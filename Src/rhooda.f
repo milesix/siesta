@@ -29,7 +29,7 @@ C  Modules
 C
       use precision, only: dp, grid_p
 
-      use atmfuncs, only: rcut, phiatm
+      use atmfuncs, only: rcut, phiatm, orb_f
       use atomlist, only: indxuo
       use mesh,     only: nsp, dxa, xdop, xdsp
       use meshphi
@@ -64,7 +64,7 @@ C  Generate phi value and loop on subpoints
             iphi = iphorb(i)
             ia = iaorb(i)
             is = isa(ia)
-            r2o = rcut(is,iphi)**2
+            r2o = rcut(is,orb_f,iphi)**2
             iop = listp2(kn)
             do isp = 1,nsp
               do ix = 1,3
@@ -72,7 +72,7 @@ C  Generate phi value and loop on subpoints
               enddo
               r2sp = dxsp(1)**2 + dxsp(2)**2 + dxsp(3)**2
               if (r2sp.lt.r2o) then
-                call phiatm(is,iphi,dxsp,phip,gradCi)
+                call phiatm(is,orb_f,iphi,dxsp,phip,gradCi)
                 Ci = phip
                 rhoatm(isp,ip) = rhoatm(isp,ip) + Datm(iu) * Ci * Ci
               endif

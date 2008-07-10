@@ -52,7 +52,7 @@ C
       use atomlist,     only : iphorb, iaorb
       use siesta_geom,  only : na_u, isa
       use atmfuncs,     only : nofis, labelfis, zvalfis
-      use atmfuncs,     only : cnfigfio, lofio, zetafio
+      use atmfuncs,     only : cnfigfio, lofio, zetafio,orb_f
       use fdf
       use files,        only : slabel, label_length
       use sys,          only : die
@@ -339,7 +339,8 @@ C Free buffer array
            write(iu) (labelfis(is), zvalfis(is),nofis(is),is=1,nspecies)
            do is = 1, nspecies
               do io=1,nofis(is)
-                 write(iu) cnfigfio(is,io), lofio(is,io), zetafio(is,io)
+                 write(iu) cnfigfio(is,io), lofio(is,orb_f,io), 
+     $                zetafio(is,io)
               enddo
            enddo
            write(iu) na_u

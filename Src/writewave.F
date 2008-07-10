@@ -607,7 +607,7 @@ C
       use files,       only : slabel
       use densematrix, only : Haux, Saux, psi
       use alloc
-      use atmfuncs,     only : symfio, cnfigfio, labelfis, nofis
+      use atmfuncs,     only : symfio, cnfigfio, labelfis, nofis, orb_f
       use atomlist,     only : iaorb, iphorb
       use siesta_geom,  only : isa
 
@@ -746,7 +746,7 @@ C Find output file name, and open for Node 0
         write(iu) nuotot
         write(iu) (iaorb(j),labelfis(isa(iaorb(j))),
      .            iphorb(j), cnfigfio(isa(iaorb(j)),iphorb(j)),
-     .            symfio(isa(iaorb(j)),iphorb(j)), j=1,nuotot)
+     .            symfio(isa(iaorb(j)),orb_f,iphorb(j)), j=1,nuotot)
 
         call io_close(iu)
 

@@ -68,7 +68,7 @@ CONTAINS
     !    %endblock PAO.BasisEnthalpyWeights.
 
     use precision, only: dp
-    use atmfuncs,  only: lofio, rcut
+    use atmfuncs,  only: lofio, rcut, orb_f
     use atomlist,  only: lasto, iphorb
     use siesta_geom, only: isa, na_u
     use units,     only: pi
@@ -84,8 +84,8 @@ CONTAINS
        is = isa(ia)
        do io = lasto(ia-1)+1,lasto(ia)
           ioa = iphorb(io)
-          l = lofio(is,ioa)
-          r = rcut(is,ioa)
+          l = lofio(is,orb_f,ioa)
+          r = rcut(is,orb_f,ioa)
           orb_vol = orb_vol + ((4.0_dp/3.0_dp)*pi*r**3)/(2*l+1) 
           !Just one per nl shell
        enddo

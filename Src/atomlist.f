@@ -14,9 +14,8 @@
       use alloc
       use parallel, only: IOnode
       use  atmfuncs, only: nofis, nkbfis, izofis, massfis,
-     $                     rcut, atmpopfio, zvalfis
-      use atm_types, only: species, get_number_of_orbs, 
-     $     get_number_of_kb_projs
+     $                     rcut, atmpopfio, zvalfis, orb_f,vna_f,kbpj_f
+      use atm_types
       use siesta_geom, only: na_u, na_s, xa, isa, xalast
       implicit none
 
@@ -141,6 +140,8 @@ c Initialize atomic lists
       lasto(0) = 0
       lastkb(0) = 0
       zvaltot = 0.0_dp
+
+    
       do ia = 1,na_u
         is = isa(ia)
         zvaltot = zvaltot + zvalfis(is)
@@ -148,25 +149,24 @@ c Initialize atomic lists
         nkba = nkbfis(is)
         lasto(ia)  = lasto(ia-1)  + noa
         lastkb(ia) = lastkb(ia-1) + nkba
-        rmaxv = max( rmaxv, rcut(is,0) )
+        rmaxv = max( rmaxv, rcut(is,vna_f,0) )
         iza(ia) = izofis(is)
         amass(ia) = massfis(is)
         qa(ia) = 0.0_dp
         do io = 1,noa
           nol = nol + 1
-          rmaxo = max( rmaxo, rcut(is,io) )
+          rmaxo = max( rmaxo, rcut(is,orb_f,io) )
           iaorb(nol) = ia
           iphorb(nol) = io
           Datm(nol) = atmpopfio(is,io)
           qa(ia) = qa(ia) + Datm(nol)
           qtot = qtot + Datm(nol)
         enddo
-
         do io = 1,nkba
           nokbl = nokbl + 1
-          rmaxkb = max( rmaxkb, rcut(is,-io) ) 
+          rmaxkb = max( rmaxkb, rcut(is,kbpj_f,io) ) 
           iaKB(nokbl) = ia
-          iphKB(nokbl) = -io
+          iphKB(nokbl) = io
         enddo
       enddo
 
@@ -176,11 +176,11 @@ c Initialize atomic lists
         is = isa(ia)
         do io = lasto(ia-1)+1,lasto(ia)
           ioa = iphorb(io)
-          rco(io) = rcut(is,ioa)
+          rco(io) = rcut(is,orb_f,ioa)
         enddo
         do ikb = lastkb(ia-1)+1,lastkb(ia)
           ioa = iphKB(ikb)
-          rckb(ikb) = rcut(is,ioa)
+          rckb(ikb) = rcut(is,kbpj_f,ioa)
         enddo
       enddo
       

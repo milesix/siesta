@@ -178,7 +178,7 @@ C
       use precision,     only : dp
       use parallel,      only : Node, Nodes
       use parallelsubs,  only : HowManyMeshPerNode, GlobalToLocalMesh
-      use atmfuncs,      only : rcut
+      use atmfuncs,      only : rcut,orb_f
       use mesh
       use meshphi,       only : endpht
       use siesta_cml
@@ -289,7 +289,7 @@ C and cutoff radius of each type.
         isty(nty) = is
         iphty(nty) = iphi
         noty(nty) = 1
-        rcty(nty) = rcut( is, iphi )
+        rcty(nty) = rcut( is,orb_f, iphi )
   160   continue
       enddo
 
@@ -929,7 +929,7 @@ C real*8  stressl(3,3)  : Local copy of stress tensor
 C ----------------------------------------------------------------------
 
       use precision,     only : dp, grid_p
-      use atmfuncs, only: rcut, phiatm
+      use atmfuncs, only: rcut, phiatm,orb_f,vna_f
       use mesh,     only: dxa, idop, indexp, ipa, mop, nsp, xdop, xdsp
 
       implicit none
@@ -968,7 +968,7 @@ C Initialise array to zero
       do ia = 1,na
         iua = indxua(ia)
         is = isa(ia)
-        ra = rcut( is, 0 )
+        ra = rcut( is,vna_f, 0 )
 
 C Loop over mesh points inside rmax
         do iop = 1,mop
@@ -981,7 +981,7 @@ C Loop over sub-points
               r = sqrt(dot_product(dx,dx))
               if (r .lt. ra) then
                 ip = isp + nsp * (ip0 - 1)
-                call phiatm( is, 0, dx, va, grva )
+                call phiatm( is,vna_f, 1, dx, va, grva )
                 if (Gradients) then
                   do i = 1,3
                     grva(i) = dvol * grva(i) * drho(ip)
@@ -1024,7 +1024,7 @@ C ----------------------------------------------------------------------
       use precision,     only : dp, grid_p
       use atmfuncs, only: rcut, psch
       use atm_types, only : species, get_local_charge_cutoff
-      use radial, only : rad_func_t, rad_cutoff
+      use radial, only : rad_cutoff
       use mesh,     only: dxa, idop, indexp, ipa, mop, nsp, xdop, xdsp
  
       implicit none
@@ -1100,7 +1100,7 @@ C
 C Modules
 C
       use precision,     only : dp, grid_p
-      use atmfuncs, only : rcut, phiatm
+      use atmfuncs, only : rcut, phiatm,orb_f
       use mesh,     only : dxa, idop, indexp, ipa, mop, nsp, xdop, xdsp
       use meshphi,  only : directphi, nphi, phi, lstpht, listp2, endpht
       use parallel, only : Node
@@ -1163,7 +1163,7 @@ C Find number of atomic orbitals at mesh points
         ia = iaorb(io)
         iphi = iphorb(io)
         is = isa(ia)
-        r2o = rcut(is,iphi)**2
+        r2o = rcut(is,orb_f,iphi)**2
 
 C Loop over mesh points inside rmax
         do iop = 1,mop
@@ -1255,7 +1255,7 @@ C Find indexes and values of atomic orbitals at mesh points
         ia = iaorb(io)
         iphi = iphorb(io)
         is = isa(ia)
-        r2o = rcut(is,iphi)**2
+        r2o = rcut(is,orb_f,iphi)**2
         do iop = 1,mop
           ip0 = indexp( ipa(ia) + idop(iop) )
           if (ip0 .gt. 0) then
@@ -1273,7 +1273,7 @@ C Find indexes and values of atomic orbitals at mesh points
               if (.not.DirectPhi) then
                 do isp = 1,nsp
                   if (r2sp(isp) .lt. r2o) then
-                    call phiatm( is, iphi, dxsp(1,isp),
+                    call phiatm( is,orb_f, iphi, dxsp(1:3,isp),
      .                           phip, grphi )
                     phi(isp,n) = phip
                   else

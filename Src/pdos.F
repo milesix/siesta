@@ -61,6 +61,7 @@ C **********************************************************************
       use siesta_geom,  only : xa, isa
       use atomlist,     only : iphorb, iaorb
       use atmfuncs,     only : zetafio, mofio, lofio, cnfigfio, labelfis
+      use atmfuncs,     only : orb_f
       use flib_wxml
       use xml,          only : xml_dump_attribute
       use densematrix,  only : Haux, Saux, psi
@@ -266,10 +267,12 @@ C New writing
           call xml_dump_attribute(iunit2,"position",pos_string)
           call xml_AddAttribute(xf,"n",str(cnfigfio(spec,iorb)))
           call xml_dump_attribute(iunit2,"n",str(cnfigfio(spec,iorb)))
-          call xml_AddAttribute(xf,"l",str(lofio(spec,iorb)))
-          call xml_dump_attribute(iunit2,"l",str(lofio(spec,iorb)))
-          call xml_AddAttribute(xf,"m",str(mofio(spec,iorb)))
-          call xml_dump_attribute(iunit2,"m",str(mofio(spec,iorb)))
+          call xml_AddAttribute(xf,"l",str(lofio(spec,orb_f,iorb)))
+          call xml_dump_attribute(iunit2,"l",str(lofio(spec,orb_f,
+     $         iorb)))
+          call xml_AddAttribute(xf,"m",str(mofio(spec,orb_f,iorb)))
+          call xml_dump_attribute(iunit2,"m",str(mofio(spec,orb_f,
+     $         iorb)))
           call xml_AddAttribute(xf,"z",str(zetafio(spec,iorb)))
           call xml_dump_attribute(iunit2,"z",str(zetafio(spec,iorb)))
           write(iunit2,'(a)') '> '

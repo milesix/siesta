@@ -72,7 +72,7 @@ C
       use precision
       use parallel,      only : Node, Nodes
       use parallelsubs,  only : GetNodeOrbs, GlobalToLocalOrb
-      use atmfuncs,      only : rcut
+      use atmfuncs,      only : rcut, orb_f, kbpj_f
       use listsc_module, only : listsc_init
       use sorting
       use neighbour,   only: jna=>jan, xij, r2ij, maxna=>maxnna
@@ -152,11 +152,11 @@ C Find maximum range of basis orbitals and KB projectors
         is = isa(ia)
         do ikb = lastkb(ia-1)+1,lastkb(ia)
           ioa = iphkb(ikb)
-          rmaxkb = max( rmaxkb, rcut(is,ioa) )
+          rmaxkb = max( rmaxkb, rcut(is,kbpj_f,ioa) )
         enddo
         do io = lasto(ia-1)+1,lasto(ia)
           ioa = iphorb(io)
-          rmaxo = max( rmaxo, rcut(is,ioa) )
+          rmaxo = max( rmaxo, rcut(is,orb_f,ioa) )
         enddo
       enddo
 
@@ -211,7 +211,7 @@ C Loop on orbitals of atom ia
 
               is = isa(ia)
               ioa = iphorb(io)
-              rci = rcut(is,ioa)
+              rci = rcut(is,orb_f,ioa)
 
 C Find overlaping KB projectors
               if (.not.negl) then
@@ -222,7 +222,7 @@ C Find overlaping KB projectors
                   do ko = lastkb(ka-1)+1,lastkb(ka)
                     ks = isa(ka)
                     koa = iphkb(ko)
-                    rck = rcut(ks,koa)
+                    rck = rcut(ks,kbpj_f,koa)
                     if (rci+rck .gt. rik) then
 C Check maxnkb - if too small then increase array sizes
                       if (nnkb.eq.maxnkb) then
@@ -251,7 +251,7 @@ C If not yet connected
                   if (.not.conect(jo)) then
                     js = isa(ja)
                     joa = iphorb(jo)
-                    rcj = rcut(js,joa)
+                    rcj = rcut(js,orb_f,joa)
 C Find if there is direct overlap
                     if (rci+rcj .gt. rij) then
                       conect(jo) = .true.
@@ -346,7 +346,7 @@ C Loop on orbitals of atom ia
 
               is = isa(ia)
               ioa = iphorb(io)
-              rci = rcut(is,ioa)
+              rci = rcut(is,orb_f,ioa)
 
 C Find overlaping KB projectors
               if (.not.negl) then
@@ -357,7 +357,7 @@ C Find overlaping KB projectors
                   do ko = lastkb(ka-1)+1,lastkb(ka)
                     ks = isa(ka)
                     koa = iphkb(ko)
-                    rck = rcut(ks,koa)
+                    rck = rcut(ks,kbpj_f,koa)
                     if (rci+rck .gt. rik) then
                       nnkb = nnkb + 1
                       knakb(nnkb) = kna
@@ -398,7 +398,7 @@ C through a KB projector
 
                     js = isa(ja)
                     joa = iphorb(jo)
-                    rcj = rcut(js,joa)
+                    rcj = rcut(js,orb_f,joa)
 C Find if there is direct overlap
                     if (rci+rcj .gt. rij) then
                       conect(jo) = .true.

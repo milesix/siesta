@@ -44,7 +44,7 @@ C real*8  S(maxnh)         : Sparse overlap matrix
 C *********************************************************************
 
       use precision
-      use atmfuncs,     only : rcut
+      use atmfuncs,     only : rcut,orb_f
       use parallel,     only : Node, Nodes
       use parallelsubs, only : GlobalToLocalOrb
       use alloc,        only : re_alloc, de_alloc
@@ -105,34 +105,34 @@ C Allocate local memory
               do jo = lasto(ja-1)+1,lasto(ja)
                 joa = iphorb(jo)
                 js = isa(ja) 
-                if (rcut(is,ioa)+rcut(js,joa) .gt. rij) then  
+                if (rcut(is,orb_f,ioa)+rcut(js,orb_f,joa) .gt. rij) then  
 
                   if (abs(dk(1)).gt.tiny) then
-                    call matel('X', is, js, ioa, joa, xij(1,jn),
-     .                          Sij, grSij ) 
+                    call matel('X', is, js,orb_f,orb_f, ioa, joa, 
+     .                          xij(1,jn), Sij, grSij ) 
                     Si(jo) = Si(jo) + 0.5d0*Sij*dk(1)  
  
-                    call matel('X', js, is, joa, ioa, xinv,
+                    call matel('X', js, is,orb_f,orb_f, joa, ioa, xinv,
      .                          Sij, grSij )
                     Si(jo) = Si(jo) + 0.5d0*Sij*dk(1)  
                   endif
                      
                   if (abs(dk(2)).gt.tiny) then
-                    call matel('Y', is, js, ioa, joa, xij(1,jn),
-     .                          Sij, grSij )
+                    call matel('Y', is, js,orb_f,orb_f, ioa, joa, 
+     .                          xij(1,jn), Sij, grSij )
                     Si(jo) = Si(jo) + 0.5d0*Sij*dk(2) 
                 
-                    call matel('Y', js, is, joa, ioa, xinv,
+                    call matel('Y', js, is,orb_f,orb_f, joa, ioa, xinv, 
      .                          Sij, grSij )
                     Si(jo) = Si(jo) + 0.5d0*Sij*dk(2)  
                   endif
  
                   if (abs(dk(3)).gt.tiny) then
-                    call matel('Z', is, js, ioa, joa, xij(1,jn),
-     .                          Sij, grSij )
+                    call matel('Z', is, js,orb_f,orb_f, ioa, joa,
+     .                          xij(1,jn),Sij, grSij )
                     Si(jo) = Si(jo) + 0.5d0*Sij*dk(3) 
  
-                    call matel('Z', js, is, joa, ioa, xinv,
+                    call matel('Z', js, is,orb_f,orb_f, joa, ioa, xinv,
      .                          Sij, grSij )
                     Si(jo) = Si(jo) + 0.5d0*Sij*dk(3) 
                   endif

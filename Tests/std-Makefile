@@ -25,7 +25,7 @@
 # examples of other options for batch processing.
 #
 #
-REFERENCE=../../ref-version/Tests
+REFERENCE=Reference
 #
 label=work
 #
@@ -65,11 +65,12 @@ clean:
 #   Global comparisons with other Tests directories
 #
 compare:
-	@for i in ${tests} ;do \
+	@for i in $(ALL) ;do \
              echo "---------$$i start" ;  \
-             diff $$i/$$i.out ${REFERENCE}/$$i/$$i.out ; \
+	     $(MAKE) -C $$i; \
+             diff $$i/$$i.out ${REFERENCE}/$$i.out ; \
              echo "****---------$$i done" ; \
-     done | grep -v " timer: " | grep -v " elaps: " | grep -v " of run"
+     	done | grep -v " timer: " | grep -v " elaps: " | grep -v " of run"
 
 compare-xml:    # Needs more work
 	for i in ${tests} ;do \

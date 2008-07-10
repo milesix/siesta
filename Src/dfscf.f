@@ -50,7 +50,7 @@ C    6  10        20        30        40        50        60        7072
 
 C  Modules
       use precision, only: dp, grid_p
-      use atmfuncs, only: rcut, all_phi
+      use atmfuncs, only: rcut, all_phi, orb_f
       use atm_types, only: nsmax=>nspecies
       use atomlist, only: indxuo
       use listsc_module, only: listsc
@@ -168,7 +168,7 @@ C  Find atomic cutoff radii
         ia = iaorb(i)
         is = isa(ia)
         io = iphorb(i)
-        r2cut(is) = max( r2cut(is), rcut(is,io)**2 )
+        r2cut(is) = max( r2cut(is), rcut(is,orb_f,io)**2 )
       enddo
 
 C  Evaluate constants
@@ -264,7 +264,7 @@ C  Calculate all phi values and derivatives at all subpoints
               dxsp(1:3,isp) = xdop(1:3,iop)+xdsp(1:3,isp)-dxa(1:3,ia)
               r2sp = dxsp(1,isp)**2 + dxsp(2,isp)**2 + dxsp(3,isp)**2
               if (r2sp.lt.r2cut(is)) then
-                call all_phi( is,+1, dxsp(:,isp), nphiloc,
+                call all_phi( is,orb_f, dxsp(:,isp), nphiloc,
      .                        phia(:,isp), grada(:,:,isp))
               else
                 phia(:,isp) = 0.0_dp

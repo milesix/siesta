@@ -133,7 +133,7 @@ C  Modules
 C
       use precision
       use parallel,      only : Node, Nodes
-      use atmfuncs,      only : rcut, rcore
+      use atmfuncs,      only : rcut, rcore, orb_f
       use fdf
       use sys,           only : die
       use mesh,          only : xdsp, nsm, nsp
@@ -366,7 +366,7 @@ C Find the maximum orbital radius
         ia = iaorb(io)
         iphi = iphorb(io)
         is = isa(ia)
-        rmax = max( rmax, rcut(is,iphi) )
+        rmax = max( rmax, rcut(is, orb_f, iphi) )
       enddo
 
 C ----------------------------------------------------------------------

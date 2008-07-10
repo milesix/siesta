@@ -13,9 +13,9 @@
       use precision,     only : dp
       use parallel,      only : Node, Nodes
       use parallelsubs,  only : GlobalToLocalOrb
-      use atmfuncs,      only : rcut
+      use atmfuncs,      only : rcut, orb_f
       use neighbour,     only : jna=>jan, r2ij, xij, mneighb
-      use alloc,         only : re_alloc, de_alloc
+      use alloc,         only : re_alloc, de_alloc, alloc_report
 
       implicit none
 
@@ -106,13 +106,14 @@ C Valid orbital
                 joa = iphorb(jo)
                 is = isa(ia)
                 js = isa(ja)
-                if (rcut(is,ioa)+rcut(js,joa) .gt. rij) then
-                  call matel( 'S', is, js, ioa, joa, xij(1,jn),
-     .                      Sij, grSij )
+                if (rcut(is,orb_f,ioa)+rcut(js,orb_f,joa) .gt. rij) then
+                  call matel( 'S', is, js, orb_f,orb_f,ioa, joa,
+     .                       xij(1,jn), Sij, grSij )
                   Si(jo) = Si(jo) + Sij
                 endif
               enddo
             enddo
+            
             do j = 1,numh(iio)
               ind = listhptr(iio)+j
               jo = listh(ind)
@@ -125,7 +126,6 @@ C Valid orbital
 
 C Deallocate local memory
       call de_alloc(Si,name="Si",routine="overlap")
-
 C Finish timer
       call timer( 'overlap', 2 )
 

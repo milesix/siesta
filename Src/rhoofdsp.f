@@ -42,7 +42,7 @@ C *********************************************************************
 
 C  Modules
       use precision, only: dp, grid_p
-      use atmfuncs,  only: rcut, all_phi
+      use atmfuncs,  only: rcut, all_phi, orb_f
       use atm_types, only: nsmax=>nspecies
       use atomlist,  only: indxuo
       use listsc_module, only: listsc
@@ -152,7 +152,7 @@ C  Find atomic cutoff radiae
         ia = iaorb(i)
         is = isa(ia)
         io = iphorb(i)
-        r2cut(is) = max( r2cut(is), rcut(is,io)**2 )
+        r2cut(is) = max( r2cut(is), rcut(is,orb_f,io)**2 )
       enddo
 
 C  Initializations
@@ -313,7 +313,7 @@ C  Generate or retrieve phi values for all orbitals up to nc
                 dxsp(:) = xdsp(:,isp) + xdop(:,iop) - dxa(:,ia)
                 r2sp = sum(dxsp**2)
                 if (r2sp.lt.r2cut(is)) then
-                  call all_phi( is, +1, dxsp, nphiloc, phia(:,isp) )
+                  call all_phi( is, orb_f, dxsp, nphiloc, phia(:,isp) )
                 else
                   phia(:,isp) = 0.0_dp
                 endif

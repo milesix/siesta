@@ -80,7 +80,8 @@ C *********************************************************************
       use precision,    only : dp
       use parallel,     only : Node, Nodes
       use atmparams,    only : lmx2, nzetmx, nsemx
-      use atmfuncs,     only : epskb, lofio, mofio, rcut, rphiatm
+      use atmfuncs,     only : epskb, lofio, mofio, rcut, rphiatm, orb_f
+     $     ,kbpj_f
       use atm_types,    only : nspecies
       use parallelsubs, only : GlobalToLocalOrb, LocalToGlobalOrb
       use alloc,        only : re_alloc
@@ -195,11 +196,11 @@ C Find maximum range
         is = isa(ia)
         do ikb = lastkb(ia-1)+1,lastkb(ia)
           ioa = iphKB(ikb)
-          rmaxkb = max( rmaxkb, rcut(is,ioa) )
+          rmaxkb = max( rmaxkb, rcut(is,kbpj_f,ioa) )
         enddo
         do io = lasto(ia-1)+1,lasto(ia)
           ioa = iphorb(io)
-          rmaxo = max( rmaxo, rcut(is,ioa) )
+          rmaxo = max( rmaxo, rcut(is,orb_f,ioa) )
         enddo
       enddo
       rmax = rmaxo + rmaxkb
@@ -257,7 +258,7 @@ C Find if orbital is within range
                 within = .false.
                 do ko = lastkb(ka-1)+1,lastkb(ka)
                   koa = iphKB(ko)
-                  if ( rki .lt. rcut(is,ioa)+rcut(ks,koa) ) 
+                  if ( rki .lt. rcut(is,orb_f,ioa)+rcut(ks,kbpj_f,koa) ) 
      .              within = .true.
                 enddo
 
@@ -282,22 +283,22 @@ C Find overlap between neighbour orbitals and KB projectors
                     do ix = 1,3
                      xinv(ix) = - xij(ix,ina)
                     enddo 
-                    call matel('S', is, ks, ioa, koa, xinv,
+                    call matel('S', is, ks,orb_f,kbpj_f, ioa, koa, xinv,
      .                         Ski(1,ikb,nno), grSki)
               
                     sum = 0.0d0
                     if (abs(dk(1)).gt.tiny) then
-                      call matel('X', is, ks, ioa, koa, xinv,
+                      call matel('X', is, ks,orb_f,kbpj_f,ioa,koa, xinv,
      .                           Sik, grSki)
                       sum = sum + Sik*dk(1) 
                     endif
                     if (abs(dk(2)).gt.tiny) then
-                      call matel('Y', is, ks, ioa, koa, xinv,
+                      call matel('Y', is, ks,orb_f,kbpj_f,ioa,koa, xinv,
      .                           Sik, grSki)
                       sum = sum + Sik*dk(2)
                     endif
                     if (abs(dk(3)).gt.tiny) then
-                      call matel('Z', is, ks, ioa, koa, xinv,
+                      call matel('Z', is, ks,orb_f,kbpj_f,ioa,koa, xinv,
      .                           Sik, grSki)
                       sum = sum + Sik*dk(3)
                     endif
@@ -387,23 +388,23 @@ C Initialize neighb subroutine
                 joa = iphorb(jo)
                 js = isa(ja)  
  
-                if (rcut(is,ioa)+rcut(js,joa) .gt. rij) then  
+                if (rcut(is,orb_f,ioa)+rcut(js,orb_f,joa) .gt. rij) then  
 
                   if (matrix.eq.'R') then 
  
-                    call matel('X', js, is, joa, ioa, xinv,
+                    call matel('X', js, is,orb_f,orb_f, joa, ioa, xinv,
      .                         Sij, grSij )
                     Si(jo) = Sij*dk(1)  
                      
-                    call matel('Y', js, is, joa, ioa, xinv,
+                    call matel('Y', js, is,orb_f,orb_f,joa, ioa, xinv,
      .                         Sij, grSij )
                     Si(jo) = Si(jo) + Sij*dk(2)  
  
-                    call matel('Z', js, is, joa, ioa, xinv,
+                    call matel('Z', js, is,orb_f,orb_f, joa, ioa, xinv,
      .                         Sij, grSij )
                     Si(jo) = Si(jo) + Sij*dk(3) 
            
-                    call matel('S', is, js, ioa, joa, xij(1,jn),
+                    call matel('S',is,js,orb_f,orb_f,ioa,joa,xij(1,jn),
      .                         Sij, grSij )
                     Si(jo) = Si(jo) + Sij*(
      .                   xa(1,ia)*dk(1)
@@ -416,10 +417,10 @@ C Initialize neighb subroutine
 C Perform the direct computation of the matrix element of the momentum 
 C within the same atom
                       if (.not.calculated(joa,ioa,is)) then 
-                        ilm1 = lofio(is,ioa)**2 + lofio(is,ioa) + 
-     .                    mofio(is,ioa) + 1
-                        ilm2 = lofio(is,joa)**2 + lofio(is,joa) + 
-     .                    mofio(is,joa) + 1
+                        ilm1 = lofio(is,orb_f,ioa)**2 + 
+     .                    lofio(is,orb_f,ioa) + mofio(is,orb_f,ioa) + 1
+                        ilm2 = lofio(is,orb_f,joa)**2 +  
+     .                    lofio(is,orb_f,joa) + mofio(is,orb_f,joa) + 1
                         call intgry(ilm1,ilm2,dintg2)
                         call intyyr(ilm1,ilm2,dintg1)
                         dintgmod1 = dintg1(1)**2 + dintg1(2)**2 + 
@@ -431,12 +432,12 @@ C within the same atom
      .                      then 
                           dint1 = 0.0d0
                           dint2 = 0.0d0
-                          npoints = int(max(rcut(is,ioa),rcut(is,joa))
-     .                      /dx) + 2
+                          npoints = int(max(rcut(is,orb_f,ioa),
+     .                     rcut(is,orb_f,joa))/dx) + 2
                           do ir = 1,npoints
                             r = dx*(ir-1)
-                            call rphiatm(is,ioa,r,phi1,dphi1dr)
-                            call rphiatm(is,joa,r,phi2,dphi2dr)
+                            call rphiatm(is,orb_f,ioa,r,phi1,dphi1dr)
+                            call rphiatm(is,orb_f,joa,r,phi2,dphi2dr)
                             dint1 = dint1 + dx*phi1*dphi2dr*r**2
                             dint2 = dint2 + dx*phi1*phi2*r
                           enddo 
@@ -456,8 +457,8 @@ C The factor of two because we use Ry for the Hamiltonian
                     else
 C Matrix elements between different atoms are taken from the 
 C gradient of the overlap 
-                      call matel('S', is, js, ioa, joa, xij(1,jn),
-     .                           Sij, grSij )
+                      call matel('S',is,js,orb_f,orb_f,ioa,joa,
+     .                           xij(1,jn),Sij, grSij )
 C The factor of two because we use Ry for the Hamiltonian
                       Si(jo) =
      .                  2.0d0*(grSij(1)*dk(1)

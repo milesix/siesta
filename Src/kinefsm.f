@@ -57,7 +57,7 @@ C
       use precision,     only : dp
       use parallel,      only : Node, Nodes
       use parallelsubs,  only : GlobalToLocalOrb
-      use atmfuncs,      only : rcut
+      use atmfuncs,      only : rcut, lofio, phiatm,orb_f
       use neighbour,     only : jna=>jan, r2ij, xij, mneighb
       use alloc,         only : re_alloc, de_alloc
 
@@ -107,7 +107,9 @@ C Allocate local memory
       Ti(1:no) = 0.0_dp
 
       do ia = 1,nua
+                 
         call mneighb( scell, 2.0d0*rmaxo, na, xa, ia, 0, nnia )
+
         do io = lasto(ia-1)+1,lasto(ia)
 
 C Is this orbital on this Node?
@@ -129,11 +131,11 @@ C Valid orbital
               jua = indxua(ja)
               rij = sqrt( r2ij(jn) )
               do jo = lasto(ja-1)+1,lasto(ja)
-                joa = iphorb(jo)
+                joa = iphorb(jo)                
                 js = isa(ja)
-                if (rcut(is,ioa)+rcut(js,joa) .gt. rij) then
-                  call matel( 'T', is, js, ioa, joa, xij(1,jn),
-     .                      Tij, grTij )
+                if (rcut(is,orb_f,ioa)+rcut(js,orb_f,joa) .gt. rij) then
+                  call matel( 'T', is, js, orb_f, orb_f, ioa, joa, 
+     .                      xij(1,jn),Tij, grTij )
                   Ti(jo) = Ti(jo) + Tij
                   Ekin = Ekin + Di(jo) * Tij
                   do ix = 1,3
@@ -163,6 +165,7 @@ C Valid orbital
           endif
         enddo
       enddo
+     
 
 C Deallocate local memory
       call de_alloc( Ti, name='Ti' )

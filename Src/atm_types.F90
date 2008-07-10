@@ -91,8 +91,6 @@ contains
     
     if (Node.ne.0) allocate (species(nspecies))
 
-    print *, "Node=", Node," Broadbasis"
-
     do is=1,nspecies
        spp => species(is)
        call MPI_Bcast(spp%symbol,symbol_length,MPI_character,&
@@ -111,16 +109,13 @@ contains
        !print*, "broad_basis:", Node,"self_energy=",spp%self_energy
        
        if (Node .ne. 0) allocate(spp%orbs)
-       print *, "Broad_basis:",Node, " n_funcs before hilb.coll. broad.=", get_size(spp%orbs)
 
        call broadcast_hilbert_vector_collection(spp%orbs)
-       print *, "braod_basis", Node,"orbs done"
 
        if (Node .eq. 0 .and. associated(spp%kb_proj)) kbs = .true.
        call MPI_Bcast(kbs,1,MPI_logical,0,MPI_Comm_World,MPIerror)
        if (Node .ne. 0 .and. kbs) allocate(spp%kb_proj)       
        if (kbs) call broadcast_hilbert_vector_collection(spp%kb_proj)
-       print *, "braod_basis", Node,"kbs done"
 
        if (Node .eq. 0 .and. associated(spp%ldau_proj)) ldau = .true.
        call MPI_Bcast(ldau,1,MPI_logical,0,MPI_Comm_World,MPIerror)
@@ -136,7 +131,6 @@ contains
        call MPI_Bcast(vna,1,MPI_logical,0,MPI_Comm_World,MPIerror)
        if (Node .ne.0  .and. vna) allocate(spp%neutral_atom_potential)
        if (vna) call rad_broadcast(spp%neutral_atom_potential)
-       if (vna) print *,"vna broadcasted"
 
        if (Node .eq. 0 .and. associated(spp%pseudo_local_charge)) pseudo_charge = .true.
        call MPI_Bcast(pseudo_charge,1,MPI_logical,0,MPI_Comm_World,MPIerror)
@@ -350,7 +344,7 @@ end subroutine broadcast_basis
   !-------------------------------------------------------------------------
   subroutine set_no_kb(species) 
     type(species_info_t), intent(inout) :: species
-    nullify(species%neutral_atom_potential)
+    nullify(species%kb_proj)
   end subroutine set_no_kb
 
   !-------------------------------------------------------------------------

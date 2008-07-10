@@ -41,7 +41,7 @@ C will fail if one atom evaporates from one slab and reaches another
 C image of the slab, reporting the system as bulk.
 C **********************************************************************
 
-      use atmfuncs,  only : rcut
+      use atmfuncs,  only : rcut, vna_f
       use precision, only : dp
       use neighbour, only : jna=>jan, r2ij, xij, mneighb
       use alloc,       only : re_alloc, de_alloc
@@ -62,7 +62,7 @@ C Find maximum interaction range
       RMAX = 0.0D0
       do IA = 1,NA
         IS = ISA(IA)
-        RMAX = MAX( RMAX, RCUT(IS,0) )
+        RMAX = MAX( RMAX, RCUT(IS,vna_f,0) )
       enddo
 
 C Initialize neighbour-locater routine
@@ -72,7 +72,7 @@ C Main loop
       NV = 0
       do IA = 1,NA
         IS = ISA(IA)
-        RI = RCUT(IS,0)
+        RI = RCUT(IS,vna_f,0)
 
 C Find neighbours of atom IA
         CALL MNEIGHB( CELL, RI+RMAX, NA, XA, IA, 0, NNA )
@@ -80,7 +80,7 @@ C Find neighbours of atom IA
           do IN = 1,NNA
             JA = JNA(IN)
             JS = ISA(JA)
-            RJ = RCUT(JS,0)
+            RJ = RCUT(JS,vna_f,0)
             RIJ = SQRT(R2IJ(IN))
 
 C Check if IA and JA interact

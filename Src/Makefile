@@ -101,9 +101,9 @@ OBJS =  automatic_cell.o \
         precision.o sys.o m_cell.o recipes.o files.o \
         spatial.o parallel.o parallelsubs.o  parsing.o chemical.o xcmod.o atom.o atmparams.o \
         m_mpi_utils.o m_fdf_global.o m_history.o m_iorho.o  \
-        atmfuncs.o listsc.o memoryinfo.o m_memory.o sorting.o \
+        atmfuncs.o atmfuncs_types.o listsc.o memoryinfo.o m_memory.o sorting.o \
         atomlist.o atm_types.o old_atmfuncs.o radial.o \
-        alloc.o phonon.o spher_harm.o periodic_table.o version.o timestamp.o \
+        alloc.o phonon.o spher_harm.o spher_harm2.o periodic_table.o version.o timestamp.o \
         atm_generation_types.o xml.o pseudopotential.o basis_specs.o basis_io.o\
         onmod.o densematrix.o writewave.o on_subs.o fermid.o m_broyddj.o \
         mneighb.o globalise.o siesta_cmlsubs.o siesta_cml.o \
@@ -304,7 +304,9 @@ atm_transfer.o: radial.o sys.o
 
 atm_types.o: hilbert_vector_collection.o parallel.o precision.o radial.o sys.o
 
-atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o sys.o
+atmfuncs.o: atm_types.o atmfuncs_types.o precision.o spher_harm.o sys.o
+
+atmfuncs_types.o: precision.o
 
 
 atom.o: atm_generation_types.o atm_types.o atmparams.o atom_options.o
@@ -325,7 +327,7 @@ bands.o: precision.o sys.o
 
 basis_enthalpy.o: atmfuncs.o atomlist.o precision.o siesta_geom.o units.o
 
-basis_gen.o: atm_generation_types.o atm_types.o hilbert_vector.o
+basis_gen.o: atm_generation_types.o atm_types.o atom_options.o hilbert_vector.o
 basis_gen.o: hilbert_vector_collection.o multiple_z.o pao_util.o
 basis_gen.o: periodic_table.o pol_orb.o precision.o pseudopotential.o radial.o
 basis_gen.o: sys.o units.o
@@ -664,6 +666,7 @@ m_wallclock.o: m_walltime.o
 madelung.o: parallel.o precision.o sys.o
 
 matel.o: alloc.o atmfuncs.o precision.o radfft.o recipes.o spher_harm.o
+matel.o: spher_harm2.o
 
 md_out.o: files.o precision.o sys.o units.o
 
@@ -770,8 +773,8 @@ plcharge.o: files.o old_atmfuncs.o parallel.o precision.o
 
 poison.o: alloc.o parallel.o precision.o sys.o
 
-pol_orb.o: atm_generation_types.o atm_types.o pao_util.o precision.o
-pol_orb.o: pseudopotential.o radial.o radial_logGrid.o
+pol_orb.o: atm_generation_types.o atm_types.o atom_options.o pao_util.o
+pol_orb.o: precision.o pseudopotential.o radial.o radial_logGrid.o
 
 post_scf_work.o: atomlist.o m_energies.o m_spin.o mneighb.o setup_hamiltonian.o
 post_scf_work.o: siesta_cml.o siesta_geom.o siesta_options.o sparse_matrices.o
@@ -786,7 +789,7 @@ propor.o: precision.o sys.o
 proximity_check.o: mneighb.o parallel.o precision.o siesta_geom.o
 proximity_check.o: siesta_options.o
 
-pseudopotential.o: flib_spline.o precision.o radial.o sys.o
+pseudopotential.o: atom_options.o flib_spline.o precision.o radial.o sys.o
 
 
 radfft.o: alloc.o precision.o recipes.o
@@ -909,7 +912,9 @@ sparse_matrices.o: precision.o
 
 spatial.o: precision.o
 
-spher_harm.o: alloc.o precision.o sys.o
+spher_harm.o: precision.o sys.o
+
+spher_harm2.o: atmfuncs.o precision.o spher_harm.o
 
 state_analysis.o: atomlist.o born_charge.o m_energies.o m_forces.o m_iostruct.o
 state_analysis.o: m_ntm.o m_spin.o m_stress.o m_wallclock.o parallel.o
@@ -1037,7 +1042,6 @@ m_state_analysis.o: state_analysis.o
 m_state_init.o: state_init.o
 m_struct_init.o: struct_init.o
 m_timestamp.o: timestamp.o
-m_xyz_phiatm.o: matel.o
 m_zm_broyden_optim.o: zm_broyden_optim.o
 m_zm_fire_optim.o: zm_fire_optim.o
 mesh.o: meshsubs.o

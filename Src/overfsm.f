@@ -13,7 +13,7 @@
       use precision,     only : dp
       use parallel,      only : Node, Nodes
       use parallelsubs,  only : GlobalToLocalOrb
-      use atmfuncs,      only : rcut
+      use atmfuncs,      only : rcut, orb_f
       use neighbour,     only : jna=>jan, r2ij, xij, mneighb
       use alloc,         only : re_alloc, de_alloc
 
@@ -135,9 +135,9 @@ C Valid orbital
                 joa = iphorb(jo)
                 is = isa(ia)
                 js = isa(ja)
-                if (rcut(is,ioa)+rcut(js,joa) .gt. rij) then
-                  call matel( 'S', is, js, ioa, joa, xij(1,jn),
-     .                      Sij, grSij )
+                if (rcut(is,orb_f,ioa)+rcut(js,orb_f,joa) .gt. rij) then
+                  call matel( 'S', is, js, orb_f, orb_f, ioa, joa,
+     .                       xij(1,jn), Sij, grSij )
                   Si(jo) = Si(jo) + Sij
                   do ix = 1,3
                     fij(ix) = (- Di(jo)) * grSij(ix)

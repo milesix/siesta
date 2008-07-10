@@ -50,7 +50,7 @@ C
       use precision,    only : dp
       use parallel,     only : IOnode, Node, Nodes
       use parallelsubs, only : GlobalToLocalOrb, GetNodeOrbs
-      use atmfuncs,     only : symfio, cnfigfio, labelfis, nofis
+      use atmfuncs,     only : symfio, cnfigfio, labelfis, nofis,orb_f
       use siesta_cml
 #ifdef MPI
       use mpi_siesta
@@ -140,7 +140,7 @@ C Compute and print Overlap Populations for Orbitals ....................
           imax = ncol
           if (ib .eq. nblock+1) imax = nbasistot - nblock * ncol  
           do ii=1,imax 
-             sym_label(ii)=symfio(isa(iaorb((ib-1)*ncol+ii)),
+             sym_label(ii)=symfio(isa(iaorb((ib-1)*ncol+ii)),orb_f,
      .                iphorb((ib-1)*ncol+ii))
              config(ii)=cnfigfio(isa(iaorb((ib-1)*ncol+ii)),
      .                iphorb((ib-1)*ncol+ii))
@@ -165,7 +165,7 @@ C Compute and print Overlap Populations for Orbitals ....................
           do itot = 1,nbasistot
             call GlobalToLocalOrb(itot,Node,Nodes,i)
             if (i.gt.0) then
-              sym_label(1)=symfio(isa(iaorb(itot)),iphorb(itot))
+              sym_label(1)=symfio(isa(iaorb(itot)),orb_f,iphorb(itot))
               config(1)=cnfigfio(isa(iaorb(itot)),iphorb(itot))
               do ii = 1,imax
                 p(ii) = 0._dp
@@ -305,7 +305,7 @@ C DSP, Orbitals with a 'P' belong to the polarization shell
              allocate(orb_label(nao))
              do io=1,nao
                write(orb_label(io),'(i1,a7)')
-     .              cnfigfio(ispec,io), symfio(ispec,io)
+     .              cnfigfio(ispec,io), symfio(ispec,orb_f,io)
              enddo
              nrow=nao/ncol
              io=1
@@ -431,7 +431,7 @@ C Global sum of total charge
                       if (itot.gt.0) then
 C DSP, Writing symmetries for each orbital.
 C DSP, Orbitals with a 'P' belong to the polarization shell
-                        sym_label(1)=symfio(ispec,iphorb(io))
+                        sym_label(1)=symfio(ispec,orb_f,iphorb(io))
                         config(1)=cnfigfio(ispec,iphorb(io))
                         do is = 1,nspin
                           qas(is) = qas(is) + qos(is,itot)

@@ -57,7 +57,7 @@ C
 
       use parallel,     only : IOnode, Node, Nodes, ProcessorY
       use parallelsubs, only : HowManyMeshPerNode
-      use atmfuncs,     only : rcut
+      use atmfuncs,     only : rcut, orb_f
       use fdf
       use parsing
       use siesta_cml
@@ -192,7 +192,7 @@ C Find the geometric center of the system
         enddo
         do ia = 1,na
           is = isa(ia)
-          rc = rcut(is,0)
+          rc = rcut(is,orb_f,0)
           do ix = 1,3
             xfrac = ddot(3,xa(1,ia),1,rcell(1,ix),1)
             xmin(ix) = min( xmin(ix), xfrac-rc/dplane(ix) )

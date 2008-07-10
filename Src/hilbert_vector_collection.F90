@@ -77,11 +77,9 @@ contains
 
        if (Node .ne. 0) call allocate_collection(data,n)
 
-       print *, Node, "vec broad!"
 
        do i=1,n
           call broadcast_hilbert_vector(data%vec(i))
-          print *, i, " broadcasted"
        enddo
     endif
 

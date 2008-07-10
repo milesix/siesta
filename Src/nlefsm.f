@@ -72,7 +72,7 @@ C
       use parallel,      only : Node, Nodes
       use parallelsubs,  only : GetNodeOrbs, LocalToGlobalOrb
       use parallelsubs,  only : GlobalToLocalOrb
-      use atmfuncs,      only : rcut, epskb
+      use atmfuncs,      only : rcut, epskb,  orb_f, kbpj_f
       use neighbour    , only : iana=>jan, r2ki=>r2ij, xki=>xij
       use neighbour    , only : mneighb
       use alloc,         only : re_alloc, de_alloc
@@ -132,11 +132,11 @@ C Find maximum range
         is = isa(ia)
         do ikb = lastkb(ia-1)+1,lastkb(ia)
           ioa = iphKB(ikb)
-          rmaxkb = max( rmaxkb, rcut(is,ioa) )
+          rmaxkb = max( rmaxkb, rcut(is,kbpj_f,ioa) )
         enddo
         do io = lasto(ia-1)+1,lasto(ia)
           ioa = iphorb(io)
-          rmaxo = max( rmaxo, rcut(is,ioa) )
+          rmaxo = max( rmaxo, rcut(is,orb_f,ioa) )
         enddo
       enddo
       rmax = rmaxo + rmaxkb
@@ -226,7 +226,7 @@ C Find if orbital is within range
                 within = .false.
                 do ko = lastkb(ka-1)+1,lastkb(ka)
                   koa = iphKB(ko)
-                  if ( rki .lt. rcut(is,ioa)+rcut(ks,koa) ) 
+                  if ( rki .lt. rcut(is,orb_f,ioa)+rcut(ks,kbpj_f,koa) ) 
      .              within = .true.
                 enddo
 
@@ -257,8 +257,8 @@ C Check maxno - if too small then increase array sizes
                     ikb = ikb + 1
                     ioa = iphorb(io)
                     koa = iphKB(ko)
-                    call matel( 'S', ks, is, koa, ioa, xki(1,ina),
-     .                    Ski(ikb,nno), grSki(1,ikb,nno) )
+                    call matel( 'S', ks, is, kbpj_f, orb_f, koa, ioa,
+     .                     xki(1,ina),Ski(ikb,nno), grSki(1,ikb,nno) )
                   enddo
 
                 endif

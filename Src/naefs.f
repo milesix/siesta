@@ -39,7 +39,7 @@ C
 C *********************************************************************
 
       use precision 
-      use atmfuncs,  only: izofis
+      use atmfuncs,  only: izofis, vna_f
       use neighbour, only: jna=>jan, xij, mneighb
 
       implicit none
@@ -76,7 +76,7 @@ C Find neighbour atoms
           is = isa(ia)
           js = isa(ja)
           if (izofis(is).gt.0 .and. izofis(js).gt.0) then
-            call matel( 'T', is, js, 0, 0, xij(1,jn), vij, fij )
+            call matel( 'T', is, js,vna_f,vna_f,1,1,xij(1,jn),vij, fij )
             Ena = Ena + vij / (16.0d0*pi)
             do ix = 1,3
               fij(ix) = fij(ix) / (16.0d0*pi)

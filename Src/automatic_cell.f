@@ -1,7 +1,7 @@
       subroutine automatic_cell(ucell,scell,na_u,xa,isa,charnet)
 
       use precision, only: dp
-      use atmfuncs,  only: rcut
+      use atmfuncs,  only: rcut,vna_f
       use parallel,  only: IONode
       use units,     only: Ang
 
@@ -25,7 +25,7 @@
           xmax = -xmin
           do ia = 1,na_u
             is = isa(ia)
-            rc = rcut(is,0)
+            rc = rcut(is,vna_f,0)
             xmin = min( xmin, xa(ix,ia)-rc )
             xmax = max( xmax, xa(ix,ia)+rc )
           enddo
