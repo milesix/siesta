@@ -28,6 +28,7 @@ module atom
   use bessel_m, only : bessel
   use parallel, only:ionode
   use na, only: gen_vna
+  use atom_options, only:get_atom_options, write_ion_plot_files
   
   implicit none      
 
@@ -169,7 +170,7 @@ CONTAINS
     ! Internal variables ...................................................
     integer is
 
-    logical user_basis, user_basis_netcdf, read_from_file
+    logical :: user_basis, user_basis_netcdf, read_from_file
 
     write(6,'(/2a)')'initatom: Reading input for the', &
          'pseudopotentials and atomic orbitals'
@@ -178,6 +179,9 @@ CONTAINS
     user_basis_netcdf = fdf_boolean('user-basis-netcdf',.false.)
 
     read_from_file = user_basis .or. user_basis_netcdf
+
+
+    call get_atom_options()
 
     if (user_basis_netcdf) then
 
@@ -206,13 +210,13 @@ CONTAINS
        call elec_corr_setup()
 
     endif
-
-    !     Dump all the atomic info
-    call dump_basis_ascii()
-
-    call dump_basis_netcdf()
-
-    call dump_basis_xml()
+    
+    if (write_ion_plot_files) then
+       ! Dump all the atomic information
+       call dump_basis_ascii()
+       call dump_basis_netcdf()
+       call dump_basis_xml()
+    endif
 
     !call check_atmfuncs()
 

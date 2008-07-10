@@ -119,7 +119,8 @@ OBJS =  automatic_cell.o \
        radial_log.o radial_log_io.o radial_log_dirty.o radial_log_low_level.o \
 	radial_lin.o hilbert_vector.o hilbert_vector_collection.o vloc.o na.o\
 	basis_gen.o pao_util.o corechg.o elec_correction.o  \
-       radial_logGrid.o radial_util.o schro.o kb.o multiple_z.o bessel.o pol_orb.o 
+       radial_logGrid.o radial_util.o schro.o kb.o multiple_z.o bessel.o\
+	atom_options.o pol_orb.o 
 #--------------------------------------------------------------
 #
 WXML=libwxml.a
@@ -306,10 +307,10 @@ atm_types.o: hilbert_vector_collection.o parallel.o precision.o radial.o sys.o
 atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o sys.o
 
 
-atom.o: atm_generation_types.o atm_types.o atmparams.o basis_gen.o basis_io.o
-atom.o: basis_specs.o bessel.o chemical.o corechg.o elec_correction.o kb.o na.o
-atom.o: parallel.o periodic_table.o precision.o pseudopotential.o radial.o
-atom.o: sys.o units.o vloc.o
+atom.o: atm_generation_types.o atm_types.o atmparams.o atom_options.o
+atom.o: basis_gen.o basis_io.o basis_specs.o bessel.o chemical.o corechg.o
+atom.o: elec_correction.o kb.o na.o parallel.o periodic_table.o precision.o
+atom.o: pseudopotential.o radial.o sys.o units.o vloc.o
 
 atom_options.o: sys.o
 

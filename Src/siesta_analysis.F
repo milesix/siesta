@@ -67,6 +67,7 @@
       integer                       :: j, ix, ind, ik, io, ispin
 
       real(dp) :: g2max
+      logical  :: write_basis_enthalpy_file
 #ifdef MPI
       real(dp):: qtmp(4)   ! Temporary for globalized spin charge
 #endif
@@ -200,7 +201,10 @@
         call siesta_write_energies( first=.false., iscf=0, dDmax=0.0_dp)
         call siesta_write_forces()
         call siesta_write_stress_pressure()
-        call write_basis_enthalpy(FreeE,FreeEHarris)
+        write_basis_enthalpy_file =
+     .       fdf_boolean("WriteBasisEnthalpy",.false.)
+        if (write_basis_enthalpy_file) 
+     .       call write_basis_enthalpy(FreeE,FreeEHarris)
       endif
 
 ! Print spin polarization

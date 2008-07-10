@@ -6,6 +6,7 @@ module pol_orb
   use pseudopotential, only:pseudopotential_t
   use atm_types, only:species_info_t,species
   use pao_util,  only:calculate_energies, normalize_orbital, sym, generate_vsoft
+  use atom_options, only: write_ion_plot_files
   use radial
   use radial_logGrid
   !use schro  
@@ -59,7 +60,7 @@ module pol_orb
 
     !SOFT-CONFINEMENT            
     !Calculate the soft confinement potential for this shell                
-    vtot = generate_vsoft(shell_pol,basp%label)
+    vtot = generate_vsoft(shell_pol,basp%label,write_ion_plot_files)
 
     !Generate the polarization function perturbatively from the original PAO**
     ePAO = shell_pol%energies(1)%total

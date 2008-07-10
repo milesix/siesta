@@ -14,7 +14,7 @@ module pseudopotential
   use precision, only: dp
   use radial
   use flib_spline, only: generate_spline, evaluate_spline
-
+  use atom_options, only: write_ion_plot_files
   implicit none
 
   external :: io_assign, io_close
@@ -79,7 +79,8 @@ CONTAINS
           call die
        endif
     endif
-    call pseudo_dump(trim(p%name) // ".psdump",p)
+    if (write_ion_plot_files) &
+         call pseudo_dump(trim(p%name) // ".psdump",p)
   end subroutine pseudo_read
   !
   subroutine pseudo_read_unformatted(fname,p)
@@ -482,7 +483,8 @@ CONTAINS
     endif
 
     call pseudo_write_formatted(trim(p%name)// ".Reparam.psf",p)
-    call pseudo_dump(trim(p%name) // ".Reparam.psdump",p)
+    if(write_ion_plot_files) &
+         call pseudo_dump(trim(p%name) // ".Reparam.psdump",p)
 
   end subroutine pseudo_reparametrize
 

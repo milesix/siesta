@@ -586,13 +586,6 @@ function log_rad_multiply_by_rl(func,l) result (mult)
     s(1) = s(2)
     grid => pseudo%grid
     
-    do i=1,nrc
-       write(22,*) grid%r(i),pseudo%f(i)
-       write(23,*) grid%r(i),ve%f(i)
-       write(24,*) grid%r(i),s(i)
-       write(25,*) grid%r(i),grid%drdi(i)
-    end do
-
     call schro_eq(chg,grid%r(1:nrval),pseudo%f(1:nrval),ve%f(1:nrval),s, &
          grid%drdi(1:nrval),nrc, l,grid%a,grid%b,nnodes,nprin,energy,rphi)
 

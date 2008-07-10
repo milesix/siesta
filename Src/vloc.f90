@@ -113,7 +113,7 @@ contains
     rad_tmp = rad_multiply_by_rl(vps%vlocal,1)
     reduced_vlocal = rad_sum_value(rad_tmp,2.0_dp*zval)
     call rad_set_origin(reduced_vlocal,2.0_dp*zval)
-    call rad_dump_file(reduced_vlocal,"reduced_vlocal.dat")
+    !call rad_dump_file(reduced_vlocal,"reduced_vlocal.dat")
 
     write(6,'(2a,f10.5)') 'atom: Maximum radius for' , &
          ' r*vlocal+2*Zval: ', rad_cutoff(reduced_vlocal) 

@@ -14,6 +14,7 @@ module basis
   use pao_util,         only: calculate_energies, normalize_orbital, &
        generate_vsoft, sym, number_of_orbs, total_charge
   use periodic_table,   only: qvlofz,cnfig
+  use atom_options, only: write_ion_plot_files
   use units, only: eV
   implicit none
 
@@ -349,7 +350,7 @@ contains
 
     !SOFT-CONFINEMENT            
     !Calculate the soft confinement potential for this shell                
-    vtot = generate_vsoft(shell,label)
+    vtot = generate_vsoft(shell,label,write_ion_plot_files)
   
     shell%rphi(1) = rad_schro(shell%pseudo,vtot,rc,l,shell%i_sm,nprin,shell%z_valence,eorb)
     
@@ -388,11 +389,12 @@ contains
     rho = total_charge(is,charge,rc)
     rho4pi = rad_divide_by_4pir2(rho,.false.)
     vxc = rad_vxc(rho4pi,0,exc)
-    call rad_dump_file(rho,"rho-exc.dat")
+    !call rad_dump_file(rho,"rho-exc.dat")
 
     write(6,*) "------Species-Exc---------"
-    print *, "Charge =", charge
-    write(6,*) " Species Exc (eV) =", exc/eV
+    write(6,'(a,f14.4)') "Charge =", charge
+    write(6,'(a,f14.4)') " Species Exc (eV) =", exc/eV
+
     !write(6,*) " Species Exc (Ry) =", exc
     call rad_dealloc(vxc)
     call rad_dealloc(rho)

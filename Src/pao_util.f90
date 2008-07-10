@@ -81,14 +81,14 @@ module pao_util
 
 !----------------------------------------------------
 
-  function generate_vsoft(shell,label) result(vtot)
+  function generate_vsoft(shell,label,write_file) result(vtot)
     !This subroutine adds the soft confinemment potential
     !described in J. Junquera et. al (PRB) to the pseudopotential.
     !The resulting pseudopotential will be integrated to generate
     !the orbitals used by Siesta.
     type(shell_t), intent(inout)         :: shell
-    character(len=*)                     :: label
-
+    character(len=*), intent(in)         :: label
+    logical,intent(in)                   :: write_file
     type(rad_func_t) :: vtot
 
     integer   :: iu !i/o unit
@@ -104,21 +104,22 @@ module pao_util
     endif
     
     vtot=rad_sum_function(shell%ve_pao,soft_confinement,rinn,rcsan)
-   
-    write(filename,"(a,i1,a,i1,a,a)") trim(label) // ".L",shell%l, ".",shell%i_sm,".", "confpot"
-    
-    call io_assign(iu)
-    open(unit=iu,file=filename,status='unknown')
 
-    write(iu,'(2a)') '# Soft confinement potential for ', trim(label)
-    write(iu,'(a,2i3)') '#    Soft confinement for shell l, nsm = ',shell%l,shell%i_sm
-    write(iu,'(a,f10.4,a)') '#        Inner radius    (r_inn) = ', rinn,' bohrs'
-    write(iu,'(a,f10.4,a)') '#        External radius (r_ext) = ', rcsan,' bohrs'
-    write(iu,'(a,f10.4,a)') '#        Prefactor       (V_0)   = ', vcte,' Ry'
-
-    call rad_dump_ascii(vtot,iu)
-    call io_close(iu)
+    if (write_file) then
+       write(filename,"(a,i1,a,i1,a,a)") trim(label) // ".L",shell%l, ".",shell%i_sm,".", "confpot"
     
+       call io_assign(iu)
+       open(unit=iu,file=filename,status='unknown')
+
+       write(iu,'(2a)') '# Soft confinement potential for ', trim(label)
+       write(iu,'(a,2i3)') '#    Soft confinement for shell l, nsm = ',shell%l,shell%i_sm
+       write(iu,'(a,f10.4,a)') '#        Inner radius    (r_inn) = ', rinn,' bohrs'
+       write(iu,'(a,f10.4,a)') '#        External radius (r_ext) = ', rcsan,' bohrs'
+       write(iu,'(a,f10.4,a)') '#        Prefactor       (V_0)   = ', vcte,' Ry'
+
+       call rad_dump_ascii(vtot,iu)
+       call io_close(iu)
+    endif
 
   end function generate_vsoft
 
