@@ -15,7 +15,8 @@
       use parallel, only: IOnode
       use  atmfuncs, only: nofis, nkbfis, izofis, massfis,
      $                     rcut, atmpopfio, zvalfis
-      use atm_types, only: species
+      use atm_types, only: species, get_number_of_orbs, 
+     $     get_number_of_kb_projs
       use siesta_geom, only: na_u, na_s, xa, isa, xalast
       implicit none
 
@@ -107,8 +108,8 @@ C
       nokb_u = 0
       do ia = 1,na_u
         is = isa(ia)
-        noa  = species(is)%norbs
-        nkba = species(is)%nprojs
+        noa  = get_number_of_orbs(species(is))
+        nkba = get_number_of_kb_projs(species(is))
         no_u = no_u + noa
         nokb_u = nokb_u + nkba
       enddo
@@ -160,6 +161,7 @@ c Initialize atomic lists
           qa(ia) = qa(ia) + Datm(nol)
           qtot = qtot + Datm(nol)
         enddo
+
         do io = 1,nkba
           nokbl = nokbl + 1
           rmaxkb = max( rmaxkb, rcut(is,-io) ) 

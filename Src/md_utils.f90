@@ -41,3 +41,5 @@ module md_utils
         endif
 
         end subroutine add_to_md_file
+
+end module

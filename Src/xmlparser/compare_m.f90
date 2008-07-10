@@ -486,8 +486,8 @@ function compare_values(ref,mod,label)
   v_mod = getNodeValue(mod)
 
   if (len(v_ref) > 0 .and. len(v_mod) > 0)then
-	  v_ref = clean_string(v_ref)
-	  v_mod = clean_string(v_mod)
+        v_ref = clean_string(v_ref)
+        v_mod = clean_string(v_mod)
   endif
 
   tol = findTol(trim(label))

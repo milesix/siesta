@@ -14,9 +14,9 @@
 !**********************************************************************
 
       use sys, only: die
-
+      use precision
       public :: derf, derfc, four1, polint, spline, splint
-      public :: sort
+      public :: sort, ratint
 
       contains
 
@@ -176,10 +176,10 @@
 
       INTEGER          :: I, K
       DOUBLE PRECISION :: QN, P, SIG, U(N), UN
-      DOUBLE PRECISION, PARAMETER :: YPMAX=0.99D30, 
-     .  HALF=0.5D0, ONE=1.D0, THREE=3.D0, TWO=2.D0, ZERO=0.D0
+      DOUBLE PRECISION, PARAMETER :: YPMAX=huge(1.0_dp), 
+     .  HALF=0.5_dp, ONE=1.0_dp, THREE=3.0_dp, TWO=2.0_dp, ZERO=0.0_dp
     
-      IF (YP1.GT.YPMAX) THEN
+      IF (YP1.eq.YPMAX) THEN
         Y2(1)=ZERO
         U(1)=ZERO
       ELSE
@@ -193,7 +193,7 @@
         U(I)=(THREE*( Y(I+1)+Y(I-1)-TWO*Y(I) )/(DX*DX)
      .       -SIG*U(I-1))/P
       END DO ! I
-      IF (YPN.GT.YPMAX) THEN
+      IF (YPN.eq.YPMAX) THEN
         QN=ZERO
         UN=ZERO
       ELSE
@@ -227,16 +227,18 @@
 
       IMPLICIT NONE
       INTEGER          :: N
-      DOUBLE PRECISION :: DX, YA(N), Y2A(N), X, Y, DYDX
+      DOUBLE PRECISION :: DX, YA(:), Y2A(:), X, Y, DYDX
 
       INTEGER          :: NHI, NLO
       DOUBLE PRECISION :: A, B
       DOUBLE PRECISION, PARAMETER ::
-     .    ONE=1.D0, THREE=3.D0, SIX=6.D0, ZERO=0.D0
+     .    ONE=1.0_dp, THREE=3.0_dp, SIX=6.0_dp, ZERO=0.0_dp
 
+    
       IF (DX.EQ.ZERO) call die('splint: ERROR: DX=0')
       NLO=INT(X/DX)+1
       NHI=NLO+1
+      if(nhi .gt. n) nhi=n
       A=NHI-X/DX-1
       B=ONE-A
       Y=A*YA(NLO)+B*YA(NHI)+
@@ -348,5 +350,69 @@ c
       go to 20
 c
       end subroutine sort
+
+      SUBROUTINE RATINT(XA,YA,N,X,Y,DY) 
+C*****************************************************
+C     Rational  interpolation 
+C     Adapted from the Numerical Recipes, 
+C     Modified for double precision and combined with 
+C     polinomic interpolation by D. Sanchez-Portal, 1996
+C*****************************************************
+      integer                        ::n
+      double precision, dimension(n) ::xa,ya 
+      double precision               ::x,y,dy
+      
+      double precision               :: tiny,hh,h,w,t,dd
+      PARAMETER (TINY=1.D-15)
+      double precision, dimension(n) :: c, d
+      integer                        :: ns,i,m
+      
+      NS=1
+      HH=ABS(X-XA(1))
+      DO 11 I=1,N
+         H=DABS(X-XA(I))
+         IF (H.LT.TINY)THEN
+            Y=YA(I)
+            DY=0.0D0
+            goto 999
+         ELSE IF (H.LT.HH) THEN
+            NS=I
+            HH=H
+         ENDIF
+         C(I)=YA(I)
+         D(I)=YA(I)+TINY
+ 11   CONTINUE
+      Y=YA(NS)
+      NS=NS-1
+      DO 13 M=1,N-1
+         DO 12 I=1,N-M
+            W=C(I+1)-D(I)
+            H=XA(I+M)-X
+            T=(XA(I)-X)*D(I)/H
+            DD=T-C(I+1)
+            IF(DD.EQ.0.0D0)GOTO 100
+            DD=W/DD
+            D(I)=C(I+1)*DD
+            C(I)=T*DD
+ 12      CONTINUE
+         IF (2*NS.LT.N-M)THEN
+            DY=C(NS+1)
+         ELSE
+            DY=D(NS)
+            NS=NS-1
+         ENDIF
+         Y=Y+DY
+ 13   CONTINUE
+
+C***  AS RATIONAL INTERPOLATION DOES NOT CONVERGE,****************** 
+C*************WE TRY WITH A POLYNOMIAL ONE*************************
+
+
+ 100  CALL POLINT(XA,YA,N,X,Y,DY)
+
+C     Exit point
+ 999  continue
+
+      END subroutine
 
       end module m_recipes

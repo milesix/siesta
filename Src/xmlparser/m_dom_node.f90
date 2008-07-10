@@ -15,7 +15,7 @@ private
   !-------------------------------------------------------   
 
   public :: getNodeName
-  public :: getNodevalue	
+  public :: getNodevalue
   public :: getNodeType
   public :: hasChildNodes
   public :: hasAttributes
@@ -39,7 +39,7 @@ private
 
 CONTAINS
 
-  pure function name_len(node)
+  function name_len(node)
     type(fnode), pointer :: node
     integer :: name_len
 
@@ -47,7 +47,7 @@ CONTAINS
 
   end function name_len
 
-  pure function value_len(node)
+  function value_len(node)
     type(fnode), pointer :: node
     integer :: value_len
 

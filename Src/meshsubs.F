@@ -1023,8 +1023,8 @@ C ----------------------------------------------------------------------
  
       use precision,     only : dp, grid_p
       use atmfuncs, only: rcut, psch
-      use atm_types, only : species
-      use radial, only : rad_func
+      use atm_types, only : species, get_local_charge_cutoff
+      use radial, only : rad_func_t, rad_cutoff
       use mesh,     only: dxa, idop, indexp, ipa, mop, nsp, xdop, xdsp
  
       implicit none
@@ -1045,7 +1045,6 @@ C
       real(dp)
      .  dx(3), grpsch(3), r, ra, pschloc
 
-      type(rad_func), pointer            :: func   
  
 C Initialise array to zero 
       Chlocal(1:ntpl) = 0.0_grid_p
@@ -1053,8 +1052,8 @@ C Initialise array to zero
       do ia = 1,na
         iua = indxua(ia)
         is = isa(ia)
-        func => species(is)%chlocal
-        ra = func%cutoff
+        
+        ra = get_local_charge_cutoff(species(is))
  
 C Loop over mesh points inside rmax
         do iop = 1,mop

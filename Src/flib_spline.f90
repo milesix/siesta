@@ -3,6 +3,7 @@ module flib_spline
 ! Spline interpolation, based on code in "Numerical Recipes"
 !
 use precision, only: dp, sp
+implicit none
 private
 
 public :: generate_spline
@@ -61,12 +62,12 @@ real(kind=sp), dimension(n)  ::   U    ! Automatic array
 flag = 0
 do i =2, n
   if (x(i) == x(i-1)) then
-   flag	= -1
+   flag = -1
    if (present(stat)) stat = flag
    RETURN
   endif
 enddo
-	
+
 IF (present(YP1)) THEN
     Y2(1) = -half
     U(1) = (three/ (X(2)-X(1)))* ((Y(2)-Y(1))/ (X(2)-X(1))-YP1)
@@ -176,7 +177,7 @@ end subroutine generate_spline_dp
 
 !..............................................
 !------------------------------------------------
-SUBROUTINE evaluate_spline_sp(XA,YA,Y2A,N,X,Y)
+SUBROUTINE evaluate_spline_sp(XA,YA,Y2A,N,X,Y,DYDX)
 !
 ! Given arrays xa and ya of size n, and an array y2a computed
 ! previously by routine spline, this routine computes the value
@@ -186,9 +187,13 @@ integer, intent(in)                          :: n
 real(kind=sp), dimension(:), intent(in)  :: xa, ya, y2a
 real(kind=sp), intent(in)                :: x
 real(kind=sp), intent(out)               :: y
+real(kind=sp), intent(out), optional     :: dydx
 
-
-real(kind=sp)    ::  A,B,H
+real(kind=sp), parameter  :: zero = 0.0_sp, &
+                                 one  = 1.0_sp, &
+                                 three= 3.0_sp, &
+                                 six  = 6.0_sp
+real(kind=sp)    ::  A,B,H,dx
 integer              ::  K,KHI,KLO
 
 KLO = 1
@@ -209,10 +214,14 @@ A = (XA(KHI)-X)/H
 B = (X-XA(KLO))/H
 Y = A*YA(KLO) + B*YA(KHI) + ((A**3-A)*Y2A(KLO)+  &
    (B**3-B)*Y2A(KHI))* (H**2)/6.0_sp
+dx=xa(khi)-xa(klo)
+if(present(dydx)) dydx=(YA(KHI)-YA(KLO))/DX+ &
+     (-((THREE*(A**2)-ONE)*Y2A(KLO))+ &
+     (THREE*(B**2)-ONE)*Y2A(KHI))*DX/SIX
 
 end subroutine evaluate_spline_sp
 !..............................................
-SUBROUTINE evaluate_spline_dp(XA,YA,Y2A,N,X,Y)
+SUBROUTINE evaluate_spline_dp(XA,YA,Y2A,N,X,Y,DYDX)
 !
 ! Given arrays xa and ya of size n, and an array y2a computed
 ! previously by routine spline, this routine computes the value
@@ -222,10 +231,15 @@ integer, intent(in)                          :: n
 real(kind=dp), dimension(:), intent(in)  :: xa, ya, y2a
 real(kind=dp), intent(in)                :: x
 real(kind=dp), intent(out)               :: y
+real(kind=dp), intent(out),optional      :: dydx
 
-
-real(kind=dp)    ::  A,B,H
+real(kind=dp)    ::  A,B,H,dx
 integer              ::  K,KHI,KLO
+
+real(kind=dp), parameter  :: zero = 0.0_dp, &
+                                 one  = 1.0_dp, &
+                                 three= 3.0_dp, &
+                                 six  = 6.0_dp
 
 KLO = 1
 KHI = N
@@ -245,6 +259,10 @@ A = (XA(KHI)-X)/H
 B = (X-XA(KLO))/H
 Y = A*YA(KLO) + B*YA(KHI) + ((A**3-A)*Y2A(KLO)+  &
    (B**3-B)*Y2A(KHI))* (H**2)/6.0_dp
+dx=xa(khi)-xa(klo)
+if(present(dydx)) dydx=(YA(KHI)-YA(KLO))/DX+ &
+     (-((THREE*(A**2)-ONE)*Y2A(KLO))+ &
+     (THREE*(B**2)-ONE)*Y2A(KHI))*DX/SIX
 
 end subroutine evaluate_spline_dp
 !..............................................

@@ -42,6 +42,8 @@
       use m_gamma
       use m_ioxv, only: xv_file_read
       USE writewave, only: gamma_wavefunctions, setup_wf_kpoints
+      use atm_types, only: nspecies, broadcast_basis
+      use atom, only: generate_all_atomic_info
 #ifdef MPI
       use mpi_siesta, only: mpi_comm_world
 #endif
@@ -57,7 +59,6 @@
 
       integer :: i, is, ispin
       integer :: neigmin     ! Min. number of eigenstates (per k point)
-      integer :: ns          ! Number of species
 
 !------------------------------------------------------------------------- BEGIN
 ! Initialise MPI and set processor number
@@ -130,8 +131,8 @@
       call inittwobody()
 
 ! Initialize pseudopotentials and atomic orbitals
-      if (IOnode) call initatom(ns)
-      call broadcast(ns)
+      if (IOnode) call generate_all_atomic_info()
+      call broadcast(nspecies)
       call broadcast_basis()
 
       call fdf_global_get(atmonly,'Atom-Setup-Only',.false.)
@@ -183,7 +184,7 @@
       call init_spin()
 
 ! Read simulation data ................................................
-      call read_options( na_u, ns, nspin )
+      call read_options( na_u, nspecies, nspin )
 
 
       qtot = qtot - charnet     ! qtot set in initatomlists
