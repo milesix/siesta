@@ -149,7 +149,7 @@ dhscf.o initdm.o iodm.o iohs.o iolwf.o  grdsam.o : $(FDF)
 recoor.o outcoor.o ioxv.o m_iostruct.o kgrid.o kgridinit.o ksv.o : $(FDF)
 redata.o siesta.o diagon.o pdos.o plcharge.o: $(FDF)
 coor.o cgvc.o iocg.o ioeig.o iofa.o iokp.o iomd.o  ofc.o : $(FDF)
-readsp.o eggbox.o iopipes.o : $(FDF)
+readsp.o eggbox.o iopipes.o filter.o : $(FDF)
 #
 atom.o basis_io.o basis_specs.o: $(FDF)
 gen-basis.o: $(FDF)

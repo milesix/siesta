@@ -106,10 +106,6 @@ contains
        call MPI_Bcast(spp%self_energy,1,MPI_double_precision, &
             0,MPI_Comm_World,MPIerror)
 
-       !print*, "broad_basis:", Node,"self_energy=",spp%self_energy
-       
-       if (Node .ne. 0) allocate(spp%orbs)
-
        call broadcast_hilbert_vector_collection(spp%orbs)
 
        if (Node .eq. 0 .and. associated(spp%kb_proj)) kbs = .true.

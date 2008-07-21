@@ -91,11 +91,13 @@ module pao_util
     logical,intent(in)                   :: write_file
     type(rad_func_t) :: vtot
 
-    integer   :: iu !i/o unit
+    integer   :: iu, ircsan !i/o unit
     character(len=80)   :: filename
   
-    rcsan = shell%rc(1)+1.0E-4
-
+    !rcsan = shell%rc(1)+1.0E-1
+    ircsan = rad_get_ir_from_r(shell%ve_pao,shell%rc(1))
+    rcsan = rad_get_r_from_ir(shell%ve_pao,ircsan+1)
+    rcsan = rcsan + 1.0e-6_dp
     vcte = shell%vcte
     if (shell%rinn < 0.0_dp) then
        rinn = -shell%rinn*rcsan

@@ -581,8 +581,8 @@ function log_rad_multiply_by_rl(func,l) result (mult)
     if(nrc .gt. maximum_length) nrc=maximum_length
     if(nrval .gt. maximum_length) nrval=maximum_length
 
-    allocate(rphi(1:nrc),s(1:nrc))
-    s(2:nrc)=pseudo%grid%drdi(2:nrc)**2
+    allocate(rphi(1:nrc),s(1:nrval))
+    s(2:nrval)=pseudo%grid%drdi(2:nrval)**2
     s(1) = s(2)
     grid => pseudo%grid
     

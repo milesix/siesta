@@ -152,8 +152,12 @@ CONTAINS
 
     !Internal vars.
     real(dp) :: kmax, meshcutoff,etol,kmax_tol
-    Integer  :: ir
+    Integer  :: ir,n_basis_functions
     real(dp), parameter :: EkinTolDefault = 0.003_dp
+    real(dp), allocatable :: func_save(:) !Save a copy of the original function
+
+    allocate(func_save(1:nr))
+    func_save = func
 
     kmax = fdf_physical("FilterCutoff",0.0_dp,"Bohr^-1")
     
@@ -167,30 +171,35 @@ CONTAINS
 
     if (kmax .eq. 0.0)then
        etol = fdf_physical('Filter.Tol',EkinTolDefault,'Ry')
-       !etol = fdf_double('Fil.Tol',0.003)
-       !print *, "Tol=",etol
+       write(6,'(a,f12.6,a)') "Filter: kinetic energy tolerance:", etol,' Ry'
        kmax_tol = kcPhi(l,nr,r,func,etol)
-       print *,"kmax for tol=",kmax_tol, etol      
+       !print *,"kmax for tol=",kmax_tol, etol      
        !if kmax_tol < 7.07 Bohr^-1 (50Ry) we fix it.
        !!if(kmax_tol < 7.07 ) then
        !!   kmax = factor*7.07
        !!else
        !!   kmax = factor *kmax_tol
        !!endif
-       kmax = kmax_tol
+       kmax = kmax_tol/factor
     else
-       kmax = factor*kmax
+       kmax = kmax/factor
     endif
 
-    write(6,'(a,f8.2,a)') "Equivalent plane wave cutoff:",kmax,' Bohr^-1'
-    write(6,'(a,f8.2,a)') "Equivalent plane wave cutoff:",kmax**2,' Ry'
+    write(6,'(a,f8.2,a)') "Filter: Plane wave cutoff (before filtering):",kmax**2,' Ry'
+    
 
-    call filter_kernel(l,nr,r(1:nr),func(1:nr),kmax,norm_opt)
+    call filter_kernel(l,nr,r(1:nr),func(1:nr),kmax,norm_opt,n_basis_functions)
  
-    kmax_tol = (kcPhi(l,nr,r,func,etol))
+    if (n_basis_functions > 3) then
+       kmax_tol = kcPhi(l,nr,r,func,etol)
 
-    write(6,'(a,f8.2,a)') "Filter: The appropiate mesh cutoff is (at least):", &
-         kmax_tol**2*factor,' Ry'
+       write(6,'(a,f8.2,a)') "Filter: Then appropiate mesh cutoff is (at least):", &
+            kmax_tol**2*factor,' Ry'
+    else
+       func = func_save
+       write(6,'(a)') "Filter: The number of eigenfunctions of the"
+       write(6,'(a)') "        filtering kernel is very small, so there is no filtering"
+    endif
 
     !Siesta spects the orbs divided by r**l
     if (l /= 0) then
@@ -199,6 +208,8 @@ CONTAINS
        enddo
        func(1)=func(2)
     endif
+
+    deallocate(func_save)
 
   end subroutine filter
 
@@ -278,7 +289,7 @@ end function kcPhi
 
 !------------------------------------------------------------------------------
 
-subroutine filter_kernel( l, nr, r, f, kc, norm_opt )
+subroutine filter_kernel( l, nr, r, f, kc, norm_opt,m)
 
 ! Filters out high-k components of a radial function
 ! Ref: J.M.Soler notes of 17/10/2006.
@@ -293,9 +304,10 @@ subroutine filter_kernel( l, nr, r, f, kc, norm_opt )
   real(dp), intent(in)    :: r(nr)    ! Radial mesh, in ascending order
   real(dp), intent(inout) :: f(nr)    ! Radial function to be filtered
   integer,  intent(in)    :: norm_opt ! Option to renormalize after filtering
+  integer,  intent(out)   :: m        ! Number of eigenvectors of the filtering kernel
 
 ! Internal variables and arrays
-  integer :: i, ierror, ij, ij1, ij2, ik, ir, m, n, nj
+  integer :: i, ierror, ij, ij1, ij2, ik, ir, n, nj
   real(dp):: cij, dk, dkr, dr, f0norm, fg, fnorm, jl0, jl1, jl2, &
              k, k4j1(0:nmesh), kmesh(0:nmesh), kr, kr0, kr1, kr2, &
              pi, rc, rmesh(0:nmesh)
@@ -444,7 +456,8 @@ subroutine filter_kernel( l, nr, r, f, kc, norm_opt )
     if (e(i)/kj(i)**2-k2mix > emax) exit
     m = i
   end do
-  print*, 'filter: n, m =', n, m
+  write(6,'(a)')       'Filter:    Number of eigenfunctions  of the'
+  write(6,'(a,i3,i3)') '           filtering kernel (total, used)=', n, m
 
 ! Find eigenvectors at integration mesh points
   g(0:nmesh,1:n) = matmul( jl(0:nmesh,1:n), c(1:n,1:n) )
