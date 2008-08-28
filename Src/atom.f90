@@ -11,7 +11,7 @@ module atom
   !Main module where all the atomic info is stored.
   use atm_types, only : get_atomic_number, get_symbol,species_info_t, &
        species,nspecies, symbol_length, set_no_reduced_vlocal, set_no_kb, &
-       set_no_neutral_atom_potential
+       set_no_neutral_atom_potential, has_kbs, set_floating, set_has_core_charge
   
   !Auxiliary module where all the intermediate info is stored.
   use atom_generation_types, only : basis_def_t, basis_parameters,lshell_t, shell_t, &
@@ -51,32 +51,30 @@ CONTAINS
     use basis, only: basis_gen
 
     integer , intent(in) :: isp
+    logical :: floating = .false.
 
     write(6,'(/,a)') 'ATOM: Species begin__________________________ '
 
-    call species_init(isp)
+    if (basis_parameters(isp)%bessel .or. basis_parameters(isp)%floating) floating = .true.
+    call species_init(isp,floating)
+   
 
     if (basis_parameters(isp)%bessel) then
-       call set_no_reduced_vlocal(species(isp))
-       call set_no_kb(species(isp))
-       call set_no_neutral_atom_potential(species(isp))
+       call set_has_core_charge(species(isp), .false.)
        call bessel(isp)
     elseif (basis_parameters(isp)%floating) then
        call species_pseudopotential_init(isp)
        call species_charge(isp)
-       call set_no_reduced_vlocal(species(isp))
-       call set_no_kb(species(isp))
-       call set_no_neutral_atom_potential(species(isp))
        call basis_gen(isp)
     else
-       call species_pseudopotential_init(isp)       
-       call species_charge(isp)
+       call species_pseudopotential_init(isp)
+       call species_charge(isp)       
        call gen_vlocal(isp)
        call kbgen(isp)
        call basis_gen(isp)
        call gen_vna(isp)
     endif
-
+    print *, "has_kb? 2", has_kbs(species(isp))
     write(6,'(/,a)') 'ATOM: Species end_____________________________ '
 
   end subroutine atom_main
@@ -180,7 +178,6 @@ CONTAINS
 
     read_from_file = user_basis .or. user_basis_netcdf
 
-
     call get_atom_options()
 
     if (user_basis_netcdf) then
@@ -208,7 +205,6 @@ CONTAINS
 
        !     Compute the electrostatic correction tables
        call elec_corr_setup()
-
     endif
     
     if (write_ion_plot_files) then
@@ -219,7 +215,6 @@ CONTAINS
     endif
 
     !call check_atmfuncs()
-
   end subroutine generate_all_atomic_info
 
   !----------------------------------------------------
@@ -230,11 +225,11 @@ CONTAINS
 
     !Internal vars
     real(dp)                         :: charge 
-    type(pseudopotential_t),pointer  :: vps 
-    type(species_info_t), pointer    :: spp
-    type(basis_def_t), pointer       :: basp
+    type(pseudopotential_t),pointer  :: vps => Null()
+    type(species_info_t), pointer    :: spp => Null()
+    type(basis_def_t), pointer       :: basp => Null()
     integer                          :: irel
-    type(rad_func_t), pointer        :: chcore
+    type(rad_func_t), pointer        :: chcore => Null()
     real(dp)                         :: rescale_charge
     character(len=3)                 :: xcfunc    !Xc used
     character(len=4)                 :: xcauth    !Authors of xc
@@ -368,13 +363,14 @@ CONTAINS
 
 !------------------------------------------------------------------------
 
-  subroutine species_init(isp)
+  subroutine species_init(isp,floating)
     use atm_types, only : set_symbol, set_label,set_atomic_number, &
          set_valence_charge,set_read_from_file,set_mass,get_symbol, set_lmax_orbs,&
          get_lmax_orbs, get_label
     use chemical
     
     integer , intent(in) :: isp
+    logical , intent(in) :: floating
 
     integer :: iz
     type(basis_def_t), pointer :: basp
@@ -403,6 +399,12 @@ CONTAINS
         write(6,'(3a,i4,a)') 'ATOM: Called for ', get_label(species(isp)), '  (Z =',iz,')' 
     endif
 
+    if (floating) then
+       call set_floating(species(isp),.true.)
+       call set_no_reduced_vlocal(species(isp))
+       call set_no_kb(species(isp))
+       call set_no_neutral_atom_potential(species(isp))
+    endif
   end subroutine species_init
 
   !--------------------------------------------------------------------------

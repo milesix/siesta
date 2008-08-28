@@ -20,6 +20,7 @@ module atm_types
   !
   type species_info_t
      private
+     logical                                    ::  fake = .false. !real species or not
      character(len=symbol_length)               ::  symbol
      character(len=label_length)                ::  label
      real(dp)                                   ::  atomic_number          
@@ -27,16 +28,16 @@ module atm_types
      real(dp)                                   ::  valence_charge   
      real(dp)                                   ::  self_energy !Electrostatic
 
-     type(rad_func_t), pointer                  ::  reduced_vlocal
-     type(rad_func_t), pointer                  ::  neutral_atom_potential
-     type(rad_func_t), pointer                  ::  pseudo_local_charge
+     type(rad_func_t), pointer                  ::  reduced_vlocal => Null()
+     type(rad_func_t), pointer                  ::  neutral_atom_potential  => Null()
+     type(rad_func_t), pointer                  ::  pseudo_local_charge  => Null()
 
      !Core charge for nonlinear core corrections
-     type(rad_func_t), pointer                  ::  core_charge 
+     type(rad_func_t), pointer                  ::  core_charge  => Null()
      logical                                    ::  has_core_charge
       
      type(hilbert_vector_collection_t)          ::  orbs
-     type(hilbert_vector_collection_t), pointer ::  kb_proj, ldau_proj 
+     type(hilbert_vector_collection_t), pointer ::  kb_proj, ldau_proj  => Null()
      logical                                    ::  read_from_file
   end type species_info_t
 
@@ -44,8 +45,7 @@ module atm_types
   integer, save, public             :: nspecies
   integer, save, public             :: npairs
 
-  type(species_info_t), allocatable, target, save   ::  species(:)
-
+  type(species_info_t), allocatable, target, save   ::  species(:) 
 
 !    Radial function with the difference between the electrostatic energy 
 !    of two spherical charge-densities and two punctual charges with the 
@@ -80,7 +80,7 @@ contains
     integer MPIerror
 
     integer is, i
-    type(species_info_t), pointer  :: spp
+    type(species_info_t), pointer  :: spp => Null()
     logical :: kbs= .false., vna=.false., vlocal = .false., ldau = .false.
     logical :: pseudo_charge = .false.
     
@@ -105,38 +105,40 @@ contains
             0,MPI_Comm_World,MPIerror)
        call MPI_Bcast(spp%self_energy,1,MPI_double_precision, &
             0,MPI_Comm_World,MPIerror)
+       call MPI_Bcast(spp%fake,1,MPI_logical,0,MPI_Comm_World,MPIerror)
 
        call broadcast_hilbert_vector_collection(spp%orbs)
 
-       if (Node .eq. 0 .and. associated(spp%kb_proj)) kbs = .true.
+       if (Node .eq. 0)  kbs = has_kbs(spp)
        call MPI_Bcast(kbs,1,MPI_logical,0,MPI_Comm_World,MPIerror)
        if (Node .ne. 0 .and. kbs) allocate(spp%kb_proj)       
        if (kbs) call broadcast_hilbert_vector_collection(spp%kb_proj)
-
-       if (Node .eq. 0 .and. associated(spp%ldau_proj)) ldau = .true.
+       
+       if (Node .eq. 0)  ldau = associated(spp%ldau_proj)
        call MPI_Bcast(ldau,1,MPI_logical,0,MPI_Comm_World,MPIerror)
        if (Node .ne. 0 .and. ldau) allocate(spp%ldau_proj)
        if (ldau) call broadcast_hilbert_vector_collection(spp%ldau_proj)
 
-       if (Node .eq. 0 .and. associated(spp%reduced_vlocal)) vlocal = .true.
+       if (Node .eq. 0) vlocal = has_reduced_vlocal(spp) 
        call MPI_Bcast(vlocal,1,MPI_logical,0,MPI_Comm_World,MPIerror)
        if (Node .ne.0  .and. vlocal) allocate(spp%reduced_vlocal)
        if (vlocal) call rad_broadcast(spp%reduced_vlocal)
 
-       if (Node .eq. 0 .and. associated(spp%neutral_atom_potential)) vna = .true.
+       if (Node .eq. 0) vna = has_neutral_atom_potential(spp) 
        call MPI_Bcast(vna,1,MPI_logical,0,MPI_Comm_World,MPIerror)
        if (Node .ne.0  .and. vna) allocate(spp%neutral_atom_potential)
        if (vna) call rad_broadcast(spp%neutral_atom_potential)
 
-       if (Node .eq. 0 .and. associated(spp%pseudo_local_charge)) pseudo_charge = .true.
+       if (Node .eq. 0) pseudo_charge = has_pseudo_local_charge(spp) 
        call MPI_Bcast(pseudo_charge,1,MPI_logical,0,MPI_Comm_World,MPIerror)
        if (Node .ne.0  .and. pseudo_charge) allocate(spp%pseudo_local_charge)
        if (pseudo_charge) call rad_broadcast(spp%pseudo_local_charge)
-
+       
        call MPI_Bcast(spp%has_core_charge,1,MPI_logical,0,MPI_Comm_World,MPIerror)
        if (spp%has_core_charge) then
           if (Node .ne. 0) allocate(spp%core_charge)
           call rad_broadcast(spp%core_charge)
+          if (Node .eq. 0) print *, "core charge"
        endif
 
        call MPI_Bcast(spp%read_from_file,1,MPI_logical,0,MPI_Comm_World,MPIerror)
@@ -149,6 +151,7 @@ contains
      call rad_broadcast(elec_corr(i))
   end do
  
+  
 end subroutine broadcast_basis
 
 
@@ -223,6 +226,22 @@ end subroutine broadcast_basis
        lmax = -1
     end if
   end function get_lmax_ldau_proj
+
+  !-------------------------------------------------------------------------
+
+  function is_floating(species) result(floating)
+    type(species_info_t), intent(in) :: species
+    logical :: floating
+    floating = species%fake
+  end function is_floating
+
+  !-------------------------------------------------------------------------
+
+  subroutine set_floating(species, floating)
+   type(species_info_t), intent(inout) :: species
+    logical, intent(in) :: floating
+    species%fake = floating
+  end subroutine set_floating
 
   !-------------------------------------------------------------------------
 
@@ -402,12 +421,9 @@ end subroutine broadcast_basis
 
   function has_neutral_atom_potential(species) result(has_vna)
     type(species_info_t), intent(inout) :: species
-    logical                             :: has_vna
-    if (associated(species%neutral_atom_potential)) then
-     has_vna = .true.
-   else
-     has_vna = .false.
-   endif
+    logical                             :: has_vna 
+    has_vna = .true.
+    if (is_floating(species)) has_vna = .false.
   end function has_neutral_atom_potential
 
   !-------------------------------------------------------------------------
@@ -472,7 +488,7 @@ end subroutine broadcast_basis
   !--------------------------------------------------------------------------
   
   function has_core_charge(species)
-    type(species_info_t), intent(inout) :: species
+    type(species_info_t), intent(in) :: species
     logical                           :: has_core_charge
     has_core_charge = species%has_core_charge
   end function has_core_charge
@@ -480,19 +496,19 @@ end subroutine broadcast_basis
   !-------------------------------------------------------------------------
 
    function has_kbs(species)
-    type(species_info_t), intent(inout) :: species
+    type(species_info_t), intent(in) :: species
     logical                           :: has_kbs
-    has_kbs = .false.
-    if (associated(species%kb_proj)) has_kbs=.true.
+    has_kbs = .true.
+    if(is_floating(species)) has_kbs=.false.
   end function has_kbs
 
   !-------------------------------------------------------------------------
 
   function has_pseudo_local_charge(species)
-    type(species_info_t), intent(inout) :: species
+    type(species_info_t), intent(in) :: species
     logical                           :: has_pseudo_local_charge
-    has_pseudo_local_charge = .false.
-    if (associated(species%kb_proj)) has_pseudo_local_charge=.true.
+    has_pseudo_local_charge = .true.
+    if (is_floating(species)) has_pseudo_local_charge=.false.
   end function has_pseudo_local_charge
 
   !-------------------------------------------------------------------------
@@ -500,8 +516,8 @@ end subroutine broadcast_basis
   function has_reduced_vlocal(species)
     type(species_info_t), intent(inout) :: species
     logical                           :: has_reduced_vlocal
-    has_reduced_vlocal = .false.
-    if (associated(species%kb_proj)) has_reduced_vlocal=.true.
+    has_reduced_vlocal = .true.
+    if (is_floating(species)) has_reduced_vlocal=.false.
   end function has_reduced_vlocal
 
   !-------------------------------------------------------------------------
@@ -554,10 +570,10 @@ end subroutine broadcast_basis
     type(species_info_t), intent(in) :: species
     integer                        :: nkb
 
-    if (associated(species%kb_proj)) then      
-       nkb = get_n_funcs(species%kb_proj)
-    else
+    if (is_floating(species)) then
        nkb = 0
+    else
+       nkb = get_n_funcs(species%kb_proj)
     endif
 
   end function get_number_of_kb_projs
@@ -568,10 +584,10 @@ end subroutine broadcast_basis
     type(species_info_t),intent(in) :: species
     integer                         :: nkbs
 
-    if (associated(species%kb_proj)) then
-       nkbs = get_number_of_vectors(species%kb_proj)
-    else
+    if (is_floating(species)) then
        nkbs = 0
+    else
+       nkbs = get_number_of_vectors(species%kb_proj)
     endif
 
   end function get_number_of_kb_non_deg
@@ -715,7 +731,7 @@ end subroutine broadcast_basis
     type(species_info_t), intent(in) :: species
     integer, intent(in)            :: io
     real(dp)                       :: cutoff
-    if (associated(species%kb_proj))then
+    if (has_kbs(species))then
        cutoff = get_cutoff(species%kb_proj,io)
     else
        cutoff = 0.0_dp

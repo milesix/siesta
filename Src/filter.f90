@@ -173,29 +173,15 @@ CONTAINS
        etol = fdf_physical('Filter.Tol',EkinTolDefault,'Ry')
        write(6,'(a,f12.6,a)') "Filter: kinetic energy tolerance:", etol,' Ry'
        kmax_tol = kcPhi(l,nr,r,func,etol)
-       !print *,"kmax for tol=",kmax_tol, etol      
-       !if kmax_tol < 7.07 Bohr^-1 (50Ry) we fix it.
-       !!if(kmax_tol < 7.07 ) then
-       !!   kmax = factor*7.07
-       !!else
-       !!   kmax = factor *kmax_tol
-       !!endif
+       write(6,'(a,f8.2,a)') "Filter: Plane wave cutoff (before filtering):",kmax_tol**2,' Ry'
        kmax = kmax_tol/factor
     else
        kmax = kmax/factor
     endif
 
-    write(6,'(a,f8.2,a)') "Filter: Plane wave cutoff (before filtering):",kmax**2,' Ry'
-    
-
     call filter_kernel(l,nr,r(1:nr),func(1:nr),kmax,norm_opt,n_basis_functions)
  
-    if (n_basis_functions > 3) then
-       kmax_tol = kcPhi(l,nr,r,func,etol)
-
-       write(6,'(a,f8.2,a)') "Filter: Then appropiate mesh cutoff is (at least):", &
-            kmax_tol**2*factor,' Ry'
-    else
+    if (n_basis_functions < 3) then
        func = func_save
        write(6,'(a)') "Filter: The number of eigenfunctions of the"
        write(6,'(a)') "        filtering kernel is very small, so there is no filtering"

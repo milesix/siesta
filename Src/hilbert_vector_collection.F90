@@ -18,11 +18,11 @@ implicit none
 
      integer                         ::  n_funcs = -1! num of funcs including 2l+1 copies.
 
-     integer, pointer, dimension(:)  ::  m ! m of each nl funcs
-     integer, pointer, dimension(:)  ::  index  !Used to identify the nl the function belong.
+     integer, pointer, dimension(:)  ::  m => Null() ! m of each nl funcs
+     integer, pointer, dimension(:)  ::  index => Null() !Used to identify the nl the function belong.
     
      !The orbitals/projectors themselves (ie the "nl" in the old format):
-     type(hilbert_vector_t), dimension(:), pointer :: vec
+     type(hilbert_vector_t), dimension(:), pointer :: vec => Null()
      
   end type hilbert_vector_collection_t
   
@@ -61,7 +61,6 @@ contains
     end subroutine broadcast_hilbert_vector_collection
 #else
 
-
     call MPI_Bcast(data%lmax,1,MPI_integer,0,MPI_Comm_World,MPIerror)
 
     call MPI_Bcast(data%n_funcs,1,MPI_integer,0,MPI_Comm_World,MPIerror)
@@ -71,12 +70,12 @@ contains
 
        call MPI_Bcast(data%m,data%n_funcs,MPI_integer,0,MPI_Comm_World,MPIerror)
        call MPI_Bcast(data%index,data%n_funcs,MPI_integer,0,MPI_Comm_World,MPIerror)
+
        if (Node .eq. 0) n = size(data%vec)
 
        call MPI_Bcast(n,1,MPI_integer,0,MPI_Comm_World,MPIerror)
 
        if (Node .ne. 0) call allocate_collection(data,n)
-
 
        do i=1,n
           call broadcast_hilbert_vector(data%vec(i))
@@ -297,7 +296,7 @@ contains
     function get_rad_func(data,i)
       type(hilbert_vector_collection_t), intent(in) :: data
       integer, intent(in)                           :: i !Includes all the copies!
-      type(rad_func_t) ,pointer                     :: get_rad_func
+      type(rad_func_t) ,pointer                     :: get_rad_func 
       get_rad_func => get_rad_func_v(data%vec(data%index(i)))
     end function get_rad_func
 
