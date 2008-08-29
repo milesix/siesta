@@ -652,7 +652,7 @@ CONTAINS
           endif
 
           if (search(p,"P",indexp)) then
-             print *, "Repaobasis:   shell is polarized"
+             !print *, "Repaobasis:   shell is polarized"
             
              s%polarized = .true.       
              s%l_shell_polarizes = s%l+1
@@ -665,7 +665,7 @@ CONTAINS
                 basp%lmxo  = basp%lmxo+1  
                 
              endif
-             print *, "Repaobasis:   Adding a polarization shell with l=",s%l_shell_polarizes
+             !print *, "Repaobasis:   Adding a polarization shell with l=",s%l_shell_polarizes
 
           endif
           if (search(p,"E",indexp)) then
@@ -777,7 +777,7 @@ CONTAINS
                 call copy_shell(source=s,target=ls%shell(ind))
 
                 if(s%polarized)then !Fill the polarization shell
-                   print *, "shell polarized by:",s%l_shell_polarizes
+                   !print *, "shell polarized by:",s%l_shell_polarizes
                    allocate(basp%lshell(s%l_shell_polarizes)%shell(1))
                    call initialize(basp%lshell(s%l_shell_polarizes)%shell(1))
                    !This is crude, should be in its own subroutine
@@ -815,7 +815,7 @@ CONTAINS
        call destroy(basp%tmp_shell)
     enddo
     call destroy(bp)
-    write(6,'(a)') "Repaobasis: end processing %block PAO.Basis"
+    !write(6,'(a)') "Repaobasis: end processing %block PAO.Basis"
   end subroutine repaobasis
   !_______________________________________________________________________
 
@@ -1205,10 +1205,10 @@ CONTAINS
              S%l_shell_polarized = l_polarized
              s%nzeta_pol = nzeta_pol
              s%n_shell_polarized = basp%lshell(l_polarized)%shell(1)%n
-             write(6,*) "    shell polarizes"
-             write(6,*) "    shell l =",s%l
-             write(6,*) "    shell polarized=",s%l_shell_polarized
-             write(6,*) "    shell nzeta_pol=",s%nzeta_pol
+             !write(6,*) "    shell polarizes"
+             !write(6,*) "    shell l =",s%l
+             !write(6,*) "    shell polarized=",s%l_shell_polarized
+             !write(6,*) "    shell nzeta_pol=",s%nzeta_pol
           endif
 
           if (basp%ground_state%occupied(l)) then
@@ -1216,7 +1216,7 @@ CONTAINS
           else    
              if(s%polarizes)then
                 s%nzeta = nzeta_pol
-                print *, "s%nzeta=",s%nzeta
+                !print *, "s%nzeta=",s%nzeta
              else
                 s%nzeta = 0
              endif
@@ -1246,9 +1246,9 @@ CONTAINS
              s%rc(1:s%nzeta) = 0.0_dp
              s%lambda(1:s%nzeta) = 1.0_dp
           endif
-          print *, "s%nzeta=",s%nzeta
-          print *, "size s%orb=",size(s%orb)
-          print *, "-----------------------"
+          !print *, "s%nzeta=",s%nzeta
+          !print *, "size s%orb=",size(s%orb)
+          !print *, "-----------------------"
        enddo
 
     enddo loop

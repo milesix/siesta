@@ -8,7 +8,7 @@ implicit none
 
 
   real(dp),public, parameter                :: eps=1.0d-6
-  real(dp),public, parameter                :: min_func_val=1E-4
+  real(dp),public, parameter                :: min_func_val=1E-6
   integer, public :: maximum_length = 0
   logical, public :: restricted_grid
 

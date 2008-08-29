@@ -35,7 +35,7 @@ module pol_orb
     type(shell_t),           pointer :: shell_pol !The shell being polarized
     type(rad_func_t)                 :: vtot
 
-    logical                          :: new_pol = .false.
+    logical                          :: old_pol = .false.
 
     split_tail_norm=fdf_boolean('PAO.SplitTailNorm',.false.)
     fix_split_table=fdf_boolean('PAO.FixSplitTable',.false.)
@@ -65,14 +65,15 @@ module pol_orb
     !Generate the polarization function perturbatively from the original PAO**
     ePAO = shell_pol%energies(1)%total
 
-    new_pol = fdf_boolean('NewPol',.false.)
+    old_pol = fdf_boolean('PAO.OLD_POL',.false.)
 
-    if ( new_pol ) then
-
-       shell%rphi(1) = rad_polarization(shell_pol%rphi(1),shell%pseudo,vtot,rc,lpol,ePao)
-    else
+    if ( old_pol ) then
 
        shell%rphi(1) = rad_polarization(shell_pol%rphi(1),shell_pol%pseudo,vtot,rc,lpol,ePao)
+
+    else
+       shell%rphi(1) = rad_polarization(shell_pol%rphi(1),shell%pseudo,vtot,rc,lpol,ePao)
+
     endif
     shell%orb(1) = rad_divide_by_r_l_1(shell%rphi(1),lpol+1,shell%lambda(1))
     shell%rc(1) = rad_cutoff(shell%orb(1))
@@ -90,8 +91,6 @@ module pol_orb
        !  (norm of tail+parabola)
        
        shell%split_table = rad_split_scan_tail_parabola(shell%rphi(1),shell%l,fix_split_table)
-       !call split_scan(nrc, shell%logGrid%r, shell%logGrid%drdi, lpol, rphi,rnrm, &
-       !     shell%split_table,fix_split_table)
     endif
 
     !Normalization of basis functions***

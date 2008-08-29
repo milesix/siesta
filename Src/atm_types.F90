@@ -434,7 +434,7 @@ end subroutine broadcast_basis
 
     call rad_copy(vna,vna_tmp)
     if(rad_is_log(vna)) call rad_log_to_linear(vna_tmp)
-    call rad_fft(vna_tmp,0)
+    !call rad_fft(vna_tmp,0)
     allocate(species%neutral_atom_potential)
     call rad_copy(vna_tmp,species%neutral_atom_potential)
     call rad_dealloc(vna_tmp)
@@ -479,7 +479,7 @@ end subroutine broadcast_basis
     type(rad_func_t)              :: rad_tmp
     call rad_copy(core,rad_tmp)
     if(rad_is_log(rad_tmp)) call rad_log_to_linear(rad_tmp)
-    call rad_fft(rad_tmp,0)
+    !call rad_fft(rad_tmp,0)
     allocate(species%core_charge)
     call rad_copy(rad_tmp,species%core_charge)        
     call rad_dealloc(rad_tmp)

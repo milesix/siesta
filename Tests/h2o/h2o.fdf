@@ -17,6 +17,8 @@ AtomicCoordinatesFormat  Ang
 -0.757  0.586  0.000  2
 %endblock AtomicCoordinatesAndAtomicSpecies
 
+WriteIonPlotFiles
+PAO.Old_POL
 save-rho T
 save-delta-rho T
 save-total-potential T

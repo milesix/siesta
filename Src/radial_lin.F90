@@ -29,16 +29,16 @@ module radial_lin
      private
      real(dp)                        :: delta   ! real space distance between points
      real(dp)                        :: kdelta  ! 
-     real(dp), dimension(:), pointer :: f       ! real space data 
-     real(dp), dimension(:), pointer :: fft     ! Fft of the data
-     real(dp), dimension(:), pointer :: d2      ! Second derivative in real space
+     real(dp), dimension(:), pointer :: f  => Null()  ! real space data 
+     real(dp), dimension(:), pointer :: fft => Null() ! Fft of the data
+     real(dp), dimension(:), pointer :: d2 => Null()  ! Second derivative in real space
   end type lin_rad_func_t
   
   ! INTEGER NTBMAX    : Maximum number of points in the tables defining
   !                     orbitals,projectors and local neutral-atom 
   !                     pseudopotential.
 
-  integer, parameter, public  :: ntbmax =  1024 !It must be 2**n for the fft grid.
+  integer, parameter, public  :: ntbmax =  500 !It must be 2**n for the fft grid.
 
   
 contains

@@ -49,7 +49,6 @@ contains
 
     r_2zval_match = 0.0_dp
 
-    print *, "lmxkb=",lmxkb
     do i=0, lmxkb
        r_2zval = rad_radious_matching_value(vps%vdown(i),match_value)
        print '(a,i1,a,f8.4)','V l=',i,' =-2*Zval/r beyond r=', r_2zval

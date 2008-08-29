@@ -34,7 +34,7 @@ PAO.BasisSize         DZP
   2  2
   0. 0.
 %endblock PAO.Basis
-
+PAO.Old_POL
 LatticeConstant       2.87 Ang  
 
 %block LatticeVectors          

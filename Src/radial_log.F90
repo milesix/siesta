@@ -888,7 +888,7 @@ function log_rad_multiply_by_rl(func,l) result (mult)
     integer :: ir, nrc, nrc_new
     real(dp) :: dnrm
 
-    nrc = log_rad_get_ir(func,rc)-1
+    nrc = log_rad_get_ir(func,rc) 
     allocate(psipol(1:nrc))
     call polarization(func%grid%a,func%grid%r,func%f,pseudo%f,ve%f, &
          func%grid%drdi,nrc,l,energy,psipol,nrc)

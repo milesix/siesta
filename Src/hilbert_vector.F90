@@ -67,7 +67,7 @@ subroutine init_vector(vector,func,n,l,z,pop,energy,pol)
   allocate(vector%rad_func)
   call rad_copy(func,func_lin)
   if (rad_is_log(func_lin))  call rad_log_to_linear(func_lin)
-  call rad_fft(func_lin,l)
+  !call rad_fft(func_lin,l)
   call rad_copy(func_lin,vector%rad_func)
   vector%l = l
   vector%n = n

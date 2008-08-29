@@ -1483,6 +1483,10 @@ orbitals are generated applying perturbation theory to the first-zeta
 orbital of lower angular momentum.  They have the same cutoff radius
 than the orbitals from which they are constructed.
 
+There has been a long standing error in the polarization orbitals alogorithm, now it
+is fixed, but if you want to use the old (and buggy) algorithm you should
+use the following fdf logical option: {\bf PAO.OLD_POL}\index{Polarization orbitals}
+
 There is a different possibility of generating polarization orbitals:
 by introducing them explicitly in the {\bf PAO.Basis} block.
 It has to be remembered, however, that they sometimes correspond to 
@@ -5185,6 +5189,10 @@ coordinates, forces, $\vec k$ points, etc.  Here is a list of useful
 options:
  
 \begin{itemize}
+\item 
+{\bf WriteIonPlotFiles}\index{WriteIonPlotFiles@{\bf WriteIonPlotFiles}} 
+\index{output!atomic information}
+for writing the species atomic information in files (in ascii, netcdf \index{NetCDF format}, etc)
 \item
 {\bf WriteCoorInitial}\index{WriteCoorInitial@{\bf WriteCoorInitial}}
 \index{output!atomic coordinates!initial}

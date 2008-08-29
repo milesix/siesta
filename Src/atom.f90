@@ -40,11 +40,11 @@ module atom
 CONTAINS
 
   subroutine atom_main(isp)
-	!Main, expert subroutine which calls the all the subroutines
-	!which generate ALL the atomic info.
-	
-	!Arguments
-	!integer, intent(in) :: isp !Species index. All 
+!Main, expert subroutine which calls the all the subroutines
+!which generate ALL the atomic info.
+
+!Arguments
+!integer, intent(in) :: isp !Species index. All 
 
     use kb,    only: kbgen
     use vloc,  only: gen_vlocal 
@@ -74,7 +74,6 @@ CONTAINS
        call basis_gen(isp)
        call gen_vna(isp)
     endif
-    print *, "has_kb? 2", has_kbs(species(isp))
     write(6,'(/,a)') 'ATOM: Species end_____________________________ '
 
   end subroutine atom_main
