@@ -5,8 +5,10 @@
 !     near rc.
 
       use precision
-      use atm_types, only: species_info, nspecies, species
+      use atm_types, only: species, nspecies, species,species_info_t,
+     $     set_label, set_read_from_file
       use atmfuncs
+      use atmfuncs_types
       use m_getopts
 
       use basis_io, only: read_ion_ascii
@@ -20,7 +22,7 @@ C Internal variables ...................................................
 
       real(dp) :: x, val, grad
 
-      type(species_info), pointer   :: spp
+      type(species_info_t), pointer   :: spp
 
       character(len=200) :: opt_arg
       character(len=10)  :: opt_name 
@@ -88,8 +90,8 @@ C Internal variables ...................................................
       nspecies = 1
       allocate(species(1))
       spp => species(1)
-      spp%label = trim(nameat)
-      spp%read_from_file = .true.
+      call set_label(spp,trim(nameat))
+      call set_read_from_file(spp,.true.)
       call read_ion_ascii(spp)
 
       no = nofis(1)
@@ -100,13 +102,15 @@ C Internal variables ...................................................
          write(0,*) "Orbitals (#, l, z, m, rc):"
          do i= 1, no
             write(6,*) i,
-     $               lofio(1,i), zetafio(1,i), mofio(1,i), rcut(1,i)
+     $           lofio(1,orb_f,i), zetafio(1,i), 
+     $           mofio(1,orb_f,i), rcut(1,orb_f,i)
          enddo
          write(6,*) "KB projs (#, l, m, rc):"
          do i= 1, nkb
-            write(6,*) i, lofio(1,-i), mofio(1,-i), rcut(1,-i)
+            write(6,*) i, lofio(1,kbpj_f,i), mofio(1,kbpj_f,i),
+     $           rcut(1,kbpj_f,i)
          enddo
-         write(6,*) "Vna rcut: ", rcut(1,0)
+         write(6,*) "Vna rcut: ", rcut(1,vna_f,0)
       endif
 !
       if (show_shells) then
@@ -115,7 +119,7 @@ C Internal variables ...................................................
             if (i == no) exit
             i = i + 1
             write(6,fmt="(i3)",advance="no") i
-            i = i +  2* lofio(1,i)           ! Skip other m copies
+            i = i +  2* lofio(1,orb_f,i)           ! Skip other m copies
          enddo
          write(6,*)
       endif
@@ -126,7 +130,7 @@ C Internal variables ...................................................
             if (i == nkb) exit
             i = i + 1
             write(6,fmt="(i3)",advance="no") i
-            i = i +  2* lofio(1,-i)           ! Skip other m copies
+            i = i +  2* lofio(1,kbpj_f,i)           ! Skip other m copies
          enddo
          write(6,*)
       endif
@@ -134,8 +138,9 @@ C Internal variables ...................................................
       if (process_orb) then
          if (iorb > no) STOP "no such orbital"
          write(6,*) "# Orbital (#, l, z, m, rc):",
-     $    lofio(1,iorb), zetafio(1,iorb), mofio(1,iorb), rcut(1,iorb)
-         rc = rcut(1,iorb)
+     $        lofio(1,orb_f,iorb), zetafio(1,iorb), 
+     $        mofio(1,orb_f,iorb), rcut(1,orb_f,iorb)
+         rc = rcut(1,orb_f,iorb)
          rmin = 0.0_dp
          rmax = 1.05_dp * rc
          if (zoom) then
@@ -146,7 +151,7 @@ C Internal variables ...................................................
          delta = range/n
          do i=0,n
             x = rmin + delta*i
-            call rphiatm(1,iorb,x,val,grad)
+            call rphiatm(1,orb_f,iorb,x,val,grad)
             write(*,"(3f14.8)") x, val, grad
          enddo
       endif
@@ -154,8 +159,9 @@ C Internal variables ...................................................
       if (process_kbp) then
          if (ikb > nkb) STOP "no such KB projector"
          write(6,*) "# KB proj (#, l, m, rc):",
-     $        i, lofio(1,-ikb), mofio(1,-ikb), rcut(1,-ikb)
-         rc = rcut(1,-ikb)
+     $        i, lofio(1,kbpj_f,ikb), mofio(1,kbpj_f,ikb), 
+     $        rcut(1,kbpj_f,ikb)
+         rc = rcut(1,kbpj_f,ikb)
          rmin = 0.0_dp
          rmax = 1.05_dp * rc
          if (zoom) then
@@ -166,14 +172,14 @@ C Internal variables ...................................................
          delta = range/n
          do i=0,n
             x = rmin + delta*i
-            call rphiatm(1,-ikb,x,val,grad)
+            call rphiatm(1,kbpj_f,ikb,x,val,grad)
             write(*,"(3f14.8)") x, val, grad
          enddo
       endif
 
       if (process_vna) then
-         write(6,*) "# Vna, rcut: ", rcut(1,0)
-         rc = rcut(1,0)
+         write(6,*) "# Vna, rcut: ", rcut(1,vna_f,0)
+         rc = rcut(1,vna_f,0)
          rmin = 0.0_dp
          rmax = 1.05_dp * rc
          if (zoom) then
@@ -184,7 +190,7 @@ C Internal variables ...................................................
          delta = range/n
          do i=0,n
             x = rmin + delta*i
-            call rphiatm(1,0,x,val,grad)
+            call rphiatm(1,vna_f,i,x,val,grad)
             write(*,"(3f14.8)") x, val, grad
          enddo
       endif

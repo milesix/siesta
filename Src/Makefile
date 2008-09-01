@@ -17,7 +17,7 @@
 #
 VPATH=.
 #
-default: what siesta # gen-basis denchar fsiesta.o
+default: what siesta gen-basis denchar fsiesta.o
 #
 configure: configure.ac aclocal.m4
 	autoconf ${<D}/configure.ac
@@ -196,28 +196,40 @@ siesta: version $(MPI_INTERFACE) $(FDF) $(WXML) $(XMLPARSER) \
 #
 #------------------------------------------------------------------------
 GEN-BASIS_OBJS=alloc.o gen-basis.o basis_types.o precision.o recipes.o parallel.o \
-          parsing.o xcmod.o basis_io.o  chemical.o atm_transfer.o atm_types.o\
-          atmparams.o old_atmfuncs.o radial.o io.o \
+          parsing.o xcmod.o basis_io.o  chemical.o atm_types.o\
+          atmparams.o radial.o io.o \
 	  paste.o  flib_spline.o bessph.o filter.o filter_subs.o \
           basis_specs.o atom.o memoryinfo.o memory.o periodic_table.o\
           pseudopotential.o dot.o xc.o  atom_options.o arw.o  \
-          sys.o timer.o  xml.o m_walltime.o $(SYSOBJ)
+          sys.o xml.o m_walltime.o radial_lin.o \
+	radial_log.o radial_logGrid.o radial_util.o \
+        schro.o kb.o radial_log_low_level.o radial_log_dirty.o \
+	radial_log_io.o multiple_z.o pao_util.o atmfuncs_types.o \
+	atm_generation_types.o bessel.o pol_orb.o hilbert_vector.o \
+	hilbert_vector_collection.o corechg.o basis_gen.o vloc.o \
+	 elec_correction.o radfft.o na.o files.o $(SYSOBJ)
 # precision must be the first one here...
 gen-basis.o: $(FDF)
 gen-basis: version $(MPI_INTERFACE) $(FDF) $(WXML) \
                  $(GEN-BASIS_OBJS) 
 	$(FC) -o gen-basis \
 	       $(LDFLAGS) $(GEN-BASIS_OBJS) $(MPI_INTERFACE) $(FDF) $(WXML) \
-               $(LIBS) 
+               $(COMP_LIBS) $(LIBS) 
 #
 #------------------------------------------------------------------------
 IONCAT_OBJS=f2kcli.o m_getopts.o ioncat.o basis_types.o precision.o  parallel.o \
           parsing.o xcmod.o alloc.o atom_options.o basis_io.o  atm_types.o\
           atmparams.o radial.o io.o memory.o chkdim.o\
-	  paste.o pseudopotential.o chemical.o  alloc.o \
+	  paste.o pseudopotential.o chemical.o \
           basis_specs.o memoryinfo.o  m_memory.o periodic_table.o\
           xc.o flib_spline.o atmfuncs.o spher_harm.o\
-          sys.o timer.o  xml.o m_walltime.o $(SYSOBJ)
+          sys.o  xml.o m_walltime.o \
+	radial_lin.o radial_log.o radial_logGrid.o radial_util.o \
+        schro.o kb.o radial_log_low_level.o radial_log_dirty.o \
+	radial_log_io.o multiple_z.o pao_util.o filter.o atmfuncs_types.o \
+	atm_generation_types.o arw.o filter_subs.o recipes.o radfft.o \
+	bessel.o pol_orb.o hilbert_vector.o hilbert_vector_collection.o\
+	bessph.o $(SYSOBJ)
 # precision must be the first one here...
 ioncat.o: $(FDF)
 ioncat: version $(MPI_INTERFACE) $(FDF) $(WXML) \
@@ -241,7 +253,12 @@ OTHER_DENCHAR_OBJS=  precision.o recipes.o alloc.o atom_options.o \
         volcel.o parallel.o parallelsubs.o memoryinfo.o sys.o listsc.o  \
         atmparams.o atmfuncs.o atm_types.o m_memory.o \
         radial.o spher_harm.o  basis_io.o basis_types.o \
-        pseudopotential.o chemical.o xml.o files.o $(SYSOBJ)
+        pseudopotential.o chemical.o xml.o files.o \
+	radial_lin.o radial_log.o radial_logGrid.o radial_util.o \
+        schro.o kb.o radial_log_low_level.o radial_log_dirty.o \
+	radial_log_io.o multiple_z.o pao_util.o filter.o atmfuncs_types.o \
+	atm_generation_types.o arw.o filter_subs.o xc.o xcmod.o parsing.o\
+	bessel.o pol_orb.o hilbert_vector.o hilbert_vector_collection.o $(SYSOBJ)
 
 denchar: $(MPI_INTERFACE) $(FDF) \
          $(OTHER_DENCHAR_OBJS) $(DENCHAR_OBJS) $(COMP_LIBS)

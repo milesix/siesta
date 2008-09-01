@@ -219,7 +219,7 @@ C Read some variables from SIESTA --------------------------------------
      .             CELL, NSC, XA, RMAXO, DATM )
 
 C Read the information about the basis set -----------------------------
-      CALL READ_BASIS_ASCII(ns)
+      CALL READ_BASIS_ASCII()
 
 C Initialize listsc ----------------------------------------------------
       CALL LISTSC_INIT( NSC, NO_U )

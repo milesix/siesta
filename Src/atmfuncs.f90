@@ -803,7 +803,7 @@ contains
     !  Distances in Bohr
 
     call chk('rcut',is)
-
+    rcut = 0.0_dp
     spp => species(is)
     if (func==orb_f) then
        if (io.gt. get_number_of_orbs(spp))  call die("No such orbital")
@@ -1037,9 +1037,9 @@ contains
     !***********************OUTPUT*****************************************
     !   INTEGER ZETAFIO  : Zeta number of orbital
 
-
+   
     call chk('mofio',is)
-
+    zetafio = 0
     spp => species(is)
 
     if (io.gt.0) then

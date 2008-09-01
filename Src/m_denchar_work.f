@@ -476,7 +476,7 @@ C Loop over Non-zero orbitals ------------------------------------------
            DO 120 IO = LASTO(IAVEC1-1) + 1, LASTO(IAVEC1)
              IPHI1 = IPHORB(IO)
              IUO   = INDXUO(IO)
-             CALL PHIATM( IS1, IPHI1, XVEC1, PHIMU, GRPHIMU )
+             CALL PHIATM( IS1,orb_f, IPHI1, XVEC1, PHIMU, GRPHIMU )
 
 C Copy full row IUO of Density Matrix to DI(j) --------------------------
              IF (IO . EQ. IUO) THEN
@@ -517,7 +517,7 @@ C Loop again over neighbours -------------------------------------------
                
                DO 150 JO = LASTO(IAVEC2-1) + 1, LASTO(IAVEC2)
                  IPHI2 = IPHORB(JO)
-                 CALL PHIATM( IS2, IPHI2, XVEC2, PHINU, GRPHINU )
+                 CALL PHIATM( IS2, orb_f, IPHI2, XVEC2, PHINU, GRPHINU )
                  
                  IF ( NSPIN .EQ. 1 ) THEN
                    DENCHAR  = DENCHAR  + PHINU*PHIMU*DISCF(JO)
@@ -645,6 +645,7 @@ C **********************************************************************
 
       USE FDF
       USE ATMFUNCS
+      use atmfuncs_types
       USE CHEMICAL
 
       IMPLICIT NONE
@@ -1025,7 +1026,7 @@ C Loop over Non-zero orbitals ------------------------------------------
              DO 120 IO = LASTO(IAVEC1-1) + 1, LASTO(IAVEC1)
                IPHI1 = IPHORB(IO)
                IUO   = INDXUO(IO)
-               CALL PHIATM( IS1, IPHI1, XVEC1, PHIMU, GRPHIMU )
+               CALL PHIATM( IS1,orb_f, IPHI1, XVEC1, PHIMU, GRPHIMU )
 
                IF ( NSPIN .EQ. 1 ) THEN
                  WAVE  = WAVE  + PHIMU * PSI(IUO,IWF,1)

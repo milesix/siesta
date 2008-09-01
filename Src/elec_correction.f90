@@ -1,3 +1,13 @@
+!     This file is part of the SIESTA package.
+!     
+!     Copyright (c) Fundacion General Universidad Autonoma de Madrid:
+!     E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
+!     and J.M.Soler, 1996-2006.
+!     
+!     Use of this software constitutes agreement with the full conditions
+!     given in the SIESTA license, as signed by all legitimate users.
+!     
+
       module elec_correction
 
       use precision
@@ -14,9 +24,6 @@
 
       subroutine elec_corr_setup
 
-      use atm_types
-      use atmfuncs, only: floating
-
       integer is, is2, i
       real(dp) :: rchloc, rchloc2, cutoff,values(1:ntbmax)
 
@@ -26,9 +33,12 @@
       npairs = ((nspecies+1)*nspecies)/2
       allocate(elec_corr(npairs))
       
+      rchloc = 0.0_dp
+      rchloc2 = 0.0_dp
+
       do is=1,nspecies
         
-         if (.not. floating(is)) then
+         if (.not. is_floating(species(is))) then
             chlocal1 = get_pseudo_local_charge(species(is))
             rchloc = rad_cutoff(chlocal1)
          endif
@@ -37,7 +47,7 @@
             
             i = ((is-1)*is)/2+is2
             
-            if (floating(is) .or. floating(is2)) then
+            if (is_floating(species(is)) .or. is_floating(species(is2))) then
                grid = rad_grid_alloc(ntbmax,delta=0.0001_dp)
                values=0.0_dp
                call rad_alloc(elec_corr(i),values,grid)
@@ -58,7 +68,7 @@
             
          enddo
          
-         if (.not. floating(is)) call rad_dealloc(chlocal1)
+         if (.not. is_floating(species(is))) call rad_dealloc(chlocal1)
 
       enddo
       
@@ -70,7 +80,7 @@
 !     so they cannot be replaced by those in atom.f...
 !
       function CH_OVERLAP(IS1,IS2,RMX,grid) result(elec_corr)
-      use atmfuncs, only: zvalfis, psch
+      !use atmfuncs, only: zvalfis, psch
       use parallel, only: IOnode
 
       integer, intent(in)   :: is1, is2
@@ -144,8 +154,11 @@
       C=4.0_DP*PI*DELT
       DLT=RMX/(NTBMAX-1)
 
-      IZ1=ZVALFIS(IS1)
-      IZ2=ZVALFIS(IS2)
+      !IZ1=ZVALFIS(IS1)
+      IZ1=get_valence_charge(species(is1))
+      
+      !IZ2=ZVALFIS(IS2)
+      IZ2=get_valence_charge(species(is2))
 
       Z1=0.0_DP
       Z2=0.0_DP
@@ -157,8 +170,13 @@
          R=IR*DELT
          RX(1)=R
              
-         CALL PSCH(IS1,RX,CH1,GRCH)
-         CALL PSCH(IS2,RX,CH2,GRCH)
+         if (.not. is_floating(species(is1))) &
+              call get_value_pseudo_local_charge(species(is1),rx,ch1,grch)
+          !CALL PSCH(IS1,RX,CH1,GRCH)
+
+         if (.not. is_floating(species(is2))) &
+              call get_value_pseudo_local_charge(species(is2),rx,ch2,grch)
+         !CALL PSCH(IS2,RX,CH2,GRCH)
 
          CH(IR,1)=-CH1
          CH(IR,2)=-CH2

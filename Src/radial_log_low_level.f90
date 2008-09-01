@@ -1,3 +1,13 @@
+!     This file is part of the SIESTA package.
+!     
+!     Copyright (c) Fundacion General Universidad Autonoma de Madrid:
+!     E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
+!     and J.M.Soler, 1996-2006.
+!     
+!     Use of this software constitutes agreement with the full conditions
+!     given in the SIESTA license, as signed by all legitimate users.
+!     
+
 module radial_log_low_level
 use precision, only : dp
 use radial_logGrid, only : logGrid_t, log_grid_get_r, log_grid_copy,&
@@ -6,6 +16,7 @@ use flib_spline, only : evaluate_spline, generate_spline
 use sys, only : die
 implicit none
 
+ !Low level operations in a radial grid
 
   real(dp),public, parameter                :: eps=1.0d-6
   real(dp),public, parameter                :: min_func_val=1E-6

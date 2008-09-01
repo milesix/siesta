@@ -1,3 +1,14 @@
+!     This file is part of the SIESTA package.
+!     
+!     Copyright (c) Fundacion General Universidad Autonoma de Madrid:
+!     E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
+!     and J.M.Soler, 1996-2006.
+!     
+!     Use of this software constitutes agreement with the full conditions
+!     given in the SIESTA license, as signed by all legitimate users.
+!     
+
+
 module basis
   use precision,        only: dp
   use fdf
@@ -381,7 +392,12 @@ contains
   !----------------------------------------------------------------------------------
 
   subroutine species_vxc(is)
-    integer, intent(in) :: is
+    !Calculates exchange correlation energy of a given atomic species
+    !The result can be compared with SIESTA's result, as long as there is only
+    !one  atom in the system.
+    !E. Anglada 2008
+
+    integer, intent(in) :: is !Which specie we are interested in.
 
     type(rad_func_t) :: rho, vxc, rho4pi
     real(dp)         :: charge, rc, exc
@@ -389,13 +405,11 @@ contains
     rho = total_charge(is,charge,rc)
     rho4pi = rad_divide_by_4pir2(rho,.false.)
     vxc = rad_vxc(rho4pi,0,exc)
-    !call rad_dump_file(rho,"rho-exc.dat")
 
-    write(6,*) "------Species-Exc---------"
-    write(6,'(a,f14.4)') "Charge =", charge
-    write(6,'(a,f14.4)') " Species Exc (eV) =", exc/eV
+    write(6,'(/,a)') " Check species Exc"
+    write(6,'(a,f14.4)') "   Species valence charge =", charge
+    write(6,'(a,f14.4)') "   Species Exc (eV) =", exc/eV
 
-    !write(6,*) " Species Exc (Ry) =", exc
     call rad_dealloc(vxc)
     call rad_dealloc(rho)
     call rad_dealloc(rho4pi)

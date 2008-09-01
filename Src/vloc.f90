@@ -1,3 +1,12 @@
+!     This file is part of the SIESTA package.
+!     
+!     Copyright (c) Fundacion General Universidad Autonoma de Madrid:
+!     E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
+!     and J.M.Soler, 1996-2006.
+!     
+!     Use of this software constitutes agreement with the full conditions
+!     given in the SIESTA license, as signed by all legitimate users.
+!     
 
 module vloc
   use precision
@@ -14,9 +23,11 @@ module vloc
 contains
 
   subroutine gen_vlocal(isp)
+    !Generate the local part of the pseudopotential for a given species.
 
+    integer, intent(in)     ::  isp !The species we are interested in
 
-    integer, intent(in)     ::  isp
+    !Internal vars
     type(pseudopotential_t),pointer  ::  vps
 
     ! Rgauss is the maximum cut-off radius used in the pseudopotential

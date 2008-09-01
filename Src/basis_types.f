@@ -569,10 +569,10 @@
      $        'Mass=', smass(is), 'Charge=', charge(is)
          write(lun,'(a5,i1,1x,a6,i1,5x,a10,a10,1x,a6,l1)')
      $        'Lmxo=', lmxo(is), 'Lmxkb=', lmxkb(is),
-     $        'BasisType=', basistype(is), 'Semic=', semic(is)-1
+     $        'BasisType=', basistype(is), 'Semic=', semic(is)
          do l=0,lmxo(is)
             write(lun,'(a2,i1,2x,a7,i1,2x,a8,i1)')
-     $           'L=', l, 'Nsemic=', nsemic(l,is),
+     $           'L=', l, 'Nsemic=', nsemic(l,is)-1,
      $           'Cnfigmx=', cnfigmx(l,is)
             do n=1,nsemic(l,is)+1
                if (nzeta(l,n,is) == 0) exit
