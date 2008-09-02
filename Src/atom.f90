@@ -214,6 +214,7 @@ CONTAINS
 
        !     Compute the electrostatic correction tables
        call elec_corr_setup()
+
     endif
     
     if (write_ion_plot_files) then
@@ -222,7 +223,6 @@ CONTAINS
        call dump_basis_netcdf()
        call dump_basis_xml()
     endif
-
     !call check_atmfuncs()
   end subroutine generate_all_atomic_info
 

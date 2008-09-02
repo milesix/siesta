@@ -37,10 +37,9 @@
       rchloc2 = 0.0_dp
 
       do is=1,nspecies
-        
          if (.not. is_floating(species(is))) then
             chlocal1 = get_pseudo_local_charge(species(is))
-            rchloc = rad_cutoff(chlocal1)
+            rchloc = rad_cutoff(chlocal1)            
          endif
 
          do is2=is,1,-1
@@ -51,9 +50,8 @@
                grid = rad_grid_alloc(ntbmax,delta=0.0001_dp)
                values=0.0_dp
                call rad_alloc(elec_corr(i),values,grid)
-               call rad_zero(elec_corr(i))
+               !call rad_zero(elec_corr(i))
                call rad_grid_dealloc(grid)
-
             else
                
                chlocal2 = get_pseudo_local_charge(species(is2))
@@ -63,7 +61,6 @@
                elec_corr(i) = ch_overlap(is,is2,cutoff,grid)
                call rad_grid_dealloc(grid)
                call rad_dealloc(chlocal2)
-               
             endif
             
          enddo
@@ -71,7 +68,7 @@
          if (.not. is_floating(species(is))) call rad_dealloc(chlocal1)
 
       enddo
-      
+
       end subroutine elec_corr_setup
 !
 !======================================================================

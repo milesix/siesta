@@ -103,8 +103,6 @@ contains
 
        
        if (new_split_code) then
-           call rad_dump_file(shell%rphi(1),"1z.dat")
-          print *, "l,spln=",l,spln
           call find_split_location(shell%rphi(1),shell%split_table,l,spln,rmatch,const1,const2)
        else
           spln_min = rad_min(shell%split_table)
@@ -116,12 +114,9 @@ contains
              !call die("See manual for new split options")
           endif          
           keep_findp_bug = fdf_boolean("PAO.Keep.Findp.Bug", .false.)
-          call rad_dump_file(shell%rphi(1),"1z.dat")
-	  print *, "l,spln=",l,spln
           call rad_find_parabola_parameters(shell%rphi(1),l,spln,rmatch,const1,const2,keep_findp_bug)
        endif
-       print *, "c1,c2,rmatch=",const1,const2,rmatch 
-       stop
+
        !Cut-off radius for the split orbital with a desired norm
        !nrc=nsp
        !rc = logGrid%b*(exp(logGrid%a*(nsp-1))-1.0d0)*shell%lambda(izeta)

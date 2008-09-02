@@ -89,8 +89,8 @@ C     -------------------------------------------------------------------
 C     Argument types and dimensions -------------------------------------
       IMPLICIT          NONE
       CHARACTER         OPERAT
-      type(func_t), intent(in) :: func1  ! Function label
-      type(func_t), intent(in) :: func2  ! Function label
+      type(func_t), intent(in) :: func1 ! Function label
+      type(func_t), intent(in) :: func2 ! Function label
       INTEGER           IO1, IO2, IS1, IS2
       real(dp)          DSDR(3), R12(3), S12
 C     -------------------------------------------------------------------
@@ -228,20 +228,23 @@ c     Find the integer associated with the functions type
 
 C     Check size of orbital index table
       IF ( MAX(IS1,IS2).GT.SIZE(INDF,1)   .OR.
-     .     MAX(IT1,IT2).GT.UBOUND(INDF,2) .OR.
+     .     MAX(IT1,IT2).GT.SIZE(INDF,2) .OR.
+     .     MIN(IO1,IO2).LT.LBOUND(INDF,3) .OR.
      .     MAX(IO1,IO2).GT.UBOUND(INDF,3) .OR.
      .     MAX(IOPER,3).GT.SIZE(INDF,4) ) THEN
          CALL RE_ALLOC( INDF,
-     .        1,MAX(  SIZE(INDF,1), IS1,IS2),
-     .        1,MAX(UBOUND(INDF,2), IT1,IT2),
-     .        1,MAX(UBOUND(INDF,3), IO1,IO2),
-     .        1,MAX(  SIZE(INDF,4), IOPER,3),
+     .        1, MAX(  SIZE(INDF,1), IS1,IS2),
+     .        1, MAX( SIZE(INDF,2), IT1,IT2),
+     .        MIN(LBOUND(INDF,3),IO1,IO2), 
+     .        MAX(UBOUND(INDF,3), IO1,IO2),
+     .        1, MAX(  SIZE(INDF,4), IOPER,3),
      .        MYNAME//'INDF' )
          CALL RE_ALLOC( NLM,  
-     .        1,MAX(  SIZE(INDF,1), IS1,IS2),
-     .        1,MAX(UBOUND(INDF,2), IT1,IT2),
-     .        1,MAX(UBOUND(INDF,3), IO1,IO2),
-     .        1,MAX(  SIZE(INDF,4), IOPER,3),
+     .        1, MAX(  SIZE(NLM,1), IS1,IS2),
+     .        1, MAX(  SIZE(NLM,2), IT1,IT2),
+     .        MIN(LBOUND(NLM,3),IO1,IO2),
+     .        MAX(UBOUND(NLM,3), IO1,IO2),
+     .        1,MAX(  SIZE(NLM,4), IOPER,3),
      .        MYNAME//'NLM'  )
       ENDIF
 
@@ -298,13 +301,13 @@ C     Expand orbital in spherical harmonics
             ELSE
                IF(IOPER.EQ.4) THEN
                   CALL YLMEXP( L+1, RLYLM, XPHIATM, IS, FUNC, IO, 0, 
-     .                  NQ, RMAX, NILM, ILM(NF+1:), F(0:,NF+1:) )
+     .                 NQ, RMAX, NILM, ILM(NF+1:), F(0:,NF+1:) )
                ELSEIF(IOPER.EQ.5) THEN
                   CALL YLMEXP( L+1, RLYLM, YPHIATM, IS, FUNC, IO, 0, 
-     .                  NQ, RMAX, NILM, ILM(NF+1:), F(0:,NF+1:) )
+     .                 NQ, RMAX, NILM, ILM(NF+1:), F(0:,NF+1:) )
                ELSE
                   CALL YLMEXP( L+1, RLYLM, ZPHIATM, IS, FUNC, IO, 0, 
-     .                  NQ, RMAX, NILM, ILM(NF+1:), F(0:,NF+1:) )
+     .                 NQ, RMAX, NILM, ILM(NF+1:), F(0:,NF+1:) )
                ENDIF
                INDF(IS,IT,IO,IOPER) = NF+1
                NLM(IS,IT,IO,IOPER) = NILM

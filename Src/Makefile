@@ -482,8 +482,8 @@ egandd.o: alloc.o globalise.o m_mpi_utils.o onmod.o onmod.o precision.o sys.o
 
 eggbox.o: parallel.o parsing.o precision.o
 
-elec_correction.o: atm_types.o atmfuncs.o parallel.o precision.o radfft.o
-elec_correction.o: radial.o recipes.o
+elec_correction.o: atm_types.o parallel.o precision.o radfft.o radial.o
+elec_correction.o: recipes.o
 
 ener3.o: globalise.o m_mpi_utils.o onmod.o precision.o
 
@@ -516,8 +516,7 @@ forhar.o: alloc.o meshsubs.o precision.o
 fractional.o: f2kcli.o periodic_table.o precision.o pseudopotential.o sys.o
 
 
-gen-basis.o: atom.o atom_options.o basis_io.o basis_specs.o basis_types.o
-gen-basis.o: old_atmfuncs.o parallel.o precision.o sys.o xcmod.o
+gen-basis.o: atom.o parallel.o precision.o
 
 
 get_target_stress.o: m_mpi_utils.o parallel.o precision.o units.o
@@ -571,7 +570,8 @@ iolwf.o: alloc.o files.o onmod.o parallel.o parallelsubs.o precision.o sys.o
 
 iomd.o: files.o precision.o
 
-ioncat.o: atm_types.o atmfuncs.o basis_io.o m_getopts.o precision.o
+ioncat.o: atm_types.o atmfuncs.o atmfuncs_types.o basis_io.o m_getopts.o
+ioncat.o: precision.o
 
 iopipes.o: parallel.o precision.o sys.o
 
@@ -626,8 +626,8 @@ m_denchar_io.o: m_denchar_geom.o
 
 m_denchar_neighb.o: precision.o sys.o
 
-m_denchar_work.o: atmfuncs.o chemical.o listsc.o m_denchar_geom.o
-m_denchar_work.o: m_denchar_io.o m_denchar_neighb.o parallel.o
+m_denchar_work.o: atmfuncs.o atmfuncs_types.o chemical.o listsc.o
+m_denchar_work.o: m_denchar_geom.o m_denchar_io.o m_denchar_neighb.o parallel.o
 
 m_dipol.o: precision.o
 
