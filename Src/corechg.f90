@@ -12,7 +12,7 @@ module corechg
 
   use precision
   use pseudopotential, only : pseudopotential_t
-  use atm_types, only: species, set_has_core_charge, set_core_charge
+  use atm_types, only: species, set_has_core_charge, set_core_charge, orbs_kc_max
   use atom_generation_types , only :basis_parameters
   use radial
   use fdf
@@ -20,7 +20,7 @@ module corechg
 
 contains
 
-  subroutine corechargeSetup(isp)
+  subroutine core_charge_Setup(isp)
     !    Fill species(isp)%core with the pseudo-core information contained in core.
     !    This charge density will be used in the calculation of the nonlinear core corrections.
     !    D. Sanchez-Portal, Aug. 1998
@@ -34,7 +34,7 @@ contains
     !    Internal variables     
     real(dp)                     :: rcore
     logical                      :: filterPCC
-    type(rad_func_t), pointer    :: core_charge
+    type(rad_func_t), pointer    :: core_charge => NULL()
     type(rad_func_t)             :: core_charge_tmp,core_charge_filtered
   
     if (basis_parameters(isp)%pseudopotential%nicore == 'nc ') then
@@ -54,7 +54,7 @@ contains
        filterPCC = fdf_boolean("PCC.Filter",.false.)
          
        if (filterPCC) then
-          core_charge_filtered = rad_filter(core_charge_tmp,0,1.0_dp,0)   
+          core_charge_filtered = rad_filter(core_charge_tmp,0,1.0_dp,0,orbs_kc_max)   
           call set_core_charge(species(isp),core_charge_filtered)
           call rad_dealloc(core_charge_filtered)         
        else
@@ -66,7 +66,7 @@ contains
 
     endif
 
-  end subroutine corechargeSetup
+  end subroutine core_charge_Setup
 
 
 end module corechg

@@ -1,3 +1,13 @@
+!     This file is part of the SIESTA package.
+!     
+!     Copyright (c) Fundacion General Universidad Autonoma de Madrid:
+!     E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
+!     and J.M.Soler, 1996-2006.
+!     
+!     Use of this software constitutes agreement with the full conditions
+!     given in the SIESTA license, as signed by all legitimate users.
+!     
+
 module basis
   use precision,        only: dp
   use fdf
@@ -5,7 +15,7 @@ module basis
   use hilbert_vector_m, only:hilbert_vector_t
   use radial,           only: rad_func_t, rad_copy
   use atm_types,        only: species_info_t, get_lmax_orbs, set_orbs_deg, &
-       set_lmax_orbs, species, init_orbs, get_atomic_number, set_orb
+       set_lmax_orbs, species, init_orbs, get_atomic_number, set_orb, orbs_kc_max
   use pseudopotential,  only:pseudopotential_t
   use atom_generation_types,      only:basis_def_t,basis_parameters,shell_t,lshell_t,energies_t
   use sys,              only:die
@@ -24,7 +34,7 @@ module basis
   real(dp), parameter             :: deltmax=0.05d0
 
   !     Default energy-shift to define the cut off radius of orbitals
-  ! In Rydbergs
+  ! In Rydberg
   real(dp), parameter             :: eshift_default=0.02d0
 
   !    Default norm-percentage for the automatic definition of
@@ -81,10 +91,12 @@ contains
     
     integer            :: atomic_number
     logical            :: filterOrbitals
-    real(dp)           :: filterFactor
+    real(dp)           :: filterEkinTol
+    real(dp)           :: kc
     real(dp),dimension(0:3) :: qatm
     integer, dimension(0:3) :: config
     logical                 :: is_pol
+    real(dp), parameter :: EkinTolDefault = 0.003_dp
 
     basp => basis_parameters(isp)
     spp  => species(isp)
@@ -92,7 +104,7 @@ contains
 
     !**   Filter the orbitals
     filterOrbitals = fdf_boolean("PAO.Filter",.false.)
-    filterFactor = fdf_double("PAO.FilterFactor", 0.7_dp)
+    filterEkinTol = fdf_double("Filter.EkinTol", EkinTolDefault)
 
     qatm(0:3)=0.0d0
 
@@ -112,7 +124,7 @@ contains
   
     call init_orbs(species(isp),norbs)
     
-    print ('(/,a)'), "BASISgen begin"
+    print ('(/,a)'), "BASIS_GEN begin"
 
     !LOOP over angular momenta    
     iorb = 1
@@ -125,9 +137,9 @@ contains
           
           shell => lshell%shell(nsm)
           shell%i_sm = nsm
-          shell%population = 0.0_dp
-
+          print *, "l,nsm=",l,nsm
           if(shell%nzeta.le.0) exit
+          shell%population = 0.0_dp
           
           if(.not. shell%polarizes) &
                write(6,'(/A,I2)')'SPLIT: Orbitals with angular momentum L=',l
@@ -193,20 +205,12 @@ contains
 
              call print_shell_info(shell,izeta)
 
-             !filter
-             if (filterorbitals) then                
-                call rad_copy(shell%orb(izeta),rad_tmp)
-                call rad_dealloc(shell%orb(izeta))
-                shell%orb(izeta) = rad_filter(rad_tmp,l,filterFactor,2) 
-                shell%rc(izeta) = rad_cutoff(shell%orb(izeta))
-                call rad_dealloc(rad_tmp)
-                call rad_copy(shell%orb(izeta),rad_tmp)
-                call rad_dealloc(shell%rphi(izeta))
-                shell%rphi(izeta) = rad_multiply_by_rl(rad_tmp,l+1)
-                call rad_dealloc(rad_tmp)
-                call calculate_energies(shell, izeta)
-                print *, "----Filtered-orb--energies"
-                call print_shell_info(shell, izeta)
+              !filter
+             if (filterorbitals) then
+                print *, "get kc"
+                kc = rad_get_filter_cutoff(shell%orb(izeta),l,FilterEkinTol)
+                print *, "kc=",kc
+                if (kc .gt. orbs_kc_max) orbs_kc_max = kc
              endif            
 
              call init_vector(orb_vector,shell%orb(izeta),shell%n,l,izeta,&

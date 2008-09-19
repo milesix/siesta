@@ -51,29 +51,30 @@ module atom_generation_types
      integer                   ::  i_sm       ! This is the ith shell in the semicore list. 
      integer                   ::  nzeta      ! Number of PAOs
      logical                   ::  polarizes  !Does this shell polarize another?  
-     logical                   ::  polarized  !Is this shell polarized?
+     logical                   ::  polarized = .false.  !Is this shell polarized?
+     logical                   ::  auto_polarized = .false. !Is this shell polarized automagically?
+     logical                   ::  auto_polarizes = .false. !Is this shell polarizing automagically?
      integer                   ::  nzeta_pol 
      real(dp)                  ::  split_norm ! Split norm value
      logical                   ::  split_norm_specified
 
-     real(dp), pointer         :: spln(:)     ! Split norm used for each z
+     real(dp), pointer         :: spln(:) => Null()    ! Split norm used for each z
 
      real(dp)                  ::  rinn       ! Soft confinement
      real(dp)                  ::  vcte       ! Soft confinement
-     real(dp), pointer         ::  rc(:)      ! rc's for PAOs
-     real(dp), pointer         ::  lambda(:)  ! Contraction factors.
-     real(dp), pointer         :: population(:) !Population of each orb
+     real(dp), pointer         ::  rc(:) => Null()     ! rc's for PAOs
+     real(dp), pointer         ::  lambda(:)  => Null() ! Contraction factors.
+     real(dp), pointer         :: population(:)  => Null()!Population of each orb
 
      character(len=20)         :: multiple_z_kind !split, splitgauss, nodes, etc
-     type(rad_func_t), pointer :: orb(:)  ! Actual orbitals. 
-     type(rad_func_t), pointer :: rphi(:) ! Orb multiplied by r
+     type(rad_func_t), pointer :: orb(:)  => Null()  ! Actual orbitals. 
+     type(rad_func_t), pointer :: rphi(:)  => Null() ! Orb multiplied by r
      type(rad_func_t)          :: split_table !Norm for multiple z generation
      type(rad_func_t)          :: pseudo  ! Pseudopotential for this shell.    
     
      type(rad_func_t)          ::  ve   ! Potential used during the pseudo generation
      type(rad_func_t)          ::  ve_PAO ! Potential used for PAOs. May include a scaling factor
 
-     !real(dp), dimension(:), pointer ::  ve_PAO !
      integer                   ::  l_shell_polarized !l of the shell being polarized.
      integer                   ::  n_shell_polarized
      integer                   ::  l_shell_polarizes 
@@ -122,6 +123,7 @@ module atom_generation_types
      type(shell_t), pointer    ::  tmp_shell(:)
   end type basis_def_t
 
+  real(dp)                     :: filter_cutoff = 0.0_dp
   !integer, save                      :: nsp  ! Number of species
   type(basis_def_t),allocatable, save, target :: basis_parameters(:)
 
@@ -227,7 +229,7 @@ CONTAINS
   subroutine destroy_shell(p)
     type(shell_t), pointer   :: p(:)
 
-    integer                  :: i, j
+    integer                  :: i
     type(shell_t), pointer   :: q
 
     if (.not. associated(p)) return
@@ -385,7 +387,7 @@ CONTAINS
          'BasisType=', basp%basis_type, 'Semic=', basp%semic
    
     do l=0,basp%lmxo
-       write(lun,'(a2,i1,2x,a7,i1)') 'L=',l,'Nsemic=', basp%lshell(l)%nn
+       write(lun,'(a2,i1,2x,a7,i1)') 'L=',l,'Nsemic=', basp%lshell(l)%nn-1
        do n=1,basp%lshell(l)%nn
           nshell => basp%lshell(l)%shell(n)
           if(nshell%nzeta == 0) exit

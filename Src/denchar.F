@@ -82,9 +82,7 @@ C
       LOGICAL 
      .  FOUND, CHARGE, WAVES
 
-      EXTERNAL  IODM, VOLCEL
-
-      integer narg, ns
+      EXTERNAL  IODM, VOLCEL      
 
       DATA NORMAL /0.D0,0.D0,1.D0/
       DATA COORPO /1.D0,0.D0,0.D0,0.D0,1.D0,0.D0,0.D0,0.D0,1.D0/

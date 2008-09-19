@@ -21,7 +21,8 @@ module atom
   !Main module where all the atomic info is stored.
   use atm_types, only : get_atomic_number, get_symbol,species_info_t, &
        species,nspecies, symbol_length, set_no_reduced_vlocal, set_no_kb, &
-       set_no_neutral_atom_potential, has_kbs, set_floating, set_has_core_charge
+       set_no_neutral_atom_potential, has_kbs, set_floating, &
+       set_has_core_charge, filter_orbs
   
   !Auxiliary module where all the intermediate info is stored.
   use atom_generation_types, only : basis_def_t, basis_parameters,lshell_t, shell_t, &
@@ -32,8 +33,8 @@ module atom
   use periodic_table, only : symbol
   use pseudopotential, only : pseudopotential_t
   
-  !All the experte subroutines which generate the corresponding functions.
-  use corechg, only: coreChargeSetup
+  !All the expert subroutines which generate the corresponding functions.
+  use corechg, only: core_Charge_Setup
   
   use bessel_m, only : bessel
   use parallel, only:ionode
@@ -82,7 +83,6 @@ CONTAINS
        call gen_vlocal(isp)
        call kbgen(isp)
        call basis_gen(isp)
-       call gen_vna(isp)
     endif
     write(6,'(/,a)') 'ATOM: Species end_____________________________ '
 
@@ -176,8 +176,9 @@ CONTAINS
 
     ! Internal variables ...................................................
     integer is
+    real(dp) :: filter_factor
 
-    logical :: user_basis, user_basis_netcdf, read_from_file
+    logical :: user_basis, user_basis_netcdf, read_from_file, filter_Orbitals
 
     write(6,'(/2a)')'initatom: Reading input for the', &
          'pseudopotentials and atomic orbitals'
@@ -209,12 +210,26 @@ CONTAINS
 
        do is = 1,nspecies
           call write_basis_specs(6,is)
-          call atom_main(is) 
+          call atom_main(is)
+       enddo
+
+       filter_Orbitals = fdf_boolean("PAO.Filter",.false.)
+       if (filter_orbitals) then
+          filter_factor = fdf_double("PAO.FilterFactor",0.7_dp)
+          call filter_orbs(filter_factor)
+       endif
+
+       !Nonlinear core corrections, neutral atom potential 
+       do is = 1, nspecies
+          ! If exists, fill species core density (for nonlinear core corrections)
+          call core_charge_setup(is)
+          call gen_vna(is)
        enddo
 
        !     Compute the electrostatic correction tables
        call elec_corr_setup()
 
+       call prinput(nspecies)
     endif
     
     if (write_ion_plot_files) then
@@ -223,11 +238,124 @@ CONTAINS
        call dump_basis_netcdf()
        call dump_basis_xml()
     endif
+
+    !Subroutine which dumps all the atomic info. Do not remove, please.
     !call check_atmfuncs()
   end subroutine generate_all_atomic_info
 
   !----------------------------------------------------
 
+  subroutine prinput(ntotsp)
+
+!**
+! Prints the values of the parameter which have been actually 
+! used in the generation of the basis (cut-off radius, contraction
+! factors, and BasisType option to augment the basis set).
+! The information is written in the same format as required for the 
+! input file.
+! Written by D. Sanchez-Portal, Oct. 1998.
+!**
+
+    implicit none 
+    integer ntotsp
+
+        
+    !***Internal variables
+    integer is, nshells, l, izeta
+          
+    character(len=11) rcchar(nzetmx), lambdachar(nzetmx)
+
+    type (basis_def_t), pointer :: basp
+    type (shell_t)    , pointer :: shell
+    integer                     :: n
+    
+    write(6,'(/a,58("-"))') 'prinput: Basis input '
+
+
+    write(6,'(/2a)')'PAO.BasisType split'
+
+    write(6,'(/a)') '%block ChemicalSpeciesLabel' 
+    do is=1,ntotsp
+       basp => basis_parameters(is)
+       write(6,'(2(1x,i4),1x,2a)') is,basp%z,basp%label, &
+            '    # Species index, atomic number, species label' 
+       nullify(basp)
+    enddo
+    write(6,'(a)') '%endblock ChemicalSpeciesLabel' 
+
+    write(6,'(/a)') '%block PAO.Basis                 # Define Basis set'
+    do is=1, ntotsp  
+       basp => basis_parameters(is)
+       nshells=0 
+
+       do l=0,basp%lmxo !Find number of shells (including semicore)
+          do n=1,basp%lshell(l)%nn
+             shell => basp%lshell(l)%shell(n)
+             if(shell%nzeta > 0) nshells=nshells+1
+             nullify(shell)
+          enddo
+       enddo
+
+       if(basp%basis_type .eq. 'split') then  
+
+          if(abs(basp%ionic_charge).lt.1.0d-4) then 
+             write(6,'(a10,1x,i2,20x,a)') basp%label, nshells, &
+                  '# Species label, number of l-shells'
+          else
+             write(6,'(a10,1x,i2,1x,f7.3,12x,2a)') basp%label, nshells, &
+                  basp%ionic_charge, '# Label, l-shells,',' ionic net charge'
+          endif
+         
+       else 
+
+          if(abs(basp%ionic_charge).lt.1.0d-4) then
+             write(6,'(a10,1x,i2,1x,a,10x,2a)') &
+                  basp%label, nshells,basp%basis_type, &
+                  '# Species label, l-shells,',' basis type ' 
+          else
+             write(6,'(a10,1x,i2,1x,a,1x,f7.3,1x,2a)') &
+                  basp%label, nshells, basp%basis_type, &
+                  basp%ionic_charge, '# Label, l-shells, type,', &
+                  ' ionic net charge'
+          endif
+           
+       endif
+ 
+       do l=0,basp%lmxo
+          do n=1,basp%lshell(l)%nn
+             shell => basp%lshell(l)%shell(n)
+             if(shell%auto_polarizes .or. shell%nzeta == 0) then
+                exit
+             else
+                if (shell%auto_polarized) then
+                   write(6,'(1x,a,i1,2(1x,i3),a,i3,19x,2a)') &
+                        'n=',shell%n,l,shell%nzeta, ' P ',shell%nzeta_pol,&
+                        '# n, l, Nzeta, ','Polarization, NzetaPol'
+                else
+                   write(6,'(1x,a,i1,2(1x,i3),25x,a)') &
+                        'n=',shell%n,l, shell%nzeta, '# n, l, Nzeta '
+                endif
+                do izeta=1, shell%nzeta
+                   write(rcchar(izeta),'(1x,f7.3)') shell%rc(izeta)
+                   write(lambdachar(izeta),'(1x,f7.3)') shell%lambda(izeta)
+                enddo
+                write(6,'(20a)') (rcchar(izeta), izeta=1,shell%nzeta)
+!                    ,'        # rc(izeta=1,Nzeta)(Bohr)'
+                write(6,'(20a)') (lambdachar(izeta), izeta=1,shell%nzeta)
+!                    ,'        # scaleFactor(izeta=1,Nzeta)'
+             endif
+          enddo
+       enddo
+    enddo
+    write(6,'(a)') '%endblock PAO.Basis' 
+
+    write(6,'(/a,70("-")/)') 'prinput: '
+
+  end subroutine prinput
+
+
+
+  !----------------------------------------------------
   subroutine species_charge(isp)
     use atm_types, only : get_valence_charge
     integer, intent(in) :: isp
@@ -285,9 +413,6 @@ CONTAINS
        ! if there are semicore states 
        charge = get_valence_charge(spp) - vps%gen_zval
     endif
-
-    !    Fill species core density used for the nonlinear core corrections
-    call coreChargeSetup(isp)
 
     !    Relativistic pseudo
     if (vps%irel.eq.'rel') irel=1

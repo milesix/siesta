@@ -138,6 +138,14 @@ CONTAINS
           if(k%nkbl.eq.1) then
              call rad_ghost(rphi(ikb),vps%vdown(l),vps%vlocal,vps%ve_val,l,&
                   k%erefkb(ikb),vps%zval,ighost)
+
+                if (ighost.eq.1) then
+                    write(6,"(2a)")'KBgen: WARNING: ','Ghost states have been detected'
+                    write(6,"(2a)")'KBgen: WARNING: ','Some parameter should be changed in the '
+                    write(6,"(2a)")'KBgen: WARNING: ','pseudopotential generation procedure.'
+                    call die()
+                endif
+
           else 
              if (ikb.eq.1) &
                   write(6,'(a,i3,/a)') '      KBgen: More than one KB projector for l=',l,&

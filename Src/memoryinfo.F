@@ -64,6 +64,6 @@ C
 
       implicit none
 
-      real(dp), save :: MemoryFactor
+      real(dp), save :: MemoryFactor=1.0_dp
 
       end module diagmemory

@@ -293,11 +293,23 @@ contains
 
     !--------------------------------------------------------
 
-    function get_rad_func(data,i)
+    function get_rad_func_p(data,i)
       type(hilbert_vector_collection_t), intent(in) :: data
       integer, intent(in)                           :: i !Includes all the copies!
-      type(rad_func_t) ,pointer                     :: get_rad_func 
-      get_rad_func => get_rad_func_v(data%vec(data%index(i)))
+      type(rad_func_t), pointer                     :: get_rad_func_p
+      get_rad_func_p => get_rad_func_p_v(data%vec(data%index(i)))
+    end function get_rad_func_p
+
+    !--------------------------------------------------------
+
+     function get_rad_func(data,i)
+      type(hilbert_vector_collection_t), intent(in) :: data
+      integer, intent(in)                           :: i !Includes all the copies!
+      type(rad_func_t)                              :: get_rad_func
+      type(rad_func_t) :: rad_tmp
+      rad_tmp = get_rad_func_v(data%vec(data%index(i)))
+      call rad_copy(rad_tmp , get_rad_func)
+      call rad_dealloc(rad_tmp)
     end function get_rad_func
 
     !--------------------------------------------------------
@@ -306,6 +318,8 @@ contains
       type(hilbert_vector_collection_t), intent(inout) :: data
       type(hilbert_vector_t), intent(in)               :: vec
       integer, intent(in)                              :: i
+
+      if(vector_is_initialized(data%vec(i))) call destroy_vector(data%vec(i))
       call copy_vector(vec,data%vec(i))
     end subroutine set_vector
 

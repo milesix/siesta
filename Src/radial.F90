@@ -48,6 +48,7 @@ contains
   !-------------------------------------------------------------------------
 
   subroutine rad_alloc(rad_func,values,grid,yp)
+    !Allocate a given function
     type (rad_func_t), intent(out)   :: rad_func
     real(dp), dimension(:), intent(in) :: values
     type (rad_grid_t), intent(in)      :: grid
@@ -73,6 +74,7 @@ contains
   !-------------------------------------------------------------------------
 
   function rad_allocated(rad_func) result(allocated)
+    !Check if the function is allocated.
     type(rad_func_t), intent(in) :: rad_func
     logical :: allocated
 
@@ -84,7 +86,7 @@ contains
   !-------------------------------------------------------------------------
 
   subroutine rad_broadcast(rad_func)
-    
+    ! Broadcast (MPI)
     use parallel, only : Node,  nodes
 
 #ifdef MPI
@@ -119,6 +121,7 @@ contains
   !------------------------------------------------------------------------- 
 
   subroutine rad_copy(src,dest)
+    !Copy from src to dest.
     type (rad_func_t), intent(in)   :: src
     type (rad_func_t), intent(out)  :: dest
 
@@ -138,9 +141,11 @@ contains
   !--------------------------------------------------------------------------
 
   function rad_cutoff(rad_func) result (cutoff)
+    !Obtain the cutoff radius of a radial function
     type (rad_func_t), intent(in) :: rad_func
     real(dp)                      :: cutoff
 
+    cutoff = 0.0_dp
     if (rad_func%kind == lin_t) then
        cutoff = lin_rad_cutoff(rad_func%lin)
     elseif(rad_func%kind == log_t) then
@@ -153,6 +158,7 @@ contains
   !-----------------------------------------------------------------------
 
   subroutine rad_dealloc(rad_func)
+    !Deallocate a radial function
     type (rad_func_t), intent(inout) :: rad_func
 
     if (rad_func%kind == lin_t) then
@@ -170,6 +176,7 @@ contains
   !--------------------------------------------------------------------------
 
   subroutine rad_dealloc_kind(rad_func,kind)
+    !Deallocate a kind data structure.
     type (rad_func_t), intent(inout) :: rad_func
     type (rad_kind_t), intent(in)    :: kind
 
@@ -190,6 +197,7 @@ contains
   !----------------------------------------------------------------------
 
   function rad_default_length(func) result(length)
+    !Obtain the default number of points of a function (grid/log).
     type (rad_func_t), intent(in) :: func
 
     integer :: length
@@ -208,6 +216,7 @@ contains
   !--------------------------------------------------------------------------
 
   function rad_divide_by_4pir2(rad_func,update) result(divided)
+    !Divide a function by 4pir2
     type (rad_func_t), intent(in)   :: rad_func
     logical, intent(in)             :: update
 
@@ -228,6 +237,7 @@ contains
   !------------------------------------------------------------------------
 
   subroutine rad_dump_ascii(rad_func,io, header)
+    !Dump the function into a file
     type (rad_func_t), intent(in) :: rad_func
     integer, intent(in) :: io
     logical,intent(in),optional :: header
@@ -248,6 +258,7 @@ contains
   !--------------------------------------------------------------------------
 
   subroutine rad_dump_xml(rad_func,io)
+    !Dump a function into a xml file
     type (rad_func_t), intent(in) :: rad_func
     integer, intent(in) :: io
 
@@ -264,6 +275,7 @@ contains
   !-------------------------------------------------------------------------
 
   subroutine rad_dump_fft_xml(rad_func,io)
+    !Dump the fft of a function into a xml file
     type (rad_func_t), intent(out) :: rad_func
     integer, intent(in) :: io
 
@@ -280,6 +292,7 @@ contains
   !--------------------------------------------------------------------------
 
   subroutine rad_dump_fft_ascii(rad_func,io)
+    !Dump the fft of a function into an ascii files
     type (rad_func_t), intent(in) :: rad_func
     integer, intent(in) :: io
 
@@ -296,6 +309,7 @@ contains
   !-------------------------------------------------------------------------
 
    subroutine rad_dump_fft_file(rad_func,label)
+     !Dump the fft of a function into a file
     type (rad_func_t), intent(in) :: rad_func
     character(len=*), intent(in)   :: label
 
@@ -312,6 +326,7 @@ contains
   !-------------------------------------------------------------------------
 
   subroutine rad_dump_file(rad_func,label)
+    !Dump a function to a file
     type (rad_func_t), intent(in) :: rad_func
     character(len=*), intent(in)   :: label
 
@@ -326,6 +341,7 @@ contains
 
   !-------------------------------------------------------------------------
   subroutine rad_dump_funcs_ascii(rad_func1,rad_func2,io)
+    !Dump two functions in ascii
     type(rad_func_t), intent(in) :: rad_func1, rad_func2
     integer, intent(in)          :: io
 
@@ -341,6 +357,7 @@ contains
   !--------------------------------------------------------------------------
 
   function rad_energy_deriv(rad_func,vps,ve,l,e) result(ederiv)
+    !To be moved
     type(rad_func_t) , intent(in) :: rad_func
     type(rad_func_t) , intent(in) :: vps, ve
     integer, intent(in)           :: l
@@ -362,6 +379,7 @@ contains
   !---------------------------------------------------------------------------
 
   subroutine rad_fft(func,l)
+    !Find fft of a radial function
     type(rad_func_t), intent(inout) :: func
     integer, intent(in) :: l
 
@@ -377,10 +395,45 @@ contains
   
   !---------------------------------------------------------------------------
 
-  function rad_filter(rad_func,l,factor,norm_opt) result(filtered)
+  function rad_get_filter_cutoff(rad_func,l,etol) result(kc)
+    !Given a tolerance intent the kinetic energy this function
+    !returns the corresponding reciprocal space cutoff.
+    !See module filter.f90
+
+    type(rad_func_t), intent(in) :: rad_func
+    integer, intent(in) :: l
+    real(dp), intent(in) :: etol 
+    real(dp) :: kc 
+
+    type(rad_func_t) :: rad_tmp
+    
+    kc = 0.0_dp 
+
+    if (rad_func%kind == lin_t) then
+       kc = lin_rad_get_filter_cutoff(rad_func%lin,l,etol)
+    elseif(rad_func%kind == log_t) then
+       call rad_copy(rad_func,rad_tmp)
+       call rad_log_to_linear(rad_tmp)
+       kc = lin_rad_get_filter_cutoff(rad_tmp%lin,l,etol)
+       call rad_dealloc(rad_tmp)
+    else
+       call die("radial: rad_get_filter_cutoff unknown type!")
+    endif
+
+  end function rad_get_filter_cutoff
+
+  !---------------------------------------------------------------------------
+
+  function rad_filter(rad_func,l,factor,norm_opt,kc) result(filtered)
+    !Remove the components of a function in reciprocal space.
+    ! The threshold is defined in kc. 
+    ! The factor scales the kc 
+    ! The norm_opt specifies the normalization option of the filtered function
+    ! See notes in module filter.f90
     type(rad_func_t), intent(in) :: rad_func
     integer, intent(in) :: l,norm_opt
     real(dp), intent(in) :: factor
+    real(dp), intent(in) :: kc !Filter cutoff in reciprocal space
 
     type(rad_func_t) :: filtered,rad_tmp
 
@@ -388,19 +441,19 @@ contains
     filtered%kind=lin_t
 
     if (rad_func%kind == lin_t) then
-       filtered%lin = lin_rad_filter(rad_func%lin,l,factor,norm_opt) 
+       filtered%lin = lin_rad_filter(rad_func%lin,l,factor,norm_opt,kc) 
        call rad_fft(filtered,l)
     elseif(rad_func%kind == log_t) then
        !Convert to lin, filter and then convert to log the filtered func.
        call rad_copy(rad_func,rad_tmp)
        call rad_log_to_linear(rad_tmp)
-       call rad_fft(rad_tmp,l)
-       filtered%lin = lin_rad_filter(rad_tmp%lin,l,factor,norm_opt)
-       call rad_fft(filtered,l)
-       call rad_dump_file(filtered,"test-filt.dat")
+       !call rad_fft(rad_tmp,l)
+       filtered%lin = lin_rad_filter(rad_tmp%lin,l,factor,norm_opt,kc)
+       !call rad_fft(filtered,l)
+       !call rad_dump_file(filtered,"test-filt.dat")
        call rad_dealloc(rad_tmp)
        call rad_lin_to_log(filtered,rad_func%log%grid)
-       call rad_dump_file(filtered,"test-filt-log.dat")
+       !call rad_dump_file(filtered,"test-filt-log.dat")
     else
        call die("radial: rad_filter unknown type!")
     endif
@@ -410,6 +463,8 @@ contains
   !------------------------------------------------
 
   subroutine rad_find_parabola_parameters(func,l,spln,rmatch,const1,const2,dpbug)
+    !Obtain the parameters defining a parabola
+    !To be moved?
     type(rad_func_t), intent(in) :: func
     real(dp), intent(in) :: spln
     integer, intent(in) :: l
@@ -429,6 +484,7 @@ contains
 
 
   subroutine rad_fit_parabola(func,rmatch,l,const1,const2,parab_norm)
+    !Fit a parabola
     type(rad_func_t), intent(in) :: func
     real(dp), intent(in) :: rmatch
     integer, intent(in) :: l
@@ -447,6 +503,7 @@ contains
   !------------------------------------------------------------------------
 
   subroutine rad_get(rad_func,r,fr,dfdr)
+    !Obtain the the value of a function at a given r
     type (rad_func_t), intent(in) :: rad_func
     real(dp), intent(in)         :: r
     real(dp), intent(out)        :: fr
@@ -464,6 +521,7 @@ contains
   !---------------------------------------------------------
 
   function rad_get_grid(rad_func) result(grid)
+    !Obtain the grid
     type(rad_func_t), intent(in) :: rad_func
     type(rad_Grid_t) :: grid
     if(rad_func%kind == lin_t) then
@@ -482,6 +540,7 @@ contains
   !-----------------------------------------------------------------------
 
   subroutine rad_grid_dump_ascii_formatted(grid,io_ps)
+    !save a function in ascii formatted.
     type(rad_grid_t), intent(in) :: grid
     integer, intent(in) :: io_ps
 
@@ -497,9 +556,11 @@ contains
   !-----------------------------------------------------------------------
 
   function rad_grid_get_a(grid) result(a)
+    !Obtain the a from the grid definition: r(i)= b*[ exp( a*(i-1) ) - 1 ]
     type(rad_grid_t), intent(in) :: grid
     real(dp) :: a
 
+    a = 0.0_dp
     if(grid%kind==lin_t) then
        call die("radial: rad_grid_get_a doesn't make sense for lin funcs")
     elseif(grid%kind==log_t)then
@@ -513,9 +574,11 @@ contains
   !-----------------------------------------------------------------------
 
   function rad_grid_get_b(grid) result(b)
+    !Obtain the b from the grid definition: r(i)= b*[ exp( a*(i-1) ) - 1 ]
     type(rad_grid_t), intent(in) :: grid
     real(dp) :: b
 
+    b = 0.0_dp
     if(grid%kind==lin_t) then
        call die("radial: rad_grid_get_b doesn't make sense for lin funcs")
     elseif(grid%kind==log_t)then
@@ -528,11 +591,13 @@ contains
 
   !-----------------------------------------------------------------------
 
-
   function rad_grid_get_length(grid) result(length)
+    !Obtain the number of points in the grid
+    !To be deprecated
     type(rad_grid_t), intent(in) :: grid
     integer :: length
 
+    length = 0
     if(grid%kind==lin_t)then
        call die("radial: rad_grid_get_length not implemented for lin funcs")
     elseif(grid%kind==log_t) then
@@ -545,9 +610,13 @@ contains
   !-----------------------------------------------------------------------
 
   function rad_get_r_from_ir(rad_func,ir) result (r)
+    !Obtain the r from the grid index ir.
+    !To be deprecated.
     type (rad_func_t), intent(in)  :: rad_func
     integer, intent(in)            :: ir
     real(dp)                       :: r
+
+    r = 0.0_dp
 
     if (rad_func%kind == lin_t) then
        !r = lin_rad_get_r_from_ir(rad_func%lin,ir) 
@@ -562,10 +631,12 @@ contains
   !---------------------------------------------------------------------------------
 
   function rad_get_r_from_value(rad_func,value) result (r)
+    !Obtain the r corresponding to a given value of a radial function
     type (rad_func_t), intent(in)  :: rad_func
     real(dp), intent(in)            :: value
     real(dp)                       :: r
 
+    r = 0.0_dp
     if (rad_func%kind == lin_t) then
        !r = lin_rad_get_r_from_ir(rad_func%lin,ir) 
        call die("radial: rad_get_r_from_ir lin_t not implemented")
@@ -579,10 +650,14 @@ contains
   !---------------------------------------------------------------------------------
 
   function rad_get_value_from_ir(rad_func,ir) result (value)
+    !Obtain the value of a function from the array index
+    !To be deprecated.
     type (rad_func_t), intent(in) :: rad_func
     integer,  intent(in)         :: ir
-
     real(dp)                      :: value
+
+    value = 0.0_dp
+
     if (rad_func%kind == lin_t) then
        value = lin_rad_get_value_from_ir(rad_func%lin,ir)
     elseif(rad_func%kind == log_t) then
@@ -595,6 +670,8 @@ contains
   !----------------------------------------------------------------------------
 
   subroutine rad_ghost(func,vps,vlocal,ve,l,e,zval,ighost) 
+    !Check if there are "ghost" states
+    !To be moved to  kb.f90 
     type(rad_func_t) , intent(in) :: func, vps, vlocal, ve
     integer, intent(in)           :: l
     real(dp), intent(in)          :: e, zval
@@ -612,6 +689,7 @@ contains
   !-----------------------------------------------------------------
 
   function rad_grid_alloc(length,delta,a,b,r) result(grid)
+    !Allocated a grid (linear or logarithmic)
     integer, intent(in), optional :: length
     real(dp), intent(in), optional :: delta
     real(dp), intent(in), optional :: a,b 
@@ -636,6 +714,7 @@ contains
   !--------------------------------------------------------------------------
 
   subroutine rad_grid_dealloc(grid)
+    !Deallocate a grid
     type(rad_grid_t), intent(inout) :: grid
 
     if(grid%kind== lin_t) then
@@ -651,8 +730,8 @@ contains
 
   !--------------------------------------------------------------------------
   
-
   function rad_is_log(func) result(is)
+    !Check if a given function is defined in a logarithmic grid.
     type(rad_func_t), intent(in) :: func
     logical :: is
 
@@ -666,6 +745,7 @@ contains
   !--------------------------------------------------------------------------
 
   function rad_is_lin(func) result(is)
+    !Check if a given function is defined in a linear grid.
     type(rad_func_t), intent(in) :: func
     logical :: is
 
@@ -678,6 +758,8 @@ contains
 
   !---------------------------------------------------------------------------
   function rad_kbproj(func,pseudo,vlocal,l,dkbcos,ekb) result(kb_proj)
+    !Calculate the kb projectors
+    !To be moved to kb.f90
     type(rad_func_t), intent(in) :: func, pseudo,vlocal
     integer, intent(in) :: l
     real(dp), intent(out) :: dkbcos,ekb
@@ -698,6 +780,7 @@ contains
   !------------------------------------------------------------------
 
   function rad_kind(rad_func) result(kind)
+    !Query the kind of radial function, it can be either logarithmic or linear.
     type(rad_func_t), intent(in) :: rad_func
 
     type(rad_kind_t) :: kind
@@ -714,6 +797,7 @@ contains
   !------------------------------------------------------------------
 
   subroutine rad_kind_broadcast(func)
+    !Broad cast (MPI) the kind of function
 
     use parallel, only : Node,  nodes
 
@@ -741,6 +825,7 @@ contains
   !------------------------------------------------------------------
 
   function rad_kind_compare(k1,k2) result (compare)
+    !Check if two radial kinds are the same.
     type(rad_kind_t), intent(in) :: k1,k2
     logical                  :: compare 
     compare = .false.
@@ -750,9 +835,12 @@ contains
   !------------------------------------------------------------------
 
   function rad_min(func) result(min)
+    !Obtain the minimum value of a function 
     type(rad_func_t), intent (in) :: func
-
     real(dp) :: min
+
+    min  = 0.0_dp
+
     if (func%kind == lin_t) then
        call die("rad_min not implemented for lin_t")
     elseif(func%kind == log_t) then
@@ -765,6 +853,8 @@ contains
   !-----------------------------------------------------------------------
 
   function rad_parabolic_split(func,rmatch,const1,const2,l,nsm,shells,lambdas) result(parabola)
+    !Split function.
+    !To be moved to multiple-zeta generation function.
     type(rad_func_t), intent(in) :: func
     real(dp), intent(in)  :: rmatch
     real(dp), intent(in) :: const1,const2
@@ -803,6 +893,7 @@ contains
   !------------------------------------------------------------------------
 
   subroutine rad_read_ascii(rad_func,io)
+    !Read a function in ascii
     type (rad_func_t), intent(out) :: rad_func
     integer, intent(in) :: io
 
@@ -818,6 +909,7 @@ contains
 
   !---------------------------------------------------------------------------------
   function rad_reparametrize(rad_func,a,b) result(new_func)
+    !Re-parametrize a function 
     type (rad_func_t), intent(in) :: rad_func
     real(dp), intent(in) :: a,b
 
@@ -836,6 +928,7 @@ contains
 
   !--------------------------------------------------------------------------
   subroutine rad_read_ascii_unformatted(rad_func,io)
+    !Read a function in ascii and unformatted
     type (rad_func_t), intent(out) :: rad_func
     integer, intent(in) :: io
 
@@ -851,6 +944,7 @@ contains
 
   !---------------------------------------------------------------------------
   subroutine rad_read_ascii_formatted(rad_func,io)
+     !Read a function in ascii and formatted
     type (rad_func_t), intent(inout) :: rad_func
     integer, intent(in) :: io
 
@@ -867,6 +961,7 @@ contains
   !---------------------------------------------------------------------------
 
   subroutine rad_write_ascii_formatted(rad_func,io)
+    !Write a function in ascii and unformatted
     type (rad_func_t), intent(in) :: rad_func
     integer, intent(in) :: io
 
@@ -883,6 +978,7 @@ contains
   !----------------------------------------------------------------------
 
   subroutine rad_set_origin(rad_func,value)
+    !Set the value of a function at the origin.
     type (rad_func_t), intent(inout) :: rad_func
     real(dp), intent(in) :: value
 
@@ -895,10 +991,10 @@ contains
     endif
   end subroutine rad_set_origin
 
-
   !--------------------------------------------------------------------------
 
   subroutine rad_set_default_length(grid,length)
+    !Establish the default length of a grid. 
     type(rad_grid_t), intent(in) :: grid
     integer, intent(in) :: length
     if(grid%kind == lin_t) then
@@ -913,6 +1009,8 @@ contains
   !---------------------------------------------------------------------------
  
   subroutine rad_lin_to_log(func,grid)
+    !Convert a function from a linear to logarithmic grid.
+    !The a, b parameters of the grid should have been specified beforehand.
     type(rad_func_t), intent(inout)         :: func
     type(logGrid_t), intent(in)                 :: grid
     
@@ -942,8 +1040,7 @@ contains
  !---------------------------------------------------------------------------
 
   subroutine rad_log_to_linear(func,yp1)
-    !     Transforms a logarithmic function contained in logFunc
-    !     into  a "linear radial" one (rad)
+    !     Convert a logarithmic function into a linear one.
 
     type(rad_func_t), intent(inout)         :: func
     real(dp),          intent(in),optional  :: yp1
@@ -993,6 +1090,9 @@ contains
   !--------------------------------------------------------------------------
 
   subroutine rad_normalize_r_l_1(rad_func,l) 
+    !Normalize the function, taking into account the r*(l+1) factor
+    !To be deprecated.
+
     type (rad_func_t), intent(inout) :: rad_func
     integer, intent(in)            :: l
 
@@ -1008,6 +1108,9 @@ contains
   !-------------------------------------------------------------------
 
   function rad_divide_by_r_l_1(rad_func,l,lambda) result(div)
+    !Divide the function by r*(l+1) (matel spects all the functions
+    ! divided by r**l, the +1 comes from the solution of radial part 
+    ! of the Schrodinger Equation).
     type (rad_func_t), intent(in) :: rad_func
     integer, intent(in)            :: l
     real(dp), intent(in)           :: lambda
@@ -1028,10 +1131,13 @@ contains
   !-------------------------------------------------------------------
 
   function rad_kinetic_energy(rad_func,l) result(ekin)
+    ! Obtain the kinetic energy of a radial function.
     type (rad_func_t), intent(in) :: rad_func
     integer, intent(in)            :: l
 
     real(dp) :: ekin
+
+    ekin = 0.0_dp
 
     if (rad_func%kind == lin_t) then
        call die("radial: rad_kinetic_energy lin_t not implemented")
@@ -1046,6 +1152,8 @@ contains
   !-------------------------------------------------------------------
 
   function rad_potential_energy(rad_func,pot,l) result(epot)
+    !Obtain the potential energy 
+    !To be moved.
     type (rad_func_t), intent(in) :: rad_func
     type (rad_func_t), intent(in) :: pot
     integer, intent(in)           :: l
@@ -1065,9 +1173,11 @@ contains
   !-------------------------------------------------------------------
 
   function rad_self_energy(func) result(energy)
+    !Self energy, to be moved.
     type (rad_func_t), intent(in) :: func
     real(dp)                      :: energy
 
+    energy = 0.0_dp
     if (func%kind == lin_t) then
        call die("radial: rad_self_energy lin_t not implemented")
     elseif(func%kind == log_t) then
@@ -1081,6 +1191,7 @@ contains
   !------------------------------------------------------------------------
 
   function rad_split_gauss(first_z,rc,lambda,l) result(gauss)
+    !To be moved
     type(rad_func_t), intent(in)   :: first_z
     real(dp), intent(in)           :: rc, lambda
     integer, intent(in)            :: l
@@ -1101,6 +1212,7 @@ contains
   !-------------------------------------------------------------------
 
   function rad_sum(func1,func2,rmax) result(sum)
+    !Sum two functions
     type (rad_func_t), intent(in) :: func1, func2
     real(dp), intent(in), optional :: rmax
     type (rad_func_t)             :: sum
@@ -1124,6 +1236,7 @@ contains
   !--------------------------------------------------------------------
 
   function rad_multiply(func1,func2) result(mult)
+    !Multiply two functions, at every point of the grid.
     type (rad_func_t), intent(in) :: func1, func2
     type (rad_func_t)             :: mult
 
@@ -1142,9 +1255,11 @@ contains
   !--------------------------------------------------------------------
 
   function rad_integral(func) result(integral)
+    !Integrate a function
     type (rad_func_t), intent(in) :: func
     real(dp)                      :: integral
 
+    integral = 0.0_dp
     if (func%kind == lin_t) then
        call die("radial: rad_sum lin_t not implemented")
     elseif(func%kind == log_t) then
@@ -1158,6 +1273,7 @@ contains
   !--------------------------------------------------------------------
 
   function rad_sum_function(func1,func2,r0,rmax) result(sum)
+    !Sum two functions, from r0 to rmax.
     type (rad_func_t), intent(in) :: func1
     real(dp), intent(in) :: r0, rmax
 
@@ -1186,6 +1302,7 @@ contains
   !--------------------------------------------------------------------
 
   function rad_schro(pseudo,ve,rc,l,nnodes,nprin,chg,energy) result(integral)
+    !Integrate the radial part of the Schrodinger equation
     type(rad_func_t), intent(in) :: pseudo
     type(rad_func_t), intent(in) :: ve     !pseudo of valence electrons.
     real(dp), intent(in) :: rc
@@ -1212,6 +1329,7 @@ contains
   !----------------------------------------------------------------------------- 
 
   function rad_multiply_by_rl(rad_func,l) result (mult)
+    !Multiply a function by rl
     type(rad_func_t), intent(in) :: rad_func
     integer, intent(in) :: l
 
@@ -1232,6 +1350,7 @@ contains
   !--------------------------------------------------------
 
   function rad_sum_value(rad_func,value) result (sum)
+    !At every point of the grid sum a given value to the function.
     type(rad_func_t), intent(in) :: rad_func
     real(dp), intent(in) :: value
 
@@ -1255,9 +1374,11 @@ contains
   !--------------------------------------------------------
 
   function rad_get_length(rad_func) result(length)
+    !Get the number of points where the function is evaluated.
     type(rad_func_t), intent(in) :: rad_func
     integer :: length
 
+    length = 0
     if (rad_func%kind == lin_t) then
        length = lin_rad_get_length()     
     elseif(rad_func%kind == log_t) then
@@ -1270,11 +1391,13 @@ contains
   !----------------------------------------------------------
 
   function rad_get_ir_from_r(rad_func,r) result(ir)
+    !Get the index of
     type(rad_func_t), intent(in) :: rad_func
     real(dp), intent(in)  :: r
 
     integer :: ir
 
+    ir = -1
     if (rad_func%kind == lin_t) then
        call die("radial: rad_get_r_from_ir not implemented for lin")
     elseif(rad_func%kind == log_t) then
@@ -1287,11 +1410,10 @@ contains
 
   !-----------------------------------------------------------------
 
-
-
-  function rad_matching_radious(func,ref) result(rmatch)
-
-    ! (vps,Zval,lmxkb,nrgauss, rgauss, rgauss2) 
+  function rad_matching_radius(func,ref) result(rmatch)
+    ! Obtain the radius where two functions become identical
+    ! the threshold is defined by the min_func_val parameter.
+  
 
     !    This routine returns the maximum radius for the
     !    Kleinman-Bylander projectors with a standard choice
@@ -1332,12 +1454,12 @@ contains
 
     rmatch=r 
 
-
-  end function rad_matching_radious
+  end function rad_matching_radius
 
   !---------------------------------------------------------------------------
 
-  function rad_radious_matching_value(func,value) result(r_match)
+  function rad_get_radius_from_value(func,value) result(r_match)
+    !Obtain the r corresponding to a given function value.
     type(rad_func_t), intent(in) :: func
     real(dp), intent(in)         :: value
 
@@ -1358,13 +1480,12 @@ contains
     enddo
     r_match=r 
 
-  endfunction rad_radious_matching_value
+  endfunction rad_get_radius_from_value
 
   !----------------------------------------------------------------------------
 
-
-
   function rad_integral_vs_value(vps,ve,l,e,rmax) result(integ_vs_val)
+    !
     type(rad_func_t) , intent(in) :: vps, ve
     integer, intent(in)           :: l
     real(dp), intent(in)          :: e
@@ -1373,7 +1494,7 @@ contains
     type(rad_func_t) :: integ_vs_val
 
     if (vps%kind == lin_t) then
-       call die("radial: rad_energy_deriv lin_t not implemented")        
+       call die("radial: rad_integral_vs_value lin_t not implemented")        
     elseif(vps%kind == log_t ) then
        allocate(integ_vs_val%log)
        integ_vs_val%log = log_rad_integral_vs_value(vps%log,ve%log,l,e,rmax)
@@ -1490,6 +1611,8 @@ contains
     integer, intent(in) :: l, nnodes
 
     real(dp) :: rc
+
+    rc = 0.0_dp
 
     if(func%kind == lin_t) then
        call die("rad_rc_vs_e not implemented for lin functions")

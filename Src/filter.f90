@@ -83,7 +83,6 @@ MODULE m_filter
 
 ! Used module parameters
   use precision, only: dp     ! Real double precision type
-  use fdf, only: fdf_physical
 
 ! All public procedures (there are no public types, parameters, or variables):
 PUBLIC:: &
@@ -114,90 +113,7 @@ PRIVATE ! Nothing is declared public beyond this point
     end subroutine rdiag
   end interface
 
-  real(dp), save :: kc_needed = 0.0_dp
-
 CONTAINS
-
-!------------------------------------------------------------------------------
-
-  subroutine filter(l,nr,r,func,factor,norm_opt)
-    ! Filters out high-k components of a radial function
-    ! Interface of J.M.Soler filter subroutine. E. Anglada 2007-2008
-    !---------------------------------------------------------------------------
-    ! Input:
-    !  integer l     : Angular momentum of the function to filter
-    !  integer nr    : Number of radial points
-    !  real*8  r(nr) : Radial mesh, in ascending order
-    !  real*8  factor: Scaling factor of the function (func*factor)
-    !                  It's 1 except for orbitals as we're interested 
-    !                  in their square.  
-    !  integer norm_opt : Option to renormalize after filtering:
-    !                       0 => do not renormalize
-    !                       1 => renormalize f
-    !                       2 => renormalize f**2
-    ! Input/output:
-    !  real*8  func(nr) : Radial function to be filtered
-    !-------------------------------------------------------------------------
-    ! Logic:
-    !    The user imposes a kc (cutoff in reciprocal space) or we call kcPhi 
-    !in order to determine the kc from the value of the kinetic energy above kc
-    !-------------------------------------------------------------------------
-
-    integer,  intent(in)                    :: l 
-    integer,  intent(in)                    :: nr
-    real(dp), dimension(1:nr), intent(in)   :: r
-    real(dp), dimension(1:nr), intent(inout):: func
-    real(dp), intent(in)                    :: factor 
-    integer,  intent(in)                    :: norm_opt
-
-    !Internal vars.
-    real(dp) :: kmax, meshcutoff,etol,kmax_tol
-    Integer  :: ir,n_basis_functions
-    real(dp), parameter :: EkinTolDefault = 0.003_dp
-    real(dp), allocatable :: func_save(:) !Save a copy of the original function
-
-    allocate(func_save(1:nr))
-    func_save = func
-
-    kmax = fdf_physical("FilterCutoff",0.0_dp,"Bohr^-1")
-    
-     !Siesta stores the orbs divided by r**l
-    if (l /= 0) then
-       do ir=2,nr
-          func(ir)=func(ir)*r(ir)**(l)
-       enddo
-       func(1)=func(2)
-    endif
-
-    if (kmax .eq. 0.0)then
-       etol = fdf_physical('Filter.Tol',EkinTolDefault,'Ry')
-       write(6,'(a,f12.6,a)') "Filter: kinetic energy tolerance:", etol,' Ry'
-       kmax_tol = kcPhi(l,nr,r,func,etol)
-       write(6,'(a,f8.2,a)') "Filter: Plane wave cutoff (before filtering):",kmax_tol**2,' Ry'
-       kmax = kmax_tol/factor
-    else
-       kmax = kmax/factor
-    endif
-
-    call filter_kernel(l,nr,r(1:nr),func(1:nr),kmax,norm_opt,n_basis_functions)
- 
-    if (n_basis_functions < 3) then
-       func = func_save
-       write(6,'(a)') "Filter: The number of eigenfunctions of the"
-       write(6,'(a)') "        filtering kernel is very small, so there is no filtering"
-    endif
-
-    !Siesta spects the orbs divided by r**l
-    if (l /= 0) then
-       do ir=2,nr
-          func(ir)=func(ir)/(r(ir)**(l))
-       enddo
-       func(1)=func(2)
-    endif
-
-    deallocate(func_save)
-
-  end subroutine filter
 
 !------------------------------------------------------------------------------
 
@@ -225,7 +141,7 @@ function kcPhi( l, nr, r, phi, etol )
   real(dp):: de, dk, dr, e, f(0:nmesh), kmax, kmesh(0:nmesh), k1, k2, &
              norm, pi, rc, rmax, rmesh(0:nmesh)
 
-! Trap bad arguments  
+! Trap bad arguments
   if (etol<=0._dp .or. etol>=1._dp) call die('kcPhi: ERROR: bad tol')
   if (kexp/=0 .and. kexp/=2)        call die('kcPhi: ERROR: bad kexp')
 
@@ -275,7 +191,7 @@ end function kcPhi
 
 !------------------------------------------------------------------------------
 
-subroutine filter_kernel( l, nr, r, f, kc, norm_opt,m)
+subroutine filter( l, nr, r, f, kc, norm_opt )
 
 ! Filters out high-k components of a radial function
 ! Ref: J.M.Soler notes of 17/10/2006.
@@ -290,10 +206,9 @@ subroutine filter_kernel( l, nr, r, f, kc, norm_opt,m)
   real(dp), intent(in)    :: r(nr)    ! Radial mesh, in ascending order
   real(dp), intent(inout) :: f(nr)    ! Radial function to be filtered
   integer,  intent(in)    :: norm_opt ! Option to renormalize after filtering
-  integer,  intent(out)   :: m        ! Number of eigenvectors of the filtering kernel
 
 ! Internal variables and arrays
-  integer :: i, ierror, ij, ij1, ij2, ik, ir, n, nj
+  integer :: i, ierror, ij, ij1, ij2, ik, ir, m, n, nj
   real(dp):: cij, dk, dkr, dr, f0norm, fg, fnorm, jl0, jl1, jl2, &
              k, k4j1(0:nmesh), kmesh(0:nmesh), kr, kr0, kr1, kr2, &
              pi, rc, rmesh(0:nmesh)
@@ -403,14 +318,12 @@ subroutine filter_kernel( l, nr, r, f, kc, norm_opt,m)
 !        integral( nmesh+1, k4j1(:)*jlk(:,ij2), x=kmesh(:) )
       ! Symmetrize
       h(ij2,ij1) = h(ij1,ij2)
-      write(33,*) ij1,ij2,h(ij1,ij2)
     end do ! ij2
   end do ! ij1
 
 ! Add some mixing weight of total kinetic energy to 'Hamiltonian'
   do ij = 1,n
     h(ij,ij) = (1-k2mix) * h(ij,ij) + k2mix * kj(ij)**2
-    
   end do
 
 ! Initialize unity overlap matrix to call rdiag
@@ -418,7 +331,8 @@ subroutine filter_kernel( l, nr, r, f, kc, norm_opt,m)
   forall(i=1:n) s(i,i) = 1
 
 ! Diagonalize 'Hamiltonian'
-  call filter_rdiag( h, s, n, n, n, e, c, n, 0, ierror )
+  print *, "filter: rdiag:",n
+  call rdiag( h, s, n, n, n, e, c, n, 0, ierror )
 
 ! Subtract mixing weight of total kinetic energy from 'Hamiltonian'
 !  do ij = 1,n
@@ -442,8 +356,7 @@ subroutine filter_kernel( l, nr, r, f, kc, norm_opt,m)
     if (e(i)/kj(i)**2-k2mix > emax) exit
     m = i
   end do
-  write(6,'(a)')       'Filter:    Number of eigenfunctions  of the'
-  write(6,'(a,i3,i3)') '           filtering kernel (total, used)=', n, m
+  print*, 'filter: Eigenfunctions (total, used)=', n, m
 
 ! Find eigenvectors at integration mesh points
   g(0:nmesh,1:n) = matmul( jl(0:nmesh,1:n), c(1:n,1:n) )
@@ -496,7 +409,7 @@ subroutine filter_kernel( l, nr, r, f, kc, norm_opt,m)
 ! Deallocate arrays
   deallocate( aux, c, e, fm, g, gr, h, indx, jl, jlk, jlnorm, jlr, kj, s )
 
-end subroutine filter_kernel
+end subroutine filter
 
 !------------------------------------------------------------------------------
 
@@ -570,69 +483,308 @@ end subroutine filter_kernel
 
   end function lagrange
 
+END MODULE m_filter
 
-  ! ***************************************************************************
-! subroutine rdiag(H,S,n,nm,nml,w,Z,neigvec,iscf,ierror)
-!
-! Simple replacement to subroutine rdiag of siesta
-! J.M.Soler, April 2008
-! ************************** INPUT ******************************************
-! real*8 H(nml,nm)                 : Symmetric H matrix
-! real*8 S(nml,nm)                 : Symmetric S matrix, ignored in this version
-! integer n                        : Order of the generalized  system
-! integer nm                       : Right hand dimension of H and S matrices
-! integer nml                      : Left hand dimension of H and S matrices
-!                                    which is greater than or equal to nm
-! integer neigvec                  : No. of eigenvectors to calculate
-! integer iscf                     : SCF cycle, ignored in this version
-! ************************** OUTPUT *****************************************
-! real*8 w(nml)                    : Eigenvalues
-! real*8 Z(nml,nm)                 : Eigenvectors
-! integer ierror                   : Flag indicating success code for routine
-!                                  :  0 = success
-!                                  : -1 = repeat call as memory is increased
-!                                  :  1 = fatal error
-! ***************************************************************************
+!-----------------------------------------------------------------------------
 
-subroutine filter_rdiag(H,S,n,nm,nml,w,Z,neigvec,iscf,ierror)
+! Old version of filter placed here to avoid two files with same name
 
-  use precision, only: dp
+subroutine filter( l, nr, r, f, kmax, norm_opt,emin )
+
+! Filters out high-k components of a radial function
+! J.M.Soler. July 2005
+!------------------------------------------------------------
+! Input:
+!  integer l     : Angular momentum of the function to filter
+!  integer nr    : Number of radial points
+!  real*8  r(nr) : Radial mesh, in ascending order
+!  real*8  kmax  : Cutoff in reciprocal space
+!  integer norm_opt : Option to renormalize after filtering:
+!                       0 => do not renormalize
+!                       1 => renormalize f
+!                       2 => renormalize f**2
+!  real*8  emin_in: Min. norm. of filt. eigv.
+! Input/output:
+!  real*8  f(nr) : Radial function to be filtered
+!------------------------------------------------------------
+
+!  use plot_module
+
   implicit none
+  integer, parameter :: dp = kind(1.d0)
 
-! Passed variables
-  integer  :: ierror
-  integer  :: iscf
-  integer  :: n
-  integer  :: neigvec
-  integer  :: nm
-  integer  :: nml
-  real(dp) :: H(nml,nm)
-  real(dp) :: S(nml,nm)
-  real(dp) :: w(nml)
-  real(dp) :: Z(nml,nm)
+! Arguments
+  integer,  intent(in)    :: l
+  integer,  intent(in)    :: nr
+  real(dp), intent(in)    :: kmax
+  real(dp), intent(in)    :: r(nr)
+  real(dp), intent(inout) :: f(nr)
+  integer,  intent(in)    :: norm_opt
+  real(dp), intent(in)    :: emin
+
+! Internal parameters
+  real(dp), parameter :: pkr  = 1.00_dp ! Num. polyn. / (kmax*rmax)
+  real(dp), parameter :: emin_default = 0.999_dp ! Min. norm. of filt. eigv.
 
 ! Internal variables and arrays
-  integer :: indx(n)
-  real(dp):: aux(n), c(n,n), e(n)
+  integer :: i, j, ir, ix, jx, lp, m, n
+  real(dp):: fnorm, f0norm, krmax, p0, pi, rmax, y,tail,dnrm,aa,aamax
+  integer, allocatable:: indx(:)
+  real(dp),allocatable:: a(:,:), ar(:,:), aux(:), e(:), &
+                         f0(:), p(:,:), wx(:), x(:)
 
-! Diagonalize Hamiltonian
-  c(1:n,1:n) = H(1:n,1:n)
-  call tred2( c, n, n, e, aux )
-  call tqli( e, aux, n, n, c )
+! Debugging variables
+!  real(dp):: aa, aamax, af, axy, da, damax, df, &
+!             fa, ff0(nr), fmax, fmin , fnorm
 
-! Order eigenvalues and eigenvectors by increasing eigval
-  call ordix( e, 1, n, indx )
+! Interfaces to external functions
+!   interface
+!     DOUBLE PRECISION FUNCTION BESSPH (L,X)
+!       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+!       integer  l
+!     END
+!     DOUBLE PRECISION FUNCTION PLGNDR(L,M,X)
+!       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+!     END
+!     SUBROUTINE XLGNDR (X,W,N)
+!       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+!       DOUBLE PRECISION X(N),W(N)
+!     END
+!   end interface
+  real(dp),external :: bessph,plgndr
+  
+! Fix order of filter kernel by empirical rule
+  rmax = r(nr)
+  krmax = kmax * rmax
+  n = l/2 + 1 + nint(krmax*pkr)
+  !write(6,*) "n,krmax,rmax:",n,krmax,rmax
+
+! Allocate arrays
+  allocate( a(n,n), ar(nr,n), aux(n), e(n), f0(n), indx(n), &
+            p(n,n), wx(n), x(n) )
+
+! Find special points and weights for Gauss-Legendre integration
+  lp = mod(l,2)
+  call xlgndr( x, wx, 2*n-lp )
+
+! Calculate the "filter" kernel at the special points
+  do ix = 1,n
+    do jx = 1,ix
+      y = krmax * x(ix) * x(jx)
+      a(ix,jx) = y * bessph( l, y )
+      a(jx,ix) = a(ix,jx)
+    end do
+  end do
+
+! Find normalized Legendre polynomials at special points (times weight)
+  do i = 1,n
+    j = 2*i - lp - 1
+    p0 = sqrt( real( 2*j+1, dp ) )
+    do ix = 1,n
+      p(ix,i) = p0 * plgndr( j, 0, x(ix) ) * wx(ix)
+    end do
+  end do
+
+! Expand the kernel in orthonormal Legendre polynomials: pT*a*p
+  a = matmul( transpose(p), matmul(a,p) )
+
+! Remove integration weight from Legendre polynomials
+  forall (i=1:n, ix=1:n) p(ix,i) = p(ix,i) / wx(ix)
+
+! Diagonalize the filter kernel
+  call tred2( a, n, n, e, aux )
+  call tqli( e, aux, n, n, a )
+
+! Order eigenvalues and eigenvectors with decreasing eigval**2
+  call ordix( -e**2, 1, n, indx )
   call order( e, 1, n, indx )
-  call order( c, n, n, indx )
+  call order( a, n, n, indx )
 
-! Copy eigenvectors and eigenvalues to output arrays
-  w = 0
-  Z = 0
-  w(1:neigvec) = e(1:neigvec)
-  Z(1:n,1:neigvec) = c(1:n,1:neigvec)
-  ierror = 0
+! Print eigenvalues for debugging
+  pi = acos(-1._dp)
+  !print'(a,i4,2f18.12)', &
+  !  ('filter: i,e,e2=',i,sqrt(2*krmax/pi)*e(i),2*krmax/pi*e(i)**2,i=1,n)
 
-end subroutine filter_rdiag
+! Renormalize eigenvalues so that e=1 => perfect confinement 
+  pi = acos(-1._dp)
+  e = 2*krmax/pi * e**2
+
+! Find how many eigenvalues are within filter tolerance
+  m = 0
+  do i = 1,n
+    if (e(i)<emin) exit
+    m = i
+  end do
+!  print*, 'filter: n, m =', n, m
+
+! Find Legendre polynomials at mesh points
+  ar = 0.0_dp
+  do i = 1,n
+    j = 2*i - lp - 1
+    p0 = sqrt( real( 2*j+1, dp ) )
+    do ir = 1,nr
+      ar(ir,i) = ar(ir,i) + p0 * plgndr( j, 0, r(ir)/rmax )
+    end do
+  end do
+
+! Find eigenvectors at mesh points
+  ar = matmul( ar, a )
+
+! Find eigenvectors at special points
+  a = matmul( p, a )
+
+! Check that eigenvectors are orthonormal for debugging
+ aamax = 0
+  do i = 1,n
+    do j = 1,i
+!!      aa = sum( wx(:) * p(:,i) * p(:,j) )
+      aa = sum( wx(:) * a(:,i) * a(:,j) )
+!!      print'(a,2i6,f15.9)', 'filter: i,j,<i|j>=', i, j, aa
+      if (i==j) aa = aa-1
+      aamax = max( aamax, abs(aa) )
+    end do
+  end do
+  !print*, 'filter: n, aamax =', n, aamax
+
+! Plot first eigenvectors
+!  call window( 0._dp, 1._dp, -3._dp, 3._dp, 0 )
+!  call axes( 0._dp, 0.1_dp, 0._dp, 0.5_dp )
+!  do i = 1,min(n,5)
+!!    call plot( n, x, a(:,i) )
+!    call plot( nr, r/rmax, ar(:,i)*sign(1._dp,ar(nr,i)) )
+!!    call plot( nr-1, r(2:nr)/rmax, ar(2:nr,i)/(r(2:nr)/rmax) )
+!  end do
+!  call show(0)
+
+! Find function to be filtered at special points
+  f0(:) = interpolation( f, r/rmax, x )
+
+!  print'(a,2f12.6)', ('filter: x,f0=',x(i),f0(i),i=1,n)
+
+! Filter radial function (times x)
+!  ff0 = f
+  f = 0
+  do i = 1,m
+    f(1:nr) = f(1:nr) + ar(1:nr,i) * sum(wx*x*f0*a(:,i))
+  end do
+
+! Renormalize filtered function
+  if (norm_opt==1) then
+    f0norm = sum( matmul(wx*x*f0,a(:,1:n)) )
+    fnorm  = sum( matmul(wx*x*f0,a(:,1:m)) )
+    f = f * f0norm/fnorm
+  else if (norm_opt==2) then
+    f0norm = sum( matmul(wx*x*f0,a(:,1:n))**2 )
+    fnorm  = sum( matmul(wx*x*f0,a(:,1:m))**2 )
+    f = f * sqrt(f0norm/fnorm)
+  else if (norm_opt/=0) then
+    stop 'filter: ERROR: invalid value of norm_opt'
+  end if
+
+!  if (norm_opt==1 .or. norm_opt==2) &
+!    print*, 'filter: f0norm, fnorm =', f0norm*rmax**3, fnorm*rmax**3
+
+! Divide filtered function (times x) by x=r/rmax
+  f(2:nr) = f(2:nr) / (r(2:nr)/rmax)
+  if (r(1)==0._dp) then
+    if (l==0) then
+      ! Linear extrapolation to r=0
+      f(1) = (r(3)*f(2) - r(2)*f(3)) / (r(3) - r(2))
+    else
+      f(1) = 0
+    end if
+  else
+    f(1) = f(1) / (r(1)/rmax)
+  end if
 
 
-END MODULE m_filter
+
+!  print*, 'filter: dfmean =', sqrt(sum((f-ff0)**2)/nr)
+
+! Plot original and filtered functions for debugging
+!  fmin = minval(ff0)
+!  fmax = maxval(ff0)
+!  df = fmax - fmin
+
+!  call window( 0._dp, 1._dp, fmin-df/10, fmax+df/10, 0 )
+!  call axes( 0._dp, 0.1_dp, 0._dp, df/10 )
+!!  call plot( n, x, f0 )
+!  call plot( nr, r/rmax, ff0, f )
+!!  call plot( nr-1, r(2:nr)/rmax, ff0(2:nr), f(2:nr) )
+!  call show(0)
+
+! Deallocate arrays
+  deallocate( a, ar, aux, e, f0, indx, p, wx, x )
+
+contains
+
+  function interpolation( yold, xold, xnew ) result(ynew)
+
+    ! Interpolates function yold(xold) at new points xnew
+    ! Assumes that xold and xnew are in increasing order
+
+    implicit none
+    real(dp), intent(in) :: yold(:), xold(:), xnew(:)
+    real(dp) :: ynew(size(xnew))
+
+    integer :: i1, i2, inew, iold, nnew, nold
+
+    nold = size(xold)
+    nnew = size(xnew)
+
+    iold = 1
+    do inew = 1,nnew
+      ! Find iold such that xold(iold) < xnew(inew) < xold(iold+1)
+      do
+        if (iold+1==nold .or. xold(iold+1) > xnew(inew)) exit
+        iold = iold + 1
+      end do
+      ! Four-point Lagrange interpolation (3-point at extreme intervals)
+      i1 = max(iold-1,1)
+      i2 = min(iold+2,nold)
+      ynew(inew) = lagrange( yold(i1:i2), xold(i1:i2), xnew(inew) )
+    end do
+
+  end function interpolation
+
+  function lagrange( yold, xold, xnew ) result(ynew)
+
+    ! Lagrange interpolation of function yold(xold) at point xnew
+    ! Based on routine polint of Numerical Recipes
+
+    implicit none
+    real(dp), intent(in) :: yold(:), xold(:), xnew
+    real(dp) :: ynew
+
+    integer :: i, i0, m, n
+    real(dp):: c(size(xold)), d(size(xold)), den, dy, ho, hp, w
+
+    n = size(xold)
+    c = yold
+    d = yold
+    i0 = n/2
+    ynew = yold(i0)
+    i0 = i0 - 1
+    do m = 1,n-1
+      do i=1,n-m
+        ho = xold(i) - xnew
+        hp = xold(i+m) - xnew
+        w = c(i+1) - d(i)
+        den = ho - hp
+        if (den==0._dp) stop 'filter:lagrange: ERROR: den=0'
+        d(i) = hp * w / den
+        c(i) = ho * w / den
+      end do
+      if (2*i0 < n-m) then
+        dy = c(i0+1)
+      else
+        dy = d(i0)
+        i0 = i0 - 1
+      endif
+      ynew = ynew + dy
+    end do
+
+  end function lagrange
+
+end subroutine filter
+

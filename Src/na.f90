@@ -27,7 +27,7 @@ module na
   use fdf
   use atm_types, only: species_info_t,species,get_atomic_number,get_lmax_orbs,&
        get_valence_charge, set_neutral_atom_potential,set_self_energy, &
-       set_no_neutral_atom_potential
+       set_no_neutral_atom_potential, is_floating, orbs_kc_max
   use atom_generation_types, only: basis_parameters,lshell_t,shell_t,basis_def_t
   use pao_util, only: total_charge
   use schro, only: vhrtre
@@ -57,9 +57,13 @@ contains
  
     !-----------------------------------------
 
+    spp => species(is)
+
+    !Only compute vna if it's a real species (not floating, bessel, etc)
+    if (is_floating(spp)) return
+
     Write(6,*) 'Computing Vna for species ' , is
 
-    spp => species(is)
     basp=>basis_parameters(is)
     vps => basis_parameters(is)%pseudopotential
 
@@ -119,7 +123,7 @@ contains
     filterVna = fdf_boolean("Vna.Filter",.false.)
 
     if (filterVna)then
-       filt_vna = rad_filter(vna,0,1.0_dp,0)
+       filt_vna = rad_filter(vna,0,1.0_dp,0,orbs_kc_max)
        call set_neutral_atom_potential(spp,filt_vna)
        call rad_dealloc(filt_vna)
     else

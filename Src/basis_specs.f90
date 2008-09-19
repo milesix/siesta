@@ -181,7 +181,7 @@ CONTAINS
 
     type(ground_state_t), pointer :: gs
 
-    integer nns, noccs, i, ns_read, l,n_rmax
+    integer nns, noccs, i, ns_read, l
     logical synthetic_atoms, found, reparametrize_pseudos
     real(dp) :: new_a, new_b
 
@@ -654,7 +654,8 @@ CONTAINS
           if (search(p,"P",indexp)) then
              !print *, "Repaobasis:   shell is polarized"
             
-             s%polarized = .true.       
+             s%polarized = .true.
+             s%auto_polarized = .true.
              s%l_shell_polarizes = s%l+1
              if (match(p,"i",after=indexp)) then
                 s%nzeta_pol=integers(p,ind=1,after=indexp)
@@ -789,6 +790,7 @@ CONTAINS
                    spol%n                 = basp%ground_state%n(spol%l)
                    spol%n_shell_polarized = s%n
                    spol%polarizes         = .true.
+                   spol%auto_polarizes    = .true.
                    spol%nzeta             = s%nzeta_pol                                      
                    allocate(spol%rc(1:spol%nzeta),spol%lambda(1:spol%nzeta))
                    allocate(spol%spln(1:spol%nzeta))
@@ -1164,14 +1166,26 @@ CONTAINS
                 lmax=i
              endif
           enddo
+          print *, " nmax, lmax=",nmax,lmax
 
           if(basp%ground_state%n(basp%lmxo) .eq. nmax)then 
              l_polarization        = lmax+1
              l_polarized           = lmax
              basp%lmxo             = basp%lmxo+1
           else
-             l_polarization        = lmax-1
-             l_polarized           = lmax-2
+             if (nmax<=5) then
+                l_polarization        = lmax-1
+                l_polarized           = lmax-2
+             elseif(nmax==6 .or. nmax == 7)then
+                if (basp%ground_state%occupied(0)) then
+                   l_polarized = 0
+                   l_polarization = 1
+                endif
+                if (basp%ground_state%occupied(1)) then
+                   l_polarized = 1
+                   l_polarization = 2
+                endif
+             endif
           endif
        endif
 
@@ -1184,6 +1198,8 @@ CONTAINS
        allocate (basp%lshell(0:basp%lmxo))
 
        do l=0, basp%lmxo
+
+          print *, "New shell with l=",l
 
           ls=>basp%lshell(l)
           call initialize(ls)
@@ -1203,12 +1219,15 @@ CONTAINS
           if (basp%basis_size(3:3) .eq. 'p' .and. l .eq. l_polarization)then
              s%polarizes = .true.
              S%l_shell_polarized = l_polarized
+             s%auto_polarizes = .true.
+             basp%lshell(l_polarized)%shell(1)%auto_polarized = .true.
              s%nzeta_pol = nzeta_pol
              s%n_shell_polarized = basp%lshell(l_polarized)%shell(1)%n
-             !write(6,*) "    shell polarizes"
-             !write(6,*) "    shell l =",s%l
-             !write(6,*) "    shell polarized=",s%l_shell_polarized
-             !write(6,*) "    shell nzeta_pol=",s%nzeta_pol
+             write(6,*) "    shell polarizes"
+             write(6,*) "    shell nzeta_pol=",s%nzeta_pol
+             write(6,*) "    shell l =",s%l
+             write(6,*) "    shell polarized=",s%l_shell_polarized
+             write(6,*) "    shell nzeta_pol=",s%nzeta_pol
           endif
 
           if (basp%ground_state%occupied(l)) then
@@ -1216,7 +1235,7 @@ CONTAINS
           else    
              if(s%polarizes)then
                 s%nzeta = nzeta_pol
-                !print *, "s%nzeta=",s%nzeta
+                print *, "s%nzeta=",s%nzeta
              else
                 s%nzeta = 0
              endif
@@ -1246,9 +1265,9 @@ CONTAINS
              s%rc(1:s%nzeta) = 0.0_dp
              s%lambda(1:s%nzeta) = 1.0_dp
           endif
-          !print *, "s%nzeta=",s%nzeta
-          !print *, "size s%orb=",size(s%orb)
-          !print *, "-----------------------"
+          print *, "s%nzeta=",s%nzeta
+          print *, "size s%orb=",size(s%orb)
+          print *, "-----------------------"
        enddo
 
     enddo loop

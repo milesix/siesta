@@ -304,7 +304,7 @@ subroutine read_ion_ascii(spp)
   type(species_info_t), pointer  :: spp
 
   character(len=20) filename
-  integer:: i, l, lun, nk, ispol,izeta, n
+  integer:: i, l, lun, ispol,izeta, n
   real(dp) :: pop,ekb
   type(rad_func_t) :: rad_func
   type(hilbert_vector_t) :: orb
@@ -661,7 +661,7 @@ subroutine dump_ion_ascii(is)
   type(species_info_t), pointer  ::   spp
   character*40 filename
   character*30 fileid
-  integer i, ispol, lun, lun2, zeta, n_series
+  integer i, lun, lun2, n_series
   type(hilbert_vector_t) :: vector
   type(rad_func_t) :: rfunc
 
@@ -917,7 +917,7 @@ subroutine dump_vector(vector,kind,label,output_kind,lun)
 
         call io_assign(lun2)
         open(unit=lun2,file=filename,status='replace',form='formatted')
-        func => get_rad_func_v(vector)
+        func => get_rad_func_p_v(vector)
         call rad_dump_ascii(func,lun2,header=.false.)
         call io_close(lun2)
 
@@ -941,7 +941,7 @@ subroutine dump_vector(vector,kind,label,output_kind,lun)
 
         call io_assign(lun2)
         open(unit=lun2,file=filename,status='replace',form='formatted')
-        func => get_rad_func_v(vector)
+        func => get_rad_func_p_v(vector)
         write(lun,'(2i3,f10.6,2x,a)') l,n,energy, &
              " #kb l, n, Reference energy"
         call rad_dump_ascii(func,lun2,header=.false.)

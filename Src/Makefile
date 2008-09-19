@@ -110,7 +110,7 @@ OBJS =  automatic_cell.o \
         units.o zmatrix.o m_broyden_mixing.o forhar.o m_walltime.o m_wallclock.o m_iostruct.o \
         nlefsm.o overfsm.o overlap.o conjgr.o conjgr_old.o m_energies.o m_steps.o\
         m_broyddj_nocomm.o broyden_optim.o ioxv.o dynamics.o md_out.o \
-        molecularmechanics.o filter.o filter_subs.o zm_broyden_optim.o \
+        molecularmechanics.o m_filter.o zm_broyden_optim.o \
         cell_broyden_optim.o remove_intramol_pressure.o \
         m_ntm.o m_dipol.o  m_kinetic.o  m_rmaxh.o \
         m_forces.o m_stress.o m_eo.o m_spin.o m_gamma.o m_hsx.o m_fire.o \
@@ -198,7 +198,7 @@ siesta: version $(MPI_INTERFACE) $(FDF) $(WXML) $(XMLPARSER) \
 GEN-BASIS_OBJS=alloc.o gen-basis.o basis_types.o precision.o recipes.o parallel.o \
           parsing.o xcmod.o basis_io.o  chemical.o atm_types.o\
           atmparams.o radial.o io.o \
-	  paste.o  flib_spline.o bessph.o filter.o filter_subs.o \
+	  paste.o  flib_spline.o bessph.o m_filter.o \
           basis_specs.o atom.o memoryinfo.o memory.o periodic_table.o\
           pseudopotential.o dot.o xc.o  atom_options.o arw.o  \
           sys.o xml.o m_walltime.o radial_lin.o \
@@ -206,8 +206,8 @@ GEN-BASIS_OBJS=alloc.o gen-basis.o basis_types.o precision.o recipes.o parallel.
         schro.o kb.o radial_log_low_level.o radial_log_dirty.o \
 	radial_log_io.o multiple_z.o pao_util.o atmfuncs_types.o \
 	atm_generation_types.o bessel.o pol_orb.o hilbert_vector.o \
-	hilbert_vector_collection.o corechg.o basis_gen.o vloc.o \
-	 elec_correction.o radfft.o na.o files.o $(SYSOBJ)
+	hilbert_vector_collection.o corechg.o basis_gen.o vloc.o siesta_options.o \
+	 elec_correction.o radfft.o na.o files.o rdiag.o dsyevds.o timer.o $(SYSOBJ)
 # precision must be the first one here...
 gen-basis.o: $(FDF)
 gen-basis: version $(MPI_INTERFACE) $(FDF) $(WXML) \
@@ -226,8 +226,8 @@ IONCAT_OBJS=f2kcli.o m_getopts.o ioncat.o basis_types.o precision.o  parallel.o 
           sys.o  xml.o m_walltime.o \
 	radial_lin.o radial_log.o radial_logGrid.o radial_util.o \
         schro.o kb.o radial_log_low_level.o radial_log_dirty.o \
-	radial_log_io.o multiple_z.o pao_util.o filter.o atmfuncs_types.o \
-	atm_generation_types.o arw.o filter_subs.o recipes.o radfft.o \
+	radial_log_io.o multiple_z.o pao_util.o m_filter.o atmfuncs_types.o \
+	atm_generation_types.o arw.o recipes.o radfft.o \
 	bessel.o pol_orb.o hilbert_vector.o hilbert_vector_collection.o\
 	bessph.o $(SYSOBJ)
 # precision must be the first one here...
@@ -256,9 +256,10 @@ OTHER_DENCHAR_OBJS=  precision.o recipes.o alloc.o atom_options.o \
         pseudopotential.o chemical.o xml.o files.o \
 	radial_lin.o radial_log.o radial_logGrid.o radial_util.o \
         schro.o kb.o radial_log_low_level.o radial_log_dirty.o \
-	radial_log_io.o multiple_z.o pao_util.o filter.o atmfuncs_types.o \
-	atm_generation_types.o arw.o filter_subs.o xc.o xcmod.o parsing.o\
-	bessel.o pol_orb.o hilbert_vector.o hilbert_vector_collection.o $(SYSOBJ)
+	radial_log_io.o multiple_z.o pao_util.o m_filter.o atmfuncs_types.o \
+	atm_generation_types.o arw.o xc.o xcmod.o parsing.o\
+	bessel.o pol_orb.o hilbert_vector.o hilbert_vector_collection.o rdiag.o \
+        dsyevds.o timer.o siesta_options.o $(SYSOBJ)
 
 denchar: $(MPI_INTERFACE) $(FDF) \
          $(OTHER_DENCHAR_OBJS) $(DENCHAR_OBJS) $(COMP_LIBS)
@@ -637,6 +638,7 @@ m_eo.o: precision.o
 
 m_fdf_global.o: m_mpi_utils.o parallel.o precision.o
 
+
 m_fire.o: parallel.o precision.o
 
 m_fire_mixing.o: alloc.o m_fdf_global.o m_fire_para.o m_mpi_utils.o parallel.o
@@ -815,7 +817,7 @@ radial.o: parallel.o precision.o radial_lin.o radial_log.o radial_logGrid.o
 radial.o: radial_log_dirty.o radial_log_io.o radial_log_low_level.o recipes.o
 radial.o: sys.o
 
-radial_lin.o: filter.o parallel.o precision.o radfft.o recipes.o sys.o xml.o
+radial_lin.o: m_filter.o parallel.o precision.o radfft.o recipes.o sys.o xml.o
 
 radial_log.o: flib_spline.o parallel.o precision.o radial_logGrid.o
 radial_log.o: radial_log_io.o radial_log_low_level.o radial_util.o schro.o
@@ -1024,7 +1026,6 @@ m_conjgr_old.o: conjgr_old.o
 m_dynamics.o: dynamics.o
 m_extrapol.o: extrapol.o
 m_fermid.o: fermid.o
-m_filter.o: filter.o
 m_find_kgrid.o: find_kgrid.o
 m_fire_optim.o: fire_optim.o
 m_forhar.o: forhar.o

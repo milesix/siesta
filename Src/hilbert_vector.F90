@@ -5,12 +5,12 @@ implicit none
 
 type hilbert_vector_t
    private
-   type(rad_func_t), pointer     :: rad_func !the radial function
+   type(rad_func_t), pointer     :: rad_func =>Null() !the radial function
    integer                       :: l,n !quantum numbers
    real(dp)                      :: energy
-   real(dp)                      :: pop
-   integer                       :: zeta
-   logical                       :: pol
+   real(dp)                      :: pop !population
+   integer                       :: zeta !index
+   logical                       :: pol !If it's a polarization orbital.
 end type hilbert_vector_t
 
 
@@ -169,18 +169,30 @@ end subroutine set_zeta_v
 
 !------------------------------------------------
 
-function get_rad_func_v(vector) 
+function get_rad_func_p_v(vector) 
   type(hilbert_vector_t), intent (in) :: vector
-  type(rad_func_t), pointer:: get_rad_func_v
-  get_rad_func_v => vector%rad_func
-end function get_rad_func_v
+  type(rad_func_t), pointer :: get_rad_func_p_v
+  !call rad_copy(vector%rad_func,get_rad_func_v)
+  get_rad_func_p_v => vector%rad_func
+end function get_rad_func_p_v
 
 !------------------------------------------------
 
+function get_rad_func_v(vector) 
+  type(hilbert_vector_t), intent (in) :: vector
+  type(rad_func_t)                    :: get_rad_func_v
+  call rad_copy(vector%rad_func,get_rad_func_v)
+end function get_rad_func_v
+
+!------------------------------------------------
 subroutine set_rad_func_v(vector,func)
   type(hilbert_vector_t) , intent (inout) :: vector
   type(rad_func_t), intent(in) :: func
-  allocate(vector%rad_func)
+  if (.not. associated(vector%rad_func))then
+     allocate(vector%rad_func)
+  else
+     call rad_dealloc(vector%rad_func)
+  endif
   call rad_copy(func,vector%rad_func) 
 end subroutine set_rad_func_v
 
@@ -212,7 +224,6 @@ subroutine set_energy_v(vector,energy)
 end subroutine set_energy_v
 
 !-------------------------------------------------
-
 
 function get_energy_v(vector) 
   type(hilbert_vector_t) , intent (in) :: vector
@@ -248,5 +259,13 @@ function get_cutoff_v(vector)
 end function get_cutoff_v
 
 !-------------------------------------------------
+
+function vector_is_initialized(vector) result(initialized)
+  type(hilbert_vector_t), intent(in) :: vector
+  logical :: initialized
+  
+  initialized = .false.
+  if (associated(vector%rad_func)) initialized = .true.
+end function vector_is_initialized
 
 end module  hilbert_vector_m

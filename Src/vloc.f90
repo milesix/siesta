@@ -52,7 +52,7 @@ contains
 
     r_match = 0.0_dp
     do i=0,lmxkb-1
-       r_i     = rad_matching_radious(vps%vdown(i),vps%vdown(lmxkb))
+       r_i     = rad_matching_radius(vps%vdown(i),vps%vdown(lmxkb))
        r_match = max(r_i,r_match)
     enddo
 
@@ -61,7 +61,7 @@ contains
     r_2zval_match = 0.0_dp
 
     do i=0, lmxkb
-       r_2zval = rad_radious_matching_value(vps%vdown(i),match_value)
+       r_2zval = rad_get_radius_from_value(vps%vdown(i),match_value)
        print '(a,i1,a,f8.4)','V l=',i,' =-2*Zval/r beyond r=', r_2zval
        r_2zval_match = max(r_2zval,r_2zval_match)
     enddo

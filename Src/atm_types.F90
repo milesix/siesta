@@ -1,9 +1,19 @@
-module atm_types
+!     This file is part of the SIESTA package.
+!     
+!     Copyright (c) Fundacion General Universidad Autonoma de Madrid:
+!     E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
+!     and J.M.Soler, 1996-2006.
+!     
+!     Use of this software constitutes agreement with the full conditions
+!     given in the SIESTA license, as signed by all legitimate users.
+!     
 
+module atm_types
+  use precision, only : dp
   use radial
   use sys, only : die
   use hilbert_vector_collection
-  use precision
+  
  
   implicit none
 
@@ -45,6 +55,8 @@ module atm_types
   integer, save, public             :: nspecies
   integer, save, public             :: npairs
 
+  real(dp)                          :: orbs_kc_max = 0.0_dp  !Maximum cutoff of all orbs in kspace
+
   type(species_info_t), allocatable, target, save   ::  species(:) 
 
 !    Radial function with the difference between the electrostatic energy 
@@ -59,7 +71,7 @@ contains
 
   subroutine broadcast_basis
 !
-!     Globalizes the basis and potentials data structure!
+!     Globalizes the basis and potentials data structure
 !     Alberto Garcia, June 2000--
 
       use radial
@@ -91,6 +103,7 @@ contains
     
     if (Node.ne.0) allocate (species(nspecies))
 
+    print *, "species"
     do is=1,nspecies
        spp => species(is)
        call MPI_Bcast(spp%symbol,symbol_length,MPI_character,&
@@ -107,8 +120,9 @@ contains
             0,MPI_Comm_World,MPIerror)
        call MPI_Bcast(spp%fake,1,MPI_logical,0,MPI_Comm_World,MPIerror)
 
+       print *, "orbs begin"
        call broadcast_hilbert_vector_collection(spp%orbs)
-
+       print *, "orbs done"
        if (Node .eq. 0)  kbs = has_kbs(spp)
        call MPI_Bcast(kbs,1,MPI_logical,0,MPI_Comm_World,MPIerror)
        if (Node .ne. 0 .and. kbs) allocate(spp%kb_proj)       
@@ -621,7 +635,7 @@ end subroutine broadcast_basis
     integer, intent(in)            :: io
 
     type(rad_func_t) :: orb
-    call rad_copy(get_rad_func(species%orbs,io),orb)
+    call rad_copy(get_rad_func_p(species%orbs,io),orb)
   end function get_orb
   
   !------------------------------------------------------------------------
@@ -869,7 +883,7 @@ end subroutine broadcast_basis
 
   end subroutine get_value_of_core_charge
 
-    !------------------------------------------------------------------------
+  !------------------------------------------------------------------------
 
   subroutine get_value_of_orb(species,i,r,v,grv)
     type(species_info_t), intent(in) :: species
@@ -885,7 +899,7 @@ end subroutine broadcast_basis
     v=0.0_dp
     grv=0.0_dp
     
-    orb => get_rad_func(species%orbs,i)
+    orb => get_rad_func_p(species%orbs,i)
     rmod = sqrt(sum(r*r))
     rmod = rmod+tiny20
     if (rmod .gt. rad_cutoff(orb)) return
@@ -894,6 +908,7 @@ end subroutine broadcast_basis
     grv(1:3) = dvdr * r(1:3)/rmod
 
   end subroutine get_value_of_orb
+
    !------------------------------------------------------------------------
 
   subroutine get_rvalue_of_orb(species,i,r,v,grv)
@@ -910,7 +925,7 @@ end subroutine broadcast_basis
     v=0.0_dp
     grv=0.0_dp
     
-    orb => get_rad_func(species%orbs,i)
+    orb => get_rad_func_p(species%orbs,i)
     rmod = r+tiny20
     if (rmod .gt. rad_cutoff(orb)) return
 
@@ -934,7 +949,7 @@ end subroutine broadcast_basis
     v=0.0_dp
     grv=0.0_dp
     
-    kb_proj => get_rad_func(species%kb_proj,i)
+    kb_proj => get_rad_func_p(species%kb_proj,i)
     rmod = sqrt(sum(r*r))
     rmod=rmod+tiny20
     if (rmod .gt. rad_cutoff(kb_proj)) return
@@ -961,14 +976,13 @@ end subroutine broadcast_basis
     v=0.0_dp
     grv=0.0_dp
     
-    kb_proj => get_rad_func(species%kb_proj,i)
+    kb_proj => get_rad_func_p(species%kb_proj,i)
     rmod = r+tiny20
     if (rmod .gt. rad_cutoff(kb_proj)) return
 
     call rad_get(kb_proj,rmod,v,grv)
 
   end subroutine get_rvalue_of_kb_proj
-
 
   !---------------------------------------------------------------------------
 
@@ -1004,5 +1018,37 @@ end subroutine broadcast_basis
   end subroutine set_kb_proj
 
   !---------------------------------------------------------
+
+  subroutine filter_orbs(factor)
+    !Filter orbitals of all the species.
+    !The kc_max is found when the orbitals are generated.
+    !(see module filter.f90, basis_gen.f90)
+    real(dp), intent(in) :: factor !Instead of filtering the square of the orbs
+                                   !we multiply them by this factor.
+
+    integer :: is,norbs,io,l
+    type(rad_func_t) :: filtered,non_filtered
+    type(hilbert_vector_t) :: filtered_v,non_filtered_v
+
+    write(6,'(a,f10.3,a)') "atm_types: Filtering orbitals. Kcutoff=",orbs_kc_max,' bohr^-1'
+    do is=1,nspecies
+       norbs = get_number_of_orbs_non_deg(species(is))
+       do io=1,norbs
+          non_filtered_v = get_vector(species(is)%orbs,io)
+          non_filtered   = get_rad_func_v(non_filtered_v)
+          l              = get_l_v(non_filtered_v)
+          write(6,'(a,3i3)') "atm_types: species, orbital, l =", is,io,l
+
+          filtered       = rad_filter(non_filtered,l,factor,2,orbs_kc_max)          
+          call copy_vector(non_filtered_v,filtered_v)
+          call set_rad_func_v(filtered_v,filtered)
+          call set_orb(species(is),filtered_v,io)
+          call destroy_vector(non_filtered_v)
+          call destroy_vector(filtered_v)
+          call rad_dealloc(non_filtered)
+          call rad_dealloc(filtered)
+       enddo
+    enddo
+  end subroutine filter_orbs
 
 end module atm_types

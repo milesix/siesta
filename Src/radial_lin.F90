@@ -1,8 +1,19 @@
+!     This file is part of the SIESTA package.
+!     
+!     Copyright (c) Fundacion General Universidad Autonoma de Madrid:
+!     E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
+!     and J.M.Soler, 1996-2006.
+!     
+!     Use of this software constitutes agreement with the full conditions
+!     given in the SIESTA license, as signed by all legitimate users.
+!     
+
+!Radial (1D) functions defined in a linnear grid
 module radial_lin
   use precision, only : dp
   use m_recipes, only : spline, splint
   use m_radfft, only : radfft
-  use m_filter, only : filter
+  use m_filter, only : filter, kcPhi
   use xml
   use sys
 
@@ -15,7 +26,8 @@ module radial_lin
   public lin_rad_dump_ascii, lin_rad_dump_xml
   public lin_rad_filter,  lin_rad_get
   public lin_rad_FFT, lin_rad_dump_fft_ascii, lin_rad_dump_fft_xml
-  public lin_rad_get_value_from_ir, lin_rad_get_grid, lin_rad_get_length
+  public lin_rad_get_value_from_ir
+  public lin_rad_get_filter_cutoff, lin_rad_get_grid, lin_rad_get_length
   public lin_rad_read_ascii, lin_rad_set_origin, lin_rad_zero
   private
 
@@ -303,10 +315,11 @@ contains
 
   !-----------------------------------------------------------------
 
-  function lin_rad_filter(rad_func,l,factor,norm_opt) result(filtered)
+  function lin_rad_filter(rad_func,l,factor,norm_opt,kc) result(filtered)
     type(lin_rad_func_t), intent(in) :: rad_func
     integer, intent(in) :: l,norm_opt
-    real(dp), intent(in) :: factor
+    real(dp), intent(in) :: factor 
+    real(dp), intent(in) :: kc !filter cutoff
 
     type(lin_rad_func_t) :: filtered
 
@@ -318,34 +331,57 @@ contains
 
     allocate(r(1:length),y(1:length))
 
-    do i=1,length
+    do i=2,length
        r(i)=rad_func%delta*(i-1)
-       y(i)=rad_func%f(i)
+       y(i)=rad_func%f(i)*factor*r(i)**l
     enddo
+    y(1)=y(2)
 
-    call filter(l,length,r,y,factor,norm_opt)
+    call filter(l,length,r,y,kc,norm_opt)
+
+    do i=2,length
+       y(i)=y(i)/r(i)**l
+    enddo
+    y(1)=y(2)
     
-!!$    dnrm = 0.0_dp
-!!$    do i=1,length
-!!$       dnrm = dnrm + rad_func%delta*(r(i)**l*y(i))**2
-!!$    enddo
-!!$
-!!$
-!!$    dnrm = sqrt(dnrm)
-!!$
-!!$    if (dnrm .ne. 1.0_dp) then
-!!$       print *, "Filter: norm=",dnrm
-!!$       do i=1,length
-!!$          y(i)=y(i)/dnrm
-!!$       enddo
-!!$    end if
-
     call lin_rad_alloc(filtered,rad_func%delta,y)
+
     deallocate(r,y)
+
   end function lin_rad_filter
 
   !-----------------------------------------------------
  
+  function lin_rad_get_filter_cutoff(rad_func,l,etol) result(kc)
+    !Given a tolerance in the kinetic energy this function
+    !returns the corresponding reciprocal space cutoff.
+    !See module filter.f90
+    type(lin_rad_func_t), intent(in) :: rad_func
+    integer, intent(in)              :: l
+    real(dp), intent(in)             :: etol
+    real(dp) :: kc 
+
+    real(dp), allocatable, dimension(:) :: r,y
+
+    integer :: i,length
+
+    length = ntbmax
+
+    allocate(r(1:length),y(1:length))
+
+    do i=1,length
+       r(i)=rad_func%delta*(i-1)
+       y(i)=rad_func%f(i)*r(i)**(l)
+    enddo
+
+    kc=kcPhi(l,length,r,y,etol)
+    
+    deallocate(r,y)
+
+  end function lin_rad_get_filter_cutoff
+
+  !-----------------------------------------------------
+
   subroutine lin_rad_get(func,r,fr,dfdr)
     type(lin_rad_func_t), intent(in) :: func
     real(dp), intent(in)         :: r
