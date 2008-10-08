@@ -2,10 +2,172 @@
                   SIESTA CHANGES: TOP IS MOST RECENT
 =======================================================================
 
+** CHANGES ALONG siesta-2.6 trunk branch 
+
+------------------------------------------------------------------
+2008-09-12  13:45:00 Alberto Garcia <albertog@icmab.es>	 2.6.4
+Extended Ordejon-Mauri ordern functional to atoms with odd number of electrons
+
+Patch by: Emilio Artacho <emilio@esc.cam.ac.uk>
+timestamp: Sat 2008-08-30 18:38:45 +0100
+  
+In the initial assigning of LWF centers to atoms, it assigns n/2 to
+atoms with n even, and (n+1)/2 or (n-1)/2 in an alternating sequence
+to atoms with odd number. The sequence runs in the order of input in
+the atomic coordinates block; the user can control the assignment by
+defining the order there.
+  
+modified:
+  Docs/siesta.tex
+  Src/atomlwf.F
+
+------------------------------------------------------------------
+2008-09-12  13:25:00 Alberto Garcia <albertog@icmab.es>	 2.6.3
+Siesta moves on with fresh DM instead of stopping when wrong DM file
+
+Patch by: Emilio Artacho <emilio@esc.cam.ac.uk>
+timestamp: Thu 2008-08-28 15:53:19 +0100
+  
+Simple patch removing chkdim calls in iodm.F and substituting them by
+if statements. If the dimensions are wrong it sends back found=.false.
+  
+There is a 'goto' statement introduced to minimise impact on present
+structure (pending the up-and-coming revision of DM handling)
+  
+modified:
+  Src/iodm.F
+
+------------------------------------------------------------------
+2008-09-11  11:50:00 Alberto Garcia <albertog@icmab.es>	 2.6.2
+Incorporate new filtering functionality
+
+Pending the merge of the new atom-clean structure, the new filtering
+functionality of Jose Soler and Eduardo Anglada has been incorporated
+temporarily into this branch.
+
+The filtering routines are in Src/m_filter.f90, a self-contained
+module with no dependencies. A new subdirectory Src/filter with
+the same code is meant to serve as a test framework for now.
+Eventually it would be turned into a "library" subdirectory, 
+and Src/m_filter.f90 removed.
+
+The old filtering routines have been removed.
+Minimal documentation has been added to Docs/siesta.tex.
+
+removed:
+  Src/filter.f90
+  Src/filter_subs.f
+added:
+  Src/filter/
+  Src/filter/README
+  Src/filter/ba-6s-orb.dat
+  Src/filter/core.dat
+  Src/filter/f2kcli.F90
+  Src/filter/m_filter.f90
+  Src/filter/m_getopts.f90
+  Src/filter/makefile
+  Src/filter/test_filter.f90
+  Src/filter/ti-3p-orb.dat
+  Src/filter/ti-4p-orb.dat
+  Src/m_filter.f90
+modified:
+  Docs/CHANGES
+  Docs/siesta.ind
+  Docs/siesta.tex
+  Src/Makefile
+  Src/atom.f
+  Src/version.F90
+  version.info
+
+
+2008-09-11  11:10:00 GMT  Alberto Garcia <albertog@icmab.es>	2.6.1
+Fix bug related to vna introduced at a previous patch
+
+A patch introduced in 2.5.29 in meshsubs.F was wrong. Vna must
+be kept in "gradients" calculations. Its intent has been set 
+to "inout" and the extra initialization removed.
+
+The bug was spotted by Rogeli Grima.
+
+modified:
+  Src/meshsubs.F
+  Src/version.F90
+  version.info
 
 ____________________________________________________________________
 ** CHANGES ALONG siesta@uam.es--2006/siesta-devel--reference--2.5
 --------------------------------------------------------------------
+
+2008-07-18  08:30:00 GMT  Alberto Garcia <albertog@icmab.es>	patch-33
+
+Summary: Fix in dhscf.F . Added OUT directories int Tests/transiesta 
+
+(F.D. Novaes) 
+
+* Corrected the position of MPI #endif in dhscf.
+
+* Added output files of transiesta runs in OUT directories
+and of tbtrans runs in OUT_TBT in the tests located in Tests/transiesta
+
+2008-07-16  15:30:00 GMT  Alberto Garcia <albertog@icmab.es>	patch-32
+
+Summary: Added tests for Transiesta and /Util/TBTrans (F.D. Novaes)
+
+Tests/transiesta contains some (not quite automatic)
+tests for transiesta and tbtrans.
+
+Util/TBTrans contains the source code for tbtrans.
+
+README_TRANSIESTA in the top directory explains
+the basic features and organization for transiesta.
+
+2008-07-16  07:40:00 GMT  Alberto Garcia <albertog@icmab.es>	patch-31
+
+Summary: Added support for Lapack routine zgesv for transiesta
+
+For systems without pre-compiled libraries, zgesv_lapack.f has
+been added to Src/Libs. It is added by default to linalg.a
+
+2008-07-15  08:40:00 GMT  Alberto Garcia <albertog@icmab.es>	patch-30
+
+Summary: Merge of Transiesta code -- F. D. Novaes version
+
+Brief Description: 
+
+The TranSIESTA code consists in a a set of additional routines for the
+SIESTA package for the computation of electronic transport
+properties. It was originally developed by Mads Brandbyge, Jose-Luiz
+Mozos, Pablo Ordejon, Jeremy Taylor and Kurt Stokbro (Phys. Rev. B 65,
+165401 (02)), and first implemented in the SIESTA 1.3p version.
+
+The present distribution was adapted to the SIESTA 2.5 structure. With
+respect to the first implementation, it has the additional feature of
+allowing for the use of a k-point sampling other than the gamma point
+(for the 2D Brillouin zone perpendicular to the transport
+direction). These modifications were done by F. D. Novaes
+(fdnovaes@icmab.es)
+
+Source code Structure: 
+
+In this implementation, the original TranSIESTA routines were grouped
+in a set of modules, that all begin with m_ts (m_ts_electrode.F90,
+e.g.), together with the addition of some new subroutines. These
+modules are located in the Src directory.  The interface for
+TranSIESTA also requires the modification of some of the SIESTA
+routines. Presently, this is controlled by compilation directives
+(#ifdef TRANSIESTA), so that only when compiling with the -DTRANSIESTA
+FPPFLAGS option that the objects will contain the modifications.
+
+Compiling:
+
+Add -DTRANSIESTA to the FPPFLAGS variable in the arch.make file, and
+type 
+
+make transiesta
+
+The Makefile was modified in such a way to link the m_ts modules and
+create a binary called transiesta.
+
 
 2008-07-08  13:45:00 GMT  Alberto Garcia <albertog@icmab.es>	patch-29
 
