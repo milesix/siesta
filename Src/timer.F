@@ -27,8 +27,8 @@ c
       call timer1(prog,iopt)
       if (IOnode) then
          call elap1(prog,iopt,time_exceeded)
-         if (time_exceeded)
-     $   call die("** User-defined maximum wall-clock time exceeded.")
+!         if (time_exceeded)
+!     $   call die("** User-defined maximum wall-clock time exceeded.")
       endif
 
 
