@@ -220,7 +220,7 @@ C  WRITTEN BY Alberto Garcia, Feb 2000, stealing code from J. Soler
       use m_walltime
       use parallel, only: node
       use sys, only : die
-      use siesta_options,  only : maximum_runtime
+      !use siesta_options,  only : maximum_runtime
       
 
       implicit none
@@ -307,11 +307,11 @@ C  WRITTEN BY Alberto Garcia, Feb 2000, stealing code from J. Soler
 !  maximum wallclock time, and if we have, abort the job. Do it
 !  here to save us from getting the time more than once.
 
-      time_exceeded = .false.
-      if ((maximum_runtime.gt.ZERO).and. 
-     &         ((time - time0).gt.maximum_runtime)) then
-         time_exceeded = .true.
-      endif 
+      !time_exceeded = .false.
+      !if ((maximum_runtime.gt.ZERO).and. 
+      !&         ((time - time0).gt.maximum_runtime)) then
+      !   time_exceeded = .true.
+      !endif 
 
       END
 

@@ -206,7 +206,7 @@ GEN-BASIS_OBJS=alloc.o gen-basis.o basis_types.o precision.o recipes.o parallel.
         schro.o kb.o radial_log_low_level.o radial_log_dirty.o \
 	radial_log_io.o multiple_z.o pao_util.o atmfuncs_types.o \
 	atm_generation_types.o bessel.o pol_orb.o hilbert_vector.o \
-	hilbert_vector_collection.o corechg.o basis_gen.o vloc.o siesta_options.o \
+	hilbert_vector_collection.o corechg.o basis_gen.o vloc.o \
 	 elec_correction.o radfft.o na.o files.o rdiag.o dsyevds.o timer.o $(SYSOBJ)
 # precision must be the first one here...
 gen-basis.o: $(FDF)
@@ -259,7 +259,7 @@ OTHER_DENCHAR_OBJS=  precision.o recipes.o alloc.o atom_options.o \
 	radial_log_io.o multiple_z.o pao_util.o m_filter.o atmfuncs_types.o \
 	atm_generation_types.o arw.o xc.o xcmod.o parsing.o\
 	bessel.o pol_orb.o hilbert_vector.o hilbert_vector_collection.o rdiag.o \
-        dsyevds.o timer.o siesta_options.o $(SYSOBJ)
+        dsyevds.o timer.o  m_walltime.o $(SYSOBJ)
 
 denchar: $(MPI_INTERFACE) $(FDF) \
          $(OTHER_DENCHAR_OBJS) $(DENCHAR_OBJS) $(COMP_LIBS)
