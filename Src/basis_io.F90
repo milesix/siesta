@@ -702,7 +702,7 @@ subroutine dump_ion_ascii(is)
      open(unit=lun2,file=fileid,status='replace', form='formatted')
      write(lun2,'(3a)') "# ",trim(get_label(spp)), " Vna"
      rfunc=get_neutral_atom_potential(spp)
-     call rad_dump_ascii(rfunc,lun2,header=.false.)
+     call rad_dump_ascii(rfunc,lun2,header=.true.)
      call io_close(lun2)
      call rad_dump_ascii(rfunc,lun)
      write(fileid,'(a,a)') trim(get_label(spp)),"-VNA-fft.dat"
@@ -717,7 +717,7 @@ subroutine dump_ion_ascii(is)
      open(unit=lun2,file=fileid,status='replace', form='formatted')
      write(lun2,'(3a)') "# ",trim(get_label(spp)), " ChLocal"
      rfunc = get_pseudo_local_charge(spp)
-     call rad_dump_ascii(rfunc,lun2,header=.false.)
+     call rad_dump_ascii(rfunc,lun2,header=.true.)
      call io_close(lun2)
      call rad_dump_ascii(rfunc,lun)
      call rad_dealloc(rfunc)
@@ -732,7 +732,7 @@ subroutine dump_ion_ascii(is)
      open(unit=lun2,file=fileid,status='replace',  form='formatted')
      write(lun2,'(3a)') "# ",trim(get_label(spp))," Red_Vlocal"
      rfunc = get_reduced_vlocal(spp)
-     call rad_dump_ascii(rfunc,lun2,header=.false.)
+     call rad_dump_ascii(rfunc,lun2,header=.true.)
      call rad_dealloc(rfunc)
      call io_close(lun2)
   endif
@@ -745,7 +745,7 @@ subroutine dump_ion_ascii(is)
      open(unit=lun2,file=fileid,status='replace', form='formatted')
      write(lun2,'(3a)') "# ",trim(get_label(spp)), " ChCore"
      rfunc = get_core_charge(spp)
-     call rad_dump_ascii(rfunc,lun2,header=.false.)
+     call rad_dump_ascii(rfunc,lun2,header=.true.)
      call io_close(lun2)
      call rad_dump_ascii(rfunc,lun)
      !FFT
@@ -918,12 +918,12 @@ subroutine dump_vector(vector,kind,label,output_kind,lun)
         call io_assign(lun2)
         open(unit=lun2,file=filename,status='replace',form='formatted')
         func => get_rad_func_p_v(vector)
-        call rad_dump_ascii(func,lun2,header=.false.)
+        call rad_dump_ascii(func,lun2,header=.true.)
         call io_close(lun2)
 
         write(lun,'(4i3,f10.6,2x,a)') l,n,zeta,ispol,pop, &
              " #orbital l, n, z, is_polarized, population"
-        call rad_dump_ascii(func,lun,header=.false.)
+        call rad_dump_ascii(func,lun,header=.true.)
 
         !FFT
         write(filename,'(a,a,a,a,i1,a,i1,a,i1,a)') trim(label),"-",&
@@ -944,12 +944,12 @@ subroutine dump_vector(vector,kind,label,output_kind,lun)
         func => get_rad_func_p_v(vector)
         write(lun,'(2i3,f10.6,2x,a)') l,n,energy, &
              " #kb l, n, Reference energy"
-        call rad_dump_ascii(func,lun2,header=.false.)
+        call rad_dump_ascii(func,lun2,header=.true.)
         call io_close(lun2)
 
         write(lun,'(2i3,f10.6,2x,a)') l,n,energy, &
              " #kb l, n, Reference energy"
-        call rad_dump_ascii(func,lun,header=.false.)
+        call rad_dump_ascii(func,lun,header=.true.)
      endif
   elseif(output_kind == "xml")then
      if(kind=="orb")then

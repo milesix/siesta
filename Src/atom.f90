@@ -232,12 +232,14 @@ CONTAINS
        call prinput(nspecies)
     endif
     
-    if (write_ion_plot_files) then
+    
        ! Dump all the atomic information
        call dump_basis_ascii()
-       call dump_basis_netcdf()
-       call dump_basis_xml()
-    endif
+       
+       if (write_ion_plot_files) then
+          call dump_basis_netcdf()
+          call dump_basis_xml()
+       endif
 
     !Subroutine which dumps all the atomic info. Do not remove, please.
     !call check_atmfuncs()

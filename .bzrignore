@@ -1,3 +1,6 @@
 denchar
 gen-basis
 test-xml
+./Makefile
+Tests/Makefile
+Tests/test.mk
