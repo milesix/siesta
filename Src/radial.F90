@@ -22,7 +22,7 @@ module radial
        log_t = rad_kind_t(1), &
        lin_t = rad_kind_t(2)
 
-  type, public :: Rad_func_t
+  type, public :: rad_func_t
      private
      type (rad_kind_t)              :: kind
      type (lin_rad_func_t), pointer :: lin
