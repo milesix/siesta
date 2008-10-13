@@ -12,7 +12,7 @@ module kb
   !
   !    Generates the KB projectors
   use precision, only : dp
-  use atm_types, only : species_info_t, species, get_number_of_kb_projs, &
+  use atom_types, only : species_info_t, species, get_number_of_kb_projs, &
        init_kb_proj,set_kb_projs_deg,set_lmax_kb_proj, set_kb_proj
   use hilbert_vector_m, only : hilbert_vector_t,  init_vector, destroy_vector
   use radial, only : rad_func_t, rad_schro, rad_kbproj,rad_integral_vs_value, &

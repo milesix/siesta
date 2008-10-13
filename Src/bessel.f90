@@ -13,9 +13,9 @@
 module bessel_m
 use precision
 use atom_generation_types , only : basis_def_t, basis_parameters,lshell_t, shell_t
-use atmparams
+use atomparams
 use radial
-use atm_types 
+use atom_types 
 use hilbert_vector_collection
 use pao_util, only : number_of_orbs
 implicit none

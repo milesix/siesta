@@ -1025,7 +1025,7 @@ C ----------------------------------------------------------------------
  
       use precision,     only : dp, grid_p
       use atmfuncs, only: rcut, psch
-      use atm_types, only : species, get_local_charge_cutoff
+      use atom_types, only : species, get_local_charge_cutoff
       use radial, only : rad_cutoff
       use mesh,     only: dxa, idop, indexp, ipa, mop, nsp, xdop, xdsp
  

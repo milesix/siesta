@@ -8,7 +8,7 @@
 !     given in the SIESTA license, as signed by all legitimate users.
 !     
 
-module atm_types
+module atom_types
   use precision, only : dp
   use radial
   use sys, only : die
@@ -1051,4 +1051,4 @@ end subroutine broadcast_basis
     enddo
   end subroutine filter_orbs
 
-end module atm_types
+end module atom_types

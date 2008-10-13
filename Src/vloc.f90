@@ -10,7 +10,7 @@
 
 module vloc
   use precision
-  use atm_types, only:species, set_pseudo_local_charge, set_reduced_vlocal
+  use atom_types, only:species, set_pseudo_local_charge, set_reduced_vlocal
   use radial
   use atom_generation_types, only: basis_parameters
   use pseudopotential, only : pseudopotential_t

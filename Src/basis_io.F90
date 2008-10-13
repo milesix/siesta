@@ -18,7 +18,7 @@ module basis_io
   use chemical
   use sys, only: die
   use precision
-  use atm_types
+  use atom_types
   use atom_generation_types, only: write_basis_specs, basis_parameters
   use pseudopotential
   use radial

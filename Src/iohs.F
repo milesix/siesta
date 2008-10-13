@@ -50,7 +50,7 @@ C
       use parallel,     only : Node, Nodes
       use parallelsubs, only : WhichNodeOrb, LocalToGlobalOrb,
      .                         GlobalToLocalOrb, GetNodeOrbs
-      use atm_types,    only : nspecies
+      use atom_types,    only : nspecies
       use atomlist,     only : iphorb, iaorb
       use siesta_geom,  only : na_u, isa
       use atmfuncs,     only : nofis, labelfis, zvalfis

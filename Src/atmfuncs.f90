@@ -20,7 +20,7 @@ module atmfuncs
 
   use precision
   use sys, only: die
-  use atm_types
+  use atom_types
   use atmfuncs_types
   use spher_harm, only: rlylm
   implicit none 

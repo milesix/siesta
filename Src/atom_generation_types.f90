@@ -23,9 +23,10 @@ module atom_generation_types
   !     of 'nl' to 'nlm' orbitals and projectors and the polarization
   !     orbitals) by the use of the 'rad_func' pointers indicated within 
   !     types 'shell_t' and 'kbshell_t'. (See module 'radial')
+  !     Almost all the subroutines are public.
 
   use precision
-  use atmparams
+  use atomparams
   use pseudopotential
   use radial
 

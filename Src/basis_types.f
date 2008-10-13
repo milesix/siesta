@@ -25,7 +25,7 @@
 !     types 'shell_t' and 'kbshell_t'. (See module 'radial')
 !     
 !
-      use atmparams, only: lmaxd, nzetmx, nsemx, nkbmx
+      use atomparams, only: lmaxd, nzetmx, nsemx, nkbmx
       use pseudopotential, only: pseudopotential_t
       use precision, only: dp
       use sys, only : die

@@ -25,7 +25,7 @@ module na
 
   use precision
   use fdf
-  use atm_types, only: species_info_t,species,get_atomic_number,get_lmax_orbs,&
+  use atom_types, only: species_info_t,species,get_atomic_number,get_lmax_orbs,&
        get_valence_charge, set_neutral_atom_potential,set_self_energy, &
        set_no_neutral_atom_potential, is_floating, orbs_kc_max
   use atom_generation_types, only: basis_parameters,lshell_t,shell_t,basis_def_t

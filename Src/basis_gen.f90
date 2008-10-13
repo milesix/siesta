@@ -8,13 +8,19 @@
 !     given in the SIESTA license, as signed by all legitimate users.
 !     
 
+! This module handles the basis generation in siesta.
+! The only public subroutine is:
+
+!subroutine basis_gen(isp)
+!Integer, intent(in) :: isp
+
 module basis
   use precision,        only: dp
   use fdf
   use hilbert_vector_collection
   use hilbert_vector_m, only:hilbert_vector_t
   use radial,           only: rad_func_t, rad_copy
-  use atm_types,        only: species_info_t, get_lmax_orbs, set_orbs_deg, &
+  use atom_types,        only: species_info_t, get_lmax_orbs, set_orbs_deg, &
        set_lmax_orbs, species, init_orbs, get_atomic_number, set_orb, orbs_kc_max
   use pseudopotential,  only:pseudopotential_t
   use atom_generation_types,      only:basis_def_t,basis_parameters,shell_t,lshell_t,energies_t
@@ -79,6 +85,7 @@ contains
 
     integer :: l,iorb,norbs
     integer :: izeta, nsm, nvalence
+
 
     type(basis_def_t), pointer :: basp     !Parameters corresponding to this basis set.
     type(pseudopotential_t),pointer :: vps !Psuedopotential info.

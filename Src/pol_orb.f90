@@ -14,25 +14,21 @@ module pol_orb
   use precision
   use atom_generation_types, only:basis_def_t,basis_parameters,shell_t,lshell_t,energies_t
   use pseudopotential, only:pseudopotential_t
-  use atm_types, only:species_info_t,species
   use pao_util,  only:calculate_energies, normalize_orbital, sym, generate_vsoft
   use atom_options, only: write_ion_plot_files
   use radial
   use radial_logGrid
-  !use schro  
+
   implicit none
 
   contains
 
 
   subroutine generate_polarization_orbital(isp,shell)
-
     !    Calculates the polarization  orbitals for the basis set augmentation.
     !    Written by D. Sanchez-Portal, Aug. 1998.
     !    Modify by DSP, July 1999
-    !    Filter added by E. Anglada 2006
-
-    integer, intent(in)              ::  isp  !Specie index
+    integer, intent(in)             :: isp   !Species index
     type(shell_t),intent(inout)      :: shell !The shell being filled with orbitals.
 
     !Internal vars.
@@ -40,7 +36,6 @@ module pol_orb
     real(dp)                         :: rc,epao
     logical                          :: new_split_code, fix_split_table, split_tail_norm
 
-    type(species_info_t),    pointer :: spp
     type(basis_def_t),       pointer :: basp
     type(shell_t),           pointer :: shell_pol !The shell being polarized
     type(rad_func_t)                 :: vtot
@@ -56,7 +51,6 @@ module pol_orb
     endif
 
     basp => basis_parameters(isp)
-    spp  => species(isp)
     
     lpol = shell%l_shell_polarized
     shell_pol => basp%lshell(lpol)%shell(1)

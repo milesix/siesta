@@ -8,6 +8,11 @@
 !     given in the SIESTA license, as signed by all legitimate users.
 !     
 
+!     This module is the main interface to the basis/kbs subroutines
+!     The only public subroutine is:
+!     subroutine generate_all_atomic_info()
+!     No arguments.
+
 module atom
   !Common modules
   use precision, only: dp
@@ -19,7 +24,7 @@ module atom
   use radial
   
   !Main module where all the atomic info is stored.
-  use atm_types, only : get_atomic_number, get_symbol,species_info_t, &
+  use atom_types, only : get_atomic_number, get_symbol,species_info_t, &
        species,nspecies, symbol_length, set_no_reduced_vlocal, set_no_kb, &
        set_no_neutral_atom_potential, has_kbs, set_floating, &
        set_has_core_charge, filter_orbs
@@ -29,7 +34,7 @@ module atom
        write_basis_specs
   
   !All the auxiliary modules
-  use atmparams
+  use atomparams
   use periodic_table, only : symbol
   use pseudopotential, only : pseudopotential_t
   
@@ -170,7 +175,6 @@ CONTAINS
     use basis_specs, only: read_basis_specs
     use basis_io, only: read_basis_ascii, dump_basis_ascii,dump_basis_xml, dump_basis_netcdf, read_basis_netcdf
     use elec_correction, only: elec_corr_setup
-    !use atmfuncs, only: check_atmfuncs
 
     implicit none
 
@@ -360,7 +364,7 @@ CONTAINS
 
   !----------------------------------------------------
   subroutine species_charge(isp)
-    use atm_types, only : get_valence_charge
+    use atom_types, only : get_valence_charge
     integer, intent(in) :: isp
 
     !Internal vars
@@ -501,7 +505,7 @@ CONTAINS
 !------------------------------------------------------------------------
 
   subroutine species_init(isp,floating)
-    use atm_types, only : set_symbol, set_label,set_atomic_number, &
+    use atom_types, only : set_symbol, set_label,set_atomic_number, &
          set_valence_charge,set_read_from_file,set_mass,get_symbol, set_lmax_orbs,&
          get_lmax_orbs, get_label
     use chemical

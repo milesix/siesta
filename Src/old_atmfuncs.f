@@ -19,8 +19,8 @@ C     chemical species present in the calculation.
 
       use precision, only: dp
       use sys
-      use atmparams, only: nzetmx, lmaxd, nsemx
-      use atmparams, only: maxos, nkbmx
+      use atomparams, only: nzetmx, lmaxd, nsemx
+      use atomparams, only: maxos, nkbmx
       use radial, only : ntbmax
 
       implicit none 

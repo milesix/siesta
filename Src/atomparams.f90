@@ -7,7 +7,7 @@
 !     Use of this software constitutes agreement with the full conditions
 !     given in the SIESTA license, as signed by all legitimate users.
 !     
-      module atmparams
+      module atomparams
 
       implicit none 
 !
@@ -49,4 +49,4 @@
 
          integer, parameter      :: maxos=2*nzetmx*lmx2*nsemx
 
-      end module atmparams
+      end module atomparams

@@ -15,7 +15,7 @@
       use parallel, only: IOnode
       use  atmfuncs, only: nofis, nkbfis, izofis, massfis,
      $                     rcut, atmpopfio, zvalfis, orb_f,vna_f,kbpj_f
-      use atm_types
+      use atom_types
       use siesta_geom, only: na_u, na_s, xa, isa, xalast
       implicit none
 

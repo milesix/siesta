@@ -79,10 +79,10 @@ C *********************************************************************
 
       use precision,    only : dp
       use parallel,     only : Node, Nodes
-      use atmparams,    only : lmx2, nzetmx, nsemx
+      use atomparams,    only : lmx2, nzetmx, nsemx
       use atmfuncs,     only : epskb, lofio, mofio, rcut, rphiatm, orb_f
      $     ,kbpj_f
-      use atm_types,    only : nspecies
+      use atom_types,    only : nspecies
       use parallelsubs, only : GlobalToLocalOrb, LocalToGlobalOrb
       use alloc,        only : re_alloc
       use sys,          only : die

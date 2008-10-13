@@ -116,7 +116,7 @@ module basis_specs
   use pseudopotential
   use periodic_table
   use chemical
-  use atm_types, only : nspecies
+  use atom_types, only : nspecies
   use sys
   use radial
   Use fdf

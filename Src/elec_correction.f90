@@ -11,7 +11,7 @@
       module elec_correction
 
       use precision
-      use atm_types
+      use atom_types
       use radial
       use m_radfft
       use m_recipes, only:ratint

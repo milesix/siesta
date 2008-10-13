@@ -43,7 +43,7 @@ C *********************************************************************
 C  Modules
       use precision,     only: dp, grid_p
       use atmfuncs,      only: rcut, all_phi, orb_f
-      use atm_types,     only: nsmax=>nspecies
+      use atom_types,    only: nsmax=>nspecies
       use atomlist,      only: indxuo
       use listsc_module, only: listsc
       use mesh, only: dxa, nsp, xdop, xdsp

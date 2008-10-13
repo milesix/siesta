@@ -14,7 +14,7 @@ module pao_util
   use atom_generation_types, only:basis_def_t,basis_parameters,shell_t,lshell_t,energies_t
   use radial
   use m_recipes, only: polint
-  use atm_types, only: species_info_t,species,get_lmax_orbs 
+  use atom_types, only: species_info_t,species,get_lmax_orbs 
   implicit none
   
   character(len=1)     :: sym(0:4) = (/ 's','p','d','f','g' /)

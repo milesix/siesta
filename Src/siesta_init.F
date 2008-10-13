@@ -42,7 +42,7 @@
       use m_gamma
       use m_ioxv, only: xv_file_read
       USE writewave, only: gamma_wavefunctions, setup_wf_kpoints
-      use atm_types, only: nspecies, broadcast_basis
+      use atom_types, only: nspecies, broadcast_basis
       use atom, only: generate_all_atomic_info
 #ifdef MPI
       use mpi_siesta, only: mpi_comm_world

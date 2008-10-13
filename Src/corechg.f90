@@ -12,7 +12,7 @@ module corechg
 
   use precision
   use pseudopotential, only : pseudopotential_t
-  use atm_types, only: species, set_has_core_charge, set_core_charge, orbs_kc_max
+  use atom_types, only: species, set_has_core_charge, set_core_charge, orbs_kc_max
   use atom_generation_types , only :basis_parameters
   use radial
   use fdf
