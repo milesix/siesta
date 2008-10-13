@@ -326,6 +326,7 @@ CONTAINS
        do l=0,basp%lmxo
           do n=1,basp%lshell(l)%nn
              shell => basp%lshell(l)%shell(n)
+
              if(shell%auto_polarizes .or. shell%nzeta == 0) then
                 exit
              else

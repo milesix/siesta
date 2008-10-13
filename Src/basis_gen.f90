@@ -137,7 +137,7 @@ contains
           
           shell => lshell%shell(nsm)
           shell%i_sm = nsm
-          print *, "l,nsm=",l,nsm
+
           if(shell%nzeta.le.0) exit
           shell%population = 0.0_dp
           
@@ -393,13 +393,10 @@ contains
     rho = total_charge(is,charge,rc)
     rho4pi = rad_divide_by_4pir2(rho,.false.)
     vxc = rad_vxc(rho4pi,0,exc)
-    !call rad_dump_file(rho,"rho-exc.dat")
 
-    write(6,*) "------Species-Exc---------"
-    write(6,'(a,f14.4)') "Charge =", charge
-    write(6,'(a,f14.4)') " Species Exc (eV) =", exc/eV
+    write(6,'(/,a,f14.4)') "Basis: Total Species Charge =", charge
+    write(6,'(a,f14.4)')   "Basis: Species Exc (eV) =", exc/eV
 
-    !write(6,*) " Species Exc (Ry) =", exc
     call rad_dealloc(vxc)
     call rad_dealloc(rho)
     call rad_dealloc(rho4pi)

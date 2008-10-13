@@ -4,3 +4,4 @@ test-xml
 ./Makefile
 Tests/Makefile
 Tests/test.mk
+Src/siesta.dSYM

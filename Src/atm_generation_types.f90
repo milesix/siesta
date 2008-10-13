@@ -54,8 +54,8 @@ module atom_generation_types
      logical                   ::  polarized = .false.  !Is this shell polarized?
      logical                   ::  auto_polarized = .false. !Is this shell polarized automagically?
      logical                   ::  auto_polarizes = .false. !Is this shell polarizing automagically?
-     integer                   ::  nzeta_pol 
-     real(dp)                  ::  split_norm ! Split norm value
+     integer                   ::  nzeta_pol = 0
+     real(dp)                  ::  split_norm = 0.0_dp ! Split norm value
      logical                   ::  split_norm_specified
 
      real(dp), pointer         :: spln(:) => Null()    ! Split norm used for each z
@@ -182,7 +182,7 @@ CONTAINS
     p%nzeta = 0
     p%polarizes = .false.
     p%polarized = .false.
-    p%nzeta_pol = 0
+    p%nzeta_pol = -1
     p%rinn = 0._dp
     p%vcte = 0._dp
     p%split_norm = 0.0_dp

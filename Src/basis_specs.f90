@@ -652,7 +652,6 @@ CONTAINS
           endif
 
           if (search(p,"P",indexp)) then
-             !print *, "Repaobasis:   shell is polarized"
             
              s%polarized = .true.
              s%auto_polarized = .true.
@@ -666,7 +665,6 @@ CONTAINS
                 basp%lmxo  = basp%lmxo+1  
                 
              endif
-             !print *, "Repaobasis:   Adding a polarization shell with l=",s%l_shell_polarizes
 
           endif
           if (search(p,"E",indexp)) then
@@ -789,8 +787,8 @@ CONTAINS
                    spol%l                 = s%l+1
                    spol%n                 = basp%ground_state%n(spol%l)
                    spol%n_shell_polarized = s%n
-                   spol%polarizes         = .true.
-                   spol%auto_polarizes    = .true.
+                   spol%polarizes         = .true.                   
+                   if(s%auto_polarized) spol%auto_polarizes    = .true.
                    spol%nzeta             = s%nzeta_pol                                      
                    allocate(spol%rc(1:spol%nzeta),spol%lambda(1:spol%nzeta))
                    allocate(spol%spln(1:spol%nzeta))
@@ -1166,7 +1164,7 @@ CONTAINS
                 lmax=i
              endif
           enddo
-          print *, " nmax, lmax=",nmax,lmax
+          print *, "species nmax, lmax=",nmax,lmax
 
           if(basp%ground_state%n(basp%lmxo) .eq. nmax)then 
              l_polarization        = lmax+1
@@ -1189,18 +1187,10 @@ CONTAINS
           endif
        endif
 
-       !write(6,*)"   n,nmax:",basp%ground_state%n(basp%lmxo),nmax
-       !write(6,*)"   lmax:",lmax
-       !write(6,*)"   lmxo:",basp%lmxo
-       !write(6,*)"   lpolarization:",l_polarization
-       !write(6,*)"   l_polarized:",l_polarized
-
        allocate (basp%lshell(0:basp%lmxo))
 
        do l=0, basp%lmxo
-
-          print *, "New shell with l=",l
-
+         
           ls=>basp%lshell(l)
           call initialize(ls)
           ls%l  = l
@@ -1221,13 +1211,10 @@ CONTAINS
              S%l_shell_polarized = l_polarized
              s%auto_polarizes = .true.
              basp%lshell(l_polarized)%shell(1)%auto_polarized = .true.
+             basp%lshell(l_polarized)%shell(1)%polarized = .true.
              s%nzeta_pol = nzeta_pol
+             basp%lshell(l_polarized)%shell(1)%nzeta_pol = s%nzeta_pol            
              s%n_shell_polarized = basp%lshell(l_polarized)%shell(1)%n
-             write(6,*) "    shell polarizes"
-             write(6,*) "    shell nzeta_pol=",s%nzeta_pol
-             write(6,*) "    shell l =",s%l
-             write(6,*) "    shell polarized=",s%l_shell_polarized
-             write(6,*) "    shell nzeta_pol=",s%nzeta_pol
           endif
 
           if (basp%ground_state%occupied(l)) then
@@ -1235,7 +1222,6 @@ CONTAINS
           else    
              if(s%polarizes)then
                 s%nzeta = nzeta_pol
-                print *, "s%nzeta=",s%nzeta
              else
                 s%nzeta = 0
              endif
@@ -1265,9 +1251,7 @@ CONTAINS
              s%rc(1:s%nzeta) = 0.0_dp
              s%lambda(1:s%nzeta) = 1.0_dp
           endif
-          print *, "s%nzeta=",s%nzeta
-          print *, "size s%orb=",size(s%orb)
-          print *, "-----------------------"
+         
        enddo
 
     enddo loop
