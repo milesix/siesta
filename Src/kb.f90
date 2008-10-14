@@ -12,7 +12,7 @@ module kb
   !
   !    Generates the KB projectors
   use precision, only : dp
-  use atom_types, only : species_info_t, species, get_number_of_kb_projs, &
+  use atom_types, only : get_number_of_kb_projs, &
        init_kb_proj,set_kb_projs_deg,set_lmax_kb_proj, set_kb_proj
   use hilbert_vector_m, only : hilbert_vector_t,  init_vector, destroy_vector
   use radial, only : rad_func_t, rad_schro, rad_kbproj,rad_integral_vs_value, &
@@ -56,7 +56,6 @@ CONTAINS
 
     real(dp) :: rmax, pop, r_c
     real(dp), pointer :: ekb(:), dkbcos(:), rc(:)
-    type (species_info_t),pointer  :: spp
 
     !   The atomic wavefunctions and/or its energy derivatives are* 
     !  calculated only inside a sphere of radius Rmax. To define the***  
@@ -69,7 +68,6 @@ CONTAINS
 
     basp => basis_parameters(isp)
     vps => basp%pseudopotential
-    spp => species(isp)
 
     nkb=0
     nkb_deg=0
@@ -83,8 +81,8 @@ CONTAINS
 
     allocate(ekb(1:nkb),dkbcos(1:nkb),rc(1:nkb))
 
-    call init_kb_proj(species(isp),nkb)
-    call set_lmax_kb_proj(species(isp),basp%lmxkb)
+    call init_kb_proj(isp,nkb)
+    call set_lmax_kb_proj(isp,basp%lmxkb)
 
     print '(/a)', "--------------------------------------------"
     print *, "KB: Generation of KB projectors"
@@ -158,7 +156,7 @@ CONTAINS
 
           pop=0.0_dp
           call init_vector(kb_vector,kb_proj,0,l,ikb,pop,ekb(idx),.false.) 
-          call set_kb_proj(spp,kb_vector,idx)
+          call set_kb_proj(isp,kb_vector,idx)
           call rad_dealloc(kb_proj)
           call destroy_vector(kb_vector)
           idx=idx+1
@@ -191,10 +189,10 @@ CONTAINS
           ikb=ikb+1
        enddo
     enddo
-    call set_kb_projs_deg(spp)
+    call set_kb_projs_deg(isp)
 
     write(6,'(/,a, i4)') 'KBgen: Total number of  Kleinman-Bylander projectors: ', &
-         get_number_of_kb_projs(spp)
+         get_number_of_kb_projs(isp)
 
      print '(/a)', "--------------------------------------------"
 

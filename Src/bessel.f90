@@ -25,7 +25,7 @@ private
 
 contains
 
-  subroutine bessel(is) 
+  subroutine bessel(isp) 
     !****
     ! Caculates Bessel functions as a floating basis
     ! Written by D. Sanchez-Portal, Aug. 1998.
@@ -33,12 +33,11 @@ contains
 
     implicit none
 
-    integer, intent(in) :: is
+    integer, intent(in) :: isp
 
     type(basis_def_t), pointer :: basp     !Structure with the parameters corresponding to this
     !basis set.
     
-    type(species_info_t),pointer :: spp      !Pointer to a specie.
     type(shell_t),     pointer :: shell    !Pointer to a shell.
     type(lshell_t),    pointer :: lshell   !Pointer to a l-shell.
 
@@ -56,8 +55,7 @@ contains
 
     real(dp) :: v(nrmax)=0.0_dp,s(nrmax)=0.0_dp,drdi(nrmax)=0.0_dp,rofi(nrmax)=0.0_dp
 
-    basp => basis_parameters(is)
-    spp  => species(is)
+    basp => basis_parameters(isp)
 
     !
 
@@ -73,12 +71,12 @@ contains
     s(2:nrmax) = drdi(2:nrmax)*drdi(2:nrmax)
     s(1)       = s(2)
 
-    norbs = number_of_orbs(is)
+    norbs = number_of_orbs(isp)
 
-    call init_orbs(species(is),norbs)
+    call init_orbs(isp,norbs)
         
     iorb=1
-    lmxo=get_lmax_orbs(spp) 
+    lmxo=get_lmax_orbs(isp) 
     do l=0,lmxo 
 
        lshell => basp%lshell(l)
@@ -147,7 +145,7 @@ contains
                 !We are done. Fill species with the orbs.
 
                 call init_vector(orb_vector,rad_orb,shell%n,l,izeta,0.0_dp,0.0_dp,.false.)               
-                call set_orb(spp,orb_vector,iorb)
+                call set_orb(isp,orb_vector,iorb)
                 
                 iorb=iorb+1
 
@@ -159,9 +157,9 @@ contains
 
     enddo
 
-    call set_orbs_deg(spp)
+    call set_orbs_deg(isp)
 
-    write(6,'(/a,i3)') 'ATOM: Total number of floating Bessel orbitals:', get_number_of_orbs(spp)
+    write(6,'(/a,i3)') 'ATOM: Total number of floating Bessel orbitals:', get_number_of_orbs(isp)
 
     
 

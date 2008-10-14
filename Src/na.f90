@@ -25,7 +25,7 @@ module na
 
   use precision
   use fdf
-  use atom_types, only: species_info_t,species,get_atomic_number,get_lmax_orbs,&
+  use atom_types, only: get_atomic_number,get_lmax_orbs,&
        get_valence_charge, set_neutral_atom_potential,set_self_energy, &
        set_no_neutral_atom_potential, is_floating, orbs_kc_max
   use atom_generation_types, only: basis_parameters,lshell_t,shell_t,basis_def_t
@@ -52,25 +52,22 @@ contains
     real(dp)                        :: self_energy, reference_chval,ch_temp
     type(pseudopotential_t),pointer :: vps
     type(rad_func_t)                :: rho, vna,vna_tmp,filt_vna
-    type(species_info_t), pointer   :: spp
     type(basis_def_t),  pointer     :: basp
  
     !-----------------------------------------
 
-    spp => species(is)
-
     !Only compute vna if it's a real species (not floating, bessel, etc)
-    if (is_floating(spp)) return
+    if (is_floating(is)) return
 
-    Write(6,*) 'Computing Vna for species ' , is
+    Write(6,*) 'na: Computing Vna for species ' , is
 
     basp=>basis_parameters(is)
     vps => basis_parameters(is)%pseudopotential
 
-    if (get_atomic_number(spp) .le.0) then
-       Write(6,*) " No Vna for species: ", is
-       call set_self_energy(spp,0.0_dp)
-       call set_no_neutral_atom_potential(spp)
+    if (get_atomic_number(is) .le.0) then
+       Write(6,*) "na: No Vna for species: ", is
+       call set_self_energy(is,0.0_dp)
+       call set_no_neutral_atom_potential(is)
        !call rad_zero(Vna)
        !call set_neutral_atom_potential(spp,vna)
        RETURN
@@ -79,7 +76,7 @@ contains
     !     Compute total charge, using the occupied basis orbitals.
     rho =  total_charge(is,chval,rcocc)
 
-    reference_chval = dble(get_valence_charge(spp))
+    reference_chval = dble(get_valence_charge(is))
     write(6,'(a,2f10.5)') '     Vna: chval, zval: ', chval, reference_chval
     
     !     Make sure that it adds up to the total valence charge
@@ -124,23 +121,23 @@ contains
 
     if (filterVna)then
        filt_vna = rad_filter(vna,0,1.0_dp,0,orbs_kc_max)
-       call set_neutral_atom_potential(spp,filt_vna)
+       call set_neutral_atom_potential(is,filt_vna)
        call rad_dealloc(filt_vna)
     else
        !Store the neutral atom potential
-       call set_neutral_atom_potential(spp,vna)
+       call set_neutral_atom_potential(is,vna)
     endif
 
     !Self energy
     self_energy = rad_self_energy(vps%vlocal)
-    call set_self_energy(spp,self_energy)
+    call set_self_energy(is,self_energy)
 
     !Release memory
     call rad_dealloc(rho)
     call rad_dealloc(vna)
     call rad_dealloc(vna_tmp)
     
-    Write(6,*) 'Finished computing Vna for species ' , is
+    Write(6,*) 'na: Finished computing Vna for species ' , is
     
   end subroutine gen_Vna
  

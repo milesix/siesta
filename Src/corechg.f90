@@ -12,7 +12,7 @@ module corechg
 
   use precision
   use pseudopotential, only : pseudopotential_t
-  use atom_types, only: species, set_has_core_charge, set_core_charge, orbs_kc_max
+  use atom_types, only: set_has_core_charge, set_core_charge, orbs_kc_max
   use atom_generation_types , only :basis_parameters
   use radial
   use fdf
@@ -39,12 +39,12 @@ contains
   
     if (basis_parameters(isp)%pseudopotential%nicore == 'nc ') then
 
-       call set_has_core_charge(species(isp), .false.)
+       call set_has_core_charge(isp, .false.)
        
     else
 
        core_charge => basis_parameters(isp)%pseudopotential%chcore
-       call set_has_core_charge(species(isp), .true.)
+       call set_has_core_charge(isp, .true.)
        core_charge_tmp = rad_divide_by_4pir2(core_charge,.true.)
        rcore = rad_cutoff(core_charge_tmp)
        write(6,'(a,f10.6)') 'corechg: Radius of charge density used in the'
@@ -55,11 +55,11 @@ contains
          
        if (filterPCC) then
           core_charge_filtered = rad_filter(core_charge_tmp,0,1.0_dp,0,orbs_kc_max)   
-          call set_core_charge(species(isp),core_charge_filtered)
+          call set_core_charge(isp,core_charge_filtered)
           call rad_dealloc(core_charge_filtered)         
        else
           !Store the core charge
-          call set_core_charge(species(isp),core_charge_tmp)          
+          call set_core_charge(isp,core_charge_tmp)          
        endif
        call rad_dealloc(core_charge_tmp)
        nullify(core_charge)

@@ -37,8 +37,8 @@
       rchloc2 = 0.0_dp
 
       do is=1,nspecies
-         if (.not. is_floating(species(is))) then
-            chlocal1 = get_pseudo_local_charge(species(is))
+         if (.not. is_floating(is)) then
+            chlocal1 = get_pseudo_local_charge(is)
             rchloc = rad_cutoff(chlocal1)            
          endif
 
@@ -46,7 +46,7 @@
             
             i = ((is-1)*is)/2+is2
             
-            if (is_floating(species(is)) .or. is_floating(species(is2))) then
+            if (is_floating(is) .or. is_floating(is2)) then
                grid = rad_grid_alloc(ntbmax,delta=0.0001_dp)
                values=0.0_dp
                call rad_alloc(elec_corr(i),values,grid)
@@ -54,7 +54,7 @@
                call rad_grid_dealloc(grid)
             else
                
-               chlocal2 = get_pseudo_local_charge(species(is2))
+               chlocal2 = get_pseudo_local_charge(is2)
                rchloc2 = rad_cutoff(chlocal2)
                cutoff = rchloc + rchloc2 + 0.2_dp
                grid = rad_get_grid(chlocal1)
@@ -65,7 +65,7 @@
             
          enddo
          
-         if (.not. is_floating(species(is))) call rad_dealloc(chlocal1)
+         if (.not. is_floating(is)) call rad_dealloc(chlocal1)
 
       enddo
 
@@ -152,10 +152,10 @@
       DLT=RMX/(NTBMAX-1)
 
       !IZ1=ZVALFIS(IS1)
-      IZ1=get_valence_charge(species(is1))
+      IZ1=get_valence_charge(is1)
       
       !IZ2=ZVALFIS(IS2)
-      IZ2=get_valence_charge(species(is2))
+      IZ2=get_valence_charge(is2)
 
       Z1=0.0_DP
       Z2=0.0_DP
@@ -167,12 +167,12 @@
          R=IR*DELT
          RX(1)=R
              
-         if (.not. is_floating(species(is1))) &
-              call get_value_pseudo_local_charge(species(is1),rx,ch1,grch)
+         if (.not. is_floating(is1)) &
+              call get_value_pseudo_local_charge(is1,rx,ch1,grch)
           !CALL PSCH(IS1,RX,CH1,GRCH)
 
-         if (.not. is_floating(species(is2))) &
-              call get_value_pseudo_local_charge(species(is2),rx,ch2,grch)
+         if (.not. is_floating(is2)) &
+              call get_value_pseudo_local_charge(is2,rx,ch2,grch)
          !CALL PSCH(IS2,RX,CH2,GRCH)
 
          CH(IR,1)=-CH1

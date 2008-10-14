@@ -14,7 +14,7 @@ module basis_io
   !     ASCII or NetCDF files.
   !
   !     Alberto Garcia, 2000, 2001
-  !
+  !     E. Anglada 2008
   use chemical
   use sys, only: die
   use precision
@@ -32,8 +32,6 @@ module basis_io
   public :: dump_basis_xml
   public :: dump_basis_netcdf, read_basis_netcdf
   public :: read_ion_ascii
-
-  type(species_info_t), pointer        :: spp
 
   private
 
@@ -291,17 +289,16 @@ subroutine read_basis_ascii
   allocate(species(nspecies))
 
   do is = 1, nspecies
-     spp => species(is)
-     call set_label(spp, species_label(is))
-     call set_read_from_file(spp, .true.)
-     call read_ion_ascii(spp)
+     call set_label(is, species_label(is))
+     call set_read_from_file(is, .true.)
+     call read_ion_ascii(is)
   enddo
 
 end subroutine read_basis_ascii
 !
 !----------------------
-subroutine read_ion_ascii(spp)
-  type(species_info_t), pointer  :: spp
+subroutine read_ion_ascii(is)
+  integer, intent(in) :: is
 
   character(len=20) filename
   integer:: i, l, lun, ispol,izeta, n
@@ -309,56 +306,56 @@ subroutine read_ion_ascii(spp)
   type(rad_func_t) :: rad_func
   type(hilbert_vector_t) :: orb
 
-  write(filename,'(a,a)') trim(get_label(spp)), ".ion"
+  write(filename,'(a,a)') trim(get_label(is)), ".ion"
   call io_assign(lun)
   open(lun,file=filename,status='old',form='formatted')
   rewind(lun)
 
-  call read_header(spp,lun)
+  call read_header(is,lun)
   read(lun,*) 
 
-  do i=1,get_number_of_orbs(spp)
+  do i=1,get_number_of_orbs(is)
      read(lun,*) l, n, izeta,pop,ispol
      call rad_read_ascii(rad_func,lun)
      call init_vector(orb,rad_func,n,l,izeta,pop,0.0_dp,ispol.eq.1)
-     call set_orb(spp,orb,i)
+     call set_orb(is,orb,i)
      call destroy_vector(orb)
      call rad_dealloc(rad_func)
   enddo
 
-  call set_orbs_deg(spp) 
+  call set_orbs_deg(is) 
 
   ! KBs
 
-  do i=1,get_number_of_orbs(spp)
+  do i=1,get_number_of_orbs(is)
      read(lun,*) l, n, ekb
      call rad_read_ascii(rad_func,lun)
      call init_vector(orb,rad_func,n,l,1,0.0_dp,ekb,.false.)
-     call set_orb(spp,orb,i)
+     call set_orb(is,orb,i)
      call destroy_vector(orb)
      call rad_dealloc(rad_func)
   enddo
 
-  call set_kb_projs_deg(spp)
+  call set_kb_projs_deg(is)
   !
   !Vna
   read(lun,*)
   call rad_read_ascii(rad_func,lun)
-  call set_neutral_atom_potential(spp,rad_func)
+  call set_neutral_atom_potential(is,rad_func)
   call rad_dealloc(rad_func)
 
   !
   !Chlocal
   read(lun,*)
   call rad_read_ascii(rad_func,lun)
-  call set_pseudo_local_charge(spp,rad_func)
+  call set_pseudo_local_charge(is,rad_func)
   call rad_dealloc(rad_func)
 
   !
   !Core charge
   read(lun,*,end=9999)
   call rad_read_ascii(rad_func,lun)
-  call set_core_charge(spp,rad_func)
+  call set_core_charge(is,rad_func)
   call rad_dealloc(rad_func)
 
 9999 continue
@@ -366,9 +363,9 @@ subroutine read_ion_ascii(spp)
 
 CONTAINS
 
-  subroutine read_header(p,unit)
-    type(species_info_t), pointer :: p
-    integer, intent(in)         :: unit
+  subroutine read_header(is,unit)
+    integer, intent(in)   :: is
+    integer, intent(in)   :: unit
 
     character(len=78) :: line
     character(len=symbol_length) :: symbol
@@ -392,17 +389,17 @@ CONTAINS
     read(unit,*) lmax_basis, norbs
     read(unit,*) lmax_projs, nkbs
     
-    call set_symbol(p,symbol)
-    call set_label(p,label)
-    call set_atomic_number(p,z)
-    call set_valence_charge(p,zval)
-    call set_mass(p,mass)
-    call set_self_energy(p,self_energy)
-    call set_lmax_orbs(p,lmax_basis)
-    call set_lmax_kb_proj(p,lmax_projs)
+    call set_symbol(is,symbol)
+    call set_label(is,label)
+    call set_atomic_number(is,z)
+    call set_valence_charge(is,zval)
+    call set_mass(is,mass)
+    call set_self_energy(is,self_energy)
+    call set_lmax_orbs(is,lmax_basis)
+    call set_lmax_kb_proj(is,lmax_projs)
 
-    call init_orbs(p,norbs)
-    call init_kb_proj(p,nkbs)
+    call init_orbs(is,norbs)
+    call init_kb_proj(is,nkbs)
 
   end subroutine read_header
 
@@ -658,17 +655,15 @@ end subroutine dump_basis_ascii
 subroutine dump_ion_ascii(is)
   integer, intent(in)      :: is
 
-  type(species_info_t), pointer  ::   spp
   character*40 filename
   character*30 fileid
   integer i, lun, lun2, n_series
   type(hilbert_vector_t) :: vector
   type(rad_func_t) :: rfunc
 
-  spp => species(is)
-  if (get_read_from_file(spp)) return !! Do not dump
+  if (get_read_from_file(is)) return !! Do not dump
 
-  write(filename,'(a,a)') trim(get_label(spp)), ".ion"
+  write(filename,'(a,a)') trim(get_label(is)), ".ion"
   call io_assign(lun)
   open(lun,file=filename,status='replace',form='formatted')
 
@@ -676,83 +671,83 @@ subroutine dump_ion_ascii(is)
   call write_basis_specs(lun,is)
   call pseudo_header_print(lun,basis_parameters(is)%pseudopotential)
   write(lun,'(a)') '</preamble>'
-  call write_header(spp,lun)
+  call write_header(is,lun)
   write(lun,'(a)') "# PAOs:__________________________"
   n_series = 0
-  do i=1,get_number_of_orbs_non_deg(spp)
-     vector = get_orb_v(spp,i)
-     call dump_vector(vector,"orb",trim(get_label(spp)),"ascii",lun)
+  do i=1,get_number_of_orbs_non_deg(is)
+     vector = get_orb_v(is,i)
+     call dump_vector(vector,"orb",trim(get_label(is)),"ascii",lun)
      call destroy_vector(vector)
   enddo
 
   write(lun,'(a)') "# KBs:__________________________"
-  if (has_kbs(spp)) then
+  if (has_kbs(is)) then
      n_series = 0
-     do i=1,get_number_of_kb_non_deg(spp)
-        vector = get_kb_v(spp,i)
-        call dump_vector(vector,"kb",trim(get_label(spp)),"ascii",lun)
+     do i=1,get_number_of_kb_non_deg(is)
+        vector = get_kb_v(is,i)
+        call dump_vector(vector,"kb",trim(get_label(is)),"ascii",lun)
         call destroy_vector(vector)
      enddo
   endif
 
-  if(has_neutral_atom_potential(spp)) then
+  if(has_neutral_atom_potential(is)) then
      write(lun,'(a)') "# Vna:__________________________"
-     write(fileid,'(a,a)') trim(get_label(spp)),"-VNA.dat"
+     write(fileid,'(a,a)') trim(get_label(is)),"-VNA.dat"
      call io_assign(lun2)
      open(unit=lun2,file=fileid,status='replace', form='formatted')
-     write(lun2,'(3a)') "# ",trim(get_label(spp)), " Vna"
-     rfunc=get_neutral_atom_potential(spp)
+     write(lun2,'(3a)') "# ",trim(get_label(is)), " Vna"
+     rfunc=get_neutral_atom_potential(is)
      call rad_dump_ascii(rfunc,lun2,header=.true.)
      call io_close(lun2)
      call rad_dump_ascii(rfunc,lun)
-     write(fileid,'(a,a)') trim(get_label(spp)),"-VNA-fft.dat"
+     write(fileid,'(a,a)') trim(get_label(is)),"-VNA-fft.dat"
      call rad_dump_fft_file(rfunc,fileid)
      call rad_dealloc(rfunc)
   endif
 
-  if (has_pseudo_local_charge(spp))then
+  if (has_pseudo_local_charge(is))then
      write(lun,'(a)') "# Chlocal:__________________________"
-     write(fileid,'(a,a)') trim(get_label(spp)),"-CHLOCAL.dat"
+     write(fileid,'(a,a)') trim(get_label(is)),"-CHLOCAL.dat"
      call io_assign(lun2)
      open(unit=lun2,file=fileid,status='replace', form='formatted')
-     write(lun2,'(3a)') "# ",trim(get_label(spp)), " ChLocal"
-     rfunc = get_pseudo_local_charge(spp)
+     write(lun2,'(3a)') "# ",trim(get_label(is)), " ChLocal"
+     rfunc = get_pseudo_local_charge(is)
      call rad_dump_ascii(rfunc,lun2,header=.true.)
      call io_close(lun2)
      call rad_dump_ascii(rfunc,lun)
      call rad_dealloc(rfunc)
   endif
 
-  if (has_reduced_vlocal(spp))then
+  if (has_reduced_vlocal(is))then
   !
   !        Vlocal does not go to the .ion file
   !
-     write(fileid,'(a,a)') trim(get_label(spp)),"-RED_VLOCAL.dat" 
+     write(fileid,'(a,a)') trim(get_label(is)),"-RED_VLOCAL.dat" 
      call io_assign(lun2)
      open(unit=lun2,file=fileid,status='replace',  form='formatted')
-     write(lun2,'(3a)') "# ",trim(get_label(spp))," Red_Vlocal"
-     rfunc = get_reduced_vlocal(spp)
+     write(lun2,'(3a)') "# ",trim(get_label(is))," Red_Vlocal"
+     rfunc = get_reduced_vlocal(is)
      call rad_dump_ascii(rfunc,lun2,header=.true.)
      call rad_dealloc(rfunc)
      call io_close(lun2)
   endif
 
   !
-  if (has_core_charge(spp)) then
+  if (has_core_charge(is)) then
      write(lun,'(a)') "# Core:__________________________"
-     write(fileid,'(a,a)') trim(get_label(spp)),"-CHCORE.dat"
+     write(fileid,'(a,a)') trim(get_label(is)),"-CHCORE.dat"
      call io_assign(lun2)
      open(unit=lun2,file=fileid,status='replace', form='formatted')
-     write(lun2,'(3a)') "# ",trim(get_label(spp)), " ChCore"
-     rfunc = get_core_charge(spp)
+     write(lun2,'(3a)') "# ",trim(get_label(is)), " ChCore"
+     rfunc = get_core_charge(is)
      call rad_dump_ascii(rfunc,lun2,header=.true.)
      call io_close(lun2)
      call rad_dump_ascii(rfunc,lun)
      !FFT
-     write(fileid,'(a,a)') trim(get_label(spp)),"-CHCORE-fft.dat"
+     write(fileid,'(a,a)') trim(get_label(is)),"-CHCORE-fft.dat"
      call io_assign(lun2)
      !open(unit=lun2,file=fileid,status='replace', form='formatted')
-     !write(lun2,'(3a)') "# ",trim(get_label(spp)), " ChCore"
+     !write(lun2,'(3a)') "# ",trim(get_label(is)), " ChCore"
      !call rad_dump_fft_ascii(rfunc,lun2)
      call rad_dump_fft_file(rfunc,fileid) 
      !call io_close(lun2)
@@ -763,20 +758,19 @@ subroutine dump_ion_ascii(is)
 
 CONTAINS
 
-  subroutine write_header(p,unit)
+  subroutine write_header(is,unit)
+    integer, intent(in) :: is
+    integer, intent(in) :: unit
 
-    type(species_info_t), pointer :: p
-    integer, intent(in)         :: unit
-
-    write(unit,'(a2,28x,a)') get_symbol(p), "# Symbol"
-    write(unit,'(a20,10x,a)') get_label(p), "# Label"
-    write(unit,'(i5,25x,a)') get_atomic_number(p), "# Atomic number"
-    write(unit,'(g22.12,25x,a)') get_valence_charge(p),   "# Valence charge"
-    write(unit,'(g22.12,4x,a)') get_mass(p), "# Mass "
-    write(unit,'(g22.12,4x,a)') get_self_energy(p),      "# Self energy "
-    write(unit,'(2i4,22x,a)') get_lmax_orbs(p), get_number_of_orbs(p), &
+    write(unit,'(a2,28x,a)') get_symbol(is), "# Symbol"
+    write(unit,'(a20,10x,a)') get_label(is), "# Label"
+    write(unit,'(i5,25x,a)') get_atomic_number(is), "# Atomic number"
+    write(unit,'(g22.12,25x,a)') get_valence_charge(is),   "# Valence charge"
+    write(unit,'(g22.12,4x,a)') get_mass(is), "# Mass "
+    write(unit,'(g22.12,4x,a)') get_self_energy(is),      "# Self energy "
+    write(unit,'(2i4,22x,a)') get_lmax_orbs(is), get_number_of_orbs(is), &
          "# Lmax for basis, no. of nl orbitals "
-    write(unit,'(2i4,22x,a)') get_lmax_kb_proj(p),get_number_of_kb_projs(p),&
+    write(unit,'(2i4,22x,a)') get_lmax_kb_proj(is),get_number_of_kb_projs(is),&
          "# Lmax for projectors, no. of nl KB projectors "
 
   end subroutine write_header
@@ -797,30 +791,29 @@ subroutine dump_ion_xml(is)
 
   integer, intent(in)      :: is
 
-  type(hilbert_vector_t)         :: vector
-  type(species_info_t), pointer  :: spp
-  type(rad_func_t)               :: rfunc
+  type(hilbert_vector_t)   :: vector
+  type(rad_func_t)         :: rfunc
   character*40 filename
   integer i, lun
 
-  spp => species(is)
-  if (get_read_from_file(spp)) return    !! Do not dump
 
-  write(filename,'(a,a)') trim(get_label(spp)), ".ion.xml"
+  if (get_read_from_file(is)) return    !! Do not dump
+
+  write(filename,'(a,a)') trim(get_label(is)), ".ion.xml"
   call io_assign(lun)
   open(lun,file=filename,status='replace',form='formatted')
 
   write(lun,'(a)') '<ion version="0.1">'
-  call xml_dump_element(lun,'symbol',str(get_symbol(spp)))
-  call xml_dump_element(lun,'label',str(get_label(spp)))
-  call xml_dump_element(lun,'z',str(get_atomic_number(spp)))
-  call xml_dump_element(lun,'valence',str(get_valence_charge(spp)))
-  call xml_dump_element(lun,'mass',str(get_mass(spp)))
-  call xml_dump_element(lun,'self_energy',str(get_self_energy(spp)))
-  call xml_dump_element(lun,'lmax_basis',str(get_lmax_orbs(spp)))
-  call xml_dump_element(lun,'norbs_nl',str(get_number_of_orbs(spp)))
-  call xml_dump_element(lun,'lmax_projs',str(get_lmax_kb_proj(spp))) 
-  call xml_dump_element(lun,'nprojs_nl',str(get_number_of_kb_projs(spp)))
+  call xml_dump_element(lun,'symbol',str(get_symbol(is)))
+  call xml_dump_element(lun,'label',str(get_label(is)))
+  call xml_dump_element(lun,'z',str(get_atomic_number(is)))
+  call xml_dump_element(lun,'valence',str(get_valence_charge(is)))
+  call xml_dump_element(lun,'mass',str(get_mass(is)))
+  call xml_dump_element(lun,'self_energy',str(get_self_energy(is)))
+  call xml_dump_element(lun,'lmax_basis',str(get_lmax_orbs(is)))
+  call xml_dump_element(lun,'norbs_nl',str(get_number_of_orbs(is)))
+  call xml_dump_element(lun,'lmax_projs',str(get_lmax_kb_proj(is))) 
+  call xml_dump_element(lun,'nprojs_nl',str(get_number_of_kb_projs(is)))
 
   write(lun,'(a)') '<preamble>'
   call write_basis_specs(lun,is)
@@ -828,18 +821,18 @@ subroutine dump_ion_xml(is)
   write(lun,'(a)') '</preamble>'
 
   write(lun,'(a)') "<paos>"
-  do i=1,get_number_of_orbs_non_deg(spp)
-     vector = get_orb_v(spp,i)
-     call dump_vector(vector,"orb",trim(get_label(spp)),"xml",lun)
+  do i=1,get_number_of_orbs_non_deg(is)
+     vector = get_orb_v(is,i)
+     call dump_vector(vector,"orb",trim(get_label(is)),"xml",lun)
      call destroy_vector(vector)
   enddo
   write(lun,'(a)') "</paos>"
 
   write(lun,'(a)') "<kbs>"
-  if(has_kbs(spp))then
-     do i=1,get_number_of_kb_non_deg(spp)
-        vector=get_kb_v(spp,i)
-        call dump_vector(vector,"kb",trim(get_label(spp)),"xml",lun)
+  if(has_kbs(is))then
+     do i=1,get_number_of_kb_non_deg(is)
+        vector=get_kb_v(is,i)
+        call dump_vector(vector,"kb",trim(get_label(is)),"xml",lun)
         call destroy_vector(vector)
      enddo
   else
@@ -848,16 +841,16 @@ subroutine dump_ion_xml(is)
   write(lun,'(a)') "</kbs>"
 
   write(lun,'(a)') "<vna>"
-  if (has_neutral_atom_potential(spp)) then
-     rfunc=get_neutral_atom_potential(spp)
+  if (has_neutral_atom_potential(is)) then
+     rfunc=get_neutral_atom_potential(is)
      call rad_dump_xml(rfunc,lun)
      call rad_dealloc(rfunc)
   endif
   write(lun,'(a)') "</vna>"
 
   write(lun,'(a)') "<chlocal>"
-  if (has_pseudo_local_charge(spp)) then
-     rfunc=get_pseudo_local_charge(spp)
+  if (has_pseudo_local_charge(is)) then
+     rfunc=get_pseudo_local_charge(is)
      call rad_dump_xml(rfunc,lun)
      call rad_dealloc(rfunc)
   else
@@ -866,16 +859,16 @@ subroutine dump_ion_xml(is)
   write(lun,'(a)') "</chlocal>"
 
   write(lun,'(a)') "<reduced_vlocal>"
-  if(has_reduced_vlocal(spp)) then
-     rfunc=get_reduced_vlocal(spp)
+  if(has_reduced_vlocal(is)) then
+     rfunc=get_reduced_vlocal(is)
      call rad_dump_xml(rfunc,lun)
      call rad_dealloc(rfunc)
   endif
   write(lun,'(a)') "</reduced_vlocal>"
 
-  if (has_core_charge(spp)) then
+  if (has_core_charge(is)) then
      write(lun,'(a)') "<core>"
-     rfunc=get_core_charge(spp)
+     rfunc=get_core_charge(is)
      call rad_dump_xml(rfunc,lun)
      call rad_dealloc(rfunc)
      write(lun,'(a)') "</core>"

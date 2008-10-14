@@ -14,7 +14,7 @@ module pao_util
   use atom_generation_types, only:basis_def_t,basis_parameters,shell_t,lshell_t,energies_t
   use radial
   use m_recipes, only: polint
-  use atom_types, only: species_info_t,species,get_lmax_orbs 
+  use atom_types, only: get_lmax_orbs 
   implicit none
   
   character(len=1)     :: sym(0:4) = (/ 's','p','d','f','g' /)
@@ -164,19 +164,17 @@ module pao_util
     integer, intent(in) :: isp
     integer             :: norbs
 
-    type(species_info_t),pointer :: spp      !Pointer to a specie.
     integer             :: nsm,l
 
     type(lshell_t),    pointer :: lshell
     type(shell_t),     pointer :: shell
     type(basis_def_t), pointer :: basp     !Parameters corresponding to this basis set.
 
-    spp => species(isp)
     basp => basis_parameters(isp)
 
     !Find total number of orbs, including degeneracy
     norbs=0
-    do l=0, get_lmax_orbs(spp)
+    do l=0, get_lmax_orbs(isp)
        lshell => basp%lshell(l)
        do nsm=1,lshell%nn
           shell => lshell%shell(nsm)
@@ -200,11 +198,8 @@ module pao_util
     type(pseudopotential_t),pointer :: vps
     integer :: l,nsm,izeta
     real(dp) :: ch_temp,pop
-    type(species_info_t), pointer   :: spp
     type(basis_def_t),  pointer     :: basp
     
-
-    spp => species(is)
     basp=>basis_parameters(is)
     vps => basis_parameters(is)%pseudopotential
 
@@ -215,7 +210,7 @@ module pao_util
 
     chval=0.0_dp
     rcocc=0.0_dp
-    do l= 0,get_lmax_orbs(spp)
+    do l= 0,get_lmax_orbs(is)
        lshell => basp%lshell(l)
 
        do nsm=1,lshell%nn

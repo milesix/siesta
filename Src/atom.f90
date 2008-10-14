@@ -24,10 +24,10 @@ module atom
   use radial
   
   !Main module where all the atomic info is stored.
-  use atom_types, only : get_atomic_number, get_symbol,species_info_t, &
-       species,nspecies, symbol_length, set_no_reduced_vlocal, set_no_kb, &
+  use atom_types, only : get_atomic_number, get_symbol, &
+       nspecies, symbol_length, set_no_reduced_vlocal, set_no_kb, &
        set_no_neutral_atom_potential, has_kbs, set_floating, &
-       set_has_core_charge, filter_orbs
+       set_has_core_charge, filter_orbs, set_number_of_species
   
   !Auxiliary module where all the intermediate info is stored.
   use atom_generation_types, only : basis_def_t, basis_parameters,lshell_t, shell_t, &
@@ -76,7 +76,7 @@ CONTAINS
    
 
     if (basis_parameters(isp)%bessel) then
-       call set_has_core_charge(species(isp), .false.)
+       call set_has_core_charge(isp, .false.)
        call bessel(isp)
     elseif (basis_parameters(isp)%floating) then
        call species_pseudopotential_init(isp)
@@ -210,7 +210,8 @@ CONTAINS
        !     Note : In this section, the number of species is nspecies
        call read_basis_specs()
 
-       allocate(species(1:nspecies))
+       call set_number_of_species(nspecies)
+       
 
        do is = 1,nspecies
           call write_basis_specs(6,is)
@@ -370,7 +371,6 @@ CONTAINS
     !Internal vars
     real(dp)                         :: charge 
     type(pseudopotential_t),pointer  :: vps => Null()
-    type(species_info_t), pointer    :: spp => Null()
     type(basis_def_t), pointer       :: basp => Null()
     integer                          :: irel
     type(rad_func_t), pointer        :: chcore => Null()
@@ -380,14 +380,13 @@ CONTAINS
 
 
     basp => basis_parameters(isp)
-    spp => species(isp)
     vps => basp%pseudopotential
 
 
-    if (abs(get_atomic_number(spp)-vps%gen_zval).gt.1.0d-3) then 
+    if (abs(get_atomic_number(isp)-vps%gen_zval).gt.1.0d-3) then 
        write(6,'(/,a,/,a,f5.2)') &
             'ATOM: Pseudopotential generated from an ionic configuration',&
-            'ATOM: with net charge', get_valence_charge(spp)-vps%gen_zval
+            'ATOM: with net charge', get_valence_charge(isp)-vps%gen_zval
     endif
 
     !
@@ -418,7 +417,7 @@ CONTAINS
          (abs(charge-vps%zval+vps%gen_zval) .lt. 1.0d-3) ) then   
        ! We can't overwrite basp%ionic_charge because it may be used 
        ! if there are semicore states 
-       charge = get_valence_charge(spp) - vps%gen_zval
+       charge = get_valence_charge(isp) - vps%gen_zval
     endif
 
     !    Relativistic pseudo
@@ -442,7 +441,7 @@ CONTAINS
     !    to the charge of a neutral atom.
 
     
-    rescale_charge = vps%gen_zval/get_valence_charge(spp)
+    rescale_charge = vps%gen_zval/get_valence_charge(isp)
 
     if(basp%pseudopotential%nicore.ne.'nc ') then
        chcore => vps%chcore
@@ -468,7 +467,7 @@ CONTAINS
     call rad_copy(vps%rho_val,vps%rho_val_scaled)
 
 
-    rescale_charge = (get_valence_charge(spp)-charge)/vps%gen_zval
+    rescale_charge = (get_valence_charge(isp)-charge)/vps%gen_zval
 
     if(basp%pseudopotential%nicore.ne.'nc ') then
       
@@ -521,30 +520,30 @@ CONTAINS
 
     iz = basp%z
     sym = symbol(abs(iz))
-    call set_atomic_number(species(isp),basp%z)
-    call set_symbol(species(isp),sym)
-    call set_label(species(isp),basp%label)
-    call set_mass(species(isp),basp%mass)
-    call set_valence_charge(species(isp),basp%pseudopotential%zval)
-    call set_read_from_file(species(isp),.false.)
-    call set_lmax_orbs(species(isp),basp%lmxo)
+    call set_atomic_number(isp,basp%z)
+    call set_symbol(isp,sym)
+    call set_label(isp,basp%label)
+    call set_mass(isp,basp%mass)
+    call set_valence_charge(isp,basp%pseudopotential%zval)
+    call set_read_from_file(isp,.false.)
+    call set_lmax_orbs(isp,basp%lmxo)
 
     if (basp%floating) then  
-       write(6,'(3a,i4,a,a)') 'ATOM: Called for ', get_label(species(isp)), '  (Z =',iz,')',' ( Floating basis ) '
+       write(6,'(3a,i4,a,a)') 'ATOM: Called for ', get_label(isp), '  (Z =',iz,')',' ( Floating basis ) '
 
     elseif (basp%bessel) then
        write(6,'(a,i4,a)')'ATOM: Called for Z=',iz,'( Floating Bessel functions)'  
     elseif (basp%synthetic) then
-       write(6,'(3a,i4,a)') 'ATOM: Called for (synthetic) ',  get_label(species(isp)),'  (Z =', iz,')'
+       write(6,'(3a,i4,a)') 'ATOM: Called for (synthetic) ',  get_label(isp),'  (Z =', iz,')'
     else
-        write(6,'(3a,i4,a)') 'ATOM: Called for ', get_label(species(isp)), '  (Z =',iz,')' 
+        write(6,'(3a,i4,a)') 'ATOM: Called for ', get_label(isp), '  (Z =',iz,')' 
     endif
 
     if (floating) then
-       call set_floating(species(isp),.true.)
-       call set_no_reduced_vlocal(species(isp))
-       call set_no_kb(species(isp))
-       call set_no_neutral_atom_potential(species(isp))
+       call set_floating(isp,.true.)
+       call set_no_reduced_vlocal(isp)
+       call set_no_kb(isp)
+       call set_no_neutral_atom_potential(isp)
     endif
   end subroutine species_init
 

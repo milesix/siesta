@@ -1025,7 +1025,7 @@ C ----------------------------------------------------------------------
  
       use precision,     only : dp, grid_p
       use atmfuncs, only: rcut, psch
-      use atom_types, only : species, get_local_charge_cutoff
+      use atom_types, only : get_local_charge_cutoff
       use radial, only : rad_cutoff
       use mesh,     only: dxa, idop, indexp, ipa, mop, nsp, xdop, xdsp
  
@@ -1055,7 +1055,7 @@ C Initialise array to zero
         iua = indxua(ia)
         is = isa(ia)
         
-        ra = get_local_charge_cutoff(species(is))
+        ra = get_local_charge_cutoff(is)
  
 C Loop over mesh points inside rmax
         do iop = 1,mop

@@ -27,10 +27,6 @@ module atmfuncs
 
   private
 
-  !
-  type(species_info_t), pointer        :: spp
-  !
-  
   integer, parameter               :: max_l = 5
   integer, parameter               :: max_ilm = (max_l+1)*(max_l+1)
 
@@ -90,13 +86,12 @@ contains
     logical :: within(maxphi)
 
     call chk('all_phi',is)
-    spp => species(is)
 
     !     Find number of orbitals
     if (func==orb_f) then
-       nphi=get_number_of_orbs(spp)
+       nphi=get_number_of_orbs(is)
     elseif (func==kbpj_f) then
-       nphi=get_number_of_kb_projs(spp)
+       nphi=get_number_of_kb_projs(is)
     else
        call die("all_phi: Please use phiatm to get Vna...")
     endif
@@ -105,16 +100,16 @@ contains
 
     if (func==orb_f) then
        do i = 1, nphi
-          l = get_orb_l(spp,i)
-          m = get_orb_m(spp,i)
+          l = get_orb_l(is,i)
+          m = get_orb_m(is,i)
           ilm(i) = l*(l+1)+m+1
-          rmax(i) = get_orb_cutoff(spp,i)
+          rmax(i) = get_orb_cutoff(is,i)
        enddo
     elseif(func==kbpj_f) then
        do i = 1, nphi
-          rmax(i) =get_kb_proj_cutoff(spp,i)
-          l = get_kb_proj_l(spp,i)
-          m = get_kb_proj_m(spp,i)
+          rmax(i) =get_kb_proj_cutoff(is,i)
+          l = get_kb_proj_l(is,i)
+          m = get_kb_proj_m(is,i)
           ilm(i) = l*(l+1)+m+1
        enddo
     else
@@ -158,9 +153,9 @@ contains
        !       Find radial part
 
        if (func==orb_f) then
-          call get_value_of_orb(spp,i,r,phir,grphi(:,i))          
+          call get_value_of_orb(is,i,r,phir,grphi(:,i))          
        elseif(func==kbpj_f) then 
-          call get_value_of_kb_proj(spp,i,r,phir,grphi(:,i))
+          call get_value_of_kb_proj(is,i,r,phir,grphi(:,i))
        else
           call die("all_phi: unknown function type")
        endif
@@ -186,9 +181,9 @@ contains
     ! ground state configuration.
 
     call chk('atmpopfio',is)
-    if ( (io .gt. get_number_of_orbs(species(is))) .or. (io .lt. 1))   call die("atmpopfio: Wrong io")
+    if ( (io .gt. get_number_of_orbs(is)) .or. (io .lt. 1))   call die("atmpopfio: Wrong io")
 
-    atmpopfio = get_orb_pop(species(is),io)
+    atmpopfio = get_orb_pop(is,io)
   end function atmpopfio
 
   !-------------------------------------------------------------------------
@@ -211,7 +206,7 @@ contains
 
     if (floating(is)) return
     
-    call get_value_of_core_charge(species(is), r,ch,grch)
+    call get_value_of_core_charge(is, r,ch,grch)
 
   end subroutine chcore_sub
   
@@ -238,8 +233,6 @@ contains
 
     real(dp):: r(3), val, grphi, gr(3),delta,rm,rc
     integer ::is1, is2, is,npoints=50,i,ir
-    !type(rad_func_t), pointer :: func
-    type(species_info_t), pointer :: spp
     character(len=40) :: filename
     real(dp) :: energy,dedr
 
@@ -250,8 +243,8 @@ contains
     do is1=1,nspecies
        do is2=1,nspecies
           if (.not. floating(is2) .and. .not. floating(is1))then
-             rc=2.0_dp*max(get_vna_cutoff(species(is1)), &
-                  get_vna_cutoff(species(is2)))
+             rc=2.0_dp*max(get_vna_cutoff(is1), &
+                  get_vna_cutoff(is2))
              delta = rc/dble(npoints)
              rm=0.0_dp
              write(88,*) "elec_corr: is1,is2",is1,is2
@@ -269,9 +262,9 @@ contains
     !---------------------------------------
 
     do is=1,nspecies
-       print *, "Specie=",is,"label=",trim(get_label(spp))
-       spp => species(is)
-       write(filename,'(a,a)') trim(get_label(spp)),"-atomcheck.dat"
+       print *, "Specie=",is,"label=",trim(get_label(is))
+      
+       write(filename,'(a,a)') trim(get_label(is)),"-atomcheck.dat"
        open(unit=88,file=filename,status="replace")
 
        write(88,*) "Label=",labelfis(is)
@@ -302,7 +295,7 @@ contains
 
        !---------------------------------------
        write(88,*) 'Vna -----------------'
-       if (has_neutral_atom_potential(spp)) then
+       if (has_neutral_atom_potential(is)) then
           rc = rcut(is,vna_f,0)
           delta=rc/dble(npoints)
           write(88,*) 'Species_info ',is, ' rcut Vna: ', rc
@@ -391,10 +384,10 @@ contains
 
 
     call chk('cnfigfio',is)
-    if (io .gt. get_number_of_orbs(species(is)) .or. (io .lt. 1))  &
+    if (io .gt. get_number_of_orbs(is) .or. (io .lt. 1))  &
          call die("cnfigfio: Wrong io")
 
-    cnfigfio = get_orb_n(species(is),io)
+    cnfigfio = get_orb_n(is,io)
 
   end function cnfigfio
   
@@ -415,10 +408,9 @@ contains
 
     integer :: ik
 
-    spp => species(is)
     ik = abs(io)
-    if ((ik.gt. get_number_of_kb_projs(spp)) .or. (ik .lt. 1) )  call die("epskb: No such projector")
-    epskb = get_kb_proj_energy(spp, ik) 
+    if ((ik.gt. get_number_of_kb_projs(is)) .or. (ik .lt. 1) )  call die("epskb: No such projector")
+    epskb = get_kb_proj_energy(is, ik) 
   end function epskb
 
   !--------------------------------------------------------------------
@@ -440,7 +432,7 @@ contains
 
     call chk('izofis',is)
 
-    izofis = get_atomic_number(species(is))
+    izofis = get_atomic_number(is)
 
   end function izofis
 
@@ -451,7 +443,7 @@ contains
     integer, intent(in) :: is            ! Species index
 
     call chk('labelfis',is)
-    labelfis= get_label(species(is))
+    labelfis= get_label(is)
   end function labelfis
 
   !-------------------------------------------------------------------
@@ -461,7 +453,7 @@ contains
     integer, intent(in) :: is            ! Species index
 
     call chk('lmxkbfis',is)
-    lmxkbfis= get_lmax_kb_proj(species(is))
+    lmxkbfis= get_lmax_kb_proj(is)
   end function lmxkbfis
   
   !--------------------------------------------------------------------
@@ -484,14 +476,14 @@ contains
     !   INTEGER LOFIO  : Quantum number L of orbital or KB projector
     call chk('lofio',is)
 
-    spp => species(is)
+   
 
     if (func==orb_f) then
-       if (io.gt. get_number_of_orbs(spp)) call die("lofio: No such orbital")
-       lofio = get_orb_l(spp,io)
+       if (io.gt. get_number_of_orbs(is)) call die("lofio: No such orbital")
+       lofio = get_orb_l(is,io)
     else if (func==kbpj_f) then
-       if (io.gt. get_number_of_kb_projs(spp)) call die("lofio: No such projector")
-       lofio = get_kb_proj_l(spp,io)
+       if (io.gt. get_number_of_kb_projs(is)) call die("lofio: No such projector")
+       lofio = get_kb_proj_l(is,io)
     else
        lofio = 0
     endif
@@ -506,7 +498,7 @@ contains
 
     call chk('lomaxfis',is)
 
-    lomaxfis = get_lmax_orbs(species(is)) 
+    lomaxfis = get_lmax_orbs(is) 
   end function lomaxfis
 
   !--------------------------------------------------------------------
@@ -516,7 +508,7 @@ contains
     integer, intent(in) :: is            ! Species index
 
     call chk('massfis',is)
-    massfis=get_mass(species(is))
+    massfis=get_mass(is)
   end function massfis
 
   !--------------------------------------------------------------------
@@ -537,14 +529,14 @@ contains
 
     call chk('mofio',is)
 
-    spp => species(is)
+   
 
     if (func == orb_f) then
-       if (io.gt. get_number_of_orbs(spp))  call die("Mofio: No such orbital")
-       mofio = get_orb_m(spp,io)
+       if (io.gt. get_number_of_orbs(is))  call die("Mofio: No such orbital")
+       mofio = get_orb_m(is,io)
     else if (func == kbpj_f) then
-       if (io.gt. get_number_of_kb_projs(spp))  call die("Mofio: No such projector")
-       mofio = get_kb_proj_m(spp,io)
+       if (io.gt. get_number_of_kb_projs(is))  call die("Mofio: No such projector")
+       mofio = get_kb_proj_m(is,io)
     else
        mofio = 0
     endif
@@ -558,7 +550,7 @@ contains
     integer, intent(in) :: is            ! Species index
 
     call chk('nkbfis',is)
-    nkbfis = get_number_of_kb_projs(species(is))
+    nkbfis = get_number_of_kb_projs(is)
   end function nkbfis
   
   !--------------------------------------------------------------------
@@ -575,11 +567,9 @@ contains
 
     call chk('nkbl_func',is)
 
-    spp => species(is)
-
     nkbl_func = 0
-    do i = 1, get_number_of_kb_projs(spp)
-       if (get_kb_proj_l(spp,i).eq.l) nkbl_func = nkbl_func+1
+    do i = 1, get_number_of_kb_projs(is)
+       if (get_kb_proj_l(is,i).eq.l) nkbl_func = nkbl_func+1
     enddo
 
   end function nkbl_func
@@ -591,7 +581,7 @@ contains
     integer, intent(in) :: is            ! Species index
 
     call chk('nofis',is)
-    nofis = get_number_of_orbs(species(is))
+    nofis = get_number_of_orbs(is)
   end function nofis
 
   !--------------------------------------------------------------------
@@ -609,12 +599,12 @@ contains
     integer i
 
     call chk('nztfl',is)
-    spp => species(is)
+   
 
     nztfl = 0
 
-    do i = 1, get_number_of_orbs(spp)
-       if (get_orb_l(spp,i).eq.l) nztfl = nztfl+1
+    do i = 1, get_number_of_orbs(is)
+       if (get_orb_l(is,i).eq.l) nztfl = nztfl+1
     enddo
 
   end function nztfl
@@ -645,31 +635,32 @@ contains
     ! 6) Returns exactly zero when |R| > RCUT(IS,IO)
     ! 7) PHIATM with IO = 0 is strictly equivalent to VNA_SUB
 
-    real(dp) rmod, phir,cutoff
-    real(dp) rly(max_ilm), grly(3,max_ilm)
-    integer i, l, m, ilm
+    real(dp) :: rmod, phir,cutoff=0.0_dp
+    real(dp) :: rly(max_ilm), grly(3,max_ilm)
+    integer  :: i, l, m, ilm
 
+    m = -1000
     phi=0.0_dp
     grphi(1:3)=0.0_dp
 
-    spp => species(is)
+   
     if (func==orb_f) then
-       if (io.gt. get_number_of_orbs(spp))  call die("phiatm: No such orbital")
-       call get_value_of_orb(spp,io,r,phir,grphi)
-       cutoff = get_orb_cutoff(spp,io)
-       l = get_orb_l(spp,io)
-       m = get_orb_m(spp,io)
+       if (io.gt. get_number_of_orbs(is))  call die("phiatm: No such orbital")
+       call get_value_of_orb(is,io,r,phir,grphi)
+       cutoff = get_orb_cutoff(is,io)
+       l = get_orb_l(is,io)
+       m = get_orb_m(is,io)
     else if (func==kbpj_f) then
        if (floating(is)) return
-       if (io.gt. get_number_of_kb_projs(spp))  call die("phiatm: No such projector")
-       call get_value_of_kb_proj(spp,io,r,phir,grphi)
-       cutoff = get_kb_proj_cutoff(spp,io)
-       l = get_kb_proj_l(spp,io)
-       m = get_kb_proj_m(spp,io)
+       if (io.gt. get_number_of_kb_projs(is))  call die("phiatm: No such projector")
+       call get_value_of_kb_proj(is,io,r,phir,grphi)
+       cutoff = get_kb_proj_cutoff(is,io)
+       l = get_kb_proj_l(is,io)
+       m = get_kb_proj_m(is,io)
     else if (func==vna_f)then
        if (floating(is)) return
-       call get_value_vna(spp,r,phir,grphi)
-       cutoff = get_vna_cutoff(spp)
+       call get_value_vna(is,r,phir,grphi)
+       cutoff = get_vna_cutoff(is)
        l = 0
        m = 0
     else
@@ -703,11 +694,11 @@ contains
 
     ! If true, the orbital IO is a perturbative polarization orbital
 
-    spp => species(is)
+   
 
-    if ( (io .gt. get_number_of_orbs(spp)) .or. (io .le. 0))   call die("pol: Wrong io")
-    spp => species(is)
-    pol = get_orb_pol(spp,io)
+    if ( (io .gt. get_number_of_orbs(is)) .or. (io .le. 0))   call die("pol: Wrong io")
+   
+    pol = get_orb_pol(is,io)
 
   end function pol
 
@@ -731,7 +722,7 @@ contains
 
     if (floating(is)) return
 
-    call get_value_pseudo_local_charge(species(is), r,ch,grch)
+    call get_value_pseudo_local_charge(is, r,ch,grch)
   end subroutine psch
 
   !----------------------------------------------------------------------
@@ -783,8 +774,8 @@ contains
     !  Distances in Bohr
 
     call chk('rcore',is)
-    if(has_core_charge(species(is)))then
-       rcore = get_rcore(species(is))
+    if(has_core_charge(is))then
+       rcore = get_rcore(is)
     else
        rcore = 0.0_dp
     endif
@@ -804,15 +795,15 @@ contains
 
     call chk('rcut',is)
     rcut = 0.0_dp
-    spp => species(is)
+   
     if (func==orb_f) then
-       if (io.gt. get_number_of_orbs(spp))  call die("No such orbital")
-       rcut = get_orb_cutoff(spp,io)
+       if (io.gt. get_number_of_orbs(is))  call die("No such orbital")
+       rcut = get_orb_cutoff(is,io)
     else if (func==kbpj_f) then
-       if (io.gt. get_number_of_kb_projs(spp))  call die("No such projector")
-       rcut = get_kb_proj_cutoff(spp,io)
+       if (io.gt. get_number_of_kb_projs(is))  call die("No such projector")
+       rcut = get_kb_proj_cutoff(is,io)
     else if (func==vna_f) then
-       rcut = get_vna_cutoff(spp)
+       rcut = get_vna_cutoff(is)
     else       
        call die("rcut: unknown function")
     endif
@@ -849,26 +840,27 @@ contains
 
     real(dp) :: phir,cutoff
     integer  :: l, m
-
+    l = -1
+    m = -1000
     phi = 0.0_dp
     dphidr = 0._dp
 
-    spp => species(is)
+   
     if (func==orb_f) then
-       if (io.gt. get_number_of_orbs(spp))  call die("rphiatm: No such orbital")
-       call get_rvalue_of_orb(spp,io,r,phir,dphidr)
-       cutoff = get_orb_cutoff(spp,io)
-       l = get_orb_l(spp,io)
-       m = get_orb_m(spp,io)
+       if (io.gt. get_number_of_orbs(is))  call die("rphiatm: No such orbital")
+       call get_rvalue_of_orb(is,io,r,phir,dphidr)
+       cutoff = get_orb_cutoff(is,io)
+       l = get_orb_l(is,io)
+       m = get_orb_m(is,io)
     else if (func==kbpj_f) then
        if (floating(is)) return
-       if (io.gt. get_number_of_kb_projs(spp))  call die("rphiatm: No such projector")
-       call get_rvalue_of_kb_proj(spp,io,r,phir,dphidr)
-       l = get_kb_proj_l(spp,io)
-       m = get_kb_proj_m(spp,io)
+       if (io.gt. get_number_of_kb_projs(is))  call die("rphiatm: No such projector")
+       call get_rvalue_of_kb_proj(is,io,r,phir,dphidr)
+       l = get_kb_proj_l(is,io)
+       m = get_kb_proj_m(is,io)
     else if(func==vna_f) then
        if (floating(is)) return
-       call get_rvalue_na(spp,r,phir,dphidr)
+       call get_rvalue_na(is,r,phir,dphidr)
        l = 0
        m = 0
     else 
@@ -922,11 +914,11 @@ contains
 
     call chk('rcut',is)
 
-    spp => species(is)
+   
     if (func==orb_f) then
-       if (io.gt. get_number_of_orbs(spp))  call die("No such orbital")
+       if (io.gt. get_number_of_orbs(is))  call die("No such orbital")
     else if (func==kbpj_f) then
-       if (io.gt. get_number_of_kb_projs(spp))  call die("No such projector")
+       if (io.gt. get_number_of_kb_projs(is))  call die("No such projector")
     else
        symfio = 's'
     endif
@@ -957,7 +949,7 @@ contains
     real(dp) uion
     integer, intent(in) :: is    ! Species index
     call chk('uion',is)
-    uion = get_self_energy(species(is))
+    uion = get_self_energy(is)
   end function uion
 
   !-------------------------------------------------------------------------
@@ -977,9 +969,9 @@ contains
     v=0.0_dp
     grv(1:3)=0.0_dp
 
-    if (floating(is) .or. .not. has_neutral_atom_potential(species(is))) return
+    if (floating(is) .or. .not. has_neutral_atom_potential(is)) return
 
-    call get_value_vna(species(is),r,v,grv)    
+    call get_value_vna(is,r,v,grv)    
   end subroutine vna_sub
 
   !------------------------------------------------------------------------
@@ -1040,11 +1032,10 @@ contains
    
     call chk('mofio',is)
     zetafio = 0
-    spp => species(is)
 
     if (io.gt.0) then
-       if (io.gt. get_number_of_orbs(spp))  call die("zetafio: No such orbital")
-       zetafio = get_orb_zeta(spp,io)
+       if (io.gt. get_number_of_orbs(is))  call die("zetafio: No such orbital")
+       zetafio = get_orb_zeta(is,io)
     else 
        call die('zetafio only deals with orbitals')
     endif
@@ -1078,7 +1069,7 @@ contains
 
     call chk('zvalfis',is)
 
-    zvalfis= get_valence_charge(species(is))
+    zvalfis= get_valence_charge(is)
   end function zvalfis
 
 

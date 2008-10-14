@@ -15,7 +15,7 @@
       use parallel, only: IOnode
       use  atmfuncs, only: nofis, nkbfis, izofis, massfis,
      $                     rcut, atmpopfio, zvalfis, orb_f,vna_f,kbpj_f
-      use atom_types
+      use atom_types, only: get_number_of_orbs, get_number_of_kb_projs
       use siesta_geom, only: na_u, na_s, xa, isa, xalast
       implicit none
 
@@ -107,8 +107,8 @@ C
       nokb_u = 0
       do ia = 1,na_u
         is = isa(ia)
-        noa  = get_number_of_orbs(species(is))
-        nkba = get_number_of_kb_projs(species(is))
+        noa  = get_number_of_orbs(is)
+        nkba = get_number_of_kb_projs(is)
         no_u = no_u + noa
         nokb_u = nokb_u + nkba
       enddo

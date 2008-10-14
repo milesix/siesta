@@ -10,7 +10,7 @@
 
 module vloc
   use precision
-  use atom_types, only:species, set_pseudo_local_charge, set_reduced_vlocal
+  use atom_types, only:set_pseudo_local_charge, set_reduced_vlocal
   use radial
   use atom_generation_types, only: basis_parameters
   use pseudopotential, only : pseudopotential_t
@@ -117,7 +117,7 @@ contains
          '  4*pi*r*r*local-pseudopot. charge ',Rchloc
 
     !     Fill species(isp)%reduced_vlocal and species(isp)%chlocal
-    call set_pseudo_local_charge(species(isp),chlocal)
+    call set_pseudo_local_charge(isp,chlocal)
     call rad_dealloc(chlocal)
 
     rad_tmp = rad_multiply_by_rl(vps%vlocal,1)
@@ -128,7 +128,7 @@ contains
     write(6,'(2a,f10.5)') 'atom: Maximum radius for' , &
          ' r*vlocal+2*Zval: ', rad_cutoff(reduced_vlocal) 
   
-    call set_reduced_vlocal(species(isp),reduced_vlocal)
+    call set_reduced_vlocal(isp,reduced_vlocal)
     call rad_dealloc(reduced_vlocal)
     call rad_dealloc(rad_tmp)
   end subroutine gen_vlocal

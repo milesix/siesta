@@ -20,10 +20,10 @@ module basis
   use hilbert_vector_collection
   use hilbert_vector_m, only:hilbert_vector_t
   use radial,           only: rad_func_t, rad_copy
-  use atom_types,        only: species_info_t, get_lmax_orbs, set_orbs_deg, &
-       set_lmax_orbs, species, init_orbs, get_atomic_number, set_orb, orbs_kc_max
+  use atom_types,       only: get_lmax_orbs, set_orbs_deg, set_lmax_orbs, &
+        species, init_orbs, get_atomic_number, set_orb, orbs_kc_max
   use pseudopotential,  only:pseudopotential_t
-  use atom_generation_types,      only:basis_def_t,basis_parameters,shell_t,lshell_t,energies_t
+  use atom_generation_types, only:basis_def_t,basis_parameters,shell_t,lshell_t,energies_t
   use sys,              only:die
   use multiple_z,       only: generate_multiple_zeta
   use pol_orb,          only: generate_polarization_orbital
@@ -89,12 +89,10 @@ contains
 
     type(basis_def_t), pointer :: basp     !Parameters corresponding to this basis set.
     type(pseudopotential_t),pointer :: vps !Psuedopotential info.
-    type(species_info_t),pointer :: spp    !Pointer to a species.
     type(shell_t),     pointer :: shell    !Pointer to a shell.
     type(lshell_t),    pointer :: lshell   !Pointer to a l-shell.
     
     type(hilbert_vector_t) :: orb_vector
-    type(rad_func_t)   :: rad_tmp
     
     integer            :: atomic_number
     logical            :: filterOrbitals
@@ -106,7 +104,6 @@ contains
     real(dp), parameter :: EkinTolDefault = 0.003_dp
 
     basp => basis_parameters(isp)
-    spp  => species(isp)
     vps  => basp%pseudopotential
 
     !**   Filter the orbitals
@@ -116,12 +113,12 @@ contains
     qatm(0:3)=0.0d0
 
     if(basp%floating) then
-       atomic_number = -1*get_atomic_number(spp)
+       atomic_number = -1*get_atomic_number(isp)
        qatm = 0.0_dp
     elseif(basp%synthetic) then
        qatm = basp%ground_state%occupation
     else
-       atomic_number = get_atomic_number(spp)
+       atomic_number = get_atomic_number(isp)
        call qvlofz(atomic_number,qatm)
     endif
     
@@ -129,14 +126,14 @@ contains
 
     norbs = number_of_orbs(isp)
   
-    call init_orbs(species(isp),norbs)
+    call init_orbs(isp,norbs)
     
     print ('(/,a)'), "BASIS_GEN begin"
 
     !LOOP over angular momenta    
     iorb = 1
 
-    do l=0,get_lmax_orbs(spp) ! species(isp)%lmax_basis
+    do l=0,get_lmax_orbs(isp) ! species(isp)%lmax_basis
        lshell => basp%lshell(l)
       
        !loop over all the semicorestates.
@@ -177,7 +174,7 @@ contains
 
                    !Population analysis
                    ! floating atom?
-                   if (get_atomic_number(spp) > 0) then !Not a floating atom
+                   if (get_atomic_number(isp) > 0) then !Not a floating atom
                       if(shell%n == nvalence)then
                          shell%population(izeta) = qatm(l)/dble(2*l+1)
                       elseif(shell%n < nvalence) then
@@ -223,7 +220,7 @@ contains
              call init_vector(orb_vector,shell%orb(izeta),shell%n,l,izeta,&
                      shell%population(izeta),shell%energies(izeta)%total,is_pol)
              !Store the orb and realese the memory
-             call set_orb(spp,orb_vector,iorb)
+             call set_orb(isp,orb_vector,iorb)
              call destroy_vector(orb_vector)
 
              iorb = iorb + 1
@@ -233,7 +230,7 @@ contains
 
     enddo
     
-    call set_orbs_deg(spp)
+    call set_orbs_deg(isp)
 
     if (.not. basp%floating) then
        call species_vxc(isp)
