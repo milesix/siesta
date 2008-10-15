@@ -15,6 +15,7 @@ private
 logical, public :: compare_debug = .false.
 logical :: compare_node_debug = .false.
 logical :: compare_values_debug = .false.
+logical :: matching_debug = .false.
 logical :: compare_node_list_debug = .false.
 logical, public :: STOP_ON_ERROR = .false.
 integer, public :: MAX_NUMBER_OF_ERRORS = huge(1)
@@ -113,46 +114,148 @@ type(fnodeList), pointer :: referenceList
 type(fnodeList), pointer :: modifiedList
 
 !Internal vars.
-integer                  :: i,length,length_ref,length_mod
+integer                  :: i,length_ref,last_found
 type(fnode),pointer      :: reference,modified
-type(string) :: sn_ref,sn_mod,sv_ref, sv_mod
+type(string)             :: sn_ref,sn_mod,sv_ref, sv_mod
 
 
 length_ref = getLength(referenceList)
-length_mod = getLength(modifiedList)
 
-length     = min(length_ref, length_mod)
-!print *, " number of elements in lists=",length_ref, length_mod
+if(compare_node_list_debug) print *, "List begin"
+if(compare_node_list_debug) print *, "---List: number of elements in reference list=",length_ref
+if(compare_node_list_debug) print *, "---List: number of elements in modified  list=",getLength(modifiedList)
 
-do i=0,length-1
+
+last_found = 0
+do i=0,length_ref-1
+   if(compare_node_list_debug) print *, "------List element:",i
    reference => item(referenceList,i)
-   modified  => item(modifiedList,i)
+
+   modified => Null()
+   modified => findMatchingNodeinList(reference,modifiedList,last_found)
+
+   if(.not. associated(modified))then
+      if(compare_node_list_debug) then
+         sn_ref = getNodeName(reference)  
+         print *, "--------List:compare_node_list: node: ",char(sn_ref), &
+           "--------has no corresponding node in the modified list!"
+      endif
+      cycle
+   endif
 
    if (compare_node_list_debug) then
-      print *, "compare_node_list: begin element=",i,"^^^^^^^^^^^^^^^^^^^"
+      !print *, "    compare_node_list: begin element=",i,"^^^^^^^^^^^^^^^^^^^"
       sn_ref = getNodeName(reference)      
-      print *,"1"
       sn_mod = getNodeName(modified)
-      print *,"2"
       sv_ref = getNodevalue(reference)
-      print *,"3"
       sv_mod = getNodevalue(modified)
-      print *, " compare_node_list: names=",char(sn_ref),"|",char(sn_mod)
+      !print *, "--------List: names=",char(sn_ref),"|",char(sn_mod)
 
       if (len(sv_ref) > 0 .and. len(sv_mod) > 0) then
-         print *, " compare_node_list: values=",char(sv_ref),"|",char(sv_mod)
+      !   print *, "--------list: values=",char(sv_ref),"|",char(sv_mod)
       endif
    endif
 
    call compareNode(reference,modified) 
 
    if (compare_node_list_debug) then
-      print *, "compare_node_list: finished ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+      print *, "---List element:",i," end"
    endif
 
 enddo
 
+if (compare_node_list_debug) then
+   print *, "---list: end"
+   print *, "            "
+   print *, "            "
+endif
+
 end subroutine compareList
+
+!--------------------------------------------------------------------------
+
+function findMatchingNodeinList(ref,modList,last) result(mod)
+!Given a reference node this sub finds the corresponding node in modList.
+  use flib_dom
+
+  type(fnode), pointer        :: ref
+  type(fnodeList), pointer    :: modList
+  type(fnode), pointer        :: mod
+  integer, intent(inout)      :: last
+
+  integer               :: i,j,k,length_ref,length_mod
+  type(string)          :: sn_ref, sn_mod,name_attr_ref,name_attr_mod,val_attr_ref,val_attr_mod
+  type(fnode), pointer  :: modified 
+  type(fnamedNodeMap),pointer :: attr_ref,attr_mod
+  type(fnode), pointer :: attr_ref_j, attr_mod_j
+  logical              :: error = .false.
+
+
+  mod => Null()
+  sn_ref = getNodeName(ref)  
+
+  if ( matching_debug) print *,"********Match of:",char(sn_ref)
+    
+  do i=last,getLength(modList)-1
+     if ( matching_debug)  print *, "*********Match: mod i=",i
+     modified => Item(modList,i)
+     sn_mod = getNodeName(modified)
+
+      if (sn_ref == sn_mod) then
+         if(.not. hasAttributes(ref) .and. .not. hasAttributes(modified))then
+            mod => Item(modList,i)
+            if ( matching_debug)  print *, "**********Match: found (no attr)"
+            last = i
+            exit !We found the node
+        
+         else !Check Attributes
+            attr_ref => getAttributes(ref)
+            attr_mod => getAttributes(modified)
+
+            length_ref = getlength(attr_ref)
+            length_mod = getlength(attr_mod)
+ 
+            if (length_ref .ne. length_mod) then
+               error = .true.
+               cycle !If the number of attrs is different, they are different!!!
+            else !Check the attrs, one by one.
+               error = .false.
+               do j=0,length_ref-1
+                  !print *, "     Attrs j=",j
+                  attr_ref_j => Item(attr_ref,j)
+                  name_attr_ref = getNodeName(attr_ref_j)
+                  val_attr_ref =  getNodeValue(attr_ref_j)
+
+                  attr_mod_j => Item(attr_mod,j)
+                  name_attr_mod = getNodeName(attr_mod_j)   
+                  val_attr_mod =  getNodeValue(attr_mod_j)  
+   
+
+                  if ( matching_debug) then
+                     print *, "************* Match: Attrs name:",trim(char(name_attr_ref)),"|",trim(char(name_attr_mod)),"|"
+
+                     print *, "************* Match: Attrs value:",trim(char(val_attr_ref)),"|",trim(char(val_attr_mod)),"|"
+                  endif
+
+                  if(name_attr_ref .ne. name_attr_mod .or. val_attr_ref .ne. val_attr_mod)then
+                     error = .true.
+                     exit
+                  endif
+
+               enddo
+               if (.not. error) then
+                  mod =>Item(modList,i) !If we reached this point all the attrs and name are the same  
+                  if ( matching_debug)  print *, "*********Match: Found corresponding node!"
+                  last = i
+                  exit
+               endif                             
+            endif
+         endif
+      endif
+   enddo
+   if ( matching_debug .and. error)  print *, "*********Match: Cant find corresponding node!"
+  
+end function findMatchingNodeinList
 
 !--------------------------------------------------------------------------
 
@@ -163,12 +266,12 @@ recursive subroutine compareNode(ref,mod)
   type(fnode),pointer :: mod
   
 
-  integer :: i,n_type_ref, n_type_mod,length_ref,length_mod, length
+  integer :: i,n_type_ref, n_type_mod !,length_ref,length_mod , length
   integer :: n_children_ref, n_children_mod, n_children
   type(string) :: sn_ref,sn_mod,sv_ref, sv_mod
   character(len=50) ::  label,cn_parent_ref
-  type(fnamedNodeMap),pointer :: attr_ref,attr_mod
-  type(fnode), pointer :: c_node_ref, c_node_mod
+  !type(fnamedNodeMap),pointer :: attr_ref,attr_mod
+  !type(fnode), pointer :: c_node_ref, c_node_mod
   type(fnode), pointer  :: sub_ref,sub_mod
   type(fnodelist),pointer  :: sub_list_ref, sub_list_mod 
   logical :: same_values = .true.
@@ -182,10 +285,9 @@ recursive subroutine compareNode(ref,mod)
      sn_ref = clean_string(sn_ref)
      sn_mod = clean_string(sn_mod)
   endif
-
   if (compare_node_debug) then
-     print *,"       1++++++++++++++++++++++++++++++++++++++++++++++++++"
-     print *,"        compare_node: Names=","|",char(sn_ref),"|", char(sn_mod),"|"
+     !print *,"          1++++++++++++++++++++++++++++++++++++++++++++++++++"
+     print *,"+++++++++++++Node: Names=","|",char(sn_ref),"|", char(sn_mod),"|"
   endif
 
   if (char(sn_ref) /= char(sn_mod)) call dump_error(ref,mod,name=sn_ref)
@@ -203,12 +305,16 @@ recursive subroutine compareNode(ref,mod)
  
 
   !Check values
-  if (len(sv_ref) > 0) then
+  if (len(sv_ref) == 0) then
   
-  	sv_ref = clean_string(sv_ref)
-  	sv_mod = clean_string(sv_mod)
+     if (compare_node_debug) print *, "+++++++++++++ Node:No values, so no problem"
+  
+  else 
+  
+     sv_ref = clean_string(sv_ref)
+     sv_mod = clean_string(sv_mod)
 
-     if (compare_node_debug) print *,"        compare_node: Value=","|",char(sv_ref),"|", char(sv_mod),"|"
+     if (compare_node_debug) print *,"+++++++++++++ Node: Value=","|",char(sv_ref),"|", char(sv_mod),"|"
     
 
 
@@ -225,62 +331,24 @@ recursive subroutine compareNode(ref,mod)
 
      if ( .not. same_values) then
         call dump_error(ref,mod,value=sv_ref)
+        return
+     else if(compare_node_debug)then
+         print *,"++++++++++No errors, they are identical!"
      endif
   endif
-
-  if (compare_node_debug) print *,"       2++++++++++++++++++++++++++++++++++++++++++++++++++"
-
-  !Check attributes
-  if (hasAttributes(ref) .and. hasAttributes(mod)) then
-
-     attr_ref => getAttributes(ref)
-     attr_mod => getAttributes(mod)
-
-     length_ref = getlength(attr_ref)
-     length_mod = getlength(attr_mod)
-     
-     length     = min(length_ref,length_mod)
-
-     if (compare_node_debug) then
-        print *, "      compare_node: Attributes"
-        print *, &
-          "       compare_node: Ref, mod, attributes length:",length_ref,"|",length_mod
-     endif
- 
-     do i=0,length-1
-        c_node_ref => item(attr_ref,i)
-        c_node_mod => item(attr_mod,i)           
-        call compareNode(c_node_ref, c_node_mod)
-     enddo
-  endif
-
+  
   !Check children
   if ( hasChildNodes(ref) .and. hasChildNodes(mod)) then
    sub_list_ref   => getchildNodes(ref)
    n_children_ref =  getLength(sub_list_ref)
 
    sub_list_mod   => getchildNodes(mod)
-   n_children_mod =  getLength(sub_list_mod)
-   
-   if ( n_children_ref /= n_children_mod ) then      
-      if (compare_node_debug) then
-          print *, "      compare_node: Children"
-         print *, " compare_node: The nodes have a different number of children!"
-         print *, " compare_node: lengths=",n_children_ref,n_children_mod
-      endif
-   endif
 
-   n_children=min(n_children_ref,n_children_mod)
- 
-   do i=0,n_children-1
-      if (compare_node_debug) then
-         print *,"   compare_node: Compairing children n:",i
-      endif
-      sub_ref => item(sub_list_ref,i)
-      sub_mod => item(sub_list_mod,i)
-      call compareNode(sub_ref,sub_mod) 
-   enddo   
    
+   if(compare_node_debug) print *, "++++++++++++ Node: compare children"
+   call compareList(sub_list_ref,sub_list_mod)
+   if(compare_node_debug) print *, "++++++++++++ Node: end compare children"
+
 endif
 
  
@@ -386,10 +454,10 @@ sn_mod = getNodeValue(mod)
 
 !If the name is empty then use the parents name.
 if (len(sn_ref) == 0) then
-	sn_ref = n_parent_ref
+   sn_ref = n_parent_ref
 else
     if(sn_ref=="#text") then
-    	sn_ref = n_parent_ref
+       sn_ref = n_parent_ref
     else
        sn_ref = clean_string(sn_ref)
        sn_mod = clean_string(sn_mod)
@@ -405,8 +473,8 @@ sv_ref = getNodevalue(ref)
 sv_mod = getNodevalue(mod)
 
 if (len(sv_ref) > 0 .and. len(sv_mod) > 0)then
-	sv_ref = clean_string(sv_ref)
-	sv_mod = clean_string(sv_mod)
+   sv_ref = clean_string(sv_ref)
+   sv_mod = clean_string(sv_mod)
 endif
 
 !Attr.
@@ -425,24 +493,24 @@ if (name_e) then
    if (len(sn_ref) >0) then
       print *,"  Ref: ",char(sn_ref)
    else
-   	  print *,"  Ref: no name"
+      print *,"  Ref: no name"
    endif
    if (len(sn_mod)>0) then
       print *,"  Mod: ",char(sn_mod)
    else
-   	  print *,"  Mod: no name"
+      print *,"  Mod: no name"
    endif
 elseif(value_e)then
    print *, "Different values:"
    if (len(sv_ref) >0) then
       print *,"  Ref: ","|",char(sv_ref),"|"
    else
-   	  print *,"  Ref: no value"
+      print *,"  Ref: no value"
    endif
    if (len(sv_mod)>0) then
-      print *,"  Mod: ","|",char(sv_mod),"|"	
+      print *,"  Mod: ","|",char(sv_mod),"|"
    else
-   	  print *,"  Mod: no value"
+      print *,"  Mod: no value"
    endif
 elseif(attr_e)then
    print *, "Different attr:"
