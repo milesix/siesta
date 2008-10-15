@@ -1,4 +1,4 @@
-module basis_specs
+module atom_basis_specs
   ! 
   ! Alberto Garcia, August 2000, based on 'classic' redbasis.
   ! 
@@ -1258,7 +1258,7 @@ CONTAINS
 
   end subroutine autobasis
 
-End module basis_specs
+End module atom_basis_specs
 
 
 

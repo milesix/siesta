@@ -8,7 +8,7 @@
 !     given in the SIESTA license, as signed by all legitimate users.
 !     
 
-      module elec_correction
+      module atom_elec_correction
 
       use precision
       use atom_types
@@ -330,7 +330,7 @@
 !-----------------------
       
 
-      end module elec_correction
+      end module atom_elec_correction
 
 
 

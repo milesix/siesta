@@ -39,11 +39,11 @@ module atom
   use pseudopotential, only : pseudopotential_t
   
   !All the expert subroutines which generate the corresponding functions.
-  use corechg, only: core_Charge_Setup
+  use atom_corecharge, only: core_Charge_Setup
   
-  use bessel_m, only : bessel
+  use atom_bessel, only : bessel
   use parallel, only:ionode
-  use na, only: gen_vna
+  use atom_na, only: gen_vna
   use atom_options, only:get_atom_options, write_ion_plot_files
   
   implicit none      
@@ -62,9 +62,9 @@ CONTAINS
 !Arguments
 !integer, intent(in) :: isp !Species index. All 
 
-    use kb,    only: kbgen
-    use vloc,  only: gen_vlocal 
-    use basis, only: basis_gen
+    use atom_kb,    only: kbgen
+    use atom_vloc,  only: gen_vlocal 
+    use atom_basis_gen, only: basis_gen
 
     integer , intent(in) :: isp
     logical :: floating = .false.
@@ -172,9 +172,9 @@ CONTAINS
     ! determined by the routines in the 'basis_specs' modules. 
     !
 
-    use basis_specs, only: read_basis_specs
-    use basis_io, only: read_basis_ascii, dump_basis_ascii,dump_basis_xml, dump_basis_netcdf, read_basis_netcdf
-    use elec_correction, only: elec_corr_setup
+    use atom_basis_specs, only: read_basis_specs
+    use atom_basis_io, only: read_basis_ascii, dump_basis_ascii,dump_basis_xml, dump_basis_netcdf, read_basis_netcdf
+    use atom_elec_correction, only: elec_corr_setup
 
     implicit none
 

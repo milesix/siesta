@@ -30,7 +30,7 @@ C
 
       USE PRECISION
       USE PARALLEL
-      USE BASIS_IO
+      USE atom_BASIS_IO
       USE LISTSC_MODULE, ONLY: LISTSC_INIT
       USE FDF
       use sys, only: die

@@ -9,12 +9,12 @@
 !     
 
 ! Generation of polarization orbitals
-module pol_orb
+module atom_pol_orb
   use fdf
   use precision
   use atom_generation_types, only:basis_def_t,basis_parameters,shell_t,lshell_t,energies_t
   use pseudopotential, only:pseudopotential_t
-  use pao_util,  only:calculate_energies, normalize_orbital, sym, generate_vsoft
+  use atom_pao_util,  only:calculate_energies, normalize_orbital, sym, generate_vsoft
   use atom_options, only: write_ion_plot_files
   use radial
   use radial_logGrid
@@ -107,4 +107,4 @@ module pol_orb
   end subroutine generate_polarization_orbital
 
   !-----------------------------------------------------
-end module pol_orb
+end module atom_pol_orb

@@ -8,7 +8,7 @@
 !     given in the SIESTA license, as signed by all legitimate users.
 !     
 
-module basis_enthalpy
+module atom_basis_enthalpy
   implicit none
   private
   public :: write_basis_enthalpy
@@ -102,4 +102,4 @@ CONTAINS
     enddo
   end subroutine orb_volumes
 
-end module basis_enthalpy
+end module atom_basis_enthalpy

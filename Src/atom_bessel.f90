@@ -10,14 +10,14 @@
 
 !Generation of multiple-z using bessel functions
 
-module bessel_m
+module atom_bessel
 use precision
 use atom_generation_types , only : basis_def_t, basis_parameters,lshell_t, shell_t
 use atomparams
 use radial
 use atom_types 
 use hilbert_vector_collection
-use pao_util, only : number_of_orbs
+use atom_pao_util, only : number_of_orbs
 implicit none
 
 public bessel
@@ -211,6 +211,4 @@ contains
 
   !---------------------------------------------------------------------
 
-
-
-end module bessel_m
+end module atom_bessel

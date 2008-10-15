@@ -9,7 +9,7 @@
 !     
 
 !Generation of neutral atom potential, used to screen the hartree potential.
-module na
+module atom_na
   !
   !     Generates the neutral-atom potential Vna
   !     using only the orbitals and reduced_vlocal
@@ -29,7 +29,7 @@ module na
        get_valence_charge, set_neutral_atom_potential,set_self_energy, &
        set_no_neutral_atom_potential, is_floating, orbs_kc_max
   use atom_generation_types, only: basis_parameters,lshell_t,shell_t,basis_def_t
-  use pao_util, only: total_charge
+  use atom_pao_util, only: total_charge
   use schro, only: vhrtre
   use radial
   use pseudopotential
@@ -143,9 +143,6 @@ contains
  
   !=================================================================
 
-
- 
-
-end module na
+end module atom_na
 
 

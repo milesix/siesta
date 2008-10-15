@@ -8,7 +8,7 @@
 ! Use of this software constitutes agreement with the full conditions
 ! given in the SIESTA license, as signed by all legitimate users.
 !
-module basis_io
+module atom_basis_io
   !
   !     Support for dumping and reading PAO and KB information from
   !     ASCII or NetCDF files.
@@ -969,7 +969,7 @@ subroutine dump_vector(vector,kind,label,output_kind,lun)
 endif
 end subroutine dump_vector
 
-end module basis_io
+end module atom_basis_io
 
 
 

@@ -14,7 +14,7 @@
 !subroutine basis_gen(isp)
 !Integer, intent(in) :: isp
 
-module basis
+module atom_basis_gen
   use precision,        only: dp
   use fdf
   use hilbert_vector_collection
@@ -25,9 +25,9 @@ module basis
   use pseudopotential,  only:pseudopotential_t
   use atom_generation_types, only:basis_def_t,basis_parameters,shell_t,lshell_t,energies_t
   use sys,              only:die
-  use multiple_z,       only: generate_multiple_zeta
-  use pol_orb,          only: generate_polarization_orbital
-  use pao_util,         only: calculate_energies, normalize_orbital, &
+  use atom_multiple_z,       only: generate_multiple_zeta
+  use atom_pol_orb,          only: generate_polarization_orbital
+  use atom_pao_util,         only: calculate_energies, normalize_orbital, &
        generate_vsoft, sym, number_of_orbs, total_charge
   use periodic_table,   only: qvlofz,cnfig
   use atom_options, only: write_ion_plot_files
@@ -406,7 +406,7 @@ contains
     call rad_dealloc(rho4pi)
   end subroutine species_vxc
 
-end module basis
+end module atom_basis_gen
 
 
 

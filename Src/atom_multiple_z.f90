@@ -10,11 +10,11 @@
 
 !Generation of multiple z orbitals, not the first one!
 
-module multiple_z
+module atom_multiple_z
 use precision
 use fdf
 use atom_generation_types,     only:shell_t,lshell_t
-use pao_util, only : normalize_orbital, calculate_energies
+use atom_pao_util, only : normalize_orbital, calculate_energies
 use radial, only: rad_func_t, rad_fit_parabola,rad_find_parabola_parameters, &
      rad_split_gauss, rad_get_r_from_value,rad_cutoff, rad_min, rad_parabolic_split, &
      rad_multiply_by_rl,rad_get, rad_schro,rad_dump_file
@@ -201,4 +201,4 @@ contains
 
   !--------------------------------------------------------------
 
-end module multiple_z
+end module atom_multiple_z

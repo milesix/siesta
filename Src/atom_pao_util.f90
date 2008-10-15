@@ -8,7 +8,7 @@
 !     given in the SIESTA license, as signed by all legitimate users.
 !     
 ! Auxiliary routines for pao genaration
-module pao_util
+module atom_pao_util
   use precision
   use pseudopotential, only:pseudopotential_t
   use atom_generation_types, only:basis_def_t,basis_parameters,shell_t,lshell_t,energies_t
@@ -57,12 +57,6 @@ module pao_util
     integer                           :: l
     type(rad_func_t)                  :: vsum 
  
-    integer  npoint
-    parameter(npoint=4)
-
-    !Pointer
-    !logGrid => shell%logGrid
-
     l = shell%l
     lambda = shell%lambda(iorb)
 
@@ -248,4 +242,4 @@ module pao_util
     call rad_grid_dealloc(grid)
   end function total_charge
 
-end module pao_util
+end module atom_pao_util

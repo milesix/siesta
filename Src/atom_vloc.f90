@@ -8,7 +8,7 @@
 !     given in the SIESTA license, as signed by all legitimate users.
 !     
 
-module vloc
+module atom_vloc
   use precision
   use atom_types, only:set_pseudo_local_charge, set_reduced_vlocal
   use radial
@@ -133,4 +133,4 @@ contains
     call rad_dealloc(rad_tmp)
   end subroutine gen_vlocal
 
-end module vloc
+endmodule atom_vloc

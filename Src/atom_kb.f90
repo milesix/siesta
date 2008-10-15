@@ -8,7 +8,7 @@
 !     given in the SIESTA license, as signed by all legitimate users.
 !     
 
-module kb
+module atom_kb
   !
   !    Generates the KB projectors
   use precision, only : dp
@@ -201,4 +201,4 @@ CONTAINS
 
   !--------------------------------------------------
 
-end  module kb
+endmodule atom_kb

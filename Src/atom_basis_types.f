@@ -99,8 +99,8 @@
       end type basis_def_t
 
       integer, save, public              :: nsp  ! Number of species
-      type(basis_def_t), public,
-     $     allocatable, save, target     :: basis_parameters(:)
+      type(basis_def_t), public,allocatable, save, target ::
+     $     basis_parameters(:)
 
 !=====================================================================
 !     OLD ARRAYS

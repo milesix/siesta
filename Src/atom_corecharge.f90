@@ -8,7 +8,7 @@
 !     given in the SIESTA license, as signed by all legitimate users.
 !     
 
-module corechg
+module atom_corecharge
 
   use precision
   use pseudopotential, only : pseudopotential_t
@@ -68,8 +68,7 @@ contains
 
   end subroutine core_charge_Setup
 
-
-end module corechg
+end module atom_corecharge
 
 
 
