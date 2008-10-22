@@ -50,7 +50,7 @@ C
       use parallel,     only : Node, Nodes
       use parallelsubs, only : WhichNodeOrb, LocalToGlobalOrb,
      .                         GlobalToLocalOrb, GetNodeOrbs
-      use atom_types,    only : nspecies
+      use atom_types,    only : get_number_of_species
       use atomlist,     only : iphorb, iaorb
       use siesta_geom,  only : na_u, isa
       use atmfuncs,     only : nofis, labelfis, zvalfis
@@ -67,7 +67,7 @@ C
       character         task*(*)
       character(len=label_length+3) :: paste
       logical           gamma
-      integer           maxnh, no_u, no_s, nspin
+      integer           maxnh, no_u, no_s, nspin, nspecies
       integer           indxuo(no_s), listh(maxnh), numh(*), listhptr(*)
       real(dp)          H(maxnh,nspin), S(maxnh),
      .                  qtot, temp, xij(3,maxnh)
@@ -647,6 +647,7 @@ C Free buffer array
 !
 !       Write other useful info
 !
+           nspecies = get_number_of_species()
            write(iu) nspecies
            write(iu) (labelfis(is), zvalfis(is),nofis(is),is=1,nspecies)
            do is = 1, nspecies

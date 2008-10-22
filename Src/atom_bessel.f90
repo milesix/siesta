@@ -18,6 +18,7 @@ use radial
 use atom_types 
 use hilbert_vector_collection
 use atom_pao_util, only : number_of_orbs
+use schro, only : schro_eq
 implicit none
 
 public bessel

@@ -111,9 +111,9 @@ CONTAINS
                         
              r_c = rad_cutoff(vdown)
            
-             call rad_dump_file(vdown,"vdown.dat")
-             call rad_dump_file(ve_val,"ve_val.dat")
-             print *, "rc,l,nnodes,nprint,zval,e=",r_c,l,nnodes,nprin,zval,k%erefkb(ikb)
+             !call rad_dump_file(vdown,"vdown.dat")
+             !call rad_dump_file(ve_val,"ve_val.dat")
+             !print *, "rc,l,nnodes,nprint,zval,e=",r_c,l,nnodes,nprin,zval,k%erefkb(ikb)
 
              rphi(ikb) = rad_schro(vdown,ve_val,r_c,l,nnodes,nprin,zval,k%erefkb(ikb))    
              

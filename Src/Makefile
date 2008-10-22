@@ -102,9 +102,8 @@ OBJS =  automatic_cell.o \
         spatial.o parallel.o parallelsubs.o  parsing.o chemical.o xcmod.o \
         m_mpi_utils.o m_fdf_global.o m_history.o m_iorho.o  \
         atmfuncs.o atmfuncs_types.o listsc.o memoryinfo.o m_memory.o sorting.o \
-        atomlist.o  \
+        atomlist.o  xml.o  \
         alloc.o phonon.o spher_harm.o spher_harm2.o version.o timestamp.o \
-        xml.o pseudopotential.o  \
         onmod.o densematrix.o writewave.o on_subs.o fermid.o m_broyddj.o \
         mneighb.o globalise.o siesta_cmlsubs.o siesta_cml.o \
         units.o zmatrix.o m_broyden_mixing.o forhar.o m_walltime.o m_wallclock.o m_iostruct.o \
@@ -125,7 +124,8 @@ ATOM_OBJS=atom.o atomparams.o atom_types.o old_atmfuncs.o radial.o atom_pol_orb.
 	atom_basis_gen.o  atom_vloc.o atom_pao_util.o atom_corecharge.o \
 	atom_elec_correction.o atom_multiple_z.o atom_basis_io.o atom_basis_specs.o \
         radial_logGrid.o radial_util.o schro.o atom_kb.o  atom_bessel.o\
-	atom_options.o  atom_generation_types.o periodic_table.o
+	atom_options.o  atom_generation_types.o periodic_table.o pseudopotential.o\
+        pseudopotential_new.o
 #--------------------------------------------------------------
 #
 WXML=libwxml.a
@@ -202,10 +202,10 @@ siesta: version $(MPI_INTERFACE) $(FDF) $(WXML) $(XMLPARSER) \
 #------------------------------------------------------------------------
 GEN-BASIS_OBJS=gen-basis.o alloc.o precision.o recipes.o parallel.o \
           parsing.o xcmod.o chemical.o\
-          atomparams.o io.o \
+          io.o \
 	  paste.o  flib_spline.o bessph.o m_filter.o \
           memoryinfo.o memory.o\
-          pseudopotential.o dot.o xc.o arw.o  \
+          dot.o xc.o arw.o  \
           sys.o xml.o m_walltime.o radfft.o \
 	 dsyevds.o timer.o $(ATOM_OBJS) $(SYSOBJ)
 # precision must be the first one here...
@@ -219,8 +219,8 @@ gen-basis: version $(MPI_INTERFACE) $(FDF) $(WXML) \
 #------------------------------------------------------------------------
 IONCAT_OBJS=f2kcli.o m_getopts.o ioncat.o  precision.o  parallel.o \
           parsing.o xcmod.o alloc.o\
-          atomparams.o radial.o io.o memory.o chkdim.o\
-	  paste.o pseudopotential.o chemical.o \
+          radial.o io.o memory.o chkdim.o\
+	  paste.o chemical.o \
           memoryinfo.o  m_memory.o periodic_table.o\
           xc.o flib_spline.o atmfuncs.o spher_harm.o\
           sys.o  xml.o m_walltime.o \
@@ -248,7 +248,7 @@ OTHER_DENCHAR_OBJS=  precision.o recipes.o alloc.o \
         volcel.o parallel.o parallelsubs.o memoryinfo.o sys.o listsc.o  \
          atmfuncs.o m_memory.o \
         spher_harm.o atmfuncs_types.o m_filter.o \
-        pseudopotential.o chemical.o xml.o files.o \
+        chemical.o xml.o files.o \
 	 arw.o xc.o xcmod.o parsing.o\
         rdiag.o dsyevds.o timer.o  m_walltime.o $(ATOM_OBJS) $(SYSOBJ)
 
@@ -314,56 +314,59 @@ atom.o: atom_basis_gen.o atom_basis_io.o atom_basis_specs.o atom_bessel.o
 atom.o: atom_corecharge.o atom_elec_correction.o atom_generation_types.o
 atom.o: atom_kb.o atom_na.o atom_options.o atom_types.o atom_vloc.o
 atom.o: atomparams.o chemical.o parallel.o periodic_table.o precision.o
-atom.o: pseudopotential.o radial.o sys.o units.o
+atom.o: pseudopotential_new.o radial.o sys.o units.o
 
 atom_basis_enthalpy.o: atmfuncs.o atomlist.o precision.o siesta_geom.o units.o
 
 atom_basis_gen.o: atom_generation_types.o atom_multiple_z.o atom_options.o
 atom_basis_gen.o: atom_pao_util.o atom_pol_orb.o atom_types.o hilbert_vector.o
 atom_basis_gen.o: hilbert_vector_collection.o periodic_table.o precision.o
-atom_basis_gen.o: pseudopotential.o radial.o sys.o units.o
+atom_basis_gen.o: pseudopotential_new.o radial.o sys.o units.o
 
 atom_basis_io.o: atom_generation_types.o atom_types.o chemical.o precision.o
-atom_basis_io.o: pseudopotential.o radial.o sys.o xml.o
+atom_basis_io.o: pseudopotential_new.o radial.o sys.o xml.o
 
 atom_basis_specs.o: atom_generation_types.o atom_types.o chemical.o
-atom_basis_specs.o: periodic_table.o precision.o pseudopotential.o radial.o
-atom_basis_specs.o: sys.o
+atom_basis_specs.o: periodic_table.o precision.o pseudopotential.o
+atom_basis_specs.o: pseudopotential_new.o radial.o sys.o
 
 atom_basis_types.o: alloc.o atomparams.o precision.o pseudopotential.o sys.o
 
 atom_bessel.o: atom_generation_types.o atom_pao_util.o atom_types.o
 atom_bessel.o: atomparams.o hilbert_vector_collection.o precision.o radial.o
+atom_bessel.o: schro.o
 
 atom_corecharge.o: atom_generation_types.o atom_types.o precision.o
-atom_corecharge.o: pseudopotential.o radial.o
+atom_corecharge.o: pseudopotential_new.o radial.o
 
 atom_elec_correction.o: atom_types.o parallel.o precision.o radfft.o radial.o
-atom_elec_correction.o: recipes.o
+atom_elec_correction.o: recipes.o sys.o
 
-atom_generation_types.o: atomparams.o precision.o pseudopotential.o radial.o
+atom_generation_types.o: atomparams.o precision.o pseudopotential_new.o
+atom_generation_types.o: radial.o
 
 atom_kb.o: atom_generation_types.o atom_types.o hilbert_vector.o precision.o
-atom_kb.o: pseudopotential.o radial.o sys.o
+atom_kb.o: pseudopotential_new.o radial.o sys.o
 
 atom_multiple_z.o: atom_generation_types.o atom_pao_util.o precision.o radial.o
 atom_multiple_z.o: sys.o
 
 atom_na.o: atom_generation_types.o atom_pao_util.o atom_types.o precision.o
-atom_na.o: pseudopotential.o radial.o schro.o
+atom_na.o: pseudopotential_new.o radial.o schro.o
 
 atom_options.o: sys.o
 
 atom_pao_util.o: atom_generation_types.o atom_types.o precision.o
-atom_pao_util.o: pseudopotential.o radial.o recipes.o
+atom_pao_util.o: pseudopotential_new.o radial.o recipes.o sys.o
 
 atom_pol_orb.o: atom_generation_types.o atom_options.o atom_pao_util.o
-atom_pol_orb.o: precision.o pseudopotential.o radial.o radial_logGrid.o
+atom_pol_orb.o: precision.o pseudopotential_new.o radial.o radial_logGrid.o
+atom_pol_orb.o: sys.o
 
 atom_types.o: hilbert_vector_collection.o parallel.o precision.o radial.o sys.o
 
-atom_vloc.o: atom_generation_types.o atom_types.o precision.o pseudopotential.o
-atom_vloc.o: radial.o
+atom_vloc.o: atom_generation_types.o atom_types.o precision.o
+atom_vloc.o: pseudopotential_new.o radial.o
 
 atomlist.o: alloc.o atmfuncs.o atom_types.o parallel.o precision.o
 atomlist.o: siesta_geom.o
@@ -439,8 +442,8 @@ coxmol.o: files.o periodic_table.o precision.o
 
 
 
-denchar.o: f2kcli.o listsc.o m_denchar_geom.o m_denchar_init.o m_denchar_io.o
-denchar.o: m_denchar_work.o parallel.o precision.o sys.o
+denchar.o: atom_basis_io.o f2kcli.o listsc.o m_denchar_geom.o m_denchar_init.o
+denchar.o: m_denchar_io.o m_denchar_work.o parallel.o precision.o sys.o
 
 denmat.o: alloc.o globalise.o m_mpi_utils.o onmod.o precision.o
 
@@ -822,7 +825,10 @@ propor.o: precision.o sys.o
 proximity_check.o: mneighb.o parallel.o precision.o siesta_geom.o
 proximity_check.o: siesta_options.o
 
-pseudopotential.o: atom_options.o flib_spline.o precision.o radial.o sys.o
+pseudopotential.o: alloc.o atom_options.o flib_spline.o precision.o sys.o
+
+pseudopotential_new.o: atom_options.o flib_spline.o precision.o
+pseudopotential_new.o: pseudopotential.o radial.o sys.o
 
 
 radfft.o: alloc.o precision.o recipes.o

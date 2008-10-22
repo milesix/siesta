@@ -763,8 +763,6 @@ contains
     indx=((ismx-1)*ismx)/2 + ismn
   
     call get_elec_corr(indx,r,energ,dedr)
-    print *, "psover: index,ener=",indx,energ
-    
 
   end subroutine psover
 

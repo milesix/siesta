@@ -214,9 +214,7 @@ contains
 
               !filter
              if (filterorbitals) then
-                print *, "get kc"
                 kc = rad_get_filter_cutoff(shell%orb(izeta),l,FilterEkinTol)
-                print *, "kc=",kc
                 if (kc .gt. orbs_kc_max) orbs_kc_max = kc
              endif            
 

@@ -40,3 +40,4 @@ MeshCutoff 120 Ry
 PAO.EnergyShift 0.01 Ry
 DM.NumberPulay 5
 DM.MixingWeight 0.3
+PAO.Old_POL
