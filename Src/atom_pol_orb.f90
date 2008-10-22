@@ -11,13 +11,15 @@
 ! Generation of polarization orbitals
 module atom_pol_orb
   use fdf
-  use precision
+  use precision, only : dp
   use atom_generation_types, only:basis_def_t,basis_parameters,shell_t,lshell_t,energies_t
-  use pseudopotential, only:pseudopotential_t
+  use pseudopotential_new, only:pseudopotential_new_t
   use atom_pao_util,  only:calculate_energies, normalize_orbital, sym, generate_vsoft
   use atom_options, only: write_ion_plot_files
-  use radial
-  use radial_logGrid
+  use radial, only : rad_func_t, rad_polarization, rad_divide_by_r_l_1, rad_cutoff
+  use radial, only : rad_split_scan_tail, rad_split_scan_tail_parabola, rad_dealloc
+  use radial_logGrid, only : 
+  use sys, only : die
 
   implicit none
 

@@ -10,11 +10,13 @@
 
 module atom_corecharge
 
-  use precision
-  use pseudopotential, only : pseudopotential_t
+  use precision, only : dp
+  use pseudopotential_new, only : pseudopotential_new_t, pseudo_has_core_charge,&
+       get_core_charge
   use atom_types, only: set_has_core_charge, set_core_charge, orbs_kc_max
   use atom_generation_types , only :basis_parameters
-  use radial
+  use radial, only : rad_func_t, rad_divide_by_4pir2, rad_cutoff, rad_filter, &
+       rad_dealloc
   use fdf
   implicit none
 
@@ -34,16 +36,19 @@ contains
     !    Internal variables     
     real(dp)                     :: rcore
     logical                      :: filterPCC
-    type(rad_func_t), pointer    :: core_charge => NULL()
+    type(rad_func_t)             :: core_charge
     type(rad_func_t)             :: core_charge_tmp,core_charge_filtered
   
-    if (basis_parameters(isp)%pseudopotential%nicore == 'nc ') then
+    !if (basis_parameters(isp)%pseudopotential%nicore == 'nc ') then
+
+    if (.not. pseudo_has_core_charge(basis_parameters(isp)%pseudopotential)) then
 
        call set_has_core_charge(isp, .false.)
        
     else
 
-       core_charge => basis_parameters(isp)%pseudopotential%chcore
+       core_charge = get_core_charge(basis_parameters(isp)%pseudopotential)
+
        call set_has_core_charge(isp, .true.)
        core_charge_tmp = rad_divide_by_4pir2(core_charge,.true.)
        rcore = rad_cutoff(core_charge_tmp)
@@ -62,7 +67,7 @@ contains
           call set_core_charge(isp,core_charge_tmp)          
        endif
        call rad_dealloc(core_charge_tmp)
-       nullify(core_charge)
+       call rad_dealloc(core_charge)
 
     endif
 

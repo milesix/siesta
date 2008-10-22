@@ -31,8 +31,9 @@ module atom_na
   use atom_generation_types, only: basis_parameters,lshell_t,shell_t,basis_def_t
   use atom_pao_util, only: total_charge
   use schro, only: vhrtre
-  use radial
-  use pseudopotential
+  use radial, only : rad_func_t, rad_cutoff, rad_filter, rad_vhartree, rad_multiply_each_value, &
+       rad_sum, rad_dealloc, rad_self_energy, eps
+  use pseudopotential_new, only : pseudopotential_new_t, get_vlocal
 
   implicit none
 
@@ -50,8 +51,8 @@ contains
     logical                         :: filterVna
     real(dp)                        :: chval, rVna, rcocc 
     real(dp)                        :: self_energy, reference_chval,ch_temp
-    type(pseudopotential_t),pointer :: vps
-    type(rad_func_t)                :: rho, vna,vna_tmp,filt_vna
+    type(pseudopotential_new_t),pointer :: vps
+    type(rad_func_t)                :: rho, vna,vna_tmp,filt_vna, vlocal
     type(basis_def_t),  pointer     :: basp
  
     !-----------------------------------------
@@ -91,8 +92,9 @@ contains
     !C DUE TO THE NEW VALENCE CHARGE 
     vna_tmp = rad_vhartree(rho)
 
-    !Calculation of real 
-    vna=rad_sum(vps%vlocal,vna_tmp,rcocc)
+    !Calculation of real
+    vlocal = get_vlocal(vps)
+    vna=rad_sum(vlocal,vna_tmp,rcocc)
 
     rVna = rad_cutoff(vna)
 
@@ -129,13 +131,14 @@ contains
     endif
 
     !Self energy
-    self_energy = rad_self_energy(vps%vlocal)
+    self_energy = rad_self_energy(vlocal)
     call set_self_energy(is,self_energy)
 
     !Release memory
     call rad_dealloc(rho)
     call rad_dealloc(vna)
     call rad_dealloc(vna_tmp)
+    call rad_dealloc(vlocal)
     
     Write(6,*) 'na: Finished computing Vna for species ' , is
     

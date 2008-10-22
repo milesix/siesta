@@ -9,12 +9,17 @@
 !     
 ! Auxiliary routines for pao genaration
 module atom_pao_util
-  use precision
-  use pseudopotential, only:pseudopotential_t
+  use precision, only : dp
+  use pseudopotential_new, only:pseudopotential_new_t,get_grid
   use atom_generation_types, only:basis_def_t,basis_parameters,shell_t,lshell_t,energies_t
-  use radial
-  use m_recipes, only: polint
-  use atom_types, only: get_lmax_orbs 
+  use radial, only : rad_func_t, rad_grid_t, rad_copy, rad_multiply_each_value, rad_get_r_from_ir
+  use radial, only : rad_sum, rad_multiply, rad_get_ir_from_r, rad_sum_function, rad_kinetic_energy
+  use radial, only : rad_potential_energy, rad_normalize_r_l_1, rad_get_length, rad_alloc
+  use radial, only : rad_dealloc, rad_grid_get_length, rad_cutoff, rad_integral, rad_set_origin
+  use radial, only : rad_grid_dealloc, rad_dump_ascii
+  use m_recipes, only : polint
+  use atom_types, only : get_lmax_orbs 
+  use sys, only : die
   implicit none
   
   character(len=1)     :: sym(0:4) = (/ 's','p','d','f','g' /)
@@ -24,7 +29,7 @@ module atom_pao_util
   private
 
   real(dp) :: exponent, rcsan, rinn, vcte
-  
+
   contains
 
   !-------------------------------------------------------------
@@ -95,9 +100,10 @@ module atom_pao_util
     logical,intent(in)                   :: write_file
     type(rad_func_t) :: vtot
 
+    external  :: io_assign, io_close
     integer   :: iu, ircsan !i/o unit
     character(len=80)   :: filename
-  
+
     !rcsan = shell%rc(1)+1.0E-1
     ircsan = rad_get_ir_from_r(shell%ve_pao,shell%rc(1))
     rcsan = rad_get_r_from_ir(shell%ve_pao,ircsan+1)
@@ -189,7 +195,7 @@ module atom_pao_util
     type(lshell_t),    pointer      :: lshell   !Pointer to a l-shell.
     real(dp), dimension(:), pointer :: values
     type(rad_grid_t)                :: grid
-    type(pseudopotential_t),pointer :: vps
+    type(pseudopotential_new_t),pointer :: vps
     integer :: l,nsm,izeta
     real(dp) :: ch_temp,pop
     type(basis_def_t),  pointer     :: basp
@@ -197,7 +203,7 @@ module atom_pao_util
     basp=>basis_parameters(is)
     vps => basis_parameters(is)%pseudopotential
 
-    grid = rad_get_grid(vps%vlocal)
+    grid = get_grid(vps)
     allocate(values(1:rad_grid_get_length(grid)))
     values=0.0_dp
     call rad_alloc(rho,values,grid)

@@ -18,8 +18,8 @@ module atmfuncs
   !     are initialized by calling the subroutine 'atom' for all the 
   !     different chemical species in the calculation:
 
-  use precision
-  use sys, only: die
+  use precision, only : dp
+  use sys, only : die
   use atom_types
   use atmfuncs_types
   use spher_harm, only: rlylm
@@ -31,7 +31,7 @@ module atmfuncs
   integer, parameter               :: max_ilm = (max_l+1)*(max_l+1)
 
   
-  private :: chk, max_l, max_ilm, message
+  private :: chk, max_l, max_ilm !, message
 
   public  :: nofis, nkbfis, izofis, massfis
   public  :: rcore, rcut, chcore_sub, epskb, uion
@@ -217,7 +217,10 @@ contains
 
     integer, intent(in) :: is
 
+    integer :: nspecies
     character(len=79) message
+
+    nspecies = get_number_of_species()
 
     if ((is.lt.1).or.(is.gt.nspecies)) then 
        write(message,'(2a,i3,a,i3)') name, ": Wrong species", is, ". Have", nspecies
@@ -232,7 +235,7 @@ contains
     !This is all the info which will be used by siesta
 
     real(dp):: r(3), val, grphi, gr(3),delta,rm,rc
-    integer ::is1, is2, is,npoints=50,i,ir
+    integer ::is1, is2, is,npoints=50,i,ir, nspecies
     character(len=40) :: filename
     real(dp) :: energy,dedr
 
@@ -240,6 +243,7 @@ contains
 
     !------------elec_corr---------------------
     open(unit=88,file="elec_corr_check.dat",status="replace")
+    nspecies = get_number_of_species()
     do is1=1,nspecies
        do is2=1,nspecies
           if (.not. floating(is2) .and. .not. floating(is1))then
@@ -759,6 +763,7 @@ contains
     indx=((ismx-1)*ismx)/2 + ismn
   
     call get_elec_corr(indx,r,energ,dedr)
+    print *, "psover: index,ener=",indx,energ
     
 
   end subroutine psover

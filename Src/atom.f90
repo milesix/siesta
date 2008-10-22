@@ -8,7 +8,7 @@
 !     given in the SIESTA license, as signed by all legitimate users.
 !     
 
-!     This module is the main interface to the basis/kbs subroutines
+!     This module is the main interface to the atomic part of siesta.
 !     The only public subroutine is:
 !     subroutine generate_all_atomic_info()
 !     No arguments.
@@ -21,31 +21,40 @@ module atom
   use units, only: eV
   
   !Generic module for radial (1D) functions
-  use radial
+  use radial, only : rad_func_t, restricted_grid, rmax_radial_grid, rad_cutoff, &
+       rad_get_ir_from_r, rad_get_grid, rad_multiply_by_rl, rad_dealloc, rad_sum,&
+       rad_set_default_length, rad_vhartree, rad_multiply_each_value, &
+       rad_divide_by_4pir2, rad_vxc, rad_copy
   
   !Main module where all the atomic info is stored.
   use atom_types, only : get_atomic_number, get_symbol, &
-       nspecies, symbol_length, set_no_reduced_vlocal, set_no_kb, &
+       symbol_length, set_no_reduced_vlocal, set_no_kb, &
        set_no_neutral_atom_potential, has_kbs, set_floating, &
-       set_has_core_charge, filter_orbs, set_number_of_species
+       set_has_core_charge, filter_orbs, get_number_of_species, rad_grid_t
   
   !Auxiliary module where all the intermediate info is stored.
   use atom_generation_types, only : basis_def_t, basis_parameters,lshell_t, shell_t, &
        write_basis_specs
   
   !All the auxiliary modules
-  use atomparams
+  use atomparams, only : 
   use periodic_table, only : symbol
-  use pseudopotential, only : pseudopotential_t
+  use pseudopotential_new, only : pseudopotential_new_t, get_pseudo_valence_charge,&
+       get_pseudo_gen_valence_charge, pseudo_has_core_charge, pseudo_copy_scaled_ve,&
+       get_pseudo_method, get_pseudo_npotd, get_pseudo_nicore, pseudo_dealloc_vdown,&
+       pseudo_set_vdown, get_pseudo_l, get_pseudo_down, set_rho_val,&
+       pseudo_dealloc_vdown, pseudo_set_vdown, get_core_charge, get_irel, get_icorr,&
+       get_rho_val, pseudo_copy_valence_charge, set_ve_val_scaled, set_ve_val,&
+       get_rho_val_scaled, pseudo_copy_scaled_charge, set_rho_val_scaled
   
   !All the expert subroutines which generate the corresponding functions.
-  use atom_corecharge, only: core_Charge_Setup
+  use atom_corecharge, only: core_charge_Setup
   
   use atom_bessel, only : bessel
-  use parallel, only:ionode
-  use atom_na, only: gen_vna
-  use atom_options, only:get_atom_options, write_ion_plot_files
-  
+  use parallel, only : ionode
+  use atom_na, only : gen_vna
+  use atom_options, only : get_atom_options, write_ion_plot_files
+  use atomparams, only : nzetmx, nrmax
   implicit none      
 
   private
@@ -84,7 +93,7 @@ CONTAINS
        call basis_gen(isp)
     else
        call species_pseudopotential_init(isp)
-       call species_charge(isp)       
+       call species_charge(isp)    
        call gen_vlocal(isp)
        call kbgen(isp)
        call basis_gen(isp)
@@ -96,6 +105,8 @@ CONTAINS
   !----------------------------------------------------
 
   subroutine calculate_rho_potential(charge,rho,potential,irel,rho_core)
+    !Scale rho with charge
+    !Calculate Vhartree and Vxc
     real(dp), intent(in)                   :: charge
     type(rad_func_t), intent(inout)        :: rho
     type(rad_func_t), intent(out)          :: potential
@@ -112,18 +123,19 @@ CONTAINS
 
     rmax = rad_cutoff(rho)
 
-    !------Hartree-potential-----------------
+    !-------Scale rho with the new charge
     rho_scaled = rad_multiply_each_value(rho,charge)
+    call rad_dealloc(rho)
+     
+     !------Hartree-potential-----------------
     pot_hartree = rad_vhartree(rho_scaled)
     !call rad_dump_file(pot_hartree,"pot_hartree.dat")
 
     ! NOTE that atomxc expects true rho(r), not 4pir^2*rho(r)
     rho4pir2=rad_divide_by_4pir2(rho_scaled,.false.)
 
-
     !------XC-potential----------------------
     !If exists add the core charge due to nonlinear core correcctions
-    call rad_dealloc(rho)
     if (present(rho_core)) then
        rho_core4pir2 = rad_divide_by_4pir2(rho_core,.false.)
        !call rad_dump_file(rho_core4pir2,"rho_core4pir2.dat")
@@ -134,7 +146,7 @@ CONTAINS
        call rad_copy(rho4pir2,rho_tot)
     endif
 
-    !    Compute xc energy and potential and add to ve
+    !------Compute xc energy and potential and add to ve
     pot_xc = rad_vxc(rho_tot,irel,exc)
     !call rad_dump_file(pot_xc,"pot_xc.dat")
 
@@ -179,7 +191,7 @@ CONTAINS
     implicit none
 
     ! Internal variables ...................................................
-    integer is
+    integer  :: nspecies, is
     real(dp) :: filter_factor
 
     logical :: user_basis, user_basis_netcdf, read_from_file, filter_Orbitals
@@ -210,8 +222,7 @@ CONTAINS
        !     Note : In this section, the number of species is nspecies
        call read_basis_specs()
 
-       call set_number_of_species(nspecies)
-       
+       nspecies = get_number_of_species()
 
        do is = 1,nspecies
           call write_basis_specs(6,is)
@@ -370,23 +381,25 @@ CONTAINS
 
     !Internal vars
     real(dp)                         :: charge 
-    type(pseudopotential_t),pointer  :: vps => Null()
+    type(pseudopotential_new_t),pointer  :: vps => Null()
     type(basis_def_t), pointer       :: basp => Null()
     integer                          :: irel
-    type(rad_func_t), pointer        :: chcore => Null()
-    real(dp)                         :: rescale_charge
-    character(len=3)                 :: xcfunc    !Xc used
-    character(len=4)                 :: xcauth    !Authors of xc
-
-
+    type(rad_func_t)                 :: chcore, rho_val, ve_val, rho_val_scaled, ve_val_scaled
+    real(dp)                         :: rescale_charge, zval, gen_zval
+    character(len=3)                 :: xcfunc, rel_label    !XC used, relativistic?
+    character(len=4)                 :: xcauth               !Authors of xc
+    character(len=2)                 :: pseudo_XC_label      !XC used in the pseudo
+    
     basp => basis_parameters(isp)
     vps => basp%pseudopotential
 
+    zval = get_pseudo_valence_charge(vps)
+    gen_zval = get_pseudo_gen_valence_charge(vps)
 
-    if (abs(get_atomic_number(isp)-vps%gen_zval).gt.1.0d-3) then 
+    if (abs(get_atomic_number(isp)-gen_zval).gt.1.0d-3) then 
        write(6,'(/,a,/,a,f5.2)') &
             'ATOM: Pseudopotential generated from an ionic configuration',&
-            'ATOM: with net charge', get_valence_charge(isp)-vps%gen_zval
+            'ATOM: with net charge', get_valence_charge(isp)-gen_zval
     endif
 
     !
@@ -414,19 +427,22 @@ CONTAINS
     !    
     charge = basp%ionic_charge
     if ( abs(charge) == 0.d0  .or. &
-         (abs(charge-vps%zval+vps%gen_zval) .lt. 1.0d-3) ) then   
+         (abs(charge-zval+gen_zval) .lt. 1.0d-3) ) then   
        ! We can't overwrite basp%ionic_charge because it may be used 
        ! if there are semicore states 
-       charge = get_valence_charge(isp) - vps%gen_zval
+       charge = get_valence_charge(isp) - gen_zval
     endif
 
     !    Relativistic pseudo
-    if (vps%irel.eq.'rel') irel=1
-    if (vps%irel.ne.'rel') irel=0
+    rel_label = get_irel(vps)
+    pseudo_XC_label = get_icorr(vps)
+    if (rel_label.eq.'rel') irel=1
+    if (rel_label.ne.'rel') irel=0
 
     xcfunc = fdf_string('xc.functional','LDA')
     xcauth = fdf_string('xc.authors','PZ')
-    call xc_check(xcfunc,xcauth,vps%icorr)
+
+    call xc_check(xcfunc,xcauth,pseudo_XC_label)
 
     !-----------------------Rho, hartree potential for KBs-------------------
     !    CALCULATION OF THE VALENCE SCREENING POTENTIAL FROM THE READ CHARGE
@@ -435,20 +451,28 @@ CONTAINS
     !    For Kleinman-Bylander projectors calculation, use
     !    the true valence charge used for pseudopotential generation
 
-    call rad_copy(vps%chval,vps%rho_val)
+    !call rad_copy(vps%chval,vps%rho_val)
+    call pseudo_copy_valence_charge(vps)
 
     !    Rho has to be updated as rho in the VPS/PSF file is rescaled
     !    to the charge of a neutral atom.
 
     
-    rescale_charge = vps%gen_zval/get_valence_charge(isp)
+    rescale_charge = gen_zval/get_valence_charge(isp)
 
-    if(basp%pseudopotential%nicore.ne.'nc ') then
-       chcore => vps%chcore
-       call calculate_rho_potential(rescale_charge,vps%rho_val,vps%ve_val,irel,chcore)
+    !if(basp%pseudopotential%nicore.ne.'nc ') then
+    rho_val = get_rho_val(vps)
+
+    if(pseudo_has_core_charge(vps))then
+       chcore = get_core_charge(vps)
+       call calculate_rho_potential(rescale_charge,rho_val,ve_val,irel,chcore)
     else
-       call calculate_rho_potential(rescale_charge,vps%rho_val,vps%ve_val,irel)
+       call calculate_rho_potential(rescale_charge,rho_val,ve_val,irel)
     endif
+
+    call set_rho_val(vps, rho_val)
+    call set_ve_val(vps, ve_val)
+
     !    vps%Rho now contains the 'true' charge used in the pseudopotential
     !    calculation,
     
@@ -464,18 +488,20 @@ CONTAINS
     !              basis gen specified charge: +0.7
    
     !The rho for pao generation
-    call rad_copy(vps%rho_val,vps%rho_val_scaled)
+    call pseudo_copy_scaled_charge(vps)
 
+    rescale_charge = (get_valence_charge(isp)-charge)/gen_zval
+    rho_val_scaled = get_rho_val_scaled(vps)
 
-    rescale_charge = (get_valence_charge(isp)-charge)/vps%gen_zval
-
-    if(basp%pseudopotential%nicore.ne.'nc ') then
-      
-       call calculate_rho_potential(rescale_charge,vps%rho_val_scaled,vps%ve_val_scaled,irel,chcore)
-       nullify(chcore)
+    if(pseudo_has_core_charge(vps)) then      
+       call calculate_rho_potential(rescale_charge,rho_val_scaled,ve_val_scaled,irel,chcore)
+       call rad_dealloc(chcore) !no longer needed.
     else
-       call calculate_rho_potential(rescale_charge,vps%rho_val_scaled,vps%ve_val_scaled,irel)
+       call calculate_rho_potential(rescale_charge,rho_val_scaled,ve_val_scaled,irel)
     endif
+
+    call set_rho_val_scaled(vps, rho_val_scaled)
+    call set_ve_val_scaled(vps, ve_val_scaled)
 
     if (charge <= 0.0_dp) then
 
@@ -486,8 +512,8 @@ CONTAINS
 
 
     else if (charge > 0.0_dp) then
-       ! charge > 0
-       if (abs(charge-basp%pseudopotential%zval+vps%gen_zval).gt.1.0d-3) then 
+       
+       if (abs(charge-zval+gen_zval).gt.1.0d-3) then 
           write(6,'(/,a)') 'ATOM: basis set generated (by rescaling the valence charge)'
           write(6,'(a,f8.4)') 'ATOM: for a cation of charge ',charge 
        else
@@ -495,10 +521,14 @@ CONTAINS
           write(6,'(a)')   'ATOM: to generate the pseudopotential'
        endif
 
-       call rad_copy(vps%ve_val, vps%ve_val_scaled)
-
+       !call rad_copy(vps%ve_val, vps%ve_val_scaled)
+       call pseudo_copy_scaled_ve(vps)
     Endif
 
+    call rad_dealloc(rho_val)
+    call rad_dealloc(ve_val)
+    call rad_dealloc(rho_val_scaled)
+    call rad_dealloc(ve_val_scaled)
   end subroutine species_charge
 
 !------------------------------------------------------------------------
@@ -513,6 +543,7 @@ CONTAINS
     logical , intent(in) :: floating
 
     integer :: iz
+    real(dp) :: zval
     type(basis_def_t), pointer :: basp
     character(len=symbol_length) :: sym
 
@@ -524,7 +555,8 @@ CONTAINS
     call set_symbol(isp,sym)
     call set_label(isp,basp%label)
     call set_mass(isp,basp%mass)
-    call set_valence_charge(isp,basp%pseudopotential%zval)
+    zval = get_pseudo_valence_charge(basp%pseudopotential)
+    call set_valence_charge(isp,zval)
     call set_read_from_file(isp,.false.)
     call set_lmax_orbs(isp,basp%lmxo)
 
@@ -557,20 +589,24 @@ CONTAINS
 
     !    Internal vars.
 
-    integer :: lmax,linput,nodd,l,nrval,i,ndown,exponent
+    integer :: lmax,linput,nodd,l,nrval,i,ndown,exponent, npotd
+    real(dp) ::gen_zval
 
-    type(pseudopotential_t), pointer :: vp
+    type(pseudopotential_new_t), pointer :: vp
     type(basis_def_t),       pointer :: basp
     type(rad_func_t)                 :: ve
-    type(rad_func_t)                 :: rad_tmp      
+    type(rad_func_t)                 :: rad_tmp,vdown, chcore      
     type(rad_grid_t)                 :: grid
+    character(len=10)                :: method(6)
+    character(len=4)                 :: nicore
     !---
 
     basp => basis_parameters(isp)
     vp   => basp%pseudopotential
 
     linput=max(basp%lmxo,basp%lmxkb)
-    lmax=min(vp%npotd-1,linput)
+    npotd = get_pseudo_npotd(vp)
+    lmax=min(npotd-1,linput)
 
     if (lmax.lt.linput) then
        write(6,'(a)')  'read_vps: ERROR: You must generate a pseudopotential'
@@ -578,13 +614,15 @@ CONTAINS
        call die
     endif
 
-    nrval = rad_get_ir_from_r(vp%vdown(0),rad_cutoff(vp%vdown(0)))
+    vdown = get_pseudo_down(vp,0)
+
+    nrval = rad_get_ir_from_r(vdown,rad_cutoff(vdown))
     if (rmax_radial_grid /= 0.0_dp) then
-       nrval = rad_get_ir_from_r(vp%vdown(0),rmax_radial_grid)
+       nrval = rad_get_ir_from_r(vdown,rmax_radial_grid)
        write(6,"(a,f10.5,i5)") &
             "Maximum radius (at nrval) set to ", &
             rmax_radial_grid, nrval
-       grid = rad_get_grid(vp%vdown(0))
+       grid = rad_get_grid(vdown)
        call rad_set_default_length(grid,nrval)
     endif
 
@@ -599,30 +637,31 @@ CONTAINS
        call die
     endif
 
-
+    method = get_pseudo_method(vp)
     write(6,'(/,a)')'read_Read: Pseudopotential generation method:'
-    write(6,'(7a)') 'read_vps: ',vp%method(1),(vp%method(i),i=3,6)
+    write(6,'(7a)') 'read_vps: ',method(1),(method(i),i=3,6)
 
     !We are going to find the charge configuration
     !used for the pseudopotential generation using the information given in
     !the 'text' variable.
 
-    write(6,'(a,f10.5)') 'Total valence charge: ', vp%gen_zval
+    write(6,'(a,f10.5)') 'Total valence charge: ', gen_zval
 
-    if (vp%nicore.ne.'nc  ') then
+    if (pseudo_has_core_charge(vp)) then
        write(6,'(/,a)') &
             'read_vps: Pseudopotential includes a core correction:'
 
-       if(vp%nicore.eq.'pcec') then
+       nicore = get_pseudo_nicore(vp)
+       if(nicore.eq.'pcec') then
           write(6,'(a)') 'read_vps: Pseudo-core for xc-correction'
-       elseif(vp%nicore.eq.'pche') then
+       elseif(nicore.eq.'pche') then
           write(6,'(a)')  'read_vps: Pseudo-core for hartree and xc-correction'
           write(6,'(a)') 'Siesta cannot use this pseudopotential'
           write(6,'(a)') 'Use option pe instead of ph in ATOM program'
           call die()
-       elseif(vp%nicore.eq.'fcec') then
+       elseif(nicore.eq.'fcec') then
           write(6,'(a)') 'read_vps: Full-core for xc-correction'
-       elseif(vp%nicore.eq.'fche') then
+       elseif(nicore.eq.'fche') then
           write(6,'(a)') 'read_vps: Full-core for hartree and xc-correction'
           write(6,'(a)') 'Siesta cannot use this pseudopotential'
           write(6,'(a)') 'Use option pe instead of ph in ATOM program'
@@ -633,35 +672,45 @@ CONTAINS
 
     !Ionic pseudopotentials (Only 'down' used)
     do ndown=0,lmax
-       l = vp%ldown(ndown) 
+       l = get_pseudo_l(vp,ndown)
+       !l = vp%ldown(ndown) 
        if(l.ne.ndown) then
           write(6,'(a)') 'atom: Unexpected angular momentum  for pseudopotential'
           write(6,'(a)') 'atom: Pseudopotential should be ordered by increasing l'
        endif
        exponent = -1
-       rad_tmp = rad_multiply_by_rl(vp%vdown(l),exponent)
-       call rad_dealloc(vp%vdown(l))
-       call rad_copy(rad_tmp,vp%vdown(l))
+       vdown = get_pseudo_down(vp,l)
+       rad_tmp = rad_multiply_by_rl(vdown,exponent)
+       !call rad_dealloc(vp%vdown(l))
+       !call rad_copy(rad_tmp,vp%vdown(l))
+       call pseudo_dealloc_vdown(vp,l)
+       call pseudo_set_vdown(vp,l,rad_tmp)
        call rad_dealloc(rad_tmp)       
-
     enddo
 
     !***  OBTAIN AN IONIC-PSEUDOPOTENTIAL IF CORE CORRECTION FOR HARTREE****
     !    POTENTIAL
-    if((vp%nicore.eq.'pche').or.(vp%nicore.eq.'fche')) then
+    if((nicore.eq.'pche').or.(nicore.eq.'fche')) then
 
-       ve = rad_vhartree(vp%chcore)
-
+       chcore = get_core_charge(vp)
+       ve = rad_vhartree(chcore)
 
        do l=0,lmax
-          rad_tmp = rad_sum(vp%vdown(l),ve)
-          call rad_dealloc(vp%vdown(l))
-          call rad_copy(rad_tmp,vp%vdown(l))
+          vdown = get_pseudo_down(vp,l)
+          rad_tmp = rad_sum(vdown,ve)
+          call pseudo_dealloc_vdown(vp,l)
+          !call rad_dealloc(vp%vdown(l))
+          call pseudo_set_vdown(vp,l,rad_tmp)
+          !call rad_copy(rad_tmp,vp%vdown(l))
           call rad_dealloc(rad_tmp)
+          call rad_dealloc(vdown)
        enddo
        call rad_dealloc(ve)
+       call rad_dealloc(chcore)
+
     endif
 
+   
     nullify(vp,basp)
 
   end subroutine species_pseudopotential_init

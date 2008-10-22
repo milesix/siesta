@@ -13,7 +13,7 @@ module radial
 
   implicit none
 
-  type :: rad_kind_t
+  type, public :: rad_kind_t
      private
      integer :: kind = 0
   end type rad_kind_t
@@ -29,7 +29,7 @@ module radial
      type (log_rad_func_t), pointer :: log
   end type rad_func_t
 
-  type :: rad_grid_t
+  type, public :: rad_grid_t
      private
      type (rad_kind_t)         :: kind
      type (logGrid_t), pointer :: log
@@ -41,7 +41,35 @@ module radial
   end interface
 
   real(dp), public ::rmax_radial_grid
+  
+  public :: rad_alloc, rad_allocated, rad_broadcast, rad_copy, rad_cutoff
+  public :: rad_dealloc, rad_dealloc_kind, rad_default_length, rad_divide_by_4pir2
+  public :: rad_dump_ascii, rad_dump_xml, rad_dump_fft_xml, rad_dump_fft_ascii
+  public :: rad_dump_fft_file, rad_dump_file, rad_dump_funcs_ascii, rad_energy_deriv
+  public :: rad_fft, rad_get_filter_cutoff, rad_filter, rad_find_parabola_parameters
+  public :: rad_fit_parabola, rad_get, rad_get_grid, rad_grid_dump_ascii_formatted
+  public :: rad_grid_get_a, rad_grid_get_b, rad_grid_get_length, rad_get_r_from_value
+  public :: rad_get_value_from_ir, rad_ghost, rad_grid_alloc, rad_grid_dealloc
+  public :: rad_is_log, rad_is_lin, rad_kbproj, rad_kind, rad_kind_broadcast
+  public :: rad_kind_compare, rad_min, rad_parabolic_split, rad_read_ascii
+  public :: rad_reparametrize, rad_read_ascii_unformatted, rad_read_ascii_formatted
+  public :: rad_write_ascii_formatted, rad_set_origin, rad_set_default_length
+  public :: rad_lin_to_log, rad_log_to_linear, rad_normalize_r_l_1, rad_divide_by_r_l_1
+  public :: rad_kinetic_energy, rad_potential_energy, rad_self_energy, rad_split_gauss
+  public :: rad_sum, rad_multiply, rad_integral, rad_sum_function, rad_schro
+  public :: rad_multiply_by_rl, rad_sum_value, rad_get_length, rad_get_ir_from_r
+  public :: rad_matching_radius, rad_get_radius_from_value, rad_integral_vs_value
+  public :: rad_smooth, rad_smooth_large, rad_multiply_each_value, rad_vhartree
+  public :: rad_vxc, rad_rc_vs_e, rad_split_scan_tail, rad_polarization
+  public :: rad_split_scan_tail_parabola, rad_zero, rad_get_r_from_ir
 
+  !These should be encapsulated.
+  public :: restricted_grid
+  public :: ntbmax
+  public :: lin_rad_default_length
+  public :: eps
+  !public :: nrmax
+  private
 
 contains
 
@@ -1160,6 +1188,8 @@ contains
 
     real(dp) :: epot
 
+    epot = 0.0_dp
+
     if (rad_func%kind == lin_t .and. pot%kind == lin_t ) then
        call die("radial: rad_potential_energy lin_t not implemented")
     elseif(rad_func%kind == log_t .and. pot%kind == log_t ) then
@@ -1467,7 +1497,6 @@ contains
 
     integer :: ir,nr
     real(dp) :: r,v1,diff
-    real(dp), parameter :: dr = 0.1
     real(dp), parameter :: eps = 1E-4
 
     nr = rad_get_length(func)

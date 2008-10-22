@@ -10,11 +10,17 @@
 
       module atom_elec_correction
 
-      use precision
-      use atom_types
-      use radial
+      use precision, only : dp
+      use atom_types, only : get_number_of_species, npairs, elec_corr, &
+           get_valence_charge, is_floating, get_value_pseudo_local_charge, &
+           get_pseudo_local_charge
+      use radial, only : rad_func_t, ntbmax, rad_alloc, rad_grid_t, &
+           lin_rad_default_length, rad_cutoff, rad_grid_alloc, rad_grid_dealloc, &
+           rad_get_grid, rad_dealloc, rad_dump_file
+           
       use m_radfft
       use m_recipes, only:ratint
+      use sys, only : die
       implicit none
 
       private
@@ -24,12 +30,13 @@
 
       subroutine elec_corr_setup
 
-      integer is, is2, i
+      integer  :: is, is2, i, nspecies
       real(dp) :: rchloc, rchloc2, cutoff,values(1:ntbmax)
 
       type(rad_func_t)  :: chlocal1, chlocal2
       type(rad_grid_t)  :: grid
 
+      nspecies = get_number_of_species()
       npairs = ((nspecies+1)*nspecies)/2
       allocate(elec_corr(npairs))
       
@@ -50,21 +57,18 @@
                grid = rad_grid_alloc(ntbmax,delta=0.0001_dp)
                values=0.0_dp
                call rad_alloc(elec_corr(i),values,grid)
-               !call rad_zero(elec_corr(i))
                call rad_grid_dealloc(grid)
             else
                
                chlocal2 = get_pseudo_local_charge(is2)
                rchloc2 = rad_cutoff(chlocal2)
-               cutoff = rchloc + rchloc2 + 0.2_dp
-               grid = rad_get_grid(chlocal1)
-               elec_corr(i) = ch_overlap(is,is2,cutoff,grid)
-               call rad_grid_dealloc(grid)
+               cutoff = rchloc + rchloc2 + 0.2_dp               
+               elec_corr(i) = ch_overlap(is,is2,cutoff)
                call rad_dealloc(chlocal2)
             endif
             
          enddo
-         
+        
          if (.not. is_floating(is)) call rad_dealloc(chlocal1)
 
       enddo
@@ -76,13 +80,12 @@
 !     This "atomic" routines use information **in the new structures**,
 !     so they cannot be replaced by those in atom.f...
 !
-      function CH_OVERLAP(IS1,IS2,RMX,grid) result(elec_corr)
+      function CH_OVERLAP(IS1,IS2,RMX) result(elec_corr)
       !use atmfuncs, only: zvalfis, psch
       use parallel, only: IOnode
 
       integer, intent(in)   :: is1, is2
       real(dp), intent(in )    :: rmx
-      type(rad_grid_t), intent(in)    :: grid
       type(rad_func_t) :: elec_corr
      
 
@@ -92,6 +95,7 @@
 !    of these charge densities. 
 !    Written by D.Sanchez-Portal. March, 1997.(from routine MATEL, written 
 !    by Jose M. Soler)
+
 
 !    INTEGER IS1,IS2             :  Species indexes.
 !    RMX                         :  Maximum range of the correction.
@@ -112,8 +116,8 @@
       real(dp), pointer        :: aux(:)   
       real(dp), pointer        :: corr(:)
 
-      integer nq, npoint
-      real(dp)            :: q2cut, cherr
+      integer                  :: nq, npoint
+      real(dp)                 :: q2cut, cherr
       PARAMETER ( NQ     =  512  )
       PARAMETER ( NPOINT =  4     ) 
       PARAMETER ( Q2CUT  =  2.5e3 )
@@ -126,7 +130,8 @@
       REAL(DP) r, vd, vv1, vv2, energ1, energ2, bessph,iz1,iz2
       integer  itb, nr, nmin, nmax, nn, iq, ir
 
-      REAL(DP) QTMP             
+      REAL(DP) QTMP
+      type(rad_grid_t) :: grid
 
       allocate(aux(1:lin_rad_default_length()),corr(1:lin_rad_default_length()))
       
@@ -180,9 +185,8 @@
 
          Z1=Z1-C*CH1*R*R    
          Z2=Z2-C*CH2*R*R
-
       ENDDO
-
+      
       
       IF((ABS(Z1-IZ1).GT.CHERR).OR.(ABS(Z2-IZ2).GT.CHERR)) THEN 
          if (IOnode) then
@@ -220,7 +224,8 @@
          VTB(ITB,1)=VV1
          VTB(ITB,2)=VV2
       ENDDO 
-         
+
+
 !      C****FOURIER-TRANSFORM OF RADIAL CHARGE DENSITY****
 !      C
       CALL RADFFT( 0, NQ, RMAX, CH(0:NQ,1), CH(0:NQ,1) )
@@ -237,7 +242,7 @@
          CH(IQ,2) = CH2
       ENDDO
 !C
-!    THE ELECTROSTATI!ENERGY CORRECTION IS STORED IN 'CORR'
+!    THE ELECTROSTATIC ENERGY CORRECTION IS STORED IN 'CORR'
 ! 
       DO IR=1,NTBMAX
 
@@ -263,11 +268,11 @@
          ENERG2=-(ENERG2*R)-(IZ1*(VTB(IR,2)*R-IZ2))
   
          CORR(IR)=0.5_DP*(ENERG1+ENERG2)
-
       ENDDO 
 
+      grid = rad_grid_alloc(ntbmax,delta=dlt)
       call rad_alloc(elec_corr,corr,grid)
-      
+      call rad_grid_dealloc(grid)
       deallocate(corr,aux)
       END function ch_overlap
 

@@ -176,7 +176,7 @@ contains
     endif
 
     do j=1,ntbmax
-       write(lun,'(3f15.9)') (j-1)*op%delta, op%f(j) ,op%d2(j)
+       write(lun,'(3f18.12)') (j-1)*op%delta, op%f(j) ,op%d2(j)
     enddo
   end subroutine lin_rad_dump_ascii
 

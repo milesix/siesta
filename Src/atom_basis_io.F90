@@ -15,13 +15,27 @@ module atom_basis_io
   !
   !     Alberto Garcia, 2000, 2001
   !     E. Anglada 2008
-  use chemical
+  use chemical, only : read_chemical_types, species_label
   use sys, only: die
-  use precision
-  use atom_types
+  use precision, only: dp
+  use atom_types, only: set_number_of_species, get_number_of_species, hilbert_vector_t, &
+       label_length, symbol_length, get_l_v, get_n_v, get_zeta_v, get_pop_v, get_energy_v, &
+       get_pol_v, get_rad_func_p_v, get_read_from_file, get_label, get_symbol, get_atomic_number, &
+       get_valence_charge, get_mass, get_self_energy, get_number_of_orbs, get_lmax_orbs, &
+       get_lmax_kb_proj, get_number_of_orbs, get_number_of_kb_projs, get_orb_v, get_rad_func_v,&
+       destroy_vector, get_number_of_orbs_non_deg, has_kbs, get_kb_v, get_number_of_kb_non_deg,&
+       has_neutral_atom_potential, get_neutral_atom_potential, has_pseudo_local_charge, &
+       get_pseudo_local_charge, has_reduced_vlocal, get_reduced_vlocal, has_core_charge,&
+       get_core_charge, get_symbol, set_label, set_atomic_number, set_valence_charge, set_mass,&
+       set_self_energy, set_lmax_orbs, set_lmax_kb_proj,init_orbs, init_kb_proj, init_vector,&
+       set_symbol, set_orb, set_orbs_deg, set_kb_projs_deg, set_neutral_atom_potential,&
+       set_pseudo_local_charge, set_core_charge, set_read_from_file
+
   use atom_generation_types, only: write_basis_specs, basis_parameters
-  use pseudopotential
-  use radial
+  use pseudopotential_new, only : pseudopotential_new_t, pseudo_header_print
+  use radial, only : rad_func_t, rad_read_ascii, rad_dealloc, rad_dump_ascii, &
+       rad_dump_fft_file, rad_dump_xml
+  
   use fdf
   !      use flib_wxml, only: str
   use xml, only: xml_dump_attribute, xml_dump_element, str
@@ -281,12 +295,12 @@ end subroutine read_basis_netcdf
 
 subroutine read_basis_ascii
 
-  integer is
+  integer :: is, nspecies
 
   call read_chemical_types
-  nspecies = number_of_species()
+  nspecies = get_number_of_species()
 
-  allocate(species(nspecies))
+  call set_number_of_species(nspecies)
 
   do is = 1, nspecies
      call set_label(is, species_label(is))
@@ -642,16 +656,21 @@ end subroutine dump_basis_netcdf
 
 #endif
 
+!------------------------------------
 
 subroutine dump_basis_ascii
 
-  integer is
+  integer :: is, nspecies
+
+  nspecies = get_number_of_species()
 
   do is = 1, nspecies
      call dump_ion_ascii(is)
   enddo
 end subroutine dump_basis_ascii
-!---
+
+!------------------------------------
+
 subroutine dump_ion_ascii(is)
   integer, intent(in)      :: is
 
@@ -697,7 +716,7 @@ subroutine dump_ion_ascii(is)
      open(unit=lun2,file=fileid,status='replace', form='formatted')
      write(lun2,'(3a)') "# ",trim(get_label(is)), " Vna"
      rfunc=get_neutral_atom_potential(is)
-     call rad_dump_ascii(rfunc,lun2,header=.true.)
+     call rad_dump_ascii(rfunc,lun2,header=.false.)
      call io_close(lun2)
      call rad_dump_ascii(rfunc,lun)
      write(fileid,'(a,a)') trim(get_label(is)),"-VNA-fft.dat"
@@ -712,7 +731,7 @@ subroutine dump_ion_ascii(is)
      open(unit=lun2,file=fileid,status='replace', form='formatted')
      write(lun2,'(3a)') "# ",trim(get_label(is)), " ChLocal"
      rfunc = get_pseudo_local_charge(is)
-     call rad_dump_ascii(rfunc,lun2,header=.true.)
+     call rad_dump_ascii(rfunc,lun2,header=.false.)
      call io_close(lun2)
      call rad_dump_ascii(rfunc,lun)
      call rad_dealloc(rfunc)
@@ -727,7 +746,7 @@ subroutine dump_ion_ascii(is)
      open(unit=lun2,file=fileid,status='replace',  form='formatted')
      write(lun2,'(3a)') "# ",trim(get_label(is))," Red_Vlocal"
      rfunc = get_reduced_vlocal(is)
-     call rad_dump_ascii(rfunc,lun2,header=.true.)
+     call rad_dump_ascii(rfunc,lun2,header=.false.)
      call rad_dealloc(rfunc)
      call io_close(lun2)
   endif
@@ -740,7 +759,7 @@ subroutine dump_ion_ascii(is)
      open(unit=lun2,file=fileid,status='replace', form='formatted')
      write(lun2,'(3a)') "# ",trim(get_label(is)), " ChCore"
      rfunc = get_core_charge(is)
-     call rad_dump_ascii(rfunc,lun2,header=.true.)
+     call rad_dump_ascii(rfunc,lun2,header=.false.)
      call io_close(lun2)
      call rad_dump_ascii(rfunc,lun)
      !FFT
@@ -780,7 +799,8 @@ end subroutine dump_ion_ascii
 !-----------------------------------------------------------------
 subroutine dump_basis_xml
 
-  integer is
+  integer :: is, nspecies
+  nspecies = get_number_of_species()
 
   do is = 1, nspecies
      call dump_ion_xml(is)
@@ -795,7 +815,6 @@ subroutine dump_ion_xml(is)
   type(rad_func_t)         :: rfunc
   character*40 filename
   integer i, lun
-
 
   if (get_read_from_file(is)) return    !! Do not dump
 

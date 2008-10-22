@@ -113,12 +113,15 @@ module atom_basis_specs
   !
   use precision
   use atom_generation_types
-  use pseudopotential
+  use pseudopotential, only : pseudopotential_t, pseudo_read
+  use pseudopotential_new, only : pseudopotential_new_t, get_pseudo_valence_charge,&
+       pseudo_reparametrize
+  use pseudopotential_new, only : pseudo_convert
   use periodic_table
   use chemical
-  use atom_types, only : nspecies
+  use atom_types, only : set_number_of_species   !nspecies
   use sys
-  use radial
+  use radial, only: rad_func_t, restricted_grid, rmax_radial_grid
   Use fdf
   use parse
 
@@ -179,9 +182,10 @@ CONTAINS
     character(len=15) :: basis_size
     character(len=10) :: basistype_generic
 
-    type(ground_state_t), pointer :: gs
+    type(ground_state_t),    pointer :: gs
+    type(pseudopotential_t), pointer :: pseudo
 
-    integer nns, noccs, i, ns_read, l
+    integer nns, noccs, i, ns_read, l, nspecies
     logical synthetic_atoms, found, reparametrize_pseudos
     real(dp) :: new_a, new_b
 
@@ -237,6 +241,7 @@ CONTAINS
     !
     call read_chemical_types
     nspecies = number_of_species()
+    call set_number_of_species(nspecies)
 
     allocate(basis_parameters(nspecies))
     do isp=1,nspecies
@@ -246,6 +251,7 @@ CONTAINS
     synthetic_atoms = .false.
     
     do isp=1,nspecies
+       allocate(pseudo)
        basp=>basis_parameters(isp)
 
        basp%label = species_label(isp)
@@ -269,14 +275,18 @@ CONTAINS
        else if (basp%synthetic) then
           synthetic_atoms = .true.
           ! Will set gs later
-          call pseudo_read(basp%label,basp%pseudopotential)
+          call pseudo_read(basp%label,pseudo)
        else
           call ground_state(abs(int(basp%z)),basp%ground_state)
-          call pseudo_read(basp%label,basp%pseudopotential)
+          call pseudo_read(basp%label,pseudo)
        endif
+       
+       call pseudo_convert(pseudo,basp%pseudopotential)
        if (reparametrize_pseudos) then 
           call pseudo_reparametrize(p=basp%pseudopotential, a=new_a, b=new_b)
        endif
+       
+       deallocate(pseudo)
     enddo
     
     if (synthetic_atoms) then
@@ -360,7 +370,9 @@ CONTAINS
     integer index
     character(len=*), intent(in) ::  str
 
-    integer i
+    integer:: i, nspecies
+
+    nspecies = number_of_species()
 
     index = 0
     do i=1,nspecies
@@ -402,8 +414,10 @@ CONTAINS
 
   !---------------------------------------------------------------
   subroutine readkb
-    integer lpol, isp, ish, i, l
+    integer lpol, isp, ish, i, l, nspecies
     character(len=20) unitstr
+
+    nspecies = number_of_species()
 
     lpol = 0
 
@@ -571,8 +585,11 @@ CONTAINS
 
   subroutine repaobasis
 
-    integer isp, ish, nn, i, ind, l, indexp,nmax, index_splnorm
+    integer :: isp, ish, nn, i, ind, l, indexp,nmax=0, index_splnorm
     type(shell_t), pointer::  spol
+    integer :: nspecies
+
+    nspecies = number_of_species()
 
     nullify(bp)
     If (.not.fdf_block('PAO.Basis',bp)) RETURN
@@ -947,16 +964,16 @@ CONTAINS
 
     type(block), pointer  :: bp
     type(parsed_line), pointer  :: p
-    character(len=132) line
+    character(len=132) :: line
 
-    integer isp
+    integer :: isp, nspecies
 
     ! Read atomic masses of different species.
     !
     ! Reads fdf block. Not necessarily all species have to be given. The
     ! ones not given at input will be assumed to have their natural mass
     ! (according to atmass subroutine).
-
+    nspecies = number_of_species()
     nullify(bp)
     if (.not. fdf_block('AtomicMass',bp) ) return
     loop: DO
@@ -1071,7 +1088,7 @@ CONTAINS
     basp%semic = .false.
     if (basp%bessel) return
 
-    zval_vps = basp%pseudopotential%zval
+    zval_vps = get_pseudo_valence_charge(basp%pseudopotential)
     zval = basp%ground_state%z_valence
 
     if(abs(Zval-zval_vps).lt.tiny) return
@@ -1100,11 +1117,11 @@ CONTAINS
     !     It sets the defaults if a species has not been included
     !     in the PAO.Basis block
     !
-    integer::l, nzeta,i,l_polarization=-1,l_polarized=-1
-    integer::lastlmax,lastnmax,nzeta_pol
+    integer::l, nzeta=-1,i,l_polarization=-1,l_polarized=-1, nspecies
+    integer::lastlmax,lastnmax,nzeta_pol=-1
     integer::lmax=0,nmax=1
     
-
+    nspecies = number_of_species()
     loop: do isp=1, nspecies
        basp=>basis_parameters(isp)
 
@@ -1164,7 +1181,6 @@ CONTAINS
                 lmax=i
              endif
           enddo
-          print *, "species nmax, lmax=",nmax,lmax
 
           if(basp%ground_state%n(basp%lmxo) .eq. nmax)then 
              l_polarization        = lmax+1

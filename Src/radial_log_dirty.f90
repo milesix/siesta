@@ -63,8 +63,8 @@ module radial_log_dirty
     real(dp), dimension(:), pointer :: chlocal,vlocal,s
     integer ir,nrval,nchloc
     type(logGrid_t), pointer :: grid
-
-    !parameter(eps=1.0d-4)
+    real(dp) :: eps
+    parameter(eps=1.0d-4)
     !     AG       Maximum exponent for exp(-x)
     real(dp), parameter :: exp_range=60.d0
     !     AG

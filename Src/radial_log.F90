@@ -575,7 +575,6 @@ function log_rad_multiply_by_rl(func,l) result (mult)
     nrval = size(pseudo%f) 
         
     nrc = log_rad_get_ir(pseudo,rc)
-
     if(restricted_grid) nrc=nrc+1-mod(nrc,2)
     if(nrc > nrval) nrc=nrval
     if(nrc .gt. maximum_length) nrc=maximum_length
@@ -586,6 +585,7 @@ function log_rad_multiply_by_rl(func,l) result (mult)
     s(1) = s(2)
     grid => pseudo%grid
     
+    print *, "schro: nrc, nrval=", nrc, nrval
     call schro_eq(chg,grid%r(1:nrval),pseudo%f(1:nrval),ve%f(1:nrval),s, &
          grid%drdi(1:nrval),nrc, l,grid%a,grid%b,nnodes,nprin,energy,rphi)
 
@@ -779,9 +779,6 @@ function log_rad_multiply_by_rl(func,l) result (mult)
     vxc_values(1)=vxc_values(2)
     call log_rad_alloc(vxc,vxc_values,func%grid)
 
-    !do i=1,length
-    !   print *, i, vxc%grid%drdi(i), vxc%f(i),vxc%d2(i)
-    !enddo
     deallocate(vxc_values,rho)
   end function log_rad_vxc
 

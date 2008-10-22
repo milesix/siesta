@@ -28,7 +28,7 @@ module atom_types
   !
   !     Species_info: Consolidate all the pieces of information in one place
   !
-  type species_info_t
+  type, private :: species_info_t
      private
      logical                                    ::  fake = .false. !real species or not
      character(len=symbol_length)               ::  symbol
@@ -50,7 +50,6 @@ module atom_types
      type(hilbert_vector_collection_t), pointer ::  kb_proj, ldau_proj  => Null()
      logical                                    ::  read_from_file
   end type species_info_t
-  private species_info_t
 
   !
   integer, save, public             :: nspecies
@@ -75,6 +74,13 @@ contains
     nspecies = nsp
     allocate(species(1:nspecies))
   end subroutine set_number_of_species
+
+  !-------------------------------------------------------------------------
+
+  function get_number_of_species() result(nsp)
+    integer :: nsp
+    nsp = nspecies
+  end function get_number_of_species
 
   !-------------------------------------------------------------------------
 

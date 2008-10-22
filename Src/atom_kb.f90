@@ -18,18 +18,14 @@ module atom_kb
   use radial, only : rad_func_t, rad_schro, rad_kbproj,rad_integral_vs_value, &
        rad_energy_deriv, rad_cutoff, rad_ghost, rad_dump_file, rad_log_to_linear, &
        rad_dealloc
-  use pseudopotential, only : pseudopotential_t
+  use pseudopotential_new, only : pseudopotential_new_t, get_pseudo_down, get_ve_val,&
+       get_vlocal, get_pseudo_valence_charge
   use atom_generation_types, only : basis_def_t, kbshell_t, basis_parameters
   use sys, only : die
   implicit none
 
   private
   public kbgen
-
-  !Variables used by kbproj subroutine.
-  !type(rad_func_t), pointer :: kbs(:)
-  !integer :: l_last, nkb_last
-
 
 CONTAINS
 
@@ -47,14 +43,15 @@ CONTAINS
 
     type (basis_def_t),pointer :: basp
     type (kbshell_t),pointer   :: k
-    type (pseudopotential_t),pointer :: vps
+    type (pseudopotential_new_t), pointer :: vps
     type (hilbert_vector_t)      :: kb_vector
     type (rad_func_t)            :: kb_proj
     type (rad_func_t), pointer   :: rphi(:)
+    type (rad_func_t)            :: vdown, ve_val, vlocal
 
     integer :: l,nkb,nnodes,nprin, ighost, ikb,i, nkb_deg, idx
 
-    real(dp) :: rmax, pop, r_c
+    real(dp) :: rmax, pop, r_c, zval
     real(dp), pointer :: ekb(:), dkbcos(:), rc(:)
 
     !   The atomic wavefunctions and/or its energy derivatives are* 
@@ -89,44 +86,54 @@ CONTAINS
 
     idx=1
     do l=0,basp%lmxkb
-       print *, "KB:  Shell with L=",l
+       print *, "KB:  L=",l
        k => basp%kbshell(l)
        if (k%nkbl > 0) allocate(rphi(1:k%nkbl))
 
        print '(a,i2)', " KB:    Number of Kleinman-Bylander projectors:",k%nkbl 
        do ikb= 1, k%nkbl
-          print '(A,i2)', " KB:     Generating projector:",ikb
+          print '(A,i2)', " KB:       Generating projector:",ikb
           !    Atomic wavefunctions and eigenvalues
           !    for the construction of the KB projectors
+
+            vdown = get_pseudo_down(vps,l)
+            ve_val = get_ve_val(vps) 
+            zval = get_pseudo_valence_charge(vps)
+            vlocal = get_vlocal(vps)
+
           if(k%erefkb(ikb).ge.1.0d3) then           
              !    If the reference energies have not been specifed, the eigenstates
              !    with the condition of being zero at r(nrval) will be used.
              !   
-             print *, "KB:       Projector kind: standard"
+             print *, "KB:          Projector kind: standard"
              nnodes=ikb
              nprin=l+1
-             
-             r_c = rad_cutoff(vps%vdown(l))
-             !print *, "rc,l,nnodes,nprint,zval,e=",r_c,l,nnodes,nprin,vps%zval,k%erefkb(ikb)
-             rphi(ikb) = rad_schro(vps%vdown(l),vps%ve_val,r_c,l,nnodes,nprin,vps%zval,k%erefkb(ikb))    
+                        
+             r_c = rad_cutoff(vdown)
+           
+             call rad_dump_file(vdown,"vdown.dat")
+             call rad_dump_file(ve_val,"ve_val.dat")
+             print *, "rc,l,nnodes,nprint,zval,e=",r_c,l,nnodes,nprin,zval,k%erefkb(ikb)
+
+             rphi(ikb) = rad_schro(vdown,ve_val,r_c,l,nnodes,nprin,zval,k%erefkb(ikb))    
              
 
           elseif((k%erefkb(ikb).le.-1.0d3).and.(ikb.gt.1) ) then 
-             print *, " KB:      Projector generated using the energy derivative"
-             print *, " KB:      of the previous (L-1) projector"
+             print *, " KB:          Projector generated using the energy derivative"
+             print *, " KB:          of the previous (L-1) projector"
 
              !    If the energy is specified to be 1000 Ry, the energy derivative
              !    of the previous wavefunction will be used
 
-             rphi(ikb) = rad_energy_deriv(rphi(ikb-1),vps%vdown(l),vps%ve_val,l,k%erefkb(ikb-1))
+             rphi(ikb) = rad_energy_deriv(rphi(ikb-1),vdown,ve_val,l,k%erefkb(ikb-1))
              k%erefkb(ikb)=0.0d0
 
           else 
 
-             print *, " KB:      Projector generated using the specified reference energy"
+             print *, " KB:          Projector generated using the specified reference energy"
              !    If the reference energies have been specified, we just use them 
 
-             rphi(ikb) = rad_integral_vs_value(vps%vdown(l),vps%ve_val,l,k%erefkb(ikb),rmax)
+             rphi(ikb) = rad_integral_vs_value(vdown,ve_val,l,k%erefkb(ikb),rmax)
 
           endif
 
@@ -134,8 +141,7 @@ CONTAINS
           !***  GHOST ANALYSIS****
           !    
           if(k%nkbl.eq.1) then
-             call rad_ghost(rphi(ikb),vps%vdown(l),vps%vlocal,vps%ve_val,l,&
-                  k%erefkb(ikb),vps%zval,ighost)
+             call rad_ghost(rphi(ikb),vdown,vlocal,ve_val,l,k%erefkb(ikb),zval,ighost)
 
                 if (ighost.eq.1) then
                     write(6,"(2a)")'KBgen: WARNING: ','Ghost states have been detected'
@@ -150,7 +156,7 @@ CONTAINS
                   '      KBgen: ghost states analysis will be not performed'
           endif
 
-          kb_proj=rad_kbproj(rphi(ikb),vps%vdown(l),vps%vlocal,l,dkbcos(idx),ekb(idx))
+          kb_proj=rad_kbproj(rphi(ikb),vdown,vlocal,l,dkbcos(idx),ekb(idx))
           
           rc(idx) = rad_cutoff(kb_proj)
 
@@ -160,6 +166,10 @@ CONTAINS
           call rad_dealloc(kb_proj)
           call destroy_vector(kb_vector)
           idx=idx+1
+
+          call rad_dealloc(vdown)
+          call rad_dealloc(vlocal)
+          call rad_dealloc(ve_val)
        enddo !ikb
 
        if (k%nkbl > 0) then

@@ -25,14 +25,12 @@ module atom_generation_types
   !     types 'shell_t' and 'kbshell_t'. (See module 'radial')
   !     Almost all the subroutines are public.
 
-  use precision
-  use atomparams
-  use pseudopotential
-  use radial
+  use precision, only : dp
+  use atomparams, only :
+  use pseudopotential_new, only : pseudopotential_new_t
+  use radial, only : rad_func_t, rad_cutoff
 
   Implicit None
-
-  private die 
 
   type ground_state_t
      integer                   ::  lmax_valence
@@ -102,7 +100,7 @@ module atom_generation_types
      character(len=2)          ::  symbol     ! Atomic symbol
      integer                   ::  z          ! Atomic number
      type(ground_state_t)      ::  ground_state
-     type(pseudopotential_t)   ::  pseudopotential
+     type(pseudopotential_new_t) ::  pseudopotential
      integer                   ::  lmxo       ! Max l for basis
      integer                   ::  lmxkb      ! Max l for KB projs
      type(lshell_t), pointer   ::  lshell(:)  ! One shell per l 

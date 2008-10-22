@@ -22,7 +22,8 @@ module atom_basis_gen
   use radial,           only: rad_func_t, rad_copy
   use atom_types,       only: get_lmax_orbs, set_orbs_deg, set_lmax_orbs, &
         species, init_orbs, get_atomic_number, set_orb, orbs_kc_max
-  use pseudopotential,  only:pseudopotential_t
+  use pseudopotential_new,  only:pseudopotential_new_t, get_pseudo_down, get_ve_val, &
+       get_ve_val_scaled
   use atom_generation_types, only:basis_def_t,basis_parameters,shell_t,lshell_t,energies_t
   use sys,              only:die
   use atom_multiple_z,       only: generate_multiple_zeta
@@ -88,7 +89,7 @@ contains
 
 
     type(basis_def_t), pointer :: basp     !Parameters corresponding to this basis set.
-    type(pseudopotential_t),pointer :: vps !Psuedopotential info.
+    type(pseudopotential_new_t),pointer :: vps !Psuedopotential info.
     type(shell_t),     pointer :: shell    !Pointer to a shell.
     type(lshell_t),    pointer :: lshell   !Pointer to a l-shell.
     
@@ -102,6 +103,7 @@ contains
     integer, dimension(0:3) :: config
     logical                 :: is_pol
     real(dp), parameter :: EkinTolDefault = 0.003_dp
+    type(rad_func_t)   :: vdown
 
     basp => basis_parameters(isp)
     vps  => basp%pseudopotential
@@ -151,7 +153,8 @@ contains
           !IF THE COMPRESSION FACTOR IS NEGATIVE OR ZERO THE ORBITALS ARE
           !LEFT UNTOUCHED
           if(shell%lambda(1).le.0.0d0) shell%lambda(1)=1.0d0
-          call rad_copy(vps%vdown(l), shell%pseudo)
+          vdown = get_pseudo_down(vps,l)
+          call rad_copy(vdown, shell%pseudo)
 
           shell%z_valence  = basp%ground_state%z_valence
            !Set pseudo for schroed. eq.
@@ -244,10 +247,15 @@ contains
 
   subroutine pseudopotential_setup(shell,vps)
     type(shell_t), intent(inout)         :: shell
-    type(pseudopotential_t),intent(in)   :: vps    !Pseudo information
+    type(pseudopotential_new_t),intent(in)   :: vps    !Pseudo information
 
-    call rad_copy(vps%ve_val,shell%ve)
-    call rad_copy(vps%ve_val_scaled,shell%ve_PAO)
+    type(rad_func_t) :: ve_val, ve_val_scaled
+
+    ve_val = get_ve_val(vps)
+    ve_val_scaled = get_ve_val_scaled(vps)
+
+    call rad_copy(ve_val,shell%ve)
+    call rad_copy(ve_val_scaled,shell%ve_PAO)
 
   end subroutine pseudopotential_setup
 
@@ -286,7 +294,7 @@ contains
 
   subroutine auto_rc(shell,vps,l,nsm)
     type(shell_t) :: shell
-    Type(pseudopotential_t) :: vps
+    Type(pseudopotential_new_t) :: vps
     integer, intent(in) :: nsm !which semicore shell we're generating
     integer, intent(in) :: l
 
@@ -294,7 +302,7 @@ contains
     real(dp) :: eigen, eshift, el,rc
     !real(dp), pointer, dimension(:) :: rphi
 
-    type(rad_func_t) :: rad_orb
+    type(rad_func_t) :: rad_orb, ve_val
     !Automatic determination of the cut off radius for the PAOs
     !***  READING THE ENERGY-SHIFT TO DEFINE THE CUT-OFF RADIUS OF ORBITALS***
     eshift=fdf_physical('PAO.EnergyShift',eshift_default,'Ry')
@@ -302,9 +310,9 @@ contains
     nnodes=nsm
     nprin=l+nsm
 
-
-    rc = rad_cutoff(vps%ve_val)
-    rad_orb = rad_schro(shell%pseudo,vps%ve_val,rc,l,nnodes,nprin,shell%z_valence,eigen)
+    ve_val = get_ve_val(vps)
+    rc = rad_cutoff(ve_val)
+    rad_orb = rad_schro(shell%pseudo,ve_val,rc,l,nnodes,nprin,shell%z_valence,eigen)
 
     !Rc given by eshift   
     if(eigen.gt.0.0d0) then 
@@ -316,7 +324,7 @@ contains
 
     if(abs(eshift).gt.1.0d-5) then
        el=eigen+eshift
-       shell%rc(1) = rad_rc_vs_e(rad_orb,shell%pseudo,vps%ve_val,l,el,nnodes)
+       shell%rc(1) = rad_rc_vs_e(rad_orb,shell%pseudo,ve_val,l,el,nnodes)
     else
        shell%rc(1) = rad_default_length(rad_orb) - 0.2_dp
        !rad_get_r_from_ir(shell%pseudo, rad_default_length(shell%pseudo)-2)
