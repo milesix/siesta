@@ -24,7 +24,7 @@ module atom_basis_gen
         species, init_orbs, get_atomic_number, set_orb, orbs_kc_max
   use pseudopotential_new,  only:pseudopotential_new_t, get_pseudo_down, get_ve_val, &
        get_ve_val_scaled
-  use atom_generation_types, only:basis_def_t,basis_parameters,shell_t,lshell_t,energies_t
+  use atom_generation_types,      only:basis_def_t,basis_parameters,shell_t,lshell_t,energies_t
   use sys,              only:die
   use atom_multiple_z,       only: generate_multiple_zeta
   use atom_pol_orb,          only: generate_polarization_orbital
@@ -85,8 +85,7 @@ contains
     !***  Internal variables**
 
     integer :: l,iorb,norbs
-    integer :: izeta, nsm, nvalence
-
+    integer :: izeta, nsm, nvalence, nmin
 
     type(basis_def_t), pointer :: basp     !Parameters corresponding to this basis set.
     type(pseudopotential_new_t),pointer :: vps !Psuedopotential info.
@@ -137,12 +136,19 @@ contains
 
     do l=0,get_lmax_orbs(isp) ! species(isp)%lmax_basis
        lshell => basp%lshell(l)
-      
+      ! find the smaller (nodeless) principal quantum number 
+      ! for this  l  
+       nmin=100 
+       do nsm=1,lshell%nn
+           shell => lshell%shell(nsm)
+           nmin=min(nmin,shell%n)
+       enddo 
+
        !loop over all the semicorestates.
        do nsm=1,lshell%nn
           
           shell => lshell%shell(nsm)
-          shell%i_sm = nsm
+          shell%i_sm = shell%n-nmin+1
 
           if(shell%nzeta.le.0) exit
           shell%population = 0.0_dp
@@ -184,7 +190,7 @@ contains
                          shell%population(izeta) = 2.0_dp
                       endif
                    endif
-
+                  
                    !Automatic rc?
                    if (shell%rc(1) .eq. 0.0_dp) call auto_rc(shell,vps,l,nsm)
                    !Generate the orbital                   
