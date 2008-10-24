@@ -369,7 +369,7 @@ contains
     nprin=l+shell%i_sm
 
     !SOFT-CONFINEMENT            
-    !Calculate the soft confinement potential for this shell                
+    !Calculate the soft confinement potential for this shell
     vtot = generate_vsoft(shell,label,write_ion_plot_files)
   
     shell%rphi(1) = rad_schro(shell%pseudo,vtot,rc,l,shell%i_sm,nprin,shell%z_valence,eorb)

@@ -522,7 +522,7 @@ CONTAINS
        endif
 
        !call rad_copy(vps%ve_val, vps%ve_val_scaled)
-       call pseudo_copy_scaled_ve(vps)
+       !call pseudo_copy_scaled_ve(vps)
     Endif
 
     call rad_dealloc(rho_val)
