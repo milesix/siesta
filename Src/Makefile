@@ -887,6 +887,7 @@ scfconvergence_test.o: m_convergence.o m_energies.o m_ts_options.o
 scfconvergence_test.o: m_wallclock.o parallel.o siesta_cml.o siesta_options.o
 scfconvergence_test.o: write_subs.o
 
+schro.o: precision.o
 
 setatomnodes.o: alloc.o parallel.o precision.o spatial.o sys.o
 
