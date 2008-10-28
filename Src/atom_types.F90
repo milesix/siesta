@@ -774,6 +774,16 @@ end subroutine broadcast_basis
 
   !------------------------------------------------------------------------
 
+function get_kb_proj_n(isp,io) result(n)
+    !Obtain the l of a given kb
+    integer, intent(in) :: isp
+    integer, intent(in) :: io
+    integer             :: n
+    n = get_n(species(isp)%kb_proj,io)
+  end function get_kb_proj_n
+
+  !------------------------------------------------------------------------
+
   function get_orb_m(isp,io) result(m)
     !Obtain the m of a given orb.
     integer, intent(in) :: isp

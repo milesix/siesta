@@ -62,6 +62,7 @@ module radial
   public :: rad_smooth, rad_smooth_large, rad_multiply_each_value, rad_vhartree
   public :: rad_vxc, rad_rc_vs_e, rad_split_scan_tail, rad_polarization
   public :: rad_split_scan_tail_parabola, rad_zero, rad_get_r_from_ir
+  public :: rad_grid_get_delta, rad_dump_netcdf
 
   !These should be encapsulated.
   public :: restricted_grid
@@ -282,6 +283,22 @@ contains
        call die("radial: rad_dump_ascii unknown type!")
     endif
   end subroutine rad_dump_ascii
+
+  !--------------------------------------------------------------------------
+
+  subroutine rad_dump_netcdf(rad_func,io,netcdf_id)
+    !Dump the function into a file
+    type (rad_func_t), intent(in) :: rad_func
+    integer, intent(in) :: io,netcdf_id
+
+    if (rad_func%kind == lin_t) then
+       call lin_rad_dump_netcdf(rad_func%lin,io,netcdf_id)
+    elseif(rad_func%kind == log_t) then
+       call die("radial: dump_netcdf not implemented for log funcs!")         
+    else
+       call die("radial: rad_dump_ascii unknown type!")
+    endif
+  end subroutine rad_dump_netcdf
 
   !--------------------------------------------------------------------------
 
@@ -616,6 +633,24 @@ contains
     endif
        
   end function rad_grid_get_b
+
+  !-----------------------------------------------------------------------
+
+  function rad_grid_get_delta(grid) result(a)
+    !Obtain the a from the grid definition: r(i)= b*[ exp( a*(i-1) ) - 1 ]
+    type(rad_grid_t), intent(in) :: grid
+    real(dp) :: a
+
+    a = 0.0_dp
+    if(grid%kind==lin_t) then
+       a = grid%lin%delta
+    elseif(grid%kind==log_t)then
+       call die("radial: rad_grid_get_a doesn't make sense for log funcs")
+    else
+       call die("radial: rad_grid_get_delta unknown function kind!")
+    endif
+       
+  end function rad_grid_get_delta
 
   !-----------------------------------------------------------------------
 

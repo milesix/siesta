@@ -16,18 +16,18 @@
       
       implicit none   
 
-      integer, intent(in) ::    nrc,l,nnodes,nprin
-      double precision, intent(in) ::
-     .     Zval, rofi(:),vps(:),ve(:),s(nrc),drdi(:),a,b
-      double precision, intent(out) :: e, g(:)
+      integer, intent(in)  :: nrc,l,nnodes,nprin
+      real(dp), intent(in) :: Zval, rofi(1:nrc),vps(1:nrc),ve(1:nrc),
+     $     s(1:nrc),drdi(1:nrc),a,b
+      real(dp), intent(out) :: e, g(1:nrc)
       
-                                !
-                                !       Automatic arrays
-                                !
-      double precision   :: h(nrc), y(nrc)
+!
+!       Automatic arrays
+!
+      real(dp) :: h(nrc), y(nrc)
 
-      double precision  a2b4, r2, vtot, rmax, dr, dnrm, phi, dsq
-      integer  ir
+      real(dp) ::  a2b4, r2, vtot, rmax, dr, dnrm, phi, dsq
+      integer  ::  ir
 
       a2b4=a*a*0.25d0
 
