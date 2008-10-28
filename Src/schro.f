@@ -3,6 +3,8 @@
 !     Routines related to the integration of the Schrodinger Equation
 !     in atoms
 
+      use precision, only : dp
+      implicit none
       private
       public schro_eq, energ_deriv, rc_vs_e, rphi_vs_e, vhrtre,
      $       polarization
@@ -14,18 +16,18 @@
       
       implicit none   
 
-      integer, intent(in) ::    nrc,l,nnodes,nprin
-      double precision, intent(in) ::
-     .     Zval, rofi(:),vps(:),ve(:),s(nrc),drdi(:),a,b
-      double precision, intent(out) :: e, g(:)
+      integer, intent(in)  :: nrc,l,nnodes,nprin
+      real(dp), intent(in) :: Zval, rofi(1:nrc),vps(1:nrc),ve(1:nrc),
+     $     s(1:nrc),drdi(1:nrc),a,b
+      real(dp), intent(out) :: e, g(1:nrc)
       
-                                !
-                                !       Automatic arrays
-                                !
-      double precision   :: h(nrc), y(nrc)
+!
+!       Automatic arrays
+!
+      real(dp) :: h(nrc), y(nrc)
 
-      double precision  a2b4, r2, vtot, rmax, dr, dnrm, phi, dsq
-      integer  ir
+      real(dp) ::  a2b4, r2, vtot, rmax, dr, dnrm, phi, dsq
+      integer  ::  ir
 
       a2b4=a*a*0.25d0
 
@@ -39,7 +41,7 @@
       g(1)=0.0d0 
 
       e=-((zval/dble(nprin))**2)
-      dr=-1.0d6
+      dr=-1.0d6    
       rmax=rofi(nrc)
       
       call egofv(h,s,nrc,e,g,y,l,zval,a,b,rmax,
@@ -209,7 +211,7 @@ C     Normalize the wavefunction
 
       subroutine energ_deriv(a,r,psi,vps,
      .     ve,drdi,nrc,l,el,psidev,nrval)
-      
+      implicit none
 C     This routine calculate the energy derivative of 
 C     a given wavefunction.
 C     The routine solve and inhomogeneus version of 
@@ -313,6 +315,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
 
       SUBROUTINE EGOFV(H,S,N,E,G,Y,L,Z,A,B,RMAX,NPRIN,NNODE,DR)
+      !implicit none
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 C  EIOFV DETERMINES THE EIGENENERGY AND WAVEFUNCTION CORRESPONDING
 C  TO A PARTICULAR L, PRINCIPAL QUANTUM NUMBER AND BOUNDARY CONDITION.
@@ -332,10 +335,23 @@ C  THE INDIVIDUAL ENERGIES ARE RESOLVED BY PERFORMING A FIXED NUMBER
 C  OF BISECTIONS AFTER A GIVEN EIGENVALUE HAS BEEN ISOLATED
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 C
-      IMPLICIT DOUBLE PRECISION (A-H,O-Z)
-      DIMENSION H(N),S(N),G(N),Y(*)
-      integer Node
-      DATA TOL   /1.D-5/
+!      IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+      Integer, intent(in) :: N
+      real(dp), intent(in) :: H(1:N),S(1:N)
+      real(dp), intent(out) :: Y(1:N)
+      real(dp), intent(out) :: G(1:N)
+      real(dp), intent(out) :: E
+      integer, intent(in) :: L
+      real(dp),intent(in) :: Z
+      real(dp),intent(in) :: A,B
+      real(dp),intent(in) :: rmax, dr
+      integer, intent(in) :: nprin,nnode
+!      DIMENSION H(N),S(N),G(N),Y(*)
+
+      !Internal vars
+      real(dp) :: de, del, et, e1, e2, t
+      integer  :: nt,n1,n2, niter,i,ncor
+      real(dp), parameter :: TOL=1.D-5
 
 C Added by JDG as NT was used before being initialised
       NT = 0 
@@ -446,6 +462,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
 
       SUBROUTINE YOFE(E,DE,DR,RMAX,H,S,Y,NMAX,L,NCOR,NNODE,Z,A,B)
+      !implicit none
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 C   YOFE INTEGRATES THE RADIAL SCHRODINGER EQN USING THE NUMEROV
 C   METHOD.
@@ -462,9 +479,22 @@ C       NCOR IS THE NUMBER OF STATES OF LOWER ENERGY
 C       NNODE IS 1 + THE NUMBER OF INTERIOR NODES IN PSI
 C       Z IS THE ATOMIC NUMBER
 C       A AND B SPECIFY THE RADIAL MESH R(I)=(EXP(A*(I-1))-1)*B
-CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC      
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
-      DOUBLE PRECISION H(NMAX),S(NMAX),Y(NMAX)
+      real(dp), intent(inout) :: E
+
+      real(dp), intent(out) :: de
+      real(dp), intent(in) :: rmax,dr
+      integer, intent(in) :: nmax, l,ncor
+      integer, intent(inout) :: nnode
+      real(dp), intent(in) :: z,a,b
+      real(dp), intent(in) :: H(1:NMAX),S(1:NMAX)
+      real(dp), intent(inout) :: Y(1:NMAX)
+
+      !Internal vars
+      real(dp) :: zdr,yn
+      integer  :: n, knk,i,nndin
+
       ZDR = Z*A*B
       N=NMAX
 
@@ -476,7 +506,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
  9    CONTINUE
 
       
-      CALL BCORGN(E,H,S,L,ZDR,Y2)
+      CALL BCORGN(E,H,S,N,L,ZDR,Y2)
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 C
 C  BCORGN COMPUTES Y2, WHICH EMBODIES THE BOUNDARY CONDITION
@@ -560,7 +590,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC=
 
       END SUBROUTINE NRMLZG
 
-      SUBROUTINE BCORGN(E,H,S,L,ZDR,Y2)
+      SUBROUTINE BCORGN(E,H,S,N,L,ZDR,Y2)
 C
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 C   YOFE INTEGRATES THE RADIAL SCHRODINGER EQN USING THE NUMEROV
@@ -578,8 +608,16 @@ C       NNODE IS 1 + THE NUMBER OF INTERIOR NODES IN PSI
 C       Z IS THE ATOMIC NUMBER
 C       A AND B SPECIFY THE RADIAL MESH R(I)=(EXP(A*(I-1))-1)*B
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-      IMPLICIT DOUBLE PRECISION (A-H,O-Z)
-      DOUBLE PRECISION H(*),S(*)
+      !IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+      implicit none
+      real(dp), intent(in) :: E
+      integer, intent(in)  :: N,L
+      real(dp), intent(in) :: H(1:N),S(1:N)
+      real(dp), intent(in) :: zdr
+      real(dp), intent(out) :: Y2
+
+      !Internal vars
+      real(dp) :: T2,T3,D2,C0,C1,C2
 C
 C   THE QUANTITY CALLED D(I) IN THE PROGRAM IS ACTUALLY THE INVERSE
 C   OF THE DIAGONAL OF THE TRI-DIAGONAL NUMEROV MATRIX
@@ -613,12 +651,18 @@ C=================================================================
       END SUBROUTINE BCORGN
 
       SUBROUTINE BCRMAX(E,DR,RMAX,H,S,N,YN,A,B)
+      implicit none
 C
 C 22.7.85
 C
-      IMPLICIT DOUBLE PRECISION (A-H,O-Z)
-      DOUBLE PRECISION  H(*),S(*),
-     .   E,DR,RMAX,YN,A,B,TNM1,TN,TNP1,BETA,DG,C1,C2,C3,DN
+      !IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+      integer, intent(in) :: N
+      real(dp), intent(in) :: H(1:N),S(1:N)
+      real(dp),intent(in) :: E,DR,RMAX,A,B
+      real(dp), intent(out) :: YN
+
+      !Internal vars
+      real(dp) ::TNM1,TN,TNP1,BETA,DG,C1,C2,C3,DN
 C
 C     WRITE(6,*) 'BCRMAX:',DR
       TNM1=H(N-1)-E*S(N-1)
@@ -658,8 +702,23 @@ C       NNODE IS 1 + THE NUMBER OF INTERIOR NODES IN PSI
 C       Z IS THE ATOMIC NUMBER
 C       A AND B SPECIFY THE RADIAL MESH R(I)=(EXP(A*(I-1))-1)*B
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-      IMPLICIT DOUBLE PRECISION (A-H,O-Z)
-      DOUBLE PRECISION H(N),S(N),Y(N)
+      !IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+      implicit none
+      real(dp), intent(in) :: E
+      integer, intent(in)  :: N
+      real(dp), intent(in) :: H(1:N),S(1:N)
+      real(dp), intent(out) :: Y(1:N)
+      integer, intent(out) :: NNODE
+      real(dp), intent(in) :: YN
+      real(dp), intent(out) :: G
+      real(dp), intent(out) :: GSG
+      real(dp), intent(out) :: X
+      integer, intent(out)   :: KNK
+      
+      !Internal vars
+      real(dp) :: T
+      integer  :: I
+
       Y(N)=YN
       T=H(N)-E*S(N)
       G=Y(N)/(1.D0-T/12.D0)
@@ -715,8 +774,22 @@ C       NNODE IS 1 + THE NUMBER OF INTERIOR NODES IN PSI
 C       Z IS THE ATOMIC NUMBER
 C       A AND B SPECIFY THE RADIAL MESH R(I)=(EXP(A*(I-1))-1)*B
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-      IMPLICIT DOUBLE PRECISION (A-H,O-Z)
-      DOUBLE PRECISION H(KNK),S(KNK),Y(KNK)
+      !IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+      implicit none
+      real(dp), intent(in) :: E
+      real(dp), intent(in) :: H(1:KNK), S(1:KNK)
+      real(dp), intent(out) :: Y(1:KNK)
+      integer, intent(in) :: ncor
+      integer, intent(inout) :: knk
+      integer, intent(out) :: nnode
+      real(dp), intent(in) :: y2
+      real(dp), intent(out) :: g,gsg,x
+      
+      !Internal vars
+      real(dp) :: T, XL
+      integer  :: I,NM4
+      
+      !DOUBLE PRECISION H(KNK),S(KNK),Y(KNK)
       Y(1)=0.D0
       Y(2)=Y2
       T=H(2)-E*S(2)
@@ -778,8 +851,17 @@ C      DRDI...DR(I)/DI
 C      SRDRDI.SQRT(DR/DI)
 C      A......THE PARAMETER APPEARING IN R(I) = B*(EXP(A(I-1))-1)
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-      IMPLICIT DOUBLE PRECISION (A-H,O-Z)
-      DOUBLE PRECISION RHO(*),V(*),R(*),DRDI(*),SRDRDI(*)
+      implicit none
+      !IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+      integer, intent(in)  :: NR
+      real(dp), intent(in) :: RHO(1:NR),R(1:NR),DRDI(1:NR),SRDRDI(1:NR)
+      real(dp), intent(out) :: V(1:NR)
+      real(dp), intent(in)  :: A
+
+      !Internal vars
+      integer :: nrm1, nrm2,ir
+      real(dp) :: ybyq,qbyy,v0,q,qt,dz,t,beta,x,y,dv,qpartc,a2by4
+
       NRM1=NR-1
       NRM2=NR-2
       A2BY4=A*A/4.D0
@@ -899,17 +981,16 @@ C       where Rint should not be greater than aprox. 15 Bohr
 C       Written by Daniel Sanchez-Portal, July 1997
 C 
 
-        integer nrmin, niter
-        real*8 cons1, rint
-        parameter(nrmin=1,niter=1000,
-     .                    cons1=1.0d5,rint=15.0d0)
+        integer:: nrmin, niter
+        real(dp):: cons1, rint
+        parameter(nrmin=1,niter=1000,Cons1=1.0d5,rint=15.0d0)
 
 
-        real*8 g(nrval), h(nrval), psi_copy(nrval)   !  Automatic
+        real(dp):: g(nrval), h(nrval), psi_copy(nrval)   !  Automatic
 
-        real*8 rmax, reduc, dl, hi, rnd1, c1, c2, rnodo, cons, gold
-        real*8 gmax, r0, g0, r1, g1, grmx, dff1, dff2, savecons, dnrm
-        integer index, nnodes, iter, nnd
+        real(dp):: rmax, reduc, dl, hi, rnd1, c1, c2, rnodo, cons, gold
+        real(dp):: gmax, r0, g0, r1, g1, grmx, dff1, dff2, savecons,dnrm
+        integer :: index, nnodes, iter, nnd, ir
 
         psi_copy=0.0d0
         psi_copy(1:nrc)=psi(1:nrc)

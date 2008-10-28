@@ -40,7 +40,8 @@ module atmfuncs
   public  :: labelfis, lomaxfis, nztfl, rphiatm, lmxkbfis
   public  :: phiatm, all_phi, xphiatm, yphiatm, zphiatm
   public  :: check_atmfuncs
-  public  :: func_t,orb_f,kbpj_f,vlocal_f,vna_f,chlocal_f,core_f,get_func_type,func_t_compare
+  public  :: func_t,orb_f,kbpj_f,vlocal_f,vna_f,chlocal_f,core_f,ldaupj_f,get_func_type,func_t_compare
+  public  :: nldaupfis, switch_ldau, Ufio, Jfio, nldaup_func, cnfig_ldaupjfio
  
   !
   
@@ -92,6 +93,8 @@ contains
        nphi=get_number_of_orbs(is)
     elseif (func==kbpj_f) then
        nphi=get_number_of_kb_projs(is)
+    elseif (func==ldaupj_f) then
+       nphi=get_number_of_ldau_proj(is)
     else
        call die("all_phi: Please use phiatm to get Vna...")
     endif
@@ -110,6 +113,13 @@ contains
           rmax(i) =get_kb_proj_cutoff(is,i)
           l = get_kb_proj_l(is,i)
           m = get_kb_proj_m(is,i)
+          ilm(i) = l*(l+1)+m+1
+       enddo
+    elseif(func==ldaupj_f) then
+       do i = 1, nphi
+          rmax(i) = get_ldau_proj_cutoff(is,i)
+          l = get_ldau_proj_l(is,i)
+          m = get_ldau_proj_m(is,i)
           ilm(i) = l*(l+1)+m+1
        enddo
     else
@@ -156,6 +166,8 @@ contains
           call get_value_of_orb(is,i,r,phir,grphi(:,i))          
        elseif(func==kbpj_f) then 
           call get_value_of_kb_proj(is,i,r,phir,grphi(:,i))
+       elseif(func==ldaupj_f) then
+          call get_value_of_ldau_proj(is,i,r,phir,grphi(:,i))
        else
           call die("all_phi: unknown function type")
        endif
@@ -285,6 +297,12 @@ contains
           write(88,*) " l,n_kbs=",i,nkbl_func(is,i)
        enddo
 
+       if(switch_ldau(is)) then
+         do i=0,4
+           write(88,*) "l,n_ldaup=",i,nldaup_func(is,i)
+         enddo
+       endif
+
        if(rcore(is) > 0.0_dp)then
           write(88,*) 'Chcore---------------'
           r=0.0_dp
@@ -345,6 +363,30 @@ contains
        enddo
 
        !----------------------------------------
+       !ldaup
+       if(switch_ldau(is)) then
+       write(88,*) 'ldaup--------------------'
+       do i=1,nldaupfis(is)
+          write(88,*) '*****************'
+          write(88,*) 'l=',lofio(is,ldaupj_f,i)
+          write(88,*) 'm=',mofio(is,ldaupj_f,i)
+          write(88,*) 'rcut=',rcut(is,ldaupj_f,i)
+          write(88,*) 'Sym=',symfio(is,ldaupj_f,i)
+          write(88,*) 'U=',Ufio(is,i)
+          write(88,*) 'J=',Jfio(is,i)
+
+          r=0.0_dp
+          rc = rcut(is,ldaupj_f,i)
+          delta=rc/(dble(npoints))
+          do ir=1,npoints
+             call phiatm(is,ldaupj_f,i,r,val,gr)
+             write(88,'(7f9.3)') r,val,gr
+             r=r+0.1*delta
+          enddo
+       enddo
+       endif
+
+       !----------------------------------------
        !orb
        write(88,*) 'orbs----------------------'
        write(88,*) "norbs=",is,nofis(is)
@@ -395,6 +437,32 @@ contains
 
   end function cnfigfio
   
+
+  !------------------------------------------------------------------------
+ 
+  FUNCTION cnfig_ldaupjfio(IS,IO)
+    integer cnfig_ldaupjfio
+    integer, intent(in) :: is    ! Species index
+    integer, intent(in) :: io    ! Orbital index (within atom)
+
+    ! Returns the valence-shell configuration in the atomic ground state
+    ! (i.e. the principal quatum number for orbitals of angular momentum l)
+
+    !   INTEGER CNFIGFIO: Principal quantum number of the shell to what 
+    !                     the orbital belongs ( for polarization orbitals
+    !                     the quantum number corresponds to the shell which
+    !                     is polarized by the orbital io) 
+
+
+    call chk('cnfig_ldaupjfio',is)
+    if (io .gt. get_number_of_ldau_proj(is) .or. (io .lt. 1))  &
+         call die("cnfig_ldaupjfio: Wrong io")
+
+    cnfig_ldaupjfio = get_ldau_proj_n(is,io)
+
+  end function cnfig_ldaupjfio
+
+ 
   !------------------------------------------------------------------------
 
    FUNCTION epskb (IS,IO)
@@ -412,10 +480,73 @@ contains
 
     integer :: ik
 
+    call chk('epskb',is)
+
+    
     ik = abs(io)
     if ((ik.gt. get_number_of_kb_projs(is)) .or. (ik .lt. 1) )  call die("epskb: No such projector")
     epskb = get_kb_proj_energy(is, ik) 
   end function epskb
+
+  !--------------------------------------------------------------------
+
+   FUNCTION Ufio(IS,io)
+    real(dp) Ufio
+    integer, intent(in)   ::  is   ! Species index
+    integer, intent(in)   ::  io   ! Ldau proyector index (within atom)
+    ! May be positive or negative 
+    ! (only ABS(IO) is used).
+    ! Returns the U parameter corresponding to projector io
+    !  Energy in Rydbergs.
+
+    integer :: ik
+    integer :: l
+    integer :: n
+
+    call chk('Ufio',is)
+
+    ik = abs(io)
+    if ((ik.gt. get_number_of_ldau_proj(is)) .or. (ik .lt. 1) )  call die("Ufio: No such projector")
+    l=get_ldau_proj_l(is,io)
+    n=get_ldau_proj_n(is,io)
+    Ufio = get_U_ldau_proj(is, l, n)
+  end function Ufio
+
+  !--------------------------------------------------------------------
+
+   FUNCTION Jfio(IS,io)
+    real(dp) Jfio
+    integer, intent(in)   ::  is   ! Species index
+    integer, intent(in)   ::  io   ! Ldau proyector index (within atom)
+    ! May be positive or negative 
+    ! (only ABS(IO) is used).
+    ! Returns the J parameter corresponding to projector io
+    !  Energy in Rydbergs.
+
+    integer :: ik
+    integer :: l
+    integer :: n
+
+    call chk('Jfio',is)
+
+    
+    ik = abs(io)
+    if ((ik.gt. get_number_of_ldau_proj(is)) .or. (ik .lt. 1) )  call die("Jfio: No such projector")
+    l=get_ldau_proj_l(is,io)
+    n=get_ldau_proj_n(is,io)
+    Jfio = get_J_ldau_proj(is, l, n)
+  end function Jfio
+
+  !--------------------------------------------------------------------
+
+  FUNCTION switch_ldau(is)
+    logical :: switch_ldau
+    integer, intent(in)   ::  is   ! Species index
+    ! Are there ldau projectors associated with this species?
+
+    call chk('switch_ldau',is)
+    switch_ldau=get_switch_ldau(is)
+  end function switch_ldau
 
   !--------------------------------------------------------------------
 
@@ -485,6 +616,9 @@ contains
     if (func==orb_f) then
        if (io.gt. get_number_of_orbs(is)) call die("lofio: No such orbital")
        lofio = get_orb_l(is,io)
+    else if (func==ldaupj_f) then
+       if (io.gt. get_number_of_ldau_proj(is)) call die("lofio: No such projector")
+       lofio = get_ldau_proj_l(is,io)
     else if (func==kbpj_f) then
        if (io.gt. get_number_of_kb_projs(is)) call die("lofio: No such projector")
        lofio = get_kb_proj_l(is,io)
@@ -538,6 +672,9 @@ contains
     if (func == orb_f) then
        if (io.gt. get_number_of_orbs(is))  call die("Mofio: No such orbital")
        mofio = get_orb_m(is,io)
+    else if (func == ldaupj_f) then
+       if (io.gt. get_number_of_ldau_proj(is))  call die("Mofio: No such projector")
+       mofio = get_ldau_proj_m(is,io)
     else if (func == kbpj_f) then
        if (io.gt. get_number_of_kb_projs(is))  call die("Mofio: No such projector")
        mofio = get_kb_proj_m(is,io)
@@ -578,6 +715,39 @@ contains
 
   end function nkbl_func
 
+  !--------------------------------------------------------------------
+
+  FUNCTION nldaupfis(IS)
+    integer :: nldaupfis    ! Total number of ldau projectors
+    integer, intent(in) :: is            ! Species index
+
+    call chk('nldaupfis',is)
+    nldaupfis = get_number_of_ldau_proj(is)
+  end function nldaupfis
+
+  !--------------------------------------------------------------------
+
+   FUNCTION nldaup_func (IS,L)
+    integer nldaup_func
+    integer, intent(in)  :: is   ! Species index
+    integer, intent(in)  :: l    ! Angular momentum of the basis funcs
+
+    ! Returns the number of different ldau projectors
+    ! with the same angular momentum and for a given species
+
+    integer i
+
+    call chk('nldaup_func',is)
+
+    
+
+    nldaup_func = 0
+    do i = 1, get_number_of_ldau_proj(is)
+       if (get_ldau_proj_l(is,i).eq.l) nldaup_func = nldaup_func+1
+    enddo
+  
+  end function nldaup_func
+   
   !--------------------------------------------------------------------
 
   FUNCTION nofis(IS)
@@ -661,6 +831,12 @@ contains
        cutoff = get_kb_proj_cutoff(is,io)
        l = get_kb_proj_l(is,io)
        m = get_kb_proj_m(is,io)
+    else if (func==ldaupj_f) then
+       if (io.gt. get_number_of_ldau_proj(is))  call die("phiatm: No such projector")
+       call get_value_of_ldau_proj(is,io,r,phir,grphi)
+       cutoff = get_ldau_proj_cutoff(is,io)
+       l = get_ldau_proj_l(is,io)
+       m = get_ldau_proj_m(is,io)
     else if (func==vna_f)then
        if (floating(is)) return
        call get_value_vna(is,r,phir,grphi)
@@ -807,6 +983,8 @@ contains
        rcut = get_kb_proj_cutoff(is,io)
     else if (func==vna_f) then
        rcut = get_vna_cutoff(is)
+    else if (func==ldaupj_f) then
+       rcut = get_ldau_proj_cutoff(is,io)
     else       
        call die("rcut: unknown function")
     endif
@@ -861,6 +1039,11 @@ contains
        call get_rvalue_of_kb_proj(is,io,r,phir,dphidr)
        l = get_kb_proj_l(is,io)
        m = get_kb_proj_m(is,io)
+   else if (func==ldaupj_f) then
+       if (io.gt. get_number_of_ldau_proj(is))  call die("rphiatm: No such projector")
+       call get_rvalue_of_ldau_proj(is,io,r,phir,dphidr)
+       l = get_ldau_proj_l(is,io)
+       m = get_ldau_proj_m(is,io)
     else if(func==vna_f) then
        if (floating(is)) return
        call get_rvalue_na(is,r,phir,dphidr)
@@ -915,13 +1098,15 @@ contains
     data (sym_label(i),i=5,9)   / 'dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2' / 
     data (sym_label(i),i=10,16) / 'f', 'f', 'f', 'f', 'f', 'f', 'f' /
 
-    call chk('rcut',is)
+    call chk('symfio',is)
 
    
     if (func==orb_f) then
        if (io.gt. get_number_of_orbs(is))  call die("No such orbital")
     else if (func==kbpj_f) then
        if (io.gt. get_number_of_kb_projs(is))  call die("No such projector")
+    else if (func==ldaupj_f) then
+       if (io.gt. get_number_of_ldau_proj(is)) call die("No such projector")
     else
        symfio = 's'
     endif
@@ -989,6 +1174,8 @@ contains
 
     real(dp) phi, grphi(3), x
 
+    call chk('xphiatm',is)
+
     call phiatm(is,func,io,r,phi,grphi)
     x = r(1)
     xphi = x * phi
@@ -1008,6 +1195,8 @@ contains
     real(dp), intent(out) :: yphi, gryphi(3)
 
     real(dp) phi, grphi(3), y
+
+    call chk('yphiatm',is)
 
     call phiatm(is,func,io,r,phi,grphi)
     y = r(2)
@@ -1033,7 +1222,7 @@ contains
     !   INTEGER ZETAFIO  : Zeta number of orbital
 
    
-    call chk('mofio',is)
+    call chk('zetafio',is)
     zetafio = 0
 
     if (io.gt.0) then
@@ -1056,6 +1245,9 @@ contains
     real(dp), intent(out) :: zphi, grzphi(3)
 
     real(dp) phi, grphi(3), z
+    
+    call chk('zphiatm',is)
+
     call phiatm(is,func,io,r,phi,grphi)
     z = r(3)
     zphi = z * phi

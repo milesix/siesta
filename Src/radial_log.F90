@@ -573,7 +573,6 @@ function log_rad_multiply_by_rl(func,l) result (mult)
     type(logGrid_t), pointer :: grid
    
     nrval = size(pseudo%f) 
-    write(6,*) "radial_log: schro: rc input=",rc
     nrc = log_rad_get_ir(pseudo,rc)
     if(restricted_grid) nrc=nrc+1-mod(nrc,2)
     if(nrc > nrval) nrc=nrval
@@ -585,8 +584,6 @@ function log_rad_multiply_by_rl(func,l) result (mult)
     s(1) = s(2)
     grid => pseudo%grid
     
-
-    write(6,*) "radial_log: schro: rc before int.=",grid%r(nrc)
     call schro_eq(chg,grid%r(1:nrval),pseudo%f(1:nrval),ve%f(1:nrval),s, &
          grid%drdi(1:nrval),nrc, l,grid%a,grid%b,nnodes,nprin,energy,rphi)
 
@@ -607,7 +604,6 @@ function log_rad_multiply_by_rl(func,l) result (mult)
     !   endif
     !enddo
 
-    write(6,*) "radial_log: schro: rc end=",grid%r(nrc_new)
     call log_rad_alloc(integral,rphi(1:nrc_new),grid)
     deallocate(rphi,s)
     nullify(grid)

@@ -46,8 +46,14 @@ module atom_types
      type(rad_func_t), pointer                  ::  core_charge  => Null()
      logical                                    ::  has_core_charge
       
+    !LDA+U parameter,   DSP
+     real(dp), pointer                          ::  U(:) => Null()
+     real(dp), pointer                          ::  J(:) => Null()
+     logical                                    ::  switch_ldau
+      
      type(hilbert_vector_collection_t)          ::  orbs
-     type(hilbert_vector_collection_t), pointer ::  kb_proj, ldau_proj  => Null()
+     type(hilbert_vector_collection_t), pointer ::  kb_proj   => Null()
+     type(hilbert_vector_collection_t), pointer ::  ldau_proj => Null()  
      logical                                    ::  read_from_file
   end type species_info_t
 
@@ -142,10 +148,15 @@ contains
        if (Node .ne. 0 .and. kbs) allocate(spp%kb_proj)       
        if (kbs) call broadcast_hilbert_vector_collection(spp%kb_proj)
        
+       call MPI_Bcast(spp%switch_ldau,1,MPI_logical,0,MPI_Comm_World,MPIerror)
+
        if (Node .eq. 0)  ldau = associated(spp%ldau_proj)
        call MPI_Bcast(ldau,1,MPI_logical,0,MPI_Comm_World,MPIerror)
+       if(ldau.ne.spp%switch_ldau) call die("Inconsistency in broadcasting LDAU projs")
        if (Node .ne. 0 .and. ldau) allocate(spp%ldau_proj)
        if (ldau) call broadcast_hilbert_vector_collection(spp%ldau_proj)
+       if (ldau) call broadcast(spp%U)
+       if (ldau) call broadcast(spp%J)      
 
        if (Node .eq. 0) vlocal = has_reduced_vlocal(spp) 
        call MPI_Bcast(vlocal,1,MPI_logical,0,MPI_Comm_World,MPIerror)
@@ -262,8 +273,104 @@ end subroutine broadcast_basis
 
   !-------------------------------------------------------------------------
 
+  subroutine set_lmax_ldau_proj(isp, lmax)
+    integer,  intent(in) :: isp
+    integer,  intent(in) :: lmax
+    call set_lmax(species(isp)%ldau_proj, lmax)
+  end subroutine set_lmax_ldau_proj
+
+  !-------------------------------------------------------------------------
+
+  subroutine init_UJ_ldau_proj(isp, nmax)
+    integer, intent(in)  :: isp
+    integer, intent(in)  :: nmax
+    integer              :: nshells
+    nshells=nmax*(nmax+1)/2
+    allocate(species(isp)%U(nshells))
+    allocate(species(isp)%J(nshells))
+    species(isp)%U(1:nshells)= 0.0_dp
+    species(isp)%J(1:nshells)= 0.0_dp
+  end subroutine init_UJ_ldau_proj
+
+  !-------------------------------------------------------------------------
+
+  function get_U_ldau_proj(isp, l, n) result(U)
+    integer, intent(in) :: isp
+    integer, intent(in) :: l
+    integer, intent(in) :: n
+    integer             :: ishell
+    real(dp) :: U
+    U=0.0_dp
+    ishell=(n-1)*n/2+l+1
+    if (associated(species(isp)%U)) then
+       if(ishell.le.size(species(isp)%U)) U=species(isp)%U(ishell)
+    end if
+  end function get_U_ldau_proj
+
+  !-------------------------------------------------------------------------
+
+  subroutine set_U_ldau_proj(isp, U, l, n )
+    integer,               intent(in) :: isp
+    integer,               intent(in) :: l
+    integer,               intent(in) :: n
+    real(dp),              intent(in) :: U
+    integer  :: ishell
+    if (n.lt.1) call die("atm_types: set_U incorrect value of n")
+    if (l.lt.0) call die("atm_types: set_U incorrect value of l")
+    ishell=(n-1)*n/2+l+1
+    species(isp)%U(ishell)=U
+  end subroutine set_U_ldau_proj
+
+  !-------------------------------------------------------------------------
+
+  function get_J_ldau_proj(isp, l, n) result(J)
+    integer, intent(in) :: isp
+    integer, intent(in) :: l
+    integer, intent(in) :: n
+    integer             :: ishell
+    real(dp) :: J
+    J=0.0_dp
+    ishell=(n-1)*n/2+l+1
+    if (associated(species(isp)%J)) then
+       if(ishell.le.size(species(isp)%J)) J=species(isp)%J(ishell)
+    end if
+  end function get_J_ldau_proj
+
+  !-------------------------------------------------------------------------
+
+  subroutine set_J_ldau_proj(isp, J, l, n )
+    integer,               intent(in) :: isp
+    integer,               intent(in) :: l
+    integer,               intent(in) :: n
+    real(dp),              intent(in) :: J
+    integer  :: ishell
+    if (n.lt.1) call die("atm_types: set_J incorrect value of n")
+    if (l.lt.0) call die("atm_types: set_J incorrect value of l")
+    ishell=(n-1)*n/2+l+1
+    species(isp)%J(ishell)=J
+  end subroutine set_J_ldau_proj
+
+  !-------------------------------------------------------------------------
+
+
+  !-------------------------------------------------------------------------
+  subroutine set_switch_ldau(isp,switch)
+    integer,               intent(in) :: isp
+    logical,               intent(in) :: switch
+    species(isp)%switch_ldau=switch
+  end subroutine set_switch_ldau
+
+  !-------------------------------------------------------------------------
+
+  function get_switch_ldau(isp) result(switch)
+    integer, intent(in) :: isp
+    logical :: switch
+    switch=species(isp)%switch_ldau
+  end function get_switch_ldau
+
+  !-------------------------------------------------------------------------
+
   function is_floating(isp) result(floating)
-    !Ask if the species is floating (no kbs, vloc, only basis without e-)
     integer, intent(in) :: isp
     logical :: floating
     floating = species(isp)%fake
@@ -299,11 +406,12 @@ end subroutine broadcast_basis
 
   !-------------------------------------------------------------------------
 
-  subroutine init_ldau_proj(isp)
+  subroutine init_ldau_proj(isp,nldaupj)
     !Initialize the lda+u projectors.
     integer, intent(in) :: isp
+    integer, intent(in) :: nldaupj
     allocate(species(isp)%ldau_proj)
-    stop "atm_types: init_ldau_proj"
+    call allocate_collection(species(isp)%ldau_proj,nldaupj)
   end subroutine init_ldau_proj
 
   !-------------------------------------------------------------------------
@@ -682,8 +790,20 @@ end subroutine broadcast_basis
 
   !------------------------------------------------------------------------
 
+  function get_number_of_ldau_proj_non_deg(isp) result(nldaupj)
+    integer, intent(in) :: isp
+    integer             :: nldaupj
+    if (associated(species(isp)%ldau_proj)) then
+       nldaupj = get_number_of_vectors(species(isp)%ldau_proj)
+    else
+       nldaupj = 0
+    endif
+ 
+  end function get_number_of_ldau_proj_non_deg
+
+  !-------------------------------------------------------------------------
+
   function get_rcore(isp) result(rcore)
-    !Obtain the rcore
     integer, intent(in) :: isp
     real(dp)            :: rcore
     rcore = rad_cutoff(species(isp)%core_charge)
@@ -713,10 +833,19 @@ end subroutine broadcast_basis
   
   !------------------------------------------------------------------------
 
-  function get_kb_v(isp,io) result(kb)
-    !Obtain the vector corresponding to a given kb
+  function get_ldau_proj_v(isp,io) result(proj)
     integer, intent(in) :: isp
     integer, intent(in) :: io
+
+    type(hilbert_vector_t) :: proj
+    proj = get_vector(species(isp)%ldau_proj,io)
+  end function get_ldau_proj_v
+
+  !------------------------------------------------------------------------
+
+  function get_kb_v(isp,io) result(kb)
+    integer, intent(in)  :: isp
+    integer, intent(in)  :: io
     
     type(hilbert_vector_t) :: kb
     kb = get_vector(species(isp)%kb_proj,io)
@@ -764,6 +893,24 @@ end subroutine broadcast_basis
 
   !------------------------------------------------------------------------
 
+  function get_ldau_proj_n(isp,io) result(n)
+    integer, intent(in)            :: isp
+    integer, intent(in)            :: io
+    integer                        :: n
+    n = get_n(species(isp)%ldau_proj,io)
+  end function get_ldau_proj_n
+
+  !------------------------------------------------------------------------
+
+  function get_ldau_proj_l(isp,io) result(l)
+    integer, intent(in)            :: isp
+    integer, intent(in)            :: io
+    integer                        :: l
+    l = get_l(species(isp)%ldau_proj,io)
+  end function get_ldau_proj_l
+
+  !------------------------------------------------------------------------
+
   function get_kb_proj_l(isp,io) result(l)
     !Obtain the l of a given kb
     integer, intent(in) :: isp
@@ -771,6 +918,16 @@ end subroutine broadcast_basis
     integer             :: l
     l = get_l(species(isp)%kb_proj,io)
   end function get_kb_proj_l
+
+  !------------------------------------------------------------------------
+
+function get_kb_proj_n(isp,io) result(n)
+    !Obtain the l of a given kb
+    integer, intent(in) :: isp
+    integer, intent(in) :: io
+    integer             :: n
+    n = get_n(species(isp)%kb_proj,io)
+  end function get_kb_proj_n
 
   !------------------------------------------------------------------------
 
@@ -784,8 +941,16 @@ end subroutine broadcast_basis
 
   !------------------------------------------------------------------------
 
+  function get_ldau_proj_m(isp,io) result(m)
+    integer, intent(in)            :: isp
+    integer, intent(in)            :: io
+    integer                        :: m
+    m = get_m(species(isp)%ldau_proj,io)
+  end function get_ldau_proj_m
+
+  !------------------------------------------------------------------------
+
   function get_kb_proj_m(isp,io) result(m)
-    !Obtain the m of a given kb.
     integer, intent(in) :: isp
     integer, intent(in) :: io
     integer             :: m
@@ -814,11 +979,19 @@ end subroutine broadcast_basis
 
   !------------------------------------------------------------------------
 
+  function get_ldau_proj_cutoff(isp,io) result(cutoff)
+    integer, intent(in)            :: isp
+    integer, intent(in)            :: io
+    real(dp)                       :: cutoff
+    cutoff = get_cutoff(species(isp)%ldau_proj,io)
+  end function get_ldau_proj_cutoff
+
+  !------------------------------------------------------------------------
+
   function get_kb_proj_cutoff(isp,io) result(cutoff)
-    !Obtain the cutoff of a given kb.
-    integer, intent(in) :: isp
-    integer, intent(in) :: io
-    real(dp)            :: cutoff
+    integer, intent(in)            :: isp
+    integer, intent(in)            :: io
+    real(dp)                       :: cutoff
     if (has_kbs(isp))then
        cutoff = get_cutoff(species(isp)%kb_proj,io)
     else
@@ -1018,8 +1191,56 @@ end subroutine broadcast_basis
   
   !------------------------------------------------------------------------
 
-  subroutine get_value_of_kb_proj(isp,i,r,v,grv)
-    integer, intent(in) :: isp
+ subroutine get_value_of_ldau_proj(isp,i,r,v,grv)
+    integer, intent(in)   :: isp
+    integer, intent(in)   :: i       ! orb index
+    real(dp), intent(in)  :: r(3)    ! Point vector, relative to atom
+    real(dp), intent(out) :: v       ! Value of local pseudopotential
+    real(dp), intent(out) :: grv(3)  ! Gradient of local pseudopotential
+
+    !Internal vars
+    type(rad_func_t), pointer     :: ldau_proj
+    real(dp)                      :: rmod, dvdr
+
+    v=0.0_dp
+    grv=0.0_dp
+
+    ldau_proj => get_rad_func_p(species(isp)%ldau_proj,i)
+    rmod = sqrt(sum(r*r))
+    rmod = rmod+tiny20
+    if (rmod .gt. rad_cutoff(ldau_proj)) return
+
+    call rad_get(ldau_proj,rmod,v,dvdr)
+    grv(1:3) = dvdr * r(1:3)/rmod
+
+  end subroutine get_value_of_ldau_proj
+  !------------------------------------------------------------------------
+
+  subroutine get_rvalue_of_ldau_proj(isp,i,r,v,grv)
+    integer, intent(in)   :: isp
+    integer, intent(in)   :: i       ! orb index
+    real(dp), intent(in)  :: r       ! Point vector, relative to atom
+    real(dp), intent(out) :: v       ! Value of local pseudopotential
+    real(dp), intent(out) :: grv     ! Gradient of local pseudopotential
+    
+    !Internal vars
+    type(rad_func_t), pointer     :: ldau_proj
+    real(dp)                      :: rmod
+
+    v=0.0_dp
+    grv=0.0_dp
+
+    ldau_proj => get_rad_func_p(species(isp)%ldau_proj,i)
+    rmod = r+tiny20
+    if (rmod .gt. rad_cutoff(ldau_proj)) return
+
+    call rad_get(ldau_proj,rmod,v,grv)
+    
+  end subroutine get_rvalue_of_ldau_proj
+    
+   !------------------------------------------------------------------------
+   subroutine get_value_of_kb_proj(isp,i,r,v,grv)
+    integer, intent(in)   :: isp
     integer, intent(in)   :: i       ! kb_proj index
     real(dp), intent(in)  :: r(3)    ! Point vector, relative to atom
     real(dp), intent(out) :: v       ! Value of local pseudopotential
@@ -1105,6 +1326,25 @@ end subroutine broadcast_basis
   end subroutine set_kb_proj
 
   !---------------------------------------------------------
+
+
+  subroutine set_ldau_proj(isp,ldaupj,iorb )
+     integer, intent(in)               :: isp
+     type(hilbert_vector_t),intent(in) :: ldaupj
+     integer, intent(in)               :: iorb
+
+     call set_vector(species(isp)%ldau_proj,ldaupj,iorb)
+  end subroutine set_ldau_proj
+
+  !-------------------------------------------------------
+
+  subroutine set_ldau_projs_deg(isp)
+    integer, intent(in) :: isp
+    call set_deg(species(isp)%ldau_proj)
+  end subroutine set_ldau_projs_deg
+
+  !-------------------------------------------------------
+
 
   subroutine filter_orbs(factor)
     !Filter orbitals of all the species.

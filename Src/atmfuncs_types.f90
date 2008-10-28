@@ -25,7 +25,8 @@ module atmfuncs_types
        vlocal_f  = func_t(3), &
        vna_f     = func_t(4), &
        chlocal_f = func_t(5), &
-       core_f    = func_t(6)
+       core_f    = func_t(6), &
+       ldaupj_f  = func_t(7)
 
   INTERFACE OPERATOR (==)
      MODULE PROCEDURE func_t_compare

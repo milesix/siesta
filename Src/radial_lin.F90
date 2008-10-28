@@ -28,7 +28,7 @@ module radial_lin
   public lin_rad_FFT, lin_rad_dump_fft_ascii, lin_rad_dump_fft_xml
   public lin_rad_get_value_from_ir
   public lin_rad_get_filter_cutoff, lin_rad_get_grid, lin_rad_get_length
-  public lin_rad_read_ascii, lin_rad_set_origin, lin_rad_zero
+  public lin_rad_read_ascii, lin_rad_set_origin, lin_rad_zero, lin_rad_dump_netcdf
   private
 
   type linGrid_t
@@ -198,6 +198,38 @@ contains
     close(io)
   end subroutine lin_rad_dump_file
 
+  !----------------------------------------------------------
+
+  subroutine lin_rad_dump_netcdf(op,lun,netcdf_id)
+
+#ifndef CDF
+    type(lin_rad_func_t), intent(in) :: op
+    integer, intent(in)              :: lun, netcdf_id
+
+  end subroutine lin_rad_dump_netcdf
+
+#else
+    use netcdf
+    type(lin_rad_func_t), intent(in) :: op
+    integer, intent(in)              :: lun, netcdf_id
+
+    integer :: iret
+
+    iret = nf90_put_var(lun,netcdf_id,op%f(1:), start=(/1/),count=(/size(op%f)/))
+    call check(iret)
+  contains
+    subroutine check(status)
+
+      integer, intent(in):: status
+      if (status .ne. nf90_noerr) then
+         print  *, trim(nf90_strerror(status))
+         call die()
+      endif
+    end subroutine check
+
+  end subroutine lin_rad_dump_netcdf
+
+#endif
   !----------------------------------------------------------
 
    subroutine lin_rad_dump_fft_ascii(op,lun,header)
