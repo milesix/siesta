@@ -62,7 +62,7 @@ module radial
   public :: rad_smooth, rad_smooth_large, rad_multiply_each_value, rad_vhartree
   public :: rad_vxc, rad_rc_vs_e, rad_split_scan_tail, rad_polarization
   public :: rad_split_scan_tail_parabola, rad_zero, rad_get_r_from_ir
-  public :: rad_grid_get_delta, rad_dump_netcdf
+  public :: rad_grid_get_delta, rad_dump_netcdf, rad_get_norm_r_l_1_from_ir
 
   !These should be encapsulated.
   public :: restricted_grid
@@ -1167,6 +1167,22 @@ contains
        call die("radial: rad_normalize_r_l_1 unknown type!")
     endif
   end subroutine rad_normalize_r_l_1
+
+  !-------------------------------------------------------------------
+
+  function rad_get_norm_r_l_1_from_ir(rad_func,l,ir) result(norm)
+    type (rad_func_t), intent(in) :: rad_func
+    integer, intent(in)           :: l,ir
+    real(dp)                      :: norm
+
+    if (rad_func%kind == lin_t) then
+       call die("radial: rad_get_norm_r_l_1_from_ir lin_t not implemented")
+    elseif(rad_func%kind == log_t) then
+       norm=log_rad_get_norm_r_l_1_from_ir(rad_func%log,l,ir)
+    else
+       call die("radial: rad_get_norm_r_l_1_from_ir unknown type!")
+    endif
+  end function rad_get_norm_r_l_1_from_ir
 
   !-------------------------------------------------------------------
 

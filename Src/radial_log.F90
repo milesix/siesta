@@ -497,7 +497,28 @@ function log_rad_multiply_by_rl(func,l) result (mult)
 
   !-------------------------------------------------------
 
- 
+   function log_rad_get_norm_r_l_1_from_ir(rad_func,l,ir) result(norm)
+    type(log_rad_func_t), intent(in) :: rad_func
+    integer, intent(in) :: l, ir
+    real(dp) :: norm
+
+    !Internal vars
+    real(dp) :: r
+    integer  :: jr
+
+    type(logGrid_t), pointer :: grid
+
+    grid => rad_func%grid
+
+    norm=0.0_dp
+    do jr=2,min(ir,size(rad_func%f))
+       r = grid%r(jr)
+       norm=norm+grid%drdi(jr)*(rad_func%f(jr)*r**(l+1))**2
+    enddo
+
+  end function log_rad_get_norm_r_l_1_from_ir
+
+  !-------------------------------------------------------
 
   function log_rad_kinetic_energy(rad_func,l) result(ekin)
     type(log_rad_func_t), intent(in) :: rad_func

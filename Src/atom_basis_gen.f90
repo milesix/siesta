@@ -337,6 +337,7 @@ contains
          'SPLIT: PAO cut-off radius determinated from an', &
          'SPLIT: energy shift=',eshift,' Ry'
     call rad_dealloc(rad_orb)
+    call rad_dealloc(ve_val)
   end subroutine auto_rc
 
   !--------------------------------------------------------------------

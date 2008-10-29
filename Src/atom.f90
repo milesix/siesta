@@ -74,6 +74,7 @@ CONTAINS
     use atom_kb,    only: kbgen
     use atom_vloc,  only: gen_vlocal 
     use atom_basis_gen, only: basis_gen
+    use ldauproj, only: ldauproj_gen
 
     integer , intent(in) :: isp
     logical :: floating = .false.
@@ -97,6 +98,7 @@ CONTAINS
        call gen_vlocal(isp)
        call kbgen(isp)
        call basis_gen(isp)
+       call ldauproj_gen(isp)
     endif
     write(6,'(/,a)') 'ATOM: Species end_____________________________ '
 
@@ -218,7 +220,8 @@ CONTAINS
 
     else
 
-       !     Read basis specification and generate PAOs and KB projectors
+       !     Read basis specification and generate PAOs and 
+       !     KB and LDAU projectors
        !     Note : In this section, the number of species is nspecies
        call read_basis_specs()
 
@@ -536,7 +539,8 @@ CONTAINS
   subroutine species_init(isp,floating)
     use atom_types, only : set_symbol, set_label,set_atomic_number, &
          set_valence_charge,set_read_from_file,set_mass,get_symbol, set_lmax_orbs,&
-         get_lmax_orbs, get_label
+         get_lmax_orbs, get_label, set_lmax_ldau_proj
+
     use chemical
     
     integer , intent(in) :: isp

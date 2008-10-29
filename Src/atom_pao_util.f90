@@ -25,7 +25,7 @@ module atom_pao_util
   character(len=1)     :: sym(0:4) = (/ 's','p','d','f','g' /)
 
   public normalize_orbital,generate_vsoft,calculate_energies, sym, number_of_orbs
-  public total_charge
+  public total_charge, soft_confinement
   private
 
   real(dp) :: exponent, rcsan, rinn, vcte
@@ -247,5 +247,6 @@ module atom_pao_util
     deallocate(values)
     call rad_grid_dealloc(grid)
   end function total_charge
+
 
 end module atom_pao_util

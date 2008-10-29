@@ -125,7 +125,7 @@ ATOM_OBJS=atom.o atomparams.o atom_types.o old_atmfuncs.o radial.o atom_pol_orb.
 	atom_elec_correction.o atom_multiple_z.o atom_basis_io.o atom_basis_specs.o \
         radial_logGrid.o radial_util.o schro.o atom_kb.o  atom_bessel.o\
 	atom_options.o  atom_generation_types.o periodic_table.o pseudopotential.o\
-        pseudopotential_new.o
+        pseudopotential_new.o ldauproj_gen.o
 #--------------------------------------------------------------
 #
 WXML=libwxml.a
@@ -313,8 +313,8 @@ atmfuncs_types.o: precision.o
 atom.o: atom_basis_gen.o atom_basis_io.o atom_basis_specs.o atom_bessel.o
 atom.o: atom_corecharge.o atom_elec_correction.o atom_generation_types.o
 atom.o: atom_kb.o atom_na.o atom_options.o atom_types.o atom_vloc.o
-atom.o: atomparams.o chemical.o parallel.o periodic_table.o precision.o
-atom.o: pseudopotential_new.o radial.o sys.o units.o
+atom.o: atomparams.o chemical.o ldauproj_gen.o parallel.o periodic_table.o
+atom.o: precision.o pseudopotential_new.o radial.o sys.o units.o
 
 atom_basis_enthalpy.o: atmfuncs.o atomlist.o precision.o siesta_geom.o units.o
 
@@ -328,7 +328,7 @@ atom_basis_io.o: pseudopotential_new.o radial.o sys.o xml.o
 
 atom_basis_specs.o: atom_generation_types.o atom_types.o chemical.o
 atom_basis_specs.o: periodic_table.o precision.o pseudopotential.o
-atom_basis_specs.o: pseudopotential_new.o radial.o sys.o
+atom_basis_specs.o: pseudopotential_new.o radial.o sys.o units.o
 
 atom_basis_types.o: alloc.o atomparams.o precision.o pseudopotential.o sys.o
 
@@ -606,6 +606,10 @@ ksv.o: alloc.o atmfuncs.o densematrix.o ksvinit.o parallel.o parsing.o
 ksv.o: precision.o sys.o
 
 ksvinit.o: alloc.o parallel.o parsing.o precision.o
+
+ldauproj_gen.o: atom_generation_types.o hilbert_vector.o
+ldauproj_gen.o: hilbert_vector_collection.o precision.o pseudopotential.o
+ldauproj_gen.o: radial.o sys.o units.o
 
 
 listsc.o: alloc.o
@@ -1033,6 +1037,7 @@ band.o: bands.o
 basis_types.o: atom_basis_types.o
 diagmemory.o: memoryinfo.o
 hilbert_vector_m.o: hilbert_vector.o
+ldauproj.o: ldauproj_gen.o
 listsc_module.o: listsc.o
 m_born_charge.o: born_charge.o
 m_broyden_optim.o: broyden_optim.o
