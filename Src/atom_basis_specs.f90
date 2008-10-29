@@ -144,6 +144,8 @@ module atom_basis_specs
   type(shell_t), pointer::  s
   type(lshell_t), pointer::  ls
   type(kbshell_t), pointer:: k
+  type(ldaushell_t), pointer:: sldau
+  type(l_ldaushell_t), pointer:: lsldau
 
   type(block), pointer  :: bp
   type(parsed_line), pointer  :: p
@@ -170,6 +172,8 @@ module atom_basis_specs
   !logical, save, public     :: restricted_grid
   logical, parameter        :: restricted_grid_default = .true.
   !real(dp), save, public    :: rmax_radial_grid
+  ! Default generation method for the LDAU projectors
+  integer, parameter          :: method_gen_default= 2
 
 CONTAINS
 
@@ -362,6 +366,7 @@ CONTAINS
     call autobasis
     call relmxkb
     call readkb
+    call reldauproj
 
   end subroutine read_basis_specs
   !-----------------------------------------------------------------------
@@ -1274,9 +1279,212 @@ CONTAINS
 
   end subroutine autobasis
 
+  subroutine reldauproj
+
+    use units, only: eV
+
+    integer isp, ish, nn, i, ind, l, indexp, method_gen, jsh, nspecies
+    type(ldaushell_t), pointer::  spol
+    
+    nullify(bp)
+    
+!    Generation scheme used for the LDAU projectors
+     method_gen = &
+     fdf_integer('LDAU.ProjectorGenerationMethod',method_gen_default)
+
+!    LDAU.switch=.false.
+    If (.not.fdf_block('LDAU.proj',bp)) RETURN
+       
+    nspecies = number_of_species()
+
+    write(6,'(/,a)') "Reldauproj: processing %block LDAU.proj"
+!    LDAU.switch=.true.
+
+    loop: DO !! over species
+
+       if (.not. fdf_bline(bp,line)) exit loop
+       p => digest(line)
+       if (.not. match(p,"ni")) call die("Wrong format in LDAU.proj")
+       isp = label2species(names(p,1))
+       if (isp .eq. 0) then
+          write(6,'(a,1x,a)') "WRONG species symbol in LDAU.proj:",trim(names(p,1))
+          call die
+       endif
+       
+       basp=>basis_parameters(isp)
+       basp%label=names(p,1)
+       basp%nldaushells = integers(p,1)
+       basp%lmxldaupj = -1 
+
+       write(6,'(a,a)') "Reldauproj: species: ",basp%label
+       write(6,'(a,i2)') "Reldauproj:  Number of shells=",basp%nldaushells
+
+       !! Check whether there are optional type and ionic charge
+!       if (nnames(p).eq.2) basp%basis_type=names(p,2)
+!       if (nvalues(p).eq.2) basp%ionic_charge=values(p,2)
+       call destroy(p)
+       allocate(basp%tmp_ldaushell(1:basp%nldaushells))
+
+!       do i=0,3
+!          if (basp%ground_state%occupied(i))then
+!             nmax=basp%ground_state%n(i) 
+!          endif
+!       enddo
+
+       shells: do ish=1,basp%nldaushells
+          sldau=>basp%tmp_ldaushell(ish)
+          call initialize(sldau)
+          sldau%method=method_gen
+          if (.not. fdf_bline(bp,line)) call die("No l U J, etc")
+
+          p => digest(line)
+          if (match(p,"nii")) then
+             sldau%n = integers(p,1)
+             sldau%l = integers(p,2)
+             basp%lmxldaupj = max(basp%lmxldaupj,s%l)
+          else if (match(p,"i")) then
+             if (basp%semic) call &
+                  die("Please specify n if there are semicore states")
+             sldau%l = integers(p,1)
+             sldau%n = basp%ground_state%n(sldau%l)
+             basp%lmxldaupj = max(basp%lmxldaupj,sldau%l)
+          else
+             call die("Bad format of (n), l line in LDAU.proj")
+          endif
+          write(6,'(a,2i2)') "Reldauproj:     Shell with n,l=",sldau%n,sldau%l
+          do jsh=1,ish-1
+             if(sldau%l.eq.basp%tmp_ldaushell(jsh)%l .and. &
+             sldau%n.eq.basp%tmp_ldaushell(jsh)%n ) &
+             call die("LDAU projs. with the same l need different values of n")
+          enddo 
+               
+          if (search(p,"E",indexp)) then
+             if (match(p,"vv",after=indexp)) then
+                sldau%vcte = values(p,ind=1,after=indexp)
+                sldau%rinn = values(p,ind=2,after=indexp)
+             else
+                call die("Need vcte and rinn after E in LDAU.proj")
+             endif
+          elseif (lsoft) then
+             sldau%vcte = softPt 
+             sldau%rinn = -softRc
+          else
+             sldau%vcte = 0.0_dp
+             sldau%rinn = 0.0_dp
+          endif
+          call destroy(p)
+          
+          sldau%U=0.0_dp
+          sldau%J=0.0_dp
+          if (.not. fdf_bline(bp,line)) call die("No U and J")
+          p => digest(line)
+          if (nvalues(p).ne.2) call die("Insert one value of U and J")
+          sldau%U = values(p,1)*eV
+          sldau%J = values(p,2)*eV
+          call destroy(p)
+          
+          sldau%rc = 0.0_dp
+          sldau%lambda = 1.0_dp
+          sldau%width = 0.0_dp
+          if (.not. fdf_bline(bp,line)) call die("No rc's")
+          p => digest(line)
+          if(method_gen.eq.1) then
+            if (nvalues(p).ne.1) call die("Insert one value of rc")
+            sldau%rc = values(p,1)
+            call destroy(p)
+          else 
+            if (nvalues(p).ne.2) call die("Insert rc and width")
+            sldau%rc = values(p,1)
+            sldau%width = values(p,2)
+            call destroy(p)
+          endif
+          ! Optional scale factors. They MUST be reals, or else...
+          if (.not. fdf_bline(bp,line)) then
+             if (ish.ne.basp%nldaushells)call die("Not enough shells")
+             ! Default values for scale factors
+          else
+             p => digest(line)
+             if (.not.match(p,"r")) then
+                ! New shell or species
+                ! Default values for the scale factors
+                call backspace(bp)
+                cycle shells
+             else
+                if (nreals(p).ne.1) call die("One optional value of lambda")
+                sldau%lambda = reals(p,1)
+             endif
+             call destroy(p)
+          endif
+          nullify(sldau)
+       enddo shells
+       ! Clean up for this species
+    enddo loop
+    nullify(basp)
+    !
+    !OK, now classify the states by l-shells
+    !
+    do isp = 1, nspecies
+       basp=>basis_parameters(isp)
+       if (basp%lmxldaupj.eq.-1) cycle !! Species not in block
+
+       allocate (basp%l_ldaushell(0:basp%lmxldaupj))
+
+       do i=0,basp%lmxldaupj
+          call initialize(basp%l_ldaushell(i))
+       enddo
+
+       loop_l: do l=0,basp%lmxldaupj
+          
+          lsldau=>basp%l_ldaushell(l)
+
+          if (lsldau%nn == 0) then
+             call initialize(lsldau)
+          endif
+          lsldau%l = l
+          ! Search for multiple tmp_shells with the same l
+          ! Taking into account the polarization shells
+          nn = 0
+          do ish=1, basp%nldaushells
+             sldau=>basp%tmp_ldaushell(ish)
+             if (sldau%l .eq. l) nn=nn+1
+          enddo
+          if (lsldau%nn == 0) lsldau%nn = nn !The shell can be a pol shell
+          if (lsldau%nn.eq.0) then
+             !! What else do we do here?
+             cycle loop_l  
+          endif
+          !! 
+          if (.not. associated(lsldau%ldaushell)) allocate(lsldau%ldaushell(1:nn))
+
+          ! Collect previously allocated shells
+          ind = 0
+          do ish=1, basp%nldaushells
+
+             sldau=>basp%tmp_ldaushell(ish)
+             if (sldau%l .eq. l) then
+                ind = ind+1
+                call copy_ldaushell(source=sldau,target=lsldau%ldaushell(ind))
+             endif
+          enddo
+          if (nn.eq.1) then
+             ! If n was not specified, set it to ground state n
+             if (lsldau%ldaushell(1)%n.eq.-1) &
+                  lsldau%ldaushell(1)%n=basp%ground_state%n(l)
+          endif
+          !! Do we have to sort by n value????
+          !!
+          
+       enddo loop_l
+       !! Destroy temporary shells in basp
+       call destroy(basp%tmp_ldaushell)
+    enddo
+    call destroy(bp)
+    write(6,'(a)') "Reldauproj: end processing %block LDAU.proj"
+  end subroutine reldauproj
+  !_______________________________________________________________________
+
+
 End module atom_basis_specs
-
-
 
 
 
