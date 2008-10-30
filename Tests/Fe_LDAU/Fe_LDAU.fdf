@@ -1,0 +1,107 @@
+# $Id: Fe.fdf,v 1.1 1999/04/20 12:52:43 emilio Exp $
+# -----------------------------------------------------------------------------
+# FDF for bcc iron      
+#
+# GGA, Ferromagnetic. 
+# Scalar-relativistic pseudopotential with non-linear partial-core correction
+#
+# E. Artacho, April 1999
+# -----------------------------------------------------------------------------
+
+SystemName       bcc Fe ferro GGA   # Descriptive name of the system
+SystemLabel            Fe2_bis           # Short name for naming files
+
+# Output options
+
+WriteCoorStep
+WriteMullikenPop       1    
+WriteIonPlotFiles .true.
+
+# Species and atoms
+
+NumberOfSpecies        2       
+NumberOfAtoms          2      
+%block ChemicalSpeciesLabel
+  1  26  Fe
+  2  26  Fe_bis
+%endblock ChemicalSpeciesLabel
+
+# Basis
+
+PAO.EnergyShift       50 meV
+%block PAO.Basis
+  Fe  2
+  0  1  
+  5.00000  
+  2   1
+  3.00000
+  Fe_bis  2
+  0  1
+  5.00000
+  2  1
+  3.00000
+%endblock PAO.Basis
+
+LatticeConstant       2.87 Ang  
+
+%block LatticeVectors          
+ 1.00000   1.000000  1.000000
+ 0.50000  -0.500000  0.500000 
+ 0.50000   0.500000 -0.500000
+%endblock LatticeVectors
+
+KgridCutoff          7. Ang
+
+xc.functional         GGA           # Exchange-correlation functional
+xc.authors            PBE           # Exchange-correlation version
+
+SpinPolarized         true          # Logical parameters are: yes or no
+
+MeshCutoff           200. Ry        # Mesh cutoff. real space mesh 
+
+# SCF options
+MaxSCFIterations       100           # Maximum number of SCF iter
+DM.MixingWeight       0.05           # New DM amount for next SCF cycle
+DM.Tolerance          1.d-4         # Tolerance in maximum difference
+                                    # between input and output DM
+DM.UseSaveDM          true          # to use continuation files
+DM.NumberPulay         3
+
+SolutionMethod        diagon        # OrderN or Diagon
+ElectronicTemperature  25 meV       # Temp. for Fermi smearing
+
+# MD options
+
+MD.TypeOfRun           cg           # Type of dynamics:
+MD.NumCGsteps           0           # Number of CG steps for 
+                                    #   coordinate optimization
+MD.MaxCGDispl          0.1 Ang      # Maximum atomic displacement 
+                                    #   in one CG step (Bohr)
+MD.MaxForceTol         0.04 eV/Ang  # Tolerance in the maximum 
+                                    #   atomic force (Ry/Bohr)
+
+# Atomic coordinates
+AtomicCoordinatesFormat    ScaledCartesian
+%block AtomicCoordinatesAndAtomicSpecies
+  0.000000000000    0.000000000000    0.000000000000  1 
+  0.50000000000 0.5000000000 0.5000000000 2
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+WriteIonPlotFiles .true.
+
+LDAU.EnergyShift 4.5 eV
+LDAU.FirstIteration .true.
+LDAU.PopTol 1.0d-4
+LDAU.ThresholdTol   1.0d-2
+LDAU.ProjectorGenerationMethod 2
+
+%block LDAU.proj
+Fe   1           # number of shells of projectors
+n=3    2         #  n, l
+   3.0 0.0000    # U(eV), J(eV)
+   0.000 0.0000  # rc, \omega 
+Fe_bis   1       # number of shells of projectors
+    2            # angular momentum
+   2.00 0.00     # U and J
+   0.0000 0.000  #rc , \omega 
+%endblock LDAU.proj
