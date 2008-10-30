@@ -13,7 +13,8 @@
       use sparse_matrices
       use siesta_geom
       use atomlist, only: iphorb, iphkb, rco, rckb, indxua,no_s, rmaxkb,
-     .                    rmaxo, no_u, lastkb, lasto, superc, rmaxv
+     .                    rmaxo, no_u, lastkb, lasto, superc, rmaxv,
+     .                    rmaxldau
       use atomlist, only: no_s, indxuo
       use atomlist, only: no_l
       use alloc, only: re_alloc, alloc_report
@@ -184,8 +185,10 @@
       rmax = max( 2._dp*rmaxv, 2._dp*rmaxo, rmaxo+rmaxkb)
 
       ! AG: Why not use the largest range and be done with it?
+      ! DSP I fully agree.... and if we have LDAU projectors
+      ! this can be even larger, thus....
       if (.not. negl) then
-         rmax = max(rmax, 2.0_dp * (rmaxo+rmaxkb) )
+         rmax = max(rmax, rmaxh)
       endif
 
       ! Check if any two atoms are unreasonably close

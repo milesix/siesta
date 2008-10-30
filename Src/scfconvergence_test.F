@@ -13,6 +13,7 @@
       use m_energies
       use m_convergence, only: converger_t
       use m_convergence, only: add_value, is_converged
+      use m_ldau, only: ldau, conv_ldaupop, dDmax_current
 #ifdef TRANSIESTA
 ! TSS Begin
       use m_ts_options, only: TSinit, TSrun, TSiscf, initH
@@ -31,7 +32,7 @@
           ! convergence test
           DEna = Enascf - Enaatm
           Etot = E0 + DEna + DUscf + DUext + Exc + Ecorrec+Emad+Emm+
-     &           Emeta
+     &           Emeta + Eldau
           Eharrs = Etot + DEharr
 
           call add_value(conv_harris, eharrs)
@@ -44,14 +45,22 @@
           Eharrs1 = Eharrs
 
           Elast = Etot
+          ! Pass information about density matrix convergency 
+          ! to the LDA+U subroutine
+          dDmax_current=dDmax
+
           if (require_energy_convergence) then
+           if(ldau) then
              if (   dDmax.lt.dDtol
-     $            .and. is_converged(conv_etot)) then
-                last = .true.
-                if (IOnode) then
-                   write(6,"(a)") "SCF Convergence by Etot+DM criteria"
-                endif
-             endif
+     $            .and. is_converged(conv_etot)
+     $            .and. conv_ldaupop) last = .true.
+             if (   dDmax.lt.dDtol
+     $            .and. is_converged(conv_etot)) last = .true.
+           endif
+           if (IOnode.and.last) then
+               write(6,"(a)") "SCF Convergence by Etot+DM criteria"
+           endif
+
           else if (require_harris_convergence) then
              if (is_converged(conv_harris)) then
                 last = .true.
@@ -60,7 +69,11 @@
                 endif
              endif
           else
-            if (dDmax.lt.dDtol) last = .true.
+            if(ldau) then 
+              if (dDmax.lt.dDtol.and.conv_ldaupop) last = .true.
+            else
+              if (dDmax.lt.dDtol) last = .true.
+            endif
           endif
 
 

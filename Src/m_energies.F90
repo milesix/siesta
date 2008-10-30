@@ -24,6 +24,7 @@ module m_energies
   real(dp):: Enaatm     ! Integral of Vna * rhoatm, calculated  in dhscf
   real(dp):: Enascf     ! Integral of Vna * rhoscf, calculated  in dhscf
   real(dp):: Enl        ! Non-local pseudopot. energy term,  calculated in nlefsm
+  real(dp):: Eldau      ! Hubbard term contribution to energy, for LDA+U calculations
   real(dp):: Emeta      ! Metadynamics energy contribution  calculated in meta
   real(dp):: Entrop     ! Temporary to call diagon
   real(dp):: Entropy    ! Entropy due to electron state  occupations, calc. in diagon

@@ -13,7 +13,7 @@
       use sparse_matrices
       use siesta_geom
       use atomlist, only: no_u, rmaxkb, amass, lasto, qtot, iza, rmaxo,
-     .                    zvaltot, superc, initatomlists, no_l
+     .                    zvaltot, superc, initatomlists, no_l, rmaxldau
       use m_fdf_global, only: fdf_global_get
       use sys, only: die, bye
       use xcmod, only: setXC

@@ -72,7 +72,9 @@ C
       use precision
       use parallel,      only : Node, Nodes
       use parallelsubs,  only : GetNodeOrbs, GlobalToLocalOrb
-      use atmfuncs,      only : rcut, orb_f, kbpj_f
+      use atmfuncs,      only : rcut, orb_f, kbpj_f, ldaupj_f,
+     $  nldaupfis, switch_ldau
+
       use listsc_module, only : listsc_init
       use sorting
       use neighbour,   only: jna=>jan, xij, r2ij, maxna=>maxnna
@@ -117,7 +119,7 @@ C
 
       real(dp)
      .  rci, rcj, rck, rij, rik, rjk,
-     .  rmax, rmaxkb, rmaxo
+     .  rmax, rmaxkb, rmaxo, rmaxldau
 
       logical, save :: warn1 = .false.
 
@@ -148,6 +150,8 @@ C Allocate local arrays
 C Find maximum range of basis orbitals and KB projectors
       rmaxo = 0.0d0
       rmaxkb = 0.0d0
+      rmaxldau = 0.0d0
+
       do ia = 1,na
         is = isa(ia)
         do ikb = lastkb(ia-1)+1,lastkb(ia)
@@ -158,12 +162,17 @@ C Find maximum range of basis orbitals and KB projectors
           ioa = iphorb(io)
           rmaxo = max( rmaxo, rcut(is,orb_f,ioa) )
         enddo
+        if(switch_ldau(is)) then
+         do io = 1, nldaupfis(is)
+           rmaxldau = max( rmaxldau, rcut(is,ldaupj_f,io) )
+         enddo
+        endif
       enddo
-
+   
       if (negl) then
         rmax = 2.0d0 * rmaxo
       else
-        rmax = 2.0d0 * (rmaxo+rmaxkb)
+        rmax = 2.0d0 * (rmaxo+max(rmaxkb,rmaxldau))
       endif
 
       ! Allocate local arrays that depend on parameters
@@ -213,12 +222,13 @@ C Loop on orbitals of atom ia
               ioa = iphorb(io)
               rci = rcut(is,orb_f,ioa)
 
-C Find overlaping KB projectors
+C Find overlaping KB and LDAU projectors
               if (.not.negl) then
                 nnkb = 0
                 do kna = 1,nna
                   ka = jna(kna)
                   rik = sqrt( r2ij(kna) )
+                  ks = isa(ka)
                   do ko = lastkb(ka-1)+1,lastkb(ka)
                     ks = isa(ka)
                     koa = iphkb(ko)
@@ -237,14 +247,33 @@ C Check maxnkb - if too small then increase array sizes
                       rckb(nnkb) = rck
                     endif
                   enddo
+                  if(switch_ldau(ks))then
+                    do ko=1,nldaupfis(ks)
+                       rck = rcut(ks,ldaupj_f,ko)
+                       if (rci+rck .gt. rik) then
+C Check maxnkb - if too small then increase array sizes
+                         if (nnkb.eq.maxnkb) then
+                           maxnkb = maxnkb + 100
+                           call re_alloc(knakb,1,maxnkb,
+     $                        name="knakb",copy=.true.)
+                            call re_alloc(rckb,1,maxnkb,
+     $                        name="rckb",copy=.true.)
+                          endif
+                          nnkb = nnkb + 1
+                          knakb(nnkb) = kna
+                          rckb(nnkb) = rck
+                         endif
+                       enddo
+                    endif
                 enddo
               endif
 
 C Find orbitals connected by direct overlap or
-C through a KB projector
+C through a KB or LDAU projector
               do jnat = 1,nna
                 ja = jna(jnat)
                 rij = sqrt( r2ij(jnat) )
+                js = isa(ja)
                 do jo = lasto(ja-1)+1,lasto(ja)
 
 C If not yet connected 
@@ -256,7 +285,7 @@ C Find if there is direct overlap
                     if (rci+rcj .gt. rij) then
                       conect(jo) = .true.
                     elseif (.not.negl) then
-C Find if jo overlaps with a KB projector
+C Find if jo overlaps with a projector
                       do inkb = 1,nnkb
                         rck = rckb(inkb)
                         kna = knakb(inkb)
@@ -348,14 +377,14 @@ C Loop on orbitals of atom ia
               ioa = iphorb(io)
               rci = rcut(is,orb_f,ioa)
 
-C Find overlaping KB projectors
+C Find overlaping KB and LDAU projectors
               if (.not.negl) then
                 nnkb = 0 
                 do kna = 1,nna
                   ka = jna(kna)
                   rik = sqrt( r2ij(kna) )
+                  ks = isa(ka)
                   do ko = lastkb(ka-1)+1,lastkb(ka)
-                    ks = isa(ka)
                     koa = iphkb(ko)
                     rck = rcut(ks,kbpj_f,koa)
                     if (rci+rck .gt. rik) then
@@ -364,14 +393,25 @@ C Find overlaping KB projectors
                       rckb(nnkb) = rck
                     endif
                   enddo
+                 if(switch_ldau(ks))then
+                    do ko=1,nldaupfis(ks)
+                       rck = rcut(ks,ldaupj_f,ko)
+                       if (rci+rck .gt. rik) then
+                          nnkb = nnkb + 1
+                          knakb(nnkb) = kna
+                          rckb(nnkb) = rck
+                         endif
+                       enddo
+                    endif
                 enddo
               endif
           
 C Find orbitals connected by direct overlap or
-C through a KB projector
+C through a KB or LDAU projector
               do jnat = 1,nna
                 ja = jna(jnat)
                 rij = sqrt( r2ij(jnat) )
+                js = isa(ja)
                 do jo = lasto(ja-1)+1,lasto(ja)
 
                    if (conect(jo)) then
@@ -396,7 +436,6 @@ C through a KB projector
 
                    else         ! not conect(jo)
 
-                    js = isa(ja)
                     joa = iphorb(jo)
                     rcj = rcut(js,orb_f,joa)
 C Find if there is direct overlap

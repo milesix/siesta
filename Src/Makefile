@@ -115,7 +115,7 @@ OBJS =  automatic_cell.o \
         m_forces.o m_stress.o m_eo.o m_spin.o m_gamma.o m_hsx.o m_fire.o \
        get_target_stress.o fire_optim.o zm_fire_optim.o \
        cell_fire_optim.o m_fire_para.o m_fire_mixing.o write_raw_efs.o \
-	atom_basis_enthalpy.o
+	atom_basis_enthalpy.o ldau.o
 
 
 ATOM_OBJS=atom.o atomparams.o atom_types.o old_atmfuncs.o radial.o atom_pol_orb.o \
@@ -607,9 +607,12 @@ ksv.o: precision.o sys.o
 
 ksvinit.o: alloc.o parallel.o parsing.o precision.o
 
-ldauproj_gen.o: atom_generation_types.o hilbert_vector.o
-ldauproj_gen.o: hilbert_vector_collection.o precision.o pseudopotential.o
-ldauproj_gen.o: radial.o sys.o units.o
+ldau.o: alloc.o atmfuncs.o m_fdf_global.o mneighb.o parallel.o parallelsubs.o
+ldau.o: precision.o siesta_options.o
+
+ldauproj_gen.o: atom_generation_types.o atom_options.o atom_pao_util.o
+ldauproj_gen.o: atom_types.o hilbert_vector.o hilbert_vector_collection.o
+ldauproj_gen.o: precision.o pseudopotential_new.o radial.o sys.o units.o
 
 
 listsc.o: alloc.o
@@ -887,7 +890,7 @@ rhoofdsp.o: meshsubs.o meshsubs.o precision.o sys.o
 savepsi.o: alloc.o parallel.o parallelsubs.o precision.o
 
 
-scfconvergence_test.o: m_convergence.o m_energies.o m_ts_options.o
+scfconvergence_test.o: ldau.o m_convergence.o m_energies.o m_ts_options.o
 scfconvergence_test.o: m_wallclock.o parallel.o siesta_cml.o siesta_options.o
 scfconvergence_test.o: write_subs.o
 
@@ -897,7 +900,7 @@ setatomnodes.o: alloc.o parallel.o precision.o spatial.o sys.o
 
 setspatial.o: alloc.o parallel.o precision.o spatial.o
 
-setup_hamiltonian.o: alloc.o atmfuncs.o atomlist.o files.o m_dipol.o
+setup_hamiltonian.o: alloc.o atmfuncs.o atomlist.o files.o ldau.o m_dipol.o
 setup_hamiltonian.o: m_energies.o m_forces.o m_gamma.o m_hsx.o m_mpi_utils.o
 setup_hamiltonian.o: m_ntm.o m_spin.o m_steps.o m_stress.o m_ts_io.o
 setup_hamiltonian.o: m_ts_kpoints.o m_ts_options.o metaforce.o
@@ -1058,6 +1061,7 @@ m_intramol_pressure.o: remove_intramol_pressure.o
 m_ioxv.o: ioxv.o
 m_ksv.o: ksv.o
 m_ksvinit.o: ksvinit.o
+m_ldau.o: ldau.o
 m_local_dos.o: local_DOS.o
 m_minvec.o: minvec.o
 m_mixer.o: mixer.o

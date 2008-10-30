@@ -14,7 +14,9 @@
       use alloc
       use parallel, only: IOnode
       use  atmfuncs, only: nofis, nkbfis, izofis, massfis,
-     $                     rcut, atmpopfio, zvalfis, orb_f,vna_f,kbpj_f
+     $                     rcut, atmpopfio, zvalfis, orb_f,vna_f,kbpj_f,
+     $                     ldaupj_f, nldaupfis, switch_ldau
+
       use atom_types, only: get_number_of_orbs, get_number_of_kb_projs
       use siesta_geom, only: na_u, na_s, xa, isa, xalast
       implicit none
@@ -57,6 +59,7 @@ C real*8 qa(na)             : Neutral atom charge of each atom
       real(dp), save, public     :: rmaxv  ! Max cutoff for local pot Vna
       real(dp), save, public     :: rmaxo  ! Max cuoff for atomic orbitals
       real(dp), save, public     :: rmaxkb ! Max cuoff for KB projectors
+      real(dp), save, public     :: rmaxldau ! Max cutoff for ldau projectors
 
       real(dp), save, public     :: qtot ! Total number of electrons
       real(dp), save, public     :: zvaltot ! Total number of pseudoprotons
@@ -137,6 +140,7 @@ c Initialize atomic lists
       rmaxv  = 0._dp
       rmaxo  = 0._dp
       rmaxkb = 0._dp
+      rmaxldau = 0._dp
       lasto(0) = 0
       lastkb(0) = 0
       zvaltot = 0.0_dp
@@ -168,6 +172,11 @@ c Initialize atomic lists
           iaKB(nokbl) = ia
           iphKB(nokbl) = io
         enddo
+        if(switch_ldau(is)) then
+          do io =1,nldaupfis(is)
+             rmaxldau = max(rmaxldau, rcut(is,ldaupj_f,io) )
+          enddo
+        endif
       enddo
 
 ! Find rco and rckb .............................
