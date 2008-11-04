@@ -40,7 +40,7 @@ implicit none
   contains
 
     subroutine log_rad_alloc(rad_func,values,grid,yp1)
-    type (log_rad_func_t), intent(out) :: rad_func
+    type (log_rad_func_t), intent(inout) :: rad_func
     real(dp), intent(in) :: values(:)
     type(logGrid_t), intent(in) :: grid
     real(dp), optional, intent(in) :: yp1
