@@ -262,6 +262,7 @@ CONTAINS
 
        basp%basis_size = basis_size
        basp%basis_type = basistype_generic
+
        if (basp%floating) then
           basp%mass = 1.d40   ! big but not too big, as it is used
                               ! later in computations
@@ -270,18 +271,28 @@ CONTAINS
        else
           basp%mass = atmass(abs(int(basp%z)))
        endif
-       if (basp%bessel) then
+
+       !if (basp%bessel) then
           ! do nothing here
-       else if (basp%synthetic) then
-          synthetic_atoms = .true.
+       !else if (basp%synthetic) then
+          !synthetic_atoms = .true.
           ! Will set gs later
-          call pseudo_read(basp%label,pseudo)
-       else
-          call ground_state(abs(int(basp%z)),basp%ground_state)
+          !call pseudo_read(basp%label,pseudo)
+       !else
+          !call ground_state(abs(int(basp%z)),basp%ground_state)
+          !call pseudo_read(basp%label,pseudo)
+       !endif
+       
+       if (basp%synthetic) then
+          synthetic_atoms = .true.
           call pseudo_read(basp%label,pseudo)
        endif
+
+       if (.not. basp%bessel .and. .not. basp%synthetic) then
+           call pseudo_read(basp%label,pseudo)
+           call pseudo_convert(pseudo,basp%pseudopotential)
+       endif
        
-       call pseudo_convert(pseudo,basp%pseudopotential)
        if (reparametrize_pseudos) then 
           call pseudo_reparametrize(p=basp%pseudopotential, a=new_a, b=new_b)
        endif
