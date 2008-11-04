@@ -251,9 +251,9 @@ CONTAINS
     
        ! Dump all the atomic information
        call dump_basis_ascii()
-       
-       if (write_ion_plot_files) then
-          call dump_basis_netcdf()
+       call dump_basis_netcdf()
+
+       if (write_ion_plot_files) then         
           call dump_basis_xml()
        endif
 
@@ -645,6 +645,7 @@ CONTAINS
     !used for the pseudopotential generation using the information given in
     !the 'text' variable.
 
+    gen_zval = get_pseudo_gen_valence_charge(vp)
     write(6,'(a,f10.5)') 'Total valence charge: ', gen_zval
 
     if (pseudo_has_core_charge(vp)) then

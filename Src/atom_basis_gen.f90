@@ -21,7 +21,7 @@ module atom_basis_gen
   use hilbert_vector_m, only:hilbert_vector_t
   use radial,           only: rad_func_t, rad_copy
   use atom_types,       only: get_lmax_orbs, set_orbs_deg, set_lmax_orbs, &
-        species, init_orbs, get_atomic_number, set_orb, orbs_kc_max
+        init_orbs, get_atomic_number, set_orb, orbs_kc_max
   use pseudopotential_new,  only:pseudopotential_new_t, get_pseudo_down, get_ve_val, &
        get_ve_val_scaled
   use atom_generation_types,      only:basis_def_t,basis_parameters,shell_t,lshell_t,energies_t

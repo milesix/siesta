@@ -492,7 +492,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       real(dp), intent(inout) :: Y(1:NMAX)
 
       !Internal vars
-      real(dp) :: zdr,yn
+      real(dp) :: zdr,yn,y2,g,gsg,x,gin,gsgin,xin,ratio,t
       integer  :: n, knk,i,nndin
 
       ZDR = Z*A*B
