@@ -171,12 +171,12 @@ contains
     endif
 
     if(print_header)then
-       write(lun,'(i4,2g22.12,a)') ntbmax,op%delta,dble(ntbmax*(op%delta-1)),&
+       write(lun,'(i4,2g22.12,a)') ntbmax,op%delta,dble(op%delta*(ntbmax-1)),&
             " #npts, delta, cutoff"
     endif
 
     do j=1,ntbmax
-       write(lun,'(3f18.12)') (j-1)*op%delta, op%f(j) ,op%d2(j)
+       write(lun,'(2f18.12)') (j-1)*op%delta, op%f(j) !,op%d2(j)
     enddo
   end subroutine lin_rad_dump_ascii
 
@@ -365,7 +365,7 @@ contains
 
     do i=2,length
        r(i)=rad_func%delta*(i-1)
-       y(i)=rad_func%f(i)*factor*r(i)**l
+       y(i)=(rad_func%f(i)*r(i)**l)*factor
     enddo
     y(1)=y(2)
 
@@ -384,13 +384,13 @@ contains
 
   !-----------------------------------------------------
  
-  function lin_rad_get_filter_cutoff(rad_func,l,etol) result(kc)
+  function lin_rad_get_filter_cutoff(rad_func,l,factor,etol) result(kc)
     !Given a tolerance in the kinetic energy this function
     !returns the corresponding reciprocal space cutoff.
     !See module filter.f90
     type(lin_rad_func_t), intent(in) :: rad_func
     integer, intent(in)              :: l
-    real(dp), intent(in)             :: etol
+    real(dp), intent(in)             :: factor, etol
     real(dp) :: kc 
 
     real(dp), allocatable, dimension(:) :: r,y
@@ -403,7 +403,7 @@ contains
 
     do i=1,length
        r(i)=rad_func%delta*(i-1)
-       y(i)=rad_func%f(i)*r(i)**(l)
+       y(i)=(rad_func%f(i)*r(i)**(l))*factor
     enddo
 
     kc=kcPhi(l,length,r,y,etol)
@@ -457,7 +457,7 @@ contains
     
     rmax = lin_rad_cutoff(func)
     dk = pi/rmax
-    kcut = dble(dk*ntbmax)
+    kcut = dble(dk*(ntbmax-1))
 
   end function lin_rad_kcutoff
 

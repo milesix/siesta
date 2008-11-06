@@ -96,7 +96,7 @@ contains
     
     integer            :: atomic_number
     logical            :: filterOrbitals
-    real(dp)           :: filterEkinTol
+    real(dp)           :: filterEkinTol,filter_Factor
     real(dp)           :: kc
     real(dp),dimension(0:3) :: qatm
     integer, dimension(0:3) :: config
@@ -118,11 +118,12 @@ contains
        qatm = 0.0_dp
     elseif(basp%synthetic) then
        qatm = basp%ground_state%occupation
+       atomic_number = get_atomic_number(isp)
     else
        atomic_number = get_atomic_number(isp)
        call qvlofz(atomic_number,qatm)
     endif
-    
+   
     call cnfig(atomic_number,config)
 
     norbs = number_of_orbs(isp)
@@ -184,13 +185,12 @@ contains
                    !Population analysis
                    ! floating atom?
                    if (get_atomic_number(isp) > 0) then !Not a floating atom
-                      if(shell%n == nvalence)then
+                      if(shell%n == nvalence .or. basp%synthetic)then
                          shell%population(izeta) = qatm(l)/dble(2*l+1)
                       elseif(shell%n < nvalence) then
                          shell%population(izeta) = 2.0_dp
                       endif
                    endif
-                  
                    !Automatic rc?
                    if (shell%rc(1) .eq. 0.0_dp) call auto_rc(shell,vps,l,nsm)
                    !Generate the orbital                   
@@ -220,7 +220,9 @@ contains
 
               !filter
              if (filterorbitals) then
-                kc = rad_get_filter_cutoff(shell%orb(izeta),l,FilterEkinTol)
+                filter_factor = fdf_double("PAO.FilterFactor",0.7_dp)
+                kc = rad_get_filter_cutoff(shell%orb(izeta),l,Filter_Factor,FilterEkinTol)
+                write(6,'(a,f14.6,a)') "basis_gen: Filter cutoff:",kc," Bohr^-1"
                 if (kc .gt. orbs_kc_max) orbs_kc_max = kc
              endif            
 

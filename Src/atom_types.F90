@@ -33,7 +33,7 @@ module atom_types
      logical                                    ::  fake = .false. !real species or not
      character(len=symbol_length)               ::  symbol
      character(len=label_length)                ::  label
-     real(dp)                                   ::  atomic_number          
+     integer                                    ::  atomic_number          
      real(dp)                                   ::  mass
      real(dp)                                   ::  valence_charge   
      real(dp)                                   ::  self_energy !Electrostatic
@@ -1135,8 +1135,8 @@ function get_kb_proj_n(isp,io) result(n)
           non_filtered   = get_rad_func_v(non_filtered_v)
           l              = get_l_v(non_filtered_v)
           write(6,'(a,3i3)') "atm_types: species, orbital, l =", is,io,l
-
-          filtered       = rad_filter(non_filtered,l,factor,2,orbs_kc_max)          
+          filtered       = rad_filter(non_filtered,l,factor,1,orbs_kc_max)         
+          !call rad_dump_file(filtered,"filtered.dat")
           call copy_vector(non_filtered_v,filtered_v)
           call set_rad_func_v(filtered_v,filtered)
           call set_orb(is,filtered_v,io)

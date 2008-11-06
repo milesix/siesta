@@ -886,9 +886,9 @@ CONTAINS
     write(unit,'(g22.12,25x,a)') get_valence_charge(is),   "# Valence charge"
     write(unit,'(g22.12,4x,a)') get_mass(is), "# Mass "
     write(unit,'(g22.12,4x,a)') get_self_energy(is),      "# Self energy "
-    write(unit,'(2i4,22x,a)') get_lmax_orbs(is), get_number_of_orbs(is), &
+    write(unit,'(2i4,22x,a)') get_lmax_orbs(is), get_number_of_orbs_non_deg(is), &
          "# Lmax for basis, no. of nl orbitals "
-    write(unit,'(2i4,22x,a)') get_lmax_kb_proj(is),get_number_of_kb_projs(is),&
+    write(unit,'(2i4,22x,a)') get_lmax_kb_proj(is),get_number_of_kb_non_deg(is),&
          "# Lmax for projectors, no. of nl KB projectors "
 
   end subroutine write_header
@@ -1029,7 +1029,7 @@ subroutine dump_vector(vector,kind,label,output_kind,lun)
         call io_assign(lun2)
         open(unit=lun2,file=filename,status='replace',form='formatted')
         func => get_rad_func_p_v(vector)
-        call rad_dump_ascii(func,lun2,header=.true.)
+        call rad_dump_ascii(func,lun2,header=.false.)
         call io_close(lun2)
 
         write(lun,'(4i3,f10.6,2x,a)') l,n,zeta,ispol,pop, &

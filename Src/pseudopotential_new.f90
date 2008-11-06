@@ -51,7 +51,7 @@ module pseudopotential_new
      character(len=10)       :: correlation
      character(len=2)        :: icorr
      character(len=3)        :: irel
-     character(len=4)        :: nicore
+     character(len=4)        :: nicore = 'nc '
      character(len=10)       :: method(6)
      character(len=70)       :: text
      integer                 :: npotu
