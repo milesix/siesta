@@ -368,6 +368,7 @@ contains
        y(i)=(rad_func%f(i)*r(i)**l)*factor
     enddo
     y(1)=y(2)
+    r(1)=0.0_dp
 
     call filter(l,length,r,y,kc,norm_opt)
 

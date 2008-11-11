@@ -567,3 +567,8 @@ m_strings.mod
 m_xml_error.mod
 m_xml_parser.mod
 string_utilities.mod
+Src/arch.make
+arch.make
+siesta
+work.pcl
+compinfo.F90

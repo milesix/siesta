@@ -818,8 +818,8 @@ subroutine dump_ion_ascii(is)
      call rad_dump_ascii(rfunc,lun2,header=.false.)
      call io_close(lun2)
      call rad_dump_ascii(rfunc,lun)
-     write(fileid,'(a,a)') trim(get_label(is)),"-VNA-fft.dat"
-     call rad_dump_fft_file(rfunc,fileid)
+     !write(fileid,'(a,a)') trim(get_label(is)),"-VNA-fft.dat"
+     !call rad_dump_fft_file(rfunc,fileid)
      call rad_dealloc(rfunc)
   endif
 
@@ -862,12 +862,12 @@ subroutine dump_ion_ascii(is)
      call io_close(lun2)
      call rad_dump_ascii(rfunc,lun)
      !FFT
-     write(fileid,'(a,a)') trim(get_label(is)),"-CHCORE-fft.dat"
-     call io_assign(lun2)
+     !write(fileid,'(a,a)') trim(get_label(is)),"-CHCORE-fft.dat"
+     !call io_assign(lun2)
      !open(unit=lun2,file=fileid,status='replace', form='formatted')
      !write(lun2,'(3a)') "# ",trim(get_label(is)), " ChCore"
      !call rad_dump_fft_ascii(rfunc,lun2)
-     call rad_dump_fft_file(rfunc,fileid) 
+     !call rad_dump_fft_file(rfunc,fileid) 
      !call io_close(lun2)
      
      call rad_dealloc(rfunc)
@@ -1037,12 +1037,12 @@ subroutine dump_vector(vector,kind,label,output_kind,lun)
         call rad_dump_ascii(func,lun,header=.true.)
 
         !FFT
-        write(filename,'(a,a,a,a,i1,a,i1,a,i1,a)') trim(label),"-",&
-             trim(kind),"-n=",n,"-l=",l,"-zeta=",zeta,"-fft.dat"
+        !write(filename,'(a,a,a,a,i1,a,i1,a,i1,a)') trim(label),"-",&
+        !     trim(kind),"-n=",n,"-l=",l,"-zeta=",zeta,"-fft.dat"
         !call io_assign(lun2)
         !open(unit=lun2,file=filename,status='replace',form='formatted')
         !write(lun2,'(a)') "#(species label, l, n, z, is_polarized, popul)"
-        call rad_dump_fft_file(func,filename)
+        !call rad_dump_fft_file(func,filename)
         !call io_close(lun2)
 
      elseif(kind=="kb")then

@@ -1135,6 +1135,7 @@ function get_kb_proj_n(isp,io) result(n)
           non_filtered   = get_rad_func_v(non_filtered_v)
           l              = get_l_v(non_filtered_v)
           write(6,'(a,3i3)') "atm_types: species, orbital, l =", is,io,l
+          !call rad_dump_file(non_filtered,"non-filtered.dat")
           filtered       = rad_filter(non_filtered,l,factor,1,orbs_kc_max)         
           !call rad_dump_file(filtered,"filtered.dat")
           call copy_vector(non_filtered_v,filtered_v)
@@ -1145,6 +1146,7 @@ function get_kb_proj_n(isp,io) result(n)
           call rad_dealloc(non_filtered)
           call rad_dealloc(filtered)
        enddo
+       call set_orbs_deg(is)
     enddo
   end subroutine filter_orbs
 
