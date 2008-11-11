@@ -292,7 +292,7 @@ CONTAINS
            call pseudo_read(basp%label,pseudo)
            call pseudo_convert(pseudo,basp%pseudopotential)
        endif
-       
+
        if (reparametrize_pseudos) then 
           call pseudo_reparametrize(p=basp%pseudopotential, a=new_a, b=new_b)
        endif
@@ -301,8 +301,6 @@ CONTAINS
     enddo
     
     if (synthetic_atoms) then
-
-      
        nullify(bp)
        found = fdf_block('SyntheticAtoms',bp)
        if (.not. found ) call die("Block SyntheticAtoms does not exist.")
