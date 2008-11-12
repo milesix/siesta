@@ -373,7 +373,7 @@ contains
     call filter(l,length,r,y,kc,norm_opt)
 
     do i=2,length
-       y(i)=y(i)/r(i)**l
+       y(i)=y(i)/(r(i)**l*factor)
     enddo
     y(1)=y(2)
     
