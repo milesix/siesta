@@ -601,7 +601,7 @@ function log_rad_multiply_by_rl(func,l) result (mult)
     nrc_new = nrc
     do i=nrc,2,-1
        if(abs(rphi(i)) .gt. min_func_val)then
-         !nrc_new=i+1
+         nrc_new=i+1
          print *, "radial_log schro: updating the rc to:",grid%r(nrc_new)
          exit
        endif
