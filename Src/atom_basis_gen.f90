@@ -390,14 +390,13 @@ contains
        !  Do a full scan using the old method
        !  (scan norm of tail+parabola)
        shell%split_table = rad_split_scan_tail_parabola(shell%rphi(1),l,fix_split_table)
-
     endif
-    
+
     call normalize_orbital(shell,1)
     call calculate_energies(shell,1)
     shell%rc(1) = rad_cutoff(shell%orb(1))
     call rad_dealloc(vtot)
-
+    
   end subroutine generate_first_zeta
 
   !----------------------------------------------------------------------------------

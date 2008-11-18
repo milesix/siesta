@@ -50,8 +50,8 @@ implicit none
     
     allocate(rad_func%f(1:length),rad_func%d2(1:length))
     allocate(rad_func%grid)
-    rad_func%grid = grid
-
+    !rad_func%grid = grid
+    call log_grid_copy(grid,rad_func%grid)
     rad_func%f = values
 
     if (present(yp1))then
