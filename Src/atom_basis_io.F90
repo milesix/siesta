@@ -1053,8 +1053,8 @@ subroutine dump_vector(vector,kind,label,output_kind,lun)
         call io_assign(lun2)
         open(unit=lun2,file=filename,status='replace',form='formatted')
         func => get_rad_func_p_v(vector)
-        write(lun,'(2i3,f10.6,2x,a)') l,n,energy, &
-             " #kb l, n, Reference energy"
+        !write(lun,'(2i3,f10.6,2x,a)') l,n,energy, &
+        !     " #kb l, n, Reference energy"
         call rad_dump_ascii(func,lun2,header=.true.)
         call io_close(lun2)
 
