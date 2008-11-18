@@ -32,7 +32,7 @@ contains
     io = 1024
     open(unit=io,file=label,status="replace")
     do ir=1,size(func%f)
-       write(io,*) func%grid%r(ir),func%f(ir),func%d2(ir)
+       write(io,'(3f18.8)') func%grid%r(ir),func%f(ir),func%d2(ir)
     end do
     close(io)
 

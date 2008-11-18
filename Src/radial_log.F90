@@ -597,12 +597,12 @@ function log_rad_multiply_by_rl(func,l) result (mult)
        rphi(ir)=rphi(ir)/dnrm
     enddo
     nrc_new = nrc
-    do i=nrc,2,-1
-       if(abs(rphi(i)) .gt. min_func_val)then
-         nrc_new=i+1
-          exit
-       endif
-    enddo
+    !do i=nrc,2,-1
+    !   if(abs(rphi(i)) .gt. min_func_val)then
+    !     nrc_new=i+1
+    !      exit
+    !   endif
+    !enddo
 
     call log_rad_alloc(integral,rphi(1:nrc_new),grid)
     deallocate(rphi,s)

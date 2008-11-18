@@ -548,12 +548,12 @@ contains
 
   !-------------------------------------------------------------------
 
-subroutine lin_rad_setup_d2(func,yp1)
-    !Set up second derivative in a radial function
+  subroutine lin_rad_setup_d2(func,yp1)
+    !Set up second derivative (for spline interpol) of a radial function
     type(lin_rad_func_t), intent(inout) :: func
     real(dp),intent(in),optional  :: yp1
 
-    real(dp) yp1def, ypn
+    real(dp) :: yp1def, ypn
 
     if (size(func%f) .eq. 0) return
 
@@ -563,35 +563,20 @@ subroutine lin_rad_setup_d2(func,yp1)
        yp1def = huge(1._dp)
     endif
 
-    !yp1 = (func%f(2)-func%f(1))/func%delta
     ypn = huge(1._dp)
-    !ypn = (func%f(func%n)-func%f(func%n-1))/func%delta
-
     call spline(func%delta,func%f,ntbmax,yp1def,ypn,func%d2)
 
   end subroutine lin_rad_setup_d2
 
   !-----------------------------------------------------------------
 
-   subroutine lin_rad_set_origin(func,value)
+  subroutine lin_rad_set_origin(func,value)
+    !Set value at origin
     type(lin_rad_func_t), intent(inout) :: func
     real(dp),             intent(in) :: value
 
     func%f(1) = value
   end subroutine lin_rad_set_origin
-
-  !-------------------------------------------------------
-
-  !subroutine lin_rad_set_values(rad_func,values)
-  !  type(lin_rad_func_t), intent(inout) :: rad_func
-  !  real(dp), dimension(:), intent(in) :: values
-  !  if (size(rad_func%f) .ne. size(values) ) then
-  !     call die("radial_lin: set_values: different sizes!")
-  !     !update rc etc?
-  !  else
-  !     rad_func%f=values
-  !  endif
-  !end subroutine lin_rad_set_values
 
   !-------------------------------------------------------
 

@@ -984,10 +984,9 @@ module radial_log_dirty
     parameter(dlt=0.6_dp)
 
     grid => func%grid
-    nrc = log_rad_get_ir(func,rmatch)
+    nrc = log_rad_get_ir(func,rmatch) + 1
     allocate(g(1:nrc))
     if (nsm > 1) allocate(over(1:nsm),norm(1:nsm))
-
     do ir=2,nrc-1
        r=Grid%r(ir)         
        g(ir)=-(c1*r**2+c2)*r**(l+1)+func%f(ir) 
