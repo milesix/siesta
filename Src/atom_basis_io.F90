@@ -583,7 +583,7 @@ subroutine dump_basis_netcdf
      delta = rad_grid_get_delta(grid_tmp)
      iret = nf90_put_att(ncid,vna_id,'Vna_delta',delta)
      call check(iret)
-     call rad_dump_netcdf(rad_tmp,ncid,vna_id)
+!!AG     call rad_dump_netcdf(rad_tmp,ncid,vna_id)
      call rad_dealloc(rad_tmp)
      call rad_grid_dealloc(grid_tmp)
 
@@ -597,7 +597,7 @@ subroutine dump_basis_netcdf
      delta = rad_grid_get_delta(grid_tmp)
      iret = nf90_put_att(ncid,chlocal_id, 'Chlocal_delta',delta)
      call check(iret)
-     call rad_dump_netcdf(rad_tmp,ncid,chlocal_id)
+!!AG     call rad_dump_netcdf(rad_tmp,ncid,chlocal_id)
      call rad_dealloc(rad_tmp)
      call rad_grid_dealloc(grid_tmp)
      !
@@ -610,7 +610,7 @@ subroutine dump_basis_netcdf
      delta = rad_grid_get_delta(grid_tmp)
      iret = nf90_put_att(ncid,reduced_vlocal_id,'Reduced_vlocal_delta', delta)
      call check(iret)
-     call rad_dump_netcdf(rad_tmp,ncid,reduced_vlocal_id)
+!!AG     call rad_dump_netcdf(rad_tmp,ncid,reduced_vlocal_id)
      call rad_dealloc(rad_tmp)
      call rad_grid_dealloc(grid_tmp)
 
@@ -627,7 +627,7 @@ subroutine dump_basis_netcdf
          iret = nf90_put_att(ncid,core_id,'Core_delta',delta)
          call check(iret)
 
-         call rad_dump_netcdf(rad_tmp,ncid,core_id)
+!!AG         call rad_dump_netcdf(rad_tmp,ncid,core_id)
          call rad_dealloc(rad_tmp)
          call rad_grid_dealloc(grid_tmp)
       else
@@ -638,10 +638,30 @@ subroutine dump_basis_netcdf
       iret = nf90_def_var(ncid,'proj',nf90_double, (/ntb_id,nkbs_id/),proj_id)
       call check(iret)
 ! !
-! !!!!!!!
+!!AG  End of definition phase.
+
       iret = nf90_enddef(ncid)
       call check(iret)
+!!AG
+      rad_tmp = get_neutral_atom_potential(isp)
+      call rad_dump_netcdf(rad_tmp,ncid,vna_id)
+      call rad_dealloc(rad_tmp)
 
+      rad_tmp = get_pseudo_local_charge(isp)
+      call rad_dump_netcdf(rad_tmp,ncid,chlocal_id)
+      call rad_dealloc(rad_tmp)
+      
+      rad_tmp = get_reduced_vlocal(isp)
+      call rad_dump_netcdf(rad_tmp,ncid,reduced_vlocal_id)
+      call rad_dealloc(rad_tmp)
+
+      if (has_core_charge(isp)) then
+         rad_tmp = get_core_charge(isp)
+         call rad_dump_netcdf(rad_tmp,ncid,core_id)
+         call rad_dealloc(rad_tmp)
+      endif
+
+!!AG
       nfuncs = get_number_of_kb_non_deg(isp)
       allocate (i_tmp(1:nfuncs))
       do i=1,nfuncs
@@ -747,7 +767,7 @@ contains
     integer, intent(in):: status
     if (status .ne. nf90_noerr) then
        print  *, trim(nf90_strerror(status))
-       call die()
+       call pxfabort()
     endif
   end subroutine check
 
@@ -1058,7 +1078,7 @@ subroutine dump_vector(vector,kind,label,output_kind,lun)
         call rad_dump_ascii(func,lun2,header=.true.)
         call io_close(lun2)
 
-        write(lun,'(2i3,f10.6,2x,a)') l,n,energy, &
+        write(lun,'(2i3,4x,f10.6,2x,a)') l,n,energy, &
              " #kb l, n, Reference energy"
         call rad_dump_ascii(func,lun,header=.true.)
      endif

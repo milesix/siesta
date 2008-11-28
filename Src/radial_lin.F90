@@ -176,7 +176,7 @@ contains
     endif
 
     do j=1,ntbmax
-       write(lun,'(2f18.12)') (j-1)*op%delta, op%f(j) !,op%d2(j)
+       write(lun,'(2g22.12)') (j-1)*op%delta, op%f(j) !,op%d2(j)
     enddo
   end subroutine lin_rad_dump_ascii
 
@@ -214,7 +214,7 @@ contains
     integer, intent(in)              :: lun, netcdf_id
 
     integer :: iret
-
+    print *, "Size of op%f in dump_netcdf: ", size(op%f)
     iret = nf90_put_var(lun,netcdf_id,op%f(1:), start=(/1/),count=(/size(op%f)/))
     call check(iret)
   contains
