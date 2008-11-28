@@ -16,7 +16,7 @@ module atom_pao_util
   use radial, only : rad_sum, rad_multiply, rad_get_ir_from_r, rad_sum_function, rad_kinetic_energy
   use radial, only : rad_potential_energy, rad_normalize_r_l_1, rad_get_length, rad_alloc
   use radial, only : rad_dealloc, rad_grid_get_length, rad_cutoff, rad_integral, rad_set_origin
-  use radial, only : rad_grid_dealloc, rad_dump_ascii
+  use radial, only : rad_grid_dealloc, rad_dump_ascii, restricted_grid
   use m_recipes, only : polint
   use atom_types, only : get_lmax_orbs 
   use sys, only : die
@@ -106,8 +106,10 @@ module atom_pao_util
 
     !rcsan = shell%rc(1)+1.0E-1
     ircsan = rad_get_ir_from_r(shell%ve_pao,shell%rc(1))
+    if(restricted_grid)  ircsan=ircsan+1-mod(ircsan,2)
     rcsan = rad_get_r_from_ir(shell%ve_pao,ircsan+1)
     rcsan = rcsan + 1.0e-6_dp
+
     vcte = shell%vcte
     if (shell%rinn < 0.0_dp) then
        rinn = -shell%rinn*rcsan

@@ -1,0 +1,56 @@
+
+%! program = pdflatex
+
+\documentclass[12pt]{article}
+\usepackage{geometry} % see geometry.pdf on how to lay out the page. There's lots.
+\geometry{a4paper} % or letter or a5paper or ... etc
+% \geometry{landscape} % rotated page geometry
+% See the ``Article customise'' template for come common customisations
+
+%% LaTeX Preamble - Common packages
+
+\usepackage[utf8]{inputenc} % Any characters can be typed directly from the keyboard, eg éçñ
+\usepackage{textcomp} % provide lots of new symbols
+\usepackage{graphicx}  % Add graphics capabilities
+%\usepackage{epstopdf} % to include .eps graphics files with pdfLaTeX
+\usepackage{flafter}  % Don't place floats before their definition
+%\usepackage{topcapt}   % Define \topcation for placing captions above tables (not in gwTeX)
+\usepackage{natbib} % use author/date bibliographic citations
+
+\usepackage{amsmath,amssymb}  % Better maths support & more symbols
+\usepackage{bm}  % Define \bm{} to use bold math fonts
+
+\usepackage[pdftex,bookmarks,colorlinks,breaklinks]{hyperref}  % PDF hyperlinks, with coloured links
+%\definecolor{dullmagenta}{rgb}{0.4,0,0.4}   % #660066
+%\definecolor{darkblue}{rgb}{0,0,0.4}
+\hypersetup{linkcolor=red,citecolor=blue,filecolor=dullmagenta,urlcolor=darkblue} % coloured links
+%\hypersetup{linkcolor=black,citecolor=black,filecolor=black,urlcolor=black} % black links, for printed output
+
+\usepackage{memhfixc}  % remove conflict between the memoir class & hyperref
+% \usepackage[activate]{pdfcprot}  % Turn on margin kerning (not in gwTeX)
+\usepackage{pdfsync}  % enable tex source and pdf output syncronicity
+
+\title{Recent changes to the atomic part of SIESTA}
+\author{Eduardo Anglada}
+
+
+%%% BEGIN DOCUMENT
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+
+\section{Output energies}
+
+The potential (screened and ionic) are calculated using the soft confining potential (if exists, of course).
+
+\section{Cutoff radii}
+
+\begin{itemize}
+\item The determination of the rc used when there is soft confining potential (line 109 in  \verb+Src/atom_pao_util.f90+)  didn't take into account the restricted grid, so the rc was too small.
+
+\item The schro integrator in the log grid sometimes returns a function which has several zeros at the end. When the function is interpolated in the linear grid several artificial oscillations are introduced. The changes in lines 602-608 of \verb+Src/radial_log.F90+ correct this.
+\end{itemize}
+\end{document}
+

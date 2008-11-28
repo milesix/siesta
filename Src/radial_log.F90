@@ -206,7 +206,7 @@ contains
 
    integer :: ir
    
-   ir =  nint(log(r/func%grid%b+1.0_dp)/func%grid%a)+1
+   ir =  nint(log(r/func%grid%b+1.0_dp)/func%grid%a) +1
 
   end function log_rad_get_ir
 
@@ -595,7 +595,9 @@ function log_rad_multiply_by_rl(func,l) result (mult)
    
     nrval = size(pseudo%f) 
     nrc = log_rad_get_ir(pseudo,rc)
+
     if(restricted_grid) nrc=nrc+1-mod(nrc,2)
+
     if(nrc > nrval) nrc=nrval
     if(nrc .gt. maximum_length) nrc=maximum_length
     if(nrval .gt. maximum_length) nrval=maximum_length
@@ -604,7 +606,7 @@ function log_rad_multiply_by_rl(func,l) result (mult)
     s(2:nrval)=pseudo%grid%drdi(2:nrval)**2
     s(1) = s(2)
     grid => pseudo%grid
-    
+
     call schro_eq(chg,grid%r(1:nrval),pseudo%f(1:nrval),ve%f(1:nrval),s, &
          grid%drdi(1:nrval),nrc, l,grid%a,grid%b,nnodes,nprin,energy,rphi)
 
@@ -618,12 +620,13 @@ function log_rad_multiply_by_rl(func,l) result (mult)
        rphi(ir)=rphi(ir)/dnrm
     enddo
     nrc_new = nrc
-    !do i=nrc,2,-1
-    !   if(abs(rphi(i)) .gt. min_func_val)then
-          !nrc_new=i+1
-    !      exit
-    !   endif
-    !enddo
+    do i=nrc,2,-1
+       if(abs(rphi(i)) .gt. min_func_val)then
+         nrc_new=i+1
+         print *, "radial_log schro: updating the rc to:",grid%r(nrc_new)
+         exit
+       endif
+    enddo
 
     call log_rad_alloc(integral,rphi(1:nrc_new),grid)
     deallocate(rphi,s)

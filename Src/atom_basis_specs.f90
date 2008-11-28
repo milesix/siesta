@@ -266,6 +266,7 @@ CONTAINS
 
        basp%basis_size = basis_size
        basp%basis_type = basistype_generic
+
        if (basp%floating) then
           basp%mass = 1.d40   ! big but not too big, as it is used
                               ! later in computations
@@ -274,18 +275,28 @@ CONTAINS
        else
           basp%mass = atmass(abs(int(basp%z)))
        endif
-       if (basp%bessel) then
+
+       !if (basp%bessel) then
           ! do nothing here
-       else if (basp%synthetic) then
-          synthetic_atoms = .true.
+       !else if (basp%synthetic) then
+          !synthetic_atoms = .true.
           ! Will set gs later
-          call pseudo_read(basp%label,pseudo)
-       else
-          call ground_state(abs(int(basp%z)),basp%ground_state)
-          call pseudo_read(basp%label,pseudo)
-       endif
+          !call pseudo_read(basp%label,pseudo)
+       !else
+          !call ground_state(abs(int(basp%z)),basp%ground_state)
+          !call pseudo_read(basp%label,pseudo)
+       !endif
        
-       call pseudo_convert(pseudo,basp%pseudopotential)
+       if (basp%synthetic) then
+          synthetic_atoms = .true.
+          call pseudo_read(basp%label,pseudo)
+          call pseudo_convert(pseudo,basp%pseudopotential)
+       elseif(.not. basp%bessel) then
+           call ground_state(abs(int(basp%z)),basp%ground_state)
+           call pseudo_read(basp%label,pseudo)
+           call pseudo_convert(pseudo,basp%pseudopotential)
+       endif
+
        if (reparametrize_pseudos) then 
           call pseudo_reparametrize(p=basp%pseudopotential, a=new_a, b=new_b)
        endif
@@ -294,8 +305,6 @@ CONTAINS
     enddo
     
     if (synthetic_atoms) then
-
-      
        nullify(bp)
        found = fdf_block('SyntheticAtoms',bp)
        if (.not. found ) call die("Block SyntheticAtoms does not exist.")

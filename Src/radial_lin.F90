@@ -171,12 +171,12 @@ contains
     endif
 
     if(print_header)then
-       write(lun,'(i4,2g22.12,a)') ntbmax,op%delta,dble(ntbmax*(op%delta-1)),&
+       write(lun,'(i4,2g22.12,a)') ntbmax,op%delta,dble(op%delta*(ntbmax-1)),&
             " #npts, delta, cutoff"
     endif
 
     do j=1,ntbmax
-       write(lun,'(3f18.12)') (j-1)*op%delta, op%f(j) ,op%d2(j)
+       write(lun,'(2g22.12)') (j-1)*op%delta, op%f(j) !,op%d2(j)
     enddo
   end subroutine lin_rad_dump_ascii
 
@@ -214,7 +214,7 @@ contains
     integer, intent(in)              :: lun, netcdf_id
 
     integer :: iret
-
+    print *, "Size of op%f in dump_netcdf: ", size(op%f)
     iret = nf90_put_var(lun,netcdf_id,op%f(1:), start=(/1/),count=(/size(op%f)/))
     call check(iret)
   contains
@@ -365,14 +365,15 @@ contains
 
     do i=2,length
        r(i)=rad_func%delta*(i-1)
-       y(i)=rad_func%f(i)*factor*r(i)**l
+       y(i)=(rad_func%f(i)*r(i)**l)*factor
     enddo
     y(1)=y(2)
+    r(1)=0.0_dp
 
     call filter(l,length,r,y,kc,norm_opt)
 
     do i=2,length
-       y(i)=y(i)/r(i)**l
+       y(i)=y(i)/(r(i)**l*factor)
     enddo
     y(1)=y(2)
     
@@ -384,13 +385,13 @@ contains
 
   !-----------------------------------------------------
  
-  function lin_rad_get_filter_cutoff(rad_func,l,etol) result(kc)
+  function lin_rad_get_filter_cutoff(rad_func,l,factor,etol) result(kc)
     !Given a tolerance in the kinetic energy this function
     !returns the corresponding reciprocal space cutoff.
     !See module filter.f90
     type(lin_rad_func_t), intent(in) :: rad_func
     integer, intent(in)              :: l
-    real(dp), intent(in)             :: etol
+    real(dp), intent(in)             :: factor, etol
     real(dp) :: kc 
 
     real(dp), allocatable, dimension(:) :: r,y
@@ -403,7 +404,7 @@ contains
 
     do i=1,length
        r(i)=rad_func%delta*(i-1)
-       y(i)=rad_func%f(i)*r(i)**(l)
+       y(i)=(rad_func%f(i)*r(i)**(l))*factor
     enddo
 
     kc=kcPhi(l,length,r,y,etol)
@@ -457,7 +458,7 @@ contains
     
     rmax = lin_rad_cutoff(func)
     dk = pi/rmax
-    kcut = dble(dk*ntbmax)
+    kcut = dble(dk*(ntbmax-1))
 
   end function lin_rad_kcutoff
 
@@ -547,12 +548,12 @@ contains
 
   !-------------------------------------------------------------------
 
-subroutine lin_rad_setup_d2(func,yp1)
-    !Set up second derivative in a radial function
+  subroutine lin_rad_setup_d2(func,yp1)
+    !Set up second derivative (for spline interpol) of a radial function
     type(lin_rad_func_t), intent(inout) :: func
     real(dp),intent(in),optional  :: yp1
 
-    real(dp) yp1def, ypn
+    real(dp) :: yp1def, ypn
 
     if (size(func%f) .eq. 0) return
 
@@ -562,35 +563,20 @@ subroutine lin_rad_setup_d2(func,yp1)
        yp1def = huge(1._dp)
     endif
 
-    !yp1 = (func%f(2)-func%f(1))/func%delta
     ypn = huge(1._dp)
-    !ypn = (func%f(func%n)-func%f(func%n-1))/func%delta
-
     call spline(func%delta,func%f,ntbmax,yp1def,ypn,func%d2)
 
   end subroutine lin_rad_setup_d2
 
   !-----------------------------------------------------------------
 
-   subroutine lin_rad_set_origin(func,value)
+  subroutine lin_rad_set_origin(func,value)
+    !Set value at origin
     type(lin_rad_func_t), intent(inout) :: func
     real(dp),             intent(in) :: value
 
     func%f(1) = value
   end subroutine lin_rad_set_origin
-
-  !-------------------------------------------------------
-
-  !subroutine lin_rad_set_values(rad_func,values)
-  !  type(lin_rad_func_t), intent(inout) :: rad_func
-  !  real(dp), dimension(:), intent(in) :: values
-  !  if (size(rad_func%f) .ne. size(values) ) then
-  !     call die("radial_lin: set_values: different sizes!")
-  !     !update rc etc?
-  !  else
-  !     rad_func%f=values
-  !  endif
-  !end subroutine lin_rad_set_values
 
   !-------------------------------------------------------
 

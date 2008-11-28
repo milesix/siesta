@@ -185,13 +185,17 @@ CONTAINS
 
     target%l = source%l
     target%n = source%n
+    target%i_sm = source%i_sm
     target%nzeta = source%nzeta
     target%polarizes = source%polarizes
     target%polarized    = source%polarized
+    target%auto_polarized = source%auto_polarized
+    target%auto_polarizes = source%auto_polarizes
     target%nzeta_pol = source%nzeta_pol
     target%rinn = source%rinn
     target%vcte = source%vcte
     target%split_norm = source%split_norm
+    target%split_norm_specified = source%split_norm_specified
     allocate(target%rc(1:size(source%rc)))
     allocate(target%lambda(1:size(source%lambda)))
     allocate(target%orb(1:size(source%orb)))
@@ -205,7 +209,12 @@ CONTAINS
     target%orb          = source%orb
     target%energies(:)  = source%energies(:)
     target%population   = source%population
-    target%rphi         = source%rphi
+    target%rphi         = source%rphi    
+    target%multiple_z_kind = source%multiple_z_kind
+    target%z_valence    = source%z_valence
+    target%l_shell_polarized = source%l_shell_polarized
+    target%n_shell_polarized = source%n_shell_polarized
+    target%l_shell_polarizes = source%l_shell_polarizes
   end subroutine copy_shell
   !-----------------------------------------------------------------------
 

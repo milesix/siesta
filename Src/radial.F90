@@ -440,14 +440,14 @@ contains
   
   !---------------------------------------------------------------------------
 
-  function rad_get_filter_cutoff(rad_func,l,etol) result(kc)
+  function rad_get_filter_cutoff(rad_func,l,factor,etol) result(kc)
     !Given a tolerance intent the kinetic energy this function
     !returns the corresponding reciprocal space cutoff.
     !See module filter.f90
 
     type(rad_func_t), intent(in) :: rad_func
     integer, intent(in) :: l
-    real(dp), intent(in) :: etol 
+    real(dp), intent(in) :: etol,factor 
     real(dp) :: kc 
 
     type(rad_func_t) :: rad_tmp
@@ -455,11 +455,11 @@ contains
     kc = 0.0_dp 
 
     if (rad_func%kind == lin_t) then
-       kc = lin_rad_get_filter_cutoff(rad_func%lin,l,etol)
+       kc = lin_rad_get_filter_cutoff(rad_func%lin,l,factor,etol)
     elseif(rad_func%kind == log_t) then
        call rad_copy(rad_func,rad_tmp)
        call rad_log_to_linear(rad_tmp)
-       kc = lin_rad_get_filter_cutoff(rad_tmp%lin,l,etol)
+       kc = lin_rad_get_filter_cutoff(rad_tmp%lin,l,factor,etol)
        call rad_dealloc(rad_tmp)
     else
        call die("radial: rad_get_filter_cutoff unknown type!")
@@ -487,7 +487,7 @@ contains
 
     if (rad_func%kind == lin_t) then
        filtered%lin = lin_rad_filter(rad_func%lin,l,factor,norm_opt,kc) 
-       call rad_fft(filtered,l)
+       !call rad_fft(filtered,l) !The grid should have an acceptable number of points (2*n+1)
     elseif(rad_func%kind == log_t) then
        !Convert to lin, filter and then convert to log the filtered func.
        call rad_copy(rad_func,rad_tmp)

@@ -33,7 +33,7 @@ module atom_types
      logical                                    ::  fake = .false. !real species or not
      character(len=symbol_length)               ::  symbol
      character(len=label_length)                ::  label
-     real(dp)                                   ::  atomic_number          
+     integer                                    ::  atomic_number          
      real(dp)                                   ::  mass
      real(dp)                                   ::  valence_charge   
      real(dp)                                   ::  self_energy !Electrostatic
@@ -63,7 +63,7 @@ module atom_types
 
   real(dp)                          :: orbs_kc_max = 0.0_dp  !Maximum cutoff of all orbs in kspace
 
-  type(species_info_t), allocatable, target, save   ::  species(:) 
+  type(species_info_t), allocatable, target, save, private   ::  species(:) 
 
 !    Radial function with the difference between the electrostatic energy 
 !    of two spherical charge-densities and two punctual charges with the 
@@ -1365,8 +1365,9 @@ function get_kb_proj_n(isp,io) result(n)
           non_filtered   = get_rad_func_v(non_filtered_v)
           l              = get_l_v(non_filtered_v)
           write(6,'(a,3i3)') "atm_types: species, orbital, l =", is,io,l
-
-          filtered       = rad_filter(non_filtered,l,factor,2,orbs_kc_max)          
+          !call rad_dump_file(non_filtered,"non-filtered.dat")
+          filtered       = rad_filter(non_filtered,l,factor,2,orbs_kc_max)         
+          !call rad_dump_file(filtered,"filtered.dat")
           call copy_vector(non_filtered_v,filtered_v)
           call set_rad_func_v(filtered_v,filtered)
           call set_orb(is,filtered_v,io)
@@ -1375,6 +1376,7 @@ function get_kb_proj_n(isp,io) result(n)
           call rad_dealloc(non_filtered)
           call rad_dealloc(filtered)
        enddo
+       call set_orbs_deg(is)
     enddo
   end subroutine filter_orbs
 

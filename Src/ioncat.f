@@ -5,7 +5,7 @@
 !     near rc.
 
       use precision
-      use atm_types, only: species, nspecies, species,species_info_t,
+      use atom_types, only: species, nspecies, species,species_info_t,
      $     set_label, set_read_from_file
       use atmfuncs
       use atmfuncs_types

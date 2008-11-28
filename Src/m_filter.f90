@@ -287,7 +287,7 @@ subroutine filter( l, nr, r, f, kc, norm_opt, n_eigen)
 !        integral( nmesh+1, k4j1(:)*jlk(:,ij2), x=kmesh(:) )
       ! Symmetrize
       h(ij2,ij1) = h(ij1,ij2)
-      write(33,*) ij1,ij2,h(ij1,ij2)
+      !write(33,*) ij1,ij2,h(ij1,ij2)
     end do ! ij2
   end do ! ij1
 
