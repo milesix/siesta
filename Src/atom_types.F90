@@ -13,7 +13,7 @@ module atom_types
   use radial
   use sys, only : die
   use hilbert_vector_collection
-  
+  use m_mpi_utils, only: broadcast
  
   implicit none
 
@@ -28,7 +28,7 @@ module atom_types
   !
   !     Species_info: Consolidate all the pieces of information in one place
   !
-  type, private :: species_info_t
+  type   :: species_info_t
      private
      logical                                    ::  fake = .false. !real species or not
      character(len=symbol_length)               ::  symbol
@@ -143,7 +143,7 @@ contains
 
        call broadcast_hilbert_vector_collection(spp%orbs)
 
-       if (Node .eq. 0)  kbs = has_kbs(spp)
+       if (Node .eq. 0)  kbs = has_kbs(is)
        call MPI_Bcast(kbs,1,MPI_logical,0,MPI_Comm_World,MPIerror)
        if (Node .ne. 0 .and. kbs) allocate(spp%kb_proj)       
        if (kbs) call broadcast_hilbert_vector_collection(spp%kb_proj)
@@ -158,17 +158,17 @@ contains
        if (ldau) call broadcast(spp%U)
        if (ldau) call broadcast(spp%J)      
 
-       if (Node .eq. 0) vlocal = has_reduced_vlocal(spp) 
+       if (Node .eq. 0) vlocal = has_reduced_vlocal(is) 
        call MPI_Bcast(vlocal,1,MPI_logical,0,MPI_Comm_World,MPIerror)
        if (Node .ne.0  .and. vlocal) allocate(spp%reduced_vlocal)
        if (vlocal) call rad_broadcast(spp%reduced_vlocal)
 
-       if (Node .eq. 0) vna = has_neutral_atom_potential(spp) 
+       if (Node .eq. 0) vna = has_neutral_atom_potential(is) 
        call MPI_Bcast(vna,1,MPI_logical,0,MPI_Comm_World,MPIerror)
        if (Node .ne.0  .and. vna) allocate(spp%neutral_atom_potential)
        if (vna) call rad_broadcast(spp%neutral_atom_potential)
 
-       if (Node .eq. 0) pseudo_charge = has_pseudo_local_charge(spp) 
+       if (Node .eq. 0) pseudo_charge = has_pseudo_local_charge(is) 
        call MPI_Bcast(pseudo_charge,1,MPI_logical,0,MPI_Comm_World,MPIerror)
        if (Node .ne.0  .and. pseudo_charge) allocate(spp%pseudo_local_charge)
        if (pseudo_charge) call rad_broadcast(spp%pseudo_local_charge)
