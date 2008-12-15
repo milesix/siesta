@@ -360,7 +360,7 @@ contains
             dnrm_rc=fdf_double("LDAU.CutoffNorm",dnrm_rc_default)
             write(6,'(a)')'LDAUproj cut-off radious determined from a'
             write(6,'(a,f12.6)')'cutoff norm parameter = ',dnrm_rc
-            do ir=0,nrc
+            do ir=1,nrc
                r=rad_get_r_from_ir(shell%ldaupj,ir)
                dnrm=rad_get_norm_r_l_1_from_ir(shell%ldaupj,l,ir)
                if(dnrm.gt.dnrm_rc) exit
