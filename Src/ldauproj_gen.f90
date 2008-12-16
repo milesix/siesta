@@ -8,7 +8,7 @@ module ldauproj
         rad_get_length, rad_get_norm_r_l_1_from_ir, rad_get_grid, &
         rad_multiply, rad_alloc
   use atom_types,        only:  get_lmax_ldau_proj, &
-        set_lmax_ldau_proj, set_lmax_orbs, species, init_ldau_proj, &
+        set_lmax_ldau_proj, set_lmax_orbs, init_ldau_proj, &
         get_atomic_number, set_ldau_proj, set_ldau_projs_deg, & 
         get_number_of_ldau_proj, get_number_of_ldau_proj_non_deg, &
         set_switch_ldau, get_switch_ldau, init_UJ_ldau_proj, &
@@ -57,7 +57,6 @@ contains
  
     type(basis_def_t), pointer :: basp     !Parameters corresponding to this basis set.
     type(pseudopotential_new_t),pointer :: vps !Psuedopotential info.
-    !type(species_info_t),pointer :: spp    !Pointer to a species.
     type(ldaushell_t),     pointer :: shell    !Pointer to a shell.
     type(l_ldaushell_t),    pointer :: lshell   !Pointer to a l-shell.
     
@@ -66,7 +65,6 @@ contains
     
 
     basp => basis_parameters(isp)
-    !spp  => species(isp)
     vps  => basp%pseudopotential
 
     nldaupj = number_of_ldau_proj(isp)
