@@ -357,7 +357,6 @@ bessph.o: parallel.o precision.o sys.o
 bonds.o: alloc.o atmfuncs.o mneighb.o precision.o recipes.o sorting.o units.o
 born_charge.o: atomlist.o ksv.o ksvinit.o m_mpi_utils.o m_spin.o parallel.o
 born_charge.o: siesta_geom.o siesta_options.o sparse_matrices.o
-broadcast_basis.o: parallel.o radial.o
 broyden_optim.o: m_broyddj_nocomm.o m_fdf_global.o m_memory.o m_mpi_utils.o
 broyden_optim.o: parallel.o precision.o units.o
 cart2frac.o: sys.o
@@ -474,6 +473,7 @@ ksv.o: precision.o sys.o
 ksvinit.o: alloc.o parallel.o parsing.o precision.o
 ldau.o: alloc.o atmfuncs.o m_fdf_global.o mneighb.o parallel.o parallelsubs.o
 ldau.o: precision.o siesta_options.o
+ldau.o: m_mpi_utils.o
 ldauproj_gen.o: atom_generation_types.o atom_options.o atom_pao_util.o
 ldauproj_gen.o: atom_types.o hilbert_vector.o hilbert_vector_collection.o
 ldauproj_gen.o: precision.o pseudopotential_new.o radial.o sys.o units.o
