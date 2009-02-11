@@ -1,0 +1,54 @@
+
+2009-02-11  18:30 GMT Daniel Sanchez-Portal  <sqbsapod@ehu.es>  2.6.3-ldau-bug-1-2
+
+Bugs corrected in subroutines hubbard_term and
+broadcast_basis to allow for parallel execution
+of the LDA+U options.
+
+Files removed:
+  Src/broadcast_basis.F
+  Src/ldau.f (changed to ldau.F)
+Files modified:
+  Src/Makefile
+  Src/atom_types.F90
+  Src/m_energies.F90
+  Src/setup_hamiltonian.F
+New files:
+  Src/ldau.F
+------------------------------------------------------------
+Previous changes in this branch (using the "bzr log" command)
+revno: 293
+committer: dsanchez <sqbsapod@ehu.es>
+branch nick: ldau-bug-1
+timestamp: Tue 2008-12-16 17:33:15 +0100
+message:
+  
+     Two bugs corrected in module ldauproj.
+      
+     Variable declaration:
+      Variable species deleted from the list of used variables from
+      module atom_types 
+           
+     Procedure fermicutoff:
+      Index ir was used with value 0 while the lower bound of
+      array ldaushell%ldaupj is 1 (line 364 in file ldauproj_gen.f90)
+  
+    modified:
+      Src/ldauproj_gen.f90
+  ------------------------------------------------------------
+------------------------------------------------------------
+revno: 292
+committer: dsanchez <sqbsapod@ehu.es>
+branch nick: ldau
+timestamp: Mon 2008-12-15 15:30:42 +0100
+message:
+  
+  
+   A bug corrected in procedure fermicutoff in module ldauproj.
+  
+    Index ir was used with value 0 while the lower bound of 
+    array ldaushell%ldaupj is 1 (line 364 in file ldauproj_gen.f90)
+  
+  modified:
+    Src/ldauproj_gen.f90
+------------------------------------------------------------
