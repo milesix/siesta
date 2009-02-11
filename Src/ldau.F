@@ -185,8 +185,10 @@ C LDAU projectors
         allocate(occu_old(maxldau,maxldau,nua,nspin))
         call memory('A','D',size(occu_old),'hubbard_term')
         occu_old=0.0_dp
+#ifdef  MPI
 	allocate(buffer1(maxldau,maxldau,nua,nspin))
 	call memory('A','D',size(buffer1),'hubbard_term')
+#endif
         allocate(Hldau(maxnh,nspin))
         call memory('A','D',size(Hldau),'hubbard_term')
         Hldau=0.0_dp 
@@ -290,7 +292,9 @@ C Allocate local arrays that depend on saved parameters
 
 C Initialize occupations
       occu=0._dp
+#ifdef  MPI
       buffer1=0._dp
+#endif
 
 C Initialize neighb subroutine
       call mneighb( scell, rmax, na, xa, 0, 0, nna )
