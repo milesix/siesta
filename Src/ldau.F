@@ -13,7 +13,9 @@
 
       use m_fdf_global
       use precision, only: dp
-      
+#ifdef MPI
+            use m_mpi_utils, only: globalize_sum
+#endif
 
       implicit none
       
@@ -42,7 +44,7 @@
       subroutine hubbard_term( scell, nua, na, isa, xa, indxua,
      .                   maxnh, maxnd, lasto, iphorb, 
      .                   numd, listdptr, listd, numh, 
-     .                   listhptr, listh, nspin, Dscf, Eldau, 
+     .                   listhptr, listh, nspin, Dscf, Eldau, DEldau,
      .                   fa, stress, H, first, last )
 C *********************************************************************
 C Calculates Hubbard-like U term contribution to total 
@@ -83,7 +85,8 @@ C real*8 fa(3,na)          : NL forces (added to input fa)
 C real*8 stress(3,3)       : NL stress (added to input stress)
 C real*8 H(maxnh,nspin)    : NL Hamiltonian (added to input H)
 C **************************** OUTPUT *********************************
-C real*8 Eldau               : U-Hubbard energy
+C real*8 Eldau               : U-Hubbard energy 1 
+C real*8 DEldau              : U-hubbard energy 2 
 C *********************************************************************
 C
 C  Modules
@@ -112,7 +115,7 @@ C
       logical,  intent(in) :: first, last
       real(dp), intent(inout) :: fa(3,nua), stress(3,3)
       real(dp), intent(inout) :: H(maxnh,nspin)
-      real(dp), intent(out)   :: Eldau
+      real(dp), intent(out)   :: Eldau, DEldau
 
       real(dp) ::   volcel
       external ::   timer, volcel
@@ -142,6 +145,10 @@ C maxno  = maximum number of basis orbitals overlapping a KB projector
       real(dp), dimension(:,:), pointer, save :: Hldau(:,:)
       real(dp), dimension(:,:,:), pointer :: grSki
       real(dp), dimension(:,:,:,:), pointer, save :: occu, occu_old
+#ifdef MPI
+      real(dp), dimension(:,:,:,:), pointer, save :: buffer1
+#endif
+
 
       logical ::   within
       logical, dimension(:), pointer ::  listed, listedall
@@ -178,6 +185,10 @@ C LDAU projectors
         allocate(occu_old(maxldau,maxldau,nua,nspin))
         call memory('A','D',size(occu_old),'hubbard_term')
         occu_old=0.0_dp
+#ifdef  MPI
+	allocate(buffer1(maxldau,maxldau,nua,nspin))
+	call memory('A','D',size(buffer1),'hubbard_term')
+#endif
         allocate(Hldau(maxnh,nspin))
         call memory('A','D',size(Hldau),'hubbard_term')
         Hldau=0.0_dp 
@@ -276,11 +287,14 @@ C Allocate local arrays that depend on saved parameters
      &               routine='hubbard_term' )
       
        iter_ldaupop=iter_ldaupop+1
-       write(6,'(a,i4)') 
+       if (Node.eq.0) write(6,'(a,i4)') 
      &   'LDAU: recalculating local occupations ', iter_ldaupop
 
 C Initialize occupations
       occu=0._dp
+#ifdef  MPI
+      buffer1=0._dp
+#endif
 
 C Initialize neighb subroutine
       call mneighb( scell, rmax, na, xa, 0, 0, nna )
@@ -419,19 +433,33 @@ C Restore  Di and listed
           enddo
 
       enddo
-      
+     
       dnmax=0.0_dp 
       oc=0.0_dp 
+#ifdef MPI
+! Global reduction of occupation
       do ka=1,nua
           is=isa(ka)
           if(switch_ldau(is)) then
-            nkb=nldaupfis(is) 
+           nkb=nldaupfis(is)
+           do ispin=1,nspin             
+             call globalize_sum(occu(1:nkb,1:nkb,ka,ispin),
+     &           buffer1(1:nkb,1:nkb,ka,ispin))
+           enddo 
+         endif
+      enddo 
+      occu=buffer1
+#endif
+      do ka=1,nua
+          is=isa(ka)
+	  if(switch_ldau(is)) then
+	  nkb=nldaupfis(is)
+
             do ko=1,nkb
               do ikb=1,nkb
-
-c                write(6,'(2i4,2f12.5)') ko, ikb,
+c                 write(6,'(2i4,2f12.5)') ko, ikb,
 c    &          (occu_old(ko,ikb,ka,ispin),ispin=1,nspin)
-c               write(6,'(2i4,2f12.5)') ko, ikb,
+c               write(6,'(3i4,2f12.5)')  Node, ko, ikb,
 c    &          (occu(ko,ikb,ka,ispin),ispin=1,nspin)
 
                 do ispin=1,nspin
@@ -453,10 +481,12 @@ c     write(6,'(a,f12.6)')'LDAU: maximum change in local occup.', dnmax
        
 
       recalc_hamilt: if(.not.conv_ldaupop.or. last) then
-      if(.not.last) then
+      if(Node.eq.0) then 
+       if(.not.last) then
         write(6,'(a)') 'LDAU: recalculating Hamiltonian'
-      else
+       else
         write(6,'(a)') 'LDAU: recalculating Hamiltonian and forces'
+       endif
       endif
       Hldau=0.0_dp
 C Initialize neighb subroutine
@@ -642,8 +672,10 @@ C Restore  Di and listed
       endif occupations
        
       Eldau=0.0_dp
+      DEldau=0.0_dp
       add_hamilt: if(iter_ldaupop.gt.0) then 
-      write(6,'(a)') 'LDAU: Adding Hamiltonian contribution'
+      if(Node.eq.0) 
+     & write(6,'(a)') 'LDAU: Adding Hamiltonian contribution'
 
       do ia = 1,nua
         is = isa(ia)
@@ -665,14 +697,15 @@ C Restore  Di and listed
            do ispin=1,nspin
               do ko=1,nkb
                   Ueff=Ufio(is,ko)-Jfio(is,ko)
-                  Eldau=Eldau+
+                  DEldau=DEldau+
      &   0.25_dp*(3.0_dp-dble(nspin))*Ueff*occu(ko,ko,ia,ispin)
               enddo
            enddo   
          endif
        enddo
 
-       write(6,'(a,f12.6)') 'Eldau(eV)=',Eldau*13.6057_dp
+c      write(6,'(a,f12.6)') 'Eldau(eV)=',Eldau*13.6057_dp
+c      write(6,'(a,f12.6)') 'DEldau(eV)=',DEldau*13.6057_dp
        endif add_hamilt
 
 C Deallocate local memory

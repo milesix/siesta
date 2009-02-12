@@ -53,7 +53,7 @@ module atom_types
       
      type(hilbert_vector_collection_t)          ::  orbs
      type(hilbert_vector_collection_t), pointer ::  kb_proj   => Null()
-     type(hilbert_vector_collection_t), pointer ::  ldau_proj => Null()  
+     type(hilbert_vector_collection_t), pointer ::  ldau_proj  => Null()
      logical                                    ::  read_from_file
   end type species_info_t
 
@@ -113,7 +113,7 @@ contains
 #else
     integer MPIerror
 
-    integer is, i
+    integer is, i, nU
     type(species_info_t), pointer  :: spp => Null()
     logical :: kbs= .false., vna=.false., vlocal = .false., ldau = .false.
     logical :: pseudo_charge = .false.
@@ -149,15 +149,19 @@ contains
        if (kbs) call broadcast_hilbert_vector_collection(spp%kb_proj)
        
        call MPI_Bcast(spp%switch_ldau,1,MPI_logical,0,MPI_Comm_World,MPIerror)
-
-       if (Node .eq. 0)  ldau = associated(spp%ldau_proj)
-       call MPI_Bcast(ldau,1,MPI_logical,0,MPI_Comm_World,MPIerror)
-       if(ldau.ne.spp%switch_ldau) call die("Inconsistency in broadcasting LDAU projs")
-       if (Node .ne. 0 .and. ldau) allocate(spp%ldau_proj)
-       if (ldau) call broadcast_hilbert_vector_collection(spp%ldau_proj)
-       if (ldau) call broadcast(spp%U)
-       if (ldau) call broadcast(spp%J)      
-
+       ldau=spp%switch_ldau
+       if(ldau) then
+        if (Node.eq.0) nU=size(spp%U)
+        call MPI_Bcast(nU,1,MPI_integer,0,MPI_Comm_World,MPIerror)
+        if (Node.ne.0) then
+	         allocate(spp%ldau_proj)
+                 allocate(spp%U(nU))
+		 allocate(spp%J(nU))
+        endif
+        call broadcast_hilbert_vector_collection(spp%ldau_proj)
+        call broadcast(spp%U)
+        call broadcast(spp%J) 
+       endif 
        if (Node .eq. 0) vlocal = has_reduced_vlocal(is) 
        call MPI_Bcast(vlocal,1,MPI_logical,0,MPI_Comm_World,MPIerror)
        if (Node .ne.0  .and. vlocal) allocate(spp%reduced_vlocal)
@@ -189,7 +193,6 @@ contains
      call rad_broadcast(elec_corr(i))
   end do
  
-  
 end subroutine broadcast_basis
 
 
