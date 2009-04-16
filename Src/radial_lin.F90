@@ -10,6 +10,9 @@
 
 !Radial (1D) functions defined in a linnear grid
 module radial_lin
+#ifdef CDF
+#undef CDF
+#endif
   use precision, only : dp
   use m_recipes, only : spline, splint
   use m_radfft, only : radfft

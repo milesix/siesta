@@ -1,5 +1,7 @@
 module radial
-
+#ifdef CDF
+#undef CDF
+#endif
   use precision
   use m_recipes, only: spline,splint
   use radial_lin

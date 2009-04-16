@@ -13,6 +13,9 @@ module atom_basis_io
   !     Support for dumping and reading PAO and KB information from
   !     ASCII or NetCDF files.
   !
+#ifdef CDF
+#undef CDF
+#endif
   !     Alberto Garcia, 2000, 2001
   !     E. Anglada 2008
   use chemical, only : read_chemical_types, species_label, number_of_species, atomic_number

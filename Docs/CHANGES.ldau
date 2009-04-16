@@ -1,3 +1,22 @@
+2009-04-16  10:20 GMT Alberto Garcia <albertog@icmab.es> siesta-2.6.8--ldau-3-dm-checks-noncol-2
+Deactivate netCDF in atom-clean routines
+ 
+The implementation of netCDF IO in the atom-clean
+routines is wrong. It has been deactivated by
+'undef'ining the CDF macro in the relevant files.
+
++ renamed changes file to CHANGES.ldau
+
+renamed:
+  Docs/CHANGES.ldau-bug-1-2 => Docs/CHANGES.ldau
+modified:
+  Src/atom_basis_io.F90
+  Src/radial.F90
+  Src/radial_lin.F90
+  version.info
+  Docs/CHANGES.ldau
+
+------------------------------------------------------------------
 
 2009-02-11  18:30 GMT Daniel Sanchez-Portal  <sqbsapod@ehu.es>  2.6.3-ldau-bug-1-2
 
