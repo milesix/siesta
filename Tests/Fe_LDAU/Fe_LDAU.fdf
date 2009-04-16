@@ -9,7 +9,7 @@
 # -----------------------------------------------------------------------------
 
 SystemName       bcc Fe ferro GGA   # Descriptive name of the system
-SystemLabel            Fe2_bis           # Short name for naming files
+SystemLabel            Fe_LDAU           # Short name for naming files
 
 # Output options
 

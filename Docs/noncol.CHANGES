@@ -1,3 +1,16 @@
+2009-04-16  10:15:00 GMT Alberto Garcia <albertog@icmab.es> 2.6.8--ldau-dm-checks-noncol-2
+Fixed previous patch for non-collinear spin
+ 
+A couple of lines had dissappeared from m_spin.F90.
+
++ fix the SystemLabel in Fe_LDAU test
+
+modified:
+  Src/m_spin.F90
+  Tests/Fe_LDAU/Fe_LDAU.fdf
+
+------------------------------------------------------------------
+
 2009-02-26  10:30:00 GMT Alberto Garcia <albertog@icmab.es>
 Fixed non-collinear spin calculation in parallel  (Merged from trunk)
   
