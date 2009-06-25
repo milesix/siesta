@@ -75,6 +75,7 @@ contains
     if(nldaupj.gt.0) switch=.true. 
     call set_switch_ldau(isp,switch)
     if(.not.switch) return
+    maxn=1
     do l=0,basp%lmxldaupj
         lshell => basp%l_ldaushell(l)
         do nsm=1,lshell%nn
@@ -84,7 +85,7 @@ contains
             maxn=max(maxn,shell%n)
         enddo
     enddo
-    write(6,*) 'maxn ', maxn
+
     call init_UJ_ldau_proj(isp,maxn)
     
     print ('(/,a)'), "LDAUprojgen begin"
