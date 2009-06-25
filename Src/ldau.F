@@ -34,6 +34,7 @@
       real(dp), save  :: dtol_ldaupop
       integer, save   :: iter_ldaupop
       logical, save   :: ldau_init
+      logical, save   :: ldau_shift
       real(dp), save  :: dDmax_threshold
       real(dp), parameter  :: dtol_ldaupop_default =1.0e-3_dp
       real(dp), parameter  ::  dDmax_threshold_default= 1.0e-2_dp
@@ -102,6 +103,8 @@ C
       use neighbour    , only : mneighb
       use alloc,         only : re_alloc, de_alloc
       use siesta_options, only : dDtol
+      use m_steps, only: istp
+
       integer, intent(in) ::
      .   maxnh, na, maxnd, nspin, nua
 
@@ -132,7 +135,7 @@ C maxno  = maximum number of basis orbitals overlapping a KB projector
      .  j, jno, jo, jx, ka, ko, koa, ks, kua,
      .  nkb, nna, nno, no, nuo, nuotot, ja,
      .  lko, lkb, nprin_ko, nprin_kb
-
+      integer, save :: istp_last
       integer, dimension(:), pointer :: iano, iono
 
       real(dp)
@@ -189,10 +192,11 @@ C LDAU projectors
 	allocate(buffer1(maxldau,maxldau,nua,nspin))
 	call memory('A','D',size(buffer1),'hubbard_term')
 #endif
-        allocate(Hldau(maxnh,nspin))
-        call memory('A','D',size(Hldau),'hubbard_term')
+
+        nullify(Hldau)
+        call re_alloc(Hldau,1,maxnh,1,nspin,name='Hldau',
+     &    routine='hubbard_term',shrink=.false.,copy=.false.)
         Hldau=0.0_dp 
-       endif
        
        call fdf_global_get(dtol_ldaupop,'LDAU.PopTol',
      &           dtol_ldaupop_default)
@@ -200,15 +204,27 @@ C LDAU projectors
      &           .false.)
        call fdf_global_get(dDmax_threshold,'LDAU.ThresholdTol',
      &           dDmax_threshold_default)
-         
+       call fdf_global_get(ldau_shift,'LDAU.PotentialShift',
+     &           .false.)
+       if(ldau_shift) ldau_init=.true.
+       istp_last=istp
        frstme=.false.
-C End initialization
+       endif
+! End initialization
 
+! If the system has moved, reallocate Hldau and set ldau_init to true
+       if(istp_last.ne.istp) then 
+          call re_alloc(Hldau,1,maxnh,1,nspin,name='Hldau',
+     &    routine='hubbard_term',shrink=.false.,copy=.false.)
+	  ldau_init=.true.
+       endif
+       istp_last=istp
 
        if(first.and.(.not.ldau_init) )return
       
-       occupations: if((first.and.ldau_init).or.
-     &            (dDmax_current.lt.dDmax_threshold)) then 
+       occupations: if(first.or.
+     &            (dDmax_current.lt.dDmax_threshold).or.
+     &            ldau_shift) then 
 
        
 
@@ -454,33 +470,48 @@ C Restore  Di and listed
           is=isa(ka)
 	  if(switch_ldau(is)) then
 	  nkb=nldaupfis(is)
+            oc=0.0d0
 
+	    if(ldau_shift.and.Node.eq.0) then
+                 write(6,*) 'LDAU: projector occupations'
+		 write(6,*) 'LDAU: atom, species: ',ka, is
+            endif
             do ko=1,nkb
               do ikb=1,nkb
-c                 write(6,'(2i4,2f12.5)') ko, ikb,
-c    &          (occu_old(ko,ikb,ka,ispin),ispin=1,nspin)
-c               write(6,'(3i4,2f12.5)')  Node, ko, ikb,
-c    &          (occu(ko,ikb,ka,ispin),ispin=1,nspin)
+!                 write(6,'(2i4,2f12.5)') ko, ikb,
+!    &          (occu_old(ko,ikb,ka,ispin),ispin=1,nspin)
+
+                if(ldau_shift.and.Node.eq.0) then
+                   write(6,'(2i4,2f12.5)')  ko, ikb,
+     &             (occu(ko,ikb,ka,ispin),ispin=1,nspin)
+                endif
 
                 do ispin=1,nspin
                   dn=occu(ko,ikb,ka,ispin)-occu_old(ko,ikb,ka,ispin)
                   dnmax=max(dnmax,dabs(dn))
                 enddo 
               enddo 
-c             oc(1)=oc(1)+occu(ko,ko,ka,1)
-c             oc(2)=oc(2)+occu(ko,ko,ka,2)
+	      if(ldau_shift) then
+                oc(1)=oc(1)+occu(ko,ko,ka,1)
+                oc(2)=oc(2)+occu(ko,ko,ka,2)
+	      endif
             enddo 
+	    if(ldau_shift.and.Node.eq.0) then
+	       write(6,'(a,/,a,3f12.6)') 
+     &           'LDAU: Total projector shell',
+     &           'Occupations: ', oc(1), oc(2),oc(1)+oc(2)
+            endif
           endif
       enddo 
-c     write(6,*) ' occup ', oc(1), oc(2)
-c     write(6,'(a,f12.6)')'LDAU: maximum change in local occup.', dnmax
+!     write(6,*) ' occup ', oc(1), oc(2)
+!    write(6,'(a,f12.6)')'LDAU: maximum change in local occup.', dnmax
 
       conv_ldaupop=.false.
       if(dnmax.lt.dtol_ldaupop) conv_ldaupop=.true. 
       if(.not.conv_ldaupop) occu_old=occu
        
 
-      recalc_hamilt: if(.not.conv_ldaupop.or. last) then
+      recalc_hamilt: if(.not.conv_ldaupop.or.first.or.last) then
       if(Node.eq.0) then 
        if(.not.last) then
         write(6,'(a)') 'LDAU: recalculating Hamiltonian'
@@ -596,6 +627,7 @@ C Loop on LdaU projectors
                        lko=lofio(ks,ldaupj_f,ko)
                        nprin_ko=cnfig_ldaupjfio(ks,ko)
                        Ueff=Ufio(ks,ko)-Jfio(ks,ko)
+		       if(ldau_shift) Ueff=2.0d0*Ueff
                        Sik = Ski(ko,ino)
                        Sjk = Ski(ko,jno)
                        do ispin=1, nspin
@@ -614,6 +646,8 @@ C Loop on LdaU projectors
                              enddo 
                            enddo 
                           endif
+
+			  if(.not.ldau_shift) then 
                           do ikb = 1, nkb
                             lkb=lofio(ks,ldaupj_f,ikb)
                             nprin_kb=cnfig_ldaupjfio(ks,ikb)
@@ -638,6 +672,8 @@ C of Dudarev and collaborators
                               endif
                             endif 
                           enddo 
+			  endif
+
                        enddo 
                     enddo
                   endif
@@ -697,6 +733,7 @@ C Restore  Di and listed
            do ispin=1,nspin
               do ko=1,nkb
                   Ueff=Ufio(is,ko)-Jfio(is,ko)
+		  if(ldau_shift) Ueff=2.0d0*Ueff
                   DEldau=DEldau+
      &   0.25_dp*(3.0_dp-dble(nspin))*Ueff*occu(ko,ko,ia,ispin)
               enddo
