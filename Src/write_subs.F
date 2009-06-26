@@ -128,7 +128,7 @@
 !           Write Voigt components of total stress tensor 
 !
             ps = stress + kin_stress
-            write(6,'(/,a,6f12.2))')
+            write(6,'(/,a,6f12.2)')
      .           'Stress-tensor-Voigt (kbar):',
      .           (ps(jx,jx)/kbar,jx=1,3),
      $            ps(1,2)/kbar,

@@ -95,7 +95,10 @@ contains
     type(lin_rad_func_t), intent(in) :: src
     type(lin_rad_func_t), intent(out) :: dest
     
-    call lin_rad_alloc(dest,src%delta,src%f)
+!  DSP, to avoid problems with forces    
+!   call lin_rad_alloc(dest,src%delta,src%f)
+    call lin_rad_alloc(dest,src%delta,src%f,0.0d0)
+
     dest%fft = src%fft
   end subroutine lin_rad_copy
 

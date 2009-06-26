@@ -346,7 +346,7 @@ contains
     real(dp) ::r, dnrm, rc, a, dnrm_rc, w
     real(dp), parameter :: gexp=60.0_dp
     real(dp), parameter :: eps=1.0e-4_dp
-    real(dp), parameter :: dnrm_rc_default=0.85_dp
+    real(dp), parameter :: dnrm_rc_default=0.90_dp
     real(dp), parameter :: width_default=0.05_dp
     type(rad_func_t)          ::  fermi_func, multiply
     type(rad_grid_t)          ::  grid
