@@ -1,0 +1,97 @@
+SystemName          FeO_U
+SystemLabel         FeO_U
+NumberOfAtoms       4
+NumberOfSpecies     3
+
+%block ChemicalSpeciesLabel
+1  26	Fe
+2  8	O_opt	 # Species index, atomic number, species label
+3  26   Fe_shift
+%endblock ChemicalSpeciesLabel
+
+XC.functional        GGA
+XC.authors           PBE
+
+PAO.SplitNorm 0.3
+PAO.EnergyShift 50 meV
+
+
+%block PAO.Basis
+  Fe  3
+n=3  2  2
+     0. 0.
+n=4  0  2
+     6. 0.
+n=4  1  1
+     6. 
+  Fe_shift  3
+n=3  2  2
+     0. 0.
+n=4  0  2
+     6. 0.
+n=4  1  1
+     6.
+  O_opt  3 -0.26164
+n=2  0  2  E  58.20321  3.46941
+  4.47270   2.36882
+n=2  1  2  E  1.04886   4.84571
+  5.84957   2.42377
+n=3  2  1  E  69.64604  0.30027
+  3.51189
+%endblock PAO.Basis
+
+AtomicCoordinatesFormat ScaledCartesian
+WriteCoorXmol .true.
+LatticeConstant 4.3607 Ang
+MeshCutoff 150 Ry
+MaxSCFIterations 200
+DM.NumberPulay  4 
+DM.MixingWeight 0.05
+DM.Tolerance	0.0004
+DM.UseSaveDM .true.
+MD.TypeOfRun CG 
+MD.NumCGsteps 0
+
+%block kgrid_Monkhorst_Pack
+4 	0 	0	0.0
+0 	4 	0	0.0
+0 	0	4	0.0
+%endblock kgrid_Monkhorst_Pack
+%block LatticeVectors
+-0.5     0.5      0
+0       0.5       -0.5
+1.0     0.0      1.0
+%endblock LatticeVectors
+SpinPolarized 	.true.
+WriteMullikenPop 1
+DM.ElectronicTemperature 50 meV
+
+%block AtomicCoordinatesAndAtomicSpecies
+0.0 0.0 0.0 3
+0.5 0.0 0.5 1
+0.5 0.5 0.5 2
+1.0 0.5 1.0 2
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+%block DM.InitSpin
+1 1.0
+2 -1.0
+%endblock DM.InitSpin
+
+
+LDAU.FirstIteration .true.
+LDAU.PopTol 5.0d-4
+LDAU.ThresholdTol   1.0d-2
+LDAU.ProjectorGenerationMethod 2
+LDAU.PotentialShift  .true.
+
+%block LDAU.proj
+Fe_shift   1           # number of shells of projectors
+n=3    2         #  n, l
+   0.2 0.0000    # U(eV), J(eV)
+   0.000 0.0000  # rc, \omega 
+Fe   1           # number of shells of projectors
+n=3    2         #  n, l
+   0.0 0.0000    # U(eV), J(eV)
+   0.000 0.0000  # rc, \omega
+%endblock LDAU.proj
