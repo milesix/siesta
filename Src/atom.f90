@@ -757,6 +757,23 @@ CONTAINS
           if(icorr.eq.'ca') write(6,'(a)') 'xc_check: WARNING: Ceperly-Alder functional'
           if(icorr.eq.'pw') write(6,'(a)') 'xc_check: WARNING: Perdew-Wang 1992 functional'
        endif
+     elseif ((xcauth.eq.'RPBE').and.(xcfunc.eq.'GGA')) then
+
+       write(6,'(a)')  &
+          'xc_check: GGA  Hammer, Hansen and Norskov, PRB 59, 7413 (1999)'
+
+     elseif ((xcauth.eq.'REVPBE').and.(xcfunc.eq.'GGA')) then
+
+       write(6,'(a)') 'xc_check: GGA Zhang and  Yang, PRL 80,890(1998)'
+
+     elseif ((xcauth.eq.'LYP').and.(xcfunc.eq.'GGA')) then
+
+       write(6,'(a)')  &
+        'xc_check:  GGA Becke-Lee-Yang-Parr'
+
+       elseif ((xcauth.eq.'WC').and.(xcfunc.eq.'GGA')) then
+
+       write(6,'(a)') 'xc_check: GGA Wu-Cohen'
 
     else
 
