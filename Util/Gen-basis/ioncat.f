@@ -8,14 +8,14 @@
       use atm_types, only: species_info, nspecies, species
       use atmfuncs
       use m_getopts
-
       use basis_io, only: read_ion_ascii
+      use m_orthogonalize_orbitals, only: orthogonalize_orbitals
 
       implicit none
 
 C Internal variables ...................................................
       integer is, i, j
-      integer, parameter :: n=1000
+      integer  :: npts=1000      ! Number of points
       real(dp) :: delta, rc, rmin, rmax, range
 
       real(dp) :: x, val, grad, rlog
@@ -26,12 +26,15 @@ C Internal variables ...................................................
       character(len=10)  :: opt_name 
       integer :: nargs, iostat, n_opts, nlabels, iorb, ikb
       integer :: no, nkb
+      integer :: l
+      real(dp) :: fval, integral
 
       logical :: show_all    = .false.,
      $           show_shells = .false.,
      $           show_kbshells = .false.,
      $           zoom        = .false.,
      $           near_origin = .false.,
+     $   orthogonalize_zetas = .false.,
      $           process_orb = .false.,
      $           process_kbp = .false.,
      $           process_vna = .false.,
@@ -43,7 +46,8 @@ C Internal variables ...................................................
 !
       n_opts = 0
       do
-         call getopts('sijo:k:vclZO:h',opt_name,opt_arg,n_opts,iostat)
+         call getopts('sijo:k:vclZO:n:hx',
+     $                 opt_name,opt_arg,n_opts,iostat)
          if (iostat /= 0) exit
          select case(opt_name)
          case ('s', '+s')
@@ -77,6 +81,12 @@ C Internal variables ...................................................
             near_origin = .true.
             read(opt_arg,*) rlog
             write(0,*) "Will zoom near zero, up to ", 10.0_dp**(rlog)
+         case ('n', '+n')
+            read(opt_arg,*) npts
+            write(0,*) "Will use ", npts, " points."
+         case ('x', '+x')
+            orthogonalize_zetas = .true.
+            write(0,*) "Will orthogonalize zetas "
          case ('h', '+h')
             call print_help()
          case ('?',':')
@@ -105,21 +115,25 @@ C Internal variables ...................................................
       spp%read_from_file = .true.
       call read_ion_ascii(spp)
 
+      if (orthogonalize_zetas) call orthogonalize_orbitals()
+
       no = nofis(1)
       nkb = nkbfis(1)
 
       if (show_all) then
-         write(0,*) "Atomic number, norbs, nkbs: ", izofis(1), no, nkb
-         write(0,*) "Orbitals (#, l, z, m, rc):"
+         write(0,"(a,3i4)")
+     $        "Atomic number, norbs, nkbs: ", izofis(1), no, nkb
+         write(0,"(a)") "Orbitals (#, l, z, m, rc):"
          do i= 1, no
-            write(6,*) i,
+            write(6,"(4i4,f10.4)") i,
      $               lofio(1,i), zetafio(1,i), mofio(1,i), rcut(1,i)
          enddo
-         write(6,*) "KB projs (#, l, m, rc):"
+         write(6,"(a)") "KB projs (#, l, m, rc):"
          do i= 1, nkb
-            write(6,*) i, lofio(1,-i), mofio(1,-i), rcut(1,-i)
+            write(6,"(3i4,f10.4)")
+     $           i, lofio(1,-i), mofio(1,-i), rcut(1,-i)
          enddo
-         write(6,*) "Vna rcut: ", rcut(1,0)
+         write(6,"(a,f10.4)Â") "Vna rcut: ", rcut(1,0)
       endif
 !
       if (show_shells) then
@@ -146,7 +160,7 @@ C Internal variables ...................................................
 !
       if (process_orb) then
          if (iorb > no) STOP "no such orbital"
-         write(6,*) "# Orbital (#, l, z, m, rc):",
+         write(6,"(a,3i4,f10.4)") "# Orbital (#, l, z, m, rc):",
      $    lofio(1,iorb), zetafio(1,iorb), mofio(1,iorb), rcut(1,iorb)
          rc = rcut(1,iorb)
          rmin = 0.0_dp
@@ -160,17 +174,22 @@ C Internal variables ...................................................
             rmax = 10.0_dp**(rlog)
          endif
          range = rmax - rmin
-         delta = range/n
-         do i=0,n
+         delta = range/npts
+         integral = 0.0_dp
+         l = lofio(1,iorb)
+         do i=0,npts
             x = rmin + delta*i
             call rphiatm(1,iorb,x,val,grad)
+            fval = val*x
+            integral = integral + fval**2
             write(*,"(3f14.8)") x, val, grad
          enddo
+         write(0,*) "l, Norm: ", l, sqrt(integral*delta)
       endif
 
       if (process_kbp) then
          if (ikb > nkb) STOP "no such KB projector"
-         write(6,*) "# KB proj (#, l, m, rc):",
+         write(6,"(a,3i4,f10.4)") "# KB proj (#, l, m, rc):",
      $        i, lofio(1,-ikb), mofio(1,-ikb), rcut(1,-ikb)
          rc = rcut(1,-ikb)
          rmin = 0.0_dp
@@ -184,8 +203,8 @@ C Internal variables ...................................................
             rmax = 10.0_dp**(rlog)
          endif
          range = rmax - rmin
-         delta = range/n
-         do i=0,n
+         delta = range/npts
+         do i=0,npts
             x = rmin + delta*i
             call rphiatm(1,-ikb,x,val,grad)
             write(*,"(3f14.8)") x, val, grad
@@ -193,7 +212,7 @@ C Internal variables ...................................................
       endif
 
       if (process_vna) then
-         write(6,*) "# Vna, rcut: ", rcut(1,0)
+         write(6,"(a,f10.4)") "# Vna, rcut: ", rcut(1,0)
          rc = rcut(1,0)
          rmin = 0.0_dp
          rmax = 1.05_dp * rc
@@ -206,8 +225,8 @@ C Internal variables ...................................................
             rmax = 10.0_dp**(rlog)
          endif
          range = rmax - rmin
-         delta = range/n
-         do i=0,n
+         delta = range/npts
+         do i=0,npts
             x = rmin + delta*i
             call rphiatm(1,0,x,val,grad)
             write(*,"(3f14.8)") x, val, grad
@@ -215,7 +234,7 @@ C Internal variables ...................................................
       endif
 
       if (process_core) then
-         write(6,*) "# Core charge, rcut: ", rcore(1)
+         write(6,"(a,f10.4)") "# Core charge, rcut: ", rcore(1)
          rc = rcore(1)
          rmin = 0.0_dp
          rmax = 1.05_dp * rc
@@ -228,8 +247,8 @@ C Internal variables ...................................................
             rmax = 10.0_dp**(rlog)
          endif
          range = rmax - rmin
-         delta = range/n
-         do i=0,n
+         delta = range/npts
+         do i=0,npts
             x = rmin + delta*i
             call chcore_sub(1,(/x,0.0_dp,0.0_dp/),val,gradv)
             write(*,"(3f14.8)") x, val, gradv(1)
@@ -237,7 +256,7 @@ C Internal variables ...................................................
       endif
 
       if (process_chlocal) then
-         write(6,*) "# Local ps charge, rcut: ", rchlocal(1)
+         write(6,"(a,f10.4)") "# Local ps charge, rcut: ", rchlocal(1)
          rc = rchlocal(1)
          rmin = 0.0_dp
          rmax = 1.05_dp * rc
@@ -250,8 +269,8 @@ C Internal variables ...................................................
             rmax = 10.0_dp**(rlog)
          endif
          range = rmax - rmin
-         delta = range/n
-         do i=0,n
+         delta = range/npts
+         do i=0,npts
             x = rmin + delta*i
             call psch(1,(/x,0.0_dp,0.0_dp/),val,gradv)
             write(*,"(3f14.8)") x, val, gradv(1)
@@ -274,6 +293,7 @@ C Internal variables ...................................................
          print *, " -l          : Generate table for Vlocal charge"
          print *, " -Z          : Zoom in near rc for table generation"
          print *, " -O rlog     : Zoom near zero (up to 10^rlog)"
+         print *, " -n npts     : Use npts points (default 1000)"
          print *, " -h          : Print this help message"
          print *, " "
       end subroutine print_help

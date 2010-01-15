@@ -1,0 +1,7 @@
+New heuristics options for neighbor ordering in hsparse
+
+Implemented two new heuristics for neighbor ordering in hsparse,
+one based on distance, and the other on a random shuffling. The aim
+of the second is to test the restructuring of the DM upon geometry
+changes, and also to test hsparse itself internally.
+

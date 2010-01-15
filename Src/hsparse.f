@@ -70,18 +70,21 @@ C
      .                    nlhmax, numh, listhptr, listh,
      $                    set_xijo, xijo, gamma)
 
-      use precision
+      use precision,     only : dp
       use parallel,      only : Node, Nodes
       use parallelsubs,  only : GetNodeOrbs, GlobalToLocalOrb
       use atmfuncs,      only : rcut, nofis, nkbfis
       use atm_types,     only : nspecies
       use listsc_module, only : listsc_init
+      use siesta_options, only: sort_neighbors_by_distance,
+     $                          shuffle_neighbors
       use sorting
       use neighbour,   only: jna=>jan, xij, r2ij, maxna=>maxnna
       use neighbour,   only: mneighb
       
       use sys,           only : die
       use alloc,         only : re_alloc, de_alloc
+      use m_shuffle,     only : shuffle
 
       implicit none
 
@@ -116,7 +119,7 @@ C
                                              ! atom's orbitals.
 
       integer
-     .  ia, iio, ikb, ind, inkb, io, ioa, is, isel, 
+     .  ia, iio, ikb, ind, inkb, io, ioa, is, isel, i,
      .  j, ja, jnat, jo, joa, js, 
      .  ka, kna, ko, koa, ks, 
      .  ncells, nlh, nna, nnkb, no, nua, nuo, nuotot
@@ -124,7 +127,7 @@ C
 
       real(dp)
      .  rci, rcj, rck, rij, rik, rjk,
-     .  rmax, rmaxkb, rmaxo
+     .  rmax, rmaxkb, rmaxo, rmax2
 
       logical, save :: warn1 = .false.
 
@@ -215,6 +218,7 @@ C  Find number of non-zeros in H  _
 C----------------------------------
 C Loop on atoms in unit cell
 
+      rmax2 = rmax*rmax
       do ia = 1,nua
 
 C Find neighbour atoms within maximum range
@@ -223,10 +227,29 @@ C Find neighbour atoms within maximum range
          call re_alloc(index,1, maxna, name="index",routine="hsparse")
 
 C Order neighbours in a well defined way
-          call ordvec( tol, 3, nna, xij, index )
-          call iorder( jna, 1, nna, index )
-          call order ( r2ij, 1, nna, index )
-
+         do i=1,nna
+            if (r2ij(i) > rmax2) then
+               write(0,*) "RMAX, i, r2ij:", rmax2, i, r2ij(i)
+            endif
+         enddo
+         if (shuffle_neighbors) then
+            ! shuffle
+            index(1:nna) = (/ (i, i=1, nna) /)
+            call shuffle(index(1:nna))
+            call iorder( jna, 1, nna, index )
+            call order ( r2ij, 1, nna, index )
+            call order ( xij, 3, nna, index )
+         else if (sort_neighbors_by_distance) then
+            ! sort by distance
+            call ordvec( tol, 1, nna, r2ij, index )
+            call iorder( jna, 1, nna, index )
+            call order ( xij, 3, nna, index )
+         else
+            ! sort by z, then by y, then by x ....
+            call ordvec( tol, 3, nna, xij, index )
+            call iorder( jna, 1, nna, index )
+            call order ( r2ij, 1, nna, index )
+         endif
 C Loop on orbitals of atom ia
           do io = lasto(ia-1)+1,lasto(ia)
 
@@ -322,12 +345,10 @@ C Find optimum value for nlhmax
       endif     
 
       nlhmax = nlh
-      ! (re)allocate listh, but do not shrink, as it might
-      ! be used for DM extrapolation
-      ! using information from different geometries.
-      ! CHANGED NOW
+      ! (re)allocate listh
       call re_alloc(listh,1,nlhmax,name='listh',
      $     routine='hsparse',SHRINK=.true.)
+      ! Should we shrink xijo?
       if (set_xijo) then
          call re_alloc(xijo,1,3,1,nlhmax,name='xijo',routine='hsparse')
       else
@@ -345,12 +366,16 @@ C Set up listhptr
             listhptr(io) = 0
           endif
         enddo
+        
+        !write(0,*) "nuo, nnz, sp_index: ",
+        !     $       nuo, nlhmax, nlhmax/dble(nuo*nuo)
 C---------------------------------
 C  Find full H sparsity pattern  -
 C---------------------------------
 
 C Loop on atoms in unit cell
         do ia = 1,nua
+          !write(0,*) "atom ", ia, isa(ia)
 
 C Find neighbour atoms within maximum range
            call mneighb( cell, rmax, na, xa, ia, isel, nna )
@@ -358,9 +383,25 @@ C Find neighbour atoms within maximum range
            call re_alloc(index,1, maxna, name="index",routine="hsparse")
 
 C Order neighbours in a well defined way
-          call ordvec( tol, 3, nna, xij, index )
-          call iorder( jna, 1, nna, index )
-          call order(  r2ij, 1, nna, index )
+           if (shuffle_neighbors) then
+              ! shuffle
+              index(1:nna) = (/ (i, i=1, nna) /)
+              call shuffle(index(1:nna))
+              call iorder( jna, 1, nna, index )
+              call order ( r2ij, 1, nna, index )
+              call order ( xij, 3, nna, index )
+           else if (sort_neighbors_by_distance) then
+              ! sort by distance
+              call ordvec( tol, 1, nna, r2ij, index )
+              call iorder( jna, 1, nna, index )
+              call order ( xij, 3, nna, index )
+           else
+              ! sort by z, then by y, then by x ....
+              call ordvec( tol, 3, nna, xij, index )
+              call iorder( jna, 1, nna, index )
+              call order ( r2ij, 1, nna, index )
+           endif
+           !write(0,*) "distances: ", r2ij(1:nna)
 
 C Loop on orbitals of atom ia
           do io = lasto(ia-1)+1,lasto(ia)
@@ -397,6 +438,7 @@ C through a KB projector
                 ja = jna(jnat)
                 js = isa(ja)
                 rij = sqrt( r2ij(jnat) )
+                !write(0,*) "    neigh ", ja, isa(ja), xij(:,jnat)
                 do jo = lasto(ja-1)+1,lasto(ja)
                    connected = .false.
 
@@ -469,6 +511,7 @@ C Find if jo overlaps with a KB projector
                       numh(iio) = numh(iio) + 1
                       ind = listhptr(iio)+numh(iio)
                       listh(ind) = jo
+                      !write(0,*) "       connected: ", iio, ind, jo
                       if (set_xijo) then
                          xijo(1:3,ind) = xij(1:3,jnat)
                       endif

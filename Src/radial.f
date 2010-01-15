@@ -20,6 +20,7 @@
       public :: rad_alloc, rad_get, rad_setup_d2, rad_zero
       public :: radial_read_ascii, radial_dump_ascii
       public :: radial_dump_xml
+      public :: evaluate
 
       type, public :: rad_func
          integer          n
@@ -28,6 +29,11 @@
          double precision, dimension(:), pointer :: f   ! Actual data
          double precision, dimension(:), pointer :: d2  ! Second derivative
       end type rad_func
+
+      interface evaluate
+        module procedure evaluate_s
+        module procedure evaluate_v
+      end interface
 
       private :: splint, spline
 
@@ -57,6 +63,32 @@
        endif
       
       end subroutine rad_get
+
+      function evaluate_s(func,r) result (val)
+      type(rad_func), intent(in)    :: func
+      real(dp), intent(in)          :: r
+      real(dp)                      :: val
+
+      real(dp)      :: dfdr
+      call rad_get(func,r,val,dfdr)
+      end function evaluate_s
+
+      function evaluate_v(func,r) result (val)
+      type(rad_func), intent(in)    :: func
+      real(dp), intent(in)          :: r(:)
+      real(dp)                      :: val(size(r))
+
+      real(dp)      :: dfdr
+      integer       :: i
+      do i = 1, size(r)
+         if (r(i) > func%cutoff) then
+            val(i) = 0.0_dp
+         else
+            call rad_get(func,r(i),val(i),dfdr)
+         endif
+      enddo
+      end function evaluate_v
+      
 !
 !     Set up second derivative in a radial function
 !
@@ -107,8 +139,8 @@ C Adapted from Numerical Recipes for a uniform grid.
       integer nlo, nhi
       real(dp) a, b
 
-      NLO=INT(X/DELT)+1
-      NHI=NLO+1
+      NLO=min(INT(X/DELT)+1,N)
+      NHI=min(NLO+1,N)
 
       A=NHI-X/DELT-1
       B=1.0_DP-A

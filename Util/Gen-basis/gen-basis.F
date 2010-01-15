@@ -42,6 +42,8 @@ C
       use xcmod,        only : setXC
       use sys,          only : die
       use atom_options, only : get_atom_options, write_ion_plot_files
+      use atom_options, only: get_atom_options, orthogonalize_zetas
+      use m_orthogonalize_orbitals, only: orthogonalize_orbitals
 C
 C     It has to be MPI-aware since it calls routines down the line...
 C
@@ -123,10 +125,10 @@ C Initialise MPI and set processor number
 
 !        Create the new data structures
 
-         call atm_transfer
-
-         call dump_basis_ascii
-         call dump_basis_netcdf
+         call atm_transfer()
+         if (orthogonalize_zetas) call orthogonalize_orbitals()
+         call dump_basis_ascii()
+         call dump_basis_netcdf()
 
       endif
 

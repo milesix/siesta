@@ -80,12 +80,14 @@ c Reading input for the pseudopotentials and atomic orbitals
 
          write(6,'(/a)') 'Reading PAOs and KBs from NetCDF files...'
          call read_basis_netcdf(ns)
+         call ion_post_processing()
          call elec_corr_setup()
 
       else if (user_basis) then
 
          write(6,'(/a)') 'Reading PAOs and KBs from ascii files...'
          call read_basis_ascii(ns)
+         call ion_post_processing()
          call elec_corr_setup()
 
       else
@@ -118,6 +120,7 @@ c Reading input for the pseudopotentials and atomic orbitals
 !        Create the new data structures for atmfuncs.
 
          call atm_transfer()
+         call ion_post_processing()
          call deallocate_old_arrays()
          call elec_corr_setup()
          ns = nsp               ! Set number of species for main program
@@ -131,6 +134,18 @@ c Reading input for the pseudopotentials and atomic orbitals
       if (.not. user_basis .and. .not. user_basis_netcdf) then
         call deallocate_spec_arrays()
       endif
+
+      CONTAINS
+
+      subroutine ion_post_processing()
+      use atom_options, only: orthogonalize_zetas 
+      use m_orthogonalize_orbitals, only: orthogonalize_orbitals
+
+      ! Performs extra optional operations on the ion tables, after the "generation" process
+
+      if (orthogonalize_zetas) call orthogonalize_orbitals()      
+
+      end subroutine ion_post_processing
 
       end subroutine initatom
 

@@ -85,6 +85,7 @@ OBJS =  automatic_cell.o atom_options.o \
 	madelung.o matel.o meshmatrix.o memory.o meshsubs.o metaforce.o \
         m_check_supercell.o m_filter.o mulliken.o minvec.o m_pulay.o naefs.o \
 	new_dm.o normalize_dm.o ordern.o outcell.o outcoor.o \
+        orthogonalize_orbitals.o \
 	paste.o pdos.o pdosg.o pdosk.o pdoskp.o phirphi.o pixmol.o plcharge.o \
 	projected_DOS.o propor.o \
 	ran3.o reclat.o redcel.o \
@@ -124,7 +125,7 @@ OBJS =  automatic_cell.o atom_options.o \
         m_forces.o m_stress.o m_eo.o m_spin.o m_gamma.o m_hsx.o m_fire.o \
         get_target_stress.o fire_optim.o zm_fire_optim.o \
         cell_fire_optim.o m_fire_para.o m_fire_mixing.o write_raw_efs.o \
-        m_iodm.o m_sparse.o kpoint_pdos.o 
+        m_iodm.o m_sparse.o kpoint_pdos.o m_shuffle.o
 #--------------------------------------------------------------
 # FoX whatnot
 #
@@ -398,11 +399,12 @@ globalise.o: alloc.o onmod.o onmod.o precision.o spatial.o
 gradient.o: globalise.o m_mpi_utils.o onmod.o precision.o
 gradientlomem.o: globalise.o onmod.o precision.o
 grdsam.o: parallel.o parsing.o precision.o sys.o
-hsparse.o: alloc.o atmfuncs.o listsc.o mneighb.o parallel.o parallelsubs.o
-hsparse.o: precision.o sorting.o sys.o
+hsparse.o: alloc.o atm_types.o atmfuncs.o listsc.o m_shuffle.o mneighb.o
+hsparse.o: parallel.o parallelsubs.o precision.o siesta_options.o sorting.o
+hsparse.o: sys.o
 idiag.o: parallel.o sys.o
 initatom.o: atom.o atom_options.o basis_io.o basis_specs.o basis_types.o
-initatom.o: electrostatic.o old_atmfuncs.o precision.o
+initatom.o: electrostatic.o old_atmfuncs.o orthogonalize_orbitals.o precision.o
 initparallel.o: alloc.o parallel.o parallelsubs.o precision.o spatial.o sys.o
 io.o: sys.o
 iocg.o: files.o precision.o sys.o
@@ -480,11 +482,12 @@ m_ts_io.o: precision.o sys.o
 m_ts_kpoints.o: minvec.o parallel.o precision.o siesta_cml.o siesta_options.o
 m_ts_kpoints.o: sys.o units.o
 m_ts_options.o: m_fdf_global.o parallel.o precision.o siesta_options.o sys.o
-m_ts_scattering.o: m_ts_aux_rout.o parallelsubs.o precision.o sys.o m_ts_options.o
+m_ts_scattering.o: m_ts_aux_rout.o m_ts_options.o parallelsubs.o precision.o
+m_ts_scattering.o: sys.o
 m_wallclock.o: m_walltime.o
 madelung.o: parallel.o precision.o sys.o
 matel.o: alloc.o atmfuncs.o precision.o radfft.o recipes.o spher_harm.o
-md_out.o: files.o precision.o sys.o units.o
+md_out.o: files.o m_energies.o precision.o sys.o units.o
 md_utils.o: precision.o
 memory.o: memoryinfo.o parallel.o precision.o
 memoryinfo.o: precision.o
@@ -518,6 +521,8 @@ optical.o: alloc.o atmfuncs.o densematrix.o fermid.o files.o parallel.o
 optical.o: parallelsubs.o parsing.o precision.o sys.o units.o
 ordern.o: alloc.o chempot.o globalise.o m_mpi_utils.o onmod.o parallel.o
 ordern.o: precision.o siesta_cml.o sys.o units.o
+orthogonalize_orbitals.o: atm_types.o atom_options.o precision.o radial.o
+orthogonalize_orbitals.o: recipes.o sys.o
 outcell.o: precision.o siesta_cml.o units.o
 outcoor.o: alloc.o atmfuncs.o precision.o siesta_geom.o sys.o units.o
 overfsm.o: alloc.o atmfuncs.o mneighb.o parallel.o parallelsubs.o precision.o
@@ -682,6 +687,7 @@ m_nlefsm.o: nlefsm.o
 m_norm.o: compute_norm.o
 m_normalize_dm.o: normalize_dm.o
 m_ordern.o: ordern.o
+m_orthogonalize_orbitals.o: orthogonalize_orbitals.o
 m_overfsm.o: overfsm.o
 m_overlap.o: overlap.o
 m_post_scf_work.o: post_scf_work.o

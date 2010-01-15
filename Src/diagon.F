@@ -149,8 +149,8 @@ C
      .  io, iuo, naux, nhs, npsi, nuo
 
 C Dynamic arrays
-      real(dp), dimension(:), allocatable, save :: aux
-      integer,  dimension(:), allocatable, save :: muo
+      real(dp), dimension(:), allocatable  :: aux
+      integer,  dimension(:), allocatable  :: muo
 
 #ifdef MPI
       logical, save :: ParallelOverK

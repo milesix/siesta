@@ -18,6 +18,7 @@
 #
 OBJDIR=Obj
 #
+.SUFFIXES:
 .SUFFIXES: .f .F .o .a  .f90 .F90
 #
 VPATH:=$(shell pwd)/../../Src
@@ -53,15 +54,16 @@ OBJS_GEN-BASIS=alloc.o basis_types.o precision.o recipes.o parallel.o \
 	  paste.o  flib_spline.o bessph.o  m_filter.o \
           basis_specs.o atom.o memoryinfo.o memory.o periodic_table.o\
           pseudopotential.o pxf.o dot.o xc.o  atom_options.o arw.o  \
-          sys.o timer.o  xml.o m_walltime.o gen-basis.o $(SYSOBJ)
+          sys.o timer.o  xml.o m_walltime.o \
+          orthogonalize_orbitals.o  gen-basis.o $(SYSOBJ)
 #
-IONCAT_OBJS=f2kcli.o m_getopts.o ioncat.o basis_types.o precision.o  parallel.o \
-          parsing.o xcmod.o alloc.o atom_options.o basis_io.o  atm_types.o\
+IONCAT_OBJS=f2kcli.o m_getopts.o basis_types.o precision.o  parallel.o \
+          parsing.o xcmod.o alloc.o atom_options.o atmfuncs.o basis_io.o  atm_types.o\
           atmparams.o radial.o io.o memory.o chkdim.o\
-	  paste.o pseudopotential.o chemical.o \
+	  paste.o pseudopotential.o chemical.o recipes.o \
           basis_specs.o memoryinfo.o  m_memory.o periodic_table.o pxf.o \
-          xc.o flib_spline.o atmfuncs.o spher_harm.o\
-          sys.o timer.o  xml.o m_walltime.o $(SYSOBJ)
+          xc.o flib_spline.o spher_harm.o\
+          sys.o timer.o  xml.o m_walltime.o orthogonalize_orbitals.o ioncat.o $(SYSOBJ)
 
 #
 # Use the makefile in Src/fdf and all the sources there.
@@ -170,6 +172,7 @@ diagsprl.o: atomlist.o fermid.o parallel.o parallelsubs.o precision.o
 diagsprl.o: siesta_geom.o sys.o
 dipole.o: parallel.o precision.o sys.o
 dnaefs.o: atmfuncs.o mneighb.o precision.o
+doping.o: meshsubs.o meshsubs.o parallel.o precision.o sys.o
 dynamics.o: atomlist.o files.o ioxv.o m_mpi_utils.o parallel.o precision.o
 dynamics.o: sys.o units.o
 efield.o: atmfuncs.o parallel.o parallelsubs.o parsing.o precision.o
@@ -189,14 +192,13 @@ fire_optim.o: precision.o siesta_options.o units.o
 fixed.o: alloc.o parallel.o parsing.o precision.o
 flib_spline.o: precision.o
 forhar.o: alloc.o meshsubs.o precision.o
-fractional.o: f2kcli.o periodic_table.o precision.o pseudopotential.o sys.o
 get_target_stress.o: m_mpi_utils.o parallel.o precision.o units.o
 globalise.o: alloc.o onmod.o onmod.o precision.o spatial.o
 gradient.o: globalise.o m_mpi_utils.o onmod.o precision.o
 gradientlomem.o: globalise.o onmod.o precision.o
 grdsam.o: parallel.o parsing.o precision.o sys.o
-hsparse.o: alloc.o atmfuncs.o listsc.o mneighb.o parallel.o parallelsubs.o
-hsparse.o: precision.o sorting.o sys.o
+hsparse.o: alloc.o atm_types.o atmfuncs.o listsc.o mneighb.o parallel.o
+hsparse.o: parallelsubs.o precision.o sorting.o sys.o
 idiag.o: parallel.o sys.o
 initatom.o: atom.o atom_options.o basis_io.o basis_specs.o basis_types.o
 initatom.o: electrostatic.o old_atmfuncs.o precision.o
@@ -214,7 +216,6 @@ iohs.o: precision.o siesta_geom.o sys.o
 iokp.o: files.o precision.o
 iolwf.o: alloc.o files.o onmod.o parallel.o parallelsubs.o precision.o sys.o
 iomd.o: files.o precision.o
-ioncat.o: atm_types.o atmfuncs.o basis_io.o m_getopts.o precision.o
 iopipes.o: parallel.o precision.o sys.o
 iowfs_netcdf.o: alloc.o parallel.o parallelsubs.o precision.o sys.o
 ioxv.o: files.o parallel.o precision.o
@@ -297,11 +298,8 @@ mixer.o: atomlist.o iodm_netcdf.o m_broyden_mixing.o m_energies.o
 mixer.o: m_fire_mixing.o m_iodm.o m_mpi_utils.o m_pulay.o m_spin.o m_steps.o
 mixer.o: m_ts_io.o m_ts_options.o parallel.o siesta_geom.o siesta_options.o
 mixer.o: sparse_matrices.o
-mixps.o: f2kcli.o flib_spline.o periodic_table.o precision.o pseudopotential.o
-mixps.o: sys.o
 mneighb.o: alloc.o precision.o sys.o
 molecularmechanics.o: alloc.o parallel.o parsing.o precision.o sys.o units.o
-mpi_test.o: m_mpi_utils.o parallel.o precision.o
 mulliken.o: atmfuncs.o parallel.o parallelsubs.o precision.o siesta_cml.o
 naefs.o: atmfuncs.o mneighb.o precision.o
 new_dm.o: alloc.o atomlist.o compute_norm.o m_energies.o m_iodm.o m_sparse.o
@@ -455,64 +453,64 @@ zm_fire_optim.o: m_fdf_global.o m_fire.o parallel.o precision.o
 zm_fire_optim.o: siesta_options.o units.o zmatrix.o
 zmatrix.o: alloc.o m_cell.o parallel.o parsing.o precision.o siesta_geom.o
 zmatrix.o: sys.o units.o
-band.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/bands.o
-diagmemory.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/memoryinfo.o
-listsc_module.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/listsc.o
-m_born_charge.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/born_charge.o
-m_broyden_optim.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/broyden_optim.o
-m_cell_broyden_optim.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/cell_broyden_optim.o
-m_cell_fire_optim.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/cell_fire_optim.o
-m_chempot.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/chempot.o
-m_compute_dm.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/compute_dm.o
-m_conjgr.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/conjgr.o
-m_conjgr_old.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/conjgr_old.o
-m_dynamics.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/dynamics.o
-m_fermid.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/fermid.o
-m_find_kgrid.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/find_kgrid.o
-m_fire_optim.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/fire_optim.o
-m_forhar.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/forhar.o
-m_hsparse.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/hsparse.o
-m_intramol_pressure.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/remove_intramol_pressure.o
-m_ioxv.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/ioxv.o
-m_ksv.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/ksv.o
-m_ksvinit.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/ksvinit.o
-m_local_dos.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/local_DOS.o
-m_minvec.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/minvec.o
-m_mixer.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/mixer.o
-m_new_dm.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/new_dm.o
-m_nlefsm.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/nlefsm.o
-m_norm.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/compute_norm.o
-m_normalize_dm.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/normalize_dm.o
-m_ordern.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/ordern.o
-m_overfsm.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/overfsm.o
-m_overlap.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/overlap.o
-m_post_scf_work.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/post_scf_work.o
-m_projected_dos.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/projected_DOS.o
-m_proximity_check.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/proximity_check.o
-m_radfft.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/radfft.o
-m_recipes.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/recipes.o
-m_scf_options.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/m_options.o
-m_scfconvergence_test.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/scfconvergence_test.o
-m_setup_hamiltonian.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/setup_hamiltonian.o
-m_siesta_analysis.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/siesta_analysis.o
-m_siesta_end.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/siesta_end.o
-m_siesta_forces.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/siesta_forces.o
-m_siesta_init.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/siesta_init.o
-m_siesta_move.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/siesta_move.o
-m_state_analysis.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/state_analysis.o
-m_state_init.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/state_init.o
-m_struct_init.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/struct_init.o
-m_timestamp.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/timestamp.o
-m_xyz_phiatm.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/matel.o
-m_zm_broyden_optim.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/zm_broyden_optim.o
-m_zm_fire_optim.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/zm_fire_optim.o
-mesh.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/meshsubs.o
-meshdscf.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/meshmatrix.o
-meshphi.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/meshsubs.o
-neighbour.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/mneighb.o
-on_core.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/onmod.o
-on_main.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/onmod.o
-version_info.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/version.o
-write_subs_energies.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/write_subs.o
-write_subs_positions.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/write_subs.o
-write_subs_pressure.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/Gen-basis/../../Src/write_subs.o
+band.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/bands.o
+diagmemory.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/memoryinfo.o
+listsc_module.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/listsc.o
+m_born_charge.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/born_charge.o
+m_broyden_optim.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/broyden_optim.o
+m_cell_broyden_optim.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/cell_broyden_optim.o
+m_cell_fire_optim.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/cell_fire_optim.o
+m_chempot.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/chempot.o
+m_compute_dm.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/compute_dm.o
+m_conjgr.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/conjgr.o
+m_conjgr_old.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/conjgr_old.o
+m_dynamics.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/dynamics.o
+m_fermid.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/fermid.o
+m_find_kgrid.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/find_kgrid.o
+m_fire_optim.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/fire_optim.o
+m_forhar.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/forhar.o
+m_hsparse.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/hsparse.o
+m_intramol_pressure.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/remove_intramol_pressure.o
+m_ioxv.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/ioxv.o
+m_ksv.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/ksv.o
+m_ksvinit.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/ksvinit.o
+m_local_dos.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/local_DOS.o
+m_minvec.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/minvec.o
+m_mixer.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/mixer.o
+m_new_dm.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/new_dm.o
+m_nlefsm.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/nlefsm.o
+m_norm.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/compute_norm.o
+m_normalize_dm.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/normalize_dm.o
+m_ordern.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/ordern.o
+m_overfsm.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/overfsm.o
+m_overlap.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/overlap.o
+m_post_scf_work.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/post_scf_work.o
+m_projected_dos.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/projected_DOS.o
+m_proximity_check.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/proximity_check.o
+m_radfft.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/radfft.o
+m_recipes.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/recipes.o
+m_scf_options.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/m_options.o
+m_scfconvergence_test.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/scfconvergence_test.o
+m_setup_hamiltonian.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/setup_hamiltonian.o
+m_siesta_analysis.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/siesta_analysis.o
+m_siesta_end.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/siesta_end.o
+m_siesta_forces.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/siesta_forces.o
+m_siesta_init.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/siesta_init.o
+m_siesta_move.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/siesta_move.o
+m_state_analysis.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/state_analysis.o
+m_state_init.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/state_init.o
+m_struct_init.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/struct_init.o
+m_timestamp.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/timestamp.o
+m_xyz_phiatm.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/matel.o
+m_zm_broyden_optim.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/zm_broyden_optim.o
+m_zm_fire_optim.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/zm_fire_optim.o
+mesh.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/meshsubs.o
+meshdscf.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/meshmatrix.o
+meshphi.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/meshsubs.o
+neighbour.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/mneighb.o
+on_core.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/onmod.o
+on_main.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/onmod.o
+version_info.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/version.o
+write_subs_energies.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/write_subs.o
+write_subs_positions.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/write_subs.o
+write_subs_pressure.o: /home/albertog/code/SIESTA/zeta-orthog/Util/Gen-basis/../../Src/write_subs.o

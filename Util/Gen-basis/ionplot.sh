@@ -13,7 +13,7 @@
 #
 # Make sure you can find the ioncat executable
 #
-IONCAT=$(basename $0)/ioncat
+IONCAT=$(dirname $0)/ioncat
 #
 ## set -x
 string="$@"

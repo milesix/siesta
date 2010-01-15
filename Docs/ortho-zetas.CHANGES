@@ -1,0 +1,128 @@
+  322 Alberto Garcia	2010-01-15
+Added KeepVna option
+
+To use the original orthogonalization maintaining the rc's, but not changing
+the underlying electrostatics, only maybe the first guess at the charge density.
+
+modified:
+  Src/atom_options.F90
+  Src/orthogonalize_orbitals.f90
+
+
+  321 Alberto Garcia	2010-01-14
+Fix output fields in ioncat
+
+They could be too long and wrap around.
+
+  320 Alberto Garcia	2010-01-13
+New option to keep the tails of multiple-zeta orbitals
+
+If we orthogonalize by keeping the 'atomic-like' orbital as the first zeta,
+the upper zetas will have longer cutoffs (actually the same cutoff as the first -- the routine
+has been changed to explicitly enforce this).
+
+With this option the differences in energies and forces with respect
+to a standard calculation are minimal, but could reflect extra interactions in
+the hamiltonian. Hence, a new knob has been added to atom.f: if the option
+
+PAO.KeepFullHigherZetas
+
+is true, the higher-zeta orbitals will retain the original tail. 
+
+(+ cosmetic change in initatom to generalize the "post-processing" of
+the ionic tables).
+
+modified:
+  Src/atom.f
+  Src/initatom.f
+  Src/orthogonalize_orbitals.f90
+
+
+  319 Alberto Garcia	2010-01-07
+      New option to keep the ordering of multiple-zeta orbitals
+      
+      It is convenient to keep the 'atomic-like' orbital as the first zeta,
+      so a new option KeepZetaOrdering has been added to prevent the sorting
+      during the orthogonalization step. 
+      
+      The upper zetas will have longer cutoffs, and a subtle kink at their
+      original cutoffs if soft confinement is not used (to be explored further).
+      
+      With this option the differences in energies and forces with respect
+      to a standard calculation are minimal.
+
+  318 Alberto Garcia	2009-12-11
+      Changes to the default precision of grid magnitudes
+      
+      The grid functions (charge densities, potentials, etc) are now in
+      double precision by default. The 'phi' array that holds the values of
+      the basis orbitals on the real-space grid is kept in single precision.
+      
+      The following pre-processing symbols at compile time control the 
+      precision selection:
+      
+      #ifdef GRID_SP
+          integer, parameter :: grid_p = sp
+          integer, parameter :: phi_grid_p = sp
+      #elif defined(GRID_DP)
+          integer, parameter :: grid_p = dp
+          integer, parameter :: phi_grid_p = dp
+      #else
+          integer, parameter :: grid_p = dp
+          integer, parameter :: phi_grid_p = sp
+      #endif
+      
+      GRID_DP will lead to a sizable memory increase, as 'phi' is the main
+      user of memory on the grid. On the other hand, the gains in accuracy
+      are negligible, as the operations over 'phi' are accumulated in double
+      precision variables.
+      
+      GRID_SP recovers the old Siesta default. It will not free much
+      memory, and it will show some numerical differences.
+
+  317 Alberto Garcia	2009-12-11 [merge]
+      New heuristics options for neighbor ordering in hsparse
+      
+      Implemented two new heuristics for neighbor ordering in hsparse,
+      one based on distance, and the other on a random shuffling. The aim
+      of the second is to test the restructuring of the DM upon geometry
+      changes, and also to test hsparse itself internally.
+
+  316 Alberto Garcia	2009-12-11
+      Backtrack changes in m_sparse nullifying statements
+
+  315 Alberto Garcia	2009-12-10
+      Debug in m_sparse, remove misleading comment in hsparse
+
+  314 Alberto Garcia	2009-12-09
+      Fix typo in hsparse.f
+
+  313 Alberto Garcia	2009-12-07
+      New hsparse sort. New flags for orthog. New cutoff Vna
+
+  312 Alberto Garcia	2009-12-04
+      Better implementation of "extrapolate" interface in 'radial': spline
+      extrapolation was inadvertently used. Now r is checked and val set to
+      zero if beyond the cutoff.
+      
+      Normalization of charges before calling poisson integrator in
+      recompute_vna.
+      
+      Fixes to the grouping logic.
+      
+      For now, the option to orthonormalize zetas is set by default.
+
+  311 Alberto Garcia	2009-11-30
+      Implement the recomputation of Vna
+
+  310 Alberto Garcia	2009-11-29
+      Enable initatom -- neutral atom is missing
+
+  309 Alberto Garcia	2009-11-29
+      Functional
+
+  308 Alberto Garcia	2009-11-29
+      Second stage
+
+  307 Alberto Garcia	2009-11-27
+      First implementation of zeta orthogonalization

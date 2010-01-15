@@ -13,6 +13,8 @@ MODULE siesta_options
   logical :: fixspin       ! Keep the total spin fixed?
   logical :: inspn         ! Antiferro spin ordering in initdm?
   logical :: initdmaux     ! Re-initialize DM when auxiliary supercell changes?        
+  logical :: sort_neighbors_by_distance ! Sort neighbors in hsparse?        
+  logical :: shuffle_neighbors ! Shuffle neighbors in hsparse?        
   logical :: allow_dm_reuse! Allow re-use of the previous geometry DM ? (with possible extrapolation)
   logical :: allow_dm_extrapolation ! Allow the extrapolation of previous geometries' DM ?
   logical :: change_kgrid_in_md ! Allow k-point grid to change in MD calculations
@@ -1439,6 +1441,8 @@ MODULE siesta_options
     call fdf_global_get(fixauxcell, 'FixAuxiliaryCell', .false.)
     call fdf_global_get(naiveauxcell, 'NaiveAuxiliaryCell', .false.)
     call fdf_global_get(initdmaux, 'ReInitialiseDM'  , .TRUE.)
+    call fdf_global_get(sort_neighbors_by_distance,'SortNeighborsByDistance',.FALSE.)
+    call fdf_global_get(shuffle_neighbors,'ShuffleNeighbors',.FALSE.)
     call fdf_global_get(allow_dm_reuse, 'DM.AllowReuse'  , .TRUE.)
     call fdf_global_get(allow_dm_extrapolation, 'DM.AllowExtrapolation'  , .TRUE.)
     call fdf_global_get(muldeb, 'MullikenInSCF'   , .false.)

@@ -1,0 +1,297 @@
+Work on zeta-orthogonalization, to reduce the condition number of the
+S matrix.
+
+It is not clear that on-site non-orthogonality is the main culprit of
+S's possible problems.
+
+Work in progress, never really working well.
+
+-------------------
+This is the log of changes (bzr revisions were squashed to produce this git commit):
+
+------------------------------------------------------------
+revno: 323
+committer: Alberto Garcia <albertog@icmab.es>
+branch nick: ortho-zetas
+timestamp: Fri 2014-03-07 16:49:25 +0100
+message:
+  Added branch info file
+added:
+  BRANCH_INFO
+------------------------------------------------------------
+revno: 322
+committer: Alberto Garcia <albertog@icmab.es>
+branch nick: zeta-orthog
+timestamp: Fri 2010-01-15 16:32:30 +0100
+message:
+  Added KeepVna option
+  
+  To use the original orthogonalization maintaining the rc's, but not changing
+  the underlying electrostatics, only maybe the first guess at the charge density.
+  
+  modified:
+    Src/atom_options.F90
+    Src/orthogonalize_orbitals.f90
+modified:
+  Docs/ortho-zetas.CHANGES
+  Src/atom_options.F90
+  Src/orthogonalize_orbitals.f90
+  version.info
+------------------------------------------------------------
+revno: 321
+committer: Alberto Garcia <albertog@icmab.es>
+branch nick: zeta-orthog
+timestamp: Thu 2010-01-14 10:17:03 +0100
+message:
+  Fix output fields in ioncat
+  
+  They could be too long and wrap around.
+modified:
+  Docs/ortho-zetas.CHANGES
+  Util/Gen-basis/ioncat.f
+  version.info
+------------------------------------------------------------
+revno: 320
+committer: Alberto Garcia <albertog@icmab.es>
+branch nick: ortho-zetas
+timestamp: Wed 2010-01-13 18:28:21 +0100
+message:
+  New option to keep the tails of multiple-zeta orbitals
+  
+  If we orthogonalize by keeping the 'atomic-like' orbital as the first zeta,
+  the upper zetas will have longer cutoffs (actually the same cutoff as the first -- the routine
+  has been changed to explicitly enforce this).
+  
+  With this option the differences in energies and forces with respect
+  to a standard calculation are minimal, but could reflect extra interactions in
+  the hamiltonian. Hence, a new knob has been added to atom.f: if the option
+  
+  PAO.KeepFullHigherZetas
+  
+  is true, the higher-zeta orbitals will retain the original tail. 
+  
+  (+ cosmetic change in initatom to generalize the "post-processing" of
+  the ionic tables).
+  
+  modified:
+    Src/atom.f
+    Src/initatom.f
+    Src/orthogonalize_orbitals.f90
+modified:
+  Docs/ortho-zetas.CHANGES
+  Src/atom.f
+  Src/initatom.f
+  Src/orthogonalize_orbitals.f90
+  version.info
+------------------------------------------------------------
+revno: 319
+committer: Alberto Garcia <albertog@icmab.es>
+branch nick: ortho-zetas
+timestamp: Thu 2010-01-07 18:07:49 +0100
+message:
+  New option to keep the ordering of multiple-zeta orbitals
+  
+  It is convenient to keep the 'atomic-like' orbital as the first zeta,
+  so a new option KeepZetaOrdering has been added to prevent the sorting
+  during the orthogonalization step. 
+  
+  The upper zetas will have longer cutoffs, and a subtle kink at their
+  original cutoffs if soft confinement is not used (to be explored further).
+  
+  With this option the differences in energies and forces with respect
+  to a standard calculation are minimal.
+modified:
+  Src/atom_options.F90
+  Src/orthogonalize_orbitals.f90
+------------------------------------------------------------
+revno: 318
+committer: Alberto Garcia <albertog@icmab.es>
+branch nick: zeta-orthog
+timestamp: Fri 2009-12-11 14:34:37 +0100
+message:
+  Changes to the default precision of grid magnitudes
+  
+  The grid functions (charge densities, potentials, etc) are now in
+  double precision by default. The 'phi' array that holds the values of
+  the basis orbitals on the real-space grid is kept in single precision.
+  
+  The following pre-processing symbols at compile time control the 
+  precision selection:
+  
+  #ifdef GRID_SP
+      integer, parameter :: grid_p = sp
+      integer, parameter :: phi_grid_p = sp
+  #elif defined(GRID_DP)
+      integer, parameter :: grid_p = dp
+      integer, parameter :: phi_grid_p = dp
+  #else
+      integer, parameter :: grid_p = dp
+      integer, parameter :: phi_grid_p = sp
+  #endif
+  
+  GRID_DP will lead to a sizable memory increase, as 'phi' is the main
+  user of memory on the grid. On the other hand, the gains in accuracy
+  are negligible, as the operations over 'phi' are accumulated in double
+  precision variables.
+  
+  GRID_SP recovers the old Siesta default. It will not free much
+  memory, and it will show some numerical differences.
+added:
+  Docs/grid-precision.CHANGES
+modified:
+  Docs/siesta.tex
+  Src/meshsubs.F
+  Src/precision.F
+  version.info
+------------------------------------------------------------
+revno: 317 [merge]
+committer: Alberto Garcia <albertog@icmab.es>
+branch nick: ozetas
+timestamp: Fri 2009-12-11 14:28:14 +0100
+message:
+  New heuristics options for neighbor ordering in hsparse
+  
+  Implemented two new heuristics for neighbor ordering in hsparse,
+  one based on distance, and the other on a random shuffling. The aim
+  of the second is to test the restructuring of the DM upon geometry
+  changes, and also to test hsparse itself internally.
+added:
+  Docs/shuffle.CHANGES
+  Src/m_shuffle.F90
+modified:
+  Docs/siesta.ind
+  Docs/siesta.tex
+  Src/Makefile
+  Src/diagon.F
+  Src/hsparse.f
+  Src/siesta_options.F90
+  version.info
+------------------------------------------------------------
+revno: 316
+committer: Alberto Garcia <albertog@icmab.es>
+branch nick: ozetas
+timestamp: Fri 2009-12-11 11:23:35 +0100
+message:
+  Backtrack changes in m_sparse nullifying statements
+modified:
+  Src/m_sparse.F
+------------------------------------------------------------
+revno: 315
+committer: Alberto Garcia <albertog@icmab.es>
+branch nick: ortho-zetas
+timestamp: Thu 2009-12-10 17:54:18 +0100
+message:
+  Debug in m_sparse, remove misleading comment in hsparse
+modified:
+  Src/hsparse.f
+  Src/m_sparse.F
+------------------------------------------------------------
+revno: 314
+committer: Alberto Garcia <albertog@icmab.es>
+branch nick: ortho-zetas
+timestamp: Wed 2009-12-09 18:50:34 +0100
+message:
+  Fix typo in hsparse.f
+modified:
+  Src/hsparse.f
+------------------------------------------------------------
+revno: 313
+committer: Alberto Garcia <albertog@icmab.es>
+branch nick: ortho-zetas
+timestamp: Mon 2009-12-07 17:51:23 +0100
+message:
+  New hsparse sort. New flags for orthog. New cutoff Vna
+modified:
+  Src/atom_options.F90
+  Src/hsparse.f
+  Src/orthogonalize_orbitals.f90
+  Src/siesta_options.F90
+------------------------------------------------------------
+revno: 312
+committer: Alberto Garcia <albertog@icmab.es>
+branch nick: ortho-zetas
+timestamp: Fri 2009-12-04 19:05:21 +0100
+message:
+  Better implementation of "extrapolate" interface in 'radial': spline
+  extrapolation was inadvertently used. Now r is checked and val set to
+  zero if beyond the cutoff.
+  
+  Normalization of charges before calling poisson integrator in
+  recompute_vna.
+  
+  Fixes to the grouping logic.
+  
+  For now, the option to orthonormalize zetas is set by default.
+added:
+  Docs/ortho-zetas.CHANGES
+modified:
+  Src/atom.f
+  Src/atom_options.F90
+  Src/orthogonalize_orbitals.f90
+  Src/radial.f
+  Util/Gen-basis/Makefile
+  Util/Gen-basis/ionplot.sh
+------------------------------------------------------------
+revno: 311
+committer: Alberto Garcia <albertog@icmab.es>
+branch nick: zeta-orthog
+timestamp: Mon 2009-11-30 18:49:54 +0100
+message:
+  Implement the recomputation of Vna
+modified:
+  Src/orthogonalize_orbitals.f90
+  Src/radial.f
+------------------------------------------------------------
+revno: 310
+committer: Alberto Garcia <albertog@icmab.es>
+branch nick: zeta-orthog
+timestamp: Sun 2009-11-29 15:17:42 +0100
+message:
+  Enable initatom -- neutral atom is missing
+renamed:
+  Util/Gen-basis/orthogonalize_orbitals.f90 => Src/orthogonalize_orbitals.f90
+modified:
+  Src/Makefile
+  Src/atom_options.F90
+  Src/initatom.f
+  Util/Gen-basis/Makefile
+  Util/Gen-basis/gen-basis.F
+  Util/Gen-basis/ioncat.f
+  Src/orthogonalize_orbitals.f90
+------------------------------------------------------------
+revno: 309
+committer: Alberto Garcia <albertog@icmab.es>
+branch nick: zeta-orthog
+timestamp: Sun 2009-11-29 14:49:06 +0100
+message:
+  Functional
+modified:
+  Util/Gen-basis/ioncat.f
+  Util/Gen-basis/orthogonalize_orbitals.f90
+------------------------------------------------------------
+revno: 308
+committer: Alberto Garcia <albertog@icmab.es>
+branch nick: zeta-orthog
+timestamp: Sun 2009-11-29 02:16:23 +0100
+message:
+  Second stage
+modified:
+  Src/m_getopts.f90
+  Src/radial.f
+  Util/Gen-basis/Makefile
+  Util/Gen-basis/orthogonalize_orbitals.f90
+------------------------------------------------------------
+revno: 307
+committer: Alberto Garcia <albertog@icmab.es>
+branch nick: ortho-zetas
+timestamp: Fri 2009-11-27 15:26:22 +0100
+message:
+  First implementation of zeta orthogonalization
+added:
+  Util/Gen-basis/orthogonalize_orbitals.f90
+modified:
+  Src/initatom.f
+  Util/Gen-basis/Makefile
+  Util/Gen-basis/ioncat.f
+------------------------------------------------------------
+Use --include-merged or -n0 to see merged revisions.

@@ -11,6 +11,11 @@ MODULE atom_options
   PUBLIC
 
   logical :: write_ion_plot_files    ! Write small auxiliary files?
+  logical :: orthogonalize_zetas     ! Orthogonalize zetas?
+  logical :: swap_zetas_only         ! Debugging option
+  logical :: keep_zeta_ordering      ! Debugging option
+  logical :: keep_vna                ! Debugging option
+  logical :: just_refill_zetas       ! debugging option
   logical :: debug_kb_generation     ! Write auxiliary files for KB projectors
 
 CONTAINS
@@ -28,6 +33,12 @@ CONTAINS
 #endif
 
     write_ion_plot_files = fdf_boolean('WriteIonPlotFiles',.false.)
+    orthogonalize_zetas  = fdf_boolean('OrthogonalizeZetas',.false.)
+    swap_zetas_only  = fdf_boolean('SwapZetasOnly',.false.)
+    keep_zeta_ordering  = fdf_boolean('KeepZetaOrdering',.false.)
+    keep_vna            = fdf_boolean('KeepVna',.false.)
+    just_refill_zetas  = fdf_boolean('JustRefillZetas',.false.)
+    orthogonalize_zetas  = fdf_boolean('OrthogonalizeZetas',.false.)
     debug_kb_generation  = fdf_boolean('Atom.Debug.KB.Generation',.false.)
   end subroutine get_atom_options
 
