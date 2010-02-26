@@ -472,9 +472,8 @@ kpoint_grid.o: siesta_options.o units.o
 ksv.o: alloc.o atmfuncs.o densematrix.o ksvinit.o parallel.o parsing.o
 ksv.o: precision.o sys.o
 ksvinit.o: alloc.o parallel.o parsing.o precision.o
-ldau.o: alloc.o atmfuncs.o m_fdf_global.o mneighb.o parallel.o parallelsubs.o
-ldau.o: precision.o siesta_options.o
-ldau.o: m_mpi_utils.o
+ldau.o: alloc.o atmfuncs.o m_fdf_global.o m_mpi_utils.o m_steps.o mneighb.o
+ldau.o: parallel.o parallelsubs.o precision.o siesta_options.o
 ldauproj_gen.o: atom_generation_types.o atom_options.o atom_pao_util.o
 ldauproj_gen.o: atom_types.o hilbert_vector.o hilbert_vector_collection.o
 ldauproj_gen.o: precision.o pseudopotential_new.o radial.o sys.o units.o
@@ -559,7 +558,7 @@ molecularmechanics.o: alloc.o parallel.o parsing.o precision.o sys.o units.o
 mpi_test.o: m_mpi_utils.o parallel.o precision.o
 mulliken.o: atmfuncs.o parallel.o parallelsubs.o precision.o siesta_cml.o
 naefs.o: atmfuncs.o mneighb.o precision.o
-new_dm.o: alloc.o atomlist.o compute_norm.o m_energies.o m_iodm.o m_sparse.o
+new_dm.o: alloc.o atomlist.o m_energies.o m_fdf_global.o m_iodm.o m_sparse.o
 new_dm.o: m_spin.o m_steps.o m_ts_io.o m_ts_options.o parallel.o parallelsubs.o
 new_dm.o: parsing.o precision.o siesta_geom.o siesta_options.o
 new_dm.o: sparse_matrices.o sys.o units.o
@@ -704,8 +703,6 @@ typecell.o: precision.o
 uncell.o: precision.o
 units.o: precision.o
 vmat.o: alloc.o atmfuncs.o atom_types.o atomlist.o listsc.o meshmatrix.o
-vm_diagon.o: alloc.o densematrix.o m_memory.o parallel.o parallelsubs.o
-vm_diagon.o: precision.o sys.o
 vmat.o: meshsubs.o meshsubs.o parallel.o precision.o
 vmatsp.o: alloc.o atmfuncs.o atom_types.o atomlist.o listsc.o meshmatrix.o
 vmatsp.o: meshsubs.o meshsubs.o precision.o
