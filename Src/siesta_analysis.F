@@ -277,7 +277,7 @@
       call optical(na_u, na_s, xalast, scell_last, ucell_last,
      .             no_u, no_l, no_s, nspin, qspin,
      .             maxnh, numh, listhptr, listh, H, S, H0,
-     .             Eold(1,1), Dold(1,1),
+     .             Eold, Dold,
      .             xijo, indxuo, indxua, ebk, ef, temp,
      .             isa, iphorb, iphKB, iaorb, lasto, lastkb,
      .             shape )
