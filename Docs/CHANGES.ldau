@@ -1,4 +1,25 @@
 -----------------------------------------------------------------------
+(New version string series + move of reference branch to 'siesta' space)
+2012-09-24  10:30:00 GMT Alberto Garcia <albertog@icmab.es>  ldau-ref-309
+Trapping of out-of-bounds errors if nuo=0 in some nodes
+
+* Modifications made to prevent an out of bounds error in diagg,
+diagk, and diagk_file in parallel when nuo = 0 on some nodes. Reflects
+changes in main trunk.
+
+* The call to optical in siesta_analysis has been modified to remove
+the specific array element reference for Eold and Dold since this also
+causes a similar out of bounds reference.
+
+(Julian Gale)
+
+modified:
+  Src/diagg.F
+  Src/diagk.F
+  Src/diagk_file.F
+  Src/siesta_analysis.F
+
+-----------------------------------------------------------------------
 2010-02-26  14:30:00 GMT Alberto Garcia <albertog@icmab.es>  ldau-6-dm-fix
 Tentative fix for DM reuse bug
 

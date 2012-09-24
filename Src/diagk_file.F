@@ -224,9 +224,11 @@ C Find weights for local density of states ............................
       endif
 
 C New density and energy-density matrices of unit-cell orbitals .......
-      nd = listdptr(nuo) + numd(nuo)
-      Dnew(1:nd,1:nspin) = 0.0_dp
-      Enew(1:nd,1:nspin) = 0.0_dp
+      if (nuo.gt.0) then
+        nd = listdptr(nuo) + numd(nuo)
+        Dnew(1:nd,1:nspin) = 0.0_dp
+        Enew(1:nd,1:nspin) = 0.0_dp
+      endif
 
       call open_wfs_netcdf_file()
 
