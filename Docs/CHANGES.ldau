@@ -1,3 +1,16 @@
+
+2013-04-18 11:30:00 GMT  Daniel Sanchez-Portal <sqbsapod@ehu.es>
+ldau-ref-309-bug-reldauproj
+Bug in the calculation of lmxldaupj corrected in subroutine reldauproj
+
+*Variable lmxldaupj was not well determined for a particular format of
+the LDAU-bock input. As a consequence, LDAU projectors were not used 
+in some cases (in principle, quite randomly, but in practice this bug only
+showed up when the requested projectors had a large l, like "f" projectors.
+
+ modified:
+ Src/atom_basis_specs.f90
+
 -----------------------------------------------------------------------
 (New version string series + move of reference branch to 'siesta' space)
 2012-09-24  10:30:00 GMT Alberto Garcia <albertog@icmab.es>  ldau-ref-309
