@@ -1,6 +1,6 @@
 
 2013-04-18 11:30:00 GMT  Daniel Sanchez-Portal <sqbsapod@ehu.es>
-ldau-ref-309-bug-reldauproj
+ldau-ref-bug-reldauproj
 Bug in the calculation of lmxldaupj corrected in subroutine reldauproj
 
 *Variable lmxldaupj was not well determined for a particular format of
