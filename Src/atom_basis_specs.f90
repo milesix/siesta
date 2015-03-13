@@ -1350,7 +1350,7 @@ CONTAINS
           if (match(p,"nii")) then
              sldau%n = integers(p,1)
              sldau%l = integers(p,2)
-             basp%lmxldaupj = max(basp%lmxldaupj,s%l)
+             basp%lmxldaupj = max(basp%lmxldaupj,sldau%l)
           else if (match(p,"i")) then
              if (basp%semic) call &
                   die("Please specify n if there are semicore states")
