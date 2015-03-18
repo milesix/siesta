@@ -1,0 +1,38 @@
+Decide on final name for package. Siesta3L seems adequate,
+with '3' implying "old version" and 'L' meaning "Libre".
+But we do not need to explain this.
+
+Decide how to refer to the name 'SIESTA' which is
+pervasive. There is an attempt in the INTRODUCTION section of the manual.
+Thankfully we have the old dichotomy "method/implementation" to fall back on.
+
+Update NOTICE.txt for other bundled software?
+
+Insert a header in every file, in some cases
+replacing the existing header. Do this off-bzr?
+
+For removing the old one, use:
+(you can search for Fundacion to identify the files:
+     grep -lr Fundacion .
+)
+
+sed -i '.bak' '/part of the SIESTA package/,/all legitimate users/d' file
+
+for in-place editing (and saving a backup in file.bak).
+
+(this will work regardless of the prefix character)
+
+Docs/
+
+Update Contributors !!
+
+Util/
+
+Check that the Contrib directory is adequately treated.
+
+NOTE: See Util/Contrib/APostnikov/itochar.f
+
+Check (c) by Miquel Llunell for COOP stuff.
+
+
+

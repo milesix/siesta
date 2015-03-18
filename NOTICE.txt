@@ -1,0 +1,34 @@
+The purpose of this NOTICE.txt file is to contain notices related
+to third-party products distributed with Siesta3L. 
+
+Some of the accompanying products have an attribution requirement, or
+different licensing terms, so see below. Other accompanying products
+without special requirements are not listed.
+
+This package includes a copy of the FoX software, which has its own
+license, copyright, and attribution terms. (See Src/FoX)
+
+This package includes parts of the xmlf90 package, which has its own
+license, copyright, and attribution terms. (See Src/xmlparser and
+Src/wxml)
+
+This package includes a copy of the ATOM software, which has its own
+license, copyright, and attribution terms. (See Pseudo/atom)
+
+This package includes the f2kcli module developed by Interactive
+Software Services Ltd (see Src/f2kcli_manual.txt).
+
+This package includes a MPI interface module by Michael Hennecke. (See
+Src/MPI/mpi__include.f90)
+
+This package includes software developed by A.R. Williams (see
+Src/arw.f and Src/periodic_table.f).
+
+This product includes software based on code from Numerical Recipes,
+The Art of Scientific Computing, (c) W.H. Press et al. (See Src/recipes.f)
+
+The serial version of the multivariate fast fourier transform used to
+solve Poisson's equation in this package was written by
+R. C. Singleton in 1968.
+
+

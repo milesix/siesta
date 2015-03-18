@@ -1,0 +1,48 @@
+List of contributors to the development of Siesta3L
+
+Copyright (C) 1996-2014 The SIESTA group
+E. Artacho, J.D. Gale, A. Garcia, J. Junquera, P. Ordejon,
+D. Sanchez-Portal, J.M. Cela and J.M. Soler
+
+This file is distributed under the terms of the GNU General Public
+License, see COPYING in the top directory, or
+http://www.gnu.org/copyleft/gpl.txt
+
+*******************************************************************
+
+The SIESTA project was initiated by P. Ordejon (then at the Univ. de
+Oviedo), and J.M. Soler and E. Artacho (Univ. Autonoma de Madrid,
+UAM).  The development team was then joined by A. Garcia (then at
+Univ. del Pais Vasco, Bilbao), D. Sanchez-Portal (UAM), and
+J. Junquera (Univ. de Oviedo and later UAM), and sometime later by
+J. Gale (then at Imperial College, London). In 2007 J.M. Cela
+(Barcelona Supercomputing Center, BSC) became a developer.
+
+The TranSiesta module within Siesta3L was originally developed by
+P. Ordejon and J.L. Mozos (then at ICMAB-CSIC), and M. Brandbyge,
+K. Stokbro, and J. Taylor (Technical Univ. of Denmark).
+
+Other contributors:
+
+Eduardo Anglada
+Xavier Blase
+Marivi Fernandez-Serra
+Jaime Ferrer
+Chu-Chun Fu
+Sandra Garcia
+Jorge Kohanoff
+In-Ho Lee
+Nicolas Lorente
+Miquel Llunell
+Eduardo Machado
+Nick Papior Andersen
+Oscar Paz
+Andrei Postnikov
+Francois Willaime
+...
+
+O.F. Sankey, D.J. Niklewski and D.A. Drabold made the FIREBALL code
+available to P. Ordejon.  Although we no longer use the routines in
+that code, it was essential in the initial development of Siesta3L,
+which still uses many of the algorithms developed by them.
+

@@ -1,25 +1,31 @@
-SIESTA-3.2, March 24, 2011
+Copyright (C) 1996-2014	The SIESTA group
 
-www.uam.es/siesta
+Except for those items listed in the NOTICE.txt file, the files in
+this directory are distributed under the terms of the GNU General
+Public License: see COPYING in this directory or
+http://www.gnu.org/copyleft/gpl.txt .
 
-In the Docs/ directory: 
+This package, Siesta3L, contains an open-source implementation of the
+SIESTA method to perform efficient electronic structure calculations
+and ab initio molecular dynamics simulations of molecules and solids,
+as described in
 
-* Release Notes
-* Detailed list of Changes to the code.
-* LaTeX source for the manual (in siesta.tex)
+The Siesta method for ab initio order-N materials simulation,
+J. M. Soler, E. Artacho, J.D. Gale, A. Garcia, J. Junquera, P. Ordejon,
+and D. Sanchez-Portal, 
+J. Phys.: Condens. Matter, 14, 2745-2779 (2002),
 
-The code itself can be found under Src/
-Examples and other tutorial material in Tests/, Tutorials/, and Examples/
+and an open-source implementation of the TranSiesta method to model
+open-boundary systems where ballistic electron transport is taking
+place, as described in
 
-Utilities under Util/
+Density-functional method for nonequilibrium electron transport,
+M. Brandbyge, J.L. Mozos, P. Ordejon, J. Taylor, and K. Stokbro,
+Phys. Rev. B 65, 165401 (2002).
 
-The pseudopotential generation code and related materials can be found
-under Pseudo/.
+See Docs/Contributors.txt for a list of contributors.
 
-Please see the manual for compilation and other instructions.
-
-Please be sure to follow the terms and conditions stated in SIESTA_LICENCE.
-
-For bug reports, and other code suggestions, please follow the guidelines
-in the file Docs/REPORTING_BUGS
+The SIESTA project website at http://icmab.es/siesta contains pointers
+to reference material, and to other implementations with updated
+capabilities.
 
