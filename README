@@ -25,7 +25,10 @@ Phys. Rev. B 65, 165401 (2002).
 
 See Docs/Contributors.txt for a list of contributors.
 
-The SIESTA project website at http://icmab.es/siesta contains pointers
-to reference material, and to other implementations with updated
+Siesta3L is released as open source to provide the community with a
+free reference implementation of the SIESTA method. It corresponds
+essentially to the 3.2-pl5 version of the historic series. The SIESTA
+project website at http://icmab.es/siesta contains pointers to
+reference material, and to other implementations with updated
 capabilities.
 

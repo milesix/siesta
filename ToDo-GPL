@@ -7,6 +7,7 @@ pervasive. There is an attempt in the INTRODUCTION section of the manual.
 Thankfully we have the old dichotomy "method/implementation" to fall back on.
 
 Update NOTICE.txt for other bundled software?
+Decide what to do with ATOM
 
 Insert a header in every file, in some cases
 replacing the existing header. Do this off-bzr?

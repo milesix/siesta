@@ -12,6 +12,15 @@ This package includes parts of the xmlf90 package, which has its own
 license, copyright, and attribution terms. (See Src/xmlparser and
 Src/wxml)
 
+*** Jose Luis Martins' version is distributed under the condition
+*** of non-profit use.
+*** The bundled version of ATOM here prohibits its redistribution, but
+*** it does not forbid for-profit use...
+*** Do we care? Should we remove Pseudo/atom and insert a message
+*** saying where to look for pseudopotentials? (and a pointer for
+*** academic users to the Siesta webpage to download a copy of ATOM?)
+*** What do we do in the future in commercial versions of Siesta?
+***
 This package includes a copy of the ATOM software, which has its own
 license, copyright, and attribution terms. (See Pseudo/atom)
 
