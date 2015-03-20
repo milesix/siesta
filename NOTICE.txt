@@ -33,6 +33,7 @@ Src/MPI/mpi__include.f90)
 This package includes software developed by A.R. Williams (see
 Src/arw.f and Src/periodic_table.f).
 
+** Strictly speaking, NR code cannot be re-distributed in source form
 This product includes software based on code from Numerical Recipes,
 The Art of Scientific Computing, (c) W.H. Press et al. (See Src/recipes.f)
 

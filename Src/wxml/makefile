@@ -1,3 +1,8 @@
+# ---
+#  This file is distributed under the terms of the
+#  Modified BSD License: see the LICENSE file
+# ---
+
 .SUFFIXES: 
 .SUFFIXES: .f .F .o .a  .f90 .F90
 #

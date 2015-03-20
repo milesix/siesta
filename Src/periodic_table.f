@@ -1,12 +1,9 @@
-! 
-! This file is part of the SIESTA package.
-!
-! Copyright (c) Fundacion General Universidad Autonoma de Madrid:
-! E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
-! and J.M.Soler, 1996- .
-! 
-! Use of this software constitutes agreement with the full conditions
-! given in the SIESTA license, as signed by all legitimate users.
+!***********************************************************************
+!    This file contains modified versions of some routines written by 
+!    A.R.Williams around 1985 (possibly based on previous work).
+!    (qvlofz, lmxofz, cnfig)
+!    (See also file arw.F)
+!***********************************************************************
 !
       module periodic_table
 
