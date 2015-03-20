@@ -1,5 +1,6 @@
-The files in this directory are part of the xmlf90 fortran XML parser
-package.
+The source files in this directory, except f2kcli.F90 and
+m_getopts.f90 (see NOTICE.txt) are part of the xmlf90 fortran XML
+parser package, and are distributed according to the following terms:
 
 Copyright (c) 2003, 2004, 2005, 2006 Alberto Garcia 
              (SAX, XPATH, WXML, Overall design)

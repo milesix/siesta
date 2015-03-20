@@ -1,3 +1,7 @@
+! ---
+!  This file is distributed under the terms of the
+!  Modified BSD License: see the LICENSE file
+! ---
 module compare_m
 use flib_dom
 use compare_tol_m, only: findTol, sp, dp

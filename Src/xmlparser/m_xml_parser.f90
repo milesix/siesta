@@ -1,3 +1,7 @@
+! ---
+!  This file is distributed under the terms of the
+!  Modified BSD License: see the LICENSE file
+! ---
 module m_xml_parser
 
 !

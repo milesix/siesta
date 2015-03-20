@@ -1,3 +1,7 @@
+! ---
+!  This file is distributed under the terms of the
+!  Modified BSD License: see the LICENSE file
+! ---
 module flib_wxml
 
 use m_wxml_text

@@ -1,3 +1,7 @@
+! ---
+!  This file is distributed under the terms of the
+!  Modified BSD License: see the LICENSE file
+! ---
 module corresponding_node
   use flib_dom
   use string_utilities, only: clean_string, only_numbers

@@ -1,3 +1,7 @@
+! ---
+!  This file is distributed under the terms of the
+!  Modified BSD License: see the LICENSE file
+! ---
 !Test the xml output of siesta 
 !A xml file (called modified!) is compared against a  xml reference file.
 

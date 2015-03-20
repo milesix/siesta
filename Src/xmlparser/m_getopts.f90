@@ -1,3 +1,4 @@
+!
 module m_getopts
 use f2kcli
 public :: getopts

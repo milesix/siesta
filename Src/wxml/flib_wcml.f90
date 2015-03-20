@@ -1,3 +1,7 @@
+! ---
+!  This file is distributed under the terms of the
+!  Modified BSD License: see the LICENSE file
+! ---
 module flib_wcml
 
   use flib_wxml, only: xmlf_t, str

@@ -1,0 +1,6 @@
+The f2kcli module was developed by Interactive Software Services Ltd
+(see f2kcli_manual.txt).
+
+File m_getopts.f90 contains code to process command-line options.
+Its original distribution terms are unknown. 
+

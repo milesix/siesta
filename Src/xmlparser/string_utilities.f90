@@ -1,3 +1,7 @@
+! ---
+!  This file is distributed under the terms of the
+!  Modified BSD License: see the LICENSE file
+! ---
 module string_utilities
 use compare_tol_m, only: sp, dp
 use m_strings

@@ -1,3 +1,7 @@
+! ---
+!  This file is distributed under the terms of the
+!  Modified BSD License: see the LICENSE file
+! ---
 !*******************************************************************************
 ! module STRINGS
 ! Mart Rentmeester, Mart.Rentmeester@sci.kun.nl

@@ -1,3 +1,7 @@
+! ---
+!  This file is distributed under the terms of the
+!  Modified BSD License: see the LICENSE file
+! ---
 module m_wxml_dictionary
 
   use m_wxml_escape, only : check_Name
