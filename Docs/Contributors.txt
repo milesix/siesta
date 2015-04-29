@@ -1,4 +1,4 @@
-List of contributors to the development of Siesta3L
+List of contributors to the development of Siesta-3L
 
 Copyright (C) 1996-2014 The SIESTA group
 E. Artacho, J.D. Gale, A. Garcia, J. Junquera, P. Ordejon,
@@ -18,7 +18,7 @@ J. Junquera (Univ. de Oviedo and later UAM), and sometime later by
 J. Gale (then at Imperial College, London). In 2007 J.M. Cela
 (Barcelona Supercomputing Center, BSC) became a developer.
 
-The TranSiesta module within Siesta3L was originally developed by
+The TranSiesta module within Siesta-3L was originally developed by
 P. Ordejon and J.L. Mozos (then at ICMAB-CSIC), and M. Brandbyge,
 K. Stokbro, and J. Taylor (Technical Univ. of Denmark).
 
@@ -38,11 +38,14 @@ Eduardo Machado
 Nick Papior Andersen
 Oscar Paz
 Andrei Postnikov
+Andrew Walker
+Andrew Walkingshaw
+Toby White
 Francois Willaime
 ...
 
 O.F. Sankey, D.J. Niklewski and D.A. Drabold made the FIREBALL code
 available to P. Ordejon.  Although we no longer use the routines in
-that code, it was essential in the initial development of Siesta3L,
+that code, it was essential in the initial development of Siesta-3L,
 which still uses many of the algorithms developed by them.
 
