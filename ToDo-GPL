@@ -1,21 +1,7 @@
-Put headers in files in Util/COOP
-Put headers in files in Util/VCA
-Put headers in files in Util/TBTrans
-Put headers in files in Util/Projections
-Put headers in files in Util/Optimizer (amoeba??)
-Put headers in files in Util/HSX
-Put headers in files in Util/Gen-basis (ioncat.f)
-Put headers in files in Util/Grid (some files)
-Put headers in files in Util/Denchar/Src
+RECIPES...
 
 Recover CMLCOMP
-
-
-Put headers in files in Util/STM/ol-stm
-
 Decide what to do with Util/SCF and Util/Scripting
-
-
 
 Docs/
 
