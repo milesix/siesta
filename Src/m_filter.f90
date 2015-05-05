@@ -459,21 +459,30 @@ end subroutine filter
 
   end function lagrange
 
-
-  ! ***************************************************************************
-! subroutine rdiag(H,S,n,nm,nml,w,Z,neigvec,iscf,ierror)
+! ***************************************************************************
+! subroutine filter_rdiag 
 !
-! Simple replacement to subroutine rdiag of siesta
-! J.M.Soler, April 2008
+! Adapted by Emilio Artacho, April 2015, to replace older one of
+! same name of Jose Soler (2008). Using Lapack instead of numerical recipes
+!
+! Note: A tighter version for the simple symmetric eigenvalue problem
+!       using routine DSYEV should be coded a some point.
+!
+! From the rdiag subroutine in Siesta, 
+! used to solve all eigenvalues and eigenvectors of the
+! real general eigenvalue problem  H z = w S z,  with H and S
+! real symmetric matrices.
+! Written by G.Fabricius and J.Soler, March 1998
+! Rewritten by Julian Gale, August 2004
 ! ************************** INPUT ******************************************
 ! real*8 H(nml,nm)                 : Symmetric H matrix
-! real*8 S(nml,nm)                 : Symmetric S matrix, ignored in this version
+! real*8 S(nml,nm)                 : Symmetric S matrix
 ! integer n                        : Order of the generalized  system
 ! integer nm                       : Right hand dimension of H and S matrices
 ! integer nml                      : Left hand dimension of H and S matrices
 !                                    which is greater than or equal to nm
 ! integer neigvec                  : No. of eigenvectors to calculate
-! integer iscf                     : SCF cycle, ignored in this version
+! integer iscf                     : SCF cycle
 ! ************************** OUTPUT *****************************************
 ! real*8 w(nml)                    : Eigenvalues
 ! real*8 Z(nml,nm)                 : Eigenvectors
@@ -483,44 +492,141 @@ end subroutine filter
 !                                  :  1 = fatal error
 ! ***************************************************************************
 
-subroutine filter_rdiag(H,S,n,nm,nml,w,Z,neigvec,iscf,ierror)
+  subroutine filter_rdiag(H,S,n,nm,nml,w,Z,neigvec,iscf,ierror)
 
-  implicit none
+!  Modules
+
+    use precision
+    use sys,   only : die
+
+    implicit          none
 
 ! Passed variables
-  integer  :: ierror
-  integer  :: iscf
-  integer  :: n
-  integer  :: neigvec
-  integer  :: nm
-  integer  :: nml
-  real(dp) :: H(nml,nm)
-  real(dp) :: S(nml,nm)
-  real(dp) :: w(nml)
-  real(dp) :: Z(nml,nm)
+    integer                 :: ierror
+    integer                 :: iscf
+    integer                 :: n
+    integer                 :: neigvec
+    integer                 :: nm
+    integer                 :: nml
+    real(dp)                :: H(nml,nm)
+    real(dp)                :: S(nml,nm)
+    real(dp)                :: w(nml)
+    real(dp)                :: Z(nml,nm)
 
-! Internal variables and arrays
-  integer :: indx(n)
-  real(dp):: aux(n), c(n,n), e(n)
+! Local variables
+    character            :: jobz
+    character            :: range
+    integer              :: ilaenv
+    integer              :: info
+    integer              :: liwork
+    integer              :: lwork
+    integer              :: nb
+    integer              :: neigok
+    real(dp)             :: vl
+    real(dp)             :: vu
 
-! Diagonalize Hamiltonian
-  c(1:n,1:n) = H(1:n,1:n)
-  call tred2( c, n, n, e, aux )
-  call tqli( e, aux, n, n, c )
+    real(dp),  parameter :: abstol = 1.0e-8_dp
+    real(dp),  parameter :: orfac = 1.0e-3_dp
+    real(dp),  parameter :: zero = 0.0_dp
+    real(dp),  parameter :: one = 1.0_dp
+    real(dp),  parameter :: MemoryFactor = 1.5_dp
 
-! Order eigenvalues and eigenvectors by increasing eigval
-  call ordix( e, 1, n, indx )
-  call order( e, 1, n, indx )
-  call order( c, n, n, indx )
+    integer, allocatable :: ifail(:), iwork(:)
+    real(dp),allocatable :: work(:)
 
-! Copy eigenvectors and eigenvalues to output arrays
-  w = 0
-  Z = 0
-  w(1:neigvec) = e(1:neigvec)
-  Z(1:n,1:neigvec) = c(1:n,1:neigvec)
-  ierror = 0
+!****************************************************************************
+! Setup                                                                     *
+!****************************************************************************
 
-end subroutine filter_rdiag
+! Initialise error flag
+    ierror = 0
+
+! Trap n=1 case, which is not handled correctly otherwise (JMS 2011/07/19)
+    if (n==1) then
+      w(:) = 0._dp
+      w(1) = H(1,1) / S(1,1)
+      Z(:,:) = 0._dp
+      Z(1,1) = 1._dp / sqrt(S(1,1))
+      goto 1000   ! exit point
+    end if
+
+! vl and vu are not currently used, but they must be initialized
+    vl = 0
+    vu = n
+
+! Set general Lapack parameters
+    if (neigvec.gt.0) then
+      jobz   = 'V'
+      range  = 'A'
+    else
+      jobz   = 'N'
+      range  = 'A'
+    endif
+
+! Calculate memory requirements
+    nb = ilaenv(1,'DSYTRD','U',n,-1,-1,-1)
+    lwork = max(8*n,(nb+3)*n)
+    liwork = 5*n
+
+! Scale memory by memory factor
+    lwork = nint(MemoryFactor*dble(lwork))
+
+! Allocate workspace arrays
+    allocate( work(1:lwork) )
+    allocate( iwork(1:liwork) )
+    allocate( ifail(1:n) )
+
+!****************************************************************************
+! Solve standard eigenvalue problem                                         *
+!****************************************************************************
+    call dsyevx(jobz,range,'U',n,H,n,vl,vu,1,neigvec,abstol, &
+                neigok,w,Z,n,work,lwork,iwork,ifail,info)
+
+! Check error flag
+    if (info.ne.0) then
+      ierror = 1
+      if (info.lt.0) then
+        call die('Illegal argument to standard eigensolver')
+      elseif (info.gt.0)   then
+        if (mod(info/2,2).ne.0) then
+          write(6,'(/,''Clustered eigenvectors not converged - '', &
+            ''more memory required'',/)')
+        endif
+        call die('Failure to converge standard eigenproblem')
+      endif
+    endif
+    if (neigok.lt.neigvec) then
+      call die('Insufficient eigenvalues converged in filter_rdiag')
+    endif
+
+!****************************************************************************
+! Back transformation                                                       *
+!****************************************************************************
+    if (neigvec.gt.0) then
+      call dtrsm('Left','U','N','Non-unit',n,neigvec,one,S,n,Z,n)
+    endif
+    if (info.ne.0) then
+      call die('Error in back transformation in filter_rdiag')
+    endif
+ 
+!***************************************************************************
+! Clean up                                                                 *
+!***************************************************************************
+
+! Common exit point 
+  999 continue
+
+! Deallocate workspace arrays
+    deallocate( work )
+    deallocate( iwork )
+    deallocate( ifail )
+
+!  Exit point, excluding deallocations
+1000  continue
+
+    return
+
+  end subroutine filter_rdiag
 
       FUNCTION BESSPH (L,X) 
 !
@@ -866,281 +972,5 @@ end subroutine filter_rdiag
       END DO ! until (N.LE.MMAX)
 
       END SUBROUTINE FOUR1
-
-!
-!  Helper routines for filtering package:
-!
-!  ordix.f order.f tqli.f tred2.f
-!
-      SUBROUTINE ORDIX( X, M, N, INDX )
-!*******************************************************************
-!Makes an index table of array X, with size N and stride M.
-!Ref: W.H.Press et al. Numerical Recipes, Cambridge Univ. Press.
-!Adapted by J.M.Soler from routine INDEXX of Num. Rec. May'96.
-!*************** INPUT *********************************************
-!REAL*8  X(M,N)   : Array with the values to be ordered
-!INTEGER M, N     : Dimensions of array X
-!*************** OUTPUT ********************************************
-!INTEGER INDEX(N) : Array which gives the increasing order of X(1,I):
-!                   X(1,INDEX(I)) .LE. X(1,INDEX(I+1)) )
-!*************** USAGE *********************************************
-!Example to order atomic positions X(I,IA), I=1,3, IA=1,NA by
-!increasing z coordinate:
-!   CALL ORDIX( X(3,1), 3, NA, INDEX )
-!   CALL ORDER( X(1,1), 3, NA, INDEX )
-!*******************************************************************
-      IMPLICIT          NONE
-      INTEGER           I, N, INDX(N), INDXT, IR, J, L, M
-      DOUBLE PRECISION  X(M,N), Q
-
-      DO 1 J=1,N
-         INDX(J)=J
-   1  CONTINUE
-      IF (N.LE.1) RETURN
-      L=N/2+1
-      IR=N
-   2  CONTINUE
-         IF (L.GT.1) THEN
-            L=L-1
-            INDXT=INDX(L)
-            Q=X(1,INDXT)
-         ELSE
-            INDXT=INDX(IR)
-            Q=X(1,INDXT)
-            INDX(IR)=INDX(1)
-            IR=IR-1
-            IF (IR.EQ.1) THEN
-               INDX(1)=INDXT
-               RETURN
-            ENDIF
-         ENDIF
-         I=L
-         J=L+L
-   3     IF (J.LE.IR) THEN
-            IF (J.LT.IR) THEN
-               IF (X(1,INDX(J)).LT.X(1,INDX(J+1))) J=J+1
-            ENDIF
-            IF (Q.LT.X(1,INDX(J))) THEN
-               INDX(I)=INDX(J)
-               I=J
-               J=J+J
-            ELSE
-               J=IR+1
-            ENDIF
-         GO TO 3
-         ENDIF
-         INDX(I)=INDXT
-      GO TO 2
-
-     END subroutine ordix
-
-
-      SUBROUTINE ORDER( X, M, N, INDEX )
-!*******************************************************************
-!Orders array X(M,N) according to array INDEX(N), which may be
-!  generated by routine ORDIX.
-!Written by J.M.Soler. May'96.
-!*************** INPUT *********************************************
-!INTEGER M, N     : Dimensions of array X
-!INTEGER INDEX(N) : Array which gives the desired order
-!*************** INPUT AND OUTPUT **********************************
-!REAL*8  X(M,N) : Array(s) to be ordered: Xout(I,J) = Xin(I,INDEX(J))
-!*******************************************************************
-      IMPLICIT          NONE
-      INTEGER           I, N, INDEX(N), IORDER, ISTORE, J, M
-      DOUBLE PRECISION  X(M,N), XI
-
-      DO 40 J = 1,M
-        DO 20 I = 1,N
-          XI = X(J,I)
-          IORDER = I
-   10     CONTINUE
-          ISTORE = INDEX(IORDER)
-          IF (ISTORE .GT. 0) THEN
-            IF (ISTORE .EQ. I) THEN
-              X(J,IORDER) = XI
-            ELSE
-              X(J,IORDER) = X(J,ISTORE)
-            ENDIF
-            INDEX(IORDER) = -INDEX(IORDER)
-            IORDER = ISTORE
-            GOTO 10
-          ENDIF
-   20   CONTINUE
-        DO 30 I = 1,N
-          INDEX(I) = -INDEX(I)
-   30   CONTINUE
-   40 CONTINUE
-      END subroutine order
-
-      SUBROUTINE TQLI(D,E,N,NP,Z)
-
-! IN COMBINATION WITH TRED2 FINDS EIGENVALUES AND EIGENVECTORS OF
-! A REAL SYMMETRIC MATRIX. REF: W.H.PRESS ET AL. NUMERICAL RECIPES.
-
-      implicit none
-
-      integer, intent(in) :: np, n
-      real(dp) D(NP),E(NP),Z(NP,NP)
-      
-      real(dp) :: zero, one, two
-      PARAMETER (ZERO=0.0_dp,ONE=1.0_dp,TWO=2.0_dp)
-
-      integer  :: iter, i, k, l, m
-      real(dp) :: dd, g, r, s, c, p, f, b
-
-      IF (N.GT.1) THEN
-        DO 11 I=2,N
-          E(I-1)=E(I)
-11      CONTINUE
-        E(N)=ZERO
-        DO 15 L=1,N
-          ITER=0
-1         DO 12 M=L,N-1
-            DD=ABS(D(M))+ABS(D(M+1))
-            IF (ABS(E(M))+DD.EQ.DD) GO TO 2
-12        CONTINUE
-          M=N
-2         IF(M.NE.L)THEN
-            IF(ITER.EQ.30) STOP 'tqli: too many iterations'
-            ITER=ITER+1
-            G=(D(L+1)-D(L))/(TWO*E(L))
-            R=SQRT(G**2+ONE)
-            G=D(M)-D(L)+E(L)/(G+SIGN(R,G))
-            S=ONE
-            C=ONE
-            P=ZERO
-            DO 14 I=M-1,L,-1
-              F=S*E(I)
-              B=C*E(I)
-              IF(ABS(F).GE.ABS(G))THEN
-                C=G/F
-                R=SQRT(C**2+ONE)
-                E(I+1)=F*R
-                S=ONE/R
-                C=C*S
-              ELSE
-                S=F/G
-                R=SQRT(S**2+ONE)
-                E(I+1)=G*R
-                C=ONE/R
-                S=S*C
-              ENDIF
-              G=D(I+1)-P
-              R=(D(I)-G)*S+TWO*C*B
-              P=S*R
-              D(I+1)=G+P
-              G=C*R-B
-              DO 13 K=1,N
-                F=Z(K,I+1)
-                Z(K,I+1)=S*Z(K,I)+C*F
-                Z(K,I)=C*Z(K,I)-S*F
-13            CONTINUE
-14          CONTINUE
-            D(L)=D(L)-P
-            E(L)=G
-            E(M)=ZERO
-            GO TO 1
-          ENDIF
-15      CONTINUE
-      ENDIF
-      RETURN
-      END subroutine tqli
-
-
-      SUBROUTINE TRED2(A,N,NP,D,E)
-
-!HOUSEHOLDER REDUCTION OF A REAL SYMMETRIC MATRIX INTO TRIDIAGONAL FORM
-!REF: W.H.PRESS ET AL. NUMERICAL RECIPES. CAMBRIDGE U.P.
-
-      implicit none
-
-      integer  ::  n, np
-      real(dp) ::  A(NP,NP),D(NP),E(NP)
-
-      real(dp) ::  zero, one
-      PARAMETER (ZERO=0.0_dp,ONE=1.0_dp)
-
-      integer  :: l, i, k, j
-      real(dp) :: f, g, h, hh, scale
-
-      IF(N.GT.1)THEN
-        DO 18 I=N,2,-1
-          L=I-1
-          H=ZERO
-          SCALE=ZERO
-          IF(L.GT.1)THEN
-            DO 11 K=1,L
-              SCALE=SCALE+ABS(A(I,K))
-11          CONTINUE
-            IF(SCALE.EQ.ZERO)THEN
-              E(I)=A(I,L)
-            ELSE
-              DO 12 K=1,L
-                A(I,K)=A(I,K)/SCALE
-                H=H+A(I,K)**2
-12            CONTINUE
-              F=A(I,L)
-              G=-SIGN(SQRT(H),F)
-              E(I)=SCALE*G
-              H=H-F*G
-              A(I,L)=F-G
-              F=ZERO
-              DO 15 J=1,L
-                A(J,I)=A(I,J)/H
-                G=ZERO
-                DO 13 K=1,J
-                  G=G+A(J,K)*A(I,K)
-13              CONTINUE
-                IF(L.GT.J)THEN
-                  DO 14 K=J+1,L
-                    G=G+A(K,J)*A(I,K)
-14                CONTINUE
-                ENDIF
-                E(J)=G/H
-                F=F+E(J)*A(I,J)
-15            CONTINUE
-              HH=F/(H+H)
-              DO 17 J=1,L
-                F=A(I,J)
-                G=E(J)-HH*F
-                E(J)=G
-                DO 16 K=1,J
-                  A(J,K)=A(J,K)-F*E(K)-G*A(I,K)
-16              CONTINUE
-17            CONTINUE
-            ENDIF
-          ELSE
-            E(I)=A(I,L)
-          ENDIF
-          D(I)=H
-18      CONTINUE
-      ENDIF
-      D(1)=ZERO
-      E(1)=ZERO
-      DO 23 I=1,N
-        L=I-1
-        IF(D(I).NE.ZERO)THEN
-          DO 21 J=1,L
-            G=ZERO
-            DO 19 K=1,L
-              G=G+A(I,K)*A(K,J)
-19          CONTINUE
-            DO 20 K=1,L
-              A(K,J)=A(K,J)-G*A(K,I)
-20          CONTINUE
-21        CONTINUE
-        ENDIF
-        D(I)=A(I,I)
-        A(I,I)=ONE
-        IF(L.GE.1)THEN
-          DO 22 J=1,L
-            A(I,J)=ZERO
-            A(J,I)=ZERO
-22        CONTINUE
-        ENDIF
-23    CONTINUE
-      RETURN
-      END subroutine tred2
 
 END MODULE m_filter

@@ -455,6 +455,7 @@ m_efield.o: precision.o siesta_cml.o siesta_geom.o sys.o units.o
 m_energies.o: precision.o
 m_eo.o: precision.o
 m_fdf_global.o: m_mpi_utils.o parallel.o precision.o
+m_filter.o: precision.o sys.o
 m_fire.o: parallel.o precision.o
 m_fire_mixing.o: alloc.o m_fdf_global.o m_fire_para.o m_mpi_utils.o parallel.o
 m_fire_mixing.o: precision.o
