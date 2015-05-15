@@ -77,7 +77,7 @@ C Written by J.M.Soler. August 1996.
 C *********************************************************************
 
       use precision, only : dp
-      use m_recipes, only : four1
+      use m_fft_gpfa,only : fft_gpfa_ez
       use alloc,     only : re_alloc, de_alloc
 
 C Next line is non-standard and may be suppressed -------------------
@@ -188,10 +188,10 @@ C         Find  r**2 * r**n / r**(l+1)
 C       Perform one-dimensional complex FFT
 !
 !       Only the elements from 0 to 2*NR-1 of FN are used.
-!       (a total of 2*NR). Four1 will receive a one-dimensional
-!       array of size 2*NR.
+!       (a total of 2*NR). The FFT routine  will receive a one-dimensional
+!       array of size 2*NR (*2, for real and imaginary parts)
 !
-        CALL FOUR1( FN, 2*NR, +1 )
+        CALL fft_gpfa_ez( FN, 2*NR, +1 )
 
 C       Accumulate contribution
         DO IQ = 1,NQ
