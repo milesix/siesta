@@ -72,7 +72,8 @@ OBJS =  automatic_cell.o atom_options.o \
         born_charge.o cgwf.o chkdim.o chkgmx.o \
 	chempot.o coceri.o constr.o coxmol.o cross.o compute_norm.o \
 	m_partial_charges.o \
-	denmat.o denmatlomem.o detover.o dfscf.o dhscf.o diagon.o digcel.o fft3d.o \
+	denmat.o denmatlomem.o detover.o dfscf.o dhscf.o diagon.o digcel.o\
+        die.o fft3d.o \
 	diagg.o diagk.o diagk_file.o diagkp.o diag2g.o diag2k.o diagpol.o \
 	diagsprl.o dipole.o dismin.o dnaefs.o doping.o dot.o  \
 	m_efield.o egandd.o ener3.o ener3lomem.o extrapolon.o \
@@ -378,6 +379,7 @@ diagon.o: precision.o siesta_options.o sys.o
 diagpol.o: precision.o sys.o
 diagsprl.o: atomlist.o fermid.o parallel.o parallelsubs.o precision.o
 diagsprl.o: siesta_geom.o sys.o
+die.o: parallel.o
 dipole.o: parallel.o precision.o sys.o
 dnaefs.o: atmfuncs.o mneighb.o precision.o
 domain_decom.o: alloc.o parallel.o precision.o printmatrix.o schecomm.o

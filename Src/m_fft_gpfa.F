@@ -4,10 +4,8 @@
 !
       implicit none
 
-      integer, parameter :: dp = selected_real_kind(10,100)
-      integer, parameter :: grid_p = dp  ! legacy parameter
-                                         ! from Siesta usage
       ! Only double precision support in this module
+      integer, parameter :: dp = selected_real_kind(10,100)
 
 
   ! This module is not thread safe due to the use of
@@ -19,12 +17,18 @@
 
       real(dp), allocatable, save :: trigs(:)
       integer, save :: nold = -1
-  !-----------------------------------------------
+  !----------------------------------------------------------
+      ! auxiliary variable
+      character(len=20) :: msg
+
+      public :: nfft            ! Generates N compatible with the fft
 
       public :: fft_gpfa_ez     ! Simple version with complex array
       public :: fft_gpfa        ! General version with strides,
                                 ! multiple vectors, etc
-      public :: fft_gpfa_clean  ! Deallocates workspace
+
+      ! Wrapper for setgpfa which returns proper length of work array
+      public :: setgpfa_check
 
       ! Access to the standard legacy routines, if needed
       public :: gpfa, setgpfa
@@ -33,12 +37,34 @@
 
       CONTAINS
 
-      subroutine fft_gpfa_clean()
-      if (allocated(trigs)) then
-         deallocate(trigs)
-      endif
-      nold = -1
-      end subroutine fft_gpfa_clean
+      SUBROUTINE nfft( N )
+
+      integer, intent(inout) :: N
+
+C CHANGES N INTO THE NEXT INTEGER ALLOWED BY THE FFT ROUTINE
+C WRITTEN BY J.M.SOLER. MAY/95.
+! Modified by A. Garcia, May 2015
+
+      integer :: np, nmax, nmin, nrem, ip
+      parameter (NP = 3, NMAX = huge(N))  ! no limits with huge
+      integer :: IPRIME(NP)
+      data IPRIME / 2, 3, 5 /
+
+      NMIN = N
+      DO N = NMIN, NMAX
+        NREM = N
+        DO IP = 1,NP
+   10     CONTINUE 
+          IF ( MODULO( NREM, IPRIME(IP) ) .EQ. 0 ) THEN
+            NREM = NREM / IPRIME(IP)
+            GOTO 10
+          ENDIF
+        ENDDO
+        IF (NREM .EQ. 1) RETURN
+      ENDDO
+      write(msg,"(i0)") NMIN
+      call die('NFFT: NO SUITABLE INTEGER FOUND FOR N =' // trim(msg))
+      END SUBROUTINE nfft
 
       subroutine fft_gpfa_ez(data,n,isign)
 
@@ -51,11 +77,12 @@
 !        ISIGN = +1 FOR FORWARD TRANSFORM
 !              = -1 FOR INVERSE TRANSFORM
 
-  ! Set trigs array, used by 1D-FFT routine gpfa
+  ! If n has changed since the last use,
+  ! set trigs array, used by 1D-FFT routine gpfa
+
   ! The routine setgpfa_alloc is a special version
   ! of setgpfa which (re)allocates the trigs argument
   ! if needed, and re-fills it with new twiddle factors
-  ! if n has changed since the last use.
 
       if (n /= nold) then
          call setgpfa_alloc( trigs, n )
@@ -110,132 +137,201 @@
       real(dp), allocatable, intent(inout) :: trigs(:)
       integer, intent(in)                  :: n
 
-!    SUBROUTINE 'SETGPFA'
+      integer :: ntrigs
 
-!    SETUP ROUTINE FOR SELF-SORTING IN-PLACE
-!        GENERALIZED PRIME FACTOR (COMPLEX) FFT [GPFA]
+      if (.not. allocated(trigs)) then
+         allocate(trigs(100))
+      endif
+      call setgpfa_check(trigs,size(trigs),ntrigs,n)
 
-!    CALL SETGPFA(TRIGS,N)
+      if (size(trigs) < ntrigs) then
+         deallocate(trigs)
+         allocate(trigs(ntrigs))
+         call setgpfa_check(trigs,size(trigs),ntrigs,n)
+         if (size(trigs) < ntrigs) STOP "ntrigs error"
+      endif
 
-!    INPUT :
-!    -----
-!    N IS THE LENGTH OF THE TRANSFORMS. N MUST BE OF THE FORM:
-!      -----------------------------------
-!        N = (2**IP) * (3**IQ) * (5**IR)
-!      -----------------------------------
+      end subroutine setgpfa_alloc
+!
+      SUBROUTINE SETGPFA_check(TRIGS,maxtrigs,ntrigs,N)
+*
+      REAL(dp)  TRIGS(maxtrigs)
+      integer, intent(in)  :: maxtrigs  ! The current size of trigs
+      integer, intent(out) :: ntrigs    ! The needed size for trigs
+      integer, intent(in)  :: N
 
-!    OUTPUT:
-!    ------
-!    TRIGS IS A TABLE OF TWIDDLE FACTORS,
-!      OF LENGTH 2*IPQR (REAL) WORDS, WHERE:
-!      --------------------------------------
-!        IPQR = (2**IP) + (3**IQ) + (5**IR)
-!      --------------------------------------
-
-!    WRITTEN BY CLIVE TEMPERTON 1990
-
-!----------------------------------------------------------------------
-      INTEGER NJ(3),ntrigs
-
+      INTEGER NJ(3)
       integer       :: nn, ifac, ll, kk, ip, iq, ir,
      $                 i, ni, irot, kink, k
       real(dp)      :: angle, twopi, del
-
-
-  !
-  !     DECOMPOSE N INTO FACTORS 2,3,5
-  !     ------------------------------
+*
+*     DECOMPOSE N INTO FACTORS 2,3,5
+*     ------------------------------
       NN = N
       IFAC = 2
-  !
+*
       DO 30 LL = 1 , 3
-         KK = 0
- 10      CONTINUE
-         IF (MOD(NN,IFAC).NE.0) GO TO 20
-         KK = KK + 1
-         NN = NN / IFAC
-         GO TO 10
- 20      CONTINUE
-         NJ(LL) = KK
-         IFAC = IFAC + LL
- 30   CONTINUE
-     
+      KK = 0
+   10 CONTINUE
+      IF (MOD(NN,IFAC).NE.0) GO TO 20
+      KK = KK + 1
+      NN = NN / IFAC
+      GO TO 10
+   20 CONTINUE
+      NJ(LL) = KK
+      IFAC = IFAC + LL
+   30 CONTINUE
+*
       IF (NN.NE.1) THEN
-        WRITE(6,40) N
- 40     FORMAT(' *** WARNING!!!',I10,' IS NOT A LEGAL VALUE OF N ***')
-        RETURN
+         write(msg,"(i0)") N
+         call die('GPFA: '//trim(msg)//' IS NOT A LEGAL VALUE OF N')
       ENDIF
-            
+*
       IP = NJ(1)
       IQ = NJ(2)
       IR = NJ(3)
-!
-!     COMPUTE LIST OF ROTATED TWIDDLE FACTORS
-!     ---------------------------------------
+*
+*     COMPUTE LIST OF ROTATED TWIDDLE FACTORS
+*     ---------------------------------------
       NJ(1) = 2**IP
       NJ(2) = 3**IQ
       NJ(3) = 5**IR
-
+*
       TWOPI = 4.0_dp * ASIN(1.0_dp)
       I = 1
-
-      DO LL = 1 , 3
-        NI = NJ(LL)
-        IF (NI.EQ.1) cycle !GO TO 60
-
-        DEL = TWOPI / real(NI,kind=dp)
-        IROT = N / NI
-        KINK = MOD(IROT,NI)
-        KK = 0
-        !
-        DO K = 1 , NI
-           ANGLE = real(KK,kind=dp) * DEL
-           I = I + 2
-           KK = KK + KINK
-           IF (KK.GT.NI) KK = KK - NI
-        end DO
-      end DO
-      ntrigs = i
-
-! Re-allocation is only needed when
-! n grows
-
-      if (allocated(trigs)) then
-        if (size(trigs) < ntrigs) then
-           deallocate(trigs)
-           allocate(trigs(ntrigs))
-        endif
-      else
-        allocate(trigs(ntrigs))
+*
+      DO 60 LL = 1 , 3
+      NI = NJ(LL)
+      IF (NI.EQ.1) GO TO 60
+*
+      DEL = TWOPI / real(NI,kind=dp)
+      IROT = N / NI
+      KINK = MOD(IROT,NI)
+      KK = 0
+*
+      DO 50 K = 1 , NI
+      ANGLE = real(KK,kind=dp) * DEL
+      if (i.lt.maxtrigs) then
+        TRIGS(I) = COS(ANGLE)
+        TRIGS(I+1) = SIN(ANGLE)
       endif
-!
-!  Second pass to actually fill in
-!  the twiddle factors
-!
-      I = 1
+      I = I + 2
+      KK = KK + KINK
+      IF (KK.GT.NI) KK = KK - NI
+   50 CONTINUE
+   60 CONTINUE
+      ntrigs = i - 1  ! note boundary. i is even
+*
+      RETURN
+      END SUBROUTINE SETGPFA_check
 
-      DO LL = 1 , 3
-        NI = NJ(LL)
-        IF (NI.EQ.1) cycle
-        !
-        DEL = TWOPI / real(NI,kind=dp)
-        IROT = N / NI
-        KINK = MOD(IROT,NI)
-        KK = 0
-        !
-        DO K = 1 , NI
-           ANGLE = real(KK,kind=dp) * DEL
-           ! 
-           TRIGS(I) = COS(ANGLE)
-           TRIGS(I+1) = SIN(ANGLE)
-           !
-           I = I + 2
-           KK = KK + KINK
-           IF (KK.GT.NI) KK = KK - NI
-        enddo
-      enddo
-      end subroutine setgpfa_alloc
-! 
+!--------------------------------------------------------------
+!
+!  What follows is the original code by Temperton
+!  with explicit declarations of variables and converted to 'dp'. 
+!
+!  For arbitrary-precision support the parameter constants might
+!  be computed instead of inserted explicitly.
+!
+!  For example: sin60 = sin(2.0_wp*pi/3.0_wp), where wp is the working
+!                       precision, and
+!               pi = 4.0_wp * atan(1.0_wp), or
+!               twopi = 4.0_wp * asin(1.0_wp)
+!
+!*********************************************************************
+!
+!        SUBROUTINE 'SETGPFA'
+!        SETUP ROUTINE FOR SELF-SORTING IN-PLACE
+!            GENERALIZED PRIME FACTOR (COMPLEX) FFT [GPFA]
+!
+!        CALL SETGPFA(TRIGS,N)
+!
+!        INPUT :
+!        -----
+!        N IS THE LENGTH OF THE TRANSFORMS. N MUST BE OF THE FORM:
+!          -----------------------------------
+!            N = (2**IP) * (3**IQ) * (5**IR)
+!          -----------------------------------
+!
+!        OUTPUT:
+!        ------
+!        TRIGS IS A TABLE OF TWIDDLE FACTORS,
+!          OF LENGTH 2*IPQR (REAL) WORDS, WHERE:
+!          --------------------------------------
+!            IPQR = (2**IP) + (3**IQ) + (5**IR)
+!          --------------------------------------
+!
+!        WRITTEN BY CLIVE TEMPERTON 1990
+!
+!*********************************************************************
+!
+      SUBROUTINE SETGPFA(TRIGS,N)
+*
+
+      INTEGER NJ(3)
+      REAL(dp) TRIGS(*)
+
+      integer       :: nn, n, ifac, ll, kk, ip, iq, ir,
+     $                 i, ni, irot, kink, k
+      real(dp)      :: angle, twopi, del
+*
+*     DECOMPOSE N INTO FACTORS 2,3,5
+*     ------------------------------
+      NN = N
+      IFAC = 2
+*
+      DO 30 LL = 1 , 3
+      KK = 0
+   10 CONTINUE
+      IF (MOD(NN,IFAC).NE.0) GO TO 20
+      KK = KK + 1
+      NN = NN / IFAC
+      GO TO 10
+   20 CONTINUE
+      NJ(LL) = KK
+      IFAC = IFAC + LL
+   30 CONTINUE
+*
+      IF (NN.NE.1) THEN
+         write(msg,"(i0)") N
+         call die('GPFA: '//trim(msg)//' IS NOT A LEGAL VALUE OF N')
+      ENDIF
+*
+      IP = NJ(1)
+      IQ = NJ(2)
+      IR = NJ(3)
+*
+*     COMPUTE LIST OF ROTATED TWIDDLE FACTORS
+*     ---------------------------------------
+      NJ(1) = 2**IP
+      NJ(2) = 3**IQ
+      NJ(3) = 5**IR
+*
+      TWOPI = 4.0_dp * ASIN(1.0_dp)
+      I = 1
+*
+      DO 60 LL = 1 , 3
+      NI = NJ(LL)
+      IF (NI.EQ.1) GO TO 60
+*
+      DEL = TWOPI / real(NI,kind=dp)
+      IROT = N / NI
+      KINK = MOD(IROT,NI)
+      KK = 0
+*
+      DO 50 K = 1 , NI
+      ANGLE = real(KK,kind=dp) * DEL
+      TRIGS(I) = COS(ANGLE)
+      TRIGS(I+1) = SIN(ANGLE)
+      I = I + 2
+      KK = KK + KINK
+      IF (KK.GT.NI) KK = KK - NI
+   50 CONTINUE
+   60 CONTINUE
+*
+      RETURN
+      END SUBROUTINE SETGPFA
+
 
 !        SUBROUTINE 'GPFA'
 !        SELF-SORTING IN-PLACE GENERALIZED PRIME FACTOR (COMPLEX) FFT
@@ -279,38 +375,12 @@
 !          FOR ANY N = (2**P)(3**Q)(5**R)",
 !          SIAM J. SCI. STAT. COMP., MAY 1992.
 !
-!*********************************************************************
-!
-!        SUBROUTINE 'SETGPFA'
-!        SETUP ROUTINE FOR SELF-SORTING IN-PLACE
-!            GENERALIZED PRIME FACTOR (COMPLEX) FFT [GPFA]
-!
-!        CALL SETGPFA(TRIGS,N)
-!
-!        INPUT :
-!        -----
-!        N IS THE LENGTH OF THE TRANSFORMS. N MUST BE OF THE FORM:
-!          -----------------------------------
-!            N = (2**IP) * (3**IQ) * (5**IR)
-!          -----------------------------------
-!
-!        OUTPUT:
-!        ------
-!        TRIGS IS A TABLE OF TWIDDLE FACTORS,
-!          OF LENGTH 2*IPQR (REAL) WORDS, WHERE:
-!          --------------------------------------
-!            IPQR = (2**IP) + (3**IQ) + (5**IR)
-!          --------------------------------------
-!
-!        WRITTEN BY CLIVE TEMPERTON 1990
-!
-!*********************************************************************
 
       SUBROUTINE GPFA(A,B,TRIGS,INC,JUMP,N,LOT,ISIGN)
 
       IMPLICIT NONE
 *
-      REAL(grid_p) ::     A(*), B(*) 
+      REAL(dp) ::     A(*), B(*) 
       REAL(dp)  TRIGS(*)
       INTEGER INC, JUMP, N, LOT, ISIGN
 C
@@ -335,9 +405,8 @@ C
    30 CONTINUE
 *
       IF (NN.NE.1) THEN
-         WRITE(6,40) N
-   40    FORMAT(' *** WARNING!!!',I10,' IS NOT A LEGAL VALUE OF N ***')
-         RETURN
+         write(msg,"(i0)") N
+         call die('GPFA: '//trim(msg)//' IS NOT A LEGAL VALUE OF N')
       ENDIF
 *
       IP = NJ(1)
@@ -373,7 +442,7 @@ C
 
       subroutine gpfa2f(a,b,trigs,inc,jump,n,mm,lot,isign)
 
-      real(grid_p) ::     a(*), b(*)
+      real(dp) ::     a(*), b(*)
       real(dp)     ::     trigs(*)
       integer inc, jump, n, mm, lot, isign
 
@@ -429,7 +498,7 @@ C
 *
       nblox = 1 + (lot-1)/lvr
       left = lot
-      s = float(isign)
+      s = real(isign,kind=dp)
       istart = 1
 *
 *  loop on blocks of lvr transforms
@@ -452,8 +521,8 @@ C
 *  -----------------------------
       mu = mod(inq,4)
       if (isign.eq.-1) mu = 4 - mu
-      ss = 1.0
-      if (mu.eq.3) ss = -1.0
+      ss = 1.0_dp
+      if (mu.eq.3) ss = -1.0_dp
 *
       if (mh.eq.0) go to 200
 *
@@ -720,9 +789,9 @@ cdir$ ivdep, shortloop
       jstepl = jstep - ninc
       mu = mod(inq,8)
       if (isign.eq.-1) mu = 8 - mu
-      c1 = 1.0
-      if (mu.eq.3.or.mu.eq.7) c1 = -1.0
-      c2 = sqrt(0.5)
+      c1 = 1.0_dp
+      if (mu.eq.3.or.mu.eq.7) c1 = -1.0_dp
+      c2 = sqrt(0.5_dp)
       if (mu.eq.3.or.mu.eq.5) c2 = -c2
       c3 = c1 * c2
 *
@@ -999,8 +1068,8 @@ cdir$ ivdep, shortloop
   400 continue
       mu = mod(inq,4)
       if (isign.eq.-1) mu = 4 - mu
-      ss = 1.0
-      if (mu.eq.3) ss = -1.0
+      ss = 1.0_dp
+      if (mu.eq.3) ss = -1.0_dp
 *
       do 480 ipass = mh+1 , m
       jstep = (n*inc) / (4*la)
@@ -1385,7 +1454,7 @@ cdir$ ivdep, shortloop
 *
       subroutine gpfa3f(a,b,trigs,inc,jump,n,mm,lot,isign)
 
-      real(grid_p) ::     a(*), b(*)
+      real(dp) ::     a(*), b(*)
       real(dp)     ::     trigs(*)
       integer inc, jump, n, mm, lot, isign
 
@@ -1423,13 +1492,13 @@ cdir$ ivdep, shortloop
       if (isign.eq.-1) mu = 3-mu
       m = mm
       mh = (m+1)/2
-      s = float(isign)
+      s = real(isign,kind=dp)
       c1 = sin60
       if (mu.eq.2) c1 = -c1
 *
       nblox = 1 + (lot-1)/lvr
       left = lot
-      s = float(isign)
+      s = real(isign,kind=dp)
       istart = 1
 *
 *  loop on blocks of lvr transforms
@@ -1478,13 +1547,13 @@ cdir$ ivdep, shortloop
       ajc = a(jc+j)
       t1 = ajb + ajc
       aja = a(ja+j)
-      t2 = aja - 0.5 * t1
+      t2 = aja - 0.5_dp * t1
       t3 = c1 * ( ajb - ajc )
       bjb = b(jb+j)
       bjc = b(jc+j)
       u1 = bjb + bjc
       bja = b(ja+j)
-      u2 = bja - 0.5 * u1
+      u2 = bja - 0.5_dp * u1
       u3 = c1 * ( bjb - bjc )
       a(ja+j) = aja + t1
       b(ja+j) = bja + u1
@@ -1536,13 +1605,13 @@ cdir$ ivdep, shortloop
       ajc = a(jc+j)
       t1 = ajb + ajc
       aja = a(ja+j)
-      t2 = aja - 0.5 * t1
+      t2 = aja - 0.5_dp * t1
       t3 = c1 * ( ajb - ajc )
       bjb = b(jb+j)
       bjc = b(jc+j)
       u1 = bjb + bjc
       bja = b(ja+j)
-      u2 = bja - 0.5 * u1
+      u2 = bja - 0.5_dp * u1
       u3 = c1 * ( bjb - bjc )
       a(ja+j) = aja + t1
       b(ja+j) = bja + u1
@@ -1612,7 +1681,7 @@ cdir$ ivdep, shortloop
       ajc = a(jc+j)
       t1 = ajb + ajc
       aja = a(ja+j)
-      t2 = aja - 0.5 * t1
+      t2 = aja - 0.5_dp * t1
       t3 = c1 * ( ajb - ajc )
       ajd = a(jd+j)
       ajb =  ajd
@@ -1620,7 +1689,7 @@ cdir$ ivdep, shortloop
       bjc = b(jc+j)
       u1 = bjb + bjc
       bja = b(ja+j)
-      u2 = bja - 0.5 * u1
+      u2 = bja - 0.5_dp * u1
       u3 = c1 * ( bjb - bjc )
       bjd = b(jd+j)
       bjb =  bjd
@@ -1634,14 +1703,14 @@ cdir$ ivdep, shortloop
       aje = a(je+j)
       ajf = a(jf+j)
       t1 = aje + ajf
-      t2 = ajb - 0.5 * t1
+      t2 = ajb - 0.5_dp * t1
       t3 = c1 * ( aje - ajf )
       ajh = a(jh+j)
       ajf =  ajh
       bje = b(je+j)
       bjf = b(jf+j)
       u1 = bje + bjf
-      u2 = bjb - 0.5 * u1
+      u2 = bjb - 0.5_dp * u1
       u3 = c1 * ( bje - bjf )
       bjh = b(jh+j)
       bjf =  bjh
@@ -1655,14 +1724,14 @@ cdir$ ivdep, shortloop
       aji = a(ji+j)
       t1 = ajf + aji
       ajg = a(jg+j)
-      t2 = ajg - 0.5 * t1
+      t2 = ajg - 0.5_dp * t1
       t3 = c1 * ( ajf - aji )
       t1 = ajg + t1
       a(jg+j) = ajc
       bji = b(ji+j)
       u1 = bjf + bji
       bjg = b(jg+j)
-      u2 = bjg - 0.5 * u1
+      u2 = bjg - 0.5_dp * u1
       u3 = c1 * ( bjf - bji )
       u1 = bjg + u1
       b(jg+j) = bjc
@@ -1734,7 +1803,7 @@ cdir$ ivdep, shortloop
       ajc = a(jc+j)
       t1 = ajb + ajc
       aja = a(ja+j)
-      t2 = aja - 0.5 * t1
+      t2 = aja - 0.5_dp * t1
       t3 = c1 * ( ajb - ajc )
       ajd = a(jd+j)
       ajb =  ajd
@@ -1742,7 +1811,7 @@ cdir$ ivdep, shortloop
       bjc = b(jc+j)
       u1 = bjb + bjc
       bja = b(ja+j)
-      u2 = bja - 0.5 * u1
+      u2 = bja - 0.5_dp * u1
       u3 = c1 * ( bjb - bjc )
       bjd = b(jd+j)
       bjb =  bjd
@@ -1756,14 +1825,14 @@ cdir$ ivdep, shortloop
       aje = a(je+j)
       ajf = a(jf+j)
       t1 = aje + ajf
-      t2 = ajb - 0.5 * t1
+      t2 = ajb - 0.5_dp * t1
       t3 = c1 * ( aje - ajf )
       ajh = a(jh+j)
       ajf =  ajh
       bje = b(je+j)
       bjf = b(jf+j)
       u1 = bje + bjf
-      u2 = bjb - 0.5 * u1
+      u2 = bjb - 0.5_dp * u1
       u3 = c1 * ( bje - bjf )
       bjh = b(jh+j)
       bjf =  bjh
@@ -1777,14 +1846,14 @@ cdir$ ivdep, shortloop
       aji = a(ji+j)
       t1 = ajf + aji
       ajg = a(jg+j)
-      t2 = ajg - 0.5 * t1
+      t2 = ajg - 0.5_dp * t1
       t3 = c1 * ( ajf - aji )
       t1 = ajg + t1
       a(jg+j) = ajc
       bji = b(ji+j)
       u1 = bjf + bji
       bjg = b(jg+j)
-      u2 = bjg - 0.5 * u1
+      u2 = bjg - 0.5_dp * u1
       u3 = c1 * ( bjf - bji )
       u1 = bjg + u1
       b(jg+j) = bjc
@@ -1828,7 +1897,7 @@ cdir$ ivdep, shortloop
 *
       subroutine gpfa5f(a,b,trigs,inc,jump,n,mm,lot,isign)
 
-      real(grid_p) ::     a(*), b(*)
+      real(dp)     ::     a(*), b(*)
       real(dp)     ::     trigs(*)
       integer inc, jump, n, mm, lot, isign
 
@@ -1874,7 +1943,7 @@ cdir$ ivdep, shortloop
 *
       m = mm
       mh = (m+1)/2
-      s = float(isign)
+      s = real(isign,kind=dp)
       c1 = qrt5
       c2 = sin72
       c3 = sin36
@@ -1888,7 +1957,7 @@ cdir$ ivdep, shortloop
 *
       nblox = 1 + (lot-1)/lvr
       left = lot
-      s = float(isign)
+      s = real(isign,kind=dp)
       istart = 1
 *
 *  loop on blocks of lvr transforms
@@ -1966,7 +2035,7 @@ cdir$ ivdep, shortloop
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
       aja = a(ja+j)
-      t7 = aja - 0.25 * t5
+      t7 = aja - 0.25_dp * t5
       a(ja+j) = aja + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -1983,7 +2052,7 @@ cdir$ ivdep, shortloop
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
       bja = b(ja+j)
-      u7 = bja - 0.25 * u5
+      u7 = bja - 0.25_dp * u5
       b(ja+j) = bja + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -2017,7 +2086,7 @@ cdir$ ivdep, shortloop
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
       aja = a(ja+j)
-      t7 = aja - 0.25 * t5
+      t7 = aja - 0.25_dp * t5
       a(ja+j) = aja + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -2034,7 +2103,7 @@ cdir$ ivdep, shortloop
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
       bja = b(ja+j)
-      u7 = bja - 0.25 * u5
+      u7 = bja - 0.25_dp * u5
       b(ja+j) = bja + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -2175,7 +2244,7 @@ cdir$ ivdep, shortloop
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
       aja = a(ja+j)
-      t7 = aja - 0.25 * t5
+      t7 = aja - 0.25_dp * t5
       a(ja+j) = aja + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -2196,7 +2265,7 @@ cdir$ ivdep, shortloop
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
       bja = b(ja+j)
-      u7 = bja - 0.25 * u5
+      u7 = bja - 0.25_dp * u5
       b(ja+j) = bja + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -2225,7 +2294,7 @@ cdir$ ivdep, shortloop
       ajh =  ajl
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
-      t7 = ajb - 0.25 * t5
+      t7 = ajb - 0.25_dp * t5
       a(jb+j) = ajb + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -2245,7 +2314,7 @@ cdir$ ivdep, shortloop
       bjh =  bjl
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
-      u7 = bjb - 0.25 * u5
+      u7 = bjb - 0.25_dp * u5
       b(jb+j) = bjb + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -2273,7 +2342,7 @@ cdir$ ivdep, shortloop
       ajn =  ajr
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
-      t7 = ajc - 0.25 * t5
+      t7 = ajc - 0.25_dp * t5
       a(jc+j) = ajc + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -2292,7 +2361,7 @@ cdir$ ivdep, shortloop
       bjn =  bjr
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
-      u7 = bjc - 0.25 * u5
+      u7 = bjc - 0.25_dp * u5
       b(jc+j) = bjc + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -2320,7 +2389,7 @@ cdir$ ivdep, shortloop
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
       ajp = a(jp+j)
-      t7 = ajp - 0.25 * t5
+      t7 = ajp - 0.25_dp * t5
       ax = ajp + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -2339,7 +2408,7 @@ cdir$ ivdep, shortloop
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
       bjp = b(jp+j)
-      u7 = bjp - 0.25 * u5
+      u7 = bjp - 0.25_dp * u5
       bx = bjp + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -2366,7 +2435,7 @@ cdir$ ivdep, shortloop
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
       aju = a(ju+j)
-      t7 = aju - 0.25 * t5
+      t7 = aju - 0.25_dp * t5
       ax = aju + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -2384,7 +2453,7 @@ cdir$ ivdep, shortloop
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
       bju = b(ju+j)
-      u7 = bju - 0.25 * u5
+      u7 = bju - 0.25_dp * u5
       bx = bju + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -2422,7 +2491,7 @@ cdir$ ivdep, shortloop
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
       aja = a(ja+j)
-      t7 = aja - 0.25 * t5
+      t7 = aja - 0.25_dp * t5
       a(ja+j) = aja + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -2443,7 +2512,7 @@ cdir$ ivdep, shortloop
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
       bja = b(ja+j)
-      u7 = bja - 0.25 * u5
+      u7 = bja - 0.25_dp * u5
       b(ja+j) = bja + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -2472,7 +2541,7 @@ cdir$ ivdep, shortloop
       ajh =  ajl
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
-      t7 = ajb - 0.25 * t5
+      t7 = ajb - 0.25_dp * t5
       a(jb+j) = ajb + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -2492,7 +2561,7 @@ cdir$ ivdep, shortloop
       bjh =  bjl
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
-      u7 = bjb - 0.25 * u5
+      u7 = bjb - 0.25_dp * u5
       b(jb+j) = bjb + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -2520,7 +2589,7 @@ cdir$ ivdep, shortloop
       ajn =  ajr
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
-      t7 = ajc - 0.25 * t5
+      t7 = ajc - 0.25_dp * t5
       a(jc+j) = ajc + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -2539,7 +2608,7 @@ cdir$ ivdep, shortloop
       bjn =  bjr
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
-      u7 = bjc - 0.25 * u5
+      u7 = bjc - 0.25_dp * u5
       b(jc+j) = bjc + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -2567,7 +2636,7 @@ cdir$ ivdep, shortloop
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
       ajp = a(jp+j)
-      t7 = ajp - 0.25 * t5
+      t7 = ajp - 0.25_dp * t5
       ax = ajp + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -2586,7 +2655,7 @@ cdir$ ivdep, shortloop
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
       bjp = b(jp+j)
-      u7 = bjp - 0.25 * u5
+      u7 = bjp - 0.25_dp * u5
       bx = bjp + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -2613,7 +2682,7 @@ cdir$ ivdep, shortloop
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
       aju = a(ju+j)
-      t7 = aju - 0.25 * t5
+      t7 = aju - 0.25_dp * t5
       ax = aju + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -2631,7 +2700,7 @@ cdir$ ivdep, shortloop
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
       bju = b(ju+j)
-      u7 = bju - 0.25 * u5
+      u7 = bju - 0.25_dp * u5
       bx = bju + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -2674,78 +2743,5 @@ cdir$ ivdep, shortloop
 *
       return
       end subroutine gpfa5f
-
-!*********************************************************************
-
-      SUBROUTINE SETGPFA(TRIGS,maxtrigs,ntrigs,N)
-*
-
-      INTEGER maxtrigs,NJ(3),ntrigs
-      REAL(dp) TRIGS(maxtrigs)
-
-      integer       :: nn, n, ifac, ll, kk, ip, iq, ir,
-     $                 i, ni, irot, kink, k
-      real(dp)      :: angle, twopi, del
-*
-*     DECOMPOSE N INTO FACTORS 2,3,5
-*     ------------------------------
-      NN = N
-      IFAC = 2
-*
-      DO 30 LL = 1 , 3
-      KK = 0
-   10 CONTINUE
-      IF (MOD(NN,IFAC).NE.0) GO TO 20
-      KK = KK + 1
-      NN = NN / IFAC
-      GO TO 10
-   20 CONTINUE
-      NJ(LL) = KK
-      IFAC = IFAC + LL
-   30 CONTINUE
-*
-      IF (NN.NE.1) THEN
-         WRITE(6,40) N
-   40    FORMAT(' *** WARNING!!!',I10,' IS NOT A LEGAL VALUE OF N ***')
-         RETURN
-      ENDIF
-*
-      IP = NJ(1)
-      IQ = NJ(2)
-      IR = NJ(3)
-*
-*     COMPUTE LIST OF ROTATED TWIDDLE FACTORS
-*     ---------------------------------------
-      NJ(1) = 2**IP
-      NJ(2) = 3**IQ
-      NJ(3) = 5**IR
-*
-      TWOPI = 4.0_dp * ASIN(1.0_dp)
-      I = 1
-*
-      DO 60 LL = 1 , 3
-      NI = NJ(LL)
-      IF (NI.EQ.1) GO TO 60
-*
-      DEL = TWOPI / real(NI,kind=dp)
-      IROT = N / NI
-      KINK = MOD(IROT,NI)
-      KK = 0
-*
-      DO 50 K = 1 , NI
-      ANGLE = real(KK,kind=dp) * DEL
-      if (i.lt.maxtrigs) then
-        TRIGS(I) = COS(ANGLE)
-        TRIGS(I+1) = SIN(ANGLE)
-      endif
-      I = I + 2
-      KK = KK + KINK
-      IF (KK.GT.NI) KK = KK - NI
-   50 CONTINUE
-   60 CONTINUE
-      ntrigs = i
-*
-      RETURN
-      END SUBROUTINE SETGPFA
 
       end module m_fft_gpfa

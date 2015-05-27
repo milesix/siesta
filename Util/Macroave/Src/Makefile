@@ -15,7 +15,7 @@ FC:=$(FC_SERIAL)         # Make it non-recursive
 # Note that machine-specific files are now in top Src directory.
 #
 OBJS = io.o iorho.o paste.o macroave.o thetaft.o \
-	surpla.o volcel.o recipes.o hdr_io.o m_fft_gpfa.o
+	surpla.o volcel.o recipes.o hdr_io.o m_fft_gpfa.o local_die.o
 #
 #
 # This is crude but will have to do for now.
