@@ -9,7 +9,7 @@
 !
       subroutine fft(f, Mesh, isn, nsm)
 C
-C  Parallel FFT based on FFT routine of Templeton
+C  Parallel FFT based on FFT routine of Temperton
 C
 C  On input :
 C
@@ -930,7 +930,7 @@ C
 *
       nblox = 1 + (lot-1)/lvr
       left = lot
-      s = float(isign)
+      s = real(isign,kind=dp)
       istart = 1
 *
 *  loop on blocks of lvr transforms
@@ -953,8 +953,8 @@ C
 *  -----------------------------
       mu = mod(inq,4)
       if (isign.eq.-1) mu = 4 - mu
-      ss = 1.0
-      if (mu.eq.3) ss = -1.0
+      ss = 1.0_dp
+      if (mu.eq.3) ss = -1.0_dp
 *
       if (mh.eq.0) go to 200
 *
@@ -1221,9 +1221,9 @@ cdir$ ivdep, shortloop
       jstepl = jstep - ninc
       mu = mod(inq,8)
       if (isign.eq.-1) mu = 8 - mu
-      c1 = 1.0
-      if (mu.eq.3.or.mu.eq.7) c1 = -1.0
-      c2 = sqrt(0.5)
+      c1 = 1.0_dp
+      if (mu.eq.3.or.mu.eq.7) c1 = -1.0_dp
+      c2 = sqrt(0.5_dp)
       if (mu.eq.3.or.mu.eq.5) c2 = -c2
       c3 = c1 * c2
 *
@@ -1500,8 +1500,8 @@ cdir$ ivdep, shortloop
   400 continue
       mu = mod(inq,4)
       if (isign.eq.-1) mu = 4 - mu
-      ss = 1.0
-      if (mu.eq.3) ss = -1.0
+      ss = 1.0_dp
+      if (mu.eq.3) ss = -1.0_dp
 *
       do 480 ipass = mh+1 , m
       jstep = (n*inc) / (4*la)
@@ -1922,13 +1922,13 @@ cdir$ ivdep, shortloop
       if (isign.eq.-1) mu = 3-mu
       m = mm
       mh = (m+1)/2
-      s = float(isign)
+      s = real(isign,kind=dp)
       c1 = sin60
       if (mu.eq.2) c1 = -c1
 *
       nblox = 1 + (lot-1)/lvr
       left = lot
-      s = float(isign)
+      s = real(isign,kind=dp)
       istart = 1
 *
 *  loop on blocks of lvr transforms
@@ -1977,13 +1977,13 @@ cdir$ ivdep, shortloop
       ajc = a(jc+j)
       t1 = ajb + ajc
       aja = a(ja+j)
-      t2 = aja - 0.5 * t1
+      t2 = aja - 0.5_dp * t1
       t3 = c1 * ( ajb - ajc )
       bjb = b(jb+j)
       bjc = b(jc+j)
       u1 = bjb + bjc
       bja = b(ja+j)
-      u2 = bja - 0.5 * u1
+      u2 = bja - 0.5_dp * u1
       u3 = c1 * ( bjb - bjc )
       a(ja+j) = aja + t1
       b(ja+j) = bja + u1
@@ -2035,13 +2035,13 @@ cdir$ ivdep, shortloop
       ajc = a(jc+j)
       t1 = ajb + ajc
       aja = a(ja+j)
-      t2 = aja - 0.5 * t1
+      t2 = aja - 0.5_dp * t1
       t3 = c1 * ( ajb - ajc )
       bjb = b(jb+j)
       bjc = b(jc+j)
       u1 = bjb + bjc
       bja = b(ja+j)
-      u2 = bja - 0.5 * u1
+      u2 = bja - 0.5_dp * u1
       u3 = c1 * ( bjb - bjc )
       a(ja+j) = aja + t1
       b(ja+j) = bja + u1
@@ -2111,7 +2111,7 @@ cdir$ ivdep, shortloop
       ajc = a(jc+j)
       t1 = ajb + ajc
       aja = a(ja+j)
-      t2 = aja - 0.5 * t1
+      t2 = aja - 0.5_dp * t1
       t3 = c1 * ( ajb - ajc )
       ajd = a(jd+j)
       ajb =  ajd
@@ -2119,7 +2119,7 @@ cdir$ ivdep, shortloop
       bjc = b(jc+j)
       u1 = bjb + bjc
       bja = b(ja+j)
-      u2 = bja - 0.5 * u1
+      u2 = bja - 0.5_dp * u1
       u3 = c1 * ( bjb - bjc )
       bjd = b(jd+j)
       bjb =  bjd
@@ -2133,14 +2133,14 @@ cdir$ ivdep, shortloop
       aje = a(je+j)
       ajf = a(jf+j)
       t1 = aje + ajf
-      t2 = ajb - 0.5 * t1
+      t2 = ajb - 0.5_dp * t1
       t3 = c1 * ( aje - ajf )
       ajh = a(jh+j)
       ajf =  ajh
       bje = b(je+j)
       bjf = b(jf+j)
       u1 = bje + bjf
-      u2 = bjb - 0.5 * u1
+      u2 = bjb - 0.5_dp * u1
       u3 = c1 * ( bje - bjf )
       bjh = b(jh+j)
       bjf =  bjh
@@ -2154,14 +2154,14 @@ cdir$ ivdep, shortloop
       aji = a(ji+j)
       t1 = ajf + aji
       ajg = a(jg+j)
-      t2 = ajg - 0.5 * t1
+      t2 = ajg - 0.5_dp * t1
       t3 = c1 * ( ajf - aji )
       t1 = ajg + t1
       a(jg+j) = ajc
       bji = b(ji+j)
       u1 = bjf + bji
       bjg = b(jg+j)
-      u2 = bjg - 0.5 * u1
+      u2 = bjg - 0.5_dp * u1
       u3 = c1 * ( bjf - bji )
       u1 = bjg + u1
       b(jg+j) = bjc
@@ -2233,7 +2233,7 @@ cdir$ ivdep, shortloop
       ajc = a(jc+j)
       t1 = ajb + ajc
       aja = a(ja+j)
-      t2 = aja - 0.5 * t1
+      t2 = aja - 0.5_dp * t1
       t3 = c1 * ( ajb - ajc )
       ajd = a(jd+j)
       ajb =  ajd
@@ -2241,7 +2241,7 @@ cdir$ ivdep, shortloop
       bjc = b(jc+j)
       u1 = bjb + bjc
       bja = b(ja+j)
-      u2 = bja - 0.5 * u1
+      u2 = bja - 0.5_dp * u1
       u3 = c1 * ( bjb - bjc )
       bjd = b(jd+j)
       bjb =  bjd
@@ -2255,14 +2255,14 @@ cdir$ ivdep, shortloop
       aje = a(je+j)
       ajf = a(jf+j)
       t1 = aje + ajf
-      t2 = ajb - 0.5 * t1
+      t2 = ajb - 0.5_dp * t1
       t3 = c1 * ( aje - ajf )
       ajh = a(jh+j)
       ajf =  ajh
       bje = b(je+j)
       bjf = b(jf+j)
       u1 = bje + bjf
-      u2 = bjb - 0.5 * u1
+      u2 = bjb - 0.5_dp * u1
       u3 = c1 * ( bje - bjf )
       bjh = b(jh+j)
       bjf =  bjh
@@ -2276,14 +2276,14 @@ cdir$ ivdep, shortloop
       aji = a(ji+j)
       t1 = ajf + aji
       ajg = a(jg+j)
-      t2 = ajg - 0.5 * t1
+      t2 = ajg - 0.5_dp * t1
       t3 = c1 * ( ajf - aji )
       t1 = ajg + t1
       a(jg+j) = ajc
       bji = b(ji+j)
       u1 = bjf + bji
       bjg = b(jg+j)
-      u2 = bjg - 0.5 * u1
+      u2 = bjg - 0.5_dp * u1
       u3 = c1 * ( bjf - bji )
       u1 = bjg + u1
       b(jg+j) = bjc
@@ -2371,7 +2371,7 @@ cdir$ ivdep, shortloop
 *
       m = mm
       mh = (m+1)/2
-      s = float(isign)
+      s = real(isign,kind=dp)
       c1 = qrt5
       c2 = sin72
       c3 = sin36
@@ -2385,7 +2385,7 @@ cdir$ ivdep, shortloop
 *
       nblox = 1 + (lot-1)/lvr
       left = lot
-      s = float(isign)
+      s = real(isign,kind=dp)
       istart = 1
 *
 *  loop on blocks of lvr transforms
@@ -2463,7 +2463,7 @@ cdir$ ivdep, shortloop
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
       aja = a(ja+j)
-      t7 = aja - 0.25 * t5
+      t7 = aja - 0.25_dp * t5
       a(ja+j) = aja + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -2480,7 +2480,7 @@ cdir$ ivdep, shortloop
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
       bja = b(ja+j)
-      u7 = bja - 0.25 * u5
+      u7 = bja - 0.25_dp * u5
       b(ja+j) = bja + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -2514,7 +2514,7 @@ cdir$ ivdep, shortloop
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
       aja = a(ja+j)
-      t7 = aja - 0.25 * t5
+      t7 = aja - 0.25_dp * t5
       a(ja+j) = aja + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -2531,7 +2531,7 @@ cdir$ ivdep, shortloop
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
       bja = b(ja+j)
-      u7 = bja - 0.25 * u5
+      u7 = bja - 0.25_dp * u5
       b(ja+j) = bja + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -2672,7 +2672,7 @@ cdir$ ivdep, shortloop
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
       aja = a(ja+j)
-      t7 = aja - 0.25 * t5
+      t7 = aja - 0.25_dp * t5
       a(ja+j) = aja + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -2693,7 +2693,7 @@ cdir$ ivdep, shortloop
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
       bja = b(ja+j)
-      u7 = bja - 0.25 * u5
+      u7 = bja - 0.25_dp * u5
       b(ja+j) = bja + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -2722,7 +2722,7 @@ cdir$ ivdep, shortloop
       ajh =  ajl
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
-      t7 = ajb - 0.25 * t5
+      t7 = ajb - 0.25_dp * t5
       a(jb+j) = ajb + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -2742,7 +2742,7 @@ cdir$ ivdep, shortloop
       bjh =  bjl
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
-      u7 = bjb - 0.25 * u5
+      u7 = bjb - 0.25_dp * u5
       b(jb+j) = bjb + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -2770,7 +2770,7 @@ cdir$ ivdep, shortloop
       ajn =  ajr
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
-      t7 = ajc - 0.25 * t5
+      t7 = ajc - 0.25_dp * t5
       a(jc+j) = ajc + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -2789,7 +2789,7 @@ cdir$ ivdep, shortloop
       bjn =  bjr
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
-      u7 = bjc - 0.25 * u5
+      u7 = bjc - 0.25_dp * u5
       b(jc+j) = bjc + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -2817,7 +2817,7 @@ cdir$ ivdep, shortloop
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
       ajp = a(jp+j)
-      t7 = ajp - 0.25 * t5
+      t7 = ajp - 0.25_dp * t5
       ax = ajp + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -2836,7 +2836,7 @@ cdir$ ivdep, shortloop
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
       bjp = b(jp+j)
-      u7 = bjp - 0.25 * u5
+      u7 = bjp - 0.25_dp * u5
       bx = bjp + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -2863,7 +2863,7 @@ cdir$ ivdep, shortloop
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
       aju = a(ju+j)
-      t7 = aju - 0.25 * t5
+      t7 = aju - 0.25_dp * t5
       ax = aju + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -2881,7 +2881,7 @@ cdir$ ivdep, shortloop
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
       bju = b(ju+j)
-      u7 = bju - 0.25 * u5
+      u7 = bju - 0.25_dp * u5
       bx = bju + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -2919,7 +2919,7 @@ cdir$ ivdep, shortloop
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
       aja = a(ja+j)
-      t7 = aja - 0.25 * t5
+      t7 = aja - 0.25_dp * t5
       a(ja+j) = aja + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -2940,7 +2940,7 @@ cdir$ ivdep, shortloop
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
       bja = b(ja+j)
-      u7 = bja - 0.25 * u5
+      u7 = bja - 0.25_dp * u5
       b(ja+j) = bja + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -2969,7 +2969,7 @@ cdir$ ivdep, shortloop
       ajh =  ajl
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
-      t7 = ajb - 0.25 * t5
+      t7 = ajb - 0.25_dp * t5
       a(jb+j) = ajb + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -2989,7 +2989,7 @@ cdir$ ivdep, shortloop
       bjh =  bjl
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
-      u7 = bjb - 0.25 * u5
+      u7 = bjb - 0.25_dp * u5
       b(jb+j) = bjb + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -3017,7 +3017,7 @@ cdir$ ivdep, shortloop
       ajn =  ajr
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
-      t7 = ajc - 0.25 * t5
+      t7 = ajc - 0.25_dp * t5
       a(jc+j) = ajc + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -3036,7 +3036,7 @@ cdir$ ivdep, shortloop
       bjn =  bjr
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
-      u7 = bjc - 0.25 * u5
+      u7 = bjc - 0.25_dp * u5
       b(jc+j) = bjc + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -3064,7 +3064,7 @@ cdir$ ivdep, shortloop
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
       ajp = a(jp+j)
-      t7 = ajp - 0.25 * t5
+      t7 = ajp - 0.25_dp * t5
       ax = ajp + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -3083,7 +3083,7 @@ cdir$ ivdep, shortloop
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
       bjp = b(jp+j)
-      u7 = bjp - 0.25 * u5
+      u7 = bjp - 0.25_dp * u5
       bx = bjp + u5
       u8 = u7 + u6
       u9 = u7 - u6
@@ -3110,7 +3110,7 @@ cdir$ ivdep, shortloop
       t5 = t1 + t2
       t6 = c1 * ( t1 - t2 )
       aju = a(ju+j)
-      t7 = aju - 0.25 * t5
+      t7 = aju - 0.25_dp * t5
       ax = aju + t5
       t8 = t7 + t6
       t9 = t7 - t6
@@ -3128,7 +3128,7 @@ cdir$ ivdep, shortloop
       u5 = u1 + u2
       u6 = c1 * ( u1 - u2 )
       bju = b(ju+j)
-      u7 = bju - 0.25 * u5
+      u7 = bju - 0.25_dp * u5
       bx = bju + u5
       u8 = u7 + u6
       u9 = u7 - u6

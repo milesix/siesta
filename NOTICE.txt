@@ -21,8 +21,9 @@ Src/MPI/mpi__include.f90)
 This package includes software developed by A.R. Williams (see
 Src/arw.f and Src/periodic_table.f).
 
-The serial version of the multivariate fast fourier transform used to
-solve Poisson's equation in this package was written by
-R. C. Singleton in 1968.
+The original versions of the fast fourier transform routines used in
+this package were written by Clive Temperton, and put in the public
+domain.
+
 
 
