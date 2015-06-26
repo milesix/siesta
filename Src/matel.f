@@ -139,7 +139,7 @@ C Modules -----------------------------------------------------------
       USE ALLOC
       USE ATMFUNCS, ONLY: LOFIO, PHIATM, RCUT
       use m_xyz_phiatm
-      use m_recipes, only: spline, splint
+      use interpolation, only: spline, splint
       use m_errorf, only: derf
       use spher_harm
       use m_radfft

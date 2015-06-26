@@ -47,7 +47,7 @@ SYSOBJ=$(SYS).o
 #
 # Note that machine-specific files are now in top Src directory.
 #
-OBJS_GEN-BASIS=alloc.o basis_types.o precision.o recipes.o parallel.o \
+OBJS_GEN-BASIS=alloc.o basis_types.o precision.o parallel.o \
           parsing.o xcmod.o basis_io.o  chemical.o atm_transfer.o atm_types.o\
           atmparams.o old_atmfuncs.o radial.o io.o \
 	  paste.o  interpolation.o bessph.o  m_filter.o radfft.o m_fft_gpfa.o\
@@ -97,7 +97,7 @@ atm_transfer.o: radial.o sys.o
 atm_types.o: precision.o radial.o
 atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o sys.o
 atom.o: atmparams.o atom_options.o basis_specs.o basis_types.o m_filter.o
-atom.o: old_atmfuncs.o periodic_table.o precision.o pseudopotential.o recipes.o
+atom.o: old_atmfuncs.o periodic_table.o precision.o pseudopotential.o 
 atom.o: sys.o xcmod.o
 atom_options.o: sys.o
 atomlist.o: alloc.o atm_types.o atmfuncs.o parallel.o precision.o siesta_geom.o
@@ -113,7 +113,7 @@ basis_specs.o: basis_types.o chemical.o periodic_table.o precision.o
 basis_specs.o: pseudopotential.o sys.o
 basis_types.o: alloc.o atmparams.o precision.o pseudopotential.o sys.o
 bessph.o: parallel.o precision.o sys.o
-bonds.o: alloc.o atmfuncs.o mneighb.o precision.o recipes.o sorting.o units.o
+bonds.o: alloc.o atmfuncs.o mneighb.o precision.o  sorting.o units.o
 born_charge.o: atomlist.o ksv.o ksvinit.o m_mpi_utils.o m_spin.o parallel.o
 born_charge.o: siesta_geom.o siesta_options.o sparse_matrices.o
 broadcast_basis.o: atm_types.o parallel.o radial.o
@@ -184,7 +184,7 @@ egandd.o: alloc.o denmat.o ener3.o globalise.o gradient.o m_mpi_utils.o
 egandd.o: on_subs.o onmod.o onmod.o precision.o sys.o
 eggbox.o: parallel.o parsing.o precision.o
 electrostatic.o: atm_types.o atmfuncs.o atmparams.o precision.o radfft.o
-electrostatic.o: radial.o recipes.o sys.o
+electrostatic.o: radial.o  sys.o
 ener3.o: globalise.o m_mpi_utils.o onmod.o precision.o
 ener3lomem.o: globalise.o m_mpi_utils.o onmod.o precision.o
 extrapolon.o: parallel.o precision.o sys.o
@@ -296,7 +296,7 @@ m_ts_scattering.o: m_ts_aux_rout.o m_ts_options.o parallelsubs.o precision.o
 m_ts_scattering.o: sys.o
 m_wallclock.o: m_walltime.o
 madelung.o: parallel.o precision.o sys.o
-matel.o: alloc.o atmfuncs.o errorf.o precision.o radfft.o recipes.o
+matel.o: alloc.o atmfuncs.o errorf.o precision.o radfft.o 
 matel.o: spher_harm.o
 md_out.o: files.o m_energies.o precision.o sys.o units.o
 md_utils.o: precision.o
@@ -364,7 +364,6 @@ radfft.o: alloc.o m_fft_gpfa.o precision.o
 radial.o: precision.o xml.o
 rdiag.o: alloc.o memoryinfo.o parallel.o precision.o sys.o
 readsp.o: parallel.o precision.o sys.o
-recipes.o: sys.o
 redcel.o: precision.o sys.o
 reinit.o: files.o parallel.o precision.o
 remove_intramol_pressure.o: precision.o zmatrix.o
@@ -515,7 +514,6 @@ m_post_scf_work.o: post_scf_work.o
 m_projected_dos.o: projected_DOS.o
 m_proximity_check.o: proximity_check.o
 m_radfft.o: radfft.o
-m_recipes.o: recipes.o
 m_scf_options.o: m_options.o
 m_scfconvergence_test.o: scfconvergence_test.o
 m_setup_hamiltonian.o: setup_hamiltonian.o

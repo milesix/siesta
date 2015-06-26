@@ -12,7 +12,7 @@
       use precision, only: dp
       use sys,       only: die
       use atmparams
-      use m_recipes, only: spline, polint
+      use interpolation, only: spline, polint
       use basis_types, only: basis_parameters
       use basis_types, only: ground_state_t
       use atom_options, only: write_ion_plot_files, debug_kb_generation

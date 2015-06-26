@@ -75,7 +75,7 @@ OBJS_STM = atompla.o  \
         io.o iodm.o itochar.o length.o \
         mainstm.o matvect.o memory.o \
 	neighb.o paste.o pxf.o \
-	radfft.o ranger.o recipes.o\
+	radfft.o ranger.o \
         readstm.o readwaves.o \
         redata.o  reinitstm.o stm.o \
 	vacpot.o volcel.o wrout.o m_fft_gpfa.o handlers.o
@@ -123,7 +123,7 @@ atm_transfer.o: radial.o sys.o
 atm_types.o: precision.o radial.o
 atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o sys.o
 atom.o: atmparams.o atom_options.o basis_specs.o basis_types.o m_filter.o
-atom.o: old_atmfuncs.o periodic_table.o precision.o pseudopotential.o recipes.o
+atom.o: old_atmfuncs.o periodic_table.o precision.o pseudopotential.o 
 atom.o: sys.o xcmod.o
 atom_options.o: sys.o
 atomlist.o: alloc.o atm_types.o atmfuncs.o parallel.o precision.o siesta_geom.o
@@ -138,7 +138,7 @@ basis_specs.o: basis_types.o chemical.o periodic_table.o precision.o
 basis_specs.o: pseudopotential.o sys.o
 basis_types.o: alloc.o atmparams.o precision.o pseudopotential.o sys.o
 bessph.o: parallel.o precision.o sys.o
-bonds.o: alloc.o atmfuncs.o mneighb.o precision.o recipes.o sorting.o units.o
+bonds.o: alloc.o atmfuncs.o mneighb.o precision.o  sorting.o units.o
 born_charge.o: atomlist.o ksv.o ksvinit.o m_mpi_utils.o m_spin.o parallel.o
 born_charge.o: siesta_geom.o siesta_options.o sparse_matrices.o
 broadcast_basis.o: atm_types.o parallel.o radial.o
@@ -206,11 +206,11 @@ efield.o: siesta_cml.o sys.o
 egandd.o: alloc.o globalise.o m_mpi_utils.o onmod.o onmod.o precision.o sys.o
 eggbox.o: parallel.o parsing.o precision.o
 electrostatic.o: atm_types.o atmfuncs.o atmparams.o precision.o radfft.o
-electrostatic.o: radial.o recipes.o sys.o
+electrostatic.o: radial.o  sys.o
 ener3.o: globalise.o m_mpi_utils.o onmod.o precision.o
 ener3lomem.o: globalise.o m_mpi_utils.o onmod.o precision.o
 extrapolon.o: parallel.o precision.o sys.o
-fermid.o: parallel.o precision.o recipes.o sys.o
+fermid.o: parallel.o precision.o  sys.o
 fft3d.o: alloc.o parallel.o parallelsubs.o precision.o sys.o
 find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
 fire_optim.o: alloc.o m_fdf_global.o m_fire.o m_mpi_utils.o parallel.o
@@ -309,7 +309,7 @@ m_ts_scattering.o: m_ts_aux_rout.o m_ts_options.o parallelsubs.o precision.o
 m_ts_scattering.o: sys.o
 m_wallclock.o: m_walltime.o
 madelung.o: parallel.o precision.o sys.o
-matel.o: alloc.o atmfuncs.o precision.o radfft.o recipes.o spher_harm.o
+matel.o: alloc.o atmfuncs.o precision.o radfft.o  spher_harm.o
 md_out.o: files.o m_energies.o precision.o sys.o units.o
 md_utils.o: precision.o
 memory.o: memoryinfo.o parallel.o precision.o
@@ -372,11 +372,10 @@ propor.o: precision.o sys.o
 proximity_check.o: m_ts_options.o mneighb.o parallel.o precision.o
 proximity_check.o: siesta_geom.o siesta_options.o
 pseudopotential.o: alloc.o atom_options.o interpolation.o precision.o sys.o
-radfft.o: alloc.o precision.o recipes.o m_fft_gpfa.o
-radial.o: precision.o xml.o
+radfft.o: alloc.o precision.o  m_fft_gpfa.o
+radial.o: precision.o xml.o interpolation.o
 rdiag.o: alloc.o memoryinfo.o parallel.o precision.o sys.o
 readsp.o: parallel.o precision.o sys.o
-recipes.o: sys.o
 redcel.o: precision.o sys.o
 reinit.o: files.o parallel.o precision.o
 remove_intramol_pressure.o: precision.o zmatrix.o
@@ -521,7 +520,6 @@ m_post_scf_work.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/STM/ol-stm/Src/..
 m_projected_dos.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/STM/ol-stm/Src/../../../../Src/projected_DOS.o
 m_proximity_check.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/STM/ol-stm/Src/../../../../Src/proximity_check.o
 m_radfft.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/STM/ol-stm/Src/../../../../Src/radfft.o
-m_recipes.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/STM/ol-stm/Src/../../../../Src/recipes.o
 m_scf_options.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/STM/ol-stm/Src/../../../../Src/m_options.o
 m_scfconvergence_test.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/STM/ol-stm/Src/../../../../Src/scfconvergence_test.o
 m_setup_hamiltonian.o: /home/albertog/code/SIESTA/ag-beta-3.0/Util/STM/ol-stm/Src/../../../../Src/setup_hamiltonian.o
