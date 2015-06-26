@@ -27,9 +27,10 @@ C Modified by J. Junquera, November 2001
 C **********************************************************************
 
 C Modules --------------------------------------------------------------
-      USE DEFS_BASIS
-      USE DEFS_COMMON
+!      USE DEFS_BASIS
+!      USE DEFS_COMMON
       use m_fft_gpfa, only: fft_gpfa_ez
+      use interpolation, only: spline, splint
 
       IMPLICIT NONE
 

@@ -26,4 +26,3 @@ this package were written by Clive Temperton, and put in the public
 domain.
 
 
-
