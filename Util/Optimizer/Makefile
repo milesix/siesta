@@ -15,7 +15,11 @@ SIMPLEX_OBJS=io.o parse.o minimizer.o vars_module.o simplex.o \
 SWARM_OBJS=io.o parse.o minimizer.o vars_module.o swarm.o \
      sys.o precision.o 
 #
-default: swarm simplex
+default: nothing
+nothing:
+	@echo "    To compile swarm or simplex, please edit the makefile"
+#
+#default: swarm simplex
 #
 dep: 
 	sfmakedepend --depend=obj --modext=o *.f *.f90 *.F *.F90

@@ -75,7 +75,7 @@ OBJS_DENCHAR = atompla.o planed.o\
 	radfft.o ranger.o recipes.o\
         readwavesx.o rhoofr.o wavofr.o \
         redata_denchar.o  local_reinit.o denchar.o \
-	volcel.o wrout.o stsofr.o
+	volcel.o wrout.o stsofr.o m_fft_gpfa.o die.o
 #
 # Use the makefile in Src/fdf and all the sources there.
 #
@@ -95,7 +95,7 @@ MOD_OBJS=precision.o parallel.o alloc.o memoryinfo.o sys.o listsc.o  \
          radial.o spher_harm.o  basis_io.o basis_types.o \
          domain_decom.o schecomm.o printmatrix.o qsort.o mmio.o pspltm1.o lenstr.o \
          sparse_matrices.o \
-         files.o flib_spline.o pseudopotential.o chemical.o xml.o
+         files.o interpolation.o pseudopotential.o chemical.o xml.o
 #
 COM_OBJS_DENCHAR=$(OBJS_DENCHAR) $(SYSOBJ)
 ALL_OBJS_DENCHAR=$(MOD_OBJS) $(COM_OBJS_DENCHAR)
@@ -212,7 +212,7 @@ find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
 fire_optim.o: alloc.o m_fdf_global.o m_fire.o m_mpi_utils.o parallel.o
 fire_optim.o: precision.o siesta_options.o units.o
 fixed.o: alloc.o parallel.o parsing.o precision.o
-flib_spline.o: precision.o
+interpolation.o: precision.o
 forhar.o: alloc.o meshsubs.o precision.o
 fractional.o: f2kcli.o periodic_table.o precision.o pseudopotential.o sys.o
 gen-basis.o: atom.o atom_options.o basis_io.o basis_specs.o basis_types.o
@@ -306,7 +306,7 @@ mixer.o: atomlist.o iodm_netcdf.o m_broyden_mixing.o m_energies.o
 mixer.o: m_fire_mixing.o m_mpi_utils.o m_pulay.o m_spin.o m_steps.o m_ts_io.o
 mixer.o: m_ts_options.o parallel.o siesta_geom.o siesta_options.o
 mixer.o: sparse_matrices.o
-mixps.o: f2kcli.o flib_spline.o periodic_table.o precision.o pseudopotential.o
+mixps.o: f2kcli.o interpolation.o periodic_table.o precision.o pseudopotential.o
 mixps.o: sys.o
 mneighb.o: alloc.o precision.o sys.o
 molecularmechanics.o: alloc.o parallel.o parsing.o precision.o sys.o units.o
@@ -356,8 +356,8 @@ projected_DOS.o: sparse_matrices.o sys.o
 propor.o: precision.o sys.o
 proximity_check.o: mneighb.o parallel.o precision.o siesta_geom.o
 proximity_check.o: siesta_options.o
-pseudopotential.o: alloc.o atom_options.o flib_spline.o precision.o sys.o
-radfft.o: alloc.o precision.o recipes.o
+pseudopotential.o: alloc.o atom_options.o interpolation.o precision.o sys.o
+radfft.o: alloc.o precision.o recipes.o m_fft_gpfa.o
 radial.o: precision.o xml.o
 rdiag.o: alloc.o memoryinfo.o parallel.o precision.o sys.o
 readsp.o: parallel.o precision.o sys.o

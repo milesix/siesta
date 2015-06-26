@@ -19,9 +19,9 @@
 # You must set these symbols properly, either here or 
 # (better) in your top arch.make
 #
-#FFTW_ROOT=$(HOME)/lib/fftw-ifort
-#FFTW_INCFLAGS= -I$(FFTW_ROOT)/include
-#FFTW_LIBS = -L$(FFTW_ROOT)/lib -lfftw3
+FFTW_ROOT=/usr/local/Cellar/fftw/3.3.4
+FFTW_INCFLAGS= -I$(FFTW_ROOT)/include
+FFTW_LIBS = -L$(FFTW_ROOT)/lib -lfftw3f -lfftw3
 #-----------------------------------------
 #
 OBJDIR=Obj
@@ -78,7 +78,7 @@ OBJS_STM = atompla.o  \
 	radfft.o ranger.o recipes.o\
         readstm.o readwaves.o \
         redata.o  reinitstm.o stm.o \
-	vacpot.o volcel.o wrout.o 
+	vacpot.o volcel.o wrout.o m_fft_gpfa.o handlers.o
 #
 INCFLAGS:= $(FFTW_INCFLAGS) $(NETCDF_INCFLAGS) $(INCFLAGS)
 #
@@ -100,7 +100,7 @@ MOD_OBJS=precision.o parallel.o alloc.o memoryinfo.o sys.o listsc.o  \
          radial.o spher_harm.o  basis_io.o basis_types.o \
          domain_decom.o schecomm.o printmatrix.o qsort.o mmio.o pspltm1.o lenstr.o \
          sparse_matrices.o \
-         files.o flib_spline.o pseudopotential.o chemical.o xml.o
+         files.o interpolation.o pseudopotential.o chemical.o xml.o
 #
 COM_OBJS_STM=$(OBJS_STM) $(SYSOBJ)
 ALL_OBJS_STM=$(MOD_OBJS) $(COM_OBJS_STM)
@@ -216,7 +216,7 @@ find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
 fire_optim.o: alloc.o m_fdf_global.o m_fire.o m_mpi_utils.o parallel.o
 fire_optim.o: precision.o siesta_options.o units.o
 fixed.o: alloc.o parallel.o parsing.o precision.o
-flib_spline.o: precision.o
+interpolation.o: precision.o
 forhar.o: alloc.o meshsubs.o precision.o
 get_target_stress.o: m_mpi_utils.o parallel.o precision.o units.o
 globalise.o: alloc.o onmod.o onmod.o precision.o spatial.o
@@ -371,8 +371,8 @@ projected_DOS.o: siesta_geom.o siesta_options.o sparse_matrices.o sys.o
 propor.o: precision.o sys.o
 proximity_check.o: m_ts_options.o mneighb.o parallel.o precision.o
 proximity_check.o: siesta_geom.o siesta_options.o
-pseudopotential.o: alloc.o atom_options.o flib_spline.o precision.o sys.o
-radfft.o: alloc.o precision.o recipes.o
+pseudopotential.o: alloc.o atom_options.o interpolation.o precision.o sys.o
+radfft.o: alloc.o precision.o recipes.o m_fft_gpfa.o
 radial.o: precision.o xml.o
 rdiag.o: alloc.o memoryinfo.o parallel.o precision.o sys.o
 readsp.o: parallel.o precision.o sys.o

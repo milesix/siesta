@@ -15,7 +15,7 @@
      $                           pseudo_read, pseudo_write_formatted
       use periodic_table,  only: cnfig, qvlofz
       use sys,             only: die
-      use flib_spline
+      use interpolation
       use f2kcli
 
       implicit none
@@ -196,7 +196,7 @@
 !     length nrval. Now use spline interpolation
 !     Natural spline for now
 
-      call generate_spline(x,y,nr2,y2,0.0_dp,0.0_dp)
+      call generate_spline(x,y,nr2,0.0_dp,0.0_dp,y2)
 !
 !     Interpolate into the grid of the first pseudo
 !      

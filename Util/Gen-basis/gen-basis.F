@@ -39,12 +39,6 @@ C
       use xcmod,        only : setXC
       use sys,          only : die
       use atom_options, only : get_atom_options, write_ion_plot_files
-C
-C     It has to be MPI-aware since it calls routines down the line...
-C
-#ifdef MPI
-      use mpi_siesta
-#endif
 
       implicit none
 
@@ -54,35 +48,16 @@ C
 
       type(basis_def_t), pointer   :: basp
 
-#ifdef MPI
-      integer  MPIerror
-#endif
       external atm_transfer
 
 c Reading input for the pseudopotentials and atomic orbitals 
-C Initialise MPI and set processor number
-#ifdef MPI
-      call MPI_Init( MPIerror )
-      call MPI_Comm_Rank( MPI_Comm_World, Node, MPIerror )
-      call MPI_Comm_Size( MPI_Comm_World, Nodes, MPIerror )
-#else
+
       Node =  0
       Nodes = 1
-#endif
 
       IOnode = (Node .eq. 0)
 
       if (Ionode) then
-!
-!        Problems with mpich command-line argument handling...
-!$$$         narg = command_argument_count()
-!$$$         if (narg == 0) then
-!$$$            filein = "stdin"
-!$$$         else if (narg == 1) then
-!$$$            call get_command_argument(1,filein)
-!$$$         else
-!$$$            stop "too many command-line arguments"
-!$$$         endif
 !
          filein = "stdin"
          call fdf_init(filein,'gen-basis_fdf.log')

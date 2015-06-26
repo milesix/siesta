@@ -65,17 +65,17 @@ $(FDF):
                           "ARCH_MAKE=../$(ARCH_MAKE)" \
                           "INCFLAGS=$(FDF_INCFLAGS)" "FFLAGS=$(FFLAGS)" module)
 #
-MIXPS_OBJS= f2kcli.o flib_spline.o mixps.o atom_options.o pseudopotential.o \
-            sys.o \
+MIXPS_OBJS= f2kcli.o interpolation.o mixps.o atom_options.o pseudopotential.o \
+            sys.o local_die.o \
             io.o pxf.o parallel.o periodic_table.o alloc.o memory.o memoryinfo.o
 
 mixps:  $(FDF) $(MIXPS_OBJS)
 	$(FC) -o mixps \
 	       $(LDFLAGS) $(MIXPS_OBJS)   $(FDF) 
 #----------------------------------------------------------------------------
-FRACTIONAL_OBJS= f2kcli.o alloc.o flib_spline.o fractional.o  atom_options.o \
+FRACTIONAL_OBJS= f2kcli.o alloc.o interpolation.o fractional.o  atom_options.o \
                  memory.o memoryinfo.o pseudopotential.o sys.o \
-                 io.o pxf.o parallel.o periodic_table.o
+                 io.o pxf.o parallel.o periodic_table.o local_die.o
 
 fractional: $(FDF) $(FRACTIONAL_OBJS)
 	$(FC) -o fractional \
@@ -186,7 +186,7 @@ find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
 fire_optim.o: alloc.o m_fdf_global.o m_fire.o m_mpi_utils.o parallel.o
 fire_optim.o: precision.o siesta_options.o units.o
 fixed.o: alloc.o parallel.o parsing.o precision.o
-flib_spline.o: precision.o
+interpolation.o: precision.o
 forhar.o: alloc.o meshsubs.o precision.o
 fractional.o: f2kcli.o periodic_table.o precision.o pseudopotential.o sys.o
 get_target_stress.o: m_mpi_utils.o parallel.o precision.o units.o
@@ -296,7 +296,7 @@ mixer.o: atomlist.o iodm_netcdf.o m_broyden_mixing.o m_energies.o
 mixer.o: m_fire_mixing.o m_iodm.o m_mpi_utils.o m_pulay.o m_spin.o m_steps.o
 mixer.o: m_ts_io.o m_ts_options.o parallel.o siesta_geom.o siesta_options.o
 mixer.o: sparse_matrices.o
-mixps.o: f2kcli.o flib_spline.o periodic_table.o precision.o pseudopotential.o
+mixps.o: f2kcli.o interpolation.o periodic_table.o precision.o pseudopotential.o
 mixps.o: sys.o
 mneighb.o: alloc.o precision.o sys.o
 molecularmechanics.o: alloc.o parallel.o parsing.o precision.o sys.o units.o
@@ -345,7 +345,7 @@ projected_DOS.o: siesta_geom.o siesta_options.o sparse_matrices.o sys.o
 propor.o: precision.o sys.o
 proximity_check.o: m_ts_options.o mneighb.o parallel.o precision.o
 proximity_check.o: siesta_geom.o siesta_options.o
-pseudopotential.o: alloc.o atom_options.o flib_spline.o precision.o sys.o
+pseudopotential.o: alloc.o atom_options.o interpolation.o precision.o sys.o
 radfft.o: alloc.o precision.o recipes.o
 radial.o: precision.o xml.o
 rdiag.o: alloc.o memoryinfo.o parallel.o precision.o sys.o

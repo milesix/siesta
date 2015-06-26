@@ -5,6 +5,7 @@
 !  or http://www.gnu.org/copyleft/gpl.txt .
 ! See Docs/Contributors.txt for a list of contributors.
 ! ---
+
       SUBROUTINE EXTRAPOLATE(NPX,NPY,NPZ,ZREF,ZMIN,ZMAX,UCELL,V0,
      .                       CW,E,K,CWE)
 
@@ -33,8 +34,6 @@ C ***********************************************************************
       USE fftw3_mymod
 
       IMPLICIT NONE
-
-      type(fftw3_plan_t) :: plan
 
       INTEGER
      .  NPX, NPY, NPZ
@@ -65,8 +64,8 @@ C INTERNAL VARIABLES
       EXTERNAL 
      .  VOLCEL
 
-      EXTERNAL
-     .  dfftw_plan_dft_2d, dfftw_execute, dfftw_destroy_plan
+!      EXTERNAL
+!     .  dfftw_plan_dft_2d, dfftw_execute, dfftw_destroy_plan
 
       DATA FIRST /.TRUE./
 
@@ -135,15 +134,15 @@ C      ENDDO
 C DO DIRECT FOURIER TRANSFORM TO GET SPATIAL FREQUENCIES OF WF AT 
 C REFERENCE PLANE ........
 
-      call dfftw_plan_dft_2d (plan,NPX,NPY,CW,CW,FFTW_FORWARD, 
+      plan =  fftw_plan_dft_2d (NPX,NPY,CW,CW,FFTW_FORWARD, 
      .                        FFTW_ESTIMATE)
-      call dfftw_execute (plan)
-      call dfftw_destroy_plan(plan)
+      call fftw_execute_dft (plan,cw,cw)
+      call fftw_destroy_plan(plan)
 
 C .....
 
 C LOOP OVER SIMULATION HEIGHTS ........
-      call dfftw_plan_dft_2d (plan,NPX,NPY,EXPSI,EXPSI,FFTW_BACKWARD, 
+      plan = fftw_plan_dft_2d (NPX,NPY,EXPSI,EXPSI,FFTW_BACKWARD, 
      .                        FFTW_ESTIMATE)
       DO NZ = 1, NPZ
         Z = ZMIN + (NZ-1)*STEPZ
@@ -174,7 +173,7 @@ C ... END LOOP XY
 C DO BACK FOURIER TRANSFORM TO GET REAL SPACE WF AT 
 C REFERENCE PLANE .....
 
-        call dfftw_execute (plan)
+        call fftw_execute_dft (plan,expsi,expsi)
 
 C .....
 
@@ -182,7 +181,7 @@ C .....
 
       ENDDO
 C ........ END LOOP Z
-      call dfftw_destroy_plan(plan)
+      call fftw_destroy_plan(plan)
 
 
 C      DO NX=0,NPX-1
