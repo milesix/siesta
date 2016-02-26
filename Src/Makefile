@@ -49,6 +49,8 @@ include arch.make
 #
 #FFLAGS=$(FFLAGS_DEBUG)
 #
+INCFLAGS:= $(INCFLAGS) $(NETCDF_INCFLAGS)
+#
 what:
 	@echo
 	@echo "Compilation architecture to be used: ${SIESTA_ARCH}"

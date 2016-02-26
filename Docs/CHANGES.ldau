@@ -1,4 +1,19 @@
 ------------------------------------------------------------------------
+2016-02-26 A. Garcia                                        ldau-ref-311
+Stop if user-basis* is used. Proper inclusion of NETCDF_INCFLAGS.
+
+* The code is not prepared to handle .ion or .ion.nc files. Now a
+  message is printed and the program stops.
+
+* The variable NETCDF_INCFLAGS was not properly handled in
+  Src/Makefile.
+
+modified:
+  Src/Makefile
+  Src/atom.f90
+  Src/atom_basis_io.F90
+
+------------------------------------------------------------------------
 2013-04-18 11:30:00 GMT  D Sanchez-Portal <sqbsapod@ehu.es> ldau-ref-310
 Fix the calculation of lmxldaupj in reldauproj
 

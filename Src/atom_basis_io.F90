@@ -13,9 +13,9 @@ module atom_basis_io
   !     Support for dumping and reading PAO and KB information from
   !     ASCII or NetCDF files.
   !
-#ifdef CDF
-#undef CDF
-#endif
+!#ifdef CDF
+!#undef CDF
+!#endif
   !     Alberto Garcia, 2000, 2001
   !     E. Anglada 2008
   use chemical, only : read_chemical_types, species_label, number_of_species, atomic_number
@@ -132,7 +132,7 @@ CONTAINS
 !     !! Sanity check here??
 !
      iret = nf90_get_att(ncid,nf90_global,'Atomic_number',itmp)
-     if (atomic_number(isp) .ne. tmp) call die("Atomic number mismatch")
+     if (atomic_number(isp) .ne. itmp) call die("Atomic number mismatch")
      call set_atomic_number(isp,itmp)
 !
      iret = nf90_get_att(ncid,nf90_global,'Valence_charge',tmp)
@@ -367,7 +367,7 @@ subroutine read_basis_ascii
   integer :: is, nspecies
 
   call read_chemical_types
-  nspecies = get_number_of_species()
+  nspecies = number_of_species()
 
   call set_number_of_species(nspecies)
 

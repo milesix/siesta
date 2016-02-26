@@ -205,6 +205,10 @@ CONTAINS
     user_basis_netcdf = fdf_boolean('user-basis-netcdf',.false.)
 
     read_from_file = user_basis .or. user_basis_netcdf
+    if (read_from_file) then
+       call die("This version does not support the reading of " // &
+            " basis-set and projector info from .ion(.nc) files")
+    endif
 
     call get_atom_options()
 
