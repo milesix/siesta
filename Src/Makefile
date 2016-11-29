@@ -248,6 +248,9 @@ OBJS += flook_siesta.o siesta_dicts.o
 # Add citation package
 OBJS += m_cite.o
 
+#Linres package
+OBJS += linresscf.o
+
 # Special dependency that sfmakedepend cannot grasp for now
 m_pexsi.o m_pexsi_driver.o m_pexsi_dos.o m_pexsi_local_dos.o: f_ppexsi_interface.o
 
@@ -778,6 +781,7 @@ ldau_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
 ldau_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o parallel.o
 ldau_specs.o: precision.o pseudopotential.o radial.o sys.o units.o
 listsc.o: alloc.o
+linresscf.o: 
 local_DOS.o: atomlist.o dhscf.o diagon.o files.o kpoint_grid.o m_energies.o
 local_DOS.o: m_eo.o m_forces.o m_gamma.o m_ntm.o m_spin.o parallel.o
 local_DOS.o: siesta_geom.o siesta_options.o sparse_matrices.o sys.o
@@ -1250,7 +1254,7 @@ siesta_forces.o: precision.o save_density_matrix.o scfconvergence_test.o
 siesta_forces.o: setup_H0.o setup_hamiltonian.o siesta_cml.o siesta_dicts.o
 siesta_forces.o: siesta_geom.o siesta_master.o siesta_options.o
 siesta_forces.o: sparse_matrices.o state_analysis.o state_init.o sys.o timer.o
-siesta_forces.o: units.o wavefunctions.o write_subs.o
+siesta_forces.o: units.o wavefunctions.o write_subs.o linresscf.o
 siesta_geom.o: precision.o
 siesta_init.o: alloc.o atomlist.o bands.o bsc_xcmod.o
 siesta_init.o: class_Fstack_Pair_Geometry_SpData2D.o densematrix.o files.o
@@ -1434,6 +1438,7 @@ m_ksv.o: ksv.o
 m_ksvinit.o: ksvinit.o
 m_ldau.o: ldau.o
 m_linpack.o: linpack.o
+m_linresscf.o: linresscf.o
 m_local_dos.o: local_DOS.o
 m_matel_registry.o: matel_registry.o
 m_minvec.o: minvec.o

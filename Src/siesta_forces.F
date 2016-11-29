@@ -89,6 +89,10 @@
       use m_final_H_f_stress,     only: final_H_f_stress
 ! End tddft
 
+! Linres line
+      use m_linresscf
+! End linres line
+
       use m_mpi_utils, only: broadcast
       use fdf
 #ifdef SIESTA__PEXSI      
@@ -133,6 +137,13 @@
       double precision     :: dt_tded, EF7
       complex(dp) :: varaux,varaux2
 ! End -tddft
+
+C Linres--------------------------------------------------
+      logical :: linreSwitch
+      COMMON  linreSwitch
+C---------------------------------------------------------
+
+
 #ifdef TRANSIESTA
       real(dp) :: Qcur
 #endif
@@ -191,6 +202,11 @@
       call dict_variable_add('SCF.dE',dEmax)
       call dict_variable_add('SCF.drhoG',drhog)
 #endif
+
+
+C LINRES: hardcoding linreSwitch ------------------------------------       
+      linreSwitch = .TRUE.
+c ------------------------------------------------------------------- 
 
 !     Start of SCF loop
       iscf = 0
@@ -378,7 +394,11 @@
         end if
 #endif
 
-        if (monitor_forces_in_scf) call compute_forces()
+C Linres line-----------------------------------------------------
+        if (.NOT. linreSwitch) then
+            if (monitor_forces_in_scf) call compute_forces()
+        endif
+C ---------------------------------------------------------------
 
         ! Mix_after_convergence preserves the old behavior of
         ! the program.
@@ -481,6 +501,13 @@
 !     ... so H at this point is the latest generator of the DM, except
 !     if mixing H beyond self-consistency or terminating the scf loop
 !     without convergence while mixing H
+
+C Linres line: main subroutine calling--------------------------------------
+      if (SCFconverged .AND. linreSwitch) then
+        call linresscf()
+      endif
+C---------------------------------------------------------------------------
+
 
       call state_analysis( istep )
 #ifdef SIESTA__PEXSI

@@ -26,11 +26,12 @@
       subroutine overfsm(nua, na, no, scell, xa, indxua, rmaxo,
      .                   maxnh, maxnd, lasto, iphorb, isa, 
      .                   numd, listdptr, listd, numh, listhptr, listh, 
-     .                   nspin, Escf, fa, stress, S)
+     .                   nspin, Escf, fa, stress, S, DS, D2S)
 C *********************************************************************
 C Overlap matrix and orthonormalization contribution to forces and stress.
 C Energies in Ry. Lengths in Bohr.
 C Writen by J.Soler and P.Ordejon, August-October'96, June'98
+C Added linres features by L.Riches and S.Illera (2016) 
 C **************************** INPUT **********************************
 C integer nua              : Number of atoms in unit cell
 C integer na               : Number of atoms in supercell
@@ -62,6 +63,9 @@ C real*8  S(maxnh)         : Sparse overlap matrix
 C ********************** INPUT and OUTPUT *****************************
 C real*8  fa(3,nua)        : Atomic forces (Orthog. part added to input)
 C real*8  stress(3,3)      : Stress tensor (Orthog. part added to input)
+C Linres variables-----------------------------------------------------
+C real*8 dS(maxnh,3)       : First derivative of the overlap matrix 
+C real*8 d2S(maxnh,3,3)    : Second derivative of the overlap matrix
 C *********************************************************************
 
       integer, intent(in) ::
@@ -76,6 +80,7 @@ C *********************************************************************
       real(dp) , intent(in)     :: scell(3,3), Escf(maxnd,nspin), 
      .                 rmaxo, xa(3,na)
       real(dp), intent(out)     :: S(maxnh)
+      real(dp), optional, intent(out) :: DS(maxnh,3), D2S(maxnh,3,3) !Linres line
 
 C Internal variables ......................................................
   
@@ -88,8 +93,28 @@ C Internal variables ......................................................
 
       real(dp), dimension(:), pointer  ::  Di, Si
 
+C LINRES ------------------------------------------------------------
+       real(dp) :: gr2Sij(3,3)
+       real(dp), dimension(:,:), pointer ::  dSi
+       real(dp), dimension(:,:,:), pointer :: d2Si
+C -------------------------------------------------------------------
+
       external  timer
 C ......................
+
+C Linres ------------------------------------------------------------
+      INTERFACE
+        SUBROUTINE MATEL(A, ioa, joa, rij,
+     &                   Sij, grSij, gr2Sij)
+          use precision,     only : dp
+             integer,   intent(inout) ::  ioa, joa
+             real(dp),  intent(in) :: rij, Sij
+             real(dp),  intent(out) :: grSij(3)
+             real(dp),  intent(out), optional ::  gr2Sij(3,3)
+             character, intent(in) :: A
+        END SUBROUTINE MATEL
+      END INTERFACE
+C -------------------------------------------------------------------
 
 C Start timer
       call timer( 'overfsm', 1 )
@@ -107,6 +132,13 @@ C Allocate local memory
 
       Si(1:no) = 0.0d0  ! AG: Superfluous
       Di(1:no) = 0.0d0
+
+C LINRES ------------------------------------------------------------
+       nullify( dSi )
+       call re_alloc( dSi, 1, no, 1, 3, 'dSi', 'overfsm' )
+       nullify( d2Si )
+       call re_alloc( d2Si, 1, no, 1, 3, 1, 3, 'd2Si', 'overfsm' )
+C -------------------------------------------------------------------
 
       do ia = 1,nua
         is = isa(ia)
@@ -135,17 +167,38 @@ C Valid orbital
                 joa = iphorb(jo)
                 js = isa(ja)
                 if (rcut(is,ioa)+rcut(js,joa) .gt. rij) then
-                   jg = orb_gindex(js,joa)
-                   call new_MATEL( 'S', ig, jg, xij(1:3,jn),
-     .                      Sij, grSij )
+                  jg = orb_gindex(js,joa)
+                  if (present(d2S)) then
+                     call new_MATEL( 'S', ig, jg, xij(1:3,jn),
+     .                            Sij, grSij , gr2Sij)
+                  else
+                     call new_MATEL( 'S', ig, jg, xij(1:3,jn),
+     .                            Sij, grSij)
+                  endif
                   Si(jo) = Si(jo) + Sij
                   do ix = 1,3
-                    fij(ix) = (- Di(jo)) * grSij(ix)
-                    fa(ix,ia)  = fa(ix,ia)  + fij(ix)
-                    fa(ix,jua) = fa(ix,jua) - fij(ix)
+                    if ((.not. present (dS)) .or. (.not.
+     &                             present (d2S))) then !Lin line
+                      fij(ix) = (- Di(jo)) * grSij(ix)
+                      fa(ix,ia)  = fa(ix,ia)  + fij(ix)
+                      fa(ix,jua) = fa(ix,jua) - fij(ix)
+                    endif
+C LINRES ------------------------------------------------------------
+                    if (present(DS)) then
+                     dSi(jo,ix) = dSi(jo,ix) + grSij(ix)
+                    endif
+C -------------------------------------------------------------------
                     do jx = 1,3
-                      stress(jx,ix) = stress(jx,ix) +
+                      if ((.not. present (dS)) .or. (.not.
+     &                             present (d2S))) then !Lin line
+                        stress(jx,ix) = stress(jx,ix) +
      .                              xij(jx,jn) * fij(ix) / volume
+                      endif
+C LINRES ------------------------------------------------------------
+                      if (present(D2S)) then
+                         d2Si(jo,ix,jx) = d2Si(jo,ix,jx) + gr2Sij(ix,jx)
+                      endif
+C ------------------------------------------------------------------
                     enddo
                   enddo
                 endif
@@ -160,6 +213,20 @@ C Valid orbital
               jo = listh(ind)
               S(ind) = Si(jo)
               Si(jo) = 0.0d0
+C LINRES ------------------------------------------------------------
+              if (present(DS)) then
+                do ix = 1,3
+                  DS(ind,ix) = dSi(jo,ix)
+                    dSi(jo,ix) = 0.0d0
+
+                   do jx = 1,3
+                    D2S(ind,ix,jx) =  d2Si(jo,ix,jx)
+                    d2Si(jo,ix,jx) = 0.0d0
+                   enddo
+                enddo
+               !if(ia.eq.2) print *, iio,';',jo,';',D2S(ind,1,1)
+              endif
+C -------------------------------------------------------------------
             enddo
           endif
         enddo
@@ -170,6 +237,14 @@ C Deallocate local memory
       call reset_neighbour_arrays( )
       call de_alloc( Si, 'Si', 'overfsm' )
       call de_alloc( Di, 'Di', 'overfsm' )
+C LINRES ------------------------------------------------------------
+      if (present(dS)) then 
+        call de_alloc( dSi, 'dSi', 'overfsm' )
+        call de_alloc( d2Si, 'd2Si', 'overfsm' )
+      endif
+C -------------------------------------------------------------------
+
+
 
 C Finish timer
       call timer( 'overfsm', 2 )

@@ -22,6 +22,7 @@
       use sparse_matrices, only: numh, listh, listhptr
       use sparse_matrices, only: H, S, Dscf, Escf, maxnh, xijo
       use sparse_matrices, only: H_ldau_2D
+      use sparse_matrices, only: DH,D2H,DS,D2S    !linres line
       use class_dSpData2D, only: val
 
       use siesta_geom
@@ -110,7 +111,18 @@
       type(dict) :: dic_save
 #endif
 #endif
+
+C Linres lines
+      logical :: linreSwitch ! to be changed....
+C Linres end
+
 !------------------------------------------------------------------------- BEGIN
+
+!!!!!!!!!!!!!!!!!!!!!!!!
+       linreSwitch = .TRUE. !hard linres iniatilization
+!!!!!!!!!!!!!!!!!!!!!!!!
+
+
 
 !     Initialize Hamiltonian ........................................
       call re_alloc(H_tmp, 1,maxnh, 1, spin%H,
@@ -141,6 +153,25 @@
 !$OMP end parallel
       
 
+C Linres line  init variables----------------------------------
+      if (linreSwitch) then
+        nullify(DH)
+        nullify(DS)
+        nullify(D2H)
+        nullify(D2S)
+        call re_alloc (DH, 1, maxnh, 1, 3, 'DH', 'final_H_f_stress')
+        call re_alloc (DS, 1, maxnh, 1, 3, 'DS', 'final_H_f_stress')
+        call re_alloc (D2H, 1, maxnh, 1, 3, 1, 3, 'D2H',
+     &                                  'final_H_f_stress')
+        call re_alloc (D2S, 1, maxnh, 1, 3, 1, 3, 'D2S',
+     &                                  'final_H_f_stress')
+        DH(1:maxnh,1:3) = 0.0_dp
+        DS(1:maxnh,1:3) = 0.0_dp
+        D2H(1:maxnh,1:3, 1:3) = 0.0_dp
+        D2S(1:maxnh,1:3, 1:3) = 0.0_dp
+      endif
+C--------------------------------------------------------------
+
 ! Neutral-atom: energy, forces and stress ............................
       call naefs( na_u, na_s, scell, xa, indxua, rmaxv,
      &            isa, Ena, fa, stress, forces_and_stress=.true. )
@@ -149,11 +180,20 @@
       Ena = Ena + DEna
 
 !     Kinetic: energy, forces, stress and matrix elements .................
-      call kinefsm( na_u, na_s, no_s, scell, xa, indxua, rmaxo,
+      if (.not.(linreSwitch)) then  
+        call kinefsm( na_u, na_s, no_s, scell, xa, indxua, rmaxo,
      &              maxnh, maxnh, lasto, iphorb, isa, 
      &              numh, listhptr, listh, numh, listhptr, listh, 
      &              spin%spinor, Dscf, Ekin, fal, stressl, H_tmp,
      &              matrix_elements_only=.false. ) 
+      else !Linres call: added dH, dH2
+        call kinefsm( na_u, na_s, no_s, scell, xa, indxua, rmaxo,
+     &              maxnh, maxnh, lasto, iphorb, isa,
+     &              numh, listhptr, listh, numh, listhptr, listh,
+     &              spin%spinor, Dscf, Ekin, fal, stressl, H_tmp,
+     &              dH,d2H,matrix_elements_only=.false. )
+      endif
+
 #ifdef MPI
 ! Global reduction of energy terms
       call globalize_sum(Ekin,buffer1)
@@ -235,10 +275,18 @@
 !     Orthonormalization forces ...........................................
 !     **Note that this will re-calculate S also, but should get 
 !     the same result
-      call overfsm( na_u, na_s, no_s, scell, xa, indxua, rmaxo,
+
+      if (.not.(linreSwitch)) then
+        call overfsm( na_u, na_s, no_s, scell, xa, indxua, rmaxo,
      &              maxnh, maxnh, lasto, iphorb, isa, 
      &              numh, listhptr, listh, numh, listhptr, listh, 
      &              spin%spinor, Escf, fal, stressl, S_tmp ) 
+      else !Linres call: added dS, d2S
+        call overfsm( na_u, na_s, no_s, scell, xa, indxua, rmaxo,
+     &              maxnh, maxnh, lasto, iphorb, isa,
+     &              numh, listhptr, listh, numh, listhptr, listh,
+     &              spin%spinor, Escf, fal, stressl, S_tmp, DS, D2S )
+      endif
 
 !     Metadynamics forces
       if (lMetaForce) then

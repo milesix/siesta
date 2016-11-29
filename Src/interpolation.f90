@@ -85,7 +85,7 @@
 ! Output:
 !   real(dp) d2ydx2(n) ! d2y/dx2 at mesh points
 ! ==============================================================================
-! SUBROUTINE splint( xi, yi, d2ydx2, n, x, y, dydx )
+! SUBROUTINE splint( xi, yi, d2ydx2, n, x, y, dydx, dy2dx )
 !   Included for compatibility with Numerical Recipes interface
 ! Input:
 !   real(dp) xi(n)     ! mesh points
@@ -96,8 +96,10 @@
 ! Output:
 !   real(dp) y         ! function value at point x
 !   real(dp) dydx      ! function derivative at point x
+! Input/Output optional
+!   real(dp) dy2dx     ! function second derivative at point x (Linres)
 ! ==============================================================================
-! SUBROUTINE splint( dx, yi, d2ydx2, n, x, y, dydx )
+! SUBROUTINE splint( dx, yi, d2ydx2, n, x, y, dydx, dy2dx )
 !   Included for compatibility with interface used in siesta
 ! Input:
 !   real(dp) dx        ! mesh interval of a uniform mesh starting at x=0
@@ -108,6 +110,8 @@
 ! Output:
 !   real(dp) y         ! function value at point x
 !   real(dp) dydx      ! function derivative at point x
+! Input/Output optional
+!   real(dp) dy2dx     ! function second derivative at point x (Linres)
 ! ==============================================================================
 ! SUBROUTINE polint(XA,YA,N,X,Y,DYDX) 
 !   Lagrange interpolation
@@ -401,7 +405,7 @@ END SUBROUTINE find_interval
 
 !-------------------------------------------------------------------------------
 
-SUBROUTINE interpolate_interval( xl, xh, yl, yh, d2ydx2l, d2ydx2h, x, y, dydx )
+SUBROUTINE interpolate_interval( xl, xh, yl, yh, d2ydx2l, d2ydx2h, x, y, dydx, dy2dx )
 
 ! Evaluate function at point x, within a given interval
 
@@ -415,6 +419,9 @@ real(dp),         intent(in) :: d2ydx2h ! d2y/dx2 at at xh
 real(dp),         intent(in) :: x       ! point at which function is needed
 real(dp),         intent(out):: y       ! function value at point x
 real(dp),optional,intent(out):: dydx    ! function derivative at point x
+! Linres-------------------------------------------------------------------------
+real(dp),optional,intent(out):: dy2dx   ! function second derivative at point x
+!--------------------------------------------------------------------------------
 
 ! Internal variables
 real(dp)::  A, B, dAdx, dBdx, dx
@@ -432,6 +439,13 @@ if (present(dydx)) then
   dydx = dAdx*yl + dBdx*yh + ( dAdx*(3*A**2-1)*d2ydx2l + & 
                                dBdx*(3*B**2-1)*d2ydx2h ) * (dx**2)/6.0_dp
 endif
+
+! Linres -------------------------------------------------------------------------
+!Find second order interpolated derivative
+if (present(dy2dx)) then
+  dy2dx=A*d2ydx2l+B*d2ydx2h 
+endif
+!---------------------------------------------------------------------------------
 
 END SUBROUTINE interpolate_interval
 
@@ -516,7 +530,7 @@ END SUBROUTINE generate_spline_dx
 
 !-------------------------------------------------------------------------------
 
-SUBROUTINE evaluate_spline_x( xi, yi, d2ydx2, n, x, y, dydx )
+SUBROUTINE evaluate_spline_x( xi, yi, d2ydx2, n, x, y, dydx, dy2dx )
 
 ! Included for compatibility with an older interface
 
@@ -528,6 +542,9 @@ real(dp),         intent(in) :: d2ydx2(n) ! function value at point x
 real(dp),         intent(in) :: x         ! point at which function is needed
 real(dp),         intent(out):: y         ! function value at point x
 real(dp),optional,intent(out):: dydx      ! function derivative at point x
+! Linres ----------------------------------------------------------------------
+real(dp),optional,intent(out)::dy2dx      !function second derivative at point x
+!--------------------------------------------------------------------------------
 
 integer :: kh, kl
 real(dp):: xh, xl, xtol
@@ -543,14 +560,21 @@ dat%xmax = max(xi(1),xi(n)) + xtol
 call find_interval( dat, xi, x, kl, kh, xl, xh )
 
 ! Find interpolation within given interval
-call interpolate_interval( xl, xh, yi(kl), yi(kh), &
+!Linres -------------------------------------------------------------------------
+if (present(dy2dx)) then
+  call interpolate_interval( xl, xh, yi(kl), yi(kh), &
+                           d2ydx2(kl), d2ydx2(kh), x, y, dydx, dy2dx )
+!--------------------------------------------------------------------------------
+else
+  call interpolate_interval( xl, xh, yi(kl), yi(kh), &
                            d2ydx2(kl), d2ydx2(kh), x, y, dydx ) 
+endif
 
 END SUBROUTINE evaluate_spline_x
 
 !-------------------------------------------------------------------------------
 
-SUBROUTINE evaluate_spline_dx( dx, yi, d2ydx2, n, x, y, dydx )
+SUBROUTINE evaluate_spline_dx( dx, yi, d2ydx2, n, x, y, dydx, dy2dx )
 
 ! Included for compatibility with an older interface
 
@@ -562,6 +586,9 @@ real(dp),         intent(in) :: d2ydx2(n) ! function value at point x
 real(dp),         intent(in) :: x         ! point at which function is needed
 real(dp),         intent(out):: y         ! function value at point x
 real(dp),optional,intent(out):: dydx      ! function derivative at point x
+! Linres--------------------------------------------------------------------------
+real(dp),optional,intent(out)::dy2dx      !function second derivative at point x
+!--------------------------------------------------------------------------------
 
 integer :: kh, kl
 real(dp):: xh, xl, xmax, xtol
@@ -580,8 +607,15 @@ xl = (kl-1)*dx
 xh = (kh-1)*dx
 
 ! Find interpolation within given interval
-call interpolate_interval( xl, xh, yi(kl), yi(kh), &
+! Linres ---------------------------------------------------------------------------
+if (present(dy2dx)) then
+  call interpolate_interval( xl, xh, yi(kl), yi(kh), &
+                           d2ydx2(kl), d2ydx2(kh), x, y, dydx, dy2dx )
+! ---------------------------------------------------------------------------------
+else
+  call interpolate_interval( xl, xh, yi(kl), yi(kh), &
                            d2ydx2(kl), d2ydx2(kh), x, y, dydx ) 
+endif
 
 END SUBROUTINE evaluate_spline_dx
 
