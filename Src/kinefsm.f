@@ -136,7 +136,6 @@ C Allocate local memory
 
 C Linres variable allocation-----------------------------------------
       if(present(d2H)) then
-        print *, 'DEBUG TRACK: KINEFSM for LinRes'
         nullify( dTi )
         call re_alloc( dTi, 1, no, 1, 3, 'dTi', 'kinefsm' )
         dTi(1:no,1:3) = 0.0_dp

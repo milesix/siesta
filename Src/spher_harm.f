@@ -79,7 +79,7 @@ C Internal variables
      .  C(0:MAXLP1*MAXLP1), COSM, COSMM1, COSPHI,COS2PHI,
      .  ZP(0:MAXLP1,0:MAXLP1), FAC, FOURPI, GY(3),G2Y(3,3),
      .  P(0:MAXLP1,0:MAXLP1), D2P(0:MAXLP1,0:MAXLP1),
-     .  RL(-1:MAXL), RSIZE, RX, RY, RZ, RXY,
+     .  RL(-2:MAXL), RSIZE, RX, RY, RZ, RXY,
      .  SINM, SINMM1, SINPHI, YY
       SAVE LMXMX, C
       DATA LMXMX /-1/
@@ -236,15 +236,14 @@ C     Find associated Legendre polynomials and their derivative
    50   CONTINUE
 
 C Linres ------------------------------------------------------------
-         IF (present(g2rly)) THEN
-           DO 55 L=M,LMAX
-             D2P(L,M)=-(ZP(L,M+1)+(M-1)*RZ*ZP(L,M)/RXY+
-     &               M*P(L,M)/(RXY**3))/RXY
-   55      CONTINUE
-         ENDIF
+        DO 55 L=M,LMAX
+           D2P(L,M)=-(ZP(L,M+1)+(M-1)*RZ*ZP(L,M)/RXY+
+     &              M*P(L,M)/(RXY**3))/RXY
+   55   CONTINUE
 C -------------------------------------------------------------------
    60 CONTINUE
 C     Find spherical harmonics and their gradient
+      RL(-2) = ZERO  !Needed for Linres second derivative
       RL(-1) = ZERO
       RL(0)  = ONE
       DO 70 L = 1,LMAX
@@ -351,8 +350,7 @@ C Linres ------------------------------------------------------------
                    G2Y(I,J)=G2Y(I,J)*C(ILM)/(RSIZE*RSIZE)
    72            CONTINUE
    74         CONTINUE
-
-
+ 
             G2RLY(1,1,ILM)=L*(L-2)*RL(L-2)*RX*RX*YY+L*RL(L-2)*YY
      *         +2*L*RL(L-1)*RX*GY(1)+RL(L)*G2Y(1,1)
 

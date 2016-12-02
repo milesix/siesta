@@ -249,7 +249,7 @@ OBJS += flook_siesta.o siesta_dicts.o
 OBJS += m_cite.o
 
 #Linres package
-OBJS += linresscf.o
+OBJS += linresscf.o linres_matrices.o dhinit.o dvnloc.o
 
 # Special dependency that sfmakedepend cannot grasp for now
 m_pexsi.o m_pexsi_driver.o m_pexsi_dos.o m_pexsi_local_dos.o: f_ppexsi_interface.o
@@ -655,6 +655,7 @@ densematrix.o: alloc.o precision.o
 detover.o: alloc.o linpack.o parallel.o parallelsubs.o precision.o
 dfscf.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o m_spin.o mesh.o
 dfscf.o: meshdscf.o meshphi.o parallel.o parallelsubs.o precision.o sys.o
+dhinit.o: alloc.o
 dhscf.o: alloc.o atmfuncs.o bsc_xcmod.o cellxc_mod.o delk.o dfscf.o
 dhscf.o: doping_uniform.o files.o forhar.o iogrid_netcdf.o m_charge_add.o
 dhscf.o: m_efield.o m_hartree_add.o m_iorho.o m_iotddft.o m_mesh_node.o
@@ -781,7 +782,7 @@ ldau_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
 ldau_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o parallel.o
 ldau_specs.o: precision.o pseudopotential.o radial.o sys.o units.o
 listsc.o: alloc.o
-linresscf.o: 
+linresscf.o: linres_matrices.o dvnloc.o 
 local_DOS.o: atomlist.o dhscf.o diagon.o files.o kpoint_grid.o m_energies.o
 local_DOS.o: m_eo.o m_forces.o m_gamma.o m_ntm.o m_spin.o parallel.o
 local_DOS.o: siesta_geom.o siesta_options.o sparse_matrices.o sys.o
@@ -801,6 +802,7 @@ m_dipol.o: precision.o
 m_dminim.o: densematrix.o files.o parallel.o parallelsubs.o precision.o
 m_dminim.o: siesta_options.o sys.o
 m_dscfcomm.o: alloc.o parallel.o parallelsubs.o precision.o schecomm.o
+m_dvnloc.o: dvnloc.o
 m_efield.o: atmfuncs.o m_cite.o mesh.o parallel.o precision.o siesta_cml.o
 m_efield.o: siesta_geom.o sys.o units.o
 m_energies.o: precision.o
