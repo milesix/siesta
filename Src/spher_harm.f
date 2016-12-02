@@ -266,33 +266,33 @@ C     Find spherical harmonics and their gradient
 C Linres ------------------------------------------------------------
               IF (present(g2rly)) THEN
         G2Y(1,1)=D2P(L,M)*RZ*RZ*RX*RX*SINM-ZP(L,M)*RZ*SINM
-     &            +3*ZP(L,M)*RZ*RX*RX*SINM
-     &            +2*P(L,M)*M*COSM*COSPHI*SINPHI/(RXY*RXY)
-     &            +2*ZP(L,M)*RZ*M*COSM*SINPHI*COSPHI
+     &            +THREE*ZP(L,M)*RZ*RX*RX*SINM
+     &            +TWO*P(L,M)*M*COSM*COSPHI*SINPHI/(RXY*RXY)
+     &            +TWO*ZP(L,M)*RZ*M*COSM*SINPHI*COSPHI
      &            -P(L,M)*M*M*SINM*SINPHI*SINPHI/(RXY*RXY)
         G2Y(2,1)=D2P(L,M)*RZ*RZ*RX*RY*SINM
-     &            +3*ZP(L,M)*RX*RY*RZ*SINM
+     &            +THREE*ZP(L,M)*RX*RY*RZ*SINM
      &            -P(L,M)*M*COSM*COS2PHI/(RXY*RXY)
      &            -ZP(L,M)*RZ*M*COSM*COS2PHI
      &            +P(L,M)*M*M*SINM*SINPHI*COSPHI/(RXY*RXY)
         G2Y(3,1)=-D2P(L,M)*RZ*RX*RXY*RXY*SINM
-     &            +3*ZP(L,M)*RX*RZ*RZ*SINM
+     &            +THREE*ZP(L,M)*RX*RZ*RZ*SINM
      &            -ZP(L,M)*RX*SINM
      &            -ZP(L,M)*RXY*M*COSM*SINPHI
         G2Y(1,2)=G2Y(2,1)
         G2Y(2,2)=D2P(L,M)*RZ*RZ*RY*RY*SINM-ZP(L,M)*RZ*SINM
-     &            +3*ZP(L,M)*RZ*RY*RY*SINM
-     &            -2*P(L,M)*M*COSM*COSPHI*SINPHI/(RXY*RXY)
-     &            -2*ZP(L,M)*RZ*M*COSM*SINPHI*COSPHI
+     &            +THREE*ZP(L,M)*RZ*RY*RY*SINM
+     &            -TWO*P(L,M)*M*COSM*COSPHI*SINPHI/(RXY*RXY)
+     &            -TWO*ZP(L,M)*RZ*M*COSM*SINPHI*COSPHI
      &            -P(L,M)*M*M*SINM*COSPHI*COSPHI/(RXY*RXY)
         G2Y(3,2)=-D2P(L,M)*RZ*RY*RXY*RXY*SINM
-     &            +3*ZP(L,M)*RY*RZ*RZ*SINM
+     &            +THREE*ZP(L,M)*RY*RZ*RZ*SINM
      &            -ZP(L,M)*RY*SINM
      &            +ZP(L,M)*RXY*M*COSM*COSPHI
         G2Y(1,3)=G2Y(3,1)
         G2Y(2,3)=G2Y(3,2)
         G2Y(3,3)=D2P(L,M)*SINM*RXY**4
-     &            -3*ZP(L,M)*RZ*SINM*RXY*RXY
+     &            -THREE*ZP(L,M)*RZ*SINM*RXY*RXY
               ENDIF
 C -------------------------------------------------------------------
             ELSE
@@ -305,33 +305,33 @@ C -------------------------------------------------------------------
 C Linres ------------------------------------------------------------
              IF (present(g2rly)) THEN
               G2Y(1,1)=D2P(L,M)*RZ*RZ*RX*RX*COSM-ZP(L,M)*RZ*COSM
-     .            +3*ZP(L,M)*RZ*RX*RX*COSM
-     .            -2*P(L,M)*M*SINM*COSPHI*SINPHI/(RXY*RXY)
-     .            -2*ZP(L,M)*RZ*M*SINM*SINPHI*COSPHI
+     .            +THREE*ZP(L,M)*RZ*RX*RX*COSM
+     .            -TWO*P(L,M)*M*SINM*COSPHI*SINPHI/(RXY*RXY)
+     .            -TWO*ZP(L,M)*RZ*M*SINM*SINPHI*COSPHI
      .            -P(L,M)*M*M*COSM*SINPHI*SINPHI/(RXY*RXY)
               G2Y(2,1)=D2P(L,M)*RZ*RZ*RX*RY*COSM
-     .            +3*ZP(L,M)*RX*RY*RZ*COSM
+     .            +THREE*ZP(L,M)*RX*RY*RZ*COSM
      .            +P(L,M)*M*SINM*COS2PHI/(RXY*RXY)
      .            +ZP(L,M)*RZ*M*SINM*COS2PHI
      .            +P(L,M)*M*M*COSM*SINPHI*COSPHI/(RXY*RXY)
               G2Y(3,1)=-D2P(L,M)*RZ*RX*RXY*RXY*COSM
-     .            +3*ZP(L,M)*RX*RZ*RZ*COSM
+     .            +THREE*ZP(L,M)*RX*RZ*RZ*COSM
      .            -ZP(L,M)*RX*COSM
      .            +ZP(L,M)*RXY*M*SINM*SINPHI
               G2Y(1,2)=G2Y(2,1)
               G2Y(2,2)=D2P(L,M)*RZ*RZ*RY*RY*COSM-ZP(L,M)*RZ*COSM
-     .            +3*ZP(L,M)*RZ*RY*RY*COSM
-     .            +2*P(L,M)*M*SINM*COSPHI*SINPHI/(RXY*RXY)
-     .            +2*ZP(L,M)*RZ*M*SINM*SINPHI*COSPHI
+     .            +THREE*ZP(L,M)*RZ*RY*RY*COSM
+     .            +TWO*P(L,M)*M*SINM*COSPHI*SINPHI/(RXY*RXY)
+     .            +TWO*ZP(L,M)*RZ*M*SINM*SINPHI*COSPHI
      .            -P(L,M)*M*M*COSM*COSPHI*COSPHI/(RXY*RXY)
               G2Y(3,2)=-D2P(L,M)*RZ*RY*RXY*RXY*COSM
-     .            +3*ZP(L,M)*RY*RZ*RZ*COSM
+     .            +THREE*ZP(L,M)*RY*RZ*RZ*COSM
      .            -ZP(L,M)*RY*COSM
      .            -ZP(L,M)*RXY*M*SINM*COSPHI
               G2Y(1,3)=G2Y(3,1)
               G2Y(2,3)=G2Y(3,2)
               G2Y(3,3)=D2P(L,M)*COSM*RXY**4
-     .            -3*ZP(L,M)*RZ*COSM*RXY*RXY
+     .            -THREE*ZP(L,M)*RZ*COSM*RXY*RXY
              ENDIF
 C--------------------------------------------------------------------
             ENDIF
@@ -352,7 +352,7 @@ C Linres ------------------------------------------------------------
    74         CONTINUE
  
             G2RLY(1,1,ILM)=L*(L-2)*RL(L-2)*RX*RX*YY+L*RL(L-2)*YY
-     *         +2*L*RL(L-1)*RX*GY(1)+RL(L)*G2Y(1,1)
+     *         +TWO*L*RL(L-1)*RX*GY(1)+RL(L)*G2Y(1,1)
 
             G2RLY(2,1,ILM)=L*(L-2)*RL(L-2)*RX*RY*YY+L*RL(L-1)*RY*GY(1)
      &         +L*RL(L-1)*RX*GY(2)+RL(L)*G2Y(2,1)
@@ -360,13 +360,13 @@ C Linres ------------------------------------------------------------
      *         +L*RL(L-1)*RZ*GY(1)+RL(L)*G2Y(3,1)
             G2RLY(1,2,ILM)=G2RLY(2,1,ILM)
             G2RLY(2,2,ILM)=L*(L-2)*RL(L-2)*RY*RY*YY+L*RL(L-2)*YY
-     *         +2*L*RL(L-1)*RY*GY(2)+RL(L)*G2Y(2,2)
+     *         +TWO*L*RL(L-1)*RY*GY(2)+RL(L)*G2Y(2,2)
             G2RLY(3,2,ILM)=L*(L-2)*RL(L-2)*RY*RZ*YY+L*RL(L-1)*RY*GY(3)
      *         +L*RL(L-1)*RZ*GY(2)+RL(L)*G2Y(3,2)
             G2RLY(1,3,ILM)=G2RLY(3,1,ILM)
             G2RLY(2,3,ILM)=G2RLY(3,2,ILM)
             G2RLY(3,3,ILM)=L*(L-2)*RL(L-2)*RZ*RZ*YY+L*RL(L-2)*YY
-     *         +2*L*RL(L-1)*RZ*GY(3)+RL(L)*G2Y(3,3)
+     *         +TWO*L*RL(L-1)*RZ*GY(3)+RL(L)*G2Y(3,3)
             ENDIF
 C -------------------------------------------------------------------
 
