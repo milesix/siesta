@@ -540,7 +540,8 @@ C ----------------------------------------------------------------------
      &                  listdptr, listd, Dscf, datm, maxnh, Hmat,
      &                  Enaatm, Enascf, Uatm, Uscf, DUscf, DUext, 
      &                  Exc, Dxc, dipol, stress, Fal, stressl,
-     &                  use_rhog_in, charge_density_only )
+     &                  use_rhog_in, charge_density_only, iai, iaf,
+     &                  ialr, lasto, dynmat, dDscf, dHmat0)
 
 C
 C Calculates the self-consistent field contributions to Hamiltonian
@@ -701,6 +702,9 @@ C     Modules
       use m_ts_voltage, only: ts_voltage
       use m_ts_hartree, only: ts_hartree_fix
 #endif /* TRANSIESTA */
+
+      use linres_matrices   !Linres line
+
       implicit none
 
       integer
@@ -719,6 +723,16 @@ C     Modules
 
       logical, intent(in), optional :: use_rhog_in
       logical, intent(in), optional :: charge_density_only
+
+C Linres optional variables-------------------------------------------------
+      integer, intent(in), optional    :: iai,iaf,ialr,lasto(0:na)
+
+      real(dp), intent(in), optional :: dDscf(maxnh,nspin,3)
+
+      real(dp), intent(inout),optional :: dynmat(nua,3,nua,3),
+     &                                    dHmat0(maxnh,3,nspin)
+
+C---------------------------------------------------------------------------
 
 C ----------------------------------------------------------------------
 C Routines called internally:
@@ -786,14 +800,14 @@ C logical harrisfun     : Harris functional or Kohn-Sham?
 C ----------------------------------------------------------------------
 
 C     Local variables
-      integer  :: i, ia, ip, ispin, nsd, np_vac
+      integer  :: i, ia, ip, ispin, nsd, np_vac, jx
 #ifndef BSC_CELLXC
 !     Interface to JMS's SiestaXC
       integer       :: myBox(2,3)
       integer, save :: JDGdistr=-1
       real(dp) :: stressXC(3,3)
 #endif /* ! BSC_CELLXC */
-      real(dp) :: b1Xb2(3), const, DEc, DEx, DStres(3,3),
+      real(dp) :: b1Xb2(3), const, DEc, DEx, DStres(3,3), dRhotot,
      &            Ec, Ex, rhotot, x0(3), volume, Vmax_vac, Vmean_vac
 #ifdef BSC_CELLXC
 !     Dummy arrays for cellxc call
@@ -832,6 +846,15 @@ C     Work arrays
       integer  :: MPIerror
       real(dp) :: sbuffer(7), rbuffer(7)
 #endif
+
+C    Linres internal variables
+      real(grid_p), pointer :: dvnoscf(:,:),
+     &                         dRhoscf(:,:),
+     &                         dummy_Vna(:),
+     &                         VLR(:,:),          
+     &                         dVxcTmp(:,:)
+C
+
 
 #ifdef DEBUG
       call write_debug( '    PRE DHSCF' )
@@ -1501,10 +1524,30 @@ C ----------------------------------------------------------------------
 #endif /* BSC_CELLXC */
 
 #ifndef BSC_CELLXC
-      call cellXC( 0, cell, ntm, myBox(1,1), myBox(2,1),
+
+C Linres line ---------------------------------------------------------------
+      if (present(dHmat0)) then
+        nullify(dVxc)
+        call re_alloc(dVxc,1,ntpl,1,nspin,1,nspin,'dVxc','dhscf')
+        nullify(dvxctmp)
+        call re_alloc( dvxctmp, 1, ntpl, 1, nspin, 'dvxctmp','dhscf' )
+        dVxcTmp(1:ntpl,1:nspin) = 0.0_dp
+
+        call cellXC( 0, cell, ntm, myBox(1,1), myBox(2,1),
+     .                           myBox(1,2), myBox(2,2),
+     .                           myBox(1,3), myBox(2,3), nspin,
+     .             DRho, Ex, Ec, DEx, DEc, stressXC, Vscf, dVxcTmp )
+
+        dVxc(1:ntpl,1,1) = dVxcTmp(1:ntpl,1)
+        call de_alloc( dVxctmp, 'dVxctmp', 'dhscf' )
+C The constant prefactor to the perturbed Vxc term is stored in dVxc
+C-----------------------------------------------------------------------------
+      else
+        call cellXC( 0, cell, ntm, myBox(1,1), myBox(2,1),
      .                           myBox(1,2), myBox(2,2),
      .                           myBox(1,3), myBox(2,3), nspin,
      .             DRho, Ex, Ec, DEx, DEc, stressXC, Vscf )
+      endif
 #else /* BSC_CELLXC */
 
       if (nodes.gt.1) then
@@ -1642,6 +1685,38 @@ C ----------------------------------------------------------------------
          endif
       endif
 
+C---------------------------------------------------------------------
+C     LINRES: Find Pulay terms
+C---------------------------------------------------------------------
+      if (present(dHmat0)) then
+        if (nodes.gt.1) then
+          call setMeshDistr( QUADRATIC, nsm, nsp,
+     &                      nml, nmpl, ntml, ntpl )
+        endif
+
+!    This is a work array, to which we copy Vscf
+        call re_alloc( Vscf_par, 1, ntpl, 1, nspin,
+     &                 'Vscf_par', 'dhscf' )
+
+        do ispin = 1, nspin
+          fsrc => Vscf(:,ispin)
+          fdst => Vscf_par(:,ispin)
+          call distMeshData( UNIFORM, fsrc,
+     &                        QUADRATIC, fdst, TO_CLUSTER )
+        enddo
+
+        call dvmat(norb, nmpl, dvol, nspin, Vscf_par, maxnd,
+     &             numd, listdptr, listd, dHmat0,nuo,
+     &             nuotot,iaorb, iphorb, isa, ialr)
+
+        call de_alloc( Vscf_par,  'Vscf_par', 'dhscf' )
+        if (nodes.gt.1) then
+!          Everything back to UNIFORM, sequential
+           call setMeshDistr( UNIFORM, nsm, nsp,
+     &                         nml, nmpl, ntml, ntpl )
+        endif
+      endif
+C---------------------------------------------------------------------
 
 #ifdef MPI
 C     Global reduction of Uscf/DUscf/Uatm/Enaatm/Enascf
@@ -1794,6 +1869,189 @@ C ----------------------------------------------------------------------
 C       End of force and stress calculation
 C ----------------------------------------------------------------------
       endif
+
+C-----------------------------------------------------------------------
+C        Linres block: elements of the dynamical matrix
+C-----------------------------------------------------------------------
+C variables initialization
+      if (present(dDscf)) then
+        call timer( 'DHSCF DYNMAT ELEMENTS', 1 )
+        nullify (dvnoscf)
+        call re_alloc( dvnoscf, 1, ntpl , 1, 3,'dvnoscf', 'dhscf' )
+        call re_alloc(dRhoscf,1,ntpl,1,nspin,'dRhoscf','dhscf')
+        dRhoscf=0.0_dp
+
+C Calculate core-correction part-----------------------------------------
+C Compute gradient of the partial core correction density
+        if (npcc .eq. 1) then
+          if (present(dHmat0)) then
+            call reord( dvnoscf, dvnoscf, nml, nsm, TO_CLUSTER )
+            call PartialCoreOnMesh( na, isa, ntpl, rhopcc, indxua, nsd,
+     &                            dvol, volume, Vscf, Vaux, Fal,
+     &                            stressl, .true.,
+     &                            istr.ne.0, dvnoscf)
+            call reord( dvnoscf, dvnoscf, nml, nsm, TO_SEQUENTIAL )
+          endif
+          call reord( rhopcc, rhopcc, nml, nsm, TO_SEQUENTIAL )
+          call reord( Vaux, Vaux, nml, nsm, TO_SEQUENTIAL )
+          do ispin = 1,nsd
+            call reord( Vscf(:,ispin), Vscf(:,ispin),
+     &                  nml, nsm, TO_SEQUENTIAL )
+          enddo
+        endif ! npcc if
+C------------------------------------------------------------------------
+
+C Compute gradients of density and atom -------------------------------
+C drhoscf0= sum_mu,nu rho_mu,nu * grad phi_mu * phi_nu + cc
+C drhoatm = 2 sum_mu rho_mu * grad phi_mu * phi_mu 
+
+        call re_alloc(dRhoscf0,1,3,1,ntpl,1,nspin,
+     &                                'dRhoscf0','dhscf')
+        call re_alloc(dRhoatm,1,3,1,ntpl,'dRhoatm','dhscf')
+        dRhoscf0 = 0.0_dp 
+        dRhoatm = 0.0_dp 
+        call re_alloc( Vscf_par, 1, ntpl, 1, nspin,
+     &                 'Vscf_par', 'dhscf' )
+        do ispin = 1, nspin
+          fsrc => Vscf(:,ispin)
+          fdst => Vscf_par(:,ispin)
+          call distMeshData( UNIFORM, fsrc,
+     &                       QUADRATIC, fdst, TO_CLUSTER )
+          do jx =1,3
+            fsrc => dRhoscf0(jx,:,ispin)
+            fdst => dRhoscf0(jx,:,ispin)
+            call distMeshData( UNIFORM, fsrc,
+     &                       QUADRATIC, fdst, TO_CLUSTER )
+          enddo
+        enddo
+        do jx = 1,3
+          fsrc => dRhoatm(jx,:)
+          fdst => dRhoatm(jx,:)
+          call distMeshData( UNIFORM, fsrc,
+     &                     QUADRATIC, fdst, TO_CLUSTER )
+        enddo
+
+        call dfscf2(norb, nmpl, dvol, nspin, maxnd,
+     &              numd, listdptr, listd,
+     &              nuo, nuotot, iaorb, iphorb, isa,
+     &              1, ialr, datm, Dscf,
+     &              dRhoatm, dRhoscf0)
+      
+ 
+        call de_alloc( Vscf_par,  'Vscf_par', 'dhscf' )
+        do ispin = 1, nspin
+          do jx =1,3
+            fsrc =>dRhoscf0(jx,:,ispin)
+            fdst => dRhoscf0(jx,:,ispin)
+            call distMeshData( QUADRATIC, fsrc,
+     &                       UNIFORM, fdst, TO_SEQUENTIAL )
+          enddo
+        enddo 
+        do jx = 1,3
+          fsrc => dRhoatm(jx,:)
+          fdst => dRhoatm(jx,:)
+          call distMeshData( QUADRATIC, fsrc,
+     &                      UNIFORM, fdst, TO_SEQUENTIAL )
+        enddo
+C----------------------------------------------------------------------
+
+C Compute gradient of the Neutral Atom potential and added into dvnoscf---- 
+         do jx = 1,3 
+           fsrc => dvnoscf(:,jx)
+           fdst => dvnoscf(:,jx)
+           call distMeshData( UNIFORM, fsrc,
+     &                    QUADRATIC, fdst, TO_CLUSTER )
+         enddo
+         call re_alloc( dummy_Vna, 1, ntpl, 'Vna', 'dhscf' )
+         call reord( DRho, DRho, nml, nsm, TO_CLUSTER )
+         
+         call NeutralAtomOnMesh( na, isa, ntpl, dummy_Vna, indxua,
+     &                          dVol, volume, DRho, Fal, stressl,
+     &                          ifa.ne.0, istr.ne.0, dvnoscf, 1,
+     &                          ialr, nua )
+         call reord( DRho, DRho, nml, nsm, TO_SEQUENTIAL )
+         call de_alloc( dummy_Vna, 'Vna','dhscf' )
+         do jx = 1,3
+           fsrc => dvnoscf(:,jx)
+           fdst => dvnoscf(:,jx)
+           call distMeshData( QUADRATIC, fsrc,
+     &                    UNIFORM, fdst, TO_SEQUENTIAL )
+         enddo
+C--------------------------------------------------------------------------
+
+C Compute the perturbed Vhartree and Vxc terms
+         do jx= 1, 3
+
+          nullify( VLR )
+          call re_alloc( VLR, 1, ntpl, 1, nspin,
+     &                 'vlr','dhscf' )
+
+
+C Calculate the perturbed density
+          dRhoscf(1:ntpl,1:nspin) = dRhoscf0(jx,1:ntpl,1:nspin)
+
+C Hartree potential drho-drhoatm-----------------------------------------
+C         Find the difference between selfconsistent and 
+C         atomic densities
+          do ispin =1,nsd
+            do ip = 1, ntpl
+              dRhoscf(ip,ispin) = dRhoscf(ip,ispin) -
+     &                       dRhoatm(jx,ip)/nsd
+            enddo
+          enddo
+C         Transform spin density into sum and difference ---
+          if (nsd .eq. 2) then
+            do ip = 1,ntpl
+              dRhotot = DRhoscf(ip,1) + DRhoscf(ip,2)
+              dRhoscf(ip,2) = dRhoscf(ip,2) - dRhoscf(ip,1)
+              dRhoscf(ip,1) = dRhotot
+            enddo
+          endif
+C Hartree potential of DRHO - DRHOATM stored into VLR
+          call poison( cell, ntml(1), ntml(2), ntml(3), ntm,
+     &           dRhoscf, DUscf, VLR, DStres, nsm )
+C--------------------------------------------------------------------
+
+C Vxc term------------------------------------------------------------
+C In a future, when perturbed GGA Vxc will be implemented,
+C the cellXC call will be here (remove 1543 condition and lines) 
+C----------------------------------------------------------------------
+
+
+
+
+
+
+C dvnoscf contains the Vna term
+!          do ip = 1, ntpl
+!            VLR(ip,1) = VLR(ip,1) + dvnoscf(ip,jx)
+!            dvnoscf(ip,jx) = VLR(ip,1)
+!          enddo
+C Now, dvnoscf=VLR=Vna+VH. dvnoscf will be constant whereas in the 
+C VLR the Vxc term will be added 
+
+
+        enddo
+
+
+      call timer( 'DHSCF DYNMAT ELEMENTS', 2 )
+      endif 
+C---------------------------------------------------------------------
+C      End of Linres block
+C----------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+C
+
+
 
 !     We are in the UNIFORM distribution
 !     Rhoatm, Rhopcc and Vna are in UNIFORM dist, sequential form

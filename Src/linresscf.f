@@ -81,6 +81,7 @@ C Internal variable types and dimensions -----------------------------------
 
       real(dp)          ::  tollr, eigtollr !!!!!provisional
 
+      type(filesOut_t)    :: filesOut
       character(len=label_length+3) :: fname
 
       logical            :: FIRST, dummy_use_rhog_in, 
@@ -133,7 +134,29 @@ C Init of Linres calculation. External loop over perturbed atoms (IALR).
 C Internal loop scf-loop (ISCF).
 
       do 200 ialr=iai, iaf 
-        first = .true.
+
+C Doing non-scf elements of the perturbed Hamiltonian and dinamical matrix 
+        dHmat0(:,:,:)=0.0_dp
+        call dhscf( nspin, no_s, iaorb, iphorb, no_l,
+     .            no_u, na_u, na_s, isa, xa, indxua,
+     .            ntm, 0, 0, 0, filesOut,
+     .            maxnh, numh, listhptr, listh, Dscf, Datm,
+     .            maxnh, H, Enaatm, Enascf, Uatm, Uscf, DUscf, DUext,
+     .            Exc, Dxc, dipol, dummy_stress, dummy_fa,
+     .            dummy_stress, dummy_use_rhog_in,
+     .            dummy_chargedensonly, iai, iaf, ialr, lasto,
+     .            dynmat, dDscf, dHmat0)
+
+C dHmat0 contains the pulay terms of the perturbed hamiltonian
+C Dynamat contains all the elements that are non-scf and depend
+C on the gradient potential terms
+
+        do i=1,maxnh
+       print*,'dHmat0,1,2,3',i,dHmat0(i,1,1),dHmat0(i,2,1),dHmat0(i,3,1)
+        enddo
+       stop
+
+
         
 C init pulay arrays !!!!!!!!!!!!!!!!!!!!!!
 
@@ -144,8 +167,8 @@ C       scf loop -----------------------------------------------
 
           dHmat(1:maxnh,1:3,1:nspin) = 0.0_dp
 
-          if (first) then
-C Calculation of the kinetic terms of the perturbed hamiltonian
+          if (iscf.eq.1) then
+C Calculation of the kinetic terms of the perturbed hamiltonian (added into dHmat)
             call dhinit(IALR, na_s, maxnh, maxnh, nspin, lasto,
      &       listh, listhptr, numh, DS, dSmat, dHmat,dH, dDscf,
      &       dEscf)
@@ -157,30 +180,20 @@ C (added into dHmat)
      &                 iphKB, numh, listhptr, listh, numh,
      &                 listhptr, listh, min(nspin,2), IALR,
      &                 no_s, iaorb, dDscf, dHmat, dynmat, first)
-          endif
 
-          if (first) then
-C Up to here, perturbed hamiltonian is Kinetic+KB. These terms are non-scf and 
-C are stored in dHmat0 to avoid calculating them in each iscf.
+C Update the non-scf perturbed hamiltonian with the kinetic and KB terms
+C stored in dHmat. dHmat0 contains the pulay terms. After this point, dHmat0 
+C contains all the non-scf elements and it is constant. It is added every scf 
+C step to the perturbed hamiltonian!!
             do ispin=1,nspin
-             dHmat0(1:maxnh,1:3,ispin) = dHmat(1:maxnh,1:3,ispin)
+              dHmat0(1:maxnh,1:3,ispin)=dHmat0(1:maxnh,1:3,ispin) + 
+     .                                   dHmat(1:maxnh,1:3,ispin)
             enddo
-             dHmat(:,:,:)=0.0_dp
+            dHmat(1:maxnh,1:3,1:nspin) = 0.0_dp
           endif
+          
 
-          if (first) then 
-C Non-scf elements of dynamat are calculated and added into dynmat. These elements
-C depend on gradients of densities and gradients of orbitals
-
-          ! call dhscf
-
-          endif 
-
-          first = .false.
-C Deactivate first calls flag. From now, perturbed hamiltonian elements are going
-C to be calculated. First of all, dHmat0 is updated including the pulay terms.
-C dHmat is calculated as dHmat=HperSCF+dHmat0 
-
+          
           ! call dhscf
 
 
@@ -202,7 +215,7 @@ C Perform the density matrix mixing
           dmax=0.0_dp
           do ix=1,3
 !            call pulay
-             dmax=max(dmax.dDmax)
+             dmax=max(dmax,dDmax)
           enddo
 
 

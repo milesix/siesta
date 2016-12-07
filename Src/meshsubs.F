@@ -572,9 +572,12 @@ C     If cell has changed then it is necessary to reinitialise coordinates
 
       subroutine PartialCoreOnMesh( na, isa, ntpl, rhopcc, indxua, 
      &                              nsd, dvol, volume, Vscf, Vaux, 
-     &                              fal, stressl, Forces, Stress )
+     &                              fal, stressl, Forces, Stress,
+     &                              drhopcc )
 C
 C Finds the partial-core-correction energy density on the mesh
+C For Linres purposes, the calculation of the gradient/derivative 
+C has been added. L.Rhiches, S.Illera (2016)
 C
 C ----------------------------------------------------------------------
 C Input :
@@ -617,9 +620,10 @@ C     Passed arguments
       real(grid_p), intent(out) :: rhopcc(ntpl)
       real(dp),   intent(inout) :: fal(3,*)
       real(dp), intent(inout)   :: stressl(3,3)
+      real(grid_p),intent(inout),optional:: drhopcc(ntpl,3) !Linres
 C     Internal variables
       integer                   :: i, ia, iop, ip, ip0, is, isp,
-     &                             ispin, iua
+     &                             ispin, iua, jx
       real(dp)                  :: dfa(3), dx(3), grrho(3), r, ra,
      &                             rhop, vxc
       real(dp),            save :: tiny
@@ -654,6 +658,13 @@ C               if (r .lt. ra .and. r .gt. tiny) then
                 if (r .lt. ra) then
                   ip = isp + nsp * (ip0 - 1)
                   call chcore_sub( is, dx, rhop, grrho )
+C Linres block----------------------------------------------------------
+                  if (present(drhopcc)) then
+                    do jx=1,3
+                      drhopcc(ip,jx) = drhopcc(ip,jx) + grrho(jx)
+                    enddo
+                  endif
+C ----------------------------------------------------------------------
                   if (Gradients) then
 C                   Calculate gradients of PCC
                     do ispin = 1,nsd
@@ -684,7 +695,8 @@ C                   Calculate density due to PCC
       subroutine NeutralAtomOnMesh( na, isa, ntpl, vna,
      &                              indxua, dvol, volume,
      &                              drho, fal, stressl,
-     &                              Forces, Stress )
+     &                              Forces, Stress, dvna,
+     &                              iter,IALR, nua )
 C
 C Finds the potential due to the neutral atoms on the mesh
 C
@@ -724,6 +736,11 @@ C    Passed arguments
       real(grid_p), intent(inout) :: vna(ntpl)
       real(dp),     intent(inout) :: fal(3,*)
       real(dp),     intent(inout) :: stressl(3,3)
+C LINRES ------------------------------------------------------------
+      real(grid_p), intent(out), optional :: dvna(ntpl,3)
+      integer, intent(in), optional :: iter, IALR, nua
+      integer :: iainit, iaend, step, ISIGN
+C -------------------------------------------------------------------
 C     Internal variables
       integer                     :: i, ia, iop, ip, ip0, is, isp, iua
       real(dp)                    :: dx(3), grva(3), r, ra, va
@@ -742,7 +759,30 @@ C must be kept. This is particularly important for grid-cell sampling...
 
       if (.not.Gradients) vna(1:ntpl) = 0.0_dp
 
-      do ia = 1,na
+C LINRES-------------------------------------------------------------
+       if(present(dvna)) then
+        dvna(1:ntpl,1:3) = 0.0_grid_p
+        if(iter.eq.1) then !like ilr =0
+         iainit = 1
+         iaend = na
+         step = +1
+         ISIGN = +1
+        else
+         iainit = ialr
+         iaend = na - (nua - ialr)
+         step = nua
+         ISIGN = -1
+        endif
+       else
+        iainit = 1
+        iaend = na
+        step = +1
+        ISIGN = +1
+       endif
+
+C -------------------------------------------------------------------
+
+      do ia = iainit,iaend,step
         if (ipa(ia)==0) cycle ! Atomic sphere does not intersec my Box
         iua = indxua(ia)
         is = isa(ia)
@@ -759,6 +799,13 @@ C           Loop over sub-points
               if (r .lt. ra) then
                 ip = isp + nsp * (ip0 - 1)
                 call phiatm( is, 0, dx, va, grva )
+C LINRES ------------------------------------------------------------
+                if(present(dvna)) then
+                  do i = 1,3
+                    dvna(ip,i) = dvna(ip,i) + ISIGN * grva(i)
+                  enddo
+                endif
+C -------------------------------------------------------------------
                 if (Gradients) then
                   do i = 1,3
                     grva(i) = dvol * grva(i) * drho(ip)

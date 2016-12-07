@@ -249,7 +249,7 @@ OBJS += flook_siesta.o siesta_dicts.o
 OBJS += m_cite.o
 
 #Linres package
-OBJS += linresscf.o linres_matrices.o dhinit.o dvnloc.o
+OBJS += linresscf.o linres_matrices.o dhinit.o dvnloc.o dvmat.o dfscf2.o
 
 # Special dependency that sfmakedepend cannot grasp for now
 m_pexsi.o m_pexsi_driver.o m_pexsi_dos.o m_pexsi_local_dos.o: f_ppexsi_interface.o
@@ -663,7 +663,7 @@ dhscf.o: m_ncdf_io.o m_ncdf_siesta.o m_partial_charges.o m_rhog.o m_spin.o
 dhscf.o: m_ts_global_vars.o m_ts_hartree.o m_ts_options.o m_ts_tdir.o
 dhscf.o: m_ts_voltage.o mesh.o meshdscf.o meshsubs.o moremeshsubs.o parallel.o
 dhscf.o: parsing.o precision.o rhofft.o rhoofd.o siesta_options.o sys.o units.o
-dhscf.o: vmat.o
+dhscf.o: vmat.o dvmat.o
 diag2g.o: fermid.o parallel.o parallelsubs.o precision.o sys.o
 diag2k.o: fermid.o parallel.o parallelsubs.o precision.o sys.o
 diag3g.o: fermid.o parallel.o parallelsubs.o precision.o sys.o
