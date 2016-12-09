@@ -84,7 +84,7 @@ C Internal variable types and dimensions -----------------------------------
       type(filesOut_t)    :: filesOut
       character(len=label_length+3) :: fname
 
-      logical            :: FIRST, dummy_use_rhog_in, 
+      logical            :: FIRST, dummy_use_rhog_in, LRfirst,
      &                      dummy_chargedensonly,mmix,check,printdyn!!!!!!
 
 !      external dhinit, delrho, ddsmat, io_assign, io_close 
@@ -109,16 +109,14 @@ C Initialize dDscf, dEscf, dynmat----------------------------------------------
       dynmat(:,:,:,:)=0.0_dp
 C ----------------------------------------------------------------------------
 
-C Linres flags
-      ilr=1  ! Compute perurbed hamiltonian elemts (1 yes, 0 no)
-      idyn=0 ! Compute dynamical terms (1 yes, 0 no)
+      LRfirst=.true.
 
-C IS A K CALCULATION?????
-
-
-
-
-
+C IS A K CALCULATION????? Could be better....
+      if (nkpnt .eq. 1) then
+        GAMMA = .TRUE.
+      else
+        GAMMA = .FALSE.
+      endif
 
 
 
@@ -145,17 +143,11 @@ C Doing non-scf elements of the perturbed Hamiltonian and dinamical matrix
      .            Exc, Dxc, dipol, dummy_stress, dummy_fa,
      .            dummy_stress, dummy_use_rhog_in,
      .            dummy_chargedensonly, iai, iaf, ialr, lasto,
-     .            dynmat, dDscf, dHmat0)
+     .            dynmat, dDscf,dHmat, LRfirst, dHmat0)
 
 C dHmat0 contains the pulay terms of the perturbed hamiltonian
 C Dynamat contains all the elements that are non-scf and depend
 C on the gradient potential terms
-
-        do i=1,maxnh
-       print*,'dHmat0,1,2,3',i,dHmat0(i,1,1),dHmat0(i,2,1),dHmat0(i,3,1)
-        enddo
-       stop
-
 
         
 C init pulay arrays !!!!!!!!!!!!!!!!!!!!!!
@@ -192,14 +184,42 @@ C step to the perturbed hamiltonian!!
             dHmat(1:maxnh,1:3,1:nspin) = 0.0_dp
           endif
           
+C Copy non-scf hamiltonian to total Hamiltonian
+        do ispin=1,nspin
+        dHmat(1:maxnh,1:3,ispin)=dHmat0(1:maxnh,1:3,ispin)
+        enddo
 
-          
-          ! call dhscf
 
+C Compute the perturbed potential elements Vxc, Vna and Vh and 
+C include them into dHmat. Look that dhscf is called without dHmat0!!!
+
+        call dhscf( nspin, no_s, iaorb, iphorb, no_l,
+     .            no_u, na_u, na_s, isa, xa, indxua,
+     .            ntm, 0, 0, 0, filesOut,
+     .            maxnh, numh, listhptr, listh, Dscf, Datm,
+     .            maxnh, H, Enaatm, Enascf, Uatm, Uscf, DUscf, DUext,
+     .            Exc, Dxc, dipol, dummy_stress, dummy_fa,
+     .            dummy_stress, dummy_use_rhog_in,
+     .            dummy_chargedensonly, iai, iaf, ialr, lasto,
+     .            dynmat, dDscf, dHmat, LRfirst)
 
           nullify(dDold)
           call re_alloc(dDold,1,maxnh,1,nspin,1,3,
      &                 'dDold', 'linresscf')
+
+
+
+        print*,'dHmat0 completo'
+        print*,'dHmat0(:,1,1)',dHmat0(:,1,1)
+        print*,'dHmat0(:,2,1)',dHmat0(:,2,1)
+        print*,'dHmat0(:,3,1)',dHmat0(:,3,1)
+
+        print*,'dHmat 1 iteracion'
+        print*,'dHmat(:,1,1)',dHmat(:,1,1)
+        print*,'dHmat(:,2,1)',dHmat(:,2,1)
+        print*,'dHmat(:,3,1)',dHmat(:,3,1)
+
+
 
 C Copy current density as old one to perform the mixing
           dDold(1:maxnh,1:nspin,1:3) = dDscf(1:maxnh,1:nspin,1:3)
@@ -209,7 +229,25 @@ C Copy current density as old one to perform the mixing
 C Find change in density matrix from perturbed 
 C Hamiltonian and Overlap
 
-          ! call delrho
+          call delrho(no_s, na_s, nspin, maxnh, no_l, no_u, GAMMA,
+     &               indxuo, xijo, nspin, eo, tollr, eigtollr, nkpnt,
+     &               kpoint, kweight, Qo, H, S, dHmat, dSmat, numh,
+     &               listh, listhptr, ef, temp, dDscf, dEscf,iscf)
+
+
+        print*,'dDscf iscf=',iscf
+        print*,'dDscf(:,1,1)',dDscf(1:40,1,1)
+        print*,'dDscf(:,2,1)',dDscf(1:40,2,1)
+        print*,'dDscf(:,3,1)',dDscf(1:40,3,1)
+
+
+        stop
+
+
+
+
+
+
 
 C Perform the density matrix mixing
           dmax=0.0_dp
@@ -218,9 +256,9 @@ C Perform the density matrix mixing
              dmax=max(dmax,dDmax)
           enddo
 
-
+          LRfirst=.false.
 C Check convergence cryteria
-          if (dmax .lt. tollr) goto 999
+!          if (dmax .lt. tollr) goto 999
 
  100    enddo  ! isc loop
 
@@ -237,7 +275,7 @@ C End scf loop
         stop
 
 
-
+C     !call dhscf sin dHmat0 y sind LRfirst
 
       end subroutine 
 

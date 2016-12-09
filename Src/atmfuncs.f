@@ -586,7 +586,7 @@ C  2) Returns exactly zero when |R| > Rcore
  
       end subroutine chcore_sub
 
-      subroutine phiatm(is,io,r,phi,grphi)
+      subroutine phiatm(is,io,r,phi,grphi, gr2phi)
       integer, intent(in) :: is      ! Species index
       integer, intent(in) :: io      ! Orbital index (within atom)
 !              IO > 0 =>  Basis orbitals
@@ -596,6 +596,10 @@ C  2) Returns exactly zero when |R| > Rcore
       real(dp), intent(out) :: phi     ! Basis orbital, KB projector, or
                                      !  local pseudopotential
       real(dp), intent(out) :: grphi(3)! Gradient of BO, KB proj, or Loc ps
+
+C Linres option------
+      real(dp), optional, intent(out) :: gr2phi(3,3)
+C------
 
 C  Returns Kleynman-Bylander local pseudopotential, nonlocal projectors,
 C  and atomic basis orbitals (and their gradients).
@@ -614,10 +618,17 @@ C 7) PHIATM with IO = 0 is strictly equivalent to VNA_SUB
 
       real(dp) rmod, phir, dphidr
       real(dp) rly(max_ilm), grly(3,max_ilm)
-      integer i, l, m, ik, ilm
+C Linres ---
+      real(dp) g2rly(3,3,max_ilm), d2phidr
+C ---
+      integer i, l, m, ik, ilm, ix, jx
 
       phi=0.0_dp
       grphi(1:3)=0.0_dp
+C Linres ---
+      d2phidr=0.0_dp
+      if(present(gr2phi)) gr2phi(1:3,1:3) = 0.0_dp
+C ---
 
       spp => species(is)
       if (io.gt.0) then
@@ -642,20 +653,66 @@ C 7) PHIATM with IO = 0 is strictly equivalent to VNA_SUB
       rmod = sqrt(sum(r*r)) + tiny20
       if(rmod.gt.func%cutoff-tiny12) return
 
-      call rad_get(func,rmod,phir,dphidr)
+C LINRES ------------------------------------------------------------
+      if(present(gr2phi)) then
+        call rad_get(func,rmod,phir,dphidr, d2phidr)
+      else
+        call rad_get(func,rmod,phir,dphidr)
+      endif
+C---------------------------------------------------------------------
 
       if (io.eq.0) then
          phi=phir
-         grphi(1:3)=dphidr*r(1:3)/rmod
+         do ix = 1,3
+           grphi(ix)=dphidr*r(ix)/rmod
+C LINRES ------------------------------------------------------------
+           if(present(gr2phi)) then
+            do jx = 1,3
+             if(jx .eq. ix) then
+              gr2phi(ix,jx)=d2phidr*r(ix)*r(jx)/(rmod*rmod)
+     .                    + dphidr/rmod - dphidr*r(ix)*r(jx)/(rmod**3)
+             else
+              gr2phi(ix,jx)=d2phidr*r(ix)*r(jx)/(rmod*rmod)
+     .                    - dphidr*r(ix)*r(jx)/(rmod**3)
+             endif
+            enddo
+           endif
+C -------------------------------------------------------------------
+         enddo      
       else
 
-         ilm = l*l + l + m + 1
-         call rlylm( l, r, rly, grly )
-         phi = phir * rly(ilm)
-         do i = 1,3
-            grphi(i)=dphidr*rly(ilm)*r(i)/rmod+phir*grly(i,ilm)
-         enddo
-
+        ilm = l*l + l + m + 1
+C LINRES ------------------------------------------------------------
+        if(present(gr2phi)) then
+          call rlylm(l,r,rly,grly,g2rly)
+        else
+C ------------------------------------------------------------------
+          call rlylm( l, r, rly, grly )
+        endif
+        phi = phir * rly(ilm)
+        do ix = 1,3
+          grphi(ix)=dphidr*rly(ilm)*r(ix)/rmod+phir*grly(ix,ilm)
+C LINRES ------------------------------------------------------------
+          if(present(gr2phi)) then
+            do jx = 1,3
+              if(ix .eq. jx) then
+               gr2phi(ix,jx) = phir*g2rly(ix,jx,ilm)
+     .                      +  dphidr*grly(ix,ilm)*r(jx)/rmod
+     .                      +  d2phidr*rly(ilm)*r(ix)*r(jx)/(rmod*rmod)
+     .                      +  dphidr*grly(jx,ilm)*r(ix)/rmod
+     .                      +  dphidr*rly(ilm)/rmod
+     .                      -  dphidr*rly(ilm)*r(ix)*r(jx)/(rmod**3)
+              else
+               gr2phi(ix,jx) = phir*g2rly(ix,jx,ilm)
+     .                      +  dphidr*grly(ix,ilm)*r(jx)/rmod
+     .                      +  d2phidr*rly(ilm)*r(ix)*r(jx)/(rmod*rmod)
+     .                      +  dphidr*grly(jx,ilm)*r(ix)/rmod
+     .                      -  dphidr*rly(ilm)*r(ix)*r(jx)/(rmod**3)
+              endif
+            enddo
+          endif
+C -------------------------------------------------------------------
+        enddo
       endif
 
       end subroutine phiatm
