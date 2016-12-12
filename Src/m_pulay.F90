@@ -16,6 +16,9 @@ module m_pulay
   save
 
   real(dp), pointer :: auxpul(:,:)  => null()
+! Linres purposes----------------
+  real(dp), pointer :: auxpulLR(:,:,:)  => null()
+!-------------------------------
   integer           :: n_records_saved = 0
   real(dp)          :: alpha_pulay
   real(dp)          :: alpha_before_pulay
@@ -33,7 +36,7 @@ module m_pulay
 
 CONTAINS
 
-  subroutine init_pulay_arrays()
+  subroutine init_pulay_arrays(iai)
     use siesta_options, only: maxsav
     use alloc
     use atomlist, only: no_l
@@ -41,7 +44,11 @@ CONTAINS
     use sparse_matrices, only: numh
     use fdf
 
+!   Linres initialization variable
+    integer, optional, intent(in) :: iai ! Could be flag in siesta_options
+!-------------------------------------
     integer :: ntmp, nauxpul
+
 
     n_records_saved = 0
 
@@ -50,8 +57,13 @@ CONTAINS
     else
        nauxpul = sum(numh(1:no_l)) * h_spin_dim * maxsav
        !
-       call re_alloc(auxpul,1,nauxpul,1,2,name="auxpul",        &
+       if (present(iai)) then
+         call re_alloc(auxpulLR,1,nauxpul,1,2,1,3,name="auxpulLR",        &
             routine="pulay")
+       else
+         call re_alloc(auxpul,1,nauxpul,1,2,name="auxpul",        &
+            routine="pulay")
+       endif
     endif
   
     ! Read some operational parameters
@@ -78,7 +90,7 @@ CONTAINS
 
   subroutine pulayx( iscf,mix1,no_l,maxnd,numd,             &
        listdptr,nspin,maxsav,alpha,nkick,alphakick,   &
-       dmnew,dmold,dmax)
+       dmnew,dmold,dmax,ix)
 
     ! Pulay mixing implemented to accelerate the self-consistency
     ! Mixes MAXSAV previous steps.  Linear mixing if MAXAV =< 0
@@ -152,7 +164,8 @@ CONTAINS
     use parallel,   only : Node
     use sys,        only : die
     use alloc
-    use siesta_options, only: avoid_first_after_kick
+!    use siesta_options, only: avoid_first_after_kick  NOT IMPLEMENTED 
+!    IN THIS SIESTA VE     RSION
     use fdf,        only : fdf_get
     use m_svd,      only : solve_with_svd
 #ifdef MPI
@@ -163,6 +176,11 @@ CONTAINS
     integer , intent(in) ::  iscf,maxsav,maxnd, no_l,nkick,nspin
 
     integer , intent(in) :: numd(*),listdptr(*)
+
+! Linres variable------------
+    integer, intent(in),optional :: ix  !spatial coordinate
+!---------------------------
+
     logical, intent(in) ::  mix1
 
     real(dp), intent(in)    ::  alpha,alphakick
@@ -177,6 +195,8 @@ CONTAINS
     logical :: after_kick
     logical :: no_new_information
     logical :: debug_inverse = .false.
+    logical :: avoid_first_after_kick=.false. !PROVISIONAL SOLUTION
+
 
 !    logical, save :: kick_due = .false.
     integer :: rank
@@ -199,8 +219,13 @@ CONTAINS
 #endif
 
     if (maxsav > 1) then
+       if (present(ix)) then
+       savedm => auxpulLR(:,1,ix) 
+       saveres => auxpulLR(:,2,ix)
+       else
        savedm => auxpul(:,1)          ! DM in former iterations
        saveres => auxpul(:,2)         ! Residuals in former iterations
+       endif
        !
        ! Check some input and dimensions 
        numel = sum(numd(1:no_l))
@@ -573,7 +598,11 @@ CONTAINS
       ! with a finite circular stack.
 
       if (maxsav > 1) then
-         n_records_saved = n_records_saved + 1
+         if (present(ix)) then
+           if (ix.eq.1) n_records_saved = n_records_saved + 1
+         else 
+           n_records_saved = n_records_saved + 1
+         endif
          ! isite marks the point to write 
          isite = mod(n_records_saved,maxsav)
          if (isite .eq. 0) isite = maxsav

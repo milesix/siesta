@@ -921,12 +921,15 @@ C    value of nphi
 !
 !     This routine takes two species arguments
 !
-      subroutine psover(is1,is2,r,energ,dedr)
+      subroutine psover(is1,is2,r,energ,dedr,d2edr)
       integer, intent(in) :: is1, is2     ! Species indexes
       real(dp), intent(in)  :: r       ! Distance between atoms
       real(dp), intent(out) :: energ   ! Value of the correction
                                      !  interaction energy
       real(dp), intent(out) :: dedr    ! Radial derivative of the correction
+C     Linres optional argument---------------
+      real(dp),optional     :: d2edr 
+C     ---------------------------------------
 
 C Returns electrostatic correction to the ions interaction energy
 C due to the overlap of the two 'local pseudopotential charge densities'
@@ -941,7 +944,8 @@ C  2) Returns exactly zero when |R| > Rchloc
       
       energ=0.0_dp 
       dedr=0.0_dp 
-      
+      if(present(d2edr)) d2edr = 0.0_dp     
+ 
       if (floating(is1) .or. floating(is2)) return
 
       ismx=max(is1,is2)
@@ -951,11 +955,19 @@ C  2) Returns exactly zero when |R| > Rchloc
 
       if ( r .gt. func%cutoff - tiny12 ) return
 
-      call rad_get(func,r,energ,dedr)
+C Linres line-------------------------
+      if(present(d2edr)) then
+        call rad_get(func,r,energ,dedr,d2edr)
+      else
+C ------------------------------------
+        call rad_get(func,r,energ,dedr)
+      endif
       r_local = r+tiny20
       energ=2.0_dp*energ/r_local
       dedr=(-energ + 2.0_dp*dedr)/r_local
-
+C Linres line---------------------------
+      if(present(d2edr)) d2edr=2.0_dp*(-dedr + d2edr) / r_local 
+C---------------------------------------
       end subroutine psover
 
 !

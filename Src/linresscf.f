@@ -55,12 +55,11 @@ C Modules------------------------------------------------------------------
       use m_eo
       use Kpoint_grid,   only: nkpnt, kpoint, kweight
       use m_energies,    only: ef
-c      use m_pulay
-!      use m_pulaylr,  only: init_pulaylr_arrays, pulayxlr
+      use m_pulay,       only: init_pulay_arrays, pulayx
 !      use m_iodmlr,      only: write_dmlr
       use linres_matrices, only: resetFirstmatrices
       use fdf
-!      use m_ddnaefs
+      use m_ddnaefs
 C----------------------------------------------------------------------------
       implicit none 
 
@@ -107,9 +106,6 @@ C Initialize dDscf, dEscf, dynmat----------------------------------------------
      &                 'dEscf', 'linresscf')
 
       dynmat(:,:,:,:)=0.0_dp
-C ----------------------------------------------------------------------------
-
-      LRfirst=.true.
 
 C IS A K CALCULATION????? Could be better....
       if (nkpnt .eq. 1) then
@@ -133,6 +129,9 @@ C Internal loop scf-loop (ISCF).
 
       do 200 ialr=iai, iaf 
 
+      LRfirst=.true. !init flag for first calls
+
+
 C Doing non-scf elements of the perturbed Hamiltonian and dinamical matrix 
         dHmat0(:,:,:)=0.0_dp
         call dhscf( nspin, no_s, iaorb, iphorb, no_l,
@@ -149,8 +148,7 @@ C dHmat0 contains the pulay terms of the perturbed hamiltonian
 C Dynamat contains all the elements that are non-scf and depend
 C on the gradient potential terms
 
-        
-C init pulay arrays !!!!!!!!!!!!!!!!!!!!!!
+        call init_pulay_arrays(iai)        
 
         call timer('Linres SCF loop', 1)
 
@@ -171,7 +169,7 @@ C (added into dHmat)
      &                 maxnh, maxnh, lasto, lastkb, iphorb,
      &                 iphKB, numh, listhptr, listh, numh,
      &                 listhptr, listh, min(nspin,2), IALR,
-     &                 no_s, iaorb, dDscf, dHmat, dynmat, first)
+     &                 no_s, iaorb, dDscf, dHmat, dynmat, LRfirst)
 
 C Update the non-scf perturbed hamiltonian with the kinetic and KB terms
 C stored in dHmat. dHmat0 contains the pulay terms. After this point, dHmat0 
@@ -183,7 +181,8 @@ C step to the perturbed hamiltonian!!
             enddo
             dHmat(1:maxnh,1:3,1:nspin) = 0.0_dp
           endif
-          
+         
+ 
 C Copy non-scf hamiltonian to total Hamiltonian
         do ispin=1,nspin
         dHmat(1:maxnh,1:3,ispin)=dHmat0(1:maxnh,1:3,ispin)
@@ -207,17 +206,10 @@ C include them into dHmat. Look that dhscf is called without dHmat0!!!
           call re_alloc(dDold,1,maxnh,1,nspin,1,3,
      &                 'dDold', 'linresscf')
 
-
-
-        print*,'dHmat0 completo'
-        print*,'dHmat0(:,1,1)',dHmat0(:,1,1)
-        print*,'dHmat0(:,2,1)',dHmat0(:,2,1)
-        print*,'dHmat0(:,3,1)',dHmat0(:,3,1)
-
-        print*,'dHmat 1 iteracion'
-        print*,'dHmat(:,1,1)',dHmat(:,1,1)
-        print*,'dHmat(:,2,1)',dHmat(:,2,1)
-        print*,'dHmat(:,3,1)',dHmat(:,3,1)
+        print*,'Perturbed hamiltioan iter=',iscf
+        print*,'dHmat(:,1,1)',dHmat(1:40,1,1)
+        print*,'dHmat(:,2,1)',dHmat(1:40,2,1)
+        print*,'dHmat(:,3,1)',dHmat(1:40,3,1)
 
 
 
@@ -235,45 +227,128 @@ C Hamiltonian and Overlap
      &               listh, listhptr, ef, temp, dDscf, dEscf,iscf)
 
 
-        print*,'dDscf iscf=',iscf
+        print*,'dDscf despues delrho iter=',iscf
         print*,'dDscf(:,1,1)',dDscf(1:40,1,1)
-        print*,'dDscf(:,2,1)',dDscf(1:40,2,1)
-        print*,'dDscf(:,3,1)',dDscf(1:40,3,1)
-
-
-        stop
-
-
-
-
-
-
+        print*,'dDscf(:,1,2)',dDscf(1:40,1,2)
+        print*,'dDscf(:,1,3)',dDscf(1:40,1,3)
 
 C Perform the density matrix mixing
           dmax=0.0_dp
           do ix=1,3
-!            call pulay
-             dmax=max(dmax,dDmax)
+            call pulayx( iscf , mmix , no_l, maxnh, numh,
+     &                  listhptr, nspin,maxsav,wmix,nkick,
+     &                  wmixkick,dDscf(:,:,ix),dDold(:,:,ix),dDmax,ix)
+            dmax=max(dmax,dDmax)
           enddo
 
+        print*,'dDscf despues pulay iter=',iscf
+        print*,'dDscf(:,1,1)',dDscf(1:40,1,1)
+        print*,'dDscf(:,1,2)',dDscf(1:40,1,2)
+        print*,'dDscf(:,1,3)',dDscf(1:40,1,3)
+
+C Print error in the perturbed density
+          if (iscf.eq.1) then
+            print*, 'siesta Linres: Density tolerance dDTol=', TOLLR
+            print*, 'LINRES:',iscf,'dMax=',dMax
+          else
+            print*, 'LINRES:',iscf,'dMax=',dMax
+          endif
+
           LRfirst=.false.
+
 C Check convergence cryteria
-!          if (dmax .lt. tollr) goto 999
+          if (dmax .lt. tollr) goto 999
 
  100    enddo  ! isc loop
+C------------------------------------------------------------------------
 
- 999  continue 
-C End scf loop
+ 999    continue ! Exit scf loop
+        call timer('Linres SCF loop', 2)
+
+
+        print*,'LINRES: density is converged'
+        do j=1,maxnh
+        write(*,*) (dDscf(j,1,i), i=1,3)
+        enddo
+
+
+        print*,'dynmat despues del loop'
+       do ix = 1,3
+        do j = 1, na_u
+         do jx = 1,3
+          print *, j,';',jx,';',ialr,';',ix,';',
+     &                   dynmat(j,jx,ialr,ix)
+         enddo
+        enddo
+       enddo
+
+C Now, is time to calculate the final terms of the dynamical matrix
+C------------------------------------------------------------------------
+
+C     Add non-local potential contribution to dynmat ----------------
+C     Note that LRfirst now is false
+        call dvnloc(scell, na_u, na_s, isa, xa, indxua, Dscf,
+     &                 maxnh, maxnh, lasto, lastkb, iphorb,
+     &                 iphKB, numh, listhptr, listh, numh,
+     &                 listhptr, listh, min(nspin,2), IALR,
+     &                 no_s, iaorb, dDscf, dHmat, dynmat, LRfirst)
+
+
+        print*,'dynmat despues del loop'
+       do ix = 1,3
+        do j = 1, na_u
+         do jx = 1,3
+          print *, j,';',jx,';',ialr,';',ix,';',
+     &                   dynmat(j,jx,ialr,ix)
+         enddo
+        enddo
+       enddo
+
+
+C     Add kinetic and ovelap contributions to dynmat -----------------
+        call ddsmat(dH, dS, d2H, d2S, nspin, no_s, no_u, na_s, na_u,
+     &                indxuo, lasto, numh, listh, listhptr, Dscf, Escf,
+     &                ialr, iaorb, maxnh, dDscf, dEscf, dynmat)
+
+
+c     Add terms that depends on the perturbed density and Vscf 
+C     and perturbed Vscf potentials-----------------------------------
+
+        call dhscf( nspin, no_s, iaorb, iphorb, no_l,
+     .            no_u, na_u, na_s, isa, xa, indxua,
+     .            ntm, 0, 0, 0, filesOut,
+     .            maxnh, numh, listhptr, listh, Dscf, Datm,
+     .            maxnh, H, Enaatm, Enascf, Uatm, Uscf, DUscf, DUext,
+     .            Exc, Dxc, dipol, dummy_stress, dummy_fa,
+     .            dummy_stress, dummy_use_rhog_in,
+     .            dummy_chargedensonly, iai, iaf, ialr, lasto,
+     .            dynmat, dDscf, dHmat)
+
+
+C Dealloc the non-scf variables (drhoatm, drhoscf0 and dvxc) for next atom
+        call resetFirstmatrices()
 
  200  enddo   ! ialr atoms loop
+      call timer('Linres atoms loop',2)
+C-------------------------------------------------------------------------
 
+C There are other contributions to the dynamical matrix (non-scf)
+C the second derivatives of the kinetic and KB terms
+      call ddnaefs(na_u, na_s, scell, xa, indxua, rmaxv,
+     &            isa, dynmat)
 
-
-      do i=1,maxnh
-        print*,'i,1,2,3',i,dhmat(i,1,1),dhmat(i,2,1),dhmat(i,3,1)
+      do ialr = IAI, IAF
+       do ix = 1,3
+        do j = 1, na_u
+         do jx = 1,3
+          print *, j,';',jx,';',ialr,';',ix,';',
+     &                   dynmat(j,jx,ialr,ix)
+         enddo
+        enddo
+       enddo
       enddo
-        stop
 
+	stop
 
 C     !call dhscf sin dHmat0 y sind LRfirst
 
