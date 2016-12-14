@@ -1027,6 +1027,11 @@ subroutine read_options( na, ns, nspin )
    else if (leqi(dyntyp,'lua')) then
       idyn = 10
 #endif
+! Linres line-----------------------
+   else if (leqi(dyntyp,'LR')) then
+      idyn = 0 
+      linreSwitch = .true.
+!-----------------------------
   else
      call die('Invalid Option selected - value of MD.TypeOfRun not recognised')
   endif

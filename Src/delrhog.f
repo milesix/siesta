@@ -1,6 +1,6 @@
       SUBROUTINE DELRHOG(nuo, nspin, maxorb, eval, tol, eigtol,  
      &                   occ, Hper, Oper, maxnh, numh, listh,listhptr,
-     &                   ix,ef,T,Rhoper,Erhoper,psi)
+     &                   ix,ef,T,Rhoper,Erhoper,psi,iscf)
 
 
 C **********************************************************************
@@ -33,6 +33,7 @@ C INTEGER IX                 :Spatial coordinate
 C REAL*8  EF                 :Fermi level
 C REAL*8  T                  :Temperature
 C REAL*8 PSI(NUO,NUO)        :Coeficients of the wavefunctions
+C INTEGER ISCF		     :Counter of main Linres SCF loop
 C ******************  OUTPUT  ******************************************
 C REAL*8  RHOPER(MAXNH)  :Matrix elements of the perturbated 
 C REAL*8  ERHOPER(MAXNH) :Matrix elements of the perturbated 
@@ -44,7 +45,7 @@ C **********************************************************************
       implicit none
 
       integer :: nuo,nbands, maxnh, nspin, numh(*),
-     &            listh(maxnh), listhptr(*), ix
+     &            listh(maxnh), listhptr(*), ix, iscf
       real(dp) :: eval(maxorb), tol, occ(maxorb), 
      &            Hper(maxnh), eigtol, 
      &            Oper(maxnh), ef, T,Rhoper(maxnh),Erhoper(maxnh)
@@ -60,20 +61,15 @@ C     Internal Variables
      &            prod3, prod4, ei0, ej0, dStepF, evper(3,maxorb)
       real(dp), pointer :: Haux(:,:), Saux(:,:), Psiden(:,:),
      &                     rotaux(:), eden(:)
-      logical :: FIRST
-      save :: FIRST, maxden
-      data FIRST /.TRUE./
+      save :: maxden
 
       call timer('delrhog',1)
 
-      if(ix.eq.1) print *, 'DEBUG TRACK: in delrhog'
-
       nbands = nuo
-      if(FIRST) then
+      if(iscf.eq.1) then
        deg = 1
        N = 1
        maxden = 1
-        ! the -1 makes sense but not in L1
         do io = 1,nbands-1
          ei0 = eval(io)
          ej0 = eval(io+1)
@@ -85,7 +81,6 @@ C     Internal Variables
            N = 1 !Non deg Eig
          endif
         enddo
-        FIRST = .FALSE.
       endif      
       ! initialize with size of deg subspace
       call re_alloc(Haux, 1,maxden, 1,maxden,'Haux', 'delrhog')
@@ -140,8 +135,6 @@ C     Internal Variables
                 ENDDO
               ENDDO
         ! Compute eigenvalues of dH_nn' to give dE_in
-              !rdiag wants 2 args H and S
-
               call rdiag( Haux, Saux, numb(io),maxden,maxden,
      .             eden, psiden,maxden,1,ierror )
 

@@ -138,12 +138,6 @@
       complex(dp) :: varaux,varaux2
 ! End -tddft
 
-C Linres--------------------------------------------------
-      logical :: linreSwitch
-      COMMON  linreSwitch
-C---------------------------------------------------------
-
-
 #ifdef TRANSIESTA
       real(dp) :: Qcur
 #endif
@@ -203,10 +197,6 @@ C---------------------------------------------------------
       call dict_variable_add('SCF.drhoG',drhog)
 #endif
 
-
-C LINRES: hardcoding linreSwitch ------------------------------------       
-      linreSwitch = .TRUE.
-c ------------------------------------------------------------------- 
 
 !     Start of SCF loop
       iscf = 0

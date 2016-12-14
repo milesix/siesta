@@ -68,7 +68,7 @@ C     Internal Variables
       integer :: deg, N, io, maxorb, numb(maxo), k,j, ik, ix,
      &           jden, kden, jo, mu, nu, ind, indmn, i, indbetas,
      &           ialpha, ibeta, jbeta,indi,indj,ierror,indden,
-     &           iuo, juo, ind2, nbands,maxden, maxo, maxspn 
+     &           iuo, juo, ind2, nbands, maxo, maxspn 
       real(dp) :: def(3), A(3), B(3), 
      &            dQo(nuo,3), aux(no),auxcoef(2,maxo), qio, 
      &            psiper(2,maxo,maxo), prod1(2), prod2(2), kXij, 
@@ -81,22 +81,8 @@ C     Internal Variables
      &                     Sauxden(:,:,:)
       real(dp) :: ckXij, skXij, pert
 
-      logical :: FIRST
-      save :: FIRST, maxden
-      data FIRST /.TRUE./
-
       call timer('delrhok',1)
 
-!	Hper(:,1,1)=(/5.5704E-2,0.2391,0.2391,5.5733E-2/)
-!	Hper(:,2,1)=(/1.984E-17,1.0191E-17,7.10E-18,4.58E-16/)
-!	Hper(:,3,1)=(/4.8E-11,3.364E-11,3.364E-11,2.55E-11/)
-
-	
-      if(ix.eq.1) print *, 'DEBUG TRACK: in delrhok'
-
-      if(FIRST) then
-       FIRST = .FALSE.
-      endif      
 
 C     Initialize variables --- 
       def(1:3) = 0.0_dp
@@ -121,7 +107,6 @@ C         calculates the phases k*r_ij -------------------------------
           skXij = sin(kXij)
 C         Calculates the hamiltonian and the overlap in k space ------
 C         H(k) = Sum(R) exp(i*k*R) * H(R) ----------------------------
-          ! L1 has opposite indexes
           Saux(1,juo,iuo) = Saux(1,juo,iuo) + S(ind)*ckxij
           Saux(2,juo,iuo) = Saux(2,juo,iuo) - S(ind)*skxij!-
           Haux(1,juo,iuo) = Haux(1,juo,iuo) + H(ind,ispin)*ckxij
@@ -148,22 +133,10 @@ C       Symmetrize H & S ---------------------------------------------
          Haux(2,iuo,iuo) = 0.0_dp
         enddo
 
-!	print*,Haux(1,:,:)
-!	print*,haux(2,:,:)
-!	print*,Saux(1,:,:)
-!	print*,Saux(2,:,:)
 C       Diagonalize for each k-point --------------------------------
         call cdiag( Haux, Saux, nuo, nuo, nuo, eo(:,ispin,ik),
      &                psi, nuo, 1, ierror )
 
-!        if (ispin .lt. 2) then
-!        print*,'psi(1)',psi(1,:,:)
-!       print*,'psi(2)',psi(2,:,:)
-!	print*,'autoestados',eo(:,ispin,ik)
-!	stop
-!        endif
-
-        ! Eigvals and Eigvects really good
         if (ierror.ne.0) then
           call die('DELRHOK: Terminating due to failed 
      &                                        k-diagonalisation')
@@ -365,12 +338,6 @@ C        Compute the change in the coefficients ---------------------
 C        Compute the change in density matrix elements -------------
          Saux = 0.0_dp
          Haux = 0.0_dp
-!	if (ix .lt. 2) then
-!	print*,'psi(1)',psi(1,:,:)
-!	print*,'psi(2)',psi(2,:,:)
-!	print*,'psiper(1)',psiper(1,:,:)
-!	print*,'psiper(2)',psiper(2,:,:)
-!	endif
 
          do 370 io = 1, nbands
           qio = qO(io,ispin,ik)
@@ -417,11 +384,6 @@ C        Compute the change in density matrix elements -------------
           enddo
  370     enddo
 
-!	if (ix .lt. 2) then
-!	print*,'haux(1)',Saux(1,:,:)
-!	print*,'haux(2)',Saux(2,:,:)
-!	endif 	
-
          do iuo = 1, nuo
           do nu = 1, numh(iuo)
            ind = listhptr(iuo) + nu
@@ -445,11 +407,6 @@ C        Compute the change in density matrix elements -------------
        enddo !nspin loop
 
       enddo ! nk loop 
-
-!	print*,'rhoper',rhoper(:,1,1)
-!	print*,'erhoper',erhoper(:,1,1)
-!	print*,'Stop en delrhok'
-!	stop
 
       do ix = 1,3
         def(ix) = A(ix) / (B(ix) + 1.0e-12_dp)
@@ -476,7 +433,6 @@ C         calculates the phases k*r_ij -------------------------------
                 skXij = sin(kXij)
 C         Calculates the hamiltonian and the overlap in k space ------
 C         H(k) = Sum(R) exp(i*k*R) * H(R) ----------------------------
-          ! L1 has opposite indexes
                 Saux(1,juo,iuo) = Saux(1,juo,iuo) + S(ind)*ckxij
                 Saux(2,juo,iuo) = Saux(2,juo,iuo) - S(ind)*skxij!-
                 Haux(1,juo,iuo) = Haux(1,juo,iuo) + H(ind,ispin)*ckxij

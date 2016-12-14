@@ -25,33 +25,12 @@ C     NK:  Number of K- points
      &            H(maxnh,nspin), S(maxnh)
       real(dp) :: kpoint(3,nk), xijo(3,maxnh), wk(nk)
 
-!      real(dp), pointer :: Haux(:), Saux(:)
+      logical :: gamma
 
-      logical :: gamma, frstme
-
-      data frstme /.TRUE./
 C Start time counter ---------------------------------------------------
-      print *, 'DEBUG TRACK: In DELRHO'
+      call timer( 'delrho', 1)
 
-!      if (nspin.le.2 .and. gamma) then
-!        nhs  = nuo * nuo
-!      elseif (nspin.le.2 .and. .not.gamma) then
-!        nhs  = 2 * maxo * nuo
-!      endif
-      
-!      call re_alloc(Haux,1,nhs, 'Haux', 'delrho')
-!      call re_alloc(Saux,1,nhs, 'Saux', 'delrho')
-     
-!	print*,'Opr en delrho',Oper(:,1)
-
-        print*,'iscf',iscf
-!        print*,'Hper en delrho (antes de delrhok-delrhog)'
-!        print*,'Hper(:,1,1)',Hper(:,1,1)
-!        print*,'Hper(:,2,1)',Hper(:,2,1)
-!        print*,'Hper(:,3,1)',Hper(:,3,1)
-
-	if(nspin.le.2 .and. GAMMA) then
-        print *, 'GAMMA POINT CALCULATION'
+      if(nspin.le.2 .and. GAMMA) then
         do ix = 1,3
          do ispin = 1,nspin
 
@@ -59,36 +38,16 @@ C Start time counter ---------------------------------------------------
      &                 eigtol, Qo, Hper(:,ix,ispin),
      &                 Oper(:,ix), maxnh, numh, listh, listhptr,
      &                 ix,ef,temp,Rhoper(:,ispin,ix),
-     &                 Erhoper(:,ispin,ix),psi)
+     &                 Erhoper(:,ispin,ix),psi,iscf)
          enddo
         enddo  
-      endif
-
-      if(.not. GAMMA) then
-        print *, 'K-point SAMPLING CALCULATION'
+      elseif ((.not. GAMMA).and.(nspin.le.2)) then
         call delrhok(no, nuo, maxo, maxspn, nspin, eo, eigtol, indxuo,  
      &               nk, kpoint, wk, eo,xijo, Qo, H, S, Hper, Oper,
      &               maxnh, numh, listh, listhptr, ef, temp, Rhoper, 
      &               Erhoper, psi)
-        print *, 'DEBUG TRACK: just done with delrhok'
-
       endif 
-
-!        print*,'iscf',iscf
-!        print*,'rhoper despues de delrhok'
-!        print*,'rhoper(:,1,1)',rhoper(:,1,1)
-!        print*,'rhoper(:,1,2)',rhoper(:,1,2)
-!        print*,'rhoper(:,1,3)',rhoper(:,1,3)
-
-
-
-
-!	print*,'DB: stop en delrho'
-!	stop
-
-      frstme = .false.
-!      call de_alloc( Haux, 'Haux', 'delrho')
-!      call de_alloc( Saux, 'Saux', 'delrho')
+      call timer( 'delrho', 2)
 
       return
       END 

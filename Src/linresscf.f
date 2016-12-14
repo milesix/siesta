@@ -39,6 +39,7 @@ C Modules------------------------------------------------------------------
       use siesta_geom
       use siesta_options,  only: nscf, temp, maxsav, wmix,nkick,
      &                            wmixkick
+      use parallel,          only: IOnode
       use m_spin,        only: nspin
       use sparse_matrices
       use m_overfsm,     only: overfsm 
@@ -60,6 +61,7 @@ C Modules------------------------------------------------------------------
       use linres_matrices, only: resetFirstmatrices
       use fdf
       use m_ddnaefs
+      use m_iodynmat
 C----------------------------------------------------------------------------
       implicit none 
 
@@ -83,20 +85,33 @@ C Internal variable types and dimensions -----------------------------------
       type(filesOut_t)    :: filesOut
       character(len=label_length+3) :: fname
 
-      logical            :: FIRST, dummy_use_rhog_in, LRfirst,
-     &                      dummy_chargedensonly,mmix,check,printdyn!!!!!!
+      logical            :: dummy_use_rhog_in, LRfirst,
+     &                      dummy_chargedensonly,mmix
 
 !      external dhinit, delrho, ddsmat, io_assign, io_close 
 C ----------------------------------------------------------------------------
 
-
-CCCC  PROVISIONAL SOLUTION THE READ LINRES OPTIONS
+C ----------------------------------------------------------------------------
+C Reading linres options 
+C ----------------------------------------------------------------------------
       iai = fdf_get("LR.IAI",1)
-      iaf = fdf_get("LR.IAF",1)
+      iaf = fdf_get("LR.IAF",na_u) ! Move all atoms by default
       tollr = fdf_get("LR.DMTolerance",0.001_dp)
       eigtollr = fdf_physical("LR.EigTolerance",0.001_dp,'Ry')
 
-CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCc
+
+
+C Begin to write into output file
+      if (IOnode) then
+        write(6,'(/,t22,a)') repeat('=',36)
+        write(6,'(t32,a,i7)') 'Linres calculation'
+        write(6,'(t22,a)') repeat('=',36)
+
+        write(6,'(/,a,i7)')
+     .    'Some linres parameters:'
+        write(6,'(a,i7)') 'Linres: Initial perturbed atom', iai
+        write(6,'(a,i7)') 'Linres: Final perturbed atom', iaf
+      endif
 
 C Initialize dDscf, dEscf, dynmat----------------------------------------------
       nullify(dDscf, dEscf)
@@ -120,7 +135,7 @@ C Dummies initialization------------------------------------------------------
       dummy_chargedensonly = .false.
       dummy_use_rhog_in = .false.
 
-      call timer('Linres atoms loop',1)
+      call timer('Linres',1)
 C-----------------------------------------------------------------------------
 
 C------------------------------LINRES MAIN LOOP-------------------------------
@@ -128,6 +143,12 @@ C Init of Linres calculation. External loop over perturbed atoms (IALR).
 C Internal loop scf-loop (ISCF).
 
       do 200 ialr=iai, iaf 
+
+      if (IOnode) then
+        write(6,'(/,t22,a)') repeat('=',36)
+        write(6,'(t32,a,i7)') 'Linres atom=', ialr
+        write(6,'(t22,a)') repeat('=',36)
+      endif
 
       LRfirst=.true. !init flag for first calls
 
@@ -150,7 +171,7 @@ C on the gradient potential terms
 
         call init_pulay_arrays(iai)        
 
-        call timer('Linres SCF loop', 1)
+        call timer('LRatom', 1)
 
 C       scf loop -----------------------------------------------
         do 100 iscf=1, nscf
@@ -263,7 +284,7 @@ C Check convergence cryteria
 C------------------------------------------------------------------------
 
  999    continue ! Exit scf loop
-        call timer('Linres SCF loop', 2)
+        call timer('LRatom', 2)
 
 
         print*,'LINRES: density is converged'
@@ -285,25 +306,15 @@ C------------------------------------------------------------------------
 C Now, is time to calculate the final terms of the dynamical matrix
 C------------------------------------------------------------------------
 
-C     Add non-local potential contribution to dynmat ----------------
+C     Add non-local potential and kinetic part contributions to dynmat---
+C     (the terms that depend on the perturbed density and the ones that 
+C      do not depend)
 C     Note that LRfirst now is false
         call dvnloc(scell, na_u, na_s, isa, xa, indxua, Dscf,
      &                 maxnh, maxnh, lasto, lastkb, iphorb,
      &                 iphKB, numh, listhptr, listh, numh,
      &                 listhptr, listh, min(nspin,2), IALR,
      &                 no_s, iaorb, dDscf, dHmat, dynmat, LRfirst)
-
-
-        print*,'dynmat despues del loop'
-       do ix = 1,3
-        do j = 1, na_u
-         do jx = 1,3
-          print *, j,';',jx,';',ialr,';',ix,';',
-     &                   dynmat(j,jx,ialr,ix)
-         enddo
-        enddo
-       enddo
-
 
 C     Add kinetic and ovelap contributions to dynmat -----------------
         call ddsmat(dH, dS, d2H, d2S, nspin, no_s, no_u, na_s, na_u,
@@ -328,15 +339,31 @@ C     and perturbed Vscf potentials-----------------------------------
 C Dealloc the non-scf variables (drhoatm, drhoscf0 and dvxc) for next atom
         call resetFirstmatrices()
 
+        print*,'dynmat despues del loop'
+       do ix = 1,3
+        do j = 1, na_u
+         do jx = 1,3
+          print *, j,';',jx,';',ialr,';',ix,';',
+     &                   dynmat(j,jx,ialr,ix)
+         enddo
+        enddo
+       enddo
+
+
+        call writedynmat (iai,iaf,ialr,dynmat)
+
  200  enddo   ! ialr atoms loop
-      call timer('Linres atoms loop',2)
+      call timer('Linres',2)
 C-------------------------------------------------------------------------
 
-C There are other contributions to the dynamical matrix (non-scf)
-C the second derivatives of the kinetic and KB terms
+C There is other contribution to the dynamical matrix (non-scf)
+C the Laplacian of the neutral atom potential
       call ddnaefs(na_u, na_s, scell, xa, indxua, rmaxv,
      &            isa, dynmat)
 
+C For debug.......
+      print *, '----- COMPLETE DYNAMICAL MATRIX -----'
+      print *,'Beta:',';','xyz',';','Alpha',';','xyz',';','dynmat'
       do ialr = IAI, IAF
        do ix = 1,3
         do j = 1, na_u
@@ -348,11 +375,40 @@ C the second derivatives of the kinetic and KB terms
        enddo
       enddo
 
-	stop
+C-------------------------------------------------------------------------
+C-----------------Finally, print the dynamical matrix to FC file----------
+C-------------------------------------------------------------------------
 
-C     !call dhscf sin dHmat0 y sind LRfirst
+      fname = trim(slabel) // '.FC'
+      call io_assign(unit1)
+      open(unit1, file=fname, status='unknown' )
+      rewind(unit1)
+      write(unit1,'(a)') 'Force constants matrix'
+      do i = iai,iaf
+        do ix = 1,3
+          do j = 1,na_u
+            write(unit1,'(3f15.7)')
+     .                    (-Ang**2/eV)*(dynmat(j,1,i,ix)),
+     .                    (-Ang**2/eV)*(dynmat(j,2,i,ix)),
+     .                    (-Ang**2/eV)*(dynmat(j,3,i,ix))
 
-      end subroutine 
+          enddo
+          do j = 1,na_u
+            write(unit1,'(3f15.7)')
+     .                    (-Ang**2/eV)*(dynmat(j,1,i,ix)),
+     .                    (-Ang**2/eV)*(dynmat(j,2,i,ix)),
+     .                    (-Ang**2/eV)*(dynmat(j,3,i,ix))
+
+          enddo
+        enddo
+      enddo
+
+      call io_close(unit1)
+C-------------------------------------------------------------------------
+      call de_alloc(dDscf, 'dDscf', 'linresscf')
+      call de_alloc(dEscf,'linresscf')
+
+        end subroutine 
 
       end MODULE m_linresscf
 

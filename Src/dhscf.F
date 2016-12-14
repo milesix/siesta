@@ -1532,6 +1532,7 @@ C ----------------------------------------------------------------------
 
 C Linres line ---------------------------------------------------------------
       if (present(dHmat0)) then
+        call timer('cellXC-LR',1)
         nullify(dVxc)
         call re_alloc(dVxc,1,ntpl,1,nspin,1,nspin,'dVxc','dhscf')
         nullify(dvxctmp)
@@ -1545,6 +1546,8 @@ C Linres line ---------------------------------------------------------------
 
         dVxc(1:ntpl,1,1) = dVxcTmp(1:ntpl,1)
         call de_alloc( dVxctmp, 'dVxctmp', 'dhscf' )
+        call timer('cellXC-LR',2)
+
 C The constant prefactor to the perturbed Vxc term is stored in dVxc
 C-----------------------------------------------------------------------------
       else
@@ -1882,7 +1885,7 @@ C----------------------------------------------------------------------
 C variables initialization
       if (present(dDscf)) then
 
-        call timer( 'DHSCF DYNMAT ELEMENTS', 1 )
+        call timer( 'DHSCF-LR', 1 )
         nullify (dvnoscf)
         call re_alloc( dvnoscf, 1, ntpl , 1, 3,'dvnoscf', 'dhscf' )
         call re_alloc(dRhoscf,1,ntpl,1,nspin,'dRhoscf','dhscf')
@@ -2109,9 +2112,7 @@ C Here, VL contains Vxc+Vh+Vna
 C------------------------------------------------------------------------
 
 C Calculate the total perturbed Hamiltonian
-       if (.not.(present(dHmat0))) then
-	print*,'DHSCF: calcula vmat'
-
+       if ((.not.(present(dHmat0))).and.(present(LRfirst))) then
          call re_alloc( vlr_par, 1, ntpl, 1, nspin,
      &                'vlr_par','dhscf' )
          do ispin = 1, nspin
@@ -2120,9 +2121,13 @@ C Calculate the total perturbed Hamiltonian
            call distMeshData( UNIFORM, fsrc,
      &                       QUADRATIC, fdst, TO_CLUSTER )
          enddo
+         call timer('vmat-LR',1)
+
          call vmat( norb, nmpl, dvol, spin, VLR_par,
      &         maxnd, numd, listdptr, listd, dHmat(:,jx,:),
      &         nuo, nuotot, iaorb, iphorb, isa)
+
+         call timer('vmat-LR',2)
 
          call de_alloc( VLR_par,  'VLR_par', 'dhscf' )
        endif
@@ -2203,7 +2208,7 @@ C----------------------------------------------------------------------------
 C-----------------------------------------------------------------------------
 C End Space loop
 C-----------------------------------------------------------------------------
-      call timer( 'DHSCF DYNMAT ELEMENTS', 2 )
+      call timer( 'DHSCF-LR', 2 )
       endif 
 C---------------------------------------------------------------------
 C      End of Linres block
