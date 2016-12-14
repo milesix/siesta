@@ -1697,7 +1697,6 @@ C---------------------------------------------------------------------
 C     LINRES: Find Pulay terms
 C---------------------------------------------------------------------
       if (present(dHmat0)) then
-        print*,'DHSCF: calcula pulay terms'
         if (nodes.gt.1) then
           call setMeshDistr( QUADRATIC, nsm, nsp,
      &                      nml, nmpl, ntml, ntpl )
@@ -1944,12 +1943,6 @@ C drhoatm = 2 sum_mu rho_mu * grad phi_mu * phi_mu
      &                     QUADRATIC, fdst, TO_CLUSTER )
           enddo
 
-	if (atder.eq.1) then
-         print*,'DHSCF: calcula gradientes,LRfirst=', LRfirst
-        else
-         print*,'DHSCF: calcula derivadas,LRfirsts=',LRfirst 
-        endif
-
           call dfscf2(norb, nmpl, dvol, nspin, maxnd,
      &              numd, listdptr, listd,
      &              nuo, nuotot, iaorb, iphorb, isa,
@@ -2138,7 +2131,6 @@ C Compute the dynamical matrix
 C------------------------------------------------------------------------
         if (((present(dHmat0)).and.(present(LRfirst))) .or.  
      . ((.not.(present(dHmat0))).and.(.not.(present(LRfirst))))) then
-           print*,'DHSCF: entra en dynamat'
             if (present(dHmat0)) then
               iainit = iai
               iaend = iaf

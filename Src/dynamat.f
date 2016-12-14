@@ -72,7 +72,6 @@ C     Internal variables
 
 
       call timer('dynamat', 1)
-      print *, 'DEBUG TRACK: in DYNAMAT'
       maxc = maxval(endpht(1:np)-endpht(0:np-1))
       maxb = maxc + minb
       maxb = min( maxb, no )

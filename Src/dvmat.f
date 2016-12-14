@@ -344,7 +344,6 @@ C  Deallocate local memory
 
 C  Restore old allocation defaults
       call alloc_default( restore=oldDefaults )
-      print *, 'DEBUG TRACK: end dvmat'
       call timer('dvmat',2)
 
       end

@@ -70,7 +70,8 @@ C Internal variable types and dimensions -----------------------------------
       integer           :: ialr, iai, iaf, iscf, iiscf,
      &                     maxno, ispin, io, iuo, in, jo,
      &                     ind, juo, ko, jn, i, j, jua, ix, jx,
-     &                     istr, ifa, ilr, idyn, iter, ju, iu, unit1
+     &                     istr, ifa, ilr, idyn, iter, ju, iu, unit1,
+     &                     init
       
       real(dp)          :: dSmat(maxnh,3),!First Order of Overlap 
      &                     dHmat(maxnh,3,nspin),!Perturbed Hamiltonian
@@ -80,15 +81,15 @@ C Internal variable types and dimensions -----------------------------------
       real(dp), pointer :: dDold(:,:,:)
       real(dp)          :: dynmat(na_u,3,na_u,3)
 
-      real(dp)          ::  tollr, eigtollr !!!!!provisional
+      real(dp)          ::  tollr, eigtollr 
 
       type(filesOut_t)    :: filesOut
       character(len=label_length+3) :: fname
 
       logical            :: dummy_use_rhog_in, LRfirst,
-     &                      dummy_chargedensonly,mmix
+     &                      dummy_chargedensonly,mmix,
+     &                      readold
 
-!      external dhinit, delrho, ddsmat, io_assign, io_close 
 C ----------------------------------------------------------------------------
 
 C ----------------------------------------------------------------------------
@@ -98,7 +99,7 @@ C ----------------------------------------------------------------------------
       iaf = fdf_get("LR.IAF",na_u) ! Move all atoms by default
       tollr = fdf_get("LR.DMTolerance",0.001_dp)
       eigtollr = fdf_physical("LR.EigTolerance",0.001_dp,'Ry')
-
+      readold = fdf_get("LR.readDynmat",.true.)
 
 
 C Begin to write into output file
@@ -129,8 +130,6 @@ C IS A K CALCULATION????? Could be better....
         GAMMA = .FALSE.
       endif
 
-
-
 C Dummies initialization------------------------------------------------------
       dummy_chargedensonly = .false.
       dummy_use_rhog_in = .false.
@@ -138,11 +137,18 @@ C Dummies initialization------------------------------------------------------
       call timer('Linres',1)
 C-----------------------------------------------------------------------------
 
+C Read Stored dynamical matrix files-----------------------------------------
+      init=iai
+      if (readold) then
+        call readdynmat(init,iai,dynmat)
+      else
+        init=iai
+      endif
 C------------------------------LINRES MAIN LOOP-------------------------------
 C Init of Linres calculation. External loop over perturbed atoms (IALR).
 C Internal loop scf-loop (ISCF).
 
-      do 200 ialr=iai, iaf 
+      do 200 ialr=init, iaf 
 
       if (IOnode) then
         write(6,'(/,t22,a)') repeat('=',36)
@@ -209,7 +215,6 @@ C Copy non-scf hamiltonian to total Hamiltonian
         dHmat(1:maxnh,1:3,ispin)=dHmat0(1:maxnh,1:3,ispin)
         enddo
 
-
 C Compute the perturbed potential elements Vxc, Vna and Vh and 
 C include them into dHmat. Look that dhscf is called without dHmat0!!!
 
@@ -227,13 +232,6 @@ C include them into dHmat. Look that dhscf is called without dHmat0!!!
           call re_alloc(dDold,1,maxnh,1,nspin,1,3,
      &                 'dDold', 'linresscf')
 
-        print*,'Perturbed hamiltioan iter=',iscf
-        print*,'dHmat(:,1,1)',dHmat(1:40,1,1)
-        print*,'dHmat(:,2,1)',dHmat(1:40,2,1)
-        print*,'dHmat(:,3,1)',dHmat(1:40,3,1)
-
-
-
 C Copy current density as old one to perform the mixing
           dDold(1:maxnh,1:nspin,1:3) = dDscf(1:maxnh,1:nspin,1:3)
           dDscf(1:maxnh,1:nspin,1:3) = 0.0_dp
@@ -247,12 +245,6 @@ C Hamiltonian and Overlap
      &               kpoint, kweight, Qo, H, S, dHmat, dSmat, numh,
      &               listh, listhptr, ef, temp, dDscf, dEscf,iscf)
 
-
-        print*,'dDscf despues delrho iter=',iscf
-        print*,'dDscf(:,1,1)',dDscf(1:40,1,1)
-        print*,'dDscf(:,1,2)',dDscf(1:40,1,2)
-        print*,'dDscf(:,1,3)',dDscf(1:40,1,3)
-
 C Perform the density matrix mixing
           dmax=0.0_dp
           do ix=1,3
@@ -261,11 +253,6 @@ C Perform the density matrix mixing
      &                  wmixkick,dDscf(:,:,ix),dDold(:,:,ix),dDmax,ix)
             dmax=max(dmax,dDmax)
           enddo
-
-        print*,'dDscf despues pulay iter=',iscf
-        print*,'dDscf(:,1,1)',dDscf(1:40,1,1)
-        print*,'dDscf(:,1,2)',dDscf(1:40,1,2)
-        print*,'dDscf(:,1,3)',dDscf(1:40,1,3)
 
 C Print error in the perturbed density
           if (iscf.eq.1) then
@@ -285,23 +272,6 @@ C------------------------------------------------------------------------
 
  999    continue ! Exit scf loop
         call timer('LRatom', 2)
-
-
-        print*,'LINRES: density is converged'
-        do j=1,maxnh
-        write(*,*) (dDscf(j,1,i), i=1,3)
-        enddo
-
-
-        print*,'dynmat despues del loop'
-       do ix = 1,3
-        do j = 1, na_u
-         do jx = 1,3
-          print *, j,';',jx,';',ialr,';',ix,';',
-     &                   dynmat(j,jx,ialr,ix)
-         enddo
-        enddo
-       enddo
 
 C Now, is time to calculate the final terms of the dynamical matrix
 C------------------------------------------------------------------------
@@ -339,18 +309,8 @@ C     and perturbed Vscf potentials-----------------------------------
 C Dealloc the non-scf variables (drhoatm, drhoscf0 and dvxc) for next atom
         call resetFirstmatrices()
 
-        print*,'dynmat despues del loop'
-       do ix = 1,3
-        do j = 1, na_u
-         do jx = 1,3
-          print *, j,';',jx,';',ialr,';',ix,';',
-     &                   dynmat(j,jx,ialr,ix)
-         enddo
-        enddo
-       enddo
-
-
-        call writedynmat (iai,iaf,ialr,dynmat)
+C Save in a file the dynamical matrix and extra flag of the index ialr of the last atom
+        call writedynmat(iai,iaf,ialr,dynmat,.false.)
 
  200  enddo   ! ialr atoms loop
       call timer('Linres',2)
@@ -361,49 +321,11 @@ C the Laplacian of the neutral atom potential
       call ddnaefs(na_u, na_s, scell, xa, indxua, rmaxv,
      &            isa, dynmat)
 
-C For debug.......
-      print *, '----- COMPLETE DYNAMICAL MATRIX -----'
-      print *,'Beta:',';','xyz',';','Alpha',';','xyz',';','dynmat'
-      do ialr = IAI, IAF
-       do ix = 1,3
-        do j = 1, na_u
-         do jx = 1,3
-          print *, j,';',jx,';',ialr,';',ix,';',
-     &                   dynmat(j,jx,ialr,ix)
-         enddo
-        enddo
-       enddo
-      enddo
-
 C-------------------------------------------------------------------------
 C-----------------Finally, print the dynamical matrix to FC file----------
 C-------------------------------------------------------------------------
+      call writedynmat(iai,iaf,ialr,dynmat,.true.)
 
-      fname = trim(slabel) // '.FC'
-      call io_assign(unit1)
-      open(unit1, file=fname, status='unknown' )
-      rewind(unit1)
-      write(unit1,'(a)') 'Force constants matrix'
-      do i = iai,iaf
-        do ix = 1,3
-          do j = 1,na_u
-            write(unit1,'(3f15.7)')
-     .                    (-Ang**2/eV)*(dynmat(j,1,i,ix)),
-     .                    (-Ang**2/eV)*(dynmat(j,2,i,ix)),
-     .                    (-Ang**2/eV)*(dynmat(j,3,i,ix))
-
-          enddo
-          do j = 1,na_u
-            write(unit1,'(3f15.7)')
-     .                    (-Ang**2/eV)*(dynmat(j,1,i,ix)),
-     .                    (-Ang**2/eV)*(dynmat(j,2,i,ix)),
-     .                    (-Ang**2/eV)*(dynmat(j,3,i,ix))
-
-          enddo
-        enddo
-      enddo
-
-      call io_close(unit1)
 C-------------------------------------------------------------------------
       call de_alloc(dDscf, 'dDscf', 'linresscf')
       call de_alloc(dEscf,'linresscf')

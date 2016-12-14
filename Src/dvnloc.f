@@ -143,7 +143,6 @@ C Linres ------------------------------------------------------------
       END INTERFACE
 C -------------------------------------------------------------------
 
-      print *, 'DEBUG TRACK: doing dvnloc' 
       call timer('dvnloc',1)
       
 C Find unit cell volume
