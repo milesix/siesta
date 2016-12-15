@@ -27,7 +27,6 @@ C instead of the radial derivative.
        subroutine resetFirstmatrices()
        use alloc, only: de_alloc
        implicit none
-       print *, 'DEBUG TRACK: reset Firstmatrices'
        call de_alloc(dRhoatm, 'dRhoatm', 'linres_matrices')
        call de_alloc(dRhoscf0, 'dRhoscf0', 'linres_matrices')
        call de_alloc(dVxc, 'dVxc', 'linres_matrices')

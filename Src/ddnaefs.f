@@ -67,7 +67,6 @@ C Internal variables ......................................................
        
       parameter ( r2min = 1.d-15 )
 C ......................
-      print *, 'DEBUG TRACK: doing ddnaefs'
       call mneighb( scell, 2.0d0*rmaxv, na, xa, 0, 0, nnia )
 
       volume = nua * volcel(scell) / na

@@ -2129,8 +2129,8 @@ C Calculate the total perturbed Hamiltonian
 C------------------------------------------------------------------------
 C Compute the dynamical matrix
 C------------------------------------------------------------------------
-        if (((present(dHmat0)).and.(present(LRfirst))) .or.  
-     . ((.not.(present(dHmat0))).and.(.not.(present(LRfirst))))) then
+        if (((present(dHmat0)).and.(present(LRfirst)).and.(iai.eq.ialr))
+     . .or.((.not.(present(dHmat0))).and.(.not.(present(LRfirst)))))then
             if (present(dHmat0)) then
               iainit = iai
               iaend = iaf

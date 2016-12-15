@@ -58,11 +58,12 @@ CONTAINS
 ! Force constant matrix to be read by vibra.
 ! In the other cases, we are saving the intermediate dynamat elements just in case
 ! explosive events....
-      write(*,'(a)') 'writedynmat: Saving into a file calculated dynamical matrix'
 
       if (final_call ) then
+      write(*,'(a)') 'writedynmat: Saving into a file the force constant matrix'
         fname = trim(slabel)//'.FC'
       else
+      write(*,'(a)') 'writedynmat: Saving into a file calculated dynamical matrix'
         fname = trim(slabel)//'.temp.DYNMAT'
       endif 
 
@@ -162,7 +163,8 @@ CONTAINS
 
 
       else
-        write(6,'(/,a,a,a)') 'readdynmat: File ',fname,' not found... starting from the begining '
+        write(6,'(/,a,a,a)') 'readdynmat: File ',fname
+        write(6,'(a)') 'File not found... starting from the begining '
          init=iai
       endif
       endif !IONODE

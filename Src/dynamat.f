@@ -2,7 +2,7 @@
      &                  np, ntpl, iphorb, iaorb, ialr, numd, listd, 
      &                  listdptr, indxua, maxnd, isa, iter, Dscf,dDscf, 
      &                  dvol, dRho, dRhoscf, Datm, Vscf, VLR,
-     &                  dvnoscf, dynmat,idyn) !añadido idyn for check
+     &                  dvnoscf, dynmat) 
 C    ----------------------------------------------------------------
 C    This module computes terms 1.4, 3, 4, 5, 6 of the Dynamical 
 C    Matrix as in MP thesis. It is called twice to avoid storing
@@ -25,8 +25,7 @@ C    ----------------------------------------------------------------
 
       integer :: no, nuo, na, nua, nspin, ispin, jx, indxua(na), 
      &           np, iphorb(*), iaorb(*), maxnd, listdptr(*), iter,
-     &           listd(maxnd), numd(nuo), isa(*), ialr, nuotot, ntpl,
-     &           idyn  !añadido para chequear 
+     &           listd(maxnd), numd(nuo), isa(*), ialr, nuotot, ntpl
 
       real(dp), intent(in) :: Dscf(maxnd), dDscf(maxnd), dVol,
      &                        Datm(nuotot)

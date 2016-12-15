@@ -99,7 +99,7 @@ C ----------------------------------------------------------------------------
       iaf = fdf_get("LR.IAF",na_u) ! Move all atoms by default
       tollr = fdf_get("LR.DMTolerance",0.001_dp)
       eigtollr = fdf_physical("LR.EigTolerance",0.001_dp,'Ry')
-      readold = fdf_get("LR.readDynmat",.true.)
+      readold = fdf_get("LR.readDynmat",.false.)
 
 
 C Begin to write into output file
@@ -256,7 +256,7 @@ C Perform the density matrix mixing
 
 C Print error in the perturbed density
           if (iscf.eq.1) then
-            print*, 'siesta Linres: Density tolerance dDTol=', TOLLR
+            print*, 'LINRES: Density tolerance dDTol=', TOLLR
             print*, 'LINRES:',iscf,'dMax=',dMax
           else
             print*, 'LINRES:',iscf,'dMax=',dMax
@@ -305,7 +305,6 @@ C     and perturbed Vscf potentials-----------------------------------
      .            dummy_chargedensonly, iai, iaf, ialr, lasto,
      .            dynmat, dDscf, dHmat)
 
-
 C Dealloc the non-scf variables (drhoatm, drhoscf0 and dvxc) for next atom
         call resetFirstmatrices()
 
@@ -324,6 +323,20 @@ C the Laplacian of the neutral atom potential
 C-------------------------------------------------------------------------
 C-----------------Finally, print the dynamical matrix to FC file----------
 C-------------------------------------------------------------------------
+
+      print *, '----- COMPLETE DYNAMICAL MATRIX -----'
+      print *,'Beta:',';','xyz',';','Alpha',';','xyz',';','dynmat'
+      do ialr = IAI, IAF
+       do ix = 1,3
+        do j = 1, na_u
+         do jx = 1,3
+          print *, j,';',jx,';',ialr,';',ix,';',
+     &                   dynmat(j,jx,ialr,ix)
+         enddo
+        enddo
+       enddo
+      enddo
+
       call writedynmat(iai,iaf,ialr,dynmat,.true.)
 
 C-------------------------------------------------------------------------

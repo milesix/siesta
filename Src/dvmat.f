@@ -102,8 +102,6 @@ C No paralelized subroutine (to merge with vmat in a future...)
       NTH=1     
       ParallelLocal = (Nodes.gt.1) !should be false      
 
-      print *, 'DEBUG TRACK: doing DVMAT'
-
 C  Nullify pointers
       nullify( C, gC, Vi, ilc, ilocal, r2cut )
 
