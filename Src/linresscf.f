@@ -67,10 +67,10 @@ C----------------------------------------------------------------------------
 
 
 C Internal variable types and dimensions -----------------------------------      
-      integer           :: ialr, iai, iaf, iscf, iiscf,
+      integer           :: ialr, iai, iaf, iscf,
      &                     maxno, ispin, io, iuo, in, jo,
      &                     ind, juo, ko, jn, i, j, jua, ix, jx,
-     &                     istr, ifa, ilr, idyn, iter, ju, iu, unit1,
+     &                     ju, iu, unit1,
      &                     init
       
       real(dp)          :: dSmat(maxnh,3),!First Order of Overlap 

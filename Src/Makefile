@@ -13,7 +13,7 @@
 # Remove implicit rules
 .SUFFIXES:
 
-VPATH=.
+VPATH=/home/likewise-open/ICN/sillera/Desktop/SiestaTrunk/siesta/siesta/Src
 
 # Default compiler variables
 AR ?= ar
@@ -249,7 +249,8 @@ OBJS += flook_siesta.o siesta_dicts.o
 OBJS += m_cite.o
 
 #Linres package
-OBJS += linresscf.o linres_matrices.o dhinit.o dvnloc.o dvmat.o dfscf2.o
+OBJS += linresscf.o linres_matrices.o dhinit.o dvnloc.o dvmat.o dfscf2.o dynamat.o
+OBJS += delrho.o delrhog.o delrhok.o m_pulay.o ddsmat.o ddnaefs.o m_iodynmat.o
 
 # Special dependency that sfmakedepend cannot grasp for now
 m_pexsi.o m_pexsi_driver.o m_pexsi_dos.o m_pexsi_local_dos.o: f_ppexsi_interface.o
@@ -655,7 +656,7 @@ densematrix.o: alloc.o precision.o
 detover.o: alloc.o linpack.o parallel.o parallelsubs.o precision.o
 dfscf.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o m_spin.o mesh.o
 dfscf.o: meshdscf.o meshphi.o parallel.o parallelsubs.o precision.o sys.o
-dhinit.o: alloc.o
+dhinit.o: alloc.o  
 dhscf.o: alloc.o atmfuncs.o bsc_xcmod.o cellxc_mod.o delk.o dfscf.o
 dhscf.o: doping_uniform.o files.o forhar.o iogrid_netcdf.o m_charge_add.o
 dhscf.o: m_efield.o m_hartree_add.o m_iorho.o m_iotddft.o m_mesh_node.o
@@ -663,7 +664,7 @@ dhscf.o: m_ncdf_io.o m_ncdf_siesta.o m_partial_charges.o m_rhog.o m_spin.o
 dhscf.o: m_ts_global_vars.o m_ts_hartree.o m_ts_options.o m_ts_tdir.o
 dhscf.o: m_ts_voltage.o mesh.o meshdscf.o meshsubs.o moremeshsubs.o parallel.o
 dhscf.o: parsing.o precision.o rhofft.o rhoofd.o siesta_options.o sys.o units.o
-dhscf.o: vmat.o dvmat.o
+dhscf.o: vmat.o dvmat.o dfscf2.o dynamat.o linres_matrices.o
 diag2g.o: fermid.o parallel.o parallelsubs.o precision.o sys.o
 diag2k.o: fermid.o parallel.o parallelsubs.o precision.o sys.o
 diag3g.o: fermid.o parallel.o parallelsubs.o precision.o sys.o
@@ -782,7 +783,7 @@ ldau_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
 ldau_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o parallel.o
 ldau_specs.o: precision.o pseudopotential.o radial.o sys.o units.o
 listsc.o: alloc.o
-linresscf.o: linres_matrices.o dvnloc.o 
+linresscf.o: linres_matrices.o dvnloc.o delrho.o m_pulay.o m_iodynmat.o m_ddnaefs.o 
 local_DOS.o: atomlist.o dhscf.o diagon.o files.o kpoint_grid.o m_energies.o
 local_DOS.o: m_eo.o m_forces.o m_gamma.o m_ntm.o m_spin.o parallel.o
 local_DOS.o: siesta_geom.o siesta_options.o sparse_matrices.o sys.o
@@ -792,6 +793,7 @@ m_broyden_mixing.o: alloc.o m_broyddj.o m_mpi_utils.o parallel.o precision.o
 m_cell.o: precision.o siesta_geom.o units.o
 m_charge_add.o: intrinsic_missing.o m_cite.o m_geom_objects.o m_mesh_node.o
 m_charge_add.o: parallel.o precision.o units.o
+m_ddnaefs.o: ddnaefs.o
 m_diagon_opt.o: parallel.o
 m_digest_nnkp.o: alloc.o atomlist.o files.o m_mpi_utils.o m_noccbands.o
 m_digest_nnkp.o: m_spin.o m_trialorbitalclass.o parallel.o precision.o
@@ -835,6 +837,7 @@ m_initwf.o: parallel.o parallelsubs.o precision.o sparse_matrices.o sys.o
 m_initwf.o: wavefunctions.o
 m_integrate.o: precision.o
 m_io.o: sys.o
+m_iodynmat.o : siesta_geom.o files.o parallel.o units.o precision.o
 m_io_s.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
 m_io_s.o: class_Sparsity.o parallel.o precision.o
 m_iodipol.o: files.o m_dipol.o m_steps.o
