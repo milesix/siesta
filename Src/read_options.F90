@@ -38,6 +38,8 @@ subroutine read_options( na, ns, nspin )
 
   use m_cite, only: add_citation
   
+  use nossi_mg_hypre,      only: nossi_MGreadData
+  
   implicit none
   !----------------------------------------------------------- Input Variables
   ! integer na               : Number of atoms
@@ -288,7 +290,12 @@ subroutine read_options( na, ns, nspin )
      call cmlAddParameter( xf=mainXML, name='MeshCutOff', value=g2cut,     &
           dictRef='siesta:g2max', units='siestaUnits:Ry' )
   endif
-
+  !-------------------------------------------------------------
+  !
+  ! Option to use MG method for Poisson solver.
+  !
+  call nossi_MGreadData()
+  
   ! Net charge in the cell ...
   charnet = fdf_get('NetCharge',0.0_dp)
   if (ionode) then

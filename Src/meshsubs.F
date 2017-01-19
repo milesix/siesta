@@ -272,6 +272,7 @@ C     Create extended mesh arrays for the first data distribution
       use cellsubs,      only : reclat  ! Finds reciprocal unit cell
       use m_chkgmx,      only : chkgmx  ! Checks planewave cutoff of a mesh
       use fft1d,         only : nfft    ! Finds allowed value for 1-D FFT
+      use nossi_mg_hypre,only : useMG,nmg_hypre
       use fdf
       use sys,           only : die, message
 
@@ -304,12 +305,16 @@ C     Create extended mesh arrays for the first data distribution
 
         ! Require that ntm is suitable for FFTs and a multiple of nsm
         do i = 1,3
+         if( useMG ) then ! multigrid requirements
+            call nmg_hypre( i , ntm(i), nsm )
+         else
           impose_fft: do
             ! nfft increases ntm to the next integer suitable for FFTs
             call nfft( ntm(i) )
             if ( mod( ntm(i), nsm )==0 ) exit impose_fft
             ntm(i) = ntm(i) + 1
           end do impose_fft
+         endif
         enddo ! i
 
         ! Check that effective cut-off is large enough as for non-right
@@ -1302,6 +1307,8 @@ C Finally, we call initMeshDistr that computes the new data distributions
 C that will be used inside setup_hamiltonian. We are going to have 3
 C different data distributions:
 C  - Uniform:   Same amount of mesh in every process. Used in Poison
+C  - Uniformsplitx:   Same amount of mesh in each demension (x,y,z). 
+C                         Could be used in Poisson MG solver.
 C  - Quadratic: The load in every point of the mesh is proporcional
 C               to the square of the number of orbitals that intersects
 C               in that point. Used in rhoofd and vmat.
@@ -1320,6 +1327,7 @@ C ==================================================================
       use moreMeshSubs, only: initMeshDistr
       use moreMeshSubs, only: allocASynBuffer
       use moreMeshSubs, only: UNIFORM, QUADRATIC, LINEAR
+      use moreMeshSubs, only: UNIFORMSPLITX  ! multigrid
       use cellxc_mod,   only: GGA, setGGA
       use alloc,        only: re_alloc, de_alloc
       implicit none
@@ -1386,6 +1394,14 @@ C           If within range, add one to number of point orbitals
         enddo
         call initMeshDistr( UNIFORM, LINEAR, nm, wload )
         if (GGA) call initMeshExtencil( LINEAR, nm )
+
+!       write(*,*) "meshsubs init UNIFORMSPLITX"
+        do ip0= 1, nmpl
+!         The computational work of a mesh point in multigrid is one.
+           wload(ip0) = 1
+        enddo
+        call initMeshDistr( UNIFORM, UNIFORMSPLITX, nm, wload )
+!        write(*,*) "meshsubs : nmpl", nmpl, " nm: ", nm
 
 C       Free local memory
         call de_alloc( wload, 'wload', 'distriPhiOnMesh' )

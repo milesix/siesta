@@ -45,7 +45,7 @@ C
       integer, parameter, public :: UNIFORM = 1
       integer, parameter, public :: QUADRATIC = 2
       integer, parameter, public :: LINEAR = 3
-
+      integer, parameter, public :: UNIFORMSPLITX = 4
 !
 !     Symbolic names for "reord"-type operations  
 !
@@ -96,7 +96,8 @@ C ----------------------------------------------------------------------
       character(len=*),      parameter :: moduName = 'moreMeshSubs'
       integer,               parameter :: maxDistr = 5
       integer,               parameter :: gp = grid_p
-      type(meshDisType),  target, save :: meshDistr(maxDistr)
+      type(meshDisType),  target, save, public :: meshDistr(maxDistr)
+            !! public for multigrid
       type(meshCommType), target, save ::
      &                   meshCommu((maxDistr*(maxDistr-1))/2)
       type(meshCommType), target, save :: exteCommu(maxDistr,3)

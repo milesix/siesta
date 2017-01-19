@@ -120,6 +120,11 @@
       use m_ts_voltage,   only : ts_init_voltage
       use m_ts_hartree,   only : ts_init_hartree_fix
 #endif /* TRANSIESTA */
+      
+      use nossi_mg_hypre, only : useMG,hypre_init
+      use nossi_mg_hypre, only : hypre_createMatrix,hypre_solver
+      use nossi_mg_hypre, only : hypre_cleangridandmatrix,hypre_checkBox
+      
       implicit none
       integer, intent(in)     :: nspin, norb, iaorb(norb), iphorb(norb),
      &                           nuo, nuotot, nua, na, isa(na),
@@ -376,7 +381,13 @@ C     Find Harris (sum of atomic) electron density
       call rhooda( norb, nmpl, datm, rhoatm_par, iaorb, iphorb, isa )
 !     rhoatm_par comes out of here in clustered form in QUADRATIC dist
 
-C     Routine Poison should use the uniform data distribution
+      if ( useMG) THEN
+         call hypre_cleanGridAndMatrix()
+         call hypre_init(cell,rmax )
+         call hypre_createMatrix()
+      end if
+      
+C     Routine Poison (FFT) should use the uniform data distribution
       if (nodes.gt.1) then
          call setMeshDistr( UNIFORM, nsm, nsp,
      &                      nml, nmpl, ntml, ntpl )
@@ -409,8 +420,14 @@ C     Allocate Temporal array
 C     Vscf is filled here but not used later
 C     Uharrs is computed (and saved)
 C     DStres is computed but not used later
-      call poison( cell, ntml(1), ntml(2), ntml(3), ntm, rhoatm,
-     &             Uharrs, Vscf, DStres, nsm )
+
+      if (.not. useMG) THEN
+         call poison( cell, ntml(1), ntml(2), ntml(3), ntm, rhoatm,
+     &        Uharrs, Vscf, DStres, nsm )
+      else
+         call hypre_solver(rhoatm,Uharrs,Vscf,DStres)
+      endif
+      
       call de_alloc( Vscf, 'Vscf', 'dhscf_init' )
 
 !     Always deallocate rhoatm_par, as it was used even if nodes=1
@@ -701,6 +718,9 @@ C     Modules
       use m_ts_voltage, only: ts_voltage
       use m_ts_hartree, only: ts_hartree_fix
 #endif /* TRANSIESTA */
+
+      use nossi_mg_hypre,      only: useMG,hypre_solver
+      
       implicit none
 
       integer
@@ -1260,10 +1280,13 @@ C     Find Hartree potential of DRho = rhoscf-rhoatm. Store it in Vaux
 C ----------------------------------------------------------------------
 !     Solve Poisson's equation
       call re_alloc( Vaux, 1, ntpl, 'Vaux', 'dhscf' )
-
-      call poison( cell, ntml(1), ntml(2), ntml(3), ntm, DRho,
-     &             DUscf, Vaux, DStres, nsm )
-
+      if (.not. useMG) THEN
+         call poison( cell, ntml(1), ntml(2), ntml(3), ntm, DRho,
+     &        DUscf, Vaux, DStres, nsm )
+      else
+         call hypre_solver(DRho,DUscf,Vaux,DStres)
+      endif
+      
       if ( debug_dhscf ) then
          write(*,debug_fmt) Node,'Poisson',sqrt(sum(Vaux(:)**2))
       end if

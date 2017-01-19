@@ -1,0 +1,79 @@
+#
+#                                                              Olivier Coulaud
+#                                                     Olivier.coulaud@inria.fr
+#                                                                   20-12-2010
+#
+# This FDF file illustrates the use of a multigrid method to solve Poisson's
+# equation based on the HYPRE library. A multipole expansion of the charge is
+# used to compute the potential at the boundaries of the simulation cell. 
+# You can choose either cartesian or spherical expansion. With spherical expansion,
+#  you can set the degre of this expansion 2, 3 or 4
+#
+# The system studied is a molecule of water centered inside a cubic box.
+#  
+# The input variables associated with this method are of the form MG.* and are
+# written at the end of this file. See the explanation for each variable at 
+# the Siesta documentation.
+#
+SystemName          Water molecule
+SystemLabel         h2o_hypre
+NumberOfAtoms       3
+NumberOfSpecies     2
+
+%block ChemicalSpeciesLabel
+ 1  8  O      # Species index, atomic number, species label
+ 2  1  H
+%endblock ChemicalSpeciesLabel
+
+LatticeConstant     10.6666666667 Ang
+
+%block LatticeVectors
+  1.000  0.000  0.000
+  0.000  1.000  0.000
+  0.000  0.000  1.000
+%endblock LatticeVectors
+
+AtomicCoordinatesFormat  Ang
+%block AtomicCoordinatesAndAtomicSpecies
+ 0.000  0.000  0.000  1
+ 0.757  0.586  0.000  2
+-0.757  0.586  0.000  2
+%endblock AtomicCoordinatesAndAtomicSpecies
+%block AtomicCoordinatesOrigin
+ 5.3333333333 5.3333333333 5.3333333333
+%endblock AtomicCoordinatesOrigin
+MaxSCFIterations    50
+
+DM.Tolerance 1E-5 
+DM.Require.Energy.Convergence .TRUE.
+DM.Energy.Tolerance 1.e-3 Ry
+DM.MixingWeight     0.08
+DM.NumberPulay      3
+DM.NumberKick       20
+DM.KickMixingWeight 0.15
+
+XML.WRITE .false.
+MeshCutoff         100.0 Ry
+save-rho F
+save-delta-rho F
+save-total-potential F
+save-neutral-atom-potential F
+save-hs F
+
+ProcessorY                 1
+
+MG.UseMG                   T
+MG.Distrib                 1
+MG.Order                   4
+MG.Solver                  0        # Advanced option
+MG.Precond                 1        # Advanced option
+MG.Verbose                 0
+MG.Nlevel                  4
+MG.MaxIter                 40
+MG.Tolerance               1.0e-4   # Default value
+MG.OrderMultipole         3        
+
+WriteEspCharge 		   1
+QMMM.ChargeType            2
+NOSSI-ESP.dist		   4.725
+NOSSI-ESP.delta		   0.2

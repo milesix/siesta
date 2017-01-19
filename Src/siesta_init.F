@@ -102,6 +102,7 @@
 !$    use omp_lib, only : OMP_SCHED_GUIDED, OMP_SCHED_AUTO
 #endif
 
+      use nossi_mg_hypre, only: useMG
       implicit none
 
 #ifdef MPI
@@ -466,7 +467,7 @@ C     Initialise MPI and set processor number
       endif
 
 !     Madelung correction for charged systems
-      if (charnet .ne. 0.0_dp) then
+      if ((charnet .ne. 0.0_dp) .and. (.not. useMG)) then
         call madelung(ucell, shape, charnet, Emad)
       endif
 
