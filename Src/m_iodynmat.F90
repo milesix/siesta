@@ -51,64 +51,59 @@ CONTAINS
 ! Internal variables ----------------------------------------------------
       character(len=label_length+10) :: fname
       integer    :: unit1, j, i, ix, jx
-
+      real(dp)   :: conv
 ! Begin.....
      
 ! If ialr ==iaf, this is the final calculation of Linres and we want to store the 
 ! Force constant matrix to be read by vibra.
 ! In the other cases, we are saving the intermediate dynamat elements just in case
 ! explosive events....
+      if (.not. IONode) return 
 
       if (final_call ) then
-      write(*,'(a)') 'writedynmat: Saving into a file the force constant matrix'
+        write(*,'(a)') 'writedynmat: Saving into a file the force constant matrix'
         fname = trim(slabel)//'.FC'
       else
-      write(*,'(a)') 'writedynmat: Saving into a file calculated dynamical matrix'
-        fname = trim(slabel)//'.temp.DYNMAT'
+        write(*,'(a)') 'writedynmat: Saving into a file calculated dynamical matrix'
+        fname = trim(slabel)//'.LRDYNMAT'
       endif 
 
-      if (IONode) then
-          if (final_call) then !Store the force constant matrix
-            call io_assign(unit1)
-            open(unit1, file=fname, status='unknown' )
-            rewind(unit1)
-            write(unit1,'(a)') 'Force constants matrix'
-            do i = iai,iaf
-              do ix = 1,3
-                do j = 1,na_u
-                   write(unit1,'(3f15.7)') &
-                         (-Ang**2/eV)*(dynmat(j,1,i,ix)), &
-                         (-Ang**2/eV)*(dynmat(j,2,i,ix)), &
-                         (-Ang**2/eV)*(dynmat(j,3,i,ix))
+      call io_assign(unit1)
 
-                enddo
-                do j = 1,na_u
-                  write(unit1,'(3f15.7)') &
-                         (-Ang**2/eV)*(dynmat(j,1,i,ix)), &
-                         (-Ang**2/eV)*(dynmat(j,2,i,ix)), &
-                         (-Ang**2/eV)*(dynmat(j,3,i,ix))
-                enddo
-              enddo
-            enddo
-            call io_close(unit1) 
-          else ! Store flag + dynamical matrix
-            call io_assign(unit1)
-            open(unit1, file=fname, status='unknown' )
-            rewind(unit1)
-            write(unit1,'(a)') 'ialr='
-            write(unit1,*) ialr
-            do i = iai, iaf
-              do ix = 1,3
-                do j = 1, na_u
-                  do jx = 1,3
-                    write(unit1,floatfmt) dynmat(j,jx,i,ix)
-                  enddo
-                enddo
-              enddo
-            enddo
-            call io_close(unit1)
-          endif !final_call
-      endif  !Node
+      if (final_call) then !Store the force constant matrix
+         open(unit1, file=fname, status='unknown' )
+         rewind(unit1)
+         write(unit1,'(a)') 'Force constants matrix'
+         conv=-Ang ** 2 / eV
+         do i = iai,iaf
+           do ix = 1,3
+             do j = 1,na_u
+                write(unit1,'(3f15.7)') &
+                       conv*(dynmat(j,:,i,ix))
+             enddo
+             do j = 1,na_u
+                write(unit1,'(3f15.7)') &
+                     conv*(dynmat(j,:,i,ix))
+             enddo
+           enddo
+         enddo
+      else ! Store flag + dynamical matrix
+         open(unit1, file=fname, status='unknown' )
+         rewind(unit1)
+         write(unit1,'(a)') 'ialr='
+         write(unit1,*) ialr
+         do i = iai, iaf
+           do ix = 1,3
+             do j = 1, na_u
+               do jx = 1,3
+                 write(unit1,floatfmt) dynmat(j,jx,i,ix)
+               enddo
+             enddo
+           enddo
+         enddo
+      endif !final_call
+
+      call io_close(unit1)
 
       end subroutine writedynmat
 
@@ -135,14 +130,14 @@ CONTAINS
       logical               :: found
       integer               :: unit1,jx,ix,j,i
 
-      if (IONode) then 
+      if (.not. IONode) return
+ 
       write(6,'(a)')'readdynmat: Reading from file previous dynamical matrix'
 
-      fname = trim(slabel)//'.temp.DYNMAT'
+      fname = trim(slabel)//'.LRDYNMAT'
       inquire( file=fname, exist=found )
 
       if (found) then
-
         call io_assign(unit1)
         open( unit1, file=fname, status='old' )
         read( unit1, *)
@@ -158,18 +153,14 @@ CONTAINS
         enddo
         call io_close( unit1 )
 
-      init=init+1
-      write(6,'(a,i7)') 'readdynmat: New Initial perturbed atom !!!', init
-
-
+        init=init+1
+        write(6,'(a,i7)') 'readdynmat: New Initial perturbed atom !!!', init
       else
         write(6,'(/,a,a,a)') 'readdynmat: File ',fname
         write(6,'(a)') 'File not found... starting from the begining '
          init=iai
       endif
-      endif !IONODE
 
       end subroutine readdynmat
-
 
 end module m_iodynmat

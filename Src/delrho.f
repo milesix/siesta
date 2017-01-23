@@ -33,7 +33,6 @@ C Start time counter ---------------------------------------------------
       if(nspin.le.2 .and. GAMMA) then
         do ix = 1,3
          do ispin = 1,nspin
-
           call delrhog(nuo, nspin, no, eo(:,ispin,1),tol,
      &                 eigtol, Qo, Hper(:,ix,ispin),
      &                 Oper(:,ix), maxnh, numh, listh, listhptr,

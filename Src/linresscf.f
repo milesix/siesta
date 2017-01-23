@@ -75,13 +75,13 @@ C Internal variable types and dimensions -----------------------------------
       
       real(dp)          :: dSmat(maxnh,3),!First Order of Overlap 
      &                     dHmat(maxnh,3,nspin),!Perturbed Hamiltonian
-     &                     dDmax,Dmax, 
+     &                     dDmax,dMax, 
      &                     dHmat0(maxnh,3,nspin),!non SCF perturbed H 
      &                     dummy_stress(3,3), dummy_fa(1,1), g2max 
       real(dp), pointer :: dDold(:,:,:)
       real(dp)          :: dynmat(na_u,3,na_u,3)
 
-      real(dp)          ::  tollr, eigtollr 
+      real(dp)          ::  tolLR, eigtolLR 
 
       type(filesOut_t)    :: filesOut
       character(len=label_length+3) :: fname
@@ -97,8 +97,8 @@ C Reading linres options
 C ----------------------------------------------------------------------------
       iai = fdf_get("LR.IAI",1)
       iaf = fdf_get("LR.IAF",na_u) ! Move all atoms by default
-      tollr = fdf_get("LR.DMTolerance",0.001_dp)
-      eigtollr = fdf_physical("LR.EigTolerance",0.001_dp,'Ry')
+      tolLR = fdf_get("LR.DMTolerance",0.001_dp)
+      eigtolLR = fdf_physical("LR.EigTolerance",0.001_dp,'Ry')
       readold = fdf_get("LR.readDynmat",.false.)
 
 
@@ -108,8 +108,7 @@ C Begin to write into output file
         write(6,'(t32,a,i7)') 'Linres calculation'
         write(6,'(t22,a)') repeat('=',36)
 
-        write(6,'(/,a,i7)')
-     .    'Some linres parameters:'
+        write(6,'(/,a,i7)')'Some linres parameters:'
         write(6,'(a,i7)') 'Linres: Initial perturbed atom', iai
         write(6,'(a,i7)') 'Linres: Final perturbed atom', iaf
       endif
@@ -141,8 +140,6 @@ C Read Stored dynamical matrix files-----------------------------------------
       init=iai
       if (readold) then
         call readdynmat(init,iai,dynmat)
-      else
-        init=iai
       endif
 C------------------------------LINRES MAIN LOOP-------------------------------
 C Init of Linres calculation. External loop over perturbed atoms (IALR).
@@ -150,13 +147,15 @@ C Internal loop scf-loop (ISCF).
 
       do 200 ialr=init, iaf 
 
-      if (IOnode) then
-        write(6,'(/,t22,a)') repeat('=',36)
-        write(6,'(t32,a,i7)') 'Linres atom=', ialr
-        write(6,'(t22,a)') repeat('=',36)
-      endif
+        call timer('LRatom', 1)
 
-      LRfirst=.true. !init flag for first calls
+        if (IOnode) then
+          write(6,'(/,t22,a)') repeat('=',36)
+          write(6,'(t32,a,i7)') 'Linres atom=', ialr
+          write(6,'(t22,a)') repeat('=',36)
+        endif
+
+        LRfirst=.true. !init flag for first calls
 
 
 C Doing non-scf elements of the perturbed Hamiltonian and dinamical matrix 
@@ -176,8 +175,6 @@ C Dynamat contains all the elements that are non-scf and depend
 C on the gradient potential terms
 
         call init_pulay_arrays(iai)        
-
-        call timer('LRatom', 1)
 
 C       scf loop -----------------------------------------------
         do 100 iscf=1, nscf
@@ -241,31 +238,31 @@ C Find change in density matrix from perturbed
 C Hamiltonian and Overlap
 
           call delrho(no_s, na_s, nspin, maxnh, no_l, no_u, GAMMA,
-     &               indxuo, xijo, nspin, eo, tollr, eigtollr, nkpnt,
+     &               indxuo, xijo, nspin, eo, tolLR, eigtolLR, nkpnt,
      &               kpoint, kweight, Qo, H, S, dHmat, dSmat, numh,
      &               listh, listhptr, ef, temp, dDscf, dEscf,iscf)
 
 C Perform the density matrix mixing
-          dmax=0.0_dp
+          dMax=0.0_dp
           do ix=1,3
             call pulayx( iscf , mmix , no_l, maxnh, numh,
      &                  listhptr, nspin,maxsav,wmix,nkick,
      &                  wmixkick,dDscf(:,:,ix),dDold(:,:,ix),dDmax,ix)
-            dmax=max(dmax,dDmax)
+            dmax=max(dMax,dDmax)
           enddo
 
 C Print error in the perturbed density
           if (iscf.eq.1) then
-            print*, 'LINRES: Density tolerance dDTol=', TOLLR
-            print*, 'LINRES:',iscf,'dMax=',dMax
-          else
-            print*, 'LINRES:',iscf,'dMax=',dMax
-          endif
+            write(*,'(a,f10.4)'), 'LINRES: Density tolerance dDTol=',
+     &      tolLR
+            write(*,'(tr7,a5,tr2,a10)') 'iscf','dDmax'           
+          endif 
+          write(*,'(a6,tr1,i5,tr2,f10.5)')'linres', iscf, dDmax          
 
           LRfirst=.false.
 
 C Check convergence cryteria
-          if (dmax .lt. tollr) goto 999
+          if (dmax .lt. tolLR) goto 999
 
  100    enddo  ! isc loop
 C------------------------------------------------------------------------

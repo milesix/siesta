@@ -20,10 +20,6 @@ C referred to as the Pulay terms that arise due to the localized
 C orbitals, necessary for the perturbed hamiltonian matrix elements
 C to compute the change in the dRho for DFPT in LinRes. It is non
 C SCF so it is called only once on the first scf iteration.
-C HOWEVER: this is the most computationally heavy routine of the 
-C LinRes code (and also the most complicated). Needs to have someone
-C that fully understands vmat in order to be done properly and 
-C parallelized. 
 C *********************** INPUT **************************************
 C integer no              : Number of basis orbitals
 C integer nuo             : Number of orbitals in unit cell (local)
@@ -245,14 +241,11 @@ C  Calculate all phi values and derivatives at all subpoints
               if (r2sp.lt.r2cut(is)) then
 C Calculate orbitals value at this ip point
 C Calculate gradients only for perturbed atom (unit cell atom)
+                grada(1:3,:,isp) = 0.0_dp
                 if (indxua(ia).eq.ialr) then
                   call all_phi( is,+1, dxsp, nphiloc,
      .                        phia(:,isp), grada(:,:,isp))
-                else
-                  call all_phi( is,+1, dxsp, nphiloc,
-     .                        phia(:,isp))
-                  grada(1:3,:,isp) = 0.0_dp
-                endif !ialr if
+                endif
               else
                 phia(:,isp) = 0.0_dp
                 grada(1:3,:,isp) = 0.0_dp
@@ -260,7 +253,7 @@ C Calculate gradients only for perturbed atom (unit cell atom)
             enddo !isp loop
           endif !lasta lastop if
           iphi = iphorb(i)
-          C(1:nsp,ic) = phia(iphi,1:nsp)
+          C(1:nsp,ic) = phi(1:nsp,imp)! the value of orbitals is stored in memory
           gC(1:3,1:nsp,ic) = (-1.0_dp)*grada(1:3,iphi,1:nsp)
 
           do ispin= 1,nspin  !pre-multiplication gradphi(ic)*V and V*phi(ic)
