@@ -14,6 +14,7 @@ C    ----------------------------------------------------------------
  
       use precision,     only: dp, grid_p
       use meshphi,       only: endpht, lstpht, listp2
+      use meshphi,       only: directphi, phi, gradphi
       use atomlist,      only: indxuo
       use listsc_module, only: listsc
       use alloc
@@ -56,9 +57,9 @@ C     Internal variables
      &           imag, iacell(3), iep, lastop, lasta, ja, jo,
      &           jua ,iii(3)
       real(dp) :: r2o, r2sp, dxsp(3), va, grva(3,nsp),
-     &            gr2va(3,3), gr2vna(3,nsp), r, ra, phi(maxoa,nsp),
+     &            gr2va(3,3), gr2vna(3,nsp), r, ra, phia(maxoa,nsp),
      &            grphi(3,maxoa,nsp),gr2phi(3,3,nsp),
-     &            prod1, prod2, prod3, prod4, prod5, prod6, prod7,xr(3), 
+     &            prod1, prod2, prod3, prod4, prod5, prod6, prod7, 
      &            prod8, Dij, dDij, r2cut(nsmax), total, xa(3) 
 
       integer, pointer, save :: iob(:),ibc(:),ilc(:)
@@ -108,100 +109,105 @@ C     loop over grid points -----------------------------------------
       do ip = 1,np
 
 C  Find number of nonzero orbitals at this point
-       nc = endpht(ip) - endpht(ip-1)
-       do imp = 1+endpht(ip-1), endpht(ip)
-         io = lstpht(imp)
-         ib = ibuff(io)
-         if (ib.gt.0) iob(ib) = io
-       enddo
+        nc = endpht(ip) - endpht(ip-1)
+        do imp = 1+endpht(ip-1), endpht(ip)
+          io = lstpht(imp)
+          ib = ibuff(io)
+          if (ib.gt.0) iob(ib) = io
+        enddo
 c      Look for required rows of Dscf not yet stored in D-----------
-       do ic = 1, nc
-        imp = endpht(ip-1) + ic
-        i = lstpht(imp) !list of non zero orbs at mesh p
-        if(ibuff(i) .eq. 0 ) then
- 
-         do ib = 1,maxb
+        do ic = 1, nc
+          imp = endpht(ip-1) + ic
+          i = lstpht(imp) !list of non zero orbs at mesh p
+          if(ibuff(i) .eq. 0 ) then
+            do ib = 1,maxb
 C         last runs circularly over rows of D
-          last = last + 1
-          if (last .gt. maxb) last = 1
-          if (iob(last) .le. 0) goto 10
-         enddo
-   10    continue
-C        Copy row i of Dscf into row last of D
-         j = abs(iob(last))
-         if (j.ne.0) ibuff(j) = 0
-         ibuff(i) = last
-         iob(last) = i
-         ib = last
-         iu = indxuo(i)
-         do ii = 1, numd(iu)
-          ind = listdptr(iu)+ii
-          j = listd(ind)
-          if(i.ne.iu) j = listsc( i, iu, j)
-          jb = ibuff(j)
-          Dlocal(ib,jb) = Dscf(ind)
-          Dlocal(jb,ib) = Dscf(ind)
-          dDlocal(ib,jb) = dDscf(ind)
-          dDlocal(jb,ib) = dDscf(ind)
-         enddo  
-        endif  
-        ibc(ic) = ibuff(i)
-       enddo !ic loop
+              last = last + 1
+              if (last .gt. maxb) last = 1
+              if (iob(last) .le. 0) goto 10
+            enddo
+   10       continue
+C         Copy row i of Dscf into row last of D
+            j = abs(iob(last))
+            if (j.ne.0) ibuff(j) = 0
+            ibuff(i) = last
+            iob(last) = i
+            ib = last
+            iu = indxuo(i)
+            do ii = 1, numd(iu)
+              ind = listdptr(iu)+ii
+              j = listd(ind)
+              if(i.ne.iu) j = listsc( i, iu, j)
+              jb = ibuff(j)
+              Dlocal(ib,jb) = Dscf(ind)
+              Dlocal(jb,ib) = Dscf(ind)
+              dDlocal(ib,jb) = dDscf(ind)
+              dDlocal(jb,ib) = dDscf(ind)
+            enddo  
+          endif  
+          ibc(ic) = ibuff(i)
+        enddo !ic loop
 
 c      Restore iob for next point
-       do imp = 1+endpht(ip-1), endpht(ip)
-         i = lstpht(imp)
-         ib = ibuff(i)
-         iob(ib) = -i
-       enddo
-c      loop over all non-zero orbitals at mesh point ----------------
-       lasta = 0
-       lastop = 0
-
-
-        call ipack(-1,3,nmeshg/nsm,iii,ip) 
-c	point coordinates (ip)  respect origin in unit cell 	
-        do ix = 1,3
-          xr(ix) = iii(1) * cmesh(ix,1) + iii(2)*cmesh(ix,2) +
-     .             iii(3) * cmesh(ix,3)
+        do imp = 1+endpht(ip-1), endpht(ip)
+          i = lstpht(imp)
+          ib = ibuff(i)
+          iob(ib) = -i
         enddo
 
-       do ic = 1, nc
-        imp = endpht(ip-1) + ic
-        i = lstpht(imp)
-        iu = indxuo(i)
-        iphi = iphorb(i)! Orbital index of each  orbital in its atom       
-        ia = iaorb(i)
-        is = isa(ia)
-        iua = indxua(ia)
-        iop = listp2(imp)
-        ilc(ic) = i
+c      loop over all non-zero orbitals at mesh point ----------------
+        lasta = 0
+        lastop = 0
+        do ic = 1, nc
+          imp = endpht(ip-1) + ic
+          i = lstpht(imp)
+          iu = indxuo(i)
+          iphi = iphorb(i)! Orbital index of each  orbital in its atom       
+          ia = iaorb(i)
+          is = isa(ia)
+          iua = indxua(ia)
+          iop = listp2(imp)
+          ilc(ic) = i
 
-        do isp = 1, nsp
+          if (directphi) then 
+            do isp = 1, nsp
+              dxsp(1:3) = xdop(1:3,iop) + xdsp(1:3,isp) - dxa(1:3,ia)     
+              r2sp = dxsp(1)**2 + dxsp(2)**2 + dxsp(3)**2
+              if (r2sp.lt.r2cut(is)) then
+                call all_phi(is,+1,dxsp,nphiloc, 
+     &          phia(:,isp),grphi(:,:,isp))
+              else
+                grphi(:,:,isp) = 0.0_dp
+                phia(:,isp) = 0.0_dp
+              endif
+              if(ia.ne.lasta .or. iop .ne. lastop ) then 
+                call phiatm( is, 0, dxsp, va, grva(:,isp), gr2va )
+                if(iua .eq. ialr) gr2vna(1:3,isp) = gr2va(1:3,jx)
+              else
+                grva(:,isp) = 0.0_dp
+                gr2va = 0.0_dp
+              endif
+              C(isp,ic) = phia(iphi,isp)
+              gC(1:3,isp,ic) = grphi(1:3,iphi,isp)
+            enddo !isp loop
 
-         dxsp(1:3) = xdop(1:3,iop) + xdsp(1:3,isp) - dxa(1:3,ia)     
-         r2sp = dxsp(1)**2 + dxsp(2)**2 + dxsp(3)**2
-          
-         if (r2sp.lt.r2cut(is)) then
-           call all_phi(is,+1,dxsp,nphiloc, 
-     &       phi(:,isp),grphi(:,:,isp))
-         else
-           grphi(:,:,isp) = 0.0_dp
-           phi(:,isp) = 0.0_dp
-         endif
+          else !directphi false
 
-         if(ia.ne.lasta .or. iop .ne. lastop ) then 
-          call phiatm( is, 0, dxsp, va, grva(:,isp), gr2va )
-          if(iua .eq. ialr) gr2vna(1:3,isp) = gr2va(1:3,jx)
-         else
-           grva(:,isp) = 0.0_dp
-           gr2va = 0.0_dp
-         endif
-         
-          C(isp,ic) = phi(iphi,isp)
-          gC(1:3,isp,ic) = grphi(1:3,iphi,isp)
+            C(1:nsp,ic) = phi(1:nsp,imp) 
+            gC(1:3,1:nsp,ic) = gradphi(1:3,1:nsp,imp)
+            do isp = 1, nsp
+              dxsp(1:3) = xdop(1:3,iop) + xdsp(1:3,isp) - dxa(1:3,ia)     
+              r2sp = dxsp(1)**2 + dxsp(2)**2 + dxsp(3)**2
+              if(ia.ne.lasta .or. iop .ne. lastop ) then
+                call phiatm( is, 0, dxsp, va, grva(:,isp), gr2va )
+                if(iua .eq. ialr) gr2vna(1:3,isp) = gr2va(1:3,jx)
+              else
+                grva(:,isp) = 0.0_dp
+                gr2va = 0.0_dp
+              endif
+            enddo
+          endif !directphi
 
-        enddo !isp loop
 C       compute contribution of neutral atom potential to dynamical
 C       matrix ------------------------------------------------------
 	if (ic.eq.1) then
@@ -272,16 +278,8 @@ C       avoid the double counting ------------------------------------
         endif !spin = 1
        enddo !nc/imp loop 
 
-
-!	if (ip.eq.365) then
-!		print*,'nc',nc
-!	endif
-
-	LISTED(:,:)=0
-	flag=.false.
-
-!	print*,'ip,dynmat',ip,dynmat 
-!	if (ip.eq. 365) stop
+       LISTED(:,:)=0
+       flag=.false.
  
 C      Calculate the integrals for the dynamical matrix -------------
        do ic = 1, nc 

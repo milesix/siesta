@@ -1031,8 +1031,8 @@ C Modules
       use mesh,      only : dxa, idop, indexp, ipa, mop, nsp, xdop,
      &                      xdsp, meshLim
       use meshphi,   only : directphi, nphi, phi, lstpht, listp2, endpht
-      use meshphi,   only : resetMeshPhi
-      use fdf,       only : fdf_get
+      use meshphi,   only : resetMeshPhi, gradphi
+      use fdf,       only : fdf_get,leqi
       use parallel,  only : IONode
       use alloc,     only : re_alloc
 
@@ -1050,7 +1050,7 @@ C     Local variables
       integer                :: ia, io, iop, ip, ip0, iphi, is, isp, n,
      &                          nlist, nliste, nmax
 
-      logical                :: within
+      logical                :: within, linres ! Linres
       logical,          save :: firsttime = .true.
       real(dp)               :: dxsp(3,nsp), grphi(3), phip, r2o,
      &                          r2sp(nsp)
@@ -1064,6 +1064,7 @@ C     Local variables
 C     On first call set the logical DirectPhi
       if (firsttime) then
         DirectPhi = fdf_get('DirectPhi', .false. )
+        linres=leqi(fdf_get('MD.TypeOfRun','CG'),'LR')
         firsttime = .false.
       else
         ! reset the data structures in module meshphi
@@ -1071,7 +1072,7 @@ C     On first call set the logical DirectPhi
       endif
 
 C     Allocate memory related to nmpl
-      nullify( endpht, phi, lstpht, listp2 )
+      nullify( endpht, phi, gradphi, lstpht, listp2 )
       call re_alloc( endpht, 0, nmpl, 'endpht', 'PhiOnMesh' )
 
 C     Initialise pointer array
@@ -1106,8 +1107,12 @@ C     Adjust dimensions of phi if necessary
       if (nphi.gt.nmax) then
         if (DirectPhi) then
           call re_alloc( phi, 1, nsp, 1, nphi, 'phi', 'PhiOnMesh' )
+          if (linres)  call re_alloc( gradphi, 1, 3, 1, nsp, 1, nphi,
+     .                    'gradphi','PhiOnMesh' )
        else
           call re_alloc( phi, 1, nsp, 1, nliste, 'phi', 'PhiOnMesh' )
+          if (linres)  call re_alloc( gradphi, 1, 3, 1, nsp, 1, nliste,
+     .                  'gradphi', 'PhiOnMesh' )
        endif
       endif
 
@@ -1150,8 +1155,10 @@ C     Find indexes and values of atomic orbitals at mesh points
                     call phiatm( is, iphi, dxsp(1,isp),
      &                           phip, grphi )
                     phi(isp,n) = phip
+                    if (linres) gradphi(1:3,isp,n)=grphi(1:3)
                   else
                     phi(isp,n) = 0.0_grid_p
+                    if (linres) gradphi(1:3,isp,n) = 0.0_grid_p
                   endif
                 enddo
               endif

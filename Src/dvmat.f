@@ -49,7 +49,8 @@ C  Modules
       use meshdscf,      only: matrixMtoO
       use meshdscf,      only: needdscfl, listdl, numdl, nrowsdscfl,
      &                         listdlptr
-      use meshphi,       only: directphi, endpht, lstpht, listp2, phi
+      use meshphi,       only: DirectPhi, endpht, lstpht, listp2, phi
+      use meshphi,       only: gradphi
       use parallel,      only: Nodes, node
       use alloc,         only: re_alloc, de_alloc, alloc_default,
      &                         allocDefaults
@@ -154,9 +155,14 @@ C       If overflooded, add Vlocal to Vs and reinitialize it
             i = iorb(il)
             iu = indxuo(i)
             if (ParallelLocal) then
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
               !!!TO INCLUDE PARALELIZATION
               print*,'No parallel version,stoppig'
               stop
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
             else
              call GlobalToLocalOrb( iu, Node, Nodes, iul )
               if (i .eq. iu) then
@@ -217,69 +223,104 @@ C  Look for required orbitals not yet in Vlocal
  
 C  Copy potential to a double precision array
         V(1:nsp,1:nspin) = Vscf(1:nsp,ip,1:nspin)
-
 C  Calculate all phi values and derivatives at all subpoints
-        lasta = 0
-        lastop = 0
-        do ic = 1,nc
-          imp = endpht(ip-1) + ic
-          i = lstpht(imp)
-          il = ilocal(i)
-          iu = indxuo(i)
-          ia = iaorb(i)
-          is = isa(ia)
-          iop = listp2(imp)
-          ilc(ic) = il
-          if (ia.ne.lasta .or. iop.ne.lastop) then
-            lasta = ia
-            lastop = iop
-            do isp = 1,nsp
-              do ix =1,3
-              dxsp(ix) = xdsp(ix,isp) + xdop(ix,iop) - dxa(ix,ia)
-              enddo
-              r2sp = sum(dxsp**2)
-              if (r2sp.lt.r2cut(is)) then
-C Calculate orbitals value at this ip point
-C Calculate gradients only for perturbed atom (unit cell atom)
-                grada(1:3,:,isp) = 0.0_dp
-                if (indxua(ia).eq.ialr) then
-                  call all_phi( is,+1, dxsp, nphiloc,
+        if ( DirectPhi ) then
+          lasta = 0
+          lastop = 0
+          do ic = 1,nc
+            imp = endpht(ip-1) + ic
+            i = lstpht(imp)
+            il = ilocal(i)
+            iu = indxuo(i)
+            ia = iaorb(i)
+            is = isa(ia)
+            iop = listp2(imp)
+            ilc(ic) = il
+            if (ia.ne.lasta .or. iop.ne.lastop) then
+              lasta = ia
+              lastop = iop
+              do isp = 1,nsp
+                do ix =1,3
+                  dxsp(ix) = xdsp(ix,isp) + xdop(ix,iop) - dxa(ix,ia)
+                enddo
+                r2sp = sum(dxsp**2)
+                if (r2sp.lt.r2cut(is)) then
+                  grada(1:3,:,isp) = 0.0_dp
+                  if (indxua(ia).eq.ialr) then
+                     call all_phi( is,+1, dxsp, nphiloc,
      .                        phia(:,isp), grada(:,:,isp))
-                endif
-              else
-                phia(:,isp) = 0.0_dp
-                grada(1:3,:,isp) = 0.0_dp
-              endif !r2sp if
-            enddo !isp loop
-          endif !lasta lastop if
-          iphi = iphorb(i)
-          C(1:nsp,ic) = phi(1:nsp,imp)! the value of orbitals is stored in memory
-          gC(1:3,1:nsp,ic) = (-1.0_dp)*grada(1:3,iphi,1:nsp)
-
-          do ispin= 1,nspin  !pre-multiplication gradphi(ic)*V and V*phi(ic)
-            do isp=1,nsp            
-              Vpart(:,1,isp)=gC(:,isp,ic)*V(isp,ispin)
-              Vpart(:,2,isp)=V(isp,ispin)*C(isp,ic)
-            enddo
-
+                  endif
+                else
+                  phia(:,isp) = 0.0_dp
+                  grada(1:3,:,isp) = 0.0_dp
+                endif !r2sp if
+              enddo !isp loop
+            endif !lasta lastop if
+            iphi = iphorb(i)
+            C(1:nsp,ic) = phia(iphi,1:nsp)
+            gC(1:3,1:nsp,ic) = (-1.0_dp)*grada(1:3,iphi,1:nsp)
+            do ispin= 1,nspin  !pre-multiplication gradphi(ic)*V and V*phi(ic)
+              do isp=1,nsp            
+                Vpart(:,1,isp)=gC(:,isp,ic)*V(isp,ispin)
+                Vpart(:,2,isp)=V(isp,ispin)*C(isp,ic)
+              enddo
 C    Loop on the second orbital of mesh point (only for jc.le.ic)
-            do jc= 1,ic !tringular matrix form
-              jl=ilc(jc)
+              do jc= 1,ic !tringular matrix form
+                jl=ilc(jc)
+                Vij(:)=0.0_dp
+                do isp= 1,nsp !sum over subpoints
+                  Vij(:)=Vij(:)+Vpart(:,1,isp)*C(isp,jc) +
+     &                    gC(:,isp,jc)*Vpart(:,2,isp)
+                enddo
+                if (il.gt.jl) then !from V(i,j) format to a single column
+                  ij = il*(il+1)/2 + jl + 1
+                else
+                  ij = jl*(jl+1)/2 + il + 1
+                endif
+                Vi(ij,:,ispin)=Vij+Vi(ij,:,ispin)
+              enddo !jc loop
+            enddo !ispin loop
+          enddo !ic loop
 
-              Vij(:)=0.0_dp
-              do isp= 1,nsp !sum over subpoints
+        else !directphi=false (default)
+
+          lasta = 0
+          lastop = 0
+          do ic = 1,nc
+            imp = endpht(ip-1) + ic
+            i = lstpht(imp)
+            ia = iaorb(i)
+            il = ilocal(i)
+            ilc(ic) = il
+            C(1:nsp,ic) = phi(1:nsp,imp) ! the value of orbitals is stored in memory
+            if (indxua(ia).eq.ialr) then
+              gC(1:3,1:nsp,ic) = (-1.0_dp)*gradphi(1:3,1:nsp,imp)
+            else
+              gC(1:3,1:nsp,ic) = 0.0_dp
+            endif
+            do ispin= 1,nspin  !pre-multiplication gradphi(ic)*V and V*phi(ic)
+              do isp=1,nsp
+                Vpart(:,1,isp)=gC(:,isp,ic)*V(isp,ispin)
+                Vpart(:,2,isp)=V(isp,ispin)*C(isp,ic)
+              enddo
+C    Loop on the second orbital of mesh point (only for jc.le.ic)
+              do jc= 1,ic !tringular matrix form
+                jl=ilc(jc)
+                Vij(:)=0.0_dp
+                do isp= 1,nsp !sum over subpoints
                 Vij(:)=Vij(:)+Vpart(:,1,isp)*C(isp,jc) +
      &                    gC(:,isp,jc)*Vpart(:,2,isp)
-              enddo
-              if (il.gt.jl) then !from V(i,j) format to a single column
-                ij = il*(il+1)/2 + jl + 1
-              else
-                ij = jl*(jl+1)/2 + il + 1
-              endif
-              Vi(ij,:,ispin)=Vij+Vi(ij,:,ispin)
-            enddo !jc loop
-          enddo !ispin loop
-        enddo !ic loop
+                enddo
+                if (il.gt.jl) then !from V(i,j) format to a single column
+                  ij = il*(il+1)/2 + jl + 1
+                else
+                  ij = jl*(jl+1)/2 + il + 1
+                endif
+                Vi(ij,:,ispin)=Vij+Vi(ij,:,ispin)
+              enddo !jc loop
+            enddo !ispin loop
+          enddo !ic loop
+        endif !directphi if
       enddo !ip loop
    
       do il= 1,last
