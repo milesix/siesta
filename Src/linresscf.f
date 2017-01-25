@@ -77,7 +77,7 @@ C Internal variable types and dimensions -----------------------------------
      &                     dHmat(maxnh,3,nspin),!Perturbed Hamiltonian
      &                     dDmax,dMax, 
      &                     dHmat0(maxnh,3,nspin),!non SCF perturbed H 
-     &                     dummy_stress(3,3), dummy_fa(1,1), g2max 
+     &                     dummy_stress(3,3), dummy_fa(3,na_u), g2max 
       real(dp), pointer :: dDold(:,:,:)
       real(dp)          :: dynmat(na_u,3,na_u,3)
 
@@ -98,7 +98,7 @@ C ----------------------------------------------------------------------------
       iai = fdf_get("LR.IAI",1)
       iaf = fdf_get("LR.IAF",na_u) ! Move all atoms by default
       tolLR = fdf_get("LR.DMTolerance",0.001_dp)
-      eigtolLR = fdf_physical("LR.EigTolerance",0.001_dp,'Ry')
+      eigtolLR = fdf_get('LR.EigTolerance',0.001_dp)
       readold = fdf_get("LR.readDynmat",.false.)
 
 
@@ -245,7 +245,7 @@ C Hamiltonian and Overlap
 C Perform the density matrix mixing
           dMax=0.0_dp
           do ix=1,3
-            call pulayx( iscf , mmix , no_l, maxnh, numh,
+            call pulayx( iscf , .false. , no_l, maxnh, numh,
      &                  listhptr, nspin,maxsav,wmix,nkick,
      &                  wmixkick,dDscf(:,:,ix),dDold(:,:,ix),dDmax,ix)
             dmax=max(dMax,dDmax)
