@@ -20,7 +20,8 @@ c dRhoscf = 2 Dscf dPhi Phi
 c dRhoatm = 2 Datm dPhi Phi
 C LR, Linres, summer 2015
 C on first call this computes equation 2.47 in MP thesis and on 
-C second call the non scf contribution to equation 2.25  
+C second call the non scf contribution to equation 2.25 
+C Optimized by S. Illera as rhooda+rhoofd 
 C *********************** INPUT **************************************
 C integer no              : Number of basis orbitals
 C integer np              : Number of columns in C (local)
@@ -37,10 +38,11 @@ C  Modules
       use atomlist,      only: indxuo,indxua
       use listsc_module, only: LISTSC
       use mesh,          only: dxa, nsp, xdop, xdsp, meshLim
-      use meshdscf,      only: matrixMtoO
+      use meshdscf,      only: matrixMtoO, matrixOtoM
       use meshdscf,      only: needdscfl, listdl, numdl, nrowsdscfl,
      &                         listdlptr
       use meshphi,       only: directphi, endpht, lstpht, listp2, phi
+      use meshphi,       only: gradphi
       use parallel,      only: Nodes, node
       use alloc,         only: re_alloc, de_alloc
       use parallelsubs,  only: GlobalToLocalOrb
@@ -65,7 +67,7 @@ C Internal variables and arrays
      &                            ix, j, jc, jl, last, lasta, lastop,jb,
      &                            maxloc, maxloc2, nc, nlocal, nphiloc,
      &                            maxndl, triang, lenx, leny, lenz,
-     &                            lenxy,last2,index(no),in,ind2
+     &                            lenxy,last2,index(no),in,ind2, jil
       logical                  :: ParallelLocal
       real(dp)                 :: r2sp, dxsp(3), Dji, Dij
 
@@ -75,11 +77,12 @@ C Internal variables and arrays
      &                            phia(:,:), 
      &                            r2cut(:), grphia(:,:,:) 
       integer                  :: NTH, TID, ili, ja, ib, ibuff(no),
-     &                            maxb 
+     &                            maxb  
       integer, pointer, save :: iob(:), ibc(:)
-      real(dp), pointer, save :: D(:,:,:) 
+      real(dp), pointer :: D(:,:) 
 C     Start time counter
       call timer('dfscf2',1)
+
 C     Find atomic cutoff radii
       nullify(r2cut)
       call re_alloc( r2cut, 1, nsmax, 'r2cut', 'dfscf2' )
@@ -122,7 +125,7 @@ C     Allocate local memory
       call re_alloc( grphia, 1, 3, 1, maxoa, 1, nsp, 
      &               'phia', 'dfscf2' )
 
-      call re_alloc( D, 0, maxloc, 0, maxloc, 1, nspin, 'D', 'dfscf2' )
+      call re_alloc( D, 0, triang, 1, nspin, 'D', 'dfscf2' )
       call re_alloc( iob, 0, maxloc, 'iob', 'dfscf2' )      
       call re_alloc( ibc, 1, maxloc2, 'ibc', 'dfscf2' ) 
 
@@ -133,7 +136,7 @@ C     Full initializations done only once
       last                     = 0
       last2                    = 0
 C NEW ---
-      D(:,:,:) = 0.0_dp
+      D(:,:) = 0.0_dp
       ibuff(:) = 0
       iob(:) = 0
 C NEW END ---
@@ -148,68 +151,59 @@ C             Dscf, but which is not required at this point
 
         do imp = 1+endpht(ip-1), endpht(ip )!BOTH
           i = lstpht(imp)
-          ib = ibuff(i)
-          if (ib.gt.0) iob(ib) = i
+          il = ilocal(i)
+          if (il.gt.0) iorb(il) = i
         enddo
 
         !Look for required rows of Dscf not yet stored in D (dfscf)
         do ic = 1,nc
           imp = endpht(ip-1) + ic
           i = lstpht(imp)
-          if(ibuff(i) .eq.0) then
+          if(ilocal(i) .eq.0) then
 
 C  Look for an available row in D
-            do ib = 1,maxloc
+            do il = 1,maxloc
 C  last runs circularly over rows of D
               last2 = last2 + 1
               if (last2 .gt. maxloc) last2 = 1
-              if (iob(last2) .le. 0) goto 10
+              if (iorb(last2) .le. 0) goto 10
             enddo
             call die('rhoofd: no slot available in D')
    10       continue
 
 C  Copy row i of Dscf into row last of D
 
-            j = abs(iob(last2))
-            if (j.ne.0) ibuff(j) = 0
-            ibuff(i) = last2
-            iob(last2) = i
-            ib = last2
+            j = abs(iorb(last2))
+            if (j.ne.0) ilocal(j) = 0
+            ilocal(i) = last2
+            iorb(last2) = i
+            il = last2
             iu = indxuo(i)
+!!!!!!!!!!!!!!!!!
+            ! aqui va el if del parallelLocal de rhoofd
+!!!!!!!!!!!!!!!!!
             call GlobalToLocalOrb( iu, Node, Nodes, iul )
-            do ii = 1, numd(iul)
-              ind = listdptr(iul)+ii
-              j = listd(ind)
-              if (i.ne.iu) j = listsc( i, iu, j )
-              jb = ibuff(j)
-              D(ib,jb,1:nspin) = Dscf(ind,1:nspin)
-              D(jb,ib,1:nspin) = Dscf(ind,1:nspin)
-            enddo
+            if (i .eq. iu) then 
+              do ii = 1, numd(iul)
+                ind = listdptr(iul)+ii
+                j = listd(ind)
+                ijl=idx_ijl(il,ilocal(j))
+                D(ijl,:) = Dscf(ind,:)
+              enddo
+            else
+              do ii = 1, numd(iul)
+                ind = listdptr(iul)+ii
+                j   = LISTSC( i, iu, listd(ind) )
+                ijl=idx_ijl(il,ilocal(j))
+                D(ijl,:) = Dscf(ind,:)
+              enddo
+            endif
           endif
-          ibc(ic) = ibuff(i)
         enddo ! orbs ic
 
-C  Restore iob for next point (dfscf)
-        do imp = 1+endpht(ip-1), endpht(ip)
-          i = lstpht(imp)
-          ib = ibuff(i)
-          iob(ib) = -i
-        enddo
-
-C  Look for required orbitals not yet in Vlocal
-        if (nlocal .gt. last) then
-          do ic = 1,nc
-            imp = endpht(ip-1) + ic
-            i = lstpht(imp)
-            if (ilocal(i) .eq. 0) then
-              last = last + 1
-              ilocal(i) = last
-              iorb(last) = i
-            endif
-          enddo
-        endif
-
-C       Loop on first orbital of mesh point (VMAT)
+C       Loop on first orbital of mesh point 
+ 
+       if ( DirectPhi ) then
         lasta = 0
         lastop = 0
         do ic = 1,nc
@@ -247,49 +241,97 @@ C         Generate or retrieve phi values !respecto al ultimo orbital
           elseif (iter .ne. 1) then
             dClocal(1:3,1:nsp,ic) = (-1.0_dp)*grphia(1:3,iphi,1:nsp)
           endif
-       enddo !ic loop 
-         
-       do ic=1,nc
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        enddo !ic loop 
+
+       else !  DirectPhi==False
+
+        do ic = 1,nc
           imp = endpht(ip-1) + ic
-          i = lstpht(imp)
-          iu = indxuo(i) !eq orbital unit cell
-          ia = iaorb(i) !atom to wich orbital belongs
-          ib = ibc(ic)
-          do isp = 1,nsp
-           do jx = 1, 3
-            if ( iter.eq.1 ) then
-              !2*Datm_ii*<Ci|dCi> (gradiente) 
-              Drhoatm(jx,isp,ip) = Drhoatm(jx,isp,ip) 
-     &      + 2.0_dp * Datm(iu) * Clocal(isp,ic) * dClocal(jx,isp,ic)
-            elseif(indxua(ia).eq.ialr) then
-              !2*Datm_ii*<Ci|dCi>  (derivada orbital)
-              Drhoatm(jx,isp,ip) = Drhoatm(jx,isp,ip)
-     &         + 2.0_dp * Datm(iu)*Clocal(isp,ic) * dClocal(jx,isp,ic)
+          i = lstpht(imp) !list of nonzero orbs at this point
+          il = ilocal(i)
+          iu = indxuo(i) !index eqv orbital in unit cell
+          ia = iaorb(i) !Atom to which orbitals belong
+          ilc(ic) = il
+          Clocal(1:nsp,ic) = phi(1:nsp,imp)
+          if (iter .eq. 1) then
+            dClocal(1:3,1:nsp,ic) = gradphi(1:3,1:nsp,imp) ! for gradients
+          elseif (iter .ne. 1) then ! for orbital derivatives
+            if (indxua(ia).eq.ialr) then !orb. belongs to perturbed atom
+              dClocal(1:3,1:nsp,ic) = (-1.0_dp)*gradphi(1:3,1:nsp,imp) 
+            else
+              dClocal(1:3,1:nsp,ic) = 0.0_dp
             endif
-           enddo
-          enddo
-          do ispin=1,nspin
-          do jc = 1,nc
-            jb = ibc(jc)
-            jl = ilc(jc)
-            Dji = D(jb,ib,ispin)
-            do isp=1,nsp
-             do jx = 1, 3 
-              if ( iter.eq.1 ) then
-               !Eq 2.47 in MPs thesis (gradiente)
-                Drhoscf0(jx,isp,ip,ispin) = Drhoscf0(jx,isp,ip,ispin)
-     &          +2.0_dp*Dji*Clocal(isp,jc) * dClocal(jx,isp,ic)
-              elseif( indxua(ia) .eq. ialr) then
-                !contribution to eq 2.25 in MPs (derivada orbital)
-                Drhoscf0(jx,isp,ip,ispin) = Drhoscf0(jx,isp,ip,ispin)
-     &          +2.0_dp*Dji*Clocal(isp,jc) * dClocal(jx,isp,ic)
-              endif
+          endif
+
+! Calculate atomic density =  2* sum_mu Datm*phi_mu * grad phi_mu
+          do isp=1,nsp
+             do jx=1,3
+               Drhoatm(jx,isp,ip) = Drhoatm(jx,isp,ip)
+     &      + 2.0_dp * Datm(iu) * Clocal(isp,ic) * dClocal(jx,isp,ic)
              enddo
-            enddo
-          enddo
+          enddo          
+
+! Calculate density= 2*sum_mu_nu * phi_mu *  grad phi_nu
+          do jc=1, ic-1 ! Loop on second orbital of mesh point
+            ijl = idx_ijl(il,ilc(jc))
+            jil= idx_ijl(ilc(jc),il)
+            do ispin = 1,nspin
+              do isp = 1,nsp
+                do jx=1,3
+                  Drhoscf0(jx,isp,ip,ispin) = Drhoscf0(jx,isp,ip,ispin)
+     &          +2.0_dp*D(ijl,ispin)*Clocal(isp,ic) * dClocal(jx,isp,jc)
+     &          +2.0_dp*D(jil,ispin)*Clocal(isp,jc) * dClocal(jx,isp,ic)
+                enddo !ix
+              enddo !nsp
+            enddo !ispin
+          enddo 
+
+          ijl = idx_ijl(il,ilc(ic)) ! add the mu-mu case
+          do ispin = 1,nspin
+            do isp = 1,nsp
+              do jx=1,3
+                Drhoscf0(jx,isp,ip,ispin) = Drhoscf0(jx,isp,ip,ispin)
+     &         + 2.0_dp*D(ijl,ispin)*Clocal(isp,ic) * dClocal(jx,isp,ic)
+              enddo !ix
+            enddo !nsp
           enddo !ispin
-         enddo !ic loop
-          
+        enddo !ic
+
+       endif !DirectPhi end
+
+!    Restore iorb for next point
+       do imp = 1+endpht(ip-1), endpht(ip)
+         i  = lstpht(imp)
+         il = ilocal(i)
+         iorb(il) = -i
+       end do
+
       enddo !mesh
 
 C     Free memory
@@ -307,4 +349,20 @@ C LINRES
       call de_alloc( r2cut, 'r2cut', 'dfscf2' )
       call timer('dfscf2',2)
       return
+
+      contains
+
+! In any case will the compiler most likely inline this
+! small routine. So it should not pose any problem.
+      pure function idx_ijl(i,j) result(ij)
+        integer, intent(in) :: i,j
+        integer :: ij
+        if ( i > j ) then
+          ij = i * (i + 1)/2 + j + 1
+        else
+          ij = j * (j + 1)/2 + i + 1
+        end if
+      end function idx_ijl
+
+
       end 
