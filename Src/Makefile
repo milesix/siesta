@@ -1321,6 +1321,9 @@ units.o: precision.o
 vacuum_level.o: moreParallelSubs.o precision.o
 vmat.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o m_spin.o mesh.o
 vmat.o: meshdscf.o meshphi.o parallel.o parallelsubs.o precision.o
+dvmat.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o m_spin.o mesh.o
+dvmat.o: meshdscf.o meshphi.o parallel.o parallelsubs.o 
+dvmat.o: precision.o m_mpi_utils.o
 vmatsp.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o mesh.o meshdscf.o
 vmatsp.o: meshphi.o precision.o
 vmb.o: m_fixed.o parallel.o precision.o sys.o

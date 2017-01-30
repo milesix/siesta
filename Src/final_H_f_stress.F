@@ -19,6 +19,7 @@
 #endif
       use siesta_options, only: g2cut, savehs, temp
       use siesta_options, only: recompute_H_after_scf
+      use siesta_options, only: LinreSwitch       !linres lines
       use sparse_matrices, only: numh, listh, listhptr
       use sparse_matrices, only: H, S, Dscf, Escf, maxnh, xijo
       use sparse_matrices, only: H_ldau_2D
@@ -111,18 +112,6 @@
       type(dict) :: dic_save
 #endif
 #endif
-
-C Linres lines
-      logical :: linreSwitch ! to be changed....
-C Linres end
-
-!------------------------------------------------------------------------- BEGIN
-
-!!!!!!!!!!!!!!!!!!!!!!!!
-       linreSwitch = .TRUE. !hard linres iniatilization
-!!!!!!!!!!!!!!!!!!!!!!!!
-
-
 
 !     Initialize Hamiltonian ........................................
       call re_alloc(H_tmp, 1,maxnh, 1, spin%H,
