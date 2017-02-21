@@ -78,7 +78,7 @@ C Internal variables and arrays
      &                            r2cut(:), grphia(:,:,:) 
       integer                  :: NTH, TID, ili, ja, ib, ibuff(no),
      &                            maxb  
-      integer, pointer, save :: iob(:), ibc(:)
+      integer, pointer :: iob(:), ibc(:)
       real(dp), pointer :: D(:,:) 
 C     Start time counter
       call timer('dfscf2',1)

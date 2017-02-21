@@ -250,7 +250,7 @@ OBJS += flook_siesta.o siesta_dicts.o
 OBJS += m_cite.o
 
 #Linres package
-OBJS += linresscf.o linres_matrices.o dhinit.o dvnloc.o dvmat.o dfscf2.o dynamat.o
+OBJS += linresscf.o linres_matrices.o dhinit.o dvnloc.o dfscf2.o dynamat.o
 OBJS += delrho.o delrhog.o delrhok.o m_pulay.o ddsmat.o ddnaefs.o m_iodynmat.o
 
 # Special dependency that sfmakedepend cannot grasp for now

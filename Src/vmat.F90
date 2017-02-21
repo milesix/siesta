@@ -928,7 +928,7 @@ contains
                 Vpart(:,1,isp)=gC(:,isp,ic)*V(isp,ispin)
                 Vpart(:,2,isp)=V(isp,ispin)*C(isp,ic)
               enddo
-!    Loop on the second orbital of mesh point (only for jc.le.ic)
+!    Loop on the second orbital of mesh point (only for jc.<=.ic)
               do jc= 1,ic !tringular matrix form
                 jl=ilc(jc)
                 Vij(:)=0.0_dp
