@@ -15,7 +15,7 @@ MODULE Kpoint_grid
 
   implicit none
 
-  public :: setup_kpoint_grid, scf_kgrid_first_time, gamma_scf, maxk,   &
+  public :: setup_kpoint_grid, scf_kgrid_first_time, gamma_scf, &
             nkpnt, kweight, kpoint, kscell, kdispl
 
 
@@ -23,12 +23,11 @@ MODULE Kpoint_grid
   
   logical                  :: scf_kgrid_first_time = .true.
   logical                  :: gamma_scf
-  integer                  :: maxk              ! 
   integer                  :: nkpnt             ! Total number of k-points
   real(dp)                 :: eff_kgrid_cutoff  ! Effective kgrid_cutoff
 
-  real(dp),        pointer :: kweight(:) 
-  real(dp),        pointer :: kpoint(:,:)
+  real(dp),        pointer :: kweight(:) => null()
+  real(dp),        pointer :: kpoint(:,:) => null()
 
   integer,  dimension(3,3) :: kscell = 0
   real(dp), dimension(3)   :: kdispl = 0.0_dp
@@ -51,7 +50,6 @@ MODULE Kpoint_grid
     logical  :: spiral
 
     if (scf_kgrid_first_time) then
-       nullify(kweight,kpoint)
        spiral = fdf_defined('SpinSpiral')
           ! Allow the user to control the use of time-reversal-symmetry
           ! By default, it is on, except for "spin-spiral" calculations
@@ -75,7 +73,6 @@ MODULE Kpoint_grid
                     time_reversal_symmetry,             &
                     nkpnt,kpoint,kweight, eff_kgrid_cutoff)
 
-    maxk = nkpnt
     gamma_scf =  (nkpnt == 1 .and.  &
                   dot_product(kpoint(:,1),kpoint(:,1)) < 1.0e-20_dp)
 

@@ -131,7 +131,7 @@ subroutine read_options( na, ns, nspin )
   ! logical usesavecg        : True = try to use continuation CG files
   !                              from disk
   ! integer mullipop         : Option for Mulliken Pop. analysis
-  ! logical inspn            : Spin initialization for spin-polarized
+  ! logical init_anti_ferro  : Spin initialization for spin-polarized
   !                              .true.  -> Antiferro
   !                              .false. -> Ferro
   ! integer maxsav           : Number of density-matrices stored for Pulay
@@ -166,7 +166,7 @@ subroutine read_options( na, ns, nspin )
   character(len=30) :: ctmp
   character(len=6) :: method
 
-  logical :: DaC, qnch, qnch2, usesaveddata
+  logical :: DaC, qnch, qnch2
   logical :: tBool
 
   !--------------------------------------------------------------------- BEGIN
@@ -605,16 +605,16 @@ subroutine read_options( na, ns, nspin )
 
   !--------------------------------------
   ! Initial spin density: Maximum polarization, Ferro (false), AF (true)
-  if (nspin.eq.2) then
-     inspn = fdf_get('DM.InitSpinAF',.false.)
-     if (ionode) then
-        write(6,1) 'redata: Antiferro initial spin density',inspn
+  if ( nspin .eq. 2 ) then
+     init_anti_ferro = fdf_get('DM.InitSpin.AF',.false.)
+     if ( ionode ) then
+        write(6,1) 'redata: Antiferro initial spin density',init_anti_ferro
      endif
      if (cml_p) then
         call cmlAddParameter( xf=mainXML, name='DM.InitSpinAF',   &
-             value=inspn, dictRef='siesta:inspn')
-     endif
-  endif
+             value=init_anti_ferro, dictRef='siesta:inspn')
+     end if
+  end if
 
   ! Use Saved Data
   usesaveddata = fdf_get('UseSaveData',.false.)
@@ -1517,7 +1517,7 @@ subroutine read_options( na, ns, nspin )
 
   writedm               = fdf_get( 'WriteDM', .true. )
   write_dm_at_end_of_cycle = fdf_get( 'WriteDM.End.Of.Cycle', writedm )
-  writeH                = fdf_get( 'WriteH', .true. )
+  writeH                = fdf_get( 'WriteH', .false. )
   write_H_at_end_of_cycle  = fdf_get( 'WriteH.End.Of.Cycle', writeH )
 
   writedm_cdf           = fdf_get('WriteDM.NetCDF', .false. )
@@ -1623,7 +1623,6 @@ subroutine read_options( na, ns, nspin )
   end if
 
   writec                 = fdf_get( 'WriteCoorStep', outlng )
-  default                = fdf_get( 'UseSaveData', .false. )
   savehs                 = fdf_get( 'SaveHS', .false. )
   fixauxcell             = fdf_get( 'FixAuxiliaryCell', .false. )
   naiveauxcell           = fdf_get( 'NaiveAuxiliaryCell', .false. )

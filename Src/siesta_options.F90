@@ -33,12 +33,11 @@ MODULE siesta_options
   logical :: mixH          ! Mix H instead of DM
   logical :: h_setup_only  ! H Setup only
   logical :: chebef        ! Compute the chemical potential in ordern?
-  logical :: default       ! Temporary used to pass default values in fdf reads
   logical :: dumpcharge    ! Write electron density?
   logical :: fire_mix      ! SCF mixing with FIRE method
   logical :: fixauxcell    ! Keep the auxiliary supercell fixed?
   logical :: fixspin       ! Keep the total spin fixed?
-  logical :: inspn         ! Antiferro spin ordering in initdm?
+  logical :: init_anti_ferro ! Antiferro spin ordering in initdm?
   logical :: initdmaux     ! Re-initialize DM when auxiliary supercell changes?        
   logical :: allow_dm_reuse! Allow re-use of the previous geometry DM ? (with possible extrapolation)
   logical :: allow_dm_extrapolation ! Allow the extrapolation of previous geometries' DM ?
@@ -61,6 +60,7 @@ MODULE siesta_options
   logical :: savepsch      ! Write file with ionic (local pseudopotential) charge?
   logical :: savetoch      ! Write file with total charge?
   logical :: savebader     ! Write file with charge for Bader analysis?
+  logical :: usesaveddata  ! Default for UseSavedData flag
   logical :: usesavecg     ! Use continuation file for CG geometry relaxation?
   logical :: usesavelwf    ! Use continuation file for Wannier functions?
   logical :: usesavedm     ! Use cont. file for density matrix?
@@ -128,6 +128,8 @@ MODULE siesta_options
   logical :: atmonly       ! Set up pseudoatom information only?
   logical :: harrisfun     ! Use Harris functional?
   logical :: muldeb        ! Write Mulliken polpulations at every SCF step?
+
+  ! Convergence options
   logical :: converge_FreeE   ! free Energy conv. to finish SCF iteration?
   real(dp):: tolerance_FreeE  ! Free-energy tolerance
   logical :: converge_Eharr   ! to finish SCF iteration?
@@ -138,6 +140,7 @@ MODULE siesta_options
   real(dp):: dDtol            ! Tolerance in change of DM elements to finish SCF iteration
   logical :: converge_H       ! to finish SCF iteration?
   real(dp):: dHtol            ! Tolerance in change of H elements to finish SCF iteration
+  
   logical :: broyden_optim ! Use Broyden method to optimize geometry?
   logical :: fire_optim    ! Use FIRE method to optimize geometry?
   logical :: struct_only   ! Output initial structure only?

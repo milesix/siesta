@@ -390,7 +390,7 @@ contains
           end do
           if ( .not. associated(this%mu) ) then
              call die('Could not find the chemical potential "'//trim(ln)//&
-                  '" for the electrode: "'//trim(name)//'". '//&
+                  '" for the electrode: "'//trim(this%name)//'". '//&
                   'Please supply an existing name.')
           end if
           info(3) = .true.
@@ -628,14 +628,14 @@ contains
           ! is passed, if that is the case, the chances are that the
           ! user has made a typo is high
           call die('Unrecognized option "'//trim(ln)//'" &
-               &for electrode: '//trim(name))
+               &for electrode: '//trim(this%name))
 
        end if
 
     end do
     
     if ( any(this%Bloch(:) < 1) ) then
-       call die("Bloch expansion in "//trim(name)//" electrode must be >= 1.")
+       call die("Bloch expansion in "//trim(this%name)//" electrode must be >= 1.")
     end if
 
     if ( .not. all(info(1:4)) ) then
@@ -791,7 +791,7 @@ contains
 
     use units, only : Pi
     use intrinsic_missing, only : VNORM, SPC_PROJ, IDX_SPC_PROJ
-    use intrinsic_missing, only : VEC_PROJ, VEC_PROJ_SCA
+    use intrinsic_missing, only : VEC_PROJ_SCA
 
     ! The electrode that needs to be processed
     type(Elec), intent(inout) :: this
@@ -933,8 +933,7 @@ contains
 
     use parallel, only : IONode
     use units, only : Pi, Ang
-    use intrinsic_missing, only : VNORM, SPC_PROJ, IDX_SPC_PROJ
-    use intrinsic_missing, only : VEC_PROJ, VEC_PROJ_SCA
+    use intrinsic_missing, only : VNORM
 
     use m_ts_io, only: ts_read_TSHS_opt
 
@@ -1647,6 +1646,15 @@ contains
        call print_type(this%sp01)
     end if
 
+    ! Check that there is a transfer matrix!
+    if ( nnzs(this%sp01) == 0 ) then
+       write(*,'(a)') 'Electrode '//trim(this%name)//' has no transfer matrix.'
+       write(*,'(a)') 'The self-energy cannot be calculated with a zero transfer matrix!'
+       call die('Elec: transfer matrix has 0 elements. The self-&
+            &energy cannot be calculated. Please check your electrode &
+            &electronic structure.')
+    end if
+
   end subroutine create_sp2sp01
 
   subroutine delete_(this)
@@ -1969,12 +1977,11 @@ contains
     i = len_trim(this%DEfile)
     is_TSDE = ( this%DEfile(i-3:i) == 'TSDE' )
     if ( is_TSDE ) then
-       call read_ts_dm( this%DEfile, this%nspin, fake_dit, &
-            this%no_u, f_DM_2D, f_EDM_2D, Ef, found, &
+       call read_ts_dm( this%DEfile, fake_dit, &
+            f_DM_2D, f_EDM_2D, Ef, found, &
             Bcast = .true. )
     else
-       call read_dm( this%DEfile, this%nspin, fake_dit, &
-            this%no_u, f_DM_2D, found, &
+       call read_dm( this%DEfile, fake_dit, f_DM_2D, found, &
             Bcast = .true. )
     end if
     if ( .not. found ) call die('Could not read file: '//trim(this%DEfile))
