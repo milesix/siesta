@@ -244,11 +244,11 @@ C             Rotate the coefficients inside the subspace ----------
                enddo
               enddo
 
-              call de_alloc( Psiden, 'Psiden', 'delrhog' )
-              call de_alloc( rotaux, 'rotaux', 'delrhog' )
-              call de_alloc( eden, 'eden', 'delrhog' )
-              call de_alloc( Hauxden, 'Hauxden', 'delrhog' )
-              call de_alloc( Sauxden, 'Sauxden', 'delrhog' )     
+              call de_alloc( Psiden, 'Psiden', 'delrhok' )
+              call de_alloc( rotaux, 'rotaux', 'delrhok' )
+              call de_alloc( eden, 'eden', 'delrhok' )
+              call de_alloc( Hauxden, 'Hauxden', 'delrhok' )
+              call de_alloc( Sauxden, 'Sauxden', 'delrhok' )     
             endif !numb() last degenerated state
           endif !lt tol (degenerated)
          enddo !bands io loop

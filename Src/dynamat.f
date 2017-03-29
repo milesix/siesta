@@ -71,7 +71,7 @@ C     Internal variables
 
 !  Find atomic cutoff radii
       nullify(r2cut)
-      call re_alloc( r2cut, 1, nsmax, 'r2cut', 'dynmat' )
+      call re_alloc( r2cut, 1, nsmax, 'r2cut', 'dynamat' )
       r2cut(:) = 0.0_dp
       do i = 1,nuotot
         ia = iaorb(i)
@@ -90,9 +90,9 @@ C     Internal variables
       nullify(ilocal, ilc, iorb)
       nullify(C, gC, LISTED, phia, grphi) 
 
-      call re_alloc( ilocal, 1, no, 'ilocal', 'dynmat' )
+      call re_alloc( ilocal, 1, no, 'ilocal', 'dynamat' )
       call re_alloc( ilc, 1, maxloc2, 'ilc', 'dynamat' )
-      call re_alloc( iorb, 1, maxloc, 'iorb', 'dynmat' )
+      call re_alloc( iorb, 1, maxloc, 'iorb', 'dynamat' )
 
 
       call re_alloc( Dlocal, 1, triang,'Dlocal','dynamat')
@@ -450,10 +450,10 @@ c      Restore iob for next point
       call de_alloc( gC, 'gC', 'dynamat' )
       call de_alloc( C, 'C', 'dynamat' )
       call de_alloc( LISTED,'LISTED', 'dynamat' )
-      call de_alloc( ilocal, 'ilocal', 'dynmat' )
+      call de_alloc( ilocal, 'ilocal', 'dynamat' )
       call de_alloc( ilc,'ilc', 'dynamat' )
-      call de_alloc( iorb, 'iorb', 'dynmat' )
-
+      call de_alloc( iorb, 'iorb', 'dynamat' )
+      call de_alloc( r2cut, 'r2cut', 'dynamat' )
 
       call timer('dynamat',2)
 

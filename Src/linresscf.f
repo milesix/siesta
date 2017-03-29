@@ -56,7 +56,8 @@ C Modules------------------------------------------------------------------
       use m_eo
       use Kpoint_grid,   only: nkpnt, kpoint, kweight
       use m_energies,    only: ef
-      use m_pulay,       only: init_pulay_arrays, pulayx
+      use m_pulay,       only: init_pulay_arrays, pulayx,
+     &                         resetPulayArrays
 !      use m_iodmlr,      only: write_dmlr
       use linres_matrices, only: resetFirstmatrices
       use fdf
@@ -113,20 +114,16 @@ C Begin to write into output file
         write(6,'(a,i7)') 'Linres: Final perturbed atom', iaf
       endif
 
-C Initialize dDscf, dEscf, dynmat----------------------------------------------
-      nullify(dDscf, dEscf)
-      call re_alloc(dDscf, 1, maxnh, 1, nspin, 1, 3,
-     &                 'dDscf', 'linresscf')
-      call re_alloc(dEscf, 1, maxnh, 1, nspin, 1, 3,
-     &                 'dEscf', 'linresscf')
-
+C Initialize dynmat----------------------------------------------
       dynmat(:,:,:,:)=0.0_dp
 
 C IS A K CALCULATION????? Could be better....
       if (nkpnt .eq. 1) then
         GAMMA = .TRUE.
+        write(6,'(a,i7)')'Linres: it is a Gamma-point calculation'
       else
         GAMMA = .FALSE.
+        write(6,'(a,i7)')'Linres: it is a k-point calculation'
       endif
 
 C Dummies initialization------------------------------------------------------
@@ -147,6 +144,13 @@ C Internal loop scf-loop (ISCF).
 
       do 200 ialr=init, iaf 
 
+C Initialize dDscf, dEscf
+        nullify(dDscf, dEscf)
+        call re_alloc(dDscf, 1, maxnh, 1, nspin, 1, 3,
+     &                 'dDscf', 'linresscf')
+        call re_alloc(dEscf, 1, maxnh, 1, nspin, 1, 3,
+     &                 'dEscf', 'linresscf')
+        
         call timer('LRatom', 1)
 
         if (IOnode) then
@@ -251,6 +255,8 @@ C Perform the density matrix mixing
             dmax=max(dMax,dDmax)
           enddo
 
+          call de_alloc(dDold, 'dDold', 'linresscf')
+
 C Print error in the perturbed density
           if (iscf.eq.1) then
             write(*,'(a,f10.4)'), 'LINRES: Density tolerance dDTol=',
@@ -269,6 +275,8 @@ C------------------------------------------------------------------------
 
  999    continue ! Exit scf loop
         call timer('LRatom', 2)
+
+        call resetPulayArrays()
 
 C Now, is time to calculate the final terms of the dynamical matrix
 C------------------------------------------------------------------------
@@ -308,6 +316,11 @@ C Dealloc the non-scf variables (drhoatm, drhoscf0 and dvxc) for next atom
 C Save in a file the dynamical matrix and extra flag of the index ialr of the last atom
         call writedynmat(iai,iaf,ialr,dynmat,.false.)
 
+C Dealloc matrices 
+        call de_alloc(dDscf, 'dDscf', 'linresscf')
+        call de_alloc(dEscf,'dEscf','linresscf')
+
+
  200  enddo   ! ialr atoms loop
       call timer('Linres',2)
 C-------------------------------------------------------------------------
@@ -336,11 +349,7 @@ C-------------------------------------------------------------------------
 
       call writedynmat(iai,iaf,ialr,dynmat,.true.)
 
-C-------------------------------------------------------------------------
-      call de_alloc(dDscf, 'dDscf', 'linresscf')
-      call de_alloc(dEscf,'linresscf')
-
-        end subroutine 
+      end subroutine 
 
       end MODULE m_linresscf
 

@@ -66,6 +66,7 @@ C Read change in the density matrix from file -----------------------
 
 C Initialize changed overlap, DM and energy matrices ----------------
       dSmat = 0.0_dp
+      found=.false.
       if(.not.found) then
         dDscf(1:maxnd,1:nspin,1:3) = 0.0_dp
         dEscf(1:maxnd,1:nspin,1:3) = 0.0_dp

@@ -885,8 +885,9 @@ C    Linres internal variables
       real(grid_p), pointer :: dvnoscf(:,:),
      &                         dRhoscf(:,:),
      &                         dummy_Vna(:),
-     &                         VLR(:,:),Vlr_par(:,:),  
-     &                         dVxcTmp(:,:)
+     &                         VLR(:,:),VLR_par(:,:),  
+     &                         dVxcTmp(:,:),
+     &                         dRhoscf0_par(:,:,:), dRhoatm_par(:,:)            
 
       integer :: iaend, iainit,ispin1,ispin2,atder
 C
@@ -1565,9 +1566,10 @@ C Linres line ---------------------------------------------------------------
       if (present(dHmat0)) then
         call timer('cellXC-LR',1)
         nullify(dVxc)
-        call re_alloc(dVxc,1,ntpl,1,nspin,1,nspin,'dVxc','dhscf')
+        call re_alloc(dVxc,1,ntpl,1,nspin,1,nspin,'dVxc',
+     .    'linres_matrices')
         nullify(dvxctmp)
-        call re_alloc( dvxctmp, 1, ntpl, 1, nspin, 'dvxctmp','dhscf' )
+        call re_alloc( dVxctmp, 1, ntpl, 1, nspin, 'dVxctmp','dhscf' )
         dVxcTmp(1:ntpl,1:nspin) = 0.0_dp
 
         call cellXC( 0, cell, ntm, myBox(1,1), myBox(2,1),
@@ -1728,7 +1730,7 @@ C---------------------------------------------------------------------
 C     LINRES: Find Pulay terms
 C---------------------------------------------------------------------
       if (present(dHmat0)) then
-        if (nodes.gt.1) then
+        if (nodes.gt.1) then 
           call setMeshDistr( QUADRATIC, nsm, nsp,
      &                      nml, nmpl, ntml, ntpl )
         endif
@@ -1918,8 +1920,6 @@ C variables initialization
         call timer( 'DHSCF-LR', 1 )
         nullify (dvnoscf)
         call re_alloc( dvnoscf, 1, ntpl , 1, 3,'dvnoscf', 'dhscf' )
-        call re_alloc(dRhoscf,1,ntpl,1,nspin,'dRhoscf','dhscf')
-        dRhoscf=0.0_dp
         dvnoscf=0.0_dp
 C Calculate core-correction part-----------------------------------------
 C Compute gradient of the partial core correction density
@@ -1946,81 +1946,79 @@ C drhoscf0= sum_mu,nu rho_mu,nu * grad phi_mu * phi_nu + cc
 C drhoatm = 2 sum_mu rho_mu * grad phi_mu * phi_mu 
         atder=0 !LR flag to compute derivatives(0) or gradients(1)
         if ((present(LRfirst)).and. (LRfirst)) then
+
           if (present(dHmat0)) atder=1  !flag to compute gradients
 
+! Allocate variables which are stored in linres_matrices 
+! (UNIFORM distribution)
           call re_alloc(dRhoscf0,1,3,1,ntpl,1,nspin,
-     &                                'dRhoscf0','dhscf')
-          call re_alloc(dRhoatm,1,3,1,ntpl,'dRhoatm','dhscf')
+     &                                'dRhoscf0','linres_matrices')
+          call re_alloc(dRhoatm,1,3,1,ntpl,'dRhoatm','linres_matrices')
           dRhoscf0 = 0.0_dp 
           dRhoatm = 0.0_dp 
-          call re_alloc( Vscf_par, 1, ntpl, 1, nspin,
-     &                 'Vscf_par', 'dhscf' )
-          do ispin = 1, nspin
-            fsrc => Vscf(:,ispin)
-            fdst => Vscf_par(:,ispin)
-            call distMeshData( UNIFORM, fsrc,
-     &                       QUADRATIC, fdst, TO_CLUSTER )
-            do jx =1,3
-              fsrc => dRhoscf0(jx,:,ispin)
-              fdst => dRhoscf0(jx,:,ispin)
-              call distMeshData( UNIFORM, fsrc,
-     &                       QUADRATIC, fdst, TO_CLUSTER )
-            enddo
-          enddo
-          do jx = 1,3
-            fsrc => dRhoatm(jx,:)
-            fdst => dRhoatm(jx,:)
-            call distMeshData( UNIFORM, fsrc,
-     &                     QUADRATIC, fdst, TO_CLUSTER )
-          enddo
+
+          if (nodes.gt.1) then
+            call setMeshDistr( QUADRATIC, nsm, nsp,
+     &                        nml, nmpl, ntml, ntpl )
+          endif
+
+! Par dummy variables in QUADRATIC distribution
+          call re_alloc(dRhoscf0_par,1,3,1,ntpl,1,nspin,
+     &                                'dRhoscf0_par','dhscf')
+          call re_alloc(dRhoatm_par,1,3,1,ntpl,
+     &                                 'dRhoatm_par','dhscf')
 
           call dfscf2(norb, nmpl, dvol, nspin, maxnd,
      &              numd, listdptr, listd,
      &              nuo, nuotot, iaorb, iphorb, isa,
      &              atder, ialr, datm, Dscf,
-     &              dRhoatm, dRhoscf0)
-      
- 
-          call de_alloc( Vscf_par,  'Vscf_par', 'dhscf' )
+     &              dRhoatm_par, dRhoscf0_par)
+! Densities are returned in a CLUSTERED QUADRATIC form 
+
+! Set the UNIFORM distribution again and copy densities
+          if (nodes.gt.1) then
+             call setMeshDistr( UNIFORM, nsm, nsp, nml, nmpl,
+     &                         ntml, ntpl )
+          endif
+
           do ispin = 1, nspin
             do jx =1,3
-              fsrc =>dRhoscf0(jx,:,ispin)
-              fdst => dRhoscf0(jx,:,ispin)
+              fsrc =>dRhoscf0_par(jx,:,ispin)
+              fdst =>dRhoscf0(jx,:,ispin)
               call distMeshData( QUADRATIC, fsrc,
      &                       UNIFORM, fdst, TO_SEQUENTIAL )
             enddo
           enddo 
           do jx = 1,3
-            fsrc => dRhoatm(jx,:)
+            fsrc => dRhoatm_par(jx,:)
             fdst => dRhoatm(jx,:)
             call distMeshData( QUADRATIC, fsrc,
      &                      UNIFORM, fdst, TO_SEQUENTIAL )
           enddo
+
+          call de_alloc(dRhoscf0_par,'dRhoscf0_par','dhscf')
+          call de_alloc(dRhoatm_par,'dRhoatm_par','dhscf')
+
         endif
 C----------------------------------------------------------------------
 
 C Compute gradient of the Neutral Atom potential and added into dvnoscf---- 
-         do jx = 1,3 
-           fsrc => dvnoscf(:,jx)
-           fdst => dvnoscf(:,jx)
-           call distMeshData( UNIFORM, fsrc,
-     &                    QUADRATIC, fdst, TO_CLUSTER )
-         enddo
-         call re_alloc( dummy_Vna, 1, ntpl, 'Vna', 'dhscf' )
-         call reord( DRho, DRho, nml, nsm, TO_CLUSTER )
-         
-         call NeutralAtomOnMesh( na, isa, ntpl, dummy_Vna, indxua,
+        call re_alloc( dummy_Vna, 1, ntpl, 'Vna', 'dhscf' )
+        call reord( DRho, DRho, nml, nsm, TO_CLUSTER )
+        do jx=1,3
+           call reord( dvnoscf(:,jx), dvnoscf(:,jx), nml,
+     &                 nsm, TO_CLUSTER ) 
+        enddo
+        call NeutralAtomOnMesh( na, isa, ntpl, dummy_Vna, indxua,
      &                          dVol, volume, DRho, Fal, stressl,
      &                          ifa.ne.0, istr.ne.0, dvnoscf, atder,
      &                          ialr, nua )
-         call reord( DRho, DRho, nml, nsm, TO_SEQUENTIAL )
-         call de_alloc( dummy_Vna, 'Vna','dhscf' )
-         do jx = 1,3
-           fsrc => dvnoscf(:,jx)
-           fdst => dvnoscf(:,jx)
-           call distMeshData( QUADRATIC, fsrc,
-     &                    UNIFORM, fdst, TO_SEQUENTIAL )
-         enddo
+        call reord( DRho, DRho, nml, nsm, TO_SEQUENTIAL )
+        call de_alloc( dummy_Vna, 'Vna','dhscf' )
+        do jx=1,3
+           call reord( dvnoscf(:,jx), dvnoscf(:,jx), nml,
+     &                     nsm, TO_SEQUENTIAL)
+        enddo
 C Neutral atom potential is stored into dvnoscf
 C--------------------------------------------------------------------------
 
@@ -2031,30 +2029,44 @@ C-----------------------------------------------------------------------------
          do jx= 1, 3
 
 C Initialization of VL matrix. It will store perturbed potential
+C Initialization of the perturbed density dRhoscf
+C Both are in the UNIFORM distribution
           nullify( VLR )
-          call re_alloc( VLR, 1, ntpl, 1, nspin,
-     &                 'vlr','dhscf' )
+          call re_alloc( VLR, 1, ntpl, 1, nspin,'VLR','dhscf' )
+          nullify(dRhoscf)
+          call re_alloc(dRhoscf,1,ntpl,1,nspin,'dRhoscf','dhscf')
+
+C Compute the perturbed density--------------------------------------
 C           RHOOFD-------------
             ! dn(r)/dr = Sum(mu,nu) 2*Rho(mu,nu)* dPhi(mu)/dr * 
             !Phi(nu)+ Sum(mu,nu) dRho(mu,nu)/dr * Phi(mu) * Phi(nu)
             ! first term computed in dfscf2, last term in rhoofd
+          
+          if (nodes.gt.1) then ! set QUADRATIC distribution
+            call setMeshDistr( QUADRATIC, nsm, nsp,
+     &                        nml, nmpl, ntml, ntpl )
+          endif
           call re_alloc( dRho_par, 1, ntpl, 1, nspin,
-     &                'DRho_par','dhscf' )
+     &                'dRho_par','dhscf' )
+
           call rhoofd( norb, nmpl, maxnd, numd, listdptr, listd,
-     &              nspin, dDscf(:,:,jx), DRho_par, nuo,
+     &              nspin, dDscf(:,:,jx), dRho_par, nuo,
      &              nuotot, iaorb, iphorb, isa )
+
+C       Set the UNIFORM distribution again and copy DRho_par to dRhoscf
+          if (nodes.gt.1) then
+            call setMeshDistr( UNIFORM, nsm, nsp, nml, nmpl, ntml, ntpl)
+          endif
+
           do ispin = 1, nspin
-            fsrc => dRho_par(:,ispin)
-            fdst => dRhoscf(:,ispin)
-            call distMeshData( QUADRATIC, fsrc,
-     &                     UNIFORM, fdst, TO_SEQUENTIAL )
+            call distMeshData( QUADRATIC, dRho_par(:,ispin),
+     &                     UNIFORM, dRhoscf(:,ispin), TO_SEQUENTIAL )
           enddo
-          call de_alloc( DRho_par, 'DRho_par','dhscf' )
-C-----------------------------------------------------------------------------
-C Calculate the perturbed density
-          if (present(dHmat0)) then
+          call de_alloc( dRho_par, 'dRho_par','dhscf' )
+
+          if (present(dHmat0)) then !gradient case
             dRhoscf(1:ntpl,1:nspin) = dRhoscf0(jx,1:ntpl,1:nspin)
-          else
+          else !perturbed case: add rhoofd to dfscf2
             dRhoscf(1:ntpl,1:nspin) = dRhoscf(1:ntpl,1:nspin) +
      &                     dRhoscf0(jx,1:ntpl,1:nspin)
           endif
@@ -2066,18 +2078,22 @@ C-----------------------------------------------------------------------------
 C         Find the difference between selfconsistent and 
 C         atomic densities
           do ispin =1,nsd
+!$OMP parallel do default(shared), private(ip)
             do ip = 1, ntpl
               dRhoscf(ip,ispin) = dRhoscf(ip,ispin) -
      &                       dRhoatm(jx,ip)/nsd
             enddo
+!$OMP end parallel do
           enddo
 C         Transform spin density into sum and difference ---
           if (nsd .eq. 2) then
+!$OMP parallel do default(shared), private(dRhotot,ip)
             do ip = 1,ntpl
-              dRhotot = DRhoscf(ip,1) + DRhoscf(ip,2)
+              dRhotot = dRhoscf(ip,1) + dRhoscf(ip,2)
               dRhoscf(ip,2) = dRhoscf(ip,2) - dRhoscf(ip,1)
               dRhoscf(ip,1) = dRhotot
             enddo
+!$OMP end parallel do
           endif
 C Hartree potential of DRHO - DRHOATM stored into VLR
           call poison( cell, ntml(1), ntml(2), ntml(3), ntm,
@@ -2086,20 +2102,25 @@ C Hartree potential stored in VLR
 C--------------------------------------------------------------------
 
 C Adding Vna+VH
+!$OMP parallel do default(shared), private(ip)
           do ip = 1, ntpl
             VLR(ip,1) = VLR(ip,1) + dvnoscf(ip,jx)
             dvnoscf(ip,jx) = VLR(ip,1)
           enddo
-C Now, dvnoscf=VLR=Vna+VH. dvnoscf will be constant whereas in the 
-C VLR the Vxc term will be added 
+!$OMP end parallel do
 
+C Now, dvnoscf=VLR=Vna+VH. dvnoscf will be constant whereas in  
+C VLR, the Vxc term will be added 
+C     Get back spin density from sum and difference
           if (nsd .eq. 2) then
+!$OMP parallel do default(shared), private(ip,dRhotot)
             do ip = 1,ntpl
-              drhotot = drhoscf(ip,1)
-              drhoscf(ip,1) = 0.5_dp *( drhotot - drhoscf(ip,2) )
-              drhoscf(ip,2) = 0.5_dp *( drhotot + drhoscf(ip,2) )
+              dRhotot = dRhoscf(ip,1)
+              dRhoscf(ip,1) = 0.5_dp *( dRhotot - dRhoscf(ip,2) )
+              dRhoscf(ip,2) = 0.5_dp *( dRhotot + dRhoscf(ip,2) )
               VLR(ip,2) = VLR(ip,1)
             enddo
+!$OMP end parallel do
           endif
 
 C------------------------------------------------------------------------
@@ -2107,24 +2128,27 @@ C Adding final XC potential
 C It is derVxc/drho *  drho
 C------------------------------------------------------------------------
           do ispin = 1,nsd
+!$OMP parallel do default(shared), private(ip)
             do ip = 1,ntpl
                 dRhoscf(ip,ispin) = dRhoscf(ip,ispin) +
      &                              dRhoatm(jx,ip) / nsd
               if (npcc .eq. 1) then !Add partial core correction
-                 Drhoscf(ip,ispin) = Drhoscf(ip,ispin) +
-     &                              Dvnoscf(ip,jx) / nsd
+                 dRhoscf(ip,ispin) = dRhoscf(ip,ispin) +
+     &                              dvnoscf(ip,jx) / nsd
               endif
             enddo
+!$OMP end parallel do
           enddo
 
-
           do ispin1 = 1, nsd
+!$OMP parallel do default(shared), private(ip,ispin2)
             do ip = 1, ntpl
               do ispin2 = 1, nspin
                 VLR(ip,ispin1) =VLR(ip,ispin1) +
      &     dRhoscf(ip,ispin2)*dVxc(ip,ispin2,ispin1)
               enddo
             enddo
+!$OMP end parallel do
           enddo
 
 C Vxc term
@@ -2132,13 +2156,21 @@ C In a future, when perturbed GGA Vxc will be implemented,
 C the cellXC call will be here (remove 1543 condition and lines) and added
 C directly to VLR 
 
-C Here, VL contains Vxc+Vh+Vna
+C Here, VLR contains Vxc+Vh+Vna
 C------------------------------------------------------------------------
 
 C Calculate the total perturbed Hamiltonian
        if ((.not.(present(dHmat0))).and.(present(LRfirst))) then
-         call re_alloc( vlr_par, 1, ntpl, 1, nspin,
-     &                'vlr_par','dhscf' )
+
+! Set the QUADRATIC DISTRIBUTION for VLR_par
+         if (nodes.gt.1) then
+            call setMeshDistr( QUADRATIC, nsm, nsp,
+     &                        nml, nmpl, ntml, ntpl )
+         endif
+
+         call re_alloc( VLR_par, 1, ntpl, 1, nspin,
+     &                'VLR_par','dhscf' )
+
          do ispin = 1, nspin
            fsrc => VLR(:,ispin)
            fdst => VLR_par(:,ispin)
@@ -2154,8 +2186,13 @@ C Calculate the total perturbed Hamiltonian
          call timer('vmat-LR',2)
 
          call de_alloc( VLR_par,  'VLR_par', 'dhscf' )
-       endif
 
+! Back to the UNIFORM distribution
+         if (nodes.gt.1) then
+           call setMeshDistr( UNIFORM, nsm, nsp, nml, nmpl, ntml, ntpl )
+         endif
+
+       endif
 
 C------------------------------------------------------------------------
 C Compute the dynamical matrix
@@ -2171,67 +2208,91 @@ C------------------------------------------------------------------------
             endif
 
             do ispin = 1, nsd
+!$OMP parallel do default(shared), private(ip)
               do ip = 1, ntpl
                 dRhoscf(ip,ispin) = dRhoscf(ip,ispin) -
      .                              dRhoatm(jx,ip) / nsd
               enddo
+!$OMP end parallel do
             enddo
 
             if(nsd .eq. 2) then
-              do ip = 1,ntpl
-               dRhotot = dRhoscf(ip,1) + dRhoscf(ip,2)
-               dRhoscf(ip,2) = dRhoscf(ip,2)-dRhoscf(ip,1)
-               dRhoscf(ip,1) = dRhotot
-              enddo
+!$OMP parallel do default(shared), private(dRhotot,ip)
+               do ip = 1,ntpl
+                 dRhotot = dRhoscf(ip,1) + dRhoscf(ip,2)
+                 dRhoscf(ip,2) = dRhoscf(ip,2)-dRhoscf(ip,1)
+                 dRhoscf(ip,1) = dRhotot
+               enddo
+!$OMP end parallel do
             endif
 
-            fsrc => dvnoscf(:,jx)
-            fdst => dvnoscf(:,jx)
-            call distMeshData( UNIFORM, fsrc,
-     &                     QUADRATIC, fdst, TO_CLUSTER )
+! SEQUENTIAL to CLUSTER the dvnoscf potential (Vna+Vh) and DRho
+            call reord(dvnoscf(:,jx), dvnoscf(:,jx), nml, nsm,
+     &                 TO_CLUSTER)            
+            call reord(DRho, DRho, nml, nsm, TO_CLUSTER)
+
+! Set everything to QUADRATIC distribution
+            if (nodes.gt.1) then
+              call setMeshDistr( QUADRATIC, nsm, nsp,
+     &                       nml, nmpl, ntml, ntpl )
+            endif
+
+            call re_alloc( Vscf_par, 1, ntpl, 1, nspin,
+     &                 'Vscf_par', 'dhscf' )
+            call re_alloc( VLR_par, 1, ntpl, 1, nspin,
+     &                 'VLR_par','dhscf' )
+            call re_alloc( DRho_par, 1, ntpl, 1, nspin, 
+     &                 'DRho_par','dhscf' ) !it will store the perturbed density
 
             do ispin = 1, nspin
-              fsrc => dRhoscf(:,ispin)
-              fdst => dRhoscf(:,ispin)
-              call distMeshData( UNIFORM, fsrc,
-     &                       QUADRATIC, fdst, TO_CLUSTER )
-
-              call reord(Vscf(:,ispin), Vscf(:,ispin), nml, nsm,
-     &                   TO_CLUSTER )
-              call reord(VLR(:,ispin), VLR(:,ispin), nml, nsm,
-     &                   TO_CLUSTER )
-              call reord(DRho, DRho, nml, nsm, TO_CLUSTER)
+              call distMeshData( UNIFORM, Vscf(:,ispin),
+     &                   QUADRATIC, Vscf_par(:,ispin), TO_CLUSTER )
+              call distMeshData( UNIFORM, VLR(:,ispin),
+     &                   QUADRATIC, VLR_par(:,ispin), TO_CLUSTER )
+              call distMeshData( UNIFORM, dRhoscf(:,ispin),
+     &                   QUADRATIC, DRho_par(:,ispin), TO_CLUSTER )
 
               do ia = iainit, iaend
                 call dynamat(norb, nuo, na, nua, nuotot, nspin, ispin,
      &                     jx, nmpl, ntpl, iphorb, iaorb, ia, numd,
      &                     listd, listdptr, indxua, maxnd, isa, atder,
      &                     Dscf(:,ispin), dDscf(:,ispin,jx), dvol,
-     &                     dRho(:,ispin), dRhoscf, Datm, Vscf(:,ispin),
-     &                     VLR, dvnoscf(:,jx),
-     &                     dynmat(1:nua,1:3,ia,jx)) 
+     &                     DRho(:,ispin), DRho_par(:,ispin), Datm, 
+     &                     Vscf_par(:,ispin),VLR_par(:,:), 
+     &                     dvnoscf(:,jx), dynmat(1:nua,1:3,ia,jx)) 
               enddo
-              call reord(DRho, DRho, nml, nsm, TO_SEQUENTIAL)
-              call reord(Vscf(:,ispin), Vscf(:,ispin), nml, nsm,
-     &                    TO_SEQUENTIAL )
-              call reord(VLR(:,ispin), VLR(:,ispin), nml, nsm,
-     &                    TO_SEQUENTIAL )
-              fsrc => dRhoscf(:,ispin)
-              fdst => dRhoscf(:,ispin)
-              call distMeshData( QUADRATIC, fsrc,
-     &                       UNIFORM, fdst, TO_SEQUENTIAL )
             enddo
-            fsrc => dvnoscf(:,jx)
-            fdst => dvnoscf(:,jx)
-            call distMeshData( QUADRATIC, fsrc,
-     &                     UNIFORM, fdst, TO_SEQUENTIAL )
+            call de_alloc( Vscf_par, 'Vscf_par', 'dhscf' )
+            call de_alloc( VLR_par,   'VLR_par', 'dhscf' )
+            call de_alloc( DRho_par, 'DRho_par', 'dhscf' )
+
+C       Set the UNIFORM distribution again
+            if (nodes.gt.1) then
+              call setMeshDistr( UNIFORM, nsm, nsp, nml,
+     &                           nmpl, ntml, ntpl )
+            endif
+
+! Back from CLUSTER to SEQUENTIAL dvnoscf and DRho
+            call reord(dvnoscf(:,jx), dvnoscf(:,jx), nml, nsm,
+     &                 TO_SEQUENTIAL)
+            call reord(DRho, DRho, nml, nsm, TO_SEQUENTIAL)
           endif
 C----------------------------------------------------------------------------
+          call de_alloc(VLR,'VLR','dhscf')
+          call de_alloc(dRhoscf,'dRhoscf','dhscf')
         enddo
 C-----------------------------------------------------------------------------
 C End Space loop
 C-----------------------------------------------------------------------------
-      call timer( 'DHSCF-LR', 2 )
+        if (present(dHmat0)) then
+! When the gradients are computed, these variables are deallocated
+! For non-first calculation, these variables are stored in linres_matrices module
+           call de_alloc(dRhoatm, 'dRhoatm', 'linres_matrices')
+           call de_alloc(dRhoscf0, 'dRhoscf0', 'linres_matrices')
+        endif
+
+        call de_alloc(dvnoscf,'dvnoscf','dhscf')
+        call timer( 'DHSCF-LR', 2 )
       endif 
 C---------------------------------------------------------------------
 C      End of Linres block

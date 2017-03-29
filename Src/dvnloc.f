@@ -194,7 +194,7 @@ C Allocate local memory
 
       nullify(d2Vi)
       call re_alloc( d2Vi, 1, no, 1, 3, 1, 3, 1, nua, 
-     &              'd2Di', 'dvnloc' )
+     &              'd2Vi', 'dvnloc' )
       d2Vi(1:no,1:3,1:3,1:nua) = 0.0_dp
 
 C Make list of all orbitals needed for this node
@@ -534,6 +534,7 @@ C     Deallocate local memory
       call de_alloc( dVi, 'dVi', 'dvnloc' )
       call de_alloc( dDi, 'dDi', 'dvnloc' )
       call de_alloc( d2Vi, 'd2Vi', 'dvnloc' )
+      call de_alloc( gr2Ski, 'gr2Ski', 'dvnloc' )
       end subroutine dvnloc
 
       end module m_dvnloc

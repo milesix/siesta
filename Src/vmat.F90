@@ -682,7 +682,7 @@ contains
 
 !  Find atomic cutoff radii
       nullify(r2cut)
-      call re_alloc( r2cut, 1, nsmax, 'r2cut', 'vmat' )
+      call re_alloc( r2cut, 1, nsmax, 'r2cut', 'dvmat' )
       r2cut = 0.0_dp
       do i = 1,nuotot
          ia = iaorb(i)
@@ -713,7 +713,7 @@ contains
 
 !   Allocate local memory
 !$OMP parallel default(shared), &
-!$OMP&shared(NTH,t_Vsp,t_Vss,spin), &
+!$OMP&shared(NTH,t_Vsp,t_Vss,nspin), &
 !$OMP&private(TID,last), &
 !$OMP&private(ip,nc,nlocal,ic,imp,i,il,iu,iul,ii,ind,j,ijl,ispin), &
 !$OMP&private(lasta,lastop,ia,is,iop,isp,dxsp,r2sp,nphiloc,iphi,jc,jl), &
@@ -747,7 +747,7 @@ contains
       call re_alloc( Vi, 1, triang,1, 3, 1, nspin, 'Vi', 'dvmat' )
       call re_alloc( ilc, 1, maxloc2,'ilc', 'dvmat' )
       call re_alloc( ilocal, 1, no, 'ilocal', 'dvmat' )
-      call re_alloc( iorb, 1, no, 'ilocal', 'dvmat' )
+      call re_alloc( iorb, 1, no, 'iorb', 'dvmat' )
       if (DirectPhi) allocate(phia(maxoa,nsp),grada(3,maxoa,nsp))
 !$OMP end critical
 

@@ -837,6 +837,8 @@ CONTAINS
     implicit none
     if (associated(auxpul))      &
       call de_alloc( auxpul, 'auxpul', 'pulay' )
+    if (associated(auxpulLR))      &  
+      call de_alloc( auxpulLR, 'auxpulLR', 'pulay' )
   end subroutine resetPulayArrays
 
 
