@@ -118,6 +118,7 @@
           ! The following call will OVERWRITE ictxt with a new context
           ! "C" means "column-major" ordering, which is not surprising,
           ! since we have np_rows_1d = 1
+          ! I guess "C" or "R" would be the same here!!
           call blacs_gridinit( ictxt, 'C', np_rows_1d, np_cols_1d )
 
 
