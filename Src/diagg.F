@@ -91,7 +91,6 @@ C
       use m_spin,        only : spinor_dim, e_spin_dim
       use alloc
       use fdf,           only : fdf_get
-!      use m_rdiag_elpa,  only : rdiag_elpa
       use m_rdiag_elsi_elpa,  only : rdiag_elsi_elpa
 #ifndef SIESTA__NO_MRRR
       use m_rdiag_mrrr,  only : rdiag_mrrr
@@ -130,7 +129,7 @@ C
       integer, parameter                :: nk = 1
 
       logical
-     .  getD, getPSI, fixspin, use_elpa, use_elsi, use_mrrr
+     .  getD, getPSI, fixspin, use_elpa, use_mrrr
 
       external rdiag
 
@@ -154,8 +153,6 @@ C Solve eigenvalue problem
       
       use_elpa = fdf_get("Diag.ELPA",.false.)
       if (Nodes == 1) use_elpa = .false.
-      use_elsi = fdf_get("Diag.ELSI",.false.)
-      if (Nodes == 1) use_elsi = .false.
       use_mrrr = fdf_get("Diag.MRRR",.false.)
       if (Nodes == 1) use_mrrr = .false.
 
@@ -177,8 +174,6 @@ C Solve eigenvalue problem
 !$OMP end parallel do
         call timer( 'r-buildHS', 2 )
         if (use_elpa) then
-           call die("Vanilla ELPA not implemented here")
-        else if (use_elsi) then
            call rdiag_elsi_elpa( Haux, Saux, nuotot,
      $              nuo, nuotot, eo(1,ispin), 
      .              psi(1,1,ispin), neigwanted, ierror )

@@ -5808,10 +5808,10 @@ system sizes) would not benefit from the O(N) or PEXSI solvers.
 
 \begin{fdflogicalF}{Diag!ELPA}
 
-  (For parallel gamma-point calculations without spin orbit only) Use
-  the ELPA routines for diagonalization.  Specifying a number of
-  eigenvectors to store is possible through the symbol
-  \fdf{NumberOfEigenStates} (see above).
+  (Only for (possibly collinearly-spin-polarized) parallel gamma-point
+  calculations) Use the ELPA routines in the ELSI library for
+  diagonalization.  Specifying a number of eigenvectors to store is
+  possible through the symbol \fdf{NumberOfEigenStates} (see above).
 
   A description of some algorithms present in ELPA can be found in:
 
@@ -5827,6 +5827,20 @@ system sizes) would not benefit from the O(N) or PEXSI solvers.
   theory and computational science'', Journal of Physics Condensed
   Matter, 26 (2014) doi:10.1088/0953-8984/26/21/213201
 
+  The ELSI project is documented in \url{https://wordpress.elsi-interchange.org/}.
+
+  Current options are minimal: verbose output; no check for
+  singularity of the overlap matrix; default choice of 1-stage vs
+  2-stage solver based on size of the system.
+
+  Currently, the ELSI library is re-initialized at every
+  diagonalization. This is simplest but not optimal in terms of
+  efficiency.
+
+  No wrapping of ELSI functionality. The library must be linked in.
+
+  (No other ELSI solvers are interfaced to yet)
+  
   \note It is not compatible with the \fdf{Diag!ParallelOverK}
   option.
   

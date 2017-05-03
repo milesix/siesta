@@ -1,5 +1,5 @@
 ! ---
-! Copyright (C) 1996-2016	The SIESTA group
+! Copyright (C) 1996-2017	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt .
@@ -30,7 +30,7 @@
 ! integer nm                       : Right hand dimension of H and S matrices
 ! integer nml                      : Left hand dimension of H and S matrices
 !     which is greater than or equal to nm
-      !! nml = n in all what follows
+!!    nml = n since the distribution is by columns
 ! integer neigvec                  : No. of eigenvectors to calculate
 ! ************************** OUTPUT *****************************************
 ! real*8 w(nml)                    : Eigenvalues
@@ -65,10 +65,10 @@
       real(dp), intent(out)                :: Z(nml,nm)
 
 #ifdef MPI
-      type(Matrix)  :: Hms, Sms, Z2dms
+      type(Matrix)  :: Hms, Sms, Zms
       
       integer                 :: desch(9)
-      integer                 :: MPIerror, mpi_comm_rows, mpi_comm_cols
+      integer                 :: MPIerror
       integer                 :: ictxt
       integer                 :: np_cols_1d
       integer                 :: np_rows_1d
@@ -92,7 +92,7 @@
       real(dp)                :: n_electrons
 
       integer, parameter :: ELPA = 1, MULTI_PROC = 1, BLACS_DENSE = 0
-      integer, external       :: numroc, indxl2g
+      integer, external  :: numroc
 
 !*******************************************************************************
 ! Setup                                                                        *
@@ -124,9 +124,7 @@
 
         ! Set up blacs descriptors for parallel case
         BlacsOK = .true.
-        ! This is wrong in the BSs
-        ! since the effective row blocksize is n. It should be
-        !                     n, n, n        , BlockSize
+        ! The effective row blocksize is n
         call descinit( desch, n, n, n, BlockSize, 0, 0, 
      .                 ictxt, n, info )
         if (info.ne.0) BlacsOK = .false.
@@ -197,46 +195,42 @@
         call ms_scalapack_setup(mpi_comm_world,np_rows,'r',
      $       BlockSize,icontxt=i2d_ctxt)
         
-! Initialize ELSI
-        n_electrons = neigvec * 2.0_dp   ! unused here, I hope!!
-
+! Register H, S and Z with MatrixSwitch
         matrix_size = n
+        call m_allocate( Hms, matrix_size, matrix_size, 'pddbc' )
+        call m_allocate( Sms, matrix_size, matrix_size, 'pddbc' )
+        call m_allocate( Zms, matrix_size, matrix_size, 'pddbc' )
+        call m_register_pdbc(Hms,h2d,desc_h2d)
+        call m_register_pdbc(Sms,s2d,desc_h2d)
+        call m_register_pdbc(Zms,z2d,desc_h2d)
+
+!       Initialize and customize ELSI
+
+        n_electrons = neigvec * 2.0_dp ! unused here, I hope!!
+
         call elsi_init(ELPA,MULTI_PROC,BLACS_DENSE,
      $                 matrix_size,n_electrons,neigvec)
         call elsi_set_mpi(mpi_comm_world)
         call elsi_set_blacs(i2d_ctxt,BlockSize)
 
-! Register H and S
-        call m_allocate( Hms, matrix_size, matrix_size, 'pddbc' )
-        call m_allocate( Sms, matrix_size, matrix_size, 'pddbc' )
-        call m_allocate( Z2dms, matrix_size, matrix_size, 'pddbc' )
-        call m_register_pdbc(Hms,h2d,desc_h2d)
-        call m_register_pdbc(Sms,s2d,desc_h2d)
-        ! We already have z2d. Register it to re-use storage
-        call m_register_pdbc(Z2dms,z2d,desc_h2d)
-!        call m_allocate(e_vec,matrix_size,matrix_size,m_storage)
-!        allocate(e_val(matrix_size))
-
-! Customize ELSI
         call elsi_customize(print_detail=.true.)
         call elsi_customize(no_check_singularity=.true.)
 
-!       Solve generalized eigenvalue problem
+! -----       Solve generalized eigenvalue problem
         if (node==0) print *, "About to solve eigenvalue problem..."
 
-        call elsi_ev_real(Hms%dval,Sms%dval,w,Z2dms%dval)
+        call elsi_ev_real(Hms%dval,Sms%dval,w,Zms%dval)
 
         if (node==0) print *, "About to convert z to 1d..."
         call pdgemr2d(n,n,z2d,1,1,desc_h2d,z,1,1,desch,ictxt)
               
         if (node==0) print *, "About to exit ELSI"
 
-!     Finalize ELSI
         call elsi_finalize()
 
         call m_deallocate(Hms)
         call m_deallocate(Sms)
-        call m_deallocate(Z2dms)
+        call m_deallocate(Zms)
         
         CALL BLACS_GRIDEXIT( ICTXT )
         CALL BLACS_GRIDEXIT( I2D_CTXT )
