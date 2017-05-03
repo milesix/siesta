@@ -45,7 +45,6 @@
 #ifdef MPI
       use mpi_siesta, only : mpi_comm_world
       use elsi
-      use MatrixSwitch
 #endif
       use alloc
       use sys,        only : die
@@ -65,8 +64,6 @@
       real(dp), intent(out)                :: Z(nml,nm)
 
 #ifdef MPI
-      type(Matrix)  :: Hms, Sms, Zms
-      
       integer                 :: desch(9)
       integer                 :: MPIerror
       integer                 :: ictxt
@@ -192,17 +189,8 @@
         call pdgemr2d(n, n, H, 1, 1, desch, h2d, 1, 1, desc_h2d, ictxt)
         call pdgemr2d(n, n, S, 1, 1, desch, s2d, 1, 1, desc_h2d, ictxt)
 
-        call ms_scalapack_setup(mpi_comm_world,np_rows,'r',
-     $       BlockSize,icontxt=i2d_ctxt)
         
-! Register H, S and Z with MatrixSwitch
         matrix_size = n
-        call m_allocate( Hms, matrix_size, matrix_size, 'pddbc' )
-        call m_allocate( Sms, matrix_size, matrix_size, 'pddbc' )
-        call m_allocate( Zms, matrix_size, matrix_size, 'pddbc' )
-        call m_register_pdbc(Hms,h2d,desc_h2d)
-        call m_register_pdbc(Sms,s2d,desc_h2d)
-        call m_register_pdbc(Zms,z2d,desc_h2d)
 
 !       Initialize and customize ELSI
 
@@ -218,8 +206,9 @@
 
 ! -----       Solve generalized eigenvalue problem
         if (node==0) print *, "About to solve eigenvalue problem..."
-
-        call elsi_ev_real(Hms%dval,Sms%dval,w,Zms%dval)
+        
+        ! Note that this routine uses the naked arrays
+        call elsi_ev_real(h2d,s2d,w,z2d)
 
         if (node==0) print *, "About to convert z to 1d..."
         call pdgemr2d(n,n,z2d,1,1,desc_h2d,z,1,1,desch,ictxt)
@@ -228,10 +217,6 @@
 
         call elsi_finalize()
 
-        call m_deallocate(Hms)
-        call m_deallocate(Sms)
-        call m_deallocate(Zms)
-        
         CALL BLACS_GRIDEXIT( ICTXT )
         CALL BLACS_GRIDEXIT( I2D_CTXT )
               ! Do not call blacs_exit, as it seems to be 
