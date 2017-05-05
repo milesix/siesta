@@ -735,7 +735,7 @@ contains
 #endif
 
 !  Nullify pointers
-      nullify( C, gC, Vi, ilc, ilocal, phia, grada)
+      nullify( C, gC, Vi, ilc, ilocal, iorb,  phia, grada)
 
       call alloc_default( old=oldDefaults, &
                          copy=.false., shrink=.false., &

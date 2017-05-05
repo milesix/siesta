@@ -54,6 +54,10 @@
 #ifdef MPI
   use mpi_siesta
 #endif
+#ifdef _OPENMP
+    use omp_lib
+#endif
+
 
   implicit none
 

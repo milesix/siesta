@@ -1963,8 +1963,10 @@ C drhoatm = 2 sum_mu rho_mu * grad phi_mu * phi_mu
           endif
 
 ! Par dummy variables in QUADRATIC distribution
+          nullify(dRhoscf0_par)
           call re_alloc(dRhoscf0_par,1,3,1,ntpl,1,nspin,
      &                                'dRhoscf0_par','dhscf')
+          nullify(dRhoatm_par)
           call re_alloc(dRhoatm_par,1,3,1,ntpl,
      &                                 'dRhoatm_par','dhscf')
 
@@ -2003,7 +2005,8 @@ C drhoatm = 2 sum_mu rho_mu * grad phi_mu * phi_mu
 C----------------------------------------------------------------------
 
 C Compute gradient of the Neutral Atom potential and added into dvnoscf---- 
-        call re_alloc( dummy_Vna, 1, ntpl, 'Vna', 'dhscf' )
+        nullify(dummy_Vna)
+        call re_alloc( dummy_Vna, 1, ntpl, 'dummy_Vna', 'dhscf' )
         call reord( DRho, DRho, nml, nsm, TO_CLUSTER )
         do jx=1,3
            call reord( dvnoscf(:,jx), dvnoscf(:,jx), nml,
@@ -2014,7 +2017,7 @@ C Compute gradient of the Neutral Atom potential and added into dvnoscf----
      &                          ifa.ne.0, istr.ne.0, dvnoscf, atder,
      &                          ialr, nua )
         call reord( DRho, DRho, nml, nsm, TO_SEQUENTIAL )
-        call de_alloc( dummy_Vna, 'Vna','dhscf' )
+        call de_alloc( dummy_Vna, 'dummy_Vna','dhscf' )
         do jx=1,3
            call reord( dvnoscf(:,jx), dvnoscf(:,jx), nml,
      &                     nsm, TO_SEQUENTIAL)

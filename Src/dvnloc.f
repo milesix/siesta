@@ -226,6 +226,7 @@ C Allocate local arrays that depend on saved parameters
       nullify( grSki )
       call re_alloc( grSki, 1, 3, 1, maxkba, 1, maxno, 'grSki',
      &               'dvnloc' )
+      nullify( gr2Ski )
       call re_alloc( gr2Ski, 1, 3, 1, 3, 1, maxkba, 1, maxno, 
      &               'gr2Ski', 'dvnloc' )
 

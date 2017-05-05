@@ -148,10 +148,10 @@ C Linres line  init variables----------------------------------
         nullify(DS)
         nullify(D2H)
         nullify(D2S)
-        call re_alloc (DH, 1, maxnh, 1, 3, 'DH', 'final_H_f_stress')
+        call re_alloc (DH, 1, maxnh, 1, 3, 'DH', 'sparseMat')
         call re_alloc (DS, 1, maxnh, 1, 3, 'DS', 'final_H_f_stress')
         call re_alloc (D2H, 1, maxnh, 1, 3, 1, 3, 'D2H',
-     &                                  'final_H_f_stress')
+     &                                  'sparseMat')
         call re_alloc (D2S, 1, maxnh, 1, 3, 1, 3, 'D2S',
      &                                  'final_H_f_stress')
         DH(1:maxnh,1:3) = 0.0_dp

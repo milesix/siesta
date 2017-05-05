@@ -48,7 +48,7 @@ C -------------------------------------------------------------------------
 
 C Internal variable types and dimensions
         integer      :: nspin_read, maxnd_read, j, jo, 
-     &                  io, ialr ,na, lasto(0:na),  ind, ix,
+     &                  io, iio, ialr ,na, lasto(0:na),  ind, ix,
      &                  listh(maxnh), listhptr(*), numh(*), juo,
      &                   ind2, k, ko, ispin
         logical      :: found
@@ -74,33 +74,36 @@ C Initialize changed overlap, DM and energy matrices ----------------
 C Loop on orbitals of atom IALR ----------------------------------------
 
       do io = lasto(IALR-1)+1, lasto(IALR) !orbitals from moving atom
-        do j = 1,numh(io) !interacting orbitals
-          ind = listhptr(io)+j !position to io-j interaction in the matrix
-          jo = listh(ind)
-          juo = indxuo(jo)
-          do ix = 1,3
-            DSMAT(ind,ix) = DSMAT(ind,ix) - DS(ind,ix)
-            do ispin = 1,nspin
-              DHMAT(ind,ix,ispin) = DHMAT(ind,ix,ispin)
+        call GlobalToLocalOrb(io,Node,Nodes,iio)
+        if (iio .gt. 0) then !local orbital
+          do j = 1,numh(iio) !interacting orbitals
+            ind = listhptr(iio)+j !position to io-j interaction 
+            jo = listh(ind)
+            juo = indxuo(jo)
+            do ix = 1,3
+              DSMAT(ind,ix) = DSMAT(ind,ix) - DS(ind,ix)
+              do ispin = 1,nspin
+                DHMAT(ind,ix,ispin) = DHMAT(ind,ix,ispin)
      .                               - DT(ind,ix)
+              enddo
+            enddo
+C         Idetify neighbour index of orbital io relative to orbital jo -
+            do k = 1, numh(juo)
+              ind2 = listhptr(juo)+ k
+              ko = listsc(jo,juo,listh(ind2))
+              if ( ko .EQ. iio) then
+                do ix = 1,3
+                  DSMAT(ind2,ix) = DSMAT(ind2,ix) -
+     &                           DS(ind,ix)
+                  do ispin = 1,nspin
+                    DHMAT(ind2,ix,ispin) = DHMAT(ind2,ix,ispin)
+     &                                 - DT(ind,ix)
+                  enddo
+                enddo
+              endif
             enddo
           enddo
-C         Idetify neighbour index of orbital io relative to orbital jo -
-          do k = 1, numh(juo)
-            ind2 = listhptr(juo)+ k
-            ko = listsc(jo,juo,listh(ind2))
-            if ( ko .EQ. io) then
-              do ix = 1,3
-                DSMAT(ind2,ix) = DSMAT(ind2,ix) -
-     &                           DS(ind,ix)
-                do ispin = 1,nspin
-                  DHMAT(ind2,ix,ispin) = DHMAT(ind2,ix,ispin)
-     &                                 - DT(ind,ix)
-                enddo
-              enddo
-            endif
-          enddo
-        enddo
+        endif
       enddo
 
       call timer( 'dHinit', 2 )
