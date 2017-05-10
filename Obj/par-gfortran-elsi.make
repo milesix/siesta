@@ -31,7 +31,8 @@ NETCDF_LIBS= -L$(NETCDF_ROOT)/lib -lnetcdff
 #
 ELSI_HOME=$(HOME)/code/ELSI/elsi-interface
 ELSI_INCFLAGS = -I${ELSI_HOME}/include
-ELSI_LIB = -L${ELSI_HOME}/lib -lelsi -lOMM -lMatrixSwitch -lpspblas -lelpa
+ELSI_LIB = -L${ELSI_HOME}/lib -lelsi -lOMM -lMatrixSwitch \
+                -lpspblas -lelpa -ltomato
 #
 MPI_INTERFACE=libmpi_f90.a
 MPI_INCLUDE=.      # Note . for no-op

@@ -91,6 +91,8 @@
       integer, parameter :: ELPA = 1, MULTI_PROC = 1, BLACS_DENSE = 0
       integer, external  :: numroc
 
+      type(elsi_case) :: elsi_h
+
 !*******************************************************************************
 ! Setup                                                                        *
 !*******************************************************************************
@@ -196,26 +198,26 @@
 
         n_electrons = neigvec * 2.0_dp ! unused here, I hope!!
 
-        call elsi_init(ELPA,MULTI_PROC,BLACS_DENSE,
+        call elsi_init(elsi_h,ELPA,MULTI_PROC,BLACS_DENSE,
      $                 matrix_size,n_electrons,neigvec)
-        call elsi_set_mpi(mpi_comm_world)
-        call elsi_set_blacs(i2d_ctxt,BlockSize)
+        call elsi_set_mpi(elsi_h,mpi_comm_world)
+        call elsi_set_blacs(elsi_h,i2d_ctxt,BlockSize)
 
-        call elsi_customize(print_detail=.true.)
-        call elsi_customize(no_check_singularity=.true.)
+        call elsi_customize(elsi_h,print_detail=.true.)
+        call elsi_customize(elsi_h,no_singularity_check=.true.)
 
 ! -----       Solve generalized eigenvalue problem
         if (node==0) print *, "About to solve eigenvalue problem..."
         
         ! Note that this routine uses the naked arrays
-        call elsi_ev_real(h2d,s2d,w,z2d)
+        call elsi_ev_real(elsi_h,h2d,s2d,w,z2d)
 
         if (node==0) print *, "About to convert z to 1d..."
         call pdgemr2d(n,n,z2d,1,1,desc_h2d,z,1,1,desch,ictxt)
               
         if (node==0) print *, "About to exit ELSI"
 
-        call elsi_finalize()
+        call elsi_finalize(elsi_h)
 
         CALL BLACS_GRIDEXIT( ICTXT )
         CALL BLACS_GRIDEXIT( I2D_CTXT )
