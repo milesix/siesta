@@ -573,7 +573,7 @@ C     If cell has changed then it is necessary to reinitialise coordinates
       subroutine PartialCoreOnMesh( na, isa, ntpl, rhopcc, indxua, 
      &                              nsd, dvol, volume, Vscf, Vaux, 
      &                              fal, stressl, Forces, Stress,
-     &                              drhopcc )
+     &                              drhopcc, iter, ialr, nua )
 C
 C Finds the partial-core-correction energy density on the mesh
 C For Linres purposes, the calculation of the gradient/derivative 
@@ -594,6 +594,7 @@ C real*4  Vscf(ntpl)    : Hartree potential of SCF density
 C real*4  Vaux(ntpl)    : Auxiliary potential array
 C logical Forces        : Are the forces to be calculated?
 C logical Stress        : Are the stresses to be calculated?
+C integer iter		: Linres iteration step
 C ----------------------------------------------------------------------
 C Output : (non-gradient case)
 C ----------------------------------------------------------------------
@@ -620,7 +621,11 @@ C     Passed arguments
       real(grid_p), intent(out) :: rhopcc(ntpl)
       real(dp),   intent(inout) :: fal(3,*)
       real(dp), intent(inout)   :: stressl(3,3)
+C Linres------------------------------------------------------
+      integer,      intent(in) ,optional :: iter, ialr, nua
       real(grid_p),intent(inout),optional:: drhopcc(ntpl,3) !Linres
+C -----------------------------------------------------------
+
 C     Internal variables
       integer                   :: i, ia, iop, ip, ip0, is, isp,
      &                             ispin, iua, jx
@@ -628,6 +633,8 @@ C     Internal variables
      &                             rhop, vxc
       real(dp),            save :: tiny
       logical                   :: Gradients
+      integer                   :: ISIGN, iainit, iaend, step !Linres
+
       data tiny / 1.0e-12_dp /
 
 !------------------------------------------------------------------------- BEGIN
@@ -640,7 +647,28 @@ C     Find out whether this is a gradient run based on the arguments passed
 C     Initialise array to zero
       if (.not.Gradients) rhopcc(1:ntpl) = 0.0_dp
 
-      do ia = 1,na
+C     LINRES-------------------------------------------------------------
+      if (present(drhopcc)) then
+         drhopcc(1:ntpl,1:3)=0.0_grid_p
+         if (iter.eq.1) then
+            iainit = 1
+            iaend = na
+            step = +1
+            ISIGN = +1
+         else
+            iainit = ialr
+            iaend = na - (nua - ialr)
+            step= nua
+            ISIGN = -1
+         endif
+      else
+        iainit = 1
+        iaend = na
+        step= +1
+      endif
+C   -----------------------------------------------------------------------
+
+      do ia = iainit, iaend, step
         if (ipa(ia)==0) cycle ! Atomic sphere does not intersec my Box
         iua = indxua(ia)
         is = isa(ia)
@@ -661,7 +689,7 @@ C               if (r .lt. ra .and. r .gt. tiny) then
 C Linres block----------------------------------------------------------
                   if (present(drhopcc)) then
                     do jx=1,3
-                      drhopcc(ip,jx) = drhopcc(ip,jx) + grrho(jx)
+                      drhopcc(ip,jx) = drhopcc(ip,jx) + ISIGN *grrho(jx)
                     enddo
                   endif
 C ----------------------------------------------------------------------

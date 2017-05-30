@@ -887,8 +887,7 @@ C    Linres internal variables
      &                         dummy_Vna(:),
      &                         VLR(:,:),VLR_par(:,:),  
      &                         dVxcTmp(:,:),
-     &                         dRhoscf0_par(:,:,:), dRhoatm_par(:,:)            
-
+     &                         dRhoscf0_par(:,:,:), dRhoatm_par(:,:)  
       integer :: iaend, iainit,ispin1,ispin2,atder
 C
 
@@ -1921,33 +1920,47 @@ C variables initialization
         nullify (dvnoscf)
         call re_alloc( dvnoscf, 1, ntpl , 1, 3,'dvnoscf', 'dhscf' )
         dvnoscf=0.0_dp
-C Calculate core-correction part-----------------------------------------
-C Compute gradient of the partial core correction density
-        if (npcc .eq. 1) then
-          if (present(dHmat0)) then
-            call reord( dvnoscf, dvnoscf, nml, nsm, TO_CLUSTER )
-            call PartialCoreOnMesh( na, isa, ntpl, rhopcc, indxua, nsd,
-     &                            dvol, volume, Vscf, Vaux, Fal,
-     &                            stressl, .true.,
-     &                            istr.ne.0, dvnoscf)
-            call reord( dvnoscf, dvnoscf, nml, nsm, TO_SEQUENTIAL )
-          endif
-          call reord( rhopcc, rhopcc, nml, nsm, TO_SEQUENTIAL )
-          call reord( Vaux, Vaux, nml, nsm, TO_SEQUENTIAL )
-          do ispin = 1,nsd
-            call reord( Vscf(:,ispin), Vscf(:,ispin),
-     &                  nml, nsm, TO_SEQUENTIAL )
-          enddo
-        endif ! npcc if
 C------------------------------------------------------------------------
 
 C Compute gradients of density and atom -------------------------------
 C drhoscf0= sum_mu,nu rho_mu,nu * grad phi_mu * phi_nu + cc
 C drhoatm = 2 sum_mu rho_mu * grad phi_mu * phi_mu 
+C drhopcc = similar as dVna for gradient/derivative
         atder=0 !LR flag to compute derivatives(0) or gradients(1)
         if ((present(LRfirst)).and. (LRfirst)) then
 
           if (present(dHmat0)) atder=1  !flag to compute gradients
+
+C Compute gradient/derivative of the partial core correction density
+          if (npcc .eq. 1) then
+            call re_alloc(drhopcc,1,ntpl,1,3,'drhopcc',
+     &                                  'linres_matrices')
+            call reord( rhopcc, rhopcc, nml, nsm, TO_CLUSTER )
+            call reord( Vaux, Vaux, nml, nsm, TO_CLUSTER )
+            drhopcc(1:ntpl,1:3)=0.0_dp
+            do ispin = 1, nsd
+              call reord( Vscf(:,ispin), Vscf(:,ispin),
+     &                nml, nsm, TO_CLUSTER )
+            enddo
+            do jx=1,3
+              call reord( drhopcc(:,jx), drhopcc(:,jx),
+     &                   nml, nsm, TO_CLUSTER )
+            enddo
+            call PartialCoreOnMesh( na, isa, ntpl, rhopcc, indxua,
+     &                            nsd, dvol, volume, Vscf, Vaux, Fal,
+     &                            stressl, .FALSE.,.FALSE.,
+     &                            drhopcc, atder, ialr, nua)
+            call reord( rhopcc, rhopcc, nml, nsm, TO_SEQUENTIAL )
+            call reord( Vaux, Vaux, nml, nsm, TO_SEQUENTIAL )
+            do jx=1,3
+              call reord( drhopcc(:,jx), drhopcc(:,jx),
+     &                   nml, nsm, TO_SEQUENTIAL )
+            enddo
+            do ispin = 1, nsd
+              call reord( Vscf(:,ispin), Vscf(:,ispin),
+     &                  nml, nsm, TO_SEQUENTIAL )
+            enddo
+          endif ! npcc calculated gradient/derivative of rhopcc (drhopcc)
 
 ! Allocate variables which are stored in linres_matrices 
 ! (UNIFORM distribution)
@@ -2001,10 +2014,10 @@ C drhoatm = 2 sum_mu rho_mu * grad phi_mu * phi_mu
           call de_alloc(dRhoscf0_par,'dRhoscf0_par','dhscf')
           call de_alloc(dRhoatm_par,'dRhoatm_par','dhscf')
 
-        endif
+        endif !Present LRfirst
 C----------------------------------------------------------------------
 
-C Compute gradient of the Neutral Atom potential and added into dvnoscf---- 
+C Compute the perturbed Neutral Atom potential and added into dvnoscf---- 
         nullify(dummy_Vna)
         call re_alloc( dummy_Vna, 1, ntpl, 'dummy_Vna', 'dhscf' )
         call reord( DRho, DRho, nml, nsm, TO_CLUSTER )
@@ -2127,19 +2140,24 @@ C     Get back spin density from sum and difference
           endif
 
 C------------------------------------------------------------------------
-C Adding final XC potential
+C Adding final XC potential + add drhopcc to density
 C It is derVxc/drho *  drho
 C------------------------------------------------------------------------
           do ispin = 1,nsd
+            if (npcc .eq. 1) then 
 !$OMP parallel do default(shared), private(ip)
-            do ip = 1,ntpl
-                dRhoscf(ip,ispin) = dRhoscf(ip,ispin) +
-     &                              dRhoatm(jx,ip) / nsd
-              if (npcc .eq. 1) then !Add partial core correction
+               do ip = 1,ntpl
+                  dRhoscf(ip,ispin) = dRhoscf(ip,ispin) +
+     &                       (drhopcc(ip,jx) + dRhoatm(jx,ip)) *rnsd
+               enddo
+!$OMP end parallel do
+            else 
+!$OMP parallel do default(shared), private(ip)
+               do ip = 1,ntpl
                  dRhoscf(ip,ispin) = dRhoscf(ip,ispin) +
-     &                              dvnoscf(ip,jx) / nsd
-              endif
-            enddo
+     &                              dRhoatm(jx,ip) / nsd
+               enddo
+            endif
 !$OMP end parallel do
           enddo
 
@@ -2211,12 +2229,21 @@ C------------------------------------------------------------------------
             endif
 
             do ispin = 1, nsd
+              if (npcc .eq.1) then
 !$OMP parallel do default(shared), private(ip)
-              do ip = 1, ntpl
-                dRhoscf(ip,ispin) = dRhoscf(ip,ispin) -
-     .                              dRhoatm(jx,ip) / nsd
-              enddo
+                 do ip = 1, ntpl
+                    dRhoscf(ip,ispin) = dRhoscf(ip,ispin) -
+     .                       (drhopcc(ip,jx) + dRhoatm(jx,ip)) * rnsd
+                 enddo
 !$OMP end parallel do
+              else
+!$OMP parallel do default(shared), private(ip)
+                 do ip = 1, ntpl
+                    dRhoscf(ip,ispin) = dRhoscf(ip,ispin) -
+     .                       dRhoatm(jx,ip) / nsd
+                 enddo
+!$OMP end parallel do
+              endif
             enddo
 
             if(nsd .eq. 2) then
@@ -2292,6 +2319,7 @@ C-----------------------------------------------------------------------------
 ! For non-first calculation, these variables are stored in linres_matrices module
            call de_alloc(dRhoatm, 'dRhoatm', 'linres_matrices')
            call de_alloc(dRhoscf0, 'dRhoscf0', 'linres_matrices')
+           call de_alloc(drhopcc, 'drhopcc', 'linres_matrices')
         endif
 
         call de_alloc(dvnoscf,'dvnoscf','dhscf')

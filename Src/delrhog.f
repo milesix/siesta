@@ -44,17 +44,17 @@ C **********************************************************************
       use alloc
       implicit none
 
-      integer :: nuo,nbands, maxnh, nspin, numh(*),
+      integer :: nuo, nspin, maxorb, maxnh, numh(*),
      &            listh(maxnh), listhptr(*), ix, iscf
       real(dp) :: eval(maxorb), tol, occ(maxorb), 
      &            Hper(maxnh), eigtol, 
      &            Oper(maxnh), ef, T,Rhoper(maxnh),Erhoper(maxnh)
       real(dp) :: psi(nuo,nuo)
 C     Internal Variables
-      integer :: deg, N, io, maxorb, numb(maxorb), k,j, maxden,
+      integer :: deg, N, io, numb(maxorb), k,j, maxden,
      &           jden, kden, jo, mu, nu, ind, indmn, i, indbetas,
      &           ialpha, ibeta, jbeta,indi,indj,indden, ierror,
-     &           indk 
+     &           indk, nbands 
       real(dp) :: def, A, B, 
      &            dQo(maxorb), Qo,aux(maxorb), 
      &            psiper(maxorb,maxorb), prod1, prod2, 

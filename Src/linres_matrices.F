@@ -16,12 +16,14 @@ C                                   to:  rho^GD_mu,nu* der(phi_mu)*phi_nu
 C                                      + rho^GD_mu,nu * phi_mu * der(phi_nu)
 C                                   where rho^GD corresponds to the
 C				    ground state density matrix
-C NOTE: the first time that dRhoatm and dRhoscf0 are used, they store the gradient 
+C real (dp) drhopcc(1:ntlp,1:3)   : gradient/derivative of the core correction density
+
+C NOTE: the first time that dRhoatm and dRhoscf0 and drhopcc are used, they store the gradient 
 C instead of the radial derivative.
 
        use precision, only: grid_p
        real(grid_p), pointer :: dRhoatm(:,:),
-     &                 dRhoscf0(:,:,:), dVxc(:,:,:)
+     &                 dRhoscf0(:,:,:), dVxc(:,:,:), drhopcc(:,:)
        CONTAINS
 
        subroutine resetFirstmatrices()
@@ -30,6 +32,7 @@ C instead of the radial derivative.
        call de_alloc(dRhoatm, 'dRhoatm', 'linres_matrices')
        call de_alloc(dRhoscf0, 'dRhoscf0', 'linres_matrices')
        call de_alloc(dVxc, 'dVxc', 'linres_matrices')
+       call de_alloc(drhopcc, 'drhopcc', 'linres_matrices')
        end subroutine resetFirstmatrices
 
        END MODULE linres_matrices
