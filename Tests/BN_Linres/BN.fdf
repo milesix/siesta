@@ -1,0 +1,66 @@
+# 
+# FDF for a BN sheet
+# 
+# BN 2 atom (cell) 110 replicas for FC calculations by Linres
+
+SystemName          BN-2 atom
+SystemLabel         BN
+
+NumberOfSpecies     2
+NumberOfAtoms          18
+
+%block ChemicalSpeciesLabel
+ 1  5  B 10.811
+ 2  7  N_2 14.0067
+%endblock ChemicalSpeciesLabel
+
+PAO.BasisSize       SZ
+XC.functional LDA
+XC.authors    CA
+
+MeshCutoff          200.0 Ry
+MaxSCFIterations    500  
+DM.MixingWeight      0.1 
+DM.NumberPulay       5  
+DM.Tolerance         1.d-5           
+SolutionMethod       diagon 
+DM.UseSaveDM  	     .true.	   
+
+LatticeConstant    1.8897268778  Bohr
+%block LatticeVectors
+   7.6123710000    -0.0000000000     0.0000000000
+   3.8061870000     6.5925090000    -0.0000000000
+   0.0000000000    -0.0000000000     6.6791520000
+%endblock LatticeVectors
+
+AtomicCoordinatesFormat  NotScaledCartesianBohr
+%block AtomicCoordinatesAndAtomicSpecies
+  -7.1926524962    -4.1526813713     0.0000000000      1
+  -4.7951009587    -2.7684532019     0.0000000000      2
+  -4.7951012043    -0.0000008882     0.0000000000      1
+  -2.3975496667     1.3842272812     0.0000000000      2
+  -2.3975499124     4.1526795949     0.0000000000      1
+   0.0000016252     5.5369077643     0.0000000000      2
+  -2.3975518021    -4.1526813713     0.0000000000      1
+  -0.0000002646    -2.7684532019     0.0000000000      2
+  -0.0000005102    -0.0000008882     0.0000000000      1
+   2.3975510274     1.3842272812     0.0000000000      2
+   2.3975507817     4.1526795949     0.0000000000      1
+   4.7951023193     5.5369077643     0.0000000000      2
+   2.3975488920    -4.1526813713     0.0000000000      1
+   4.7951004295    -2.7684532019     0.0000000000      2
+   4.7951001839    -0.0000008882     0.0000000000      1
+   7.1926517214     1.3842272812     0.0000000000      2
+   7.1926514758     4.1526795949     0.0000000000      1
+   9.5902030134     5.5369077643     0.0000000000      2
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+MD.TypeOfRun         LR
+LR.IAI              9
+LR.IAF              10
+
+%block kgrid_Monkhorst_Pack
+	6	0	0	0.0
+	0	6	0	0.0
+	0	0	1	0.0
+%endblock kgrid_Monkhorst_Pack

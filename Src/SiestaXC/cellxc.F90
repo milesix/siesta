@@ -232,7 +232,7 @@ MODULE m_cellXC
 CONTAINS ! nothing else but public routine cellXC
 
 SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
-                   nSpin, dens, Ex, Ec, Dx, Dc, stress, Vxc, dVxcdD )
+                   nSpin, dens, Ex, Ec, Dx, Dc, stress, Vxc, ddens )
 
   ! Module routines
   use mesh3D,  only: addMeshData   ! Accumulates a mesh array
@@ -301,8 +301,8 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
   real(dp),intent(out):: stress(3,3) ! xc contribution to stress in unit cell
   real(gp),intent(out):: Vxc(0:ub1-lb1,0:ub2-lb2,0:ub3-lb3,1:nSpin) 
                                      ! (spin) xc potential
-  real(gp),intent(out),optional:: &  ! dVxc/dDens (LDA only)
-                         dVxcdD(0:ub1-lb1,0:ub2-lb2,0:ub3-lb3,1:nSpin**2) 
+  real(gp),intent(in),optional:: &   ! Pertuebed density
+                         ddens(0:ub1-lb1,0:ub2-lb2,0:ub3-lb3,1:nSpin**2) 
 
   ! Fix the order of the numerical derivatives
   ! nn is the number of points used in each coordinate and direction,
@@ -361,7 +361,10 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
   real(gp), dimension(:,:,:,:), pointer:: &
      Dleft=>null(), Dleft1=>null(), Dleft2=>null(), Dleft3=>null(), &
      Drght=>null(), Drght1=>null(), Drght2=>null(), Drght3=>null(), &
-     myDens=>null(), mydVxcdD=>null(), myVxc=>null(), &
+     myDens=>null(), myVxc=>null(), &
+! Linres
+     mydDens=>null(), & !perturbed density pointer
+! 
      tq=>null(), uq=>null(), &
      Vleft=>null(), Vleft1=>null(), Vleft2=>null(), Vleft3=>null(), &
      Vrght=>null(), Vrght1=>null(), Vrght2=>null(), Vrght3=>null()
@@ -389,7 +392,11 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
      EcuspVDW, Enl, epsC, epsCusp, epsNL, epsX, f1, f2, &  
      GD(3,nSpin), k, kcell(3,3), kcut, kvec(3),  &
      stressVDW(3,3), sumTime, sumTime2, totTime, VDWweightC, volume, &
-     XCweightC(maxFunc), XCweightVDW, XCweightX(maxFunc)
+     XCweightC(maxFunc), XCweightVDW, XCweightX(maxFunc),&
+! Linres
+     dD(nSpin) !perturbed density in local point grid
+!
+
 #ifdef DEBUG_XC
   integer :: iip, jjp, jq
   real(dp):: rmod, rvec(3)
@@ -456,9 +463,9 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
     endif
   enddo
 
-  ! Check argument dVxcdD
-  if (present(dVxcdD) .and. GGA) &
-    call die(errHead//'dVxcdD available only for LDA')
+  ! Check argument ddens
+  if (present(ddens) .and. GGA) &
+    call die(errHead//'Linres available only for LDA')
 
   ! Find my mesh box in I/O distribution of mesh points
   ioBox(1,1)=lb1;  ioBox(1,2)=lb2;  ioBox(1,3)=lb3
@@ -475,12 +482,18 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
 
   ! Find new mesh distribution, if previous iteration was too unbalanced
   if (nodes>1 .and. timeDisp/timeAvge>maxUnbalance) then
+    print*,'cellxc: entra en nodes1'
     ! Find my node's mesh box using myDistr
     call myMeshBox( nMesh, myDistr, myBox )
     ! Allocate arrays for the density and workload per point in my box
     call re_alloc( myDens, myBox(1,1),myBox(2,1), &
                            myBox(1,2),myBox(2,2), &
                            myBox(1,3),myBox(2,3), 1,ndSpin, myName//'myDens' )
+! Linres
+    call re_alloc( mydDens, myBox(1,1),myBox(2,1), &
+                            myBox(1,2),myBox(2,2), &
+                            myBox(1,3),myBox(2,3), 1,ndSpin, myName//'mydDens' )
+!
     call re_alloc(workload,myBox(1,1),myBox(2,1), &
                            myBox(1,2),myBox(2,2), &
                            myBox(1,3),myBox(2,3), myName//'workload' )
@@ -488,6 +501,8 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
     call associateMeshTask( io2my, ioDistr, myDistr )
     call copyMeshData( nMesh, ioDistr, dens(:,:,:,1:ndSpin), &
                               myBox, myDens(:,:,:,1:ndSpin), io2my )
+    call copyMeshData( nMesh, ioDistr, ddens(:,:,:,1:ndSpin), & !Linres
+                              myBox, mydDens(:,:,:,1:ndSpin), io2my )
 !    call copyMeshData( nMesh, ioDistr, dens(:,:,:,1:ndSpin), &
 !                              myBox, myDens(:,:,:,1:ndSpin) )
     ! Find initial expected workload (zero if dens=0, one otherwise)
@@ -508,6 +523,8 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
     ! Deallocate temporary arrays
     call de_alloc( workload, myName//'workload' )
     call de_alloc( myDens,   myName//'myDens' )
+    call de_alloc( mydDens,  myName//'mydDens' ) !Linres
+
 #ifdef DEBUG_XC
     myIter = myIter+1
     call myMeshBox( nMesh, myDistr, myBox )
@@ -537,9 +554,9 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
     ns = nSpin  ! Just a shorter name
     call re_alloc( myDens, m11,m21, m12,m22, m13,m23, 1,ns, myName//'myDens' )
     call re_alloc( myVxc,  m11,m21, m12,m22, m13,m23, 1,ns, myName//'myVxc'  )
-    if (present(dVxcdD)) &
-      call re_alloc( mydVxcdD, m11,m21, m12,m22, m13,m23, 1,ns**2, &
-                     myName//'mydVxcdD'  )
+    if (present(ddens)) then !Linres
+      call re_alloc( mydDens, m11,m21, m12,m22, m13,m23, 1,ns, myName//'mydDens' )
+    endif
     ! Allocate arrays for density and potential in neighbor regions
     if (GGA) then
       l11=m11-nn;     l12=m12-nn;     l13=m13-nn
@@ -565,7 +582,8 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
   if (associated(myDens)) then
     call associateMeshTask( io2my, ioDistr, myDistr )
     call copyMeshData( nMesh, ioDistr, dens, myBox, myDens, io2my )
-!    call copyMeshData( nMesh, ioDistr, dens, myBox, myDens )
+    if (associated(mydDens)) & ! Linres : redistribute perturbed density
+       call copyMeshData( nMesh, ioDistr, ddens, myBox, mydDens,io2my )
   end if
 
   ! If mesh arrays are distributed, find density of neighbor regions
@@ -637,7 +655,6 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
   Dc = 0.0_dp
   stress(:,:) = 0.0_dp
   Vxc(:,:,:,:) = 0.0_gp
-  if (present(dVxcdD)) dVxcdD(:,:,:,:) = 0.0_gp
 
   ! VdW initializations -------------------------------------------------------
   if (VDW) then
@@ -935,6 +952,7 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
       D(:) = dens(i1,i2,i3,:)
     end if
 
+
     ! Skip point if density=0
     Dtot = sum(D(1:ndSpin))
     if (Dtot < Dmin) cycle ! i1 loop on mesh points
@@ -1039,7 +1057,7 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
         dExdGD(:,:) = XCweightX(nf)*dExdGD(:,:)
         dEcdGD(:,:) = XCweightC(nf)*dEcdGD(:,:)
       endif
-      if (present(dVxcdD)) then
+      if (present(ddens)) then
         dVxdD(:) = XCweightX(nf)*dVxdD(:)
         dVcdD(:) = XCweightC(nf)*dVcdD(:)
       endif
@@ -1052,18 +1070,21 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
       Dc = Dc + dVol * Dtot * epsC
       Dx = Dx - dVol * sum(D(:)*dExdD(:))
       Dc = Dc - dVol * sum(D(:)*dEcdD(:))
-      if (associated(myVxc)) then
-        myVxc(ii1,ii2,ii3,:) = myVxc(ii1,ii2,ii3,:) + dExdD(:) + dEcdD(:)
-      else  ! Add directly to output array Vxc
-        Vxc(i1,i2,i3,:) = Vxc(i1,i2,i3,:) + dExdD(:) + dEcdD(:)
-      end if ! (associated(myVxc))
-      if (present(dVxcdD)) then
-        if (associated(mydVxcdD)) then
-          mydVxcdD(ii1,ii2,ii3,:) = mydVxcdD(ii1,ii2,ii3,:) + dVxdD(:)+dVcdD(:)
+      if (present(ddens)) then
+        if (associated(myVxc)) then !Linres
+          myVxc(ii1,ii2,ii3,:) = myVxc(ii1,ii2,ii3,:) + &
+                         (dVxdD(:)+dVcdD(:))*mydDens(ii1,ii2,ii3,:)
         else
-          dVxcdD(i1,i2,i3,:) = dVxcdD(i1,i2,i3,:) + dVxdD(:) + dVcdD(:)
-        end if
-      end if ! (present(dVxcdD))
+          Vxc(ii1,ii2,ii3,:) = Vxc(ii1,ii2,ii3,:) + & 
+                         (dVxdD(:)+dVcdD(:))*ddens(ii1,ii2,ii3,:)
+        endif
+      else 
+        if (associated(myVxc)) then
+          myVxc(ii1,ii2,ii3,:) = myVxc(ii1,ii2,ii3,:) + dExdD(:) + dEcdD(:)
+        else  ! Add directly to output array Vxc
+          Vxc(i1,i2,i3,:) = Vxc(i1,i2,i3,:) + dExdD(:) + dEcdD(:)
+        end if ! (associated(myVxc))
+      endif
 
       ! Add contributions to exchange-correlation potential
       ! with respect to density at neighbor points
@@ -1207,13 +1228,6 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
         else
           Vxc(i1,i2,i3,:) = 0
         end if
-        if (present(dVxcdD)) then
-          if (associated(mydVxcdD)) then
-            mydVxcdD(ii1,ii2,ii3,:) = 0
-          else
-            dVxcdD(i1,i2,i3,:) = 0
-          end if
-        end if ! (present(dVxcdD))
       end if ! (Dtot<Dcut)
     end do
     end do
@@ -1224,15 +1238,12 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
   if (associated(myVxc)) then  ! Distributed Vxc array
     if (sameMeshDistr(ioDistr,myDistr)) then ! Just copy myVxc to output array
       Vxc = myVxc
-      if (present(dVxcdD)) dVxcdD = mydVxcdD
     else ! Redistribution required
       ! Copy myVxc and dVxcdD to output box
       call associateMeshTask( my2io, myDistr )
       call copyMeshData( nMesh, myDistr, myVxc, ioBox, Vxc, my2io )
 !      call copyMeshData( nMesh, myDistr, myVxc, ioBox, Vxc )
-      if (present(dVxcdD)) &
-        call copyMeshData( nMesh, myDistr, mydVxcdD, ioBox, dVxcdD, my2io )
-!        call copyMeshData( nMesh, myDistr, mydVxcdD, ioBox, dVxcdD )
+!      call copyMeshData( nMesh, myDistr, mydVxcdD, ioBox, dVxcdD )
     end if ! (sameMeshDistr(ioDistr,myDistr))
   end if ! (associated(myVxc))
 
@@ -1266,7 +1277,7 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
   Dc = Dc / Eunit
   Vxc = Vxc / Eunit
   stress = stress / Eunit
-  if (present(dVxcdD)) dVxcdD = dVxcdD / Eunit
+!  if (present(dVxcdD)) dVxcdD = dVxcdD / Eunit
 
   ! Deallocate VDW-related arrays
   if (VDW) then
@@ -1301,7 +1312,7 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
       call de_alloc( Drght1, myName//'Drght1' )
       call de_alloc( Dleft1, myName//'Dleft1' )
     end if
-    if (present(dVxcdD)) call de_alloc( mydVxcdD, myName//'mydVxcdD'  )
+    if (present(ddens)) call de_alloc( mydDens, myName//'mydDens'  )
     call de_alloc( myVxc,  myName//'myVxc'  )
     call de_alloc( myDens, myName//'myDens' )
   end if ! (associated(myDens))

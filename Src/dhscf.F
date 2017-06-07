@@ -886,7 +886,7 @@ C    Linres internal variables
      &                         dRhoscf(:,:),
      &                         dummy_Vna(:),
      &                         VLR(:,:),VLR_par(:,:),  
-     &                         dVxcTmp(:,:),
+     &                         dVXCpot(:,:),
      &                         dRhoscf0_par(:,:,:), dRhoatm_par(:,:)  
       integer :: iaend, iainit,ispin1,ispin2,atder
 C
@@ -1561,33 +1561,10 @@ C ----------------------------------------------------------------------
 
 #ifndef BSC_CELLXC
 
-C Linres line ---------------------------------------------------------------
-      if (present(dHmat0)) then
-        call timer('cellXC-LR',1)
-        nullify(dVxc)
-        call re_alloc(dVxc,1,ntpl,1,nspin,1,nspin,'dVxc',
-     .    'linres_matrices')
-        nullify(dvxctmp)
-        call re_alloc( dVxctmp, 1, ntpl, 1, nspin, 'dVxctmp','dhscf' )
-        dVxcTmp(1:ntpl,1:nspin) = 0.0_dp
-
-        call cellXC( 0, cell, ntm, myBox(1,1), myBox(2,1),
-     .                           myBox(1,2), myBox(2,2),
-     .                           myBox(1,3), myBox(2,3), nspin,
-     .             DRho, Ex, Ec, DEx, DEc, stressXC, Vscf, dVxcTmp )
-
-        dVxc(1:ntpl,1,1) = dVxcTmp(1:ntpl,1)
-        call de_alloc( dVxctmp, 'dVxctmp', 'dhscf' )
-        call timer('cellXC-LR',2)
-
-C The constant prefactor to the perturbed Vxc term is stored in dVxc
-C-----------------------------------------------------------------------------
-      else
         call cellXC( 0, cell, ntm, myBox(1,1), myBox(2,1),
      .                           myBox(1,2), myBox(2,2),
      .                           myBox(1,3), myBox(2,3), nspin,
      .             DRho, Ex, Ec, DEx, DEc, stressXC, Vscf )
-      endif
 #else /* BSC_CELLXC */
 
       if (nodes.gt.1) then
@@ -2042,7 +2019,26 @@ C-----------------------------------------------------------------------------
 C Compute the perturbed Vhartree and Vxc terms
 C Derivative Space loop for perturbed Hamiltonian
 C-----------------------------------------------------------------------------
-         do jx= 1, 3
+! For the perturbed Vxc we need total density dRho
+        do ispin = 1,nsd
+          if (npcc .eq. 1) then
+!$OMP do
+            do ip = 1,ntpl
+              DRho(ip,ispin) = DRho(ip,ispin) + 
+     &             (rhoatm(ip)+rhopcc(ip)) * rnsd
+            enddo
+!$OMP end do
+          else
+!$OMP do
+            do ip = 1,ntpl
+              DRho(ip,ispin) = DRho(ip,ispin) + rhoatm(ip) * rnsd
+            enddo
+!$OMP end do
+          endif
+        enddo
+!$OMP end parallel
+
+        do jx= 1, 3 !space loop
 
 C Initialization of VL matrix. It will store perturbed potential
 C Initialization of the perturbed density dRhoscf
@@ -2141,7 +2137,6 @@ C     Get back spin density from sum and difference
 
 C------------------------------------------------------------------------
 C Adding final XC potential + add drhopcc to density
-C It is derVxc/drho *  drho
 C------------------------------------------------------------------------
           do ispin = 1,nsd
             if (npcc .eq. 1) then 
@@ -2160,22 +2155,27 @@ C------------------------------------------------------------------------
             endif
 !$OMP end parallel do
           enddo
+       
+!In order to keep the Vscf as out argument from cellXC, we create another
+! variable
+          call timer("CellXC-LR",1)
+          nullify(dVXCpot)
+          call re_alloc( dVXCpot, 1, ntpl, 1, nspin, 'dVXCpot','dhscf' )
+          call cellXC( 0, cell, ntm, myBox(1,1), myBox(2,1),
+     .                           myBox(1,2), myBox(2,2),
+     .                           myBox(1,3), myBox(2,3), nspin,
+     .             DRho, Ex, Ec, DEx, DEc, stressXC, dVXCpot, dRhoscf )
 
           do ispin1 = 1, nsd
 !$OMP parallel do default(shared), private(ip,ispin2)
             do ip = 1, ntpl
-              do ispin2 = 1, nspin
-                VLR(ip,ispin1) =VLR(ip,ispin1) +
-     &     dRhoscf(ip,ispin2)*dVxc(ip,ispin2,ispin1)
-              enddo
+                VLR(ip,ispin1) =VLR(ip,ispin1) + dVXCpot(ip,ispin1)
             enddo
 !$OMP end parallel do
           enddo
 
-C Vxc term
-C In a future, when perturbed GGA Vxc will be implemented,
-C the cellXC call will be here (remove 1543 condition and lines) and added
-C directly to VLR 
+          call de_alloc( dVXCpot, 'dVXCpot','dhscf' )
+          call timer("CellXC-LR",2)
 
 C Here, VLR contains Vxc+Vh+Vna
 C------------------------------------------------------------------------
@@ -2227,6 +2227,26 @@ C------------------------------------------------------------------------
               iainit = ialr
               iaend = ialr
             endif
+
+!To dynamat, we need the density dRhoscf and the unperturbed charge dRho=dRho-rhoatm
+            do ispin = 1,nsd
+              if (npcc .eq. 1) then
+!$OMP do
+                 do ip = 1,ntpl
+                     DRho(ip,ispin) = DRho(ip,ispin) -
+     &                 (rhoatm(ip)+rhopcc(ip)) * rnsd
+                 enddo
+!$OMP end do
+               else
+!$OMP do
+                 do ip = 1,ntpl
+                      DRho(ip,ispin) = DRho(ip,ispin)
+     &                        - rhoatm(ip) * rnsd
+                 enddo
+!$OMP end do
+               endif
+            enddo
+!$OMP end parallel
 
             do ispin = 1, nsd
               if (npcc .eq.1) then
@@ -2306,7 +2326,27 @@ C       Set the UNIFORM distribution again
             call reord(dvnoscf(:,jx), dvnoscf(:,jx), nml, nsm,
      &                 TO_SEQUENTIAL)
             call reord(DRho, DRho, nml, nsm, TO_SEQUENTIAL)
-          endif
+
+!Back to the total density (for the perturbed Vxc calculation)
+            do ispin = 1,nsd
+              if (npcc .eq. 1) then
+!$OMP do
+                do ip = 1,ntpl
+                DRho(ip,ispin) = DRho(ip,ispin) +
+     &                 (rhoatm(ip)+rhopcc(ip)) * rnsd
+                enddo
+!$OMP end do
+              else
+!$OMP do
+                do ip = 1,ntpl
+                   DRho(ip,ispin) = DRho(ip,ispin)
+     &                        + rhoatm(ip) * rnsd
+                enddo
+!$OMP end do
+              endif
+            enddo
+!$OMP end parallel
+          endif !Dynamat if
 C----------------------------------------------------------------------------
           call de_alloc(VLR,'VLR','dhscf')
           call de_alloc(dRhoscf,'dRhoscf','dhscf')

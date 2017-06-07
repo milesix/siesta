@@ -9,8 +9,6 @@ C      --------------------------------------------------------------
 C real(dp) dRhoatm(3,ntpl)        : Derivative of the atomic density in the mesh points.
 C                                   rho^atm* der(phi_mu)*phi_nu 
 C                                      + rho^atm * phi_mu * der(phi_nu)
-C real(dp) dVxc(ntpl,ispin,nspin) : Derivative of the Vxc respect to the
-C                                   density. Matrix defined in all mesh points.
 C real(dp) dRhoscf0(3,ntpl,nspin) : Non-scf part of the perturbed density corresponding
 C                                   to:  rho^GD_mu,nu* der(phi_mu)*phi_nu 
 C                                      + rho^GD_mu,nu * phi_mu * der(phi_nu)
@@ -23,7 +21,7 @@ C instead of the radial derivative.
 
        use precision, only: grid_p
        real(grid_p), pointer :: dRhoatm(:,:),
-     &                 dRhoscf0(:,:,:), dVxc(:,:,:), drhopcc(:,:)
+     &                 dRhoscf0(:,:,:), drhopcc(:,:)
        CONTAINS
 
        subroutine resetFirstmatrices()
@@ -31,7 +29,6 @@ C instead of the radial derivative.
        implicit none
        call de_alloc(dRhoatm, 'dRhoatm', 'linres_matrices')
        call de_alloc(dRhoscf0, 'dRhoscf0', 'linres_matrices')
-       call de_alloc(dVxc, 'dVxc', 'linres_matrices')
        call de_alloc(drhopcc, 'drhopcc', 'linres_matrices')
        end subroutine resetFirstmatrices
 
