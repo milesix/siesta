@@ -47,6 +47,11 @@ dep:
 
 INCFLAGS:= $(NETCDF_INCFLAGS) $(PEXSI_INCFLAGS) $(INCFLAGS)
 
+ifdef USE_LIBXC
+  FPPFLAGS += -DLIBXC
+  LIBS += $(LIBXC_LIBS)
+  INCFLAGS += $(LIBXC_INCFLAGS)
+endif
 
 # For removing any -ipo compilation in sub directories...
 # Later compilers are also having this enabled, and it lets you
@@ -306,7 +311,8 @@ XC=libSiestaXC.a
 $(XC): $(FDF)
 	(cd SiestaXC ; $(MAKE) -j 1 \
                     "VPATH_ROOT=$(VPATH)"  \
-	            "INCFLAGS=-I../MPI" \
+	            "INCFLAGS=-I../MPI $(INCFLAGS)" \
+                    "FPPFLAGS=$(FPPFLAGS)" \
 		    "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module )
 
 # In case the user requests compilation of flook

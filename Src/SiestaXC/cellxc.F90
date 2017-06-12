@@ -738,11 +738,11 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
         D(:) = dens(i1,i2,i3,:)
       end if
 
-      ! Avoid negative densities
-      D(1:ndSpin) = max( D(1:ndSpin), 0._dp )
-
       !  Find gradient of density at this point
       call getGradDens( ii1, ii2, ii3, GD )   ! This subr. is contained below
+
+      ! Avoid negative densities
+      D(1:ndSpin) = max( D(1:ndSpin), 0._dp )
 
       ! Find expansion of theta(q(r)) for VdW
       call vdw_theta( nSpin, D, GD, tr, dtdd, dtdgd )
@@ -958,11 +958,11 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
     if (Dtot < Dmin) cycle ! i1 loop on mesh points
     ip = ip + 1
 
+    ! Find gradient of density at this point
+    if (GGA) call getGradDens( ii1, ii2, ii3, GD) 
+
     ! Avoid negative densities
     D(1:ndSpin) = max( D(1:ndSpin), 0._dp )
-
-    ! Find gradient of density at this point
-    if (GGA) call getGradDens( ii1, ii2, ii3, GD )
 
     ! Loop over all functionals
     do nf = 1,nXCfunc
@@ -1346,16 +1346,16 @@ CONTAINS !---------------------------------------------------------------------
 
   subroutine getGradDens( ii1, ii2, ii3, GD )
 
-  ! Finds the density gradient at one mesh point
+  ! Finds the gradient (GD) of densto (whatever) at one mesh point
 
   ! Arguments
   integer, intent(in) :: ii1, ii2, ii3  ! Global mesh point indexes
-  real(dp),intent(out):: GD(3,nSpin) ! Density gradient
+  real(dp),intent(out):: GD(3,nSpin) !  gradient of densto
 
   ! Variables and arrays accessed from parent subroutine:
-  !   dens, Dleft1, Dleft2, Dleft3, 
+  !   Dleft1, Dleft2, Dleft3, 
   !   Drght1, Drght2, Drght3, DGiDFj,
-  !   myBox, myDistr, nn, nSpin
+  !   myBox, myDistr, nn, nSpin, nMesh
 
   ! Local variables and arrays
   integer :: ic, in, is, jj(3)
@@ -1363,7 +1363,7 @@ CONTAINS !---------------------------------------------------------------------
   real(gp),pointer:: Dleft(:,:,:,:), Drght(:,:,:,:)
 
   GD(:,:) = 0
-  if (myDistr==0) then   ! dens data not distributed
+  if (myDistr==0) then   ! densto data not distributed
     do ic = 1,3          ! Loop on cell axes
       do in = -nn,nn     ! Loop on finite difference index
         ! Find index jp of neighbor point
@@ -1404,7 +1404,7 @@ CONTAINS !---------------------------------------------------------------------
         else if (jj(ic)>myBox(2,ic)) then ! Right region
           Dj(1:nSpin) = Drght(jj(1),jj(2),jj(3),1:nSpin)
         else ! j within myBox
-          Dj(1:nSpin) = myDens(jj(1),jj(2),jj(3),1:nSpin)
+          Dj(1:nSpin) = dens(jj(1),jj(2),jj(3),1:nSpin)
         end if
         ! Find contribution of density at j to gradient at i
         do is = 1,nSpin  ! Loop on spin component

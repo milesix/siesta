@@ -43,6 +43,17 @@ COMP_LIBS = libsiestaLAPACK.a libsiestaBLAS.a
 
 LIBS = $(COMP_LIBS)
 
+###ADD LIBXC STUFF
+#libxc_root=points to your libxc installation path
+LIBXC_ROOT=/home/likewise-open/ICN/sillera/Desktop/LIBXC/LinresLibxc/libxc-2.2.3/INSTAL
+LIBXC_INCFLAGS= -I $(LIBXC_ROOT)/include
+LIBXC_LIBS=-L$(LIBXC_ROOT)/lib -l xcf90 -l xc
+
+
+#LIBXC_INCFLAGS= 
+USE_LIBXC=1
+
+
 # Dependency rules ---------
 
 FFLAGS_DEBUG = -g -O1   # your appropriate flags here...

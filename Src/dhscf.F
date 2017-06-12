@@ -1565,6 +1565,7 @@ C ----------------------------------------------------------------------
      .                           myBox(1,2), myBox(2,2),
      .                           myBox(1,3), myBox(2,3), nspin,
      .             DRho, Ex, Ec, DEx, DEc, stressXC, Vscf )
+
 #else /* BSC_CELLXC */
 
       if (nodes.gt.1) then

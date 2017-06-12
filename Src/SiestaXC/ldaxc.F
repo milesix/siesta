@@ -51,10 +51,16 @@ C Finds the exchange and correlation energies and potentials, in the
 C Local (spin) Density Approximation.
 C Written by L.C.Balbas and J.M.Soler, Dec'96.
 C Non-collinear spin added by J.M.Soler, May'98
+C Interface with LibXC added by Micael Oliveira, Jul.2014
 C *********** INPUT ************************************************
 C CHARACTER*(*) AUTHOR : Parametrization desired:
 C     'CA' or 'PZ' => LSD Perdew & Zunger, PRB 23, 5075 (1981)
 C           'PW92' => LSD Perdew & Wang, PRB, 45, 13244 (1992)
+C     A check is made first for libxc identifiers (strings of the
+C     form "GGA_C_PBE", which are morphologically identical to the
+C     functional id macros but in string form.
+C     If the check fails the routine falls back on the built-in cases
+C     CA/PZ or PW92.
 C                     Uppercase is optional
 C INTEGER IREL     : Relativistic exchange? (0=>no, 1=>yes)
 C INTEGER nspin    : nspin=1 => unpolarized; nspin=2 => polarized;
@@ -79,6 +85,11 @@ C ******************************************************************
       use precision, only : dp
       use sys,       only : die
 
+#ifdef LIBXC
+      use xc_f90_types_m
+      use xc_f90_lib_m
+#endif
+
       implicit          none
 
       CHARACTER*(*),intent(in) :: AUTHOR ! LDA flavour ('PZ'|'PW92')
@@ -94,6 +105,12 @@ C ******************************************************************
 
       INTEGER           IS, NS, ISPIN1, ISPIN2
       real(dp)          DD(2), DPOL, DTOT, TINY, VCD(2), VPOL, VXD(2)
+
+#ifdef LIBXC
+      type(xc_f90_pointer_t) :: xc_func, xc_info
+      integer :: xc_ispin, xc_id, iostat
+      real(dp) :: leps, ldedn(nspin)
+#endif
 
       PARAMETER ( TINY = 1.D-12 )
 
@@ -127,6 +144,42 @@ cag       Avoid negative densities
         CALL PZXC( IREL, NS, DD, EPSX, EPSC, VXD, VCD, DVXDN, DVCDN )
       ELSEIF ( AUTHOR.EQ.'PW92' .OR. AUTHOR.EQ.'pw92' ) THEN
         CALL PW92XC( IREL, NS, DD, EPSX, EPSC, VXD, VCD )
+      ELSEIF ( AUTHOR(1:5) == 'LIBXC') THEN
+#ifdef LIBXC
+      read(AUTHOR(7:10),iostat=iostat,fmt=*) xc_id
+      if (iostat /= 0) call die("Bad libxc code in " // AUTHOR)
+        IF (nspin == 1) THEN
+          xc_ispin = XC_UNPOLARIZED
+        ELSE
+          xc_ispin = XC_POLARIZED
+        ENDIF
+        call xc_f90_func_init(xc_func, xc_info, xc_id, xc_ispin)
+        IF (xc_f90_info_family(xc_info) /= XC_FAMILY_LDA) THEN
+           call die('LDAXC: Functional is not an LDA')
+        ENDIF
+
+        IF (xc_id == XC_LDA_X .and. irel == 1) THEN
+          call xc_f90_lda_x_set_par(xc_func, 4.D0/3.D0, 0, 0.D0)
+        ENDIF
+
+        call xc_f90_lda_exc_vxc(xc_func, 1, DD(1), leps, ldedn(1))
+        IF (xc_f90_info_kind(xc_info) == XC_CORRELATION) THEN
+          EPSC = leps
+          VCD(1:nspin) = ldedn(1:nspin)
+        ELSE if (xc_f90_info_kind(xc_info) == XC_EXCHANGE) THEN
+          EPSX = leps
+          VXD(1:nspin) = ldedn(1:nspin)
+        ELSE  ! combined functional, use an arbitrary 50/50 split
+          EPSX = 0.5_dp * leps
+          EPSC = 0.5_dp * leps
+          VXD(1:nspin) = 0.5_dp * ldedn(1:nspin)
+          VCD(1:nspin) = 0.5_dp * ldedn(1:nspin)
+        ENDIF
+        call xc_f90_func_end(xc_func)
+#else
+        call die("Libxc not compiled in. Cannot handle " //
+     $       trim(AUTHOR))
+#endif /* LIBXC */
       ELSE
         call die('LDAXC: Unknown author ' // trim(AUTHOR))
       ENDIF

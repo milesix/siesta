@@ -54,6 +54,11 @@
       ! Used module parameters
       use precision, only : dp   ! Double precision real kind
 
+#ifdef LIBXC
+      use xc_f90_types_m
+      use xc_f90_lib_m
+#endif
+
       implicit none
 
       PUBLIC::  
@@ -91,6 +96,7 @@ C Lengths in Bohr, energies in Hartrees
 C Written by L.C.Balbas and J.M.Soler, Dec'96.
 C Modified by V.M.Garcia-Suarez to include non-collinear spin. June 2002
 C Non collinear part rewritten by J.M.Soler. Sept. 2009
+C Interface with LibXC added by Micael Oliveira, Jul.2014
 
       implicit none
 
@@ -120,6 +126,12 @@ C Non collinear part rewritten by J.M.Soler. Sept. 2009
      .              DPOL, DTOT, GDD(3,2), GDTOT(3), GDPOL(3),
      .              VPOL
       real(dp), parameter :: DENMIN = 1.e-12_dp
+
+#ifdef LIBXC
+      type(xc_f90_pointer_t) :: xc_func, xc_info
+      integer :: xc_ispin, xc_id, iostat
+      real(dp) :: eps, dedn(nspin), sgm(3), dedsgm(3), dedgd(3, nspin)
+#endif
 
       ! Handle non-collinear spin case
       if (nSpin==4) then
@@ -272,6 +284,56 @@ C Non collinear part rewritten by J.M.Soler. Sept. 2009
         CALL BHX( IREL, NS, DD, GDD,
      .            EPSX, EPSC, dEXdDD, dECdDD, dEXdGDD, dECdGDD ) 
 
+      ELSEIF ( AUTHOR(1:5) == 'LIBXC') THEN
+#ifdef LIBXC
+      read(AUTHOR(7:10),iostat=iostat,fmt=*) xc_id
+      if (iostat /= 0) call die("Bad libxc code in " // AUTHOR)
+        sgm(1) = sum(GDD(1:3,1)*GDD(1:3,1))
+        IF (nspin == 1) THEN
+          xc_ispin = XC_UNPOLARIZED
+        ELSE
+          xc_ispin = XC_POLARIZED
+          sgm(2) = sum(GDD(1:3,1)*GDD(1:3,2))
+          sgm(3) = sum(GDD(1:3,2)*GDD(1:3,2))
+        ENDIF
+        call xc_f90_func_init(xc_func, xc_info, xc_id, xc_ispin)
+        IF (xc_f90_info_family(xc_info) /= XC_FAMILY_GGA) THEN
+          call die('GGAXC: Functional is not a GGA')
+        ENDIF
+
+        call xc_f90_gga_exc_vxc(xc_func, 1, DD(1), sgm(1), eps, dedn(1), 
+     .                          dedsgm(1))
+        IF (nspin == 1) THEN
+          dedgd(1:3, 1) = 2.0D0*dedsgm(1)*GDD(1:3, 1)
+        ELSE
+          dedgd(1:3, 1) = 2.0D0*dedsgm(1)*GDD(1:3, 1) +
+     .                    dedsgm(2)*GDD(1:3, 2)
+          dedgd(1:3, 2) = 2.0D0*dedsgm(3)*GDD(1:3, 2) +
+     .                    dedsgm(2)*GDD(1:3, 1)
+        ENDIF
+        IF (xc_f90_info_kind(xc_info) == XC_CORRELATION) THEN
+          EPSC = eps
+          dECdDD(1:nspin) = dedn(1:nspin)
+          dECdGDD(1:3, 1:nspin) = dedgd(1:3, 1:nspin)
+        ELSE if (xc_f90_info_kind(xc_info) == XC_EXCHANGE) THEN
+          EPSX = eps
+          dEXdDD(1:nspin) = dedn(1:nspin)
+          dEXdGDD(1:3, 1:nspin) = dedgd(1:3, 1:nspin)
+        ELSE ! combined functional, use an arbitrary 50/50 split
+          EPSX = 0.5_dp * eps
+          dEXdDD(1:nspin) = 0.5_dp * dedn(1:nspin)
+          dEXdGDD(1:3, 1:nspin) = 0.5_dp * dedgd(1:3, 1:nspin)
+          !
+          EPSC = EPSX
+          dECdDD(1:nspin) = dEXdDD(1:nspin)
+          dECdGDD(1:3, 1:nspin) = dEXdGDD(1:3,1:nspin)
+         ENDIF
+
+        call xc_f90_func_end(xc_func)
+#else
+        call die("Libxc not compiled in. Cannot handle " //
+     $       trim(AUTHOR))
+#endif /* LIBXC */
       ELSE
         call die('GGAXC: Unknown author ' // trim(AUTHOR))
       ENDIF
