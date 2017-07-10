@@ -110,8 +110,7 @@ C         Idetify neighbour index of orbital io relative to orbital jo -
                 qxij    = qpoint(1) *  dist(1)  + 
      &                    qpoint(2) *  dist(2)  + 
      &                    qpoint(3) *  dist(3)
-!                cqxij = cos(qxij)
-		cqxij = cos(pi)
+                cqxij = cos(qxij)
 
                 do ix = 1,3
                   DSMAT(ind2,ix) = DSMAT(ind2,ix) -
@@ -129,20 +128,20 @@ C         Idetify neighbour index of orbital io relative to orbital jo -
       enddo
 
 
-      do ix = 1,3
-          do i = 1,no_l
-           do j = 1, numh(i)
-            iu = indxuo(i)
-            ind2 = listhptr(iu)+ j
-            ju = listh(ind2)
-            ind=listhptr(i) + j
-            print*, i,';',j,';',ix,';',dSMAT(ind,ix)
-           enddo
-          enddo
-      enddo
+!      do ix = 1,3
+!          do i = 1,no_l
+!           do j = 1, numh(i)
+!            iu = indxuo(i)
+!            ind2 = listhptr(iu)+ j
+!            ju = listh(ind2)
+!            ind=listhptr(i) + j
+!            print*, i,';',j,';',ix,';',dSMAT(ind,ix)
+!           enddo
+!          enddo
+!      enddo
 
-	print*,'dhinit: stop'
-	stop
+!	print*,'dhinit: stop'
+!	stop
 
 
 

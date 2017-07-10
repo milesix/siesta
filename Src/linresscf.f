@@ -191,9 +191,6 @@ C Calculation of the kinetic terms of the perturbed hamiltonian (added into dHma
      &       listh, listhptr, numh, DS, dSmat, dHmat,dH, dDscf,
      &       dEscf)
 
-             print*,'linresscf DSMAT',DSMAT(:,1)
-		stop
-
 C Calculation of the KB terms of the perturbed hamiltonian
 C (added into dHmat)
             call dvnloc(scell, na_u, na_s, isa, xa, indxua, Dscf,

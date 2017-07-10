@@ -2,8 +2,3 @@ file.txt
 *.mod
 Obj/*
 Src/MPI/*
-Src/dhinit.f
-Src/rhooda.F
-Src/linresscf.f
-Src/dhscf.F
-
