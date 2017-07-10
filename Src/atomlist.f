@@ -88,7 +88,9 @@ C real*8 qa(na)             : Neutral atom charge of each atom
       real(dp), pointer, save, public   :: rckb(:)
 !         Cutoff radius of each KB projector
 !
-
+! Linres:Store the indices of the cell replica to know the translation vector
+      integer, pointer, save, public    :: Sreplica(:,:)
+! Linres
       CONTAINS
 
 !=======================================================
@@ -113,6 +115,10 @@ C
       call re_alloc(xa_last,1,3,1,na_u,'xa_last','atomlist')
       call re_alloc( amass, 1, na_u, 'amass', 'atomlist' )
       call re_alloc( in_kb_orb_u_range, 1, na_u, 'in_kb', 'atomlist' )
+! Linres
+      nullify(Sreplica)
+      call re_alloc( Sreplica, 1, na_u, 1, 3, 'Sreplica', 'atomlist' )
+! Liners
 !
 !     Find number of orbitals and KB projectors in cell
 !
@@ -250,12 +256,16 @@ C Internal variables
         call re_alloc( xa, 1, 3, 1, na, 'xa', 'atomlist', .true. )
         call re_alloc(xa_last, 1,3, 1,na, 'xa_last', 'superc',
      &                copy=.true. )
+! Linres
+        call re_alloc(Sreplica, 1, na, 1, 3, 'Sreplica',
+     &                   'atomlist',.true.)
+!
       endif
 
       na_s  = na
 
 C Find supercell vectors and atomic coordinates in supercell 
-      call superx( ucell, nsc, na_u, na_s, xa, scell )
+      call superx( ucell, nsc, na_u, na_s, xa, scell, Sreplica )
 
 C Find indxua and expand isa, iza, lasto and lastkb to supercell 
       do ia = 1,na_s
@@ -328,7 +338,7 @@ C Expand iakb and iphKB and rckb
 
       end subroutine superc
 
-      SUBROUTINE SUPERX( UCELL, NSC, NA, MAXA, XA, SCELL )
+      SUBROUTINE SUPERX( UCELL, NSC, NA, MAXA, XA, SCELL, Sreplica )
 
 C **********************************************************************
 C Generates supercell vectors and atomic positions.
@@ -357,6 +367,9 @@ C **********************************************************************
       IMPLICIT          NONE
       INTEGER           MAXA, NA, NSC(3)
       DOUBLE PRECISION  SCELL(3,3), UCELL(3,3), XA(3,MAXA)
+! Linres
+      INTEGER, optional :: Sreplica(MAXA,3) 
+! Linres
 
 C Internal variables
       INTEGER           I, I1, I2, I3, IA, IX, JA, NCELLS
@@ -384,12 +397,14 @@ C Expand atomic positions to supercell
             DO 20 IX = 1,3
               XA(IX,IA) = XA(IX,JA) + XC(IX)
    20       CONTINUE
+! Linres
+            IF (present(Sreplica)) Sreplica(IA,:)=(/I1,I2,I3/)
+! Linres
    30     CONTINUE
    40   CONTINUE
    50   CONTINUE
    60   CONTINUE
       ENDIF
-
       END subroutine superx
 
       end module atomlist

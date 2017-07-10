@@ -27,8 +27,13 @@ C
       use precision, only: dp, grid_p
 
       use atmfuncs, only: rcut, phiatm
-      use atomlist, only: indxuo
-      use mesh,     only: nsp, dxa, xdop, xdsp
+      use atomlist, only: indxuo, indxua,Sreplica
+      use mesh,     only: nsp, dxa, xdop, xdsp, iatfold
+     
+!	use siesta_geom,   only: xa
+ 
+!      use mesh,   only: idop,ipa,ne,nem,meshLim,cmesh,nmsc
+
       use meshphi
 C
       implicit none
@@ -43,6 +48,13 @@ C
       integer      ::  i, ip, isp, iu, kn, iop, is, iphi, ia, ix
       real(dp)     ::  Ci, gradCi(3), r2o, r2sp, dxsp(3) 
 
+
+
+      integer    :: irel,inmp(3)
+      real(dp)   :: dxp(3),displat(3)
+
+
+
 #ifdef DEBUG
       call write_debug( '      Pre rhooda' )
 #endif
@@ -54,10 +66,40 @@ C  Initialise rhoatm
           rhoatm(isp,ip) = 0.0_grid_p
         enddo
 
+!	if (ip.gt.50) stop
+!	print*,'rhoofa: ip point',ip
+
 C  Loop on orbitals of mesh point
         do kn = 1+endpht(ip-1), endpht(ip)
           i = lstpht(kn)
           iu = indxuo(i)
+!	  print*,'rhoofa: orbital, atomo,atomo c.unida',iu,iaorb(i),
+!     &                indxua(iaorb(i))
+!	  print*,'posicion',xdop(:,listp2(kn))
+!	  print*,'Sreplica',Sreplica(iaorb(i),:)
+!	  print*,'iatfold',iatfold(:,iaorb(i))
+!	  print*,'veamos su vector translacion'
+          
+!         ia = iaorb(i)
+!	  iop=listp2(kn)
+!          irel = idop(iop) + ipa(ia)
+!	print*,'ipa(ia)',ipa(ia)
+!          call ipack( -1, 3, nem, inmp, irel )
+!             inmp(:) = inmp(:) + (meshLim(1,:) - 1)
+!             inmp(:) = inmp(:) - 2 * ne(:)
+!	print*,'inmp',inmp(:)
+!          dxp(:) = cmesh(:,1) * inmp(1) + 
+!     &                  cmesh(:,2) * inmp(2) + 
+!     &                 cmesh(:,3) * inmp(3)
+!	print*,'dxp',dxp(:)
+
+!	do ix=1,3
+!	displat(ix)= (iatfold(1,ia)*nmsc(1))*cmesh(ix,1)+
+!     &               (iatfold(2,ia)*nmsc(2))*cmesh(ix,2)+
+!     &               (iatfold(3,ia)*nmsc(3))*cmesh(ix,3)
+!	enddo
+!	print*,'displat',displat(:)
+!	print*,'distancia',xa(:,indxua(ia))-xa(:,ia)-displat(:)
 
           if (DirectPhi) then
 C  Generate phi value and loop on subpoints

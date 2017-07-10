@@ -381,14 +381,14 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
      m11, m12, m13, m21, m22, m23, maxPoints, mesh(3), &
      myBox(2,3), myMesh(3), myOldDistr, myPoints, &
      ndSpin, nf, nonemptyPoints, nPoints, nq, ns, nXCfunc, &
-     r11, r12, r13, r21, r22, r23
+     r11, r12, r13, r21, r22, r23, is2 
   real(dp):: &
      comTime, D(nSpin), dedk, dEcdD(nSpin), dEcdGD(3,nSpin), &
      dEcidDj, dEcuspdD(nSpin), dEcuspdGD(3,nSpin),  &
      dExdD(nSpin), dExdGD(3,nSpin), dExidDj, &
      dGdM(-nn:nn), dGidFj(3,3,-nn:nn), Dj(nSpin), &
      dMdX(3,3), DV, dVol, Dtot, dXdM(3,3), &
-     dVcdD(nSpin*nSpin), dVxdD(nSpin*nSpin), &
+     dVcdD(nSpin,nSpin), dVxdD(nSpin,nSpin), &
      EcuspVDW, Enl, epsC, epsCusp, epsNL, epsX, f1, f2, &  
      GD(3,nSpin), k, kcell(3,3), kcut, kvec(3),  &
      stressVDW(3,3), sumTime, sumTime2, totTime, VDWweightC, volume, &
@@ -1058,8 +1058,8 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
         dEcdGD(:,:) = XCweightC(nf)*dEcdGD(:,:)
       endif
       if (present(ddens)) then
-        dVxdD(:) = XCweightX(nf)*dVxdD(:)
-        dVcdD(:) = XCweightC(nf)*dVcdD(:)
+        dVxdD(:,:) = XCweightX(nf)*dVxdD(:,:)
+        dVcdD(:,:) = XCweightC(nf)*dVcdD(:,:)
       endif
 
       ! Add contributions to exchange-correlation energy and its
@@ -1070,13 +1070,25 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
       Dc = Dc + dVol * Dtot * epsC
       Dx = Dx - dVol * sum(D(:)*dExdD(:))
       Dc = Dc - dVol * sum(D(:)*dEcdD(:))
+
+!! The elements dVx/cdD have nspin*nspin dimension and correspond to
+![(up,up),(down,up),(up,down),(down,down)] where the first index is the spin 
+! potential and the second one the spin of the density
       if (present(ddens)) then
         if (associated(myVxc)) then !Linres
-          myVxc(ii1,ii2,ii3,:) = myVxc(ii1,ii2,ii3,:) + &
-                         (dVxdD(:)+dVcdD(:))*mydDens(ii1,ii2,ii3,:)
+          do is=1,nSpin   
+            do is2=1,nSpin 
+            myVxc(ii1,ii2,ii3,is) = myVxc(ii1,ii2,ii3,is) + &
+                         (dVxdD(is,is2)+dVcdD(is,is2))*mydDens(ii1,ii2,ii3,is2)
+            enddo
+          enddo
         else
-          Vxc(ii1,ii2,ii3,:) = Vxc(ii1,ii2,ii3,:) + & 
-                         (dVxdD(:)+dVcdD(:))*ddens(ii1,ii2,ii3,:)
+          do is=1,nSpin
+            do is2=1,nSpin
+            Vxc(ii1,ii2,ii3,is) = Vxc(ii1,ii2,ii3,is) + & 
+                         (dVxdD(is,is2)+dVcdD(is,is2))*ddens(ii1,ii2,ii3,is2)
+            enddo
+          enddo
         endif
       else 
         if (associated(myVxc)) then

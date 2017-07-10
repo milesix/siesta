@@ -36,12 +36,14 @@ C REAL*8 DESCF		      : perturbed energy density matrix
 C Modules-----------------------------------------------------------------
 !        use m_iodmlr,      only: read_dmlr
         use precision,     only: dp
-        use atomlist,      only: no_l, indxuo
+        use atomlist,      only: no_l, indxuo, indxua, iaorb
         use alloc,         only: re_alloc, de_alloc
-        use parallel,      only : Node, Nodes
-        use parallelsubs,  only : GlobalToLocalOrb
+        use parallel,      only: Node, Nodes
+        use parallelsubs,  only: GlobalToLocalOrb
         use listsc_module, only: listsc
-        use alloc,         only : re_alloc
+        use alloc,         only: re_alloc
+        use mesh,          only: iatfold, nmsc, cmesh
+        use siesta_geom,   only: xa
 C -------------------------------------------------------------------------
 
         implicit none
@@ -53,16 +55,20 @@ C Internal variable types and dimensions
      &                   ind2, k, ko, ispin
         logical      :: found
 
-        integer      :: maxnh, maxnd, nspin, i, ia
+        integer      :: maxnh, maxnd, nspin, i, ia, iua, iu, ju
         real(dp)     :: DS(maxnh,3), DSMAT(maxnh,3), 
      &                  DHMAT(maxnh,3, nspin), DT(maxnh,3), 
      &                  dDscf(maxnd,nspin,3), dEscf(maxnd,nspin,3)
-      
+        real(dp)     :: displaat(3), dist(3), qxij, qpoint(3), cqxij, pi
         
       call timer( 'dHinit', 1 )  
 C Read change in the density matrix from file ----------------------- 
 !     call read_dmlr ( maxnh, no_l, nspin, numh,
 !    &                     listhptr, listh, dDscf, found )
+
+      qpoint=(/0.0,0.0,0.0/)
+      pi = 4*atan(1.0_dp)
+
 
 C Initialize changed overlap, DM and energy matrices ----------------
       dSmat = 0.0_dp
@@ -75,12 +81,12 @@ C Loop on orbitals of atom IALR ----------------------------------------
 
       do io = lasto(IALR-1)+1, lasto(IALR) !orbitals from moving atom
         call GlobalToLocalOrb(io,Node,Nodes,iio)
-        if (iio .gt. 0) then !local orbital
+        if (iio .gt. 0) then !local orbital 
           do j = 1,numh(iio) !interacting orbitals
             ind = listhptr(iio)+j !position to io-j interaction 
             jo = listh(ind)
             juo = indxuo(jo)
-            do ix = 1,3
+            do ix = 1,3 ! calculate mu,nu elements (mu is in the unit cell)
               DSMAT(ind,ix) = DSMAT(ind,ix) - DS(ind,ix)
               do ispin = 1,nspin
                 DHMAT(ind,ix,ispin) = DHMAT(ind,ix,ispin)
@@ -90,11 +96,27 @@ C Loop on orbitals of atom IALR ----------------------------------------
 C         Idetify neighbour index of orbital io relative to orbital jo -
             do k = 1, numh(juo)
               ind2 = listhptr(juo)+ k
-              ko = listsc(jo,juo,listh(ind2))
-              if ( ko .EQ. iio) then
+              ko = listsc(jo,juo,listh(ind2)) 
+              if ( ko .EQ. iio) then !add contributions nu,mu elements
+                ia  = iaorb(listh(ind2))
+                iua = indxua(ia)
+                do ix = 1, 3
+                  displaat(ix) = 
+     &                 (iatfold(1,ia)*nmsc(1))*cmesh(ix,1)+ 
+     &                 (iatfold(2,ia)*nmsc(2))*cmesh(ix,2)+ 
+     &                 (iatfold(3,ia)*nmsc(3))*cmesh(ix,3)
+                end do
+                dist(:) = xa(:,iua) - xa(:,ia) - displaat(:)
+                qxij    = qpoint(1) *  dist(1)  + 
+     &                    qpoint(2) *  dist(2)  + 
+     &                    qpoint(3) *  dist(3)
+!                cqxij = cos(qxij)
+		cqxij = cos(pi)
+
                 do ix = 1,3
                   DSMAT(ind2,ix) = DSMAT(ind2,ix) -
      &                           DS(ind,ix)
+                  DSMAT(ind2,ix) = cqxij * DSMAT(ind2,ix)
                   do ispin = 1,nspin
                     DHMAT(ind2,ix,ispin) = DHMAT(ind2,ix,ispin)
      &                                 - DT(ind,ix)
@@ -105,6 +127,28 @@ C         Idetify neighbour index of orbital io relative to orbital jo -
           enddo
         endif
       enddo
+
+
+      do ix = 1,3
+          do i = 1,no_l
+           do j = 1, numh(i)
+            iu = indxuo(i)
+            ind2 = listhptr(iu)+ j
+            ju = listh(ind2)
+            ind=listhptr(i) + j
+            print*, i,';',j,';',ix,';',dSMAT(ind,ix)
+           enddo
+          enddo
+      enddo
+
+	print*,'dhinit: stop'
+	stop
+
+
+
+
+
+
 
       call timer( 'dHinit', 2 )
 

@@ -1979,7 +1979,7 @@ C Compute gradient/derivative of the partial core correction density
               fsrc =>dRhoscf0_par(jx,:,ispin)
               fdst =>dRhoscf0(jx,:,ispin)
               call distMeshData( QUADRATIC, fsrc,
-     &                       UNIFORM, fdst, TO_SEQUENTIAL )
+     &                    UNIFORM, fdst, TO_SEQUENTIAL )
             enddo
           enddo 
           do jx = 1,3
