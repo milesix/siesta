@@ -586,7 +586,7 @@ C Input :
 C ----------------------------------------------------------------------
 C integer nspin         : Number of different spin polarisations
 C                         nspin=1 => Unpolarized, nspin=2 => polarized
-C                         nspin=4 => Noncollinear spin
+C                         nspin=4 => Noncollinear spin or spin-orbit
 C integer norb          : Total number of basis orbitals in supercell
 C integer iaorb(norb)   : Atom to which each orbital belongs
 C integer iphorb(norb)  : Orbital index (within atom) of each orbital
@@ -1771,6 +1771,8 @@ C     Global reduction of Uscf/DUscf/Uatm/Enaatm/Enascf
 #ifdef BSC_CELLXC
       sbuffer(6) = Exc
       sbuffer(7) = Dxc
+#else
+      sbuffer(6:7) = 0._dp
 #endif /* BSC_CELLXC */
       call MPI_AllReduce( sbuffer, rbuffer, 7, MPI_double_precision,
      &                     MPI_Sum, MPI_Comm_World, MPIerror )

@@ -630,7 +630,7 @@ contains
 
     call init_Sigma_options( save_DATA )
 
-    call init_dH_options( )
+    call init_dH_options( save_DATA )
 
     ! read in contour options
     call read_contour_options( N_Elec, Elecs, N_mu, mus )
@@ -731,7 +731,7 @@ contains
     
     call print_diag()
     call print_Sigma_options( save_DATA )
-    call print_dH_options()
+    call print_dH_options( save_DATA )
     call print_save_options()
 
     write(*,f11)'          >> Electrodes << '
@@ -773,11 +773,11 @@ contains
     ! Removal of keys
     rem_DOS_Elecs = 'DOS-Elecs' .in. save_DATA
     if ( any(Elecs(:)%out_of_core) ) then
-       call remove(save_DATA,'DOS-Elecs')
+       call delete(save_DATA,'DOS-Elecs')
     end if
     rem_T_Gf = 'T-Gf' .in. save_DATA
     if ( N_Elec > 3 ) then
-       call remove(save_DATA,'T-Gf')
+       call delete(save_DATA,'T-Gf')
     end if
 
     if ( .not. IONode ) return
@@ -790,13 +790,15 @@ contains
             &zero or positive.')
     end if
 
-    if ( ('orb-current' .in.save_DATA) ) then
-       ltmp = .not. fdf_get('SpinSpiral',.false.)
-       ltmp = fdf_get('TBT.Symmetry.TimeReversal',ltmp)
-       if ( .not. Gamma ) then
-          write(*,'(a,/,a)') 'WARNING: k-averaging orbital currents with &
-               &time-reversal symmetry will not reproduce','the correct &
-               &orbital current. Set TBT.Symmetry.TimeReversal F'
+    if ( .not. Gamma ) then
+       if ( ('orb-current' .in.save_DATA) ) then
+          ltmp = .not. fdf_get('SpinSpiral',.false.)
+          ltmp = fdf_get('TBT.Symmetry.TimeReversal',ltmp)
+          if ( IONode .and. ltmp ) then
+             write(*,'(a,/,a)') 'WARNING: k-averaging orbital currents with &
+                  &time-reversal symmetry will not reproduce','the correct &
+                  &orbital current. Set TBT.Symmetry.TimeReversal F'
+          end if
        end if
     end if
 
