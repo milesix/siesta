@@ -74,7 +74,7 @@
       real(dp),      pointer :: Dlocal(:), dDlocal(:)
       real(dp),      pointer :: DscfL(:), dDscfL(:)
 ! parallel:  Will store the sumation of t_dynmat from each node
-      real(dp),      pointer :: t_dynmatBuff(:,:) 
+      real(dp),      pointer :: t_dynmatBuff(:,:,:) 
 ! calculated contributions in each node
       real(dp),      pointer :: t_dynmat(:,:) !will store common (s/p) dynmat
       logical                :: VnaListed, ParallelLocal
@@ -170,7 +170,7 @@
       call re_alloc( gC, 1, 3, 1, nsp, 1, maxloc2, 'gC', 'dynamat' )
       call re_alloc( LISTED, 1,na,1,maxloc2, 'LISTED', 'dynamat' )
 
-      call re_alloc(t_dynmat, 1, nua, 1, 3, 't_dynmat', 'dynamat')      
+!      call re_alloc(t_dynmat, 1, nua, 1, 3, 't_dynmat', 'dynamat')      
 
       if (DirectPhi) allocate(phia(maxoa,nsp),grphi(3,maxoa,nsp))
 !$OMP end critical
@@ -179,22 +179,30 @@
 !$OMP single
     if ( ParallelLocal ) then ! Define parallel buffer
        nullify( t_dynmatBuff )
-       call re_alloc( t_dynmatBuff, 1, nua, 1, 3, 't_dynmatBuff',  'dynamat' )
+       call re_alloc( t_dynmatBuff, 1, nua, 1, 3, 1, NTH, 't_dynmatBuff',  'dynamat' )
+    else 
+       if ( NTH > 1 ) then
+         nullify( t_dynmatBuff )
+         call re_alloc( t_dynmatBuff, 1, nua, 1, 3, 2, NTH, 't_dynmatBuff',  'dynamat' )
+       end if
     end if
 !$OMP end single ! implicit barrier
 
     if ( ParallelLocal ) then
+       t_dynmat =>t_dynmatBuff(1:nua,:,TID)
        t_dynmat(1:nua,:) = 0._dp
     else
        if ( NTH > 1 ) then
-!          if ( TID == 1 ) then
-!             t_dynmat => dynmat 
-!          else
-!             t_dynmat => t_dynmats(1:nua,:,TID) !t_dyn points to serial dynmat
-!             t_dynmat(1:nua,:) = 0._dp
-!          end if
+          if ( TID == 1 ) then
+             call re_alloc(t_dynmat, 1, nua, 1, 3, 't_dynmat', 'dynamat')
+             t_dynmat(1:nua,:) = 0._dp
+          else
+             t_dynmat => t_dynmatBuff(1:nua,:,TID)
+             t_dynmat(1:nua,:) = 0._dp
+          end if
        else
-!          t_dynmat => dynmat  ! serial case, points directly to target
+          call re_alloc(t_dynmat, 1, nua, 1, 3, 't_dynmat', 'dynamat')
+          t_dynmat(1:nua,:) = 0._dp
        end if
     end if
 
@@ -541,39 +549,49 @@
 !$OMP end do nowait
 
 !$OMP barrier
-!    if ( ParallelLocal .and. NTH > 1 ) then
+    if ( ParallelLocal .and. NTH > 1 ) then
 !$OMP do collapse(2)
-!       do ind = 1, nua
-!          do ii = 2, NTH
-!                t_dynmatL(ind,:,1) = t_dynmatL(ind,:,1) + &
-!                     t_dynmatL(ind,:,ii)
-!          end do
-!       end do
+       do ind = 1, nua
+          do ix=1, 3
+             do ii = 2, NTH
+                t_dynmatBuff(ind,ix,1) = t_dynmatBuff(ind,ix,1) + &
+                     t_dynmatBuff(ind,ix,ii)
+             end do
+          end do
+       end do
 !$OMP end do
-!    else if ( NTH > 1 ) then
+       dynmat(1:nua,1:3)= t_dynmatBuff(1:nua,1:3,1)+dynmat(1:nua,1:3)
+    else if ( NTH > 1 ) then
 !$OMP do collapse(2)
-!       do ind = 1, nua
-!          do ii = 2, NTH
-!                dynmat(ind,:) = dynmat(ind,:) + t_dynmats(ind,:,ii)
-!          end do
-!       end do
+       do ind = 1, nua
+          do ix=1, 3
+            do ii = 2, NTH
+                dynmat(ind,ix) = dynmat(ind,ix) + t_dynmatBuff(ind,ix,ii)
+            end do
+          end do
+       end do
 !$OMP end do
-!    end if
+    else
+       dynmat(1:nua,1:3)= t_dynmat(1:nua,1:3)+dynmat(1:nua,1:3)
+       call de_alloc( t_dynmat, 't_dynmat', 'dynamat')
+    end if
 
 !     Global reduction of dynamical matrix
     if ( ParallelLocal ) then
-#ifdef MPI
-       call globalize_sum( t_dynmat(1:nua,1:3),   &
-             t_dynmatBuff(1:nua,1:3) )
-       dynmat(1:nua,1:3)= dynmat(1:nua,1:3)+t_dynmatBuff(1:nua,1:3)
+!#ifdef MPI
+!       call globalize_sum( t_dynmat(1:nua,1:3),   &
+!             t_dynmatBuff(1:nua,1:3) )
+!       dynmat(1:nua,1:3)= dynmat(1:nua,1:3)+t_dynmatBuff(1:nua,1:3)
        call de_alloc(t_dynmatBuff,'t_dynmatBuff','dynamat')
-#endif
-    else
-        dynmat(1:nua,1:3)= t_dynmat(1:nua,1:3)+dynmat(1:nua,1:3)
+!#endif
+!    else
+!        dynmat(1:nua,1:3)= t_dynmat(1:nua,1:3)+dynmat(1:nua,1:3)
+    else if ( NTH > 1 ) then
+       call de_alloc(t_dynmatBuff,'t_dynmatBuff','dynamat')
     endif
 
     if (DirectPhi) deallocate(phia,grphi)
-    call de_alloc( t_dynmat, 't_dynmat', 'dynamat')
+!    call de_alloc( t_dynmat, 't_dynmat', 'dynamat')
     call de_alloc( Dlocal, 'Dlocal','dynamat')
     call de_alloc( dDlocal, 'dDlocal','dynamat')
     call de_alloc( gC, 'gC', 'dynamat' )

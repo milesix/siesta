@@ -302,7 +302,7 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
   real(gp),intent(out):: Vxc(0:ub1-lb1,0:ub2-lb2,0:ub3-lb3,1:nSpin) 
                                      ! (spin) xc potential
   real(gp),intent(in),optional:: &   ! Pertuebed density
-                         ddens(0:ub1-lb1,0:ub2-lb2,0:ub3-lb3,1:nSpin**2) 
+                         ddens(0:ub1-lb1,0:ub2-lb2,0:ub3-lb3,1:nSpin) 
 
   ! Fix the order of the numerical derivatives
   ! nn is the number of points used in each coordinate and direction,
@@ -482,7 +482,6 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
 
   ! Find new mesh distribution, if previous iteration was too unbalanced
   if (nodes>1 .and. timeDisp/timeAvge>maxUnbalance) then
-    print*,'cellxc: entra en nodes1'
     ! Find my node's mesh box using myDistr
     call myMeshBox( nMesh, myDistr, myBox )
     ! Allocate arrays for the density and workload per point in my box
@@ -740,7 +739,7 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
 
       !  Find gradient of density at this point
       call getGradDens( ii1, ii2, ii3, GD )   ! This subr. is contained below
-
+      
       ! Avoid negative densities
       D(1:ndSpin) = max( D(1:ndSpin), 0._dp )
 
@@ -1429,6 +1428,48 @@ CONTAINS !---------------------------------------------------------------------
   end if ! (myDistr==0)
 
   end subroutine getGradDens
+
+
+  subroutine Gradient( ii1, ii2, ii3, D, GD )
+  ! Finds the gradient (GD) of general thing D in the mesh.
+  ! Only working for myDistr==0. For the myDistr=/0, the left,righ123
+  ! pointers must be initializated and created
+
+  ! Arguments
+  integer, intent(in) :: ii1, ii2, ii3  ! Global mesh point indexes
+  real(dp),intent(in),target :: D(0:ub1-lb1,0:ub2-lb2,0:ub3-lb3,1:nSpin)
+  real(dp),intent(out):: GD(3,nSpin) !  gradient of densto
+
+  ! Variables and arrays accessed from parent subroutine:
+  !   Dleft1, Dleft2, Dleft3, 
+  !   Drght1, Drght2, Drght3, DGiDFj,
+  !   myBox, myDistr, nn, nSpin, nMesh
+
+  ! Local variables and arrays
+  integer :: ic, in, is, jj(3)
+  real(dp):: Dj(nSpin)
+  real(gp),pointer:: Dleft(:,:,:,:), Drght(:,:,:,:)
+  real(gp), pointer:: F(:,:,:,:)
+
+  GD(:,:) = 0
+  F=>D
+  do ic = 1,3          ! Loop on cell axes
+    do in = -nn,nn     ! Loop on finite difference index
+      ! Find index jp of neighbor point
+      jj(1) = ii1  ! Warning: jj(:)=(/ii1,ii2,ii3/) is VERY slow!!!
+      jj(2) = ii2
+      jj(3) = ii3
+      jj(ic) = modulo( jj(ic)+in, nMesh(ic) )
+      ! Find contribution of density at j to gradient at i
+      do is = 1,nSpin
+        do ix = 1,3  ! Warning: GD(:,is)=GD(:,is)+... is slower!!!
+          GD(ix,is) = GD(ix,is) + DGiDFj(ix,ic,in) * &
+                                  F(jj(1),jj(2),jj(3),is)
+        end do ! ix
+      end do ! is
+    end do ! in
+  end do ! ic
+  end subroutine Gradient
 
 END SUBROUTINE cellXC
 

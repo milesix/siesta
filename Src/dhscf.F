@@ -2189,7 +2189,7 @@ C Calculate the total perturbed Hamiltonian
             call setMeshDistr( QUADRATIC, nsm, nsp,
      &                        nml, nmpl, ntml, ntpl )
          endif
-
+         nullify(VLR_par)
          call re_alloc( VLR_par, 1, ntpl, 1, nspin,
      &                'VLR_par','dhscf' )
 
@@ -2287,7 +2287,7 @@ C------------------------------------------------------------------------
               call setMeshDistr( QUADRATIC, nsm, nsp,
      &                       nml, nmpl, ntml, ntpl )
             endif
-
+            nullify(VLR_par)
             call re_alloc( Vscf_par, 1, ntpl, 1, nspin,
      &                 'Vscf_par', 'dhscf' )
             call re_alloc( VLR_par, 1, ntpl, 1, nspin,
