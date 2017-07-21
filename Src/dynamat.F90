@@ -170,8 +170,6 @@
       call re_alloc( gC, 1, 3, 1, nsp, 1, maxloc2, 'gC', 'dynamat' )
       call re_alloc( LISTED, 1,na,1,maxloc2, 'LISTED', 'dynamat' )
 
-!      call re_alloc(t_dynmat, 1, nua, 1, 3, 't_dynmat', 'dynamat')      
-
       if (DirectPhi) allocate(phia(maxoa,nsp),grphi(3,maxoa,nsp))
 !$OMP end critical
 
@@ -578,20 +576,12 @@
 
 !     Global reduction of dynamical matrix
     if ( ParallelLocal ) then
-!#ifdef MPI
-!       call globalize_sum( t_dynmat(1:nua,1:3),   &
-!             t_dynmatBuff(1:nua,1:3) )
-!       dynmat(1:nua,1:3)= dynmat(1:nua,1:3)+t_dynmatBuff(1:nua,1:3)
        call de_alloc(t_dynmatBuff,'t_dynmatBuff','dynamat')
-!#endif
-!    else
-!        dynmat(1:nua,1:3)= t_dynmat(1:nua,1:3)+dynmat(1:nua,1:3)
     else if ( NTH > 1 ) then
        call de_alloc(t_dynmatBuff,'t_dynmatBuff','dynamat')
     endif
 
     if (DirectPhi) deallocate(phia,grphi)
-!    call de_alloc( t_dynmat, 't_dynmat', 'dynamat')
     call de_alloc( Dlocal, 'Dlocal','dynamat')
     call de_alloc( dDlocal, 'dDlocal','dynamat')
     call de_alloc( gC, 'gC', 'dynamat' )
@@ -605,8 +595,6 @@
     if (ParallelLocal) then
         call de_alloc( DscfL, 'DscfL', 'dynamat' )
         call de_alloc( dDscfL, 'dDscfL', 'dynamat' )
-!      else if ( NTH > 1 ) then
-!        call de_alloc( t_dynmats, 't_dynmats',  'dynamat' )
     end if
 
 
