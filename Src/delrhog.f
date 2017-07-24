@@ -1,6 +1,6 @@
       SUBROUTINE DELRHOG(nuo, nspin, maxorb, eval, tol, eigtol,  
      &                   occ, Hper, Oper, maxnh, numh, listh,listhptr,
-     &                   ix,ef,T,Rhoper,Erhoper,psi,iscf)
+     &                   ef,T,Rhoper,Erhoper,psi,iscf)
 
 
 C **********************************************************************
@@ -58,7 +58,7 @@ C     Internal Variables
       real(dp) :: def, A, B, 
      &            dQo(maxorb), Qo,aux(maxorb), 
      &            psiper(maxorb,maxorb), prod1, prod2, 
-     &            prod3, prod4, ei0, ej0, dStepF, evper(3,maxorb)
+     &            prod3, prod4, ei0, ej0, dStepF, evper(maxorb)
       real(dp), pointer :: Haux(:,:), Saux(:,:), Psiden(:,:),
      &                     rotaux(:), eden(:)
       save :: maxden
@@ -83,19 +83,19 @@ C     Internal Variables
         enddo
       endif      
       ! initialize with size of deg subspace
-      call re_alloc(Haux, 1,maxden, 1,maxden,'Haux', 'delrhog')
-      call re_alloc(Saux, 1,maxden, 1,maxden,'Saux', 'delrhog')
-      call re_alloc(Psiden, 1,maxden, 1,maxden,'Psiden', 'delrhog')
-      call re_alloc(rotaux, 1,maxden,'rotaux', 'delrhog')
-      call re_alloc(eden, 1,maxden,'eden', 'delrhog')
+!      call re_alloc(Haux, 1,maxden, 1,maxden,'Haux', 'delrhog')
+!      call re_alloc(Saux, 1,maxden, 1,maxden,'Saux', 'delrhog')
+!      call re_alloc(Psiden, 1,maxden, 1,maxden,'Psiden', 'delrhog')
+!      call re_alloc(rotaux, 1,maxden,'rotaux', 'delrhog')
+!      call re_alloc(eden, 1,maxden,'eden', 'delrhog')
  
       def = 0.0_dp
       A = 0.0_dp
       B = 0.0_dp
-      rotaux(1:maxden) = 0.0_dp
-      Haux(1:maxden,1:maxden) = 0.0_dp
-      Saux(1:maxden,1:maxden) = 0.0_dp
-      numb(1:nbands) = 0
+!      rotaux(1:maxden) = 0.0_dp
+!      Haux(1:maxden,1:maxden) = 0.0_dp
+!      Saux(1:maxden,1:maxden) = 0.0_dp
+!      numb(1:nbands) = 0
       dQo(1:nbands) = 0.0_dp
 
       N = 0
@@ -103,7 +103,6 @@ C     Internal Variables
         qo = occ (io)
         if(qo .ge. 1.0e-5_dp) then
           ei0 = eval(io) 
-
           if(io .lt. nbands) then
             ej0 = eval(io+1)
           else
@@ -116,7 +115,14 @@ C     Internal Variables
           else
             numb(io) = N + 1
             N = 0
-            if(numb(io).gt.1) then
+            if((numb(io).gt.1) .and. (iscf.gt.1)) then
+      ! initialize with size of deg subspace
+      nullify(psiden,eden,rotaux,Haux,Saux)
+      call re_alloc(Haux, 1,numb(io), 1,numb(io),'Haux', 'delrhog')
+      call re_alloc(Saux, 1,numb(io), 1,numb(io),'Saux', 'delrhog')
+      call re_alloc(Psiden, 1,numb(io), 1,numb(io),'Psiden', 'delrhog')
+      call re_alloc(rotaux, 1,numb(io),'rotaux', 'delrhog')
+      call re_alloc(eden, 1,numb(io),'eden', 'delrhog')
               do j = io-numb(io)+1, io
                 jden = j - io + numb(io)
                 numb(j) = numb(io)
@@ -126,7 +132,8 @@ C     Internal Variables
                   do mu=1,nuo 
                     do nu = 1,numh(mu)
                       indmn=listhptr(mu) + nu
-                      jo = ucorb(listh(indmn),nuo)
+!                      jo = ucorb(listh(indmn),nuo)
+                      jo = listh(indmn)    ! LET ME TRY THIS ALTERNATIVE
                        Haux(jden,kden) = Haux(jden,kden)  
      .                     + psi(mu,j) * psi(jo,k) * 
      .                     (Hper(indmn)-eval(io)*Oper(indmn))
@@ -135,9 +142,12 @@ C     Internal Variables
                 ENDDO
               ENDDO
         ! Compute eigenvalues of dH_nn' to give dE_in
-              call rdiag( Haux, Saux, numb(io),maxden,maxden,
-     .             eden, psiden,maxden,1,ierror )
+!              call rdiag( Haux, Saux, maxden, numb(io),maxden,
+!     .             eden, psiden,numb(io),iscf,ierror )
+              call rdiag( Haux, Saux, numb(io), numb(io),numb(io),
+     .             eden, psiden,numb(io),iscf,ierror )
 
+! Rotate eigenvectors in degenerate subspace
               do mu = 1,nuo
                do ialpha = 1, numb(io)
                 do ibeta = 1, numb(io)
@@ -152,15 +162,20 @@ C     Internal Variables
                enddo
               enddo
               do jo = 1, numb(io)
-                evper(ix,io-numb(io)+jo) = eden(jo)
+                evper(io-numb(io)+jo) = eden(jo)
               enddo
                     
-              do jo = 1, numb(io)
-               do k = 1, numb(io)
-                Haux(k,jo) = 0.D0
-                Saux(k,jo) = 0.D0
-               enddo
-              enddo
+!              do jo = 1, numb(io)
+!               do k = 1, numb(io)
+!                Haux(k,jo) = 0.D0
+!                Saux(k,jo) = 0.D0
+!               enddo
+!              enddo
+             call de_alloc(psiden,'psiden','delrhog')
+             call de_alloc(rotaux,'rotaux','delrhog')
+             call de_alloc(eden,'eden','delrhog')
+             call de_alloc(Haux,'Haux','delrhog')
+             call de_alloc(Saux,'Saux','delrhog')
             endif !numb(io)>1 
          endif !abs
         endif !qo.ge.
@@ -168,7 +183,7 @@ C     Internal Variables
 
 C Initialize the perturbed coefficients
       do j = 1,maxorb
-       evper(ix,j) = 0.0_dp 
+       evper(j) = 0.0_dp 
        do i = 1,maxorb
         psiper(i,j) = 0.0_dp
        enddo
@@ -204,7 +219,7 @@ C Calculate perturbed coefficients
              aux(j) = aux(j) - prod4 * psi(ialpha,j)
             endif
           enddo
-         evper(ix,i) = evper(ix,i) + prod3 * psi(ialpha,i)
+         evper(i) = evper(i) + prod3 * psi(ialpha,i)
         enddo
         do ialpha = 1,nuo
           psiper(i,ialpha) = 0.0_dp
@@ -213,8 +228,8 @@ C Calculate perturbed coefficients
      .                        aux(j) * psi(ialpha,j) 
           enddo
         enddo
-        dQo(i) = evper(ix,i) * dStepF((ei0-ef)/T)/(T*nspin+1.0e-12_dp)
-        A = A + evper(ix,i) * dStepF((ei0-ef)/T)
+        dQo(i) = evper(i) * dStepF((ei0-ef)/T)/(T*nspin+1.0e-12_dp)
+        A = A + evper(i) * dStepF((ei0-ef)/T)
         B = B + dStepF((ei0-ef)/T)
  110  enddo
       def = A / (B + 1.0e-12_dp)
@@ -244,7 +259,7 @@ C Calculate matrix elements of the perturbed Density Matrix
      .                           qo* ei0*
      .                           ( psiper(i,mu) * psi(j,i) +
      .                             psi(mu,i) * psiper(i,j))+
-     .               evper(ix,i)*qo * ( psi(mu,i)*psi(j,i)) 
+     .               evper(i)*qo * ( psi(mu,i)*psi(j,i)) 
      .             + dQo(i) * ei0 * ( psi(mu,i) * psi(j,i) )
  1300     enddo
  1400   enddo
