@@ -93,7 +93,7 @@
 \BOOKMARK [2][-]{subsection.6.26}{Memory, CPU-time, and Wall time accounting options}{section.6}% 93
 \BOOKMARK [2][-]{subsection.6.27}{The catch-all option UseSaveData}{section.6}% 94
 \BOOKMARK [2][-]{subsection.6.28}{Output of information for Denchar}{section.6}% 95
-\BOOKMARK [2][-]{subsection.6.29}{NetCDF-4 output file}{section.6}% 96
+\BOOKMARK [2][-]{subsection.6.29}{NetCDF \(CDF4\) output file}{section.6}% 96
 \BOOKMARK [1][]{section.7}{STRUCTURAL RELAXATION, PHONONS, AND MOLECULAR DYNAMICS}{}% 97
 \BOOKMARK [2][-]{subsection.7.1}{Compatibility with pre-v4 versions}{section.7}% 98
 \BOOKMARK [2][-]{subsection.7.2}{Structural relaxation}{section.7}% 99
@@ -106,38 +106,40 @@
 \BOOKMARK [2][-]{subsection.7.6}{Restarting geometry optimizations and MD runs}{section.7}% 106
 \BOOKMARK [2][-]{subsection.7.7}{Use of general constraints}{section.7}% 107
 \BOOKMARK [2][-]{subsection.7.8}{Phonon calculations}{section.7}% 108
-\BOOKMARK [1][]{section.8}{LDA+U}{}% 109
-\BOOKMARK [1][]{section.9}{RT-TDDFT}{}% 110
-\BOOKMARK [2][-]{subsection.9.1}{Brief description}{section.9}% 111
-\BOOKMARK [2][-]{subsection.9.2}{Input options for RT-TDDFT}{section.9}% 112
-\BOOKMARK [1][]{section.10}{TRANSIESTA}{}% 113
-\BOOKMARK [2][-]{subsection.10.1}{Brief description}{section.10}% 114
-\BOOKMARK [2][-]{subsection.10.2}{Source code structure}{section.10}% 115
-\BOOKMARK [2][-]{subsection.10.3}{Compilation}{section.10}% 116
-\BOOKMARK [2][-]{subsection.10.4}{Running a fast example}{section.10}% 117
-\BOOKMARK [2][-]{subsection.10.5}{Brief explanation}{section.10}% 118
-\BOOKMARK [2][-]{subsection.10.6}{Electrodes}{section.10}% 119
-\BOOKMARK [2][-]{subsection.10.7}{TranSIESTA Options}{section.10}% 120
-\BOOKMARK [3][-]{subsubsection.10.7.1}{Quick and dirty}{subsection.10.7}% 121
-\BOOKMARK [3][-]{subsubsection.10.7.2}{General options}{subsection.10.7}% 122
-\BOOKMARK [3][-]{subsubsection.10.7.3}{Algorithm specific options}{subsection.10.7}% 123
-\BOOKMARK [3][-]{subsubsection.10.7.4}{Poisson solution for fixed boundary conditions}{subsection.10.7}% 124
-\BOOKMARK [3][-]{subsubsection.10.7.5}{Electrode description options}{subsection.10.7}% 125
-\BOOKMARK [3][-]{subsubsection.10.7.6}{Chemical potentials}{subsection.10.7}% 126
-\BOOKMARK [3][-]{subsubsection.10.7.7}{Complex contour integration options}{subsection.10.7}% 127
-\BOOKMARK [3][-]{subsubsection.10.7.8}{Bias contour integration options}{subsection.10.7}% 128
-\BOOKMARK [2][-]{subsection.10.8}{Matching TranSIESTA coordinates: basic rules}{section.10}% 129
-\BOOKMARK [2][-]{subsection.10.9}{Output}{section.10}% 130
-\BOOKMARK [2][-]{subsection.10.10}{Utilities for analysis: TBtrans}{section.10}% 131
-\BOOKMARK [1][]{section.11}{ANALYSIS TOOLS}{}% 132
-\BOOKMARK [1][]{section.12}{SCRIPTING}{}% 133
-\BOOKMARK [1][]{section.13}{PROBLEM HANDLING}{}% 134
-\BOOKMARK [2][-]{subsection.13.1}{Error and warning messages}{section.13}% 135
-\BOOKMARK [1][]{section.14}{REPORTING BUGS}{}% 136
-\BOOKMARK [1][]{section.15}{ACKNOWLEDGMENTS}{}% 137
-\BOOKMARK [1][]{section.16}{APPENDIX: Physical unit names recognized by FDF}{}% 138
-\BOOKMARK [1][]{section.17}{APPENDIX: XML Output}{}% 139
-\BOOKMARK [2][-]{subsection.17.1}{Controlling XML output}{section.17}% 140
-\BOOKMARK [2][-]{subsection.17.2}{Converting XML to XHTML}{section.17}% 141
-\BOOKMARK [1][]{section.18}{APPENDIX: Selection of precision for storage}{}% 142
-\BOOKMARK [1][]{section.19}{APPENDIX: Data structures and reference counting}{}% 143
+\BOOKMARK [1][]{section.8}{LINRES}{}% 109
+\BOOKMARK [1][]{section.9}{LDA+U}{}% 110
+\BOOKMARK [1][]{section.10}{RT-TDDFT}{}% 111
+\BOOKMARK [2][-]{subsection.10.1}{Brief description}{section.10}% 112
+\BOOKMARK [2][-]{subsection.10.2}{Input options for RT-TDDFT}{section.10}% 113
+\BOOKMARK [1][]{section.11}{External control of SIESTA}{}% 114
+\BOOKMARK [2][-]{subsection.11.1}{Examples of Lua programs}{section.11}% 115
+\BOOKMARK [1][]{section.12}{TRANSIESTA}{}% 116
+\BOOKMARK [2][-]{subsection.12.1}{Brief description}{section.12}% 117
+\BOOKMARK [2][-]{subsection.12.2}{Source code structure}{section.12}% 118
+\BOOKMARK [2][-]{subsection.12.3}{Compilation}{section.12}% 119
+\BOOKMARK [2][-]{subsection.12.4}{Brief explanation}{section.12}% 120
+\BOOKMARK [2][-]{subsection.12.5}{Electrodes}{section.12}% 121
+\BOOKMARK [2][-]{subsection.12.6}{TranSIESTA Options}{section.12}% 122
+\BOOKMARK [3][-]{subsubsection.12.6.1}{Quick and dirty}{subsection.12.6}% 123
+\BOOKMARK [3][-]{subsubsection.12.6.2}{General options}{subsection.12.6}% 124
+\BOOKMARK [3][-]{subsubsection.12.6.3}{Algorithm specific options}{subsection.12.6}% 125
+\BOOKMARK [3][-]{subsubsection.12.6.4}{Poisson solution for fixed boundary conditions}{subsection.12.6}% 126
+\BOOKMARK [3][-]{subsubsection.12.6.5}{Electrode description options}{subsection.12.6}% 127
+\BOOKMARK [3][-]{subsubsection.12.6.6}{Chemical potentials}{subsection.12.6}% 128
+\BOOKMARK [3][-]{subsubsection.12.6.7}{Complex contour integration options}{subsection.12.6}% 129
+\BOOKMARK [3][-]{subsubsection.12.6.8}{Bias contour integration options}{subsection.12.6}% 130
+\BOOKMARK [2][-]{subsection.12.7}{Matching TranSIESTA coordinates: basic rules}{section.12}% 131
+\BOOKMARK [2][-]{subsection.12.8}{Output}{section.12}% 132
+\BOOKMARK [2][-]{subsection.12.9}{Utilities for analysis: TBtrans}{section.12}% 133
+\BOOKMARK [1][]{section.13}{ANALYSIS TOOLS}{}% 134
+\BOOKMARK [1][]{section.14}{SCRIPTING}{}% 135
+\BOOKMARK [1][]{section.15}{PROBLEM HANDLING}{}% 136
+\BOOKMARK [2][-]{subsection.15.1}{Error and warning messages}{section.15}% 137
+\BOOKMARK [1][]{section.16}{REPORTING BUGS}{}% 138
+\BOOKMARK [1][]{section.17}{ACKNOWLEDGMENTS}{}% 139
+\BOOKMARK [1][]{section.18}{APPENDIX: Physical unit names recognized by FDF}{}% 140
+\BOOKMARK [1][]{section.19}{APPENDIX: XML Output}{}% 141
+\BOOKMARK [2][-]{subsection.19.1}{Controlling XML output}{section.19}% 142
+\BOOKMARK [2][-]{subsection.19.2}{Converting XML to XHTML}{section.19}% 143
+\BOOKMARK [1][]{section.20}{APPENDIX: Selection of precision for storage}{}% 144
+\BOOKMARK [1][]{section.21}{APPENDIX: Data structures and reference counting}{}% 145

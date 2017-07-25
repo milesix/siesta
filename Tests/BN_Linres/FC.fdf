@@ -32,5 +32,5 @@ AtomicCoordinatesFormat  NotScaledCartesianBohr
 %endblock AtomicCoordinatesAndAtomicSpecies
 
 MD.TypeOfRun         LR 
-LR.IAI              9
-LR.IAF              10
+MD.FCFirst             9
+MD.FCLast              10

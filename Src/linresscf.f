@@ -96,8 +96,8 @@ C ----------------------------------------------------------------------------
 C ----------------------------------------------------------------------------
 C Reading linres options 
 C ----------------------------------------------------------------------------
-      iai = fdf_get("LR.IAI",1)
-      iaf = fdf_get("LR.IAF",na_u) ! Move all atoms by default
+      iai = fdf_get("MD.FCFirst",1)
+      iaf = fdf_get("MD.FCLast",na_u) ! Move all atoms by default
       tolLR = fdf_get("LR.DMTolerance",0.001_dp)
       eigtolLR = fdf_get('LR.EigTolerance',0.001_dp)
       readold = fdf_get("LR.readDynmat",.false.)

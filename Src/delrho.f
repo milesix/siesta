@@ -36,7 +36,7 @@ C Start time counter ---------------------------------------------------
           call delrhog(nuo, nspin, no, eo(:,ispin,1),tol,
      &                 eigtol, Qo, Hper(:,ix,ispin),
      &                 Oper(:,ix), maxnh, numh, listh, listhptr,
-     &                 ix,ef,temp,Rhoper(:,ispin,ix),
+     &                 ef,temp,Rhoper(:,ispin,ix),
      &                 Erhoper(:,ispin,ix),psi,iscf)
          enddo
         enddo  

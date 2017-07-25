@@ -15,7 +15,7 @@
 \contentsline {subsection}{\numberline {5.1}Standard output}{20}{subsection.5.1}
 \contentsline {subsection}{\numberline {5.2}Output to dedicated files}{21}{subsection.5.2}
 \contentsline {section}{\numberline {6}DETAILED DESCRIPTION OF PROGRAM OPTIONS}{21}{section.6}
-\contentsline {subsection}{\numberline {6.1}General system descriptors}{21}{subsection.6.1}
+\contentsline {subsection}{\numberline {6.1}General system descriptors}{22}{subsection.6.1}
 \contentsline {subsection}{\numberline {6.2}Pseudopotentials}{23}{subsection.6.2}
 \contentsline {subsection}{\numberline {6.3}Basis set and KB projectors}{23}{subsection.6.3}
 \contentsline {subsubsection}{\numberline {6.3.1}Overview of atomic-orbital bases implemented in \siesta }{23}{subsubsection.6.3.1}
@@ -26,7 +26,7 @@
 \contentsline {subsubsection}{\numberline {6.3.6}Soft-confinement options}{30}{subsubsection.6.3.6}
 \contentsline {subsubsection}{\numberline {6.3.7}Kleinman-Bylander projectors}{30}{subsubsection.6.3.7}
 \contentsline {subsubsection}{\numberline {6.3.8}The PAO.Basis block}{32}{subsubsection.6.3.8}
-\contentsline {subsubsection}{\numberline {6.3.9}Filtering}{34}{subsubsection.6.3.9}
+\contentsline {subsubsection}{\numberline {6.3.9}Filtering}{35}{subsubsection.6.3.9}
 \contentsline {subsubsection}{\numberline {6.3.10}Saving and reading basis-set information}{35}{subsubsection.6.3.10}
 \contentsline {subsubsection}{\numberline {6.3.11}Tools to inspect the orbitals and KB projectors}{36}{subsubsection.6.3.11}
 \contentsline {subsubsection}{\numberline {6.3.12}Basis optimization}{36}{subsubsection.6.3.12}
@@ -43,7 +43,7 @@
 \contentsline {subsubsection}{\numberline {6.5.1}Output of k-point information}{47}{subsubsection.6.5.1}
 \contentsline {subsection}{\numberline {6.6}Exchange-correlation functionals}{47}{subsection.6.6}
 \contentsline {subsection}{\numberline {6.7}Spin polarization}{49}{subsection.6.7}
-\contentsline {subsection}{\numberline {6.8}Spin--Orbit coupling}{49}{subsection.6.8}
+\contentsline {subsection}{\numberline {6.8}Spin--Orbit coupling}{50}{subsection.6.8}
 \contentsline {subsection}{\numberline {6.9}The self-consistent-field loop}{51}{subsection.6.9}
 \contentsline {subsubsection}{\numberline {6.9.1}Harris functional and basic options}{52}{subsubsection.6.9.1}
 \contentsline {subsubsection}{\numberline {6.9.2}Mixing options}{52}{subsubsection.6.9.2}
@@ -54,92 +54,94 @@
 \contentsline {subsubsection}{\numberline {6.9.7}Convergence criteria}{64}{subsubsection.6.9.7}
 \contentsline {subsection}{\numberline {6.10}The real-space grid and the eggbox-effect}{66}{subsection.6.10}
 \contentsline {subsection}{\numberline {6.11}Matrix elements of the Hamiltonian and overlap}{69}{subsection.6.11}
-\contentsline {subsubsection}{\numberline {6.11.1}The auxiliary supercell}{69}{subsubsection.6.11.1}
+\contentsline {subsubsection}{\numberline {6.11.1}The auxiliary supercell}{70}{subsubsection.6.11.1}
 \contentsline {subsection}{\numberline {6.12}Calculation of the electronic structure}{70}{subsection.6.12}
-\contentsline {subsubsection}{\numberline {6.12.1}Diagonalization options}{70}{subsubsection.6.12.1}
+\contentsline {subsubsection}{\numberline {6.12.1}Diagonalization options}{71}{subsubsection.6.12.1}
 \contentsline {subsubsection}{\numberline {6.12.2}Output of eigenvalues and wavefunctions}{72}{subsubsection.6.12.2}
-\contentsline {subsubsection}{\numberline {6.12.3}Occupation of electronic states and Fermi level}{72}{subsubsection.6.12.3}
-\contentsline {subsubsection}{\numberline {6.12.4}Orbital minimization method (OMM)}{73}{subsubsection.6.12.4}
-\contentsline {subsubsection}{\numberline {6.12.5}Order(N) calculations}{75}{subsubsection.6.12.5}
+\contentsline {subsubsection}{\numberline {6.12.3}Occupation of electronic states and Fermi level}{73}{subsubsection.6.12.3}
+\contentsline {subsubsection}{\numberline {6.12.4}Orbital minimization method (OMM)}{74}{subsubsection.6.12.4}
+\contentsline {subsubsection}{\numberline {6.12.5}Order(N) calculations}{76}{subsubsection.6.12.5}
 \contentsline {paragraph}{Output of localized wavefunctions}{77}{section*.3}
-\contentsline {subsection}{\numberline {6.13}The PEXSI solver}{77}{subsection.6.13}
+\contentsline {subsection}{\numberline {6.13}The PEXSI solver}{78}{subsection.6.13}
 \contentsline {subsubsection}{\numberline {6.13.1}Pole handling}{78}{subsubsection.6.13.1}
 \contentsline {subsubsection}{\numberline {6.13.2}Parallel environment and control options}{78}{subsubsection.6.13.2}
-\contentsline {subsubsection}{\numberline {6.13.3}Electron tolerance and the PEXSI solver}{79}{subsubsection.6.13.3}
-\contentsline {subsubsection}{\numberline {6.13.4}Inertia-counting}{80}{subsubsection.6.13.4}
-\contentsline {subsubsection}{\numberline {6.13.5}Re-use of $\mu $ information accross iterations}{81}{subsubsection.6.13.5}
-\contentsline {subsubsection}{\numberline {6.13.6}Calculation of the density of states by inertia-counting}{82}{subsubsection.6.13.6}
+\contentsline {subsubsection}{\numberline {6.13.3}Electron tolerance and the PEXSI solver}{80}{subsubsection.6.13.3}
+\contentsline {subsubsection}{\numberline {6.13.4}Inertia-counting}{81}{subsubsection.6.13.4}
+\contentsline {subsubsection}{\numberline {6.13.5}Re-use of $\mu $ information accross iterations}{82}{subsubsection.6.13.5}
+\contentsline {subsubsection}{\numberline {6.13.6}Calculation of the density of states by inertia-counting}{83}{subsubsection.6.13.6}
 \contentsline {subsubsection}{\numberline {6.13.7}Calculation of the LDOS by selected-inversion}{83}{subsubsection.6.13.7}
-\contentsline {subsection}{\numberline {6.14}Band-structure analysis}{83}{subsection.6.14}
-\contentsline {subsubsection}{\numberline {6.14.1}Format of the .bands file}{84}{subsubsection.6.14.1}
+\contentsline {subsection}{\numberline {6.14}Band-structure analysis}{84}{subsection.6.14}
+\contentsline {subsubsection}{\numberline {6.14.1}Format of the .bands file}{85}{subsubsection.6.14.1}
 \contentsline {subsubsection}{\numberline {6.14.2}Output of wavefunctions associated to bands}{85}{subsubsection.6.14.2}
-\contentsline {subsection}{\numberline {6.15}Output of selected wavefunctions}{85}{subsection.6.15}
-\contentsline {subsection}{\numberline {6.16}Densities of states}{86}{subsection.6.16}
-\contentsline {subsubsection}{\numberline {6.16.1}Total density of states}{86}{subsubsection.6.16.1}
+\contentsline {subsection}{\numberline {6.15}Output of selected wavefunctions}{86}{subsection.6.15}
+\contentsline {subsection}{\numberline {6.16}Densities of states}{87}{subsection.6.16}
+\contentsline {subsubsection}{\numberline {6.16.1}Total density of states}{87}{subsubsection.6.16.1}
 \contentsline {subsubsection}{\numberline {6.16.2}Partial (projected) density of states}{87}{subsubsection.6.16.2}
 \contentsline {subsubsection}{\numberline {6.16.3}Local density of states}{88}{subsubsection.6.16.3}
-\contentsline {subsection}{\numberline {6.17}Options for chemical analysis}{88}{subsection.6.17}
-\contentsline {subsubsection}{\numberline {6.17.1}Mulliken charges and overlap populations}{88}{subsubsection.6.17.1}
+\contentsline {subsection}{\numberline {6.17}Options for chemical analysis}{89}{subsection.6.17}
+\contentsline {subsubsection}{\numberline {6.17.1}Mulliken charges and overlap populations}{89}{subsubsection.6.17.1}
 \contentsline {subsubsection}{\numberline {6.17.2}Voronoi and Hirshfeld atomic population analysis}{89}{subsubsection.6.17.2}
-\contentsline {subsubsection}{\numberline {6.17.3}Crystal-Orbital overlap and hamilton populations (COOP/COHP)}{89}{subsubsection.6.17.3}
-\contentsline {subsection}{\numberline {6.18}Optical properties}{90}{subsection.6.18}
-\contentsline {subsection}{\numberline {6.19}Macroscopic polarization}{91}{subsection.6.19}
-\contentsline {subsection}{\numberline {6.20}Maximally Localized Wannier Functions}{93}{subsection.6.20}
-\contentsline {subsection}{\numberline {6.21}Systems with net charge or dipole, and electric fields}{95}{subsection.6.21}
-\contentsline {subsection}{\numberline {6.22}Output of charge densities and potentials on the grid}{98}{subsection.6.22}
-\contentsline {subsection}{\numberline {6.23}Auxiliary Force field}{100}{subsection.6.23}
-\contentsline {subsection}{\numberline {6.24}Parallel options}{101}{subsection.6.24}
-\contentsline {subsubsection}{\numberline {6.24.1}Parallel decompositions for O(N)}{102}{subsubsection.6.24.1}
-\contentsline {subsection}{\numberline {6.25}Efficiency options}{103}{subsection.6.25}
-\contentsline {subsection}{\numberline {6.26}Memory, CPU-time, and Wall time accounting options}{103}{subsection.6.26}
-\contentsline {subsection}{\numberline {6.27}The catch-all option UseSaveData}{104}{subsection.6.27}
-\contentsline {subsection}{\numberline {6.28}Output of information for Denchar}{104}{subsection.6.28}
-\contentsline {subsection}{\numberline {6.29}NetCDF-4 output file}{104}{subsection.6.29}
-\contentsline {section}{\numberline {7}STRUCTURAL RELAXATION, PHONONS, AND MOLECULAR DYNAMICS}{105}{section.7}
-\contentsline {subsection}{\numberline {7.1}Compatibility with pre-v4 versions}{106}{subsection.7.1}
-\contentsline {subsection}{\numberline {7.2}Structural relaxation}{107}{subsection.7.2}
-\contentsline {subsubsection}{\numberline {7.2.1}Conjugate-gradients optimization}{108}{subsubsection.7.2.1}
-\contentsline {subsubsection}{\numberline {7.2.2}Broyden optimization}{109}{subsubsection.7.2.2}
-\contentsline {subsubsection}{\numberline {7.2.3}FIRE relaxation}{109}{subsubsection.7.2.3}
-\contentsline {subsection}{\numberline {7.3}Target stress options}{109}{subsection.7.3}
-\contentsline {subsection}{\numberline {7.4}Molecular dynamics}{110}{subsection.7.4}
-\contentsline {subsection}{\numberline {7.5}Output options for dynamics}{111}{subsection.7.5}
-\contentsline {subsection}{\numberline {7.6}Restarting geometry optimizations and MD runs}{112}{subsection.7.6}
-\contentsline {subsection}{\numberline {7.7}Use of general constraints}{113}{subsection.7.7}
-\contentsline {subsection}{\numberline {7.8}Phonon calculations}{116}{subsection.7.8}
-\contentsline {section}{\numberline {8}LDA+U}{116}{section.8}
-\contentsline {section}{\numberline {9}RT-TDDFT}{118}{section.9}
-\contentsline {subsection}{\numberline {9.1}Brief description}{118}{subsection.9.1}
-\contentsline {subsection}{\numberline {9.2}Input options for RT-TDDFT}{119}{subsection.9.2}
-\contentsline {section}{\numberline {10}TRANSIESTA}{120}{section.10}
-\contentsline {subsection}{\numberline {10.1}Brief description}{120}{subsection.10.1}
-\contentsline {subsection}{\numberline {10.2}Source code structure}{121}{subsection.10.2}
-\contentsline {subsection}{\numberline {10.3}Compilation}{121}{subsection.10.3}
-\contentsline {subsection}{\numberline {10.4}Running a fast example}{121}{subsection.10.4}
-\contentsline {subsection}{\numberline {10.5}Brief explanation}{122}{subsection.10.5}
-\contentsline {subsection}{\numberline {10.6}Electrodes}{123}{subsection.10.6}
-\contentsline {paragraph}{Principal layer interactions}{123}{section*.4}
-\contentsline {subsection}{\numberline {10.7}\tsiesta \ Options}{124}{subsection.10.7}
-\contentsline {subsubsection}{\numberline {10.7.1}Quick and dirty}{124}{subsubsection.10.7.1}
-\contentsline {subsubsection}{\numberline {10.7.2}General options}{125}{subsubsection.10.7.2}
-\contentsline {subsubsection}{\numberline {10.7.3}Algorithm specific options}{128}{subsubsection.10.7.3}
-\contentsline {subsubsection}{\numberline {10.7.4}Poisson solution for fixed boundary conditions}{129}{subsubsection.10.7.4}
-\contentsline {subsubsection}{\numberline {10.7.5}Electrode description options}{130}{subsubsection.10.7.5}
-\contentsline {subsubsection}{\numberline {10.7.6}Chemical potentials}{132}{subsubsection.10.7.6}
-\contentsline {subsubsection}{\numberline {10.7.7}Complex contour integration options}{134}{subsubsection.10.7.7}
-\contentsline {subsubsection}{\numberline {10.7.8}Bias contour integration options}{136}{subsubsection.10.7.8}
-\contentsline {subsection}{\numberline {10.8}Matching \tsiesta \ coordinates: basic rules}{136}{subsection.10.8}
-\contentsline {subsection}{\numberline {10.9}Output}{137}{subsection.10.9}
-\contentsline {subsection}{\numberline {10.10}Utilities for analysis: \tbtrans }{138}{subsection.10.10}
-\contentsline {section}{\numberline {11}ANALYSIS TOOLS}{138}{section.11}
-\contentsline {section}{\numberline {12}SCRIPTING}{138}{section.12}
-\contentsline {section}{\numberline {13}PROBLEM HANDLING}{138}{section.13}
-\contentsline {subsection}{\numberline {13.1}Error and warning messages}{138}{subsection.13.1}
-\contentsline {section}{\numberline {14}REPORTING BUGS}{139}{section.14}
-\contentsline {section}{\numberline {15}ACKNOWLEDGMENTS}{139}{section.15}
-\contentsline {section}{\numberline {16}APPENDIX: Physical unit names recognized by FDF}{140}{section.16}
-\contentsline {section}{\numberline {17}APPENDIX: XML Output}{142}{section.17}
-\contentsline {subsection}{\numberline {17.1}Controlling XML output}{142}{subsection.17.1}
-\contentsline {subsection}{\numberline {17.2}Converting XML to XHTML}{142}{subsection.17.2}
-\contentsline {section}{\numberline {18}APPENDIX: Selection of precision for storage}{143}{section.18}
-\contentsline {section}{\numberline {19}APPENDIX: Data structures and reference counting}{144}{section.19}
+\contentsline {subsubsection}{\numberline {6.17.3}Crystal-Orbital overlap and hamilton populations (COOP/COHP)}{90}{subsubsection.6.17.3}
+\contentsline {subsection}{\numberline {6.18}Optical properties}{91}{subsection.6.18}
+\contentsline {subsection}{\numberline {6.19}Macroscopic polarization}{92}{subsection.6.19}
+\contentsline {subsection}{\numberline {6.20}Maximally Localized Wannier Functions}{94}{subsection.6.20}
+\contentsline {subsection}{\numberline {6.21}Systems with net charge or dipole, and electric fields}{96}{subsection.6.21}
+\contentsline {subsection}{\numberline {6.22}Output of charge densities and potentials on the grid}{99}{subsection.6.22}
+\contentsline {subsection}{\numberline {6.23}Auxiliary Force field}{101}{subsection.6.23}
+\contentsline {subsection}{\numberline {6.24}Parallel options}{102}{subsection.6.24}
+\contentsline {subsubsection}{\numberline {6.24.1}Parallel decompositions for O(N)}{103}{subsubsection.6.24.1}
+\contentsline {subsection}{\numberline {6.25}Efficiency options}{104}{subsection.6.25}
+\contentsline {subsection}{\numberline {6.26}Memory, CPU-time, and Wall time accounting options}{104}{subsection.6.26}
+\contentsline {subsection}{\numberline {6.27}The catch-all option UseSaveData}{105}{subsection.6.27}
+\contentsline {subsection}{\numberline {6.28}Output of information for Denchar}{105}{subsection.6.28}
+\contentsline {subsection}{\numberline {6.29}NetCDF (CDF4) output file}{105}{subsection.6.29}
+\contentsline {section}{\numberline {7}STRUCTURAL RELAXATION, PHONONS, AND MOLECULAR DYNAMICS}{106}{section.7}
+\contentsline {subsection}{\numberline {7.1}Compatibility with pre-v4 versions}{108}{subsection.7.1}
+\contentsline {subsection}{\numberline {7.2}Structural relaxation}{108}{subsection.7.2}
+\contentsline {subsubsection}{\numberline {7.2.1}Conjugate-gradients optimization}{110}{subsubsection.7.2.1}
+\contentsline {subsubsection}{\numberline {7.2.2}Broyden optimization}{110}{subsubsection.7.2.2}
+\contentsline {subsubsection}{\numberline {7.2.3}FIRE relaxation}{110}{subsubsection.7.2.3}
+\contentsline {subsection}{\numberline {7.3}Target stress options}{111}{subsection.7.3}
+\contentsline {subsection}{\numberline {7.4}Molecular dynamics}{111}{subsection.7.4}
+\contentsline {subsection}{\numberline {7.5}Output options for dynamics}{113}{subsection.7.5}
+\contentsline {subsection}{\numberline {7.6}Restarting geometry optimizations and MD runs}{114}{subsection.7.6}
+\contentsline {subsection}{\numberline {7.7}Use of general constraints}{114}{subsection.7.7}
+\contentsline {subsection}{\numberline {7.8}Phonon calculations}{117}{subsection.7.8}
+\contentsline {section}{\numberline {8}LINRES}{117}{section.8}
+\contentsline {section}{\numberline {9}LDA+U}{119}{section.9}
+\contentsline {section}{\numberline {10}RT-TDDFT}{121}{section.10}
+\contentsline {subsection}{\numberline {10.1}Brief description}{121}{subsection.10.1}
+\contentsline {subsection}{\numberline {10.2}Input options for RT-TDDFT}{121}{subsection.10.2}
+\contentsline {section}{\numberline {11}External control of \siesta }{122}{section.11}
+\contentsline {subsection}{\numberline {11.1}Examples of Lua programs}{125}{subsection.11.1}
+\contentsline {section}{\numberline {12}TRANSIESTA}{125}{section.12}
+\contentsline {subsection}{\numberline {12.1}Brief description}{125}{subsection.12.1}
+\contentsline {subsection}{\numberline {12.2}Source code structure}{126}{subsection.12.2}
+\contentsline {subsection}{\numberline {12.3}Compilation}{126}{subsection.12.3}
+\contentsline {subsection}{\numberline {12.4}Brief explanation}{126}{subsection.12.4}
+\contentsline {subsection}{\numberline {12.5}Electrodes}{127}{subsection.12.5}
+\contentsline {paragraph}{Principal layer interactions}{128}{section*.4}
+\contentsline {subsection}{\numberline {12.6}\tsiesta \ Options}{128}{subsection.12.6}
+\contentsline {subsubsection}{\numberline {12.6.1}Quick and dirty}{128}{subsubsection.12.6.1}
+\contentsline {subsubsection}{\numberline {12.6.2}General options}{129}{subsubsection.12.6.2}
+\contentsline {subsubsection}{\numberline {12.6.3}Algorithm specific options}{132}{subsubsection.12.6.3}
+\contentsline {subsubsection}{\numberline {12.6.4}Poisson solution for fixed boundary conditions}{134}{subsubsection.12.6.4}
+\contentsline {subsubsection}{\numberline {12.6.5}Electrode description options}{134}{subsubsection.12.6.5}
+\contentsline {subsubsection}{\numberline {12.6.6}Chemical potentials}{137}{subsubsection.12.6.6}
+\contentsline {subsubsection}{\numberline {12.6.7}Complex contour integration options}{138}{subsubsection.12.6.7}
+\contentsline {subsubsection}{\numberline {12.6.8}Bias contour integration options}{140}{subsubsection.12.6.8}
+\contentsline {subsection}{\numberline {12.7}Matching \tsiesta \ coordinates: basic rules}{141}{subsection.12.7}
+\contentsline {subsection}{\numberline {12.8}Output}{142}{subsection.12.8}
+\contentsline {subsection}{\numberline {12.9}Utilities for analysis: \tbtrans }{142}{subsection.12.9}
+\contentsline {section}{\numberline {13}ANALYSIS TOOLS}{142}{section.13}
+\contentsline {section}{\numberline {14}SCRIPTING}{142}{section.14}
+\contentsline {section}{\numberline {15}PROBLEM HANDLING}{143}{section.15}
+\contentsline {subsection}{\numberline {15.1}Error and warning messages}{143}{subsection.15.1}
+\contentsline {section}{\numberline {16}REPORTING BUGS}{143}{section.16}
+\contentsline {section}{\numberline {17}ACKNOWLEDGMENTS}{143}{section.17}
+\contentsline {section}{\numberline {18}APPENDIX: Physical unit names recognized by FDF}{145}{section.18}
+\contentsline {section}{\numberline {19}APPENDIX: XML Output}{147}{section.19}
+\contentsline {subsection}{\numberline {19.1}Controlling XML output}{147}{subsection.19.1}
+\contentsline {subsection}{\numberline {19.2}Converting XML to XHTML}{147}{subsection.19.2}
+\contentsline {section}{\numberline {20}APPENDIX: Selection of precision for storage}{148}{section.20}
+\contentsline {section}{\numberline {21}APPENDIX: Data structures and reference counting}{149}{section.21}
