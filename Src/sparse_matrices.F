@@ -32,8 +32,9 @@
       real(dp), public, pointer :: xijo(:,:)=>null()
 
 C Linres -----------------------------------------------------------------
-      real(dp), public, pointer :: DS(:,:), D2S(:,:,:), dDscf(:,:,:),
-     &                     dEscf(:,:,:)
+      real(dp), public, pointer :: DS(:,:)=>null(), D2S(:,:,:)=>null(),
+     &                             dDscf(:,:,:)=>null(),
+     &                             dEscf(:,:,:)=>null()
       real(dp), public, pointer :: DH(:,:) => null()
       real(dp), public, pointer :: D2H(:,:,:) => null()
 C-------------------------------------------------------------------------

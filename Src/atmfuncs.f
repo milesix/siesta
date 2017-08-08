@@ -650,7 +650,7 @@ C ---
          m = 0
       endif
 
-      rmod = sqrt(sum(r*r)) + tiny20
+      rmod = sqrt(sum(r*r)) + tiny12
       if(rmod.gt.func%cutoff-tiny12) return
 
 C LINRES ------------------------------------------------------------

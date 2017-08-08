@@ -85,11 +85,13 @@ C Internal variable types and dimensions -----------------------------------
       real(dp)          ::  tolLR, eigtolLR 
 
       type(filesOut_t)    :: filesOut
-      character(len=label_length+3) :: fname
+
+      character(len=label_length+5+5) :: fname
+      character(len=5) :: atomdisp
 
       logical            :: dummy_use_rhog_in, LRfirst,
      &                      dummy_chargedensonly,mmix,
-     &                      readold
+     &                      readold, converged, found
 
 C ----------------------------------------------------------------------------
 
@@ -116,6 +118,8 @@ C Begin to write into output file
 
 C Initialize dynmat----------------------------------------------
       dynmat(:,:,:,:)=0.0_dp
+C Initialize converged-------------------------------------------
+      converged=.true.
 
 C IS A K CALCULATION????? Could be better....
       if (nkpnt .eq. 1) then
@@ -150,7 +154,29 @@ C Initialize dDscf, dEscf
      &                 'dDscf', 'linresscf')
         call re_alloc(dEscf, 1, maxnh, 1, nspin, 1, 3,
      &                 'dEscf', 'linresscf')
-        
+
+C Read stored DM in file .LRDMIALR from previous non-converged calculation
+        if (readold) then
+          if (IOnode) then
+            write(6,'(a)')
+            write(6,'(a,i7)')'Linres: trying to start from .LRDM file'
+            write(atomdisp,'(i5)') ialr
+          endif
+          fname = trim(slabel)//'.LRDM'//adjustl(atomdisp)
+          inquire( file=fname, exist=found )
+          if (found) then
+            if (IOnode) then
+              write(6,'(a,i7)') 'Linres: reading LRDM file for atom=',
+     &                            ialr
+            endif
+            call read_dmlr( maxnh, no_l, nspin, numh,
+     &                     listhptr, listh, dDscf, fname)
+              write(6,'(a)')'Linres: Read DM from file...successfully!!'
+          else
+            write(6,'(a)')'Linres: LRDM file not found'//
+     $                    ' or not corresponds to this atom'
+          endif
+        endif
         call timer('LRatom', 1)
 
         if (IOnode) then
@@ -264,6 +290,10 @@ C Print error in the perturbed density
             write(*,'(tr7,a5,tr2,a10)') 'iscf','dDmax'           
           endif 
           write(*,'(a6,tr1,i5,tr2,f10.5)')'linres', iscf, dDmax          
+C Write dDscf to file ------------------------------------------------
+C DM file is named as: label.LRDM+'IALR'
+          call write_dmlr(maxnh, no_l,nspin,numh,
+     &                    listhptr,listh,dDscf,ialr)
 
           LRfirst=.false.
 
@@ -277,6 +307,15 @@ C------------------------------------------------------------------------
         call timer('LRatom', 2)
 
         call resetPulayArrays()
+
+C Adding actions if iscf loop ends but ddscf is NOT converged
+C In this case, the FC matrix elements that depend on the dDscf 
+C are not calculated
+C ----------------------------------------------------------------
+        if ((iscf.eq.nscf).and.(dmax .ge. tolLR)) then
+           converged=.false.
+           exit
+        endif
 
 C Now, is time to calculate the final terms of the dynamical matrix
 C------------------------------------------------------------------------
@@ -327,9 +366,10 @@ C-------------------------------------------------------------------------
 
 C There is other contribution to the dynamical matrix (non-scf)
 C the Laplacian of the neutral atom potential
-      call ddnaefs(na_u, na_s, scell, xa, indxua, rmaxv,
+      if (converged .eqv. .true.) then
+         call ddnaefs(na_u, na_s, scell, xa, indxua, rmaxv,
      &            isa, dynmat)
-
+      endif
 C-------------------------------------------------------------------------
 C-----------------Finally, print the dynamical matrix to FC file----------
 C-------------------------------------------------------------------------

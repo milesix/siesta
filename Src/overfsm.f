@@ -80,7 +80,7 @@ C *********************************************************************
       real(dp) , intent(in)     :: scell(3,3), Escf(maxnd,nspin), 
      .                 rmaxo, xa(3,na)
       real(dp), intent(out)     :: S(maxnh)
-      real(dp), optional, intent(out) :: DS(maxnh,3), D2S(maxnh,3,3) !Linres line
+      real(dp), optional, intent(out) :: DS(:,:), D2S(:,:,:) !Linres line
 
 C Internal variables ......................................................
   

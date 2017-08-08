@@ -149,11 +149,11 @@ C Linres line  init variables----------------------------------
         nullify(D2H)
         nullify(D2S)
         call re_alloc (DH, 1, maxnh, 1, 3, 'DH', 'sparseMat')
-        call re_alloc (DS, 1, maxnh, 1, 3, 'DS', 'final_H_f_stress')
+        call re_alloc (DS, 1, maxnh, 1, 3, 'DS', 'sparseMat')
         call re_alloc (D2H, 1, maxnh, 1, 3, 1, 3, 'D2H',
      &                                  'sparseMat')
         call re_alloc (D2S, 1, maxnh, 1, 3, 1, 3, 'D2S',
-     &                                  'final_H_f_stress')
+     &                                  'sparseMat')
         DH(1:maxnh,1:3) = 0.0_dp
         DS(1:maxnh,1:3) = 0.0_dp
         D2H(1:maxnh,1:3, 1:3) = 0.0_dp
@@ -270,6 +270,7 @@ C--------------------------------------------------------------
      &              maxnh, maxnh, lasto, iphorb, isa,
      &              numh, listhptr, listh, numh, listhptr, listh,
      &              spin%spinor, Escf, fal, stressl, S_tmp, DS, D2S )
+
       endif
 
 !     Metadynamics forces

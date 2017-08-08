@@ -1,5 +1,6 @@
 # 
-# FDF for a BN sheet
+# FDF for a BN sheet ONLY FOR VIBRA
+# TO obtain the FC matrix, run the BNlin.fdf system 
 # 
 
 SystemName          BN-2 atom
@@ -36,8 +37,6 @@ AtomicCoordinatesFormat  ScaledCartesian
 	1.26872886    0.73250124   -0.00000000   2 14.0067
 %endblock AtomicCoordinatesAndAtomicSpecies
 
-#%include FC.fdf
-
 %block kgrid_Monkhorst_Pack
 	6	0	0	0.0
 	0	6	0	0.0
@@ -50,10 +49,6 @@ LatticeConstant     1 Ang
         1.268729    2.197503   -0.000000
         0.000000   -0.000000    6.679152
 %endblock LatticeVectors
-
-MD.TypeOfRun	LR
-LR.IAI 1
-LR.IAF 2
 
 BandLinesScale	ReciprocalLatticeVectors
 %block BandLines
