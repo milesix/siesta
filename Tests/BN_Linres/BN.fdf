@@ -12,7 +12,7 @@ NumberOfAtoms       2
 
 %block ChemicalSpeciesLabel
  1  5  B 10.811
- 2  7  N 14.0067
+ 2  7  N_2 14.0067
 %endblock ChemicalSpeciesLabel
 
 PAO.BasisSize       SZ

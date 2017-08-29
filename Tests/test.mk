@@ -4,7 +4,7 @@
 # You can edit the SIESTA macro here, or pass it on the command line
 
 MPI=mpirun -np 2
-SIESTA=../Obj/./siesta
+SIESTA=../../../siesta
 
 # Example for BSC runs
 #
