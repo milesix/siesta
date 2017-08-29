@@ -232,7 +232,7 @@ MODULE m_cellXC
 CONTAINS ! nothing else but public routine cellXC
 
 SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
-                   nSpin, dens, Ex, Ec, Dx, Dc, stress, Vxc, dVxcdD )
+                   nSpin, dens, Ex, Ec, Dx, Dc, stress, Vxc, ddens )
 
   ! Module routines
   use mesh3D,  only: addMeshData   ! Accumulates a mesh array
@@ -301,8 +301,8 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
   real(dp),intent(out):: stress(3,3) ! xc contribution to stress in unit cell
   real(gp),intent(out):: Vxc(0:ub1-lb1,0:ub2-lb2,0:ub3-lb3,1:nSpin) 
                                      ! (spin) xc potential
-  real(gp),intent(out),optional:: &  ! dVxc/dDens (LDA only)
-                         dVxcdD(0:ub1-lb1,0:ub2-lb2,0:ub3-lb3,1:nSpin**2) 
+  real(gp),intent(in),optional:: &   ! Pertuebed density
+                         ddens(0:ub1-lb1,0:ub2-lb2,0:ub3-lb3,1:nSpin) 
 
   ! Fix the order of the numerical derivatives
   ! nn is the number of points used in each coordinate and direction,
@@ -361,7 +361,12 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
   real(gp), dimension(:,:,:,:), pointer:: &
      Dleft=>null(), Dleft1=>null(), Dleft2=>null(), Dleft3=>null(), &
      Drght=>null(), Drght1=>null(), Drght2=>null(), Drght3=>null(), &
-     myDens=>null(), mydVxcdD=>null(), myVxc=>null(), &
+     myDens=>null(), myVxc=>null(), &
+! Linres !perturbed density pointer and left-right elements
+     mydDens=>null(), & 
+     dDleft=>null(), dDleft1=>null(), dDleft2=>null(), dDleft3=>null(), &
+     dDrght=>null(), dDrght1=>null(), dDrght2=>null(), dDrght3=>null(), &
+! 
      tq=>null(), uq=>null(), &
      Vleft=>null(), Vleft1=>null(), Vleft2=>null(), Vleft3=>null(), &
      Vrght=>null(), Vrght1=>null(), Vrght2=>null(), Vrght3=>null()
@@ -378,18 +383,22 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
      m11, m12, m13, m21, m22, m23, maxPoints, mesh(3), &
      myBox(2,3), myMesh(3), myOldDistr, myPoints, &
      ndSpin, nf, nonemptyPoints, nPoints, nq, ns, nXCfunc, &
-     r11, r12, r13, r21, r22, r23
+     r11, r12, r13, r21, r22, r23, is2 
   real(dp):: &
      comTime, D(nSpin), dedk, dEcdD(nSpin), dEcdGD(3,nSpin), &
      dEcidDj, dEcuspdD(nSpin), dEcuspdGD(3,nSpin),  &
      dExdD(nSpin), dExdGD(3,nSpin), dExidDj, &
      dGdM(-nn:nn), dGidFj(3,3,-nn:nn), Dj(nSpin), &
      dMdX(3,3), DV, dVol, Dtot, dXdM(3,3), &
-     dVcdD(nSpin*nSpin), dVxdD(nSpin*nSpin), &
+     dVcdD(nSpin,nSpin), dVxdD(nSpin,nSpin), &
      EcuspVDW, Enl, epsC, epsCusp, epsNL, epsX, f1, f2, &  
      GD(3,nSpin), k, kcell(3,3), kcut, kvec(3),  &
      stressVDW(3,3), sumTime, sumTime2, totTime, VDWweightC, volume, &
-     XCweightC(maxFunc), XCweightVDW, XCweightX(maxFunc)
+     XCweightC(maxFunc), XCweightVDW, XCweightX(maxFunc),&
+! Linres
+     dD(nSpin) !perturbed density in local point grid
+!
+
 #ifdef DEBUG_XC
   integer :: iip, jjp, jq
   real(dp):: rmod, rvec(3)
@@ -456,9 +465,9 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
     endif
   enddo
 
-  ! Check argument dVxcdD
-  if (present(dVxcdD) .and. GGA) &
-    call die(errHead//'dVxcdD available only for LDA')
+  ! Check argument ddens
+  if (present(ddens) .and. GGA) &
+    call die(errHead//'Linres available only for LDA')
 
   ! Find my mesh box in I/O distribution of mesh points
   ioBox(1,1)=lb1;  ioBox(1,2)=lb2;  ioBox(1,3)=lb3
@@ -481,6 +490,13 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
     call re_alloc( myDens, myBox(1,1),myBox(2,1), &
                            myBox(1,2),myBox(2,2), &
                            myBox(1,3),myBox(2,3), 1,ndSpin, myName//'myDens' )
+! Linres
+    if (present(ddens)) then
+       call re_alloc( mydDens, myBox(1,1),myBox(2,1), &
+                            myBox(1,2),myBox(2,2), &
+                            myBox(1,3),myBox(2,3), 1,ndSpin, myName//'mydDens' )
+    endif
+!
     call re_alloc(workload,myBox(1,1),myBox(2,1), &
                            myBox(1,2),myBox(2,2), &
                            myBox(1,3),myBox(2,3), myName//'workload' )
@@ -488,6 +504,11 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
     call associateMeshTask( io2my, ioDistr, myDistr )
     call copyMeshData( nMesh, ioDistr, dens(:,:,:,1:ndSpin), &
                               myBox, myDens(:,:,:,1:ndSpin), io2my )
+    if (present(ddens)) then
+       call copyMeshData( nMesh, ioDistr, ddens(:,:,:,1:ndSpin), & !Linres
+                              myBox, mydDens(:,:,:,1:ndSpin), io2my )
+    endif
+
 !    call copyMeshData( nMesh, ioDistr, dens(:,:,:,1:ndSpin), &
 !                              myBox, myDens(:,:,:,1:ndSpin) )
     ! Find initial expected workload (zero if dens=0, one otherwise)
@@ -508,6 +529,8 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
     ! Deallocate temporary arrays
     call de_alloc( workload, myName//'workload' )
     call de_alloc( myDens,   myName//'myDens' )
+    call de_alloc( mydDens,  myName//'mydDens' ) !Linres
+
 #ifdef DEBUG_XC
     myIter = myIter+1
     call myMeshBox( nMesh, myDistr, myBox )
@@ -537,9 +560,9 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
     ns = nSpin  ! Just a shorter name
     call re_alloc( myDens, m11,m21, m12,m22, m13,m23, 1,ns, myName//'myDens' )
     call re_alloc( myVxc,  m11,m21, m12,m22, m13,m23, 1,ns, myName//'myVxc'  )
-    if (present(dVxcdD)) &
-      call re_alloc( mydVxcdD, m11,m21, m12,m22, m13,m23, 1,ns**2, &
-                     myName//'mydVxcdD'  )
+    if (present(ddens)) then !Linres
+      call re_alloc( mydDens, m11,m21, m12,m22, m13,m23, 1,ns, myName//'mydDens' )
+    endif
     ! Allocate arrays for density and potential in neighbor regions
     if (GGA) then
       l11=m11-nn;     l12=m12-nn;     l13=m13-nn
@@ -558,6 +581,16 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
       call re_alloc( Vrght2, m11,m21, r12,r22, m13,m23, 1,ns, myName//'Vrght2' )
       call re_alloc( Vleft3, m11,m21, m12,m22, l13,l23, 1,ns, myName//'Vleft3' )
       call re_alloc( Vrght3, m11,m21, m12,m22, r13,r23, 1,ns, myName//'Vrght3' )
+! Linres
+      if (present(ddens)) then !allocate ddens left/right elements
+         call re_alloc( dDleft1, l11,l21, m12,m22, m13,m23, 1,ns, myName//'dDleft1' )
+         call re_alloc( dDrght1, r11,r21, m12,m22, m13,m23, 1,ns, myName//'dDrght1' )
+         call re_alloc( dDleft2, m11,m21, l12,l22, m13,m23, 1,ns, myName//'dDleft2' )
+         call re_alloc( dDrght2, m11,m21, r12,r22, m13,m23, 1,ns, myName//'dDrght2' )
+         call re_alloc( dDleft3, m11,m21, m12,m22, l13,l23, 1,ns, myName//'dDleft3' )
+         call re_alloc( dDrght3, m11,m21, m12,m22, r13,r23, 1,ns, myName//'dDrght3' )
+      endif
+!!!
     end if ! (GGA)
   end if ! (myDistr/=ioDistr .or. GGA)
 
@@ -565,7 +598,8 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
   if (associated(myDens)) then
     call associateMeshTask( io2my, ioDistr, myDistr )
     call copyMeshData( nMesh, ioDistr, dens, myBox, myDens, io2my )
-!    call copyMeshData( nMesh, ioDistr, dens, myBox, myDens )
+    if (associated(mydDens)) & ! Linres : redistribute perturbed density
+       call copyMeshData( nMesh, ioDistr, ddens, myBox, mydDens,io2my )
   end if
 
   ! If mesh arrays are distributed, find density of neighbor regions
@@ -595,6 +629,33 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
 !      call copyMeshData( nMesh, myDistr, myDens, boxLeft, Dleft )
 !      call copyMeshData( nMesh, myDistr, myDens, boxRght, Drght )
     end do ! ic
+
+! Linres
+    if (present(ddens)) then
+    ! Find the perturbed density of neighbor regions
+      do ic = 1,3  ! Loop on cell axes
+        if (ic==1) then
+          dDleft => dDleft1
+          dDrght => dDrght1
+        else if (ic==2) then
+          dDleft => dDleft2
+          dDrght => dDrght2
+        else ! (ic==3)
+          dDleft => dDleft3
+          dDrght => dDrght3
+        end if ! (ic==1)
+        boxLeft = myBox
+        boxLeft(1,ic) = myBox(1,ic)-nn
+        boxLeft(2,ic) = myBox(1,ic)-1
+        boxRght = myBox
+        boxRght(1,ic) = myBox(2,ic)+1
+        boxRght(2,ic) = myBox(2,ic)+nn
+        call associateMeshTask( my2left(ic), myDistr )
+        call associateMeshTask( my2rght(ic), myDistr )
+        call copyMeshData( nMesh, myDistr, mydDens, boxLeft, dDleft, my2left(ic) )
+        call copyMeshData( nMesh, myDistr, mydDens, boxRght, dDrght, my2rght(ic) )
+      end do ! ic
+    endif !ddens
   end if ! (GGA .and. myDistr/=0)
 
   ! Find Jacobian matrix dx/dmesh and gradient coeficients dGrad_i/dDens_j
@@ -637,7 +698,6 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
   Dc = 0.0_dp
   stress(:,:) = 0.0_dp
   Vxc(:,:,:,:) = 0.0_gp
-  if (present(dVxcdD)) dVxcdD(:,:,:,:) = 0.0_gp
 
   ! VdW initializations -------------------------------------------------------
   if (VDW) then
@@ -721,11 +781,14 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
         D(:) = dens(i1,i2,i3,:)
       end if
 
+      !  Find gradient of density at this point
+!      call getGradDens( ii1, ii2, ii3, GD )   ! This subr. is contained below
+       call getGradDens( ii1, ii2, ii3, dens, GD, Dleft1, Dleft2, &
+                                     Dleft3, Drght1, Drght2, Drght3 )
+ 
+     
       ! Avoid negative densities
       D(1:ndSpin) = max( D(1:ndSpin), 0._dp )
-
-      !  Find gradient of density at this point
-      call getGradDens( ii1, ii2, ii3, GD )   ! This subr. is contained below
 
       ! Find expansion of theta(q(r)) for VdW
       call vdw_theta( nSpin, D, GD, tr, dtdd, dtdgd )
@@ -935,16 +998,20 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
       D(:) = dens(i1,i2,i3,:)
     end if
 
+
     ! Skip point if density=0
     Dtot = sum(D(1:ndSpin))
     if (Dtot < Dmin) cycle ! i1 loop on mesh points
     ip = ip + 1
 
+    ! Find gradient of density at this point
+    if (GGA) call getGradDens( ii1, ii2, ii3, dens, GD, Dleft1, Dleft2, &
+                                     Dleft3, Drght1, Drght2, Drght3 )
+
+!call getGradDens( ii1, ii2, ii3, dens, GD) 
+
     ! Avoid negative densities
     D(1:ndSpin) = max( D(1:ndSpin), 0._dp )
-
-    ! Find gradient of density at this point
-    if (GGA) call getGradDens( ii1, ii2, ii3, GD )
 
     ! Loop over all functionals
     do nf = 1,nXCfunc
@@ -1039,9 +1106,9 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
         dExdGD(:,:) = XCweightX(nf)*dExdGD(:,:)
         dEcdGD(:,:) = XCweightC(nf)*dEcdGD(:,:)
       endif
-      if (present(dVxcdD)) then
-        dVxdD(:) = XCweightX(nf)*dVxdD(:)
-        dVcdD(:) = XCweightC(nf)*dVcdD(:)
+      if (present(ddens)) then
+        dVxdD(:,:) = XCweightX(nf)*dVxdD(:,:)
+        dVcdD(:,:) = XCweightC(nf)*dVcdD(:,:)
       endif
 
       ! Add contributions to exchange-correlation energy and its
@@ -1052,18 +1119,33 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
       Dc = Dc + dVol * Dtot * epsC
       Dx = Dx - dVol * sum(D(:)*dExdD(:))
       Dc = Dc - dVol * sum(D(:)*dEcdD(:))
-      if (associated(myVxc)) then
-        myVxc(ii1,ii2,ii3,:) = myVxc(ii1,ii2,ii3,:) + dExdD(:) + dEcdD(:)
-      else  ! Add directly to output array Vxc
-        Vxc(i1,i2,i3,:) = Vxc(i1,i2,i3,:) + dExdD(:) + dEcdD(:)
-      end if ! (associated(myVxc))
-      if (present(dVxcdD)) then
-        if (associated(mydVxcdD)) then
-          mydVxcdD(ii1,ii2,ii3,:) = mydVxcdD(ii1,ii2,ii3,:) + dVxdD(:)+dVcdD(:)
+
+!! The elements dVx/cdD have nspin*nspin dimension and correspond to
+![(up,up),(down,up),(up,down),(down,down)] where the first index is the spin 
+! potential and the second one the spin of the density
+      if (present(ddens)) then
+        if (associated(myVxc)) then !Linres
+          do is=1,nSpin   
+            do is2=1,nSpin 
+            myVxc(ii1,ii2,ii3,is) = myVxc(ii1,ii2,ii3,is) + &
+                         (dVxdD(is,is2)+dVcdD(is,is2))*mydDens(ii1,ii2,ii3,is2)
+            enddo
+          enddo
         else
-          dVxcdD(i1,i2,i3,:) = dVxcdD(i1,i2,i3,:) + dVxdD(:) + dVcdD(:)
-        end if
-      end if ! (present(dVxcdD))
+          do is=1,nSpin
+            do is2=1,nSpin
+            Vxc(ii1,ii2,ii3,is) = Vxc(ii1,ii2,ii3,is) + & 
+                         (dVxdD(is,is2)+dVcdD(is,is2))*ddens(ii1,ii2,ii3,is2)
+            enddo
+          enddo
+        endif
+      else 
+        if (associated(myVxc)) then
+          myVxc(ii1,ii2,ii3,:) = myVxc(ii1,ii2,ii3,:) + dExdD(:) + dEcdD(:)
+        else  ! Add directly to output array Vxc
+          Vxc(i1,i2,i3,:) = Vxc(i1,i2,i3,:) + dExdD(:) + dEcdD(:)
+        end if ! (associated(myVxc))
+      endif
 
       ! Add contributions to exchange-correlation potential
       ! with respect to density at neighbor points
@@ -1207,13 +1289,6 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
         else
           Vxc(i1,i2,i3,:) = 0
         end if
-        if (present(dVxcdD)) then
-          if (associated(mydVxcdD)) then
-            mydVxcdD(ii1,ii2,ii3,:) = 0
-          else
-            dVxcdD(i1,i2,i3,:) = 0
-          end if
-        end if ! (present(dVxcdD))
       end if ! (Dtot<Dcut)
     end do
     end do
@@ -1224,15 +1299,12 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
   if (associated(myVxc)) then  ! Distributed Vxc array
     if (sameMeshDistr(ioDistr,myDistr)) then ! Just copy myVxc to output array
       Vxc = myVxc
-      if (present(dVxcdD)) dVxcdD = mydVxcdD
     else ! Redistribution required
       ! Copy myVxc and dVxcdD to output box
       call associateMeshTask( my2io, myDistr )
       call copyMeshData( nMesh, myDistr, myVxc, ioBox, Vxc, my2io )
 !      call copyMeshData( nMesh, myDistr, myVxc, ioBox, Vxc )
-      if (present(dVxcdD)) &
-        call copyMeshData( nMesh, myDistr, mydVxcdD, ioBox, dVxcdD, my2io )
-!        call copyMeshData( nMesh, myDistr, mydVxcdD, ioBox, dVxcdD )
+!      call copyMeshData( nMesh, myDistr, mydVxcdD, ioBox, dVxcdD )
     end if ! (sameMeshDistr(ioDistr,myDistr))
   end if ! (associated(myVxc))
 
@@ -1266,7 +1338,7 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
   Dc = Dc / Eunit
   Vxc = Vxc / Eunit
   stress = stress / Eunit
-  if (present(dVxcdD)) dVxcdD = dVxcdD / Eunit
+!  if (present(dVxcdD)) dVxcdD = dVxcdD / Eunit
 
   ! Deallocate VDW-related arrays
   if (VDW) then
@@ -1300,8 +1372,18 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
       call de_alloc( Dleft2, myName//'Dleft2' )
       call de_alloc( Drght1, myName//'Drght1' )
       call de_alloc( Dleft1, myName//'Dleft1' )
+! Linres
+      if (present(ddens)) then 
+         call de_alloc( dDrght3, myName//'dDrght3' )
+         call de_alloc( dDleft3, myName//'dDleft3' )
+         call de_alloc( dDrght2, myName//'dDrght2' )
+         call de_alloc( dDleft2, myName//'dDleft2' )
+         call de_alloc( dDrght1, myName//'dDrght1' )
+         call de_alloc( dDleft1, myName//'dDleft1' )
+      endif
+!
     end if
-    if (present(dVxcdD)) call de_alloc( mydVxcdD, myName//'mydVxcdD'  )
+    if (present(ddens)) call de_alloc( mydDens, myName//'mydDens'  )
     call de_alloc( myVxc,  myName//'myVxc'  )
     call de_alloc( myDens, myName//'myDens' )
   end if ! (associated(myDens))
@@ -1333,26 +1415,105 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
 
 CONTAINS !---------------------------------------------------------------------
 
-  subroutine getGradDens( ii1, ii2, ii3, GD )
+!!GET GRAD DENS ORIGINAL
+  !subroutine getGradDens( ii1, ii2, ii3, GD )
+  ! Finds the gradient (GD) of densto (whatever) at one mesh point
+  ! Arguments
+!  integer, intent(in) :: ii1, ii2, ii3  ! Global mesh point indexes
+!  real(dp),intent(out):: GD(3,nSpin) !  gradient of densto
+  ! Variables and arrays accessed from parent subroutine:
+  !   Dleft1, Dleft2, Dleft3, 
+  !   Drght1, Drght2, Drght3, DGiDFj,
+  !   myBox, myDistr, nn, nSpin, nMesh
+  ! Local variables and arrays
+!  integer :: ic, in, is, jj(3)
+!  real(dp):: Dj(nSpin)
+!  real(gp),pointer:: Dleft(:,:,:,:), Drght(:,:,:,:)
+!  GD(:,:) = 0
+!  if (myDistr==0) then   ! densto data not distributed
+!    do ic = 1,3          ! Loop on cell axes
+!      do in = -nn,nn     ! Loop on finite difference index
+        ! Find index jp of neighbor point
+!        jj(1) = ii1  ! Warning: jj(:)=(/ii1,ii2,ii3/) is VERY slow!!!
+!        jj(2) = ii2
+!        jj(3) = ii3
+!        jj(ic) = modulo( jj(ic)+in, nMesh(ic) )
+        ! Find contribution of density at j to gradient at i
+!        do is = 1,nSpin
+!          do ix = 1,3  ! Warning: GD(:,is)=GD(:,is)+... is slower!!!
+!            GD(ix,is) = GD(ix,is) + DGiDFj(ix,ic,in) * &
+!                                    dens(jj(1),jj(2),jj(3),is)
+!          end do ! ix
+!        end do ! is
+!      end do ! in
+!    end do ! ic
+!  else                   ! Distributed dens data
+!    do ic = 1,3          ! Loop on cell axes
+!      if (ic==1) then
+!        Dleft => Dleft1
+!        Drght => Drght1
+!      else if (ic==2) then 
+!        Dleft => Dleft2
+!        Drght => Drght2
+!      else ! (ic==3)
+!        Dleft => Dleft3
+!        Drght => Drght3
+!      end if ! (ic==1)
+!      do in = -nn,nn     ! Loop on finite difference index
+        ! Find indexes jj(:) of neighbor point
+!        jj(1) = ii1
+!        jj(2) = ii2
+!        jj(3) = ii3
+!        jj(ic) = jj(ic) + in
+        ! Find density Dj at neighbor point j
+!        if (jj(ic)<myBox(1,ic)) then ! Left neighbor region
+!          Dj(1:nSpin) = Dleft(jj(1),jj(2),jj(3),1:nSpin)
+!        else if (jj(ic)>myBox(2,ic)) then ! Right region
+!          Dj(1:nSpin) = Drght(jj(1),jj(2),jj(3),1:nSpin)
+!        else ! j within myBox
+!          Dj(1:nSpin) = dens(jj(1),jj(2),jj(3),1:nSpin)
+!        end if
+        ! Find contribution of density at j to gradient at i
+!        do is = 1,nSpin  ! Loop on spin component
+!          do ix = 1,3    ! Warning: GD(:,is)=GD(:,is)+... is slower!!!
+!            GD(ix,is) = GD(ix,is) + DGiDFj(ix,ic,in) * Dj(is)
+!          end do ! ix
+!        end do ! is
+!      end do ! in
+!    end do ! ic
+!  end if ! (myDistr==0)
+!  end subroutine getGradDens2
 
-  ! Finds the density gradient at one mesh point
+  subroutine getGradDens( ii1, ii2, ii3, D, GD, Dleft1, Dleft2, &
+                                     Dleft3, Drght1, Drght2, Drght3 )
+
+  ! Finds the gradient (GD) of D (whatever) at one mesh point
 
   ! Arguments
   integer, intent(in) :: ii1, ii2, ii3  ! Global mesh point indexes
-  real(dp),intent(out):: GD(3,nSpin) ! Density gradient
+  real(dp),intent(in),target :: D(0:ub1-lb1,0:ub2-lb2,0:ub3-lb3,1:nSpin)
+  real(dp),intent(out):: GD(3,nSpin) !  gradient of D
+  real(gp),intent(in),target,optional:: &
+      Dleft1( l11:l21, m12:m22, m13:m23, 1:ns), &
+      Drght1( r11:r21, m12:m22, m13:m23, 1:ns), &
+      Dleft2( m11:m21, l12:l22, m13:m23, 1:ns), &
+      Drght2( m11:m21, r12:r22, m13:m23, 1:ns), &
+      Dleft3( m11:m21, m12:m22, l13:l23, 1:ns), &
+      Drght3( m11:m21, m12:m22, r13:r23, 1:ns)
 
   ! Variables and arrays accessed from parent subroutine:
-  !   dens, Dleft1, Dleft2, Dleft3, 
-  !   Drght1, Drght2, Drght3, DGiDFj,
-  !   myBox, myDistr, nn, nSpin
+  ! DGiDFj, myBox, myDistr, nn, nSpin, nMesh
 
   ! Local variables and arrays
   integer :: ic, in, is, jj(3)
-  real(dp):: Dj(nSpin)
-  real(gp),pointer:: Dleft(:,:,:,:), Drght(:,:,:,:)
+  real(gp), pointer:: Fleft(:,:,:,:), Frght(:,:,:,:)
+  real(gp), pointer:: F(:,:,:,:)
+  real(dp):: Fj(nSpin)
+
 
   GD(:,:) = 0
-  if (myDistr==0) then   ! dens data not distributed
+  F=>D 
+  if (myDistr==0) then   ! densto data not distributed
     do ic = 1,3          ! Loop on cell axes
       do in = -nn,nn     ! Loop on finite difference index
         ! Find index jp of neighbor point
@@ -1364,7 +1525,7 @@ CONTAINS !---------------------------------------------------------------------
         do is = 1,nSpin
           do ix = 1,3  ! Warning: GD(:,is)=GD(:,is)+... is slower!!!
             GD(ix,is) = GD(ix,is) + DGiDFj(ix,ic,in) * &
-                                    dens(jj(1),jj(2),jj(3),is)
+                                    F(jj(1),jj(2),jj(3),is)
           end do ! ix
         end do ! is
       end do ! in
@@ -1372,14 +1533,14 @@ CONTAINS !---------------------------------------------------------------------
   else                   ! Distributed dens data
     do ic = 1,3          ! Loop on cell axes
       if (ic==1) then
-        Dleft => Dleft1
-        Drght => Drght1
-      else if (ic==2) then 
-        Dleft => Dleft2
-        Drght => Drght2
+        Fleft => Dleft1
+        Frght => Drght1
+      else if (ic==2) then
+        Fleft => Dleft2
+        Frght => Drght2
       else ! (ic==3)
-        Dleft => Dleft3
-        Drght => Drght3
+        Fleft => Dleft3
+        Frght => Drght3
       end if ! (ic==1)
       do in = -nn,nn     ! Loop on finite difference index
         ! Find indexes jj(:) of neighbor point
@@ -1389,16 +1550,16 @@ CONTAINS !---------------------------------------------------------------------
         jj(ic) = jj(ic) + in
         ! Find density Dj at neighbor point j
         if (jj(ic)<myBox(1,ic)) then ! Left neighbor region
-          Dj(1:nSpin) = Dleft(jj(1),jj(2),jj(3),1:nSpin)
+          Fj(1:nSpin) = Fleft(jj(1),jj(2),jj(3),1:nSpin)
         else if (jj(ic)>myBox(2,ic)) then ! Right region
-          Dj(1:nSpin) = Drght(jj(1),jj(2),jj(3),1:nSpin)
+          Fj(1:nSpin) = Frght(jj(1),jj(2),jj(3),1:nSpin)
         else ! j within myBox
-          Dj(1:nSpin) = myDens(jj(1),jj(2),jj(3),1:nSpin)
+          Fj(1:nSpin) = F(jj(1),jj(2),jj(3),1:nSpin)
         end if
         ! Find contribution of density at j to gradient at i
         do is = 1,nSpin  ! Loop on spin component
           do ix = 1,3    ! Warning: GD(:,is)=GD(:,is)+... is slower!!!
-            GD(ix,is) = GD(ix,is) + DGiDFj(ix,ic,in) * Dj(is)
+            GD(ix,is) = GD(ix,is) + DGiDFj(ix,ic,in) * Fj(is)
           end do ! ix
         end do ! is
       end do ! in

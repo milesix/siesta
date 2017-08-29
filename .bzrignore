@@ -1,2 +1,4 @@
+file.txt
 *.mod
 Obj/*
+Src/MPI/*

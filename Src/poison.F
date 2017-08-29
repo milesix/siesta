@@ -6,7 +6,7 @@
 ! See Docs/Contributors.txt for a list of contributors.
 !
       subroutine poison( CELL, N1, N2, N3, Mesh, RHO, U, V, STRESS, 
-     &                   NSM )
+     &                   NSM, Q)
 
 C *********************************************************************
 C SOLVES POISSON'S EQUATION.
@@ -17,6 +17,11 @@ C REAL*8  CELL(3,3)     : UNIT CELL VECTORS
 C INTEGER N1,N2,N3      : NUMBER OF MESH DIVISIONS IN EACH CELL VECTOR
 C INTEGER Mesh(3)       : Number of global mesh divisions
 C REAL*4  RHO(N1,N2,N3) : DENSITIY AT MESH POINTS
+
+! LINRES
+C REAL*8  Q(3)          : PHONON Q-VECTOR
+!
+
 C **************** OUTPUT *********************************************
 C REAL*8  U             : ELECTROSTATIC ENERGY (IN RY)
 C REAL*4  V(N1,N2,N3)   : ELECTROSTATIC POTENTIAL (IN RY)
@@ -51,6 +56,8 @@ C     Input/output variables
       integer               :: N1, N2, N3, Mesh(3), NSM
       real(grid_p)          :: RHO(N1*N2*N3), V(N1*N2*N3)
       real(dp)              :: CELL(3,3), STRESS(3,3), U
+      real(dp), intent(in), optional :: Q(3) !LINRES
+
 C     Local variables
       integer               :: I, I1, I2, I3, IX, J, J1, J2, J3, JX,
      &                         NP, NG, NG2, NG3, 
@@ -58,7 +65,7 @@ C     Local variables
      &                         J3min, J3max, J2L, J3L, NRemY, NRemZ,
      &                         BlockSizeY, BlockSizeZ
       real(dp)              :: C, B(3,3), DU, G(3), G2, G2MAX, 
-     &                         PI, VG, VOLUME, PI8
+     &                         PI, VG, VOLUME, PI8, Qdummy(3) !Linres
       real(grid_p), pointer :: CG(:,:)
       real(dp),   parameter :: K0(3)= (/ 0.0, 0.0, 0.0 /), TINY= 1.0e-15
 #ifdef MPI
@@ -98,6 +105,11 @@ C     Copy density to complex array
         CG(2,I) = 0.0_grid_p
       enddo
 !$OMP end parallel do
+
+!Linres
+      Qdummy(1:3)=0.0_dp
+!      if (present(Q)) Qdummy(1:3)=Q(1:3)
+!
 
 C     Find fourier transform of density
       call fft( CG, Mesh, -1 )
@@ -162,7 +174,8 @@ C     Multiply by 8*PI/G2 to get the potential
             G(1)= B(1,1) * I1 + B(1,2) * I2 + B(1,3) * I3
             G(2)= B(2,1) * I1 + B(2,2) * I2 + B(2,3) * I3
             G(3)= B(3,1) * I1 + B(3,2) * I2 + B(3,3) * I3
-            G2 = G(1)**2 + G(2)**2 + G(3)**2
+            G2 = (G(1) + Qdummy(1))**2 + (G(2) + Qdummy(2))**2
+     &         + (G(3) + Qdummy(3))**2
             J = 1 + J1 + N1 * J2L + N1 * N2 * J3L
             if (G2.LT.G2MAX .AND. G2.GT.TINY) then
               VG = PI8 / G2

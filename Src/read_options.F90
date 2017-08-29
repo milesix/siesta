@@ -1085,6 +1085,15 @@ subroutine read_options( na, ns, nspin )
    else if (leqi(dyntyp,'lua')) then
       idyn = 10
 #endif
+! Linres line-----------------------
+   else if (leqi(dyntyp,'LR')) then
+      idyn = 0
+      if (Nodes > 1) then
+         call die('Option LR for MD.TypeOfRun not compatible with more than 1 MPI process')
+      else
+         linreSwitch = .true.
+      endif
+!-----------------------------
   else
      call die('Invalid Option selected - value of MD.TypeOfRun not recognised')
   endif

@@ -9,7 +9,7 @@
       module m_new_matel
       public :: new_matel
       CONTAINS
-      SUBROUTINE new_MATEL( OPERAT, IG1, IG2, R12, S12, DSDR )
+      SUBROUTINE new_MATEL( OPERAT, IG1, IG2, R12, S12, DSDR, DS2DR)
 C *******************************************************************
 C Finds two-center matrix elements between 'atomic orbitals' 
 C with finite radial and angular momentum cutoffs.
@@ -17,6 +17,7 @@ C Written by J.M.Soler. April 1995.
 C Matrix elements of the position operator by DSP. June, 1999
 C Electrostatic interaction added by JMS. July 2002.
 C Introduction of unified 'global' indexes by AG. July 2011.
+C Added second derivative for Linres purposes, L.Riches and S.Illera (2016)
 C ************************* INPUT ***********************************
 C CHARACTER OPERAT : Operator to be used. The valid options are:
 C   'S' => Unity (overlap). Uppercase required for all values.
@@ -26,7 +27,7 @@ C   'X' => x, returning <phi1(r-R12)|x|phi2(r)> (origin on second atom)
 C   'Y' => y, returning <phi1(r-R12)|y|phi2(r)>
 C   'Z' => z, returning <phi1(r-R12)|z|phi2(r)>
 C INTEGER IG1    : Global index of 1st function (must be positive)
-C INTEGER IG2    : Gloabal index of 2nd function
+C INTEGER IG2    : Global index of 2nd function
 C                    Indexes IG1, IG2 are used only to call 
 C                    routines LCUT, RCUT and EVALUATE (see below), and 
 C                    may have other meanings within those routines
@@ -34,6 +35,7 @@ C REAL*8  R12(3) : Vector from first to second atom
 C ************************* OUTPUT **********************************
 C REAL*8 S12      : Matrix element between orbitals.
 C REAL*8 DSDR(3)  : Derivative (gradient) of S12 with respect to R12.
+C REAL*8 DS2DR(3,3) : Second derivative of S12 with respect to R12.
 C ************************* ROUTINES CALLED *************************
 C The following functions must exist:
 C
@@ -85,6 +87,7 @@ C Argument types and dimensions -------------------------------------
       CHARACTER         OPERAT
       INTEGER           IG1, IG2
       real(dp)          DSDR(3), R12(3), S12
+      real(dp), optional ::  DS2DR(3,3)   !Linres
 C -------------------------------------------------------------------
 
 C Internal precision parameters  ------------------------------------
@@ -111,7 +114,7 @@ C -------------------------------------------------------------------
 C Internal variable types and dimensions ----------------------------
       INTEGER ::
      &  I, IF1, IF2, IFF, IFFY, IFLM1, IFLM2, 
-     &  IG, IOPER, IQ, IR, IX,
+     &  IG, IOPER, IQ, IR, IX, JX,
      &  JF1, JF2, JFF, JFFR, JFFY, JFLM1, JFLM2, JLM, 
      &  JG1, JG2, JR,
      &  L, L1, L2, L3, LMAX,
@@ -125,7 +128,7 @@ C Internal variable types and dimensions ----------------------------
      &  INDFFR(:), INDFFY(:), NLM(:,:)
 
       real(dp) ::
-     &  C, CH(2), CPROP, DFFR0, DFFRMX, DSRDR, ERRF,
+     &  C, CH(2), CPROP, DFFR0, DFFRMX, DSRDR, DSR2DR, ERRF,
      &  FFL(0:NQ), FFQ(0:NQ), FR(0:NQ,2), FQ(0:NQ,2), GAUSS, 
      &  Q, R, SR, VR(0:NQ,2), VQ(0:NQ,2), X12(3)
 
@@ -134,6 +137,10 @@ C Internal variable types and dimensions ----------------------------
 
       real(dp), POINTER, SAVE ::
      &  CFFR(:), DYDR(:,:), F(:,:), FFR(:,:,:), FFY(:,:), Y(:)
+
+C Linres ------------------------------------------------------------
+      real(dp), POINTER, SAVE :: DY2DR(:,:,:)
+C -------------------------------------------------------------------
 
       LOGICAL ::
      &  FAR, FOUND, PROPOR
@@ -176,6 +183,10 @@ C Check if tables must be re-initialized
         CALL DE_ALLOC( NLM, 'NLM', MYNAME )
         CALL DE_ALLOC( CFFR, 'CFFR', MYNAME )
         CALL DE_ALLOC( DYDR, 'DYDR', MYNAME )
+C Linres ------------------------------------------------------------
+        nullify(DY2DR)
+        CALL DE_ALLOC( DY2DR, 'DY2DR', MYNAME )
+C -------------------------------------------------------------------
         CALL DE_ALLOC( F, 'F', MYNAME )
         CALL DE_ALLOC( FFR, 'FFR', MYNAME )
         CALL DE_ALLOC( FFY, 'FFY', MYNAME )
@@ -504,6 +515,11 @@ C         Reallocate some arrays
           CALL RE_ALLOC( Y, 1, NILM, 'Y', MYNAME, .FALSE. )
           CALL RE_ALLOC( DYDR, 1, 3, 1, NILM, 'DYDR', MYNAME, .FALSE. )
 
+C Linres ------------------------------------------------------------
+           CALL RE_ALLOC( DY2DR, 1, 3, 1, 3, 1, NILM, 'DY2DR',
+     &          MYNAME, .FALSE. )
+C -------------------------------------------------------------------
+
 C         Expand the product of two spherical harmonics (SH) also in SH
           CALL YLMEXP( L1+L2, RLYLM, YLMYLM, ILM(IFLM1), ILM(IFLM2),
      &                 1, 1, 1.0_dp, NILM, ILMFF(NFFY+1:),
@@ -540,6 +556,10 @@ C     Initialize output
       DSDR(1) = 0.0_dp
       DSDR(2) = 0.0_dp
       DSDR(3) = 0.0_dp
+
+C LINRES ------------------------------------------------------------
+        if (present(DS2DR)) DS2DR(1:3,1:3) = 0.0_dp
+c ------------------------------------------------------------------- 
 
 C     Avoid R12=0
       X12(1) = R12(1)
@@ -583,19 +603,58 @@ C     Find spherical harmonics times R**L
             JLM = ILMFF(IFFY)
             LMAX = MAX( LMAX, LOFILM(JLM) )
           ENDDO
-          CALL RLYLM( LMAX, X12, Y, DYDR )
+C Linres ------------------------------------------------------------     
+          if (present(DS2DR)) then
+            CALL RLYLM( LMAX, X12, Y, DYDR, DY2DR)
+C-------------------------------------------------------------------
+          else
+            CALL RLYLM( LMAX, X12, Y, DYDR )
+          endif
 
 C         Interpolate radial functions and obtain SH expansion
           DO IFFY = INDFFY(IFF-1)+1, INDFFY(IFF)
             JFFR = INDFFR(IFFY)
-            CALL SPLINT( RMAX/NRTAB, FFR(0:NRTAB,1,JFFR),
+C Linres ------------------------------------------------------------
+            if (present(DS2DR)) then
+              CALL SPLINT( RMAX/NRTAB, FFR(0:NRTAB,1,JFFR),
+     &                   FFR(0:NRTAB,2,JFFR), NRTAB+1, R,
+     &                   SR, DSRDR, DSR2DR )
+C-------------------------------------------------------------------
+            else
+              CALL SPLINT( RMAX/NRTAB, FFR(0:NRTAB,1,JFFR),
      &                   FFR(0:NRTAB,2,JFFR), NRTAB+1, R, SR, DSRDR )
+            endif
             JLM = ILMFF(IFFY)
             S12 = S12 + SR * FFY(1,IFFY) * Y(JLM)
             DO IX = 1,3
               DSDR(IX) = DSDR(IX) +
      &                   DSRDR * FFY(1,IFFY) * Y(JLM) * X12(IX) / R +
      &                   SR * FFY(1,IFFY) * DYDR(IX,JLM)
+C Linres -----------------Second order elements-----------------------
+              if (present(DS2DR)) then
+                do jx=1,3
+                   if (JX.EQ.IX) then
+                     DS2DR(IX,JX) = DS2DR(IX,JX)
+     &                        + (  DYDR(JX,JLM)*DSRDR*X12(IX)/R
+     &                        + Y(JLM)*DSR2DR*X12(IX)*X12(JX)/(R*R)
+     &                        + Y(JLM)*DSRDR/R
+     &                        - Y(JLM)*DSRDR*X12(IX)*X12(JX)/R**3
+     &                        + DY2DR(IX,JX,JLM)*SR
+     &                        + DYDR(IX,JLM)*DSRDR*X12(JX)/R )*
+     &                          FFY(1,IFFY)
+
+                   else
+                     DS2DR(IX,JX) = DS2DR(IX,JX)
+     &                        + (  DYDR(JX,JLM)*DSRDR*X12(IX)/R
+     &                        + Y(JLM)*DSR2DR*X12(IX)*X12(JX)/(R*R)
+     &                        - Y(JLM)*DSRDR*X12(IX)*X12(JX)/R**3
+     &                        + DY2DR(IX,JX,JLM)*SR
+     &                        + DYDR(IX,JLM)*DSRDR*X12(JX)/R )*
+     &                          FFY(1,IFFY)
+                   endif
+                enddo
+              endif
+C-------------------------------------------------------------------
             ENDDO
           ENDDO
         ENDDO

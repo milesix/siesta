@@ -27,12 +27,14 @@
 
       CONTAINS
 
-      subroutine rlylm( LMAX, R, RLY, GRLY )
+      subroutine rlylm( LMAX, R, RLY, GRLY, G2RLY )
       integer, intent(in)   :: lmax
       real(dp), intent(in)  :: r(3)
       real(dp), intent(out) :: rly(0:)
 !      real(dp), intent(out) :: grly(3,0:)   !!! Not accepted...
       real(dp), intent(out) :: grly(1:,0:)
+      real(dp), intent(out), optional :: g2rly(1:,1:,0:)  !Linres line
+
 
 C FINDS REAL SPHERICAL HARMONICS MULTIPLIED BY R**L: RLY=R**L*YLM,
 C AND THEIR GRADIENTS GRLY, AT POINT R:
@@ -46,6 +48,7 @@ C      DO M=-L,L
 C WITH A UNIFIED INDEX ILM=1,...,LMAX**2 INCREASING BY ONE UNIT IN THE
 C  INNER LOOP.
 C WRITTEN BY J.M.SOLER. AUG/96
+C Second derivative by L.Riches and S.Illera (2016)
 C *********** INPUT ***************************************************
 C INTEGER LMAX : Maximum angular momentum quantum number required.
 C REAL*8  R(3) : Position at which Y and GY are required.
@@ -53,6 +56,7 @@ C *********** OUTPUT **************************************************
 C REAL*8 RLY(LMAX*LMAX)    : Real spherical harmonics times r**l,
 C                             at point R, as explained above.
 C REAL*8 GRLY(3,LMAX*LMAX) : Gradient of the RLY's at point R.
+C REAL*8 G2RLY(3,3,LMAX*LMAX): d2(r**l*Y)/(dxi*dxj) for Linres two-centre integrals
 C *********** UNITS ***************************************************
 C Units of R are arbitrary. Units of RLY and GRLY are related to those
 C  of R in the obvious way.
@@ -70,12 +74,12 @@ C Other internal parameters
 
 C Internal variables
       INTEGER
-     .  I, ILM, ILM0, L, LMXMX, M, MS
+     .  I, ILM, ILM0, L, LMXMX, M, MS, J
       REAL(DP)
-     .  C(0:MAXLP1*MAXLP1), COSM, COSMM1, COSPHI,
-     .  ZP(0:MAXLP1,0:MAXLP1), FAC, FOURPI, GY(3),
-     .  P(0:MAXLP1,0:MAXLP1),
-     .  RL(-1:MAXL), RSIZE, RX, RY, RZ, RXY,
+     .  C(0:MAXLP1*MAXLP1), COSM, COSMM1, COSPHI,COS2PHI,
+     .  ZP(0:MAXLP1,0:MAXLP1), FAC, FOURPI, GY(3),G2Y(3,3),
+     .  P(0:MAXLP1,0:MAXLP1), D2P(0:MAXLP1,0:MAXLP1),
+     .  RL(-2:MAXL), RSIZE, RX, RY, RZ, RXY,
      .  SINM, SINMM1, SINPHI, YY
       SAVE LMXMX, C
       DATA LMXMX /-1/
@@ -106,7 +110,12 @@ C Initalize to zero
         GRLY(1,ILM) = ZERO
         GRLY(2,ILM) = ZERO
         GRLY(3,ILM) = ZERO
+C Linres ------------------------------------------------------------
+        if (present(g2rly)) then
+          G2RLY(1:3,1:3,ILM) = ZERO
+        endif
    25 CONTINUE
+C -------------------------------------------------------------------
 
 C Explicit formulas up to L=2
       IF (LMAX.LE.2) THEN
@@ -131,22 +140,58 @@ C        Label 999 is the exit point
          GRLY(1,4) =  C(4)*SIX*R(2)
          GRLY(2,4) =  C(4)*SIX*R(1)
 
+C Linres ------------------------------------------------------------
+         IF (present(g2rly)) THEN
+           G2RLY(2,1,4) = C(4)*SIX
+           G2RLY(1,2,4) = C(4)*SIX
+         ENDIF
+C -------------------------------------------------------------------
+
          RLY(5)    = (-C(5))*THREE*R(2)*R(3)
          GRLY(2,5) = (-C(5))*THREE*R(3)
          GRLY(3,5) = (-C(5))*THREE*R(2)
+
+C Linres ------------------------------------------------------------
+         IF (present(g2rly)) THEN
+           G2RLY(3,2,5) = -C(5)*THREE
+           G2RLY(2,3,5) = -C(5)*THREE
+         ENDIF
+C -------------------------------------------------------------------
 
          RLY(6)    =  C(6)*HALF*(TWO*R(3)*R(3)-R(1)*R(1)-R(2)*R(2))
          GRLY(1,6) = (-C(6))*R(1)
          GRLY(2,6) = (-C(6))*R(2)
          GRLY(3,6) =  C(6)*TWO*R(3)
 
+C Linres ------------------------------------------------------------
+         IF (present(g2rly)) THEN
+           G2RLY(1,1,6) = -C(6)
+           G2RLY(2,2,6) = -C(6)
+           G2RLY(3,3,6) =  C(6)*TWO
+         ENDIF
+C -------------------------------------------------------------------
+
          RLY(7)    = (-C(7))*THREE*R(1)*R(3)
          GRLY(1,7) = (-C(7))*THREE*R(3)
          GRLY(3,7) = (-C(7))*THREE*R(1)
 
+C Linres ------------------------------------------------------------
+         IF (present(g2rly)) THEN
+           G2RLY(3,1,7) = -C(7)*THREE
+           G2RLY(1,3,7) = -C(7)*THREE
+         ENDIF
+C -------------------------------------------------------------------
+
          RLY(8)    =  C(8)*THREE*(R(1)*R(1)-R(2)*R(2))
          GRLY(1,8) =  C(8)*SIX*R(1)
          GRLY(2,8) = (-C(8))*SIX*R(2)
+
+C Linres ------------------------------------------------------------
+         IF (present(g2rly)) THEN
+           G2RLY(1,1,8) = C(8)*SIX
+           G2RLY(2,2,8) = -C(8)*SIX
+         ENDIF
+C -------------------------------------------------------------------
 
          GOTO 999
       ENDIF
@@ -189,8 +234,16 @@ C     Find associated Legendre polynomials and their derivative
          DO 50 L=M,LMAX
             ZP(L,M)=-((M*P(L,M)*RZ/RXY+P(L,M+1))/RXY)
    50   CONTINUE
+
+C Linres ------------------------------------------------------------
+        DO 55 L=M,LMAX
+           D2P(L,M)=-(ZP(L,M+1)+(M-1)*RZ*ZP(L,M)/RXY+
+     &              M*P(L,M)/(RXY**3))/RXY
+   55   CONTINUE
+C -------------------------------------------------------------------
    60 CONTINUE
 C     Find spherical harmonics and their gradient
+      RL(-2) = ZERO  !Needed for Linres second derivative
       RL(-1) = ZERO
       RL(0)  = ONE
       DO 70 L = 1,LMAX
@@ -198,6 +251,7 @@ C     Find spherical harmonics and their gradient
    70 CONTINUE
       COSPHI=RX/RXY
       SINPHI=RY/RXY
+      COS2PHI=COSPHI*COSPHI-SINPHI*SINPHI
       COSM=ONE
       SINM=ZERO
       DO 90 M=0,LMAX
@@ -209,12 +263,77 @@ C     Find spherical harmonics and their gradient
               GY(1)=(-ZP(L,M))*RX *RZ *SINM - P(L,M)*M*COSM*SINPHI/RXY
               GY(2)=(-ZP(L,M))*RY *RZ *SINM + P(L,M)*M*COSM*COSPHI/RXY
               GY(3)= ZP(L,M)*RXY*RXY*SINM
+C Linres ------------------------------------------------------------
+              IF (present(g2rly)) THEN
+        G2Y(1,1)=D2P(L,M)*RZ*RZ*RX*RX*SINM-ZP(L,M)*RZ*SINM
+     &            +THREE*ZP(L,M)*RZ*RX*RX*SINM
+     &            +TWO*P(L,M)*M*COSM*COSPHI*SINPHI/(RXY*RXY)
+     &            +TWO*ZP(L,M)*RZ*M*COSM*SINPHI*COSPHI
+     &            -P(L,M)*M*M*SINM*SINPHI*SINPHI/(RXY*RXY)
+        G2Y(2,1)=D2P(L,M)*RZ*RZ*RX*RY*SINM
+     &            +THREE*ZP(L,M)*RX*RY*RZ*SINM
+     &            -P(L,M)*M*COSM*COS2PHI/(RXY*RXY)
+     &            -ZP(L,M)*RZ*M*COSM*COS2PHI
+     &            +P(L,M)*M*M*SINM*SINPHI*COSPHI/(RXY*RXY)
+        G2Y(3,1)=-D2P(L,M)*RZ*RX*RXY*RXY*SINM
+     &            +THREE*ZP(L,M)*RX*RZ*RZ*SINM
+     &            -ZP(L,M)*RX*SINM
+     &            -ZP(L,M)*RXY*M*COSM*SINPHI
+        G2Y(1,2)=G2Y(2,1)
+        G2Y(2,2)=D2P(L,M)*RZ*RZ*RY*RY*SINM-ZP(L,M)*RZ*SINM
+     &            +THREE*ZP(L,M)*RZ*RY*RY*SINM
+     &            -TWO*P(L,M)*M*COSM*COSPHI*SINPHI/(RXY*RXY)
+     &            -TWO*ZP(L,M)*RZ*M*COSM*SINPHI*COSPHI
+     &            -P(L,M)*M*M*SINM*COSPHI*COSPHI/(RXY*RXY)
+        G2Y(3,2)=-D2P(L,M)*RZ*RY*RXY*RXY*SINM
+     &            +THREE*ZP(L,M)*RY*RZ*RZ*SINM
+     &            -ZP(L,M)*RY*SINM
+     &            +ZP(L,M)*RXY*M*COSM*COSPHI
+        G2Y(1,3)=G2Y(3,1)
+        G2Y(2,3)=G2Y(3,2)
+        G2Y(3,3)=D2P(L,M)*SINM*RXY**4
+     &            -THREE*ZP(L,M)*RZ*SINM*RXY*RXY
+              ENDIF
+C -------------------------------------------------------------------
             ELSE
               ILM=L*L+L+M
               YY=C(ILM)*P(L,M)*COSM
               GY(1)=(-ZP(L,M))*RX *RZ *COSM + P(L,M)*M*SINM*SINPHI/RXY
               GY(2)=(-ZP(L,M))*RY *RZ *COSM - P(L,M)*M*SINM*COSPHI/RXY
               GY(3)= ZP(L,M)*RXY*RXY*COSM
+
+C Linres ------------------------------------------------------------
+             IF (present(g2rly)) THEN
+              G2Y(1,1)=D2P(L,M)*RZ*RZ*RX*RX*COSM-ZP(L,M)*RZ*COSM
+     .            +THREE*ZP(L,M)*RZ*RX*RX*COSM
+     .            -TWO*P(L,M)*M*SINM*COSPHI*SINPHI/(RXY*RXY)
+     .            -TWO*ZP(L,M)*RZ*M*SINM*SINPHI*COSPHI
+     .            -P(L,M)*M*M*COSM*SINPHI*SINPHI/(RXY*RXY)
+              G2Y(2,1)=D2P(L,M)*RZ*RZ*RX*RY*COSM
+     .            +THREE*ZP(L,M)*RX*RY*RZ*COSM
+     .            +P(L,M)*M*SINM*COS2PHI/(RXY*RXY)
+     .            +ZP(L,M)*RZ*M*SINM*COS2PHI
+     .            +P(L,M)*M*M*COSM*SINPHI*COSPHI/(RXY*RXY)
+              G2Y(3,1)=-D2P(L,M)*RZ*RX*RXY*RXY*COSM
+     .            +THREE*ZP(L,M)*RX*RZ*RZ*COSM
+     .            -ZP(L,M)*RX*COSM
+     .            +ZP(L,M)*RXY*M*SINM*SINPHI
+              G2Y(1,2)=G2Y(2,1)
+              G2Y(2,2)=D2P(L,M)*RZ*RZ*RY*RY*COSM-ZP(L,M)*RZ*COSM
+     .            +THREE*ZP(L,M)*RZ*RY*RY*COSM
+     .            +TWO*P(L,M)*M*SINM*COSPHI*SINPHI/(RXY*RXY)
+     .            +TWO*ZP(L,M)*RZ*M*SINM*SINPHI*COSPHI
+     .            -P(L,M)*M*M*COSM*COSPHI*COSPHI/(RXY*RXY)
+              G2Y(3,2)=-D2P(L,M)*RZ*RY*RXY*RXY*COSM
+     .            +THREE*ZP(L,M)*RY*RZ*RZ*COSM
+     .            -ZP(L,M)*RY*COSM
+     .            -ZP(L,M)*RXY*M*SINM*COSPHI
+              G2Y(1,3)=G2Y(3,1)
+              G2Y(2,3)=G2Y(3,2)
+              G2Y(3,3)=D2P(L,M)*COSM*RXY**4
+     .            -THREE*ZP(L,M)*RZ*COSM*RXY*RXY
+             ENDIF
+C--------------------------------------------------------------------
             ENDIF
             GY(1)= GY(1)*C(ILM)/RSIZE
             GY(2)= GY(2)*C(ILM)/RSIZE
@@ -223,6 +342,34 @@ C     Find spherical harmonics and their gradient
             GRLY(1,ILM)= RX*L*RL(L-1)*YY + RL(L)*GY(1)
             GRLY(2,ILM)= RY*L*RL(L-1)*YY + RL(L)*GY(2)
             GRLY(3,ILM)= RZ*L*RL(L-1)*YY + RL(L)*GY(3)
+
+C Linres ------------------------------------------------------------
+            IF (present(g2rly)) THEN
+              DO 74 I=1,3
+                 DO 72 J=1,3
+                   G2Y(I,J)=G2Y(I,J)*C(ILM)/(RSIZE*RSIZE)
+   72            CONTINUE
+   74         CONTINUE
+ 
+            G2RLY(1,1,ILM)=L*(L-2)*RL(L-2)*RX*RX*YY+L*RL(L-2)*YY
+     *         +TWO*L*RL(L-1)*RX*GY(1)+RL(L)*G2Y(1,1)
+
+            G2RLY(2,1,ILM)=L*(L-2)*RL(L-2)*RX*RY*YY+L*RL(L-1)*RY*GY(1)
+     &         +L*RL(L-1)*RX*GY(2)+RL(L)*G2Y(2,1)
+            G2RLY(3,1,ILM)=L*(L-2)*RL(L-2)*RX*RZ*YY+L*RL(L-1)*RX*GY(3)
+     *         +L*RL(L-1)*RZ*GY(1)+RL(L)*G2Y(3,1)
+            G2RLY(1,2,ILM)=G2RLY(2,1,ILM)
+            G2RLY(2,2,ILM)=L*(L-2)*RL(L-2)*RY*RY*YY+L*RL(L-2)*YY
+     *         +TWO*L*RL(L-1)*RY*GY(2)+RL(L)*G2Y(2,2)
+            G2RLY(3,2,ILM)=L*(L-2)*RL(L-2)*RY*RZ*YY+L*RL(L-1)*RY*GY(3)
+     *         +L*RL(L-1)*RZ*GY(2)+RL(L)*G2Y(3,2)
+            G2RLY(1,3,ILM)=G2RLY(3,1,ILM)
+            G2RLY(2,3,ILM)=G2RLY(3,2,ILM)
+            G2RLY(3,3,ILM)=L*(L-2)*RL(L-2)*RZ*RZ*YY+L*RL(L-2)*YY
+     *         +TWO*L*RL(L-1)*RZ*GY(3)+RL(L)*G2Y(3,3)
+            ENDIF
+C -------------------------------------------------------------------
+
    75     CONTINUE
    80   CONTINUE
         COSMM1=COSM
@@ -306,12 +453,13 @@ C Makes a radial times spherical-harmonic expansion of a function.
 
       integer, intent(in)          :: lmax
       interface
-         subroutine rlylm_f(lmax,rvec,yy,grady)
+         subroutine rlylm_f(lmax,rvec,yy,grady,g2rly)
          use precision, only: dp
          integer, intent(in)   :: lmax
          real(dp), intent(in)  :: rvec(3)
          real(dp), intent(out) :: yy(0:)
          real(dp), intent(out) :: grady(1:,0:)
+         real(dp), intent(out), optional :: g2rly(1:,1:,0:)  !Linres line
          end subroutine rlylm_f
 
          subroutine func(i1,i2,rvec,yy,grady)
@@ -479,12 +627,13 @@ C Makes a radial times spherical-harmonic expansion of a function.
 
       integer, intent(in)          :: lmax
       interface
-         subroutine rlylm_f(lmax,rvec,yy,grady)
+         subroutine rlylm_f(lmax,rvec,yy,grady,g2rly)
          use precision, only: dp
          integer, intent(in)   :: lmax
          real(dp), intent(in)  :: rvec(3)
          real(dp), intent(out) :: yy(0:)
          real(dp), intent(out) :: grady(1:,0:)
+         real(dp), intent(out), optional :: g2rly(1:,1:,0:)  !Linres line
          end subroutine rlylm_f
 
          subroutine func(ig,rvec,yy,grady)

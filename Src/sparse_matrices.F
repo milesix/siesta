@@ -31,6 +31,13 @@
 
       real(dp), public, pointer :: xijo(:,:)=>null()
 
+C Linres -----------------------------------------------------------------
+      real(dp), public, pointer :: DS(:,:)=>null(), D2S(:,:,:)=>null(),
+     &                             dDscf(:,:,:)=>null(),
+     &                             dEscf(:,:,:)=>null()
+      real(dp), public, pointer :: DH(:,:) => null()
+      real(dp), public, pointer :: D2H(:,:,:) => null()
+C-------------------------------------------------------------------------
 
       ! Pieces of H that do not depend on the SCF density matrix
       ! Formerly there was a single array H0 for this
@@ -83,7 +90,12 @@
       call de_alloc( Hold, 'Hold', 'sparseMat' )
       call de_alloc( Dold, 'Dold', 'sparseMat' )
       call de_alloc( Eold, 'Eold', 'sparseMat' )
-
+C Linres ------------------------------------------------------------
+      call de_alloc( DH,          'DH',          'sparseMat' )
+      call de_alloc( D2H,         'D2H',         'sparseMat' )
+      call de_alloc( dDscf,       'dDscf',       'sparseMat' )
+      call de_alloc( dEscf,       'dEscf',       'sparseMat' )
+C -------------------------------------------------------------------
       end subroutine resetSparseMatrices
 
       END MODULE sparse_matrices

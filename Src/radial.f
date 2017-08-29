@@ -56,18 +56,26 @@
 !      allocate(func%f(n),func%d2(n))
       end subroutine rad_alloc
 
-      subroutine rad_get(func,r,fr,dfdr)
+      subroutine rad_get(func,r,fr,dfdr,df2dr)
       type(rad_func), intent(in) :: func
       real(dp), intent(in)         :: r
       real(dp), intent(out)        :: fr
       real(dp), intent(out)        :: dfdr
+      real(dp), intent(out),optional :: df2dr !Linres line
 
       if (func%n .eq. 0) then
           fr = 0._dp
           dfdr = 0._dp
-       else
-          call splint(func%delta,func%f,func%d2,func%n,r,fr,dfdr)
-       endif
+         if (present(df2dr)) df2dr=0.0_dp !Linres line
+      else
+C Linres------------------------------------------------------------
+         if (present(df2dr)) then
+           call splint(func%delta,func%f,func%d2,func%n,r,fr,dfdr,df2dr)
+         else
+           call splint(func%delta,func%f,func%d2,func%n,r,fr,dfdr)
+         endif 
+C -----------------------------------------------------------------
+      endif
       
       end subroutine rad_get
 !

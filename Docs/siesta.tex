@@ -222,6 +222,7 @@ Victor M. Garcia-Suarez,
 Georg Huhs,
 Rogeli Grima,
 Rainer Hoft,
+Sergio Illera,
 Jorge Kohanoff,
 Richard Korytar,
 In-Ho Lee,
@@ -239,6 +240,7 @@ Nick R\"ubner Papior,
 Magnus Paulsson,
 Oscar Paz,
 Andrei Postnikov,
+Miguel Pruneda,
 Tristana Sondon,
 Rafi Ullah,
 Andrew Walker,
@@ -8145,8 +8147,8 @@ or interpolation of bands), can be downloaded from
   The periodic part of the Bloch functions is defined by
   \begin{equation}
     u_{n \vec{k}} (\vec{r}) =
-    \sum_{\vec{R} \mu} c_{n \mu}(\vec{k})
-    e^{i \vec{k} \cdot ( \vec{r}_{\mu} + \vec{R} - \vec{r} )}
+    \sum_{\vec{R} \mu} c_{n \mu}(\vec{k})
+    e^{i \vec{k} \cdot ( \vec{r}_{\mu} + \vec{R} - \vec{r} )}
     \phi_{\mu} (\vec{r} - \vec{r}_{\mu} - \vec{R} ) ,
   \end{equation}
   where $\phi_{\mu} (\vec{r} - \vec{r}_{\mu} - \vec{R} )$ is a basis
@@ -10191,6 +10193,70 @@ the forces in the $x$, $y$ and $z$ direction for one of the atoms.
 
 If constraints are used, the file \sysfile{FCC} is also written.
 
+\section{LINRES}\index{LINRES}\index{LINRES}
+\label{sec:linres}
+
+SIESTA now includes the linear response theory, an implementation of
+the Density Functional Perturbation Theory (DFPT). The present
+implementation of DFPT was coded with the aim of calculating the
+vibrational properties of clusters and solids via the Force Constant
+matrix (FC), i.e. the second derivatives of the energy with respect to
+atomic displacements.
+
+This implementation is based on the old LINRES module coded by
+J. M. Pruneda, J. Junquera and P. Ordej\'on for the SIESTA-0.12
+version (J. M. Pruneda, \textit{Ph.D. Thesis}, Universidad de Oviedo
+(2002)).
+
+For the calculation of the FC matrix, a standard SIESTA run is
+performed in order to calculate the unperturbed density matrix. Once
+the system reaches the self-consistent solution, the LINRES method is
+called. The density matrix is calculated using DFPT for each perturbed
+atom (external loop over the perturbed atoms) and the contributions to
+the second energy derivative are added. It is important to note that
+the calculated perturbed density matrix for each perturbed atom is
+independent of the rest, but it is currently not possible to run
+LINRES with more than one MPI process. Once the atom loop ends, the FC matrix is
+written to a file SystemLabel.FC as usual. The output can be analyzed
+to extract phonon frequencies and vectors with the VIBRA\index{VIBRA}
+package in the \program{Util/Vibra}.
+
+During a LINRES calculation, a temporary file SystemLabel.LRDYNMAT is
+created. This file contains the not-fully-complete FC matrix and the
+last moved atom which has included its contribution to the FC matrix
+in order to restart the calculation if it stops unexpectedly.
+
+\begin{fdfentry}{MD.TypeOfRun}[string]<LR>
+Input to perform a LINRES calculation after the single point
+self-consistency is achieved.
+\end{fdfentry}
+
+\begin{fdfentry}{MD.FCFirst}[integer]<$1$>
+Index of first atom to displace for the computation of the force
+constant matrix\index{linres} for phonon calculations.
+\end{fdfentry}
+
+\begin{fdfentry}{MD.FCLast}[integer]<\fdfvalue{MD.FCFirst}>
+Index of last atom to displace for the computation of the force
+constant matrix\index{linres} for phonon calculations.
+\end{fdfentry}  
+     
+\begin{fdfentry}{LR.DMTolerance}[real]<$10^{-3}$>
+Tolerance of the perturbed Density Matrix to achieve the
+self-consistency (as in the standard way with the Density matrix).
+\end{fdfentry}
+
+\begin{fdfentry}{LR.EigTolerance}[real]<$10^{-3}\,\mathrm{eV}$>
+Threshold for the energy difference between levels to consider that
+there is a degeneracy.
+\end{fdfentry}  
+
+\begin{fdflogicalF}{LR.readDynmat}
+Restart calculation from SystemLabel.LRDYNMAT file.
+\end{fdflogicalF} 
+
+Note: The self-consistency loop is currently implemented using the Pulay
+mixing scheme. Check the Pulay options in the appropriate section.
 
 \section{LDA+U}
 \label{sec:lda+u}

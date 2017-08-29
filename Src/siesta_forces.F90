@@ -79,6 +79,10 @@ contains
 #endif
     use m_compute_energies, only: compute_energies
 
+! Linres line
+      use m_linresscf
+! End linres line
+
     use m_mpi_utils, only: broadcast
     use fdf
 #ifdef SIESTA__PEXSI
@@ -408,9 +412,12 @@ contains
 
           end if
 #endif
-          
-          if ( monitor_forces_in_scf ) call compute_forces()
-
+         
+! Linres line-----------------------------------------------------
+          if (.NOT. linreSwitch) then
+              if (monitor_forces_in_scf) call compute_forces()
+          endif
+! ---------------------------------------------------------------
           ! Mix_after_convergence preserves the old behavior of
           ! the program.
           if ( (.not. SCFconverged) .or. mix_after_convergence) then
@@ -572,7 +579,13 @@ contains
     ! ... so H at this point is the latest generator of the DM, except
     ! if mixing H beyond self-consistency or terminating the scf loop
     ! without convergence while mixing H
-    
+
+! Linres line: main subroutine calling--------------------------------------
+      if (SCFconverged .AND. linreSwitch) then
+        call linresscf()
+      endif
+!---------------------------------------------------------------------------
+
     call state_analysis( istep )
 #ifdef SIESTA__PEXSI
     if (ionode) call memory_snapshot("after state_analysis")

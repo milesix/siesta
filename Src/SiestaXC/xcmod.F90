@@ -23,6 +23,8 @@
 !            'GGA' => Generalized gradients approx.
 !            'VDW' => Van der Waals functional
 ! XCauth:
+!     'LIBXC-XXXX-OPTIONAL_NAME' => Libxc functional
+!
 !     'CA' or 'PZ' => LSD Perdew & Zunger, PRB 23, 5075 (1981)
 !           'PW91' => GGA Perdew & Wang, JCP, 100, 1290 (1994) 
 !           'PW92' => LSD Perdew & Wang, PRB, 45, 13244 (1992). This is
@@ -76,6 +78,12 @@
 ! - Does not change any output array whose size is smaller than nFunc
 !
 !******************************************************************************
+! New, easier to use routines:
+! call setxc_family_authors(family,authors)
+!
+! call setxc_libxc_ids(nfuncs,libxc_ids)
+!                   /array of libxc ids/
+!
 
 module xcmod
 
@@ -86,17 +94,35 @@ module xcmod
   implicit none
 
 public:: &
-  setXC, &! Sets XC functional(s) to be used
+  setXC_family_authors, &! Sets single XC functional in family/author style
+  setXC, &! Sets XC functional(s) to be used (comprehensive)
   getXC   ! Returns the XC functional(s) being used
+
+#ifdef LIBXC
+public :: setXC_libxc_ids! Sets XC functionals using libxc ids
+#endif
 
 private ! Nothing is declared public beyond this point
 
+! These data should be put into a derived type and
+! initialized and passed around in a single handle, instead
+! of being global
+
   integer, parameter :: maxFunc = 20
   integer,           save :: nXCfunc=0
-  character(len=20), save :: XCauth(MaxFunc), XCfunc(MaxFunc)
+  character(len=50), save :: XCauth(MaxFunc), XCfunc(MaxFunc)
   real(dp),          save :: XCweightX(MaxFunc), XCweightC(MaxFunc)
 
 contains
+
+  subroutine setXC_family_authors( family, auth )
+    !! Sets a single XC functional in family/author style
+    implicit none
+    character(len=*),intent(in):: family
+    character(len=*),intent(in):: auth
+
+    call setXC(1, [family], [auth], [1.0_dp], [1.0_dp])
+  end subroutine setXC_family_authors
 
   subroutine setXC( n, func, auth, wx, wc )
     implicit none
@@ -121,6 +147,11 @@ contains
         end do ! j
         call vdw_set_author( XCauth(i) )
       end if ! (XCfunc(i)=='VDW')
+
+      if (XCauth(i)(1:6) == "LIBXC-") then
+         call process_libxc_spec(XCfunc(i),XCauth(i))
+      endif
+
     end do ! i
   end subroutine setXC
 
@@ -147,5 +178,118 @@ contains
        if (size(wc)  >=nf) wc(1:nf)   = XCweightC(1:nf)
     end if
   end subroutine getXC
+
+#ifndef LIBXC               
+  subroutine process_libxc_spec(func,auth)
+    character(len=*), intent(in)    :: func
+    character(len=*), intent(inout) ::  auth
+
+    call die("Libxc not compiled in. Cannot handle " //  &
+              trim(func) // " " // trim(auth))
+  end subroutine process_libxc_spec
+
+#else
+
+  subroutine process_libxc_spec(func,auth)
+
+    use xc_f90_types_m
+    use xc_f90_lib_m
+
+    character(len=*), intent(in)    :: func
+    character(len=*), intent(inout) ::  auth
+
+    integer :: iostat, xc_id, idx, xc_id_from_symbol
+    character(len=50) :: symbolic_name
+
+         ! Fields are of the form LIBXC-XXXX-SYMBOL
+         ! where -SYMBOL is optional if XXXX is a meaningful code
+         idx = index(auth(7:),"-")
+         if (idx /= 0) then
+            ! We have code and symbol fields
+            read(auth(7:7+idx-2),iostat=iostat,fmt=*) xc_id
+            symbolic_name = auth(7+idx:)
+            xc_id_from_symbol = xc_f90_functional_get_number(symbolic_name)
+            if (xc_id == 0) then
+               ! A zero in the code field signals that we want
+               ! to fall back on the symbolic name field 
+               if (xc_id_from_symbol < 0) then
+                  call die("Cannot get xc_id from " // &
+                       trim(symbolic_name))
+               else
+                  xc_id = xc_id_from_symbol
+               endif
+            else
+               ! Check consistency
+               if (xc_id /= xc_id_from_symbol) then
+                  call die("Conflicting code field for " // &
+                       trim(symbolic_name))
+               endif
+            endif
+            ! Normalize the internal representation 
+            write(auth,"(a,i4.4,'-',a)") &
+                 "LIBXC-",xc_id, trim(symbolic_name)
+         else
+            ! Just a code field
+            read(auth(7:),iostat=iostat,fmt=*) xc_id
+            if (iostat /= 0) call die("Bad libxc code in " &
+                                   // trim(auth))
+            ! Normalize the internal representation 
+            write(auth,"(a,i4.4)") "LIBXC-",xc_id
+         endif
+
+         !
+         select case (xc_f90_family_from_id (xc_id))
+         case (XC_FAMILY_LDA)
+            if (func /= "LDA") call die("Family mismatch in " // &
+                  trim(func) // " " // trim(auth))
+         case (XC_FAMILY_GGA)
+            if (func /= "GGA") call die("Family mismatch in " // &
+                  trim(func) // " " // trim(auth))
+         case default
+            call die("Unsupported Libxc family or functional")
+         end select
+  end subroutine process_libxc_spec
+
+#endif
+
+#ifdef LIBXC
+  subroutine setXC_libxc_ids( nfuncs, libxc_ids)
+    !! Sets the XC info using libxc numerical codes
+
+    use xc_f90_types_m
+    use xc_f90_lib_m
+
+    implicit none
+    integer, intent(in) :: nfuncs
+    !! number of functionals
+    integer, intent(in) :: libxc_ids(nfuncs)
+    !! numerical libxc codes
+
+    ! automatic arrays
+    character(len=10)   :: family(nfuncs), auth(nfuncs)
+    real(dp)            :: weight(nfuncs)
+
+    integer :: i
+
+    do i = 1, nfuncs
+       select case (xc_f90_family_from_id (libxc_ids(i)))
+       case (XC_FAMILY_LDA)
+          family(i) = "LDA"
+       case (XC_FAMILY_GGA)
+          family(i) = "GGA"
+       ! There is probably a (negative) case for bad id ...
+       case (-1)
+          call die("Bad libxc functional code")
+       case default
+          family(i) = "other"
+       end select
+       write(auth(i),"(a,i4.4)") "LIBXC-", libxc_ids(i)
+    end do
+
+    weight = 1.0_dp / nfuncs
+
+    call setXC(nfuncs, family, auth, weight, weight)
+  end subroutine setXC_libxc_ids
+# endif /* LIBXC */
 
 end module xcmod

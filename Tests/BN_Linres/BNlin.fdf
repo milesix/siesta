@@ -1,0 +1,36 @@
+# 
+# FDF for a BN sheet with 110 supercell
+# 
+
+SystemName          BN-2 atom
+SystemLabel         BN
+
+NumberOfSpecies     2
+
+%block ChemicalSpeciesLabel
+ 1  5  B 10.811
+ 2  7  N_2 14.0067
+%endblock ChemicalSpeciesLabel
+
+PAO.BasisSize       SZ
+XC.functional LDA
+XC.authors    CA
+
+MeshCutoff          200.0 Ry
+MaxSCFIterations    500  
+DM.MixingWeight      0.1 
+DM.NumberPulay       5  
+DM.Tolerance         1.d-5           
+SolutionMethod       diagon 
+DM.UseSaveDM  	     .true.	   
+
+%include FC.fdf
+AllocReportLevel   2
+
+
+%block kgrid_Monkhorst_Pack
+	6	0	0	0.0
+	0	6	0	0.0
+	0	0	1	0.0
+%endblock kgrid_Monkhorst_Pack
+

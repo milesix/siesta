@@ -47,6 +47,11 @@ dep:
 
 INCFLAGS:= $(NETCDF_INCFLAGS) $(PEXSI_INCFLAGS) $(INCFLAGS)
 
+ifdef USE_LIBXC
+  FPPFLAGS += -DLIBXC
+  LIBS += $(LIBXC_LIBS)
+  INCFLAGS += $(LIBXC_INCFLAGS)
+endif
 
 # For removing any -ipo compilation in sub directories...
 # Later compilers are also having this enabled, and it lets you
@@ -248,6 +253,10 @@ OBJS += flook_siesta.o siesta_dicts.o
 # Add citation package
 OBJS += m_cite.o
 
+#Linres package
+OBJS += linresscf.o linres_matrices.o dhinit.o dvnloc.o dfscf2.o dynamat.o
+OBJS += delrho.o delrhog.o delrhok.o m_pulay.o ddsmat.o ddnaefs.o m_iodynmat.o
+
 # Special dependency that sfmakedepend cannot grasp for now
 m_pexsi.o m_pexsi_driver.o m_pexsi_dos.o m_pexsi_local_dos.o: f_ppexsi_interface.o
 
@@ -303,7 +312,8 @@ XC=libSiestaXC.a
 $(XC): $(FDF)
 	(cd SiestaXC ; $(MAKE) -j 1 \
                     "VPATH_ROOT=$(VPATH)"  \
-	            "INCFLAGS=-I../MPI" \
+	            "INCFLAGS=-I../MPI $(INCFLAGS)" \
+                    "FPPFLAGS=$(FPPFLAGS)" \
 		    "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module )
 
 #######################
@@ -651,21 +661,30 @@ coxmol.o: files.o periodic_table.o precision.o
 create_Sparsity_SC.o: class_Sparsity.o geom_helper.o intrinsic_missing.o
 create_Sparsity_Union.o: class_OrbitalDistribution.o class_Sparsity.o
 create_Sparsity_Union.o: m_region.o parallel.o precision.o
+ddnaefs.o: atmfuncs.o mneighb.o new_matel.o precision.o
+ddsmat.o: listsc.o precision.o
 debugmpi.o: parallel.o
 delk.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o
 delk.o: m_planewavematrixvar.o mesh.o meshdscf.o meshphi.o parallel.o
 delk.o: parallelsubs.o precision.o siesta_geom.o
+delrho.o: alloc.o densematrix.o precision.o
+delrhog.o: alloc.o precision.o
+delrhok.o: alloc.o precision.o
 denmat.o: alloc.o globalise.o m_mpi_utils.o onmod.o precision.o
 denmatlomem.o: alloc.o globalise.o onmod.o precision.o
 densematrix.o: alloc.o precision.o
 detover.o: alloc.o linpack.o parallel.o parallelsubs.o precision.o
 dfscf.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o m_spin.o mesh.o
 dfscf.o: meshdscf.o meshphi.o parallel.o parallelsubs.o precision.o sys.o
+dfscf2.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o mesh.o meshdscf.o
+dfscf2.o: meshphi.o parallel.o parallelsubs.o precision.o
+dhinit.o: alloc.o atomlist.o listsc.o mesh.o parallel.o parallelsubs.o
+dhinit.o: precision.o siesta_geom.o
 dhscf.o: alloc.o atmfuncs.o bsc_xcmod.o cellxc_mod.o delk.o dfscf.o
-dhscf.o: doping_uniform.o files.o forhar.o iogrid_netcdf.o m_charge_add.o
-dhscf.o: m_efield.o m_hartree_add.o m_iorho.o m_iotddft.o m_mesh_node.o
-dhscf.o: m_ncdf_io.o m_ncdf_siesta.o m_partial_charges.o m_rhog.o m_spin.o
-dhscf.o: m_ts_global_vars.o m_ts_hartree.o m_ts_options.o m_ts_tdir.o
+dhscf.o: doping_uniform.o files.o forhar.o iogrid_netcdf.o linres_matrices.o
+dhscf.o: m_charge_add.o m_efield.o m_hartree_add.o m_iorho.o m_iotddft.o
+dhscf.o: m_mesh_node.o m_ncdf_io.o m_ncdf_siesta.o m_partial_charges.o m_rhog.o
+dhscf.o: m_spin.o m_ts_global_vars.o m_ts_hartree.o m_ts_options.o m_ts_tdir.o
 dhscf.o: m_ts_voltage.o mesh.o meshdscf.o meshsubs.o moremeshsubs.o parallel.o
 dhscf.o: parsing.o precision.o rhofft.o rhoofd.o siesta_options.o sys.o units.o
 dhscf.o: vmat.o
@@ -697,6 +716,10 @@ dnaefs.o: atmfuncs.o mneighb.o precision.o
 domain_decom.o: alloc.o parallel.o precision.o printmatrix.o schecomm.o
 domain_decom.o: sparse_matrices.o sys.o
 doping_uniform.o: alloc.o m_ntm.o mesh.o parallel.o precision.o sys.o
+dvnloc.o: alloc.o atmfuncs.o mneighb.o new_matel.o parallel.o parallelsubs.o
+dvnloc.o: precision.o
+dynamat.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o m_mpi_utils.o
+dynamat.o: mesh.o meshdscf.o meshphi.o parallel.o parallelsubs.o precision.o
 dynamics.o: alloc.o atomlist.o files.o ioxv.o m_mpi_utils.o parallel.o
 dynamics.o: precision.o siesta_options.o sys.o units.o
 egandd.o: alloc.o denmat.o ener3.o globalise.o gradient.o on_subs.o onmod.o
@@ -787,6 +810,12 @@ ldau.o: precision.o radial.o
 ldau_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
 ldau_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o parallel.o
 ldau_specs.o: precision.o pseudopotential.o radial.o sys.o units.o
+linres_matrices.o: alloc.o precision.o
+linresscf.o: alloc.o atomlist.o ddnaefs.o dhscf.o dvnloc.o files.o
+linresscf.o: kpoint_grid.o linres_matrices.o listsc.o m_dipol.o m_energies.o
+linresscf.o: m_eo.o m_gamma.o m_iodynmat.o m_ntm.o m_pulay.o m_spin.o overfsm.o
+linresscf.o: parallel.o precision.o siesta_geom.o siesta_options.o
+linresscf.o: sparse_matrices.o units.o
 listsc.o: alloc.o
 local_DOS.o: atomlist.o dhscf.o diagon.o files.o kpoint_grid.o m_energies.o
 local_DOS.o: m_eo.o m_forces.o m_gamma.o m_ntm.o m_spin.o parallel.o
@@ -846,6 +875,8 @@ m_iodm.o: class_OrbitalDistribution.o class_SpData2D.o class_Sparsity.o
 m_iodm.o: m_io_s.o m_os.o parallel.o
 m_iodm_old.o: alloc.o files.o m_matio.o m_mpi_utils.o parallel.o parallelsubs.o
 m_iodm_old.o: precision.o sparse_matrices.o sys.o
+m_iodynmat.o: alloc.o files.o m_mpi_utils.o parallel.o parallelsubs.o
+m_iodynmat.o: precision.o siesta_geom.o sys.o units.o
 m_iorho.o: alloc.o parallel.o parallelsubs.o precision.o sys.o
 m_iostruct.o: alloc.o files.o m_mpi_utils.o parallel.o precision.o
 m_iostruct.o: siesta_geom.o sys.o units.o
@@ -1248,7 +1279,7 @@ siesta_end.o: moremeshsubs.o parallel.o siesta_cml.o siesta_cmlsubs.o
 siesta_end.o: siesta_master.o siesta_options.o sparse_matrices.o timestamp.o
 siesta_forces.o: atomlist.o class_Fstack_Data1D.o class_SpData2D.o compute_dm.o
 siesta_forces.o: compute_energies.o compute_max_diff.o files.o
-siesta_forces.o: final_H_f_stress.o flook_siesta.o kpoint_grid.o
+siesta_forces.o: final_H_f_stress.o flook_siesta.o kpoint_grid.o linresscf.o
 siesta_forces.o: m_check_walltime.o m_convergence.o m_energies.o m_eo.o
 siesta_forces.o: m_forces.o m_gamma.o m_initwf.o m_iodm_old.o m_mixing.o
 siesta_forces.o: m_mixing_scf.o m_mpi_utils.o m_ncdf_siesta.o m_pexsi.o
@@ -1425,6 +1456,7 @@ m_compute_max_diff.o: compute_max_diff.o
 m_compute_rhog.o: compute_rhog.o
 m_conjgr.o: conjgr.o
 m_conjgr_old.o: conjgr_old.o
+m_ddnaefs.o: ddnaefs.o
 m_delk.o: delk.o
 m_denmat.o: denmat.o
 m_dfscf.o: dfscf.o
@@ -1434,6 +1466,7 @@ m_diag_option.o: diag_option.o
 m_diagon.o: diagon.o
 m_dnaefs.o: dnaefs.o
 m_doping_uniform.o: doping_uniform.o
+m_dvnloc.o: dvnloc.o
 m_dynamics.o: dynamics.o
 m_eandg.o: egandd.o
 m_ener3.o: ener3.o
@@ -1455,6 +1488,7 @@ m_ksv.o: ksv.o
 m_ksvinit.o: ksvinit.o
 m_ldau.o: ldau.o
 m_linpack.o: linpack.o
+m_linresscf.o: linresscf.o
 m_local_dos.o: local_DOS.o
 m_matel_registry.o: matel_registry.o
 m_minvec.o: minvec.o

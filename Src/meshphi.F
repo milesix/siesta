@@ -29,7 +29,7 @@
       integer,          pointer, save :: lstpht(:)
       integer,          pointer, save :: listp2(:)
       real(phi_grid_p), pointer, save :: phi(:,:)
-
+      real(phi_grid_p), pointer, save :: gradphi(:,:,:) !Linres
       CONTAINS
 
       subroutine resetMeshPhi( )
@@ -48,6 +48,8 @@
      $     call de_alloc( listp2, 'listp2',  'PhiOnMesh' )
       if (associated(phi))
      $     call de_alloc( phi, 'phi',  'PhiOnMesh' )
+      if (associated(gradphi)) !Linres
+     $     call de_alloc( gradphi, 'gradphi',  'PhiOnMesh' )
 
       end subroutine resetMeshPhi
 

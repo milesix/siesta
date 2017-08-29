@@ -572,9 +572,12 @@ C     If cell has changed then it is necessary to reinitialise coordinates
 
       subroutine PartialCoreOnMesh( na, isa, ntpl, rhopcc, indxua, 
      &                              nsd, dvol, volume, Vscf, Vaux, 
-     &                              fal, stressl, Forces, Stress )
+     &                              fal, stressl, Forces, Stress,
+     &                              drhopcc, iter, ialr, nua )
 C
 C Finds the partial-core-correction energy density on the mesh
+C For Linres purposes, the calculation of the gradient/derivative 
+C has been added. L.Rhiches, S.Illera (2016)
 C
 C ----------------------------------------------------------------------
 C Input :
@@ -591,6 +594,7 @@ C real*4  Vscf(ntpl)    : Hartree potential of SCF density
 C real*4  Vaux(ntpl)    : Auxiliary potential array
 C logical Forces        : Are the forces to be calculated?
 C logical Stress        : Are the stresses to be calculated?
+C integer iter		: Linres iteration step
 C ----------------------------------------------------------------------
 C Output : (non-gradient case)
 C ----------------------------------------------------------------------
@@ -617,13 +621,20 @@ C     Passed arguments
       real(grid_p), intent(out) :: rhopcc(ntpl)
       real(dp),   intent(inout) :: fal(3,*)
       real(dp), intent(inout)   :: stressl(3,3)
+C Linres------------------------------------------------------
+      integer,      intent(in) ,optional :: iter, ialr, nua
+      real(grid_p),intent(inout),optional:: drhopcc(ntpl,3) !Linres
+C -----------------------------------------------------------
+
 C     Internal variables
       integer                   :: i, ia, iop, ip, ip0, is, isp,
-     &                             ispin, iua
+     &                             ispin, iua, jx
       real(dp)                  :: dfa(3), dx(3), grrho(3), r, ra,
      &                             rhop, vxc
       real(dp),            save :: tiny
       logical                   :: Gradients
+      integer                   :: ISIGN, iainit, iaend, step !Linres
+
       data tiny / 1.0e-12_dp /
 
 !------------------------------------------------------------------------- BEGIN
@@ -636,7 +647,28 @@ C     Find out whether this is a gradient run based on the arguments passed
 C     Initialise array to zero
       if (.not.Gradients) rhopcc(1:ntpl) = 0.0_dp
 
-      do ia = 1,na
+C     LINRES-------------------------------------------------------------
+      if (present(drhopcc)) then
+         drhopcc(1:ntpl,1:3)=0.0_grid_p
+         if (iter.eq.1) then
+            iainit = 1
+            iaend = na
+            step = +1
+            ISIGN = +1
+         else
+            iainit = ialr
+            iaend = na - (nua - ialr)
+            step= nua
+            ISIGN = -1
+         endif
+      else
+        iainit = 1
+        iaend = na
+        step= +1
+      endif
+C   -----------------------------------------------------------------------
+
+      do ia = iainit, iaend, step
         if (ipa(ia)==0) cycle ! Atomic sphere does not intersec my Box
         iua = indxua(ia)
         is = isa(ia)
@@ -654,6 +686,13 @@ C               if (r .lt. ra .and. r .gt. tiny) then
                 if (r .lt. ra) then
                   ip = isp + nsp * (ip0 - 1)
                   call chcore_sub( is, dx, rhop, grrho )
+C Linres block----------------------------------------------------------
+                  if (present(drhopcc)) then
+                    do jx=1,3
+                      drhopcc(ip,jx) = drhopcc(ip,jx) + ISIGN *grrho(jx)
+                    enddo
+                  endif
+C ----------------------------------------------------------------------
                   if (Gradients) then
 C                   Calculate gradients of PCC
                     do ispin = 1,nsd
@@ -684,7 +723,8 @@ C                   Calculate density due to PCC
       subroutine NeutralAtomOnMesh( na, isa, ntpl, vna,
      &                              indxua, dvol, volume,
      &                              drho, fal, stressl,
-     &                              Forces, Stress )
+     &                              Forces, Stress, dvna,
+     &                              iter,IALR, nua )
 C
 C Finds the potential due to the neutral atoms on the mesh
 C
@@ -724,6 +764,11 @@ C    Passed arguments
       real(grid_p), intent(inout) :: vna(ntpl)
       real(dp),     intent(inout) :: fal(3,*)
       real(dp),     intent(inout) :: stressl(3,3)
+C LINRES ------------------------------------------------------------
+      real(grid_p), intent(out), optional :: dvna(ntpl,3)
+      integer, intent(in), optional :: iter, IALR, nua
+      integer :: iainit, iaend, step, ISIGN
+C -------------------------------------------------------------------
 C     Internal variables
       integer                     :: i, ia, iop, ip, ip0, is, isp, iua
       real(dp)                    :: dx(3), grva(3), r, ra, va
@@ -742,7 +787,30 @@ C must be kept. This is particularly important for grid-cell sampling...
 
       if (.not.Gradients) vna(1:ntpl) = 0.0_dp
 
-      do ia = 1,na
+C LINRES-------------------------------------------------------------
+       if(present(dvna)) then
+        dvna(1:ntpl,1:3) = 0.0_grid_p
+        if(iter.eq.1) then !like ilr =0
+         iainit = 1
+         iaend = na
+         step = +1
+         ISIGN = +1
+        else
+         iainit = ialr
+         iaend = na - (nua - ialr)
+         step = nua
+         ISIGN = -1
+        endif
+       else
+        iainit = 1
+        iaend = na
+        step = +1
+        ISIGN = +1
+       endif
+
+C -------------------------------------------------------------------
+
+      do ia = iainit,iaend,step
         if (ipa(ia)==0) cycle ! Atomic sphere does not intersec my Box
         iua = indxua(ia)
         is = isa(ia)
@@ -759,6 +827,13 @@ C           Loop over sub-points
               if (r .lt. ra) then
                 ip = isp + nsp * (ip0 - 1)
                 call phiatm( is, 0, dx, va, grva )
+C LINRES ------------------------------------------------------------
+                if(present(dvna)) then
+                  do i = 1,3
+                    dvna(ip,i) = dvna(ip,i) + ISIGN * grva(i)
+                  enddo
+                endif
+C -------------------------------------------------------------------
                 if (Gradients) then
                   do i = 1,3
                     grva(i) = dvol * grva(i) * drho(ip)
@@ -1000,8 +1075,8 @@ C Modules
       use mesh,      only : dxa, idop, indexp, ipa, mop, nsp, xdop,
      &                      xdsp, meshLim
       use meshphi,   only : directphi, nphi, phi, lstpht, listp2, endpht
-      use meshphi,   only : resetMeshPhi
-      use fdf,       only : fdf_get
+      use meshphi,   only : resetMeshPhi, gradphi
+      use fdf,       only : fdf_get,leqi
       use parallel,  only : IONode
       use alloc,     only : re_alloc
 
@@ -1019,7 +1094,7 @@ C     Local variables
       integer                :: ia, io, iop, ip, ip0, iphi, is, isp, n,
      &                          nlist, nliste, nmax
 
-      logical                :: within
+      logical                :: within, linres ! Linres
       logical,          save :: firsttime = .true.
       real(dp)               :: dxsp(3,nsp), grphi(3), phip, r2o,
      &                          r2sp(nsp)
@@ -1033,6 +1108,7 @@ C     Local variables
 C     On first call set the logical DirectPhi
       if (firsttime) then
         DirectPhi = fdf_get('DirectPhi', .false. )
+        linres=leqi(fdf_get('MD.TypeOfRun','CG'),'LR')
         firsttime = .false.
       else
         ! reset the data structures in module meshphi
@@ -1040,7 +1116,7 @@ C     On first call set the logical DirectPhi
       endif
 
 C     Allocate memory related to nmpl
-      nullify( endpht, phi, lstpht, listp2 )
+      nullify( endpht, phi, gradphi, lstpht, listp2 )
       call re_alloc( endpht, 0, nmpl, 'endpht', 'PhiOnMesh' )
 
 C     Initialise pointer array
@@ -1075,8 +1151,12 @@ C     Adjust dimensions of phi if necessary
       if (nphi.gt.nmax) then
         if (DirectPhi) then
           call re_alloc( phi, 1, nsp, 1, nphi, 'phi', 'PhiOnMesh' )
+          if (linres)  call re_alloc( gradphi, 1, 3, 1, nsp, 1, nphi,
+     .                    'gradphi','PhiOnMesh' )
        else
           call re_alloc( phi, 1, nsp, 1, nliste, 'phi', 'PhiOnMesh' )
+          if (linres)  call re_alloc( gradphi, 1, 3, 1, nsp, 1, nliste,
+     .                  'gradphi', 'PhiOnMesh' )
        endif
       endif
 
@@ -1119,8 +1199,10 @@ C     Find indexes and values of atomic orbitals at mesh points
                     call phiatm( is, iphi, dxsp(1,isp),
      &                           phip, grphi )
                     phi(isp,n) = phip
+                    if (linres) gradphi(1:3,isp,n)=grphi(1:3)
                   else
                     phi(isp,n) = 0.0_grid_p
+                    if (linres) gradphi(1:3,isp,n) = 0.0_grid_p
                   endif
                 enddo
               endif

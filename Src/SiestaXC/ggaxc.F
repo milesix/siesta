@@ -51,9 +51,13 @@
       USE m_ldaxc, only: exchng  ! Local exchange
       USE m_ldaxc, only: pw92c   ! Perdew & Wang, PRB, 45, 13244 (1992) correl
 
-
       ! Used module parameters
       use precision, only : dp   ! Double precision real kind
+
+#ifdef LIBXC
+      use xc_f90_types_m
+      use xc_f90_lib_m
+#endif
 
       implicit none
 
@@ -92,6 +96,7 @@ C Lengths in Bohr, energies in Hartrees
 C Written by L.C.Balbas and J.M.Soler, Dec'96.
 C Modified by V.M.Garcia-Suarez to include non-collinear spin. June 2002
 C Non collinear part rewritten by J.M.Soler. Sept. 2009
+C Interface with LibXC added by Micael Oliveira, Jul.2014
 
       implicit none
 
@@ -122,42 +127,15 @@ C Non collinear part rewritten by J.M.Soler. Sept. 2009
      .              VPOL
       real(dp), parameter :: DENMIN = 1.e-12_dp
 
-      real(dp):: theta, phi, c2, s2, st, ct, cp, sp, dpolz, dpolxy
-
-      logical , parameter :: old_scheme = .true.
+#ifdef LIBXC
+      type(xc_f90_pointer_t) :: xc_func, xc_info
+      integer :: xc_ispin, xc_id, iostat
+      real(dp) :: eps, dedn(nspin), sgm(3), dedsgm(3), dedgd(3, nspin)
+#endif
 
       ! Handle non-collinear spin case
       if (nSpin==4) then
         NS = 2             ! Diagonal spin components
-
-        if ( old_scheme ) then
-         DTOT = D(1) + D(2)
-         dpolz= D(1) - D(2)
-         dpolxy= 2.0d0*sqrt(d(3)**2+d(4)**2)
-         dpol  = sqrt( dpolz**2 + dpolxy**2 )
-         if ( dpol.gt.1.0d-12 ) then
-          theta = atan2(dpolxy,dpolz)
-         else
-          theta = 0.0_dp
-         endif
-         C2 = COS(THETA/2.0_dp)
-         S2 = SIN(THETA/2.0_dp)
-         ST = SIN(THETA)
-         CT = COS(THETA)
-         PHI = ATAN2(-D(4),D(3))
-         CP = COS(PHI)
-         SP = SIN(PHI)
-
-         DD(1) = 0.5D0 * ( DTOT + DPOL )
-         DD(2) = 0.5D0 * ( DTOT - DPOL )
-         DO IX = 1,3
-          GDD(IX,1) = GD(IX,1)*C2**2 + GD(IX,2)*S2**2 +
-     .                2.d0*C2*S2*(GD(IX,3)*CP - GD(IX,4)*SP)
-          GDD(IX,2) = GD(IX,1)*S2**2 + GD(IX,2)*C2**2 -
-     .                2.d0*C2*S2*(GD(IX,3)*CP - GD(IX,4)*SP)
-         ENDDO
-
-        else
 
         ! Find eigenvalues of density matrix Dij (diagonal densities DD, i.e.
         ! up and down densities along the spin direction). Note convention: 
@@ -213,7 +191,6 @@ C Non collinear part rewritten by J.M.Soler. Sept. 2009
      .                 + dGDPOLdGD(:) ) / 2
         dGDDdGD(2,:) = ( dGDTOTdGD(:)                ! dGradDensDn/dGradD(i)
      .                 - dGDPOLdGD(:) ) / 2
-       endif
         
       else if (nSpin==1 .or. nSpin==2) then ! Normal (collinear) spin
         NS = nSpin
@@ -307,6 +284,56 @@ C Non collinear part rewritten by J.M.Soler. Sept. 2009
         CALL BHX( IREL, NS, DD, GDD,
      .            EPSX, EPSC, dEXdDD, dECdDD, dEXdGDD, dECdGDD ) 
 
+      ELSEIF ( AUTHOR(1:5) == 'LIBXC') THEN
+#ifdef LIBXC
+      read(AUTHOR(7:10),iostat=iostat,fmt=*) xc_id
+      if (iostat /= 0) call die("Bad libxc code in " // AUTHOR)
+        sgm(1) = sum(GDD(1:3,1)*GDD(1:3,1))
+        IF (nspin == 1) THEN
+          xc_ispin = XC_UNPOLARIZED
+        ELSE
+          xc_ispin = XC_POLARIZED
+          sgm(2) = sum(GDD(1:3,1)*GDD(1:3,2))
+          sgm(3) = sum(GDD(1:3,2)*GDD(1:3,2))
+        ENDIF
+        call xc_f90_func_init(xc_func, xc_info, xc_id, xc_ispin)
+        IF (xc_f90_info_family(xc_info) /= XC_FAMILY_GGA) THEN
+          call die('GGAXC: Functional is not a GGA')
+        ENDIF
+
+        call xc_f90_gga_exc_vxc(xc_func, 1, DD(1), sgm(1), eps, dedn(1), 
+     .                          dedsgm(1))
+        IF (nspin == 1) THEN
+          dedgd(1:3, 1) = 2.0D0*dedsgm(1)*GDD(1:3, 1)
+        ELSE
+          dedgd(1:3, 1) = 2.0D0*dedsgm(1)*GDD(1:3, 1) +
+     .                    dedsgm(2)*GDD(1:3, 2)
+          dedgd(1:3, 2) = 2.0D0*dedsgm(3)*GDD(1:3, 2) +
+     .                    dedsgm(2)*GDD(1:3, 1)
+        ENDIF
+        IF (xc_f90_info_kind(xc_info) == XC_CORRELATION) THEN
+          EPSC = eps
+          dECdDD(1:nspin) = dedn(1:nspin)
+          dECdGDD(1:3, 1:nspin) = dedgd(1:3, 1:nspin)
+        ELSE if (xc_f90_info_kind(xc_info) == XC_EXCHANGE) THEN
+          EPSX = eps
+          dEXdDD(1:nspin) = dedn(1:nspin)
+          dEXdGDD(1:3, 1:nspin) = dedgd(1:3, 1:nspin)
+        ELSE ! combined functional, use an arbitrary 50/50 split
+          EPSX = 0.5_dp * eps
+          dEXdDD(1:nspin) = 0.5_dp * dedn(1:nspin)
+          dEXdGDD(1:3, 1:nspin) = 0.5_dp * dedgd(1:3, 1:nspin)
+          !
+          EPSC = EPSX
+          dECdDD(1:nspin) = dEXdDD(1:nspin)
+          dECdGDD(1:3, 1:nspin) = dEXdGDD(1:3,1:nspin)
+         ENDIF
+
+        call xc_f90_func_end(xc_func)
+#else
+        call die("Libxc not compiled in. Cannot handle " //
+     $       trim(AUTHOR))
+#endif /* LIBXC */
       ELSE
         call die('GGAXC: Unknown author ' // trim(AUTHOR))
       ENDIF
@@ -318,32 +345,6 @@ C Non collinear part rewritten by J.M.Soler. Sept. 2009
         ! dE/dD(i) = dE/dDup * dDup/dD(i) + dE/dDdn * dDdn/dD(i)
         !          + dE/dGDup * dGDup/dD(i) + dE/dGDdn * dGDdn/dD(i)
         ! dE/dGradD(i) = dE/dGDup * dGDup/dGD(i) + dE/dGDdn * dGDdn/dGD(i)
-
-        if ( old_scheme ) then
-         VPOL  = (dExdDD(1)-dExdDD(2)) * ct
-         dExdD(1) = 0.5D0 * ( dExdDD(1) + dExdDD(2) + VPOL )
-         dExdD(2) = 0.5D0 * ( dExdDD(1) + dExdDD(2) - VPOL )
-         dExdD(3) = 0.5d0 * (dExdDD(1)-dExdDD(2)) * st * cp
-         dExdD(4) =-0.5d0 * (dExdDD(1)-dExdDD(2)) * st * sp
-         VPOL  = (dEcdDD(1)-dEcdDD(2)) * ct
-         dEcdD(1) = 0.5D0 * ( dEcdDD(1) + dEcdDD(2) + VPOL )
-         dEcdD(2) = 0.5D0 * ( dEcdDD(1) + dEcdDD(2) - VPOL )
-         dEcdD(3) = 0.5d0 * (dEcdDD(1)-dEcdDD(2)) * st * cp
-         dEcdD(4) =-0.5d0 * (dEcdDD(1)-dEcdDD(2)) * st * sp
-C Gradient terms
-         DO IX = 1,3
-          dExdGD(IX,1) = dExdGDD(IX,1)*C2**2 + dExdGDD(IX,2)*S2**2
-          dExdGD(IX,2) = dExdGDD(IX,1)*S2**2 + dExdGDD(IX,2)*C2**2
-          dExdGD(IX,3) = 0.5D0*(dExdGDD(IX,1) - dExdGDD(IX,2))*ST*CP
-          dExdGD(IX,4) =-0.5D0*(dExdGDD(IX,1) - dExdGDD(IX,2))*ST*SP
-          dEcdGD(IX,1) = dEcdGDD(IX,1)*C2**2 + dEcdGDD(IX,2)*S2**2
-          dEcdGD(IX,2) = dEcdGDD(IX,1)*S2**2 + dEcdGDD(IX,2)*C2**2
-          dEcdGD(IX,3) = 0.5D0*(dEcdGDD(IX,1) - dEcdGDD(IX,2))*ST*CP
-          dEcdGD(IX,4) =-0.5D0*(dEcdGDD(IX,1) - dEcdGDD(IX,2))*ST*SP
-         enddo
-
-        else
-
         do is = 1,4
           dEXdD(is) = sum( dEXdDD(:) * dDDdD(:,is) )
      .              + sum( dEXdGDD(:,:) * dGDDdD(:,:,is) )
@@ -363,8 +364,6 @@ C Gradient terms
         dECdD(3:4) = dECdD(3:4) / 2
         dEXdGD(:,3:4) = dEXdGD(:,3:4) / 2
         dECdGD(:,3:4) = dECdGD(:,3:4) / 2
-
-       endif
       else   ! Collinear spin => just copy derivatives to output arrays
         dEXdD(1:nSpin) = dEXdDD(1:nSpin)
         dECdD(1:nSpin) = dECdDD(1:nSpin)

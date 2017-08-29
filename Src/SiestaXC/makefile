@@ -31,8 +31,10 @@ SIESTA_OBJS:= $(SIESTA_OBJS:.F90=.o)
 #
 SIESTA_SOURCES:=$(addprefix ../, $(SIESTA_SRCS))
 
-LOCAL_SRCS= atomxc.F90 cellxc.F90 debugxc.f90 ggaxc.f ldaxc.f \
-            siestaxc.F90 vdwxc.F90 xcmod.f90  fft3d.F90 fftr.F90 \
+INCFLAGS += $(LIBXC_INCFLAGS)
+
+LOCAL_SRCS= atomxc.F90 cellxc.F90 debugxc.f90 ggaxc.F ldaxc.F \
+            siestaxc.F90 vdwxc.F90 xcmod.F90  fft3d.F90 fftr.F90 \
             mesh1d.f90 mesh3d.F90 am05.f90 vv_vdwxc.F90 array.F90 local_sys.F
 LOCAL_OBJS:= $(LOCAL_SRCS:.f=.o)
 LOCAL_OBJS:= $(LOCAL_OBJS:.F=.o)
