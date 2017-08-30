@@ -3,7 +3,7 @@
 # 
 
 SystemName          BN-2 atom
-SystemLabel         BN
+SystemLabel         BNlin
 
 NumberOfSpecies     2
 

@@ -13,8 +13,8 @@ Release notes for the MaX R2 release of Siesta
    a linear scaling solver which calculates the density matrix and the
    energy density matrix.
 
- - Added the Cold-smearing method for zero-temperature limit
-   with smearing.
+ - Added the Cold-smearing method as another option to enhance the convergence
+   for metallic systems.
 
  - TDDFT implemented by R. Ullah via older code from
    D. Sanchez-Portal.
