@@ -2044,6 +2044,7 @@ C-----------------------------------------------------------------------------
 C Compute the perturbed Vhartree and Vxc terms
 C Derivative Space loop for perturbed Hamiltonian
 C-----------------------------------------------------------------------------
+!$OMP parallel default(shared), private(ip,ispin)
 ! For the perturbed Vxc we need total density dRho
         do ispin = 1,nsd
           if (npcc .eq. 1) then
@@ -2177,8 +2178,8 @@ C------------------------------------------------------------------------
                  dRhoscf(ip,ispin) = dRhoscf(ip,ispin) +
      &                              dRhoatm(jx,ip) / nsd
                enddo
-            endif
 !$OMP end parallel do
+            endif
           enddo
        
 !In order to keep the Vscf as out argument from cellXC, we create another
@@ -2253,6 +2254,7 @@ C------------------------------------------------------------------------
               iaend = ialr
             endif
 
+!$OMP parallel default(shared), private(ip,ispin)
 !To dynamat, we need the density dRhoscf and the unperturbed charge dRho=dRho-rhoatm
             do ispin = 1,nsd
               if (npcc .eq. 1) then
@@ -2352,6 +2354,7 @@ C       Set the UNIFORM distribution again
      &                 TO_SEQUENTIAL)
             call reord(DRho, DRho, nml, nsm, TO_SEQUENTIAL)
 
+!$OMP parallel default(shared), private(ip,ispin)
 !Back to the total density (for the perturbed Vxc calculation)
             do ispin = 1,nsd
               if (npcc .eq. 1) then

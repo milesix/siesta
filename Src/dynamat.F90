@@ -581,6 +581,9 @@
        call de_alloc(t_dynmatBuff,'t_dynmatBuff','dynamat')
     endif
 
+!*AG: Is this the right place?
+!$OMP end parallel
+
     if (DirectPhi) deallocate(phia,grphi)
     call de_alloc( Dlocal, 'Dlocal','dynamat')
     call de_alloc( dDlocal, 'dDlocal','dynamat')
@@ -605,9 +608,8 @@
 
       call timer('dynamat',2)
 
-      return
-      
-      contains
+      CONTAINS
+
 ! In any case will the compiler most likely inline this
 ! small routine. So it should not pose any problem.
       pure function idx_ijl(i,j) result(ij)
