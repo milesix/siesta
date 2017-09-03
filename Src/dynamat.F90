@@ -73,9 +73,9 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
   real(dp),      pointer :: Dlocal(:), dDlocal(:)
   real(dp),      pointer :: DscfL(:), dDscfL(:)
   ! parallel:  Will store the sumation of t_dynmat from each node
-  real(dp),      pointer :: t_dynmatBuff(:,:,:) 
+  real(dp),      pointer :: t_DYL(:,:,:) 
   ! calculated contributions in each node
-  real(dp),      pointer :: t_dynmat(:,:) !will store common (s/p) dynmat
+  real(dp),      pointer :: DY(:,:) !will store common (s/p) dynmat
   logical                :: VnaListed, ParallelLocal
 
   type(allocDefaults) :: oldDefaults
@@ -140,7 +140,7 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
 !$OMP&private(TID), &
 !$OMP&private(ip,nc,imp,i,il,ilocal,iorb,ic,last,j,iu,iul,ii,ind,ijl,Dlocal,dDlocal),&
 !$OMP&private(lasta,lastop,ia,is,iua,iop,ilc,Vnalisted,LISTED,dxsp,r2sp,grphi,phia),&
-!$OMP&private(iphi,C,gC,va,grva,gr2va,gr2vna,isp,ix,t_dynmat,prod1,nind,prod2,prod3,prod4),&
+!$OMP&private(iphi,C,gC,va,grva,gr2va,gr2vna,isp,ix,DY,prod1,nind,prod2,prod3,prod4),&
 !$OMP&private(jc,jua,ja,jil,prod5)
   
 !$OMP single
@@ -183,27 +183,27 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
 
 !$OMP single
   if ( ParallelLocal ) then ! Define parallel buffer
-     nullify( t_dynmatBuff )
-     call re_alloc( t_dynmatBuff, 1, nua, 1, 3, 1, NTH, 't_dynmatBuff')
+     nullify( t_DYL )
+     call re_alloc( t_DYL, 1, nua, 1, 3, 1, NTH, 't_DYL')
   else if ( NTH > 1 ) then
-     nullify( t_dynmatBuff )
-     call re_alloc( t_dynmatBuff, 1, nua, 1, 3, 2, NTH, 't_dynmatBuff')
+     nullify( t_DYL )
+     call re_alloc( t_DYL, 1, nua, 1, 3, 2, NTH, 't_DYL')
   end if
 !$OMP end single ! implicit barrier
 
   if ( ParallelLocal ) then
-     t_dynmat => t_dynmatBuff(1:nua,:,TID)
-     t_dynmat(1:nua,:) = 0._dp
+     DY => t_DYL(1:nua,:,TID)
+     DY(1:nua,:) = 0._dp
   else
      if ( NTH > 1 ) then
         if ( TID == 1 ) then
-           t_dynmat => dynmat
+           DY => dynmat
         else
-           t_dynmat => t_dynmatBuff(1:nua,:,TID)
-           t_dynmat(1:nua,:) = 0._dp
+           DY => t_DYL(1:nua,:,TID)
+           DY(1:nua,:) = 0._dp
         end if
      else
-        t_dynmat => dynmat
+        DY => dynmat
      end if
   end if
 
@@ -381,7 +381,7 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
                 do isp = 1, nsp  
 !            ! d2Vna*Rho (dynmat term 6)
                   do ix = 1,3
-                    t_dynmat(iua,ix) = t_dynmat(iua,ix) - gr2vna(ix,isp) &
+                    DY(iua,ix) = DY(iua,ix) - gr2vna(ix,isp) &
                          *  dRho(isp,ip) * dVol 
                   enddo
                 enddo
@@ -389,7 +389,7 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
                 do isp = 1, nsp
              ! dVna*dRho (dynmat term 5)
                   do ix = 1,3
-                    t_dynmat(iua,ix) = t_dynmat(iua,ix) + grva(ix,isp) &
+                    DY(iua,ix) = DY(iua,ix) + grva(ix,isp) &
                          * dRhoscf(isp,ip) * dVol 
                   enddo
                 enddo
@@ -404,13 +404,12 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
               prod2 = prod1 * C(isp,ic) 
               do ix = 1,3
                 prod3 = prod2 * gC(ix,isp,ic)  
-             ! 2 Rho*Phi*dPhi*dVna (part of 4 in dynmat)
+                ! 2 Rho*Phi*dPhi*dVna (part of 4 in dynmat)
+                ! TODO check these equations??? They are the same
                 if(iter.eq.1 .and. iua .eq. ialr) then
-                  t_dynmat(iua,ix) = t_dynmat(iua,ix) - &
-                              prod3 * dvnoscf(isp,ip)
+                  DY(iua,ix) = DY(iua,ix) - prod3 * dvnoscf(isp,ip)
                 elseif(iter.ne.1) then
-                  t_dynmat(iua,ix) = t_dynmat(iua,ix) - &
-                              dvnoscf(isp,ip) * prod3
+                  DY(iua,ix) = DY(iua,ix) - dvnoscf(isp,ip) * prod3
                 endif
               enddo
             enddo
@@ -430,15 +429,15 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
                 do isp=1,nsp
                   nind = (ip-1) * nsp + isp
                   do ix = 1,3
-                    t_dynmat(iua,ix) = t_dynmat(iua,ix) +   &
+                    DY(iua,ix) = DY(iua,ix) +   &
                  VLR(nind,ispin)*prod4(1)*gC(ix,isp,ic)*C(isp,jc) + &
                  VLR(nind,ispin)*prod4(2)*C(isp,ic)*gC(ix,isp,jc)
 
-                    t_dynmat(iua,ix) = t_dynmat(iua,ix) +  &
+                    DY(iua,ix) = DY(iua,ix) +  &
                  Vscf(nind)*prod4(1)*gC(jx,isp,ic)*gC(ix,isp,jc) + &
                  Vscf(nind)*prod4(2)*gC(ix,isp,ic)*gC(jx,isp,jc)
 
-                     t_dynmat(jua,ix) = t_dynmat(jua,ix) - &
+                     DY(jua,ix) = DY(jua,ix) - &
                  Vscf(nind)*prod4(1)*gC(jx,isp,ic)*gC(ix,isp,jc) - &
                  Vscf(nind)*prod4(2)*gC(ix,isp,ic)*gC(jx,isp,jc)
 
@@ -449,13 +448,13 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
                 do isp=1,nsp
                   nind = (ip-1) * nsp + isp
                   do ix = 1,3
-                    t_dynmat(jua,ix) = t_dynmat(jua,ix) + &
+                    DY(jua,ix) = DY(jua,ix) + &
                  VLR(nind,ispin)*prod4(2)*C(isp,ic)*gC(ix,isp,jc)
 
-                    t_dynmat(jua,ix) = t_dynmat(jua,ix) +  &
+                    DY(jua,ix) = DY(jua,ix) +  &
                  Vscf(nind)*prod4(2)*gC(jx,isp,jc)*gC(ix,isp,ic)
 
-                    t_dynmat(iua,ix) = t_dynmat(iua,ix) - &
+                    DY(iua,ix) = DY(iua,ix) - &
                  Vscf(nind)*prod4(2)*gC(jx,isp,jc)*gC(ix,isp,ic)
 
                   enddo
@@ -464,13 +463,13 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
                 do isp=1,nsp
                   nind = (ip-1) * nsp + isp
                   do ix = 1,3
-                    t_dynmat(iua,ix) = t_dynmat(iua,ix) + &
+                    DY(iua,ix) = DY(iua,ix) + &
                  VLR(nind,ispin)*prod4(1)*gC(ix,isp,ic)*C(isp,jc)
 
-                    t_dynmat(iua,ix) = t_dynmat(iua,ix) + &
+                    DY(iua,ix) = DY(iua,ix) + &
                  Vscf(nind)* prod4(1)*gC(jx,isp,ic)*gC(ix,isp,jc)
 
-                    t_dynmat(jua,ix) = t_dynmat(jua,ix) - &
+                    DY(jua,ix) = DY(jua,ix) - &
                  Vscf(nind)* prod4(1)*gC(jx,isp,ic)*gC(ix,isp,jc)
 
                   enddo
@@ -484,13 +483,13 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
               do isp=1,nsp
                 nind = (ip-1) * nsp + isp
                 do ix = 1,3
-                 t_dynmat(iua,ix) = t_dynmat(iua,ix) + &
+                 DY(iua,ix) = DY(iua,ix) + &
                  VLR(nind,ispin)*prod4(1)*gC(ix,isp,ic)*C(isp,ic)
 
-                 t_dynmat(iua,ix) = t_dynmat(iua,ix) + &
+                 DY(iua,ix) = DY(iua,ix) + &
                  Vscf(nind)*prod4(1)*gC(jx,isp,ic)*gC(ix,isp,ic)
 
-                 t_dynmat(iua,ix) = t_dynmat(iua,ix) - &
+                 DY(iua,ix) = DY(iua,ix) - &
                  Vscf(nind)*prod4(1)*gC(jx,isp,ic)*gC(ix,isp,ic)
 
                 enddo
@@ -510,14 +509,14 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
               do isp=1,nsp
                 nind = (ip-1) * nsp + isp
                 do ix = 1,3
-                   t_dynmat(iua,ix) = t_dynmat(iua,ix) + &
+                   DY(iua,ix) = DY(iua,ix) + &
                      Vscf(nind)*prod5*gC(ix,isp,ic)*C(isp,jc) 
-                   t_dynmat(jua,ix) = t_dynmat(jua,ix) + &
+                   DY(jua,ix) = DY(jua,ix) + &
                      Vscf(nind)*prod5*C(isp,ic)*gC(ix,isp,jc)
 
-                   t_dynmat(iua,ix) = t_dynmat(iua,ix) + &
+                   DY(iua,ix) = DY(iua,ix) + &
                       VLR(nind,ispin)*prod4(1)*gC(ix,isp,ic)*C(isp,jc)
-                   t_dynmat(jua,ix) = t_dynmat(jua,ix) + &
+                   DY(jua,ix) = DY(jua,ix) + &
                      VLR(nind,ispin)*prod4(2)*C(isp,ic)*gC(ix,isp,jc)
                 enddo
               enddo
@@ -529,10 +528,10 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
             do isp=1,nsp
               nind = (ip-1) * nsp + isp
               do ix = 1,3
-                   t_dynmat(iua,ix) = t_dynmat(iua,ix) + &
+                   DY(iua,ix) = DY(iua,ix) + &
                      Vscf(nind)*prod5*gC(ix,isp,ic)*C(isp,ic) 
 
-                   t_dynmat(iua,ix) = t_dynmat(iua,ix) + &
+                   DY(iua,ix) = DY(iua,ix) + &
                      VLR(nind,ispin)*prod4(1)*gC(ix,isp,ic)*C(isp,ic)
               enddo
             enddo
@@ -561,19 +560,19 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
        do ind = 1, nua
           do ix = 1, 3
              do ii = 2, NTH
-                t_dynmatBuff(ind,ix,1) = t_dynmatBuff(ind,ix,1) + &
-                     t_dynmatBuff(ind,ix,ii)
+                t_DYL(ind,ix,1) = t_DYL(ind,ix,1) + &
+                     t_DYL(ind,ix,ii)
              end do
           end do
        end do
 !$OMP end do
-       dynmat(1:nua,1:3)= t_dynmatBuff(1:nua,1:3,1)+dynmat(1:nua,1:3)
+       dynmat(1:nua,1:3)= t_DYL(1:nua,1:3,1)+dynmat(1:nua,1:3)
     else if ( NTH > 1 ) then
 !$OMP do collapse(2)
        do ind = 1, nua
           do ix = 1, 3
             do ii = 2, NTH
-                dynmat(ind,ix) = dynmat(ind,ix) + t_dynmatBuff(ind,ix,ii)
+                dynmat(ind,ix) = dynmat(ind,ix) + t_DYL(ind,ix,ii)
             end do
           end do
        end do
@@ -585,9 +584,9 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
 !     Global reduction of dynamical matrix
 !$OMP single
     if ( ParallelLocal ) then
-       call de_alloc(t_dynmatBuff, 't_dynmatBuff')
+       call de_alloc(t_DYL, 't_DYL')
     else if ( NTH > 1 ) then
-       call de_alloc(t_dynmatBuff, 't_dynmatBuff')
+       call de_alloc(t_DYL, 't_DYL')
     endif
 !$OMP end single nowait
 
