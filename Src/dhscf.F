@@ -763,7 +763,7 @@ C Linres optional variables-------------------------------------------------
 
       real(dp), intent(in), optional :: dDscf(maxnh,nspin,3)
 
-      real(dp), intent(inout),optional :: dynmat(nua,3,nua,3),
+      real(dp), intent(inout),optional :: dynmat(3,nua,3,nua),
      &                                    dHmat0(maxnh,3,nspin),
      &                                    dHmat(maxnh,3,nspin)
 
@@ -2363,7 +2363,7 @@ C------------------------------------------------------------------------
      &                 Dscf(:,ispin), dDscf(:,ispin,jx), dvol,
      &                 DRho(:,ispin), DRho_par(:,ispin), Datm, 
      &                 Vscf_par(:,ispin),VLR_par(:,:), 
-     &                 dvnoscf(:,jx), dynmat(1:nua,1:3,ia,jx)) 
+     &                 dvnoscf(:,jx), dynmat(:,:,jx,ia)) 
                end do
             end do
             call de_alloc( Vscf_par, 'Vscf_par', 'dhscf' )

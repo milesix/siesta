@@ -70,7 +70,7 @@ C logical FIRST		   : flag
 C			TRUE= compute elements of the perturbed Hamiltonian
 C			FALSE= compute dynamical matrix terms (non-SCF and SCF terms)
 C ******************* INPUT and OUTPUT *********************************
-c dynmat(nua,3,nua,3)	: Dynamical Matrix
+c dynmat(3,nua,3,nua)	: Dynamical Matrix
 C dHMAT(maxnh,3, nspin) : Perturbed Hamiltonian Matrix Elements
 
 C  Modules
@@ -96,7 +96,7 @@ C  Modules
       real(dp), intent(in)   :: scell(3,3), Dscf(maxnd,nspin),
      .                        xa(3,na), dDscf(maxnh,nspin,3)
       logical, Intent(in)    :: first
-      real(dp), intent(inout) ::dynmat(nua,3,nua,3),
+      real(dp), intent(inout) ::dynmat(3,nua,3,nua),
      &                         dHMAT(maxnh,3, nspin)
 
       real(dp) ::   volcel
@@ -457,9 +457,9 @@ C Computing dynmat terms ------------------------------------------------
                       do ix = 1,3
                        dCijk(ix) = dDi(jo,ix) * epsk
                        do jx = 1,3
-                        dynmat(ia,jx,ialr,ix) = dynmat(ia,jx,ialr,ix)
+                        dynmat(jx,ia,ix,ialr) = dynmat(jx,ia,ix,ialr)
      &                    - 2.0_dp * dCijk(ix) * Sjk * grSki(jx,ikb,ino)
-                        dynmat(kua,jx,ialr,ix) = dynmat(kua,jx,ialr,ix)
+                        dynmat(jx,kua,ix,ialr) = dynmat(jx,kua,ix,ialr)
      &                    + 2.0_dp * dCijk(ix) * Sjk * grSki(jx,ikb,ino)
                          ! this is ok 
                        enddo
@@ -483,14 +483,14 @@ C             Pick up contributions to H and restore Di and Vi
 C Computing dynmat terms ------------------------------------------------
                     if(.not.first) then
                      do jx = 1, 3
-                      dynmat(ia,jx,ialr,ix) = dynmat(ia,jx,ialr,ix)
+                      dynmat(jx,ia,ix,ialr) = dynmat(jx,ia,ix,ialr)
      &                            - d2Vi(jo,ix,jx,ia)*dscf(ind,ispin)
                       if((ja.ne.ia).and.(ja.ne.ka)) then
-                       dynmat(jua,jx,ialr,ix) = dynmat(jua,jx,ialr,ix)
+                       dynmat(jx,jua,ix,ialr) = dynmat(jx,jua,ix,ialr)
      &                            - d2Vi(jo,ix,jx,jua)*dscf(ind,ispin)
                       endif
                       if( (ka.ne.ia) ) then
-                        dynmat(kua,jx,ialr,ix) = dynmat(kua,jx,ialr,ix)
+                        dynmat(jx,kua,ix,ialr) = dynmat(jx,kua,ix,ialr)
      .                             - d2Vi(jo,ix,jx,kua)*dscf(ind,ispin)
                         !this is ok
                       endif

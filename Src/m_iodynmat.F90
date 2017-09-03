@@ -54,7 +54,7 @@ CONTAINS
       implicit none
 
       integer, intent(in) :: iai,iaf,ialr 
-      real(dp), intent(in) :: dynmat(na_u,3,na_u,3)
+      real(dp), intent(in) :: dynmat(3,na_u,3,na_u)
       logical, intent (in) :: final_call
 
 ! Internal variables ----------------------------------------------------
@@ -90,12 +90,10 @@ CONTAINS
          do i = iai,iaf
            do ix = 1,3
              do j = 1,na_u
-                write(unit1,'(3f15.7)') &
-                       conv*(dynmat(j,:,i,ix))
+                write(unit1,'(3f15.7)') conv*dynmat(:,j,ix,i)
              enddo
              do j = 1,na_u
-                write(unit1,'(3f15.7)') &
-                     conv*(dynmat(j,:,i,ix))
+                write(unit1,'(3f15.7)') conv*dynmat(:,j,ix,i)
              enddo
            enddo
          enddo
@@ -108,7 +106,7 @@ CONTAINS
            do ix = 1,3
              do j = 1, na_u
                do jx = 1,3
-                 write(unit1,floatfmt) dynmat(j,jx,i,ix)
+                 write(unit1,floatfmt) dynmat(jx,j,ix,i)
                enddo
              enddo
            enddo
@@ -134,7 +132,7 @@ CONTAINS
 
 
       integer, intent(inout) :: init
-      real(dp), intent(inout) :: dynmat(na_u,3,na_u,3)
+      real(dp), intent(inout) :: dynmat(3,na_u,3,na_u)
       integer, intent (in) :: iai
 ! Internal variables
 
@@ -160,7 +158,7 @@ CONTAINS
           do ix=1,3
             do j=1,na_u
               do jx=1,3
-                read(unit1,floatfmt) dynmat(j,jx,i,ix) 
+                read(unit1,floatfmt) dynmat(jx,j,ix,i) 
               enddo
             enddo
           enddo
@@ -604,7 +602,5 @@ CONTAINS
       endif
 
       end subroutine read_dmlr
-
-
 
       end module m_iodynmat

@@ -80,7 +80,7 @@ C Internal variable types and dimensions -----------------------------------
      &                     dHmat0(maxnh,3,nspin),!non SCF perturbed H 
      &                     dummy_stress(3,3), dummy_fa(3,na_u), g2max 
       real(dp), pointer :: dDold(:,:,:)
-      real(dp)          :: dynmat(na_u,3,na_u,3)
+      real(dp)          :: dynmat(3,na_u,3,na_u)
 
       real(dp)          ::  tolLR, eigtolLR 
 
@@ -381,7 +381,7 @@ C-------------------------------------------------------------------------
         do j = 1, na_u
          do jx = 1,3
           print *, j,';',jx,';',ialr,';',ix,';',
-     &                   dynmat(j,jx,ialr,ix)
+     &                   dynmat(jx,j,ix,ialr)
          enddo
         enddo
        enddo
