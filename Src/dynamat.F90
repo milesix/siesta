@@ -1,8 +1,8 @@
-  subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
-                       np, ntpl, iphorb, iaorb, ialr, numd, listd, &
-                       listdptr, indxua, maxnd, isa, iter, Dscf,dDscf, & 
-                       dvol, dRho, dRhoscf, Datm, Vscf, VLR, &
-                       dvnoscf, dynmat) 
+subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
+     np, ntpl, iphorb, iaorb, ialr, numd, listd, &
+     listdptr, indxua, maxnd, isa, iter, Dscf,dDscf, & 
+     dvol, dRho, dRhoscf, Datm, Vscf, VLR, &
+     dvnoscf, dynmat) 
 !    ----------------------------------------------------------------
 !    This module computes terms 1.4, 3, 4, 5, 6 of the Dynamical 
 !    Matrix as in MP thesis. It is called twice to avoid storing
@@ -11,219 +11,221 @@
 !    LinRes Riches, Junquera, Ordejon and Pruneda 2015 
 !    ----------------------------------------------------------------
 
-
 ! Modules 
-      use precision,     only: dp, grid_p
-      use meshphi,       only: endpht, lstpht, listp2
-      use meshphi,       only: DirectPhi, phi, gradphi
-      use atomlist,      only: indxuo
-      use listsc_module, only: listsc
-      use alloc,        only: re_alloc, de_alloc  
-      use atmfuncs,      only: rcut, phiatm, all_phi
-      use mesh,          only: nsp, dxa, xdop, xdsp, indexp, meshLim 
-      use mesh,          only: idop, xdop,cmesh, nmeshg, nsm,ipa
-      use meshdscf,      only: nrowsDscfL, listdl, listdlptr, NeedDscfL
-      use meshdscf,      only: numdl, matrixOtoM, matrixMtoO
-      use atm_types,     only: nsmax=>nspecies
-      use parallelsubs,  only: GlobalToLocalOrb
-      use parallel,      only: Nodes, node,IOnode
+  use precision,     only: dp, grid_p
+  use meshphi,       only: endpht, lstpht, listp2
+  use meshphi,       only: DirectPhi, phi, gradphi
+  use atomlist,      only: indxuo
+  use listsc_module, only: listsc
+  use alloc,         only: re_alloc, de_alloc, allocDefaults, alloc_default
+  use atmfuncs,      only: rcut, phiatm, all_phi
+  use mesh,          only: nsp, dxa, xdop, xdsp, indexp, meshLim 
+  use mesh,          only: idop, xdop,cmesh, nmeshg, nsm,ipa
+  use meshdscf,      only: nrowsDscfL, listdl, listdlptr, NeedDscfL
+  use meshdscf,      only: numdl, matrixOtoM, matrixMtoO
+  use atm_types,     only: nsmax=>nspecies
+  use parallelsubs,  only: GlobalToLocalOrb
+  use parallel,      only: Nodes, node,IOnode
 #ifdef MPI
-      use mpi_siesta
-      use m_mpi_utils, only: globalize_sum
+  use mpi_siesta
+  use m_mpi_utils, only: globalize_sum
 #endif
 #ifdef _OPENMP
-      use omp_lib
+  use omp_lib
 #endif
 
-      implicit none
+  implicit none
 
 !   Argument types and dimensions
-      integer, intent(in) :: no, nuo, na, nua, nspin, ispin, jx, indxua(na) 
-      integer, intent(in) :: np, iphorb(*), iaorb(*), maxnd, listdptr(*), iter
-      integer, intent(in) :: listd(maxnd), numd(nuo), isa(*), ialr, nuotot, ntpl
+  integer, intent(in) :: no, nuo, na, nua, nspin, ispin, jx, indxua(na) 
+  integer, intent(in) :: np, iphorb(*), iaorb(*), maxnd, listdptr(*), iter
+  integer, intent(in) :: listd(maxnd), numd(nuo), isa(*), ialr, nuotot, ntpl
+  
+  real(dp), intent(in) :: Dscf(maxnd), dDscf(maxnd), dVol
+  real(dp), intent(in) :: Datm(nuotot)
+  real(dp), target, intent(inout)  :: dynmat(nua,3)
+  
+  real(grid_p), intent(in) :: dRho(nsp,np) 
+  real(grid_p), intent(in) :: dRhoscf(nsp,np), dvnoscf(nsp,np) 
+  real(grid_p), intent(in) :: Vscf(ntpl), VLR(ntpl,nspin)
+  
+  !     Internal variables and arrays
+  integer, parameter :: minloc  = 1000  ! Min buffer size 
+  integer, parameter :: maxoa = 100   ! Max # of orb/atom
+  integer  :: imp, ip, iu, iphi, ia, ind  
+  integer  :: ii, j, last, maxloc, maxloc2, triang, maxndl
+  integer  :: isp, ijl, jil, il, io, iul, ix, iop, is, iua
+  integer  :: nc, i, ic, nphiloc, nind, jc 
+  integer  :: lastop, lasta, ja, jua ,iii(3)
+  integer  :: lenx, leny, lenz, lenxy
+  integer  :: NTH, TID      
 
-      real(dp), intent(in) :: Dscf(maxnd), dDscf(maxnd), dVol
-      real(dp), intent(in) :: Datm(nuotot)
-      real(dp), target, intent(inout)  :: dynmat(nua,3)
-     
-      real(grid_p), intent(in) :: dRho(nsp,np) 
-      real(grid_p), intent(in) :: dRhoscf(nsp,np), dvnoscf(nsp,np) 
-      real(grid_p), intent(in) :: Vscf(ntpl), VLR(ntpl,nspin)
+  real(dp) :: r2sp, dxsp(3), va, grva(3,nsp)
+  real(dp) :: gr2va(3,3), gr2vna(3,nsp)   
+  real(dp) :: prod1, prod2, prod3, prod4(2),prod5 
 
-!     Internal variables and arrays
-      integer, parameter :: minloc  = 1000  ! Min buffer size 
-      integer, parameter :: maxoa = 100   ! Max # of orb/atom
-      integer  :: imp, ip, iu, iphi, ia, ind  
-      integer  :: ii, j, last, maxloc, maxloc2, triang, maxndl
-      integer  :: isp, ijl, jil, il, io, iul, ix, iop, is, iua
-      integer  :: nc, i, ic, nphiloc, nind, jc 
-      integer  :: lastop, lasta, ja, jua ,iii(3)
-      integer  :: lenx, leny, lenz, lenxy
-      integer  :: NTH, TID      
+  integer,       pointer :: ilc(:), ilocal(:), iorb(:)
+  integer,       pointer :: LISTED(:,:)
 
-      real(dp) :: r2sp, dxsp(3), va, grva(3,nsp)
-      real(dp) :: gr2va(3,3), gr2vna(3,nsp)   
-      real(dp) :: prod1, prod2, prod3, prod4(2),prod5 
+  real(dp),      pointer :: r2cut(:)
+  real(dp),      pointer :: phia(:,:), grphi(:,:,:)
+  real(dp),      pointer :: C(:,:), gC(:,:,:)
+  real(dp),      pointer :: Dlocal(:), dDlocal(:)
+  real(dp),      pointer :: DscfL(:), dDscfL(:)
+  ! parallel:  Will store the sumation of t_dynmat from each node
+  real(dp),      pointer :: t_dynmatBuff(:,:,:) 
+  ! calculated contributions in each node
+  real(dp),      pointer :: t_dynmat(:,:) !will store common (s/p) dynmat
+  logical                :: VnaListed, ParallelLocal
 
-      integer,       pointer :: ilc(:), ilocal(:), iorb(:)
-      integer,       pointer :: LISTED(:,:)
-
-      real(dp),      pointer :: r2cut(:)
-      real(dp),      pointer :: phia(:,:), grphi(:,:,:)
-      real(dp),      pointer :: C(:,:), gC(:,:,:)
-      real(dp),      pointer :: Dlocal(:), dDlocal(:)
-      real(dp),      pointer :: DscfL(:), dDscfL(:)
-! parallel:  Will store the sumation of t_dynmat from each node
-      real(dp),      pointer :: t_dynmatBuff(:,:,:) 
-! calculated contributions in each node
-      real(dp),      pointer :: t_dynmat(:,:) !will store common (s/p) dynmat
-      logical                :: VnaListed, ParallelLocal
-
+  type(allocDefaults) :: oldDefaults
+  
 #ifdef _TRACE_
-    integer :: MPIerror
+  integer :: MPIerror
 #endif
 #ifdef _TRACE_
-    call MPI_Barrier( MPI_Comm_World, MPIerror )
-    call MPItrace_event( 1000, 4 )
+  call MPI_Barrier( MPI_Comm_World, MPIerror )
+  call MPItrace_event( 1000, 4 )
 #endif
+  
+  !  Start time counter
+  call timer('dynamat', 1)
 
-!  Start time counter
-    call timer('dynamat', 1)
+  call alloc_default( old=oldDefaults, &
+       copy=.false., shrink=.false., &
+       imin=1, routine='dynamat' )
 
-!   Set algorithm logical
-    ParallelLocal = (Nodes > 1)
-    lenx  = meshLim(2,1) - meshLim(1,1) + 1
-    leny  = meshLim(2,2) - meshLim(1,2) + 1
-    lenz  = meshLim(2,3) - meshLim(1,3) + 1
-    lenxy = lenx*leny
-
-!  Find value of maxloc
-    maxloc2 = maxval(endpht(1:np)-endpht(0:np-1))
-    maxloc = maxloc2 + minloc
-    maxloc = min( maxloc, no)
-    triang  = (maxloc+1)*(maxloc+2)/2
-
-    if (ParallelLocal) then
-      if (nrowsDscfL > 0) then
+  ! Set algorithm logical
+  ParallelLocal = (Nodes > 1)
+  lenx  = meshLim(2,1) - meshLim(1,1) + 1
+  leny  = meshLim(2,2) - meshLim(1,2) + 1
+  lenz  = meshLim(2,3) - meshLim(1,3) + 1
+  lenxy = lenx*leny
+  
+  ! Find value of maxloc
+  maxloc2 = maxval(endpht(1:np)-endpht(0:np-1))
+  maxloc = maxloc2 + minloc
+  maxloc = min( maxloc, no)
+  triang  = (maxloc+1)*(maxloc+2)/2
+  
+  if (ParallelLocal) then
+     if (nrowsDscfL > 0) then
         maxndl = listdlptr(nrowsDscfL) + numdl(nrowsDscfL)
-      else
+     else
         maxndl = 1
-      end if
-      nullify(DscfL)
-      nullify(dDscfL)
-      call re_alloc( DscfL, 1, maxndl, 'DscfL','dynamat' )
-      call re_alloc( dDscfL, 1, maxndl, 'dDscfL','dynamat' )
-!       Redistribute Dscf/dDscf to DscfL/dDscfL form
-      call matrixOtoM( maxnd, numd, listdptr, maxndl, nuo, &
+     end if
+     nullify(DscfL)
+     nullify(dDscfL)
+     call re_alloc( DscfL, 1, maxndl, 'DscfL')
+     call re_alloc( dDscfL, 1, maxndl, 'dDscfL')
+     ! Redistribute Dscf/dDscf to DscfL/dDscfL form
+     call matrixOtoM( maxnd, numd, listdptr, maxndl, nuo, &
           1, Dscf, DscfL )
-      call matrixOtoM( maxnd, numd, listdptr, maxndl, nuo, &
+     call matrixOtoM( maxnd, numd, listdptr, maxndl, nuo, &
           1, dDscf, dDscfL )
-    end if
+  end if
 
-!  Find atomic cutoff radii
-    nullify(r2cut)
-    call re_alloc( r2cut, 1, nsmax, 'r2cut', 'dynamat' )
-    r2cut(:) = 0.0_dp
-    do i = 1,nuotot
-      ia = iaorb(i)
-      is = isa(ia)
-      io = iphorb(i)
-      r2cut(is) = max( r2cut(is), rcut(is,io)**2 )
-    enddo
-!   Allocate local memory
+  ! Find atomic cutoff radii
+  nullify(r2cut)
+  call re_alloc( r2cut, 1, nsmax, 'r2cut')
+  r2cut(:) = 0.0_dp
+  do i = 1,nuotot
+     ia = iaorb(i)
+     is = isa(ia)
+     io = iphorb(i)
+     r2cut(is) = max( r2cut(is), rcut(is,io)**2 )
+  enddo
+  
 !$OMP parallel default(shared), &
-!$OMP&shared(iter,ialr,ispin,phi,gradphi,dRho,dRhoscf,dVol,Datm,dvnoscf,VLR,Vscf),&
+!$OMP&private(TID), &
 !$OMP&private(ip,nc,imp,i,il,ilocal,iorb,ic,last,j,iu,iul,ii,ind,ijl,Dlocal,dDlocal),&
 !$OMP&private(lasta,lastop,ia,is,iua,iop,ilc,Vnalisted,LISTED,dxsp,r2sp,grphi,phia),&
-!$OMP&private(iphi,C,gC,gr2va,gr2vna,isp,ix,t_dynmat,prod1,nind,prod2,prod3,prod4),&
+!$OMP&private(iphi,C,gC,va,grva,gr2va,gr2vna,isp,ix,t_dynmat,prod1,nind,prod2,prod3,prod4),&
 !$OMP&private(jc,jua,ja,jil,prod5)
-
+  
 !$OMP single
 #ifdef _OPENMP
-    NTH = omp_get_num_threads( )
+  NTH = omp_get_num_threads( )
 #else
-    NTH = 1
+  NTH = 1
 #endif
 !$OMP end single ! implicit barrier, IMPORTANT
 
 #ifdef _OPENMP
-    TID = omp_get_thread_num( ) + 1
+  TID = omp_get_thread_num( ) + 1
 #else
-    TID = 1
+  TID = 1
 #endif
 
-!  Nullify pointers
-      nullify(ilocal, ilc, iorb)
-      nullify(Dlocal, dDlocal)
-      nullify(C, gC, LISTED, phia, grphi) 
-      nullify(t_dynmat)
-
+  ! Nullify pointers
+  nullify(ilocal, ilc, iorb)
+  nullify(Dlocal, dDlocal)
+  nullify(C, gC, LISTED, phia, grphi) 
+  
 !$OMP critical
-      call re_alloc( ilocal, 1, no, 'ilocal', 'dynamat' )
-      call re_alloc( ilc, 1, maxloc2, 'ilc', 'dynamat' )
-      call re_alloc( iorb, 1, maxloc, 'iorb', 'dynamat' )
+  call re_alloc( C, 1, nsp, 1, maxloc2, 'C')
+  call re_alloc( gC, 1, 3, 1, nsp, 1, maxloc2, 'gC')
 
-      call re_alloc( Dlocal, 1, triang,'Dlocal','dynamat')
-      call re_alloc( dDlocal, 1, triang,'dDlocal','dynamat')
+  call re_alloc( ilocal, 1, no, 'ilocal')
+  call re_alloc( ilc, 1, maxloc2, 'ilc')
+  call re_alloc( iorb, 1, maxloc, 'iorb')
 
-      call re_alloc( C, 1, nsp, 1, maxloc2, 'C', 'dynamat' )
-      call re_alloc( gC, 1, 3, 1, nsp, 1, maxloc2, 'gC', 'dynamat' )
-      call re_alloc( LISTED, 1,na,1,maxloc2, 'LISTED', 'dynamat' )
+  call re_alloc( Dlocal, 1, triang,'Dlocal')
+  call re_alloc( dDlocal, 1, triang,'dDlocal')
+    
+  call re_alloc( LISTED, 1,na,1,maxloc2, 'LISTED')
 
-      if (DirectPhi) allocate(phia(maxoa,nsp),grphi(3,maxoa,nsp))
+  if ( DirectPhi ) then
+     call re_alloc( phia, 1, maxoa, 1, nsp, 'phia')
+     call re_alloc( grphi, 1, 3, 1, maxoa, 1, nsp, 'grphi')
+  end if
 !$OMP end critical
 
-
 !$OMP single
-    if ( ParallelLocal ) then ! Define parallel buffer
-       nullify( t_dynmatBuff )
-       call re_alloc( t_dynmatBuff, 1, nua, 1, 3, 1, NTH, 't_dynmatBuff',  'dynamat' )
-    else 
-       if ( NTH > 1 ) then
-         nullify( t_dynmatBuff )
-         call re_alloc( t_dynmatBuff, 1, nua, 1, 3, 2, NTH, 't_dynmatBuff',  'dynamat' )
-       end if
-    end if
+  if ( ParallelLocal ) then ! Define parallel buffer
+     nullify( t_dynmatBuff )
+     call re_alloc( t_dynmatBuff, 1, nua, 1, 3, 1, NTH, 't_dynmatBuff')
+  else if ( NTH > 1 ) then
+     nullify( t_dynmatBuff )
+     call re_alloc( t_dynmatBuff, 1, nua, 1, 3, 2, NTH, 't_dynmatBuff')
+  end if
 !$OMP end single ! implicit barrier
 
-    if ( ParallelLocal ) then
-       t_dynmat =>t_dynmatBuff(1:nua,:,TID)
-       t_dynmat(1:nua,:) = 0._dp
-    else
-       if ( NTH > 1 ) then
-          if ( TID == 1 ) then
-             call re_alloc(t_dynmat, 1, nua, 1, 3, 't_dynmat', 'dynamat')
-             t_dynmat(1:nua,:) = 0._dp
-          else
-             t_dynmat => t_dynmatBuff(1:nua,:,TID)
-             t_dynmat(1:nua,:) = 0._dp
-          end if
-       else
-          call re_alloc(t_dynmat, 1, nua, 1, 3, 't_dynmat', 'dynamat')
-          t_dynmat(1:nua,:) = 0._dp
-       end if
-    end if
+  if ( ParallelLocal ) then
+     t_dynmat => t_dynmatBuff(1:nua,:,TID)
+     t_dynmat(1:nua,:) = 0._dp
+  else
+     if ( NTH > 1 ) then
+        if ( TID == 1 ) then
+           t_dynmat => dynmat
+        else
+           t_dynmat => t_dynmatBuff(1:nua,:,TID)
+           t_dynmat(1:nua,:) = 0._dp
+        end if
+     else
+        t_dynmat => dynmat
+     end if
+  end if
 
-!     Full initializations done only once
-      ilocal(1:no)  = 0
-      iorb(1:maxloc)= 0
-      last          = 0
-      Dlocal(:) = 0.0_dp
-      dDlocal(:) = 0.0_dp
-      LISTED(:,:)=0
-      VnaListed=.false.
-      t_dynmat(1:nua,:)=0._dp 
+  ! Full initializations done only once
+  ilocal(1:no) = 0
+  iorb(1:maxloc) = 0
+  last = 0
+  Dlocal(:) = 0.0_dp
+  dDlocal(:) = 0.0_dp
+  LISTED(:,:) = 0
+  VnaListed = .false.
 
 !     loop over grid points -----------------------------------------
 !$OMP do
-      do ip = 1,np
-!  Find number of nonzero orbitals at this point
-        nc = endpht(ip) - endpht(ip-1)
-        do imp = 1+endpht(ip-1), endpht(ip)
-          i = lstpht(imp)
-          il = ilocal(i)
-          if (il.gt.0) iorb(il) = i
-        enddo
+  do ip = 1,np
+     !  Find number of nonzero orbitals at this point
+     nc = endpht(ip) - endpht(ip-1)
+     do imp = 1+endpht(ip-1), endpht(ip)
+        i = lstpht(imp)
+        il = ilocal(i)
+        if (il.gt.0) iorb(il) = i
+     enddo
 
 !   Look for required rows of DscfL not yet stored in Dlocal-----------
 !   Look for required rows of dDscfL not yet stored in dDlocal-----------
@@ -326,8 +328,10 @@
                 dxsp(1:3) = xdop(1:3,iop) + xdsp(1:3,isp) - dxa(1:3,ia)     
                 r2sp = dxsp(1)**2 + dxsp(2)**2 + dxsp(3)**2
                 if (r2sp.lt.r2cut(is)) then
+!$OMP critical
                   call all_phi(is,+1, dxsp, nphiloc, & 
-               phia(:,isp), grphi(:,:,isp))
+                       phia(:,isp), grphi(:,:,isp))
+!$OMP end critical
                 else
                   grphi(:,:,isp) = 0.0_dp
                   phia(:,isp) = 0.0_dp
@@ -340,7 +344,9 @@
             if (.not.(VnaListed) ) then
               do isp = 1, nsp
                 dxsp(1:3) = xdop(1:3,iop) + xdsp(1:3,isp) - dxa(1:3,ia)     
+!$OMP critical
                 call phiatm( is, 0, dxsp, va, grva(:,isp), gr2va )
+!$OMP end critical
                 if(iua .eq. ialr) then
                   gr2vna(1:3,isp) = gr2va(1:3,jx)
                 else
@@ -356,7 +362,9 @@
             if (.not.(VnaListed) ) then
               do isp = 1, nsp
                 dxsp(1:3) = xdop(1:3,iop) + xdsp(1:3,isp) - dxa(1:3,ia)     
+!$OMP critical
                 call phiatm( is, 0, dxsp, va, grva(:,isp), gr2va )
+!$OMP end critical
                 if(iua .eq. ialr) then
                   gr2vna(1:3,isp) = gr2va(1:3,jx)
                 else
@@ -374,7 +382,7 @@
 !            ! d2Vna*Rho (dynmat term 6)
                   do ix = 1,3
                     t_dynmat(iua,ix) = t_dynmat(iua,ix) - gr2vna(ix,isp) &
-                  *  dRho(isp,ip) * dVol 
+                         *  dRho(isp,ip) * dVol 
                   enddo
                 enddo
               elseif(iter.ne.1) then
@@ -382,7 +390,7 @@
              ! dVna*dRho (dynmat term 5)
                   do ix = 1,3
                     t_dynmat(iua,ix) = t_dynmat(iua,ix) + grva(ix,isp) &
-                       *  dRhoscf(isp,ip) * dVol 
+                         * dRhoscf(isp,ip) * dVol 
                   enddo
                 enddo
               endif
@@ -547,10 +555,11 @@
 !$OMP end do nowait
 
 !$OMP barrier
-    if ( ParallelLocal .and. NTH > 1 ) then
+
+      if ( ParallelLocal .and. NTH > 1 ) then
 !$OMP do collapse(2)
        do ind = 1, nua
-          do ix=1, 3
+          do ix = 1, 3
              do ii = 2, NTH
                 t_dynmatBuff(ind,ix,1) = t_dynmatBuff(ind,ix,1) + &
                      t_dynmatBuff(ind,ix,ii)
@@ -562,7 +571,7 @@
     else if ( NTH > 1 ) then
 !$OMP do collapse(2)
        do ind = 1, nua
-          do ix=1, 3
+          do ix = 1, 3
             do ii = 2, NTH
                 dynmat(ind,ix) = dynmat(ind,ix) + t_dynmatBuff(ind,ix,ii)
             end do
@@ -570,56 +579,64 @@
        end do
 !$OMP end do
     else
-       dynmat(1:nua,1:3)= t_dynmat(1:nua,1:3)+dynmat(1:nua,1:3)
-       call de_alloc( t_dynmat, 't_dynmat', 'dynamat')
+       ! t_dynmat is already pointing to the result array
     end if
 
 !     Global reduction of dynamical matrix
+!$OMP single
     if ( ParallelLocal ) then
-       call de_alloc(t_dynmatBuff,'t_dynmatBuff','dynamat')
+       call de_alloc(t_dynmatBuff, 't_dynmatBuff')
     else if ( NTH > 1 ) then
-       call de_alloc(t_dynmatBuff,'t_dynmatBuff','dynamat')
+       call de_alloc(t_dynmatBuff, 't_dynmatBuff')
     endif
+!$OMP end single nowait
 
-!*AG: Is this the right place?
+!$OMP critical
+    call de_alloc( C, 'C')
+    call de_alloc( gC, 'gC')
+    call de_alloc( ilocal, 'ilocal')
+    call de_alloc( ilc,'ilc')
+    call de_alloc( iorb, 'iorb')
+    call de_alloc( Dlocal, 'Dlocal')
+    call de_alloc( dDlocal, 'dDlocal')
+    call de_alloc( LISTED, 'LISTED')
+    if ( DirectPhi ) then
+       call de_alloc( phia, 'phia')
+       call de_alloc( grphi, 'grphi')
+    end if
+!$OMP end critical
+
 !$OMP end parallel
 
-    if (DirectPhi) deallocate(phia,grphi)
-    call de_alloc( Dlocal, 'Dlocal','dynamat')
-    call de_alloc( dDlocal, 'dDlocal','dynamat')
-    call de_alloc( gC, 'gC', 'dynamat' )
-    call de_alloc( C, 'C', 'dynamat' )
-    call de_alloc( LISTED,'LISTED', 'dynamat' )
-    call de_alloc( ilocal, 'ilocal', 'dynamat' )
-    call de_alloc( ilc,'ilc', 'dynamat' )
-    call de_alloc( iorb, 'iorb', 'dynamat' )
-    call de_alloc( r2cut, 'r2cut', 'dynamat' )
+    call de_alloc( r2cut, 'r2cut')
 
     if (ParallelLocal) then
-        call de_alloc( DscfL, 'DscfL', 'dynamat' )
-        call de_alloc( dDscfL, 'dDscfL', 'dynamat' )
+        call de_alloc( DscfL, 'DscfL')
+        call de_alloc( dDscfL, 'dDscfL')
     end if
 
-
 #ifdef _TRACE_
-  call MPI_Barrier( MPI_Comm_World, MPIerror )
-  call MPItrace_event( 1000, 0 )
+    call MPI_Barrier( MPI_Comm_World, MPIerror )
+    call MPItrace_event( 1000, 0 )
 #endif
 
-      call timer('dynamat',2)
+    call alloc_default( restore=oldDefaults )
 
-      CONTAINS
+    call timer('dynamat',2)
+
+  CONTAINS
 
 ! In any case will the compiler most likely inline this
 ! small routine. So it should not pose any problem.
-      pure function idx_ijl(i,j) result(ij)
-        integer, intent(in) :: i,j
-        integer :: ij
-        if ( i > j ) then
-          ij = i * (i + 1)/2 + j + 1
-        else
-          ij = j * (j + 1)/2 + i + 1
-        end if
-      end function idx_ijl
-
-      end subroutine dynamat
+    pure function idx_ijl(i,j) result(ij)
+      integer, intent(in) :: i,j
+      integer :: ij
+      if ( i > j ) then
+         ij = i * (i + 1)/2 + j + 1
+      else
+         ij = j * (j + 1)/2 + i + 1
+      end if
+    end function idx_ijl
+    
+  end subroutine dynamat
+  

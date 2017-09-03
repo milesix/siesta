@@ -140,9 +140,8 @@ contains
        end if
     end if
 
-!   Allocate local memory
+
 !$OMP parallel default(shared), &
-!$OMP&shared(NTH,t_DscfL,t_Vss,spin), &
 !$OMP&private(TID,last), &
 !$OMP&private(ip,nc,nlocal,ic,imp,i,il,iu,iul,ii,ind,j,ijl,ispin), &
 !$OMP&private(lasta,lastop,ia,is,iop,isp,dxsp,r2sp,nphiloc,iphi,jc,jl), &
@@ -162,16 +161,16 @@ contains
     TID = 1
 #endif
 
-    nullify(Clocal,phia,ilocal,ilc,iorb,Vlocal)
+    nullify(Clocal,ilocal,ilc,iorb,Vlocal,phia)
 !$OMP critical
-    ! Perhaps the critical section is not needed,
-    ! however it "tells" the OS to allocate per
-    ! thread, possibly waiting for each thread to
-    ! place the memory in the best position.
-    allocate( Clocal(nsp,maxloc2) )
-    allocate( ilocal(no) , ilc(maxloc2) , iorb(maxloc) )
-    allocate( Vlocal(triang,spin%Grid) )
-    if ( DirectPhi ) allocate( phia(maxoa,nsp) )
+    call re_alloc(Clocal, 1, nsp, 1, maxloc2, 'Clocal','vmat')
+    call re_alloc(ilocal, 1, no, 'ilocal','vmat') 
+    call re_alloc(ilc, 1, maxloc2, 'ilc','vmat') 
+    call re_alloc(iorb, 1, maxloc, 'iorb','vmat') 
+    call re_alloc(Vlocal, 1, triang, 1, spin%Grid, 'Vlocal','vmat') 
+    if ( DirectPhi ) then
+       call re_alloc(phia, 1, maxoa, 1, nsp, 'phia','vmat')
+    end if
 !$OMP end critical
 
 !$OMP single
@@ -204,9 +203,9 @@ contains
        end if
     end if
 
-!   Full initializations done only once
-    ilocal(1:no)             = 0
-    iorb(1:maxloc)           = 0
+    ! initializations of counters, etc.
+    ilocal(1:no) = 0
+    iorb(1:maxloc) = 0
     Vlocal(1:triang,:) = 0._dp
     last = 0
 
@@ -290,6 +289,7 @@ contains
                 end if
              end do
           end if
+          
 !         Reset local arrays
           do i = 1, last
              ilocal(iorb(i)) = 0
@@ -526,10 +526,17 @@ contains
 !$OMP end do
     end if
 
-!   Free memory
-    deallocate(Clocal,ilocal,ilc,iorb,Vlocal)
-    if ( DirectPhi ) deallocate( phia )
-
+!$OMP critical
+    call de_alloc(Clocal, 'Clocal', 'vmat')
+    call de_alloc(ilocal, 'ilocal', 'vmat')
+    call de_alloc(ilc, 'ilc', 'vmat')
+    call de_alloc(iorb, 'iorb', 'vmat')
+    call de_alloc(Vlocal, 'Vlocal', 'vmat')
+    if ( DirectPhi ) then
+       call de_alloc(phia, 'phia', 'vmat')
+    end if
+!$OMP end critical
+    
 !$OMP master
     if ( ParallelLocal ) then
 !      Redistribute Hamiltonian from mesh to orbital based distribution
@@ -632,8 +639,8 @@ contains
       integer                  :: numVs(nuo), listVsptr(nuo)
       integer                  :: listVs(nvmax)
       integer,      intent(in) :: ialr
-      real(grid_p), intent(in) :: Vscf(nsp,np,nspin)
-      real(dp)                 :: dvol, VolCel
+      real(grid_p), intent(in), target :: Vscf(nsp,np,nspin)
+      real(dp)                 :: dvol
       real(dp),         target :: Vs(nvmax,3,nspin)
 
 ! Internal variables
@@ -641,29 +648,29 @@ contains
       integer,       parameter :: maxoa = 100   ! Max # of orbitals per atom
       integer                  :: i, ia, ic, ii, imp
       integer                  :: ind, iop, ip, iphi, io, is, isp
-      integer                  :: ispin, iu, iua, iul, ix
+      integer                  :: ispin, iu, iul
       integer                  :: nlocal, j, jc, last, lasta
       integer                  :: lastop, maxloc, maxloc2, NTH,TID
-      integer                  :: nc, nphiloc, index(no)
-      integer                  :: in, il, ij,  jl, triang, ijl
+      integer                  :: nc, nphiloc
+      integer                  :: il, jl, triang, ijl
       integer                  :: lenx, leny, lenz, lenxy, nvmaxl
 
       logical                  :: ParallelLocal
 
       real(dp)                 :: dxsp(3),  Vij(3)
       real(dp)                 :: r2sp
-      real(dp)                 :: V(nsp,nspin), Vpart(3,2,nsp)
+      real(dp)                 :: Vpart(3,2,nsp)
 
       integer,         pointer :: ilc(:), ilocal(:), iorb(:)
 
       real(dp),        pointer :: C(:,:), gC(:,:,:), phia(:,:) 
       real(dp),        pointer :: grada(:,:,:)
+      real(grid_p),    pointer :: VV(:,:)
       real(dp),        pointer :: Vi(:,:,:),  r2cut(:)
       real(dp),        pointer :: Vss(:,:,:), t_Vss(:,:,:,:)  !serial potential
       real(dp),        pointer :: Vsp(:,:,:), t_Vsp(:,:,:,:)  !parallel potential
 
-      logical                  :: Parallel_Run
-      type(allocDefaults) oldDefaults
+      type(allocDefaults) :: oldDefaults
 #ifdef _TRACE_
       integer :: MPIerror
 #endif
@@ -680,9 +687,13 @@ contains
 !  Start time counter
       call timer('dvmat',1)
 
+      call alloc_default( old=oldDefaults, &
+           copy=.false., shrink=.false., &
+           imin=1, routine='dvmat' )
+      
 !  Find atomic cutoff radii
       nullify(r2cut)
-      call re_alloc( r2cut, 1, nsmax, 'r2cut', 'dvmat' )
+      call re_alloc( r2cut, 1, nsmax, 'r2cut')
       r2cut = 0.0_dp
       do i = 1,nuotot
          ia = iaorb(i)
@@ -710,15 +721,12 @@ contains
             nvmaxl = 1
          end if
       end if
-
-!   Allocate local memory
+      
 !$OMP parallel default(shared), &
-!$OMP&shared(NTH,t_Vsp,t_Vss,nspin), &
 !$OMP&private(TID,last), &
 !$OMP&private(ip,nc,nlocal,ic,imp,i,il,iu,iul,ii,ind,j,ijl,ispin), &
 !$OMP&private(lasta,lastop,ia,is,iop,isp,dxsp,r2sp,nphiloc,iphi,jc,jl), &
-!$OMP&private(Vij,Vpart,Vsp,Vss,ilocal,ilc,iorb,Vi,C,gC,phia,grada)
-
+!$OMP&private(Vij,Vpart,VV,Vsp,Vss,ilocal,ilc,iorb,Vi,C,gC,phia,grada)
 
 !$OMP single
 #ifdef _OPENMP
@@ -734,34 +742,27 @@ contains
       TID = 1
 #endif
 
-!  Nullify pointers
       nullify( C, gC, Vi, ilc, ilocal, iorb,  phia, grada)
-
-      call alloc_default( old=oldDefaults, &
-                         copy=.false., shrink=.false., &
-                         imin=1, routine='dvmat' )
-
 !$OMP critical
-      call re_alloc( C, 1, nsp, 1, maxloc2, 'C', 'dvmat' )
-      call re_alloc( gC, 1, 3, 1, nsp, 1, maxloc2, 'gC', 'dvmat' )
-      call re_alloc( Vi, 1, triang,1, 3, 1, nspin, 'Vi', 'dvmat' )
-      call re_alloc( ilc, 1, maxloc2,'ilc', 'dvmat' )
-      call re_alloc( ilocal, 1, no, 'ilocal', 'dvmat' )
-      call re_alloc( iorb, 1, no, 'iorb', 'dvmat' )
-      if (DirectPhi) allocate(phia(maxoa,nsp),grada(3,maxoa,nsp))
+    call re_alloc(C, 1, nsp, 1, maxloc2, 'C')
+    call re_alloc(gC, 1, 3, 1, nsp, 1, maxloc2, 'gC')
+    call re_alloc(ilocal, 1, no, 'ilocal') 
+    call re_alloc(ilc, 1, maxloc2, 'ilc') 
+    call re_alloc(iorb, 1, maxloc, 'iorb') 
+    call re_alloc(Vi, 1, triang, 1, 3, 1, nspin, 'Vi')
+    if ( DirectPhi ) then
+       call re_alloc(phia, 1, maxoa, 1, nsp, 'phia')
+       call re_alloc(grada, 1, 3, 1, maxoa, 1, nsp, 'grada')
+    end if
 !$OMP end critical
 
 !$OMP single
       if ( ParallelLocal ) then
          nullify( t_Vsp )
-         call re_alloc( t_Vsp, 1, nvmaxl, 1, 3, 1 ,nspin, 1, NTH, &
-              'Vsp',  'dvmat' )
-      else
-        if ( NTH > 1 ) then
-          nullify( t_Vss )
-          call re_alloc( t_Vss, 1, nvmax, 1, 3, 1, nspin, 2, NTH, &
-              'Vss',  'dvmat' )
-       end if
+         call re_alloc( t_Vsp, 1, nvmaxl, 1, 3, 1, nspin, 1, NTH, 'Vsp' )
+      else if ( NTH > 1 ) then
+         nullify( t_Vss )
+         call re_alloc( t_Vss, 1, nvmax, 1, 3, 1, nspin, 2, NTH, 'Vss' )
       end if
 !$OMP end single ! implicit barrier
 
@@ -781,12 +782,12 @@ contains
          end if
       end if
 
-!  Initialise variables
-      last                     = 0
+      ! Initialise variables
       Vi(1:triang,1:3,1:nspin) = 0.0_dp
-      ilocal(1:no)             = 0
-      iorb(1:no)               = 0
-      ilc(:)                   = 0
+      ilocal(1:no) = 0
+      iorb(1:maxloc) = 0
+      ilc(:) = 0
+      last = 0
 
 !  Loop over grid points
 !$OMP do
@@ -798,11 +799,11 @@ contains
         do ic = 1,nc
          imp = endpht(ip-1) + ic
          i = lstpht(imp)
-         if (ilocal(i) .eq. 0) nlocal = nlocal + 1
+         if (ilocal(i) == 0) nlocal = nlocal + 1
         enddo
 
 !       If overflooded, add Vlocal to Vs and reinitialize it
-        if (nlocal .gt. maxloc .and. last >0) then
+        if (nlocal > maxloc .and. last > 0) then
            if ( ParallelLocal ) then
              do il = 1,last
                 i   = iorb(il)
@@ -835,14 +836,14 @@ contains
                 i = iorb(il)
                 iu = indxuo(i)
                 call GlobalToLocalOrb( iu, Node, Nodes, iul )
-                if (i .eq. iu) then
+                if (i == iu) then
                   do ii = 1, numVs(iul)
                     ind = listVsptr(iul)+ii
                     j = listVs(ind)
                     ijl = idx_ijl(il,ilocal(j))
                     do ispin = 1,nspin
-                      Vss(ind,1:3,ispin) = Vss(ind,1:3,ispin) + dVol * &
-                     Vi(ijl,1:3,ispin)
+                       Vss(ind,:,ispin) = Vss(ind,:,ispin) + &
+                            Vi(ijl,:,ispin) * dVol
                     enddo
                   enddo
                 else !i .eq. iu
@@ -851,8 +852,8 @@ contains
                     j = LISTSC( i, iu, listVs(ind) )
                     ijl = idx_ijl(il,ilocal(j))
                     do ispin = 1,nspin
-                      Vss(ind,1:3,ispin) = Vss(ind,1:3,ispin) + dVol * &
-                     Vi(ijl,1:3,ispin)
+                       Vss(ind,:,ispin) = Vss(ind,:,ispin) + &
+                            Vi(ijl,:,ispin) * dVol
                     enddo
                   enddo
                 endif !i .eq. iu
@@ -860,8 +861,8 @@ contains
           endif ! Parallel local
 
 !         Reset local arrays
-          do ii= 1, last
-            ilocal(iorb(ii)) = 0
+          do i= 1, last
+            ilocal(iorb(i)) = 0
           enddo
           iorb(1:last) = 0
           ijl = (last+1)*(last+2)/2
@@ -870,11 +871,11 @@ contains
         endif !nlocal .gt. maxloc
 
 !  Look for required orbitals not yet in Vlocal
-        if (nlocal .gt. last) then
+        if ( nlocal > last ) then
           do ic = 1, nc
             imp = endpht(ip-1) + ic
             i = lstpht(imp)
-            if(ilocal(i) .eq. 0) then
+            if( ilocal(i) == 0 ) then
               last = last + 1
               ilocal(i) = last
               iorb(last) = i
@@ -883,7 +884,7 @@ contains
         endif
 
 !  Copy potential to a double precision array
-        V(1:nsp,1:nspin) = Vscf(1:nsp,ip,1:nspin)
+        VV => Vscf(1:nsp,ip,1:nspin)
 
 !  Calculate all phi values and derivatives at all subpoints
         if ( DirectPhi ) then
@@ -902,17 +903,17 @@ contains
               lasta = ia
               lastop = iop
               do isp = 1,nsp
-                do ix =1,3
-                  dxsp(ix) = xdsp(ix,isp) + xdop(ix,iop) - dxa(ix,ia)
-                enddo
+                dxsp(:) = xdsp(:,isp) + xdop(:,iop) - dxa(:,ia)
                 r2sp = sum(dxsp**2)
-                if (r2sp.lt.r2cut(is)) then
-                  grada(1:3,:,isp) = 0.0_dp
+                if (r2sp < r2cut(is) ) then
                   if (indxua(ia).eq.ialr) then
 !$OMP critical
                      call all_phi( is,+1, dxsp, nphiloc, &
                              phia(:,isp), grada(:,:,isp))
 !$OMP end critical
+                  else
+                     ! TODO, why not phia(:,isp) ???
+                     grada(1:3,:,isp) = 0.0_dp
                   endif
                 else
                   phia(:,isp) = 0.0_dp
@@ -922,11 +923,11 @@ contains
             endif !lasta lastop if
             iphi = iphorb(i)
             C(1:nsp,ic) = phia(iphi,1:nsp)
-            gC(1:3,1:nsp,ic) = (-1.0_dp)*grada(1:3,iphi,1:nsp)
+            gC(:,1:nsp,ic) = - grada(:,iphi,1:nsp)
             do ispin= 1,nspin  !pre-multiplication gradphi(ic)*V and V*phi(ic)
-              do isp=1,nsp
-                Vpart(:,1,isp)=gC(:,isp,ic)*V(isp,ispin)
-                Vpart(:,2,isp)=V(isp,ispin)*C(isp,ic)
+               do isp=1,nsp
+                Vpart(:,1,isp)=gC(:,isp,ic)*VV(isp,ispin)
+                Vpart(:,2,isp)=VV(isp,ispin)*C(isp,ic)
               enddo
 !    Loop on the second orbital of mesh point (only for jc.<=.ic)
               do jc= 1,ic !tringular matrix form
@@ -937,7 +938,7 @@ contains
                          gC(:,isp,jc)*Vpart(:,2,isp)
                 enddo
                 ijl = idx_ijl(il,ilc(ic))
-                Vi(ijl,:,ispin)=Vij+Vi(ijl,:,ispin)
+                Vi(ijl,:,ispin) = Vi(ijl,:,ispin) + Vij
               enddo !jc loop
             enddo !ispin loop
           enddo !ic loop
@@ -952,14 +953,14 @@ contains
             ilc(ic) = il
             C(1:nsp,ic) = phi(1:nsp,imp) ! the value of orbitals is stored in memory
             if (indxua(ia).eq.ialr) then
-              gC(1:3,1:nsp,ic) = (-1.0_dp)*gradphi(1:3,1:nsp,imp)
+              gC(1:3,1:nsp,ic) = - gradphi(1:3,1:nsp,imp)
             else
               gC(1:3,1:nsp,ic) = 0.0_dp
             endif
             do ispin= 1,nspin  !pre-multiplication gradphi(ic)*V and V*phi(ic)
               do isp=1,nsp
-                Vpart(:,1,isp)=gC(:,isp,ic)*V(isp,ispin)
-                Vpart(:,2,isp)=V(isp,ispin)*C(isp,ic)
+                Vpart(:,1,isp)=gC(:,isp,ic)*VV(isp,ispin)
+                Vpart(:,2,isp)=VV(isp,ispin)*C(isp,ic)
               enddo
 !    Loop on the second orbital of mesh point (only for jc.le.ic)
               do jc= 1,ic !tringular matrix form
@@ -977,6 +978,7 @@ contains
         endif !directphi if
       enddo !ip loop
 !$OMP end do nowait
+
 ! Note that this is already performed in parallel!
 !   Add final Vi to Vs
       if ( ParallelLocal .and. last > 0 ) then
@@ -990,8 +992,8 @@ contains
                 j   = listdl(ind)
                 ijl = idx_ijl(il,ilocal(j))
                 do ispin = 1, nspin
-                   Vsp(ind,1:3,ispin) = Vsp(ind,1:3,ispin) + &
-                                Vi(ijl,1:3,ispin) * dVol
+                   Vsp(ind,:,ispin) = Vsp(ind,:,ispin) + &
+                                Vi(ijl,:,ispin) * dVol
                 enddo
              enddo
           else
@@ -1000,8 +1002,8 @@ contains
                 j   = LISTSC( i, iu, listdl(ind) )
                 ijl = idx_ijl(il,ilocal(j))
                 do ispin = 1, nspin
-                   Vsp(ind,1:3,ispin) = Vsp(ind,1:3,ispin) + &
-                                 Vi(ijl,1:3,ispin) * dVol
+                   Vsp(ind,:,ispin) = Vsp(ind,:,ispin) + &
+                                 Vi(ijl,:,ispin) * dVol
                 end do
              end do
           endif
@@ -1017,8 +1019,8 @@ contains
                jl=ilocal(j)
                ijl = idx_ijl(il,jl)
                do ispin = 1,nspin
-                 Vss(ind,1:3,ispin) = Vss(ind,1:3,ispin) + dVol * &
-                 Vi(ijl,1:3,ispin)
+                  Vss(ind,:,ispin) = Vss(ind,:,ispin) + &
+                       Vi(ijl,:,ispin) * dVol
                enddo
              enddo !ii loop
            else
@@ -1028,8 +1030,8 @@ contains
                jl = ilocal(j)
                ijl = idx_ijl(il,jl)
                do ispin = 1,nspin
-                 Vss(ind,1:3,ispin) = Vss(ind,1:3,ispin) + dVol * &
-                 Vi(ijl,1:3,ispin)
+                  Vss(ind,:,ispin) = Vss(ind,:,ispin) + &
+                       Vi(ijl,:,ispin) * dVol
                enddo
              enddo
            endif !i .eq. iu
@@ -1062,32 +1064,38 @@ contains
 !$OMP end do
       end if
 
-!  Deallocate local memory
-      call de_alloc( gC, 'gC', 'dvmat' )
-      call de_alloc( C, 'C', 'dvmat' )
-      call de_alloc( ilocal, 'ilocal', 'dvmat' )
-      call de_alloc( Vi, 'Vi','dvmat')
-      call de_alloc( ilc, 'ilc','dvmat')
-      call de_alloc( iorb, 'iorb','dvmat')
-      if ( DirectPhi ) deallocate( phia, grada )
+!$OMP critical
+      call de_alloc(C, 'C')
+      call de_alloc(gC, 'gC')
+      call de_alloc(ilocal, 'ilocal')
+      call de_alloc(ilc, 'ilc')
+      call de_alloc(iorb, 'iorb')
+      call de_alloc(Vi, 'Vi')
+      if ( DirectPhi ) then
+         call de_alloc(phia, 'phia')
+         call de_alloc(grada, 'grada')
+      end if
+!$OMP end critical
 
 !$OMP master
       if ( ParallelLocal ) then
 !      Redistribute Hamiltonian from mesh to orbital based distribution
          Vsp => t_Vsp(1:nvmaxl,1:3,1:nspin,1)
-         do ix=1,3
-           call matrixMtoO( nvmaxl, nvmax, numVs, listVsptr, nuo, &
-            nspin, Vsp(:,ix,:), Vs(:,ix,:) )
-         enddo
-         call de_alloc( t_Vsp, 'Vsp', 'dvmat' )
+         do ispin = 1 , nspin
+            do i = 1 , 3
+               call matrixMtoO( nvmaxl, nvmax, numVs, listVsptr, nuo, &
+                    1, Vsp(:,i,ispin), Vs(:,i,ispin) )
+            end do
+         end do
+         call de_alloc( t_Vsp, 'Vsp')
       else if ( NTH > 1 ) then
-         call de_alloc( t_Vss, 'Vss', 'dvmat' )
+         call de_alloc( t_Vss, 'Vss')
       end if
 !$OMP end master
-
+      
 !$OMP end parallel
 
-      call de_alloc( r2cut, 'r2cut','dvmat')
+      call de_alloc( r2cut, 'r2cut')
 
 #ifdef _TRACE_
       call MPI_Barrier( MPI_Comm_World, MPIerror )
@@ -1118,6 +1126,5 @@ contains
       end function idx_ijl
 
   end subroutine dvmat
-
 
 end module m_vmat
