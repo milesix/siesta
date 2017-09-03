@@ -416,7 +416,6 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
           endif !spin = 1
   
           if (iter==1) then
-            prod4(:)=0.0_dp
             do jc=1, ic-1
               jua=indxua(iaorb(lstpht((endpht(ip-1) + jc))))
               ja = ilc(jc)
@@ -428,49 +427,46 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
               if((jua.eq.ialr).and.(iua.eq.ialr)) then
                 do isp=1,nsp
                   nind = (ip-1) * nsp + isp
+                  prod1 = VLR(nind,ispin) * prod4(1)
+                  prod2 = VLR(nind,ispin) * prod4(2)
+                  prod3 = Vscf(nind) * prod4(1) * gC(jx,isp,ic)
+                  prod5 = Vscf(nind) * prod4(2) * gC(jx,isp,jc)
                   do ix = 1,3
-                    DY(iua,ix) = DY(iua,ix) +   &
-                 VLR(nind,ispin)*prod4(1)*gC(ix,isp,ic)*C(isp,jc) + &
-                 VLR(nind,ispin)*prod4(2)*C(isp,ic)*gC(ix,isp,jc)
-
-                    DY(iua,ix) = DY(iua,ix) +  &
-                 Vscf(nind)*prod4(1)*gC(jx,isp,ic)*gC(ix,isp,jc) + &
-                 Vscf(nind)*prod4(2)*gC(ix,isp,ic)*gC(jx,isp,jc)
-
+                     DY(iua,ix) = DY(iua,ix) +   &
+                          prod1*gC(ix,isp,ic)*C(isp,jc) + &
+                          prod2*C(isp,ic)*gC(ix,isp,jc)
+                     
+                     DY(iua,ix) = DY(iua,ix) +  &
+                          prod3*gC(ix,isp,jc) + &
+                          prod5*gC(ix,isp,ic)
+                     
                      DY(jua,ix) = DY(jua,ix) - &
-                 Vscf(nind)*prod4(1)*gC(jx,isp,ic)*gC(ix,isp,jc) - &
-                 Vscf(nind)*prod4(2)*gC(ix,isp,ic)*gC(jx,isp,jc)
-
-
+                          prod3*gC(ix,isp,jc) - &
+                          prod5*gC(ix,isp,ic)
                   enddo
                 enddo
               elseif(jua.eq.ialr) then
                 do isp=1,nsp
                   nind = (ip-1) * nsp + isp
+                  prod1 = VLR(nind,ispin) * prod4(2) * C(isp,ic)
+                  prod2 = Vscf(nind) * prod4(2) * gC(jx,isp,jc)
                   do ix = 1,3
-                    DY(jua,ix) = DY(jua,ix) + &
-                 VLR(nind,ispin)*prod4(2)*C(isp,ic)*gC(ix,isp,jc)
-
-                    DY(jua,ix) = DY(jua,ix) +  &
-                 Vscf(nind)*prod4(2)*gC(jx,isp,jc)*gC(ix,isp,ic)
-
-                    DY(iua,ix) = DY(iua,ix) - &
-                 Vscf(nind)*prod4(2)*gC(jx,isp,jc)*gC(ix,isp,ic)
-
+                    DY(jua,ix) = DY(jua,ix) + prod1 * gC(ix,isp,jc)
+                    DY(jua,ix) = DY(jua,ix) + prod2 * gC(ix,isp,ic)
+                    DY(iua,ix) = DY(iua,ix) - prod2 * gC(ix,isp,ic)
                   enddo
                 enddo
               elseif(iua.eq.ialr) then
                 do isp=1,nsp
                   nind = (ip-1) * nsp + isp
+                  prod1 = VLR(nind,ispin) * prod4(1) * C(isp,jc)
+                  prod2 = Vscf(nind) * prod4(1) * gC(jx,isp,ic)
                   do ix = 1,3
-                    DY(iua,ix) = DY(iua,ix) + &
-                 VLR(nind,ispin)*prod4(1)*gC(ix,isp,ic)*C(isp,jc)
+                    DY(iua,ix) = DY(iua,ix) + prod1 * gC(ix,isp,ic)
 
-                    DY(iua,ix) = DY(iua,ix) + &
-                 Vscf(nind)* prod4(1)*gC(jx,isp,ic)*gC(ix,isp,jc)
+                    DY(iua,ix) = DY(iua,ix) + prod2 * gC(ix,isp,jc)
 
-                    DY(jua,ix) = DY(jua,ix) - &
-                 Vscf(nind)* prod4(1)*gC(jx,isp,ic)*gC(ix,isp,jc)
+                    DY(jua,ix) = DY(jua,ix) - prod2 * gC(ix,isp,jc)
 
                   enddo
                 enddo
@@ -479,60 +475,62 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
 !          mu-mu cases diagonal elements
             if (iua.eq.ialr) then
               ijl = idx_ijl(il,il)
-              prod4(1)=2.0_dp * dVol * Dlocal(ijl)
+              prod3=2.0_dp * dVol * Dlocal(ijl)
               do isp=1,nsp
                 nind = (ip-1) * nsp + isp
+                prod1 = VLR(nind,ispin) * prod3 * C(isp,ic)
+                prod2 = Vscf(nind) * prod3 * gC(jx,isp,ic)
                 do ix = 1,3
-                 DY(iua,ix) = DY(iua,ix) + &
-                 VLR(nind,ispin)*prod4(1)*gC(ix,isp,ic)*C(isp,ic)
+                 DY(iua,ix) = DY(iua,ix) + prod1 * gC(ix,isp,ic)
 
-                 DY(iua,ix) = DY(iua,ix) + &
-                 Vscf(nind)*prod4(1)*gC(jx,isp,ic)*gC(ix,isp,ic)
+                 DY(iua,ix) = DY(iua,ix) + prod2 * gC(ix,isp,ic)
 
-                 DY(iua,ix) = DY(iua,ix) - &
-                 Vscf(nind)*prod4(1)*gC(jx,isp,ic)*gC(ix,isp,ic)
+                 DY(iua,ix) = DY(iua,ix) - prod2 * gC(ix,isp,ic)
 
                 enddo
               enddo
             endif !diagonal elements
           elseif (iter.ne.1) then
-            prod4(:)=0.0_dp
-            prod5=0.0_dp
             do jc=1,ic-1
               jua=indxua(iaorb(lstpht((endpht(ip-1) + jc))))
               ja = ilc(jc)
               ijl = idx_ijl(il,ilc(jc))
               jil = idx_ijl(ilc(jc),il)
-              prod4(1)=2.0_dp * dVol * Dlocal(ijl)
-              prod4(2)=2.0_dp * dVol * Dlocal(jil)
-              prod5=2.0_dp * dVol * dDlocal(ijl)
+              prod4(1) = 2.0_dp * dVol * Dlocal(ijl)
+              prod4(2) = 2.0_dp * dVol * Dlocal(jil)
+              prod5 = 2.0_dp * dVol * dDlocal(ijl)
               do isp=1,nsp
                 nind = (ip-1) * nsp + isp
+                prod1 = Vscf(nind)*prod5
+                prod2 = VLR(nind,ispin)*prod4(1)
+                prod3 = VLR(nind,ispin)*prod4(2)
                 do ix = 1,3
                    DY(iua,ix) = DY(iua,ix) + &
-                     Vscf(nind)*prod5*gC(ix,isp,ic)*C(isp,jc) 
+                     prod1*gC(ix,isp,ic)*C(isp,jc) 
                    DY(jua,ix) = DY(jua,ix) + &
-                     Vscf(nind)*prod5*C(isp,ic)*gC(ix,isp,jc)
+                     prod1*C(isp,ic)*gC(ix,isp,jc)
 
                    DY(iua,ix) = DY(iua,ix) + &
-                      VLR(nind,ispin)*prod4(1)*gC(ix,isp,ic)*C(isp,jc)
+                        prod2*gC(ix,isp,ic)*C(isp,jc)
                    DY(jua,ix) = DY(jua,ix) + &
-                     VLR(nind,ispin)*prod4(2)*C(isp,ic)*gC(ix,isp,jc)
+                        prod3*C(isp,ic)*gC(ix,isp,jc)
                 enddo
               enddo
             enddo !jc loop
 ! mu-mu cases diagonal elements
             ijl = idx_ijl(il,il)
-            prod4(1)=2.0_dp * dVol * Dlocal(ijl)
-            prod5=2.0_dp * dVol * dDlocal(ijl)
+            prod3 = 2.0_dp * dVol * Dlocal(ijl)
+            prod5 = 2.0_dp * dVol * dDlocal(ijl)
             do isp=1,nsp
-              nind = (ip-1) * nsp + isp
-              do ix = 1,3
-                   DY(iua,ix) = DY(iua,ix) + &
-                     Vscf(nind)*prod5*gC(ix,isp,ic)*C(isp,ic) 
-
-                   DY(iua,ix) = DY(iua,ix) + &
-                     VLR(nind,ispin)*prod4(1)*gC(ix,isp,ic)*C(isp,ic)
+               nind = (ip-1) * nsp + isp
+               prod1 = Vscf(nind)*prod5
+               prod2 = VLR(nind,ispin)*prod3
+               do ix = 1,3
+                  DY(iua,ix) = DY(iua,ix) + &
+                       prod1*gC(ix,isp,ic)*C(isp,ic)
+                  
+                  DY(iua,ix) = DY(iua,ix) + &
+                       prod2*gC(ix,isp,ic)*C(isp,ic)
               enddo
             enddo
           endif !iter if
@@ -566,7 +564,7 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
           end do
        end do
 !$OMP end do
-       dynmat(1:nua,1:3)= t_DYL(1:nua,1:3,1)+dynmat(1:nua,1:3)
+       dynmat(1:nua,1:3)= t_DYL(1:nua,1:3,1) + dynmat(1:nua,1:3)
     else if ( NTH > 1 ) then
 !$OMP do collapse(2)
        do ind = 1, nua
@@ -577,8 +575,6 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
           end do
        end do
 !$OMP end do
-    else
-       ! t_dynmat is already pointing to the result array
     end if
 
 !     Global reduction of dynamical matrix
