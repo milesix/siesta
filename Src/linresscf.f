@@ -100,9 +100,9 @@ C Begin to write into output file
         write(6,'(t32,a,i7)') 'Linres calculation'
         write(6,'(t22,a)') repeat('=',36)
 
-        write(6,'(/,a,i7)')'Some linres parameters:'
-        write(6,'(a,i7)') 'Linres: Initial perturbed atom', iai
-        write(6,'(a,i7)') 'Linres: Final perturbed atom', iaf
+        write(6,'(a30,i7)') 'Linres: Initial perturbed atom', iai
+        write(6,'(a30,i7)') 'Linres: Final perturbed atom', iaf
+        write(6,'(a30,f10.5)') 'Linres: Tolerance (DM)', tolLR
       endif
 
       ! Nullify arrays
@@ -112,15 +112,6 @@ C Initialize ----------------------------------------------
       dynmat(:,:,:,:) = 0.0_dp
       atomdisp = ' '
       
-C IS A K CALCULATION????? Could be better....
-      if ( nkpnt .eq. 1 ) then
-        GAMMA = .TRUE.
-        write(6,'(a,i7)')'Linres: it is a Gamma-point calculation'
-      else
-        GAMMA = .FALSE.
-        write(6,'(a,i7)')'Linres: it is a k-point calculation'
-      endif
-
 C Dummies initialization------------------------------------------------------
       dummy_chargedensonly = .false.
       dummy_use_rhog_in = .false.
@@ -271,11 +262,9 @@ C Perform the density matrix mixing
 
 C Print error in the perturbed density
            if ( first_LR ) then
-              write(*,'(a,f10.4)') 'LINRES: Density tolerance dDTol=',
-     &             tolLR
-              write(*,'(tr7,a5,tr2,a10)') 'iscf','dDmax'           
+              write(6,'(a12,a10)') 'iscf', 'dDmax'
            end if 
-           write(*,'(a6,tr1,i5,tr2,f10.5)')'linres', iscf, dDmax
+           write(*,'(a8,i4,f10.6)')'lr-scf:', iscf, dDmax
           
 C Write dDscf to file ------------------------------------------------
 C DM file is named as: label.LRDM+'IALR'
