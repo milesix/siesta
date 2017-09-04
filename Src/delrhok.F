@@ -83,10 +83,10 @@ C     Internal Variables
      &            prod3(2), prod4(2), eio, ejo, dStepF, evper(2,3,no_u),
      &            pipj1, pipj2
 
-      real(dp), pointer :: auxcoef(:,:)
-      real(dp), pointer :: Psiden(:,:,:),
-     &                     eden(:),rotaux(:,:), Hauxden(:,:,:), 
-     &                     Sauxden(:,:,:)
+      real(dp), pointer :: auxcoef(:,:), rotaux(:,:)
+      real(dp), pointer :: Psiden(:,:,:) => null()
+      real(dp), pointer :: Hauxden(:,:,:) => null()
+      real(dp), pointer :: Sauxden(:,:,:) => null()
       real(dp) :: ckXij, skXij, pert
 
       call timer('delrhok',1)
@@ -164,7 +164,7 @@ C     Symmetrize H & S ---------------------------------------------
          Saux(2,iuo,iuo) = 0.0_dp
          Haux(2,iuo,iuo) = 0.0_dp
         enddo
-!$OMP end do
+!$OMP end do nowait
 
 !$OMP end parallel
 C       Diagonalize for each k-point --------------------------------
@@ -176,7 +176,7 @@ C       Diagonalize for each k-point --------------------------------
      &                                        k-diagonalisation')
         endif
 C       loop on spatial xyz -----------------------------------------
-        do 215 ix = 1,3
+        do ix = 1,3
 C        Find out the degenerated subespaces ------------------------
          nbands = no_u
          numb(1:no_u) = 0
@@ -196,15 +196,17 @@ C        Find out the degenerated subespaces ------------------------
             numb(io) = N + 1
             N = 0
             if(numb(io).gt.1) then !last degenerated state
-              nullify(Psiden,Eden,rotaux,Hauxden,Sauxden)
               call re_alloc(Psiden, 1, 2, 1, numb(io), 1, numb(io),
      &                       'Psiden', 'delrhok')
-              call re_alloc(eden,1, numb(io),'eden', 'delrhok')
-              call re_alloc(rotaux,1,2,1, numb(io),'rotaux', 'delrhok')
-              call re_alloc(Hauxden,1,2,1, numb(io),1, numb(io),
+              call re_alloc(Hauxden, 1, 2, 1, numb(io), 1, numb(io),
      &                       'Hauxden', 'delrhok')
               call re_alloc(Sauxden, 1, 2, 1, numb(io), 1, numb(io),
      &                       'Sauxden', 'delrhok')
+              ! Re-use memory for rotation.
+              rotaux => Sauxden(:,:,1)
+              
+              ! Initialize to 0, all of Hauxden gets set
+              Sauxden = 0._dp
 
               do j = io-numb(io)+1, io
                 jden = j - io + numb(io)
@@ -213,7 +215,16 @@ C        Find out the degenerated subespaces ------------------------
                   kden = k - io + numb(io)
                   if(jden .eq. kden) then
                     Sauxden(1,jden,kden) = 1.0_dp
-                    Sauxden(2,jden,kden) = 1.0_dp
+                    ! TODO I have commented this out. 
+                    ! Otherwise you solve the GEP
+                    !   H \psi = E (I + i I) \psi
+                    ! which is not the same as the eigenvalue problem:
+                    !   H \psi = E \psi
+                    ! Isn't the latter what you want? If so write
+                    ! it and delete the below line (i.e. by comparing to the Gamma
+                    ! delrhog it is only I, and they should be equivalent for non-Gamma with
+                    ! k-point == [0, 0, 0]
+                    !Sauxden(2,jden,kden) = 1.0_dp
                   endif
                   do mu=1,no_l
                     do nu = 1,numh(mu)
@@ -239,9 +250,11 @@ C        Find out the degenerated subespaces ------------------------
                   enddo
                 enddo
               enddo !j loop
+              ! Haux is a dummy argument, we don't need the eigenvalues
+              ! and here Haux is always big enough to hold them all!
               call cdiag( Hauxden, Sauxden, numb(io), 
      &             numb(io), numb(io),
-     .             eden, psiden,numb(io),1,ierror )
+     .             Haux, psiden,numb(io),1,ierror )
               if (ierror.ne.0) then
                call die('DELRHOK: Terminating due to failed
      &                                deg- diagonalisation')
@@ -250,37 +263,28 @@ C        Find out the degenerated subespaces ------------------------
 C             Rotate the coefficients inside the subspace ---------- 
               do mu = 1,no_l
                do ialpha = 1, numb(io)
-                do ibeta = 1, numb(io)
-                  rotaux(1,ialpha) = rotaux(1,ialpha) +
-     &                   psiden(1,ibeta,ialpha) *
-     &                   psi(1,mu,io-numb(io)+ibeta) -
-     &                   psiden(2,ibeta,ialpha) *
-     &                   psi(2,mu,io-numb(io)+ibeta)
+                 ! This is actually Sauxden(:,:,1)
+                 rotaux(:,ialpha) = 0._dp
+                 do ibeta = 1, numb(io)
+                  rotaux(1,ialpha) = rotaux(1,ialpha) + 
+     &                  psiden(1,ibeta,ialpha) *
+     &                  psi(1,mu,io-numb(io)+ibeta) -
+     &                  psiden(2,ibeta,ialpha) *
+     &                  psi(2,mu,io-numb(io)+ibeta)
                   rotaux(2,ialpha) = rotaux(2,ialpha) +
-     &                   psiden(1,ibeta,ialpha) *
-     &                   psi(2,mu,io-numb(io)+ibeta) +
-     &                   psiden(2,ibeta,ialpha) *
-     &                   psi(1,mu,io-numb(io)+ibeta)
-
-                enddo
-               enddo
+     &                 psiden(1,ibeta,ialpha) *
+     &                 psi(2,mu,io-numb(io)+ibeta) +
+     &                 psiden(2,ibeta,ialpha) *
+     &                 psi(1,mu,io-numb(io)+ibeta)
+                end do
+               end do
                do ialpha = 1, numb(io)
-                psi(1,mu,io-numb(io)+ialpha) = rotaux(1,ialpha)
-                psi(2,mu,io-numb(io)+ialpha) = rotaux(2,ialpha)
-                rotaux(1,ialpha) = 0.0_dp
-                rotaux(2,ialpha) = 0.0_dp
-               enddo
+                  psi(1,mu,io-numb(io)+ialpha) = rotaux(1,ialpha)
+                  psi(2,mu,io-numb(io)+ialpha) = rotaux(2,ialpha)
+               end do
               enddo !mu loop
-              do jo = 1, numb(io)
-               do k = 1, numb(io)
-                Hauxden(1:2,jo,k) = 0.D0
-                Sauxden(1:2,jo,k) = 0.D0
-               enddo
-              enddo
 
               call de_alloc( Psiden, 'Psiden', 'delrhok' )
-              call de_alloc( rotaux, 'rotaux', 'delrhok' )
-              call de_alloc( eden, 'eden', 'delrhok' )
               call de_alloc( Hauxden, 'Hauxden', 'delrhok' )
               call de_alloc( Sauxden, 'Sauxden', 'delrhok' )     
             endif !numb() last degenerated state
@@ -468,7 +472,7 @@ C Compute the change in density matrix elements -------------
          
 !$OMP end parallel
          
-215     enddo !spatial coordinates
+        enddo !spatial coordinates
        enddo !nspin loop
 
       enddo ! nk loop 
