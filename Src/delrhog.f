@@ -60,7 +60,7 @@ C     Internal Variables
      &            psiper(maxorb,maxorb), prod1, prod2, 
      &            prod3, prod4, ei0, ej0, dStepF, evper(maxorb)
       real(dp), pointer :: Haux(:,:), Saux(:,:), Psiden(:,:),
-     &                     rotaux(:), eden(:)
+     &                     rotaux(:)
       save :: maxden
 
       call timer('delrhog',1)
@@ -82,24 +82,14 @@ C     Internal Variables
          endif
         enddo
       endif      
-      ! initialize with size of deg subspace
-!      call re_alloc(Haux, 1,maxden, 1,maxden,'Haux', 'delrhog')
-!      call re_alloc(Saux, 1,maxden, 1,maxden,'Saux', 'delrhog')
-!      call re_alloc(Psiden, 1,maxden, 1,maxden,'Psiden', 'delrhog')
-!      call re_alloc(rotaux, 1,maxden,'rotaux', 'delrhog')
-!      call re_alloc(eden, 1,maxden,'eden', 'delrhog')
  
       def = 0.0_dp
       A = 0.0_dp
       B = 0.0_dp
-!      rotaux(1:maxden) = 0.0_dp
-!      Haux(1:maxden,1:maxden) = 0.0_dp
-!      Saux(1:maxden,1:maxden) = 0.0_dp
-!      numb(1:nbands) = 0
       dQo(1:nbands) = 0.0_dp
 
       N = 0
-      do 520 io = 1, nbands
+      do io = 1, nbands
         qo = occ (io)
         if(qo .ge. 1.0e-5_dp) then
           ei0 = eval(io) 
@@ -116,19 +106,25 @@ C     Internal Variables
             numb(io) = N + 1
             N = 0
             if((numb(io).gt.1) .and. (iscf.gt.1)) then
-      ! initialize with size of deg subspace
-      nullify(psiden,eden,rotaux,Haux,Saux)
-      call re_alloc(Haux, 1,numb(io), 1,numb(io),'Haux', 'delrhog')
-      call re_alloc(Saux, 1,numb(io), 1,numb(io),'Saux', 'delrhog')
-      call re_alloc(Psiden, 1,numb(io), 1,numb(io),'Psiden', 'delrhog')
-      call re_alloc(rotaux, 1,numb(io),'rotaux', 'delrhog')
-      call re_alloc(eden, 1,numb(io),'eden', 'delrhog')
-              do j = io-numb(io)+1, io
+               ! initialize with size of deg subspace
+               nullify(psiden,Haux,Saux)
+               call re_alloc(Haux, 1,numb(io), 1,numb(io),
+     &                       'Haux','delrhog')
+               call re_alloc(Saux, 1,numb(io), 1,numb(io),
+     &                       'Saux','delrhog')
+               call re_alloc(Psiden, 1,numb(io), 1,numb(io),
+     &                       'Psiden','delrhog')
+               rotaux => Saux(:,1)
+
+               ! Initialize to 0
+               Saux = 0._dp
+               
+               do j = io-numb(io)+1, io
                 jden = j - io + numb(io)
                 numb(j) = numb(io)
                 do k = io-numb(io)+1, io
                   kden = k - io + numb(io)
-                  if(jden .eq. kden) Saux(jden,kden) = 1.0_dp
+                  if ( jden == kden ) Saux(jden,kden) = 1.0_dp
                   do mu=1,nuo 
                     do nu = 1,numh(mu)
                       indmn=listhptr(mu) + nu
@@ -137,49 +133,42 @@ C     Internal Variables
                        Haux(jden,kden) = Haux(jden,kden)  
      .                     + psi(mu,j) * psi(jo,k) * 
      .                     (Hper(indmn)-eval(io)*Oper(indmn))
-                    ENDDO
-                  ENDDO
-                ENDDO
-              ENDDO
-        ! Compute eigenvalues of dH_nn' to give dE_in
-!              call rdiag( Haux, Saux, maxden, numb(io),maxden,
-!     .             eden, psiden,numb(io),iscf,ierror )
+                    enddo
+                  enddo
+                enddo
+              enddo
+             
+              ! Compute eigenvalues of dH_nn' to give dE_in
               call rdiag( Haux, Saux, numb(io), numb(io),numb(io),
-     .             eden, psiden,numb(io),iscf,ierror )
+     .             evper(io-numb(io)+1), psiden,numb(io),iscf,ierror)
+              if (ierror.ne.0) then
+                 call die('DELRHOG: Terminating due to failed
+     &                     deg- diagonalisation')
+              end if
 
-! Rotate eigenvectors in degenerate subspace
+              ! Rotate eigenvectors in degenerate subspace
               do mu = 1,nuo
                do ialpha = 1, numb(io)
+                rotaux(ialpha) = 0._dp
                 do ibeta = 1, numb(io)
                   rotaux(ialpha) = rotaux(ialpha) +
      &                   psiden(ibeta,ialpha) * 
      &                   psi(mu,io-numb(io)+ibeta)
                 enddo
                enddo
-               do ibeta = 1, numb(io)
-                  psi(mu,io-numb(io)+ibeta)=rotaux(ibeta)
-                  rotaux(ibeta) = 0.D0
+               do ialpha = 1, numb(io)
+                  psi(mu,io-numb(io)+ialpha)=rotaux(ialpha)
                enddo
               enddo
-              do jo = 1, numb(io)
-                evper(io-numb(io)+jo) = eden(jo)
-              enddo
                     
-!              do jo = 1, numb(io)
-!               do k = 1, numb(io)
-!                Haux(k,jo) = 0.D0
-!                Saux(k,jo) = 0.D0
-!               enddo
-!              enddo
              call de_alloc(psiden,'psiden','delrhog')
-             call de_alloc(rotaux,'rotaux','delrhog')
-             call de_alloc(eden,'eden','delrhog')
              call de_alloc(Haux,'Haux','delrhog')
              call de_alloc(Saux,'Saux','delrhog')
+             
             endif !numb(io)>1 
          endif !abs
         endif !qo.ge.
- 520  enddo
+      enddo
 
 C Initialize the perturbed coefficients
       do j = 1,maxorb
@@ -265,12 +254,6 @@ C Calculate matrix elements of the perturbed Density Matrix
  1400   enddo
  1200 enddo 
       
-      call de_alloc( Haux, 'Haux', 'delrhog' )
-      call de_alloc( Saux, 'Saux', 'delrhog' )
-      call de_alloc( Psiden, 'Psiden', 'delrhog' )
-      call de_alloc( rotaux, 'rotaux', 'delrhog' )
-      call de_alloc( eden, 'eden', 'delrhog' )
-
       call timer('delrhog',2)
       return
       contains

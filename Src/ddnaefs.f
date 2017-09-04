@@ -30,7 +30,7 @@ C real*8  rmaxv            : Maximum cutoff for NA potential
 C integer isa(na)          : Species index of each atom
 C **************************** OUTPUT *********************************
 C ********************** INPUT and OUTPUT *****************************
-C dynmat(nua,3,nua,3) 	   : Dynamical matrix
+C dynmat(3,nua,3,nua) 	   : Dynamical matrix
 C *********************************************************************
 C The following function must exits:
 C
@@ -54,7 +54,7 @@ C *********************************************************************
 
       real(dp)
      .  scell(3,3), rmaxv, xa(3,na), 
-     .  dynmat(nua,3,nua,3)
+     .  dynmat(3,nua,3,nua)
 
 
 C Internal variables ......................................................
@@ -98,33 +98,33 @@ C Find neighbour atoms
              do jx = 1,3
               gr2ij(ix,jx) = gr2ij(ix,jx) / (16.0_dp*pi)
               if (r2ij(jn).gt.r2min) then
-                dynmat(jua,jx,ia,ix) = dynmat(jua,jx,ia,ix)
+                dynmat(jx,jua,ix,ia) = dynmat(jx,jua,ix,ia)
      .          + d2vdr*xij(ix,jn)*xij(jx,jn) / (rij*rij) / 2.0_dp
      .          - dvdr*xij(ix,jn)*xij(jx,jn) / (rij**3) /2.0_dp
-                dynmat(ia,jx,jua,ix) = dynmat(ia,jx,jua,ix)
+                dynmat(jx,ia,ix,jua) = dynmat(jx,ia,ix,jua)
      .          + d2vdr*xij(ix,jn)*xij(jx,jn) / (rij*rij) / 2.0_dp
      .          - dvdr*xij(ix,jn)*xij(jx,jn) / (rij**3) /2.0_dp
-                dynmat(ia,jx,ia,ix) = dynmat(ia,jx,ia,ix)-
+                dynmat(jx,ia,ix,ia) = dynmat(jx,ia,ix,ia)-
      .            d2vdr*xij(ix,jn)*xij(jx,jn) / (rij*rij) / 2.0_dp
      .          + dvdr*xij(ix,jn)*xij(jx,jn) / (rij**3) /2.0_dp
-                dynmat(jua,jx,jua,ix) = dynmat(jua,jx,jua,ix)-
+                dynmat(jx,jua,ix,jua) = dynmat(jx,jua,ix,jua)-
      .            d2vdr*xij(ix,jn)*xij(jx,jn) / (rij*rij) / 2.0_dp
      .          + dvdr*xij(ix,jn)*xij(jx,jn) / (rij**3) /2.0_dp
                 if (ix.eq.jx) then
-                  dynmat(jua,jx,ia,ix) = dynmat(jua,jx,ia,ix) +
+                  dynmat(jx,jua,ix,ia) = dynmat(jx,jua,ix,ia) +
      .               dvdr / rij /2.0_dp
-                  dynmat(ia,jx,jua,ix) = dynmat(ia,jx,jua,ix) +
+                  dynmat(jx,ia,ix,jua) = dynmat(jx,ia,ix,jua) +
      .               dvdr / rij /2.0_dp
-                  dynmat(ia,jx,ia,ix) = dynmat(ia,jx,ia,ix) -
+                  dynmat(jx,ia,ix,ia) = dynmat(jx,ia,ix,ia) -
      .               dvdr / rij /2.0_dp
-                  dynmat(jua,jx,jua,ix) = dynmat(jua,jx,jua,ix) -
+                  dynmat(jx,jua,ix,jua) = dynmat(jx,jua,ix,jua) -
      .               dvdr / rij /2.0_dp
                 endif
               endif
-              dynmat(jua,jx,ia,ix)=dynmat(jua,jx,ia,ix)+gr2ij(ix,jx)
-              dynmat(ia,jx,jua,ix)=dynmat(ia,jx,jua,ix)+gr2ij(ix,jx)
-              dynmat(ia,jx,ia,ix)=dynmat(ia,jx,ia,ix)-gr2ij(ix,jx)
-              dynmat(jua,jx,jua,ix)=dynmat(jua,jx,jua,ix)-gr2ij(ix,jx)
+              dynmat(jx,jua,ix,ia)=dynmat(jx,jua,ix,ia)+gr2ij(ix,jx)
+              dynmat(jx,ia,ix,jua)=dynmat(jx,ia,ix,jua)+gr2ij(ix,jx)
+              dynmat(jx,ia,ix,ia)=dynmat(jx,ia,ix,ia)-gr2ij(ix,jx)
+              dynmat(jx,jua,ix,jua)=dynmat(jx,jua,ix,jua)-gr2ij(ix,jx)
              enddo
             enddo
           endif

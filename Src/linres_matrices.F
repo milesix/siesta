@@ -20,8 +20,10 @@ C NOTE: the first time that dRhoatm and dRhoscf0 and drhopcc are used, they stor
 C instead of the radial derivative.
 
        use precision, only: grid_p
-       real(grid_p), pointer :: dRhoatm(:,:),
-     &                 dRhoscf0(:,:,:), drhopcc(:,:)
+       real(grid_p), pointer :: dRhoatm(:,:) => null()
+       real(grid_p), pointer :: dRhoscf0(:,:,:) => null()
+       real(grid_p), pointer :: dRhopcc(:,:) => null()
+
        CONTAINS
 
        subroutine resetFirstmatrices()

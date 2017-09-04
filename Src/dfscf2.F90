@@ -49,7 +49,7 @@
   use meshphi,       only: directphi, endpht, lstpht, listp2, phi
   use meshphi,       only: gradphi
   use parallel,      only: Nodes, node
-  use alloc,         only: re_alloc, de_alloc
+  use alloc,         only: re_alloc, de_alloc, allocDefaults, alloc_default
   use parallelsubs,  only: GlobalToLocalOrb
 #ifdef MPI
   use mpi_siesta
@@ -76,20 +76,22 @@
                                  maxoa  = 100   ! Max # of orb/atom
   integer                     :: i, ia, ic, ii, ijl, il, imp, ind, iop,&
                                  ip, iphi, io, is, isp, ispin, iu, iul,&
-                                 ix, j, jc, jl, last, lasta, lastop,jb,&
-                                 maxloc, maxloc2, nc, nlocal, nphiloc,&
+                                 ix, j, jc, last, lasta, lastop,&
+                                 maxloc, maxloc2, nc, nphiloc,&
                                  maxndl, triang, lenx, leny, lenz,&
-                                 lenxy,last2,index(no),in,ind2, jil
+                                 lenxy,last2,jil
   integer                     :: h_spin_dim
   logical                     :: ParallelLocal
-  real(dp)                    :: r2sp, dxsp(3), Dji, Dij
+  real(dp)                    :: r2sp, dxsp(3)
 
   integer,           pointer  :: ilc(:), ilocal(:), iorb(:)   
   real(dp),          pointer  :: DscfL(:,:), Clocal(:,:),dClocal(:,:,:),&  
                                  phia(:,:),r2cut(:), grphia(:,:,:)  
-  integer                     :: ili, ja, ib, ibuff(no),maxb  
+  integer                     :: ib, ibuff(no) 
   integer,           pointer  :: iob(:), ibc(:)
   real(dp),          pointer  :: D(:,:) 
+
+  type(allocDefaults) :: oldDefaults
 #ifdef _TRACE_
   integer :: MPIerror
 #endif
@@ -104,6 +106,10 @@
 !     Start time counter
   call timer('dfscf2',1)
 
+  call alloc_default( old=oldDefaults, &
+       copy=.false., shrink=.false., &
+       imin=1, routine='dfscf2' )
+
 !     Get spin-size
   h_spin_dim = size(Dscf, 2)
 
@@ -116,7 +122,7 @@
         maxndl = 1
      end if
      nullify(DscfL)
-     call re_alloc( DscfL, 1, maxndl, 1, h_spin_dim, 'DscfL', 'dfscf2' )
+     call re_alloc( DscfL, 1, maxndl, 1, h_spin_dim, 'DscfL')
 !     Redistribute Dscf to DscfL form
      call matrixOtoM( maxnd, numd, listdptr, maxndl, nuo, &
           h_spin_dim, Dscf, DscfL )
@@ -124,7 +130,7 @@
 
 !     Find atomic cutoff radii
   nullify(r2cut)
-  call re_alloc( r2cut, 1, nsmax, 'r2cut', 'dfscf2' )
+  call re_alloc( r2cut, 1, nsmax, 'r2cut')
   r2cut = 0.0_dp
   do i = 1,nuotot
     ia = iaorb(i)
@@ -145,49 +151,44 @@
   lenxy = lenx*leny
 
 !$OMP parallel default(shared), &
-!$OMP&shared( Drhoatm, Drhoscf0,nspin), &
-!$OMP&private(ip,nc,ic,imp,i,il,last2,j,ilocal,iorb,iu,iul,ii,ind,ijl), &
-!$OMP&private(D,lasta,lastop,ia,is,iop,ilc,ib,ibc,isp,ix,dxsp,r2sp), &
-!$OMP&private(phia,grphia,iphi,Clocal,dClocal,jil,ispin)
+!$OMP&private(ip,nc,ic,imp,i,il,last2,j,iu,iul,ii,ind,ijl,jil), &
+!$OMP&private(lasta,lastop,ia,is,iop,ib,isp,ix,dxsp,r2sp,iphi,ispin), &
+!$OMP&private(ilocal,ilc,iorb,dClocal,Clocal,D,iob,ibc,phia,grphia)
 
-!     Allocate local memory
-  nullify ( ilocal, ilc, iorb, &
-               dClocal, phia, grphia,Clocal,D,iob,ibc )
+! Allocate local memory
+  nullify ( ilocal, ilc, iorb, dClocal, Clocal, D, iob, ibc )
+  nullify ( phia, grphia )
+
 !$OMP critical
-  call re_alloc( ilocal, 1, no, 'ilocal', 'dfscf2' )
-  call re_alloc( ilc, 1, maxloc2, 'ilc', 'dfscf2' )
-  call re_alloc( iorb, 1, maxloc, 'iorb', 'dfscf2' )
-
-  call re_alloc( dClocal, 1,3, 1, nsp, 1, maxloc2,&
-                    'dClocal', 'dfscf2' )
-  call re_alloc( Clocal, 1, nsp, 1, maxloc2,&
-                    'Clocal', 'dfscf2' )
-  call re_alloc( D, 0, triang, 1, nspin, 'D', 'dfscf2' )
-  call re_alloc( iob, 0, maxloc, 'iob', 'dfscf2' )
-  call re_alloc( ibc, 1, maxloc2, 'ibc', 'dfscf2' )
-  if (DirectPhi) then
-    call re_alloc( phia, 1, maxoa, 1, nsp,&
-                   'phia', 'dfscf2' )
-    call re_alloc( grphia, 1, 3, 1, maxoa, 1, nsp,&
-                   'phia', 'dfscf2' )
-  endif
+  call re_alloc(Clocal, 1, nsp, 1, maxloc2, 'Clocal')
+  call re_alloc(dClocal, 1, 3, 1, nsp, 1, maxloc2, 'dClocal')
+  call re_alloc(ilocal, 1, no, 'ilocal')
+  call re_alloc(ilc, 1, maxloc2, 'ilc')
+  call re_alloc(iorb, 1, maxloc, 'iorb')
+  call re_alloc(iob, 0, maxloc, 'iob')
+  call re_alloc(ibc, 1, maxloc2, 'ibc')
+  call re_alloc(D, 0, triang, 1, nspin, 'D')
+  if ( DirectPhi ) then
+     call re_alloc(phia, 1, maxoa, 1, nsp, 'phia')
+     call re_alloc(grphia, 1, 3, 1, maxoa, 1, nsp, 'grphia')
+  end if
 !$OMP end critical
 
-!     Full initializations done only once
-  ilocal(1:no)             = 0
-  iorb(1:maxloc)           = 0
-  last                     = 0
-  last2                    = 0
+! Full initializations done only once
+  ilocal(1:no) = 0
+  iorb(1:maxloc) = 0
+  last = 0
+  last2 = 0
   D(:,:) = 0.0_dp
   ibuff(:) = 0
   iob(:) = 0
 
-!$OMP do
+!$OMP do schedule(static,1)
   do ip = 1,np
 
 ! Initializations
-   Drhoatm(:,:,ip)=0.0_grid_p
-   Drhoscf0(:,:,ip,:)=0.0_grid_p
+   Drhoatm(:,:,ip) = 0.0_grid_p
+   Drhoscf0(:,:,ip,:) = 0.0_grid_p
 
 ! Find number of nonzero orbitals at this point
     nc = endpht(ip) - endpht(ip-1)
@@ -286,8 +287,10 @@
             enddo
             r2sp = sum(dxsp**2)
             if (r2sp.lt.r2cut(is)) then
-              call all_phi( is, +1, dxsp, nphiloc, phia(:,isp),&
+!$OMP critical
+               call all_phi( is, +1, dxsp, nphiloc, phia(:,isp),&
                            grphia(:,:,isp))
+!$OMP end critical
             else
               phia(:,isp) = 0.0_dp
               grphia(1:3,:,isp) = 0.0_dp
@@ -298,8 +301,8 @@
         Clocal(1:nsp,ic) = phia(iphi,1:nsp)
         if (iter == 1) then
           dClocal(1:3,1:nsp,ic) = grphia(1:3,iphi,1:nsp)
-        elseif (iter /= 1) then
-          dClocal(1:3,1:nsp,ic) = (-1.0_dp)*grphia(1:3,iphi,1:nsp)
+        else
+          dClocal(1:3,1:nsp,ic) = - grphia(1:3,iphi,1:nsp)
         endif
 
 ! Calculate atomic density =  2* sum_mu Datm*phi_mu * grad phi_mu
@@ -348,9 +351,9 @@
         Clocal(1:nsp,ic) = phi(1:nsp,imp)
         if (iter == 1) then
           dClocal(1:3,1:nsp,ic) = gradphi(1:3,1:nsp,imp) ! for gradients
-        elseif (iter /= 1) then ! for orbital derivatives
+        else ! for orbital derivatives
           if (indxua(ia) == ialr) then !orb. belongs to perturbed atom
-            dClocal(1:3,1:nsp,ic) = (-1.0_dp)*gradphi(1:3,1:nsp,imp)
+            dClocal(1:3,1:nsp,ic) = - gradphi(1:3,1:nsp,imp)
           else
             dClocal(1:3,1:nsp,ic) = 0.0_dp
           endif
@@ -402,30 +405,26 @@
   enddo !mesh
 !$OMP end do
 
-! Free local memory
-
 !$OMP critical
-  call de_alloc( phia, 'phia', 'dfscf2' )
-  call de_alloc( Clocal, 'Clocal', 'dfscf2' )
-  call de_alloc( iorb, 'iorb', 'dfscf2' )
-  call de_alloc( ilc, 'ilc', 'dfscf2' )
-  call de_alloc( ilocal, 'ilocal', 'dfscf2' )
-  call de_alloc( grphia, 'phia', 'dfscf2' )
-  call de_alloc( dClocal, 'dClocal', 'dfscf2' )
-  call de_alloc( D, 'D', 'dfscf2')
-  call de_alloc( iob, 'iob', 'dfscf2' )
-  call de_alloc( ibc, 'ibc', 'dfscf2' )
-  if (DirectPhi) then
-    call de_alloc( phia, 'phia', 'dfscf2' )
-    call de_alloc( grphia, 'phia', 'dfscf2' )
-  endif 
+  call de_alloc(Clocal, 'Clocal')
+  call de_alloc(dClocal, 'dClocal')
+  call de_alloc(ilocal, 'ilocal')
+  call de_alloc(ilc, 'ilc')
+  call de_alloc(iorb, 'iorb')
+  call de_alloc(iob, 'iob')
+  call de_alloc(ibc, 'ibc')
+  call de_alloc(D, 'D')
+  if ( DirectPhi ) then
+     call de_alloc(phia, 'phia')
+     call de_alloc(grphia, 'grphia')
+  end if
 !$OMP end critical
 
 !$OMP end parallel
-  call de_alloc( r2cut, 'r2cut', 'dfscf2' )
+  call de_alloc( r2cut, 'r2cut')
 
   if (ParallelLocal) then
-     call de_alloc( DscfL, 'DscfL', 'dfscf2' )
+     call de_alloc( DscfL, 'DscfL')
   end if
 
 #ifdef _TRACE_
@@ -433,6 +432,9 @@
   call MPItrace_event( 1000, 0 )
 #endif
 
+  ! Restore old allocation defaults
+  call alloc_default( restore=oldDefaults )
+        
   call timer('dfscf2',2)
 
 #ifdef DEBUG
