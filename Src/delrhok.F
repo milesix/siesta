@@ -137,9 +137,9 @@ C         calculates the phases k*r_ij -------------------------------
 C         Calculates the hamiltonian and the overlap in k space ------
 C         H(k) = Sum(R) exp(i*k*R) * H(R) ----------------------------
           Saux(1,juo,iuo) = Saux(1,juo,iuo) + S(ind)*ckxij
-          Saux(2,juo,iuo) = Saux(2,juo,iuo) - S(ind)*skxij!-
+          Saux(2,juo,iuo) = Saux(2,juo,iuo) - S(ind)*skxij
           Haux(1,juo,iuo) = Haux(1,juo,iuo) + H(ind,ispin)*ckxij
-          Haux(2,juo,iuo) = Haux(2,juo,iuo) - H(ind,ispin)*skxij!-
+          Haux(2,juo,iuo) = Haux(2,juo,iuo) - H(ind,ispin)*skxij
          enddo
         enddo
 !$OMP end do
@@ -205,27 +205,17 @@ C        Find out the degenerated subespaces ------------------------
               ! Re-use memory for rotation.
               rotaux => Sauxden(:,:,1)
               
-              ! Initialize to 0, all of Hauxden gets set
+              ! Initialize to 0
               Sauxden = 0._dp
 
+              ! TODO transpose this construction, i.e. 
+              ! the access is sub-optimal
               do j = io-numb(io)+1, io
                 jden = j - io + numb(io)
                 numb(j) = numb(io)
                 do k = io-numb(io)+1, io
                   kden = k - io + numb(io)
-                  if(jden .eq. kden) then
-                    Sauxden(1,jden,kden) = 1.0_dp
-                    ! TODO I have commented this out. 
-                    ! Otherwise you solve the GEP
-                    !   H \psi = E (I + i I) \psi
-                    ! which is not the same as the eigenvalue problem:
-                    !   H \psi = E \psi
-                    ! Isn't the latter what you want? If so write
-                    ! it and delete the below line (i.e. by comparing to the Gamma
-                    ! delrhog it is only I, and they should be equivalent for non-Gamma with
-                    ! k-point == [0, 0, 0]
-                    !Sauxden(2,jden,kden) = 1.0_dp
-                  endif
+                  if ( jden == kden ) Sauxden(1,jden,kden) = 1.0_dp
                   do mu=1,no_l
                     do nu = 1,numh(mu)
                       indmn=listhptr(mu) + nu
@@ -240,7 +230,7 @@ C        Find out the degenerated subespaces ------------------------
      &                        psi(2,mu,j) * psi(2,juo,k)
                       pipj2 = psi(1,mu,j) * psi(2,juo,k) -
      &                        psi(2,mu,j) * psi(1,juo,k)
-                      pert = Hper(indmn,ix,ispin) - !looks ok 
+                      pert = Hper(indmn,ix,ispin) -
      &                       eio * Oper(indmn,ix)
                       Hauxden(1,jden,kden) = Hauxden(1,jden,kden) +
      &                        (pipj1 * ckXij - pipj2 * skXij) * pert
@@ -250,6 +240,7 @@ C        Find out the degenerated subespaces ------------------------
                   enddo
                 enddo
               enddo !j loop
+
               ! Haux is a dummy argument, we don't need the eigenvalues
               ! and here Haux is always big enough to hold them all!
               call cdiag( Hauxden, Sauxden, numb(io), 
@@ -338,7 +329,6 @@ C        Compute the change in the coefficients ---------------------
             prod1(1) = prod1(1) + Hper(indmn,ix,ispin) *
      &                (psi(1,ibeta,io) * ckXij - 
      &                 psi(2,ibeta,io) * skXij)
-            !both psis look good
             prod1(2) = prod1(2) + Hper(indmn,ix,ispin) *
      &                (psi(1,ibeta,io) * skXij + 
      &                 psi(2,ibeta,io) * ckXij)
