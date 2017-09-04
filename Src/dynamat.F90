@@ -217,7 +217,7 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
   VnaListed = .false.
 
 !     loop over grid points -----------------------------------------
-!$OMP do
+!$OMP do schedule(static,1)
   do ip = 1,np
      !  Find number of nonzero orbitals at this point
      nc = endpht(ip) - endpht(ip-1)

@@ -183,7 +183,7 @@
   ibuff(:) = 0
   iob(:) = 0
 
-!$OMP do
+!$OMP do schedule(static,1)
   do ip = 1,np
 
 ! Initializations
