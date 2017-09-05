@@ -1,6 +1,5 @@
         subroutine dhinit(ialr, na, maxnh, maxnd, nspin,lasto, 
-     &             listh, listhptr, numh, dS, dSmat, dHmat, dT,
-     &             dDscf,dEscf)
+     &             listh, listhptr, numh, dS, dSmat, dHmat, dT)
 
 C *************************   LINEAR RESPONSE   ************************
 C Initializes first order changed overlap matrix elements and
@@ -29,8 +28,6 @@ C REAL*8 DT		      : change in the kinetic elements
 ****************************OUTPUT**********************************
 C REAL*8 DSMAT		      : overlap changed matrix elements for moving IALR
 C REAL*8 DHMAT		      : perturbed hamiltonian 
-C REAL*8 DDSCF		      : perturbed density matrix elements
-C REAL*8 DESCF		      : perturbed energy density matrix
 *******************************************************************
 
 C Modules-----------------------------------------------------------------
@@ -57,8 +54,7 @@ C Internal variable types and dimensions
 
         integer      :: maxnh, maxnd, nspin, i, ia, iua, iu, ju
         real(dp)     :: DS(maxnh,3), DSMAT(maxnh,3), 
-     &                  DHMAT(maxnh,3, nspin), DT(maxnh,3), 
-     &                  dDscf(maxnd,nspin,3), dEscf(maxnd,nspin,3)
+     &                  DHMAT(maxnh,3, nspin), DT(maxnh,3) 
         real(dp)     :: displaat(3), dist(3), qxij, qpoint(3), cqxij, pi
         
       call timer( 'dHinit', 1 )  
@@ -69,14 +65,7 @@ C Read change in the density matrix from file -----------------------
       qpoint=(/0.0,0.0,0.0/)
       pi = 4*atan(1.0_dp)
 
-
-C Initialize changed overlap, DM and energy matrices ----------------
       dSmat = 0.0_dp
-      found=.false.
-      if(.not.found) then
-        dDscf(1:maxnd,1:nspin,1:3) = 0.0_dp
-        dEscf(1:maxnd,1:nspin,1:3) = 0.0_dp
-      endif
 C Loop on orbitals of atom IALR ----------------------------------------
 
       do io = lasto(IALR-1)+1, lasto(IALR) !orbitals from moving atom
@@ -126,28 +115,6 @@ C         Idetify neighbour index of orbital io relative to orbital jo -
           enddo
         endif
       enddo
-
-
-!      do ix = 1,3
-!          do i = 1,no_l
-!           do j = 1, numh(i)
-!            iu = indxuo(i)
-!            ind2 = listhptr(iu)+ j
-!            ju = listh(ind2)
-!            ind=listhptr(i) + j
-!            print*, i,';',j,';',ix,';',dSMAT(ind,ix)
-!           enddo
-!          enddo
-!      enddo
-
-!	print*,'dhinit: stop'
-!	stop
-
-
-
-
-
-
 
       call timer( 'dHinit', 2 )
 

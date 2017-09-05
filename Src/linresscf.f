@@ -156,6 +156,8 @@ C Initialize dDscf, dEscf
      &                 'dEscf', 'linresscf')
 
 C Read stored DM in file .LRDMIALR from previous non-converged calculation
+        dDscf(1:maxnh,1:nspin,1:3) = 0.0_dp
+        dEscf(1:maxnh,1:nspin,1:3) = 0.0_dp
         if (readold) then
           if (IOnode) then
             write(6,'(a)')
@@ -214,8 +216,7 @@ C       scf loop -----------------------------------------------
           if (iscf.eq.1) then
 C Calculation of the kinetic terms of the perturbed hamiltonian (added into dHmat)
             call dhinit(IALR, na_s, maxnh, maxnh, nspin, lasto,
-     &       listh, listhptr, numh, DS, dSmat, dHmat,dH, dDscf,
-     &       dEscf)
+     &       listh, listhptr, numh, DS, dSmat, dHmat,dH)
 
 C Calculation of the KB terms of the perturbed hamiltonian
 C (added into dHmat)
