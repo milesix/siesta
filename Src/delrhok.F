@@ -2,9 +2,8 @@
      &                   indxuo, nk, kpoint, wk, eo,  
      &                   xij, Qo, H, S, Hper, Oper, maxnh, numh, 
      &                   listh, listhptr, ef, T,
-     &                   Haux, Saux,
      &                   Rhoper, Erhoper, 
-     &                   psi)
+     &                   Haux, Saux, psi)
 C **********************************************************************
 C FINDS THE CHANGE IN DENSITY MATRIX ELEMENTS DUE TO DISPLACEMENTS OF
 C THE ATOMS
