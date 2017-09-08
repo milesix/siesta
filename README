@@ -1,13 +1,9 @@
-SIESTA 
-(see version.info for the up-to-date version string)
+SIESTA
+MaX-R2 release, August 2017
+(For up-to-date versions, please visit http://launchpad.net/siesta)
 
-www.uam.es/siesta
-
-In the Docs/ directory: 
-
-* Release Notes
-* Detailed list of Changes to the code.
-* LaTeX source for the manual (in siesta.tex)
+The LaTeX source for the manual (in siesta.tex) can be found in the
+Docs/ directory.
 
 The code itself can be found under Src/
 Examples and other tutorial material in Tests/, Tutorials/, and Examples/

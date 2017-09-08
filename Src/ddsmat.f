@@ -20,7 +20,7 @@ C Arguments ---------------------------------------------------------
      &           lasto(0:na), listh(maxnh),listhptr(*),
      &           numh(*), jalr, indxuo(no)
 
-      real(dp) :: dynmat(nua,3,nua,3), dDscf(maxnh,nspin,3),
+      real(dp) :: dynmat(3,nua,3,nua), dDscf(maxnh,nspin,3),
      &            dEscf(maxnh,nspin,3), dT(maxnh,3), d2T(maxnh,3,3),
      &            dS(maxnh,3), d2S(maxnh,3,3), Escf(maxnh,nspin),
      &            Dscf(maxnh,nspin) 
@@ -67,7 +67,7 @@ C        Form changed overlap matrix element --------------------
           do jx = 1,3
            if(IALR.eq.JALR) then
              !terms 7.1 and 7.2
-             dynmat(IALR,jx,JALR,ix) = dynmat(IALR,jx,JALR,ix)
+             dynmat(jx,IALR,ix,JALR) = dynmat(jx,IALR,ix,JALR)
      &                            + escf(ind2,ispin)*d2S(ind2,ix,jx)
      &                            + escf(ind,ispin)*d2S(ind2,ix,jx)
      &                            - dscf(ind2,ispin)*d2t(ind2,ix,jx)
@@ -75,14 +75,14 @@ C        Form changed overlap matrix element --------------------
            endif
            if(jua.eq.JALR) then
              ! terms 7.1 and 7.2 
-             dynmat(IALR,jx,JALR,ix) = dynmat(IALR,jx,JALR,ix)
+             dynmat(jx,IALR,ix,JALR) = dynmat(jx,IALR,ix,JALR)
      &                             - escf(ind2,ispin)*d2S(ind2,ix,jx)
      &                             - escf(ind,ispin)*d2S(ind2,ix,jx)
      &                             + dscf(ind2,ispin)*d2t(ind2,ix,jx)
      &                             + dscf(ind,ispin)*d2t(ind2,ix,jx)
            endif
              ! terms 1.2 and 2
-             dynmat(IALR,jx,JALR,ix) = dynmat(IALR,jx,JALR,ix)
+             dynmat(jx,IALR,ix,JALR) = dynmat(jx,IALR,ix,JALR)
      &                             + descf(ind2,ispin,ix)*ds(ind2,jx)
      &                             + descf(ind,ispin,ix)*ds(ind2,jx)
      &                             - ddscf(ind,ispin,ix)*dt(ind2,jx)

@@ -12,7 +12,7 @@ NumberOfAtoms       2
 
 %block ChemicalSpeciesLabel
  1  5  B 10.811
- 2  7  N 14.0067
+ 2  7  N_2 14.0067
 %endblock ChemicalSpeciesLabel
 
 PAO.BasisSize       SZ
@@ -27,6 +27,8 @@ DM.Tolerance         1.d-5
 SolutionMethod       diagon 
 DM.UseSaveDM  	     .true.	   
 
+Vibra.FC BNlin.FC
+	
 SuperCell_1          1
 SuperCell_2          1
 SuperCell_3          0

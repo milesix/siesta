@@ -763,7 +763,7 @@ C Linres optional variables-------------------------------------------------
 
       real(dp), intent(in), optional :: dDscf(maxnh,nspin,3)
 
-      real(dp), intent(inout),optional :: dynmat(nua,3,nua,3),
+      real(dp), intent(inout),optional :: dynmat(3,nua,3,nua),
      &                                    dHmat0(maxnh,3,nspin),
      &                                    dHmat(maxnh,3,nspin)
 
@@ -842,7 +842,7 @@ C     Local variables
       integer, save :: JDGdistr=-1
       real(dp) :: stressXC(3,3)
 #endif /* ! BSC_CELLXC */
-      real(dp) :: b1Xb2(3), const, DEc, DEx, DStres(3,3), dRhotot,
+      real(dp) :: b1Xb2(3), const, DEc, DEx, DStres(3,3), 
      &            Ec, Ex, rhotot, x0(3), volume, Vmax_vac, Vmean_vac
 #ifdef BSC_CELLXC
 !     Dummy arrays for cellxc call
@@ -889,7 +889,7 @@ C    Linres internal variables
      &                         VLR(:,:),VLR_par(:,:),  
      &                         dVXCpot(:,:),
      &                         dRhoscf0_par(:,:,:), dRhoatm_par(:,:)  
-      integer :: iaend, iainit,ispin1,ispin2,atder
+      integer :: iaend, iainit,atder
 C
 
 
@@ -1998,6 +1998,10 @@ C Compute gradient/derivative of the partial core correction density
      &                         ntml, ntpl )
           endif
 
+          ! TODO, these loops will create temporary copies 
+          ! due to the strided pointer. I.e. we might
+          ! as well do a copy.
+
           do ispin = 1, nspin
             do jx =1,3
               fsrc =>dRhoscf0_par(jx,:,ispin)
@@ -2023,20 +2027,20 @@ C Compute the perturbed Neutral Atom potential and added into dvnoscf----
         nullify(dummy_Vna)
         call re_alloc( dummy_Vna, 1, ntpl, 'dummy_Vna', 'dhscf' )
         call reord( DRho, DRho, nml, nsm, TO_CLUSTER )
-        do jx=1,3
+        do jx = 1 , 3
            call reord( dvnoscf(:,jx), dvnoscf(:,jx), nml,
-     &                 nsm, TO_CLUSTER ) 
-        enddo
+     &          nsm, TO_CLUSTER ) 
+        end do
         call NeutralAtomOnMesh( na, isa, ntpl, dummy_Vna, indxua,
      &                          dVol, volume, DRho, Fal, stressl,
      &                          ifa.ne.0, istr.ne.0, dvnoscf, atder,
      &                          ialr, nua )
         call reord( DRho, DRho, nml, nsm, TO_SEQUENTIAL )
         call de_alloc( dummy_Vna, 'dummy_Vna','dhscf' )
-        do jx=1,3
+        do jx = 1 , 3
            call reord( dvnoscf(:,jx), dvnoscf(:,jx), nml,
-     &                     nsm, TO_SEQUENTIAL)
-        enddo
+     &          nsm, TO_SEQUENTIAL)
+        end do
 C Neutral atom potential is stored into dvnoscf
 C--------------------------------------------------------------------------
 
@@ -2044,26 +2048,33 @@ C-----------------------------------------------------------------------------
 C Compute the perturbed Vhartree and Vxc terms
 C Derivative Space loop for perturbed Hamiltonian
 C-----------------------------------------------------------------------------
+
+!$OMP parallel default(shared), private(ip,ispin)
+
 ! For the perturbed Vxc we need total density dRho
-        do ispin = 1,nsd
-          if (npcc .eq. 1) then
-!$OMP do
-            do ip = 1,ntpl
-              DRho(ip,ispin) = DRho(ip,ispin) + 
-     &             (rhoatm(ip)+rhopcc(ip)) * rnsd
-            enddo
+        if ( npcc == 1 ) then
+!$OMP do collapse(2)
+           do ispin = 1, nsd
+              do ip = 1, ntpl
+                 DRho(ip,ispin) = DRho(ip,ispin) + 
+     &                (rhoatm(ip)+rhopcc(ip)) * rnsd
+              end do
+           end do
 !$OMP end do
-          else
-!$OMP do
-            do ip = 1,ntpl
-              DRho(ip,ispin) = DRho(ip,ispin) + rhoatm(ip) * rnsd
-            enddo
+        else
+!$OMP do collapse(2)
+           do ispin = 1, nsd
+              do ip = 1, ntpl
+                 DRho(ip,ispin) = DRho(ip,ispin) + rhoatm(ip) * rnsd
+              end do
+           end do
 !$OMP end do
-          endif
-        enddo
+        end if
+
 !$OMP end parallel
 
-        do jx= 1, 3 !space loop
+        ! Loop on each Cartesian coordinate
+        do jx = 1, 3
 
 C Initialization of VL matrix. It will store perturbed potential
 C Initialization of the perturbed density dRhoscf
@@ -2112,75 +2123,87 @@ C-----------------------------------------------------------------------------
 C-----------------------------------------------------------------------------
 C Hartree potential drho-drhoatm
 C-----------------------------------------------------------------------------
+
+!$OMP parallel default(shared), private(ip,ispin,Rhotot)
+
 C         Find the difference between selfconsistent and 
 C         atomic densities
-          do ispin =1,nsd
-!$OMP parallel do default(shared), private(ip)
+!$OMP do collapse(2)
+          do ispin = 1 , nsd
             do ip = 1, ntpl
               dRhoscf(ip,ispin) = dRhoscf(ip,ispin) -
-     &                       dRhoatm(jx,ip)/nsd
-            enddo
-!$OMP end parallel do
-          enddo
+     &                       dRhoatm(jx,ip) * rnsd
+            end do
+          end do
+!$OMP end do ! implicit barrier KEEP
+
 C         Transform spin density into sum and difference ---
-          if (nsd .eq. 2) then
-!$OMP parallel do default(shared), private(dRhotot,ip)
-            do ip = 1,ntpl
-              dRhotot = dRhoscf(ip,1) + dRhoscf(ip,2)
-              dRhoscf(ip,2) = dRhoscf(ip,2) - dRhoscf(ip,1)
-              dRhoscf(ip,1) = dRhotot
-            enddo
-!$OMP end parallel do
-          endif
+          if ( nsd == 2 ) then
+!$OMP do
+             do ip = 1 , ntpl
+                Rhotot = dRhoscf(ip,1) + dRhoscf(ip,2)
+                dRhoscf(ip,2) = dRhoscf(ip,2) - dRhoscf(ip,1)
+                dRhoscf(ip,1) = Rhotot
+             end do
+!$OMP end do
+          end if
+
+!$OMP end parallel
+          
 C Hartree potential of DRHO - DRHOATM stored into VLR
           call poison( cell, ntml(1), ntml(2), ntml(3), ntm,
      &           dRhoscf, DUscf, VLR, DStres, nsm )
 C Hartree potential stored in VLR
 C--------------------------------------------------------------------
 
+!$OMP parallel default(shared), private(ip,ispin,Rhotot)
+
 C Adding Vna+VH
-!$OMP parallel do default(shared), private(ip)
+!$OMP do
           do ip = 1, ntpl
-            VLR(ip,1) = VLR(ip,1) + dvnoscf(ip,jx)
-            dvnoscf(ip,jx) = VLR(ip,1)
-          enddo
-!$OMP end parallel do
+             VLR(ip,1) = VLR(ip,1) + dvnoscf(ip,jx)
+             dvnoscf(ip,jx) = VLR(ip,1)
+          end do
+!$OMP end do
 
 C Now, dvnoscf=VLR=Vna+VH. dvnoscf will be constant whereas in  
 C VLR, the Vxc term will be added 
 C     Get back spin density from sum and difference
-          if (nsd .eq. 2) then
-!$OMP parallel do default(shared), private(ip,dRhotot)
-            do ip = 1,ntpl
-              dRhotot = dRhoscf(ip,1)
-              dRhoscf(ip,1) = 0.5_dp *( dRhotot - dRhoscf(ip,2) )
-              dRhoscf(ip,2) = 0.5_dp *( dRhotot + dRhoscf(ip,2) )
-              VLR(ip,2) = VLR(ip,1)
-            enddo
-!$OMP end parallel do
-          endif
+          if ( nsd == 2 ) then
+!$OMP do
+             do ip = 1, ntpl
+                Rhotot = dRhoscf(ip,1)
+                dRhoscf(ip,1) = 0.5_dp *( Rhotot - dRhoscf(ip,2) )
+                dRhoscf(ip,2) = 0.5_dp *( Rhotot + dRhoscf(ip,2) )
+                VLR(ip,2) = VLR(ip,1)
+             end do
+!$OMP end do
+          end if
 
 C------------------------------------------------------------------------
 C Adding final XC potential + add drhopcc to density
 C------------------------------------------------------------------------
-          do ispin = 1,nsd
-            if (npcc .eq. 1) then 
-!$OMP parallel do default(shared), private(ip)
-               do ip = 1,ntpl
-                  dRhoscf(ip,ispin) = dRhoscf(ip,ispin) +
-     &                       (drhopcc(ip,jx) + dRhoatm(jx,ip)) *rnsd
-               enddo
-!$OMP end parallel do
-            else 
-!$OMP parallel do default(shared), private(ip)
-               do ip = 1,ntpl
-                 dRhoscf(ip,ispin) = dRhoscf(ip,ispin) +
-     &                              dRhoatm(jx,ip) / nsd
-               enddo
-            endif
-!$OMP end parallel do
-          enddo
-       
+          if ( npcc == 1 ) then
+!$OMP do collapse(2)
+             do ispin = 1,nsd
+                do ip = 1,ntpl
+                   dRhoscf(ip,ispin) = dRhoscf(ip,ispin) +
+     &                  (drhopcc(ip,jx) + dRhoatm(jx,ip)) * rnsd
+                end do
+             end do
+!$OMP end do
+          else
+!$OMP do collapse(2)
+             do ispin = 1,nsd
+                do ip = 1,ntpl
+                   dRhoscf(ip,ispin) = dRhoscf(ip,ispin) +
+     &                  dRhoatm(jx,ip) * rnsd
+                end do
+             end do
+!$OMP end do
+          end if
+!$OMP end parallel
+          
 !In order to keep the Vscf as out argument from cellXC, we create another
 ! variable
           call timer("CellXC-LR",1)
@@ -2191,13 +2214,13 @@ C------------------------------------------------------------------------
      .                           myBox(1,3), myBox(2,3), nspin,
      .             DRho, Ex, Ec, DEx, DEc, stressXC, dVXCpot, dRhoscf )
 
-          do ispin1 = 1, nsd
-!$OMP parallel do default(shared), private(ip,ispin2)
-            do ip = 1, ntpl
-                VLR(ip,ispin1) =VLR(ip,ispin1) + dVXCpot(ip,ispin1)
-            enddo
+!$OMP parallel do default(shared), private(ip,ispin), collapse(2)
+          do ispin = 1, nsd
+             do ip = 1, ntpl
+                VLR(ip,ispin) = VLR(ip,ispin) + dVXCpot(ip,ispin)
+             end do
+          end do
 !$OMP end parallel do
-          enddo
 
           call de_alloc( dVXCpot, 'dVXCpot','dhscf' )
           call timer("CellXC-LR",2)
@@ -2253,131 +2276,139 @@ C------------------------------------------------------------------------
               iaend = ialr
             endif
 
-!To dynamat, we need the density dRhoscf and the unperturbed charge dRho=dRho-rhoatm
-            do ispin = 1,nsd
-              if (npcc .eq. 1) then
-!$OMP do
-                 do ip = 1,ntpl
+!$OMP parallel default(shared), private(ip,ispin,Rhotot)
+
+! To dynamat, we need the density dRhoscf and the unperturbed charge dRho=dRho-rhoatm
+
+            if ( npcc == 1 ) then
+!$OMP do collapse(2)
+               do ispin = 1, nsd
+                  do ip = 1, ntpl
+                     dRhoscf(ip,ispin) = dRhoscf(ip,ispin) -
+     &                    (drhopcc(ip,jx) + dRhoatm(jx,ip)) * rnsd
+                  end do
+               end do
+!$OMP end do nowait
+!$OMP do collapse(2)
+               do ispin = 1, nsd
+                  do ip = 1, ntpl
                      DRho(ip,ispin) = DRho(ip,ispin) -
-     &                 (rhoatm(ip)+rhopcc(ip)) * rnsd
-                 enddo
-!$OMP end do
-               else
+     &                    (rhoatm(ip) + rhopcc(ip)) * rnsd
+                  end do
+               end do
+!$OMP end do ! implicit barrier required !
+
+            else
+!$OMP do collapse(2)
+               do ispin = 1, nsd
+                  do ip = 1, ntpl
+                     dRhoscf(ip,ispin) = dRhoscf(ip,ispin) -
+     &                    dRhoatm(jx,ip) * rnsd
+                  end do
+               end do
+!$OMP end do nowait
+!$OMP do collapse(2)
+               do ispin = 1, nsd
+                  do ip = 1, ntpl
+                     DRho(ip,ispin) = DRho(ip,ispin)
+     &                    - rhoatm(ip) * rnsd
+                  end do
+               end do
+!$OMP end do ! implicit barrier required !
+               
+            end if
+
+            if ( nsd == 2 ) then
 !$OMP do
-                 do ip = 1,ntpl
-                      DRho(ip,ispin) = DRho(ip,ispin)
-     &                        - rhoatm(ip) * rnsd
-                 enddo
+               do ip = 1, ntpl
+                  Rhotot = dRhoscf(ip,1) + dRhoscf(ip,2)
+                  dRhoscf(ip,2) = dRhoscf(ip,2) - dRhoscf(ip,1)
+                  dRhoscf(ip,1) = Rhotot
+               end do
 !$OMP end do
-               endif
-            enddo
-!$OMP end parallel
-
-            do ispin = 1, nsd
-              if (npcc .eq.1) then
-!$OMP parallel do default(shared), private(ip)
-                 do ip = 1, ntpl
-                    dRhoscf(ip,ispin) = dRhoscf(ip,ispin) -
-     .                       (drhopcc(ip,jx) + dRhoatm(jx,ip)) * rnsd
-                 enddo
-!$OMP end parallel do
-              else
-!$OMP parallel do default(shared), private(ip)
-                 do ip = 1, ntpl
-                    dRhoscf(ip,ispin) = dRhoscf(ip,ispin) -
-     .                       dRhoatm(jx,ip) / nsd
-                 enddo
-!$OMP end parallel do
-              endif
-            enddo
-
-            if(nsd .eq. 2) then
-!$OMP parallel do default(shared), private(dRhotot,ip)
-               do ip = 1,ntpl
-                 dRhotot = dRhoscf(ip,1) + dRhoscf(ip,2)
-                 dRhoscf(ip,2) = dRhoscf(ip,2)-dRhoscf(ip,1)
-                 dRhoscf(ip,1) = dRhotot
-               enddo
-!$OMP end parallel do
             endif
+
+!$OMP end parallel
 
 ! SEQUENTIAL to CLUSTER the dvnoscf potential (Vna+Vh) and DRho
             call reord(dvnoscf(:,jx), dvnoscf(:,jx), nml, nsm,
-     &                 TO_CLUSTER)            
+     &           TO_CLUSTER)            
             call reord(DRho, DRho, nml, nsm, TO_CLUSTER)
-
+            
 ! Set everything to QUADRATIC distribution
             if (nodes.gt.1) then
-              call setMeshDistr( QUADRATIC, nsm, nsp,
-     &                       nml, nmpl, ntml, ntpl )
-            endif
+               call setMeshDistr( QUADRATIC, nsm, nsp,
+     &              nml, nmpl, ntml, ntpl )
+            end if
             nullify(VLR_par)
             call re_alloc( Vscf_par, 1, ntpl, 1, nspin,
-     &                 'Vscf_par', 'dhscf' )
+     &                    'Vscf_par', 'dhscf' )
             call re_alloc( VLR_par, 1, ntpl, 1, nspin,
-     &                 'VLR_par','dhscf' )
+     &                    'VLR_par','dhscf' )
             call re_alloc( DRho_par, 1, ntpl, 1, nspin, 
-     &                 'DRho_par','dhscf' ) !it will store the perturbed density
+     &                    'DRho_par','dhscf' ) !it will store the perturbed density
 
             do ispin = 1, nspin
-              call distMeshData( UNIFORM, Vscf(:,ispin),
-     &                   QUADRATIC, Vscf_par(:,ispin), TO_CLUSTER )
-              call distMeshData( UNIFORM, VLR(:,ispin),
-     &                   QUADRATIC, VLR_par(:,ispin), TO_CLUSTER )
-              call distMeshData( UNIFORM, dRhoscf(:,ispin),
-     &                   QUADRATIC, DRho_par(:,ispin), TO_CLUSTER )
-
-              do ia = iainit, iaend
-                call dynamat(norb, nuo, na, nua, nuotot, nspin, ispin,
-     &                     jx, nmpl, ntpl, iphorb, iaorb, ia, numd,
-     &                     listd, listdptr, indxua, maxnd, isa, atder,
-     &                     Dscf(:,ispin), dDscf(:,ispin,jx), dvol,
-     &                     DRho(:,ispin), DRho_par(:,ispin), Datm, 
-     &                     Vscf_par(:,ispin),VLR_par(:,:), 
-     &                     dvnoscf(:,jx), dynmat(1:nua,1:3,ia,jx)) 
-              enddo
-            enddo
+               call distMeshData( UNIFORM, Vscf(:,ispin),
+     &              QUADRATIC, Vscf_par(:,ispin), TO_CLUSTER )
+               call distMeshData( UNIFORM, VLR(:,ispin),
+     &              QUADRATIC, VLR_par(:,ispin), TO_CLUSTER )
+               call distMeshData( UNIFORM, dRhoscf(:,ispin),
+     &              QUADRATIC, DRho_par(:,ispin), TO_CLUSTER )
+               
+               do ia = iainit, iaend
+                  call dynamat(norb, nuo, na, nua, nuotot, nspin, ispin,
+     &                 jx, nmpl, ntpl, iphorb, iaorb, ia, numd,
+     &                 listd, listdptr, indxua, maxnd, isa, atder,
+     &                 Dscf(:,ispin), dDscf(:,ispin,jx), dvol,
+     &                 DRho(:,ispin), DRho_par(:,ispin), Datm, 
+     &                 Vscf_par(:,ispin),VLR_par(:,:), 
+     &                 dvnoscf(:,jx), dynmat(:,:,jx,ia)) 
+               end do
+            end do
             call de_alloc( Vscf_par, 'Vscf_par', 'dhscf' )
             call de_alloc( VLR_par,   'VLR_par', 'dhscf' )
             call de_alloc( DRho_par, 'DRho_par', 'dhscf' )
 
-C       Set the UNIFORM distribution again
+C     Set the UNIFORM distribution again
             if (nodes.gt.1) then
-              call setMeshDistr( UNIFORM, nsm, nsp, nml,
-     &                           nmpl, ntml, ntpl )
-            endif
+               call setMeshDistr( UNIFORM, nsm, nsp, nml,
+     &              nmpl, ntml, ntpl )
+            end if
 
 ! Back from CLUSTER to SEQUENTIAL dvnoscf and DRho
             call reord(dvnoscf(:,jx), dvnoscf(:,jx), nml, nsm,
-     &                 TO_SEQUENTIAL)
+     &           TO_SEQUENTIAL)
             call reord(DRho, DRho, nml, nsm, TO_SEQUENTIAL)
 
-!Back to the total density (for the perturbed Vxc calculation)
-            do ispin = 1,nsd
-              if (npcc .eq. 1) then
-!$OMP do
-                do ip = 1,ntpl
-                DRho(ip,ispin) = DRho(ip,ispin) +
-     &                 (rhoatm(ip)+rhopcc(ip)) * rnsd
-                enddo
-!$OMP end do
+! Back to the total density (for the perturbed Vxc calculation)
+            if ( npcc == 1 ) then
+!$OMP parallel do default(shared), private(ip,ispin), collapse(2)
+               do ispin = 1,nsd
+                  do ip = 1,ntpl
+                     DRho(ip,ispin) = DRho(ip,ispin) +
+     &                    (rhoatm(ip)+rhopcc(ip)) * rnsd
+                  end do
+               end do
+!$OMP end parallel do
               else
-!$OMP do
-                do ip = 1,ntpl
-                   DRho(ip,ispin) = DRho(ip,ispin)
-     &                        + rhoatm(ip) * rnsd
-                enddo
-!$OMP end do
-              endif
-            enddo
-!$OMP end parallel
-          endif !Dynamat if
+!$OMP parallel do default(shared), private(ip,ispin), collapse(2)
+               do ispin = 1,nsd
+                  do ip = 1,ntpl
+                     DRho(ip,ispin) = DRho(ip,ispin)
+     &                    + rhoatm(ip) * rnsd
+                  end do
+               end do
+!$OMP end parallel do
+            end if
+          end if !Dynamat if
 C----------------------------------------------------------------------------
           call de_alloc(VLR,'VLR','dhscf')
           call de_alloc(dRhoscf,'dRhoscf','dhscf')
-        enddo
+       end do ! Cartesian loop
+       
 C-----------------------------------------------------------------------------
-C End Space loop
+C End Cartesian loop
 C-----------------------------------------------------------------------------
         if (present(dHmat0)) then
 ! When the gradients are computed, these variables are deallocated

@@ -1,0 +1,38 @@
+This test exercises the linear-response features
+of Siesta.
+
+By default, a "make" command will run Siesta with BNlin.fdf as input,
+computing the force-constant matrix for the system.
+
+The unit cell is composed of just two atoms, but a supercell is
+defined to properly account for the forces on the rest of the atoms
+when any of the unit-cell atoms move. The real-space force-constant
+information can be converted into a reciprocal-space dynamical matrix,
+which gives the relevant phonon frequencies when diagonalized. This is
+analogous to the handling of the electronic hamiltonian: the
+real-space matrix elements between the unit-cell orbitals and the
+supercell ones are converted into reciprocal-space matrix elements and
+diagonalized to get the electronic band structure.
+
+The force-constant matrix is contained by default in the
+(label)/BNlin.FC file, where (label) is 'work' by default. In order to
+construct the dynamical matrix and compute the phonons, the 'vibra'
+program must be executed with BN.fdf as input.
+
+(Before proceeding, see Util/Vibra/Docs for documentation, and compile
+Util/Vibra/Src/vibra. Also, compile Util/Bands/gnubands to process the
+phonon dispersion plot.)
+
+Now the sequence of steps would be:
+
+       cd work
+       /path/to/vibra < ../BN.fdf
+               (a BN.bands file will be produced)
+       /path/to/gnubands -G -o BNphonons.dat BN.bands
+       gnuplot -persist BNphonons.gplot
+
+The '-G' option to gnubands requests the production of a .gplot file
+with the proper commands for gnuplot, in addition to the data file.
+
+
+

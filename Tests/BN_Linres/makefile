@@ -1,7 +1,8 @@
 #
 # Single-test makefile
 #
-name=BN
+name=BNlin
+EXTRAFILES=FC.fdf
 #
 include ../test.mk
 

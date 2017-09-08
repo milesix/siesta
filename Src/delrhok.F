@@ -1,7 +1,9 @@
-      subroutine delrhok(no, nuo, maxo, maxspn, nspin, eval, eigtol,
+      subroutine delrhok(no, no_l, no_u, maxspn, nspin, eval, eigtol,
      &                   indxuo, nk, kpoint, wk, eo,  
      &                   xij, Qo, H, S, Hper, Oper, maxnh, numh, 
-     &                   listh, listhptr, ef, T, Rhoper, Erhoper, 
+     &                   listh, listhptr, ef, T,
+     &                   Haux, Saux,
+     &                   Rhoper, Erhoper, 
      &                   psi)
 C **********************************************************************
 C FINDS THE CHANGE IN DENSITY MATRIX ELEMENTS DUE TO DISPLACEMENTS OF
@@ -12,20 +14,19 @@ C FOR SIESTA 3.X L. Riches, SUMMER '15
 C CHECKED AND CORRECTED BY S. ILLERA APRIL '16
 C **********************INPUT*******************************************
 C INTEGER NO		     :Number of orbitals in the supercell
-C INTEGER NUO                :Number of basis orbitals in unit cell
-C INTEGER MAXO		     :Number of orbitals
+C INTEGER NO_L                :Number of basis orbitals in unit cell
+C INTEGER NO_U		     :Number of orbitals
 C INTEGER MAXSPN	     :Maximum number of differents spin polarizations
 C INTEGER NSPIN              :Spin polarization
-C INTEGER MAXORB             :Number of orbitals
-C REAL*8 EVAL(NUO)           :Eigenvalues of non-perturbated Hamiltonian
+C REAL*8 EVAL(NO_U)           :Eigenvalues of non-perturbated Hamiltonian
 C REAL*8  EIGTOL             :Tolerance to assume degenerate energy levels
 C INTEGER INDXUO(NO)	     :Index of equivalent orbital in unit cell
 C INTEGER NK		     :Number of kpoints
 C REAL*8 KPOINT(3,NK)        :k point vectors 
 C REAL*8 WK(NK)		     :k points weight		
-C REAL*8 EO(MAXO,MAXSPN,NK)  :Eigenvalues
+C REAL*8 EO(NO_U,MAXSPN,NK)  :Eigenvalues
 C REAL*8 XIJ(3,MAXNH)        :Vectors between orbital centers
-C REAL*8 QO(NUO)             :Occupations of unpertubed eigenstates
+C REAL*8 QO(NO_U)             :Occupations of unpertubed eigenstates
 C REAL*8 H(MAXNH,NSPIN)	     :Hamiltonian in sparse format
 C REAL*8 S(MAXNH)            : Overlap in sparse format
 C REAL*8  HPER(MAXNH)        :Matrix elements of the perturbated 
@@ -33,15 +34,17 @@ C                             Hamiltonian
 C REAL*8  OPER(MAXNH,3)      :Matrix elements of the perturbated 
 C                             Overlap
 C INTEGER MAXNH              :First dimension of listh
-C INTEGER NUMH(NUO)          :Number of nonzero density matrix elements
+C INTEGER NUMH(NO_L)          :Number of nonzero density matrix elements
 C                             for each matrix row
 C INTEGER LISTH(MAXNH)       :Nonzero density matrix element column
 C                             indexes
-C INTEGER LISTHPTR(NUO)      :Pointer to each row (-1) of the
+C INTEGER LISTHPTR(NO_L)      :Pointer to each row (-1) of the
 C                             density matrix
-C REAL*8  EF                 :Fermi level
-C REAL*8  T                  :Temperature
-C REAL*8 PSI(2,NUO,NUO)      :Auxiliary space for the eigenvectors
+C REAL*8  EF                  :Fermi level
+C REAL*8  T                   :Temperature
+C REAL*8 Haux(2,NO_U,NO_L)    :Auxiliary space for the Hamiltonian
+C REAL*8 Saux(2,NO_U,NO_L)    :Auxiliary space for the overlap matrix
+C REAL*8 PSI(2,NO_U,NO_L)     :Auxiliary space for the eigenvectors
 C ******************  OUTPUT  ******************************************
 C REAL*8  RHOPER(MAXNH,3,MAXSPN)  :Matrix elements of the perturbated DM
 C REAL*8  ERHOPER(MAXNH,3,MAXSPN) :Matrix elements of the perturbated 
@@ -49,52 +52,78 @@ C                                  Energy Density Matrix
 C **********************************************************************
 
 
-      use precision,      only : dp,sp
+      use precision,      only : dp
       use alloc
+#ifdef _OPENMP
+      use omp_lib
+#endif
 
       implicit none
 
-      integer ::  no, nuo, iscf, 
+      integer ::  no, no_l, iscf, 
      &            ispin, maxnh, nspin, numh(*),
      &            listh(maxnh), listhptr(*), nk,indxuo(no) 
-      real(dp) :: eval(nuo,nspin,nk), Qo(maxo,maxspn,nk),
+      real(dp) :: eval(no_u,nspin,nk), Qo(no_u,maxspn,nk),
      &            Hper(maxnh,3,nspin), eigtol, S(maxnh),
      &            Oper(maxnh,3), ef, T,Rhoper(maxnh,3,nspin),
      &            Erhoper(maxnh,nspin,3), H(maxnh,nspin),
-     &            psi(2,nuo,nuo), kpoint(3,nk), xij(3,maxnh),
-     &            eo(maxo,maxspn,nk),wk(nk)
+     &            psi(2,no_u,no_l), kpoint(3,nk), xij(3,maxnh),
+     &     eo(no_u,maxspn,nk),wk(nk)
+      real(dp), target :: Haux(2,no_u,no_l)
+      real(dp) :: Saux(2,no_u,no_l)
 
 C     Internal Variables
-      integer :: deg, N, io, maxorb, numb(maxo), k,j, ik, ix,
+      integer :: deg, N, io, numb(no_u), k,j, ik, ix,
      &           jden, kden, jo, mu, nu, ind, indmn, i, indbetas,
      &           ialpha, ibeta, jbeta,indi,indj,ierror,indden,
-     &           iuo, juo, ind2, nbands, maxo, maxspn 
+     &           iuo, juo, ind2, nbands, no_u, maxspn 
       real(dp) :: def(3), A(3), B(3), 
-     &            dQo(nuo,3), aux(no),auxcoef(2,maxo), qio, 
-     &            psiper(2,maxo,maxo), prod1(2), prod2(2), kXij, 
-     &            prod3(2), prod4(2), eio, ejo, dStepF, evper(2,3,maxo),
-     &            pipj1, pipj2,Haux(2,maxo,nuo),
-     &            Saux(2,maxo,nuo) !maxo = nuotot
+     &            dQo(no_u,3), aux(no), qio, 
+     &            psiper(2,no_u,no_u), prod1(2), prod2(2), kXij, 
+     &            prod3(2), prod4(2), eio, ejo, dStepF, evper(2,3,no_u),
+     &            pipj1, pipj2
 
-      real(dp), pointer :: Psiden(:,:,:),
-     &                     eden(:),rotaux(:,:), Hauxden(:,:,:), 
-     &                     Sauxden(:,:,:)
+      real(dp), pointer :: auxcoef(:,:), rotaux(:,:)
+      real(dp), pointer :: Psiden(:,:,:) => null()
+      real(dp), pointer :: Hauxden(:,:,:) => null()
+      real(dp), pointer :: Sauxden(:,:,:) => null()
       real(dp) :: ckXij, skXij, pert
 
       call timer('delrhok',1)
 
+#ifdef _OPENMP
+!$OMP parallel default(shared)
 
+      ! Check that we can use the appropiate partition in the
+      ! coefficient change routine
+      ! This does put a constraint on the number of OMP threads
+      ! we can use. But for now I think this is good.
+      ! Else, we force this to be sequential
+!$OMP single
+      if ( omp_get_num_threads() > no_l ) then
+         write(*,*) 'Reduce OMP_NUM_THREADS to (maximum): ',no_l
+         call die('delrhok: too many OMP_NUM_THREADS, compared to no_l')
+      end if
+!$OMP end single
+
+!$OMP end parallel
+#endif
+      
 C     Initialize variables --- 
-      def(1:3) = 0.0_dp
       A(1:3) = 0.0_dp
       B(1:3) = 0.0_dp
 
 C     Find eigenvectors (where stored for only one k-point) ---------
       do ik = 1,nk     ! for each k-point 
        do ispin = 1, nspin !for each spin component
-        Haux = 0.0_dp
-        Saux = 0.0_dp
-        do iuo = 1, nuo 
+
+!$OMP parallel default(shared), private(iuo,j,ind,jo,juo),
+!$OMP&private(kXij,ckXij,skXij)
+          
+!$OMP do
+        do iuo = 1, no_l 
+         Haux(:,:,iuo) = 0._dp
+         Saux(:,:,iuo) = 0._dp
          do j = 1, numh(iuo)
           ind = listhptr(iuo) + j
           jo = listh(ind)
@@ -108,13 +137,16 @@ C         calculates the phases k*r_ij -------------------------------
 C         Calculates the hamiltonian and the overlap in k space ------
 C         H(k) = Sum(R) exp(i*k*R) * H(R) ----------------------------
           Saux(1,juo,iuo) = Saux(1,juo,iuo) + S(ind)*ckxij
-          Saux(2,juo,iuo) = Saux(2,juo,iuo) - S(ind)*skxij!-
+          Saux(2,juo,iuo) = Saux(2,juo,iuo) - S(ind)*skxij
           Haux(1,juo,iuo) = Haux(1,juo,iuo) + H(ind,ispin)*ckxij
-          Haux(2,juo,iuo) = Haux(2,juo,iuo) - H(ind,ispin)*skxij!-
+          Haux(2,juo,iuo) = Haux(2,juo,iuo) - H(ind,ispin)*skxij
          enddo
         enddo
-C       Symmetrize H & S ---------------------------------------------
-        do iuo = 1, nuo
+!$OMP end do
+        
+C     Symmetrize H & S ---------------------------------------------
+!$OMP do schedule(static,1)
+        do iuo = 1, no_u
          do juo = 1, iuo-1
           Saux(1,juo,iuo) = 0.5_dp * ( Saux(1,juo,iuo) +
      .                               Saux(1,iuo,juo) )
@@ -132,20 +164,22 @@ C       Symmetrize H & S ---------------------------------------------
          Saux(2,iuo,iuo) = 0.0_dp
          Haux(2,iuo,iuo) = 0.0_dp
         enddo
+!$OMP end do nowait
 
+!$OMP end parallel
 C       Diagonalize for each k-point --------------------------------
-        call cdiag( Haux, Saux, nuo, nuo, nuo, eo(:,ispin,ik),
-     &                psi, nuo, 1, ierror )
+        call cdiag( Haux, Saux, no_u, no_l, no_u, eo(1,ispin,ik),
+     &                psi, no_u, 1, ierror )
 
         if (ierror.ne.0) then
           call die('DELRHOK: Terminating due to failed 
      &                                        k-diagonalisation')
         endif
 C       loop on spatial xyz -----------------------------------------
-        do 215 ix = 1,3
+        do ix = 1,3
 C        Find out the degenerated subespaces ------------------------
-         nbands = nuo
-         numb(1:maxo) = 0
+         nbands = no_u
+         numb(1:no_u) = 0
          N = 0
          do  io = 1, nbands
           eio = eo(io,ispin,ik)
@@ -162,26 +196,27 @@ C        Find out the degenerated subespaces ------------------------
             numb(io) = N + 1
             N = 0
             if(numb(io).gt.1) then !last degenerated state
-              nullify(Psiden,Eden,rotaux,Hauxden,Sauxden)
               call re_alloc(Psiden, 1, 2, 1, numb(io), 1, numb(io),
      &                       'Psiden', 'delrhok')
-              call re_alloc(eden,1, numb(io),'eden', 'delrhok')
-              call re_alloc(rotaux,1,2,1, numb(io),'rotaux', 'delrhok')
-              call re_alloc(Hauxden,1,2,1, numb(io),1, numb(io),
+              call re_alloc(Hauxden, 1, 2, 1, numb(io), 1, numb(io),
      &                       'Hauxden', 'delrhok')
               call re_alloc(Sauxden, 1, 2, 1, numb(io), 1, numb(io),
      &                       'Sauxden', 'delrhok')
+              ! Re-use memory for rotation.
+              rotaux => Sauxden(:,:,1)
+              
+              ! Initialize to 0
+              Sauxden = 0._dp
 
+              ! TODO transpose this construction, i.e. 
+              ! the access is sub-optimal
               do j = io-numb(io)+1, io
                 jden = j - io + numb(io)
                 numb(j) = numb(io)
                 do k = io-numb(io)+1, io
                   kden = k - io + numb(io)
-                  if(jden .eq. kden) then
-                    Sauxden(1,jden,kden) = 1.0_dp
-                    Sauxden(2,jden,kden) = 1.0_dp
-                  endif
-                  do mu=1,nuo
+                  if ( jden == kden ) Sauxden(1,jden,kden) = 1.0_dp
+                  do mu=1,no_l
                     do nu = 1,numh(mu)
                       indmn=listhptr(mu) + nu
                       jo = listh(indmn)
@@ -195,7 +230,7 @@ C        Find out the degenerated subespaces ------------------------
      &                        psi(2,mu,j) * psi(2,juo,k)
                       pipj2 = psi(1,mu,j) * psi(2,juo,k) -
      &                        psi(2,mu,j) * psi(1,juo,k)
-                      pert = Hper(indmn,ix,ispin) - !looks ok 
+                      pert = Hper(indmn,ix,ispin) -
      &                       eio * Oper(indmn,ix)
                       Hauxden(1,jden,kden) = Hauxden(1,jden,kden) +
      &                        (pipj1 * ckXij - pipj2 * skXij) * pert
@@ -205,66 +240,82 @@ C        Find out the degenerated subespaces ------------------------
                   enddo
                 enddo
               enddo !j loop
+
+              ! Haux is a dummy argument, we don't need the eigenvalues
+              ! and here Haux is always big enough to hold them all!
               call cdiag( Hauxden, Sauxden, numb(io), 
      &             numb(io), numb(io),
-     .             eden, psiden,numb(io),1,ierror )
+     .             Haux, psiden,numb(io),1,ierror )
               if (ierror.ne.0) then
                call die('DELRHOK: Terminating due to failed
      &                                deg- diagonalisation')
               endif
 
 C             Rotate the coefficients inside the subspace ---------- 
-              do mu = 1,nuo
+              do mu = 1,no_l
                do ialpha = 1, numb(io)
-                do ibeta = 1, numb(io)
-                  rotaux(1,ialpha) = rotaux(1,ialpha) +
-     &                   psiden(1,ibeta,ialpha) *
-     &                   psi(1,mu,io-numb(io)+ibeta) -
-     &                   psiden(2,ibeta,ialpha) *
-     &                   psi(2,mu,io-numb(io)+ibeta)
+                 ! This is actually Sauxden(:,:,1)
+                 rotaux(:,ialpha) = 0._dp
+                 do ibeta = 1, numb(io)
+                  rotaux(1,ialpha) = rotaux(1,ialpha) + 
+     &                  psiden(1,ibeta,ialpha) *
+     &                  psi(1,mu,io-numb(io)+ibeta) -
+     &                  psiden(2,ibeta,ialpha) *
+     &                  psi(2,mu,io-numb(io)+ibeta)
                   rotaux(2,ialpha) = rotaux(2,ialpha) +
-     &                   psiden(1,ibeta,ialpha) *
-     &                   psi(2,mu,io-numb(io)+ibeta) +
-     &                   psiden(2,ibeta,ialpha) *
-     &                   psi(1,mu,io-numb(io)+ibeta)
-
-                enddo
-               enddo
+     &                 psiden(1,ibeta,ialpha) *
+     &                 psi(2,mu,io-numb(io)+ibeta) +
+     &                 psiden(2,ibeta,ialpha) *
+     &                 psi(1,mu,io-numb(io)+ibeta)
+                end do
+               end do
                do ialpha = 1, numb(io)
-                psi(1,mu,io-numb(io)+ialpha) = rotaux(1,ialpha)
-                psi(2,mu,io-numb(io)+ialpha) = rotaux(2,ialpha)
-                rotaux(1,ialpha) = 0.0_dp
-                rotaux(2,ialpha) = 0.0_dp
-               enddo
+                  psi(1,mu,io-numb(io)+ialpha) = rotaux(1,ialpha)
+                  psi(2,mu,io-numb(io)+ialpha) = rotaux(2,ialpha)
+               end do
               enddo !mu loop
-              do jo = 1, numb(io)
-               do k = 1, numb(io)
-                Hauxden(1:2,jo,k) = 0.D0
-                Sauxden(1:2,jo,k) = 0.D0
-               enddo
-              enddo
 
               call de_alloc( Psiden, 'Psiden', 'delrhok' )
-              call de_alloc( rotaux, 'rotaux', 'delrhok' )
-              call de_alloc( eden, 'eden', 'delrhok' )
               call de_alloc( Hauxden, 'Hauxden', 'delrhok' )
               call de_alloc( Sauxden, 'Sauxden', 'delrhok' )     
             endif !numb() last degenerated state
           endif !lt tol (degenerated)
          enddo !bands io loop
-         evper(1:2,ix,1:maxo) = 0.0_dp
+
+!$OMP parallel default(shared),
+!$OMP&private(io,qio,eio,mu,juo,iuo,nu,ind,jo),
+!$OMP&private(kXij,ckXij,skXij,auxcoef),
+!$OMP&private(ialpha,prod1,prod2,prod3,prod4),
+!$OMP&private(indmn,ibeta,ejo),
+!$OMP&reduction(+:A,B)
+
+! OMP remark:
+! evper is accessed without possibility of data-race
+! psipero is accessed without possibility of data-race
+! dQo is accessed without possibility of data-race
+
+#ifdef _OPENMP
+         io = omp_get_thread_num( ) + 1
+         auxcoef => Haux(:,:,io)
+#else
+         auxcoef => Haux(:,:,1)
+#endif
+
+!$OMP workshare
+         evper(1:2,ix,1:no_u) = 0.0_dp
+!$OMP end workshare
 
 C        Compute the change in the coefficients ---------------------
-         do 300 io = 1, nbands
+!$OMP do schedule(static,1)
+         do io = 1, nbands
           qio = Qo(io,ispin,ik)
-          if(qio .gt. 1.0e-6_dp) then !is it occupied?
+          if (qio > 1.0e-6_dp) then !is it occupied?
 
           eio = eo(io,ispin,ik)
 
-          auxcoef(1,1:maxo) = 0.0_dp
-          auxcoef(2,1:maxo) = 0.0_dp
+          auxcoef(:,:) = 0.0_dp
           
-           do ialpha = 1, nuo
+          do ialpha = 1, no_l
            prod1(1:2) = 0.0_dp
            prod2(1:2) = 0.0_dp
             do jbeta = 1, numh(ialpha)
@@ -278,7 +329,6 @@ C        Compute the change in the coefficients ---------------------
             prod1(1) = prod1(1) + Hper(indmn,ix,ispin) *
      &                (psi(1,ibeta,io) * ckXij - 
      &                 psi(2,ibeta,io) * skXij)
-            !both psis look good
             prod1(2) = prod1(2) + Hper(indmn,ix,ispin) *
      &                (psi(1,ibeta,io) * skXij + 
      &                 psi(2,ibeta,io) * ckXij)
@@ -314,7 +364,7 @@ C        Compute the change in the coefficients ---------------------
      .            psi(1,ialpha,io)*prod3(2) - psi(2,ialpha,io)*prod3(1)
            enddo !ialpha      
           
-           do ialpha = 1,nuo
+           do ialpha = 1,no_u
            psiper(1:2,ialpha,io) = 0.0_dp
             do j = 1, nbands
             psiper(1,ialpha,io) = psiper(1,ialpha,io) +
@@ -332,20 +382,24 @@ C        Compute the change in the coefficients ---------------------
           A(ix) = A(ix) + wk(ik)*evper(1,ix,io)*dstepf((eio-ef)/T)
           B(ix) = B(ix) + wk(ik)*dstepf((eio-ef)/T)
 *********
-          endif !occupancy
-300      enddo !io bands loop
+         endif ! occupancy
+         enddo !io bands loop
+!$OMP end do
+         
+C Compute the change in density matrix elements -------------
 
-C        Compute the change in density matrix elements -------------
+!$OMP workshare
          Saux = 0.0_dp
          Haux = 0.0_dp
+!$OMP end workshare
 
-         do 370 io = 1, nbands
+         do io = 1, nbands
           qio = qO(io,ispin,ik)
-          if(qio .lt. 1.0e-6_dp) goto 370
+          if ( qio < 1.0e-6_dp ) cycle
           eio = eo(io,ispin,ik)
-          do mu = 1, nuo
-           do juo = 1, nuo
-            nu = juo
+!$OMP do collapse(2)
+          do mu = 1, no_u
+           do juo = 1, no_u
             Saux(1,juo,mu) = Saux(1,juo,mu) +
      .             (psiper(1,mu,io) * psi(1,juo,io) +
      .              psiper(2,mu,io) * psi(2,juo,io) +
@@ -382,9 +436,11 @@ C        Compute the change in density matrix elements -------------
      .          psi(2,mu,io)*psi(1,juo,io))*eio*dQo(io,ix)
            enddo
           enddo
- 370     enddo
+!$OMP end do ! retain barrier
+       enddo
 
-         do iuo = 1, nuo
+!$OMP do
+         do iuo = 1, no_l
           do nu = 1, numh(iuo)
            ind = listhptr(iuo) + nu
            jo = listh(ind)
@@ -402,8 +458,11 @@ C        Compute the change in density matrix elements -------------
      .                             Haux(2,juo,iuo)*skxij
           enddo
          enddo  
-
-215     enddo !spatial coordinates
+!$OMP end do nowait
+         
+!$OMP end parallel
+         
+        enddo !spatial coordinates
        enddo !nspin loop
 
       enddo ! nk loop 
@@ -420,7 +479,7 @@ c    Variation of the energy level ocupation--------------------------
           do 770 ispin=1,nspin
             Haux=0.0_dp
             Saux=0.0_dp
-            do iuo = 1, nuo
+            do iuo = 1, no_l
               do j = 1, numh(iuo)
                 ind = listhptr(iuo) + j
                 jo = listh(ind)
@@ -440,7 +499,7 @@ C         H(k) = Sum(R) exp(i*k*R) * H(R) ----------------------------
               enddo
             enddo
 C       Symmetrize H & S ---------------------------------------------
-            do iuo = 1, nuo
+            do iuo = 1, no_u
               do juo = 1, iuo-1
                 Saux(1,juo,iuo) = 0.5_dp * ( Saux(1,juo,iuo) +
      .                               Saux(1,iuo,juo) )
@@ -459,8 +518,8 @@ C       Symmetrize H & S ---------------------------------------------
               Haux(2,iuo,iuo) = 0.0_dp
             enddo
 C       Diagonalize for each k-point --------------------------------
-            call cdiag( Haux, Saux, nuo, nuo, nuo, eo(:,ispin,ik),
-     &                psi, nuo, 1, ierror )
+            call cdiag( Haux, Saux, no_u, no_l, no_u, eo(:,ispin,ik),
+     &                psi, no_u, 1, ierror )
 C        Compute the change in density matrix elements -------------
             Saux = 0.0_dp
             Haux = 0.0_dp
@@ -470,9 +529,8 @@ C        Compute the change in density matrix elements -------------
                 eio = eo(io,ispin,ik)
                 dQo(io,1) = -wk(ik)*dstepf((eio-ef)/T)/
      .                 (T*nspin+1.0e-12)
-              do mu = 1, nuo
-                do juo = 1, nuo
-                  nu = juo
+              do mu = 1, no_u
+                do juo = 1, no_u
                   Saux(1,juo,mu) = Saux(1,juo,mu) 
      .              + (psi(1,mu,io)*psi(1,juo,io) +
      .              psi(2,mu,io)*psi(2,juo,io))*dQo(io,1)
@@ -489,7 +547,7 @@ C        Compute the change in density matrix elements -------------
                 enddo
               enddo
 550         enddo
-            do iuo=1,nuo
+            do iuo=1,no_l
               do j=1,numh(iuo)
                 ind = listhptr(iuo) + j
                 jo = listh(ind)
