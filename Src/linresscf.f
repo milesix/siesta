@@ -264,7 +264,7 @@ C Print error in the perturbed density
            if ( first_LR ) then
               write(6,'(a12,a10)') 'iscf', 'dDmax'
            end if 
-           write(*,'(a8,i4,f10.6)')'lr-scf:', iscf, dDmax
+           write(*,'(a8,i4,f10.6)')'lr-scf:', iscf, dmax
           
 C Write dDscf to file ------------------------------------------------
 C DM file is named as: label.LRDM+'IALR'
