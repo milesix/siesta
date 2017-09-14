@@ -1,0 +1,63 @@
+Minimal compilation and linking instruccions for use LIBXC in a Linres calculation
+=========================================================================
+
+1) Download and unpack the Libxc version 2.2.3 (up to now, the only checked) from: https://gitlab.com/libxc/libxc/tree/2.2.3
+
+2) Install Libxc following the information provided by the authors. Basically:
+    1-cd to the directory containing the package's source
+    2- ./configure --prefix=/destination/folder/installation 
+    3-  make, make check, make install 
+(Read the INSTALL file for further options and specific configuration)
+
+3) The SIESTA arch.make contains several lines related to Libxc:
+   ###ADD LIBXC STUFF
+   #LIBXC_ROOT=points to your libxc installation path
+   LIBXC_ROOT=
+   LIBXC_INCFLAGS= -I $(LIBXC_ROOT)/include
+   LIBXC_LIBS=-L$(LIBXC_ROOT)/lib -l xcf90 -l xc
+   #LIBXC_INCFLAGS= 
+   USE_LIBXC=1
+
+4) Compile Siesta as usual with the correct definition of LIBXC_ROOT variable (pointing to the Libxc instalation folder that contains the bin, include and lib folders)
+
+5) You can check whether the installation has been successful by running the Linres-Libxc test that you can find in the folder Tests.
+===================================================================================
+
+
+HOW TO USE LIBXC IN A SIESTA (OR) LINRES CALCULATION
+==================================================================================
+Siesta can use ONLY all the LDA and GGA XC-potentials included in the LIBXC library
+Linres uses LIBXC to obtain the second energy (EXC) derivatives (respecto to density and density gradient) to compute the perturbed potential. Thus, Linres can use ONLY LDA and GGA XC-potentials.
+
+Examples: define in the .fdf file blocks like this (in the most general form, EX and EC from different authors):
+
+LDA example (LDA CA)
+
+%block XC.hybrid
+2
+LDA LIBXC-01-LDA_X 1.0 0.0
+LDA LIBXC-09-LDA_C_PZ 0.0 1.0
+%endblock
+
+GGA example (GGA PBE)
+
+%block XC.hybrid
+2
+GGA LIBXC-00-GGA_X_PBE 1.0 0.0
+GGA LIBXC-00-GGA_C_PBE 0.0 1.0
+%endblock
+
+General form to call the XC-potential:
+
+Flavour LIBXC-xc_ide-NAME EX_weight EC_weight
+
+The complete list of xc_ide and XC-names can be found in: Libxc/src/xc_funcs.h  
+
+	#define XC-name xc_ide  /*comments*/
+
+(see Libxc webpage for further details and references) 
+
+
+
+
+ 
