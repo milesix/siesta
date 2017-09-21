@@ -72,7 +72,7 @@ CONTAINS
       if (final_call ) then
         write(*,'(a)') 'writedynmat: Saving into a file the force &
                       &constant matrix'
-        fname = trim(slabel)//'.FC'
+        fname = trim(slabel)//'.LRFC'
       else
         write(*,'(a)')
         write(*,'(a)') 'writedynmat: Saving into a file calculated &

@@ -10216,10 +10216,10 @@ atom (external loop over the perturbed atoms) and the contributions to
 the second energy derivative are added. It is important to note that
 the calculated perturbed density matrix for each perturbed atom is
 independent of the rest, but it is currently not possible to run
-LINRES with more than one MPI process. Once the atom loop ends, the FC matrix is
-written to a file SystemLabel.FC as usual. The output can be analyzed
-to extract phonon frequencies and vectors with the VIBRA\index{VIBRA}
-package in the \program{Util/Vibra}.
+LINRES with more than one MPI process. Once the atom loop ends, the FC
+matrix is written to a file SystemLabel.LRFC. The output can be
+analyzed to extract phonon frequencies and vectors with the
+VIBRA\index{VIBRA} package in the \program{Util/Vibra}.
 
 During a LINRES calculation, a temporary file SystemLabel.LRDYNMAT is
 created. This file contains the not-fully-complete FC matrix and the

@@ -14,10 +14,10 @@ real-space matrix elements between the unit-cell orbitals and the
 supercell ones are converted into reciprocal-space matrix elements and
 diagonalized to get the electronic band structure.
 
-The force-constant matrix is contained by default in the
-(label)/BNlin.FC file, where (label) is 'work' by default. In order to
-construct the dynamical matrix and compute the phonons, the 'vibra'
-program must be executed with BN.fdf as input.
+The force-constant matrix is contained in the (label)/BNlin.LRFC file,
+where (label) is 'work' by default. In order to construct the
+dynamical matrix and compute the phonons, the 'vibra' program must be
+executed with BN.fdf as input.
 
 (Before proceeding, see Util/Vibra/Docs for documentation, and compile
 Util/Vibra/Src/vibra. Also, compile Util/Bands/gnubands to process the
