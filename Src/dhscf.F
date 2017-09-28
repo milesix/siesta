@@ -2315,7 +2315,6 @@ C------------------------------------------------------------------------
                   end do
                end do
 !$OMP end do ! implicit barrier required !
-               
             end if
 
             if ( nsd == 2 ) then
@@ -2324,10 +2323,13 @@ C------------------------------------------------------------------------
                   Rhotot = dRhoscf(ip,1) + dRhoscf(ip,2)
                   dRhoscf(ip,2) = dRhoscf(ip,2) - dRhoscf(ip,1)
                   dRhoscf(ip,1) = Rhotot
+
+                  Rhotot = dRho(ip,1) + dRho(ip,2)
+                  dRho(ip,2) = dRho(ip,2) - dRho(ip,1)
+                  dRho(ip,1) = Rhotot
                end do
 !$OMP end do
             endif
-
 !$OMP end parallel
 
 ! SEQUENTIAL to CLUSTER the dvnoscf potential (Vna+Vh) and DRho
@@ -2382,6 +2384,16 @@ C     Set the UNIFORM distribution again
             call reord(DRho, DRho, nml, nsm, TO_SEQUENTIAL)
 
 ! Back to the total density (for the perturbed Vxc calculation)
+            if (nspin .eq. 2) then
+!$OMP do
+              do ip = 1, ntpl
+                Rhotot = dRho(ip,1)
+                dRho(ip,1) = 0.5_dp *( Rhotot - dRho(ip,2) )
+                dRho(ip,2) = 0.5_dp *( Rhotot + dRho(ip,2) )
+              end do
+!$OMP end do
+            endif
+
             if ( npcc == 1 ) then
 !$OMP parallel do default(shared), private(ip,ispin), collapse(2)
                do ispin = 1,nsd
@@ -2391,7 +2403,7 @@ C     Set the UNIFORM distribution again
                   end do
                end do
 !$OMP end parallel do
-              else
+            else
 !$OMP parallel do default(shared), private(ip,ispin), collapse(2)
                do ispin = 1,nsd
                   do ip = 1,ntpl

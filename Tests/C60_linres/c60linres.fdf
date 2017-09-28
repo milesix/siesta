@@ -16,7 +16,13 @@ DM.Tolerance     1.0d-4
 
 NumberOfAtoms        60
 
-AtomicCoordinatesFormat   Ang
+
+LatticeConstant     1 Ang
+%block LatticeVectors
+   13.241400    0.000000    0.000000
+    0.000000   13.591481    0.000000
+    0.000000    0.000000   13.699090
+%endblock LatticeVectors
 
 %block AtomicCoordinatesAndAtomicSpecies
     2.29304783    0.62476973    2.76325237   1       1  C

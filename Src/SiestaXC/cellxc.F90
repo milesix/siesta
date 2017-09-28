@@ -402,10 +402,10 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
      XCweightC(maxFunc), XCweightVDW, XCweightX(maxFunc),&
 ! Linres
      dD(nSpin),& !perturbed density in local point grid
-     Ax(nSpin), dAxdD(nSpin,nSpin), d2GxdD2(nSpin,nSpin), &
-     dAxdGDM(nSpin,nSpin), Ac, dAcdGDM, &
-     dBcdD(nSpin,nSpin), dBcdGDM(nSpin), &
-     sumP(nSpin), GdD(3,nSpin), &
+     Ax(nSpin), dAxdD(nSpin), d2GxdD2(nSpin,nSpin), &
+     dAxdGDM(nSpin), Ac(nSpin), dAcdGDM(nSpin,nSpin), &
+     dBcdD(nSpin,nSpin), dBcdGDM(nSpin,nSpin), &
+     sumP(nSpin), GdD(3,nSpin), sumP2, &
      GV(3,nSpin)
 !
 
@@ -1146,13 +1146,13 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
         dEcdGD(:,:) = XCweightC(nf)*dEcdGD(:,:)
           if (present(ddens)) then !LINRES
             Ax(:) = XCweightX(nf)*Ax(:)
-            dAxdD(:,:) = XCweightX(nf)*dAxdD(:,:)
+            dAxdD(:) = XCweightX(nf)*dAxdD(:)
             d2GxdD2(:,:) = XCweightX(nf)*d2GxdD2(:,:)
-            dAxdGDM(:,:) = XCweightX(nf)*dAxdGDM(:,:)
-            Ac = XCweightC(nf)*Ac
-            dAcdGDM = XCweightC(nf)*dAcdGDM
+            dAxdGDM(:) = XCweightX(nf)*dAxdGDM(:)
+            Ac(:) = XCweightC(nf)*Ac(:)
+            dAcdGDM(:,:) = XCweightC(nf)*dAcdGDM(:,:)
             dBcdD(:,:) = XCweightC(nf)*dBcdD(:,:)
-            dBcdGDM(:) = XCweightC(nf)*dBcdGDM(:)
+            dBcdGDM(:,:) = XCweightC(nf)*dBcdGDM(:,:)
           endif
       endif
       if (present(ddens) .and. .not.VDWfunctl .and. .not.GGAfunctl) then !LDA LINRES
@@ -1212,21 +1212,21 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
               myVxc(ii1,ii2,ii3,is) = myVxc(ii1,ii2,ii3,is) + &
                                       d2GxdD2(is,is)*mydDens(ii1,ii2,ii3,is) + & 
                                       sum(dBcdD(is,1:nSpin)*mydDens(ii1,ii2,ii3,1:nSpin)) + &
-                                      sum(dAxdD(is,1:nSpin))*sumP(is) + & 
-                                      dBcdGDM(is)*sum(sumP(1:nSpin))
+                                      dAxdD(is)*sumP(is) + & 
+                                      sum(dBcdGDM(:,is)*sumP(:))
               do ixx = 1,3 !Compute auxiliar potential which store the last term
                   ix= (ixx-1)*nSpin+is !point to the correct 4th index
-                  myVaux(ii1,ii2,ii3,ix) = myVaux(ii1,ii2,ii3,ix) + & 
-                                       sum(dAxdD(is,1:nSpin)*mydDens(ii1,ii2,ii3,is)*GD(ixx,is)) + &  
-                                       sum(GD(ixx,1:nSpin)*sum(dBcdGDM(1:nSpin)*mydDens(ii1,ii2,ii3,1:nSpin))) + &
-                                       sum(dAxdGDM(is,1:nSpin)*sumP(is)*GD(ixx,is)) + &
-                                       dAcdGDM*sum(sum(GdD,DIM=2)*sum(GD,DIM=2))*sum(GD(ixx,:)) + &
-                                       Ax(is)*GdD(ixx,is) + Ac*sum(GdD(ixx,1:nspin))
+                  myVaux(ii1,ii2,ii3,ix) = myVaux(ii1,ii2,ii3,ix) + &
+                                       dAxdD(is)*mydDens(ii1,ii2,ii3,is)*GD(ixx,is) + &
+                                       GD(ixx,is)*sum(dBcdGDM(:,is)*mydDens(ii1,ii2,ii3,:)) + &
+                                       dAxdGDM(is)*sumP(is)*GD(ixx,is) + &
+                                       sum(dAcdGDM(:,is))*sumP(is)*GD(ixx,is) + &
+                                       Ax(is)*GdD(ixx,is) + Ac(is)*GdD(ixx,is)
               enddo
             enddo
           else !associated myVxc
             call getGradDens( ii1, ii2, ii3, ddens, GdD) !grad(dDens)
-            sumP(nspin)=0
+            sumP(nspin)=0.0_dp
             do iSpin=1, nSpin   
               sumP(iSpin) = sum(GD(1:3,iSpin)*GdD(1:3,iSpin))
             enddo !iSpin
@@ -1235,16 +1235,16 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
               Vxc(ii1,ii2,ii3,is) = Vxc(ii1,ii2,ii3,is) + &
                                     d2GxdD2(is,is)*ddens(ii1,ii2,ii3,is) + & 
                                     sum(dBcdD(is,1:nSpin)*ddens(ii1,ii2,ii3,1:nSpin)) + & 
-                                    sum(dAxdD(is,1:nSpin))*sumP(is) + & 
-                                    dBcdGDM(is)*sum(sumP(1:nSpin)) 
+                                    dAxdD(is)*sumP(is) + & 
+                                    sum(dBcdGDM(:,is)*sumP(:))  
               do ixx = 1,3 !Compute auxiliar potential which store the last term
                 ix= (ixx-1)*nSpin+is !point to the correct 4th index 
                 Vaux(ii1,ii2,ii3,ix) = Vaux(ii1,ii2,ii3,ix) + &
-                                       sum(dAxdD(is,1:nSpin)*ddens(ii1,ii2,ii3,is)*GD(ixx,is)) + &  
-                                       sum(GD(ixx,1:nSpin)*sum(dBcdGDM(1:nSpin)*ddens(ii1,ii2,ii3,1:nSpin))) + &    
-                                       sum(dAxdGDM(is,1:nSpin)*sumP(is)*GD(ixx,is)) + & 
-                                       dAcdGDM*sum(sum(GdD,DIM=2)*sum(GD,DIM=2))*sum(GD(ixx,:)) + &
-                                       Ax(is)*GdD(ixx,is) + Ac*sum(GdD(ixx,1:nspin)) 
+                                       dAxdD(is)*ddens(ii1,ii2,ii3,is)*GD(ixx,is) + &  
+                                       GD(ixx,is)*sum(dBcdGDM(:,is)*ddens(ii1,ii2,ii3,:)) + &    
+                                       dAxdGDM(is)*sumP(is)*GD(ixx,is) + & 
+                                       sum(dAcdGDM(:,is))*sumP(is)*GD(ixx,is) + &
+                                       Ax(is)*GdD(ixx,is) + Ac(is)*GdD(ixx,is)
               enddo
             enddo
           endif !associated myVxc

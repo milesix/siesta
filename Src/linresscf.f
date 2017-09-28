@@ -246,7 +246,8 @@ C Find change in density matrix from perturbed Hamiltonian and Overlap
      &          indxuo, xijo, nspin, eo, tolLR, eigtolLR, nkpnt,
      &          kpoint, kweight, Qo, H, S, dHmat, dSmat, numh,
      &          listh, listhptr, ef, temp, dDscf, dEscf, iscf)
-           
+
+
 C Perform the density matrix mixing
            dMax = 0.0_dp
            do ix = 1 , 3
@@ -276,7 +277,7 @@ C     Check convergence cryteria
 
        end do ! isc loop
 C------------------------------------------------------------------------
-       
+
        call timer('LRatom', 2)
        
        call resetPulayArrays()

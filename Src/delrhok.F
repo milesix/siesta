@@ -46,8 +46,8 @@ C REAL*8 Haux(2,NO_U,NO_L)    :Auxiliary space for the Hamiltonian
 C REAL*8 Saux(2,NO_U,NO_L)    :Auxiliary space for the overlap matrix
 C REAL*8 PSI(2,NO_U,NO_L)     :Auxiliary space for the eigenvectors
 C ******************  OUTPUT  ******************************************
-C REAL*8  RHOPER(MAXNH,3,MAXSPN)  :Matrix elements of the perturbated DM
-C REAL*8  ERHOPER(MAXNH,3,MAXSPN) :Matrix elements of the perturbated 
+C REAL*8  RHOPER(MAXNH,MAXSPN,3)  :Matrix elements of the perturbated DM
+C REAL*8  ERHOPER(MAXNH,MAXSPN,3) :Matrix elements of the perturbated 
 C                                  Energy Density Matrix
 C **********************************************************************
 
@@ -65,7 +65,7 @@ C **********************************************************************
      &            listh(maxnh), listhptr(*), nk,indxuo(no) 
       real(dp) :: eval(no_u,nspin,nk), Qo(no_u,maxspn,nk),
      &            Hper(maxnh,3,nspin), eigtol, S(maxnh),
-     &            Oper(maxnh,3), ef, T,Rhoper(maxnh,3,nspin),
+     &            Oper(maxnh,3), ef, T,Rhoper(maxnh,nspin,3),
      &            Erhoper(maxnh,nspin,3), H(maxnh,nspin),
      &            psi(2,no_u,no_l), kpoint(3,nk), xij(3,maxnh),
      &     eo(no_u,maxspn,nk),wk(nk)
@@ -450,7 +450,7 @@ C Compute the change in density matrix elements -------------
      &            kpoint(3,ik) * Xij(3,ind)
            ckXij = cos(kXij)
            skXij = sin(kXij)
-           Rhoper(ind,ix,ispin) = Rhoper(ind,ix,ispin) +
+           Rhoper(ind,ispin,ix) = Rhoper(ind,ispin,ix) +
      .                            Saux(1,juo,iuo)*ckxij -
      .                            Saux(2,juo,iuo)*skxij
            erhoper(ind,ispin,ix) = erhoper(ind,ispin,ix) +
@@ -558,7 +558,7 @@ C        Compute the change in density matrix elements -------------
                 do ix=1,3
                   ckXij = cos(kXij)*def(ix)
                   skXij = sin(kXij)*def(ix)
-                  Rhoper(ind,ix,ispin) = Rhoper(ind,ix,ispin) +
+                  Rhoper(ind,ispin,ix) = Rhoper(ind,ispin,ix) +
      .                            Saux(1,juo,iuo)*ckxij -
      .                            Saux(2,juo,iuo)*skxij
                   erhoper(ind,ispin,ix) = erhoper(ind,ispin,ix) +
