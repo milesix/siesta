@@ -61,13 +61,14 @@ C **********************************************************************
       integer ::  no, nuo, iscf, maxo, nuotot,
      &            ispin, maxnh, nspin, numh(*),
      &            listh(maxnh), listhptr(*), nk,indxuo(no) 
-      real(dp) :: eval(maxo,nspin,nk), Qo(maxo,maxspn,nk),
+      real(dp) :: eval(nuo,nspin,nk), Qo(maxo,maxspn,nk),
      &            Hper(maxnh,3,nspin), eigtol, S(maxnh),
      &            Oper(maxnh,3), ef, T,Rhoper(maxnh,nspin,3),
      &            Erhoper(maxnh,nspin,3), H(maxnh,nspin),
-     &            Haux(2,nuotot,nuotot), Saux(2,nuotot,nuotot),
      &            psi(2,nuotot,nuotot), kpoint(3,nk), Xij(3,maxnh),
-     &            eo(maxo,maxspn,nk),wk(nk)
+     &            eo(maxo,maxspn,nk),wk(nk), Saux(2,nuotot,nuotot)
+      real(dp), target :: Haux(2,nuotot,nuotot)
+
       external     cdiag
 
 C     Internal Variables
@@ -90,21 +91,23 @@ C     Internal Variables
      &           ialpha, ibeta, jbeta,indi,indj,ierror,indden,
      &           iuo, juo, ind2, nbands, maxspn 
       real(dp) :: def(3), A(3), B(3), 
-     &            dQo(maxo,3), aux(no),auxcoef(2,maxo), qio, qde,
+     &            dQo(nuo,3), aux(no), qio, qde,
      &            psiper(2,maxo,maxo), prod1(2), prod2(2), kXij, 
      &            prod3(2), prod4(2), eio, ejo, dStepF, 
+*     &            evper(2,3,maxo),
      &            evper(maxo,3),
      &            pipj1, pipj2, dpipj1, dpipj2
 *     &            , Haux(2,maxo,nuo),
 *     &            Saux(2,maxo,nuo) !maxo = nuotot
 
 
-      real(dp), pointer :: Psiden(:,:,:),
-     &                     eden(:),rotaux(:,:), Hauxden(:,:,:), 
-     &                     Sauxden(:,:,:)
+      real(dp), pointer :: auxcoef(:,:), rotaux(:,:)
+      real(dp), pointer :: Psiden(:,:,:) => null()
+      real(dp), pointer :: Hauxden(:,:,:) => null()
+      real(dp), pointer :: Sauxden(:,:,:) => null()
       real(dp) :: ckXij, skXij, pert
 
-      call timer('delrhok',1)
+      call timer('delrhokp',1)
 
 C Globalise list arrays - assumes listh and listd are the same
 
@@ -225,7 +228,7 @@ C     Initialize variables ---
 C Allocate local copies of Dk and Ek for building matrices
       call re_alloc( Rhoperloc, 1, maxnhg, 1,2, 1,3, name='Rhoperloc',
      &               routine= 'delrhokp' )
-      call re_alloc( Erhoperloc, 1, maxnhg, 1,2, 1,3, name='ERhoperloc',
+      call re_alloc( Erhoperloc, 1, maxnhg, 1,2, 1,3, name='Erhoperloc',
      &               routine= 'delrhokp' )
 
 
@@ -244,18 +247,20 @@ C     Find eigenvectors (where stored for only one k-point) ---------
 !$OMP parallel default(shared),
 !$OMP&private(iuo,juo,io,j,ind,jo,kxij,ckxij,skxij)
 !$OMP do collapse(2)
-         do iuo = 1,nuog
-          do juo = 1,nuotot
-            Saux(1,juo,iuo) = 0.0d0
-            Saux(2,juo,iuo) = 0.0d0
-            Haux(1,juo,iuo) = 0.0d0
-            Haux(2,juo,iuo) = 0.0d0
-          enddo
-        enddo
+!         do iuo = 1,nuog
+!          do juo = 1,nuotot
+!            Saux(1,juo,iuo) = 0.0d0
+!            Saux(2,juo,iuo) = 0.0d0
+!            Haux(1,juo,iuo) = 0.0d0
+!            Haux(2,juo,iuo) = 0.0d0
+!          enddo
+!        enddo
 !$OMP end do
 !$OMP do
         do io = 1, nuog 
          iuo = indxuo(io)
+         Saux(:,:,iuo) = 0.0d0
+         Haux(:,:,iuo) = 0.0d0
          do j = 1, numhg(io)
           ind = listhptrg(io) + j
           jo = listhg(ind)
@@ -328,25 +333,26 @@ C ------ Find out the degenerated subespaces ------------------------
             numb(io) = N + 1
             N = 0
             if(numb(io).gt.1) then !last degenerated state
-              nullify(Psiden,Eden,rotaux,Hauxden,Sauxden)
+!              nullify(Psiden,Eden,Hauxden,Sauxden)
               call re_alloc(Psiden, 1, 2, 1, numb(io), 1, numb(io),
      &                       'Psiden', 'delrhok')
-              call re_alloc(eden,1, numb(io),'eden', 'delrhok')
-              call re_alloc(rotaux,1,2,1, numb(io),'rotaux', 'delrhok')
               call re_alloc(Hauxden,1,2,1, numb(io),1, numb(io),
      &                       'Hauxden', 'delrhok')
               call re_alloc(Sauxden, 1, 2, 1, numb(io), 1, numb(io),
      &                       'Sauxden', 'delrhok')
+              ! Re-use memory for rotation.
+              rotaux => Sauxden(:,:,1)
+
+
+              ! Initialize to 0
+              Sauxden = 0._dp
 
               do j = io-numb(io)+1, io
                 jden = j - io + numb(io)
                 numb(j) = numb(io)
                 do k = io-numb(io)+1, io
                   kden = k - io + numb(io)
-                  if(jden .eq. kden) then
-                    Sauxden(1,jden,kden) = 1.0_dp
-                    Sauxden(2,jden,kden) = 0.0_dp
-                  endif
+                  if( jden == kden ) Sauxden(1,jden,kden) = 1.0_dp
                   do mu=1,nuog
                     do nu = 1,numhg(mu)
                       indmn=listhptrg(mu) + nu
@@ -373,7 +379,7 @@ C ------ Find out the degenerated subespaces ------------------------
               enddo !j loop
               call cdiag( Hauxden, Sauxden, numb(io), 
      &             numb(io), numb(io),
-     .             eden, psiden,numb(io),1,ierror,-1 )
+     .             Haux, psiden,numb(io),1,ierror,-1 )
               if (ierror.ne.0) then
                call die('DELRHOK: Terminating due to failed
      &                                deg- diagonalisation')
@@ -382,6 +388,8 @@ C ------ Find out the degenerated subespaces ------------------------
 C             Rotate the coefficients inside the subspace ---------- 
               do mu = 1,nuog
                do ialpha = 1, numb(io)
+                ! This is actually Sauxden(:,:,1)
+                rotaux(:,ialpha) = 0._dp
                 do ibeta = 1, numb(io)
                   rotaux(1,ialpha) = rotaux(1,ialpha) +
      &                   psiden(1,ibeta,ialpha) *
@@ -399,26 +407,28 @@ C             Rotate the coefficients inside the subspace ----------
                do ialpha = 1, numb(io)
                 psi(1,mu,io-numb(io)+ialpha) = rotaux(1,ialpha)
                 psi(2,mu,io-numb(io)+ialpha) = rotaux(2,ialpha)
-                rotaux(1,ialpha) = 0.0_dp
-                rotaux(2,ialpha) = 0.0_dp
+!                rotaux(1,ialpha) = 0.0_dp
+!                rotaux(2,ialpha) = 0.0_dp
                enddo
               enddo !mu loop
-              do jo = 1, numb(io)
-               do k = 1, numb(io)
-                Hauxden(1:2,jo,k) = 0.D0
-                Sauxden(1:2,jo,k) = 0.D0
-               enddo
-              enddo
+!              do jo = 1, numb(io)
+!               do k = 1, numb(io)
+!                Hauxden(1:2,jo,k) = 0.D0
+!                Sauxden(1:2,jo,k) = 0.D0
+!               enddo
+!              enddo
 
               call de_alloc( Psiden, 'Psiden', 'delrhok' )
-              call de_alloc( rotaux, 'rotaux', 'delrhok' )
-              call de_alloc( eden, 'eden', 'delrhok' )
+!              call de_alloc( rotaux, 'rotaux', 'delrhok' )
               call de_alloc( Hauxden, 'Hauxden', 'delrhok' )
               call de_alloc( Sauxden, 'Sauxden', 'delrhok' )     
             endif !numb() last degenerated state
           endif !lt tol (degenerated)
          enddo !bands io loop
 *C --- End of work on degenerated subespaces ------------------------
+
+         auxcoef => Haux(:,:,1)
+
          evper(1:maxo,ix) = 0.0_dp
 
 C ------ Compute the change in the coefficients ---------------------
@@ -428,8 +438,7 @@ C ------ Compute the change in the coefficients ---------------------
 
           eio = eo(io,ispin,ik)
 
-          auxcoef(1,1:maxo) = 0.0_dp
-          auxcoef(2,1:maxo) = 0.0_dp
+          auxcoef(:,:) = 0.0_dp
 *          auxcoef(1,1:nuotot) = 0.0_dp
 *          auxcoef(2,1:nuotot) = 0.0_dp
           
@@ -509,7 +518,7 @@ C        Compute the change in density matrix elements -------------
 
          do 370 io = 1, nbands
           qio = qO(io,ispin,ik)
-          if(qio .lt. 1.0e-6_dp) cycle
+          if(qio < 1.0e-6_dp) cycle
           eio = eo(io,ispin,ik) * qio
           qde = qio * evper(io,ix) + eio * dQo(io,ix)
           do mu = 1, nuog
@@ -709,7 +718,7 @@ C Free local memory
       call de_alloc( Rhoperloc, name='Rhoperloc', routine= 'delrhokp' )
       call de_alloc( Erhoperloc, name='Erhoperloc', routine= 'delrhokp')
 
-      call timer('delrhok',2)
+      call timer('delrhokp',2)
       return
       end
 

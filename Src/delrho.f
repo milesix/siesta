@@ -114,18 +114,18 @@ C Check internal dimensions ..........................................
      &                 Erhoper(:,ispin,ix),psi,iscf)
             enddo
          enddo  
-      else
 #ifdef MPI
+      else if (Nodes .gt. 1) then
         call delrhokp(no, nuo, maxo, maxspn, nspin, eo, eigtol, indxuo,
      &               nk, kpoint, wk, eo,xijo, Qo, H, S, Hper, Oper,
      &               maxnh, numh, listh, listhptr, ef, temp, Rhoper,
      &               Erhoper, Haux, Saux, psi, nuotot, iscf)
-#else
+#endif
+      else
          call delrhok(no, nuo, maxo, maxspn, nspin, eo, eigtol, indxuo, 
      &        nk, kpoint, wk, eo,xijo, Qo, H, S, Hper, Oper,
      &        maxnh, numh, listh, listhptr, ef, temp,
      &        Rhoper, Erhoper, Haux, Saux, psi)
-#endif
       end if 
       call timer( 'delrho', 2)
       
