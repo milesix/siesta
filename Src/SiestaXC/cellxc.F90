@@ -1,6 +1,4 @@
-!!@LICENSE
 !
-! *******************************************************************
 ! subroutine cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, 
 !    .               nSpin, dens, Ex, Ec, Dx, Dc, stress, Vxc, dVxcdD )
 ! *******************************************************************
@@ -1220,7 +1218,7 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
                                        dAxdD(is)*mydDens(ii1,ii2,ii3,is)*GD(ixx,is) + &
                                        GD(ixx,is)*sum(dBcdGDM(:,is)*mydDens(ii1,ii2,ii3,:)) + &
                                        dAxdGDM(is)*sumP(is)*GD(ixx,is) + &
-                                       sum(dAcdGDM(:,is))*sumP(is)*GD(ixx,is) + &
+                                       sum(dAcdGDM(:,is)*sumP(:))*GD(ixx,is) + &
                                        Ax(is)*GdD(ixx,is) + Ac(is)*GdD(ixx,is)
               enddo
             enddo
@@ -1243,7 +1241,7 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
                                        dAxdD(is)*ddens(ii1,ii2,ii3,is)*GD(ixx,is) + &  
                                        GD(ixx,is)*sum(dBcdGDM(:,is)*ddens(ii1,ii2,ii3,:)) + &    
                                        dAxdGDM(is)*sumP(is)*GD(ixx,is) + & 
-                                       sum(dAcdGDM(:,is))*sumP(is)*GD(ixx,is) + &
+                                       sum(dAcdGDM(:,is)*sumP(:))*GD(ixx,is) + &
                                        Ax(is)*GdD(ixx,is) + Ac(is)*GdD(ixx,is)
               enddo
             enddo
@@ -1616,7 +1614,7 @@ CONTAINS !---------------------------------------------------------------------
   real(dp):: Fj(nSpin)
 
 
-  GD(:,:) = 0
+  GD(:,:) = 0._dp
 
   if (present(myD)) then
     F=>myD ! to mydens
