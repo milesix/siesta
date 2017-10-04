@@ -242,8 +242,8 @@ C Copy current density as old one to perform the mixing
            dEscf(1:maxnh,1:nspin,1:3) = 0.0_dp
 
 C Find change in density matrix from perturbed Hamiltonian and Overlap
-           call delrho(no_s, na_s, nspin, maxnh, no_l, no_u, GAMMA,
-     &          indxuo, xijo, nspin, eo, tolLR, eigtolLR, nkpnt,
+           call delrho(no_s, na_s, nspin, maxnh, no_u, no_u, no_l, 
+     &          GAMMA, indxuo, xijo, nspin, eo, tolLR, eigtolLR, nkpnt,
      &          kpoint, kweight, Qo, H, S, dHmat, dSmat, numh,
      &          listh, listhptr, ef, temp, dDscf, dEscf, iscf)
 

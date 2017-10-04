@@ -2,9 +2,8 @@
      &                   indxuo, nk, kpoint, wk, eo,  
      &                   xij, Qo, H, S, Hper, Oper, maxnh, numh, 
      &                   listh, listhptr, ef, T,
-     &                   Haux, Saux,
      &                   Rhoper, Erhoper, 
-     &                   psi)
+     &                   Haux, Saux, psi)
 C **********************************************************************
 C FINDS THE CHANGE IN DENSITY MATRIX ELEMENTS DUE TO DISPLACEMENTS OF
 C THE ATOMS
@@ -81,7 +80,7 @@ C     Internal Variables
      &            dQo(no_u,3), aux(no), qio, 
      &            psiper(2,no_u,no_u), prod1(2), prod2(2), kXij, 
      &            prod3(2), prod4(2), eio, ejo, dStepF, evper(2,3,no_u),
-     &            pipj1, pipj2
+     &            pipj1, pipj2,dpipj1,dpipj2,qde
 
       real(dp), pointer :: auxcoef(:,:), rotaux(:,:)
       real(dp), pointer :: Psiden(:,:,:) => null()
@@ -396,44 +395,66 @@ C Compute the change in density matrix elements -------------
          do io = 1, nbands
           qio = qO(io,ispin,ik)
           if ( qio < 1.0e-6_dp ) cycle
-          eio = eo(io,ispin,ik)
+          eio = eo(io,ispin,ik) * qio
+          qde = qio * evper(1,ix,io) + eio * dQo(io,ix)
 !$OMP do collapse(2)
           do mu = 1, no_u
            do juo = 1, no_u
-            Saux(1,juo,mu) = Saux(1,juo,mu) +
-     .             (psiper(1,mu,io) * psi(1,juo,io) +
+            dpipj1 = (psiper(1,mu,io) * psi(1,juo,io) +
      .              psiper(2,mu,io) * psi(2,juo,io) +
      .              psi(1,mu,io) * psiper(1,juo,io) +
-     .              psi(2,mu,io) * psiper(2,juo,io)) * qio
-     .              + (psi(1,mu,io)*psi(1,juo,io) +
-     .              psi(2,mu,io)*psi(2,juo,io))*dQo(io,ix)
-            Saux(2,juo,mu) = Saux(2,juo,mu) +
-     .             (psiper(1,mu,io) * psi(2,juo,io) -
+     .              psi(2,mu,io) * psiper(2,juo,io))
+            dpipj2 = (psiper(1,mu,io) * psi(2,juo,io) -
      .              psiper(2,mu,io) * psi(1,juo,io) +
      .              psi(1,mu,io) * psiper(2,juo,io) -
-     .              psi(2,mu,io) * psiper(1,juo,io)) * qio
-     .              + (psi(1,mu,io)*psi(2,juo,io) -
-     .              psi(2,mu,io)*psi(1,juo,io))*dQo(IO,ix)
-             Haux(1,juo,mu) = Haux(1,juo,mu) +
-     .             (psiper(1,mu,io) * psi(1,juo,io) +
-     .              psiper(2,mu,io) * psi(2,juo,io) +
-     .              psi(1,mu,io) * psiper(1,juo,io) +
-     .              psi(2,mu,io) * psiper(2,juo,io)) * qio * eio +
-     .              qio * evper(1,ix,io) *
-     .              (psi(1,mu,io) * psi(1,juo,io) +
-     .               psi(2,mu,io) * psi(2,juo,io))
-     .            + (psi(1,mu,io)*psi(1,juo,io) +
-     .              psi(2,mu,io)*psi(2,juo,io))*eio*dQo(io,ix)
-             Haux(2,juo,mu) = Haux(2,juo,mu) +
-     .             (psiper(1,mu,io) * psi(2,juo,io) -
-     .              psiper(2,mu,io) * psi(1,juo,io) +
-     .              psi(1,mu,io) * psiper(2,juo,io) -
-     .              psi(2,mu,io) * psiper(1,juo,io)) * qio * eio +
-     .              qio * evper(1,ix,io) *
-     .              (psi(1,mu,io) * psi(2,juo,io) -
-     .               psi(2,mu,io) * psi(1,juo,io) )
-     .       + (psi(1,mu,io)*psi(2,juo,io) -
-     .          psi(2,mu,io)*psi(1,juo,io))*eio*dQo(io,ix)
+     .              psi(2,mu,io) * psiper(1,juo,io))
+            pipj1 = (psi(1,mu,io)*psi(1,juo,io) +
+     .              psi(2,mu,io)*psi(2,juo,io))
+            pipj2 = (psi(1,mu,io)*psi(2,juo,io) -
+     .              psi(2,mu,io)*psi(1,juo,io))
+            Saux(1,juo,mu) = Saux(1,juo,mu) + dpipj1 * qio
+     .                     + pipj1 * dQo(io,ix)
+            Saux(2,juo,mu) = Saux(2,juo,mu) + dpipj2 * qio
+     .                     + pipj2 * dQo(IO,ix)
+            Haux(1,juo,mu) = Haux(1,juo,mu) + dpipj1 * eio
+     .                     + qde * pipj1
+            Haux(2,juo,mu) = Haux(2,juo,mu) + dpipj2 * eio
+     .                     + qde * pipj2
+!
+!            Saux(1,juo,mu) = Saux(1,juo,mu) +
+!     .             (psiper(1,mu,io) * psi(1,juo,io) +
+!     .              psiper(2,mu,io) * psi(2,juo,io) +
+!     .              psi(1,mu,io) * psiper(1,juo,io) +
+!     .              psi(2,mu,io) * psiper(2,juo,io)) * qio
+!     .              + (psi(1,mu,io)*psi(1,juo,io) +
+!     .              psi(2,mu,io)*psi(2,juo,io))*dQo(io,ix)
+!            Saux(2,juo,mu) = Saux(2,juo,mu) +
+!     .             (psiper(1,mu,io) * psi(2,juo,io) -
+!     .              psiper(2,mu,io) * psi(1,juo,io) +
+!     .              psi(1,mu,io) * psiper(2,juo,io) -
+!     .              psi(2,mu,io) * psiper(1,juo,io)) * qio
+!     .              + (psi(1,mu,io)*psi(2,juo,io) -
+!     .              psi(2,mu,io)*psi(1,juo,io))*dQo(IO,ix)
+!             Haux(1,juo,mu) = Haux(1,juo,mu) +
+!     .             (psiper(1,mu,io) * psi(1,juo,io) +
+!     .              psiper(2,mu,io) * psi(2,juo,io) +
+!     .              psi(1,mu,io) * psiper(1,juo,io) +
+!     .              psi(2,mu,io) * psiper(2,juo,io)) * qio * eio +
+!     .              qio * evper(1,ix,io) *
+!     .              (psi(1,mu,io) * psi(1,juo,io) +
+!     .               psi(2,mu,io) * psi(2,juo,io))
+!     .            + (psi(1,mu,io)*psi(1,juo,io) +
+!     .              psi(2,mu,io)*psi(2,juo,io))*eio*dQo(io,ix)
+!             Haux(2,juo,mu) = Haux(2,juo,mu) +
+!     .             (psiper(1,mu,io) * psi(2,juo,io) -
+!     .              psiper(2,mu,io) * psi(1,juo,io) +
+!     .              psi(1,mu,io) * psiper(2,juo,io) -
+!     .              psi(2,mu,io) * psiper(1,juo,io)) * qio * eio +
+!     .              qio * evper(1,ix,io) *
+!     .              (psi(1,mu,io) * psi(2,juo,io) -
+!     .               psi(2,mu,io) * psi(1,juo,io) )
+!     .       + (psi(1,mu,io)*psi(2,juo,io) -
+!     .          psi(2,mu,io)*psi(1,juo,io))*eio*dQo(io,ix)
            enddo
           enddo
 !$OMP end do ! retain barrier

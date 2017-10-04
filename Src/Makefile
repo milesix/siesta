@@ -255,7 +255,7 @@ OBJS += m_cite.o
 
 #Linres package
 OBJS += linresscf.o linres_matrices.o dhinit.o dvnloc.o dfscf2.o dynamat.o
-OBJS += delrho.o delrhog.o delrhok.o m_pulay.o ddsmat.o ddnaefs.o m_iodynmat.o
+OBJS += delrho.o delrhog.o delrhok.o delrhokp.o m_pulay.o ddsmat.o ddnaefs.o m_iodynmat.o
 
 # Special dependency that sfmakedepend cannot grasp for now
 m_pexsi.o m_pexsi_driver.o m_pexsi_dos.o m_pexsi_local_dos.o: f_ppexsi_interface.o
@@ -667,9 +667,10 @@ debugmpi.o: parallel.o
 delk.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o
 delk.o: m_planewavematrixvar.o mesh.o meshdscf.o meshphi.o parallel.o
 delk.o: parallelsubs.o precision.o siesta_geom.o
-delrho.o: alloc.o densematrix.o precision.o
+delrho.o: alloc.o parallelsubs.o parallel.o precision.o densematrix.o
 delrhog.o: alloc.o precision.o
 delrhok.o: alloc.o precision.o
+delrhokp.o: alloc.o parallel.o parallelsubs.o precision.o sys.o
 denmat.o: alloc.o globalise.o m_mpi_utils.o onmod.o precision.o
 denmatlomem.o: alloc.o globalise.o onmod.o precision.o
 densematrix.o: alloc.o precision.o
@@ -811,7 +812,7 @@ ldau_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
 ldau_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o parallel.o
 ldau_specs.o: precision.o pseudopotential.o radial.o sys.o units.o
 linres_matrices.o: alloc.o precision.o
-linresscf.o: alloc.o atomlist.o ddnaefs.o dhscf.o dvnloc.o files.o
+linresscf.o: alloc.o atomlist.o ddnaefs.o delrho.o dhscf.o dvnloc.o files.o
 linresscf.o: kpoint_grid.o linres_matrices.o listsc.o m_dipol.o m_energies.o
 linresscf.o: m_eo.o m_gamma.o m_iodynmat.o m_ntm.o m_pulay.o m_spin.o overfsm.o
 linresscf.o: parallel.o precision.o siesta_geom.o siesta_options.o
