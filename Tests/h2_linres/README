@@ -1,0 +1,17 @@
+This test exercises the linear-response features
+of Siesta.
+
+By default, a "make" command will run Siesta with h2linres.fdf as input,
+computing the force-constant matrix for the system.
+
+This corresponds to the calculation of the vibrational frequencies 
+of the h2 molecule.
+
+The force-constant matrix is contained by default in the
+(label)/h2linres.FC file, where (label) is 'work' by default. In order to
+compute the molecular vibrational frequencies, the 'vibra'
+program must be executed..
+
+(Before proceeding, see Util/Vibra/Docs for documentation, and compile
+Util/Vibra/Src/vibra. 
+

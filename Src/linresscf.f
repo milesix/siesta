@@ -246,7 +246,8 @@ C Find change in density matrix from perturbed Hamiltonian and Overlap
      &          GAMMA, indxuo, xijo, nspin, eo, tolLR, eigtolLR, nkpnt,
      &          kpoint, kweight, Qo, H, S, dHmat, dSmat, numh,
      &          listh, listhptr, ef, temp, dDscf, dEscf, iscf)
-           
+
+
 C Perform the density matrix mixing
            dMax = 0.0_dp
            do ix = 1 , 3
@@ -264,7 +265,7 @@ C Print error in the perturbed density
            if ( first_LR ) then
               write(6,'(a12,a10)') 'iscf', 'dDmax'
            end if 
-           write(*,'(a8,i4,f10.6)')'lr-scf:', iscf, dDmax
+           write(*,'(a8,i4,f10.6)')'lr-scf:', iscf, dmax
           
 C Write dDscf to file ------------------------------------------------
 C DM file is named as: label.LRDM+'IALR'
@@ -276,7 +277,7 @@ C     Check convergence cryteria
 
        end do ! isc loop
 C------------------------------------------------------------------------
-       
+
        call timer('LRatom', 2)
        
        call resetPulayArrays()

@@ -1,0 +1,31 @@
+# 
+# FDF for a h2 molecule
+# 
+
+SystemName          h2 molecule
+SystemLabel         h2linres
+
+NumberOfSpecies     1
+NumberOfAtoms       2
+
+
+%block ChemicalSpeciesLabel
+ 1  1  H 1.007825
+%endblock ChemicalSpeciesLabel
+
+LatticeConstant 10.00 Ang
+% block LatticeVectors
+1.0 0.0 0.0
+0.0 1.0 0.0
+0.0 0.0 1.0
+% endblock LatticeVectors
+
+AtomicCoordinatesFormat  Ang
+%block AtomicCoordinatesAndAtomicSpecies
+	0.000 0.000 0.000 1 
+    	0.800 0.000 0.000 1
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+MD.TypeOfRun	LR
+MD.FCfirst  1
+MD.FClast   2

@@ -86,8 +86,10 @@
 
       CONTAINS
 
-      SUBROUTINE GGAXC( AUTHOR, IREL, nSpin, D, GD,
-     .                  EPSX, EPSC, dEXdD, dECdD, dEXdGD, dECdGD )
+      SUBROUTINE GGAXC( AUTHOR, IREL, nSpin, D, GD,   
+     .                  EPSX, EPSC, dEXdD, dECdD, dEXdGD, dECdGD,   
+     .                  Ax, dAxdD, d2GxdD2, dAxdGDM,          !LINRES
+     .                  Ac, dBcdD, dBcdGDM, dAcdGDM )
 
 C Finds the exchange and correlation energies at a point, and their
 C derivatives with respect to density and density gradient, in the
@@ -114,9 +116,18 @@ C Interface with LibXC added by Micael Oliveira, Jul.2014
       real(dp),intent(out):: dECdD(nSpin)   ! dEc/dDens
       real(dp),intent(out):: dEXdGD(3,nSpin) ! dEx/dGrad(Dens)
       real(dp),intent(out):: dECdGD(3,nSpin) ! dEc/dGrad(Dens)
+! -----------------Linres
+      real(dp),intent(out),optional :: dAxdD(nSpin)   
+      real(dp),intent(out),optional :: d2GxdD2(nSpin,nSpin)
+      real(dp),intent(out),optional :: dAxdGDM(nSpin)     
+      real(dp),intent(out),optional :: Ax(nSpin)
+      real(dp),intent(out),optional :: dBcdD(nSpin,nSpin)
+      real(dp),intent(out),optional :: dBcdGDM(nSpin,nSpin)
+      real(dp),intent(out),optional :: dAcdGDM(nSpin,nSpin)     
+      real(dp),intent(out),optional :: Ac(nSpin) 
 
       ! Internal variables and arrays
-      integer    :: NS, is, ix
+      integer    :: NS, is, Mx, ix
       real(dp)   :: DD(2), dECdDD(2), dEXdDD(2),
      .              dDDdD(2,4), dDTOTdD(4), dDPOLdD(4),
      .              dECdGDD(3,2), dEXdGDD(3,2),
@@ -124,13 +135,20 @@ C Interface with LibXC added by Micael Oliveira, Jul.2014
      .              dGDTOTdD(3,4), dGDPOLdD(3,4),
      .              dGDTOTdGD(4), dGDPOLdGD(4),
      .              DPOL, DTOT, GDD(3,2), GDTOT(3), GDPOL(3),
-     .              VPOL
+! ----------------Linres
+     .              GDM(nspin), dBcdDD(nspin,nspin), 
+     .              dBcdGDDM(nspin,nspin),   
+     .              AcD(nSpin), dAcdGDDM(nspin,nspin), AxD(nspin), 
+     .              d2GxdDD2(nspin,nspin),
+     .              dAxdDD(nspin), dAxdGDDM(nspin)
+
       real(dp), parameter :: DENMIN = 1.e-12_dp
 
 #ifdef LIBXC
       type(xc_f90_pointer_t) :: xc_func, xc_info
       integer :: xc_ispin, xc_id, iostat
       real(dp) :: eps, dedn(nspin), sgm(3), dedsgm(3), dedgd(3, nspin)
+      real(dp) :: d2edndn(3), d2edndsgm(6), d2edsgmdsgm(6)   !Output Libxc Linres
 #endif
 
       ! Handle non-collinear spin case
@@ -303,23 +321,119 @@ C Interface with LibXC added by Micael Oliveira, Jul.2014
 
         call xc_f90_gga_exc_vxc(xc_func, 1, DD(1), sgm(1), eps, dedn(1), 
      .                          dedsgm(1))
+
+        if (present(Ac)) then !Linres calculation: extra derivatives 
+          call timer('LIBXC_GGA',1)
+          call xc_f90_gga_fxc(xc_func, 1, DD(1), sgm(1), d2edndn(1),
+     .                          d2edndsgm(1), d2edsgmdsgm(1))
+          call timer('LIBXC_GGA',2)
+        endif
+        
         IF (nspin == 1) THEN
           dedgd(1:3, 1) = 2.0D0*dedsgm(1)*GDD(1:3, 1)
-        ELSE
+        ELSE !nspin==2
           dedgd(1:3, 1) = 2.0D0*dedsgm(1)*GDD(1:3, 1) +
      .                    dedsgm(2)*GDD(1:3, 2)
           dedgd(1:3, 2) = 2.0D0*dedsgm(3)*GDD(1:3, 2) +
      .                    dedsgm(2)*GDD(1:3, 1)
         ENDIF
+
+        IF (present(Ac)) THEN !LINRES DERIVATIVES
+          GDM(1) = SQRT( GDD(1,1)**2 + GDD(2,1)**2 + GDD(3,1)**2 ) 
+          if (nSpin==2) then
+            GDM(2) = SQRT( GDD(1,2)**2 + GDD(2,2)**2 + GDD(3,2)**2 )
+          endif 
+        ENDIF 
+
         IF (xc_f90_info_kind(xc_info) == XC_CORRELATION) THEN
+
+          if (present(Ac)) then !LINRES
+            dBcdDD(1,1)   = d2edndn(1)  !second density derivative           
+            dBcdGDDM(1,1) = 2 * d2edndsgm(1) !1/Grad * dE/dGrad dn
+            AcD(1)        = 2 * dedsgm(1)  
+            dAcdGDDM(1,1) = 4 * d2edsgmdsgm(1) !1/Grad * d/dGrad (1/grad dE /dGrad)
+            if (nSpin==2) then
+              !second density derivative
+              dBcdDD(1,1)   = d2edndn(1)
+              dBcdDD(2,2)   = d2edndn(3)
+              dBcdDD(1,2)   = d2edndn(2)
+              dBcdDD(2,1)   = dBcdDD(1,2)
+
+              dBCdGDDM(1,1) = 2*d2edndsgm(1)+GDM(2)/GDM(1)*d2edndsgm(3) !1/Grad(up)*d/dGrad(up) (dE/dn(up))
+              dBCdGDDM(1,2) = 2*d2edndsgm(5)+GDM(1)/GDM(2)*d2edndsgm(3) !1/Grad(up)*d/dGrad(up) (dE/dn(dwn))
+              dBCdGDDM(2,1) = 2*d2edndsgm(2)+GDM(2)/GDM(1)*d2edndsgm(4) !1/Grad(dwn)*d/dGrad(dwn) (dE/dn(up))
+              dBCdGDDM(2,2) = 2*d2edndsgm(6)+GDM(1)/GDM(2)*d2edndsgm(4) !1/Grad(dwn)*d/dGrad(dwn) (dE/dn(dwn))
+
+              AcD(1)=2*dedsgm(1)+GDM(2)/GDM(1)*dedsgm(2) 
+              AcD(2)=2*dedsgm(3)+GDM(1)/GDM(2)*dedsgm(2) 
+
+              dAcdGDDM(1,1)=4*d2edsgmdsgm(1)+
+     .                      2*GDM(2)/GDM(1)*d2edsgmdsgm(2)+
+     .                      -GDM(2)/(GDM(1)**3)*dedsgm(2)+
+     .                      2*GDM(2)/GDM(1)*d2edsgmdsgm(2)+
+     .                      ((GDM(2)/GDM(1))**2)*d2edsgmdsgm(4)
+
+              dAcdGDDM(2,2)=4*d2edsgmdsgm(6)+
+     .                      2*GDM(1)/GDM(2)*d2edsgmdsgm(5)+
+     .                      -GDM(2)/(GDM(1)**3)*dedsgm(2)+
+     .                      2*GDM(2)/GDM(1)*d2edsgmdsgm(5)+
+     .                      ((GDM(2)/GDM(1))**2)*d2edsgmdsgm(4)
+
+              dAcdGDDM(2,1)=2*GDM(1)/GDM(2)*d2edsgmdsgm(2)+
+     .                      4*d2edsgmdsgm(3)+
+     .                      1/(GDM(1)*GDM(2))*dedsgm(2)+
+     .                      d2edsgmdsgm(4)+
+     .                      2*GDM(2)/GDM(1)*d2edsgmdsgm(5)
+
+              dAcdGDDM(2,1)=2*GDM(2)/GDM(1)*d2edsgmdsgm(5)+
+     .                      4*d2edsgmdsgm(3)+
+     .                      1/(GDM(1)*GDM(2))*dedsgm(2)+
+     .                      d2edsgmdsgm(4)+
+     .                      2*GDM(1)/GDM(2)*d2edsgmdsgm(5)
+            endif
+          endif !end Linres
           EPSC = eps
           dECdDD(1:nspin) = dedn(1:nspin)
           dECdGDD(1:3, 1:nspin) = dedgd(1:3, 1:nspin)
+
         ELSE if (xc_f90_info_kind(xc_info) == XC_EXCHANGE) THEN
+
+          if (present(Ac)) then !LINRES
+            AxD(1)        = 2 * dedsgm(1)
+            d2GxdDD2(1,1) = d2edndn(1) 
+            dAxdDD(1)     = 2 * d2edndsgm(1) !dAx/dn
+            dAxdGDDM(1) = 4 * d2edsgmdsgm(1) !1/Grad * dAx/dGrad
+            if (nSpin==2) then
+              AxD(1)=2*dedsgm(1)+GDM(2)/GDM(1)*dedsgm(2) !Ax(up)=1/Grad(up)*dEx/dGrad(up)
+              AxD(2)=2*dedsgm(3)+GDM(1)/GDM(2)*dedsgm(2) !Ax(down)=1/Grad(down)*dEx/dGrad(down)
+
+              d2GxdDD2(1,1) = d2edndn(1)  !dEx/dn(up)dn(up)
+              d2GxdDD2(1,2) = d2edndn(2)  !dEx/dn(up)dn(down)
+              d2GxdDD2(2,1) = d2edndn(2)  !dEx/dn(down)dn(up)
+              d2GxdDD2(2,2) = d2edndn(3)  !dEx/dn(down)dn(down)
+
+              dAxdDD(2)=2*d2edndsgm(6)+GDM(1)/GDM(2)*d2edndsgm(4) !dAx/dn
+
+              dAxdGDDM(1) = 4*d2edsgmdsgm(1)+
+     .                      2*GDM(2)/GDM(1)*d2edsgmdsgm(2)+
+     .                      -GDM(2)/(GDM(1)**3)*dedsgm(2)+
+     .                      2*GDM(2)/GDM(1)*d2edsgmdsgm(2)+
+     .                      ((GDM(2)/GDM(1))**2)*d2edsgmdsgm(4)
+
+              dAxdGDDM(2) = 4*d2edsgmdsgm(6)+
+     .                      2*GDM(1)/GDM(2)*d2edsgmdsgm(5)+
+     .                      -GDM(2)/(GDM(1)**3)*dedsgm(2)+
+     .                      2*GDM(2)/GDM(1)*d2edsgmdsgm(5)+
+     .                      ((GDM(2)/GDM(1))**2)*d2edsgmdsgm(4)
+            endif
+          endif !end Linres
+
           EPSX = eps
           dEXdDD(1:nspin) = dedn(1:nspin)
           dEXdGDD(1:3, 1:nspin) = dedgd(1:3, 1:nspin)
+
         ELSE ! combined functional, use an arbitrary 50/50 split
+
           EPSX = 0.5_dp * eps
           dEXdDD(1:nspin) = 0.5_dp * dedn(1:nspin)
           dEXdGDD(1:3, 1:nspin) = 0.5_dp * dedgd(1:3, 1:nspin)
@@ -327,7 +441,7 @@ C Interface with LibXC added by Micael Oliveira, Jul.2014
           EPSC = EPSX
           dECdDD(1:nspin) = dEXdDD(1:nspin)
           dECdGDD(1:3, 1:nspin) = dEXdGDD(1:3,1:nspin)
-         ENDIF
+        ENDIF
 
         call xc_f90_func_end(xc_func)
 #else
@@ -365,6 +479,16 @@ C Interface with LibXC added by Micael Oliveira, Jul.2014
         dEXdGD(:,3:4) = dEXdGD(:,3:4) / 2
         dECdGD(:,3:4) = dECdGD(:,3:4) / 2
       else   ! Collinear spin => just copy derivatives to output arrays
+        IF (present(Ac)) THEN !LINRES
+          dAxdD(1:nSpin) = dAxdDD(1:nSpin)
+          d2GxdD2(1:nSpin,1:nSpin) = d2GxdDD2(1:nSpin,1:nSpin)
+          dAxdGDM(:) = dAxdGDDM(:)     
+          Ax(1:nSpin) = AxD(1:nSpin)
+          dBcdD(1:nSpin,1:nSpin) = dBcdDD(1:nSpin,1:nSpin)
+          dBcdGDM(1:nSpin,1:nSpin) = dBcdGDDM(1:nSpin,1:nSpin) 
+          dAcdGDM(1:nSpin,1:nSpin) = dAcdGDDM(1:nSpin,1:nSpin)     
+          Ac(:) = AcD(:)
+        ENDIF
         dEXdD(1:nSpin) = dEXdDD(1:nSpin)
         dECdD(1:nSpin) = dECdDD(1:nSpin)
         dEXdGD(:,1:nSpin) = dEXdGDD(:,1:nSpin)

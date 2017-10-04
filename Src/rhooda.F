@@ -73,33 +73,6 @@ C  Loop on orbitals of mesh point
         do kn = 1+endpht(ip-1), endpht(ip)
           i = lstpht(kn)
           iu = indxuo(i)
-!	  print*,'rhoofa: orbital, atomo,atomo c.unida',iu,iaorb(i),
-!     &                indxua(iaorb(i))
-!	  print*,'posicion',xdop(:,listp2(kn))
-!	  print*,'Sreplica',Sreplica(iaorb(i),:)
-!	  print*,'iatfold',iatfold(:,iaorb(i))
-!	  print*,'veamos su vector translacion'
-          
-!         ia = iaorb(i)
-!	  iop=listp2(kn)
-!          irel = idop(iop) + ipa(ia)
-!	print*,'ipa(ia)',ipa(ia)
-!          call ipack( -1, 3, nem, inmp, irel )
-!             inmp(:) = inmp(:) + (meshLim(1,:) - 1)
-!             inmp(:) = inmp(:) - 2 * ne(:)
-!	print*,'inmp',inmp(:)
-!          dxp(:) = cmesh(:,1) * inmp(1) + 
-!     &                  cmesh(:,2) * inmp(2) + 
-!     &                 cmesh(:,3) * inmp(3)
-!	print*,'dxp',dxp(:)
-
-!	do ix=1,3
-!	displat(ix)= (iatfold(1,ia)*nmsc(1))*cmesh(ix,1)+
-!     &               (iatfold(2,ia)*nmsc(2))*cmesh(ix,2)+
-!     &               (iatfold(3,ia)*nmsc(3))*cmesh(ix,3)
-!	enddo
-!	print*,'displat',displat(:)
-!	print*,'distancia',xa(:,indxua(ia))-xa(:,ia)-displat(:)
 
           if (DirectPhi) then
 C  Generate phi value and loop on subpoints

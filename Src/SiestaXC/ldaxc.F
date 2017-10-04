@@ -44,7 +44,7 @@
       CONTAINS
 
       SUBROUTINE LDAXC( AUTHOR, IREL, nspin, D, EPSX, EPSC, VX, VC,
-     .                  DVXDN, DVCDN )
+     .                  DVXDN, DVCDN, LR_flag )
 
 C ******************************************************************
 C Finds the exchange and correlation energies and potentials, in the
@@ -68,6 +68,7 @@ C                    nspin=4 => non-collinear polarization
 C REAL*8  D(nspin) : Local (spin) density. For non-collinear
 C                    polarization, the density matrix is given by:
 C                    D(1)=D11, D(2)=D22, D(3)=Real(D12), D(4)=Im(D12)
+C LOGICAL LR_flag  : optional argument for Linres calculations
 C *********** OUTPUT ***********************************************
 C REAL*8 EPSX, EPSC : Exchange and correlation energy densities
 C REAL*8 VX(nspin), VC(nspin) : Exchange and correlation potentials,
@@ -102,14 +103,15 @@ C ******************************************************************
       real(dp),intent(out):: VC(nspin)   ! Correlation potential
       real(dp),intent(out):: DVXDN(nspin,nspin) ! dVX(spin1)/dDens(spin2)
       real(dp),intent(out):: DVCDN(nspin,nspin) ! dVC(spin1)/dDens(spin2)
+      logical,intent(in),optional ::LR_flag !It is a Linres calculation
 
       INTEGER           IS, NS, ISPIN1, ISPIN2
       real(dp)          DD(2), DPOL, DTOT, TINY, VCD(2), VPOL, VXD(2)
-
 #ifdef LIBXC
       type(xc_f90_pointer_t) :: xc_func, xc_info
       integer :: xc_ispin, xc_id, iostat
       real(dp) :: leps, ldedn(nspin)
+      real(dp)          DVDN(3)
 #endif
 
       PARAMETER ( TINY = 1.D-12 )
@@ -163,12 +165,31 @@ cag       Avoid negative densities
         ENDIF
 
         call xc_f90_lda_exc_vxc(xc_func, 1, DD(1), leps, ldedn(1))
+        DVDN(:)=0.D0
+        if (present(LR_flag)) then
+           call xc_f90_lda_fxc(xc_func, 1, DD(1), DVDN(1))
+        endif 
+
         IF (xc_f90_info_kind(xc_info) == XC_CORRELATION) THEN
           EPSC = leps
           VCD(1:nspin) = ldedn(1:nspin)
+! Linres Libxc-LDA derivatives
+          DVCDN(1,1)=DVDN(1)
+          IF (NSPIN == 2) THEN         
+            DVCDN(2,2)=DVDN(3)
+            DVCDN(2,1)=DVDN(2)
+            DVCDN(1,2)=DVDN(2)
+          ENDIF
         ELSE if (xc_f90_info_kind(xc_info) == XC_EXCHANGE) THEN
           EPSX = leps
           VXD(1:nspin) = ldedn(1:nspin)
+! Linres Libxc-LDA derivatives
+          DVXDN(1,1)=DVDN(1)
+          IF (NSPIN == 2) THEN 
+            DVXDN(2,2)=DVDN(3)
+            DVXDN(2,1)=DVDN(2)
+            DVXDN(1,2)=DVDN(2)
+          ENDIF
         ELSE  ! combined functional, use an arbitrary 50/50 split
           EPSX = 0.5_dp * leps
           EPSC = 0.5_dp * leps

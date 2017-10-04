@@ -45,8 +45,8 @@ C REAL*8 Haux(2,NO_U,NO_L)    :Auxiliary space for the Hamiltonian
 C REAL*8 Saux(2,NO_U,NO_L)    :Auxiliary space for the overlap matrix
 C REAL*8 PSI(2,NO_U,NO_L)     :Auxiliary space for the eigenvectors
 C ******************  OUTPUT  ******************************************
-C REAL*8  RHOPER(MAXNH,3,MAXSPN)  :Matrix elements of the perturbated DM
-C REAL*8  ERHOPER(MAXNH,3,MAXSPN) :Matrix elements of the perturbated 
+C REAL*8  RHOPER(MAXNH,MAXSPN,3)  :Matrix elements of the perturbated DM
+C REAL*8  ERHOPER(MAXNH,MAXSPN,3) :Matrix elements of the perturbated 
 C                                  Energy Density Matrix
 C **********************************************************************
 
