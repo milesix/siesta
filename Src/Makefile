@@ -255,7 +255,7 @@ OBJS += m_cite.o
 
 #Linres package
 OBJS += linresscf.o linres_matrices.o dhinit.o dvnloc.o dfscf2.o dynamat.o
-OBJS += delrho.o delrhog.o delrhok.o delrhokp.o m_pulay.o ddsmat.o ddnaefs.o m_iodynmat.o
+OBJS += delrho.o delrhog.o delrhok.o m_pulay.o ddsmat.o ddnaefs.o m_iodynmat.o delrhokp.o
 
 # Special dependency that sfmakedepend cannot grasp for now
 m_pexsi.o m_pexsi_driver.o m_pexsi_dos.o m_pexsi_local_dos.o: f_ppexsi_interface.o

@@ -216,6 +216,7 @@ C  Linear response SCF loop --------------------------
            first_LR = iscf == 1
            
 C          Copy non-scf hamiltonian to total Hamiltonian
+           dHmat(:,:,:)=0.0_dp
            do ispin = 1 , nspin
               dHmat(:,:,ispin) = dHmat0(:,:,ispin)
            end do

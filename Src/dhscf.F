@@ -2209,6 +2209,7 @@ C------------------------------------------------------------------------
           call timer("CellXC-LR",1)
           nullify(dVXCpot)
           call re_alloc( dVXCpot, 1, ntpl, 1, nspin, 'dVXCpot','dhscf' )
+          dVXCpot(:,:)=0.0_dp
           call cellXC( 0, cell, ntm, myBox(1,1), myBox(2,1),
      .                           myBox(1,2), myBox(2,2),
      .                           myBox(1,3), myBox(2,3), nspin,
