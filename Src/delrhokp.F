@@ -53,8 +53,11 @@ C **********************************************************************
       use sys
       use parallel,     only : Node, Nodes
       use parallelsubs, only : WhichNodeOrb, GlobalToLocalOrb
-      use mpi_siesta
       use alloc,        only : re_alloc, de_alloc
+#ifdef MPI
+      use mpi_siesta
+#endif
+
 
       implicit none
 
@@ -106,6 +109,8 @@ C     Internal Variables
       real(dp), pointer :: Hauxden(:,:,:) => null()
       real(dp), pointer :: Sauxden(:,:,:) => null()
       real(dp) :: ckXij, skXij, pert
+
+#ifdef MPI
 
       call timer('delrhokp',1)
 
@@ -719,6 +724,10 @@ C Free local memory
       call de_alloc( Erhoperloc, name='Erhoperloc', routine= 'delrhokp')
 
       call timer('delrhokp',2)
+
+#else
+      call die('delrhokp only works for MPI process')
+#endif
       return
       end
 
