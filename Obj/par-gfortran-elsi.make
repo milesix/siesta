@@ -31,16 +31,15 @@ NETCDF_LIBS= -L$(NETCDF_ROOT)/lib -lnetcdff
 #
 ELSI_HOME=$(HOME)/code/ELSI/elsi-interface
 ELSI_INCFLAGS = -I${ELSI_HOME}/include
-ELSI_LIB = -L${ELSI_HOME}/lib -lelsi -lOMM -lMatrixSwitch \
-                -lpspblas -lelpa -ltomato
+ELSI_LIB = -L${ELSI_HOME}/lib -lelsi -lOMM -lMatrixSwitch -lelpa
 #
 MPI_INTERFACE=libmpi_f90.a
 MPI_INCLUDE=.      # Note . for no-op
 FPPFLAGS_MPI=-DMPI
-
-LIBS= $(ELSI_LIB) -L/opt/scalapack/openmpi-1.6.1-gfortran/lib \
-        -lscalapack -ltmg -lreflapack -lrefblas \
-      $(NETCDF_LIBS)
+#
+# You need (maybe via modules) the symbols SCALAPACK_LIBS and LAPACK_LIBS
+#
+LIBS= $(ELSI_LIB) $(SCALAPACK_LIBS) $(LAPACK_LIBS)  $(NETCDF_LIBS)
 
 SYS=nag
 FPPFLAGS= $(FPPFLAGS_CDF) $(FPPFLAGS_MPI) -DF2003 

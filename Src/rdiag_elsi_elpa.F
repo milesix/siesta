@@ -91,7 +91,7 @@
       integer, parameter :: ELPA = 1, MULTI_PROC = 1, BLACS_DENSE = 0
       integer, external  :: numroc
 
-      type(elsi_case) :: elsi_h
+      type(elsi_handle) :: elsi_h
 
 !*******************************************************************************
 ! Setup                                                                        *
@@ -203,13 +203,15 @@
         call elsi_set_mpi(elsi_h,mpi_comm_world)
         call elsi_set_blacs(elsi_h,i2d_ctxt,BlockSize)
 
-        call elsi_customize(elsi_h,print_detail=.true.)
-        call elsi_customize(elsi_h,no_singularity_check=.true.)
+        call elsi_set_output(elsi_h,out_level=3)
+        call elsi_set_sing_check(elsi_h,sing_check=0)
+!        call elsi_customize(elsi_h,no_singularity_check=.true.)
+!        call elsi_customize(elsi_h,print_detail=.true.)
 
 ! -----       Solve generalized eigenvalue problem
         if (node==0) print *, "About to solve eigenvalue problem..."
         
-        ! Note that this routine uses the naked arrays
+! Note that this routine uses the naked arrays
         call elsi_ev_real(elsi_h,h2d,s2d,w,z2d)
 
         if (node==0) print *, "About to convert z to 1d..."
