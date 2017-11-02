@@ -76,6 +76,8 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
   real(dp),      pointer :: t_DYL(:,:,:) 
   ! calculated contributions in each node
   real(dp),      pointer :: DY(:,:) !will store common (s/p) dynmat
+  real(dp),      pointer :: dynmat_g(:,:)
+
   logical                :: VnaListed, ParallelLocal
 
   type(allocDefaults) :: oldDefaults
@@ -161,7 +163,7 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
   nullify(ilocal, ilc, iorb)
   nullify(Dlocal, dDlocal)
   nullify(C, gC, LISTED, phia, grphi) 
-  
+
 !$OMP critical
   call re_alloc( C, 1, nsp, 1, maxloc2, 'C')
   call re_alloc( gC, 1, 3, 1, nsp, 1, maxloc2, 'gC')
@@ -185,6 +187,9 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
   if ( ParallelLocal ) then ! Define parallel buffer
      nullify( t_DYL )
      call re_alloc( t_DYL, 1, 3, 1, nua, 1, NTH, 't_DYL')
+     nullify(dynmat_g)
+     call re_alloc( dynmat_g, 1, 3, 1, nua,'dynmat_g')
+     dynmat_g(:,:)=0.0_dp
   else if ( NTH > 1 ) then
      nullify( t_DYL )
      call re_alloc( t_DYL, 1, 3, 1, nua, 2, NTH, 't_DYL')
@@ -219,6 +224,7 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
 !     loop over grid points -----------------------------------------
 !$OMP do schedule(static,1)
   do ip = 1,np
+
      !  Find number of nonzero orbitals at this point
      nc = endpht(ip) - endpht(ip-1)
      do imp = 1+endpht(ip-1), endpht(ip)
@@ -382,7 +388,7 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
 !            ! d2Vna*Rho (dynmat term 6)
                   do ix = 1,3
                     DY(ix,iua) = DY(ix,iua) - gr2vna(ix,isp) &
-                         *  dRho(isp,ip) * dVol 
+                           * dRho(isp,ip) * dVol 
                   enddo
                 enddo
               elseif(iter.ne.1) then
@@ -553,29 +559,41 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
 
 !$OMP barrier
 
-      if ( ParallelLocal .and. NTH > 1 ) then
+      if ( ParallelLocal) then
+        if (NTH>1) then
 !$OMP do collapse(2)
-       do ind = 1, nua
-          do ix = 1, 3
-             do ii = 2, NTH
+          do ind = 1, nua
+            do ix = 1, 3
+              do ii = 2, NTH
                 t_DYL(ix,ind,1) = t_DYL(ix,ind,1) + &
                      t_DYL(ix,ind,ii)
-             end do
-          end do
-       end do
-!$OMP end do
-       dynmat(:,:) = dynmat(:,:) + t_DYL(:,:,1)
-    else if ( NTH > 1 ) then
-!$OMP do collapse(2)
-       do ind = 1, nua
-          do ix = 1, 3
-            do ii = 2, NTH
-                dynmat(ix,ind) = dynmat(ix,ind) + t_DYL(ix,ind,ii)
+              end do
             end do
           end do
-       end do
 !$OMP end do
-    end if
+        endif
+#ifdef MPI
+        call globalize_sum( t_DYL(1:3,1:nua,1),   &
+             dynmat_g(1:3,1:nua) )
+#endif
+        dynmat=dynmat+dynmat_g !add buffer dynmat to the input one
+      else
+         if (NTH>1) then
+            if (TID .ne. 1) then
+!$OMP do collapse(2)
+              do ind = 1, nua
+                do ix = 1, 3
+                  do ii = 2, NTH
+                    t_DYL(ix,ind,1) = t_DYL(ix,ind,1) + &
+                     t_DYL(ix,ind,ii)
+                  end do
+                end do
+              end do
+!$OMP end do
+            dynmat(:,:) = dynmat(:,:) + t_DYL(:,:,1)
+            endif
+         endif
+       endif
 
 !     Global reduction of dynamical matrix
 !$OMP single
@@ -608,6 +626,7 @@ subroutine dynamat(no, nuo, na, nua, nuotot, nspin, ispin, jx, &
     if (ParallelLocal) then
         call de_alloc( DscfL, 'DscfL')
         call de_alloc( dDscfL, 'dDscfL')
+        call de_alloc( dynmat_g,'dynmat_g')
     end if
 
 #ifdef _TRACE_

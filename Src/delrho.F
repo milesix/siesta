@@ -16,6 +16,7 @@ C *********************************************************************
       use alloc
 #ifdef MPI
       use mpi_siesta
+      use m_diag_option, only: ParallelOverK
 #endif
 
       implicit none
@@ -116,6 +117,11 @@ C Check internal dimensions ..........................................
          enddo  
 #ifdef MPI
       else if (Nodes .gt. 1) then
+        if (.not. ParallelOverK) then
+          call die('DELRHOK: for MPI calculations and k-points
+     & activate the ParallelOverK flag in the fdf file.')
+        endif
+
         call delrhokp(no, nuo, maxo, maxspn, nspin, eo, eigtol, indxuo,
      &               nk, kpoint, wk, eo,xijo, Qo, H, S, Hper, Oper,
      &               maxnh, numh, listh, listhptr, ef, temp, Rhoper,
