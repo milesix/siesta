@@ -29,7 +29,7 @@ C Modules------------------------------------------------------------------
       use siesta_geom
       use siesta_options,  only: nscf, temp, maxsav, wmix,nkick,
      &                            wmixkick
-      use parallel,          only: IOnode, Node
+      use parallel,          only: IOnode, Node, Nodes
       use m_spin,        only: nspin
       use sparse_matrices
       use m_overfsm,     only: overfsm 
@@ -54,6 +54,7 @@ C Modules------------------------------------------------------------------
       use m_ddnaefs
       use m_iodynmat
 #ifdef MPI
+      use m_diag_option, only: ParallelOverK
       use m_mpi_utils, only: globalize_max
 #endif
 
@@ -101,6 +102,19 @@ C ----------------------------------------------------------------------------
       tolLR = fdf_get("LR.DMTolerance",0.001_dp)
       eigtolLR = fdf_get('LR.EigTolerance',0.001_dp)
       readold = fdf_get("LR.readDynmat",.false.)
+
+C Needed for k-points in parallel
+#ifdef MPI
+      if (Nodes .gt. 1) then 
+        if (GAMMA) ParallelOverK = fdf_get("Diag.ParallelOverK",.true.) 
+        if (IOnode) then
+              write(6,'(a)')'Linres: Parallel calculation using MPI'
+              write(6,'(a)')'Linres: k-point calculation, ParallelOverK
+     & flag set to .true.'
+        endif
+      endif
+#endif
+C -----------------
 
 C Begin to write into output file
       if (IOnode) then
@@ -192,9 +206,6 @@ C Doing non-scf elements of the perturbed Hamiltonian and dinamical matrix
      .            dummy_stress, dummy_use_rhog_in,
      .            dummy_chargedensonly, iai, iaf, ialr, lasto,
      .            dynmat, dDscf, dHmat, first_LR, dHmat0)
-        print*,'dynmat 1 dhscf',dynmat
-        print*,'dhmat0 dhscf',dhmat0(1:50,1,1)
-
 
 C dHmat0 contains the pulay terms of the perturbed hamiltonian
 C Dynamat contains all the elements that are non-scf and depend
@@ -205,7 +216,7 @@ C (added into dHmat0)
         
       call dhinit(IALR, na_s, no_u, maxnh, maxnh, nspin, lasto,
      &       listh, listhptr, numh, DS, dSmat, dHmat0, dH)
-        print*,'dhmat0 dhinit',dhmat0(1:50,1,1)
+
 C Calculation of the KB terms of the perturbed hamiltonian
 C (added into dHmat0)
 
@@ -214,7 +225,6 @@ C (added into dHmat0)
      &       iphKB, numh, listhptr, listh, numh,
      &       listhptr, listh, min(nspin,2), IALR,
      &       no_s, iaorb, dDscf, dHmat0, dynmat, first_LR)
-        print*,'dhmat0 dvnloc',dhmat0(1:50,1,1)
 
 C  Linear response SCF loop --------------------------
         iscf = 0
@@ -246,7 +256,6 @@ C include them into dHmat. Look that dhscf is called without dHmat0!!!
      .          dummy_stress, dummy_use_rhog_in,
      .          dummy_chargedensonly, iai, iaf, ialr, lasto,
      .          dynmat, dDscf, dHmat, first_LR)
-        print*,'dhmat iscf',dhmat(1:50,1,1)
            
            call re_alloc(dDold,1,maxnh,1,nspin,1,3,
      &          'dDold', 'linresscf')
@@ -313,28 +322,22 @@ C----------------------------------------------------------------
 
 C Now, is time to calculate the final terms of the dynamical matrix
 C------------------------------------------------------------------------
-        print*,'ddscf conver',ddscf(1:50,1,1)
 
 C     Add non-local potential and kinetic part contributions to dynmat---
 C     (the terms that depend on the perturbed density and the ones that 
 C     do not depend)
 C     Note that first_LR now is false
-        print*,'dynmat antes dvnloc final',dynmat
-!	dynmat=0.0_dp
-!	print*,'dynmat set to 0 antes de dvnloc'
+
        call dvnloc(scell, na_u, na_s, isa, xa, indxua, Dscf,
      &      maxnh, maxnh, lasto, lastkb, iphorb,
      &      iphKB, numh, listhptr, listh, numh,
      &      listhptr, listh, min(nspin,2), IALR,
      &      no_s, iaorb, dDscf, dHmat, dynmat, first_LR)
-        print*,'dynmat dvnloc final',dynmat
-!	stop
 
 C     Add kinetic and ovelap contributions to dynmat -----------------
        call ddsmat(dH, dS, d2H, d2S, nspin, no_s, no_u, na_s, na_u,
      &      indxuo, lasto, numh, listh, listhptr, Dscf, Escf,
      &      ialr, iaorb, maxnh, dDscf, dEscf, dynmat)
-                      print*,'dynmat ddsmat final',dynmat
 
 c     Add terms that depends on the perturbed density and Vscf 
 C     and perturbed Vscf potentials-----------------------------------
@@ -348,7 +351,6 @@ C     and perturbed Vscf potentials-----------------------------------
      .      dummy_stress, dummy_use_rhog_in,
      .      dummy_chargedensonly, iai, iaf, ialr, lasto,
      .      dynmat, dDscf, dHmat)
-                      print*,'dynmat dhscf final',dynmat
        
 C Dealloc the non-scf variables (drhoatm, drhoscf0 and dvxc) for next atom
        call resetFirstmatrices()

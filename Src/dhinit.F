@@ -64,7 +64,8 @@ C Internal variable types and dimensions
      &                      DSMATg(:,:)=>null(),
      &                      DHMATg(:,:,:)=>null(),
      &                      DTg(:,:)=>null(),
-     &                      DHMAT0(:,:,:)=>null()
+     &                      DHMAT0(:,:,:)=>null(),
+     &                      Daux(:)=>null()
 
         real(dp)     :: displaat(3), dist(3), qxij, qpoint(3), cqxij, pi
         
@@ -105,7 +106,7 @@ C Build global numh
       if (Nodes .gt. 1) then
         call re_alloc(DHMAT0,1,maxnh,1,3,1,nspin,
      &               name='DHMAT0',routine='dhinit')
-        DHMAT0(:,:,:)=DHMAT(:,:,:)
+        DHMAT0(:,:,:)=0.0_dp
       endif
 #endif
 
@@ -145,6 +146,10 @@ C******************local to global variables******************
       do io = 1,nuotot
         maxnumh = max(maxnumh,numh(io))
       enddo
+      nullify(Daux)
+      call re_alloc( Daux, 1, maxnumh, name='Daux',
+     &               routine= 'dhinit' )
+
 #endif
 
 C****************Globalize H and S****************************
@@ -193,9 +198,10 @@ C*************************************************************
 
 C Loop on orbitals of atom IALR ----------------------------------------
       do io = lasto(IALR-1)+1, lasto(IALR) !orbitals from moving atom
-        call GlobalToLocalOrb(io,Node,Nodes,iio)
-!         iio=io
-        if (iio .gt. 0) then !local orbital
+!        call GlobalToLocalOrb(io,Node,Nodes,iio)
+        call WhichNodeOrb(io,Nodes,BNode)
+        iio=io
+        if (Node .eq. BNode) then !local orbital
           do j = 1,numhg(iio) !interacting orbitals
             ind = listhptrg(iio)+j !position to io-j interaction
             jo = listhg(ind)
@@ -244,36 +250,43 @@ C         Idetify neighbour index of orbital io relative to orbital jo -
 ! Transform from global to local the Hamiltonian and the overlap
 #ifdef MPI
       if (Nodes .gt. 1) then
-        do io = 1, lasto(IALR-1)+1, lasto(IALR)
+        do io = 1, nuotot
           call WhichNodeOrb(io,Nodes,BNode)
           call GlobalToLocalOrb(io,BNode,Nodes,iio)
           do ix = 1,3
             do ispin = 1,nspin
+              call MPI_Reduce(DHMATg(listhptrg(io)+1,ix,ispin),
+     &          Daux(1),numhg(io),MPI_double_precision,
+     &          MPI_sum,BNode,MPI_Comm_World,MPIerror)
               if (Node.eq.BNode) then
                 do j = 1,numh(iio)
-                  DHMAT(listhptr(iio)+j,ix,ispin) =
-     &                      DHMATg(listhptrg(io)+j,ix,ispin) 
+                  DHMAT0(listhptr(iio)+j,ix,ispin) = Daux(j)
                 enddo
               endif
             enddo
+            Daux(:)=0.0_dp
+            call MPI_Reduce(DSMATg(listhptrg(io)+1,ix),
+     &         Daux(1),numhg(io),MPI_double_precision,
+     &         MPI_sum,BNode,MPI_Comm_World,MPIerror)
             if (Node.eq.BNode) then
               do j = 1,numh(iio)
-                DSMAT(listhptr(iio)+j,ix) =
-     &              DSMATg(listhptrg(io)+j,ix)
+                DSMAT(listhptr(iio)+j,ix) = Daux(j)
               enddo
             endif
           enddo
         enddo
-!add the dhscf input contribution (already distributed)
-        DHMAT(:,:,:)=DHMAT(:,:,:)+DHMAT0(:,:,:) 
 
+! add to the input the here calculated contribution (DHMAT0)
+        DHMAT(:,:,:)=DHMAT(:,:,:)+DHMAT0(:,:,:)
       else
+! add to the input the here calculated contribution (DHMATg)
         DSMAT(:,:)=DSMATg(:,:)
-        DHMAT(:,:,:)=DHMATg(:,:,:)+DHMAT(:,:,:) !add the dhscf input contribution
+        DHMAT(:,:,:)=DHMATg(:,:,:)+DHMAT(:,:,:) 
       endif
 #else
+! add to the input the here calculated contribution (DHMATg)
       DSMAT(:,:)=DSMATg(:,:)
-      DHMAT(:,:,:)=DHMATg(:,:,:)+DHMAT(:,:,:) !add the dhscf input contribution
+      DHMAT(:,:,:)=DHMATg(:,:,:)+DHMAT(:,:,:) 
 #endif
 
       call de_alloc( DHMATg, name='DSMATg', routine= 'dhinit' )
