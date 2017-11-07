@@ -44,7 +44,7 @@ C Internal variables ------------------------------------------------
       real(dp), pointer:: d2Haux(:,:,:)=>null(),
      &                    d2Saux(:,:,:)=>null(),
      &                    HSaux(:,:,:)=>null(),
-     &                    Ddaux(:,:,:)=>null(),
+     &                    dDaux(:,:,:)=>null(),
      &                    Daux(:,:)=>null()
 
 
@@ -108,7 +108,7 @@ C global auxiliar variable: will store dT, d2T, dS and d2S
       do io = 1,nuotot
         maxnumh = max(maxnumh,numh(io))
       enddo
-      nullify( HSaux, d2Haux, d2Saux, Ddaux, Daux)
+      nullify( HSaux, d2Haux, d2Saux, dDaux, Daux)
       call re_alloc( HSaux, 1, maxnhg, 1, 3, 1, 2, name='HSaux',
      &               routine= 'ddsmat' ) !1=dT, 2=dS
       call re_alloc( d2Haux, 1, maxnhg, 1, 3, 1, 3, name='d2Haux',
@@ -117,7 +117,7 @@ C global auxiliar variable: will store dT, d2T, dS and d2S
      &               routine= 'ddsmat' ) !d2S
       call re_alloc( Daux, 1, maxnhg, 1, 2, name='Daux',
      &               routine= 'ddsmat' )!1=dscf, 2=Escf for each spin
-      call re_alloc( Ddaux, 1, maxnhg, 1, 3, 1, 2, name='Ddaux',
+      call re_alloc( dDaux, 1, maxnhg, 1, 3, 1, 2, name='dDaux',
      &               routine= 'ddsmat' )
 
 C Globalize dT and dS into Haux(1,2)

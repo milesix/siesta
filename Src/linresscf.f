@@ -53,6 +53,7 @@ C Modules------------------------------------------------------------------
       use fdf
       use m_ddnaefs
       use m_iodynmat
+      use m_mpi_utils,  only : broadcast
 #ifdef MPI
       use m_diag_option, only: ParallelOverK
       use m_mpi_utils, only: globalize_max
@@ -103,18 +104,27 @@ C ----------------------------------------------------------------------------
       eigtolLR = fdf_get('LR.EigTolerance',0.001_dp)
       readold = fdf_get("LR.readDynmat",.false.)
 
-C Needed for k-points in parallel
+C Check all the inputs options
+C------------------------------------------------------------------------------
 #ifdef MPI
       if (Nodes .gt. 1) then 
-        if (GAMMA) ParallelOverK = fdf_get("Diag.ParallelOverK",.true.) 
-        if (IOnode) then
+        if (GAMMA) then 
+          if (IOnode) then
+            write(6,'(a)')'Linres: MPI Gamma point calculation 
+     & not implemented yet, run in serial mode'
+          endif
+          call die() !MPI no-kpoints not implemeted in MPI (use delrhog NO-MPI-compatible)   
+        else
+          ParallelOverK = fdf_get("Diag.ParallelOverK",.true.)
+          if (IOnode) then
               write(6,'(a)')'Linres: Parallel calculation using MPI'
               write(6,'(a)')'Linres: k-point calculation, ParallelOverK
-     & flag set to .true.'
+     & flag set to .true.' !For MPI-Nodes>1, use delrhokp instead of delrhok (check in delrho)
+          endif
         endif
       endif
 #endif
-C -----------------
+C---------------------------------------------------------------------------------
 
 C Begin to write into output file
       if (IOnode) then
@@ -162,24 +172,40 @@ C Internal loop scf-loop (ISCF).
 
 C Read stored DM in file .LRDMIALR from previous non-converged calculation
         if (readold) then
+
           if (IOnode) then
             write(6,'(a)')
             write(6,'(a,i7)')'Linres: trying to start from .LRDM file'
             write(atomdisp,'(i0)') ialr
           endif
+
           fname = trim(slabel)//'.LRDM'//trim(atomdisp)
-          inquire( file=fname, exist=found )
+          if (Node .eq. 0) then
+            inquire( file=fname, exist=found )
+          endif
+          call broadcast(found)
+
           if (found) then
+
             if (IOnode) then
               write(6,'(a,i7)') 'Linres: reading LRDM file for atom=',
      &                            ialr
             endif
+
             call read_dmlr( maxnh, no_l, nspin, numh,
      &                     listhptr, listh, dDscf, fname)
+
+            if (IOnode) then
               write(6,'(a)')'Linres: Read DM from file...successfully!!'
+            endif
+
           else
-            write(6,'(a)')'Linres: LRDM file not found'//
+
+            if (IOnode) then 
+              write(6,'(a)')'Linres: LRDM file not found'//
      $                    ' or not corresponds to this atom'
+            endif
+
           endif
         endif
         call timer('LRatom', 1)

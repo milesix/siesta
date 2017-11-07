@@ -104,9 +104,15 @@ C Build global numh
 
 #ifdef MPI
       if (Nodes .gt. 1) then
+        nullify(DHMAT0)
         call re_alloc(DHMAT0,1,maxnh,1,3,1,nspin,
      &               name='DHMAT0',routine='dhinit')
         DHMAT0(:,:,:)=0.0_dp
+
+        nullify(Daux)
+        call re_alloc(Daux, 1, maxnumh, name='Daux',
+     &               routine= 'dhinit' )
+        Daux(:)=0.0_dp
       endif
 #endif
 
@@ -144,7 +150,7 @@ C******************local to global variables******************
 #ifdef MPI
       maxnumh = 0
       do io = 1,nuotot
-        maxnumh = max(maxnumh,numh(io))
+        maxnumh = max(maxnumh,numhg(io))
       enddo
       nullify(Daux)
       call re_alloc( Daux, 1, maxnumh, name='Daux',
@@ -155,6 +161,7 @@ C******************local to global variables******************
 C****************Globalize H and S****************************
 C dS and DT (inputs) are local, copy to global variable, operate, and
 C for output, change to local again
+      nullify( DSg, DTg)
       call re_alloc( DSg, 1, maxnhg,1,3, name='DSg',
      &               routine= 'dhinit' )
       call re_alloc( DTg, 1, maxnhg, 1, 3, name='DTg',
@@ -186,6 +193,7 @@ C for output, change to local again
       enddo
 
 ! global copies of the distributed output
+      nullify( DSMATg, DHMATg)
       call re_alloc( DSMATg, 1, maxnhg, 1, 3, name='DSMATg',
      &               routine= 'dhinit' )
       call re_alloc( DHMATg,1,maxnhg,1,3,1,nspin,name='DHMATg',
@@ -289,6 +297,8 @@ C         Idetify neighbour index of orbital io relative to orbital jo -
       DHMAT(:,:,:)=DHMATg(:,:,:)+DHMAT(:,:,:) 
 #endif
 
+      call de_alloc( DSg, name='DSg', routine= 'dhinit' )
+      call de_alloc( DTg, name='DTg', routine= 'dhinit' )
       call de_alloc( DHMATg, name='DSMATg', routine= 'dhinit' )
       call de_alloc( DSMATg, name='DHMATg', routine= 'dhinit' )
       call de_alloc( listhg, name='listhg', routine= 'dhinit' )
@@ -298,6 +308,7 @@ C         Idetify neighbour index of orbital io relative to orbital jo -
 #ifdef MPI
       if (Nodes .gt. 1) then
         call de_alloc(DHMAT0,name='DHMAT0',routine='dhinit')
+        call de_alloc(Daux,name='Daux',routine='dhinit')
       endif 
 #endif
 
