@@ -475,8 +475,8 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
 
 !  Now available for GGA functionals  LINRES
 !  Check argument ddens
-!  if (present(ddens) .and. GGA) &
-!    call die(errHead//'Linres available only for LDA')
+  if (present(ddens) .and.  VDW) &
+    call die(errHead//'Linres available only for LDA or GGA (use LIBXC)')
 
   ! Find my mesh box in I/O distribution of mesh points
   ioBox(1,1)=lb1;  ioBox(1,2)=lb2;  ioBox(1,3)=lb3
@@ -1170,29 +1170,36 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
 !! The elements dVx/cdD have nspin*nspin dimension and correspond to
 ![(up,up),(down,up),(up,down),(down,down)] where the first index is the spin 
 ! potential and the second one the spin of the density
-      if (present(ddens) .and. .not.VDWfunctl .and. .not.GGAfunctl) then !LDA LINRES
-        if (associated(myVxc)) then !Linres
-          do is=1,nSpin   
-            do is2=1,nSpin 
-            myVxc(ii1,ii2,ii3,is) = myVxc(ii1,ii2,ii3,is) + &
-                         (dVxdD(is,is2)+dVcdD(is,is2))*mydDens(ii1,ii2,ii3,is2)
-            enddo
-          enddo
-        else
-          do is=1,nSpin
-            do is2=1,nSpin
-            Vxc(ii1,ii2,ii3,is) = Vxc(ii1,ii2,ii3,is) + & 
-                         (dVxdD(is,is2)+dVcdD(is,is2))*ddens(ii1,ii2,ii3,is2)
-            enddo
-          enddo
-        endif
-      else ! SIESTA LDA 
-        if (associated(myVxc)) then
+     if (.not.(present(ddens))) then !SIESTA 
+
+       if (associated(myVxc)) then
           myVxc(ii1,ii2,ii3,:) = myVxc(ii1,ii2,ii3,:) + dExdD(:) + dEcdD(:)
-        else  ! Add directly to output array Vxc
+       else  ! Add directly to output array Vxc
           Vxc(i1,i2,i3,:) = Vxc(i1,i2,i3,:) + dExdD(:) + dEcdD(:)
-        end if ! (associated(myVxc))
-      endif
+       end if ! (associated(myVxc))
+
+     else ! is a Linres calculation
+       
+       if (.not.GGAfunctl) then !LDA Linres
+         if (associated(myVxc)) then 
+           do is=1,nSpin
+             do is2=1,nSpin
+              myVxc(ii1,ii2,ii3,is) = myVxc(ii1,ii2,ii3,is) + &
+                         (dVxdD(is,is2)+dVcdD(is,is2))*mydDens(ii1,ii2,ii3,is2)
+             enddo
+           enddo
+         else
+           do is=1,nSpin
+             do is2=1,nSpin
+             Vxc(ii1,ii2,ii3,is) = Vxc(ii1,ii2,ii3,is) + &
+                         (dVxdD(is,is2)+dVcdD(is,is2))*ddens(ii1,ii2,ii3,is2)
+             enddo
+           enddo
+         endif
+       endif
+
+! For PBE Linres nothing to do
+     endif
 
       ! Add contributions to exchange-correlation potential
       ! with respect to density at neighbor points
@@ -1201,7 +1208,7 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
           if (associated(myVxc)) then  
             call getGradDens( ii1, ii2, ii3, dDens, GdD, dDleft1, dDleft2, & !grad(mydDens)
                                      dDleft3, dDrght1, dDrght2, dDrght3, mydDens)
-            sumP(nspin)=0
+            sumP(:)=0.0_dp
             do iSpin=1, nSpin   
               sumP(iSpin) = sum(GD(1:3,iSpin)*GdD(1:3,iSpin))
             enddo 
@@ -1224,7 +1231,7 @@ SUBROUTINE cellXC( irel, cell, nMesh, lb1, ub1, lb2, ub2, lb3, ub3, &
             enddo
           else !associated myVxc
             call getGradDens( ii1, ii2, ii3, ddens, GdD) !grad(dDens)
-            sumP(nspin)=0.0_dp
+            sumP(:)=0.0_dp
             do iSpin=1, nSpin   
               sumP(iSpin) = sum(GD(1:3,iSpin)*GdD(1:3,iSpin))
             enddo !iSpin
@@ -1609,8 +1616,9 @@ CONTAINS !---------------------------------------------------------------------
 
   ! Local variables and arrays
   integer :: ic, in, is, jj(3)
-  real(gp), pointer:: Fleft(:,:,:,:), Frght(:,:,:,:)
-  real(gp), pointer:: F(:,:,:,:)
+  real(gp), pointer:: Fleft(:,:,:,:)=>null(), &
+                      Frght(:,:,:,:)=>null()
+  real(gp), pointer:: F(:,:,:,:)=>null()
   real(dp):: Fj(nSpin)
 
 

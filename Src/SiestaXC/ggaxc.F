@@ -322,7 +322,16 @@ C Interface with LibXC added by Micael Oliveira, Jul.2014
         call xc_f90_gga_exc_vxc(xc_func, 1, DD(1), sgm(1), eps, dedn(1), 
      .                          dedsgm(1))
 
-        if (present(Ac)) then !Linres calculation: extra derivatives 
+        if (present(Ac)) then !Linres calculation: extra derivatives
+          dBcdDD(:,:)=0.0_dp
+          dBcdGDDM(:,:)=0.0_dp
+          AcD(:)=0.0_dp
+          dAcdGDDM(:,:)=0.0_dp
+          AxD(:)=0.0_dp
+          d2GxdDD2(:,:)=0.0_dp
+          dAxdDD(:)=0.0_dp
+          dAxdGDDM(:)=0.0_dp
+ 
           call timer('LIBXC_GGA',1)
           call xc_f90_gga_fxc(xc_func, 1, DD(1), sgm(1), d2edndn(1),
      .                          d2edndsgm(1), d2edsgmdsgm(1))

@@ -29,7 +29,7 @@ C Modules------------------------------------------------------------------
       use siesta_geom
       use siesta_options,  only: nscf, temp, maxsav, wmix,nkick,
      &                            wmixkick
-      use parallel,          only: IOnode
+      use parallel,          only: IOnode, Node, Nodes
       use m_spin,        only: nspin
       use sparse_matrices
       use m_overfsm,     only: overfsm 
@@ -53,6 +53,12 @@ C Modules------------------------------------------------------------------
       use fdf
       use m_ddnaefs
       use m_iodynmat
+      use m_mpi_utils,  only : broadcast
+#ifdef MPI
+      use m_diag_option, only: ParallelOverK
+      use m_mpi_utils, only: globalize_max
+#endif
+
 C----------------------------------------------------------------------------
       implicit none 
 
@@ -82,6 +88,10 @@ C Internal variable types and dimensions -----------------------------------
       logical            :: dummy_use_rhog_in, first_LR,
      &                      dummy_chargedensonly,mmix,
      &                      readold, converged, found
+#ifdef MPI
+      real(dp) :: buffer1
+#endif
+
 
 C ----------------------------------------------------------------------------
 
@@ -93,6 +103,28 @@ C ----------------------------------------------------------------------------
       tolLR = fdf_get("LR.DMTolerance",0.001_dp)
       eigtolLR = fdf_get('LR.EigTolerance',0.001_dp)
       readold = fdf_get("LR.readDynmat",.false.)
+
+C Check all the inputs options
+C------------------------------------------------------------------------------
+#ifdef MPI
+      if (Nodes .gt. 1) then 
+        if (GAMMA) then 
+          if (IOnode) then
+            write(6,'(a)')'Linres: MPI Gamma point calculation 
+     & not implemented yet, run in serial mode'
+          endif
+          call die() !MPI no-kpoints not implemeted in MPI (use delrhog NO-MPI-compatible)   
+        else
+          ParallelOverK = fdf_get("Diag.ParallelOverK",.true.)
+          if (IOnode) then
+              write(6,'(a)')'Linres: Parallel calculation using MPI'
+              write(6,'(a)')'Linres: k-point calculation, ParallelOverK
+     & flag set to .true.' !For MPI-Nodes>1, use delrhokp instead of delrhok (check in delrho)
+          endif
+        endif
+      endif
+#endif
+C---------------------------------------------------------------------------------
 
 C Begin to write into output file
       if (IOnode) then
@@ -140,24 +172,40 @@ C Internal loop scf-loop (ISCF).
 
 C Read stored DM in file .LRDMIALR from previous non-converged calculation
         if (readold) then
+
           if (IOnode) then
             write(6,'(a)')
             write(6,'(a,i7)')'Linres: trying to start from .LRDM file'
             write(atomdisp,'(i0)') ialr
           endif
+
           fname = trim(slabel)//'.LRDM'//trim(atomdisp)
-          inquire( file=fname, exist=found )
+          if (Node .eq. 0) then
+            inquire( file=fname, exist=found )
+          endif
+          call broadcast(found)
+
           if (found) then
+
             if (IOnode) then
               write(6,'(a,i7)') 'Linres: reading LRDM file for atom=',
      &                            ialr
             endif
+
             call read_dmlr( maxnh, no_l, nspin, numh,
      &                     listhptr, listh, dDscf, fname)
+
+            if (IOnode) then
               write(6,'(a)')'Linres: Read DM from file...successfully!!'
+            endif
+
           else
-            write(6,'(a)')'Linres: LRDM file not found'//
+
+            if (IOnode) then 
+              write(6,'(a)')'Linres: LRDM file not found'//
      $                    ' or not corresponds to this atom'
+            endif
+
           endif
         endif
         call timer('LRatom', 1)
@@ -191,12 +239,13 @@ C on the gradient potential terms
 
 C Calculation of the kinetic terms of the perturbed hamiltonian
 C (added into dHmat0)
-        call dhinit(IALR, na_s, maxnh, maxnh, nspin, lasto,
-     &       listh, listhptr, numh, DS, dSmat, dHmat0, dH, dDscf,
-     &       dEscf)
+        
+      call dhinit(IALR, na_s, no_u, maxnh, maxnh, nspin, lasto,
+     &       listh, listhptr, numh, DS, dSmat, dHmat0, dH)
 
 C Calculation of the KB terms of the perturbed hamiltonian
 C (added into dHmat0)
+
         call dvnloc(scell, na_u, na_s, isa, xa, indxua, Dscf,
      &       maxnh, maxnh, lasto, lastkb, iphorb,
      &       iphKB, numh, listhptr, listh, numh,
@@ -216,6 +265,7 @@ C  Linear response SCF loop --------------------------
            first_LR = iscf == 1
            
 C          Copy non-scf hamiltonian to total Hamiltonian
+           dHmat(:,:,:)=0.0_dp
            do ispin = 1 , nspin
               dHmat(:,:,ispin) = dHmat0(:,:,ispin)
            end do
@@ -232,7 +282,7 @@ C include them into dHmat. Look that dhscf is called without dHmat0!!!
      .          dummy_stress, dummy_use_rhog_in,
      .          dummy_chargedensonly, iai, iaf, ialr, lasto,
      .          dynmat, dDscf, dHmat, first_LR)
-
+           
            call re_alloc(dDold,1,maxnh,1,nspin,1,3,
      &          'dDold', 'linresscf')
            
@@ -247,25 +297,34 @@ C Find change in density matrix from perturbed Hamiltonian and Overlap
      &          kpoint, kweight, Qo, H, S, dHmat, dSmat, numh,
      &          listh, listhptr, ef, temp, dDscf, dEscf, iscf)
 
-
 C Perform the density matrix mixing
            dMax = 0.0_dp
            do ix = 1 , 3
               call pulayx( iscf , .false. , no_l, maxnh, numh,
      &             listhptr, nspin,maxsav,wmix,nkick,
      &             wmixkick,dDscf(:,:,ix),dDold(:,:,ix),dDmax,ix)
+
+#ifdef MPI
               dMax = max(dMax,dDmax)
+              call globalize_max(dMax, buffer1)
+              dMax = buffer1
+#else
+              dMax = max(dMax,dDmax)
+#endif
            end do
+
            converged = dMax < tolLR
 
            ! Clean-up temporary memory
            call de_alloc(dDold, 'dDold', 'linresscf')
 
 C Print error in the perturbed density
-           if ( first_LR ) then
-              write(6,'(a12,a10)') 'iscf', 'dDmax'
-           end if 
-           write(*,'(a8,i4,f10.6)')'lr-scf:', iscf, dmax
+           if (IOnode) then 
+             if ( first_LR ) then
+               write(6,'(a12,a10)') 'iscf', 'dDmax'
+             end if 
+             write(*,'(a8,i4,f10.6)')'lr-scf:', iscf, dmax
+           endif
           
 C Write dDscf to file ------------------------------------------------
 C DM file is named as: label.LRDM+'IALR'
@@ -295,21 +354,21 @@ C     Add non-local potential and kinetic part contributions to dynmat---
 C     (the terms that depend on the perturbed density and the ones that 
 C     do not depend)
 C     Note that first_LR now is false
+
        call dvnloc(scell, na_u, na_s, isa, xa, indxua, Dscf,
      &      maxnh, maxnh, lasto, lastkb, iphorb,
      &      iphKB, numh, listhptr, listh, numh,
      &      listhptr, listh, min(nspin,2), IALR,
      &      no_s, iaorb, dDscf, dHmat, dynmat, first_LR)
-       
+
 C     Add kinetic and ovelap contributions to dynmat -----------------
        call ddsmat(dH, dS, d2H, d2S, nspin, no_s, no_u, na_s, na_u,
      &      indxuo, lasto, numh, listh, listhptr, Dscf, Escf,
      &      ialr, iaorb, maxnh, dDscf, dEscf, dynmat)
-       
 
 c     Add terms that depends on the perturbed density and Vscf 
 C     and perturbed Vscf potentials-----------------------------------
-       
+
        call dhscf( nspin, no_s, iaorb, iphorb, no_l,
      .      no_u, na_u, na_s, isa, xa, indxua,
      .      ntm, 0, 0, 0, filesOut,
@@ -343,19 +402,22 @@ C the Laplacian of the neutral atom potential
 C-------------------------------------------------------------------------
 C-----------------Finally, print the dynamical matrix to FC file----------
 C-------------------------------------------------------------------------
+      if (IOnode) then
 
-      print *, '----- COMPLETE DYNAMICAL MATRIX -----'
-      print *,'Beta:',';','xyz',';','Alpha',';','xyz',';','dynmat'
-      do ialr = IAI, IAF
-       do ix = 1,3
-        do j = 1, na_u
-         do jx = 1,3
-          print *, j,';',jx,';',ialr,';',ix,';',
+        print *, '----- COMPLETE DYNAMICAL MATRIX -----'
+        print *,'Beta:',';','xyz',';','Alpha',';','xyz',';','dynmat'
+        do ialr = IAI, IAF
+          do ix = 1,3
+            do j = 1, na_u
+              do jx = 1,3
+                print *, j,';',jx,';',ialr,';',ix,';',
      &                   dynmat(jx,j,ix,ialr)
-         enddo
+              enddo
+            enddo
+          enddo
         enddo
-       enddo
-      enddo
+
+      endif
 
       call writedynmat(iai,iaf,ialr,dynmat,.true.)
 

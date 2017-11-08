@@ -139,41 +139,68 @@ CONTAINS
       character(len=label_length+10) :: fname
       logical               :: found
       integer               :: unit1,jx,ix,j,i
+#ifdef MPI
+      integer   MPIerror
+      integer   BNode
+#endif
 
-      if (.not. IONode) return
+      if (Node .eq. 0) then ! only Node 0 reads the file
 
-      write(6,'(a)')
-      write(6,'(a)')'readdynmat: Reading from file the &
+        write(6,'(a)')
+        write(6,'(a)')'readdynmat: Reading from file the &
      &dynamical matrix'
 
-      fname = trim(slabel)//'.LRDYNMAT'
-      inquire( file=fname, exist=found )
+        fname = trim(slabel)//'.LRDYNMAT'
+        inquire( file=fname, exist=found )
 
-      if (found) then
-        call io_assign(unit1)
-        open( unit1, file=fname, status='old' )
-        read( unit1, *)
-        read( unit1, *)  init !read the first flag
-        do i=1,na_u
-          do ix=1,3
-            do j=1,na_u
-              do jx=1,3
-                read(unit1,floatfmt) dynmat(jx,j,ix,i) 
+        if (found) then
+          call io_assign(unit1)
+          open( unit1, file=fname, status='old' )
+          read( unit1, *)
+          read( unit1, *)  init !read the first flag
+          do i=1,na_u
+            do ix=1,3
+              do j=1,na_u
+                do jx=1,3
+                  read(unit1,floatfmt) dynmat(jx,j,ix,i) 
+                enddo
               enddo
             enddo
           enddo
-        enddo
-        call io_close( unit1 )
+          call io_close( unit1 )
 
-        init=init+1
-        write(6,'(a,i7)') 'readdynmat: New Initial perturbed atom !!!',&
+          init=init+1
+         write(6,'(a,i7)')'readdynmat: New Initial perturbed atom !!!',&
                             init
-      else
-        write(6,'(a,a)') 'readdynmat: File ',fname
-        write(6,'(a)') 'readdynmat: File not found...&
+        else
+          write(6,'(a,a)') 'readdynmat: File ',fname
+          write(6,'(a)') 'readdynmat: File not found...&
      & starting from the begining '
-         init=iai
+          init=iai
+        endif
       endif
+
+! If MPI, share init and dynmat between all the nodes
+#ifdef MPI
+      if (BNode.ne.0) then !Wait until read the dynamat
+         call MPI_Barrier(MPI_Comm_World,MPIerror)
+      endif
+
+      call MPI_Bcast(init,1,MPI_integer,0,MPI_Comm_World,MPIerror)
+      do i= 1,na_u
+        do ix= 1,3
+          do j= 1,na_u
+            do jx= 1,3
+              call MPI_Bcast(dynmat(jx,j,ix,i),1,MPI_double_precision,&
+                                 0,MPI_Comm_World,MPIerror)
+              if (BNode.ne.0) then
+                call MPI_Barrier(MPI_Comm_World,MPIerror)
+              endif
+            enddo
+          enddo
+        enddo
+      enddo
+#endif
 
       end subroutine readdynmat
 
@@ -217,10 +244,10 @@ CONTAINS
 #else
       no_u = no_l
 #endif
-      write(atomdisp,'(i5)') ialr
-      fname = slabel
 
       if (Node.eq.0) then
+         write(atomdisp,'(i5)') ialr
+         fname = slabel
          call io_assign(unit1)
          open( unit1, file=trim(fname)//'.LRDM'//adjustl(atomdisp), &
              form='unformatted', status='unknown' )
@@ -321,36 +348,37 @@ CONTAINS
 #endif
 
 !     Write density matrix
-      do is=1,nspin
-         do m=1,no_u
+      do ix=1,3
+        do is=1,nspin
+          do m=1,no_u
 #ifdef MPI
-            call WhichNodeOrb(m,Nodes,BNode)
-            if (BNode.eq.0.and.Node.eq.BNode) then
+             call WhichNodeOrb(m,Nodes,BNode)
+             if (BNode.eq.0.and.Node.eq.BNode) then
                call GlobalToLocalOrb(m,Node,Nodes,ml)
 #else
                ml = m
 #endif
                if (fmto) then
                   write(unit1, floatfmt) &
-                      ((dm(listdptr(ml)+im,is,ix), &
-                      im=1,numd(ml)),ix = 1,3)
+                      (dm(listdptr(ml)+im,is,ix), &
+                      im=1,numd(ml))
                else
-                  write(unit1) ((dm(listdptr(ml)+im,is,ix), &
-                 im=1,numd(ml)),ix = 1,3)
+                  write(unit1) (dm(listdptr(ml)+im,is,ix), &
+                 im=1,numd(ml))
                endif
 #ifdef MPI
-            elseif (Node.eq.0) then
+             elseif (Node.eq.0) then
                call MPI_IRecv(buffer,numdg(m),MPI_double_precision, &
                    BNode,1,MPI_Comm_World,Request,MPIerror)
                call MPI_Wait(Request,Status,MPIerror)
-            elseif (Node.eq.BNode) then
+             elseif (Node.eq.BNode) then
                call GlobalToLocalOrb(m,Node,Nodes,ml)
                call MPI_ISend(dm(listdptr(ml)+1,is,ix),numd(ml), &
                    MPI_double_precision,0,1,MPI_Comm_World,Request, &
                    MPIerror)
                call MPI_Wait(Request,Status,MPIerror)
-            endif
-            if (BNode.ne.0) then
+             endif
+             if (BNode.ne.0) then
                call MPI_Barrier(MPI_Comm_World,MPIerror)
                if (Node.eq.0) then
                   if (fmto) then
@@ -359,11 +387,11 @@ CONTAINS
                      write(unit1) (buffer(im),im=1,numdg(m))
                   endif
                endif
-            endif
+             endif
 #endif
-         enddo
+          enddo
+        enddo
       enddo
-
       if (Node.eq.0) then
 #ifdef MPI
          call de_alloc( buffer, 'buffer', 'write_dmlr' )
@@ -550,47 +578,49 @@ CONTAINS
       call de_alloc( ibuffer, 'ibuffer', 'read_dm' )
 #endif
 
-      do is = 1,nspin
-         do m = 1,no_u
+      do ix = 1,3
+        do is = 1,nspin
+          do m = 1,no_u
 
 #ifdef MPI
-            call WhichNodeOrb(m,Nodes,BNode)
-            if (BNode.eq.0.and.Node.eq.BNode) then
-               call GlobalToLocalOrb(m,Node,Nodes,ml)
+             call WhichNodeOrb(m,Nodes,BNode)
+             if (BNode.eq.0.and.Node.eq.BNode) then
+                call GlobalToLocalOrb(m,Node,Nodes,ml)
 #else
-               ml = m
+                ml = m
 #endif
-               if (fmti) then
-                  read(unit1, floatfmt) &
-                       ((dm(listdptr(ml)+im,is,ix), &
-                       im=1,numd(ml)),ix = 1,3)
-               else
-                  read(unit1) ((dm(listdptr(ml)+im,is,ix), &
-                              im=1,numd(ml)),ix=1,3)
-               endif
+                if (fmti) then
+                   read(unit1, floatfmt) &
+                       (dm(listdptr(ml)+im,is,ix), &
+                       im=1,numd(ml))
+                else
+                   read(unit1) (dm(listdptr(ml)+im,is,ix), &
+                              im=1,numd(ml))
+                endif
 #ifdef MPI
-            elseif (Node.eq.0) then
-               if (fmti) then
-                  read(unit1, floatfmt) (buffer(im),im=1,numdg(m))
-               else
-                  read(unit1) (buffer(im),im=1,numdg(m))
-               endif
-               call MPI_ISend(buffer,numdg(m),MPI_double_precision,&
+             elseif (Node.eq.0) then
+                if (fmti) then
+                   read(unit1, floatfmt) (buffer(im),im=1,numdg(m))
+                else
+                   read(unit1) (buffer(im),im=1,numdg(m))
+                endif
+                call MPI_ISend(buffer,numdg(m),MPI_double_precision,&
                     BNode,1,MPI_Comm_World,Request,MPIerror)
-               call MPI_Wait(Request,Status,MPIerror)
-            elseif (Node.eq.BNode) then
-               call GlobalToLocalOrb(m,Node,Nodes,ml)
-               call MPI_IRecv(dm(listdptr(ml)+1,is,ix),numd(ml), &
+                call MPI_Wait(Request,Status,MPIerror)
+             elseif (Node.eq.BNode) then
+                call GlobalToLocalOrb(m,Node,Nodes,ml)
+                call MPI_IRecv(dm(listdptr(ml)+1,is,ix),numd(ml), &
                     MPI_double_precision,0,1,MPI_Comm_World,Request, &
                     MPIerror)
-               call MPI_Wait(Request,Status,MPIerror)
-            endif
-            if (BNode.ne.0) then
+                call MPI_Wait(Request,Status,MPIerror)
+             endif
+             if (BNode.ne.0) then
                call MPI_Barrier(MPI_Comm_World,MPIerror)
-            endif
+             endif
 #endif
 
-         enddo
+          enddo
+        enddo
       enddo
 #ifdef MPI
       call de_alloc( buffer, 'buffer', 'read_dm' )

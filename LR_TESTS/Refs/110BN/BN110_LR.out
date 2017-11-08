@@ -1,0 +1,1028 @@
+
+                           ***********************       
+                           *  WELCOME TO SIESTA  *       
+                           ***********************       
+
+reinit: Reading from standard input
+reinit: Dumped input in INPUT_TMP.96607
+************************** Dump of input data file ****************************
+#
+# FDF for a BN sheet with 110 supercell
+#
+SystemName          BN-2 atom
+SystemLabel         BNlin
+NumberOfSpecies     2
+%block ChemicalSpeciesLabel
+ 1  5  B 10.811
+ 2  7  N 14.0067
+%endblock ChemicalSpeciesLabel
+PAO.BasisSize       SZ
+XC.functional LDA
+XC.authors    CA
+MeshCutoff          200.0 Ry
+MaxSCFIterations    500
+DM.MixingWeight      0.1
+DM.NumberPulay       5
+DM.Tolerance         1.d-5
+SolutionMethod       diagon
+DM.UseSaveDM  	     .true.	
+%include FC.fdf
+AllocReportLevel   2
+%block kgrid_Monkhorst_Pack
+	6	0	0	0.0
+	0	6	0	0.0
+	0	0	1	0.0
+%endblock kgrid_Monkhorst_Pack
+************************** End of input data file *****************************
+
+reinit: -----------------------------------------------------------------------
+reinit: System Name: BN-2 atom
+reinit: -----------------------------------------------------------------------
+reinit: System Label: BNlin
+reinit: -----------------------------------------------------------------------
+Siesta Version: MaX-R2--pl-1-Linres628
+Architecture  : unknown
+Compiler flags: gfortran -O2 -fPIC -ftree-vectorize
+PP flags      : -fbounds-check -g -fcheck=all -DFC_HAVE_FLUSH -DFC_HAVE_ABORT -fbacktrace -DL1 -DSIESTA__DIAG_2STAGE
+Libraries     : libsiestaLAPACK.a libsiestaBLAS.a -L/home/likewise-open/ICN/sillera/Desktop/L1/LinresLibxc/libxc-2.2.3/INSTAL/lib -l xcf90 -l xc
+SERIAL version
+
+* Running in serial mode
+>> Start of run:   6-NOV-2017  17:43:56
+
+initatom: Reading input for the pseudopotentials and atomic orbitals ----------
+Species number:   1 Atomic number:    5 Label: B
+Species number:   2 Atomic number:    7 Label: N
+
+Ground state valence configuration:   2s02  2p01
+Reading pseudopotential information in formatted form from B.psf
+
+Valence configuration for pseudopotential generation:
+2s( 2.00) rc: 1.99
+2p( 1.00) rc: 1.99
+3d( 0.00) rc: 1.99
+4f( 0.00) rc: 1.99
+Ground state valence configuration:   2s02  2p03
+Reading pseudopotential information in formatted form from N.psf
+
+Valence configuration for pseudopotential generation:
+2s( 2.00) rc: 1.74
+2p( 3.00) rc: 1.74
+3d( 0.00) rc: 1.74
+4f( 0.00) rc: 1.74
+For B, standard SIESTA heuristics set lmxkb to 2
+ (one more than the basis l, including polarization orbitals).
+Use PS.lmax or PS.KBprojectors blocks to override.
+For N, standard SIESTA heuristics set lmxkb to 2
+ (one more than the basis l, including polarization orbitals).
+Use PS.lmax or PS.KBprojectors blocks to override.
+
+<basis_specs>
+===============================================================================
+B                    Z=   5    Mass=  10.810        Charge= 0.17977+309
+Lmxo=1 Lmxkb= 2    BasisType=split      Semic=F
+L=0  Nsemic=0  Cnfigmx=2
+          n=1  nzeta=1  polorb=0
+            splnorm:   0.15000    
+               vcte:    0.0000    
+               rinn:    0.0000    
+               qcoe:    0.0000    
+               qyuk:    0.0000    
+               qwid:   0.10000E-01
+                rcs:    0.0000    
+            lambdas:    1.0000    
+L=1  Nsemic=0  Cnfigmx=2
+          n=1  nzeta=1  polorb=0
+            splnorm:   0.15000    
+               vcte:    0.0000    
+               rinn:    0.0000    
+               qcoe:    0.0000    
+               qyuk:    0.0000    
+               qwid:   0.10000E-01
+                rcs:    0.0000    
+            lambdas:    1.0000    
+-------------------------------------------------------------------------------
+L=0  Nkbl=1  erefs: 0.17977+309
+L=1  Nkbl=1  erefs: 0.17977+309
+L=2  Nkbl=1  erefs: 0.17977+309
+===============================================================================
+</basis_specs>
+
+atom: Called for B                     (Z =   5)
+
+read_vps: Pseudopotential generation method:
+read_vps: ATM3.3.2  Troullier-Martins                       
+Total valence charge:    3.00000
+
+xc_check: Exchange-correlation functional:
+xc_check: Ceperley-Alder
+V l=0 = -2*Zval/r beyond r=  1.9696
+V l=1 = -2*Zval/r beyond r=  1.9696
+V l=2 = -2*Zval/r beyond r=  1.9696
+All V_l potentials equal beyond r=  1.9696
+This should be close to max(r_c) in ps generation
+All pots = -2*Zval/r beyond r=  1.9696
+
+VLOCAL1: 99.0% of the norm of Vloc inside     11.190 Ry
+VLOCAL1: 99.9% of the norm of Vloc inside     25.502 Ry
+atom: Maximum radius for 4*pi*r*r*local-pseudopot. charge    2.34633
+atom: Maximum radius for r*vlocal+2*Zval:    2.01943
+GHOST: No ghost state for L =  0
+GHOST: No ghost state for L =  1
+GHOST: No ghost state for L =  2
+
+KBgen: Kleinman-Bylander projectors: 
+   l= 0   rc=  2.204140   el= -0.689820   Ekb=  2.799048   kbcos=  0.322597
+   l= 1   rc=  2.204140   el= -0.273582   Ekb= -2.485131   kbcos= -0.367909
+   l= 2   rc=  2.375846   el=  0.002410   Ekb= -0.625064   kbcos= -0.020974
+
+KBgen: Total number of  Kleinman-Bylander projectors:    9
+atom: -------------------------------------------------------------------------
+
+atom: SANKEY-TYPE ORBITALS:
+
+SPLIT: Orbitals with angular momentum L= 0
+
+SPLIT: Basis orbitals for state 2s
+
+SPLIT: PAO cut-off radius determined from an
+SPLIT: energy shift=  0.020000 Ry
+
+   izeta = 1
+                 lambda =    1.000000
+                     rc =    4.906010
+                 energy =   -0.672077
+                kinetic =    0.586165
+    potential(screened) =   -1.258241
+       potential(ionic) =   -3.318920
+
+SPLIT: Orbitals with angular momentum L= 1
+
+SPLIT: Basis orbitals for state 2p
+
+SPLIT: PAO cut-off radius determined from an
+SPLIT: energy shift=  0.020000 Ry
+
+   izeta = 1
+                 lambda =    1.000000
+                     rc =    5.700051
+                 energy =   -0.254268
+                kinetic =    1.576866
+    potential(screened) =   -1.831134
+       potential(ionic) =   -3.817568
+atom: Total number of Sankey-type orbitals:  4
+
+atm_pop: Valence configuration (for local Pseudopot. screening):
+ 2s( 2.00)                                                            
+ 2p( 1.00)                                                            
+Vna: chval, zval:    3.00000   3.00000
+
+Vna:  Cut-off radius for the neutral-atom potential:   5.700051
+
+atom: _________________________________________________________________________
+
+<basis_specs>
+===============================================================================
+N                    Z=   7    Mass=  14.010        Charge= 0.17977+309
+Lmxo=1 Lmxkb= 2    BasisType=split      Semic=F
+L=0  Nsemic=0  Cnfigmx=2
+          n=1  nzeta=1  polorb=0
+            splnorm:   0.15000    
+               vcte:    0.0000    
+               rinn:    0.0000    
+               qcoe:    0.0000    
+               qyuk:    0.0000    
+               qwid:   0.10000E-01
+                rcs:    0.0000    
+            lambdas:    1.0000    
+L=1  Nsemic=0  Cnfigmx=2
+          n=1  nzeta=1  polorb=0
+            splnorm:   0.15000    
+               vcte:    0.0000    
+               rinn:    0.0000    
+               qcoe:    0.0000    
+               qyuk:    0.0000    
+               qwid:   0.10000E-01
+                rcs:    0.0000    
+            lambdas:    1.0000    
+-------------------------------------------------------------------------------
+L=0  Nkbl=1  erefs: 0.17977+309
+L=1  Nkbl=1  erefs: 0.17977+309
+L=2  Nkbl=1  erefs: 0.17977+309
+===============================================================================
+</basis_specs>
+
+atom: Called for N                     (Z =   7)
+
+read_vps: Pseudopotential generation method:
+read_vps: ATM3.3.2  Troullier-Martins                       
+Total valence charge:    5.00000
+
+xc_check: Exchange-correlation functional:
+xc_check: Ceperley-Alder
+V l=0 = -2*Zval/r beyond r=  1.7184
+V l=1 = -2*Zval/r beyond r=  1.7184
+V l=2 = -2*Zval/r beyond r=  1.7184
+All V_l potentials equal beyond r=  1.7184
+This should be close to max(r_c) in ps generation
+All pots = -2*Zval/r beyond r=  1.7184
+
+VLOCAL1: 99.0% of the norm of Vloc inside     14.700 Ry
+VLOCAL1: 99.9% of the norm of Vloc inside     33.502 Ry
+atom: Maximum radius for 4*pi*r*r*local-pseudopot. charge    2.07284
+atom: Maximum radius for r*vlocal+2*Zval:    1.80650
+GHOST: No ghost state for L =  0
+GHOST: No ghost state for L =  1
+GHOST: No ghost state for L =  2
+
+KBgen: Kleinman-Bylander projectors: 
+   l= 0   rc=  1.923037   el= -1.352239   Ekb=  3.172975   kbcos=  0.267359
+   l= 1   rc=  1.875548   el= -0.532623   Ekb= -5.099421   kbcos= -0.501360
+   l= 2   rc=  1.996534   el=  0.002346   Ekb= -1.142886   kbcos= -0.011476
+
+KBgen: Total number of  Kleinman-Bylander projectors:    9
+atom: -------------------------------------------------------------------------
+
+atom: SANKEY-TYPE ORBITALS:
+
+SPLIT: Orbitals with angular momentum L= 0
+
+SPLIT: Basis orbitals for state 2s
+
+SPLIT: PAO cut-off radius determined from an
+SPLIT: energy shift=  0.020000 Ry
+
+   izeta = 1
+                 lambda =    1.000000
+                     rc =    3.683980
+                 energy =   -1.333777
+                kinetic =    1.196945
+    potential(screened) =   -2.530722
+       potential(ionic) =   -8.128785
+
+SPLIT: Orbitals with angular momentum L= 1
+
+SPLIT: Basis orbitals for state 2p
+
+SPLIT: PAO cut-off radius determined from an
+SPLIT: energy shift=  0.020000 Ry
+
+   izeta = 1
+                 lambda =    1.000000
+                     rc =    4.280232
+                 energy =   -0.512467
+                kinetic =    3.438273
+    potential(screened) =   -3.950740
+       potential(ionic) =   -9.360253
+atom: Total number of Sankey-type orbitals:  4
+
+atm_pop: Valence configuration (for local Pseudopot. screening):
+ 2s( 2.00)                                                            
+ 2p( 3.00)                                                            
+Vna: chval, zval:    5.00000   5.00000
+
+Vna:  Cut-off radius for the neutral-atom potential:   4.280232
+
+atom: _________________________________________________________________________
+
+prinput: Basis input ----------------------------------------------------------
+
+PAO.BasisType split     
+
+%block ChemicalSpeciesLabel
+    1    5 B                       # Species index, atomic number, species label
+    2    7 N                       # Species index, atomic number, species label
+%endblock ChemicalSpeciesLabel
+
+%block PAO.Basis                 # Define Basis set
+B                     2                    # Species label, number of l-shells
+ n=2   0   1                         # n, l, Nzeta 
+   4.906   
+   1.000   
+ n=2   1   1                         # n, l, Nzeta 
+   5.700   
+   1.000   
+N                     2                    # Species label, number of l-shells
+ n=2   0   1                         # n, l, Nzeta 
+   3.684   
+   1.000   
+ n=2   1   1                         # n, l, Nzeta 
+   4.280   
+   1.000   
+%endblock PAO.Basis
+
+prinput: ----------------------------------------------------------------------
+
+coor:   Atomic-coordinates input format  =     Cartesian coordinates
+coor:                                            (in Bohr units)
+
+siesta: Atomic coordinates (Bohr) and species
+siesta:     -7.19265  -4.15268   0.00000  1        1
+siesta:     -4.79510  -2.76845   0.00000  2        2
+siesta:     -4.79510  -0.00000   0.00000  1        3
+siesta:     -2.39755   1.38423   0.00000  2        4
+siesta:     -2.39755   4.15268   0.00000  1        5
+siesta:      0.00000   5.53691   0.00000  2        6
+siesta:     -2.39755  -4.15268   0.00000  1        7
+siesta:     -0.00000  -2.76845   0.00000  2        8
+siesta:     -0.00000  -0.00000   0.00000  1        9
+siesta:      2.39755   1.38423   0.00000  2       10
+siesta:      2.39755   4.15268   0.00000  1       11
+siesta:      4.79510   5.53691   0.00000  2       12
+siesta:      2.39755  -4.15268   0.00000  1       13
+siesta:      4.79510  -2.76845   0.00000  2       14
+siesta:      4.79510  -0.00000   0.00000  1       15
+siesta:      7.19265   1.38423   0.00000  2       16
+siesta:      7.19265   4.15268   0.00000  1       17
+siesta:      9.59020   5.53691   0.00000  2       18
+
+siesta: System type = slab      
+
+initatomlists: Number of atoms, orbitals, and projectors:     18    72   162
+
+siesta: ******************** Simulation parameters ****************************
+siesta:
+siesta: The following are some of the parameters of the simulation.
+siesta: A complete list of the parameters used, including default values,
+siesta: can be found in file out.fdf
+siesta:
+redata: Spin configuration                          = none
+redata: Number of spin components                   = 1
+redata: Time-Reversal Symmetry                      = T
+redata: Spin-spiral                                 = F
+redata: Long output                                 =   F
+redata: Number of Atomic Species                    =        2
+redata: Charge density info will appear in .RHO file
+redata: Write Mulliken Pop.                         = NO
+redata: Mesh Cutoff                                 =   200.0000 Ry
+redata: Net charge of the system                    =     0.0000 |e|
+redata: Min. number of SCF Iter                     =        0
+redata: Max. number of SCF Iter                     =      500
+redata: SCF mix quantity                            = Hamiltonian
+redata: Mix DM or H after convergence               =   F
+redata: Recompute H after scf cycle                 =   F
+redata: Mix DM in first SCF step                    =   T
+redata: Write Pulay info on disk                    =   F
+redata: New DM Mixing Weight                        =     0.1000
+redata: New DM Occupancy tolerance                  = 0.000000000001
+redata: No kicks to SCF
+redata: DM Mixing Weight for Kicks                  =     0.5000
+redata: Require Harris convergence for SCF          =   F
+redata: Harris energy tolerance for SCF             =     0.000100 eV
+redata: Require DM convergence for SCF              =   T
+redata: DM tolerance for SCF                        =     0.000010
+redata: Require EDM convergence for SCF             =   F
+redata: EDM tolerance for SCF                       =     0.001000 eV
+redata: Require H convergence for SCF               =   T
+redata: Hamiltonian tolerance for SCF               =     0.001000 eV
+redata: Require (free) Energy convergence for SCF   =   F
+redata: (free) Energy tolerance for SCF             =     0.000100 eV
+redata: Using Saved Data (generic)                  =   F
+redata: Use continuation files for DM               =   T
+redata: Neglect nonoverlap interactions             =   F
+redata: Method of Calculation                       = Diagonalization
+redata: Electronic Temperature                      =   299.9869 K
+redata: Fix the spin of the system                  =   F
+redata: Max. number of TDED Iter                    =        1
+redata: Write .TDWF and .DM after time steps        =      100
+redata: Dynamics option                             = Single-point calculation
+mix.SCF: Pulay mixing                            = Pulay
+mix.SCF:    Variant                              = stable
+mix.SCF:    History steps                        = 5
+mix.SCF:    Linear mixing weight                 =     0.100000
+mix.SCF:    Mixing weight                        =     0.100000
+mix.SCF:    SVD condition                        = 0.1000E-07
+redata: ***********************************************************************
+
+%block SCF.Mixers
+  Pulay
+%endblock SCF.Mixers
+
+%block SCF.Mixer.Pulay
+  # Mixing method
+  method pulay
+  variant stable
+
+  # Mixing options
+  weight 0.1000
+  weight.linear 0.1000
+  history 5
+%endblock SCF.Mixer.Pulay
+
+DM_history_depth set to one: no extrapolation allowed by default for geometry relaxation
+Size of DM history Fstack: 1
+Total number of electrons:    72.000000
+Total ionic charge:    72.000000
+k-point displ. along   1 input, could be:     0.00    0.50
+k-point displ. along   2 input, could be:     0.00    0.50
+ Kpoints in:           24 . Kpoints trimmed:           22
+
+siesta: k-grid: Number of k-points =    22
+siesta: k-grid: Cutoff (effective) =     3.340 Ang
+siesta: k-grid: Supercell and displacements
+siesta: k-grid:    6   0   0      0.000
+siesta: k-grid:    0   6   0      0.000
+siesta: k-grid:    0   0   1      0.000
+
+diag: Algorithm                                     = D&C
+diag: Used triangular part                          = Lower
+diag: Absolute tolerance                            =  0.100E-15
+diag: Orthogonalization factor                      =  0.100E-05
+diag: Memory factor                                 =  1.0000
+
+superc: Internal auxiliary supercell:     3 x     3 x     1  =       9
+superc: Number of atoms, orbitals, and projectors:    162    648   1458
+
+
+                     ====================================
+                        Single-point calculation
+                     ====================================
+
+superc: Internal auxiliary supercell:     3 x     3 x     1  =       9
+superc: Number of atoms, orbitals, and projectors:    162    648   1458
+
+outcell: Unit cell vectors (Ang):
+        7.612371   -0.000000    0.000000
+        3.806187    6.592509   -0.000000
+        0.000000   -0.000000    6.679152
+
+outcell: Cell vector modules (Ang)   :    7.612371    7.612374    6.679152
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     60.0000
+outcell: Cell volume (Ang**3)        :    335.1907
+<dSpData1D:S at geom step 0
+  <sparsity:sparsity for geom step 0
+    nrows_g=72 nrows=72 sparsity=2.7743 nnzs=14382, refcount: 7>
+  <dData1D:(new from dSpData1D) n=14382, refcount: 1>
+refcount: 1>
+new_DM -- step:     1
+Initializing Density Matrix...
+
+Attempting to read DM from file... Failed...
+DM filled with atomic data:
+<dSpData2D:DM initialized from atoms
+  <sparsity:sparsity for geom step 0
+    nrows_g=72 nrows=72 sparsity=2.7743 nnzs=14382, refcount: 8>
+  <dData2D:DM n=14382 m=1, refcount: 1>
+refcount: 1>
+
+No. of atoms with KB's overlaping orbs in proc 0. Max # of overlaps:      56      70
+New grid distribution:   1
+           1       1:   30    1:   30    1:   30
+
+InitMesh: MESH =    60 x    60 x    60 =      216000
+InitMesh: (bp) =    30 x    30 x    30 =       27000
+InitMesh: Mesh cutoff (required, used) =   200.000   223.029 Ry
+ExtMesh (bp) on 0 =    86 x    86 x    86 =      636056
+PhiOnMesh: Number of (b)points on node 0 =                27000
+PhiOnMesh: nlist on node 0 =               477414
+
+stepf: Fermi-Dirac step function
+
+siesta: Program's energy decomposition (eV):
+siesta: Ebs     =      -956.347358
+siesta: Eions   =      4185.345278
+siesta: Ena     =       432.038396
+siesta: Ekin    =      2159.191192
+siesta: Enl     =      -652.953332
+siesta: Eso     =         0.000000
+siesta: Eldau   =         0.000000
+siesta: DEna    =        -8.235473
+siesta: DUscf   =         7.052606
+siesta: DUext   =         0.000000
+siesta: Exc     =      -884.547695
+siesta: eta*DQ  =         0.000000
+siesta: Emadel  =         0.000000
+siesta: Emeta   =         0.000000
+siesta: Emolmec =         0.000000
+siesta: Ekinion =         0.000000
+siesta: Eharris =     -3125.551020
+siesta: Etot    =     -3132.799583
+siesta: FreeEng =     -3132.799583
+
+        iscf     Eharris(eV)        E_KS(eV)     FreeEng(eV)     dDmax    Ef(eV) dHmax(eV)
+   scf:    1    -3125.551020    -3132.799583    -3132.799583  1.708408 -5.241495  1.977447
+timer: Routine,Calls,Time,% = IterSCF        1       1.671  44.01
+   scf:    2    -3134.613752    -3133.744987    -3133.744987  0.024805 -5.141389  1.472649
+   scf:    3    -3135.669152    -3135.025317    -3135.025317  0.073118 -4.874842  0.144266
+   scf:    4    -3134.968912    -3134.999466    -3134.999466  0.005622 -5.086385  0.256758
+   scf:    5    -3135.051455    -3135.037097    -3135.037097  0.014412 -5.053526  0.004369
+   scf:    6    -3135.037025    -3135.037078    -3135.037078  0.000646 -5.055510  0.007425
+   scf:    7    -3135.037114    -3135.037104    -3135.037104  0.000381 -5.053568  0.000146
+   scf:    8    -3135.037104    -3135.037104    -3135.037104  0.000011 -5.053595  0.000054
+   scf:    9    -3135.037104    -3135.037104    -3135.037104  0.000003 -5.053591  0.000001
+
+SCF Convergence by DM+H criterion
+max |DM_out - DM_in|         :     0.0000028841
+max |H_out - H_in|      (eV) :     0.0000008992
+SCF cycle converged after 9 iterations
+
+Using DM_out to compute the final energy and forces
+No. of atoms with KB's overlaping orbs in proc 0. Max # of overlaps:      56      70
+
+                     ====================================
+                               Linres calculation
+                     ====================================
+Linres: Initial perturbed atom      9
+  Linres: Final perturbed atom     10
+        Linres: Tolerance (DM)   0.00100
+
+                     ====================================
+                               Linres atom=      9
+                     ====================================
+        iscf     dDmax
+ lr-scf:   1  0.212672
+ lr-scf:   2  0.098377
+ lr-scf:   3  0.054695
+ lr-scf:   4  0.017831
+ lr-scf:   5  0.004468
+ lr-scf:   6  0.000436
+
+WARNING: alloc-realloc-dealloc name mismatch
+         Name: ddsmat dDaux
+         Size:           -690336. Bytes
+         Subsequent mismatches will not be reported
+
+writedynmat: Saving into a file calculated dynamical matrix
+
+                     ====================================
+                               Linres atom=     10
+                     ====================================
+        iscf     dDmax
+ lr-scf:   1  0.389693
+ lr-scf:   2  0.220668
+ lr-scf:   3  0.138183
+ lr-scf:   4  0.036156
+ lr-scf:   5  0.009045
+ lr-scf:   6  0.000905
+
+writedynmat: Saving into a file calculated dynamical matrix
+ ----- COMPLETE DYNAMICAL MATRIX -----
+ Beta:;xyz;Alpha;xyz;dynmat
+           1 ;           1 ;           9 ;           1 ;   2.5330194320431799E-002
+           1 ;           2 ;           9 ;           1 ;   6.9524857574754914E-008
+           1 ;           3 ;           9 ;           1 ;   1.1858929600883275E-017
+           2 ;           1 ;           9 ;           1 ;  -1.8449575587689431E-002
+           2 ;           2 ;           9 ;           1 ;  -3.2313677009860493E-002
+           2 ;           3 ;           9 ;           1 ;  -5.9459731060019916E-013
+           3 ;           1 ;           9 ;           1 ;  0.11703292814899240     
+           3 ;           2 ;           9 ;           1 ;   3.2017612127120555E-003
+           3 ;           3 ;           9 ;           1 ;   2.5282600208293323E-013
+           4 ;           1 ;           9 ;           1 ;  0.43431214732385487     
+           4 ;           2 ;           9 ;           1 ; -0.16404888844664631     
+           4 ;           3 ;           9 ;           1 ;  -4.1588540231084658E-012
+           5 ;           1 ;           9 ;           1 ;  -1.3881142335771972E-002
+           5 ;           2 ;           9 ;           1 ;  -7.8843838404737299E-002
+           5 ;           3 ;           9 ;           1 ;   3.8948879832788055E-013
+           6 ;           1 ;           9 ;           1 ;   3.7523003558294313E-002
+           6 ;           2 ;           9 ;           1 ;   9.3718300424371888E-007
+           6 ;           3 ;           9 ;           1 ;  -1.9437142292198712E-016
+           7 ;           1 ;           9 ;           1 ;  -1.3928692162990143E-002
+           7 ;           2 ;           9 ;           1 ;   7.2351654016988065E-002
+           7 ;           3 ;           9 ;           1 ;  -1.1901868076750882E-013
+           8 ;           1 ;           9 ;           1 ;  0.15016457982803710     
+           8 ;           2 ;           9 ;           1 ;   3.7079328311684972E-006
+           8 ;           3 ;           9 ;           1 ;   1.8939850343587554E-016
+           9 ;           1 ;           9 ;           1 ;  -1.1664402882608871     
+           9 ;           2 ;           9 ;           1 ;  -2.7456608072716643E-006
+           9 ;           3 ;           9 ;           1 ;  -3.1304211677821332E-015
+          10 ;           1 ;           9 ;           1 ;  0.43431127715001339     
+          10 ;           2 ;           9 ;           1 ;  0.16405489761935460     
+          10 ;           3 ;           9 ;           1 ;   4.1483506004219955E-012
+          11 ;           1 ;           9 ;           1 ;  -1.3883342508445829E-002
+          11 ;           2 ;           9 ;           1 ;   7.8840424464100375E-002
+          11 ;           3 ;           9 ;           1 ;  -3.8695216559513145E-013
+          12 ;           1 ;           9 ;           1 ;  -1.6043140398135109E-002
+          12 ;           2 ;           9 ;           1 ;  -1.9539160352010108E-002
+          12 ;           3 ;           9 ;           1 ;   2.5014765710829779E-013
+          13 ;           1 ;           9 ;           1 ;  -1.3927404545686023E-002
+          13 ;           2 ;           9 ;           1 ;  -7.2352723421946291E-002
+          13 ;           3 ;           9 ;           1 ;   1.1946723730124251E-013
+          14 ;           1 ;           9 ;           1 ;  -1.8447319140198985E-002
+          14 ;           2 ;           9 ;           1 ;   3.2315210998052520E-002
+          14 ;           3 ;           9 ;           1 ;   5.9404443443824296E-013
+          15 ;           1 ;           9 ;           1 ;  0.11703254871735184     
+          15 ;           2 ;           9 ;           1 ;  -3.2068796089588102E-003
+          15 ;           3 ;           9 ;           1 ;  -2.5293217636916108E-013
+          16 ;           1 ;           9 ;           1 ;  -4.9885005808098799E-002
+          16 ;           2 ;           9 ;           1 ;   1.0267806740499733E-006
+          16 ;           3 ;           9 ;           1 ;  -1.2280547539908251E-016
+          17 ;           1 ;           9 ;           1 ;   2.5315375138556629E-002
+          17 ;           2 ;           9 ;           1 ;  -2.0988695812735560E-007
+          17 ;           3 ;           9 ;           1 ;   3.3240425860814926E-017
+          18 ;           1 ;           9 ;           1 ;  -1.6044028303804081E-002
+          18 ;           2 ;           9 ;           1 ;   1.9538378629035492E-002
+          18 ;           3 ;           9 ;           1 ;  -2.5050766885254452E-013
+           1 ;           1 ;           9 ;           2 ;  -8.1025546603092456E-009
+           1 ;           2 ;           9 ;           2 ;   2.5329496429245198E-002
+           1 ;           3 ;           9 ;           2 ;  -3.6953237179409362E-016
+           2 ;           1 ;           9 ;           2 ;  -3.2314343875515281E-002
+           2 ;           2 ;           9 ;           2 ;   1.8863739570299801E-002
+           2 ;           3 ;           9 ;           2 ;  -3.4370674909349860E-013
+           3 ;           1 ;           9 ;           2 ;  -3.2570128639630774E-003
+           3 ;           2 ;           9 ;           2 ;  -5.7549397908204757E-002
+           3 ;           3 ;           9 ;           2 ;  -2.8612693435174126E-013
+           4 ;           1 ;           9 ;           2 ; -0.16405368703255044     
+           4 ;           2 ;           9 ;           2 ;  0.24487797872170283     
+           4 ;           3 ;           9 ;           2 ;   2.4434746584911586E-012
+           5 ;           1 ;           9 ;           2 ;  -7.2378105701168399E-002
+           5 ;           2 ;           9 ;           2 ;   7.3364689695291599E-002
+           5 ;           3 ;           9 ;           2 ;  -8.9380360550555396E-014
+           6 ;           1 ;           9 ;           2 ;   9.0773313030315827E-009
+           6 ;           2 ;           9 ;           2 ;  -3.7104412627891645E-002
+           6 ;           3 ;           9 ;           2 ;   6.9085221167634631E-013
+           7 ;           1 ;           9 ;           2 ;   7.8814673094907695E-002
+           7 ;           2 ;           9 ;           2 ;   7.3410714702512328E-002
+           7 ;           3 ;           9 ;           2 ;   3.7019492852465181E-013
+           8 ;           1 ;           9 ;           2 ;  -5.5942695854124849E-010
+           8 ;           2 ;           9 ;           2 ;  0.52902552977652761     
+           8 ;           3 ;           9 ;           2 ;  -4.7446431200757603E-012
+           9 ;           1 ;           9 ;           2 ;   1.5780737132149609E-006
+           9 ;           2 ;           9 ;           2 ;  -1.1664387236379161     
+           9 ;           3 ;           9 ;           2 ;   2.2776165168494184E-014
+          10 ;           1 ;           9 ;           2 ;  0.16405218480000514     
+          10 ;           2 ;           9 ;           2 ;  0.24487734854731699     
+          10 ;           3 ;           9 ;           2 ;   2.4288460447705604E-012
+          11 ;           1 ;           9 ;           2 ;   7.2377975562059979E-002
+          11 ;           2 ;           9 ;           2 ;   7.3364498002055897E-002
+          11 ;           3 ;           9 ;           2 ;  -9.5485788111711798E-014
+          12 ;           1 ;           9 ;           2 ;  -1.9537893692872083E-002
+          12 ;           2 ;           9 ;           2 ;  -3.8603387905380114E-002
+          12 ;           3 ;           9 ;           2 ;  -1.4481505782106837E-013
+          13 ;           1 ;           9 ;           2 ;  -7.8814717680314714E-002
+          13 ;           2 ;           9 ;           2 ;   7.3410906368901963E-002
+          13 ;           3 ;           9 ;           2 ;   3.6942604042145946E-013
+          14 ;           1 ;           9 ;           2 ;   3.2314344964640321E-002
+          14 ;           2 ;           9 ;           2 ;   1.8863715947615538E-002
+          14 ;           3 ;           9 ;           2 ;  -3.4309830921516427E-013
+          15 ;           1 ;           9 ;           2 ;   3.2569599873294021E-003
+          15 ;           2 ;           9 ;           2 ;  -5.7549397058443121E-002
+          15 ;           3 ;           9 ;           2 ;  -2.8573644357940381E-013
+          16 ;           1 ;           9 ;           2 ;   1.9122210747449241E-008
+          16 ;           2 ;           9 ;           2 ;  -4.7628977942686130E-003
+          16 ;           3 ;           9 ;           2 ;   2.8795001066098707E-013
+          17 ;           1 ;           9 ;           2 ;  -9.0396968962535993E-009
+          17 ;           2 ;           9 ;           2 ;   2.5315274317161879E-002
+          17 ;           3 ;           9 ;           2 ;   3.8451841717049918E-016
+          18 ;           1 ;           9 ;           2 ;   1.9537995366247340E-002
+          18 ;           2 ;           9 ;           2 ;  -3.8603510642750340E-002
+          18 ;           3 ;           9 ;           2 ;  -1.4449889681989910E-013
+           1 ;           1 ;           9 ;           3 ;   1.0332790910408661E-010
+           1 ;           2 ;           9 ;           3 ;   2.4007412721852575E-010
+           1 ;           3 ;           9 ;           3 ;  -1.0753429778381385E-004
+           2 ;           1 ;           9 ;           3 ;   4.0878926124012221E-007
+           2 ;           2 ;           9 ;           3 ;   2.3589911177593959E-007
+           2 ;           3 ;           9 ;           3 ;   8.0710251119842612E-003
+           3 ;           1 ;           9 ;           3 ;  -2.1834576234328263E-006
+           3 ;           2 ;           9 ;           3 ;   1.3061002045618471E-006
+           3 ;           3 ;           9 ;           3 ;  -5.3263632817537798E-003
+           4 ;           1 ;           9 ;           3 ;   6.5437020193713184E-006
+           4 ;           2 ;           9 ;           3 ;  -3.7797278159634913E-006
+           4 ;           3 ;           9 ;           3 ;  0.10851116298161310     
+           5 ;           1 ;           9 ;           3 ;  -2.2230380302233002E-006
+           5 ;           2 ;           9 ;           3 ;   1.2381914150191020E-006
+           5 ;           3 ;           9 ;           3 ;  -5.3262899281248744E-003
+           6 ;           1 ;           9 ;           3 ;  -8.8460456963012848E-011
+           6 ;           2 ;           9 ;           3 ;  -4.7228776765508734E-007
+           6 ;           3 ;           9 ;           3 ;   8.0710404784369270E-003
+           7 ;           1 ;           9 ;           3 ;   3.9698083028596242E-008
+           7 ;           2 ;           9 ;           3 ;  -2.5443389846046082E-006
+           7 ;           3 ;           9 ;           3 ;  -5.3263114118411595E-003
+           8 ;           1 ;           9 ;           3 ;  -5.9413987774355599E-010
+           8 ;           2 ;           9 ;           3 ;   7.5579159053743831E-006
+           8 ;           3 ;           9 ;           3 ;  0.10851106378811265     
+           9 ;           1 ;           9 ;           3 ;   4.5227833252495085E-010
+           9 ;           2 ;           9 ;           3 ;   1.0035266281606409E-009
+           9 ;           3 ;           9 ;           3 ; -0.28346739692876710     
+          10 ;           1 ;           9 ;           3 ;  -6.5433700630996994E-006
+          10 ;           2 ;           9 ;           3 ;  -3.7788471217125159E-006
+          10 ;           3 ;           9 ;           3 ;  0.10851147860416345     
+          11 ;           1 ;           9 ;           3 ;   2.2227257791301902E-006
+          11 ;           2 ;           9 ;           3 ;   1.2382036292344740E-006
+          11 ;           3 ;           9 ;           3 ;  -5.3263101645538201E-003
+          12 ;           1 ;           9 ;           3 ;  -2.4458837862891699E-006
+          12 ;           2 ;           9 ;           3 ;   1.4124599578856697E-006
+          12 ;           3 ;           9 ;           3 ;  -1.1377802660364381E-002
+          13 ;           1 ;           9 ;           3 ;  -3.9635974372835147E-008
+          13 ;           2 ;           9 ;           3 ;  -2.5444984549640375E-006
+          13 ;           3 ;           9 ;           3 ;  -5.3262905836114535E-003
+          14 ;           1 ;           9 ;           3 ;  -4.0894240924280132E-007
+          14 ;           2 ;           9 ;           3 ;   2.3588555689200026E-007
+          14 ;           3 ;           9 ;           3 ;   8.0710483051205078E-003
+          15 ;           1 ;           9 ;           3 ;   2.1834821571888124E-006
+          15 ;           2 ;           9 ;           3 ;   1.3058481288570279E-006
+          15 ;           3 ;           9 ;           3 ;  -5.3263626017155457E-003
+          16 ;           1 ;           9 ;           3 ;   1.1290405296874040E-010
+          16 ;           2 ;           9 ;           3 ;  -2.8245515601250344E-006
+          16 ;           3 ;           9 ;           3 ;  -1.1377803946021019E-002
+          17 ;           1 ;           9 ;           3 ;   3.6108587844079535E-011
+          17 ;           2 ;           9 ;           3 ;   1.3787780507402789E-010
+          17 ;           3 ;           9 ;           3 ;  -1.0744703545446922E-004
+          18 ;           1 ;           9 ;           3 ;   2.4458950736044126E-006
+          18 ;           2 ;           9 ;           3 ;   1.4123349625217458E-006
+          18 ;           3 ;           9 ;           3 ;  -1.1377829771449046E-002
+           1 ;           1 ;          10 ;           1 ;  -1.5964330926385630E-002
+           1 ;           2 ;          10 ;           1 ;   1.9584179430780998E-002
+           1 ;           3 ;          10 ;           1 ;  -8.6379770675323409E-014
+           2 ;           1 ;          10 ;           1 ;   1.5719653150323285E-002
+           2 ;           2 ;          10 ;           1 ;  -8.2584021186351765E-007
+           2 ;           3 ;          10 ;           1 ;   5.9275614122279721E-016
+           3 ;           1 ;          10 ;           1 ;  -4.9897294782076961E-002
+           3 ;           2 ;          10 ;           1 ;   6.8044101606417183E-005
+           3 ;           3 ;          10 ;           1 ;   2.3136820888783942E-016
+           4 ;           1 ;          10 ;           1 ;   9.4627994260210388E-002
+           4 ;           2 ;          10 ;           1 ;   9.7649749284530341E-003
+           4 ;           3 ;          10 ;           1 ;   1.1536318484119862E-012
+           5 ;           1 ;          10 ;           1 ;  -1.8408826994158231E-002
+           5 ;           2 ;          10 ;           1 ;   3.2186341837738483E-002
+           5 ;           3 ;          10 ;           1 ;  -1.6156309649394665E-013
+           6 ;           1 ;          10 ;           1 ;   3.9246263330479994E-003
+           6 ;           2 ;          10 ;           1 ;  -6.2210139648444449E-002
+           6 ;           3 ;          10 ;           1 ;   1.0798863480994541E-012
+           7 ;           1 ;          10 ;           1 ;  -1.5959720950069638E-002
+           7 ;           2 ;          10 ;           1 ;  -1.9604892448731336E-002
+           7 ;           3 ;          10 ;           1 ;   8.7469791217684209E-014
+           8 ;           1 ;          10 ;           1 ;   3.7945023747030936E-003
+           8 ;           2 ;          10 ;           1 ;   4.2571865176314748E-002
+           8 ;           3 ;          10 ;           1 ;   5.5941761109768358E-014
+           9 ;           1 ;          10 ;           1 ;  0.43414360961236476     
+           9 ;           2 ;          10 ;           1 ;  0.16417861522802424     
+           9 ;           3 ;          10 ;           1 ;  -2.9519007014421914E-012
+          10 ;           1 ;          10 ;           1 ;  -1.1737465856506371     
+          10 ;           2 ;          10 ;           1 ;   5.8809861109904125E-005
+          10 ;           3 ;          10 ;           1 ;   4.8750496286684504E-015
+          11 ;           1 ;          10 ;           1 ;  0.14991703143685997     
+          11 ;           2 ;          10 ;           1 ;   2.5120083478538721E-005
+          11 ;           3 ;          10 ;           1 ;   9.8728497750628804E-017
+          12 ;           1 ;          10 ;           1 ;   3.8515752473779509E-003
+          12 ;           2 ;          10 ;           1 ;   6.2238645677251569E-002
+          12 ;           3 ;          10 ;           1 ;  -1.0802925570554276E-012
+          13 ;           1 ;          10 ;           1 ;   3.7442314393516536E-002
+          13 ;           2 ;          10 ;           1 ;   1.9578644058684634E-005
+          13 ;           3 ;          10 ;           1 ;  -4.8131733412868596E-016
+          14 ;           1 ;          10 ;           1 ;   3.9151082540189799E-003
+          14 ;           2 ;          10 ;           1 ;  -4.2569598673906819E-002
+          14 ;           3 ;          10 ;           1 ;  -5.3389170013268942E-014
+          15 ;           1 ;          10 ;           1 ;  0.43432456182191809     
+          15 ;           2 ;          10 ;           1 ; -0.16425478368814816     
+          15 ;           3 ;          10 ;           1 ;   2.9458418522434582E-012
+          16 ;           1 ;          10 ;           1 ;   9.4637179572857680E-002
+          16 ;           2 ;          10 ;           1 ;  -9.8130701366272947E-003
+          16 ;           3 ;          10 ;           1 ;  -1.1606919255081315E-012
+          17 ;           1 ;          10 ;           1 ;  -1.8327663934413777E-002
+          17 ;           2 ;          10 ;           1 ;  -3.2217234350275389E-002
+          17 ;           3 ;          10 ;           1 ;   1.6130316636381066E-013
+          18 ;           1 ;          10 ;           1 ;   1.5633387405838001E-002
+          18 ;           2 ;          10 ;           1 ;  -2.5547349117979912E-005
+          18 ;           3 ;          10 ;           1 ;   1.0736783790976433E-015
+           1 ;           1 ;          10 ;           2 ;   1.9588220918088955E-002
+           1 ;           2 ;          10 ;           2 ;  -3.8589103952651464E-002
+           1 ;           3 ;          10 ;           2 ;  -4.4954907156944098E-014
+           2 ;           1 ;          10 ;           2 ;  -2.4036186986627062E-007
+           2 ;           2 ;          10 ;           2 ;   1.5715377574160295E-002
+           2 ;           3 ;          10 ;           2 ;   3.6521551190879181E-016
+           3 ;           1 ;          10 ;           2 ;  -1.8695751056575334E-005
+           3 ;           2 ;          10 ;           2 ;  -4.6815346539931489E-003
+           3 ;           3 ;          10 ;           2 ;   9.2788524291399856E-014
+           4 ;           1 ;          10 ;           2 ;  -9.8690784798291711E-003
+           4 ;           2 ;          10 ;           2 ;  -2.6418316803079420E-002
+           4 ;           3 ;          10 ;           2 ;  -5.6966675721760409E-013
+           5 ;           1 ;          10 ;           2 ;   3.2272530882797405E-002
+           5 ;           2 ;          10 ;           2 ;   1.8840023424558667E-002
+           5 ;           3 ;          10 ;           2 ;   9.1483197968442557E-014
+           6 ;           1 ;          10 ;           2 ;  -4.2570135068924292E-002
+           6 ;           2 ;          10 ;           2 ;   6.4409268109663811E-002
+           6 ;           3 ;          10 ;           2 ;  -7.1144775436203404E-013
+           7 ;           1 ;          10 ;           2 ;  -1.9523808869487506E-002
+           7 ;           2 ;          10 ;           2 ;  -3.8631288636756134E-002
+           7 ;           3 ;          10 ;           2 ;  -4.4538259676832102E-014
+           8 ;           1 ;          10 ;           2 ;   6.2210683745153657E-002
+           8 ;           2 ;          10 ;           2 ;   6.4403520518391114E-002
+           8 ;           3 ;          10 ;           2 ;   1.2999012755300613E-012
+           9 ;           1 ;          10 ;           2 ;  0.16419314832179671     
+           9 ;           2 ;          10 ;           2 ;  0.24460828000867438     
+           9 ;           3 ;          10 ;           2 ;  -1.6917578846681876E-012
+          10 ;           1 ;          10 ;           2 ;   4.3942718330086637E-005
+          10 ;           2 ;          10 ;           2 ;  -1.1738139841647479     
+          10 ;           3 ;          10 ;           2 ;  -5.0981598291652684E-015
+          11 ;           1 ;          10 ;           2 ;  -5.9725237707254774E-005
+          11 ;           2 ;          10 ;           2 ;  0.52915136549113262     
+          11 ;           3 ;          10 ;           2 ;   3.4652914420185954E-012
+          12 ;           1 ;          10 ;           2 ;   4.2596322317264901E-002
+          12 ;           2 ;          10 ;           2 ;   6.4375581054101794E-002
+          12 ;           3 ;          10 ;           2 ;  -7.1070431479626051E-013
+          13 ;           1 ;          10 ;           2 ;  -6.4332635780337455E-005
+          13 ;           2 ;          10 ;           2 ;  -3.7006375162980172E-002
+          13 ;           3 ;          10 ;           2 ;  -1.8577116183880096E-013
+          14 ;           1 ;          10 ;           2 ;  -6.2210536899726006E-002
+          14 ;           2 ;          10 ;           2 ;   6.4415316675959233E-002
+          14 ;           3 ;          10 ;           2 ;   1.3001348124118628E-012
+          15 ;           1 ;          10 ;           2 ; -0.16417590683715916     
+          15 ;           2 ;          10 ;           2 ;  0.24472918635950458     
+          15 ;           3 ;          10 ;           2 ;  -1.6972660273552407E-012
+          16 ;           1 ;          10 ;           2 ;   9.8267375503035131E-003
+          16 ;           2 ;          10 ;           2 ;  -2.6412745373055924E-002
+          16 ;           3 ;          10 ;           2 ;  -5.7069424032748255E-013
+          17 ;           1 ;          10 ;           2 ;  -3.2212826961070036E-002
+          17 ;           2 ;          10 ;           2 ;   1.8865649397791975E-002
+          17 ;           3 ;          10 ;           2 ;   9.2620451976554052E-014
+          18 ;           1 ;          10 ;           2 ;  -2.6250941803669511E-005
+          18 ;           2 ;          10 ;           2 ;   1.5666855643900676E-002
+          18 ;           3 ;          10 ;           2 ;   1.4538872411938275E-015
+           1 ;           1 ;          10 ;           3 ;  -2.8046038159461262E-006
+           1 ;           2 ;          10 ;           3 ;  -1.6198904248430129E-006
+           1 ;           3 ;          10 ;           3 ;  -1.1376270893911036E-002
+           2 ;           1 ;          10 ;           3 ;  -1.0169386489897938E-008
+           2 ;           2 ;          10 ;           3 ;  -6.0880387873754690E-009
+           2 ;           3 ;          10 ;           3 ;   1.6911888766813672E-003
+           3 ;           1 ;          10 ;           3 ;   1.7071054714516522E-007
+           3 ;           2 ;          10 ;           3 ;   2.8768038456647032E-006
+           3 ;           3 ;          10 ;           3 ;  -1.1376013868596546E-002
+           4 ;           1 ;          10 ;           3 ;  -2.8268332854455623E-006
+           4 ;           2 ;          10 ;           3 ;  -1.5667488770513348E-006
+           4 ;           3 ;          10 ;           3 ;  -1.9193984486067919E-002
+           5 ;           1 ;          10 ;           3 ;   1.7674450529196255E-006
+           5 ;           2 ;          10 ;           3 ;  -7.5761697795140172E-007
+           5 ;           3 ;          10 ;           3 ;   8.0719925697261274E-003
+           6 ;           1 ;          10 ;           3 ;   1.4645860748739957E-007
+           6 ;           2 ;          10 ;           3 ;   3.1282042141446603E-006
+           6 ;           3 ;          10 ;           3 ;  -1.9193664279483904E-002
+           7 ;           1 ;          10 ;           3 ;   2.5768113659129568E-006
+           7 ;           2 ;          10 ;           3 ;  -1.2912571356462871E-006
+           7 ;           3 ;          10 ;           3 ;  -1.1376013804435472E-002
+           8 ;           1 ;          10 ;           3 ;  -2.7708390875767196E-006
+           8 ;           2 ;          10 ;           3 ;  -1.6646769534925377E-006
+           8 ;           3 ;          10 ;           3 ;  -1.9193966959541293E-002
+           9 ;           1 ;          10 ;           3 ;   3.9132934919489468E-006
+           9 ;           2 ;          10 ;           3 ;   2.2593428885734831E-006
+           9 ;           3 ;          10 ;           3 ;  0.10850242408579956     
+          10 ;           1 ;          10 ;           3 ;   2.0572054187677809E-007
+          10 ;           2 ;          10 ;           3 ;   1.1830145676680734E-007
+          10 ;           3 ;          10 ;           3 ; -0.20384859498191407     
+          11 ;           1 ;          10 ;           3 ;  -3.9910789361626677E-007
+          11 ;           2 ;          10 ;           3 ;  -4.4921255816714482E-006
+          11 ;           3 ;          10 ;           3 ;  0.10850983867846981     
+          12 ;           1 ;          10 ;           3 ;   1.5011694878484791E-007
+          12 ;           2 ;          10 ;           3 ;   2.9454679074829889E-006
+          12 ;           3 ;          10 ;           3 ;  -1.9194484682705824E-002
+          13 ;           1 ;          10 ;           3 ;   2.2725699262305717E-007
+          13 ;           2 ;          10 ;           3 ;   1.9092995494156493E-006
+          13 ;           3 ;          10 ;           3 ;   8.0719850332606913E-003
+          14 ;           1 ;          10 ;           3 ;   2.7818333408819438E-006
+          14 ;           2 ;          10 ;           3 ;  -1.4360026642035628E-006
+          14 ;           3 ;          10 ;           3 ;  -1.9193663711707144E-002
+          15 ;           1 ;          10 ;           3 ;  -4.0882091989621428E-006
+          15 ;           2 ;          10 ;           3 ;   1.8994876801926612E-006
+          15 ;           3 ;          10 ;           3 ;  0.10850993997087217     
+          16 ;           1 ;          10 ;           3 ;   2.6243283899819564E-006
+          16 ;           2 ;          10 ;           3 ;  -1.3424025292421919E-006
+          16 ;           3 ;          10 ;           3 ;  -1.9194501725602508E-002
+          17 ;           1 ;          10 ;           3 ;  -1.3688834750826601E-006
+          17 ;           2 ;          10 ;           3 ;  -7.8992195534028370E-007
+          17 ;           3 ;          10 ;           3 ;   8.0723063402209361E-003
+          18 ;           1 ;          10 ;           3 ;  -2.9534397886280722E-007
+          18 ;           2 ;          10 ;           3 ;  -1.7020921533193082E-007
+          18 ;           3 ;          10 ;           3 ;   1.6903175739135939E-003
+writedynmat: Saving into a file the force constant matrix
+
+siesta: E_KS(eV) =            -3135.0371
+
+siesta: E_KS - E_eggbox =     -3135.0371
+
+siesta: Atomic forces (eV/Ang):
+----------------------------------------
+   Tot    0.000017    0.000006    0.000000
+----------------------------------------
+   Max    0.000042
+   Res    0.000024    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.000042    constrained
+
+Stress-tensor-Voigt (kbar):     1749.26     1749.26        0.09        0.00        0.00       -0.00
+(Free)E + p*V (eV/cell)    -3379.0155
+Target enthalpy (eV/cell)    -3135.0371
+
+siesta: Program's energy decomposition (eV):
+siesta: Ebs     =     -1023.607718
+siesta: Eions   =      4185.345278
+siesta: Ena     =       432.038396
+siesta: Ekin    =      2095.933654
+siesta: Enl     =      -622.391107
+siesta: Eso     =         0.000000
+siesta: Eldau   =         0.000000
+siesta: DEna    =        13.448752
+siesta: DUscf   =         0.420613
+siesta: DUext   =         0.000000
+siesta: Exc     =      -871.444501
+siesta: eta*DQ  =         0.000000
+siesta: Emadel  =         0.000000
+siesta: Emeta   =         0.000000
+siesta: Emolmec =         0.000000
+siesta: Ekinion =         0.000000
+siesta: Eharris =     -3135.037104
+siesta: Etot    =     -3135.037104
+siesta: FreeEng =     -3135.037104
+
+siesta: Final energy (eV):
+siesta:  Band Struct. =   -1023.607718
+siesta:       Kinetic =    2095.933654
+siesta:       Hartree =    3133.005660
+siesta:       Eldau   =       0.000000
+siesta:       Eso     =       0.000000
+siesta:    Ext. field =       0.000000
+siesta:   Exch.-corr. =    -871.444501
+siesta:  Ion-electron =   -8247.934869
+siesta:       Ion-ion =     753.100586
+siesta:       Ekinion =       0.000000
+siesta:         Total =   -3135.037104
+siesta:         Fermi =      -5.053591
+
+siesta: Stress tensor (static) (eV/Ang**3):
+siesta:     1.091788    0.000000    0.000000
+siesta:     0.000000    1.091792    0.000000
+siesta:    -0.000000    0.000000    0.000058
+
+siesta: Cell volume =        335.190734 Ang**3
+
+siesta: Pressure (static):
+siesta:                Solid            Molecule  Units
+siesta:          -0.00792754         -0.00792753  Ry/Bohr**3
+siesta:          -0.72787939         -0.72787908  eV/Ang**3
+siesta:       -1166.20395727      -1166.20346190  kBar
+(Free)E+ p_basis*V_orbitals  =       -3132.026700
+(Free)Eharris+ p_basis*V_orbitals  =       -3132.026700
+
+siesta: Electric dipole (a.u.)  =    0.000000    0.000000   -0.000000
+siesta: Electric dipole (Debye) =    0.000000    0.000000   -0.000000
+
+timer: Elapsed wall time (sec) =     260.221
+timer: CPU execution times (sec):
+
+Routine            Calls   Time/call    Tot.time        %
+siesta                 1     259.628     259.628   100.00
+Setup                  1       0.331       0.331     0.13
+bands                  1       0.000       0.000     0.00
+KSV_init               1       0.000       0.000     0.00
+IterGeom               1     259.286     259.286    99.87
+state_init             1       0.057       0.057     0.02
+hsparse                1       0.017       0.017     0.01
+overlap                1       0.033       0.033     0.01
+Setup_H0               1       1.737       1.737     0.67
+naefs                  2       0.001       0.002     0.00
+MolMec                 2       0.000       0.000     0.00
+kinefsm                2       0.018       0.036     0.01
+nlefsm                 2       0.119       0.239     0.09
+DHSCF_Init             1       1.537       1.537     0.59
+DHSCF1                 1       0.047       0.047     0.02
+INITMESH               1       0.000       0.000     0.00
+DHSCF2                 1       1.490       1.490     0.57
+REMESH                 1       0.195       0.195     0.08
+REORD                338       0.001       0.335     0.13
+PHION                  1       1.013       1.013     0.39
+COMM_BSC             196       0.001       0.198     0.08
+POISON                76       0.034       2.573     0.99
+fft                  152       0.012       1.758     0.68
+IterSCF                9       1.093       9.834     3.79
+setup_H               10       0.638       6.377     2.46
+DHSCF                 27       2.794      75.442    29.06
+DHSCF3                27       0.531      14.349     5.53
+rhoofd                75       0.253      18.986     7.31
+CellXC                27       0.072       1.936     0.75
+cellXC                75       0.074       5.515     2.12
+vmat                  47       0.263      12.379     4.77
+compute_dm             9       0.382       3.436     1.32
+diagon                 9       0.381       3.432     1.32
+c-eigval             198       0.004       0.828     0.32
+c-buildHS            198       0.002       0.319     0.12
+cdiag              13620       0.000       4.017     1.55
+cdiag1             13620       0.000       0.194     0.07
+cdiag2             13620       0.000       0.679     0.26
+cdiag3             13620       0.000       2.510     0.97
+c-eigvec             198       0.008       1.546     0.60
+cdiag4             13422       0.000       0.333     0.13
+c-buildD             198       0.005       1.054     0.41
+MIXER                  8       0.001       0.006     0.00
+PostSCF                1       2.040       2.040     0.79
+DHSCF4                 1       1.318       1.318     0.51
+dfscf                  1       1.060       1.060     0.41
+overfsm                1       0.007       0.007     0.00
+Linres                 1     245.615     245.615    94.60
+LRatom                 2     112.107     224.215    86.36
+dvmat                  2       0.697       1.394     0.54
+DHSCF-LR              16       3.736      59.775    23.02
+dfscf2                 4       1.885       7.541     2.90
+CellXC-LR             48       0.076       3.662     1.41
+dynamat               12       1.965      23.582     9.08
+dhinit                 2       0.006       0.012     0.00
+dvnloc                 4       0.239       0.957     0.37
+vmat-LR               36       0.263       9.475     3.65
+delrho                12      14.781     177.373    68.32
+delrhok               12      14.781     177.373    68.32
+WriteLRDM             12       0.002       0.028     0.01
+ddsmat                 2       0.042       0.084     0.03
+state_analysis         1       0.000       0.000     0.00
+siesta_move            1       0.000       0.000     0.00
+Analysis               1       0.003       0.003     0.00
+optical                1       0.000       0.000     0.00
+  
+>> End of run:   6-NOV-2017  17:48:16
+Job completed

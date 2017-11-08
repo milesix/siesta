@@ -883,10 +883,10 @@ C     Work arrays
 #endif
 
 C    Linres internal variables
-      real(grid_p), pointer :: dvnoscf(:,:),
-     &                         dRhoscf(:,:),
-     &                         dummy_Vna(:),
-     &                         VLR(:,:),VLR_par(:,:),  
+      real(grid_p), pointer :: dvnoscf(:,:),dvnoscf_par(:),
+     &                         dRhoscf(:,:),dRhoscf_par(:,:),
+     &                         VLR(:,:),VLR_par(:,:), 
+     &                         dummy_Vna(:), 
      &                         dVXCpot(:,:),
      &                         dRhoscf0_par(:,:,:), dRhoatm_par(:,:)  
       integer :: iaend, iainit,atder
@@ -2209,6 +2209,7 @@ C------------------------------------------------------------------------
           call timer("CellXC-LR",1)
           nullify(dVXCpot)
           call re_alloc( dVXCpot, 1, ntpl, 1, nspin, 'dVXCpot','dhscf' )
+          dVXCpot(:,:)=0.0_dp
           call cellXC( 0, cell, ntm, myBox(1,1), myBox(2,1),
      .                           myBox(1,2), myBox(2,2),
      .                           myBox(1,3), myBox(2,3), nspin,
@@ -2332,45 +2333,57 @@ C------------------------------------------------------------------------
             endif
 !$OMP end parallel
 
-! SEQUENTIAL to CLUSTER the dvnoscf potential (Vna+Vh) and DRho
-            call reord(dvnoscf(:,jx), dvnoscf(:,jx), nml, nsm,
-     &           TO_CLUSTER)            
-            call reord(DRho, DRho, nml, nsm, TO_CLUSTER)
+! SEQUENTIAL to CLUSTER DRho
+
+!            call reord(DRho, DRho, nml, nsm, TO_CLUSTER)
             
 ! Set everything to QUADRATIC distribution
             if (nodes.gt.1) then
                call setMeshDistr( QUADRATIC, nsm, nsp,
      &              nml, nmpl, ntml, ntpl )
             end if
-            nullify(VLR_par)
+
+            nullify(VLR_par,dvnoscf_par,DRhoscf_par)
+
             call re_alloc( Vscf_par, 1, ntpl, 1, nspin,
      &                    'Vscf_par', 'dhscf' )
             call re_alloc( VLR_par, 1, ntpl, 1, nspin,
      &                    'VLR_par','dhscf' )
             call re_alloc( DRho_par, 1, ntpl, 1, nspin, 
      &                    'DRho_par','dhscf' ) !it will store the perturbed density
+            call re_alloc( DRhoscf_par, 1, ntpl, 1, nspin,
+     &                    'DRhoscf_par','dhscf' ) !it will store the perturbed density
+            call re_alloc(dvnoscf_par,1,ntpl,'dvnoscf_par','dhscf')
+
+            call distMeshData( UNIFORM, dvnoscf(:,jx),
+     &              QUADRATIC, dvnoscf_par(:), TO_CLUSTER )
 
             do ispin = 1, nspin
                call distMeshData( UNIFORM, Vscf(:,ispin),
      &              QUADRATIC, Vscf_par(:,ispin), TO_CLUSTER )
                call distMeshData( UNIFORM, VLR(:,ispin),
      &              QUADRATIC, VLR_par(:,ispin), TO_CLUSTER )
-               call distMeshData( UNIFORM, dRhoscf(:,ispin),
+               call distMeshData( UNIFORM, dRho(:,ispin),
      &              QUADRATIC, DRho_par(:,ispin), TO_CLUSTER )
-               
+               call distMeshData( UNIFORM, dRhoscf(:,ispin),
+     &              QUADRATIC, DRhoscf_par(:,ispin), TO_CLUSTER )
+              
                do ia = iainit, iaend
                   call dynamat(norb, nuo, na, nua, nuotot, nspin, ispin,
      &                 jx, nmpl, ntpl, iphorb, iaorb, ia, numd,
      &                 listd, listdptr, indxua, maxnd, isa, atder,
      &                 Dscf(:,ispin), dDscf(:,ispin,jx), dvol,
-     &                 DRho(:,ispin), DRho_par(:,ispin), Datm, 
+     &                 DRho_par(:,ispin), DRhoscf_par(:,ispin), Datm, 
      &                 Vscf_par(:,ispin),VLR_par(:,:), 
-     &                 dvnoscf(:,jx), dynmat(:,:,jx,ia)) 
+     &                 dvnoscf_par(:), dynmat(:,:,jx,ia)) 
                end do
             end do
             call de_alloc( Vscf_par, 'Vscf_par', 'dhscf' )
             call de_alloc( VLR_par,   'VLR_par', 'dhscf' )
             call de_alloc( DRho_par, 'DRho_par', 'dhscf' )
+            call de_alloc( DRhoscf_par, 'DRhoscf_par', 'dhscf' )
+            call de_alloc( dvnoscf_par, 'dvnoscf_par','dhscf')
+
 
 C     Set the UNIFORM distribution again
             if (nodes.gt.1) then
@@ -2381,7 +2394,7 @@ C     Set the UNIFORM distribution again
 ! Back from CLUSTER to SEQUENTIAL dvnoscf and DRho
             call reord(dvnoscf(:,jx), dvnoscf(:,jx), nml, nsm,
      &           TO_SEQUENTIAL)
-            call reord(DRho, DRho, nml, nsm, TO_SEQUENTIAL)
+!            call reord(DRho, DRho, nml, nsm, TO_SEQUENTIAL)
 
 ! Back to the total density (for the perturbed Vxc calculation)
             if (nspin .eq. 2) then
@@ -2417,6 +2430,7 @@ C     Set the UNIFORM distribution again
 C----------------------------------------------------------------------------
           call de_alloc(VLR,'VLR','dhscf')
           call de_alloc(dRhoscf,'dRhoscf','dhscf')
+
        end do ! Cartesian loop
        
 C-----------------------------------------------------------------------------

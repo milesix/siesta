@@ -1,0 +1,19 @@
+This folder contains all the associated test for the linear-response features of
+ Siesta.
+
+The structure of this folder is the following:
+
+- 3 Tests are provided (2 bulk systems and a molecular one)
+	- One of the tests is a single layer BN (2D material) 
+          with a large Supercell enough to calculate the Phonon
+          spectra in an easy way (read the README file in the BN test)
+
+- The pseudos needed for each calculation are inside the Pseudos folder.
+
+- The Refs folder contains two things for each Test:
+        - The solution of the linear-response calculation
+          (the Siesta output as well as the force constant
+          matrix in the FC file are provided).
+	- The same calculation but using the Frozen Phonon
+          approach using Siesta (the output and the .FC file
+          are provided)
