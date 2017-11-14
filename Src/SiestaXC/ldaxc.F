@@ -173,6 +173,9 @@ cag       Avoid negative densities
         IF (xc_f90_info_kind(xc_info) == XC_CORRELATION) THEN
           EPSC = leps
           VCD(1:nspin) = ldedn(1:nspin)
+          EPSX = 0.0_dp
+          VXD(1:nspin) = 0.0_dp
+
 ! Linres Libxc-LDA derivatives
           DVCDN(1,1)=DVDN(1)
           IF (NSPIN == 2) THEN         
@@ -183,6 +186,9 @@ cag       Avoid negative densities
         ELSE if (xc_f90_info_kind(xc_info) == XC_EXCHANGE) THEN
           EPSX = leps
           VXD(1:nspin) = ldedn(1:nspin)
+          EPSC = 0.0_dp
+          VCD(1:nspin) = 0.0_dp
+
 ! Linres Libxc-LDA derivatives
           DVXDN(1,1)=DVDN(1)
           IF (NSPIN == 2) THEN 

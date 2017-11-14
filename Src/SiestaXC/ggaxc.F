@@ -404,6 +404,9 @@ C Interface with LibXC added by Micael Oliveira, Jul.2014
           EPSC = eps
           dECdDD(1:nspin) = dedn(1:nspin)
           dECdGDD(1:3, 1:nspin) = dedgd(1:3, 1:nspin)
+          EPSX = 0.0_dp
+          dEXdDD(1:nspin) = 0.0_dp
+          dEXdGDD(1:3, 1:nspin) = 0.0_dp
 
         ELSE if (xc_f90_info_kind(xc_info) == XC_EXCHANGE) THEN
 
@@ -440,6 +443,9 @@ C Interface with LibXC added by Micael Oliveira, Jul.2014
           EPSX = eps
           dEXdDD(1:nspin) = dedn(1:nspin)
           dEXdGDD(1:3, 1:nspin) = dedgd(1:3, 1:nspin)
+          EPSC = 0.0_dp
+          dECdDD(1:nspin) = 0.0_dp
+          dECdGDD(1:3, 1:nspin) = 0.0_dp
 
         ELSE ! combined functional, use an arbitrary 50/50 split
 

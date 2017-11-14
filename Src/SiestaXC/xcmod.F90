@@ -267,11 +267,36 @@ contains
 
     ! automatic arrays
     character(len=10)   :: family(nfuncs), auth(nfuncs)
-    real(dp)            :: weight(nfuncs)
+    real(dp)            :: weight_x(nfuncs), weight_c(nfuncs)
 
+    type(xc_f90_pointer_t) :: xc_func, xc_info
+    integer :: xc_ispin
     integer :: i
 
     do i = 1, nfuncs
+       !
+       ! Determine the kind of functional to assign weights correctly
+       !
+       xc_ispin = XC_UNPOLARIZED 
+       ! 'unpolarized' is the least stringent option: for non-polarized
+       ! functionals, the other option might result in an error
+       call xc_f90_func_init(xc_func, xc_info, libxc_ids(i), xc_ispin)
+ 
+       select case (xc_f90_info_kind(xc_info))
+       case (XC_CORRELATION)
+          weight_x(i) = 0.0_dp
+          weight_c(i) = 1.0_dp
+       case (XC_EXCHANGE)
+          weight_x(i) = 1.0_dp
+          weight_c(i) = 0.0_dp
+       case (XC_EXCHANGE_CORRELATION)
+          weight_x(i) = 1.0_dp
+          weight_c(i) = 1.0_dp
+       case default
+          call die("Functional kind not supported")
+       end select
+       call xc_f90_func_end(xc_func)
+
        select case (xc_f90_family_from_id (libxc_ids(i)))
        case (XC_FAMILY_LDA)
           family(i) = "LDA"
@@ -286,9 +311,14 @@ contains
        write(auth(i),"(a,i4.4)") "LIBXC-", libxc_ids(i)
     end do
 
-    weight = 1.0_dp / nfuncs
+    if (sum(weight_x(1:nfuncs)) /= 1.0_dp) then
+       call die("Wrong exchange weights")
+    endif
+    if (sum(weight_c(1:nfuncs)) /= 1.0_dp) then
+       call die("Wrong correlation weights")
+    endif
+    call setXC(nfuncs, family, auth, weight_x, weight_c)
 
-    call setXC(nfuncs, family, auth, weight, weight)
   end subroutine setXC_libxc_ids
 # endif /* LIBXC */
 

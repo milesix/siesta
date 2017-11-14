@@ -586,7 +586,7 @@ C        Compute the change in density matrix elements -------------
 c    Variation of the energy level ocupation--------------------------
       if ( (def(1).gt.1.0e-6_dp) .or. (def(2).gt.1.0e-6_dp) .or.
      .                             (def(3).gt.1.0e-6_dp) ) then
-        print *, 'DEBUG TRACK: delrhok, change in the fermi level!!'
+        print *, 'DEBUG TRACK: delrhokp, change in the fermi level!!'
         do 800 ik=1+Node,nk,Nodes
           do 770 ispin=1,nspin
             Haux=0.0_dp
