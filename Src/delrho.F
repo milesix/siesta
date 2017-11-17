@@ -107,7 +107,7 @@ C Check internal dimensions ..........................................
       if ( Gamma ) then
          do ix = 1,3
             do ispin = 1,nspin
-               call delrhog(nuo, nspin, no,
+               call delrhog(nuotot, nuo, nspin, no,
      &                 eo(:,ispin,1), tol,
      &                 eigtol, Qo, Hper(:,ix,ispin),
      &                 Oper(:,ix), maxnh, numh, listh, listhptr,
@@ -115,6 +115,7 @@ C Check internal dimensions ..........................................
      &                 Erhoper(:,ispin,ix),psi,iscf)
             enddo
          enddo  
+
 #ifdef MPI
       else if (Nodes .gt. 1) then
         if (.not. ParallelOverK) then

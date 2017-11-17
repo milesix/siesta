@@ -110,10 +110,8 @@ C------------------------------------------------------------------------------
       if (Nodes .gt. 1) then 
         if (GAMMA) then 
           if (IOnode) then
-            write(6,'(a)')'Linres: MPI Gamma point calculation 
-     & not implemented yet, run in serial mode'
+            write(6,'(a)')'Linres: MPI Gamma point calculation' 
           endif
-          call die() !MPI no-kpoints not implemeted in MPI (use delrhog NO-MPI-compatible)   
         else
           ParallelOverK = fdf_get("Diag.ParallelOverK",.true.)
           if (IOnode) then
