@@ -83,11 +83,13 @@ C Internal variable types and dimensions -----------------------------------
       type(filesOut_t)    :: filesOut
 
       character(len=label_length+5+5) :: fname
+      character(len=label_length+11) :: psifile
       character(len=6) :: atomdisp
+      character(len=5) :: currNode
 
       logical            :: dummy_use_rhog_in, first_LR,
      &                      dummy_chargedensonly,mmix,
-     &                      readold, converged, found
+     &                      readold, converged, found, usePSI
 #ifdef MPI
       real(dp) :: buffer1
 #endif
@@ -103,6 +105,7 @@ C ----------------------------------------------------------------------------
       tolLR = fdf_get("LR.DMTolerance",0.001_dp)
       eigtolLR = fdf_get('LR.EigTolerance',0.001_dp)
       readold = fdf_get("LR.readDynmat",.false.)
+      usePSI = fdf_get("LR.UsePsi",.false.)
 
 C Check all the inputs options
 C------------------------------------------------------------------------------
@@ -206,6 +209,26 @@ C Read stored DM in file .LRDMIALR from previous non-converged calculation
 
           endif
         endif
+
+C Check the existency of PSI files if UsePsi is True----------------------
+C If the file exist, delete it
+        if (UsePsi) then
+          if (IOnode) then
+
+            write(6,'(a)')'Linres: unperturbed wavefunction are going'//
+     $      ' to be stored in a file'
+          endif
+          write(currNode,'(i5)') Node
+          psifile = trim(slabel)//'.LRPSI'//adjustl(currNode)
+          inquire( file=fname, exist=found )
+          if (found) then
+            call io_assign(unit1)
+            open( unit1, file=psifile, form='unformatted',status='old' )
+            close( iu, status='DELETE' )
+          endif 
+        endif
+C---------------------------------------------------------------------------
+
         call timer('LRatom', 1)
 
         if (IOnode) then
@@ -293,7 +316,7 @@ C Find change in density matrix from perturbed Hamiltonian and Overlap
            call delrho(no_s, na_s, nspin, maxnh, no_u, no_u, no_l, 
      &          GAMMA, indxuo, xijo, nspin, eo, tolLR, eigtolLR, nkpnt,
      &          kpoint, kweight, Qo, H, S, dHmat, dSmat, numh,
-     &          listh, listhptr, ef, temp, dDscf, dEscf, iscf)
+     &          listh, listhptr, ef, temp, dDscf, dEscf, iscf, UsePsi)
 
 C Perform the density matrix mixing
            dMax = 0.0_dp
@@ -418,6 +441,20 @@ C-------------------------------------------------------------------------
       endif
 
       call writedynmat(iai,iaf,ialr,dynmat,.true.)
+
+C Clean the PSI file UsePsi is True----------------------
+C If the file exist, delete it
+        if (UsePsi) then
+          write(currNode,'(i5)') Node
+          psifile = trim(slabel)//'.LRPSI'//adjustl(currNode)
+          inquire( file=fname, exist=found )
+          if (found) then
+            call io_assign(unit1)
+            open( unit1, file=psifile, form='unformatted',status='old' )
+            close( iu, status='DELETE' )
+          endif
+        endif
+C---------------------------------------------------------------------------
 
       end subroutine 
 

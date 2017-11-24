@@ -2,7 +2,7 @@
      &                   indxuo, nk, kpoint, wk, eo,  
      &                   Xij, Qo, H, S, Hper, Oper, maxnh, numh, 
      &                   listh, listhptr, ef, T, Rhoper, Erhoper, 
-     &                   Haux, Saux, psi, nuotot, iscf)
+     &                   Haux, Saux, psi, nuotot, iscf, UsePsi)
 C **********************************************************************
 C FINDS THE CHANGE IN DENSITY MATRIX ELEMENTS DUE TO DISPLACEMENTS OF
 C THE ATOMS
@@ -71,6 +71,7 @@ C **********************************************************************
      &            psi(2,nuotot,nuotot), kpoint(3,nk), Xij(3,maxnh),
      &            eo(maxo,maxspn,nk),wk(nk), Saux(2,nuotot,nuotot)
       real(dp), target :: Haux(2,nuotot,nuotot)
+      logical :: UsePsi
 
       external     cdiag
 
@@ -92,7 +93,7 @@ C     Internal Variables
      &           numb(maxo), k,j, ik, ix,
      &           jden, kden, jo, mu, nu, ind, indmn, i, indbetas,
      &           ialpha, ibeta, jbeta,indi,indj,ierror,indden,
-     &           iuo, juo, ind2, nbands, maxspn 
+     &           iuo, juo, ind2, nbands, maxspn, kcounter 
       real(dp) :: def(3), A(3), B(3), 
      &            dQo(nuo,3), aux(no), qio, qde,
      &            psiper(2,maxo,maxo), prod1(2), prod2(2), kXij, 
@@ -245,10 +246,17 @@ C Allocate local copies of Dk and Ek for building matrices
       B(1:3) = 0.0_dp
 
       nbands = nuotot
+      kcounter = 0
 
 C     Find eigenvectors (where stored for only one k-point) ---------
       do ik = 1+Node,nk,Nodes     ! for each k-point 
+
+       kcounter=kcounter + 1      ! counter of k for each node
+
        do ispin = 1, nspin !for each spin component
+
+        if (UsePsi .and. (iscf.ne.1)) goto 999 !skip the psi calculation
+
 !$OMP parallel default(shared),
 !$OMP&private(iuo,juo,io,j,ind,jo,kxij,ckxij,skxij)
 !$OMP do collapse(2)
@@ -316,6 +324,17 @@ C       Diagonalize for each k-point --------------------------------
           call die('DELRHOK: Terminating due to failed 
      &                                        k-diagonalisation')
         endif
+
+
+         if (UsePsi) then !For iscf==1, save the psi into a file
+           call save_psi(psi)
+         endif
+
+  999 continue !skipped the psi calculation
+
+         if (UsePsi .and. (iscf.gt.1)) then !For iscf!=1, read the psi from file 
+           call read_psi(kcounter,ispin,nspin,psi)
+         endif
 
 
 C       loop on spatial xyz -----------------------------------------
@@ -433,7 +452,6 @@ C             Rotate the coefficients inside the subspace ----------
 *C --- End of work on degenerated subespaces ------------------------
 
          auxcoef => Haux(:,:,1)
-
          evper(1:maxo,ix) = 0.0_dp
 
 C ------ Compute the change in the coefficients ---------------------
@@ -577,7 +595,6 @@ C        Compute the change in density matrix elements -------------
        enddo !nspin loop
 
       enddo ! nk loop 
-
 
       do ix = 1,3
         def(ix) = A(ix) / (B(ix) + 1.0e-12_dp)
@@ -729,5 +746,97 @@ C Free local memory
       call die('delrhokp only works for MPI process')
 #endif
       return
-      end
+
+      contains !---------------------------------------------------------------
+
+      subroutine save_psi(psi)
+! This subrotuine saves for the first time (iscf=1) the psi (solved the degeneracy problem)
+! for each spin for the distributed k-points in each node
+!               Node 1                                           Node 2            ...
+!       kpoin_1              Kpoint_2     ...   || kpoin_1  Kpoint_2   Kpoint_3 || ....   
+!psi(:,1) psi(:,spin2)  psi(:,1) psi(:,spin2) ... 
+! in one file per node called #.LRPSI+NODE
+
+! *****************************INPUTS***************************************
+! REAL PSI (2*nuotot*nuotot) : wavefunction for a k-point and spin
+! ****************************OUTPUTS***************************************
+! NONE
+
+        use files,        only: slabel, label_length
+  
+        real(dp),intent (in) :: psi(2*nuotot*nuotot)        
+        
+! Internal variables
+        character(len=label_length+11) :: fname
+        character(len=5) :: currNode
+        character(len=*), parameter :: intfmt = '(I11)'
+        integer :: unit1, m
+
+
+        write(currNode,'(i5)') Node
+        fname = trim(slabel)//'.LRPSI'//adjustl(currNode)
+        
+        call io_assign(unit1)
+
+        open( unit1, file=fname, form='unformatted', action='write', 
+     .        position='append', status='unknown' )
+
+        do m= 1, 2*nuotot*nuotot 
+          write(unit1) psi(m) 
+        enddo
+
+        call io_close(unit1)
+
+      end subroutine save_psi 
+
+      subroutine read_psi(ik,ispin,nspin,psi)
+! This subroutine reads from the #.LRPSI+NODE file the wavefunctions for a specific
+! k-point and spin
+! *****************************INPUTS***************************************
+! REAL PSI (2*nuotot*nuotot) : wavefunction for a k-point and spin (set to 0)
+! INTEGER IK                 : counter of k points in the node
+! INTEGER ISPIN              : current spin of the wavefunction
+! INTEGER NSPIN              : number of spin components
+! ****************************OUTPUTS***************************************
+! REAL PSI (2*nuotot*nuotot) : read  wavefunction for a k-point and spin
+
+        use files,        only: slabel, label_length
+
+        real(dp),intent (inout) :: psi(2*nuotot*nuotot)
+        integer, intent (in)    :: ik
+        integer, intent (in)    :: ispin
+        integer, intent (in)    :: nspin
+
+! Internal variables
+        character(len=label_length+11) :: fname
+        character(len=5) :: currNode
+        character(len=*), parameter :: intfmt = '(I11)'
+        integer :: unit1, m, j, init
+
+        psi(:)=0.0_dp
+
+        init=(ik-1)*nspin*2*nuotot*nuotot + 
+     .               (ispin-1)*2*nuotot*nuotot   
+
+        write(currNode,'(i5)') Node
+        fname = trim(slabel)//'.LRPSI'//adjustl(currNode)
+
+        call io_assign(unit1)
+
+        open( unit1, file=fname, form='unformatted', position='rewind',
+     .        action='read', status='old' )
+
+        do m=1,init
+          read(unit1)  !skip psis that not correspond to this spin or kpoint
+        enddo
+
+        do j=1,2*nuotot*nuotot
+          read(unit1) psi(j)
+        enddo
+
+        call io_close(unit1)
+
+      end subroutine read_psi
+ 
+      end !delrhokp end
 

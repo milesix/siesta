@@ -2,7 +2,8 @@
      &                   Gamma, indxuo, xijo, maxspn, eo,
      &                   tol, eigtol, nk, kpoint,
      &                   wk, Qo, H, S, Hper, Oper, numh, listh,
-     &                   listhptr, ef, temp, Rhoper, Erhoper, iscf)
+     &                   listhptr, ef, temp, Rhoper, Erhoper, 
+     &                   iscf, usePsi)
 C **********************************************************************
 C Linres: Subroutine to calculate the change in the elements of the Density Matrix
 C Written by J. Junquera and J. M. Alonso Pruneda, Novembre 1999.
@@ -31,7 +32,8 @@ C     NK:  Number of K- points
      &            Hper(maxnh,3,nspin), Oper(maxnh,3),
      &            Rhoper(maxnh,maxspn,3), Erhoper(maxnh,maxspn,3),
      &            H(maxnh,nspin), S(maxnh)
-      logical :: Gamma
+
+      logical :: Gamma, UsePsi
 
       integer :: ix, ispin, io, iuo, nhs, npsi, nuo
       integer,pointer :: muo(:)
@@ -126,13 +128,13 @@ C Check internal dimensions ..........................................
         call delrhokp(no, nuo, maxo, maxspn, nspin, eo, eigtol, indxuo,
      &               nk, kpoint, wk, eo,xijo, Qo, H, S, Hper, Oper,
      &               maxnh, numh, listh, listhptr, ef, temp, Rhoper,
-     &               Erhoper, Haux, Saux, psi, nuotot, iscf)
+     &               Erhoper, Haux, Saux, psi, nuotot, iscf, UsePsi)
 #endif
       else
          call delrhok(no, nuo, maxo, maxspn, nspin, eo, eigtol, indxuo, 
      &        nk, kpoint, wk, eo,xijo, Qo, H, S, Hper, Oper,
      &        maxnh, numh, listh, listhptr, ef, temp,
-     &        Rhoper, Erhoper, Haux, Saux, psi)
+     &        Rhoper, Erhoper, Haux, Saux, psi, iscf, UsePsi)
       end if 
       call timer( 'delrho', 2)
       
