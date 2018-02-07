@@ -198,30 +198,14 @@ C     Internal Variables
       enddo
 
       nbands = nuotot
-      if(iscf.eq.1) then
-       deg = 1
-       N = 1
-       maxden = 1
-        do io = 1,nbands-1
-         ei0 = eval(io)
-         ej0 = eval(io+1)
-         if(abs(ei0-ej0) .lt. eigtol) then
-           N = N + 1 !Degenerate Eig
-           if(N.gt.MAXDEN) MAXDEN = N
-         else
-           DEG = max(DEG,N)
-           N = 1 !Non deg Eig
-         endif
-        enddo
-      endif      
- 
       def = 0.0_dp
       A = 0.0_dp
       B = 0.0_dp
       dQo(1:nbands) = 0.0_dp
 
       N = 0
-      do io = 1, nbands
+      if (iscf.gt.1) then
+       do io = 1, nbands
         qo = occ (io)
         if(qo .ge. 1.0e-5_dp) then
           ei0 = eval(io) 
@@ -237,7 +221,7 @@ C     Internal Variables
           else
             numb(io) = N + 1
             N = 0
-            if((numb(io).gt.1) .and. (iscf.gt.1)) then
+            if (numb(io).gt.1) then
                ! initialize with size of deg subspace
                nullify(psiden,Haux,Saux)
                call re_alloc(Haux, 1,numb(io), 1,numb(io),
@@ -305,7 +289,8 @@ C     Internal Variables
             endif !numb(io)>1 
          endif !abs
         endif !qo.ge.
-      enddo
+       enddo
+      endif !iscf>1
 
 C Initialize the perturbed coefficients
       do j = 1,maxorb
@@ -350,9 +335,9 @@ C Calculate perturbed coefficients
         enddo
 
         do ialpha = 1,nuotot
-          psiper(io,ialpha) = 0.0_dp
+          psiper(ialpha,io) = 0.0_dp
           do j = 1,nbands
-           psiper(io,ialpha) = psiper(io,ialpha) +  
+           psiper(ialpha,io) = psiper(ialpha,io) +  
      .                        aux(j) * psig(ialpha,j) 
           enddo
         enddo
@@ -396,16 +381,12 @@ C Calculate matrix elements of the perturbed Density Matrix
           do 1300 nu = 1, numhg(mu)
             indmn = listhptrg(mu) + nu
             j = ucorb(listhg(indmn),nuotot)
-            Daux(indmn) = Daux(indmn) + Qo *  
-     &                  (psiper(io,mu) * psig(j,io) +
-     &                  psig(mu,io) * psiper(io,j)) +
-     &                   dQo(io) *(psig(mu,io) * psig(j,io))
-            DEaux(indmn) = DEaux(indmn) +
-     .                           qo* ei0*
-     .                           ( psiper(io,mu) * psig(j,io) +
-     .                             psig(mu,io) * psiper(io,j))+
-     .               evper(io)*qo * ( psig(mu,io)*psig(j,io)) 
-     .             + dQo(i) * ei0 * ( psig(mu,io) * psig(j,io) )
+            prod1 = psiper(mu,io)*psig(j,io)+psig(mu,io)*psiper(j,io)
+            prod2 = psig(mu,io) * psig(j,io)
+            Daux(indmn) = Daux(indmn) + Qo *  prod1 +
+     &                   dQo(io) * prod2
+            DEaux(indmn) = DEaux(indmn) + qo* ei0 * prod1 +
+     .               evper(io)*qo * prod2 + dQo(i) * ei0 * prod2
  1300     enddo
  1400   enddo
  1200 enddo 

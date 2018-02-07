@@ -370,6 +370,7 @@ C ------ Find out the degenerated subespaces ------------------------
 
               ! Initialize to 0
               Sauxden = 0._dp
+              Hauxden = 0._dp
 
               do j = io-numb(io)+1, io
                 jden = j - io + numb(io)
@@ -403,7 +404,7 @@ C ------ Find out the degenerated subespaces ------------------------
               enddo !j loop
               call cdiag( Hauxden, Sauxden, numb(io), 
      &             numb(io), numb(io),
-     .             Haux, psiden,numb(io),1,ierror,-1 )
+     .             Hauxden, psiden,numb(io),1,ierror,-1 )
               if (ierror.ne.0) then
                call die('DELRHOK: Terminating due to failed
      &                                deg- diagonalisation')
