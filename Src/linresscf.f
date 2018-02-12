@@ -431,7 +431,7 @@ C-------------------------------------------------------------------------
           do ix = 1,3
             do j = 1, na_u
               do jx = 1,3
-                print *, j,';',jx,';',ialr,';',ix,';',
+                print *, jx,';',j,';',ix,';',ialr,';',
      &                   dynmat(jx,j,ix,ialr)
               enddo
             enddo

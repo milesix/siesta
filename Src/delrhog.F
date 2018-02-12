@@ -45,9 +45,9 @@ C **********************************************************************
       use parallel,      only: Node, Nodes, BlockSize
       use parallelsubs,  only: GlobalToLocalOrb, LocalToGlobalOrb,
      &                         WhichNodeOrb, GetNodeOrbs
-      use m_mpi_utils,  only : broadcast, Globalize_sum
 
 #ifdef MPI
+      use m_mpi_utils,  only : broadcast, Globalize_sum
       use mpi_siesta
 #endif
 
@@ -66,7 +66,7 @@ C     Internal Variables
       integer :: deg, N, io, numb(maxorb), k,j, maxden,
      &           jden, kden, jo, mu, nu, ind, indmn, i, indbetas,
      &           ialpha, ibeta, jbeta,indi,indj,indden, ierror,
-     &           indk, nbands, maxnhg 
+     &           indk, nbands, maxnhg, mug 
 
       integer :: BNode, MPIerror,iio,jjo,noccloc
 
@@ -75,8 +75,8 @@ C     Internal Variables
      &            psiper(maxorb,maxorb), prod1, prod2, 
      &            prod3, prod4, ei0, ej0, dStepF, evper(maxorb)
 
-      real(dp), pointer :: Haux(:,:), Saux(:,:), Psiden(:,:),
-     &                     rotaux(:)
+      real(dp), pointer :: Haux(:,:), HauxL(:,:), Saux(:,:), 
+     &                     Psiden(:,:), rotaux(:)
 
       real(dp), pointer :: Hperg(:)=>null(),
      &                     Operg(:)=>null(),
@@ -204,8 +204,8 @@ C     Internal Variables
       dQo(1:nbands) = 0.0_dp
 
       N = 0
-      if (iscf.gt.1) then
-       do io = 1, nbands
+      numb(:) = 0
+      do io = 1, nbands
         qo = occ (io)
         if(qo .ge. 1.0e-5_dp) then
           ei0 = eval(io) 
@@ -222,83 +222,105 @@ C     Internal Variables
             numb(io) = N + 1
             N = 0
             if (numb(io).gt.1) then
-               ! initialize with size of deg subspace
-               nullify(psiden,Haux,Saux)
-               call re_alloc(Haux, 1,numb(io), 1,numb(io),
+              ! initialize with size of deg subspace
+              nullify(psiden,Haux,HauxL,Saux)
+              call re_alloc(Haux, 1,numb(io), 1,numb(io),
      &                       'Haux','delrhog')
-               call re_alloc(Saux, 1,numb(io), 1,numb(io),
+              call re_alloc(HauxL, 1,numb(io), 1,numb(io),
+     &                       'HauxL','delrhog')
+              call re_alloc(Saux, 1,numb(io), 1,numb(io),
      &                       'Saux','delrhog')
-               call re_alloc(Psiden, 1,numb(io), 1,numb(io),
+              call re_alloc(Psiden, 1,numb(io), 1,numb(io),
      &                       'Psiden','delrhog')
-               rotaux => Saux(:,1)
+              rotaux => Saux(:,1)
 
-               ! Initialize to 0
-               Saux = 0._dp
-               
-               do j = io-numb(io)+1, io
+                ! Initialize to 0
+!$OMP parallel workshare
+              Saux(:,:) = 0._dp
+              HauxL(:,:) = 0._dp
+!$OMP parallel end workshare
+
+!$OMP parallel do default(shared), private(j,jden,k,kden,mu,mug,nu,indmn,jo)
+              do j = 1,numb(io)
+                Saux(j,j)=1.0_dp
+              enddo
+
+              do j = io-numb(io)+1, io
                 jden = j - io + numb(io)
                 numb(j) = numb(io)
                 do k = io-numb(io)+1, io
                   kden = k - io + numb(io)
-                  if ( jden == kden ) Saux(jden,kden) = 1.0_dp
-                  do mu=1,nuotot 
-                    do nu = 1,numhg(mu)
-                      indmn=listhptrg(mu) + nu
+!                   if ( jden == kden ) Saux(jden,kden) = 1.0_dp
+                  do mu=1,nuo
+                    call LocalToGlobalOrb(mu,Node,Nodes,mug)
+                    do nu = 1,numh(mu)
+                      indmn=listhptr(mu) + nu
 !                      jo = ucorb(listh(indmn),nuo)
-                      jo = listhg(indmn)    ! LET ME TRY THIS ALTERNATIVE
-                       Haux(jden,kden) = Haux(jden,kden)  
-     .                     + psig(mu,j) * psig(jo,k) * 
+                      jo = listh(indmn)    ! LET ME TRY THIS ALTERNATIVE
+                      HauxL(jden,kden) = Haux(jden,kden)  
+     .                     + psig(mug,j) * psig(jo,k) * 
      .                     (Hperg(indmn)-eval(io)*Operg(indmn))
                     enddo
                   enddo
                 enddo
               enddo
-             
+!$OMP end parallel do
+
+!$OMP parallel workshare
+              Haux(:,:) = 0._dp
+              Haux(:,:) = HauxL(:,:) !just copy
+!$OMP parallel end workshare
+
+#ifdef MPI
+              Haux = 0._dp
+              call Globalize_sum(HauxL,Haux) !Haux is in all nodes (equal value)
+#endif             
               ! Compute eigenvalues of dH_nn' to give dE_in
               call rdiag( Haux, Saux, numb(io), numb(io),numb(io),
      .             evper(io-numb(io)+1), psiden,numb(io),iscf,ierror,
      .             BlockSize)
               if (ierror.ne.0) then
-                 call die('DELRHOG: Terminating due to failed
-     &                     deg- diagonalisation')
-              end if
+                call die('DELRHOG: Terminating due to failed
+     &                   deg- diagonalisation')
+              endif
 
 #ifdef MPI
 ! psiden returned by rdiag only in ONE node
               if (Nodes.gt.1) call broadcast(psiden)
 #endif
               ! Rotate eigenvectors in degenerate subspace
+
+!$OMP parallel do default(shared), private(mu,ialpha,ibeta)
               do mu = 1,nuotot
-               do ialpha = 1, numb(io)
-                rotaux(ialpha) = 0._dp
-                do ibeta = 1, numb(io)
-                  rotaux(ialpha) = rotaux(ialpha) +
-     &                   psiden(ibeta,ialpha) * 
-     &                   psig(mu,io-numb(io)+ibeta)
+                do ialpha = 1, numb(io)
+                  rotaux(ialpha) = 0._dp
+                  do ibeta = 1, numb(io)
+                    rotaux(ialpha) = rotaux(ialpha) +
+     &                 psiden(ibeta,ialpha) * 
+     &                 psig(mu,io-numb(io)+ibeta)
+                  enddo
                 enddo
-               enddo
-               do ialpha = 1, numb(io)
+                do ialpha = 1, numb(io)
                   psig(mu,io-numb(io)+ialpha)=rotaux(ialpha)
-               enddo
+                enddo
               enddo
-                    
-             call de_alloc(psiden,'psiden','delrhog')
-             call de_alloc(Haux,'Haux','delrhog')
-             call de_alloc(Saux,'Saux','delrhog')
+!$OMP end parallel do
+
+              call de_alloc(psiden,'psiden','delrhog')
+              call de_alloc(Haux,'Haux','delrhog')
+              call de_alloc(HauxL,'HauxL','delrhog')
+              call de_alloc(Saux,'Saux','delrhog')
              
             endif !numb(io)>1 
-         endif !abs
+          endif !abs
         endif !qo.ge.
-       enddo
-      endif !iscf>1
-
-C Initialize the perturbed coefficients
-      do j = 1,maxorb
-       evper(j) = 0.0_dp 
-       do i = 1,maxorb
-        psiper(i,j) = 0.0_dp
-       enddo
       enddo
+C Initialize the perturbed coefficients
+
+!$OMP parallel workshare
+      evper(:) = 0.0_dp 
+      psiper(:,:) = 0.0_dp
+!$OMP parallel end workshare
 
 C Calculate perturbed coefficients
       do 110 i=1,nuo
@@ -306,12 +328,18 @@ C Calculate perturbed coefficients
         QO = OCC(io)
         if(QO .lt. 1.0e-5_dp) goto 110
         ei0 = eval(io)
-        do j=1,nbands
-         aux(j) = 0.0_dp
-        enddo
+
+!$OMP parallel default(shared),
+!$OMP&private(jbeta,indbetas,ibeta,prod1,prod2,j,ej0,ialpha)
+
+!$OMP workshare
+        aux(:) = 0.0_dp
+!$OMP end workshare
+
         do ialpha = 1, nuotot
           prod1 = 0.0_dp
           prod2 = 0.0_dp
+!$OMP do reduction(+:prod1,prod2)
           do jbeta = 1, numhg(ialpha)
             indbetas = listhptrg(ialpha) + jbeta
             ibeta = ucorb(listhg(indbetas),nuotot)
@@ -320,20 +348,24 @@ C Calculate perturbed coefficients
             prod2 = prod2 + psig(ibeta,io) *
      &                       Operg(indbetas)
           enddo
+!$OMP end do
           prod3 = prod1 - ei0 * prod2
           prod4 = prod2 / 2.0_dp
+!$OMP do
           do j = 1, nbands
             ej0 = eval(j)
             if(io.ne.j) then 
-             aux(j) = aux(j) + prod3 * psig(ialpha,j) 
+              aux(j) = aux(j) + prod3 * psig(ialpha,j) 
      &                        / (ei0-ej0) 
             else
-             aux(j) = aux(j) - prod4 * psig(ialpha,j)
+              aux(j) = aux(j) - prod4 * psig(ialpha,j)
             endif
           enddo
-         evper(io) = evper(io) + prod3 * psig(ialpha,io)
+!$OMP end do
+          evper(io) = evper(io) + prod3 * psig(ialpha,io)
         enddo
 
+!$OMP do collapse(2)
         do ialpha = 1,nuotot
           psiper(ialpha,io) = 0.0_dp
           do j = 1,nbands
@@ -341,10 +373,15 @@ C Calculate perturbed coefficients
      .                        aux(j) * psig(ialpha,j) 
           enddo
         enddo
+!$OMP end do
+
+!$OMP end parallel
+
         dQo(io) = evper(io) * dStepF((ei0-ef)/T)/(T*nspin+1.0e-12_dp)
         A = A + evper(io) * dStepF((ei0-ef)/T)
         B = B + dStepF((ei0-ef)/T)
  110  enddo
+
       def = A / (B + 1.0e-12_dp)
       do i = 1, nuo
         call LocalToGlobalOrb(i,Node,Nodes,io)
@@ -371,16 +408,21 @@ C Calculate matrix elements of the perturbed Density Matrix
       DEaux(:)=0.0_dp
 
 C Calculate matrix elements of the perturbed Density Matrix
+
+!$OMP parallel default(shared), 
+!$OMP&private(mu,nu,indmn,j,prod1,prod2)
       do 1200 i = 1, nuo
         call LocalToGlobalOrb(i,Node,Nodes,io) !since occ is global
         Qo = occ(io)
 
         if(Qo .lt. 1.0e-5_dp) goto 1200
         ei0 = eval(io)
+!$OMP do
         do 1400 mu = 1, nuotot
           do 1300 nu = 1, numhg(mu)
             indmn = listhptrg(mu) + nu
-            j = ucorb(listhg(indmn),nuotot)
+!            j = ucorb(listhg(indmn),nuotot)
+            j = listhg(indmn) !TRY THIS AS BEFORE
             prod1 = psiper(mu,io)*psig(j,io)+psig(mu,io)*psiper(j,io)
             prod2 = psig(mu,io) * psig(j,io)
             Daux(indmn) = Daux(indmn) + Qo *  prod1 +
@@ -389,7 +431,9 @@ C Calculate matrix elements of the perturbed Density Matrix
      .               evper(io)*qo * prod2 + dQo(i) * ei0 * prod2
  1300     enddo
  1400   enddo
+!$OMP end do
  1200 enddo 
+!$OMP end parallel
       
 ! Sum over all nodes (the bands)
 ! The final sum is already distributed, so, is GLOBAL.

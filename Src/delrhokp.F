@@ -259,16 +259,6 @@ C     Find eigenvectors (where stored for only one k-point) ---------
 
 !$OMP parallel default(shared),
 !$OMP&private(iuo,juo,io,j,ind,jo,kxij,ckxij,skxij)
-!$OMP do collapse(2)
-!         do iuo = 1,nuog
-!          do juo = 1,nuotot
-!            Saux(1,juo,iuo) = 0.0d0
-!            Saux(2,juo,iuo) = 0.0d0
-!            Haux(1,juo,iuo) = 0.0d0
-!            Haux(2,juo,iuo) = 0.0d0
-!          enddo
-!        enddo
-!$OMP end do
 !$OMP do
         do io = 1, nuog 
          iuo = indxuo(io)
@@ -294,6 +284,9 @@ C         H(k) = Sum(R) exp(i*k*R) * H(R) ----------------------------
         enddo
 !$OMP end do nowait
 !$OMP end parallel
+
+!$OMP parallel default(shared),
+!$OMP&private(iuo,juo)
 C       Symmetrize H & S ---- (MP not completly sure why) ------------
 !$OMP do
         do iuo = 1, nuog
@@ -315,6 +308,7 @@ C       Symmetrize H & S ---- (MP not completly sure why) ------------
          Haux(2,iuo,iuo) = 0.0_dp
         enddo
 !$OMP end do
+!$OMP end parallel
 
 C       Diagonalize for each k-point --------------------------------
         call cdiag( Haux, Saux, nuotot, nuotot, nuog, eo(1,ispin,ik),
