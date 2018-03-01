@@ -31,6 +31,7 @@
 
       real(dp), public, pointer :: xijo(:,:)=>null()
 
+      real(dp), public, pointer :: tight_binding_param(:,:)=>null()
 
       ! Pieces of H that do not depend on the SCF density matrix
       ! Formerly there was a single array H0 for this
@@ -42,6 +43,7 @@
       type(Sparsity), public, save :: sparse_pattern
       type(dSpData1D), public, save :: S_1D
       type(dSpData2D), public, save :: DM_2D, EDM_2D, xij_2D, H_2D
+      type(dSpData2D), public, save :: tight_binding_param_2D
       type(Fstack_Pair_Geometry_dSpData2D), public, save :: DM_history
 
       ! Orbital distribution descriptor
@@ -72,6 +74,7 @@
       call delete( S_1D ) ; nullify(S)
       call delete( H_2D ) ; nullify(H)
       call delete( xij_2D ) ; nullify(xijo)
+      call delete( tight_binding_param_2D );nullify(tight_binding_param)
 
       call delete( DM_history )
       

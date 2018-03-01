@@ -69,6 +69,13 @@ C  Internal variables .............................................
      .  ierror, ind, ispin, iuo, j, jo, juo
       real(dp)
      .  ckxij, kxij, skxij
+      real(dp), allocatable :: Sauxsave(:,:,:)    ! Auxiliar variable to 
+                                                  !    store temporarily 
+                                                  !    the orbital matrix
+                                                  !    in k-space
+
+C Allocate the auxiliary variable Sauxsave .........................
+      allocate(Sauxsave(ng,nuotot,nuo))
 
 C Solve eigenvalue problem .........................................
       Saux = 0.0d0
@@ -94,6 +101,14 @@ C Solve eigenvalue problem .........................................
           endif
         enddo
       enddo
+
+!     Save the overlap matrix in k-space (square matrix) into the auxiliary 
+!     variable.
+!     This is done because Saux will be changed inside the diagonalization 
+!     routines, so the matrix that comes from these routines is NOT the 
+!     overlap matrix but a transformation
+      Sauxsave = Saux
+
       if(ng.eq.2) then 
        call cdiag( Haux, Saux, nuotot, nuo, nuotot, eo, psi,
      .            nuotot, 1, ierror, BlockSize)
@@ -138,5 +153,9 @@ C Repeat diagonalisation with increased memory to handle clustering
       endif
 
       endif
+
+!     Restore the values for the overlap matrix in k-space
+      Saux = Sauxsave
+      deallocate (Sauxsave)
 
       end

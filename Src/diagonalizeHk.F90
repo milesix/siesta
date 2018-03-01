@@ -116,6 +116,8 @@ subroutine diagonalizeHk( ispin )
   use sparse_matrices,    only: H            ! Hamiltonian matrix in sparse form
   use sparse_matrices,    only: S            ! Overlap matrix in sparse form
   use sparse_matrices,    only: xijo         ! Vectors between orbital centers
+  use sparse_matrices,    only: tight_binding_param ! Parameters of the 
+                                             !   tight-binding Hamiltonian
   use units,              only: eV           ! Conversion factor from Ry to eV
   use m_siesta2wannier90, only: numkpoints   ! Total number of k-points
                                              !   for which the overlap of the
@@ -152,6 +154,7 @@ subroutine diagonalizeHk( ispin )
 !
   use alloc,              only: re_alloc     ! Reallocation routines
   use alloc,              only: de_alloc     ! Deallocation routines
+  use parallelsubs,       only: LocalToGlobalOrb
 
 #ifdef MPI
   use parallelsubs,       only : set_blocksizedefault
@@ -160,11 +163,10 @@ subroutine diagonalizeHk( ispin )
 ! excluding some of them for wannierization 
 ! 
   use m_orderbands,       only: order_index
-
 #endif
 
 ! For debugging
-  use parallel,           only: Node, Nodes, IOnode
+  use parallel,           only: Node, Nodes, IOnode, BlockSize
 ! End debugging
 
 
@@ -176,6 +178,10 @@ subroutine diagonalizeHk( ispin )
   integer  :: ik            ! Counter for loops on k-points
   integer  :: iband         ! Counter for loops on bands
   integer  :: iuo           ! Counter for loops on atomic orbitals
+  integer  :: juo           ! Counter for loops on atomic orbitals
+  integer  :: j             ! Counter for loops on atomic orbitals
+  integer  :: jo            ! Counter for loops on atomic orbitals
+  integer  :: ind           ! Counter for loops on atomic orbitals
   integer  :: io            ! Counter for loops on atomic orbitals
   integer  :: n             ! Counter for loops on Nodes
   integer  :: nincbands     ! Total number of included bands for wannierization 
@@ -184,13 +190,129 @@ subroutine diagonalizeHk( ispin )
   integer  :: nhs           ! Variable to dimension the Hamiltonian and Overlap
   integer  :: npsi          ! Variable to dimension the coefficient vector
   integer  :: nsave         ! Variable to dimension the coefficient vector
+  integer  :: ierror        ! Code for error message from cdiag
+  integer  :: BNode         ! 
+  integer  :: BTest         ! 
+  integer  :: ie            ! 
+  integer  :: iie            ! 
 
   real(dp), dimension(:), pointer :: epsilon ! Eigenvalues of the Hamiltonian
+  real(dp), dimension(:), pointer :: epsilonstilde 
+                                             ! Eigenvalues of the Overlap matrix
+! jjunquer
+  integer  :: iio   
+  real(dp) :: ckxij
+  real(dp) :: skxij
+  real(dp) :: kxij
+  real(dp) :: qp1
+  real(dp) :: qp2
+  real(dp) :: eqp1
+  real(dp) :: eqp2
+  real(dp) :: ee
+  complex(dp), pointer, save ::   coeffsnew(:,:)
+  complex(dp), pointer, save ::   overlap_sq(:,:)
+  complex(dp), pointer, save ::   normalization(:,:)
+  complex(dp), pointer, save ::   phitilde(:,:)
+  complex(dp), pointer, save ::   overlaptilde(:,:)
+  complex(dp), pointer, save ::   overlapaux(:,:)
+  complex(dp), pointer, save ::   invsqrtover(:,:)
+  complex(dp), pointer, save ::   invsqrtd(:,:)
+  complex(dp), pointer, save ::   coeffshatphi(:,:)
+  real(dp), pointer, save ::   tight_binding_param_k(:,:,:)
+  complex(dp), pointer, save ::   aux(:)
+  complex(dp), pointer, save ::   lpsi(:)
+  logical, allocatable :: done_juo(:)
+! end jjunquer
 
 #ifdef MPI
   integer, external :: numroc
 #endif
+  external cdiag
+
   call timer('diagonalizeHk',1)
+
+! jjunquer
+  allocate(done_juo(no_u))
+
+  nullify( lpsi )
+  call re_alloc(lpsi, 1, no_u,                         &
+ &              name='lpsi', routine='diagonalizeHk',  &
+ &              shrink=.false., copy=.false.)   
+  lpsi = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+  nullify( tight_binding_param )
+  call re_alloc(tight_binding_param, 1, maxnh, 1, nspin,              &
+ &              name='tight_binding_param', routine='diagonalizeHk',  &
+ &              shrink=.false., copy=.false.)   
+  tight_binding_param = 0.0_dp
+
+  nullify( coeffsnew )
+  call re_alloc(coeffsnew, 1, no_u, 1, no_u,        &
+ &              name='coeffsnew', routine='diagonalizeHk',  &
+ &              shrink=.false., copy=.false.)   
+  coeffsnew = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+  nullify( overlap_sq )
+  call re_alloc(overlap_sq, 1, no_u, 1, no_u,       &
+ &              name='overlap_sq', routine='diagonalizeHk', &
+ &              shrink=.false., copy=.false.)
+  overlap_sq = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+  nullify( normalization )
+  call re_alloc(normalization, 1, no_u, 1, no_u,       &
+ &              name='normalization', routine='diagonalizeHk', &
+ &              shrink=.false., copy=.false.)
+  normalization = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+  nullify( phitilde )
+  call re_alloc(phitilde, 1, no_u, 1, no_u,       &
+ &              name='phitilde', routine='diagonalizeHk', &
+ &              shrink=.false., copy=.false.)
+  phitilde = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+  nullify( overlaptilde )
+  call re_alloc(overlaptilde, 1, no_u, 1, no_u,       &
+ &              name='overlaptilde', routine='diagonalizeHk', &
+ &              shrink=.false., copy=.false.)
+  overlaptilde = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+  nullify( overlapaux )
+  call re_alloc(overlapaux, 1, no_u, 1, no_u,       &
+ &              name='overlapaux', routine='diagonalizeHk', &
+ &              shrink=.false., copy=.false.)
+  overlapaux = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+  nullify( aux )
+  call re_alloc(aux, 1, 5*no_u,       &
+ &              name='aux', routine='diagonalizeHk', &
+ &              shrink=.false., copy=.false.)
+  aux = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+  nullify( invsqrtover )
+  call re_alloc(invsqrtover, 1, no_u, 1, no_u,       &
+ &              name='invsqrtover', routine='diagonalizeHk', &
+ &              shrink=.false., copy=.false.)
+  invsqrtover = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+  nullify( coeffshatphi )
+  call re_alloc(coeffshatphi, 1, no_u, 1, no_u,       &
+ &              name='coeffshatphi', routine='diagonalizeHk', &
+ &              shrink=.false., copy=.false.)
+  coeffshatphi = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+  nullify( invsqrtd )
+  call re_alloc(invsqrtd, 1, no_u, 1, no_u,       &
+ &              name='invsqrtd', routine='diagonalizeHk', &
+ &              shrink=.false., copy=.false.)
+  invsqrtd = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+  nullify( tight_binding_param_k )
+  call re_alloc(tight_binding_param_k, 1, 2, 1, no_u, 1, no_l,         &
+ &              name='tight_binding_param_k', routine='diagonalizeHk', &
+ &              shrink=.false., copy=.false.)
+  tight_binding_param_k = 0.0_dp
+
+! end jjunquer
 
 ! Initialize the number of occupied bands
   nincbands = numincbands( ispin )
@@ -212,6 +334,9 @@ subroutine diagonalizeHk( ispin )
 ! k-point will be stored
   nullify( epsilon )
   call re_alloc( epsilon, 1, no_u, name='epsilon', routine='diagonalizeHk' )
+
+  nullify( epsilonstilde )
+  call re_alloc( epsilonstilde, 1, no_u, name='epsilonstilde', routine='diagonalizeHk' )
 
 ! Allocate memory related with the coefficients of the wavefunctions
 #ifdef MPI
@@ -276,6 +401,46 @@ kpoints:                                                             &
  &                maxnh, numh, listhptr, listh, H, S, xijo, indxuo, kvector,  &
  &                epsilon, psi, 2, Haux, Saux )
 
+! jjunquer
+    write(6,*)' ispin, ik    = ', ispin, ik
+!   Coeffsnew is a complex square matrix of dimension:
+!   (number_of_atomic_orbitals_in_the_unit_cell)^2.
+!   It has two indices:
+!   The first one refers to the atomic orbital 
+!   The second one refers to the band index
+!   
+    coeffsnew = cmplx(0.0_dp,0.0_dp,kind=dp)
+    ind = 0
+    do iband = 1, no_l
+      do io = 1, no_u
+        coeffsnew(io,iband) =                                  &
+ &         cmplx( psi(ind+1), psi(ind+2), kind=dp )
+        ind = ind + 2
+!        write(6,*)' iband, io, eo, psi = ',                    &
+! &                  iband, io, eo(iband,ik),                   &
+! &                  coeffsnew(io, iband)
+      enddo
+    enddo
+
+! 
+!   In overlap_sq we store the overlap matrix between two Bloch orbitals
+!   that enters in the diagonalization routines
+!   It is computed inside diagpol
+!   This is a complex square matrix of dimension
+!   (number_of_atomic_orbitals_in_the_unit_cell)^2.
+!
+    overlap_sq     = cmplx(0.0_dp,0.0_dp,kind=dp)
+    ind = 0
+    do iuo = 1, no_u
+      do juo = 1, no_u
+        overlap_sq(juo,iuo) =                                  &
+ &         cmplx(Saux(ind+1),Saux(ind+2),kind=dp)
+        ind = ind + 2
+      enddo
+    enddo
+! end jjunquer
+
+
 !!   NOTE OF CAUTION: beware when comparing the coefficients of the
 !!   wave function obtained in differente machines, specially for 
 !!   degenerate states. 
@@ -288,6 +453,7 @@ kpoints:                                                             &
 !   Store the eigenvalues, while skipping the excluded bands
     eo(1:numincbands(ispin),ik) = pack(epsilon/eV,.not.isexcluded)
 
+!
 !   Keep only the coefficients of the included bands for wannierization,
 !   while skipping the excluded eigenvectors.
 !   The coefficients of the included eigenvectors will be stored in coeffs,
@@ -297,12 +463,232 @@ kpoints:                                                             &
     call reordpsi( coeffs(1:no_u,1:nincbands_loc,ik), psi, no_l, &
                    no_u, numbands(ispin), nincbands_loc )
 
+! jjunquer
+!
+!   For debugging: check the normalization of the eigenfunctions
+!   that come out of the diagonalization 
+    normalization = cmplx(0.0_dp,0.0_dp,kind=dp)
+    normalization = matmul( overlap_sq, coeffsnew )
+
+    normalization = matmul( transpose(conjg(coeffsnew)),normalization)
+
+!    write(6,'(a)') ' Normalization: '
+!    do iuo = 1, no_u
+!      do juo = 1, no_u
+!        write(6,'(2i5,2f12.5)') iuo, juo, normalization(iuo,juo)
+!      enddo
+!    enddo
+!   End debugging: check the normalization of the eigenfunctions
+
+!
+!   Define phitilde in the basis of Blochs made of numerical atomic orbitals
+!   It is a complex square matrix of dimension
+!   (number_of_atomic_orbitals_in_the_unit_cell)^2.
+!   And this is independent of number of bands considered
+!
+
+    phitilde = cmplx(0.0_dp,0.0_dp,kind=dp)
+    phitilde = matmul( transpose(conjg(coeffsnew)), overlap_sq )
+    phitilde = matmul( coeffsnew, phitilde )
+
+!    do iuo = 1, no_u
+!      do juo = 1, no_u
+!        write(6,'(2i5,2f12.5)') iuo, juo, phitilde(iuo,juo)
+!      enddo
+!    enddo
+
+!
+!   Define the overlap between phitildes
+!   It is a complex square matrix of dimension
+!   (number_of_atomic_orbitals_in_the_unit_cell)^2.
+!   And this is independent of number of bands considered.
+!
+
+    overlaptilde = cmplx(0.0_dp,0.0_dp,kind=dp)
+    overlaptilde = matmul( overlap_sq, coeffsnew )
+    overlaptilde = matmul( overlaptilde, transpose(conjg(coeffsnew)))
+    overlaptilde = matmul( overlaptilde, overlap_sq )
+
+    overlapaux = cmplx(0.0_dp,0.0_dp,kind=dp)
+    do iuo = 1, no_u
+      overlapaux(iuo,iuo) = cmplx(1.0_dp,0.0_dp,kind=dp)
+!      do juo = 1, no_u
+!        write(6,'(2i5,6f12.5)') iuo, juo, overlaptilde(iuo,juo), overlap_sq(iuo,juo), overlapaux(iuo,juo)
+!      enddo
+    enddo
+
+!
+!   Diagonalize overlaptilde.
+!   We need it to compute the inverse of the root square
+!
+
+    call cdiag( overlaptilde, overlapaux, no_u, no_l, no_u, epsilonstilde, &
+ &              psi, no_u, 1, ierror, BlockSize )
+
+
+    overlapaux = matmul( conjg(transpose(overlaptilde)), overlap_sq )
+    overlapaux = matmul( overlapaux, overlaptilde )
+
+!    do iuo = 1, no_u
+!      write(6,*)epsilonstilde(iuo)
+!      do juo = 1, no_u
+!        write(6,'(2i5,6f12.5)') iuo, juo, overlaptilde(iuo,juo), overlap_sq(iuo,juo), overlapaux(iuo,juo)
+!      enddo
+!    enddo
+
+    invsqrtd = cmplx( 0.0_dp, 0.0_dp, kind=dp )
+    do iuo = 1, no_u
+      invsqrtd(iuo, iuo) = cmplx( epsilonstilde(iuo)**(-1.0_dp/2.0_dp), 0.0_dp, kind=dp )
+    enddo
+
+    invsqrtover = matmul( overlaptilde, invsqrtd )
+    invsqrtover = matmul( invsqrtover, conjg(transpose(overlaptilde)) )
+
+    normalization = matmul( invsqrtover, overlap_sq ) 
+    normalization = matmul( normalization, invsqrtover ) 
+
+!    do iuo = 1, no_u
+!      write(6,*)epsilonstilde(iuo)
+!      do juo = 1, no_u
+!        write(6,'(2i5,6f12.5)') iuo, juo, normalization(iuo,juo)
+!      enddo
+!    enddo
+
+!   
+!   coeffshatphi is a complex square matrix of dimension
+!   (number_of_atomic_orbitals_in_the_unit_cell)^2.
+!   the first index refers to a band
+!   the second index refer to a basis function
+!
+!   For debugging:
+!   If we want the tight-binding Hamiltonian to be the same as the 
+!   Hamiltonian in real space between SIESTA atomic orbitals
+!
+    invsqrtover = cmplx( 0.0_dp, 0.0_dp, kind=dp )
+    do iuo = 1, no_u
+      invsqrtover(iuo, iuo) = cmplx( 1.0_dp, 0.0_dp, kind=dp )
+    enddo
+
+    coeffshatphi = matmul( transpose(conjg(coeffsnew)), overlap_sq )
+    coeffshatphi = matmul( coeffshatphi, invsqrtover )
+
+    call timer( 'tight-binding-compute', 1 )
+
+!   Add contribution to tight-binding-parameters of unit-cell orbitals
+!   WARNING: Dk and Ek may be EQUIVALENCE'd to Haux and Saux
+!$OMP parallel do default(shared), collapse(2)
+!$OMP&private(iuo,juo)
+    do iuo = 1, no_l
+      do juo = 1, no_u
+        tight_binding_param_k(1,juo,iuo) = 0.0_dp
+        tight_binding_param_k(2,juo,iuo) = 0.0_dp
+      enddo
+    enddo
+!$OMP end parallel do
+
+! Global operation to form new density matrix
+    BNode = 0
+    iie = 0
+    do ie = 1, no_u  ! Loop over bands
+      if ( Node == BNode ) iie = iie + 1
+
+      if ( Node == BNode ) then
+         lpsi => coeffshatphi(iie,:)
+      else
+         lpsi => aux(:)
+      endif
+#ifdef MPI
+      call MPI_Bcast(lpsi(1),no_u,MPI_double_complex,
+     &               BNode,MPI_Comm_World,MPIerror)
+#endif
+
+      ee = epsilon(ie)
+
+!$OMP parallel do default(shared),
+!$OMP&private(iuo,iio,done_juo,ind,juo,qp1,qp2,eqp1,eqp2)
+      do iuo = 1, no_l
+        call LocalToGlobalOrb(iuo,Node,Nodes,iio)
+
+        qp1 = ee * realpart(lpsi(iio))
+        qp2 = ee * imagpart(lpsi(iio))
+
+       ! Process only the elements really needed
+       ! Dk and Ek are re-used storage, so
+       ! no memory is really wasted  [AG, Aug 2009]
+        done_juo(1:no_u) = .false.
+        do ind = listhptr(iuo) + 1, listhptr(iuo) + numh(iuo)
+          juo = indxuo(listh(ind))
+          if (done_juo(juo)) cycle
+          eqp1 = qp1 * realpart(lpsi(juo)) + qp2 * imagpart(lpsi(juo))
+          eqp2 = qp1 * imagpart(lpsi(juo)) - qp2 * realpart(lpsi(juo))
+
+          tight_binding_param_k(1,juo,iuo) = tight_binding_param_k(1,juo,iuo) + eqp1 
+          tight_binding_param_k(2,juo,iuo) = tight_binding_param_k(2,juo,iuo) + eqp2 
+          done_juo(juo) = .true.
+        enddo
+      enddo
+!$OMP end parallel do
+      BTest = ie/BlockSize
+      if (BTest*BlockSize.eq.ie) then
+        BNode = BNode + 1
+        if (BNode .gt. Nodes-1) BNode = 0
+      endif
+    enddo
+
+!$OMP parallel do default(shared),
+!$OMP&private(iuo,ind,juo,kxij,ckxij,skxij)
+    do iuo = 1,no_l
+      do ind = listhptr(iuo) + 1, listhptr(iuo) + numh(iuo)
+        juo = indxuo(listh(ind))
+        kxij = kvector(1) * xijo(1,ind) +  &
+ &             kvector(2) * xijo(2,ind) +  &
+ &             kvector(3) * xijo(3,ind)
+        kxij = -1.0_dp * kxij
+        ckxij = cos(kxij)
+        skxij = sin(kxij)
+        tight_binding_param(ind,ispin) = tight_binding_param(ind,ispin) + &
+ &           tight_binding_param_k(1,juo,iuo)*ckxij -                     &
+ &           tight_binding_param_k(2,juo,iuo)*skxij
+      enddo
+    enddo
+!$OMP end parallel do
+
+    call timer( 'tight-binding-compute', 2 )
+
+! end jjunquer
+
+
   enddo kpoints
 
-  call de_alloc( Haux,    name='Haux',    routine='diagonalizeHk' )
-  call de_alloc( Saux,    name='Saux',    routine='diagonalizeHk' )
-  call de_alloc( psi,     name='psi',     routine='diagonalizeHk' )
-  call de_alloc( epsilon, name='epsilon', routine='diagonalizeHk' )
+  do iuo = 1, no_u
+    do j = 1, numh(iuo)
+      ind = listhptr(iuo) + j
+      jo  = listh(ind)
+      write(6,'(2i5,4f12.5)') iuo, jo,  &
+ &       H(ind,:), S(ind), tight_binding_param(ind,ispin)/numkpoints
+    enddo 
+  enddo 
+
+
+  call de_alloc( Haux,    name='Haux',         routine='diagonalizeHk' )
+  call de_alloc( Saux,    name='Saux',         routine='diagonalizeHk' )
+  call de_alloc( psi,     name='psi',          routine='diagonalizeHk' )
+  call de_alloc( epsilon, name='epsilon',      routine='diagonalizeHk' )
+  call de_alloc( coeffsnew,     name='coeffsnew',      routine='diagonalizeHk' )
+  call de_alloc( overlap_sq,    name='overlap_sq',     routine='diagonalizeHk' )
+  call de_alloc( normalization, name='normalization',  routine='diagonalizeHk' )
+  call de_alloc( phitilde,      name='phitilde',       routine='diagonalizeHk' )
+  call de_alloc( epsilonstilde, name='epsilonstilde',  routine='diagonalizeHk' )
+  call de_alloc( overlaptilde,  name='overlaptilde',   routine='diagonalizeHk' )
+  call de_alloc( overlapaux,    name='overlapaux',     routine='diagonalizeHk' )
+  call de_alloc( coeffshatphi,  name='coeffshatphi',   routine='diagonalizeHk' )
+  call de_alloc( invsqrtover,   name='invsqrtover',    routine='diagonalizeHk' )
+  call de_alloc( invsqrtd,      name='invsqrtd',       routine='diagonalizeHk' )
+  call de_alloc( tight_binding_param_k, name='tight_binding_param_k', routine='diagonalizeHk' )
+  call de_alloc( lpsi,          name='lpsi',           routine='diagonalizeHk' )
+  call de_alloc( tight_binding_param, name='tight_binding_param', routine='diagonalizeHk' )
+  call de_alloc( aux,           name='aux',            routine='diagonalizeHk' )
+  deallocate(done_juo)
 
   call timer('diagonalizeHk',2)
 
