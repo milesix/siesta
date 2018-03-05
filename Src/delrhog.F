@@ -235,16 +235,21 @@ C     Internal Variables
               rotaux => Saux(:,1)
 
                 ! Initialize to 0
-!$OMP parallel workshare
+
+!$OMP parallel default(shared),
+!$OMP&private(j,jden,k,kden,mu,mug,nu,indmn,jo)
+
+!!$OMP parallel workshare
               Saux(:,:) = 0._dp
               HauxL(:,:) = 0._dp
-!$OMP parallel end workshare
+!!$OMP parallel end workshare
 
-!$OMP parallel do default(shared), private(j,jden,k,kden,mu,mug,nu,indmn,jo)
+!$OMP do
               do j = 1,numb(io)
                 Saux(j,j)=1.0_dp
               enddo
-
+!$OMP end do 
+!$OMP do
               do j = io-numb(io)+1, io
                 jden = j - io + numb(io)
                 numb(j) = numb(io)
@@ -264,12 +269,11 @@ C     Internal Variables
                   enddo
                 enddo
               enddo
-!$OMP end parallel do
+!$OMP end do 
+!$OMP end parallel
 
-!$OMP parallel workshare
               Haux(:,:) = 0._dp
               Haux(:,:) = HauxL(:,:) !just copy
-!$OMP parallel end workshare
 
 #ifdef MPI
               Haux = 0._dp
@@ -317,10 +321,10 @@ C     Internal Variables
       enddo
 C Initialize the perturbed coefficients
 
-!$OMP parallel workshare
+!!$OMP parallel workshare
       evper(:) = 0.0_dp 
       psiper(:,:) = 0.0_dp
-!$OMP parallel end workshare
+!!$OMP parallel end workshare
 
 C Calculate perturbed coefficients
       do 110 i=1,nuo
@@ -330,11 +334,11 @@ C Calculate perturbed coefficients
         ei0 = eval(io)
 
 !$OMP parallel default(shared),
-!$OMP&private(jbeta,indbetas,ibeta,prod1,prod2,j,ej0,ialpha)
+!$OMP&private(jbeta,indbetas,ibeta,j,ej0,ialpha)
 
-!$OMP workshare
+!!$OMP workshare
         aux(:) = 0.0_dp
-!$OMP end workshare
+!!$OMP end workshare
 
         do ialpha = 1, nuotot
           prod1 = 0.0_dp
@@ -365,7 +369,7 @@ C Calculate perturbed coefficients
           evper(io) = evper(io) + prod3 * psig(ialpha,io)
         enddo
 
-!$OMP do collapse(2)
+!$OMP do 
         do ialpha = 1,nuotot
           psiper(ialpha,io) = 0.0_dp
           do j = 1,nbands

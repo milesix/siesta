@@ -116,11 +116,11 @@ C------------------------------------------------------------------------------
             write(6,'(a)')'Linres: MPI Gamma point calculation' 
           endif
         else
-          ParallelOverK = fdf_get("Diag.ParallelOverK",.true.)
+          ParallelOverK = fdf_get("Diag.ParallelOverK",.false.)
           if (IOnode) then
               write(6,'(a)')'Linres: Parallel calculation using MPI'
-              write(6,'(a)')'Linres: k-point calculation, ParallelOverK
-     & flag set to .true.' !For MPI-Nodes>1, use delrhokp instead of delrhok (check in delrho)
+              write(6,'(a,l1)')'Linres: k-point calculation, 
+     & ParallelOverK= ',ParallelOverK   
           endif
         endif
       endif

@@ -96,8 +96,10 @@ C Check internal dimensions ..........................................
          npsi = 2 * nuotot * nuo
       end if
 #ifdef MPI
-      nhs  = 2 * nuotot * nuotot
-      npsi = 2 * nuotot * nuotot
+      if (ParallelOverk) then 
+        nhs  = 2 * nuotot * nuotot
+        npsi = 2 * nuotot * nuotot
+      endif
 #endif
       
       call re_alloc( psi,  1, npsi, 'psi',  'densematrix' )
@@ -119,17 +121,13 @@ C Check internal dimensions ..........................................
          enddo  
 
 #ifdef MPI
-      else if (Nodes .gt. 1) then
-        if (.not. ParallelOverK) then
-          call die('DELRHOK: for MPI calculations and k-points
-     & activate the ParallelOverK flag in the fdf file.')
-        endif
-
+      else if ((Nodes .gt. 1) .and. ParallelOverk) then
         call delrhokp(no, nuo, maxo, maxspn, nspin, eo, eigtol, indxuo,
      &               nk, kpoint, wk, eo,xijo, Qo, H, S, Hper, Oper,
      &               maxnh, numh, listh, listhptr, ef, temp, Rhoper,
      &               Erhoper, Haux, Saux, psi, nuotot, iscf, UsePsi)
 #endif
+
       else
          call delrhok(no, nuo, maxo, maxspn, nspin, eo, eigtol, indxuo, 
      &        nk, kpoint, wk, eo,xijo, Qo, H, S, Hper, Oper,
