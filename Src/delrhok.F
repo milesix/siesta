@@ -889,7 +889,7 @@ C        Compute the change in density matrix elements -------------
 
             Saux = 0.0_dp
             Haux = 0.0_dp
-            do 550 io = 1, nuo
+            do 550 i = 1, nuo
               call LocalToGlobalOrb(i,Node,Nodes,io)
               qio = qO(io,ispin,ik)
               if(qio .lt. 1.0e-6_dp) cycle
@@ -948,14 +948,17 @@ C        Compute the change in density matrix elements -------------
             call de_alloc(hauxden)
             call de_alloc(Sauxden)
 
-            do iuo=1,maxo
-              do j=1,numhg(iuo)
-                ind = listhptrg(iuo) + j
+!Psiden and HauxdenL are already global
+
+            do i=1,nuo
+              call LocalToGlobalOrb(i,Node,Nodes,iuo)
+              do j=1,numh(i)
+                ind = listhptr(i) + j
                 jo = listhg(ind)
                 juo = indxuo(jo)
-                kXij = kpoint(1,ik) * Xijg(1,ind) +
-     .          kpoint(2,ik) * Xijg(2,ind) +
-     .          kpoint(3,ik) * Xijg(3,ind)
+                kXij = kpoint(1,ik) * Xij(1,ind) +
+     .          kpoint(2,ik) * Xij(2,ind) +
+     .          kpoint(3,ik) * Xij(3,ind)
                 do ix=1,3
                   ckXij = cos(kXij)*def(ix)
                   skXij = sin(kXij)*def(ix)
