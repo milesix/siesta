@@ -95,6 +95,13 @@ MODULE siesta_options
   integer :: nobdown          ! Number of bands with spin down for wannierization
   integer :: nob              ! Number of bands for wannierization
                               !   (for non spin-polarized calculations).
+!----------------------------------------------------
+! Lowdin interface
+  logical :: lowdin_processing  ! Will we call produce the Lowdin-Mattheis
+                                !   transformation to obtain orthonormal 
+                                !   wave functions 
+  integer :: n_lowdin_manifolds ! Number of bands manifolds that will be 
+                                !   considered for Lowdin transformation
 
 !----------------------------------------------------
   logical :: writef        ! Write atomic forces at every geometry step?

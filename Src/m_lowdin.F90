@@ -1,0 +1,1127 @@
+! 
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt.
+! See Docs/Contributors.txt for a list of contributors.
+!
+
+!> \brief General purpose of the Lowdin module 
+!! 
+!! In this module we perform a Lowdin orthonormalization of the Bloch functions
+!! corresponding to a given manifold of bands
+!! We follow the recipe given in \cite Iniguez-04. 
+!!
+!! Example: band structure of SrTiO3
+!! \image html Bands_STO.png
+module m_lowdin
+
+
+  use precision,      only: dp                     !< Real double precision type
+  use siesta_options, only: n_lowdin_manifolds     !< Number of bands manifolds 
+                                                   !!  that will be considered
+                                                   !!  for Lowdin transformation
+  use parallel,       only: Node, Nodes, IOnode, BlockSize
+  use m_spin,         only: nspin                  ! Number of spin components
+  use lowdin_types,   only: lowdin_manifold_t    
+  use lowdin_types,   only: manifold_bands_lowdin  ! Variable where the initial
+                                                   !   and final band of each
+                                                   !   manifold are stored
+  use lowdin_types,   only: coeffs_k               ! 
+  use lowdin_types,   only: coeffshatphi           !
+  use lowdin_types,   only: invsqrtover            !
+  use lowdin_types,   only: overlap_sq             !
+  use lowdin_types,   only: overlaptilde           !
+  use lowdin_types,   only: phitilde               !
+  use sparse_matrices,    only: maxnh        ! Maximum number of orbitals
+                                             !   interacting
+                                             ! NOTE: While running in parallel,
+                                             !   maxnh changes from one core to
+                                             !   the other
+  use sparse_matrices,    only: numh         ! Number of nonzero element of each
+                                             !   row of the hamiltonian matrix
+  use sparse_matrices,    only: listh        ! Nonzero hamiltonian-matrix elemen
+  use sparse_matrices,    only: listhptr     ! Pointer to start of each row
+                                             !   of the hamiltonian matrix
+  use sparse_matrices,    only: xijo         ! Vectors between orbital centers
+  use sparse_matrices,    only: tight_binding_param ! Parameters of the
+                                             !   tight-binding Hamiltonian
+  use sparse_matrices,    only: H            ! Real space Hamiltonian
+  use sparse_matrices,    only: S            ! Real space Overlap
+  use atomlist,           only: indxuo       ! Index of equivalent orbital in
+                                             !   the unit cell
+  use atomlist,           only: no_u         ! Number of orbitals in unit cell
+                                             ! NOTE: When running in parallel,
+                                             !   this is core independent
+  use sys,                only : die         ! Termination routine
+  use fdf
+
+!
+! Allocation/Deallocation routines
+!
+  use alloc,              only: re_alloc     ! Reallocation routines
+  use alloc,              only: de_alloc     ! Deallocation routines
+
+  use parallelsubs,       only: LocalToGlobalOrb
+
+  implicit none
+
+! Routines
+  public :: read_lowdin_specs
+  public :: check_normalization
+  public :: define_phitilde
+  public :: define_overlap_phitilde
+  public :: define_invsqover_phitilde
+  public :: define_coeffshatphi
+  public :: compute_tight_binding_param
+  public :: write_tight_binding_param
+  public :: set_excluded_bands_lowdin
+  public :: setup_Lowdin 
+  public :: allocate_matrices_Lowdin
+  public :: deallocate_matrices_Lowdin
+
+  private
+
+  CONTAINS
+
+! subroutine read_lowdin_specs         : Subroutine that reads all the
+!                                        info in the fdf file related with the
+!                                        Lowdin orthogonalization
+
+  subroutine read_lowdin_specs( )
+!
+!   Processes the information in an fdf file
+!   regarding the bands that will enter into the orthonormalization procedure
+!   and the atomic orbitals that will be orthonormalized.
+!
+    use fdf
+    use m_cite,   only: add_citation
+    use parallel, only: IONode
+
+!   Internal variables
+    integer :: index_manifold      ! Counter for the number of manifolds
+    integer :: iorb                ! Counter for the number of atomic orbitals
+
+    type(block_fdf)            :: bfdf
+    type(parsed_line), pointer :: pline
+
+!   Allocate the pointer where the initial and final band of every 
+!   manifold will be stored
+    allocate(manifold_bands_lowdin(n_lowdin_manifolds))
+    
+
+!   Read the LDAU.proj block
+    if (.not. fdf_block('LowdinProjections',bfdf)) RETURN
+
+!   Add citation
+    if ( IONode ) then
+      call add_citation("arXiv:cond-mat/0407677")
+    end if
+
+    do while(fdf_bline(bfdf, pline))     !! over band manifolds to be 
+                                         !! orthonormalized
+      if (.not. fdf_bmatch(pline,'iii'))        &    ! We expect that each line
+                                                     !   contains three integers
+                                                     !   That is the meaning of
+                                                     !   iii
+ &      call die('Wrong format in LowdinProjections')
+        
+!     Assign the initial and final band of each manifold
+      index_manifold = fdf_bintegers(pline,1)
+      manifold_bands_lowdin(index_manifold)%initial_band=fdf_bintegers(pline,2)
+      manifold_bands_lowdin(index_manifold)%final_band  =fdf_bintegers(pline,3)
+      manifold_bands_lowdin(index_manifold)%number_of_bands=      &
+ &        ( manifold_bands_lowdin(index_manifold)%final_band   -  &
+ &          manifold_bands_lowdin(index_manifold)%initial_band )  + 1
+
+      nullify( manifold_bands_lowdin(index_manifold)%orbital_indices )
+      call re_alloc( manifold_bands_lowdin(index_manifold)%orbital_indices,  &
+ &        1, manifold_bands_lowdin(index_manifold)%number_of_bands )
+
+      do iorb = 1, manifold_bands_lowdin(index_manifold)%number_of_bands
+        manifold_bands_lowdin(index_manifold)%orbital_indices(iorb) =        &
+ &         fdf_bintegers(pline,3+iorb)
+      enddo
+
+!!     For debugging
+!      write(6,'(a,4i5)') &
+! &      'index manifold, initial band, final band, number of bands = ',      &
+! &      index_manifold,                                                      &
+! &      manifold_bands_lowdin(index_manifold)%initial_band,                  &
+! &      manifold_bands_lowdin(index_manifold)%final_band,                    &
+! &      manifold_bands_lowdin(index_manifold)%number_of_bands
+!
+!      do iorb = 1, manifold_bands_lowdin(index_manifold)%number_of_bands
+!        write(6,*) manifold_bands_lowdin(index_manifold)%orbital_indices(iorb)
+!      enddo
+!!     End debugging
+    enddo ! end loop over band manifolds
+    
+  endsubroutine read_lowdin_specs
+
+  subroutine setup_Lowdin
+
+    integer :: index_manifold
+
+#ifdef MPI
+    use parallelsubs,       only : set_blocksizedefault
+!
+!   Subroutine to order the indices of the different bands after
+!   excluding some of them for Lowdin orthonormalization
+!
+    use m_orderbands,       only: order_index
+    integer, external :: numroc
+#endif
+
+    do index_manifold = 1, n_lowdin_manifolds
+!       Allocate memory related with the coefficients of the wavefunctions
+#ifdef MPI
+!       Find the number of included bands for Lowdin orthonormalization 
+!       that will be stored
+!       per node. Use a block-cyclic distribution of nincbands over Nodes.
+!
+        call set_blocksizedefault( Nodes,                         &
+ &         manifold_bands_lowdin(index_manifold)%number_of_bands, &
+ &         manifold_bands_lowdin(index_manifold)%blocksizeincbands_lowdin )
+
+!!       For debugging
+!        write(6,'(a,3i5)')' setup_Lowdin: index_manifold, Node, Blocksize = ', &
+! &                                         index_manifold, Node,               &
+! &              manifold_bands_lowdin(index_manifold)%blocksizeincbands_lowdin
+!!       End debugging
+
+        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin =       &
+ &         numroc( manifold_bands_lowdin(index_manifold)%number_of_bands,  &
+ &         manifold_bands_lowdin(index_manifold)%blocksizeincbands_lowdin, &
+ &         Node, 0, Nodes )
+#else
+        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin =       &
+ &         manifold_bands_lowdin(index_manifold)%number_of_bands
+#endif
+!!      For debugging
+!       write(6,'(a,3i5)')' setup_Lowdin: index_manifold, nincbands_loc = ', &
+! &        index_manifold,                                                   &
+! &        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
+!!      End debugging
+
+       call set_excluded_bands_lowdin( index_manifold )
+
+#ifdef MPI
+!      Set up the arrays that control the indices of the bands to be
+!      considered after excluding some of them for wannierization
+!      This is done once and for all the k-points
+       call order_index( no_l,  & 
+ &                       no_u,  &
+ &                manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin  )
+#endif
+    enddo    ! End loop on number of manifolds
+  endsubroutine setup_Lowdin
+
+  subroutine allocate_matrices_Lowdin( index_manifold )
+    integer, intent(in) :: index_manifold
+
+    integer number_of_orbitals_to_project
+    integer number_of_bands_in_manifold_local
+
+    number_of_orbitals_to_project =                                      &
+ &        manifold_bands_lowdin(index_manifold)%number_of_bands
+    number_of_bands_in_manifold_local =                                  &
+ &        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
+
+!   Allocate the different matrices required for Lowdin orthonormalization
+    nullify( coeffs_k )
+    call re_alloc( coeffs_k,                                                &
+ &                 1, no_u,                                                 &
+ &                 1, number_of_bands_in_manifold_local,                    &
+ &                 name='coeffs_k', routine='allocate_matrices_Lowdin',     &
+ &                 shrink=.false., copy=.false.)
+    coeffs_k = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+    nullify( overlaptilde )
+    call re_alloc( overlaptilde,                                            &
+ &                 1, number_of_orbitals_to_project,                        &
+ &                 1, number_of_orbitals_to_project,                        &
+ &                 name='overlaptilde', routine='allocate_matrices_Lowdin', &
+ &                 shrink=.false., copy=.false.)
+    overlaptilde = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+    nullify( invsqrtover )
+    call re_alloc( invsqrtover,                                             &
+ &                 1, number_of_orbitals_to_project,                        &
+ &                 1, number_of_orbitals_to_project,                        &
+ &                 name='invsqrtover', routine='allocate_matrices_Lowdin',  &
+ &                 shrink=.false., copy=.false.)
+    invsqrtover = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+    nullify( overlap_sq )
+    call re_alloc( overlap_sq,                                              &
+ &                 1, no_u,                                                 &
+ &                 1, no_u,                                                 &
+ &                 name='overlap_sq', routine='allocate_matrices_Lowdin',   &
+ &                 shrink=.false., copy=.false.)
+    overlap_sq = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+    nullify( coeffshatphi )
+    call re_alloc( coeffshatphi,                                            &
+ &                 1, number_of_bands_in_manifold_local,                    &
+ &                 1, number_of_orbitals_to_project,                        &
+ &                 name='coeffshatphi', routine='allocate_matrices_Lowdin', &
+ &                 shrink=.false., copy=.false.)
+    coeffshatphi = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+  endsubroutine allocate_matrices_Lowdin
+
+  subroutine deallocate_matrices_Lowdin
+    call de_alloc( coeffs_k,                                 &
+ &                 name='coeffs_k',                          & 
+ &                 routine='deallocate_matrices_Lowdin' )
+    call de_alloc( overlaptilde,                             &
+ &                 name='overlaptilde',                      & 
+ &                 routine='deallocate_matrices_Lowdin' )
+    call de_alloc( overlap_sq,                               &
+ &                 name='overlap_sq',                        & 
+ &                 routine='deallocate_matrices_Lowdin' )
+    call de_alloc( invsqrtover,                              &
+ &                 name='invsqrtover',                       & 
+ &                 routine='deallocate_matrices_Lowdin' )
+    call de_alloc( coeffshatphi,                             &
+ &                 name='coeffshatphi',                      & 
+ &                 routine='deallocate_matrices_Lowdin' )
+  endsubroutine deallocate_matrices_Lowdin
+
+
+
+  subroutine set_excluded_bands_lowdin( index_manifold )
+    
+    integer, intent(in) :: index_manifold
+
+    integer :: iband
+    integer :: iorb
+    integer :: iterex
+    integer :: index
+    integer :: index_orb_included
+
+    nullify( manifold_bands_lowdin(index_manifold)%isexcluded )
+    call re_alloc( manifold_bands_lowdin(index_manifold)%isexcluded,      &
+ &                 1, no_u,                                               &
+ &                 name='isexcluded',                                     &
+ &                 routine='set_excluded_bands_lowdin' )
+
+    nullify( manifold_bands_lowdin(index_manifold)%orbexcluded )
+    call re_alloc( manifold_bands_lowdin(index_manifold)%orbexcluded,     &
+ &                 1, no_u,                                               &
+ &                 name='orbexcluded',                                    &
+ &                 routine='set_excluded_bands_lowdin' )
+
+    nullify( manifold_bands_lowdin(index_manifold)%orb_in_manifold )
+    call re_alloc( manifold_bands_lowdin(index_manifold)%orb_in_manifold, &
+ &                 1, no_u,                                               &
+ &                 name='orb_in_manifold',                                &
+ &                 routine='set_excluded_bands_lowdin' )
+
+
+!   By default, all the bands are excluded from the calculation
+    manifold_bands_lowdin(index_manifold)%isexcluded(:) = .true.
+
+    do iband = 1, no_u
+!     Exclude the corresponding bands from the computation
+      if( (iband .ge. manifold_bands_lowdin(index_manifold)%initial_band) &
+ &        .and.                                                           &
+ &        (iband .le. manifold_bands_lowdin(index_manifold)%final_band) ) then
+        manifold_bands_lowdin(index_manifold)%isexcluded( iband ) = .false.
+      endif
+    enddo
+
+!!   For debugging
+!    do iterex = 1, no_u
+!     write(6,'(a,i5,l5)')                                               &
+! &     'excluded_bands_lowind (iband, excluded)',                       &
+! &     iterex, manifold_bands_lowdin(index_manifold)%isexcluded(iterex)
+!    enddo
+!!   End debugging
+
+!   By default, all the orbitals are excluded from the calculation
+    manifold_bands_lowdin(index_manifold)%orbexcluded(:) = .true.
+    do iorb = 1, manifold_bands_lowdin(index_manifold)%number_of_bands
+      index_orb_included =                                          & 
+ &      manifold_bands_lowdin(index_manifold)%orbital_indices(iorb)
+      manifold_bands_lowdin(index_manifold)%orbexcluded(index_orb_included) = &
+ &      .false. 
+    enddo
+
+    index = 0
+    manifold_bands_lowdin(index_manifold)%orb_in_manifold(:) = 0
+    do iorb = 1, manifold_bands_lowdin(index_manifold)%number_of_bands
+      index = index + 1
+      index_orb_included = manifold_bands_lowdin(index_manifold)%orbital_indices(iorb)
+      manifold_bands_lowdin(index_manifold)%orb_in_manifold(index_orb_included) = index
+    enddo
+
+!!   For debugging
+!    do iterex = 1, no_u
+!     write(6,'(a,2i5,l5,i5)')                                        &
+! &     'orbitals excluded (iband, excluded)',                        &
+! &     index_manifold, iterex,                                       &
+! &     manifold_bands_lowdin(index_manifold)%orbexcluded(iterex),    &
+! &     manifold_bands_lowdin(index_manifold)%orb_in_manifold(iterex)    
+!    enddo
+!!   End debugging
+
+  endsubroutine set_excluded_bands_lowdin
+
+
+!> \f{eqnarray*}{
+!!    \langle \psi_{j} (\vec{k}) \vert \psi_{i} (\vec{k}) \rangle & = &
+!!    \sum_{\mu \nu} c_{j \nu} (\vec{k})
+!!    \langle \phi_{\nu} (\vec{k}) \vert \phi_{\mu} (\vec{k}) \rangle
+!!    c_{\mu i} (\vec{k})   \\
+!!    & = & \sum_{\mu \nu} c_{\nu j}^{\ast} (\vec{k})
+!!    S_{\nu \mu} (\vec{k}) c_{\mu i} (\vec{k})  \\
+!!    & = & \delta_{ij},
+!! \f}
+  subroutine check_normalization( no_u, coeffs_k, overlap_sq )
+
+    integer, intent(in)       :: no_u
+    complex(dp), intent(in)   :: coeffs_k(no_u,no_u)
+    complex(dp), intent(in)   :: overlap_sq(no_u,no_u)
+
+    complex(dp), pointer, save ::   normalization(:,:)
+
+!
+!   Internal variables
+!
+    integer iuo      ! Counter for loop on atomic orbitals
+    integer juo      ! Counter for loop on atomic orbitals
+
+    nullify( normalization )
+    call re_alloc(normalization, 1, no_u, 1, no_u,                     &
+ &                name='normalization', routine='check_normalization', &
+ &                shrink=.false., copy=.false.)
+    normalization = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+!   Check the normalization of the eigenfunctions
+!   that come out of the diagonalization
+    normalization = matmul( overlap_sq, coeffs_k )
+    normalization = matmul( transpose(conjg(coeffs_k)),normalization)
+
+!   For debugging
+    write(6,'(a)') ' Normalization: '
+    do iuo = 1, no_u
+      do juo = 1, no_u
+        write(6,'(2i5,2f12.5)') iuo, juo, normalization(iuo,juo)
+      enddo
+    enddo
+!   End debugging
+   
+    call de_alloc( normalization,                &
+ &                 name='normalization',         & 
+ &                 routine='check_normalization' )
+
+  endsubroutine check_normalization
+
+  subroutine define_phitilde( no_u, coeffs_k, overlap_sq, phitilde )
+
+    integer, intent(in)       :: no_u
+    complex(dp), intent(in)   :: coeffs_k(no_u,no_u)
+    complex(dp), intent(in)   :: overlap_sq(no_u,no_u)
+    complex(dp), intent(out)  :: phitilde(no_u,no_u)
+
+!
+!   Internal variables
+!
+    integer jband    ! Counter for loop on bands
+    integer mu       ! Counter for loop on atomic orbitals
+    integer nu       ! Counter for loop on atomic orbitals
+    integer lambda   ! Counter for loop on atomic orbitals
+
+    complex(dp), pointer, save ::   aux(:,:) 
+
+    nullify( aux )
+    call re_alloc(aux, 1, no_u, 1, no_u,                  &
+ &                name='aux', routine='define_phitilde',  &
+ &                shrink=.false., copy=.false.)
+    aux = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+    do mu  = 1, no_u
+      do jband = 1, no_u
+        do nu = 1, no_u
+          aux(jband,mu) = aux(jband,mu) +                    &
+ &          conjg(coeffs_k(nu,jband)) * overlap_sq(nu,mu)
+        enddo 
+      enddo
+    enddo
+
+    do mu  = 1, no_u
+      do lambda = 1, no_u
+        do jband = 1, no_u
+          phitilde(lambda,mu) = phitilde(lambda,mu) +        &
+ &          coeffs_k(lambda,jband) * aux(jband,mu)
+        enddo 
+      enddo
+    enddo
+
+!
+!   If we want to perform the previous operation directly using the
+!   matrix multiplication internal routines.
+!   This is only for testing, since while using this matmul function:
+!   - We sum over all the bands (and not only over a chosen set)
+!   - It is not well adapted for multiplication
+!   In this case, if the band index runs over all the bands, 
+!   phitilde has to be equal to delta_(\lambda,\mu)
+!
+!   phitilde = cmplx(0.0_dp,0.0_dp,kind=dp)
+!   phitilde = matmul( transpose(conjg(coeffs_k)), overlap_sq )
+!   phitilde = matmul( coeffs_k, phitilde )
+
+!!   For debugging
+!    write(6,'(a)')'Phitilde = '
+!    do lambda = 1, no_u
+!      do mu  = 1, no_u
+!        write(6,'(2i5,2f12.5)') lambda, mu, phitilde(lambda,mu)
+!      enddo
+!    enddo
+!!   End debugging
+
+    call de_alloc( aux,                          &
+ &                 name='aux',                   & 
+ &                 routine='define_phitilde' )
+
+
+  endsubroutine define_phitilde
+
+!
+!
+!
+
+  subroutine define_overlap_phitilde( index_manifold )
+
+    integer, intent(in)       :: index_manifold
+
+!
+!   Internal variables
+!
+    integer jband    ! Counter for loop on bands
+    integer mu       ! Counter for loop on atomic orbitals
+    integer mu_index ! Counter for loop on atomic orbitals
+    integer nu_index ! Counter for loop on atomic orbitals
+    integer nu       ! Counter for loop on atomic orbitals
+    integer lambda   ! Counter for loop on atomic orbitals
+    integer rho      ! Counter for loop on atomic orbitals
+    integer number_of_orbitals_to_project
+    integer number_of_bands_in_manifold
+
+    complex(dp), pointer, save ::   aux(:,:), aux2(:,:)
+
+    number_of_orbitals_to_project =                                      &
+ &        manifold_bands_lowdin(index_manifold)%number_of_bands
+    number_of_bands_in_manifold =                                        &
+ &        manifold_bands_lowdin(index_manifold)%number_of_bands
+
+    nullify( aux, aux2 )
+    call re_alloc( aux,                                                  &
+ &                 1, number_of_bands_in_manifold,                       &
+ &                 1, number_of_orbitals_to_project,                     &
+ &                 name='aux', routine='define_overlap_phitilde',        &
+ &                 shrink=.false., copy=.false. )
+    aux = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+    call re_alloc( aux2,                                                 &
+ &                 1, no_u,                                              &
+ &                 1, number_of_orbitals_to_project,                     &
+ &                 name='aux2', routine='define_overlap_phitilde',       &
+ &                 shrink=.false., copy=.false. )
+    aux2 = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+    overlaptilde = cmplx(0.0_dp,0.0_dp,kind=dp)
+
+!!   For debugging
+!    do mu  = 1, number_of_orbitals_to_project
+!      write(6,'(a,3i5)') ' index_manifold, mu, orbital = ',        &
+! &      index_manifold, mu,                                        &
+! &      manifold_bands_lowdin(index_manifold)%orbital_indices(mu)
+!    enddo
+!
+!    do jband = 1, number_of_bands_in_manifold
+!      write(6,'(a,3i5)') ' index_manifold, jband = ',              &
+! &      index_manifold, jband,                                     &
+! &      manifold_bands_lowdin(index_manifold)%initial_band+ (jband - 1)
+!    enddo
+!!   End debugging
+
+    do mu  = 1, number_of_orbitals_to_project
+      mu_index = manifold_bands_lowdin(index_manifold)%orbital_indices(mu)
+      do jband = 1, number_of_bands_in_manifold
+        do lambda = 1, no_u
+          aux(jband,mu) = aux(jband,mu) +                    &
+ &          conjg(coeffs_k(lambda,jband)) * overlap_sq(lambda,mu_index)
+        enddo 
+      enddo
+    enddo
+
+    do mu   = 1, number_of_orbitals_to_project
+      do rho = 1, no_u
+        do jband = 1, number_of_bands_in_manifold
+          aux2(rho,mu) = aux2(rho,mu) +                     &
+ &          coeffs_k(rho,jband) * aux(jband,mu)
+        enddo 
+      enddo
+    enddo
+
+    do mu  = 1, number_of_orbitals_to_project
+      do nu = 1, number_of_orbitals_to_project
+        nu_index = manifold_bands_lowdin(index_manifold)%orbital_indices(nu)
+        do rho = 1, no_u
+          overlaptilde(nu,mu) = overlaptilde(nu,mu) +       &
+ &          overlap_sq(nu_index,rho) * aux2(rho,mu)
+        enddo 
+      enddo
+    enddo
+
+!!   For debugging
+!    write(6,'(a)')'Overlap phitilde = '
+!    do nu = 1, number_of_orbitals_to_project
+!      do mu  = 1, number_of_orbitals_to_project
+!        write(6,'(2i5,2f12.5)') nu, mu, overlaptilde(nu,mu)
+!      enddo
+!    enddo
+!!   End debugging
+
+    call de_alloc( aux,                                &
+ &                 name='aux',                         & 
+ &                 routine='define_overlap_phitilde' )
+
+    call de_alloc( aux2,                                &
+ &                 name='aux2',                         & 
+ &                 routine='define_overlap_phitilde' )
+
+  endsubroutine define_overlap_phitilde
+
+!
+!
+!
+
+  subroutine define_invsqover_phitilde( index_manifold )
+
+    integer, intent(in)       :: index_manifold
+
+!
+!   Internal variables
+!
+    integer mu       ! Counter for loop on atomic orbitals
+    integer nu       ! Counter for loop on atomic orbitals
+    integer lambda   ! Counter for loop on atomic orbitals
+
+!
+!   Variables required for the diagonalization of overlaptilde
+!
+    integer  :: ierror        ! Code for error message from cdiag
+    integer  :: npsi_tilde    ! Variable to dimension the coefficient vector
+
+    complex(dp), pointer, save ::   aux(:,:)
+    complex(dp), pointer, save ::   unity(:,:)
+    complex(dp), pointer, save ::   invsqrtd(:,:)
+    real(dp), dimension(:), pointer :: epsilonstilde ! Eigenvalues of 
+                                                     !   overlaptilde
+    real(dp), pointer :: psi_tilde(:) => null()
+
+!!   For debugging
+!    complex(dp), pointer, save ::   normalization(:,:)
+!    complex(dp), pointer, save ::   overlaptilde_save(:,:)
+!!   End debugging
+
+    integer number_of_orbitals_to_project
+    integer number_of_bands_in_manifold
+
+    external cdiag
+
+    number_of_orbitals_to_project =                                      &
+ &        manifold_bands_lowdin(index_manifold)%number_of_bands
+    number_of_bands_in_manifold =                                        &
+ &        manifold_bands_lowdin(index_manifold)%number_of_bands
+
+
+    nullify( epsilonstilde )
+    call re_alloc( epsilonstilde,                                      &
+  &                1, number_of_orbitals_to_project,                   &
+  &                name='epsilonstilde',                               &
+  &                routine='define_invsqover_phitilde' )
+
+    nullify( unity )
+    call re_alloc( unity,                                              &
+ &                 1, number_of_orbitals_to_project,                   &
+ &                 1, number_of_orbitals_to_project,                   &
+ &                 name='unity', routine='define_invsqover_phitilde',  &
+ &                 shrink=.false., copy=.false.)
+    unity = cmplx(0.0_dp,0.0_dp,kind=dp)
+
+    do mu = 1, number_of_orbitals_to_project
+      unity(mu,mu) = cmplx(1.0_dp,0.0_dp,kind=dp)
+    enddo
+
+    nullify( aux )
+    call re_alloc( aux,                                                       &
+ &                 1, number_of_orbitals_to_project,                          &
+ &                 1, number_of_orbitals_to_project,                          &
+ &                 name='aux', routine='define_invsqover_phitilde',           &
+ &                 shrink=.false., copy=.false.)
+    aux = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+
+    nullify( invsqrtd )
+    call re_alloc( invsqrtd,                                                  &
+ &                 1, number_of_orbitals_to_project,                          &
+ &                 1, number_of_orbitals_to_project,                          &
+ &                 name='invsqrtd', routine='define_invsqover_phitilde',      &
+ &                 shrink=.false., copy=.false.)
+    invsqrtd = cmplx(0.0_dp,0.0_dp,kind=dp)
+
+    npsi_tilde = 2*number_of_orbitals_to_project*number_of_orbitals_to_project
+    call re_alloc( psi_tilde,  1, npsi_tilde,  name='psi_tilde',              &
+ &                 routine='define_invsqover_phitilde' )
+
+!!   For debugging
+!    nullify( normalization )
+!    call re_alloc( normalization,                                             &
+! &                 1, number_of_orbitals_to_project,                          &
+! &                 1, number_of_orbitals_to_project,                          &
+! &                 name='normalization', routine='define_invsqover_phitilde', &
+! &                 shrink=.false., copy=.false.)
+!    normalization = cmplx(0.0_dp, 0.0_dp, kind=dp)
+!
+!    nullify( overlaptilde_save )
+!    call re_alloc( overlaptilde_save,                                         &
+! &                 1, number_of_orbitals_to_project,                          &
+! &                 1, number_of_orbitals_to_project,                          &
+! &                 name='overlaptilde_save',                                  &
+! &                 routine='define_invsqover_phitilde',                       &
+! &                 shrink=.false., copy=.false.)
+!    overlaptilde_save = overlaptilde
+!!   End debugging
+
+!
+!   Diagonalize overlaptilde.
+!   We need it to compute the inverse of the root square
+!
+!   In the input, overlaptilde is the matrix to be diagonalized
+!   After calling cdiag, overlaptilde contains the unitary transformation
+!   matrix that transforms the overlap matrix into its diagonal form
+!   L. F. Mattheiss, Phys. Rev. B 2, 3918 (1970)
+
+
+    call cdiag( overlaptilde, unity,                  &
+ &              number_of_orbitals_to_project,        &
+ &              number_of_orbitals_to_project,        &
+ &              number_of_orbitals_to_project,        &
+ &              epsilonstilde,                        &
+ &              psi_tilde,                            &
+ &              number_of_orbitals_to_project,        &
+ &              1, ierror, BlockSize )
+
+    do mu = 1, number_of_orbitals_to_project
+      invsqrtd(mu,mu) =      &
+ &      cmplx( epsilonstilde(mu)**(-1.0_dp/2.0_dp), 0.0_dp, kind=dp )
+    enddo
+
+!!   For debugging
+!    do mu = 1, no_u
+!      write(6,'(i5,3f12.5)')mu, epsilonstilde(mu), invsqrtd(mu,mu)
+!    enddo 
+!!   End debugging
+
+    do mu = 1, number_of_orbitals_to_project
+      do nu = 1, number_of_orbitals_to_project
+        do lambda = 1, number_of_orbitals_to_project
+          aux(mu,nu) = aux(mu,nu) +                    &
+ &          overlaptilde(mu,lambda) * invsqrtd(lambda,nu)
+        enddo 
+      enddo
+    enddo
+
+    invsqrtover = cmplx(0.0_dp, 0.0_dp, kind=dp)
+    do mu = 1, number_of_orbitals_to_project
+      do nu = 1, number_of_orbitals_to_project
+        do lambda = 1, number_of_orbitals_to_project
+          invsqrtover(mu,nu) = invsqrtover(mu,nu) +           &
+ &          aux(mu,lambda) * conjg(overlaptilde(nu,lambda))
+        enddo 
+      enddo
+    enddo
+
+!!   For debugging
+!!   Check that the computation of the inverse of the root square has been
+!!   properly done.
+!!
+!    aux = cmplx(0.0_dp, 0.0_dp, kind=dp)
+!    do mu = 1, number_of_orbitals_to_project
+!      do nu = 1, number_of_orbitals_to_project
+!        do lambda = 1, number_of_orbitals_to_project
+!          aux(mu,nu) = aux(mu,nu) +                    &
+! &          invsqrtover(mu,lambda) * overlaptilde_save(lambda,nu)
+!        enddo 
+!      enddo
+!    enddo
+!
+!    do mu = 1, number_of_orbitals_to_project
+!      do nu = 1, number_of_orbitals_to_project
+!        do lambda = 1, number_of_orbitals_to_project
+!          normalization(mu,nu) = normalization(mu,nu) +     &
+! &          aux(mu,lambda) * invsqrtover(lambda,nu) 
+!        enddo 
+!      enddo
+!    enddo
+!
+!    write(6,'(a)') ' Normalization: '
+!    do mu = 1, number_of_orbitals_to_project
+!      do nu = 1, number_of_orbitals_to_project
+!        write(6,'(2i5,2f12.5)') mu, nu, normalization(mu,nu)
+!      enddo
+!    enddo
+!!   End debugging
+
+
+    call de_alloc( unity,                              &
+ &                 name='unity',                       & 
+ &                 routine='define_invsqover_phitilde' )
+
+    call de_alloc( epsilonstilde,                      &
+ &                 name='epsilonstilde',               & 
+ &                 routine='define_invsqover_phitilde' )
+
+    call de_alloc( invsqrtd,                           &
+ &                 name='invsqrtd',                    & 
+ &                 routine='define_invsqover_phitilde' )
+
+    call de_alloc( aux,                                &
+ &                 name='aux',                         & 
+ &                 routine='define_invsqover_phitilde' )
+
+    call de_alloc( psi_tilde,                          &
+ &                 name='psi_tilde',                   & 
+ &                 routine='define_invsqover_phitilde' )
+
+!!   For debugging
+!    call de_alloc( normalization,                      &
+! &                 name='normalization',               & 
+! &                 routine='define_invsqover_phitilde' )
+!
+!    call de_alloc( overlaptilde_save,                  &
+! &                 name='overlaptilde_save',           & 
+! &                 routine='define_invsqover_phitilde' )
+!!   End debugging
+
+
+
+  endsubroutine define_invsqover_phitilde
+
+!
+!
+!  
+  subroutine define_coeffshatphi( index_manifold )
+
+    integer, intent(in)       :: index_manifold
+
+!
+!   Internal variables
+!
+    integer mu       ! Counter for loop on atomic orbitals
+    integer nu       ! Counter for loop on atomic orbitals
+    integer lambda   ! Counter for loop on atomic orbitals
+    integer nu_index ! Counter for loop on atomic orbitals
+    integer jband    ! Counter for loop on bands
+
+
+    complex(dp), pointer, save ::   aux(:,:)
+
+    integer number_of_orbitals_to_project
+    integer number_of_bands_in_manifold_local
+
+    number_of_orbitals_to_project =                                  &
+ &        manifold_bands_lowdin(index_manifold)%number_of_bands
+    number_of_bands_in_manifold_local =                              &
+ &        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
+
+    nullify( aux )
+    call re_alloc( aux,                                              &
+ &                 1, number_of_bands_in_manifold_local,             &
+ &                 1, number_of_orbitals_to_project,                 &
+ &                 name='aux', routine='define_coeffshatphi',        &
+ &                 shrink=.false., copy=.false. )
+    aux = cmplx(0.0_dp,0.0_dp,kind=dp)
+
+    do nu  = 1, number_of_orbitals_to_project
+      nu_index = manifold_bands_lowdin(index_manifold)%orbital_indices(nu)
+      do jband = 1, number_of_bands_in_manifold_local 
+        do lambda = 1, no_u
+          aux(jband,nu) = aux(jband,nu) +                    &
+ &          conjg(coeffs_k(lambda,jband)) * overlap_sq(lambda,nu_index)
+        enddo 
+      enddo
+    enddo
+
+    coeffshatphi = cmplx(0.0_dp,0.0_dp,kind=dp)
+    do mu  = 1, number_of_orbitals_to_project
+      do jband = 1, number_of_bands_in_manifold_local
+        do nu = 1, number_of_orbitals_to_project
+          coeffshatphi(jband,mu) = coeffshatphi(jband,mu) +       &
+ &          aux(jband,nu) * invsqrtover(nu,mu)
+        enddo 
+      enddo
+    enddo
+
+!!   For debugging
+!    do jband = 1, number_of_bands_in_manifold_local
+!      do mu  = 1, number_of_orbitals_to_project
+!        write(6,'(a,2i5,2f12.5)')' jband, mu, coeffshat = ',     &
+! &        jband, mu, coeffshatphi(jband,mu)
+!      enddo
+!    enddo
+!!   End debugging
+
+    call de_alloc( aux,                                   &
+ &                 name='aux',                            & 
+ &                 routine='define_invsqover_phitilde' )
+
+
+  endsubroutine define_coeffshatphi
+
+  subroutine compute_tight_binding_param( ispin, index_manifold, & 
+ &                                        kvector, epsilon )
+
+    integer,     intent(in)  :: ispin
+    integer,     intent(in)  :: index_manifold
+    real(dp),    intent(in)  :: kvector(3)
+    real(dp),    intent(in)  :: epsilon(no_u)  ! Eigenvalues of the Hamiltonian
+
+    real(dp), pointer, save  :: tight_binding_param_k(:,:,:) 
+    complex(dp), pointer     :: aux(:) 
+    complex(dp), pointer     :: lpsi(:)
+
+
+    integer  :: BNode         !
+    integer  :: BTest         !
+    integer  :: iuo
+    integer  :: io
+    integer  :: juo
+    integer  :: ie 
+    integer  :: iie 
+    integer  :: ind
+    integer  :: jbandini 
+    real(dp) :: ckxij
+    real(dp) :: skxij
+    real(dp) :: kxij
+    real(dp) :: qp1
+    real(dp) :: qp2
+    real(dp) :: eqp1
+    real(dp) :: eqp2
+    real(dp) :: ee
+
+    integer  :: number_of_orbitals_to_project
+    integer  :: number_of_bands_in_manifold_local
+
+
+    number_of_orbitals_to_project =                                  &
+ &        manifold_bands_lowdin(index_manifold)%number_of_bands
+    number_of_bands_in_manifold_local =                              &
+ &        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
+
+
+    nullify( aux )
+    call re_alloc(aux, 1, 5*number_of_orbitals_to_project,       &
+ &                name='aux', routine='diagonalizeHk', &
+ &                shrink=.false., copy=.false.)
+    aux = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+!    nullify( lpsi )
+!    call re_alloc(lpsi, 1, number_of_orbitals_to_project,                 &
+! &                name='lpsi', routine='diagonalizeHk',                   &
+! &                shrink=.false., copy=.false.)
+!    lpsi = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+    nullify( tight_binding_param_k )
+    call re_alloc( tight_binding_param_k,                                 &
+ &                 1, 2,                                                  &
+ &                 1, number_of_orbitals_to_project,                      &
+ &                 1, number_of_orbitals_to_project,                      &
+ &                 name='tight_binding_param_k',                          &
+ &                 routine='compute_tight_binding_param',                 &
+ &                 shrink=.false., copy=.false. )
+    tight_binding_param_k = 0.0_dp
+
+    jbandini = manifold_bands_lowdin(index_manifold)%initial_band
+ 
+!   Add contribution to tight-binding-parameters of unit-cell orbitals
+!   WARNING: Dk and Ek may be EQUIVALENCE'd to Haux and Saux
+!$OMP parallel do default(shared), collapse(2)
+!$OMP&private(iuo,juo)
+    do iuo = 1, number_of_orbitals_to_project
+      do juo = 1, number_of_orbitals_to_project
+        tight_binding_param_k(1,juo,iuo) = 0.0_dp
+        tight_binding_param_k(2,juo,iuo) = 0.0_dp
+      enddo
+    enddo
+!$OMP end parallel do
+
+! Global operation to form new density matrix
+    BNode = 0
+    iie = 0
+    do ie = 1, number_of_bands_in_manifold_local
+      if ( Node == BNode ) iie = iie + 1
+
+      if ( Node == BNode ) then
+         lpsi => coeffshatphi(iie,:)
+      else
+         lpsi => aux(:)
+      endif
+#ifdef MPI
+      call MPI_Bcast( lpsi(1),number_of_orbitals_to_project,          &
+     &                MPI_double_complex,                             &
+     &                BNode,MPI_Comm_World,MPIerror )
+#endif
+
+      ee = epsilon(jbandini+ie-1)
+
+!$OMP parallel do default(shared),
+!$OMP&private(iuo,ind,juo,qp1,qp2,eqp1,eqp2)
+      do iuo = 1, number_of_orbitals_to_project
+
+        qp1 = ee * realpart(lpsi(iuo))
+        qp2 = ee * imagpart(lpsi(iuo))
+
+
+        do juo = 1, number_of_orbitals_to_project
+          eqp1 = qp1 * realpart(lpsi(juo)) + qp2 * imagpart(lpsi(juo))
+          eqp2 = qp1 * imagpart(lpsi(juo)) - qp2 * realpart(lpsi(juo))
+
+          tight_binding_param_k(1,juo,iuo) = tight_binding_param_k(1,juo,iuo) + eqp1
+          tight_binding_param_k(2,juo,iuo) = tight_binding_param_k(2,juo,iuo) + eqp2
+!!     For debugging
+!        write(6,'(a,3i5,1f12.5,i5,6f12.5)')                             &
+! &         ' k, index_manifold, band_local, band_global, eigen = ',       &
+! &           index_manifold, ie, jbandini+ie-1, ee*13.6058_dp, iuo,       &
+! &           realpart(lpsi(iuo)), imagpart(lpsi(iuo)), realpart(lpsi(juo)), imagpart(lpsi(juo)), &
+! &           tight_binding_param_k(1,juo,iuo), tight_binding_param_k(2,juo,iuo)
+!!     End debugging
+        enddo
+      enddo
+!$OMP end parallel do
+      BTest = ie/BlockSize
+      if (BTest*BlockSize.eq.ie) then
+        BNode = BNode + 1
+        if (BNode .gt. Nodes-1) BNode = 0
+      endif
+    enddo
+
+!$OMP parallel do default(shared),
+!$OMP&private(iuo,ind,juo,kxij,ckxij,skxij)
+    do io = 1, number_of_orbitals_to_project
+      iuo = manifold_bands_lowdin(index_manifold)%orbital_indices(io)
+      
+      do ind = listhptr(iuo) + 1, listhptr(iuo) + numh(iuo)
+        juo = indxuo(listh(ind))
+        if( .not. manifold_bands_lowdin(index_manifold)%orbexcluded(juo) ) then
+           juo = manifold_bands_lowdin(index_manifold)%orb_in_manifold(juo)
+           kxij = kvector(1) * xijo(1,ind) +  &
+ &                kvector(2) * xijo(2,ind) +  &
+ &                kvector(3) * xijo(3,ind)
+           kxij = -1.0_dp * kxij
+           ckxij = cos(kxij)
+           skxij = sin(kxij)
+           tight_binding_param(index_manifold,ind,ispin) =      &
+ &              tight_binding_param(index_manifold,ind,ispin) + &
+ &              tight_binding_param_k(1,juo,io)*ckxij -        &
+ &              tight_binding_param_k(2,juo,io)*skxij
+!!        For debugging      
+!           write(6,'(a,5i7,8f12.5)')   &
+! &          'index_manifold, orbital_manifold, orbital_global',           &
+! &           index_manifold, io, iuo, ind, juo, xijo(:,ind),              &
+! &           tight_binding_param(index_manifold,ind,ispin),               &
+! &           tight_binding_param_k(1,juo,io), ckxij,                     &
+! &           tight_binding_param_k(2,juo,io), skxij
+!!        End debugging      
+        endif
+      enddo
+    enddo
+!$OMP end parallel do
+
+    call de_alloc( aux,                                   &
+ &                 name='aux',                            & 
+ &                 routine='compute_tight_binding_param' )
+
+!    call de_alloc( lpsi,                                   &
+! &                 name='lpsi',                            & 
+! &                 routine='compute_tight_binding_param' )
+
+    call de_alloc( tight_binding_param_k,                  &
+ &                 name='tight_binding_param_k',           & 
+ &                 routine='compute_tight_binding_param' )
+
+
+  end subroutine compute_tight_binding_param
+
+  subroutine write_tight_binding_param( ispin, numkpoints )
+
+    integer,     intent(in)  :: ispin
+    integer,     intent(in)  :: numkpoints
+
+    character(len=30) :: sname 
+    character(len=41) :: filenameparam ! Name of the file where the 
+                                       !   tight-binding parameters  
+                                       !   will be written
+    integer           :: fileunitparam ! Logical unit of the file
+
+    integer           :: io
+    integer           :: iuo
+    integer           :: j
+    integer           :: juo
+    integer           :: ind
+    integer           :: jo
+    integer           :: index_manifold
+    integer           :: number_of_orbitals_to_project
+    integer      :: eof
+
+    external     :: io_assign ! Assign a logical unit
+    external     :: io_close  ! Close a logical unit
+
+    if (Node.eq.0) then
+      sname = fdf_string('SystemLabel','siesta')
+    endif
+
+    do index_manifold = 1, n_lowdin_manifolds
+      number_of_orbitals_to_project =                              &
+ &        manifold_bands_lowdin(index_manifold)%number_of_bands
+
+!     For debugging
+      write(filenameparam,"(a,'.',i1.1,'.tb.param')") &
+ &      trim(sname), index_manifold
+!      write(6,*)filenameparam
+!     End debugging
+
+      call io_assign(fileunitparam)
+    
+      open( unit=fileunitparam, err=199, file=filenameparam,       &
+ &          status='replace', form='formatted', iostat=eof )
+
+      do io = 1, number_of_orbitals_to_project
+        iuo = manifold_bands_lowdin(index_manifold)%orbital_indices(io)
+        do ind = listhptr(iuo) + 1, listhptr(iuo) + numh(iuo)
+          juo = indxuo(listh(ind))
+          if( .not. manifold_bands_lowdin(index_manifold)%orbexcluded(juo) ) then
+            write(fileunitparam,'(4i7,4f15.7)') io, iuo,                      & 
+ &           manifold_bands_lowdin(index_manifold)%orb_in_manifold(juo), juo, &
+ &           xijo(:,ind),                                                     &
+ &           tight_binding_param(index_manifold,ind,ispin)/numkpoints/2.0_dp
+          endif
+        enddo
+      enddo
+      call io_close(fileunitparam)
+
+    enddo 
+    
+    return
+
+199 call die('write_tight_binding_param: Error creating output parameter files')
+     
+  end subroutine write_tight_binding_param
+
+
+endmodule m_lowdin

@@ -1742,6 +1742,13 @@ subroutine read_options( na, ns, nspin )
   nobdown    = fdf_get( 'Siesta2Wannier90.NumberOfBandsDown', 0)
   nob        = fdf_get( 'Siesta2Wannier90.NumberOfBands',     0)
 
+  !
+  !   Lowdin orthonormalization -related flags
+  !
+
+  n_lowdin_manifolds = fdf_get( 'NumberOfBandManifoldsForLowdin', 0 )
+  if( n_lowdin_manifolds .ne. 0 ) lowdin_processing = .true.
+
   if (ionode) then
      write(6,'(2a)') 'redata: ', repeat('*', 71)
   endif

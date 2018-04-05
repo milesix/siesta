@@ -31,7 +31,7 @@
 
       real(dp), public, pointer :: xijo(:,:)=>null()
 
-      real(dp), public, pointer :: tight_binding_param(:,:)=>null()
+      real(dp), public, pointer :: tight_binding_param(:,:,:)=>null()
 
       ! Pieces of H that do not depend on the SCF density matrix
       ! Formerly there was a single array H0 for this

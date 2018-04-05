@@ -58,6 +58,7 @@
       use m_partial_charges, only: want_partial_charges
       use m_iodm_old,        only: read_spmatrix
       use m_siesta2wannier90, only: siesta2wannier90
+      use m_lowdin,          only: read_lowdin_specs
 
 #ifdef MPI
       use m_mpi_utils, only: globalize_sum
@@ -491,6 +492,12 @@
                     ! as no forces are calculated
                     ! todo: make all these optional
       endif
+
+C    
+C     Call the Lowdin orthonormalization here, 
+C
+      if( lowdin_processing ) call read_lowdin_specs()
+
 C    
 C     Call the wannier90 interface here, as local_DOS destroys the DM...
 C
