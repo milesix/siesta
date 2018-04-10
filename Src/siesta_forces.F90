@@ -62,11 +62,7 @@ contains
     use m_save_density_matrix, only: save_density_matrix
     use m_iodm_old,    only: write_spmatrix
 
-    use atomlist,      only: no_s, no_l, no_u, qtot, indxuo
-    use m_spin,        only: nspin
-    use m_gamma
-    use Kpoint_grid,    only: nkpnt, kpoint, kweight
-    use m_eo
+    use atomlist,      only: no_u
 
     use m_pexsi_solver,        only: prevDmax
     use write_subs,            only: siesta_write_forces
@@ -124,7 +120,6 @@ contains
 
     ! For initwf
     integer :: istpp
-    real(dp) :: EF7
 
 #ifdef SIESTA__FLOOK
     ! len=24 from m_mixing.F90
@@ -547,9 +542,7 @@ contains
     ! consequent TDDFT run.
     if ( writetdwf ) then
        istpp = 0
-       call initwf(no_s, nspin, nspin, no_l, maxnh, no_u, qtot, &
-            gamma, indxuo, nkpnt, kpoint, kweight, &
-            no_u, EF7, istpp,totime)
+       call initwf(istpp,totime)
     end if
     
 #ifdef TRANSIESTA

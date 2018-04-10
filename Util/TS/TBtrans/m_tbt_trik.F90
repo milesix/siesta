@@ -39,12 +39,11 @@ module m_tbt_trik
 
   use m_verbosity, only : verbosity
   use m_tbt_hs, only: tTSHS, Volt, IsVolt
-  use m_tbt_regions, only : sp_uc, sp_dev_sc, r_aDev
+  use m_tbt_regions, only : sp_uc, sp_dev_sc
 #ifdef NOT_WORKING
   use m_tbt_regions, only : r_oEl
 #endif
   use m_tbt_regions, only : r_oDev, r_oEl_alone, r_oElpD
-  use m_tbt_regions, only : r_aBuf
   use m_tbt_tri_init, only : ElTri, DevTri
 
   implicit none
@@ -119,7 +118,9 @@ contains
     use m_tbt_proj, only : proj_Mt_mix, proj_cdf_save
     use m_tbt_proj, only : proj_cdf_save_J
 
-    use m_tbt_dH, only : read_next_dH, clean_dH, dH
+    use m_tbt_delta, only : read_delta_next, clean_delta
+    use m_tbt_dH, only : use_dH, dH
+    use m_tbt_dSE, only : use_dSE, dSE
 #endif
 
     use m_tbt_sparse_helper, only : create_region_HS
@@ -589,8 +590,7 @@ contains
           ! We need _all_ diagonal blocks of the spectral function
           do iEl = 1 , N_Elec
              do io = 1 , Elecs(iEl)%o_inD%n
-                jEl = which_part(Gf_tri, &
-                     rgn_pivot(r_oDev,Elecs(iEl)%o_inD%r(io)) )
+                jEl = which_part(Gf_tri, pvt%r(Elecs(iEl)%o_inD%r(io)))
                 A_parts(jEl) = .true.
              end do
           end do
@@ -601,8 +601,7 @@ contains
           ! for all other electrodes than the first one
           do iEl = 2 , N_Elec
              do io = 1 , Elecs(iEl)%o_inD%n
-                jEl = which_part(Gf_tri, &
-                     rgn_pivot(r_oDev,Elecs(iEl)%o_inD%r(io)) )
+                jEl = which_part(Gf_tri, pvt%r(Elecs(iEl)%o_inD%r(io)))
                 A_parts(jEl) = .true.
              end do
           end do
@@ -862,8 +861,13 @@ contains
           call timer('read-GS',2)
 
 #ifdef NCDF_4
-          ! prepare dH
-          call read_next_dH(no,bkpt,nE)
+          ! prepare delta terms
+          if ( use_dH ) then
+             call read_delta_next('dH', dH, no,bkpt,nE)
+          end if
+          if ( use_dSE ) then
+             call read_delta_next('dSE', dSE, no,bkpt,nE)
+          end if
 #endif
 
           call timer('SE-dwn',1)
@@ -1004,7 +1008,7 @@ contains
                    if ( iEl == N_Elec .and. .not. T_all ) cycle
                    
                    call invert_BiasTriMat_rgn(GF_tri,zwork_tri, &
-                        r_oDev, Elecs(iEl)%o_inD,only_diag=.true.)
+                        r_oDev, pvt, Elecs(iEl)%o_inD,only_diag=.true.)
                    
                    call GF_T(zwork_tri,Elecs(iEl), &
                         T(N_Elec+1,iEl), T(iEl,iEl), &
@@ -1031,7 +1035,7 @@ contains
               ! ******************
               if ( .not. cE%fake ) then
                  call invert_BiasTriMat_rgn(GF_tri,zwork_tri, &
-                      r_oDev, Elecs(iEl)%o_inD)
+                      r_oDev, pvt, Elecs(iEl)%o_inD)
  
                  if ( 'T-sum-out' .in. save_DATA ) then
                     call Gf_Gamma(zwork_tri,Elecs(iEl),T(N_Elec+1,iEl))
@@ -1056,11 +1060,11 @@ contains
               ! *****************
               if ( .not. cE%fake ) then
                  if ( 'T-sum-out' .in. save_DATA ) then
-                    call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, &
+                    call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, pvt, &
                          Elecs(iEl), A_parts, &
                          TrGfG = T(N_Elec+1,iEl))
                  else
-                    call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, &
+                    call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, pvt, &
                          Elecs(iEl), A_parts)
                  end if
               end if
@@ -1087,10 +1091,8 @@ contains
                         cE,zwork_tri,r_oDev,orb_J,pvt)
 #endif
                    if ( dH%lvl > 0 ) then
-                      if ( 'orb-current-dH' .in. save_DATA ) then
-                         call orb_current_add_dH(dH%dH, TSHS%sc_off, &
-                              kpt, zwork_tri, r_oDev, orb_J, pvt)
-                      end if
+                      call orb_current_add_dH(dH%d, TSHS%sc_off, &
+                           kpt, zwork_tri, r_oDev, orb_J, pvt)
                    end if
                 end if
 #endif
@@ -1151,8 +1153,6 @@ contains
           end if
 
 
-          call timer('DOS-Gf-A-T',2)
-
           ! Save the current gathered data
 #ifdef NCDF_4
           call state_cdf_save(TBTcdf, ikpt, nE, N_Elec, Elecs, &
@@ -1162,6 +1162,8 @@ contains
                N_eigen, Teig, &
                save_DATA )
 #endif
+
+          call timer('DOS-Gf-A-T',2)
 
           end if ! .not. proj-only
           end if ! .not. Sigma-only
@@ -1221,7 +1223,7 @@ contains
 
                if ( ts_A_method == TS_BTD_A_COLUMN ) then
                 call invert_BiasTriMat_rgn(GF_tri,zwork_tri, &
-                     r_oDev, El_p%o_inD)
+                     r_oDev, pvt, El_p%o_inD)
 
                 if ( 'proj-T-sum-out' .in. save_DATA ) then
                    call Gf_Gamma(zwork_tri,El_p, &
@@ -1229,11 +1231,11 @@ contains
                 end if
                else
                 if ( 'proj-T-sum-out' .in. save_DATA ) then
-                   call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, &
+                   call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, pvt, &
                         El_p, proj_parts, &
                         TrGfG = bTk(size(proj_T(ipt)%R)+1,ipt) )
                 else
-                   call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, &
+                   call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, pvt, &
                         El_p, proj_parts)
                 end if
                end if
@@ -1248,7 +1250,7 @@ contains
 
                if ( ts_A_method == TS_BTD_A_COLUMN ) then
                 call invert_BiasTriMat_rgn(GF_tri,zwork_tri, &
-                     r_oDev, Elecs(iEl)%o_inD)
+                     r_oDev, pvt, Elecs(iEl)%o_inD)
 
                 if ( 'proj-T-sum-out' .in. save_DATA ) then
                    call Gf_Gamma(zwork_tri,Elecs(iEl), &
@@ -1256,11 +1258,11 @@ contains
                 end if
                else
                 if ( 'T-sum-out' .in. save_DATA ) then
-                   call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, &
+                   call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, pvt, &
                         Elecs(iEl), proj_parts, &
                         TrGfG = bTk(1+size(proj_T(ipt)%R),ipt))
                 else
-                   call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, &
+                   call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, pvt, &
                         Elecs(iEl), proj_parts)
                 end if
                end if
@@ -1294,10 +1296,8 @@ contains
                        cE,zwork_tri,r_oDev,orb_J,pvt)
 #endif
                   if ( dH%lvl > 0 ) then
-                     if ( 'orb-current-dH' .in. save_DATA ) then
-                        call orb_current_add_dH(dH%dH, TSHS%sc_off, &
-                             kpt, zwork_tri, r_oDev, orb_J, pvt)
-                     end if
+                     call orb_current_add_dH(dH%d, TSHS%sc_off, &
+                          kpt, zwork_tri, r_oDev, orb_J, pvt)
                   end if
                      
                   ! We need to save it immediately, we
@@ -1372,13 +1372,14 @@ contains
 
           end do ! projections loop
 
-          call timer('T-proj',2)
 
           ! Save the projections
           call proj_cdf_save(PROJcdf,N_Elec,Elecs, &
                ikpt,nE,N_proj_T,proj_T, &
                pDOS, bTk, N_eigen, bTkeig, save_DATA )
 
+          call timer('T-proj',2)
+          
           end if
 #endif
 
@@ -1458,7 +1459,8 @@ contains
        deallocate(proj_parts)
     end if
 
-    call clean_dH( )
+    call clean_delta( dH )
+    call clean_delta( dSE )
 
     if ( N_proj_ME > 0 ) then
        deallocate(El_p%Sigma)
@@ -1551,7 +1553,9 @@ contains
     use m_tbt_tri_scat, only : insert_Self_Energy_Dev
     use intrinsic_missing, only : SFIND
 #ifdef NCDF_4
-    use m_tbt_dH, only : dH, add_zdH_TriMat
+    use m_tbt_delta, only : add_zdelta_TriMat
+    use m_tbt_dH, only : dH
+    use m_tbt_dSE, only : dSE
 #endif
 
     ! the current energy point
@@ -1628,7 +1632,11 @@ contains
 #ifdef NCDF_4
     if ( dH%lvl > 0 ) then
        ! Add dH
-       call add_zdH_TriMat(dH%dH, Gfinv_tri, r, sc_off, kpt)
+       call add_zdelta_TriMat(dH%d, Gfinv_tri, r, pvt, sc_off, kpt)
+    end if
+    if ( dSE%lvl > 0 ) then
+       ! Add dSE
+       call add_zdelta_TriMat(dSE%d, Gfinv_tri, r, pvt, sc_off, kpt)
     end if
 #endif
 
@@ -1651,7 +1659,7 @@ contains
   ! this can be reinstantiated.
   ! However, then we are talking about more
   ! than 2,000,000 elements...
-  subroutine prep_Gfinv_algo(dev_tri,sp,r,loop_dev)
+  subroutine prep_Gfinv_algo(dev_tri,sp,r,pvt,loop_dev)
 
     use class_Sparsity
     use class_zTriMat
@@ -1659,7 +1667,7 @@ contains
 
     type(zTriMat), intent(inout) :: dev_tri
     type(Sparsity), intent(inout) :: sp
-    type(tRgn), intent(in) :: r
+    type(tRgn), intent(in) :: r, pvt
     logical, intent(out) :: loop_dev
 
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
@@ -1711,8 +1719,8 @@ contains
     t_s = tt
 #endif
     do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
-       
-       iu = rgn_pivot(r,l_col(ind))
+
+       iu = pvt%r(l_col(ind))
        ! Important to check this as we cannot ensure
        ! the entire sparsity pattern in this
        ! tri-diagonal matrix
@@ -1735,7 +1743,8 @@ contains
   end subroutine prep_Gfinv_algo
 #endif
 
-  subroutine downfold_SE(cE, El, spH, spS,r,np,p, sc_off, kpt, nwork,work)
+  subroutine downfold_SE(cE, El, spH, spS, r, &
+       np, p, sc_off, kpt, nwork, work)
 
     use class_Sparsity
     use class_zSpData1D
@@ -1891,7 +1900,8 @@ contains
 
 #ifdef NOT_WORKING
 
-  subroutine downfold_SE_life(cE, El, spH, spS,r,np,p,life,nwork,work)
+  subroutine downfold_SE_life(cE, El, spH, spS, r, &
+       np, p, life, nwork, work)
 
     use class_Sparsity
     use class_zSpData1D
@@ -2126,7 +2136,9 @@ contains
     use intrinsic_missing, only : SFIND
 
 #ifdef NCDF_4
-    use m_tbt_dH, only : dH, add_zdH_Mat
+    use m_tbt_delta, only : add_zdelta_Mat
+    use m_tbt_dH, only : dH
+    use m_tbt_dSE, only : dSE
 #endif
 
     ! the current energy point
@@ -2187,7 +2199,11 @@ contains
 #ifdef NCDF_4
     if ( dH%lvl > 0 ) then
        ! Add dH
-       call add_zdH_Mat(dH%dH, r, off1,n1,off2,n2, M, sc_off, kpt)
+       call add_zdelta_Mat(dH%d, r, off1,n1,off2,n2, M, sc_off, kpt)
+    end if
+    if ( dSE%lvl > 0 ) then
+       ! Add dSE
+       call add_zdelta_Mat(dSE%d, r, off1,n1,off2,n2, M, sc_off, kpt)
     end if
 #endif
 

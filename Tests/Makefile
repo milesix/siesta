@@ -77,10 +77,9 @@ tests = ag anneal-cont ar2_vdw \
 	sinw sinw_2 \
 	var_cell \
 	wannier \
-	zmatrix TDDFT_h2o\
 	bn_linres\
         h2_linres\
-        C60_linres
+        C60_linres\
 
 # These tests are extremely time consuming and
 # should only be runned sometimes
