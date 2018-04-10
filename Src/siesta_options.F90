@@ -102,9 +102,7 @@ MODULE siesta_options
   logical :: writic        ! Write the initial atomic ccordinates?
   logical :: varcel        ! Change unit cell during relaxation or dynamics?
   logical :: do_pdos       ! Compute the projected density of states?
-#ifdef TRANSIESTA
   logical :: write_tshs_history ! Write the MD track of Hamiltonian and overlap matrices in transiesta format
-#endif
   logical :: write_hs_history ! Write the MD track of Hamiltonian and overlap matrices
   logical :: writedm       ! Write file with density matrix?
   logical :: write_dm_at_end_of_cycle ! Write DM at end of SCF cycle? (converged or not)
@@ -231,7 +229,7 @@ MODULE siesta_options
   real(dp) :: tempinit      ! Initial ionic temperature read in redata
   real(dp) :: threshold     ! Min. size of arrays printed by alloc_report
   real(dp) :: tp            ! Target pressure. Read in redata. Used in dynamics routines
-  real(dp) :: ts            ! Total spin read from redata but not used
+  real(dp) :: total_spin    ! Total spin used in spin-polarized calculations
   real(dp) :: tt            ! Target temperature. Read in redata. Used in dynamics rout.
   real(dp) :: wmix          ! Mixing weight for DM in SCF iteration
   real(dp) :: wmixkick       ! Mixing weight for DM in special 'kick' SCF steps

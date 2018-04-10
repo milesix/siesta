@@ -253,7 +253,6 @@ contains
     integer :: i, j
     real(dp) :: rtmp
     logical :: err, bool
-    character(len=200) :: chars
 
     if ( N_mu == 0 ) call die('read_tbt_elecs: error in programming')
 
@@ -274,8 +273,7 @@ contains
        Elecs(2)%ID = 2
        ! if they do-not exist, the user will be told
        if ( IONode ) then
-          chars = '(''tbtrans: ***'',a)'
-          write(*,chars) 'No electrode names were found, &
+          write(*,'(/,''tbt: *** '',a)') 'No electrode names were found, &
                &default Left/Right are expected'
        end if
     end if
@@ -599,9 +597,48 @@ contains
        save_DATA = save_DATA // ('orb-current'.kv.1)
        only_T_Gf = .false.
     else if ( ltmp .and. IONode ) then
-       write(*,'(a,/,a)')'WARNING: Will not calculate the orbital currents, &
+       write(*,'(2(/,a))')'WARNING: Will not calculate the orbital currents, &
             &the spectral function needs to be calculated for this to &
             &apply.','Set TBT.DOS.A T to calculate orbital currents.'
+    end if
+
+    ! Options for COOP and COHP curves.
+    ! These are orbital (energy) populations that can be used to determine the
+    ! bonding nature of the material.
+    ltmp = fdf_get('TBT.COOP.Gf', .false.)
+    if ( ltmp .and. ('DOS-Gf'.in.save_DATA)) then
+       save_DATA = save_DATA // ('COOP-Gf'.kv.1)
+    else if ( ltmp .and. IONode ) then
+       write(*,'(2(/,a))')'WARNING: Will not calculate the COOP (Gf) curve, &
+            &the Green function DOS needs to be calculated for this to &
+            &apply.','Set TBT.DOS.Gf T to calculate COOP (Gf) curves.'
+    end if
+
+    ltmp = fdf_get('TBT.COOP.A', .false. )
+    if ( ltmp .and. ('DOS-A'.in.save_DATA)) then
+       save_DATA = save_DATA // ('COOP-A'.kv.1)
+    else if ( ltmp .and. IONode ) then
+       write(*,'(2(/,a))')'WARNING: Will not calculate the COOP (A) curve, &
+            &the Green function DOS needs to be calculated for this to &
+            &apply.','Set TBT.DOS.A T to calculate COOP (A) curves.'
+    end if
+
+    ltmp = fdf_get('TBT.COHP.Gf', .false. )
+    if ( ltmp .and. ('DOS-Gf'.in.save_DATA)) then
+       save_DATA = save_DATA // ('COHP-Gf'.kv.1)
+    else if ( ltmp .and. IONode ) then
+       write(*,'(2(/,a))')'WARNING: Will not calculate the COHP (Gf) curve, &
+            &the Green function DOS needs to be calculated for this to &
+            &apply.','Set TBT.DOS.Gf T to calculate COHP (Gf) curves.'
+    end if
+
+    ltmp = fdf_get('TBT.COHP.A', .false. )
+    if ( ltmp .and. ('DOS-A'.in.save_DATA)) then
+       save_DATA = save_DATA // ('COHP-A'.kv.1)
+    else if ( ltmp .and. IONode ) then
+       write(*,'(2(/,a))')'WARNING: Will not calculate the COHP (A) curve, &
+            &the Green function DOS needs to be calculated for this to &
+            &apply.','Set TBT.DOS.A T to calculate COHP (A) curves.'
     end if
 
     ltmp = fdf_get('TBT.T.Out',N_Elec == 1)
@@ -644,6 +681,7 @@ contains
     call init_dH_options( no_u )
     call init_dSE_options( )
 
+    
     ! read in contour options
     call read_contour_options( N_Elec, Elecs, N_mu, mus )
 
@@ -711,6 +749,12 @@ contains
     end if
     write(*,f1) 'Saving bond currents (orb-orb)',('orb-current'.in.save_DATA)
 
+    ! COOP/COHP curves
+    write(*,f1) 'Saving COOP from Green function',('COOP-Gf'.in.save_DATA)
+    write(*,f1) 'Saving COOP from spectral functions',('COOP-A'.in.save_DATA)
+    write(*,f1) 'Saving COHP from Green function',('COHP-Gf'.in.save_DATA)
+    write(*,f1) 'Saving COHP from spectral functions',('COHP-A'.in.save_DATA)
+
     write(*,f12) 'Calc. # transmission eigenvalues',N_eigen
     write(*,f1) 'Calc. T between all electrodes',('T-all'.in.save_DATA)
     write(*,f1) 'Calc. total T out of electrodes',('T-sum-out'.in.save_DATA)
@@ -775,25 +819,30 @@ contains
 
   subroutine print_tbt_warnings( Gamma )
 
-    use fdf, only: fdf_get
+    use fdf, only: fdf_get, fdf_defined
     use units, only: eV
     use parallel, only: IONode
 
     use m_tbt_save, only: save_parallel
 
+    use m_tbt_dH, only: print_dH_warnings
     use m_tbt_hs, only: Volt
 
     ! Whether the user requests a Gamma calculation
     logical, intent(in) :: Gamma
 
     integer :: i
-    logical :: ltmp, rem_DOS_Elecs, rem_T_Gf
+    logical :: ltmp, rem_DOS_Elecs, rem_T_Gf, has
 
     ! Removal of keys
     rem_DOS_Elecs = 'DOS-Elecs' .in. save_DATA
-    if ( any(Elecs(:)%out_of_core) ) then
-       call delete(save_DATA,'DOS-Elecs')
+    if ( rem_DOS_Elecs ) then
+       if ( any(Elecs(:)%out_of_core) ) &
+            call delete(save_DATA,'DOS-Elecs')
+       if ( 'Sigma-only' .in. save_DATA ) &
+            call delete(save_DATA,'DOS-Elecs')
     end if
+    
     rem_T_Gf = 'T-Gf' .in. save_DATA
     if ( N_Elec > 3 ) then
        call delete(save_DATA,'T-Gf')
@@ -810,14 +859,25 @@ contains
     end if
 
     if ( .not. Gamma ) then
+       ltmp = .not. fdf_get('SpinSpiral',.false.)
+       ltmp = fdf_get('TBT.Symmetry.TimeReversal',ltmp)
        if ( ('orb-current' .in.save_DATA) ) then
-          ltmp = .not. fdf_get('SpinSpiral',.false.)
-          ltmp = fdf_get('TBT.Symmetry.TimeReversal',ltmp)
           if ( IONode .and. ltmp ) then
              write(*,'(a,/,a)') 'WARNING: k-averaging orbital currents with &
                   &time-reversal symmetry will not reproduce','the correct &
                   &orbital current. Set TBT.Symmetry.TimeReversal F'
           end if
+       end if
+
+       ! Also for COOP analysis
+       has = 'COOP-Gf' .in. save_DATA
+       has = has .or. ('COOP-A' .in. save_DATA)
+       has = has .or. ('COHP-Gf' .in. save_DATA)
+       has = has .or. ('COHP-A' .in. save_DATA)
+       if ( IONode .and. ltmp .and. has) then
+          write(*,'(a,/,a)') 'WARNING: k-averaging COOP/COHP with &
+               &time-reversal symmetry will not reproduce','the correct &
+               &populations. Set TBT.Symmetry.TimeReversal F'
        end if
     end if
 
@@ -844,20 +904,22 @@ contains
        call die('Chemical potentials must not introduce consistent Ef shift to the system.')
     end if
 
-    if ( any(Elecs(:)%out_of_core) ) then
-       if ( rem_DOS_Elecs ) then
+    if ( rem_DOS_Elecs ) then
+       if ( any(Elecs(:)%out_of_core) ) then
           write(*,'(a)')' Disabling electrode DOS calculation, only &
                &enabled for in-core self-energy calculations.'
        end if
+       if ( 'Sigma-only' .in. save_DATA ) then
+          write(*,'(a)')' Disabling electrode DOS calculation, only &
+               &enabled when calculating transmission (not TBT.SelfEnergy.Only).'
+       end if
     end if
-    
-    write(*,'(a)')' ** Use TBT.Atoms.Device for faster execution'
     
     if ( rem_T_Gf .and. N_Elec > 3 ) then
        write(*,'(a)')' ** Disabling transport calculation using diagonal, &
             &not possible with N_elec > 3.'
     end if
-    
+
 #ifdef MPI
 #ifdef NCDF_PARALLEL
     if ( .not. save_parallel ) then
@@ -866,6 +928,8 @@ contains
     end if
 #endif
 #endif
+
+    call print_dH_warnings( save_DATA )
 
     write(*,'(3a,/)') repeat('*',24),' End: TBT CHECKS AND WARNINGS ',repeat('*',26)
 

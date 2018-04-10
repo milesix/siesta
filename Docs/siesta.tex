@@ -22,6 +22,10 @@
 % as FDF.Flag, but indexed as \index{FDF!Flag}. If you reference
 % a flag you must use the exclamation mark as used in the fdfentry
 % environment.
+% If you want to reference a fdf flag with an argument do it like
+% this:
+%   \fdf{Label:Argument}
+% in case the index exists for this.
 %
 % Two very used fdf-flags are \fdftrue and \fdffalse which
 % are short-hands for \fdf*{true} and \fdf*{false}.
@@ -147,7 +151,7 @@
 
 
 \section*{Contributors to \siesta}
-\addcontentsline{toc}{section}{Contributors to \siesta}
+\addcontentsline{toc}{section}{Contributors to \texorpdfstring{\siesta}{Siesta}}
 
 \siesta\ is Copyright \copyright\  1996-2017 by The Siesta Group:
 \vspace{0.5cm}
@@ -198,9 +202,9 @@ Javier Junquera (Univ. de Oviedo and later UAM), and sometime later by
 Julian Gale (then at Imperial College, London). In 2007 Jose M. Cela
 (Barcelona Supercomputing Center, BSC) became a core developer.
 
-The current TranSIESTA module within SIESTA is developed by 
+The current \tsiesta\ module within SIESTA is developed by 
 Nick R. Papior (then at Technical University of Denmark) and Mads Brandbyge. 
-The original TranSIESTA module was developed by
+The original \tsiesta\ module was developed by
 Pablo Ordejon and Jose L. Mozos (then at ICMAB-CSIC), and Mads Brandbyge,
 Kurt Stokbro, and Jeremy Taylor (Technical Univ. of Denmark).
 
@@ -325,7 +329,7 @@ And also (though not all options are compatible):
 \item Geometry relaxation, fixed or variable cell.
 \item Constant-temperature molecular dynamics (Nose thermostat).
 \item Variable cell dynamics (Parrinello-Rahman).
-\item Spin polarized calculations (collinear or not).
+\item Spin polarized calculations (colinear or not).
 \item k-sampling of the Brillouin zone.
 \item Local and orbital-projected density of states.
 \item COOP and COHP curves for chemical bonding analysis.
@@ -345,6 +349,10 @@ The method is based on using non equilibrium Greens functions (NEGF), that are
 constructed using the density functional theory Hamiltonian obtained from a given electron
 density. A new density is computed using the NEGF formalism, which closes the DFT-NEGF
 self consistent cycle.
+
+Starting from version 4.1, \tsiesta\ is an intrinsic part of the
+\siesta\ code. I.e. a separate executable is not necessary
+anymore. See Sec.~\ref{sec:transiesta} for details.
 
 For more details on the formalism, see the main \tsiesta\
 reference cited below. A section has been added to this User's Guide,
@@ -413,7 +421,7 @@ and E. Canadell, Structure and Bonding \textbf{113},
 Extensive review of applications as of summer 2003.
 
 \item
- ``Improvements on non-equilibrium and transport Green function techniques: The next-generation tranSIESTA'',
+ ``Improvements on non-equilibrium and transport Green function techniques: The next-generation TranSIESTA'',
  Nick Papior, Nicolas Lorente, Thomas Frederiksen, Alberto García and
  Mads Brandbyge, Computer Physics Communications, \textbf{212}, 8--24 (2017).
 
@@ -432,6 +440,7 @@ For more information you can visit the web page
 \url{http://www.uam.es/siesta}.
 
 \section{COMPILATION}
+\label{sec:compilation}
 
 \subsection{The build directory}
 
@@ -629,7 +638,11 @@ socket, one may do:
 If using only 1 thread per MPI core it is advised to compile \siesta\
 without OpenMP. As such it may be advantageous to compile \siesta\ in
 3 variants; OpenMP-only (small systems), MPI-only (medium to large
-systems) and MPI$+$OpenMP (large$+$ systems).
+systems) and MPI$+$OpenMP (large$>$ systems).
+
+The variable \shell{OMP\_PROC\_BIND} may heavily influence the
+performance of the executable! Please perform tests for the
+architecture used.
 
 
 \subsection{Library dependencies}
@@ -839,7 +852,7 @@ libraries
   \index{External library!ELPA}%
   The ELPA\cite{ELPA,ELPA-1} library provides faster diagonalization routines.
 
-  The required version of ELPA \emph{must} be later than 2017.05.
+  The required version of ELPA \emph{must} be 2017.05.003 or later.
   Add these flags to your \file{arch.make} file to enable ELPA
 \begin{shellexample}
   LIBS += -L/opt/elpa/lib -lelpa <>
@@ -1141,20 +1154,23 @@ substitute spaces by \fdf*{:}.
 
   \shell{siesta -out RUN.out}.
 
-\end{fdfoptions}
-Additionally \tsiesta\ accepts these flags:
-\begin{fdfoptions}
+  \option[-electrode|-elec]%
+  \fdfdepend{TS!HS.Save,TS!DE.Save}
+  denote this as an electrode calculation which forces the
+  \sysfile{TSHS} and \sysfile{TSDE} files to be saved.
 
   \option[-V]%
-  specify the bias for the current \tsiesta\ run. 
+  \fdfdepend{TS.Voltage}
+  specify the bias for the current \tsiesta\ run.
 
-  \shell{transiesta -V 0.25:eV} or \shell{transiesta -V "0.25 eV"}
+  \shell{siesta -V 0.25:eV} or \shell{siesta -V "0.25 eV"}
   which sets the applied bias to $0.25\,\mathrm{eV}$.
 
 \end{fdfoptions}
 
 
-\section{THE FLEXIBLE DATA FORMAT (FDF)}\index{FDF}
+\section{THE FLEXIBLE DATA FORMAT (FDF)}
+\index{FDF}
 
 The main input file,\index{input file}
 which is read as the standard input (unit 5),
@@ -2813,28 +2829,28 @@ modified xyz format) which must be described within a
 
   \begin{fdfoptions}
     \option[Bohr|NotScaledCartesianBohr]%
-    \fdfindex*{AtomicCoordinatesFormat!Bohr}
-    \fdfindex*{AtomicCoordinatesFormat!NotScaledCartesianBohr} 
+    \fdfindex*{AtomicCoordinatesFormat:Bohr}
+    \fdfindex*{AtomicCoordinatesFormat:NotScaledCartesianBohr} 
 
     atomic positions are given directly in Bohr, in Cartesian
     coordinates
 
     \option[Ang|NotScaledCartesianAng]%
-    \fdfindex*{AtomicCoordinatesFormat!Ang}
-    \fdfindex*{AtomicCoordinatesFormat!NotScaledCartesianAng}
+    \fdfindex*{AtomicCoordinatesFormat:Ang}
+    \fdfindex*{AtomicCoordinatesFormat:NotScaledCartesianAng}
 
     atomic positions are given directly in \AA ngstr\"om, in Cartesian
     coordinates
 
     \option[ScaledCartesian]%
-    \fdfindex*{AtomicCoordinatesFormat!ScaledCartesian}
+    \fdfindex*{AtomicCoordinatesFormat:ScaledCartesian}
 
     atomic positions are given in Cartesian coordinates, in units of
     the lattice constant
 
     \option[Fractional|ScaledByLatticeVectors]%
-    \fdfindex*{AtomicCoordinatesFormat!Fractional}
-    \fdfindex*{AtomicCoordinatesFormat!ScaledCartesian}
+    \fdfindex*{AtomicCoordinatesFormat:Fractional}
+    \fdfindex*{AtomicCoordinatesFormat:ScaledByLatticeVectors}
 
     atomic positions are given referred to the lattice vectors
 
@@ -3468,7 +3484,7 @@ of States sections.
   fields or spin-orbit interaction.
 
   Note this defaults to \fdffalse\ if \fdf{Spin} is
-  \fdf*{non-collinear}, \fdf*{spin-orbit} or \fdf{Spin!Spiral} is  used.
+  \fdf*{non-colinear}, \fdf*{spin-orbit} or \fdf{Spin!Spiral} is used.
 
 \end{fdflogicalT}
 
@@ -3679,13 +3695,16 @@ are always stored in the file \sysfile{KP}.
   \begin{fdfoptions}
 
     \option[non-polarized]%
+    \fdfindex*{Spin:non-polarized}%
     Perform a calculation with spin-degeneracy (only one component).
 
     \option[polarized]%
-    Perform a calculation with collinear spin (two spin components).
+    \fdfindex*{Spin:polarized}%
+    Perform a calculation with colinear spin (two spin components).
 
-    \option[non-collinear]%
-    Perform a calculation with non-collinear spin (4 spin components),
+    \option[non-colinear]%
+    \fdfindex*{Spin:non-colinear}%
+    Perform a calculation with non-colinear spin (4 spin components),
     up-down and angles.
 
     Refs: T. Oda et al, PRL, \textbf{80}, 3622 (1998); 
@@ -3694,6 +3713,7 @@ are always stored in the file \sysfile{KP}.
     Phys: Cond. Matt \textbf{16}, 5453 (2004).
 
     \option[spin-orbit]%
+    \fdfindex*{Spin:spin-orbit}%
     Perform a calculation with spin-orbit coupling.  This requires the
     pseudopotentials to be relativistic.
 
@@ -3714,18 +3734,18 @@ are always stored in the file \sysfile{KP}.
 
 \begin{fdflogicalF}{Spin!Fix}
   \index{fixed spin state}\index{LSD}
-  \fdfindex{FixSpin}[|Spin!Fix]
+  \fdfindex*{FixSpin}[|Spin!Fix]
 
   If \fdftrue, the calculation is done with a fixed value of the spin
   of the system, defined by variable \fdf{Spin!Total}. This option can
-  only be used for collinear spin polarized calculations.
+  only be used for colinear spin polarized calculations.
 
 \end{fdflogicalF}
 
 \begin{fdfentry}{Spin!Total}[real]<$0$>
   \index{fixed spin state}\index{LSD}
   \index{spin}
-  \fdfindex{TotalSpin}[|Spin!Total]
+  \fdfindex*{TotalSpin}[|Spin!Total]
   
   Value of the imposed total spin polarization of the system (in units
   of the electron spin, 1/2). It is only used if \fdf{Spin!Fix} \fdftrue.
@@ -3818,9 +3838,9 @@ relativistic form and use the non-linear core corrections.
  
 \begin{fdfentry}{Spin!OrbitStrength}[real]<1.0>
 
-  It allows to vary the strength of the spin--orbit interaction from
+  It allows to vary the strength of the spin-orbit interaction from
   zero to any positive value, including the physical value. This flag
-  is only active when SpinOrbit is set to \fdftrue.
+  is only active when \fdf{Spin} is set to \fdf*{spin-orbit}.
 
 \end{fdfentry}
 
@@ -3879,7 +3899,7 @@ The current version introduces several changes:
   \item When achieving convergence, the loop might be exited without a
   further mixing of the DM, thus preserving DM(out) for further
   processing (including the calculation of forces and the analysis of
-  the electronic structure) (see the \fdf{SCF.MixAfterConvergence}
+  the electronic structure) (see the \fdf{SCF.Mix!AfterConvergence}
   option).
 
   \index{Variational character of E\_KS}
@@ -3889,7 +3909,7 @@ The current version introduces several changes:
   convergence as a function of the scf step. In order to gain some
   more data and heuristics on this we have implemented a
   force-monitoring option, activated by setting to \fdftrue\ the
-  variable \fdf{SCF.MonitorForces}. The program will then print the
+  variable \fdf{SCF!MonitorForces}. The program will then print the
   maximum absolute value of the change in forces from one step to the
   next. Other statistics could be implemented.
 
@@ -3902,7 +3922,29 @@ The current version introduces several changes:
 \end{itemize}
 
 
-\subsubsection{Harris functional and basic options}
+\begin{fdfentry}{MinSCFIterations}[integer]<0>
+
+  Minimum number of SCF\index{SCF} iterations per time step. In MD
+  simulations this can with benefit be set to 3.
+  
+\end{fdfentry}
+
+\begin{fdfentry}{MaxSCFIterations}[integer]<1000>
+
+  Maximum number of SCF\index{SCF} iterations per time step. 
+  
+\end{fdfentry}
+
+\begin{fdflogicalT}{SCF!MustConverge}
+
+  Defines the behaviour if convergence is not reached in the maximum
+  number of SCF iterations. The default is to stop on the first SCF
+  convergence failure. Increasing \fdf{MaxSCFIterations} to a large
+  number may be advantageous when this is \fdftrue.
+  
+\end{fdflogicalT}
+
+\subsubsection{Harris functional}
 
 \begin{fdflogicalF}{Harris!Functional}
   
@@ -3923,28 +3965,6 @@ The current version introduces several changes:
     whatever other specification are in the INPUT file.
   \end{itemize}
 
-\end{fdflogicalF}
-
-\begin{fdfentry}{MinSCFIterations}[integer]<0>
-
-  Minimum number of SCF\index{SCF} iterations per time step. In MD
-  simulations this can with benefit be set to 3.
-  
-\end{fdfentry}
-
-\begin{fdfentry}{MaxSCFIterations}[integer]<50>
-
-  Maximum number of SCF\index{SCF} iterations per time step. 
-  
-\end{fdfentry}
-
-\begin{fdflogicalF}{SCF!MustConverge}
-
-  Defines the behaviour if convergence is not reached in the maximum
-  number of SCF iterations. The default is to update the forces, perform
-  an MD or geometry optimisation step and carry on. When set to true
-  the calculation will stop on the first SCF convergence failure.
-  
 \end{fdflogicalF}
 
 
@@ -3978,11 +3998,12 @@ by potentially saving many self-consistency steps in production runs.
     \index{SCF!mixing!Charge}
     Mix the real-space charge density. Note this is an experimental
     feature.
-    
+
   \end{fdfoptions}
   
   \note Real-space charge density does not follow the regular options
-  that adhere to density-matrix or Hamiltonian mixing.
+  that adhere to density-matrix or Hamiltonian mixing. Also it is not
+  recommended to use real-space charge density mixing with \tsiesta.
 
 \end{fdfentry}
 
@@ -4015,7 +4036,7 @@ by potentially saving many self-consistency steps in production runs.
 \end{fdfentry}
 
 \begin{fdflogicalT}{SCF.Mix!First}
-  \fdfindex{DM.MixSCF1}[|see SCF.Mix.First]
+  \fdfindex*{DM.MixSCF1}[|see SCF.Mix.First]
 
   Whether the first SCF should be mixed or it uses the output as input
   in the next SCF step. It is generally advised to set this to true,
@@ -4138,7 +4159,7 @@ $\RRes[i] = \Res[i] - \Res[i-1]$.
 \end{fdfentry}
 
 \begin{fdfentry}{SCF.Mixer!Weight}[real]<0.25>%
-  \fdfindex{DM.MixingWeight}[|see SCF.Mixer.Weight]
+  \fdfindex*{DM!MixingWeight}[|see SCF.Mixer.Weight]
 
   The mixing weight used to mix the quantity.
   In the linear mixing case this refers to
@@ -4151,8 +4172,8 @@ $\RRes[i] = \Res[i] - \Res[i-1]$.
 
 
 \begin{fdfentry}{SCF.Mixer!History}[integer]<2>%
-  \fdfindex{DM.NumberPulay}[|see SCF.Mixer.History]%
-  \fdfindex{DM.NumberBroyden}[|see SCF.Mixer.History]
+  \fdfindex*{DM.NumberPulay}[|see SCF.Mixer.History]%
+  \fdfindex*{DM.NumberBroyden}[|see SCF.Mixer.History]
 
   Number of previous SCF steps used in estimating the following input.
   Increasing this number, typically, increases stability and a number
@@ -4162,7 +4183,7 @@ $\RRes[i] = \Res[i] - \Res[i-1]$.
 
 
 \begin{fdfentry}{SCF.Mixer!Kick}[integer]<0>%
-  \fdfindex{DM.NumberKick}[|see SCF.Mixer.Kick]
+  \fdfindex*{DM.NumberKick}[|see SCF.Mixer.Kick]
 
   After every $N$ SCF steps a linear mix is inserted to \emph{kick}
   the SCF cycle out of a possible local minimum. 
@@ -4172,7 +4193,7 @@ $\RRes[i] = \Res[i] - \Res[i-1]$.
 \end{fdfentry}
 
 \begin{fdfentry}{SCF.Mixer!Kick.Weight}[real]<\fdfvalue{SCF.Mixer!Weight}>%
-  \fdfindex{DM.KickMixingWeight}[|see SCF.Mixer.Kick.Weight]
+  \fdfindex*{DM!KickMixingWeight}[|see SCF.Mixer.Kick.Weight]
 
   The mixing weight for the linear kick (if used).
   
@@ -5011,6 +5032,7 @@ The Density matrix can be:
 
   If \fdffalse\ the initial spin-configuration is a ferromagnetic
   order (all spins up).
+  %
   If \fdftrue\ all odd atoms are initialized to spin-up, all even
   atoms are initialized to spin-down.
 
@@ -5031,11 +5053,11 @@ The Density matrix can be:
   polarized. The atoms not contemplated in the block will be given
   non-polarized initialization. 
 
-  For non-collinear spin, the spin direction may be specified for each
+  For non-colinear spin, the spin direction may be specified for each
   atom by the polar angle $\theta$ and the azimuthal angle $\phi$
   (using the physics ISO convention), given as the last two arguments
   in degrees. If not specified, $\theta=0$ is assumed
-  ($z$-polarized). \fdf{Spin} must be set to use non-collinear or
+  ($z$-polarized). \fdf{Spin} must be set to use non-colinear or
   spin-orbit for the directions to have effect.
 
   Example:
@@ -5049,7 +5071,7 @@ The Density matrix can be:
   In the above example, atom 5 is polarized in the $x$-direction.
 
   If this block is defined, but empty, all atoms are not polarized.
-  This block has precedence over \fdf{DM!InitSpinAF}.
+  This block has precedence over \fdf{DM!InitSpin!AF}.
 
 \end{fdfentry}
 
@@ -5177,7 +5199,7 @@ analysis of data and to increase the efficiency.
   Equivalent to \fdf{Write!DM}, but will only write at the end of each
   SCF loop.
 
-  \note The file generated depends on \fdf{SCF.MixAfterConvergence}.
+  \note The file generated depends on \fdf{SCF.Mix!AfterConvergence}.
 
 \end{fdfentry}  
 
@@ -5199,7 +5221,7 @@ analysis of data and to increase the efficiency.
   Equivalent to \fdf{Write!H}, but will only write at the end of each
   SCF loop.
 
-  \note The file generated depends on \fdf{SCF.MixAfterConvergence}.
+  \note The file generated depends on \fdf{SCF.Mix!AfterConvergence}.
 
 \end{fdfentry}  
 
@@ -5469,7 +5491,7 @@ note also that a filtering of the orbitals and the relevant parts of
 the pseudopotential and the pseudocore charge might be enough to solve
 the issue (see Sec.~\ref{sec:filtering}).
 
-\begin{fdfentry}{MeshCutoff}[energy]<$100\,\mathrm{Ry}$>
+\begin{fdfentry}{MeshCutoff}[energy]<$300\,\mathrm{Ry}$>
   \index{grid}%
   \index{mesh}
 
@@ -5841,20 +5863,23 @@ system sizes) would not benefit from the O(N) or PEXSI solvers.
 
   This parameter allows the user to reduce the number of eigenstates
   that are calculated from the maximum possible. The benefit is that,
-  for any calculation, the cost of the diagonalization is
-  reduced by finding fewer eigenvectors. For example, during a
+  for any calculation, the cost of the diagonalization is reduced by
+  finding fewer eigenvalues/eigenvectors. For example, during a
   geometry optimisation, only the occupied states are required rather
   than the full set of virtual orbitals. Note, that if the electronic
   temperature is greater than zero then the number of partially
-  occupied states increases, depending on the band gap.  The value
-  specified must be greater than the number of occupied states and less
-  than the number of basis functions.
+  occupied states increases, depending on the band gap. The value
+  specified must be greater than the number of occupied states and
+  less than the number of basis functions.
 
   If a \emph{negative} number is passed it corresponds to the number
   of orbitals above the total charge of the system. In effect it
   corresponds to the number of orbitals above the Fermi level for zero
-  temperature. I.e. if this option is $-2$ for a system of 20 orbitals
-  with 10 electrons it is equivalent to $12$.
+  temperature. I.e. if $-2$ is specified for a system with $20$
+  orbitals and $10$ electrons it is equivalent to $12$.
+
+  Using this option can \emph{greatly} speed up your calculations if
+  used correctly.
 
   \note If experiencing \shell{PDORMTR} errors in $\Gamma$
   calculations with \fdf*{MRRR} algorithm, it is because of a buggy
@@ -5901,8 +5926,10 @@ system sizes) would not benefit from the O(N) or PEXSI solvers.
   numbers of processors and is therefore the default. This option only
   influences the parallel performance.
 
-  \note If \fdf{Diag!ProcessorY} is $1$ or the total number of
-  processors, then this flag will default to \fdffalse.
+  If \fdf{Diag!BlockSize} is different from \fdf{BlockSize} this flag
+  defaults to \fdftrue, else if \fdf{Diag!ProcessorY} is $1$ or the
+  total number of processors, then this flag will default to
+  \fdffalse.
 
 \end{fdflogicalT}
 
@@ -5933,6 +5960,10 @@ system sizes) would not benefit from the O(N) or PEXSI solvers.
   The block-size used for the 2D distribution in the ScaLAPACK calls.
   This number greatly affects the performance of ScaLAPACK.
 
+  If the ScaLAPACK library is threaded this parameter should not be
+  too small. In any case it may be advantageous to run a few tests to
+  find a suitable value.
+
   \note If \fdf{Diag!Use2D} is set to \fdffalse\ this flag is not
   used. 
 
@@ -5944,24 +5975,28 @@ system sizes) would not benefit from the O(N) or PEXSI solvers.
   Select the algorithm when calculating the eigenvalues and/or
   eigenvectors.
 
+  The fastest routines are typically MRRR or ELPA which may be
+  significantly faster by specifying a suitable
+  \fdf{NumberOfEigenStates} value.
+
   Currently the implemented solvers are:
 
   \begin{fdfoptions}
 
     \option[divide-and-Conquer]%
-    \fdfindex{Diag!Algorithm!Divide-and-Conquer}
+    \fdfindex*{Diag!Algorithm!Divide-and-Conquer}
     
     Use the divide-and-conquer algorithm.
 
     \option[divide-and-Conquer-2stage]%
-    \fdfindex{Diag!Algorithm!Divide-and-Conquer-2stage}
+    \fdfindex*{Diag!Algorithm!Divide-and-Conquer-2stage}
     
     Use the divide-and-conquer 2stage algorithm (fall-back to the
     divide-and-conquer if not available).
 
     
     \option[MRRR]%
-    \fdfindex{Diag!Algorithm!MRRR}%
+    \fdfindex*{Diag!Algorithm!MRRR}%
     \fdfdepend{NumberOfEigenStates}
     
     Use the multiple relatively robust algorithm.
@@ -5972,14 +6007,14 @@ system sizes) would not benefit from the O(N) or PEXSI solvers.
     \index{compile!pre-processor!-DSIESTA\_\_MRRR}
 
     \option[MRRR-2stage]%
-    \fdfindex{Diag!Algorithm!MRRR-2stage}%
+    \fdfindex*{Diag!Algorithm!MRRR-2stage}%
     \fdfdepend{NumberOfEigenStates}
     
     Use the 2-stage multiple relatively robust algorithm.
 
 
     \option[expert]%
-    \fdfindex{Diag!Algorithm!Expert}%
+    \fdfindex*{Diag!Algorithm!Expert}%
     \fdfdepend{NumberOfEigenStates}
     
     Use the expert algorithm which allows calculating a subset of the
@@ -5987,7 +6022,7 @@ system sizes) would not benefit from the O(N) or PEXSI solvers.
 
 
     \option[expert-2stage]%
-    \fdfindex{Diag!Algorithm!Expert-2stage}%
+    \fdfindex*{Diag!Algorithm!Expert-2stage}%
     \fdfdepend{NumberOfEigenStates}
 
     Use the 2-stage expert algorithm which allows calculating a subset
@@ -5995,31 +6030,31 @@ system sizes) would not benefit from the O(N) or PEXSI solvers.
 
     
     \option[noexpert|QR]%
-    \fdfindex{Diag!Algorithm!NoExpert}%
-    \fdfindex{Diag!Algorithm!QR}%
+    \fdfindex*{Diag!Algorithm!NoExpert}%
+    \fdfindex*{Diag!Algorithm!QR}%
 
     Use the QR algorithm.
 
     \option[noexpert-2stage|QR-2stage]%
-    \fdfindex{Diag!Algorithm!NoExpert-2stage}%
+    \fdfindex*{Diag!Algorithm!NoExpert-2stage}%
 
     Use the 2-stage QR algorithm.
 
     
     \option[ELPA-1stage]%
-    \fdfindex{Diag!Algorithm!ELPA-1stage}%
+    \fdfindex*{Diag!Algorithm!ELPA-1stage}%
     \fdfdepend{NumberOfEigenStates}
     
-    Use the ELPA\cite{ELPA,ELPA-1} 1-stage solver. Requires the
+    Use the ELPA\cite{ELPA,ELPA-1} 1-stage solver. Requires
     compilation of \siesta\ with ELPA, see Sec.~\ref{sec:libs}.
 
     Not compatible with \fdf{Diag!ParallelOverK}.
 
     \option[ELPA|ELPA-2stage]%
-    \fdfindex{Diag!Algorithm!ELPA-2stage}%
+    \fdfindex*{Diag!Algorithm!ELPA-2stage}%
     \fdfdepend{NumberOfEigenStates}
     
-    Use the ELPA\cite{ELPA,ELPA-1} 2-stage solver. Requires the
+    Use the ELPA\cite{ELPA,ELPA-1} 2-stage solver. Requires
     compilation of \siesta\ with ELPA, see Sec.~\ref{sec:libs}.
 
     Not compatible with \fdf{Diag!ParallelOverK}.
@@ -6298,7 +6333,7 @@ fixed, integer number of electrons at each k point/spin is
 allowed. Therefore, only spin-polarized calculations with
 \fdf{Spin!Fix} are allowed, and \fdf{Spin!Total} must be chosen
 appropriately. For non-$\Gamma$ point calculations, the number of
-electrons is set to be equal at all k points. Non-collinear
+electrons is set to be equal at all k points. Non-colinear
 calculations (see \fdf{Spin}) are not supported at present.
 
 It is important to note that the OMM requires all occupied Kohn-Sham
@@ -7048,7 +7083,7 @@ parameter (see Sec.~\ref{electronic-occupation}).
 \end{fdfentry}
 
 
-\subsubsection{Re-use of $\mu$ information accross iterations}
+\subsubsection{Re-use of \texorpdfstring{$\mu$}{u} information accross iterations}
 
 This is an important issue, as the efficiency of the PEXSI procedure
 depends on how close a guess of $\mu$ we have at our
@@ -7549,7 +7584,7 @@ There are two options to obtain the partial density of states
   cell is dumped sequentially into a file called
   \sysfile{PDOS}. This file is structured using spacing and
   xml tags. A machine-readable (but not very human readable) xml file
-  \file{pdos.xml} is also produced. Both can be processed by the
+  \sysfile{PDOS.xml} is also produced. Both can be processed by the
   program in \program{Util/pdosxml}. The \sysfile{PDOS} file can be
   processed by utilites in \program{Util/Contrib/APostnikov}.
 
@@ -7920,9 +7955,9 @@ References:
   formula
   \begin{equation}
     \label{pol_formula}
-    P_{e,\parallel}={ifq_e \over 8\pi^3} \int_A d\mathbf{k}_\perp
+    P_{e,\parallel}=\frac{ifq_e}{8\pi^3} \int_A d\mathbf{k}_\perp
     \sum_{n=1}^M \int_0^{|G_\parallel|} dk_{\parallel}
-    \langle u_{\mathbf{k} n} |{\delta \over \delta k_{\parallel}} |
+    \langle u_{\mathbf{k} n} |\frac\delta{\delta k_{\parallel}} |
     u_{\mathbf{k} n} \rangle
   \end{equation}
   where $f$ is the occupation (2 for a non-magnetic system), $q_e$ the
@@ -7990,7 +8025,7 @@ References:
   defined as
   \begin{equation}
     \mathbf{P}^\sigma = \mathbf{P}_e^\sigma +
-    {1 \over 2} \sum_i^{N_a}  Z_i \mathbf{r}_i
+    \frac12 \sum_i^{N_a}  Z_i \mathbf{r}_i
   \end{equation}
   $N_a$ is the number of atoms in the unit cell, and $\mathbf{r}_i$
   and $Z_i$ are the positions and charges of the ions.
@@ -8016,7 +8051,7 @@ References:
   atom by finite differences, by calculating the change in electric
   polarization (see \fdf{PolarizationGrids}) induced by the small
   displacements generated for the force constants calculation (see
-  \fdf{MD.TypeOfRun} \fdf*{FC}):
+  \fdf{MD.TypeOfRun:FC}):
   \begin{equation}
     \label{eq:effective_charge}
     Z^*_{i,\alpha,\beta}=\frac{\Omega_0}{e} \left. {\frac{\partial{P_\alpha}}
@@ -8315,6 +8350,11 @@ or interpolation of bands), can be downloaded from
 
   This will default to \fdftrue\ if an external field is applied to a
   slab calculation, otherwise it will default to \fdffalse.
+
+  For \tsiesta\ calculations an additional step is added. For more
+  than 1 electrode, the dipole moments along the semi-infinite
+  directions are removed. Otherwise, for 1 electrode, the dipole is
+  \emph{only} allowed along the semi-infinite direction.
 
 \end{fdflogicalF}
 
@@ -9119,8 +9159,8 @@ atomic positions (and maybe the cell vectors) accordingly and moves on
 to the next cycle.
 %
 If there are molecular dynamics options missing you are highly
-recommend to look into \fdf{MD.TypeOfRun!Lua} or
-\fdf{MD.TypeOfRun!Master}. 
+recommend to look into \fdf{MD.TypeOfRun:Lua} or
+\fdf{MD.TypeOfRun:Master}. 
 
 
 Several options for MD and structural optimizations are
@@ -9130,55 +9170,56 @@ implemented, selected by
   \begin{fdfoptions}
     
     \option[CG]%
-    \fdfindex{MD.TypeOfRun!CG}%
+    \fdfindex*{MD.TypeOfRun:CG}%
+
     Coordinate optimization by conjugate gradients). Optionally (see
     variable \fdf{MD.VariableCell} below), the optimization can include the
     cell vectors.
 
     \option[Broyden]%
-    \fdfindex{MD.TypeOfRun!Broyden}%
+    \fdfindex*{MD.TypeOfRun:Broyden}%
     Coordinate optimization by a modified Broyden scheme). Optionally,
     (see variable \fdf{MD.VariableCell} below), the optimization can
     include the cell vectors.
 
     \option[FIRE]%
-    \fdfindex{MD.TypeOfRun!FIRE}%
+    \fdfindex*{MD.TypeOfRun:FIRE}%
     Coordinate optimization by Fast Inertial Relaxation Engine (FIRE)
     (E. Bitzek et al, PRL 97, 170201, (2006)).  Optionally, (see
     variable \fdf{MD.VariableCell} below), the optimization can
     include the cell vectors.
 
     \option[Verlet]%
-    \fdfindex{MD.TypeOfRun!Verlet}%
+    \fdfindex*{MD.TypeOfRun:Verlet}%
     Standard Verlet algorithm MD
 
     \option[Nose]%
-    \fdfindex{MD.TypeOfRun!Nose}%
+    \fdfindex*{MD.TypeOfRun:Nose}%
     MD with temperature controlled  by means of a Nos\'e
     thermostat
 
     \option[ParrinelloRahman]%
-    \fdfindex{MD.TypeOfRun!ParrinelloRahman}%
+    \fdfindex*{MD.TypeOfRun:ParrinelloRahman}%
     MD with pressure controlled by the Parrinello-Rahman method
 
     \option[NoseParrinelloRahman]%
-    \fdfindex{MD.TypeOfRun!NoseParrinelloRahman}%
+    \fdfindex*{MD.TypeOfRun:NoseParrinelloRahman}%
     MD with temperature controlled by means of a Nos\'e thermostat and
     pressure controlled by the Parrinello-Rahman method
 
     \option[Anneal]%
-    \fdfindex{MD.TypeOfRun!Anneal}%
+    \fdfindex*{MD.TypeOfRun:Anneal}%
     MD with annealing to a desired temperature and/or pressure (see
     variable \fdf{MD.AnnealOption} below)
 
     \option[FC]%
-    \fdfindex{MD.TypeOfRun!FC}%
+    \fdfindex*{MD.TypeOfRun:FC}%
     Compute force constants matrix\index{Force Constants Matrix} for
     phonon calculations.
 
     \option[Master|Forces]%
-    \fdfindex{MD.TypeOfRun!Master}%
-    \fdfindex{MD.TypeOfRun!Forces}%
+    \fdfindex*{MD.TypeOfRun:Master}%
+    \fdfindex*{MD.TypeOfRun:Forces}%
     Receive coordinates from, and return forces to, an external
     driver program, using MPI, Unix pipes, or Inet sockets for
     communication. The routines in module \program{fsiesta} allow the
@@ -9192,7 +9233,7 @@ implemented, selected by
     options.
 
     \option[Lua]%
-    \fdfindex{MD.TypeOfRun!Lua}%
+    \fdfindex*{MD.TypeOfRun:Lua}%
     Fully control the MD cycle and convergence path using an external
     Lua script. 
 
@@ -9284,7 +9325,7 @@ structure. The changes are:
 \end{itemize}
 
 To recover the previous behavior, the user can turn on the
-compatibility switch \fdf{Compat!Pre-v4-Dynamics}, which is off by
+compatibility switch \fdf*{Compat!Pre-v4-Dynamics}, which is off by
 default.
 
 Note that complete compatibility cannot be perfectly guaranteed.
@@ -9310,7 +9351,7 @@ misleading but kept for historical reasons.
   \fdf{MD.ConstantVolume}, and
   \fdf{MD.PreconditionVariableCell}.
 
-  \note only compatible with \fdf{MD.TypeOfRun} \fdf*{CG},
+  \note only compatible with \fdf{MD.TypeOfRun:CG},
   \fdf*{Broyden} or \fdf*{fire}.
 
 \end{fdflogicalF}
@@ -9326,7 +9367,7 @@ misleading but kept for historical reasons.
   (traceless) stresses.  See \fdf{MD.VariableCell},
   \fdf{MD.TargetStress}.
 
-  \note only compatible with \fdf{MD.TypeOfRun} \fdf*{CG},
+  \note only compatible with \fdf{MD.TypeOfRun:CG},
   \fdf*{Broyden} or \fdf*{fire}.
 
 \end{fdflogicalF}
@@ -9341,7 +9382,7 @@ misleading but kept for historical reasons.
   atom in each molecule is kept fixed, and no attempt is made to
   rescale the bond distances or angles.
 
-  \note only compatible with \fdf{MD.TypeOfRun} \fdf*{Broyden} or \fdf*{fire}.
+  \note only compatible with \fdf{MD.TypeOfRun:Broyden} or \fdf*{fire}.
 
 \end{fdflogicalF}
 
@@ -9497,7 +9538,7 @@ build up the Jacobian matrix. (See D.D. Johnson, PRB 38, 12807
 Implementation of the Fast Inertial Relaxation Engine (FIRE) method
 (E. Bitzek et al, PRL 97, 170201, (2006) in a manner compatible with
 the CG and Broyden modes of relaxation. (An older implementation
-activated by the \fdf{MD.FireQuench} variable is still available).
+activated by the \fdf*{MD.FireQuench} variable is still available).
 
 \begin{fdfentry}{MD.FIRE.TimeStep}[time]<\fdfvalue{MD.LengthTimeStep}>
   
@@ -9524,10 +9565,10 @@ activated by the \fdf{MD.FireQuench} variable is still available).
 These methods are really based on molecular dynamics, but are used for
 structural relaxation.
 
-Note that the Zmatrix input option (see
-Sec.~\ref{sec:Zmatrix}) is not compatible with molecular dynamics. The
-initial geometry can be specified using the Zmatrix format, but the
-Zmatrix generalized coordinates will not be updated.
+Note that the Zmatrix input option (see Sec.~\ref{sec:Zmatrix}) is not
+compatible with molecular dynamics. The initial geometry can be
+specified using the Zmatrix format, but the Zmatrix generalized
+coordinates will not be updated.
 
 Note also that the force and stress tolerances have no effect on
 the termination conditions of these methods. They run for the number
@@ -9541,7 +9582,7 @@ of MD steps requested (this is arguably a bug).
   component. This affects atomic velocities, or unit-cell velocities
   (for cell shape optimizations).
 
-  \note only applicable for \fdf{MD.TypeOfRun} \fdf*{Verlet} or
+  \note only applicable for \fdf{MD.TypeOfRun:Verlet} or
   \fdf*{ParrinelloRahman}.
   %
   It is incompatible with Nose thermostat options.  
@@ -9571,7 +9612,7 @@ of MD steps requested (this is arguably a bug).
   thereof etc.) are hardwired in the code, at the recommended values
   in the cited paper, including $\Delta t_{max} = 10$ fs.
 
-  Only available for \fdf{MD.TypeOfRun} \fdf*{Verlet}
+  Only available for \fdf{MD.TypeOfRun:Verlet}
   It is incompatible with Nose thermostat options. No variable
   cell option implemented for this at this stage.
   \fdf{MD.FireQuench} supersedes \fdf{MD.Quench}. This option is
@@ -9739,7 +9780,7 @@ coordinates will not be updated.
     by scaling of the unit cell size and shape
   \end{fdfoptions}
 
-  Only applicable for \fdf{MD.TypeOfRun} \fdf*{Anneal}.
+  Only applicable for \fdf{MD.TypeOfRun:Anneal}.
 
 \end{fdfentry}
 
@@ -9752,7 +9793,7 @@ coordinates will not be updated.
   actual time needed to reach the \emph{averaged} targets will be
   significantly longer.
 
-  Only applicable for \fdf{MD.TypeOfRun} \fdf*{Anneal}.
+  Only applicable for \fdf{MD.TypeOfRun:Anneal}.
 
 \end{fdfentry}
 
@@ -10139,7 +10180,8 @@ involving molecules.
   constraining the $x$ Cartesian vector
   \begin{fdfexample}
     %block Geometry.Constraints
-      Z 6 1. 0. 0.
+      Z 6 # constrain Carbon
+      Z 1 1. 0. 0. # constrain Hydrogen along x Cartesian vector
     %endblock
   \end{fdfexample}
   Note that you \emph{must} append a ``.'' to denote it a real. The
@@ -10147,7 +10189,8 @@ involving molecules.
   be constrained along the $x$-$y$ vector you may do
   \begin{fdfexample}
     %block Geometry.Constraints
-      Z 6 1. 1. 0.
+      Z 6
+      Z 1 1. 1. 0.
     %endblock
   \end{fdfexample}
   
@@ -10754,6 +10797,53 @@ end
   
 \end{fdflogicalF}
 
+\begin{fdflogicalF}{Lua!Interactive}
+
+  Start an interactive Lua session at all the states in the program
+  and ask for user-input.
+  %
+  This is primarily intended for debugging purposes. The interactive
+  session is executed just \emph{before} the \code{siesta\_comm}
+  function call (if the script is used).
+  
+  For serial runs \code{siesta.send} may be used. For parallel runs do
+  \emph{not} use \code{siesta.send} as the code is only
+  executed on the first MPI node.
+
+  There are various commands that are caught if they are the only
+  content on a line:
+  \begin{fdfoptions}
+    \option[/debug]%
+    Turn on/off debugging information.
+
+    \option[/show]%
+    Show the currently collected lines of code.
+
+    \option[/clear]%
+    Clears the currently collected lines of code.
+
+    \option[;]%
+    Run the currently collected lines of code and continue collecting
+    lines.
+
+    \option[/run]%
+    Same as \code{;}.
+
+    \option[/cont]%
+    Run the currently collected lines of code and continue \siesta.
+
+    \option[/stop]%
+    Run the currently collected lines of code and stop all future
+    interactive Lua sessions.
+
+  \end{fdfoptions}
+
+  Currently this only works if \fdf{Lua!Script} is having a valid Lua
+  file (note the file may be empty).
+  
+\end{fdflogicalF}
+
+
 
 \subsection{Examples of Lua programs}
 
@@ -10779,25 +10869,62 @@ the mixing parameters may be very difficult to implement. If you do
 create such a Lua script, please share it on the mailing list.
 
 
+\subsection{External MD/relaxation methods}
+
+Using the Lua interface allows a very easy interface for creating
+external MD and/or relaxation methods.
+
+A public library (\program{flos},
+\url{https://github.com/siesta-project/flos}) already implements a
+wider range of relaxation methods than intrinsically enabled in
+\siesta. Secondly, by using external scripting mechanisms one can
+customize the routines to a much greater extend while simultaneously
+create custom constraints.
+
+You are \emph{highly} encouraged to try out the \program{flos} library
+(please note that \program{flook} is required, see installation
+instructions above).
+
+
 
 \section{TRANSIESTA}
+\label{sec:transiesta}
+
 
 \siesta\ includes the possibility of performing calculations of
 electronic transport properties using the \tsiesta\ method. This
-Section describes how to compile the code to be able to use these
+Section describes how to use these
 capabilities, and a reference guide to the relevant \fdflib\
 options. We describe here only the additional options available for
 \tsiesta\ calculations, while the rest of the Siesta functionalities
 and variables are described in the previous sections of this User's
 Guide.
 
+Starting from 4.1 \tsiesta\ is intrinsic to the \siesta\ executable
+and thus there is no need for two separate executables.
+
+An accompanying Python toolbox is available which will assist with
+\tsiesta\ calculations. Please use (and cite) \sisl\cite{sisl}.
+
+
+\subsection{Source code structure}
+
+In this implementation, the \tsiesta\ routines have been grouped in a
+set of modules whose file names begin with \texttt{m\_ts} or
+\texttt{ts}.
+
+\subsection{Compilation}
+
+Simply compile \siesta\ and \tsiesta\ is enabled, see
+Sec.~\ref{sec:compilation} for details on compiling \siesta.
+
 \subsection{Brief description}
 
 The \tsiesta\ method is a procedure to solve the electronic
 structure of an open system formed by a finite structure sandwiched
-between two semi-infinite metallic leads. A finite bias can be applied
+between semi-infinite metallic leads. A finite bias can be applied
 between both leads, to drive a finite current. The method is described
-in detail in \cite{Brandbyge2002}. In practical terms,
+in detail in \cite{Brandbyge2002,Papior2017}. In practical terms,
 calculations using \tsiesta\ involve the solution of the
 electronic density from the DFT Hamiltonian using Greens functions
 techniques, instead of the usual diagonalization procedure. Therefore,
@@ -10823,53 +10950,16 @@ added by Nick R. Papior during 2012.
 
 The current \tsiesta\ module has been completely rewritten by Nick
 R. Papior and encompass a highly advanced inversion algorithm as well
-as allowing $N$ electrode setups among just a few additional
-features. Furthermore, the utility \tbtrans\ has also been fully
-re-coded (by Nick R. Papior) to be a generic tight-binding code capable
-of analyzing physics from the Greens function perspective in $N\ge1$
-setups.
+as allowing $N$ electrode setups among many new features. Furthermore,
+the utility \tbtrans\ has also been fully re-coded (by Nick R. Papior)
+to be a generic tight-binding code capable of analyzing physics from
+the Greens function perspective in $N\ge1$ setups.
 
-\subsection{Source code structure}
-
-In this implementation, the \tsiesta\ routines have been grouped in a
-set of modules whose file names begin with \texttt{m\_ts}. The
-inclusion of \tsiesta\ has also required the modification of some of
-the \siesta\ routines. Presently, these modifications are controlled
-by pre-processor compilation directives (such as in \texttt{\#ifdef
-    TRANSIESTA}). See the next section for compilation instructions.
-
-\subsection{Compilation}
-
-The standard \siesta\ executable (obtained as described in Section
-2) does not include the \tsiesta\ modules. In order to use the
-\tsiesta\ capabilities, you must compile the \siesta\
-package as indicated in this Section. In this way, the compilation is
-done using the appropriate preprocessor flags needed to include the
-\tsiesta\ modules in the binary file. To generate a binary of
-\siesta\ which includes the \tsiesta\ capabilities, just
-type:
-
-\begin{verbatim}
-$ make transiesta
-\end{verbatim}
-
-using the appropriate \file{arch.make} file for your system (note that
-you do not need to make any modification on your arch.make file: you
-can use the same one that you have used to make a standard \siesta\
-compilation in your system).  The Makefile takes care of defining the
-appropriate preprocessor flag \texttt{-DTRANSIESTA} so that the
-\tsiesta\ modules and modifications are compiled and incorporated into
-the binary. Upon successful compilation, the binary file
-\program{transiesta} will be generated, containing an executable
-version of \siesta\ with \tsiesta\ capabilities.
-
-
-\subsection{Brief explanation}
 
 \begin{itemize}
   \item%
   Transport calculations involve \emph{electrode} (EL) calculations,
-  and then the Scattering Region (SR) calculation.  The
+  and subsequently the Scattering Region (SR) calculation. The
   \emph{electrode} calculations are usual \siesta\ calculations, but
   where a file \sysfile{TSHS} is generated. These files contain the
   information necessary for calculation of the self-energies. If any
@@ -10900,8 +10990,9 @@ version of \siesta\ with \tsiesta\ capabilities.
 
   \item %
   When performing several bias calculations, it is heavily advised to
-  copy the \sysfile{TSDE} for the closest, previously, calculated
-  bias.
+  run different bias' in different directories. To drastically improve
+  convergence (and throughput) one should copy the \sysfile{TSDE} from
+  the closest, previously, calculated bias to the current bias.
   
   \item %
   The \sysfile{TSDE} may be read equivalently as the
@@ -10919,13 +11010,12 @@ version of \siesta\ with \tsiesta\ capabilities.
   directory). It is to be noted that the \sysfile{TSHS} files contain
   all the needed structural information (atomic positions, matrix
   elements, \ldots), and so this kind of parameters will not be
-  changed by input (fdf) flags once they are read a \sysfile{TSHS}
-  file.
+  changed by input (fdf) flags once a \sysfile{TSHS} file is read.
 
   \item %
   When the non-equilibrium calculation uses different electrodes one
   may use so-called \emph{buffer} atoms behind the electrodes to act
-  as additional screening region when calculating the initial guess
+  as additional screening regions when calculating the initial guess
   (using \siesta) for \tsiesta. Essentially they may be used to
   achieve a better ``bulk-like'' environment at the electrodes.
 
@@ -10933,44 +11023,56 @@ version of \siesta\ with \tsiesta\ capabilities.
   \item%
   An important parameter is the lower bound of the energy contours. It
   is a good practice, to start with a \siesta\ calculation for the SR
-  and look at the eigenvalues of the system. 
+  and look at the eigenvalues of the system. The lower bound of the
+  contours must be \emph{well} below the lowest eigenvalue.
 
   \item%
-  \tsiesta\ still assumes periodic boundary conditions in the
-  \texttt{xy} directions. For \tsiesta, the specified $k$-point
-  sampling (of this 2-dimensional Brillouin zone) used in a SR
-  calculation must be the same as the one that was used for the
-  electrodes, if they are different the code will stop. 
+  \tsiesta\ assumes periodic boundary conditions in directions
+  orthogonal to the electrodes semi-infinite directions. If $N>2$
+  \tsiesta\ does not assume anything and one is required to specify
+  the periodicity (via $k$-points) separately.
 
   \item%
-  Importantly the $k$-point sampling need typically be much higher in
-  a \tbtrans\ calculation to achieve a converged transmission
+  The default algorithm for matrix inversion is the BTD method, before
+  starting a \tsiesta\ calculation please run with the analyzation
+  step \fdf{TS!Analyze}.
+
+  \item%
+  Importantly(!) the $k$-point sampling need typically be much higher
+  in a \tbtrans\ calculation to achieve a converged transmission
   function.
 
 \end{itemize}
 
 \subsection{Electrodes}
 
-In order to calculate the electronic structure of a system under
-external bias, \tsiesta\ attaches the system to semi-infinite
-electrodes which extend to their respective semi-infinite
-directions. Examples of electrodes would include surfaces, nanowires,
-nanotubes or even atomic chains. The electrode must be large enough
-(in the semi-infinite direction) so that orbitals within the unit cell
-only interact with a single nearest neighbor cell in the semi-infinite
-direction (the size of the unit cell can thus be derived from the
-range of support for the orbital basis functions). \tsiesta\ will warn
-if this is not enforced. The electrodes are generated by a separate
-transiesta run on a bulk system. The results are saved in a file with
-extension \sysfile{TSHS} which contains a description of the electrode
-unit cell, the position of the atoms within the unit cell, as well as
-the Hamiltonian and overlap matrices that describe the electronic
+To calculate the electronic structure of a system under external bias,
+\tsiesta\ attaches the system to semi-infinite electrodes which extend
+to their respective semi-infinite directions. Examples of electrodes
+would include surfaces, nanowires, nanotubes or even atomic
+chains. The electrode must be large enough (in the semi-infinite
+direction) so that orbitals within the unit cell only interact with a
+single nearest neighbor cell in the semi-infinite direction (the size
+of the unit cell can thus be derived from the range of support for the
+orbital basis functions). \tsiesta\ will stop if this is not
+enforced. The electrodes are generated by a separate \tsiesta\ run on
+a bulk system. The results are saved in a file with extension
+\sysfile{TSHS} which contains a description of the electrode unit
+cell, the position of the atoms within the unit cell, as well as the
+Hamiltonian and overlap matrices that describe the electronic
 structure of the lead. One can generate a variety of electrodes and
-the typical use of transiesta would involve reusing the same electrode
-for several setups. At runtime, the transiesta coordinates are checked
+the typical use of \tsiesta\ would involve reusing the same electrode
+for several setups. At runtime, the \tsiesta\ coordinates are checked
 against the electrode coordinates and the program stops if there is a
 mismatch to a certain precision ($10^{-4}\,\mathrm{Bohr}$).
 
+To run an electrode calculation one should do:
+\begin{shellexample}
+  siesta --electrode RUN.fdf
+\end{shellexample}
+or define these options in the electrode fdf files:
+\fdf{TS!HS.Save} and \fdf{TS!DE.Save} to \fdf*{true} (the above
+\code{--electrode} is a shorthand for setting the two options).
 
 \paragraph{Principal layer interactions} %
 \index{transiesta!electrode!principal layer}%
@@ -11007,7 +11109,7 @@ the scattering region. When using \tsiesta\ for electrode
 calculations, only the usual \siesta\ options are relevant.
 %
 Note that since \tsiesta\ is a generic $N$ electrode NEGF code the
-input options are heavily changed.
+input options are heavily changed compared to versions prior to 4.1.
 
 \subsubsection{Quick and dirty}
 
@@ -11024,20 +11126,20 @@ One may input options as in the old \tsiesta\ version and then run
   ts2ts OLD.fdf > NEW.fdf
 \end{fdfexample}
 which translates all keys to the new, equivalent, input format. If you
-are familiar with the old-style flags this is highly recommendable to
-become comfortable with the new input format. Please note that some
-defaults have changed to more conservative values in the newer
-release. 
+are familiar with the old-style flags this is highly recommendable
+while becoming comfortable with the new input format. Please note that
+some defaults have changed to more conservative values in the newer
+release.
 
 If one does not know the old flags and wish to get a basic example of
-an input file, a program \program{Util/TS/tselecs.sh} exists that can
+an input file, a script \program{Util/TS/tselecs.sh} exists that can
 create the basic input for $N$ electrodes. One may call it like:
-\begin{fdfexample}
+\begin{shellexample}
   tselecs.sh -2 > TWO_ELECTRODE.fdf
   tselecs.sh -3 > THREE_ELECTRODE.fdf
   tselecs.sh -4 > FOUR_ELECTRODE.fdf
   ...
-\end{fdfexample}
+\end{shellexample}
 where the first call creates an input fdf for 2 electrode setups, the
 second for a 3 electrode setup, and so on. See the help (\program{-h})
 for the program for additional options.
@@ -11045,27 +11147,42 @@ for the program for additional options.
 Before endeavoring on large scale calculations you are advised to run
 an analyzation of the system at hand, you may run your system as
 \begin{shellexample}
-  transiesta -fdf TS.Analyze RUN.fdf > analyze.out
+  siesta -fdf TS.Analyze RUN.fdf > analyze.out
 \end{shellexample}
 which will analyze the sparsity pattern and print out several
 different pivoting schemes. Please see \fdf{TS!Analyze} for additional
-information. 
+information.
 
 
 \subsubsection{General options}
 
-\begin{fdfentry}{SolutionMethod}[string]<transiesta>
-
-  To run \tsiesta\ the solution method \emph{must} be
-  \fdf*{transiesta}.
-
-\end{fdfentry}
+One have to set \fdf{SolutionMethod} to \fdf*{transiesta} to enable
+\tsiesta.
 
 \begin{fdfentry}{TS!SolutionMethod}[string]<btd|mumps|full>
 
   Control the algorithm used for calculating the Green
   function. Generally the BTD method is the fastest and this option
   need not be changed.
+
+  \begin{fdfoptions}
+    \option[BTD]%
+    \fdfindex*{TS!SolutionMethod:BTD}%
+    Use the block-tri-diagonal algorithm for matrix inversion.
+
+    This is generally the recommended method.
+
+    \option[MUMPS]%
+    \fdfindex*{TS!SolutionMethod:MUMPS}%
+    Use sparse matrix inversion algorithm (MUMPS). This requires
+    \tsiesta\ to be compiled with MUMPS.
+
+    \option[full]%
+    \fdfindex*{TS!SolutionMethod:full}%
+    Use full matrix inversion algorithm (LAPACK). Generally only
+    usable for debugging purposes.
+    
+  \end{fdfoptions}
   
 \end{fdfentry}
 
@@ -11093,11 +11210,11 @@ information.
   \fdf*{atom} line(s).
 
   \begin{fdfexample}
-    %block TBT.Atoms.Buffer
+    %block TS.Atoms.Buffer
        atom [ 1 -- 5 ]
     %endblock
     # Or equivalently as a list   
-    TBT.Atoms.Buffer [1 -- 5]
+    TS.Atoms.Buffer [1 -- 5]
   \end{fdfexample}
   will remove atoms [1--5] from the calculation.
 
@@ -11114,11 +11231,12 @@ information.
 
 \begin{fdfentry}{TS!SCF.Initialize}[string]<diagon|transiesta>%
 
-  Control which initial guess should be used for \tsiesta. The
-  general way is the \fdf*{diagon} solution method, however, one can
-  start immediately in a \tsiesta\ run. If you start directly with
-  \tsiesta\ please refer to these flags: \fdf{TS!Elecs!DM.Init},
-  \fdf{DM.Init.Bulk} and \fdf{TS!Fermi.Initial}.
+  Control which initial guess should be used for \tsiesta. The general
+  way is the \fdf*{diagon} solution method (which is preferred),
+  however, one can start a \tsiesta\ run immediately. If you start
+  directly with \tsiesta\ please refer to these flags:
+  \fdf{TS!Elecs!DM.Init}, \fdf{DM.Init.Bulk} and
+  \fdf{TS!Fermi.Initial}.
   
   \note Setting this to \fdf*{transiesta} is highly experimental and
   convergence may be extremely poor.
@@ -11241,7 +11359,7 @@ information.
   
   Control whether the forces are calculated. If \emph{not} \tsiesta\
   will use slightly less memory and the performance slightly
-  increased.
+  increased, however the final forces shown are incorrect.
 
 \end{fdflogicalT}
 
@@ -11275,8 +11393,7 @@ information.
     cubic spline interpolation to much faster converge to the
     ``correct'' Fermi level.
     
-    This method will create a file called \file{TS\_FERMI} and only works with the BTD
-    solver.
+    This method will create a file called \file{TS\_FERMI}.
     
   \end{fdfoptions}
 
@@ -11285,9 +11402,9 @@ information.
 \begin{fdfentry}{TS!ChargeCorrection!Factor}[real]<0.75>
 
   Should be between $0$ and $1$ to lower the charge adjustment. $0$
-  means no charge correction. $1$ means total charge
-  conservation. This will reduce the fluctuations in the SCF and
-  setting this to $1$ may result in difficulties in converging.
+  means no charge correction. $1$ means total charge correction. This
+  will reduce the fluctuations in the SCF and setting this to $1$ may
+  result in difficulties in converging.
   
 \end{fdfentry}
 
@@ -11304,7 +11421,7 @@ information.
   The maximally allowed value that the Fermi level will change from a
   charge correction using the Fermi correction method. In case the
   Fermi level lies in between two bands a DOS of $0$ at the Fermi
-  level will make the Fermi change equal $\infty$. This is not
+  level will make the Fermi change equal to $\infty$. This is not
   physical and the user can thus truncate the correction.
   
   \emph{If you know the band-gab, setting this to $1/4$ (or smaller)
@@ -11315,15 +11432,24 @@ information.
 
 \begin{fdflogicalT}{TS!HS.Save}
 
-  Must be \fdftrue\ for saving the Hamiltonian. In almost no cases
-  is this useful to redefine.
+  Must be \fdftrue\ for saving the Hamiltonian (\sysfile{TSHS}). Can only be set if
+  \fdf{SolutionMethod} is not \fdf*{transiesta}.
+
+  The default is \fdffalse\ for \fdf{SolutionMethod} different from
+  \fdf*{transiesta} and if \code{--electrode} has not been passed as a
+  command line argument.
 
 \end{fdflogicalT}  
 
 \begin{fdflogicalT}{TS!DE.Save}
 
-  Must be \fdftrue\ for saving the density matrix for continuation
-  runs. If \fdffalse\ the \sysfile{TSDE} file will not be created.
+  Must be \fdftrue\ for saving the density and energy density matrix
+  for continuation runs (\sysfile{TSDE}). Can only be set if
+  \fdf{SolutionMethod} is not \fdf*{transiesta}.
+
+  The default is \fdffalse\ for \fdf{SolutionMethod} different from
+  \fdf*{transiesta} and if \code{--electrode} has not been passed as a
+  command line argument.
 
 \end{fdflogicalT}  
 
@@ -11339,8 +11465,11 @@ information.
 \begin{fdflogicalF}{TS!SIESTA.Only}
 
   Stop \tsiesta\ right after the initial diagonalization run in
-  \siesta. Upon exit it will also create the TSDE file which may be
-  used for initialization runs later.
+  \siesta. Upon exit it will also create the \sysfile{TSDE} file which
+  may be used for initialization runs later.
+
+  This is mainly intended for test runs where one wishes to start
+  several calculations from the same initial density matrix.
 
 \end{fdflogicalF}
 
@@ -11348,40 +11477,42 @@ information.
 \begin{fdflogicalF}{TS!Analyze}
 
   When using the BTD solution method (\fdf{TS!SolutionMethod}) this
-  will analyze the Hamiltonian and printout an analysis on the
+  will analyze the Hamiltonian and printout an analysis of the
   sparsity pattern for optimal choice of the BTD partitioning
-  algorithm. 
+  algorithm.
 
   This yields information regarding the \fdf{TS!BTD!Pivot} flag.
 
   \note we advice users to \emph{always} run an analyzation step prior
-  to actual calculation and select the \emph{best} BTD
-  format. This analyzing step is very fast and may be performed on
-  small work-station computers, even on systems of 10,000$+$ orbitals.  
+  to actual calculation and select the \emph{best} BTD format. This
+  analyzing step is very fast and may be performed on small
+  work-station computers, even on systems of $\gg10,000$ orbitals.
 
   To run the analyzing step you may do:
   \begin{shellexample}
-    transiesta -fdf TS.Analyze RUN.fdf > analyze.out
+    siesta -fdf TS.Analyze RUN.fdf > analyze.out
   \end{shellexample}
   note that there is little gain on using MPI and it should complete
   within a few minutes, no matter the number of orbitals.
 
-  Choosing the best one may be difficult. Generally one should
-  choose the pivoting scheme that uses the least amount of
-  memory. However, one should also choose the method with largest
-  block-size being as small as possible. As an example:
+  Choosing the best one may be difficult. Generally one should choose
+  the pivoting scheme that uses the least amount of memory. However,
+  one should also choose the method with the largest block-size being
+  as small as possible. As an example:
   \begin{shellexample}
 TS.BTD.Pivot atom+GPS
 ...
     BTD partitions (7): 
      [ 2984, 2776, 192, 192, 1639, 4050, 105 ]
-    Matrix elements in tri / % of full: 68246662 /  47.88707
+    BTD matrix block size [max] / [average]: 4050 /   1705.429
+    BTD matrix elements in % of full matrix:   47.88707 %
 
 TS.BTD.Pivot atom+GGPS
 ...
     BTD partitions (6): 
      [ 2880, 2916, 174, 174, 2884, 2910 ]
-    Matrix elements in tri / % of full: 69303556 /  48.62867
+    BTD matrix block size [max] / [average]: 2916 /   1989.667
+    BTD matrix elements in % of full matrix:   48.62867 %
 
   \end{shellexample}
   Although the GPS method uses the least amount of memory, the GGPS
@@ -11390,12 +11521,21 @@ TS.BTD.Pivot atom+GGPS
 
 \end{fdflogicalF}
 
+\begin{fdflogicalF}{TS!Analyze.Graphviz}
+  \fdfdepend{TS!Analyze}
+
+  If performing the analysis, also create the connectivity graph and
+  store it as \file{GRAPHVIZ\_atom.gv} or \file{GRAPHVIZ\_orbital.gv}
+  to be post-processed in Graphviz\footnote{\url{www.graphviz.org}}.
+  
+\end{fdflogicalF}
 
 \subsubsection{Algorithm specific options}
 
 These options adhere to the specific solution methods available for
-\tsiesta. For instance the \fdf*{TS.BTD.*} options adhere when using
-\fdf{TS.SolutionMethod} \fdf*{btd}, and similarly for \fdf*{MUMPS}.
+\tsiesta. For instance the \fdf*{TS.BTD.*} options adhere only when
+using \fdf{TS!SolutionMethod:BTD}, similarly for options with
+\fdf*{MUMPS}.
 
 \begin{fdfentry}{TS!BTD!Pivot}[string]<\nonvalue{first electrode}>
 
@@ -11408,7 +11548,7 @@ These options adhere to the specific solution methods available for
 
   \begin{fdfoptions}
 
-    \option[<elec-name>]%
+    \option[<elec-name>|CG-<elec-name>]%
     The partitioning will be a connectivity graph starting from the
     electrode denoted by the name. This name \emph{must} be found in
     the \fdf{TS!Elecs} block. One can append more than one electrode
@@ -11432,6 +11572,8 @@ These options adhere to the specific solution methods available for
     Use the generalized Gibbs-Poole-Stockmeyer algorithm for reducing
     the bandwidth.
 
+    \note this algorithm does not work on dis-connected graphs.
+
     \option[PCG] %
     Use the perphiral connectivity graph algorithm for reducing the
     bandwidth.
@@ -11440,7 +11582,6 @@ These options adhere to the specific solution methods available for
     electrode(s), append \fdf*{+<elec-name>} to initialize the PCG
     algorithm from the specified electrode.
 
-
   \end{fdfoptions}
 
   Examples are
@@ -11448,9 +11589,9 @@ These options adhere to the specific solution methods available for
     TS.BTD.Pivot atom+GGPS
     TS.BTD.Pivot GGPS
     TS.BTD.Pivot orb+GGPS
-    TS.BTD.Pivot orb+PCG
+    TS.BTD.Pivot orb+PCG+Left
   \end{fdfexample}
-  where the first two are equivalent. The 3rd and 4th are more heavily
+  where the first two are equivalent. The 3rd and 4th are more heavy
   on analysis and will typically not improve the bandwidth reduction.
   
 \end{fdfentry}
@@ -11464,6 +11605,36 @@ These options adhere to the specific solution methods available for
   \note often both methods provide \emph{exactly} the same BTD matrix
   due to constraints on the matrix.
   
+\end{fdfentry}
+
+\begin{fdfentry}{TS!BTD!Guess1.Min}[int]<\nonvalue{empirically determined}>
+  \fdfdepend{TS!BTD!Guess1.Max}
+  
+  Constructing the blocks for the BTD starts by \emph{guessing} the
+  first block size. One could guess on all different block sizes, but
+  to speed up the process one can define a smaller range of guesses by
+  defining \fdf{TS!BTD!Guess1.Min} and \fdf{TS!BTD!Guess1.Max}.
+
+  The initial guessed block size will be between the two values.
+
+  By default this is $1/4$ of the minimum bandwidth for a selected
+  first set of orbitals.
+
+  \note setting this to 1 may sometimes improve the final BTD matrix
+  blocks.
+
+\end{fdfentry}
+
+\begin{fdfentry}{TS!BTD!Guess1.Max}[int]<\nonvalue{empirically determined}>
+  \fdfdepend{TS!BTD!Guess1.Min}
+
+  See \fdf{TS!BTD!Guess1.Min}.
+
+  \note for improved initialization performance setting Min/Max flags
+  to the first block size for a given pivoting scheme will drastically
+  reduce the search space and make initialization much
+  faster.
+
 \end{fdfentry}
 
 \begin{fdfentry}{TS!BTD!Spectral}[string]<propagation|column>
@@ -11520,10 +11691,10 @@ intricate and important detail.
 
   Define how the correction of the Poisson equation is
   superimposed. The default is to apply the linear correction across
-  the central region (if there are two semi-infinite aligned electrodes).
-  Otherwise this defaults to the \emph{box} solution which will
-  introduce spurious effects at the electrode boundaries. In this case
-  you are encouraged to supply a \fdf*{file}.
+  the central region (if there are two semi-infinite aligned
+  electrodes).  Otherwise this defaults to the \emph{box} solution
+  which will introduce spurious effects at the electrode
+  boundaries. In this case you are encouraged to supply a \fdf*{file}.
 
   If the input is a \fdf*{file}, it should be a NetCDF file containing
   the grid information which acts as the boundary conditions for the
@@ -11547,7 +11718,7 @@ intricate and important detail.
 
   \begin{fdfoptions}
     \option[ramp-central]%
-    \fdfindex*{TS!Poisson!ramp-central}%
+    \fdfindex*{TS!Poisson:ramp-central}%
 
     Apply the bias-ramp between the leads. For a \emph{bulk} electrode
     (see \fdf{TS!Elec.<>!Bulk}) the ramp will start at the
@@ -11556,30 +11727,57 @@ intricate and important detail.
 
 
     \option[<file>]%
-    \fdfindex*{TS!Poisson!<file>}%
+    \fdfindex*{TS!Poisson:<file>}%
 
     Specify an external file used as the boundary conditions for the
     applied bias. This is encouraged to use for $N>2$ electrode
     calculations but may also be used when an \emph{a priori}
     potential profile is know.
+
+    The file should contain something similar to this output
+    (\code{ncdump -h}):
+    \begin{shellexample}
+netcdf <file> {
+dimensions:
+	one = 1 ;
+	a = 43 ;
+	b = 451 ;
+	c = 350 ;
+variables:
+	double Vmin(one) ;
+		Vmin:unit = "Ry" ;
+	double Vmax(one) ;
+		Vmax:unit = "Ry" ;
+	double V(c, b, a) ;
+		V:unit = "Ry" ;
+}
+    \end{shellexample}
+    Note that the units should be in Ry. \code{Vmax}/\code{Vmin}
+    should contain the maximum/minimum fixed boundary conditions in
+    the Poisson solution. This is used internally by \tsiesta\ to
+    scale the potential to arbitrary $V$. This enables the Poisson
+    solution to only be solved \emph{once} independent on subsequent
+    calculations For some chemical potential configurations the
+    Poisson solution cannot be linearly extrapolated, in which case a
+    separate file is required for each applied bias.
+
     
     \option[elec-box]%
-    \fdfindex*{TS!Poisson!ramp-cell}%
+    \fdfindex*{TS!Poisson:elec-box}%
 
     The default potential profile for $N>2$, or when the electrodes
-    does are not aligned (in terms of their transport direction). When
-    this is the case you are highly encouraged to try with an external
-    solution (\fdf*{<file>}).
-
+    does are not aligned (in terms of their transport direction).
+    
+    \note usage of this Poisson solution is \emph{highly}
+    discouraged. Please see \fdf{TS!Poisson:<file>}.
 
     \option[ramp-cell]%
-    \fdfindex*{TS!Poisson!ramp-cell}%
+    \fdfindex*{TS!Poisson:ramp-cell}%
 
     Apply the ramp for the full cell. This option should \emph{only}
     be used for testing against older versions of \tsiesta.
 
   \end{fdfoptions}
-
   
 \end{fdfentry}
 
@@ -11592,7 +11790,7 @@ intricate and important detail.
   For anything but two electrodes this defaults to \fdf*{elec-plane}
   because the plane should be at a fixed position in the cell. 
 
-  \note generally this shouldn't need to be changed.
+  \note generally this need not be changed.
 
 \end{fdfentry}
 
@@ -11600,20 +11798,40 @@ intricate and important detail.
 
   Fraction of the correction that is applied.
 
-  \note this is an experimental feature and shouldn't be used.
+  \note this is an experimental feature!
 
+\end{fdfentry}
+
+\begin{fdfentry}{TS!Elec.<>!Hartree.Extend}[length]<$0.\,\mathrm{Ang}$>
+  \fdfdepend{TS!Poisson:ramp-central,TS!Poisson:ramp-cell}
+
+  The potential profile will by default be terminated at the interface
+  between the electrode and the device. However, as one requires a
+  screening region between the electrode and the actual scattering
+  region one may argue that the electrode potential will extend
+  further into the device.
+  %
+  This flag increases the electrode potentials extend into the device
+  region.
+
+  It may help convergence but should not be so large it extends into
+  the scattering region.
+
+  \note This only affects $2$ electrode calculations when
+  \fdf{TS!Poisson:ramp-central} or \fdf{TS!Poisson:ramp-cell}.
+  
 \end{fdfentry}
 
 
 \subsubsection{Electrode description options}
 
-As \tsiesta\ supports $N$ electrodes you need to specify all
+As \tsiesta\ supports $N$ electrodes one needs to specify all
 electrodes in a generic input format.
 
 \begin{fdfentry}{TS!Elecs}[block]
 
-  Each line denote an electrode which may be queried in
-  \fdf{TS!Elec.<>} for its setup.
+  Each line denote an electrode which is queried in \fdf{TS!Elec.<>}
+  for its setup.
   
 \end{fdfentry}
 
@@ -11621,7 +11839,12 @@ electrodes in a generic input format.
 
   Each line represents a setting for electrode \fdf*{<>}.
   There are a few lines that \emph{must} be present, \fdf*{HS},
-  \fdf*{semi-inf-dir}, \fdf*{electrode-pos}, \fdf*{chem-pot}.
+  \fdf*{semi-inf-dir}, \fdf*{electrode-pos}, \fdf*{chem-pot}. The
+  remaining options are optional.
+
+  \note Options prefixed with \fdf*{tbt} are neglected in \tsiesta\
+  calculations. In \tbtrans\ calculations these flags has precedence
+  over the other options.
 
   \begin{fdfoptions}
 
@@ -11640,9 +11863,10 @@ electrodes in a generic input format.
     The semi-infinite direction of the electrode with respect to the
     electrode unit-cell. 
 
-    \note this has nothing to do with the scattering region unit cell,
-    \tsiesta\ will figure out the alignment of the electrode unit-cell
-    and the scattering region unit-cell.
+    \note this direction is \emph{not} with respect to the scattering
+    region unit cell. It is with respect to the electrode unit
+    cell. \tsiesta\ will figure out the alignment of the electrode
+    unit cell and the scattering region unit-cell.
 
     \option[chemical-potential|chem-pot|mu]%
     \fdfindex*{TS!Elec.<>!chemical-potential}%
@@ -11672,17 +11896,20 @@ electrodes in a generic input format.
     \fdfindex*{TS!Elec.<>!Bulk}%
     Logical controlling whether the Hamiltonian of the electrode
     region in the scattering region is enforced \emph{bulk} or whether
-    the Hamiltonian is taken from the scattering region elements.
+    the Hamiltonian is taken from the scattering region elements. If
 
     \option[DM-update]%
     \fdfindex*{TS!Elec.<>!DM-Update}%
+    \fdfdepend{TS!Elec.<>!Bulk}%
     String of values \fdf*{none}, \fdf*{cross-terms} or \fdf*{all}
     which controls which part of the electrode density matrix elements
     that are updated. If \fdf*{all}, both the density matrix elements
-    in the electrode and the coupling elements between the 
-    electrode and scattering region are updated. If \fdf*{cross-terms}
+    in the electrode and the coupling elements between the electrode
+    and scattering region are updated. If \fdf*{cross-terms} (default)
     only the coupling elements between the electrode and the
     scattering region are updated.
+
+    If \fdf{TS!Elec.<>!Bulk:false} this is forced to \fdf*{all}.
 
     \option[Gf]%
     \fdfindex*{TS!Elec.<>!Gf}%
@@ -11704,16 +11931,16 @@ electrodes in a generic input format.
     
     \option[Eta]%
     \fdfindex*{TS!Elec.<>!Eta}%
+    \fdfdepend{TS!Elecs!Eta}
     Control the imaginary part of the surface Green function for this
-    electrode. See \fdf{TS!Elecs!Eta}.
+    electrode.
 
     \option[Accuracy]%
     \fdfindex*{TS!Elec.<>!Accuracy}%
+    \fdfdepend{TS!Elecs!Accuracy}
     Control the convergence accuracy required for the self-energy
     calculation when using the Lopez-Sanchez, Lopez-Sanchez iterative
     scheme. 
-    %
-    See \fdf{TS!Elecs!Accuracy}.
 
     \note advanced use \emph{only}.
     
@@ -11730,15 +11957,15 @@ electrodes in a generic input format.
 
     \option[Bloch]%
     \fdfindex*{TS!Elec.<>!Bloch}%
-    $3$ integers are present on this line which each denote the number
-    of times bigger the scattering region electrode is compared to the
-    electrode, in each lattice direction. Remark that these expansion
-    coefficients are with regard to the electrode unit-cell.
+    $3$ integers should be present on this line which each denote the
+    number of times bigger the scattering region electrode is compared
+    to the electrode, in each lattice direction. Remark that these
+    expansion coefficients are with regard to the electrode unit-cell.
     This is denoted ``Bloch'' because it is an expansion based on
     Bloch waves.
 
     \option[Bloch-A/a1|B/a2|C/a3]%
-    \fdfindex*{TS!Elec.<>!Bloch}%
+    \fdfindex{TS!Elec.<>!Bloch}%
     Specific Bloch expansions in each of the electrode unit-cell
     direction. See \fdf*{Bloch} for details.
 
@@ -11765,14 +11992,14 @@ electrodes in a generic input format.
     it is highly discouraged!
 
     \option[check-kgrid]%
-    \fdfindex*{TS.Elec.<>!check-kgrid}%
+    \fdfindex*{TS!Elec.<>!check-kgrid}%
     For $N$ electrode calculations the $\mathbf k$ mesh will sometimes
     not be equivalent for the electrodes and the device region
     calculations. However, \tsiesta\ requires that the device and
     electrode $\mathbf k$ samplings are commensurate. This flag
     controls whether this check is enforced.
 
-    \note only use if fully aware of the implications.
+    \note only use if fully aware of the implications!
 
   \end{fdfoptions}
   
@@ -11837,7 +12064,7 @@ for the electrodes (with \fdf{TS!Elec.<>} taking precedence).
   
 \end{fdflogicalT}
 
-\begin{fdfentry}{TS!Elecs!DM.Update}[string]<none|cross-terms|all>
+\begin{fdfentry}{TS!Elecs!DM.Update}[string]<cross-terms|all|none>
 
   This globally controls which parts of the electrode density matrix
   gets updated. 
@@ -11858,7 +12085,7 @@ for the electrodes (with \fdf{TS!Elec.<>} taking precedence).
   
 \end{fdfentry}
 
-\begin{fdfentry}{TS!Elecs!Coord.EPS}[length]<$10^{-4}\,\mathrm{Bohr}$>
+\begin{fdfentry}{TS!Elecs!Coord.EPS}[length]<$0.001\,\mathrm{Ang}$>
 
   When using Bloch expansion of the self-energies one may experience
   difficulties in obtaining perfectly aligned electrode coordinates.
@@ -11882,8 +12109,8 @@ potentials. They are defined via blocks similar to \fdf{TS!Elecs}.
 
 \begin{fdfentry}{TS!ChemPots}[block]
   
-  Each line denotes a new chemical potential which is 
-  defined in the \fdf{TS!ChemPot.<>} block.
+  Each line denotes a new chemical potential which is defined in the
+  \fdf{TS!ChemPot.<>} block.
   
 \end{fdfentry}
 
@@ -11891,7 +12118,6 @@ potentials. They are defined via blocks similar to \fdf{TS!Elecs}.
 
   Each line defines a setting for the chemical potential named
   \fdf*{<>}.
-
 
   \begin{fdfoptions}
     
@@ -12014,15 +12240,18 @@ Fermi-level, which is rather unfortunate (for non-equilibrium but not
 equilibrium). Fortunately the non-equilibrium contours are defined
 from different chemical potentials Fermi functions, and as such this
 contour is defined in the window of the minimum and maximum chemical
-potentials.
+potentials. Because the reference energy is the periodic Fermi level
+it is advised to retain the average chemical potentials equal to
+$0$. Otherwise applying different bias will shift transmission curves
+calculated via \tbtrans\ relative to the average chemical potential.
 
 In this section the equilibrium contours are defined, and in the next
 section the non-equilibrium contours are defined.
 
 \begin{fdfentry}{TS!Contours!Eq.Pole}[energy]<$2.5\,\mathrm{eV}$>
 
-  The imaginary part of the Fermi function tail when crossing the
-  Fermi level. Note that the actual number of poles may differ between
+  The imaginary part of the line integral crossing the chemical
+  potential. Note that the actual number of poles may differ between
   different calculations where the electronic temperatures are
   different.
 
@@ -12033,7 +12262,7 @@ section the non-equilibrium contours are defined.
 
 \begin{fdfentry}{TS!Contours!Eq.Pole.N}[integer]<8>
 
-  Manually select the \# of poles for the equilibrium contour. 
+  Manually select the number poles for the equilibrium contour. 
 
   \note this flag will only take effect if \fdf{TS!Contours!Eq.Pole}
   is a negative energy.
@@ -12069,7 +12298,7 @@ section the non-equilibrium contours are defined.
 
       \option[tail]%
       The final part of the contour \emph{must} be a tail which
-      denotes the Fermi-tail.
+      denotes the Fermi function tail.
 
     \end{fdfoptions}
 
@@ -12079,8 +12308,12 @@ section the non-equilibrium contours are defined.
     Define the integration range on the energy axis.
     Thus \emph{a} and \emph{b} are energies.
 
+    The parameters may also be given values \fdf*{prev}/\fdf*{next}
+    which is the equivalent of specifying the same energy as the
+    previous contour it is connected to.
+
     \note that \emph{b} may be supplied as \fdf*{inf} for \fdf*{tail}
-    parts. 
+    parts.
 
     \option[points/delta]%
     \fdfindex*{TS!Contour.<>!points}%
@@ -12111,14 +12344,18 @@ section the non-equilibrium contours are defined.
       \option[G-legendre]%
       Gauss-Legendre quadrature.
 
+      \note has \fdf*{opt left}
+      
       \note has \fdf*{opt right}
 
       \option[tanh-sinh]%
       Tanh-Sinh quadrature.
 
-      \note has \fdf*{opt precision <>}.
+      \note has \fdf*{opt precision <>}
 
-      \note has \fdf*{opt right}.
+      \note has \fdf*{opt left}
+      
+      \note has \fdf*{opt right}
 
       \option[G-Fermi]%
       Gauss-Fermi quadrature (only on tails).
@@ -12136,8 +12373,7 @@ section the non-equilibrium contours are defined.
 \end{fdfentry}
 
 These options complicate the input sequence for regular $2$ electrode
-which is unfortunate. However, it allows highly customizable contours,
-etc.
+which is unfortunate. However, it allows highly customizable contours.
 
 Using \program{tselecs.sh -only-c} yields this output:
 \begin{fdfexample}
@@ -12170,7 +12406,7 @@ Using \program{tselecs.sh -only-c} yields this output:
 These contour options refer to input options for the chemical
 potentials as shown in Sec.~\ref{sec:ts:chem-pot}
 (p.~\pageref{sec:ts:chem-pot}). Importantly one should note the shift
-of the contours of corresponding to the chemical potential (the shift
+of the contours corresponding to the chemical potential (the shift
 corresponds to difference from the reference energy used in \tsiesta).
 
 
@@ -12183,8 +12419,8 @@ create default input blocks.
 \begin{fdfentry}{TS!Contours.nEq!Eta}[energy]<$0\,\mathrm{eV}$>
 
   The imaginary part ($\eta$) of the device states. Generally this is
-  not necessary to define as the imaginary part arises from the
-  self-energies (where $\eta>0$). 
+  not necessary to define as the imaginary part naturally arises from
+  the self-energies (where $\eta>0$).
   
 \end{fdfentry}
 
@@ -12235,18 +12471,17 @@ should change accordingly. Note that here \fdf*{kT} refers to
 
 
 
-\subsection{Matching \texorpdfstring{\tsiesta\ }{TranSIESTA}
-    coordinates: basic rules}
+\subsection{Matching electrode coordinates: basic rules}
 
-Having discussed the possible input options of \tsiesta\ here
-we just list a set of rules to construct the appropriate coordinates
-of the scattering region. Contrary to versions pre 4.1, the order of
+Having discussed the possible input options of \tsiesta\ here we just
+list a set of rules to construct the appropriate coordinates of the
+scattering region. Contrary to versions prior to 4.1, the order of
 atoms is largely irrelevant. One may define all electrodes, then
 subsequently the device, or vice versa. Similarly are buffer atoms not
 restricted to be the first/last atoms.
 %
-However, each electrode atoms \emph{must} be defined
-consecutively. I.e. if an electrode input option is given by:
+However, each electrode atoms \emph{must} be consecutive in the input
+file. I.e. if an electrode input option is given by:
 \begin{fdfexample}
   %block TS.Elec.<>
     HS ../elec-<>/siesta.TSHS
@@ -12255,10 +12490,37 @@ consecutively. I.e. if an electrode input option is given by:
     electrode-position 10
   %endblock
 \end{fdfexample}
-then the atoms from $10$ to $21$ must coincide with the atoms of the
-calculation performed in the \program{../elec-<>/}
-subdirectory. The Bloch expansion requires a particular sequence of
-the atoms which may be outlined as in the following loop:
+then the atoms from $10$ to $10+4*3-1$ must coincide with the atoms of
+the calculation performed in the \program{../elec-<>/}
+subdirectory.
+
+When using the Bloch expansion it is advised to follow the
+\emph{tiling} method. However both of the below sequences are allowed.
+
+\paragraph{Tile} \fdfindex{TS!Elec.<>!Bloch}%
+Here the atoms are copied and displaced by the full
+electrode. Generally this expansion should be preferred over the
+\emph{repeat} expansion due to faster execution.
+\begin{fdfexample}
+  iaD = 10 ! as per the above input option
+  do iC = 0 , nC - 1
+  do iB = 0 , nB - 1
+  do iA = 0 , nA - 1
+    do iaE = 1 , na_u
+      xyz_device(:, iaD) = xyz_elec(:, iaE) + &
+          cell_elec(:, 1) * iA + &
+          cell_elec(:, 2) * iB + &
+          cell_elec(:, 3) * iC
+      iaD = iaD + 1
+    end do
+  end do
+  end do
+  end do
+\end{fdfexample}
+
+\paragraph{Repeat} \fdfindex{TS!Elec.<>!Bloch}%
+Here the atoms are copied individually. Generally
+this expansion should not be used.
 \begin{fdfexample}
   iaD = 10 ! as per the above input option
   do iaE = 1 , na_u
@@ -12275,15 +12537,17 @@ the atoms which may be outlined as in the following loop:
     end do
   end do
 \end{fdfexample}
+
 As a help, \tsiesta\ prints out the expected coordinates as though the
 first device atom coincides with the first electrode atom. Another
 means to create this is using the \sisl\cite{sisl} program and this command
 line:
 \begin{fdfexample}
-  sgeom -rx 1 -ry 3 -rz 1 ELEC.fdf DEVICE_ELEC.fdf
+  sgeom -tx 1 -ty 3 -tz 1 ELEC.fdf DEVICE_ELEC.fdf # Tile
+  sgeom -rz 1 -ry 3 -rx 1 ELEC.fdf DEVICE_ELEC.fdf # Repeat
 \end{fdfexample}
 and then shift the coordinates according to the placement in the
-device region.
+device region. Note how repeating has different order of tiling.
 
 \subsection{Output}
 
@@ -12298,7 +12562,7 @@ device region.
   calculation.
   
   \item[\sysfile{TSDE}]: The \tsiesta\ density matrix and energy
-  density matrix. During a transiesta run, the \sysfile{DM} values are
+  density matrix. During a \tsiesta\ run, the \sysfile{DM} values are
   used for the density matrix in the buffer (if used) and electrode
   regions. The coupling terms may or may not be updated in a \tsiesta\
   run, see \fdf{TS!Elec.<>!DM-Update}.
@@ -12315,14 +12579,22 @@ device region.
   \item[\sysfile{TSCCNEQ*}]: The non-equilibrium complex contour
   integration paths.
 
+  \item[\sysfile{TSGF*}]: Self-energy files containing the used
+  self-energies from the leads. These are very large files used in the
+  SCF loop. Once completed one can safely delete these files.
+  %
+  For heavily increased throughput these files may be re-used for the
+  same electrode settings in various calculations.
+
 \end{description} 
 
 \subsection{Utilities for analysis:
     \texorpdfstring{\tbtrans}{TBtrans}} 
-\index{tbtrans@\textbf{tbtrans}}
+\index{tbtrans@\tbtrans}
 
 Please see the separate \tbtrans\ manual
-(\href{run:tbtrans.pdf}{tbtrans.pdf}).
+(\href{run:tbtrans.pdf}{tbtrans.pdf}). 
+
 
 \section{ANALYSIS TOOLS}
 
@@ -12459,7 +12731,7 @@ Ram\'on Areces.
 \begin{tabular}{llr}
 Magnitude & Unit name & MKS value \\
 \hline
-mass     & Kg         & 1.E0 \\
+mass     & kg         & 1.E0 \\
 mass     & g          & 1.E-3 \\
 mass     & amu        & 1.66054E-27 \\
 length   & m          & 1.E0 \\

@@ -134,6 +134,7 @@ module m_tbt_proj
 
   public :: init_proj
   public :: init_proj_T
+  public :: open_cdf_proj
   public :: proj_print
   public :: proj_LME_assoc
   public :: init_proj_save
@@ -456,6 +457,33 @@ contains
     
   end subroutine init_proj
 
+
+  subroutine open_cdf_proj(fname, ncdf)
+    use netcdf_ncdf, ncdf_parallel => parallel
+#ifdef MPI
+    use mpi_siesta, only : MPI_COMM_WORLD
+#endif
+
+    character(len=*), intent(in) :: fname
+    type(hNCDF), intent(inout) :: ncdf
+
+    ! quick return
+    if ( N_proj_ME == 0 ) return
+
+#ifdef MPI
+    ! Open the netcdf file
+    if ( save_parallel ) then
+       call ncdf_open(ncdf,fname, mode=ior(NF90_WRITE,NF90_MPIIO), &
+            comm = MPI_COMM_WORLD )
+    else
+       call ncdf_open(ncdf,fname, mode=NF90_WRITE)
+    end if
+#else
+    call ncdf_open(ncdf,fname, mode=NF90_WRITE)
+#endif
+    
+  end subroutine open_cdf_proj
+
   subroutine proj_print( N_Elec, Elecs )
 
     use parallel, only : Node
@@ -477,7 +505,7 @@ contains
 
     ! Lets first print out the projections
 
-    write(*,'(/,a)')'tbtrans: Projection regions:'
+    write(*,'(/,a)')'tbt: Projection regions:'
 
     do im = 1 , N_mol
 
@@ -758,7 +786,7 @@ contains
           if ( Node == 0 ) then
              if ( .not. any_skipped ) write(*,*) ! newline
              any_skipped = .true.
-             write(*,'(a)')'tbtrans: Projection "from '//trim(char)//'" has &
+             write(*,'(a)')'tbt: Projection "from '//trim(char)//'" has &
                   &been silently rejected.'
           end if
           cycle ! all these projections will be skipped
@@ -957,7 +985,7 @@ contains
                 if ( Node == 0 ) then
                    if ( .not. any_skipped ) write(*,*) ! newline
                    any_skipped = .true.
-                   write(*,'(a)')'tbtrans: Projection "from '//&
+                   write(*,'(a)')'tbt: Projection "from '//&
                         trim(Elecs(iE_p)%name)// &
                         ' to '//trim(char)//'" has been silently rejected.'
                 end if
@@ -1090,8 +1118,8 @@ contains
     end do
 
     if ( Node == 0 .and. any_skipped ) then
-       write(*,'(a)') 'tbtrans: Certain projections have been skipped'
-       write(*,'(a)') 'tbtrans: Check manual for allowing all projections'
+       write(*,'(a)') 'tbt: Certain projections have been skipped'
+       write(*,'(a)') 'tbt: Check manual for allowing all projections'
     end if
 
   contains
@@ -1131,8 +1159,8 @@ contains
          if ( leqi(E,Elecs(iE)%name) ) exit
       end do
       if ( iE > N_Elec ) then
-         write(*,*)'tbtrans: Could not recognize electrode designation in TBT.Proj.T block'
-         write(*,*)'tbtrans: The electrode named '//trim(E)//' could not be found.'
+         write(*,*)'tbt: Could not recognize electrode designation in TBT.Proj.T block'
+         write(*,*)'tbt: The electrode named '//trim(E)//' could not be found.'
          call die('Error in input')
       end if
       if ( idot < 1 ) return
@@ -1277,7 +1305,7 @@ contains
   end function ProjMolEl_same
 
   ! Initialize the TBT.Proj.nc file
-  subroutine init_proj_save( fname, TSHS , r, ispin, N_Elec, Elecs, &
+  subroutine init_proj_save( fname, TSHS , r, btd, ispin, N_Elec, Elecs, &
        nkpt, kpt, wkpt, NE , a_Dev, a_Buf, sp_dev_sc, save_DATA )
 
     use parallel, only : Node, Nodes, IONode
@@ -1308,7 +1336,7 @@ contains
 
     character(len=*), intent(in) :: fname
     type(tTSHS), intent(inout) :: TSHS
-    type(tRgn), intent(in) :: r
+    type(tRgn), intent(in) :: r, btd
     integer, intent(in) :: ispin
     integer, intent(in) :: N_Elec
     type(Elec), intent(in) :: Elecs(N_Elec)
@@ -1320,7 +1348,7 @@ contains
     type(dict), intent(inout) :: save_DATA
 
     type(hNCDF) :: ncdf, grp, grp2, grp3
-    type(tRgn) :: r_tmp, a_Dev_sort
+    type(tRgn) :: r_tmp
     integer :: cmp_lvl
     integer :: no, im, Np, ip, i, ik, iN, iE
     integer :: it, ipt
@@ -1344,11 +1372,6 @@ contains
 
     ! There is nothing to initialize
     if ( N_mol == 0 ) return
-
-    ! We have to sort the device atoms.
-    ! We however, know that a_Buf *is* sorted.
-    call rgn_copy(a_Dev, a_Dev_sort)
-    call rgn_sort(a_Dev_sort)
 
     exist = file_exist(fname, Bcast = .true. )
 
@@ -1407,12 +1430,12 @@ contains
     if ( IONode ) write(*,*) ! newline
 
     if ( IONode .and. .not. all(mols(:)%Gamma) ) then
-       write(*,'(a)')'tbtrans: *********'
-       write(*,'(a)')'tbtrans: k-resolved projections only work if dispersion'
-       write(*,'(a)')'tbtrans: does not create band-crossings.'
-       write(*,'(a)')'tbtrans: IT IS YOUR RESPONSIBILITY TO ENSURE THIS!'
-       write(*,'(a)')'tbtrans: Do specific k-points separately at band-crossings.'
-       write(*,'(a/)')'tbtrans: *********'
+       write(*,'(a)')'tbt: *********'
+       write(*,'(a)')'tbt: k-resolved projections only work if dispersion'
+       write(*,'(a)')'tbt: does not create band-crossings.'
+       write(*,'(a)')'tbt: IT IS YOUR RESPONSIBILITY TO ENSURE THIS!'
+       write(*,'(a)')'tbt: Do specific k-points separately at band-crossings.'
+       write(*,'(a/)')'tbt: *********'
        
     end if
 
@@ -1426,7 +1449,8 @@ contains
        call ncdf_open(ncdf,fname,mode=NF90_NOWRITE)
 
        dic = ('no_u'.kv. TSHS%no_u)//('na_u'.kv. TSHS%na_u )
-       dic = dic //('no_d'.kv.r%n) // ('na_d'.kv.a_Dev_sort%n)
+       dic = dic //('no_d'.kv.r%n) // ('na_d'.kv.a_Dev%n)
+       dic = dic //('n_btd'.kv.btd%n)
        if ( a_Buf%n > 0 ) then
           dic = dic // ('na_b'.kv.a_Buf%n)
        end if
@@ -1437,29 +1461,30 @@ contains
        ! Check the variables
        dic = ('lasto'.kvp. TSHS%lasto(1:TSHS%na_u) )
        dic = dic // ('xa'.kvp. TSHS%xa) // ('cell'.kvp.TSHS%cell)
-       dic = dic // ('pivot'.kvp.r%r)//('a_dev'.kvp.a_Dev_sort%r)
-       dic = dic // ('nsc'.kvp. TSHS%nsc)
+       call rgn_copy(a_Dev, r_tmp)
+       call rgn_sort(r_tmp)
+       dic = dic // ('pivot'.kvp.r%r)//('a_dev'.kvp.r_tmp%r)
+       dic = dic // ('nsc'.kvp. TSHS%nsc) // ('btd'.kvp.btd%r)
        if ( a_Buf%n > 0 ) then
           dic = dic // ('a_buf'.kvp.a_Buf%r)
        end if
        call ncdf_assert(ncdf,is_same,vars=dic, d_EPS = 1.e-4_dp )
        call check(dic,is_same,'lasto, xa or cell in the PROJ.nc file does &
             &not conform to the current simulation.',.false.)
+       call rgn_delete(r_tmp)
 
-       if ( .not. isGamma ) then
-          ! Check the k-points
-          allocate(rv(3,nkpt))
-          do i = 1 , nkpt
-             call kpoint_convert(TSHS%cell,kpt(:,i),rv(:,i),1)
-          end do
-          dic = ('kpt'.kvp.rv) // ('wkpt'.kvp. wkpt)
-          call ncdf_assert(ncdf,is_same,vars=dic, d_EPS = 1.e-7_dp )
-          if ( .not. is_same ) then
-             call die('k-points or k-weights are not the same')
-          end if
-          call delete(dic,dealloc = .false. )
-          deallocate(rv)
+       ! Check the k-points
+       allocate(rv(3,nkpt))
+       do i = 1 , nkpt
+          call kpoint_convert(TSHS%cell,kpt(:,i),rv(:,i),1)
+       end do
+       dic = ('kpt'.kvp.rv) // ('wkpt'.kvp. wkpt)
+       call ncdf_assert(ncdf,is_same,vars=dic, d_EPS = 1.e-7_dp )
+       if ( .not. is_same ) then
+          call die('k-points or k-weights are not the same')
        end if
+       call delete(dic,dealloc = .false. )
+       deallocate(rv)
 
        ! We check each molecule in the projection file
        do im = 1 , N_mol
@@ -1527,7 +1552,7 @@ contains
        call ncdf_close(ncdf)
 
        if ( Node == 0 ) then
-          write(*,'(a)') 'tbtrans: Projection tables are re-used from the &
+          write(*,'(a)') 'tbt: Projection tables are re-used from the &
                &TBT.Proj.nc file.'
        end if
 
@@ -1545,7 +1570,7 @@ contains
     ! The projection file does not exist.
     ! We need to create it.
     if ( Node == 0 ) then
-       write(*,'(2a)')'tbtrans: Initializing projection data file: ',trim(fname)
+       write(*,'(2a)')'tbt: Initializing projection data file: ',trim(fname)
     end if
 
     call timer('proj_init',1)
@@ -1569,11 +1594,12 @@ contains
     call ncdf_def_dim(ncdf,'na_u',TSHS%na_u)
     call ncdf_def_dim(ncdf,'xyz',3)
     call ncdf_def_dim(ncdf,'one',1)
-    call ncdf_def_dim(ncdf,'na_d',a_Dev_sort%n)
+    call ncdf_def_dim(ncdf,'na_d',a_Dev%n)
     call ncdf_def_dim(ncdf,'no_d',r%n)
     call ncdf_def_dim(ncdf,'nkpt',NF90_UNLIMITED)
     call ncdf_def_dim(ncdf,'ne',NF90_UNLIMITED)
     call ncdf_def_dim(ncdf,'n_s',product(TSHS%nsc))
+    call ncdf_def_dim(ncdf,'n_btd',btd%n)
 
     ! Create eigenvalue dimension, if needed
     if ( N_eigen > 0 ) then
@@ -1631,6 +1657,10 @@ contains
     dic = dic//('info'.kv.'Device region orbital pivot table')
     call ncdf_def_var(ncdf,'pivot',NF90_INT,(/'no_d'/), &
          atts = dic)
+    
+    dic = dic // ('info'.kv.'Blocks in BTD for the pivot table')
+    call ncdf_def_var(ncdf,'btd',NF90_INT,(/'n_btd'/), &
+         atts = dic)
 
     dic = dic//('info'.kv.'Index of device atoms')
     call ncdf_def_var(ncdf,'a_dev',NF90_INT,(/'na_d'/), &
@@ -1642,17 +1672,13 @@ contains
             atts = dic)
     end if
 
-    if ( .not. isGamma ) then
-
-       dic = ('info'.kv.'k point weights')
-       call ncdf_def_var(ncdf,'wkpt',NF90_DOUBLE,(/'nkpt'/), &
-            atts = dic)
-       dic = dic//('info'.kv.'k point')//('unit'.kv.'b')
-       call ncdf_def_var(ncdf,'kpt',NF90_DOUBLE,(/'xyz ','nkpt'/), &
-            atts = dic)
-
-    end if
-
+    dic = ('info'.kv.'k point weights')
+    call ncdf_def_var(ncdf,'wkpt',NF90_DOUBLE,(/'nkpt'/), &
+         atts = dic)
+    dic = dic//('info'.kv.'k point')//('unit'.kv.'b')
+    call ncdf_def_var(ncdf,'kpt',NF90_DOUBLE,(/'xyz ','nkpt'/), &
+         atts = dic)
+    
 #ifdef TBT_PHONON
     dic = dic//('info'.kv.'Frequency')//('unit'.kv.'Ry')
 #else
@@ -1668,30 +1694,27 @@ contains
     call ncdf_put_var(ncdf,'cell',TSHS%cell)
     call ncdf_put_var(ncdf,'xa',TSHS%xa)
     call ncdf_put_var(ncdf,'lasto',TSHS%lasto(1:TSHS%na_u))
-    call ncdf_put_var(ncdf,'a_dev',a_Dev_sort%r)
+    call rgn_copy(a_Dev, r_tmp)
+    call rgn_sort(r_tmp)
+    call ncdf_put_var(ncdf,'a_dev',r_tmp%r)
+    call rgn_delete(r_tmp)
+    call ncdf_put_var(ncdf,'btd',btd%r)
     if ( a_Buf%n > 0 ) then
        call ncdf_put_var(ncdf,'a_buf',a_Buf%r)
     end if
-
-    ! We are now done with a_Dev_sort
-    call rgn_delete(a_Dev_sort)
 
     ! Save all k-points
     ! Even though they are in an unlimited dimension,
     ! we save them instantly.
     ! This ensures that a continuation can check for 
     ! the same k-points in the same go.
-    if ( .not. isGamma ) then
-
-       allocate(rv(3,nkpt))
-       do i = 1 , nkpt
-          call kpoint_convert(TSHS%cell,kpt(:,i),rv(:,i),1)
-       end do
-       call ncdf_put_var(ncdf,'kpt',rv)
-       call ncdf_put_var(ncdf,'wkpt',wkpt)
-       deallocate(rv)
-
-    end if
+    allocate(rv(3,nkpt))
+    do i = 1 , nkpt
+       call kpoint_convert(TSHS%cell,kpt(:,i),rv(:,i),1)
+    end do
+    call ncdf_put_var(ncdf,'kpt',rv)
+    call ncdf_put_var(ncdf,'wkpt',wkpt)
+    deallocate(rv)
 
     if ( 'proj-orb-current' .in. save_DATA ) then
 
@@ -1738,7 +1761,7 @@ contains
        end if
 
        if ( Node == 0 ) then
-          write(*,'(2a)') 'tbtrans: Calculating eigenvalues and |> of projection: ', &
+          write(*,'(2a)') 'tbt: Calculating eigenvalues and |> of projection: ', &
                trim(mols(im)%name)
        end if
 
@@ -1977,6 +2000,7 @@ contains
 
 #else
        ! figure out the LUMO level
+       iLUMO = no
        do i = 1 , no 
           if ( eig(i) > 0._dp ) then
              iLUMO = i
@@ -2145,7 +2169,7 @@ contains
           end if
           ! Check that the state actually exists
           if ( i < 1 .or. no < i ) then
-             write(*,'(a)')'tbtrans: Projection eigenvalues [eV]:'
+             write(*,'(a)')'tbt: Projection eigenvalues [eV]:'
              do i = 1 , no
                 if ( i < iLUMO ) then
                    write(*,'(a,tr1,i4,tr1,e12.5)')'Eigenvalue: ', &
@@ -2270,9 +2294,9 @@ contains
     call ncdf_close(ncdf)
 
     if ( Node == 0 ) then
-       write(*,'(a)') 'tbtrans: Please ensure the projection eigenvalues &
+       write(*,'(a)') 'tbt: Please ensure the projection eigenvalues &
             &are aligned as you suspect.'
-       write(*,'(a)') 'tbtrans: Molecular states hybridize in proximity &
+       write(*,'(a)') 'tbt: Molecular states hybridize in proximity &
             &and energy levels might shift.'
        write(*,*) 
     end if

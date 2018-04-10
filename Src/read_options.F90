@@ -78,7 +78,7 @@ subroutine read_options( na, ns, nspin )
   !                                                 6   = CheSS
   ! real*8 temp              : Temperature for Fermi smearing (Ry)
   ! logical fixspin          : Fix the spin of the system?
-  ! real*8  ts               : Total spin of the system
+  ! real*8  total_spin       : Total spin of the system
   ! integer ncgmax           : Maximum number of CG steps for 
   !                            band structure energy minimization
   ! real*8 etol              : Relative tolerance in CG minimization
@@ -281,7 +281,7 @@ subroutine read_options( na, ns, nspin )
 
 
   ! Planewave cutoff of the real space mesh ...
-  g2cut = fdf_get('MeshCutoff',100._dp,'Ry')
+  g2cut = fdf_get('MeshCutoff',300._dp,'Ry')
   if (ionode) then
      write(6,6) 'redata: Mesh Cutoff', g2cut,' Ry'
   endif
@@ -305,8 +305,8 @@ subroutine read_options( na, ns, nspin )
   ! SCF Loop parameters ...
   !     Minimum/Maximum number of SCF iterations
   min_nscf = fdf_get('MinSCFIterations',0)
-  nscf     = fdf_get('MaxSCFIterations',50)
-  SCFMustConverge = fdf_get('SCFMustConverge', .false.)
+  nscf     = fdf_get('MaxSCFIterations',1000)
+  SCFMustConverge = fdf_get('SCFMustConverge', .true.)
   if (ionode) then
      write(6,4) 'redata: Min. number of SCF Iter',min_nscf
      write(6,4) 'redata: Max. number of SCF Iter',nscf
@@ -705,7 +705,6 @@ subroutine read_options( na, ns, nspin )
      endif
 #endif /* CHESS */
      
-#ifdef TRANSIESTA
   else if (leqi(method,'transi') .or. leqi(method,'transiesta') &
        .or. leqi(method,'negf') ) then
      isolve = SOLVE_TRANSI
@@ -714,19 +713,15 @@ subroutine read_options( na, ns, nspin )
         call add_citation("10.1016/j.cpc.2016.09.022")
         write(*,3) 'redata: Method of Calculation','Transiesta'
      endif
-#endif /* TRANSIESTA */
   else
      call die( 'redata: The method of solution must be either '//&
 #ifdef SIESTA__CHESS
           'CheSS, '//&
 #endif
-#ifdef TRANSIESTA
-          'Transiesta, '//&
-#endif
 #ifdef SIESTA__PEXSI
           'PEXSI, '//&
 #endif
-          'OrderN, OMM or Diagon' )
+          'OrderN, OMM, Diagon or Transiesta' )
   endif
 
 #ifdef DEBUG
@@ -817,23 +812,24 @@ subroutine read_options( na, ns, nspin )
   endif
 
   if (fixspin) then
-     if (nspin .ne. 2) then
-        call die( 'redata: ERROR: You can only fix the spin of '//&
-             'the system for collinear spin polarized calculations.' )
-     endif
-     ts = fdf_get('TotalSpin',0.0_dp)
-     if (ionode) then
-        write(6,9) 'redata: Value of the Spin of the System',ts
-     endif
+    if (nspin .ne. 2) then
+      call die( 'redata: ERROR: You can only fix the spin of '//&
+          'the system for collinear spin polarized calculations.' )
+    endif
+    total_spin = fdf_get('TotalSpin',0.0_dp)
+    total_spin = fdf_get('Spin.Total',total_spin)
+    if (ionode) then
+      write(6,9) 'redata: Total spin of the system (spin value)', total_spin
+    endif
   else
-     ts = 0.0_dp
+    total_spin = 0.0_dp
   endif
 
   if (cml_p) then 
      call cmlAddParameter( xf=mainXML, name='FixSpin', &
           value=fixspin, dictref='siesta:fixspin' )
      call cmlAddParameter( xf=mainXML, name='TotalSpin', &
-          value=ts, dictref='siesta:ts',&
+          value=total_spin, dictref='siesta:totalspin',&
           units='siestaUnits:eSpin' )
   endif
 
@@ -1635,11 +1631,9 @@ subroutine read_options( na, ns, nspin )
        fdf_get('SCF.Read.Deformation.Charge.NetCDF', .false. )
 
   ! Write the history
-#ifdef TRANSIESTA
   write_tshs_history = fdf_get('Write.TSHS.History', .false.)
   if ( IONode.and.write_tshs_history ) &
        write(*,2) 'redata: Saves TSHS files in MD simulation'
-#endif
   !write_hs_history = fdf_get('Write.HS.History', .false.)
 
   if (read_charge_cdf .or. read_deformation_charge_cdf) then

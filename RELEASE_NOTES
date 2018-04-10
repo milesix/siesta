@@ -1,26 +1,29 @@
-Release notes for the MaX R2 release of Siesta
+#BETA#BETA#BETA#BETA#BETA#BETA#
+B                             B
+E            SIESTA           E
+#             X.Y             #
+T              Z              T
+A                             A
+#BETA#BETA#BETA#BETA#BETA#BETA#
+
+Release notes for next Siesta
 
 *** Backward-compatibility issues
 
- None.
+ * The transiesta executable has been deprecated. Please use
+      siesta --electrode 
+   for electrode calculations. For regular transiesta runs, there
+   is no need for the specific executable. Details were given in the
+   4.1-b4 release.
 
 *** New features
 
- - Added the updated LinRes module to compute the force-constant
-   matrix by using Density-Functional Perturbation Theory.
-  
  - Added the CheSS solver as a new solution method. This is
    a linear scaling solver which calculates the density matrix and the
    energy density matrix.
 
- - Added the Cold-smearing method as another option to enhance the convergence
-   for metallic systems.
+ - Added the Cold-smearing method for zero-temperature limit
+   with smearing.
 
  - TDDFT implemented by R. Ullah via older code from
    D. Sanchez-Portal.
-   
- - Refactoring of the diagonalization subsystem: more choice of
-   methods and performance and memory-use improvements.
-
- - Enhanced control of quantum engine operations through an
-   embedded Lua interpreter

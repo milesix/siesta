@@ -138,8 +138,15 @@ contains
 
     ! Read in general values that should be used in the electrode generation
     ! I.e. these FDF-parameters are used for diagon runs with transiesta
+#ifdef TRANSIESTA
+    ! Although transiesta is deprecated, one may still
+    ! compile a TS executable that always saves HS and DE.
     TS_HS_save = fdf_get('TS.HS.Save',.true.)
+    TS_DE_save = fdf_get('TS.DE.Save',.true.)
+#else
+    TS_HS_save = fdf_get('TS.HS.Save',.false.)
     TS_DE_save = fdf_get('TS.DE.Save',.false.)
+#endif
     onlyS      = fdf_get('TS.onlyS',.false.)
     onlyS      = fdf_get('TS.S.Save',onlyS)
 
@@ -147,6 +154,10 @@ contains
     ! no settings from the intrinsic transiesta routines
     ! are needed.
     if ( onlyS .or. .not. TSmode ) return
+
+    ! When running TSmode we FORCE TS.HS.Save and TS.DE.Save
+    TS_HS_save = .true.
+    TS_DE_save = .true.
 
     ! Read in the transiesta SCF mixing options
     call mixers_init('TS.SCF', ts_scf_mixs )
@@ -303,7 +314,7 @@ contains
     use m_os, only : file_exist
 
     use files, only: slabel
-    use units, only: eV
+    use units, only: eV, Ang
 
     use m_ts_global_vars, only: TSmode, onlyS
     
@@ -362,7 +373,7 @@ contains
     call fdf_deprecated('TS.ReUseGF','TS.Elecs.GF.ReUse')
 
     ! To determine the same coordinate nature of the electrodes
-    Elecs_xa_EPS = fdf_get('TS.Elecs.Coord.Eps',1.e-4_dp,'Bohr')
+    Elecs_xa_EPS = fdf_get('TS.Elecs.Coord.Eps',0.001_dp*Ang, 'Bohr')
 
     ! Whether we should always set the DM to bulk
     ! values (by reading in from electrode DM)
@@ -417,7 +428,7 @@ contains
     ! We should probably warn if +2 electrodes are used and t_dir is the
     ! same for all electrodes... Then the user needs to know what (s)he is doing...
     ! Accuracy required for self-energy convergence
-    Elecs(:)%accu = fdf_get('TS.Elecs.Accuracy',1e-14_dp*eV,'Ry')
+    Elecs(:)%accu = fdf_get('TS.Elecs.Accuracy',1.e-14_dp*eV,'Ry')
     Elecs(:)%Eta  = fdf_get('TS.Contours.nEq.Eta',0.0001_dp*eV,'Ry')
     Elecs(:)%Eta  = fdf_get('TS.Elecs.Eta',Elecs(1)%Eta,'Ry')
     Elecs(:)%Bulk = fdf_get('TS.Elecs.Bulk',.true.) ! default everything to bulk electrodes
@@ -1060,7 +1071,7 @@ contains
   end subroutine print_ts_options
 
 
-  subroutine print_ts_warnings( cell, na_u, xa, Nmove )
+  subroutine print_ts_warnings( Gamma, cell, na_u, xa, Nmove )
 
     use parallel, only: IONode, Nodes
     use intrinsic_missing, only : VNORM, VEC_PROJ_SCA
@@ -1084,6 +1095,7 @@ contains
     use m_ts_hartree, only: TS_HA_NONE, TS_HA_PLANE, TS_HA_ELEC, TS_HA_ELEC_BOX
 
     ! Input variables
+    logical, intent(in) :: Gamma
     real(dp), intent(in) :: cell(3,3)
     integer, intent(in) :: na_u
     real(dp), intent(in) :: xa(3,na_u)
@@ -1128,8 +1140,6 @@ contains
        end if
     else if ( TS_DE_save ) then
        ! means TS_HA == TS_HA_NONE
-       write(*,'(a)') 'If you do not use Hartree.Fix you cannot &
-            &use the TSDE file for restart in TranSIESTA.'
     end if
 
     
@@ -1444,7 +1454,7 @@ contains
 
              ! Origo offset:
              p = - cell(:,ts_tidx) * bdir(i)
-             p = p + tmp3 * Elecs(iEl)%dINF_layer
+             p = p + tmp3 * Elecs(iEl)%dINF_layer * 0.5_dp
              ! Bond-length
              write(*,'(a,f9.5,a)') 'Electrode: '//trim(Elecs(iEl)%name)//' lies &
                   &outside the unit-cell.'
@@ -1475,7 +1485,7 @@ contains
 
              ! Origo offset:
              p = - cell(:,ts_tidx) * bdir(i)
-             p = p - tmp3 * Elecs(iEl)%dINF_layer
+             p = p - tmp3 * Elecs(iEl)%dINF_layer * 0.5_dp
              ! Bond-length
              write(*,'(a,f9.5,a)') 'Electrode: '//trim(Elecs(iEl)%name)//' lies &
                   &outside the unit-cell.'
@@ -1587,6 +1597,21 @@ contains
        warn = .true.
     end if
 
+    ! Check that the pivoting table is unique
+    do iEl = 1, N_Elec
+       if ( sum(Elecs(iEl)%pvt) /= 6 .or. count(Elecs(iEl)%pvt==2) /= 1 ) then
+          write(*,'(a,/,a)') 'The pivoting table for the electrode unit-cell, &
+               &onto the simulation unit-cell is not unique: '//trim(Elecs(iEl)%name), &
+               '  Please check your electrode and device cell parameters.'
+          if ( .not. Gamma ) then
+             err = .true.
+          else
+             warn = .true.
+             write(*,'(a)') '  Combining this with electric fields or dipole-corrections is ill-adviced!'
+          end if
+       end if
+    end do
+
     write(*,'(3a,/)') repeat('*',24),' End: TS CHECKS AND WARNINGS ',repeat('*',26)
 
     if ( warn ) then
@@ -1617,7 +1642,6 @@ contains
 
     use m_ts_global_vars, only: TSmode, onlyS
     use m_ts_chem_pot, only: print_mus_block
-    use m_ts_electype, only: print_elec
     use m_ts_contour, only: print_contour_block, io_contour
 
 
@@ -1643,13 +1667,7 @@ contains
     ! write out the contour
     call io_contour(IsVolt, mus, slabel)
 
-    ! Print out the electrode coordinates
-    do i = 1 , N_Elec
-       call print_elec(Elecs(i),na_u,xa)
-    end do
-
   end subroutine print_ts_blocks
-
 
   subroutine val_swap(v1,v2)
     real(dp), intent(inout) :: v1, v2

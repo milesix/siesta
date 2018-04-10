@@ -51,17 +51,17 @@ contains
     use siesta_options, only: sname, isolve
     use siesta_options, only: SOLVE_DIAGON, SOLVE_ORDERN
     use siesta_options, only: SOLVE_MINIM, SOLVE_TRANSI
+    use siesta_options, only: SOLVE_PEXSI
     use siesta_options, only: savehs
     use siesta_options, only: saverho, savedrho, savevh, savevna
     use siesta_options, only: savevt, savepsch, savetoch, saverhoxc
     use siesta_options, only: savebader
     use siesta_options, only: save_initial_charge_density
+    use siesta_options, only: fixspin, total_spin
     use m_timestamp, only: datestring
-#ifdef TRANSIESTA
     use m_ts_electype, elec_name => name
     use m_ts_options, only : Volt, N_Elec, Elecs
     use m_ts_options, only : TS_HS_Save
-#endif
 
     character(len=*), intent(in) :: fname
     logical, intent(in) :: is_md
@@ -71,9 +71,7 @@ contains
     type(dict) :: dic, d
     character(len=DICT_KEY_LENGTH) :: key
     integer :: n_nzs, tmp, i, chks(3), iEl
-#ifdef TRANSIESTA
     integer, allocatable :: ibuf(:)
-#endif
     logical :: exists
 #ifdef MPI
     integer :: MPIerror
@@ -114,8 +112,18 @@ contains
          compress_lvl=0, atts=dic)
 
     dic = dic//('info'.kv.'Fermi level')//('unit'.kv.'Ry')
-    call ncdf_def_var(ncdf,'Ef',NF90_DOUBLE,(/'one'/), &
-         compress_lvl=0, atts=dic)
+    if ( fixspin ) then
+      call ncdf_def_var(ncdf,'Ef',NF90_DOUBLE,(/'spin'/), &
+          compress_lvl=0, atts=dic)
+
+      call delete(dic)
+      dic = dic//('info'.kv.'Total spin')
+      call ncdf_def_var(ncdf,'Qspin',NF90_DOUBLE,(/'one'/), &
+          compress_lvl=0, atts=dic)
+    else
+      call ncdf_def_var(ncdf,'Ef',NF90_DOUBLE,(/'one'/), &
+          compress_lvl=0, atts=dic)
+    end if
     
     dic = dic//('info'.kv.'Atomic coordinates')//('unit'.kv.'Bohr')
     call ncdf_def_var(ncdf,'xa',NF90_DOUBLE,(/'xyz ','na_u'/), &
@@ -175,11 +183,7 @@ contains
     call ncdf_def_var(grp,'EDM',NF90_DOUBLE,(/'nnzs    ','spin_EDM'/), &
          compress_lvl=cdf_comp_lvl,atts=dic,chunks=chks)
 
-#ifdef TRANSIESTA
     if ( savehs .or. TS_HS_save ) then
-#else
-    if ( savehs ) then
-#endif
        ! Unit is already present in dictionary
        dic = dic//('info'.kv.'Hamiltonian')
        call ncdf_def_var(grp,'H',NF90_DOUBLE,(/'nnzs','spin'/), &
@@ -377,7 +381,6 @@ contains
 
     call delete(dic)
 
-#ifdef TRANSIESTA
     if ( isolve == SOLVE_TRANSI ) then
 
        ! Save all information about the transiesta method
@@ -423,8 +426,6 @@ contains
 
     end if
 
-#endif
-
     ! Save all things necessary here
     dic = ('time'.kv.datestring())
     dic = dic//('name'.kv.trim(sname))
@@ -436,10 +437,10 @@ contains
        dic = dic//('method'.kv.'order-n')
     else if ( isolve == SOLVE_MINIM ) then
        dic = dic//('method'.kv.'omm')
-#ifdef TRANSIESTA
     else if ( isolve == SOLVE_TRANSI ) then
        dic = dic//('method'.kv.'transiesta')
-#endif
+    else if ( isolve == SOLVE_PEXSI ) then
+       dic = dic//('method'.kv.'pexsi')
     end if
 
     ! Attributes are collective
@@ -449,9 +450,12 @@ contains
 
     ! Save the total charge and lasto
     call ncdf_put_var(ncdf,'Qtot',Qtot)
+    if ( fixspin ) then
+      call ncdf_put_var(ncdf,'Qspin',total_spin)
+    end if
+
     call ncdf_put_var(ncdf,'lasto',lasto(1:na_u))
 
-#ifdef TRANSIESTA
     if ( isolve == SOLVE_TRANSI ) then
 
        ! Save all information about the transiesta method
@@ -479,7 +483,6 @@ contains
        end do
 
     end if
-#endif
 
     ! Close the file
     call ncdf_close(ncdf)
@@ -491,11 +494,9 @@ contains
     use kpoint_grid,    only: kscell, kdispl
     use siesta_options, only: cdf_w_parallel
     use siesta_options, only: dDtol, dHtol, charnet, wmix, temp, g2cut
-#ifdef TRANSIESTA
     use siesta_options, only: isolve
     use siesta_options, only: SOLVE_DIAGON, SOLVE_ORDERN, SOLVE_TRANSI
     use m_ts_kpoints,   only: ts_kscell, ts_kdispl
-#endif
 
     character(len=*), intent(in) :: fname
     
@@ -503,7 +504,7 @@ contains
 
     ! We just open it (prepending)
     call ncdf_open(ncdf,fname, &
-         mode=ior(NF90_WRITE,NF90_NETCDF4))
+        mode=ior(NF90_WRITE,NF90_NETCDF4))
 
     call ncdf_open_grp(ncdf,'SETTINGS',grp)
 
@@ -520,7 +521,6 @@ contains
     ! I suggest that all MD settings are 
     ! put in the MD-group
 
-#ifdef TRANSIESTA
     if ( isolve == SOLVE_TRANSI ) then
        call ncdf_open_grp(ncdf,'TRANSIESTA',grp)
 
@@ -528,7 +528,6 @@ contains
        call ncdf_put_var(grp,'BZ_displ',ts_kdispl)
 
     end if
-#endif
 
     call ncdf_close(ncdf)
 
@@ -536,9 +535,10 @@ contains
 
 
   subroutine cdf_save_state(fname,dic_save)
-!    use m_gamma, only : Gamma
-    use m_energies, only: Ef
-    use atomlist, only : Qtot
+    !    use m_gamma, only : Gamma
+    use m_energies, only: Ef, Efs
+    use atomlist, only : Qtot, Qtots
+    use siesta_options, only: fixspin, total_spin
     use siesta_geom, only: na_u, ucell, xa, va
     use siesta_geom, only: nsc, isc_off
     use sparse_matrices, only: sparse_pattern, block_dist
@@ -567,8 +567,15 @@ contains
 #endif
 
     ! Add attribute of current Fermi-level
-    if ( ('Ef' .in. dic_save) .and. Node == 0 ) &
-         call ncdf_put_var(ncdf,'Ef',Ef)
+    if ( fixspin ) then
+      if ( ('Ef' .in. dic_save) .and. Node == 0 ) &
+          call ncdf_put_var(ncdf,'Ef',Efs)
+      if ( ('Qspin' .in. dic_save) .and. Node == 0 ) &
+          call ncdf_put_var(ncdf,'Qspin',total_spin)
+    else
+      if ( ('Ef' .in. dic_save) .and. Node == 0 ) &
+          call ncdf_put_var(ncdf,'Ef',Ef)
+    end if
     if ( ('Qtot' .in. dic_save) .and. Node == 0 ) &
          call ncdf_put_var(ncdf,'Qtot',Qtot)
     ! Save nsc, xa, fa, lasto, ucell
@@ -701,13 +708,15 @@ contains
        ! Get array sizes
        no = spp%n_orbnl
        nk = spp%n_pjnl
-       if ( no == 0 .or. nk == 0 ) cycle
+       if ( no == 0 ) cycle
 
        ! Create the group
        call ncdf_def_grp(ncdf,trim(spp%label),grp)
 
        call ncdf_def_dim(grp,'norbs',no)
-       call ncdf_def_dim(grp,'nkbs',nk)
+       if ( nk > 0 ) then
+          call ncdf_def_dim(grp,'nkbs',nk)
+       end if
        call ncdf_def_dim(grp,'ntb',nt)
 
        ! Save the orbital global attributes
@@ -742,20 +751,22 @@ contains
        call delete(dic)
 
        ! Create all projector variables...
-       dic = ('pjnl_l'.kv.NF90_INT)//('pjnl_n'.kv.NF90_INT)
-       dic = dic//('pjnl_ekb'.kv.NF90_DOUBLE)
-       dic = dic//('kbcutoff'.kv.NF90_DOUBLE)//('kbdelta'.kv.NF90_DOUBLE)
-       d = .first. dic
-       do while ( .not. (.empty. d) )
-          key = .key. d
-          v = .val. d
-          call assign(i,v)
-          call ncdf_def_var(grp,trim(key),i,(/'nkbs'/), &
-               compress_lvl=0,chunks=(/nk/))
-          d = .next. d
-       end do
-       call delete(dic)
-       call delete(v)
+       if ( nk > 0 ) then
+          dic = ('pjnl_l'.kv.NF90_INT)//('pjnl_n'.kv.NF90_INT)
+          dic = dic//('pjnl_ekb'.kv.NF90_DOUBLE)
+          dic = dic//('kbcutoff'.kv.NF90_DOUBLE)//('kbdelta'.kv.NF90_DOUBLE)
+          d = .first. dic
+          do while ( .not. (.empty. d) )
+             key = .key. d
+             v = .val. d
+             call assign(i,v)
+             call ncdf_def_var(grp,trim(key),i,(/'nkbs'/), &
+                  compress_lvl=0,chunks=(/nk/))
+             d = .next. d
+          end do
+          call delete(dic)
+          call delete(v)
+       end if
 
        ! Create orbital projector
        call ncdf_def_var(grp,'orb',NF90_DOUBLE,(/'ntb  ','norbs'/), &
@@ -795,9 +806,11 @@ contains
        call delete(dic)
 
        ! Define the projector
-       call ncdf_def_var(grp,'proj',NF90_DOUBLE, (/'ntb ','nkbs'/), &
-            compress_lvl=cdf_comp_lvl,chunks=(/nt,1/))
-
+       if ( nk > 0 ) then
+          call ncdf_def_var(grp,'proj',NF90_DOUBLE, (/'ntb ','nkbs'/), &
+               compress_lvl=cdf_comp_lvl,chunks=(/nt,1/))
+       end if
+          
        ! Save all variables to the group
 
        ! Save orbital
@@ -818,9 +831,11 @@ contains
        call ncdf_put_var(grp,'orbnl_pop',spp%orbnl_pop(1:no))
 
        ! Save projector
-       call ncdf_put_var(grp,'pjnl_l',spp%pjnl_l(1:nk))
-       call ncdf_put_var(grp,'pjnl_n',spp%pjnl_n(1:nk))
-       call ncdf_put_var(grp,'pjnl_ekb',spp%pjnl_ekb(1:nk))
+       if ( nk > 0 ) then
+          call ncdf_put_var(grp,'pjnl_l',spp%pjnl_l(1:nk))
+          call ncdf_put_var(grp,'pjnl_n',spp%pjnl_n(1:nk))
+          call ncdf_put_var(grp,'pjnl_ekb',spp%pjnl_ekb(1:nk))
+       end if
 
        do i = 1, nk
           p => spp%pjnl(i)

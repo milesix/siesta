@@ -43,7 +43,7 @@
       use atomlist,          only: iphorb, iphkb, indxua,
      &                             rmaxo, rmaxkb, rmaxv, rmaxldau,
      &                             lastkb, lasto, superc, indxuo,
-     &                             no_u, no_s, no_l, iza
+     &                             no_u, no_s, no_l, iza, qtots
       use alloc,             only: re_alloc, de_alloc, alloc_report
       use m_hsparse,         only: hsparse
       use m_overlap,         only: overlap
@@ -56,7 +56,7 @@
       use m_iotdxv,          only: iotdxv
       use m_steps
       use parallel,          only: IOnode, node, nodes, BlockSize
-      use m_spin,            only: spin, qs
+      use m_spin,            only: spin
       use m_rmaxh
       use m_mixing,          only: mixers_history_init
       use m_mixing_scf,      only: scf_mixs, scf_mix
@@ -73,7 +73,7 @@
 
       use m_sparse, only : xij_offset
 
-#ifdef TRANSIESTA
+      use m_ts_kpoints, only: setup_ts_kpoint_grid
       use m_ts_charge, only : TS_RHOCORR_METHOD, TS_RHOCORR_FERMI
       use m_ts_options, only : BTD_method
       use m_ts_options, only : TS_Analyze
@@ -85,7 +85,6 @@
       use m_ts_sparse, only : ts_sparse_init
       use m_ts_tri_init, only : ts_tri_init, ts_tri_analyze
       use files, only: slabel, label_length
-#endif
 #ifdef SIESTA__CHESS
       use m_chess, only: CheSS_init, get_CheSS_parameter
 #endif
@@ -99,6 +98,9 @@
       use class_dData2D
 #ifdef TEST_IO
       use m_test_io
+#endif
+#ifdef SIESTA__FLOOK
+      use siesta_dicts, only : dict_repopulate_MD
 #endif
 
       implicit none
@@ -114,13 +116,11 @@
       external           ::  madelung, timer
       real(dp), external :: volcel
 
-#ifdef TRANSIESTA
       integer                       :: ts_kscell_file(3,3) = 0
       real(dp)                      :: ts_kdispl_file(3) = 0.0
       logical                       :: ts_Gamma_file = .true.
       character(len=label_length+6) :: fname
       real(dp)                      :: dummyef=0.0, dummyqtot=0.0
-#endif
 #ifdef SIESTA__CHESS
       integer :: maxnh_kernel, maxnh_mult, no_l_kernel, no_l_mult
       integer,dimension(:),allocatable :: listh_kernel, listh_mult
@@ -132,6 +132,7 @@
       character(len=256)            :: oname
 
       type(dData2D) :: tmp_2D
+      real(dp) :: dummy_qspin(8)
 
 
 !------------------------------------------------------------------- BEGIN
@@ -257,6 +258,8 @@
 !       Will print k-points also
         call setup_Kpoint_grid( ucell )
 
+        call setup_ts_kpoint_grid( ucell )
+
         call re_alloc( eo, 1, no_u, 1, spin%spinor, 1, nkpnt, 'eo',
      &                 'state_init')
         call re_alloc( qo, 1, no_u, 1, spin%spinor, 1, nkpnt, 'qo',
@@ -295,6 +298,9 @@
 !     Do not move from here, as the coordinates might have changed
 !     even if not the unit cell
       call superc(ucell, scell, nsc)
+#ifdef SIESTA__FLOOK
+      call dict_repopulate_MD()
+#endif
 
 !     Print unit cell and compute cell volume
 !     Possible BUG: 
@@ -380,7 +386,7 @@
       if (isolve == SOLVE_CHESS) then
           call CheSS_init(node, nodes, maxnh, maxnh_kernel, maxnh_mult, 
      &         no_u, no_l, no_l_kernel, no_l_mult, BlockSize, 
-     &         spin%spinor, qs, listh, listh_kernel, listh_mult, 
+     &         spin%spinor, qtots, listh, listh_kernel, listh_mult, 
      &         numh, numh_kernel, numh_mult)
           deallocate(listh_kernel)
           deallocate(numh_kernel)
@@ -468,7 +474,6 @@
       end if
 
       
-#ifdef TRANSIESTA
       ! When the user requests to only do an analyzation, we can call
       ! appropriate routines and quit
       if ( TS_Analyze ) then
@@ -490,7 +495,6 @@
          call bye('transiesta analyzation performed')
          
       end if
-#endif
 
 
       write(oname,"(a,i0)") "EDM at geom step ", istep
@@ -567,9 +571,9 @@
       call new_DM(auxchanged, DM_history, DM_2D, EDM_2D)
       Dscf => val(DM_2D)
       Escf => val(EDM_2D)
+      call print_spin(dummy_qspin)
 
       ! Initialize energy-density matrix to zero for first call to overfsm
-#ifdef TRANSIESTA
       ! Only part of Escf is updated in TS, so if it is put as zero here
       ! a continuation run gives bad forces.
       if ( .not. TSrun ) then
@@ -578,19 +582,12 @@
          Escf(:,:) = 0.0_dp
 !$OMP end parallel workshare
       end if
-#else
-      call normalize_DM( first= .true. )
-!$OMP parallel workshare default(shared)
-      Escf(:,:) = 0.0_dp
-!$OMP end parallel workshare
-#endif /* TRANSIESTA */
 
 #ifdef TEST_IO
       ! We test the io-performance here
       call time_io(spin%H,H_2D)
 #endif
 
-#ifdef TRANSIESTA
 !     If onlyS, Save overlap matrix and exit
       if ( onlyS ) then
          fname = fname_TSHS(slabel, onlyS = .true. )
@@ -621,8 +618,6 @@
           end if
        end if
       
-#endif /* TRANSIESTA */
-
 #ifdef CDF
       if (writedm_cdf) then
          call setup_dm_netcdf_file( maxnh, no_l, spin%H,

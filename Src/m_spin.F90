@@ -90,10 +90,6 @@ module m_spin
   ! Consider moving this to some other place...
   logical, save, public :: TrSym   = .true.
 
-  ! Different Fermi-levels for different fixed spin-components
-  real(dp), pointer, save, public  :: efs(:)
-  real(dp), pointer, save, public  :: qs(:)
-
   ! Whether we are performing spiral arrangement of spins
   logical, save, public :: Spiral  = .false.
   ! Pitch wave vector for spiral configuration
@@ -153,7 +149,7 @@ contains
     if ( spin%SO ) then
        opt = 'spin-orbit'
     else if ( spin%NCol ) then
-       opt = 'non-collinear'
+       opt = 'non-colinear'
     else if ( spin%Col ) then
        opt = 'collinear'
     else
@@ -172,12 +168,12 @@ contains
        spin%none = .true.
        
     else if ( leqi(opt, 'polarized') .or. &
-         leqi(opt, 'collinear') .or. &
+         leqi(opt, 'collinear') .or. leqi(opt, 'colinear') .or. &
          leqi(opt, 'polarised') .or. leqi(opt, 'P') ) then
        
        spin%Col = .true.
        
-    else if ( leqi(opt, 'non-collinear') .or. &
+    else if ( leqi(opt, 'non-collinear') .or. leqi(opt, 'non-colinear') .or. &
          leqi(opt, 'NC') .or. leqi(opt, 'N-C') ) then
        
        spin%NCol = .true.
@@ -305,12 +301,6 @@ contains
     ! Get true time reversal symmetry
     TRSym  = fdf_get('TimeReversalSymmetry',TrSym)
 
-    nullify(efs,qs)
-    call re_alloc(efs, 1, spin%spinor, &
-         name="efs",routine="init_spin")
-    call re_alloc(qs, 1, spin%spinor, &
-         name="qs",routine="init_spin")
-
   contains
 
     subroutine int_pointer(from, to)
@@ -381,7 +371,7 @@ contains
 
     ! Unit cell lattice vectors
     real(dp), intent(in) :: ucell(3,3)
-    
+
     type(block_fdf)            :: bfdf
     type(parsed_line), pointer :: pline
 
@@ -394,12 +384,12 @@ contains
 
     call reclat( ucell, rcell, 1 )
 
-    Spiral = fdf_block('SpinSpiral', bfdf)
+    Spiral = fdf_block('Spin.Spiral', bfdf)
 
     if ( .not. Spiral ) return
 
     if (.not. fdf_bline(bfdf,pline)) &
-         call die('init_spiral: ERROR in SpinSpiral block')
+         call die('init_spiral: ERROR in Spin.Spiral block')
 
     ! Read lattice
     lattice = fdf_bnames(pline,1)
@@ -409,9 +399,9 @@ contains
     qSpiral(3) = fdf_bvalues(pline,3)
 
     if ( leqi(lattice,'Cubic') ) then
-       qSpiral(1) = Pi * qs(1) / alat
-       qSpiral(2) = Pi * qs(2) / alat
-       qSpiral(3) = Pi * qs(3) / alat
+       qSpiral(1) = Pi * qSpiral(1) / alat
+       qSpiral(2) = Pi * qSpiral(2) / alat
+       qSpiral(3) = Pi * qSpiral(3) / alat
     else if ( leqi(lattice,'ReciprocalLatticeVectors') ) then
        qSpiral = matmul(rcell,qSpiral)
     else

@@ -26,6 +26,8 @@ module m_pivot_methods
   public :: GPS, rev_GPS
   public :: GGPS, rev_GGPS
   public :: PCG, rev_PCG
+  public :: connectivity_graph
+  public :: rev_connectivity_graph
 
 #ifdef SIESTA__METIS
   public :: metis_pvt
@@ -77,9 +79,12 @@ module m_pivot_methods
   end type tllPvtLvl
 
   ! Linked list of levels
+  ! This should be preferred over tPvtLvl as it has the
+  ! same information at half the memory requirements (and probably
+  ! also faster).
   type :: tLevelStructure
      ! Level number
-     integer :: lvl
+     integer :: lvl = 0
      ! The elements in the level
      type(tRgn) :: v
      ! the next level level
@@ -91,7 +96,7 @@ contains
   ! The Generalized GPS algorithm 
   ! (Progress In Electromagnetics Research, PIER 90, 121–136, 2009)
   subroutine GGPS(n,nnzs,n_col,l_ptr,l_col,sub,pvt,priority, &
-       range, Comm)
+       range)
     ! the dimensionality of the system
     integer, intent(in) :: n, nnzs
     ! The sparse pattern
@@ -104,9 +109,6 @@ contains
     integer, intent(in), optional :: priority(n)
     ! The allowed range to save the node point in the new set (step II-(a))
     integer, intent(in), optional :: range
-    ! Whether the GGPS routine should be performed using
-    ! this communicator
-    integer, intent(in), optional :: Comm
 
     ! The local allowed range
     integer :: lrange
@@ -659,19 +661,17 @@ contains
        call rgn_range(con,1,n) ! all
        call lvl_struct_extract(pvt,lvl,il,r) ! L_il
        call rgn_complement(r,con,con)
-       call rgn_init(S,n) ! then we can increment it
-       S%n = 0
-       do i = 1 , con%n
-          suc = rgn_push(S,con%r(i))
-       end do
+       ! We use a consecutive array to hold the skipping region
+       call rgn_init_consecutive(n, S, con)
 
-       call rgn_init(con,sub%n)
-
+       ! Make sure there is space
+       call rgn_init(con, sub%n)
+       
        if ( il == 1 ) then
 
           ! Initialize renum
           suc = rgn_push(renum,etr)
-          suc = rgn_push(S,etr) ! remove the entry from the search-space
+          call rgn_consecutive_insert(S, etr)
           k     = 1
           N_sub = 1
           !  (ii) -- assign integers to the nodes in L_1
@@ -717,7 +717,6 @@ contains
               ! allocated)
              call rgn_init(con,sub%n)
              con%n = 0
-             call rgn_sort(S)
              call graph_connect(renum%r(i),n,nnzs,n_col,l_ptr,l_col,con, &
                   skip = S)
           end if
@@ -752,10 +751,8 @@ contains
           ! Sort the graph with respect to the LOW_SUM
           call sort_degree(D_LOW_SUM,n,nnzs,n_col,l_ptr,l_col,con,r)
           ! add all adjacent nodes
-          do j = 1 , r%n
-             suc = rgn_push(renum,r%r(j))
-             suc = rgn_push(S,r%r(j)) ! removes it from the graph_connect-call
-          end do
+          if ( .not. rgn_push(renum, r) ) call die('Error GGPS -- push 2')
+          call rgn_consecutive_insert(S, r)
 
           ! if we are in the first level, we
           ! need to increase the search space
@@ -800,7 +797,244 @@ contains
     call rgn_delete(con,lvl,S)
     call rgn_delete(r,renum)
 
+    if ( pvt%n /= sub%n ) &
+         call die('GGPS: Error in algorithm')
+
   end subroutine GGPS
+
+  ! The Generalized GPS algorithm 
+  ! (Progress In Electromagnetics Research, PIER 90, 121–136, 2009)
+  subroutine GGPS_new(n,nnzs,n_col,l_ptr,l_col,sub,pvt,priority, &
+       range)
+    ! the dimensionality of the system
+    integer, intent(in) :: n, nnzs
+    ! The sparse pattern
+    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    ! The region of interest
+    type(tRgn), intent(in) :: sub
+    ! The currently indexs of the pivoted arrays
+    type(tRgn), intent(inout) :: pvt
+    ! The priority of the rows, optional
+    integer, intent(in), optional :: priority(n)
+    ! The allowed range to save the node point in the new set (step II-(a))
+    integer, intent(in), optional :: range
+
+    ! The local allowed range
+    integer :: lrange
+
+    ! Temporary region used to contain the connectivity graph
+    type(tRgn) :: con
+    ! The level structure, contains the level of each
+    type(tRgn) :: set, lvl
+
+    ! The last region of the currently investigated level
+    type(tRgn) :: S, skip
+    type(tRgn) :: r ! temporary region
+    type(tRgn) :: renum
+
+    ! local variables
+    integer :: depth, width
+    integer :: k, iuv, vlvl, ulvl
+    integer :: depthv, widthv, v, degreev
+    integer :: depthu, widthu, u
+    integer :: i, il, j, etr, idx, tmp(3)
+    logical :: III_a, III_b
+
+    type(tRgn) :: vend, uend
+    integer :: n_uss, n_vss
+    type(tLevelStructure) :: vs, us, xs, C
+    type(tLevelStructure), allocatable :: uss(:)
+    type(tLevelStructure), allocatable :: vss(:)
+    type(tLevelStructure), pointer :: ps
+
+    call rgn_delete(pvt)
+
+    lrange = 0
+    if ( present(range) ) lrange = range
+
+    III_a = .false.
+    III_b = .false.
+
+    ! Create skip
+    call rgn_range(r, 1, n)
+    call rgn_complement(sub, r, skip)
+    call rgn_delete(r)
+
+    ! Find a set of pseudo-peripherals using the GPS algorithm
+    ! This will retrieve set v and width, depth, etr_small are for node v
+    ! (i) -- (iii)
+    call pseudo_peripheral_level_structure(D_LOW,n,nnzs,n_col,l_ptr,l_col,sub,vs, &
+         small_wd = tmp, priority = priority)
+    widthv = tmp(1) ! the s \in L_ec where the width is the smallest
+    depthv = tmp(2) ! the depth of s
+    v = tmp(3)
+
+#ifdef PVT_DEBUG
+    write(*,*)'   primary set level [depth / width]: ', &
+         level_structure_depth(vs), level_structure_width(vs)
+    write(*,*)'   s [min width] set level [depth / width / etr_small]: ',depthv,widthv,v
+#endif
+
+    ! (iv), find smallest width in level-structures of S (i.e. last level of L_v)
+    depth = level_structure_depth(vs)
+    call level_structure_level(vs, depth, S)
+    widthu = huge(1)
+    do i = 1 , S%n
+       call rgn_list(r, 1, S%r(i:i))
+       
+       call level_structure(n,nnzs,n_col,l_ptr,l_col,us,r,skip,priority=priority)
+       j = level_structure_width(us)
+       if ( j < widthu ) then
+          widthu = j
+          depthu = level_structure_depth(us)
+          u = S%r(i)
+       end if
+          
+    end do
+
+    ! this is the current depth we are targetting
+    k = max(depthu, depthv)
+
+    ! We have now created the first 'v' point
+    !   (v) -- we need to populate 'u' end points
+    call rgn_init(uend, S%n)
+    uend%n = 0
+    ! also collect all uss
+    allocate(uss(S%n))
+    n_uss = 1
+    do i = 1 , S%n
+       call rgn_list(r, 1, S%r(i:i))
+       
+       call level_structure(n,nnzs,n_col,l_ptr,l_col,uss(n_uss),r,skip,priority=priority)
+       j = level_structure_depth(uss(n_uss))
+       if ( j == k ) then
+          if ( .not. rgn_push(uend, S%r(i)) ) &
+               call die('Should never happen')
+          n_uss = n_uss + 1
+       end if
+       
+    end do
+    call rgn_purge(uend)
+    ! Sort u
+    call rgn_sort(uend)
+    n_uss = rgn_size(uend)
+
+    ! Get all nodes with same degree as v
+    !   (vi) -- we need to populate 'v' end points
+    call sort_degree(D_LOW,n,nnzs,n_col,l_ptr,l_col, sub, pvt)
+    call rgn_init(vend, sub%n)
+    vend%n = 0
+    ! Get degree of the root 'v' node
+    degreev = n_col(vs%v%r(1))
+    ! This is obviously too big, however the memory requirement of this
+    ! type should be negligeble...
+    allocate(vss(sub%n))
+    n_vss = 1
+    do i = 1, pvt%n
+       ! Since the pivoting is sorted by increasing degree, we can easily
+       if ( n_col(pvt%r(i)) > degreev ) exit
+       
+       call rgn_list(r, 1, pvt%r(i:i))
+       
+       ! Check degree of this node and store it if it has the same depth as v
+       if ( n_col(pvt%r(i)) == degreev .and. .not. in_rgn(uend, pvt%r(i)) ) then
+          call level_structure(n,nnzs,n_col,l_ptr,l_col,vss(n_vss),r,skip,priority=priority)
+          j = level_structure_depth(vss(n_vss))
+          if ( j == k ) then
+             if ( .not. rgn_push(vend, pvt%r(i)) ) &
+                  call die('Should never happen')
+             n_vss = n_vss + 1
+          end if
+       end if
+       
+    end do
+    call rgn_purge(vend)
+    call rgn_sort(vend)
+    n_vss = rgn_size(vend)
+    
+#ifdef PVT_DEBUG
+    write(*,*)' v has peripherals ',n_vss
+    write(*,*)' u has peripherals ',n_uss
+#endif
+
+    ! ### Completed algorithm I. ###
+
+    ! At this point we have two sets, and for all the sets we have the sets
+
+    ! ### Algorithm II ###
+
+    ! Loop all elements and figure out their placement in the level-structure
+    call init_level_structure(xs, k)
+    call rgn_range(r, 1, n)
+    call rgn_init(set, n)
+    call rgn_init(pvt, n)
+    set%n = 0
+    pvt%n = 0
+
+    ! (i) we have all Lvi = Lv
+    !  -- (a) first assign all those with the same index
+    step_a: do i = 1, sub%n
+
+       ! Get currently searched element
+       etr = sub%r(i)
+
+       ! If we have already removed it, no need to check it
+       if ( .not. in_rgn(r, etr) ) cycle
+
+       ! get indices in 'v'
+       vlvl = level_structure_element_lvl(vss(1), etr)
+       do iuv = 2, n_vss
+          if ( level_structure_element_lvl(vss(iuv), etr) /= vlvl ) then
+             vlvl = 0
+             cycle step_a
+          end if
+       end do
+       ! quick skip if the level is not "uniform"
+       if ( vlvl == 0 ) cycle
+       
+       ! get indices in 'u'
+       j = level_structure_depth(uss(1)) + 1
+       ulvl = j - level_structure_element_lvl(uss(1), etr)
+       if ( ulvl /= vlvl ) cycle
+       do iuv = 2, n_uss
+          j = level_structure_depth(uss(iuv)) + 1
+          
+          if ( j - level_structure_element_lvl(uss(iuv), etr) /= ulvl ) then
+             ulvl = 0
+             cycle step_a
+          end if
+       end do
+       
+       ! All have the same level structure
+       if ( .not. (rgn_push(set, etr) .and. rgn_push(lvl, ulvl)) ) then
+          call die('GGPS: push to (II) (a)')
+       end if
+       
+       ! Remove sets from r
+       call rgn_consecutive_remove(r, etr)
+       
+       ! Now remove all connections
+       j = l_ptr(etr)
+       call rgn_list(S, n_col(etr), l_col(j+1:j+n_col(etr)))
+       call rgn_consecutive_remove(r, S)
+       
+    end do step_a
+
+    !  -- (b)
+    ! split into different graphs
+    if ( r%r(r%n) /= 0 ) then
+
+       do i = 1 , sub%n
+
+          if ( in_rgn(r, sub%r(i)) ) cycle
+          
+          ! Now figure out the full connectivity for this node
+
+       end do
+
+    end if
+
+  end subroutine GGPS_NEW
 
   subroutine rev_GGPS(n,nnzs,n_col,l_ptr,l_col,sub,pvt,priority)
     integer, intent(in) :: n, nnzs
@@ -829,7 +1063,7 @@ contains
     integer, intent(in), optional :: priority(n)
     
     ! The level structure created by the algo_i_ii
-    type(tPvtLvl) :: lvl
+    type(tLevelStructure) :: lvl
     type(tRgn) :: ipvt, r
     integer :: d, depth
 
@@ -839,18 +1073,20 @@ contains
     pvt%n = 0
 
     ! Find a set of pseudo-peripherals using the GPS algorithm
-    call pseudo_peripheral(D_LOW,n,nnzs,n_col,l_ptr,l_col,sub,lvl, &
-         priority = priority)
-    depth = lvl_depth(lvl%lvl)
+    call pseudo_peripheral_level_structure(D_LOW,n,nnzs,n_col,l_ptr,l_col, &
+         sub, lvl, priority=priority)
+
+    ! Depth of level-structure
+    depth = level_structure_depth(lvl)
 #ifdef PVT_DEBUG
-       write(*,*)'   GPS found left peripheral ', lvl%pvt%r(1)
+       write(*,*)'   GPS found left peripheral ', lvl%v%r(1)
 #endif
     
     ! Process the pivoting of each level
     do d = 1 , depth
 
        ! Order the level according to increasing degree
-       call lvl_struct_extract(lvl%pvt,lvl%lvl,d,ipvt)
+       call level_structure_level(lvl, d, ipvt)
 
 #ifdef PVT_DEBUG
        write(*,*)'   GPS processing level ', d, ipvt%n
@@ -858,15 +1094,17 @@ contains
           write(*,*)'   GPS found right peripheral ', ipvt%r(1)
        end if
 #endif
-       if ( ipvt%n == 1 ) then
-          if ( .not. rgn_push(pvt, ipvt) ) call die('GPS push -- 1')
-       else
-          call sort_degree(D_LOW,n,nnzs,n_col,l_ptr,l_col,ipvt,r)
-          if ( .not. rgn_push(pvt, r) ) call die('GPS push -- 2')
-       end if
+       
+       call sort_degree(D_LOW,n,nnzs,n_col,l_ptr,l_col,ipvt,r)
+       if ( .not. rgn_push(pvt, r) ) call die('GPS push -- 1')
+       
     end do
 
-    call rgn_delete(r,ipvt,lvl%pvt,lvl%lvl)
+    call rgn_delete(r,ipvt)
+    call delete_level_structure(lvl)
+
+    if ( pvt%n /= sub%n ) &
+         call die('GPS: Error in algorithm')
 
   end subroutine GPS
 
@@ -883,6 +1121,178 @@ contains
 
   end subroutine rev_GPS
 
+
+  ! The connectivity graph
+  ! This is a very simple pivoting method, entirely based on a connectivity
+  ! algorithm.
+  ! This may be started anywhere.
+  subroutine connectivity_graph(n,nnzs,n_col,l_ptr,l_col,sub,pvt,&
+       start, priority, only_sub)
+    ! the dimensionality of the system
+    integer, intent(in) :: n, nnzs
+    ! The sparse pattern
+    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    ! The region of interest
+    type(tRgn), intent(in) :: sub
+    ! The currently indexs of the pivoted arrays
+    type(tRgn), intent(inout) :: pvt
+    ! The algorithm performs (only) if it knows where to start
+    ! hence we can force the algorithm to start from some point
+    type(tRgn), intent(in), optional :: start
+    ! The priority of the rows, optional
+    integer, intent(in), optional :: priority(n)
+    ! Whether we should only allow to find the pivoting for the sub-graph
+    ! This means that the pivoting table will not necessarily have all sub elements
+    logical, intent(in), optional :: only_sub
+
+    integer :: i, j, ptr, col
+    type(tRgn) :: skip, con, r_tmp
+    logical :: lonly_sub
+    logical, allocatable :: in_pvt(:)
+
+    lonly_sub = .false.
+    if ( present(only_sub) ) lonly_sub = only_sub
+
+    call rgn_init(pvt, sub%n)
+    pvt%n = 0
+
+    ! Start by initializing skip to be everything but the sub part
+    call rgn_range(r_tmp, 1, n)
+    call rgn_complement(sub, r_tmp, skip)
+    call rgn_sort(skip)
+    call rgn_delete(r_tmp)
+    
+    ! Initialize in_pvt
+    allocate(in_pvt(n))
+    in_pvt = .false.
+    
+    if ( present(start) ) then
+       if ( .not. rgn_push(pvt, start) ) &
+            call die('CG -- push 1')
+       call rgn_sp_sort(pvt,n,nnzs,n_col,l_ptr,l_col, &
+            start,R_SORT_MAX_FRONT)
+       ! Initialize the connectivity graph (with the sorted elements)
+       call rgn_copy(pvt, con)
+    end if
+
+    ! Initialize the logical array
+    do i = 1, pvt%n
+      in_pvt(pvt%r(i)) = .true.
+    end do
+
+    ! sort the starting configuration
+    
+    ! Continue the propagation
+    do while ( pvt%n /= sub%n )
+
+       ! Initialize room for the new columns
+       if ( con%n > 0 ) then
+          ! Get size
+          j = 0
+          do i = 1, con%n
+             j = j + n_col(con%r(i))
+          end do
+          ! We keep the temporary region allocated.
+          ! since we will use it every cycle.
+          call rgn_grow(r_tmp, j)
+          r_tmp%n = 0
+          
+          ! find all connections
+          do i = 1, con%n
+             ptr = l_ptr(con%r(i))
+             do j = ptr + 1, ptr + n_col(con%r(i))
+                col = l_col(j)
+                if ( .not. (in_rgn(skip, col) .or. in_pvt(col)) ) then
+                   if ( .not. rgn_push(r_tmp, col) ) &
+                        call die('CG -- push 2')
+                end if
+             end do
+          end do
+          
+          ! Reduce to the unique values (this also sorts it)
+          call rgn_uniq(r_tmp, in_place=.true.)
+          
+          ! Copy to the new connectivity region
+          call copy(r_tmp, con)
+
+       end if
+
+       if ( con%n == 0 ) then
+
+          ! Exit if done, or we if we shouldn't create the full graph
+          if ( pvt%n == sub%n .or. lonly_sub ) exit
+
+          ! Choose a random one
+          do i = 1 , sub%n
+             if ( in_rgn(skip, sub%r(i)) .or. in_pvt(sub%r(i)) ) cycle
+             call rgn_grow(con, 1)
+             con%n = 1
+             con%r(1) = sub%r(i)
+             exit
+          end do
+          
+       end if
+
+       ! Update pivoting check-indices
+       do i = 1, con%n
+         in_pvt(con%r(i)) = .true.
+       end do
+
+       if ( .not. rgn_push(pvt, con) ) call die('CG -- push 3')
+       call rgn_sp_sort(pvt,n,nnzs,n_col,l_ptr,l_col, &
+            con, R_SORT_MAX_BACK, r_logical=in_pvt)
+       
+    end do
+
+    deallocate(in_pvt)
+    call rgn_delete(skip, con, r_tmp)
+
+    if ( pvt%n /= sub%n .and. .not. lonly_sub ) then
+       call die('connectivity_graph: Error in algorithm')
+    end if
+
+  contains
+
+    subroutine copy(from, to)
+      type(tRgn), intent(in) :: from
+      type(tRgn), intent(inout) :: to
+      integer :: i
+      call rgn_grow(to, from%n)
+      do i = 1, from%n
+        to%r(i) = from%r(i)
+      end do
+      to%n = from%n
+    end subroutine copy
+
+  end subroutine connectivity_graph
+
+  subroutine rev_connectivity_graph(n,nnzs,n_col,l_ptr,l_col,sub,pvt,&
+       start,priority, only_sub)
+    ! the dimensionality of the system
+    integer, intent(in) :: n, nnzs
+    ! The sparse pattern
+    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    ! The region of interest
+    type(tRgn), intent(in) :: sub
+    ! The currently indexs of the pivoted arrays
+    type(tRgn), intent(inout) :: pvt
+    ! The algorithm performs (only) if it knows where to start
+    ! hence we can force the algorithm to start from some point
+    type(tRgn), intent(in), optional :: start
+    ! The priority of the rows, optional
+    integer, intent(in), optional :: priority(n)
+    ! Whether we should only allow to find the pivoting for the sub-graph
+    ! This means that the pivoting table will not necessarily have all sub elements
+    logical, intent(in), optional :: only_sub
+
+    call connectivity_graph(n,nnzs,n_col,l_ptr,l_col,sub,pvt,&
+         start,priority, only_sub)
+    
+    call rgn_reverse(pvt)
+    
+  end subroutine rev_connectivity_graph
+  
+
   ! The PCG algorithm 
   ! This algorithm uses the connectivity graph to sort each level.
   ! We use the peripheral search to find the end-points of the 
@@ -890,7 +1300,7 @@ contains
   ! This PCG algorithm is implemented and envisioned by Nick R. Papior.
   ! It proves more efficient than the GPS algorithm, and is a little slower.
   ! It however reduces the bandwidth by more.
-  subroutine PCG(n,nnzs,n_col,l_ptr,l_col,sub,pvt,start,priority)
+  subroutine PCG(n,nnzs,n_col,l_ptr,l_col,sub,pvt,start,priority, only_sub)
     ! the dimensionality of the system
     integer, intent(in) :: n, nnzs
     ! The sparse pattern
@@ -903,6 +1313,7 @@ contains
     type(tRgn), intent(in), optional :: start
     ! The priority of the rows, optional
     integer, intent(in), optional :: priority(n)
+    logical, intent(in), optional :: only_sub
 
     ! Another temporary level structure
     type(tLevelStructure), target :: level_s
@@ -913,6 +1324,10 @@ contains
     type(tRgn) :: st, skip
     integer :: i, idx, st_n
     integer :: width, width2, depth, depth2
+    logical :: lonly_sub
+
+    lonly_sub = .false.
+    if ( present(only_sub) ) lonly_sub = only_sub
 
     call rgn_range(st, 1, n)
     call rgn_complement(sub, st, skip)
@@ -924,7 +1339,7 @@ contains
     ! Algorithm I
     !   (i) -- pick arbitrary node with minimal degree
     if ( present(start) ) then
-       call level_structure(n, nnzs, n_col, l_ptr, l_col, level_s, start, skip)
+       call level_structure(n, nnzs, n_col, l_ptr, l_col, level_s, start, skip, priority=priority)
     else
        idx = idx_degree(D_LOW,n,nnzs,n_col,l_ptr,l_col, sub, priority = priority)
        !   (ii/iii) -- search for deepest level structure in these peripherals
@@ -932,7 +1347,7 @@ contains
        write(*,*)'   first v set: ',sub%r(idx), idx
 #endif
        call rgn_range(pvt, sub%r(idx), sub%r(idx))
-       call level_structure(n, nnzs, n_col, l_ptr, l_col, level_s, pvt, skip)
+       call level_structure(n, nnzs, n_col, l_ptr, l_col, level_s, pvt, skip, priority=priority)
        
     end if
 
@@ -961,7 +1376,7 @@ contains
 #ifdef PVT_DEBUG
           write(*,*)'     analyzing size: ',i
 #endif
-          call level_structure(n, nnzs, n_col, l_ptr, l_col, level_s2, st, skip)
+          call level_structure(n, nnzs, n_col, l_ptr, l_col, level_s2, st, skip, priority=priority)
           
           depth2 = level_structure_depth(level_s2)
           width2 = level_structure_width(level_s2)
@@ -1009,21 +1424,21 @@ contains
 
     call delete_level_structure(level_s)
 
-    if ( pvt%n /= sub%n ) then
-       call die('End failure in PCG -- 2')
-    end if
+    if ( pvt%n /= sub%n .and. .not. lonly_sub ) &
+         call die('PCG: Error in algorithm')
     
   end subroutine PCG
 
-  subroutine rev_PCG(n,nnzs,n_col,l_ptr,l_col,sub,pvt,start,priority)
+  subroutine rev_PCG(n,nnzs,n_col,l_ptr,l_col,sub,pvt,start,priority,only_sub)
     integer, intent(in) :: n, nnzs
     integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
     type(tRgn), intent(in) :: sub
     type(tRgn), intent(inout) :: pvt
     type(tRgn), intent(in), optional :: start
     integer, intent(in), optional :: priority(n)
+    logical, intent(in), optional :: only_sub
 
-    call PCG(n,nnzs,n_col,l_ptr,l_col,sub,pvt,start,priority)
+    call PCG(n,nnzs,n_col,l_ptr,l_col,sub,pvt,start,priority,only_sub)
 
     call rgn_reverse(pvt)
     
@@ -1184,7 +1599,9 @@ contains
 
     ! Clean-up
     deallocate(perm,w)
-    
+
+    if ( pvt%n /= sub%n ) call die('metis: Error in algorithm')
+
   end subroutine metis_pvt
 #endif
 
@@ -1295,7 +1712,7 @@ contains
     
   end subroutine breadth_first_search
 
-  subroutine level_structure(n, nnzs, n_col, l_ptr, l_col, ls, start, skip)
+  subroutine level_structure(n, nnzs, n_col, l_ptr, l_col, ls, start, skip, priority, only_sub)
     integer, intent(in) :: n, nnzs, n_col(n), l_ptr(n), l_col(nnzs)
 
     ! The LV table
@@ -1304,35 +1721,55 @@ contains
     type(tRgn), intent(in), optional :: start
     ! Optional discarded elements
     type(tRgn), intent(in), optional :: skip
+    ! The priority of the rows, optional
+    integer, intent(in), optional :: priority(n)
+    ! Allow only a sub-graph
+    logical, intent(in), optional :: only_sub
 
     ! The current queue of elements
-    type(tRgn) :: queue, all
+    type(tRgn) :: queue
+    logical, allocatable :: log_skip(:)
 
     type(tLevelStructure), pointer :: clvl
     integer :: i, nel, el, nadded
+    logical :: lonly_sub
+
+    lonly_sub = .false.
+    if ( present(only_sub) ) lonly_sub = only_sub
 
     call delete_level_structure(ls)
 
-    call rgn_init(all, n)
-    all%n = 0
+    allocate(log_skip(n))
+    log_skip(:) = .false.
 
+    nel = 0
     if ( present(skip) ) then
+      nel = skip%n
        
-       ! Speed up searches in the skipped elements
-       if ( .not. rgn_push(all, skip) ) call die('Error in push LS -- 0')
-       call rgn_sort(all)
-       
+      ! Speed up searches in the skipped elements
+      do i = 1, skip%n
+        log_skip(skip%r(i)) = .true.
+      end do
+      
     end if
 
     ! Actual number of elements in the total level structure
-    nel = n - rgn_size(all)
+    nel = n - nel
 
     if ( nel <= 1 ) then
-       ls%lvl = 1
-       call rgn_range(ls%v, 1, n)
-       call rgn_complement(all, ls%v, ls%v)
-       
-       return
+
+      call rgn_init(ls%v, nel)
+      ls%v%n = 0
+      do i = 1, n
+        if ( .not. log_skip(i) ) then
+          if ( .not. rgn_push(ls%v, i) ) call die('level_structure: push -- 1')
+        end if
+      end do
+      ls%lvl = 1
+
+      deallocate(log_skip)
+      
+      return
        
     end if
 
@@ -1345,21 +1782,39 @@ contains
        if ( .not. rgn_push(queue, start) ) call die('Error in LS -- 1')
     end if
 
+    ! Ensure we have all elements in one array, to easy skip
+    do i = 1, queue%n
+      log_skip(queue%r(i)) = .true.
+    end do
+
     ! Counter to count number of elements added
     nadded = 0
+    
     ! Initialize the level structure
     ls%lvl = 1
     clvl => ls
     do
-
+      
        if ( rgn_size(queue) == 0 ) then
+ 
+          ! Ensure it has space
+          call rgn_grow(queue, 1)
+          queue%n = 0
+
+          ! Quick escape if the graph is finished
+          if ( lonly_sub ) exit
+          
           ! We have to "manually" add a fictitious point
           ! that hasn't been added yet, i.e. if the queue is
           ! empty. We have to keep filling it...
 
+          ! ( we could optionally do a sort_degree call
+          !   to select the one with the lowest degree)
+          
           do el = 1 , n
              ! Ensure it is not skipped
-             if ( in_rgn(all, el) ) cycle
+             if ( log_skip(el) ) cycle
+             log_skip(el) = .true.
              
              if ( .not. rgn_push(queue, el) ) call die('Error in LS -- 2')
              exit
@@ -1368,13 +1823,8 @@ contains
           
        end if
 
-       ! Ensure we have all elements in one array, to easy skip
-       if ( .not. rgn_push(all, queue) ) call die('Error in push LS -- 1')
-       call rgn_sort(all)
-
        ! Copy to the current level
        call rgn_copy(queue, clvl%v)
-       call rgn_delete(queue)
 
        ! Update number of added elements
        nadded = nadded + rgn_size(clvl%v)
@@ -1382,7 +1832,7 @@ contains
        if ( nadded >= nel ) exit
 
        ! Prepare queue
-       call rgn_init(queue, nel - nadded)
+       call rgn_grow(queue, nel - nadded)
 
        ! Get the next level
        call next_level(clvl%v, queue)
@@ -1395,7 +1845,8 @@ contains
 
     end do
 
-    call rgn_delete(queue, all)
+    call rgn_delete(queue)
+    deallocate(log_skip)
 
   contains
 
@@ -1419,8 +1870,8 @@ contains
             eln = l_col(ind)
 
             ! Ensure it is not already assigned
-            if ( in_rgn(all, eln) ) cycle
-            if ( in_rgn(qout, eln) ) cycle
+            if ( log_skip(eln) ) cycle
+            log_skip(eln) = .true.
 
             ! Now we can add it to the queue
             if ( .not. rgn_push(qout, eln) ) call die('Error in LS -- 5')
@@ -1428,6 +1879,8 @@ contains
          end do
 
       end do
+
+      call sort_degree(D_LOW,n,nnzs,n_col,l_ptr,l_col,qout,qout,priority)
 
     end subroutine next_level
   
@@ -1475,6 +1928,29 @@ contains
     end if
     
   end function level_structure_width
+
+  ! Return the level index in the level structure in which el resides
+  function level_structure_element_lvl(level_s, el) result(ilvl)
+    type(tLevelStructure), intent(in), target :: level_s
+    integer, intent(in) :: el
+    integer :: ilvl
+
+    type(tLevelStructure), pointer :: ls
+
+    ! Simply go to the level and copy
+    ls => level_s
+    ilvl = 1
+    do
+       if ( in_rgn(ls%v, el) ) return
+       if ( .not. associated(ls%next) ) then
+          ilvl = 0
+          return
+       end if
+       ilvl = ilvl + 1
+       ls => ls%next
+    end do
+    
+  end function level_structure_element_lvl
 
 
   ! Extract only a certain level from the level structure
@@ -1532,7 +2008,8 @@ contains
     ! Algorithm I
     !   (i) -- pick arbitrary node with minimal degree
     if ( present(start) ) then
-       call level_structure(n, nnzs, n_col, l_ptr, l_col, level_s, start, skip)
+       call level_structure(n, nnzs, n_col, l_ptr, l_col, level_s, start, skip, &
+            priority=priority)
     else
        idx = idx_degree(method,n,nnzs,n_col,l_ptr,l_col, sub, priority = priority)
        !   (ii/iii) -- search for deepest level structure in these peripherals
@@ -1540,7 +2017,8 @@ contains
        write(*,*)'   first v set: ',sub%r(idx), idx
 #endif
        call rgn_range(pvt, sub%r(idx), sub%r(idx))
-       call level_structure(n, nnzs, n_col, l_ptr, l_col, level_s, pvt, skip)
+       call level_structure(n, nnzs, n_col, l_ptr, l_col, level_s, pvt, skip, &
+            priority=priority)
     end if
 
     search_deepest: do 
@@ -1566,7 +2044,8 @@ contains
 #ifdef PVT_DEBUG
           write(*,*)'     analyzing degree set: ',i,etr
 #endif
-          call level_structure(n, nnzs, n_col, l_ptr, l_col, level_s2, pvt, skip)
+          call level_structure(n, nnzs, n_col, l_ptr, l_col, level_s2, pvt, skip, &
+               priority=priority)
 
           if ( present(small_wd) ) then
              j = level_structure_width(level_s2)
@@ -1602,6 +2081,18 @@ contains
     call rgn_delete(S, pvt, skip)
     
   end subroutine pseudo_peripheral_level_structure
+
+  recursive subroutine init_level_structure(ls, lvl)
+    type(tLevelStructure), intent(inout) :: ls
+    integer, intent(in) :: lvl
+    
+    call delete_level_structure(ls)
+    if ( lvl <= 0 ) return
+    allocate(ls%next)
+
+    call init_level_structure(ls%next, lvl - 1)
+    
+  end subroutine init_level_structure
 
   recursive subroutine delete_level_structure(ls)
     type(tLevelStructure), intent(inout) :: ls
@@ -1700,7 +2191,7 @@ contains
     type(tRgn), intent(in) :: lvl
     integer, intent(in), optional :: ilvl
     integer :: width
-    integer :: i , depth
+    integer :: i, depth
     if ( present(ilvl) ) then
        width = count(lvl%r(1:lvl%n) == ilvl)
        return
@@ -1737,17 +2228,17 @@ contains
     integer, intent(in), optional :: priority(n)
 
     ! Temporary region used to contain the connectivity graph
-    type(tRgn) :: con, con_c, rtmp, rskip, rskip_def
+    type(tRgn) :: con, con_c, skip
 
     ! local variables
-    integer :: i, iidx, etr, iLvl
+    integer :: i, etr, iLvl, ncon
     logical :: suc
-    
-    ! by sorting, taking the complement is much faster
-    call rgn_copy(sub,rtmp)
-    call rgn_sort(rtmp)
-    call rgn_range(rskip_def,1,n)
-    call rgn_complement(rtmp,rskip_def,rskip_def)
+
+    ! create the initial consecutive region
+    call rgn_range(con, 1, n)
+    call rgn_complement(sub, con, con)
+    ! now create the initial consecutive region
+    call rgn_init_consecutive(n, skip, con)
 
     ! initialize the pivoting array
     call rgn_init(pvt,sub%n)
@@ -1763,7 +2254,8 @@ contains
     con_c%n = 0
     
     ! initialize connectivity region
-    call rgn_init(con,1)
+    call rgn_init(con, sub%n)
+    con%n = 1
     con%r(1) = sub%r(idx)
 
     do while ( pvt%n < sub%n )
@@ -1777,22 +2269,24 @@ contains
        !  In TS this will probably be one of the worst choices, yet
        !  it is hard to select another node on another basis.
        if ( con%n == 0 ) then
-          ! this limits rtmp to those not chosen
-          call rgn_complement(rskip,sub,rtmp)
-          call sort_degree(D_LOW,n,nnzs,n_col,l_ptr,l_col,rtmp,con)
-          if ( con%n > 0 ) con%n = 1
+          ! this limits con_c to those not chosen
+          call rgn_complement(skip, sub, con_c)
+          if ( con_c%n > 0 ) then
+            i = idx_degree(D_LOW,n,nnzs,n_col,l_ptr,l_col,con_c, priority = priority )
+            ! We will limit the addition to 1 element
+            if ( .not. rgn_push(con, con_c%r(i)) ) call die('level_struct: push -- 1')
+          end if
        end if
-       call rgn_copy(con,rtmp) ! rtmp is used to generate the next connectivity
 
+       ! Insert the current connectivity graph
+       call rgn_consecutive_insert(skip, con)
+       ncon = con%n
        do while ( con%n > 0 )
           ! Get index with lowest degree
-          iidx = idx_degree(D_LOW,n,nnzs,n_col,l_ptr,l_col,con, priority = priority )
-          etr = con%r(iidx) ! the actual entry
-          i = rgn_pop(con,iidx) ! remove entry in con
-          if ( i /= etr ) call die('Erroneous popping of the connectivity &
-               &graph.')
-          suc = rgn_push(pvt,etr)
-          suc = rgn_push(lvl,iLvl)
+          i = idx_degree(D_LOW,n,nnzs,n_col,l_ptr,l_col,con, priority = priority )
+          etr = rgn_pop(con, i) ! remove entry in con
+          suc = rgn_push(pvt, etr)
+          suc = rgn_push(lvl, iLvl)
        end do
 
        ! A simple check to see if we have finished the
@@ -1803,24 +2297,26 @@ contains
        !    This will loop on all previously connected entries.
        !    We create a new connectivity graph and let it be
        !    added on the following loop
-       ! 2a. Note that on entry con%n == 0
-       ! Create a skip region to not "get back" in the list
-       call rgn_append(pvt,rskip_def,rskip)
-       call rgn_sort(rskip) ! speeds it up
-       do i = 1 , rtmp%n
+       ! 2a. Note that on entry con%n == 0 (due to rgn_pop)
+       do i = 1 , ncon
           ! Find connections from followed entry
           ! we pick-up the entry in the order they were added
           ! to 'pvt'
-          etr = pvt%r(pvt%n-rtmp%n+i)
+          etr = pvt%r(pvt%n-ncon+i)
           call graph_connect(etr,n,nnzs,n_col,l_ptr,l_col,con_c, &
-               skip = rskip)
-          call rgn_union(con,con_c,con)
+               skip = skip)
+
+          ! Speed up big systems as we constantly add
+          ! elements to the skip table, and only push new values
+          call rgn_consecutive_insert(skip, con_c)
+          if ( .not. rgn_push(con, con_c) ) call die('level_struct: push -- 2')
 
        end do
-       
+
     end do
-    
-    call rgn_delete(con,rskip,con_c,rtmp)
+
+    ! Clean up
+    call rgn_delete(con,con_c,skip)
 
   end subroutine level_struct
 
@@ -1993,7 +2489,7 @@ contains
   end subroutine sort_degree
     
   subroutine Cuthill_Mckee(n,nnzs,n_col,l_ptr,l_col,sub,pvt,&
-       start,priority)
+       start,priority, only_sub)
     ! the dimensionality of the system
     integer, intent(in) :: n, nnzs
     ! The sparse pattern
@@ -2007,15 +2503,19 @@ contains
     type(tRgn), intent(in), optional :: start
     ! The priority of the rows, optional
     integer, intent(in), optional :: priority(n)
+    logical, intent(in), optional :: only_sub
 
     ! The queue list
     type(tRgn) :: Q
     ! Temporary region used to contain the connectivity graph
-    type(tRgn) :: con, pvtQ
+    type(tRgn) :: con, skip
 
     ! local variables
     integer :: i, etr, idx
-    logical :: suc
+    logical :: suc, lonly_sub
+
+    lonly_sub = .false.
+    if ( present(only_sub) ) lonly_sub = only_sub
 
     ! prepare lists used for the algorithm
     call rgn_init(Q,sub%n)
@@ -2024,8 +2524,10 @@ contains
     ! When we have a start immediately add the starting elements
     if ( present(start) ) then
        ! Sort the starting elements according to the lowest degree
-       call sort_degree(D_LOW,n,nnzs,n_col,l_ptr,l_col,start,pvtQ, priority = priority)
-       if ( .not. rgn_push(Q, pvtQ) ) call die('Error in CM -- 1')
+       call sort_degree(D_LOW,n,nnzs,n_col,l_ptr,l_col,start,skip, priority = priority)
+       ! Push the starting points into the queue (sorted with priority and
+       ! lowest degree)
+       if ( .not. rgn_push(Q, skip) ) call die('Error in CM -- 1')
     end if
 
     ! initialize the pivoting array
@@ -2034,35 +2536,36 @@ contains
     
     ! the pivoting array + the queue array, this ensures that
     ! we do not back-track already processed elements
-    call rgn_init(pvtQ, n)
-    pvtQ%n = 0
-    if ( .not. rgn_push(pvtQ, Q) ) call die('Error in CM -- 2')
+    call rgn_range(con, 1, n)
+    call rgn_complement(sub, con, con)
     
-    call rgn_copy(sub,con)
-    call rgn_sort(con)
-    do i = 1 , n
-       if ( .not. in_rgn(con,i) ) then
-          suc = rgn_push(pvtQ,i)
-       end if
-    end do
+    ! now create the initial region used for skipping connectivities
+    if ( con%n > Q%n ) then
+       call rgn_init_consecutive(n, skip, con)
+       call rgn_consecutive_insert(skip, Q)
+    else
+       call rgn_init_consecutive(n, skip, Q)
+       call rgn_consecutive_insert(skip, con)
+    end if
 
+    ! Initialize connectivity region for graph_connect
     do while ( pvt%n < sub%n )
-
-       ! Sort to speed up searching...
-       call rgn_sort(pvtQ)
 
        ! 1. If the queue is empty we add the one with the lowest
        !    degree
        if ( Q%n == 0 ) then
-          idx = idx_degree(D_LOW,n,nnzs,n_col,l_ptr,l_col,sub, skip = pvtQ, &
+
+          ! We will not follow the graph
+          if ( lonly_sub ) exit
+
+          idx = idx_degree(D_LOW,n,nnzs,n_col,l_ptr,l_col,sub, skip = skip, &
                priority = priority)
           etr = sub%r(idx)
-
+          
+          ! Push the queue and the skip table
           suc = rgn_push(Q,etr)
-          suc = rgn_push(pvtQ,etr)
-
-          call rgn_sort(pvtQ)
-
+          call rgn_consecutive_insert(skip, etr)
+          
        end if
 
        ! We find the one in the queue with the highest priority
@@ -2071,37 +2574,42 @@ contains
        ! 2. Add it to the pivoting table
        if ( .not. rgn_push(pvt, etr) ) call die('Error in CM push -- 1')
 
-       ! Make room in the connectivity graph
+       ! Since the sort-degree is sorting into the same array, we have
+       ! to ensure con to have the correct size
        call rgn_init(con, sub%n - pvt%n)
 
        ! 3. Create the connectivity graph from idx (this will remove "back" 
        !    connected entries, hence no dublicates needs to be taken into 
        !    account.)
-       call graph_connect(etr,n,nnzs,n_col,l_ptr,l_col,con, skip = pvtQ )
+       call graph_connect(etr,n,nnzs,n_col,l_ptr,l_col, con, skip = skip )
+       call rgn_consecutive_insert(skip, con)
 
        ! 4. Sort the connecting elements from lowest degree to highest degree
        call sort_degree(D_LOW,n,nnzs,n_col,l_ptr,l_col,con,con, priority = priority)
 
        ! 5. Add all connected entries to the queue in increasing order
        if ( .not. rgn_push(Q, con) ) call die('Error in CM push -- 2')
-       if ( .not. rgn_push(pvtQ, con) ) call die('Error in CM push -- 3')
 
     end do
 
-    call rgn_delete(Q,con,pvtQ)
+    call rgn_delete(Q, con, skip)
+
+    if ( pvt%n /= sub%n .and. .not. lonly_sub ) &
+         call die('CM: Error in algorithm')
 
   end subroutine Cuthill_Mckee
 
-  subroutine rev_Cuthill_Mckee(n,nnzs,n_col,l_ptr,l_col,sub,pvt,start,priority)
+  subroutine rev_Cuthill_Mckee(n,nnzs,n_col,l_ptr,l_col,sub,pvt,start,priority, only_sub)
     integer, intent(in) :: n, nnzs
     integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
     type(tRgn), intent(in) :: sub
     type(tRgn), intent(inout) :: pvt
     type(tRgn), intent(in), optional :: start
     integer, intent(in), optional :: priority(n)
+    logical, intent(in), optional :: only_sub
 
     call Cuthill_Mckee(n,nnzs,n_col,l_ptr,l_col,sub,pvt, &
-         start=start,priority=priority)
+         start=start,priority=priority, only_sub=only_sub)
 
     call rgn_reverse(pvt)
 
@@ -2217,18 +2725,25 @@ contains
     logical :: suc
 
     ! Reset connectivity graph
+    call rgn_grow(con, n_col(idx))
     con%n = 0
     if ( n_col(idx) == 0 ) return
-
-    do ind = l_ptr(idx) + 1 , l_ptr(idx) + n_col(idx)
-       if ( l_col(ind) == idx ) cycle ! on-site
-       ! skip connect if already present
-       if ( present(skip) ) then
+    
+    if ( present(skip) ) then
+       do ind = l_ptr(idx) + 1 , l_ptr(idx) + n_col(idx)
+          if ( l_col(ind) == idx ) cycle ! on-site
+          ! skip connect if already present
           if ( in_rgn(skip,l_col(ind)) ) cycle
-       end if
-       ! add to the list
-       suc = rgn_push(con,l_col(ind))
-    end do
+          ! add to the list
+          suc = rgn_push(con,l_col(ind))
+       end do
+    else
+       do ind = l_ptr(idx) + 1 , l_ptr(idx) + n_col(idx)
+          if ( l_col(ind) == idx ) cycle ! on-site
+          ! add to the list
+          suc = rgn_push(con,l_col(ind))
+       end do
+    end if
 
   end subroutine graph_connect
     
@@ -2247,76 +2762,90 @@ contains
     ! Returned index for the degree function
     integer :: idx, etr
     type(tRgn) :: self
-
+    
     ! Local variables
     integer :: i, deg, cdeg
+    logical, allocatable :: lskip(:)
 
     select case ( method ) 
     case ( D_LOW , D_LOW_SUM )
-       deg = huge(1)
+      deg = huge(1)
     case ( D_HIGH , D_HIGH_SUM )
-       deg = 0
+      deg = 0
     end select
     select case ( method ) 
     case ( D_LOW_SUM , D_HIGH_SUM )
-       ! initialize for graph_connect (needs to be allocated)
-       call rgn_init(self,n)
+      ! initialize for graph_connect (needs to be allocated)
+      call rgn_init(self,n)
     end select
+
+    allocate(lskip(n))
+    do i = 1, sub%n
+      lskip(sub%r(i)) = .false.
+    end do
+    if ( present(skip) ) then
+      do i = 1, skip%n
+        lskip(skip%r(i)) = .true.
+      end do
+    end if
 
     idx = 0
     do i = 1 , sub%n
-       etr = sub%r(i)
-       if ( present(skip) ) then
-          ! check whether we should skip it
-          if ( in_rgn(skip,etr) ) cycle
-       end if
-       ! Get the current degree (dependent on the method)
-       cdeg = degree(method,n,nnzs,n_col,l_ptr,l_col,etr,self)
-       if ( method == D_LOW ) then
-          if ( cdeg < deg ) then
-             idx = i
-             deg = cdeg
-          else if ( cdeg == deg .and. present(priority) ) then
-             ! ** this should never happen if idx == 0
-             if ( priority(sub%r(idx)) < priority(etr) ) then
-                idx = i
-             end if
+      etr = sub%r(i)
+
+      ! check whether we should skip it
+      if ( lskip(etr) ) cycle
+
+      ! Get the current degree (dependent on the method)
+      cdeg = degree(method,n,nnzs,n_col,l_ptr,l_col,etr,self)
+
+      select case ( method )
+      case ( D_LOW )
+        if ( cdeg < deg ) then
+          idx = i
+          deg = cdeg
+        else if ( cdeg == deg .and. present(priority) ) then
+          ! ** this should never happen if idx == 0
+          if ( priority(sub%r(idx)) < priority(etr) ) then
+            idx = i
           end if
-       else if ( method == D_HIGH ) then
-          if ( deg < cdeg ) then
-             idx = i
-             deg = cdeg
-          else if ( cdeg == deg .and. present(priority) ) then
-             ! ** this should never happen if idx == 0
-             if ( priority(sub%r(idx)) < priority(etr) ) then
-                idx = i
-             end if
+        end if
+      case ( D_HIGH )
+        if ( deg < cdeg ) then
+          idx = i
+          deg = cdeg
+        else if ( cdeg == deg .and. present(priority) ) then
+          ! ** this should never happen if idx == 0
+          if ( priority(sub%r(idx)) < priority(etr) ) then
+            idx = i
           end if
-       else if ( method == D_LOW_SUM ) then
-          if ( cdeg < deg ) then
-             idx = i
-             deg = cdeg
-          else if ( cdeg == deg .and. present(priority) ) then
-             ! ** this should never happen if idx == 0
-             if ( priority(sub%r(idx)) < priority(etr) ) then
-                idx = i
-             end if
+        end if
+      case ( D_LOW_SUM )
+        if ( cdeg < deg ) then
+          idx = i
+          deg = cdeg
+        else if ( cdeg == deg .and. present(priority) ) then
+          ! ** this should never happen if idx == 0
+          if ( priority(sub%r(idx)) < priority(etr) ) then
+            idx = i
           end if
-       else if ( method == D_HIGH_SUM ) then
-          if ( deg < cdeg ) then
-             idx = i
-             deg = cdeg
-          else if ( cdeg == deg .and. present(priority) ) then
-             ! ** this should never happen if idx == 0
-             if ( priority(sub%r(idx)) < priority(etr) ) then
-                idx = i
-             end if
+        end if
+      case ( D_HIGH_SUM )
+        if ( deg < cdeg ) then
+          idx = i
+          deg = cdeg
+        else if ( cdeg == deg .and. present(priority) ) then
+          ! ** this should never happen if idx == 0
+          if ( priority(sub%r(idx)) < priority(etr) ) then
+            idx = i
           end if
-       end if
+        end if
+      end select
     end do
-    
+
+    deallocate(lskip)
     call rgn_delete(self)
-    
+
   end function idx_degree
 
   function degree(method,n,nnzs,n_col,l_ptr,l_col,etr,self) result(deg)

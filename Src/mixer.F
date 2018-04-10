@@ -44,7 +44,6 @@
       integer               :: iiscf, i, is
 
       external :: mulliken
-
 !-------------------------------------------------------------------- BEGIN
 
       call timer( 'MIXER', 1 )
@@ -187,19 +186,21 @@
       ! entirely correct. It should be moved to the top,
       ! or done somewhere else.
 
-      if (muldeb) then 
+      if (muldeb .and. (.not. MixH)) then 
          if (IONode)
      &        write (6,"(/a)")
      &        'siesta: Mulliken populations after mixing'
          if ( SpOrb ) then
+            ! BUG: Dscf is truncated (1..4) instead of being correctly hermitified
+            ! Kept just for the "orbital moment" output
             call moments( mullipop, na_u, no_u, maxnh, numh, listhptr,
      .           listh, S, Dscf, isa, lasto, iaorb, iphorb,
      .           indxuo )
-         else
-            call mulliken( mullipop, h_spin_dim, na_u, no_u, maxnh,
+         endif
+         ! Call this unconditionally
+         call mulliken( mullipop, na_u, no_u, maxnh,
      &           numh, listhptr, listh, S, Dscf, isa,
      &           lasto, iaorb, iphorb )
-         endif
       endif
 
       call timer( 'MIXER', 2 )

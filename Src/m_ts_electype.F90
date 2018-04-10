@@ -38,13 +38,17 @@ module m_ts_electype
   public :: Elec, Name, Elec_idx
   public :: TotUsedAtoms, TotUsedOrbs
   public :: AtomInElec, OrbInElec
-  public :: q_exp, q_exp_all, Elec_kpt
+  public :: q_exp, Elec_kpt
+
+  interface q_exp
+    module procedure q_exp_
+    module procedure q_exp_all
+  end interface q_exp
 
   public :: fdf_nElec, fdf_elec
 
   public :: read_Elec
   public :: create_sp2sp01
-  public :: print_Elec
   public :: print_settings
   public :: init_Elec_sim, check_Elec_sim
   public :: check_connectivity
@@ -74,6 +78,9 @@ module m_ts_electype
      integer :: na_used = 0
      ! orbitals used
      integer :: no_used = 0
+     ! Whether the geometry is tiled or repeated
+     ! Old behaviour is repeated, but tiling is more efficient
+     logical :: repeat = .true.
      ! Bloch expansions (repetitions)
      integer :: Bloch(3) = 1
      ! Pre-expand before saving Gf
@@ -663,9 +670,8 @@ contains
     end if
 #endif
 
-    ! If the user will not use bulk, and haven't set DM-update,
-    ! default to 'all'
-    if ( .not. info(5) .and. .not. this%Bulk ) then
+    ! If the user will not use bulk, set DM_update to 'all'
+    if ( .not. this%Bulk ) then
        this%DM_update = 2 ! set 'all'
     end if
     
@@ -809,8 +815,8 @@ contains
     integer, intent(in) :: na_u
     real(dp), intent(in) :: xa(3,na_u)
     
-    real(dp) :: p(3), contrib
-    integer :: i, j, ia, na
+    real(dp) :: p(3), contrib, work(12)
+    integer :: i, j, ia, na, ipiv(3)
 
     ! First figure out the minimum bond-length
     ia = this%idx_a
@@ -840,12 +846,6 @@ contains
        end if
        
     end do
-    if ( sum(this%pvt) /= 6 .or. count(this%pvt==2) /= 1 ) then
-       print *, this%pvt
-       call die('The pivoting table for the electrode unit-cell, &
-            &onto the simulation unit-cell is not unique. &
-            &Please check your simulation cells.')
-    end if
     
     ! Create the basal plane of the electrode
     ! Decide which end of the electrode we use
@@ -931,6 +931,15 @@ contains
        this%box%v(:,i) = this%box%v(:,i) * contrib
     end if
 
+    call dgetrf(3,3,this%box%v,3,ipiv,i)
+    if ( i /= 0 ) then
+       call die('Electrode inversion of cell vectors failed')
+    end if
+    call dgetri(3,this%box%v,3,ipiv,work,12,i)
+    if ( i /= 0 ) then
+       call die('Electrode inversion of cell vectors failed')
+    end if
+    
   end subroutine init_Elec_sim
 
   ! Initialize variables for the electrode according
@@ -969,7 +978,7 @@ contains
     real(dp) :: max_xa(3), cur_xa(3)
     real(dp), pointer :: this_xa(:,:)
     integer :: i, j, k, ia, na, pvt(3), iaa, idir(3)
-    logical :: ldie, er, Gamma
+    logical :: ldie, er, Gamma, orbs
     
     na = TotUsedAtoms(this)
 
@@ -982,37 +991,11 @@ contains
     xa_o(:) = xa(:,this%idx_a)
     this_xa_o(:) = this_xa(:,1)
 
-    max_xa = 0._dp
-    er = .false.
-    iaa = this%idx_a
-    do ia = 1 , this%na_used
-       
-       do k = 1 , this%Bloch(3)
-       idir(3) = k - 1
-       do j = 1 , this%Bloch(2)
-       idir(2) = j - 1
-       do i = 1 , this%Bloch(1)
-          idir(1) = i - 1
-
-          ! Calculate repetition vector
-          cur_xa(1) = sum(cell(1,:)*idir)
-          cur_xa(2) = sum(cell(2,:)*idir)
-          cur_xa(3) = sum(cell(3,:)*idir)
-          
-          ! Add the electrode distance for the ELEC atom
-          cur_xa(:) = cur_xa(:) + this_xa(:,ia)-this_xa_o(:)
-          ! Subtract the SYSTEM position
-          cur_xa(:) = cur_xa(:) - xa(:,iaa) + xa_o(:)
-          if ( VNORM(cur_xa) > VNORM(max_xa) ) then
-             max_xa = cur_xa
-             er = er .or. any( abs(max_xa) > xa_EPS )
-          end if
-
-          iaa = iaa + 1
-       end do
-       end do
-       end do
-    end do
+    ! Check repeat
+    call check_tile()
+    if ( er ) then
+      call check_repeat()
+    end if
 
     ldie = ldie .or. er
 
@@ -1061,48 +1044,11 @@ contains
 
     end if
 
-    iaa = this%idx_a
-    er = .false.
-    do ia = 1 , this%na_used
-       do k = 1 , this%Bloch(3)
-       do j = 1 , this%Bloch(2)
-       do i = 1 , this%Bloch(1)
+    ldie = ldie .or. orbs
 
-          ! Check number of orbitals for this electrode
-          ! atom
-          if ( lasto(iaa) - lasto(iaa-1) /= &
-               this%lasto_used(ia) - this%lasto_used(ia-1) ) then
-             er = .true.
-          end if
-
-          iaa = iaa + 1
-       end do
-       end do
-       end do
-    end do
-    
-    ldie = ldie .or. er
-
-    if ( er .and. IONode) then
+    if ( orbs .and. IONode) then
        write(*,'(a)') "Number of orbitals per atom in the electrode does not match the system electrode"
        write(*,'(a)') 'Have you changed your basis size?'
-       write(*,'(t3,3a20)') "ia system","n_orb_el","n_orb_sys"
-       iaa = this%idx_a
-       do ia = 1 , this%na_used
-          do k = 1 , this%Bloch(3)
-          do j = 1 , this%Bloch(2)
-          do i = 1 , this%Bloch(1)
-                
-             ! Check number of orbitals for this electrode
-             ! atom
-             write(*,'(t3,3(i20))')iaa, &
-                  this%lasto_used(ia) - this%lasto_used(ia-1), &
-                  lasto(iaa) - lasto(iaa-1)
-             iaa = iaa + 1
-          end do
-          end do
-          end do
-       end do
     end if
 
     if ( nspin /= this%nspin ) then
@@ -1192,17 +1138,107 @@ contains
        ldie = .true.
     end if
 
-    if ( sum(this%pvt) /= 6 .or. count(this%pvt==2) /= 1 ) then
-       write(*,'(tr2,i2)') this%pvt
-       ldie = .true.
-       write(*,'(a)')'The pivoting table for the electrode unit-cell, &
-            &onto the simulation unit-cell is not unique. &
-            &Please check your simulation cells.'
-    end if
-    
     if ( ldie ) then
        call die('Erroneous electrode setup, check out-put')
-    end if
+     end if
+
+  contains
+
+    subroutine check_repeat()
+      integer :: idir(3)
+
+      er = .false.
+      orbs = .true.
+      max_xa = 0._dp
+      
+      iaa = this%idx_a
+      do ia = 1 , this%na_used
+       
+       do k = 1 , this%Bloch(3)
+       idir(3) = k - 1
+       do j = 1 , this%Bloch(2)
+       idir(2) = j - 1
+       do i = 1 , this%Bloch(1)
+       idir(1) = i - 1
+
+          ! Calculate repetition vector
+          cur_xa(1) = sum(cell(1,:)*idir)
+          cur_xa(2) = sum(cell(2,:)*idir)
+          cur_xa(3) = sum(cell(3,:)*idir)
+          
+          ! Add the electrode distance for the ELEC atom
+          cur_xa(:) = cur_xa(:) + this_xa(:,ia)-this_xa_o(:)
+          
+          ! Subtract the SYSTEM position
+          cur_xa(:) = cur_xa(:) - xa(:,iaa) + xa_o(:)
+          if ( VNORM(cur_xa) > VNORM(max_xa) ) then
+            max_xa = cur_xa
+          end if
+
+          orbs = orbs .and. lasto(iaa) - lasto(iaa-1) /= this%lasto_used(ia) - this%lasto_used(ia-1)
+
+          iaa = iaa + 1
+       end do
+       end do
+       end do
+      end do
+
+      er = any( abs(max_xa) > xa_EPS )
+
+      if ( .not. er ) then
+        this%repeat = .true.
+      end if
+      
+    end subroutine check_repeat
+    
+    subroutine check_tile()
+      integer :: idir(3)
+      real(dp) :: off(3)
+
+      er = .false.
+      orbs = .true.
+      max_xa = 0._dp
+      
+      iaa = this%idx_a
+
+      do k = 1 , this%Bloch(3)
+      idir(3) = k - 1
+      do j = 1 , this%Bloch(2)
+      idir(2) = j - 1
+      do i = 1 , this%Bloch(1)
+      idir(1) = i - 1
+
+        ! Calculate repetition vector
+        off(1) = sum(cell(1,:)*idir)
+        off(2) = sum(cell(2,:)*idir)
+        off(3) = sum(cell(3,:)*idir)
+
+        do ia = 1 , this%na_used
+          
+          ! Add the electrode distance for the ELEC atom
+          cur_xa(:) = off(:) + this_xa(:,ia) - this_xa_o(:)
+          
+          ! Subtract the SYSTEM position
+          cur_xa(:) = cur_xa(:) - xa(:,iaa) + xa_o(:)
+          if ( VNORM(cur_xa) > VNORM(max_xa) ) then
+             max_xa = cur_xa
+          end if
+
+          orbs = orbs .and. lasto(iaa) - lasto(iaa-1) /= this%lasto_used(ia) - this%lasto_used(ia-1)
+
+          iaa = iaa + 1
+       end do
+       end do
+       end do
+      end do
+      
+      er = any( abs(max_xa) > xa_EPS )
+
+      if ( .not. er ) then
+        this%repeat = .false.
+      end if
+
+    end subroutine check_tile
     
   end subroutine check_Elec_sim
 
@@ -1256,7 +1292,7 @@ contains
     
   end function q_exp_all
 
-  pure function q_exp(this,idx) result(q)
+  pure function q_exp_(this,idx) result(q)
     type(Elec), intent(in) :: this
     integer, intent(in) :: idx
     real(dp) :: q(3)
@@ -1283,7 +1319,7 @@ contains
     else
        q = 0._dp
     end if
-  end function q_exp
+  end function q_exp_
 
   subroutine Elec_kpt(this,cell,k1,k2,opt)
     type(Elec), intent(in) :: this
@@ -1378,12 +1414,18 @@ contains
     ! The minimum/maximum grid indices
     integer, intent(out) :: imin(3), imax(3)
 
-    real(dp) :: LHS(3,3), RHS(3)
+    real(dp) :: LHS(3,3), RHS(3), cell(3,3), contrib
     integer :: idx(3), i
 
     ! Initialize the indices
     imin = huge(1)
     imax = -huge(1)
+
+    contrib = real(this%na_used,dp) / real(this%na_u,dp)
+    i = this%t_dir
+    ! Scale semi-infinite direction
+    cell = this%cell
+    cell(:,i) = cell(:,i) * contrib
 
     call get_idx(0,0,0,imin,imax)
     call get_idx(1,0,0,imin,imax)
@@ -1417,9 +1459,9 @@ contains
       ! Copy the LHS
       LHS = dL
       ! Create RHS
-      RHS = this%box%c + this%box%v(:,1) * ix &
-           + this%box%v(:,2) * iy &
-           + this%box%v(:,3) * iz
+      RHS = this%box%c + cell(:,1) * ix &
+           + cell(:,2) * iy &
+           + cell(:,3) * iz
       
       ! Calculate pqosition in the grid
       call dgesv(3,1,LHS,3,idx,RHS,3,i)
@@ -1906,79 +1948,6 @@ contains
 
   end function check_connectivity
 
-  ! Routine for checking the validity of the electrode against the 
-  ! system setup in transiesta
-  subroutine print_Elec(this,na_u,xa)
-    use parallel, only : IONode
-    use units, only : Ang
-    use intrinsic_missing, only : VNORM
-    type(Elec), intent(in) :: this
-    integer,  intent(in) :: na_u
-    real(dp), intent(in) :: xa(3,na_u)
-
-    ! Local variables
-    logical :: do_print
-    integer  :: i,j,k, ia, iaa
-    real(dp), parameter :: check_xa = 0.0005_dp * Ang
-    real(dp) :: xa_o(3), this_xa_o(3), ucell(3,3), tmp(3)
-    real(dp), pointer :: this_xa(:,:)
-
-    if ( .not. IONode ) return
-
-    this_xa      => this%xa_used
-    xa_o(:)      =  xa(:,this%idx_a)
-    this_xa_o(:) =  this_xa(:,1)
-    ucell        =  this%cell
-
-    ! We only print out this structure if it does not fit the coordinates
-    do_print = .false.
-    
-    iaa = this%idx_a
-    do ia = 1 , this%na_used
-       do k = 0 , this%Bloch(3) - 1
-       do j = 0 , this%Bloch(2) - 1
-       do i = 0 , this%Bloch(1) - 1
-          tmp(1) = this_xa(1,ia)-this_xa_o(1)+sum(ucell(1,:)*(/i,j,k/))
-          tmp(2) = this_xa(2,ia)-this_xa_o(2)+sum(ucell(2,:)*(/i,j,k/))
-          tmp(3) = this_xa(3,ia)-this_xa_o(3)+sum(ucell(3,:)*(/i,j,k/))
-          do_print = do_print .or. VNORM(xa(:,iaa) - xa_o - tmp) > check_xa
-          iaa = iaa + 1
-       end do
-       end do
-       end do
-    end do
-
-    if ( .not. do_print ) return
-
-    write(*,*) trim(this%name)//' unit cell (Ang):'
-    write(*,'(2(3(tr1,f10.5),/),3(tr1,f10.5))') this%cell/Ang
-    
-    write(*,'(a,t35,a)') &
-         " Structure of "//trim(this%name)//" electrode","| System electrode:"
-    write(*,'(t3,3a10,''  |'',3a10,''  | '',a10)') &
-         "X (Ang)","Y (Ang)","Z (Ang)", "X (Ang)","Y (Ang)","Z (Ang)","|r_S-r_E|"
-
-    iaa = this%idx_a
-    do ia = 1 , this%na_used
-       do k = 0 , this%Bloch(3) - 1
-       do j = 0 , this%Bloch(2) - 1
-       do i = 0 , this%Bloch(1) - 1
-          tmp(1) = this_xa(1,ia)-this_xa_o(1)+sum(ucell(1,:)*(/i,j,k/))
-          tmp(2) = this_xa(2,ia)-this_xa_o(2)+sum(ucell(2,:)*(/i,j,k/))
-          tmp(3) = this_xa(3,ia)-this_xa_o(3)+sum(ucell(3,:)*(/i,j,k/))
-          write(*,'(t3,3f10.5,''  |'',3f10.5,''  | '',e10.5)') &
-               tmp / Ang, (xa(:,iaa) - xa_o(:))/Ang, &
-               VNORM(xa(:,iaa) - xa_o - tmp) / Ang
-          iaa = iaa + 1
-       end do
-       end do
-       end do
-    end do
-    
-    write(*,*) ! new-line
-
-  end subroutine print_Elec
-
   subroutine copy_DM(this,na_u,xa,lasto,nsc,isc_off,cell,DM_2D, EDM_2D, &
        na_a, allowed)
     use m_handle_sparse
@@ -2082,6 +2051,8 @@ contains
     character(len=*), intent(in) :: prefix
     logical, intent(in), optional :: plane, box
 
+    integer :: nq
+    real(dp) :: contrib, cell(3,3)
     character(len=100) :: chars
     character(len=60) :: f1, f5, f20, f6, f7, f8, f9, f10, f11, f15, f3, f16
 
@@ -2113,7 +2084,16 @@ contains
     end if
     write(*,f10) '  Electrode TSHS file', trim(this%HSfile)
     write(*,f5)  '  # atoms used in electrode', this%na_used
-    write(*,f15) '  Electrode Bloch expansion [E1 x E2 x E3]', this%Bloch(:)
+    nq = product(this%Bloch)
+    if ( nq > 1 ) then
+      if ( this%repeat ) then
+        write(*,f15) '  Electrode Bloch repeating [E1 x E2 x E3]', this%Bloch(:)
+      else
+        write(*,f15) '  Electrode Bloch tiling [E1 x E2 x E3]', this%Bloch(:)
+      end if
+    else
+      write(*,f15) '  Electrode Bloch unity [E1 x E2 x E3]', this%Bloch(:)
+    end if
     write(*,f20) '  Position in geometry', this%idx_a, &
          this%idx_a + TotUsedAtoms(this) - 1
     if ( this%t_dir == 1 ) then
@@ -2183,10 +2163,13 @@ contains
     if ( present(box) ) then
     if ( box ) then
        write(*,f11) '  Hartree potential box:'
+       contrib = real(this%na_used,dp) / real(this%na_u,dp)
+       cell = this%cell
+       cell(:,this%t_dir) = cell(:,this%t_dir) * contrib
        write(*,f3)  '    box origo',this%box%c / Ang, ' Ang'
-       write(*,f3)  '    box v1',this%box%v(:,1) / Ang, ' Ang'
-       write(*,f3)  '    box v2',this%box%v(:,2) / Ang, ' Ang'
-       write(*,f3)  '    box v3',this%box%v(:,3) / Ang, ' Ang'
+       write(*,f3)  '    box v1', cell(:,1) / Ang, ' Ang'
+       write(*,f3)  '    box v2', cell(:,2) / Ang, ' Ang'
+       write(*,f3)  '    box v3', cell(:,3) / Ang, ' Ang'
     end if
     end if
 #endif

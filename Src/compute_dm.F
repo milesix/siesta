@@ -21,13 +21,14 @@
       use sparse_matrices
       use siesta_geom
       use atomlist, only: qa, lasto, iphorb, iaorb, no_u, no_s, indxuo, 
-     &                    qtot, no_l
+     &                    qtot, Qtots, no_l
       use sys, only: die, bye
       use Kpoint_grid
-      use m_energies,   only: Ebs, Ecorrec, Ef, Entropy
+      use m_energies,   only: Ebs, Ecorrec, Entropy, DE_NEGF
+      use m_energies,   only: Ef, Efs
       use m_rmaxh
       use m_eo
-      use m_spin,   only: spin, qs, efs
+      use m_spin,   only: spin
       use m_diagon, only: diagon
       use m_gamma
       use parallel, only: IONode
@@ -51,11 +52,9 @@
 #ifdef SIESTA__CHESS
       use m_chess, only: CheSS_wrapper
 #endif
-#ifdef TRANSIESTA
       use m_energies,   only: DE_NEGF
       use m_ts_global_vars, only : TSmode, TSinit, TSrun
       use m_transiesta,     only : transiesta
-#endif /* TRANSIESTA */
       
       implicit none
       
@@ -71,6 +70,7 @@
       real(dp), parameter :: e1 = 1.0_dp, e2 = -1.0_dp
       real(dp)            :: buffer1
       integer             :: mpierr
+      real(dp) :: dummy_qspin(8)
 
 !       character(15)            :: filename, indexstr
 !       character(15), parameter :: fnameform = '(A,A,A)'
@@ -177,7 +177,7 @@ c$$$     &           S, 'S.matrix')
         call diagon(no_s, spin%spinor, 
      &              no_l, maxnh, maxnh, no_u,
      &              numh, listhptr, listh, numh, listhptr, listh, 
-     &              H, S, qtot, fixspin, qs, temp, e1, e2,
+     &              H, S, qtot, fixspin, qtots, temp, e1, e2,
      &              gamma, xijo, indxuo, nkpnt, kpoint, kweight,
      &              eo, qo, Dscf, Escf, ef, efs, Entropy, no_u,
      &              occtol, iscf, neigwanted)
@@ -191,7 +191,7 @@ c$$$     &           S, 'S.matrix')
      &               isa, qa, rcoor, rmaxh, ucell, xa, iscf,
      &               istp, ncgmax, etol, eta, qtot, maxnh, numh,
      &               listhptr, listh, H, S, chebef, noeta, rcoorcp,
-     &               beta, pmax, Dscf, Escf, Ecorrec, spin%H, qs )
+     &               beta, pmax, Dscf, Escf, Ecorrec, spin%H, qtots )
         Entropy = 0.0_dp
       elseif (isolve .eq. SOLVE_MINIM) then
         if ( spin%NCol .or. spin%SO ) 
@@ -201,11 +201,11 @@ c$$$     &           S, 'S.matrix')
         if (gamma) then
           call dminim(.false., PreviousCallDiagon, iscf, istp, no_l,
      &                 spin%H, no_u, maxnh, numh, listhptr, listh, Dscf,
-     &                 eta, qs, H, S, H_kin)
+     &                 eta, qtots, H, S, H_kin)
         else
           call zminim(.false., PreviousCallDiagon, iscf, istp, no_l,
      &                 spin%H, no_u, maxnh, numh, listhptr, listh, Dscf,
-     &                 eta, qs, no_s, xijo, indxuo, nkpnt, kpoint,
+     &                 eta, qtots, no_s, xijo, indxuo, nkpnt, kpoint,
      &                 kweight, H, S, H_kin)
         end if
         Ecorrec = 0.0_dp
@@ -225,12 +225,11 @@ c$$$     &           S, 'S.matrix')
         Entropy = 0.0_dp
         PreviousCallDiagon=.false.
 #endif
-#ifdef TRANSIESTA
       elseif (TSmode .and. TSinit) then
         call diagon(no_s, spin%spinor, 
      &              no_l, maxnh, maxnh, no_u,
      &              numh, listhptr, listh, numh, listhptr, listh,
-     &              H, S, qtot, fixspin, qs, temp, e1, e2,
+     &              H, S, qtot, fixspin, qtots, temp, e1, e2,
      &              gamma, xijo, indxuo, nkpnt, kpoint, kweight,
      &              eo, qo, Dscf, Escf, ef, efs, Entropy, no_u,
      &              occtol, iscf, neigwanted)
@@ -245,7 +244,7 @@ c$$$     &           S, 'S.matrix')
 
          Ecorrec = 0._dp
          Entropy = 0.0_dp
-#endif /* TRANSIESTA */
+         
       else
         !call die('siesta: ERROR: wrong solution method')
       endif
@@ -261,41 +260,33 @@ c$$$     &           S, 'S.matrix')
 
 !     Print populations at each SCF step if requested before mixing ......
       if (muldeb) then
+        call print_spin(dummy_qspin)
         if (ionode) write (6,"(/a)")
      &    'siesta: Mulliken populations (DM_out)'
-            if ( spin%SO ) then
-              call moments( mullipop, na_u, no_u, maxnh, numh, listhptr,
-     .                      listh, S, Dscf, isa, lasto, iaorb, iphorb,
-     .                      indxuo )
-            else
-             call mulliken( mullipop, spin%DM, na_u, no_u, maxnh,
+        if ( spin%SO ) then
+           ! BUG: Dscf truncated (1..4) instead of being correctly hermitified
+           ! Kept just for the "orbital moment" output
+           call moments( mullipop, na_u, no_u, maxnh, numh, listhptr,
+     .                   listh, S, Dscf, isa, lasto, iaorb, iphorb,
+     .                   indxuo )
+        endif
+        ! Call this unconditionally
+        call mulliken( mullipop, na_u, no_u, maxnh,
      &                 numh, listhptr, listh, S, Dscf, isa,
      &                 lasto, iaorb, iphorb )
-            endif
       endif
 
 ! Write orbital indexes. JMS Dec.2009
-
-#ifdef TRANSIESTA
-      if (IOnode .and. iscf==1.and..not. TSrun) then
-         call write_orb_indx( na_u, na_s, no_u, no_s, isa, xa,
-     .        iaorb, iphorb, indxuo, nsc, ucell )
-      endif
-#else
       if (IOnode .and. iscf==1) then
          call write_orb_indx( na_u, na_s, no_u, no_s, isa, xa,
      .        iaorb, iphorb, indxuo, nsc, ucell )
       endif
-#endif
 
 !     Normalize density matrix to exact charge
 !     Placed here for now to avoid disturbing EHarris
-#ifdef TRANSIESTA      
-      if ( .not. TSrun ) call normalize_dm( first= .false. )
-#else
-      call normalize_dm(first=.false.)
-#endif
-      
+      if ( .not. TSrun ) then
+         call normalize_dm( first= .false. )
+      end if
 
       call timer( 'compute_dm', 2 )
 #ifdef SIESTA__PEXSI
