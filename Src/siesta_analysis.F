@@ -58,7 +58,9 @@
       use m_partial_charges, only: want_partial_charges
       use m_iodm_old,        only: read_spmatrix
       use m_siesta2wannier90, only: siesta2wannier90
+      use m_switch_local_projection, only: switch_local_projection
       use m_lowdin,          only: read_lowdin_specs
+      use m_lowdin,          only: setup_Lowdin
 
 #ifdef MPI
       use m_mpi_utils, only: globalize_sum
@@ -80,7 +82,7 @@
       real(dp)          :: qaux
       real(dp), pointer :: ebk(:,:,:)       ! Band energies
 
-      integer           :: j, ix, ind, ik, io, ispin
+      integer           :: j, ix, ind, ik, io, ispin, index_manifold
       integer           :: wfs_band_min, wfs_band_max
       real(dp)          :: g2max, current_ef
 #ifdef MPI
@@ -496,12 +498,24 @@
 C    
 C     Call the Lowdin orthonormalization here, 
 C
-      if( lowdin_processing ) call read_lowdin_specs()
+      if( lowdin_processing ) then
+        call read_lowdin_specs()
+        call setup_Lowdin
+        do index_manifold = 1, n_lowdin_manifolds
+          call switch_local_projection( index_manifold )
+          do ispin = 1, nspin
+            call diagonalizeHk( ispin, index_manifold )
+          enddo 
+        enddo
+        lowdin_processing = .false.
+      endif
 
 C    
 C     Call the wannier90 interface here, as local_DOS destroys the DM...
 C
-      if( w90_processing ) call siesta2wannier90()
+      if( w90_processing ) then
+        call siesta2wannier90()
+      endif
 
 C     Find local density of states
 !  It needs H,S, and xa, as it diagonalizes them again

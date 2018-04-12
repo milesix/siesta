@@ -28,23 +28,35 @@
                                                    !   Lowdin orthonormaliza
           logical, pointer       :: orbexcluded(:) ! List of orbitals excluded 
                                                    !   for Lowdin orthonormaliza
-          integer, pointer       :: orb_in_manifold(:) ! List of orbitals excluded 
+          integer, pointer       :: orb_in_manifold(:) 
+                                                   ! List of orbitals excluded 
                                                    !   for Lowdin orthonormaliza
           integer                :: blocksizeincbands_lowdin 
                                                    ! Maximum number of bands
                                                    !    considered for 
                                                    !    Lowdin orthonormalizat
-
+                                                   !    per node
+          integer                :: numbands_lowdin
           integer                :: nincbands_loc_lowdin     
                                                    ! Number of included bands 
                                                    !   in the calc.
                                                    !   of the overlap and 
-                                                   !   projection matrices.
-                                                   !   in the local Node
+                                                   !   projection matrices
+                                                   !   in the local node
       end type lowdin_manifold_t
 
       type(lowdin_manifold_t), public,
      .     allocatable, save, target     :: manifold_bands_lowdin(:)
+
+
+      integer :: numkpoints_lowdin   ! Total number of k-points
+                                     !   used in the Lowdin normalization
+
+      real(dp), pointer :: kpointsfrac_lowdin(:,:)
+                                     ! List of k points relative
+                                     !   to the reciprocal lattice vectors.
+                                     !   First  index: component
+                                     !   Second index: k-point index in the list
 
       complex(dp), pointer, save ::   overlaptilde(:,:)
       complex(dp), pointer, save ::   coeffs_k(:,:)
@@ -52,9 +64,6 @@
       complex(dp), pointer, save ::   phitilde(:,:)
       complex(dp), pointer, save ::   invsqrtover(:,:)
       complex(dp), pointer, save ::   coeffshatphi(:,:)
-
-      
- 
 
       end module lowdin_types
 

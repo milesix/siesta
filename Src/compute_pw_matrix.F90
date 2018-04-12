@@ -148,8 +148,8 @@ subroutine getkvector(frac, vector)
 ! Converts from fractional to Bohr^-1 coordinates in reciprocal space.
 !
 
-use m_siesta2wannier90, only : reclatvec ! Reciprocal lattice vectors
-use precision,          only : dp        ! Real double precision type
+use m_switch_local_projection, only : reclatvec ! Reciprocal lattice vectors
+use precision,                 only : dp        ! Real double precision type
 
 integer              :: i,j
 real(dp),intent(in)  :: frac(3)

@@ -33,6 +33,8 @@ module m_lowdin
   use lowdin_types,   only: overlap_sq             !
   use lowdin_types,   only: overlaptilde           !
   use lowdin_types,   only: phitilde               !
+  use lowdin_types,   only: numkpoints_lowdin
+  use lowdin_types,   only: kpointsfrac_lowdin     !
   use sparse_matrices,    only: maxnh        ! Maximum number of orbitals
                                              !   interacting
                                              ! NOTE: While running in parallel,
@@ -96,11 +98,18 @@ module m_lowdin
 !
     use fdf
     use m_cite,   only: add_citation
-    use parallel, only: IONode
+    use parallel, only: IONode        ! Node for Input/output
 
 !   Internal variables
     integer :: index_manifold      ! Counter for the number of manifolds
     integer :: iorb                ! Counter for the number of atomic orbitals
+    integer :: kmeshlowdin(3)      ! Number of divisions along the three
+                                   !   reciprocal lattice vectors that will be
+                                   !   used in the Lowdinn projections
+    integer :: ik                  ! Counter for loop on k-points
+    integer :: ikx                 ! Counter for loop on k-points along 1-direc
+    integer :: iky                 ! Counter for loop on k-points along 2-direc
+    integer :: ikz                 ! Counter for loop on k-points along 3-direc
 
     type(block_fdf)            :: bfdf
     type(parsed_line), pointer :: pline
@@ -109,8 +118,7 @@ module m_lowdin
 !   manifold will be stored
     allocate(manifold_bands_lowdin(n_lowdin_manifolds))
     
-
-!   Read the LDAU.proj block
+!   Read the LowdinProjections block
     if (.not. fdf_block('LowdinProjections',bfdf)) RETURN
 
 !   Add citation
@@ -133,6 +141,8 @@ module m_lowdin
       manifold_bands_lowdin(index_manifold)%number_of_bands=      &
  &        ( manifold_bands_lowdin(index_manifold)%final_band   -  &
  &          manifold_bands_lowdin(index_manifold)%initial_band )  + 1
+      manifold_bands_lowdin(index_manifold)%numbands_lowdin =     &
+ &        manifold_bands_lowdin(index_manifold)%final_band 
 
       nullify( manifold_bands_lowdin(index_manifold)%orbital_indices )
       call re_alloc( manifold_bands_lowdin(index_manifold)%orbital_indices,  &
@@ -150,71 +160,137 @@ module m_lowdin
 ! &      manifold_bands_lowdin(index_manifold)%initial_band,                  &
 ! &      manifold_bands_lowdin(index_manifold)%final_band,                    &
 ! &      manifold_bands_lowdin(index_manifold)%number_of_bands
+!     write(6,'(a,2i5)')'read_lowdin_specs: Number of bands for Lowdin = ',   &
+! &      index_manifold, manifold_bands_lowdin(index_manifold)%numbands_lowdin
 !
 !      do iorb = 1, manifold_bands_lowdin(index_manifold)%number_of_bands
 !        write(6,*) manifold_bands_lowdin(index_manifold)%orbital_indices(iorb)
 !      enddo
 !!     End debugging
     enddo ! end loop over band manifolds
+
+!   Read the data to generate the grid in reciprocal space that will be used
+!   for the Lowdin Projections
+    if (.not. fdf_block('kMeshforLowdin',bfdf)) RETURN
+
+    do while(fdf_bline(bfdf, pline))     
+      if (.not. fdf_bmatch(pline,'iii'))        &   ! We expect that each line
+                                                    !   contains three integers
+                                                    !   That is the meaning of
+                                                    !   iii
+                                                    ! The first integer is the
+                                                    !   number of divisions 
+                                                    !   the first reciprocal 
+                                                    !   lattice vector and so on
+ &      call die('Wrong format in kMeshforLowdin')
+      kmeshlowdin(1) = fdf_bintegers(pline,1)
+      kmeshlowdin(2) = fdf_bintegers(pline,2)
+      kmeshlowdin(3) = fdf_bintegers(pline,3)
+    enddo 
+
+!     Define the total number of k-points used in the Lowdin projection
+      numkpoints_lowdin = kmeshlowdin(1) * kmeshlowdin(2) * kmeshlowdin(3)
+
+!     Compute and store the components of the k-points in fractional units
+      nullify( kpointsfrac_lowdin )
+      call re_alloc( kpointsfrac_lowdin, 1, 3, 1, numkpoints_lowdin,  &
+ &                   name='kpointsfrac_lowdin', routine='read_lowdin_specs')
+
+      ik = 0
+      do ikx = 0, kmeshlowdin(1) - 1
+        do iky = 0, kmeshlowdin(2) - 1
+          do ikz = 0, kmeshlowdin(3) - 1
+            ik = ik + 1
+            kpointsfrac_lowdin(1,ik) = (ikx*1.0_dp)/kmeshlowdin(1)
+            kpointsfrac_lowdin(2,ik) = (iky*1.0_dp)/kmeshlowdin(2)
+            kpointsfrac_lowdin(3,ik) = (ikz*1.0_dp)/kmeshlowdin(3)
+          enddo 
+        enddo 
+      enddo 
+
+!!     For debugging
+!      write(6,'(a,a,3i5)')'read_lowdin_specs: Number of subdivisions ',  &  
+! &      'of the reciprocal vectors for Lowdin = ', kmeshlowdin(:)
+!      write(6,'(a,a,3i5)')'read_lowdin_specs: Number of k-points used ', & 
+! &      'in the Lowdin projection = ', numkpoints_lowdin
+!      do ik = 1, numkpoints_lowdin
+!        write(6,'(a,a,i5,3f12.5)')'read_lowdin_specs: k-points in ',     & 
+! &        'fractional units:', ik, kpointsfrac_lowdin(:,ik)
+!      enddo
+!!     End debugging
+
     
   endsubroutine read_lowdin_specs
 
   subroutine setup_Lowdin
 
-    integer :: index_manifold
+    use parallel,  only : Node                 ! This process node
+    use parallel,  only : Nodes                ! Total number of processor nodes
+    use parallel,  only : BlockSize            ! Total number of processor nodes
 
 #ifdef MPI
     use parallelsubs,       only : set_blocksizedefault
 !
 !   Subroutine to order the indices of the different bands after
-!   excluding some of them for Lowdin orthonormalization
+!   excluding some of them for wannierization
 !
     use m_orderbands,       only: order_index
+#endif
+
+    integer :: index_manifold
+    integer :: numincbands_tmp
+    integer :: blocksizeincbands_tmp 
+    integer :: nincbands_loc_tmp
+
+#ifdef MPI
     integer, external :: numroc
 #endif
 
     do index_manifold = 1, n_lowdin_manifolds
-!       Allocate memory related with the coefficients of the wavefunctions
-#ifdef MPI
-!       Find the number of included bands for Lowdin orthonormalization 
-!       that will be stored
-!       per node. Use a block-cyclic distribution of nincbands over Nodes.
-!
-        call set_blocksizedefault( Nodes,                         &
- &         manifold_bands_lowdin(index_manifold)%number_of_bands, &
- &         manifold_bands_lowdin(index_manifold)%blocksizeincbands_lowdin )
-
-!!       For debugging
-!        write(6,'(a,3i5)')' setup_Lowdin: index_manifold, Node, Blocksize = ', &
-! &                                         index_manifold, Node,               &
-! &              manifold_bands_lowdin(index_manifold)%blocksizeincbands_lowdin
-!!       End debugging
-
-        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin =       &
- &         numroc( manifold_bands_lowdin(index_manifold)%number_of_bands,  &
- &         manifold_bands_lowdin(index_manifold)%blocksizeincbands_lowdin, &
- &         Node, 0, Nodes )
-#else
-        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin =       &
- &         manifold_bands_lowdin(index_manifold)%number_of_bands
-#endif
-!!      For debugging
-!       write(6,'(a,3i5)')' setup_Lowdin: index_manifold, nincbands_loc = ', &
-! &        index_manifold,                                                   &
-! &        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
-!!      End debugging
-
        call set_excluded_bands_lowdin( index_manifold )
+       numincbands_tmp = manifold_bands_lowdin(index_manifold)%number_of_bands
+
+!      Allocate memory related with the coefficients of the wavefunctions
+#ifdef MPI
+!      Find the number of included bands for Wannierization that will be stored
+!      per node. Use a block-cyclic distribution of nincbands over Nodes.
+!
+       call set_blocksizedefault( Nodes, numincbands_tmp, 
+ &                                blocksizeincbands_tmp )
+
+!       write(6,'(a,3i5)')' diagonalizeHk: Node, Blocksize = ', &
+! &                               Node, blocksizeincbands_tmp
+
+       nincbands_loc_tmp = numroc( numincbands_tmp,
+                               blocksizeincbands_tmp, Node, 0, Nodes )
+#else
+       nincbands_loc_tmp = numincbands_tmp
+#endif
+
+       manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin = &
+ &        nincbands_loc_tmp
+       manifold_bands_lowdin(index_manifold)%blocksizeincbands_lowdin = &
+ &        blocksizeincbands_tmp
 
 #ifdef MPI
 !      Set up the arrays that control the indices of the bands to be
 !      considered after excluding some of them for wannierization
 !      This is done once and for all the k-points
-       call order_index( no_l,  & 
- &                       no_u,  &
- &                manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin  )
+       call order_index( no_l, no_u, numincbands_tmp )
 #endif
-    enddo    ! End loop on number of manifolds
+
+    enddo  
+
+    nullify( tight_binding_param )
+    call re_alloc( tight_binding_param,                                 &
+ &                 1, n_lowdin_manifolds,                               &
+ &                 1, maxnh,                                            &
+ &                 1, nspin,                                            &
+ &                 name='tight_binding_param',                          &
+ &                 routine='setup_Lowdin',                              &
+ &                 shrink=.false., copy=.false.)
+    tight_binding_param = 0.0_dp
+
   endsubroutine setup_Lowdin
 
   subroutine allocate_matrices_Lowdin( index_manifold )
@@ -359,10 +435,10 @@ module m_lowdin
 
 !!   For debugging
 !    do iterex = 1, no_u
-!     write(6,'(a,2i5,l5,i5)')                                        &
-! &     'orbitals excluded (iband, excluded)',                        &
-! &     index_manifold, iterex,                                       &
-! &     manifold_bands_lowdin(index_manifold)%orbexcluded(iterex),    &
+!     write(6,'(a,2i5,l5,i5)')                                            &
+! &     'orbitals excluded: manifold, orb_unit cell, excluded, orb_mani', &
+! &     index_manifold, iterex,                                           &
+! &     manifold_bands_lowdin(index_manifold)%orbexcluded(iterex),        &
 ! &     manifold_bands_lowdin(index_manifold)%orb_in_manifold(iterex)    
 !    enddo
 !!   End debugging
@@ -987,7 +1063,6 @@ module m_lowdin
         qp1 = ee * realpart(lpsi(iuo))
         qp2 = ee * imagpart(lpsi(iuo))
 
-
         do juo = 1, number_of_orbitals_to_project
           eqp1 = qp1 * realpart(lpsi(juo)) + qp2 * imagpart(lpsi(juo))
           eqp2 = qp1 * imagpart(lpsi(juo)) - qp2 * realpart(lpsi(juo))
@@ -995,9 +1070,9 @@ module m_lowdin
           tight_binding_param_k(1,juo,iuo) = tight_binding_param_k(1,juo,iuo) + eqp1
           tight_binding_param_k(2,juo,iuo) = tight_binding_param_k(2,juo,iuo) + eqp2
 !!     For debugging
-!        write(6,'(a,3i5,1f12.5,i5,6f12.5)')                             &
-! &         ' k, index_manifold, band_local, band_global, eigen = ',       &
-! &           index_manifold, ie, jbandini+ie-1, ee*13.6058_dp, iuo,       &
+!        write(6,'(a,3i5,1f12.5,2i5,6f12.5)')                              &
+! &         ' k, i_man, band_local, band_global, eigen, iuo, juo = ',      &
+! &           index_manifold, ie, jbandini+ie-1, ee*13.6058_dp, juo, iuo,  &
 ! &           realpart(lpsi(iuo)), imagpart(lpsi(iuo)), realpart(lpsi(juo)), imagpart(lpsi(juo)), &
 ! &           tight_binding_param_k(1,juo,iuo), tight_binding_param_k(2,juo,iuo)
 !!     End debugging
@@ -1010,6 +1085,16 @@ module m_lowdin
         if (BNode .gt. Nodes-1) BNode = 0
       endif
     enddo
+
+!!   For debugging
+!    do iuo = 1, number_of_orbitals_to_project
+!      do juo = 1, number_of_orbitals_to_project
+!        write(6,'(a,2i5,2f15.7)')'iuo, juo, tbk1, tbk2 = ',       &
+! &        iuo, juo,                                               &
+! &        tight_binding_param_k(1,juo,iuo), tight_binding_param_k(2,juo,iuo)
+!      enddo 
+!    enddo
+!!   End debugging
 
 !$OMP parallel do default(shared),
 !$OMP&private(iuo,ind,juo,kxij,ckxij,skxij)
@@ -1032,10 +1117,10 @@ module m_lowdin
  &              tight_binding_param_k(2,juo,io)*skxij
 !!        For debugging      
 !           write(6,'(a,5i7,8f12.5)')   &
-! &          'index_manifold, orbital_manifold, orbital_global',           &
+! &          'i_man,o_man,o_global,ind,o_neig,xijo,tb,tbk1,cos,tbk2,sin',  &
 ! &           index_manifold, io, iuo, ind, juo, xijo(:,ind),              &
 ! &           tight_binding_param(index_manifold,ind,ispin),               &
-! &           tight_binding_param_k(1,juo,io), ckxij,                     &
+! &           tight_binding_param_k(1,juo,io), ckxij,                      &
 ! &           tight_binding_param_k(2,juo,io), skxij
 !!        End debugging      
         endif
@@ -1090,9 +1175,9 @@ module m_lowdin
       number_of_orbitals_to_project =                              &
  &        manifold_bands_lowdin(index_manifold)%number_of_bands
 
-!     For debugging
       write(filenameparam,"(a,'.',i1.1,'.tb.param')") &
  &      trim(sname), index_manifold
+!     For debugging
 !      write(6,*)filenameparam
 !     End debugging
 

@@ -5,7 +5,7 @@
 !  or http://www.gnu.org/copyleft/gpl.txt .
 ! See Docs/Contributors.txt for a list of contributors.
 ! ---
-subroutine diagonalizeHk( ispin )
+subroutine diagonalizeHk( ispin, index_manifold )
 !
 ! Solves H(k)c(k) = e(k)S(k)c(k), with the SCF hamiltonian and
 ! overlap matrices in k points of the Wannier90 Monkhorst-Pack.
@@ -119,27 +119,32 @@ subroutine diagonalizeHk( ispin )
   use sparse_matrices,    only: tight_binding_param ! Parameters of the 
                                              !   tight-binding Hamiltonian
   use units,              only: eV           ! Conversion factor from Ry to eV
-  use m_siesta2wannier90, only: numkpoints   ! Total number of k-points
+  use m_switch_local_projection, only: numkpoints   ! Total number of k-points
                                              !   for which the overlap of the
                                              !   periodic part of the wavefunct
                                              !   with a neighbour k-point will
                                              !   be computed
-  use m_siesta2wannier90, only: kpointsfrac  ! List of k points relative to the 
+  use m_switch_local_projection, only: kpointsfrac  ! List of k points relative to the 
                                              !   reciprocal lattice vectors.
                                              !   First  index: component
                                              !   Second index: k-point index 
                                              !      in the list
-  use m_siesta2wannier90, only: numbands     ! Number of bands for wannierizatio
+  use m_switch_local_projection, only: numbands     
+                                             ! Number of bands for wannierizatio
                                              !   before excluding bands 
-  use m_siesta2wannier90, only: numincbands  ! Number of bands for wannierizatio
+  use m_switch_local_projection, only: numincbands  
+                                             ! Number of bands for wannierizatio
                                              !   after excluding bands 
-  use m_siesta2wannier90, only: nincbands_loc! Number of bands for wannierizatio
+  use m_switch_local_projection, only: nincbands_loc
+                                             ! Number of bands for wannierizatio
                                              !   after excluding bands 
                                              !   in the local node
-  use m_siesta2wannier90, only: blocksizeincbands ! Maximum number of bands
+  use m_switch_local_projection, only: blocksizeincbands 
+                                             ! Maximum number of bands
                                              !   considered for wannierization
                                              !   per node
-  use m_siesta2wannier90, only: isexcluded   ! Masks excluded bands
+  use m_switch_local_projection, only: isexcluded   
+                                             ! Masks excluded bands
   use m_siesta2wannier90, only: coeffs       ! Coefficients of the wavefunctions
                                              !   First  index: orbital
                                              !   Second index: band
@@ -153,14 +158,8 @@ subroutine diagonalizeHk( ispin )
                                              !   Lowdin-Mattheis
                                              !   transformation to obtain 
                                              !   orthonormal wave functions?
-  use siesta_options, only: n_lowdin_manifolds 
-  use lowdin_types,   only: manifold_bands_lowdin
   use lowdin_types,   only: coeffs_k               !
-  use lowdin_types,   only: coeffshatphi           !
-  use lowdin_types,   only: invsqrtover            !
   use lowdin_types,   only: overlap_sq             !
-  use lowdin_types,   only: overlaptilde           !
-  use lowdin_types,   only: phitilde               !
 
   use m_lowdin, only: check_normalization
   use m_lowdin, only: define_phitilde
@@ -169,7 +168,6 @@ subroutine diagonalizeHk( ispin )
   use m_lowdin, only: define_coeffshatphi
   use m_lowdin, only: compute_tight_binding_param
   use m_lowdin, only: write_tight_binding_param
-  use m_lowdin, only: setup_lowdin
   use m_lowdin, only: allocate_matrices_Lowdin
   use m_lowdin, only: deallocate_matrices_Lowdin
 
@@ -179,15 +177,6 @@ subroutine diagonalizeHk( ispin )
   use alloc,              only: re_alloc     ! Reallocation routines
   use alloc,              only: de_alloc     ! Deallocation routines
 
-#ifdef MPI
-  use parallelsubs,       only : set_blocksizedefault
-! 
-! Subroutine to order the indices of the different bands after 
-! excluding some of them for wannierization 
-! 
-  use m_orderbands,       only: order_index
-#endif
-
 ! For debugging
   use parallel,           only: Node, Nodes, IOnode, BlockSize
 ! End debugging
@@ -196,10 +185,10 @@ subroutine diagonalizeHk( ispin )
   implicit none
 
   integer,intent(in)    :: ispin
+  integer,intent(in)    :: index_manifold
 
 ! Internal variables
   integer  :: ik            ! Counter for loops on k-points
-  integer  :: index_manifold! Counter for loops on k-points
   integer  :: iband         ! Counter for loops on bands
   integer  :: iuo           ! Counter for loops on atomic orbitals
   integer  :: iorb          ! Counter for loops on atomic orbitals
@@ -217,25 +206,7 @@ subroutine diagonalizeHk( ispin )
 
   real(dp), dimension(:), pointer :: epsilon ! Eigenvalues of the Hamiltonian
 
-#ifdef MPI
-  integer, external :: numroc
-#endif
-  external cdiag
-
   call timer('diagonalizeHk',1)
-
-  if( lowdin_processing )then
-    call setup_Lowdin
-    nullify( tight_binding_param )
-    call re_alloc( tight_binding_param,                                 &
- &                 1, n_lowdin_manifolds,                               &
- &                 1, maxnh,                                            &
- &                 1, nspin,                                            &
- &                 name='tight_binding_param',                          &
- &                 routine='allocate_matrices_Lowdin',                  &
- &                 shrink=.false., copy=.false.)
-    tight_binding_param = 0.0_dp
-  endif
 
 ! Initialize the number of occupied bands
   nincbands = numincbands( ispin )
@@ -258,20 +229,6 @@ subroutine diagonalizeHk( ispin )
   nullify( epsilon )
   call re_alloc( epsilon, 1, no_u, name='epsilon', routine='diagonalizeHk' )
 
-! Allocate memory related with the coefficients of the wavefunctions
-#ifdef MPI
-! Find the number of included bands for Wannierization that will be stored 
-! per node. Use a block-cyclic distribution of nincbands over Nodes.
-!
-     call set_blocksizedefault(Nodes,nincbands,blocksizeincbands)
-
-!     write(6,'(a,3i5)')' diagonalizeHk: Node, Blocksize = ', &
-! &                                      Node, BlockSizeincbands
-
-     nincbands_loc = numroc(nincbands,blocksizeincbands,node,0,nodes)
-#else
-     nincbands_loc = nincbands
-#endif
   nullify( coeffs )
   call re_alloc( coeffs,             &
  &               1, no_u,            &
@@ -279,7 +236,6 @@ subroutine diagonalizeHk( ispin )
  &               1, numkpoints,      &
  &               'coeffs',           &
  &               'diagonalizeHk' )
-
 
 ! Allocate memory related with the eigenvalues of the Hamiltonian
   nullify( eo )
@@ -293,13 +249,6 @@ subroutine diagonalizeHk( ispin )
   do io = 1, npsi
     psi(io)     = 0.0_dp
   enddo
-
-#ifdef MPI
-! Set up the arrays that control the indices of the bands to be 
-! considered after excluding some of them for wannierization
-! This is done once and for all the k-points
-  call order_index( no_l, no_u, nincbands )
-#endif
 
 !
 ! Solve for eigenvectors of H(k) for the k's given in the .nnkp
@@ -321,8 +270,9 @@ kpoints:                                                             &
  &                epsilon, psi, 2, Haux, Saux )
 
 !!   For debugging
-!    write(6,'(a, 2 i5)')' diagonalizeHk: ispin, ik    = ', ispin, ik
-!!   End debugging
+!    write(6,'(a, 2i5,3f12.5)')' diagonalizeHk: ispin, ik    = ',             & 
+! &                               ispin, ik, kvector
+!   End debugging
 
 !!   NOTE OF CAUTION: beware when comparing the coefficients of the
 !!   wave function obtained in differente machines, specially for 
@@ -345,40 +295,41 @@ kpoints:                                                             &
     call reordpsi( coeffs(1:no_u,1:nincbands_loc,ik), psi, no_l, &
                    no_u, numbands(ispin), nincbands_loc, 0 )
 
+!!   For debugging
+!    write(6,*)' nincbands_loc = ', nincbands_loc
+!    do iband = 1, nincbands_loc
+!      do io = 1, no_u
+!        write(6,*)' iband, io, eo, coeffs   = ',              &
+! &                  iband, io, eo(iband,ik),                  &
+! &                  coeffs(io,iband,ik)
+!      enddo
+!    enddo
+!!   End debugging
+    
     if( lowdin_processing ) then
 
-      do index_manifold = 1, n_lowdin_manifolds
-!!       For debugging
-!        write(6,'(a,2i5)')'# index_manifold = ', index_manifold,   &
-! &        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
-!!       End debugging
+      call allocate_matrices_Lowdin( index_manifold )
 
-        call allocate_matrices_Lowdin( index_manifold )
-
-!       coeffs_k is a complex square matrix of dimension:
-!       (number_of_atomic_orbitals_in_the_unit_cell)^2.
-!       It has two indices:
-!       The first one refers to the atomic orbital 
-!       The second one refers to the band index
-!       It stores the coefficients of the wave functions for a given k-point
+!     coeffs_k is a complex square matrix of dimension:
+!     (number_of_atomic_orbitals_in_the_unit_cell)^2.
+!     It has two indices:
+!     The first one refers to the atomic orbital 
+!     The second one refers to the band index
+!     It stores the coefficients of the wave functions for a given k-point
 !
-        coeffs_k = cmplx(0.0_dp,0.0_dp,kind=dp)
-        call reordpsi(                                                         &
- & coeffs_k(1:no_u,1:manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin),&
- & psi, no_l, no_u,                                                           &
- & no_u,                                                                       &
- & manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin,                &
- & index_manifold )
+      coeffs_k = cmplx(0.0_dp,0.0_dp,kind=dp)
+      call reordpsi( coeffs_k(1:no_u,1:nincbands_loc), psi, no_l, no_u,  &
+ &                   no_u, nincbands_loc, index_manifold )
 
-!!       For debugging
-!        do iband = 1, manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
-!          do io = 1, no_u
-!            write(6,*)' iband, io, eo, coeffs_k = ',              &
-! &                      iband, io, epsilon(iband),                &
-! &                      coeffs_k(io, iband)
-!          enddo
+!!     For debugging
+!      do iband = 1, nincbands_loc
+!        do io = 1, no_u
+!          write(6,*)' iband, io, eo, coeffs_k = ',              &
+! &                    iband, io, epsilon(iband),                &
+! &                    coeffs_k(io, iband)
 !        enddo
-!!       End debugging
+!      enddo
+!!     End debugging
 
 !     In overlap_sq we store the overlap matrix between two Bloch orbitals
 !     that enters in the diagonalization routines
@@ -386,57 +337,48 @@ kpoints:                                                             &
 !     This is a complex square matrix of dimension
 !     (number_of_atomic_orbitals_in_the_unit_cell)^2.
 !
-        overlap_sq     = cmplx(0.0_dp,0.0_dp,kind=dp)
-        ind = 0
-        do iuo = 1, no_u
-          do juo = 1, no_u
-            overlap_sq(juo,iuo) =                                  &
- &             cmplx(Saux(ind+1),Saux(ind+2),kind=dp)
-            ind = ind + 2
-          enddo
+      overlap_sq     = cmplx(0.0_dp,0.0_dp,kind=dp)
+      ind = 0
+      do iuo = 1, no_u
+        do juo = 1, no_u
+          overlap_sq(juo,iuo) =                                  &
+ &           cmplx(Saux(ind+1),Saux(ind+2),kind=dp)
+          ind = ind + 2
         enddo
+      enddo
 
-!!       For debugging
-!        do iuo = 1, no_u
-!          do juo = 1, no_u
-!            write(6,*)' iuo, juo, overlap_sq = ',              &
-! &                      iuo, juo, overlap_sq(iuo, juo)
-!          enddo
+!!     For debugging
+!      do iuo = 1, no_u
+!        do juo = 1, no_u
+!          write(6,*)' iuo, juo, overlap_sq = ',              &
+! &                    iuo, juo, overlap_sq(iuo, juo)
 !        enddo
-!!       End debugging
+!      enddo
+!!     End debugging
 
-!       Define the overlap between phitildes
-!       It is a complex square matrix of dimension
-!       (number_of_atomic_orbitals_in_the_unit_cell)^2.
-!       And this is independent of number of bands considered.
+!     Define the overlap between phitildes
+!     It is a complex square matrix of dimension
+!     (number_of_atomic_orbitals_in_the_unit_cell)^2.
+!     And this is independent of number of bands considered.
 
-        call define_overlap_phitilde( index_manifold )
+      call define_overlap_phitilde( index_manifold )
 
-!!       For debugging
-!        do iband = 1, manifold_bands_lowdin(index_manifold)%number_of_bands
-!          do iorb = 1, manifold_bands_lowdin(index_manifold)%number_of_bands
-!            write(6,'(a,2i5,2f12.5)')' iband, iorb, overlaptilde = ', &
-! &                                     iband, iorb, overlaptilde(iband,iorb)
-!          enddo 
-!        enddo 
-!!       End debugging
+      call define_invsqover_phitilde( index_manifold )
 
-        call define_invsqover_phitilde( index_manifold )
+      call define_coeffshatphi( index_manifold )
 
-        call define_coeffshatphi( index_manifold )
-
-        call compute_tight_binding_param( ispin, index_manifold,     & 
- &                                        kvector, epsilon )
+      call compute_tight_binding_param( ispin, index_manifold,     & 
+ &                                      kvector, epsilon )
  
-        call deallocate_matrices_Lowdin
+      call deallocate_matrices_Lowdin
 
-      enddo ! end loop over possible manifolds
-
-    endif
+    endif  !end if Lowdin
 
   enddo kpoints
 
-  call write_tight_binding_param( ispin, numkpoints )
+  if( lowdin_processing ) then
+    call write_tight_binding_param( ispin, numkpoints )
+  end if
 
 
   call de_alloc( Haux,    name='Haux',         routine='diagonalizeHk' )

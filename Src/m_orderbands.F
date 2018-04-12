@@ -77,7 +77,7 @@ C *************************** OUTPUT **********************************
 C The different arrays declared above in the module
 C *********************************************************************
 
-      use m_siesta2wannier90, only : isexcluded
+      use m_switch_local_projection, only : isexcluded
       use m_siesta2wannier90, only : blocksizeincbands
       use m_siesta2wannier90, only : nincbands_loc
 

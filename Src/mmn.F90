@@ -34,12 +34,14 @@ subroutine Mmn( ispin )
 !
 
   use precision,          only: dp           ! Real double precision type
-  use m_siesta2wannier90, only: numkpoints   ! Total number of k-points
+  use m_switch_local_projection, only: numkpoints 
+                                             ! Total number of k-points
                                              !   for which the overlap of the
                                              !   periodic part of the wavefunct
                                              !   with a neighbour k-point will
                                              !   be computed
-  use m_siesta2wannier90, only: kpointsfrac  ! List of k points relative to the 
+  use m_switch_local_projection, only: kpointsfrac
+                                             ! List of k points relative to the 
                                              !   reciprocal lattice vectors.
                                              !   First  index: component
                                              !   Second index: k-point index 
@@ -58,11 +60,11 @@ subroutine Mmn( ispin )
                                              !   (which is in the first BZ) to 
                                              !   the actual \vec{k} + \vec{b} 
                                              !   that we need.
-  use m_siesta2wannier90, only: numbands     ! Number of bands for wannierizatio
-                                             !   before excluding bands         
-  use m_siesta2wannier90, only: numincbands  ! Number of bands for wannierizatio
+  use m_switch_local_projection, only: numincbands  
+                                             ! Number of bands for wannierizatio
                                              !   after excluding bands         
-  use m_siesta2wannier90, only: nincbands_loc! Number of bands for wannierizatio
+  use m_switch_local_projection, only: nincbands_loc
+                                             ! Number of bands for wannierizatio
                                              !   after excluding bands         
                                              !   in the local node
   use m_siesta2wannier90, only: numproj      ! Total number of projectors
@@ -275,7 +277,7 @@ kneighbour:                      &
 !     where exp^(i \vec{b} \cdot \vec{r}) is stored,
 !     where \vec{b} is the vector connecting kvector and kvectorneig.
       bvectoraux(:) = kpointsfrac(:,nnlist(ik,inn)) +               &
- &                     nnFolding(:,ik,inn) - kPointsFrac(:,ik)
+ &                     nnFolding(:,ik,inn) - kpointsfrac(:,ik)
       handle = getdelkmatgenhandle( bvectoraux, nncount, bvectorsfrac )
       call getkvector( bvectoraux, bvector )
 

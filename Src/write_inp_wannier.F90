@@ -25,9 +25,10 @@ subroutine writemmn( ispin )
                                          !   where the Wannier90
                                          !   code, when used as a postprocessing
                                          !   tool, dumps the information.
-  use m_siesta2wannier90, only: numincbands! Number of included bands 
+  use m_switch_local_projection, only: numincbands
+                                         ! Number of included bands 
                                          !   for wannierization
-  use m_siesta2wannier90, only: numkpoints ! Total number of k-points
+  use m_switch_local_projection, only: numkpoints ! Total number of k-points
                                          !   for which the overlap of the
                                          !   periodic part of the wavefunct
                                          !   with a neighbour k-point will
@@ -186,9 +187,11 @@ subroutine writeamn( ispin )
                                          !   where the Wannier90
                                          !   code, when used as a postprocessing
                                          !   tool, dumps the information.
-  use m_siesta2wannier90, only: numincbands! Number of included bands 
+  use m_switch_local_projection, only: numincbands
+                                         ! Number of included bands 
                                          !   for wannierization
-  use m_siesta2wannier90, only: numkpoints ! Total number of k-points
+  use m_switch_local_projection, only: numkpoints 
+                                         ! Total number of k-points
                                          !   for which the overlap of the
                                          !   periodic part of the wavefunct
                                          !   with a neighbour k-point will
@@ -302,12 +305,13 @@ subroutine writeeig( ispin )
                                           !   where the Wannier90
                                           !   code, when used as postprocessing
                                           !   tool, dumps the information.
-  use m_siesta2wannier90, only: numkpoints! Total number of k-points
+  use m_switch_local_projection, only: numkpoints! Total number of k-points
                                           !   for which the overlap of the
                                           !   periodic part of the wavefunct
                                           !   with a neighbour k-point will
                                           !   be computed
-  use m_siesta2wannier90, only: numincbands! Number of included bands 
+  use m_switch_local_projection, only: numincbands
+                                          ! Number of included bands 
                                           !   for wannierization
   use m_siesta2wannier90, only: eo        ! Eigenvalues of the Hamiltonian 
                                           !   at the numkpoints introduced in
@@ -456,20 +460,22 @@ subroutine writeunk( ispin )
 
   use neighbour,          only: mneighb       ! Subroutine to compute the
                                               !   number of neighbours
-  use m_siesta2wannier90, only: numincbands   ! Number of bands for 
+  use m_switch_local_projection, only: numincbands   
+                                              ! Number of bands for 
                                               !   wannierization
                                               !   after excluding bands  
-  use m_siesta2wannier90, only: nincbands_loc ! Number of bands for 
+  use m_switch_local_projection, only: nincbands_loc 
+                                              ! Number of bands for 
                                               !   wannierization
                                               !   after excluding bands  
                                               !   in the local node
-  use m_siesta2wannier90, only: numkpoints    ! Total number of k-points
+  use m_switch_local_projection, only: numkpoints    ! Total number of k-points
                                               !   for which the overlap of
                                               !   the periodic part of the
                                               !   wavefunct with a 
                                               !   neighbour k-point will
                                               !   be computed
-  use m_siesta2wannier90, only: kpointsfrac   ! List of k points relative
+  use m_switch_local_projection, only: kpointsfrac   ! List of k points relative
                                               !   to the reciprocal 
                                               !   lattice vectors.
                                               !   First  index: component

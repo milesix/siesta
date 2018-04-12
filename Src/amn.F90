@@ -52,23 +52,23 @@ subroutine amn( ispin )
   use m_siesta2wannier90, only: latvec              ! Lattice vectors in real 
                                                     !   space
   use m_siesta2wannier90, only: numproj             ! Total number of projectors
-  use m_siesta2wannier90, only: numkpoints          ! Total number of k-points
+  use m_switch_local_projection, only: numkpoints   ! Total number of k-points
                                                     !   for which the overlap of
                                                     !   the periodic part of the
                                                     !   wavefunct with a 
                                                     !   neighbour k-point will
                                                     !   be computed
-  use m_siesta2wannier90, only: kpointsfrac         ! List of k points relative
+  use m_switch_local_projection, only: kpointsfrac  ! List of k points relative
                                                     !   to the reciprocal 
                                                     !   lattice vectors.
                                                     !   First  index: component
                                                     !   Second index: k-point  
                                                     !      index in the list
   use m_siesta2wannier90, only: projections         ! Trial projection functions
-  use m_siesta2wannier90, only: numincbands         ! Number of bands for 
+  use m_switch_local_projection, only: numincbands  ! Number of bands for 
                                                     !   wannierization
                                                     !   after excluding bands  
-  use m_siesta2wannier90, only: nincbands_loc       ! Number of bands for 
+  use m_switch_local_projection, only: nincbands_loc! Number of bands for 
                                                     !   wannierization
                                                     !   after excluding bands  
                                                     !   in the local Node
