@@ -55,6 +55,7 @@ C **********************************************************************
       use parallel,     only : Node, Nodes, BlockSize, IONode
       use parallelsubs,  only: GlobalToLocalOrb, LocalToGlobalOrb,
      &                         WhichNodeOrb, GetNodeOrbs
+      use m_diag_option, only: diag_set_serial, diag_set_parallel
 
 #ifdef MPI
       use m_mpi_utils,  only : broadcast, Globalize_sum
@@ -468,8 +469,10 @@ C        Find out the degenerated subespaces ------------------------
 
               ! Haux is a dummy argument, we don't need the eigenvalues
               ! and here Haux is always big enough to hold them all!
+              call diag_set_serial()
               call cdiag( Hauxden, Sauxden, numb(io),numb(io), numb(io),
      .             Haux, psiden,numb(io),iscf,ierror,BlockSize )
+              call diag_set_parallel()
 
               if (ierror.ne.0) then
                call die('DELRHOK: Terminating due to failed

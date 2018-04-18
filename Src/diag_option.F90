@@ -314,6 +314,15 @@ contains
 
   end subroutine read_diag
 
+  subroutine diag_set_serial()
+    Serial = .true.
+  end subroutine diag_set_serial
+
+  subroutine diag_set_parallel()
+    use parallel, only: Nodes
+    Serial = Nodes == 1
+  end subroutine diag_set_parallel
+
   subroutine print_diag()
     use parallel, only: IONode, Nodes
 
