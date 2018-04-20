@@ -50,6 +50,26 @@
                                      !   to the reciprocal lattice vectors.
                                      !   First  index: component
                                      !   Second index: k-point index in the list
+
+!
+! Variables related with the neighbours of the k-points
+!
+      integer           :: nncount_wannier
+                             ! The number of nearest neighbours belonging to
+                             !   each k-point of the Monkhorst-Pack mesh
+      integer, pointer  :: nnlist_wannier(:,:)
+                             ! nnlist(ikp,inn) is the index of the
+                             !   inn-neighbour of ikp-point
+                             !   in the Monkhorst-Pack grid folded to the
+                             !   first Brillouin zone
+      integer, pointer  :: nnfolding_wannier(:,:,:)
+                             ! nnfolding(i,ikp,inn) is the i-component
+                             !   of the reciprocal lattice vector
+                             !   (in reduced units) that brings
+                             !   the inn-neighbour specified in nnlist
+                             !   (which is in the first BZ) to the
+                             !   actual \vec{k} + \vec{b} that we need.
+                             !   In reciprocal lattice units.
 !
 ! Variables related with the number of bands considered for wannierization
 !

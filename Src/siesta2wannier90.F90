@@ -61,6 +61,22 @@ module m_siesta2wannier90
                                                 !   First  index: component
                                                 !   Second index: k-point index 
                                                 !                 in the list
+  use wannier90_types, only: nncount_wannier
+                             ! The number of nearest neighbours belonging to
+                             !   each k-point of the Monkhorst-Pack mesh
+  use wannier90_types, only: nnlist_wannier
+                             ! nnlist(ikp,inn) is the index of the
+                             !   inn-neighbour of ikp-point
+                             !   in the Monkhorst-Pack grid folded to the
+                             !   first Brillouin zone
+  use wannier90_types, only: nnfolding_wannier
+                             ! nnfolding(i,ikp,inn) is the i-component
+                             !   of the reciprocal lattice vector
+                             !   (in reduced units) that brings
+                             !   the inn-neighbour specified in nnlist
+                             !   (which is in the first BZ) to the
+                             !   actual \vec{k} + \vec{b} that we need.
+                             !   In reciprocal lattice units.
   use wannier90_types, only: nincbands_loc_wannier  
                                                 ! Number of bands in the local
                                                 !   node for wannierization 
@@ -101,25 +117,6 @@ module m_siesta2wannier90
                              ! The vectors b that connect each mesh-point k
                              !   to its nearest neighbours
 !
-! Variables related with the neighbours of the k-points
-!
-  integer           :: nncount  
-                             ! The number of nearest neighbours belonging to 
-                             !   each k-point of the Monkhorst-Pack mesh
-  integer, pointer  :: nnlist(:,:)
-                             ! nnlist(ikp,inn) is the index of the 
-                             !   inn-neighbour of ikp-point
-                             !   in the Monkhorst-Pack grid folded to the 
-                             !   first Brillouin zone
-  integer, pointer  :: nnfolding(:,:,:)
-                             ! nnfolding(i,ikp,inn) is the i-component 
-                             !   of the reciprocal lattice vector 
-                             !   (in reduced units) that brings
-                             !   the inn-neighbour specified in nnlist
-                             !   (which is in the first BZ) to the
-                             !   actual \vec{k} + \vec{b} that we need.
-                             !   In reciprocal lattice units.
-!
 ! Variables related with the projections with trial functions,
 ! initial approximations to the MLWF
 !
@@ -138,20 +135,6 @@ module m_siesta2wannier90
                              ! Bands to be excluded
                              !   This variable is read from the .nnkp file
   integer, pointer :: isincluded(:) ! Masks included bands
-
-!
-! Variables related with the coefficients of the wavefunctions and
-! eigenvalues at the Wannier90 k-point mesh
-!
-  complex(dp), pointer :: coeffs(:,:,:) => null() ! Coefficients of the wavefunctions.
-                                         !   First  index: orbital
-                                         !   Second index: band
-                                         !   Third  index: k-point
-  real(dp),    pointer :: eo(:,:) => null()        ! Eigenvalues of the Hamiltonian 
-                                         !   at the numkpoints introduced in
-                                         !   kpointsfrac 
-                                         !   First  index: band index
-                                         !   Second index: k-point index
 
 
 !
@@ -241,9 +224,9 @@ subroutine siesta2wannier90
  &       'siesta2wannier90: Reading the ' // trim(seedname) // '.nnkp file'
     endif
     call read_nnkp( seedname, latvec, reclatvec_wannier, numkpoints_wannier,  &
-                    kpointsfrac_wannier, nncount, nnlist, nnfolding,  &
-                    numproj, projections, numexcluded, excludedbands, &
-                    w90_write_amn )
+ &                  kpointsfrac_wannier, nncount_wannier, nnlist_wannier,     &
+ &                  nnfolding_wannier, numproj, projections, numexcluded,     &
+ &                  excludedbands, w90_write_amn )
 
 !!   For debugging
 !    write(6,'(a,i5)') ' numkpoints_wannier = ', numkpoints_wannier
@@ -254,8 +237,8 @@ subroutine siesta2wannier90
 !!   End debugging
 
 !   Compute the vectors that connect each mesh k-point to its nearest neighbours
-    call chosing_b_vectors( kpointsfrac_wannier, nncount, nnlist, nnfolding,  &
-                            bvectorsfrac )
+    call chosing_b_vectors( kpointsfrac_wannier, nncount_wannier,  &
+ &                          nnlist_wannier, nnfolding_wannier, bvectorsfrac )
 
 !   Compute the number of bands for wannierization
     call number_bands_wannier( numbandswan )
@@ -306,7 +289,7 @@ subroutine siesta2wannier90
 !   Compute the matrix elements of the plane wave,
 !   for all the wave vectors that connect a given k-point to its nearest
 !   neighbours
-    call compute_pw_matrix( nncount, bvectorsfrac )
+    call compute_pw_matrix( nncount_wannier, bvectorsfrac )
 
 !   Compute the coefficients of the wavefunctions at the 
 !   k-points of the Wannier90 mesh

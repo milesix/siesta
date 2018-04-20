@@ -23,11 +23,11 @@ module m_lowdin
                                                    !!  for Lowdin transformation
   use parallel,       only: Node, Nodes, IOnode, BlockSize
   use m_spin,         only: nspin                  ! Number of spin components
+  use m_switch_local_projection, only: coeffs
   use lowdin_types,   only: lowdin_manifold_t    
   use lowdin_types,   only: manifold_bands_lowdin  ! Variable where the initial
                                                    !   and final band of each
                                                    !   manifold are stored
-  use lowdin_types,   only: coeffs_k               ! 
   use lowdin_types,   only: coeffshatphi           !
   use lowdin_types,   only: invsqrtover            !
   use lowdin_types,   only: overlap_sq             !
@@ -35,6 +35,10 @@ module m_lowdin
   use lowdin_types,   only: phitilde               !
   use lowdin_types,   only: numkpoints_lowdin
   use lowdin_types,   only: kpointsfrac_lowdin     !
+  use lowdin_types,   only: nncount_lowdin
+  use lowdin_types,   only: nnlist_lowdin
+  use lowdin_types,   only: nnfolding_lowdin
+
   use sparse_matrices,    only: maxnh        ! Maximum number of orbitals
                                              !   interacting
                                              ! NOTE: While running in parallel,
@@ -56,6 +60,12 @@ module m_lowdin
                                              ! NOTE: When running in parallel,
                                              !   this is core independent
   use sys,                only : die         ! Termination routine
+  use w90_kmesh,          only : kmesh_get
+  use w90_kmesh,          only : kmesh_write
+  use w90_parameters,     only : nntot
+  use w90_parameters,     only : nnlist
+  use w90_parameters,     only : neigh
+  use w90_parameters,     only : nncell
   use fdf
 
 !
@@ -99,6 +109,15 @@ module m_lowdin
     use fdf
     use m_cite,   only: add_citation
     use parallel, only: IONode        ! Node for Input/output
+    use siesta_geom,  only: ucell      ! Unit cell lattice vectors
+    use lowdin_types, only: reclatvec_lowdin
+    use w90_parameters, only: mp_grid
+    use w90_parameters, only: gamma_only
+    use w90_parameters, only: num_kpts
+    use w90_parameters, only: recip_lattice
+    use w90_parameters, only: real_lattice
+    use w90_parameters, only: kpt_latt
+    use w90_parameters, only: param_read
 
 !   Internal variables
     integer :: index_manifold      ! Counter for the number of manifolds
@@ -110,6 +129,9 @@ module m_lowdin
     integer :: ikx                 ! Counter for loop on k-points along 1-direc
     integer :: iky                 ! Counter for loop on k-points along 2-direc
     integer :: ikz                 ! Counter for loop on k-points along 3-direc
+    integer :: nkp                 ! Counter for loop on k-points along 3-direc
+    integer :: nn                  ! Counter for loop on k-points along 3-direc
+    integer :: i                   ! Counter for loop on k-points along 3-direc
 
     type(block_fdf)            :: bfdf
     type(parsed_line), pointer :: pline
@@ -219,6 +241,49 @@ module m_lowdin
 !      enddo
 !!     End debugging
 
+!     Reciprocal lattice vectors
+      real_lattice  = ucell * 0.529177_dp
+      call reclat( real_lattice, reclatvec_lowdin, 1 )
+      mp_grid       = kmeshlowdin
+      num_kpts      = numkpoints_lowdin
+      recip_lattice = reclatvec_lowdin 
+      allocate ( kpt_latt(3,num_kpts) )
+      kpt_latt      = kpointsfrac_lowdin
+      gamma_only    = .false.
+
+      call param_read
+      call kmesh_get( )
+
+      nncount_lowdin = nntot
+!     Initialize the list of neighbour k-points
+      nullify( nnlist_lowdin    )
+      nullify( nnfolding_lowdin )
+
+!     Broadcast information regarding the number of k-points neighbours
+!     and allocate in all nodes the corresponding arrays containing information
+!     about k-point neighbours
+
+      call re_alloc( nnlist_lowdin, 1, numkpoints_lowdin, 1, nncount_lowdin,   &
+ &                   name = "nnlist_lowdin", routine = "read_lowdin_specs" )
+      call re_alloc( nnfolding_lowdin, 1, 3, 1, numkpoints_lowdin,             &
+ &                   1, nncount_lowdin, name = "nnfolding_lowdin",             &
+ &                   routine = "read_lowdin_specs" )
+      nnlist_lowdin     = nnlist
+      nnfolding_lowdin  = nncell
+
+
+!     For debugging
+      write(6,'(a)') 'begin nnkpts'
+      write(6,'(i4)') nntot
+      do nkp=1,num_kpts
+         do nn=1,nntot
+            write(6,'(2i6,3x,3i4)') &
+               nkp,nnlist(nkp,nn),(nncell(i,nkp,nn),i=1,3)
+         end do
+      end do
+      write(6,'(a/)') 'end nnkpts'
+!     End debugging
+                         
     
   endsubroutine read_lowdin_specs
 
@@ -305,13 +370,6 @@ module m_lowdin
  &        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
 
 !   Allocate the different matrices required for Lowdin orthonormalization
-    nullify( coeffs_k )
-    call re_alloc( coeffs_k,                                                &
- &                 1, no_u,                                                 &
- &                 1, number_of_bands_in_manifold_local,                    &
- &                 name='coeffs_k', routine='allocate_matrices_Lowdin',     &
- &                 shrink=.false., copy=.false.)
-    coeffs_k = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
     nullify( overlaptilde )
     call re_alloc( overlaptilde,                                            &
@@ -348,9 +406,6 @@ module m_lowdin
   endsubroutine allocate_matrices_Lowdin
 
   subroutine deallocate_matrices_Lowdin
-    call de_alloc( coeffs_k,                                 &
- &                 name='coeffs_k',                          & 
- &                 routine='deallocate_matrices_Lowdin' )
     call de_alloc( overlaptilde,                             &
  &                 name='overlaptilde',                      & 
  &                 routine='deallocate_matrices_Lowdin' )
@@ -455,10 +510,10 @@ module m_lowdin
 !!    S_{\nu \mu} (\vec{k}) c_{\mu i} (\vec{k})  \\
 !!    & = & \delta_{ij},
 !! \f}
-  subroutine check_normalization( no_u, coeffs_k, overlap_sq )
+  subroutine check_normalization( ik, no_u, overlap_sq )
 
+    integer, intent(in)       :: ik
     integer, intent(in)       :: no_u
-    complex(dp), intent(in)   :: coeffs_k(no_u,no_u)
     complex(dp), intent(in)   :: overlap_sq(no_u,no_u)
 
     complex(dp), pointer, save ::   normalization(:,:)
@@ -477,8 +532,8 @@ module m_lowdin
 
 !   Check the normalization of the eigenfunctions
 !   that come out of the diagonalization
-    normalization = matmul( overlap_sq, coeffs_k )
-    normalization = matmul( transpose(conjg(coeffs_k)),normalization)
+    normalization = matmul( overlap_sq, coeffs(:,:,ik) )
+    normalization = matmul( transpose(conjg(coeffs(:,:,ik))),normalization)
 
 !   For debugging
     write(6,'(a)') ' Normalization: '
@@ -495,10 +550,10 @@ module m_lowdin
 
   endsubroutine check_normalization
 
-  subroutine define_phitilde( no_u, coeffs_k, overlap_sq, phitilde )
+  subroutine define_phitilde( ik, no_u, overlap_sq, phitilde )
 
+    integer, intent(in)       :: ik
     integer, intent(in)       :: no_u
-    complex(dp), intent(in)   :: coeffs_k(no_u,no_u)
     complex(dp), intent(in)   :: overlap_sq(no_u,no_u)
     complex(dp), intent(out)  :: phitilde(no_u,no_u)
 
@@ -522,7 +577,7 @@ module m_lowdin
       do jband = 1, no_u
         do nu = 1, no_u
           aux(jband,mu) = aux(jband,mu) +                    &
- &          conjg(coeffs_k(nu,jband)) * overlap_sq(nu,mu)
+ &          conjg(coeffs(nu,jband,ik)) * overlap_sq(nu,mu)
         enddo 
       enddo
     enddo
@@ -531,7 +586,7 @@ module m_lowdin
       do lambda = 1, no_u
         do jband = 1, no_u
           phitilde(lambda,mu) = phitilde(lambda,mu) +        &
- &          coeffs_k(lambda,jband) * aux(jband,mu)
+ &          coeffs(lambda,jband,ik) * aux(jband,mu)
         enddo 
       enddo
     enddo
@@ -546,8 +601,8 @@ module m_lowdin
 !   phitilde has to be equal to delta_(\lambda,\mu)
 !
 !   phitilde = cmplx(0.0_dp,0.0_dp,kind=dp)
-!   phitilde = matmul( transpose(conjg(coeffs_k)), overlap_sq )
-!   phitilde = matmul( coeffs_k, phitilde )
+!   phitilde = matmul( transpose(conjg(coeffs(:,:,ik))), overlap_sq )
+!   phitilde = matmul( coeffs(:,:,ik), phitilde )
 
 !!   For debugging
 !    write(6,'(a)')'Phitilde = '
@@ -569,9 +624,10 @@ module m_lowdin
 !
 !
 
-  subroutine define_overlap_phitilde( index_manifold )
+  subroutine define_overlap_phitilde( index_manifold, ik )
 
     integer, intent(in)       :: index_manifold
+    integer, intent(in)       :: ik
 
 !
 !   Internal variables
@@ -629,7 +685,7 @@ module m_lowdin
       do jband = 1, number_of_bands_in_manifold
         do lambda = 1, no_u
           aux(jband,mu) = aux(jband,mu) +                    &
- &          conjg(coeffs_k(lambda,jband)) * overlap_sq(lambda,mu_index)
+ &          conjg(coeffs(lambda,jband,ik)) * overlap_sq(lambda,mu_index)
         enddo 
       enddo
     enddo
@@ -638,7 +694,7 @@ module m_lowdin
       do rho = 1, no_u
         do jband = 1, number_of_bands_in_manifold
           aux2(rho,mu) = aux2(rho,mu) +                     &
- &          coeffs_k(rho,jband) * aux(jband,mu)
+ &          coeffs(rho,jband,ik) * aux(jband,mu)
         enddo 
       enddo
     enddo
@@ -892,9 +948,10 @@ module m_lowdin
 !
 !
 !  
-  subroutine define_coeffshatphi( index_manifold )
+  subroutine define_coeffshatphi( index_manifold, ik )
 
     integer, intent(in)       :: index_manifold
+    integer, intent(in)       :: ik
 
 !
 !   Internal variables
@@ -929,7 +986,7 @@ module m_lowdin
       do jband = 1, number_of_bands_in_manifold_local 
         do lambda = 1, no_u
           aux(jband,nu) = aux(jband,nu) +                    &
- &          conjg(coeffs_k(lambda,jband)) * overlap_sq(lambda,nu_index)
+ &          conjg(coeffs(lambda,jband,ik)) * overlap_sq(lambda,nu_index)
         enddo 
       enddo
     enddo
@@ -960,10 +1017,11 @@ module m_lowdin
 
   endsubroutine define_coeffshatphi
 
-  subroutine compute_tight_binding_param( ispin, index_manifold, & 
+  subroutine compute_tight_binding_param( ispin, ik, index_manifold, & 
  &                                        kvector, epsilon )
 
     integer,     intent(in)  :: ispin
+    integer,     intent(in)  :: ik
     integer,     intent(in)  :: index_manifold
     real(dp),    intent(in)  :: kvector(3)
     real(dp),    intent(in)  :: epsilon(no_u)  ! Eigenvalues of the Hamiltonian
@@ -1022,6 +1080,13 @@ module m_lowdin
  &                 routine='compute_tight_binding_param',                 &
  &                 shrink=.false., copy=.false. )
     tight_binding_param_k = 0.0_dp
+
+    call define_overlap_phitilde( index_manifold, ik )
+
+    call define_invsqover_phitilde( index_manifold )
+
+    call define_coeffshatphi( index_manifold, ik )
+
 
     jbandini = manifold_bands_lowdin(index_manifold)%initial_band
  

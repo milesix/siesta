@@ -51,6 +51,38 @@ module m_switch_local_projection
                                          !!  Cartesian coordinates in Bohr^-1 
                                          !!  First  index: component
                                          !!  Second index: vector
+  integer          :: nncount            !< The number of nearest
+                                         !!   neighbours belonging to
+                                         !!   each k-point of the 
+                                         !!   Monkhorst-Pack mesh
+  integer, pointer :: nnlist(:,:)        !< nnlist(ikp,inn) is the index of the
+                                         !!   inn-neighbour of ikp-point
+                                         !!   in the Monkhorst-Pack grid 
+                                         !!   folded to the first Brillouin zone
+  integer, pointer :: nnfolding(:,:,:)   !< nnfolding(i,ikp,inn) is the
+                                         !!   i-component of the reciprocal 
+                                         !!   lattice vector
+                                         !!   (in reduced units) that brings
+                                         !!   the inn-neighbour specified in 
+                                         !!   nnlist (which is in the first BZ)
+                                         !!   to the actual \vec{k} + \vec{b} 
+                                         !!   that we need.
+                                         !!   In reciprocal lattice units.
+
+
+!
+! Variables related with the coefficients of the wavefunctions and
+! eigenvalues at the Wannier90 k-point mesh
+!
+  complex(dp), pointer :: coeffs(:,:,:) => null() ! Coefficients of the wavefunctions.
+                                         !   First  index: orbital
+                                         !   Second index: band
+                                         !   Third  index: k-point
+  real(dp),    pointer :: eo(:,:) => null()        ! Eigenvalues of the Hamiltonian
+                                         !   at the numkpoints introduced in
+                                         !   kpointsfrac
+                                         !   First  index: band index
+                                         !   Second index: k-point index
 
 
 ! Routines
@@ -78,6 +110,24 @@ module m_switch_local_projection
                                                   !!   i.e. relative to the
                                                   !!   reciprocal space 
                                                   !!   lattice vectors)
+     use lowdin_types, only: nncount_lowdin       !< The number of nearest
+                                                  !!   neighbours belonging to
+                             !   each k-point of the Monkhorst-Pack mesh
+     use lowdin_types, only: nnlist_lowdin
+                             ! nnlist(ikp,inn) is the index of the
+                             !   inn-neighbour of ikp-point
+                             !   in the Monkhorst-Pack grid folded to the
+                             !   first Brillouin zone
+     use lowdin_types, only: nnfolding_lowdin
+                             ! nnfolding(i,ikp,inn) is the i-component
+                             !   of the reciprocal lattice vector
+                             !   (in reduced units) that brings
+                             !   the inn-neighbour specified in nnlist
+                             !   (which is in the first BZ) to the
+                             !   actual \vec{k} + \vec{b} that we need.
+                             !   In reciprocal lattice units.
+ 
+    use wannier90_types, only: numbands_wannier   !< Number of bands for 
     use wannier90_types, only: numkpoints_wannier !< Number of k-points in 
                                                   !!   the Monkhorst-Pack grid
                                                   !!   for which the overlap of
@@ -92,6 +142,23 @@ module m_switch_local_projection
                                                   !!   First  index: components
                                                   !!   Second index: k-point 
                                                   !!   index in the list
+     use wannier90_types, only: nncount_wannier   !< The number of nearest
+                                                  !!   neighbours belonging to
+                             !   each k-point of the Monkhorst-Pack mesh
+     use wannier90_types, only: nnlist_wannier
+                             ! nnlist(ikp,inn) is the index of the
+                             !   inn-neighbour of ikp-point
+                             !   in the Monkhorst-Pack grid folded to the
+                             !   first Brillouin zone
+     use wannier90_types, only: nnfolding_wannier
+                             ! nnfolding(i,ikp,inn) is the i-component
+                             !   of the reciprocal lattice vector
+                             !   (in reduced units) that brings
+                             !   the inn-neighbour specified in nnlist
+                             !   (which is in the first BZ) to the
+                             !   actual \vec{k} + \vec{b} that we need.
+                             !   In reciprocal lattice units.
+ 
     use wannier90_types, only: numbands_wannier   !< Number of bands for 
                                                   !!   wannierization before
                                                   !!   excluding bands
@@ -122,6 +189,8 @@ module m_switch_local_projection
 ! Internal variables
 !
     integer :: ik             ! Counter for loop on ik points
+    integer :: nn             ! 
+    integer :: i              ! 
     integer :: iband          ! Counter for loop on bands
     integer :: iorb           ! Counter for loop on atomic orbitals
     integer :: ivec           ! Counter for loop on vectors
@@ -141,6 +210,23 @@ module m_switch_local_projection
       do ik = 1, numkpoints
         kpointsfrac(:,ik) = kpointsfrac_lowdin(:,ik)
       enddo
+
+!     Initialize the list of neighbour k-points
+      nullify( nnlist        )
+      nullify( nnfolding     )
+
+!     Broadcast information regarding the number of k-points neighbours
+!     and allocate in all nodes the corresponding arrays containing information
+!     about k-point neighbours
+
+      nncount = nncount_lowdin
+
+      call re_alloc( nnlist, 1, numkpoints, 1, nncount,           &
+ &                   name = "nnlist", routine = "read_nnkp" )
+      call re_alloc( nnfolding, 1, 3, 1, numkpoints, 1, nncount,  &
+ &                   name = "nnfolding", routine = "read_nnkp" )
+      nnlist     = nnlist_lowdin
+      nnfolding  = nnfolding_lowdin
 
       numbands(1)   = manifold_bands_lowdin(index_manifold)%numbands_lowdin
       numincbands(1)= manifold_bands_lowdin(index_manifold)%number_of_bands
@@ -174,6 +260,23 @@ module m_switch_local_projection
       do ik = 1, numkpoints
         kpointsfrac(:,ik) = kpointsfrac_wannier(:,ik)
       enddo
+
+!     Initialize the list of neighbour k-points
+      nullify( nnlist        )
+      nullify( nnfolding     )
+
+!     Broadcast information regarding the number of k-points neighbours
+!     and allocate in all nodes the corresponding arrays containing information
+!     about k-point neighbours
+
+      nncount = nncount_wannier
+
+      call re_alloc( nnlist, 1, numkpoints, 1, nncount,           &
+ &                   name = "nnlist", routine = "read_nnkp" )
+      call re_alloc( nnfolding, 1, 3, 1, numkpoints, 1, nncount,  &
+ &                   name = "nnfolding", routine = "read_nnkp" )
+      nnlist     = nnlist_wannier
+      nnfolding  = nnfolding_wannier
 
       numbands          = numbands_wannier
       numincbands       = numincbands_wannier
@@ -225,6 +328,15 @@ module m_switch_local_projection
 ! &      'switch_local_projection: reciprocal lattice= ',       &
 ! &      ivec, reclatvec(:,ivec)
 !    enddo
+     write(6,'(a)') 'begin nnkpts'
+     write(6,'(i4)') nncount
+      do ik = 1,numkpoints
+         do nn = 1, nncount
+            write(6,'(2i6,3x,3i4)') &
+               ik,nnlist(ik,nn),(nnfolding(i,ik,nn),i=1,3)
+         end do
+      end do
+      write(6,'(a/)') 'end nnkpts'
 !!   End debugging
 
   end subroutine switch_local_projection

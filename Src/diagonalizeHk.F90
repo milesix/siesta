@@ -145,11 +145,11 @@ subroutine diagonalizeHk( ispin, index_manifold )
                                              !   per node
   use m_switch_local_projection, only: isexcluded   
                                              ! Masks excluded bands
-  use m_siesta2wannier90, only: coeffs       ! Coefficients of the wavefunctions
+  use m_switch_local_projection, only: coeffs! Coefficients of the wavefunctions
                                              !   First  index: orbital
                                              !   Second index: band
                                              !   Third  index: k-point
-  use m_siesta2wannier90, only: eo           ! Eigenvalues of the Hamiltonian 
+  use m_switch_local_projection, only: eo    ! Eigenvalues of the Hamiltonian 
                                              !   at the numkpoints introduced in
                                              !   kpointsfrac 
                                              !   First  index: band index
@@ -158,14 +158,8 @@ subroutine diagonalizeHk( ispin, index_manifold )
                                              !   Lowdin-Mattheis
                                              !   transformation to obtain 
                                              !   orthonormal wave functions?
-  use lowdin_types,   only: coeffs_k               !
-  use lowdin_types,   only: overlap_sq             !
+  use lowdin_types,   only: overlap_sq       !
 
-  use m_lowdin, only: check_normalization
-  use m_lowdin, only: define_phitilde
-  use m_lowdin, only: define_overlap_phitilde
-  use m_lowdin, only: define_invsqover_phitilde
-  use m_lowdin, only: define_coeffshatphi
   use m_lowdin, only: compute_tight_binding_param
   use m_lowdin, only: write_tight_binding_param
   use m_lowdin, only: allocate_matrices_Lowdin
@@ -310,27 +304,6 @@ kpoints:                                                             &
 
       call allocate_matrices_Lowdin( index_manifold )
 
-!     coeffs_k is a complex square matrix of dimension:
-!     (number_of_atomic_orbitals_in_the_unit_cell)^2.
-!     It has two indices:
-!     The first one refers to the atomic orbital 
-!     The second one refers to the band index
-!     It stores the coefficients of the wave functions for a given k-point
-!
-      coeffs_k = cmplx(0.0_dp,0.0_dp,kind=dp)
-      call reordpsi( coeffs_k(1:no_u,1:nincbands_loc), psi, no_l, no_u,  &
- &                   no_u, nincbands_loc, index_manifold )
-
-!!     For debugging
-!      do iband = 1, nincbands_loc
-!        do io = 1, no_u
-!          write(6,*)' iband, io, eo, coeffs_k = ',              &
-! &                    iband, io, epsilon(iband),                &
-! &                    coeffs_k(io, iband)
-!        enddo
-!      enddo
-!!     End debugging
-
 !     In overlap_sq we store the overlap matrix between two Bloch orbitals
 !     that enters in the diagonalization routines
 !     It is computed inside diagpol
@@ -356,18 +329,7 @@ kpoints:                                                             &
 !      enddo
 !!     End debugging
 
-!     Define the overlap between phitildes
-!     It is a complex square matrix of dimension
-!     (number_of_atomic_orbitals_in_the_unit_cell)^2.
-!     And this is independent of number of bands considered.
-
-      call define_overlap_phitilde( index_manifold )
-
-      call define_invsqover_phitilde( index_manifold )
-
-      call define_coeffshatphi( index_manifold )
-
-      call compute_tight_binding_param( ispin, index_manifold,     & 
+      call compute_tight_binding_param( ispin, ik, index_manifold,     & 
  &                                      kvector, epsilon )
  
       call deallocate_matrices_Lowdin

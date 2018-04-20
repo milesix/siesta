@@ -57,6 +57,29 @@
                                      !   to the reciprocal lattice vectors.
                                      !   First  index: component
                                      !   Second index: k-point index in the list
+!
+! Variables related with the neighbours of the k-points
+!
+      integer           :: nncount_lowdin
+                             ! The number of nearest neighbours belonging to
+                             !   each k-point of the Monkhorst-Pack mesh
+      integer, pointer  :: nnlist_lowdin(:,:)
+                             ! nnlist(ikp,inn) is the index of the
+                             !   inn-neighbour of ikp-point
+                             !   in the Monkhorst-Pack grid folded to the
+                             !   first Brillouin zone
+      integer, pointer  :: nnfolding_lowdin(:,:,:)
+                             ! nnfolding(i,ikp,inn) is the i-component
+                             !   of the reciprocal lattice vector
+                             !   (in reduced units) that brings
+                             !   the inn-neighbour specified in nnlist
+                             !   (which is in the first BZ) to the
+                             !   actual \vec{k} + \vec{b} that we need.
+                             !   In reciprocal lattice units. 
+      real(dp) :: reclatvec_lowdin(3,3)     !< Reciprocal lattice vectors
+                                     !!  Cartesian coordinates in Bohr^-1
+                                     !!  First  index: component
+                                     !!  Second index: vector
 
       complex(dp), pointer, save ::   overlaptilde(:,:)
       complex(dp), pointer, save ::   coeffs_k(:,:)

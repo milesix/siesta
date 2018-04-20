@@ -33,13 +33,13 @@ subroutine writemmn( ispin )
                                          !   periodic part of the wavefunct
                                          !   with a neighbour k-point will
                                          !   be computed
-  use m_siesta2wannier90, only: nncount  ! Number of neighbour k-points
-  use m_siesta2wannier90, only: nnlist   ! nnlist(ikp,inn) is the index of the 
+  use m_switch_local_projection, only: nncount  ! Number of neighbour k-points
+  use m_switch_local_projection, only: nnlist   ! nnlist(ikp,inn) is the index of the 
                                          !   inn-neighbour of ikp-point
                                          !   in the Monkhorst-Pack grid 
                                          !   folded to the 
                                          !   first Brillouin zone
-  use m_siesta2wannier90, only: nnfolding ! nnfolding(i,ikp,inn) is the 
+  use m_switch_local_projection, only: nnfolding ! nnfolding(i,ikp,inn) is the 
                                          !   i-component 
                                          !   of the reciprocal lattice vector 
                                          !   (in reduced units) that brings
@@ -313,7 +313,7 @@ subroutine writeeig( ispin )
   use m_switch_local_projection, only: numincbands
                                           ! Number of included bands 
                                           !   for wannierization
-  use m_siesta2wannier90, only: eo        ! Eigenvalues of the Hamiltonian 
+  use m_switch_local_projection, only: eo ! Eigenvalues of the Hamiltonian 
                                           !   at the numkpoints introduced in
                                           !   kpointsfrac 
                                           !   First  index: band index
@@ -481,7 +481,7 @@ subroutine writeunk( ispin )
                                               !   First  index: component
                                               !   Second index: k-point  
                                               !      index in the list
-  use m_siesta2wannier90, only: coeffs        ! Coefficients of the
+  use m_switch_local_projection, only: coeffs ! Coefficients of the
                                               !   wavefunctions.
                                               !   First  index: orbital
                                               !   Second index: band

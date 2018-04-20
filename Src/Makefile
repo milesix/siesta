@@ -287,6 +287,13 @@ $(FDF): $(MPI_INTERFACE)
 		    "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module )
 
 #--------------------------------------------------------------
+WANNIER90=libwann90.a
+$(WANNIER90): 
+	(cd Wannier90 ; $(MAKE) -j 1 "VPATH=$(VPATH)/Wannier90" \
+		    "FPPFLAGS=$(FPPFLAGS)" \
+		    "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module )
+
+#--------------------------------------------------------------
 MS=MatrixSwitch.a
 $(MS): $(MPI_INTERFACE)
 	(cd MatrixSwitch/src ; \
@@ -364,6 +371,9 @@ ldau_specs.o m_lowdin.o: $(FDF)
 cranknic_evolk.o: $(FDF)
 cranknic_evolg.o: $(FDF)
 sankey_change_basis.o iotdxv.o: $(FDF)
+
+# Routines using Wannier90 calls.
+m_lowdin.o: $(WANNIER90)
 
 # Create all objects
 ALL_OBJS=$(OBJS) $(SYSOBJ) $(MAIN_OBJ)
@@ -443,10 +453,10 @@ check-siesta:
 
 siesta: check-siesta what version \
                 $(MPI_INTERFACE) $(FDF) $(MS) $(WXML) $(XMLPARSER) $(XC) \
-                $(COMP_LIBS) $(ALL_OBJS) 
+                $(WANNIER90) $(COMP_LIBS) $(ALL_OBJS) 
 	$(FC) -o siesta \
 	       $(LDFLAGS) $(ALL_OBJS) $(FDF) $(MS) $(WXML) $(XMLPARSER) \
-               $(XC) $(MPI_INTERFACE) \
+               $(XC) $(WANNIER90) $(MPI_INTERFACE) \
                $(COMP_LIBS) $(LIBS) 
 
 libSiestaForces.a: $(OBJS) $(SYSOBJ)
@@ -861,7 +871,7 @@ m_iotddft.o: units.o wavefunctions.o
 m_kinetic.o: precision.o
 m_lowdin.o: m_cite.o parallel.o lowdin_types.o precision.o alloc.o 
 m_lowdin.o: siesta_options.o sparse_matrices.o atomlist.o parallelsubs.o sys.o
-m_lowdin.o: m_spin.o m_orderbands.o sys.o 
+m_lowdin.o: m_spin.o m_orderbands.o sys.o kmesh_proj.o
 m_mat_invert.o: intrinsic_missing.o m_pivot_array.o precision.o
 m_matdiag.o: precision.o
 m_matio.o: alloc.o parallel.o

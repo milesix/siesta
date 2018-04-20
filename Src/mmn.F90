@@ -46,12 +46,12 @@ subroutine Mmn( ispin )
                                              !   First  index: component
                                              !   Second index: k-point index 
                                              !      in the list
-  use m_siesta2wannier90, only: nncount      ! Number of nearest k-pnt neighbors
-  use m_siesta2wannier90, only: nnlist       ! nnlist(ikp,inn) is the index of
+  use m_switch_local_projection, only: nncount      ! Number of nearest k-pnt neighbors
+  use m_switch_local_projection, only: nnlist       ! nnlist(ikp,inn) is the index of
                                              !   the inn-neighbour of ikp-point
                                              !   in the Monkhorst-Pack grid 
                                              !   folded to first Brillouin zone
-  use m_siesta2wannier90, only: nnfolding    ! nnfolding(i,ikp,inn) is the 
+  use m_switch_local_projection, only: nnfolding    ! nnfolding(i,ikp,inn) is the 
                                              !   i-component of the reciprocal 
                                              !   lattice vector 
                                              !   (in reduced units) that brings
@@ -71,7 +71,7 @@ subroutine Mmn( ispin )
   use m_siesta2wannier90, only: bvectorsfrac ! Vectors that connect each 
                                              !   mesh k-point to its 
                                              !   nearest neighbours.
-  use m_siesta2wannier90, only: coeffs       ! Coefficients of the
+  use m_switch_local_projection, only: coeffs! Coefficients of the
                                              !   wavefunctions.
                                              !   First  index: orbital
                                              !   Second index: band

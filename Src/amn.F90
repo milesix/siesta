@@ -72,7 +72,7 @@ subroutine amn( ispin )
                                                     !   wannierization
                                                     !   after excluding bands  
                                                     !   in the local Node
-  use m_siesta2wannier90, only: coeffs              ! Coefficients of the
+  use m_switch_local_projection, only: coeffs       ! Coefficients of the
                                                     !   wavefunctions.
                                                     !   First  index: orbital
                                                     !   Second index: band
