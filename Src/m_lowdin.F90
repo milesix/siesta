@@ -38,6 +38,7 @@ module m_lowdin
   use lowdin_types,   only: nncount_lowdin
   use lowdin_types,   only: nnlist_lowdin
   use lowdin_types,   only: nnfolding_lowdin
+  use lowdin_types,   only: bvectorsfrac_lowdin
 
   use sparse_matrices,    only: maxnh        ! Maximum number of orbitals
                                              !   interacting
@@ -86,11 +87,13 @@ module m_lowdin
   public :: define_invsqover_phitilde
   public :: define_coeffshatphi
   public :: compute_tight_binding_param
+  public :: compute_position
   public :: write_tight_binding_param
   public :: set_excluded_bands_lowdin
   public :: setup_Lowdin 
   public :: allocate_matrices_Lowdin
   public :: deallocate_matrices_Lowdin
+  public :: define_trial_orbitals
 
   private
 
@@ -118,6 +121,12 @@ module m_lowdin
     use w90_parameters, only: real_lattice
     use w90_parameters, only: kpt_latt
     use w90_parameters, only: param_read
+    use m_digest_nnkp,  only: chosing_b_vectors 
+                                       ! Subroutine that computes the b
+                                         ! vectors that connect each mesh
+                                         ! k-point to its nearest neighbours.
+    use files,         only: slabel        ! Short system label,
+                                         !   used to generate file names
 
 !   Internal variables
     integer :: index_manifold      ! Counter for the number of manifolds
@@ -175,7 +184,11 @@ module m_lowdin
  &         fdf_bintegers(pline,3+iorb)
       enddo
 
+      write(manifold_bands_lowdin(index_manifold)%seedname_lowdin,"(a,'.',i1.1)") &
+ &       trim(slabel), index_manifold
+
 !!     For debugging
+!         write(6,*)manifold_bands_lowdin(index_manifold)%seedname_lowdin
 !      write(6,'(a,4i5)') &
 ! &      'index manifold, initial band, final band, number of bands = ',      &
 ! &      index_manifold,                                                      &
@@ -254,6 +267,7 @@ module m_lowdin
       call param_read
       call kmesh_get( )
 
+
       nncount_lowdin = nntot
 !     Initialize the list of neighbour k-points
       nullify( nnlist_lowdin    )
@@ -271,20 +285,25 @@ module m_lowdin
       nnlist_lowdin     = nnlist
       nnfolding_lowdin  = nncell
 
+!     Compute the vectors that connect each mesh k-point 
+!     to its nearest neighbours
+      call chosing_b_vectors( kpointsfrac_lowdin, nncount_lowdin,  &
+ &                          nnlist_lowdin, nnfolding_lowdin,       &
+ &                          bvectorsfrac_lowdin )
 
-!     For debugging
-      write(6,'(a)') 'begin nnkpts'
-      write(6,'(i4)') nntot
-      do nkp=1,num_kpts
-         do nn=1,nntot
-            write(6,'(2i6,3x,3i4)') &
-               nkp,nnlist(nkp,nn),(nncell(i,nkp,nn),i=1,3)
-         end do
-      end do
-      write(6,'(a/)') 'end nnkpts'
-!     End debugging
-                         
-    
+
+!!     For debugging
+!      write(6,'(a)') 'begin nnkpts'
+!      write(6,'(i4)') nntot
+!      do nkp=1,num_kpts
+!         do nn=1,nntot
+!            write(6,'(2i6,3x,3i4)') &
+!               nkp,nnlist(nkp,nn),(nncell(i,nkp,nn),i=1,3)
+!         end do
+!      end do
+!      write(6,'(a/)') 'end nnkpts'
+!!     End debugging
+
   endsubroutine read_lowdin_specs
 
   subroutine setup_Lowdin
@@ -1273,5 +1292,214 @@ module m_lowdin
      
   end subroutine write_tight_binding_param
 
+  subroutine compute_position( ispin, index_manifold )
+
+    use m_switch_local_projection, only: nncount
+    use m_switch_local_projection, only: numkpoints
+    use m_switch_local_projection, only: bvectorsfrac
+    use m_switch_local_projection, only: Mmnkb
+    use m_switch_local_projection, only: Amnmat
+    use w90_constants,  only : cmplx_1
+    use w90_parameters, only : wb
+    use w90_parameters, only : bk
+    use w90_parameters, only : lenconfac
+    use w90_parameters, only : u_matrix
+    use w90_parameters, only : m_matrix
+    use w90_parameters, only : num_bands
+    use w90_parameters, only : num_wann
+    use w90_parameters, only : num_kpts
+    use w90_parameters, only : nntot
+    use w90_parameters, only : nnlist
+    use w90_overlap,    only : overlap_project
+
+    integer :: ispin
+    integer :: index_manifold
+    integer :: nn
+    integer :: n
+    integer :: m
+    integer :: nkp
+    integer :: iw
+    integer :: ind
+    integer :: iband
+    integer :: iproj
+    integer :: iorb
+    integer :: ix
+    integer :: number_of_bands_in_manifold_local
+
+    complex(kind=dp), allocatable :: csheet(:,:,:)
+    real(kind=dp),    allocatable :: sheet (:,:,:)
+    real(kind=dp),    allocatable :: rave(:,:)
+    real(kind=dp),    allocatable :: ln_tmp(:,:,:)
+
+    number_of_bands_in_manifold_local =                                  &
+ &        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
+
+    num_bands = number_of_bands_in_manifold_local 
+    num_wann  = number_of_bands_in_manifold_local 
+    num_kpts  = numkpoints
+    nntot     = nncount
+
+    nnlist    = nnlist_lowdin
+
+    allocate( csheet (number_of_bands_in_manifold_local, nncount, numkpoints) )
+    allocate( sheet  (number_of_bands_in_manifold_local, nncount, numkpoints) )
+    allocate( rave   (3, number_of_bands_in_manifold_local) )
+    allocate( ln_tmp (number_of_bands_in_manifold_local, nncount, numkpoints) )
+
+    csheet = cmplx_1 
+    sheet  = 0.0_dp
+    rave   = 0.0_dp
+
+    if ( allocated(u_matrix) ) deallocate(u_matrix)
+    allocate( u_matrix(number_of_bands_in_manifold_local,               &
+ &                     number_of_bands_in_manifold_local,               &
+ &                     numkpoints) )
+    u_matrix = cmplx(0.0_dp,0.0_dp,kind=dp)
+    if ( allocated(m_matrix) ) deallocate(m_matrix)
+    allocate( m_matrix(number_of_bands_in_manifold_local,               &
+ &                     number_of_bands_in_manifold_local,               &
+ &                     nncount,                                         &
+ &                     numkpoints) )
+    m_matrix = cmplx(0.0_dp,0.0_dp,kind=dp)
+
+    call amn( ispin )
+     
+    u_matrix = Amnmat
+
+!   Compute the matrix elements of the plane wave,
+!   for all the wave vectors that connect a given k-point to its nearest
+!   neighbours
+    call compute_pw_matrix( nncount, bvectorsfrac )
+
+    call mmn( ispin )
+
+    do nkp = 1, numkpoints
+       do nn = 1, nncount
+          do n = 1, number_of_bands_in_manifold_local
+            do m = 1, number_of_bands_in_manifold_local
+              m_matrix(m,n,nn,nkp) = Mmnkb(m,n,nkp,nn)
+            enddo 
+          enddo 
+       enddo 
+    enddo 
+
+    call overlap_project()
+
+    do nkp = 1, numkpoints
+       do nn = 1, nncount
+          do n = 1, number_of_bands_in_manifold_local
+             ! Note that this ln_tmp is defined differently wrt the one in wann_domega
+             ln_tmp(n,nn,nkp)=( aimag(log(csheet(n,nn,nkp) &
+                     * m_matrix(n,n,nn,nkp))) - sheet(n,nn,nkp) )
+          end do
+      end do
+    end do
+
+    rave  = 0.0_dp
+    do iw = 1, number_of_bands_in_manifold_local
+       do ind = 1, 3
+          do nkp = 1, numkpoints
+             do nn = 1, nncount
+                rave(ind,iw) = rave(ind,iw) + wb(nn) * bk(ind,nn,nkp) &
+                      *ln_tmp(iw,nn,nkp)
+             enddo
+          enddo
+       enddo
+    enddo
+    rave = -rave/real(numkpoints,dp)
+
+    do iw=1, number_of_bands_in_manifold_local
+       write(6,1000) iw,(rave(ind,iw)*lenconfac,ind=1,3)
+    end do
+
+1000 format(2x,'WF centre ', &
+         &       i5,2x,'(',f10.6,',',f10.6,',',f10.6,' )')
+
+
+    deallocate( csheet )
+    deallocate( sheet  )
+    deallocate( rave   )
+    deallocate( ln_tmp )
+
+  end subroutine compute_position
+
+  subroutine define_trial_orbitals( i_manifold )
+    use trialorbitalclass,  only: trialorbital  ! Derived type to define the
+                                                !    localized trial
+                                                !    orbitals
+    use atmfuncs,    only: lofio      ! Returns angular momentum number
+    use atmfuncs,    only: mofio      ! Returns magnetic quantum number
+    use atmfuncs,    only: mofio      ! Returns magnetic quantum number
+    use atmfuncs,    only: rcut       ! Returns orbital cutoff radius
+    use atmfuncs,    only: orb_gindex ! Returns the global index of a 
+                                      !    basis orbital
+    use atomlist,    only: iaorb      ! Atomic index of each orbital
+    use atomlist,    only: iphorb     ! Orbital index of each orbital 
+                                      !    in its atom
+    use siesta_geom, only: xa         ! Atomic coordinates
+    use siesta_geom, only: isa        ! Species index of each atom
+
+    integer,  intent(in)  :: i_manifold
+    integer  :: number_projections
+    integer  :: iproj
+    integer  :: iorb
+    integer  :: ia
+    integer  :: iao
+    integer  :: is
+    integer  :: l
+    integer  :: r
+    integer  :: m
+    real(dp) :: rc
+    real(dp) :: zaxis(3)
+    real(dp) :: xaxis(3)
+    real(dp) :: yaxis(3)
+    real(dp) :: zovera
+
+    xaxis(1) = 1.0_dp
+    xaxis(2) = 0.0_dp
+    xaxis(3) = 0.0_dp
+
+    yaxis(1) = 0.0_dp
+    yaxis(2) = 1.0_dp
+    yaxis(3) = 0.0_dp
+
+    zaxis(1) = 0.0_dp
+    zaxis(2) = 0.0_dp
+    zaxis(3) = 1.0_dp
+
+    zovera = 1.0_dp/0.529177_dp
+
+    r = 1
+
+    number_projections = manifold_bands_lowdin(i_manifold)%number_of_bands
+    if (allocated(manifold_bands_lowdin(i_manifold)%proj_lowdin)) &
+ &     deallocate( manifold_bands_lowdin(i_manifold)%proj_lowdin )
+    allocate(manifold_bands_lowdin(i_manifold)%proj_lowdin(number_projections))
+    do iproj = 1, number_projections
+      iorb = manifold_bands_lowdin(i_manifold)%orbital_indices(iproj)
+      ia = iaorb(iorb)        
+      is = isa(ia)
+      iao = iphorb( iorb )           ! Orbital index within atom
+      l  = lofio( is, iao )          ! Orbital's angular mumentum number
+      m  = mofio( is, iao )          ! (Real) orbital's magnetic quantum number
+      rc = rcut(  is, iao )          ! Orbital's cutoff radius
+      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%center = xa(:,ia)
+      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%zaxis  = zaxis
+      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%xaxis  = xaxis
+      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%yaxis  = yaxis
+      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%zovera = zovera
+      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%r      = r
+      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%l      = l
+      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%mr     = m
+      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%rcut   = rc
+      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%lmax   = l
+      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%from_basis_orbital =&
+ &                                                         .true.
+      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%iorb   = iorb
+      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%iorb_gindex = &
+ &                                     orb_gindex(is,iao) 
+    enddo
+
+  end subroutine define_trial_orbitals
 
 endmodule m_lowdin

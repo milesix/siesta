@@ -49,9 +49,9 @@ subroutine amn( ispin )
   use siesta_geom,        only: na_s                ! Number of atoms in the
                                                     !   supercell
   use siesta_geom,        only: xa                  ! Atomic positions
-  use m_siesta2wannier90, only: latvec              ! Lattice vectors in real 
+  use m_switch_local_projection, only: latvec       ! Lattice vectors in real 
                                                     !   space
-  use m_siesta2wannier90, only: numproj             ! Total number of projectors
+  use m_switch_local_projection, only: numproj      ! Total number of projectors
   use m_switch_local_projection, only: numkpoints   ! Total number of k-points
                                                     !   for which the overlap of
                                                     !   the periodic part of the
@@ -64,7 +64,7 @@ subroutine amn( ispin )
                                                     !   First  index: component
                                                     !   Second index: k-point  
                                                     !      index in the list
-  use m_siesta2wannier90, only: projections         ! Trial projection functions
+  use m_switch_local_projection, only: projections  ! Trial projection functions
   use m_switch_local_projection, only: numincbands  ! Number of bands for 
                                                     !   wannierization
                                                     !   after excluding bands  
@@ -77,7 +77,7 @@ subroutine amn( ispin )
                                                     !   First  index: orbital
                                                     !   Second index: band
                                                     !   Third  index: k-point
-  use m_siesta2wannier90, only: Amnmat              ! Matrix of the overlaps of 
+  use m_switch_local_projection, only: Amnmat       ! Matrix of the overlaps of 
                                                     !   trial projector funtions
                                                     !   with Eigenstates of the
                                                     !   Hamiltonian
@@ -233,6 +233,9 @@ subroutine amn( ispin )
  &               'Amnmat',       &
  &               'Amn'           )
 
+! Initialize Amnmat
+  Amnmat = cmplx( 0.0_dp, 0.0_dp, kind =dp )
+
 
 ! Allocate memory related with a local variable where the coefficients 
 ! of the eigenvector at the k-point will be stored
@@ -242,7 +245,9 @@ subroutine amn( ispin )
 
 ! Assign a global index to the trial functions
 ! The same global index is assigned to a given trial function in all the nodes
+  firsttime = .true. 
   if( firsttime ) then
+    if (allocated(projector_gindex)) deallocate(projector_gindex)
     allocate ( projector_gindex(numproj) )
     do iproj = 1, numproj
       tf = projections( iproj )
@@ -332,6 +337,8 @@ OrbitalQueue:                                                        &
       do while (associated(item))
         r12 = trialcenter - item%center
         globalindexorbital = orb_gindex( item%specie, item%specieindex )
+        if( projections(indexproj)%from_basis_orbital )             &
+ &        globalindexproj = projections(indexproj)%iorb_gindex
         call new_matel('S',                & ! Compute the overlap
  &                     globalindexorbital, & ! Between orbital with globalinde
  &                     globalindexproj,    & ! And projector with globalindex

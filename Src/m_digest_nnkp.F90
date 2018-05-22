@@ -238,7 +238,7 @@ subroutine read_nnkp( seedname, latvec, reclatvec, numkpoints,          &
  &                       (xaxis(i), i = 1, 3), & 
  &                        zovera
 
-!       Check that the xaxis and the yaxis are orthogonal to each other
+!       Check that the xaxis and the zaxis are orthogonal to each other
         xnorm = sqrt(xaxis(1)*xaxis(1) + xaxis(2)*xaxis(2) + xaxis(3)*xaxis(3))
         if (xnorm < eps6) call die('read_nnkp: |xaxis| < eps ')
         znorm = sqrt(zaxis(1)*zaxis(1) + zaxis(2)*zaxis(2) + zaxis(3)*zaxis(3))

@@ -14,10 +14,18 @@
 !     is read from the fdf file by routine 'read_lowdin_specs'.
 
       use precision, only: dp
+      use files,     only : label_length         ! Number of characters in slabel
+      use trialorbitalclass
 
       implicit none
 
       type, public ::  lowdin_manifold_t
+          character(label_length+3)  :: seedname_lowdin  
+                                         ! Name of the file where the Wannier90
+                                         !   code, when used as a postprocessing
+                                         !   tool, reads or dumps the
+                                         !   information.
+
           integer                :: initial_band
           integer                :: final_band
           integer                :: number_of_bands
@@ -43,6 +51,7 @@
                                                    !   of the overlap and 
                                                    !   projection matrices
                                                    !   in the local node
+          type(trialorbital), allocatable  :: proj_lowdin(:)
       end type lowdin_manifold_t
 
       type(lowdin_manifold_t), public,
@@ -76,17 +85,24 @@
                              !   (which is in the first BZ) to the
                              !   actual \vec{k} + \vec{b} that we need.
                              !   In reciprocal lattice units. 
+      real(dp) :: latvec_lowdin(3,3)        !< Lattice vectors
       real(dp) :: reclatvec_lowdin(3,3)     !< Reciprocal lattice vectors
                                      !!  Cartesian coordinates in Bohr^-1
                                      !!  First  index: component
                                      !!  Second index: vector
-
+      
+      real(dp), pointer :: bvectorsfrac_lowdin(:,:)
+                                         !! The vectors b that connect
+                                         !!   each mesh-point k
+                                         !!   to its nearest neighbours
       complex(dp), pointer, save ::   overlaptilde(:,:)
       complex(dp), pointer, save ::   coeffs_k(:,:)
       complex(dp), pointer, save ::   overlap_sq(:,:)
       complex(dp), pointer, save ::   phitilde(:,:)
       complex(dp), pointer, save ::   invsqrtover(:,:)
       complex(dp), pointer, save ::   coeffshatphi(:,:)
+
+
 
       end module lowdin_types
 

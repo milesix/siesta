@@ -23,6 +23,8 @@ module m_switch_local_projection
                                               !!   the Lowdin orthonormalization
   use atomlist,       only: no_u              !< Number of orbitals in unit cell
   use siesta_geom,    only: ucell             !< Unit cell lattice vectors
+  use files,     only : label_length         ! Number of characters in slabel
+  use trialorbitalclass
 
   implicit none
 
@@ -47,10 +49,15 @@ module m_switch_local_projection
                                          !!   calculation of the overlap and 
                                          !!   projection matrices.
                                          !!   in the local Node
+  real(dp)         :: latvec(3,3) 
   real(dp)         :: reclatvec(3,3)     !< Reciprocal lattice vectors
                                          !!  Cartesian coordinates in Bohr^-1 
                                          !!  First  index: component
                                          !!  Second index: vector
+!
+! Variables related with the k-point list for which the overlap
+! matrices Mmn between a k-point and its neighbor will be computed
+!
   integer          :: nncount            !< The number of nearest
                                          !!   neighbours belonging to
                                          !!   each k-point of the 
@@ -68,6 +75,10 @@ module m_switch_local_projection
                                          !!   to the actual \vec{k} + \vec{b} 
                                          !!   that we need.
                                          !!   In reciprocal lattice units.
+  real(dp), pointer :: bvectorsfrac(:,:)
+                                         !! The vectors b that connect
+                                         !!   each mesh-point k
+                                         !!   to its nearest neighbours
 
 
 !
@@ -83,6 +94,46 @@ module m_switch_local_projection
                                          !   kpointsfrac
                                          !   First  index: band index
                                          !   Second index: k-point index
+
+!
+! Variables related with the projections with trial functions,
+! initial approximations to the MLWF
+!
+  integer  :: numproj        ! Total number of projection centers,
+                             !   equal to the number of MLWF
+
+  type(trialorbital), target, allocatable  :: projections(:)
+
+
+!
+! Output matrices
+!
+
+  complex(dp), pointer :: Mmnkb(:,:,:,:) => null()  
+                                         ! Matrix of the overlaps of
+                                         !   periodic parts of Bloch waves.
+                                         !   <u_{ik}|u_{jk+b}>
+                                         !   The first two indices refer to
+                                         !   the number of occupied bands
+                                         !   (indices m and n in standard
+                                         !   notation, see for instance,
+                                         !   Eq. (27) of the paper by
+                                         !   Marzari et al., RMP 84, 1419 (2012)
+                                         !   The third index refer to the kpoint
+                                         !   The fourth index refer to the neig
+  complex(dp), pointer :: Amnmat(:,:,:) => null() 
+                                         ! Projections of a trial function
+                                         !   with a Bloch orbital
+                                         !   <\psi_{m k}|g_n>
+
+!
+! Variables related with the input/output files
+!
+  character(label_length+3)  :: seedname ! Name of the file where the Wannier90
+                                         !   code, when used as a postprocessing
+                                         !   tool, reads or dumps the
+                                         !   information.
+
 
 
 ! Routines
@@ -126,6 +177,8 @@ module m_switch_local_projection
                              !   (which is in the first BZ) to the
                              !   actual \vec{k} + \vec{b} that we need.
                              !   In reciprocal lattice units.
+     use lowdin_types, only: bvectorsfrac_lowdin
+     use lowdin_types, only: latvec_lowdin
  
     use wannier90_types, only: numbands_wannier   !< Number of bands for 
     use wannier90_types, only: numkpoints_wannier !< Number of k-points in 
@@ -178,7 +231,13 @@ module m_switch_local_projection
                                                   !!   for wannierization
     use wannier90_types, only: isexcluded_wannier !< Masks excluded bands for
                                                   !!   Wannier
+    use wannier90_types, only: latvec_wannier     !< Reciprocal lattice vectors
     use wannier90_types, only: reclatvec_wannier  !< Reciprocal lattice vectors
+    use wannier90_types, only: bvectorsfrac_wannier
+    use wannier90_types, only: numproj_wannier    !< Number of projectors
+    use wannier90_types, only: seedname_wannier
+    use wannier90_types, only: projections_wannier
+
     use alloc,           only: re_alloc           !< Reallocation routines
 
     integer, intent(in) :: index_manifold         !< Index of the band manifold
@@ -240,9 +299,24 @@ module m_switch_local_projection
  &                   routine='switch_local_projection' )
       isexcluded = manifold_bands_lowdin(index_manifold)%isexcluded
 
+      latvec = ucell
+
+!     Initialize number of projectors
+      numproj = numincbands(1) 
+      if( allocated(projections) ) deallocate( projections )
+      allocate(projections(numproj))
+      projections = manifold_bands_lowdin(index_manifold)%proj_lowdin
+
 !     Reciprocal lattice vectors
       call reclat( ucell, reclatvec, 1 )
 
+
+      nullify( bvectorsfrac )
+      call re_alloc( bvectorsfrac, 1, 3, 1, nncount,    &
+                     name="bvectorsfrac", routine = "chosing_b_vectors")
+      bvectorsfrac = bvectorsfrac_lowdin
+
+      seedname = manifold_bands_lowdin(index_manifold)%seedname_lowdin
       goto 100
     endif
 
@@ -289,8 +363,21 @@ module m_switch_local_projection
  &                   routine='switch_local_projection' )
       isexcluded = isexcluded_wannier
 
+      latvec    = latvec_wannier
 !     Reciprocal lattice vector
       reclatvec = reclatvec_wannier
+
+      nullify( bvectorsfrac )
+      call re_alloc( bvectorsfrac, 1, 3, 1, nncount,    &
+                     name="bvectorsfrac", routine = "chosing_b_vectors")
+      bvectorsfrac = bvectorsfrac_wannier
+
+      numproj = numproj_wannier
+      if( allocated(projections) ) deallocate( projections )
+      allocate(projections(numproj))
+      projections = projections_wannier
+
+      seedname = seedname_wannier
     
     endif
 
@@ -301,11 +388,11 @@ module m_switch_local_projection
 ! &    'switch_local_projection: index_manifold    = ', index_manifold
 !    write(6,'(a,i5)')                                          & 
 ! &    'switch_local_projection: numkpoints        = ', numkpoints
-!!    do ik = 1, numkpoints
-!!      write(6,'(a,i5,3f12.5)')                                &
-!! &      'switch_local_projection: ik, kpointsfrac = ',        &
-!! &      ik, kpointsfrac(:,ik) 
-!!    enddo
+!    do ik = 1, numkpoints
+!      write(6,'(a,i5,3f12.5)')                                &
+! &      'switch_local_projection: ik, kpointsfrac = ',        &
+! &      ik, kpointsfrac(:,ik) 
+!    enddo
 !    write(6,'(a,2i5)')                                         &
 ! &    'switch_local_projection: numbands          = ',         &
 ! &      numbands
@@ -325,18 +412,29 @@ module m_switch_local_projection
 !    enddo
 !    do ivec = 1, 3
 !      write(6,'(a,i5,3f12.5)')                                 &
+! &      'switch_local_projection: lattice vectors   = ',       &
+! &      ivec, latvec(:,ivec)
+!    enddo
+!    do ivec = 1, 3
+!      write(6,'(a,i5,3f12.5)')                                 &
 ! &      'switch_local_projection: reciprocal lattice= ',       &
 ! &      ivec, reclatvec(:,ivec)
 !    enddo
-     write(6,'(a)') 'begin nnkpts'
-     write(6,'(i4)') nncount
-      do ik = 1,numkpoints
-         do nn = 1, nncount
-            write(6,'(2i6,3x,3i4)') &
-               ik,nnlist(ik,nn),(nnfolding(i,ik,nn),i=1,3)
-         end do
-      end do
-      write(6,'(a/)') 'end nnkpts'
+!    write(6,'(a)') 'begin nnkpts'
+!    write(6,'(i4)') nncount
+!    do ik = 1,numkpoints
+!      do nn = 1, nncount
+!        write(6,'(2i6,3x,3i4)') &
+! &        ik,nnlist(ik,nn),(nnfolding(i,ik,nn),i=1,3)
+!      end do
+!    end do
+!    write(6,'(a)') 'begin bvectorsfrac'
+!    do nn = 1, nncount
+!      write(6,'(i6,3x,3f12.5)') &
+! &      nn,(bvectorsfrac(nn,i),i=1,3)
+!    end do
+!    write(6,'(a/)') 'end bvectorsfrac'
+!      
 !!   End debugging
 
   end subroutine switch_local_projection

@@ -61,6 +61,8 @@
       use m_switch_local_projection, only: switch_local_projection
       use m_lowdin,          only: read_lowdin_specs
       use m_lowdin,          only: setup_Lowdin
+      use m_lowdin,          only: compute_position
+      use m_lowdin,          only: define_trial_orbitals
 
 #ifdef MPI
       use m_mpi_utils, only: globalize_sum
@@ -502,9 +504,11 @@ C
         call read_lowdin_specs()
         call setup_Lowdin
         do index_manifold = 1, n_lowdin_manifolds
+          call define_trial_orbitals( index_manifold )
           call switch_local_projection( index_manifold )
           do ispin = 1, nspin
             call diagonalizeHk( ispin, index_manifold )
+            call compute_position( ispin, index_manifold )
           enddo 
         enddo
         lowdin_processing = .false.
@@ -516,6 +520,8 @@ C
       if( w90_processing ) then
         call siesta2wannier90()
       endif
+
+
 
 C     Find local density of states
 !  It needs H,S, and xa, as it diagonalizes them again

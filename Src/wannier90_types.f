@@ -14,6 +14,8 @@
 !     is read from the fdf file by routine 'read_lowdin_specs'.
 
       use precision, only: dp
+      use files,     only : label_length         ! Number of characters in slabel
+      use trialorbitalclass
 
       implicit none
 
@@ -22,6 +24,15 @@
 ! Variables related with the atomic structure of the system
 !
 
+      real(dp) :: latvec_wannier(3,3)    ! Real lattice vectors.
+                                 !   Cartesian coordinates.
+                                 !   Readed in Angstroms and transformed to Bohr
+                                 !   internally
+                                 !   First  index: component
+                                 !   Second index: vector
+                                 !   This is consistent with the unit cell read
+                                 !   in Siesta, but it has changed with respect
+                                 !   the first version implemented by R. Korytar
       real(dp) :: reclatvec_wannier(3,3) ! Reciprocal lattice vectors.
                                          !   Cartesian coordinates.
                                          !   Readed in Angstroms^-1 
@@ -87,5 +98,30 @@
                                         !   per node
       logical, pointer :: isexcluded_wannier(:) 
                                         ! Masks excluded bands
+
+      real(dp), pointer :: bvectorsfrac_wannier(:,:)
+                                         !! The vectors b that connect 
+                                         !!   each mesh-point k
+                                         !!   to its nearest neighbours
+
+!
+! Variables related with the projections with trial functions,
+! initial approximations to the MLWF
+!
+      integer  :: numproj_wannier        !! Total number of projection centers,
+                                         !!   equal to the number of MLWF
+      type(trialorbital), target, allocatable  :: projections_wannier(:)
+
+
+!
+! Variables related with the input/output files
+!
+      character(label_length+3)  :: seedname_wannier  ! Name of the file where the Wannier90
+                                         !   code, when used as a postprocessing
+                                         !   tool, reads or dumps the
+                                         !   information.
+
+
+
 
       end module wannier90_types

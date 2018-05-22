@@ -96,7 +96,7 @@ C     Internal variables
      &  iie, ik, io, ispin, iuo, ix, iy,  is, ia, ntote,
      &  nbands, ixmin, ije, j, maxhs, maxpsi,
      &  kscell(3,3), nk, nmeshk(3), npol, ipol, 
-     &  ie, je, iw, nwi, nwf, nw, iu, ngamma, ig
+     &  ie, je, iw, nwi, nwf, nw, iu, iu2, ngamma, ig
 
 #ifdef MPI
       integer                     :: MPIerror
@@ -125,6 +125,7 @@ C     Internal variables
      &  wmin, wmax, wi, wf, escissor, omega_p2(2),aux_p2(2)
 
       character(len=label_length+7) :: filename
+      character(len=label_length+15):: filename2
       character(len=10)             :: shape
       character(len=12)             :: option
       character(len=1)              :: matrix
@@ -136,6 +137,10 @@ C     Internal variables
 #endif
 C     Start time counter 
       call timer( 'optical', 1 )
+
+      call io_assign(iu2)
+      filename2 = trim(slabel) // '.contrib.EPSIMG'
+      open(iu2,file=filename2, status='unknown')
 
 C     Initialise nbands to maximum number possible 
       nbands = nuotot
@@ -474,6 +479,7 @@ C...  For Drude formula.....
 C     Begin the BZ integration
       do ik = 1,nkopt
         do ispin = 1,nspin 
+          write(iu2,'(a,i5)')'# ispin =', ispin
           do ix = 1,3
             kint(ix) = kopt(ix,ik)
           enddo            
@@ -508,6 +514,10 @@ C         Apply scissor operator if required
           endif
 
           do ipol = 1,npol
+            write(iu2,'(a,i5)')'#   ipol =', ipol
+            write(iu2,'(a,i5)')'#  Energy(eV) bin   ik        kpoint (Bo        
+     .hr^-1)           band_ini band_fin Eigen_ini (eV)      Eigen_fin(e
+     .V)     Delta eigen (eV)       Transition'
 C Matrix elements for the dipolar transition are stored in Haux
 C DSP May 2010, modified call to subroutine transition_rate 
 C information wmin and wmax
@@ -566,19 +576,31 @@ C                         smooth is in Ry instead of Ha.
                           epsimg(iw,ispin) = epsimg(iw,ispin) +
      &                        2.0d0*dexp(-((ediff-w)/smooth)**2)*T/
      &                        (dsqrt(pi)*smooth)
+                          if (Node .eq. 0) then
+                            if((2.0d0*dexp(-((ediff-w)/smooth)**2)*T/
+     &                        (dsqrt(pi)*smooth)) .gt. 1.d-5) then
+                             write(iu2,'(f12.5,2i5,3f12.5,2i5,4f20.12)')      
+     &                     (wmin + (iw-1)*dw)*13.6058_dp, iw, 
+     &                     ik, kint, ie, je, 
+     &                     ekloc(ie), ekloc(je), ediff, 
+     &                     2.0d0*dexp(-((ediff-w)/smooth)**2)*T/
+     &                        (dsqrt(pi)*smooth)
+                            endif
+                          endif
                         enddo
                       endif
                     endif
-                  endif
-                enddo
-              endif
-            enddo
+                  endif    ! end check whether the two bands are separated
+                           !   by more than ediffmin
+                enddo      ! enddo je  (to which band)
+              endif        ! endif the band does not belong to this node
+            enddo          ! enddo ie  (from which band)
 C           Closing loop on polarization options
-          enddo 
+          enddo            ! enddo ipol (loop on polarization modes)
 C         Closing loop on spin orientations
-        enddo 
+        enddo              ! enddo loop ispin
 C       Closing loop on k_points
-      enddo 
+      enddo                ! enddo kpoints
 
 #ifdef MPI
       call re_alloc( epsbuff, 1, nw, 1, 2, 'epsbuff', 'optical' )
@@ -649,6 +671,8 @@ C A factor of 4 due to the integration in Ry rather than in a.u.
      &   'Optical: number of unoccupied bands have been',
      &   ' included' 
       endif
+
+      call io_close(iu2)
        
 C     This is the only exit point 
   999 continue

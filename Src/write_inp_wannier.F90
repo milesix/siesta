@@ -21,7 +21,7 @@ subroutine writemmn( ispin )
 ! based on a previous subroutine by R. Korytar
 ! 
 
-  use m_siesta2wannier90, only: seedname ! Seed for the name of the file 
+  use m_switch_local_projection, only: seedname ! Seed for the name of the file 
                                          !   where the Wannier90
                                          !   code, when used as a postprocessing
                                          !   tool, dumps the information.
@@ -48,7 +48,7 @@ subroutine writemmn( ispin )
                                          !   to the actual \vec{k} + \vec{b} 
                                          !   that we need.
                                          !   In reciprocal lattice units.
-  use m_siesta2wannier90, only: Mmnkb    ! Matrix of the overlaps of 
+  use m_switch_local_projection, only: Mmnkb    ! Matrix of the overlaps of 
                                          !   periodic parts of Bloch waves.
                                          !   <u_{m k}|u_{n k+b}>
                                          !   The first two indices refer to 
@@ -183,7 +183,7 @@ subroutine writeamn( ispin )
 ! based on a previous subroutine by R. Korytar
 ! 
 
-  use m_siesta2wannier90, only: seedname ! Seed for the name of the file 
+  use m_switch_local_projection, only: seedname ! Seed for the name of the file 
                                          !   where the Wannier90
                                          !   code, when used as a postprocessing
                                          !   tool, dumps the information.
@@ -196,9 +196,10 @@ subroutine writeamn( ispin )
                                          !   periodic part of the wavefunct
                                          !   with a neighbour k-point will
                                          !   be computed
-  use m_siesta2wannier90, only: numproj  ! Total number of projection centers,
+  use m_switch_local_projection, only: numproj  ! Total number of projection centers,
                                          !   equal to the number of MLWF
-  use m_siesta2wannier90, only: Amnmat   ! Projections of a trial function
+  use m_switch_local_projection, only: Amnmat   
+                                         ! Projections of a trial function
                                          !   with a Bloch orbital
                                          !   <\psi_{m k}|g_n>
 
@@ -301,7 +302,7 @@ subroutine writeeig( ispin )
 ! based on a previous subroutine by R. Korytar
 ! 
 
-  use m_siesta2wannier90, only: seedname  ! Seed for the name of the file 
+  use m_switch_local_projection, only: seedname  ! Seed for the name of the file 
                                           !   where the Wannier90
                                           !   code, when used as postprocessing
                                           !   tool, dumps the information.
@@ -455,7 +456,7 @@ subroutine writeunk( ispin )
   use siesta_geom,        only: na_u          ! Number of atoms in the unit cell
   use atomlist,           only: rmaxo         ! Maximum cutoff for atomic orb.
   use atomlist,           only: no_u          ! Number of orbitals in unit cell
-  use m_siesta2wannier90, only: latvec        ! Lattice vectors in real 
+  use m_switch_local_projection, only: latvec ! Lattice vectors in real 
                                               !   space
 
   use neighbour,          only: mneighb       ! Subroutine to compute the

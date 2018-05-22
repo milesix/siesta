@@ -78,8 +78,8 @@ C The different arrays declared above in the module
 C *********************************************************************
 
       use m_switch_local_projection, only : isexcluded
-      use m_siesta2wannier90, only : blocksizeincbands
-      use m_siesta2wannier90, only : nincbands_loc
+      use m_switch_local_projection, only : blocksizeincbands
+      use m_switch_local_projection, only : nincbands_loc
 
       use parallel,           only : Node, Nodes
       use parallelsubs,       only : GetNodeOrbs, LocalToGlobalOrb

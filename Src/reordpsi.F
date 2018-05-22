@@ -36,7 +36,7 @@ C k vectors in reciprocal atomic units.
 C Energies in Rydbergs.
 C *********************************************************************
       use precision, only: dp
-      use m_siesta2wannier90, only : isexcluded
+      use m_switch_local_projection, only : isexcluded
       use siesta_options,     only : lowdin_processing
       use lowdin_types,       only : manifold_bands_lowdin
       use alloc,              only : re_alloc, de_alloc
@@ -60,24 +60,12 @@ C *********************************************************************
 C**** Internal variables ***********************************************
 
       integer :: jband, jbandloc, iuo, juo, iband
-      logical, pointer :: isexcluded_tmp(:)
 
 #ifdef MPI
       integer 
      .  MPIerror, iuog, juog, n, noccloc
       real(dp), dimension(:,:,:), pointer ::  psitmp
 #endif
-
-      nullify( isexcluded_tmp )
-      call re_alloc( isexcluded_tmp, 1, nuotot, name='isexcluded_tmp', 
-     .               routine='reordpsi' )
-
-      if( index_manifold .ne. 0 ) then
-        isexcluded_tmp(:) = 
-     .    manifold_bands_lowdin(index_manifold)%isexcluded(:)
-      else
-        isexcluded_tmp(:) = isexcluded(:)
-      endif
 
 !! For debugging
 !      do iuo = 1, nuo
@@ -148,16 +136,13 @@ C**** Internal variables ***********************************************
 !     Straight serial copy
       jband = 0
       do iband = 1, nocc
-        if (.not. isexcluded_tmp(iband)) then
+        if (.not. isexcluded(iband)) then
           jband = jband + 1
           psisave(:,jband) =
      $        cmplx(psi(1,:,iband),psi(2,:,iband),kind=dp)
         endif
       enddo
 #endif
-
-      call de_alloc( isexcluded_tmp, name='isexcluded_tmp' )
-
 
       end subroutine reordpsi
 

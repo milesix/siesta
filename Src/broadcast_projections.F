@@ -14,8 +14,9 @@
 !     broadcast_basis by Alberto Garcia
 
       use trialorbitalclass        
-      use parallel,           only : Node, Nodes
-      use m_siesta2wannier90, only : numproj, projections
+      use parallel,                  only : Node, Nodes
+      use m_switch_local_projection, only : numproj
+      use m_switch_local_projection, only : projections
 
 #ifdef MPI
       use mpi_siesta

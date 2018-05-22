@@ -67,8 +67,7 @@ subroutine Mmn( ispin )
                                              ! Number of bands for wannierizatio
                                              !   after excluding bands         
                                              !   in the local node
-  use m_siesta2wannier90, only: numproj      ! Total number of projectors
-  use m_siesta2wannier90, only: bvectorsfrac ! Vectors that connect each 
+  use m_switch_local_projection, only: bvectorsfrac ! Vectors that connect each 
                                              !   mesh k-point to its 
                                              !   nearest neighbours.
   use m_switch_local_projection, only: coeffs! Coefficients of the
@@ -76,7 +75,7 @@ subroutine Mmn( ispin )
                                              !   First  index: orbital
                                              !   Second index: band
                                              !   Third  index: k-point
-  use m_siesta2wannier90, only: Mmnkb        ! Matrix of the overlaps of 
+  use m_switch_local_projection, only: Mmnkb ! Matrix of the overlaps of 
                                              !   periodic parts of Bloch waves.
                                              !   <u_{n,k}|u_{m,k+b}>
   use atomlist,           only: no_s         ! Number of orbitals in supercell
@@ -101,8 +100,6 @@ subroutine Mmn( ispin )
   use alloc,              only: de_alloc     ! Deallocation routines
   use parallel,           only: IOnode       ! Input/output node
   use m_digest_nnkp,      only: getdelkmatgenhandle
-  use m_noccbands,        only: noccupied    ! Number of occupied bands for a 
-                                             !   given spin direction
   use m_planewavematrixvar, only: delkmat    ! Matrix elements of a plane wave
                                              !   Only for one \vec{b} vector
   use m_planewavematrixvar, only: delkmatgen ! Matrix elements of a plane wave
@@ -239,7 +236,7 @@ kneighbour:                      &
         foldfrac(:) = nnfolding(:,ik,inn) * 1.0_dp
         call getkvector( foldfrac, gfold )  
 !!       For debugging
-!        if ( IOnode )
+!        if ( IOnode ) then
 !          write(6,'(a,i5,3i5,3f12.5)')         &
 ! &          'mmn: inn, gfold = ', inn, nnfolding(:,ik,inn), gfold
 !        endif
@@ -289,10 +286,10 @@ kneighbour:                      &
 ! &        'mmn: inn, handle  = ', inn, handle
 !        write(6,'(a,i5,3f12.5)')   &
 ! &        'mmn: inn, bvector = ', inn, bvector
-!!        do io = 1, maxnh
-!!          write(6,'(a,i5,2f12.5)')         &
-!! &          'mmn: io, delkmat  = ', io, delkmat(io)
-!!        enddo
+!        do io = 1, maxnh
+!          write(6,'(a,i5,2f12.5)')         &
+! &          'mmn: io, delkmat  = ', io, delkmat(io)
+!        enddo
 !      endif 
 !! End debugging
 

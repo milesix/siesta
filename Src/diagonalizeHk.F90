@@ -266,7 +266,7 @@ kpoints:                                                             &
 !!   For debugging
 !    write(6,'(a, 2i5,3f12.5)')' diagonalizeHk: ispin, ik    = ',             & 
 ! &                               ispin, ik, kvector
-!   End debugging
+!!   End debugging
 
 !!   NOTE OF CAUTION: beware when comparing the coefficients of the
 !!   wave function obtained in differente machines, specially for 
@@ -332,7 +332,7 @@ kpoints:                                                             &
       call compute_tight_binding_param( ispin, ik, index_manifold,     & 
  &                                      kvector, epsilon )
  
-      call deallocate_matrices_Lowdin
+!      call deallocate_matrices_Lowdin
 
     endif  !end if Lowdin
 

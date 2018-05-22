@@ -45,6 +45,20 @@ type trialorbital
   integer               :: mr     ! z-projection quantum number
   real(dp)              :: rcut   ! Siesta's cut-off radius: Bohr
   integer               :: lmax   ! Maximum total angular momentum
+  logical               :: from_basis_orbital = .false.  
+                                  ! Does the trial function come from one of the
+                                  !   basis orbital (.true.) or is it radial
+                                  !   part defined from the hydrogenoid 
+                                  !   functions defined in the Wannier90 
+                                  !   user guide?
+  integer               :: iorb = 0   
+                                  ! If from_basis_orbital == .true. 
+                                  !   index of the orbital within the unit cell
+                                  !   on which we are going to project
+  integer               :: iorb_gindex = 0 
+                                  ! If from_basis_orbital == .true. 
+                                  !   Returns the global index of a
+                                  !   basis orbital
 end type
 
 ! Cut-off radii in units of \alpha^-1
@@ -486,6 +500,9 @@ subroutine print_trialorb( what )
   write(*,fmt='(a,i5)')      "print_trialorb: l      = ",what%l
   write(*,'(a,1f8.3,a)')     "print_trialorb: rcut   = ",what%rcut," Bohr"
   write(*,fmt='(a,i5)')      "print_trialorb: lmax   = ",what%lmax
+  write(*,fmt='(a,l5)')      "print_trialorb: basis? = ",what%from_basis_orbital
+  write(*,fmt='(a,i5)')      "print_trialorb: orbital= ",what%iorb
+  write(*,fmt='(a,i5)')      "print_trialorb: gindex = ",what%iorb_gindex
 end subroutine print_trialorb
 
 endmodule trialorbitalclass
