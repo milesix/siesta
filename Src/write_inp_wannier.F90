@@ -139,7 +139,8 @@ subroutine writemmn( ispin )
 
       do nband = 1,numincbands(ispin)
         do mband = 1,numincbands(ispin)
-        write( unit=mmnunit, fmt="(f12.5,2x,f12.5)", err=1984 )     &
+!        write( unit=mmnunit, fmt="(f12.5,2x,f12.5)", err=1984 )     &
+        write( unit=mmnunit, fmt="(f24.16,2x,f24.16)", err=1984 )   &
  &         real(  Mmnkb(mband,nband,ik,inn) ),                      &
  &         aimag( Mmnkb(mband,nband,ik,inn) )
         enddo  ! End loop on bands      (mband)
@@ -258,7 +259,8 @@ subroutine writeamn( ispin )
   do ik = 1, numkpoints
     do iproj = 1, numproj
       do mband = 1, numincbands(ispin)
-        write(unit=amnunit,fmt="(3i5,1x,f12.5,2x,f12.5)",err=1992)      &
+!        write(unit=amnunit,fmt="(3i5,1x,f12.5,2x,f12.5)",err=1992)      &
+        write(unit=amnunit,fmt="(3i5,1x,f24.16,2x,f24.16)",err=1992)   &
  &         mband, iproj, ik,                                           &
  &         real(Amnmat(mband,iproj,ik)),aimag(Amnmat(mband,iproj,ik))
       enddo

@@ -366,6 +366,10 @@ module w90_parameters
   complex(kind=dp), allocatable, save, public :: u_matrix(:,:,:)
   complex(kind=dp), allocatable, save, public :: m_matrix(:,:,:,:)
 
+ ! RS: symmetry-adapted Wannier functions
+  logical,       public, save :: lsitesymmetry=.false.
+  real(kind=dp), public, save :: symmetrize_eps=1.d-3
+
   ! The maximum number of shells we need to satisfy B1 condition in kmesh
   integer, parameter, public :: max_shells=6
   integer, parameter, public :: num_nnmax=12

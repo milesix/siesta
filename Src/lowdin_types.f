@@ -102,6 +102,10 @@
       complex(dp), pointer, save ::   invsqrtover(:,:)
       complex(dp), pointer, save ::   coeffshatphi(:,:)
 
+      integer :: kmeshlowdin(3)      ! Number of divisions along the three
+                                     !   reciprocal lattice vectors that will be
+                                     !   used in the Lowdinn projections
+
 
 
       end module lowdin_types

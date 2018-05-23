@@ -114,6 +114,7 @@ module m_lowdin
     use parallel, only: IONode        ! Node for Input/output
     use siesta_geom,  only: ucell      ! Unit cell lattice vectors
     use lowdin_types, only: reclatvec_lowdin
+    use lowdin_types, only: kmeshlowdin
     use w90_parameters, only: mp_grid
     use w90_parameters, only: gamma_only
     use w90_parameters, only: num_kpts
@@ -131,9 +132,6 @@ module m_lowdin
 !   Internal variables
     integer :: index_manifold      ! Counter for the number of manifolds
     integer :: iorb                ! Counter for the number of atomic orbitals
-    integer :: kmeshlowdin(3)      ! Number of divisions along the three
-                                   !   reciprocal lattice vectors that will be
-                                   !   used in the Lowdinn projections
     integer :: ik                  ! Counter for loop on k-points
     integer :: ikx                 ! Counter for loop on k-points along 1-direc
     integer :: iky                 ! Counter for loop on k-points along 2-direc
@@ -1299,7 +1297,12 @@ module m_lowdin
     use m_switch_local_projection, only: bvectorsfrac
     use m_switch_local_projection, only: Mmnkb
     use m_switch_local_projection, only: Amnmat
+    use lowdin_types, only: kmeshlowdin
+    use w90_constants,  only : cmplx_i
+    use w90_constants,  only : cmplx_0
     use w90_constants,  only : cmplx_1
+    use w90_constants,  only : twopi
+    use w90_constants,  only : eps7
     use w90_parameters, only : wb
     use w90_parameters, only : bk
     use w90_parameters, only : lenconfac
@@ -1310,14 +1313,29 @@ module m_lowdin
     use w90_parameters, only : num_kpts
     use w90_parameters, only : nntot
     use w90_parameters, only : nnlist
+    use w90_parameters, only : kpt_latt
+    use w90_parameters, only : real_metric
     use w90_overlap,    only : overlap_project
 
     integer :: ispin
     integer :: index_manifold
+    integer :: idir
     integer :: nn
     integer :: n
+    integer :: n1
+    integer :: n2
+    integer :: n3
+    integer :: i1
+    integer :: i
+    integer :: j 
+    integer :: i2
+    integer :: i3
+    integer :: icnt
+    integer :: ndiff(3)
+    real(kind=dp) :: dist(125), dist_min, tot
     integer :: m
     integer :: nkp
+    integer :: ik
     integer :: iw
     integer :: ind
     integer :: iband
@@ -1325,6 +1343,17 @@ module m_lowdin
     integer :: iorb
     integer :: ix
     integer :: number_of_bands_in_manifold_local
+
+    integer              :: nrpts      !! Number of Wigner-Seitz grid points
+    integer              :: irpts      !! Counter for the Wigner-Seitz grid poin
+    integer, allocatable :: irvec(:,:) !! The irpt-th Wigner-Seitz grid point 
+                                       !!   has components irvec(1:3,irpt) 
+                                       !!   in the basis of the lattice vectors
+
+    complex(kind=dp) :: pos_r(3)
+    complex(kind=dp) :: fac
+    real(kind=dp)    :: delta
+    real(kind=dp)    :: rdotk
 
     complex(kind=dp), allocatable :: csheet(:,:,:)
     real(kind=dp),    allocatable :: sheet (:,:,:)
@@ -1363,6 +1392,8 @@ module m_lowdin
     m_matrix = cmplx(0.0_dp,0.0_dp,kind=dp)
 
     call amn( ispin )
+
+    call writeeig( ispin )
      
     u_matrix = Amnmat
 
@@ -1383,7 +1414,9 @@ module m_lowdin
        enddo 
     enddo 
 
+    write(6,*)m_matrix(1,2,1,1), u_matrix(1,2,1)
     call overlap_project()
+    write(6,*)m_matrix(1,2,1,1), u_matrix(1,2,1)
 
     do nkp = 1, numkpoints
        do nn = 1, nncount
@@ -1414,6 +1447,123 @@ module m_lowdin
 
 1000 format(2x,'WF centre ', &
          &       i5,2x,'(',f10.6,',',f10.6,',',f10.6,' )')
+
+    irpts = 0
+    do n1 = -kmeshlowdin(1), kmeshlowdin(1)
+      do n2 = -kmeshlowdin(2), kmeshlowdin(2)
+        do n3 = -kmeshlowdin(3), kmeshlowdin(3)
+          ! Loop over the 125 points R. R=0 corresponds to
+          ! i1=i2=i3=0, or icnt=63
+          icnt = 0
+          do i1 = -2, 2
+            do i2 = -2, 2
+              do i3 = -2, 2
+                icnt = icnt + 1
+                ! Calculate distance squared |r-R|^2
+                ndiff(1) = n1 - i1 * kmeshlowdin(1)
+                ndiff(2) = n2 - i2 * kmeshlowdin(2)
+                ndiff(3) = n3 - i3 * kmeshlowdin(3)
+                dist(icnt) = 0.0_dp
+                do i = 1, 3
+                  do j = 1, 3
+                    dist(icnt) = dist(icnt) +                &
+ &                    real(ndiff(i),dp) * real_metric(i,j) * real(ndiff(j),dp)
+                  enddo ! j
+                enddo   ! i
+              enddo     ! i3
+            enddo       ! i2
+          enddo         ! i1
+          dist_min = minval(dist)
+          if (abs(dist(63) - dist_min ) .lt. eps7 ) then
+            irpts = irpts + 1
+          endif 
+        enddo ! n3
+      enddo   ! n2
+    enddo     ! n1
+    nrpts = irpts
+
+    allocate(irvec(3,nrpts))
+    irvec=0
+
+    irpts = 0
+    do n1 = -kmeshlowdin(1), kmeshlowdin(1)
+      do n2 = -kmeshlowdin(2), kmeshlowdin(2)
+        do n3 = -kmeshlowdin(3), kmeshlowdin(3)
+          ! Loop over the 125 points R. R=0 corresponds to
+          ! i1=i2=i3=0, or icnt=63
+          icnt = 0
+          do i1 = -2, 2
+            do i2 = -2, 2
+              do i3 = -2, 2
+                icnt = icnt + 1
+                ! Calculate distance squared |r-R|^2
+                ndiff(1) = n1 - i1 * kmeshlowdin(1)
+                ndiff(2) = n2 - i2 * kmeshlowdin(2)
+                ndiff(3) = n3 - i3 * kmeshlowdin(3)
+                dist(icnt) = 0.0_dp
+                do i = 1, 3
+                  do j = 1, 3
+                    dist(icnt) = dist(icnt) +                &
+ &                    real(ndiff(i),dp) * real_metric(i,j) * real(ndiff(j),dp)
+                  enddo ! j
+                enddo   ! i
+              enddo     ! i3
+            enddo       ! i2
+          enddo         ! i1
+          dist_min = minval(dist)
+          if (abs(dist(63) - dist_min ) .lt. eps7 ) then
+            irpts = irpts + 1
+            irvec(1,irpts) = n1
+            irvec(2,irpts) = n2
+            irvec(3,irpts) = n3
+          endif 
+        enddo ! n3
+      enddo   ! n2
+    enddo     ! n1
+
+!!   For debugging
+!    do irpts = 1, nrpts
+!      write(6,'(a,4i5)') ' irpts, irvec = ', irpts, irvec(:,irpts)
+!    enddo 
+!!   End debugging
+
+    write(6,*)m_matrix(1,2,1,1), u_matrix(1,2,1)
+
+    do irpts = 1, nrpts
+      write(6,'(/,3i5)') irvec(:,irpts)
+      do i = 1, number_of_bands_in_manifold_local
+        do j = 1, number_of_bands_in_manifold_local
+          delta=0._dp
+          if (i==j) delta=1._dp
+          pos_r(:)=0._dp
+          do ik = 1, numkpoints
+            rdotk = twopi*dot_product(kpt_latt(:,ik),real(irvec(:,irpts),dp))
+            fac   = exp(-cmplx_i*rdotk)/real(numkpoints,dp)
+            do idir=1,3
+              do nn=1,nntot
+                if(i==j) then
+                  ! For irpts==rpt_origin, this reduces to
+                  ! Eq.(31) of Marzari and Vanderbilt PRB 56,
+                  ! 12847 (1997). Otherwise, is is Eq.(44)
+                  ! Wang, Yates, Souza and Vanderbilt PRB 74,
+                  ! 195118 (2006), modified according to
+                  ! Eqs.(27,29) of Marzari and Vanderbilt
+                  pos_r(idir) = pos_r(idir) - &
+ &                   wb(nn)*bk(idir,nn,ik)*aimag(log(m_matrix(i,i,nn,ik)))*fac
+                else
+                  ! Eq.(44) Wang, Yates, Souza and Vanderbilt 
+                  ! PRB 74, 195118 (2006)
+                  pos_r(idir) = pos_r(idir) + &
+ &                 cmplx_i*wb(nn)*bk(idir,nn,ik)*(m_matrix(j,i,nn,ik)-delta)*fac
+                endif
+              enddo ! nn
+            enddo   ! idir
+          enddo     ! ik
+          write(6,'(2i5,3x,6(e15.8,1x))') j, i, pos_r(:)
+        enddo       ! j
+      enddo         ! i
+    enddo           ! irpts
+
 
 
     deallocate( csheet )
