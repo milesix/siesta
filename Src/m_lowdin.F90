@@ -1292,6 +1292,10 @@ module m_lowdin
 
   subroutine compute_position( ispin, index_manifold )
 
+    use m_switch_local_projection, only: seedname 
+                                         ! Seed for the name of the file
+                                         !   where the matrix elements of the
+                                         !   position operator will be written.
     use m_switch_local_projection, only: nncount
     use m_switch_local_projection, only: numkpoints
     use m_switch_local_projection, only: bvectorsfrac
@@ -1360,6 +1364,20 @@ module m_lowdin
     real(kind=dp),    allocatable :: rave(:,:)
     real(kind=dp),    allocatable :: ln_tmp(:,:,:)
 
+    character(len=len_trim(seedname)+6) :: posfilename
+                                           ! Name of the file where the 
+                                           !   matrix elements of the position
+                                           !   operator will be written
+    integer      :: posunit   
+                                           ! Logical unit assigned to the file 
+                                           !   where the position matrices   
+                                           !   will be written
+    integer      :: eof
+
+    external     :: io_assign              ! Assign a logical unit
+    external     :: io_close               ! Close a logical unit
+
+
     number_of_bands_in_manifold_local =                                  &
  &        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
 
@@ -1414,9 +1432,7 @@ module m_lowdin
        enddo 
     enddo 
 
-    write(6,*)m_matrix(1,2,1,1), u_matrix(1,2,1)
     call overlap_project()
-    write(6,*)m_matrix(1,2,1,1), u_matrix(1,2,1)
 
     do nkp = 1, numkpoints
        do nn = 1, nncount
@@ -1527,10 +1543,16 @@ module m_lowdin
 !    enddo 
 !!   End debugging
 
-    write(6,*)m_matrix(1,2,1,1), u_matrix(1,2,1)
+!   Compute and write the matrix elements of the position operator
+!   Assign a name to the file where the position matrices will be written
+    posfilename = trim( seedname )// "_r.dat"
+
+!   Open the output file where the position matrices will be written
+    open( unit=posunit, err=1992, file=posfilename, status="replace", &
+ &        iostat=eof )
 
     do irpts = 1, nrpts
-      write(6,'(/,3i5)') irvec(:,irpts)
+      write(posunit,'(/,3i5)') irvec(:,irpts)
       do i = 1, number_of_bands_in_manifold_local
         do j = 1, number_of_bands_in_manifold_local
           delta=0._dp
@@ -1559,17 +1581,22 @@ module m_lowdin
               enddo ! nn
             enddo   ! idir
           enddo     ! ik
-          write(6,'(2i5,3x,6(e15.8,1x))') j, i, pos_r(:)
+          write(posunit,'(2i5,3x,6(e15.8,1x))') j, i, pos_r(:)
         enddo       ! j
       enddo         ! i
     enddo           ! irpts
 
+!   Close the output file where the position matrices will be written
+    call io_close(posunit)
 
 
     deallocate( csheet )
     deallocate( sheet  )
     deallocate( rave   )
     deallocate( ln_tmp )
+
+    return
+1992 call die("compute_position: Error writing to _r.dat file")
 
   end subroutine compute_position
 
