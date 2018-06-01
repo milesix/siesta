@@ -1634,7 +1634,7 @@ CONTAINS !---------------------------------------------------------------------
       Drght2( m11:m21, r12:r22, m13:m23, 1:ns), &
       Dleft3( m11:m21, m12:m22, l13:l23, 1:ns), &
       Drght3( m11:m21, m12:m22, r13:r23, 1:ns), &
-      myD( m11:m21, m12:m22, r13:r23, 1:ns)
+      myD( m11:m21, m12:m22, m13:m23, 1:ns)
 
   ! Variables and arrays accessed from parent subroutine:
   ! DGiDFj, myBox, myDistr, nn, nSpin, nMesh

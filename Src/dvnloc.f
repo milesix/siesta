@@ -116,15 +116,15 @@ C Internal variables ................................................
      .  io, iio, ioa, is, ispin, ix, jua, 
      .  j, jno, jo, jx, ka, ko, koa, ks, kua,
      .  nkb, nna, nno, no, nuo, nuotot, maxkba,
-     .  norb, iaorb(norb), ig, jg
+     .  norb, iaorb(norb), ig, jg, jnoold
 
       integer, dimension(:), pointer :: iano, iono
+      integer, pointer :: jo2jno(:)=>null()
 
       real(dp)
      .  Cijk, epsk, fik, rki, rmax, rmaxkb, rmaxo,prot, 
      .  Sik, Sjk, volume, dCijk(3), Htest(maxnh,nspin)
 
-      real(dp), dimension(:), pointer :: Di, Vi
       real(dp), dimension(:,:), pointer :: Ski, xno
       real(dp), dimension(:,:,:), pointer :: grSki
       real(dp), dimension(:,:), pointer :: dDi, dVi
@@ -184,38 +184,23 @@ C Find maximum range
       ! Calculate max extend
       rmax = rmaxo + rmaxkb
 
-C Initialize arrays Di and Vi only once
       no = lasto(na)
       nuotot = lasto(nua)
       call GetNodeOrbs(nuotot,Node,Nodes,nuo)
 
 C Allocate local memory
 
-      nullify( Vi )
-      call re_alloc( Vi, 1, no, 'Vi', 'dvnloc' )
-      Vi(1:no) = 0.0_dp
       nullify( listed )
       call re_alloc( listed, 1, no, 'listed', 'dvnloc' )
       listed(1:no) = .false.
       nullify( listedall )
       call re_alloc( listedall, 1, no, 'listedall', 'dvnloc' )
       listedall(1:no) = .false.
-      nullify( Di )
-      call re_alloc( Di, 1, no, 'Di', 'dvnloc' )
-      Di(1:no) = 0.0_dp
-
-      nullify(dVi)
-      call re_alloc( dVi, 1, no, 1, 3, 'dVi', 'dvnloc' )
-      dVi(1:no,1:3) = 0.0_dp
-
       nullify(dDi)
       call re_alloc( dDi, 1, no, 1, 3, 'dDi', 'dvnloc' )
       dDi(1:no,1:3) = 0.0_dp
-
-      nullify(d2Vi)
-      call re_alloc( d2Vi, 1, no, 1, 3, 1, 3, 1, nua, 
-     &              'd2Vi', 'dvnloc' )
-      d2Vi(1:no,1:3,1:3,1:nua) = 0.0_dp
+      nullify(jo2jno)
+      call re_alloc(jo2jno,1,no,'jo2jno','dvnloc')
 
       if (.not. first) then
         nullify(dynmatl) !stores local dvnloc dynamat element
@@ -339,12 +324,24 @@ C         Scatter density matrix row of orbital io
             jo = listh(listhptr(iio)+j)
             listed(jo) = .true.
           enddo
-        
+
+          nullify(dVi)
+          call re_alloc( dVi, 1, nno, 1, 3 ,'dVi', 'dvnloc' )
+          dVi = 0.0_dp
+          nullify(d2Vi)
+          call re_alloc( d2Vi, 1, nno, 1, 3, 1, 3, 1,
+     .                           nua,'d2Vi','dvnloc')
+          jo2jno(:) = 0
+
 C     Find matrix elements with other neighbour orbitals
           do jno = 1,nno
             jo = iono(jno)
             ja = iano(jno)
             jua = indxua(ja)
+            jnoold = jno
+            if (jo2jno(jo) .ne. 0)  jnoold=jo2jno(jo)
+            jo2jno(jo)=jno
+
             if ( .not. listed(jo)) CYCLE
 
 C           Loop on KB projectors
@@ -359,42 +356,42 @@ C Three cases:
 C Case A ...        
               if( kua .eq. ialr ) then
                 do ix = 1,3
-                  dVi(jo,ix) = dVi(jo,ix) 
+                  dVi(jnoold,ix) = dVi(jnoold,ix) 
      &                       - epsk*Sik*grSki(ix,ikb,jno) 
      &                       - epsk*Sjk*grSki(ix,ikb,ino)
                   do jx = 1,3
                     if(ia .ne. ka) then
-                      d2Vi(jo,ix,jx,ia) = d2Vi(jo,ix,jx,ia) -
+                      d2Vi(jnoold,ix,jx,ia) = d2Vi(jnoold,ix,jx,ia) -
      &                    epsk*gr2Ski(jx,ix,ikb,ino)*Sjk
                     endif
 
                     if((ia .ne. ka) .and. (ja .ne. ka)) then
-                      d2Vi(jo,ix,jx,ia) = d2Vi(jo,ix,jx,ia) -
+                      d2Vi(jnoold,ix,jx,ia) = d2Vi(jnoold,ix,jx,ia) -
      &                   epsk*grSki(jx,ikb,ino)*grSki(ix,ikb,jno)
                     endif
                            
                     if(ja .ne. ka) then
-                      d2Vi(jo,ix,jx,jua) = d2Vi(jo,ix,jx,jua)
+                      d2Vi(jnoold,ix,jx,jua) = d2Vi(jnoold,ix,jx,jua)
      &                    - epsk*Sik*gr2Ski(ix,jx,ikb,jno)
                     endif
                           
                     if((ja .ne. ka) .and. (ia .ne. ka)) then
-                      d2Vi(jo,ix,jx,jua) = d2Vi(jo,ix,jx,jua)
+                      d2Vi(jnoold,ix,jx,jua) = d2Vi(jnoold,ix,jx,jua)
      &                   - epsk*grSki(ix,ikb,ino)*grSki(jx,ikb,jno)
                     endif
 
                     if(ia .ne. ka) then
-                      d2Vi(jo,ix,jx,kua) = d2Vi(jo,ix,jx,kua)
+                      d2Vi(jnoold,ix,jx,kua) = d2Vi(jnoold,ix,jx,kua)
      &                   + epsk*gr2Ski(ix,jx,ikb,ino)*Sjk
                     endif
 
                     if(ja.ne.ka) then
-                      d2Vi(jo,ix,jx,kua) = d2Vi(jo,ix,jx,kua)
+                      d2Vi(jnoold,ix,jx,kua) = d2Vi(jnoold,ix,jx,kua)
      &                   + epsk*gr2Ski(ix,jx,ikb,jno)*Sik
                     endif
  
                     if((ia.ne.ka) .and. (ja .ne. ka)) then
-                      d2Vi(jo,ix,jx,kua) = d2Vi(jo,ix,jx,kua)
+                      d2Vi(jnoold,ix,jx,kua) = d2Vi(jnoold,ix,jx,kua)
      &                   + epsk*grSki(ix,ikb,ino)*grSki(jx,ikb,jno)
      &                   + epsk*grSki(jx,ikb,ino)*grSki(ix,ikb,jno)
                     endif
@@ -404,28 +401,28 @@ C Case A ...
 C Case B ...
               if(iua .eq. ialr) then
                 do ix = 1,3
-                  dVi(jo,ix) = dVi(jo,ix) +
+                  dVi(jnoold,ix) = dVi(jnoold,ix) +
      &                 epsk*Sjk*grSki(ix,ikb,ino)
                        
                   do jx = 1,3
                     if(ka.ne.ia) then
-                      d2Vi(jo,ix,jx,ia) = d2Vi(jo,ix,jx,ia) +
+                      d2Vi(jnoold,ix,jx,ia) = d2Vi(jnoold,ix,jx,ia) +
      &                      epsk*gr2Ski(ix,jx,ikb,ino)*Sjk
                     endif
 
                     if((ka .ne. ia) .and. (ka .ne. ja)) then
-                      d2Vi(jo,ix,jx,jua) = d2Vi(jo,ix,jx,jua) 
+                      d2Vi(jnoold,ix,jx,jua) = d2Vi(jnoold,ix,jx,jua) 
      &                      + epsk*grSki(ix,ikb,ino)*
      &                      grSki(jx,ikb,jno) 
                     endif
                            
                     if(ka .ne. ia) then
-                      d2Vi(jo,ix,jx,kua) = d2Vi(jo,ix,jx,kua)
+                      d2Vi(jnoold,ix,jx,kua) = d2Vi(jnoold,ix,jx,kua)
      &                    - epsk*gr2Ski(ix,jx,ikb,ino)*Sjk
                     endif
                            
                     if((ia .ne. ka) .and. (ja .ne. ka)) then
-                      d2Vi(jo,ix,jx,kua) = d2Vi(jo,ix,jx,kua)
+                      d2Vi(jnoold,ix,jx,kua) = d2Vi(jnoold,ix,jx,kua)
      &                     - epsk*grSki(ix,ikb,ino)*
      &                       grSki(jx,ikb,jno)
                     endif
@@ -435,27 +432,27 @@ C Case B ...
 C Case C ...
               if( jua .eq. ialr) then
                 do ix = 1, 3
-                  dVi(jo,ix) = dVi(jo,ix) +
+                  dVi(jnoold,ix) = dVi(jnoold,ix) +
      &                         epsk*Sik*grSki(ix,ikb,jno)
 
                   do jx = 1, 3
                     if((ia.ne.ka).and.(ja.ne.ka)) then
-                      d2Vi(jo,ix,jx,ia) = d2Vi(jo,ix,jx,ia)
+                      d2Vi(jnoold,ix,jx,ia) = d2Vi(jnoold,ix,jx,ia)
      &                  + epsk*grSki(jx,ikb,ino)*grSki(ix,ikb,jno)
                     endif
 
                     if((ja.ne.ka)) then
-                      d2Vi(jo,ix,jx,jua) = d2Vi(jo,ix,jx,jua)
+                      d2Vi(jnoold,ix,jx,jua) = d2Vi(jnoold,ix,jx,jua)
      &                   + epsk*gr2Ski(ix,jx,ikb,jno)*Sik
                     endif
 
                     if( (ja.ne.ka) ) then
-                      d2Vi(jo,ix,jx,kua) = d2Vi(jo,ix,jx,kua)
+                      d2Vi(jnoold,ix,jx,kua) = d2Vi(jnoold,ix,jx,kua)
      &                   - epsk*gr2Ski(jx,ix,ikb,jno)*Sik
                     endif
 
                     if((ka.ne.ia).and.(ka.ne.ja))then
-                      d2Vi(jo,ix,jx,kua) = d2Vi(jo,ix,jx,kua)
+                      d2Vi(jnoold,ix,jx,kua) = d2Vi(jnoold,ix,jx,kua)
      &                  - epsk*grSki(jx,ikb,ino)*grSki(ix,ikb,jno)
                     endif
                   enddo !jx loop
@@ -477,6 +474,8 @@ C Computing dynmat terms ------------------------------------------------
               endif 
 C------------------------------------------------------------------------
             enddo !ko loop
+            dVi(jno,:) = dVi(jnoold,:)
+            d2Vi(jno,:,:,:) = d2Vi(jnoold,:,:,:)
           enddo !jno loop
 
 C         Pick up contributions to H and restore Di and Vi
@@ -485,22 +484,28 @@ C         Pick up contributions to H and restore Di and Vi
             jo = listh(ind)
             ja = iaorb(jo)
             jua = indxua(ja)
+            jno=jo2jno(jo)
+            listed(jo) = .false.
+            dDi(jo,:) = 0.d0
+
+            if (jno.eq.0) cycle
+
             do ispin = 1,nspin
               do ix = 1,3
                 dHMAT(ind,ix,ispin) = dHMAT(ind,ix,ispin)
-     &                                    + dVi(jo,ix)
+     &                                    + dVi(jno,ix)
 C Computing dynmat terms ------------------------------------------------
                 if(.not.first) then
                   do jx = 1, 3
                     dynmatl(jx,ia,ix,ialr) = dynmatl(jx,ia,ix,ialr)
-     &                            - d2Vi(jo,ix,jx,ia)*dscf(ind,ispin)
+     &                            - d2Vi(jno,ix,jx,ia)*dscf(ind,ispin)
                     if((ja.ne.ia).and.(ja.ne.ka)) then
                        dynmatl(jx,jua,ix,ialr) = dynmatl(jx,jua,ix,ialr)
-     &                            - d2Vi(jo,ix,jx,jua)*dscf(ind,ispin)
+     &                            - d2Vi(jno,ix,jx,jua)*dscf(ind,ispin)
                     endif
                     if( (ka.ne.ia) ) then
                        dynmatl(jx,kua,ix,ialr) = dynmatl(jx,kua,ix,ialr)
-     .                             - d2Vi(jo,ix,jx,kua)*dscf(ind,ispin)
+     .                             - d2Vi(jno,ix,jx,kua)*dscf(ind,ispin)
                         !this is ok
                     endif
                   enddo
@@ -508,17 +513,14 @@ C Computing dynmat terms ------------------------------------------------
 C------------------------------------------------------------------------
               enddo !ix loop
             enddo !ispin loop
-            listed(jo) = .false.
-            dVi(jo,:) = 0.d0
-            dDi(jo,:) = 0.d0
-            d2Vi(jo,:,:,ia) = 0.d0
-            d2Vi(jo,:,:,jua) = 0.d0
-            d2Vi(jo,:,:,kua) = 0.d0
+            dVi(jno,:) = 0.d0
+            d2Vi(jno,:,:,ia) = 0.d0
+            d2Vi(jno,:,:,jua) = 0.d0
+            d2Vi(jno,:,:,kua) = 0.d0
           enddo !j loop
-          do j = 1,numd(iio)
-            jo = listd(listdptr(iio)+j)
-            Di(jo) = 0.0d0
-          enddo
+          call de_alloc( dVi, 'dVi', 'dvnloc')
+          call de_alloc( d2Vi, 'd2Vi', 'dvnloc')
+          jo2jno(:) = 0
         enddo !ino loop
       enddo !ka loop
     
@@ -553,12 +555,9 @@ C     Deallocate local memory
       call de_alloc( iano, 'iano', 'dvnloc' )
       call de_alloc( listedall, 'listedall', 'dvnloc' )
       call de_alloc( listed, 'listed', 'dvnloc' )
-      call de_alloc( Vi, 'Vi', 'dvnloc' )
-      call de_alloc( Di, 'Di', 'dvnloc' )
-      call de_alloc( dVi, 'dVi', 'dvnloc' )
       call de_alloc( dDi, 'dDi', 'dvnloc' )
-      call de_alloc( d2Vi, 'd2Vi', 'dvnloc' )
       call de_alloc( gr2Ski, 'gr2Ski', 'dvnloc' )
+      call de_alloc(jo2jno, 'jo2jno', 'dvnloc')
 
       if (.not.first) then
         call de_alloc( dynmatl, 'dynmatl', 'dvnloc' )

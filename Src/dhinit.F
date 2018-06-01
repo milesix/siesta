@@ -108,11 +108,6 @@ C Build global numh
         call re_alloc(DHMAT0,1,maxnh,1,3,1,nspin,
      &               name='DHMAT0',routine='dhinit')
         DHMAT0(:,:,:)=0.0_dp
-
-        nullify(Daux)
-        call re_alloc(Daux, 1, maxnumh, name='Daux',
-     &               routine= 'dhinit' )
-        Daux(:)=0.0_dp
       endif
 #endif
 

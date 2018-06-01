@@ -200,13 +200,12 @@ C Globalize dDscf and dEscf for each spin component into dDaux
           endif
 #endif
         enddo
-
         do io = 1, nuotot
           iuo = indxuo(io) !EHKEHK
           IALR = iaorb(iuo)
 
 C       Invert the neighb list
-          index(1:nuotot) = 0
+          index(:) = 0
           do in = 1,numhg(iuo)
             ind = listhptrg(iuo) + in
             jo = listsc(io,iuo,listhg(ind))
@@ -218,7 +217,6 @@ C       Invert the neighb list
             enddo              
           enddo
 C         ---
-
 C       Loop over neighb orbs
           do j = 1, numhg(iuo)
             ind = listhptrg(iuo) + j

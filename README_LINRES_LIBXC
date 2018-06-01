@@ -5,9 +5,9 @@ Minimal compilation and linking instruccions for use LIBXC in a Linres calculati
 
 2) Install Libxc following the information provided by the authors. Basically:
     1-cd to the directory containing the package's source
-    2- ./configure --prefix=/destination/folder/installation 
+    2- ./configure --prefix=/destination/folder/installation CC=c_compiler FC=fortran_compiler 
     3-  make, make check, make install 
-(Read the INSTALL file for further options and specific configuration)
+(Read the LIBXC INSTALL file for further options and specific configuration)
 
 3) The SIESTA arch.make contains several lines related to Libxc:
    ###ADD LIBXC STUFF
@@ -27,7 +27,7 @@ Minimal compilation and linking instruccions for use LIBXC in a Linres calculati
 HOW TO USE LIBXC IN A SIESTA (OR) LINRES CALCULATION
 ==================================================================================
 Siesta can use ONLY all the LDA and GGA XC-potentials included in the LIBXC library
-Linres uses LIBXC to obtain the second energy (EXC) derivatives (respecto to density and density gradient) to compute the perturbed potential. Thus, Linres can use ONLY LDA and GGA XC-potentials.
+Linres uses LIBXC to obtain the second energy (EXC) derivatives (respect to density and density gradient) to compute the perturbed potential. Thus, Linres can use ONLY LDA and GGA XC-potentials.
 
 Examples: define in the .fdf file blocks like this (in the most general form, EX and EC from different authors):
 

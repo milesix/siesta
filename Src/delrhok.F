@@ -383,7 +383,7 @@ C        Find out the degenerated subespaces ------------------------
               call re_alloc(Hauxden, 1, 2, 1, numb(io), 1, numb(io),
      &                       'Hauxden', 'delrhok')
               call re_alloc(HauxdenL, 1, 2, 1, numb(io), 1, numb(io),
-     &                       'Hauxden', 'delrhok')
+     &                       'HauxdenL', 'delrhok')
               call re_alloc(Sauxden, 1, 2, 1, numb(io), 1, numb(io),
      &                       'Sauxden', 'delrhok')
 

@@ -13,7 +13,7 @@
 # Remove implicit rules
 .SUFFIXES:
 
-VPATH=/home/likewise-open/ICN/sillera/Desktop/SiestaTrunk/linres-parallel/linres-parallel/Src
+VPATH=.
 
 # Default compiler variables
 AR ?= ar
@@ -678,7 +678,7 @@ delk.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o
 delk.o: m_planewavematrixvar.o mesh.o meshdscf.o meshphi.o parallel.o
 delk.o: parallelsubs.o precision.o siesta_geom.o
 delrho.o: alloc.o parallelsubs.o parallel.o precision.o densematrix.o
-delrhog.o: alloc.o precision.o parallel.o parallelsubs.o
+delrhog.o: alloc.o precision.o parallel.o parallelsubs.o diag_option.o
 delrhok.o: alloc.o precision.o parallel.o parallelsubs.o sys.o diag_option.o
 delrhokp.o: alloc.o parallel.o parallelsubs.o precision.o sys.o
 denmat.o: alloc.o globalise.o m_mpi_utils.o onmod.o precision.o

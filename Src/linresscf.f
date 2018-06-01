@@ -426,7 +426,7 @@ C-------------------------------------------------------------------------
       if (IOnode) then
 
         print *, '----- COMPLETE DYNAMICAL MATRIX -----'
-        print *,'Beta:',';','xyz',';','Alpha',';','xyz',';','dynmat'
+        print *,'xyz',';','Beta',';','xyz',';','Alpha',';','dynmat'
         do ialr = IAI, IAF
           do ix = 1,3
             do j = 1, na_u

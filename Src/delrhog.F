@@ -45,6 +45,7 @@ C **********************************************************************
       use parallel,      only: Node, Nodes, BlockSize
       use parallelsubs,  only: GlobalToLocalOrb, LocalToGlobalOrb,
      &                         WhichNodeOrb, GetNodeOrbs
+      use m_diag_option, only: diag_set_serial, diag_set_parallel
 
 #ifdef MPI
       use m_mpi_utils,  only : broadcast, Globalize_sum
@@ -280,9 +281,12 @@ C     Internal Variables
               call Globalize_sum(HauxL,Haux) !Haux is in all nodes (equal value)
 #endif             
               ! Compute eigenvalues of dH_nn' to give dE_in
+              call diag_set_serial()
               call rdiag( Haux, Saux, numb(io), numb(io),numb(io),
      .             evper(io-numb(io)+1), psiden,numb(io),iscf,ierror,
      .             BlockSize)
+              call diag_set_parallel()
+
               if (ierror.ne.0) then
                 call die('DELRHOG: Terminating due to failed
      &                   deg- diagonalisation')
