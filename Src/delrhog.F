@@ -446,10 +446,6 @@ C Calculate matrix elements of the perturbed Density Matrix
 ! Sum over all nodes (the bands)
 ! The final sum is already distributed, so, is GLOBAL.
 
-! Do it in serial (just copy)
-        rhoper(:) = Daux(:)
-        erhoper(:) = DEaux(:)
-
 #ifdef MPI
         if (Nodes .gt.1 ) then
           call re_alloc(rhoperg,1,maxnhg,'rhoperg','delrhog')
@@ -477,6 +473,10 @@ C Calculate matrix elements of the perturbed Density Matrix
           rhoper(:) = Daux(:)
           erhoper(:) = DEaux(:)
         endif
+#else
+! Do it in serial (just copy)
+        rhoper(:) = Daux(:)
+        erhoper(:) = DEaux(:)
 #endif
 
       call de_alloc(Daux)
