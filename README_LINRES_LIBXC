@@ -7,7 +7,9 @@ Minimal compilation and linking instruccions for use LIBXC in a Linres calculati
     1-cd to the directory containing the package's source
     2- ./configure --prefix=/destination/folder/installation CC=c_compiler FC=fortran_compiler 
     3-  make, make check, make install 
-(Read the LIBXC INSTALL file for further options and specific configuration)
+
+(Read the LIBXC INSTALL file for further options and specific configuration
+HINT: in the new LIBXC versions you have to use the autoconf utility to generate the configure executable)
 
 3) The SIESTA arch.make contains several lines related to Libxc:
    ###ADD LIBXC STUFF

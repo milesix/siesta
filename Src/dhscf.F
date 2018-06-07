@@ -696,7 +696,7 @@ C Linres optional variables-------------------------------------------------
 
       real(dp), intent(inout),optional :: dynmat(3,nua,3,nua),
      &                                    dHmat0(maxnh,3,nspin),
-     &                                    dHmat(maxnh,3,nspin)
+     &                                    dHmat(maxnh,nspin,3)
 
 C---------------------------------------------------------------------------
 
@@ -1918,9 +1918,9 @@ C Compute gradient/derivative of the partial core correction density
 
 ! Allocate variables which are stored in linres_matrices 
 ! (UNIFORM distribution)
-          call re_alloc(dRhoscf0,1,3,1,ntpl,1,nspin,
+          call re_alloc(dRhoscf0,1,ntpl,1,nspin,1,3,
      &                                'dRhoscf0','linres_matrices')
-          call re_alloc(dRhoatm,1,3,1,ntpl,'dRhoatm','linres_matrices')
+          call re_alloc(dRhoatm,1,ntpl,1,3,'dRhoatm','linres_matrices')
           dRhoscf0 = 0.0_dp 
           dRhoatm = 0.0_dp 
 
@@ -1931,10 +1931,10 @@ C Compute gradient/derivative of the partial core correction density
 
 ! Par dummy variables in QUADRATIC distribution
           nullify(dRhoscf0_par)
-          call re_alloc(dRhoscf0_par,1,3,1,ntpl,1,nspin,
+          call re_alloc(dRhoscf0_par,1,ntpl,1,nspin,1,3,
      &                                'dRhoscf0_par','dhscf')
           nullify(dRhoatm_par)
-          call re_alloc(dRhoatm_par,1,3,1,ntpl,
+          call re_alloc(dRhoatm_par,1,ntpl,1,3,
      &                                 'dRhoatm_par','dhscf')
 
           call dfscf2(norb, nmpl, dvol, nspin, maxnd,
@@ -1956,15 +1956,15 @@ C Compute gradient/derivative of the partial core correction density
 
           do ispin = 1, nspin
             do jx =1,3
-              fsrc =>dRhoscf0_par(jx,:,ispin)
-              fdst =>dRhoscf0(jx,:,ispin)
+              fsrc =>dRhoscf0_par(:,ispin,jx)
+              fdst =>dRhoscf0(:,ispin,jx)
               call distMeshData( QUADRATIC, fsrc,
      &                    UNIFORM, fdst, TO_SEQUENTIAL )
             enddo
           enddo 
           do jx = 1,3
-            fsrc => dRhoatm_par(jx,:)
-            fdst => dRhoatm(jx,:)
+            fsrc => dRhoatm_par(:,jx)
+            fdst => dRhoatm(:,jx)
             call distMeshData( QUADRATIC, fsrc,
      &                      UNIFORM, fdst, TO_SEQUENTIAL )
           enddo
@@ -2065,10 +2065,10 @@ C       Set the UNIFORM distribution again and copy DRho_par to dRhoscf
           call de_alloc( dRho_par, 'dRho_par','dhscf' )
 
           if (present(dHmat0)) then !gradient case
-            dRhoscf(1:ntpl,1:nspin) = dRhoscf0(jx,1:ntpl,1:nspin)
+            dRhoscf(1:ntpl,1:nspin) = dRhoscf0(1:ntpl,1:nspin,jx)
           else !perturbed case: add rhoofd to dfscf2
             dRhoscf(1:ntpl,1:nspin) = dRhoscf(1:ntpl,1:nspin) +
-     &                     dRhoscf0(jx,1:ntpl,1:nspin)
+     &                     dRhoscf0(1:ntpl,1:nspin,jx)
           endif
 C-----------------------------------------------------------------------------
 
@@ -2084,7 +2084,7 @@ C         atomic densities
           do ispin = 1 , nsd
             do ip = 1, ntpl
               dRhoscf(ip,ispin) = dRhoscf(ip,ispin) -
-     &                       dRhoatm(jx,ip) * rnsd
+     &                       dRhoatm(ip,jx) * rnsd
             end do
           end do
 !$OMP end do ! implicit barrier KEEP
@@ -2140,7 +2140,7 @@ C------------------------------------------------------------------------
              do ispin = 1,nsd
                 do ip = 1,ntpl
                    dRhoscf(ip,ispin) = dRhoscf(ip,ispin) +
-     &                  (drhopcc(ip,jx) + dRhoatm(jx,ip)) * rnsd
+     &                  (drhopcc(ip,jx) + dRhoatm(ip,jx)) * rnsd
                 end do
              end do
 !$OMP end do
@@ -2149,7 +2149,7 @@ C------------------------------------------------------------------------
              do ispin = 1,nsd
                 do ip = 1,ntpl
                    dRhoscf(ip,ispin) = dRhoscf(ip,ispin) +
-     &                  dRhoatm(jx,ip) * rnsd
+     &                  dRhoatm(ip,jx) * rnsd
                 end do
              end do
 !$OMP end do
@@ -2202,7 +2202,7 @@ C Calculate the total perturbed Hamiltonian
          call timer('vmat-LR',1)
 
          call vmat( norb, nmpl, dvol, spin, VLR_par,
-     &         maxnd, numd, listdptr, listd, dHmat(:,jx,:),
+     &         maxnd, numd, listdptr, listd, dHmat(:,:,jx),
      &         nuo, nuotot, iaorb, iphorb, isa)
 
          call timer('vmat-LR',2)
@@ -2238,7 +2238,7 @@ C------------------------------------------------------------------------
                do ispin = 1, nsd
                   do ip = 1, ntpl
                      dRhoscf(ip,ispin) = dRhoscf(ip,ispin) -
-     &                    (drhopcc(ip,jx) + dRhoatm(jx,ip)) * rnsd
+     &                    (drhopcc(ip,jx) + dRhoatm(ip,jx)) * rnsd
                   end do
                end do
 !$OMP end do nowait
@@ -2256,7 +2256,7 @@ C------------------------------------------------------------------------
                do ispin = 1, nsd
                   do ip = 1, ntpl
                      dRhoscf(ip,ispin) = dRhoscf(ip,ispin) -
-     &                    dRhoatm(jx,ip) * rnsd
+     &                    dRhoatm(ip,jx) * rnsd
                   end do
                end do
 !$OMP end do nowait

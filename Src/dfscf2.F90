@@ -69,8 +69,8 @@
   real(dp)                    :: dvol
 
   real(dp),        intent(in) :: datm(no), Dscf(maxnd,nspin)
-  real(grid_p), intent(out) :: Drhoatm(3,nsp,np),&
-                                 Drhoscf0(3,nsp,np,nspin) 
+  real(grid_p), intent(out) :: Drhoatm(nsp,np,3),&
+                                 Drhoscf0(nsp,np,nspin,3) 
 ! Internal variables and arrays
   integer,          parameter :: minloc = 1000,&  ! Min buffer size
                                  maxoa  = 100   ! Max # of orb/atom
@@ -187,8 +187,8 @@
   do ip = 1,np
 
 ! Initializations
-   Drhoatm(:,:,ip) = 0.0_grid_p
-   Drhoscf0(:,:,ip,:) = 0.0_grid_p
+   Drhoatm(:,ip,:) = 0.0_grid_p
+   Drhoscf0(:,ip,:,:) = 0.0_grid_p
 
 ! Find number of nonzero orbitals at this point
     nc = endpht(ip) - endpht(ip-1)
@@ -308,7 +308,7 @@
 ! Calculate atomic density =  2* sum_mu Datm*phi_mu * grad phi_mu
         do isp = 1,nsp
           do ix = 1,3
-            Drhoatm(ix,isp,ip) = Drhoatm(ix,isp,ip) &
+            Drhoatm(isp,ip,ix) = Drhoatm(isp,ip,ix) &
            + 2.0_dp * Datm(iu) * Clocal(isp,ic) * dClocal(ix,isp,ic)
           enddo
         enddo
@@ -320,7 +320,7 @@
           do ispin = 1,nspin
             do isp = 1,nsp
               do ix=1,3
-                  Drhoscf0(ix,isp,ip,ispin) = Drhoscf0(ix,isp,ip,ispin) &
+                  Drhoscf0(isp,ip,ispin,ix) = Drhoscf0(isp,ip,ispin,ix) &
                +2.0_dp*D(ijl,ispin)*Clocal(isp,ic) * dClocal(ix,isp,jc) &
                +2.0_dp*D(jil,ispin)*Clocal(isp,jc) * dClocal(ix,isp,ic)
               enddo !ix
@@ -332,7 +332,7 @@
         do ispin = 1,nspin
           do isp = 1,nsp
             do ix=1,3
-                Drhoscf0(ix,isp,ip,ispin) = Drhoscf0(ix,isp,ip,ispin) &
+                Drhoscf0(isp,ip,ispin,ix) = Drhoscf0(isp,ip,ispin,ix) &
               + 2.0_dp*D(ijl,ispin)*Clocal(isp,ic) * dClocal(ix,isp,ic)
             enddo !ix
           enddo !nsp
@@ -362,7 +362,7 @@
 ! Calculate atomic density =  2* sum_mu Datm*phi_mu * grad phi_mu
         do isp=1,nsp
           do ix=1,3
-            Drhoatm(ix,isp,ip) = Drhoatm(ix,isp,ip) &
+            Drhoatm(isp,ip,ix) = Drhoatm(isp,ip,ix) &
            + 2.0_dp * Datm(iu) * Clocal(isp,ic) * dClocal(ix,isp,ic)
           enddo
         enddo
@@ -374,7 +374,7 @@
           do ispin = 1,nspin
             do isp = 1,nsp
               do jx=1,3
-                  Drhoscf0(jx,isp,ip,ispin) = Drhoscf0(jx,isp,ip,ispin) &
+                  Drhoscf0(isp,ip,ispin,jx) = Drhoscf0(isp,ip,ispin,jx) &
                +2.0_dp*D(ijl,ispin)*Clocal(isp,ic) * dClocal(jx,isp,jc) &
                +2.0_dp*D(jil,ispin)*Clocal(isp,jc) * dClocal(jx,isp,ic) 
               enddo !ix
@@ -386,7 +386,7 @@
         do ispin = 1,nspin
           do isp = 1,nsp
             do ix=1,3
-                Drhoscf0(ix,isp,ip,ispin) = Drhoscf0(ix,isp,ip,ispin) &
+                Drhoscf0(isp,ip,ispin,ix) = Drhoscf0(isp,ip,ispin,ix) &
               + 2.0_dp*D(ijl,ispin)*Clocal(isp,ic) * dClocal(ix,isp,ic)
             enddo !ix
           enddo !nsp

@@ -375,12 +375,14 @@ C     Add non-local potential and kinetic part contributions to dynmat---
 C     (the terms that depend on the perturbed density and the ones that 
 C     do not depend)
 C     Note that first_LR now is false
+C     The dHmat0 argument now is not needed, to respect the dimensions lets use
+C     dHmat0 (dummy argument)
 
        call dvnloc(scell, na_u, na_s, isa, xa, indxua, Dscf,
      &      maxnh, maxnh, lasto, lastkb, iphorb,
      &      iphKB, numh, listhptr, listh, numh,
      &      listhptr, listh, min(nspin,2), IALR,
-     &      no_s, iaorb, dDscf, dHmat, dynmat, first_LR)
+     &      no_s, iaorb, dDscf, dHmat0, dynmat, first_LR) 
 
 C     Add kinetic and ovelap contributions to dynmat -----------------
        call ddsmat(dH, dS, d2H, d2S, nspin, no_s, no_u, na_s, na_u,

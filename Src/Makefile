@@ -676,7 +676,7 @@ ddsmat.o: alloc.o listsc.o parallel.o parallelsubs.o precision.o
 debugmpi.o: parallel.o
 delk.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o
 delk.o: m_planewavematrixvar.o mesh.o meshdscf.o meshphi.o parallel.o
-delk.o: parallelsubs.o precision.o siesta_geom.oi
+delk.o: parallelsubs.o precision.o siesta_geom.o
 delrho.o: alloc.o densematrix.o diag_option.o parallel.o parallelsubs.o
 delrho.o: precision.o
 delrhog.o: alloc.o diag_option.o m_mpi_utils.o parallel.o parallelsubs.o
