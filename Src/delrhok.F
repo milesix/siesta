@@ -890,8 +890,8 @@ C        Compute the change in density matrix elements -------------
             call re_alloc(Hauxden, 1, 2, 1, maxo, 1, maxo,
      &                       'Hauxden', 'delrhok')
 
-            Saux = 0.0_dp
-            Haux = 0.0_dp
+            Sauxden = 0.0_dp
+            Hauxden = 0.0_dp
             do 550 i = 1, nuo
               call LocalToGlobalOrb(i,Node,Nodes,io)
               qio = qO(io,ispin,ik)
@@ -948,7 +948,7 @@ C        Compute the change in density matrix elements -------------
               Psiden(:,:,:) = hauxden(:,:,:) !just copy
               HauxdenL(:,:,:) = Sauxden(:,:,:)
 #endif
-            call de_alloc(hauxden)
+            call de_alloc(Hauxden)
             call de_alloc(Sauxden)
 
 !Psiden and HauxdenL are already global

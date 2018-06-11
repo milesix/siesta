@@ -197,7 +197,7 @@ C Globalse listh
 C     Create new distribution of H and S
       nuog = nuotot
       nullify(Snew,Hnew,xijloc)
-      call re_alloc( Snew, 1, maxnhg, name='listhg',
+      call re_alloc( Snew, 1, maxnhg, name='Snew',
      &               routine= 'diagkp' )
       call re_alloc( Hnew, 1, maxnhg, 1, nspin, name='Hnew',
      &               routine= 'diagkp' )

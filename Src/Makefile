@@ -683,7 +683,7 @@ delrhog.o: alloc.o diag_option.o m_mpi_utils.o parallel.o parallelsubs.o
 delrhog.o: precision.o
 delrhok.o: alloc.o diag_option.o files.o m_mpi_utils.o parallel.o
 delrhok.o: parallelsubs.o precision.o
-delrhokp.o: alloc.o files.o parallel.o parallelsubs.o precision.o sys.o
+delrhokp.o: alloc.o files.o parallel.o parallelsubs.o precision.o sys.o m_mpi_utils.o
 denmat.o: alloc.o globalise.o m_mpi_utils.o onmod.o precision.o
 denmatlomem.o: alloc.o globalise.o onmod.o precision.o
 densematrix.o: alloc.o precision.o

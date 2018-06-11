@@ -16,7 +16,7 @@ HINT: in the new LIBXC versions you have to use the autoconf utility to generate
    #LIBXC_ROOT=points to your libxc installation path
    LIBXC_ROOT=
    LIBXC_INCFLAGS= -I $(LIBXC_ROOT)/include
-   LIBXC_LIBS=-L$(LIBXC_ROOT)/lib -l xcf90 -l xc
+   LIBXC_LIBS=-L$(LIBXC_ROOT)/lib -lxcf90 -lxc
    #LIBXC_INCFLAGS= 
    USE_LIBXC=1
 
