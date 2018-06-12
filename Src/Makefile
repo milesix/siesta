@@ -250,6 +250,8 @@ OBJS += m_iterator.o m_pivot_array.o
 OBJS += dm_charge.o
 
 OBJS += grimme_dispersion_m.o
+# Bulk-bias codes
+OBJS += velocity_shift.o diagkp_velocity.o
 
 # Pivot (of sparsity pattern) routines
 OBJS += m_pivot.o m_pivot_methods.o

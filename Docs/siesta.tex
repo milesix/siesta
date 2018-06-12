@@ -9795,6 +9795,44 @@ or interpolation of bands), can be downloaded from
 \end{fdfentry}
 
 
+\subsubsection{Bulk current}
+
+\siesta\ enables a crude way of calculating a bulk current. The basic
+principle may be understood from basic condensed matter physics by
+filling all right-moving states up to $E_F + V/2$ and emptying all
+left-moving states down to $E_F - V/2$. This can be used to create
+electrodes with a net-current flowing.
+
+\begin{fdfentry}{BulkBias!V}[energy]<$0.\,\mathrm{eV}$>
+  \fdfdepend{BulkBias!Direction}
+
+  The applied bias shift in the band-structure. All right-moving
+  states will be shifted halve this value down in energy, while
+  all left-moving states will be shifted halve this value up in energy.
+
+\end{fdfentry}
+
+\begin{fdfentry}{BulkBias!Direction}[block]
+  \fdfdepend{BulkBias!Tolerance}
+
+  The direction in which the electrons are moving. All electrons having
+  velocities with a positive projection onto this direction are
+  considered ``right-movers'' while all having a negative projection
+  are considered ``left-movers''.
+
+\end{fdfentry}
+
+\begin{fdfentry}{BulkBias!Tolerance}[real]<$10^{-8}$>
+
+  The tolerance used for determining whether the velocity projection
+  is positive or negative. States with projections below this tolerance
+  value will not be shifted.
+
+  This value may be regarded as the velocity in atomic units and thus
+  having a larger value will only shift eigenstates with higher
+  velocities projected onto the potential-direction.
+
+\end{fdfentry}
 
 
 \subsection{Output of charge densities and potentials on the grid}

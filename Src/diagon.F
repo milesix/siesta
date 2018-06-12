@@ -116,6 +116,7 @@ C
       use mpi_siesta
 #endif
       use siesta_options, only: diag_wfs_cache
+      use m_velocity_shift, only: use_velocity_shift
 
       implicit none
 
@@ -201,11 +202,13 @@ C     Check internal dimensions ..........................................
       endif
 
       call allocDenseMatrix(nhs, nhs, npsi)
+      if ( use_velocity_shift .and. .not. ParallelOverK ) then
+        call die('diagon: Velocity-shift requires ParallelOverK')
+      end if
 
 C Allocate local arrays
       nullify(aux)
       call re_alloc( aux,  1, naux, 'aux',  'diagon' )
-
 
 C Call apropriate routine
       getD = .true.
@@ -222,13 +225,22 @@ C Call apropriate routine
        else
 #ifdef MPI
         if (ParallelOverK) then
-          call diagkp( spin%H, nuo, no, nspin, maxnh,
-     .              maxnd, maxo, numh,
-     .              listhptr, listh, H, S, getD, fixspin, qtot, qs,
-     .              temp, e1, e2, xij, indxuo, nk, kpoint, wk,
-     .              eo, qo, Dnew, Enew, ef, efs, Entropy,
-     .              Haux, Saux, psi, Haux, Saux, aux, 
-     .              nuotot, occtol, iscf, neigwanted )
+          if ( use_velocity_shift ) then
+            call diagkp_velocity( spin, maxuo, nuotot, no,
+     .          maxnh, numh, listhptr, listh, H, S, getD,
+     .          fixspin, qtot, qs, temp, e1, e2, xij, indxuo,
+     .          nk, kpoint, wk,
+     .          eo, qo, Dnew, Enew, Ef, Efs, Entropy,
+     .          Haux, Saux, psi, aux, occtol, iscf, neigwanted)
+          else
+            call diagkp( spin%H, nuo, no, nspin, maxnh,
+     .          maxnd, maxo, numh,
+     .          listhptr, listh, H, S, getD, fixspin, qtot, qs,
+     .          temp, e1, e2, xij, indxuo, nk, kpoint, wk,
+     .          eo, qo, Dnew, Enew, ef, efs, Entropy,
+     .          Haux, Saux, psi, Haux, Saux, aux, 
+     .          nuotot, occtol, iscf, neigwanted )
+          end if
         else
 #endif
 #ifndef CDF
