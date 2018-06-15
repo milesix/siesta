@@ -125,6 +125,11 @@ module m_switch_local_projection
                                          ! Projections of a trial function
                                          !   with a Bloch orbital
                                          !   <\psi_{m k}|g_n>
+  complex(dp), pointer :: Amnmat_man(:,:,:,:) => null() 
+                                         ! Projections of a trial function
+                                         !   with a Bloch orbital
+                                         !   <\psi_{m k}|g_n>
+
 
 !
 ! Variables related with the input/output files

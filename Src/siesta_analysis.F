@@ -59,6 +59,9 @@
       use m_iodm_old,        only: read_spmatrix
       use m_siesta2wannier90, only: siesta2wannier90
       use m_switch_local_projection, only: switch_local_projection
+      use m_switch_local_projection, only: Amnmat_man
+      use lowdin_types,      only: numkpoints_lowdin
+      use lowdin_types,      only: manifold_bands_lowdin
       use m_lowdin,          only: read_lowdin_specs
       use m_lowdin,          only: setup_Lowdin
       use m_lowdin,          only: compute_position
@@ -503,6 +506,16 @@ C
       if( lowdin_processing ) then
         call read_lowdin_specs()
         call setup_Lowdin
+        call re_alloc( Amnmat_man,              
+     &                 1, n_lowdin_manifolds,                                         
+     &                 1, manifold_bands_lowdin(1)%number_of_bands + 
+     &                    manifold_bands_lowdin(2)%number_of_bands,        
+     &                 1, manifold_bands_lowdin(1)%number_of_bands + 
+     &                    manifold_bands_lowdin(2)%number_of_bands, 
+     &                 1, numkpoints_lowdin,                   
+     &                 'Amnmat_man',            
+     &                 'siesta_analysis'        )
+        Amnmat_man = cmplx(0.0_dp,0.0_dp,kind=dp)
         do index_manifold = 1, n_lowdin_manifolds
           call define_trial_orbitals( index_manifold )
           call switch_local_projection( index_manifold )

@@ -1301,6 +1301,8 @@ module m_lowdin
     use m_switch_local_projection, only: bvectorsfrac
     use m_switch_local_projection, only: Mmnkb
     use m_switch_local_projection, only: Amnmat
+    use m_switch_local_projection, only: Amnmat_man
+    use siesta_options, only: n_lowdin_manifolds
     use lowdin_types, only: kmeshlowdin
     use w90_constants,  only : cmplx_i
     use w90_constants,  only : cmplx_0
@@ -1347,6 +1349,8 @@ module m_lowdin
     integer :: iorb
     integer :: ix
     integer :: number_of_bands_in_manifold_local
+    integer :: m_reset 
+    integer :: n_reset 
 
     integer              :: nrpts      !! Number of Wigner-Seitz grid points
     integer              :: irpts      !! Counter for the Wigner-Seitz grid poin
@@ -1411,9 +1415,59 @@ module m_lowdin
 
     call amn( ispin )
 
+    Amnmat_man(index_manifold,:,:,:) = cmplx(0.0_dp,0.0_dp,kind=dp)
+    do ik = 1, numkpoints
+      do n = 1, number_of_bands_in_manifold_local
+        do m = 1, number_of_bands_in_manifold_local
+          Amnmat_man(index_manifold,m,n,ik) = Amnmat(m,n,ik) 
+!         write(6,*) index_manifold, m, n, ik, Amnmat_man(index_manifold,m,n,ik)
+        enddo 
+      enddo 
+    enddo 
+
     call writeeig( ispin )
      
     u_matrix = Amnmat
+
+    if( index_manifold .eq. 3) then
+      u_matrix = cmplx(0.0_dp,0.0_dp,kind=dp)
+      do ik = 1, numkpoints
+        do n = 1, manifold_bands_lowdin(1)%nincbands_loc_lowdin
+          do m = 1, manifold_bands_lowdin(1)%nincbands_loc_lowdin
+            u_matrix(m,n,ik) = Amnmat_man(1,m,n,ik)
+          enddo
+        enddo
+      enddo 
+
+      do ik = 1, numkpoints
+        n_reset = 0
+        do n = manifold_bands_lowdin(1)%nincbands_loc_lowdin + 1,  &
+ &             manifold_bands_lowdin(1)%nincbands_loc_lowdin +     & 
+ &             manifold_bands_lowdin(2)%nincbands_loc_lowdin 
+          n_reset = n_reset + 1
+          m_reset = 0
+          do m = manifold_bands_lowdin(1)%nincbands_loc_lowdin + 1,  &
+ &               manifold_bands_lowdin(1)%nincbands_loc_lowdin +     & 
+ &               manifold_bands_lowdin(2)%nincbands_loc_lowdin 
+            m_reset = m_reset + 1
+            u_matrix(m,n,ik) = Amnmat_man(2,m_reset,n_reset,ik)
+          enddo
+        enddo
+      enddo 
+
+!!     For debugging
+!      do ik = 1, numkpoints
+!        do n = 1, number_of_bands_in_manifold_local
+!          do m = 1, number_of_bands_in_manifold_local
+!           write(6,fmt="(3i5,1x,f24.16,2x,f24.16)")            &
+! &              m, n, ik,                                      &
+! &              real(u_matrix(m,n,ik)),aimag(u_matrix(m,n,ik))
+!          enddo
+!        enddo
+!      enddo
+!!     End debugging
+
+    endif
 
 !   Compute the matrix elements of the plane wave,
 !   for all the wave vectors that connect a given k-point to its nearest

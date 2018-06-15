@@ -872,7 +872,7 @@ m_kinetic.o: precision.o
 m_lowdin.o: m_cite.o parallel.o lowdin_types.o precision.o alloc.o 
 m_lowdin.o: siesta_options.o sparse_matrices.o atomlist.o parallelsubs.o sys.o
 m_lowdin.o: m_spin.o m_orderbands.o sys.o atmfuncs.o atomlist.o siesta_geom.o
-m_lowdin.o: m_switch_local_proj.o m_digest_nnkp.o
+m_lowdin.o: m_switch_local_proj.o m_digest_nnkp.o siesta_options.o
 m_mat_invert.o: intrinsic_missing.o m_pivot_array.o precision.o
 m_matdiag.o: precision.o
 m_matio.o: alloc.o parallel.o
@@ -946,7 +946,7 @@ m_stress.o: precision.o
 m_supercell.o: atom_graph.o class_OrbitalDistribution.o class_SpData2D.o
 m_supercell.o: intrinsic_missing.o parallel.o parallelsubs.o precision.o
 m_svd.o: precision.o
-m_switch_local_proj.o: precision.o siesta_options.o 
+m_switch_local_proj.o: precision.o siesta_options.o atomlist.o
 m_switch_local_proj.o: wannier90_types.o alloc.o siesta_geom.o 
 m_switch_local_proj.o: m_trialorbitalclass.o
 m_target_stress.o: parallel.o precision.o sys.o units.o
@@ -1266,6 +1266,7 @@ siesta_analysis.o: m_pexsi_dos.o m_pexsi_local_dos.o m_spin.o m_steps.o
 siesta_analysis.o: parallel.o projected_DOS.o siesta2wannier90.o siesta_cml.o
 siesta_analysis.o: siesta_geom.o siesta_options.o sparse_matrices.o units.o
 siesta_analysis.o: write_subs.o writewave.o zmatrix.o m_switch_local_proj.o
+siesta_analysis.o: lowdin_types.o
 siesta_cmlsubs.o: files.o m_uuid.o parallel.o siesta_cml.o timestamp.o
 siesta_cmlsubs.o: 
 siesta_dicts.o: atomlist.o files.o kpoint_grid.o m_energies.o m_forces.o
