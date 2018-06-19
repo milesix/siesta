@@ -27,7 +27,8 @@ C Modules------------------------------------------------------------------
      &                          no_u, rmaxv 
       use precision,  only: dp, sp
       use siesta_geom
-      use siesta_options,  only: nscf, temp, maxsav, wmix,nkick,
+      use siesta_options,  only: nscf_siesta=>nscf
+      use siesta_options,  only: temp, maxsav, wmix,nkick,
      &                            wmixkick
       use parallel,          only: IOnode, Node, Nodes
       use m_spin,        only: nspin
@@ -69,6 +70,8 @@ C Internal variable types and dimensions -----------------------------------
      &                     ind, juo, ko, jn, i, j, jua, ix, jx,
      &                     ju, iu, unit1,
      &                     init
+
+      integer           :: nscf
       
       real(dp)          :: dSmat(maxnh,3),!First Order of Overlap 
      &                     dHmat(maxnh,3,nspin),!Perturbed Hamiltonian
@@ -100,6 +103,10 @@ C ----------------------------------------------------------------------------
 C ----------------------------------------------------------------------------
 C Reading linres options 
 C ----------------------------------------------------------------------------
+
+      ! 
+      nscf = fdf_get("LR.SCF.Iterations",nscf_siesta)
+
       iai = fdf_get("MD.FCFirst",1)
       iaf = fdf_get("MD.FCLast",na_u) ! Move all atoms by default
       tolLR = fdf_get("LR.DMTolerance",0.001_dp)
