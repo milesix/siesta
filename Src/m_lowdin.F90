@@ -1292,7 +1292,7 @@ module m_lowdin
 
   subroutine compute_position( ispin, index_manifold )
 
-    use m_switch_local_projection, only: seedname 
+!    use m_switch_local_projection, only: seedname 
                                          ! Seed for the name of the file
                                          !   where the matrix elements of the
                                          !   position operator will be written.
@@ -1302,7 +1302,10 @@ module m_lowdin
     use m_switch_local_projection, only: Mmnkb
     use m_switch_local_projection, only: Amnmat
     use m_switch_local_projection, only: Amnmat_man
+    use m_switch_local_projection, only: eo
     use siesta_options, only: n_lowdin_manifolds
+    use files,         only: slabel        ! Short system label,
+                                         !   used to generate file names
     use lowdin_types, only: kmeshlowdin
     use w90_constants,  only : cmplx_i
     use w90_constants,  only : cmplx_0
@@ -1321,7 +1324,15 @@ module m_lowdin
     use w90_parameters, only : nnlist
     use w90_parameters, only : kpt_latt
     use w90_parameters, only : real_metric
-    use w90_overlap,    only : overlap_project
+    use w90_parameters, only : eigval
+    use w90_parameters, only : have_disentangled
+    use w90_parameters,  only : timing_level
+    use w90_hamiltonian, only : hamiltonian_setup
+    use w90_hamiltonian, only : hamiltonian_get_hr
+    use w90_hamiltonian, only : hamiltonian_write_hr
+    use w90_hamiltonian, only : hamiltonian_dealloc
+    use w90_overlap,     only : overlap_project
+    use w90_io,          only : seedname
 
     integer :: ispin
     integer :: index_manifold
@@ -1381,6 +1392,7 @@ module m_lowdin
     external     :: io_assign              ! Assign a logical unit
     external     :: io_close               ! Close a logical unit
 
+    write(seedname,"(a,'.',i1.1)") trim(slabel), index_manifold
 
     number_of_bands_in_manifold_local =                                  &
  &        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
@@ -1388,6 +1400,8 @@ module m_lowdin
     num_bands = number_of_bands_in_manifold_local 
     num_wann  = number_of_bands_in_manifold_local 
     num_kpts  = numkpoints
+    have_disentangled = .false.
+    timing_level      = 1
     nntot     = nncount
 
     nnlist    = nnlist_lowdin
@@ -1400,6 +1414,19 @@ module m_lowdin
     csheet = cmplx_1 
     sheet  = 0.0_dp
     rave   = 0.0_dp
+
+    if ( allocated(eigval) ) deallocate(eigval)
+    allocate( eigval(num_bands,num_kpts) )
+    eigval = eo
+
+!   For debugging
+    do ik = 1, num_kpts
+      do iband = 1, num_wann
+        write(6,'(a,2i5,f12.5)') ' ik, iband, eigval(iband,ik) = ',     &
+ &                               ik, iband, eigval(iband,ik) 
+      enddo
+    enddo
+!   End debugging
 
     if ( allocated(u_matrix) ) deallocate(u_matrix)
     allocate( u_matrix(number_of_bands_in_manifold_local,               &
@@ -1597,6 +1624,7 @@ module m_lowdin
 !    enddo 
 !!   End debugging
 
+
 !   Compute and write the matrix elements of the position operator
 !   Assign a name to the file where the position matrices will be written
     posfilename = trim( seedname )// "_r.dat"
@@ -1642,6 +1670,11 @@ module m_lowdin
 
 !   Close the output file where the position matrices will be written
     call io_close(posunit)
+
+    call hamiltonian_setup( )
+    call hamiltonian_get_hr( )
+    call hamiltonian_write_hr( )
+    call hamiltonian_dealloc( )
 
 
     deallocate( csheet )

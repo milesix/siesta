@@ -114,7 +114,7 @@ contains
     if (ierr/=0) call io_error('Error allocating wannier_centres_translated in hamiltonian_setup')
     wannier_centres_translated=0.0_dp
 
-    ham_have_setup = .true.
+!    ham_have_setup = .true.
 
     return
   end subroutine hamiltonian_setup
@@ -274,7 +274,7 @@ contains
        enddo
     endif                                                  !YN:
 
-    have_ham_k = .true.
+!    have_ham_k = .true.
 
 100 continue
 
@@ -297,7 +297,7 @@ contains
           enddo
        enddo
 
-       have_translated = .false.
+!       have_translated = .false.
 
     else
 
@@ -320,7 +320,7 @@ contains
           enddo
        enddo
 
-       have_translated = .true.
+!       have_translated = .true.
 
     end if
 
@@ -334,7 +334,7 @@ contains
 !         call ws_translate_dist(nrpts, irvec)
 !     endif
 
-    have_ham_r = .true.
+!    have_ham_r = .true.
 
 200 continue
 
@@ -477,7 +477,7 @@ contains
 
     close(file_unit)
 
-    hr_written=.true.
+!    hr_written=.true.
 
     if (timing_level>1) call io_stopwatch('hamiltonian: write_hr',2)
 
