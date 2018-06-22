@@ -957,7 +957,7 @@ C        Compute the change in density matrix elements -------------
               call LocalToGlobalOrb(i,Node,Nodes,iuo)
               do j=1,numh(i)
                 ind = listhptr(i) + j
-                jo = listhg(ind)
+                jo = listh(ind)
                 juo = indxuo(jo)
                 kXij = kpoint(1,ik) * Xij(1,ind) +
      .          kpoint(2,ik) * Xij(2,ind) +

@@ -102,20 +102,6 @@ C -------------------------------------------------------------------
       external  timer
 C ......................
 
-C Linres ------------------------------------------------------------
-      INTERFACE
-        SUBROUTINE MATEL(A, ioa, joa, rij,
-     &                   Sij, grSij, gr2Sij)
-          use precision,     only : dp
-             integer,   intent(inout) ::  ioa, joa
-             real(dp),  intent(in) :: rij, Sij
-             real(dp),  intent(out) :: grSij(3)
-             real(dp),  intent(out), optional ::  gr2Sij(3,3)
-             character, intent(in) :: A
-        END SUBROUTINE MATEL
-      END INTERFACE
-C -------------------------------------------------------------------
-
 C Start timer
       call timer( 'overfsm', 1 )
 

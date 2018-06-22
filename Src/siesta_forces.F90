@@ -573,7 +573,10 @@ contains
     ! without convergence while mixing H
 
 ! Linres line: main subroutine calling--------------------------------------
-      if (SCFconverged .AND. linreSwitch) then
+      if (linreSwitch) then
+        if (.not. SCFconverged) then
+          call message("WARNING","LR: scf cycle not converged in Siesta")
+        endif
         call linresscf()
       endif
 !---------------------------------------------------------------------------

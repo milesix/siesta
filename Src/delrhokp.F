@@ -662,6 +662,7 @@ C        Compute the change in density matrix elements -------------
             do 550 io = 1, nbands
               qio = qO(io,ispin,ik)
               if(qio .lt. 1.0e-6_dp) cycle
+              eio = eo(io,ispin,ik)
               dQo(io,1) = -wk(ik)*dstepf((eio-ef)/T)/
      .                    (T*nspin+1.0e-12)
               eio = eo(io,ispin,ik)*dQo(io,1)
@@ -708,6 +709,7 @@ C        Compute the change in density matrix elements -------------
       endif !Variation of the energy level ocupation
 C
 
+! Sum all node contributions (k-distributed) to the final DM and distribute it over the Nodes
       do io = 1,nuog
         call WhichNodeOrb(io,Nodes,BNode)
         call GlobalToLocalOrb(io,BNode,Nodes,iio)
