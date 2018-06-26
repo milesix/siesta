@@ -150,7 +150,6 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   ! Arrays for figuring out the degenerate states
   real(dp), parameter :: deg_EPS = 7.3498067e-06_dp ! 1e-4 eV
   integer :: ndeg
-  logical :: in_deg
   real(dp), pointer :: vdeg(:,:,:) => null(), Identity(:,:,:) => null()
 
   ! Globalized matrices
@@ -252,32 +251,33 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
 
       ! Figure out the degenerate states
       ndeg = 1
-      in_deg = .false.
       do ie = 2, neigwanted
         
         ! Eigenvalues are sorted, so this will work fine
         if ( eo(ie,is,ik) - eo(ie-1,is,ik) < deg_EPS ) then
 
           ndeg = ndeg + 1
-          in_deg = .true.
           
-        else if ( in_deg ) then
+        else if ( ndeg > 1 ) then
 
           ! Decouple ndeg from ie - 1 and ndeg back
-          call degenerate_decouple(ndeg, ie - 1)
+          call degenerate_decouple(neigwanted, eo(1,is,ik), ndeg, ie - 1)
 
           ! To debug, one may calculate the velocities
           ! before and after the degenerate decoupling
           ndeg = 1
-          in_deg = .false.
           
         end if
         
       end do
 
+      ! Decouple the last elements
+      if ( ndeg > 1 ) &
+          call degenerate_decouple(neigwanted, eo(1,is,ik), ndeg, neigwanted)
+
       ! After having decoupled the degenerate states we can calculate
       ! the velocities
-      call calculate_velocity()
+      call calculate_velocity(neigwanted)
 
       ! Shift eigenvalues according to the velocity projection onto the field
       call velocity_shift(+1, neigwanted, eo(:,is,ik), v)
@@ -374,37 +374,34 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
       ! states so that we don't populate the degenaries wrongly
       ! This assumes that the decoupling is stable.
       ndeg = 1
-      in_deg = .false.
       do ie = 2, neigneeded
         
         ! Eigenvalues are sorted, so this will work fine
         if ( eig_aux(ie) - eig_aux(ie-1) < deg_EPS ) then
 
           ndeg = ndeg + 1
-          in_deg = .true.
           
-        else if ( in_deg ) then
+        else if ( ndeg > 1 ) then
 
           ! Decouple ndeg from ie - 1 and ndeg back
-          call degenerate_decouple(ndeg, ie - 1)
+          call degenerate_decouple(neigneeded, eig_aux, ndeg, ie - 1)
 
           ! To debug, one may calculate the velocities
           ! before and after the degenerate decoupling
           ndeg = 1
-          in_deg = .false.
           
         end if
         
       end do
 
-      ! One could revert the eigenspectrum, however,
-      ! it may be advantegeous to consult the EIG file for post-processing.
-!!$      ! After having decoupled the degenerate states we can calculate
-!!$      ! the velocities (only required to correctly shift the eigenvalues back)!
-!!$      call calculate_velocity()
-!!$      
-!!$      ! Shift eigenvalues according to the velocity projection onto the field
-!!$      call velocity_shift(-1, neigwanted, eo(:,is,ik), v)
+      ! Decouple the last elements
+      if ( ndeg > 1 ) &
+          call degenerate_decouple(neigneeded, eig_aux, ndeg, neigneeded)
+
+      ! One could revert the eigenspectrum, via:
+      !   call calculate_velocity(neigneeded)
+      !   call velocity_shift(-1, neigneeded, eo(:,is,ik), v)
+      ! However it may be advantegeous to consult the EIG file for post-processing.
 
 !!$      ! This transmission calculation is actually a bit wrong.
 !!$      ! Only states in the bias-window which are forward moving will contribute.
@@ -630,7 +627,9 @@ contains
   ! This subroutine decouples consecutive degenerate states
   !
   ! NOTE this routine may not use the global variable ie, is or ik
-  subroutine degenerate_decouple(ndeg, io_end)
+  subroutine degenerate_decouple(neig, eig, ndeg, io_end)
+    integer, intent(in) :: neig
+    real(dp), intent(inout) :: eig(neig)
     integer, intent(in) :: ndeg, io_end
     integer :: io_start, ix
     real(dp) :: e_avg
@@ -646,7 +645,7 @@ contains
     ! Calculate the average eigenvalue
     e_avg = 0._dp
     do io = io_start, io_end
-      e_avg = e_avg + eo(io,is,ik)
+      e_avg = e_avg + eig(io)
     end do
     
     ! Average the eigenvalues
@@ -655,7 +654,7 @@ contains
     ! Copy them back to the energy so that they have a unified energy
     ! A decoupling forces them to be aligned since we "mix" the eigenvalues
     do io = io_start, io_end
-      eo(io,is,ik) = e_avg
+      eig(io) = e_avg
     end do
 
     do ix = 1, 3
@@ -705,9 +704,9 @@ contains
 
   ! This routine calculates the velocities of all the states
   ! It uses the variable ie, so don't use this outside
-  subroutine calculate_velocity()
+  subroutine calculate_velocity(neig)
+    integer, intent(in) :: neig
     integer :: ix, ie
-    real(dp) :: vtot
     
     do ix = 1, 3
       
@@ -715,7 +714,7 @@ contains
       ! alpha is the Cartesian direction
       call setup_dk(ix, kpoint(:,ik))
       
-      do ie = 1, neigwanted
+      do ie = 1, neig
 
         ! dH | psi >
         call zgemv('N', no_u, no_u, dcmplx(1._dp, 0._dp), &
@@ -726,11 +725,10 @@ contains
 
         ! Now calculate the velocity along ix
         ! < psi | H - e dS | psi >
-        vtot = 0._dp
+        v(ix,ie) = 0._dp
         do io = 1, no_u
-          vtot = vtot + psi(1,io,ie) * aux(1,io) + psi(2,io,ie) * aux(2,io)
+          v(ix,ie) = v(ix,ie) + psi(1,io,ie) * aux(1,io) + psi(2,io,ie) * aux(2,io)
         end do
-        v(ix,ie) = vtot
 
       end do
       
