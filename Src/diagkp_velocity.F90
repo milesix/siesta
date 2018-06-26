@@ -9,7 +9,7 @@
 #ifdef MPI
 subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
     ncol, ptr, col, H, S, getD, &
-    fixspin, qtot, qs, temp, e1, e2, xij, indxuo, &
+    fixspin, qtot, qs, temp, e1, e2, xij, &
     nk, kpoint, wk, eo, qo, DM, EDM, ef, efs, &
     Entropy, Haux, Saux, psi, aux, &
     occtol, iscf, neigwanted)
@@ -49,10 +49,6 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   !                               Not used if e1 > e2
   ! real*8  xij(3,nnz)          : Vectors between orbital centers (sparse)
   !                               (not used if only gamma point)
-  ! integer indxuo(no_s)          : Index of equivalent orbital in unit cell
-  !                               Unit cell orbitals must be the first in
-  !                               orbital lists, i.e. indxuo.le.nuo, with
-  !                               no_u the number of orbitals in unit cell
   ! integer nk                  : Number of k points
   ! real*8  kpoint(3,nk)        : k point vectors
   ! real*8  wk(nk)              : k point weights (must sum one)
@@ -94,7 +90,8 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   use m_fermid,     only : fermid, fermispin, stepf
   use alloc,        only : re_alloc, de_alloc
   use t_spin, only: tSpin
-  use m_velocity_shift, only: velocity_shift  
+  use m_velocity_shift, only: velocity_shift
+  use intrinsic_missing, only: MODP
 
   implicit none
 
@@ -105,9 +102,6 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   ! Pass system size information
   ! Local, unit-cell, supercell
   integer, intent(in) :: no_l, no_u, no_s
-
-  ! Pass folding array
-  integer, intent(in) :: indxuo(no_s)
 
   ! K-point information
   integer, intent(in) :: nk
@@ -157,7 +151,7 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   real(dp), parameter :: deg_EPS = 7.3498067e-06_dp ! 1e-4 eV
   integer :: ndeg
   logical :: in_deg
-  real(dp), pointer :: vdeg(:,:), Identity(:,:)
+  real(dp), pointer :: vdeg(:,:,:) => null(), Identity(:,:,:) => null()
 
   ! Globalized matrices
   integer :: g_nnz
@@ -169,7 +163,7 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   ! Not allocated, only pointers
   real(dp), pointer :: Dk(:,:,:), Ek(:,:,:)
   real(dp), pointer :: dH(:,:,:), dS(:,:,:)
-  real(dp), pointer :: paux(:,:)
+  real(dp), pointer :: paux(:,:), eig_aux(:)
 
 #ifdef DEBUG
   call write_debug( '    PRE diagkp_velocity' )
@@ -179,9 +173,11 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   call MPI_AllReduce(nnz, g_nnz, 1, MPI_Integer, MPI_Sum, &
       MPI_Comm_World, MPIerror)
 
+  call diagkp_velocity_2d1d(no_u, aux(1,no_u+1), eig_aux)
+
   ! Nullify arrays
   nullify(g_ncol, g_ptr, g_col, g_H, g_S, g_xij, g_DM, g_EDM)
-  nullify(vdeg, Identity, v)
+  nullify(v)
   
   ! Allocate local memory for global list arrays
   call re_alloc( g_ncol, 1, no_u, name='g_ncol', routine= 'diagkp_velocity' )
@@ -284,17 +280,11 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
       call calculate_velocity()
 
       ! Shift eigenvalues according to the velocity projection onto the field
-      call velocity_shift(neigwanted, eo(:,is,ik), v)
+      call velocity_shift(+1, neigwanted, eo(:,is,ik), v)
 
     end do
     
   end do
-
-  call de_alloc(vdeg, name='vdeg', routine= 'diagkp_velocity' )
-  call de_alloc(Identity, name='identity', routine= 'diagkp_velocity' )
-
-  ! Clean-up the velocities
-  call de_alloc( v, name='v', routine= 'diagkp_velocity' )
 
   ! Globalise eigenvalues
   BNode = -1
@@ -370,14 +360,14 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
 
       ! Find eigenvectors
       call setup_k(kpoint(:,ik))
-      call cdiag(Haux,Saux,no_u,no_u,no_u,aux,psi,neigneeded,iscf,ierror, -1)
+      call cdiag(Haux,Saux,no_u,no_u,no_u,eig_aux,psi,neigneeded,iscf,ierror, -1)
 
       ! Check error flag and take appropriate action
       if ( ierror > 0 ) then
         call die('Terminating due to failed diagonalisation')
       else if ( ierror < 0 ) then
         call setup_k(kpoint(:,ik))
-        call cdiag(Haux,Saux,no_u,no_u,no_u,aux,psi,neigneeded,iscf,ierror, -1)
+        call cdiag(Haux,Saux,no_u,no_u,no_u,eig_aux,psi,neigneeded,iscf,ierror, -1)
       end if
 
       ! Before expanding eigenvectors we need to decouple the degenerate
@@ -388,7 +378,7 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
       do ie = 2, neigneeded
         
         ! Eigenvalues are sorted, so this will work fine
-        if ( eo(ie,is,ik) - eo(ie-1,is,ik) < deg_EPS ) then
+        if ( eig_aux(ie) - eig_aux(ie-1) < deg_EPS ) then
 
           ndeg = ndeg + 1
           in_deg = .true.
@@ -406,6 +396,15 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
         end if
         
       end do
+
+      ! One could revert the eigenspectrum, however,
+      ! it may be advantegeous to consult the EIG file for post-processing.
+!!$      ! After having decoupled the degenerate states we can calculate
+!!$      ! the velocities (only required to correctly shift the eigenvalues back)!
+!!$      call calculate_velocity()
+!!$      
+!!$      ! Shift eigenvalues according to the velocity projection onto the field
+!!$      call velocity_shift(-1, neigwanted, eo(:,is,ik), v)
 
 !!$      ! This transmission calculation is actually a bit wrong.
 !!$      ! Only states in the bias-window which are forward moving will contribute.
@@ -433,7 +432,7 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
       do ie = 1, neigneeded
         
         qe = qo(ie,is,ik)
-        ee = qe * eo(ie,is,ik)
+        ee = qe * eig_aux(ie)
         
         ! Point to the wavefunction
         paux => psi(:,:,ie)
@@ -457,7 +456,7 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
       do io = 1, no_u
         do j = 1, g_ncol(io)
           ind = g_ptr(io) + j
-          jo = indxuo(g_col(ind))
+          jo = modp(g_col(ind), no_u)
           kxij = kpoint(1,ik) * g_xij(1,ind) + kpoint(2,ik) * g_xij(2,ind) + kpoint(3,ik) * g_xij(3,ind)
           ckxij = cos(kxij)
           skxij = sin(kxij)
@@ -521,6 +520,13 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   ! Exit point 
 999 continue
 
+  ! Clean-up the arrays required for degenerate decoupling
+  call de_alloc(vdeg, name='vdeg', routine= 'diagkp_velocity' )
+  call de_alloc(Identity, name='identity', routine= 'diagkp_velocity' )
+
+  ! Clean-up the velocities
+  call de_alloc( v, name='v', routine= 'diagkp_velocity' )
+
   ! Clean up memory
   call de_alloc( g_ncol, name='g_ncol', routine= 'diagkp_velocity' )
   call de_alloc( g_ptr, name='g_ptr', routine= 'diagkp_velocity' )
@@ -555,7 +561,7 @@ contains
     do io = 1,no_u
       do j = 1, g_ncol(io)
         ind = g_ptr(io) + j
-        jo = indxuo(g_col(ind))
+        jo = modp(g_col(ind), no_u)
         kxij = k(1) * g_xij(1,ind) + k(2) * g_xij(2,ind) + k(3) * g_xij(3,ind)
         
         ckxij = cos(kxij)
@@ -597,7 +603,7 @@ contains
       do j = 1, g_ncol(io)
 
         ind = g_ptr(io) + j
-        jo = indxuo(g_col(ind))
+        jo = modp(g_col(ind), no_u)
         kxij = k(1) * g_xij(1,ind) + k(2) * g_xij(2,ind) + k(3) * g_xij(3,ind)
         
         ckxij = cos(kxij) * g_xij(ix,ind)
@@ -628,16 +634,12 @@ contains
     integer, intent(in) :: ndeg, io_end
     integer :: io_start, ix
     real(dp) :: e_avg
-    real(dp), pointer :: vdeg2d(:,:,:), identity2d(:,:,:)
-
-    call re_alloc(vdeg, 1, 2, 1, ndeg * ndeg, name='vdeg', routine= 'diagkp_velocity', &
-        copy=.false., shrink=.false.)
-    call re_alloc(Identity, 1, 2, 1, ndeg * ndeg, name='identity', routine= 'diagkp_velocity', &
-        copy=.false., shrink=.false.)
-
-    call diagkp_velocity_1d2d(ndeg, vdeg, vdeg2d)
-    call diagkp_velocity_1d2d(ndeg, identity, identity2d)
     
+    call re_alloc(vdeg, 1, 2, 1, ndeg, 1, ndeg, name='vdeg', routine= 'diagkp_velocity', &
+        copy=.false., shrink=.false.)
+    call re_alloc(Identity, 1, 2, 1, ndeg, 1, ndeg, name='identity', routine= 'diagkp_velocity', &
+        copy=.false., shrink=.false.)
+
     ! Figure out the start and end of the orbitals
     io_start = io_end - ndeg + 1
 
@@ -673,17 +675,17 @@ contains
 
         ! Calculte < psi_: | dH - e dS | psi_i >
         call zgemv('C', no_u, ndeg, dcmplx(1._dp, 0._dp), &
-            psi(1,1,io_start), no_u, aux, 1, dcmplx(0._dp, 0._dp), vdeg2d(1,1,io), 1)
+            psi(1,1,io_start), no_u, aux, 1, dcmplx(0._dp, 0._dp), vdeg(1,1,io), 1)
 
         ! Initialize identity matrix
-        Identity2d(:,:,io) = 0._dp
-        Identity2d(1,io,io) = 1._dp
+        Identity(:,:,io) = 0._dp
+        Identity(1,io,io) = 1._dp
 
       end do
 
       ! Now we have the < psi_j | dH - e dS | psi_i > matrix, we need to diagonalize to find
       ! the linear combinations of the new states
-      call cdiag(vdeg2d, identity2d, ndeg, ndeg, ndeg, aux, Haux, ndeg, 1, ierror, -1)
+      call cdiag(vdeg, identity, ndeg, ndeg, ndeg, aux, Haux, ndeg, 1, ierror, -1)
       if ( ierror > 0 ) then
         call die('Terminating due to failed diagonalisation in degenerate sub-space')
       end if
@@ -740,12 +742,12 @@ contains
 
   end subroutine calculate_velocity
 
-  subroutine diagkp_velocity_1d2d(n,from,to)
+  subroutine diagkp_velocity_2d1d(n,from,to)
     integer, intent(in) :: n
-    real(dp), intent(in), target :: from(2,n,n)
-    real(dp), pointer :: to(:,:,:)
-    to => from(:,:,:)
-  end subroutine diagkp_velocity_1d2d
+    real(dp), intent(in), target :: from(2*n)
+    real(dp), pointer :: to(:)
+    to => from(:)
+  end subroutine diagkp_velocity_2d1d
 
 end subroutine diagkp_velocity
 

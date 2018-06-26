@@ -176,7 +176,7 @@ C     Check internal dimensions ..........................................
        else
         nhs  = 2 * nuotot * nuo
         npsi = 2 * nuotot * nuo
-        naux = 2 * nuotot * 5            !!!! AG: Put factor 2 !!
+        naux = 2 * nuotot * 5
 #ifdef MPI
         if ( ParallelOverK ) then
           nhs  = 2 * nuotot * nuotot
@@ -228,7 +228,7 @@ C Call apropriate routine
           if ( use_velocity_shift ) then
             call diagkp_velocity( spin, maxuo, nuotot, no,
      .          maxnh, numh, listhptr, listh, H, S, getD,
-     .          fixspin, qtot, qs, temp, e1, e2, xij, indxuo,
+     .          fixspin, qtot, qs, temp, e1, e2, xij,
      .          nk, kpoint, wk,
      .          eo, qo, Dnew, Enew, Ef, Efs, Entropy,
      .          Haux, Saux, psi, aux, occtol, iscf, neigwanted)

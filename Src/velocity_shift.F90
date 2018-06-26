@@ -118,13 +118,14 @@ contains
       call cmlEndPropertyList(mainXML)
     end if
 
-    ! Only take half the bias (so we dont have to divide by 2 all the time
+    ! Only take half the bias (so we dont have to divide by 2 all the time)
     velocity_h_bias = velocity_h_bias / 2
 
   end subroutine read_velocity_shift
 
   !< Shift the eigenspectrum according to the velocities
-  subroutine velocity_shift(ne, e, v)
+  subroutine velocity_shift(sign,ne, e, v)
+    integer, intent(in) :: sign
     integer, intent(in) :: ne
     real(dp), intent(inout) :: e(ne)
     real(dp), intent(in) :: v(3, ne)
@@ -132,17 +133,36 @@ contains
     integer :: ie
     real(dp) :: p
 
-    do ie = 1, ne
-      p = sum(velocity_dir * v(:,ie))
-      if ( p > velocity_tolerance ) then
-        ! The velocity is along the direction of the potential drop
-        ! This means that the electron will be pushed in the same direction and filled
-        ! up faster.
-        e(ie) = e(ie) - velocity_h_bias
-      else if ( p < - velocity_tolerance ) then
-        e(ie) = e(ie) + velocity_h_bias
-      end if
-    end do
+    if ( sign > 0 ) then
+
+      do ie = 1, ne
+
+        p = sum(velocity_dir * v(:,ie))
+        if ( p > velocity_tolerance ) then
+          ! The velocity is along the direction of the potential drop
+          ! This means that the electron will be pushed in the same direction and filled
+          ! up faster.
+          e(ie) = e(ie) - velocity_h_bias
+        else if ( p < - velocity_tolerance ) then
+          e(ie) = e(ie) + velocity_h_bias
+        end if
+        
+      end do
+
+    else
+
+      ! Shift back the eigenvalues
+      
+      do ie = 1, ne
+        p = sum(velocity_dir * v(:,ie))
+        if ( p > velocity_tolerance ) then
+          e(ie) = e(ie) + velocity_h_bias
+        else if ( p < - velocity_tolerance ) then
+          e(ie) = e(ie) - velocity_h_bias
+        end if
+      end do
+      
+    end if
 
   end subroutine velocity_shift
 
