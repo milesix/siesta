@@ -1,16 +1,26 @@
+Siesta Version  : Linres_parallel652--trunk680
+Architecture    : unknown
+Compiler version: GNU Fortran (Ubuntu 4.8.4-2ubuntu1~14.04.3) 4.8.4
+Compiler flags  : gfortran -O2 -fPIC -ftree-vectorize
+PP flags        : -fbounds-check -g -fcheck=all -DFC_HAVE_FLUSH -DFC_HAVE_ABORT -fbacktrace -DL1 -DSIESTA__DIAG_2STAGE
+Libraries       : libsiestaLAPACK.a libsiestaBLAS.a libsiestaLAPACK.a libsiestaBLAS.a -L/home/llikewise-open/ICN/sillera/Desktop/1/LinresLibxc/libxc-2.2.3/INSTAL/lib -l xcf90 -l xc
+SERIAL version
+
+* Running in serial mode
+>> Start of run:  25-JUN-2018  13:13:31
 
                            ***********************       
                            *  WELCOME TO SIESTA  *       
                            ***********************       
 
 reinit: Reading from standard input
-reinit: Dumped input in INPUT_TMP.52378
+reinit: Dumped input in INPUT_TMP.39213
 ************************** Dump of input data file ****************************
 #
-# FDF for a BN sheet
+# FDF for a h2 molecule
 #
-SystemName          BN-2 atom
-SystemLabel         h2
+SystemName          h2 molecule
+SystemLabel         h2linres
 NumberOfSpecies     1
 NumberOfAtoms       2
 %block ChemicalSpeciesLabel
@@ -33,19 +43,10 @@ MD.FClast   2
 ************************** End of input data file *****************************
 
 reinit: -----------------------------------------------------------------------
-reinit: System Name: BN-2 atom
+reinit: System Name: h2 molecule
 reinit: -----------------------------------------------------------------------
-reinit: System Label: h2
+reinit: System Label: h2linres
 reinit: -----------------------------------------------------------------------
-Siesta Version: MaX-R2--pl-1
-Architecture  : unknown
-Compiler flags: gfortran -O2 -fPIC -ftree-vectorize
-PP flags      : -fbounds-check -g -fcheck=all -DFC_HAVE_FLUSH -DFC_HAVE_ABORT -fbacktrace -DL1 -DSIESTA__DIAG_2STAGE
-Libraries     : libsiestaLAPACK.a libsiestaBLAS.a -L/home/likewise-open/ICN/sillera/Desktop/L1/LinresLibxc/libxc-2.2.3/INSTAL/lib -l xcf90 -l xc
-SERIAL version
-
-* Running in serial mode
->> Start of run:   8-SEP-2017  14:08:35
 
 initatom: Reading input for the pseudopotentials and atomic orbitals ----------
 Species number:   1 Atomic number:    1 Label: H
@@ -202,10 +203,11 @@ redata: Long output                                 =   F
 redata: Number of Atomic Species                    =        1
 redata: Charge density info will appear in .RHO file
 redata: Write Mulliken Pop.                         = NO
-redata: Mesh Cutoff                                 =   100.0000 Ry
+redata: Mesh Cutoff                                 =   300.0000 Ry
 redata: Net charge of the system                    =     0.0000 |e|
 redata: Min. number of SCF Iter                     =        0
-redata: Max. number of SCF Iter                     =       50
+redata: Max. number of SCF Iter                     =     1000
+redata: SCF convergence failure will abort job
 redata: SCF mix quantity                            = Hamiltonian
 redata: Mix DM or H after convergence               =   F
 redata: Recompute H after scf cycle                 =   F
@@ -232,7 +234,7 @@ redata: Method of Calculation                       = Diagonalization
 redata: Electronic Temperature                      =   299.9869 K
 redata: Fix the spin of the system                  =   F
 redata: Max. number of TDED Iter                    =        1
-redata: Write .TDWF and .DM after time steps        =      100
+redata: Number of TDED substeps                     =        3
 redata: Dynamics option                             = Single-point calculation
 mix.SCF: Pulay mixing                            = Pulay
 mix.SCF:    Variant                              = stable
@@ -277,6 +279,17 @@ diag: Orthogonalization factor                      =  0.100E-05
 diag: Memory factor                                 =  1.0000
 
 
+ts: **************************************************************
+ts: Save H and S matrices                           =    F
+ts: Save DM and EDM matrices                        =    F
+ts: Fix Hartree potential                           =    F
+ts: Only save the overlap matrix S                  =    F
+ts: **************************************************************
+
+************************ Begin: TS CHECKS AND WARNINGS ************************
+************************ End: TS CHECKS AND WARNINGS **************************
+
+
                      ====================================
                         Single-point calculation
                      ====================================
@@ -305,51 +318,52 @@ refcount: 1>
 
 No. of atoms with KB's overlaping orbs in proc 0. Max # of overlaps:       2      10
 New grid distribution:   1
-           1       1:   32    1:   32    1:   32
+           1       1:   54    1:   54    1:   54
 
-InitMesh: MESH =    64 x    64 x    64 =      262144
-InitMesh: (bp) =    32 x    32 x    32 =       32768
-InitMesh: Mesh cutoff (required, used) =   100.000   113.204 Ry
-ExtMesh (bp) on 0 =    68 x    68 x    68 =      314432
-PhiOnMesh: Number of (b)points on node 0 =                32768
-PhiOnMesh: nlist on node 0 =                23729
+InitMesh: MESH =   108 x   108 x   108 =     1259712
+InitMesh: (bp) =    54 x    54 x    54 =      157464
+InitMesh: Mesh cutoff (required, used) =   300.000   322.366 Ry
+ExtMesh (bp) on 0 =   110 x   110 x   110 =     1331000
+PhiOnMesh: Number of (b)points on node 0 =               157464
+PhiOnMesh: nlist on node 0 =               107783
 
 stepf: Fermi-Dirac step function
 
 siesta: Program's energy decomposition (eV):
-siesta: Ebs     =       -18.655477
+siesta: Ebs     =       -18.655965
 siesta: Eions   =        39.414643
 siesta: Ena     =        11.131311
-siesta: Ekin    =        28.285486
-siesta: Enl     =        -9.401483
+siesta: Ekin    =        28.285370
+siesta: Enl     =        -9.401585
 siesta: Eso     =         0.000000
 siesta: Eldau   =         0.000000
-siesta: DEna    =        -3.972460
-siesta: DUscf   =         0.631048
+siesta: DEna    =        -3.972216
+siesta: DUscf   =         0.630876
 siesta: DUext   =         0.000000
-siesta: Exc     =       -17.743290
+siesta: Enegf   =         0.000000
+siesta: Exc     =       -17.743110
 siesta: eta*DQ  =         0.000000
 siesta: Emadel  =         0.000000
 siesta: Emeta   =         0.000000
 siesta: Emolmec =         0.000000
 siesta: Ekinion =         0.000000
-siesta: Eharris =       -34.846214
-siesta: Etot    =       -30.484031
-siesta: FreeEng =       -30.484031
+siesta: Eharris =       -34.846190
+siesta: Etot    =       -30.483998
+siesta: FreeEng =       -30.483998
 
         iscf     Eharris(eV)        E_KS(eV)     FreeEng(eV)     dDmax    Ef(eV) dHmax(eV)
-   scf:    1      -34.846214      -30.484031      -30.484031  0.894129 -3.588329  2.577882
-timer: Routine,Calls,Time,% = IterSCF        1       0.161  34.55
-   scf:    2      -30.537036      -30.510893      -30.510893  0.019492 -2.964681  1.809257
-   scf:    3      -30.561203      -30.538336      -30.538336  0.043770 -1.512971  0.021827
-   scf:    4      -30.538333      -30.538335      -30.538335  0.000352 -1.527766  0.007303
-   scf:    5      -30.538336      -30.538335      -30.538335  0.000088 -1.528430  0.005314
-   scf:    6      -30.538337      -30.538336      -30.538336  0.000244 -1.530140  0.000261
-   scf:    7      -30.538336      -30.538336      -30.538336  0.000005 -1.530097  0.000168
+   scf:    1      -34.846190      -30.483998      -30.483998  0.893910 -3.587289  2.577595
+timer: Routine,Calls,Time,% = IterSCF        1       0.937  54.34
+   scf:    2      -30.536987      -30.510852      -30.510852  0.019483 -2.963732  1.809054
+   scf:    3      -30.561140      -30.538279      -30.538279  0.043750 -1.512206  0.021809
+   scf:    4      -30.538276      -30.538278      -30.538278  0.000351 -1.526991  0.007296
+   scf:    5      -30.538279      -30.538279      -30.538279  0.000088 -1.527655  0.005310
+   scf:    6      -30.538280      -30.538279      -30.538279  0.000244 -1.529363  0.000257
+   scf:    7      -30.538279      -30.538279      -30.538279  0.000005 -1.529320  0.000166
 
 SCF Convergence by DM+H criterion
-max |DM_out - DM_in|         :     0.0000051146
-max |H_out - H_in|      (eV) :     0.0001679020
+max |DM_out - DM_in|         :     0.0000050836
+max |H_out - H_in|      (eV) :     0.0001656548
 SCF cycle converged after 7 iterations
 
 Using DM_out to compute the final energy and forces
@@ -366,21 +380,21 @@ Linres: Initial perturbed atom      1
                                Linres atom=      1
                      ====================================
         iscf     dDmax
- lr-scf:   1  0.010670
- lr-scf:   2  0.000230
- lr-scf:   3  0.000164
- lr-scf:   4  0.000117
- lr-scf:   5  0.000084
- lr-scf:   6  0.000060
- lr-scf:   7  0.000043
- lr-scf:   8  0.000031
- lr-scf:   9  0.000022
- lr-scf:  10  0.000016
- lr-scf:  11  0.000012
- lr-scf:  12  0.000008
- lr-scf:  13  0.000006
- lr-scf:  14  0.000004
- lr-scf:  15  0.000003
+ lr-scf:   1  0.198439
+ lr-scf:   2  0.090238
+ lr-scf:   3  0.063329
+ lr-scf:   4  0.044459
+ lr-scf:   5  0.031223
+ lr-scf:   6  0.021935
+ lr-scf:   7  0.015416
+ lr-scf:   8  0.010839
+ lr-scf:   9  0.007624
+ lr-scf:  10  0.005365
+ lr-scf:  11  0.003777
+ lr-scf:  12  0.002661
+ lr-scf:  13  0.001875
+ lr-scf:  14  0.001322
+ lr-scf:  15  0.000933
 
 writedynmat: Saving into a file calculated dynamical matrix
 
@@ -388,63 +402,63 @@ writedynmat: Saving into a file calculated dynamical matrix
                                Linres atom=      2
                      ====================================
         iscf     dDmax
- lr-scf:   1  0.018910
- lr-scf:   2  0.000211
- lr-scf:   3  0.000155
- lr-scf:   4  0.000114
- lr-scf:   5  0.000084
- lr-scf:   6  0.000062
- lr-scf:   7  0.000045
- lr-scf:   8  0.000033
- lr-scf:   9  0.000025
- lr-scf:  10  0.000018
- lr-scf:  11  0.000014
- lr-scf:  12  0.000010
- lr-scf:  13  0.000007
- lr-scf:  14  0.000006
- lr-scf:  15  0.000004
- lr-scf:  16  0.000003
- lr-scf:  17  0.000002
+ lr-scf:   1  0.394296
+ lr-scf:   2  0.180446
+ lr-scf:   3  0.126640
+ lr-scf:   4  0.088906
+ lr-scf:   5  0.062437
+ lr-scf:   6  0.043864
+ lr-scf:   7  0.030828
+ lr-scf:   8  0.021675
+ lr-scf:   9  0.015246
+ lr-scf:  10  0.010729
+ lr-scf:  11  0.007554
+ lr-scf:  12  0.005321
+ lr-scf:  13  0.003750
+ lr-scf:  14  0.002644
+ lr-scf:  15  0.001866
+ lr-scf:  16  0.001317
+ lr-scf:  17  0.000931
 
 writedynmat: Saving into a file calculated dynamical matrix
  ----- COMPLETE DYNAMICAL MATRIX -----
- Beta:;xyz;Alpha;xyz;dynmat
-           1 ;           1 ;           1 ;           1 ; -0.63061248941013193     
-           1 ;           2 ;           1 ;           1 ;   1.1934715402636773E-016
-           1 ;           3 ;           1 ;           1 ;   4.7164936628267225E-013
-           2 ;           1 ;           1 ;           1 ;  0.63045583106929337     
-           2 ;           2 ;           1 ;           1 ;   3.3829791817199350E-016
-           2 ;           3 ;           1 ;           1 ;   2.3807085511644177E-013
-           1 ;           1 ;           1 ;           2 ;   2.2027515309821707E-017
-           1 ;           2 ;           1 ;           2 ;  -5.0987167961496077E-003
-           1 ;           3 ;           1 ;           2 ;   2.2060359012351493E-016
-           2 ;           1 ;           1 ;           2 ;   5.1000594908010271E-016
-           2 ;           2 ;           1 ;           2 ;   5.3137139551632101E-003
-           2 ;           3 ;           1 ;           2 ;  -7.9608073910340197E-017
-           1 ;           1 ;           1 ;           3 ;  -4.2940030244492449E-013
-           1 ;           2 ;           1 ;           3 ;  -4.5770420568599143E-016
-           1 ;           3 ;           1 ;           3 ;  -5.0987167961092511E-003
-           2 ;           1 ;           1 ;           3 ;   2.9147269562687070E-013
-           2 ;           2 ;           1 ;           3 ;   8.8863391166751123E-017
-           2 ;           3 ;           1 ;           3 ;   5.3137139551631823E-003
-           1 ;           1 ;           2 ;           1 ;  0.63046236921844390     
-           1 ;           2 ;           2 ;           1 ;   5.4519590226809995E-016
-           1 ;           3 ;           2 ;           1 ;  -2.0750338812100626E-013
-           2 ;           1 ;           2 ;           1 ; -0.63009562654249862     
-           2 ;           2 ;           2 ;           1 ;  -2.9325157031802878E-016
-           2 ;           3 ;           2 ;           1 ;  -4.8645165823529543E-013
-           1 ;           1 ;           2 ;           2 ;  -8.2266625781640728E-017
-           1 ;           2 ;           2 ;           2 ;   5.3138958072709158E-003
-           1 ;           3 ;           2 ;           2 ;  -1.2220215963878838E-016
-           2 ;           1 ;           2 ;           2 ;   2.3644133607065948E-016
-           2 ;           2 ;           2 ;           2 ;  -5.4770227164344792E-003
-           2 ;           3 ;           2 ;           2 ;   3.0726873723187781E-016
-           1 ;           1 ;           2 ;           3 ;  -3.4177325732997368E-013
-           1 ;           2 ;           2 ;           3 ;  -1.0646585746760611E-016
-           1 ;           3 ;           2 ;           3 ;   5.3138958072611459E-003
-           2 ;           1 ;           2 ;           3 ;   4.6317699144641885E-013
-           2 ;           2 ;           2 ;           3 ;   2.7099664155112032E-016
-           2 ;           3 ;           2 ;           3 ;  -5.4770227163932900E-003
+ xyz;Beta;xyz;Alpha;dynmat
+           1 ;           1 ;           1 ;           1 ; -0.62996965436571073     
+           2 ;           1 ;           1 ;           1 ;  -9.2305812473731405E-017
+           3 ;           1 ;           1 ;           1 ;   4.9482453746474779E-013
+           1 ;           2 ;           1 ;           1 ;  0.62987609789878241     
+           2 ;           2 ;           1 ;           1 ;   5.7439354237744257E-016
+           3 ;           2 ;           1 ;           1 ;   2.0059987918638824E-013
+           1 ;           1 ;           2 ;           1 ;  -2.3689605710571458E-017
+           2 ;           1 ;           2 ;           1 ;  -5.6900050634224458E-003
+           3 ;           1 ;           2 ;           1 ;  -1.0583557561934275E-016
+           1 ;           2 ;           2 ;           1 ;  -2.3051607259809718E-016
+           2 ;           2 ;           2 ;           1 ;   5.7249772096709256E-003
+           3 ;           2 ;           2 ;           1 ;  -1.1608391327495624E-016
+           1 ;           1 ;           3 ;           1 ;  -4.0963143108802160E-013
+           2 ;           1 ;           3 ;           1 ;   8.2144778768689216E-016
+           3 ;           1 ;           3 ;           1 ;  -5.6900050633044569E-003
+           1 ;           2 ;           3 ;           1 ;   4.7279329330413403E-013
+           2 ;           2 ;           3 ;           1 ;  -7.2460436015771537E-016
+           3 ;           2 ;           3 ;           1 ;   5.7249772096298474E-003
+           1 ;           1 ;           1 ;           2 ;  0.62988274265747024     
+           2 ;           1 ;           1 ;           2 ;  -2.9156554213753235E-016
+           3 ;           1 ;           1 ;           2 ;  -1.8198220922945515E-013
+           1 ;           2 ;           1 ;           2 ; -0.62978045302522956     
+           2 ;           2 ;           1 ;           2 ;   3.2931470570039465E-016
+           3 ;           2 ;           1 ;           2 ;  -5.0018720636991404E-013
+           1 ;           1 ;           2 ;           2 ;  -3.1787240686322570E-017
+           2 ;           1 ;           2 ;           2 ;   5.7252466174059907E-003
+           3 ;           1 ;           2 ;           2 ;   4.6774597814467694E-017
+           1 ;           2 ;           2 ;           2 ;   1.1932968314465000E-017
+           2 ;           2 ;           2 ;           2 ;  -5.7608463691356665E-003
+           3 ;           2 ;           2 ;           2 ;   6.5962985295425496E-016
+           1 ;           1 ;           3 ;           2 ;  -4.5713107118198946E-013
+           2 ;           1 ;           3 ;           2 ;  -5.3262974849462638E-016
+           3 ;           1 ;           3 ;           2 ;   5.7252466173793454E-003
+           1 ;           2 ;           3 ;           2 ;   4.2192145397564279E-013
+           2 ;           2 ;           3 ;           2 ;   8.2922081667265367E-016
+           3 ;           2 ;           3 ;           2 ;  -5.7608463689305806E-003
 writedynmat: Saving into a file the force constant matrix
 
 siesta: E_KS(eV) =              -30.5383
@@ -453,113 +467,115 @@ siesta: E_KS - E_eggbox =       -30.5383
 
 siesta: Atomic forces (eV/Ang):
 ----------------------------------------
-   Tot   -0.007766   -0.000000   -0.000000
+   Tot   -0.002187   -0.000000   -0.000000
 ----------------------------------------
-   Max   22.346244
-   Res   12.899368    sqrt( Sum f_i^2 / 3N )
+   Max    0.225485
+   Res    0.129554    sqrt( Sum f_i^2 / 3N )
 ----------------------------------------
-   Max   22.346244    constrained
+   Max    0.225485    constrained
 
-Stress-tensor-Voigt (kbar):       28.65       -0.00       -0.00        0.00       -0.00       -0.00
-(Free)E + p*V (eV/cell)      -36.4982
+Stress-tensor-Voigt (kbar):        0.29       -0.00       -0.00        0.00        0.00        0.00
+(Free)E + p*V (eV/cell)      -30.5983
 Target enthalpy (eV/cell)      -30.5383
 
 siesta: Program's energy decomposition (eV):
-siesta: Ebs     =       -19.554654
+siesta: Ebs     =       -19.554959
 siesta: Eions   =        39.414643
 siesta: Ena     =        11.131311
-siesta: Ekin    =        26.824072
-siesta: Enl     =        -8.986386
+siesta: Ekin    =        26.824163
+siesta: Enl     =        -8.986522
 siesta: Eso     =         0.000000
 siesta: Eldau   =         0.000000
-siesta: DEna    =        -3.247375
-siesta: DUscf   =         0.101280
+siesta: DEna    =        -3.247255
+siesta: DUscf   =         0.441007
 siesta: DUext   =         0.000000
-siesta: Exc     =       -17.286440
+siesta: Enegf   =         0.000000
+siesta: Exc     =       -17.286341
 siesta: eta*DQ  =         0.000000
 siesta: Emadel  =         0.000000
 siesta: Emeta   =         0.000000
 siesta: Emolmec =         0.000000
 siesta: Ekinion =         0.000000
-siesta: Eharris =       -30.538336
-siesta: Etot    =       -30.538336
-siesta: FreeEng =       -30.538336
+siesta: Eharris =       -30.538279
+siesta: Etot    =       -30.538279
+siesta: FreeEng =       -30.538279
 
 siesta: Final energy (eV):
-siesta:  Band Struct. =     -19.554654
-siesta:       Kinetic =      26.824072
-siesta:       Hartree =      26.205354
+siesta:  Band Struct. =     -19.554959
+siesta:       Kinetic =      26.824163
+siesta:       Hartree =      26.205037
 siesta:       Eldau   =       0.000000
 siesta:       Eso     =       0.000000
 siesta:    Ext. field =       0.000000
-siesta:   Exch.-corr. =     -17.286440
-siesta:  Ion-electron =     -76.568991
-siesta:       Ion-ion =       9.947824
+siesta:       Enegf   =       0.000000
+siesta:   Exch.-corr. =     -17.286341
+siesta:  Ion-electron =     -76.229037
+siesta:       Ion-ion =       9.947899
 siesta:       Ekinion =       0.000000
-siesta:         Total =     -30.538336
-siesta:         Fermi =      -1.530097
+siesta:         Total =     -30.538279
+siesta:         Fermi =      -1.529320
 
 siesta: Atomic forces (eV/Ang):
-siesta:      1   22.338478   -0.000000   -0.000000
-siesta:      2  -22.346244   -0.000000   -0.000000
+siesta:      1    0.223298   -0.000000   -0.000000
+siesta:      2   -0.225485   -0.000000   -0.000000
 siesta: ----------------------------------------
-siesta:    Tot   -0.007766   -0.000000   -0.000000
+siesta:    Tot   -0.002187   -0.000000   -0.000000
 
 siesta: Stress tensor (static) (eV/Ang**3):
-siesta:     0.017880   -0.000000   -0.000000
-siesta:     0.000000   -0.000000    0.000000
-siesta:    -0.000000   -0.000000   -0.000000
+siesta:     0.000180   -0.000000   -0.000000
+siesta:     0.000000   -0.000000   -0.000000
+siesta:     0.000000    0.000000   -0.000000
 
 siesta: Cell volume =       1000.000000 Ang**3
 
 siesta: Pressure (static):
 siesta:                Solid            Molecule  Units
-siesta:          -0.00006491         -0.00000002  Ry/Bohr**3
-siesta:          -0.00595987         -0.00000191  eV/Ang**3
-siesta:          -9.54886803         -0.00305575  kBar
-(Free)E+ p_basis*V_orbitals  =         -30.100711
-(Free)Eharris+ p_basis*V_orbitals  =         -30.100711
+siesta:          -0.00000065         -0.00000000  Ry/Bohr**3
+siesta:          -0.00005999         -0.00000015  eV/Ang**3
+siesta:          -0.09611063         -0.00023894  kBar
+(Free)E+ p_basis*V_orbitals  =         -30.100654
+(Free)Eharris+ p_basis*V_orbitals  =         -30.100654
 
-siesta: Electric dipole (a.u.)  =    0.000119   -0.000000   -0.000000
-siesta: Electric dipole (Debye) =    0.000302   -0.000000   -0.000000
+siesta: Electric dipole (a.u.)  =   -0.000008    0.000000   -0.000000
+siesta: Electric dipole (Debye) =   -0.000019    0.000000   -0.000000
 
-timer: Elapsed wall time (sec) =      14.528
+timer: Elapsed wall time (sec) =      78.789
 timer: CPU execution times (sec):
 
 Routine            Calls   Time/call    Tot.time        %
-siesta                 1      14.071      14.071   100.00
-Setup                  1       0.129       0.129     0.92
+siesta                 1      78.582      78.582   100.00
+Setup                  1       0.092       0.092     0.12
 bands                  1       0.000       0.000     0.00
 KSV_init               1       0.000       0.000     0.00
-IterGeom               1      13.942      13.942    99.08
-state_init             1       0.011       0.011     0.08
+IterGeom               1      78.489      78.489    99.88
+state_init             1       0.011       0.011     0.01
 hsparse                1       0.000       0.000     0.00
-overlap                1       0.011       0.011     0.08
-Setup_H0               1       0.164       0.164     1.17
-naefs                  2       0.000       0.001     0.01
+overlap                1       0.011       0.011     0.01
+Setup_H0               1       0.684       0.684     0.87
+naefs                  2       0.000       0.000     0.00
 MolMec                 2       0.000       0.000     0.00
-kinefsm                2       0.004       0.008     0.06
-nlefsm                 2       0.017       0.034     0.24
-DHSCF_Init             1       0.121       0.121     0.86
-DHSCF1                 1       0.016       0.016     0.11
+kinefsm                2       0.004       0.008     0.01
+nlefsm                 2       0.017       0.035     0.04
+DHSCF_Init             1       0.641       0.641     0.82
+DHSCF1                 1       0.062       0.062     0.08
 INITMESH               1       0.000       0.000     0.00
-DHSCF2                 1       0.105       0.105     0.75
-REMESH                 1       0.007       0.007     0.05
-REORD                643       0.001       0.741     5.27
-PHION                  1       0.044       0.044     0.31
-COMM_BSC             314       0.001       0.372     2.65
-POISON               154       0.038       5.892    41.88
-fft                  308       0.013       3.967    28.19
-IterSCF                7       0.092       0.642     4.56
-setup_H                8       0.080       0.640     4.55
-DHSCF                 45       0.305      13.744    97.68
-DHSCF3                45       0.075       3.389    24.08
-rhoofd               153       0.006       0.944     6.71
-CellXC                45       0.013       0.593     4.21
-cellXC               153       0.013       2.022    14.37
-vmat                 105       0.006       0.593     4.21
-compute_dm             7       0.000       0.001     0.00
-diagon                 7       0.000       0.001     0.00
+DHSCF2                 1       0.578       0.578     0.74
+REMESH                 1       0.027       0.027     0.03
+REORD                634       0.006       3.793     4.83
+PHION                  1       0.214       0.214     0.27
+COMM_BSC             332       0.006       2.067     2.63
+POISON               154       0.263      40.462    51.49
+fft                  308       0.101      31.185    39.68
+IterSCF                7       0.538       3.765     4.79
+setup_H                8       0.471       3.764     4.79
+DHSCF                 45       1.728      77.754    98.95
+DHSCF3                45       0.444      19.973    25.42
+rhoofd               153       0.029       4.370     5.56
+CellXC                45       0.061       2.755     3.51
+cellXC               153       0.063       9.597    12.21
+vmat                 105       0.025       2.672     3.40
+compute_dm             7       0.000       0.000     0.00
+diagon                 7       0.000       0.000     0.00
 r-eigvec               7       0.000       0.000     0.00
 r-buildHS              7       0.000       0.000     0.00
 rdiag                  7       0.000       0.000     0.00
@@ -569,28 +585,28 @@ rdiag3                 7       0.000       0.000     0.00
 rdiag4                 7       0.000       0.000     0.00
 r-buildD               7       0.000       0.000     0.00
 MIXER                  6       0.000       0.000     0.00
-PostSCF                1       0.144       0.144     1.02
-DHSCF4                 1       0.063       0.063     0.44
-dfscf                  1       0.046       0.046     0.32
+PostSCF                1       0.763       0.763     0.97
+DHSCF4                 1       0.297       0.297     0.38
+dfscf                  1       0.210       0.210     0.27
 overfsm                1       0.000       0.000     0.00
-Linres                 1      12.980      12.980    92.25
-LRatom                 2       5.947      11.894    84.53
-dvmat                  2       0.016       0.031     0.22
-DHSCF-LR              36       0.286      10.293    73.15
-dfscf2                 4       0.040       0.160     1.13
-CellXC-LR            108       0.015       1.606    11.41
-dynamat               12       0.055       0.658     4.68
-dHinit                 2       0.000       0.000     0.00
-dvnloc                 4       0.001       0.005     0.03
-vmat-LR               96       0.006       0.546     3.88
-delrho                32       0.000       0.000     0.00
-delrhog               96       0.000       0.000     0.00
-WriteLRDM             32       0.000       0.004     0.03
+Linres                 1      73.266      73.266    93.23
+LRatom                 2      33.729      67.458    85.84
+dvmat                  2       0.071       0.141     0.18
+DHSCF-LR              36       1.597      57.484    73.15
+dfscf2                 4       0.190       0.758     0.96
+CellXC-LR            108       0.077       8.292    10.55
+dynamat               12       0.250       2.996     3.81
+dhinit                 2       0.000       0.000     0.00
+dvnloc                 4       0.001       0.005     0.01
+vmat-LR               96       0.025       2.444     3.11
+delrho                32       0.000       0.002     0.00
+delrhog               96       0.000       0.001     0.00
+WriteLRDM             32       0.000       0.003     0.00
 ddsmat                 2       0.000       0.000     0.00
 state_analysis         1       0.000       0.000     0.00
 siesta_move            1       0.000       0.000     0.00
 Analysis               1       0.000       0.000     0.00
 optical                1       0.000       0.000     0.00
   
->> End of run:   8-SEP-2017  14:08:49
+>> End of run:  25-JUN-2018  13:14:49
 Job completed

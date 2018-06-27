@@ -55,6 +55,7 @@ C **********************************************************************
       use parallelsubs, only : WhichNodeOrb, GlobalToLocalOrb
       use alloc,        only : re_alloc, de_alloc
 #ifdef MPI
+      use m_mpi_utils,  only : Globalize_sum
       use mpi_siesta
 #endif
 
@@ -94,7 +95,7 @@ C     Internal Variables
      &           jden, kden, jo, mu, nu, ind, indmn, i, indbetas,
      &           ialpha, ibeta, jbeta,indi,indj,ierror,indden,
      &           iuo, juo, ind2, nbands, maxspn, kcounter 
-      real(dp) :: def(3), A(3), B(3), 
+      real(dp) :: def(3), A(3), B(3), Ag(3), Bg(3), 
      &            dQo(nuo,3), aux(no), qio, qde,
      &            psiper(2,maxo,maxo), prod1(2), prod2(2), kXij, 
      &            prod3(2), prod4(2), eio, ejo, dStepF, 
@@ -588,11 +589,21 @@ C        Compute the change in density matrix elements -------------
 
 215     enddo !spatial coordinates
        enddo !nspin loop
-
       enddo ! nk loop 
 
+! A and B are local (in the k-paralelization )
+      Ag(:) = 0.0_dp
+      Bg(:) = 0.0_dp
+#ifdef MPI
+      call globalize_sum(A(:),Ag(:))
+      call globalize_sum(A(:),Bg(:))
+#else
+      Ag(:) = A(:)
+      Bg(:) = B(:)
+#endif
+
       do ix = 1,3
-        def(ix) = A(ix) / (B(ix) + 1.0e-12_dp)
+        def(ix) = Ag(ix) / (Bg(ix) + 1.0e-12_dp)
       enddo
 
 c    Variation of the energy level ocupation--------------------------
@@ -651,6 +662,7 @@ C        Compute the change in density matrix elements -------------
             do 550 io = 1, nbands
               qio = qO(io,ispin,ik)
               if(qio .lt. 1.0e-6_dp) cycle
+              eio = eo(io,ispin,ik)
               dQo(io,1) = -wk(ik)*dstepf((eio-ef)/T)/
      .                    (T*nspin+1.0e-12)
               eio = eo(io,ispin,ik)*dQo(io,1)
@@ -697,6 +709,7 @@ C        Compute the change in density matrix elements -------------
       endif !Variation of the energy level ocupation
 C
 
+! Sum all node contributions (k-distributed) to the final DM and distribute it over the Nodes
       do io = 1,nuog
         call WhichNodeOrb(io,Nodes,BNode)
         call GlobalToLocalOrb(io,BNode,Nodes,iio)

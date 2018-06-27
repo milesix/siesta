@@ -105,7 +105,7 @@ contains
     use m_ts_charge,           only: TS_RHOCORR_FERMI_TOLERANCE
     use m_transiesta,          only: transiesta
     use kpoint_grid, only : gamma_scf
-    use m_energies, only : Ef
+    use m_energies, only : Ef, dUscf
 
     use m_initwf, only: initwf
 
@@ -117,6 +117,7 @@ contains
     real(dp) :: dHmax ! Max. change in H elements
     real(dp) :: dEmax ! Max. change in EDM elements
     real(dp) :: drhog ! Max. change in rho(G) (experimental)
+    real(dp) :: dUscf_dummy !to store this variable in a LR calculation
     real(dp), target :: G2max ! actually used meshcutoff
     type(converger_t) ::  conv_harris, conv_freeE
 
@@ -581,10 +582,12 @@ contains
 
 ! Linres line: main subroutine calling--------------------------------------
       if (linreSwitch) then
-         if (.not. SCFconverged) then
-            call message("WARNING","LR: scf cycle not converged in Siesta")
-         endif
+        dUscf_dummy = dUscf !LR-dhscf overwrites this variable
+        if (.not. SCFconverged) then
+          call message("WARNING","LR: scf cycle not converged in Siesta")
+        endif
          call linresscf()
+        dUscf = dUscf_dummy
       endif
 !---------------------------------------------------------------------------
 

@@ -27,8 +27,8 @@ C Modules------------------------------------------------------------------
      &                          no_u, rmaxv 
       use precision,  only: dp, sp
       use siesta_geom
-      use siesta_options,  only: nscf_siesta=>nscf
-      use siesta_options,  only: temp, maxsav, wmix,nkick,
+      use siesta_options,  only:  nscf_siesta=>nscf
+      use siesta_options,  only:  temp, maxsav, wmix,nkick,
      &                            wmixkick
       use parallel,          only: IOnode, Node, Nodes
       use m_spin,        only: nspin
@@ -107,12 +107,13 @@ C ----------------------------------------------------------------------------
       ! 
       nscf = fdf_get("LR.SCF.Iterations",nscf_siesta)
 
-      iai = fdf_get("MD.FCFirst",1)
-      iaf = fdf_get("MD.FCLast",na_u) ! Move all atoms by default
-      tolLR = fdf_get("LR.DMTolerance",0.001_dp)
-      eigtolLR = fdf_get('LR.EigTolerance',0.001_dp)
-      readold = fdf_get("LR.readDynmat",.false.)
-      usePSI = fdf_get("LR.UsePsi",.false.)
+      iai       = fdf_get("MD.FCFirst",1)
+      iaf       = fdf_get("MD.FCLast",na_u) ! Move all atoms by default
+      tolLR     = fdf_get("LR.DMTolerance",0.001_dp)
+      eigtolLR  = fdf_get('LR.EigTolerance',0.001_dp)
+      readold   = fdf_get("LR.readDynmat",.false.)
+      usePSI    = fdf_get("LR.UsePsi",.false.)
+      nscf      = fdf_get('LR.SCF.Iterations',nscf_siesta) !Overwrite the SIESTA nscf max-iterations 
 
 C Check all the inputs options
 C------------------------------------------------------------------------------

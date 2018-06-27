@@ -102,20 +102,6 @@ C -------------------------------------------------------------------
       external  timer
 C ......................
 
-C Linres ------------------------------------------------------------
-      INTERFACE
-        SUBROUTINE MATEL(A, ioa, joa, rij,
-     &                   Sij, grSij, gr2Sij)
-          use precision,     only : dp
-             integer,   intent(inout) ::  ioa, joa
-             real(dp),  intent(in) :: rij, Sij
-             real(dp),  intent(out) :: grSij(3)
-             real(dp),  intent(out), optional ::  gr2Sij(3,3)
-             character, intent(in) :: A
-        END SUBROUTINE MATEL
-      END INTERFACE
-C -------------------------------------------------------------------
-
 C Start timer
       call timer( 'overfsm', 1 )
 
@@ -177,23 +163,17 @@ C Valid orbital
                   endif
                   Si(jo) = Si(jo) + Sij
                   do ix = 1,3
-                    if ((.not. present (dS)) .or. (.not.
-     &                             present (d2S))) then !Lin line
-                      fij(ix) = (- Di(jo)) * grSij(ix)
-                      fa(ix,ia)  = fa(ix,ia)  + fij(ix)
-                      fa(ix,jua) = fa(ix,jua) - fij(ix)
-                    endif
+                    fij(ix) = (- Di(jo)) * grSij(ix)
+                    fa(ix,ia)  = fa(ix,ia)  + fij(ix)
+                    fa(ix,jua) = fa(ix,jua) - fij(ix)
 C LINRES ------------------------------------------------------------
-                    if (present(DS)) then
+                    if (present(D2S)) then
                      dSi(jo,ix) = dSi(jo,ix) + grSij(ix)
                     endif
 C -------------------------------------------------------------------
                     do jx = 1,3
-                      if ((.not. present (dS)) .or. (.not.
-     &                             present (d2S))) then !Lin line
-                        stress(jx,ix) = stress(jx,ix) +
-     .                              xij(jx,jn) * fij(ix) / volume
-                      endif
+                      stress(jx,ix) = stress(jx,ix) +
+     .                         xij(jx,jn) * fij(ix) / volume
 C LINRES ------------------------------------------------------------
                       if (present(D2S)) then
                          d2Si(jo,ix,jx) = d2Si(jo,ix,jx) + gr2Sij(ix,jx)
@@ -214,17 +194,15 @@ C ------------------------------------------------------------------
               S(ind) = Si(jo)
               Si(jo) = 0.0d0
 C LINRES ------------------------------------------------------------
-              if (present(DS)) then
+              if (present(D2S)) then
                 do ix = 1,3
                   DS(ind,ix) = dSi(jo,ix)
-                    dSi(jo,ix) = 0.0d0
-
-                   do jx = 1,3
+                  dSi(jo,ix) = 0.0d0
+                  do jx = 1,3
                     D2S(ind,ix,jx) =  d2Si(jo,ix,jx)
                     d2Si(jo,ix,jx) = 0.0d0
-                   enddo
+                  enddo
                 enddo
-               !if(ia.eq.2) print *, iio,';',jo,';',D2S(ind,1,1)
               endif
 C -------------------------------------------------------------------
             enddo

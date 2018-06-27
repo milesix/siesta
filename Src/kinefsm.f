@@ -107,20 +107,6 @@ C -------------------------------------------------------------------
       external ::  volcel, timer
 C ......................
 
-C Linres ------------------------------------------------------------
-      INTERFACE
-        SUBROUTINE MATEL(A, ioa, joa, rij,
-     &                   Sij, grSij, gr2Sij)
-          use precision,     only : dp
-             integer,   intent(inout) ::  ioa, joa
-             real(dp),  intent(in) :: rij, Sij
-             real(dp),  intent(out) :: grSij(3)
-             real(dp),  intent(out), optional ::  gr2Sij(3,3)
-             character, intent(in) :: A
-        END SUBROUTINE MATEL
-      END INTERFACE
-C -------------------------------------------------------------------
-
 C Start timer
       call timer( 'kinefsm', 1 )
 
@@ -191,23 +177,19 @@ C Is this orbital on this Node?
                   Ti(jo) = Ti(jo) + Tij
 
                   if (.not. matrix_elements_only) then
-                     Ekin = Ekin + Di(jo) * Tij
+                    Ekin = Ekin + Di(jo) * Tij
                     do ix = 1,3
-                      if ((.not. present (d2H))) then !Lin line
-                        fij(ix) = Di(jo) * grTij(ix)
-                        fa(ix,ia)  = fa(ix,ia)  + fij(ix)
-                        fa(ix,jua) = fa(ix,jua) - fij(ix)
-                      endif
+                      fij(ix) = Di(jo) * grTij(ix)
+                      fa(ix,ia)  = fa(ix,ia)  + fij(ix)
+                      fa(ix,jua) = fa(ix,jua) - fij(ix)
 C LINRES ------------------------------------------------------------
-                      if (present(dH)) then
-                          dTi(jo,ix) = dTi(jo,ix) + grTij(ix)
+                      if (present(d2H)) then
+                        dTi(jo,ix) = dTi(jo,ix) + grTij(ix)
                       endif
 C -------------------------------------------------------------------
                       do jx = 1,3
-                        if ((.not.present (d2H))) then !Lin line
-                          stress(jx,ix) = stress(jx,ix) +
-     .                                  xij(jx,jn) * fij(ix) / volume
-                        endif
+                        stress(jx,ix) = stress(jx,ix) +
+     .                            xij(jx,jn) * fij(ix) / volume
 C LINRES ------------------------------------------------------------
                         if (present(d2H)) then
                           d2Ti(jo,ix,jx) = d2Ti(jo,ix,jx) + 
@@ -218,7 +200,6 @@ C -------------------------------------------------------------------
                     enddo
                   endif 
                 endif
-
               enddo
             enddo
             if (.not. matrix_elements_only) then
@@ -232,22 +213,20 @@ C -------------------------------------------------------------------
               jo = listh(ind)
               do ispin = 1,nspin
                 H(ind,ispin) = H(ind,ispin) + Ti(jo)
-C LINRES -----------------------------------------------------------------
-                do ix = 1,3
-                  if (present(dH)) then
-                   DH(ind,ix) = DH(ind,ix) + dTi(jo,ix)
-                   dTi(jo,ix) = 0.0_dp
-                  endif
-                     do jx =1,3
-                       if (present(d2H)) then
-                        D2H(ind,ix,jx) = D2H(ind,ix,jx) +
-     &                                  d2Ti(jo,ix,jx)
-                        d2Ti(jo,ix,jx) = 0.0_dp
-                       endif
-                     enddo
-                enddo
-C ----------------------------------------------------------------------
               enddo
+C LINRES -----------------------------------------------------------------
+              if (present(d2H)) then
+                do ix = 1,3
+                  DH(ind,ix) = DH(ind,ix) + dTi(jo,ix)
+                  dTi(jo,ix) = 0.0_dp
+                  do jx =1,3
+                    D2H(ind,ix,jx) = D2H(ind,ix,jx) +
+     &                               d2Ti(jo,ix,jx)
+                    d2Ti(jo,ix,jx) = 0.0_dp
+                  enddo
+                enddo
+              endif
+C ----------------------------------------------------------------------
               Ti(jo) = 0.0_dp
             enddo
           endif
