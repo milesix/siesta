@@ -130,9 +130,12 @@
 \hrulefill
 \vspace{1cm}
 
-{\Huge \textbf{S I E S T A \, \, \input{../version.info}}}
+{\Huge \textbf{S I E S T A - L I N R E S}}
+\vspace{0.5cm}
 
-\vspace{1cm}
+{\Large \textbf{\input{../version.info}}}
+
+\vspace{0.5cm}
 \hrulefill
 \vspace{0.5cm}
 
@@ -10282,10 +10285,11 @@ performed in order to calculate the unperturbed density matrix. Once
 the system reaches the self-consistent solution, the LINRES method is
 called. The density matrix is calculated using DFPT for each perturbed
 atom (external loop over the perturbed atoms) and the contributions to
-the second energy derivative are added. It is important to note that
-the calculated perturbed density matrix for each perturbed atom is
-independent of the rest, but it is currently not possible to run
-LINRES with more than one MPI process. Once the atom loop ends, the FC matrix is
+the second energy derivative are added. The calculated perturbed
+density matrix for each perturbed atom is independent of the rest, but
+it is currently not possible to parallelize LINRES over displacements;
+the parallelization is done over orbitals and grid points, as in the
+standard version of SIESTA.  Once the atom loop ends, the FC matrix is
 written to a file SystemLabel.FC as usual. The output can be analyzed
 to extract phonon frequencies and vectors with the VIBRA\index{VIBRA}
 package in the \program{Util/Vibra}.
