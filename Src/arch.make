@@ -45,7 +45,7 @@ LIBS = $(COMP_LIBS)
 
 ###ADD LIBXC STUFF
 #libxc_root=points to your libxc installation path
-LIBXC_ROOT=/home/likewise-open/ICN/sillera/Desktop/LIBXC/LinresLibxc/libxc-2.2.3/INSTAL
+LIBXC_ROOT=
 LIBXC_INCFLAGS= -I $(LIBXC_ROOT)/include
 LIBXC_LIBS=-L$(LIBXC_ROOT)/lib -l xcf90 -l xc
 

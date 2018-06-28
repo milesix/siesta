@@ -1,7 +1,6 @@
+single-test makefile
 #
-# Single-test makefile
-#
-name=C60
+name=c60linres
 #
 include ../test.mk
 

@@ -1,18 +1,23 @@
-SIESTA
-MaX-R2 release, August 2017
-(For up-to-date versions, please visit http://launchpad.net/siesta)
+SIESTA-LINRES
+
+Part of MaX-R3 release, June 2018
+(For up-to-date versions, please visit http://launchpad.net/siesta/max-releases)
+
+This is a special version of SIESTA able to carry out
+density-functional perturbation theory (linear-response LINRES)
+calculations. It is being developed in tandem with the main code, but
+it still needs a special set of libraries and lacks a few features of
+the main version, so it is released as an independent sub-package.
 
 The LaTeX source for the manual (in siesta.tex) can be found in the
-Docs/ directory.
+Docs/ directory. See the LINRES section for more information about the
+specific features of this version.
 
-The code itself can be found under Src/
-Examples and other tutorial material in Tests/, Tutorials/, and Examples/
+Some examples of linear-response calculations can be found in the
+LR_TESTS directory.
 
-Utilities under Util/
-
-Pseudopotential-related information can be found under Pseudo/.
-
-Please see the manual for compilation and other instructions.
+Please see the manual and the file README_LINRES_LIBXC for compilation
+and other instructions.
 
 For bug reports, and other code suggestions, please follow the guidelines
 in the file Docs/REPORTING_BUGS

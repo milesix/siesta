@@ -1,29 +1,41 @@
-#BETA#BETA#BETA#BETA#BETA#BETA#
-B                             B
-E            SIESTA           E
-#             X.Y             #
-T              Z              T
-A                             A
-#BETA#BETA#BETA#BETA#BETA#BETA#
+Release notes for Siesta-Linres (part of MaX-R3 release)
 
-Release notes for next Siesta
+* The code currently implements DFPT for q=0 perturbations. It still
+needs a proper supercell to carry out Force-constant-matrix
+calculations. The advantage with respect to the 'Forces' mode of
+operation in standard Siesta is that the derivatives used here are
+formal, instead of through finite diferences.
 
-*** Backward-compatibility issues
+* The code can use PSML pseudopotentials if they are first processed
+by the standard Siesta version in this MaX release to generate the
+.ion files which contain basis set and projector information. In full,
+prepare a minimal fdf file with the appropriate chemical-species block
+and basis-set specification, and include the fdf line:
 
- * The transiesta executable has been deprecated. Please use
-      siesta --electrode 
-   for electrode calculations. For regular transiesta runs, there
-   is no need for the specific executable. Details were given in the
-   4.1-b4 release.
+atom-setup-only T
 
-*** New features
+Run the standard version of Siesta, and then copy the .ion files to
+the place where you intend to run a LinRes calculation. Then, in the
+fdf file for the LinRes run, include the line
 
- - Added the CheSS solver as a new solution method. This is
-   a linear scaling solver which calculates the density matrix and the
-   energy density matrix.
+user-basis T
 
- - Added the Cold-smearing method for zero-temperature limit
-   with smearing.
 
- - TDDFT implemented by R. Ullah via older code from
-   D. Sanchez-Portal.
+* Re-use of converged density matrices.
+
+Siesta-Linres carries out an initial phase of convergence of the
+electronic structure of the system, and then proceeds to the
+linear-response cycle. The initial phase can be speeded up if a
+(converged or nearly so) density-matrix from another Siesta run is
+available. Note that the convergence thresholds used in
+linear-response calculations might be more stringent than in normal
+runs. See the documentation for the DM.UseSaveDM option in the manual.
+
+* Limitations
+
+Siesta-Linres does not yet work in non-collinear spin or spin-orbit
+mode.
+
+
+
+

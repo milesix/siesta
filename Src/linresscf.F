@@ -103,6 +103,10 @@ C ----------------------------------------------------------------------------
 C ----------------------------------------------------------------------------
 C Reading linres options 
 C ----------------------------------------------------------------------------
+
+      ! 
+      nscf = fdf_get("LR.SCF.Iterations",nscf_siesta)
+
       iai       = fdf_get("MD.FCFirst",1)
       iaf       = fdf_get("MD.FCLast",na_u) ! Move all atoms by default
       tolLR     = fdf_get("LR.DMTolerance",0.001_dp)
