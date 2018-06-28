@@ -1,0 +1,15 @@
+This folder contains a single test for the linear-response features 
+of Siesta using the Libxc library.
+
+In order to run this test, the Siesta version that contains the
+linear-response features has to be compiled using the Libxc 
+library (check README_LINRES_LIBXC to install it).
+
+- This test corresponds to a linear-response calculation of
+  the hexagonal-boron-nitride unit cell displacing both atoms.
+  This simple calculation allows us to show how the Libxc xc-potentials
+  are called in a Siesta calculation.
+
+- The pseudos needed for the calculation are inside the Pseudos folder.
+
+The Refs/Libxc folder contains the output and the obtained FC file.
