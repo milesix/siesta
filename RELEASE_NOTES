@@ -1,4 +1,4 @@
-Release notes for PSML-enabled version of SIESTA, Mark R1 
+Release notes for the Third Max Release of SIESTA
 
 *** Use of PSML pseudopotentials
 
@@ -14,14 +14,30 @@ Release notes for PSML-enabled version of SIESTA, Mark R1
 
 *** New features
 
- - Enabled custom k-points in PDOS and SCF calculations.
-
+ - The TranSiesta and TBTrans performance has been significantly
+   increased.
+ 
+ - Added an interface to the ELSI library of electronic-structure
+   solvers.
+ 
  - Added the CheSS solver as a new solution method. This is
    a linear scaling solver which calculates the density matrix and the
    energy density matrix.
 
+ - Full spin-orbit-coupling through relativistic projectors
+   
  - Added the Cold-smearing method for zero-temperature limit
    with smearing.
 
  - TDDFT implemented by R. Ullah via older code from
    D. Sanchez-Portal.
+
+ - Use of the stand-alone libGridXC library
+   (http://launchpad.net/libgridxc), including an interface to the libxc
+   library.
+ 
+ - Enabled custom k-points in PDOS and SCF calculations.
+
+ - New 'Siesta-Linres' package for linear-response (Density Functional
+   Perturbation Theory). (Released jointly with this one).
+ 
