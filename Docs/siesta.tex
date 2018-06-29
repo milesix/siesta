@@ -10265,7 +10265,7 @@ the forces in the $x$, $y$ and $z$ direction for one of the atoms.
 
 If constraints are used, the file \sysfile{FCC} is also written.
 
-\section{LINRES}\index{LINRES}\index{LINRES}
+\section{Linear-response calculations: LINRES}\index{LINRES}\index{LINRES}
 \label{sec:linres}
 
 SIESTA now includes the linear response theory, an implementation of
@@ -10297,7 +10297,11 @@ package in the \program{Util/Vibra}.
 During a LINRES calculation, a temporary file SystemLabel.LRDYNMAT is
 created. This file contains the not-fully-complete FC matrix and the
 last moved atom which has included its contribution to the FC matrix
-in order to restart the calculation if it stops unexpectedly.
+in order to restart the calculation if it stops unexpectedly. The perturbed
+density matrix is also stored for each scf step in the SystemLabel.LRDM\#
+file where \# corresponds to the index of the perturbed atom. The combination 
+of both files (.LRDYNMAT and .LRDM) allows to restart the calculation from a 
+specific perturbed atom. 
 
 \begin{fdfentry}{MD.TypeOfRun}[string]<LR>
 Input to perform a LINRES calculation after the single point
@@ -10309,7 +10313,7 @@ Index of first atom to displace for the computation of the force
 constant matrix\index{linres} for phonon calculations.
 \end{fdfentry}
 
-\begin{fdfentry}{MD.FCLast}[integer]<\fdfvalue{MD.FCFirst}>
+\begin{fdfentry}{MD.FCLast}[integer]<Number of atoms>
 Index of last atom to displace for the computation of the force
 constant matrix\index{linres} for phonon calculations.
 \end{fdfentry}  
@@ -10325,11 +10329,22 @@ there is a degeneracy.
 \end{fdfentry}  
 
 \begin{fdflogicalF}{LR.readDynmat}
-Restart calculation from SystemLabel.LRDYNMAT file.
+Restart calculation from SystemLabel.LRDYNMAT file or/and SystemLabel.LRDM file.
 \end{fdflogicalF} 
+
+\begin{fdfentry}{LR.SCF.Iterations}[integer]<$1000$>
+Maximum number of SCF iterations per Linres perturbed atom.
+\end{fdfentry} 
 
 Note: The self-consistency loop is currently implemented using the Pulay
 mixing scheme. Check the Pulay options in the appropriate section.
+
+Linres can deal out-of-the-box with LDA-XC potentials. In order
+to include the perturbed xc-potential within the GGA approximation,
+the Libxc library has to be used. The complete notes about how to
+compile Siesta with the Libxc library are presented in the
+\shell{README\_LINRES\_LIBXC} file. The \fdf{XC.Hybrid} block is used to
+define the XC functionals.
 
 \section{LDA+U}
 \label{sec:lda+u}

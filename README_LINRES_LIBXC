@@ -18,11 +18,11 @@ HINT: in the new LIBXC versions you have to use the autoconf utility to generate
    LIBXC_INCFLAGS= -I $(LIBXC_ROOT)/include
    LIBXC_LIBS=-L$(LIBXC_ROOT)/lib -lxcf90 -lxc
    #LIBXC_INCFLAGS= 
-   USE_LIBXC=1
+   USE_LIBXC=1 (1=True, 0=False)
 
 4) Compile Siesta as usual with the correct definition of LIBXC_ROOT variable (pointing to the Libxc instalation folder that contains the bin, include and lib folders)
 
-5) You can check whether the installation has been successful by running the Linres-Libxc test that you can find in the folder Tests.
+5) You can check whether the installation has been successful by running the Linres-Libxc test that you can find in the folder LR_TESTS/Libxc.
 ===================================================================================
 
 
