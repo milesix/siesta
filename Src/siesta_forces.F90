@@ -84,6 +84,9 @@ contains
 #ifdef SIESTA__PEXSI
     use m_pexsi, only: pexsi_finalize_scfloop
 #endif
+#ifdef SIESTA__ELSI
+    use m_elsi_interface, only: elsi_finalize_scfloop
+#endif
     use m_check_walltime
 
     use m_energies, only: DE_NEGF
@@ -140,10 +143,10 @@ contains
     call write_debug( '    PRE siesta_forces' )
 #endif
 
-#ifdef SIESTA__PEXSI
+#if defined (SIESTA__PEXSI) || defined (SIESTA__ELSI)
     ! Broadcast relevant things for program logic
     ! These were set in read_options, called only by "SIESTA_workers".
-    call broadcast(nscf, comm=true_MPI_Comm_World)
+    call broadcast(nscf, comm=mpi_comm_dft)
 #endif
 
     if ( SIESTA_worker )  then
@@ -498,9 +501,9 @@ contains
           
        end if
 
-#ifdef SIESTA__PEXSI
-       call broadcast(iscf, comm=true_MPI_Comm_World)
-       call broadcast(SCFconverged, comm=true_MPI_Comm_World)
+#if defined (SIESTA__PEXSI) || defined (SIESTA__ELSI)
+       call broadcast(iscf, comm=mpi_comm_dft)
+       call broadcast(SCFconverged, comm=mpi_comm_dft)
 #endif
 
        ! Exit if converged
@@ -511,6 +514,11 @@ contains
 #ifdef SIESTA__PEXSI
     if ( isolve == SOLVE_PEXSI ) then
        call pexsi_finalize_scfloop()
+    end if
+#endif
+#ifdef SIESTA__ELSI
+    if ( isolve == SOLVE_ELSI ) then
+       call elsi_finalize_scfloop()
     end if
 #endif
 

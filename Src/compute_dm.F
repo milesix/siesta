@@ -35,6 +35,9 @@
 #ifdef SIESTA__PEXSI
       use m_pexsi_solver,  only: pexsi_solver
 #endif
+#ifdef SIESTA__ELSI
+      use m_elsi_interface,  only: getdm_elsi
+#endif
       use m_hsx, only      : write_hs_formatted
 #ifdef MPI
       use mpi_siesta
@@ -76,7 +79,7 @@
       if (SIESTA_worker) call timer( 'compute_dm', 1 )
 
 #ifdef MPI
-      call MPI_Bcast(isolve,1,MPI_integer,0,true_MPI_Comm_World,mpierr)
+      call MPI_Bcast(isolve,1,MPI_integer,0,MPI_Comm_DFT,mpierr)
 #endif     
 
       if (SIESTA_worker) then
@@ -135,6 +138,30 @@
      $              maxnh, numh, listhptr, listh,
      $              H, S, qtot, Dscf, Escf,
      $              ef, Entropy, temp, delta_Ef)
+      endif
+      if (.not. SIESTA_worker) RETURN
+#endif
+#ifdef SIESTA__ELSI
+      if (isolve .eq. SOLVE_ELSI) then
+        ! This test done in node 0 since NonCol and SpOrb
+        ! are not set for ELSI-solver-only processes
+         if (ionode) then
+            if (spin%NCol .or. spin%SO) call die(
+     $               "The ELSI solver does not implement "//
+     $               "non-coll spins or Spin-orbit yet")
+         endif
+         call getdm_elsi(iscf, no_s, spin%spinor, 
+     &              no_l, maxnh, no_u,
+     &              numh, listhptr, listh,
+     &              H, S, qtot, temp, 
+     &              xijo, indxuo,
+     &              kpoint_scf%N, kpoint_scf%k, kpoint_scf%w,
+     &              eo, qo, Dscf, Escf, ef, Entropy,
+     &              occtol, neigwanted)
+         Ecorrec = 0.0_dp
+!         call elsi_solver(iscf, no_u, no_l, spin%spinor,
+!     $              maxnh, listhptr, listh, qtot, temp,
+!     $              H, S, Dscf, Escf, ef, Entropy)
       endif
       if (.not. SIESTA_worker) RETURN
 #endif
