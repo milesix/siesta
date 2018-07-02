@@ -1419,14 +1419,14 @@ module m_lowdin
     allocate( eigval(num_bands,num_kpts) )
     eigval = eo
 
-!   For debugging
-    do ik = 1, num_kpts
-      do iband = 1, num_wann
-        write(6,'(a,2i5,f12.5)') ' ik, iband, eigval(iband,ik) = ',     &
- &                               ik, iband, eigval(iband,ik) 
-      enddo
-    enddo
-!   End debugging
+!!   For debugging
+!    do ik = 1, num_kpts
+!      do iband = 1, num_wann
+!        write(6,'(a,2i5,f12.5)') ' ik, iband, eigval(iband,ik) = ',     &
+! &                               ik, iband, eigval(iband,ik) 
+!      enddo
+!    enddo
+!!   End debugging
 
     if ( allocated(u_matrix) ) deallocate(u_matrix)
     allocate( u_matrix(number_of_bands_in_manifold_local,               &
@@ -1627,6 +1627,8 @@ module m_lowdin
 
 !   Compute and write the matrix elements of the position operator
 !   Assign a name to the file where the position matrices will be written
+    call io_assign( posunit )  
+
     posfilename = trim( seedname )// "_r.dat"
 
 !   Open the output file where the position matrices will be written
