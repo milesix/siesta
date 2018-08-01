@@ -150,7 +150,7 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   ! Arrays for figuring out the degenerate states
   real(dp), parameter :: deg_EPS = 7.3498067e-06_dp ! 1e-4 eV
   integer :: ndeg
-  real(dp), pointer :: vdeg(:,:,:) => null(), Identity(:,:,:) => null()
+  real(dp), pointer :: vdeg(:,:) => null(), Identity(:,:) => null()
 
   ! Globalized matrices
   integer :: g_nnz
@@ -211,9 +211,9 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
       end do
     end if
     
-    call MPI_Bcast(g_ncol(io),1,MPI_integer, BNode, &
+    call MPI_Bcast(g_ncol(io),1,MPI_Integer, BNode, &
         MPI_Comm_World,MPIerror)
-    call MPI_Bcast(g_col(g_ptr(io)+1),g_ncol(io),MPI_integer, &
+    call MPI_Bcast(g_col(g_ptr(io)+1),g_ncol(io),MPI_Integer, &
         BNode,MPI_Comm_World,MPIerror)
     do is = 1, spin%spinor
       call MPI_Bcast(g_H(g_ptr(io)+1,is),g_ncol(io),MPI_Double_Precision, &
@@ -287,12 +287,10 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   end do
 
   ! Globalise eigenvalues
-  BNode = -1
   io = no_u * spin%spinor
   do ik = 1,nk
-    BNode = BNode + 1
-    if ( BNode == Nodes ) BNode = 0
-    call MPI_Bcast(eo(1,1,ik), io, MPI_double_precision, &
+    BNode = mod(ik-1, Nodes)
+    call MPI_Bcast(eo(1,1,ik), io, MPI_Double_Precision, &
         BNode,MPI_Comm_World,MPIerror)
   end do
 
@@ -543,19 +541,10 @@ contains
 
 !$OMP parallel default(shared), private(io,jo,j,ind,kxij,ckxij,skxij)
 
-!$OMP do collapse(2)
-    do io = 1, no_u
-      do jo = 1, no_u
-        Saux(1,jo,io) = 0._dp
-        Saux(2,jo,io) = 0._dp
-        Haux(1,jo,io) = 0._dp
-        Haux(2,jo,io) = 0._dp
-      end do
-    end do
-!$OMP end do
-
 !$OMP do
     do io = 1,no_u
+      Saux(:,:,io) = 0._dp
+      Haux(:,:,io) = 0._dp
       do j = 1, g_ncol(io)
         ind = g_ptr(io) + j
         jo = modp(g_col(ind), no_u)
@@ -584,19 +573,10 @@ contains
 
 !$OMP parallel default(shared), private(io,jo,j,ind,kxij,ckxij,skxij)
 
-!$OMP do collapse(2)
-    do io = 1, no_u
-      do jo = 1, no_u
-        dH(1,jo,io) = 0._dp
-        dH(2,jo,io) = 0._dp
-        dS(1,jo,io) = 0._dp
-        dS(2,jo,io) = 0._dp
-      end do
-    end do
-!$OMP end do
-
 !$OMP do
     do io = 1, no_u
+      dS(:,:,io) = 0._dp
+      dH(:,:,io) = 0._dp
       do j = 1, g_ncol(io)
 
         ind = g_ptr(io) + j
@@ -634,9 +614,9 @@ contains
     integer :: io_start, ix
     real(dp) :: e_avg
     
-    call re_alloc(vdeg, 1, 2, 1, ndeg, 1, ndeg, name='vdeg', routine= 'diagkp_velocity', &
+    call re_alloc(vdeg, 1, 2, 1, ndeg**2, name='vdeg', routine= 'diagkp_velocity', &
         copy=.false., shrink=.false.)
-    call re_alloc(Identity, 1, 2, 1, ndeg, 1, ndeg, name='identity', routine= 'diagkp_velocity', &
+    call re_alloc(Identity, 1, 2, 1, ndeg**2, name='identity', routine= 'diagkp_velocity', &
         copy=.false., shrink=.false.)
 
     ! Figure out the start and end of the orbitals
@@ -662,6 +642,7 @@ contains
       call setup_dk(ix, kpoint(:,ik))
 
       ! Calculate < psi_i | dH - e dS | psi_j >
+      Identity(:,1:ndeg**2) = 0._dp
       do io = 1, ndeg
         jo = io_start + io - 1
 
@@ -674,17 +655,16 @@ contains
 
         ! Calculte < psi_: | dH - e dS | psi_i >
         call zgemv('C', no_u, ndeg, dcmplx(1._dp, 0._dp), &
-            psi(1,1,io_start), no_u, aux, 1, dcmplx(0._dp, 0._dp), vdeg(1,1,io), 1)
+            psi(1,1,io_start), no_u, aux, 1, dcmplx(0._dp, 0._dp), vdeg(1,(io-1)*ndeg+1), 1)
 
         ! Initialize identity matrix
-        Identity(:,:,io) = 0._dp
-        Identity(1,io,io) = 1._dp
+        Identity(1,(io-1)*ndeg+io) = 1._dp
 
       end do
 
       ! Now we have the < psi_j | dH - e dS | psi_i > matrix, we need to diagonalize to find
       ! the linear combinations of the new states
-      call cdiag(vdeg, identity, ndeg, ndeg, ndeg, aux, Haux, ndeg, 1, ierror, -1)
+      call cdiag(vdeg, Identity, ndeg, ndeg, ndeg, aux, Haux, ndeg, 1, ierror, -1)
       if ( ierror > 0 ) then
         call die('Terminating due to failed diagonalisation in degenerate sub-space')
       end if
