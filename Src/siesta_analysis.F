@@ -507,7 +507,7 @@ C
         call read_lowdin_specs()
         call setup_Lowdin
         call re_alloc( Amnmat_man,              
-     &                 1, n_lowdin_manifolds,                                         
+     &                 1, n_lowdin_manifolds,  
      &                 1, manifold_bands_lowdin(1)%number_of_bands + 
      &                    manifold_bands_lowdin(2)%number_of_bands,        
      &                 1, manifold_bands_lowdin(1)%number_of_bands + 
