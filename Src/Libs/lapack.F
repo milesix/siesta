@@ -5619,8 +5619,7 @@
       PARAMETER          ( ONE = 1.0D+0 )
       LOGICAL            LQUERY
       INTEGER            I, IINFO, J, LDWRKX, LDWRKY, LWKOPT, MINMN, NB,
-     $                   NBMIN, NX
-      DOUBLE PRECISION   WS
+     $                   NBMIN, NX, WS
       EXTERNAL           DGEBD2, DGEMM, DLABRD, XERBLA
       INTRINSIC          DBLE, MAX, MIN
       INTEGER            ILAENV
@@ -6475,6 +6474,1641 @@
          CALL DGETRS( 'No transpose', N, NRHS, A, LDA, IPIV, B, LDB,
      $                INFO )
       END IF
+      RETURN
+      END
+! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/dgesvd.f
+      SUBROUTINE DGESVD( JOBU, JOBVT, M, N, A, LDA, S, U, LDU,
+     $                   VT, LDVT, WORK, LWORK, INFO )
+      CHARACTER          JOBU, JOBVT
+      INTEGER            INFO, LDA, LDU, LDVT, LWORK, M, N
+      DOUBLE PRECISION   A( LDA, * ), S( * ), U( LDU, * ),
+     $                   VT( LDVT, * ), WORK( * )
+      DOUBLE PRECISION   ZERO, ONE
+      PARAMETER          ( ZERO = 0.0D0, ONE = 1.0D0 )
+      LOGICAL            LQUERY, WNTUA, WNTUAS, WNTUN, WNTUO, WNTUS,
+     $                   WNTVA, WNTVAS, WNTVN, WNTVO, WNTVS
+      INTEGER            BDSPAC, BLK, CHUNK, I, IE, IERR, IR, ISCL,
+     $                   ITAU, ITAUP, ITAUQ, IU, IWORK, LDWRKR, LDWRKU,
+     $                   MAXWRK, MINMN, MINWRK, MNTHR, NCU, NCVT, NRU,
+     $                   NRVT, WRKBL
+      INTEGER            LWORK_DGEQRF, LWORK_DORGQR_N, LWORK_DORGQR_M,
+     $                   LWORK_DGEBRD, LWORK_DORGBR_P, LWORK_DORGBR_Q,
+     $                   LWORK_DGELQF, LWORK_DORGLQ_N, LWORK_DORGLQ_M
+      DOUBLE PRECISION   ANRM, BIGNUM, EPS, SMLNUM
+      DOUBLE PRECISION   DUM( 1 )
+      EXTERNAL           DBDSQR, DGEBRD, DGELQF, DGEMM, DGEQRF, DLACPY,
+     $                   DLASCL, DLASET, DORGBR, DORGLQ, DORGQR, DORMBR,
+     $                   XERBLA
+      LOGICAL            LSAME
+      INTEGER            ILAENV
+      DOUBLE PRECISION   DLAMCH, DLANGE
+      EXTERNAL           LSAME, ILAENV, DLAMCH, DLANGE
+      INTRINSIC          MAX, MIN, SQRT
+      INFO = 0
+      MINMN = MIN( M, N )
+      WNTUA = LSAME( JOBU, 'A' )
+      WNTUS = LSAME( JOBU, 'S' )
+      WNTUAS = WNTUA .OR. WNTUS
+      WNTUO = LSAME( JOBU, 'O' )
+      WNTUN = LSAME( JOBU, 'N' )
+      WNTVA = LSAME( JOBVT, 'A' )
+      WNTVS = LSAME( JOBVT, 'S' )
+      WNTVAS = WNTVA .OR. WNTVS
+      WNTVO = LSAME( JOBVT, 'O' )
+      WNTVN = LSAME( JOBVT, 'N' )
+      LQUERY = ( LWORK.EQ.-1 )
+      IF( .NOT.( WNTUA .OR. WNTUS .OR. WNTUO .OR. WNTUN ) ) THEN
+         INFO = -1
+      ELSE IF( .NOT.( WNTVA .OR. WNTVS .OR. WNTVO .OR. WNTVN ) .OR.
+     $         ( WNTVO .AND. WNTUO ) ) THEN
+         INFO = -2
+      ELSE IF( M.LT.0 ) THEN
+         INFO = -3
+      ELSE IF( N.LT.0 ) THEN
+         INFO = -4
+      ELSE IF( LDA.LT.MAX( 1, M ) ) THEN
+         INFO = -6
+      ELSE IF( LDU.LT.1 .OR. ( WNTUAS .AND. LDU.LT.M ) ) THEN
+         INFO = -9
+      ELSE IF( LDVT.LT.1 .OR. ( WNTVA .AND. LDVT.LT.N ) .OR.
+     $         ( WNTVS .AND. LDVT.LT.MINMN ) ) THEN
+         INFO = -11
+      END IF
+      IF( INFO.EQ.0 ) THEN
+         MINWRK = 1
+         MAXWRK = 1
+         IF( M.GE.N .AND. MINMN.GT.0 ) THEN
+            MNTHR = ILAENV( 6, 'DGESVD', JOBU // JOBVT, M, N, 0, 0 )
+            BDSPAC = 5*N
+            CALL DGEQRF( M, N, A, LDA, DUM(1), DUM(1), -1, IERR )
+            LWORK_DGEQRF = INT( DUM(1) )
+            CALL DORGQR( M, N, N, A, LDA, DUM(1), DUM(1), -1, IERR )
+            LWORK_DORGQR_N = INT( DUM(1) )
+            CALL DORGQR( M, M, N, A, LDA, DUM(1), DUM(1), -1, IERR )
+            LWORK_DORGQR_M = INT( DUM(1) )
+            CALL DGEBRD( N, N, A, LDA, S, DUM(1), DUM(1),
+     $                   DUM(1), DUM(1), -1, IERR )
+            LWORK_DGEBRD = INT( DUM(1) )
+            CALL DORGBR( 'P', N, N, N, A, LDA, DUM(1),
+     $                   DUM(1), -1, IERR )
+            LWORK_DORGBR_P = INT( DUM(1) )
+            CALL DORGBR( 'Q', N, N, N, A, LDA, DUM(1),
+     $                   DUM(1), -1, IERR )
+            LWORK_DORGBR_Q = INT( DUM(1) )
+            IF( M.GE.MNTHR ) THEN
+               IF( WNTUN ) THEN
+                  MAXWRK = N + LWORK_DGEQRF
+                  MAXWRK = MAX( MAXWRK, 3*N + LWORK_DGEBRD )
+                  IF( WNTVO .OR. WNTVAS )
+     $               MAXWRK = MAX( MAXWRK, 3*N + LWORK_DORGBR_P )
+                  MAXWRK = MAX( MAXWRK, BDSPAC )
+                  MINWRK = MAX( 4*N, BDSPAC )
+               ELSE IF( WNTUO .AND. WNTVN ) THEN
+                  WRKBL = N + LWORK_DGEQRF
+                  WRKBL = MAX( WRKBL, N + LWORK_DORGQR_N )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DGEBRD )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DORGBR_Q )
+                  WRKBL = MAX( WRKBL, BDSPAC )
+                  MAXWRK = MAX( N*N + WRKBL, N*N + M*N + N )
+                  MINWRK = MAX( 3*N + M, BDSPAC )
+               ELSE IF( WNTUO .AND. WNTVAS ) THEN
+                  WRKBL = N + LWORK_DGEQRF
+                  WRKBL = MAX( WRKBL, N + LWORK_DORGQR_N )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DGEBRD )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DORGBR_Q )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DORGBR_P )
+                  WRKBL = MAX( WRKBL, BDSPAC )
+                  MAXWRK = MAX( N*N + WRKBL, N*N + M*N + N )
+                  MINWRK = MAX( 3*N + M, BDSPAC )
+               ELSE IF( WNTUS .AND. WNTVN ) THEN
+                  WRKBL = N + LWORK_DGEQRF
+                  WRKBL = MAX( WRKBL, N + LWORK_DORGQR_N )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DGEBRD )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DORGBR_Q )
+                  WRKBL = MAX( WRKBL, BDSPAC )
+                  MAXWRK = N*N + WRKBL
+                  MINWRK = MAX( 3*N + M, BDSPAC )
+               ELSE IF( WNTUS .AND. WNTVO ) THEN
+                  WRKBL = N + LWORK_DGEQRF
+                  WRKBL = MAX( WRKBL, N + LWORK_DORGQR_N )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DGEBRD )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DORGBR_Q )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DORGBR_P )
+                  WRKBL = MAX( WRKBL, BDSPAC )
+                  MAXWRK = 2*N*N + WRKBL
+                  MINWRK = MAX( 3*N + M, BDSPAC )
+               ELSE IF( WNTUS .AND. WNTVAS ) THEN
+                  WRKBL = N + LWORK_DGEQRF
+                  WRKBL = MAX( WRKBL, N + LWORK_DORGQR_N )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DGEBRD )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DORGBR_Q )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DORGBR_P )
+                  WRKBL = MAX( WRKBL, BDSPAC )
+                  MAXWRK = N*N + WRKBL
+                  MINWRK = MAX( 3*N + M, BDSPAC )
+               ELSE IF( WNTUA .AND. WNTVN ) THEN
+                  WRKBL = N + LWORK_DGEQRF
+                  WRKBL = MAX( WRKBL, N + LWORK_DORGQR_M )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DGEBRD )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DORGBR_Q )
+                  WRKBL = MAX( WRKBL, BDSPAC )
+                  MAXWRK = N*N + WRKBL
+                  MINWRK = MAX( 3*N + M, BDSPAC )
+               ELSE IF( WNTUA .AND. WNTVO ) THEN
+                  WRKBL = N + LWORK_DGEQRF
+                  WRKBL = MAX( WRKBL, N + LWORK_DORGQR_M )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DGEBRD )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DORGBR_Q )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DORGBR_P )
+                  WRKBL = MAX( WRKBL, BDSPAC )
+                  MAXWRK = 2*N*N + WRKBL
+                  MINWRK = MAX( 3*N + M, BDSPAC )
+               ELSE IF( WNTUA .AND. WNTVAS ) THEN
+                  WRKBL = N + LWORK_DGEQRF
+                  WRKBL = MAX( WRKBL, N + LWORK_DORGQR_M )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DGEBRD )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DORGBR_Q )
+                  WRKBL = MAX( WRKBL, 3*N + LWORK_DORGBR_P )
+                  WRKBL = MAX( WRKBL, BDSPAC )
+                  MAXWRK = N*N + WRKBL
+                  MINWRK = MAX( 3*N + M, BDSPAC )
+               END IF
+            ELSE
+               CALL DGEBRD( M, N, A, LDA, S, DUM(1), DUM(1),
+     $                   DUM(1), DUM(1), -1, IERR )
+               LWORK_DGEBRD = INT( DUM(1) )
+               MAXWRK = 3*N + LWORK_DGEBRD
+               IF( WNTUS .OR. WNTUO ) THEN
+                  CALL DORGBR( 'Q', M, N, N, A, LDA, DUM(1),
+     $                   DUM(1), -1, IERR )
+                  LWORK_DORGBR_Q = INT( DUM(1) )
+                  MAXWRK = MAX( MAXWRK, 3*N + LWORK_DORGBR_Q )
+               END IF
+               IF( WNTUA ) THEN
+                  CALL DORGBR( 'Q', M, M, N, A, LDA, DUM(1),
+     $                   DUM(1), -1, IERR )
+                  LWORK_DORGBR_Q = INT( DUM(1) )
+                  MAXWRK = MAX( MAXWRK, 3*N + LWORK_DORGBR_Q )
+               END IF
+               IF( .NOT.WNTVN ) THEN
+                 MAXWRK = MAX( MAXWRK, 3*N + LWORK_DORGBR_P )
+               END IF
+               MAXWRK = MAX( MAXWRK, BDSPAC )
+               MINWRK = MAX( 3*N + M, BDSPAC )
+            END IF
+         ELSE IF( MINMN.GT.0 ) THEN
+            MNTHR = ILAENV( 6, 'DGESVD', JOBU // JOBVT, M, N, 0, 0 )
+            BDSPAC = 5*M
+            CALL DGELQF( M, N, A, LDA, DUM(1), DUM(1), -1, IERR )
+            LWORK_DGELQF = INT( DUM(1) )
+            CALL DORGLQ( N, N, M, DUM(1), N, DUM(1), DUM(1), -1, IERR )
+            LWORK_DORGLQ_N = INT( DUM(1) )
+            CALL DORGLQ( M, N, M, A, LDA, DUM(1), DUM(1), -1, IERR )
+            LWORK_DORGLQ_M = INT( DUM(1) )
+            CALL DGEBRD( M, M, A, LDA, S, DUM(1), DUM(1),
+     $                   DUM(1), DUM(1), -1, IERR )
+            LWORK_DGEBRD = INT( DUM(1) )
+            CALL DORGBR( 'P', M, M, M, A, N, DUM(1),
+     $                   DUM(1), -1, IERR )
+            LWORK_DORGBR_P = INT( DUM(1) )
+            CALL DORGBR( 'Q', M, M, M, A, N, DUM(1),
+     $                   DUM(1), -1, IERR )
+            LWORK_DORGBR_Q = INT( DUM(1) )
+            IF( N.GE.MNTHR ) THEN
+               IF( WNTVN ) THEN
+                  MAXWRK = M + LWORK_DGELQF
+                  MAXWRK = MAX( MAXWRK, 3*M + LWORK_DGEBRD )
+                  IF( WNTUO .OR. WNTUAS )
+     $               MAXWRK = MAX( MAXWRK, 3*M + LWORK_DORGBR_Q )
+                  MAXWRK = MAX( MAXWRK, BDSPAC )
+                  MINWRK = MAX( 4*M, BDSPAC )
+               ELSE IF( WNTVO .AND. WNTUN ) THEN
+                  WRKBL = M + LWORK_DGELQF
+                  WRKBL = MAX( WRKBL, M + LWORK_DORGLQ_M )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DGEBRD )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DORGBR_P )
+                  WRKBL = MAX( WRKBL, BDSPAC )
+                  MAXWRK = MAX( M*M + WRKBL, M*M + M*N + M )
+                  MINWRK = MAX( 3*M + N, BDSPAC )
+               ELSE IF( WNTVO .AND. WNTUAS ) THEN
+                  WRKBL = M + LWORK_DGELQF
+                  WRKBL = MAX( WRKBL, M + LWORK_DORGLQ_M )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DGEBRD )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DORGBR_P )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DORGBR_Q )
+                  WRKBL = MAX( WRKBL, BDSPAC )
+                  MAXWRK = MAX( M*M + WRKBL, M*M + M*N + M )
+                  MINWRK = MAX( 3*M + N, BDSPAC )
+               ELSE IF( WNTVS .AND. WNTUN ) THEN
+                  WRKBL = M + LWORK_DGELQF
+                  WRKBL = MAX( WRKBL, M + LWORK_DORGLQ_M )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DGEBRD )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DORGBR_P )
+                  WRKBL = MAX( WRKBL, BDSPAC )
+                  MAXWRK = M*M + WRKBL
+                  MINWRK = MAX( 3*M + N, BDSPAC )
+               ELSE IF( WNTVS .AND. WNTUO ) THEN
+                  WRKBL = M + LWORK_DGELQF
+                  WRKBL = MAX( WRKBL, M + LWORK_DORGLQ_M )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DGEBRD )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DORGBR_P )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DORGBR_Q )
+                  WRKBL = MAX( WRKBL, BDSPAC )
+                  MAXWRK = 2*M*M + WRKBL
+                  MINWRK = MAX( 3*M + N, BDSPAC )
+               ELSE IF( WNTVS .AND. WNTUAS ) THEN
+                  WRKBL = M + LWORK_DGELQF
+                  WRKBL = MAX( WRKBL, M + LWORK_DORGLQ_M )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DGEBRD )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DORGBR_P )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DORGBR_Q )
+                  WRKBL = MAX( WRKBL, BDSPAC )
+                  MAXWRK = M*M + WRKBL
+                  MINWRK = MAX( 3*M + N, BDSPAC )
+               ELSE IF( WNTVA .AND. WNTUN ) THEN
+                  WRKBL = M + LWORK_DGELQF
+                  WRKBL = MAX( WRKBL, M + LWORK_DORGLQ_N )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DGEBRD )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DORGBR_P )
+                  WRKBL = MAX( WRKBL, BDSPAC )
+                  MAXWRK = M*M + WRKBL
+                  MINWRK = MAX( 3*M + N, BDSPAC )
+               ELSE IF( WNTVA .AND. WNTUO ) THEN
+                  WRKBL = M + LWORK_DGELQF
+                  WRKBL = MAX( WRKBL, M + LWORK_DORGLQ_N )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DGEBRD )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DORGBR_P )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DORGBR_Q )
+                  WRKBL = MAX( WRKBL, BDSPAC )
+                  MAXWRK = 2*M*M + WRKBL
+                  MINWRK = MAX( 3*M + N, BDSPAC )
+               ELSE IF( WNTVA .AND. WNTUAS ) THEN
+                  WRKBL = M + LWORK_DGELQF
+                  WRKBL = MAX( WRKBL, M + LWORK_DORGLQ_N )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DGEBRD )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DORGBR_P )
+                  WRKBL = MAX( WRKBL, 3*M + LWORK_DORGBR_Q )
+                  WRKBL = MAX( WRKBL, BDSPAC )
+                  MAXWRK = M*M + WRKBL
+                  MINWRK = MAX( 3*M + N, BDSPAC )
+               END IF
+            ELSE
+               CALL DGEBRD( M, N, A, LDA, S, DUM(1), DUM(1),
+     $                   DUM(1), DUM(1), -1, IERR )
+               LWORK_DGEBRD = INT( DUM(1) )
+               MAXWRK = 3*M + LWORK_DGEBRD
+               IF( WNTVS .OR. WNTVO ) THEN
+                 CALL DORGBR( 'P', M, N, M, A, N, DUM(1),
+     $                   DUM(1), -1, IERR )
+                 LWORK_DORGBR_P = INT( DUM(1) )
+                 MAXWRK = MAX( MAXWRK, 3*M + LWORK_DORGBR_P )
+               END IF
+               IF( WNTVA ) THEN
+                 CALL DORGBR( 'P', N, N, M, A, N, DUM(1),
+     $                   DUM(1), -1, IERR )
+                 LWORK_DORGBR_P = INT( DUM(1) )
+                 MAXWRK = MAX( MAXWRK, 3*M + LWORK_DORGBR_P )
+               END IF
+               IF( .NOT.WNTUN ) THEN
+                  MAXWRK = MAX( MAXWRK, 3*M + LWORK_DORGBR_Q )
+               END IF
+               MAXWRK = MAX( MAXWRK, BDSPAC )
+               MINWRK = MAX( 3*M + N, BDSPAC )
+            END IF
+         END IF
+         MAXWRK = MAX( MAXWRK, MINWRK )
+         WORK( 1 ) = MAXWRK
+         IF( LWORK.LT.MINWRK .AND. .NOT.LQUERY ) THEN
+            INFO = -13
+         END IF
+      END IF
+      IF( INFO.NE.0 ) THEN
+         CALL XERBLA( 'DGESVD', -INFO )
+         RETURN
+      ELSE IF( LQUERY ) THEN
+         RETURN
+      END IF
+      IF( M.EQ.0 .OR. N.EQ.0 ) THEN
+         RETURN
+      END IF
+      EPS = DLAMCH( 'P' )
+      SMLNUM = SQRT( DLAMCH( 'S' ) ) / EPS
+      BIGNUM = ONE / SMLNUM
+      ANRM = DLANGE( 'M', M, N, A, LDA, DUM )
+      ISCL = 0
+      IF( ANRM.GT.ZERO .AND. ANRM.LT.SMLNUM ) THEN
+         ISCL = 1
+         CALL DLASCL( 'G', 0, 0, ANRM, SMLNUM, M, N, A, LDA, IERR )
+      ELSE IF( ANRM.GT.BIGNUM ) THEN
+         ISCL = 1
+         CALL DLASCL( 'G', 0, 0, ANRM, BIGNUM, M, N, A, LDA, IERR )
+      END IF
+      IF( M.GE.N ) THEN
+         IF( M.GE.MNTHR ) THEN
+            IF( WNTUN ) THEN
+               ITAU = 1
+               IWORK = ITAU + N
+               CALL DGEQRF( M, N, A, LDA, WORK( ITAU ), WORK( IWORK ),
+     $                      LWORK-IWORK+1, IERR )
+               IF( N .GT. 1 ) THEN
+                  CALL DLASET( 'L', N-1, N-1, ZERO, ZERO, A( 2, 1 ),
+     $                         LDA )
+               END IF
+               IE = 1
+               ITAUQ = IE + N
+               ITAUP = ITAUQ + N
+               IWORK = ITAUP + N
+               CALL DGEBRD( N, N, A, LDA, S, WORK( IE ), WORK( ITAUQ ),
+     $                      WORK( ITAUP ), WORK( IWORK ), LWORK-IWORK+1,
+     $                      IERR )
+               NCVT = 0
+               IF( WNTVO .OR. WNTVAS ) THEN
+                  CALL DORGBR( 'P', N, N, N, A, LDA, WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  NCVT = N
+               END IF
+               IWORK = IE + N
+               CALL DBDSQR( 'U', N, NCVT, 0, 0, S, WORK( IE ), A, LDA,
+     $                      DUM, 1, DUM, 1, WORK( IWORK ), INFO )
+               IF( WNTVAS )
+     $            CALL DLACPY( 'F', N, N, A, LDA, VT, LDVT )
+            ELSE IF( WNTUO .AND. WNTVN ) THEN
+               IF( LWORK.GE.N*N+MAX( 4*N, BDSPAC ) ) THEN
+                  IR = 1
+                  IF( LWORK.GE.MAX( WRKBL, LDA*N + N ) + LDA*N ) THEN
+                     LDWRKU = LDA
+                     LDWRKR = LDA
+                  ELSE IF( LWORK.GE.MAX( WRKBL, LDA*N + N ) + N*N ) THEN
+                     LDWRKU = LDA
+                     LDWRKR = N
+                  ELSE
+                     LDWRKU = ( LWORK-N*N-N ) / N
+                     LDWRKR = N
+                  END IF
+                  ITAU = IR + LDWRKR*N
+                  IWORK = ITAU + N
+                  CALL DGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL DLACPY( 'U', N, N, A, LDA, WORK( IR ), LDWRKR )
+                  CALL DLASET( 'L', N-1, N-1, ZERO, ZERO, WORK( IR+1 ),
+     $                         LDWRKR )
+                  CALL DORGQR( M, N, N, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IE = ITAU
+                  ITAUQ = IE + N
+                  ITAUP = ITAUQ + N
+                  IWORK = ITAUP + N
+                  CALL DGEBRD( N, N, WORK( IR ), LDWRKR, S, WORK( IE ),
+     $                         WORK( ITAUQ ), WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL DORGBR( 'Q', N, N, N, WORK( IR ), LDWRKR,
+     $                         WORK( ITAUQ ), WORK( IWORK ),
+     $                         LWORK-IWORK+1, IERR )
+                  IWORK = IE + N
+                  CALL DBDSQR( 'U', N, 0, N, 0, S, WORK( IE ), DUM, 1,
+     $                         WORK( IR ), LDWRKR, DUM, 1,
+     $                         WORK( IWORK ), INFO )
+                  IU = IE + N
+                  DO 10 I = 1, M, LDWRKU
+                     CHUNK = MIN( M-I+1, LDWRKU )
+                     CALL DGEMM( 'N', 'N', CHUNK, N, N, ONE, A( I, 1 ),
+     $                           LDA, WORK( IR ), LDWRKR, ZERO,
+     $                           WORK( IU ), LDWRKU )
+                     CALL DLACPY( 'F', CHUNK, N, WORK( IU ), LDWRKU,
+     $                            A( I, 1 ), LDA )
+   10             CONTINUE
+               ELSE
+                  IE = 1
+                  ITAUQ = IE + N
+                  ITAUP = ITAUQ + N
+                  IWORK = ITAUP + N
+                  CALL DGEBRD( M, N, A, LDA, S, WORK( IE ),
+     $                         WORK( ITAUQ ), WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL DORGBR( 'Q', M, N, N, A, LDA, WORK( ITAUQ ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IWORK = IE + N
+                  CALL DBDSQR( 'U', N, 0, M, 0, S, WORK( IE ), DUM, 1,
+     $                         A, LDA, DUM, 1, WORK( IWORK ), INFO )
+               END IF
+            ELSE IF( WNTUO .AND. WNTVAS ) THEN
+               IF( LWORK.GE.N*N+MAX( 4*N, BDSPAC ) ) THEN
+                  IR = 1
+                  IF( LWORK.GE.MAX( WRKBL, LDA*N + N ) + LDA*N ) THEN
+                     LDWRKU = LDA
+                     LDWRKR = LDA
+                  ELSE IF( LWORK.GE.MAX( WRKBL, LDA*N + N ) + N*N ) THEN
+                     LDWRKU = LDA
+                     LDWRKR = N
+                  ELSE
+                     LDWRKU = ( LWORK-N*N-N ) / N
+                     LDWRKR = N
+                  END IF
+                  ITAU = IR + LDWRKR*N
+                  IWORK = ITAU + N
+                  CALL DGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL DLACPY( 'U', N, N, A, LDA, VT, LDVT )
+                  IF( N.GT.1 )
+     $               CALL DLASET( 'L', N-1, N-1, ZERO, ZERO,
+     $                            VT( 2, 1 ), LDVT )
+                  CALL DORGQR( M, N, N, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IE = ITAU
+                  ITAUQ = IE + N
+                  ITAUP = ITAUQ + N
+                  IWORK = ITAUP + N
+                  CALL DGEBRD( N, N, VT, LDVT, S, WORK( IE ),
+     $                         WORK( ITAUQ ), WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL DLACPY( 'L', N, N, VT, LDVT, WORK( IR ), LDWRKR )
+                  CALL DORGBR( 'Q', N, N, N, WORK( IR ), LDWRKR,
+     $                         WORK( ITAUQ ), WORK( IWORK ),
+     $                         LWORK-IWORK+1, IERR )
+                  CALL DORGBR( 'P', N, N, N, VT, LDVT, WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IWORK = IE + N
+                  CALL DBDSQR( 'U', N, N, N, 0, S, WORK( IE ), VT, LDVT,
+     $                         WORK( IR ), LDWRKR, DUM, 1,
+     $                         WORK( IWORK ), INFO )
+                  IU = IE + N
+                  DO 20 I = 1, M, LDWRKU
+                     CHUNK = MIN( M-I+1, LDWRKU )
+                     CALL DGEMM( 'N', 'N', CHUNK, N, N, ONE, A( I, 1 ),
+     $                           LDA, WORK( IR ), LDWRKR, ZERO,
+     $                           WORK( IU ), LDWRKU )
+                     CALL DLACPY( 'F', CHUNK, N, WORK( IU ), LDWRKU,
+     $                            A( I, 1 ), LDA )
+   20             CONTINUE
+               ELSE
+                  ITAU = 1
+                  IWORK = ITAU + N
+                  CALL DGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL DLACPY( 'U', N, N, A, LDA, VT, LDVT )
+                  IF( N.GT.1 )
+     $               CALL DLASET( 'L', N-1, N-1, ZERO, ZERO,
+     $                            VT( 2, 1 ), LDVT )
+                  CALL DORGQR( M, N, N, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IE = ITAU
+                  ITAUQ = IE + N
+                  ITAUP = ITAUQ + N
+                  IWORK = ITAUP + N
+                  CALL DGEBRD( N, N, VT, LDVT, S, WORK( IE ),
+     $                         WORK( ITAUQ ), WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL DORMBR( 'Q', 'R', 'N', M, N, N, VT, LDVT,
+     $                         WORK( ITAUQ ), A, LDA, WORK( IWORK ),
+     $                         LWORK-IWORK+1, IERR )
+                  CALL DORGBR( 'P', N, N, N, VT, LDVT, WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IWORK = IE + N
+                  CALL DBDSQR( 'U', N, N, M, 0, S, WORK( IE ), VT, LDVT,
+     $                         A, LDA, DUM, 1, WORK( IWORK ), INFO )
+               END IF
+            ELSE IF( WNTUS ) THEN
+               IF( WNTVN ) THEN
+                  IF( LWORK.GE.N*N+MAX( 4*N, BDSPAC ) ) THEN
+                     IR = 1
+                     IF( LWORK.GE.WRKBL+LDA*N ) THEN
+                        LDWRKR = LDA
+                     ELSE
+                        LDWRKR = N
+                     END IF
+                     ITAU = IR + LDWRKR*N
+                     IWORK = ITAU + N
+                     CALL DGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'U', N, N, A, LDA, WORK( IR ),
+     $                            LDWRKR )
+                     CALL DLASET( 'L', N-1, N-1, ZERO, ZERO,
+     $                            WORK( IR+1 ), LDWRKR )
+                     CALL DORGQR( M, N, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = ITAU
+                     ITAUQ = IE + N
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     CALL DGEBRD( N, N, WORK( IR ), LDWRKR, S,
+     $                            WORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DORGBR( 'Q', N, N, N, WORK( IR ), LDWRKR,
+     $                            WORK( ITAUQ ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     IWORK = IE + N
+                     CALL DBDSQR( 'U', N, 0, N, 0, S, WORK( IE ), DUM,
+     $                            1, WORK( IR ), LDWRKR, DUM, 1,
+     $                            WORK( IWORK ), INFO )
+                     CALL DGEMM( 'N', 'N', M, N, N, ONE, A, LDA,
+     $                           WORK( IR ), LDWRKR, ZERO, U, LDU )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + N
+                     CALL DGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'L', M, N, A, LDA, U, LDU )
+                     CALL DORGQR( M, N, N, U, LDU, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = ITAU
+                     ITAUQ = IE + N
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     IF( N .GT. 1 ) THEN
+                        CALL DLASET( 'L', N-1, N-1, ZERO, ZERO,
+     $                               A( 2, 1 ), LDA )
+                     END IF
+                     CALL DGEBRD( N, N, A, LDA, S, WORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DORMBR( 'Q', 'R', 'N', M, N, N, A, LDA,
+     $                            WORK( ITAUQ ), U, LDU, WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     IWORK = IE + N
+                     CALL DBDSQR( 'U', N, 0, M, 0, S, WORK( IE ), DUM,
+     $                            1, U, LDU, DUM, 1, WORK( IWORK ),
+     $                            INFO )
+                  END IF
+               ELSE IF( WNTVO ) THEN
+                  IF( LWORK.GE.2*N*N+MAX( 4*N, BDSPAC ) ) THEN
+                     IU = 1
+                     IF( LWORK.GE.WRKBL+2*LDA*N ) THEN
+                        LDWRKU = LDA
+                        IR = IU + LDWRKU*N
+                        LDWRKR = LDA
+                     ELSE IF( LWORK.GE.WRKBL+( LDA + N )*N ) THEN
+                        LDWRKU = LDA
+                        IR = IU + LDWRKU*N
+                        LDWRKR = N
+                     ELSE
+                        LDWRKU = N
+                        IR = IU + LDWRKU*N
+                        LDWRKR = N
+                     END IF
+                     ITAU = IR + LDWRKR*N
+                     IWORK = ITAU + N
+                     CALL DGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'U', N, N, A, LDA, WORK( IU ),
+     $                            LDWRKU )
+                     CALL DLASET( 'L', N-1, N-1, ZERO, ZERO,
+     $                            WORK( IU+1 ), LDWRKU )
+                     CALL DORGQR( M, N, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = ITAU
+                     ITAUQ = IE + N
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     CALL DGEBRD( N, N, WORK( IU ), LDWRKU, S,
+     $                            WORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'U', N, N, WORK( IU ), LDWRKU,
+     $                            WORK( IR ), LDWRKR )
+                     CALL DORGBR( 'Q', N, N, N, WORK( IU ), LDWRKU,
+     $                            WORK( ITAUQ ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DORGBR( 'P', N, N, N, WORK( IR ), LDWRKR,
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     IWORK = IE + N
+                     CALL DBDSQR( 'U', N, N, N, 0, S, WORK( IE ),
+     $                            WORK( IR ), LDWRKR, WORK( IU ),
+     $                            LDWRKU, DUM, 1, WORK( IWORK ), INFO )
+                     CALL DGEMM( 'N', 'N', M, N, N, ONE, A, LDA,
+     $                           WORK( IU ), LDWRKU, ZERO, U, LDU )
+                     CALL DLACPY( 'F', N, N, WORK( IR ), LDWRKR, A,
+     $                            LDA )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + N
+                     CALL DGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'L', M, N, A, LDA, U, LDU )
+                     CALL DORGQR( M, N, N, U, LDU, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = ITAU
+                     ITAUQ = IE + N
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     IF( N .GT. 1 ) THEN
+                        CALL DLASET( 'L', N-1, N-1, ZERO, ZERO,
+     $                               A( 2, 1 ), LDA )
+                     END IF
+                     CALL DGEBRD( N, N, A, LDA, S, WORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DORMBR( 'Q', 'R', 'N', M, N, N, A, LDA,
+     $                            WORK( ITAUQ ), U, LDU, WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DORGBR( 'P', N, N, N, A, LDA, WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IWORK = IE + N
+                     CALL DBDSQR( 'U', N, N, M, 0, S, WORK( IE ), A,
+     $                            LDA, U, LDU, DUM, 1, WORK( IWORK ),
+     $                            INFO )
+                  END IF
+               ELSE IF( WNTVAS ) THEN
+                  IF( LWORK.GE.N*N+MAX( 4*N, BDSPAC ) ) THEN
+                     IU = 1
+                     IF( LWORK.GE.WRKBL+LDA*N ) THEN
+                        LDWRKU = LDA
+                     ELSE
+                        LDWRKU = N
+                     END IF
+                     ITAU = IU + LDWRKU*N
+                     IWORK = ITAU + N
+                     CALL DGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'U', N, N, A, LDA, WORK( IU ),
+     $                            LDWRKU )
+                     CALL DLASET( 'L', N-1, N-1, ZERO, ZERO,
+     $                            WORK( IU+1 ), LDWRKU )
+                     CALL DORGQR( M, N, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = ITAU
+                     ITAUQ = IE + N
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     CALL DGEBRD( N, N, WORK( IU ), LDWRKU, S,
+     $                            WORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'U', N, N, WORK( IU ), LDWRKU, VT,
+     $                            LDVT )
+                     CALL DORGBR( 'Q', N, N, N, WORK( IU ), LDWRKU,
+     $                            WORK( ITAUQ ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DORGBR( 'P', N, N, N, VT, LDVT, WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IWORK = IE + N
+                     CALL DBDSQR( 'U', N, N, N, 0, S, WORK( IE ), VT,
+     $                            LDVT, WORK( IU ), LDWRKU, DUM, 1,
+     $                            WORK( IWORK ), INFO )
+                     CALL DGEMM( 'N', 'N', M, N, N, ONE, A, LDA,
+     $                           WORK( IU ), LDWRKU, ZERO, U, LDU )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + N
+                     CALL DGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'L', M, N, A, LDA, U, LDU )
+                     CALL DORGQR( M, N, N, U, LDU, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'U', N, N, A, LDA, VT, LDVT )
+                     IF( N.GT.1 )
+     $                  CALL DLASET( 'L', N-1, N-1, ZERO, ZERO,
+     $                               VT( 2, 1 ), LDVT )
+                     IE = ITAU
+                     ITAUQ = IE + N
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     CALL DGEBRD( N, N, VT, LDVT, S, WORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DORMBR( 'Q', 'R', 'N', M, N, N, VT, LDVT,
+     $                            WORK( ITAUQ ), U, LDU, WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DORGBR( 'P', N, N, N, VT, LDVT, WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IWORK = IE + N
+                     CALL DBDSQR( 'U', N, N, M, 0, S, WORK( IE ), VT,
+     $                            LDVT, U, LDU, DUM, 1, WORK( IWORK ),
+     $                            INFO )
+                  END IF
+               END IF
+            ELSE IF( WNTUA ) THEN
+               IF( WNTVN ) THEN
+                  IF( LWORK.GE.N*N+MAX( N+M, 4*N, BDSPAC ) ) THEN
+                     IR = 1
+                     IF( LWORK.GE.WRKBL+LDA*N ) THEN
+                        LDWRKR = LDA
+                     ELSE
+                        LDWRKR = N
+                     END IF
+                     ITAU = IR + LDWRKR*N
+                     IWORK = ITAU + N
+                     CALL DGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'L', M, N, A, LDA, U, LDU )
+                     CALL DLACPY( 'U', N, N, A, LDA, WORK( IR ),
+     $                            LDWRKR )
+                     CALL DLASET( 'L', N-1, N-1, ZERO, ZERO,
+     $                            WORK( IR+1 ), LDWRKR )
+                     CALL DORGQR( M, M, N, U, LDU, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = ITAU
+                     ITAUQ = IE + N
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     CALL DGEBRD( N, N, WORK( IR ), LDWRKR, S,
+     $                            WORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DORGBR( 'Q', N, N, N, WORK( IR ), LDWRKR,
+     $                            WORK( ITAUQ ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     IWORK = IE + N
+                     CALL DBDSQR( 'U', N, 0, N, 0, S, WORK( IE ), DUM,
+     $                            1, WORK( IR ), LDWRKR, DUM, 1,
+     $                            WORK( IWORK ), INFO )
+                     CALL DGEMM( 'N', 'N', M, N, N, ONE, U, LDU,
+     $                           WORK( IR ), LDWRKR, ZERO, A, LDA )
+                     CALL DLACPY( 'F', M, N, A, LDA, U, LDU )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + N
+                     CALL DGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'L', M, N, A, LDA, U, LDU )
+                     CALL DORGQR( M, M, N, U, LDU, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = ITAU
+                     ITAUQ = IE + N
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     IF( N .GT. 1 ) THEN
+                        CALL DLASET( 'L', N-1, N-1, ZERO, ZERO,
+     $                                A( 2, 1 ), LDA )
+                     END IF
+                     CALL DGEBRD( N, N, A, LDA, S, WORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DORMBR( 'Q', 'R', 'N', M, N, N, A, LDA,
+     $                            WORK( ITAUQ ), U, LDU, WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     IWORK = IE + N
+                     CALL DBDSQR( 'U', N, 0, M, 0, S, WORK( IE ), DUM,
+     $                            1, U, LDU, DUM, 1, WORK( IWORK ),
+     $                            INFO )
+                  END IF
+               ELSE IF( WNTVO ) THEN
+                  IF( LWORK.GE.2*N*N+MAX( N+M, 4*N, BDSPAC ) ) THEN
+                     IU = 1
+                     IF( LWORK.GE.WRKBL+2*LDA*N ) THEN
+                        LDWRKU = LDA
+                        IR = IU + LDWRKU*N
+                        LDWRKR = LDA
+                     ELSE IF( LWORK.GE.WRKBL+( LDA + N )*N ) THEN
+                        LDWRKU = LDA
+                        IR = IU + LDWRKU*N
+                        LDWRKR = N
+                     ELSE
+                        LDWRKU = N
+                        IR = IU + LDWRKU*N
+                        LDWRKR = N
+                     END IF
+                     ITAU = IR + LDWRKR*N
+                     IWORK = ITAU + N
+                     CALL DGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'L', M, N, A, LDA, U, LDU )
+                     CALL DORGQR( M, M, N, U, LDU, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'U', N, N, A, LDA, WORK( IU ),
+     $                            LDWRKU )
+                     CALL DLASET( 'L', N-1, N-1, ZERO, ZERO,
+     $                            WORK( IU+1 ), LDWRKU )
+                     IE = ITAU
+                     ITAUQ = IE + N
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     CALL DGEBRD( N, N, WORK( IU ), LDWRKU, S,
+     $                            WORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'U', N, N, WORK( IU ), LDWRKU,
+     $                            WORK( IR ), LDWRKR )
+                     CALL DORGBR( 'Q', N, N, N, WORK( IU ), LDWRKU,
+     $                            WORK( ITAUQ ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DORGBR( 'P', N, N, N, WORK( IR ), LDWRKR,
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     IWORK = IE + N
+                     CALL DBDSQR( 'U', N, N, N, 0, S, WORK( IE ),
+     $                            WORK( IR ), LDWRKR, WORK( IU ),
+     $                            LDWRKU, DUM, 1, WORK( IWORK ), INFO )
+                     CALL DGEMM( 'N', 'N', M, N, N, ONE, U, LDU,
+     $                           WORK( IU ), LDWRKU, ZERO, A, LDA )
+                     CALL DLACPY( 'F', M, N, A, LDA, U, LDU )
+                     CALL DLACPY( 'F', N, N, WORK( IR ), LDWRKR, A,
+     $                            LDA )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + N
+                     CALL DGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'L', M, N, A, LDA, U, LDU )
+                     CALL DORGQR( M, M, N, U, LDU, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = ITAU
+                     ITAUQ = IE + N
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     IF( N .GT. 1 ) THEN
+                        CALL DLASET( 'L', N-1, N-1, ZERO, ZERO,
+     $                                A( 2, 1 ), LDA )
+                     END IF
+                     CALL DGEBRD( N, N, A, LDA, S, WORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DORMBR( 'Q', 'R', 'N', M, N, N, A, LDA,
+     $                            WORK( ITAUQ ), U, LDU, WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DORGBR( 'P', N, N, N, A, LDA, WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IWORK = IE + N
+                     CALL DBDSQR( 'U', N, N, M, 0, S, WORK( IE ), A,
+     $                            LDA, U, LDU, DUM, 1, WORK( IWORK ),
+     $                            INFO )
+                  END IF
+               ELSE IF( WNTVAS ) THEN
+                  IF( LWORK.GE.N*N+MAX( N+M, 4*N, BDSPAC ) ) THEN
+                     IU = 1
+                     IF( LWORK.GE.WRKBL+LDA*N ) THEN
+                        LDWRKU = LDA
+                     ELSE
+                        LDWRKU = N
+                     END IF
+                     ITAU = IU + LDWRKU*N
+                     IWORK = ITAU + N
+                     CALL DGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'L', M, N, A, LDA, U, LDU )
+                     CALL DORGQR( M, M, N, U, LDU, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'U', N, N, A, LDA, WORK( IU ),
+     $                            LDWRKU )
+                     CALL DLASET( 'L', N-1, N-1, ZERO, ZERO,
+     $                            WORK( IU+1 ), LDWRKU )
+                     IE = ITAU
+                     ITAUQ = IE + N
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     CALL DGEBRD( N, N, WORK( IU ), LDWRKU, S,
+     $                            WORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'U', N, N, WORK( IU ), LDWRKU, VT,
+     $                            LDVT )
+                     CALL DORGBR( 'Q', N, N, N, WORK( IU ), LDWRKU,
+     $                            WORK( ITAUQ ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DORGBR( 'P', N, N, N, VT, LDVT, WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IWORK = IE + N
+                     CALL DBDSQR( 'U', N, N, N, 0, S, WORK( IE ), VT,
+     $                            LDVT, WORK( IU ), LDWRKU, DUM, 1,
+     $                            WORK( IWORK ), INFO )
+                     CALL DGEMM( 'N', 'N', M, N, N, ONE, U, LDU,
+     $                           WORK( IU ), LDWRKU, ZERO, A, LDA )
+                     CALL DLACPY( 'F', M, N, A, LDA, U, LDU )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + N
+                     CALL DGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'L', M, N, A, LDA, U, LDU )
+                     CALL DORGQR( M, M, N, U, LDU, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'U', N, N, A, LDA, VT, LDVT )
+                     IF( N.GT.1 )
+     $                  CALL DLASET( 'L', N-1, N-1, ZERO, ZERO,
+     $                               VT( 2, 1 ), LDVT )
+                     IE = ITAU
+                     ITAUQ = IE + N
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     CALL DGEBRD( N, N, VT, LDVT, S, WORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DORMBR( 'Q', 'R', 'N', M, N, N, VT, LDVT,
+     $                            WORK( ITAUQ ), U, LDU, WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DORGBR( 'P', N, N, N, VT, LDVT, WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IWORK = IE + N
+                     CALL DBDSQR( 'U', N, N, M, 0, S, WORK( IE ), VT,
+     $                            LDVT, U, LDU, DUM, 1, WORK( IWORK ),
+     $                            INFO )
+                  END IF
+               END IF
+            END IF
+         ELSE
+            IE = 1
+            ITAUQ = IE + N
+            ITAUP = ITAUQ + N
+            IWORK = ITAUP + N
+            CALL DGEBRD( M, N, A, LDA, S, WORK( IE ), WORK( ITAUQ ),
+     $                   WORK( ITAUP ), WORK( IWORK ), LWORK-IWORK+1,
+     $                   IERR )
+            IF( WNTUAS ) THEN
+               CALL DLACPY( 'L', M, N, A, LDA, U, LDU )
+               IF( WNTUS )
+     $            NCU = N
+               IF( WNTUA )
+     $            NCU = M
+               CALL DORGBR( 'Q', M, NCU, N, U, LDU, WORK( ITAUQ ),
+     $                      WORK( IWORK ), LWORK-IWORK+1, IERR )
+            END IF
+            IF( WNTVAS ) THEN
+               CALL DLACPY( 'U', N, N, A, LDA, VT, LDVT )
+               CALL DORGBR( 'P', N, N, N, VT, LDVT, WORK( ITAUP ),
+     $                      WORK( IWORK ), LWORK-IWORK+1, IERR )
+            END IF
+            IF( WNTUO ) THEN
+               CALL DORGBR( 'Q', M, N, N, A, LDA, WORK( ITAUQ ),
+     $                      WORK( IWORK ), LWORK-IWORK+1, IERR )
+            END IF
+            IF( WNTVO ) THEN
+               CALL DORGBR( 'P', N, N, N, A, LDA, WORK( ITAUP ),
+     $                      WORK( IWORK ), LWORK-IWORK+1, IERR )
+            END IF
+            IWORK = IE + N
+            IF( WNTUAS .OR. WNTUO )
+     $         NRU = M
+            IF( WNTUN )
+     $         NRU = 0
+            IF( WNTVAS .OR. WNTVO )
+     $         NCVT = N
+            IF( WNTVN )
+     $         NCVT = 0
+            IF( ( .NOT.WNTUO ) .AND. ( .NOT.WNTVO ) ) THEN
+               CALL DBDSQR( 'U', N, NCVT, NRU, 0, S, WORK( IE ), VT,
+     $                      LDVT, U, LDU, DUM, 1, WORK( IWORK ), INFO )
+            ELSE IF( ( .NOT.WNTUO ) .AND. WNTVO ) THEN
+               CALL DBDSQR( 'U', N, NCVT, NRU, 0, S, WORK( IE ), A, LDA,
+     $                      U, LDU, DUM, 1, WORK( IWORK ), INFO )
+            ELSE
+               CALL DBDSQR( 'U', N, NCVT, NRU, 0, S, WORK( IE ), VT,
+     $                      LDVT, A, LDA, DUM, 1, WORK( IWORK ), INFO )
+            END IF
+         END IF
+      ELSE
+         IF( N.GE.MNTHR ) THEN
+            IF( WNTVN ) THEN
+               ITAU = 1
+               IWORK = ITAU + M
+               CALL DGELQF( M, N, A, LDA, WORK( ITAU ), WORK( IWORK ),
+     $                      LWORK-IWORK+1, IERR )
+               CALL DLASET( 'U', M-1, M-1, ZERO, ZERO, A( 1, 2 ), LDA )
+               IE = 1
+               ITAUQ = IE + M
+               ITAUP = ITAUQ + M
+               IWORK = ITAUP + M
+               CALL DGEBRD( M, M, A, LDA, S, WORK( IE ), WORK( ITAUQ ),
+     $                      WORK( ITAUP ), WORK( IWORK ), LWORK-IWORK+1,
+     $                      IERR )
+               IF( WNTUO .OR. WNTUAS ) THEN
+                  CALL DORGBR( 'Q', M, M, M, A, LDA, WORK( ITAUQ ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+               END IF
+               IWORK = IE + M
+               NRU = 0
+               IF( WNTUO .OR. WNTUAS )
+     $            NRU = M
+               CALL DBDSQR( 'U', M, 0, NRU, 0, S, WORK( IE ), DUM, 1, A,
+     $                      LDA, DUM, 1, WORK( IWORK ), INFO )
+               IF( WNTUAS )
+     $            CALL DLACPY( 'F', M, M, A, LDA, U, LDU )
+            ELSE IF( WNTVO .AND. WNTUN ) THEN
+               IF( LWORK.GE.M*M+MAX( 4*M, BDSPAC ) ) THEN
+                  IR = 1
+                  IF( LWORK.GE.MAX( WRKBL, LDA*N + M ) + LDA*M ) THEN
+                     LDWRKU = LDA
+                     CHUNK = N
+                     LDWRKR = LDA
+                  ELSE IF( LWORK.GE.MAX( WRKBL, LDA*N + M ) + M*M ) THEN
+                     LDWRKU = LDA
+                     CHUNK = N
+                     LDWRKR = M
+                  ELSE
+                     LDWRKU = M
+                     CHUNK = ( LWORK-M*M-M ) / M
+                     LDWRKR = M
+                  END IF
+                  ITAU = IR + LDWRKR*M
+                  IWORK = ITAU + M
+                  CALL DGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL DLACPY( 'L', M, M, A, LDA, WORK( IR ), LDWRKR )
+                  CALL DLASET( 'U', M-1, M-1, ZERO, ZERO,
+     $                         WORK( IR+LDWRKR ), LDWRKR )
+                  CALL DORGLQ( M, N, M, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IE = ITAU
+                  ITAUQ = IE + M
+                  ITAUP = ITAUQ + M
+                  IWORK = ITAUP + M
+                  CALL DGEBRD( M, M, WORK( IR ), LDWRKR, S, WORK( IE ),
+     $                         WORK( ITAUQ ), WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL DORGBR( 'P', M, M, M, WORK( IR ), LDWRKR,
+     $                         WORK( ITAUP ), WORK( IWORK ),
+     $                         LWORK-IWORK+1, IERR )
+                  IWORK = IE + M
+                  CALL DBDSQR( 'U', M, M, 0, 0, S, WORK( IE ),
+     $                         WORK( IR ), LDWRKR, DUM, 1, DUM, 1,
+     $                         WORK( IWORK ), INFO )
+                  IU = IE + M
+                  DO 30 I = 1, N, CHUNK
+                     BLK = MIN( N-I+1, CHUNK )
+                     CALL DGEMM( 'N', 'N', M, BLK, M, ONE, WORK( IR ),
+     $                           LDWRKR, A( 1, I ), LDA, ZERO,
+     $                           WORK( IU ), LDWRKU )
+                     CALL DLACPY( 'F', M, BLK, WORK( IU ), LDWRKU,
+     $                            A( 1, I ), LDA )
+   30             CONTINUE
+               ELSE
+                  IE = 1
+                  ITAUQ = IE + M
+                  ITAUP = ITAUQ + M
+                  IWORK = ITAUP + M
+                  CALL DGEBRD( M, N, A, LDA, S, WORK( IE ),
+     $                         WORK( ITAUQ ), WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL DORGBR( 'P', M, N, M, A, LDA, WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IWORK = IE + M
+                  CALL DBDSQR( 'L', M, N, 0, 0, S, WORK( IE ), A, LDA,
+     $                         DUM, 1, DUM, 1, WORK( IWORK ), INFO )
+               END IF
+            ELSE IF( WNTVO .AND. WNTUAS ) THEN
+               IF( LWORK.GE.M*M+MAX( 4*M, BDSPAC ) ) THEN
+                  IR = 1
+                  IF( LWORK.GE.MAX( WRKBL, LDA*N + M ) + LDA*M ) THEN
+                     LDWRKU = LDA
+                     CHUNK = N
+                     LDWRKR = LDA
+                  ELSE IF( LWORK.GE.MAX( WRKBL, LDA*N + M ) + M*M ) THEN
+                     LDWRKU = LDA
+                     CHUNK = N
+                     LDWRKR = M
+                  ELSE
+                     LDWRKU = M
+                     CHUNK = ( LWORK-M*M-M ) / M
+                     LDWRKR = M
+                  END IF
+                  ITAU = IR + LDWRKR*M
+                  IWORK = ITAU + M
+                  CALL DGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL DLACPY( 'L', M, M, A, LDA, U, LDU )
+                  CALL DLASET( 'U', M-1, M-1, ZERO, ZERO, U( 1, 2 ),
+     $                         LDU )
+                  CALL DORGLQ( M, N, M, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IE = ITAU
+                  ITAUQ = IE + M
+                  ITAUP = ITAUQ + M
+                  IWORK = ITAUP + M
+                  CALL DGEBRD( M, M, U, LDU, S, WORK( IE ),
+     $                         WORK( ITAUQ ), WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL DLACPY( 'U', M, M, U, LDU, WORK( IR ), LDWRKR )
+                  CALL DORGBR( 'P', M, M, M, WORK( IR ), LDWRKR,
+     $                         WORK( ITAUP ), WORK( IWORK ),
+     $                         LWORK-IWORK+1, IERR )
+                  CALL DORGBR( 'Q', M, M, M, U, LDU, WORK( ITAUQ ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IWORK = IE + M
+                  CALL DBDSQR( 'U', M, M, M, 0, S, WORK( IE ),
+     $                         WORK( IR ), LDWRKR, U, LDU, DUM, 1,
+     $                         WORK( IWORK ), INFO )
+                  IU = IE + M
+                  DO 40 I = 1, N, CHUNK
+                     BLK = MIN( N-I+1, CHUNK )
+                     CALL DGEMM( 'N', 'N', M, BLK, M, ONE, WORK( IR ),
+     $                           LDWRKR, A( 1, I ), LDA, ZERO,
+     $                           WORK( IU ), LDWRKU )
+                     CALL DLACPY( 'F', M, BLK, WORK( IU ), LDWRKU,
+     $                            A( 1, I ), LDA )
+   40             CONTINUE
+               ELSE
+                  ITAU = 1
+                  IWORK = ITAU + M
+                  CALL DGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL DLACPY( 'L', M, M, A, LDA, U, LDU )
+                  CALL DLASET( 'U', M-1, M-1, ZERO, ZERO, U( 1, 2 ),
+     $                         LDU )
+                  CALL DORGLQ( M, N, M, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IE = ITAU
+                  ITAUQ = IE + M
+                  ITAUP = ITAUQ + M
+                  IWORK = ITAUP + M
+                  CALL DGEBRD( M, M, U, LDU, S, WORK( IE ),
+     $                         WORK( ITAUQ ), WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL DORMBR( 'P', 'L', 'T', M, N, M, U, LDU,
+     $                         WORK( ITAUP ), A, LDA, WORK( IWORK ),
+     $                         LWORK-IWORK+1, IERR )
+                  CALL DORGBR( 'Q', M, M, M, U, LDU, WORK( ITAUQ ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IWORK = IE + M
+                  CALL DBDSQR( 'U', M, N, M, 0, S, WORK( IE ), A, LDA,
+     $                         U, LDU, DUM, 1, WORK( IWORK ), INFO )
+               END IF
+            ELSE IF( WNTVS ) THEN
+               IF( WNTUN ) THEN
+                  IF( LWORK.GE.M*M+MAX( 4*M, BDSPAC ) ) THEN
+                     IR = 1
+                     IF( LWORK.GE.WRKBL+LDA*M ) THEN
+                        LDWRKR = LDA
+                     ELSE
+                        LDWRKR = M
+                     END IF
+                     ITAU = IR + LDWRKR*M
+                     IWORK = ITAU + M
+                     CALL DGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'L', M, M, A, LDA, WORK( IR ),
+     $                            LDWRKR )
+                     CALL DLASET( 'U', M-1, M-1, ZERO, ZERO,
+     $                            WORK( IR+LDWRKR ), LDWRKR )
+                     CALL DORGLQ( M, N, M, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = ITAU
+                     ITAUQ = IE + M
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL DGEBRD( M, M, WORK( IR ), LDWRKR, S,
+     $                            WORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DORGBR( 'P', M, M, M, WORK( IR ), LDWRKR,
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     IWORK = IE + M
+                     CALL DBDSQR( 'U', M, M, 0, 0, S, WORK( IE ),
+     $                            WORK( IR ), LDWRKR, DUM, 1, DUM, 1,
+     $                            WORK( IWORK ), INFO )
+                     CALL DGEMM( 'N', 'N', M, N, M, ONE, WORK( IR ),
+     $                           LDWRKR, A, LDA, ZERO, VT, LDVT )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + M
+                     CALL DGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'U', M, N, A, LDA, VT, LDVT )
+                     CALL DORGLQ( M, N, M, VT, LDVT, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = ITAU
+                     ITAUQ = IE + M
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL DLASET( 'U', M-1, M-1, ZERO, ZERO, A( 1, 2 ),
+     $                            LDA )
+                     CALL DGEBRD( M, M, A, LDA, S, WORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DORMBR( 'P', 'L', 'T', M, N, M, A, LDA,
+     $                            WORK( ITAUP ), VT, LDVT,
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IWORK = IE + M
+                     CALL DBDSQR( 'U', M, N, 0, 0, S, WORK( IE ), VT,
+     $                            LDVT, DUM, 1, DUM, 1, WORK( IWORK ),
+     $                            INFO )
+                  END IF
+               ELSE IF( WNTUO ) THEN
+                  IF( LWORK.GE.2*M*M+MAX( 4*M, BDSPAC ) ) THEN
+                     IU = 1
+                     IF( LWORK.GE.WRKBL+2*LDA*M ) THEN
+                        LDWRKU = LDA
+                        IR = IU + LDWRKU*M
+                        LDWRKR = LDA
+                     ELSE IF( LWORK.GE.WRKBL+( LDA + M )*M ) THEN
+                        LDWRKU = LDA
+                        IR = IU + LDWRKU*M
+                        LDWRKR = M
+                     ELSE
+                        LDWRKU = M
+                        IR = IU + LDWRKU*M
+                        LDWRKR = M
+                     END IF
+                     ITAU = IR + LDWRKR*M
+                     IWORK = ITAU + M
+                     CALL DGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'L', M, M, A, LDA, WORK( IU ),
+     $                            LDWRKU )
+                     CALL DLASET( 'U', M-1, M-1, ZERO, ZERO,
+     $                            WORK( IU+LDWRKU ), LDWRKU )
+                     CALL DORGLQ( M, N, M, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = ITAU
+                     ITAUQ = IE + M
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL DGEBRD( M, M, WORK( IU ), LDWRKU, S,
+     $                            WORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'L', M, M, WORK( IU ), LDWRKU,
+     $                            WORK( IR ), LDWRKR )
+                     CALL DORGBR( 'P', M, M, M, WORK( IU ), LDWRKU,
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DORGBR( 'Q', M, M, M, WORK( IR ), LDWRKR,
+     $                            WORK( ITAUQ ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     IWORK = IE + M
+                     CALL DBDSQR( 'U', M, M, M, 0, S, WORK( IE ),
+     $                            WORK( IU ), LDWRKU, WORK( IR ),
+     $                            LDWRKR, DUM, 1, WORK( IWORK ), INFO )
+                     CALL DGEMM( 'N', 'N', M, N, M, ONE, WORK( IU ),
+     $                           LDWRKU, A, LDA, ZERO, VT, LDVT )
+                     CALL DLACPY( 'F', M, M, WORK( IR ), LDWRKR, A,
+     $                            LDA )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + M
+                     CALL DGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'U', M, N, A, LDA, VT, LDVT )
+                     CALL DORGLQ( M, N, M, VT, LDVT, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = ITAU
+                     ITAUQ = IE + M
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL DLASET( 'U', M-1, M-1, ZERO, ZERO, A( 1, 2 ),
+     $                            LDA )
+                     CALL DGEBRD( M, M, A, LDA, S, WORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DORMBR( 'P', 'L', 'T', M, N, M, A, LDA,
+     $                            WORK( ITAUP ), VT, LDVT,
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DORGBR( 'Q', M, M, M, A, LDA, WORK( ITAUQ ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IWORK = IE + M
+                     CALL DBDSQR( 'U', M, N, M, 0, S, WORK( IE ), VT,
+     $                            LDVT, A, LDA, DUM, 1, WORK( IWORK ),
+     $                            INFO )
+                  END IF
+               ELSE IF( WNTUAS ) THEN
+                  IF( LWORK.GE.M*M+MAX( 4*M, BDSPAC ) ) THEN
+                     IU = 1
+                     IF( LWORK.GE.WRKBL+LDA*M ) THEN
+                        LDWRKU = LDA
+                     ELSE
+                        LDWRKU = M
+                     END IF
+                     ITAU = IU + LDWRKU*M
+                     IWORK = ITAU + M
+                     CALL DGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'L', M, M, A, LDA, WORK( IU ),
+     $                            LDWRKU )
+                     CALL DLASET( 'U', M-1, M-1, ZERO, ZERO,
+     $                            WORK( IU+LDWRKU ), LDWRKU )
+                     CALL DORGLQ( M, N, M, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = ITAU
+                     ITAUQ = IE + M
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL DGEBRD( M, M, WORK( IU ), LDWRKU, S,
+     $                            WORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'L', M, M, WORK( IU ), LDWRKU, U,
+     $                            LDU )
+                     CALL DORGBR( 'P', M, M, M, WORK( IU ), LDWRKU,
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DORGBR( 'Q', M, M, M, U, LDU, WORK( ITAUQ ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IWORK = IE + M
+                     CALL DBDSQR( 'U', M, M, M, 0, S, WORK( IE ),
+     $                            WORK( IU ), LDWRKU, U, LDU, DUM, 1,
+     $                            WORK( IWORK ), INFO )
+                     CALL DGEMM( 'N', 'N', M, N, M, ONE, WORK( IU ),
+     $                           LDWRKU, A, LDA, ZERO, VT, LDVT )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + M
+                     CALL DGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'U', M, N, A, LDA, VT, LDVT )
+                     CALL DORGLQ( M, N, M, VT, LDVT, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'L', M, M, A, LDA, U, LDU )
+                     CALL DLASET( 'U', M-1, M-1, ZERO, ZERO, U( 1, 2 ),
+     $                            LDU )
+                     IE = ITAU
+                     ITAUQ = IE + M
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL DGEBRD( M, M, U, LDU, S, WORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DORMBR( 'P', 'L', 'T', M, N, M, U, LDU,
+     $                            WORK( ITAUP ), VT, LDVT,
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DORGBR( 'Q', M, M, M, U, LDU, WORK( ITAUQ ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IWORK = IE + M
+                     CALL DBDSQR( 'U', M, N, M, 0, S, WORK( IE ), VT,
+     $                            LDVT, U, LDU, DUM, 1, WORK( IWORK ),
+     $                            INFO )
+                  END IF
+               END IF
+            ELSE IF( WNTVA ) THEN
+               IF( WNTUN ) THEN
+                  IF( LWORK.GE.M*M+MAX( N + M, 4*M, BDSPAC ) ) THEN
+                     IR = 1
+                     IF( LWORK.GE.WRKBL+LDA*M ) THEN
+                        LDWRKR = LDA
+                     ELSE
+                        LDWRKR = M
+                     END IF
+                     ITAU = IR + LDWRKR*M
+                     IWORK = ITAU + M
+                     CALL DGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'U', M, N, A, LDA, VT, LDVT )
+                     CALL DLACPY( 'L', M, M, A, LDA, WORK( IR ),
+     $                            LDWRKR )
+                     CALL DLASET( 'U', M-1, M-1, ZERO, ZERO,
+     $                            WORK( IR+LDWRKR ), LDWRKR )
+                     CALL DORGLQ( N, N, M, VT, LDVT, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = ITAU
+                     ITAUQ = IE + M
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL DGEBRD( M, M, WORK( IR ), LDWRKR, S,
+     $                            WORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DORGBR( 'P', M, M, M, WORK( IR ), LDWRKR,
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     IWORK = IE + M
+                     CALL DBDSQR( 'U', M, M, 0, 0, S, WORK( IE ),
+     $                            WORK( IR ), LDWRKR, DUM, 1, DUM, 1,
+     $                            WORK( IWORK ), INFO )
+                     CALL DGEMM( 'N', 'N', M, N, M, ONE, WORK( IR ),
+     $                           LDWRKR, VT, LDVT, ZERO, A, LDA )
+                     CALL DLACPY( 'F', M, N, A, LDA, VT, LDVT )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + M
+                     CALL DGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'U', M, N, A, LDA, VT, LDVT )
+                     CALL DORGLQ( N, N, M, VT, LDVT, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = ITAU
+                     ITAUQ = IE + M
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL DLASET( 'U', M-1, M-1, ZERO, ZERO, A( 1, 2 ),
+     $                            LDA )
+                     CALL DGEBRD( M, M, A, LDA, S, WORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DORMBR( 'P', 'L', 'T', M, N, M, A, LDA,
+     $                            WORK( ITAUP ), VT, LDVT,
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IWORK = IE + M
+                     CALL DBDSQR( 'U', M, N, 0, 0, S, WORK( IE ), VT,
+     $                            LDVT, DUM, 1, DUM, 1, WORK( IWORK ),
+     $                            INFO )
+                  END IF
+               ELSE IF( WNTUO ) THEN
+                  IF( LWORK.GE.2*M*M+MAX( N + M, 4*M, BDSPAC ) ) THEN
+                     IU = 1
+                     IF( LWORK.GE.WRKBL+2*LDA*M ) THEN
+                        LDWRKU = LDA
+                        IR = IU + LDWRKU*M
+                        LDWRKR = LDA
+                     ELSE IF( LWORK.GE.WRKBL+( LDA + M )*M ) THEN
+                        LDWRKU = LDA
+                        IR = IU + LDWRKU*M
+                        LDWRKR = M
+                     ELSE
+                        LDWRKU = M
+                        IR = IU + LDWRKU*M
+                        LDWRKR = M
+                     END IF
+                     ITAU = IR + LDWRKR*M
+                     IWORK = ITAU + M
+                     CALL DGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'U', M, N, A, LDA, VT, LDVT )
+                     CALL DORGLQ( N, N, M, VT, LDVT, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'L', M, M, A, LDA, WORK( IU ),
+     $                            LDWRKU )
+                     CALL DLASET( 'U', M-1, M-1, ZERO, ZERO,
+     $                            WORK( IU+LDWRKU ), LDWRKU )
+                     IE = ITAU
+                     ITAUQ = IE + M
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL DGEBRD( M, M, WORK( IU ), LDWRKU, S,
+     $                            WORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'L', M, M, WORK( IU ), LDWRKU,
+     $                            WORK( IR ), LDWRKR )
+                     CALL DORGBR( 'P', M, M, M, WORK( IU ), LDWRKU,
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DORGBR( 'Q', M, M, M, WORK( IR ), LDWRKR,
+     $                            WORK( ITAUQ ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     IWORK = IE + M
+                     CALL DBDSQR( 'U', M, M, M, 0, S, WORK( IE ),
+     $                            WORK( IU ), LDWRKU, WORK( IR ),
+     $                            LDWRKR, DUM, 1, WORK( IWORK ), INFO )
+                     CALL DGEMM( 'N', 'N', M, N, M, ONE, WORK( IU ),
+     $                           LDWRKU, VT, LDVT, ZERO, A, LDA )
+                     CALL DLACPY( 'F', M, N, A, LDA, VT, LDVT )
+                     CALL DLACPY( 'F', M, M, WORK( IR ), LDWRKR, A,
+     $                            LDA )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + M
+                     CALL DGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'U', M, N, A, LDA, VT, LDVT )
+                     CALL DORGLQ( N, N, M, VT, LDVT, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = ITAU
+                     ITAUQ = IE + M
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL DLASET( 'U', M-1, M-1, ZERO, ZERO, A( 1, 2 ),
+     $                            LDA )
+                     CALL DGEBRD( M, M, A, LDA, S, WORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DORMBR( 'P', 'L', 'T', M, N, M, A, LDA,
+     $                            WORK( ITAUP ), VT, LDVT,
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DORGBR( 'Q', M, M, M, A, LDA, WORK( ITAUQ ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IWORK = IE + M
+                     CALL DBDSQR( 'U', M, N, M, 0, S, WORK( IE ), VT,
+     $                            LDVT, A, LDA, DUM, 1, WORK( IWORK ),
+     $                            INFO )
+                  END IF
+               ELSE IF( WNTUAS ) THEN
+                  IF( LWORK.GE.M*M+MAX( N + M, 4*M, BDSPAC ) ) THEN
+                     IU = 1
+                     IF( LWORK.GE.WRKBL+LDA*M ) THEN
+                        LDWRKU = LDA
+                     ELSE
+                        LDWRKU = M
+                     END IF
+                     ITAU = IU + LDWRKU*M
+                     IWORK = ITAU + M
+                     CALL DGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'U', M, N, A, LDA, VT, LDVT )
+                     CALL DORGLQ( N, N, M, VT, LDVT, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'L', M, M, A, LDA, WORK( IU ),
+     $                            LDWRKU )
+                     CALL DLASET( 'U', M-1, M-1, ZERO, ZERO,
+     $                            WORK( IU+LDWRKU ), LDWRKU )
+                     IE = ITAU
+                     ITAUQ = IE + M
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL DGEBRD( M, M, WORK( IU ), LDWRKU, S,
+     $                            WORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'L', M, M, WORK( IU ), LDWRKU, U,
+     $                            LDU )
+                     CALL DORGBR( 'P', M, M, M, WORK( IU ), LDWRKU,
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL DORGBR( 'Q', M, M, M, U, LDU, WORK( ITAUQ ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IWORK = IE + M
+                     CALL DBDSQR( 'U', M, M, M, 0, S, WORK( IE ),
+     $                            WORK( IU ), LDWRKU, U, LDU, DUM, 1,
+     $                            WORK( IWORK ), INFO )
+                     CALL DGEMM( 'N', 'N', M, N, M, ONE, WORK( IU ),
+     $                           LDWRKU, VT, LDVT, ZERO, A, LDA )
+                     CALL DLACPY( 'F', M, N, A, LDA, VT, LDVT )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + M
+                     CALL DGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'U', M, N, A, LDA, VT, LDVT )
+                     CALL DORGLQ( N, N, M, VT, LDVT, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DLACPY( 'L', M, M, A, LDA, U, LDU )
+                     CALL DLASET( 'U', M-1, M-1, ZERO, ZERO, U( 1, 2 ),
+     $                            LDU )
+                     IE = ITAU
+                     ITAUQ = IE + M
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL DGEBRD( M, M, U, LDU, S, WORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DORMBR( 'P', 'L', 'T', M, N, M, U, LDU,
+     $                            WORK( ITAUP ), VT, LDVT,
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL DORGBR( 'Q', M, M, M, U, LDU, WORK( ITAUQ ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IWORK = IE + M
+                     CALL DBDSQR( 'U', M, N, M, 0, S, WORK( IE ), VT,
+     $                            LDVT, U, LDU, DUM, 1, WORK( IWORK ),
+     $                            INFO )
+                  END IF
+               END IF
+            END IF
+         ELSE
+            IE = 1
+            ITAUQ = IE + M
+            ITAUP = ITAUQ + M
+            IWORK = ITAUP + M
+            CALL DGEBRD( M, N, A, LDA, S, WORK( IE ), WORK( ITAUQ ),
+     $                   WORK( ITAUP ), WORK( IWORK ), LWORK-IWORK+1,
+     $                   IERR )
+            IF( WNTUAS ) THEN
+               CALL DLACPY( 'L', M, M, A, LDA, U, LDU )
+               CALL DORGBR( 'Q', M, M, N, U, LDU, WORK( ITAUQ ),
+     $                      WORK( IWORK ), LWORK-IWORK+1, IERR )
+            END IF
+            IF( WNTVAS ) THEN
+               CALL DLACPY( 'U', M, N, A, LDA, VT, LDVT )
+               IF( WNTVA )
+     $            NRVT = N
+               IF( WNTVS )
+     $            NRVT = M
+               CALL DORGBR( 'P', NRVT, N, M, VT, LDVT, WORK( ITAUP ),
+     $                      WORK( IWORK ), LWORK-IWORK+1, IERR )
+            END IF
+            IF( WNTUO ) THEN
+               CALL DORGBR( 'Q', M, M, N, A, LDA, WORK( ITAUQ ),
+     $                      WORK( IWORK ), LWORK-IWORK+1, IERR )
+            END IF
+            IF( WNTVO ) THEN
+               CALL DORGBR( 'P', M, N, M, A, LDA, WORK( ITAUP ),
+     $                      WORK( IWORK ), LWORK-IWORK+1, IERR )
+            END IF
+            IWORK = IE + M
+            IF( WNTUAS .OR. WNTUO )
+     $         NRU = M
+            IF( WNTUN )
+     $         NRU = 0
+            IF( WNTVAS .OR. WNTVO )
+     $         NCVT = N
+            IF( WNTVN )
+     $         NCVT = 0
+            IF( ( .NOT.WNTUO ) .AND. ( .NOT.WNTVO ) ) THEN
+               CALL DBDSQR( 'L', M, NCVT, NRU, 0, S, WORK( IE ), VT,
+     $                      LDVT, U, LDU, DUM, 1, WORK( IWORK ), INFO )
+            ELSE IF( ( .NOT.WNTUO ) .AND. WNTVO ) THEN
+               CALL DBDSQR( 'L', M, NCVT, NRU, 0, S, WORK( IE ), A, LDA,
+     $                      U, LDU, DUM, 1, WORK( IWORK ), INFO )
+            ELSE
+               CALL DBDSQR( 'L', M, NCVT, NRU, 0, S, WORK( IE ), VT,
+     $                      LDVT, A, LDA, DUM, 1, WORK( IWORK ), INFO )
+            END IF
+         END IF
+      END IF
+      IF( INFO.NE.0 ) THEN
+         IF( IE.GT.2 ) THEN
+            DO 50 I = 1, MINMN - 1
+               WORK( I+1 ) = WORK( I+IE-1 )
+   50       CONTINUE
+         END IF
+         IF( IE.LT.2 ) THEN
+            DO 60 I = MINMN - 1, 1, -1
+               WORK( I+1 ) = WORK( I+IE-1 )
+   60       CONTINUE
+         END IF
+      END IF
+      IF( ISCL.EQ.1 ) THEN
+         IF( ANRM.GT.BIGNUM )
+     $      CALL DLASCL( 'G', 0, 0, BIGNUM, ANRM, MINMN, 1, S, MINMN,
+     $                   IERR )
+         IF( INFO.NE.0 .AND. ANRM.GT.BIGNUM )
+     $      CALL DLASCL( 'G', 0, 0, BIGNUM, ANRM, MINMN-1, 1, WORK( 2 ),
+     $                   MINMN, IERR )
+         IF( ANRM.LT.SMLNUM )
+     $      CALL DLASCL( 'G', 0, 0, SMLNUM, ANRM, MINMN, 1, S, MINMN,
+     $                   IERR )
+         IF( INFO.NE.0 .AND. ANRM.LT.SMLNUM )
+     $      CALL DLASCL( 'G', 0, 0, SMLNUM, ANRM, MINMN-1, 1, WORK( 2 ),
+     $                   MINMN, IERR )
+      END IF
+      WORK( 1 ) = MAXWRK
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/dgetrf.f
@@ -12584,7 +14218,7 @@
             CALL DSCAL( N-1, RSAFMN, X, INCX )
             BETA = BETA*RSAFMN
             ALPHA = ALPHA*RSAFMN
-            IF( ABS( BETA ).LT.SAFMIN )
+            IF( (ABS( BETA ).LT.SAFMIN) .AND. (KNT .LT. 20) )
      $         GO TO 10
             XNORM = DNRM2( N-1, X, INCX )
             BETA = -SIGN( DLAPY2( ALPHA, XNORM ), ALPHA )
@@ -13884,7 +15518,7 @@
       DOUBLE PRECISION            DLAMCH
       EXTERNAL           DLAMCH, LSAME
       EXTERNAL           DCOPY, DLARNV, DLARRA, DLARRB, DLARRC, DLARRD,
-     $                   DLASQ2
+     $                   DLASQ2, DLARRK
       INTRINSIC          ABS, MAX, MIN
       INFO = 0
       IF( N.LE.0 ) THEN
@@ -19552,7 +21186,7 @@
       DOUBLE PRECISION   BIGNUM, CDEN, CDEN1, CNUM, CNUM1, MUL, SMLNUM
       DOUBLE PRECISION   DLAMCH
       EXTERNAL           DLAMCH
-      EXTERNAL           DSCAL
+      EXTERNAL           DSCAL, DLABAD
       INTRINSIC          ABS
       IF( N.LE.0 )
      $   RETURN
@@ -19582,22 +21216,22 @@
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/dsb2st_kernels.f
-      SUBROUTINE  DSB2ST_KERNELS( UPLO, WANTZ, TTYPE, 
+      SUBROUTINE  DSB2ST_KERNELS( UPLO, WANTZ, TTYPE,
      $                            ST, ED, SWEEP, N, NB, IB,
      $                            A, LDA, V, TAU, LDVT, WORK)
       IMPLICIT NONE
       CHARACTER          UPLO
       LOGICAL            WANTZ
       INTEGER            TTYPE, ST, ED, SWEEP, N, NB, IB, LDA, LDVT
-      DOUBLE PRECISION   A( LDA, * ), V( * ), 
+      DOUBLE PRECISION   A( LDA, * ), V( * ),
      $                   TAU( * ), WORK( * )
       DOUBLE PRECISION   ZERO, ONE
       PARAMETER          ( ZERO = 0.0D+0,
      $                   ONE = 1.0D+0 )
       LOGICAL            UPPER
       INTEGER            I, J1, J2, LM, LN, VPOS, TAUPOS,
-     $                   DPOS, OFDPOS, AJETER 
-      DOUBLE PRECISION   CTMP 
+     $                   DPOS, OFDPOS, AJETER
+      DOUBLE PRECISION   CTMP
       EXTERNAL           DLARFG, DLARFX, DLARFY
       INTRINSIC          MOD
       LOGICAL            LSAME
@@ -19624,10 +21258,10 @@
               V( VPOS ) = ONE
               DO 10 I = 1, LM-1
                   V( VPOS+I )         = ( A( OFDPOS-I, ST+I ) )
-                  A( OFDPOS-I, ST+I ) = ZERO  
+                  A( OFDPOS-I, ST+I ) = ZERO
    10         CONTINUE
               CTMP = ( A( OFDPOS, ST ) )
-              CALL DLARFG( LM, CTMP, V( VPOS+1 ), 1, 
+              CALL DLARFG( LM, CTMP, V( VPOS+1 ), 1,
      $                                       TAU( TAUPOS ) )
               A( OFDPOS, ST ) = CTMP
               LM = ED - ST + 1
@@ -19659,7 +21293,7 @@
                   ENDIF
                   V( VPOS ) = ONE
                   DO 30 I = 1, LM-1
-                      V( VPOS+I )          = 
+                      V( VPOS+I )          =
      $                                    ( A( DPOS-NB-I, J1+I ) )
                       A( DPOS-NB-I, J1+I ) = ZERO
    30             CONTINUE
@@ -19684,9 +21318,9 @@
               V( VPOS ) = ONE
               DO 20 I = 1, LM-1
                   V( VPOS+I )         = A( OFDPOS+I, ST-1 )
-                  A( OFDPOS+I, ST-1 ) = ZERO  
+                  A( OFDPOS+I, ST-1 ) = ZERO
    20         CONTINUE
-              CALL DLARFG( LM, A( OFDPOS, ST-1 ), V( VPOS+1 ), 1, 
+              CALL DLARFG( LM, A( OFDPOS, ST-1 ), V( VPOS+1 ), 1,
      $                                       TAU( TAUPOS ) )
               LM = ED - ST + 1
               CALL DLARFY( UPLO, LM, V( VPOS ), 1,
@@ -19705,7 +21339,7 @@
               LN = ED-ST+1
               LM = J2-J1+1
               IF( LM.GT.0) THEN
-                  CALL DLARFX( 'Right', LM, LN, V( VPOS ), 
+                  CALL DLARFX( 'Right', LM, LN, V( VPOS ),
      $                         TAU( TAUPOS ), A( DPOS+NB, ST ),
      $                         LDA-1, WORK)
                   IF( WANTZ ) THEN
@@ -19720,17 +21354,16 @@
                       V( VPOS+I )        = A( DPOS+NB+I, ST )
                       A( DPOS+NB+I, ST ) = ZERO
    40             CONTINUE
-                  CALL DLARFG( LM, A( DPOS+NB, ST ), V( VPOS+1 ), 1, 
+                  CALL DLARFG( LM, A( DPOS+NB, ST ), V( VPOS+1 ), 1,
      $                                        TAU( TAUPOS ) )
-                  CALL DLARFX( 'Left', LM, LN-1, V( VPOS ), 
+                  CALL DLARFX( 'Left', LM, LN-1, V( VPOS ),
      $                         ( TAU( TAUPOS ) ),
      $                         A( DPOS+NB-1, ST+1 ), LDA-1, WORK)
-             
               ENDIF
           ENDIF
       ENDIF
       RETURN
-      END      
+      END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/dspev.f
       SUBROUTINE DSPEV( JOBZ, UPLO, N, AP, W, Z, LDZ, WORK, INFO )
       CHARACTER          JOBZ, UPLO
@@ -21941,9 +23574,9 @@
       DOUBLE PRECISION   ANRM, BIGNUM, EPS, RMAX, RMIN, SAFMIN, SIGMA,
      $                   SMLNUM
       LOGICAL            LSAME
-      INTEGER            ILAENV
+      INTEGER            ILAENV2STAGE
       DOUBLE PRECISION   DLAMCH, DLANSY
-      EXTERNAL           LSAME, ILAENV, DLAMCH, DLANSY
+      EXTERNAL           LSAME, DLAMCH, DLANSY, ILAENV2STAGE
       EXTERNAL           DLASCL, DORGTR, DSCAL, DSTEQR, DSTERF,
      $                   XERBLA, DSYTRD_2STAGE
       INTRINSIC          MAX, SQRT
@@ -21961,10 +23594,10 @@
          INFO = -5
       END IF
       IF( INFO.EQ.0 ) THEN
-         KD    = ILAENV( 17, 'DSYTRD_2STAGE', JOBZ, N, -1, -1, -1 )
-         IB    = ILAENV( 18, 'DSYTRD_2STAGE', JOBZ, N, KD, -1, -1 )
-         LHTRD = ILAENV( 19, 'DSYTRD_2STAGE', JOBZ, N, KD, IB, -1 )
-         LWTRD = ILAENV( 20, 'DSYTRD_2STAGE', JOBZ, N, KD, IB, -1 )
+         KD    = ILAENV2STAGE( 1, 'DSYTRD_2STAGE', JOBZ, N, -1, -1, -1 )
+         IB    = ILAENV2STAGE( 2, 'DSYTRD_2STAGE', JOBZ, N, KD, -1, -1 )
+         LHTRD = ILAENV2STAGE( 3, 'DSYTRD_2STAGE', JOBZ, N, KD, IB, -1 )
+         LWTRD = ILAENV2STAGE( 4, 'DSYTRD_2STAGE', JOBZ, N, KD, IB, -1 )
          LWMIN = 2*N + LHTRD + LWTRD
          WORK( 1 )  = LWMIN
          IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY )
@@ -22162,9 +23795,9 @@
       DOUBLE PRECISION   ANRM, BIGNUM, EPS, RMAX, RMIN, SAFMIN, SIGMA,
      $                   SMLNUM
       LOGICAL            LSAME
-      INTEGER            ILAENV
+      INTEGER            ILAENV2STAGE
       DOUBLE PRECISION   DLAMCH, DLANSY
-      EXTERNAL           LSAME, DLAMCH, DLANSY, ILAENV
+      EXTERNAL           LSAME, DLAMCH, DLANSY, ILAENV2STAGE
       EXTERNAL           DLACPY, DLASCL, DORMTR, DSCAL, DSTEDC, DSTERF,
      $                   DSYTRD_2STAGE, XERBLA
       INTRINSIC          MAX, SQRT
@@ -22186,10 +23819,14 @@
             LIWMIN = 1
             LWMIN = 1
          ELSE
-            KD    = ILAENV( 17, 'DSYTRD_2STAGE', JOBZ, N, -1, -1, -1 )
-            IB    = ILAENV( 18, 'DSYTRD_2STAGE', JOBZ, N, KD, -1, -1 )
-            LHTRD = ILAENV( 19, 'DSYTRD_2STAGE', JOBZ, N, KD, IB, -1 )
-            LWTRD = ILAENV( 20, 'DSYTRD_2STAGE', JOBZ, N, KD, IB, -1 )
+            KD    = ILAENV2STAGE( 1, 'DSYTRD_2STAGE', JOBZ,
+     $                            N, -1, -1, -1 )
+            IB    = ILAENV2STAGE( 2, 'DSYTRD_2STAGE', JOBZ,
+     $                            N, KD, -1, -1 )
+            LHTRD = ILAENV2STAGE( 3, 'DSYTRD_2STAGE', JOBZ,
+     $                            N, KD, IB, -1 )
+            LWTRD = ILAENV2STAGE( 4, 'DSYTRD_2STAGE', JOBZ,
+     $                            N, KD, IB, -1 )
             IF( WANTZ ) THEN
                LIWMIN = 3 + 5*N
                LWMIN = 1 + 6*N + 2*N**2
@@ -22521,9 +24158,9 @@
       DOUBLE PRECISION   ABSTLL, ANRM, BIGNUM, EPS, RMAX, RMIN, SAFMIN,
      $                   SIGMA, SMLNUM, TMP1, VLL, VUU
       LOGICAL            LSAME
-      INTEGER            ILAENV
+      INTEGER            ILAENV, ILAENV2STAGE
       DOUBLE PRECISION   DLAMCH, DLANSY
-      EXTERNAL           LSAME, ILAENV, DLAMCH, DLANSY
+      EXTERNAL           LSAME, DLAMCH, DLANSY, ILAENV, ILAENV2STAGE
       EXTERNAL           DCOPY, DORMTR, DSCAL, DSTEBZ, DSTEMR, DSTEIN,
      $                   DSTERF, DSWAP, DSYTRD_2STAGE, XERBLA
       INTRINSIC          MAX, MIN, SQRT
@@ -22534,10 +24171,10 @@
       VALEIG = LSAME( RANGE, 'V' )
       INDEIG = LSAME( RANGE, 'I' )
       LQUERY = ( ( LWORK.EQ.-1 ) .OR. ( LIWORK.EQ.-1 ) )
-      KD     = ILAENV( 17, 'DSYTRD_2STAGE', JOBZ, N, -1, -1, -1 )
-      IB     = ILAENV( 18, 'DSYTRD_2STAGE', JOBZ, N, KD, -1, -1 )
-      LHTRD  = ILAENV( 19, 'DSYTRD_2STAGE', JOBZ, N, KD, IB, -1 )
-      LWTRD  = ILAENV( 20, 'DSYTRD_2STAGE', JOBZ, N, KD, IB, -1 )
+      KD     = ILAENV2STAGE( 1, 'DSYTRD_2STAGE', JOBZ, N, -1, -1, -1 )
+      IB     = ILAENV2STAGE( 2, 'DSYTRD_2STAGE', JOBZ, N, KD, -1, -1 )
+      LHTRD  = ILAENV2STAGE( 3, 'DSYTRD_2STAGE', JOBZ, N, KD, IB, -1 )
+      LWTRD  = ILAENV2STAGE( 4, 'DSYTRD_2STAGE', JOBZ, N, KD, IB, -1 )
       LWMIN  = MAX( 26*N, 5*N + LHTRD + LWTRD )
       LIWMIN = MAX( 1, 10*N )
       INFO = 0
@@ -22992,9 +24629,9 @@
       DOUBLE PRECISION   ABSTLL, ANRM, BIGNUM, EPS, RMAX, RMIN, SAFMIN,
      $                   SIGMA, SMLNUM, TMP1, VLL, VUU
       LOGICAL            LSAME
-      INTEGER            ILAENV
+      INTEGER            ILAENV2STAGE
       DOUBLE PRECISION   DLAMCH, DLANSY
-      EXTERNAL           LSAME, ILAENV, DLAMCH, DLANSY
+      EXTERNAL           LSAME, DLAMCH, DLANSY, ILAENV2STAGE
       EXTERNAL           DCOPY, DLACPY, DORGTR, DORMTR, DSCAL, DSTEBZ,
      $                   DSTEIN, DSTEQR, DSTERF, DSWAP, XERBLA,
      $                   DSYTRD_2STAGE
@@ -23038,10 +24675,14 @@
             LWMIN = 1
             WORK( 1 ) = LWMIN
          ELSE
-            KD    = ILAENV( 17, 'DSYTRD_2STAGE', JOBZ, N, -1, -1, -1 )
-            IB    = ILAENV( 18, 'DSYTRD_2STAGE', JOBZ, N, KD, -1, -1 )
-            LHTRD = ILAENV( 19, 'DSYTRD_2STAGE', JOBZ, N, KD, IB, -1 )
-            LWTRD = ILAENV( 20, 'DSYTRD_2STAGE', JOBZ, N, KD, IB, -1 )
+            KD    = ILAENV2STAGE( 1, 'DSYTRD_2STAGE', JOBZ,
+     $                            N, -1, -1, -1 )
+            IB    = ILAENV2STAGE( 2, 'DSYTRD_2STAGE', JOBZ,
+     $                            N, KD, -1, -1 )
+            LHTRD = ILAENV2STAGE( 3, 'DSYTRD_2STAGE', JOBZ,
+     $                            N, KD, IB, -1 )
+            LWTRD = ILAENV2STAGE( 4, 'DSYTRD_2STAGE', JOBZ,
+     $                            N, KD, IB, -1 )
             LWMIN = MAX( 8*N, 3*N + LHTRD + LWTRD )
             WORK( 1 )  = LWMIN
          END IF
@@ -23519,115 +25160,6 @@
       WORK( 1 ) = LWKOPT
       RETURN
       END
-! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/dsygvx.f
-      SUBROUTINE DSYGVX( ITYPE, JOBZ, RANGE, UPLO, N, A, LDA, B, LDB,
-     $                   VL, VU, IL, IU, ABSTOL, M, W, Z, LDZ, WORK,
-     $                   LWORK, IWORK, IFAIL, INFO )
-      CHARACTER          JOBZ, RANGE, UPLO
-      INTEGER            IL, INFO, ITYPE, IU, LDA, LDB, LDZ, LWORK, M, N
-      DOUBLE PRECISION   ABSTOL, VL, VU
-      INTEGER            IFAIL( * ), IWORK( * )
-      DOUBLE PRECISION   A( LDA, * ), B( LDB, * ), W( * ), WORK( * ),
-     $                   Z( LDZ, * )
-      DOUBLE PRECISION   ONE
-      PARAMETER          ( ONE = 1.0D+0 )
-      LOGICAL            ALLEIG, INDEIG, LQUERY, UPPER, VALEIG, WANTZ
-      CHARACTER          TRANS
-      INTEGER            LWKMIN, LWKOPT, NB
-      LOGICAL            LSAME
-      INTEGER            ILAENV
-      EXTERNAL           LSAME, ILAENV
-      EXTERNAL           DPOTRF, DSYEVX, DSYGST, DTRMM, DTRSM, XERBLA
-      INTRINSIC          MAX, MIN
-      UPPER = LSAME( UPLO, 'U' )
-      WANTZ = LSAME( JOBZ, 'V' )
-      ALLEIG = LSAME( RANGE, 'A' )
-      VALEIG = LSAME( RANGE, 'V' )
-      INDEIG = LSAME( RANGE, 'I' )
-      LQUERY = ( LWORK.EQ.-1 )
-      INFO = 0
-      IF( ITYPE.LT.1 .OR. ITYPE.GT.3 ) THEN
-         INFO = -1
-      ELSE IF( .NOT.( WANTZ .OR. LSAME( JOBZ, 'N' ) ) ) THEN
-         INFO = -2
-      ELSE IF( .NOT.( ALLEIG .OR. VALEIG .OR. INDEIG ) ) THEN
-         INFO = -3
-      ELSE IF( .NOT.( UPPER .OR. LSAME( UPLO, 'L' ) ) ) THEN
-         INFO = -4
-      ELSE IF( N.LT.0 ) THEN
-         INFO = -5
-      ELSE IF( LDA.LT.MAX( 1, N ) ) THEN
-         INFO = -7
-      ELSE IF( LDB.LT.MAX( 1, N ) ) THEN
-         INFO = -9
-      ELSE
-         IF( VALEIG ) THEN
-            IF( N.GT.0 .AND. VU.LE.VL )
-     $         INFO = -11
-         ELSE IF( INDEIG ) THEN
-            IF( IL.LT.1 .OR. IL.GT.MAX( 1, N ) ) THEN
-               INFO = -12
-            ELSE IF( IU.LT.MIN( N, IL ) .OR. IU.GT.N ) THEN
-               INFO = -13
-            END IF
-         END IF
-      END IF
-      IF (INFO.EQ.0) THEN
-         IF (LDZ.LT.1 .OR. (WANTZ .AND. LDZ.LT.N)) THEN
-            INFO = -18
-         END IF
-      END IF
-      IF( INFO.EQ.0 ) THEN
-         LWKMIN = MAX( 1, 8*N )
-         NB = ILAENV( 1, 'DSYTRD', UPLO, N, -1, -1, -1 )
-         LWKOPT = MAX( LWKMIN, ( NB + 3 )*N )
-         WORK( 1 ) = LWKOPT
-         IF( LWORK.LT.LWKMIN .AND. .NOT.LQUERY ) THEN
-            INFO = -20
-         END IF
-      END IF
-      IF( INFO.NE.0 ) THEN
-         CALL XERBLA( 'DSYGVX', -INFO )
-         RETURN
-      ELSE IF( LQUERY ) THEN
-         RETURN
-      END IF
-      M = 0
-      IF( N.EQ.0 ) THEN
-         RETURN
-      END IF
-      CALL DPOTRF( UPLO, N, B, LDB, INFO )
-      IF( INFO.NE.0 ) THEN
-         INFO = N + INFO
-         RETURN
-      END IF
-      CALL DSYGST( ITYPE, UPLO, N, A, LDA, B, LDB, INFO )
-      CALL DSYEVX( JOBZ, RANGE, UPLO, N, A, LDA, VL, VU, IL, IU, ABSTOL,
-     $             M, W, Z, LDZ, WORK, LWORK, IWORK, IFAIL, INFO )
-      IF( WANTZ ) THEN
-         IF( INFO.GT.0 )
-     $      M = INFO - 1
-         IF( ITYPE.EQ.1 .OR. ITYPE.EQ.2 ) THEN
-            IF( UPPER ) THEN
-               TRANS = 'N'
-            ELSE
-               TRANS = 'T'
-            END IF
-            CALL DTRSM( 'Left', UPLO, TRANS, 'Non-unit', N, M, ONE, B,
-     $                  LDB, Z, LDZ )
-         ELSE IF( ITYPE.EQ.3 ) THEN
-            IF( UPPER ) THEN
-               TRANS = 'T'
-            ELSE
-               TRANS = 'N'
-            END IF
-            CALL DTRMM( 'Left', UPLO, TRANS, 'Non-unit', N, M, ONE, B,
-     $                  LDB, Z, LDZ )
-         END IF
-      END IF
-      WORK( 1 ) = LWKOPT
-      RETURN
-      END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/dsytd2.f
       SUBROUTINE DSYTD2( UPLO, N, A, LDA, D, E, TAU, INFO )
       CHARACTER          UPLO
@@ -24011,16 +25543,16 @@
       INTEGER            KD, IB, LWMIN, LHMIN, LWRK, LDAB, WPOS, ABPOS
       EXTERNAL           XERBLA, DSYTRD_SY2SB, DSYTRD_SB2ST
       LOGICAL            LSAME
-      INTEGER            ILAENV
-      EXTERNAL           LSAME, ILAENV
+      INTEGER            ILAENV2STAGE
+      EXTERNAL           LSAME, ILAENV2STAGE
       INFO   = 0
       WANTQ  = LSAME( VECT, 'V' )
       UPPER  = LSAME( UPLO, 'U' )
       LQUERY = ( LWORK.EQ.-1 ) .OR. ( LHOUS2.EQ.-1 )
-      KD     = ILAENV( 17, 'DSYTRD_2STAGE', VECT, N, -1, -1, -1 )
-      IB     = ILAENV( 18, 'DSYTRD_2STAGE', VECT, N, KD, -1, -1 )
-      LHMIN  = ILAENV( 19, 'DSYTRD_2STAGE', VECT, N, KD, IB, -1 )
-      LWMIN  = ILAENV( 20, 'DSYTRD_2STAGE', VECT, N, KD, IB, -1 )
+      KD     = ILAENV2STAGE( 1, 'DSYTRD_2STAGE', VECT, N, -1, -1, -1 )
+      IB     = ILAENV2STAGE( 2, 'DSYTRD_2STAGE', VECT, N, KD, -1, -1 )
+      LHMIN  = ILAENV2STAGE( 3, 'DSYTRD_2STAGE', VECT, N, KD, IB, -1 )
+      LWMIN  = ILAENV2STAGE( 4, 'DSYTRD_2STAGE', VECT, N, KD, IB, -1 )
       IF( .NOT.LSAME( VECT, 'N' ) ) THEN
          INFO = -1
       ELSE IF( .NOT.UPPER .AND. .NOT.LSAME( UPLO, 'L' ) ) THEN
@@ -24093,20 +25625,20 @@
      $                   ABDPOS, ABOFDPOS, DPOS, OFDPOS, AWPOS, 
      $                   INDA, INDW, APOS, SIZEA, LDA, INDV, INDTAU,
      $                   SIDEV, SIZETAU, LDV, LHMIN, LWMIN
-      EXTERNAL           DSB2ST_KERNELS, DLACPY, DLASET
+      EXTERNAL           DSB2ST_KERNELS, DLACPY, DLASET, XERBLA
       INTRINSIC          MIN, MAX, CEILING, REAL
       LOGICAL            LSAME
-      INTEGER            ILAENV 
-      EXTERNAL           LSAME, ILAENV
+      INTEGER            ILAENV2STAGE 
+      EXTERNAL           LSAME, ILAENV2STAGE
       DEBUG   = 0
       INFO    = 0
       AFTERS1 = LSAME( STAGE1, 'Y' )
       WANTQ   = LSAME( VECT, 'V' )
       UPPER   = LSAME( UPLO, 'U' )
       LQUERY  = ( LWORK.EQ.-1 ) .OR. ( LHOUS.EQ.-1 )
-      IB     = ILAENV( 18, 'DSYTRD_SB2ST', VECT, N, KD, -1, -1 )
-      LHMIN  = ILAENV( 19, 'DSYTRD_SB2ST', VECT, N, KD, IB, -1 )
-      LWMIN  = ILAENV( 20, 'DSYTRD_SB2ST', VECT, N, KD, IB, -1 )
+      IB     = ILAENV2STAGE( 2, 'DSYTRD_SB2ST', VECT, N, KD, -1, -1 )
+      LHMIN  = ILAENV2STAGE( 3, 'DSYTRD_SB2ST', VECT, N, KD, IB, -1 )
+      LWMIN  = ILAENV2STAGE( 4, 'DSYTRD_SB2ST', VECT, N, KD, IB, -1 )
       IF( .NOT.AFTERS1 .AND. .NOT.LSAME( STAGE1, 'N' ) ) THEN
          INFO = -1
       ELSE IF( .NOT.LSAME( VECT, 'N' ) ) THEN
@@ -24306,16 +25838,16 @@
      $                   LDT, LDW, LDS2, LDS1, 
      $                   LS2, LS1, LW, LT,
      $                   TPOS, WPOS, S2POS, S1POS
-      EXTERNAL           XERBLA, DSYR2K, DSYMM, DGEMM,
+      EXTERNAL           XERBLA, DSYR2K, DSYMM, DGEMM, DCOPY,
      $                   DLARFT, DGELQF, DGEQRF, DLASET
       INTRINSIC          MIN, MAX
       LOGICAL            LSAME
-      INTEGER            ILAENV 
-      EXTERNAL           LSAME, ILAENV
+      INTEGER            ILAENV2STAGE 
+      EXTERNAL           LSAME, ILAENV2STAGE
       INFO   = 0
       UPPER  = LSAME( UPLO, 'U' )
       LQUERY = ( LWORK.EQ.-1 )
-      LWMIN  = ILAENV( 20, 'DSYTRD_SY2SB', '', N, KD, -1, -1 )
+      LWMIN  = ILAENV2STAGE( 4, 'DSYTRD_SY2SB', '', N, KD, -1, -1 )
       
       IF( .NOT.UPPER .AND. .NOT.LSAME( UPLO, 'L' ) ) THEN
          INFO = -1
@@ -25292,14 +26824,13 @@
       CHARACTER*( * )    NAME, OPTS
       INTEGER            ISPEC, N1, N2, N3, N4
       INTEGER            I, IC, IZ, NB, NBMIN, NX
-      LOGICAL            CNAME, SNAME
-      CHARACTER          C1*1, C2*2, C4*2, C3*3, SUBNAM*6
+      LOGICAL            CNAME, SNAME, TWOSTAGE
+      CHARACTER          C1*1, C2*2, C4*2, C3*3, SUBNAM*16
       INTRINSIC          CHAR, ICHAR, INT, MIN, REAL
       INTEGER            IEEECK, IPARMQ, IPARAM2STAGE
       EXTERNAL           IEEECK, IPARMQ, IPARAM2STAGE
       GO TO ( 10, 10, 10, 80, 90, 100, 110, 120,
-     $        130, 140, 150, 160, 160, 160, 160, 160,
-     $        170, 170, 170, 170, 170 )ISPEC
+     $        130, 140, 150, 160, 160, 160, 160, 160)ISPEC
       ILAENV = -1
       RETURN
    10 CONTINUE
@@ -25347,6 +26878,8 @@
       C2 = SUBNAM( 2: 3 )
       C3 = SUBNAM( 4: 6 )
       C4 = C3( 2: 3 )
+      TWOSTAGE = LEN( SUBNAM ).GE.11
+     $           .AND. SUBNAM( 11: 11 ).EQ.'2'
       GO TO ( 50, 60, 70 )ISPEC
    50 CONTINUE
       NB = 1
@@ -25438,9 +26971,17 @@
       ELSE IF( C2.EQ.'SY' ) THEN
          IF( C3.EQ.'TRF' ) THEN
             IF( SNAME ) THEN
-               NB = 64
+               IF( TWOSTAGE ) THEN
+                  NB = 192
+               ELSE
+                  NB = 64
+               END IF
             ELSE
-               NB = 64
+               IF( TWOSTAGE ) THEN
+                  NB = 192
+               ELSE
+                  NB = 64
+               END IF
             END IF
          ELSE IF( SNAME .AND. C3.EQ.'TRD' ) THEN
             NB = 32
@@ -25449,7 +26990,11 @@
          END IF
       ELSE IF( CNAME .AND. C2.EQ.'HE' ) THEN
          IF( C3.EQ.'TRF' ) THEN
-            NB = 64
+            IF( TWOSTAGE ) THEN
+               NB = 192
+            ELSE
+               NB = 64
+            END IF
          ELSE IF( C3.EQ.'TRD' ) THEN
             NB = 32
          ELSE IF( C3.EQ.'GST' ) THEN
@@ -25720,8 +27265,21 @@
   160 CONTINUE
       ILAENV = IPARMQ( ISPEC, NAME, OPTS, N1, N2, N3, N4 )
       RETURN
-  170 CONTINUE
-      ILAENV = IPARAM2STAGE( ISPEC, NAME, OPTS, N1, N2, N3, N4 )
+      END
+! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/ilaenv2stage.f
+      INTEGER FUNCTION ILAENV2STAGE( ISPEC, NAME, OPTS, N1, N2, N3, N4 )
+      CHARACTER*( * )    NAME, OPTS
+      INTEGER            ISPEC, N1, N2, N3, N4
+      INTEGER            IISPEC
+      INTEGER            IPARAM2STAGE
+      EXTERNAL           IPARAM2STAGE
+      GO TO ( 10, 10, 10, 10, 10 )ISPEC
+      ILAENV2STAGE = -1
+      RETURN
+   10 CONTINUE
+      IISPEC = 16 + ISPEC
+      ILAENV2STAGE = IPARAM2STAGE( IISPEC, NAME, OPTS,
+     $                             N1, N2, N3, N4 )
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/ilaprec.f
@@ -29386,6 +30944,414 @@
       END IF
       RETURN
       END
+! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zbdsqr.f
+      SUBROUTINE ZBDSQR( UPLO, N, NCVT, NRU, NCC, D, E, VT, LDVT, U,
+     $                   LDU, C, LDC, RWORK, INFO )
+      CHARACTER          UPLO
+      INTEGER            INFO, LDC, LDU, LDVT, N, NCC, NCVT, NRU
+      DOUBLE PRECISION   D( * ), E( * ), RWORK( * )
+      COMPLEX*16         C( LDC, * ), U( LDU, * ), VT( LDVT, * )
+      DOUBLE PRECISION   ZERO
+      PARAMETER          ( ZERO = 0.0D0 )
+      DOUBLE PRECISION   ONE
+      PARAMETER          ( ONE = 1.0D0 )
+      DOUBLE PRECISION   NEGONE
+      PARAMETER          ( NEGONE = -1.0D0 )
+      DOUBLE PRECISION   HNDRTH
+      PARAMETER          ( HNDRTH = 0.01D0 )
+      DOUBLE PRECISION   TEN
+      PARAMETER          ( TEN = 10.0D0 )
+      DOUBLE PRECISION   HNDRD
+      PARAMETER          ( HNDRD = 100.0D0 )
+      DOUBLE PRECISION   MEIGTH
+      PARAMETER          ( MEIGTH = -0.125D0 )
+      INTEGER            MAXITR
+      PARAMETER          ( MAXITR = 6 )
+      LOGICAL            LOWER, ROTATE
+      INTEGER            I, IDIR, ISUB, ITER, J, LL, LLL, M, MAXIT, NM1,
+     $                   NM12, NM13, OLDLL, OLDM
+      DOUBLE PRECISION   ABSE, ABSS, COSL, COSR, CS, EPS, F, G, H, MU,
+     $                   OLDCS, OLDSN, R, SHIFT, SIGMN, SIGMX, SINL,
+     $                   SINR, SLL, SMAX, SMIN, SMINL, SMINOA,
+     $                   SN, THRESH, TOL, TOLMUL, UNFL
+      LOGICAL            LSAME
+      DOUBLE PRECISION   DLAMCH
+      EXTERNAL           LSAME, DLAMCH
+      EXTERNAL           DLARTG, DLAS2, DLASQ1, DLASV2, XERBLA, ZDROT,
+     $                   ZDSCAL, ZLASR, ZSWAP
+      INTRINSIC          ABS, DBLE, MAX, MIN, SIGN, SQRT
+      INFO = 0
+      LOWER = LSAME( UPLO, 'L' )
+      IF( .NOT.LSAME( UPLO, 'U' ) .AND. .NOT.LOWER ) THEN
+         INFO = -1
+      ELSE IF( N.LT.0 ) THEN
+         INFO = -2
+      ELSE IF( NCVT.LT.0 ) THEN
+         INFO = -3
+      ELSE IF( NRU.LT.0 ) THEN
+         INFO = -4
+      ELSE IF( NCC.LT.0 ) THEN
+         INFO = -5
+      ELSE IF( ( NCVT.EQ.0 .AND. LDVT.LT.1 ) .OR.
+     $         ( NCVT.GT.0 .AND. LDVT.LT.MAX( 1, N ) ) ) THEN
+         INFO = -9
+      ELSE IF( LDU.LT.MAX( 1, NRU ) ) THEN
+         INFO = -11
+      ELSE IF( ( NCC.EQ.0 .AND. LDC.LT.1 ) .OR.
+     $         ( NCC.GT.0 .AND. LDC.LT.MAX( 1, N ) ) ) THEN
+         INFO = -13
+      END IF
+      IF( INFO.NE.0 ) THEN
+         CALL XERBLA( 'ZBDSQR', -INFO )
+         RETURN
+      END IF
+      IF( N.EQ.0 )
+     $   RETURN
+      IF( N.EQ.1 )
+     $   GO TO 160
+      ROTATE = ( NCVT.GT.0 ) .OR. ( NRU.GT.0 ) .OR. ( NCC.GT.0 )
+      IF( .NOT.ROTATE ) THEN
+         CALL DLASQ1( N, D, E, RWORK, INFO )
+         IF( INFO .NE. 2 ) RETURN
+         INFO = 0
+      END IF
+      NM1 = N - 1
+      NM12 = NM1 + NM1
+      NM13 = NM12 + NM1
+      IDIR = 0
+      EPS = DLAMCH( 'Epsilon' )
+      UNFL = DLAMCH( 'Safe minimum' )
+      IF( LOWER ) THEN
+         DO 10 I = 1, N - 1
+            CALL DLARTG( D( I ), E( I ), CS, SN, R )
+            D( I ) = R
+            E( I ) = SN*D( I+1 )
+            D( I+1 ) = CS*D( I+1 )
+            RWORK( I ) = CS
+            RWORK( NM1+I ) = SN
+   10    CONTINUE
+         IF( NRU.GT.0 )
+     $      CALL ZLASR( 'R', 'V', 'F', NRU, N, RWORK( 1 ), RWORK( N ),
+     $                  U, LDU )
+         IF( NCC.GT.0 )
+     $      CALL ZLASR( 'L', 'V', 'F', N, NCC, RWORK( 1 ), RWORK( N ),
+     $                  C, LDC )
+      END IF
+      TOLMUL = MAX( TEN, MIN( HNDRD, EPS**MEIGTH ) )
+      TOL = TOLMUL*EPS
+      SMAX = ZERO
+      DO 20 I = 1, N
+         SMAX = MAX( SMAX, ABS( D( I ) ) )
+   20 CONTINUE
+      DO 30 I = 1, N - 1
+         SMAX = MAX( SMAX, ABS( E( I ) ) )
+   30 CONTINUE
+      SMINL = ZERO
+      IF( TOL.GE.ZERO ) THEN
+         SMINOA = ABS( D( 1 ) )
+         IF( SMINOA.EQ.ZERO )
+     $      GO TO 50
+         MU = SMINOA
+         DO 40 I = 2, N
+            MU = ABS( D( I ) )*( MU / ( MU+ABS( E( I-1 ) ) ) )
+            SMINOA = MIN( SMINOA, MU )
+            IF( SMINOA.EQ.ZERO )
+     $         GO TO 50
+   40    CONTINUE
+   50    CONTINUE
+         SMINOA = SMINOA / SQRT( DBLE( N ) )
+         THRESH = MAX( TOL*SMINOA, MAXITR*N*N*UNFL )
+      ELSE
+         THRESH = MAX( ABS( TOL )*SMAX, MAXITR*N*N*UNFL )
+      END IF
+      MAXIT = MAXITR*N*N
+      ITER = 0
+      OLDLL = -1
+      OLDM = -1
+      M = N
+   60 CONTINUE
+      IF( M.LE.1 )
+     $   GO TO 160
+      IF( ITER.GT.MAXIT )
+     $   GO TO 200
+      IF( TOL.LT.ZERO .AND. ABS( D( M ) ).LE.THRESH )
+     $   D( M ) = ZERO
+      SMAX = ABS( D( M ) )
+      SMIN = SMAX
+      DO 70 LLL = 1, M - 1
+         LL = M - LLL
+         ABSS = ABS( D( LL ) )
+         ABSE = ABS( E( LL ) )
+         IF( TOL.LT.ZERO .AND. ABSS.LE.THRESH )
+     $      D( LL ) = ZERO
+         IF( ABSE.LE.THRESH )
+     $      GO TO 80
+         SMIN = MIN( SMIN, ABSS )
+         SMAX = MAX( SMAX, ABSS, ABSE )
+   70 CONTINUE
+      LL = 0
+      GO TO 90
+   80 CONTINUE
+      E( LL ) = ZERO
+      IF( LL.EQ.M-1 ) THEN
+         M = M - 1
+         GO TO 60
+      END IF
+   90 CONTINUE
+      LL = LL + 1
+      IF( LL.EQ.M-1 ) THEN
+         CALL DLASV2( D( M-1 ), E( M-1 ), D( M ), SIGMN, SIGMX, SINR,
+     $                COSR, SINL, COSL )
+         D( M-1 ) = SIGMX
+         E( M-1 ) = ZERO
+         D( M ) = SIGMN
+         IF( NCVT.GT.0 )
+     $      CALL ZDROT( NCVT, VT( M-1, 1 ), LDVT, VT( M, 1 ), LDVT,
+     $                  COSR, SINR )
+         IF( NRU.GT.0 )
+     $      CALL ZDROT( NRU, U( 1, M-1 ), 1, U( 1, M ), 1, COSL, SINL )
+         IF( NCC.GT.0 )
+     $      CALL ZDROT( NCC, C( M-1, 1 ), LDC, C( M, 1 ), LDC, COSL,
+     $                  SINL )
+         M = M - 2
+         GO TO 60
+      END IF
+      IF( LL.GT.OLDM .OR. M.LT.OLDLL ) THEN
+         IF( ABS( D( LL ) ).GE.ABS( D( M ) ) ) THEN
+            IDIR = 1
+         ELSE
+            IDIR = 2
+         END IF
+      END IF
+      IF( IDIR.EQ.1 ) THEN
+         IF( ABS( E( M-1 ) ).LE.ABS( TOL )*ABS( D( M ) ) .OR.
+     $       ( TOL.LT.ZERO .AND. ABS( E( M-1 ) ).LE.THRESH ) ) THEN
+            E( M-1 ) = ZERO
+            GO TO 60
+         END IF
+         IF( TOL.GE.ZERO ) THEN
+            MU = ABS( D( LL ) )
+            SMINL = MU
+            DO 100 LLL = LL, M - 1
+               IF( ABS( E( LLL ) ).LE.TOL*MU ) THEN
+                  E( LLL ) = ZERO
+                  GO TO 60
+               END IF
+               MU = ABS( D( LLL+1 ) )*( MU / ( MU+ABS( E( LLL ) ) ) )
+               SMINL = MIN( SMINL, MU )
+  100       CONTINUE
+         END IF
+      ELSE
+         IF( ABS( E( LL ) ).LE.ABS( TOL )*ABS( D( LL ) ) .OR.
+     $       ( TOL.LT.ZERO .AND. ABS( E( LL ) ).LE.THRESH ) ) THEN
+            E( LL ) = ZERO
+            GO TO 60
+         END IF
+         IF( TOL.GE.ZERO ) THEN
+            MU = ABS( D( M ) )
+            SMINL = MU
+            DO 110 LLL = M - 1, LL, -1
+               IF( ABS( E( LLL ) ).LE.TOL*MU ) THEN
+                  E( LLL ) = ZERO
+                  GO TO 60
+               END IF
+               MU = ABS( D( LLL ) )*( MU / ( MU+ABS( E( LLL ) ) ) )
+               SMINL = MIN( SMINL, MU )
+  110       CONTINUE
+         END IF
+      END IF
+      OLDLL = LL
+      OLDM = M
+      IF( TOL.GE.ZERO .AND. N*TOL*( SMINL / SMAX ).LE.
+     $    MAX( EPS, HNDRTH*TOL ) ) THEN
+         SHIFT = ZERO
+      ELSE
+         IF( IDIR.EQ.1 ) THEN
+            SLL = ABS( D( LL ) )
+            CALL DLAS2( D( M-1 ), E( M-1 ), D( M ), SHIFT, R )
+         ELSE
+            SLL = ABS( D( M ) )
+            CALL DLAS2( D( LL ), E( LL ), D( LL+1 ), SHIFT, R )
+         END IF
+         IF( SLL.GT.ZERO ) THEN
+            IF( ( SHIFT / SLL )**2.LT.EPS )
+     $         SHIFT = ZERO
+         END IF
+      END IF
+      ITER = ITER + M - LL
+      IF( SHIFT.EQ.ZERO ) THEN
+         IF( IDIR.EQ.1 ) THEN
+            CS = ONE
+            OLDCS = ONE
+            DO 120 I = LL, M - 1
+               CALL DLARTG( D( I )*CS, E( I ), CS, SN, R )
+               IF( I.GT.LL )
+     $            E( I-1 ) = OLDSN*R
+               CALL DLARTG( OLDCS*R, D( I+1 )*SN, OLDCS, OLDSN, D( I ) )
+               RWORK( I-LL+1 ) = CS
+               RWORK( I-LL+1+NM1 ) = SN
+               RWORK( I-LL+1+NM12 ) = OLDCS
+               RWORK( I-LL+1+NM13 ) = OLDSN
+  120       CONTINUE
+            H = D( M )*CS
+            D( M ) = H*OLDCS
+            E( M-1 ) = H*OLDSN
+            IF( NCVT.GT.0 )
+     $         CALL ZLASR( 'L', 'V', 'F', M-LL+1, NCVT, RWORK( 1 ),
+     $                     RWORK( N ), VT( LL, 1 ), LDVT )
+            IF( NRU.GT.0 )
+     $         CALL ZLASR( 'R', 'V', 'F', NRU, M-LL+1, RWORK( NM12+1 ),
+     $                     RWORK( NM13+1 ), U( 1, LL ), LDU )
+            IF( NCC.GT.0 )
+     $         CALL ZLASR( 'L', 'V', 'F', M-LL+1, NCC, RWORK( NM12+1 ),
+     $                     RWORK( NM13+1 ), C( LL, 1 ), LDC )
+            IF( ABS( E( M-1 ) ).LE.THRESH )
+     $         E( M-1 ) = ZERO
+         ELSE
+            CS = ONE
+            OLDCS = ONE
+            DO 130 I = M, LL + 1, -1
+               CALL DLARTG( D( I )*CS, E( I-1 ), CS, SN, R )
+               IF( I.LT.M )
+     $            E( I ) = OLDSN*R
+               CALL DLARTG( OLDCS*R, D( I-1 )*SN, OLDCS, OLDSN, D( I ) )
+               RWORK( I-LL ) = CS
+               RWORK( I-LL+NM1 ) = -SN
+               RWORK( I-LL+NM12 ) = OLDCS
+               RWORK( I-LL+NM13 ) = -OLDSN
+  130       CONTINUE
+            H = D( LL )*CS
+            D( LL ) = H*OLDCS
+            E( LL ) = H*OLDSN
+            IF( NCVT.GT.0 )
+     $         CALL ZLASR( 'L', 'V', 'B', M-LL+1, NCVT, RWORK( NM12+1 ),
+     $                     RWORK( NM13+1 ), VT( LL, 1 ), LDVT )
+            IF( NRU.GT.0 )
+     $         CALL ZLASR( 'R', 'V', 'B', NRU, M-LL+1, RWORK( 1 ),
+     $                     RWORK( N ), U( 1, LL ), LDU )
+            IF( NCC.GT.0 )
+     $         CALL ZLASR( 'L', 'V', 'B', M-LL+1, NCC, RWORK( 1 ),
+     $                     RWORK( N ), C( LL, 1 ), LDC )
+            IF( ABS( E( LL ) ).LE.THRESH )
+     $         E( LL ) = ZERO
+         END IF
+      ELSE
+         IF( IDIR.EQ.1 ) THEN
+            F = ( ABS( D( LL ) )-SHIFT )*
+     $          ( SIGN( ONE, D( LL ) )+SHIFT / D( LL ) )
+            G = E( LL )
+            DO 140 I = LL, M - 1
+               CALL DLARTG( F, G, COSR, SINR, R )
+               IF( I.GT.LL )
+     $            E( I-1 ) = R
+               F = COSR*D( I ) + SINR*E( I )
+               E( I ) = COSR*E( I ) - SINR*D( I )
+               G = SINR*D( I+1 )
+               D( I+1 ) = COSR*D( I+1 )
+               CALL DLARTG( F, G, COSL, SINL, R )
+               D( I ) = R
+               F = COSL*E( I ) + SINL*D( I+1 )
+               D( I+1 ) = COSL*D( I+1 ) - SINL*E( I )
+               IF( I.LT.M-1 ) THEN
+                  G = SINL*E( I+1 )
+                  E( I+1 ) = COSL*E( I+1 )
+               END IF
+               RWORK( I-LL+1 ) = COSR
+               RWORK( I-LL+1+NM1 ) = SINR
+               RWORK( I-LL+1+NM12 ) = COSL
+               RWORK( I-LL+1+NM13 ) = SINL
+  140       CONTINUE
+            E( M-1 ) = F
+            IF( NCVT.GT.0 )
+     $         CALL ZLASR( 'L', 'V', 'F', M-LL+1, NCVT, RWORK( 1 ),
+     $                     RWORK( N ), VT( LL, 1 ), LDVT )
+            IF( NRU.GT.0 )
+     $         CALL ZLASR( 'R', 'V', 'F', NRU, M-LL+1, RWORK( NM12+1 ),
+     $                     RWORK( NM13+1 ), U( 1, LL ), LDU )
+            IF( NCC.GT.0 )
+     $         CALL ZLASR( 'L', 'V', 'F', M-LL+1, NCC, RWORK( NM12+1 ),
+     $                     RWORK( NM13+1 ), C( LL, 1 ), LDC )
+            IF( ABS( E( M-1 ) ).LE.THRESH )
+     $         E( M-1 ) = ZERO
+         ELSE
+            F = ( ABS( D( M ) )-SHIFT )*( SIGN( ONE, D( M ) )+SHIFT /
+     $          D( M ) )
+            G = E( M-1 )
+            DO 150 I = M, LL + 1, -1
+               CALL DLARTG( F, G, COSR, SINR, R )
+               IF( I.LT.M )
+     $            E( I ) = R
+               F = COSR*D( I ) + SINR*E( I-1 )
+               E( I-1 ) = COSR*E( I-1 ) - SINR*D( I )
+               G = SINR*D( I-1 )
+               D( I-1 ) = COSR*D( I-1 )
+               CALL DLARTG( F, G, COSL, SINL, R )
+               D( I ) = R
+               F = COSL*E( I-1 ) + SINL*D( I-1 )
+               D( I-1 ) = COSL*D( I-1 ) - SINL*E( I-1 )
+               IF( I.GT.LL+1 ) THEN
+                  G = SINL*E( I-2 )
+                  E( I-2 ) = COSL*E( I-2 )
+               END IF
+               RWORK( I-LL ) = COSR
+               RWORK( I-LL+NM1 ) = -SINR
+               RWORK( I-LL+NM12 ) = COSL
+               RWORK( I-LL+NM13 ) = -SINL
+  150       CONTINUE
+            E( LL ) = F
+            IF( ABS( E( LL ) ).LE.THRESH )
+     $         E( LL ) = ZERO
+            IF( NCVT.GT.0 )
+     $         CALL ZLASR( 'L', 'V', 'B', M-LL+1, NCVT, RWORK( NM12+1 ),
+     $                     RWORK( NM13+1 ), VT( LL, 1 ), LDVT )
+            IF( NRU.GT.0 )
+     $         CALL ZLASR( 'R', 'V', 'B', NRU, M-LL+1, RWORK( 1 ),
+     $                     RWORK( N ), U( 1, LL ), LDU )
+            IF( NCC.GT.0 )
+     $         CALL ZLASR( 'L', 'V', 'B', M-LL+1, NCC, RWORK( 1 ),
+     $                     RWORK( N ), C( LL, 1 ), LDC )
+         END IF
+      END IF
+      GO TO 60
+  160 CONTINUE
+      DO 170 I = 1, N
+         IF( D( I ).LT.ZERO ) THEN
+            D( I ) = -D( I )
+            IF( NCVT.GT.0 )
+     $         CALL ZDSCAL( NCVT, NEGONE, VT( I, 1 ), LDVT )
+         END IF
+  170 CONTINUE
+      DO 190 I = 1, N - 1
+         ISUB = 1
+         SMIN = D( 1 )
+         DO 180 J = 2, N + 1 - I
+            IF( D( J ).LE.SMIN ) THEN
+               ISUB = J
+               SMIN = D( J )
+            END IF
+  180    CONTINUE
+         IF( ISUB.NE.N+1-I ) THEN
+            D( ISUB ) = D( N+1-I )
+            D( N+1-I ) = SMIN
+            IF( NCVT.GT.0 )
+     $         CALL ZSWAP( NCVT, VT( ISUB, 1 ), LDVT, VT( N+1-I, 1 ),
+     $                     LDVT )
+            IF( NRU.GT.0 )
+     $         CALL ZSWAP( NRU, U( 1, ISUB ), 1, U( 1, N+1-I ), 1 )
+            IF( NCC.GT.0 )
+     $         CALL ZSWAP( NCC, C( ISUB, 1 ), LDC, C( N+1-I, 1 ), LDC )
+         END IF
+  190 CONTINUE
+      GO TO 220
+  200 CONTINUE
+      INFO = 0
+      DO 210 I = 1, N - 1
+         IF( E( I ).NE.ZERO )
+     $      INFO = INFO + 1
+  210 CONTINUE
+  220 CONTINUE
+      RETURN
+      END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zgbtrs.f
       SUBROUTINE ZGBTRS( TRANS, N, KL, KU, NRHS, AB, LDAB, IPIV, B, LDB,
      $                   INFO )
@@ -29730,6 +31696,174 @@
   210 CONTINUE
       ILO = K
       IHI = L
+      RETURN
+      END
+! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zgebd2.f
+      SUBROUTINE ZGEBD2( M, N, A, LDA, D, E, TAUQ, TAUP, WORK, INFO )
+      INTEGER            INFO, LDA, M, N
+      DOUBLE PRECISION   D( * ), E( * )
+      COMPLEX*16         A( LDA, * ), TAUP( * ), TAUQ( * ), WORK( * )
+      COMPLEX*16         ZERO, ONE
+      PARAMETER          ( ZERO = ( 0.0D+0, 0.0D+0 ),
+     $                   ONE = ( 1.0D+0, 0.0D+0 ) )
+      INTEGER            I
+      COMPLEX*16         ALPHA
+      EXTERNAL           XERBLA, ZLACGV, ZLARF, ZLARFG
+      INTRINSIC          DCONJG, MAX, MIN
+      INFO = 0
+      IF( M.LT.0 ) THEN
+         INFO = -1
+      ELSE IF( N.LT.0 ) THEN
+         INFO = -2
+      ELSE IF( LDA.LT.MAX( 1, M ) ) THEN
+         INFO = -4
+      END IF
+      IF( INFO.LT.0 ) THEN
+         CALL XERBLA( 'ZGEBD2', -INFO )
+         RETURN
+      END IF
+      IF( M.GE.N ) THEN
+         DO 10 I = 1, N
+            ALPHA = A( I, I )
+            CALL ZLARFG( M-I+1, ALPHA, A( MIN( I+1, M ), I ), 1,
+     $                   TAUQ( I ) )
+            D( I ) = ALPHA
+            A( I, I ) = ONE
+            IF( I.LT.N )
+     $         CALL ZLARF( 'Left', M-I+1, N-I, A( I, I ), 1,
+     $                     DCONJG( TAUQ( I ) ), A( I, I+1 ), LDA, WORK )
+            A( I, I ) = D( I )
+            IF( I.LT.N ) THEN
+               CALL ZLACGV( N-I, A( I, I+1 ), LDA )
+               ALPHA = A( I, I+1 )
+               CALL ZLARFG( N-I, ALPHA, A( I, MIN( I+2, N ) ), LDA,
+     $                      TAUP( I ) )
+               E( I ) = ALPHA
+               A( I, I+1 ) = ONE
+               CALL ZLARF( 'Right', M-I, N-I, A( I, I+1 ), LDA,
+     $                     TAUP( I ), A( I+1, I+1 ), LDA, WORK )
+               CALL ZLACGV( N-I, A( I, I+1 ), LDA )
+               A( I, I+1 ) = E( I )
+            ELSE
+               TAUP( I ) = ZERO
+            END IF
+   10    CONTINUE
+      ELSE
+         DO 20 I = 1, M
+            CALL ZLACGV( N-I+1, A( I, I ), LDA )
+            ALPHA = A( I, I )
+            CALL ZLARFG( N-I+1, ALPHA, A( I, MIN( I+1, N ) ), LDA,
+     $                   TAUP( I ) )
+            D( I ) = ALPHA
+            A( I, I ) = ONE
+            IF( I.LT.M )
+     $         CALL ZLARF( 'Right', M-I, N-I+1, A( I, I ), LDA,
+     $                     TAUP( I ), A( I+1, I ), LDA, WORK )
+            CALL ZLACGV( N-I+1, A( I, I ), LDA )
+            A( I, I ) = D( I )
+            IF( I.LT.M ) THEN
+               ALPHA = A( I+1, I )
+               CALL ZLARFG( M-I, ALPHA, A( MIN( I+2, M ), I ), 1,
+     $                      TAUQ( I ) )
+               E( I ) = ALPHA
+               A( I+1, I ) = ONE
+               CALL ZLARF( 'Left', M-I, N-I, A( I+1, I ), 1,
+     $                     DCONJG( TAUQ( I ) ), A( I+1, I+1 ), LDA,
+     $                     WORK )
+               A( I+1, I ) = E( I )
+            ELSE
+               TAUQ( I ) = ZERO
+            END IF
+   20    CONTINUE
+      END IF
+      RETURN
+      END
+! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zgebrd.f
+      SUBROUTINE ZGEBRD( M, N, A, LDA, D, E, TAUQ, TAUP, WORK, LWORK,
+     $                   INFO )
+      INTEGER            INFO, LDA, LWORK, M, N
+      DOUBLE PRECISION   D( * ), E( * )
+      COMPLEX*16         A( LDA, * ), TAUP( * ), TAUQ( * ), WORK( * )
+      COMPLEX*16         ONE
+      PARAMETER          ( ONE = ( 1.0D+0, 0.0D+0 ) )
+      LOGICAL            LQUERY
+      INTEGER            I, IINFO, J, LDWRKX, LDWRKY, LWKOPT, MINMN, NB,
+     $                   NBMIN, NX, WS
+      EXTERNAL           XERBLA, ZGEBD2, ZGEMM, ZLABRD
+      INTRINSIC          DBLE, MAX, MIN
+      INTEGER            ILAENV
+      EXTERNAL           ILAENV
+      INFO = 0
+      NB = MAX( 1, ILAENV( 1, 'ZGEBRD', ' ', M, N, -1, -1 ) )
+      LWKOPT = ( M+N )*NB
+      WORK( 1 ) = DBLE( LWKOPT )
+      LQUERY = ( LWORK.EQ.-1 )
+      IF( M.LT.0 ) THEN
+         INFO = -1
+      ELSE IF( N.LT.0 ) THEN
+         INFO = -2
+      ELSE IF( LDA.LT.MAX( 1, M ) ) THEN
+         INFO = -4
+      ELSE IF( LWORK.LT.MAX( 1, M, N ) .AND. .NOT.LQUERY ) THEN
+         INFO = -10
+      END IF
+      IF( INFO.LT.0 ) THEN
+         CALL XERBLA( 'ZGEBRD', -INFO )
+         RETURN
+      ELSE IF( LQUERY ) THEN
+         RETURN
+      END IF
+      MINMN = MIN( M, N )
+      IF( MINMN.EQ.0 ) THEN
+         WORK( 1 ) = 1
+         RETURN
+      END IF
+      WS = MAX( M, N )
+      LDWRKX = M
+      LDWRKY = N
+      IF( NB.GT.1 .AND. NB.LT.MINMN ) THEN
+         NX = MAX( NB, ILAENV( 3, 'ZGEBRD', ' ', M, N, -1, -1 ) )
+         IF( NX.LT.MINMN ) THEN
+            WS = ( M+N )*NB
+            IF( LWORK.LT.WS ) THEN
+               NBMIN = ILAENV( 2, 'ZGEBRD', ' ', M, N, -1, -1 )
+               IF( LWORK.GE.( M+N )*NBMIN ) THEN
+                  NB = LWORK / ( M+N )
+               ELSE
+                  NB = 1
+                  NX = MINMN
+               END IF
+            END IF
+         END IF
+      ELSE
+         NX = MINMN
+      END IF
+      DO 30 I = 1, MINMN - NX, NB
+         CALL ZLABRD( M-I+1, N-I+1, NB, A( I, I ), LDA, D( I ), E( I ),
+     $                TAUQ( I ), TAUP( I ), WORK, LDWRKX,
+     $                WORK( LDWRKX*NB+1 ), LDWRKY )
+         CALL ZGEMM( 'No transpose', 'Conjugate transpose', M-I-NB+1,
+     $               N-I-NB+1, NB, -ONE, A( I+NB, I ), LDA,
+     $               WORK( LDWRKX*NB+NB+1 ), LDWRKY, ONE,
+     $               A( I+NB, I+NB ), LDA )
+         CALL ZGEMM( 'No transpose', 'No transpose', M-I-NB+1, N-I-NB+1,
+     $               NB, -ONE, WORK( NB+1 ), LDWRKX, A( I, I+NB ), LDA,
+     $               ONE, A( I+NB, I+NB ), LDA )
+         IF( M.GE.N ) THEN
+            DO 10 J = I, I + NB - 1
+               A( J, J ) = D( J )
+               A( J, J+1 ) = E( J )
+   10       CONTINUE
+         ELSE
+            DO 20 J = I, I + NB - 1
+               A( J, J ) = D( J )
+               A( J+1, J ) = E( J )
+   20       CONTINUE
+         END IF
+   30 CONTINUE
+      CALL ZGEBD2( M-I+1, N-I+1, A( I, I ), LDA, D( I ), E( I ),
+     $             TAUQ( I ), TAUP( I ), WORK, IINFO )
+      WORK( 1 ) = WS
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zgeev.f
@@ -30311,6 +32445,1625 @@
       END IF
       RETURN
       END
+! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zgesvd.f
+      SUBROUTINE ZGESVD( JOBU, JOBVT, M, N, A, LDA, S, U, LDU,
+     $                   VT, LDVT, WORK, LWORK, RWORK, INFO )
+      CHARACTER          JOBU, JOBVT
+      INTEGER            INFO, LDA, LDU, LDVT, LWORK, M, N
+      DOUBLE PRECISION   RWORK( * ), S( * )
+      COMPLEX*16         A( LDA, * ), U( LDU, * ), VT( LDVT, * ),
+     $                   WORK( * )
+      COMPLEX*16         CZERO, CONE
+      PARAMETER          ( CZERO = ( 0.0D0, 0.0D0 ),
+     $                   CONE = ( 1.0D0, 0.0D0 ) )
+      DOUBLE PRECISION   ZERO, ONE
+      PARAMETER          ( ZERO = 0.0D0, ONE = 1.0D0 )
+      LOGICAL            LQUERY, WNTUA, WNTUAS, WNTUN, WNTUO, WNTUS,
+     $                   WNTVA, WNTVAS, WNTVN, WNTVO, WNTVS
+      INTEGER            BLK, CHUNK, I, IE, IERR, IR, IRWORK, ISCL,
+     $                   ITAU, ITAUP, ITAUQ, IU, IWORK, LDWRKR, LDWRKU,
+     $                   MAXWRK, MINMN, MINWRK, MNTHR, NCU, NCVT, NRU,
+     $                   NRVT, WRKBL
+      INTEGER            LWORK_ZGEQRF, LWORK_ZUNGQR_N, LWORK_ZUNGQR_M,
+     $                   LWORK_ZGEBRD, LWORK_ZUNGBR_P, LWORK_ZUNGBR_Q,
+     $                   LWORK_ZGELQF, LWORK_ZUNGLQ_N, LWORK_ZUNGLQ_M
+      DOUBLE PRECISION   ANRM, BIGNUM, EPS, SMLNUM
+      DOUBLE PRECISION   DUM( 1 )
+      COMPLEX*16         CDUM( 1 )
+      EXTERNAL           DLASCL, XERBLA, ZBDSQR, ZGEBRD, ZGELQF, ZGEMM,
+     $                   ZGEQRF, ZLACPY, ZLASCL, ZLASET, ZUNGBR, ZUNGLQ,
+     $                   ZUNGQR, ZUNMBR
+      LOGICAL            LSAME
+      INTEGER            ILAENV
+      DOUBLE PRECISION   DLAMCH, ZLANGE
+      EXTERNAL           LSAME, ILAENV, DLAMCH, ZLANGE
+      INTRINSIC          MAX, MIN, SQRT
+      INFO = 0
+      MINMN = MIN( M, N )
+      WNTUA = LSAME( JOBU, 'A' )
+      WNTUS = LSAME( JOBU, 'S' )
+      WNTUAS = WNTUA .OR. WNTUS
+      WNTUO = LSAME( JOBU, 'O' )
+      WNTUN = LSAME( JOBU, 'N' )
+      WNTVA = LSAME( JOBVT, 'A' )
+      WNTVS = LSAME( JOBVT, 'S' )
+      WNTVAS = WNTVA .OR. WNTVS
+      WNTVO = LSAME( JOBVT, 'O' )
+      WNTVN = LSAME( JOBVT, 'N' )
+      LQUERY = ( LWORK.EQ.-1 )
+      IF( .NOT.( WNTUA .OR. WNTUS .OR. WNTUO .OR. WNTUN ) ) THEN
+         INFO = -1
+      ELSE IF( .NOT.( WNTVA .OR. WNTVS .OR. WNTVO .OR. WNTVN ) .OR.
+     $         ( WNTVO .AND. WNTUO ) ) THEN
+         INFO = -2
+      ELSE IF( M.LT.0 ) THEN
+         INFO = -3
+      ELSE IF( N.LT.0 ) THEN
+         INFO = -4
+      ELSE IF( LDA.LT.MAX( 1, M ) ) THEN
+         INFO = -6
+      ELSE IF( LDU.LT.1 .OR. ( WNTUAS .AND. LDU.LT.M ) ) THEN
+         INFO = -9
+      ELSE IF( LDVT.LT.1 .OR. ( WNTVA .AND. LDVT.LT.N ) .OR.
+     $         ( WNTVS .AND. LDVT.LT.MINMN ) ) THEN
+         INFO = -11
+      END IF
+      IF( INFO.EQ.0 ) THEN
+         MINWRK = 1
+         MAXWRK = 1
+         IF( M.GE.N .AND. MINMN.GT.0 ) THEN
+            MNTHR = ILAENV( 6, 'ZGESVD', JOBU // JOBVT, M, N, 0, 0 )
+            CALL ZGEQRF( M, N, A, LDA, CDUM(1), CDUM(1), -1, IERR )
+            LWORK_ZGEQRF = INT( CDUM(1) )
+            CALL ZUNGQR( M, N, N, A, LDA, CDUM(1), CDUM(1), -1, IERR )
+            LWORK_ZUNGQR_N = INT( CDUM(1) )
+            CALL ZUNGQR( M, M, N, A, LDA, CDUM(1), CDUM(1), -1, IERR )
+            LWORK_ZUNGQR_M = INT( CDUM(1) )
+            CALL ZGEBRD( N, N, A, LDA, S, DUM(1), CDUM(1),
+     $                   CDUM(1), CDUM(1), -1, IERR )
+            LWORK_ZGEBRD = INT( CDUM(1) )
+            CALL ZUNGBR( 'P', N, N, N, A, LDA, CDUM(1),
+     $                   CDUM(1), -1, IERR )
+            LWORK_ZUNGBR_P = INT( CDUM(1) )
+            CALL ZUNGBR( 'Q', N, N, N, A, LDA, CDUM(1),
+     $                   CDUM(1), -1, IERR )
+            LWORK_ZUNGBR_Q = INT( CDUM(1) )
+            IF( M.GE.MNTHR ) THEN
+               IF( WNTUN ) THEN
+                  MAXWRK = N + LWORK_ZGEQRF
+                  MAXWRK = MAX( MAXWRK, 2*N+LWORK_ZGEBRD )
+                  IF( WNTVO .OR. WNTVAS )
+     $               MAXWRK = MAX( MAXWRK, 2*N+LWORK_ZUNGBR_P )
+                  MINWRK = 3*N
+               ELSE IF( WNTUO .AND. WNTVN ) THEN
+                  WRKBL = N + LWORK_ZGEQRF
+                  WRKBL = MAX( WRKBL, N+LWORK_ZUNGQR_N )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZGEBRD )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZUNGBR_Q )
+                  MAXWRK = MAX( N*N+WRKBL, N*N+M*N )
+                  MINWRK = 2*N + M
+               ELSE IF( WNTUO .AND. WNTVAS ) THEN
+                  WRKBL = N + LWORK_ZGEQRF
+                  WRKBL = MAX( WRKBL, N+LWORK_ZUNGQR_N )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZGEBRD )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZUNGBR_Q )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZUNGBR_P )
+                  MAXWRK = MAX( N*N+WRKBL, N*N+M*N )
+                  MINWRK = 2*N + M
+               ELSE IF( WNTUS .AND. WNTVN ) THEN
+                  WRKBL = N + LWORK_ZGEQRF
+                  WRKBL = MAX( WRKBL, N+LWORK_ZUNGQR_N )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZGEBRD )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZUNGBR_Q )
+                  MAXWRK = N*N + WRKBL
+                  MINWRK = 2*N + M
+               ELSE IF( WNTUS .AND. WNTVO ) THEN
+                  WRKBL = N + LWORK_ZGEQRF
+                  WRKBL = MAX( WRKBL, N+LWORK_ZUNGQR_N )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZGEBRD )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZUNGBR_Q )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZUNGBR_P )
+                  MAXWRK = 2*N*N + WRKBL
+                  MINWRK = 2*N + M
+               ELSE IF( WNTUS .AND. WNTVAS ) THEN
+                  WRKBL = N + LWORK_ZGEQRF
+                  WRKBL = MAX( WRKBL, N+LWORK_ZUNGQR_N )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZGEBRD )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZUNGBR_Q )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZUNGBR_P )
+                  MAXWRK = N*N + WRKBL
+                  MINWRK = 2*N + M
+               ELSE IF( WNTUA .AND. WNTVN ) THEN
+                  WRKBL = N + LWORK_ZGEQRF
+                  WRKBL = MAX( WRKBL, N+LWORK_ZUNGQR_M )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZGEBRD )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZUNGBR_Q )
+                  MAXWRK = N*N + WRKBL
+                  MINWRK = 2*N + M
+               ELSE IF( WNTUA .AND. WNTVO ) THEN
+                  WRKBL = N + LWORK_ZGEQRF
+                  WRKBL = MAX( WRKBL, N+LWORK_ZUNGQR_M )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZGEBRD )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZUNGBR_Q )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZUNGBR_P )
+                  MAXWRK = 2*N*N + WRKBL
+                  MINWRK = 2*N + M
+               ELSE IF( WNTUA .AND. WNTVAS ) THEN
+                  WRKBL = N + LWORK_ZGEQRF
+                  WRKBL = MAX( WRKBL, N+LWORK_ZUNGQR_M )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZGEBRD )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZUNGBR_Q )
+                  WRKBL = MAX( WRKBL, 2*N+LWORK_ZUNGBR_P )
+                  MAXWRK = N*N + WRKBL
+                  MINWRK = 2*N + M
+               END IF
+            ELSE
+               CALL ZGEBRD( M, N, A, LDA, S, DUM(1), CDUM(1),
+     $                   CDUM(1), CDUM(1), -1, IERR )
+               LWORK_ZGEBRD = INT( CDUM(1) )
+               MAXWRK = 2*N + LWORK_ZGEBRD
+               IF( WNTUS .OR. WNTUO ) THEN
+                  CALL ZUNGBR( 'Q', M, N, N, A, LDA, CDUM(1),
+     $                   CDUM(1), -1, IERR )
+                  LWORK_ZUNGBR_Q = INT( CDUM(1) )
+                  MAXWRK = MAX( MAXWRK, 2*N+LWORK_ZUNGBR_Q )
+               END IF
+               IF( WNTUA ) THEN
+                  CALL ZUNGBR( 'Q', M, M, N, A, LDA, CDUM(1),
+     $                   CDUM(1), -1, IERR )
+                  LWORK_ZUNGBR_Q = INT( CDUM(1) )
+                  MAXWRK = MAX( MAXWRK, 2*N+LWORK_ZUNGBR_Q )
+               END IF
+               IF( .NOT.WNTVN ) THEN
+                  MAXWRK = MAX( MAXWRK, 2*N+LWORK_ZUNGBR_P )
+               END IF
+               MINWRK = 2*N + M
+            END IF
+         ELSE IF( MINMN.GT.0 ) THEN
+            MNTHR = ILAENV( 6, 'ZGESVD', JOBU // JOBVT, M, N, 0, 0 )
+            CALL ZGELQF( M, N, A, LDA, CDUM(1), CDUM(1), -1, IERR )
+            LWORK_ZGELQF = INT( CDUM(1) )
+            CALL ZUNGLQ( N, N, M, CDUM(1), N, CDUM(1), CDUM(1), -1,
+     $                   IERR )
+            LWORK_ZUNGLQ_N = INT( CDUM(1) )
+            CALL ZUNGLQ( M, N, M, A, LDA, CDUM(1), CDUM(1), -1, IERR )
+            LWORK_ZUNGLQ_M = INT( CDUM(1) )
+            CALL ZGEBRD( M, M, A, LDA, S, DUM(1), CDUM(1),
+     $                   CDUM(1), CDUM(1), -1, IERR )
+            LWORK_ZGEBRD = INT( CDUM(1) )
+            CALL ZUNGBR( 'P', M, M, M, A, N, CDUM(1),
+     $                   CDUM(1), -1, IERR )
+            LWORK_ZUNGBR_P = INT( CDUM(1) )
+            CALL ZUNGBR( 'Q', M, M, M, A, N, CDUM(1),
+     $                   CDUM(1), -1, IERR )
+            LWORK_ZUNGBR_Q = INT( CDUM(1) )
+            IF( N.GE.MNTHR ) THEN
+               IF( WNTVN ) THEN
+                  MAXWRK = M + LWORK_ZGELQF
+                  MAXWRK = MAX( MAXWRK, 2*M+LWORK_ZGEBRD )
+                  IF( WNTUO .OR. WNTUAS )
+     $               MAXWRK = MAX( MAXWRK, 2*M+LWORK_ZUNGBR_Q )
+                  MINWRK = 3*M
+               ELSE IF( WNTVO .AND. WNTUN ) THEN
+                  WRKBL = M + LWORK_ZGELQF
+                  WRKBL = MAX( WRKBL, M+LWORK_ZUNGLQ_M )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZGEBRD )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZUNGBR_P )
+                  MAXWRK = MAX( M*M+WRKBL, M*M+M*N )
+                  MINWRK = 2*M + N
+               ELSE IF( WNTVO .AND. WNTUAS ) THEN
+                  WRKBL = M + LWORK_ZGELQF
+                  WRKBL = MAX( WRKBL, M+LWORK_ZUNGLQ_M )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZGEBRD )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZUNGBR_P )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZUNGBR_Q )
+                  MAXWRK = MAX( M*M+WRKBL, M*M+M*N )
+                  MINWRK = 2*M + N
+               ELSE IF( WNTVS .AND. WNTUN ) THEN
+                  WRKBL = M + LWORK_ZGELQF
+                  WRKBL = MAX( WRKBL, M+LWORK_ZUNGLQ_M )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZGEBRD )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZUNGBR_P )
+                  MAXWRK = M*M + WRKBL
+                  MINWRK = 2*M + N
+               ELSE IF( WNTVS .AND. WNTUO ) THEN
+                  WRKBL = M + LWORK_ZGELQF
+                  WRKBL = MAX( WRKBL, M+LWORK_ZUNGLQ_M )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZGEBRD )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZUNGBR_P )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZUNGBR_Q )
+                  MAXWRK = 2*M*M + WRKBL
+                  MINWRK = 2*M + N
+               ELSE IF( WNTVS .AND. WNTUAS ) THEN
+                  WRKBL = M + LWORK_ZGELQF
+                  WRKBL = MAX( WRKBL, M+LWORK_ZUNGLQ_M )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZGEBRD )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZUNGBR_P )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZUNGBR_Q )
+                  MAXWRK = M*M + WRKBL
+                  MINWRK = 2*M + N
+               ELSE IF( WNTVA .AND. WNTUN ) THEN
+                  WRKBL = M + LWORK_ZGELQF
+                  WRKBL = MAX( WRKBL, M+LWORK_ZUNGLQ_N )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZGEBRD )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZUNGBR_P )
+                  MAXWRK = M*M + WRKBL
+                  MINWRK = 2*M + N
+               ELSE IF( WNTVA .AND. WNTUO ) THEN
+                  WRKBL = M + LWORK_ZGELQF
+                  WRKBL = MAX( WRKBL, M+LWORK_ZUNGLQ_N )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZGEBRD )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZUNGBR_P )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZUNGBR_Q )
+                  MAXWRK = 2*M*M + WRKBL
+                  MINWRK = 2*M + N
+               ELSE IF( WNTVA .AND. WNTUAS ) THEN
+                  WRKBL = M + LWORK_ZGELQF
+                  WRKBL = MAX( WRKBL, M+LWORK_ZUNGLQ_N )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZGEBRD )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZUNGBR_P )
+                  WRKBL = MAX( WRKBL, 2*M+LWORK_ZUNGBR_Q )
+                  MAXWRK = M*M + WRKBL
+                  MINWRK = 2*M + N
+               END IF
+            ELSE
+               CALL ZGEBRD( M, N, A, LDA, S, DUM(1), CDUM(1),
+     $                   CDUM(1), CDUM(1), -1, IERR )
+               LWORK_ZGEBRD = INT( CDUM(1) )
+               MAXWRK = 2*M + LWORK_ZGEBRD
+               IF( WNTVS .OR. WNTVO ) THEN
+                 CALL ZUNGBR( 'P', M, N, M, A, N, CDUM(1),
+     $                   CDUM(1), -1, IERR )
+                 LWORK_ZUNGBR_P = INT( CDUM(1) )
+                 MAXWRK = MAX( MAXWRK, 2*M+LWORK_ZUNGBR_P )
+               END IF
+               IF( WNTVA ) THEN
+                 CALL ZUNGBR( 'P', N,  N, M, A, N, CDUM(1),
+     $                   CDUM(1), -1, IERR )
+                 LWORK_ZUNGBR_P = INT( CDUM(1) )
+                 MAXWRK = MAX( MAXWRK, 2*M+LWORK_ZUNGBR_P )
+               END IF
+               IF( .NOT.WNTUN ) THEN
+                  MAXWRK = MAX( MAXWRK, 2*M+LWORK_ZUNGBR_Q )
+               END IF
+               MINWRK = 2*M + N
+            END IF
+         END IF
+         MAXWRK = MAX( MAXWRK, MINWRK )
+         WORK( 1 ) = MAXWRK
+         IF( LWORK.LT.MINWRK .AND. .NOT.LQUERY ) THEN
+            INFO = -13
+         END IF
+      END IF
+      IF( INFO.NE.0 ) THEN
+         CALL XERBLA( 'ZGESVD', -INFO )
+         RETURN
+      ELSE IF( LQUERY ) THEN
+         RETURN
+      END IF
+      IF( M.EQ.0 .OR. N.EQ.0 ) THEN
+         RETURN
+      END IF
+      EPS = DLAMCH( 'P' )
+      SMLNUM = SQRT( DLAMCH( 'S' ) ) / EPS
+      BIGNUM = ONE / SMLNUM
+      ANRM = ZLANGE( 'M', M, N, A, LDA, DUM )
+      ISCL = 0
+      IF( ANRM.GT.ZERO .AND. ANRM.LT.SMLNUM ) THEN
+         ISCL = 1
+         CALL ZLASCL( 'G', 0, 0, ANRM, SMLNUM, M, N, A, LDA, IERR )
+      ELSE IF( ANRM.GT.BIGNUM ) THEN
+         ISCL = 1
+         CALL ZLASCL( 'G', 0, 0, ANRM, BIGNUM, M, N, A, LDA, IERR )
+      END IF
+      IF( M.GE.N ) THEN
+         IF( M.GE.MNTHR ) THEN
+            IF( WNTUN ) THEN
+               ITAU = 1
+               IWORK = ITAU + N
+               CALL ZGEQRF( M, N, A, LDA, WORK( ITAU ), WORK( IWORK ),
+     $                      LWORK-IWORK+1, IERR )
+               IF( N .GT. 1 ) THEN
+                  CALL ZLASET( 'L', N-1, N-1, CZERO, CZERO, A( 2, 1 ),
+     $                         LDA )
+               END IF
+               IE = 1
+               ITAUQ = 1
+               ITAUP = ITAUQ + N
+               IWORK = ITAUP + N
+               CALL ZGEBRD( N, N, A, LDA, S, RWORK( IE ), WORK( ITAUQ ),
+     $                      WORK( ITAUP ), WORK( IWORK ), LWORK-IWORK+1,
+     $                      IERR )
+               NCVT = 0
+               IF( WNTVO .OR. WNTVAS ) THEN
+                  CALL ZUNGBR( 'P', N, N, N, A, LDA, WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  NCVT = N
+               END IF
+               IRWORK = IE + N
+               CALL ZBDSQR( 'U', N, NCVT, 0, 0, S, RWORK( IE ), A, LDA,
+     $                      CDUM, 1, CDUM, 1, RWORK( IRWORK ), INFO )
+               IF( WNTVAS )
+     $            CALL ZLACPY( 'F', N, N, A, LDA, VT, LDVT )
+            ELSE IF( WNTUO .AND. WNTVN ) THEN
+               IF( LWORK.GE.N*N+3*N ) THEN
+                  IR = 1
+                  IF( LWORK.GE.MAX( WRKBL, LDA*N )+LDA*N ) THEN
+                     LDWRKU = LDA
+                     LDWRKR = LDA
+                  ELSE IF( LWORK.GE.MAX( WRKBL, LDA*N )+N*N ) THEN
+                     LDWRKU = LDA
+                     LDWRKR = N
+                  ELSE
+                     LDWRKU = ( LWORK-N*N ) / N
+                     LDWRKR = N
+                  END IF
+                  ITAU = IR + LDWRKR*N
+                  IWORK = ITAU + N
+                  CALL ZGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL ZLACPY( 'U', N, N, A, LDA, WORK( IR ), LDWRKR )
+                  CALL ZLASET( 'L', N-1, N-1, CZERO, CZERO,
+     $                         WORK( IR+1 ), LDWRKR )
+                  CALL ZUNGQR( M, N, N, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IE = 1
+                  ITAUQ = ITAU
+                  ITAUP = ITAUQ + N
+                  IWORK = ITAUP + N
+                  CALL ZGEBRD( N, N, WORK( IR ), LDWRKR, S, RWORK( IE ),
+     $                         WORK( ITAUQ ), WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL ZUNGBR( 'Q', N, N, N, WORK( IR ), LDWRKR,
+     $                         WORK( ITAUQ ), WORK( IWORK ),
+     $                         LWORK-IWORK+1, IERR )
+                  IRWORK = IE + N
+                  CALL ZBDSQR( 'U', N, 0, N, 0, S, RWORK( IE ), CDUM, 1,
+     $                         WORK( IR ), LDWRKR, CDUM, 1,
+     $                         RWORK( IRWORK ), INFO )
+                  IU = ITAUQ
+                  DO 10 I = 1, M, LDWRKU
+                     CHUNK = MIN( M-I+1, LDWRKU )
+                     CALL ZGEMM( 'N', 'N', CHUNK, N, N, CONE, A( I, 1 ),
+     $                           LDA, WORK( IR ), LDWRKR, CZERO,
+     $                           WORK( IU ), LDWRKU )
+                     CALL ZLACPY( 'F', CHUNK, N, WORK( IU ), LDWRKU,
+     $                            A( I, 1 ), LDA )
+   10             CONTINUE
+               ELSE
+                  IE = 1
+                  ITAUQ = 1
+                  ITAUP = ITAUQ + N
+                  IWORK = ITAUP + N
+                  CALL ZGEBRD( M, N, A, LDA, S, RWORK( IE ),
+     $                         WORK( ITAUQ ), WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL ZUNGBR( 'Q', M, N, N, A, LDA, WORK( ITAUQ ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IRWORK = IE + N
+                  CALL ZBDSQR( 'U', N, 0, M, 0, S, RWORK( IE ), CDUM, 1,
+     $                         A, LDA, CDUM, 1, RWORK( IRWORK ), INFO )
+               END IF
+            ELSE IF( WNTUO .AND. WNTVAS ) THEN
+               IF( LWORK.GE.N*N+3*N ) THEN
+                  IR = 1
+                  IF( LWORK.GE.MAX( WRKBL, LDA*N )+LDA*N ) THEN
+                     LDWRKU = LDA
+                     LDWRKR = LDA
+                  ELSE IF( LWORK.GE.MAX( WRKBL, LDA*N )+N*N ) THEN
+                     LDWRKU = LDA
+                     LDWRKR = N
+                  ELSE
+                     LDWRKU = ( LWORK-N*N ) / N
+                     LDWRKR = N
+                  END IF
+                  ITAU = IR + LDWRKR*N
+                  IWORK = ITAU + N
+                  CALL ZGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL ZLACPY( 'U', N, N, A, LDA, VT, LDVT )
+                  IF( N.GT.1 )
+     $               CALL ZLASET( 'L', N-1, N-1, CZERO, CZERO,
+     $                            VT( 2, 1 ), LDVT )
+                  CALL ZUNGQR( M, N, N, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IE = 1
+                  ITAUQ = ITAU
+                  ITAUP = ITAUQ + N
+                  IWORK = ITAUP + N
+                  CALL ZGEBRD( N, N, VT, LDVT, S, RWORK( IE ),
+     $                         WORK( ITAUQ ), WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL ZLACPY( 'L', N, N, VT, LDVT, WORK( IR ), LDWRKR )
+                  CALL ZUNGBR( 'Q', N, N, N, WORK( IR ), LDWRKR,
+     $                         WORK( ITAUQ ), WORK( IWORK ),
+     $                         LWORK-IWORK+1, IERR )
+                  CALL ZUNGBR( 'P', N, N, N, VT, LDVT, WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IRWORK = IE + N
+                  CALL ZBDSQR( 'U', N, N, N, 0, S, RWORK( IE ), VT,
+     $                         LDVT, WORK( IR ), LDWRKR, CDUM, 1,
+     $                         RWORK( IRWORK ), INFO )
+                  IU = ITAUQ
+                  DO 20 I = 1, M, LDWRKU
+                     CHUNK = MIN( M-I+1, LDWRKU )
+                     CALL ZGEMM( 'N', 'N', CHUNK, N, N, CONE, A( I, 1 ),
+     $                           LDA, WORK( IR ), LDWRKR, CZERO,
+     $                           WORK( IU ), LDWRKU )
+                     CALL ZLACPY( 'F', CHUNK, N, WORK( IU ), LDWRKU,
+     $                            A( I, 1 ), LDA )
+   20             CONTINUE
+               ELSE
+                  ITAU = 1
+                  IWORK = ITAU + N
+                  CALL ZGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL ZLACPY( 'U', N, N, A, LDA, VT, LDVT )
+                  IF( N.GT.1 )
+     $               CALL ZLASET( 'L', N-1, N-1, CZERO, CZERO,
+     $                            VT( 2, 1 ), LDVT )
+                  CALL ZUNGQR( M, N, N, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IE = 1
+                  ITAUQ = ITAU
+                  ITAUP = ITAUQ + N
+                  IWORK = ITAUP + N
+                  CALL ZGEBRD( N, N, VT, LDVT, S, RWORK( IE ),
+     $                         WORK( ITAUQ ), WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL ZUNMBR( 'Q', 'R', 'N', M, N, N, VT, LDVT,
+     $                         WORK( ITAUQ ), A, LDA, WORK( IWORK ),
+     $                         LWORK-IWORK+1, IERR )
+                  CALL ZUNGBR( 'P', N, N, N, VT, LDVT, WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IRWORK = IE + N
+                  CALL ZBDSQR( 'U', N, N, M, 0, S, RWORK( IE ), VT,
+     $                         LDVT, A, LDA, CDUM, 1, RWORK( IRWORK ),
+     $                         INFO )
+               END IF
+            ELSE IF( WNTUS ) THEN
+               IF( WNTVN ) THEN
+                  IF( LWORK.GE.N*N+3*N ) THEN
+                     IR = 1
+                     IF( LWORK.GE.WRKBL+LDA*N ) THEN
+                        LDWRKR = LDA
+                     ELSE
+                        LDWRKR = N
+                     END IF
+                     ITAU = IR + LDWRKR*N
+                     IWORK = ITAU + N
+                     CALL ZGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'U', N, N, A, LDA, WORK( IR ),
+     $                            LDWRKR )
+                     CALL ZLASET( 'L', N-1, N-1, CZERO, CZERO,
+     $                            WORK( IR+1 ), LDWRKR )
+                     CALL ZUNGQR( M, N, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     CALL ZGEBRD( N, N, WORK( IR ), LDWRKR, S,
+     $                            RWORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZUNGBR( 'Q', N, N, N, WORK( IR ), LDWRKR,
+     $                            WORK( ITAUQ ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     IRWORK = IE + N
+                     CALL ZBDSQR( 'U', N, 0, N, 0, S, RWORK( IE ), CDUM,
+     $                            1, WORK( IR ), LDWRKR, CDUM, 1,
+     $                            RWORK( IRWORK ), INFO )
+                     CALL ZGEMM( 'N', 'N', M, N, N, CONE, A, LDA,
+     $                           WORK( IR ), LDWRKR, CZERO, U, LDU )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + N
+                     CALL ZGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'L', M, N, A, LDA, U, LDU )
+                     CALL ZUNGQR( M, N, N, U, LDU, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     IF( N .GT. 1 ) THEN
+                        CALL ZLASET( 'L', N-1, N-1, CZERO, CZERO,
+     $                               A( 2, 1 ), LDA )
+                     END IF
+                     CALL ZGEBRD( N, N, A, LDA, S, RWORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZUNMBR( 'Q', 'R', 'N', M, N, N, A, LDA,
+     $                            WORK( ITAUQ ), U, LDU, WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     IRWORK = IE + N
+                     CALL ZBDSQR( 'U', N, 0, M, 0, S, RWORK( IE ), CDUM,
+     $                            1, U, LDU, CDUM, 1, RWORK( IRWORK ),
+     $                            INFO )
+                  END IF
+               ELSE IF( WNTVO ) THEN
+                  IF( LWORK.GE.2*N*N+3*N ) THEN
+                     IU = 1
+                     IF( LWORK.GE.WRKBL+2*LDA*N ) THEN
+                        LDWRKU = LDA
+                        IR = IU + LDWRKU*N
+                        LDWRKR = LDA
+                     ELSE IF( LWORK.GE.WRKBL+( LDA+N )*N ) THEN
+                        LDWRKU = LDA
+                        IR = IU + LDWRKU*N
+                        LDWRKR = N
+                     ELSE
+                        LDWRKU = N
+                        IR = IU + LDWRKU*N
+                        LDWRKR = N
+                     END IF
+                     ITAU = IR + LDWRKR*N
+                     IWORK = ITAU + N
+                     CALL ZGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'U', N, N, A, LDA, WORK( IU ),
+     $                            LDWRKU )
+                     CALL ZLASET( 'L', N-1, N-1, CZERO, CZERO,
+     $                            WORK( IU+1 ), LDWRKU )
+                     CALL ZUNGQR( M, N, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     CALL ZGEBRD( N, N, WORK( IU ), LDWRKU, S,
+     $                            RWORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'U', N, N, WORK( IU ), LDWRKU,
+     $                            WORK( IR ), LDWRKR )
+                     CALL ZUNGBR( 'Q', N, N, N, WORK( IU ), LDWRKU,
+     $                            WORK( ITAUQ ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZUNGBR( 'P', N, N, N, WORK( IR ), LDWRKR,
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     IRWORK = IE + N
+                     CALL ZBDSQR( 'U', N, N, N, 0, S, RWORK( IE ),
+     $                            WORK( IR ), LDWRKR, WORK( IU ),
+     $                            LDWRKU, CDUM, 1, RWORK( IRWORK ),
+     $                            INFO )
+                     CALL ZGEMM( 'N', 'N', M, N, N, CONE, A, LDA,
+     $                           WORK( IU ), LDWRKU, CZERO, U, LDU )
+                     CALL ZLACPY( 'F', N, N, WORK( IR ), LDWRKR, A,
+     $                            LDA )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + N
+                     CALL ZGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'L', M, N, A, LDA, U, LDU )
+                     CALL ZUNGQR( M, N, N, U, LDU, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     IF( N .GT. 1 ) THEN
+                        CALL ZLASET( 'L', N-1, N-1, CZERO, CZERO,
+     $                               A( 2, 1 ), LDA )
+                     END IF
+                     CALL ZGEBRD( N, N, A, LDA, S, RWORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZUNMBR( 'Q', 'R', 'N', M, N, N, A, LDA,
+     $                            WORK( ITAUQ ), U, LDU, WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZUNGBR( 'P', N, N, N, A, LDA, WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IRWORK = IE + N
+                     CALL ZBDSQR( 'U', N, N, M, 0, S, RWORK( IE ), A,
+     $                            LDA, U, LDU, CDUM, 1, RWORK( IRWORK ),
+     $                            INFO )
+                  END IF
+               ELSE IF( WNTVAS ) THEN
+                  IF( LWORK.GE.N*N+3*N ) THEN
+                     IU = 1
+                     IF( LWORK.GE.WRKBL+LDA*N ) THEN
+                        LDWRKU = LDA
+                     ELSE
+                        LDWRKU = N
+                     END IF
+                     ITAU = IU + LDWRKU*N
+                     IWORK = ITAU + N
+                     CALL ZGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'U', N, N, A, LDA, WORK( IU ),
+     $                            LDWRKU )
+                     CALL ZLASET( 'L', N-1, N-1, CZERO, CZERO,
+     $                            WORK( IU+1 ), LDWRKU )
+                     CALL ZUNGQR( M, N, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     CALL ZGEBRD( N, N, WORK( IU ), LDWRKU, S,
+     $                            RWORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'U', N, N, WORK( IU ), LDWRKU, VT,
+     $                            LDVT )
+                     CALL ZUNGBR( 'Q', N, N, N, WORK( IU ), LDWRKU,
+     $                            WORK( ITAUQ ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZUNGBR( 'P', N, N, N, VT, LDVT, WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IRWORK = IE + N
+                     CALL ZBDSQR( 'U', N, N, N, 0, S, RWORK( IE ), VT,
+     $                            LDVT, WORK( IU ), LDWRKU, CDUM, 1,
+     $                            RWORK( IRWORK ), INFO )
+                     CALL ZGEMM( 'N', 'N', M, N, N, CONE, A, LDA,
+     $                           WORK( IU ), LDWRKU, CZERO, U, LDU )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + N
+                     CALL ZGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'L', M, N, A, LDA, U, LDU )
+                     CALL ZUNGQR( M, N, N, U, LDU, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'U', N, N, A, LDA, VT, LDVT )
+                     IF( N.GT.1 )
+     $                  CALL ZLASET( 'L', N-1, N-1, CZERO, CZERO,
+     $                               VT( 2, 1 ), LDVT )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     CALL ZGEBRD( N, N, VT, LDVT, S, RWORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZUNMBR( 'Q', 'R', 'N', M, N, N, VT, LDVT,
+     $                            WORK( ITAUQ ), U, LDU, WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZUNGBR( 'P', N, N, N, VT, LDVT, WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IRWORK = IE + N
+                     CALL ZBDSQR( 'U', N, N, M, 0, S, RWORK( IE ), VT,
+     $                            LDVT, U, LDU, CDUM, 1,
+     $                            RWORK( IRWORK ), INFO )
+                  END IF
+               END IF
+            ELSE IF( WNTUA ) THEN
+               IF( WNTVN ) THEN
+                  IF( LWORK.GE.N*N+MAX( N+M, 3*N ) ) THEN
+                     IR = 1
+                     IF( LWORK.GE.WRKBL+LDA*N ) THEN
+                        LDWRKR = LDA
+                     ELSE
+                        LDWRKR = N
+                     END IF
+                     ITAU = IR + LDWRKR*N
+                     IWORK = ITAU + N
+                     CALL ZGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'L', M, N, A, LDA, U, LDU )
+                     CALL ZLACPY( 'U', N, N, A, LDA, WORK( IR ),
+     $                            LDWRKR )
+                     CALL ZLASET( 'L', N-1, N-1, CZERO, CZERO,
+     $                            WORK( IR+1 ), LDWRKR )
+                     CALL ZUNGQR( M, M, N, U, LDU, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     CALL ZGEBRD( N, N, WORK( IR ), LDWRKR, S,
+     $                            RWORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZUNGBR( 'Q', N, N, N, WORK( IR ), LDWRKR,
+     $                            WORK( ITAUQ ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     IRWORK = IE + N
+                     CALL ZBDSQR( 'U', N, 0, N, 0, S, RWORK( IE ), CDUM,
+     $                            1, WORK( IR ), LDWRKR, CDUM, 1,
+     $                            RWORK( IRWORK ), INFO )
+                     CALL ZGEMM( 'N', 'N', M, N, N, CONE, U, LDU,
+     $                           WORK( IR ), LDWRKR, CZERO, A, LDA )
+                     CALL ZLACPY( 'F', M, N, A, LDA, U, LDU )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + N
+                     CALL ZGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'L', M, N, A, LDA, U, LDU )
+                     CALL ZUNGQR( M, M, N, U, LDU, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     IF( N .GT. 1 ) THEN
+                        CALL ZLASET( 'L', N-1, N-1, CZERO, CZERO,
+     $                               A( 2, 1 ), LDA )
+                     END IF
+                     CALL ZGEBRD( N, N, A, LDA, S, RWORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZUNMBR( 'Q', 'R', 'N', M, N, N, A, LDA,
+     $                            WORK( ITAUQ ), U, LDU, WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     IRWORK = IE + N
+                     CALL ZBDSQR( 'U', N, 0, M, 0, S, RWORK( IE ), CDUM,
+     $                            1, U, LDU, CDUM, 1, RWORK( IRWORK ),
+     $                            INFO )
+                  END IF
+               ELSE IF( WNTVO ) THEN
+                  IF( LWORK.GE.2*N*N+MAX( N+M, 3*N ) ) THEN
+                     IU = 1
+                     IF( LWORK.GE.WRKBL+2*LDA*N ) THEN
+                        LDWRKU = LDA
+                        IR = IU + LDWRKU*N
+                        LDWRKR = LDA
+                     ELSE IF( LWORK.GE.WRKBL+( LDA+N )*N ) THEN
+                        LDWRKU = LDA
+                        IR = IU + LDWRKU*N
+                        LDWRKR = N
+                     ELSE
+                        LDWRKU = N
+                        IR = IU + LDWRKU*N
+                        LDWRKR = N
+                     END IF
+                     ITAU = IR + LDWRKR*N
+                     IWORK = ITAU + N
+                     CALL ZGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'L', M, N, A, LDA, U, LDU )
+                     CALL ZUNGQR( M, M, N, U, LDU, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'U', N, N, A, LDA, WORK( IU ),
+     $                            LDWRKU )
+                     CALL ZLASET( 'L', N-1, N-1, CZERO, CZERO,
+     $                            WORK( IU+1 ), LDWRKU )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     CALL ZGEBRD( N, N, WORK( IU ), LDWRKU, S,
+     $                            RWORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'U', N, N, WORK( IU ), LDWRKU,
+     $                            WORK( IR ), LDWRKR )
+                     CALL ZUNGBR( 'Q', N, N, N, WORK( IU ), LDWRKU,
+     $                            WORK( ITAUQ ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZUNGBR( 'P', N, N, N, WORK( IR ), LDWRKR,
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     IRWORK = IE + N
+                     CALL ZBDSQR( 'U', N, N, N, 0, S, RWORK( IE ),
+     $                            WORK( IR ), LDWRKR, WORK( IU ),
+     $                            LDWRKU, CDUM, 1, RWORK( IRWORK ),
+     $                            INFO )
+                     CALL ZGEMM( 'N', 'N', M, N, N, CONE, U, LDU,
+     $                           WORK( IU ), LDWRKU, CZERO, A, LDA )
+                     CALL ZLACPY( 'F', M, N, A, LDA, U, LDU )
+                     CALL ZLACPY( 'F', N, N, WORK( IR ), LDWRKR, A,
+     $                            LDA )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + N
+                     CALL ZGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'L', M, N, A, LDA, U, LDU )
+                     CALL ZUNGQR( M, M, N, U, LDU, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     IF( N .GT. 1 ) THEN
+                        CALL ZLASET( 'L', N-1, N-1, CZERO, CZERO,
+     $                               A( 2, 1 ), LDA )
+                     END IF
+                     CALL ZGEBRD( N, N, A, LDA, S, RWORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZUNMBR( 'Q', 'R', 'N', M, N, N, A, LDA,
+     $                            WORK( ITAUQ ), U, LDU, WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZUNGBR( 'P', N, N, N, A, LDA, WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IRWORK = IE + N
+                     CALL ZBDSQR( 'U', N, N, M, 0, S, RWORK( IE ), A,
+     $                            LDA, U, LDU, CDUM, 1, RWORK( IRWORK ),
+     $                            INFO )
+                  END IF
+               ELSE IF( WNTVAS ) THEN
+                  IF( LWORK.GE.N*N+MAX( N+M, 3*N ) ) THEN
+                     IU = 1
+                     IF( LWORK.GE.WRKBL+LDA*N ) THEN
+                        LDWRKU = LDA
+                     ELSE
+                        LDWRKU = N
+                     END IF
+                     ITAU = IU + LDWRKU*N
+                     IWORK = ITAU + N
+                     CALL ZGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'L', M, N, A, LDA, U, LDU )
+                     CALL ZUNGQR( M, M, N, U, LDU, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'U', N, N, A, LDA, WORK( IU ),
+     $                            LDWRKU )
+                     CALL ZLASET( 'L', N-1, N-1, CZERO, CZERO,
+     $                            WORK( IU+1 ), LDWRKU )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     CALL ZGEBRD( N, N, WORK( IU ), LDWRKU, S,
+     $                            RWORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'U', N, N, WORK( IU ), LDWRKU, VT,
+     $                            LDVT )
+                     CALL ZUNGBR( 'Q', N, N, N, WORK( IU ), LDWRKU,
+     $                            WORK( ITAUQ ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZUNGBR( 'P', N, N, N, VT, LDVT, WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IRWORK = IE + N
+                     CALL ZBDSQR( 'U', N, N, N, 0, S, RWORK( IE ), VT,
+     $                            LDVT, WORK( IU ), LDWRKU, CDUM, 1,
+     $                            RWORK( IRWORK ), INFO )
+                     CALL ZGEMM( 'N', 'N', M, N, N, CONE, U, LDU,
+     $                           WORK( IU ), LDWRKU, CZERO, A, LDA )
+                     CALL ZLACPY( 'F', M, N, A, LDA, U, LDU )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + N
+                     CALL ZGEQRF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'L', M, N, A, LDA, U, LDU )
+                     CALL ZUNGQR( M, M, N, U, LDU, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'U', N, N, A, LDA, VT, LDVT )
+                     IF( N.GT.1 )
+     $                  CALL ZLASET( 'L', N-1, N-1, CZERO, CZERO,
+     $                               VT( 2, 1 ), LDVT )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + N
+                     IWORK = ITAUP + N
+                     CALL ZGEBRD( N, N, VT, LDVT, S, RWORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZUNMBR( 'Q', 'R', 'N', M, N, N, VT, LDVT,
+     $                            WORK( ITAUQ ), U, LDU, WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZUNGBR( 'P', N, N, N, VT, LDVT, WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IRWORK = IE + N
+                     CALL ZBDSQR( 'U', N, N, M, 0, S, RWORK( IE ), VT,
+     $                            LDVT, U, LDU, CDUM, 1,
+     $                            RWORK( IRWORK ), INFO )
+                  END IF
+               END IF
+            END IF
+         ELSE
+            IE = 1
+            ITAUQ = 1
+            ITAUP = ITAUQ + N
+            IWORK = ITAUP + N
+            CALL ZGEBRD( M, N, A, LDA, S, RWORK( IE ), WORK( ITAUQ ),
+     $                   WORK( ITAUP ), WORK( IWORK ), LWORK-IWORK+1,
+     $                   IERR )
+            IF( WNTUAS ) THEN
+               CALL ZLACPY( 'L', M, N, A, LDA, U, LDU )
+               IF( WNTUS )
+     $            NCU = N
+               IF( WNTUA )
+     $            NCU = M
+               CALL ZUNGBR( 'Q', M, NCU, N, U, LDU, WORK( ITAUQ ),
+     $                      WORK( IWORK ), LWORK-IWORK+1, IERR )
+            END IF
+            IF( WNTVAS ) THEN
+               CALL ZLACPY( 'U', N, N, A, LDA, VT, LDVT )
+               CALL ZUNGBR( 'P', N, N, N, VT, LDVT, WORK( ITAUP ),
+     $                      WORK( IWORK ), LWORK-IWORK+1, IERR )
+            END IF
+            IF( WNTUO ) THEN
+               CALL ZUNGBR( 'Q', M, N, N, A, LDA, WORK( ITAUQ ),
+     $                      WORK( IWORK ), LWORK-IWORK+1, IERR )
+            END IF
+            IF( WNTVO ) THEN
+               CALL ZUNGBR( 'P', N, N, N, A, LDA, WORK( ITAUP ),
+     $                      WORK( IWORK ), LWORK-IWORK+1, IERR )
+            END IF
+            IRWORK = IE + N
+            IF( WNTUAS .OR. WNTUO )
+     $         NRU = M
+            IF( WNTUN )
+     $         NRU = 0
+            IF( WNTVAS .OR. WNTVO )
+     $         NCVT = N
+            IF( WNTVN )
+     $         NCVT = 0
+            IF( ( .NOT.WNTUO ) .AND. ( .NOT.WNTVO ) ) THEN
+               CALL ZBDSQR( 'U', N, NCVT, NRU, 0, S, RWORK( IE ), VT,
+     $                      LDVT, U, LDU, CDUM, 1, RWORK( IRWORK ),
+     $                      INFO )
+            ELSE IF( ( .NOT.WNTUO ) .AND. WNTVO ) THEN
+               CALL ZBDSQR( 'U', N, NCVT, NRU, 0, S, RWORK( IE ), A,
+     $                      LDA, U, LDU, CDUM, 1, RWORK( IRWORK ),
+     $                      INFO )
+            ELSE
+               CALL ZBDSQR( 'U', N, NCVT, NRU, 0, S, RWORK( IE ), VT,
+     $                      LDVT, A, LDA, CDUM, 1, RWORK( IRWORK ),
+     $                      INFO )
+            END IF
+         END IF
+      ELSE
+         IF( N.GE.MNTHR ) THEN
+            IF( WNTVN ) THEN
+               ITAU = 1
+               IWORK = ITAU + M
+               CALL ZGELQF( M, N, A, LDA, WORK( ITAU ), WORK( IWORK ),
+     $                      LWORK-IWORK+1, IERR )
+               CALL ZLASET( 'U', M-1, M-1, CZERO, CZERO, A( 1, 2 ),
+     $                      LDA )
+               IE = 1
+               ITAUQ = 1
+               ITAUP = ITAUQ + M
+               IWORK = ITAUP + M
+               CALL ZGEBRD( M, M, A, LDA, S, RWORK( IE ), WORK( ITAUQ ),
+     $                      WORK( ITAUP ), WORK( IWORK ), LWORK-IWORK+1,
+     $                      IERR )
+               IF( WNTUO .OR. WNTUAS ) THEN
+                  CALL ZUNGBR( 'Q', M, M, M, A, LDA, WORK( ITAUQ ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+               END IF
+               IRWORK = IE + M
+               NRU = 0
+               IF( WNTUO .OR. WNTUAS )
+     $            NRU = M
+               CALL ZBDSQR( 'U', M, 0, NRU, 0, S, RWORK( IE ), CDUM, 1,
+     $                      A, LDA, CDUM, 1, RWORK( IRWORK ), INFO )
+               IF( WNTUAS )
+     $            CALL ZLACPY( 'F', M, M, A, LDA, U, LDU )
+            ELSE IF( WNTVO .AND. WNTUN ) THEN
+               IF( LWORK.GE.M*M+3*M ) THEN
+                  IR = 1
+                  IF( LWORK.GE.MAX( WRKBL, LDA*N )+LDA*M ) THEN
+                     LDWRKU = LDA
+                     CHUNK = N
+                     LDWRKR = LDA
+                  ELSE IF( LWORK.GE.MAX( WRKBL, LDA*N )+M*M ) THEN
+                     LDWRKU = LDA
+                     CHUNK = N
+                     LDWRKR = M
+                  ELSE
+                     LDWRKU = M
+                     CHUNK = ( LWORK-M*M ) / M
+                     LDWRKR = M
+                  END IF
+                  ITAU = IR + LDWRKR*M
+                  IWORK = ITAU + M
+                  CALL ZGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL ZLACPY( 'L', M, M, A, LDA, WORK( IR ), LDWRKR )
+                  CALL ZLASET( 'U', M-1, M-1, CZERO, CZERO,
+     $                         WORK( IR+LDWRKR ), LDWRKR )
+                  CALL ZUNGLQ( M, N, M, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IE = 1
+                  ITAUQ = ITAU
+                  ITAUP = ITAUQ + M
+                  IWORK = ITAUP + M
+                  CALL ZGEBRD( M, M, WORK( IR ), LDWRKR, S, RWORK( IE ),
+     $                         WORK( ITAUQ ), WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL ZUNGBR( 'P', M, M, M, WORK( IR ), LDWRKR,
+     $                         WORK( ITAUP ), WORK( IWORK ),
+     $                         LWORK-IWORK+1, IERR )
+                  IRWORK = IE + M
+                  CALL ZBDSQR( 'U', M, M, 0, 0, S, RWORK( IE ),
+     $                         WORK( IR ), LDWRKR, CDUM, 1, CDUM, 1,
+     $                         RWORK( IRWORK ), INFO )
+                  IU = ITAUQ
+                  DO 30 I = 1, N, CHUNK
+                     BLK = MIN( N-I+1, CHUNK )
+                     CALL ZGEMM( 'N', 'N', M, BLK, M, CONE, WORK( IR ),
+     $                           LDWRKR, A( 1, I ), LDA, CZERO,
+     $                           WORK( IU ), LDWRKU )
+                     CALL ZLACPY( 'F', M, BLK, WORK( IU ), LDWRKU,
+     $                            A( 1, I ), LDA )
+   30             CONTINUE
+               ELSE
+                  IE = 1
+                  ITAUQ = 1
+                  ITAUP = ITAUQ + M
+                  IWORK = ITAUP + M
+                  CALL ZGEBRD( M, N, A, LDA, S, RWORK( IE ),
+     $                         WORK( ITAUQ ), WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL ZUNGBR( 'P', M, N, M, A, LDA, WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IRWORK = IE + M
+                  CALL ZBDSQR( 'L', M, N, 0, 0, S, RWORK( IE ), A, LDA,
+     $                         CDUM, 1, CDUM, 1, RWORK( IRWORK ), INFO )
+               END IF
+            ELSE IF( WNTVO .AND. WNTUAS ) THEN
+               IF( LWORK.GE.M*M+3*M ) THEN
+                  IR = 1
+                  IF( LWORK.GE.MAX( WRKBL, LDA*N )+LDA*M ) THEN
+                     LDWRKU = LDA
+                     CHUNK = N
+                     LDWRKR = LDA
+                  ELSE IF( LWORK.GE.MAX( WRKBL, LDA*N )+M*M ) THEN
+                     LDWRKU = LDA
+                     CHUNK = N
+                     LDWRKR = M
+                  ELSE
+                     LDWRKU = M
+                     CHUNK = ( LWORK-M*M ) / M
+                     LDWRKR = M
+                  END IF
+                  ITAU = IR + LDWRKR*M
+                  IWORK = ITAU + M
+                  CALL ZGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL ZLACPY( 'L', M, M, A, LDA, U, LDU )
+                  CALL ZLASET( 'U', M-1, M-1, CZERO, CZERO, U( 1, 2 ),
+     $                         LDU )
+                  CALL ZUNGLQ( M, N, M, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IE = 1
+                  ITAUQ = ITAU
+                  ITAUP = ITAUQ + M
+                  IWORK = ITAUP + M
+                  CALL ZGEBRD( M, M, U, LDU, S, RWORK( IE ),
+     $                         WORK( ITAUQ ), WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL ZLACPY( 'U', M, M, U, LDU, WORK( IR ), LDWRKR )
+                  CALL ZUNGBR( 'P', M, M, M, WORK( IR ), LDWRKR,
+     $                         WORK( ITAUP ), WORK( IWORK ),
+     $                         LWORK-IWORK+1, IERR )
+                  CALL ZUNGBR( 'Q', M, M, M, U, LDU, WORK( ITAUQ ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IRWORK = IE + M
+                  CALL ZBDSQR( 'U', M, M, M, 0, S, RWORK( IE ),
+     $                         WORK( IR ), LDWRKR, U, LDU, CDUM, 1,
+     $                         RWORK( IRWORK ), INFO )
+                  IU = ITAUQ
+                  DO 40 I = 1, N, CHUNK
+                     BLK = MIN( N-I+1, CHUNK )
+                     CALL ZGEMM( 'N', 'N', M, BLK, M, CONE, WORK( IR ),
+     $                           LDWRKR, A( 1, I ), LDA, CZERO,
+     $                           WORK( IU ), LDWRKU )
+                     CALL ZLACPY( 'F', M, BLK, WORK( IU ), LDWRKU,
+     $                            A( 1, I ), LDA )
+   40             CONTINUE
+               ELSE
+                  ITAU = 1
+                  IWORK = ITAU + M
+                  CALL ZGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL ZLACPY( 'L', M, M, A, LDA, U, LDU )
+                  CALL ZLASET( 'U', M-1, M-1, CZERO, CZERO, U( 1, 2 ),
+     $                         LDU )
+                  CALL ZUNGLQ( M, N, M, A, LDA, WORK( ITAU ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IE = 1
+                  ITAUQ = ITAU
+                  ITAUP = ITAUQ + M
+                  IWORK = ITAUP + M
+                  CALL ZGEBRD( M, M, U, LDU, S, RWORK( IE ),
+     $                         WORK( ITAUQ ), WORK( ITAUP ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  CALL ZUNMBR( 'P', 'L', 'C', M, N, M, U, LDU,
+     $                         WORK( ITAUP ), A, LDA, WORK( IWORK ),
+     $                         LWORK-IWORK+1, IERR )
+                  CALL ZUNGBR( 'Q', M, M, M, U, LDU, WORK( ITAUQ ),
+     $                         WORK( IWORK ), LWORK-IWORK+1, IERR )
+                  IRWORK = IE + M
+                  CALL ZBDSQR( 'U', M, N, M, 0, S, RWORK( IE ), A, LDA,
+     $                         U, LDU, CDUM, 1, RWORK( IRWORK ), INFO )
+               END IF
+            ELSE IF( WNTVS ) THEN
+               IF( WNTUN ) THEN
+                  IF( LWORK.GE.M*M+3*M ) THEN
+                     IR = 1
+                     IF( LWORK.GE.WRKBL+LDA*M ) THEN
+                        LDWRKR = LDA
+                     ELSE
+                        LDWRKR = M
+                     END IF
+                     ITAU = IR + LDWRKR*M
+                     IWORK = ITAU + M
+                     CALL ZGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'L', M, M, A, LDA, WORK( IR ),
+     $                            LDWRKR )
+                     CALL ZLASET( 'U', M-1, M-1, CZERO, CZERO,
+     $                            WORK( IR+LDWRKR ), LDWRKR )
+                     CALL ZUNGLQ( M, N, M, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL ZGEBRD( M, M, WORK( IR ), LDWRKR, S,
+     $                            RWORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZUNGBR( 'P', M, M, M, WORK( IR ), LDWRKR,
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     IRWORK = IE + M
+                     CALL ZBDSQR( 'U', M, M, 0, 0, S, RWORK( IE ),
+     $                            WORK( IR ), LDWRKR, CDUM, 1, CDUM, 1,
+     $                            RWORK( IRWORK ), INFO )
+                     CALL ZGEMM( 'N', 'N', M, N, M, CONE, WORK( IR ),
+     $                           LDWRKR, A, LDA, CZERO, VT, LDVT )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + M
+                     CALL ZGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'U', M, N, A, LDA, VT, LDVT )
+                     CALL ZUNGLQ( M, N, M, VT, LDVT, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL ZLASET( 'U', M-1, M-1, CZERO, CZERO,
+     $                            A( 1, 2 ), LDA )
+                     CALL ZGEBRD( M, M, A, LDA, S, RWORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZUNMBR( 'P', 'L', 'C', M, N, M, A, LDA,
+     $                            WORK( ITAUP ), VT, LDVT,
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IRWORK = IE + M
+                     CALL ZBDSQR( 'U', M, N, 0, 0, S, RWORK( IE ), VT,
+     $                            LDVT, CDUM, 1, CDUM, 1,
+     $                            RWORK( IRWORK ), INFO )
+                  END IF
+               ELSE IF( WNTUO ) THEN
+                  IF( LWORK.GE.2*M*M+3*M ) THEN
+                     IU = 1
+                     IF( LWORK.GE.WRKBL+2*LDA*M ) THEN
+                        LDWRKU = LDA
+                        IR = IU + LDWRKU*M
+                        LDWRKR = LDA
+                     ELSE IF( LWORK.GE.WRKBL+( LDA+M )*M ) THEN
+                        LDWRKU = LDA
+                        IR = IU + LDWRKU*M
+                        LDWRKR = M
+                     ELSE
+                        LDWRKU = M
+                        IR = IU + LDWRKU*M
+                        LDWRKR = M
+                     END IF
+                     ITAU = IR + LDWRKR*M
+                     IWORK = ITAU + M
+                     CALL ZGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'L', M, M, A, LDA, WORK( IU ),
+     $                            LDWRKU )
+                     CALL ZLASET( 'U', M-1, M-1, CZERO, CZERO,
+     $                            WORK( IU+LDWRKU ), LDWRKU )
+                     CALL ZUNGLQ( M, N, M, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL ZGEBRD( M, M, WORK( IU ), LDWRKU, S,
+     $                            RWORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'L', M, M, WORK( IU ), LDWRKU,
+     $                            WORK( IR ), LDWRKR )
+                     CALL ZUNGBR( 'P', M, M, M, WORK( IU ), LDWRKU,
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZUNGBR( 'Q', M, M, M, WORK( IR ), LDWRKR,
+     $                            WORK( ITAUQ ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     IRWORK = IE + M
+                     CALL ZBDSQR( 'U', M, M, M, 0, S, RWORK( IE ),
+     $                            WORK( IU ), LDWRKU, WORK( IR ),
+     $                            LDWRKR, CDUM, 1, RWORK( IRWORK ),
+     $                            INFO )
+                     CALL ZGEMM( 'N', 'N', M, N, M, CONE, WORK( IU ),
+     $                           LDWRKU, A, LDA, CZERO, VT, LDVT )
+                     CALL ZLACPY( 'F', M, M, WORK( IR ), LDWRKR, A,
+     $                            LDA )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + M
+                     CALL ZGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'U', M, N, A, LDA, VT, LDVT )
+                     CALL ZUNGLQ( M, N, M, VT, LDVT, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL ZLASET( 'U', M-1, M-1, CZERO, CZERO,
+     $                            A( 1, 2 ), LDA )
+                     CALL ZGEBRD( M, M, A, LDA, S, RWORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZUNMBR( 'P', 'L', 'C', M, N, M, A, LDA,
+     $                            WORK( ITAUP ), VT, LDVT,
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZUNGBR( 'Q', M, M, M, A, LDA, WORK( ITAUQ ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IRWORK = IE + M
+                     CALL ZBDSQR( 'U', M, N, M, 0, S, RWORK( IE ), VT,
+     $                            LDVT, A, LDA, CDUM, 1,
+     $                            RWORK( IRWORK ), INFO )
+                  END IF
+               ELSE IF( WNTUAS ) THEN
+                  IF( LWORK.GE.M*M+3*M ) THEN
+                     IU = 1
+                     IF( LWORK.GE.WRKBL+LDA*M ) THEN
+                        LDWRKU = LDA
+                     ELSE
+                        LDWRKU = M
+                     END IF
+                     ITAU = IU + LDWRKU*M
+                     IWORK = ITAU + M
+                     CALL ZGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'L', M, M, A, LDA, WORK( IU ),
+     $                            LDWRKU )
+                     CALL ZLASET( 'U', M-1, M-1, CZERO, CZERO,
+     $                            WORK( IU+LDWRKU ), LDWRKU )
+                     CALL ZUNGLQ( M, N, M, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL ZGEBRD( M, M, WORK( IU ), LDWRKU, S,
+     $                            RWORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'L', M, M, WORK( IU ), LDWRKU, U,
+     $                            LDU )
+                     CALL ZUNGBR( 'P', M, M, M, WORK( IU ), LDWRKU,
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZUNGBR( 'Q', M, M, M, U, LDU, WORK( ITAUQ ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IRWORK = IE + M
+                     CALL ZBDSQR( 'U', M, M, M, 0, S, RWORK( IE ),
+     $                            WORK( IU ), LDWRKU, U, LDU, CDUM, 1,
+     $                            RWORK( IRWORK ), INFO )
+                     CALL ZGEMM( 'N', 'N', M, N, M, CONE, WORK( IU ),
+     $                           LDWRKU, A, LDA, CZERO, VT, LDVT )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + M
+                     CALL ZGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'U', M, N, A, LDA, VT, LDVT )
+                     CALL ZUNGLQ( M, N, M, VT, LDVT, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'L', M, M, A, LDA, U, LDU )
+                     CALL ZLASET( 'U', M-1, M-1, CZERO, CZERO,
+     $                            U( 1, 2 ), LDU )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL ZGEBRD( M, M, U, LDU, S, RWORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZUNMBR( 'P', 'L', 'C', M, N, M, U, LDU,
+     $                            WORK( ITAUP ), VT, LDVT,
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZUNGBR( 'Q', M, M, M, U, LDU, WORK( ITAUQ ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IRWORK = IE + M
+                     CALL ZBDSQR( 'U', M, N, M, 0, S, RWORK( IE ), VT,
+     $                            LDVT, U, LDU, CDUM, 1,
+     $                            RWORK( IRWORK ), INFO )
+                  END IF
+               END IF
+            ELSE IF( WNTVA ) THEN
+               IF( WNTUN ) THEN
+                  IF( LWORK.GE.M*M+MAX( N+M, 3*M ) ) THEN
+                     IR = 1
+                     IF( LWORK.GE.WRKBL+LDA*M ) THEN
+                        LDWRKR = LDA
+                     ELSE
+                        LDWRKR = M
+                     END IF
+                     ITAU = IR + LDWRKR*M
+                     IWORK = ITAU + M
+                     CALL ZGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'U', M, N, A, LDA, VT, LDVT )
+                     CALL ZLACPY( 'L', M, M, A, LDA, WORK( IR ),
+     $                            LDWRKR )
+                     CALL ZLASET( 'U', M-1, M-1, CZERO, CZERO,
+     $                            WORK( IR+LDWRKR ), LDWRKR )
+                     CALL ZUNGLQ( N, N, M, VT, LDVT, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL ZGEBRD( M, M, WORK( IR ), LDWRKR, S,
+     $                            RWORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZUNGBR( 'P', M, M, M, WORK( IR ), LDWRKR,
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     IRWORK = IE + M
+                     CALL ZBDSQR( 'U', M, M, 0, 0, S, RWORK( IE ),
+     $                            WORK( IR ), LDWRKR, CDUM, 1, CDUM, 1,
+     $                            RWORK( IRWORK ), INFO )
+                     CALL ZGEMM( 'N', 'N', M, N, M, CONE, WORK( IR ),
+     $                           LDWRKR, VT, LDVT, CZERO, A, LDA )
+                     CALL ZLACPY( 'F', M, N, A, LDA, VT, LDVT )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + M
+                     CALL ZGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'U', M, N, A, LDA, VT, LDVT )
+                     CALL ZUNGLQ( N, N, M, VT, LDVT, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL ZLASET( 'U', M-1, M-1, CZERO, CZERO,
+     $                            A( 1, 2 ), LDA )
+                     CALL ZGEBRD( M, M, A, LDA, S, RWORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZUNMBR( 'P', 'L', 'C', M, N, M, A, LDA,
+     $                            WORK( ITAUP ), VT, LDVT,
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IRWORK = IE + M
+                     CALL ZBDSQR( 'U', M, N, 0, 0, S, RWORK( IE ), VT,
+     $                            LDVT, CDUM, 1, CDUM, 1,
+     $                            RWORK( IRWORK ), INFO )
+                  END IF
+               ELSE IF( WNTUO ) THEN
+                  IF( LWORK.GE.2*M*M+MAX( N+M, 3*M ) ) THEN
+                     IU = 1
+                     IF( LWORK.GE.WRKBL+2*LDA*M ) THEN
+                        LDWRKU = LDA
+                        IR = IU + LDWRKU*M
+                        LDWRKR = LDA
+                     ELSE IF( LWORK.GE.WRKBL+( LDA+M )*M ) THEN
+                        LDWRKU = LDA
+                        IR = IU + LDWRKU*M
+                        LDWRKR = M
+                     ELSE
+                        LDWRKU = M
+                        IR = IU + LDWRKU*M
+                        LDWRKR = M
+                     END IF
+                     ITAU = IR + LDWRKR*M
+                     IWORK = ITAU + M
+                     CALL ZGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'U', M, N, A, LDA, VT, LDVT )
+                     CALL ZUNGLQ( N, N, M, VT, LDVT, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'L', M, M, A, LDA, WORK( IU ),
+     $                            LDWRKU )
+                     CALL ZLASET( 'U', M-1, M-1, CZERO, CZERO,
+     $                            WORK( IU+LDWRKU ), LDWRKU )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL ZGEBRD( M, M, WORK( IU ), LDWRKU, S,
+     $                            RWORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'L', M, M, WORK( IU ), LDWRKU,
+     $                            WORK( IR ), LDWRKR )
+                     CALL ZUNGBR( 'P', M, M, M, WORK( IU ), LDWRKU,
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZUNGBR( 'Q', M, M, M, WORK( IR ), LDWRKR,
+     $                            WORK( ITAUQ ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     IRWORK = IE + M
+                     CALL ZBDSQR( 'U', M, M, M, 0, S, RWORK( IE ),
+     $                            WORK( IU ), LDWRKU, WORK( IR ),
+     $                            LDWRKR, CDUM, 1, RWORK( IRWORK ),
+     $                            INFO )
+                     CALL ZGEMM( 'N', 'N', M, N, M, CONE, WORK( IU ),
+     $                           LDWRKU, VT, LDVT, CZERO, A, LDA )
+                     CALL ZLACPY( 'F', M, N, A, LDA, VT, LDVT )
+                     CALL ZLACPY( 'F', M, M, WORK( IR ), LDWRKR, A,
+     $                            LDA )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + M
+                     CALL ZGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'U', M, N, A, LDA, VT, LDVT )
+                     CALL ZUNGLQ( N, N, M, VT, LDVT, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL ZLASET( 'U', M-1, M-1, CZERO, CZERO,
+     $                            A( 1, 2 ), LDA )
+                     CALL ZGEBRD( M, M, A, LDA, S, RWORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZUNMBR( 'P', 'L', 'C', M, N, M, A, LDA,
+     $                            WORK( ITAUP ), VT, LDVT,
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZUNGBR( 'Q', M, M, M, A, LDA, WORK( ITAUQ ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IRWORK = IE + M
+                     CALL ZBDSQR( 'U', M, N, M, 0, S, RWORK( IE ), VT,
+     $                            LDVT, A, LDA, CDUM, 1,
+     $                            RWORK( IRWORK ), INFO )
+                  END IF
+               ELSE IF( WNTUAS ) THEN
+                  IF( LWORK.GE.M*M+MAX( N+M, 3*M ) ) THEN
+                     IU = 1
+                     IF( LWORK.GE.WRKBL+LDA*M ) THEN
+                        LDWRKU = LDA
+                     ELSE
+                        LDWRKU = M
+                     END IF
+                     ITAU = IU + LDWRKU*M
+                     IWORK = ITAU + M
+                     CALL ZGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'U', M, N, A, LDA, VT, LDVT )
+                     CALL ZUNGLQ( N, N, M, VT, LDVT, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'L', M, M, A, LDA, WORK( IU ),
+     $                            LDWRKU )
+                     CALL ZLASET( 'U', M-1, M-1, CZERO, CZERO,
+     $                            WORK( IU+LDWRKU ), LDWRKU )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL ZGEBRD( M, M, WORK( IU ), LDWRKU, S,
+     $                            RWORK( IE ), WORK( ITAUQ ),
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'L', M, M, WORK( IU ), LDWRKU, U,
+     $                            LDU )
+                     CALL ZUNGBR( 'P', M, M, M, WORK( IU ), LDWRKU,
+     $                            WORK( ITAUP ), WORK( IWORK ),
+     $                            LWORK-IWORK+1, IERR )
+                     CALL ZUNGBR( 'Q', M, M, M, U, LDU, WORK( ITAUQ ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IRWORK = IE + M
+                     CALL ZBDSQR( 'U', M, M, M, 0, S, RWORK( IE ),
+     $                            WORK( IU ), LDWRKU, U, LDU, CDUM, 1,
+     $                            RWORK( IRWORK ), INFO )
+                     CALL ZGEMM( 'N', 'N', M, N, M, CONE, WORK( IU ),
+     $                           LDWRKU, VT, LDVT, CZERO, A, LDA )
+                     CALL ZLACPY( 'F', M, N, A, LDA, VT, LDVT )
+                  ELSE
+                     ITAU = 1
+                     IWORK = ITAU + M
+                     CALL ZGELQF( M, N, A, LDA, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'U', M, N, A, LDA, VT, LDVT )
+                     CALL ZUNGLQ( N, N, M, VT, LDVT, WORK( ITAU ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZLACPY( 'L', M, M, A, LDA, U, LDU )
+                     CALL ZLASET( 'U', M-1, M-1, CZERO, CZERO,
+     $                            U( 1, 2 ), LDU )
+                     IE = 1
+                     ITAUQ = ITAU
+                     ITAUP = ITAUQ + M
+                     IWORK = ITAUP + M
+                     CALL ZGEBRD( M, M, U, LDU, S, RWORK( IE ),
+     $                            WORK( ITAUQ ), WORK( ITAUP ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZUNMBR( 'P', 'L', 'C', M, N, M, U, LDU,
+     $                            WORK( ITAUP ), VT, LDVT,
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     CALL ZUNGBR( 'Q', M, M, M, U, LDU, WORK( ITAUQ ),
+     $                            WORK( IWORK ), LWORK-IWORK+1, IERR )
+                     IRWORK = IE + M
+                     CALL ZBDSQR( 'U', M, N, M, 0, S, RWORK( IE ), VT,
+     $                            LDVT, U, LDU, CDUM, 1,
+     $                            RWORK( IRWORK ), INFO )
+                  END IF
+               END IF
+            END IF
+         ELSE
+            IE = 1
+            ITAUQ = 1
+            ITAUP = ITAUQ + M
+            IWORK = ITAUP + M
+            CALL ZGEBRD( M, N, A, LDA, S, RWORK( IE ), WORK( ITAUQ ),
+     $                   WORK( ITAUP ), WORK( IWORK ), LWORK-IWORK+1,
+     $                   IERR )
+            IF( WNTUAS ) THEN
+               CALL ZLACPY( 'L', M, M, A, LDA, U, LDU )
+               CALL ZUNGBR( 'Q', M, M, N, U, LDU, WORK( ITAUQ ),
+     $                      WORK( IWORK ), LWORK-IWORK+1, IERR )
+            END IF
+            IF( WNTVAS ) THEN
+               CALL ZLACPY( 'U', M, N, A, LDA, VT, LDVT )
+               IF( WNTVA )
+     $            NRVT = N
+               IF( WNTVS )
+     $            NRVT = M
+               CALL ZUNGBR( 'P', NRVT, N, M, VT, LDVT, WORK( ITAUP ),
+     $                      WORK( IWORK ), LWORK-IWORK+1, IERR )
+            END IF
+            IF( WNTUO ) THEN
+               CALL ZUNGBR( 'Q', M, M, N, A, LDA, WORK( ITAUQ ),
+     $                      WORK( IWORK ), LWORK-IWORK+1, IERR )
+            END IF
+            IF( WNTVO ) THEN
+               CALL ZUNGBR( 'P', M, N, M, A, LDA, WORK( ITAUP ),
+     $                      WORK( IWORK ), LWORK-IWORK+1, IERR )
+            END IF
+            IRWORK = IE + M
+            IF( WNTUAS .OR. WNTUO )
+     $         NRU = M
+            IF( WNTUN )
+     $         NRU = 0
+            IF( WNTVAS .OR. WNTVO )
+     $         NCVT = N
+            IF( WNTVN )
+     $         NCVT = 0
+            IF( ( .NOT.WNTUO ) .AND. ( .NOT.WNTVO ) ) THEN
+               CALL ZBDSQR( 'L', M, NCVT, NRU, 0, S, RWORK( IE ), VT,
+     $                      LDVT, U, LDU, CDUM, 1, RWORK( IRWORK ),
+     $                      INFO )
+            ELSE IF( ( .NOT.WNTUO ) .AND. WNTVO ) THEN
+               CALL ZBDSQR( 'L', M, NCVT, NRU, 0, S, RWORK( IE ), A,
+     $                      LDA, U, LDU, CDUM, 1, RWORK( IRWORK ),
+     $                      INFO )
+            ELSE
+               CALL ZBDSQR( 'L', M, NCVT, NRU, 0, S, RWORK( IE ), VT,
+     $                      LDVT, A, LDA, CDUM, 1, RWORK( IRWORK ),
+     $                      INFO )
+            END IF
+         END IF
+      END IF
+      IF( ISCL.EQ.1 ) THEN
+         IF( ANRM.GT.BIGNUM )
+     $      CALL DLASCL( 'G', 0, 0, BIGNUM, ANRM, MINMN, 1, S, MINMN,
+     $                   IERR )
+         IF( INFO.NE.0 .AND. ANRM.GT.BIGNUM )
+     $      CALL DLASCL( 'G', 0, 0, BIGNUM, ANRM, MINMN-1, 1,
+     $                   RWORK( IE ), MINMN, IERR )
+         IF( ANRM.LT.SMLNUM )
+     $      CALL DLASCL( 'G', 0, 0, SMLNUM, ANRM, MINMN, 1, S, MINMN,
+     $                   IERR )
+         IF( INFO.NE.0 .AND. ANRM.LT.SMLNUM )
+     $      CALL DLASCL( 'G', 0, 0, SMLNUM, ANRM, MINMN-1, 1,
+     $                   RWORK( IE ), MINMN, IERR )
+      END IF
+      WORK( 1 ) = MAXWRK
+      RETURN
+      END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zgetrf.f
       SUBROUTINE ZGETRF( M, N, A, LDA, IPIV, INFO )
       INTEGER            INFO, LDA, M, N
@@ -30577,22 +34330,22 @@
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zhb2st_kernels.f
-      SUBROUTINE  ZHB2ST_KERNELS( UPLO, WANTZ, TTYPE, 
+      SUBROUTINE  ZHB2ST_KERNELS( UPLO, WANTZ, TTYPE,
      $                            ST, ED, SWEEP, N, NB, IB,
      $                            A, LDA, V, TAU, LDVT, WORK)
       IMPLICIT NONE
       CHARACTER          UPLO
       LOGICAL            WANTZ
       INTEGER            TTYPE, ST, ED, SWEEP, N, NB, IB, LDA, LDVT
-      COMPLEX*16         A( LDA, * ), V( * ), 
+      COMPLEX*16         A( LDA, * ), V( * ),
      $                   TAU( * ), WORK( * )
       COMPLEX*16         ZERO, ONE
       PARAMETER          ( ZERO = ( 0.0D+0, 0.0D+0 ),
      $                   ONE = ( 1.0D+0, 0.0D+0 ) )
       LOGICAL            UPPER
       INTEGER            I, J1, J2, LM, LN, VPOS, TAUPOS,
-     $                   DPOS, OFDPOS, AJETER 
-      COMPLEX*16         CTMP 
+     $                   DPOS, OFDPOS, AJETER
+      COMPLEX*16         CTMP
       EXTERNAL           ZLARFG, ZLARFX, ZLARFY
       INTRINSIC          DCONJG, MOD
       LOGICAL            LSAME
@@ -30619,10 +34372,10 @@
               V( VPOS ) = ONE
               DO 10 I = 1, LM-1
                   V( VPOS+I )         = DCONJG( A( OFDPOS-I, ST+I ) )
-                  A( OFDPOS-I, ST+I ) = ZERO  
+                  A( OFDPOS-I, ST+I ) = ZERO
    10         CONTINUE
               CTMP = DCONJG( A( OFDPOS, ST ) )
-              CALL ZLARFG( LM, CTMP, V( VPOS+1 ), 1, 
+              CALL ZLARFG( LM, CTMP, V( VPOS+1 ), 1,
      $                                       TAU( TAUPOS ) )
               A( OFDPOS, ST ) = CTMP
               LM = ED - ST + 1
@@ -30654,7 +34407,7 @@
                   ENDIF
                   V( VPOS ) = ONE
                   DO 30 I = 1, LM-1
-                      V( VPOS+I )          = 
+                      V( VPOS+I )          =
      $                                    DCONJG( A( DPOS-NB-I, J1+I ) )
                       A( DPOS-NB-I, J1+I ) = ZERO
    30             CONTINUE
@@ -30679,9 +34432,9 @@
               V( VPOS ) = ONE
               DO 20 I = 1, LM-1
                   V( VPOS+I )         = A( OFDPOS+I, ST-1 )
-                  A( OFDPOS+I, ST-1 ) = ZERO  
+                  A( OFDPOS+I, ST-1 ) = ZERO
    20         CONTINUE
-              CALL ZLARFG( LM, A( OFDPOS, ST-1 ), V( VPOS+1 ), 1, 
+              CALL ZLARFG( LM, A( OFDPOS, ST-1 ), V( VPOS+1 ), 1,
      $                                       TAU( TAUPOS ) )
               LM = ED - ST + 1
               CALL ZLARFY( UPLO, LM, V( VPOS ), 1,
@@ -30700,7 +34453,7 @@
               LN = ED-ST+1
               LM = J2-J1+1
               IF( LM.GT.0) THEN
-                  CALL ZLARFX( 'Right', LM, LN, V( VPOS ), 
+                  CALL ZLARFX( 'Right', LM, LN, V( VPOS ),
      $                         TAU( TAUPOS ), A( DPOS+NB, ST ),
      $                         LDA-1, WORK)
                   IF( WANTZ ) THEN
@@ -30715,17 +34468,16 @@
                       V( VPOS+I )        = A( DPOS+NB+I, ST )
                       A( DPOS+NB+I, ST ) = ZERO
    40             CONTINUE
-                  CALL ZLARFG( LM, A( DPOS+NB, ST ), V( VPOS+1 ), 1, 
+                  CALL ZLARFG( LM, A( DPOS+NB, ST ), V( VPOS+1 ), 1,
      $                                        TAU( TAUPOS ) )
-                  CALL ZLARFX( 'Left', LM, LN-1, V( VPOS ), 
+                  CALL ZLARFX( 'Left', LM, LN-1, V( VPOS ),
      $                         DCONJG( TAU( TAUPOS ) ),
      $                         A( DPOS+NB-1, ST+1 ), LDA-1, WORK)
-             
               ENDIF
           ENDIF
       ENDIF
       RETURN
-      END      
+      END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zheev.f
       SUBROUTINE ZHEEV( JOBZ, UPLO, N, A, LDA, W, WORK, LWORK, RWORK,
      $                  INFO )
@@ -30846,9 +34598,9 @@
       DOUBLE PRECISION   ANRM, BIGNUM, EPS, RMAX, RMIN, SAFMIN, SIGMA,
      $                   SMLNUM
       LOGICAL            LSAME
-      INTEGER            ILAENV
+      INTEGER            ILAENV2STAGE
       DOUBLE PRECISION   DLAMCH, ZLANHE
-      EXTERNAL           LSAME, ILAENV, DLAMCH, ZLANHE
+      EXTERNAL           LSAME, DLAMCH, ZLANHE, ILAENV2STAGE
       EXTERNAL           DSCAL, DSTERF, XERBLA, ZLASCL, ZSTEQR,
      $                   ZUNGTR, ZHETRD_2STAGE
       INTRINSIC          DBLE, MAX, SQRT
@@ -30866,10 +34618,10 @@
          INFO = -5
       END IF
       IF( INFO.EQ.0 ) THEN
-         KD    = ILAENV( 17, 'ZHETRD_2STAGE', JOBZ, N, -1, -1, -1 )
-         IB    = ILAENV( 18, 'ZHETRD_2STAGE', JOBZ, N, KD, -1, -1 )
-         LHTRD = ILAENV( 19, 'ZHETRD_2STAGE', JOBZ, N, KD, IB, -1 )
-         LWTRD = ILAENV( 20, 'ZHETRD_2STAGE', JOBZ, N, KD, IB, -1 )
+         KD    = ILAENV2STAGE( 1, 'ZHETRD_2STAGE', JOBZ, N, -1, -1, -1 )
+         IB    = ILAENV2STAGE( 2, 'ZHETRD_2STAGE', JOBZ, N, KD, -1, -1 )
+         LHTRD = ILAENV2STAGE( 3, 'ZHETRD_2STAGE', JOBZ, N, KD, IB, -1 )
+         LWTRD = ILAENV2STAGE( 4, 'ZHETRD_2STAGE', JOBZ, N, KD, IB, -1 )
          LWMIN = N + LHTRD + LWTRD
          WORK( 1 )  = LWMIN
          IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY )
@@ -31093,9 +34845,9 @@
       DOUBLE PRECISION   ANRM, BIGNUM, EPS, RMAX, RMIN, SAFMIN, SIGMA,
      $                   SMLNUM
       LOGICAL            LSAME
-      INTEGER            ILAENV
+      INTEGER            ILAENV2STAGE
       DOUBLE PRECISION   DLAMCH, ZLANHE
-      EXTERNAL           LSAME, ILAENV, DLAMCH, ZLANHE
+      EXTERNAL           LSAME, DLAMCH, ZLANHE, ILAENV2STAGE
       EXTERNAL           DSCAL, DSTERF, XERBLA, ZLACPY, ZLASCL,
      $                   ZSTEDC, ZUNMTR, ZHETRD_2STAGE
       INTRINSIC          DBLE, MAX, SQRT 
@@ -31118,10 +34870,14 @@
             LRWMIN = 1
             LIWMIN = 1
          ELSE
-            KD    = ILAENV( 17, 'ZHETRD_2STAGE', JOBZ, N, -1, -1, -1 )
-            IB    = ILAENV( 18, 'ZHETRD_2STAGE', JOBZ, N, KD, -1, -1 )
-            LHTRD = ILAENV( 19, 'ZHETRD_2STAGE', JOBZ, N, KD, IB, -1 )
-            LWTRD = ILAENV( 20, 'ZHETRD_2STAGE', JOBZ, N, KD, IB, -1 )
+            KD    = ILAENV2STAGE( 1, 'ZHETRD_2STAGE', JOBZ,
+     $                            N, -1, -1, -1 )
+            IB    = ILAENV2STAGE( 2, 'ZHETRD_2STAGE', JOBZ,
+     $                            N, KD, -1, -1 )
+            LHTRD = ILAENV2STAGE( 3, 'ZHETRD_2STAGE', JOBZ,
+     $                            N, KD, IB, -1 )
+            LWTRD = ILAENV2STAGE( 4, 'ZHETRD_2STAGE', JOBZ,
+     $                            N, KD, IB, -1 )
             IF( WANTZ ) THEN
                LWMIN = 2*N + N*N
                LRWMIN = 1 + 5*N + 2*N**2
@@ -31492,9 +35248,9 @@
       DOUBLE PRECISION   ABSTLL, ANRM, BIGNUM, EPS, RMAX, RMIN, SAFMIN,
      $                   SIGMA, SMLNUM, TMP1, VLL, VUU
       LOGICAL            LSAME
-      INTEGER            ILAENV
+      INTEGER            ILAENV, ILAENV2STAGE
       DOUBLE PRECISION   DLAMCH, ZLANSY
-      EXTERNAL           LSAME, ILAENV, DLAMCH, ZLANSY
+      EXTERNAL           LSAME, DLAMCH, ZLANSY, ILAENV, ILAENV2STAGE
       EXTERNAL           DCOPY, DSCAL, DSTEBZ, DSTERF, XERBLA, ZDSCAL,
      $                   ZHETRD_2STAGE, ZSTEMR, ZSTEIN, ZSWAP, ZUNMTR
       INTRINSIC          DBLE, MAX, MIN, SQRT
@@ -31506,10 +35262,10 @@
       INDEIG = LSAME( RANGE, 'I' )
       LQUERY = ( ( LWORK.EQ.-1 ) .OR. ( LRWORK.EQ.-1 ) .OR.
      $         ( LIWORK.EQ.-1 ) )
-      KD     = ILAENV( 17, 'DSYTRD_2STAGE', JOBZ, N, -1, -1, -1 )
-      IB     = ILAENV( 18, 'DSYTRD_2STAGE', JOBZ, N, KD, -1, -1 )
-      LHTRD  = ILAENV( 19, 'DSYTRD_2STAGE', JOBZ, N, KD, IB, -1 )
-      LWTRD  = ILAENV( 20, 'DSYTRD_2STAGE', JOBZ, N, KD, IB, -1 )
+      KD     = ILAENV2STAGE( 1, 'ZHETRD_2STAGE', JOBZ, N, -1, -1, -1 )
+      IB     = ILAENV2STAGE( 2, 'ZHETRD_2STAGE', JOBZ, N, KD, -1, -1 )
+      LHTRD  = ILAENV2STAGE( 3, 'ZHETRD_2STAGE', JOBZ, N, KD, IB, -1 )
+      LWTRD  = ILAENV2STAGE( 4, 'ZHETRD_2STAGE', JOBZ, N, KD, IB, -1 )
       LWMIN  = N + LHTRD + LWTRD
       LRWMIN = MAX( 1, 24*N )
       LIWMIN = MAX( 1, 10*N )
@@ -31990,9 +35746,9 @@
       DOUBLE PRECISION   ABSTLL, ANRM, BIGNUM, EPS, RMAX, RMIN, SAFMIN,
      $                   SIGMA, SMLNUM, TMP1, VLL, VUU
       LOGICAL            LSAME
-      INTEGER            ILAENV
+      INTEGER            ILAENV2STAGE
       DOUBLE PRECISION   DLAMCH, ZLANHE
-      EXTERNAL           LSAME, ILAENV, DLAMCH, ZLANHE
+      EXTERNAL           LSAME, DLAMCH, ZLANHE, ILAENV2STAGE
       EXTERNAL           DCOPY, DSCAL, DSTEBZ, DSTERF, XERBLA, ZDSCAL,
      $                   ZLACPY, ZSTEIN, ZSTEQR, ZSWAP, ZUNGTR, ZUNMTR,
      $                   ZHETRD_2STAGE
@@ -32036,10 +35792,14 @@
             LWMIN = 1
             WORK( 1 ) = LWMIN
          ELSE
-            KD    = ILAENV( 17, 'ZHETRD_2STAGE', JOBZ, N, -1, -1, -1 )
-            IB    = ILAENV( 18, 'ZHETRD_2STAGE', JOBZ, N, KD, -1, -1 )
-            LHTRD = ILAENV( 19, 'ZHETRD_2STAGE', JOBZ, N, KD, IB, -1 )
-            LWTRD = ILAENV( 20, 'ZHETRD_2STAGE', JOBZ, N, KD, IB, -1 )
+            KD    = ILAENV2STAGE( 1, 'ZHETRD_2STAGE', JOBZ,
+     $                            N, -1, -1, -1 )
+            IB    = ILAENV2STAGE( 2, 'ZHETRD_2STAGE', JOBZ,
+     $                            N, KD, -1, -1 )
+            LHTRD = ILAENV2STAGE( 3, 'ZHETRD_2STAGE', JOBZ,
+     $                            N, KD, IB, -1 )
+            LWTRD = ILAENV2STAGE( 4, 'ZHETRD_2STAGE', JOBZ,
+     $                            N, KD, IB, -1 )
             LWMIN = N + LHTRD + LWTRD
             WORK( 1 )  = LWMIN
          END IF
@@ -32457,198 +36217,6 @@
             END IF
          END IF
       END IF
-      RETURN
-      END
-! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zhegv.f
-      SUBROUTINE ZHEGV( ITYPE, JOBZ, UPLO, N, A, LDA, B, LDB, W, WORK,
-     $                  LWORK, RWORK, INFO )
-      CHARACTER          JOBZ, UPLO
-      INTEGER            INFO, ITYPE, LDA, LDB, LWORK, N
-      DOUBLE PRECISION   RWORK( * ), W( * )
-      COMPLEX*16         A( LDA, * ), B( LDB, * ), WORK( * )
-      COMPLEX*16         ONE
-      PARAMETER          ( ONE = ( 1.0D+0, 0.0D+0 ) )
-      LOGICAL            LQUERY, UPPER, WANTZ
-      CHARACTER          TRANS
-      INTEGER            LWKOPT, NB, NEIG
-      LOGICAL            LSAME
-      INTEGER            ILAENV
-      EXTERNAL           LSAME, ILAENV
-      EXTERNAL           XERBLA, ZHEEV, ZHEGST, ZPOTRF, ZTRMM, ZTRSM
-      INTRINSIC          MAX
-      WANTZ = LSAME( JOBZ, 'V' )
-      UPPER = LSAME( UPLO, 'U' )
-      LQUERY = ( LWORK.EQ.-1 )
-      INFO = 0
-      IF( ITYPE.LT.1 .OR. ITYPE.GT.3 ) THEN
-         INFO = -1
-      ELSE IF( .NOT.( WANTZ .OR. LSAME( JOBZ, 'N' ) ) ) THEN
-         INFO = -2
-      ELSE IF( .NOT.( UPPER .OR. LSAME( UPLO, 'L' ) ) ) THEN
-         INFO = -3
-      ELSE IF( N.LT.0 ) THEN
-         INFO = -4
-      ELSE IF( LDA.LT.MAX( 1, N ) ) THEN
-         INFO = -6
-      ELSE IF( LDB.LT.MAX( 1, N ) ) THEN
-         INFO = -8
-      END IF
-      IF( INFO.EQ.0 ) THEN
-         NB = ILAENV( 1, 'ZHETRD', UPLO, N, -1, -1, -1 )
-         LWKOPT = MAX( 1, ( NB + 1 )*N )
-         WORK( 1 ) = LWKOPT
-         IF( LWORK.LT.MAX( 1, 2*N - 1 ) .AND. .NOT.LQUERY ) THEN
-            INFO = -11
-         END IF
-      END IF
-      IF( INFO.NE.0 ) THEN
-         CALL XERBLA( 'ZHEGV ', -INFO )
-         RETURN
-      ELSE IF( LQUERY ) THEN
-         RETURN
-      END IF
-      IF( N.EQ.0 )
-     $   RETURN
-      CALL ZPOTRF( UPLO, N, B, LDB, INFO )
-      IF( INFO.NE.0 ) THEN
-         INFO = N + INFO
-         RETURN
-      END IF
-      CALL ZHEGST( ITYPE, UPLO, N, A, LDA, B, LDB, INFO )
-      CALL ZHEEV( JOBZ, UPLO, N, A, LDA, W, WORK, LWORK, RWORK, INFO )
-      IF( WANTZ ) THEN
-         NEIG = N
-         IF( INFO.GT.0 )
-     $      NEIG = INFO - 1
-         IF( ITYPE.EQ.1 .OR. ITYPE.EQ.2 ) THEN
-            IF( UPPER ) THEN
-               TRANS = 'N'
-            ELSE
-               TRANS = 'C'
-            END IF
-            CALL ZTRSM( 'Left', UPLO, TRANS, 'Non-unit', N, NEIG, ONE,
-     $                  B, LDB, A, LDA )
-         ELSE IF( ITYPE.EQ.3 ) THEN
-            IF( UPPER ) THEN
-               TRANS = 'C'
-            ELSE
-               TRANS = 'N'
-            END IF
-            CALL ZTRMM( 'Left', UPLO, TRANS, 'Non-unit', N, NEIG, ONE,
-     $                  B, LDB, A, LDA )
-         END IF
-      END IF
-      WORK( 1 ) = LWKOPT
-      RETURN
-      END
-! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zhegvx.f
-      SUBROUTINE ZHEGVX( ITYPE, JOBZ, RANGE, UPLO, N, A, LDA, B, LDB,
-     $                   VL, VU, IL, IU, ABSTOL, M, W, Z, LDZ, WORK,
-     $                   LWORK, RWORK, IWORK, IFAIL, INFO )
-      CHARACTER          JOBZ, RANGE, UPLO
-      INTEGER            IL, INFO, ITYPE, IU, LDA, LDB, LDZ, LWORK, M, N
-      DOUBLE PRECISION   ABSTOL, VL, VU
-      INTEGER            IFAIL( * ), IWORK( * )
-      DOUBLE PRECISION   RWORK( * ), W( * )
-      COMPLEX*16         A( LDA, * ), B( LDB, * ), WORK( * ),
-     $                   Z( LDZ, * )
-      COMPLEX*16         CONE
-      PARAMETER          ( CONE = ( 1.0D+0, 0.0D+0 ) )
-      LOGICAL            ALLEIG, INDEIG, LQUERY, UPPER, VALEIG, WANTZ
-      CHARACTER          TRANS
-      INTEGER            LWKOPT, NB
-      LOGICAL            LSAME
-      INTEGER            ILAENV
-      EXTERNAL           LSAME, ILAENV
-      EXTERNAL           XERBLA, ZHEEVX, ZHEGST, ZPOTRF, ZTRMM, ZTRSM
-      INTRINSIC          MAX, MIN
-      WANTZ = LSAME( JOBZ, 'V' )
-      UPPER = LSAME( UPLO, 'U' )
-      ALLEIG = LSAME( RANGE, 'A' )
-      VALEIG = LSAME( RANGE, 'V' )
-      INDEIG = LSAME( RANGE, 'I' )
-      LQUERY = ( LWORK.EQ.-1 )
-      INFO = 0
-      IF( ITYPE.LT.1 .OR. ITYPE.GT.3 ) THEN
-         INFO = -1
-      ELSE IF( .NOT.( WANTZ .OR. LSAME( JOBZ, 'N' ) ) ) THEN
-         INFO = -2
-      ELSE IF( .NOT.( ALLEIG .OR. VALEIG .OR. INDEIG ) ) THEN
-         INFO = -3
-      ELSE IF( .NOT.( UPPER .OR. LSAME( UPLO, 'L' ) ) ) THEN
-         INFO = -4
-      ELSE IF( N.LT.0 ) THEN
-         INFO = -5
-      ELSE IF( LDA.LT.MAX( 1, N ) ) THEN
-         INFO = -7
-      ELSE IF( LDB.LT.MAX( 1, N ) ) THEN
-         INFO = -9
-      ELSE
-         IF( VALEIG ) THEN
-            IF( N.GT.0 .AND. VU.LE.VL )
-     $         INFO = -11
-         ELSE IF( INDEIG ) THEN
-            IF( IL.LT.1 .OR. IL.GT.MAX( 1, N ) ) THEN
-               INFO = -12
-            ELSE IF( IU.LT.MIN( N, IL ) .OR. IU.GT.N ) THEN
-               INFO = -13
-            END IF
-         END IF
-      END IF
-      IF (INFO.EQ.0) THEN
-         IF (LDZ.LT.1 .OR. (WANTZ .AND. LDZ.LT.N)) THEN
-            INFO = -18
-         END IF
-      END IF
-      IF( INFO.EQ.0 ) THEN
-         NB = ILAENV( 1, 'ZHETRD', UPLO, N, -1, -1, -1 )
-         LWKOPT = MAX( 1, ( NB + 1 )*N )
-         WORK( 1 ) = LWKOPT
-         IF( LWORK.LT.MAX( 1, 2*N ) .AND. .NOT.LQUERY ) THEN
-            INFO = -20
-         END IF
-      END IF
-      IF( INFO.NE.0 ) THEN
-         CALL XERBLA( 'ZHEGVX', -INFO )
-         RETURN
-      ELSE IF( LQUERY ) THEN
-         RETURN
-      END IF
-      M = 0
-      IF( N.EQ.0 ) THEN
-         RETURN
-      END IF
-      CALL ZPOTRF( UPLO, N, B, LDB, INFO )
-      IF( INFO.NE.0 ) THEN
-         INFO = N + INFO
-         RETURN
-      END IF
-      CALL ZHEGST( ITYPE, UPLO, N, A, LDA, B, LDB, INFO )
-      CALL ZHEEVX( JOBZ, RANGE, UPLO, N, A, LDA, VL, VU, IL, IU, ABSTOL,
-     $             M, W, Z, LDZ, WORK, LWORK, RWORK, IWORK, IFAIL,
-     $             INFO )
-      IF( WANTZ ) THEN
-         IF( INFO.GT.0 )
-     $      M = INFO - 1
-         IF( ITYPE.EQ.1 .OR. ITYPE.EQ.2 ) THEN
-            IF( UPPER ) THEN
-               TRANS = 'N'
-            ELSE
-               TRANS = 'C'
-            END IF
-            CALL ZTRSM( 'Left', UPLO, TRANS, 'Non-unit', N, M, CONE, B,
-     $                  LDB, Z, LDZ )
-         ELSE IF( ITYPE.EQ.3 ) THEN
-            IF( UPPER ) THEN
-               TRANS = 'C'
-            ELSE
-               TRANS = 'N'
-            END IF
-            CALL ZTRMM( 'Left', UPLO, TRANS, 'Non-unit', N, M, CONE, B,
-     $                  LDB, Z, LDZ )
-         END IF
-      END IF
-      WORK( 1 ) = LWKOPT
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zhetd2.f
@@ -33079,16 +36647,16 @@
       INTEGER            KD, IB, LWMIN, LHMIN, LWRK, LDAB, WPOS, ABPOS
       EXTERNAL           XERBLA, ZHETRD_HE2HB, ZHETRD_HB2ST
       LOGICAL            LSAME
-      INTEGER            ILAENV
-      EXTERNAL           LSAME, ILAENV
+      INTEGER            ILAENV2STAGE
+      EXTERNAL           LSAME, ILAENV2STAGE
       INFO   = 0
       WANTQ  = LSAME( VECT, 'V' )
       UPPER  = LSAME( UPLO, 'U' )
       LQUERY = ( LWORK.EQ.-1 ) .OR. ( LHOUS2.EQ.-1 )
-      KD     = ILAENV( 17, 'ZHETRD_2STAGE', VECT, N, -1, -1, -1 )
-      IB     = ILAENV( 18, 'ZHETRD_2STAGE', VECT, N, KD, -1, -1 )
-      LHMIN  = ILAENV( 19, 'ZHETRD_2STAGE', VECT, N, KD, IB, -1 )
-      LWMIN  = ILAENV( 20, 'ZHETRD_2STAGE', VECT, N, KD, IB, -1 )
+      KD     = ILAENV2STAGE( 1, 'ZHETRD_2STAGE', VECT, N, -1, -1, -1 )
+      IB     = ILAENV2STAGE( 2, 'ZHETRD_2STAGE', VECT, N, KD, -1, -1 )
+      LHMIN  = ILAENV2STAGE( 3, 'ZHETRD_2STAGE', VECT, N, KD, IB, -1 )
+      LWMIN  = ILAENV2STAGE( 4, 'ZHETRD_2STAGE', VECT, N, KD, IB, -1 )
       IF( .NOT.LSAME( VECT, 'N' ) ) THEN
          INFO = -1
       ELSE IF( .NOT.UPPER .AND. .NOT.LSAME( UPLO, 'L' ) ) THEN
@@ -33163,20 +36731,20 @@
      $                   SIZEV, SIZETAU, LDV, LHMIN, LWMIN
       DOUBLE PRECISION   ABSTMP
       COMPLEX*16         TMP
-      EXTERNAL           ZHB2ST_KERNELS, ZLACPY, ZLASET
+      EXTERNAL           ZHB2ST_KERNELS, ZLACPY, ZLASET, XERBLA
       INTRINSIC          MIN, MAX, CEILING, DBLE, REAL
       LOGICAL            LSAME
-      INTEGER            ILAENV 
-      EXTERNAL           LSAME, ILAENV
+      INTEGER            ILAENV2STAGE 
+      EXTERNAL           LSAME, ILAENV2STAGE
       DEBUG   = 0
       INFO    = 0
       AFTERS1 = LSAME( STAGE1, 'Y' )
       WANTQ   = LSAME( VECT, 'V' )
       UPPER   = LSAME( UPLO, 'U' )
       LQUERY  = ( LWORK.EQ.-1 ) .OR. ( LHOUS.EQ.-1 )
-      IB     = ILAENV( 18, 'ZHETRD_HB2ST', VECT, N, KD, -1, -1 )
-      LHMIN  = ILAENV( 19, 'ZHETRD_HB2ST', VECT, N, KD, IB, -1 )
-      LWMIN  = ILAENV( 20, 'ZHETRD_HB2ST', VECT, N, KD, IB, -1 )
+      IB     = ILAENV2STAGE( 2, 'ZHETRD_HB2ST', VECT, N, KD, -1, -1 )
+      LHMIN  = ILAENV2STAGE( 3, 'ZHETRD_HB2ST', VECT, N, KD, IB, -1 )
+      LWMIN  = ILAENV2STAGE( 4, 'ZHETRD_HB2ST', VECT, N, KD, IB, -1 )
       IF( .NOT.AFTERS1 .AND. .NOT.LSAME( STAGE1, 'N' ) ) THEN
          INFO = -1
       ELSE IF( .NOT.LSAME( VECT, 'N' ) ) THEN
@@ -33396,16 +36964,16 @@
      $                   LDT, LDW, LDS2, LDS1, 
      $                   LS2, LS1, LW, LT,
      $                   TPOS, WPOS, S2POS, S1POS
-      EXTERNAL           XERBLA, ZHER2K, ZHEMM, ZGEMM,
+      EXTERNAL           XERBLA, ZHER2K, ZHEMM, ZGEMM, ZCOPY,
      $                   ZLARFT, ZGELQF, ZGEQRF, ZLASET
       INTRINSIC          MIN, MAX
       LOGICAL            LSAME
-      INTEGER            ILAENV 
-      EXTERNAL           LSAME, ILAENV
+      INTEGER            ILAENV2STAGE 
+      EXTERNAL           LSAME, ILAENV2STAGE
       INFO   = 0
       UPPER  = LSAME( UPLO, 'U' )
       LQUERY = ( LWORK.EQ.-1 )
-      LWMIN  = ILAENV( 20, 'ZHETRD_HE2HB', '', N, KD, -1, -1 )
+      LWMIN  = ILAENV2STAGE( 4, 'ZHETRD_HE2HB', '', N, KD, -1, -1 )
       
       IF( .NOT.UPPER .AND. .NOT.LSAME( UPLO, 'L' ) ) THEN
          INFO = -1
@@ -34206,6 +37774,209 @@
       IWORK( 1 ) = LIWMIN
       RETURN
       END
+! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zhpevx.f
+      SUBROUTINE ZHPEVX( JOBZ, RANGE, UPLO, N, AP, VL, VU, IL, IU,
+     $                   ABSTOL, M, W, Z, LDZ, WORK, RWORK, IWORK,
+     $                   IFAIL, INFO )
+      CHARACTER          JOBZ, RANGE, UPLO
+      INTEGER            IL, INFO, IU, LDZ, M, N
+      DOUBLE PRECISION   ABSTOL, VL, VU
+      INTEGER            IFAIL( * ), IWORK( * )
+      DOUBLE PRECISION   RWORK( * ), W( * )
+      COMPLEX*16         AP( * ), WORK( * ), Z( LDZ, * )
+      DOUBLE PRECISION   ZERO, ONE
+      PARAMETER          ( ZERO = 0.0D0, ONE = 1.0D0 )
+      COMPLEX*16         CONE
+      PARAMETER          ( CONE = ( 1.0D0, 0.0D0 ) )
+      LOGICAL            ALLEIG, INDEIG, TEST, VALEIG, WANTZ
+      CHARACTER          ORDER
+      INTEGER            I, IINFO, IMAX, INDD, INDE, INDEE, INDIBL,
+     $                   INDISP, INDIWK, INDRWK, INDTAU, INDWRK, ISCALE,
+     $                   ITMP1, J, JJ, NSPLIT
+      DOUBLE PRECISION   ABSTLL, ANRM, BIGNUM, EPS, RMAX, RMIN, SAFMIN,
+     $                   SIGMA, SMLNUM, TMP1, VLL, VUU
+      LOGICAL            LSAME
+      DOUBLE PRECISION   DLAMCH, ZLANHP
+      EXTERNAL           LSAME, DLAMCH, ZLANHP
+      EXTERNAL           DCOPY, DSCAL, DSTEBZ, DSTERF, XERBLA, ZDSCAL,
+     $                   ZHPTRD, ZSTEIN, ZSTEQR, ZSWAP, ZUPGTR, ZUPMTR
+      INTRINSIC          DBLE, MAX, MIN, SQRT
+      WANTZ = LSAME( JOBZ, 'V' )
+      ALLEIG = LSAME( RANGE, 'A' )
+      VALEIG = LSAME( RANGE, 'V' )
+      INDEIG = LSAME( RANGE, 'I' )
+      INFO = 0
+      IF( .NOT.( WANTZ .OR. LSAME( JOBZ, 'N' ) ) ) THEN
+         INFO = -1
+      ELSE IF( .NOT.( ALLEIG .OR. VALEIG .OR. INDEIG ) ) THEN
+         INFO = -2
+      ELSE IF( .NOT.( LSAME( UPLO, 'L' ) .OR. LSAME( UPLO, 'U' ) ) )
+     $          THEN
+         INFO = -3
+      ELSE IF( N.LT.0 ) THEN
+         INFO = -4
+      ELSE
+         IF( VALEIG ) THEN
+            IF( N.GT.0 .AND. VU.LE.VL )
+     $         INFO = -7
+         ELSE IF( INDEIG ) THEN
+            IF( IL.LT.1 .OR. IL.GT.MAX( 1, N ) ) THEN
+               INFO = -8
+            ELSE IF( IU.LT.MIN( N, IL ) .OR. IU.GT.N ) THEN
+               INFO = -9
+            END IF
+         END IF
+      END IF
+      IF( INFO.EQ.0 ) THEN
+         IF( LDZ.LT.1 .OR. ( WANTZ .AND. LDZ.LT.N ) )
+     $      INFO = -14
+      END IF
+      IF( INFO.NE.0 ) THEN
+         CALL XERBLA( 'ZHPEVX', -INFO )
+         RETURN
+      END IF
+      M = 0
+      IF( N.EQ.0 )
+     $   RETURN
+      IF( N.EQ.1 ) THEN
+         IF( ALLEIG .OR. INDEIG ) THEN
+            M = 1
+            W( 1 ) = AP( 1 )
+         ELSE
+            IF( VL.LT.DBLE( AP( 1 ) ) .AND. VU.GE.DBLE( AP( 1 ) ) ) THEN
+               M = 1
+               W( 1 ) = AP( 1 )
+            END IF
+         END IF
+         IF( WANTZ )
+     $      Z( 1, 1 ) = CONE
+         RETURN
+      END IF
+      SAFMIN = DLAMCH( 'Safe minimum' )
+      EPS = DLAMCH( 'Precision' )
+      SMLNUM = SAFMIN / EPS
+      BIGNUM = ONE / SMLNUM
+      RMIN = SQRT( SMLNUM )
+      RMAX = MIN( SQRT( BIGNUM ), ONE / SQRT( SQRT( SAFMIN ) ) )
+      ISCALE = 0
+      ABSTLL = ABSTOL
+      IF( VALEIG ) THEN
+         VLL = VL
+         VUU = VU
+      ELSE
+         VLL = ZERO
+         VUU = ZERO
+      END IF
+      ANRM = ZLANHP( 'M', UPLO, N, AP, RWORK )
+      IF( ANRM.GT.ZERO .AND. ANRM.LT.RMIN ) THEN
+         ISCALE = 1
+         SIGMA = RMIN / ANRM
+      ELSE IF( ANRM.GT.RMAX ) THEN
+         ISCALE = 1
+         SIGMA = RMAX / ANRM
+      END IF
+      IF( ISCALE.EQ.1 ) THEN
+         CALL ZDSCAL( ( N*( N+1 ) ) / 2, SIGMA, AP, 1 )
+         IF( ABSTOL.GT.0 )
+     $      ABSTLL = ABSTOL*SIGMA
+         IF( VALEIG ) THEN
+            VLL = VL*SIGMA
+            VUU = VU*SIGMA
+         END IF
+      END IF
+      INDD = 1
+      INDE = INDD + N
+      INDRWK = INDE + N
+      INDTAU = 1
+      INDWRK = INDTAU + N
+      CALL ZHPTRD( UPLO, N, AP, RWORK( INDD ), RWORK( INDE ),
+     $             WORK( INDTAU ), IINFO )
+      TEST = .FALSE.
+      IF (INDEIG) THEN
+         IF (IL.EQ.1 .AND. IU.EQ.N) THEN
+            TEST = .TRUE.
+         END IF
+      END IF
+      IF ((ALLEIG .OR. TEST) .AND. (ABSTOL.LE.ZERO)) THEN
+         CALL DCOPY( N, RWORK( INDD ), 1, W, 1 )
+         INDEE = INDRWK + 2*N
+         IF( .NOT.WANTZ ) THEN
+            CALL DCOPY( N-1, RWORK( INDE ), 1, RWORK( INDEE ), 1 )
+            CALL DSTERF( N, W, RWORK( INDEE ), INFO )
+         ELSE
+            CALL ZUPGTR( UPLO, N, AP, WORK( INDTAU ), Z, LDZ,
+     $                   WORK( INDWRK ), IINFO )
+            CALL DCOPY( N-1, RWORK( INDE ), 1, RWORK( INDEE ), 1 )
+            CALL ZSTEQR( JOBZ, N, W, RWORK( INDEE ), Z, LDZ,
+     $                   RWORK( INDRWK ), INFO )
+            IF( INFO.EQ.0 ) THEN
+               DO 10 I = 1, N
+                  IFAIL( I ) = 0
+   10          CONTINUE
+            END IF
+         END IF
+         IF( INFO.EQ.0 ) THEN
+            M = N
+            GO TO 20
+         END IF
+         INFO = 0
+      END IF
+      IF( WANTZ ) THEN
+         ORDER = 'B'
+      ELSE
+         ORDER = 'E'
+      END IF
+      INDIBL = 1
+      INDISP = INDIBL + N
+      INDIWK = INDISP + N
+      CALL DSTEBZ( RANGE, ORDER, N, VLL, VUU, IL, IU, ABSTLL,
+     $             RWORK( INDD ), RWORK( INDE ), M, NSPLIT, W,
+     $             IWORK( INDIBL ), IWORK( INDISP ), RWORK( INDRWK ),
+     $             IWORK( INDIWK ), INFO )
+      IF( WANTZ ) THEN
+         CALL ZSTEIN( N, RWORK( INDD ), RWORK( INDE ), M, W,
+     $                IWORK( INDIBL ), IWORK( INDISP ), Z, LDZ,
+     $                RWORK( INDRWK ), IWORK( INDIWK ), IFAIL, INFO )
+         INDWRK = INDTAU + N
+         CALL ZUPMTR( 'L', UPLO, 'N', N, M, AP, WORK( INDTAU ), Z, LDZ,
+     $                WORK( INDWRK ), IINFO )
+      END IF
+   20 CONTINUE
+      IF( ISCALE.EQ.1 ) THEN
+         IF( INFO.EQ.0 ) THEN
+            IMAX = M
+         ELSE
+            IMAX = INFO - 1
+         END IF
+         CALL DSCAL( IMAX, ONE / SIGMA, W, 1 )
+      END IF
+      IF( WANTZ ) THEN
+         DO 40 J = 1, M - 1
+            I = 0
+            TMP1 = W( J )
+            DO 30 JJ = J + 1, M
+               IF( W( JJ ).LT.TMP1 ) THEN
+                  I = JJ
+                  TMP1 = W( JJ )
+               END IF
+   30       CONTINUE
+            IF( I.NE.0 ) THEN
+               ITMP1 = IWORK( INDIBL+I-1 )
+               W( I ) = W( J )
+               IWORK( INDIBL+I-1 ) = IWORK( INDIBL+J-1 )
+               W( J ) = TMP1
+               IWORK( INDIBL+J-1 ) = ITMP1
+               CALL ZSWAP( N, Z( 1, I ), 1, Z( 1, J ), 1 )
+               IF( INFO.NE.0 ) THEN
+                  ITMP1 = IFAIL( I )
+                  IFAIL( I ) = IFAIL( J )
+                  IFAIL( J ) = ITMP1
+               END IF
+            END IF
+   40    CONTINUE
+      END IF
+      RETURN
+      END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zhpgst.f
       SUBROUTINE ZHPGST( ITYPE, UPLO, N, AP, BP, INFO )
       CHARACTER          UPLO
@@ -34485,6 +38256,98 @@
       WORK( 1 ) = LWMIN
       RWORK( 1 ) = LRWMIN
       IWORK( 1 ) = LIWMIN
+      RETURN
+      END
+! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zhpgvx.f
+      SUBROUTINE ZHPGVX( ITYPE, JOBZ, RANGE, UPLO, N, AP, BP, VL, VU,
+     $                   IL, IU, ABSTOL, M, W, Z, LDZ, WORK, RWORK,
+     $                   IWORK, IFAIL, INFO )
+      CHARACTER          JOBZ, RANGE, UPLO
+      INTEGER            IL, INFO, ITYPE, IU, LDZ, M, N
+      DOUBLE PRECISION   ABSTOL, VL, VU
+      INTEGER            IFAIL( * ), IWORK( * )
+      DOUBLE PRECISION   RWORK( * ), W( * )
+      COMPLEX*16         AP( * ), BP( * ), WORK( * ), Z( LDZ, * )
+      LOGICAL            ALLEIG, INDEIG, UPPER, VALEIG, WANTZ
+      CHARACTER          TRANS
+      INTEGER            J
+      LOGICAL            LSAME
+      EXTERNAL           LSAME
+      EXTERNAL           XERBLA, ZHPEVX, ZHPGST, ZPPTRF, ZTPMV, ZTPSV
+      INTRINSIC          MIN
+      WANTZ = LSAME( JOBZ, 'V' )
+      UPPER = LSAME( UPLO, 'U' )
+      ALLEIG = LSAME( RANGE, 'A' )
+      VALEIG = LSAME( RANGE, 'V' )
+      INDEIG = LSAME( RANGE, 'I' )
+      INFO = 0
+      IF( ITYPE.LT.1 .OR. ITYPE.GT.3 ) THEN
+         INFO = -1
+      ELSE IF( .NOT.( WANTZ .OR. LSAME( JOBZ, 'N' ) ) ) THEN
+         INFO = -2
+      ELSE IF( .NOT.( ALLEIG .OR. VALEIG .OR. INDEIG ) ) THEN
+         INFO = -3
+      ELSE IF( .NOT.( UPPER .OR. LSAME( UPLO, 'L' ) ) ) THEN
+         INFO = -4
+      ELSE IF( N.LT.0 ) THEN
+         INFO = -5
+      ELSE
+         IF( VALEIG ) THEN
+            IF( N.GT.0 .AND. VU.LE.VL ) THEN
+               INFO = -9
+            END IF
+         ELSE IF( INDEIG ) THEN
+            IF( IL.LT.1 ) THEN
+               INFO = -10
+            ELSE IF( IU.LT.MIN( N, IL ) .OR. IU.GT.N ) THEN
+               INFO = -11
+            END IF
+         END IF
+      END IF
+      IF( INFO.EQ.0 ) THEN
+         IF( LDZ.LT.1 .OR. ( WANTZ .AND. LDZ.LT.N ) ) THEN
+            INFO = -16
+         END IF
+      END IF
+      IF( INFO.NE.0 ) THEN
+         CALL XERBLA( 'ZHPGVX', -INFO )
+         RETURN
+      END IF
+      IF( N.EQ.0 )
+     $   RETURN
+      CALL ZPPTRF( UPLO, N, BP, INFO )
+      IF( INFO.NE.0 ) THEN
+         INFO = N + INFO
+         RETURN
+      END IF
+      CALL ZHPGST( ITYPE, UPLO, N, AP, BP, INFO )
+      CALL ZHPEVX( JOBZ, RANGE, UPLO, N, AP, VL, VU, IL, IU, ABSTOL, M,
+     $             W, Z, LDZ, WORK, RWORK, IWORK, IFAIL, INFO )
+      IF( WANTZ ) THEN
+         IF( INFO.GT.0 )
+     $      M = INFO - 1
+         IF( ITYPE.EQ.1 .OR. ITYPE.EQ.2 ) THEN
+            IF( UPPER ) THEN
+               TRANS = 'N'
+            ELSE
+               TRANS = 'C'
+            END IF
+            DO 10 J = 1, M
+               CALL ZTPSV( UPLO, TRANS, 'Non-unit', N, BP, Z( 1, J ),
+     $                     1 )
+   10       CONTINUE
+         ELSE IF( ITYPE.EQ.3 ) THEN
+            IF( UPPER ) THEN
+               TRANS = 'C'
+            ELSE
+               TRANS = 'N'
+            END IF
+            DO 20 J = 1, M
+               CALL ZTPMV( UPLO, TRANS, 'Non-unit', N, BP, Z( 1, J ),
+     $                     1 )
+   20       CONTINUE
+         END IF
+      END IF
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zhptrd.f
@@ -36294,6 +40157,145 @@
          END DO
       END IF
       ZLA_SYRPVGRW = RPVGRW
+      END
+! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zlabrd.f
+      SUBROUTINE ZLABRD( M, N, NB, A, LDA, D, E, TAUQ, TAUP, X, LDX, Y,
+     $                   LDY )
+      INTEGER            LDA, LDX, LDY, M, N, NB
+      DOUBLE PRECISION   D( * ), E( * )
+      COMPLEX*16         A( LDA, * ), TAUP( * ), TAUQ( * ), X( LDX, * ),
+     $                   Y( LDY, * )
+      COMPLEX*16         ZERO, ONE
+      PARAMETER          ( ZERO = ( 0.0D+0, 0.0D+0 ),
+     $                   ONE = ( 1.0D+0, 0.0D+0 ) )
+      INTEGER            I
+      COMPLEX*16         ALPHA
+      EXTERNAL           ZGEMV, ZLACGV, ZLARFG, ZSCAL
+      INTRINSIC          MIN
+      IF( M.LE.0 .OR. N.LE.0 )
+     $   RETURN
+      IF( M.GE.N ) THEN
+         DO 10 I = 1, NB
+            CALL ZLACGV( I-1, Y( I, 1 ), LDY )
+            CALL ZGEMV( 'No transpose', M-I+1, I-1, -ONE, A( I, 1 ),
+     $                  LDA, Y( I, 1 ), LDY, ONE, A( I, I ), 1 )
+            CALL ZLACGV( I-1, Y( I, 1 ), LDY )
+            CALL ZGEMV( 'No transpose', M-I+1, I-1, -ONE, X( I, 1 ),
+     $                  LDX, A( 1, I ), 1, ONE, A( I, I ), 1 )
+            ALPHA = A( I, I )
+            CALL ZLARFG( M-I+1, ALPHA, A( MIN( I+1, M ), I ), 1,
+     $                   TAUQ( I ) )
+            D( I ) = ALPHA
+            IF( I.LT.N ) THEN
+               A( I, I ) = ONE
+               CALL ZGEMV( 'Conjugate transpose', M-I+1, N-I, ONE,
+     $                     A( I, I+1 ), LDA, A( I, I ), 1, ZERO,
+     $                     Y( I+1, I ), 1 )
+               CALL ZGEMV( 'Conjugate transpose', M-I+1, I-1, ONE,
+     $                     A( I, 1 ), LDA, A( I, I ), 1, ZERO,
+     $                     Y( 1, I ), 1 )
+               CALL ZGEMV( 'No transpose', N-I, I-1, -ONE, Y( I+1, 1 ),
+     $                     LDY, Y( 1, I ), 1, ONE, Y( I+1, I ), 1 )
+               CALL ZGEMV( 'Conjugate transpose', M-I+1, I-1, ONE,
+     $                     X( I, 1 ), LDX, A( I, I ), 1, ZERO,
+     $                     Y( 1, I ), 1 )
+               CALL ZGEMV( 'Conjugate transpose', I-1, N-I, -ONE,
+     $                     A( 1, I+1 ), LDA, Y( 1, I ), 1, ONE,
+     $                     Y( I+1, I ), 1 )
+               CALL ZSCAL( N-I, TAUQ( I ), Y( I+1, I ), 1 )
+               CALL ZLACGV( N-I, A( I, I+1 ), LDA )
+               CALL ZLACGV( I, A( I, 1 ), LDA )
+               CALL ZGEMV( 'No transpose', N-I, I, -ONE, Y( I+1, 1 ),
+     $                     LDY, A( I, 1 ), LDA, ONE, A( I, I+1 ), LDA )
+               CALL ZLACGV( I, A( I, 1 ), LDA )
+               CALL ZLACGV( I-1, X( I, 1 ), LDX )
+               CALL ZGEMV( 'Conjugate transpose', I-1, N-I, -ONE,
+     $                     A( 1, I+1 ), LDA, X( I, 1 ), LDX, ONE,
+     $                     A( I, I+1 ), LDA )
+               CALL ZLACGV( I-1, X( I, 1 ), LDX )
+               ALPHA = A( I, I+1 )
+               CALL ZLARFG( N-I, ALPHA, A( I, MIN( I+2, N ) ), LDA,
+     $                      TAUP( I ) )
+               E( I ) = ALPHA
+               A( I, I+1 ) = ONE
+               CALL ZGEMV( 'No transpose', M-I, N-I, ONE, A( I+1, I+1 ),
+     $                     LDA, A( I, I+1 ), LDA, ZERO, X( I+1, I ), 1 )
+               CALL ZGEMV( 'Conjugate transpose', N-I, I, ONE,
+     $                     Y( I+1, 1 ), LDY, A( I, I+1 ), LDA, ZERO,
+     $                     X( 1, I ), 1 )
+               CALL ZGEMV( 'No transpose', M-I, I, -ONE, A( I+1, 1 ),
+     $                     LDA, X( 1, I ), 1, ONE, X( I+1, I ), 1 )
+               CALL ZGEMV( 'No transpose', I-1, N-I, ONE, A( 1, I+1 ),
+     $                     LDA, A( I, I+1 ), LDA, ZERO, X( 1, I ), 1 )
+               CALL ZGEMV( 'No transpose', M-I, I-1, -ONE, X( I+1, 1 ),
+     $                     LDX, X( 1, I ), 1, ONE, X( I+1, I ), 1 )
+               CALL ZSCAL( M-I, TAUP( I ), X( I+1, I ), 1 )
+               CALL ZLACGV( N-I, A( I, I+1 ), LDA )
+            END IF
+   10    CONTINUE
+      ELSE
+         DO 20 I = 1, NB
+            CALL ZLACGV( N-I+1, A( I, I ), LDA )
+            CALL ZLACGV( I-1, A( I, 1 ), LDA )
+            CALL ZGEMV( 'No transpose', N-I+1, I-1, -ONE, Y( I, 1 ),
+     $                  LDY, A( I, 1 ), LDA, ONE, A( I, I ), LDA )
+            CALL ZLACGV( I-1, A( I, 1 ), LDA )
+            CALL ZLACGV( I-1, X( I, 1 ), LDX )
+            CALL ZGEMV( 'Conjugate transpose', I-1, N-I+1, -ONE,
+     $                  A( 1, I ), LDA, X( I, 1 ), LDX, ONE, A( I, I ),
+     $                  LDA )
+            CALL ZLACGV( I-1, X( I, 1 ), LDX )
+            ALPHA = A( I, I )
+            CALL ZLARFG( N-I+1, ALPHA, A( I, MIN( I+1, N ) ), LDA,
+     $                   TAUP( I ) )
+            D( I ) = ALPHA
+            IF( I.LT.M ) THEN
+               A( I, I ) = ONE
+               CALL ZGEMV( 'No transpose', M-I, N-I+1, ONE, A( I+1, I ),
+     $                     LDA, A( I, I ), LDA, ZERO, X( I+1, I ), 1 )
+               CALL ZGEMV( 'Conjugate transpose', N-I+1, I-1, ONE,
+     $                     Y( I, 1 ), LDY, A( I, I ), LDA, ZERO,
+     $                     X( 1, I ), 1 )
+               CALL ZGEMV( 'No transpose', M-I, I-1, -ONE, A( I+1, 1 ),
+     $                     LDA, X( 1, I ), 1, ONE, X( I+1, I ), 1 )
+               CALL ZGEMV( 'No transpose', I-1, N-I+1, ONE, A( 1, I ),
+     $                     LDA, A( I, I ), LDA, ZERO, X( 1, I ), 1 )
+               CALL ZGEMV( 'No transpose', M-I, I-1, -ONE, X( I+1, 1 ),
+     $                     LDX, X( 1, I ), 1, ONE, X( I+1, I ), 1 )
+               CALL ZSCAL( M-I, TAUP( I ), X( I+1, I ), 1 )
+               CALL ZLACGV( N-I+1, A( I, I ), LDA )
+               CALL ZLACGV( I-1, Y( I, 1 ), LDY )
+               CALL ZGEMV( 'No transpose', M-I, I-1, -ONE, A( I+1, 1 ),
+     $                     LDA, Y( I, 1 ), LDY, ONE, A( I+1, I ), 1 )
+               CALL ZLACGV( I-1, Y( I, 1 ), LDY )
+               CALL ZGEMV( 'No transpose', M-I, I, -ONE, X( I+1, 1 ),
+     $                     LDX, A( 1, I ), 1, ONE, A( I+1, I ), 1 )
+               ALPHA = A( I+1, I )
+               CALL ZLARFG( M-I, ALPHA, A( MIN( I+2, M ), I ), 1,
+     $                      TAUQ( I ) )
+               E( I ) = ALPHA
+               A( I+1, I ) = ONE
+               CALL ZGEMV( 'Conjugate transpose', M-I, N-I, ONE,
+     $                     A( I+1, I+1 ), LDA, A( I+1, I ), 1, ZERO,
+     $                     Y( I+1, I ), 1 )
+               CALL ZGEMV( 'Conjugate transpose', M-I, I-1, ONE,
+     $                     A( I+1, 1 ), LDA, A( I+1, I ), 1, ZERO,
+     $                     Y( 1, I ), 1 )
+               CALL ZGEMV( 'No transpose', N-I, I-1, -ONE, Y( I+1, 1 ),
+     $                     LDY, Y( 1, I ), 1, ONE, Y( I+1, I ), 1 )
+               CALL ZGEMV( 'Conjugate transpose', M-I, I, ONE,
+     $                     X( I+1, 1 ), LDX, A( I+1, I ), 1, ZERO,
+     $                     Y( 1, I ), 1 )
+               CALL ZGEMV( 'Conjugate transpose', I, N-I, -ONE,
+     $                     A( 1, I+1 ), LDA, Y( 1, I ), 1, ONE,
+     $                     Y( I+1, I ), 1 )
+               CALL ZSCAL( N-I, TAUQ( I ), Y( I+1, I ), 1 )
+            ELSE
+               CALL ZLACGV( N-I+1, A( I, I ), LDA )
+            END IF
+   20    CONTINUE
+      END IF
+      RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zlacgv.f
       SUBROUTINE ZLACGV( N, X, INCX )
@@ -40245,6 +44247,9 @@
       INTRINSIC          ABS, DBLE, DIMAG
       DOUBLE PRECISION   CABS1
       CABS1( CDUM ) = ABS( DBLE( CDUM ) ) + ABS( DIMAG( CDUM ) )
+      IF( N.NE.2 .AND. N.NE.3 ) THEN
+         RETURN
+      END IF
       IF( N.EQ.2 ) THEN
          S = CABS1( H( 1, 1 )-S2 ) + CABS1( H( 2, 1 ) )
          IF( S.EQ.RZERO ) THEN
@@ -41765,7 +45770,7 @@
             BETA = BETA*RSAFMN
             ALPHI = ALPHI*RSAFMN
             ALPHR = ALPHR*RSAFMN
-            IF( ABS( BETA ).LT.SAFMIN )
+            IF( (ABS( BETA ).LT.SAFMIN) .AND. (KNT .LT. 20) )
      $         GO TO 10
             XNORM = DZNRM2( N-1, X, INCX )
             ALPHA = DCMPLX( ALPHR, ALPHI )
@@ -43568,7 +47573,7 @@
       COMPLEX*16         ZDOTC, ZDOTU, ZLADIV
       EXTERNAL           LSAME, IDAMAX, IZAMAX, DLAMCH, DZASUM, ZDOTC,
      $                   ZDOTU, ZLADIV
-      EXTERNAL           DSCAL, XERBLA, ZAXPY, ZDSCAL, ZTRSV
+      EXTERNAL           DSCAL, XERBLA, ZAXPY, ZDSCAL, ZTRSV, DLABAD
       INTRINSIC          ABS, DBLE, DCMPLX, DCONJG, DIMAG, MAX, MIN
       DOUBLE PRECISION   CABS1, CABS2
       CABS1( ZDUM ) = ABS( DBLE( ZDUM ) ) + ABS( DIMAG( ZDUM ) )
@@ -45448,7 +49453,7 @@
       DOUBLE PRECISION   DLAMCH, DZASUM
       EXTERNAL           LSAME, ILAENV, IZAMAX, DLAMCH, DZASUM
       EXTERNAL           XERBLA, ZCOPY, ZDSCAL, ZGEMV, ZLATRS,
-     $                   ZGEMM, DLABAD, ZLASET
+     $                   ZGEMM, DLABAD, ZLASET, ZLACPY
       INTRINSIC          ABS, DBLE, DCMPLX, CONJG, AIMAG, MAX
       DOUBLE PRECISION   CABS1
       CABS1( CDUM ) = ABS( DBLE( CDUM ) ) + ABS( AIMAG( CDUM ) )
@@ -45942,6 +49947,116 @@
    40 CONTINUE
       RETURN
       END
+! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zungbr.f
+      SUBROUTINE ZUNGBR( VECT, M, N, K, A, LDA, TAU, WORK, LWORK, INFO )
+      CHARACTER          VECT
+      INTEGER            INFO, K, LDA, LWORK, M, N
+      COMPLEX*16         A( LDA, * ), TAU( * ), WORK( * )
+      COMPLEX*16         ZERO, ONE
+      PARAMETER          ( ZERO = ( 0.0D+0, 0.0D+0 ),
+     $                   ONE = ( 1.0D+0, 0.0D+0 ) )
+      LOGICAL            LQUERY, WANTQ
+      INTEGER            I, IINFO, J, LWKOPT, MN
+      LOGICAL            LSAME
+      EXTERNAL           LSAME
+      EXTERNAL           XERBLA, ZUNGLQ, ZUNGQR
+      INTRINSIC          MAX, MIN
+      INFO = 0
+      WANTQ = LSAME( VECT, 'Q' )
+      MN = MIN( M, N )
+      LQUERY = ( LWORK.EQ.-1 )
+      IF( .NOT.WANTQ .AND. .NOT.LSAME( VECT, 'P' ) ) THEN
+         INFO = -1
+      ELSE IF( M.LT.0 ) THEN
+         INFO = -2
+      ELSE IF( N.LT.0 .OR. ( WANTQ .AND. ( N.GT.M .OR. N.LT.MIN( M,
+     $         K ) ) ) .OR. ( .NOT.WANTQ .AND. ( M.GT.N .OR. M.LT.
+     $         MIN( N, K ) ) ) ) THEN
+         INFO = -3
+      ELSE IF( K.LT.0 ) THEN
+         INFO = -4
+      ELSE IF( LDA.LT.MAX( 1, M ) ) THEN
+         INFO = -6
+      ELSE IF( LWORK.LT.MAX( 1, MN ) .AND. .NOT.LQUERY ) THEN
+         INFO = -9
+      END IF
+      IF( INFO.EQ.0 ) THEN
+         WORK( 1 ) = 1
+         IF( WANTQ ) THEN
+            IF( M.GE.K ) THEN
+               CALL ZUNGQR( M, N, K, A, LDA, TAU, WORK, -1, IINFO )
+            ELSE
+               IF( M.GT.1 ) THEN
+                  CALL ZUNGQR( M-1, M-1, M-1, A( 2, 2 ), LDA, TAU, WORK,
+     $                         -1, IINFO )
+               END IF
+            END IF
+         ELSE
+            IF( K.LT.N ) THEN
+               CALL ZUNGLQ( M, N, K, A, LDA, TAU, WORK, -1, IINFO )
+            ELSE
+               IF( N.GT.1 ) THEN
+                  CALL ZUNGLQ( N-1, N-1, N-1, A( 2, 2 ), LDA, TAU, WORK,
+     $                         -1, IINFO )
+               END IF
+            END IF
+         END IF
+         LWKOPT = WORK( 1 )
+         LWKOPT = MAX (LWKOPT, MN)
+      END IF
+      IF( INFO.NE.0 ) THEN
+         CALL XERBLA( 'ZUNGBR', -INFO )
+         RETURN
+      ELSE IF( LQUERY ) THEN
+         WORK( 1 ) = LWKOPT
+         RETURN
+      END IF
+      IF( M.EQ.0 .OR. N.EQ.0 ) THEN
+         WORK( 1 ) = 1
+         RETURN
+      END IF
+      IF( WANTQ ) THEN
+         IF( M.GE.K ) THEN
+            CALL ZUNGQR( M, N, K, A, LDA, TAU, WORK, LWORK, IINFO )
+         ELSE
+            DO 20 J = M, 2, -1
+               A( 1, J ) = ZERO
+               DO 10 I = J + 1, M
+                  A( I, J ) = A( I, J-1 )
+   10          CONTINUE
+   20       CONTINUE
+            A( 1, 1 ) = ONE
+            DO 30 I = 2, M
+               A( I, 1 ) = ZERO
+   30       CONTINUE
+            IF( M.GT.1 ) THEN
+               CALL ZUNGQR( M-1, M-1, M-1, A( 2, 2 ), LDA, TAU, WORK,
+     $                      LWORK, IINFO )
+            END IF
+         END IF
+      ELSE
+         IF( K.LT.N ) THEN
+            CALL ZUNGLQ( M, N, K, A, LDA, TAU, WORK, LWORK, IINFO )
+         ELSE
+            A( 1, 1 ) = ONE
+            DO 40 I = 2, N
+               A( I, 1 ) = ZERO
+   40       CONTINUE
+            DO 60 J = 2, N
+               DO 50 I = J - 1, 2, -1
+                  A( I, J ) = A( I-1, J )
+   50          CONTINUE
+               A( 1, J ) = ZERO
+   60       CONTINUE
+            IF( N.GT.1 ) THEN
+               CALL ZUNGLQ( N-1, N-1, N-1, A( 2, 2 ), LDA, TAU, WORK,
+     $                      LWORK, IINFO )
+            END IF
+         END IF
+      END IF
+      WORK( 1 ) = LWKOPT
+      RETURN
+      END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zunghr.f
       SUBROUTINE ZUNGHR( N, ILO, IHI, A, LDA, TAU, WORK, LWORK, INFO )
       INTEGER            IHI, ILO, INFO, LDA, LWORK, N
@@ -46012,6 +50127,149 @@
      $                WORK, LWORK, IINFO )
       END IF
       WORK( 1 ) = LWKOPT
+      RETURN
+      END
+! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zungl2.f
+      SUBROUTINE ZUNGL2( M, N, K, A, LDA, TAU, WORK, INFO )
+      INTEGER            INFO, K, LDA, M, N
+      COMPLEX*16         A( LDA, * ), TAU( * ), WORK( * )
+      COMPLEX*16         ONE, ZERO
+      PARAMETER          ( ONE = ( 1.0D+0, 0.0D+0 ),
+     $                   ZERO = ( 0.0D+0, 0.0D+0 ) )
+      INTEGER            I, J, L
+      EXTERNAL           XERBLA, ZLACGV, ZLARF, ZSCAL
+      INTRINSIC          DCONJG, MAX
+      INFO = 0
+      IF( M.LT.0 ) THEN
+         INFO = -1
+      ELSE IF( N.LT.M ) THEN
+         INFO = -2
+      ELSE IF( K.LT.0 .OR. K.GT.M ) THEN
+         INFO = -3
+      ELSE IF( LDA.LT.MAX( 1, M ) ) THEN
+         INFO = -5
+      END IF
+      IF( INFO.NE.0 ) THEN
+         CALL XERBLA( 'ZUNGL2', -INFO )
+         RETURN
+      END IF
+      IF( M.LE.0 )
+     $   RETURN
+      IF( K.LT.M ) THEN
+         DO 20 J = 1, N
+            DO 10 L = K + 1, M
+               A( L, J ) = ZERO
+   10       CONTINUE
+            IF( J.GT.K .AND. J.LE.M )
+     $         A( J, J ) = ONE
+   20    CONTINUE
+      END IF
+      DO 40 I = K, 1, -1
+         IF( I.LT.N ) THEN
+            CALL ZLACGV( N-I, A( I, I+1 ), LDA )
+            IF( I.LT.M ) THEN
+               A( I, I ) = ONE
+               CALL ZLARF( 'Right', M-I, N-I+1, A( I, I ), LDA,
+     $                     DCONJG( TAU( I ) ), A( I+1, I ), LDA, WORK )
+            END IF
+            CALL ZSCAL( N-I, -TAU( I ), A( I, I+1 ), LDA )
+            CALL ZLACGV( N-I, A( I, I+1 ), LDA )
+         END IF
+         A( I, I ) = ONE - DCONJG( TAU( I ) )
+         DO 30 L = 1, I - 1
+            A( I, L ) = ZERO
+   30    CONTINUE
+   40 CONTINUE
+      RETURN
+      END
+! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zunglq.f
+      SUBROUTINE ZUNGLQ( M, N, K, A, LDA, TAU, WORK, LWORK, INFO )
+      INTEGER            INFO, K, LDA, LWORK, M, N
+      COMPLEX*16         A( LDA, * ), TAU( * ), WORK( * )
+      COMPLEX*16         ZERO
+      PARAMETER          ( ZERO = ( 0.0D+0, 0.0D+0 ) )
+      LOGICAL            LQUERY
+      INTEGER            I, IB, IINFO, IWS, J, KI, KK, L, LDWORK,
+     $                   LWKOPT, NB, NBMIN, NX
+      EXTERNAL           XERBLA, ZLARFB, ZLARFT, ZUNGL2
+      INTRINSIC          MAX, MIN
+      INTEGER            ILAENV
+      EXTERNAL           ILAENV
+      INFO = 0
+      NB = ILAENV( 1, 'ZUNGLQ', ' ', M, N, K, -1 )
+      LWKOPT = MAX( 1, M )*NB
+      WORK( 1 ) = LWKOPT
+      LQUERY = ( LWORK.EQ.-1 )
+      IF( M.LT.0 ) THEN
+         INFO = -1
+      ELSE IF( N.LT.M ) THEN
+         INFO = -2
+      ELSE IF( K.LT.0 .OR. K.GT.M ) THEN
+         INFO = -3
+      ELSE IF( LDA.LT.MAX( 1, M ) ) THEN
+         INFO = -5
+      ELSE IF( LWORK.LT.MAX( 1, M ) .AND. .NOT.LQUERY ) THEN
+         INFO = -8
+      END IF
+      IF( INFO.NE.0 ) THEN
+         CALL XERBLA( 'ZUNGLQ', -INFO )
+         RETURN
+      ELSE IF( LQUERY ) THEN
+         RETURN
+      END IF
+      IF( M.LE.0 ) THEN
+         WORK( 1 ) = 1
+         RETURN
+      END IF
+      NBMIN = 2
+      NX = 0
+      IWS = M
+      IF( NB.GT.1 .AND. NB.LT.K ) THEN
+         NX = MAX( 0, ILAENV( 3, 'ZUNGLQ', ' ', M, N, K, -1 ) )
+         IF( NX.LT.K ) THEN
+            LDWORK = M
+            IWS = LDWORK*NB
+            IF( LWORK.LT.IWS ) THEN
+               NB = LWORK / LDWORK
+               NBMIN = MAX( 2, ILAENV( 2, 'ZUNGLQ', ' ', M, N, K, -1 ) )
+            END IF
+         END IF
+      END IF
+      IF( NB.GE.NBMIN .AND. NB.LT.K .AND. NX.LT.K ) THEN
+         KI = ( ( K-NX-1 ) / NB )*NB
+         KK = MIN( K, KI+NB )
+         DO 20 J = 1, KK
+            DO 10 I = KK + 1, M
+               A( I, J ) = ZERO
+   10       CONTINUE
+   20    CONTINUE
+      ELSE
+         KK = 0
+      END IF
+      IF( KK.LT.M )
+     $   CALL ZUNGL2( M-KK, N-KK, K-KK, A( KK+1, KK+1 ), LDA,
+     $                TAU( KK+1 ), WORK, IINFO )
+      IF( KK.GT.0 ) THEN
+         DO 50 I = KI + 1, 1, -NB
+            IB = MIN( NB, K-I+1 )
+            IF( I+IB.LE.M ) THEN
+               CALL ZLARFT( 'Forward', 'Rowwise', N-I+1, IB, A( I, I ),
+     $                      LDA, TAU( I ), WORK, LDWORK )
+               CALL ZLARFB( 'Right', 'Conjugate transpose', 'Forward',
+     $                      'Rowwise', M-I-IB+1, N-I+1, IB, A( I, I ),
+     $                      LDA, WORK, LDWORK, A( I+IB, I ), LDA,
+     $                      WORK( IB+1 ), LDWORK )
+            END IF
+            CALL ZUNGL2( IB, N-I+1, IB, A( I, I ), LDA, TAU( I ), WORK,
+     $                   IINFO )
+            DO 40 J = 1, I - 1
+               DO 30 L = I, I + IB - 1
+                  A( L, J ) = ZERO
+   30          CONTINUE
+   40       CONTINUE
+   50    CONTINUE
+      END IF
+      WORK( 1 ) = IWS
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zungql.f
@@ -46431,6 +50689,136 @@
    10 CONTINUE
       RETURN
       END
+! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zunmbr.f
+      SUBROUTINE ZUNMBR( VECT, SIDE, TRANS, M, N, K, A, LDA, TAU, C,
+     $                   LDC, WORK, LWORK, INFO )
+      CHARACTER          SIDE, TRANS, VECT
+      INTEGER            INFO, K, LDA, LDC, LWORK, M, N
+      COMPLEX*16         A( LDA, * ), C( LDC, * ), TAU( * ), WORK( * )
+      LOGICAL            APPLYQ, LEFT, LQUERY, NOTRAN
+      CHARACTER          TRANST
+      INTEGER            I1, I2, IINFO, LWKOPT, MI, NB, NI, NQ, NW
+      LOGICAL            LSAME
+      INTEGER            ILAENV
+      EXTERNAL           LSAME, ILAENV
+      EXTERNAL           XERBLA, ZUNMLQ, ZUNMQR
+      INTRINSIC          MAX, MIN
+      INFO = 0
+      APPLYQ = LSAME( VECT, 'Q' )
+      LEFT = LSAME( SIDE, 'L' )
+      NOTRAN = LSAME( TRANS, 'N' )
+      LQUERY = ( LWORK.EQ.-1 )
+      IF( LEFT ) THEN
+         NQ = M
+         NW = N
+      ELSE
+         NQ = N
+         NW = M
+      END IF
+      IF( M.EQ.0 .OR. N.EQ.0 ) THEN
+         NW = 0
+      END IF
+      IF( .NOT.APPLYQ .AND. .NOT.LSAME( VECT, 'P' ) ) THEN
+         INFO = -1
+      ELSE IF( .NOT.LEFT .AND. .NOT.LSAME( SIDE, 'R' ) ) THEN
+         INFO = -2
+      ELSE IF( .NOT.NOTRAN .AND. .NOT.LSAME( TRANS, 'C' ) ) THEN
+         INFO = -3
+      ELSE IF( M.LT.0 ) THEN
+         INFO = -4
+      ELSE IF( N.LT.0 ) THEN
+         INFO = -5
+      ELSE IF( K.LT.0 ) THEN
+         INFO = -6
+      ELSE IF( ( APPLYQ .AND. LDA.LT.MAX( 1, NQ ) ) .OR.
+     $         ( .NOT.APPLYQ .AND. LDA.LT.MAX( 1, MIN( NQ, K ) ) ) )
+     $          THEN
+         INFO = -8
+      ELSE IF( LDC.LT.MAX( 1, M ) ) THEN
+         INFO = -11
+      ELSE IF( LWORK.LT.MAX( 1, NW ) .AND. .NOT.LQUERY ) THEN
+         INFO = -13
+      END IF
+      IF( INFO.EQ.0 ) THEN
+         IF( NW.GT.0 ) THEN
+            IF( APPLYQ ) THEN
+               IF( LEFT ) THEN
+                  NB = ILAENV( 1, 'ZUNMQR', SIDE // TRANS, M-1, N, M-1,
+     $                 -1 )
+               ELSE
+                  NB = ILAENV( 1, 'ZUNMQR', SIDE // TRANS, M, N-1, N-1,
+     $                 -1 )
+               END IF
+            ELSE
+               IF( LEFT ) THEN
+                  NB = ILAENV( 1, 'ZUNMLQ', SIDE // TRANS, M-1, N, M-1,
+     $                 -1 )
+               ELSE
+                  NB = ILAENV( 1, 'ZUNMLQ', SIDE // TRANS, M, N-1, N-1,
+     $                 -1 )
+               END IF
+            END IF
+            LWKOPT = MAX( 1, NW*NB )
+         ELSE
+            LWKOPT = 1
+         END IF
+         WORK( 1 ) = LWKOPT
+      END IF
+      IF( INFO.NE.0 ) THEN
+         CALL XERBLA( 'ZUNMBR', -INFO )
+         RETURN
+      ELSE IF( LQUERY ) THEN
+         RETURN
+      END IF
+      IF( M.EQ.0 .OR. N.EQ.0 )
+     $   RETURN
+      IF( APPLYQ ) THEN
+         IF( NQ.GE.K ) THEN
+            CALL ZUNMQR( SIDE, TRANS, M, N, K, A, LDA, TAU, C, LDC,
+     $                   WORK, LWORK, IINFO )
+         ELSE IF( NQ.GT.1 ) THEN
+            IF( LEFT ) THEN
+               MI = M - 1
+               NI = N
+               I1 = 2
+               I2 = 1
+            ELSE
+               MI = M
+               NI = N - 1
+               I1 = 1
+               I2 = 2
+            END IF
+            CALL ZUNMQR( SIDE, TRANS, MI, NI, NQ-1, A( 2, 1 ), LDA, TAU,
+     $                   C( I1, I2 ), LDC, WORK, LWORK, IINFO )
+         END IF
+      ELSE
+         IF( NOTRAN ) THEN
+            TRANST = 'C'
+         ELSE
+            TRANST = 'N'
+         END IF
+         IF( NQ.GT.K ) THEN
+            CALL ZUNMLQ( SIDE, TRANST, M, N, K, A, LDA, TAU, C, LDC,
+     $                   WORK, LWORK, IINFO )
+         ELSE IF( NQ.GT.1 ) THEN
+            IF( LEFT ) THEN
+               MI = M - 1
+               NI = N
+               I1 = 2
+               I2 = 1
+            ELSE
+               MI = M
+               NI = N - 1
+               I1 = 1
+               I2 = 2
+            END IF
+            CALL ZUNMLQ( SIDE, TRANST, MI, NI, NQ-1, A( 1, 2 ), LDA,
+     $                   TAU, C( I1, I2 ), LDC, WORK, LWORK, IINFO )
+         END IF
+      END IF
+      WORK( 1 ) = LWKOPT
+      RETURN
+      END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zunmhr.f
       SUBROUTINE ZUNMHR( SIDE, TRANS, M, N, ILO, IHI, A, LDA, TAU, C,
      $                   LDC, WORK, LWORK, INFO )
@@ -46507,6 +50895,208 @@
       END IF
       CALL ZUNMQR( SIDE, TRANS, MI, NI, NH, A( ILO+1, ILO ), LDA,
      $             TAU( ILO ), C( I1, I2 ), LDC, WORK, LWORK, IINFO )
+      WORK( 1 ) = LWKOPT
+      RETURN
+      END
+! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zunml2.f
+      SUBROUTINE ZUNML2( SIDE, TRANS, M, N, K, A, LDA, TAU, C, LDC,
+     $                   WORK, INFO )
+      CHARACTER          SIDE, TRANS
+      INTEGER            INFO, K, LDA, LDC, M, N
+      COMPLEX*16         A( LDA, * ), C( LDC, * ), TAU( * ), WORK( * )
+      COMPLEX*16         ONE
+      PARAMETER          ( ONE = ( 1.0D+0, 0.0D+0 ) )
+      LOGICAL            LEFT, NOTRAN
+      INTEGER            I, I1, I2, I3, IC, JC, MI, NI, NQ
+      COMPLEX*16         AII, TAUI
+      LOGICAL            LSAME
+      EXTERNAL           LSAME
+      EXTERNAL           XERBLA, ZLACGV, ZLARF
+      INTRINSIC          DCONJG, MAX
+      INFO = 0
+      LEFT = LSAME( SIDE, 'L' )
+      NOTRAN = LSAME( TRANS, 'N' )
+      IF( LEFT ) THEN
+         NQ = M
+      ELSE
+         NQ = N
+      END IF
+      IF( .NOT.LEFT .AND. .NOT.LSAME( SIDE, 'R' ) ) THEN
+         INFO = -1
+      ELSE IF( .NOT.NOTRAN .AND. .NOT.LSAME( TRANS, 'C' ) ) THEN
+         INFO = -2
+      ELSE IF( M.LT.0 ) THEN
+         INFO = -3
+      ELSE IF( N.LT.0 ) THEN
+         INFO = -4
+      ELSE IF( K.LT.0 .OR. K.GT.NQ ) THEN
+         INFO = -5
+      ELSE IF( LDA.LT.MAX( 1, K ) ) THEN
+         INFO = -7
+      ELSE IF( LDC.LT.MAX( 1, M ) ) THEN
+         INFO = -10
+      END IF
+      IF( INFO.NE.0 ) THEN
+         CALL XERBLA( 'ZUNML2', -INFO )
+         RETURN
+      END IF
+      IF( M.EQ.0 .OR. N.EQ.0 .OR. K.EQ.0 )
+     $   RETURN
+      IF( ( LEFT .AND. NOTRAN .OR. .NOT.LEFT .AND. .NOT.NOTRAN ) ) THEN
+         I1 = 1
+         I2 = K
+         I3 = 1
+      ELSE
+         I1 = K
+         I2 = 1
+         I3 = -1
+      END IF
+      IF( LEFT ) THEN
+         NI = N
+         JC = 1
+      ELSE
+         MI = M
+         IC = 1
+      END IF
+      DO 10 I = I1, I2, I3
+         IF( LEFT ) THEN
+            MI = M - I + 1
+            IC = I
+         ELSE
+            NI = N - I + 1
+            JC = I
+         END IF
+         IF( NOTRAN ) THEN
+            TAUI = DCONJG( TAU( I ) )
+         ELSE
+            TAUI = TAU( I )
+         END IF
+         IF( I.LT.NQ )
+     $      CALL ZLACGV( NQ-I, A( I, I+1 ), LDA )
+         AII = A( I, I )
+         A( I, I ) = ONE
+         CALL ZLARF( SIDE, MI, NI, A( I, I ), LDA, TAUI, C( IC, JC ),
+     $               LDC, WORK )
+         A( I, I ) = AII
+         IF( I.LT.NQ )
+     $      CALL ZLACGV( NQ-I, A( I, I+1 ), LDA )
+   10 CONTINUE
+      RETURN
+      END
+! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zunmlq.f
+      SUBROUTINE ZUNMLQ( SIDE, TRANS, M, N, K, A, LDA, TAU, C, LDC,
+     $                   WORK, LWORK, INFO )
+      CHARACTER          SIDE, TRANS
+      INTEGER            INFO, K, LDA, LDC, LWORK, M, N
+      COMPLEX*16         A( LDA, * ), C( LDC, * ), TAU( * ), WORK( * )
+      INTEGER            NBMAX, LDT, TSIZE
+      PARAMETER          ( NBMAX = 64, LDT = NBMAX+1,
+     $                     TSIZE = LDT*NBMAX )
+      LOGICAL            LEFT, LQUERY, NOTRAN
+      CHARACTER          TRANST
+      INTEGER            I, I1, I2, I3, IB, IC, IINFO, IWT, JC, LDWORK,
+     $                   LWKOPT, MI, NB, NBMIN, NI, NQ, NW
+      LOGICAL            LSAME
+      INTEGER            ILAENV
+      EXTERNAL           LSAME, ILAENV
+      EXTERNAL           XERBLA, ZLARFB, ZLARFT, ZUNML2
+      INTRINSIC          MAX, MIN
+      INFO = 0
+      LEFT = LSAME( SIDE, 'L' )
+      NOTRAN = LSAME( TRANS, 'N' )
+      LQUERY = ( LWORK.EQ.-1 )
+      IF( LEFT ) THEN
+         NQ = M
+         NW = N
+      ELSE
+         NQ = N
+         NW = M
+      END IF
+      IF( .NOT.LEFT .AND. .NOT.LSAME( SIDE, 'R' ) ) THEN
+         INFO = -1
+      ELSE IF( .NOT.NOTRAN .AND. .NOT.LSAME( TRANS, 'C' ) ) THEN
+         INFO = -2
+      ELSE IF( M.LT.0 ) THEN
+         INFO = -3
+      ELSE IF( N.LT.0 ) THEN
+         INFO = -4
+      ELSE IF( K.LT.0 .OR. K.GT.NQ ) THEN
+         INFO = -5
+      ELSE IF( LDA.LT.MAX( 1, K ) ) THEN
+         INFO = -7
+      ELSE IF( LDC.LT.MAX( 1, M ) ) THEN
+         INFO = -10
+      ELSE IF( LWORK.LT.MAX( 1, NW ) .AND. .NOT.LQUERY ) THEN
+         INFO = -12
+      END IF
+      IF( INFO.EQ.0 ) THEN
+         NB = MIN( NBMAX, ILAENV( 1, 'ZUNMLQ', SIDE // TRANS, M, N, K,
+     $        -1 ) )
+         LWKOPT = MAX( 1, NW )*NB + TSIZE
+         WORK( 1 ) = LWKOPT
+      END IF
+      IF( INFO.NE.0 ) THEN
+         CALL XERBLA( 'ZUNMLQ', -INFO )
+         RETURN
+      ELSE IF( LQUERY ) THEN
+         RETURN
+      END IF
+      IF( M.EQ.0 .OR. N.EQ.0 .OR. K.EQ.0 ) THEN
+         WORK( 1 ) = 1
+         RETURN
+      END IF
+      NBMIN = 2
+      LDWORK = NW
+      IF( NB.GT.1 .AND. NB.LT.K ) THEN
+         IF( LWORK.LT.NW*NB+TSIZE ) THEN
+            NB = (LWORK-TSIZE) / LDWORK
+            NBMIN = MAX( 2, ILAENV( 2, 'ZUNMLQ', SIDE // TRANS, M, N, K,
+     $              -1 ) )
+         END IF
+      END IF
+      IF( NB.LT.NBMIN .OR. NB.GE.K ) THEN
+         CALL ZUNML2( SIDE, TRANS, M, N, K, A, LDA, TAU, C, LDC, WORK,
+     $                IINFO )
+      ELSE
+         IWT = 1 + NW*NB
+         IF( ( LEFT .AND. NOTRAN ) .OR.
+     $       ( .NOT.LEFT .AND. .NOT.NOTRAN ) ) THEN
+            I1 = 1
+            I2 = K
+            I3 = NB
+         ELSE
+            I1 = ( ( K-1 ) / NB )*NB + 1
+            I2 = 1
+            I3 = -NB
+         END IF
+         IF( LEFT ) THEN
+            NI = N
+            JC = 1
+         ELSE
+            MI = M
+            IC = 1
+         END IF
+         IF( NOTRAN ) THEN
+            TRANST = 'C'
+         ELSE
+            TRANST = 'N'
+         END IF
+         DO 10 I = I1, I2, I3
+            IB = MIN( NB, K-I+1 )
+            CALL ZLARFT( 'Forward', 'Rowwise', NQ-I+1, IB, A( I, I ),
+     $                   LDA, TAU( I ), WORK( IWT ), LDT )
+            IF( LEFT ) THEN
+               MI = M - I + 1
+               IC = I
+            ELSE
+               NI = N - I + 1
+               JC = I
+            END IF
+            CALL ZLARFB( SIDE, TRANST, 'Forward', 'Rowwise', MI, NI, IB,
+     $                   A( I, I ), LDA, WORK( IWT ), LDT,
+     $                   C( IC, JC ), LDC, WORK, LDWORK )
+   10    CONTINUE
+      END IF
       WORK( 1 ) = LWKOPT
       RETURN
       END
