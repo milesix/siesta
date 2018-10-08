@@ -36,7 +36,7 @@
       use m_pexsi_solver,  only: pexsi_solver
 #endif
 #ifdef SIESTA__ELSI
-      use m_elsi_interface,  only: getdm_elsi
+      use m_elsi_interface,  only: elsi_getdm
 #endif
       use m_hsx, only      : write_hs_formatted
 #ifdef MPI
@@ -150,18 +150,15 @@
      $               "The ELSI solver does not implement "//
      $               "non-coll spins or Spin-orbit yet")
          endif
-         call getdm_elsi(iscf, no_s, spin%spinor, 
+         call elsi_getdm(iscf, no_s, spin%spinor, 
      &              no_l, maxnh, no_u,
      &              numh, listhptr, listh,
      &              H, S, qtot, temp, 
-     &              xijo, indxuo,
+     &              xijo,
      &              kpoint_scf%N, kpoint_scf%k, kpoint_scf%w,
      &              eo, qo, Dscf, Escf, ef, Entropy,
      &              occtol, neigwanted)
          Ecorrec = 0.0_dp
-!         call elsi_solver(iscf, no_u, no_l, spin%spinor,
-!     $              maxnh, listhptr, listh, qtot, temp,
-!     $              H, S, Dscf, Escf, ef, Entropy)
       endif
       if (.not. SIESTA_worker) RETURN
 #endif
