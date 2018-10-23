@@ -67,6 +67,7 @@ module m_lowdin
   use w90_parameters,     only : nnlist
   use w90_parameters,     only : neigh
   use w90_parameters,     only : nncell
+  use w90_parameters,     only : param_write_chkpt
   use fdf
 
 !
@@ -1283,6 +1284,7 @@ module m_lowdin
       call io_close(fileunitparam)
 
     enddo 
+
     
     return
 
@@ -1678,6 +1680,7 @@ module m_lowdin
     call hamiltonian_write_hr( )
     call hamiltonian_dealloc( )
 
+    call param_write_chkpt('postwann')
 
     deallocate( csheet )
     deallocate( sheet  )
