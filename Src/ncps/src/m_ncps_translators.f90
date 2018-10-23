@@ -27,8 +27,7 @@ CONTAINS
         use m_psml
         use m_ncps_psml_plugins
         use m_ncps_froyen_ps_t,  only: froyen_ps_t
-        use m_libxc_compat, only: xc_id_t, get_xc_id_from_libxc
-        use m_libxc_compat, only: xc_id_to_string
+        use m_libxc_compat, only: set_full_xc_info
 
         implicit none 
 
@@ -49,7 +48,6 @@ CONTAINS
         logical          :: polarized
         real(dp)         :: zeld, zelu, occupation, jval
         real(dp)         :: r2, rc, rmax_grid, znuc
-        character(len=64):: xc_string
         character(len=40):: method_string
         character(len=1), dimension(0:4) :: &
                          sym = (/ "s", "p", "d", "f", "g" /)
@@ -62,7 +60,6 @@ CONTAINS
         real(dp), parameter :: bb_def = 80.0_dp    ! UCB_COMPAT: 40.0
         real(dp), parameter :: rmax_def = 120.0_dp ! UCB_COMPAT: 80.0
 
-        type(xc_id_t)                        :: xc_id
         type(ps_annotation_t)                :: grid_annotation, annot
         character(len=40)                    :: strvalue
         logical                              :: log_grid_in_file
@@ -106,30 +103,14 @@ CONTAINS
         ! pack these unconditionally
         call xcid_pack(n_xcfuncs,libxc_ids,p%libxc_packed_code)
 
-        ! Try to convert to the legacy two-char code used by ATOM
-        if (n_xcfuncs == 2) then
-           call get_xc_id_from_libxc(libxc_ids,xc_id,status)
-        else
-           ! treat this below with the 'xc' code
-           status = -1
-        endif
+        ! If the pseudo comes from ATOM, take advantage of the
+        ! built-in functionals, if possible. Otherwise, fall back
+        ! to using libxc
+        call get_annotation_value(annot,"atom-xc-code",p%icorr,status)
+        if (status /= 0) p%icorr = "xc"
 
-        if (status == 0) then
-              write(6,"(a,2i4)") "Using libxc ids: ", libxc_ids(:)
-              write(6,"(a)") trim(xc_id_to_string(xc_id))
-              p%icorr = xc_id%atom_id
-        else
-           ! Fall back to querying a possible XC annotation
-           call get_annotation_value(annot,  &
-                                      "atom-xc-code",p%icorr,status)
-           if (status == 0) then
-              write(6,"(a)") "Atom-xc-code from annotation: " // p%icorr
-           else
-              ! Fall back to using the "xc" pseudo-code
-              ! The packed libxc ids have been computed above
-              p%icorr = "xc"
-           endif
-        endif
+        call set_full_xc_info(p%icorr,p%libxc_packed_code, &
+                              p%xc_family,p%xc_authors)
 !
 !       Note that most (all?) formats include only "scalar-relativistic" plus
 !       maybe spin-orbit components, but never "polarized" pseudos.

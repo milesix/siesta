@@ -298,6 +298,7 @@
         real(dp) :: kb_rmax
         character(len=40) :: vlocal_type
 
+        external :: set_xc_species
 
         call setup_filtering()
 
@@ -365,6 +366,12 @@
           call read_vps(lmxo, lmxkb, nrval,a,b,rofi,drdi,s,vps,vps_u,
      .        rho, chcore, zval, chgvps, nicore, irel, icorr,basp) 
 
+          spp%xc_info%atom_id = basp%pseudopotential%icorr
+          spp%xc_info%xc_family = basp%pseudopotential%xc_family
+          spp%xc_info%xc_authors = basp%pseudopotential%xc_authors
+          spp%xc_info%libxc_packed_code =
+     $                      basp%pseudopotential%libxc_packed_code
+          
           ! drdi(:) : derivative of the r(i) function, or equivalently
           !           distance between points.
           ! s(:) = sqrt(drdi(:))  *** Note that it will be redefined for
@@ -460,13 +467,6 @@ c    .          'atom: The above configuration will be used ',
      .            trim(global_label)//".Vhart-PAO")
           endif
 ! 
-! Check the exchange correlation functionals
-! 
-          call xc_check(icorr)
-! 
-          if (irel.eq.'rel') irelt=1
-          if (irel.ne.'rel') irelt=0 
-!
 !         NOTE that atomxc expects true rho(r), not 4pir^2*rho(r)
 !         We use auxrho for that
 !
@@ -481,6 +481,10 @@ c    .          'atom: The above configuration will be used ',
           r2 = rofi(2)/(rofi(3)-rofi(2))
           auxrho(1) = auxrho(2) -(auxrho(3)-auxrho(2))*r2
 
+          ! Set the XC functional for this particular pseudopotential
+          call set_xc_species(spp)
+          irelt = 0
+          if (irel.eq.'rel') irelt=1
           call atomxc(irelt,nrval,nrmax,rofi,
      .                1,auxrho,ex,ec,dx,dc,vxc)
 
@@ -2272,6 +2276,11 @@ C
         a = vp%a
         zval = vp%zval
 
+        print *, "atom_id: ", trim(vp%icorr)
+        print *, "family/authors: ", trim(vp%xc_family) // "/" //
+     $            trim(vp%xc_authors)
+        print *, "libxc_packed_code: ", vp%libxc_packed_code
+        
         linput=max(lmxo,lmxkb)
         lmax=min(npotd-1,linput)
         lmax_ps = npotd-1
@@ -7604,4 +7613,5 @@ c    .              ,'        # scaleFactor(izeta=1,Nzeta)'
 
       end subroutine remove_atom_tables
 
+      
       end module atom

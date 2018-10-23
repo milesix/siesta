@@ -97,8 +97,8 @@
       integer  ::  lun
       
       if (Node .eq. 0) then
-         write(6,'(a)') trim(str)
-         write(0,'(a)') trim(str)
+         write(6,'(a)') trim(level) // ": " // trim(str)
+         write(0,'(a)') trim(level) // ": " // trim(str)
          call io_assign(lun)
          open(lun,file="MESSAGES",status="unknown",
      $        position="append",action="write")

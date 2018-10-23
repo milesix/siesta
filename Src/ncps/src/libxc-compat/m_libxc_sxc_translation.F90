@@ -24,6 +24,9 @@ end type xc_id_t
 public :: get_xc_id_from_atom_id, print_xc_id, xc_id_to_string
 public :: get_xc_id_from_siestaxc, xc_is_not_lda, xc_nfuncs_libxc
 public :: get_xc_id_from_libxc
+public :: set_full_xc_info
+
+!!!public :: get_libxc_packed_code_from_xc_id
 
 ! These names are placeholders, not currently implemented in libxc
 type(libxc_t), parameter :: XC_GGA_C_PBE_XXX = XC_NOT_IMPL
@@ -172,6 +175,72 @@ CONTAINS
           trim(xc_id%libxc_id(2)%name), &
           trim(xc_id%atom_id)
   end function xc_id_to_string
+
+  !> Determines all the equivalent pieces of XC information
+  !> (SiestaXC family/authors, atom icorr code,
+  !> and libxc packed code)
+  !> starting from a generalized 'icorr' code which might be 'xc'
+  !> and possibly also a packed libxc code
+  
+  subroutine set_full_xc_info(atom_id,libxc_packed_code,xc_family,xc_authors)
+    character(len=*), intent(in) :: atom_id
+    integer, intent(inout) :: libxc_packed_code
+    character(len=*), intent(out) :: xc_family
+    character(len=*), intent(out) :: xc_authors
+
+    type(xc_id_t) :: xc_id
+    integer :: status, x_code, c_code
+    
+    call get_xc_id_from_atom_id(atom_id,xc_id,status)
+    if (status == 0) then
+
+       xc_family =  xc_id%siestaxc_id%family
+       xc_authors =  xc_id%siestaxc_id%authors
+       ! get libxc codes here
+       ! Note that, if we are using a legacy atom_id, we always have two functionals
+       ! If the atom_id does not have a libxc correspondence, these codes will be negative.
+       x_code = xc_id%libxc_id(1)%code
+       c_code = xc_id%libxc_id(2)%code
+       if ((x_code < 0) .or. (c_code < 0)) then
+          ! Not implemented in libxc (e.g. vdw correlation functionals)
+          libxc_packed_code = -1
+       else
+          libxc_packed_code = 10000* x_code + c_code
+       endif
+       
+    else if (atom_id == "xc") then
+       if (libxc_packed_code == 0) then
+          call die("No libxc codes with 'xc' pseudo-code")
+       endif
+
+       ! set family and authors to some blank value
+
+       xc_family = "--"
+       xc_authors = "--"
+
+       ! conceivably the above could still be found, but if
+       ! the pseudo data structure is marked "xc" we should really be using libxc
+       ! for maximal compatibility.
+       ! --- this is how one could
+       !     convert to the legacy two-char code used by ATOM:
+       !
+       ! if (n_xcfuncs == 2) then   ! only in this case...
+       !    call get_xc_id_from_libxc(libxc_ids,xc_id,status)
+       !    if (status == 0) then
+       !       write(6,"(a,2i4)") "Using libxc ids: ", libxc_ids(:)
+       !       write(6,"(a)") trim(xc_id_to_string(xc_id))
+       !       p%icorr = xc_id%atom_id
+       !       p%xc_family =  xc_id%siestaxc_id%family
+       !       p%xc_authors =  xc_id%siestaxc_id%authors
+       !    endif
+       ! endif
+
+    else
+       ! there should be no more possibilities
+       call die("set_full_xc_info: cannot set")
+    endif
+    
+  end subroutine set_full_xc_info
     
 end module m_libxc_sxc_translation
 

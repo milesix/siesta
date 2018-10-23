@@ -31,7 +31,12 @@
       integer, parameter, public  :: maxnprojs = 200
 !       Maximum number of nlm projectors
 !
-
+      type, public :: xc_info_t
+        character(len=2)  :: atom_id
+        character(len=10) :: xc_family
+        character(len=10) :: xc_authors
+        integer           :: libxc_packed_code
+      end type
 !
 !     Species_info: Consolidate all the pieces of information in one place
 !
@@ -43,7 +48,8 @@
          real(dp)                        ::  zval       ! Valence charge
          real(dp)                        ::  self_energy !Electrostatic
                                                          !self-energy
-!
+         type(xc_info_t)                 ::  xc_info
+!     
 !        Orbitals
 !             We keep track of just one orbital for each
 !             "nl" family

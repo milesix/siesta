@@ -7,7 +7,8 @@
 !
       subroutine read_xc_info()
 C
-C     Reads the exchange-correlation functional information
+C     Gathers species' exchange-correlation functional information,
+C     optionally reads extra settings from the fdf file,
 C     and calls setXC to store it
 C
       use precision, only : dp
@@ -15,7 +16,9 @@ C
       use fdf
       use parallel,  only : Node
       use sys,       only : die
-
+      use atm_types, only: species, species_info
+      use fdf
+      
       implicit none
 
 C     LOCAL variables
@@ -35,7 +38,50 @@ C     LOCAL variables
         type(block_fdf)            :: bfdf
         type(parsed_line), pointer :: pline
 
-!      Read XC functionals
+        integer isp, nsp
+        character(len=2) :: atom_id
+        integer :: libxc_packed_code
+        type(species_info), pointer :: spp
+        
+        logical :: same_xc, force_xc_consistency
+        logical :: allow_xc_control
+
+        external :: set_xc_species
+        
+        nsp = size(species)
+        spp => species(1)
+        atom_id = spp%xc_info%atom_id
+        libxc_packed_code = spp%xc_info%libxc_packed_code
+        same_xc = .true.
+        do isp = 2, nsp
+           spp => species(isp)
+           if (spp%xc_info%atom_id /= atom_id) same_xc = .false.
+           if (spp%xc_info%libxc_packed_code /= libxc_packed_code)
+     $          same_xc = .false.
+        enddo
+
+        force_xc_consistency = fdf_get("XC-Force-Consistency",.true.)
+        allow_xc_control = fdf_get("XC-Allow-Control",.false.)
+        
+        if (Node==0) write(6,'(/,a,/)')
+     $                  "Exchange-correlation information"
+        if (same_xc) then
+           call set_xc_species(spp)
+           if (.not. allow_xc_control) then
+              RETURN            ! Do not read more xc input
+           endif
+        else
+           if (force_xc_consistency) then
+              call die("Inconsistent XC functionals. See manual")
+           else
+              call message("WARNING",
+     $             "Inconsistent species XC functionals")
+              call message("WARNING","Will set XC from fdf file")
+           endif
+        endif
+           
+!     Read XC functional information from the fdf file, to override
+!     the species' setting.        
         
         if (fdf_block('xc.hybrid',bfdf)) then
            call die('XC.hybrid block is deprecated. Use XC.cocktail')
@@ -91,25 +137,93 @@ C     LOCAL variables
           XCweightC(1) = 1.0_dp
         endif
 
-C Output data for cocktail functionals
-        if ((nXCfunc .gt. 1) .and. (Node .eq. 0)) then
-          write(6,'(/,''xc:'')')
-          write(6,'(''xc:  Cocktail exchange-correlation functional:'')
-     .      ')
-          write(6,'(''xc:'')')
-          write(6,'(''xc: Number     Functional     Authors  '',
-     .      ''   Weight(Ex)   Weight(Ec)'')')
+        ! Set only if explicitly defined in the fdf file
+        if ( (fdf_defined('xc.functional')) .or.
+     $       (fdf_defined('xc.authors')) .or.
+     $       (fdf_defined('xc.cocktail')) )  then
+
+           if (same_xc) then
+              call message("WARNING",
+     $             "Species XC info overridden")
+           endif
+
+         if (Node .eq. 0) then
+          if (nXCfunc > 1) then
+             write(6,'(a,/)') "Cocktail exchange-correlation functional"
+          else
+             write(6,'(a,/)') "Functional information"
+          endif
+          write(6,'(a,a)') " Number     Functional     Authors  ",
+     .      "            Weight(Ex)   Weight(Ec)"
           do n = 1,nXCfunc
-          write(6,'(''xc: '',i4,3x,a20,2x,a20,3x,f5.3,8x,f5.3)')
+          write(6,'(i4,3x,a20,2x,a20,3x,f5.3,8x,f5.3)')
      .        n,XCfunc(n),XCauth(n),XCweightX(n),XCweightC(n)
           enddo
-          write(6,'(''xc:'')')
+          write(6,*)
         endif
 
-C     Store information in module
+        ! Store information in module
 
-      call setXC (n=nXCfunc, func=XCfunc, auth=XCauth,
-     $            wx=XCweightX, wc=XCweightC)
+        call setXC (n=nXCfunc, func=XCfunc, auth=XCauth,
+     $           wx=XCweightX, wc=XCweightC)
+
+      else
+         call die("Need to set XC functional info explicitly")
+      endif
 
       end subroutine read_xc_info
+!
+!>     Set xc record for gridxc based on the information
+!>     for the species
+!      
+      subroutine set_xc_species(spp)
+      use gridXC,  only : setXC => gridxc_setXC
+      use gridXC,  only : setXC_libxc => gridxc_setXC_libxc
+      use atm_types, only: species_info
+      use precision, only: dp
+      use parallel, only: node
+      
+      type(species_info), intent(in) :: spp
+      
+      integer :: libxc_id(2), xc_code, x_code, c_code, nfuncs, i
+      character(len=10) :: xc_family, xc_authors
+      
+      xc_family = spp%xc_info%xc_family
+      xc_authors = spp%xc_info%xc_authors
+      xc_code = spp%xc_info%libxc_packed_code
+      
+      if ((xc_family /= "--") .and. (xc_authors /= "--")) then
+         call setXC( 1 , (/ xc_family /), (/ xc_authors /),
+     $        wx= (/ 1.0_dp /), wc= (/ 1.0_dp /) )
+         if (node == 0) then
+            write(6,"(a,a,'/',a)") "Using Siesta-lineage XC: ",
+     $                      trim(xc_family),
+     $                      trim(xc_authors)
+         endif
+      else
+         ! Fall back to libxc
+         if (xc_code <= 0) then
+            call die("Cannot fall back to libxc codes")
+         else
+            if (xc_code < 10000) then
+               ! Special syntax for single functional
+               ! (For example, Teter exch-corr functional: xc_code=0020
+               nfuncs = 1
+               libxc_id(1) = xc_code
+            else
+               x_code = xc_code/10000
+               c_code = xc_code - 10000*x_code
+               nfuncs = 2
+               libxc_id = (/ x_code, c_code /)
+            endif
+            if (node == 0) then
+               write(6,"(a,2(1x,i3))") "Using libXC codes: ",
+     $              (libxc_id(i), i=1,nfuncs)
+            endif
+            call setxc_libxc(nfuncs, libxc_id)
+         endif
+      endif
+      if (node == 0) write(6,*)
+      
+      end subroutine set_xc_species
 

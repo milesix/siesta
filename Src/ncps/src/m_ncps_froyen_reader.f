@@ -2,10 +2,12 @@
 
       use m_ncps_froyen_ps_t,    only: pseudopotential_t => froyen_ps_t
 
+      implicit none
+
       public :: pseudo_read_unformatted
       public :: pseudo_read_formatted
       public :: pseudo_reparametrize
-
+      
       integer, parameter, private :: dp = selected_real_kind(10,100)
 
       CONTAINS
@@ -67,6 +69,10 @@
         end subroutine pseudo_read_unformatted
 !----
         subroutine pseudo_read_formatted(fname,p)
+
+        use m_libxc_compat, only: set_full_xc_info
+        use iso_fortran_env, only: iostat_eor
+
         character(len=*), intent(in) :: fname
         type(pseudopotential_t)                    :: p
 
@@ -74,6 +80,8 @@
         character(len=70) dummy
         real(dp) :: r2, gen_zval_inline
 
+        integer                              :: status
+        
         call get_free_lun(io_ps)
         open(io_ps,file=fname,form='formatted',status='unknown')
         write(6,'(3a)') 'Reading pseudopotential information ',
@@ -84,28 +92,35 @@
  8008   format(1x,a2,1x,a2,1x,a3,1x,a4,1x,i8)
  8010   format(1x,6a10,/,1x,a70)
  8015   format(1x,2i3,i5,4g20.12)
+ 8020   format(1x,2i3,i5,3g20.12)
  8030   format(4(g20.12))
  8040   format(1x,a)
 
-        ! Attempt to read extra xc information
+        ! Attempt to read extra xc information in the psf file.
+        ! An extra integer with a packed code for libxc functionals
         ! This can be present even with the usual atom xc codes
         read(io_ps,8008,iostat=ios) p%name, p%icorr,
      $          p%irel, p%nicore, p%libxc_packed_code
-        if (ios /= 0) then
+        if (ios == iostat_eor) then
            ! Fall back to normal line
            backspace(io_ps)
            read(io_ps,8005) p%name, p%icorr, p%irel, p%nicore
            p%libxc_packed_code = 0
         endif
-        if ((p%icorr == "xc") .and. (p%libxc_packed_code == 0)) then
-           call die("No libxc codes with 'xc' pseudo-code")
-        endif
+
+        call set_full_xc_info(p%icorr, p%libxc_packed_code,
+     $       p%xc_family, p%xc_authors)
+        
         read(io_ps,8010) (p%method(i),i=1,6), p%text
         read(io_ps,8015,iostat=ios)
      $       p%npotd, p%npotu, p%nr, p%b, p%a, p%zval,
      $       gen_zval_inline
-        ! TEST_ME: if ios<0, are we guaranteed that the other info has been read?
-        if (ios < 0) gen_zval_inline = 0.0_dp
+        if (ios == iostat_eor) then
+           gen_zval_inline = 0.0_dp
+           backspace(io_ps)
+           read(io_ps,8020,iostat=ios)
+     $          p%npotd, p%npotu, p%nr, p%b, p%a, p%zval
+        endif
         call read_ps_conf(p%irel,p%npotd-1,p%text,p%gen_zval)
 !
 !       (Some .psf files contain an extra field corresponding

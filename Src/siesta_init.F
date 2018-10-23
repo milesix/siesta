@@ -387,18 +387,14 @@ C     Initialise MPI and set processor number
       end if
 
 
-!     Initialise exchange-correlation functional information
-#ifndef BSC_CELLXC
-      call read_xc_info()
+#ifndef BXC_CELLXC
 #ifdef MPI
       call gridxc_init(comm=MPI_Comm_World,
      $     time_mpi_calls=fdf_get('gridxc-time-mpi-calls',.false.))
 #else
       call gridxc_init()
 #endif
-#else /* BSC_CELLXC */
-      call setXC( )
-#endif /* BSC_CELLXC */
+#endif
 
 !     Initialise force field component
       call inittwobody( )
@@ -413,6 +409,18 @@ C     Initialise MPI and set processor number
 
       atmonly = fdf_get( 'Atom-Setup-Only', .false. )
       if (atmonly) call bye( 'End of atom setup' )
+
+!     Initialise exchange-correlation functional information
+!     Moved here as the setting depends on the information
+!     found in atom
+!     This will *not* work if the .ion files are used
+      
+#ifdef BSC_CELLXC
+      call setXC( )
+#else
+      call read_xc_info()
+#endif
+
 
 !     Read geometry
       call struct_init( )      ! Sets na_u, isa, ucell

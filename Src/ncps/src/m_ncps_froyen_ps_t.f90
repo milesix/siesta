@@ -18,8 +18,12 @@ module m_ncps_froyen_ps_t
         real(dp)                :: gen_zval  ! Generation valence charge
         logical                 :: relativistic
         character(len=10)       :: correlation
-        character(len=2)        :: icorr
-        integer                 :: libxc_packed_code
+        ! ------------------------------------------------ xc info
+        character(len=2)        :: icorr = ""
+        character(len=10)       :: xc_family = ""
+        character(len=20)       :: xc_authors = ""
+        integer                 :: libxc_packed_code = 0
+        ! ------------------------------------------------ xc info
         character(len=3)        :: irel
         character(len=4)        :: nicore
         real(dp)                :: a
@@ -50,6 +54,8 @@ module m_ncps_froyen_ps_t
       p%correlation = ' '
       p%icorr = ' '
       p%libxc_packed_code = 0
+      p%xc_family = ''
+      p%xc_authors = ''
       p%irel = ' '
       p%nicore = ' '
       p%a = 0._dp
