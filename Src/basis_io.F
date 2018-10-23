@@ -460,12 +460,13 @@
       character(len=78) line
       integer :: iostat
 
-      read(unit,'(a)') line
-      if (trim(line) .eq. '<preamble>') then
- 1       continue
+      do
          read(unit,'(a)') line
-         if (trim(line) .ne. '</preamble>') goto 1
-      endif
+         if (line(1:8) == "xc_info:") then
+            call read_xc_specs(line(10:),p%xc_info)
+         endif
+         if (trim(line) .eq. '</preamble>') exit
+      enddo
          
       read(unit,'(a2)') p%symbol
       read(unit,'(a20)') p%label
@@ -486,6 +487,23 @@
 
       end subroutine read_header
 
+      subroutine read_xc_specs(str,xc)
+      character(len=*), intent(in) :: str
+      type(xc_info_t), intent(out) :: xc
+
+      character(len=30) :: fam_auth
+      character(len=8)  :: code_str
+      integer :: i
+      
+      read(str,*) xc%atom_id, fam_auth, code_str
+     $                      
+      i = index(fam_auth,":")
+      read(fam_auth(1:i-1),"(a)") xc%xc_family
+      read(fam_auth(i+1:),"(a)") xc%xc_authors
+      read(code_str,"(i8)")  xc%libxc_packed_code
+      
+      end subroutine read_xc_specs
+      
       end subroutine read_ion_ascii
 
 
@@ -788,6 +806,7 @@
       open(lun,file=filename,status='replace',form='formatted')
 
       write(lun,'(a)') '<preamble>'
+      call write_xc_specs(lun,spp%xc_info)
       call write_basis_specs(lun,is)
       if ( .not. basis_parameters(is)%bessel ) then
          call pseudo_header_print(lun,
@@ -981,6 +1000,17 @@
 
          end subroutine write_header
 
+         subroutine write_xc_specs(lun,xc_info)
+         use atm_types, only: xc_info_t
+         
+         integer, intent(in) :: lun
+         type(xc_info_t), intent(in) :: xc_info
+
+         write(lun,"(a,a2,1x,a,':',a,1x,i8)")
+     $        "xc_info: ", xc_info%atom_id, trim(xc_info%xc_family),
+     $        trim(xc_info%xc_authors), xc_info%libxc_packed_code
+         end subroutine write_xc_specs
+      
       end subroutine dump_ion_ascii
 !
 !-----------------------------------------------------------------
