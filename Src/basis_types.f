@@ -748,7 +748,7 @@
 
       basp => basis_parameters(is)
 
-      write(lun,'(/a/79("="))') '<basis_specs>'
+      write(lun,'(a/79("="))') '<basis_specs>'
       write(lun,'(a20,1x,a2,i4,4x,a5,g12.5,4x,a7,g12.5)')
      $     atm_label(is), 'Z=',iz(is),
      $     'Mass=', smass(is), 'Charge=', charge(is)

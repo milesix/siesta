@@ -2701,6 +2701,25 @@ See an Appendix for information on the optional NetCDF package.
 
 These files can be used to read back information into \siesta.
 
+\textbf{Compatibility Note:} Starting with the PSML-enabled versions
+of \siesta, the \texttt{.ion} and \texttt{.ion.nc} files are generated
+with and expected to contain XC functional information. Older
+\texttt{.ion} files can be updated by simply replacing the (blank)
+second line (after '<preamble>') by a line of the form
+
+\begin{verbatim}
+xc_info: pb GGA:PBE  01010130
+\end{verbatim}
+
+containing the 'atom' xc code, the functional type and 'authors'
+strings joined by a colon (:), and a packed libxc code formed by the
+juxtaposition of the codes for the exchange and correlation
+functionals in four-digit fields (in the above case, x\_code=101,
+c\_code=130). If the XC functional is not implemented in LibXC (e.g.,
+van der Waals functionals), the code is simply '-1'.
+
+There is no support for converting \texttt{ion.nc} files.
+
 \begin{fdflogicalF}{User!Basis}
   \index{basis!User basis}
 
@@ -2711,7 +2730,8 @@ These files can be used to read back information into \siesta.
   previous \siesta\ run or (one by one) by the standalone program
   \program{Gen-basis}.\index{Gen-basis
       program@\program{Gen-basis}}\index{basis!Gen-basis standalone
-      program} No pseudopotential files are necessary.
+    program} No pseudopotential files are necessary (except for the
+    ``on-site'' spin-orbit scheme).
 
 \end{fdflogicalF}
 

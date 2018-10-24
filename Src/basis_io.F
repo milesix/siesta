@@ -20,7 +20,8 @@
 #ifdef CDF
       use atmparams, only:NTBMAX
 #endif
-      use atm_types
+      use atm_types, only: species, species_info, nspecies
+      use atm_types, only: xc_info_t, maxnorbs
       use basis_types, only: write_basis_specs, basis_parameters
       use m_ncps,      only: pseudo_header_print
       use radial
@@ -135,6 +136,18 @@
      $        'Number_of_projectors',spp%nprojs)
          iret = nf90_get_att(ncid,nf90_global,
      $        'L_max_projs',spp%lmax_projs)
+
+         ! xc info
+         iret = nf90_get_att(ncid,nf90_global,
+     $        'xc_atom_id',spp%xc_info%atom_id)
+         call check_xc(iret)         ! Will flag old-style file
+         iret = nf90_get_att(ncid,nf90_global,
+     $                      'xc_family',spp%xc_info%xc_family)
+         iret = nf90_get_att(ncid,nf90_global,
+     $                      'xc_authors',spp%xc_info%xc_authors)
+         iret = nf90_get_att(ncid,nf90_global,
+     $            'xc_libxc_packed_code',spp%xc_info%libxc_packed_code)
+        !---------
 
          !! Orbitals
          iret = nf90_inq_varid(ncid,'orbnl_l',orbnl_l_id)
@@ -314,9 +327,18 @@
       integer, intent(in):: status
       if (status .ne. nf90_noerr) then
          print  *, trim(nf90_strerror(status))
-         call die()
+         call die("Error reading ion.nc file")
       endif
       end subroutine check
+
+      subroutine check_xc(status)
+      
+      integer, intent(in):: status
+      if (status .ne. nf90_noerr) then
+         print  *, trim(nf90_strerror(status))
+         call die("XC information missing from ion.nc file")
+      endif
+      end subroutine check_xc
 
       end subroutine read_basis_netcdf
 #endif
@@ -459,15 +481,23 @@
       
       character(len=78) line
       integer :: iostat
+      logical :: xc_found
 
+      xc_found = .false.
       do
          read(unit,'(a)') line
          if (line(1:8) == "xc_info:") then
             call read_xc_specs(line(10:),p%xc_info)
+            xc_found = .true.
          endif
          if (trim(line) .eq. '</preamble>') exit
       enddo
-         
+      if (.not. xc_found) then
+         call message("INFO","XC information not found in .ion file")
+         call message("INFO","Please see manual to insert info")
+         call die("XC info missing in .ion file")
+      endif
+      
       read(unit,'(a2)') p%symbol
       read(unit,'(a20)') p%label
       read(unit,*) p%z
@@ -581,6 +611,17 @@
      $                      'Number_of_projectors',spp%nprojs)
         iret = nf90_put_att(ncid,nf90_global,
      $                      'L_max_projs',spp%lmax_projs)
+
+        ! xc info
+        iret = nf90_put_att(ncid,nf90_global,
+     $                      'xc_atom_id',spp%xc_info%atom_id)
+        iret = nf90_put_att(ncid,nf90_global,
+     $                      'xc_family',spp%xc_info%xc_family)
+        iret = nf90_put_att(ncid,nf90_global,
+     $                      'xc_authors',spp%xc_info%xc_authors)
+        iret = nf90_put_att(ncid,nf90_global,
+     $            'xc_libxc_packed_code',spp%xc_info%libxc_packed_code)
+        !---------
 
         iret = nf90_def_var(ncid,'orbnl_l',nf90_int,norbs_id,orbnl_l_id)
         iret = nf90_def_var(ncid,'orbnl_n',nf90_int,norbs_id,orbnl_n_id)
@@ -806,7 +847,7 @@
       open(lun,file=filename,status='replace',form='formatted')
 
       write(lun,'(a)') '<preamble>'
-      call write_xc_specs(lun,spp%xc_info)
+      call write_xc_specs(lun,is)
       call write_basis_specs(lun,is)
       if ( .not. basis_parameters(is)%bessel ) then
          call pseudo_header_print(lun,
@@ -1000,18 +1041,28 @@
 
          end subroutine write_header
 
-         subroutine write_xc_specs(lun,xc_info)
-         use atm_types, only: xc_info_t
-         
-         integer, intent(in) :: lun
-         type(xc_info_t), intent(in) :: xc_info
-
-         write(lun,"(a,a2,1x,a,':',a,1x,i8)")
-     $        "xc_info: ", xc_info%atom_id, trim(xc_info%xc_family),
-     $        trim(xc_info%xc_authors), xc_info%libxc_packed_code
-         end subroutine write_xc_specs
-      
       end subroutine dump_ion_ascii
+
+      subroutine write_xc_specs(lun,is)
+      use atm_types, only: xc_info_t
+         
+      integer, intent(in) :: lun
+      integer, intent(in) :: is
+      
+      type(xc_info_t), pointer :: xc_info
+      character(len=30)        :: fmtstr
+
+      xc_info => species(is)%xc_info
+      if (xc_info%libxc_packed_code >= 0) then
+         fmtstr = "(a,a2,1x,a,':',a,1x,i8.8)"
+      else
+         fmtstr = "(a,a2,1x,a,':',a,1x,i8)"
+      endif
+      write(lun,fmt=fmtstr)
+     $     "xc_info: ", xc_info%atom_id, trim(xc_info%xc_family),
+     $     trim(xc_info%xc_authors), xc_info%libxc_packed_code
+      end subroutine write_xc_specs
+      
 !
 !-----------------------------------------------------------------
       subroutine dump_basis_xml()
@@ -1051,6 +1102,9 @@
       call xml_dump_element(lun,'nprojs_nl',str(spp%n_pjnl))
 
       write(lun,'(a)') '<preamble>'
+      write(lun,'(a)') '<xc_info>'
+      call write_xc_specs(lun,is)
+      write(lun,'(a)') '</xc_info>'
       call write_basis_specs(lun,is)
       if ( .not. basis_parameters(is)%bessel ) then
          call pseudo_header_print(lun,
