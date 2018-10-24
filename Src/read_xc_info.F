@@ -66,8 +66,17 @@ C     LOCAL variables
         if (Node==0) write(6,'(/,a,/)')
      $                  "Exchange-correlation information"
         if (same_xc) then
+           ! all species have the same XC. Use it globally
            call set_xc_species(spp)
            if (.not. allow_xc_control) then
+
+              if ( (fdf_defined('xc.functional')) .or.
+     $             (fdf_defined('xc.authors')) .or.
+     $             (fdf_defined('xc.cocktail')) )  then
+                 call message("WARNING",
+     $                "XC settings in fdf file disregarded")
+              endif
+              
               RETURN            ! Do not read more xc input
            endif
         else
@@ -142,9 +151,9 @@ C     LOCAL variables
      $       (fdf_defined('xc.authors')) .or.
      $       (fdf_defined('xc.cocktail')) )  then
 
-           if (same_xc) then
+           if (same_xc) then  ! allow_xc_control must be true
               call message("WARNING",
-     $             "Species XC info overridden")
+     $             "Species-based XC setting overridden")
            endif
 
          if (Node .eq. 0) then

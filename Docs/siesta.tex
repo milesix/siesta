@@ -3694,11 +3694,22 @@ are always stored in the file \sysfile{KP}.
 
 \subsection{Exchange-correlation functionals}
 
+The program uses the XC functionals specified in the pseudopotential
+file(s) to construct the PAOs (and possibly the KB projectors) for
+each species.  Then it checks that all atomic species are using the
+same XC functionals (either from Siesta's own XC lineage or from
+LibXC, if support for it is compiled-in in the libGridXC
+library\index{LibXC library}), and sets the calculation's functionals
+accordingly.  Thus in most cases the XC setting is automatic and no
+further action is required.
 
-(Apart from the built-in functionals, \siesta\ can use the functionals
-provided by the LibXC library, if support for it is compiled-in in the
-libGridXC library. See the description of the \fdf{XC.cocktail} block
-below for the appropriate syntax. \index{LibXC library})
+If the XC functionals are not consistent the program stops, unless the
+variable \fdf{XC!ForceConsistency} is set to \fdffalse\ .  In this
+case, the program attempts to read XC specifications from the fdf
+file, or sets defaults, as detailed below.  It is still possible to
+override the species' XC settting, by setting the
+\fdf{XC!AllowControl} variable to \fdftrue\ .
+
 
 \begin{fdfentry}{XC!Functional}[string]<LDA>
   
@@ -3840,12 +3851,28 @@ below for the appropriate syntax. \index{LibXC library})
 
 \end{fdfentry}
 
+\begin{fdflogicalT}{XC!ForceConsistency}
+  
+The program will stop if the XC settings of all the pseudopotential files
+(or .ion files) are not the same. This behavior can be relaxed by
+setting this variable to \fdffalse\ .
+
+\end{fdflogicalT}
+
+\begin{fdflogicalF}{XC!AllowControl}
+  
+Even if all the species' XC settings are the same, it is still
+possible to control externally the XC functional to be used for
+the calculation using the options below, by setting this variable to
+\fdftrue\ . A warning will still be printed.
+
+\end{fdflogicalF}
 
 \begin{fdfentry}{XC!Cocktail}[block]
 
   This data block allows the user to create a ``cocktail'' functional by
   mixing the desired amounts of exchange and correlation from each of
-the functionals described under XC.authors.
+  the functionals described under XC.authors.
 
   The first line of the block must contain the number of functionals to
   be mixed. On the subsequent lines the values of XC.functl and
