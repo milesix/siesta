@@ -187,15 +187,21 @@ C     LOCAL variables
 !      
       subroutine set_xc_species(spp)
       use gridXC,  only : setXC => gridxc_setXC
+#ifndef SIESTA__NO_LIBXC
       use gridXC,  only : setXC_libxc => gridxc_setXC_libxc
+#endif      
       use atm_types, only: species_info
       use precision, only: dp
       use parallel, only: node
+
+      implicit none
       
       type(species_info), intent(in) :: spp
       
       integer :: libxc_id(2), xc_code, x_code, c_code, nfuncs, i
       character(len=10) :: xc_family, xc_authors
+      character(len=100) :: xc_str
+      character(len=25) :: xc_type
       
       xc_family = spp%xc_info%xc_family
       xc_authors = spp%xc_info%xc_authors
@@ -225,14 +231,77 @@ C     LOCAL variables
                nfuncs = 2
                libxc_id = (/ x_code, c_code /)
             endif
+#ifndef SIESTA__NO_LIBXC
             if (node == 0) then
-               write(6,"(a,2(1x,i3))") "Using libXC codes: ",
-     $              (libxc_id(i), i=1,nfuncs)
+               write(6,"(a)") "Using libXC functionals: "
+               do i = 1, nfuncs
+                  call libxc_info(libxc_id(i),xc_str, xc_type)
+                  write(6,"(i4,':',a,2x,'(',a,')')")
+     $                 libxc_id(i), trim(xc_str), trim(xc_type)
+               enddo
             endif
             call setxc_libxc(nfuncs, libxc_id)
+#else
+            if (node == 0) then
+               write(6,"(a,2(1x,i3))") "Will need libXC functionals: ",
+     $                                 (libxc_id(i), i=1,nfuncs)
+            endif
+            call die("GridXC does not have LibXC support")
+#endif            
          endif
       endif
       if (node == 0) write(6,*)
       
       end subroutine set_xc_species
 
+#ifndef SIESTA__NO_LIBXC
+      subroutine libxc_info(id,libxc_str,libxc_type)
+      use xc_f90_types_m
+      use xc_f90_lib_m
+
+      implicit none
+
+      integer, intent(in) :: id
+      character(len=*), intent(out) :: libxc_str, libxc_type
+
+      TYPE(xc_f90_pointer_t) :: xc_func
+      TYPE(xc_f90_pointer_t) :: xc_info
+!     integer :: i
+      character(len=120) :: s1, s2
+!     type(xc_f90_pointer_t) :: str
+
+      call xc_f90_func_init(xc_func, xc_info, id, XC_UNPOLARIZED)
+
+      select case(xc_f90_info_kind(xc_info))
+      case(XC_EXCHANGE)
+         libxc_type = 'exchange'
+      case(XC_CORRELATION)
+         libxc_type = 'correlation'
+      case(XC_EXCHANGE_CORRELATION)
+         libxc_type =  'exchange-correlation'
+      case(XC_KINETIC)
+         libxc_type =  'kinetic'
+      end select
+
+      call xc_f90_info_name(xc_info, s1)
+      select case(xc_f90_info_family(xc_info))
+      case (XC_FAMILY_LDA);       write(s2,'(a)') "LDA"
+      case (XC_FAMILY_GGA);       write(s2,'(a)') "GGA"
+      case (XC_FAMILY_HYB_GGA);   write(s2,'(a)') "Hybrid GGA"
+      case (XC_FAMILY_MGGA);      write(s2,'(a)') "MGGA"
+      case (XC_FAMILY_HYB_MGGA);  write(s2,'(a)') "Hybrid MGGA"
+      case (XC_FAMILY_LCA);       write(s2,'(a)') "LCA"
+      end select
+      write(libxc_str, '(4a)') trim(s1), ' (', trim(s2), ')'
+
+!     i = 0
+!     call xc_f90_info_refs(xc_info, i, str, s1)
+!     do while(i >= 0)
+!     write(*, '(a,i1,2a)') '[', i, '] ', trim(s1)
+!     call xc_f90_info_refs(xc_info, i, str, s1)
+!     end do
+
+      call xc_f90_func_end(xc_func)
+
+      end subroutine libxc_info
+#endif

@@ -52,6 +52,13 @@ dep:
 
 #
 XC=$(GRIDXC_LIBS)
+#
+#  Guard compilation if libGridXC does not have LibXC support
+#  In this case only Siesta-lineage functionals can be used
+#
+ifeq ($(GRIDXC_USES_LIBXC),0)
+ FPPFLAGS += -DSIESTA__NO_LIBXC
+endif
 
 NCPS_INCFLAGS=-I $(MAIN_OBJDIR)/ncps/src
 PSOP_INCFLAGS=-I $(MAIN_OBJDIR)/psoplib/src
