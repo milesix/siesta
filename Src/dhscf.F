@@ -69,6 +69,7 @@
       use parsing
 #ifndef BSC_CELLXC
       use gridXC, only : getXC=>gridxc_getXC   ! Returns the XC functional used
+      use xc_info,only : xc_handle
 #else /* BSC_CELLXC */
       use bsc_xcmod,          only : nXCfunc, XCauth
 #endif /* BSC_CELLXC */
@@ -180,7 +181,7 @@ C       Check spin-spiral wavevector (if defined)
 
 #ifndef BSC_CELLXC
 C Get functional(s) being used
-      call getXC( nXCfunc, XCfunc, XCauth )
+      call getXC( xc_handle, nXCfunc, XCfunc, XCauth )
 #endif /* ! BSC_CELLXC */
 
       if (harrisfun) then
@@ -624,6 +625,7 @@ C     Modules
       use m_partial_charges, only: want_partial_charges
 #ifndef BSC_CELLXC
 
+      use xc_info,only : xc_handle
       use gridXC, only : cellXC=>gridxc_cellXC       ! Finds xc energy and potential
       use gridXC, only : myMeshBox    ! Returns my processor mesh box
       use gridXC, only : jms_setMeshDistr => setMeshDistr
@@ -1506,7 +1508,7 @@ C ----------------------------------------------------------------------
 #endif /* BSC_CELLXC */
 
 #ifndef BSC_CELLXC
-      call cellXC( 0, cell, ntm, myBox(1,1), myBox(2,1),
+      call cellXC( xc_handle, 0, cell, ntm, myBox(1,1), myBox(2,1),
      .                           myBox(1,2), myBox(2,2),
      .                           myBox(1,3), myBox(2,3), nspin,
      .             DRho, Ex, Ec, DEx, DEc, stressXC, Vscf )

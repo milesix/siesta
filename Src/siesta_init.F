@@ -37,6 +37,7 @@
       use bsc_xcmod,          only: setXC
 #else
       use gridxc,             only: gridxc_init
+      use xc_info,            only: xc_handle, read_xc_info
 #endif /* BSC_CELLXC */
       use molecularmechanics, only: inittwobody
       use metaforce,          only: initmeta

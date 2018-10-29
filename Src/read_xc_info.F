@@ -5,11 +5,22 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
+      module xc_info
+
+      use gridXC, only: xc_t => gridXC_xc_t
+      
+      public :: read_xc_info
+      public :: set_xc_species
+
+      type(xc_t), save :: xc_handle
+
+      CONTAINS
+      
       subroutine read_xc_info()
 C
 C     Gathers species' exchange-correlation functional information,
 C     optionally reads extra settings from the fdf file,
-C     and calls setXC to store it
+C     and calls setXC to store it into the module's xc_handle
 C
       use precision, only : dp
       use gridXC,  only : setXC=>gridxc_setXC
@@ -46,8 +57,6 @@ C     LOCAL variables
         logical :: same_xc, force_xc_consistency
         logical :: allow_xc_control
 
-        external :: set_xc_species
-        
         nsp = size(species)
         spp => species(1)
         atom_id = spp%xc_info%atom_id
@@ -67,7 +76,7 @@ C     LOCAL variables
      $                  "Exchange-correlation information"
         if (same_xc) then
            ! all species have the same XC. Use it globally
-           call set_xc_species(spp)
+           call set_xc_species(spp,xc_handle)
            if (.not. allow_xc_control) then
 
               if ( (fdf_defined('xc.functional')) .or.
@@ -173,7 +182,7 @@ C     LOCAL variables
 
         ! Store information in module
 
-        call setXC (n=nXCfunc, func=XCfunc, auth=XCauth,
+        call setXC ( xc_handle, n=nXCfunc, func=XCfunc, auth=XCauth,
      $           wx=XCweightX, wc=XCweightC)
 
       else
@@ -185,8 +194,10 @@ C     LOCAL variables
 !>     Set xc record for gridxc based on the information
 !>     for the species
 !      
-      subroutine set_xc_species(spp)
+      subroutine set_xc_species(spp, xc_handle)
       use gridXC,  only : setXC => gridxc_setXC
+      use gridXC,  only : xc_t => gridxc_xc_t
+      
 #ifndef SIESTA__NO_LIBXC
       use gridXC,  only : setXC_libxc => gridxc_setXC_libxc
 #endif      
@@ -197,6 +208,7 @@ C     LOCAL variables
       implicit none
       
       type(species_info), intent(in) :: spp
+      type(xc_t), intent(out) :: xc_handle
       
       integer :: libxc_id(2), xc_code, x_code, c_code, nfuncs, i
       character(len=10) :: xc_family, xc_authors
@@ -208,7 +220,7 @@ C     LOCAL variables
       xc_code = spp%xc_info%libxc_packed_code
       
       if ((xc_family /= "--") .and. (xc_authors /= "--")) then
-         call setXC( 1 , (/ xc_family /), (/ xc_authors /),
+         call setXC( xc_handle, 1 , (/ xc_family /), (/ xc_authors /),
      $        wx= (/ 1.0_dp /), wc= (/ 1.0_dp /) )
          if (node == 0) then
             write(6,"(a,a,'/',a)") "Using Siesta-lineage XC: ",
@@ -240,7 +252,7 @@ C     LOCAL variables
      $                 libxc_id(i), trim(xc_str), trim(xc_type)
                enddo
             endif
-            call setxc_libxc(nfuncs, libxc_id)
+            call setxc_libxc(xc_handle, nfuncs, libxc_id)
 #else
             if (node == 0) then
                write(6,"(a,2(1x,i3))") "Will need libXC functionals: ",
@@ -305,3 +317,5 @@ C     LOCAL variables
 
       end subroutine libxc_info
 #endif
+      end module xc_info
+      

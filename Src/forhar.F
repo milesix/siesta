@@ -16,7 +16,7 @@
       use gridXC , only : jms_setMeshDistr => setMeshDistr
                                         ! Sets a distribution of mesh
                                         ! points over parallel processors
-
+      use xc_info, only : xc_handle
 #else /* BSC_CELLXC */
       use mesh
       use moreMeshSubs, only : setMeshDistr, distMeshData
@@ -188,7 +188,7 @@ C ----------------------------------------------------------------------
       ENDDO
 
 #ifndef BSC_CELLXC
-      CALL CELLXC( 0, CELL, NTM, myBox(1,1), myBox(2,1),
+      CALL CELLXC( xc_handle, 0, CELL, NTM, myBox(1,1), myBox(2,1),
      .                           myBox(1,2), myBox(2,2),
      .                           myBox(1,3), myBox(2,3), NSPIN, DRHOIN,
      .             EX, EC, DEX, DEC, STRESS, VHARRIS1, DVXCDN )
