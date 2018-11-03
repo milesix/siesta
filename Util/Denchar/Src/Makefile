@@ -96,7 +96,7 @@ SIESTA_OBJS += precision.o parallel.o debugmpi.o m_io.o alloc.o listsc.o  \
          schecomm.o sparse_matrices.o\
          files.o interpolation.o chemical.o xml.o \
          domain_decom.o printmatrix.o qsort.o mmio.o pspltm1.o lenstr.o \
-         spatial.o 
+         spatial.o
 
 # Additional class objects
 SIESTA_OBJS += m_uuid.o object_debug.o class_Sparsity.o \

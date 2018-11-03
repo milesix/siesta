@@ -33,6 +33,19 @@
       end subroutine die
 
 !--------------------------------------------------
+      subroutine message(level,str)
+
+      ! One of INFO, WARNING, FATAL
+      character(len=*), intent(in)  :: level
+      character(len=*), intent(in)  :: str
+
+      write(6,'(a)') trim(level) // ": " // trim(str)
+      write(0,'(a)') trim(level) // ": " // trim(str)
+      call pxfflush(6)
+      call pxfflush(0)
+
+      end subroutine message
+!--------------------------------------------------
       subroutine timer(str,i)
 
       character(len=*), intent(in)  :: str

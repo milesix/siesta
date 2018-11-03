@@ -37,7 +37,8 @@
       use bsc_xcmod,          only: setXC
 #else
       use gridxc,             only: gridxc_init
-      use xc_info,            only: xc_handle, read_xc_info
+      use xc_info_m,          only: read_xc_options
+      use xc_info_m,          only: set_xc_info
 #endif /* BSC_CELLXC */
       use molecularmechanics, only: inittwobody
       use metaforce,          only: initmeta
@@ -387,14 +388,17 @@ C     Initialise MPI and set processor number
          call add_citation("10.1088/0953-8984/14/11/302")
       end if
 
-
-#ifndef BXC_CELLXC
+!     Initialise exchange-correlation functional information
+#ifndef BSC_CELLXC
+      call read_xc_options()
 #ifdef MPI
       call gridxc_init(comm=MPI_Comm_World,
      $     time_mpi_calls=fdf_get('gridxc-time-mpi-calls',.false.))
 #else
       call gridxc_init()
 #endif
+#else
+      call setXC( )
 #endif
 
 !     Initialise force field component
@@ -412,16 +416,12 @@ C     Initialise MPI and set processor number
       if (atmonly) call bye( 'End of atom setup' )
 
 !     Initialise exchange-correlation functional information
-!     Moved here as the setting depends on the information
-!     found in atom
-!     This will *not* work if the .ion files are used
+!     Moved here as the setting might depend on the information
+!     found during species' processing in 'atom'.
       
-#ifdef BSC_CELLXC
-      call setXC( )
-#else
-      call read_xc_info()
+#ifndef BSC_CELLXC
+      call set_xc_info()
 #endif
-
 
 !     Read geometry
       call struct_init( )      ! Sets na_u, isa, ucell

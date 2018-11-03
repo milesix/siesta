@@ -5,34 +5,39 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-      module xc_info
+      module xc_info_m
 
+      use precision, only: dp
       use gridXC, only: xc_t => gridXC_xc_t
       
-      public :: read_xc_info
+      public :: set_xc_info
+      public :: read_xc_options
       public :: set_xc_species
 
-      type(xc_t), save :: xc_handle
+      logical :: force_xc_consistency
+      logical :: allow_xc_control
+
+      !> Handle to be used by the program (except perhaps in the atomic routines)
+      type(xc_t), public, save :: xc_siesta
+
+      !> Handle containing information in the fdf file
+      type(xc_t), protected, save :: xc_from_user
+      
+      type(xc_t), protected, save :: xc_from_species
+      type(xc_t), protected, save :: xc_default
 
       CONTAINS
       
-      subroutine read_xc_info()
-C
-C     Gathers species' exchange-correlation functional information,
-C     optionally reads extra settings from the fdf file,
-C     and calls setXC to store it into the module's xc_handle
-C
+      subroutine read_xc_options()
+!
+!     Reads XC settings from the fdf file,
+!     and calls setXC to store it into the module's 'xc_from_user' object
+!
       use precision, only : dp
       use gridXC,  only : setXC=>gridxc_setXC
       use fdf
-      use parallel,  only : Node
-      use sys,       only : die
-      use atm_types, only: species, species_info
-      use fdf
       
       implicit none
-
-C     LOCAL variables
 
       integer, parameter      :: MaxFunc = 10
       integer                 :: nXCfunc
@@ -49,57 +54,13 @@ C     LOCAL variables
         type(block_fdf)            :: bfdf
         type(parsed_line), pointer :: pline
 
-        integer isp, nsp
-        character(len=2) :: atom_id
-        integer :: libxc_packed_code
-        type(species_info), pointer :: spp
+!     Read XC functional information from the fdf file
+
+        ! Create 'default' handle
+        call setXC ( xc_default, 1,["LDA"],["PZ"],[1.0_dp],[1.0_dp])
         
-        logical :: same_xc, force_xc_consistency
-        logical :: allow_xc_control
-
-        nsp = size(species)
-        spp => species(1)
-        atom_id = spp%xc_info%atom_id
-        libxc_packed_code = spp%xc_info%libxc_packed_code
-        same_xc = .true.
-        do isp = 2, nsp
-           spp => species(isp)
-           if (spp%xc_info%atom_id /= atom_id) same_xc = .false.
-           if (spp%xc_info%libxc_packed_code /= libxc_packed_code)
-     $          same_xc = .false.
-        enddo
-
-        force_xc_consistency = fdf_get("XC-Force-Consistency",.true.)
-        allow_xc_control = fdf_get("XC-Allow-Control",.false.)
-        
-        if (Node==0) write(6,'(/,a,/)')
-     $                  "Exchange-correlation information"
-        if (same_xc) then
-           ! all species have the same XC. Use it globally
-           call set_xc_species(spp,xc_handle)
-           if (.not. allow_xc_control) then
-
-              if ( (fdf_defined('xc.functional')) .or.
-     $             (fdf_defined('xc.authors')) .or.
-     $             (fdf_defined('xc.cocktail')) )  then
-                 call message("WARNING",
-     $                "XC settings in fdf file disregarded")
-              endif
-              
-              RETURN            ! Do not read more xc input
-           endif
-        else
-           if (force_xc_consistency) then
-              call die("Inconsistent XC functionals. See manual")
-           else
-              call message("WARNING",
-     $             "Inconsistent species XC functionals")
-              call message("WARNING","Will set XC from fdf file")
-           endif
-        endif
-           
-!     Read XC functional information from the fdf file, to override
-!     the species' setting.        
+        call init_xc_handle(xc_from_user)
+        nXCfunc = 0   
         
         if (fdf_block('xc.hybrid',bfdf)) then
            call die('XC.hybrid block is deprecated. Use XC.cocktail')
@@ -107,13 +68,12 @@ C     LOCAL variables
         
         if (fdf_block('xc.cocktail',bfdf)) then
           if (.not. fdf_bline(bfdf,pline)) then
-            call die('setXC: ERROR no data in xc.cocktail block')
+            call die('read_xc_options: ERROR no data in xc.cocktail block')
           endif
           ni = fdf_bnintegers(pline)
 
           if (ni .eq. 0) then
-            call die('setXC: Number of functionals missing in ' //
-     .               'xc.cocktail')
+            call die("setXC: Number of functionals missing in 'xc.cocktail'")
           endif
           nXCfunc = abs(fdf_bintegers(pline,1))
           if (nXCfunc .gt. MaxFunc) then
@@ -128,7 +88,7 @@ C     LOCAL variables
 
             if (nn .gt. 0) then
               XCfunc(n) = fdf_bnames(pline,1)
-            else
+            else   ! Remove this fallback...
               XCfunc(n) = 'LDA'
             endif
             if (nn .gt. 1) then
@@ -148,48 +108,107 @@ C     LOCAL variables
             endif
           enddo
         else
-          nXCfunc = 1 
-          XCfunc(1) = fdf_string('xc.functional','LDA')
-          XCauth(1) = fdf_string('xc.authors','PZ')
-          XCweightX(1) = 1.0_dp
-          XCweightC(1) = 1.0_dp
+           if ( fdf_defined('xc.functional') .and. &
+                fdf_defined('xc.authors') ) then
+              nXCfunc = 1 
+              XCfunc(1) = fdf_string('xc.functional','--')
+              XCauth(1) = fdf_string('xc.authors','--')
+              XCweightX(1) = 1.0_dp
+              XCweightC(1) = 1.0_dp
+           endif
+        endif
+        ! Store information in handle
+
+        if (nXCfunc > 0) then
+           call setXC ( xc_from_user, n=nXCfunc, func=XCfunc, auth=XCauth, &
+                wx=XCweightX, wc=XCweightC)
+        endif
+
+      end subroutine read_xc_options
+      subroutine set_xc_info()
+!
+!     Gathers species' exchange-correlation functional information,
+!     optionally reads extra settings from the fdf file,
+!     and calls setXC to store it into the module's xc_siesta
+!
+      use parallel,  only : Node
+      use atm_types, only: species, species_info
+      use fdf
+      
+      implicit none
+
+        integer isp, nsp
+        character(len=2) :: atom_id
+        integer :: libxc_packed_code
+        type(species_info), pointer :: spp
+        
+        logical :: same_xc, force_xc_consistency
+        logical :: allow_xc_control
+
+        
+        call init_xc_handle(xc_siesta)
+
+        call init_xc_handle(xc_from_species)
+        nsp = size(species)
+        spp => species(1)
+        atom_id = spp%xc_info%atom_id
+        libxc_packed_code = spp%xc_info%libxc_packed_code
+        same_xc = .true.
+        do isp = 2, nsp
+           spp => species(isp)
+           if (spp%xc_info%atom_id /= atom_id) same_xc = .false.
+           if (spp%xc_info%libxc_packed_code /= libxc_packed_code) same_xc = .false.
+        enddo
+
+        force_xc_consistency = fdf_get("XC-Force-Consistency",.true.)
+        allow_xc_control = fdf_get("XC-Allow-Control",.false.)
+        
+        if (Node==0) write(6,'(/,a,/)') "Exchange-correlation information"
+
+        ! all species have the same XC. Store the handle
+        if (same_xc)  call set_xc_species(spp,xc_from_species)
+
+        if (valid_xc_handle(xc_from_species)) then
+
+           call message("INFO","Using XC settings from species info")
+           xc_siesta = xc_from_species
+           
+           if (.not. allow_xc_control) then
+
+              if ( valid_xc_handle(xc_from_user))  then
+                 call message("WARNING","XC settings in fdf file disregarded")
+              endif
+              
+              RETURN            ! Do not read more xc input
+           endif
+           
+        else
+           
+           if (force_xc_consistency) then
+              call die("Inconsistent species' XC functionals. See manual")
+           else
+              call message("WARNING","Inconsistent species XC functionals")
+              call message("WARNING","Will set XC from fdf file")
+           endif
         endif
 
         ! Set only if explicitly defined in the fdf file
-        if ( (fdf_defined('xc.functional')) .or.
-     $       (fdf_defined('xc.authors')) .or.
-     $       (fdf_defined('xc.cocktail')) )  then
+        if ( valid_xc_handle(xc_from_user))  then
 
            if (same_xc) then  ! allow_xc_control must be true
-              call message("WARNING",
-     $             "Species-based XC setting overridden")
+              call message("WARNING","Species-based XC setting overridden")
            endif
-
-         if (Node .eq. 0) then
-          if (nXCfunc > 1) then
-             write(6,'(a,/)') "Cocktail exchange-correlation functional"
-          else
-             write(6,'(a,/)') "Functional information"
-          endif
-          write(6,'(a,a)') " Number     Functional     Authors  ",
-     .      "            Weight(Ex)   Weight(Ec)"
-          do n = 1,nXCfunc
-          write(6,'(i4,3x,a20,2x,a20,3x,f5.3,8x,f5.3)')
-     .        n,XCfunc(n),XCauth(n),XCweightX(n),XCweightC(n)
-          enddo
-          write(6,*)
+           xc_siesta = xc_from_user
+        
         endif
 
-        ! Store information in module
+        if (.not. valid_xc_handle(xc_siesta)) then
+           call die("Need to set XC functional info explicitly")
+        endif
 
-        call setXC ( xc_handle, n=nXCfunc, func=XCfunc, auth=XCauth,
-     $           wx=XCweightX, wc=XCweightC)
+        if (Node==0) call print_xc_handle(xc_siesta)
 
-      else
-         call die("Need to set XC functional info explicitly")
-      endif
-
-      end subroutine read_xc_info
+      end subroutine set_xc_info
 !
 !>     Set xc record for gridxc based on the information
 !>     for the species
@@ -220,12 +239,12 @@ C     LOCAL variables
       xc_code = spp%xc_info%libxc_packed_code
       
       if ((xc_family /= "--") .and. (xc_authors /= "--")) then
-         call setXC( xc_handle, 1 , (/ xc_family /), (/ xc_authors /),
-     $        wx= (/ 1.0_dp /), wc= (/ 1.0_dp /) )
+         call setXC( xc_handle, 1 , (/ xc_family /), (/ xc_authors /), &
+              wx= (/ 1.0_dp /), wc= (/ 1.0_dp /) )
          if (node == 0) then
-            write(6,"(a,a,'/',a)") "Using Siesta-lineage XC: ",
-     $                      trim(xc_family),
-     $                      trim(xc_authors)
+            write(6,"(a,a,'/',a)") "Using Siesta-lineage XC: ", &
+                            trim(xc_family),                    &
+                            trim(xc_authors)
          endif
       else
          ! Fall back to libxc
@@ -248,17 +267,19 @@ C     LOCAL variables
                write(6,"(a)") "Using libXC functionals: "
                do i = 1, nfuncs
                   call libxc_info(libxc_id(i),xc_str, xc_type)
-                  write(6,"(i4,':',a,2x,'(',a,')')")
-     $                 libxc_id(i), trim(xc_str), trim(xc_type)
+                  write(6,"(i4,':',a,2x,'(',a,')')")    &
+                        libxc_id(i), trim(xc_str), trim(xc_type)
                enddo
             endif
             call setxc_libxc(xc_handle, nfuncs, libxc_id)
 #else
             if (node == 0) then
-               write(6,"(a,2(1x,i3))") "Will need libXC functionals: ",
-     $                                 (libxc_id(i), i=1,nfuncs)
+               write(6,"(a,2(1x,i3))") "Will need libXC functionals: ", &
+                                       (libxc_id(i), i=1,nfuncs)
             endif
             call die("GridXC does not have LibXC support")
+            !! Could allow here the overriding by xc_from_user, if
+            !! a suitable flag is set (xc_allow_control, or xc_override_species)
 #endif            
          endif
       endif
@@ -278,9 +299,7 @@ C     LOCAL variables
 
       TYPE(xc_f90_pointer_t) :: xc_func
       TYPE(xc_f90_pointer_t) :: xc_info
-!     integer :: i
       character(len=120) :: s1, s2
-!     type(xc_f90_pointer_t) :: str
 
       call xc_f90_func_init(xc_func, xc_info, id, XC_UNPOLARIZED)
 
@@ -317,5 +336,41 @@ C     LOCAL variables
 
       end subroutine libxc_info
 #endif
-      end module xc_info
+      !
+      ! These should go in libGridXC
+      !
+      subroutine init_xc_handle(xc_h)
+        type(xc_t), intent(inout) :: xc_h
+
+        xc_h%nfunc = 0
+        
+      end subroutine init_xc_handle
+      
+      function valid_xc_handle(xc_h) result(ok)
+        type(xc_t), intent(in) :: xc_h
+        logical                :: ok
+
+        ok = (xc_h%nfunc > 0)
+      end function valid_xc_handle
+      
+      subroutine print_xc_handle(xc_h)
+        type(xc_t), intent(in) :: xc_h
+
+        ! Use also information from libxc strings, if suitable
+        if (xc_h%nfunc > 1) then
+           write(6,'(a,/)') "Cocktail exchange-correlation functional"
+        else
+           write(6,'(a,/)') "Functional information"
+        endif
+        write(6,'(a,a)') " Number     Functional     Authors  ", &
+                         "            Weight(Ex)   Weight(Ec)"
+        do n = 1,xc_h%nfunc
+           write(6,'(i4,3x,a20,2x,a20,3x,f5.3,8x,f5.3)')    &
+                n, xc_h%func(n), xc_h%auth(n),           &
+                xc_h%weightX(n), xc_h%weightC(n)
+        enddo
+        write(6,*)
+      end subroutine print_xc_handle
+      
+    end module xc_info_m
       

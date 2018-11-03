@@ -658,7 +658,7 @@
 
       use gridXC,  only : setXC=>gridxc_setXC
       use gridXC,  only : atomXC=>gridxc_atomXC
-      use xc_info, only : xc_handle
+      use xc_info_m, only : xc_siesta
 
       integer, intent(in)   :: isp   ! Species index
 
@@ -1068,7 +1068,7 @@
       if (irel.ne.'rel') irelt=0
 
 !     Compute the exchange and correlation potential
-      call atomxc( xc_handle, irelt, nrval, nrmax, rofi,
+      call atomxc( xc_siesta, irelt, nrval, nrmax, rofi,
      &             1, auxrho, ex, ec, dx, dc, vxc )
 
 !!     For debugging
@@ -1108,7 +1108,7 @@
       r2 = rofi(2)/(rofi(3)-rofi(2))
       auxrho(1) = auxrho(2) -(auxrho(3)-auxrho(2))*r2
 
-      call atomxc( xc_handle, irelt, nrval, nrmax, rofi,
+      call atomxc( xc_siesta, irelt, nrval, nrmax, rofi,
      &             1, auxrho, ex, ec, dx, dc, vxc )
 
       vePAO(1:nrval) = vePAO(1:nrval) + vxc(1:nrval)

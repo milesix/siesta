@@ -30,11 +30,6 @@
       use basis_types, only: basis_def_t
       use fdf
       use m_ncps, only: pseudopotential_t => froyen_ps_t
-#ifndef BSC_CELLXC
-      use gridXC, only: atomXC=>gridxc_atomXC  ! XC for a spherical charge
-      use gridXC, only: getXC=>gridxc_getXC ! Returns the XC functional to be used
-      use gridXC, only: xc_t => gridxc_xc_t ! Opaque handle for functionals
-#endif /* ! BSC_CELLXC */
 
       implicit none      
 
@@ -124,8 +119,11 @@
         use m_psml, only: ps_HasProjectors
         use basis_specs, only: restricted_grid
         use aux_proj, only: is, a, b
-        use xc_info, only : set_xc_species
 
+        use gridXC, only: atomXC=>gridxc_atomXC ! XC for a spherical charge
+        use gridXC, only: xc_t => gridxc_xc_t ! Opaque handle for functionals
+
+        use xc_info_m, only : set_xc_species, print_xc_handle
 
         implicit none
 
@@ -486,6 +484,7 @@ c    .          'atom: The above configuration will be used ',
 
           ! Set the XC functional for this particular pseudopotential
           call set_xc_species(spp,xc_species)
+          call print_xc_handle(xc_species)
           irelt = 0
           if (irel.eq.'rel') irelt=1
           call atomxc(xc_species, irelt,nrval,nrmax,rofi,

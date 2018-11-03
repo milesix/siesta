@@ -39,6 +39,7 @@ C
 
       use m_spin,             only: init_spin, spin
       use chemical
+      use xc_info_m,          only: read_xc_options
       
 C
       implicit none
@@ -60,7 +61,7 @@ c Reading input for the pseudopotentials and atomic orbitals
          call get_atom_options()
          write_ion_plot_files = .true.  ! get them always
 
-         call read_xc_info()
+         call read_xc_options()
 
          ! Initialize all basis-parameters
          call read_chemical_types()
