@@ -40,8 +40,9 @@
       use files,        only : filesOut_t   ! derived type for output file names
       use zmatrix,      only: lUseZmatrix, write_zmatrix
       use kpoint_scf_m, only: kpoint_scf, gamma_scf
-      use parallel, only: IOnode
+      use parallel, only: IOnode, Node, Nodes
       use parallel, only: SIESTA_worker
+      use parallelsubs, only: GetNodeOrbs
       use files,       only : label_length
       use m_energies
       use m_steps, only: final
@@ -75,7 +76,7 @@
       real(dp)          :: qaux
       real(dp), pointer :: ebk(:,:,:)       ! Band energies
 
-      integer           :: j, ix, ind, ik, io, ispin
+      integer           :: j, ix, ind, ik, io, ispin, nuo
       integer           :: wfs_band_min, wfs_band_max
       real(dp)          :: g2max, current_ef
       type(filesOut_t)  :: filesOut  ! blank output file names
@@ -304,42 +305,68 @@
      &               'ebk', 'siesta_analysis' )
 
       if (nbk.gt.0) then
-        if (IONode) print "(a)", "Computing bands..."
-        getPSI = fdf_get('WFS.Write.For.Bands', .false.)
-        if (getPSI) then
-           wfs_filename = trim(slabel)//".bands.WFSX"
-         if (IONode) print "(a)", "Writing WFSX for bands in "
-     $                           // trim(wfs_filename)
-           wfs_band_min = fdf_get("WFS.BandMin",1)
-           wfs_band_max = fdf_get("WFS.BandMax",no_u)
-           call setup_wfs_list(nbk,no_u,wfs_band_min,wfs_band_max,
-     $          use_scf_weights=.false.,
-     $          use_energy_window=.false.)
-        endif
-        call bands( no_s, h_spin_dim, spinor_dim, no_u, no_l, maxnh, 
-     .              maxbk,
-     .              numh, listhptr, listh, H, S, Ef, xijo, indxuo,
-     .              .true., nbk, bk, ebk, occtol, getPSI )
-        if (IOnode) then
-          if ( writbk ) then
-            write(6,'(/,a,/,a4,a12)')
-     &       'siesta: Band k vectors (Bohr**-1):', 'ik', 'k'
+!
+! R.Robles: Now it exists the option of having kpoints (nbk > 0) and not plotting
+!  the bands, since they can be used for the spin texture.
+!
+        if ( writeb .OR. writb ) then
+          if (IONode) print "(a)", "Computing bands..."
+          getPSI = fdf_get('WFS.Write.For.Bands', .false.)
+          if (getPSI) then
+             wfs_filename = trim(slabel)//".bands.WFSX"
+           if (IONode) print "(a)", "Writing WFSX for bands in "
+     $                             // trim(wfs_filename)
+             wfs_band_min = fdf_get("WFS.BandMin",1)
+             wfs_band_max = fdf_get("WFS.BandMax",no_u)
+             call setup_wfs_list(nbk,no_u,wfs_band_min,wfs_band_max,
+     $            use_scf_weights=.false.,
+     $            use_energy_window=.false.)
+          endif
+          call bands( no_s, h_spin_dim, spinor_dim, no_u, no_l, maxnh, 
+     .                maxbk,
+     .                numh, listhptr, listh, H, S, Ef, xijo, indxuo,
+     .                .true., nbk, bk, ebk, occtol, getPSI )
+          if (IOnode) then
+            if ( writbk ) then
+              write(6,'(/,a,/,a4,a12)')
+     &         'siesta: Band k vectors (Bohr**-1):', 'ik', 'k'
+              do ik = 1,nbk
+                write(6,'(i4,3f12.6)') ik, (bk(ix,ik),ix=1,3)
+              enddo
+            endif
+        
+            if ( writb ) then
+              write(6,'(/,a,/,a4,a3,a7)')
+     &         'siesta: Band energies (eV):', 'ik', 'is', 'eps'
+!
+! R.Robles: changed to better account for NC and SOC with same behavior as in .bands
+!
             do ik = 1,nbk
-              write(6,'(i4,3f12.6)') ik, (bk(ix,ik),ix=1,3)
+              write(6,'(i4,10f7.2,/,(4x,10f7.2)))')
+     &          ik, ((ebk(io,ispin,ik)/eV,
+     &          io=1,no_u),ispin=1,spinor_dim)
             enddo
           endif
-        
-          if ( writb ) then
-            write(6,'(/,a,/,a4,a3,a7)')
-     &       'siesta: Band energies (eV):', 'ik', 'is', 'eps'
-            do ispin = 1, spinor_dim
-              do ik = 1,nbk
-                write(6,'(i4,i3,10f7.2)')
-     &            ik, ispin, (ebk(io,ispin,ik)/eV,io=1,min(10,no_u))
-                if (no_u.gt.10) write(6,'(7x,10f7.2)')
-     &              (ebk(io,ispin,ik)/eV,io=11,no_u)
-              enddo
-            enddo
+        endif
+      endif
+! R.Robles: Added to compute the spin texture
+!
+        if (writst) then
+! Consistency check
+          if ( .NOT.SpOrb ) then
+            if (IONode)
+     .        write(6,*) "Spin texture only makes sense with Spin-Orbit"
+          else
+            if (IONode) print "(/a)", "Computing spin texture..."
+#ifdef MPI
+            call GetNodeOrbs(no_u,Node,Nodes,nuo)
+#else
+            nuo = no_u
+#endif
+            call spin_texture( nuo, no_s, no_u, maxnh, numh,
+     .              listhptr, listh, H, S,
+     .              xijo, indxuo, nbk, maxbk, bk, Ef,
+     .              no_u, 1, no_u )
           endif
         endif
       endif

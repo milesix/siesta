@@ -109,7 +109,7 @@
 \input{tex/init.tex}
 
 % Title
-\title{SIESTA manual 4.1-b4}
+\title{SIESTA manual trunk}
 
 % Set the date
 \date{\today}
@@ -153,7 +153,7 @@
 \hrulefill
 \vspace{1cm}
 
-{\Huge \textbf{S I E S T A \, \, \softwareversion}}
+{\Huge \textbf{S I E S T A \, \, \input{../version.info}}}
 
 \vspace{1cm}
 \hrulefill
@@ -7515,6 +7515,28 @@ to the \sysfile{bands} file (see below for the format).
 
 \end{fdflogicalF}
 
+\begin{fdflogicalT}{WriteBandsFile}
+  \index{output!band structure}%
+  \index{band structure}
+
+  If \fdffalse, it doesn't write the .bands file. Useful when 
+  only the Hamiltonian eigenvalues are needed in the main output
+  file. Also useful if \fdf{BandLines} or \fdf{BandPoints} are needed
+  to plot the spin texture, but the bands are not needed.
+
+\end{fdflogicalT}
+
+\begin{fdflogicalF}{SpinTexture}
+  \index{output!band structure}%
+  \index{band structure}
+
+  If \fdftrue, it writes the spin texture corresponding to
+  the $\vec k$ points defined for band plotting, in the file
+  \file{spin\_texture.dat}. The spin texture is defined as the
+  expectation value of the spin operators for each $\vec k$-point and
+  eigenvalue.
+
+\end{fdflogicalF}
 
 \subsubsection{Format of the .bands file}
 

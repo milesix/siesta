@@ -70,6 +70,8 @@ MODULE siesta_options
   logical :: writmd        
   logical :: writpx        ! Write atomic coordinates at every geometry step?
   logical :: writb         ! Write band eigenvalues?
+  logical :: writeb        ! Write bands file?
+  logical :: writst        ! Write spin texture?
   logical :: writec        ! Write atomic coordinates at every geometry step?
   logical :: write_coop    ! Write information for COOP/COHP analysis ?
   logical :: save_ORB_INDX ! Write orbital information to ORB_INDX file ?

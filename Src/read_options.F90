@@ -1645,6 +1645,8 @@ subroutine read_options( na, ns, nspin )
 
   new_diagk              = fdf_get( 'UseNewDiagk', .false. )
   writb                  = fdf_get( 'WriteBands', outlng )
+  writeb                 = fdf_get( 'WriteBandsFile', .true. )
+  writst                 = fdf_get( 'SpinTexture', .false. )
   writbk                 = fdf_get( 'WriteKbands', outlng )
   writeig                = fdf_get('WriteEigenvalues', outlng )
   writec                 = fdf_get( 'WriteCoorStep', outlng )

@@ -167,7 +167,7 @@ OBJS =  automatic_cell.o atom_options.o \
 	m_target_stress.o compute_max_diff.o \
 	m_initwf.o wavefunctions.o \
 	m_evolve.o cranknic_evolk.o cranknic_evolg.o sankey_change_basis.o m_iotddft.o \
-	m_matdiag.o m_matswinvers.o iotdxv.o  m_inversemm.o
+	m_matdiag.o m_matswinvers.o iotdxv.o m_inversemm.o spin_texture.o
 
 OBJS += kpoint_t.o kpoint_scf.o kpoint_dos.o kpoint_pdos.o kpoint_ldos.o
 
@@ -691,6 +691,7 @@ diag2k.o: fermid.o parallel.o parallelsubs.o precision.o sys.o
 diag3g.o: fermid.o intrinsic_missing.o parallel.o parallelsubs.o precision.o
 diag3g.o: sys.o
 diag3k.o: fermid.o parallel.o parallelsubs.o precision.o sys.o
+spin_texture.o: fermid.o parallel.o parallelsubs.o precision.o sys.o
 diag_option.o: parallel.o precision.o
 diagg.o: alloc.o fermid.o intrinsic_missing.o m_spin.o parallel.o
 diagg.o: parallelsubs.o precision.o sys.o writewave.o
