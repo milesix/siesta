@@ -51,7 +51,9 @@ module w90_hamiltonian
   public :: hamiltonian_write_tb
 
   ! Module variables
-  logical, save :: ham_have_setup=.false.
+! jjunquer
+  logical, public, save :: ham_have_setup=.false.
+! end jjunquer
   logical, save :: have_translated=.false.
   logical, save :: use_translation=.false.
   logical, save :: have_ham_r=.false.
@@ -85,6 +87,13 @@ contains
     if ( bands_plot .and. (index(bands_plot_mode,'cut').ne.0) ) use_translation=.true.
     if ( transport  .and. (index(transport_mode,'bulk').ne.0) ) use_translation=.true.
     if ( transport  .and. (index(transport_mode,'lcr' ).ne.0) ) use_translation=.true.
+!   jjunquer
+    if( allocated(ham_r) )  deallocate(ham_r)
+    if( allocated(ham_k) )  deallocate(ham_k)
+    if( allocated(wannier_centres_translated) ) deallocate(wannier_centres_translated)
+    if( allocated(irvec) )  deallocate(irvec)
+    if( allocated(ndegen) ) deallocate(ndegen)
+!   end jjunquer
     !
     ! Set up Wigner-Seitz vectors
     !
@@ -114,7 +123,7 @@ contains
     if (ierr/=0) call io_error('Error allocating wannier_centres_translated in hamiltonian_setup')
     wannier_centres_translated=0.0_dp
 
-!    ham_have_setup = .true.
+    ham_have_setup = .true.
 
     return
   end subroutine hamiltonian_setup
@@ -274,7 +283,7 @@ contains
        enddo
     endif                                                  !YN:
 
-!    have_ham_k = .true.
+    have_ham_k = .true.
 
 100 continue
 
@@ -297,7 +306,7 @@ contains
           enddo
        enddo
 
-!       have_translated = .false.
+       have_translated = .false.
 
     else
 
@@ -320,7 +329,7 @@ contains
           enddo
        enddo
 
-!       have_translated = .true.
+       have_translated = .true.
 
     end if
 
@@ -334,7 +343,7 @@ contains
 !         call ws_translate_dist(nrpts, irvec)
 !     endif
 
-!    have_ham_r = .true.
+    have_ham_r = .true.
 
 200 continue
 
@@ -477,7 +486,7 @@ contains
 
     close(file_unit)
 
-!    hr_written=.true.
+    hr_written=.true.
 
     if (timing_level>1) call io_stopwatch('hamiltonian: write_hr',2)
 

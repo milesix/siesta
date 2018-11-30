@@ -39,7 +39,7 @@ type trialorbital
   real(dp),dimension(3) :: yaxis  ! Angular momentum y-axis
   real(dp)              :: zovera ! z/a, diffusivity, spread. 
                                   !   Read from the nnkp file in Ang^-1
-                                  !   Transformed later to Ang^-1
+                                  !   Transformed later to Bohr^-1
   integer               :: r      ! Radial quantum number
   integer               :: l      ! Angular momentum
   integer               :: mr     ! z-projection quantum number

@@ -1,18 +1,22 @@
-!-*- mode: F90; mode: font-lock; column-number-mode: true -*-!
-!                                                            !
-! Copyright (C) 2007-13 Jonathan Yates, Arash Mostofi,       !
-!                Giovanni Pizzi, Young-Su Lee,               !
-!                Nicola Marzari, Ivo Souza, David Vanderbilt !
-!                                                            !
-! This file is distributed under the terms of the GNU        !
-! General Public License. See the file `LICENSE' in          !
-! the root directory of the present distribution, or         !
-! http://www.gnu.org/copyleft/gpl.txt .                      !
-!                                                            !
+!-*- mode: F90 -*-!
 !------------------------------------------------------------!
-module w90_parameters
+! This file is distributed as part of the Wannier90 code and !
+! under the terms of the GNU General Public License. See the !
+! file `LICENSE' in the root directory of the Wannier90      !
+! distribution, or http://www.gnu.org/copyleft/gpl.txt       !
+!                                                            !
+! The webpage of the Wannier90 code is www.wannier.org       !
+!                                                            !
+! The Wannier90 code is hosted on GitHub:                    !
+!                                                            !
+! https://github.com/wannier-developers/wannier90            !
+!------------------------------------------------------------!
 
-  use precision, only : dp
+module w90_parameters
+  !! This module contains parameters to control the actions of wannier90.
+  !! Also routines to read the parameters and write them out again.
+
+  use w90_constants, only : dp
   use w90_io,        only : stdout,maxlen
 
   implicit none
@@ -21,15 +25,25 @@ module w90_parameters
 
   !Input
   integer,           public, save :: iprint
+  !! Controls the verbosity of the output
   character(len=20), public, save :: energy_unit
+  !! Units for energy
   character(len=20), public, save :: length_unit
+  !! Units for length
   logical,           public, save :: wvfn_formatted
+  !! Read the wvfn from fortran formatted file
   logical,           public, save :: spn_formatted
+  !! Read the spin from fortran formatted file
   logical,           public, save :: berry_uHu_formatted
+  !! Read the uHu from fortran formatted file
   integer,           public, save :: spin
+  !! Spin up=1 down=2
   integer,           public, save :: num_bands
+  !! Number of bands
   integer,           public, save :: num_dump_cycles
+  !! Number of steps before writing checkpoint
   integer,           public, save :: num_print_cycles
+  !! Number of steps between writing output
   character(len=50), public, save :: devel_flag
   ! Adaptive vs. fixed smearing stuff [GP, Jul 12, 2012]
   ! Only internal, always use the local variables defined by each module
@@ -46,7 +60,6 @@ module w90_parameters
   real(kind=dp),              public, save :: degen_thr
   logical,                    public, save :: spin_decomp
   integer,                    public, save :: num_valence_bands
-!  logical,                    public, save :: found_fermi_energy
   logical                                  :: found_fermi_energy
   real(kind=dp),              public, save :: scissors_shift
   !IVO_END
@@ -59,24 +72,37 @@ module w90_parameters
   ! [gp-end]
   integer, allocatable, public,save :: exclude_bands(:)  
   integer,           public, save :: num_wann
+  !! number of wannier functions
   integer,           public, save :: mp_grid(3)
+  !! Dimensions of the Monkhorst-Pack grid
 !  logical,           public, save :: automatic_mp_grid
   logical,           public, save :: gamma_only  
+  !! Use the special Gamma-point routines
   real(kind=dp),     public, save :: dis_win_min
+    !! lower bound of the disentanglement outer window
   real(kind=dp),     public, save :: dis_win_max
+    !! upper bound of the disentanglement outer window
   real(kind=dp),     public, save :: dis_froz_min
+    !! lower bound of the disentanglement inner (frozen) window
   real(kind=dp),     public, save :: dis_froz_max
+    !! upper bound of the disentanglement inner (frozen) window
   integer,           public, save :: dis_num_iter
+    !! number of disentanglement iteration steps
   real(kind=dp),     public, save :: dis_mix_ratio
+  !! Mixing ratio for the disentanglement routine
   real(kind=dp),     public, save :: dis_conv_tol
+  !! Convergence tolerance for the disentanglement 
   integer,           public, save :: dis_conv_window
-  !!! GS-start
+  !! Size of the convergence window for disentanglement
+  ! GS-start
   integer,           public, save :: dis_spheres_first_wann
   integer,           public, save :: dis_spheres_num
   real(kind=dp), allocatable, public, save :: dis_spheres(:,:)
-  !!! GS-end
+  ! GS-end
   integer,           public, save :: num_iter
+  !! Number of wannierisation iterations
   integer,           public, save :: num_cg_steps
+  !! Number of Conjugate Gradient steps
   real(kind=dp),     public, save :: conv_tol
   integer,           public, save :: conv_window
   logical,           public, save :: wannier_plot
@@ -84,22 +110,29 @@ module w90_parameters
   integer,           public, save :: wannier_plot_supercell(3)
   character(len=20), public, save :: wannier_plot_format
   character(len=20), public, save :: wannier_plot_mode
+  logical,           public, save :: write_u_matrices
   logical,           public, save :: bands_plot
   integer,           public, save :: bands_num_points
   character(len=20), public, save :: bands_plot_format
   character(len=20), public, save :: bands_plot_mode
   integer, allocatable, public, save :: bands_plot_project(:)
   integer,           public, save :: bands_plot_dim         
-  logical,           public, save :: hr_plot
+  logical,           public, save :: write_hr
+  logical,           public, save :: write_rmn
+  logical,           public, save :: write_tb
   real(kind=dp),     public, save :: hr_cutoff
   real(kind=dp),     public, save :: dist_cutoff
   character(len=20), public, save :: dist_cutoff_mode
   real(kind=dp),     public, save :: dist_cutoff_hc
   character(len=20), public, save :: one_dim_axis
+  logical,           public, save :: use_ws_distance
   logical,           public, save :: fermi_surface_plot
   integer,           public, save :: fermi_surface_num_points
   character(len=20), public, save :: fermi_surface_plot_format
-  real(kind=dp),             save :: fermi_energy
+! jjunquer
+!  real(kind=dp),             save :: fermi_energy
+  real(kind=dp),     public, save :: fermi_energy
+! end jjunquer
 
   ! module  k p a t h
   logical,                    public, save :: kpath
@@ -114,9 +147,7 @@ module w90_parameters
   real(kind=dp),     public, save :: kslice_b1(3)
   real(kind=dp),     public, save :: kslice_b2(3)
   integer,           public, save :: kslice_2dkmesh(2)
-  real(kind=dp),     public, save :: kslice_fermi_level
   character(len=20), public, save :: kslice_fermi_lines_colour
-  logical,           public, save :: found_kslice_fermi_level
 
   ! module  d o s
   logical,           public, save    :: dos
@@ -179,13 +210,13 @@ module w90_parameters
   integer,           public, save :: spin_kmesh(3)
 
   ! [gp-begin, Apr 13, 2012]
-  !! Global interpolation k mesh variables
-  !! These don't need to be public, since their values are copied in the variables of the
-  !! local interpolation meshes. JRY: added save attribute
+  ! Global interpolation k mesh variables
+  ! These don't need to be public, since their values are copied in the variables of the
+  ! local interpolation meshes. JRY: added save attribute
   real(kind=dp), save             :: kmesh_spacing
   integer, save                   :: kmesh(3)
   logical, save                   :: global_kmesh_set
-  !! [gp-end]
+  ! [gp-end]
 
   ! [gp-begin, Jun 1, 2012]
   ! GeneralInterpolator variables
@@ -245,13 +276,19 @@ module w90_parameters
   integer,           public, save :: tran_num_cell_rr     
   real(kind=dp),     public, save :: tran_group_threshold  
   real(kind=dp),     public, save :: translation_centre_frac(3)
-  integer,           public, save :: num_shells    !no longer an input keyword
+  integer,           public, save :: num_shells    
+    !! no longer an input keyword
   logical,           public, save :: skip_B1_tests
+    !! do not check the B1 condition 
+  logical,           public, save :: explicit_nnkpts 
+    !! nnkpts block is in the input file (allowed only for post-proc setup)
   integer, allocatable, public,save :: shell_list(:)
-  real(kind=dp), allocatable,    public, save :: kpt_latt(:,:) !kpoints in lattice vecs
+  real(kind=dp), allocatable,    public, save :: kpt_latt(:,:)   
+    !! kpoints in lattice vecs
   real(kind=dp),     public, save :: real_lattice(3,3)
   logical,           public, save :: postproc_setup
-  logical,           public, save :: cp_pp ! Car-Parinello post-proc flag/transport
+  logical,           public, save :: cp_pp 
+    !! Car-Parinello post-proc flag/transport
 
   logical,           public, save :: calc_only_A
   logical,           public, save :: use_bloch_phases
@@ -348,11 +385,11 @@ module w90_parameters
   real(kind=dp),    allocatable, save, public :: eigval(:,:)
   logical,                       save, public :: eig_found
 
-!!$![ysl-b]
-!!$  ! ph_g = phase factor of Bloch functions at Gamma
-!!$  !  assuming that Bloch functions at Gamma are real except this phase factor
-!!$  complex(kind=dp), allocatable, save, public :: ph_g(:)
-!!$![ysl-e]
+! $![ysl-b]
+! $  ! ph_g = phase factor of Bloch functions at Gamma
+! $  !  assuming that Bloch functions at Gamma are real except this phase factor
+! $  complex(kind=dp), allocatable, save, public :: ph_g(:)
+! $![ysl-e]
 
   ! u_matrix_opt gives the num_wann dimension optimal subspace from the
   ! original bloch states
@@ -366,10 +403,10 @@ module w90_parameters
   complex(kind=dp), allocatable, save, public :: u_matrix(:,:,:)
   complex(kind=dp), allocatable, save, public :: m_matrix(:,:,:,:)
 
- ! RS: symmetry-adapted Wannier functions
+  ! RS: symmetry-adapted Wannier functions
   logical,       public, save :: lsitesymmetry=.false.
   real(kind=dp), public, save :: symmetrize_eps=1.d-3
-
+  
   ! The maximum number of shells we need to satisfy B1 condition in kmesh
   integer, parameter, public :: max_shells=6
   integer, parameter, public :: num_nnmax=12
@@ -400,6 +437,8 @@ module w90_parameters
   character(len=maxlen), allocatable :: in_data(:)
   character(len=maxlen)              :: ctmp
   logical                            :: ltmp
+  ! AAM_2016-09-15: hr_plot is a deprecated input parameter. Replaced by write_hr.
+  logical                            :: hr_plot 
 
   public :: param_read
   public :: param_write
@@ -420,7 +459,7 @@ contains
   subroutine param_read ( )
   !==================================================================!
   !                                                                  !
-  ! Read parameters and calculate derived values                     !
+  !! Read parameters and calculate derived values                    
   !                                                                  !
   !===================================================================  
     use w90_constants, only : bohr, eps6
@@ -430,12 +469,28 @@ contains
 
     !local variables
     real(kind=dp)  :: real_lattice_tmp(3,3)
-    integer :: nkp,i,j,n,k,itmp,i_temp,i_temp2,eig_unit,loop,ierr,iv_temp(3)
+    integer :: nkp,i,j,n,k,itmp,i_temp,i_temp2,eig_unit,loop,ierr,iv_temp(3), rows
     logical :: found,found2,lunits,chk_found
     character(len=6) :: spin_str
     real(kind=dp) :: cosa(3),rv_temp(3)
+    integer, allocatable, dimension(:,:) :: nnkpts_block
+    integer, allocatable, dimension(:) :: nnkpts_idx
 
+!!   jjunquer: 
+!   This call is not required when we use Wannier90 subroutines called
+!   directly from SIESTA.
 !    call param_in_file
+!!   end jjunquer: 
+
+    !%%%%%%%%%%%%%%%%
+    ! Site symmetry
+    !%%%%%%%%%%%%%%%%
+
+    ! default value is lsitesymmetry=.false.
+    call param_get_keyword('site_symmetry' ,found,l_value=lsitesymmetry )!YN:
+
+    ! default value is symmetrize_eps=0.001
+    call param_get_keyword('symmetrize_eps',found,r_value=symmetrize_eps)!YN:
 
     !%%%%%%%%%%%%%%%%
     ! Transport 
@@ -501,10 +556,16 @@ contains
        end if
     end if
 
-    num_wann      =   -99
-    call param_get_keyword('num_wann',found,i_value=num_wann)
+!!   jjunquer
+!   WANNIER90 assumes that we are going to specify the number of 
+!   Wannier functions from a file. 
+!   But it is going to be transferred from SIESTA
+!   To avoid a crash, we comment the following lines
+!    num_wann      =   -99
+!    call param_get_keyword('num_wann',found,i_value=num_wann)
 !    if(.not. found) call io_error('Error: You must specify num_wann')
 !    if(num_wann<=0) call io_error('Error: num_wann must be greater than zero')
+!!  end jjunquer
 
     num_exclude_bands=0
     call param_get_range_vector('exclude_bands',found,num_exclude_bands,lcount=.true.)
@@ -517,16 +578,22 @@ contains
             call io_error('Error: exclude_bands must contain positive numbers')
     end if
 
+    ! AAM_2016-09-16: some changes to logic to patch a problem with uninitialised num_bands in library mode
 !    num_bands       =   -1   
-    call param_get_keyword('num_bands',found,i_value=i_temp)
-    if(found.and.library) write(stdout,'(/a)') ' Ignoring <num_bands> in input file'
-    if (.not. library .and. .not.effective_model) then
-       if(found) num_bands=i_temp
-       if(.not.found) num_bands=num_wann
-       if(found .and. num_bands<num_wann) then
-          call io_error('Error: num_bands must be greater than or equal to num_wann')
-       endif
-    end if
+!!   jjunquer: num_bands is transferred from Siesta
+!    call param_get_keyword('num_bands',found,i_value=i_temp)
+!    if(found.and.library) write(stdout,'(/a)') ' Ignoring <num_bands> in input file'
+!    if (.not. library .and. .not.effective_model) then
+!       if(found) num_bands=i_temp
+!       if(.not.found) num_bands=num_wann
+!    end if
+!    if (library) num_bands = num_bands - num_exclude_bands
+!    if (.not. effective_model) then
+!       if(found .and. num_bands<num_wann) then
+!          call io_error('Error: num_bands must be greater than or equal to num_wann')
+!       endif
+!    endif
+!!   end jjunquer
 
     num_dump_cycles =   100          ! frequency to write backups at
     call param_get_keyword('num_dump_cycles',found,i_value=num_dump_cycles)
@@ -539,14 +606,19 @@ contains
     devel_flag      =   ' '          !       
     call param_get_keyword('devel_flag',found,c_value=devel_flag)
 
-
 !    mp_grid=-99
     call param_get_keyword_vector('mp_grid',found,3,i_value=iv_temp)
     if(found.and.library) write(stdout,'(a)') ' Ignoring <mp_grid> in input file'
     if(.not.library .and. .not.effective_model) then
        if(found) mp_grid=iv_temp
        if (.not. found) then
+!!     jjunquer
+!      WANNIER90 assumes that we are going to specify the 
+!      dimensions of the Monkhorst-Pack grid from a file. 
+!      But it is going to be transferred from SIESTA
+!      To avoid a crash, we comment the following lines
 !          call io_error('Error: You must specify dimensions of the Monkhorst-Pack grid by setting mp_grid')
+!!     end jjunquer
        elseif (any(mp_grid<1)) then
           call io_error('Error: mp_grid must be greater than zero')
        end if
@@ -638,10 +710,12 @@ contains
     !%%%%%%%%%%%
     ! Wannierise
     !%%%%%%%%%%%
-
-    num_iter          = 100    
-    call param_get_keyword('num_iter',found,i_value=num_iter)
-    if (num_iter<0) call io_error('Error: num_iter must be positive')       
+!!   jjunquer: the number of iterations for the minimization of Omega 
+!!   is transferred from SIESTA
+!    num_iter          = 100    
+!    call param_get_keyword('num_iter',found,i_value=num_iter)
+!    if (num_iter<0) call io_error('Error: num_iter must be positive')       
+!!   end jjunquer
 
     num_cg_steps      =   5
     call param_get_keyword('num_cg_steps',found,i_value=num_cg_steps)
@@ -686,27 +760,31 @@ contains
     ! Plotting
     !%%%%%%%%%
 
-    wannier_plot              = .false.
-    call param_get_keyword('wannier_plot',found,l_value=wannier_plot)
-
-    wannier_plot_supercell    = 2
-
-    call param_get_vector_length('wannier_plot_supercell',found,length=i)
-    if (found) then
-       if (i.eq.1) then
-          call param_get_keyword_vector('wannier_plot_supercell',found,1, &
-               i_value=wannier_plot_supercell)
-          wannier_plot_supercell(2) = wannier_plot_supercell(1)
-          wannier_plot_supercell(3) = wannier_plot_supercell(1)
-       elseif (i.eq.3) then
-          call param_get_keyword_vector('wannier_plot_supercell',found,3, &
-               i_value=wannier_plot_supercell)
-       else
-         call io_error('Error: wannier_plot_supercell must be provided as either one integer or a vector of three integers')
-       end if
-       if (any(wannier_plot_supercell<=0)) &
-            call io_error('Error: wannier_plot_supercell elements must be greater than zero')
-    end if
+!!  jjunquer: wannier_plot and wannier_plot_supercell are passed from SIESTA
+!    wannier_plot              = .false.
+!    call param_get_keyword('wannier_plot',found,l_value=wannier_plot)
+!
+!    wannier_plot_supercell    = 2
+!
+!    call param_get_vector_length('wannier_plot_supercell',found,length=i)
+!    if (found) then
+!       if (i.eq.1) then
+!          call param_get_keyword_vector('wannier_plot_supercell',found,1, &
+!               i_value=wannier_plot_supercell)
+!          wannier_plot_supercell(2) = wannier_plot_supercell(1)
+!          wannier_plot_supercell(3) = wannier_plot_supercell(1)
+!       elseif (i.eq.3) then
+!          call param_get_keyword_vector('wannier_plot_supercell',found,3, &
+!               i_value=wannier_plot_supercell)
+!       else
+!         call io_error('Error: wannier_plot_supercell must be provided as either one integer or a vector of three integers')
+!       end if
+!       if (any(wannier_plot_supercell<=0)) &
+!            call io_error('Error: wannier_plot_supercell elements must be greater than zero')
+!    end if
+     wannier_plot_supercell(2) = wannier_plot_supercell(1)
+     wannier_plot_supercell(3) = wannier_plot_supercell(1)
+!!  end jjunquer
 
 
     wannier_plot_format       = 'xcrysden'
@@ -726,6 +804,9 @@ contains
     else
        ! we plot all wannier functions
        num_wannier_plot=num_wann
+!      jjunquer
+       if ( allocated(wannier_plot_list) ) deallocate(wannier_plot_list)
+!      end jjunquer
        allocate(wannier_plot_list(num_wannier_plot),stat=ierr)
        if (ierr/=0) call io_error('Error allocating wannier_plot_list in param_read')
        do loop=1,num_wann
@@ -744,6 +825,9 @@ contains
             call io_error('Error: wannier_plot_mode not recognised')
        if ( wannier_plot_radius < 0.0_dp ) call io_error('Error: wannier_plot_radius must be positive')
     endif
+
+    write_u_matrices = .false.
+    call param_get_keyword('write_u_matrices',found,l_value=write_u_matrices)
 
     bands_plot                = .false.
     call param_get_keyword('bands_plot',found,l_value=bands_plot)
@@ -793,84 +877,79 @@ contains
        if ( bands_num_points < 0 ) call io_error('Error: bands_num_points must be positive')       
     endif
 
-    fermi_surface_plot        =  .false.
-    call param_get_keyword('fermi_surface_plot',found,l_value=fermi_surface_plot)
+!!   jjunquer: fermi_surface_plot passed from SIESTA
+!    fermi_surface_plot        =  .false.
+!    call param_get_keyword('fermi_surface_plot',found,l_value=fermi_surface_plot)
+!!   end jjunquer: fermi_surface_plot passed from SIESTA
 
     fermi_surface_num_points  = 50
     call param_get_keyword('fermi_surface_num_points',found,i_value=fermi_surface_num_points)
  
     fermi_surface_plot_format = 'xcrysden'
-    call param_get_keyword('fermi_surface_plot_format',found,c_value=fermi_surface_plot_format)
+    call param_get_keyword('fermi_surface_plot_format',&
+         found,c_value=fermi_surface_plot_format)
 
-    fermi_energy=0.0_dp
+!   jjunquer: Fermi energy is passed from SIESTA
+!    nfermi=0
+!    found_fermi_energy=.false.
+!    call param_get_keyword('fermi_energy',found,r_value=fermi_energy)
+!    if(found) then
+!       found_fermi_energy=.true.
+!       nfermi=1
+!    endif
+    found_fermi_energy=.true. 
     nfermi=1
-    found_fermi_energy=.false.
-    call param_get_keyword('fermi_energy',found,r_value=fermi_energy)
-    if(found) then
-       found_fermi_energy=.true.
-    endif
+!   end jjunquer
     !
     fermi_energy_scan=.false.
     call param_get_keyword('fermi_energy_min',found,r_value=fermi_energy_min)
     if(found) then
-       if(found_fermi_energy) then
-          call io_error(&
-               'Error: Cannot specify both fermi_energy and fermi_energy_min')
-       else
-          fermi_energy_scan=.true.
-       endif
-    endif
-    !
-    fermi_energy_max=fermi_energy_min+1.0_dp
-    call param_get_keyword('fermi_energy_max',found,r_value=fermi_energy_max)
-    if(found) then
        if(found_fermi_energy) call io_error(&
-            'Error: Cannot specify both fermi_energy and fermi_energy_max')
-       if(.not.fermi_energy_scan) call io_error(&
-         'Error: Must specify fermi_energy_min together with fermi_energy_max')
-       if(fermi_energy_max<=fermi_energy_min) call io_error(&
+            'Error: Cannot specify both fermi_energy and fermi_energy_min')
+       fermi_energy_scan=.true.
+       fermi_energy_max=fermi_energy_min+1.0_dp
+       call param_get_keyword('fermi_energy_max',found,&
+            r_value=fermi_energy_max)
+       if(found .and. fermi_energy_max<=fermi_energy_min) call io_error(&
             'Error: fermi_energy_max must be larger than fermi_energy_min')
-    !else
-    !   if (fermi_energy_scan) call io_error(&
-    !        'Error: fermi_energy_min specified, but no fermi_energy_max')
-    endif
-    !
-    fermi_energy_step=0.01_dp
-    call param_get_keyword('fermi_energy_step',found,r_value=fermi_energy_step)
-    if(found) then
-       if(found_fermi_energy) call io_error(&
-            'Error: Cannot specify both fermi_energy and fermi_energy_step')
-       if(.not.fermi_energy_scan) call io_error(&
-         'Error: Must specify fermi_energy_min and fermi_energy_max'&
-         //' together with fermi_energy_step')
-       if(fermi_energy_step<=0.0_dp) call io_error(&
+       fermi_energy_step=0.01_dp
+       call param_get_keyword('fermi_energy_step',found,&
+            r_value=fermi_energy_step)
+       if(found .and. fermi_energy_step<=0.0_dp) call io_error(&
             'Error: fermi_energy_step must be positive')
-    endif
-    !
-    if(fermi_energy_scan) then
        nfermi=nint((fermi_energy_max-fermi_energy_min)/fermi_energy_step)+1
-       if(nfermi==1) nfermi=2
-       fermi_energy_step=(fermi_energy_max-fermi_energy_min)/(nfermi-1)
     endif
     !
-    allocate(fermi_energy_list(nfermi),stat=ierr)
-    if (ierr/=0) call io_error(&
-         'Error allocating fermi_energy_read in param_read')
-    fermi_energy_list=0.0_dp
     if(found_fermi_energy) then
+!      jjunquer
+       if( allocated( fermi_energy_list ) ) deallocate( fermi_energy_list )
+!      end jjunquer
+       allocate(fermi_energy_list(1),stat=ierr)
        fermi_energy_list(1)=fermi_energy
     elseif(fermi_energy_scan) then
-       do i=1,nfermi
+       allocate(fermi_energy_list(0:nfermi),stat=ierr)
+       do i=0,nfermi
           fermi_energy_list(i)=fermi_energy_min&
-               +(i-1)*(fermi_energy_max-fermi_energy_min)/(nfermi-1)
+               +i*(fermi_energy_max-fermi_energy_min)/real(nfermi,dp)
        enddo
+    elseif(nfermi==0) then 
+       ! This happens when both found_fermi_energy=.false. and
+       ! fermi_energy_scan=.false. Functionalities that require
+       ! specifying a Fermi level should give an error message
+!      jjunquer
+       if ( allocated(fermi_energy_list) ) deallocate(fermi_energy_list)
+!      end jjunquer
+       allocate(fermi_energy_list(1),stat=ierr) ! helps streamline things
     endif
+    if (ierr/=0) call io_error(&
+         'Error allocating fermi_energy_list in param_read')
 
     ! checks
     if (fermi_surface_plot) then
        if ( (index(fermi_surface_plot_format,'xcrys').eq.0) ) &
             call io_error('Error: fermi_surface_plot_format not recognised')    
-       if ( fermi_surface_num_points < 0 ) call io_error('Error: fermi_surface_num_points must be positive')
+       if ( fermi_surface_num_points < 0 )&
+            call io_error('Error: fermi_surface_num_points must be positive')
     endif
 
     kslice                = .false.
@@ -884,7 +963,7 @@ contains
             ('Error: value of kslice_task not recognised in param_read')
        if(kslice .and. index(kslice_task,'curv')>0 .and.&
             index(kslice_task,'morb')>0) call io_error&
-          ('Error: kslice_task cannot include both "curv" and "morb"')
+          ("Error: kslice_task cannot include both 'curv' and 'morb'")
 
     kslice_2dkmesh(1:2) = 50
     call param_get_vector_length('kslice_2dkmesh',found,length=i)
@@ -917,12 +996,6 @@ contains
     kslice_b2(2)=1.0_dp
     kslice_b2(3)=0.0_dp
     call param_get_keyword_vector('kslice_b2',found,3,r_value=kslice_b2)
-
-    kslice_fermi_level=fermi_energy_list(1)
-    found_kslice_fermi_level=.false.
-    call param_get_keyword('kslice_fermi_level',found,&
-         r_value=kslice_fermi_level)
-    if(found.or.found_fermi_energy) found_kslice_fermi_level=.true.
 
     kslice_fermi_lines_colour='none'                 
     call param_get_keyword('kslice_fermi_lines_colour',found,&
@@ -1003,8 +1076,9 @@ contains
     berry_curv_adpt_kmesh           = 1
     call param_get_keyword('berry_curv_adpt_kmesh',found,&
          i_value=berry_curv_adpt_kmesh)
-    if (berry_curv_adpt_kmesh<0)&
-         call io_error('Error:  berry_curv_adpt_kmesh must be positive')       
+    if (berry_curv_adpt_kmesh<1)&
+         call io_error(&
+         'Error:  berry_curv_adpt_kmesh must be a positive integer')       
 
     berry_curv_adpt_kmesh_thresh           = 100.0_dp
     call param_get_keyword('berry_curv_adpt_kmesh_thresh',found,&
@@ -1170,6 +1244,9 @@ contains
     else
        ! by default plot all
        num_dos_project=num_wann
+!      jjunquer
+       if ( allocated(dos_project) ) deallocate(dos_project)
+!      end jjunquer
        allocate(dos_project(num_dos_project),stat=ierr) 
        if (ierr/=0) call io_error('Error allocating dos_project in param_read')
        do i=1,num_dos_project
@@ -1179,6 +1256,17 @@ contains
 
     hr_plot                    = .false.
     call param_get_keyword('hr_plot',found,l_value=hr_plot)
+    if (found) call io_error('Input parameter hr_plot is no longer used. Please use write_hr instead.')
+!!   jjunquer: write_hr is passed from SIESTA
+!    write_hr                   = .false.
+!    call param_get_keyword('write_hr',found,l_value=write_hr)
+!!   end jjunquer
+
+    write_rmn                    = .false.
+    call param_get_keyword('write_rmn',found,l_value=write_rmn)
+
+    write_tb = .false.
+    call param_get_keyword('write_tb',found,l_value=write_tb)
                                                                                            
     hr_cutoff                 = 0.0_dp
     call param_get_keyword('hr_cutoff',found,r_value=hr_cutoff)
@@ -1207,6 +1295,9 @@ contains
          call io_error('Error: one_dim_axis not recognised')
 
 301  continue
+
+    use_ws_distance = .false.
+    call param_get_keyword('use_ws_distance',found,l_value=use_ws_distance)
 
     !%%%%%%%%%%%%%%%%
     ! Transport 
@@ -1306,26 +1397,35 @@ contains
     if(.not.library .and. .not.effective_model) then
        
        if(.not.postproc_setup)  then
-          inquire(file=trim(seedname)//'.eig',exist=eig_found)
+!         jjunquer
+!          inquire(file=trim(seedname)//'.eig',exist=eig_found)
+          inquire(file=trim(seedname)//'.eigW',exist=eig_found)
+!         end jjunquer
           if(.not. eig_found) then
              if ( disentanglement) then
                 call io_error('No '//trim(seedname)//'.eig file found. Needed for disentanglement')
-             else if ((bands_plot .or. dos_plot .or. fermi_surface_plot .or. hr_plot .or. boltzwann &
+             else if ((bands_plot .or. dos_plot .or. fermi_surface_plot .or. write_hr .or. boltzwann &
                   .or. geninterp) ) then
                 call io_error('No '//trim(seedname)//'.eig file found. Needed for interpolation')
              end if
           else
              ! Allocate only here
+!            jjunquer
+             if ( allocated(eigval) ) deallocate(eigval)
+!            end jjunquer
              allocate(eigval(num_bands,num_kpts),stat=ierr)
              if (ierr/=0) call io_error('Error allocating eigval in param_read')
 
              eig_unit=io_file_unit()
-             open(unit=eig_unit,file=trim(seedname)//'.eig',form='formatted',status='old',err=105)
+!            jjunquer
+!             open(unit=eig_unit,file=trim(seedname)//'.eig',form='formatted',status='old',err=105)
+             open(unit=eig_unit,file=trim(seedname)//'.eigW',form='formatted',status='old',err=105)
+!            end jjunquer
              do k=1,num_kpts
                 do n=1,num_bands
                    read(eig_unit,*,err=106,end=106) i,j,eigval(n,k)
                    if ((i.ne.n).or.(j.ne.k)) then
-                      write(stdout,'(a)') 'Found a mismatch in '//trim(seedname)//'.eig' 
+                      write(stdout,'(a)') 'Found a mismatch in '//trim(seedname)//'.eigW' 
                       write(stdout,'(a,i0,a,i0)') 'Wanted band  : ',n,' found band  : ',i
                       write(stdout,'(a,i0,a,i0)') 'Wanted kpoint: ',k,' found kpoint: ',j
                       write(stdout,'(a)') ' '
@@ -1354,9 +1454,13 @@ contains
     if ( eig_found .and. (dis_win_max.lt.dis_win_min) ) &
          call io_error('Error: param_read: check disentanglement windows')
 
-    dis_froz_min=-1.0_dp;dis_froz_max=0.0_dp
+!   jjunquer: dis_froz_min and dis_froz_max are directly passed from Siesta
+!    dis_froz_min=-1.0_dp;dis_froz_max=0.0_dp
     ! no default for dis_froz_max
     frozen_states=.false.
+    if( dis_froz_min /= -1.0_dp .and. dis_froz_max /= 0.0_dp ) &
+ &     frozen_states=.true.
+!   end jjunquer: 
     call param_get_keyword('dis_froz_max',found,r_value=dis_froz_max)
     if (found) then 
        frozen_states=.true.
@@ -1373,7 +1477,6 @@ contains
     dis_num_iter      = 200
     call param_get_keyword('dis_num_iter',found,i_value=dis_num_iter)
     if (dis_num_iter<0) call io_error('Error: dis_num_iter must be positive')       
-
     dis_mix_ratio     = 0.5_dp
     call param_get_keyword('dis_mix_ratio',found,r_value=dis_mix_ratio)
     if (dis_mix_ratio<=0.0_dp .or. dis_mix_ratio>1.0_dp) &
@@ -1388,7 +1491,7 @@ contains
     call param_get_keyword('dis_conv_window',found,i_value=dis_conv_window)
     if (dis_conv_window<0) call io_error('Error: dis_conv_window must be positive')       
 
-    !!! GS-start
+    ! GS-start
     dis_spheres_first_wann = 1
     call param_get_keyword('dis_spheres_first_wann',found,i_value=dis_spheres_first_wann)
     if ( dis_spheres_first_wann < 1 )  call io_error('Error: dis_spheres_first_wann must be greater than 0')
@@ -1407,7 +1510,7 @@ contains
              call io_error('Error: radius for dis_spheres must be > 0')
        enddo
     endif
-    !!! GS-end
+    ! GS-end
 
     ! [gp-begin, Jun 1, 2012]
     !%%%%%%%%%%%%%%%%%%%%
@@ -1632,9 +1735,10 @@ contains
             'Error: kubo_freq_step must be positive')
     !
     kubo_nfreq=nint((kubo_freq_max-kubo_freq_min)/kubo_freq_step)+1
-    if(kubo_nfreq==1) kubo_nfreq=2
+    if(kubo_nfreq<=1) kubo_nfreq=2
     kubo_freq_step=(kubo_freq_max-kubo_freq_min)/(kubo_nfreq-1)
     !
+    if (allocated(kubo_freq_list)) deallocate(kubo_freq_list)
     allocate(kubo_freq_list(kubo_nfreq),stat=ierr)
     if (ierr/=0)&
          call io_error('Error allocating kubo_freq_list in param_read')
@@ -1688,6 +1792,9 @@ contains
        if (any(shell_list<1)  ) &
             call io_error('Error: shell_list must contain positive numbers')
     else
+!      jjunquer
+       if ( allocated(shell_list) ) deallocate(shell_list)
+!      end jjunquer
        allocate( shell_list(max_shells),stat=ierr)
        if (ierr/=0) call io_error('Error allocating shell_list in param_read')
     end if
@@ -1702,20 +1809,27 @@ contains
     ! mainly needed for the interaction with Z2PACK
     ! By default: .false. (perform the tests)
     skip_B1_tests = .false.
-    call param_get_keyword('skip_B1_tests', found, l_value=skip_B1_tests)
+    call param_get_keyword('skip_b1_tests', found, l_value=skip_B1_tests)
     
     call param_get_keyword_block('unit_cell_cart',found,3,3,r_value=real_lattice_tmp)
     if(found.and.library) write(stdout,'(a)') ' Ignoring <unit_cell_cart> in input file'
+!!   jjunquer
+!    WANNIER90 expects that the cell information is read from a file.
+!    But it will be transferred from SIESTA.
+!    Therefore, we comment the following lines.
 !    if (.not. library) then
 !       real_lattice=transpose(real_lattice_tmp)
 !       if(.not. found) call io_error('Error: Did not find the cell information in the input file')
 !    end if
+!!   end jjunquer
 
     if(.not. library) &
          call utility_recip_lattice(real_lattice,recip_lattice,cell_volume)
     call utility_metric(real_lattice,recip_lattice,real_metric,recip_metric)
 
     if(.not.effective_model) allocate ( kpt_cart(3,num_kpts) ,stat=ierr)
+!!    jjunquer
+!    All this information will be directly transferred to WANNIER90 from SIESTA
 !    if (ierr/=0) call io_error('Error allocating kpt_cart in param_read')
 !    if(.not. library .and. .not.effective_model) then
 !       allocate ( kpt_latt(3,num_kpts) ,stat=ierr)
@@ -1728,6 +1842,7 @@ contains
 !       kpt_latt=kpt_cart
 !       if(.not. found) call io_error('Error: Did not find the kpoint information in the input file')
 !    end if
+!!    end jjunquer
 
     ! Calculate the kpoints in cartesian coordinates
     if(.not.effective_model) then
@@ -1736,21 +1851,71 @@ contains
        end do
     endif
 
+!!  jjunquer: For debugging
 !    do nkp = 1, num_kpts
 !      write(6,*)nkp, kpt_latt(:,nkp)
 !    enddo
 !    do nkp = 1, num_kpts
 !      write(6,*)nkp, kpt_cart(:,nkp)
 !    enddo
+!    do nkp = 1, 3
+!      write(6,*)'recip_lattice = ', recip_lattice(:,nkp)
+!    enddo
+!    do nkp = 1, 3
+!      write(6,*)' real_lattice = ', real_lattice(:,nkp)
+!    enddo
+!    write(6,*)' num_wann = ', num_wann
+!    write(6,*)' mp_grid = ', mp_grid
 !    stop
+!!  end jjunquer
+ 
+    ! get the nnkpts block -- this is allowed only in postproc-setup mode
+    call param_get_block_length('nnkpts', explicit_nnkpts, rows)
+    if(explicit_nnkpts) then
+       nntot = rows / num_kpts
+       if (modulo(rows, num_kpts) /= 0) then 
+          call io_error('The number of rows in nnkpts must be a multiple of num_kpts')
+       end if
+       allocate(nnkpts_block(5, rows), stat=ierr)
+       if (ierr /= 0) call io_error('Error allocating nnkpts_block in param_read')
+       call param_get_keyword_block('nnkpts', found, rows, 5, i_value=nnkpts_block)
+       ! check that postproc_setup is true
+       if (.not. postproc_setup) &
+            call io_error('Input parameter nnkpts_block is allowed only if postproc_setup = .true.')
+       ! assign the values in nnkpts_block to nnlist and nncell
+       ! this keeps track of how many neighbours have been seen for each k-point
+       allocate(nnkpts_idx(num_kpts), stat=ierr)
+       if (ierr /= 0) call io_error('Error allocating nnkpts_idx in param_read')
+       nnkpts_idx = 1
+       ! allocating "global" nnlist & nncell
+       ! These are deallocated in kmesh_dealloc
+       allocate(nnlist(num_kpts, nntot), stat=ierr)
+       if (ierr /= 0) call io_error('Error allocating nnlist in param_read')
+       allocate(nncell(3, num_kpts, nntot), stat=ierr)
+       if (ierr /= 0) call io_error('Error allocating nncell in param_read')
+       do i=1,num_kpts * nntot
+          k = nnkpts_block(1, i)
+          nnlist(k, nnkpts_idx(k)) = nnkpts_block(2, i)
+          nncell(:, k, nnkpts_idx(k)) = nnkpts_block(3:, i)
+          nnkpts_idx(k) = nnkpts_idx(k) + 1
+       end do
+       ! check that all k-points have the same number of neighbours
+       if (any(nnkpts_idx /= (/ (nntot + 1, i=1, num_kpts) /))) then
+          call io_error('Inconsistent number of nearest neighbours.')
+       end if
+       deallocate(nnkpts_idx, stat=ierr)
+       if (ierr /= 0) call io_error('Error deallocating nnkpts_idx in param_read')
+       deallocate(nnkpts_block, stat=ierr)
+       if (ierr /= 0) call io_error('Error deallocating nnkpts_block in param_read')
+    end if
 
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ! k meshes
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
+    ! k meshes                                                                                 !
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
     ! [GP-begin, Apr13, 2012]
-    !! Global interpolation k-mesh; this is overridden by "local" meshes of a given submodule
-    !! This bit of code must appear *before* all other codes for the local interpolation meshes,
-    !! BUT *after* having calculated the reciprocal-space vectors.
+    ! Global interpolation k-mesh; this is overridden by "local" meshes of a given submodule
+    ! This bit of code must appear *before* all other codes for the local interpolation meshes,
+    ! BUT *after* having calculated the reciprocal-space vectors.
     global_kmesh_set = .false.
     kmesh_spacing=-1._dp
     kmesh = 0
@@ -1804,24 +1969,26 @@ contains
          module_kmesh_spacing=dos_kmesh_spacing)
 
     ! Atoms
-    if (.not.library) num_atoms=0
-    call param_get_block_length('atoms_frac',found,i_temp)
-    if (found.and.library) write(stdout,'(a)') ' Ignoring <atoms_frac> in input file'
-    call param_get_block_length('atoms_cart',found2,i_temp2,lunits)
-    if (found2.and.library) write(stdout,'(a)') ' Ignoring <atoms_cart> in input file'
-    if (.not.library) then
-       if (found.and.found2) call io_error('Error: Cannot specify both atoms_frac and atoms_cart')
-       if (found .and. i_temp>0) then
-          lunits=.false.
-          num_atoms=i_temp
-       elseif (found2 .and. i_temp2>0) then
-          num_atoms=i_temp2
-          if (lunits) num_atoms=num_atoms-1
-       end if
-       if(num_atoms>0) then
-          call param_get_atoms(lunits)
-       end if
-    endif
+!!   jjunquer: the number of atoms are directly passed from SIESTA
+!    if (.not.library) num_atoms=0
+!    call param_get_block_length('atoms_frac',found,i_temp)
+!    if (found.and.library) write(stdout,'(a)') ' Ignoring <atoms_frac> in input file'
+!    call param_get_block_length('atoms_cart',found2,i_temp2,lunits)
+!    if (found2.and.library) write(stdout,'(a)') ' Ignoring <atoms_cart> in input file'
+!    if (.not.library) then
+!       if (found.and.found2) call io_error('Error: Cannot specify both atoms_frac and atoms_cart')
+!       if (found .and. i_temp>0) then
+!          lunits=.false.
+!          num_atoms=i_temp
+!       elseif (found2 .and. i_temp2>0) then
+!          num_atoms=i_temp2
+!          if (lunits) num_atoms=num_atoms-1
+!       end if
+!       if(num_atoms>0) then
+!          call param_get_atoms(lunits)
+!       end if
+!    endif
+!!   end jjunquer: the number of atoms are directly passed from SIESTA
 
     ! Projections
     call param_get_block_length('projections',found,i_temp)
@@ -1833,6 +2000,7 @@ contains
 
 302  continue
 
+!!   jjunquer
 !    if ( any(len_trim(in_data(:))>0 )) then
 !       write(stdout,'(1x,a)') 'The following section of file '//trim(seedname)//'.win contained unrecognised keywords'
 !       write(stdout,*) 
@@ -1844,6 +2012,7 @@ contains
 !       write(stdout,*) 
 !       call io_error('Unrecognised keyword(s) in input file, see also output file')
 !    end if
+!!   end jjunquer
 
     if (transport .and. tran_read_ht) goto 303 
 
@@ -1852,11 +2021,12 @@ contains
 
 303  continue
 
+!!   jjunquer
 !    deallocate(in_data,stat=ierr)
 !    if (ierr/=0) call io_error('Error deallocating in_data in param_read')
+!!   end jjunquer
 
     if (transport .and. tran_read_ht) return 
-
 
     ! =============================== !
     ! Some checks and initialisations !
@@ -1867,6 +2037,9 @@ contains
     if (disentanglement) then 
        allocate(ndimwin(num_kpts),stat=ierr)
        if (ierr/=0) call io_error('Error allocating ndimwin in param_read')
+!      jjunquer:
+       if (allocated(lwindow)) deallocate(lwindow)
+!      end jjunquer:
        allocate(lwindow(num_bands,num_kpts),stat=ierr)
        if (ierr/=0) call io_error('Error allocating lwindow in param_read')
     endif
@@ -1886,6 +2059,10 @@ contains
     omega_invariant = -999.0_dp
     have_disentangled = .false.
 
+!   jjunquer
+    if ( allocated(wannier_centres) ) deallocate(wannier_centres)
+    if ( allocated(wannier_spreads) ) deallocate(wannier_spreads)
+!   end jjunquer
     allocate(wannier_centres(3,num_wann),stat=ierr)
     if (ierr/=0) call io_error('Error allocating wannier_centres in param_read')
     wannier_centres=0.0_dp
@@ -1900,24 +2077,25 @@ contains
     
   end subroutine param_read
 
-  !> This routines returns the three integers that define the interpolation k-mesh, satisfying
-  !> the condition that the spacing between two neighboring points along each of the three
-  !> k_x, k_y and k_z directions is at smaller than a given spacing.
-  !>
-  !> \note The reclat is defined as:
-  !>   * 'b_1' = (recip_lattice(1,I), i=1,3)
-  !>   * 'b_2' = (recip_lattice(2,I), i=1,3)
-  !>   * 'b_3' = (recip_lattice(3,I), i=1,3)
-  !>
-  !> \note spacing must be > 0 (and in particular different from zero). We don't check this here.
-  !> 
-  !> \param spacing Minimum spacing between neighboring points, in angstrom^(-1)
-  !> \param reclat  Matrix of the reciprocal lattice vectors in cartesian coordinates, in angstrom^(-1)
-  !> \param mesh    output, will contain the three integers defining the interpolation k-mesh.
-  subroutine internal_set_kmesh(spacing,reclat,mesh)
+ subroutine internal_set_kmesh(spacing,reclat,mesh)
+  !! This routines returns the three integers that define the interpolation k-mesh, satisfying
+  !! the condition that the spacing between two neighboring points along each of the three
+  !! k_x, k_y and k_z directions is at smaller than a given spacing.
+  !!
+  !! The reclat is defined as:
+  !!   * 'b_1' = (recip_lattice(1,I), i=1,3)
+  !!   * 'b_2' = (recip_lattice(2,I), i=1,3)
+  !!   * 'b_3' = (recip_lattice(3,I), i=1,3)
+  !!
+  !!  spacing must be > 0 (and in particular different from zero). We don't check this here.
+  !! 
+   implicit none
     real(kind=dp),                 intent(in) :: spacing
+    !! Minimum spacing between neighboring points, in angstrom^(-1)
     real(kind=dp), dimension(3,3), intent(in) :: reclat
+    !! Matrix of the reciprocal lattice vectors in cartesian coordinates, in angstrom^(-1)
     integer,       dimension(3),  intent(out) :: mesh
+    !! Will contain the three integers defining the interpolation k-mesh
 
     real(kind=dp), dimension(3) :: blen
     integer :: i
@@ -1932,29 +2110,28 @@ contains
 
   end subroutine internal_set_kmesh
 
-  !> This function reads and sets the interpolation mesh variables needed by a given module
-  !> 
-  !> \note This function MUST be called after having read the global kmesh and kmesh_spacing!!
-  !> \note if the user didn't provide an interpolation_mesh_spacing, it is set to -1, so that
-  !>       one can check in the code what the user asked for
-  !> \note The function takes care also of setting the default value to the global one if no local 
-  !>       keyword is defined
-  !> 
-  !> \param moduleprefix   The prefix that is appended before the name of the variables. In particular,
-  !>                       if the prefix is for instance XXX, the two variables that are read from the
-  !>                       input file are XXX_kmesh and XXX_kmesh_spacing.
-  !> \param should_be_defined A logical flag: if it is true, at the end the code stops if no value is specified.
-  !>                       Define it to .false. if no check should be performed.
-  !>                       Often, you can simply pass the flag that activates the module itself.
-  !> \param module_kmesh the integer array (length 3) where the interpolation mesh will be saved
-  !> \param module_kmesh_spacing the real number on which the min mesh spacing is saved. -1 if it the
-  !>                       user specifies in input the mesh and not the mesh_spacing
   subroutine get_module_kmesh(moduleprefix,should_be_defined,module_kmesh,module_kmesh_spacing)
+  !! This function reads and sets the interpolation mesh variables needed by a given module
+  !> 
+  !!  This function MUST be called after having read the global kmesh and kmesh_spacing!!
+  !!  if the user didn't provide an interpolation_mesh_spacing, it is set to -1, so that
+  !!       one can check in the code what the user asked for
+  !!  The function takes care also of setting the default value to the global one if no local 
+  !!       keyword is defined
     use w90_io, only : io_error
     character(len=*), intent(in)       :: moduleprefix
+    !!The prefix that is appended before the name of the variables. In particular,
+    !!if the prefix is for instance XXX, the two variables that are read from the
+    !!input file are XXX_kmesh and XXX_kmesh_spacing.
     logical, intent(in)                :: should_be_defined
+    !! A logical flag: if it is true, at the end the code stops if no value is specified.
+    !! Define it to .false. if no check should be performed.
+    !! Often, you can simply pass the flag that activates the module itself.
     integer, dimension(3), intent(out) :: module_kmesh
+    !! the integer array (length 3) where the interpolation mesh will be saved
     real(kind=dp), intent(out)         :: module_kmesh_spacing
+    !! the real number on which the min mesh spacing is saved. -1 if it the
+    !!user specifies in input the mesh and not the mesh_spacing
 
     logical :: found, found2
     integer :: i
@@ -2002,14 +2179,12 @@ contains
     end if
   end subroutine get_module_kmesh
 
-  !> This function returns a string describing the type of smearing
-  !> associated to a given smr_index integer value.
-  !>
-  !> \param smearing_index The integer index for which we want to get
-  !>        the string
-  !> \return returns a string which describes the type of smearing
+
   function param_get_smearing_type(smearing_index)
+  !! This function returns a string describing the type of smearing
+  !! associated to a given smr_index integer value.
     integer, intent(in) :: smearing_index
+    !! The integer index for which we want to get the string
     character(len=80)   :: param_get_smearing_type
 
     character(len=4)   :: orderstr
@@ -2030,18 +2205,16 @@ contains
   end function param_get_smearing_type
 
 
-  !> This function parses a string containing the type of 
-  !> smearing and returns the correct index for the smearing_index variable
-  !>
-  !> If the string is not valid, an io_error is issued
-  !>
-  !> \param string The string read from input 
-  !> \param keyword The keyword that was read (e.g., smr_type), so that
-  !>        we can print a more useful error message
   function get_smearing_index(string,keyword)
+  !! This function parses a string containing the type of 
+  !! smearing and returns the correct index for the smearing_index variable
+  !
+  !! If the string is not valid, an io_error is issued
     use w90_io, only: io_error
     character(len=*), intent(in) :: string
+    !! The string read from input 
     character(len=*), intent(in) :: keyword
+    !! The keyword that was read (e.g., smr_type), so that we can print a more useful error message
     integer :: get_smearing_index
 
     integer :: pos
@@ -2082,7 +2255,7 @@ contains
   subroutine param_uppercase
     !===================================================================
     !                                                                  !
-    ! Convert a few things to uppercase to look nice in the output     !
+    !! Convert a few things to uppercase to look nice in the output   
     !                                                                  !
     !===================================================================  
 
@@ -2097,11 +2270,13 @@ contains
             atoms_label(nsp)(1:1) = char(ic+ichar('Z')-ichar('z'))
     enddo
 
-    do nsp=1,num_species
-       ic=ichar(atoms_symbol(nsp)(1:1))
-       if ((ic.ge.ichar('a')).and.(ic.le.ichar('z'))) &
-            atoms_symbol(nsp)(1:1) = char(ic+ichar('Z')-ichar('z'))
-    enddo
+!!   jjunquer: atoms_symbol is directly passed from SIESTA
+!    do nsp=1,num_species
+!       ic=ichar(atoms_symbol(nsp)(1:1))
+!       if ((ic.ge.ichar('a')).and.(ic.le.ichar('z'))) &
+!            atoms_symbol(nsp)(1:1) = char(ic+ichar('Z')-ichar('z'))
+!    enddo
+!!   end jjunquer
 
 
     ! Bands labels (eg, x --> X)
@@ -2125,7 +2300,7 @@ contains
   subroutine param_write
     !==================================================================!
     !                                                                  !
-    ! write wannier90 parameters to stdout                             !
+    !! write wannier90 parameters to stdout 
     !                                                                  !
     !===================================================================  
 
@@ -2167,6 +2342,8 @@ contains
     write(stdout,101) 'b_2',(recip_lattice(2,I)/lenconfac, i=1,3)
     write(stdout,101) 'b_3',(recip_lattice(3,I)/lenconfac, i=1,3)
     write(stdout,*)   ' '
+    write(stdout,*)   'num_atoms   = ', num_atoms
+    write(stdout,*)   'num_species = ', num_species
     ! Atoms
     if(num_atoms>0) then
        write(stdout,'(1x,a)') '*----------------------------------------------------------------------------*'
@@ -2241,6 +2418,12 @@ contains
     write(stdout,'(1x,a46,10x,a8,13x,a1)') '|  Length Unit                               :',trim(length_unit),'|'  
     write(stdout,'(1x,a46,10x,L8,13x,a1)') '|  Post-processing setup (write *.nnkp)      :',postproc_setup,'|'
     write(stdout,'(1x,a46,10x,L8,13x,a1)') '|  Using Gamma-only branch of algorithms     :',gamma_only,'|'
+    !YN: RS:
+    if(lsitesymmetry) then
+      write(stdout,'(1x,a46,10x,L8,13x,a1)')   '|  Using symmetry-adapted WF mode            :',lsitesymmetry,'|'
+      write(stdout,'(1x,a46,8x,E10.3,13x,a1)') '|  Tolerance for symmetry condition on U     :',symmetrize_eps,'|'
+    endif                                                         
+ 
     if(cp_pp .or. iprint>2) &
                   write(stdout,'(1x,a46,10x,L8,13x,a1)') '|  CP code post-processing                   :',cp_pp,'|'
     if(wannier_plot .or. iprint>2) then
@@ -2291,7 +2474,7 @@ contains
        write(stdout,'(1x,a46,10x,F8.3,13x,a1)') '|  Mixing ratio                              :',dis_mix_ratio,'|'
        write(stdout,'(1x,a46,8x,ES10.3,13x,a1)') '|  Convergence tolerence                     :',dis_conv_tol,'|'
        write(stdout,'(1x,a46,10x,I8,13x,a1)')   '|  Convergence window                        :',dis_conv_window,'|'
-       !!! GS-start
+       ! GS-start
        if ( dis_spheres_num .gt. 0 ) then
           write(stdout,'(1x,a46,10x,I8,13x,a1)') '|  Number of spheres in k-space              :',dis_spheres_num,'|'
           do nkp = 1,dis_spheres_num
@@ -2300,14 +2483,14 @@ contains
           enddo
           write(stdout,'(1x,a46,10x,I8,13x,a1)') '|  Index of first Wannier band               :',dis_spheres_first_wann,'|'
        endif
-       !!! GS-end
+       ! GS-end
        write(stdout,'(1x,a78)') '*----------------------------------------------------------------------------*'
     end if
     !
     ! Plotting
     !
     if (wannier_plot .or. bands_plot .or. fermi_surface_plot .or. kslice &
-         .or. dos_plot .or. hr_plot .or. iprint>2) then
+         .or. dos_plot .or. write_hr .or. iprint>2) then
        !
        write(stdout,'(1x,a78)') '*-------------------------------- PLOTTING ----------------------------------*'
        !
@@ -2367,8 +2550,8 @@ contains
           write(stdout,'(1x,a78)') '*----------------------------------------------------------------------------*'
        end if
        !
-       if (hr_plot .or. iprint>2) then
-          write(stdout,'(1x,a46,10x,L8,13x,a1)')   '|  Plotting Hamiltonian in WF basis          :',hr_plot,'|'
+       if (write_hr .or. iprint>2) then
+          write(stdout,'(1x,a46,10x,L8,13x,a1)')   '|  Plotting Hamiltonian in WF basis          :',write_hr,'|'
           write(stdout,'(1x,a78)') '*----------------------------------------------------------------------------*'
        endif
        if (write_vdw_data .or. iprint>2) then
@@ -2425,7 +2608,7 @@ contains
   subroutine param_postw90_write
     !==================================================================!
     !                                                                  !
-    ! write postw90 parameters to stdout                               !
+    !! write postw90 parameters to stdout 
     !                                                                  !
     !===================================================================  
 
@@ -2626,10 +2809,10 @@ contains
        write(stdout,'(1x,a78)') '*----------------------------------------------------------------------------*'
     endif
 
-    if(kpath .or. iprint>2) then
+    if(kslice .or. iprint>2) then
        write(stdout,'(1x,a78)') '*--------------------------------- KSLICE -----------------------------------*'
        write(stdout,'(1x,a46,10x,L8,13x,a1)')    '|  Plot Properties along a slice in k-space  :',kslice,'|'
-       write(stdout,'(1x,a46,10x,f8.3,13x,a1)')  '|  Fermi level used for slice                :',kslice_fermi_level,'|'
+       write(stdout,'(1x,a46,10x,f8.3,13x,a1)')  '|  Fermi level used for slice                :',fermi_energy_list(1),'|'
        write(stdout,'(1x,a46,10x,I8,13x,a1)')    '|  Divisions along first kpath section       :',kpath_num_points,'|'
        if(index(kslice_task,'fermi_lines')>0) then
           write(stdout,'(1x,a46,10x,a8,13x,a1)') '|  Plot energy contours (fermi lines)        :','       T','|'
@@ -2758,7 +2941,8 @@ contains
           write(stdout,'(1x,a46,10x,f8.3,13x,a1)') '|  Minimum energy range for DOS plot         :',boltz_dos_energy_min,'|'
           write(stdout,'(1x,a46,10x,f8.3,13x,a1)') '|  Maximum energy range for DOS plot         :',boltz_dos_energy_max,'|'
           write(stdout,'(1x,a46,10x,f8.3,13x,a1)') '|  Energy step for DOS plot                  :',boltz_dos_energy_step,'|'
-          if(boltz_dos_adpt_smr.eqv.adpt_smr .and. boltz_dos_adpt_smr_fac==adpt_smr_fac .and. boltz_dos_adpt_smr_max==adpt_smr_max &
+          if(boltz_dos_adpt_smr.eqv.adpt_smr .and. boltz_dos_adpt_smr_fac==adpt_smr_fac &
+               .and. boltz_dos_adpt_smr_max==adpt_smr_max &
                .and. boltz_dos_smr_fixed_en_width==smr_fixed_en_width .and. smr_index==boltz_dos_smr_index) then
              write(stdout,'(1x,a78)') '|  Using global smearing parameters                                          |'
           else
@@ -2795,6 +2979,7 @@ contains
   end subroutine param_postw90_write
 
   subroutine param_write_header
+    !! Write a suitable header for the calculation - version authors etc
     use w90_io, only : io_date
     use w90_constants, only: bohr_version_str, constants_version_str1, constants_version_str2
     implicit none
@@ -2815,7 +3000,7 @@ contains
     write(stdout,*)  '            |        Generalized Wannier Functions code         |'
     write(stdout,*)  '            |            http://www.wannier.org                 |'
     write(stdout,*)  '            |                                                   |'
-    write(stdout,*)  '            |  Wannier90 v2.0 Authors:                          |'
+    write(stdout,*)  '            |  Wannier90 v2.x Authors:                          |'
     write(stdout,*)  '            |    Arash A. Mostofi  (Imperial College London)    |'
     write(stdout,*)  '            |    Giovanni Pizzi    (EPFL)                       |'
     write(stdout,*)  '            |    Ivo Souza         (Universidad del Pais Vasco) |'
@@ -2827,6 +3012,20 @@ contains
     write(stdout,*)  '            |    Nicolas Poilvert   (Penn State University)     |'
     write(stdout,*)  '            |    Raffaello Bianco   (Paris 6 and CNRS)          |'
     write(stdout,*)  '            |    Gabriele Sclauzero (ETH Zurich)                |'
+    write(stdout,*)  '            |    David Strubbe (MIT, USA)                       |'
+    write(stdout,*)  '            |    Rei Sakuma (Lund University, Sweden)           |'
+    write(stdout,*)  '            |    Yusuke Nomura (U. Tokyo, Japan)                |'
+    write(stdout,*)  '            |    Takashi Koretsune (Riken, Japan)               |'
+    write(stdout,*)  '            |    Yoshiro Nohara (ASMS Co. Ltd., Japan)          |'
+    write(stdout,*)  '            |    Ryotaro Arita (Riken, Japan)                   |'
+    write(stdout,*)  '            |    Lorenzo Paulatto (UPMC Paris)                  |'
+    write(stdout,*)  '            |    Florian Thole (ETH Zurich)                     |'
+    write(stdout,*)  '            |    Pablo Garcia Fernandez (Unican, Spain)         |'
+    write(stdout,*)  '            |    Dominik Gresch (ETH Zurich)                    |'
+    write(stdout,*)  '            |    Samuel Ponce (University of Oxford)            |'
+    write(stdout,*)  '            |    Marco Gibertini (EPFL)                         |'
+    write(stdout,*)  '            |    Christian Stieger (ETHZ, CH)                   |' 
+    write(stdout,*)  '            |    Stepan Tsirkin (Universidad del Pais Vasco)    |' 
     write(stdout,*)  '            |                                                   |' 
     write(stdout,*)  '            |  Wannier77 Authors:                               |'
     write(stdout,*)  '            |    Nicola Marzari    (EPFL)                       |'
@@ -2835,11 +3034,13 @@ contains
     write(stdout,*)  '            |                                                   |'
     write(stdout,*)  '            |  Please cite                                      |'
     write(stdout,*)  '            |                                                   |'
-    write(stdout,*)  '            |  [ref] "Wannier90: A Tool for Obtaining Maximally |'
-    write(stdout,*)  '            |         Localised Wannier Functions"              |'
-    write(stdout,*)  '            |        A. A. Mostofi, J. R. Yates, Y.-S. Lee,     |'
-    write(stdout,*)  '            |        I. Souza, D. Vanderbilt and N. Marzari     |'
-    write(stdout,*)  '            |        Comput. Phys. Commun. 178, 685 (2008)      |'
+    write(stdout,*)  '            |  [ref] "An updated version of Wannier90:          |'
+    write(stdout,*)  '            |        A Tool for Obtaining Maximally Localised   |'
+    write(stdout,*)  '            |        Wannier Functions", A. A. Mostofi,         |'
+    write(stdout,*)  '            |        J. R. Yates, G. Pizzi, Y. S. Lee,          |'
+    write(stdout,*)  '            |        I. Souza, D. Vanderbilt and N. Marzari,    |'
+    write(stdout,*)  '            |        Comput. Phys. Commun. 185, 2309 (2014)     |'
+    write(stdout,*)  '            |        http://dx.doi.org/10.1016/j.cpc.2014.05.003|'
     write(stdout,*)  '            |                                                   |'
     write(stdout,*)  '            |  in any publications arising from the use of      |'
     write(stdout,*)  '            |  this code. For the method please cite            |'
@@ -2855,12 +3056,12 @@ contains
     write(stdout,*)  '            |         Phys. Rev. B 65 035109 (2001)             |'
     write(stdout,*)  '            |                                                   |'
     write(stdout,*)  '            |                                                   |'
-    write(stdout,*)  '            | Copyright (c) 1996-2015                           |'
+    write(stdout,*)  '            | Copyright (c) 1996-2017                           |'
     write(stdout,*)  '            |        Arash A. Mostofi, Jonathan R. Yates,       |'
     write(stdout,*)  '            |        Young-Su Lee, Giovanni Pizzi, Ivo Souza,   |'
     write(stdout,*)  '            |        David Vanderbilt and Nicola Marzari        |'
     write(stdout,*)  '            |                                                   |'
-    write(stdout,*)  '            |        Release: 2.0.1   2nd April 2015            |'
+    write(stdout,*)  '            |        Release: 2.1.0   13th January 2017         |'
     write(stdout,*)  '            |                                                   |'
     write(stdout,*)  '            | This program is free software; you can            |'
     write(stdout,*)  '            | redistribute it and/or modify it under the terms  |'
@@ -2898,7 +3099,7 @@ contains
   subroutine param_dealloc
     !==================================================================!
     !                                                                  !
-    ! release memory from allocated parameters                         !
+    !! release memory from allocated parameters 
     !                                                                  !
     !===================================================================  
     use w90_io, only : io_error
@@ -2938,26 +3139,31 @@ contains
        deallocate (  bands_spec_points, stat=ierr  )
        if (ierr/=0) call io_error('Error in deallocating bands_spec_points in param_dealloc')
     end if
-    if ( allocated ( atoms_label ) ) then
-       deallocate (  atoms_label, stat=ierr  )
-       if (ierr/=0) call io_error('Error in deallocating atoms_label in param_dealloc')
-    end if
-    if ( allocated ( atoms_symbol ) ) then
-       deallocate (  atoms_symbol, stat=ierr  )
-       if (ierr/=0) call io_error('Error in deallocating atoms_symbol in param_dealloc')
-    end if
+!!   jjunquer: atoms_label and atoms_symbol are directly passed from SIESTA
+!    if ( allocated ( atoms_label ) ) then
+!       deallocate (  atoms_label, stat=ierr  )
+!       if (ierr/=0) call io_error('Error in deallocating atoms_label in param_dealloc')
+!    end if
+!    if ( allocated ( atoms_symbol ) ) then
+!       deallocate (  atoms_symbol, stat=ierr  )
+!       if (ierr/=0) call io_error('Error in deallocating atoms_symbol in param_dealloc')
+!    end if
+!!   end jjunquer
     if ( allocated ( atoms_pos_frac ) ) then
        deallocate (  atoms_pos_frac, stat=ierr  )
        if (ierr/=0) call io_error('Error in deallocating atom_pos_frac in param_dealloc')
     end if
-    if ( allocated ( atoms_pos_cart ) ) then
-       deallocate (  atoms_pos_cart, stat=ierr  )
-       if (ierr/=0) call io_error('Error in deallocating atoms_pos_cart in param_dealloc')
-    end if
-    if ( allocated ( atoms_species_num ) ) then
-       deallocate (atoms_species_num, stat=ierr  )
-       if (ierr/=0) call io_error('Error in deallocating atoms_species_num in param_dealloc')
-    end if
+!!   jjunquer: atoms_pos_cart and atom_species_num are directly 
+!    transferred from SIESTA
+!    if ( allocated ( atoms_pos_cart ) ) then
+!       deallocate (  atoms_pos_cart, stat=ierr  )
+!       if (ierr/=0) call io_error('Error in deallocating atoms_pos_cart in param_dealloc')
+!    end if
+!    if ( allocated ( atoms_species_num ) ) then
+!       deallocate (atoms_species_num, stat=ierr  )
+!       if (ierr/=0) call io_error('Error in deallocating atoms_species_num in param_dealloc')
+!    end if
+!!   end jjunquer
     if ( allocated( proj_site ) ) then
        deallocate( proj_site, stat=ierr  )
        if (ierr/=0) call io_error('Error in deallocating proj_site in param_dealloc')
@@ -3018,101 +3224,112 @@ contains
        deallocate( dos_project, stat=ierr  )
        if (ierr/=0) call io_error('Error in deallocating dos_project in param_dealloc')
     endif
-
+    if( allocated( fermi_energy_list ) ) then
+       deallocate( fermi_energy_list, stat=ierr  )
+       if (ierr/=0) call io_error('Error in deallocating fermi_energy_list in param_dealloc')
+    endif
+    if( allocated( kubo_freq_list ) ) then
+       deallocate( kubo_freq_list, stat=ierr  )
+       if (ierr/=0) call io_error('Error in deallocating kubo_freq_list in param_dealloc')
+    endif
+    if( allocated( dis_spheres ) ) then
+       deallocate( dis_spheres, stat=ierr  )
+       if (ierr/=0) call io_error('Error in deallocating dis_spheres in param_dealloc')
+    endif
 
     return
 
   end subroutine param_dealloc
 
 
-!!$  !================================!
-!!$  subroutine param_write_um
-!!$    !================================!
-!!$    !                                !
-!!$    ! Dump the U and M to *_um.dat   !
-!!$    !                                !
-!!$    !================================!
-!!$
-!!$
-!!$    use w90_io,        only : io_file_unit,io_error,seedname,io_date
-!!$    implicit none
-!!$
-!!$    integer :: i,j,k,l,um_unit
-!!$    character (len=9) :: cdate, ctime
-!!$    character(len=33) :: header
-!!$
-!!$    call io_date(cdate, ctime)
-!!$    header='written on '//cdate//' at '//ctime
-!!$
-!!$    um_unit=io_file_unit()
-!!$    open(unit=um_unit,file=trim(seedname)//'_um.dat',form='unformatted')
-!!$    write(um_unit) header
-!!$    write(um_unit) omega_invariant
-!!$    write(um_unit) num_wann,num_kpts,num_nnmax    
-!!$    write(um_unit) (((u_matrix(i,j,k),i=1,num_wann),j=1,num_wann),k=1,num_kpts)
-!!$    write(um_unit) ((((m_matrix(i,j,k,l),i=1,num_wann),j=1,num_wann),k=1,nntot),l=1,num_kpts)
-!!$    close(um_unit)
-!!$
-!!$    return
-!!$
-!!$  end subroutine param_write_um
+!~  !================================!
+!~  subroutine param_write_um
+!~    !================================!
+!~    !                                !
+!~    ! Dump the U and M to *_um.dat   !
+!~    !                                !
+!~    !================================!
+!~
+!~
+!~    use w90_io,        only : io_file_unit,io_error,seedname,io_date
+!~    implicit none
+!~
+!~    integer :: i,j,k,l,um_unit
+!~    character (len=9) :: cdate, ctime
+!~    character(len=33) :: header
+!~
+!~    call io_date(cdate, ctime)
+!~    header='written on '//cdate//' at '//ctime
+!~
+!~    um_unit=io_file_unit()
+!~    open(unit=um_unit,file=trim(seedname)//'_um.dat',form='unformatted')
+!~    write(um_unit) header
+!~    write(um_unit) omega_invariant
+!~    write(um_unit) num_wann,num_kpts,num_nnmax    
+!~    write(um_unit) (((u_matrix(i,j,k),i=1,num_wann),j=1,num_wann),k=1,num_kpts)
+!~    write(um_unit) ((((m_matrix(i,j,k,l),i=1,num_wann),j=1,num_wann),k=1,nntot),l=1,num_kpts)
+!~    close(um_unit)
+!~
+!~    return
+!~
+!~  end subroutine param_write_um
 
 
-!!$  !================================!
-!!$  subroutine param_read_um
-!!$    !================================!
-!!$    !                                !
-!!$    ! Restore U and M from file      !
-!!$    !                                !
-!!$    !================================!
-!!$
-!!$    use w90_io,        only : io_file_unit,io_error,seedname
-!!$    implicit none
-!!$
-!!$    integer       :: tmp_num_wann,tmp_num_kpts,tmp_num_nnmax    
-!!$    integer       :: i,j,k,l,um_unit,ierr
-!!$    character(len=33) :: header
-!!$    real(kind=dp) :: tmp_omi
-!!$
-!!$    um_unit=io_file_unit()
-!!$    open(unit=um_unit,file=trim(seedname)//'_um.dat',status="old",form='unformatted',err=105)
-!!$    read(um_unit) header
-!!$    write(stdout,'(1x,4(a))') 'Reading U and M from file ',trim(seedname),'_um.dat ', header 
-!!$    read(um_unit) tmp_omi
-!!$    if ( have_disentangled ) then
-!!$       if ( abs(tmp_omi-omega_invariant).gt.1.0e-10_dp )  &
-!!$            call io_error('Error in restart: omega_invariant in .chk and um.dat files do not match')
-!!$    endif
-!!$    read(um_unit) tmp_num_wann,tmp_num_kpts,tmp_num_nnmax    
-!!$    if(tmp_num_wann/=num_wann) call io_error('Error in param_read_um: num_wann mismatch')
-!!$    if(tmp_num_kpts/=num_kpts) call io_error('Error in param_read_um: num_kpts mismatch')
-!!$    if(tmp_num_nnmax/=num_nnmax) call io_error('Error in param_read_um: num_nnmax mismatch')
-!!$    if (.not.allocated(u_matrix)) then
-!!$       allocate(u_matrix(num_wann,num_wann,num_kpts),stat=ierr)
-!!$       if (ierr/=0) call io_error('Error allocating u_matrix in param_read_um')
-!!$    endif
-!!$    read(um_unit) (((u_matrix(i,j,k),i=1,num_wann),j=1,num_wann),k=1,num_kpts)
-!!$    if (.not.allocated(m_matrix)) then
-!!$       allocate(m_matrix(num_wann,num_wann,nntot,num_kpts),stat=ierr)
-!!$       if (ierr/=0) call io_error('Error allocating m_matrix in param_read_um')
-!!$    endif
-!!$    read(um_unit) ((((m_matrix(i,j,k,l),i=1,num_wann),j=1,num_wann),k=1,nntot),l=1,num_kpts)
-!!$    close(um_unit)
-!!$
-!!$    return
-!!$
-!!$105 call io_error('Error: Problem opening file '//trim(seedname)//'_um.dat in param_read_um')
-!!$
-!!$  end subroutine param_read_um
+!~  !================================!
+!~  subroutine param_read_um
+!~    !================================!
+!~    !                                !
+!~    ! Restore U and M from file      !
+!~    !                                !
+!~    !================================!
+!~
+!~    use w90_io,        only : io_file_unit,io_error,seedname
+!~    implicit none
+!~
+!~    integer       :: tmp_num_wann,tmp_num_kpts,tmp_num_nnmax    
+!~    integer       :: i,j,k,l,um_unit,ierr
+!~    character(len=33) :: header
+!~    real(kind=dp) :: tmp_omi
+!~
+!~    um_unit=io_file_unit()
+!~    open(unit=um_unit,file=trim(seedname)//'_um.dat',status="old",form='unformatted',err=105)
+!~    read(um_unit) header
+!~    write(stdout,'(1x,4(a))') 'Reading U and M from file ',trim(seedname),'_um.dat ', header 
+!~    read(um_unit) tmp_omi
+!~    if ( have_disentangled ) then
+!~       if ( abs(tmp_omi-omega_invariant).gt.1.0e-10_dp )  &
+!~            call io_error('Error in restart: omega_invariant in .chk and um.dat files do not match')
+!~    endif
+!~    read(um_unit) tmp_num_wann,tmp_num_kpts,tmp_num_nnmax    
+!~    if(tmp_num_wann/=num_wann) call io_error('Error in param_read_um: num_wann mismatch')
+!~    if(tmp_num_kpts/=num_kpts) call io_error('Error in param_read_um: num_kpts mismatch')
+!~    if(tmp_num_nnmax/=num_nnmax) call io_error('Error in param_read_um: num_nnmax mismatch')
+!~    if (.not.allocated(u_matrix)) then
+!~       allocate(u_matrix(num_wann,num_wann,num_kpts),stat=ierr)
+!~       if (ierr/=0) call io_error('Error allocating u_matrix in param_read_um')
+!~    endif
+!~    read(um_unit) (((u_matrix(i,j,k),i=1,num_wann),j=1,num_wann),k=1,num_kpts)
+!~    if (.not.allocated(m_matrix)) then
+!~       allocate(m_matrix(num_wann,num_wann,nntot,num_kpts),stat=ierr)
+!~       if (ierr/=0) call io_error('Error allocating m_matrix in param_read_um')
+!~    endif
+!~    read(um_unit) ((((m_matrix(i,j,k,l),i=1,num_wann),j=1,num_wann),k=1,nntot),l=1,num_kpts)
+!~    close(um_unit)
+!~
+!~    return
+!~
+!~105 call io_error('Error: Problem opening file '//trim(seedname)//'_um.dat in param_read_um')
+!~
+! $  end subroutine param_read_um
 
 
 
   !=================================================!
   subroutine param_write_chkpt(chkpt)
     !=================================================!
-    ! Write checkpoint file                           !
-    ! IMPORTANT! If you change the chkpt format, adapt!
-    ! accordingly also the w90chk2chk.x utility!      !
+    !! Write checkpoint file                           
+    !! IMPORTANT! If you change the chkpt format, adapt
+    !! accordingly also the w90chk2chk.x utility!      
     !=================================================!
 
     use w90_io, only : io_file_unit,io_date,seedname
@@ -3171,9 +3388,9 @@ contains
     !=================================================!
   subroutine param_read_chkpt()
     !=================================================!
-    ! Read checkpoint file                            !
-    ! IMPORTANT! If you change the chkpt format, adapt!
-    ! accordingly also the w90chk2chk.x utility!      !
+    !! Read checkpoint file                            
+    !! IMPORTANT! If you change the chkpt format, adapt
+    !! accordingly also the w90chk2chk.x utility!      
     !=================================================!
 
     use w90_constants, only : eps6
@@ -3253,10 +3470,13 @@ contains
        read(chk_unit) omega_invariant     ! omega invariant
 
        ! lwindow
-       if (.not.allocated(lwindow)) then
+!      jjunquer:
+!       if (.not.allocated(lwindow)) then
+       if (allocated(lwindow)) deallocate(lwindow)
+!      jjunquer:
           allocate(lwindow(num_bands,num_kpts),stat=ierr)
           if (ierr/=0) call io_error('Error allocating lwindow in param_read_chkpt')
-       endif
+!       endif
        read(chk_unit,err=122) ((lwindow(i,nkp),i=1,num_bands),nkp=1,num_kpts)
 
        ! ndimwin
@@ -3267,26 +3487,36 @@ contains
        read(chk_unit,err=123) (ndimwin(nkp),nkp=1,num_kpts)
 
        ! U_matrix_opt
-       if (.not.allocated(u_matrix_opt)) then
+!      jjunquer: if u_matrix_opt was already allocated, deallocate it befire
+!      reallocation
+!       if (.not.allocated(u_matrix_opt)) then
+       if ( allocated(u_matrix_opt) ) deallocate(u_matrix_opt)
           allocate(u_matrix_opt(num_bands,num_wann,num_kpts),stat=ierr)
           if (ierr/=0) call io_error('Error allocating u_matrix_opt in param_read_chkpt')
-       endif
+!       endif
+!      end jjunquer
        read(chk_unit,err=124) (((u_matrix_opt(i,j,nkp),i=1,num_bands),j=1,num_wann),nkp=1,num_kpts)
 
     endif
 
     ! U_matrix
-    if (.not.allocated(u_matrix)) then
+!   jjunquer: if u_matrix_opt was already allocated, deallocate it befire
+!   reallocation
+!    if (.not.allocated(u_matrix)) then
+    if (allocated(u_matrix)) deallocate(u_matrix)
        allocate(u_matrix(num_wann,num_wann,num_kpts),stat=ierr)
        if (ierr/=0) call io_error('Error allocating u_matrix in param_read_chkpt')
-    endif
+!    endif
     read(chk_unit,err=125) (((u_matrix(i,j,k),i=1,num_wann),j=1,num_wann),k=1,num_kpts)
 
     ! M_matrix
-    if (.not.allocated(m_matrix)) then
+!   jjunquer: if m_matrix_opt was already allocated, deallocate it befire
+!   reallocation
+!    if (not.allocated(m_matrix)) then
+    if (allocated(m_matrix)) deallocate(m_matrix)
        allocate(m_matrix(num_wann,num_wann,nntot,num_kpts),stat=ierr)
        if (ierr/=0) call io_error('Error allocating m_matrix in param_read_chkpt')
-    endif
+!    endif
     read(chk_unit,err=126) ((((m_matrix(i,j,k,l),i=1,num_wann),j=1,num_wann),k=1,nntot),l=1,num_kpts)
 
     ! wannier_centres
@@ -3320,10 +3550,10 @@ contains
   !=======================================!
   subroutine param_in_file
     !=======================================!
-    ! Load the *.win file into a character  !
-    ! array in_file, ignoring comments and  !
-    ! blank lines and converting everything !
-    ! to lowercase characters               !
+    !! Load the *.win file into a character  
+    !! array in_file, ignoring comments and  
+    !! blank lines and converting everything 
+    !! to lowercase characters               
     !=======================================!
 
     use w90_io,        only : io_file_unit,io_error,seedname
@@ -3397,7 +3627,7 @@ contains
   subroutine param_get_keyword(keyword,found,c_value,l_value,i_value,r_value)
     !===========================================================================!
     !                                                                           !
-    !             Finds the value of the required keyword.                      !
+    !! Finds the value of the required keyword.
     !                                                                           !
     !===========================================================================!
 
@@ -3406,11 +3636,17 @@ contains
     implicit none
 
     character(*),      intent(in)  :: keyword
+    !! Keyword to examine
     logical          , intent(out) :: found
+    !! Is keyword present
     character(*)     ,optional, intent(inout) :: c_value
+    !! Keyword value
     logical          ,optional, intent(inout) :: l_value
+    !! Keyword value
     integer          ,optional, intent(inout) :: i_value
+    !! Keyword value
     real(kind=dp)    ,optional, intent(inout) :: r_value
+    !! Keyword value
 
     integer           :: kl, in,loop,itmp
     character(len=maxlen) :: dummy
@@ -3466,7 +3702,7 @@ contains
   subroutine param_get_keyword_vector(keyword,found,length,c_value,l_value,i_value,r_value)
     !=========================================================================================!
     !                                                                                         !
-    !                  Finds the values of the required keyword vector                        !
+    !! Finds the values of the required keyword vector 
     !                                                                                         !
     !=========================================================================================!
 
@@ -3475,12 +3711,19 @@ contains
     implicit none
 
     character(*),      intent(in)  :: keyword
+    !! Keyword to examine
     logical          , intent(out) :: found
+    !! Is keyword present
     integer,           intent(in)  :: length
+    !! Length of vecotr to read
     character(*)     ,optional, intent(inout) :: c_value(length)
+    !! Keyword data
     logical          ,optional, intent(inout) :: l_value(length)
+    !! Keyword data
     integer          ,optional, intent(inout) :: i_value(length)
+    !! Keyword data
     real(kind=dp)    ,optional, intent(inout) :: r_value(length)
+    !! Keyword data
 
     integer           :: kl, in,loop,i
     character(len=maxlen) :: dummy
@@ -3533,7 +3776,7 @@ contains
   subroutine param_get_vector_length(keyword,found,length)
     !======================================================!
     !                                                      !
-    !        Returns the length of a keyword vector        !
+    !! Returns the length of a keyword vector 
     !                                                      !
     !======================================================!
 
@@ -3542,8 +3785,11 @@ contains
     implicit none
 
     character(*),      intent(in)  :: keyword
+    !! Keyword to examine
     logical          , intent(out) :: found
+    !! Is keyword present
     integer,           intent(out)  :: length
+    !! length of vector
 
     integer           :: kl, in,loop,pos
     character(len=maxlen) :: dummy
@@ -3600,7 +3846,7 @@ contains
   subroutine param_get_keyword_block(keyword,found,rows,columns,c_value,l_value,i_value,r_value)
     !==============================================================================================!
     !                                                                                              !
-    !                           Finds the values of the required data block                        !
+    !!   Finds the values of the required data block               
     !                                                                                              !
     !==============================================================================================!
 
@@ -3610,13 +3856,21 @@ contains
     implicit none
 
     character(*),      intent(in)  :: keyword
+    !! Keyword to examine
     logical          , intent(out) :: found
+    !! Is keyword present
     integer,           intent(in)  :: rows
+    !! Number of rows
     integer,           intent(in)  :: columns
+    !! Number of columns
     character(*)     ,optional, intent(inout) :: c_value(columns,rows)
+    !! keyword block data
     logical          ,optional, intent(inout) :: l_value(columns,rows)
+    !! keyword block data
     integer          ,optional, intent(inout) :: i_value(columns,rows)
+    !! keyword block data
     real(kind=dp)    ,optional, intent(inout) :: r_value(columns,rows)
+    !! keyword block data
 
     integer           :: in,ins,ine,loop,i,line_e,line_s,counter,blen
     logical           :: found_e,found_s,lconvert
@@ -3736,7 +3990,7 @@ contains
   subroutine param_get_block_length(keyword,found,rows,lunits)
     !=====================================================!
     !                                                     !
-    !       Finds the length of the data block            !
+    !! Finds the length of the data block       
     !                                                     !
     !=====================================================!
 
@@ -3745,9 +3999,13 @@ contains
     implicit none
 
     character(*),      intent(in)  :: keyword
+    !! Keyword to examine
     logical,           intent(out) :: found
+    !! Is keyword present
     integer,           intent(out) :: rows
+    !! Number of rows
     logical, optional, intent(out) :: lunits
+    !! Have we found a unit specification
 
     integer           :: i,in,ins,ine,loop,line_e,line_s
     logical           :: found_e,found_s
@@ -3755,6 +4013,7 @@ contains
     character(len=2)  :: atsym
     real(kind=dp)     :: atpos(3)
 
+    rows=0
     found_s=.false.
     found_e=.false.
 
@@ -3845,7 +4104,7 @@ contains
   subroutine param_get_atoms(lunits)
     !===================================!
     !                                   !
-    !   Fills the atom data block       !
+    !!   Fills the atom data block      
     !                                   !
     !===================================!
 
@@ -3855,6 +4114,7 @@ contains
     implicit none
 
     logical, intent(in) :: lunits
+    !! Do we expect a first line with the units
 
     real(kind=dp)     :: atoms_pos_frac_tmp(3,num_atoms)
     real(kind=dp)     :: atoms_pos_cart_tmp(3,num_atoms)
@@ -3971,28 +4231,33 @@ contains
        end do
     end do
 
-    allocate(atoms_species_num(num_species),stat=ierr)
-       if (ierr/=0) call io_error('Error allocating atoms_species_num in param_get_atoms')
-    allocate(atoms_label(num_species),stat=ierr)
-       if (ierr/=0) call io_error('Error allocating atoms_label in param_get_atoms')
-    allocate(atoms_symbol(num_species),stat=ierr)
-       if (ierr/=0) call io_error('Error allocating atoms_symbol in param_get_atoms')
-    atoms_species_num(:)=0
-
-    do loop=1,num_species
-       atoms_label(loop)=ctemp(loop)
-       do loop2=1,num_atoms
-          if( trim(atoms_label(loop))==trim(atoms_label_tmp(loop2) )) then
-             atoms_species_num(loop)=atoms_species_num(loop)+1
-          end if
-       end do
-    end do
+!!   jjunquer: atoms_symbol, atoms_label, and atoms_species_num are 
+!    directly passed from SIESTA
+!    allocate(atoms_species_num(num_species),stat=ierr)
+!       if (ierr/=0) call io_error('Error allocating atoms_species_num in param_get_atoms')
+!    allocate(atoms_label(num_species),stat=ierr)
+!       if (ierr/=0) call io_error('Error allocating atoms_label in param_get_atoms')
+!    allocate(atoms_symbol(num_species),stat=ierr)
+!       if (ierr/=0) call io_error('Error allocating atoms_symbol in param_get_atoms')
+!    atoms_species_num(:)=0
+!
+!    do loop=1,num_species
+!       atoms_label(loop)=ctemp(loop)
+!       do loop2=1,num_atoms
+!          if( trim(atoms_label(loop))==trim(atoms_label_tmp(loop2) )) then
+!             atoms_species_num(loop)=atoms_species_num(loop)+1
+!          end if
+!       end do
+!    end do
+!!   end jjunquer
 
     max_sites=maxval(atoms_species_num)
     allocate(atoms_pos_frac(3,max_sites,num_species),stat=ierr)
        if (ierr/=0) call io_error('Error allocating atoms_pos_frac in param_get_atoms')
-    allocate(atoms_pos_cart(3,max_sites,num_species),stat=ierr)
-       if (ierr/=0) call io_error('Error allocating atoms_pos_cart in param_get_atoms')
+!!   jjunquer: atoms_pos_cart directly transferred from SIESTA
+!    allocate(atoms_pos_cart(3,max_sites,num_species),stat=ierr)
+!       if (ierr/=0) call io_error('Error allocating atoms_pos_cart in param_get_atoms')
+!!   end jjunquer
 
     do loop=1,num_species
        counter=0
@@ -4000,18 +4265,22 @@ contains
           if( trim(atoms_label(loop))==trim(atoms_label_tmp(loop2) )) then
              counter=counter+1
              atoms_pos_frac(:,counter,loop)=atoms_pos_frac_tmp(:,loop2)
-             atoms_pos_cart(:,counter,loop)=atoms_pos_cart_tmp(:,loop2)
+!!            jjunquer: atoms_pos_cart directly transferred from SIESTA
+!             atoms_pos_cart(:,counter,loop)=atoms_pos_cart_tmp(:,loop2)
+!!            end jjunquer
           end if
        end do
     end do
 
-    ! Strip any numeric characters from atoms_label to get atoms_symbol
-    do loop=1,num_species    
-       atoms_symbol(loop)(1:2)=atoms_label(loop)(1:2)
-       ic=ichar(atoms_symbol(loop)(2:2))
-       if ((ic.lt.ichar('a')).or.(ic.gt.ichar('z'))) &
-         atoms_symbol(loop)(2:2)=' '
-    end do
+!!   jjunquer: atoms_symbol is directly passed from SIESTA
+!    ! Strip any numeric characters from atoms_label to get atoms_symbol
+!    do loop=1,num_species    
+!       atoms_symbol(loop)(1:2)=atoms_label(loop)(1:2)
+!       ic=ichar(atoms_symbol(loop)(2:2))
+!       if ((ic.lt.ichar('a')).or.(ic.gt.ichar('z'))) &
+!         atoms_symbol(loop)(2:2)=' '
+!    end do
+!!   end jjunquer
 
     return
 
@@ -4023,7 +4292,7 @@ contains
      subroutine param_lib_set_atoms(atoms_label_tmp,atoms_pos_cart_tmp)
     !=====================================================!
     !                                                     !
-    !   Fills the atom data block during a library call   !
+    !!   Fills the atom data block during a library call   
     !                                                     !
     !=====================================================!
 
@@ -4033,7 +4302,9 @@ contains
     implicit none
 
     character(len=*), intent(in) :: atoms_label_tmp(num_atoms)
+    !! Atom labels
     real(kind=dp), intent(in)      :: atoms_pos_cart_tmp(3,num_atoms)
+    !! Atom positions
 
     real(kind=dp)     :: atoms_pos_frac_tmp(3,num_atoms)
     integer           :: loop2,max_sites,ierr,ic,loop,counter
@@ -4059,28 +4330,34 @@ contains
        end do
     end do
 
-    allocate(atoms_species_num(num_species),stat=ierr)
-       if (ierr/=0) call io_error('Error allocating atoms_species_num in param_lib_set_atoms')
-    allocate(atoms_label(num_species),stat=ierr)
-       if (ierr/=0) call io_error('Error allocating atoms_label in param_lib_set_atoms')
-    allocate(atoms_symbol(num_species),stat=ierr)
-       if (ierr/=0) call io_error('Error allocating atoms_symbol in param_lib_set_atoms')
-    atoms_species_num(:)=0
-
-    do loop=1,num_species
-       atoms_label(loop)=ctemp(loop)
-       do loop2=1,num_atoms
-          if( trim(atoms_label(loop))==trim(atoms_label_tmp(loop2) )) then
-             atoms_species_num(loop)=atoms_species_num(loop)+1
-          end if
-       end do
-    end do
+!!   jjunquer: atoms_symbol, atoms_label, and atoms_species_num are 
+!    directy passed from SIESTA
+!    allocate(atoms_species_num(num_species),stat=ierr)
+!       if (ierr/=0) call io_error('Error allocating atoms_species_num in param_lib_set_atoms')
+!    allocate(atoms_label(num_species),stat=ierr)
+!       if (ierr/=0) call io_error('Error allocating atoms_label in param_lib_set_atoms')
+!
+!    allocate(atoms_symbol(num_species),stat=ierr)
+!       if (ierr/=0) call io_error('Error allocating atoms_symbol in param_lib_set_atoms')
+!    atoms_species_num(:)=0
+!
+!    do loop=1,num_species
+!       atoms_label(loop)=ctemp(loop)
+!       do loop2=1,num_atoms
+!          if( trim(atoms_label(loop))==trim(atoms_label_tmp(loop2) )) then
+!             atoms_species_num(loop)=atoms_species_num(loop)+1
+!          end if
+!       end do
+!    end do
+!!   end jjunquer
 
     max_sites=maxval(atoms_species_num)
     allocate(atoms_pos_frac(3,max_sites,num_species),stat=ierr)
     if (ierr/=0) call io_error('Error allocating atoms_pos_frac in param_lib_set_atoms')
-    allocate(atoms_pos_cart(3,max_sites,num_species),stat=ierr)
-    if (ierr/=0) call io_error('Error allocating atoms_pos_cart in param_lib_set_atoms')
+!!   jjunquer: atoms_pos_cart is directly transferred from SIESTA
+!    allocate(atoms_pos_cart(3,max_sites,num_species),stat=ierr)
+!    if (ierr/=0) call io_error('Error allocating atoms_pos_cart in param_lib_set_atoms')
+!!   end jjunquer
     
     do loop=1,num_species
        counter=0
@@ -4088,22 +4365,26 @@ contains
           if( trim(atoms_label(loop))==trim(atoms_label_tmp(loop2) )) then
              counter=counter+1
              atoms_pos_frac(:,counter,loop)=atoms_pos_frac_tmp(:,loop2)
-             atoms_pos_cart(:,counter,loop)=atoms_pos_cart_tmp(:,loop2)
+!!            jjunquer: atoms_pos_cart is directly transferred from SIESTA
+!             atoms_pos_cart(:,counter,loop)=atoms_pos_cart_tmp(:,loop2)
+!!            end jjunquer
           end if
        end do
     end do
 
-    ! Strip any numeric characters from atoms_label to get atoms_symbol
-    do loop=1,num_species    
-       atoms_symbol(loop)(1:2)=atoms_label(loop)(1:2)
-       ic=ichar(atoms_symbol(loop)(2:2))
-       if ((ic.lt.ichar('a')).or.(ic.gt.ichar('z'))) &
-         atoms_symbol(loop)(2:2)=' '
-       tmp_string = trim(adjustl(utility_lowercase(atoms_symbol(loop))))
-       atoms_symbol(loop)(1:2)=tmp_string(1:2)
-       tmp_string = trim(adjustl(utility_lowercase(atoms_label(loop))))
-       atoms_label(loop)(1:2)=tmp_string(1:2)
-    end do
+!!   jjunquer: atoms_symbol is directly passed from SIESTA
+!    ! Strip any numeric characters from atoms_label to get atoms_symbol
+!    do loop=1,num_species    
+!       atoms_symbol(loop)(1:2)=atoms_label(loop)(1:2)
+!       ic=ichar(atoms_symbol(loop)(2:2))
+!       if ((ic.lt.ichar('a')).or.(ic.gt.ichar('z'))) &
+!         atoms_symbol(loop)(2:2)=' '
+!       tmp_string = trim(adjustl(utility_lowercase(atoms_symbol(loop))))
+!       atoms_symbol(loop)(1:2)=tmp_string(1:2)
+!       tmp_string = trim(adjustl(utility_lowercase(atoms_label(loop))))
+!       atoms_label(loop)(1:2)=tmp_string(1:2)
+!    end do
+!!   end jjunquer
 
     return
 
@@ -4114,18 +4395,23 @@ contains
     !====================================================================!
     subroutine param_get_range_vector(keyword,found,length,lcount,i_value)
     !====================================================================!
-    !   Read a range vector eg. 1,2,3,4-10  or 1 3 400:100               !
-    !   if(lcount) we return the number of states in length              !
+    !!   Read a range vector eg. 1,2,3,4-10  or 1 3 400:100           
+    !!   if(lcount) we return the number of states in length            
     !====================================================================!
     use w90_io,        only : io_error
 
     implicit none
 
     character(*),      intent(in)    :: keyword
+    !! Keyword to examine
     logical          , intent(out)   :: found
+    !! Is keyword found
     integer,           intent(inout) :: length
+    !! Number of states
     logical,           intent(in)    :: lcount
+    !! If T only count states
     integer, optional, intent(out)   :: i_value(length)
+    !! States specified in range vector
 
     integer   :: kl, in,loop,num1,num2,i_punc
     integer   :: counter,i_digit,loop_r,range_size
@@ -4214,7 +4500,7 @@ contains
    subroutine param_get_projections
      !===================================!
      !                                   !
-     !  Fills the projection data block  !
+     !!  Fills the projection data block 
      !                                   !
      !===================================!
 
@@ -4355,8 +4641,8 @@ contains
         endif
      endif
 
+     counter=0
      if(.not. lrandom) then
-        counter=0
         do line=line_s+1,line_e-1
            ang_states=0
            !Assume the default values
@@ -4732,8 +5018,11 @@ contains
      if (.not. lpartrandom) then
         if (counter.ne.num_proj) call io_error(&
              'param_get_projections: Fewer projections defined than the number of Wannier functions requested')
-     else
-        call random_seed()
+     end if
+     end if ! .not. lrandom
+     
+     if (lpartrandom .or. lrandom) then
+        call random_seed()  ! comment out this line for reproducible random positions!
         do loop=counter+1,num_proj
            call random_number(proj_site(:,loop))
            proj_l(loop)      = 0
@@ -4742,33 +5031,28 @@ contains
            proj_x(:,loop)    = proj_x_def  
            proj_zona(loop)   = proj_zona_def  
            proj_radial(loop) = proj_radial_def             
+           if (spinors) then
+               if (modulo(loop, 2) == 1) then
+                  proj_s(loop) = 1
+               else
+                  proj_s(loop) = -1
+               end if
+               proj_s_qaxis(1, loop) = 0.
+               proj_s_qaxis(2, loop) = 0.
+               proj_s_qaxis(3, loop) = 1.
+           end if
         enddo
      endif
 
-     elseif(lrandom) then
-
-        call random_seed() ! comment out this line for reproducible random positions!
-        do loop=1,num_proj
-           call random_number(proj_site(:,loop))
-           proj_l(loop)      = 0
-           proj_m(loop)      = 1
-           proj_z(:,loop)    = proj_z_def  
-           proj_x(:,loop)    = proj_x_def  
-           proj_zona(loop)   = proj_zona_def  
-           proj_radial(loop) = proj_radial_def
-        end do
-
-     end if
-
      in_data(line_s:line_e)(1:maxlen) = ' '
 
-!!$     ! Check
-!!$     do loop=1,num_wann
-!!$        if ( abs(sum(proj_z(:,loop)*proj_x(:,loop))).gt.1.0e-6_dp ) then
-!!$           write(stdout,*) ' Projection:',loop
-!!$           call io_error(' Error in projections: z and x axes are not orthogonal')
-!!$        endif
-!!$     enddo
+!~     ! Check
+!~     do loop=1,num_wann
+!~        if ( abs(sum(proj_z(:,loop)*proj_x(:,loop))).gt.1.0e-6_dp ) then
+!~           write(stdout,*) ' Projection:',loop
+!~           call io_error(' Error in projections: z and x axes are not orthogonal')
+!~        endif
+!~     enddo
 
      ! Normalise z-axis and x-axis and check/fix orthogonality
      do loop=1,num_proj
@@ -4840,7 +5124,7 @@ contains
   subroutine param_get_keyword_kpath
     !===================================!
     !                                   !
-    !  Fills the kpath data block       !
+    !!  Fills the kpath data block     
     !                                   !
     !===================================!
     use w90_io,        only : io_error
@@ -4919,7 +5203,7 @@ contains
     subroutine param_memory_estimate
     !===========================================!
     !                                           !
-    ! Estimate how much memory we will allocate !
+    !! Estimate how much memory we will allocate
     !                                           !
     !===========================================!
 
@@ -5143,6 +5427,8 @@ contains
         end if
      write(stdout,'(1x,a)')  '|   However, this will result in more i/o and slow down the calculation      |'
      endif
+
+     write(stdout,'(1x,"|",24x,a15,f16.2,a,18x,"|")') 'plot_wannier:',(mem_param+mem_wan)/(1024**2),' Mb'
 
      if (ispostw90) then
         if (boltzwann) &

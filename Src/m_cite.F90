@@ -74,7 +74,7 @@ module m_cite
   ! Increment this after having added a new
   ! citation!
   ! OTHERWISE YOU WILL EXPERIENCE A SEG-FAULT.
-  integer, parameter :: N_citations = 7
+  integer, parameter :: N_citations = 9
 
   private
 
@@ -89,6 +89,7 @@ module m_cite
   integer, parameter :: LEN_JOURNAL = 128
   integer, parameter :: LEN_VOLUME = 32
   integer, parameter :: LEN_ISSUE = 32
+  integer, parameter :: LEN_PAGE  = 32
 
   type citation
      character(len=LEN_COMMENT) :: comment = STR_NULL
@@ -101,6 +102,7 @@ module m_cite
      integer :: year = 0
      character(len=LEN_VOLUME) :: volume = STR_NULL
      character(len=LEN_ISSUE) :: issue = STR_NULL
+     character(len=LEN_PAGE) :: page = STR_NULL
      character(len=LEN_CITEKEY) :: cite_key = STR_NULL
      character(len=LEN_DOI) :: doi = STR_NULL
 
@@ -242,6 +244,30 @@ contains
        cit%issue = "30"
        cit%cite_key = "Lin2014"
        ID = 7
+
+    case ( "10.1103/PhysRevB.56.12847" )
+       ! Maximally Localized Wannier Function Paper
+       cit%comment = "Maximally Localized Wannier Function paper"
+       cit%doi = "10.1103/PhysRevB.56.12847"
+       cit%journal = "Physical Review B"
+       cit%year = 1997
+       cit%volume = "56"
+       cit%issue = "20"
+       cit%page = "12847"
+       cit%cite_key = "Marzari1997"
+       ID = 8
+       
+    case ( "10.1016/j.cpc.2014.05.003" )
+       ! Wannier90 paper
+       cit%comment = "Wannier90 paper"
+       cit%doi = "10.1016/j.cpc.2014.05.003"
+       cit%journal = "Comput. Phys. Commun."
+       cit%year = 2014
+       cit%volume = "185"
+       cit%issue = "8"
+       cit%page = "2309"
+       cit%cite_key = "Wannier90"
+       ID = 9
        
     end select
 
@@ -306,6 +332,10 @@ contains
     if ( cit%issue /= STR_NULL ) then
        write(iu, '(t3,3a)') &
             'issue = {',trim(cit%issue),'},'
+    end if
+    if ( cit%page  /= STR_NULL ) then
+       write(iu, '(t3,3a)') &
+            'issue = {',trim(cit%page),'},'
     end if
     if ( cit%doi /= STR_NULL ) then
        write(iu, '(t3,3a)') &

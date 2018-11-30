@@ -14,21 +14,26 @@
 !     is read from the fdf file by routine 'read_lowdin_specs'.
 
       use precision, only: dp
-      use files,     only : label_length         ! Number of characters in slabel
+      use files,     only: label_length         ! Number of characters in slabel
       use trialorbitalclass
 
       implicit none
 
       type, public ::  lowdin_manifold_t
           character(label_length+3)  :: seedname_lowdin  
-                                         ! Name of the file where the Wannier90
-                                         !   code, when used as a postprocessing
-                                         !   tool, reads or dumps the
-                                         !   information.
-
+                                       !< Seed of the name of the file 
+                                       !!  that will be used to dump the 
+                                       !!  information of the matrix elements
+                                       !!  produced by the Wannier90 subroutines
           integer                :: initial_band
           integer                :: final_band
           integer                :: number_of_bands
+                                       !< Number of bands passed to Wannier90
+          integer                :: numbands_lowdin
+                                       !< Number of bands that will be 
+                                       !!   orthonormalized
+          integer                :: num_iter       ! Number of iterations for th
+                                                   !   minimization of \Omega
           integer, pointer       :: orbital_indices(:)
           logical, pointer       :: isexcluded(:)  ! List of bands excluded for
                                                    !   Lowdin orthonormaliza
@@ -44,13 +49,51 @@
                                                    !    considered for 
                                                    !    Lowdin orthonormalizat
                                                    !    per node
-          integer                :: numbands_lowdin
           integer                :: nincbands_loc_lowdin     
                                                    ! Number of included bands 
                                                    !   in the calc.
                                                    !   of the overlap and 
                                                    !   projection matrices
                                                    !   in the local node
+          real(dp)               :: dis_win_min   !< Bottom of the outer energy
+                                                  !!   window for band 
+                                                  !!   disentanglement
+                                                  !!   Units: energy
+                                                  !!   Read from the fdf input
+                                                  !!   in the 
+                                                  !!   %block LowdinProjections
+          real(dp)               :: dis_win_max   !< Top of the outer energy
+                                                  !!   window for band 
+                                                  !!   disentanglement
+                                                  !!   Units: energy
+                                                  !!   Read from the fdf input
+                                                  !!   in the 
+                                                  !!   %block LowdinProjections
+          real(dp)               :: dis_froz_min  !< Bottom of the inner 
+                                                  !!   (frozen) energy window 
+                                                  !!   for band disentanglement
+                                                  !!   Units: energy
+                                                  !!   Read from the fdf input
+                                                  !!   in the 
+                                                  !!   %block LowdinProjections
+          real(dp)               :: dis_froz_max  !< Top of the inner 
+                                                  !!   (frozen) energy window 
+                                                  !!   for band disentanglement
+                                                  !!   Units: energy
+                                                  !!   Read from the fdf input
+                                                  !!   in the 
+                                                  !!   %block LowdinProjections
+          logical                :: disentanglement !< Is the disentanglement 
+                                                  !!   procedure required for
+                                                  !!   this manifold?
+          logical                :: wannier_plot  !! Plot the Wannier functions?
+          integer                :: wannier_plot_supercell(3)
+                                                  !! Size of the supercell for 
+                                                  !!   plotting the WF
+          logical                :: fermi_surface_plot  
+                                                  !! Plot the Fermi surface?
+          logical                :: write_hr      !! Write the Hamiltonian in 
+                                                  !!   the WF basis?
           type(trialorbital), allocatable  :: proj_lowdin(:)
       end type lowdin_manifold_t
 

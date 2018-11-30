@@ -58,18 +58,33 @@ contains
 
     if (timing_level>0) call io_stopwatch('overlap: read',1)
 
+!   jjunquer
+    if( allocated(u_matrix) ) deallocate(u_matrix)
+!   end jjunquer
     allocate ( u_matrix( num_wann,num_wann,num_kpts),stat=ierr)
     if (ierr/=0) call io_error('Error in allocating u_matrix in overlap_read')
     u_matrix = cmplx_0
 
     if (disentanglement) then
+!      jjunquer
+       if( allocated(m_matrix_orig) ) deallocate(m_matrix_orig)
+!      end jjunquer
        allocate(m_matrix_orig(num_bands,num_bands,nntot,num_kpts),stat=ierr)
        if (ierr/=0) call io_error('Error in allocating m_matrix_orig in overlap_read')
+!      jjunquer
+       if( allocated(a_matrix) ) deallocate(a_matrix)
+!      end jjunquer
        allocate(a_matrix(num_bands,num_wann,num_kpts),stat=ierr)
        if (ierr/=0) call io_error('Error in allocating a_matrix in overlap_read')
+!      jjunquer
+       if( allocated(u_matrix_opt) ) deallocate(u_matrix_opt)
+!      end jjunquer
        allocate(u_matrix_opt(num_bands,num_wann,num_kpts),stat=ierr)
        if (ierr/=0) call io_error('Error in allocating u_matrix_opt in overlap_read')
     else
+!      jjunquer
+       if( allocated(m_matrix) ) deallocate(m_matrix)
+!      end jjunquer
        allocate ( m_matrix( num_wann,num_wann,nntot,num_kpts),stat=ierr)
        if (ierr/=0) call io_error('Error in allocating m_matrix in overlap_read')
        m_matrix = cmplx_0
@@ -126,6 +141,9 @@ contains
 
        ! Read the overlaps
        num_mmn=num_kpts*nntot
+!      jjunquer
+       if( allocated(mmn_tmp) ) deallocate(mmn_tmp)
+!      end jjunquer
        allocate(mmn_tmp(num_bands,num_bands),stat=ierr)
        if (ierr/=0) call io_error('Error in allocating mmn_tmp in overlap_read')
        do ncount = 1, num_mmn
@@ -177,7 +195,6 @@ contains
           open(unit=amn_in,file=trim(seedname)//'.amn',form='formatted',status='old',err=102)
           
           write(stdout,'(/a)',advance='no') ' Reading projections from '//trim(seedname)//'.amn : '
-
           
           ! Read the comment line
           read(amn_in,'(a)',err=104,end=104) dummy
@@ -247,13 +264,7 @@ contains
 !~[aam]
        if ( (.not.disentanglement).and.(.not.cp_pp).and.(.not.use_bloch_phases) ) then
           if (.not.gamma_only) then
-! jjunquer
-             write(6,*)m_matrix(1,2,1,1)
-! end jjunquer
              call overlap_project()
-! jjunquer
-             write(6,*)m_matrix(1,2,1,1)
-! end jjunquer
           else
              call overlap_project_gamma()
           endif

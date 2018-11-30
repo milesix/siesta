@@ -63,9 +63,11 @@
       use lowdin_types,      only: numkpoints_lowdin
       use lowdin_types,      only: manifold_bands_lowdin
       use m_lowdin,          only: read_lowdin_specs
+      use m_lowdin,          only: read_kpoints_lowdin
       use m_lowdin,          only: setup_Lowdin
-      use m_lowdin,          only: compute_position
+      use m_lowdin,          only: compute_wannier
       use m_lowdin,          only: define_trial_orbitals
+      use m_lowdin,          only: deallocate_wannier
 
 #ifdef MPI
       use m_mpi_utils, only: globalize_sum
@@ -504,26 +506,38 @@ C
 C     Call the Lowdin orthonormalization here, 
 C
       if( lowdin_processing ) then
-        call read_lowdin_specs()
-        call setup_Lowdin
-        call re_alloc( Amnmat_man,              
-     &                 1, n_lowdin_manifolds,  
-     &                 1, manifold_bands_lowdin(1)%number_of_bands + 
-     &                    manifold_bands_lowdin(2)%number_of_bands,        
-     &                 1, manifold_bands_lowdin(1)%number_of_bands + 
-     &                    manifold_bands_lowdin(2)%number_of_bands, 
-     &                 1, numkpoints_lowdin,                   
-     &                 'Amnmat_man',            
-     &                 'siesta_analysis'        )
+        call read_lowdin_specs
+        call read_kpoints_lowdin
+        call setup_lowdin
+        if( n_lowdin_manifolds .eq. 1) then
+          call re_alloc( Amnmat_man,              
+     &                   1, n_lowdin_manifolds,  
+     &                   1, manifold_bands_lowdin(1)%number_of_bands,
+     &                   1, manifold_bands_lowdin(1)%number_of_bands,
+     &                   1, numkpoints_lowdin,                   
+     &                   'Amnmat_man',            
+     &                   'siesta_analysis'        )
+        else 
+          call re_alloc( Amnmat_man,              
+     &                   1, n_lowdin_manifolds,  
+     &                   1, manifold_bands_lowdin(1)%number_of_bands + 
+     &                      manifold_bands_lowdin(2)%number_of_bands,        
+     &                   1, manifold_bands_lowdin(1)%number_of_bands + 
+     &                      manifold_bands_lowdin(2)%number_of_bands, 
+     &                   1, numkpoints_lowdin,                   
+     &                   'Amnmat_man',            
+     &                   'siesta_analysis'        )
+        endif
         Amnmat_man = cmplx(0.0_dp,0.0_dp,kind=dp)
         do index_manifold = 1, n_lowdin_manifolds
           call define_trial_orbitals( index_manifold )
           call switch_local_projection( index_manifold )
           do ispin = 1, nspin
             call diagonalizeHk( ispin, index_manifold )
-            call compute_position( ispin, index_manifold )
+            call compute_wannier( ispin, index_manifold )
           enddo 
         enddo
+        call deallocate_wannier
         lowdin_processing = .false.
       endif
 

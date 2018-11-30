@@ -8,7 +8,7 @@
 
 !> \brief General purpose of the switch_local_projection module:
 !!
-!! The interface between Siesta and Wannier90 shares many similarities
+!! The interface between Siesta and WANNIER90 shares many similarities
 !! with the Lowdin projection algorithm.
 !! Here, depending on the kind of projection to localized orbitals 
 !! that will be carried out,
@@ -16,14 +16,14 @@
 
 module m_switch_local_projection
 
-  use precision,      only: dp                !< Real double precision type
-  use siesta_options, only: w90_processing    !< Will we call the interface with
-                                              !!    Wannier90
-  use siesta_options, only: lowdin_processing !< Will we call the interface with
-                                              !!   the Lowdin orthonormalization
-  use atomlist,       only: no_u              !< Number of orbitals in unit cell
-  use siesta_geom,    only: ucell             !< Unit cell lattice vectors
-  use files,     only : label_length         ! Number of characters in slabel
+  use precision,      only: dp                ! Real double precision type
+  use siesta_options, only: w90_processing    ! Will we call the interface with
+                                              !    WANNIER90
+  use siesta_options, only: lowdin_processing ! Will we call the interface with
+                                              !   the Lowdin orthonormalization
+  use atomlist,       only: no_u              ! Number of orbitals in unit cell
+  use siesta_geom,    only: ucell             ! Unit cell lattice vectors
+  use files,          only: label_length      ! Number of characters in slabel
   use trialorbitalclass
 
   implicit none
@@ -292,7 +292,8 @@ module m_switch_local_projection
       nnlist     = nnlist_lowdin
       nnfolding  = nnfolding_lowdin
 
-      numbands(1)   = manifold_bands_lowdin(index_manifold)%numbands_lowdin
+!      numbands(1)   = manifold_bands_lowdin(index_manifold)%number_of_bands
+      numbands(1)   = manifold_bands_lowdin(index_manifold)%final_band
       numincbands(1)= manifold_bands_lowdin(index_manifold)%number_of_bands
       nincbands_loc = manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
       blocksizeincbands =  &
@@ -307,14 +308,13 @@ module m_switch_local_projection
       latvec = ucell
 
 !     Initialize number of projectors
-      numproj = numincbands(1) 
+      numproj = manifold_bands_lowdin(index_manifold)%numbands_lowdin
       if( allocated(projections) ) deallocate( projections )
       allocate(projections(numproj))
       projections = manifold_bands_lowdin(index_manifold)%proj_lowdin
 
 !     Reciprocal lattice vectors
       call reclat( ucell, reclatvec, 1 )
-
 
       nullify( bvectorsfrac )
       call re_alloc( bvectorsfrac, 1, 3, 1, nncount,    &
@@ -436,7 +436,7 @@ module m_switch_local_projection
 !    write(6,'(a)') 'begin bvectorsfrac'
 !    do nn = 1, nncount
 !      write(6,'(i6,3x,3f12.5)') &
-! &      nn,(bvectorsfrac(nn,i),i=1,3)
+! &      nn,(bvectorsfrac(i,nn),i=1,3)
 !    end do
 !    write(6,'(a/)') 'end bvectorsfrac'
 !      

@@ -17,12 +17,16 @@
 module m_lowdin
 
 
-  use precision,      only: dp                     !< Real double precision type
-  use siesta_options, only: n_lowdin_manifolds     !< Number of bands manifolds 
-                                                   !!  that will be considered
-                                                   !!  for Lowdin transformation
-  use parallel,       only: Node, Nodes, IOnode, BlockSize
-  use m_spin,         only: nspin                  ! Number of spin components
+  use precision,      only: dp            ! Real double precision type
+  use m_cite,         only: add_citation  ! Subroutine used to cite the proper 
+                                          !   papers where the implementation is
+                                          !   based on
+  use siesta_options, only: n_lowdin_manifolds     
+                                          ! Number of bands manifolds 
+                                          !  that will be considered
+                                          !  for Lowdin transformation
+  use parallel,       only: Node, Nodes, BlockSize
+  use parallel,       only: IONode        ! Node for Input/output
   use m_switch_local_projection, only: coeffs
   use lowdin_types,   only: lowdin_manifold_t    
   use lowdin_types,   only: manifold_bands_lowdin  ! Variable where the initial
@@ -33,40 +37,11 @@ module m_lowdin
   use lowdin_types,   only: overlap_sq             !
   use lowdin_types,   only: overlaptilde           !
   use lowdin_types,   only: phitilde               !
-  use lowdin_types,   only: numkpoints_lowdin
-  use lowdin_types,   only: kpointsfrac_lowdin     !
-  use lowdin_types,   only: nncount_lowdin
-  use lowdin_types,   only: nnlist_lowdin
-  use lowdin_types,   only: nnfolding_lowdin
-  use lowdin_types,   only: bvectorsfrac_lowdin
 
-  use sparse_matrices,    only: maxnh        ! Maximum number of orbitals
-                                             !   interacting
-                                             ! NOTE: While running in parallel,
-                                             !   maxnh changes from one core to
-                                             !   the other
-  use sparse_matrices,    only: numh         ! Number of nonzero element of each
-                                             !   row of the hamiltonian matrix
-  use sparse_matrices,    only: listh        ! Nonzero hamiltonian-matrix elemen
-  use sparse_matrices,    only: listhptr     ! Pointer to start of each row
-                                             !   of the hamiltonian matrix
-  use sparse_matrices,    only: xijo         ! Vectors between orbital centers
-  use sparse_matrices,    only: tight_binding_param ! Parameters of the
-                                             !   tight-binding Hamiltonian
-  use sparse_matrices,    only: H            ! Real space Hamiltonian
-  use sparse_matrices,    only: S            ! Real space Overlap
-  use atomlist,           only: indxuo       ! Index of equivalent orbital in
-                                             !   the unit cell
   use atomlist,           only: no_u         ! Number of orbitals in unit cell
                                              ! NOTE: When running in parallel,
                                              !   this is core independent
   use sys,                only : die         ! Termination routine
-  use w90_kmesh,          only : kmesh_get
-  use w90_kmesh,          only : kmesh_write
-  use w90_parameters,     only : nntot
-  use w90_parameters,     only : nnlist
-  use w90_parameters,     only : neigh
-  use w90_parameters,     only : nncell
   use w90_parameters,     only : param_write_chkpt
   use fdf
 
@@ -82,126 +57,460 @@ module m_lowdin
 
 ! Routines
   public :: read_lowdin_specs
-  public :: check_normalization
-  public :: define_phitilde
-  public :: define_overlap_phitilde
-  public :: define_invsqover_phitilde
-  public :: define_coeffshatphi
-  public :: compute_tight_binding_param
-  public :: compute_position
-  public :: write_tight_binding_param
+  public :: read_kpoints_lowdin
+  public :: compute_wannier
   public :: set_excluded_bands_lowdin
   public :: setup_Lowdin 
-  public :: allocate_matrices_Lowdin
-  public :: deallocate_matrices_Lowdin
   public :: define_trial_orbitals
+  public :: deallocate_wannier
 
   private
 
   CONTAINS
 
-! subroutine read_lowdin_specs         : Subroutine that reads all the
-!                                        info in the fdf file related with the
-!                                        Lowdin orthogonalization
+!> \brief  Subroutine that reads all the
+!!         info in the fdf file related with the
+!!         band manifolds that will be treated in the 
+!!         Lowdin orthogonalization.
+!!         This information is contained in the block
+!!         %block LowdinProjections.
+!!         
 
-  subroutine read_lowdin_specs( )
+   subroutine read_lowdin_specs
 !
 !   Processes the information in an fdf file
 !   regarding the bands that will enter into the orthonormalization procedure
 !   and the atomic orbitals that will be orthonormalized.
 !
     use fdf
-    use m_cite,   only: add_citation
-    use parallel, only: IONode        ! Node for Input/output
-    use siesta_geom,  only: ucell      ! Unit cell lattice vectors
-    use lowdin_types, only: reclatvec_lowdin
-    use lowdin_types, only: kmeshlowdin
-    use w90_parameters, only: mp_grid
-    use w90_parameters, only: gamma_only
-    use w90_parameters, only: num_kpts
-    use w90_parameters, only: recip_lattice
-    use w90_parameters, only: real_lattice
-    use w90_parameters, only: kpt_latt
-    use w90_parameters, only: param_read
-    use m_digest_nnkp,  only: chosing_b_vectors 
-                                       ! Subroutine that computes the b
-                                         ! vectors that connect each mesh
-                                         ! k-point to its nearest neighbours.
-    use files,         only: slabel        ! Short system label,
-                                         !   used to generate file names
+    use files,    only: slabel        ! Short system label,
+                                      !   used to generate file names
 
 !   Internal variables
-    integer :: index_manifold      ! Counter for the number of manifolds
-    integer :: iorb                ! Counter for the number of atomic orbitals
-    integer :: ik                  ! Counter for loop on k-points
-    integer :: ikx                 ! Counter for loop on k-points along 1-direc
-    integer :: iky                 ! Counter for loop on k-points along 2-direc
-    integer :: ikz                 ! Counter for loop on k-points along 3-direc
-    integer :: nkp                 ! Counter for loop on k-points along 3-direc
-    integer :: nn                  ! Counter for loop on k-points along 3-direc
-    integer :: i                   ! Counter for loop on k-points along 3-direc
+    integer :: index_manifold        ! Counter for the number of manifolds
+    integer :: iorb                  ! Counter for the number of atomic orbitals
+    character(len=30) :: string_num     ! Check whether the number of 
+                                        !    iterations is in the input      
+    character(len=30) :: string_plot    ! 
+    character(len=30) :: string_plot_f  !
+    character(len=30) :: string_write_h !
 
     type(block_fdf)            :: bfdf
     type(parsed_line), pointer :: pline
 
-!   Allocate the pointer where the initial and final band of every 
-!   manifold will be stored
-    allocate(manifold_bands_lowdin(n_lowdin_manifolds))
-    
-!   Read the LowdinProjections block
-    if (.not. fdf_block('LowdinProjections',bfdf)) RETURN
-
-!   Add citation
+!   Add a citation
     if ( IONode ) then
       call add_citation("arXiv:cond-mat/0407677")
     end if
 
-    do while(fdf_bline(bfdf, pline))     !! over band manifolds to be 
-                                         !! orthonormalized
-      if (.not. fdf_bmatch(pline,'iii'))        &    ! We expect that each line
-                                                     !   contains three integers
-                                                     !   That is the meaning of
-                                                     !   iii
- &      call die('Wrong format in LowdinProjections')
+!   Allocate the pointer where all the data required for every manifold
+!   will be stored
+    allocate(manifold_bands_lowdin(n_lowdin_manifolds))
+    
+!   Read the LowdinProjections block
+!   First check whether the block is present in the fdf file.
+!   If it is not present, do nothing
+    if (.not. fdf_block('LowdinProjections',bfdf)) RETURN
+
+!   Read the content of the block, line by line
+    do while(fdf_bline(bfdf, pline))       
+
+!     Read the index of the manifold to be considered
+      if (.not. fdf_bmatch(pline,'i')) &   ! We expect that the first line
+                                           !   of the block contains only one
+                                           !   integer that is the sequential 
+                                           !   number of the manifold. 
+                                           !   That is the meaning of 'i'
+ &      call die('Wrong format in the manifold index of the LowdinProjections')
         
-!     Assign the initial and final band of each manifold
+!     Assign the index of the manifold to the first integer found 
+!     in the digested line
       index_manifold = fdf_bintegers(pline,1)
-      manifold_bands_lowdin(index_manifold)%initial_band=fdf_bintegers(pline,2)
-      manifold_bands_lowdin(index_manifold)%final_band  =fdf_bintegers(pline,3)
+
+!     Go to the next line to 
+!     read the initial and the final band of each manifold
+      if (.not. fdf_bline(bfdf,pline)) &
+ &      call die("No initial and final band specified for a manifold")
+      if (.not. fdf_bmatch(pline,'ii')) &  ! We expect that the second line 
+                                           !   of the block contains two
+                                           !   integers that are, respectively
+                                           !   the initial and the final bands
+                                           !   of the manifold.
+                                           !   That is the meaning of 'ii'
+ &      call die('Wrong format in the initial/final band in LowdinProjections')
+
+!     Assign the indices of the initial and final band of the manifold 
+!     as the first and second integer in the digested line, respectively
+      manifold_bands_lowdin(index_manifold)%initial_band =fdf_bintegers(pline,1)
+      manifold_bands_lowdin(index_manifold)%final_band   =fdf_bintegers(pline,2)
+
+      if( manifold_bands_lowdin(index_manifold)%initial_band .gt.      &
+ &        manifold_bands_lowdin(index_manifold)%final_band )           &
+ &      call die('The final band should be larger than the initial one')
+
+!     Compute the total number of bands in the manifold
       manifold_bands_lowdin(index_manifold)%number_of_bands=      &
  &        ( manifold_bands_lowdin(index_manifold)%final_band   -  &
  &          manifold_bands_lowdin(index_manifold)%initial_band )  + 1
-      manifold_bands_lowdin(index_manifold)%numbands_lowdin =     &
- &        manifold_bands_lowdin(index_manifold)%final_band 
 
+!     Go to the next line to 
+!     read the total number of bands that will enter the 
+!     Lowdin orthonormalization
+      if (.not. fdf_bline(bfdf,pline)) &
+ &      call die("Number of bands to be orthogonalized not specified")
+      if (.not. fdf_bmatch(pline,'i')) &   !  We expect that the third line
+                                           !    of the block contains only one
+                                           !    integer: 
+                                           !    the number of "Wannier" 
+                                           !    functions that will be produced.
+                                           !    That is the meaning of 'i'
+ &      call die('Wrong format in the number of Lowdin orthogonal functions')
+
+!     Assign the number of Lowdin orthogonalized functions required to the 
+!     first integer in the digested line
+      manifold_bands_lowdin(index_manifold)%numbands_lowdin = &
+ &      fdf_bintegers(pline,1)  
+
+      if( manifold_bands_lowdin(index_manifold)%numbands_lowdin .gt.   &
+ &        manifold_bands_lowdin(index_manifold)%number_of_bands )      &
+ &      call die('More Lowdin functions requested than bands in the manifold')
+
+!     Check whether the disentanglement procedure will be required:
+      if( manifold_bands_lowdin(index_manifold)%number_of_bands /=      &
+ &        manifold_bands_lowdin(index_manifold)%numbands_lowdin ) then
+        manifold_bands_lowdin(index_manifold)%disentanglement = .true. 
+      else
+        manifold_bands_lowdin(index_manifold)%disentanglement = .false.
+      endif
+
+!     Go to the next line to 
+!     read the indices of the atomic orbitals chosen as localized trial orbitals
+      if (.not. fdf_bline(bfdf,pline)) &
+ &      call die("No localized trial orbitals in LowdinProjections")
+
+!     We need as many localized trial orbitals as Lowdin functions requested
+      if( fdf_bnintegers(pline) .ne.                               &
+ &        manifold_bands_lowdin(index_manifold)%numbands_lowdin )  &
+ &      call die('We need as many localized trial orbitals as Lowdin functions requested')
+
+!     Allocate the array where the indices of the orbitals used as 
+!     trial localized functions will be stored
       nullify( manifold_bands_lowdin(index_manifold)%orbital_indices )
       call re_alloc( manifold_bands_lowdin(index_manifold)%orbital_indices,  &
- &        1, manifold_bands_lowdin(index_manifold)%number_of_bands )
+ &        1, manifold_bands_lowdin(index_manifold)%numbands_lowdin )
 
-      do iorb = 1, manifold_bands_lowdin(index_manifold)%number_of_bands
+!     Read the indices of the orbitals used as 
+!     trial localized functions will be stored
+      do iorb = 1, manifold_bands_lowdin(index_manifold)%numbands_lowdin
         manifold_bands_lowdin(index_manifold)%orbital_indices(iorb) =        &
- &         fdf_bintegers(pline,3+iorb)
+ &         fdf_bintegers(pline,iorb)
       enddo
 
-      write(manifold_bands_lowdin(index_manifold)%seedname_lowdin,"(a,'.',i1.1)") &
+!     Read the Number of iterations for the minimization of \Omega
+      if (.not. fdf_bline(bfdf,pline)) &
+ &         call die("No number of iterations for the minimization of \Omega")
+      string_num    = fdf_bnames(pline,1)
+      manifold_bands_lowdin(index_manifold)%num_iter = fdf_bintegers(pline,1)
+
+!     Read whether the Wannier functions are plotted
+      if (.not. fdf_bline(bfdf,pline)) &
+ &         call die("No plotting of the Wannier functions")
+      string_plot    = fdf_bnames(pline,1)
+      manifold_bands_lowdin(index_manifold)%wannier_plot = .true.
+      manifold_bands_lowdin(index_manifold)%wannier_plot_supercell(1) = &
+ &       fdf_bintegers(pline,1)
+
+!     Read whether the Fermi surface is plotted
+      if (.not. fdf_bline(bfdf,pline)) &
+ &         call die("No plotting of the Fermi surface")
+      string_plot_f  = fdf_bnames(pline,1)
+      manifold_bands_lowdin(index_manifold)%fermi_surface_plot = .true.
+
+!     Read whether the Hamiltonian is written in a WF basis
+      if (.not. fdf_bline(bfdf,pline)) &
+ &         call die("No writting of the Hamiltonian in a WF basis")
+      string_write_h  = fdf_bnames(pline,1)
+      manifold_bands_lowdin(index_manifold)%write_hr = .true.
+
+!     If disentanglement is required, then read the outer and inner (frozen)
+!     energy windows
+      if( manifold_bands_lowdin(index_manifold)%disentanglement ) then
+        if (.not. fdf_bline(bfdf,pline)) &
+ &         call die("No outer energy window")
+        manifold_bands_lowdin(index_manifold)%dis_win_min = fdf_bvalues(pline,1)
+        manifold_bands_lowdin(index_manifold)%dis_win_max = fdf_bvalues(pline,2)
+
+        if (.not. fdf_bline(bfdf,pline)) & 
+ &         call die("No inner (frozen) energy window")
+        manifold_bands_lowdin(index_manifold)%dis_froz_min =fdf_bvalues(pline,1)
+        manifold_bands_lowdin(index_manifold)%dis_froz_max =fdf_bvalues(pline,2)
+      else 
+!       Set up the same default values as in WANNIER90 
+!       (in subroutine parameters.F90)
+        manifold_bands_lowdin(index_manifold)%dis_win_min =  -1.0_dp
+        manifold_bands_lowdin(index_manifold)%dis_win_max =   0.0_dp
+        manifold_bands_lowdin(index_manifold)%dis_froz_min = -1.0_dp
+        manifold_bands_lowdin(index_manifold)%dis_froz_max =  0.0_dp
+      endif
+
+!!    For debugging
+      write(manifold_bands_lowdin(index_manifold)%seedname_lowdin, &
+ &          "(a,'.',i1.1)")                                        &
  &       trim(slabel), index_manifold
 
-!!     For debugging
-!         write(6,*)manifold_bands_lowdin(index_manifold)%seedname_lowdin
-!      write(6,'(a,4i5)') &
-! &      'index manifold, initial band, final band, number of bands = ',      &
-! &      index_manifold,                                                      &
-! &      manifold_bands_lowdin(index_manifold)%initial_band,                  &
-! &      manifold_bands_lowdin(index_manifold)%final_band,                    &
-! &      manifold_bands_lowdin(index_manifold)%number_of_bands
-!     write(6,'(a,2i5)')'read_lowdin_specs: Number of bands for Lowdin = ',   &
-! &      index_manifold, manifold_bands_lowdin(index_manifold)%numbands_lowdin
-!
-!      do iorb = 1, manifold_bands_lowdin(index_manifold)%number_of_bands
-!        write(6,*) manifold_bands_lowdin(index_manifold)%orbital_indices(iorb)
-!      enddo
-!!     End debugging
-    enddo ! end loop over band manifolds
+      write(6,'(/,a,i2)')                                                      &
+ &      'read_lowdin_specs: Dumping the information for the manifold number ', &
+ &       index_manifold
+
+!     Write the seed of the name of the file to dump the output
+      write(6,'(a,i1,1x,a)')                                                   &
+ &      'read_lowdin_specs: Seed of the file to dump the output for manifold:',&
+ &       index_manifold,                                                       &
+ &       manifold_bands_lowdin(index_manifold)%seedname_lowdin
+
+!     Write the initial and the final band of the manifold
+      write(6,'(a,2i5)')                                                    & 
+ &      'read_lowdin_specs: Initial band, Final band              = ',      &
+ &      manifold_bands_lowdin(index_manifold)%initial_band,                 &
+ &      manifold_bands_lowdin(index_manifold)%final_band                    
+
+!     Write the total number of bands in the manifold
+      write(6,'(a,i5)')                                                     &
+ &      'read_lowdin_specs: Total number of bands in the manifold = ',      &
+ &      manifold_bands_lowdin(index_manifold)%number_of_bands
+
+!     Write the total number of bands to be orthogonalized
+      write(6,'(a,i5)')                                                        &
+ &'read_lowdin_specs: Total number of bands in the Lowdin orthogonalization=', &
+ &      manifold_bands_lowdin(index_manifold)%numbands_lowdin
+
+      if(manifold_bands_lowdin(index_manifold)%disentanglement) then
+         write(6,'(a)')                                                  &
+ &        'read_lowdin_specs: Number of bands in the manifold is different of'
+         write(6,'(a)')                                                  &
+ &        'read_lowdin_specs: the number of bands to be orthogonalized.'
+         write(6,'(a)')                                                  &
+ &        'read_lowdin_specs: Disentanglement procedure required '
+      endif
+
+!     Write the indices of the orbitals used as initial localized guess
+      do iorb = 1, manifold_bands_lowdin(index_manifold)%numbands_lowdin
+        write(6,'(a,i5)')                                                      &
+ & 'read_lowdin_specs: Index of the orbital used as initial localized guess =',&
+ &      manifold_bands_lowdin(index_manifold)%orbital_indices(iorb)
+      enddo
+
+!     Write the values of the outer energy window for band disentanglement
+      write(6,'(a,l5)')                                             &
+ &      'read_lowdin_specs: Disentanglement                    = ', &
+ &      manifold_bands_lowdin(index_manifold)%disentanglement
+      write(6,'(a,i5,2f12.5)')                                      &
+ &      'read_lowdin_specs: Outer energy window  (eV)          = ', &
+ &      index_manifold,                                             &
+ &      manifold_bands_lowdin(index_manifold)%dis_win_min,          &
+ &      manifold_bands_lowdin(index_manifold)%dis_win_max 
+
+!     Write the values of the inner (frozen) energy window for 
+!     band disentanglement
+      write(6,'(a,i5,2f12.5)')                                      &
+ &      'read_lowdin_specs: Inner (frozen) energy window  (eV) = ', &
+ &      index_manifold,                                             &
+ &      manifold_bands_lowdin(index_manifold)%dis_froz_min,         &
+ &      manifold_bands_lowdin(index_manifold)%dis_froz_max 
+
+!     Write the values of the inner (frozen) energy window for 
+!     band disentanglement
+      write(6,'(a,i5)')                                                    &
+ &      'read_lowdin_specs: Number of iterations for the minimization = ', &
+ &      manifold_bands_lowdin(index_manifold)%num_iter
+
+!     Write the values of the inner (frozen) energy window for 
+!     band disentanglement
+      write(6,'(a,l5)')                                                    &
+ &      'read_lowdin_specs: Plot the Wannier functions?               = ', &
+ &      manifold_bands_lowdin(index_manifold)%wannier_plot
+      write(6,'(a,i5)')                                                    &
+ &      'read_lowdin_specs: Plot the Wannier functions?               = ', &
+ &      manifold_bands_lowdin(index_manifold)%wannier_plot_supercell(1)
+      write(6,'(a,l5)')                                                    &
+ &      'read_lowdin_specs: Plot the Fermi surface?                     ', &
+ &      manifold_bands_lowdin(index_manifold)%fermi_surface_plot
+      write(6,'(a,l5)')                                                    &
+ &      'read_lowdin_specs: Write the Hamiltonian in the basis of WF? = ', &
+ &      manifold_bands_lowdin(index_manifold)%write_hr
+!     End debugging
+    enddo ! end loop over all the lines in the block LowdinProjections
+
+  endsubroutine read_lowdin_specs
+
+!> \brief General purpose of the subroutine read_kpoints_lowdin
+!! 
+!! In this subroutine, we process the information in the fdf file 
+!! required to generate the k-point sampling that will be used inside 
+!! Wannier90 for the Lowdin orthogonalization.
+!! The block that is readed and digested is kMeshforLowdin
+!! Example: 
+!! %block kMeshforLowdin
+!!   20  20  1
+!! %endblock kMeshforLowdin
+!! where the three integers are the number of k-points along the corresponding 
+!! reciprocal lattice vector
+!! The algorithm to generate the k-points in reciprocal units is borrowed from 
+!! the utility kmesh.pl of Wannier90
+!!
+!! Then, and following the recipes given in the Appendix of \cite Marzari-97,
+!! we compute the distance to nearest-neighbour shells of k-points
+!! the vectors connecting neighbour k-points in the Monkhorst-Pack mesh,
+!! and check whether the completeness relation is fully satisfied 
+!! [Eq. (B1) of Ref. \cite Marzari-97]  
+!! This is done within the subroutine kmesh_get, borrowed from 
+!! WANNIER90 (version 2.1.0) \cite Wannier90.
+!!
+!! Finally, we populate the variables related with the neighbour k-points in 
+!! the Monkhorst-Pack mesh in the module where all the Lowdin parameters are
+!! stored
+
+  subroutine read_kpoints_lowdin
+
+    use fdf
+    use siesta_geom,    only: ucell            ! Unit cell lattice vectors 
+                                               !   in real space as used inside
+                                               !   SIESTA
+                                               !   First  index: component
+                                               !   Second index: vector
+                                               !   In Bohrs
+    use lowdin_types,   only: reclatvec_lowdin ! Reciprocal lattice vectors 
+                                               !   computed from real_lattice
+                                               !   The factor 2.0 * pi 
+                                               !   is included
+                                               !   First  index: component
+                                               !   Second index: vector
+                                               !   In Angstroms^-1
+    use lowdin_types,   only: kmeshlowdin      ! Number of divisions along the
+                                               !   reciprocal lattice vectors
+    use lowdin_types,   only: numkpoints_lowdin! Total number of k-points
+    use lowdin_types,   only: kpointsfrac_lowdin   
+                                               ! Coordinates of the k-points
+                                               !   In fractional units, i. e.
+                                               !   in units of the reciprocal
+                                               !   lattice vectors
+                                               !   First  index: component
+                                               !   Second index: vector
+    use w90_io,         only: stdout           ! Unit on which stdout is written
+    use w90_parameters, only: real_lattice     ! Unit cell lattice vectors
+                                               !   in real space as used inside
+                                               !   WANNIER90
+                                               !   CAREFUL: In WANNIER90, the 
+                                               !   order of the indices is 
+                                               !   inverted with respect to 
+                                               !   SIESTA
+                                               !   First  index: vector   
+                                               !   Second index: component
+                                               !   The same as the transpose 
+                                               !   of ucell,
+                                               !   but with different units
+                                               !   In Angstroms
+    use w90_parameters, only: recip_lattice    ! Reciprocal lattice vectors 
+                                               !   as used inside
+                                               !   Wannier90
+                                               !   The factor 2.0 * pi 
+                                               !   is included
+                                               !   CAREFUL: In WANNIER90, the 
+                                               !   order of the indices is 
+                                               !   inverted with respect to 
+                                               !   SIESTA
+                                               !   First  index: vector
+                                               !   Second index: component
+                                               !   The same as the transpose of
+                                               !   reclatvec_lowdin
+                                               !   In Angstroms^-1
+    use w90_parameters, only: mp_grid          ! Number of divisions along the
+                                               !   reciprocal lattice vectors.
+                                               !   It is the same as kmeshlowdin
+                                               !   But this is the variable
+                                               !   that will be transferred to 
+                                               !   the Wannier90 subroutines
+    use w90_parameters, only: num_kpts         ! Total number of k-points that
+                                               !   will be used within 
+                                               !   Wannier90
+                                               !   It is the same as 
+                                               !   numkpoints_lowdin
+                                               !   But this is the variable
+                                               !   that will be transferred to 
+                                               !   the Wannier90 subroutines
+    use w90_parameters, only: gamma_only       ! Only the gamma point will be
+                                               !   used within Wannier90?
+    use w90_parameters, only: kpt_latt         ! Coordinates of the k-points
+                                               !   that will be used within
+                                               !   Wannier90
+                                               !   In fractional units, i. e.
+                                               !   in units of the reciprocal
+                                               !   lattice vectors
+                                               !   First  index: component
+                                               !   Second index: vector
+                                               !   It is the same as 
+                                               !   kpointsfrac_lowdin
+                                               !   but this is the variable that
+                                               !   will be transferred to 
+                                               !   Wannier90
+    use w90_parameters, only : nntot           ! Number of nearest neighbours 
+                                               !   belonging to each k-point of
+                                               !   the Monkhorst-Pack mesh 
+    use w90_parameters, only : nnlist          ! The list of nearest neighbours
+                                               !   for each k-point
+    use w90_parameters, only : nncell          ! The vector, in 
+                                               !   fractional reciprocal lattice
+                                               !   coordinates, that brings the
+                                               !   nnth nearest neighbour
+                                               !   of k-point nkp to its 
+                                               !   periodic image that is needed
+                                               !   for computing the overlap 
+                                               !   M(k,b).
+    use w90_parameters, only: param_read       ! Subroutine to read the 
+                                               !    parameters required by
+                                               !    WANNIER90 and populate 
+                                               !    derived values
+    use w90_kmesh,      only: kmesh_get        ! Main routine to calculate the 
+                                               !    nearest neighbour vectors
+                                               !    in reciprocal space 
+                                               !    (the b-vectors),
+                                               ! It also checks the completeness
+                                               !    relation, Eq. (B1) in 
+                                               !    N. Marzari et al.
+                                               !    PRB 56, 12847 (1997)
+    use lowdin_types,   only: nncount_lowdin   ! Same as nntot
+                                               !    but in the module where the 
+                                               !    variables that controls the
+                                               !    Lowdin are stored
+    use lowdin_types,   only: nnlist_lowdin    ! Same as nnlist
+                                               !    but in the module where the 
+                                               !    variables that controls the
+                                               !    Lowdin are stored
+    use lowdin_types,   only: nnfolding_lowdin ! Same as nncell
+                                               !    but in the module where the 
+                                               !    variables that controls the
+                                               !    Lowdin are stored
+    use lowdin_types,   only: bvectorsfrac_lowdin
+                                               ! Vectors that connect each mesh
+                                               !    k-point
+                                               !    to its nearest neighbours
+    use m_digest_nnkp,  only: chosing_b_vectors! Subroutine that computes the b
+                                               !    vectors that connect each
+                                               !    mesh k-point to its 
+                                               !    nearest neighbours.
+
+!   Internal variables
+    integer :: ik                   
+    integer :: ikx, iky, ikz       
+    integer :: i
+    integer :: nkp
+    integer :: nn
+
+    type(block_fdf)            :: bfdf
+    type(parsed_line), pointer :: pline
+    
+!   Setup the output unit for WANNIER90
+    stdout = 6
 
 !   Read the data to generate the grid in reciprocal space that will be used
 !   for the Lowdin Projections
@@ -222,74 +531,122 @@ module m_lowdin
       kmeshlowdin(3) = fdf_bintegers(pline,3)
     enddo 
 
-!     Define the total number of k-points used in the Lowdin projection
-      numkpoints_lowdin = kmeshlowdin(1) * kmeshlowdin(2) * kmeshlowdin(3)
+!   Define the total number of k-points used in the Lowdin projection
+    numkpoints_lowdin = kmeshlowdin(1) * kmeshlowdin(2) * kmeshlowdin(3)
 
-!     Compute and store the components of the k-points in fractional units
-      nullify( kpointsfrac_lowdin )
-      call re_alloc( kpointsfrac_lowdin, 1, 3, 1, numkpoints_lowdin,  &
- &                   name='kpointsfrac_lowdin', routine='read_lowdin_specs')
+!   Compute and store the components of the k-points in fractional units
+    nullify( kpointsfrac_lowdin )
+    call re_alloc( kpointsfrac_lowdin, 1, 3, 1, numkpoints_lowdin,  &
+ &                 name='kpointsfrac_lowdin', routine='read_kpoints_lowdin')
 
-      ik = 0
-      do ikx = 0, kmeshlowdin(1) - 1
-        do iky = 0, kmeshlowdin(2) - 1
-          do ikz = 0, kmeshlowdin(3) - 1
-            ik = ik + 1
-            kpointsfrac_lowdin(1,ik) = (ikx*1.0_dp)/kmeshlowdin(1)
-            kpointsfrac_lowdin(2,ik) = (iky*1.0_dp)/kmeshlowdin(2)
-            kpointsfrac_lowdin(3,ik) = (ikz*1.0_dp)/kmeshlowdin(3)
-          enddo 
+!   The algorithm to generate the k-points in fractional units 
+!   is borrowed from the utility kmesh.pl of Wannier90
+    ik = 0
+    do ikx = 0, kmeshlowdin(1) - 1
+      do iky = 0, kmeshlowdin(2) - 1
+        do ikz = 0, kmeshlowdin(3) - 1
+          ik = ik + 1
+          kpointsfrac_lowdin(1,ik) = (ikx*1.0_dp)/kmeshlowdin(1)
+          kpointsfrac_lowdin(2,ik) = (iky*1.0_dp)/kmeshlowdin(2)
+          kpointsfrac_lowdin(3,ik) = (ikz*1.0_dp)/kmeshlowdin(3)
         enddo 
       enddo 
+    enddo 
 
-!!     For debugging
-!      write(6,'(a,a,3i5)')'read_lowdin_specs: Number of subdivisions ',  &  
-! &      'of the reciprocal vectors for Lowdin = ', kmeshlowdin(:)
-!      write(6,'(a,a,3i5)')'read_lowdin_specs: Number of k-points used ', & 
-! &      'in the Lowdin projection = ', numkpoints_lowdin
-!      do ik = 1, numkpoints_lowdin
-!        write(6,'(a,a,i5,3f12.5)')'read_lowdin_specs: k-points in ',     & 
-! &        'fractional units:', ik, kpointsfrac_lowdin(:,ik)
-!      enddo
-!!     End debugging
+!!   For debugging
+!    write(6,'(a,a,3i5)')'read_kpoints_lowdin: Number of subdivisions ',  &  
+! &    'of the reciprocal vectors for Lowdin = ', kmeshlowdin(:)
+!    write(6,'(a,a,3i5)')'read_kpoints_lowdin: Number of k-points used ', & 
+! &    'in the Lowdin projection = ', numkpoints_lowdin
+!    do ik = 1, numkpoints_lowdin
+!      write(6,'(a,a,i5,3f12.5)')'read_kpoints_lowdin: k-points in ',     & 
+! &      'fractional units:', ik, kpointsfrac_lowdin(:,ik)
+!    enddo
+!!   End debugging
 
-!     Reciprocal lattice vectors
-      real_lattice  = ucell * 0.529177_dp
-      call reclat( real_lattice, reclatvec_lowdin, 1 )
-      mp_grid       = kmeshlowdin
-      num_kpts      = numkpoints_lowdin
-      recip_lattice = reclatvec_lowdin 
-      allocate ( kpt_latt(3,num_kpts) )
-      kpt_latt      = kpointsfrac_lowdin
+!   Transform the units of the unit cell lattice vector from Bohrs to Ang,
+!   as required by Wannier90
+!   In WANNIER90 the real space lattice vector matrix is the 
+!   transpose one used in SIESTA
+!   In WANNIER90 the first component is the vector and the second the componen
+!   In SIESTA the first component is the component and the second the vector
+!   We make the transposition here to transfer the info to WANNIER90
+    real_lattice  = transpose(ucell) * 0.529177_dp
+
+!   Compute the reciprocal lattice vectors as required by Wannier90
+!   The factor 2.0 * pi is included
+    call reclat( real_lattice, reclatvec_lowdin, 1 )
+!   Save the reciprocal lattice vectors in the variable that will be
+!   transferred to Wannier90
+!   Since the reciprocal lattice vectors are already computed with the
+!   transpose matrix of real space lattice vectors, there is no need
+!   to transpose reclatvec_lowdin again
+    recip_lattice = reclatvec_lowdin
+
+!   Save the number of subdivisions along the three reciprocal lattice vectors
+!   that will be transferred to Wannier90
+    mp_grid       = kmeshlowdin
+
+!   Save the total number of k-points that will be transferred to Wannier90
+    num_kpts      = numkpoints_lowdin
+
+!   Set if only the gamma points will be used
+    if (num_kpts .ne. 1) then
       gamma_only    = .false.
+    else
+      gamma_only    = .true.
+    endif 
 
-      call param_read
-      call kmesh_get( )
+!   Allocate the variable where the k-points will be transferred to WANNIER90
+!   in fractional units (i.e. in units of the reciprocal lattice vectors
+    allocate ( kpt_latt(3,num_kpts) )
+    kpt_latt = kpointsfrac_lowdin
 
+!   Now, we generate the vectors that connect nearest-neighbour shells
+!   in reciprocal space, together with the completeness relation,
+!   Eq. (B1) in N. Marzari et al. Physical Review B 56, 12847 (1997)
+!   For that, we use the subroutine kmesh_get, directly borrowed
+!   from WANNIER90 (at this moment, from version 2.1.0)
+!   But, before using this subroutine, we have to populate some parameters
+!   required in WANNIER90, also using the subroutine param_read
+!   borrowed from the version 2.1.0 of WANNIER90 with small modifications
+!    
+!   Add a citation
+    if ( IONode ) then
+      call add_citation("10.1103/PhysRevB.56.12847")
+      call add_citation("10.1016/j.cpc.2014.05.003")
+    end if
 
-      nncount_lowdin = nntot
-!     Initialize the list of neighbour k-points
-      nullify( nnlist_lowdin    )
-      nullify( nnfolding_lowdin )
+    call param_read
+    call kmesh_get
 
-!     Broadcast information regarding the number of k-points neighbours
-!     and allocate in all nodes the corresponding arrays containing information
-!     about k-point neighbours
+!   Store the number of nearest neighbours belonging to each k-point of the 
+!   Monkhorst-Pack mesh
+    nncount_lowdin = nntot
 
-      call re_alloc( nnlist_lowdin, 1, numkpoints_lowdin, 1, nncount_lowdin,   &
- &                   name = "nnlist_lowdin", routine = "read_lowdin_specs" )
-      call re_alloc( nnfolding_lowdin, 1, 3, 1, numkpoints_lowdin,             &
- &                   1, nncount_lowdin, name = "nnfolding_lowdin",             &
- &                   routine = "read_lowdin_specs" )
-      nnlist_lowdin     = nnlist
-      nnfolding_lowdin  = nncell
+!   Initialize the list of neighbour k-points
+    nullify( nnlist_lowdin    )
+    nullify( nnfolding_lowdin )
 
-!     Compute the vectors that connect each mesh k-point 
-!     to its nearest neighbours
-      call chosing_b_vectors( kpointsfrac_lowdin, nncount_lowdin,  &
- &                          nnlist_lowdin, nnfolding_lowdin,       &
+    call re_alloc( nnlist_lowdin, 1, numkpoints_lowdin, 1, nncount_lowdin,   &
+ &                 name = "nnlist_lowdin", routine = "read_lowdin_specs" )
+    call re_alloc( nnfolding_lowdin, 1, 3, 1, numkpoints_lowdin,             &
+ &                 1, nncount_lowdin, name = "nnfolding_lowdin",             &
+ &                 routine = "read_lowdin_specs" )
+
+!   Store the list of nearest neighoburs for each k-point
+    nnlist_lowdin     = nnlist
+
+!   Store the vector, in fractional reciprocal lattice coordinates,
+!   that brings the nnth nearest neighbour of k-point nkp to its periodic image
+!   that is needed for computing the overlap matrices M_mn(k,b)
+    nnfolding_lowdin  = nncell
+
+!   Compute the vectors that connect each mesh k-point 
+!   to its nearest neighbours
+    call chosing_b_vectors( kpointsfrac_lowdin, nncount_lowdin,  &
+ &                          nnlist_lowdin, nnfolding_lowdin,     &
  &                          bvectorsfrac_lowdin )
-
 
 !!     For debugging
 !      write(6,'(a)') 'begin nnkpts'
@@ -303,8 +660,9 @@ module m_lowdin
 !      write(6,'(a/)') 'end nnkpts'
 !!     End debugging
 
-  endsubroutine read_lowdin_specs
+  endsubroutine read_kpoints_lowdin
 
+!> \brief General purpose of the subroutine setup_lowdin
   subroutine setup_Lowdin
 
     use parallel,  only : Node                 ! This process node
@@ -364,81 +722,7 @@ module m_lowdin
 
     enddo  
 
-    nullify( tight_binding_param )
-    call re_alloc( tight_binding_param,                                 &
- &                 1, n_lowdin_manifolds,                               &
- &                 1, maxnh,                                            &
- &                 1, nspin,                                            &
- &                 name='tight_binding_param',                          &
- &                 routine='setup_Lowdin',                              &
- &                 shrink=.false., copy=.false.)
-    tight_binding_param = 0.0_dp
-
   endsubroutine setup_Lowdin
-
-  subroutine allocate_matrices_Lowdin( index_manifold )
-    integer, intent(in) :: index_manifold
-
-    integer number_of_orbitals_to_project
-    integer number_of_bands_in_manifold_local
-
-    number_of_orbitals_to_project =                                      &
- &        manifold_bands_lowdin(index_manifold)%number_of_bands
-    number_of_bands_in_manifold_local =                                  &
- &        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
-
-!   Allocate the different matrices required for Lowdin orthonormalization
-
-    nullify( overlaptilde )
-    call re_alloc( overlaptilde,                                            &
- &                 1, number_of_orbitals_to_project,                        &
- &                 1, number_of_orbitals_to_project,                        &
- &                 name='overlaptilde', routine='allocate_matrices_Lowdin', &
- &                 shrink=.false., copy=.false.)
-    overlaptilde = cmplx(0.0_dp, 0.0_dp, kind=dp)
-
-    nullify( invsqrtover )
-    call re_alloc( invsqrtover,                                             &
- &                 1, number_of_orbitals_to_project,                        &
- &                 1, number_of_orbitals_to_project,                        &
- &                 name='invsqrtover', routine='allocate_matrices_Lowdin',  &
- &                 shrink=.false., copy=.false.)
-    invsqrtover = cmplx(0.0_dp, 0.0_dp, kind=dp)
-
-    nullify( overlap_sq )
-    call re_alloc( overlap_sq,                                              &
- &                 1, no_u,                                                 &
- &                 1, no_u,                                                 &
- &                 name='overlap_sq', routine='allocate_matrices_Lowdin',   &
- &                 shrink=.false., copy=.false.)
-    overlap_sq = cmplx(0.0_dp, 0.0_dp, kind=dp)
-
-    nullify( coeffshatphi )
-    call re_alloc( coeffshatphi,                                            &
- &                 1, number_of_bands_in_manifold_local,                    &
- &                 1, number_of_orbitals_to_project,                        &
- &                 name='coeffshatphi', routine='allocate_matrices_Lowdin', &
- &                 shrink=.false., copy=.false.)
-    coeffshatphi = cmplx(0.0_dp, 0.0_dp, kind=dp)
-
-  endsubroutine allocate_matrices_Lowdin
-
-  subroutine deallocate_matrices_Lowdin
-    call de_alloc( overlaptilde,                             &
- &                 name='overlaptilde',                      & 
- &                 routine='deallocate_matrices_Lowdin' )
-    call de_alloc( overlap_sq,                               &
- &                 name='overlap_sq',                        & 
- &                 routine='deallocate_matrices_Lowdin' )
-    call de_alloc( invsqrtover,                              &
- &                 name='invsqrtover',                       & 
- &                 routine='deallocate_matrices_Lowdin' )
-    call de_alloc( coeffshatphi,                             &
- &                 name='coeffshatphi',                      & 
- &                 routine='deallocate_matrices_Lowdin' )
-  endsubroutine deallocate_matrices_Lowdin
-
-
 
   subroutine set_excluded_bands_lowdin( index_manifold )
     
@@ -491,7 +775,7 @@ module m_lowdin
 
 !   By default, all the orbitals are excluded from the calculation
     manifold_bands_lowdin(index_manifold)%orbexcluded(:) = .true.
-    do iorb = 1, manifold_bands_lowdin(index_manifold)%number_of_bands
+    do iorb = 1, manifold_bands_lowdin(index_manifold)%numbands_lowdin
       index_orb_included =                                          & 
  &      manifold_bands_lowdin(index_manifold)%orbital_indices(iorb)
       manifold_bands_lowdin(index_manifold)%orbexcluded(index_orb_included) = &
@@ -500,7 +784,7 @@ module m_lowdin
 
     index = 0
     manifold_bands_lowdin(index_manifold)%orb_in_manifold(:) = 0
-    do iorb = 1, manifold_bands_lowdin(index_manifold)%number_of_bands
+    do iorb = 1, manifold_bands_lowdin(index_manifold)%numbands_lowdin
       index = index + 1
       index_orb_included = manifold_bands_lowdin(index_manifold)%orbital_indices(iorb)
       manifold_bands_lowdin(index_manifold)%orb_in_manifold(index_orb_included) = index
@@ -528,771 +812,8 @@ module m_lowdin
 !!    S_{\nu \mu} (\vec{k}) c_{\mu i} (\vec{k})  \\
 !!    & = & \delta_{ij},
 !! \f}
-  subroutine check_normalization( ik, no_u, overlap_sq )
 
-    integer, intent(in)       :: ik
-    integer, intent(in)       :: no_u
-    complex(dp), intent(in)   :: overlap_sq(no_u,no_u)
-
-    complex(dp), pointer, save ::   normalization(:,:)
-
-!
-!   Internal variables
-!
-    integer iuo      ! Counter for loop on atomic orbitals
-    integer juo      ! Counter for loop on atomic orbitals
-
-    nullify( normalization )
-    call re_alloc(normalization, 1, no_u, 1, no_u,                     &
- &                name='normalization', routine='check_normalization', &
- &                shrink=.false., copy=.false.)
-    normalization = cmplx(0.0_dp, 0.0_dp, kind=dp)
-
-!   Check the normalization of the eigenfunctions
-!   that come out of the diagonalization
-    normalization = matmul( overlap_sq, coeffs(:,:,ik) )
-    normalization = matmul( transpose(conjg(coeffs(:,:,ik))),normalization)
-
-!   For debugging
-    write(6,'(a)') ' Normalization: '
-    do iuo = 1, no_u
-      do juo = 1, no_u
-        write(6,'(2i5,2f12.5)') iuo, juo, normalization(iuo,juo)
-      enddo
-    enddo
-!   End debugging
-   
-    call de_alloc( normalization,                &
- &                 name='normalization',         & 
- &                 routine='check_normalization' )
-
-  endsubroutine check_normalization
-
-  subroutine define_phitilde( ik, no_u, overlap_sq, phitilde )
-
-    integer, intent(in)       :: ik
-    integer, intent(in)       :: no_u
-    complex(dp), intent(in)   :: overlap_sq(no_u,no_u)
-    complex(dp), intent(out)  :: phitilde(no_u,no_u)
-
-!
-!   Internal variables
-!
-    integer jband    ! Counter for loop on bands
-    integer mu       ! Counter for loop on atomic orbitals
-    integer nu       ! Counter for loop on atomic orbitals
-    integer lambda   ! Counter for loop on atomic orbitals
-
-    complex(dp), pointer, save ::   aux(:,:) 
-
-    nullify( aux )
-    call re_alloc(aux, 1, no_u, 1, no_u,                  &
- &                name='aux', routine='define_phitilde',  &
- &                shrink=.false., copy=.false.)
-    aux = cmplx(0.0_dp, 0.0_dp, kind=dp)
-
-    do mu  = 1, no_u
-      do jband = 1, no_u
-        do nu = 1, no_u
-          aux(jband,mu) = aux(jband,mu) +                    &
- &          conjg(coeffs(nu,jband,ik)) * overlap_sq(nu,mu)
-        enddo 
-      enddo
-    enddo
-
-    do mu  = 1, no_u
-      do lambda = 1, no_u
-        do jband = 1, no_u
-          phitilde(lambda,mu) = phitilde(lambda,mu) +        &
- &          coeffs(lambda,jband,ik) * aux(jband,mu)
-        enddo 
-      enddo
-    enddo
-
-!
-!   If we want to perform the previous operation directly using the
-!   matrix multiplication internal routines.
-!   This is only for testing, since while using this matmul function:
-!   - We sum over all the bands (and not only over a chosen set)
-!   - It is not well adapted for multiplication
-!   In this case, if the band index runs over all the bands, 
-!   phitilde has to be equal to delta_(\lambda,\mu)
-!
-!   phitilde = cmplx(0.0_dp,0.0_dp,kind=dp)
-!   phitilde = matmul( transpose(conjg(coeffs(:,:,ik))), overlap_sq )
-!   phitilde = matmul( coeffs(:,:,ik), phitilde )
-
-!!   For debugging
-!    write(6,'(a)')'Phitilde = '
-!    do lambda = 1, no_u
-!      do mu  = 1, no_u
-!        write(6,'(2i5,2f12.5)') lambda, mu, phitilde(lambda,mu)
-!      enddo
-!    enddo
-!!   End debugging
-
-    call de_alloc( aux,                          &
- &                 name='aux',                   & 
- &                 routine='define_phitilde' )
-
-
-  endsubroutine define_phitilde
-
-!
-!
-!
-
-  subroutine define_overlap_phitilde( index_manifold, ik )
-
-    integer, intent(in)       :: index_manifold
-    integer, intent(in)       :: ik
-
-!
-!   Internal variables
-!
-    integer jband    ! Counter for loop on bands
-    integer mu       ! Counter for loop on atomic orbitals
-    integer mu_index ! Counter for loop on atomic orbitals
-    integer nu_index ! Counter for loop on atomic orbitals
-    integer nu       ! Counter for loop on atomic orbitals
-    integer lambda   ! Counter for loop on atomic orbitals
-    integer rho      ! Counter for loop on atomic orbitals
-    integer number_of_orbitals_to_project
-    integer number_of_bands_in_manifold
-
-    complex(dp), pointer, save ::   aux(:,:), aux2(:,:)
-
-    number_of_orbitals_to_project =                                      &
- &        manifold_bands_lowdin(index_manifold)%number_of_bands
-    number_of_bands_in_manifold =                                        &
- &        manifold_bands_lowdin(index_manifold)%number_of_bands
-
-    nullify( aux, aux2 )
-    call re_alloc( aux,                                                  &
- &                 1, number_of_bands_in_manifold,                       &
- &                 1, number_of_orbitals_to_project,                     &
- &                 name='aux', routine='define_overlap_phitilde',        &
- &                 shrink=.false., copy=.false. )
-    aux = cmplx(0.0_dp, 0.0_dp, kind=dp)
-
-    call re_alloc( aux2,                                                 &
- &                 1, no_u,                                              &
- &                 1, number_of_orbitals_to_project,                     &
- &                 name='aux2', routine='define_overlap_phitilde',       &
- &                 shrink=.false., copy=.false. )
-    aux2 = cmplx(0.0_dp, 0.0_dp, kind=dp)
-
-    overlaptilde = cmplx(0.0_dp,0.0_dp,kind=dp)
-
-!!   For debugging
-!    do mu  = 1, number_of_orbitals_to_project
-!      write(6,'(a,3i5)') ' index_manifold, mu, orbital = ',        &
-! &      index_manifold, mu,                                        &
-! &      manifold_bands_lowdin(index_manifold)%orbital_indices(mu)
-!    enddo
-!
-!    do jband = 1, number_of_bands_in_manifold
-!      write(6,'(a,3i5)') ' index_manifold, jband = ',              &
-! &      index_manifold, jband,                                     &
-! &      manifold_bands_lowdin(index_manifold)%initial_band+ (jband - 1)
-!    enddo
-!!   End debugging
-
-    do mu  = 1, number_of_orbitals_to_project
-      mu_index = manifold_bands_lowdin(index_manifold)%orbital_indices(mu)
-      do jband = 1, number_of_bands_in_manifold
-        do lambda = 1, no_u
-          aux(jband,mu) = aux(jband,mu) +                    &
- &          conjg(coeffs(lambda,jband,ik)) * overlap_sq(lambda,mu_index)
-        enddo 
-      enddo
-    enddo
-
-    do mu   = 1, number_of_orbitals_to_project
-      do rho = 1, no_u
-        do jband = 1, number_of_bands_in_manifold
-          aux2(rho,mu) = aux2(rho,mu) +                     &
- &          coeffs(rho,jband,ik) * aux(jband,mu)
-        enddo 
-      enddo
-    enddo
-
-    do mu  = 1, number_of_orbitals_to_project
-      do nu = 1, number_of_orbitals_to_project
-        nu_index = manifold_bands_lowdin(index_manifold)%orbital_indices(nu)
-        do rho = 1, no_u
-          overlaptilde(nu,mu) = overlaptilde(nu,mu) +       &
- &          overlap_sq(nu_index,rho) * aux2(rho,mu)
-        enddo 
-      enddo
-    enddo
-
-!!   For debugging
-!    write(6,'(a)')'Overlap phitilde = '
-!    do nu = 1, number_of_orbitals_to_project
-!      do mu  = 1, number_of_orbitals_to_project
-!        write(6,'(2i5,2f12.5)') nu, mu, overlaptilde(nu,mu)
-!      enddo
-!    enddo
-!!   End debugging
-
-    call de_alloc( aux,                                &
- &                 name='aux',                         & 
- &                 routine='define_overlap_phitilde' )
-
-    call de_alloc( aux2,                                &
- &                 name='aux2',                         & 
- &                 routine='define_overlap_phitilde' )
-
-  endsubroutine define_overlap_phitilde
-
-!
-!
-!
-
-  subroutine define_invsqover_phitilde( index_manifold )
-
-    integer, intent(in)       :: index_manifold
-
-!
-!   Internal variables
-!
-    integer mu       ! Counter for loop on atomic orbitals
-    integer nu       ! Counter for loop on atomic orbitals
-    integer lambda   ! Counter for loop on atomic orbitals
-
-!
-!   Variables required for the diagonalization of overlaptilde
-!
-    integer  :: ierror        ! Code for error message from cdiag
-    integer  :: npsi_tilde    ! Variable to dimension the coefficient vector
-
-    complex(dp), pointer, save ::   aux(:,:)
-    complex(dp), pointer, save ::   unity(:,:)
-    complex(dp), pointer, save ::   invsqrtd(:,:)
-    real(dp), dimension(:), pointer :: epsilonstilde ! Eigenvalues of 
-                                                     !   overlaptilde
-    real(dp), pointer :: psi_tilde(:) => null()
-
-!!   For debugging
-!    complex(dp), pointer, save ::   normalization(:,:)
-!    complex(dp), pointer, save ::   overlaptilde_save(:,:)
-!!   End debugging
-
-    integer number_of_orbitals_to_project
-    integer number_of_bands_in_manifold
-
-    external cdiag
-
-    number_of_orbitals_to_project =                                      &
- &        manifold_bands_lowdin(index_manifold)%number_of_bands
-    number_of_bands_in_manifold =                                        &
- &        manifold_bands_lowdin(index_manifold)%number_of_bands
-
-
-    nullify( epsilonstilde )
-    call re_alloc( epsilonstilde,                                      &
-  &                1, number_of_orbitals_to_project,                   &
-  &                name='epsilonstilde',                               &
-  &                routine='define_invsqover_phitilde' )
-
-    nullify( unity )
-    call re_alloc( unity,                                              &
- &                 1, number_of_orbitals_to_project,                   &
- &                 1, number_of_orbitals_to_project,                   &
- &                 name='unity', routine='define_invsqover_phitilde',  &
- &                 shrink=.false., copy=.false.)
-    unity = cmplx(0.0_dp,0.0_dp,kind=dp)
-
-    do mu = 1, number_of_orbitals_to_project
-      unity(mu,mu) = cmplx(1.0_dp,0.0_dp,kind=dp)
-    enddo
-
-    nullify( aux )
-    call re_alloc( aux,                                                       &
- &                 1, number_of_orbitals_to_project,                          &
- &                 1, number_of_orbitals_to_project,                          &
- &                 name='aux', routine='define_invsqover_phitilde',           &
- &                 shrink=.false., copy=.false.)
-    aux = cmplx(0.0_dp, 0.0_dp, kind=dp)
-
-
-    nullify( invsqrtd )
-    call re_alloc( invsqrtd,                                                  &
- &                 1, number_of_orbitals_to_project,                          &
- &                 1, number_of_orbitals_to_project,                          &
- &                 name='invsqrtd', routine='define_invsqover_phitilde',      &
- &                 shrink=.false., copy=.false.)
-    invsqrtd = cmplx(0.0_dp,0.0_dp,kind=dp)
-
-    npsi_tilde = 2*number_of_orbitals_to_project*number_of_orbitals_to_project
-    call re_alloc( psi_tilde,  1, npsi_tilde,  name='psi_tilde',              &
- &                 routine='define_invsqover_phitilde' )
-
-!!   For debugging
-!    nullify( normalization )
-!    call re_alloc( normalization,                                             &
-! &                 1, number_of_orbitals_to_project,                          &
-! &                 1, number_of_orbitals_to_project,                          &
-! &                 name='normalization', routine='define_invsqover_phitilde', &
-! &                 shrink=.false., copy=.false.)
-!    normalization = cmplx(0.0_dp, 0.0_dp, kind=dp)
-!
-!    nullify( overlaptilde_save )
-!    call re_alloc( overlaptilde_save,                                         &
-! &                 1, number_of_orbitals_to_project,                          &
-! &                 1, number_of_orbitals_to_project,                          &
-! &                 name='overlaptilde_save',                                  &
-! &                 routine='define_invsqover_phitilde',                       &
-! &                 shrink=.false., copy=.false.)
-!    overlaptilde_save = overlaptilde
-!!   End debugging
-
-!
-!   Diagonalize overlaptilde.
-!   We need it to compute the inverse of the root square
-!
-!   In the input, overlaptilde is the matrix to be diagonalized
-!   After calling cdiag, overlaptilde contains the unitary transformation
-!   matrix that transforms the overlap matrix into its diagonal form
-!   L. F. Mattheiss, Phys. Rev. B 2, 3918 (1970)
-
-
-    call cdiag( overlaptilde, unity,                  &
- &              number_of_orbitals_to_project,        &
- &              number_of_orbitals_to_project,        &
- &              number_of_orbitals_to_project,        &
- &              epsilonstilde,                        &
- &              psi_tilde,                            &
- &              number_of_orbitals_to_project,        &
- &              1, ierror, BlockSize )
-
-    do mu = 1, number_of_orbitals_to_project
-      invsqrtd(mu,mu) =      &
- &      cmplx( epsilonstilde(mu)**(-1.0_dp/2.0_dp), 0.0_dp, kind=dp )
-    enddo
-
-!!   For debugging
-!    do mu = 1, no_u
-!      write(6,'(i5,3f12.5)')mu, epsilonstilde(mu), invsqrtd(mu,mu)
-!    enddo 
-!!   End debugging
-
-    do mu = 1, number_of_orbitals_to_project
-      do nu = 1, number_of_orbitals_to_project
-        do lambda = 1, number_of_orbitals_to_project
-          aux(mu,nu) = aux(mu,nu) +                    &
- &          overlaptilde(mu,lambda) * invsqrtd(lambda,nu)
-        enddo 
-      enddo
-    enddo
-
-    invsqrtover = cmplx(0.0_dp, 0.0_dp, kind=dp)
-    do mu = 1, number_of_orbitals_to_project
-      do nu = 1, number_of_orbitals_to_project
-        do lambda = 1, number_of_orbitals_to_project
-          invsqrtover(mu,nu) = invsqrtover(mu,nu) +           &
- &          aux(mu,lambda) * conjg(overlaptilde(nu,lambda))
-        enddo 
-      enddo
-    enddo
-
-!!   For debugging
-!!   Check that the computation of the inverse of the root square has been
-!!   properly done.
-!!
-!    aux = cmplx(0.0_dp, 0.0_dp, kind=dp)
-!    do mu = 1, number_of_orbitals_to_project
-!      do nu = 1, number_of_orbitals_to_project
-!        do lambda = 1, number_of_orbitals_to_project
-!          aux(mu,nu) = aux(mu,nu) +                    &
-! &          invsqrtover(mu,lambda) * overlaptilde_save(lambda,nu)
-!        enddo 
-!      enddo
-!    enddo
-!
-!    do mu = 1, number_of_orbitals_to_project
-!      do nu = 1, number_of_orbitals_to_project
-!        do lambda = 1, number_of_orbitals_to_project
-!          normalization(mu,nu) = normalization(mu,nu) +     &
-! &          aux(mu,lambda) * invsqrtover(lambda,nu) 
-!        enddo 
-!      enddo
-!    enddo
-!
-!    write(6,'(a)') ' Normalization: '
-!    do mu = 1, number_of_orbitals_to_project
-!      do nu = 1, number_of_orbitals_to_project
-!        write(6,'(2i5,2f12.5)') mu, nu, normalization(mu,nu)
-!      enddo
-!    enddo
-!!   End debugging
-
-
-    call de_alloc( unity,                              &
- &                 name='unity',                       & 
- &                 routine='define_invsqover_phitilde' )
-
-    call de_alloc( epsilonstilde,                      &
- &                 name='epsilonstilde',               & 
- &                 routine='define_invsqover_phitilde' )
-
-    call de_alloc( invsqrtd,                           &
- &                 name='invsqrtd',                    & 
- &                 routine='define_invsqover_phitilde' )
-
-    call de_alloc( aux,                                &
- &                 name='aux',                         & 
- &                 routine='define_invsqover_phitilde' )
-
-    call de_alloc( psi_tilde,                          &
- &                 name='psi_tilde',                   & 
- &                 routine='define_invsqover_phitilde' )
-
-!!   For debugging
-!    call de_alloc( normalization,                      &
-! &                 name='normalization',               & 
-! &                 routine='define_invsqover_phitilde' )
-!
-!    call de_alloc( overlaptilde_save,                  &
-! &                 name='overlaptilde_save',           & 
-! &                 routine='define_invsqover_phitilde' )
-!!   End debugging
-
-
-
-  endsubroutine define_invsqover_phitilde
-
-!
-!
-!  
-  subroutine define_coeffshatphi( index_manifold, ik )
-
-    integer, intent(in)       :: index_manifold
-    integer, intent(in)       :: ik
-
-!
-!   Internal variables
-!
-    integer mu       ! Counter for loop on atomic orbitals
-    integer nu       ! Counter for loop on atomic orbitals
-    integer lambda   ! Counter for loop on atomic orbitals
-    integer nu_index ! Counter for loop on atomic orbitals
-    integer jband    ! Counter for loop on bands
-
-
-    complex(dp), pointer, save ::   aux(:,:)
-
-    integer number_of_orbitals_to_project
-    integer number_of_bands_in_manifold_local
-
-    number_of_orbitals_to_project =                                  &
- &        manifold_bands_lowdin(index_manifold)%number_of_bands
-    number_of_bands_in_manifold_local =                              &
- &        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
-
-    nullify( aux )
-    call re_alloc( aux,                                              &
- &                 1, number_of_bands_in_manifold_local,             &
- &                 1, number_of_orbitals_to_project,                 &
- &                 name='aux', routine='define_coeffshatphi',        &
- &                 shrink=.false., copy=.false. )
-    aux = cmplx(0.0_dp,0.0_dp,kind=dp)
-
-    do nu  = 1, number_of_orbitals_to_project
-      nu_index = manifold_bands_lowdin(index_manifold)%orbital_indices(nu)
-      do jband = 1, number_of_bands_in_manifold_local 
-        do lambda = 1, no_u
-          aux(jband,nu) = aux(jband,nu) +                    &
- &          conjg(coeffs(lambda,jband,ik)) * overlap_sq(lambda,nu_index)
-        enddo 
-      enddo
-    enddo
-
-    coeffshatphi = cmplx(0.0_dp,0.0_dp,kind=dp)
-    do mu  = 1, number_of_orbitals_to_project
-      do jband = 1, number_of_bands_in_manifold_local
-        do nu = 1, number_of_orbitals_to_project
-          coeffshatphi(jband,mu) = coeffshatphi(jband,mu) +       &
- &          aux(jband,nu) * invsqrtover(nu,mu)
-        enddo 
-      enddo
-    enddo
-
-!!   For debugging
-!    do jband = 1, number_of_bands_in_manifold_local
-!      do mu  = 1, number_of_orbitals_to_project
-!        write(6,'(a,2i5,2f12.5)')' jband, mu, coeffshat = ',     &
-! &        jband, mu, coeffshatphi(jband,mu)
-!      enddo
-!    enddo
-!!   End debugging
-
-    call de_alloc( aux,                                   &
- &                 name='aux',                            & 
- &                 routine='define_invsqover_phitilde' )
-
-
-  endsubroutine define_coeffshatphi
-
-  subroutine compute_tight_binding_param( ispin, ik, index_manifold, & 
- &                                        kvector, epsilon )
-
-    integer,     intent(in)  :: ispin
-    integer,     intent(in)  :: ik
-    integer,     intent(in)  :: index_manifold
-    real(dp),    intent(in)  :: kvector(3)
-    real(dp),    intent(in)  :: epsilon(no_u)  ! Eigenvalues of the Hamiltonian
-
-    real(dp), pointer, save  :: tight_binding_param_k(:,:,:) 
-    complex(dp), pointer     :: aux(:) 
-    complex(dp), pointer     :: lpsi(:)
-
-
-    integer  :: BNode         !
-    integer  :: BTest         !
-    integer  :: iuo
-    integer  :: io
-    integer  :: juo
-    integer  :: ie 
-    integer  :: iie 
-    integer  :: ind
-    integer  :: jbandini 
-    real(dp) :: ckxij
-    real(dp) :: skxij
-    real(dp) :: kxij
-    real(dp) :: qp1
-    real(dp) :: qp2
-    real(dp) :: eqp1
-    real(dp) :: eqp2
-    real(dp) :: ee
-
-    integer  :: number_of_orbitals_to_project
-    integer  :: number_of_bands_in_manifold_local
-
-
-    number_of_orbitals_to_project =                                  &
- &        manifold_bands_lowdin(index_manifold)%number_of_bands
-    number_of_bands_in_manifold_local =                              &
- &        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
-
-
-    nullify( aux )
-    call re_alloc(aux, 1, 5*number_of_orbitals_to_project,       &
- &                name='aux', routine='diagonalizeHk', &
- &                shrink=.false., copy=.false.)
-    aux = cmplx(0.0_dp, 0.0_dp, kind=dp)
-
-!    nullify( lpsi )
-!    call re_alloc(lpsi, 1, number_of_orbitals_to_project,                 &
-! &                name='lpsi', routine='diagonalizeHk',                   &
-! &                shrink=.false., copy=.false.)
-!    lpsi = cmplx(0.0_dp, 0.0_dp, kind=dp)
-
-    nullify( tight_binding_param_k )
-    call re_alloc( tight_binding_param_k,                                 &
- &                 1, 2,                                                  &
- &                 1, number_of_orbitals_to_project,                      &
- &                 1, number_of_orbitals_to_project,                      &
- &                 name='tight_binding_param_k',                          &
- &                 routine='compute_tight_binding_param',                 &
- &                 shrink=.false., copy=.false. )
-    tight_binding_param_k = 0.0_dp
-
-    call define_overlap_phitilde( index_manifold, ik )
-
-    call define_invsqover_phitilde( index_manifold )
-
-    call define_coeffshatphi( index_manifold, ik )
-
-
-    jbandini = manifold_bands_lowdin(index_manifold)%initial_band
- 
-!   Add contribution to tight-binding-parameters of unit-cell orbitals
-!   WARNING: Dk and Ek may be EQUIVALENCE'd to Haux and Saux
-!$OMP parallel do default(shared), collapse(2)
-!$OMP&private(iuo,juo)
-    do iuo = 1, number_of_orbitals_to_project
-      do juo = 1, number_of_orbitals_to_project
-        tight_binding_param_k(1,juo,iuo) = 0.0_dp
-        tight_binding_param_k(2,juo,iuo) = 0.0_dp
-      enddo
-    enddo
-!$OMP end parallel do
-
-! Global operation to form new density matrix
-    BNode = 0
-    iie = 0
-    do ie = 1, number_of_bands_in_manifold_local
-      if ( Node == BNode ) iie = iie + 1
-
-      if ( Node == BNode ) then
-         lpsi => coeffshatphi(iie,:)
-      else
-         lpsi => aux(:)
-      endif
-#ifdef MPI
-      call MPI_Bcast( lpsi(1),number_of_orbitals_to_project,          &
-     &                MPI_double_complex,                             &
-     &                BNode,MPI_Comm_World,MPIerror )
-#endif
-
-      ee = epsilon(jbandini+ie-1)
-
-!$OMP parallel do default(shared),
-!$OMP&private(iuo,ind,juo,qp1,qp2,eqp1,eqp2)
-      do iuo = 1, number_of_orbitals_to_project
-
-        qp1 = ee * realpart(lpsi(iuo))
-        qp2 = ee * imagpart(lpsi(iuo))
-
-        do juo = 1, number_of_orbitals_to_project
-          eqp1 = qp1 * realpart(lpsi(juo)) + qp2 * imagpart(lpsi(juo))
-          eqp2 = qp1 * imagpart(lpsi(juo)) - qp2 * realpart(lpsi(juo))
-
-          tight_binding_param_k(1,juo,iuo) = tight_binding_param_k(1,juo,iuo) + eqp1
-          tight_binding_param_k(2,juo,iuo) = tight_binding_param_k(2,juo,iuo) + eqp2
-!!     For debugging
-!        write(6,'(a,3i5,1f12.5,2i5,6f12.5)')                              &
-! &         ' k, i_man, band_local, band_global, eigen, iuo, juo = ',      &
-! &           index_manifold, ie, jbandini+ie-1, ee*13.6058_dp, juo, iuo,  &
-! &           realpart(lpsi(iuo)), imagpart(lpsi(iuo)), realpart(lpsi(juo)), imagpart(lpsi(juo)), &
-! &           tight_binding_param_k(1,juo,iuo), tight_binding_param_k(2,juo,iuo)
-!!     End debugging
-        enddo
-      enddo
-!$OMP end parallel do
-      BTest = ie/BlockSize
-      if (BTest*BlockSize.eq.ie) then
-        BNode = BNode + 1
-        if (BNode .gt. Nodes-1) BNode = 0
-      endif
-    enddo
-
-!!   For debugging
-!    do iuo = 1, number_of_orbitals_to_project
-!      do juo = 1, number_of_orbitals_to_project
-!        write(6,'(a,2i5,2f15.7)')'iuo, juo, tbk1, tbk2 = ',       &
-! &        iuo, juo,                                               &
-! &        tight_binding_param_k(1,juo,iuo), tight_binding_param_k(2,juo,iuo)
-!      enddo 
-!    enddo
-!!   End debugging
-
-!$OMP parallel do default(shared),
-!$OMP&private(iuo,ind,juo,kxij,ckxij,skxij)
-    do io = 1, number_of_orbitals_to_project
-      iuo = manifold_bands_lowdin(index_manifold)%orbital_indices(io)
-      
-      do ind = listhptr(iuo) + 1, listhptr(iuo) + numh(iuo)
-        juo = indxuo(listh(ind))
-        if( .not. manifold_bands_lowdin(index_manifold)%orbexcluded(juo) ) then
-           juo = manifold_bands_lowdin(index_manifold)%orb_in_manifold(juo)
-           kxij = kvector(1) * xijo(1,ind) +  &
- &                kvector(2) * xijo(2,ind) +  &
- &                kvector(3) * xijo(3,ind)
-           kxij = -1.0_dp * kxij
-           ckxij = cos(kxij)
-           skxij = sin(kxij)
-           tight_binding_param(index_manifold,ind,ispin) =      &
- &              tight_binding_param(index_manifold,ind,ispin) + &
- &              tight_binding_param_k(1,juo,io)*ckxij -        &
- &              tight_binding_param_k(2,juo,io)*skxij
-!!        For debugging      
-!           write(6,'(a,5i7,8f12.5)')   &
-! &          'i_man,o_man,o_global,ind,o_neig,xijo,tb,tbk1,cos,tbk2,sin',  &
-! &           index_manifold, io, iuo, ind, juo, xijo(:,ind),              &
-! &           tight_binding_param(index_manifold,ind,ispin),               &
-! &           tight_binding_param_k(1,juo,io), ckxij,                      &
-! &           tight_binding_param_k(2,juo,io), skxij
-!!        End debugging      
-        endif
-      enddo
-    enddo
-!$OMP end parallel do
-
-    call de_alloc( aux,                                   &
- &                 name='aux',                            & 
- &                 routine='compute_tight_binding_param' )
-
-!    call de_alloc( lpsi,                                   &
-! &                 name='lpsi',                            & 
-! &                 routine='compute_tight_binding_param' )
-
-    call de_alloc( tight_binding_param_k,                  &
- &                 name='tight_binding_param_k',           & 
- &                 routine='compute_tight_binding_param' )
-
-
-  end subroutine compute_tight_binding_param
-
-  subroutine write_tight_binding_param( ispin, numkpoints )
-
-    integer,     intent(in)  :: ispin
-    integer,     intent(in)  :: numkpoints
-
-    character(len=30) :: sname 
-    character(len=41) :: filenameparam ! Name of the file where the 
-                                       !   tight-binding parameters  
-                                       !   will be written
-    integer           :: fileunitparam ! Logical unit of the file
-
-    integer           :: io
-    integer           :: iuo
-    integer           :: j
-    integer           :: juo
-    integer           :: ind
-    integer           :: jo
-    integer           :: index_manifold
-    integer           :: number_of_orbitals_to_project
-    integer      :: eof
-
-    external     :: io_assign ! Assign a logical unit
-    external     :: io_close  ! Close a logical unit
-
-    if (Node.eq.0) then
-      sname = fdf_string('SystemLabel','siesta')
-    endif
-
-    do index_manifold = 1, n_lowdin_manifolds
-      number_of_orbitals_to_project =                              &
- &        manifold_bands_lowdin(index_manifold)%number_of_bands
-
-      write(filenameparam,"(a,'.',i1.1,'.tb.param')") &
- &      trim(sname), index_manifold
-!     For debugging
-!      write(6,*)filenameparam
-!     End debugging
-
-      call io_assign(fileunitparam)
-    
-      open( unit=fileunitparam, err=199, file=filenameparam,       &
- &          status='replace', form='formatted', iostat=eof )
-
-      do io = 1, number_of_orbitals_to_project
-        iuo = manifold_bands_lowdin(index_manifold)%orbital_indices(io)
-        do ind = listhptr(iuo) + 1, listhptr(iuo) + numh(iuo)
-          juo = indxuo(listh(ind))
-          if( .not. manifold_bands_lowdin(index_manifold)%orbexcluded(juo) ) then
-            write(fileunitparam,'(4i7,4f15.7)') io, iuo,                      & 
- &           manifold_bands_lowdin(index_manifold)%orb_in_manifold(juo), juo, &
- &           xijo(:,ind),                                                     &
- &           tight_binding_param(index_manifold,ind,ispin)/numkpoints/2.0_dp
-          endif
-        enddo
-      enddo
-      call io_close(fileunitparam)
-
-    enddo 
-
-    
-    return
-
-199 call die('write_tight_binding_param: Error creating output parameter files')
-     
-  end subroutine write_tight_binding_param
-
-  subroutine compute_position( ispin, index_manifold )
+  subroutine compute_wannier( ispin, index_manifold )
 
 !    use m_switch_local_projection, only: seedname 
                                          ! Seed for the name of the file
@@ -1305,399 +826,495 @@ module m_lowdin
     use m_switch_local_projection, only: Amnmat
     use m_switch_local_projection, only: Amnmat_man
     use m_switch_local_projection, only: eo
+    use m_energies, only: ef                   ! Fermi energy
+    use units     , only: eV                   ! Conversion factor from Ry to eV
+    use lowdin_types,   only: nnlist_lowdin    ! Same as nnlist
+                                               !    but in the module where the 
+                                               !    variables that controls the
+                                               !    Lowdin are stored
     use siesta_options, only: n_lowdin_manifolds
     use files,         only: slabel        ! Short system label,
                                          !   used to generate file names
     use lowdin_types, only: kmeshlowdin
-    use w90_constants,  only : cmplx_i
-    use w90_constants,  only : cmplx_0
-    use w90_constants,  only : cmplx_1
-    use w90_constants,  only : twopi
-    use w90_constants,  only : eps7
-    use w90_parameters, only : wb
-    use w90_parameters, only : bk
-    use w90_parameters, only : lenconfac
-    use w90_parameters, only : u_matrix
-    use w90_parameters, only : m_matrix
-    use w90_parameters, only : num_bands
-    use w90_parameters, only : num_wann
-    use w90_parameters, only : num_kpts
-    use w90_parameters, only : nntot
-    use w90_parameters, only : nnlist
-    use w90_parameters, only : kpt_latt
-    use w90_parameters, only : real_metric
-    use w90_parameters, only : eigval
+
+!
+!   General variables
+!
+    use w90_parameters, only : num_bands            ! number of bands
+    use w90_parameters, only : num_wann             ! number of wannier 
+                                                    !   functions
+    use w90_parameters, only : num_iter             ! number of iterations for
+                                                    !   the minimization of
+                                                    !   \Omega
+!
+!   Variables related with the atomic structure
+!
+    use siesta_geom,    only : na_u                 ! number of atoms in the
+                                                    !   unit cell
+    use siesta_geom,    only : xa_last              ! atomic positions 
+                                                    !   in cartesian coordinates
+                                                    !   units in Bohrs
+    use siesta_geom,    only : isa                  ! species index of each atom
+    use units,          only : Ang                  ! conversion factor from 
+                                                    !   Ang to Bohrs
+    use atm_types,      only : nspecies             ! number of different 
+                                                    !   chemical species
+    use atmfuncs,       only : labelfis             ! Returns atom label
+    use chemical,       only : species_label        ! species label
+    use w90_parameters, only : lenconfac            ! conversion factor for
+                                                    !   unit cell
+    use w90_parameters, only : num_atoms            ! number of atoms in the 
+                                                    !   unit cell
+    use w90_parameters, only : num_species          ! number of atomic species
+    use w90_parameters, only : atoms_symbol         ! atomic symbols
+    use w90_parameters, only : atoms_label          ! atomic symbols
+    use w90_parameters, only : atoms_species_num    ! number of atoms of each
+                                                    !   species
+    use w90_parameters, only : atoms_pos_cart       ! atomic positions
+                                                    !   in cartesian coordinates
+                                                    !   units in Angstroms
+    use w90_parameters, only : lenconfac            ! conversion factor for
+                                                    !   length units
+                                                    !   lenconfac = 1.0 means
+                                                    !      that the lengths
+                                                    !      are in Angstroms
+
+!
+!   Variables related with the k-points sampling
+!
+    use w90_parameters, only : gamma_only           ! Only the Gamma point?
+    use w90_parameters, only : num_kpts             ! number of k-points
+    use w90_parameters, only : nntot                ! total number of neighbours
+                                                    !   for each k-point
+    use w90_parameters, only : nnlist               ! list of neighbours for 
+                                                    !   each k-point
+    use w90_parameters, only : nncell               ! The vector, in 
+                                                    !   fractional reciprocal 
+                                                    !   lattice coordinates,
+                                                    !   that brings the
+                                                    !   nnth nearest neighbour
+                                                    !   of k-point nkp to its
+                                                    !   periodic image that is 
+                                                    !   needed for computing 
+                                                    !   the overlap M(k,b).
+    use w90_parameters, only : kpt_latt             ! kpoints in lattice vecs
+    use w90_parameters, only : bk                   ! the b-vectors that go 
+                                                    !   from each k-point to 
+                                                    !   its neighbours
+    use w90_parameters, only : wb                   ! weights associated with 
+                                                    !   neighbours of each 
+                                                    !   k-point
+!
+!   Variables related with the disentanglement procedure
+!
     use w90_parameters, only : have_disentangled
+    use w90_parameters, only : disentanglement      ! logical value
+                                                    !   .true.:
+                                                    !   disentanglement active
+                                                    !   .false.:
+                                                    !   disentanglement inactive
+    use w90_parameters, only : dis_win_min          ! lower bound of the 
+                                                    !   disentanglement outer 
+                                                    !   window
+    use w90_parameters, only : dis_win_max          ! upper bound of the 
+                                                    !   disentanglement outer 
+                                                    !   window
+    use w90_parameters, only : dis_froz_min         ! lower bound of the 
+                                                    !   disentanglement inner
+                                                    !   (frozen) window
+    use w90_parameters, only : dis_froz_max         ! upper bound of the 
+                                                    !   disentanglement inner
+                                                    !   (frozen) window
+
+!
+!   Variables related with the post-processing
+!
+    use w90_parameters, only : wannier_plot         ! are we going to plot the
+                                                    !   Wannier functions?
+    use w90_parameters, only : wannier_plot_supercell 
+                                                    ! size of the supercell to 
+                                                    !   plot the WF
+    use w90_parameters, only : bands_plot           ! are we going to plot the
+                                                    !   band structure?
+    use w90_parameters, only : fermi_surface_plot   ! are we going to plot the
+                                                    !   Fermi surface
+    use w90_parameters, only : fermi_energy         ! Fermi energy (in eV)
+    use w90_parameters, only : write_hr             ! are we going to dump in
+                                                    !   a file the matrix 
+                                                    !   elements of the 
+                                                    !   Hamiltonian and position
+                                                    !   operator?
+
+    use w90_parameters,  only : eigval              ! Eigenvalues of the 
+                                                    !   Hamiltonian (in eV)
+    use w90_parameters,  only : lsitesymmetry       ! Symmetry-adapted 
+                                                    !   Wannier functions
+    use w90_parameters,  only : transport           ! Transport calculation? 
+    use w90_parameters,  only : tran_read_ht        ! Read the Hamiltonian for 
+                                                    !   transport calculation?
     use w90_parameters,  only : timing_level
-    use w90_hamiltonian, only : hamiltonian_setup
-    use w90_hamiltonian, only : hamiltonian_get_hr
-    use w90_hamiltonian, only : hamiltonian_write_hr
-    use w90_hamiltonian, only : hamiltonian_dealloc
+    use w90_hamiltonian, only : ham_have_setup     ! Setup the variables related
+                                                   !    with the hamiltonian?
+    use w90_overlap,     only : overlap_read       ! Allocate and read the Mmn 
+                                                   !    and Amn from files
     use w90_overlap,     only : overlap_project
     use w90_io,          only : seedname
+    use w90_disentangle, only : dis_main           ! Main disentanglement 
+                                                   !    routine
+    use w90_parameters,  only: param_read          ! Subroutine to read the 
+                                                   !    parameters required by
+                                                   !    WANNIER90 and populate 
+                                                   !    derived values
+    use w90_io,          only: io_time             ! Subroutine to control the
+                                                   !    timing, borrowed from 
+                                                   !    WANNIER90
+    use w90_wannierise,  only: wann_main           ! Subroutine that calculates
+                                                   !    the Unitary Rotations
+                                                   !    to give Maximally 
+                                                   !    Localized Wannier 
+                                                   !    Functions.
+                                                   !    Borrowed from WANNIER90
+    use w90_wannierise,  only: wann_main_gamma     ! Subroutine that calculates
+                                                   !    the Unitary Rotations
+                                                   !    to give Maximally 
+                                                   !    Localized Wannier 
+                                                   !    Functions.
+                                                   !    Gamma version.
+                                                   !    Borrowed from WANNIER90
+                                                   !    version 2.1.0
+    use w90_plot,        only: plot_main           ! Main plotting routine 
+                                                   !    of quantities related
+                                                   !    with WANNIER90
+                                                   !    (bands, Fermi surface)
+                                                   !    Borrowed from WANNIER90
+                                                   !    version 2.1.0
+    use w90_transport,   only: tran_main           ! Main tranport routine in
+                                                   !    WANNIER90.
+                                                   !    Borrowed from WANNIER90
+                                                   !    version 2.1.0
+    use w90_io,          only: io_print_timings    ! Output timing information 
+                                                   !    to stdout
+                                                   !    Borrowed from WANNIER90
+                                                   !    version 2.1.0
 
+!
+! Internal variables
+!
     integer :: ispin
     integer :: index_manifold
-    integer :: idir
     integer :: nn
     integer :: n
-    integer :: n1
-    integer :: n2
-    integer :: n3
-    integer :: i1
-    integer :: i
-    integer :: j 
-    integer :: i2
-    integer :: i3
-    integer :: icnt
-    integer :: ndiff(3)
-    real(kind=dp) :: dist(125), dist_min, tot
-    integer :: m
-    integer :: nkp
-    integer :: ik
-    integer :: iw
-    integer :: ind
-    integer :: iband
-    integer :: iproj
-    integer :: iorb
-    integer :: ix
+    integer :: nkp              ! Counter for loop on k-points
+    integer :: ik               ! Counter for loop on k-points
+    integer :: nb               ! Counter for loop on bands
+    integer :: m                ! Counter for loop on bands
+    integer :: nsp              ! Counter for loop on species
+    integer :: nat              ! Counter for loop on atoms
+    integer :: counter 
+    integer :: i, j
+    integer :: max_sites        ! Maximum number of atomic species
     integer :: number_of_bands_in_manifold_local
-    integer :: m_reset 
-    integer :: n_reset 
+    integer :: number_of_bands_to_project
 
-    integer              :: nrpts      !! Number of Wigner-Seitz grid points
-    integer              :: irpts      !! Counter for the Wigner-Seitz grid poin
-    integer, allocatable :: irvec(:,:) !! The irpt-th Wigner-Seitz grid point 
-                                       !!   has components irvec(1:3,irpt) 
-                                       !!   in the basis of the lattice vectors
-
-    complex(kind=dp) :: pos_r(3)
-    complex(kind=dp) :: fac
-    real(kind=dp)    :: delta
-    real(kind=dp)    :: rdotk
-
-    complex(kind=dp), allocatable :: csheet(:,:,:)
-    real(kind=dp),    allocatable :: sheet (:,:,:)
-    real(kind=dp),    allocatable :: rave(:,:)
-    real(kind=dp),    allocatable :: ln_tmp(:,:,:)
+! 
+!   Variables to control the timing 
+!
+    real(kind=dp) time0
+    real(kind=dp) time1
+    real(kind=dp) time2
 
     character(len=len_trim(seedname)+6) :: posfilename
                                            ! Name of the file where the 
                                            !   matrix elements of the position
                                            !   operator will be written
-    integer      :: posunit   
-                                           ! Logical unit assigned to the file 
-                                           !   where the position matrices   
-                                           !   will be written
-    integer      :: eof
 
-    external     :: io_assign              ! Assign a logical unit
-    external     :: io_close               ! Close a logical unit
-
+!   Set up the variables related with the writing of the Hamiltonian
     write(seedname,"(a,'.',i1.1)") trim(slabel), index_manifold
+    write_hr = .true. 
 
     number_of_bands_in_manifold_local =                                  &
  &        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
+    number_of_bands_to_project =                                         &
+ &        manifold_bands_lowdin(index_manifold)%numbands_lowdin
 
-    num_bands = number_of_bands_in_manifold_local 
-    num_wann  = number_of_bands_in_manifold_local 
-    num_kpts  = numkpoints
-    have_disentangled = .false.
+
+!   Set up general variables
+    num_bands = manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
+    num_wann  = manifold_bands_lowdin(index_manifold)%numbands_lowdin
+
+!   Set up the variables related with the structure
+    num_atoms   = na_u
+    num_species = nspecies
+
+!   Define the atomic symbols
+    if ( allocated(atoms_symbol) ) deallocate(atoms_symbol)
+    allocate(atoms_symbol(num_species))
+    do nsp = 1, num_species
+      atoms_symbol(nsp) = trim(species_label(nsp))
+    end do
+
+    if ( allocated(atoms_species_num) ) deallocate(atoms_species_num)
+    if ( allocated(atoms_label) )       deallocate(atoms_label)
+    allocate(atoms_species_num(num_species))
+    allocate(atoms_label(num_species))
+    atoms_species_num(:)=0
+
+    do nsp = 1, num_species
+       atoms_label(nsp)=atoms_symbol(nsp)
+       do nat = 1, num_atoms
+          if( trim(atoms_label(nsp))==trim(labelfis( isa(nat) ))) then
+             atoms_species_num(nsp)=atoms_species_num(nsp)+1
+!!         For debugging
+!          write(6,*) nsp, nat, atoms_label(nsp), labelfis( isa(nat) )
+!!         End debugging
+          end if
+       end do
+    end do
+
+!!   For debugging
+!    write(6,*) 'atoms_label       = ', atoms_label
+!    write(6,*) 'atoms_species_num = ', atoms_species_num
+!!   End debugging
+
+    max_sites=maxval(atoms_species_num)
+    if ( allocated(atoms_pos_cart) )   deallocate(atoms_pos_cart)
+    allocate(atoms_pos_cart(3,max_sites,num_species))
+
+    do nsp = 1, num_species
+       counter=0
+       do nat = 1, num_atoms
+          if( trim(atoms_label(nsp))==trim( labelfis( isa(nat) ))) then
+             counter=counter+1
+             atoms_pos_cart(:,counter,nsp) = xa_last(:,nat)/Ang
+          end if
+       end do
+    end do
+
+!!   For debugging
+!    do nsp = 1, nspecies
+!      do nat = 1, max_sites
+!        write(6,*)'atoms_pos_cart = ', atoms_pos_cart(:,nat,nsp)
+!      enddo
+!    enddo 
+!!   End debugging
+
+  
+!   Set up number of iterations for the minimization of \Omega
+    num_iter  = manifold_bands_lowdin(index_manifold)%num_iter
+
     timing_level      = 1
-    nntot     = nncount
 
+!   Set up the variables related with the k-point sampling
+    num_kpts  = numkpoints
+    nntot     = nncount
     nnlist    = nnlist_lowdin
 
-    allocate( csheet (number_of_bands_in_manifold_local, nncount, numkpoints) )
-    allocate( sheet  (number_of_bands_in_manifold_local, nncount, numkpoints) )
-    allocate( rave   (3, number_of_bands_in_manifold_local) )
-    allocate( ln_tmp (number_of_bands_in_manifold_local, nncount, numkpoints) )
+!   Set up the variables related with the disentanglement
+    disentanglement = manifold_bands_lowdin(index_manifold)%disentanglement
+    dis_win_min     = manifold_bands_lowdin(index_manifold)%dis_win_min
+    dis_win_max     = manifold_bands_lowdin(index_manifold)%dis_win_max
+    dis_froz_min    = manifold_bands_lowdin(index_manifold)%dis_froz_min
+    dis_froz_max    = manifold_bands_lowdin(index_manifold)%dis_froz_max
 
-    csheet = cmplx_1 
-    sheet  = 0.0_dp
-    rave   = 0.0_dp
+!   Set up the variables for post-processing
+    wannier_plot    = manifold_bands_lowdin(index_manifold)%wannier_plot
+    wannier_plot_supercell(1) =                                 &
+ &     manifold_bands_lowdin(index_manifold)%wannier_plot_supercell(1)
+    wannier_plot_supercell(2) = wannier_plot_supercell(1)     
+    wannier_plot_supercell(3) = wannier_plot_supercell(1)     
 
+    fermi_surface_plot =manifold_bands_lowdin(index_manifold)%fermi_surface_plot
+    fermi_energy       = ef / eV
+
+    write_hr           = manifold_bands_lowdin(index_manifold)%write_hr
+
+!   Store the eigenvalues of the Hamiltonian in the array that will be passed
+!   to WANNIER90
     if ( allocated(eigval) ) deallocate(eigval)
     allocate( eigval(num_bands,num_kpts) )
     eigval = eo
 
-!!   For debugging
-!    do ik = 1, num_kpts
-!      do iband = 1, num_wann
-!        write(6,'(a,2i5,f12.5)') ' ik, iband, eigval(iband,ik) = ',     &
-! &                               ik, iband, eigval(iband,ik) 
-!      enddo
-!    enddo
-!!   End debugging
+!   Write the selected eigenvalues within the manifold in the file
+!   SystemLabel.eigW
+    call writeeig( ispin )
 
-    if ( allocated(u_matrix) ) deallocate(u_matrix)
-    allocate( u_matrix(number_of_bands_in_manifold_local,               &
- &                     number_of_bands_in_manifold_local,               &
- &                     numkpoints) )
-    u_matrix = cmplx(0.0_dp,0.0_dp,kind=dp)
-    if ( allocated(m_matrix) ) deallocate(m_matrix)
-    allocate( m_matrix(number_of_bands_in_manifold_local,               &
- &                     number_of_bands_in_manifold_local,               &
- &                     nncount,                                         &
- &                     numkpoints) )
-    m_matrix = cmplx(0.0_dp,0.0_dp,kind=dp)
-
+!   Compute the overlaps between Bloch states onto trial localized orbitals
     call amn( ispin )
 
     Amnmat_man(index_manifold,:,:,:) = cmplx(0.0_dp,0.0_dp,kind=dp)
     do ik = 1, numkpoints
-      do n = 1, number_of_bands_in_manifold_local
+      do n = 1, number_of_bands_to_project
         do m = 1, number_of_bands_in_manifold_local
           Amnmat_man(index_manifold,m,n,ik) = Amnmat(m,n,ik) 
-!         write(6,*) index_manifold, m, n, ik, Amnmat_man(index_manifold,m,n,ik)
         enddo 
       enddo 
     enddo 
-
-    call writeeig( ispin )
-     
-    u_matrix = Amnmat
-
-    if( index_manifold .eq. 3) then
-      u_matrix = cmplx(0.0_dp,0.0_dp,kind=dp)
-      do ik = 1, numkpoints
-        do n = 1, manifold_bands_lowdin(1)%nincbands_loc_lowdin
-          do m = 1, manifold_bands_lowdin(1)%nincbands_loc_lowdin
-            u_matrix(m,n,ik) = Amnmat_man(1,m,n,ik)
-          enddo
-        enddo
-      enddo 
-
-      do ik = 1, numkpoints
-        n_reset = 0
-        do n = manifold_bands_lowdin(1)%nincbands_loc_lowdin + 1,  &
- &             manifold_bands_lowdin(1)%nincbands_loc_lowdin +     & 
- &             manifold_bands_lowdin(2)%nincbands_loc_lowdin 
-          n_reset = n_reset + 1
-          m_reset = 0
-          do m = manifold_bands_lowdin(1)%nincbands_loc_lowdin + 1,  &
- &               manifold_bands_lowdin(1)%nincbands_loc_lowdin +     & 
- &               manifold_bands_lowdin(2)%nincbands_loc_lowdin 
-            m_reset = m_reset + 1
-            u_matrix(m,n,ik) = Amnmat_man(2,m_reset,n_reset,ik)
-          enddo
-        enddo
-      enddo 
-
-!!     For debugging
-!      do ik = 1, numkpoints
-!        do n = 1, number_of_bands_in_manifold_local
-!          do m = 1, number_of_bands_in_manifold_local
-!           write(6,fmt="(3i5,1x,f24.16,2x,f24.16)")            &
-! &              m, n, ik,                                      &
-! &              real(u_matrix(m,n,ik)),aimag(u_matrix(m,n,ik))
-!          enddo
-!        enddo
-!      enddo
-!!     End debugging
-
-    endif
 
 !   Compute the matrix elements of the plane wave,
 !   for all the wave vectors that connect a given k-point to its nearest
 !   neighbours
     call compute_pw_matrix( nncount, bvectorsfrac )
 
+!   Compute the overlaps between Bloch orbitals at neighboring k points
     call mmn( ispin )
 
-    do nkp = 1, numkpoints
-       do nn = 1, nncount
-          do n = 1, number_of_bands_in_manifold_local
-            do m = 1, number_of_bands_in_manifold_local
-              m_matrix(m,n,nn,nkp) = Mmnkb(m,n,nkp,nn)
-            enddo 
-          enddo 
-       enddo 
-    enddo 
+    call writeunk( ispin )
 
-    call overlap_project()
+!   From this line till the end of the subroutine, it is a copy 
+!   verbatim of the WANNIER90 main program
+    call param_read
+    call overlap_read
 
-    do nkp = 1, numkpoints
-       do nn = 1, nncount
-          do n = 1, number_of_bands_in_manifold_local
-             ! Note that this ln_tmp is defined differently wrt the one in wann_domega
-             ln_tmp(n,nn,nkp)=( aimag(log(csheet(n,nn,nkp) &
-                     * m_matrix(n,n,nn,nkp))) - sheet(n,nn,nkp) )
-          end do
-      end do
-    end do
+    have_disentangled = .false.
 
-    rave  = 0.0_dp
-    do iw = 1, number_of_bands_in_manifold_local
-       do ind = 1, 3
-          do nkp = 1, numkpoints
-             do nn = 1, nncount
-                rave(ind,iw) = rave(ind,iw) + wb(nn) * bk(ind,nn,nkp) &
-                      *ln_tmp(iw,nn,nkp)
-             enddo
-          enddo
-       enddo
-    enddo
-    rave = -rave/real(numkpoints,dp)
+    if (disentanglement) then
+      call dis_main()
+      have_disentangled=.true.
+    endif
 
-    do iw=1, number_of_bands_in_manifold_local
-       write(6,1000) iw,(rave(ind,iw)*lenconfac,ind=1,3)
-    end do
+    call param_write_chkpt('postdis')
 
-1000 format(2x,'WF centre ', &
-         &       i5,2x,'(',f10.6,',',f10.6,',',f10.6,' )')
+!~  call param_write_um
 
-    irpts = 0
-    do n1 = -kmeshlowdin(1), kmeshlowdin(1)
-      do n2 = -kmeshlowdin(2), kmeshlowdin(2)
-        do n3 = -kmeshlowdin(3), kmeshlowdin(3)
-          ! Loop over the 125 points R. R=0 corresponds to
-          ! i1=i2=i3=0, or icnt=63
-          icnt = 0
-          do i1 = -2, 2
-            do i2 = -2, 2
-              do i3 = -2, 2
-                icnt = icnt + 1
-                ! Calculate distance squared |r-R|^2
-                ndiff(1) = n1 - i1 * kmeshlowdin(1)
-                ndiff(2) = n2 - i2 * kmeshlowdin(2)
-                ndiff(3) = n3 - i3 * kmeshlowdin(3)
-                dist(icnt) = 0.0_dp
-                do i = 1, 3
-                  do j = 1, 3
-                    dist(icnt) = dist(icnt) +                &
- &                    real(ndiff(i),dp) * real_metric(i,j) * real(ndiff(j),dp)
-                  enddo ! j
-                enddo   ! i
-              enddo     ! i3
-            enddo       ! i2
-          enddo         ! i1
-          dist_min = minval(dist)
-          if (abs(dist(63) - dist_min ) .lt. eps7 ) then
-            irpts = irpts + 1
-          endif 
-        enddo ! n3
-      enddo   ! n2
-    enddo     ! n1
-    nrpts = irpts
+1001 time2=io_time()
 
-    allocate(irvec(3,nrpts))
-    irvec=0
+    if (.not. gamma_only) then
+       call wann_main()
+    else
+       call wann_main_gamma()
+    end if
 
-    irpts = 0
-    do n1 = -kmeshlowdin(1), kmeshlowdin(1)
-      do n2 = -kmeshlowdin(2), kmeshlowdin(2)
-        do n3 = -kmeshlowdin(3), kmeshlowdin(3)
-          ! Loop over the 125 points R. R=0 corresponds to
-          ! i1=i2=i3=0, or icnt=63
-          icnt = 0
-          do i1 = -2, 2
-            do i2 = -2, 2
-              do i3 = -2, 2
-                icnt = icnt + 1
-                ! Calculate distance squared |r-R|^2
-                ndiff(1) = n1 - i1 * kmeshlowdin(1)
-                ndiff(2) = n2 - i2 * kmeshlowdin(2)
-                ndiff(3) = n3 - i3 * kmeshlowdin(3)
-                dist(icnt) = 0.0_dp
-                do i = 1, 3
-                  do j = 1, 3
-                    dist(icnt) = dist(icnt) +                &
- &                    real(ndiff(i),dp) * real_metric(i,j) * real(ndiff(j),dp)
-                  enddo ! j
-                enddo   ! i
-              enddo     ! i3
-            enddo       ! i2
-          enddo         ! i1
-          dist_min = minval(dist)
-          if (abs(dist(63) - dist_min ) .lt. eps7 ) then
-            irpts = irpts + 1
-            irvec(1,irpts) = n1
-            irvec(2,irpts) = n2
-            irvec(3,irpts) = n3
-          endif 
-        enddo ! n3
-      enddo   ! n2
-    enddo     ! n1
-
-!!   For debugging
-!    do irpts = 1, nrpts
-!      write(6,'(a,4i5)') ' irpts, irvec = ', irpts, irvec(:,irpts)
-!    enddo 
-!!   End debugging
-
-
-!   Compute and write the matrix elements of the position operator
-!   Assign a name to the file where the position matrices will be written
-    call io_assign( posunit )  
-
-    posfilename = trim( seedname )// "_r.dat"
-
-!   Open the output file where the position matrices will be written
-    open( unit=posunit, err=1992, file=posfilename, status="replace", &
- &        iostat=eof )
-
-    do irpts = 1, nrpts
-      write(posunit,'(/,3i5)') irvec(:,irpts)
-      do i = 1, number_of_bands_in_manifold_local
-        do j = 1, number_of_bands_in_manifold_local
-          delta=0._dp
-          if (i==j) delta=1._dp
-          pos_r(:)=0._dp
-          do ik = 1, numkpoints
-            rdotk = twopi*dot_product(kpt_latt(:,ik),real(irvec(:,irpts),dp))
-            fac   = exp(-cmplx_i*rdotk)/real(numkpoints,dp)
-            do idir=1,3
-              do nn=1,nntot
-                if(i==j) then
-                  ! For irpts==rpt_origin, this reduces to
-                  ! Eq.(31) of Marzari and Vanderbilt PRB 56,
-                  ! 12847 (1997). Otherwise, is is Eq.(44)
-                  ! Wang, Yates, Souza and Vanderbilt PRB 74,
-                  ! 195118 (2006), modified according to
-                  ! Eqs.(27,29) of Marzari and Vanderbilt
-                  pos_r(idir) = pos_r(idir) - &
- &                   wb(nn)*bk(idir,nn,ik)*aimag(log(m_matrix(i,i,nn,ik)))*fac
-                else
-                  ! Eq.(44) Wang, Yates, Souza and Vanderbilt 
-                  ! PRB 74, 195118 (2006)
-                  pos_r(idir) = pos_r(idir) + &
- &                 cmplx_i*wb(nn)*bk(idir,nn,ik)*(m_matrix(j,i,nn,ik)-delta)*fac
-                endif
-              enddo ! nn
-            enddo   ! idir
-          enddo     ! ik
-          write(posunit,'(2i5,3x,6(e15.8,1x))') j, i, pos_r(:)
-        enddo       ! j
-      enddo         ! i
-    enddo           ! irpts
-
-!   Close the output file where the position matrices will be written
-    call io_close(posunit)
-
-    call hamiltonian_setup( )
-    call hamiltonian_get_hr( )
-    call hamiltonian_write_hr( )
-    call hamiltonian_dealloc( )
+    time1=io_time()
+    write(6,'(1x,a25,f11.3,a)')   &
+ &    'Time for wannierise      ',time1-time2,' (sec)'
 
     call param_write_chkpt('postwann')
 
-    deallocate( csheet )
-    deallocate( sheet  )
-    deallocate( rave   )
-    deallocate( ln_tmp )
+2002 time2=io_time()
+
+    if (wannier_plot .or. bands_plot .or. fermi_surface_plot .or. write_hr) then
+      call plot_main()
+      time1=io_time()
+      write(6,'(1x,a25,f11.3,a)')  &
+ &      'Time for plotting        ',time1-time2,' (sec)'
+    end if
+
+    if (transport) then
+       call tran_main()
+       time1=io_time()
+       write(6,'(1x,a25,f11.3,a)') 'Time for transport       ',time1-time2,' (sec)'
+       if (tran_read_ht) goto 4004
+    end if
+
+
+!!   For debugging
+!    write(6,'(a,i5)')                            &
+! &    'compute_wannier: num_bands       = ', num_bands
+!    write(6,'(a,i5)')                            &
+! &    'compute_wannier: num_wann        = ', num_wann
+!    write(6,'(a,f12.5)')                         &
+! &    'compute_wannier: lenconfac       = ', lenconfac
+!    write(6,'(a,i5)')                            &
+! &    'compute_wannier: num_kpts        = ', num_kpts
+!    write(6,'(a,i5)')                            &
+! &    'compute_wannier: nntot           = ', nntot
+!    write(6,'(1x,a)') '|            No.         b_k(x)      b_k(y)      b_k(z)        w_b           |'
+!    write(6,'(1x,a)') '|            ---        --------------------------------     --------        |'
+!    do i = 1, nntot
+!       write (6,'(1x,"|",11x,i3,5x,3f12.6,3x,f10.6,8x,"|")') &
+!            i,(bk(j,i,1)/lenconfac,j=1,3),wb(i)*lenconfac**2
+!    enddo
+!    ! Nearest neighbour k-points
+!    write(6,'(a)') 'begin nnkpts'
+!    write(6,'(i4)') nntot
+!    do nkp=1,num_kpts
+!       do nn=1,nntot
+!          write(6,'(2i6,3x,3i4)') &
+!               nkp,nnlist(nkp,nn),(nncell(i,nkp,nn),i=1,3)
+!       end do
+!    end do
+!    write(6,'(a/)') 'end nnkpts'
+!    do nkp=1,num_kpts
+!!       counter=0
+!       do nb=1,num_bands
+!!          if (lwindow(nb,nkp)) then
+!!             counter=counter+1
+!!             summ=0.0_dp
+!!             do nw=1,num_wann
+!!                summ=summ+abs(u_matrix_opt(counter,nw,nkp))**2
+!!             enddo
+!!             write(6,'(1x,16x,i5,1x,i5,1x,f14.6,2x,f14.8)') &
+!!                  nkp,nb,eigval(nb,nkp),summ
+!!          endif
+!             write(6,'(1x,16x,i5,1x,i5,1x,f14.6)') &
+!                  nkp,nb,eigval(nb,nkp)
+!       enddo
+!    enddo
+!    write(6,'(1x,a78/)') repeat('-',78)
+!
+!    write(6,'(a,l5)')                            &
+! &    'compute_wannier: disentanglement = ', disentanglement
+!    write(6,'(a,f12.5)')                         &
+! &    'compute_wannier: dis_win_min     = ', dis_win_min
+!    write(6,'(a,f12.5)')                         &
+! &    'compute_wannier: dis_win_max     = ', dis_win_max
+!    write(6,'(a,f12.5)')                         &
+! &    'compute_wannier: dis_froz_min    = ', dis_froz_min
+!    write(6,'(a,f12.5)')                         &
+! &    'compute_wannier: dis_froz_max    = ', dis_froz_max
+!
+!    do nsp=1,nspecies
+!      do nat=1,atoms_species_num(nsp)
+!        write(6,'(a,a2,3x,3f12.7)')                                 &
+! &        'compute_wannier: atoms_symbol, atoms_pos_cart = ',       &
+! &        atoms_symbol(nsp),(atoms_pos_cart(:,nat,nsp))
+!      end do
+!    end do
+!!   End debugging
+
+4004 continue
+
+!   Force to setup again the Hamiltonian variables if multiple calls are done
+    ham_have_setup = .false.
+
+    write(6,'(1x,a25,f11.3,a)') 'Total Execution Time     ',io_time(),' (sec)'
+
+    if (timing_level>0) call io_print_timings()
+
+
+    write(6,*)
+    write(6,'(1x,a)') 'All done: wannier90 exiting'
+
 
     return
-1992 call die("compute_position: Error writing to _r.dat file")
+  end subroutine compute_wannier
 
-  end subroutine compute_position
+!> \brief General purpose of the define_trial_orbitals subroutine
+!! 
+!! In this subroutine we populate the derived variable where all the 
+!! information regarding the trial localized functions will be stored
+!! This variable, called proj_lowdin, is defined within the derived variable
+!! manifold_bands_lowdin.
+!! The dimension of proj_lowdin should be the same as the number
+!! of bands to be wannierized
+!! Some default values (x-axis, z-axis, zovera, r) to define the 
+!! hydrogenoid functions are taken directly from WANNIER90.
+!! Indeed, this is not a major issue since they will not be used
+!! in SIESTA in the Lowdin orthonormalization, 
+!! where we will take directly the shape of the numerical 
+!! atomic orbitals in the basis set.
+!! The center of the localized projection functions are directly given in 
+!! cartesian Bohrs, and not in fractional units as it is done in WANNIER90.
+!! The m-angular quantum number index is different in SIESTA and WANNIER90.
+!! In WANNIER90 they are defined as in Tables 3.1 and 3.2 of the User Guide.
+!! In SIESTA, they are defined as in the SystemName.ORB_INDX file.
 
   subroutine define_trial_orbitals( i_manifold )
-    use trialorbitalclass,  only: trialorbital  ! Derived type to define the
-                                                !    localized trial
-                                                !    orbitals
+    use trialorbitalclass,  only: trialorbital  
+                                      ! Derived type to define the
+                                      !    localized trial
+                                      !    orbitals
     use atmfuncs,    only: lofio      ! Returns angular momentum number
-    use atmfuncs,    only: mofio      ! Returns magnetic quantum number
     use atmfuncs,    only: mofio      ! Returns magnetic quantum number
     use atmfuncs,    only: rcut       ! Returns orbital cutoff radius
     use atmfuncs,    only: orb_gindex ! Returns the global index of a 
@@ -1710,44 +1327,74 @@ module m_lowdin
 
     integer,  intent(in)  :: i_manifold
     integer  :: number_projections
-    integer  :: iproj
-    integer  :: iorb
-    integer  :: ia
-    integer  :: iao
-    integer  :: is
-    integer  :: l
-    integer  :: r
-    integer  :: m
-    real(dp) :: rc
-    real(dp) :: zaxis(3)
-    real(dp) :: xaxis(3)
-    real(dp) :: yaxis(3)
-    real(dp) :: zovera
+    integer  :: iproj        ! Counter for the number of projections
+    integer  :: iorb         ! Index of the atomic orbital 
+    integer  :: ia           ! Pointer to atom to which orbital belongs
+    integer  :: iao          ! Orbital index within atom
+    integer  :: is           ! Species index
+    real(dp) :: rc           ! Orbital's cutoff radius
+    integer  :: l            ! Angular momentum of the localized trial function
+    integer  :: m            ! Magnetic quantum number of the localized trial
+                             !   function. 
+                             ! The corresponding to the real spherical harmonics
+                             !   can be found in Table 3.1 and 3.2 of the
+                             !   WANNIER90 Users Guide
+    integer  :: r            ! radial (optional): 
+                             ! If r=2 – use a radial function with one node 
+                             !   (ie second highest pseudostate with that 
+                             !   angular momentum). 
+                             !   Default is r=1. 
+                             !   Radial functions associated with different 
+                             !   values of r should be orthogonal to each other.
+    real(dp) :: xaxis(3)     ! Sets the x-axis direction. Default is x=(1,0,0)
+    real(dp) :: yaxis(3)     ! Sets the y-axis direction. Default is y=(0,1,0)
+    real(dp) :: zaxis(3)     ! Sets the z-axis direction. Default is z=(0,0,1)
+    real(dp) :: zovera       ! zovera (optional):
+                             !   the value of Z for the radial part 
+                             !   of the atomic orbital 
+                             !   (controls the diffusivity of the radial 
+                             !   function). 
+                             !   Units always in reciprocal Angstrom. 
+                             !   Default is zovera = 1.0.
 
+!   Sets the default for the x-axis
     xaxis(1) = 1.0_dp
     xaxis(2) = 0.0_dp
     xaxis(3) = 0.0_dp
 
+!   Sets the default for the y-axis
     yaxis(1) = 0.0_dp
     yaxis(2) = 1.0_dp
     yaxis(3) = 0.0_dp
 
+!   Sets the default for the z-axis
     zaxis(1) = 0.0_dp
     zaxis(2) = 0.0_dp
     zaxis(3) = 1.0_dp
 
-    zovera = 1.0_dp/0.529177_dp
+!   Sets the default for zovera
+    zovera = 1.0_dp
+!    zovera = 1.0_dp/0.529177_dp
 
+!   Set up the default value for r (use radial functions without node)
     r = 1
 
-    number_projections = manifold_bands_lowdin(i_manifold)%number_of_bands
+!   There should be as many localized trial orbitals as the number of bands
+!   to be projected
+    number_projections = manifold_bands_lowdin(i_manifold)%numbands_lowdin
+
+!   Allocate the derived variable where all the data for the 
+!   localized trial orbitals will be stored
     if (allocated(manifold_bands_lowdin(i_manifold)%proj_lowdin)) &
  &     deallocate( manifold_bands_lowdin(i_manifold)%proj_lowdin )
     allocate(manifold_bands_lowdin(i_manifold)%proj_lowdin(number_projections))
+
     do iproj = 1, number_projections
+!     Identify the atomic orbitals on which we are going to project
       iorb = manifold_bands_lowdin(i_manifold)%orbital_indices(iproj)
-      ia = iaorb(iorb)        
-      is = isa(ia)
+      ia = iaorb(iorb)               ! Atom to which orbital belongs
+      is = isa(ia)                   ! Atomic species of the atom where the
+                                     !   orbital is centered
       iao = iphorb( iorb )           ! Orbital index within atom
       l  = lofio( is, iao )          ! Orbital's angular mumentum number
       m  = mofio( is, iao )          ! (Real) orbital's magnetic quantum number
@@ -1769,6 +1416,52 @@ module m_lowdin
  &                                     orb_gindex(is,iao) 
     enddo
 
+!!   For debugging
+!    write(6,'(a)') 'begin projections'
+!    write(6,'(i6)') number_projections
+!    do iproj = 1, number_projections
+!      write(6,'(3(f10.5,1x),2x,3i3)') &
+! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%center(1), &
+! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%center(2), &
+! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%center(3), &
+! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%l,         &
+! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%mr,        &
+! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%r   
+!      write(6,'(2x,3f11.7,1x,3f11.7,1x,f7.2)') &
+! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%zaxis(1),  &
+! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%zaxis(2),  &
+! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%zaxis(3),  &
+! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%xaxis(1),  &
+! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%xaxis(2),  &
+! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%xaxis(3),  &
+! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%zovera
+!    enddo
+!    write(6,'(a)') 'end projections'
+!!   End debugging
+
   end subroutine define_trial_orbitals
+
+  subroutine deallocate_wannier
+
+    use w90_parameters,  only : lsitesymmetry       ! Symmetry-adapted 
+                                                    !   Wannier functions
+! 
+! Deallocation routines
+!
+    use w90_parameters,  only: param_dealloc
+    use w90_overlap,     only: overlap_dealloc
+    use w90_sitesym,     only: sitesym_dealloc
+    use w90_kmesh,       only: kmesh_dealloc
+    use w90_transport,   only: tran_dealloc
+    use w90_hamiltonian, only: hamiltonian_dealloc
+
+    call tran_dealloc()
+    call hamiltonian_dealloc()
+    call overlap_dealloc()
+    call kmesh_dealloc()
+    call param_dealloc()
+    if (lsitesymmetry) call sitesym_dealloc() !YN:
+
+  end subroutine deallocate_wannier
 
 endmodule m_lowdin

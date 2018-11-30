@@ -537,6 +537,7 @@ clean:
 	(cd Libs ; $(MAKE) clean )
 	(cd SiestaXC ; $(MAKE) clean )
 	(cd MatrixSwitch/src ; $(MAKE) clean )
+	(cd Wannier90 ; $(MAKE) clean )
 
 
 # DO NOT DELETE THIS LINE - used by make depend
@@ -697,12 +698,12 @@ diagk.o: sys.o writewave.o
 diagk_file.o: fermid.o iowfs_netcdf.o parallel.o parallelsubs.o precision.o
 diagk_file.o: sys.o writewave.o
 diagkp.o: alloc.o fermid.o parallel.o parallelsubs.o precision.o sys.o
-diagon.o: alloc.o densematrix.o diag_option.o m_memory.o m_spin.o parallel.o
-diagon.o: parallelsubs.o precision.o siesta_options.o sys.o
-diagonalizeHk.o: alloc.o atomlist.o densematrix.o m_orderbands.o m_spin.o 
-diagonalizeHk.o: parallel.o parallelsubs.o precision.o siesta2wannier90.o
-diagonalizeHk.o: sparse_matrices.o units.o siesta_options.o m_lowdin.o
-diagonalizeHk.o: lowdin_types.o alloc.o m_switch_local_proj.o
+diagon.o: alloc.o densematrix.o diag_option.o m_spin.o parallel.o
+diagon.o: parallelsubs.o precision.o siesta_options.o sys.o m_memory.o
+diagonalizeHk.o: alloc.o atomlist.o densematrix.o m_spin.o 
+diagonalizeHk.o: parallel.o parallelsubs.o precision.o 
+diagonalizeHk.o: sparse_matrices.o units.o siesta_options.o
+diagonalizeHk.o: alloc.o m_switch_local_proj.o units.o
 diagpol.o: parallel.o precision.o sys.o
 diagsprl.o: atomlist.o fermid.o parallel.o parallelsubs.o precision.o
 diagsprl.o: siesta_geom.o sys.o
@@ -869,10 +870,11 @@ m_iostruct.o: siesta_geom.o sys.o units.o
 m_iotddft.o: files.o m_dipol.o m_io.o m_steps.o parallel.o siesta_options.o
 m_iotddft.o: units.o wavefunctions.o
 m_kinetic.o: precision.o
-m_lowdin.o: m_cite.o parallel.o lowdin_types.o precision.o alloc.o 
-m_lowdin.o: siesta_options.o sparse_matrices.o atomlist.o parallelsubs.o sys.o
-m_lowdin.o: m_spin.o m_orderbands.o sys.o atmfuncs.o atomlist.o siesta_geom.o
-m_lowdin.o: m_switch_local_proj.o m_digest_nnkp.o siesta_options.o
+m_lowdin.o: m_cite.o parallel.o lowdin_types.o precision.o alloc.o atm_types.o
+m_lowdin.o: siesta_options.o atomlist.o parallelsubs.o sys.o m_energies.o 
+m_lowdin.o: m_orderbands.o sys.o atmfuncs.o atomlist.o siesta_geom.o units.o
+m_lowdin.o: m_switch_local_proj.o m_digest_nnkp.o siesta_options.o files.o
+m_lowdin.o: atmfuncs.o chemical.o m_trialorbitalclass.o
 m_mat_invert.o: intrinsic_missing.o m_pivot_array.o precision.o
 m_matdiag.o: precision.o
 m_matio.o: alloc.o parallel.o

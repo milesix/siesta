@@ -99,7 +99,7 @@ MODULE siesta_options
 ! Lowdin interface
   logical :: lowdin_processing  ! Will we call produce the Lowdin-Mattheis
                                 !   transformation to obtain orthonormal 
-                                !   wave functions 
+                                !   wave functions? 
   integer :: n_lowdin_manifolds ! Number of bands manifolds that will be 
                                 !   considered for Lowdin transformation
 

@@ -154,16 +154,6 @@ subroutine diagonalizeHk( ispin, index_manifold )
                                              !   kpointsfrac 
                                              !   First  index: band index
                                              !   Second index: k-point index
-  use siesta_options, only: lowdin_processing! Will we call produce the 
-                                             !   Lowdin-Mattheis
-                                             !   transformation to obtain 
-                                             !   orthonormal wave functions?
-  use lowdin_types,   only: overlap_sq       !
-
-  use m_lowdin, only: compute_tight_binding_param
-  use m_lowdin, only: write_tight_binding_param
-  use m_lowdin, only: allocate_matrices_Lowdin
-  use m_lowdin, only: deallocate_matrices_Lowdin
 
 !
 ! Allocation/Deallocation routines
@@ -269,7 +259,7 @@ kpoints:                                                             &
 !!   End debugging
 
 !!   NOTE OF CAUTION: beware when comparing the coefficients of the
-!!   wave function obtained in differente machines, specially for 
+!!   wave function obtained in different machines, specially for 
 !!   degenerate states. 
 !!   There is a phase that is arbitrary and might change from one machine
 !!   to the other. Also, any linear combination of eigenvectors with 
@@ -300,48 +290,7 @@ kpoints:                                                             &
 !    enddo
 !!   End debugging
     
-    if( lowdin_processing ) then
-
-      call allocate_matrices_Lowdin( index_manifold )
-
-!     In overlap_sq we store the overlap matrix between two Bloch orbitals
-!     that enters in the diagonalization routines
-!     It is computed inside diagpol
-!     This is a complex square matrix of dimension
-!     (number_of_atomic_orbitals_in_the_unit_cell)^2.
-!
-      overlap_sq     = cmplx(0.0_dp,0.0_dp,kind=dp)
-      ind = 0
-      do iuo = 1, no_u
-        do juo = 1, no_u
-          overlap_sq(juo,iuo) =                                  &
- &           cmplx(Saux(ind+1),Saux(ind+2),kind=dp)
-          ind = ind + 2
-        enddo
-      enddo
-
-!!     For debugging
-!      do iuo = 1, no_u
-!        do juo = 1, no_u
-!          write(6,*)' iuo, juo, overlap_sq = ',              &
-! &                    iuo, juo, overlap_sq(iuo, juo)
-!        enddo
-!      enddo
-!!     End debugging
-
-      call compute_tight_binding_param( ispin, ik, index_manifold,     & 
- &                                      kvector, epsilon )
- 
-!      call deallocate_matrices_Lowdin
-
-    endif  !end if Lowdin
-
   enddo kpoints
-
-  if( lowdin_processing ) then
-    call write_tight_binding_param( ispin, numkpoints )
-  end if
-
 
   call de_alloc( Haux,    name='Haux',         routine='diagonalizeHk' )
   call de_alloc( Saux,    name='Saux',         routine='diagonalizeHk' )
