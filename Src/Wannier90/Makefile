@@ -34,22 +34,30 @@ module: libwann90.a
 	@cp -p *.*d ..     
 #
 libwann90.a: parameters.o kmesh_proj.o utility.o io_proj.o constants.o \
-	overlap.o sitesym.o hamiltonian.o
+	overlap.o sitesym.o hamiltonian.o disentangle.o wannierise.o plot.o \
+	ws_distance.o transport.o
 	$(AR) $(ARFLAGS_EXTRA) cru libwann90.a \
                 parameters.o kmesh_proj.o utility.o io_proj.o constants.o \
-	        overlap.o sitesym.o hamiltonian.o
+	        overlap.o sitesym.o hamiltonian.o disentangle.o wannierise.o \
+	        plot.o ws_distance.o transport.o
 	-$(RANLIB) libwann90.a
 
 check_flags:
 	@echo "In Wannier90, INCFLAGS is: $(INCFLAGS)"
 #
+disentangle.o: constants.o io_proj.o parameters.o sitesym.o 
 hamiltonian.o: constants.o parameters.o utility.o io_proj.o 
 io_proj.o: constants.o
 kmesh_proj.o: io_proj.o utility.o parameters.o constants.o
 overlap.o: constants.o parameters.o utility.o io_proj.o sitesym.o
 parameters.o: io_proj.o constants.o utility.o
+plot.o: constants.o io_proj.o parameters.o sitesym.o utility.o hamiltonian.o
+plot.o: ws_distance.o
 sitesym.o: constants.o parameters.o utility.o io_proj.o 
-utility.o: constants.o io_proj.o
+transport.o: constants.o io_proj.o parameters.o hamiltonian.o
+wannierise.o: constants.o io_proj.o parameters.o sitesym.o utility.o 
+wannierise.o: hamiltonian.o
+ws_distance.o: constants.o io_proj.o parameters.o utility.o 
 
 #
 # Cleaning
