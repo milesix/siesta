@@ -71,10 +71,10 @@ C **********************************************************************
 
       real(dp)
      .  H(maxnh,8), S(maxnh), E1, E2, sigma, eo(maxo*2),
-     .  psi(2,2,nuotot,2*nuo), dtot(nhist,4), dpr(nhist,nuotot,4)
-
-      complex(dp)
-     .  Haux(2,nuotot,2,nuo), Saux(2,nuotot,2,nuo), caux(2,nuotot)
+     .  dtot(nhist,4), dpr(nhist,nuotot,4)
+      complex(dp), target :: psi(2,nuotot,2*nuo)
+      complex(dp) Haux(2,nuotot,2,nuo), Saux(2,nuotot,2,nuo)
+      complex(dp), pointer :: caux(:,:)
       external  cdiag
 
 C Internal variables ---------------------------------------------------
@@ -95,25 +95,25 @@ C Initialize some variables
       delta = (E2 - E1)/nhist
 
 C Initialize auxiliary variables
-      Haux=dcmplx(0.0_dp,0.0_dp)
-      Saux=dcmplx(0.0_dp,0.0_dp)
 
       call re_alloc(Spr, 1, nuotot, 1, nuo, name='Spr',
      &     routine='pdos3g')
 
       do io = 1,nuo
+        Saux(:,:,:,io) = 0._dp
+        Haux(:,:,:,io) = 0._dp
         do j = 1,numh(io)
           ind = listhptr(io) + j
           jo = listh(ind)
-            Saux(1,jo,1,io) = dcmplx(  S(ind),   0.0_dp)
-            Saux(2,jo,2,io) = dcmplx(  S(ind),   0.0_dp)
-            Haux(1,jo,1,io) = dcmplx(H(ind,1),   0.0_dp)
-            Haux(2,jo,2,io) = dcmplx(H(ind,2),   0.0_dp)
-            Haux(1,jo,2,io) = dcmplx(H(ind,3),-H(ind,4))
-            Haux(2,jo,1,io) = dcmplx(H(ind,7), H(ind,8))
+          jo = indxuo(jo)
+          Saux(1,jo,1,io) = Saux(1,jo,1,io) + dcmplx( S(ind), 0.0_dp)
+          Saux(2,jo,2,io) = Saux(2,jo,2,io) + dcmplx( S(ind), 0.0_dp)
+          Haux(1,jo,1,io) = Haux(1,jo,1,io) + dcmplx(H(ind,1), H(ind,5))
+          Haux(2,jo,2,io) = Haux(2,jo,2,io) + dcmplx(H(ind,2), H(ind,6))
+          Haux(1,jo,2,io) = Haux(1,jo,2,io) + dcmplx(H(ind,3),-H(ind,4))
+          Haux(2,jo,1,io) = Haux(2,jo,1,io) + dcmplx(H(ind,7), H(ind,8))
         enddo
       enddo
-
 C Diagonalize at the Gamma point
       call cdiag( Haux, Saux, 2*nuotot, 2*nuo, 2*nuotot,
      .            eo, psi, 2*nuotot, 1, ierror, 2*BlockSize )
@@ -121,20 +121,21 @@ C Diagonalize at the Gamma point
         call die('Terminating due to failed diagonalisation')
       elseif (ierror .lt. 0) then
 C Repeat diagonalisation with increased memory to handle clustering
-        Saux = dcmplx(0.0_dp, 0.0_dp)
-        Haux = dcmplx(0.0_dp, 0.0_dp)
-        do io = 1,nuo
-          do j = 1,numh(io)
-            ind = listhptr(io) + j
-            jo = listh(ind)
-             Saux(1,jo,1,io) = dcmplx(  S(ind),   0.0_dp)
-             Saux(2,jo,2,io) = dcmplx(  S(ind),   0.0_dp)
-             Haux(1,jo,1,io) = dcmplx(H(ind,1),   0.0_dp)
-             Haux(2,jo,2,io) = dcmplx(H(ind,2),   0.0_dp)
-             Haux(1,jo,2,io) = dcmplx(H(ind,3),-H(ind,4))
-             Haux(2,jo,1,io) = dcmplx(H(ind,7), H(ind,8))
-          enddo
+      do io = 1,nuo
+        Saux(:,:,:,io) = 0._dp
+        Haux(:,:,:,io) = 0._dp
+        do j = 1,numh(io)
+          ind = listhptr(io) + j
+          jo = listh(ind)
+          jo = indxuo(jo)
+          Saux(1,jo,1,io) = Saux(1,jo,1,io) + dcmplx( S(ind), 0.0_dp)
+          Saux(2,jo,2,io) = Saux(2,jo,2,io) + dcmplx( S(ind), 0.0_dp)
+          Haux(1,jo,1,io) = Haux(1,jo,1,io) + dcmplx(H(ind,1), H(ind,5))
+          Haux(2,jo,2,io) = Haux(2,jo,2,io) + dcmplx(H(ind,2), H(ind,6))
+          Haux(1,jo,2,io) = Haux(1,jo,2,io) + dcmplx(H(ind,3),-H(ind,4))
+          Haux(2,jo,1,io) = Haux(2,jo,1,io) + dcmplx(H(ind,7), H(ind,8))
         enddo
+      enddo
         call cdiag(Haux,Saux,2*nuotot,2*nuo,2*nuotot,eo,psi,
      .                         2*nuotot,1,ierror,2*BlockSize)
       endif
@@ -145,7 +146,8 @@ C     Rebuild the full overlap matrix
         do j = 1, numh(io)
           ind = listhptr(io) + j
           jo = listh(ind)
-          Spr(jo,io) = S(ind)
+          jo = indxuo(jo)
+          Spr(jo,io) = Spr(jo,io) + S(ind)
         enddo
       enddo
 
@@ -180,11 +182,7 @@ C Transfer data
               diff = (ener - eo(ibandg))**2 / (sigma ** 2)
               if (diff .gt. 15.0d0) cycle
               gauss = exp(-diff)
-              caux(:,:) = dcmplx(0.0_dp,0.0_dp)
-              do j=1,nuotot
-                caux(1,j) = dcmplx(psi(1,1,j,iband),psi(2,1,j,iband))   ! c_{j,up)
-                caux(2,j) = dcmplx(psi(1,2,j,iband),psi(2,2,j,iband))   ! c_{j,down)
-              enddo
+              caux => psi(:,:,iband) ! c_{up,j}, c_{down,j}
               do jo = 1, Bnuo
                 call LocalToGlobalOrb(jo,BNode,Nodes,juo)
                 do io = 1, nuotot
@@ -218,11 +216,7 @@ C Loop over all the energy range
             diff = (ener - eo(iband))**2 / (sigma ** 2)
             if (diff .gt. 15.0d0) cycle
             gauss = exp(-diff)
-            caux(:,:) = dcmplx(0.0_dp,0.0_dp)
-            do j=1,nuotot
-              caux(1,j) = dcmplx(psi(1,1,j,iband),psi(2,1,j,iband))   ! c_{j,up)
-              caux(2,j) = dcmplx(psi(1,2,j,iband),psi(2,2,j,iband))   ! c_{j,down)
-            enddo
+            caux => psi(:,:,iband) ! c_{up,j}, c_{down,j}
             do jo = 1, nuotot
               do io = 1, nuotot
                 rpipj = dreal(caux(1,io)*dconjg(caux(1,jo)))*gauss

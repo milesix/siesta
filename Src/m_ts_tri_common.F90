@@ -18,11 +18,11 @@ module m_ts_tri_common
   private
 
   public :: GFGGF_needed_worksize
-  public :: needed_mem
   public :: nnzs_tri, nnzs_tri_i8b, nnzs_tri_dp
 
   public :: ts_pivot_tri_sort
   public :: ts_pivot_tri_sort_El
+
 
 contains
 
@@ -43,15 +43,17 @@ contains
     integer :: cur_n, no_max
 
     ! calculate the maximum electrode size
-    no_max = maxval(TotUsedOrbs(Elecs))
 #ifdef TBTRANS
     ! The work size needed for the electrodes
     ! depends on the size of the connecting region
     ! Hence we need to check the connecting region
     ! size
-    do io = 1 , N_Elec
-       no_max = max(no_max,Elecs(io)%o_inD%n)
+    no_max = Elecs(1)%o_inD%n
+    do io = 2 , N_Elec
+      no_max = max(no_max,Elecs(io)%o_inD%n)
     end do
+#else
+    no_max = maxval(TotUsedOrbs(Elecs))
 #endif
 
     ! We just need to find the maximum overlap of
@@ -70,8 +72,11 @@ contains
     ! to get the first matrix element of the current processing
     ! block (with an index shift of 1, so actually previous element
     ! of what is needed)
-    tn = els - sum(tri(:)) * no_max
-    ! Initialize the padding
+    ! Note that this number *may* be negative which simply corresponds
+    ! to a very large electrode width. Such cases will immediately
+    ! increase the tn variable in the first loop.
+    tn = int(els - sum(tri(:)) * int(no_max, i8b))
+    ! Initialize the padding to 0
     padding = 0
 
     cur_n = 0
@@ -115,59 +120,30 @@ contains
 
   end subroutine GFGGF_needed_worksize
 
-  subroutine needed_mem(IsVolt, N_Elec, Elecs, N_tri, tri, worksize)
-
-    use m_ts_electype
-
-    logical, intent(in) :: IsVolt
-    integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
-    integer, intent(in) :: N_tri
-    integer, intent(in) :: tri(N_tri)
-    integer, intent(out) :: worksize
-
-#ifdef TRANSIESTA_GFGGF_COLUMN
-    integer :: pad, n
-#endif
-    
-    ! find at which point they will cross...
-    ! worksize for ONE array
-    worksize = nnzs_tri(N_tri,tri)
-
-#ifdef TRANSIESTA_GFGGF_COLUMN
-    if ( IsVolt ) then
-       call GFGGF_needed_worksize(N_tri, tri, &
-            N_Elec, Elecs, pad, n)
-       worksize = worksize + pad + n
-    end if
-#endif
-    
-  end subroutine needed_mem
-
-  function nnzs_tri(N_tri,tri) result(elem)
+  pure function nnzs_tri(N_tri,tri) result(elem)
     integer, intent(in) :: N_tri, tri(N_tri)
     integer :: elem, i
     
-    elem = tri(N_tri)**2
-    do i = 1 , N_tri - 1
-       elem = elem + tri(i)*( tri(i) + 2 * tri(i+1) )
+    elem = tri(1) ** 2
+    do i = 2 , N_tri
+      elem = elem + tri(i)*( tri(i) + 2 * tri(i-1) )
     end do
     
   end function nnzs_tri
 
-  function nnzs_tri_i8b(N_tri,tri) result(elem)
+  pure function nnzs_tri_i8b(N_tri,tri) result(elem)
     integer, intent(in) :: N_tri, tri(N_tri)
     integer(i8b) :: elem
     integer :: i
     
-    elem = tri(N_tri)**2
-    do i = 1 , N_tri - 1
-       elem = elem + tri(i)*( tri(i) + 2 * tri(i+1) )
+    elem = int(tri(1) ** 2, i8b)
+    do i = 2 , N_tri
+       elem = elem + int(tri(i)*( tri(i) + 2 * tri(i-1) ), i8b)
     end do
     
   end function nnzs_tri_i8b
 
-  function nnzs_tri_dp(N_tri,tri) result(elem)
+  pure function nnzs_tri_dp(N_tri,tri) result(elem)
     use precision, only: dp
     integer, intent(in) :: N_tri, tri(N_tri)
     real(dp) :: elem
@@ -199,14 +175,15 @@ contains
 
     ! Local variables
     integer :: i, n, off
-
+    
     ! First check that the sizes are the same
     if ( pvt%n /= sum(tri) ) then
-       call die('Pivoting sort cannot be performed &
-            &with non-equal sizes of pivoting table &
-            &and block tri-diagonal matrix.')
+      call die('Pivoting sort cannot be performed &
+          &with non-equal sizes of pivoting table &
+          &and block tri-diagonal matrix.')
     end if
-
+    
+    
     ! The beauty of the tri-diagonal matrix
     ! is that we can sort each of the
     ! blocks to make the memory more consecutive.
@@ -214,14 +191,14 @@ contains
     ! are more or less streamlined
     off = 0
     do i = 1 , tri%n
-
-       n = tri%r(i)
-       call sort_quick(n, pvt%r(off+1:))
-
-       off = off + n
-       
+      
+      n = tri%r(i)
+      call sort_quick(n, pvt%r(off+1:))
+      
+      off = off + n
+      
     end do
-
+    
   end subroutine ts_pivot_tri_sort
 
 
@@ -229,11 +206,13 @@ contains
   ! block to create the most consecutive blocks.
   ! It also sorts each block to create the most consecutive
   ! electrode regions as possible.
-  subroutine ts_pivot_tri_sort_el(pvt,N_Elec,Elecs,tri)
+  subroutine ts_pivot_tri_sort_el(no_u, pvt, N_Elec, Elecs, tri)
 
     use m_region
     use m_ts_electype
 
+    ! Total number of orbitals (including buffer atoms)
+    integer, intent(in) :: no_u
     ! The pivoting region
     ! We know that any pivoting of orbitals
     ! within each region will not result in any
@@ -247,120 +226,136 @@ contains
     type(tRgn), intent(in) :: tri
 
     ! Local variables
-    type(tRgn) :: r, rp, rsub
+    integer, allocatable :: rpvt(:)
+    type(tRgn) :: rEl, rp, rsub
     integer :: iE, i, n1, n2, n, off
 
     ! This sorts each block and checks for correct size as well
     call ts_pivot_tri_sort(pvt,tri)
 
+    allocate(rpvt(no_u))
+    rpvt(:) = 0
+    do i = 1, pvt%n
+      rpvt(pvt%r(i)) = i
+    end do
+
+    ! Now we need to sort each of the electrode regions
     do iE = 1 , N_Elec
 
 #ifdef TBTRANS
-       call rgn_assoc(r,Elecs(iE)%o_inD)
+      call rgn_copy(Elecs(iE)%o_inD, rEl)
+      call rgn_sort(rEl)
 #else
-       call rgn_range(r,Elecs(iE)%idx_o, &
-            Elecs(iE)%idx_o + TotUsedOrbs(Elecs(iE))-1)
+      call rgn_range(rEl,Elecs(iE)%idx_o, &
+          Elecs(iE)%idx_o + TotUsedOrbs(Elecs(iE))-1)
 #endif
 
-       ! Figure out the parts of the electrode
-       ! in the tri-diagonal matrix
-       n1 = huge(1)
-       n2 = 0
-       do i = 1 , r%n
-          n = which_part(tri,rgn_pivot(pvt,r%r(i)))
-          n1 = min(n1,n)
-          n2 = max(n,n2)
-       end do
+      ! Figure out the parts of the electrode
+      ! in the tri-diagonal matrix
+      n1 = huge(1)
+      n2 = 0
+      do i = 1 , rEl%n
+        n = which_part(tri,rpvt(rEl%r(i)))
+        n1 = min(n1,n)
+        n2 = max(n,n2)
+        ! once they are spread in two blocks, we *know*
+        ! we have all blocks
+        if ( n1 /= n2 ) exit
+      end do
 
-       ! Calculate offset in the tri-diagonal subspace
-       off = 0
-       do n = 1 , n1 - 1
-          off = off + tri%r(n)
-       end do
+      ! Calculate offset in the tri-diagonal subspace
+      off = 0
+      do n = 1 , n1 - 1
+        off = off + tri%r(n)
+      end do
 
+      ! For each part in the tri-diagonal
+      ! matrix, we push the parts
+      ! to the back/front
+      ! depending on whether it is the first or last block
+      do n = n1 , n2 ! maximum: n2-n1 == 1
 
-       ! For each part in the tri-diagonal
-       ! matrix, we push the parts
-       ! to the back/front
-       ! depending on whether n < tri%n/2 / tri%n/2 < n
-       do n = n1 , n2 ! maximum: n2-n1 == 1
+        ! Create copy of tri-diagonal block
+        i = tri%r(n)
+        call rgn_list(rsub, i, pvt%r(off+1:off+i))
+        call rgn_sort(rsub)
 
+        ! Create push-list for new pivoting table
+        call rgn_grow(rp, i)
+        rp%n = 0 ! init for zero elements
 
-       ! Create copy of tri-diagonal block
-       i = tri%r(n)
-       call rgn_list(rsub,i,pvt%r(off+1:off+i))
+        !  rEl == electrode orbitals
+        !  rsub == current elements in tri-diagonal block (sorted)
+        !  rp == current tri-diagonal block (with sorted electrodes)
+        !  pvt%r == current pivoting array
 
-       ! Create push-list for new pivoting table
-       call rgn_init(rp,i)
-       rp%n = 0 ! init for zero elements
-
-       if ( n <= tri%n / 2 ) then
-          ! push to back of tri-diagonal part
-
-          ! First add all electrode elements
-          do i = 1 , r%n
-             if ( in_rgn(rsub,r%r(i)) ) then
-                if ( .not. rgn_push(rp,r%r(i)) ) then
-                   call die('Error in programming(A) 1')
-                end if
-             end if
-          end do
-
-          ! Last add the remaning elements in the block
-          do i = 1 , rsub%n
-             if ( .not. in_rgn(rp,rsub%r(i)) ) then
-                if ( .not. rgn_push(rp,rsub%r(i)) ) then
-                   call die('Error in programming(A) 2')
-                end if
-             end if
-          end do
-          
-       else
+        if ( n == n1 ) then
           ! push to front of tri-diagonal part
 
-          ! First add the elements not being the electrode
-          ! in the block
-          do i = 1 , rsub%n
-             if ( .not. in_rgn(r,rsub%r(i)) ) then
-                if ( .not. rgn_push(rp,rsub%r(i)) ) then
-                   call die('Error in programming(B) 1')
-                end if
-             end if
+          ! First add the elements not electrode orbitals
+          do i = off + 1 , off + tri%r(n)
+            if ( .not. in_rgn(rEl,pvt%r(i)) ) then
+              if ( .not. rgn_push(rp,pvt%r(i)) ) then
+                call die('Error in programming(A) 1')
+              end if
+            end if
           end do
 
           ! Last add all electrode elements
-          do i = 1 , r%n
-             if ( in_rgn(rsub,r%r(i)) ) then
-                if ( .not. rgn_push(rp,r%r(i)) ) then
-                   call die('Error in programming(B) 2')
-                end if
-             end if
+          do i = 1 , rEl%n
+            if ( in_rgn(rsub,rEl%r(i)) ) then
+              if ( .not. rgn_push(rp,rEl%r(i)) ) then
+                call die('Error in programming(A) 2')
+              end if
+            end if
           end do
 
-       end if
+        else
+          ! push to back of tri-diagonal part
 
-       ! Check that we have populated the full tri-diagonal
-       ! block
-       if ( rp%n /= rsub%n ) then
+          ! First add all electrode elements
+          do i = 1 , rEl%n
+            if ( in_rgn(rsub,rEl%r(i)) ) then
+              if ( .not. rgn_push(rp,rEl%r(i)) ) then
+                call die('Error in programming(B) 1')
+              end if
+            end if
+          end do
+
+          ! Last add the remaning elements in the block
+          do i = off + 1 , off + tri%r(n)
+            if ( .not. in_rgn(rEl,pvt%r(i)) ) then
+              if ( .not. rgn_push(rp,pvt%r(i)) ) then
+                call die('Error in programming(B) 2')
+              end if
+            end if
+          end do
+
+        end if
+
+        ! Check that we have populated the full tri-diagonal block
+        if ( rp%n /= tri%r(n) ) then
+          print *,rp%n, rsub%n, tri%r(n)
           call die('Error in programming 3')
-       end if
-       
-       ! Copy back the pivoting table 
-       pvt%r(off+1:off+tri%r(n)) = rp%r(:)
+        end if
 
-       ! Temporary clean
-       call rgn_delete(rsub,rp)
+        ! Copy back the pivoting table
+        do i = 1, rp%n
+          pvt%r(off+i) = rp%r(i)
+        end do
 
-       ! Update offset for next part
-       off = off + tri%r(n)
+        ! Temporary clean
+        call rgn_delete(rsub)
 
-       end do
-       
+        ! Update offset for next part
+        off = off + tri%r(n)
+        
+      end do
+      
     end do
 
-#ifndef TBTRANS
-    call rgn_delete(r)
-#endif
+    deallocate(rpvt)
+    call rgn_delete(rEl, rp, rsub)
        
   contains
 
@@ -370,8 +365,6 @@ contains
       integer :: n
       integer :: j, t
 
-      n = 0
-      
       t = 0
       do j = 1 , tri%n
          t = t + tri%r(j)
@@ -379,7 +372,9 @@ contains
             n = j
             return
          end if
-      end do
+       end do
+
+       n = 0
       
     end function which_part
     

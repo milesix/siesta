@@ -357,16 +357,16 @@ C
       use precision,    only : dp
       use parallel,     only : Node, Nodes
       use parallelsubs, only : GetNodeOrbs
+      use densematrix,  only : allocDenseMatrix, resetDenseMatrix
       use densematrix,  only : Haux, Saux, psi
       use alloc,        only : re_alloc, de_alloc
       use files,        only : slabel, label_length
-      use m_gamma,      only : gamma
       use atomlist,     only : iaorb, iphorb
       use siesta_geom,  only : isa
       use atmfuncs,     only : symfio, cnfigfio, labelfis, nofis
       use writewave,    only : wfs_filename
 
-      use m_spin,       only: NoMagn, SPpol, NonCol, SpOrb
+      use m_spin,       only: spin 
 
       use m_diag_option, only: ParallelOverK, Serial
       use m_diag, only: diag_init
@@ -396,7 +396,7 @@ C
       integer :: ik, il, io, ispin, iu, iu_wfs, iuo, naux, nhs, j
 
       logical :: SaveParallelOverK
-
+      
       real(dp)
      .  Dnew, qs(2), e1, e2, efs(2), emax, emin, Enew, eV, qk, qtot,
      .  path, temp, wk, Entropy
@@ -436,8 +436,7 @@ C     Allocate local arrays - only aux is relevant here
          nhs = 2 * no_u*no_l
       endif
       naux  = 2*no_u*5
-      call re_alloc( Haux, 1, nhs, 'Haux', 'densematrix' )
-      call re_alloc( Saux, 1, nhs, 'Saux', 'densematrix' )
+      call allocDenseMatrix(nhs, nhs, nhs)
       call re_alloc( aux, 1, naux, 'aux', 'bands' )
 
       if (getPSI .AND. (Node.eq.0)) then
@@ -448,7 +447,7 @@ C     Allocate local arrays - only aux is relevant here
 
         rewind (iu_wfs)
 
-        write(iu_wfs) nk, gamma
+        write(iu_wfs) nk, .false. ! nk, Gamma, same file-format in WFS as for Gamma-point
         write(iu_wfs) nspin
         write(iu_wfs) no_u
         write(iu_wfs) (iaorb(j),labelfis(isa(iaorb(j))),
@@ -459,7 +458,7 @@ C     Allocate local arrays - only aux is relevant here
       endif
 
 C Find the band energies
-      if (NoMagn .or. SPpol) then
+      if ( spin%none .or. spin%Col ) then
 C fixspin and qs are not used in diagk, since getD=.false. ...
         qs(1) = 0.0_dp
         qs(2) = 0.0_dp
@@ -488,7 +487,7 @@ C Handle parallel over K points option which is not allowed for here
         ParallelOverK = SaveParallelOverK
         if ( ParallelOverK ) Serial = .true.
 
-      elseif ( NonCol ) then
+      elseif ( spin%NCol ) then
          if (getPSI) then
             if (node==0) then
                write(6,*) "No WFS for non-colinear spin, yet..."
@@ -503,7 +502,7 @@ C Handle parallel over K points option which is not allowed for here
      .              Haux, Saux, psi, Haux, Saux, aux,
      .              no_u, occtol, 1, no_u )
 
-      elseif ( SpOrb ) then
+      elseif ( spin%SO ) then
         if (getPSI) then
            if (node==0) then
               write(6,*) "No WFS for spin-orbit, yet..."
@@ -606,7 +605,8 @@ C Close output file
 
 C Free local arrays
       call de_alloc( aux, 'aux', 'bands' )
-
+      call resetDenseMatrix()
+      
 C This is the only exit point
   999 continue
       call timer( 'bands', 2 )

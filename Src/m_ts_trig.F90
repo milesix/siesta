@@ -90,7 +90,7 @@ contains
     ! Gf calculation
     use m_ts_trimat_invert
 
-    use m_ts_tri_common, only : GFGGF_needed_worksize
+    use m_ts_tri_common, only : GFGGF_needed_worksize, nnzs_tri
     
     ! Gf.Gamma.Gf
     use m_ts_tri_scat
@@ -182,14 +182,18 @@ contains
     ! than, yes, work.
 
     if ( ts_A_method == TS_BTD_A_COLUMN .and. IsVolt ) then
-       ! The zwork is needed to construct the LHS for solving: G^{-1} G = I
-       ! Hence, we will minimum require this...
-       call GFGGF_needed_worksize(c_Tri%n,c_Tri%r, &
-            N_Elec, Elecs, padding, GFGGF_size)
+      ! The zwork is needed to construct the LHS for solving: G^{-1} G = I
+      ! Hence, we will minimum require this...
+      call GFGGF_needed_worksize(c_Tri%n,c_Tri%r, &
+          N_Elec, Elecs, padding, GFGGF_size)
     else
-       padding = 0
-       GFGGF_size = 0
+      padding = 0
+      GFGGF_size = 0
     end if
+    ! Now figure out the required worksize for SE expansion
+    call UC_minimum_worksize(IsVolt, N_Elec, Elecs, idx)
+    io = nnzs_tri(c_Tri%n, c_Tri%r)
+    padding = max(padding, idx - io)
     call newzTriMat(zwork_tri,c_Tri%n,c_Tri%r,'GFinv', &
          padding=padding)
     nzwork = elements(zwork_tri,all=.true.)
@@ -310,7 +314,7 @@ contains
     call itt_attach(Sp,cur=ispin)
     
     do while ( .not. itt_step(Sp) )
-       
+
        call init_DM(sp_dist,sparse_pattern, &
             n_nzs, DM(:,ispin), EDM(:,ispin), &
             tsup_sp_uc, Calc_Forces)
@@ -505,7 +509,7 @@ contains
              ! ******************
              if ( ts_A_method == TS_BTD_A_COLUMN ) then
               call invert_BiasTriMat_rgn(GF_tri,zwork_tri, &
-                   r_pvt, Elecs(iEl)%o_inD)
+                   r_pvt, pvt, Elecs(iEl)%o_inD)
 
 #ifdef TS_DEV
               ! offset and number of orbitals
@@ -527,7 +531,7 @@ contains
 #endif
 
              else
-              call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_pvt, &
+              call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_pvt, pvt, &
                    Elecs(iEl), calc_parts)
              end if
              
@@ -800,7 +804,7 @@ contains
        if ( nspin == 1 ) kw = kw * 2._dp
        
 #ifdef TRANSIESTA_TIMING
-       call timer('TS_HS',1)
+       call timer('TS_HS-F',1)
 #endif
 
        dwork => val(spuDM)
@@ -813,11 +817,11 @@ contains
             io, dwork(:,1)) ! annoyingly we can't pass the full array!!!!!
      
 #ifdef TRANSIESTA_TIMING
-       call timer('TS_HS',2)
+       call timer('TS_HS-F',2)
 #endif
 
 #ifdef TRANSIESTA_TIMING
-       call timer('TS_EQ',1)
+       call timer('TS_EQ-F',1)
 #endif
 
        ! ***************
@@ -851,14 +855,18 @@ contains
        call add_DM( spuDM, W, spuEDM, W, &
             GF_tri, r_pvt, pvt, N_Elec, Elecs, DMidx=1)
 
+#ifdef TRANSIESTA_TIMING
+       call timer('TS_EQ-F',2)
+#endif
+
 #ifdef MPI
        call MPI_Barrier(MPI_Comm_World,io)
-       call timer('TS_comm',1)
+       call timer('TS_comm-F',1)
        dwork => val(spuDM)
        io = size(dwork)
        call MPI_Bcast(dwork(1,1),io,MPI_Double_Precision, &
             Nodes - 1, MPI_Comm_World,MPIerror)
-       call timer('TS_comm',2)
+       call timer('TS_comm-F',2)
 #endif
 
        call add_Gamma_DM(spDM,   spuDM, D_dim2=1, &

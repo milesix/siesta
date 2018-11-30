@@ -39,12 +39,11 @@ module m_tbt_trik
 
   use m_verbosity, only : verbosity
   use m_tbt_hs, only: tTSHS, Volt, IsVolt
-  use m_tbt_regions, only : sp_uc, sp_dev_sc, r_aDev
+  use m_tbt_regions, only : sp_uc, sp_dev_sc
 #ifdef NOT_WORKING
   use m_tbt_regions, only : r_oEl
 #endif
-  use m_tbt_regions, only : r_oDev, r_oEl_alone, r_oElpD
-  use m_tbt_regions, only : r_aBuf
+  use m_tbt_regions, only : r_oDev, r_oElpD
   use m_tbt_tri_init, only : ElTri, DevTri
 
   implicit none
@@ -117,7 +116,8 @@ contains
     use m_tbt_proj, only : proj_update, proj_cdf_save_S_D
     use m_tbt_proj, only : proj_bMtk, proj_cdf_save_bGammak
     use m_tbt_proj, only : proj_Mt_mix, proj_cdf_save
-    use m_tbt_proj, only : proj_cdf_save_J
+    use m_tbt_proj, only : proj_cdf_save_sp_dev
+    use m_tbt_proj, only : open_cdf_proj
 
     use m_tbt_delta, only : read_delta_next, clean_delta
     use m_tbt_dH, only : use_dH, dH
@@ -149,9 +149,24 @@ contains
     type(zSpData1D) :: spH, spS
     type(Sparsity), pointer :: sp
     real(dp), pointer :: H2D(:,:), S(:), H(:)
+    
     ! To figure out which parts of the tri-diagonal blocks we need
     ! to calculate
-    logical :: calc_GF_DOS
+    logical :: calc_T_Gf, calc_T_out
+    logical :: calc_DOS_Elecs
+    logical :: calc_DOS_Gf, calc_DOS_A
+    logical :: calc_T_all, calc_DOS_A_all
+#ifdef NCDF_4
+    logical :: calc_orb_current
+    logical :: calc_DM_Gf, calc_DM_A
+    logical :: calc_COOP_Gf, calc_COOP_A
+    logical :: calc_COHP_Gf, calc_COHP_A
+
+    ! Projection variables
+    logical :: calc_proj_orb_current, calc_proj_T_out
+    logical :: calc_proj_DOS_A, calc_proj_DM_A
+    logical :: calc_proj_COOP_A, calc_proj_COHP_A
+#endif
     logical, allocatable :: prep_El(:)
     integer, allocatable :: part_cols(:,:)
     logical, allocatable :: A_parts(:), proj_parts(:)
@@ -184,7 +199,7 @@ contains
     type(tLvlMolEl), pointer :: p_E
     real(dp), allocatable :: pDOS(:,:,:)
     real(dp), allocatable :: bTk(:,:), bTkeig(:,:,:)
-    type(dSpData1D) :: orb_J
+    type(dSpData1D) :: dev_M
 #endif
 ! ************************************************************
 
@@ -192,7 +207,7 @@ contains
     integer :: nGFGGF ! For the triple-product
     complex(dp), pointer :: GFGGF_work(:) => null()
     integer :: ntt_work
-    complex(dp), pointer :: tt_work(:), eig(:)
+    complex(dp), pointer :: tt_work(:), eig(:), phase(:)
 ! ************************************************************
 
 ! ******************* Computational variables ****************
@@ -200,7 +215,6 @@ contains
     type(tRgn) :: pvt
     real(dp) :: kpt(3), bkpt(3), wkpt
     integer :: info
-    logical :: T_all
 #ifdef TBT_PHONON
     type(ts_c_idx) :: cOmega
     real(dp) :: omega
@@ -210,7 +224,7 @@ contains
 
 ! ******************** Loop variables ************************
     type(itt1) :: Kp
-    integer :: N_E
+    integer :: N_E, N_Elec1, N_Elec2
     integer, pointer :: ikpt
     integer :: iEl, jEl
 #ifdef NCDF_4
@@ -225,7 +239,8 @@ contains
 ! ******************* DATA file variables ********************
 #ifdef NCDF_4
     ! The netcdf handle for TBT
-    type(hNCDF) :: TBTcdf, PROJcdf
+    type(hNCDF) :: TBTcdf, PROJcdf, SEcdf
+    logical :: cdf_save, only_proj, only_sigma
 #else
     ! Units for IO of ASCII files
     integer, allocatable :: iounits(:), iounits_El(:)
@@ -237,7 +252,47 @@ contains
     real :: last_progress, cur_progress
 ! ************************************************************
 
-    T_all = 'T-all' .in. save_DATA
+    calc_T_Gf = 'T-Gf' .in. save_DATA
+    calc_T_out = 'T-sum-out' .in. save_DATA
+    calc_T_all = 'T-all' .in. save_DATA
+    calc_DOS_Elecs = 'DOS-Elecs' .in. save_DATA
+    calc_DOS_Gf = 'DOS-Gf' .in. save_DATA
+    calc_DOS_A = 'DOS-A' .in. save_DATA
+    calc_DOS_A_all = 'DOS-A-all' .in. save_DATA
+#ifdef NCDF_4
+    calc_orb_current = 'orb-current' .in. save_DATA
+    calc_DM_Gf = 'DM-Gf' .in. save_DATA
+    calc_DM_A = 'DM-A' .in. save_DATA
+    calc_COOP_Gf = 'COOP-Gf' .in. save_DATA
+    calc_COOP_A = 'COOP-A' .in. save_DATA
+    calc_COHP_Gf = 'COHP-Gf' .in. save_DATA
+    calc_COHP_A = 'COHP-A' .in. save_DATA
+
+    ! Projection stuff
+    calc_proj_T_out = 'proj-T-sum-out' .in. save_DATA
+    calc_proj_DOS_A = 'proj-DOS-A' .in. save_DATA
+    calc_proj_orb_current = 'proj-orb-current' .in. save_DATA
+    calc_proj_DM_A = 'proj-DM-A' .in. save_DATA
+    calc_proj_COOP_A = 'proj-COOP-A' .in. save_DATA
+    calc_proj_COHP_A = 'proj-COHP-A' .in. save_DATA
+
+    only_proj = 'proj-only' .in. save_DATA
+    only_sigma = 'Sigma-only' .in. save_DATA
+    cdf_save = .not. (only_sigma .or. only_proj)
+#endif
+
+    ! Fix the looping variables
+    if ( calc_T_Gf ) then
+      if ( calc_T_all ) then
+        N_Elec1 = N_Elec
+      else
+        N_Elec1 = N_Elec - 1
+      end if
+    else if ( calc_T_all .or. calc_DOS_A_all ) then
+      N_Elec1 = N_Elec
+    else
+      N_Elec1 = N_Elec - 1
+    end if
 
     ! Create the back-pivoting region
     call rgn_init(pvt,nrows_g(TSHS%sp),val=0)
@@ -303,33 +358,37 @@ contains
     ! Here we calculate the maximum size we need to
     ! be able to down-fold the self-energies to the requested
     ! region.
-    pad_LHS = 0
+    call UC_minimum_worksize(.false., N_Elec, Elecs, pad_LHS)
     do iEl = 1 , N_Elec
        if ( ElTri(iEl)%n < 2 ) &
-            call die('All regions must be at least 2 blocks big. Error')
-       pad_LHS = max(pad_LHS,fold_elements(ElTri(iEl)%n,ElTri(iEl)%r))
-       ! In case we are doing in-core calculations, 
-       ! we need a certain size for the electrode calculation.
-       ! Sadly this is "pretty" big.
-       if ( .not. Elecs(iEl)%out_of_core ) then
-          no = Elecs(iEl)%no_u ** 2
-          ! Determine work array size
-          ! H00, H01, S00 and S01 in the work array
-          io = no * 4
-          if ( Elecs(iEl)%no_u /= Elecs(iEl)%no_used ) io = io + no
-          io = io + no * 8
-          if ( 'DOS-Elecs' .in. save_DATA ) then
-             io = io + no
-          end if
-          pad_LHS = max(pad_LHS,io)
-       else if ( sum(Elecs(iEl)%Bloch) > 3 ) then
-          ! ensure enough space for the expansion of the
-          ! self-energies, etc.
-          ! TODO when bulk vs. non-bulk the below can
-          ! probably be halved... see m_ts_elec_se.F90
-          no = TotUsedOrbs(Elecs(iEl)) ** 2 * 2
-          pad_LHS = max(pad_LHS,no)
+           call die('All regions must be at least 2 blocks big. Error')
+
+       ! Down-folding work-arrays
+       no = fold_elements(ElTri(iEl)%n,ElTri(iEl)%r)
+       pad_LHS = max(pad_LHS, no)
+
+       if ( Elecs(iEl)%out_of_core ) then
+         io = 0
+       else
+         ! In case we are doing in-core calculations, 
+         ! we need a certain size for the electrode calculation.
+         ! Sadly this is "pretty" big.
+         
+         ! In this part we calculate the necessary size needed to calculate
+         ! the self-energies (plus possibly DOS)
+         no = Elecs(iEl)%no_u ** 2
+         ! Determine work array size
+         ! H00, H01, S00 and S01 in the work array
+         ! and 8 for the Lopez-Sancho algorithm
+         io = no * (4 + 8)
+         ! One more array is requred when we need to invert the matrix
+         if ( Elecs(iEl)%no_u /= Elecs(iEl)%no_used ) io = io + no
+         ! There is a check above for out-of-core
+         if ( calc_DOS_Elecs ) io = io + no
+         
        end if
+
+       pad_LHS = max(pad_LHS, io)
     end do
 
     ! Correct the actual padding by subtracting the 
@@ -391,21 +450,21 @@ contains
        
        ! pre-allocate arrays for retrieving sizes
        nullify(zwork)
-       allocate(zwork(no))
+       allocate(zwork(no+1))
        eig => zwork(:)
        
        ! 'no' is the maximum size of the electrodes
        ! Work-query of eigenvalue calculations
-       call zgeev('N','N',no,zwork,no,eig,zwork,1,zwork,1, &
-            zwork,-1,Teig(1,1,1),info)
+       call zgeev('N','N',no,zwork(2),no,eig,zwork(2),1,zwork(2),1, &
+            zwork(1),-1,Teig(1,1,1),info)
        if ( info /= 0 ) then
-          print *,info
-          call die('zgeev: could not determine optimal workarray &
-               &size.')
+         print *,info
+         call die('zgeev: could not determine optimal workarray size.')
        end if
+       
        ! Minimum padding (eigenvalues) + lwork size
        ! The optimal lwork is stored in zwork(1)
-       info = zwork(1)
+       info = int(zwork(1))
        info = info + no
        deallocate(zwork)
        pad_LHS = max(pad_LHS,info)
@@ -419,14 +478,6 @@ contains
     end if
 
     
-    ! Note that padding is the extra size to be able to calculate
-    ! the spectral function in the BTD format
-
-    ! We allocate for the matrix
-    call print_memory('LHS',pad_LHS)
-    call newzTriMat(zwork_tri,DevTri%n,DevTri%r,'GFinv', &
-         padding = pad_LHS )
-
     ! The RHS will be the array that retains the 
     ! self-energies and nothing more.
     ! Here we pad with the missing elements to contain
@@ -443,10 +494,25 @@ contains
     ! this is only preferred in tbtrans as there might be 
     ! padding any-way.
     pad_RHS = max(pad_RHS,nGFGGF)
+
+    ! Ensure that at least one of the work arrays has
+    ! elements for the few supercells that we host
+    io = product(TSHS%nsc)
+    if ( pad_LHS < io .and. pad_RHS < io ) then
+      pad_LHS = io
+    end if
     
+    ! Note that padding is the extra size to be able to calculate
+    ! the spectral function in the BTD format
+
+    ! We allocate for the matrix
+    call print_memory('LHS',pad_LHS)
+    call newzTriMat(zwork_tri,DevTri%n,DevTri%r,'GFinv', &
+         padding = pad_LHS )
+
     call print_memory('RHS',pad_RHS)
     call newzTriMat(GF_tri,DevTri%n,DevTri%r,'GF', &
-         padding = pad_RHS )
+        padding = pad_RHS )
 
     ! Create the work-array...
     zwork   => val(zwork_tri,all=.true.)
@@ -454,12 +520,23 @@ contains
     Gfwork  => val(Gf_tri,all=.true.)
     nGfwork =  size(Gfwork)
     if ( nGfwork > nzwork ) then
-       nmaxwork = nGfwork
-       maxwork => Gfwork(:)
+      nmaxwork = nGfwork
+      maxwork => Gfwork(:)
     else
-       nmaxwork = nzwork
-       maxwork => zwork(:)
+      nmaxwork = nzwork
+      maxwork => zwork(:)
     end if
+
+    ! Create phase array
+    io = product(TSHS%nsc)
+    if ( pad_LHS >= io ) then
+      phase => zwork(nzwork-io+1:)
+    else if ( pad_RHS >= io ) then
+      phase => Gfwork(nGfwork-io+1:)
+    else
+      call die('Error in coding! Phase size!')
+    end if
+
 
     ! Point the work-array for eigenvalue calculation
     if ( N_eigen > 0 ) then
@@ -534,11 +611,13 @@ contains
     ! Allocate data-collecting arrays
     io = r_oDev%n
     jEl = 0
-    if ( 'DOS-Elecs' .in. save_DATA ) then
-       ! Allocate density of states for the electrodes
-       do iEl = 1 , N_Elec
-          jEl = max(jEl,Elecs(iEl)%no_u)
-       end do
+    if ( calc_DOS_Elecs ) then
+      ! Allocate density of states for the electrodes
+      do iEl = 1 , N_Elec
+        if ( .not. Elecs(iEl)%out_of_core ) then
+          jEl = max(jEl, Elecs(iEl)%no_u)
+        end if
+      end do
     end if
     ! this allows us to re-use the data arrays for
     ! the DOS storages between electrode DOS and device DOS
@@ -552,13 +631,12 @@ contains
     allocate(prep_El(N_Elec))
     ! Default to all electrode Green function parts
     prep_El = .true.
-    if ( (.not. T_all) .and. &
-         ('DOS-A-all' .nin. save_DATA) ) then
+    if ( .not. (calc_T_all .or. calc_DOS_A_all) ) then
        
        ! We only need to prepare the Green function
        ! for Gf.G.Gf product for all electrodes
        ! besides the last one.
-       ! Note that calc_GF_DOS has precedence for
+       ! Note that calc_DOS_Gf has precedence for
        ! calculating the entire Gf
        prep_El(N_elec) = .false.
        
@@ -567,67 +645,61 @@ contains
 #ifdef NCDF_4
     if ( N_proj_ME > 0 ) then
        allocate(proj_parts(DevTri%n))
-       proj_parts = .true.
+       proj_parts(:) = .true.
     end if
 #endif
     
     allocate(A_parts(DevTri%n))
-    A_parts = .true.
+    A_parts(:) = .true.
     ! If the user ONLY wants the transmission function then we
     ! should tell the program not to calculate any more
     ! than needed.
-    calc_GF_DOS = 'DOS-Gf' .in. save_DATA
-    if ( 'DOS-A' .nin. save_DATA ) then
+    if ( .not. calc_DOS_A ) then
 
-       ! We have a couple of options that requires
-       ! special parts of the Green function
+      ! We have a couple of options that requires
+      ! special parts of the Green function
+      
+      ! The first partition is whether we want
+      ! certain quantities from all electrodes
+      A_parts(:) = .false.
+      if ( calc_T_all .or. calc_T_out ) then
+        ! Everything is needed
+        N_Elec2 = 1
+      else
+        ! we only want the spectral function in regions
+        ! of all electrodes but the first
+        N_Elec2 = 2
+      end if
 
-       ! The first partition is whether we want
-       ! certain quantities from all electrodes
-       A_parts(:) = .false.
-       if ( T_all .or. &
-            ('T-sum-out' .in. save_DATA) ) then
-
-          ! We need _all_ diagonal blocks of the spectral function
-          do iEl = 1 , N_Elec
-             do io = 1 , Elecs(iEl)%o_inD%n
-                jEl = which_part(Gf_tri, &
-                     rgn_pivot(r_oDev,Elecs(iEl)%o_inD%r(io)) )
-                A_parts(jEl) = .true.
-             end do
-          end do
-
-       else
-          
-          ! we only want the spectral function
-          ! for all other electrodes than the first one
-          do iEl = 2 , N_Elec
-             do io = 1 , Elecs(iEl)%o_inD%n
-                jEl = which_part(Gf_tri, &
-                     rgn_pivot(r_oDev,Elecs(iEl)%o_inD%r(io)) )
-                A_parts(jEl) = .true.
-             end do
-          end do
-
-       end if
+      ! Figure out which parts are needed
+      do jEl = N_Elec2 , N_Elec
+        iEl = huge(1)
+        iE = 0
+        do io = 1 , Elecs(jEl)%o_inD%n
+          iEl = min(iEl, pvt%r(Elecs(jEl)%o_inD%r(io)))
+          iE = max(iE, pvt%r(Elecs(jEl)%o_inD%r(io)))
+        end do
+        A_parts(which_part(Gf_tri, iEl)) = .true.
+        A_parts(which_part(Gf_tri, iE)) = .true.
+      end do
        
     end if
 
     ! Initialize
-    if ( 'T-Gf' .in. save_DATA ) then
+    if ( calc_T_Gf ) then
        
        ! The only thing we are calculating is the
        ! transmission.
        ! In this case we can limit the calculation
        ! space to speed things up
        prep_El(:) = .true.
-       if ( .not. T_all ) then
+       if ( .not. calc_T_all ) then
           prep_El(N_Elec) = .false.
        end if
 
        ! reset all parts (A_parts is not used when
        ! only using the Green function)
-       A_parts = .false.
+       A_parts(:) = .false.
 
     end if
 
@@ -636,15 +708,18 @@ contains
     deallocate(prep_El)
 
 #ifdef NCDF_4
-    if ( ('orb-current'.in.save_DATA) .or. &
-         ('proj-orb-current'.in.save_DATA) ) then
-       
-       call newdSpData1D(sp_dev_sc,fdist,orb_J,name='TBT orb_J')
-       ! Initialize to 0, it will be overwritten for all
-       ! values, so there is no need to initialize it
-       ! in the orb_current routine (neither here actually)
-       call init_val(orb_J)
-       
+    iEl = 0
+    if ( calc_orb_current .or. calc_DM_Gf .or. calc_DM_A .or. & 
+        calc_COOP_Gf .or. calc_COOP_A .or. & 
+        calc_COHP_Gf .or. calc_COHP_A ) then
+      iEl = 1
+    end if
+    if ( calc_proj_orb_current .or. calc_proj_DM_A .or. &
+        calc_proj_COOP_A .or. calc_proj_COHP_A ) then
+      iEl = 1
+    end if
+    if ( iEl == 1 ) then
+       call newdSpData1D(sp_dev_sc,fdist,dev_M,name='TBT sparse')
     end if
 #endif
 
@@ -673,29 +748,33 @@ contains
 
 #ifdef NCDF_4
     ! Open the NetCDF handles
-    
-    if ('proj-only'.nin.save_DATA ) then
-       ! *.TBT.nc file
-       call open_cdf_save(cdf_fname, TBTcdf)
+    if ( .not. (only_proj .or. only_sigma) ) then
+      ! *.TBT.nc file
+      call open_cdf_save(cdf_fname, TBTcdf)
     end if
-    if ( N_proj_ME > 0 ) then
-
-       ! *.TBT.Proj.nc file
-       call open_cdf_save(cdf_fname_proj, PROJcdf)
-       
-    end if
+    ! *.TBT.Proj.nc file
+    call open_cdf_proj(cdf_fname_proj, PROJcdf)
+    ! *.TBT.SE.nc file
+    call open_cdf_Sigma(cdf_fname_sigma, SEcdf)
 
 #else
     ! Allocate units for IO ASCII
     allocate(iounits(1+(N_Elec*2+2)*N_Elec)) ! maximum number of units
     iounits = -100
-    call init_save(iounits,ispin,TSHS%nspin,N_Elec,Elecs, N_eigen, &
+    call init_save(iounits,ispin,TSHS%nspin,r_oDev%n, N_Elec,Elecs, N_eigen, &
          save_DATA)
     allocate(iounits_El(N_Elec*2)) ! maximum number of units
     iounits_El = -100
     call init_save_Elec(iounits_El,ispin,TSHS%nspin,N_Elec,Elecs, &
          save_DATA)
 #endif
+
+    if ( ispin == 2 ) then
+      ! skip to the 2nd spin component
+      do iEl = 1, N_Elec
+        call reread_Gamma_Green(Elecs(iEl), uGF(iEl), N_E, ispin)
+      end do
+    end if
 
     ! The current progress is 0%
     last_progress = 0.
@@ -835,12 +914,14 @@ contains
           ! *******************
           ! We have reduced the electrode sizes to only one spin-channel
           ! Hence, it will ALWAYS be the first index
+          ! Note that the spin-index will not be used when reading from GF-files
+          ! So there is no ambiguity.
           if ( n_k == 0 ) then
-             if ( 'DOS-Elecs' .in. save_DATA ) then
+             if ( calc_DOS_Elecs ) then
                 call read_next_GS(1, ikpt, bkpt, &
                      cE, N_Elec, uGF, Elecs, &
-                     nzwork, zwork, .false., forward = .false. , &
-                     DOS = DOS_El , T = T(:,1))
+                     nzwork, zwork, .false., forward=.false. , &
+                     DOS=DOS_El , T=T(:,1))
 
                 ! Immediately save the DOS
 #ifdef NCDF_4
@@ -854,7 +935,7 @@ contains
              else
                 call read_next_GS(1, ikpt, bkpt, &
                      cE, N_Elec, uGF, Elecs, &
-                     nzwork, zwork, .false., forward = .false. )
+                     nzwork, zwork, .false., forward=.false. )
              end if
           else
              call calc_GS_k(1, cE, N_Elec, Elecs, uGF, &
@@ -882,9 +963,7 @@ contains
              ! create the Gamma.
              ! Hence it is a waste of time if this is done in this
              ! loop....
-             call UC_expansion(cE, Elecs(iEl), nzwork, zwork, &
-                  non_Eq = .false. ) 
-
+             call UC_expansion(cE, Elecs(iEl), nzwork, zwork, non_Eq=.false. ) 
 
              ! Down-fold immediately :)
 #ifdef TBT_PHONON
@@ -908,7 +987,7 @@ contains
           call timer('SE-dwn',2)
 
 #ifdef NCDF_4
-          call state_Sigma_save(cdf_fname_Sigma, ikpt, nE, &
+          call state_Sigma_save(SEcdf, ikpt, nE, &
                N_Elec, Elecs, nzwork, zwork)
 
 
@@ -937,9 +1016,11 @@ contains
           end if
 #endif
 
+#ifdef NCDF_4
           ! Only calculate actual transmission if the user
           ! has requested so...
-          if ( ('Sigma-only'.nin.save_DATA) ) then
+          if ( .not. only_sigma ) then
+#endif
 
           call timer('Gf-prep',1)
 
@@ -962,7 +1043,7 @@ contains
              ! we want the DOS of the central region.
              ! So possibly we should do:
              !   all_nn = GFDOS
-             if ( calc_GF_DOS ) then
+             if ( calc_DOS_Gf ) then
                 call invert_BiasTriMat_prep(zwork_tri,GF_tri, &
                      all_nn = .true. )
 #ifdef NCDF_4
@@ -981,37 +1062,60 @@ contains
 
 
           ! Only calculate actual transmission if the user
-          ! has requested so...
-          if ( ('proj-only'.nin.save_DATA) ) then
+          ! has requested so..
+#ifdef NCDF_4
+          if ( .not. only_proj ) then
+#endif
 
-          call timer('DOS-Gf-A-T',1)
+          call timer('analysis',1)
 
           ! We have now calculated all block diagonal entries
           ! of the Green's function.
           ! This means that all necessary information to calculate
           ! the entire Green's function resides in GF_tri
-          if ( calc_GF_DOS ) then
+          if ( calc_DOS_Gf ) then
              if ( .not. cE%fake ) then
-                call GF_DOS(r_oDev,Gf_tri,spS,DOS(:,1),nzwork,zwork)
+                call GF_DOS(r_oDev,Gf_tri,zwork_tri,spS,pvt,DOS(:,1))
 #ifdef TBT_PHONON
                 DOS(:,1) = 2._dp * omega * DOS(:,1)
 #endif
              end if
+             
+#ifdef NCDF_4
+             if ( calc_DM_Gf ) then
+               call Gf_DM(TSHS%sc_off,kpt,phase,Gf_tri,zwork_tri,r_oDev,pvt, dev_M)
+               call state_cdf_save_sp_dev(TBTcdf, ikpt, nE, 'DM', dev_M)
+             end if
+             if ( calc_COOP_Gf ) then
+                call GF_COP(r_oDev,Gf_tri,zwork_tri,pvt, &
+                     TSHS%sp,S,TSHS%sc_off, kpt, phase, dev_M)
+                call state_cdf_save_sp_dev(TBTcdf, ikpt, nE, 'COOP', dev_M)
+             end if
+             if ( calc_COHP_Gf ) then
+                call GF_COP(r_oDev,Gf_tri,zwork_tri,pvt, &
+                     TSHS%sp,H,TSHS%sc_off, kpt, phase, dev_M)
+                if ( dH%lvl > 0 ) then
+                   call GF_COHP_add_dH(dH%d, TSHS%sc_off, kpt, &
+                       phase, Gf_tri, zwork_tri, r_oDev, dev_M, pvt)
+                end if
+                call state_cdf_save_sp_dev(TBTcdf, ikpt, nE, 'COHP', dev_M)
+             end if
+#endif
+
           end if
 
           ! ****************
           ! * Column Gf    *
           ! ****************
-          if ( 'T-Gf' .in. save_DATA ) then
+          if ( calc_T_Gf ) then
 
              ! We are allowed to calculate the transmission
              ! only by using the diagonal
              if ( .not. cE%fake ) then
-                do iEl = 1 , N_Elec
-                   if ( iEl == N_Elec .and. .not. T_all ) cycle
+                do iEl = 1 , N_Elec1
                    
                    call invert_BiasTriMat_rgn(GF_tri,zwork_tri, &
-                        r_oDev, Elecs(iEl)%o_inD,only_diag=.true.)
+                        r_oDev, pvt, Elecs(iEl)%o_inD,only_diag=.true.)
                    
                    call GF_T(zwork_tri,Elecs(iEl), &
                         T(N_Elec+1,iEl), T(iEl,iEl), &
@@ -1020,30 +1124,28 @@ contains
                 end do
                 
                 ! Retrieve actual transmissions
-                call GF_T_solve(N_Elec,T,T_all)
+                call GF_T_solve(N_Elec,T,calc_T_all)
 
              end if
 
           else
 
           ! We loop over all electrodes
-          do iEl = 1 , N_Elec
-             if ( iEl == N_Elec .and. ( &
-                  (.not. T_all) .and. &
-                  ('DOS-A-all' .nin. save_DATA) ) ) cycle
+          do iEl = 1 , N_Elec1
 
-             if ( ts_A_method == TS_BTD_A_COLUMN ) then
-              ! ******************
-              ! * calc GF-column *
-              ! ******************
-              if ( .not. cE%fake ) then
+             if ( .not. cE%fake ) then
+
+               if ( ts_A_method == TS_BTD_A_COLUMN ) then
+                 ! ******************
+                 ! * calc GF-column *
+                 ! ******************
                  call invert_BiasTriMat_rgn(GF_tri,zwork_tri, &
-                      r_oDev, Elecs(iEl)%o_inD)
- 
-                 if ( 'T-sum-out' .in. save_DATA ) then
-                    call Gf_Gamma(zwork_tri,Elecs(iEl),T(N_Elec+1,iEl))
+                     r_oDev, pvt, Elecs(iEl)%o_inD)
+
+                 if ( calc_T_out ) then
+                   call Gf_Gamma(zwork_tri,Elecs(iEl),T(N_Elec+1,iEl))
                  end if
- 
+
                  ! This small conversion of data, ensures
                  ! that we do not need to create two EXACT
                  ! same functions.
@@ -1051,77 +1153,98 @@ contains
                  ! is that the down-folded Gamma will NEVER
                  ! have any repetition.
                  call GF_Gamma_GF(zwork_tri, Elecs(iEl), Elecs(iEl)%o_inD%n, &
-                      A_parts, &
-                      nGFGGF, GFGGF_work)
-                 
-              end if
-              
-             else
-              
-              ! *****************
-              ! * calc A-matrix *
-              ! *****************
-              if ( .not. cE%fake ) then
-                 if ( 'T-sum-out' .in. save_DATA ) then
-                    call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, &
-                         Elecs(iEl), A_parts, &
-                         TrGfG = T(N_Elec+1,iEl))
+                     A_parts, &
+                     nGFGGF, GFGGF_work)
+
+               else
+                 ! *****************
+                 ! * calc A-matrix *
+                 ! *****************
+                 if ( calc_T_out ) then
+                   call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, pvt, &
+                       Elecs(iEl), A_parts, &
+                       TrGfG=T(N_Elec+1,iEl))
                  else
-                    call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, &
-                         Elecs(iEl), A_parts)
+                   call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, pvt, &
+                       Elecs(iEl), A_parts)
                  end if
-              end if
+                 
+               end if
              end if
              
-             if ( ('DOS-A' .in. save_DATA) .and. .not. cE%fake ) then
+             if ( calc_DOS_A ) then
 
-                ! Calculate the DOS from the spectral function
-                call A_DOS(r_oDev,zwork_tri,spS,DOS(:,1+iEl))
+                if ( .not. cE%fake ) then
+                   ! Calculate the DOS from the spectral function
+                   call A_DOS(r_oDev,zwork_tri,spS,pvt,DOS(:,1+iEl))
 #ifdef TBT_PHONON
-                DOS(:,1+iEl) = 2._dp * omega * DOS(:,1+iEl)
+                   DOS(:,1+iEl) = 2._dp * omega * DOS(:,1+iEl)
 #endif
+                end if
                 
 #ifdef NCDF_4
-                if ( 'orb-current' .in. save_DATA ) then
+                if ( calc_DM_A ) then
+                   call A_DM(TSHS%sc_off,kpt,phase,zwork_tri,r_oDev,pvt, dev_M)
+                   call state_cdf_save_sp_dev(TBTcdf, ikpt, nE, 'DM', dev_M, &
+                         Elecs(iEl))
+                end if
+                if ( calc_COOP_A ) then
+                   call A_COP(r_oDev,zwork_tri,pvt, &
+                        TSHS%sp,S,TSHS%sc_off, kpt, phase, dev_M)
+                   call state_cdf_save_sp_dev(TBTcdf, ikpt, nE, 'COOP', dev_M, &
+                        Elecs(iEl))
+                end if
+                if ( calc_COHP_A ) then
+                   call A_COP(r_oDev,zwork_tri,pvt, &
+                        TSHS%sp,H,TSHS%sc_off, kpt, phase, dev_M)
+                   if ( dH%lvl > 0 ) then
+                      call A_COHP_add_dH(dH%d, TSHS%sc_off, &
+                           kpt, phase, zwork_tri, r_oDev, dev_M, pvt)
+                   end if
+                   call state_cdf_save_sp_dev(TBTcdf, ikpt, nE, 'COHP', dev_M, &
+                        Elecs(iEl))
+                end if
+                
+                if ( calc_orb_current ) then
 
 #ifdef TBT_PHONON
                    call orb_current(TSHS%sp,H,S,TSHS%sc_off, &
-                        kpt, &
-                        cOmega,zwork_tri,r_oDev,orb_J,pvt)
+                        kpt, phase, &
+                        cOmega,zwork_tri,r_oDev,dev_M,pvt)
 #else
                    call orb_current(TSHS%sp,H,S,TSHS%sc_off, &
-                        kpt, &
-                        cE,zwork_tri,r_oDev,orb_J,pvt)
+                        kpt, phase, &
+                        cE,zwork_tri,r_oDev,dev_M,pvt)
 #endif
                    if ( dH%lvl > 0 ) then
                       call orb_current_add_dH(dH%d, TSHS%sc_off, &
-                           kpt, zwork_tri, r_oDev, orb_J, pvt)
+                           kpt, phase, zwork_tri, r_oDev, dev_M, pvt)
                    end if
+
+                   ! We need to save it immediately, we
+                   ! do not want to have several arrays in memory
+                   call state_cdf_save_sp_dev(TBTcdf, ikpt, nE, 'J', dev_M, &
+                        Elecs(iEl))
+
                 end if
 #endif
              end if
 
-#ifdef NCDF_4
-             if ( 'orb-current' .in. save_DATA ) then
-
-                ! We need to save it immediately, we
-                ! do not want to have several arrays in memory
-                call state_cdf_save_J(TBTcdf, ikpt, nE, Elecs(iEl), &
-                     orb_J, save_DATA)
-
+             if ( calc_T_all ) then
+               ! Calculate all terms
+               N_Elec2 = 1
+             else if ( calc_T_out ) then
+               ! Requesting calculating the "diagonal" transmission
+               N_Elec2 = iEl
+             else
+               ! Calculating iEl -> jEl is the
+               ! same as calculating jEl -> iEl, hence if we
+               ! do not wish to assert this is true, we only calculate
+               ! for jEl > iEl.
+               N_Elec2 = iEl + 1
              end if
-#endif
-             
-             do jEl = 1 , N_Elec
-                ! Calculating iEl -> jEl is the
-                ! same as calculating jEl -> iEl, hence if we
-                ! do not wish to assert this is true, we do not
-                ! calculate this.
-                if ( (.not. T_all) .and. &
-                     jEl < iEl ) cycle
-                if ( ('T-sum-out' .nin. save_DATA ) .and. &
-                     iEl == jEl ) cycle
 
+             do jEl = N_Elec2 , N_Elec
                 ! Notice that the Gf.G1.Gf.G2 can be performed
                 ! for all other electrodes as long as we
                 ! have the block diagonal that constitutes the 
@@ -1136,13 +1259,6 @@ contains
                       ! Copy the eigenvalues over
                       do io = 1 , N_eigen
                          Teig(io,jEl,iEl) = dreal(eig(io))
-#ifdef TBT_PHONON
-                         if ( Teig(io,jEl,iEl) >= 0._dp ) then
-                            Teig(io,jEl,iEl) = sqrt( Teig(io,jEl,iEl) )
-                         else
-                            Teig(io,jEl,iEl) = - sqrt( -Teig(io,jEl,iEl) )
-                         end if
-#endif
                       end do
                    else
                       call A_Gamma(zwork_tri,Elecs(jEl),T(jEl,iEl))
@@ -1161,22 +1277,22 @@ contains
           call state_cdf_save(TBTcdf, ikpt, nE, N_Elec, Elecs, &
                DOS, T, N_eigen, Teig, save_DATA)
 #else
-          call state_save(iounits,nE,N_Elec,Elecs,DOS, T, &
-               N_eigen, Teig, &
-               save_DATA )
+          call state_save(iounits,r_oDev%n, nE,N_Elec,Elecs,DOS, T, &
+               N_eigen, Teig, save_DATA )
 #endif
 
-          call timer('DOS-Gf-A-T',2)
-
+          call timer('analysis',2)
+#ifdef NCDF_4
           end if ! .not. proj-only
           end if ! .not. Sigma-only
+#endif
 
 
 #ifdef NCDF_4
 
           if ( N_proj_T > 0 ) then
 
-          call timer('T-proj',1)
+          call timer('analysis-proj',1)
 
           ! Calculate the projections
           do ipt = 1 , N_proj_T
@@ -1186,16 +1302,25 @@ contains
 
              if ( cE%fake ) then
 #ifdef NCDF_4
-                ! We need to fake the IO node to call the save routine
-                ! this aint pretty, however it relieves a lot of
-                ! superfluous checks in the following block
-                if ( ('proj-orb-current' .in. save_DATA) .and. p_E%idx > 0 ) then
-
-                   call proj_cdf_save_J(PROJcdf, ikpt, nE, p_E, orb_J)
-
-                end if
+               ! We need to fake the IO node to call the save routine
+               ! this aint pretty, however it relieves a lot of
+               ! superfluous checks in the following block
+               if ( calc_proj_DOS_A .and. p_E%idx > 0 ) then
+                 if ( calc_proj_DM_A ) then
+                   call proj_cdf_save_sp_dev(PROJcdf, ikpt, nE, 'DM', p_E, dev_M)
+                 end if
+                 if ( calc_proj_COOP_A ) then
+                   call proj_cdf_save_sp_dev(PROJcdf, ikpt, nE, 'COOP', p_E, dev_M)
+                 end if
+                 if ( calc_proj_COHP_A ) then
+                   call proj_cdf_save_sp_dev(PROJcdf, ikpt, nE, 'COHP', p_E, dev_M)
+                 end if
+                 if ( calc_proj_orb_current ) then
+                   call proj_cdf_save_sp_dev(PROJcdf, ikpt, nE, 'J', p_E, dev_M)
+                 end if
+               end if
 #endif
-                cycle
+               cycle
              end if
             ! We have now calculated all block diagonal entries
             ! of the Green's function.
@@ -1204,7 +1329,7 @@ contains
 
             !if ( 'DOS-Gf' .in. save_DATA ) then
             !   if ( .not. cE%fake ) then
-            !      call GF_DOS(r_oDev,Gf_tri,spS,DOS(:,1),nzwork,zwork)
+            !      call GF_DOS(r_oDev,Gf_tri,zwork_tri,spS,pvt,DOS(:,1))
 #ifdef TBT_PHONON
             !       DOS(:,1) = 2._dp * omega * DOS(:,1)
 #endif
@@ -1226,19 +1351,19 @@ contains
 
                if ( ts_A_method == TS_BTD_A_COLUMN ) then
                 call invert_BiasTriMat_rgn(GF_tri,zwork_tri, &
-                     r_oDev, El_p%o_inD)
+                     r_oDev, pvt, El_p%o_inD)
 
-                if ( 'proj-T-sum-out' .in. save_DATA ) then
+                if ( calc_proj_T_out ) then
                    call Gf_Gamma(zwork_tri,El_p, &
                         bTk(size(proj_T(ipt)%R)+1,ipt))
                 end if
                else
-                if ( 'proj-T-sum-out' .in. save_DATA ) then
-                   call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, &
+                if ( calc_proj_T_out ) then
+                   call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, pvt, &
                         El_p, proj_parts, &
                         TrGfG = bTk(size(proj_T(ipt)%R)+1,ipt) )
                 else
-                   call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, &
+                   call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, pvt, &
                         El_p, proj_parts)
                 end if
                end if
@@ -1253,19 +1378,19 @@ contains
 
                if ( ts_A_method == TS_BTD_A_COLUMN ) then
                 call invert_BiasTriMat_rgn(GF_tri,zwork_tri, &
-                     r_oDev, Elecs(iEl)%o_inD)
+                     r_oDev, pvt, Elecs(iEl)%o_inD)
 
-                if ( 'proj-T-sum-out' .in. save_DATA ) then
+                if ( calc_proj_T_out ) then
                    call Gf_Gamma(zwork_tri,Elecs(iEl), &
                         bTk(1+size(proj_T(ipt)%R),ipt))
                 end if
                else
-                if ( 'T-sum-out' .in. save_DATA ) then
-                   call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, &
+                if ( calc_proj_T_out ) then
+                   call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, pvt, &
                         Elecs(iEl), proj_parts, &
                         TrGfG = bTk(1+size(proj_T(ipt)%R),ipt))
                 else
-                   call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, &
+                   call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_oDev, pvt, &
                         Elecs(iEl), proj_parts)
                 end if
                end if
@@ -1278,36 +1403,50 @@ contains
                     nGFGGF, GFGGF_work)
             end if
 
-            if ( ('proj-DOS-A' .in. save_DATA) .and. p_E%idx > 0 ) then
+            if ( calc_proj_DOS_A .and. p_E%idx > 0 ) then
 
                ! Calculate the DOS from the spectral function
-               call A_DOS(r_oDev,zwork_tri,spS,pDOS(:,2,ipt))
+               call A_DOS(r_oDev,zwork_tri,spS,pvt,pDOS(:,2,ipt))
 #ifdef TBT_PHONON
                pDOS(:,2,ipt) = 2._dp * omega * pDOS(:,2,ipt)
 #endif
                
 #ifdef NCDF_4
-               if ( 'proj-orb-current' .in. save_DATA ) then
-
+               if ( calc_proj_DM_A ) then
+                 call A_DM(TSHS%sc_off,kpt,phase,zwork_tri,r_oDev,pvt, dev_M)
+                 call proj_cdf_save_sp_dev(PROJcdf, ikpt, nE, 'DM', p_E, dev_M)
+               end if
+               if ( calc_proj_COOP_A ) then
+                 call A_COP(r_oDev,zwork_tri,pvt, &
+                     TSHS%sp,S,TSHS%sc_off, kpt, phase, dev_M)
+                 call proj_cdf_save_sp_dev(PROJcdf, ikpt, nE, 'COOP', p_E, dev_M)
+               end if
+               if ( calc_proj_COHP_A ) then
+                 call A_COP(r_oDev,zwork_tri,pvt, &
+                     TSHS%sp,H,TSHS%sc_off, kpt, phase, dev_M)
+                 if ( dH%lvl > 0 ) then
+                   call A_COHP_add_dH(dH%d, TSHS%sc_off, &
+                       kpt, phase, zwork_tri, r_oDev, dev_M, pvt)
+                 end if
+                 call proj_cdf_save_sp_dev(PROJcdf, ikpt, nE, 'COHP', p_E, dev_M)
+               end if
+               
+               if ( calc_proj_orb_current ) then
 #ifdef TBT_PHONON
-                  call orb_current(TSHS%sp,H,S,TSHS%sc_off, &
-                       kpt, &
-                       cOmega,zwork_tri,r_oDev,orb_J,pvt)
+                 call orb_current(TSHS%sp,H,S,TSHS%sc_off, &
+                     kpt, phase, &
+                     cOmega,zwork_tri,r_oDev,dev_M,pvt)
 #else
-                  call orb_current(TSHS%sp,H,S,TSHS%sc_off, &
-                       kpt, &
-                       cE,zwork_tri,r_oDev,orb_J,pvt)
+                 call orb_current(TSHS%sp,H,S,TSHS%sc_off, &
+                     kpt, phase, &
+                     cE,zwork_tri,r_oDev,dev_M,pvt)
 #endif
-                  if ( dH%lvl > 0 ) then
-                     call orb_current_add_dH(dH%d, TSHS%sc_off, &
-                          kpt, zwork_tri, r_oDev, orb_J, pvt)
-                  end if
-                     
-                  ! We need to save it immediately, we
-                  ! do not want to have several arrays in the
-                  ! memory
-                  call proj_cdf_save_J(PROJcdf, ikpt, nE, p_E, orb_J)
+                 if ( dH%lvl > 0 ) then
+                   call orb_current_add_dH(dH%d, TSHS%sc_off, &
+                       kpt, phase, zwork_tri, r_oDev, dev_M, pvt)
+                 end if
 
+                 call proj_cdf_save_sp_dev(PROJcdf, ikpt, nE, 'J', p_E, dev_M)
                end if
 #endif
                
@@ -1334,13 +1473,6 @@ contains
                      call TT_eigen(io,GFGGF_work, ntt_work, tt_work, eig)
                      do io = 1 , N_eigen
                         bTkeig(io,jEl,ipt) = dreal(eig(io))
-#ifdef TBT_PHONON
-                        if ( bTkeig(io,jEl,ipt) >= 0._dp ) then
-                           bTkeig(io,jEl,ipt) = sqrt( bTkeig(io,jEl,ipt) )
-                        else
-                           bTkeig(io,jEl,ipt) = - sqrt( -bTkeig(io,jEl,ipt) )
-                        end if
-#endif
                      end do
                   else
                      call A_Gamma(zwork_tri,El_p,bTk(jEl,ipt))
@@ -1357,13 +1489,6 @@ contains
                      call TT_eigen(io,GFGGF_work, ntt_work, tt_work, eig)
                      do io = 1 , N_eigen
                         bTkeig(io,jEl,ipt) = dreal(eig(io))
-#ifdef TBT_PHONON
-                        if ( bTkeig(io,jEl,ipt) >= 0._dp ) then
-                           bTkeig(io,jEl,ipt) = sqrt( bTkeig(io,jEl,ipt) )
-                        else
-                           bTkeig(io,jEl,ipt) = - sqrt( -bTkeig(io,jEl,ipt) )
-                        end if
-#endif
                      end do
                   else
                      call A_Gamma(zwork_tri,Elecs(iEl),bTk(jEl,ipt))
@@ -1381,7 +1506,7 @@ contains
                ikpt,nE,N_proj_T,proj_T, &
                pDOS, bTk, N_eigen, bTkeig, save_DATA )
 
-          call timer('T-proj',2)
+          call timer('analysis-proj',2)
           
           end if
 #endif
@@ -1418,6 +1543,10 @@ contains
        ! Stop timer
        call timer_stop('E-loop')
 
+       do iEl = 1, N_Elec
+         call reread_Gamma_Green(Elecs(iEl), uGF(iEl), N_E, ispin)
+       end do
+
     end do ! k-point
 
 #ifdef MPI
@@ -1453,12 +1582,10 @@ contains
 
 #ifdef NCDF_4
 
-    if ( 'proj-only'.nin.save_DATA ) then
-       ! Close the netcdf file
-       call ncdf_close(TBTcdf)
-    end if
+    ! Close the netcdf file
+    call ncdf_close(TBTcdf)
+    call ncdf_close(PROJcdf)
     if ( N_proj_ME > 0 ) then
-       call ncdf_close(PROJcdf)
        deallocate(proj_parts)
     end if
 
@@ -1471,11 +1598,12 @@ contains
        deallocate(bTkeig)
     end if
 
-    call delete(orb_J)
+    call delete(dev_M)
 
     ! Before we delete the Gf tri-diagonal matrix
     ! we need to create the sigma mean if requested.
     ! This is because %Sigma => Gfwork(:)
+    call ncdf_close(SEcdf)
     call state_Sigma2mean(cdf_fname_sigma,N_Elec,Elecs)
 #endif
     call delete(GF_tri)
@@ -1497,7 +1625,7 @@ contains
     ! Once we have cleaned up we can easily do the
     ! conversion of the TBT.nc file to the regular txt files
     ! We should have plenty of memory to do this.
-    if ( ('proj-only'.nin.save_DATA).and.('Sigma-only'.nin.save_DATA) ) then
+    if ( cdf_save ) then
 
        ! We will guesstimate the current using the weights
        ! First we need to copy them over, we use S
@@ -1518,6 +1646,12 @@ contains
     deallocate(iounits, iounits_El)
 #endif
 
+#ifdef MPI
+    ! Ensure that we are finished will ALL IO before we
+    ! proceed. Otherwise some routines may finalized before actual end...
+    call MPI_Barrier(MPI_Comm_World, io)
+#endif
+
   contains
 
     subroutine print_memory(name,padding)
@@ -1528,18 +1662,29 @@ contains
       integer, intent(in) :: padding
       integer(i8b) :: nsize
       real(dp) :: mem
-      if ( verbosity > 4 .and. IONode ) then
-         nsize = nnzs_tri_i8b(DevTri%n,DevTri%r)
-         nsize = nsize + padding
-         mem = real(nsize,dp) * 16._dp / 1024._dp ** 2
-         if ( mem > 600._dp ) then
-            write(*,'(3a,i0,a,f8.3,a)') 'tbtrans: ',name,' Green function size / memory: ', &
-                 nsize,' / ',mem / 1024._dp,' GB'
-         else
-            write(*,'(3a,i0,a,f8.2,a)') 'tbtrans: ',name,' Green function size / memory: ', &
-                 nsize,' / ',mem,' MB'
-         end if
+      character(len=2) :: unit
+
+      if ( .not. IONode ) return
+      if ( verbosity < 5 ) return
+
+      ! Total number of elements
+      nsize = nnzs_tri_i8b(DevTri%n,DevTri%r)
+      nsize = nsize + padding
+
+      unit = 'KB'
+      mem = real(nsize, dp) * 16._dp / 1024._dp
+      if ( mem > 1024._dp ) then
+        mem = mem / 1024._dp
+        unit = 'MB'
+        if ( mem > 1024._dp ) then
+          mem = mem / 1024._dp
+          unit = 'GB'
+        end if
       end if
+
+      write(*,'(3a,i0,a,f8.3,tr1,a)') 'tbt: ',name,' Green function padding / memory: ', &
+          padding,' / ',mem, unit
+      
     end subroutine print_memory
 
   end subroutine tbt_trik
@@ -1554,7 +1699,6 @@ contains
     use class_zTriMat
     use m_ts_cctype, only : ts_c_idx
     use m_tbt_tri_scat, only : insert_Self_Energy_Dev
-    use intrinsic_missing, only : SFIND
 #ifdef NCDF_4
     use m_tbt_delta, only : add_zdelta_TriMat
     use m_tbt_dH, only : dH
@@ -1604,7 +1748,6 @@ contains
 !$OMP do 
     do iu = 1, r%n
        io = r%r(iu) ! get the orbital in the big sparsity pattern
-       if ( l_ncol(io) /= 0 ) then
           
        ! Loop over non-zero entries here
        do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
@@ -1612,17 +1755,17 @@ contains
           ju = pvt%r(l_col(ind))
           ! If it is zero, then *must* be electrode
           ! or fold down region.
-          if ( ju == 0 ) cycle
+          if ( ju > 0 ) then
           
-          ! Notice that we transpose back here...
-          ! See symmetrize_HS_kpt
-          idx = index(Gfinv_tri,ju,iu)
-          
-          GFinv(idx) = Z * S(ind) - H(ind)
+             ! Notice that we transpose back here...
+             ! See symmetrize_HS_kpt
+             idx = index(Gfinv_tri,ju,iu)
+             
+             GFinv(idx) = Z * S(ind) - H(ind)
+          end if
           
        end do
              
-       end if
     end do
 !$OMP end do nowait
 
@@ -1635,118 +1778,18 @@ contains
 #ifdef NCDF_4
     if ( dH%lvl > 0 ) then
        ! Add dH
-       call add_zdelta_TriMat(dH%d, Gfinv_tri, r, sc_off, kpt)
+       call add_zdelta_TriMat(dH%d, Gfinv_tri, r, pvt, sc_off, kpt)
     end if
     if ( dSE%lvl > 0 ) then
        ! Add dSE
-       call add_zdelta_TriMat(dSE%d, Gfinv_tri, r, sc_off, kpt)
+       call add_zdelta_TriMat(dSE%d, Gfinv_tri, r, pvt, sc_off, kpt)
     end if
 #endif
 
   end subroutine prepare_invGF
 
-#ifdef NOT_USED
-  ! There are two variants of populating the
-  ! Green function for each energy point.
-  ! If you have a very small device region it is
-  ! beneficial to search the sparsity pattern for the
-  ! indices.
-  ! On the other hand for a very large device region
-  ! it is better to loop the sparsity pattern and search
-  ! the device region.
-  ! This routine decides which is better by doing a
-  ! one-time loop for comparison
-  ! * NOT USED
-  ! This was used in the old setup.
-  ! When one wants to reduce memory requirement
-  ! this can be reinstantiated.
-  ! However, then we are talking about more
-  ! than 2,000,000 elements...
-  subroutine prep_Gfinv_algo(dev_tri,sp,r,loop_dev)
-
-    use class_Sparsity
-    use class_zTriMat
-    use intrinsic_missing, only : SFIND
-
-    type(zTriMat), intent(inout) :: dev_tri
-    type(Sparsity), intent(inout) :: sp
-    type(tRgn), intent(in) :: r
-    logical, intent(out) :: loop_dev
-
-    integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
-    integer :: io, iu, ind
-    integer :: itot
-#ifdef _OPENMP
-    real(dp) :: t_d, t_s
-#else
-    real :: t_d, t_s, tt
-#endif
-
-    call attach(sp, n_col=l_ncol, list_ptr=l_ptr, list_col=l_col)
-
-    ! search some middle orbital
-    io = r%r(r%n/2)
-
-    ! Time: loop_dev
-    itot = 0
-#ifdef _OPENMP
-    t_d = omp_get_wtime( )
-#else
-    call cpu_time( tt )
-    t_d = tt
-#endif
-    do iu = 1 , r%n
-          
-       ind = SFIND(l_col(l_ptr(io)+1:l_ptr(io)+l_ncol(io)),r%r(iu))
-       if ( ind == 0 ) cycle
-       ind = l_ptr(io) + ind
-
-       ! This is only to dis-allow the optimizer from removing
-       ! this entire loop
-       itot = itot + ind
-
-    end do
-#ifdef _OPENMP
-    t_d = omp_get_wtime( ) - t_d
-#else
-    call cpu_time( tt )
-    t_d = tt - t_d
-#endif
-    
-    itot = 0
-    ! Time: loop_sparsity
-#ifdef _OPENMP
-    t_s = omp_get_wtime( )
-#else
-    call cpu_time( tt )
-    t_s = tt
-#endif
-    do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
-       
-       iu = rgn_pivot(r,l_col(ind))
-       ! Important to check this as we cannot ensure
-       ! the entire sparsity pattern in this
-       ! tri-diagonal matrix
-       if ( iu == 0 ) cycle
-       itot = itot + iu
-       
-    end do
-#ifdef _OPENMP
-    t_s = omp_get_wtime( ) - t_s
-#else
-    call cpu_time( tt )
-    t_s = tt - t_s
-#endif
-
-    ! if the timing for the searching of
-    ! sparsity is slower than looping the
-    ! device, we prefer to loop the device
-    loop_dev = t_s > t_d
-
-  end subroutine prep_Gfinv_algo
-#endif
-
-  subroutine downfold_SE(cE, El, spH, spS,r,np,p, sc_off, kpt, nwork,work)
+  subroutine downfold_SE(cE, El, spH, spS, r, &
+       np, p, sc_off, kpt, nwork, work)
 
     use class_Sparsity
     use class_zSpData1D
@@ -1902,7 +1945,8 @@ contains
 
 #ifdef NOT_WORKING
 
-  subroutine downfold_SE_life(cE, El, spH, spS,r,np,p,life,nwork,work)
+  subroutine downfold_SE_life(cE, El, spH, spS, r, &
+       np, p, life, nwork, work)
 
     use class_Sparsity
     use class_zSpData1D
@@ -2134,7 +2178,7 @@ contains
     use class_Sparsity
     use class_zSpData1D
     use m_tbt_tri_scat, only : insert_Self_Energy
-    use intrinsic_missing, only : SFIND
+    use sorted_search_t, only: ssearch_t, ssearch_init, ssearch_find
 
 #ifdef NCDF_4
     use m_tbt_delta, only : add_zdelta_Mat
@@ -2160,6 +2204,7 @@ contains
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
     complex(dp), pointer :: H(:), S(:)
     integer :: io, iu, ind, ju
+    type(ssearch_t) :: ss
 
     sp => spar(spH)
     H  => val (spH)
@@ -2168,7 +2213,7 @@ contains
     call attach(sp, n_col=l_ncol, list_ptr=l_ptr, list_col=l_col)
 
     ! We will only loop in the region
-!$OMP parallel do default(shared), private(iu,io,ind,ju)
+!$OMP parallel do default(shared), private(iu,io,ind,ju,ss)
     do iu = 1 , n2
        io = r%r(off2+iu) ! get the orbital in the sparsity pattern
 
@@ -2177,12 +2222,14 @@ contains
 
        if ( l_ncol(io) /= 0 ) then
 
+       call ssearch_init(ss, l_col(l_ptr(io)+1:l_ptr(io) + l_ncol(io)))
+       
        ! Loop on entries here...
        do ju = 1 , n1
  
           ! Check if the orbital exists in the region
           ! We are dealing with a UC sparsity pattern.
-          ind = SFIND(l_col(l_ptr(io)+1:l_ptr(io) + l_ncol(io)),r%r(off1+ju))
+          ind = ssearch_find(ss, r%r(off1+ju))
           if ( ind == 0 ) cycle
           ind = l_ptr(io) + ind
 

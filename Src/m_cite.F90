@@ -74,7 +74,7 @@ module m_cite
   ! Increment this after having added a new
   ! citation!
   ! OTHERWISE YOU WILL EXPERIENCE A SEG-FAULT.
-  integer, parameter :: N_citations = 9
+  integer, parameter :: N_citations = 11
 
   private
 
@@ -182,7 +182,7 @@ contains
        
     case ( "10.1103/PhysRevB.65.165401" )
        ! transiesta paper
-       cit%comment = "Primary TranSIESTA paper"
+       cit%comment = "Primary TranSiesta paper"
        cit%doi = "10.1103/PhysRevB.65.165401"
        cit%journal = "Physical Review B"
        cit%year = 2002
@@ -226,7 +226,7 @@ contains
 
     case ( "10.1016/j.cpc.2016.09.022" )
        ! new transiesta article
-       cit%comment = "TranSIESTA N-electrode"
+       cit%comment = "TranSiesta N-electrode"
        cit%doi = "10.1016/j.cpc.2016.09.022"
        cit%journal = "Computer Physics Communications"
        cit%year = 2017
@@ -245,6 +245,28 @@ contains
        cit%cite_key = "Lin2014"
        ID = 7
 
+    case ( "10.1088/0953-8984/24/8/086005" )
+       ! Off-Site Spin-Orbit 
+       cit%comment = "Off-Site Spin-Orbit Implementation"
+       cit%doi = "10.1088/0953-8984/24/8/086005"
+       cit%journal = "Journal of Physics: Condensed Matter"
+       cit%year = 2012
+       cit%volume = "24"
+       cit%issue = "8"
+       cit%cite_key = "Cuadrado2012"
+       ID = 8
+       
+    case ( "10.1088/0953-8984/18/34/012")
+       ! On-Site Spin-Orbit 
+       cit%comment = "On-Site Spin-Orbit Implementation"
+       cit%doi = "10.1088/0953-8984/18/34/012"
+       cit%journal = "Journal of Physics: Condensed Matter"
+       cit%year = 2006
+       cit%volume = "18"
+       cit%issue = "0"
+       cit%cite_key = "FernandezSeivane2006"
+       ID = 9
+
     case ( "10.1103/PhysRevB.56.12847" )
        ! Maximally Localized Wannier Function Paper
        cit%comment = "Maximally Localized Wannier Function paper"
@@ -255,7 +277,7 @@ contains
        cit%issue = "20"
        cit%page = "12847"
        cit%cite_key = "Marzari1997"
-       ID = 8
+       ID = 10
        
     case ( "10.1016/j.cpc.2014.05.003" )
        ! Wannier90 paper
@@ -267,7 +289,7 @@ contains
        cit%issue = "8"
        cit%page = "2309"
        cit%cite_key = "Wannier90"
-       ID = 9
+       ID = 11
        
     end select
 

@@ -29,10 +29,10 @@
 
       use parallel, only: ionode
       use atomlist, only: lasto, rmaxo, datm, indxuo, no_s, no_u,
-     &                    iphorb, no_l, qtot
+     &                    iphorb, no_l, qtot, qtots
       use m_energies
       use neighbour,   only : maxna=>maxnna   ! For plcharge...
-      use m_spin,         only : nspin, h_spin_dim, qs, efs
+      use m_spin,         only : nspin, h_spin_dim
       use m_spin,         only : spinor_dim 
       use m_diagon,       only : diagon 
       use m_dminim,       only : dminim
@@ -40,8 +40,7 @@
       use m_steps,        only : istp, inicoor
       use m_compute_dm,   only : PreviousCallDiagon
       use m_eo
-      use Kpoint_grid
-      use m_gamma
+      use kpoint_scf_m, only: kpoint_scf, gamma_scf
       implicit none
 
       ! MD-step, SCF-step
@@ -52,12 +51,8 @@
       type(Pair_Geometry_dSpData2D)  :: pair
       type(Geometry)                :: geom
 
-#ifdef DEBUG
-      call write_debug( '    PRE post_scf_work' )
-#endif
-
       call timer( 'PostSCF', 1 )
-!
+
 !     If converged, make one last iteration to find forces and stress
 
 !     If we use the minimization routine, the energy-density
@@ -80,19 +75,23 @@
           call diagon(no_s, spinor_dim, 
      &                no_l, maxnh, maxnh, no_u,
      &                numh, listhptr, listh, numh, listhptr, listh, 
-     &                H, S, qtot, fixspin, qs, temp, 1.0_dp, -1.0_dp,
-     &                gamma, xijo, indxuo, nkpnt, kpoint, kweight,
+     &                H, S, qtot, fixspin, qtots, temp, 1.0_dp, -1.0_dp,
+     &                xijo, indxuo, gamma_SCF,
+     &                kpoint_scf%N, kpoint_scf%k, kpoint_scf%w,
      &                eo, qo, Dscf, Escf, ef, efs, Entropy, no_u,
      &                occtol, iscf, neigwanted)
           Ecorrec = 0.0_dp
         else
-          if (gamma) then
+            if ( no_u == no_s ) then ! Not using an auxiliary supercell
             call dminim(.true., .false., iscf, istp, no_l, nspin, no_u,
-     &                  maxnh, numh, listhptr, listh, Escf, eta, qs)
+     &                  maxnh, numh, listhptr, listh, Escf, eta, qtots)
           else
+            ! When using an auxiliary supercell
+            ! (even for gamma point; not optimized yet)
             call zminim(.true., .false., iscf, istp, no_l, nspin, no_u,
-     &                  maxnh, numh, listhptr, listh, Escf, eta, qs,
-     &                  no_s, xijo, indxuo, nkpnt, kpoint, kweight)
+     &                  maxnh, numh, listhptr, listh, Escf, eta, qtots,
+     &                  no_s, xijo, indxuo,
+     &                  kpoint_scf%N, kpoint_scf%k, kpoint_scf%w)
           end if
         endif
       endif
@@ -164,8 +163,8 @@
          ! Save (geom,DM) pair to history stack
          write(msg,"(a,i0)") "step: ",istep
          call newGeometry(geom,na_u,ucell,xa,isa,
-     $                    name="Geometry for " // msg)
-         call new(pair,geom,DM_2D,name=" Pair geom,DM for " // msg)
+     $                    name="Geometry for " // trim(msg))
+         call new(pair,geom,DM_2D,name="Geom, DM for "//trim(msg))
          call push(DM_history,pair)
          call delete(pair)
          call delete(geom)

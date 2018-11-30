@@ -56,13 +56,23 @@ subroutine tbt_init()
   use m_sparsity_handling
 
 #ifdef _OPENMP
-  use omp_lib, only : omp_get_num_threads, omp_get_schedule
+  use omp_lib, only : omp_get_num_threads
+  use omp_lib, only : omp_get_schedule, omp_set_schedule
+  use omp_lib, only : omp_get_proc_bind
   use omp_lib, only : OMP_SCHED_STATIC, OMP_SCHED_DYNAMIC
   use omp_lib, only : OMP_SCHED_GUIDED, OMP_SCHED_AUTO
+  use omp_lib, only : OMP_PROC_BIND_FALSE, OMP_PROC_BIND_TRUE
+  use omp_lib, only : OMP_PROC_BIND_MASTER
+  use omp_lib, only : OMP_PROC_BIND_CLOSE, OMP_PROC_BIND_SPREAD
 #else
-!$ use omp_lib, only : omp_get_num_threads, omp_get_schedule
+!$ use omp_lib, only : omp_get_num_threads
+!$ use omp_lib, only : omp_get_schedule, omp_set_schedule
+!$ use omp_lib, only : omp_get_proc_bind
 !$ use omp_lib, only : OMP_SCHED_STATIC, OMP_SCHED_DYNAMIC
 !$ use omp_lib, only : OMP_SCHED_GUIDED, OMP_SCHED_AUTO
+!$ use omp_lib, only : OMP_PROC_BIND_FALSE, OMP_PROC_BIND_TRUE
+!$ use omp_lib, only : OMP_PROC_BIND_MASTER
+!$ use omp_lib, only : OMP_PROC_BIND_CLOSE, OMP_PROC_BIND_SPREAD
 #endif
 
   implicit none
@@ -86,7 +96,7 @@ subroutine tbt_init()
   if ( MPI_Thread_Funneled /= it ) then
      ! the requested threading level cannot be asserted
      ! Notify the user
-     write(*,'(a)') '!!! Could not assert funneled threads'
+     write(0,'(a)') '!!! Could not assert funneled threads'
   end if
 #else
   call MPI_Init( MPIerror )
@@ -94,6 +104,9 @@ subroutine tbt_init()
 #endif
   
   call parallel_init()
+
+  ! Initialize the output
+  call init_output(Node == 0)
 
 #ifdef MPI
   if (.not. fdf_parallel()) then
@@ -121,6 +134,22 @@ subroutine tbt_init()
 !$    it = omp_get_num_threads()
 !$    write(*,'(a,i0,a)') '* Running ',it,' OpenMP threads.'
 !$    write(*,'(a,i0,a)') '* Running ',Nodes*it,' processes.'
+!$    it = omp_get_proc_bind()
+!$    select case ( it )
+!$    case ( OMP_PROC_BIND_FALSE ) 
+!$    write(*,'(a)') '* OpenMP threads NOT bound (please bind threads!)'
+!$    case ( OMP_PROC_BIND_TRUE ) 
+!$    write(*,'(a)') '* OpenMP threads bound'
+!$    case ( OMP_PROC_BIND_MASTER ) 
+!$    write(*,'(a)') '* OpenMP threads bound (master)'
+!$    case ( OMP_PROC_BIND_CLOSE ) 
+!$    write(*,'(a)') '* OpenMP threads bound (close)'
+!$    case ( OMP_PROC_BIND_SPREAD ) 
+!$    write(*,'(a)') '* OpenMP threads bound (spread)'
+!$    case default
+!$    write(*,'(a)') '* OpenMP threads bound (unknown)'
+!$    end select
+     
 !$    call omp_get_schedule(it,itmp)
 !$    select case ( it )
 !$    case ( OMP_SCHED_STATIC ) 
@@ -129,8 +158,8 @@ subroutine tbt_init()
 !$    write(*,'(a,i0)') '* OpenMP runtime schedule DYNAMIC, chunks ',itmp
 !$    if ( itmp == 1 ) then
 !$     ! this is the default scheduling, probably the user
-!$     ! have not set the value, predefine it to 32
-!$     itmp = 32
+!$     ! have not set the value, predefine it to 16
+!$     itmp = 16
 !$     write(*,'(a,i0)')'** OpenMP runtime schedule DYNAMIC, chunks ',itmp
 !$    end if
 !$    case ( OMP_SCHED_GUIDED ) 
@@ -212,6 +241,8 @@ subroutine tbt_init()
   call read_tbt_after_Elec(TSHS%nspin, TSHS%cell, TSHS%na_u, TSHS%lasto, &
        TSHS%xa, TSHS%no_u, kscell, kdispl)
 
+  call read_proj_options( save_DATA )
+
   ! Print options
   call print_tbt_options( TSHS%nspin )
 
@@ -235,9 +266,15 @@ subroutine tbt_init()
      ! initialize the electrode for Green's function calculation
      call init_Electrode_HS(Elecs(iEl))
 
-     call do_Green(Elecs(iEl), &
-          TSHS%cell,nkpnt,kpoint,kweight, &
-          Elecs_xa_Eps, .false. )
+     if ( Elecs(iEl)%is_gamma ) then
+       call do_Green(Elecs(iEl), &
+           TSHS%cell, 1, (/(/0._dp, 0._dp, 0._dp/)/), (/1._dp/), &
+           Elecs_xa_Eps, .false. )
+     else
+       call do_Green(Elecs(iEl), &
+           TSHS%cell,nkpnt,kpoint,kweight, &
+           Elecs_xa_Eps, .false. )
+     end if
      
      ! clean-up
      call delete(Elecs(iEl))
@@ -248,8 +285,8 @@ subroutine tbt_init()
 
   if ( stop_after_GS ) then
      if ( IONode ) then
-        write(*,'(a)')'tbtrans: Stopping program per user request.'
-        write(*,'(a)')'tbtrans: Done creating all GF files.'
+        write(*,'(a)')'tbt: Stopping program per user request.'
+        write(*,'(a)')'tbt: Done creating all GF files.'
      end if
 #ifdef MPI
      call MPI_Barrier(MPI_Comm_World,iEl)
@@ -275,7 +312,7 @@ subroutine tbt_init()
 
   if ( Node == 0 ) then
      itmp = nnzs(TSHS%sp) - nnzs(tmp_sp)
-     write(*,'(/,a,i0,/)')'tbtrans: Reducing matrix (H, S) &
+     write(*,'(/,a,i0,/)')'tbt: Reducing matrix (H, S) &
           &sparsity patterns by: ', itmp
   end if
 
@@ -292,7 +329,7 @@ subroutine tbt_init()
   ! Create the device region sparsity pattern
   call tbt_region_options( TSHS%sp, save_DATA )
 
-  call tbt_print_regions(N_Elec, Elecs)
+  call tbt_print_regions( TSHS%na_u, TSHS%lasto, N_Elec, Elecs)
 
   call tbt_print_kRegions( TSHS%cell )
 
@@ -329,10 +366,10 @@ subroutine tbt_init()
      if ( IONode ) then
         if ( N_eigen > 0 ) then
            if ( itmp /= N_eigen ) then
-              write(*,'(/,a)')'tbtrans: *** Correcting number of T eigenvalues...'
+              write(*,'(/,a)')'tbt: *** Correcting number of T eigenvalues...'
            end if
         else
-           write(*,'(/,a,i0)')'tbtrans: *** Maximizing number of T eigenvalues to ',itmp
+           write(*,'(/,a,i0)')'tbt: *** Maximizing number of T eigenvalues to ',itmp
         end if
      end if
      N_eigen = itmp

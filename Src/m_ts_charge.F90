@@ -165,8 +165,8 @@ contains
   ! it will currently only handle the full charge distribution, and
   ! not per k-point.
   subroutine ts_print_charges(N_Elec,Elecs,Qtot,dit, sp, &
-       nspin, n_nzs, DM, S, &
-       method)
+      nspin, n_nzs, DM, S, &
+      method)
     use parallel, only : IONode
     use m_ts_electype
 #ifdef MPI
@@ -176,9 +176,9 @@ contains
     use class_Sparsity
     use geom_helper, only : UCORB
 
-! **********************
-! * INPUT variables    *
-! **********************
+    ! **********************
+    ! * INPUT variables    *
+    ! **********************
     integer, intent(in) :: N_Elec
     type(Elec), intent(in) :: Elecs(N_Elec)
     ! The requested number of electrons in the simulation
@@ -192,14 +192,15 @@ contains
     real(dp), intent(in) :: DM(n_nzs,nspin), S(n_nzs)
     ! The method by which it should be printed out...
     integer, intent(in), optional :: method
-   
-! **********************
-! * LOCAL variables    *
-! **********************
+
+    ! **********************
+    ! * LOCAL variables    *
+    ! **********************
     integer :: i
     real(dp), allocatable :: Q(:,:)
     real(dp) :: sQtot
     integer :: ispin, lmethod
+    logical :: has_buffer
 
     ! Requested charge per spin if anti-ferromagnetic
     sQtot = Qtot / real(nspin,dp)
@@ -210,79 +211,90 @@ contains
     allocate(Q(0:2+N_Elec*2,nspin))
 
     call ts_get_charges(N_Elec,dit, sp, nspin, n_nzs, DM, S, Q = Q)
-         
+    has_buffer = sum(Q(1,:)) > 0._dp
+
     ! it will only be the IONode which will write out...
     if ( .not. IONode ) return
 
     if ( lmethod == TS_INFO_FULL ) then
-       write(*,'(/,a,f12.5)') 'transiesta: Charge distribution, target = ',Qtot
-       if ( nspin > 1 ) then
-          write(*,'(a,3(f12.5,tr1))') &
-               'Total charge                  [Q]  :', &
-               sum(Q(:,1)),sum(Q(:,2)),sum(Q)
-          if ( Q(1,1) > 0._dp .or. Q(1,2) > 0._dp ) then
-             write(*,'(a,2(f12.5,tr1))') &
-               'Buffer                        [B]  :',Q(1,1), Q(1,2)
-          end if
+      write(*,'(/,a,f12.5)') 'transiesta: Charge distribution, target = ',Qtot
+      if ( nspin > 1 ) then
+        write(*,'(a,3(f12.5,tr1))') &
+            'Total charge                  [Q]  :', &
+            sum(Q(:,1)),sum(Q(:,2)),sum(Q)
+        write(*,'(a,2(f12.5,tr1))') &
+            'Device                        [D]  :',Q(2,1), Q(2,2)
+        do i = 1 , N_Elec
+          write(*,'(a,t31,a,i0,a,2(f12.5,tr1))') &
+              trim(name(Elecs(i))),'[E',i,'] :', &
+              Q(3+(i-1)*2,1), Q(3+(i-1)*2,2)
+          write(*,'(a,t22,a,i0,a,2(f12.5,tr1))') &
+              trim(name(Elecs(i))),'/ device [C',i,'] :', &
+              Q(4+(i-1)*2,1), Q(4+(i-1)*2,2)
+        end do
+        write(*,'(a,2(f12.5,tr1),/)') &
+            'Other                         [O]  :',Q(0,1), Q(0,2)
+        if ( has_buffer ) then
           write(*,'(a,2(f12.5,tr1))') &
-               'Device                        [D]  :',Q(2,1), Q(2,2)
-          do i = 1 , N_Elec
-             write(*,'(a,t31,a,i0,a,2(f12.5,tr1))') &
-                  trim(name(Elecs(i))),'[E',i,'] :', &
-                  Q(3+(i-1)*2,1), Q(3+(i-1)*2,2)
-             write(*,'(a,t22,a,i0,a,2(f12.5,tr1))') &
-                  trim(name(Elecs(i))),'/ device [C',i,'] :', &
-                  Q(4+(i-1)*2,1), Q(4+(i-1)*2,2)
-          end do
-          write(*,'(a,2(f12.5,tr1),/)') &
-               'Other                         [O]  :',Q(0,1), Q(0,2)
-       else
+            'Buffer                        [B]  :',Q(1,1), Q(1,2)
+        end if
+      else
+        write(*,'(a,f12.5)') &
+            'Total charge                  [Q]  :', sum(Q(:,1))
+        write(*,'(a,f12.5)') &
+            'Device                        [D]  :',Q(2,1)
+        do i = 1 , N_Elec
+          write(*,'(a,t31,a,i0,a,f12.5)') &
+              trim(name(Elecs(i)))         ,'[E',i,'] :',Q(3+(i-1)*2,1)
+          write(*,'(a,t22,a,i0,a,f12.5)') &
+              trim(name(Elecs(i))),'/ device [C',i,'] :',Q(4+(i-1)*2,1)
+        end do
+        if ( has_buffer ) then
           write(*,'(a,f12.5)') &
-               'Total charge                  [Q]  :', sum(Q(:,1))
-          if ( Q(1,1) > 0._dp ) then
-             write(*,'(a,f12.5)') &
-               'Buffer                        [B]  :',Q(1,1)
-          end if
-          write(*,'(a,f12.5)') &
-               'Device                        [D]  :',Q(2,1)
-          do i = 1 , N_Elec
-             write(*,'(a,t31,a,i0,a,f12.5)') &
-               trim(name(Elecs(i)))         ,'[E',i,'] :',Q(3+(i-1)*2,1)
-             write(*,'(a,t22,a,i0,a,f12.5)') &
-               trim(name(Elecs(i))),'/ device [C',i,'] :',Q(4+(i-1)*2,1)
-          end do
-          write(*,'(a,f12.5,/)') &
-               'Other                         [O]  :',Q(0,1)
-       end if
+            'Buffer                        [B]  :',Q(1,1)
+        end if
+        write(*,'(a,f12.5,/)') &
+            'Other                         [O]  :',Q(0,1)
+      end if
 
     else if ( lmethod == TS_INFO_SCF ) then
 
-       ! We write out the information from the SCF cycle...
-       write(*,'(a,1x,a9)',advance='no') 'ts-q:','D'
-       do i = 1 , N_Elec
-          write(*,'(1x,a8,i0,1x,a8,i0)',advance='no') 'E',i,'C',i
-       end do
-       if ( nspin > 1 ) then
-          write(*,'(2(1x,a9))') 'dQ','dQtot'
-       else
-          write(*,'(1x,a9)') 'dQ'
-       end if
-       do ispin = 1 , nspin
-          write(*,'(a,1x,f9.3)',advance='no') 'ts-q:', Q(2,ispin)
-          do i = 1 , N_Elec
-             write(*,'(2(1x,f9.3))',advance='no') Q(3+(i-1)*2,ispin),Q(4+(i-1)*2,ispin)
-          end do
-          if ( ispin > 1 .and. ispin == nspin ) then
-             write(*,'(2(1x,es9.3e1))') sum(Q(:,ispin)) - sQtot,sum(Q) - Qtot
-          else
-             write(*,'(1x,es9.3e1)') sum(Q(:,ispin)) - sQtot
-          end if
-       end do
-       
+      ! We write out the information from the SCF cycle...
+      write(*,'(a,1x,a9)',advance='no') 'ts-q:','D'
+      do i = 1 , N_Elec
+        if ( i > 9 ) then
+          write(*,'(1x,a7,i2,1x,a7,i2)',advance='no') 'E',i,'C',i
+        else
+          write(*,'(1x,a8,i1,1x,a8,i1)',advance='no') 'E',i,'C',i
+        end if
+      end do
+      if ( has_buffer ) then
+        write(*,'(1x,a9)',advance='no') 'B'
+      end if
+      if ( nspin > 1 ) then
+        write(*,'(2(1x,a9))') 'dQ','dQtot'
+      else
+        write(*,'(1x,a9)') 'dQ'
+      end if
+      do ispin = 1 , nspin
+        write(*,'(a,1x,f9.3)',advance='no') 'ts-q:', Q(2,ispin)
+        do i = 1 , N_Elec
+          write(*,'(2(1x,f9.3))',advance='no') Q(3+(i-1)*2,ispin),Q(4+(i-1)*2,ispin)
+        end do
+        if ( has_buffer ) then
+          write(*,'(1x,f9.3)',advance='no') Q(1,ispin)
+        end if
+        if ( ispin > 1 .and. ispin == nspin ) then
+          write(*,'(2(1x,es9.3e1))') sum(Q(:,ispin)) - sQtot,sum(Q) - Qtot
+        else
+          write(*,'(1x,es9.3e1)') sum(Q(:,ispin)) - sQtot
+        end if
+      end do
+
     end if
-    
+
     deallocate(Q)
-    
+
   end subroutine ts_print_charges
 
   subroutine ts_qc(N_Elec,Elecs, &
@@ -411,7 +423,7 @@ contains
     if ( abs(Q(1)) < TS_RHOCORR_FERMI_TOLERANCE ) then
        converged = .true.
        if ( IONode ) &
-            write(*,'(a,e10.3)') 'transiesta: Fermi-level correction converged dQ: ',Q(1)
+            write(*,'(a,e10.3)') 'ts-qc: Fermi-level correction converged dQ: ',Q(1)
        return
     end if
 
@@ -435,7 +447,7 @@ contains
     ! a positive number (for additional charge)
     Efermi = Efermi - Q(2)
     if ( IONode ) then
-       write(*,'(a,e11.4,a)') 'transiesta: constant dEf = ',-Q(2)/eV,' eV'
+       write(*,'(a,e11.4,a)') 'ts-qc-iscf: first dEf = ',-Q(2)/eV,' eV'
     end if
 
   end subroutine ts_qc_Fermi
@@ -454,10 +466,11 @@ contains
     real(dp), intent(inout) :: Ef
 
     integer :: iu, ioerr, i
-    real(dp) :: Ef_min, Ef_max
-    real(dp), allocatable :: cur(:,:), Q_Ef(:,:,:), first_Q(:)
+    real(dp) :: Ef_neg, Ef_pos, cur(2)
+    real(dp), allocatable :: Q_Ef(:,:,:), first_Q(:)
     integer :: N, max_itt, tmp
     character(len=2) :: char2
+    integer :: all_sign
 
 #ifdef MPI
     integer :: MPIerror
@@ -479,7 +492,7 @@ contains
        end if
        rewind(iu)
        
-       ! Read in the size
+       ! Figure out number of fermi iterations
        do while ( ioerr /= -1 ) 
           N = N + 1
           read(iu,*) ! # TSiscf line
@@ -495,9 +508,13 @@ contains
        ! we cannot do anything...
        if ( N > 1 ) then
 
+       ! First calculated charge for every iteration
        allocate(first_Q(N))
-       allocate(cur(2,max_itt))
+       ! Q_Ef(iteration, [Ef, Q], [negative(Q), positive(Q)])
        allocate(Q_Ef(N,2,2))
+       Q_Ef(:,1,:) = 0._dp
+       Q_Ef(:,2,1) = huge(1._dp)
+       Q_Ef(:,2,2) = -huge(1._dp)
 
        ! Rewind and read data
        rewind(iu)
@@ -508,24 +525,37 @@ contains
           N = N + 1
           read(iu,*) ! # TSiscf line
           read(iu,'(a2,i15)') char2,tmp
+
           do i = 1 , tmp
-             read(iu,'(2e16.6)') cur(:,i)
-             ! Gather the converged charge... (before interp)
-             if ( i == 1 ) first_Q(N) = cur(2,i)
-             cur(1,i) = cur(1,i) * eV
+             read(iu,'(2(tr1,e20.10))') cur(:)
+             
+             ! Get first charge (initial charge)
+             if ( i == 1 ) first_Q(N) = cur(2)
+             ! Convert to Ry
+             cur(1) = cur(1) * eV
+
+             ! Assign min Q
+             if ( Q_Ef(N,2,1) > cur(2) ) then
+                Q_Ef(N,:,1) = cur(:)
+             end if
+             ! Assign max Q
+             if ( Q_Ef(N,2,2) < cur(2) ) then
+                Q_Ef(N,:,2) = cur(:)
+             end if
+             
           end do
-          i = minloc(cur(2,1:tmp),dim=1)
-          Q_Ef(N,:,1) = cur(:,i)
-          i = maxloc(cur(2,1:tmp),dim=1)
-          Q_Ef(N,:,2) = cur(:,i)
+
           read(iu,*,iostat=ioerr) ! empty line
        end do
-       deallocate(cur)
 
        ! We now have all the peaks calculated previously...
-       ! Interpolate!
-       call interp_spline(N,Q_Ef(1:N,2,1),Q_Ef(1:N,1,1),0._dp,Ef_min)
-       call interp_spline(N,Q_Ef(1:N,2,2),Q_Ef(1:N,1,2),0._dp,Ef_max)
+       
+       ! Interpolate the new fermi level by using the negative charge
+       call interp_spline(N,Q_Ef(1:N,2,1),Q_Ef(1:N,1,1),0._dp,Ef_neg)
+       ! Interpolate the new fermi level by using the positive charge
+       call interp_spline(N,Q_Ef(1:N,2,2),Q_Ef(1:N,1,2),0._dp,Ef_pos)
+
+       all_sign = 0
 
        ! We first discard the interpolation that is 
        ! clearly wrong. I.e. the one that decides the wrong
@@ -534,41 +564,54 @@ contains
        ! has the same tendency. I.e. if we always have excess charge
        ! then we should use this scheme.
        if ( all(first_Q > 0._dp) ) then
+          all_sign = 1
           ! We always have too much charge
           ! If their guesses are clearly wrong, we simply
           ! use the interpolated fermi-level, we need
           ! more iterations to clear out this mess
-          if ( Ef_max - Ef > 0._dp ) Ef_max = Ef
-          if ( Ef_min - Ef > 0._dp ) Ef_min = Ef
+          if ( Ef_pos > Ef ) Ef_pos = Ef
        else if ( all(first_Q < 0._dp) ) then
-          if ( Ef_max - Ef < 0._dp ) Ef_max = Ef
-          if ( Ef_min - Ef < 0._dp ) Ef_min = Ef
-       end if
-
-       ! we take the minimum deviating one... :)
-       ! We do not tempt our souls to the Fermi-god...
-       if ( abs(Ef_min - Ef) > abs(Ef_max - Ef) ) then
-          Ef_min = Ef
-          Ef = Ef + TS_RHOCORR_FACTOR * ( Ef_max - Ef )
-       else
-          Ef_max = Ef
-          Ef = Ef + TS_RHOCORR_FACTOR * ( Ef_min - Ef )
-          Ef_min = Ef_max
-       end if
-       ! Truncate to the maximum allowed difference
-       if ( ts_qc_Fermi_truncate(Ef_min,TS_RHOCORR_FERMI_MAX,Ef) ) then
-          ! do nothing
-       end if
-
-       ! If we change the fermi-level, just print-out to the user
-       if ( abs(Ef_min - Ef) > 0.000001_dp ) then
-          write(*,'(a,e11.4,a)') 'transiesta: Consecutive spline. dEf = ', &
-               (Ef-Ef_min)/eV, ' eV'
+          all_sign = -1
+          if ( Ef_neg < Ef ) Ef_neg = Ef
        end if
 
        deallocate(Q_Ef,first_Q)
 
+       ! we take the minimum deviating one... :)
+       ! We do not tempt our souls to the Fermi-god...
+       select case ( all_sign )
+       case ( 0 ) 
+          if ( abs(Ef_neg - Ef) > abs(Ef_pos - Ef) ) then
+             Ef_neg = Ef
+             Ef = Ef + TS_RHOCORR_FACTOR * ( Ef_pos - Ef )
+          else
+             Ef_pos = Ef
+             Ef = Ef + TS_RHOCORR_FACTOR * ( Ef_neg - Ef )
+             Ef_neg = Ef_pos
+          end if
+       case ( 1 ) ! all first ones are positive
+                  ! i.e. we always underestimate
+          Ef_neg = Ef
+          Ef = Ef + TS_RHOCORR_FACTOR * ( Ef_pos - Ef )
+       case ( -1 ) ! all first ones are negative
+                  ! i.e. we always underestimate
+          Ef_pos = Ef
+          Ef = Ef + TS_RHOCORR_FACTOR * ( Ef_neg - Ef )
+          Ef_neg = Ef_pos
+       end select
+       
+       ! Truncate to the maximum allowed difference
+       if ( ts_qc_Fermi_truncate(Ef_neg,TS_RHOCORR_FERMI_MAX,Ef) ) then
+          ! do nothing
        end if
+
+       ! If we change the fermi-level, just print-out to the user
+       if ( abs(Ef_neg - Ef) > 1.e-6_dp*eV ) then
+          write(*,'(a,e11.4,a)') 'ts-qc-scf: cubic spline dEf = ', &
+               (Ef-Ef_neg)/eV, ' eV'
+       end if
+       
+       end if ! N > 1
 
        call io_close(iu)
 

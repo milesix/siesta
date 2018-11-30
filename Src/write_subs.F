@@ -296,9 +296,7 @@
       use units
       use m_energies 
       use m_spin
-#ifdef TRANSIESTA
       use m_ts_global_vars, only: TSinit, TSrun
-#endif /* TRANSIESTA */
       implicit none
 
       integer, intent(in) :: iscf
@@ -306,21 +304,26 @@
       real(dp), intent(in) :: dHmax ! Max. change in H elements
 
       character(len=64) :: fmt
-      character(len=6) :: scf_name
-#ifndef TRANSIESTA
-      ! Enable _one_ block to reuse as much as possible
-      logical, parameter :: TSinit = .false.
-#endif
+      character(len=6)  :: scf_name
+      character(len=17) :: enl_str, eso_str
 
       logical              :: first_scf_step
       integer              :: i
 
       scf_name = 'scf'
-#ifdef TRANSIESTA
       if ( TSrun ) then
          scf_name = 'ts-scf'
       end if
-#endif
+
+      if (spin%SO .and. (.not. split_sr_so)) then
+         Enl = Enl + Eso 
+         Eso = 0.0_dp
+         enl_str = 'siesta: Enl(+so)='
+         eso_str = 'siesta: Eso(nil)='
+      else
+         enl_str = 'siesta: Enl     ='
+         eso_str = 'siesta: Eso     ='
+      endif
       
       first_scf_step = (iscf == 1)
       ! Only print out full decomposition at very beginning and end.
@@ -331,15 +334,13 @@
      .     'siesta: Eions   =', Eions/eV,
      .     'siesta: Ena     =', Ena/eV,
      .     'siesta: Ekin    =', Ekin/eV,
-     .     'siesta: Enl     =', Enl/eV,
-     .     'siesta: Eso     =', Eso/eV,
+     .      enl_str, Enl/eV,
+     .      eso_str, Eso/eV,
      .     'siesta: Eldau   =', Eldau/eV,
      .     'siesta: DEna    =', DEna/eV,
      .     'siesta: DUscf   =', DUscf/eV,
      .     'siesta: DUext   =', DUext/eV,
-#ifdef TRANSIESTA
      .     'siesta: Enegf   =', DE_NEGF/eV,
-#endif
      .     'siesta: Exc     =', Exc/eV,
      .     'siesta: eta*DQ  =', Ecorrec/eV,
      .     'siesta: Emadel  =', Emad/eV,
@@ -382,11 +383,9 @@
           call cmlAddProperty(xf=mainXML, value=DUext/eV, 
      .         units='siestaUnits:eV', 
      .         dictref='siesta:DUext', fmt='r6')
-#ifdef TRANSIESTA
           call cmlAddProperty(xf=mainXML, value=DE_NEGF/eV, 
      .         units='siestaUnits:eV', 
      .         dictref='siesta:Enegf', fmt='r6')
-#endif
           call cmlAddProperty(xf=mainXML, value=Exc/eV, 
      .         units='siestaUnits:eV', 
      .         dictref='siesta:Exc', fmt='r6')
@@ -508,17 +507,22 @@
         
       else !final
 !       Print out additional information in finalization.
+
+        if (spin%SO .and. (.not. split_sr_so)) then
+           eso_str = '     Eso(nil) ='
+        else
+           eso_str = '      Eso     ='
+        endif
+
         write(6,'(/,a)') 'siesta: Final energy (eV):'
         write(6,'(a,a15,f15.6)')
      .    'siesta: ', 'Band Struct. =', Ebs/eV,
      .    'siesta: ',      'Kinetic =', Ekin/eV,
      .    'siesta: ',      'Hartree =', Uscf/eV,
      .    'siesta: ',      'Eldau   =', Eldau/eV,
-     .    'siesta: ',      'Eso     =', Eso/eV,
+     .    'siesta: ',      eso_str    , Eso/eV,
      .    'siesta: ',   'Ext. field =', DUext/eV,
-#ifdef TRANSIESTA
      .    'siesta: ',      'Enegf   =', DE_NEGF/eV,
-#endif
      .    'siesta: ',  'Exch.-corr. =', Exc/eV,
      .    'siesta: ', 'Ion-electron =', (Enascf+Enl+DUscf-Uscf-Uatm)/eV,
      .    'siesta: ',      'Ion-ion =', (Ena+Uatm-Enaatm-Eions)/eV,
@@ -552,11 +556,9 @@
           call cmlAddProperty(xf=mainXML, value=DUext/eV, 
      .         units='siestaUnits:eV', 
      .         dictref='siesta:DUext', fmt='r7')
-#ifdef TRANSIESTA
           call cmlAddProperty(xf=mainXML, value=DE_NEGF/eV, 
      .         units='siestaUnits:eV', 
      .         dictref='siesta:Enegf', fmt='r7')
-#endif
           call cmlAddProperty(xf=mainXML, value=Exc/eV,   
      .         units='siestaUnits:eV', 
      .         dictref='siesta:Exc', fmt='r7')

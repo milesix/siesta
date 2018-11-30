@@ -14,7 +14,7 @@ MODULE siesta_options
   implicit none
   
   integer, parameter, private :: dp = selected_real_kind(10,100)
-  
+
   PUBLIC
   save
 
@@ -27,7 +27,6 @@ MODULE siesta_options
   ! -- pre 4.0 coordinate output logic -- to be implemented
   logical :: compat_pre_v4_dynamics      ! General switch
 
-  
   logical :: mix_scf_first ! Mix first SCF step?
   logical :: mix_charge    ! New: mix fourier components of rho
   logical :: mixH          ! Mix H instead of DM
@@ -35,14 +34,13 @@ MODULE siesta_options
   logical :: chebef        ! Compute the chemical potential in ordern?
   logical :: dumpcharge    ! Write electron density?
   logical :: fire_mix      ! SCF mixing with FIRE method
-  logical :: fixauxcell    ! Keep the auxiliary supercell fixed?
   logical :: fixspin       ! Keep the total spin fixed?
   logical :: init_anti_ferro ! Antiferro spin ordering in initdm?
   logical :: initdmaux     ! Re-initialize DM when auxiliary supercell changes?        
   logical :: allow_dm_reuse! Allow re-use of the previous geometry DM ? (with possible extrapolation)
   logical :: allow_dm_extrapolation ! Allow the extrapolation of previous geometries' DM ?
   logical :: change_kgrid_in_md ! Allow k-point grid to change in MD calculations
-  logical :: naiveauxcell  ! Use naive recipe for auxiliary supercell?
+  logical :: use_aux_cell  ! Force the use of the auxiliary cell
   logical :: negl          ! Neglect hamiltonian matrix elements without overlap?
   logical :: noeta         ! Use computed chemical potential instead of eta in ordern?
   logical :: new_diagk     ! Use new diagk routine with file storage of eigenvectors?
@@ -74,6 +72,7 @@ MODULE siesta_options
   logical :: writb         ! Write band eigenvalues?
   logical :: writec        ! Write atomic coordinates at every geometry step?
   logical :: write_coop    ! Write information for COOP/COHP analysis ?
+  logical :: save_ORB_INDX ! Write orbital information to ORB_INDX file ?
 
   ! Create graphviz information to visualize connectivity graph
   integer :: write_GRAPHVIZ
@@ -109,9 +108,8 @@ MODULE siesta_options
   logical :: writic        ! Write the initial atomic ccordinates?
   logical :: varcel        ! Change unit cell during relaxation or dynamics?
   logical :: do_pdos       ! Compute the projected density of states?
-#ifdef TRANSIESTA
+  logical :: do_ldos       ! Compute the local density of states?
   logical :: write_tshs_history ! Write the MD track of Hamiltonian and overlap matrices in transiesta format
-#endif
   logical :: write_hs_history ! Write the MD track of Hamiltonian and overlap matrices
   logical :: writedm       ! Write file with density matrix?
   logical :: write_dm_at_end_of_cycle ! Write DM at end of SCF cycle? (converged or not)
@@ -135,7 +133,10 @@ MODULE siesta_options
 
   logical :: atmonly       ! Set up pseudoatom information only?
   logical :: harrisfun     ! Use Harris functional?
-  logical :: muldeb        ! Write Mulliken polpulations at every SCF step?
+  logical :: muldeb        ! Write Mulliken populations at every SCF step?
+  logical :: spndeb        ! Write spin-polarization information at every SCF step?
+  logical :: orbmoms       ! Write orbital moments?
+  logical :: split_sr_so   ! Cosmetic: split full lj NL energies into SR and SO parts
 
   ! Convergence options
   logical :: converge_FreeE   ! free Energy conv. to finish SCF iteration?
@@ -238,12 +239,12 @@ MODULE siesta_options
   real(dp) :: tempinit      ! Initial ionic temperature read in redata
   real(dp) :: threshold     ! Min. size of arrays printed by alloc_report
   real(dp) :: tp            ! Target pressure. Read in redata. Used in dynamics routines
-  real(dp) :: ts            ! Total spin read from redata but not used
+  real(dp) :: total_spin    ! Total spin used in spin-polarized calculations
   real(dp) :: tt            ! Target temperature. Read in redata. Used in dynamics rout.
   real(dp) :: wmix          ! Mixing weight for DM in SCF iteration
-  real(dp) :: wmixkick       ! Mixing weight for DM in special 'kick' SCF steps
+  real(dp) :: wmixkick      ! Mixing weight for DM in special 'kick' SCF steps
 
-  character(len=150) :: sname   ! System name, used to initialise read
+  character(len=164) :: sname   ! System name, used to initialise read
 
   integer,  parameter :: SOLVE_DIAGON = 0
   integer,  parameter :: SOLVE_ORDERN = 1
@@ -257,5 +258,5 @@ MODULE siesta_options
   ! LUA-handle
   type(luaState) :: LUA
 #endif
-  
+
 END MODULE siesta_options

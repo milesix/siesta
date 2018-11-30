@@ -28,7 +28,7 @@
 #          for a serial run.
 #
 #          It is also possible to have separate working directories,
-#          by using the a "label". For example:
+#          by using a "label". For example:
 #
 #          make label=finer 
 #     
@@ -40,52 +40,46 @@
 # Default target
 default: all
 
-label=work
+label = work
 
-tests = ag anneal-cont ar2_vdw \
-	batio3 benzene bessel \
-	born born_spin \
-	carbon_nanoscroll \
-	ch4 chargeconf-h2o constant_volume \
-	chess \
-	dipole_correction \
-	fe fe_broyden fe_clust_noncollinear fe_clust_noncollinear-gga \
-	fe_cohp fen fe_noncol_kp \
-	fire_benzene floating force_2 force_constants \
-	gate_G_charge gate_G_hartree \
-	ge111 graphite_c6 graphite_vdw_df \
-	h2_bessel \
-	h2o h2o_2 h2o_basis h2o_dipole h2o_dipole2 h2o_dos \
-	h2o_findp_bug h2o_op_broyden h2o-pop h2o_radialgrid \
-	h2o_reparam h2o-rhog-mixing h2oZ \
-	h2o_filteret_basis h2o_am05 \
-	h_chain \
-	md_anneal md_nose md_npr md_pr md_verlet \
-	mgc-force mgco3 \
-	n_chain \
-	OMM_h2o OMM_si \
-	oxyn \
-	pb_bulk pb_filter_cutoff pb_filter_tol \
-	scfmix \
-	si001 si111-spinpol \
-	si2x1h si2x1h-dipole si2x1h-dipole-gcs \
-	si64 si64_coop \
-	si_bandpoints si_coop si_fatbands \
-	sic-slab \
-	sih sih_fire sih_op_broyden \
-	si-optical si_pdos_kgrid \
-	sinw sinw_2 \
-	var_cell \
-	wannier \
-	zmatrix \
+tests = 32_h2o ag anneal-cont ar2_vdw batio3 benzene bessel \
+	born born_spin carbon_nanoscroll ch4 chargeconf-h2o \
+	constant_volume dipole_correction fe fe_broyden \
+	fe_clust_noncollinear fe_clust_noncollinear-gga fe_cohp \
+	fen fe_noncol_kp fire_benzene floating \
+	force_2 force_constants gate_G_charge gate_G_hartree ge111 \
+	ge_fatbands_so	graphite_c6 graphite_c6_full graphite_vdw_df \
+	h2_bessel h2o h2o_2 h2o_am05 h2o_bands h2o_bands_nc \
+	h2o_bands_polarized h2o_basis h2o_coop h2o_dipole h2o_dipole2 \
+	h2o_dos h2o_filteret_basis h2o_findp_bug h2o_netcdf h2o_op_broyden \
+	h2o_orderN h2o-pop h2o_radialgrid h2o_reparam h2o-rhog-mixing h2oZ \
+	h3po4_1 h3po4_2 h3po4_3 h_chain h_chain2 md_anneal md-anneal-cont \
+	md-cont md-cont-no-restart-file md_nose md_npr md_pr md-single-run \
+	md_verlet mgc-force mgco3 mix_broyden mix_linear mix_pulay mno_ldau \
+	nanotube-c-5-0 n_chain OMM_h2o OMM_si oxyn partial pb_bulk pb_bulk_1000 \
+	pb_filter_cutoff pb_filter_tol pd_ice ptcda ptcda-au scfmix \
+	si001 si001-diags si001-ldos si111-spinpol si2x1h si2x1h-dipole \
+	si2x1h-dipole-gcs si2x1h-quench si64 si64_coop si_bandpoints \
+	si_coop	sic-slab si_fatbands sih sih_fire sih-mrrr sih_op_broyden \
+	sinw sinw_2 si-optical si_pdos_gamma si_pdos_kgrid \
+	var_cell wannier zmatrix \
 	TDDFT_h2o TDDFT_Ge
 
-# These tests are extremely time consuming and
-# should only be runned sometimes
-# Currently they may be runned individually.
-#	SOC_FePt_xx SOC_FePt_xz SOC_FePt_zy SOC_FePt_zz
-tests_soc  = SOC_Pt2_xx SOC_Pt2_xz SOC_Pt2_zy SOC_Pt2_zz
-tests_soc += SOC_FePt_xx SOC_FePt_xz SOC_FePt_zy SOC_FePt_zz
+# Tests that won't work with more than a few processors
+tests_mpi_max2 = h2_bessel h_chain h_chain2 \
+	born born_spin \
+	force_2 md_anneal n_chain
+
+# Tests that have been disabled, currently
+#  chess (requires CheSS)
+#  h2o_4 (ON, does not work in parallel)
+#  ipi-test (requires ipi)
+#  si64-pexsi
+#  sih-pexsi
+#  sih-pexsi-spin
+
+# SOC tests
+tests_soc = ge_soc_bands Pt_dimer_soc FePt_soc
 
 # Tests only applicable for LUA
 tests_lua  = lua_si111 lua_h2o
@@ -103,6 +97,12 @@ tests: $(tests)
 tests-soc: $(tests_soc)
 tests-lua: $(tests_lua)
 tests-flos: $(tests_flos)
+tests-proc-limit: $(tests_mpi_max2)
+
+.NOTPARALLEL: tests-ts
+.PHONY: tests-ts
+tests-ts:
+	(cd TranSiesta-TBTrans ; MPI="$(MPI)" bash ./run_tests.sh)
 
 # Ensure that tests may be called individually
 # (and that they are run, PHONY is required)

@@ -36,9 +36,9 @@ contains
     use m_ts_gf,        only : do_Green, do_Green_Fermi
     use m_ts_electrode, only : init_Electrode_HS
     
-    use m_ts_kpoints, only : setup_ts_kpoint_grid
-    use m_ts_kpoints, only : ts_nkpnt, ts_kpoint, ts_kweight
-    use m_ts_kpoints, only : ts_kscell, ts_kdispl
+    use kpoint_scf_m, only : kpoint_scf
+    use ts_kpoint_scf_m, only : setup_ts_kpoint_scf
+    use ts_kpoint_scf_m, only : ts_kpoint_scf, ts_Gamma_scf
     use m_ts_cctype
     use m_ts_electype
     use m_ts_options ! Just everything (easier)
@@ -68,7 +68,6 @@ contains
     logical :: neglect_conn
     integer :: i, ia
     integer :: nC, nTS
-    real(dp) :: mean_kT
 
     if ( isolve .eq. SOLVE_TRANSI ) then
        TSmode = .true.
@@ -91,17 +90,17 @@ contains
     call read_ts_elec( ucell, na_u, xa, lasto )
 
     ! Read in the k-points
-    call setup_ts_kpoint_grid( ucell )
+    call setup_ts_kpoint_scf( ucell, kpoint_scf )
 
     ! Read after electrode stuff
     call read_ts_after_Elec( ucell, nspin, na_u, xa, lasto, &
-         ts_kscell, ts_kdispl)
+        ts_kpoint_scf%k_cell, ts_kpoint_scf%k_displ)
 
     ! Print the options
     call print_ts_options( ucell )
 
     ! Print all warnings
-    call print_ts_warnings( ucell, na_u, xa, Nmove )
+    call print_ts_warnings( ts_Gamma_scf, ucell, na_u, xa, Nmove )
 
     ! If we actually have a transiesta run we need to process accordingly!
     if ( .not. TSmode ) return
@@ -111,13 +110,6 @@ contains
 
     ! Print out the contour blocks etc. for transiesta
     call print_ts_blocks( na_u, xa )
-
-
-    ! Check the electrodes (calculate mean temperature)
-    mean_kT = 0._dp
-    do i = 1 , N_Elec
-       mean_kT = mean_kT + Elecs(i)%mu%kT / N_Elec
-    end do
 
     ! Check that an eventual CGrun will fix all electrodes and 
     ! buffer atoms
@@ -187,16 +179,30 @@ contains
           ! initialize the electrode for Green function calculation
           call init_Electrode_HS(Elecs(i))
 
-          call do_Green(Elecs(i), &
-               ucell,ts_nkpnt,ts_kpoint,ts_kweight, &
-               Elecs_xa_Eps, .false. )
+          ! Whether we can do with a single k-point (say a chain)
+          if ( Elecs(i)%is_gamma ) then
+            call do_Green(Elecs(i), &
+                ucell,1,(/(/0._dp, 0._dp, 0._dp/)/),(/1._dp/), &
+                Elecs_xa_Eps, .false. )
+            
+            if ( TS_RHOCORR_METHOD == TS_RHOCORR_FERMI ) then
+              call do_Green_Fermi(Elecs(i), &
+                  ucell,1,(/(/0._dp, 0._dp, 0._dp/)/),(/1._dp/), &
+                  Elecs_xa_Eps, .false. )
+            end if
+            
+          else
+            call do_Green(Elecs(i), &
+                ucell,ts_kpoint_scf%N,ts_kpoint_scf%k,ts_kpoint_scf%w, &
+                Elecs_xa_Eps, .false. )
 
-          if ( TS_RHOCORR_METHOD == TS_RHOCORR_FERMI ) then
-             
-             call do_Green_Fermi(mean_kT, Elecs(i), &
-                  ucell,ts_nkpnt,ts_kpoint,ts_kweight, &
+            if ( TS_RHOCORR_METHOD == TS_RHOCORR_FERMI ) then
+
+              call do_Green_Fermi(Elecs(i), &
+                  ucell,ts_kpoint_scf%N,ts_kpoint_scf%k,ts_kpoint_scf%w, &
                   Elecs_xa_Eps, .false. )
 
+            end if
           end if
           
           ! clean-up

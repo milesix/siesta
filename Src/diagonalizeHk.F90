@@ -84,6 +84,7 @@ subroutine diagonalizeHk( ispin, index_manifold )
 ! ------------------------------------------------------------------------------
 ! Used module variables
   use precision,          only: dp           ! Real double precision type 
+  use densematrix,        only: allocDenseMatrix, resetDenseMatrix
   use densematrix,        only: Haux         ! Hamiltonian matrix in dense form
   use densematrix,        only: Saux         ! Overlap matrix in dense form
   use densematrix,        only: psi          ! Coefficients of the wave function
@@ -116,8 +117,6 @@ subroutine diagonalizeHk( ispin, index_manifold )
   use sparse_matrices,    only: H            ! Hamiltonian matrix in sparse form
   use sparse_matrices,    only: S            ! Overlap matrix in sparse form
   use sparse_matrices,    only: xijo         ! Vectors between orbital centers
-  use sparse_matrices,    only: tight_binding_param ! Parameters of the 
-                                             !   tight-binding Hamiltonian
   use units,              only: eV           ! Conversion factor from Ry to eV
   use m_switch_local_projection, only: numkpoints   ! Total number of k-points
                                              !   for which the overlap of the
@@ -201,11 +200,7 @@ subroutine diagonalizeHk( ispin, index_manifold )
 ! These matrices are defined in the module dense matrix
   nhs  = 2 * no_u * no_l
   npsi = 2 * no_u * no_l
-
-  nullify( Saux, Haux, psi )
-  call re_alloc( Haux,     1, nhs,   name='Haux',    routine='diagonalizeHk' )
-  call re_alloc( Saux,     1, nhs,   name='Saux',    routine='diagonalizeHk' )
-  call re_alloc( psi,      1, npsi,  name='psi',     routine='diagonalizeHk' )
+  call allocDenseMatrix(nhs, nhs, npsi)
 
 ! Allocate memory related with the eigenvalues of the Hamiltonian (epsilon)
 ! and with a local variable where the coefficients of the eigenvector at the
@@ -292,9 +287,7 @@ kpoints:                                                             &
     
   enddo kpoints
 
-  call de_alloc( Haux,    name='Haux',         routine='diagonalizeHk' )
-  call de_alloc( Saux,    name='Saux',         routine='diagonalizeHk' )
-  call de_alloc( psi,     name='psi',          routine='diagonalizeHk' )
+  call resetDenseMatrix()
   call de_alloc( epsilon, name='epsilon',      routine='diagonalizeHk' )
 
   call timer('diagonalizeHk',2)

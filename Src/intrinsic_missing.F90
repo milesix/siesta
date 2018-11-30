@@ -28,6 +28,7 @@
 !           for an integer array. However, this is also the most stringent
 !           case as there has not to be any margin of error (EPS)
 !  - SORT_QUICK : allows sorting of an array (using the quick-sort algorithm)
+!  - INDEX_SORT_HEAP : allows returning an index array that sorts the input array (using the heap-sort algorithm)
 !  - UNIQ : returns the unique integer values of an array
 !  - UNIQC: returns the number of unique integer vaules of an array
 !  - SFIND: will return the index of an integer in a sorted array (by logical
@@ -77,6 +78,10 @@ module intrinsic_missing
 ! Pure functions.. (i.e. callable in interface declarations..)
   public :: VNORM
   public :: FSORT, SORT, SORT_QUICK
+  public :: INDEX_SORT_HEAP
+  interface INDEX_SORT_HEAP
+    module procedure INDEX_SORT_HEAP_I4
+  end interface INDEX_SORT_HEAP
   public :: UNIQ, UNIQC
   public :: SFIND
   interface SFIND
@@ -226,12 +231,7 @@ contains
   elemental function MODP(a,p)
     integer, intent(in) :: a,p
     integer :: MODP
-    if ( a > p ) then
-       MODP = MOD(a,p)
-       if ( MODP == 0 ) MODP = p
-    else
-       MODP = a
-    end if
+    MODP = MOD(a-1,p) + 1
   end function MODP
 
 ! Function to return the unique COUNT of an integer array.
@@ -873,6 +873,98 @@ contains
     end subroutine insert_back
 
   end subroutine SORT
+
+  subroutine index_sort_heap_i4( N, A, IDX )
+! *******************************************************************
+! SUBROUTINE index_sort_heap_i4( N, A, IDX )
+! Makes an index table of increasing array A, with size N
+! using the heapsort algorithm.
+! Written by J.M.Soler, May.2015
+! Re-written by N.R.Papior, Mar.2018, taken from ORDIX (sorting.f)
+! *************** INPUT *********************************************
+! INTEGER N     : Dimensions of array A
+! integer A(N)  : Array with the values to be ordered
+! *************** OUTPUT ********************************************
+! INTEGER IDX(N)  : Array which gives the increasing order of A(I):
+!                    A(IDX(I)) .LE. A(IDX(I+1))
+! *************** ALGORITHM *****************************************
+! A hierarchical 'family tree' (heap) is generated, with each parent
+! k older than its two children (2*k and 2*k+1). Persons k with k>np
+! are children (np = highest power of 2 smaller than n). Persons with
+! np/2<k<=np are parents (but only those with k<=n/2 have actually
+! one or two children). Persons np/4<k<=np/2 are grandparents, etc.
+! Then, the person with k=1 (the oldest) is removed and the tree is
+! reconstructed. This is iterated until all members are picked.
+! Ref: W.H.Press et al. Numerical Recipes, Cambridge Univ. Press.
+! *******************************************************************
+    
+    integer, intent(in) :: N      ! Dimensions of array x
+    integer, intent(in) :: A(n)   ! Array with the values to be ordered
+                                  ! will order against the first element (m)
+    integer, intent(inout) :: idx(n) ! Increasing order of A(:)
+    
+    integer:: k, nFamily, parent
+    
+    ! Construct the heap (family tree)
+    idx = (/(k,k=1,n)/)            ! initial array order, to be modified
+    
+    
+    ! Swap to create the actual parent tree
+    nFamily = n                     ! number of persons in the family tree
+    do parent = n/2,1,-1            ! sift 'parents' down the tree
+      call siftDown(parent)         ! siftDown inherits age and indx arrays
+    end do
+
+    ! Reduce the tree size, retiring its succesive patriarchs (first element)
+    do nFamily = n-1,1,-1           ! nFamily is the new size of the tree
+      call swap( idx(1), idx(nFamily+1) ) ! swap patriarch and youngest child
+      call siftDown(1)              ! now recolocate child in tree
+    end do
+    
+  contains
+    
+    subroutine siftDown( person )   ! place person in family tree
+      integer, intent(in) :: person
+      
+      ! Inherited from ordix: age(:), ageTol, idx(:), nFamily
+      integer:: child, sw, parent
+      
+      ! initialize
+      parent = person                    ! assume person is a parent
+      child = 2 * parent                 ! first child of parent
+      sw = parent                        ! sorted swap child
+      do while ( child <= nFamily )      ! iterate the sift-down process
+        ! check current child
+        if ( A(idx(sw)) < A(idx(child)) ) then
+          sw = child
+        end if
+        ! Check neighbouring child
+        if ( child < nFamily ) then
+          if ( A(idx(sw)) < A(idx(child+1)) ) then
+            sw = child + 1
+          end if
+        end if
+        if ( sw == parent ) then
+          exit ! break
+        else
+          call swap( idx(parent) , idx(sw) )
+          ! update for next sift
+          parent = sw
+          child = sw * 2
+        end if
+      end do
+      
+    end subroutine siftDown
+    
+    subroutine swap(i,j) ! exchange integers i and j
+      integer:: i,j,k
+      k = i
+      i = j
+      j = k
+    end subroutine swap
+    
+  end subroutine index_sort_heap_i4
+
   
   recursive pure subroutine sort_quick(n, array)
     integer, intent(in) :: n
@@ -1065,9 +1157,9 @@ contains
     complex(dp), intent(in) :: vec(:)
     real(dp) :: norm
     integer :: i
-    norm = dconjg(vec(1)) * vec(1)
+    norm = conjg(vec(1)) * vec(1)
     do i = 2 , ubound(vec,dim=1)
-       norm = norm + dconjg(vec(i)) * vec(i)
+       norm = norm + conjg(vec(i)) * vec(i)
     end do
     norm = dsqrt(norm)
   end function VNORM_zp_1
@@ -1198,7 +1290,7 @@ contains
 
     ! Used internal variables
     integer :: idx
-    integer :: a,b,c,d, e
+    integer :: small, large, d
 
     ! Retrieve the size of the array we search in
     d = ubound(array,dim=1)
@@ -1224,26 +1316,21 @@ contains
     ! we have already checked the first/last index
     if ( d <= 2 ) return
 
-    a = 1 
-    c = 1
-    b = d
-
-    do while ( a + 1 < b .or. c + 1 < d ) 
-       e = (a+b)/2
-       if ( array(e) < val ) then
-          a = e
-       else
-          b = e
-       end if
-       e = (c+d)/2
-       if ( array(e) <= val ) then
-          c = e
-       else
-          d = e
-       end if
+    small = 1
+    large = d
+    do while ( small + 1 < large )
+      idx = (small + large) / 2
+      if ( array(idx) < val ) then
+        small = idx
+      else
+        large = idx
+      end if
     end do
-    idx = c
-    if ( b == c .and. array(idx) /= val ) idx = 0
+    if ( array(idx) == val ) return
+    do idx = small, large
+      if ( array(idx) == val ) return
+    end do
+    idx = 0
 
   end function SORTED_BINARY_FIND
 
@@ -1516,12 +1603,12 @@ contains
     complex(dp), intent(in), optional :: I
     complex(dp) :: lI
     integer :: j, k
-    lI = dcmplx(1._dp,0._dp)
+    lI = cmplx(1._dp,0._dp,dp)
     if ( present(I) ) lI = I
 !$OMP parallel do default(shared), private(k,j)
     do k = 1 , size
        do j = 1 , size
-          array(j,k) = dcmplx(0._dp,0._dp)
+          array(j,k) = cmplx(0._dp,0._dp,dp)
        end do
        array(k,k) = lI
     end do
@@ -1615,7 +1702,7 @@ contains
     complex(dp), intent(in) :: array(size,size)
     complex(dp) :: T
     integer :: i
-    T = dcmplx(0._dp,0._dp)
+    T = cmplx(0._dp,0._dp,dp)
 !$OMP parallel do default(shared), private(i), reduction(+:T)
     do i = 1 , size
        T = T + array(i,i)
@@ -1718,9 +1805,12 @@ contains
   end function IDX_SPC_PROJ_dp
 
 
-  ! Scalar projection of 'vin=a' onto 'vec=b' (i.e. the fraction of the
-  ! vector along 'vec')
+  ! Scalar projection of 'vin=a' onto 'vec=b'.
   !   a . b / |b|
+  ! I.e. for these vectors:
+  !   vec = [2, 0, 0]
+  !   vin = [3, 1, 1]
+  ! a = [3, 0, 0]
   pure function VEC_PROJ_SCA_sp(vec,vin) result(a)
     real(sp), intent(in) :: vec(:), vin(:)
     real(sp) :: a

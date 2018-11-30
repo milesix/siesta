@@ -22,7 +22,7 @@
      &                          CartesianForce_to_ZmatForce
       use atomlist,      only : iaorb, iphorb, amass, no_u, lasto
       use atomlist,      only : indxuo
-      use m_spin,        only : nspin, SpOrb
+      use m_spin,        only : spin
       use m_fixed,       only : fixed
       use sparse_matrices
       use siesta_geom
@@ -166,16 +166,16 @@
         call wallclock('--- end of geometry step')
       endif
 
-!     Mulliken population analysis 
-      if ( SpOrb ) then
-          call moments( mullipop, na_u, no_u, maxnh, numh, listhptr,
-     .                  listh, S, Dscf, isa, lasto, iaorb, iphorb,
-     .                  indxuo )
-      else
-       call mulliken( mullipop, nspin, na_u, no_u, maxnh,
-     &                numh, listhptr, listh, S, Dscf, isa, 
-     &                lasto, iaorb, iphorb )
+!     Population and moment analysis 
+      if ( spin%SO .and. orbmoms) then
+         call moments( 1, na_u, no_u, maxnh, numh, listhptr,
+     .           listh, S, Dscf, isa, lasto, iaorb, iphorb,
+     .           indxuo )
       endif
+      ! Call this unconditionally
+      call mulliken( mullipop, na_u, no_u, maxnh,
+     &               numh, listhptr, listh, S, Dscf, isa,
+     &               lasto, iaorb, iphorb )
 !
 !     Call the born effective charge routine only in those steps (even) 
 !     in which the dx  is positive.

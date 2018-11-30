@@ -133,8 +133,6 @@ contains
 #ifdef NCDF_4
     type(hNCDF) :: ndelta, grp
 #endif
-    character(len=128) :: fname_d
-    character(len=20) :: char
     logical :: exists, is_real
 
     integer :: n_k, n_E
@@ -840,17 +838,17 @@ contains
 #endif
 
   ! Add the delta to the tri-diagonal matrix
-  subroutine add_zdelta_TriMat( zd, GFinv_tri, r, sc_off, k)
+  subroutine add_zdelta_TriMat( zd, GFinv_tri, r, pvt, sc_off, k)
 
     use class_zTriMat
     use class_Sparsity
     use m_region
 
-    use intrinsic_missing, only : SFIND, MODP
+    use intrinsic_missing, only : MODP
 
     type(zSpData1D), intent(inout) :: zd
     type(zTriMat), intent(inout) :: GFinv_tri
-    type(tRgn), intent(in) :: r
+    type(tRgn), intent(in) :: r, pvt
     ! Super-cell offset and k-point
     real(dp), intent(in) :: sc_off(:,:), k(3)
 
@@ -885,7 +883,8 @@ contains
           
           ! Loop on entries here...
           do ind = l_ptr(jo) + 1 , l_ptr(jo) + l_ncol(jo)
-             iu = rgn_pivot(r, MODP(l_col(ind), no))
+             ! Look up in the pivoting array what the pivoted orbital is
+             iu = pvt%r(MODP(l_col(ind), no))
              ! Check whether this element should be added
              if ( iu == 0 ) cycle
              
@@ -908,7 +907,7 @@ contains
 
     use class_Sparsity
     use m_region
-    use intrinsic_missing, only : SFIND, MODP
+    use intrinsic_missing, only : MODP
 
     type(zSpData1D), intent(inout) :: zd
     ! the region which describes the current segment of insertion
@@ -940,7 +939,6 @@ contains
             k(2) * sc_off(2,iu) + &
             k(3) * sc_off(3,iu)))
     end do
-
     
 !$OMP parallel do default(shared), private(iu,jo,ind,ju)
     do ju = 1 , n1

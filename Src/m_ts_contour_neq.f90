@@ -140,52 +140,53 @@ contains
     call my_setup('nEq',N_nEq,nEq_c,nEq_io)
     if ( N_nEq < 1 ) then
 
-       if ( N_Elec /= 2 .or. N_mu /= 2 ) then
-          call die('When using other than 2 electrodes and &
-               &chemical potentials you are forced to setup &
-               &the contour input yourself.')
-       end if
-
-       ! Get the lowest chemical potential
-       if ( mus(1)%mu < mus(2)%mu ) then
-          j = 1
-          k = 2
-       else
-          j = 2
-          k = 1
-       end if
-
-       ! We create the default version
-       N_nEq = 1
-       nullify(nEq_io,nEq_c)
-       allocate(nEq_io(N_nEq),nEq_c(N_nEq))
-
-       ! Create the integrals
-       nEq_io(1)%part = 'line'
-       nEq_io(1)%name = 'line'
-       write(nEq_io(1)%ca,'(a,g12.5,a)') &
-            '- ',cutoff_kT * mus(j)%kT / kT ,' kT - |V|/2'
-       ! mus(j)%mu is negative
-       nEq_io(1)%a  = - cutoff_kT * mus(j)%kT + mus(j)%mu
-       write(nEq_io(1)%cb,'(a,g12.5,a)') &
-            '|V|/2 + ',cutoff_kT * mus(k)%kT / kT,' kT'
-       nEq_io(1)%b  = mus(k)%mu + cutoff_kT * mus(k)%kT
-       nEq_io(1)%cd = '0.01 eV'
-       nEq_io(1)%d = 0.01_dp * eV
-       nEq_io(1)%method = 'mid-rule'
-
-       do i = 1 , N_nEq
-          nEq_c(i)%c_io => nEq_io(i)
+      ! Find the minimum integration energy and the maximum
+      j = 1
+      k = 1
+      min_E = mus(j)%mu - mus(j)%kT * cutoff_kT
+      max_E = mus(k)%mu + mus(k)%kT * cutoff_kT
+      do i = 1, N_mu
+        if ( mus(i)%mu - mus(i)%kT * cutoff_kT < min_E ) then
+          min_E = mus(i)%mu - mus(i)%kT * cutoff_kT
+          j = i
+        end if
+        if ( max_E < mus(i)%mu + mus(i)%kT * cutoff_kT ) then
+          max_E = mus(i)%mu + mus(i)%kT * cutoff_kT
+          k = i
+        end if
+      end do
       
-          ! Fix the contours checking for their consistency
-          call ts_fix_contour(nEq_io(i))
+      ! We create the default version
+      N_nEq = 1
+      nullify(nEq_io,nEq_c)
+      allocate(nEq_io(N_nEq),nEq_c(N_nEq))
+      
+      ! Create the integrals
+      nEq_io(1)%part = 'line'
+      nEq_io(1)%name = 'line'
+      write(nEq_io(1)%ca,'(a,g12.5,a)') &
+          '- ',cutoff_kT * mus(j)%kT / kT ,' kT - |V|/2'
+      ! mus(j)%mu is negative
+      nEq_io(1)%a  = - cutoff_kT * mus(j)%kT + mus(j)%mu
+      write(nEq_io(1)%cb,'(a,g12.5,a)') &
+          '|V|/2 + ',cutoff_kT * mus(k)%kT / kT,' kT'
+      nEq_io(1)%b  = mus(k)%mu + cutoff_kT * mus(k)%kT
+      nEq_io(1)%cd = '0.01 eV'
+      nEq_io(1)%d = 0.01_dp * eV
+      nEq_io(1)%method = 'mid-rule'
 
-          ! setup the contour
-          allocate(nEq_c(i)%c(nEq_c(i)%c_io%N),nEq_c(i)%w(nEq_c(i)%c_io%N,1))
+      do i = 1 , N_nEq
+        nEq_c(i)%c_io => nEq_io(i)
 
-          call setup_nEq_contour(nEq_c(i), nEq_Eta)
+        ! Fix the contours checking for their consistency
+        call ts_fix_contour(nEq_io(i))
 
-       end do
+        ! setup the contour
+        allocate(nEq_c(i)%c(nEq_c(i)%c_io%N),nEq_c(i)%w(nEq_c(i)%c_io%N,1))
+
+        call setup_nEq_contour(nEq_c(i), nEq_Eta)
+
+      end do
 
     end if
 
@@ -449,22 +450,26 @@ contains
     type(ts_cw), intent(inout) :: c
     real(dp), intent(in) :: Eta
 
-    if ( leqi(c%c_io%part,'line') ) then
+    if ( leqi(c%c_io%part,'user') ) then
        
-       call contour_line(c,Eta)
-       
+      call contour_file(c,Eta)
+
+    else if ( leqi(c%c_io%part,'line') ) then
+
+      call contour_line(c,Eta)
+
     else if ( leqi(c%c_io%part,'tail') ) then
 
-       c%c_io%part = 'line'
-       
-       call contour_line(c,Eta)
+      c%c_io%part = 'line'
 
-       c%c_io%part = 'tail'
+      call contour_line(c,Eta)
+
+      c%c_io%part = 'tail'
 
     else
-       
-       call neq_die('Unrecognized contour type for the &
-            &non-equilibrium part.')
+
+      call neq_die('Unrecognized contour type for the &
+          &non-equilibrium part.')
        
     end if
     
@@ -602,6 +607,14 @@ contains
        end if
 
        call TanhSinh_Exact(c%c_io%N,ce,cw,a,b, p=tmp)
+
+     case ( CC_USER )
+
+       call contour_file(c, Eta)
+
+       ! Immediately return as the user has specified *everything*
+       deallocate(ce, cw)
+       return
        
     case default
 
@@ -615,6 +628,109 @@ contains
     deallocate(ce,cw)
     
   end subroutine contour_line
+
+
+  ! This routine will read the contour points from a file
+  subroutine contour_file(c,Eta)
+    use m_io, only: io_assign, io_close
+    use fdf, only: fdf_convfac
+
+    type(ts_cw), intent(inout) :: c
+    ! The lifting into the complex plane
+    real(dp), intent(in) :: Eta
+
+    integer :: iu, iostat, ne
+    logical :: exist
+    complex(dp) :: E , W
+    real(dp) :: rE, iE, rW, iW, conv
+    character(len=512) :: file, line
+    character(len=16) :: unit
+    
+    ! The contour type contains the file name in:
+    !  c%c_io%cN (weirdly enough)
+    file = c%c_io%cN
+
+    call io_assign(iu)
+    
+    ! Open the contour file
+    inquire(file=trim(file), exist=exist)
+    if ( .not. exist ) then
+      call die('The file: '//trim(file)//' could not be found to read contour points!')
+    end if
+    
+    ! Open the file
+    open(iu, file=trim(file), form='formatted', status='old')
+    
+    ne = 0
+    ! The default unit is eV.
+    ! On every line an optional unit-specificer may be used to specify the
+    ! subsequent lines units (until another unit is specified)
+    conv = fdf_convfac('eV', 'Ry')
+    do
+      ! Now we have the line
+      read(iu, '(a)', iostat=iostat) line
+      if ( iostat /= 0 ) exit
+      if ( len_trim(line) == 0 ) cycle
+      line = trim(adjustl(line))
+      if ( line(1:1) == '#' ) cycle
+      
+      ! We have a line with energy and weight
+      ne = ne + 1
+      ! There are three optional ways of reading this
+      ! 1.  ReE ImE, ReW ImW [unit]
+      read(line, *, iostat=iostat) rE, iE, rW, iW, unit
+      if ( iostat == 0 ) then
+        conv = fdf_convfac(unit, 'Ry')
+      else
+        read(line, *, iostat=iostat) rE, iE, rW, iW
+      end if
+      if ( iostat == 0 ) then
+        c%c(ne) = dcmplx(rE,iE) * conv
+        c%w(ne,1) = dcmplx(rW,iW) * conv
+        cycle
+      end if
+
+      ! 2.  ReE ImE, ReW [unit]
+      iW = 0._dp
+      read(line, *, iostat=iostat) rE, iE, rW, unit
+      if ( iostat == 0 ) then
+        conv = fdf_convfac(unit, 'Ry')
+      else
+        read(line, *, iostat=iostat) rE, iE, rW
+      end if
+      if ( iostat == 0 ) then
+        c%c(ne) = dcmplx(rE,iE) * conv
+        c%w(ne,1) = dcmplx(rW,iW) * conv
+        cycle
+      end if
+
+      ! 3.  ReE , ReW [unit]
+      iE = Eta
+      iW = 0._dp
+      read(line, *, iostat=iostat) rE, rW, unit
+      if ( iostat == 0 ) then
+        conv = fdf_convfac(unit, 'Ry')
+      else
+        read(line, *, iostat=iostat) rE, rW
+      end if
+      if ( iostat == 0 ) then
+        c%c(ne) = dcmplx(rE * conv,iE)
+        c%w(ne,1) = dcmplx(rW,iW) * conv
+        cycle
+      end if
+
+      call die('Contour file: '//trim(file)//' is not formatted correctly. &
+          &Please read the documentation!')
+
+    end do
+
+    call io_close(iu)
+
+    if ( c%c_io%N /= ne ) then
+      call die('Error in reading the contour points from file: '//trim(file))
+    end if
+    
+  end subroutine contour_file
 
   function nEq_E(id,step) result(c)
     integer, intent(in) :: id
@@ -799,7 +915,7 @@ contains
     write(unit,'(a,/,9a)') '# Approximated Fermi function: ', &
          '#   nF(E ', trim(cm1),' eV, ',trim(kT1),' K) &
          &- nF(E ',trim(cm2),' eV, ',trim(kT2),' K)'
-    write(unit,'(a,a12,2(tr1,a13))') '#','Re(c) [eV]','Im(c) [eV]','w'
+    write(unit,'(a,a19,2(tr1,a20))') '#','Re(c) [eV]','Im(c) [eV]','w'
     
     do i = 1 , N_nEq_E()
 
@@ -810,7 +926,7 @@ contains
        call c2weight_nEq(c,nEq_ID%ID,1._dp,W,imu,ZW)
        if ( imu < 1 ) cycle
 
-       write(unit,'(3(e13.6,tr1))') nEq_c(c%idx(2))%c(c%idx(3)) / eV, &
+       write(unit,'(3(e20.13,tr1))') nEq_c(c%idx(2))%c(c%idx(3)) / eV, &
             real(W,dp) / eV
        
     end do

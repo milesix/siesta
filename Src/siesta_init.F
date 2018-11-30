@@ -12,18 +12,22 @@
       CONTAINS
 
       subroutine siesta_init()
-      use Kpoint_grid,        only: setup_Kpoint_grid, gamma_scf, nkpnt
-      USE Kpoint_pdos,        only: gamma_pdos
+      use kpoint_scf_m,       only: setup_kpoint_scf, kpoint_scf
+      use kpoint_scf_m,       only: gamma_scf
+      use kpoint_pdos_m,      only: gamma_pdos
+      use kpoint_ldos_m,      only: gamma_ldos
       use Band,               only: gamma_bands, setup_bands
       use m_ksvinit,          only: gamma_polarization,
      &                              estimate_pol_kpoints
       use m_struct_init,      only: struct_init
+      use units,              only: Kelvin
       use siesta_options
       use timer_options,      only: use_tree_timer, use_parallel_timer
       use sparse_matrices
       use class_Fstack_Pair_Geometry_dSpData2D, only: new, max_size
       use siesta_geom
       use atomlist,           only: no_u, rmaxkb, amass, lasto, qtot,
+     &                              qtots,
      &                              iza, rmaxo, zvaltot, superc,
      &                              initatomlists, no_l, rmaxldau
       use fdf
@@ -47,17 +51,16 @@
       use parallel,           only: Node, Nodes, PEXSINodes, IOnode
       use parallel,           only: SIESTA_worker
       use parallel,           only: SIESTA_Group, SIESTA_Comm
-      use densematrix,        only: Haux, Saux, Psi
       use m_energies
       use m_steps
       use m_spin,             only: init_spin, spin
-      use m_spin,             only: qs, init_spiral
+      use m_spin,             only: init_spiral
       use m_rmaxh
       use m_forces 
       use m_eo
-      use m_gamma
       use m_fixed,            only: init_fixed, print_fixed
       use m_ioxv,             only: xv_file_read
+      use m_local_DOS,    only: init_local_DOS
       use m_projected_DOS,    only: init_projected_DOS
       use writewave,          only: gamma_wavefunctions,
      &                              setup_wf_kpoints
@@ -73,9 +76,7 @@
 #endif
       use m_cite, only: add_citation, init_citation
 
-#ifdef TRANSIESTA
       use m_ts_init, only : ts_init
-#endif
 
       use m_diag_option, only: read_diag, print_diag
       
@@ -88,19 +89,24 @@
       use netcdf_ncdf
 #endif
 #ifdef _OPENMP
-      use omp_lib, only : omp_get_num_threads, omp_get_schedule
+      use omp_lib, only : omp_get_num_threads
       use omp_lib, only : omp_get_nested, omp_set_nested
       use omp_lib, only : omp_get_max_active_levels
-      use omp_lib, only : OMP_SCHED_STATIC, OMP_SCHED_DYNAMIC
-      use omp_lib, only : OMP_SCHED_GUIDED, OMP_SCHED_AUTO
+      use omp_lib, only : omp_get_schedule, omp_set_schedule
 #if _OPENMP >= 201307
       ! The above value should correspond to OMP-4.0
       use omp_lib, only : omp_get_proc_bind
+      use omp_lib, only : OMP_PROC_BIND_FALSE, OMP_PROC_BIND_TRUE
+      use omp_lib, only : OMP_PROC_BIND_MASTER
+      use omp_lib, only : OMP_PROC_BIND_CLOSE, OMP_PROC_BIND_SPREAD
 #endif
+      use omp_lib, only : OMP_SCHED_STATIC, OMP_SCHED_DYNAMIC
+      use omp_lib, only : OMP_SCHED_GUIDED, OMP_SCHED_AUTO
 #else
-!$    use omp_lib, only : omp_get_num_threads, omp_get_sched
+!$    use omp_lib, only : omp_get_num_threads
 !$    use omp_lib, only : omp_get_nested, omp_get_max_active_levels
 !$    use omp_lib, only : omp_get_max_active_levels
+!$    use omp_lib, only : omp_get_schedule, omp_set_schedule
 !$    use omp_lib, only : OMP_SCHED_STATIC, OMP_SCHED_DYNAMIC
 !$    use omp_lib, only : OMP_SCHED_GUIDED, OMP_SCHED_AUTO
 #endif
@@ -115,7 +121,7 @@
       integer :: i, is, ispin, n_dm_items
       integer :: neigmin      ! Min. number of eigenstates (per k point)
       integer :: ns           ! Number of species
-      logical :: user_wants_supercell
+      logical :: not_using_auxcell
       real(dp) :: walltime_m, walltime_s
 
       integer :: World_Group
@@ -167,12 +173,95 @@ C     Initialise MPI and set processor number
          call system("/bin/rm -f 0_NORMAL_EXIT")
       endif
 
+      ! Initialize the output file
+      ! This will close and open unit=6 in case a command-line
+      ! option is specified
+      call init_output(Node == 0)
+
 #ifdef DEBUG_XC
 ! Set output file unit for debug info
       call setDebugOutputUnit()
 #endif /* DEBUG_XC */
 
-!     Initialise input/output...........................................
+      ! We have to immediately write out the options used to compile SIESTA
+      if ( Node == 0 ) then
+         ! Print version information
+         call prversion()
+#ifdef MPI
+         ! Sadly PEXSI workers can only be determined after
+         ! fdf has been opened, so we can't print-out that information
+         ! (for now)
+         if ( Nodes > 1 ) then
+            write(6,'(/,a,i0,a)')
+     &           '* Running on ', Nodes, ' nodes in parallel'
+         else
+            write(6,'(/,a)') '* Running in serial mode with MPI'
+         endif
+#else
+         write(6,'(/,a)') '* Running in serial mode'
+#endif
+!$OMP parallel default(shared)
+!$OMP master
+!$    i = omp_get_num_threads()
+!$    write(*,'(a,i0,a)') '* Running ',i,' OpenMP threads.'
+!$    write(*,'(a,i0,a)') '* Running ',Nodes*i,' processes.'
+#ifdef _OPENMP
+!$    write(*,'(a,i0)') '* OpenMP version ', _OPENMP
+#endif
+#if _OPENMP >= 201307
+!$    i = omp_get_proc_bind()
+!$    select case ( i )
+!$    case ( OMP_PROC_BIND_FALSE ) 
+!$    write(*,'(a)') '* OpenMP NOT bound (please bind threads!)'
+!$    case ( OMP_PROC_BIND_TRUE ) 
+!$    write(*,'(a)') '* OpenMP bound'
+!$    case ( OMP_PROC_BIND_MASTER ) 
+!$    write(*,'(a)') '* OpenMP bound (master)'
+!$    case ( OMP_PROC_BIND_CLOSE ) 
+!$    write(*,'(a)') '* OpenMP bound (close)'
+!$    case ( OMP_PROC_BIND_SPREAD ) 
+!$    write(*,'(a)') '* OpenMP bound (spread)'
+!$    case default
+!$    write(*,'(a)') '* OpenMP bound (unknown)'
+!$    end select
+#endif
+!$    call omp_get_schedule(i,is)
+!$    select case ( i )
+!$    case ( OMP_SCHED_STATIC ) 
+!$    write(*,'(a,i0)') '* OpenMP runtime schedule STATIC, chunks ',is
+!$    case ( OMP_SCHED_DYNAMIC ) 
+!$    write(*,'(a,i0)') '* OpenMP runtime schedule DYNAMIC, chunks ',is
+!$    if ( is == 1 ) then
+!$     ! this is the default scheduling, probably the user
+!$     ! have not set the value, predefine it to 16
+!$     is = 16
+!$     write(*,'(a,i0)')'** OpenMP runtime schedule DYNAMIC, chunks ',is
+!$    end if
+!$    case ( OMP_SCHED_GUIDED ) 
+!$    write(*,'(a,i0)') '* OpenMP runtime schedule GUIDED, chunks ',is
+!$    case ( OMP_SCHED_AUTO ) 
+!$    write(*,'(a,i0)') '* OpenMP runtime schedule AUTO, chunks ',is
+!$    case default
+!$    write(*,'(a,i0)') '* OpenMP runtime schedule UNKNOWN, chunks ',is
+!$    end select
+!     Now write out about nested levels
+!$    if ( omp_get_nested() ) then
+!$       ns = omp_get_max_active_levels()
+!$    else
+!$       write(*,'(a)') '** OpenMP (trying to FORCE nesting)'
+!$       call omp_set_nested(.true.)
+!$       ns = omp_get_max_active_levels()
+!$    end if
+!$    write(*,'(a,i0,a)') '* OpenMP allows ',ns,' nested levels.'
+!$OMP end master
+!$OMP end parallel
+!$    call omp_set_schedule(i,is)
+
+         ! Write time-stamp at the top of the output
+         call timestamp('Start of run')
+      end if
+      
+      ! Initialise input/output...........................................
       call reinit( sname )
 
 #ifdef MPI
@@ -206,7 +295,6 @@ C     Initialise MPI and set processor number
 
       ! Be sure to initialize the spin-configuration data
       ! for all processors.
-
       call init_spin( )
 
       if (.not. SIESTA_worker) RETURN
@@ -222,85 +310,20 @@ C     Initialise MPI and set processor number
 #endif
 
 !     Print version information
-      if (IOnode) then
-        call prversion()
+      if ( IOnode ) then
 #ifdef MPI
-        if ( PEXSINodes /= Nodes ) then
-           write(6,'(/,a,2(i0,a))')
-     &          '* Running on ', Nodes, ' SIESTA-nodes and ',
-     &          PEXSINodes, ' PEXSI-nodes in parallel'
-        else if ( Nodes > 1 ) then           
-           write(6,'(/,a,i0,a)')
-     &          '* Running on ', Nodes, ' nodes in parallel'
-        else
-           write(6,'(/,a)') '* Running in serial mode with MPI'
-        endif
-#else
-        write(6,'(/,a)') '* Running in serial mode'
+         if ( PEXSINodes /= Nodes ) then
+            write(6,'(/,a,2(i0,a))')
+     &           '* Running on ', Nodes, ' SIESTA-nodes and ',
+     &           PEXSINodes, ' PEXSI-nodes in parallel'
+         end if
 #endif
-!$OMP parallel default(shared)
-!$OMP master
-!$    i = omp_get_num_threads()
-!$    write(*,'(a,i0,a)') '* Running ',i,' OpenMP threads.'
-!$    write(*,'(a,i0,a)') '* Running ',Nodes*i,' processes.'
-#ifdef _OPENMP
-!$    write(*,'(a,i0)') '* OpenMP version ', _OPENMP
-#endif
-!$    call omp_get_schedule(i,is)
-!$    select case ( i )
-!$    case ( OMP_SCHED_STATIC ) 
-!$    write(*,'(a,i0)') '* OpenMP runtime schedule STATIC, chunks ',is
-!$    case ( OMP_SCHED_DYNAMIC ) 
-!$    write(*,'(a,i0)') '* OpenMP runtime schedule DYNAMIC, chunks ',is
-!$    if ( is == 1 ) then
-!$     ! this is the default scheduling, probably the user
-!$     ! have not set the value, predefine it to 32
-!$     is = 32
-!$     write(*,'(a,i0)')'** OpenMP runtime schedule DYNAMIC, chunks ',is
-!$    end if
-!$    case ( OMP_SCHED_GUIDED ) 
-!$    write(*,'(a,i0)') '* OpenMP runtime schedule GUIDED, chunks ',is
-!$    case ( OMP_SCHED_AUTO ) 
-!$    write(*,'(a,i0)') '* OpenMP runtime schedule AUTO, chunks ',is
-!$    case default
-!$    write(*,'(a,i0)') '* OpenMP runtime schedule UNKNOWN, chunks ',is
-!$    end select
-!     Now write out about nested levels
-!$    if ( omp_get_nested() ) then
-!$       ns = omp_get_max_active_levels()
-!$    else
-!$       write(*,'(a)') '** OpenMP (trying to FORCE nesting)'
-!$       call omp_set_nested(.true.)
-!$       ns = omp_get_max_active_levels()
-!$    end if
-!$    write(*,'(a,i0,a)') '* OpenMP allows ',ns,' nested levels.'
-#if _OPENMP >= 201307
-!$    ns = omp_get_proc_bind()
-!$    select case ( ns )
-!$    case ( 0 ) 
-!$    write(*,'(a)') '* OpenMP binding: FALSE'
-!$    case ( 1 )
-!$    write(*,'(a)') '* OpenMP binding: TRUE'
-!$    case ( 2 )
-!$    write(*,'(a)') '* OpenMP binding: MASTER'
-!$    case ( 3 )
-!$    write(*,'(a)') '* OpenMP binding: CLOSE'
-!$    case ( 4 )
-!$    write(*,'(a)') '* OpenMP binding: SPREAD'
-!$    case default
-!$    write(*,'(a)') '* OpenMP binding: UNKNOWN'
-!$    end select
-#endif
-!$OMP end master
-!$OMP end parallel
-!$    call omp_set_schedule(i,is)
-         call timestamp('Start of run')
+
          call wallclock('Start of run')
-      endif
+      end if
 
 !
 !     Nullify arrays
-      nullify(Haux,Saux,psi)
       nullify(Dscf,Dold,Escf)
       nullify(listh)
       nullify(H,S)
@@ -474,11 +497,11 @@ C     Initialise MPI and set processor number
      &    call die( 'siesta: ERROR: ' //
      &              'You can only fix the spin of the system' //
      &              ' for collinear spin polarized calculations.' )
-        qs(1) = (qtot + ts) / 2.0_dp
-        qs(2) = (qtot - ts) / 2.0_dp
+        qtots(1) = (qtot + total_spin) / 2.0_dp
+        qtots(2) = (qtot - total_spin) / 2.0_dp
       else
         do ispin = 1,spin%spinor
-           qs(ispin) = qtot/spin%spinor
+           qtots(ispin) = qtot/spin%spinor
         end do
       end if
 
@@ -509,8 +532,29 @@ C     Initialise MPI and set processor number
       numh        = 0
 
       ! Get number of eigenstates that need to be calculated
+      ! This generally needs to be set to halve the number of
+      ! charges plus some few states (such that the temperature
+      ! tail can be found).
       neigwanted = fdf_get('NumberOfEigenStates',no_u)
+
+      ! Calculate the number of eigenstates
+      ! dependent on the # of spin-components.
+      neigmin = 0
+      do is = 1 , spin%spinor
+        neigmin = max(neigmin, ceiling(qtots(is)))
+      end do
       
+      if ( spin%spinor == 1 ) then
+        ! Only take halve the number of states because the filling
+        ! is doubled. Otherwise the number of states is
+        ! correct. For NC and SOC the diag[23]* routines
+        ! intrinsically doubles neigwanted.
+        neigmin = neigmin / 2
+      end if
+      ! Always at least have one additional state per 100 K.
+      ! This choice is rather arbitrary.
+      neigmin = neigmin + ceiling((temp / Kelvin) / 100._dp)
+
       ! Correct the number of calculated eigenstates
       if ( neigwanted < 0 ) then
          
@@ -519,27 +563,18 @@ C     Initialise MPI and set processor number
          ! to be included.
          ! For very high temperatures this may be difficult to 
          ! choose, however, for moderate temperatures this
-         ! need not be somewhat more than say 10
+         ! need not be somewhat more than say 10.
 
-         ! Calculate the number of additional eigenstates
-         ! dependent on the # of spin-components
-         ! For spin-polarized calculations this is equivalent to
-         ! only half of the wanted eigenstates per spin-channel.
-         neigmin = ceiling(real(abs(neigwanted)) / spin%spinor)
-
-         do is = 1 , spin%spinor
-            neigwanted = max(neigwanted, ceiling(qs(is)) + neigmin)
-         end do
+         ! Add the user requested states.
+         neigwanted = neigmin - neigwanted
 
       end if
 
       ! Check number of eigenstates - cannot be larger than number of
       ! basis functions or smaller than number of occupied states + 1
       ! so that the Fermi level can be estimated
-      do is = 1 , spin%spinor
-         neigmin = ceiling(qs(is)) + 1
-         neigwanted = max(neigwanted, neigmin)
-      end do
+      neigwanted = max(neigwanted, neigmin)
+
       ! Truncate value
       neigwanted = min(neigwanted,no_u)
       
@@ -547,8 +582,22 @@ C     Initialise MPI and set processor number
 !     NOTE: We need to know whether gamma is .true. or
 !     not early, in order to decide whether to use an 
 !     auxiliary supercell for the calculation of matrix elements.
-      call setup_Kpoint_grid( ucell )
-      gamma = gamma_scf
+      call setup_kpoint_scf( ucell )
+      not_using_auxcell = gamma_scf
+
+!     Call initialisation of PDOS here since we need to check if 
+!     the auxiliary supercell is needed for a non-gamma calculation
+      call init_projected_DOS( ucell )
+      if ( do_pdos ) then
+        not_using_auxcell = not_using_auxcell.and. gamma_pdos
+      endif
+
+!     Call initialisation of LDOS here since we need to check if 
+!     the auxiliary supercell is needed for a non-gamma calculation
+      call init_local_DOS( ucell )
+      if ( do_ldos ) then
+        not_using_auxcell = not_using_auxcell .and. gamma_ldos
+      endif
 
       ! Read in diagonalization routines
       ! Note that only the sampled BZ is responsible for
@@ -557,55 +606,44 @@ C     Initialise MPI and set processor number
       call read_diag(Gamma_scf, spin%H)
       call print_diag()
 
-!     Call initialisation of PDOS here since we need to check if 
-!     the auxiliary supercell is needed for a non-gamma calculation
-      call init_projected_DOS( )
-      if (do_pdos) then
-        gamma = gamma .and. gamma_pdos
-      endif
-
       nullify(eo,qo)
-      call re_alloc(eo, 1, no_u, 1, spin%spinor, 1, nkpnt, 'eo', 
+      call re_alloc(eo, 1, no_u, 1, spin%spinor, 1, kpoint_scf%N, 'eo', 
      &              'siesta_init')
-      call re_alloc(qo, 1, no_u, 1, spin%spinor, 1, nkpnt, 'qo', 
+      call re_alloc(qo, 1, no_u, 1, spin%spinor, 1, kpoint_scf%N, 'qo', 
      &              'siesta_init')
 
       call setup_bands( )
-      gamma = gamma .and. gamma_bands
+      not_using_auxcell = not_using_auxcell .and. gamma_bands
 
       call setup_wf_kpoints( )
-      gamma = gamma .and. gamma_wavefunctions
+      not_using_auxcell = not_using_auxcell .and. gamma_wavefunctions
 
       call estimate_pol_kpoints( ucell )
-      gamma = gamma .and. gamma_polarization
-!      print *, "gamma, gamma_pol: ", gamma, gamma_polarization
+      not_using_auxcell = not_using_auxcell .and. gamma_polarization
 !
 !     User can request that the calculation is done with an explicit
 !     auxiliary supercell and hermitian version, even if using only
 !     the gamma point
 !
-      user_wants_supercell = fdf_get( 'ForceAuxCell', .false. )
-      if (user_wants_supercell) gamma = .false.
+!     In case the user has requested the use of auxiliary
+!     cell we simply use that option.
+      if ( .not. not_using_auxcell ) use_aux_cell = .true.
 
 !     Find required supercell
 !     2*rmaxh is used to guarantee that two given orbitals in the
 !     supercell can only overlap once
-      if (gamma) then
+      if ( .not. use_aux_cell ) then
         nsc(1:3) = 1
       else
-        ! Discussion with Jose-Soler we get this size ! NPA
-        do i = 1 , 3
-          veclen = sqrt(ucell(1,i)**2+ucell(2,i)**2+ucell(3,i)**2)
-          nsc(i) = 1 + 2 * ceiling( rmaxh / veclen )
-        end do
-        if ( .not. naiveauxcell ) 
-     &       call exact_sc_ag(negl,ucell,na_u,isa,xa,nsc)
+        ! Determine the tightest auxiliary supercell using
+        ! also the atomic positions 
+        call exact_sc_ag(negl,ucell,na_u,isa,xa,nsc)
       end if
 
       mscell = 0.0_dp
       do i = 1, 3
         mscell(i,i) = nsc(i)
-        nscold(i)   = nsc(i)
+        nsc_old(i)  = nsc(i)
       enddo
 
 !     Find auxiliary supercell (required only for k sampling)
@@ -662,17 +700,16 @@ C     Initialise MPI and set processor number
 
       istp = 0
       
-#ifdef TRANSIESTA
       call ts_init(spin%Grid,ucell,na_u,xa,lasto,no_u,inicoor,fincoor)
-#endif
 
 #ifdef SIESTA__FLOOK
 
       ! Populate dictionaries
       call dict_populate()
 
-      ! Initialize LUA handle
-      call slua_init(LUA)
+      ! Initialize LUA handle, also die if the Lua relaxation
+      ! is requested
+      call slua_init(LUA, idyn == 10)
 
       ! Call a preprocess step right after initialization
       call slua_call(LUA,LUA_INITIALIZE)

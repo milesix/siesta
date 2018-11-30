@@ -13,10 +13,8 @@ module siesta_dicts
   ! A dictionary for all the options
   type(dict) :: options
 
-#ifdef TRANSIESTA
   ! A dictionary for all transiesta options
   type(dict) :: ts_options
-#endif
 
   ! A dictionary for all variables
   type(dict) :: variables
@@ -25,6 +23,7 @@ module siesta_dicts
   private :: dict_variable_add_a_1d
   private :: dict_variable_add_b_0d
   private :: dict_variable_add_i_0d
+  private :: dict_variable_add_i_1d
   private :: dict_variable_add_d_0d
   private :: dict_variable_add_d_1d
   private :: dict_variable_add_d_2d
@@ -33,6 +32,7 @@ module siesta_dicts
      module procedure dict_variable_add_a_1d
      module procedure dict_variable_add_b_0d
      module procedure dict_variable_add_i_0d
+     module procedure dict_variable_add_i_1d
      module procedure dict_variable_add_d_0d
      module procedure dict_variable_add_d_1d, dict_variable_add_d_2d
   end interface dict_variable_add
@@ -41,9 +41,7 @@ contains
 
   subroutine dict_clean()
     call delete(options,dealloc=.false.)
-#ifdef TRANSIESTA
     call delete(ts_options,dealloc=.false.)
-#endif
     call delete(variables,dealloc=.false.)
   end subroutine dict_clean
 
@@ -220,7 +218,7 @@ contains
   subroutine dict_populate_variables()
 
     use siesta_geom
-    use kpoint_grid, only: kscell, kdispl
+    use kpoint_scf_m, only: kpoint_scf
     use m_forces
     use m_energies
     use atomlist
@@ -255,17 +253,17 @@ contains
     ! Additional information regarding the
     ! atomic species
     variables = variables // &
-         ('geom.species'.kvp.isa)
+         ('geom.species'.kvp.isa(1:na_u))
     variables = variables // &
-         ('geom.z'.kvp.iza)
+         ('geom.z'.kvp.iza(1:na_u))
     variables = variables // &
-         ('geom.last_orbital'.kvp.lasto(1:))
+         ('geom.last_orbital'.kvp.lasto(1:na_u))
     variables = variables // &
          ('geom.mass'.kvp.amass)
     variables = variables // &
-         ('geom.neutral_charge'.kvp.qa)
+         ('geom.neutral_charge'.kvp.qa(1:na_u))
     variables = variables // &
-         ('geom.orbital_charge'.kvp.Datm)
+         ('geom.orbital_charge'.kvp.Datm(1:no_u))
 
     ! This is an abstraction made
     ! easy for the user.
@@ -318,10 +316,8 @@ contains
          ('E.spin_orbit'.kvp.Eso)
     variables = variables // &
          ('E.ldau'.kvp.Eldau)
-#ifdef TRANSIESTA
     variables = variables // &
          ('E.negf'.kvp.DE_NEGF)
-#endif
 
     ! Add the number of charges to the system
     variables = variables // &
@@ -331,11 +327,67 @@ contains
 
     ! Add the k-point sampling
     variables = variables // &
-         ('BZ.k.Matrix'.kvp.kscell)
+         ('BZ.k.Matrix'.kvp.kpoint_scf%k_cell)
     variables = variables // &
-         ('BZ.k.Displacement'.kvp.kdispl)
+         ('BZ.k.Displacement'.kvp.kpoint_scf%k_displ)
 
   end subroutine dict_populate_variables
+
+  subroutine dict_repopulate_MD()
+
+    use siesta_geom, only: na_u
+    use siesta_geom, only: xa, xa_last, va, isa
+    use atomlist, only: no_u, iza, lasto, qa, Datm
+
+    real(dp), pointer :: r1(:), r2(:,:)
+    integer, pointer :: i1(:)
+
+    r2 => xa(:,1:na_u)
+    call dict_variable_add('geom.xa', r2)
+    r2 => xa_last(:,1:na_u)
+    call dict_variable_add('geom.xa_last', r2)
+
+    i1 => isa(1:na_u)
+    call dict_variable_add('geom.species', i1)
+    i1 => iza(1:na_u)
+    call dict_variable_add('geom.z', i1)
+    i1 => lasto(1:na_u)
+    call dict_variable_add('geom.last_orbital', i1)
+    r1 => qa(1:na_u)
+    call dict_variable_add('geom.neutral_charge', r1)
+    r1 => Datm(1:no_u)
+    call dict_variable_add('geom.orbital_charge', r1)
+    
+  end subroutine dict_repopulate_MD
+
+  subroutine dict_repopulate_sparse_matrices()
+
+    use class_dSpData1D, only: val
+    use sparse_matrices, only: maxnh
+    use sparse_matrices, only: listh, listhptr, numh
+    use sparse_matrices, only: Dscf, Escf, H, S, xijo
+    use sparse_matrices, only: H_vkb_1D, H_kin_1D
+
+    real(dp), pointer :: r1(:)
+
+    call dict_variable_add('sparse.n_col', numh)
+    call dict_variable_add('sparse.list_ptr', listhptr)
+    call dict_variable_add('sparse.list_col', listh)
+    call dict_variable_add('sparse.nnzs', maxnh)
+
+    call dict_variable_add('sparse.S', S)
+    call dict_variable_add('sparse.H', H)
+    call dict_variable_add('sparse.DM', Dscf)
+    call dict_variable_add('sparse.EDM', Escf)
+    call dict_variable_add('sparse.xij', xijo)
+
+    ! Now add the specific matrices
+    r1 => val(H_vkb_1D)
+    call dict_variable_add('sparse.H_Vkb', r1)
+    r1 => val(H_kin_1D)
+    call dict_variable_add('sparse.H_kin', r1)
+    
+  end subroutine dict_repopulate_sparse_matrices
 
   subroutine dict_variable_add_v_0d(name,val)
     character(len=*), intent(in) :: name
@@ -361,6 +413,12 @@ contains
     if ( name.in.variables ) call delete(variables,name,dealloc=.false.)
     variables = variables // (name.kvp.val)
   end subroutine dict_variable_add_i_0d
+  subroutine dict_variable_add_i_1d(name,val)
+    character(len=*), intent(in) :: name
+    integer, intent(inout), target :: val(:)
+    if ( name.in.variables ) call delete(variables,name,dealloc=.false.)
+    variables = variables // (name.kvp.val)
+  end subroutine dict_variable_add_i_1d
   subroutine dict_variable_add_d_0d(name,val)
     character(len=*), intent(in) :: name
     real(dp), intent(inout), target :: val

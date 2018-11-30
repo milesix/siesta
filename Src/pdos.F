@@ -8,7 +8,7 @@
       subroutine pdos( NO, nspin, maxspn, NO_L, MAXNH, 
      .                 MAXO, NUMH, LISTHPTR, LISTH, H, S, 
      .                 E1, E2, SIGMA, NHIST,
-     .                 GAMMA, XIJ, INDXUO, NK, KPOINT, WK, EO, NO_U )
+     .                 XIJ, INDXUO, GAMMA, NK, KPOINT, WK, EO, NO_U )
 C **********************************************************************
 C Subroutine to calculate the projected density of states on the
 C atomic orbitals for a given eigenvalue spectra
@@ -37,13 +37,13 @@ C                               (to find local density of states)
 C                               Not used if e1 > e2
 C REAL*8  SIGMA               : Width of the gaussian to expand the eigenvalues
 C INTEGER NHIST               : Number of subdivisions of the histogram
-C LOGICAL GAMMA               : Only gamma point?
 C REAL*8  XIJ(3,MAXNH)        : Vectors between orbital centers (sparse)
 C                               (not used if only gamma point)
 C INTEGER INDXUO(NO)          : Index of equivalent orbital in unit cell
 C                               Unit cell orbitals must be the first in
 C                               orbital lists, i.e. indxuo.le.nuo, with
 C                               nuo the nuber of orbitals in the unit cell
+C logical Gamma               : whether only the Gamma point is sampled
 C INTEGER NK                  : Number of k points
 C REAL*8  KPOINT(3,NK)        : k point vectors
 C REAL*8  WK(NK)              : k point weights (must sum one)
@@ -58,19 +58,22 @@ C **********************************************************************
       use m_spin,       only : spin
       use atomlist,     only : iphorb, iaorb
       use atmfuncs,     only : zetafio, mofio, lofio, cnfigfio, labelfis
+      use atmfuncs,     only : pol, izofis
       use flib_wxml,    only : xmlf_t, xml_OpenFile, xml_NewElement, 
      .                         xml_AddArray, xml_AddPCData,
      $                         xml_AddAttribute,
      .                         xml_EndElement, xml_Close
       use xml,          only : str, xml_dump_attribute
+      use densematrix,  only : allocDenseMatrix, resetDenseMatrix
       use densematrix,  only : Haux, Saux, psi
       use alloc,        only : re_alloc, de_alloc
       use units,        only : eV
       use files,        only : slabel, label_length
+      use m_energies, only: Ef
 #ifdef MPI
       use parallelsubs, only : GetNodeOrbs
 #endif
-      use m_diag_option, only: ParallelOverK
+      use m_diag_option, only: ParallelOverK, Serial
 
       implicit none
 
@@ -78,15 +81,13 @@ C **********************************************************************
      .  NO, NSPIN, MAXSPN, NO_L, MAXNH, NK, NHIST, 
      .  MAXO, NO_U
 
+      logical, intent(in) :: Gamma
       integer 
      .  NUMH(*), LISTH(MAXNH), LISTHPTR(*), INDXUO(NO)
 
       real(dp)
      .  H(MAXNH,NSPIN), S(MAXNH), E1, E2, SIGMA,  
      .  XIJ(3,MAXNH), KPOINT(3,NK), WK(NK), EO(MAXO,MAXSPN,NK)
-
-      logical
-     .  gamma
 
 C Dynamic arrays -------------------------------------------------------
       real(dp), dimension(:,:)  , pointer :: DTOT
@@ -99,7 +100,9 @@ C Internal variables ---------------------------------------------------
 
       integer iat, spec, ii, iorb
 
-      real(dp), dimension(:), pointer  :: tmp
+      logical :: orig_ParallelOverK, orig_Serial
+
+      real(dp), dimension(:), pointer :: tmp
 
       character*40 pos_string
 
@@ -120,8 +123,21 @@ C Internal variables ---------------------------------------------------
 
       call timer( 'pdos', 1)
 
+      orig_Serial = Serial
+      orig_ParallelOverK = ParallelOverK
+
 C Find the intervals between the subdivisions in the energy scale ------
       delta = (E2 - E1) / (NHIST-1)
+
+      ! Ensure we only use paralleloverk for
+      ! spin-(un)polarized calculations
+      if ( nspin > 2 ) ParallelOverK = .false.
+      ! Reset for Gamma-only PDOS calculations
+      if ( Gamma ) ParallelOverK = .false.
+
+      if ( Nodes > 1 .and. .not. ParallelOverK ) then
+         Serial = .false.
+      end if
 
 C Find number of orbitals per unit cell 
 #ifdef MPI
@@ -150,10 +166,9 @@ C Check internal dimensions --------------------------------------------
        endif
 
 
-C Allocate local arrays ------------------------------------------------
-      call re_alloc( Haux, 1, nhs,  'Haux', 'densematrix' )
-      call re_alloc( Saux, 1, nhs,  'Saux', 'densematrix' )
-      call re_alloc( psi,  1, npsi, 'psi',  'densematrix' )
+C Allocate local arrays -------------------------------------------
+C -----
+      call allocDenseMatrix(nhs, nhs, npsi)
       nullify( dtot, dpr )
       call re_alloc( dtot, 1, nhist, 1, spin%EDM, 'dtot', 'pdos' )
       call re_alloc( dpr, 1, nhist, 1, no_u, 1, spin%EDM,
@@ -250,7 +265,7 @@ C Close file for write
 
 C New writing
       if (IOnode) then
-         call xml_OpenFile("pdos.xml",xf,indent=.false.)
+         call xml_OpenFile(trim(slabel)//".PDOS.xml",xf,indent=.false.)
 
         fnamepro = trim(slabel)//'.PDOS'
         call io_assign(iunit2)
@@ -261,19 +276,28 @@ C New writing
         call xml_EndElement(xf,"nspin")
 
         write(iunit2,'(a)') '<pdos>'
-        write(iunit2,'(a,i1,a)') 
-     .               '<nspin>', spin%EDM,'</nspin>'
-        write(iunit2,'(a,i4,a)') '<norbitals>', no_u, '</norbitals>'
+        write(iunit2,'(a,i1,a)') '<nspin>', spin%EDM, '</nspin>'
+        write(iunit2,'(a,i0,a)') '<norbitals>', no_u, '</norbitals>'
+
+        ! Write fermi-level
+        call xml_NewElement(xf,"fermi_energy")
+        call xml_AddAttribute(xf,"units","eV")
+        call xml_AddPCData(xf, Ef / eV)
+        call xml_EndElement(xf,"fermi_energy")
+        write(iunit2,'(a,e17.9,a)') '<fermi_energy units="eV">',
+     &       Ef / eV, '</fermi_energy>'
+
+        ! Write sampled energies
+        write(iunit2,'(a)') '<energy_values units="eV">'
         call xml_NewElement(xf,"energy_values")
         call xml_AddAttribute(xf,"units","eV")
-        write(iunit2,'(a)') '<energy_values units="eV">'
 
         nullify( tmp )
         call re_alloc( tmp, 1, spin%EDM*nhist, 'tmp', 'pdos' )
         do ihist = 1,nhist
            ENER = E1 + (ihist-1) * delta
            tmp(ihist) = ener/eV
-           write(iunit2,'(f20.5)') ener/eV
+           write(iunit2,'(e17.9)') tmp(ihist)
         enddo
         write(iunit2,'(a)') '</energy_values>'
 
@@ -292,10 +316,11 @@ C New writing
           call xml_AddAttribute(xf,"atom_index",iat)
           call xml_dump_attribute(iunit2,"atom_index",str(iat))
           call xml_AddAttribute(xf,"species",trim(labelfis(spec)))
-          call xml_dump_attribute(iunit2,"species",
-     .                           trim(labelfis(spec)))
-          write(pos_string,'(3f11.6)') (xa(ii,iat),ii=1,3)
-          call xml_AddAttribute(xf,"position",pos_string)
+          call xml_dump_attribute(iunit2,"species",labelfis(spec))
+          call xml_AddAttribute(xf,"Z",izofis(spec))
+          call xml_dump_attribute(iunit2,"Z",str(izofis(spec)))
+          write(pos_string,'(3f11.6)') xa(1:3,iat)
+          call xml_AddAttribute(xf,"position",trim(pos_string))
           call xml_dump_attribute(iunit2,"position",pos_string)
           call xml_AddAttribute(xf,"n",cnfigfio(spec,iorb))
           call xml_dump_attribute(iunit2,"n",str(cnfigfio(spec,iorb)))
@@ -305,50 +330,43 @@ C New writing
           call xml_dump_attribute(iunit2,"m",str(mofio(spec,iorb)))
           call xml_AddAttribute(xf,"z",zetafio(spec,iorb))
           call xml_dump_attribute(iunit2,"z",str(zetafio(spec,iorb)))
-          write(iunit2,'(a)') '> '
+          call xml_AddAttribute(xf,"P",pol(spec,iorb))
+          call xml_dump_attribute(iunit2,"P",str(pol(spec,iorb)))
+          write(iunit2,'(a)') '>'
 
 !------------------------------------------------------------
           call xml_NewElement(xf,"data")
+          write(iunit2,'(a)') '<data>'
           select case ( spin%EDM ) 
           case ( 1 )
-             call xml_AddArray(xf,dpr(1:nhist,i,1)*eV)
+             do ihist = 1, nhist
+                tmp(ihist) = dpr(ihist,i,1) * eV
+                write(iunit2,'(e17.9)') tmp(ihist)
+             end do
+             call xml_AddArray(xf,tmp(1:nhist))
           case ( 2 )
-             tmp(1:2*nhist-1:2) = dpr(1:nhist,i,1)*eV
-             tmp(2:2*nhist:2)   = dpr(1:nhist,i,2)*eV
+             do ihist = 1, nhist
+                tmp(ihist*2-1) = dpr(ihist,i,1) * eV
+                tmp(ihist*2) = dpr(ihist,i,2) * eV
+                write(iunit2,'(2(tr1,e17.9))') tmp(ihist*2-1:ihist*2)
+             end do
              call xml_AddArray(xf,tmp(1:2*nhist))
           case ( 4 )
-             tmp(1:4*nhist-3:4) =   dpr(1:nhist,i,1)*eV
-             tmp(2:4*nhist-2:4) =   dpr(1:nhist,i,2)*eV
-             tmp(3:4*nhist-1:4) = 2*dpr(1:nhist,i,3)*eV
-             tmp(4:4*nhist:4)   = 2*dpr(1:nhist,i,4)*eV
+             do ihist = 1, nhist
+                tmp(ihist*4-3) = dpr(ihist,i,1) * eV
+                tmp(ihist*4-2) = dpr(ihist,i,2) * eV
+                tmp(ihist*4-1) = 2 * dpr(ihist,i,3) * eV
+                tmp(ihist*4  ) = 2 * dpr(ihist,i,4) * eV
+                write(iunit2,'(4f10.5)') tmp(ihist*4-3:ihist*4)
+             end do
              call xml_AddArray(xf,tmp(1:4*nhist))
           end select
           call xml_EndElement(xf,"data")
-          call xml_EndElement(xf,"orbital")
-!------------------------------------------------------------
-
-          write(iunit2,'(a)') '<data>'
-          select case ( spin%EDM )
-          case ( 1 )
-             do ihist = 1,nhist
-                write(iunit2,'(f10.5)') dpr(ihist,i,1)*eV
-             end do
-          case ( 2 )
-             do ihist = 1,nhist
-                write(iunit2,'(2f10.5)') dpr(ihist,i,1)*eV,
-     &                                   dpr(ihist,i,2)*eV
-             end do
-          case ( 4 )
-             do ihist = 1,nhist
-                write(iunit2,'(4f10.5)') dpr(ihist,i,1)*eV,
-     &                                   dpr(ihist,i,2)*eV,
-     &                                   2.0_dp*dpr(ihist,i,3)*eV,
-     &                                   2.0_dp*dpr(ihist,i,4)*eV
-             end do
-          end select
           write(iunit2,'(a)') '</data>'
+          call xml_EndElement(xf,"orbital")
           write(iunit2,'(a)') '</orbital>'
-        enddo
+          
+        end do
 
 C Close file
         call xml_EndElement(xf,"pdos")
@@ -364,6 +382,11 @@ C Free local workspace array
 C Free local arrays ----------------------------------------------------
       call de_alloc( dpr, 'dpr', 'pdos' )
       call de_alloc( dtot, 'dtot', 'pdos' )
+      call resetDenseMatrix()
+      
+      ! Restore the paralleloverk options
+      ParallelOverK = orig_ParallelOverK
+      Serial = orig_Serial
 
       call timer( 'pdos', 2)
 

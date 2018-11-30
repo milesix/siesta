@@ -96,7 +96,7 @@ contains
     ! Self-energy expansion
     use m_ts_elec_se
 
-    use m_ts_kpoints, only : ts_nkpnt, ts_kpoint, ts_kweight
+    use ts_kpoint_scf_m, only : ts_kpoint_scf
 
     use m_ts_options, only : Calc_Forces
     use m_ts_options, only : N_mu, mus
@@ -111,7 +111,9 @@ contains
     use m_ts_contour_eq,  only : Eq_E, ID2idx, c2weight_eq
     use m_ts_contour_neq, only : nEq_E, has_cE_nEq
     use m_ts_contour_neq, only : N_nEq_ID, c2weight_neq
-    
+    use m_ts_contour_eq, only : N_Eq_E
+    use m_ts_contour_neq, only : N_nEq_E
+
     use m_iterator
 
     ! Gf calculation
@@ -161,6 +163,7 @@ contains
 
 ! ******************* Computational variables ****************
     type(ts_c_idx) :: cE
+    integer :: NE
     real(dp)    :: kw, kpt(3), bkpt(3)
     complex(dp) :: W, ZW
 ! ************************************************************
@@ -201,7 +204,8 @@ contains
 
     ! The zwork is needed to construct the LHS for solving: G^{-1} G = I
     ! Hence, we will minimum require the full matrix...
-    nzwork = no_u_TS ** 2
+    call UC_minimum_worksize(IsVolt, N_Elec, Elecs, no)
+    nzwork = max(no_u_TS ** 2, no)
     allocate(zwork(nzwork),stat=ierr)
     if (ierr/=0) call die('Could not allocate space for zwork')
     call memory('A','Z',nzwork,'transiesta')
@@ -281,8 +285,11 @@ contains
        end if
     end if
 
+    ! Total number of energy points
+    NE = N_Eq_E() + N_nEq_E()
+
     ! start the itterators
-    call itt_init  (SpKp,end1=nspin,end2=ts_nkpnt)
+    call itt_init  (SpKp,end1=nspin,end2=ts_kpoint_scf%N)
     ! point to the index iterators
     call itt_attach(SpKp,cur1=ispin,cur2=ikpt)
 
@@ -294,16 +301,19 @@ contains
        ! However, the extra computation should be negligible to the gain.
 
        if ( itt_stepped(SpKp,1) ) then ! spin has incremented
-          call init_DM(sp_dist, sparse_pattern, &
-               n_nzs, DM(:,ispin), EDM(:,ispin), &
-               tsup_sp_uc, Calc_Forces)
+         call init_DM(sp_dist, sparse_pattern, &
+             n_nzs, DM(:,ispin), EDM(:,ispin), &
+             tsup_sp_uc, Calc_Forces)
+         do iEl = 1, N_Elec
+           call reread_Gamma_Green(Elecs(iEl), uGF(iEl), NE, ispin)
+         end do
        end if
 
        ! Include spin factor and 1/(2\pi)
-       kpt(:) = ts_kpoint(:,ikpt)
+       kpt(:) = ts_kpoint_scf%k(:,ikpt)
        ! create the k-point in reciprocal space
        call kpoint_convert(ucell,kpt,bkpt,1)
-       kw = 0.5_dp / Pi * ts_kweight(ikpt)
+       kw = 0.5_dp / Pi * ts_kpoint_scf%w(ikpt)
        if ( nspin == 1 ) kw = kw * 2._dp
 
 #ifdef TRANSIESTA_TIMING
@@ -435,6 +445,9 @@ close(io)
 
           ! The remaining code segment only deals with 
           ! bias integration... So we skip instantly
+          do iEl = 1, N_Elec
+            call reread_Gamma_Green(Elecs(iEl), uGF(iEl), NE, ispin)
+          end do
 
           cycle
 
@@ -598,7 +611,9 @@ close(io)
        call timer('TS_weight',2)
 #endif
 
-       ! We don't need to do anything here..
+       do iEl = 1, N_Elec
+         call reread_Gamma_Green(Elecs(iEl), uGF(iEl), NE, ispin)
+       end do
 
     end do ! spin
 
@@ -696,22 +711,21 @@ close(io)
     if ( hasEDM ) then
        if ( leq ) then
 
-!$OMP parallel do default(shared), &
-!$OMP&private(io,iu,ind,ju)
+!$OMP parallel do default(shared), private(io,iu,ind,ju)
           do io = 1 , nr
              ! Quickly go past the buffer atoms...
              if ( l_ncol(io) /= 0 ) then
-
+                
              ! The update region equivalent GF part
              iu = io - orb_offset(io)
-        
+
              do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
                 
-                ju = l_col(ind) - orb_offset(l_col(ind)) &
-                     - offset(N_Elec,Elecs,l_col(ind))
+                ju = l_col(ind) - orb_offset(l_col(ind)) - &
+                     offset(N_Elec,Elecs,l_col(ind))
                 
-                D(ind,i1) = D(ind,i1) - GF(iu,ju) * DMfact
-                E(ind,i2) = E(ind,i2) - GF(iu,ju) * EDMfact
+                D(ind,i1) = D(ind,i1) - Gf(iu,ju) * DMfact
+                E(ind,i2) = E(ind,i2) - Gf(iu,ju) * EDMfact
                 
              end do
 
@@ -721,8 +735,7 @@ close(io)
      
        else
 
-!$OMP parallel do default(shared), &
-!$OMP&private(io,iu,ind,ju)
+!$OMP parallel do default(shared), private(io,iu,ind,ju)
           do io = 1 , nr
              if ( l_ncol(io) /= 0 ) then
              iu = io - orb_offset(io)
@@ -739,21 +752,20 @@ close(io)
     else
 
        if ( leq ) then
-!$OMP parallel do default(shared), &
-!$OMP&private(io,iu,ind,ju)
+!$OMP parallel do default(shared), private(io,iu,ind,ju)
           do io = 1 , nr
              ! Quickly go past the buffer atoms...
              if ( l_ncol(io) /= 0 ) then
 
              ! The update region equivalent GF part
              iu = io - orb_offset(io)
-             
+
              do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
-                
-                ju = l_col(ind) - orb_offset(l_col(ind)) &
-                     - offset(N_Elec,Elecs,l_col(ind))
-                
-                D(ind,i1) = D(ind,i1) - GF(iu,ju) * DMfact
+
+                ju = l_col(ind) - orb_offset(l_col(ind)) - &
+                     offset(N_Elec,Elecs,l_col(ind))
+
+                D(ind,i1) = D(ind,i1) - Gf(iu,ju) * DMfact
                 
              end do
              end if
@@ -761,8 +773,7 @@ close(io)
 !$OMP end parallel do
 
        else
-!$OMP parallel do default(shared), &
-!$OMP&private(io,iu,ind,ju)
+!$OMP parallel do default(shared), private(io,iu,ind,ju)
           do io = 1 , nr
              if ( l_ncol(io) /= 0 ) then
              iu = io - orb_offset(io)
@@ -787,7 +798,7 @@ close(io)
       offset = sum(TotUsedOrbs(Elecs(:)), &
            MASK=(Elecs(:)%DM_update == 0) .and. Elecs(:)%idx_o <= io )
     end function offset
-    
+
   end subroutine add_DM
 
 

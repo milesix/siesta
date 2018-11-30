@@ -10,7 +10,6 @@
 module m_region
   
   use intrinsic_missing, only : UNIQ, UNIQC, SFIND
-  use intrinsic_missing, only : SORT_QUICK
   use geom_helper, only : UCORB, IAORB
 
   use class_OrbitalDistribution
@@ -40,13 +39,20 @@ module m_region
 
   public :: tRgn, tRgnLL
   public :: rgn_init, rgn_init_pvt
+  public :: rgn_grow
+  public :: rgn_purge
   public :: rgn_assoc
+  interface rgn_assoc
+    module procedure rgn_assoc_rgn
+    module procedure rgn_assoc_list
+  end interface rgn_assoc
   public :: rgn_delete, rgn_nullify, rgnll_delete
   public :: rgn_intersection
   public :: rgn_union, rgn_append
   public :: rgn_union_complement, rgn_complement
   public :: rgn_range
   public :: rgn_list
+  public :: rgn_2logical
   public :: rgn_overlaps
   public :: rgn_sort, rgn_uniq
   public :: rgn_insert, rgn_remove
@@ -57,6 +63,7 @@ module m_region
   public :: in_rgn, rgn_pivot
   interface rgn_push
      module procedure rgn_push_val
+     module procedure rgn_push_list
      module procedure rgn_push_rgn
   end interface rgn_push
   public :: rgn_push, rgn_pop
@@ -64,6 +71,25 @@ module m_region
   public :: rgn_MPI_union
   public :: rgn_MPI_Bcast
 #endif
+
+  public :: rgn_init_consecutive
+  interface rgn_init_consecutive
+     module procedure rgn_init_consecutive_none
+     module procedure rgn_init_consecutive_rgn
+  end interface rgn_init_consecutive
+
+  public :: rgn_consecutive_insert
+  interface rgn_consecutive_insert
+     module procedure rgn_consecutive_insert_rgn
+     module procedure rgn_consecutive_insert_val
+  end interface rgn_consecutive_insert
+
+  public :: rgn_consecutive_remove
+  interface rgn_consecutive_remove
+     module procedure rgn_consecutive_remove_rgn
+     module procedure rgn_consecutive_remove_val
+  end interface rgn_consecutive_remove
+
 
   ! Regions which has to do with sparsity patterns
   public :: rgn_sp_connect
@@ -152,6 +178,78 @@ contains
     
   end subroutine rgn_init
 
+
+  ! Set the logical array:
+  !    log(r%r(i)) = val
+  subroutine rgn_2logical(r, l, val)
+    ! The region to define values in l
+    type(tRgn), intent(in) :: r
+    ! The logical array
+    logical, intent(inout) :: l(:)
+    ! default value (true will be set if not present)
+    logical, intent(in), optional :: val
+
+    integer :: i
+    logical :: lval
+
+    if ( r%n == 0 ) return
+
+    lval = .true.
+    if ( present(val) ) lval = val
+
+    do i = 1, r%n
+      l(r%r(i)) = lval
+    end do
+
+  end subroutine rgn_2logical
+    
+  
+  ! Easy Grow a region to a maximum size
+  ! It will only re-allocate if the new size
+  ! is larger than the already allocated
+  subroutine rgn_grow(r,n)
+    ! The region containing of size n
+    type(tRgn), intent(inout) :: r
+    ! size of the range
+    integer, intent(in) :: n
+    
+    if ( associated(r%r) ) then
+      if ( size(r%r) < n ) then
+        call rgn_init(r, n)
+      end if
+    else
+      call rgn_init(r, n)
+    end if
+    
+  end subroutine rgn_grow
+
+  ! Remove all un-used elements
+  subroutine rgn_purge(r)
+    ! The region containing of size n
+    type(tRgn), intent(inout) :: r
+    integer, allocatable :: rr(:)
+    integer :: n
+    character(len=R_NAME_LEN) :: name
+    logical :: sorted
+
+    if ( r%n == 0 ) return
+    if ( r%n == size(r%r) ) return
+
+    name = r%name
+    sorted = r%sorted
+
+    ! get current size
+    n = r%n
+    allocate(rr(n))
+    rr = r%r(:n)
+    call rgn_list(r, n, rr, name=name)
+    r%sorted = sorted
+
+    deallocate(rr)
+    
+  end subroutine rgn_purge
+
+
   ! From return in pvt the pivoting
   ! table of r2 in r1.
   ! Hence:
@@ -217,9 +315,11 @@ contains
   subroutine rgn_copy(from,to)
     type(tRgn), intent(in) :: from
     type(tRgn), intent(inout) :: to
+    character(len=R_NAME_LEN) :: name
     if ( from%n == 0 ) then
+       name = from%name
        call rgn_delete(to)
-       to%name = from%name
+       to%name = name
     else if ( .not. associated(to%r,from%r) ) then
        call rgn_list(to,from%n,from%r,name=from%name)
        to%sorted = from%sorted
@@ -242,6 +342,7 @@ contains
     end if
     nullify(r%r)
     r%sorted = .false.
+    ! Recursively call delete for all arguments (up to 6 in total)
     if ( present(r1) ) call rgn_delete(r1,r2,r3,r4,r5)
   end subroutine rgn_delete
 
@@ -258,8 +359,9 @@ contains
   ! Assigns the left region with the right region
   ! hence, deleting one will create a memory leak if
   ! not handled carefully
-  subroutine rgn_assoc(lhs,rhs, dealloc)
-    type(tRgn), intent(inout) :: lhs, rhs
+  subroutine rgn_assoc_rgn(lhs,rhs, dealloc)
+    type(tRgn), intent(inout) :: lhs
+    type(tRgn), intent(in) :: rhs
     ! whether a pre-deallocation of the lhs should occur
     logical, intent(in), optional :: dealloc
     if ( present(dealloc) ) then
@@ -272,7 +374,29 @@ contains
     lhs%r => rhs%r
     lhs%sorted = rhs%sorted
 
-  end subroutine rgn_assoc
+  end subroutine rgn_assoc_rgn
+
+  ! Assigns the left region with the right region
+  ! hence, deleting one will create a memory leak if
+  ! not handled carefully
+  subroutine rgn_assoc_list(lhs,n,r, dealloc)
+    type(tRgn), intent(inout) :: lhs
+    integer, intent(in) :: n
+    integer, intent(in), target :: r(n)
+    ! whether a pre-deallocation of the lhs should occur
+    logical, intent(in), optional :: dealloc
+    if ( present(dealloc) ) then
+       if ( dealloc ) call rgn_delete(lhs)
+    end if
+    ! default to nullify
+    call rgn_nullify(lhs)
+    lhs%name = ' '
+    lhs%n = n
+    lhs%r => r
+    lhs%sorted = .false.
+
+  end subroutine rgn_assoc_list
+
 
   ! Allows removing certain elements from a region.
   subroutine rgn_remove_list(r,n,list,rout)
@@ -280,34 +404,21 @@ contains
     type(tRgn), intent(inout) :: rout
     integer, intent(in) :: n, list(n)
 
-    integer :: i, ni
-    integer, allocatable :: tmp_r(:)
+    type(tRgn) :: rr
 
-    if ( n == 0 ) then
-       call rgn_copy(r,rout)
-       return
-    end if
+    call rgn_list(rr, n, list)
+    call rgn_sort(rr)
 
-    allocate(tmp_r(r%n))
-    ni = 0
-    do i = 1 , r%n
-       if ( all(r%r(i)/=list(:)) ) then
-          ni = ni + 1
-          tmp_r(ni) = r%r(i)
-       end if
-    end do
-
-    call rgn_list(rout,ni,tmp_r)
-
-    deallocate(tmp_r)
+    call rgn_remove_rgn(r, rr, rout)
+    call rgn_delete(rr)
 
   end subroutine rgn_remove_list
   subroutine rgn_remove_rgn(r,rr,rout)
     type(tRgn), intent(in) :: r
     type(tRgn), intent(in) :: rr
     type(tRgn), intent(inout) :: rout
-    
-    call rgn_remove_list(r,rr%n,rr%r,rout)
+
+    call rgn_complement(rr, r, rout)
 
   end subroutine rgn_remove_rgn
 
@@ -317,7 +428,7 @@ contains
   ! Hence they will be wrapped
   ! An optional size can be specified
   ! if the array is shorter
-  subroutine rgn_wrap(r,n)
+  pure subroutine rgn_wrap(r,n)
     type(tRgn), intent(inout) :: r
     integer, intent(in), optional :: n
     integer :: i, ln
@@ -330,10 +441,13 @@ contains
     do while ( i <= r%n )
        if ( r%r(i) < 0 ) then
           r%r(i) = ln + r%r(i) + 1
+          r%sorted = .false.
        else if ( r%r(i) == 0 ) then
           r%r(i) = ln
+          r%sorted = .false.
        else if ( ln < r%r(i) ) then
           r%r(i) = r%r(i) - ln
+          r%sorted = .false.
        else
           i = i + 1
        end if
@@ -341,6 +455,166 @@ contains
 
   end subroutine rgn_wrap
 
+
+  ! This routine will create a new region of size 'n', with a sorted range
+  ! but only values in the range of the incoming values
+  ! This will create duplicate values starting from the values in
+  ! vr up to the next value in vr
+  ! I.e.
+  !  (10, r, [3, 7])
+  ! will create r:
+  !  [0, 0, 3, 3, 3, 3, 7, 7, 7, 7]
+  subroutine rgn_init_consecutive_rgn(n, r, vr)
+    ! Initial size of the range 'r'
+    integer, intent(in) :: n
+    type(tRgn), intent(inout) :: r
+    type(tRgn), intent(in) :: vr
+
+    integer :: i, j, v
+
+    call rgn_init(r, n)
+    ! A consecutive region is *always* sorted
+    r%sorted = .true.
+
+    if ( vr%n == 0 ) then
+      r%r(:) = 0
+      return
+    end if
+
+    if ( vr%sorted ) then
+      
+      ! Start by filling all values up to the first value
+      do i = 1, vr%r(1) - 1
+        r%r(i) = 0
+      end do
+      
+      ! Now fill the rest
+      do i = 2, vr%n
+        v = vr%r(i-1)
+        do j = v, vr%r(i) - 1
+          r%r(j) = v
+        end do
+      end do
+      
+      v = vr%r(vr%n)
+      do j = v, n
+        r%r(j) = v
+      end do
+      
+    else
+
+      ! Initialize everything to 0 to be able to check
+      r%r(:) = 0
+      
+      ! Here we first set all values at their positions
+      do i = 1, vr%n
+        r%r(vr%r(i)) = vr%r(i)
+      end do
+      
+      ! Now we need to correctly populate it
+      v = 0
+      do i = 1, n
+        if ( r%r(i) == 0 ) then
+          r%r(i) = v
+        else
+          v = r%r(i)
+        end if
+      end do
+      
+    end if
+    
+  end subroutine rgn_init_consecutive_rgn
+
+  subroutine rgn_init_consecutive_none(n, r)
+    ! Initial size of the range 'r'
+    integer, intent(in) :: n
+    type(tRgn), intent(inout) :: r
+
+    call rgn_init(r, n, val=0)
+    ! A consecutive region is *always* sorted
+    r%sorted = .true.
+
+  end subroutine rgn_init_consecutive_none
+
+  ! Insert the values in vr into r
+  pure subroutine rgn_consecutive_insert_rgn(r, vr)
+    type(tRgn), intent(inout) :: r
+    type(tRgn), intent(in) :: vr
+
+    integer :: i
+
+    if ( vr%n == 0 ) return
+
+    ! Insert all elements
+    do i = 1, vr%n
+      call rgn_consecutive_insert(r, vr%r(i))
+    end do
+    
+  end subroutine rgn_consecutive_insert_rgn
+
+  ! Insert the values in vr into r
+  pure subroutine rgn_consecutive_insert_val(r, v)
+    type(tRgn), intent(inout) :: r
+    integer, intent(in) :: v
+
+    integer :: i, v1
+
+    ! Check which elements has the
+    ! same value as the position we are going
+    ! to create.
+    v1 = r%r(v)
+    if ( v1 == v ) return
+    
+    do i = v, r%n
+      if ( r%r(i) == v1 ) then
+        r%r(i) = v
+      else
+        return
+      end if
+    end do
+    
+  end subroutine rgn_consecutive_insert_val
+
+  ! Remove values in vr from r
+  pure subroutine rgn_consecutive_remove_rgn(r, vr)
+    type(tRgn), intent(inout) :: r
+    type(tRgn), intent(in) :: vr
+
+    integer :: i
+
+    if ( vr%n == 0 ) return
+
+    do i = 1, vr%n
+       call rgn_consecutive_remove(r, vr%r(i))
+    end do
+
+  end subroutine rgn_consecutive_remove_rgn
+
+  ! Insert the values in vr into r
+  pure subroutine rgn_consecutive_remove_val(r, v)
+    type(tRgn), intent(inout) :: r
+    integer, intent(in) :: v
+
+    integer :: i, vn
+
+    if ( v == 1 ) then
+       vn = 0
+    else
+       vn = r%r(v-1)
+    end if
+    
+    ! we already have the element removed
+    if ( v == vn ) return
+    r%r(v) = vn
+    do i = v + 1, r%n
+       if ( r%r(i) == v ) then
+          r%r(i) = vn
+       else
+          return
+       end if
+    end do
+    
+  end subroutine rgn_consecutive_remove_val
 
   ! Generates a new region which connects to 'r'
   ! We have several options to control the output region
@@ -378,10 +652,10 @@ contains
     logical, intent(in), optional :: follow
 
     ! ** local variables
-    type(tRgn) :: tmp, tmp2
-    integer :: i, j, io, jo, ind, no_l, no_u, it, rt
+    integer :: i, j, io, jo, ind, no_l, no_u, it, rt, n
     integer, allocatable :: ct(:), rr(:)
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
+    logical, allocatable :: in_r(:)
 
     call attach(sp,nrows=no_l,nrows_g=no_u, &
          n_col=l_ncol,list_ptr=l_ptr,list_col=l_col)
@@ -391,30 +665,21 @@ contains
 
     allocate(rr(r%n))
     allocate(ct(no_u-r%n))
+    allocate(in_r(no_u))
 
-    call rgn_copy(r, tmp)
-    ! In case r%n is extremely big we can with benefit &
-    ! search the region in a sorted array.
-    ! We sort it once, and search that array instead
-    ! This requires a slightly increased memory, but 
-    ! drastically improves performance.
-    call rgn_sort(tmp)
-    
+    ! Initialize in_r
+    in_r(:) = .false.
+    call rgn_2logical(r, in_r)
+
     if ( present(except) ) then
-       ! Exclude it's own region, (no connection back)
-       if ( except%n > 0 ) then
-          call rgn_copy(tmp,tmp2)
-          call rgn_insert(tmp2,except,tmp,0)
-          call rgn_delete(tmp2)
-          call rgn_sort(tmp)
-       end if
+      
+      ! Exclude it's own region, (no connection back)
+      call rgn_2logical(except, in_r)
+      
     end if
 
     rt = 0
-    ! A duplicate of ct for faster checks (sorted search)
-    call rgn_init(tmp2, no_u-r%n)
-    tmp2%n = 0
-    
+    n = 0
     do i = 1 , r%n
 
        ! Orbital that should be folded from
@@ -422,29 +687,24 @@ contains
        if ( io <= 0 ) cycle ! the orbital does not exist on this node
 
        ! Count number of orbitals that are connected
-       j = tmp2%n
+       j = n
        do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
 
           ! UC-orb
           jo = ucorb(l_col(ind), no_u)
 
           ! Ensure that it is not a folding to the same region
-          ! tmp is sorted, hence it uses SFIND
-          if ( in_rgn(tmp, jo) ) cycle
+          if ( .not. in_r(jo) ) then
 
-          if ( .not. in_rgn(tmp2, jo) ) then
-             tmp2%n = tmp2%n + 1
-             ct(tmp2%n) = jo
-             ! Retain two lists (in case there
-             ! are super-cell connections we must do
-             ! the sorting here, besides)
-             tmp2%r(tmp2%n) = jo
-             call rgn_sort(tmp2)
+            n = n + 1
+            ct(n) = jo
+            ! We shouldn't use it any more
+            in_r(jo) = .true.
           end if
-
+          
        end do
        
-       if ( j /= tmp2%n ) then
+       if ( j /= n ) then
           ! The connect_from region
           ! will only make sense if we do not follow the orbitals
           ! (else we still get where the connection starts)!
@@ -457,12 +717,12 @@ contains
     end do
 
     ! Store the current size of ct
-    it = tmp2%n
+    it = n
 
     ! If we are supposed to follow
     ! then loop and extend ct
     if ( present(follow) ) then
-    if ( follow ) then
+      if ( follow ) then
 
 #ifdef MPI
        ! We have found the first group of regions
@@ -472,28 +732,20 @@ contains
 
        if ( dist_nodes(dit) > 1 ) then
           ! b-cast the connected to region
-          call rgn_list(tmp2, it, ct)
-          call rgn_MPI_union(dit, tmp2)
-          it = tmp2%n
-          if ( it > 0 ) then
-             do i = 1 , it
-                ct(i) = tmp2%r(i)
+          call rgn_list(cr, it, ct)
+          call rgn_MPI_union(dit, cr)
+          it = cr%n
+          if ( cr%n > 0 ) then
+             do i = 1 , cr%n
+                ct(i) = cr%r(i)
              end do
           end if
           
-          ! A duplicate of ct for faster checks (sorted search)
-          call rgn_init(tmp2, no_u-r%n)
-          do i = 1 , it
-             tmp2%r(i) = ct(i)
-          end do
-          tmp2%n = it
-
-          ! Ensure it is sorted.
-          call rgn_sort(tmp2)
+          call rgn_2logical(cr, in_r)
+          call rgn_delete(cr)
        end if
 #else
-       ! Do nothing, the tmp2 array is already the correct size
-       ! and sorted.
+       ! Do nothing, we already have in_r added
 #endif
 
        i = 1
@@ -508,18 +760,11 @@ contains
              jo = ucorb(l_col(ind), no_u)
 
              ! Ensure that it is not a folding to the same region
-             if ( in_rgn(tmp, jo) ) cycle
+             if ( in_r(jo) ) cycle
 
-             if ( .not. in_rgn(tmp2, jo) ) then
-                it = it + 1
-                ct(it) = jo
-                ! Retain two lists (in case there
-                ! are super-cell connections we must do
-                ! the sorting here, besides)
-                tmp2%n = it
-                tmp2%r(it) = jo
-                call rgn_sort(tmp2)
-             end if
+             it = it + 1
+             ct(it) = jo
+             in_r(jo) = .true.
              
           end do
           
@@ -531,14 +776,11 @@ contains
     end if
     end if
 
-    ! Clean-up
-    call rgn_delete(tmp2)
-
     ! We now have a list of orbitals that needs to be folded to
     ! Copy the list over
     call rgn_list(cr, it, ct)
 
-    deallocate(ct)
+    deallocate(ct, in_r)
 
 #ifdef MPI
     call rgn_MPI_union(dit, cr)
@@ -554,7 +796,6 @@ contains
 
     end if
 
-    call rgn_delete(tmp)
     deallocate(rr)
 
   end subroutine rgn_sp_connect
@@ -577,23 +818,19 @@ contains
   !     I.e. we find the number of connection orbitals for all in 'sr' which 
   !     connects into region 'r'.
   !     We then place 
-  subroutine rgn_sp_sort_type(r,dit,sp, sr, method)
-
-#ifdef MPI
-    use mpi_siesta, only : MPI_Integer
-    use mpi_siesta, only : MPI_MAX, MPI_MIN, MPI_AllReduce
-#endif
+  subroutine rgn_sp_sort_type(r,sp, sr, method, r_logical)
 
     ! the region we wish to find the connections to
     type(tRgn), intent(inout) :: r
-    ! The sparsity patterns distribution
-    type(OrbitalDistribution), intent(in) :: dit
     ! The sparsity pattern
     type(Sparsity), intent(inout) :: sp
     ! the sorting region (i.e. the orbitals that are allowed to be pivoted)
     type(tRgn), intent(in) :: sr
     ! The method used for sorting
     integer, intent(in) :: method
+    ! An exact logical array of the r array with false for all indices
+    ! except indices that are in r
+    logical, intent(in), target, optional :: r_logical(:)
 
     ! ** local variables
     integer :: n, nzs
@@ -606,7 +843,7 @@ contains
          n_col=l_ncol,list_ptr=l_ptr,list_col=l_col)
 
     call rgn_sp_sort_explicit(r,n,nzs,l_ncol,l_ptr,l_col, &
-         sr,method,dit=dit)
+         sr,method, r_logical=r_logical)
 
   end subroutine rgn_sp_sort_type
 
@@ -627,12 +864,13 @@ contains
   !     I.e. we find the number of connection orbitals for all in 'sr' which 
   !     connects into region 'r'.
   !     We then place 
-  subroutine rgn_sp_sort_explicit(r,n,nnzs,n_col,l_ptr,l_col, sr, method,dit)
+  subroutine rgn_sp_sort_explicit(r,n,nnzs,n_col,l_ptr,l_col, sr, method, r_logical)
 
 #ifdef MPI
     use mpi_siesta, only : MPI_Integer
-    use mpi_siesta, only : MPI_MAX, MPI_MIN, MPI_AllReduce
+    use mpi_siesta, only : MPI_MAX, MPI_MIN, MPI_AllReduce, MPI_IN_PLACE
 #endif
+    use intrinsic_missing, only: index_sort_heap
 
     ! the region we wish to find the connections to
     type(tRgn), intent(inout) :: r
@@ -642,36 +880,68 @@ contains
     type(tRgn), intent(in) :: sr
     ! The method used for sorting
     integer, intent(in) :: method
-    ! The distribution
-    type(OrbitalDistribution), intent(in), optional :: dit
+    ! An exact logical array of the r array with false for all indices
+    ! except indices that are in r
+    logical, intent(in), target, optional :: r_logical(:)
 
     ! ** local variables
-    type(tRgn) :: r_tmp, cc
-    integer :: i, io, ind, jo, ci, last_n, idx_max
-    integer, allocatable :: n_c(:)
-#ifdef MPI
-    integer :: comm
-    integer :: MPIerror
-#endif
+    type(tRgn) :: r_tmp
+    integer :: i, io, ind, jo, ci, last_n, idx_max, cn
+    logical :: expensive_check
+    logical, target, allocatable :: lr_logical(:)
+    logical, pointer :: in_r(:)
+    integer, allocatable :: n_c(:), idx_n_c(:)
 
     if ( r%n == 0 ) return
+    if ( sr%n <= 1 ) return
 
-#ifdef MPI
-    if ( present(dit) ) comm = dist_comm(dit)
-#endif
+    ! First we ensure that the lists are fully overlapping
+    ! Check simple push first
+    jo = r%n - sr%n
+    expensive_check = .false.
+    do i = 1, sr%n
+      jo = jo + 1
+      if ( r%r(jo) /= sr%r(i) ) then
+        expensive_check = .true.
+        exit
+      end if
+    end do
 
-    ! First we ensure that the lists are the same
-    call rgn_intersection(r,sr,r_tmp)
-    if ( r_tmp%n /= sr%n ) then
-       call die('The regions are not well-defined')
+    if ( expensive_check ) then
+      call rgn_intersection(r,sr,r_tmp)
+      if ( r_tmp%n /= sr%n ) then
+        call die('The regions are not well-defined')
+      end if
+      call rgn_delete(r_tmp)
     end if
-    call rgn_delete(r_tmp)
 
+    if ( present(r_logical) ) then
+      in_r => r_logical
+    else
+      allocate(lr_logical(n))
+!$OMP parallel default(shared), private(i), if(n>6000)
+
+!$OMP do
+      do i = 1 , n
+        lr_logical(i) = .false.
+      end do
+!$OMP end do
+
+!$OMP do
+      do i = 1 , r%n
+        lr_logical(r%r(i)) = .true.
+      end do
+!$OMP end do
+
+!$OMP end parallel
+
+      in_r => lr_logical
+
+    end if
+      
     ! Prepare the collection arrays
     allocate(n_c(sr%n))
     n_c = 0 ! initialize to ensure MPI reduction
-    call rgn_init(cc, n)
-    cc%n = 0
 
     select case ( method ) 
     case ( R_SORT_MAX_FRONT ) 
@@ -683,53 +953,35 @@ contains
 
        ! Step 1. find the number of connections for
        ! each orbital in the sorting region
-       
+!$OMP parallel do default(shared), private(i,io,cn,ind,jo)
        do i = 1 , sr%n
 
-          ! Orbital that should be folded from
-          if ( present(dit) ) then
-             io = index_global_to_local(dit,sr%r(i))
-             if ( io <= 0 ) cycle ! the orbital does not exist on this node
-          else
-             io = sr%r(i)
-          end if
-          
-          if ( n_col(io) == 0 ) cycle
-
-          cc%n = 0
-          do ind = l_ptr(io) + 1 , l_ptr(io) + n_col(io)
+         ! Orbital that should be folded from
+         io = sr%r(i)
+         
+         cn = 0
+         do ind = l_ptr(io) + 1 , l_ptr(io) + n_col(io)
+           
+           ! UC-orb
+           jo = ucorb(l_col(ind),n)
+           
+           ! Ensure that it is not folding to the same region
+           ! I.e. we check connections out in front of the SP
+           if ( .not. in_r(jo) ) then
              
-             ! UC-orb
-             jo = ucorb(l_col(ind),n)
-             
-             ! Ensure that it is not folding to the same region
-             if ( in_rgn(r,jo) ) cycle
-
-             if ( .not. in_rgn(cc, jo) ) then
-                cc%n = cc%n + 1
-                cc%r(cc%n) = jo
-                call rgn_sort(cc)
-             end if
-
-          end do
-
-          ! As the region is created "from a frontal search"
-          ! we will reverse the result (maxloc returns the first max)
-          n_c(sr%n-i+1) = cc%n
-
+             ! Note we are double counting for small systems
+             ! I don't expect this to be problematic
+             cn = cn + 1
+           end if
+           
+         end do
+         
+         ! As the region is created "from a frontal search"
+         ! we will reverse the result (maxloc returns the first max)
+         n_c(sr%n-i+1) = cn
+         
        end do
-
-#ifdef MPI
-       if ( present(dit) ) then
-          if ( dist_nodes(dit) > 1 ) then
-             call MPI_AllReduce(n_c,cc%r,sr%n,MPI_Integer, &
-                  MPI_MAX, comm, MPIerror)
-             do i = 1 , sr%n
-                n_c(i) = cc%r(i)
-             end do
-          end if
-       end if
-#endif
+!$OMP end parallel do
 
     case ( R_SORT_MAX_BACK ) 
 
@@ -742,59 +994,32 @@ contains
        ! Step 1. find the number of connections for
        ! each orbital in the sorting region
        
+!$OMP parallel do default(shared), private(i,io,cn,ind,jo)
        do i = 1 , sr%n
 
-          ! Orbital that should be folded from
-          if ( present(dit) ) then
-             io = index_global_to_local(dit,sr%r(i))
-             if ( io <= 0 ) cycle ! the orbital does not exist on this node
-          else
-             io = sr%r(i)
-          end if
+         io = sr%r(i)
+         
+         cn = 0
+         do ind = l_ptr(io) + 1 , l_ptr(io) + n_col(io)
 
-          if ( n_col(io) == 0 ) cycle
+           ! UC-orb
+           jo = ucorb(l_col(ind),n)
 
-          cc%n = 0
-          do ind = l_ptr(io) + 1 , l_ptr(io) + n_col(io)
-             
-             ! UC-orb
-             jo = ucorb(l_col(ind),n)
-             
-             ! Ensure that it is folding to the same region
-             if ( .not. in_rgn(r,jo) ) cycle
+           ! Ensure that it is folding to the same region
+           ! I.e. we check connections back into the SP
+           if ( in_r(jo) ) then
+             cn = cn + 1
+           end if
 
-             if ( .not. in_rgn(cc, jo) ) then
-                cc%n = cc%n + 1
-                cc%r(cc%n) = jo
-                call rgn_sort(cc)
-             end if
+         end do
 
-          end do
-
-          ! As the region is created "from a frontal search"
-          ! we will reverse the result (maxloc returns the first max)
-          n_c(sr%n-i+1) = cc%n
+         ! As the region is created "from a frontal search"
+         ! we will reverse the result (maxloc returns the first max)
+         ! Immideately reverse
+         n_c(sr%n-i+1) = n + 1 - cn
 
        end do
-
-#ifdef MPI
-       if ( present(dit) ) then
-          if ( dist_nodes(dit) > 1 ) then
-             call MPI_AllReduce(n_c,cc%r,sr%n,MPI_Integer, &
-                  MPI_MAX, comm, MPIerror)
-             do i = 1 , sr%n
-                n_c(i) = cc%r(i)
-             end do
-          end if
-       end if
-#endif
-
-       ! We now reverse the values as we then control that the one
-       ! with the least connections back, will be placed last
-       jo = maxval(n_c, dim=1)
-       do i = 1 , sr%n
-          n_c(i) = jo - n_c(i)
-       end do
+!$OMP end parallel do
 
     case ( R_SORT_LONGEST_BACK ) 
 
@@ -809,116 +1034,95 @@ contains
        
        do i = 1 , sr%n
 
-          ! Orbital that should be folded from
-          if ( present(dit) ) then
-             io = index_global_to_local(dit,sr%r(i))
-             if ( io <= 0 ) cycle ! the orbital does not exist on this node
-          else
-             io = sr%r(i)
-          end if
+         io = sr%r(i)
+         
+         if ( n_col(io) == 0 ) cycle
 
-          if ( n_col(io) == 0 ) cycle
+         ci = r%n
+         do ind = l_ptr(io) + 1 , l_ptr(io) + n_col(io)
 
-          ci = r%n
-          do ind = l_ptr(io) + 1 , l_ptr(io) + n_col(io)
-             
-             ! UC-orb
-             jo = ucorb(l_col(ind),n)
-             
-             ! Ensure that it is folding to the same region
-             ci = min(rgn_pivot(r,jo),ci)
+           ! UC-orb
+           jo = ucorb(l_col(ind),n)
 
-          end do
+           ! Ensure that it is folding to the same region
+           ci = min(rgn_pivot(r,jo),ci)
 
-          ! As the region is created "from a frontal search"
-          ! we will reverse the result (maxloc returns the first max)
-          n_c(i) = ci
+         end do
+
+         ! As the region is created "from a frontal search"
+         ! we will reverse the result (maxloc returns the first max)
+         n_c(i) = ci
 
        end do
-
-#ifdef MPI
-       if ( present(dit) ) then
-          if ( dist_nodes(dit) > 1 ) then
-             call MPI_AllReduce(n_c,cc%r,sr%n,MPI_Integer, &
-                  MPI_MIN, comm, MPIerror)
-             do i = 1 , sr%n
-                n_c(i) = cc%r(i)
-             end do
-          end if
-       end if
-#endif
 
     case default
 
-       call die('not implemented')
-
+      call die('not implemented')
+      
     end select
 
-    select case ( method ) 
+    ! Deallocate check-list
+    if ( allocated(lr_logical) ) deallocate(lr_logical)
 
+    
+    select case ( method ) 
     case ( R_SORT_MAX_FRONT, R_SORT_MAX_BACK )
 
-       ! We now have how many orbitals they all connect to
-       ! Sort them accordingly!
-       last_n = r%n ! where to position the next orbital
+      ! We now have how many orbitals they all connect to
+      ! Sort them accordingly!
+      last_n = r%n ! where to position the next orbital
+      allocate(idx_n_c(sr%n))
+      call index_sort_heap(sr%n, n_c, idx_n_c)
+      
+      do jo = 1 , sr%n
 
-       do jo = 1 , sr%n
+        idx_max = idx_n_c(sr%n+1-jo)
 
-          idx_max = maxloc(n_c,dim=1)
-          
-          ! The index is reversed, reverse back and retrieve
-          ! the equivalent orbital
-          io = sr%r(sr%n - idx_max + 1)
-          do i = last_n , 1 , -1
-             if ( r%r(i) == io ) then
-                ! swap the positions
-                r%r(i) = r%r(last_n)
-                r%r(last_n) = io
-                last_n = last_n - 1
-                exit ! we are not going to find it later...
-             end if
-          end do
+        ! The index is reversed, reverse back and retrieve
+        ! the equivalent orbital
+        io = sr%r(sr%n - idx_max + 1)
+        do i = last_n , 1 , -1
+          if ( r%r(i) == io ) then
+            ! swap the positions
+            r%r(i) = r%r(last_n)
+            r%r(last_n) = io
+            last_n = last_n - 1
+            exit ! we are not going to find it later...
+          end if
+        end do
 
-          n_c(idx_max) = -1 ! reset connections, we already
-                            ! processed the orbital
+      end do
 
-       end do
-
-       ! We have now sorted the entries according to the maximum
-       ! connections across the existing region.
+      ! We have now sorted the entries according to the maximum
+      ! connections across the existing region.
 
     case ( R_SORT_LONGEST_BACK )
+      
+      last_n = r%n - sr%n + 1
+      allocate(idx_n_c(sr%n))
+      call index_sort_heap(sr%n, n_c, idx_n_c)
 
-       last_n = r%n - sr%n + 1
+      do jo = 1 , sr%n
 
-       do jo = 1 , sr%n
+        ! The farthest back
+        idx_max = idx_n_c(jo)
 
-          ! The farthest back
-          idx_max = minloc(n_c,dim=1)
-          
-          io = sr%r(idx_max)
-          do i = last_n , r%n
-             if ( r%r(i) == io ) then
-                ! swap the positions
-                r%r(i) = r%r(last_n)
-                r%r(last_n) = io
-                last_n = last_n + 1
-                exit ! we are not going to find it later...
-             end if
-          end do
+        io = sr%r(idx_max)
+        do i = last_n , r%n
+          if ( r%r(i) == io ) then
+            ! swap the positions
+            r%r(i) = r%r(last_n)
+            r%r(last_n) = io
+            last_n = last_n + 1
+            exit ! we are not going to find it later...
+          end if
+        end do
 
-          n_c(idx_max) = r%n+1 ! reset connections, we already
-                               ! processed the orbital
-
-       end do
-
-       ! We have now sorted the entries according to the maximum
-       ! connections across the existing region.
+      end do
 
     end select
 
-    call rgn_delete(cc)
-    deallocate(n_c)
+    deallocate(n_c,idx_n_c)
 
     if ( r%sorted ) then
        do i = 2 , r%n
@@ -990,6 +1194,7 @@ contains
     type(tRgn), intent(inout) :: ur
 
     ! ** local variables
+    logical :: sorted 
     integer :: i, it
     type(tRgn) :: sr
     integer, allocatable :: ct(:)
@@ -1002,14 +1207,15 @@ contains
        return
     end if
 
+    sorted = r1%sorted .and. r2%sorted .and. r1%r(r1%n) <= r2%r(1)
+
     allocate(ct(r1%n+r2%n))
 
     ! Having a sorted array will greatly increase performance
     ! at minimal memory cost
     if ( r1%sorted ) then
-       sr%sorted = .true.
-       sr%n = r1%n
-       sr%r => r1%r
+      sr%sorted = .true.
+      call rgn_assoc(sr, r1)
     else
        call rgn_copy(r1,sr)
        call rgn_sort(sr)
@@ -1037,6 +1243,8 @@ contains
     ! We now have a list of orbitals that needs to be folded to
     ! Copy the list over
     call rgn_list(ur,it,ct)
+
+    ur%sorted = sorted
 
     deallocate(ct)
 
@@ -1088,14 +1296,13 @@ contains
 
   subroutine rgn_insert_list(r,n,list,rout,idx)
     type(tRgn), intent(in) :: r
-    integer, intent(in) :: n, list(n)
+    integer, intent(in), target :: n, list(n)
     type(tRgn), intent(inout) :: rout
     ! The place of insertion
     integer, intent(in) :: idx
     type(tRgn) :: rtmp
-    call rgn_list(rtmp,n,list)
+    call rgn_assoc(rtmp, n, list)
     call rgn_insert_rgn(r,rtmp,rout,idx)
-    call rgn_delete(rtmp)
   end subroutine rgn_insert_list
 
   ! Inserts a region in another region.
@@ -1164,6 +1371,7 @@ contains
 
     ! ** local variables
     type(tRgn) :: sr
+    logical :: r2_sorted
     integer :: i, it
     integer, allocatable :: ct(:)
 
@@ -1176,16 +1384,16 @@ contains
        return
     end if
 
+    r2_sorted = r2%sorted
+    
     allocate(ct(r2%n))
 
     ! Having a sorted array will greatly increase performance
     ! at minimal memory cost
     if ( r1%sorted ) then
-       sr%sorted = .true.
-       sr%n = r1%n
-       sr%r => r1%r
+       call rgn_assoc(sr, r1)
     else
-       call rgn_copy(r1,sr)
+       call rgn_copy(r1, sr)
        call rgn_sort(sr)
     end if
 
@@ -1199,10 +1407,17 @@ contains
 
     end do
 
-    if ( .not. r1%sorted ) call rgn_delete(sr)
+    if ( r1%sorted ) then
+       call rgn_nullify(sr)
+    else
+       call rgn_delete(sr)
+    end if
 
     ! Copy the list over
-    call rgn_list(cr,it,ct)
+    call rgn_list(cr, it, ct)
+    ! If r2 was sorted, then certainly it is still,
+    ! we have only removed elements.
+    cr%sorted = r2_sorted
 
     deallocate(ct)
 
@@ -1281,7 +1496,7 @@ contains
   end subroutine rgn_union_complement
 
   ! Easy setup of a consecutive orbital range
-  subroutine rgn_range(r,o1,o2)
+  subroutine rgn_range(r, o1, o2)
     ! The region containing the range [o1;o2]
     type(tRgn), intent(inout) :: r
     ! The limits on the range
@@ -1289,7 +1504,7 @@ contains
     integer :: io
 
     io = abs(o2 - o1) + 1
-    call rgn_init(r,io)
+    call rgn_init(r, io)
 
     if ( o1 <= o2 ) then
        do io = o1 , o2
@@ -1327,28 +1542,39 @@ contains
   end subroutine rgn_list
 
   subroutine rgn_sort(r)
+    use intrinsic_missing, only: sort_quick
     type(tRgn), intent(inout) :: r
     if ( r%n > 0 ) then
        call sort_quick(r%n, r%r)
-       r%sorted = .true.
     end if
+    r%sorted = .true.
   end subroutine rgn_sort
 
-  subroutine rgn_uniq(r)
+  subroutine rgn_uniq(r, in_place)
     type(tRgn), intent(inout) :: r
+    logical, intent(in), optional :: in_place
     character(len=R_NAME_LEN) :: name
     integer, allocatable :: ct(:)
+    logical :: lin_place
     integer :: n
 
-    if ( r%n > 0 ) then
-       name = r%name
-       n = uniqc(r%r(1:r%n))
-       allocate(ct(n))
-       ct(1:n) = uniq(r%r(1:r%n))
-       call rgn_list(r,n,ct,name)
-       deallocate(ct)
-       call rgn_sort(r)
+    if ( r%n == 0 ) return
+
+    lin_place = .false.
+    if ( present(in_place) ) lin_place = in_place
+
+    n = uniqc(r%r(1:r%n))
+    if ( lin_place ) then
+      r%r(1:n) = uniq(r%r(1:r%n))
+      r%n = n
+    else
+      allocate(ct(n))
+      ct(1:n) = uniq(r%r(1:r%n))
+      name = r%name
+      call rgn_list(r,n,ct,name)
+      deallocate(ct)
     end if
+    call rgn_sort(r)
 
   end subroutine rgn_uniq
 
@@ -1361,6 +1587,7 @@ contains
        r%r(i) = r%r(r%n+1-i)
        r%r(r%n+1-i) = tmp
     end do
+    r%sorted = .false.
   end subroutine rgn_reverse
 
   subroutine rgn_correct_atom(r,na_u,lasto)
@@ -1371,6 +1598,7 @@ contains
     integer, intent(in) :: na_u, lasto(0:na_u)
 
     ! ** local variables
+    logical :: r_sorted
     integer :: a(na_u), i, j, na, no
     character(len=R_NAME_LEN) :: tmp
 
@@ -1390,6 +1618,8 @@ contains
        end if
 
     end do
+
+    r_sorted = r%sorted
 
     ! Count orbital size
     no = 0
@@ -1416,6 +1646,8 @@ contains
        end do
     end if
 
+    r%sorted = r_sorted
+
   end subroutine rgn_correct_atom
 
   subroutine rgn_Atom2Orb(ar,na_u,lasto,or)
@@ -1428,15 +1660,23 @@ contains
 
     ! ** local variables
     integer :: i, cr, no
-    character(len=R_NAME_LEN) :: tmp
+    character(len=R_NAME_LEN) :: name_tmp
 
     if ( ar%n == 0 ) then
-       call rgn_delete(or)
-       return
+      call rgn_delete(or)
+      return
     end if
 
-    ! First calculate size of region in orbital
-    ! space
+    ! Quick return if 1-orbital systems
+    if ( lasto(na_u) == na_u ) then
+      name_tmp = or%name
+      call rgn_copy(ar, or)
+      or%name = name_tmp
+      
+      return
+    end if
+
+    ! First calculate size of region in orbital space
     no = 0
     do i = 1 , ar%n
        no = no + lasto(ar%r(i))-lasto(ar%r(i)-1)
@@ -1444,22 +1684,20 @@ contains
 
     ! to be sure we just depopulate the region
     ! and populate it with the correct orbitals
-    tmp = or%name
-    call rgn_delete(or)
-    or%name = tmp
-    or%n = no
-    nullify(or%r)
+    name_tmp = or%name
+    call rgn_init(or, no)
+    or%name = name_tmp
     if ( no > 0 ) then
-       allocate(or%r(no))
-       call memory('A','I',no,'rgn-list')
-       no = 0
-       do i = 1 , ar%n
-          do cr = lasto(ar%r(i)-1) + 1 , lasto(ar%r(i))
-             no = no + 1
-             or%r(no) = cr
-          end do
-       end do
+      no = 0
+      do i = 1 , ar%n
+        do cr = lasto(ar%r(i)-1) + 1 , lasto(ar%r(i))
+          no = no + 1
+          or%r(no) = cr
+        end do
+      end do
     end if
+
+    or%sorted = ar%sorted
 
   end subroutine rgn_Atom2Orb
 
@@ -1472,31 +1710,51 @@ contains
     type(tRgn), intent(inout) :: ar
 
     ! ** local variables
-    integer :: io, ia, na, a
-    integer :: ca(na_u)
-    character(len=R_NAME_LEN) :: tmp
+    integer :: io, a
+    logical, allocatable :: in_a(:)
+    type(tRgn) :: tmp
+    character(len=R_NAME_LEN) :: name_tmp
 
     if ( or%n == 0 ) then
-       call rgn_delete(ar)
-       return
+      call rgn_delete(ar)
+      return
+    end if
+
+    ! Quick return if 1-orbital systems
+    if ( lasto(na_u) == na_u ) then
+      name_tmp = ar%name
+      call rgn_copy(or, ar)
+      ar%name = name_tmp
+      
+      return
     end if
 
     ! The maximum number of atoms in the orbital region
-    ia = 1
-    ca(1) = iaorb(or%r(1),lasto)
+    allocate(in_a(na_u))
+    in_a(:) = .false.
+    
+    call rgn_init(tmp, min(na_u, or%n))
+    ! Initially sorted.
+    ! The push command will check whether it is still sorted.
+    tmp%sorted = .true.
+    a = iaorb(or%r(1), lasto)
+    tmp%r(1) = a
+    in_a(a) = .true.
+    tmp%n = 1
     do io = 2 , or%n
-       a = iaorb(or%r(io),lasto)
-       if ( any(a == ca(1:ia)) ) cycle
-       ia = ia + 1
-       if ( ia > na_u ) call die('Error in program')
-       ca(ia) = a
+      a = iaorb(or%r(io), lasto)
+      if ( .not. in_a(a) ) then
+        if ( .not. rgn_push(tmp, a) ) call die('Error in program')
+        in_a(a) = .true.
+      end if
     end do
-    na = ia
+    deallocate(in_a)
 
     ! to be sure we just depopulate the region
     ! and populate it with the correct atoms
-    tmp = ar%name
-    call rgn_list(ar,na,ca, name = tmp )
+    name_tmp = ar%name
+    call rgn_copy(tmp, ar)
+    ar%name = name_tmp
 
   end subroutine rgn_Orb2Atom
 
@@ -1514,24 +1772,45 @@ contains
     if ( r1%n == 0 ) return
     if ( r2%n == 0 ) return
 
-    ! We loop over the long one
-    if ( r1%n < r2%n ) then
-       
-       do i = 1 , r2%n
-          if ( in_rgn(r1,r2%r(i)) ) then
-             overlap = .true. 
-             return
-          end if
-       end do
+    ! We have a precedence for sorted arrays
+    ! For sorted arrays the binary seacrh algorithm is *MUCH* faster
+    ! regardless of difference of size.
+    if ( r1%sorted .and. .not. r2%sorted ) then
 
+      do i = 1 , r2%n
+        if ( in_rgn(r1,r2%r(i)) ) then
+          overlap = .true. 
+          return
+        end if
+      end do
+
+    else if ( .not. r1%sorted .and. r2%sorted ) then
+  
+      do i = 1 , r1%n
+        if ( in_rgn(r2,r1%r(i)) ) then
+          overlap = .true. 
+          return
+        end if
+      end do
+
+    else if ( r1%n < r2%n ) then
+      ! We loop over the long one
+      
+      do i = 1 , r2%n
+        if ( in_rgn(r1,r2%r(i)) ) then
+          overlap = .true. 
+          return
+        end if
+      end do
+      
     else
-
-       do i = 1 , r1%n
-          if ( in_rgn(r2,r1%r(i)) ) then
-             overlap = .true. 
-             return
-          end if
-       end do
+      
+      do i = 1 , r1%n
+        if ( in_rgn(r2,r1%r(i)) ) then
+          overlap = .true. 
+          return
+        end if
+      end do
 
     end if
 
@@ -1679,13 +1958,52 @@ contains
 
   end subroutine rgn_print
 
-  function rgn_push_val(r,val) result(good)
+  function rgn_push_val(r,val,sorted) result(good)
+    use intrinsic_missing, only: SFIND
     type(tRgn), intent(inout) :: r
     integer, intent(in) :: val
+    logical, intent(in), optional :: sorted
     logical :: good
+    integer :: idx, i
 
     good = size(r%r) > r%n
     if ( .not. good ) return
+
+    if ( r%n == 0 ) then
+      
+      ! First element
+      r%r(1) = val
+      r%n = 1
+      r%sorted = .true.
+      
+      return
+    end if
+
+    if ( present(sorted) ) then
+      
+      if ( sorted ) then
+        
+        ! Find where to insert the new value
+        idx = SFIND(r%r(1:r%n), val, +1)
+        if ( idx == 0 ) then
+          do i = r%n, 1, -1
+            r%r(i+1) = r%r(i)
+          end do
+          r%r(1) = val
+          
+        else
+          do i = r%n, idx, -1
+            r%r(i+1) = r%r(i)
+          end do
+          r%r(idx) = val
+          
+        end if
+        r%n = r%n + 1
+
+        return
+      end if
+      
+    end if
 
     ! Determine if it is still sorted
     if ( r%sorted ) then
@@ -1697,17 +2015,57 @@ contains
 
   end function rgn_push_val
 
-  function rgn_push_rgn(r,push) result(good)
+  function rgn_push_list(r,n,val,sorted) result(good)
+    type(tRgn), intent(inout) :: r
+    integer, intent(in) :: n
+    integer, intent(in), target :: val(n)
+    logical, intent(in), optional :: sorted
+    type(tRgn) :: tmp
+    logical :: good
+
+    tmp%n = n
+    tmp%r => val
+
+    good = rgn_push(r, tmp, sorted)
+
+  end function rgn_push_list
+
+  function rgn_push_rgn(r, push, sorted) result(good)
     type(tRgn), intent(inout) :: r
     type(tRgn), intent(in) :: push
+    ! In case two sorted arrays are pushed together
+    logical, intent(in), optional :: sorted
     integer :: i
     logical :: good
 
-    good = ( size(r%r) >= r%n + push%n ) 
-    if ( .not. good ) return
-    
+    good = ( size(r%r) >= r%n + push%n )
+    ! If we are not going to push anything, or
+    ! we don't have room, return immediately
+    if ( push%n == 0 .or. (.not. good) ) return
+
+    if ( r%n == 0 ) then
+      do i = 1 , push%n
+        r%r(i) = push%r(i)
+      end do
+      r%n = push%n
+      r%sorted = push%sorted
+      
+      return
+    end if
+
+    if ( present(sorted) ) then
+       if ( sorted ) then
+          good = r%sorted .and. push%sorted
+          if ( .not. good ) return
+          call push_sorted()
+          return
+       end if
+    end if
+
     if ( r%sorted .and. push%sorted ) then
-       r%sorted = r%r(r%n) <= push%r(1)
+      r%sorted = r%r(r%n) <= push%r(1)
+    else
+      r%sorted = .false.
     end if
     
     do i = 1 , push%n
@@ -1715,6 +2073,40 @@ contains
     end do
     r%n = r%n + push%n
 
+  contains
+
+    subroutine push_sorted()
+      integer :: ir, ip, n
+      
+      n = r%n + push%n
+      ir = r%n
+      ip = push%n
+      
+      do i = n, 1, -1
+         if ( r%r(ir) <= push%r(ip) ) then
+            r%r(i) = push%r(ip)
+            ip = ip - 1
+         else
+            r%r(i) = r%r(ir)
+            ir = ir - 1
+         end if
+         if ( ir < 1 ) exit
+         if ( ip < 1 ) exit
+      end do
+
+      if ( ip < 1 ) then
+         ! everything is done, r is already correct
+      else
+         ! put p at the beginning, we know r is already pushed
+         do i = 1, ip
+            r%r(i) = push%r(i)
+         end do
+      end if
+
+      r%n = n
+
+    end subroutine push_sorted
+    
   end function rgn_push_rgn
 
   pure function rgn_sum(r) result(s)
@@ -1739,30 +2131,28 @@ contains
   ! Popping of an index of a region
   function rgn_pop(r,idx,val) result(out)
     type(tRgn), intent(inout) :: r
-    integer, intent(in), optional :: val, idx
+    integer, intent(in), optional :: idx, val
     integer :: out, i, j
 
-    if ( r%n == 0 ) then
-       out = 0
-       return
-    end if
+    out = 0
+    if ( r%n == 0 ) return
 
     if ( present(idx) ) then
-       i = idx
+      i = idx
     else if ( present(val) ) then
-       i = rgn_pivot(r,val)
+      i = rgn_pivot(r,val)
+      ! The value does not exist
+      if ( i < 1 ) return
     else
-       i = 1 
+      i = 1 
     end if
 
     ! get the value
     out = r%r(i)
-    if ( r%n > 1 .and. i < r%n ) then
-       ! remove it
-       do j = i , r%n - 1
-          r%r(j) = r%r(j+1)
-       end do
-    end if
+    ! remove it
+    do j = i , r%n - 1
+      r%r(j) = r%r(j+1)
+    end do
     r%n = r%n - 1
     
   end function rgn_pop
@@ -1859,7 +2249,7 @@ contains
     integer, intent(in) :: Bnode
     integer, intent(in), optional :: Comm
 
-    integer :: Node, n, lComm
+    integer :: Node, n, lComm, Nodes
     integer :: MPIerror
 
     lComm = MPI_COMM_WORLD
@@ -1867,6 +2257,8 @@ contains
 
     ! Get current node to 
     call MPI_Comm_Rank(lComm,Node,MPIerror)
+    call MPI_Comm_Size(lComm,Nodes,MPIerror)
+    if ( Nodes == 1 ) return
 
     n = r%n
     call MPI_Bcast(n,1,MPI_Integer, Bnode, lComm, MPIerror)

@@ -66,7 +66,7 @@ contains
     ! Self-energy expansion
     use m_ts_elec_se
 
-    use m_ts_kpoints, only : ts_nkpnt, ts_kpoint, ts_kweight
+    use ts_kpoint_scf_m, only : ts_kpoint_scf
 
     use m_ts_options, only : Calc_Forces
     use m_ts_options, only : N_mu, mus
@@ -81,6 +81,8 @@ contains
     use m_ts_contour_eq,  only : Eq_E, ID2idx, c2weight_eq
     use m_ts_contour_neq, only : nEq_E, has_cE_nEq
     use m_ts_contour_neq, only : N_nEq_ID, c2weight_neq
+    use m_ts_contour_eq, only : N_Eq_E
+    use m_ts_contour_neq, only : N_nEq_E
     
     use m_iterator
 
@@ -131,6 +133,7 @@ contains
 
 ! ******************* Computational variables ****************
     type(ts_c_idx) :: cE
+    integer :: NE
     real(dp)    :: kw, kpt(3), bkpt(3)
     complex(dp) :: W, ZW
 ! ************************************************************
@@ -184,9 +187,9 @@ contains
 
     ! prepare the LHS of MUMPS-solver.
     ! This is the same no matter the contour type
-    call prep_LHS(mum,N_Elec,Elecs)
-    nzwork = mum%NZ
+    call prep_LHS(IsVolt,mum,N_Elec,Elecs)
     zwork => mum%A(:)
+    nzwork = size(zwork)
 
     ! analyzation step
     call analyze_MUMPS(mum)
@@ -234,9 +237,12 @@ contains
           call newdSpData2D(ltsup_sp_sc,N_mu, sp_dist,spEDM  ,name='TS spEDM')
        end if
     end if
+    
+    ! Total number of energy points
+    NE = N_Eq_E() + N_nEq_E()
 
     ! start the itterators
-    call itt_init  (SpKp,end1=nspin,end2=ts_nkpnt)
+    call itt_init  (SpKp,end1=nspin,end2=ts_kpoint_scf%N)
     ! point to the index iterators
     call itt_attach(SpKp,cur1=ispin,cur2=ikpt)
 
@@ -244,18 +250,21 @@ contains
 
        if ( itt_stepped(SpKp,1) ) then ! spin has incremented
 
-          write(mum%ICNTL(1),'(/,a,i0,/)') '### Solving for spin: ',ispin
-
-          call init_DM(sp_dist, sparse_pattern, &
-               n_nzs, DM(:,ispin), EDM(:,ispin), &
-               tsup_sp_uc, Calc_Forces)
+         write(mum%ICNTL(1),'(/,a,i0,/)') '### Solving for spin: ',ispin
+         
+         call init_DM(sp_dist, sparse_pattern, &
+             n_nzs, DM(:,ispin), EDM(:,ispin), &
+             tsup_sp_uc, Calc_Forces)
+         do iEl = 1, N_Elec
+           call reread_Gamma_Green(Elecs(iEl), uGF(iEl), NE, ispin)
+         end do
        end if
 
        ! Include spin factor and 1/(2\pi)
-       kpt(:) = ts_kpoint(:,ikpt)
+       kpt(:) = ts_kpoint_scf%k(:,ikpt)
        ! create the k-point in reciprocal space
        call kpoint_convert(ucell,kpt,bkpt,1)
-       kw = 0.5_dp / Pi * ts_kweight(ikpt)
+       kw = 0.5_dp / Pi * ts_kpoint_scf%w(ikpt)
        if ( nspin == 1 ) kw = kw * 2._dp
 
        write(mum%ICNTL(1),'(/,a,i0,a,3(tr1,g10.4),/)') &
@@ -326,36 +335,37 @@ contains
           ! *******************
           ! * calc GF         *
           ! *******************
+          if ( .not. cE%fake ) then
 #ifdef TRANSIESTA_TIMING
-          call timer('TS_MUMPS_SOLVE',1)
+             call timer('TS_MUMPS_SOLVE',1)
 #endif
-          write(mum%ICNTL(1),'(/,a,i0,2(a,i0),/)') &
-               '### Solving Eq Node/iC: ',Node,'/',cE%idx(2),',',cE%idx(3)
-          mum%JOB = 5
-          call zMUMPS(mum)
-          call mum_err(mum, &
-               'MUMPS failed the Eq. inversion, check the output log')
+             write(mum%ICNTL(1),'(/,a,i0,2(a,i0),/)') &
+                  '### Solving Eq Node/iC: ',Node,'/',cE%idx(2),',',cE%idx(3)
+             mum%JOB = 5
+             call zMUMPS(mum)
+             call mum_err(mum, &
+                  'MUMPS failed the Eq. inversion, check the output log')
 #ifdef TRANSIESTA_TIMING
-          call timer('TS_MUMPS_SOLVE',2)
+             call timer('TS_MUMPS_SOLVE',2)
 #endif
           
-          ! ** At this point we have calculated the Green function
-
-          ! ****************
-          ! * save GF      *
-          ! ****************
-          do imu = 1 , N_mu
-             if ( cE%fake ) cycle ! in case we implement an MPI communication solution...
-             call ID2idx(cE,mus(imu)%ID,idx)
-             if ( idx < 1 ) cycle
+             ! ** At this point we have calculated the Green function
              
-             call c2weight_eq(cE,idx, kw, W ,ZW)
-             call add_DM( spuDM, W, spuEDM, ZW, &
-                  mum, &
-                  N_Elec, Elecs, &
-                  DMidx=mus(imu)%ID)
-          end do
-
+             ! ****************
+             ! * save GF      *
+             ! ****************
+             do imu = 1 , N_mu
+                call ID2idx(cE,mus(imu)%ID,idx)
+                if ( idx < 1 ) cycle
+                
+                call c2weight_eq(cE,idx, kw, W ,ZW)
+                call add_DM( spuDM, W, spuEDM, ZW, &
+                     mum, &
+                     N_Elec, Elecs, &
+                     DMidx=mus(imu)%ID)
+             end do
+          end if
+             
           ! step energy-point
           iE = iE + Nodes
           cE = Eq_E(iE,step=Nodes) ! we read them backwards
@@ -384,6 +394,10 @@ contains
           ! The remaining code segment only deals with 
           ! bias integration... So we skip instantly
 
+          do iEl = 1, N_Elec
+            call reread_Gamma_Green(Elecs(iEl), uGF(iEl), NE, ispin)
+          end do
+          
           cycle
 
        end if
@@ -448,48 +462,50 @@ contains
           ! *******************
           ! * calc GF         *
           ! *******************
-          write(mum%ICNTL(1),'(/,a,i0,2(a,i0),/)') &
-               '### Solving nEq Node/iC: ',Node,'/',cE%idx(2),',',cE%idx(3)
-          mum%JOB = 5
-          call zMUMPS(mum)
-          call mum_err(mum, &
-               'MUMPS failed the nEq. inversion, check the output log')
+          if ( .not. cE%fake ) then
+             write(mum%ICNTL(1),'(/,a,i0,2(a,i0),/)') &
+                  '### Solving nEq Node/iC: ',Node,'/',cE%idx(2),',',cE%idx(3)
+             mum%JOB = 5
+             call zMUMPS(mum)
+             call mum_err(mum, &
+                  'MUMPS failed the nEq. inversion, check the output log')
 
-          ! ** At this point we have calculated the Green function
+             ! ** At this point we have calculated the Green function
 
-          ! ****************
-          ! * save GF      *
-          ! ****************
-          off = 0
-          do iEl = 1 , N_Elec
-             if ( cE%fake ) cycle ! in case we implement an MPI communication solution
-
-             ! The mumps solver is initialized to always
-             ! solve for all electrode columns... (not very sparse :( )
-
-             ! offset and number of orbitals
-             no = TotUsedOrbs(Elecs(iEl))
-
-             ! step to the next electrode position
-             off = off + no
-
-             ! *notice* we correct the Gf index for the column
-             call GF_Gamma_GF(Elecs(iEl), mum, no_u_TS, no, &
-                  Gf(no_u_TS*(off-no)+1:))
-
-             do iID = 1 , N_nEq_ID
+             ! ****************
+             ! * save GF      *
+             ! ****************
+             off = 0
+             do iEl = 1 , N_Elec
                 
-                if ( .not. has_cE_nEq(cE,iEl,iID) ) cycle
+                ! The mumps solver is initialized to always
+                ! solve for all electrode columns... (not very sparse :( )
                 
-                call c2weight_neq(cE,iID,kw,W,imu,ZW)
-
-                call add_DM( spuDM, W, spuEDM, ZW, &
-                     mum, &
-                     N_Elec, Elecs, &
-                     DMidx=iID, EDMidx=imu, eq = .false. )
+                ! offset and number of orbitals
+                no = TotUsedOrbs(Elecs(iEl))
+                
+                ! step to the next electrode position
+                off = off + no
+                
+                ! *notice* we correct the Gf index for the column
+                call GF_Gamma_GF(Elecs(iEl), mum, no_u_TS, no, &
+                     Gf(no_u_TS*(off-no)+1:))
+                
+                do iID = 1 , N_nEq_ID
+                   
+                   if ( .not. has_cE_nEq(cE,iEl,iID) ) cycle
+                   
+                   call c2weight_neq(cE,iID,kw,W,imu,ZW)
+                   
+                   call add_DM( spuDM, W, spuEDM, ZW, &
+                        mum, &
+                        N_Elec, Elecs, &
+                        DMidx=iID, EDMidx=imu, eq = .false. )
+                end do
              end do
-          end do
-
+             
+          end if
+          
           ! step energy-point
           iE = iE + Nodes
           cE = nEq_E(iE,step=Nodes) ! we read them backwards
@@ -544,7 +560,9 @@ contains
        call timer('TS_weight',2)
 #endif
        
-       ! We don't need to do anything here..
+       do iEl = 1, N_Elec
+         call reread_Gamma_Green(Elecs(iEl), uGF(iEl), NE, ispin)
+       end do
 
     end do ! spin, k-point
 
@@ -572,13 +590,19 @@ contains
     call delete(fdist)
 
     ! Deallocate user data
+    call memory('D','I',size(mum%IRN)*2, 'prep_LHS')
     deallocate( mum%IRN ) ; nullify( mum%IRN )
     deallocate( mum%JCN ) ; nullify( mum%JCN )
+    call memory('D', 'Z', size(mum%A), 'prep_LHS')
     deallocate( mum%A ) ; nullify( mum%A )
+    call memory('D', 'I', size(mum%IRHS_PTR), 'allocate_num')
     deallocate( mum%IRHS_PTR ) ; nullify( mum%IRHS_PTR )
+    call memory('D', 'I', size(mum%IRHS_SPARSE), 'allocate_num')
     deallocate( mum%IRHS_SPARSE ) ; nullify( mum%IRHS_SPARSE )
+    call memory('D', 'Z', size(Gf), 'allocate_num')
     deallocate( Gf ) ! mum%RHS_SPARSE is pointing to GF
     nullify( mum%RHS_SPARSE )
+    ! retain IO, killing makes a last print-out
     no = mum%ICNTL(1)
 
     ! Destroy the instance (deallocate internal data structures)
@@ -656,8 +680,7 @@ contains
 
     if ( hasEDM ) then
        
-!$OMP parallel do default(shared), &
-!$OMP&private(ir,jo,ind,io,Hn,ind_H)
+!$OMP parallel do default(shared), private(ir,jo,ind,io,Hn,ind_H)
        do ir = 1 , mum%NRHS
              
           ! this is column index
@@ -672,19 +695,18 @@ contains
              ind_H = l_ptr(io)
              ! Requires that l_col is sorted
              ind_H = ind_H + SFIND(l_col(ind_H+1:ind_H+Hn),jo)
-             if ( ind_H == l_ptr(io) ) cycle
-                
-             D(ind_H,i1) = D(ind_H,i1) - GF(ind) * DMfact
-             E(ind_H,i2) = E(ind_H,i2) - GF(ind) * EDMfact
-             
+             if ( ind_H > l_ptr(io) ) then
+                D(ind_H,i1) = D(ind_H,i1) - GF(ind) * DMfact
+                E(ind_H,i2) = E(ind_H,i2) - GF(ind) * EDMfact
+             end if
+
           end do
        end do
 !$OMP end parallel do
        
     else
 
-!$OMP parallel do default(shared), &
-!$OMP&private(ir,jo,ind,io,Hn,ind_H)
+!$OMP parallel do default(shared), private(ir,jo,ind,io,Hn,ind_H)
        do ir = 1 , mum%NRHS
           jo = ts2s_orb(ir)
           do ind = mum%IRHS_PTR(ir) , mum%IRHS_PTR(ir+1)-1
@@ -692,8 +714,9 @@ contains
              Hn    = l_ncol(io)
              ind_H = l_ptr(io)
              ind_H = ind_H + SFIND(l_col(ind_H+1:ind_H+Hn),jo)
-             if ( ind_H == l_ptr(io) ) cycle
-             D(ind_H,i1) = D(ind_H,i1) - GF(ind) * DMfact
+             if ( ind_H > l_ptr(io) ) then
+                D(ind_H,i1) = D(ind_H,i1) - GF(ind) * DMfact
+             end if
           end do
        end do
 !$OMP end parallel do
@@ -706,8 +729,7 @@ contains
 
     if ( hasEDM ) then
 
-!$OMP parallel do default(shared), &
-!$OMP&private(ind,io,jo,Hn,ind_H)
+!$OMP parallel do default(shared), private(ind,io,jo,Hn,ind_H)
        do ind = 1 , mum%NZ ! looping A
           
           ! collect the two indices
@@ -720,11 +742,11 @@ contains
           ! Requires that l_col is sorted
           ind_H = ind_H + SFIND(l_col(ind_H+1:ind_H+Hn),jo)
                     
-          if ( ind_H /= l_ptr(io) ) then  ! this occurs as mum%A contains
-                                          ! the electrode as well
+          if ( ind_H > l_ptr(io) ) then ! this occurs as mum%A contains
+                                        ! the electrode as well
           
-          D(ind_H,i1) = D(ind_H,i1) + GF(ind) * DMfact
-          E(ind_H,i2) = E(ind_H,i2) + GF(ind) * EDMfact
+             D(ind_H,i1) = D(ind_H,i1) + GF(ind) * DMfact
+             E(ind_H,i2) = E(ind_H,i2) + GF(ind) * EDMfact
              
           end if
 
@@ -733,15 +755,14 @@ contains
        
     else
 
-!$OMP parallel do default(shared), &
-!$OMP&private(ind,io,jo,Hn,ind_H)
+!$OMP parallel do default(shared), private(ind,io,jo,Hn,ind_H)
        do ind = 1 , mum%NZ
           io = ts2s_orb(mum%JCN(ind))
           jo = ts2s_orb(mum%IRN(ind))
           Hn    = l_ncol(io)
           ind_H = l_ptr(io)
           ind_H = ind_H + SFIND(l_col(ind_H+1:ind_H+Hn),jo)
-          if ( ind_H /= l_ptr(io) ) then
+          if ( ind_H > l_ptr(io) ) then
              D(ind_H,i1) = D(ind_H,i1) + GF(ind) * DMfact
           end if
        end do
@@ -786,24 +807,23 @@ contains
     Z = cE%e
     
     sp => spar(spH)
-    H  => val (spH)
-    S  => val (spS)
+    H => val(spH)
+    S => val(spS)
 
-    l_ncol => n_col   (sp)
-    l_ptr  => list_ptr(sp)
-    l_col  => list_col(sp)
+    l_ncol => n_col(sp)
+    l_ptr => list_ptr(sp)
+    l_col => list_col(sp)
 
     ! Initialize
     iG => mum%A(:)
-!$OMP parallel default(shared), private(ind,io,jo,Hn,ind_H)
 
-!$OMP workshare
-    iG(:) = 0._dp ! possibly this is not needed...
-!$OMP end workshare
+!$OMP parallel default(shared), private(ind,io,jo,Hn,ind_H)
 
 !$OMP do
     do ind = 1, mum%NZ
 
+       iG(ind) = 0._dp
+       
        io = ts2s_orb(mum%JCN(ind))
        jo = ts2s_orb(mum%IRN(ind))
 
@@ -814,12 +834,12 @@ contains
        ! Requires that l_col is sorted
        ind_H = ind_H + SFIND(l_col(ind_H+1:ind_H+Hn),jo)
 
-       if ( ind_H /= l_ptr(io) ) then
+       if ( ind_H > l_ptr(io) ) then
        
-       ! Notice that we transpose S and H back here
-       ! See symmetrize_HS_Gamma (H is hermitian)
-       iG(ind) = Z * S(ind_H) - H(ind_H)
-
+          ! Notice that we transpose S and H back here
+          ! See symmetrize_HS_Gamma (H is hermitian)
+          iG(ind) = Z * S(ind_H) - H(ind_H)
+          
        end if
        end if
 

@@ -1,47 +1,35 @@
-module m_new_dm
+!>  Prepares a starting density matrix for a new geometry iteration
 
-  !     Prepares a starting density matrix for a new geometry iteration
-  !     This DM can be:
-  !     1. Synthesized directly from atomic occupations (not idempotent)
-  !     2. Read from file
-  !     3. Re-used (with possible extrapolation) from previous geometry step(s).
-  !
-  !     In cases 2 and 3, the structure of the read or extrapolated DM 
-  !     is automatically adapted to the current sparsity pattern.
-  !
-  !     Special cases:
-  !            Harris: The matrix is always initialized
-  !            Force calculation: The DM should be written to disk
-  !                               at the time of the "no displacement"
-  !                               calculation and read from file at
-  !                               every subsequent step.
-  !            Variable-cell calculation:
-  !              If the auxiliary cell changes, the DM is forced to be
-  !              initialized (conceivably one could rescue some important
-  !              information from an old DM, but it is too much trouble
-  !              for now). NOTE that this is a change in policy with respect
-  !              to previous versions of the program, in which a (blind?)
-  !              re-use was allowed, except if 'ReInitialiseDM' was 'true'.
-  !              Now 'ReInitialiseDM' is 'true' by default. Setting it to
-  !              'false' is not recommended. (This fdf variable maps to the
-  !              'initdmaux' module variable)
-  !
-  !              In all other cases (including "server operation"), the
-  !              default is to allow DM re-use (with possible extrapolation)
-  !              from previous geometry steps.
-  !              The fdf variables 'DM.AllowReuse' and 'DM.AllowExtrapolation'
-  !              (mapped to 'allow_dm_reuse' and 'allow_dm_extrapolation', and
-  !              both 'true' by default) can be used to change this behavior.
-  !
-  !              There is no re-use of the DM for "Forces", and "Phonon"
-  !              dynamics types (i.e., the DM is re-initialized)
-  !
-  !              For "CG" calculations, the default is not to extrapolate the
-  !              DM (unless requested by setting 'DM.AllowExtrapolation' to
-  !              "true"). The previous step's DM is reused.
-  !
-  !     Alberto Garcia, September 2007, April 2012
-  !
+!>     This DM can be:
+!>         1. Synthesized directly from atomic occupations (not idempotent)
+!>         2. Read from file
+!>         3. Re-used (with possible extrapolation) from previous geometry step(s).
+
+!>     In cases 2 and 3, the structure of the read or extrapolated DM 
+!>     is automatically adapted to the current sparsity pattern.
+
+!>     Special cases:
+!>            Harris: The matrix is always initialized
+!>            Force calculation: The DM should be written to disk
+!>                               at the time of the "no displacement"
+!>                               calculation and read from file at
+!>                               every subsequent step.
+
+!>              In all other cases (including "server operation"), the
+!>              default is to allow DM re-use (with possible extrapolation)
+!>              from previous geometry steps.
+!>              The fdf variables 'DM.AllowReuse' and 'DM.AllowExtrapolation'
+!>              (mapped to 'allow_dm_reuse' and 'allow_dm_extrapolation', and
+!>              both 'true' by default) can be used to change this behavior.
+!>
+!>              There is no re-use of the DM for "Forces", and "Phonon"
+!>              dynamics types (i.e., the DM is re-initialized)
+!>
+!>              For "CG" calculations, the default is not to extrapolate the
+!>              DM (unless requested by setting 'DM.AllowExtrapolation' to
+!>              "true"). The previous step's DM is reused.
+
+module m_new_dm
 
   use sys, only: die
   use parallel, only: IONode
@@ -60,7 +48,9 @@ contains
   subroutine new_DM(SC_changed, DM_history, DM_2D, EDM_2D)
 
     use siesta_options
-    use siesta_geom,      only: ucell, xa, na_u, isc_off, nsc
+    use siesta_geom,      only: ucell, xa, na_u, isc_off
+    use siesta_geom,      only: nsc, nsc_old
+
     use sparse_matrices,  only: sparse_pattern, block_dist
     use atomlist,         only: Datm, iaorb, lasto, no_u
     use m_steps,          only: istp
@@ -72,7 +62,6 @@ contains
     use class_Pair_Geometry_dSpData2D
     use class_Fstack_Pair_Geometry_dSpData2D
 
-#ifdef TRANSIESTA
     use fdf, only: fdf_get, fdf_defined
     use units, only : eV
     use m_ts_global_vars,only: TSrun
@@ -81,10 +70,9 @@ contains
     use m_ts_options, only : N_Elec, Elecs, DM_bulk
     use m_ts_method
     use m_energies, only: Ef
-#endif
 
     logical, intent(in) :: SC_changed ! Has auxiliary supercell changed?
-    type(Fstack_Pair_Geometry_dSpData2D), intent(inout)      :: DM_history
+    type(Fstack_Pair_Geometry_dSpData2D), intent(inout) :: DM_history
     type(dSpData2D), intent(inout) :: DM_2D, EDM_2D
 
     ! Local variables
@@ -93,18 +81,16 @@ contains
     integer :: DM_in_history, n_depth
     integer :: init_method
 
-#ifdef TRANSIESTA
     real(dp), pointer :: DM(:,:), EDM(:,:)
     integer :: iElec
     integer :: na_a, na_dev
     integer, allocatable :: allowed_a(:)
     logical :: set_Ef
     real(dp) :: old_Ef, diff_Ef
-#endif
 
     if ( IONode ) then
        write(*,"(a,i5)") "new_DM -- step: ", istp
-    endif
+    end if
 
     ! In principle we allow the re-use of the DM (i.e, we do not initialize it)
     ! Initialization is either:
@@ -151,8 +137,9 @@ contains
             DM_init = .true.
     end if
 
+#ifdef TO_BE_REMOVED
     ! ... or if the auxiliary cell has changed
-    ! (in this case we have to  avoid reading back saved copy from file)
+    ! (in this case we have to avoid reading back saved copy from file)
     if ( SC_changed ) then
        
        if ( initDMaux ) then
@@ -161,7 +148,7 @@ contains
           DM_init = .true.
           read_DM = .false.
           if ( IONode ) then
-             write(*,"(a)") "DM history reset as supercell changed."
+             write(*,"(a)") "DM history reset as auxiliary supercell changed."
           end if
           call get_allowed_history_depth(n_depth)
           call new(DM_history, n_depth, "(reset DM history stack)")
@@ -171,7 +158,8 @@ contains
              write(*,"(a)") "** Warning: since 'ReinitialiseDM' is set to .false."
           end if
        end if
-    end if
+     end if
+#endif
 
     if ( DM_init ) then
        
@@ -179,7 +167,7 @@ contains
           write(*,"(a)") "Initializing Density Matrix..."
        end if
 
-       call init_DM(spin, na_u, no_u, lasto, iaorb, &
+       call init_DM(spin, na_u, no_u, nsc, lasto, iaorb, &
             Datm, &
             block_dist, sparse_pattern, &
             DM_2D, EDM_2D, &
@@ -197,7 +185,7 @@ contains
        if ( IONode ) then
           write(*,'(a,i0)') "Number of DMs in history: ", DM_in_history
        end if
-       call extrapolate_dm_with_coords(DM_history, na_u, xa(:,1:na_u), &
+       call extrapolate_DM_with_coords(DM_history, na_u, xa(:,1:na_u), &
             sparse_pattern, DM_2D)
        if ( IONode ) then
           write(*,'(a)') "New DM after history re-use:"
@@ -221,7 +209,6 @@ contains
 
     end if
 
-#ifdef TRANSIESTA
     ! In case we will immediately start a transiesta run
     if ( TSrun .and. DM_Init .and. (.not. TS_analyze ) ) then
        ! In transiesta we can always initialize
@@ -245,52 +232,57 @@ contains
           end if
 
           if ( init_method == 0 ) then
-             ! We are starting from atomic-filled orbitals
-             ! We are now allowed to overwrite everything!
-             na_a = na_u
-             allocate(allowed_a(na_a))
-             do iElec = 1 , na_a
-                allowed_a(iElec) = iElec
-             end do
+            ! We are starting from atomic-filled orbitals
+            ! We are now allowed to overwrite everything (even buffer!)
+            na_a = na_u
+            allocate(allowed_a(na_a))
+            do iElec = 1 , na_a
+              allowed_a(iElec) = iElec
+            end do
           else
-             na_a = 0
-             do iElec = 1 , na_u
-                if ( .not. a_isDev(iElec) ) na_a = na_a + 1
-             end do
-             allocate(allowed_a(na_a))
-             na_a = 0 
-             do iElec = 1 , na_u
-                if ( .not. a_isDev(iElec) ) then
-                   na_a = na_a + 1
-                   allowed_a(na_a) = iElec
-                end if
-             end do
+            ! We will only overwrite elements in the electrodes
+            ! Not in buffer
+            na_a = 0
+            do iElec = 1 , na_u
+              if ( a_isElec(iElec) ) na_a = na_a + 1
+            end do
+            allocate(allowed_a(na_a))
+            na_a = 0 
+            do iElec = 1 , na_u
+              if ( a_isElec(iElec) ) then
+                na_a = na_a + 1
+                allowed_a(na_a) = iElec
+              end if
+            end do
           end if
 
           do iElec = 1 , N_Elec
 
-             if ( IONode ) then
-                write(*,'(/,a)') 'transiesta: Reading in electrode TSDE for '//&
-                     trim(Elecs(iElec)%Name)
-             end if
-
-             ! Copy over the DM in the lead
-             ! Notice that the EDM matrix that is copied over
-             ! will be equivalent at Ef == 0
-             call copy_DM(Elecs(iElec),na_u,xa,lasto,nsc,isc_off, &
-                  ucell, DM_2D, EDM_2D, na_a, allowed_a)
-
-             ! We shift the mean by one fraction of the electrode
-             if ( set_Ef ) then
-                Ef = Ef + Elecs(iElec)%Ef / N_Elec
-             end if
-
+            if ( IONode ) then
+              write(*,'(/,2a)') 'transiesta: Reading in electrode TSDE for ', &
+                  trim(Elecs(iElec)%Name)
+            end if
+            
+            ! Copy over the DM in the lead
+            ! Notice that the EDM matrix that is copied over
+            ! will be equivalent at Ef == 0
+            call copy_DM(Elecs(iElec),na_u,xa,lasto,nsc,isc_off, &
+                ucell, DM_2D, EDM_2D, na_a, allowed_a)
+            
+            ! We shift the mean by one fraction of the electrode
+            if ( set_Ef ) then
+              Ef = Ef + Elecs(iElec)%Ef / N_Elec
+            end if
+            
           end do
 
           ! Clean-up
           deallocate(allowed_a)
 
        end if
+        
+       ! Initialize the Fermi-level
+       diff_Ef = Ef
 
        if ( fdf_defined('TS.Fermi.Initial') ) then
           ! Write out some information regarding
@@ -322,13 +314,12 @@ contains
 
        ! The electrode EDM is aligned at Ef == 0
        ! We need to align the energy matrix
-       iElec =  nnzs(sparse_pattern) * spin%EDM
-       DM    => val(DM_2D)
-       EDM   => val(EDM_2D)
+       iElec = nnzs(sparse_pattern) * spin%EDM
+       DM => val(DM_2D)
+       EDM => val(EDM_2D)
        call daxpy(iElec,diff_Ef,DM(1,1),1,EDM(1,1),1)
 
     end if
-#endif
 
 
     ! Determine how the mixing of the first step should be performed
@@ -357,7 +348,7 @@ contains
   !  1) reading a DM/TSDE(transiesta) file
   !  2) fall-back to atomic initialization using
   !     a possibly user-defined spin-configuration.
-  subroutine init_DM(spin, na_u, no_u, lasto, iaorb, &
+  subroutine init_DM(spin, na_u, no_u, nsc, lasto, iaorb, &
        DM_atom, &
        dit, sp, DM_2D, EDM_2D, &
        read_DM, &
@@ -368,7 +359,6 @@ contains
     use class_OrbitalDistribution
     use class_Sparsity
     use class_dSpData2D
-#ifdef TRANSIESTA
     use class_Fstack_dData1D, only: reset
     use m_ts_global_vars,only: ts_method_init, TSinit, TSrun
     use m_ts_options,   only : TS_scf_mode, ts_hist_keep
@@ -378,12 +368,12 @@ contains
 
     use m_mixing, only: mixers_history_init
     use m_mixing_scf, only: scf_mixs, scf_mix
-#endif /* TRANSIESTA */
 
     ! ********* INPUT ***************************************************
     ! type(tSpin) spin              : spin configuration for this system
     ! integer na_u                  : number of atoms in unit-cell
     ! integer no_u                  : number of orbitals in unit-cell
+    ! integer nsc(3)                : number of supercells along each direction
     ! integer lasto(0:na_u)         : last orbital of each atom
     ! integer iaorb(no_u)           : the atomic index of the corresponding orbital
     ! real(dp) DM_atom(no_u)        : atomic density based on atomic configuration
@@ -404,6 +394,8 @@ contains
     integer, intent(in) :: na_u
     ! Number of orbitals in the unit-cell
     integer, intent(in) :: no_u
+    ! Number of supercells along each direction
+    integer, intent(in) :: nsc(3)
     ! The last orbital on each atom
     integer, intent(in) :: lasto(0:na_u)
     ! The atom containing orbital "io"
@@ -427,11 +419,8 @@ contains
     logical, intent(in) :: anti_ferro
     integer, intent(out) :: init_method
 
-
     ! *** Local variables
-#ifdef TRANSIESTA
     integer :: i
-#endif
 
     ! Signal that we are using atomic fillings
     init_method = 0
@@ -440,7 +429,7 @@ contains
     if ( read_DM ) then
        
        ! Try and read the DM from the files
-       call init_DM_file(spin, no_u, &
+       call init_DM_file(spin, no_u, nsc, &
             dit, sp, DM_2D, EDM_2D, &
             init_method)
 
@@ -460,7 +449,6 @@ contains
     end if
 
     
-#ifdef TRANSIESTA
     if ( TS_scf_mode == 1 .and. TSinit ) then
 
        ! if the user requests to start the transiesta SCF immediately.
@@ -493,76 +481,16 @@ contains
 
     end if
 
-#else
-    ! Energy-density matrix will remain associated to old EDM
-#endif
-
-    ! print-out how the initial spin-configuration is
-    call print_initial_spin()
-
-  contains
-
-    subroutine print_initial_spin()
-      use m_mpi_utils, only: Globalize_sum
-      use sparse_matrices, only: S
-
-      ! Attach and calculate initial spin-configuration
-      real(dp), pointer :: DM(:,:)
-      real(dp) :: qspin(8)
-      integer  :: is, i, nnz
-#ifdef MPI
-      real(dp) :: qtmp(8)
-#endif
-
-      if ( spin%DM == 1 ) then
-         if ( IONode ) write(*,*) ! new line
-         return
-      end if
-
-      DM => val(DM_2D)
-      nnz = size(DM, 1)
-      
-      qspin(:) = 0.0_dp
-      ! Calculate initial spin-polarization
-!$OMP parallel do default(shared), private(is,i), reduction(+:qspin)
-      do is = 1, spin%DM
-         do i = 1 , nnz
-            qspin(is) = qspin(is) + DM(i,is) * S(i)
-         end do
-      end do
-!$OMP end parallel do
-
-#ifdef MPI
-      ! Global reduction of spin components
-      call globalize_sum(qspin, qtmp)
-      qspin = qtmp
-#endif
-      if ( .not. IONode ) return
-
-      ! Print the initial spin components
-      if ( spin%DM == 2 ) then
-         write(*,'(/,a,f12.6/)')   &
-              'initDM: Initial spin polarization (Qup-Qdown) =', &
-              qspin(1) - qspin(2)
-      else if ( spin%DM > 2 ) then
-         write(*,'(/,a,3f12.6/)')   &
-              'initDM: Initial spin polarization (x,y,z) =',  &
-              qspin(3)*2, qspin(4)*2, qspin(1) - qspin(2)
-      end if
-
-    end subroutine print_initial_spin
-    
   end subroutine init_DM
 
-
-  subroutine init_DM_file(spin, no_u, &
+  !> Routine for reading the DM from a file.  
+  !> This is a simple read-inset routine which reads
+  !> a DM/TSDE file, and inserts the quantities
+  !> into the the resulting DM (and/or EDM).
+  subroutine init_DM_file(spin, no_u, nsc, &
        dit, sp, DM_2D, EDM_2D, &
        init_method)
 
-    ! Routine for reading the DM from a file.
-    ! This is a simple read-inset routine which reads
-    ! a DM/TSDE file, and inserts the quantities
-    ! into the the resulting DM (and/or EDM).
 
     ! If the readed DM file has a different number of spin-components,
     ! this routine will easily extrapolate the quantities:
@@ -608,20 +536,21 @@ contains
     use fdf, only: fdf_get
     use files, only : slabel
     use m_iodm, only : read_DM
-#ifdef TRANSIESTA
     use m_ts_iodm, only: read_TS_DM
     use m_energies, only: Ef  ! Transiesta uses the EF obtained in a initial SIESTA run
     ! to place the electrodes and scattering region energy
     ! levels at the appropriate relative position, so it is
     ! stored in the TSDE file.
     use m_ts_global_vars,only: TSmode
-#endif /* TRANSIESTA */
 
-    use m_restruct_SpData2D, only: restructdSpData2D
+    use m_handle_sparse, only: correct_supercell_SpD
+    use m_handle_sparse, only: unfold_noauxiliary_supercell_SpD
+    use m_handle_sparse, only: fold_auxiliary_supercell_SpD
     
     ! ********* INPUT ***************************************************
     ! type(tSpin) spin              : spin configuration for this system
     ! integer no_u                  : number of orbitals in unit-cell
+    ! integer nsc(3)                : number of supercells along each direction
     ! type(OrbitalDistribution) dit : the distribution used for the orbitals
     ! type(Sparsity) sp             : sparsity pattern of DM
     ! type(dSpData2D) DM_2D         : the density matrix 
@@ -633,37 +562,37 @@ contains
     !                                   2 == .TSDE read
     ! *******************************************************************
 
-    ! The spin-configuration that is used to determine the spin-order.
+    !> The spin-configuration that is used to determine the spin-order.
     type(tSpin), intent(in) :: spin
-    ! Number of orbitals in the unit-cell
+    !> Number of orbitals in the unit-cell
     integer, intent(in) :: no_u
-    ! Parallel distribution of DM/EDM
+    !> Number of supercells along each direction
+    integer, intent(in) :: nsc(3)
+    !> Parallel distribution of DM/EDM
     type(OrbitalDistribution), intent(in) :: dit
-    ! Sparse pattern for DM/EDM
+    !> Sparse pattern for DM/EDM
     type(Sparsity), intent(inout) :: sp
-    ! The DM and EDM, these will be initialiazed upon return
-    ! if the routine could read the files
+    !> The DM and EDM, these will be initialiazed upon return
+    !> if the routine could read the files
     type(dSpData2D), intent(inout) :: DM_2D, EDM_2D
 
-    ! To signal the method by which we have read DM/EDM
+    !> To signal the method by which we have read DM/EDM
     integer, intent(out) :: init_method
 
     
     ! *** Local variables:
+    logical :: corrected_nsc
     logical :: DM_found
-#ifdef TRANSIESTA
     logical :: TSDE_found
-#endif
     ! The file we should read
     character(len=256) :: fname
     ! Number of spin-components read from the DM/TSDE file
     integer :: nspin_read
+    integer :: nsc_read(3)
 
     ! The currently read stuff
     type(dSpData2D) :: DM_read
-#ifdef TRANSIESTA
     type(dSpData2D) :: EDM_read
-#endif
 
     ! Signal the file has not been found.
     init_method = 0
@@ -671,7 +600,6 @@ contains
     if ( IONode ) write(*,*) ! New line
 
     DM_found = .false.
-#ifdef TRANSIESTA
     TSDE_found = .false.
     
     if ( TSmode ) then
@@ -682,19 +610,19 @@ contains
        fname = fdf_get('File.TSDE.Init',trim(slabel)//'.TSDE')
 
        ! Try and read the file
-       call read_ts_dm(trim(fname), dit, DM_read, EDM_read, Ef, TSDE_found)
+       call read_ts_dm(trim(fname), dit, nsc_read, DM_read, EDM_read, Ef, TSDE_found)
 
        if ( TSDE_found ) then
           ! Signal we have read TSDE
           init_method = 2
 
           DM_found = .true.
+
        else if ( IONode ) then
           write(*,'(a)') 'Failed...'
        end if
 
     end if
-#endif
 
     if ( .not. DM_found ) then
        if ( IONode ) write(*,'(a)',advance='no') &
@@ -703,11 +631,12 @@ contains
        ! Retrieve the name of the initialization file.
        fname = fdf_get('File.DM.Init',trim(slabel)//'.DM')
 
-       call read_DM(trim(fname), dit, DM_read, DM_found)
+       call read_DM(trim(fname), dit, nsc_read, DM_read, DM_found)
 
        if ( DM_found ) then
-          ! Signal that the DM file has been found
-          init_method = 1
+         ! Signal that the DM file has been found
+         init_method = 1
+         
        end if
        
     end if
@@ -726,6 +655,7 @@ contains
           end if
           
           DM_found = .false.
+          TSDE_found = .false.
           
        end if
 
@@ -736,89 +666,150 @@ contains
        
     end if
 
-#ifdef TRANSIESTA
-    ! In case the sparsity pattern does not conform we update 
-    ! the TSDE_found, note that DM_found is a logic containing
-    ! information regarding the sparsity pattern
-    if ( TSDE_found ) TSDE_found = DM_found
-#endif
 
     ! Density matrix size checks
     if ( DM_found ) then
 
-       nspin_read = size(DM_read, 2)
+      corrected_nsc = .false.
+      if ( nsc_read(1) /= 0 .and. any(nsc /= nsc_read) ) then
 
-       if ( spin%DM == nspin_read .and. IONode ) then
-          write(*,'(a)') 'Succeeded...'
-       else if ( spin%DM /= nspin_read .and. IONode ) then
-          if ( spin%DM < nspin_read ) then
-             write(*,'(a)') 'Succeeded by reducing spin-components...'
-          else
-             write(*,'(a)') 'Succeeded by increasing spin-components...'
+        ! There are three cases:
+        if ( all(nsc_read == 1) .and. fdf_get('DM.Init.Unfold', .true.) ) then
+
+          ! 1. The read DM was created from a Gamma-only calculation and thus nsc == 1, always.
+          !    In this case we know that the DM elements in the Gamma calculation (io,jo)
+          !    are replicated in all image cells (io, jo + i_s * no_u) where i_s is the image cell
+          !    offfset, since there are no k-points and thus no phases to worry about.
+          !
+          !    In very special circumstances the user may avoid this behavior by
+          !    by setting 'DM.Init.Unfold false' 
+          
+          call unfold_noauxiliary_supercell_SpD(sp, DM_read)
+          if ( TSDE_found ) then
+            call unfold_noauxiliary_supercell_SpD(sp, EDM_read)
           end if
-       end if
 
-       if ( IONode ) then
-          write(*,'(a)') "DM from file:"
-          call print_type(DM_read)
-       end if
+        else if ( all(nsc == 1) ) then
 
-       call restruct_Data(spin%DM, DM_read, DM_2D)
-#ifdef TRANSIESTA
-       if ( TSDE_found ) then
-          call restruct_Data(spin%EDM, EDM_read, EDM_2D)
-       end if
-#endif
+          ! 2. The read DM was created from a calculation with a non-trivial auxiliary cell, 
+          !    and the current calculation is Gamma-only. In this case it is necessary to fold back
+          !    all supercell DM entries.
+
+          call fold_auxiliary_supercell_SpD(sp, DM_read)
+          if ( TSDE_found ) then
+            call fold_auxiliary_supercell_SpD(sp, EDM_read)
+          end if
+            
+        else
+
+          ! 3. The read DM has a different supercell size. In this case we only copy those
+          !    elements that we know exists in the call below.
+         
+          ! Correct the supercell information
+          ! Even for EDM this will work because correct_supercell_SpD
+          ! changes the sparse pattern in-place and EDM and DM have
+          ! a shared sp
+          call correct_supercell_SpD(nsc_read, DM_read, nsc)
+          corrected_nsc = .true.
+          
+        end if
+
+      end if
+
+      nspin_read = size(DM_read, 2)
+
+      if ( IONode ) then
+        if ( spin%DM == nspin_read ) then
+          write(*,'(a)') 'Succeeded...'
+        else if ( spin%DM < nspin_read ) then
+          write(*,'(a)') 'Succeeded by reducing the number of spin-components...'
+        else
+          write(*,'(a)') 'Succeeded by increasing the number of spin-components...'
+        end if
+      end if
+      
+      if ( IONode ) then
+        write(*,'(a)') "DM from file:"
+        call print_type(DM_read)
+      end if
+
+      call restruct_Data(spin%DM, DM_read, DM_2D, .not. corrected_nsc)
+      if ( IONode ) then
+        write(*,'(a)') "DM to be used:"
+        call print_type(DM_2D)
+      end if
+      if ( TSDE_found ) then
+        call restruct_Data(spin%EDM, EDM_read, EDM_2D, .false.)
+      end if
 
     end if
 
     ! Put deletes here to avoid complicating the logic
     call delete(DM_read)
-#ifdef TRANSIESTA
     call delete(EDM_read)
-#endif
 
     if ( .not. DM_found ) init_method = 0
 
   contains
 
-    subroutine restruct_Data(nspin, in_2D, out_2D)
+    !> Driver to fix both the spin dimension and the sparsity pattern
+    !> of a DM object, which typically has been read from file.
+    !>
+    !> Note that only the cases in which one of the spin dimensions is 1
+    !> are treated.
+    
+    subroutine restruct_Data(nspin, in_2D, out_2D, show_warning)
+      
+      use m_restruct_SpData2D, only: restruct_dSpData2D
+      
+      !> Current spin dimension in the program
       integer, intent(in) :: nspin
-      type(dSpData2D), intent(inout) :: in_2D, out_2D
+      !> Input (DM) bud, to be mined for info
+      type(dSpData2D), intent(inout) :: in_2D
+      !> Output (DM) bud, created
+      type(dSpData2D), intent(inout) :: out_2D
+      !> Whether to show sanity-check warnings 
+      logical, intent(in) :: show_warning
       
       integer :: nspin_read, i
-      real(dp), pointer :: ar2(:,:)
+      real(dp), pointer :: A2(:,:)
 
       nspin_read = size(in_2D, 2)
       
       if ( nspin == 1 .and. nspin /= nspin_read ) then
          ! This SCF has 1 spin-component.
          
-         ! The readed DM has, at least 2!
-         ! Thus we sum the spinors to form the non-polarized
-         ar2 => val(in_2D)
+         ! The read DM has at least 2!
+         ! Thus we sum the spinors to form the non-polarized version
+         A2 => val(in_2D)
 !$OMP parallel do default(shared), private(i)
-         do i = 1 , size(ar2, 1)
-            ar2(i,1) = ar2(i,1) + ar2(i,2)
+         do i = 1 , size(A2, 1)
+            A2(i,1) = A2(i,1) + A2(i,2)
          end do
 !$OMP end parallel do
 
       end if
 
-      ! Restructure the sparsity data to the output DM
-      ! with maximum spin%DM number of spin-components
-      call restructdSpData2D(in_2D, sp, out_2D, nspin)
+      !> Calls [[restruct_dSpData2D]] to re-structure the sparsity
+      !> data to match the output DM, with maximum spin%DM number of
+      !> spin-components. It returns a new out_2D bud.
+      !> @note
+      !> The current sparsity pattern `sp` is known here by host association from
+      !> the parent routine, which is a bit confusing. 
+      !> `out_2D` in the called routine. Here it is the `out` sparsity, corresponding
+      !> to the current target sparsity in the program.
+      !> @endnote
+      call restruct_dSpData2D(in_2D, sp, out_2D, nspin, show_warning=show_warning)
 
       if ( nspin_read == 1 .and. nspin /= nspin_read ) then
          ! This SCF has more than 2 spin-components.
-         ! The readed DM has 1.
-         ! Thus we divide the spinors to form the polarized
-         ! case.
-         ar2 => val(out_2D)
+         ! The read DM has 1.
+         ! Thus we divide the spinors to form the polarized case.
+         A2 => val(out_2D)
 !$OMP parallel do default(shared), private(i)
-         do i = 1 , size(ar2, 1)
-            ar2(i,1) = ar2(i,1) * 0.5_dp
-            ar2(i,2) = ar2(i,1)
+         do i = 1 , size(A2, 1)
+            A2(i,1) = A2(i,1) * 0.5_dp
+            A2(i,2) = A2(i,1)
          end do
 !$OMP end parallel do
          
@@ -873,6 +864,7 @@ contains
 
     use fdf
     use parsing
+    use sparse_matrices, only: S  ! Note direct import of (associated now) pointer
 
 #ifdef MPI
     use mpi_siesta
@@ -907,6 +899,7 @@ contains
     type(dData2D) :: arr_2D
     ! The pointers for the sparse pattern
     integer :: no_l, nnz
+    integer :: io, gio, i, ind, jo
     integer, pointer :: ncol(:), ptr(:), col(:)
     real(dp), pointer :: DM(:,:)
     
@@ -936,10 +929,29 @@ contains
        call init_user()
     end if
 
+    ! We have initialized with atomic information. Correct in case we
+    ! are using such a small cell that there are direct interactions
+    ! of orbitals with their own images, and we insist on using the
+    ! Gamma-point only. Otherwise S(diagonal) is always 1.0 and the
+    ! simple atomic-orbital superposition works as intended.
+
+      do io = 1, no_l
+         ! Retrieve global orbital index
+         gio = index_local_to_global(dit, io)
+         do i = 1 , ncol(io)
+            ind = ptr(io) + i
+            jo = col(ind)
+            ! Check for diagonal element
+            if ( gio == jo ) then
+               DM(ind,:) = DM(ind,:) / S(ind)
+            endif
+         end do
+      end do
+
   contains
 
     subroutine init_atomic()
-
+      
       integer :: io, gio, i, ind, jo, i1, i2
       ! This subroutine initializes the DM based on
       ! the anti_ferro
@@ -1040,7 +1052,7 @@ contains
       
       ! Read the data from the block and then we populate DM
       na = 0
-      do while( fdf_bline(bfdf,pline) .and. na < na_u )
+      do while( fdf_bline(bfdf,pline) )
          
          ! Read number of names, integers and reals on this line
          ni = fdf_bnintegers(pline)
@@ -1303,7 +1315,7 @@ contains
     use class_Pair_Geometry_dSpData2D
     use class_Fstack_Pair_Geometry_dSpData2D
 
-    use m_restruct_SpData2D, only: restructdSpData2D
+    use m_restruct_SpData2D, only: restruct_dSpData2D
     use fdf, only: fdf_get
 
     type(Fstack_Pair_Geometry_dSpData2D), intent(in) :: DM_history
@@ -1386,7 +1398,7 @@ contains
        !           if (.not. associated(orb_dist,dist(dm))) then
        !              call die("Different orbital distributions in DM history stack")
        !           endif
-       call restructdSpData2D(dm,sparse_pattern,DMtmp)
+       call restruct_dSpData2D(dm,sparse_pattern,DMtmp)
        ai => val(DMtmp)
 !$OMP parallel workshare default(shared)
        a = a + c(i) * ai

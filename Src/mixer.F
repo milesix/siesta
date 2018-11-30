@@ -15,7 +15,7 @@
 
       use precision,        only: dp
       use siesta_options,   only: mixH, mix_scf_first
-      use siesta_options,   only: mullipop, muldeb
+      use siesta_options,   only: mullipop, muldeb, orbmoms
       ! Spin mixing options
       use m_mixing_scf, only: MIX_SPIN_ALL, MIX_SPIN_SPINOR
       use m_mixing_scf, only: MIX_SPIN_SUM, MIX_SPIN_SUM_DIFF
@@ -30,7 +30,7 @@
       use m_mixing_scf, only: scf_mix
       use m_mixing, only: mixing
       
-      use m_spin,           only: h_spin_dim, SpOrb
+      use m_spin,           only: spin 
       use parallel,         only: IONode
 
       implicit none
@@ -44,7 +44,6 @@
       integer               :: iiscf, i, is
 
       external :: mulliken
-
 !-------------------------------------------------------------------- BEGIN
 
       call timer( 'MIXER', 1 )
@@ -61,7 +60,7 @@
 
 
       ! Create residual function to minimize
-      allocate(F(maxnh,h_spin_dim))
+      allocate(F(maxnh,spin%H))
 
 !$OMP parallel default(shared), private(dtmp,i)
 
@@ -104,15 +103,15 @@
       ! Upon exit Xout contains the mixed quantity
       select case ( mix_spin )
       case ( MIX_SPIN_ALL )
-         call mixing( scf_mix, maxnh, h_spin_dim, Xin, F, Xout)
+         call mixing( scf_mix, maxnh, spin%H, Xin, F, Xout)
       case ( MIX_SPIN_SPINOR )
-         call mixing( scf_mix, maxnh, h_spin_dim, Xin, F, Xout,
+         call mixing( scf_mix, maxnh, spin%H, Xin, F, Xout,
      &        nsub=2)
       case ( MIX_SPIN_SUM )
-         call mixing( scf_mix, maxnh, h_spin_dim, Xin, F, Xout,
+         call mixing( scf_mix, maxnh, spin%H, Xin, F, Xout,
      &        nsub=1)
       case ( MIX_SPIN_SUM_DIFF )
-         call mixing( scf_mix, maxnh, h_spin_dim, Xin, F, Xout,
+         call mixing( scf_mix, maxnh, spin%H, Xin, F, Xout,
      &        nsub=2)
       end select
 
@@ -187,19 +186,17 @@
       ! entirely correct. It should be moved to the top,
       ! or done somewhere else.
 
-      if (muldeb) then 
-         if (IONode)
-     &        write (6,"(/a)")
-     &        'siesta: Mulliken populations after mixing'
-         if ( SpOrb ) then
-            call moments( mullipop, na_u, no_u, maxnh, numh, listhptr,
+      if (muldeb .and. (.not. MixH) ) then 
+         if (IONode) write (6,"(/a)") 'Using DM after mixing:'
+         if ( spin%SO .and. orbmoms) then
+            call moments( 1, na_u, no_u, maxnh, numh, listhptr,
      .           listh, S, Dscf, isa, lasto, iaorb, iphorb,
      .           indxuo )
-         else
-            call mulliken( mullipop, h_spin_dim, na_u, no_u, maxnh,
-     &           numh, listhptr, listh, S, Dscf, isa,
-     &           lasto, iaorb, iphorb )
          endif
+         ! Call this unconditionally
+         call mulliken( mullipop, na_u, no_u, maxnh,
+     &          numh, listhptr, listh, S, Dscf, isa,
+     &          lasto, iaorb, iphorb )
       endif
 
       call timer( 'MIXER', 2 )

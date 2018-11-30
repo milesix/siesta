@@ -316,8 +316,6 @@
 !                                        data structures related with the LDA+U
 !                                        projectors in the species 
 !                                        derived types.
-!                                        Called from the atm_transfer subroutine
-
 !---
       subroutine read_ldau_specs()
 
@@ -428,7 +426,7 @@
       nprojsldau(:) = 0
 
 !     Read the LDAU.proj block
-      if (.not. fdf_block('LDAU.proj',bfdf)) RETURN
+      if (.not. fdf_block('LDAU.proj', bfdf)) RETURN
 
       ! Add citation
       if ( IONode ) then
@@ -1643,7 +1641,6 @@
 !
 !     In this subroutine, we populate the variables in the species_info
 !     derived type related with the LDA+U projectors.
-!     It is called from atm_transfer. 
 !
       use alloc, only : de_alloc
       type(species_info),      pointer :: spp

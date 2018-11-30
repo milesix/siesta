@@ -72,7 +72,7 @@ contains
     ! Self-energy expansion
     use m_ts_elec_se
 
-    use m_ts_kpoints, only : ts_nkpnt, ts_kpoint, ts_kweight
+    use ts_kpoint_scf_m, only : ts_kpoint_scf
 
     use m_ts_options, only : Calc_Forces
     use m_ts_options, only : N_mu, mus
@@ -87,6 +87,8 @@ contains
     use m_ts_contour_eq,  only : Eq_E, ID2idx, c2weight_eq
     use m_ts_contour_neq, only : nEq_E, has_cE_nEq
     use m_ts_contour_neq, only : N_nEq_ID, c2weight_neq
+    use m_ts_contour_eq, only : N_Eq_E
+    use m_ts_contour_neq, only : N_nEq_E
 
     use m_iterator
     use m_mat_invert
@@ -96,7 +98,7 @@ contains
     ! Gf calculation
     use m_ts_trimat_invert
 
-    use m_ts_tri_common, only : GFGGF_needed_worksize
+    use m_ts_tri_common, only : GFGGF_needed_worksize, nnzs_tri
 
     ! Gf.Gamma.Gf
     use m_ts_tri_scat
@@ -149,6 +151,7 @@ contains
 
 ! ******************* Computational variables ****************
     type(ts_c_idx) :: cE
+    integer :: NE
     real(dp)    :: kw, kpt(3), bkpt(3)
     complex(dp) :: W, ZW
     type(tRgn)  :: pvt
@@ -194,6 +197,10 @@ contains
        padding = 0
        GFGGF_size = 0
     end if
+    ! Now figure out the required worksize for SE expansion
+    call UC_minimum_worksize(IsVolt, N_Elec, Elecs, idx)
+    io = nnzs_tri(c_Tri%n, c_Tri%r)
+    padding = max(padding, idx - io)
     call newzTriMat(zwork_tri,c_Tri%n,c_Tri%r,'GFinv', &
          padding=padding)
     nzwork = elements(zwork_tri,all=.true.)
@@ -294,27 +301,32 @@ contains
     do iel = 1 , n_mu
        print '(a20,tr1,i3)','k  '//trim(mus(iEl)%name),iel
     end do
-#endif 
+#endif
 
+    ! Total number of energy points
+    NE = N_Eq_E() + N_nEq_E()
     
     ! start the itterators
-    call itt_init  (SpKp,end1=nspin,end2=ts_nkpnt)
+    call itt_init  (SpKp,end1=nspin,end2=ts_kpoint_scf%N)
     ! point to the index iterators
     call itt_attach(SpKp,cur1=ispin,cur2=ikpt)
     
     do while ( .not. itt_step(SpKp) )
        
        if ( itt_stepped(SpKp,1) ) then
-          call init_DM(sp_dist,sparse_pattern, &
-               n_nzs, DM(:,ispin), EDM(:,ispin), &
-               tsup_sp_uc, Calc_Forces)
+         call init_DM(sp_dist,sparse_pattern, &
+             n_nzs, DM(:,ispin), EDM(:,ispin), &
+             tsup_sp_uc, Calc_Forces)
+         do iEl = 1, N_Elec
+           call reread_Gamma_Green(Elecs(iEl), uGF(iEl), NE, ispin)
+         end do
        end if
-
+        
        ! Include spin factor and 1/(2\pi)
-       kpt(:) = ts_kpoint(:,ikpt)
+       kpt(:) = ts_kpoint_scf%k(:,ikpt)
        ! create the k-point in reciprocal space
        call kpoint_convert(ucell,kpt,bkpt,1)
-       kw = 0.5_dp / Pi * ts_kweight(ikpt)
+       kw = 0.5_dp / Pi * ts_kpoint_scf%w(ikpt)
        if ( nspin == 1 ) kw = kw * 2._dp
        
 #ifdef TRANSIESTA_TIMING
@@ -416,6 +428,9 @@ contains
           
           ! The remaining code segment only deals with 
           ! bias integration... So we skip instantly
+          do iEl = 1, N_Elec
+            call reread_Gamma_Green(Elecs(iEl), uGF(iEl), NE, ispin)
+          end do
 
           cycle
 
@@ -506,7 +521,7 @@ contains
              ! ******************
              if ( ts_A_method == TS_BTD_A_COLUMN ) then
               call invert_BiasTriMat_rgn(GF_tri,zwork_tri, &
-                   r_pvt, Elecs(iEl)%o_inD)
+                   r_pvt, pvt, Elecs(iEl)%o_inD)
 
 #ifdef TS_DEV
               ! offset and number of orbitals
@@ -528,7 +543,7 @@ contains
 #endif
 
              else
-              call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_pvt, &
+              call dir_GF_Gamma_GF(Gf_tri, zwork_tri, r_pvt, pvt, &
                    Elecs(iEl), calc_parts)
              end if
              
@@ -610,7 +625,9 @@ contains
        call timer('TS_weight',2)
 #endif
 
-       ! We don't need to do anything here..
+       do iEl = 1, N_Elec
+         call reread_Gamma_Green(Elecs(iEl), uGF(iEl), NE, ispin)
+       end do
 
     end do ! spin, k-point
 
@@ -685,7 +702,7 @@ contains
     ! Self-energy expansion
     use m_ts_elec_se
 
-    use m_ts_kpoints, only : ts_nkpnt, ts_kpoint, ts_kweight
+    use ts_kpoint_scf_m, only : ts_kpoint_scf
 
     use m_ts_sparse, only : ts_sp_uc, tsup_sp_uc
     use m_ts_sparse, only : ltsup_sp_sc, sc_off
@@ -811,19 +828,25 @@ contains
     zDM => val(spuDM)
     call newdSpData2D(ltsup_sp_sc,1, sp_dist,spDM   ,name='TS spDM')
     
-    call itt_init  (SpKp,end1=nspin,end2=ts_nkpnt)
+    call itt_init  (SpKp,end1=nspin,end2=ts_kpoint_scf%N)
     call itt_attach(SpKp,cur1=ispin,cur2=ikpt)
     
     call init_val(spDM)
     do while ( .not. itt_step(SpKp) )
+      
+      if ( itt_stepped(SpKp,1) ) then
+        do iEl = 1, N_Elec
+          call reread_Gamma_Green(Elecs(iEl), uGF(iEl), 1, ispin)
+        end do
+      end if
 
-       kpt(:) = ts_kpoint(:,ikpt)
+       kpt(:) = ts_kpoint_scf%k(:,ikpt)
        call kpoint_convert(ucell,kpt,bkpt,1)
-       kw = 0.5_dp / Pi * ts_kweight(ikpt)
+       kw = 0.5_dp / Pi * ts_kpoint_scf%w(ikpt)
        if ( nspin == 1 ) kw = kw * 2._dp
        
 #ifdef TRANSIESTA_TIMING
-       call timer('TS_HS',1)
+       call timer('TS_HS-F',1)
 #endif
 
        call create_HS(sp_dist,sparse_pattern, &
@@ -834,7 +857,11 @@ contains
             nzwork, zwork)
 
 #ifdef TRANSIESTA_TIMING
-       call timer('TS_HS',2)
+       call timer('TS_HS-F',2)
+#endif
+
+#ifdef TRANSIESTA_TIMING
+       call timer('TS_EQ-F',1)
 #endif
 
        call init_val(spuDM)
@@ -850,7 +877,10 @@ contains
             nzwork, zwork, .false., forward = .false. )
        do iEl = 1 , N_Elec
           call UC_expansion(cE, Elecs(iEl), nzwork, zwork, &
-               non_Eq = .false. )
+              non_Eq = .false. )
+          ! Since there is only one energy-point, we can simply reread it
+          ! here.
+          call reread_Gamma_Green(Elecs(iEl), uGF(iEl), 1, ispin)
        end do
        
        call prepare_invGF(cE, zwork_tri, r_pvt, pvt, &
@@ -865,13 +895,17 @@ contains
        call add_DM( spuDM, W, spuEDM, W, &
             GF_tri, r_pvt, pvt, N_Elec, Elecs, DMidx=1)
 
+#ifdef TRANSIESTA_TIMING
+       call timer('TS_EQ-F',2)
+#endif
+
 #ifdef MPI
        call MPI_Barrier(MPI_Comm_World,io)
-       call timer('TS_comm',1)
+       call timer('TS_comm-F',1)
        io = size(zDM)
        call MPI_Bcast(zDM(1,1),io,MPI_Double_Complex, &
             Nodes - 1, MPI_Comm_World,MPIerror)
-       call timer('TS_comm',2)
+       call timer('TS_comm-F',2)
 #endif
 
        call add_k_DM(spDM, spuDM, 1, &

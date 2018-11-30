@@ -46,7 +46,7 @@ contains
 
   subroutine transiesta(TSiscf,nspin, &
        sp_dist, sparse_pattern, &
-       Gamma, ucell, nsc, isc_off, no_u, na_u, lasto, xa, n_nzs, &
+       no_aux_cell, ucell, nsc, isc_off, no_u, na_u, lasto, xa, n_nzs, &
        H, S, DM, EDM, Ef, &
        Qtot, Fermi_correct, DE_NEGF)
 
@@ -58,7 +58,7 @@ contains
     use class_OrbitalDistribution
     use class_Sparsity
 
-    use m_ts_kpoints, only : ts_nkpnt, ts_Gamma
+    use ts_kpoint_scf_m, only : ts_kpoint_scf, ts_gamma_scf
 
     use m_ts_electype
 
@@ -82,7 +82,7 @@ contains
     integer, intent(in)  :: nspin
     type(OrbitalDistribution), intent(inout) :: sp_dist
     type(Sparsity), intent(inout) :: sparse_pattern
-    logical, intent(in)  :: Gamma
+    logical, intent(in)  :: no_aux_cell
     real(dp), intent(in) :: ucell(3,3)
     integer, intent(in)  :: nsc(3), no_u, na_u
     integer, intent(in) :: isc_off(3,product(nsc))
@@ -134,7 +134,7 @@ contains
        ! local sparsity pattern...
        converged = IsVolt .or. TS_RHOCORR_METHOD == TS_RHOCORR_FERMI
        call ts_sparse_init(slabel,converged, N_Elec, Elecs, &
-            ucell, nsc, na_u, xa, lasto, sp_dist, sparse_pattern, Gamma, &
+            ucell, nsc, na_u, xa, lasto, sp_dist, sparse_pattern, no_aux_cell, &
             isc_off)
 
        if ( ts_method == TS_BTD ) then
@@ -145,7 +145,7 @@ contains
        end if
 
        ! print out estimated memory usage...
-       call ts_print_memory(ts_Gamma)
+       call ts_print_memory(ts_gamma_scf)
 
        call ts_print_charges(N_Elec,Elecs, Qtot, sp_dist, sparse_pattern, &
             nspin, n_nzs, DM, S)
@@ -247,7 +247,7 @@ contains
        call open_GF(N_Elec,Elecs,uGF,NEn,.false.)
 
        if ( ts_method == TS_FULL ) then
-          if ( ts_Gamma ) then
+          if ( ts_gamma_scf ) then
              call ts_fullg(N_Elec,Elecs, &
                   nq, uGF, nspin, na_u, lasto, &
                   sp_dist, sparse_pattern, &
@@ -262,7 +262,7 @@ contains
                   H, S, DM, EDM, Ef, DE_NEGF)
           end if
        else if ( ts_method == TS_BTD ) then
-          if ( ts_Gamma ) then
+          if ( ts_gamma_scf ) then
              call ts_trig(N_Elec,Elecs, &
                   nq, uGF, nspin, na_u, lasto, &
                   sp_dist, sparse_pattern, &
@@ -278,7 +278,7 @@ contains
           end if
 #ifdef SIESTA__MUMPS
        else if ( ts_method == TS_MUMPS ) then
-          if ( ts_Gamma ) then
+          if ( ts_gamma_scf ) then
              call ts_mumpsg(N_Elec,Elecs, &
                   nq, uGF, nspin, na_u, lasto, &
                   sp_dist, sparse_pattern, &
@@ -307,6 +307,12 @@ contains
        
        if ( Fermi_correct ) then
 
+          ! This is the 1. part of the Fermi correction
+          !
+          ! In this section we estimate the new Fermi level by
+          ! calculating the charge Q(E_F) and then correct
+          ! E_F such that dQ = Q(TS) - Qtot -> 0.
+          
           i_F = i_F + 1
           if ( N_F < i_F ) then
              N_F = N_F + 10
@@ -329,7 +335,7 @@ contains
                 Ef = Ef + 0.01_dp * eV
              end if
           else if ( ts_method == TS_BTD ) then
-             if ( ts_Gamma ) then
+             if ( ts_gamma_scf ) then
                 call ts_trig_Fermi(N_Elec,Elecs, &
                      nq, uGF, nspin, na_u, lasto, &
                      sp_dist, sparse_pattern, &
@@ -365,6 +371,11 @@ contains
 
           else
 
+             ! Instead of doing Q(E_F) for every change
+             ! we will perform spline interpolation ones we have 2 estimated
+             ! Q(E_F).
+             ! This tends to drastically speed up the convergence of the dQ -> 0.
+             
              ! In case we have accumulated 2 or more points
              call interp_spline(i_F,Q_Ef(1:i_F,1),Q_Ef(1:i_F,2),Qtot,Ef)
 
@@ -373,7 +384,7 @@ contains
                   TS_RHOCORR_FERMI_MAX, Ef)
 
              if ( IONode ) then
-                write(*,'(a,e11.4,a)') 'transiesta: cubic spline. dEf = ', &
+                write(*,'(a,e11.4,a)') 'ts-qc-iscf: cubic spline dEf = ', &
                      (Ef-Q_Ef(i_F,2))/eV, ' eV'
              end if
 
@@ -414,13 +425,36 @@ contains
        N_F = i_F
        write(iEl,'(a,i0)')'# ',N_F ! Number of iterations
        do i_F = 1 , N_F
-          write(iEl,'(2(tr1,e15.6))') Q_Ef(i_F,2)/eV,Q_Ef(i_F,1) - Qtot
+          write(iEl,'(2(tr1,e20.10))') Q_Ef(i_F,2)/eV,Q_Ef(i_F,1) - Qtot
        end do
 
        call io_close(iEl)
 
     end if
     if ( Fermi_correct ) then
+
+       ! This is the 2nd step of dEF correction.
+       ! At this point we have corrected E_f for the current
+       ! iteration. But generally the Hartree potential will counter
+       ! the change in E_F. So to speed up convergence
+       ! we do a spline interpolation of the dE_F by doing a spline
+       ! interpolation of the ISCF corrections.
+       ! Say TS corrects EF at iterations 50 and 80
+       ! which means TS_FERMI may look like this:
+       !#####
+       ! # TSiscf = 50
+       ! # 3
+       !   -0.204782E+01    0.172948E-01
+       !   -0.205297E+01    0.834017E-03
+       !   -0.205323E+01   -0.250016E-05
+       !
+       ! # TSiscf = 80
+       !# 3
+       !   -0.207423E+01    0.967930E-02
+       !   -0.207710E+01    0.490200E-03
+       !   -0.207726E+01   -0.817259E-06
+       !#####
+       ! 
 
        ! Guess-stimate the actual Fermi-shift
        ! typically will the above be "too" little
@@ -554,7 +588,7 @@ contains
          end if
 
          if ( Elecs(iEl)%out_of_core ) then
-            call read_Green(uGF(iEl),Elecs(iEl), ts_nkpnt, NEn )
+            call read_Green(uGF(iEl),Elecs(iEl), ts_kpoint_scf%N, NEn )
          end if
          
       end do
@@ -590,7 +624,7 @@ contains
     integer :: i, no_E, no_used
     integer(i8b) :: nel
     integer :: padding, worksize
-    real(dp) :: mem, dmem, zmem, tmp_mem
+    real(dp) :: mem, dmem, zmem
 #ifdef MPI
     integer :: MPIerror
 #endif

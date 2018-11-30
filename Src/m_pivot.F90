@@ -30,14 +30,20 @@ module m_pivot
   integer, parameter :: PVT_PCG = 7
   integer, parameter :: PVT_REV_PCG = 8
 #ifdef SIESTA__METIS
-  integer, parameter :: PVT_METIS = 9
+  integer, parameter :: PVT_METIS_NODEND = 9
+#endif
+  integer, parameter :: PVT_CONNECT = 10
+  integer, parameter :: PVT_REV_CONNECT = 11
+#ifdef SIESTA__METIS
+  integer, parameter :: PVT_METIS_PARTGRAPHKWAY = 12
+  integer, parameter :: PVT_METIS_PARTGRAPHRECURSIVE = 13
 #endif
 
 contains
 
   ! Main routine to create pivot table for the sparsity pattern
   ! The sparse pattern MUST not be distributed.
-  subroutine sp_pvt(n,sp,pvt,method,sub,start,priority)
+  subroutine sp_pvt(n,sp,pvt,method,sub,start,priority, only_sub)
     use class_Sparsity
     use m_pivot_methods
     
@@ -55,6 +61,7 @@ contains
     type(tRgn), intent(in), optional :: start
     ! The priority of the rows, optional
     integer, intent(in), optional :: priority(n)
+    logical, intent(in), optional :: only_sub
 
     type(tRgn) :: lsub
     integer :: n_nzs
@@ -84,11 +91,11 @@ contains
     ! Call the appropriate routine
     if      ( method == PVT_CUTHILL_MCKEE     ) then
        call Cuthill_Mckee(n,n_nzs,ncol,l_ptr,l_col,lsub,pvt, &
-            start = start , priority = priority )
+            start = start , priority = priority, only_sub=only_sub )
        pvt%name = 'Cuthill-Mckee'
     else if ( method == PVT_REV_CUTHILL_MCKEE ) then
        call rev_Cuthill_Mckee(n,n_nzs,ncol,l_ptr,l_col,lsub,pvt, &
-            start = start , priority = priority  )
+            start = start , priority = priority, only_sub=only_sub )
        pvt%name = 'rev-Cuthill-Mckee'
     else if ( method == PVT_GPS               ) then
        call GPS(n,n_nzs,ncol,l_ptr,l_col,lsub,pvt , priority = priority )
@@ -96,11 +103,19 @@ contains
     else if ( method == PVT_REV_GPS           ) then
        call rev_GPS(n,n_nzs,ncol,l_ptr,l_col,lsub,pvt , priority = priority )
        pvt%name = 'rev-Gibbs-Poole-Stockmeyer'
+    else if ( method == PVT_CONNECT           ) then
+       call connectivity_graph(n,n_nzs,ncol,l_ptr,l_col,lsub,pvt,start, &
+            priority = priority, only_sub=only_sub )
+       pvt%name = 'Connect-Graph ('//trim(start%name)//')'
+    else if ( method == PVT_REV_CONNECT       ) then
+       call rev_connectivity_graph(n,n_nzs,ncol,l_ptr,l_col,lsub,pvt,start, &
+            priority = priority, only_sub=only_sub )
+       pvt%name = 'rev-Connect-Graph ('//trim(start%name)//')'
     else if ( method == PVT_PCG               ) then
-       call PCG(n,n_nzs,ncol,l_ptr,l_col,lsub,pvt , priority = priority )
+       call PCG(n,n_nzs,ncol,l_ptr,l_col,lsub,pvt , priority = priority, only_sub=only_sub )
        pvt%name = 'Peripheral-Connect-Graph'
     else if ( method == PVT_REV_PCG           ) then
-       call rev_PCG(n,n_nzs,ncol,l_ptr,l_col,lsub,pvt , priority = priority )
+       call rev_PCG(n,n_nzs,ncol,l_ptr,l_col,lsub,pvt , priority = priority, only_sub=only_sub )
        pvt%name = 'rev-Peripheral-Connect-Graph'
     else if ( method == PVT_GGPS              ) then
        call GGPS(n,n_nzs,ncol,l_ptr,l_col,lsub,pvt , priority = priority )
@@ -109,9 +124,15 @@ contains
        call rev_GGPS(n,n_nzs,ncol,l_ptr,l_col,lsub,pvt , priority = priority )
        pvt%name = 'rev-General-Gibbs-Poole-Stockmeyer'
 #ifdef SIESTA__METIS
-    else if ( method == PVT_METIS ) then
-       call metis_pvt(n,n_nzs,ncol,l_ptr,l_col,lsub,pvt, priority = priority)
-       pvt%name = 'metis'
+    else if ( method == PVT_METIS_NODEND ) then
+       call metis_NodeND_pvt(n,n_nzs,ncol,l_ptr,l_col,lsub,pvt, priority = priority)
+       pvt%name = 'metis-NodeND'
+    else if ( method == PVT_METIS_PARTGRAPHKWAY ) then
+       call metis_PartGraphKway_pvt(n,n_nzs,ncol,l_ptr,l_col,lsub,pvt, priority = priority)
+       pvt%name = 'metis-PartGraphKway'
+    else if ( method == PVT_METIS_PARTGRAPHRECURSIVE ) then
+       call metis_PartGraphRecursive_pvt(n,n_nzs,ncol,l_ptr,l_col,lsub,pvt, priority = priority)
+       pvt%name = 'metis-PartGraphRecursive'
 #endif
     else
        call die('m_pivot: Programming error, unknown method')

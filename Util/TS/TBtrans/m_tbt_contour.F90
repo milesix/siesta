@@ -91,7 +91,7 @@ contains
     end if
 
     ! Bias-window setup
-    call my_setup(' ',N_tbt,tbt_c,tbt_io,max_kT)
+    call my_setup(N_tbt,tbt_c,tbt_io,max_kT)
 
     ! We only allow the user to either use the old input format, or the new
     ! per-electrode input
@@ -149,8 +149,7 @@ contains
 
   contains 
 
-    subroutine my_setup(suffix,N_tbt,tbt_c,tbt_io,max_kT)
-      character(len=*), intent(in) :: suffix
+    subroutine my_setup(N_tbt,tbt_c,tbt_io,max_kT)
       integer, intent(inout) :: N_tbt
       type(ts_cw), pointer :: tbt_c(:)
       type(ts_c_io), pointer :: tbt_io(:)
@@ -161,14 +160,14 @@ contains
       character(len=C_N_NAME_LEN), allocatable :: tmp(:)
       logical :: connected
 
-      N_tbt = fdf_nc_iotype('TBT',suffix)
+      N_tbt = fdf_nc_iotype('TBT',' ')
       if ( N_tbt < 1 ) return
 
       allocate(tmp(N_tbt))
 
-      tmp(1) = fdf_name_c_iotype('TBT',suffix,1)
+      tmp(1) = fdf_name_c_iotype('TBT',' ',1)
       do i = 2 , N_tbt
-         tmp(i) = fdf_name_c_iotype('TBT',suffix,i)
+         tmp(i) = fdf_name_c_iotype('TBT',' ',i)
          do j = 1 , i - 1
             if ( leqi(tmp(j),tmp(i)) ) then
                call neq_die('You cannot have two names from the window &
@@ -186,7 +185,7 @@ contains
          ! assign pointer
          tbt_c(i)%c_io => tbt_io(i)
          ! read in the contour
-         call ts_read_contour_block('TBT',suffix,tmp(i),tbt_io(i), max_kT, Volt)
+         call ts_read_contour_block('TBT',' ',tmp(i),tbt_io(i), max_kT, Volt)
 
          ! transport type contour
          tbt_c(i)%c_io%type = 'tran'
@@ -204,7 +203,7 @@ contains
                  connected=connected )
          end if
          if ( Node == 0 .and. .not. connected ) then
-            write(*,'(a)') 'tbtrans: *** Contours are not connected ***'
+            write(*,'(a)') 'tbt: *** Contours are not connected ***'
          end if
             
       end do
@@ -239,15 +238,19 @@ contains
     type(ts_cw), intent(inout) :: c
     real(dp), intent(in) :: Eta
 
-    if ( leqi(c%c_io%part,'line') ) then
+    if ( leqi(c%c_io%part,'user') ) then
        
-       call contour_line(c,Eta)
-       
+      call contour_file(c,Eta)
+      
+    else if ( leqi(c%c_io%part,'line') ) then
+      
+      call contour_line(c,Eta)
+      
     else
-       
-       call neq_die('Unrecognized contour type for &
-            &tbtrans, MUST be a line part.')
-       
+      
+      call neq_die('Unrecognized contour type for &
+          &tbtrans, MUST be a line part.')
+      
     end if
     
   end subroutine setup_tbt_contour
@@ -308,7 +311,14 @@ contains
        end if
 
        call TanhSinh_Exact(c%c_io%N,ce,cw,a,b, p=tmp)
-       
+
+    case ( CC_USER )
+
+      call contour_file(c,Eta)
+
+      deallocate(ce, cw)
+      return
+      
     case default
 
        call die('Could not determine the line-integral')
@@ -321,6 +331,108 @@ contains
     deallocate(ce,cw)
     
   end subroutine contour_line
+
+  ! This routine will read the contour points from a file
+  subroutine contour_file(c,Eta)
+    use m_io, only: io_assign, io_close
+    use fdf, only: fdf_convfac
+
+    type(ts_cw), intent(inout) :: c
+    ! The lifting into the complex plane
+    real(dp), intent(in) :: Eta
+
+    integer :: iu, iostat, ne
+    logical :: exist
+    complex(dp) :: E , W
+    real(dp) :: rE, iE, rW, iW, conv
+    character(len=512) :: file, line
+    character(len=16) :: unit
+    
+    ! The contour type contains the file name in:
+    !  c%c_io%cN (weirdly enough)
+    file = c%c_io%cN
+
+    call io_assign(iu)
+    
+    ! Open the contour file
+    inquire(file=trim(file), exist=exist)
+    if ( .not. exist ) then
+      call die('The file: '//trim(file)//' could not be found to read contour points!')
+    end if
+    
+    ! Open the file
+    open(iu, file=trim(file), form='formatted', status='old')
+    
+    ne = 0
+    ! The default unit is eV.
+    ! On every line an optional unit-specificer may be used to specify the
+    ! subsequent lines units (until another unit is specified)
+    conv = fdf_convfac('eV', 'Ry')
+    do
+      ! Now we have the line
+      read(iu, '(a)', iostat=iostat) line
+      if ( iostat /= 0 ) exit
+      if ( len_trim(line) == 0 ) cycle
+      line = trim(adjustl(line))
+      if ( line(1:1) == '#' ) cycle
+
+      ! We have a line with energy and weight
+      ne = ne + 1
+      ! There are three optional ways of reading this
+      ! 1.  ReE ImE, ReW ImW [unit]
+      read(line, *, iostat=iostat) rE, iE, rW, iW, unit
+      if ( iostat == 0 ) then
+        conv = fdf_convfac(unit, 'Ry')
+      else
+        read(line, *, iostat=iostat) rE, iE, rW, iW
+      end if
+      if ( iostat == 0 ) then
+        c%c(ne) = dcmplx(rE,iE) * conv
+        c%w(ne,1) = dcmplx(rW,iW) * conv
+        cycle
+      end if
+
+      ! 2.  ReE ImE, ReW [unit]
+      iW = 0._dp
+      read(line, *, iostat=iostat) rE, iE, rW, unit
+      if ( iostat == 0 ) then
+        conv = fdf_convfac(unit, 'Ry')
+      else
+        read(line, *, iostat=iostat) rE, iE, rW
+      end if
+      if ( iostat == 0 ) then
+        c%c(ne) = dcmplx(rE,iE) * conv
+        c%w(ne,1) = dcmplx(rW,iW) * conv
+        cycle
+      end if
+
+      ! 3.  ReE , ReW [unit]
+      iE = Eta
+      iW = 0._dp
+      read(line, *, iostat=iostat) rE, rW, unit
+      if ( iostat == 0 ) then
+        conv = fdf_convfac(unit, 'Ry')
+      else
+        read(line, *, iostat=iostat) rE, rW
+      end if
+      if ( iostat == 0 ) then
+        c%c(ne) = dcmplx(rE * conv,iE)
+        c%w(ne,1) = dcmplx(rW,iW) * conv
+        cycle
+      end if
+
+      call die('Contour file: '//trim(file)//' is not formatted correctly. &
+          &Please read the documentation!')
+
+    end do
+
+    call io_close(iu)
+
+    if ( c%c_io%N /= ne ) then
+      call die('Error in reading the contour points from file: '//trim(file))
+    end if
+    
+  end subroutine contour_file
 
   function TBT_E(id,step) result(c)
     integer, intent(in) :: id
@@ -429,7 +541,7 @@ contains
     write(*,opt_n) '             >> TBtrans contour << '
 #ifdef TBT_PHONON
     write(*,opt_g_u) 'Device Green function imaginary Eta', &
-         sqrt(tbt_Eta)/eV,'eV'
+         tbt_Eta/eV**2,'eV**2'
 #else
     write(*,opt_g_u) 'Device Green function imaginary Eta',tbt_Eta/eV,'eV'
 #endif
@@ -471,7 +583,7 @@ contains
     call io_assign( iu )
     open( iu, file=trim(fname), status='unknown' )
     write(iu,'(a)') '# Contour path for the transport part'
-    write(iu,'(a,a12,3(tr1,a13))') '#','Re(c) [eV]','Im(c) [eV]','Weight'
+    write(iu,'(a,a19,3(tr1,a20))') '#','Re(c) [eV]','Im(c) [eV]','Weight'
 
     cidx%idx(1) = CONTOUR_TBT
 
@@ -501,7 +613,7 @@ contains
     end if
 
     do i = 1 , size(c%c)
-       write(iu,'(3(e13.6,tr1))') c%c(i) / eV,real(c%w(i,1),dp) / eV
+       write(iu,'(3(e20.13,tr1))') c%c(i) / eV,real(c%w(i,1),dp) / eV
     end do
 
   end subroutine io_contour_c

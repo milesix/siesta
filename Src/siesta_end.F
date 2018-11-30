@@ -38,6 +38,13 @@
       ! NP, new mixing
       use m_mixing_scf,    only : mixers_scf_reset
       USE siesta_options,  only : isolve, SOLVE_CHESS
+
+      use kpoint_scf_m, only: reset_kpoint_scf
+      use kpoint_dos_m, only: reset_kpoint_dos
+      use kpoint_pdos_m, only: reset_kpoint_pdos
+      use kpoint_ldos_m, only: reset_kpoint_ldos
+      use ts_kpoint_scf_m, only: reset_ts_kpoint_scf
+
 #ifdef SIESTA__CHESS
       use m_chess, only: CheSS_finalize
 #endif
@@ -61,7 +68,6 @@
       integer MPIerror
 #endif
 !------------------------------------------------------------------------- BEGIN
-
       if (SIESTA_worker) then
 
 #ifdef SIESTA__FLOOK
@@ -80,6 +86,16 @@
       call resetDscfPointers( )
       call resetRhog()
       call mixers_scf_reset()
+
+      call reset_kpoint_ldos()
+      call reset_kpoint_pdos()
+      ! This *must* be called after LDOS+PDOS since
+      ! they may be associated with DOS
+      call reset_kpoint_dos()
+      ! This *must* be called before SCF since
+      ! they may be associated with SCF
+      call reset_ts_kpoint_scf()
+      call reset_kpoint_scf()
 
       ! Clean diagonalization
       call diag_exit()
@@ -116,6 +132,7 @@
 
 !     Print final date and time
       if (IOnode) then
+        write(*,*) ! Newline
         call timestamp('End of run')
         call wallclock('End of run')
         ! Ensure clock file is closed
@@ -137,6 +154,7 @@
       call fdf_shutdown()
 
 #ifdef MPI
+      call MPI_Barrier(MPI_Comm_World, MPIerror)
       MPIerror = MPI_SUCCESS
       if (.not.siesta_subroutine) call MPI_Finalize( MPIerror )
 #endif

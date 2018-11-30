@@ -22,6 +22,7 @@ module m_energies
   real(dp):: Dxc        ! Integral((epsxc-Vxc)*Rho), calculated  in dhscf (not used)
   real(dp):: Ecorrec    ! Energy term eta*DeltaQ, calculated in  ordern
   real(dp):: ef         ! Fermi energy
+  real(dp):: efs(2)     ! Fermi energies (only for fixed spin calculations)
   real(dp):: Eharrs     ! Harris-functional total energy
   real(dp):: Eions      ! Self-energy of isolated ions
   real(dp):: Ekin       ! Kinetic energy of electrons,  calculated in kinefsm
@@ -46,9 +47,7 @@ module m_energies
   real(dp):: Eldau      
   real(dp):: DEldau
 
-#ifdef TRANSIESTA
   real(dp) :: DE_NEGF  ! NEGF total energy contribution = - e * \sum_i N_i \mu_i
-#endif
 
 contains
 
@@ -62,6 +61,7 @@ contains
     Dxc = 0._dp
     Ecorrec = 0._dp
     ef = 0._dp
+    efs = 0._dp
     Eharrs = 0._dp
     Eions = 0._dp
     Ekin = 0._dp
@@ -85,10 +85,7 @@ contains
     Eso = 0._dp
     Eldau = 0._dp      
     DEldau = 0._dp
-    
-#ifdef TRANSIESTA
     DE_NEGF = 0._dp
-#endif
 
   end subroutine init_Energies
 
@@ -114,9 +111,9 @@ contains
     Etot = Ena + Ekin + Enl + Eso - Eions + &
          DEna + DUscf + DUext + Exc + &
          Ecorrec + Emad + Emm + Emeta + Eldau
-#ifdef TRANSIESTA
-    Etot = Etot + DE_NEGF
-#endif
+    ! Commented out the NEGF contribution to the total energy
+    ! We know it is wrong, but we estimate it. See output
+    !    Etot = Etot + DE_NEGF
 
   end subroutine update_Etot
 

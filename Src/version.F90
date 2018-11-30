@@ -29,6 +29,8 @@ implicit none
 integer, dimension(3), save  :: num_version = (/0,0,0/)
 character(len=*), parameter :: version_str =  &
 "SIESTA_VERSION"
+character(len=*), parameter :: compiler_version = &
+"COMPILER_VERSION"
 character(len=*), parameter :: siesta_arch= &
 "SIESTA_ARCH"
 character(len=*), parameter :: fflags= &
@@ -41,6 +43,7 @@ character(len=*), parameter :: libs= &
 private
 public :: num_version, version_str
 public :: siesta_arch, fflags, fppflags, libs
+public :: compiler_version
 
 end module version_info
 !================================================================
@@ -55,11 +58,12 @@ subroutine prversion
 use version_info
 implicit none
 
-write(6,'(2a)') "Siesta Version: ", trim(version_str)
-write(6,'(2a)') 'Architecture  : ', trim(siesta_arch)
-write(6,'(2a)') 'Compiler flags: ', trim(fflags)
-write(6,'(2a)') 'PP flags      : ', trim(fppflags)
-write(6,'(2a)') 'Libraries     : ', trim(libs)
+write(6,'(2a)') 'Siesta Version  : ', trim(version_str)
+write(6,'(2a)') 'Architecture    : ', trim(siesta_arch)
+write(6,'(2a)') 'Compiler version: ', trim(compiler_version)
+write(6,'(2a)') 'Compiler flags  : ', trim(fflags)
+write(6,'(2a)') 'PP flags        : ', trim(fppflags)
+write(6,'(2a)') 'Libraries       : ', trim(libs)
 
 #ifdef MPI
 write(6,'(a)') 'PARALLEL version'
@@ -76,9 +80,6 @@ write(6,'(a)') 'SERIAL version'
 !$OMP end master
 !$OMP end parallel
 
-#ifdef TRANSIESTA
-write(6,'(a)') 'TRANSIESTA support'
-#endif
 #ifdef USE_GEMM3M
 write(6,'(a)') 'GEMM3M support'
 #endif
@@ -93,6 +94,11 @@ write(6,'(a)') 'NetCDF-4 MPI-IO support'
 #endif
 #if defined(ON_DOMAIN_DECOMP) || defined(SIESTA__METIS)
 write(6,'(a)') 'METIS ordering support'
+#endif
+#ifdef TRANSIESTA
+write(6,'(a)') '******************************************************'
+write(6,'(a)') 'transiesta executable is deprecated, please use siesta'
+write(6,'(a)') '******************************************************'
 #endif
 
 end subroutine prversion

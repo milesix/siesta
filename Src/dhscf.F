@@ -89,6 +89,8 @@
 
       use iogrid_netcdf, only: set_box_limits
 #ifdef NCDF_4
+      use files,         only  : slabel
+      use m_ncdf_siesta, only : cdf_init_grid
       use m_ncdf_io, only : cdf_init_mesh
 #endif
 #ifdef BSC_CELLXC
@@ -105,6 +107,9 @@
       use m_rhog,                 only: rhog, rhog_in
       use m_rhog,                 only: order_rhog
       use siesta_options,         only: mix_charge
+#ifdef NCDF_4
+      use siesta_options,         only: write_cdf
+#endif
 #ifdef MPI
       use mpi_siesta
 #endif
@@ -113,13 +118,11 @@
       use m_charge_add,  only: init_charge_add
       use m_hartree_add, only: init_hartree_add
 
-#ifdef TRANSIESTA
       use m_ts_global_vars,only: TSmode
-      use m_ts_tdir,      only : ts_tidx
       use m_ts_options,   only : IsVolt, N_Elec, Elecs
       use m_ts_voltage,   only : ts_init_voltage
       use m_ts_hartree,   only : ts_init_hartree_fix
-#endif /* TRANSIESTA */
+
       implicit none
       integer, intent(in)     :: nspin, norb, iaorb(norb), iphorb(norb),
      &                           nuo, nuotot, nua, na, isa(na),
@@ -146,11 +149,9 @@
       integer                 :: nXCfunc
       character(len=20)       :: XCauth(10), XCfunc(10)
 #endif /* ! BSC_CELLXC */
-#ifdef TRANSIESTA
       ! Transport direction (unit-cell aligned)
       integer                 :: iE
       real(dp)                :: ortho, field(3), field2(3)
-#endif
 !--------------------------------------------------------------------- BEGIN
 #ifdef DEBUG
       call write_debug( '    PRE dhscf_init' )
@@ -252,6 +253,9 @@ C ----------------------------------------------------------------------
 #ifdef NCDF_4
       ! Initialize the box for each node...
       call cdf_init_mesh( ntm, nsm )
+      if ( write_cdf ) then
+        call cdf_init_grid( trim(slabel)//'.nc', ntm)
+      end if
 #endif
 
 C     Stop time counter for mesh initialization
@@ -435,124 +439,79 @@ C     At the end of initializations:
 C ----------------------------------------------------------------------
       if (frstme) then
          call initialize_efield()
-
-#ifdef TRANSIESTA
-!     Check if we need to add the potential 
-!     corresponding to the voltage-drop.
-      if ( TSmode ) then
-         call ts_init_hartree_fix( cell, nua, xa, ntm, ntml)
-         if ( IsVolt ) then
-            call ts_init_voltage( cell, nua, xa, ntm)
-         end if
       end if
 
-      if ( TSmode .and. acting_efield ) then
+      ! Check if we need to add the potential 
+      ! corresponding to the voltage-drop.
+      if ( TSmode ) then
+        ! These routines are important if there are cell-changes
+        call ts_init_hartree_fix( cell, nua, xa, ntm, ntml)
+        if ( IsVolt ) then
+           call ts_init_voltage( cell, nua, xa, ntm)
+        end if
+
+        if ( acting_efield ) then
          ! We do not allow the electric field for 
          ! transiesta runs with V = 0, either.
-         ! It does not make sense.
-         
+         ! It does not make sense, only for fields perpendicular
+         ! to the applied bias.
+           
          ! We need to check that the e-field is perpendicular
          ! to the transport direction, and that the system is
          ! either a chain, or a slab.
-         if ( (shape.ne.'chain') .and. (shape.ne.'slab') ) then
-            ! a molecule with buffer layers is a viable 
-            ! thing to put E-field across, however,
-            ! we can not figure out where to place it. :(
-            call die('Error, both external voltage and field!')
-         end if
+         ! However, due to the allowance of a dipole correction
+         ! along the transport direction for buffer calculations
+         ! we have to allow all shapes. (atom is not transiesta
+         ! compatible anyway)
             
          ! check that we do not violate the periodicity
          if ( Node .eq. 0 ) then
-            write(*,'(/,2(2a,/))') 'WARNING-ts: ',
+            write(*,'(/,2(2a,/))') 'ts-WARNING: ',
      &           'E-field/dipole-correction! ',
-     &           'WARNING-ts: ',
+     &           'ts-WARNING: ',
      &           'I hope you know what you are doing!'
          end if
 
-         ! In case we have 1 electrode, we will force the
-         ! dipole correction along the transport direction,
-         ! Else, should the dipole correction be perpendicular
-         ! to the transport direction
-         if ( dipole_correction ) then
-          if ( N_Elec == 1 .and. ts_tidx > 0 ) then
-            if ( shape .eq. 'chain' ) then
-               field  = cell(1:3,ts_tidx)
-               ortho  = ddot(3,field,1,field,1)
-               field  = field / ortho
-               ortho  = ddot(3,bcell,1,bcell,1)
-               field2 = bcell(1:3,1) / ortho
-               ! the transport direction must
-               ! be the periodic direction
-               if ( sum(abs(field-field2)) < 1.e-7_dp ) then
-                  call die('Dipole correction is not parallel 
-     &to transport direction. Requirement for 1 electrode.') 
-               end if
-            else if ( shape .eq. 'slab' ) then
-               ! get the dipole-correction field
-               call cross( bcell(1,1), bcell(1,2), field )
-               ortho = ddot(3,cell(1,ts_tidx),1,field,1) 
-               if ( ortho < 1.e-7_dp ) then
-                  call die('Dipole-correction must be parallel
-     &to transport direction. Requirement for 1 electrode.')
-               end if
-            end if
-          else if ( ts_tidx > 0 ) then
-            ! Now we can check the directions of the chain/slab
-            if ( shape .eq. 'chain' ) then
-               field  = cell(1:3,ts_tidx)
-               ortho  = ddot(3,field,1,field,1)
-               field  = field / ortho
-               ortho  = ddot(3,bcell,1,bcell,1)
-               field2 = bcell(1:3,1) / ortho
-               ! the transport direction must
-               ! be the periodic direction
-               if ( sum(abs(field-field2)) > 1.e-9_dp ) then
-                  call die('Dipole correction is not
-     &perpendicular to transport direction.')
-               end if
-            else if ( shape .eq. 'slab' ) then
-               ! get the dipole-correction field
-               call cross( bcell(1,1), bcell(1,2), field )
-               ortho = ddot(3,cell(1,ts_tidx),1,field,1) 
-               if ( ortho > 1.e-9_dp ) then
-                  call die('Dipole-correction must be
-     &perpendicular to transport direction.')
-               end if
-            end if
-          else 
-             ! the ts_tidx < 0 which means the electrodes are individual
-             ! in this case it is the complete responsibility of the
-             ! user that the dipole correction is aligned correctly
-          end if
-         end if
-
-         ! If there is an efield, check that it is perpendicular
-         ! to the transport directions
-         if ( acting_efield ) then
-            ! This is either dipole or user or both, for the first
-            ! user_specified_field is 0 anyway.
-            field(:) = user_specified_field(:)
-            do iE = 1 , N_Elec
-               field2 = cell(:,Elecs(iE)%pvt(Elecs(iE)%t_dir))
-               ortho = ddot(3,field2,1,field,1)
-               if ( ortho > 1.e-9_dp ) then
-                  call die('User defined E-field must be
+         ! This is either dipole or user, or both
+         field(:) = user_specified_field(:)
+         ortho = 0._dp
+         do iE = 1 , N_Elec
+           select case ( Elecs(iE)%t_dir )
+           case ( 4 )           ! B-C
+             field2 = Elecs(iE)%cell(:,2)
+             ortho = abs(ddot(3,field2,1,field,1))
+             field2 = Elecs(iE)%cell(:,3)
+             ortho = max(ortho, abs(ddot(3,field2,1,field,1)))
+           case ( 5 )           ! A-C
+             field2 = Elecs(iE)%cell(:,1)
+             ortho = abs(ddot(3,field2,1,field,1))
+             field2 = Elecs(iE)%cell(:,3)
+             ortho = max(ortho, abs(ddot(3,field2,1,field,1)))
+           case ( 6 )           ! A-B
+             field2 = Elecs(iE)%cell(:,1)
+             ortho = abs(ddot(3,field2,1,field,1))
+             field2 = Elecs(iE)%cell(:,2)
+             ortho = max(ortho, abs(ddot(3,field2,1,field,1)))
+           case default
+             field2 = Elecs(iE)%cell(:,Elecs(iE)%t_dir)
+             ortho = ddot(3,field2,1,field,1)
+           end select
+           if ( abs(ortho) > 1.e-9_dp ) then
+             call die('User defined E-field must be
      &perpendicular to semi-infinite directions')
-               end if
-            end do
-         end if
-
-         ! We know that we currently allow people to do more than
-         ! they probably should be allowed. However, there are many
-         ! corner cases that may require dipole corrections, or 
-         ! electric fields to "correct" an intrinsic dipole.
-         ! For instance, what should we do with a dipole?
-         ! Should we apply a field to counter act it in a device
-         ! calculation?
+           end if
+         end do
+        end if ! acting_efield
          
-      end if
-#endif /* TRANSIESTA */
-
+        ! We know that we currently allow people to do more than
+        ! they probably should be allowed. However, there are many
+        ! corner cases that may require dipole corrections, or 
+        ! electric fields to "correct" an intrinsic dipole.
+        ! For instance, what should we do with a dipole in a transiesta
+        ! calculation?
+        ! Should we apply a field to counter act it in a device
+        ! calculation?
+         
       end if
 
       frstme = .false.
@@ -727,12 +686,11 @@ C     Modules
       use m_spin,         only: spin
       use m_spin,         only: Spiral, qSpiral
       use m_iotddft,      only: write_tdrho
-#ifdef TRANSIESTA
       use m_ts_global_vars,only: TSmode, TSrun
-      use m_ts_options, only: IsVolt
+      use m_ts_options, only: IsVolt, Elecs, N_elec
       use m_ts_voltage, only: ts_voltage
       use m_ts_hartree, only: ts_hartree_fix
-#endif /* TRANSIESTA */
+
       implicit none
 
       integer
@@ -1297,15 +1255,65 @@ C Find dipole
         call dipole( cell, ntm, ntml(1), ntml(2), ntml(3), nsm,
      &               DRho, x0, dipol )
 
-C Orthogonalize dipole to bulk directions
+        ! Orthogonalize dipole to bulk directions
         if (shape .eq. 'chain') then
           const = ddot(3,dipol,1,bcell,1) / ddot(3,bcell,1,bcell,1)
           dipol(1:3) = dipol(1:3) - const * bcell(1:3,1)
-        elseif (shape .eq. 'slab') then
+        else if (shape .eq. 'slab') then
           call cross( bcell(1,1), bcell(1,2), b1Xb2 )
           const = ddot(3,dipol,1,b1Xb2,1) / ddot(3,b1Xb2,1,b1Xb2,1)
           dipol(1:3) = const * b1Xb2(1:3)
-        endif
+       end if
+
+       if ( TSmode ) then
+         if ( N_elec > 1 ) then
+           ! Orthogonalize dipole to electrode transport directions
+           do ia = 1 , N_Elec
+             select case ( Elecs(ia)%t_dir )
+             case ( 4 )         ! B-C
+               x0 = Elecs(ia)%cell(:,2)
+               const = ddot(3,dipol,1,x0,1) / ddot(3,x0,1,x0,1)
+               dipol(1:3) = dipol(1:3) - const * x0
+               x0 = Elecs(ia)%cell(:,3)
+               const = ddot(3,dipol,1,x0,1) / ddot(3,x0,1,x0,1)
+               dipol(1:3) = dipol(1:3) - const * x0
+             case ( 5 )         ! A-C
+               x0 = Elecs(ia)%cell(:,1)
+               const = ddot(3,dipol,1,x0,1) / ddot(3,x0,1,x0,1)
+               dipol(1:3) = dipol(1:3) - const * x0
+               x0 = Elecs(ia)%cell(:,3)
+               const = ddot(3,dipol,1,x0,1) / ddot(3,x0,1,x0,1)
+               dipol(1:3) = dipol(1:3) - const * x0
+             case ( 6 )         ! A-B
+               x0 = Elecs(ia)%cell(:,1)
+               const = ddot(3,dipol,1,x0,1) / ddot(3,x0,1,x0,1)
+               dipol(1:3) = dipol(1:3) - const * x0
+               x0 = Elecs(ia)%cell(:,2)
+               const = ddot(3,dipol,1,x0,1) / ddot(3,x0,1,x0,1)
+               dipol(1:3) = dipol(1:3) - const * x0
+             case default
+               x0 = Elecs(ia)%cell(:,Elecs(ia)%t_dir)
+               const = ddot(3,dipol,1,x0,1) / ddot(3,x0,1,x0,1)
+               dipol(1:3) = dipol(1:3) - const * x0
+             end select
+           end do
+         else if ( (shape == 'molecule') .or. (shape == 'chain') ) then
+           ! Only allow dipole correction for chains and molecules
+           ! along the semi-infinite direciton.
+           ! Note this is *only* for 1-electrode setups
+           ! Note that since the above removes the periodic directions
+           ! this should not do anything for 'chain' with the same semi-infinite
+           ! direction
+           if ( Elecs(1)%t_dir > 3 ) then
+             call die('A real-space self-energy requires some &
+     &kind of periodicity')
+           end if
+           x0 = Elecs(1)%cell(:,Elecs(1)%t_dir)
+           const = ddot(3,dipol,1,x0,1) / ddot(3,x0,1,x0,1)
+           dipol(1:3) = const * x0
+         end if
+       end if
+          
       endif
 
 C ----------------------------------------------------------------------
@@ -1324,11 +1332,11 @@ C ----------------------------------------------------------------------
       ! Vscf is in the UNIFORM, sequential form, and only using
       ! the first spin index
 
-#ifdef TRANSIESTA
       ! We require that even the SIESTA potential is "fixed"
+      ! NOTE, this will only do something if
+      !   TS.Hartree.Fix is set
       call ts_hartree_fix( ntm, ntml, Vaux)
-#endif /* TRANSIESTA */
-
+      
 C Add contribution to stress from electrostatic energy of rhoscf-rhoatm
       if (istr .eq. 1) then
         stressl(1:3,1:3) = stressl(1:3,1:3) + DStres(1:3,1:3)
@@ -1406,7 +1414,6 @@ C ----------------------------------------------------------------------
          DUext = DUext - ddot(3,user_specified_field,1,dipol,1)
       endif
 
-#ifdef TRANSIESTA
 ! ---------------------------------------------------------------------
 !     Transiesta:
 !     add the potential corresponding to the (possible) voltage-drop.
@@ -1425,10 +1432,10 @@ C ----------------------------------------------------------------------
 #ifdef TRANSIESTA_VOLTAGE_DEBUG
          call write_grid_netcdf( cell, ntm, 1, ntpl, Vaux, 
      &        "TransiestaHartreePotential")
+         call timer('ts_volt', 3)
          call bye('transiesta debug for Hartree potential')
 #endif
       endif
-#endif /* TRANSIESTA */
 
 ! ----------------------------------------------------------------------
 ! Add potential from user defined geometries (if present)
@@ -1921,16 +1928,16 @@ C ----------------------------------------------------------------------
       
       want_partial_charges = (hirshpop .or. voropop) 
 
-        if (saverho)   filesOut%rho   = trim(slabel)//'.RHO' 
-        if (savedrho)  filesOut%drho  = trim(slabel)//'.DRHO'
-        if (saverhoxc) filesOut%rhoxc = trim(slabel)//'.RHOXC'
-        if (savevh)    filesOut%vh    = trim(slabel)//'.VH'  
-        if (savevt)    filesOut%vt    = trim(slabel)//'.VT'  
-        if (savevna)   filesOut%vna   = trim(slabel)//'.VNA' 
-        if (savepsch)  filesOut%psch  = trim(slabel)//'.IOCH'
-        if (savetoch)  filesOut%toch  = trim(slabel)//'.TOCH'
-        
-        end subroutine setup_analysis_options
+      if (saverho)   filesOut%rho   = trim(slabel)//'.RHO' 
+      if (savedrho)  filesOut%drho  = trim(slabel)//'.DRHO'
+      if (saverhoxc) filesOut%rhoxc = trim(slabel)//'.RHOXC'
+      if (savevh)    filesOut%vh    = trim(slabel)//'.VH'  
+      if (savevt)    filesOut%vt    = trim(slabel)//'.VT'  
+      if (savevna)   filesOut%vna   = trim(slabel)//'.VNA' 
+      if (savepsch)  filesOut%psch  = trim(slabel)//'.IOCH'
+      if (savetoch)  filesOut%toch  = trim(slabel)//'.TOCH'
+      
+      end subroutine setup_analysis_options
       
       end subroutine dhscf
 

@@ -20,6 +20,8 @@
       use parallel,        only : Node, Nodes, BlockSize
       use parallelsubs,    only : LocalToGlobalOrb,GlobalToLocalOrb
       use m_fermid,        only : fermid, stepf
+      use intrinsic_missing, only: MODP
+
 #ifdef MPI
       use mpi_siesta
 #endif
@@ -32,6 +34,7 @@ C eigenvector, for given Hamiltonian and Overlap matrices.
 C This version is for non-collinear spin at gamma point.
 C Writen by J.Soler, May and August 1998.
 C Reduced memory requirements, Nick, Aug. 2017
+C Clarified DM calculation, N.R. Papior, Jan. 2018      
 C **************************** INPUT **********************************
 C integer nuo                 : Number of basis orbitals on local node
 C integer no                  : Number of basis orbitals
@@ -107,13 +110,13 @@ C of referencing has been changed in several places to reflect this.
       integer           BNode, BTest, ie, ierror, iie, iio
       integer           ind, io, j, jo, nd, iuo, juo
       real(dp)          ee, pipj, qe, t
-      complex(dp)       cicj, D11, D22, D12, D21
+      complex(dp) :: cicj, D11, D22, D12, D21
 #ifdef MPI
       integer MPIerror
 #endif
       external              cdiag
 #ifdef DEBUG
-      call write_debug( '    PRE diag2k' )
+      call write_debug( '    PRE diag2g' )
 #endif
 !***********************************************************************
 !     B E G I N
@@ -136,18 +139,16 @@ C of referencing has been changed in several places to reflect this.
 ! 1. Hermiticity imposes H_{i,j}^{is,js}=H_{j,i}^{js,is}^*
 ! 2. Since wave functions are real, if there are no single P or L
 ! operators:
-!      (a) H_{i,j}^{is,js}=H_{j,i}^{is,js}
-!      (b) These imply spin-box hermiticity:
-!      H_{i,j}^{is,js}=H_{i,j}^{js,is}^*
+!     (a) H_{i,j}^{is,js}=H_{j,i}^{is,js}
+!     (b) These imply spin-box hermiticity:
 !
-!      (c) Hence
+!          H_{i,j}^{is,js}=H_{i,j}^{js,is}^*
 !
-!                               | H(ind,1)                H(ind,3) - i
-!                               H(ind,4) |
-!           H_{j,i} = H_{i,j} = |
-!           |
-!                               | H(ind,3) + i H(ind,4)   H(ind,2)
-!                               |
+!     (c) Hence
+!
+!                              | H(ind,1)                H(ind,3) - i H(ind,4) |
+!          H_{j,i} = H_{i,j} = |                                               |
+!                              | H(ind,3) + i H(ind,4)   H(ind,2)              |
 !
 !
 ! The spin-orbit interaction and the orbital part of the Zeeman
@@ -155,20 +156,20 @@ C of referencing has been changed in several places to reflect this.
 ! break the  "spin-box hermiticity" of H. Hence the full format of H is
 ! needed
 ! in those cases. 
-!
       
-      Saux = dcmplx(0.0_dp, 0.0_dp)
-      Haux = dcmplx(0.0_dp, 0.0_dp)
       do io = 1,nuo
+        Saux(:,:,:,io) = 0._dp
+        Haux(:,:,:,io) = 0._dp
         do j = 1,numh(io)
           ind = listhptr(io) + j
           jo = listh(ind)
-           Saux(1,jo,1,io) = dcmplx(  S(ind),   0.0_dp)
-           Saux(2,jo,2,io) = dcmplx(  S(ind),   0.0_dp)
-           Haux(1,jo,1,io) = dcmplx(H(ind,1),   0.0_dp)
-           Haux(2,jo,2,io) = dcmplx(H(ind,2),   0.0_dp)
-           Haux(2,jo,1,io) = dcmplx(H(ind,3), H(ind,4))
-           Haux(1,jo,2,io) = dcmplx(H(ind,3),-H(ind,4))
+          jo = MODP(jo,nuotot) ! To allow auxiliary supercells
+          Saux(1,jo,1,io) = Saux(1,jo,1,io) + dcmplx( S(ind), 0.0_dp)
+          Saux(2,jo,2,io) = Saux(2,jo,2,io) + dcmplx( S(ind), 0.0_dp)
+          Haux(1,jo,1,io) = Haux(1,jo,1,io) + dcmplx(H(ind,1),   0.0_dp)
+          Haux(2,jo,2,io) = Haux(2,jo,2,io) + dcmplx(H(ind,2),   0.0_dp)
+          Haux(2,jo,1,io) = Haux(2,jo,1,io) + dcmplx(H(ind,3), H(ind,4))
+          Haux(1,jo,2,io) = Haux(1,jo,2,io) + dcmplx(H(ind,3),-H(ind,4))
         enddo
       enddo
       
@@ -180,20 +181,22 @@ C of referencing has been changed in several places to reflect this.
       if (ierror.gt.0) then
         call die('Terminating due to failed diagonalisation')
       elseif (ierror.lt.0) then
-!       Repeat diagonalisation with increased memory to handle clustering
-        Saux = dcmplx(0.0_dp, 0.0_dp)
-        Haux = dcmplx(0.0_dp, 0.0_dp)
+!     Repeat diagonalisation with increased memory to handle clustering
+
         do io = 1,nuo
+          Saux(:,:,:,io) = 0._dp
+          Haux(:,:,:,io) = 0._dp
           do j = 1,numh(io)
-            ind = listhptr(io) + j
-            jo = listh(ind)
-             Saux(1,jo,1,io) = dcmplx(  S(ind),   0.0_dp)
-             Saux(2,jo,2,io) = dcmplx(  S(ind),   0.0_dp)
-             Haux(1,jo,1,io) = dcmplx(H(ind,1),   0.0_dp)
-             Haux(2,jo,2,io) = dcmplx(H(ind,2),   0.0_dp)
-             Haux(2,jo,1,io) = dcmplx(H(ind,3), H(ind,4))
-             Haux(1,jo,2,io) = dcmplx(H(ind,3),-H(ind,4))
-          enddo
+           ind = listhptr(io) + j
+           jo = listh(ind)
+           jo = MODP(jo,nuotot) ! To allow auxiliary supercells
+           Saux(1,jo,1,io) = Saux(1,jo,1,io) +dcmplx( S(ind), 0.0_dp)
+           Saux(2,jo,2,io) = Saux(2,jo,2,io) +dcmplx( S(ind), 0.0_dp)
+           Haux(1,jo,1,io) = Haux(1,jo,1,io) +dcmplx(H(ind,1),   0.0_dp)
+           Haux(2,jo,2,io) = Haux(2,jo,2,io) +dcmplx(H(ind,2),   0.0_dp)
+           Haux(2,jo,1,io) = Haux(2,jo,1,io) +dcmplx(H(ind,3), H(ind,4))
+           Haux(1,jo,2,io) = Haux(1,jo,2,io) +dcmplx(H(ind,3),-H(ind,4))
+         enddo
         enddo
         call cdiag(Haux,Saux,2*nuotot,2*nuo,2*nuotot,eo,psi,
      .             2*neigwanted,iscf,ierror, 2*BlockSize)
@@ -219,22 +222,21 @@ C of referencing has been changed in several places to reflect this.
 !***********************************************************************
 !
 !                 | ------- 1,1 -------     ------- 1,2 ------- |
-!                 | c_{i,up} c_{j,up}^*     c_{i,up} c_{j,down)^* |
-!     D_{i,j} =   |                                             |
+!                 | c_{j,up}^* c_{i,up}     c_{j,up}^* c_{i,dn) |
+!     D_{j,i) =   |                                             |
 !                 | ------- 2,1 -------     ------- 2,2 ------- |
-!                 | c_{i,down} c_{j,up}^*     c_{i,dn} c_{j,dn)^* |
+!                 | c_{j,dn}^* c_{i,up}     c_{j,dn}^* c_{i,dn) |
 !
-!             =   | D_{i,j}(1)              D_{i,j}(3)-i D_{i,j}(4) |
-!                 | D_{i,j}(7)+i D_{i,j}(8) D_{i,j}(2)              |
+!             =   | D_{j,i}(1)              D_{j,i}(3)-i D_{j,i}(4) |
+!                 | D_{j,i}(7)+i D_{j,i}(8) D_{j,i}(2)              |
 
 ! The Energy is computed as E = Tr [ D_{i,j} H_{j,i} ]
 !
 ! The Density Matrix is not "spin box hermitian" even if H does not
-! contain P or
-! L operators. 
+! contain P or L operators. 
 !
 ! Spin-box symmetrization of D inside this present subroutine:
-! D_{i,j}(1,2) = 0.5 ( D_{i,j}(1,2) + D_{i,j}(2,1)^* )
+! D_{j,i}(1,2) = 0.5 ( D_{j,i}(1,2) + D_{j,i}(2,1)^* )
 ! does not affect the results in any case, since H is spin-box
 ! hermitian.
 
@@ -243,7 +245,6 @@ C of referencing has been changed in several places to reflect this.
       
       BNode = 0
       iie   = 0
-      
       do ie = 1,2*nuotot
         qe = qo(ie)
         if (Node.eq.BNode) then
@@ -260,7 +261,7 @@ C of referencing has been changed in several places to reflect this.
           endif
 #ifdef MPI
           call MPI_Bcast(caux(1,1),2*nuotot,MPI_double_complex,
-     .         BNode,MPI_Comm_World,MPIerror)
+     &         BNode,MPI_Comm_World,MPIerror)
 #endif
           ee = qo(ie) * eo(ie)
           do io = 1,nuo
@@ -268,32 +269,33 @@ C of referencing has been changed in several places to reflect this.
             do j = 1,numd(io)
               ind = listdptr(io) + j
               jo = listd(ind)
+              jo = MODP(jo,nuotot) ! To allow auxiliary supercells
       
 !                 | ------- 1,1 -------     ------- 2,1 ------- |
-!                 | c_{j,up} c_{i,up}^*     c_{j,dn} c_{i,up)^* |
+!                 | c_{j,up}^* c_{i,up}     c_{j,dn}^* c_{i,up) |
 !     D_{j,i} =   |                                             |
 !                 | ------- 1,2 -------     ------- 2,2 ------- |
-!                 | c_{j,up} c_{i,dn}^*     c_{j,dn} c_{i,dn)^* |
+!                 | c_{j,up}^* c_{i,dn}     c_{j,dn}^* c_{i,dn) |
 !
 !------- 1,1 -----------------------------------------------------------
-              D11  = dconjg(caux(1,iio)) * caux(1,jo)
+              D11 = dconjg(caux(1,jo)) * caux(1,iio)
 !------- 2,2 -----------------------------------------------------------
-              D22  = dconjg(caux(2,iio)) * caux(2,jo)
+              D22 = dconjg(caux(2,jo)) * caux(2,iio)
 !------- 2,1 -----------------------------------------------------------
-              D12  = dconjg(caux(1,iio)) * caux(2,jo)
+              D12 = dconjg(caux(2,jo)) * caux(1,iio)
 !------- 1,2 -----------------------------------------------------------
-              D21  = dconjg(caux(2,iio)) * caux(1,jo)
+              D21 = dconjg(caux(1,jo)) * caux(2,iio)
       
 !------------ Density matrix has to be spin-box hermitian ----------------------
               D11 = 0.5_dp * (D11 + dconjg(D11))
               D22 = 0.5_dp * (D22 + dconjg(D22))
               D12 = 0.5_dp * (D12 + dconjg(D21))
-              D21 = dconjg(D12)
+              !D21 = dconjg(D12)
       
 !       Add contribution to density matrices of unit-cell orbitals
 !       ----------------------------------------------------------------
 !       | D11 = D_{j,i}(1)               D21 = D_{j,i}(3)-i D_{j,i}(4) |
-!       | D12 = D_{i,j}(3)+i D_{i,j}(4)  D22 = D_{j,i}(2)              |
+!       | D12 = D_{j,i}(3)+i D_{j,i}(4)  D22 = D_{j,i}(2)              |
 !       ----------------------------------------------------------------
 !       ----------------------------------------------------------------
 !       | D11 = Dnew(1)                  D21 = Dnew(3)-i Dnew(4)       |
@@ -302,12 +304,12 @@ C of referencing has been changed in several places to reflect this.
               Dnew(ind,1) = Dnew(ind,1) + dreal(D11) * qe
               Dnew(ind,2) = Dnew(ind,2) + dreal(D22) * qe
               Dnew(ind,3) = Dnew(ind,3) + dreal(D12) * qe
-              Dnew(ind,4) = Dnew(ind,4) + dimag(D21) * qe
+              Dnew(ind,4) = Dnew(ind,4) - dimag(D12) * qe
       
               Enew(ind,1) = Enew(ind,1) + dreal(D11) * ee
               Enew(ind,2) = Enew(ind,2) + dreal(D22) * ee
               Enew(ind,3) = Enew(ind,3) + dreal(D12) * ee
-              Enew(ind,4) = Enew(ind,4) + dimag(D21) * ee
+              Enew(ind,4) = Enew(ind,4) - dimag(D12) * ee
       
             enddo
           enddo
@@ -322,10 +324,8 @@ C of referencing has been changed in several places to reflect this.
  1001 continue
       
 #ifdef DEBUG
-      call write_debug( '    POS diag2k' )
+      call write_debug( '    POS diag2g' )
 #endif
-!***********************************************************************
-      return
-      end
-!**********************************************************************
+
+      end subroutine diag2g
       

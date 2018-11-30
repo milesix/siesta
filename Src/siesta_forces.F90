@@ -30,7 +30,9 @@ contains
     use siesta_dicts, only : dict_variable_add
     use m_ts_options, only : ts_scf_mixs
     use variable, only : cunpack
-    use dictionary, only : assign
+#ifndef NCDF_4
+    use dictionary, only: assign
+#endif      
     use m_mixing, only : mixers_history_init
 #endif
     use m_state_init
@@ -50,6 +52,8 @@ contains
     use parallel,     only : IOnode, SIESTA_worker
     use m_state_analysis
     use m_steps
+    use m_spin,                only: spin
+    use sparse_matrices, only: DM_2D, S_1D
     use sparse_matrices, only: H, Hold, Dold, Dscf, Eold, Escf, maxnh
     use m_convergence, only: converger_t
     use m_convergence, only: reset, set_tolerance
@@ -62,7 +66,8 @@ contains
     use m_save_density_matrix, only: save_density_matrix
     use m_iodm_old,    only: write_spmatrix
 
-    use atomlist,      only: no_u
+    use atomlist,      only: no_u, lasto, Qtot
+    use m_dm_charge, only: dm_charge
 
     use m_pexsi_solver,        only: prevDmax
     use write_subs,            only: siesta_write_forces
@@ -70,36 +75,31 @@ contains
 
 #ifdef NCDF_4
     use dictionary
-    use m_ncdf_siesta, only : cdf_init_file, cdf_save_settings
-    use m_ncdf_siesta, only : cdf_save_state, cdf_save_basis
+    use m_ncdf_siesta, only : cdf_save_settings
 #endif
     use m_compute_energies, only: compute_energies
 
-    use m_mpi_utils, only: broadcast
+    use m_mpi_utils, only: broadcast, barrier
     use fdf
 #ifdef SIESTA__PEXSI
     use m_pexsi, only: pexsi_finalize_scfloop
 #endif
     use m_check_walltime
 
-#ifdef TRANSIESTA
     use m_energies, only: DE_NEGF
     use m_ts_options, only : N_Elec
     use m_ts_method
     use m_ts_global_vars,      only: TSmode, TSinit, TSrun
-    use siesta_geom,           only: nsc, xa, ucell, isc_off
-    use atomlist,              only: lasto, Qtot
+    use siesta_geom,           only: nsc, na_u, xa, ucell, isc_off
     use sparse_matrices,       only: sparse_pattern, block_dist
-    use sparse_matrices,       only: S
-    use m_spin,                only: nspin
+    use sparse_matrices,       only: Escf, S, maxnh
     use m_ts_charge, only : ts_get_charges
     use m_ts_charge,           only: TS_RHOCORR_METHOD
     use m_ts_charge,           only: TS_RHOCORR_FERMI
     use m_ts_charge,           only: TS_RHOCORR_FERMI_TOLERANCE
     use m_transiesta,          only: transiesta
-    use kpoint_grid, only : gamma_scf
+    use kpoint_scf_m, only : gamma_scf
     use m_energies, only : Ef
-#endif
 
     use m_initwf, only: initwf
 
@@ -116,7 +116,6 @@ contains
 
     ! For initwf
     integer :: istpp
-
 #ifdef SIESTA__FLOOK
     ! len=24 from m_mixing.F90
     character(len=1), target :: next_mixer(24)
@@ -127,9 +126,7 @@ contains
     logical               :: time_is_up
     character(len=40)     :: tmp_str
 
-#ifdef TRANSIESTA
     real(dp) :: Qcur
-#endif
 #ifdef NCDF_4
     type(dict) :: d_sav
 #endif
@@ -166,11 +163,15 @@ contains
        call bye("S only")
     end if
 
+    Qcur = Qtot
+    
 #ifdef SIESTA__FLOOK
     ! Add the iscf constant to the list of variables
     ! that are available only in this part of the
     ! routine.
     call dict_variable_add('SCF.iteration',iscf)
+    call dict_variable_add('SCF.converged',SCFconverged)
+    call dict_variable_add('SCF.charge',Qcur)
     call dict_variable_add('SCF.dD',dDmax)
     call dict_variable_add('SCF.dH',dHmax)
     call dict_variable_add('SCF.dE',dEmax)
@@ -181,12 +182,17 @@ contains
     call dict_variable_add('Mesh.Cutoff.Minimum',G2cut)
     call dict_variable_add('Mesh.Cutoff.Used',G2max)
 
-    call dict_variable_add('SCF.Mixer.Weight',scf_mix%w)
-    call dict_variable_add('SCF.Mixer.Restart',scf_mix%restart)
-    call dict_variable_add('SCF.Mixer.Iterations',scf_mix%n_itt)
-    
-    ! Just to populate the table in the dictionary
-    call dict_variable_add('SCF.Mixer.Switch',next_mixer)
+    if ( mix_charge ) then
+      call dict_variable_add('SCF.Mixer.Weight', wmix)
+    else
+      call dict_variable_add('SCF.Mixer.Weight',scf_mix%w)
+      call dict_variable_add('SCF.Mixer.Restart',scf_mix%restart)
+      call dict_variable_add('SCF.Mixer.Iterations',scf_mix%n_itt)
+      
+      ! Just to populate the table in the dictionary
+      call dict_variable_add('SCF.Mixer.Switch',next_mixer)
+    end if
+
     ! Initialize to no switch
     next_mixer = ' '
 #endif
@@ -210,98 +216,87 @@ contains
 #endif
 
 #ifdef NCDF_4
-    ! Initialize the NC file
-    if ( write_cdf ) then
+      ! Initialize the NC file
+      if ( write_cdf ) then
 
-       ! Initialize the file...
-       call cdf_init_file(trim(slabel)//'.nc',is_MD = .false.)
+!       Save the settings (important to do here since mesh-cutoff may
+!       have changed).
+        call cdf_save_settings(trim(slabel)//'.nc')
 #ifdef MPI
-       call MPI_Barrier(MPI_Comm_World,MPIerror)
+        call MPI_Barrier(MPI_Comm_World,MPIerror)
 #endif
 
-       ! Save the settings
-       call cdf_save_settings(trim(slabel)//'.nc')
-#ifdef MPI
-       call MPI_Barrier(MPI_Comm_World,MPIerror)
+      end if
 #endif
-       
-       d_sav = ('sp'.kv.1)//('S'.kv.1)
-       d_sav = d_sav//('nsc'.kv.1)//('xij'.kv.1)
-       d_sav = d_sav//('xa'.kv.1)//('cell'.kv.1)
-       d_sav = d_sav//('isc_off'.kv.1)
-       call cdf_save_state(trim(slabel)//'.nc',d_sav)
-       call delete(d_sav)
 
-       ! Save the basis set
-       call cdf_save_basis(trim(slabel)//'.nc')
+      ! The dHmax variable only has meaning for Hamiltonian
+      ! mixing, or when requiring the Hamiltonian to be converged.
+      dDmax = -1._dp
+      dHmax = -1._dp
+      dEmax = -1._dp
+      drhog = -1._dp
 
-    end if
-#endif
-    
-    ! The dHmax variable only has meaning for Hamiltonian
-    ! mixing, or when requiring the Hamiltonian to be converged.
-    dDmax = -1._dp
-    dHmax = -1._dp
-    dEmax = -1._dp
-    drhog = -1._dp
-
-    ! Setup convergence criteria
-    if ( SIESTA_worker ) then
-       if ( converge_Eharr ) then
+      if ( SIESTA_worker ) then
+        if ( converge_Eharr ) then
           call reset(conv_harris)
           call set_tolerance(conv_harris,tolerance_Eharr)
-       end if
-       if ( converge_FreeE ) then
+        end if
+        if ( converge_FreeE ) then
           call reset(conv_FreeE)
           call set_tolerance(conv_FreeE,tolerance_FreeE)
-       end if
-    end if
+        end if
+      end if
 
-    ! The current structure of the loop tries to reproduce the
-    ! historical Siesta usage. It should be made more clear.
-    ! Two changes: 
-    !
-    ! -- The number of scf iterations performed is exactly
-    !    equal to the number specified (i.e., the "forces"
-    !    phase is not counted as a final scf step)
-    !
-    ! -- At the change to a TranSiesta GF run the variable "first_scf"
-    !    is implicitly reset to "true".
+      ! The current structure of the loop tries to reproduce the
+      ! historical Siesta usage. It should be made more clear.
+      ! Two changes: 
+      !
+      ! -- The number of scf iterations performed is exactly
+      !    equal to the number specified (i.e., the "forces"
+      !    phase is not counted as a final scf step)
+      !
+      ! -- At the change to a TranSiesta GF run the variable "first_scf"
+      !    is implicitly reset to "true".
+      
+      ! Start of SCF loop
+      iscf = 0
+      do while ( iscf < nscf )
 
-    ! Start of SCF loop
-    iscf = 0
-    do while ( iscf < nscf )
+        ! Conditions of exit:
+        !  -- At the top, to catch a non-positive nscf
+        !  -- At the bottom, based on convergence or # of iterations
 
-       ! Conditions of exit:
-       !  -- At the top, to catch a non-positive nscf and # of iterations
-       !  -- At the bottom, based on convergence
-       
-       iscf = iscf + 1
-       
-       ! Note implications for TranSiesta when mixing H
-       ! Now H will be recomputed instead of simply being
-       ! inherited, however, this is required as the 
-       ! if we have bias calculations as the electric
-       ! field across the junction needs to be present.
-       first_scf = (iscf == 1)
-       
-       if ( SIESTA_worker ) then
-          
+        iscf = iscf + 1
+
+        ! Note implications for TranSiesta when mixing H
+        ! Now H will be recomputed instead of simply being
+        ! inherited, however, this is required as the 
+        ! if we have bias calculations as the electric
+        ! field across the junction needs to be present.
+        first_scf = (iscf == 1)
+        
+        if ( SIESTA_worker ) then
+
           ! Check whether we are short of time to continue
           call check_walltime(time_is_up)
-          if ( time_is_up ) then
-             ! Save DM/H if we were not saving it...
-             !   Do any other bookeeping not done by "die"
-             call message('WARNING', &
-                  'SCF_NOT_CONV: SCF did not converge'// &
+          if (time_is_up) then
+            ! Save DM/H if we were not saving it...
+            !     Do any other bookeeping not done by "die"
+            call timer('all',2)
+            call timer('all',3)
+            if (.not. SCFConverged) then
+              call message('WARNING', &
+                  'SCF_NOT_CONV: SCF did not converge'//&
                   ' before wall time exhaustion')
-             write(tmp_str,"(2(i5,tr1),f12.6)") istep, iscf, prevDmax
-             call message(' (info)',"Geom step, scf iteration, dmax:"//trim(tmp_str))
-             
-             call die("OUT_OF_TIME: Time is up.")
-             
+              write(tmp_str,"(i5,1x,i5,f12.6)") istep, iscf, prevDmax
+              call message(' (info)',"Geom step, scf iteration, dmax:" &
+                  //trim(tmp_str))
+            endif
+            call barrier() ! A non-root node might get first to the 'die' call
+            call die("OUT_OF_TIME: Time is up.")
+
           end if
-        
+
           call timer( 'IterSCF', 1 )
           if (cml_p) &
                call cmlStartStep( xf=mainXML, type='SCF', index=iscf )
@@ -366,6 +361,10 @@ contains
              prevDmax = dDmax
           end if
 
+          ! Calculate current charge based on the density matrix
+          call dm_charge(spin, DM_2D, S_1D, Qcur)
+
+          
           ! Check whether we should step to the next mixer
           call mixing_scf_converged( SCFconverged )
 
@@ -378,19 +377,15 @@ contains
              end if
           end if
           
-#ifdef TRANSIESTA
           ! In case the user has requested a Fermi-level correction
           ! Then we start by correcting the fermi-level
           if ( TSrun .and. SCFconverged .and. &
                TS_RHOCORR_METHOD == TS_RHOCORR_FERMI ) then
 
-             call ts_get_charges(N_Elec, block_dist, sparse_pattern, &
-                  nspin, maxnh, Dscf, S, Qtot = Qcur )
-
              if ( abs(Qcur - Qtot) > TS_RHOCORR_FERMI_TOLERANCE ) then
 
                 ! Call transiesta with fermi-correct
-                call transiesta(iscf,nspin, &
+                call transiesta(iscf,spin%H, &
                      block_dist, sparse_pattern, Gamma_Scf, ucell, nsc, &
                      isc_off, no_u, na_u, lasto, xa, maxnh, H, S, &
                      Dscf, Escf, Ef, Qtot, .true., DE_NEGF)
@@ -402,7 +397,6 @@ contains
              end if
 
           end if
-#endif
           
           if ( monitor_forces_in_scf ) call compute_forces()
 
@@ -420,9 +414,9 @@ contains
              ! Save for possible restarts
              if ( mixH ) then
                 call write_spmatrix(H,file="H_MIXED",when=writeH)
-                call save_density_matrix(file="DM_OUT",when=writeDM)
+                call save_density_matrix(SCFconverged, file="DM_OUT",when=writeDM)
              else
-                call save_density_matrix(file="DM_MIXED",when=writeDM)
+                call save_density_matrix(SCFconverged, file="DM_MIXED",when=writeDM)
                 call write_spmatrix(H,file="H_DMGEN",when=writeH)
              end if
           end if
@@ -437,8 +431,7 @@ contains
           
           ! Retrieve an easy character string
           nnext_mixer = cunpack(next_mixer)
-          if ( len_trim(nnext_mixer) > 0 ) then
-#ifdef TRANSIESTA
+          if ( len_trim(nnext_mixer) > 0 .and. .not. mix_charge ) then
              if ( TSrun ) then
                 do imix = 1 , size(ts_scf_mixs)
                    if ( ts_scf_mixs(imix)%name == nnext_mixer ) then
@@ -448,7 +441,6 @@ contains
                    end if
                 end do
              else 
-#endif
                 do imix = 1 , size(scf_mixs)
                    if ( scf_mixs(imix)%name == nnext_mixer ) then
                       call mixers_history_init(scf_mixs)
@@ -456,9 +448,7 @@ contains
                       exit
                    end if
                 end do
-#ifdef TRANSIESTA
              end if
-#endif
              
              ! Check that we indeed have changed the mixer
              if ( IONode .and. scf_mix%name /= nnext_mixer ) then
@@ -481,13 +471,11 @@ contains
           end if
 #endif
 
-#ifdef TRANSIESTA
           ! ... except that we might continue for TranSiesta
           if ( SCFconverged ) then
              call transiesta_switch()
              ! might reset SCFconverged and iscf
           end if
-#endif
           
        else
           
@@ -514,7 +502,7 @@ contains
 
     if ( .not. SIESTA_worker ) return
 
-    call end_of_cycle_save_operations()
+    call end_of_cycle_save_operations(SCFconverged)
 
     if ( .not. SCFconverged ) then
        if ( SCFMustConverge ) then
@@ -522,6 +510,9 @@ contains
                ' in maximum number of steps (required).')
           write(tmp_str,"(2(i5,tr1),f12.6)") istep, iscf, prevDmax
           call message(' (info)',"Geom step, scf iteration, dmax:"//trim(tmp_str))
+          call timer( 'all', 2 ) ! New call to close the tree
+          call timer( 'all', 3 )
+          call barrier()
           call die('ABNORMAL_TERMINATION')
        else if ( .not. harrisfun ) then
           call message('WARNING', &
@@ -538,13 +529,11 @@ contains
        call initwf(istpp,totime)
     end if
     
-#ifdef TRANSIESTA
     if ( TSmode.and.TSinit.and.(.not. SCFConverged) ) then
        ! Signal that the DM hasn't converged, so we cannot
        ! continue to the transiesta routines
        call die('ABNORMAL_TERMINATION')
     end if
-#endif
     
     ! Clean-up here to limit memory usage
     call mixers_scf_history_init( )
@@ -585,12 +574,12 @@ contains
     subroutine get_H_from_file()
       use sparse_matrices, only: maxnh, numh, listh, listhptr
       use atomlist,        only: no_l
-      use m_spin,          only: nspin
+      use m_spin,          only: spin
       use m_iodm_old,      only: read_spmatrix
 
       logical :: found
 
-      call read_spmatrix(maxnh, no_l, nspin, numh, &
+      call read_spmatrix(maxnh, no_l, spin%H, numh, &
            listhptr, listh, H, found, userfile="H_IN")
       if (.not. found) call die("Could not find H_IN")
       
@@ -628,10 +617,8 @@ contains
 
     ! Print out timings of the first SCF loop only
     subroutine print_timings(first_scf, first_md)
-#ifdef TRANSIESTA
       use timer_options, only: use_tree_timer
       use m_ts_global_vars, only : TSrun
-#endif
       logical, intent(in) :: first_scf, first_md
       character(len=20) :: routine
 
@@ -642,7 +629,6 @@ contains
 
       routine = 'IterSCF'
 
-#ifdef TRANSIESTA
       if ( TSrun ) then
          ! with Green function generation
          ! The tree-timer requires direct
@@ -653,7 +639,6 @@ contains
             routine = 'TS'
          end if
       endif
-#endif
       call timer( routine, 3 )
 
     end subroutine print_timings
@@ -665,8 +650,9 @@ contains
     ! is guaranteed that the DM is "pure out" and that
     ! we can recover the right H if mixing H.
     !
-    subroutine end_of_cycle_save_operations()
+    subroutine end_of_cycle_save_operations(SCFconverged)
 
+      logical, intent(in) :: SCFconverged
       logical :: DM_write, H_write
 
       ! Depending on the option we should overwrite the
@@ -686,26 +672,26 @@ contains
          ! If we have been saving them, there is no point in doing
          ! it one more time
          if ( mixH ) then
-            call save_density_matrix(file="DM_OUT", when=DM_write)
+            call save_density_matrix(SCFconverged, file="DM_OUT", when=DM_write)
             call write_spmatrix(H,file="H_MIXED", when=H_write)
          else
-            call save_density_matrix(file="DM_MIXED", when=DM_write)
+            call save_density_matrix(SCFconverged, file="DM_MIXED", when=DM_write)
             call write_spmatrix(H,file="H_DMGEN", when=H_write)
          end if
       else
-         call save_density_matrix(file="DM_OUT", when=DM_write)
+         call save_density_matrix(SCFconverged, file="DM_OUT", when=DM_write)
          call write_spmatrix(H,file="H_DMGEN", when=H_write)
       end if
 
     end subroutine end_of_cycle_save_operations
 
-#ifdef TRANSIESTA
     subroutine transiesta_switch()
 
       use precision,             only: dp
       use parallel,              only: IONode
       use class_dSpData2D
       use class_Fstack_dData1D
+      use densematrix, only: resetDenseMatrix
 
       use siesta_options,        only: fire_mix, broyden_maxit
       use siesta_options,        only: dDtol, dHtol
@@ -716,6 +702,7 @@ contains
       use m_energies, only : Ef
       use m_mixing, only: mixers_history_init
       use m_mixing_scf, only: scf_mix, scf_mixs
+      use m_rhog, only: resetRhoG
 
       use m_ts_global_vars,      only: TSinit, TSrun
       use m_ts_global_vars,      only: ts_print_transiesta
@@ -754,6 +741,9 @@ contains
 
       end if
 
+      ! Reduce memory requirements
+      call resetDenseMatrix()
+
       ! Signal to continue...
       ! These two variables are from the top-level
       ! routine (siesta_forces)
@@ -765,19 +755,22 @@ contains
       call val_swap(dDtol, ts_Dtol)
       call val_swap(dHtol, ts_Htol)
 
-      ! From now on, a new mixing cycle starts,
-      ! Check in mixer.F for new mixing schemes.
-      ! NP new mixing
-      if ( associated(ts_scf_mixs, target=scf_mixs) ) then
-         do iel = 1 , size(scf_mix%stack)
+      ! Clean up mixing history
+      if ( mix_charge ) then
+        call resetRhoG(.true.)
+      else
+        if ( associated(ts_scf_mixs, target=scf_mixs) ) then
+          do iel = 1 , size(scf_mix%stack)
             call reset(scf_mix%stack(iel), -ts_hist_keep)
             ! Reset iteration count as certain
             ! mixing schemes require this for consistency
             scf_mix%cur_itt = n_items(scf_mix%stack(iel))
-         end do
-      else
-         call mixers_history_init(scf_mixs)
+          end do
+        else
+          call mixers_history_init(scf_mixs)
+        end if
       end if
+      
       ! Transfer scf_mixing to the transiesta mixing routine
       scf_mix => ts_scf_mixs(1)
 #ifdef SIESTA__FLOOK
@@ -796,11 +789,19 @@ contains
       ! initialize the bulk to those values
       if ( DM_bulk > 0 ) then
 
-         if ( IONode ) then
+        if ( IONode ) then
             write(*,'(/,2a)') 'transiesta: ', &
                  'Initializing bulk DM in electrodes.'
-         end if
+        end if
 
+        ! The electrode EDM is aligned at Ef == 0
+        ! We need to align the energy matrix to Ef == 0, then we switch
+        ! it back later.
+        DM  => val(DM_2D)
+        EDM => val(EDM_2D)
+        iEl = size(DM)
+        call daxpy(iEl,-Ef,DM(1,1),1,EDM(1,1),1)
+         
          na_a = 0
          do iEl = 1 , na_u
             if ( .not. a_isDev(iEl) ) na_a = na_a + 1
@@ -841,15 +842,12 @@ contains
 
          ! The electrode EDM is aligned at Ef == 0
          ! We need to align the energy matrix
-         DM  => val(DM_2D)
-         EDM => val(EDM_2D)
-         iEl =  size(DM)
+         iEl = size(DM)
          call daxpy(iEl,Ef,DM(1,1),1,EDM(1,1),1)
 
       end if
 
     end subroutine transiesta_switch
-#endif
 
   end subroutine siesta_forces
 
