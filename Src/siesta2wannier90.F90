@@ -102,6 +102,16 @@ module m_siesta2wannier90
   use m_switch_local_projection, only: numincbands
   use m_switch_local_projection, only: isexcluded
 
+#ifdef MPI
+  use parallelsubs,       only : set_blocksizedefault
+!
+! Subroutine to order the indices of the different bands after
+! excluding some of them for wannierization
+!
+  use m_orderbands,       only: order_index
+#endif
+
+
 !
 ! Variables related with the number of bands considered for wannierization
 !
@@ -115,15 +125,6 @@ module m_siesta2wannier90
                              !   This variable is read from the .nnkp file
   integer, pointer :: isincluded(:) ! Masks included bands
 
-
-#ifdef MPI
-  use parallelsubs,       only : set_blocksizedefault
-!
-! Subroutine to order the indices of the different bands after
-! excluding some of them for wannierization
-!
-  use m_orderbands,       only: order_index
-#endif
 
 
 
@@ -153,6 +154,7 @@ subroutine siesta2wannier90
 
 #ifdef MPI
   integer, external :: numroc
+  integer           :: nincbands
 #endif
 
   external  :: timer, mmn
@@ -207,14 +209,14 @@ subroutine siesta2wannier90
 !   Find the number of included bands for Wannierization that will be stored
 !   per node. Use a block-cyclic distribution of nincbands over Nodes.
 !
-    call set_blocksizedefault( Nodes, numincbands_wannier(ispin), 
+    call set_blocksizedefault( Nodes, numincbands_wannier(ispin),     &
  &                             blocksizeincbands_wannier )
 
 !     write(6,'(a,3i5)')' diagonalizeHk: Node, Blocksize = ', &
 ! &                                      Node, BlockSizeincbands
 
-     nincbands_loc_wannier = numroc( numincbands_wannier(ispin), 
-                             blocksizeincbands_wannier, Node, 0, Nodes )
+     nincbands_loc_wannier = numroc( numincbands_wannier(ispin),      &
+  &                          blocksizeincbands_wannier, Node, 0, Nodes )
 #else
      nincbands_loc_wannier = numincbands_wannier(ispin)
 #endif

@@ -114,7 +114,8 @@ C**** Internal variables ***********************************************
 !         This is the same logic as in m_orderbands, so the arrays
 !         can be re-used
 
-          if( .not.  isexcluded_tmp(iuog) ) then
+!          if( .not.  isexcluded_tmp(iuog) ) then
+          if( .not.  isexcluded(iuog) ) then
             jband    = jband + 1
 !           The coefficients of the included band will be stored
 !           in Node (node_included_band(jband)),

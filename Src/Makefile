@@ -934,7 +934,7 @@ m_new_dm.o: sparse_matrices.o sys.o units.o
 m_noccbands.o: alloc.o atmfuncs.o m_spin.o parallel.o precision.o siesta_geom.o
 m_noccbands.o: sys.o
 m_options.o: precision.o
-m_orderbands.o: alloc.o parallel.o parallelsubs.o sys.o
+m_orderbands.o: alloc.o parallel.o parallelsubs.o sys.o m_switch_local_proj.o
 m_overkkneig.o: alloc.o atomlist.o m_orderbands.o parallel.o parallelsubs.o
 m_overkkneig.o: precision.o siesta_geom.o sparse_matrices.o
 m_partial_charges.o: atmfuncs.o atomlist.o mesh.o meshphi.o parallel.o

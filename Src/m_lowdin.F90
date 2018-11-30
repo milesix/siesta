@@ -682,6 +682,7 @@ module m_lowdin
     integer :: numincbands_tmp
     integer :: blocksizeincbands_tmp 
     integer :: nincbands_loc_tmp
+    integer :: no_l
 
 #ifdef MPI
     integer, external :: numroc
@@ -696,14 +697,14 @@ module m_lowdin
 !      Find the number of included bands for Wannierization that will be stored
 !      per node. Use a block-cyclic distribution of nincbands over Nodes.
 !
-       call set_blocksizedefault( Nodes, numincbands_tmp, 
+       call set_blocksizedefault( Nodes, numincbands_tmp,       &
  &                                blocksizeincbands_tmp )
 
 !       write(6,'(a,3i5)')' diagonalizeHk: Node, Blocksize = ', &
 ! &                               Node, blocksizeincbands_tmp
 
-       nincbands_loc_tmp = numroc( numincbands_tmp,
-                               blocksizeincbands_tmp, Node, 0, Nodes )
+       nincbands_loc_tmp = numroc( numincbands_tmp,             &
+ &                             blocksizeincbands_tmp, Node, 0, Nodes )
 #else
        nincbands_loc_tmp = numincbands_tmp
 #endif
