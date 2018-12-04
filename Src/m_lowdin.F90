@@ -665,6 +665,7 @@ module m_lowdin
 !> \brief General purpose of the subroutine setup_lowdin
   subroutine setup_Lowdin
 
+    use atomlist,  only : no_l
     use parallel,  only : Node                 ! This process node
     use parallel,  only : Nodes                ! Total number of processor nodes
     use parallel,  only : BlockSize            ! Total number of processor nodes

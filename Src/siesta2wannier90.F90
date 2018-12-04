@@ -112,6 +112,15 @@ module m_siesta2wannier90
 #endif
 
 
+#ifdef MPI
+  use parallelsubs,       only : set_blocksizedefault
+!
+! Subroutine to order the indices of the different bands after
+! excluding some of them for wannierization
+!
+  use m_orderbands,       only: order_index
+#endif
+
 !
 ! Variables related with the number of bands considered for wannierization
 !
