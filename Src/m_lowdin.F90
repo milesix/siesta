@@ -683,7 +683,6 @@ module m_lowdin
     integer :: numincbands_tmp
     integer :: blocksizeincbands_tmp 
     integer :: nincbands_loc_tmp
-    integer :: no_l
 
 #ifdef MPI
     integer, external :: numroc
