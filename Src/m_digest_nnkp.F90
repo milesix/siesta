@@ -185,7 +185,7 @@ subroutine read_nnkp( seedname, latvec, reclatvec, numkpoints,          &
        enddo 
        write(6,'(a)')'read_nnkp:      - Reciprocal lattice is ok'
   endif ! IOnode
-! Broadcast the lattice vectors in real space and the reciprocal lattice vectors
+!! Broadcast the lattice vectors in real space and the reciprocal lattice vectors
   call broadcast( latvec     )
   call broadcast( reclatvec  )
 
@@ -224,7 +224,7 @@ subroutine read_nnkp( seedname, latvec, reclatvec, numkpoints,          &
     call scan_file_to('projections')
     read(iun_nnkp,*) numproj
   endif ! IOnode
-  call broadcast( numproj )
+!  call broadcast( numproj )
 
   if( numproj .ne. 0 ) then
     if (IOnode) then   ! read from ionode only
@@ -301,8 +301,8 @@ subroutine read_nnkp( seedname, latvec, reclatvec, numkpoints,          &
       enddo
     endif ! IOnode
 
-!   Broadcast the information about the projection functions
-    call broadcast_projections( )
+!!   Broadcast the information about the projection functions
+!    call broadcast_projections( )
 
   endif ! numproj ne 0
  
@@ -395,8 +395,8 @@ subroutine read_nnkp( seedname, latvec, reclatvec, numkpoints,          &
 !  endif
 !! End debugging
 
-! Broadcast information regarding excluded bands
-  if( numexcluded .gt. 0 ) call broadcast( excludedbands )
+!! Broadcast information regarding excluded bands
+!  if( numexcluded .gt. 0 ) call broadcast( excludedbands )
 
   if (IOnode) call io_close(iun_nnkp)   ! ionode only
 

@@ -56,15 +56,13 @@
       use m_partial_charges, only: want_partial_charges
       use m_iodm_old,        only: read_spmatrix
       use m_siesta2wannier90, only: siesta2wannier90
-      use m_switch_local_projection, only: switch_local_projection
       use m_switch_local_projection, only: Amnmat_man
+      use m_switch_local_projection, only: switch_local_projection
       use lowdin_types,      only: numkpoints_lowdin
       use lowdin_types,      only: manifold_bands_lowdin
-      use m_lowdin,          only: read_lowdin_specs
-      use m_lowdin,          only: read_kpoints_lowdin
-      use m_lowdin,          only: setup_Lowdin
+      use m_lowdin,          only: setup_lowdin
+      use m_lowdin,          only: compute_matrices
       use m_lowdin,          only: compute_wannier
-      use m_lowdin,          only: define_trial_orbitals
       use m_lowdin,          only: deallocate_wannier
 
       use m_mpi_utils, only: barrier
@@ -506,9 +504,12 @@ C
 C     Call the Lowdin orthonormalization here, 
 C
       if( lowdin_processing ) then
-        call read_lowdin_specs
-        call read_kpoints_lowdin
+!
+!       Set up all the variables required for the Lowdin orthonormalization
+!       At this step, these variables are only known at the IONode
+!
         call setup_lowdin
+
         if( n_lowdin_manifolds .eq. 1) then
           call re_alloc( Amnmat_man,              
      &                   1, n_lowdin_manifolds,  
@@ -530,14 +531,16 @@ C
         endif
         Amnmat_man = cmplx(0.0_dp,0.0_dp,kind=dp)
         do index_manifold = 1, n_lowdin_manifolds
-          call define_trial_orbitals( index_manifold )
+!         Transfer all the parameters from the lowdin module to the variables
+!         that will be used in the wannierization routines
           call switch_local_projection( index_manifold )
           do ispin = 1, nspin
             call diagonalizeHk( ispin, index_manifold )
-            call compute_wannier( ispin, index_manifold )
+            call compute_matrices( ispin, index_manifold )
+            if(IONode) call compute_wannier(ispin, index_manifold)
           enddo 
         enddo
-        call deallocate_wannier
+        if(IONode) call deallocate_wannier
         lowdin_processing = .false.
       endif
 

@@ -5,8 +5,7 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-      subroutine reordpsi(psisave, psi, nuo, nuotot, nocc, ninc, 
-     .                    index_manifold)
+      subroutine reordpsi(psisave, psi, nuo, nuotot, nocc, ninc)
 C *********************************************************************
 C Reorders the coefficient of the bands, so the bands whose bands index
 C range between 1 and numincbands are the bands included for
@@ -21,8 +20,6 @@ C integer nocc                   : Number of bands considered for
 C                                  Wannierization (before excluding bands)
 C integer ninc                   : Number of maximum bands whose
 C                                  coefficients will be stored in a node
-C integer index_manifold         : Index of the manifold of bands
-C                                  for Lowdin orthonormalization
 C *************************** OUTPUT **********************************
 C complex(dp)  psisave(nuotot,ninc) : Wavefunctions saved in the matrix of
 C                                  coefficients
@@ -37,10 +34,8 @@ C Energies in Rydbergs.
 C *********************************************************************
       use precision, only: dp
       use m_switch_local_projection, only : isexcluded
-      use siesta_options,     only : lowdin_processing
-      use lowdin_types,       only : manifold_bands_lowdin
-      use alloc,              only : re_alloc, de_alloc
 #ifdef MPI
+      use alloc,              only : re_alloc, de_alloc
       use parallel,           only : Node, Nodes, BlockSize
       use parallelsubs,       only : GetNodeOrbs, LocalToGlobalOrb
       use parallelsubs,       only : GlobalToLocalOrb
@@ -53,7 +48,7 @@ C *********************************************************************
 
       implicit none
  
-      integer, intent(in) ::  nuo, nuotot, nocc, ninc, index_manifold
+      integer, intent(in) ::  nuo, nuotot, nocc, ninc
       real(dp), intent(in) ::   psi(2,nuotot,nuo)
       complex(dp), intent(out) :: psisave(nuotot,ninc)
 
@@ -66,13 +61,6 @@ C**** Internal variables ***********************************************
      .  MPIerror, iuog, juog, n, noccloc
       real(dp), dimension(:,:,:), pointer ::  psitmp
 #endif
-
-!! For debugging
-!      do iuo = 1, nuo
-!        write(6,'(a,i5,l5)')' iband, isexcluded_tmp = ',
-!     .    iuo, isexcluded_tmp(iuo)
-!      enddo
-!! End debugging
 
 
 #ifdef MPI
@@ -114,7 +102,6 @@ C**** Internal variables ***********************************************
 !         This is the same logic as in m_orderbands, so the arrays
 !         can be re-used
 
-!          if( .not.  isexcluded_tmp(iuog) ) then
           if( .not.  isexcluded(iuog) ) then
             jband    = jband + 1
 !           The coefficients of the included band will be stored

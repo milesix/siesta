@@ -120,6 +120,9 @@ contains
     iCTXT = MPI_Comm_World
     nr = 1
     nc = Nodes
+!!   jjunquer
+!    call die('Before calling blacs_gridinit')
+!!   end jjunquer
     call blacs_gridinit( iCTXT, 'C', nr, nc )
 
     if ( Use2D ) then

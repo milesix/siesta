@@ -172,11 +172,14 @@ contains
     case ( "10.1088/0953-8984/14/11/302" )
        ! Siesta paper
        cit%comment = "Primary SIESTA paper"
+       cit%author = "J. M. Soler and E. Artacho and J. D. Gale and A. Garcia and J. Junquera and P. Ordejon and D. Sanchez-Portal"
+       cit%title = "The SIESTA method for ab initio order-N materials simulations"
        cit%doi = "10.1088/0953-8984/14/11/302"
        cit%journal = "Journal of Physics: Condensed Matter"
        cit%year = 2002
        cit%volume = "14"
        cit%issue = "11"
+       cit%page = "2745"
        cit%cite_key = "Soler2002"
        ID = 1
        
@@ -270,6 +273,8 @@ contains
     case ( "10.1103/PhysRevB.56.12847" )
        ! Maximally Localized Wannier Function Paper
        cit%comment = "Maximally Localized Wannier Function paper"
+       cit%author = "N. Marzari and D. Vanderbilt"
+       cit%title = "Maximally localized generalized Wannier functions for composite energy bands"
        cit%doi = "10.1103/PhysRevB.56.12847"
        cit%journal = "Physical Review B"
        cit%year = 1997
@@ -282,6 +287,8 @@ contains
     case ( "10.1016/j.cpc.2014.05.003" )
        ! Wannier90 paper
        cit%comment = "Wannier90 paper"
+       cit%author = "A. A. Mostofi and J. R. Yates and G. Pizzi and Y.-S. Lee and I. Souza and D. Vanderbilt and N. Marzari"
+       cit%title = "An updated version of wannier90: A tool for obtaining maximally-localised Wannier functions"
        cit%doi = "10.1016/j.cpc.2014.05.003"
        cit%journal = "Comput. Phys. Commun."
        cit%year = 2014
@@ -357,7 +364,7 @@ contains
     end if
     if ( cit%page  /= STR_NULL ) then
        write(iu, '(t3,3a)') &
-            'issue = {',trim(cit%page),'},'
+            'page = {',trim(cit%page),'},'
     end if
     if ( cit%doi /= STR_NULL ) then
        write(iu, '(t3,3a)') &

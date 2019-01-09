@@ -38,6 +38,7 @@
        module procedure broadcast_v_dp, broadcast_v_int
        module procedure broadcast_vv_dp, broadcast_vv_int
        module procedure broadcast_vvv_dp, broadcast_vvv_int
+       module procedure broadcast_v_logical
       end interface
 
       CONTAINS
@@ -221,6 +222,20 @@
 #endif
       end subroutine broadcast_logical
 
+      subroutine broadcast_v_logical(a,comm)
+      logical, dimension(:), intent(inout) :: a
+      integer, intent(in), optional :: comm
+
+#ifdef MPI
+      integer :: mpi_comm
+      mpi_comm = mpi_comm_world
+      if (present(comm)) then
+         mpi_comm = comm
+      endif
+      call MPI_Bcast(a,size(a),MPI_integer,0,
+     $     MPI_Comm,MPIerror)
+#endif
+      end subroutine broadcast_v_logical
 
       subroutine Globalize_or(local,global,comm)
       logical, intent(in) :: local

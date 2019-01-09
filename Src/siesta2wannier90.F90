@@ -79,9 +79,9 @@ module m_siesta2wannier90
                              !   actual \vec{k} + \vec{b} that we need.
                              !   In reciprocal lattice units.
   use wannier90_types, only: nincbands_loc_wannier  
-                                                ! Number of bands in the local
-                                                !   node for wannierization 
-                                                !   after excluding bands
+                             ! Number of bands in the local
+                             !   node for wannierization 
+                             !   after excluding bands
   use wannier90_types, only: blocksizeincbands_wannier
                                                 ! Maximum number of bands
                                                 !   considered for 
@@ -101,16 +101,6 @@ module m_siesta2wannier90
   use m_switch_local_projection, only: numbands
   use m_switch_local_projection, only: numincbands
   use m_switch_local_projection, only: isexcluded
-
-#ifdef MPI
-  use parallelsubs,       only : set_blocksizedefault
-!
-! Subroutine to order the indices of the different bands after
-! excluding some of them for wannierization
-!
-  use m_orderbands,       only: order_index
-#endif
-
 
 #ifdef MPI
   use parallelsubs,       only : set_blocksizedefault
@@ -221,11 +211,17 @@ subroutine siesta2wannier90
     call set_blocksizedefault( Nodes, numincbands_wannier(ispin),     &
  &                             blocksizeincbands_wannier )
 
+!!    For debugging
 !     write(6,'(a,3i5)')' diagonalizeHk: Node, Blocksize = ', &
-! &                                      Node, BlockSizeincbands
+! &     Node, numincbands_wannier(ispin), blocksizeincbands_wannier
+!!    End debugging
 
      nincbands_loc_wannier = numroc( numincbands_wannier(ispin),      &
   &                          blocksizeincbands_wannier, Node, 0, Nodes )
+!    For debugging
+     write(6,'(a,3i5)')' diagonalizeHk: Node, nincbands_loc_wannier = ', &
+ &     Node, nincbands_loc_wannier
+!    End debugging
 #else
      nincbands_loc_wannier = numincbands_wannier(ispin)
 #endif
@@ -236,12 +232,12 @@ subroutine siesta2wannier90
 !
     call switch_local_projection( 0 )
 
-#ifdef MPI
-!   Set up the arrays that control the indices of the bands to be
-!   considered after excluding some of them for wannierization
-!   This is done once and for all the k-points
-    call order_index( no_l, no_u, nincbands )
-#endif
+!#ifdef MPI
+!!   Set up the arrays that control the indices of the bands to be
+!!   considered after excluding some of them for wannierization
+!!   This is done once and for all the k-points
+!    call order_index( no_l, no_u, numincbands(ispin) )
+!#endif
 
 !   Compute the matrix elements of the plane wave,
 !   for all the wave vectors that connect a given k-point to its nearest

@@ -323,9 +323,9 @@ kpoints:                 &
       trialrcut   = projections(indexproj)%rcut
 
 !!     For debugging
-!      write(6,'(a,6i5,4f12.5)')' ik, Node, nincbands, nincbands_loc, iproj, indexproj = ',  &
+!      write(6,'(a,6i5,4f12.5,2i5,f12.5)')' ik, Node, nincbands, nincbands_loc, iproj, indexproj = ',  &
 ! &                ik, Node, nincbands, nincbands_loc, iproj,      &
-! &                indexproj, trialcenter, trialrcut 
+! &                indexproj, trialcenter, trialrcut, globalindexproj, na_s, rmaxo
 !!     End debugging
 
 !     Find the atomic orbitals that ovelap with our radial orbital
@@ -345,6 +345,11 @@ OrbitalQueue:                                                        &
  &                     r12,                & 
  &                     overlap,            & 
  &                     gradient )
+!!     For debugging
+!      write(6,'(a,4i5,4f12.5)')' ik, Node, globalindices, r12, overlap = ',  &
+! &                ik, Node, globalindexorbital, globalindexproj,      &
+! &                r12, overlap
+!!     End debugging
 
         phase = -1.0_dp * dot_product( kvector, item%center )
         exponential = exp( iu * phase )
@@ -385,7 +390,7 @@ Band_loop:                                                           &
 
 ! Write the Amn overlap matrices in a file, in the format required
 ! by Wannier90
-  if( IOnode ) call writeamn( ispin )
+  if( IONode ) call writeamn( ispin )
 
 ! Deallocate some of the arrays
   call de_alloc( psiloc,  'psiloc',  'Amn' )

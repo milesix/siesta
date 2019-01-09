@@ -21,10 +21,10 @@
 
       type, public ::  lowdin_manifold_t
           character(label_length+3)  :: seedname_lowdin  
-                                       !< Seed of the name of the file 
-                                       !!  that will be used to dump the 
-                                       !!  information of the matrix elements
-                                       !!  produced by the Wannier90 subroutines
+                                       ! Seed of the name of the file 
+                                       !   that will be used to dump the 
+                                       !   information of the matrix elements
+                                       !   produced by the WANNIER90 subroutines
           integer                :: initial_band
           integer                :: final_band
           integer                :: number_of_bands
@@ -45,10 +45,9 @@
                                                    ! List of orbitals excluded 
                                                    !   for Lowdin orthonormaliza
           integer                :: blocksizeincbands_lowdin 
-                                                   ! Maximum number of bands
-                                                   !    considered for 
-                                                   !    Lowdin orthonormalizat
-                                                   !    per node
+                                                   ! Blocking size for orbital
+                                                   !   distribution across 
+                                                   !   the nodes
           integer                :: nincbands_loc_lowdin     
                                                    ! Number of included bands 
                                                    !   in the calc.

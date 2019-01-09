@@ -43,7 +43,10 @@
 
       call MPI_Bcast(numproj,1,MPI_integer,0,MPI_Comm_World,MPIerror)
 
-      if ( Node .ne. 0 ) allocate (projections(numproj))
+      if ( Node .ne. 0 ) then
+        if ( allocated(projections) ) deallocate(projections)
+        allocate (projections(numproj))
+      endif 
 
       do is = 1, numproj
         proj => projections(is)
@@ -66,6 +69,12 @@
         call MPI_Bcast(proj%rcut,1,MPI_double_precision,
      $                 0,MPI_Comm_World,MPIerror)
         call MPI_Bcast(proj%lmax,1,MPI_integer,
+     $                 0,MPI_Comm_World,MPIerror)
+        call MPI_Bcast(proj%from_basis_orbital,1,MPI_logical,
+     $                 0,MPI_Comm_World,MPIerror)
+        call MPI_Bcast(proj%iorb,1,MPI_integer,
+     $                 0,MPI_Comm_World,MPIerror)
+        call MPI_Bcast(proj%iorb_gindex,1,MPI_integer,
      $                 0,MPI_Comm_World,MPIerror)
       enddo
 

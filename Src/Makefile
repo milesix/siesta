@@ -95,7 +95,7 @@ OBJS =  automatic_cell.o atom_options.o \
 	madelung.o mesh.o meshphi.o meshdscf.o memory.o meshsubs.o metaforce.o \
         m_supercell.o mulliken.o minvec.o naefs.o \
 	m_new_dm.o normalize_dm.o ordern.o outcell.o outcoor.o \
-	m_fft_gpfa.o m_lowdin.o m_switch_local_proj.o \
+	m_fft_gpfa.o m_lowdin.o m_switch_local_proj.o broadcast_lowdin.o \
 	pdos.o pdosg.o pdosk.o pdoskp.o phirphi.o pixmol.o plcharge.o \
 	projected_DOS.o propor.o m_partial_charges.o \
 	randomg.o reclat.o redcel.o \
@@ -579,6 +579,8 @@ born_charge.o: atomlist.o ksv.o ksvinit.o m_mpi_utils.o m_spin.o parallel.o
 born_charge.o: precision.o siesta_geom.o siesta_options.o sparse_matrices.o
 broadcast_basis.o: atm_types.o chemical.o ldau_specs.o m_mpi_utils.o parallel.o
 broadcast_basis.o: radial.o
+broadcast_lowdin.o: siesta_options.o m_mpi_utils.o parallel.o files.o 
+broadcast_lowdin.o: lowdin_types.o atomlist.o alloc.o
 broadcast_projections.o: m_trialorbitalclass.o parallel.o m_switch_local_proj.o
 broyden_optim.o: m_broyddj_nocomm.o m_memory.o parallel.o precision.o
 broyden_optim.o: siesta_options.o sys.o units.o
@@ -723,7 +725,7 @@ diagon.o: parallelsubs.o precision.o siesta_options.o sys.o m_memory.o
 diagonalizeHk.o: alloc.o atomlist.o densematrix.o m_spin.o 
 diagonalizeHk.o: parallel.o parallelsubs.o precision.o 
 diagonalizeHk.o: sparse_matrices.o units.o siesta_options.o
-diagonalizeHk.o: alloc.o m_switch_local_proj.o units.o
+diagonalizeHk.o: alloc.o m_switch_local_proj.o units.o m_orderbands.o
 diagpol.o: parallel.o precision.o sys.o
 diagsprl.o: atomlist.o fermid.o parallel.o parallelsubs.o precision.o
 diagsprl.o: siesta_geom.o sys.o
@@ -979,7 +981,7 @@ m_supercell.o: parallel.o parallelsubs.o precision.o
 m_svd.o: precision.o
 m_switch_local_proj.o: precision.o siesta_options.o atomlist.o
 m_switch_local_proj.o: wannier90_types.o alloc.o siesta_geom.o 
-m_switch_local_proj.o: m_trialorbitalclass.o
+m_switch_local_proj.o: m_trialorbitalclass.o m_mpi_utils.o parallel.o
 m_target_stress.o: parallel.o precision.o sys.o units.o
 m_test_io.o: class_SpData2D.o class_Sparsity.o m_iodm.o m_matio.o parallel.o
 m_test_io.o: precision.o

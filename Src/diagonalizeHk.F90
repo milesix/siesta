@@ -153,6 +153,14 @@ subroutine diagonalizeHk( ispin, index_manifold )
                                              !   kpointsfrac 
                                              !   First  index: band index
                                              !   Second index: k-point index
+#ifdef MPI
+!
+! Subroutine to order the indices of the different bands after
+! excluding some of them for wannierization
+!
+  use m_orderbands,       only: order_index
+#endif
+
 
 !
 ! Allocation/Deallocation routines
@@ -193,6 +201,14 @@ subroutine diagonalizeHk( ispin, index_manifold )
 
 ! Initialize the number of occupied bands
   nincbands = numincbands( ispin )
+
+#ifdef MPI
+! Set up the arrays that control the indices of the bands to be
+! considered after excluding some of them for wannierization
+! This is done once and for all the k-points
+  call order_index( no_l, no_u, nincbands )
+#endif
+
 
 ! Allocate memory related with the dense matrices that will be used in
 ! the diagonalization routines.
@@ -272,7 +288,7 @@ kpoints:                                                             &
 !   to the bands included for wannierization.
 !   
     call reordpsi( coeffs(1:no_u,1:nincbands_loc,ik), psi, no_l, &
-                   no_u, numbands(ispin), nincbands_loc, 0 )
+                   no_u, numbands(ispin), nincbands_loc )
 
 !!   For debugging
 !    write(6,*)' nincbands_loc = ', nincbands_loc

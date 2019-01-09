@@ -123,10 +123,15 @@ C *********************************************************************
      .  MPIerror
       integer, external :: indxg2p
 
-
 !     Define the maximum number of local bands to be stored in a Node
 !     after wannierization.
       maxilocalb = numincbands/Nodes + 1
+
+!!     For debugging
+!      write(6,'(a,4i10)') 
+!     .  'order_index: Node, Nodes, numincbands, maxilocalb = ', 
+!     .  Node, Nodes, numincbands, maxilocalb
+!!     End debugging
 
 !     Allocate the arrays where the indices of the bands included for 
 !     wannierization, and the node that will contain its coefficients 

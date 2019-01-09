@@ -153,7 +153,7 @@ subroutine writemmn( ispin )
 
   write(6,'(/,a)')  &
  &  'mmn: Overlap matrices between periodic part of wavefunctions'
-  write(6,'(a,/)')  &
+  write(6,'(a)')  &
  &  'mmn: written in ' // trim(seedname) // '.mmn file'
 
   return
@@ -369,7 +369,6 @@ subroutine writeeig( ispin )
  &  'eig: Eigenvalues of the Hamiltonian '
    write(6,'(a)')  &
  &  'eig: written in ' // trim(seedname) // '.eigW file'
-
 
 ! Close the output file where the eigenvalues will be written
   call io_close(eigunit)

@@ -48,7 +48,6 @@ module m_switch_local_projection
   integer          :: nincbands_loc      !! Number of included bands in the 
                                          !!   calculation of the overlap and 
                                          !!   projection matrices.
-                                         !!   in the local Node
   real(dp)         :: latvec(3,3) 
   real(dp)         :: reclatvec(3,3)     !< Reciprocal lattice vectors
                                          !!  Cartesian coordinates in Bohr^-1 
@@ -243,6 +242,9 @@ module m_switch_local_projection
     use wannier90_types, only: seedname_wannier
     use wannier90_types, only: projections_wannier
 
+    use parallel,        only: IONode             ! Input/Output node
+    use parallel,        only: Node               ! Local processor number
+    use m_mpi_utils,     only: broadcast          ! Broadcasting routines
     use alloc,           only: re_alloc           !< Reallocation routines
 
     integer, intent(in) :: index_manifold         !< Index of the band manifold
@@ -253,6 +255,7 @@ module m_switch_local_projection
 ! Internal variables
 !
     integer :: ik             ! Counter for loop on ik points
+    integer :: iw             ! Counter for loop on projections
     integer :: nn             ! 
     integer :: i              ! 
     integer :: iband          ! Counter for loop on bands
@@ -260,185 +263,242 @@ module m_switch_local_projection
     integer :: ivec           ! Counter for loop on vectors
 
     if( lowdin_processing ) then
-      write(6,'(/a)')                                                     & 
- &      'switch_local_projection: Populating the relevant matrices for '  
-      write(6,'(a)')                                                      & 
- &      'switch_local_projection: the Lowdin orthonormalization'
-      write(6,'(a,i5)')                                                   & 
- &      'switch_local_projection: band manifold = ', index_manifold
-      numkpoints = numkpoints_lowdin
-!     Initialize the list of k-points
-      nullify( kpointsfrac )
-      call re_alloc( kpointsfrac, 1, 3, 1, numkpoints,  &
- &                   name='kpointsfrac', routine='switch_local_projection')
-      do ik = 1, numkpoints
-        kpointsfrac(:,ik) = kpointsfrac_lowdin(:,ik)
-      enddo
+      if(IONode) then
+        write(6,'(/a)')                                                     & 
+ &        'switch_local_projection: Populating the relevant matrices for '  
+        write(6,'(a)')                                                      & 
+ &        'switch_local_projection: the Lowdin orthonormalization'
+        write(6,'(a,i5)')                                                   & 
+ &        'switch_local_projection: band manifold = ', index_manifold
+        numkpoints = numkpoints_lowdin
+!       Initialize the list of k-points
+        nullify( kpointsfrac )
+        call re_alloc( kpointsfrac, 1, 3, 1, numkpoints,  &
+ &                     name='kpointsfrac', routine='switch_local_projection')
+        do ik = 1, numkpoints
+          kpointsfrac(:,ik) = kpointsfrac_lowdin(:,ik)
+        enddo
 
-!     Initialize the list of neighbour k-points
-      nullify( nnlist        )
-      nullify( nnfolding     )
+!       Initialize the list of neighbour k-points
+        nullify( nnlist        )
+        nullify( nnfolding     )
 
-!     Broadcast information regarding the number of k-points neighbours
-!     and allocate in all nodes the corresponding arrays containing information
-!     about k-point neighbours
+!       Broadcast information regarding the number of k-points neighbours
+!       and allocate in all nodes the corresponding arrays containing 
+!       information about k-point neighbours
 
-      nncount = nncount_lowdin
+        nncount = nncount_lowdin
 
-      call re_alloc( nnlist, 1, numkpoints, 1, nncount,           &
- &                   name = "nnlist", routine = "read_nnkp" )
-      call re_alloc( nnfolding, 1, 3, 1, numkpoints, 1, nncount,  &
- &                   name = "nnfolding", routine = "read_nnkp" )
-      nnlist     = nnlist_lowdin
-      nnfolding  = nnfolding_lowdin
+        call re_alloc( nnlist, 1, numkpoints, 1, nncount,           &
+ &                     name = "nnlist", routine = "read_nnkp" )
+        call re_alloc( nnfolding, 1, 3, 1, numkpoints, 1, nncount,  &
+ &                     name = "nnfolding", routine = "read_nnkp" )
+        nnlist     = nnlist_lowdin
+        nnfolding  = nnfolding_lowdin
 
-!      numbands(1)   = manifold_bands_lowdin(index_manifold)%number_of_bands
-      numbands(1)   = manifold_bands_lowdin(index_manifold)%final_band
-      numincbands(1)= manifold_bands_lowdin(index_manifold)%number_of_bands
+!        numbands(1)   = manifold_bands_lowdin(index_manifold)%number_of_bands
+        numbands(1)   = manifold_bands_lowdin(index_manifold)%final_band
+        numincbands(1)= manifold_bands_lowdin(index_manifold)%number_of_bands
+        blocksizeincbands =  &
+ &         manifold_bands_lowdin(index_manifold)%blocksizeincbands_lowdin
+
+!       Initialize the list of excluded bands
+        nullify( isexcluded )
+        call re_alloc( isexcluded, 1, no_u, name='isexcluded', &
+ &                     routine='switch_local_projection' )
+        isexcluded = manifold_bands_lowdin(index_manifold)%isexcluded
+
+        latvec = ucell
+
+!       Initialize number of projectors
+        numproj = manifold_bands_lowdin(index_manifold)%numbands_lowdin
+        if( allocated(projections) ) deallocate( projections )
+        allocate(projections(numproj))
+        projections = manifold_bands_lowdin(index_manifold)%proj_lowdin
+
+!       Reciprocal lattice vectors
+        call reclat( ucell, reclatvec, 1 )
+
+        nullify( bvectorsfrac )
+        call re_alloc( bvectorsfrac, 1, 3, 1, nncount,    &
+                       name="bvectorsfrac", routine = "chosing_b_vectors")
+        bvectorsfrac = bvectorsfrac_lowdin
+
+        seedname = manifold_bands_lowdin(index_manifold)%seedname_lowdin
+      endif   ! if (IONode .eq. 0)
       nincbands_loc = manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
-      blocksizeincbands =  &
- &       manifold_bands_lowdin(index_manifold)%blocksizeincbands_lowdin
-
-!     Initialize the list of excluded bands
-      nullify( isexcluded )
-      call re_alloc( isexcluded, 1, no_u, name='isexcluded', &
- &                   routine='switch_local_projection' )
-      isexcluded = manifold_bands_lowdin(index_manifold)%isexcluded
-
-      latvec = ucell
-
-!     Initialize number of projectors
-      numproj = manifold_bands_lowdin(index_manifold)%numbands_lowdin
-      if( allocated(projections) ) deallocate( projections )
-      allocate(projections(numproj))
-      projections = manifold_bands_lowdin(index_manifold)%proj_lowdin
-
-!     Reciprocal lattice vectors
-      call reclat( ucell, reclatvec, 1 )
-
-      nullify( bvectorsfrac )
-      call re_alloc( bvectorsfrac, 1, 3, 1, nncount,    &
-                     name="bvectorsfrac", routine = "chosing_b_vectors")
-      bvectorsfrac = bvectorsfrac_lowdin
-
-      seedname = manifold_bands_lowdin(index_manifold)%seedname_lowdin
       goto 100
     endif
 
     if( w90_processing ) then
-      write(6,'(/a)')                                                     & 
- &      'switch_local_projection: Populating the relevant matrices for '
-      write(6,'(a)')                                                      & 
- &      'switch_local_projection: the interface with Wannier 90'
-      numkpoints = numkpoints_wannier
+      if(IONode) then
+        write(6,'(/a)')                                                     & 
+ &        'switch_local_projection: Populating the relevant matrices for '
+        write(6,'(a)')                                                      & 
+ &        'switch_local_projection: the interface with Wannier 90'
+        numkpoints = numkpoints_wannier
 
-!     Initialize the list of k-points
-      nullify( kpointsfrac )
-      call re_alloc( kpointsfrac, 1, 3, 1, numkpoints,  &
- &                   name='kpointsfrac', routine='switch_local_projection')
-      do ik = 1, numkpoints
-        kpointsfrac(:,ik) = kpointsfrac_wannier(:,ik)
-      enddo
+!       Initialize the list of k-points
+        nullify( kpointsfrac )
+        call re_alloc( kpointsfrac, 1, 3, 1, numkpoints,  &
+ &                     name='kpointsfrac', routine='switch_local_projection')
+        do ik = 1, numkpoints
+          kpointsfrac(:,ik) = kpointsfrac_wannier(:,ik)
+        enddo
 
-!     Initialize the list of neighbour k-points
-      nullify( nnlist        )
-      nullify( nnfolding     )
+!       Initialize the list of neighbour k-points
+        nullify( nnlist        )
+        nullify( nnfolding     )
 
-!     Broadcast information regarding the number of k-points neighbours
-!     and allocate in all nodes the corresponding arrays containing information
-!     about k-point neighbours
+!       Broadcast information regarding the number of k-points neighbours
+!       and allocate in all nodes the corresponding arrays containing 
+!       information about k-point neighbours
 
-      nncount = nncount_wannier
+        nncount = nncount_wannier
 
-      call re_alloc( nnlist, 1, numkpoints, 1, nncount,           &
- &                   name = "nnlist", routine = "read_nnkp" )
-      call re_alloc( nnfolding, 1, 3, 1, numkpoints, 1, nncount,  &
- &                   name = "nnfolding", routine = "read_nnkp" )
-      nnlist     = nnlist_wannier
-      nnfolding  = nnfolding_wannier
+        call re_alloc( nnlist, 1, numkpoints, 1, nncount,           &
+ &                     name = "nnlist", routine = "read_nnkp" )
+        call re_alloc( nnfolding, 1, 3, 1, numkpoints, 1, nncount,  &
+ &                     name = "nnfolding", routine = "read_nnkp" )
+        nnlist     = nnlist_wannier
+        nnfolding  = nnfolding_wannier
 
-      numbands          = numbands_wannier
-      numincbands       = numincbands_wannier
+        numbands          = numbands_wannier
+        numincbands       = numincbands_wannier
+        blocksizeincbands = blocksizeincbands_wannier
+
+!       Initialize the list of excluded bands
+        nullify( isexcluded )
+        call re_alloc( isexcluded, 1, no_u, name='isexcluded', &
+ &                     routine='switch_local_projection' )
+        isexcluded = isexcluded_wannier
+
+        latvec    = latvec_wannier
+!       Reciprocal lattice vector
+        reclatvec = reclatvec_wannier
+
+        nullify( bvectorsfrac )
+        call re_alloc( bvectorsfrac, 1, 3, 1, nncount,    &
+                       name="bvectorsfrac", routine = "chosing_b_vectors")
+        bvectorsfrac = bvectorsfrac_wannier
+
+        numproj = numproj_wannier
+        if( allocated(projections) ) deallocate( projections )
+        allocate(projections(numproj))
+        projections = projections_wannier
+
+        seedname = seedname_wannier
+      endif  ! endif (IONode)
       nincbands_loc     = nincbands_loc_wannier
-      blocksizeincbands = blocksizeincbands_wannier
-
-!     Initialize the list of excluded bands
-      nullify( isexcluded )
-      call re_alloc( isexcluded, 1, no_u, name='isexcluded', &
- &                   routine='switch_local_projection' )
-      isexcluded = isexcluded_wannier
-
-      latvec    = latvec_wannier
-!     Reciprocal lattice vector
-      reclatvec = reclatvec_wannier
-
-      nullify( bvectorsfrac )
-      call re_alloc( bvectorsfrac, 1, 3, 1, nncount,    &
-                     name="bvectorsfrac", routine = "chosing_b_vectors")
-      bvectorsfrac = bvectorsfrac_wannier
-
-      numproj = numproj_wannier
-      if( allocated(projections) ) deallocate( projections )
-      allocate(projections(numproj))
-      projections = projections_wannier
-
-      seedname = seedname_wannier
-    
     endif
 
 100 continue
 
+#ifdef MPI
+    call broadcast( seedname    )
+
+    call broadcast( numbands          )
+    call broadcast( numincbands       )
+    call broadcast( blocksizeincbands )
+
+    call broadcast( latvec      )
+    call broadcast( reclatvec   )
+
+    call broadcast( numkpoints  )
+    if( Node .ne. 0) then
+      call re_alloc( kpointsfrac, 1, 3, 1, numkpoints,                       &
+ &                   name='kpointsfrac', routine='switch_local_projection')
+    endif
+    call broadcast( kpointsfrac )
+    call broadcast( nncount     )
+    if( Node .ne. 0) then
+      call re_alloc( nnlist, 1, numkpoints, 1, nncount,           &
+ &                   name = "nnlist", routine = 'switch_local_projection' )
+      call re_alloc( nnfolding, 1, 3, 1, numkpoints, 1, nncount,  &
+ &                   name = "nnfolding", routine = 'switch_local_projection' )
+      call re_alloc( bvectorsfrac, 1, 3, 1, nncount,    &
+                     name="bvectorsfrac", routine = 'switch_local_projection' )
+    endif
+    call broadcast( nnlist       )
+    call broadcast( nnfolding    )
+    call broadcast( bvectorsfrac )
+
+    if( Node .ne. 0) then
+      call re_alloc( isexcluded, 1, no_u, name='isexcluded', &
+ &                   routine='switch_local_projection' )
+    endif
+    call broadcast( isexcluded )
+
+    call broadcast( numproj      )
+    call broadcast_projections
+
+#endif
+
 !!   For debugging
-!    write(6,'(/a,i5)')                                         & 
-! &    'switch_local_projection: index_manifold    = ', index_manifold
-!    write(6,'(a,i5)')                                          & 
-! &    'switch_local_projection: numkpoints        = ', numkpoints
+!    write(6,'(/a,2i5)')                                         & 
+! &    'switch_local_projection: index_manifold    = ', Node, index_manifold
+!    write(6,'(a,i5,2x,a)')                                      & 
+! &    'switch_local_projection: numkpoints        = ', Node, seedname
+!    write(6,'(a,2i5)')                                          & 
+! &    'switch_local_projection: numkpoints        = ', Node, numkpoints
 !    do ik = 1, numkpoints
-!      write(6,'(a,i5,3f12.5)')                                &
-! &      'switch_local_projection: ik, kpointsfrac = ',        &
-! &      ik, kpointsfrac(:,ik) 
+!      write(6,'(a,2i5,3f12.5)')                                &
+! &      'switch_local_projection: ik, kpointsfrac = ',         &
+! &      Node, ik, kpointsfrac(:,ik) 
 !    enddo
-!    write(6,'(a,2i5)')                                         &
+!    write(6,'(a,3i5)')                                         &
 ! &    'switch_local_projection: numbands          = ',         &
-! &      numbands
-!    write(6,'(a,2i5)')                                         &
+! &      Node, numbands
+!    write(6,'(a,3i5)')                                         &
 ! &    'switch_local_projection: numincbands       = ',         &
-! &     numincbands
+! &     Node, numincbands
 !    write(6,'(a,2i5)')                                         &
 ! &    'switch_local_projection: nincbands_loc     = ',         &
-! &     nincbands_loc
+! &     Node, nincbands_loc
 !    write(6,'(a,2i5)')                                         &
 ! &    'switch_local_projection: blocksizeincbands = ',         &
-! &     blocksizeincbands
+! &     Node, blocksizeincbands
 !    do iband = 1, no_u
-!      write(6,'(a,i5,l5)')                                     &
+!      write(6,'(a,2i5,l5)')                                    &
 ! &      'switch_local_projection: iband, isexcluded = ',       &
-! &      iband, isexcluded(iband)
+! &      Node, iband, isexcluded(iband)
 !    enddo
 !    do ivec = 1, 3
-!      write(6,'(a,i5,3f12.5)')                                 &
-! &      'switch_local_projection: lattice vectors   = ',       &
-! &      ivec, latvec(:,ivec)
+!      write(6,'(a,2i5,3f12.5)')                                 &
+! &      'switch_local_projection: lattice vectors   = ',        &
+! &      Node, ivec, latvec(:,ivec)
 !    enddo
 !    do ivec = 1, 3
-!      write(6,'(a,i5,3f12.5)')                                 &
-! &      'switch_local_projection: reciprocal lattice= ',       &
-! &      ivec, reclatvec(:,ivec)
+!      write(6,'(a,2i5,3f12.5)')                                 &
+! &      'switch_local_projection: reciprocal lattice= ',        &
+! &      Node, ivec, reclatvec(:,ivec)
 !    enddo
-!    write(6,'(a)') 'begin nnkpts'
-!    write(6,'(i4)') nncount
+!    write(6,'(a,i5)') 'switch_local_projection: projections in Node: ', Node
+!    do iw = 1, numproj
+!       write(6,'(i5,3f12.6,3i3,f12.6)')   &
+! &       Node,                            &
+! &       projections(iw)%center(1:3),     &
+! &       projections(iw)%l,               &
+! &       projections(iw)%mr,              &
+! &       projections(iw)%r,               &
+! &       projections(iw)%zovera
+!    enddo
+!
+!    write(6,'(a,i5)') 'switch_local_projection: nnkpts in Node: ', Node
+!    write(6,'(2i4)') Node, nncount
 !    do ik = 1,numkpoints
 !      do nn = 1, nncount
-!        write(6,'(2i6,3x,3i4)') &
-! &        ik,nnlist(ik,nn),(nnfolding(i,ik,nn),i=1,3)
+!        write(6,'(3i6,3x,3i4)') &
+! &        Node,ik,nnlist(ik,nn),(nnfolding(i,ik,nn),i=1,3)
 !      end do
 !    end do
-!    write(6,'(a)') 'begin bvectorsfrac'
+!    write(6,'(a,i5)') 'switch_local_projection: bvectorsfrac in Node: ', Node
 !    do nn = 1, nncount
-!      write(6,'(i6,3x,3f12.5)') &
-! &      nn,(bvectorsfrac(i,nn),i=1,3)
-!    end do
-!    write(6,'(a/)') 'end bvectorsfrac'
+!      write(6,'(2i6,3x,3f12.5)') &
+! &      Node, nn,(bvectorsfrac(i,nn),i=1,3)
+!    enddo
+!    write(6,'(a,i5/)')                                                        &
+! &    'switch_local_projection: end bvectorsfrac in Node: ', Node
 !      
 !!   End debugging
 

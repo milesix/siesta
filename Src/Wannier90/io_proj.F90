@@ -36,6 +36,12 @@ module w90_io
   logical, public, save           :: post_proc_flag  
   !! Are we in post processing mode 
 
+! jjunquer
+  integer, public, save           :: write_par_wan90
+  !! Is this node in charge of writing the output in a parallel run?
+! end jjunquer
+
+
   type timing_data
       !! Data about each stopwatch - for timing routines
      integer :: ncalls           

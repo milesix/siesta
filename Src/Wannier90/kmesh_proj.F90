@@ -64,7 +64,9 @@ contains
     !! Main routine to calculate the b-vectors  
     !                                                  
     !=====================================================
-    use w90_io,      only : stdout,io_error,io_stopwatch
+! jjunquer
+    use w90_io,      only : stdout,io_error,io_stopwatch, write_par_wan90 
+! end jjunquer
     use w90_utility, only : utility_compar
 
     implicit none
@@ -91,7 +93,8 @@ contains
 
     if (timing_level>0) call io_stopwatch('kmesh: get',1)
 
-    write(stdout,'(/1x,a)') &
+    if (write_par_wan90  .eq. 0) &
+ &  write(stdout,'(/1x,a)') &
       '*---------------------------------- K-MESH ----------------------------------*'  
 
     ! Sort the cell neighbours so we loop in order of distance from the home shell
@@ -131,6 +134,7 @@ contains
        dnn1 = eta  
     enddo
 
+    if (write_par_wan90 .eq. 0) then
     write(stdout,'(1x,a)') '+----------------------------------------------------------------------------+' 
     write(stdout,'(1x,a)') '|                    Distance to Nearest-Neighbour Shells                    |'
     write(stdout,'(1x,a)') '|                    ------------------------------------                    |'
@@ -170,6 +174,7 @@ contains
        write(stdout,'(1x,"|",76(" "),"|")') 
        write(stdout,'(1x,"+",76("-"),"+")') 
     end if
+    endif   ! end if writing in parallel run
 
 
     ! Get the shell weights to satisfy the B1 condition
@@ -182,18 +187,20 @@ contains
           call kmesh_shell_fixed(multi,dnn,bweight)
        end if
 
-       write(stdout,'(1x,a)',advance='no') '| The following shells are used: '
-       do ndnn=1,num_shells
-          if (ndnn.eq.num_shells) then
-             write(stdout,'(i3,1x)',advance='no') shell_list(ndnn)
-          else
-             write(stdout,'(i3,",")',advance='no') shell_list(ndnn)
-          endif
-       enddo
-       do l=1,11-num_shells
-          write(stdout,'(4x)',advance='no')
-       enddo
-       write(stdout,'("|")')
+       if (write_par_wan90  .eq. 0) then
+         write(stdout,'(1x,a)',advance='no') '| The following shells are used: '
+         do ndnn=1,num_shells
+            if (ndnn.eq.num_shells) then
+               write(stdout,'(i3,1x)',advance='no') shell_list(ndnn)
+            else
+               write(stdout,'(i3,",")',advance='no') shell_list(ndnn)
+            endif
+         enddo
+         do l=1,11-num_shells
+            write(stdout,'(4x)',advance='no')
+         enddo
+         write(stdout,'("|")')
+       endif 
 
     end if
        
@@ -274,9 +281,12 @@ contains
     ! Comment: Now we have bk(3,nntot,num_kps) 09/04/2006
 
 
+    if (write_par_wan90 .eq. 0) then
     write(stdout,'(1x,a)') '+----------------------------------------------------------------------------+' 
     write(stdout,'(1x,a)') '|                        Shell   # Nearest-Neighbours                        |'
     write(stdout,'(1x,a)') '|                        -----   --------------------                        |'
+    endif 
+
     if(index(devel_flag,'kmesh_degen')==0) then
        !
        ! Standard routine
@@ -351,11 +361,13 @@ nnshell=0
 
 
 
+    if (write_par_wan90 .eq. 0) then
     do ndnnx=1, num_shells
        ndnn = shell_list(ndnnx)
        write(stdout,'(1x,a,24x,i3,13x,i3,33x,a)') '|',ndnn,nnshell(1,ndnn),'|'
     end do
     write(stdout,'(1x,"+",76("-"),"+")') 
+    endif 
 
 
     do nkp = 1, num_kpts  
@@ -397,11 +409,13 @@ nnshell=0
                    enddo
                 enddo
                 if ( (i.eq.j) .and. (abs(ddelta-1.0_dp).gt.kmesh_tol) ) then
-                   write(stdout,'(1x,2i3,f12.8)') i,j,ddelta
+                   if(write_par_wan90 .eq. 0) &
+ &                   write(stdout,'(1x,2i3,f12.8)') i,j,ddelta
                    call io_error('Eq. (B1) not satisfied in kmesh_get (1)')  
                 endif
                 if ( (i.ne.j) .and. (abs(ddelta).gt.kmesh_tol) ) then  
-                   write(stdout,'(1x,2i3,f12.8)') i,j,ddelta
+                   if(write_par_wan90 .eq. 0) &
+ &                   write(stdout,'(1x,2i3,f12.8)') i,j,ddelta
                    call io_error('Eq. (B1) not satisfied in kmesh_get (2)')  
                 endif
              enddo
@@ -409,8 +423,10 @@ nnshell=0
        enddo
     end if
        
+    if ( write_par_wan90 .eq. 0 ) then
     write(stdout,'(1x,a)') '| Completeness relation is fully satisfied [Eq. (B1), PRB 56, 12847 (1997)]  |'  
     write(stdout,'(1x,"+",76("-"),"+")') 
+    endif 
 
     !
     wbtot = 0.0_dp  
@@ -447,6 +463,7 @@ nnshell=0
     if (na.ne.nnh) call io_error('Did not find right number of bk directions')
 
 
+    if(write_par_wan90 .eq. 0) then
     if (lenconfac.eq.1.0_dp) then
        write(stdout,'(1x,a)') '|                  b_k Vectors (Ang^-1) and Weights (Ang^2)                  |'
        write(stdout,'(1x,a)') '|                  ----------------------------------------                  |'
@@ -475,6 +492,7 @@ nnshell=0
     enddo
     write(stdout,'(1x,"+",76("-"),"+")') 
     write(stdout,*) ' '  
+    endif ! end if writing in a parallel run
 
 
     ! find index array
@@ -489,7 +507,7 @@ nnshell=0
           enddo
           ! check found
           if (neigh(nkp,na).eq.0) then  
-             write(stdout,*) ' nkp,na=',nkp,na  
+             if(write_par_wan90 .eq. 0) write(stdout,*) ' nkp,na=',nkp,na  
              call io_error('kmesh_get: failed to find neighbours for this kpoint')  
           endif
        enddo
@@ -572,6 +590,7 @@ nnshell=0
 
        if (na.ne.nnh) call io_error('Did not find right number of b-vectors in gamma_only option')
 
+       if( write_par_wan90 .eq. 0 ) then
        write(stdout,'(1x,"+",76("-"),"+")')
        write(stdout,'(1x,a)') '|        Gamma-point: number of the b-vectors is reduced by half             |'
        write(stdout,'(1x,"+",76("-"),"+")')
@@ -590,6 +609,7 @@ nnshell=0
        enddo
        write(stdout,'(1x,"+",76("-"),"+")')
        write(stdout,*) ' '
+       endif ! End if writting in a parallel run
 
        deallocate(nnlist_tmp, stat=ierr )
        if (ierr/=0) call io_error('Error in deallocating nnlist_tmp in kmesh_get')
@@ -904,7 +924,9 @@ nnshell=0
     !==========================================================================
 
     use w90_constants, only : eps5,eps6
-    use w90_io,   only : io_error,stdout,io_stopwatch
+! jjunquer
+    use w90_io,   only : io_error,stdout,io_stopwatch, write_par_wan90
+! end jjunquer
     implicit none
 
     integer, intent(in) :: multi(search_shells)   ! the number of kpoints in the shell
@@ -929,7 +951,9 @@ nnshell=0
        if (ierr/=0) call io_error('Error allocating bvector in kmesh_shell_automatic')
     bvector=0.0_dp;bweight=0.0_dp
 
-    write(stdout,'(1x,a)') '| The b-vectors are chosen automatically                                     |'
+
+    if (write_par_wan90  .eq. 0) &
+ &    write(stdout,'(1x,a)') '| The b-vectors are chosen automatically                                     |'
 
     b1sat=.false.
     do shell=1,search_shells
