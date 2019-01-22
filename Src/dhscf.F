@@ -70,7 +70,7 @@
       use parsing
 
       use alloc,          only : re_alloc, de_alloc
-      use siesta_options, only : harrisfun
+      use siesta_options, only : harrisfun, use_bigdft_psolver
       use meshsubs,       only : PartialCoreOnMesh
       use meshsubs,       only : NeutralAtomOnMesh
       use meshsubs,       only : PhiOnMesh
@@ -108,6 +108,7 @@
 #ifdef MPI
       use mpi_siesta
 #endif
+      use m_psolver_bigdft,       only: poisson_bigdft
 
       use m_mesh_node,   only: init_mesh_node
       use m_charge_add,  only: init_charge_add
@@ -403,8 +404,13 @@ C     Allocate Temporal array
 C     Vscf is filled here but not used later
 C     Uharrs is computed (and saved)
 C     DStres is computed but not used later
-      call poison( cell, ntml(1), ntml(2), ntml(3), ntm, rhoatm,
+      if (use_bigdft_psolver) then
+        call poisson_bigdft(cell, ntml, ntm, nsm, rhoatm,
+     $                    Vscf(:,1), Uharrs)
+      else
+        call poison( cell, ntml(1), ntml(2), ntml(3), ntm, rhoatm,
      &             Uharrs, Vscf, DStres, nsm )
+      endif
       call de_alloc( Vscf, 'Vscf', 'dhscf_init' )
 
 !     Always deallocate rhoatm_par, as it was used even if nodes=1
@@ -643,12 +649,13 @@ C     Modules
 #ifdef MPI
       use mpi_siesta
 #endif
+      use m_psolver_bigdft,       only: poisson_bigdft
       use iogrid_netcdf, only: write_grid_netcdf
       use iogrid_netcdf, only: read_grid_netcdf
       use siesta_options, only: read_charge_cdf
       use siesta_options, only: savebader
       use siesta_options, only: read_deformation_charge_cdf
-      use siesta_options, only: mix_charge
+      use siesta_options, only: mix_charge, use_bigdft_psolver
 
       use m_efield,       only: get_field_from_dipole, dipole_correction
       use m_efield,       only: add_potential_from_field
@@ -1250,9 +1257,13 @@ C ----------------------------------------------------------------------
 !     Solve Poisson's equation
       call re_alloc( Vaux, 1, ntpl, 'Vaux', 'dhscf' )
 
-      call poison( cell, ntml(1), ntml(2), ntml(3), ntm, DRho,
+      if (use_bigdft_psolver) then
+        call poisson_bigdft(cell, ntml, ntm, nsm, DRho(:,1), 
+     &             Vaux, DUscf)
+      else
+        call poison( cell, ntml(1), ntml(2), ntml(3), ntm, DRho,
      &             DUscf, Vaux, DStres, nsm )
-
+      endif
       if ( debug_dhscf ) then
          write(*,debug_fmt) Node,'Poisson',sqrt(sum(Vaux(:)**2))
       end if

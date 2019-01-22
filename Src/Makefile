@@ -125,7 +125,7 @@ OBJS =  automatic_cell.o atom_options.o \
         alloc.o spher_harm.o periodic_table.o version.o timestamp.o \
         basis_types.o xml.o pseudopotential.o basis_specs.o basis_io.o\
 	ldau.o ldau_specs.o \
-        onmod.o densematrix.o writewave.o on_subs.o fermid.o m_broyddj.o \
+        onmod.o densematrix.o writewave.o m_psolver_bigdft.o on_subs.o fermid.o m_broyddj.o \
         electrostatic.o mneighb.o globalise.o siesta_cmlsubs.o siesta_cml.o \
         units.o zmatrix.o m_broyden_mixing.o forhar.o m_walltime.o m_wallclock.o m_iostruct.o \
         nlefsm.o overfsm.o overlap.o overlap_gradient.o conjgr.o conjgr_old.o m_energies.o m_steps.o\
@@ -697,7 +697,7 @@ dhscf.o: iogrid_netcdf.o m_charge_add.o m_efield.o m_hartree_add.o m_iorho.o
 dhscf.o: m_iotddft.o m_mesh_node.o m_ncdf_io.o m_ncdf_siesta.o
 dhscf.o: m_partial_charges.o m_rhog.o m_spin.o m_ts_electype.o
 dhscf.o: m_ts_global_vars.o m_ts_hartree.o m_ts_options.o m_ts_voltage.o mesh.o
-dhscf.o: meshdscf.o meshsubs.o moremeshsubs.o parallel.o parsing.o precision.o
+dhscf.o: meshdscf.o meshsubs.o moremeshsubs.o m_psolver_bigdft.o parallel.o parsing.o precision.o
 dhscf.o: rhofft.o rhoofd.o siesta_options.o sys.o units.o vmat.o
 diag.o: alloc.o diag_option.o parallel.o precision.o sys.o
 diag2g.o: fermid.o intrinsic_missing.o parallel.o parallelsubs.o precision.o
@@ -871,6 +871,8 @@ m_geom_coord.o: intrinsic_missing.o m_geom_aux.o parallel.o
 m_geom_objects.o: m_geom_aux.o m_geom_box.o m_geom_coord.o m_geom_plane.o
 m_geom_objects.o: m_geom_square.o
 m_geom_plane.o: intrinsic_missing.o m_geom_aux.o
+m_psolver_bigdft.o: alloc.o parallel.o mesh.o parallelsubs.o outcell.o
+m_psolver_bigdft.o: precision.o siesta_geom.o units.o
 m_geom_square.o: intrinsic_missing.o m_geom_aux.o m_geom_plane.o
 m_getopts.o: f2kcli.o
 m_handle_sparse.o: class_Data2D.o class_OrbitalDistribution.o class_SpData1D.o

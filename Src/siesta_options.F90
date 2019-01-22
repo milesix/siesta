@@ -237,6 +237,7 @@ MODULE siesta_options
   real(dp) :: tt            ! Target temperature. Read in redata. Used in dynamics rout.
   real(dp) :: wmix          ! Mixing weight for DM in SCF iteration
   real(dp) :: wmixkick      ! Mixing weight for DM in special 'kick' SCF steps
+  logical :: use_bigdft_psolver ! Use Poisson solver from BigDFT package instead of Siesta solver
 
   character(len=164) :: sname   ! System name, used to initialise read
 

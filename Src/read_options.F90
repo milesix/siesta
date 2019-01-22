@@ -1735,6 +1735,8 @@ subroutine read_options( na, ns, nspin )
   RelaxCellOnly                = fdf_get('MD.RelaxCellOnly', .false.)
   RemoveIntraMolecularPressure = fdf_get( &
        'MD.RemoveIntraMolecularPressure', .false.)
+  ! BigDFT Solver
+  use_bigdft_psolver=fdf_get('UseBigDFTSolver',.false.)
   !
   !   COOP-related flags
   !

@@ -5824,6 +5824,24 @@ simultaneously for complete control.
   
 \end{fdfentry}
 
+\subsubsection{Poisson solver} 
+\index{Poisson solver from BigDFT package}
+It is possible to change the Poisson solver to that of the BigDFT package
+(\url{http://bigdft.org}). In order to do that, \siesta\ has to 
+be linked to the libPSolver-1.a library during the compilation process. 
+This library can be compiled a side of the whole BigDFT code. 
+
+Module \texttt{m\_poisson\_bigdft} handles coulomb kernel for 
+both serial and parallel runs. It has been tested with garantee for
+isolated and bulk sistems, for 2D-systems, however, calculations must be
+taken with extra care (a larger box might be required). 
+%
+\begin{fdflogicalF}{use!bigdft!psolver}
+
+  Logical variable to switch the standar \siesta\ Poisson to 
+  the one used by the BigDFT code.  
+
+\end{fdflogicalF}
 
 
 \vspace{5pt}
