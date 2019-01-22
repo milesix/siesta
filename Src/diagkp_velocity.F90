@@ -399,7 +399,7 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
       ! One could revert the eigenspectrum, via:
       !   call calculate_velocity(neigneeded)
       !   call velocity_shift(-1, neigneeded, eo(:,is,ik), v)
-      ! However it may be advantegeous to consult the EIG file for post-processing.
+      ! However it may be advantageous to consult the EIG file for post-processing.
 
 !!$      ! This transmission calculation is actually a bit wrong.
 !!$      ! Only states in the bias-window which are forward moving will contribute.

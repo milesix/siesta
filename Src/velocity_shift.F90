@@ -80,6 +80,7 @@ contains
       velocity_dir(2) = fdf_bvalues(pline, 2)
       velocity_dir(3) = fdf_bvalues(pline, 3)
 
+      call fdf_bclose(bfdf)
     else
       velocity_dir = 0._dp
     end if
@@ -124,7 +125,7 @@ contains
   end subroutine read_velocity_shift
 
   !< Shift the eigenspectrum according to the velocities
-  subroutine velocity_shift(sign,ne, e, v)
+  subroutine velocity_shift(sign, ne, e, v)
     integer, intent(in) :: sign
     integer, intent(in) :: ne
     real(dp), intent(inout) :: e(ne)

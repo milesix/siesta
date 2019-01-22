@@ -9800,15 +9800,16 @@ or interpolation of bands), can be downloaded from
 \siesta\ enables a crude way of calculating a bulk current. The basic
 principle may be understood from basic condensed matter physics by
 filling all right-moving states up to $E_F + V/2$ and emptying all
-left-moving states down to $E_F - V/2$. This can be used to create
-electrodes with a net-current flowing.
+left-moving states down to $E_F - V/2$ (for a positively defined
+$V$).
 
 \begin{fdfentry}{BulkBias!V}[energy]<$0.\,\mathrm{eV}$>
   \fdfdepend{BulkBias!Direction}
 
   The applied bias shift in the band-structure. All right-moving
-  states will be shifted halve this value down in energy, while
-  all left-moving states will be shifted halve this value up in energy.
+  states will be shifted halve this value down in energy (more
+  filled), while all left-moving states will be shifted halve this
+  value up in energy (less filled).
 
 \end{fdfentry}
 
@@ -9830,7 +9831,9 @@ electrodes with a net-current flowing.
 
   This value may be regarded as the velocity in atomic units and thus
   having a larger value will only shift eigenstates with higher
-  velocities projected onto the potential-direction.
+  velocities projected onto the potential-direction. The current value
+  corresponds roughly to a velocity of
+  $2\cdot10^{-4}\,\mathrm{Bohr}/\mathrm{ps}$.
 
 \end{fdfentry}
 
