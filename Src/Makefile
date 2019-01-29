@@ -905,7 +905,7 @@ m_lowdin.o: m_cite.o parallel.o lowdin_types.o precision.o alloc.o atm_types.o
 m_lowdin.o: siesta_options.o atomlist.o parallelsubs.o sys.o m_energies.o 
 m_lowdin.o: m_orderbands.o sys.o atmfuncs.o atomlist.o siesta_geom.o units.o
 m_lowdin.o: m_switch_local_proj.o m_digest_nnkp.o siesta_options.o files.o
-m_lowdin.o: atmfuncs.o chemical.o m_trialorbitalclass.o
+m_lowdin.o: atmfuncs.o chemical.o m_trialorbitalclass.o m_spin.o
 m_mat_invert.o: intrinsic_missing.o m_pivot_array.o precision.o
 m_matdiag.o: precision.o
 m_matio.o: alloc.o parallel.o

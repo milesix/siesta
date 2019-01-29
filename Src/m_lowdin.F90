@@ -943,11 +943,13 @@ module m_lowdin
 !
   subroutine compute_matrices( ispin, index_manifold )
 
+    use m_switch_local_projection, only: seedname
     use m_switch_local_projection, only: nncount
     use m_switch_local_projection, only: numkpoints
     use m_switch_local_projection, only: bvectorsfrac
     use m_switch_local_projection, only: Amnmat
     use m_switch_local_projection, only: Amnmat_man
+    use m_spin,                    only: nspin
 
     integer, intent(in) :: ispin           ! Spin component
     integer, intent(in) :: index_manifold  ! Index of the manifold
@@ -959,6 +961,13 @@ module m_lowdin
 
     integer :: number_of_bands_in_manifold_local
     integer :: number_of_bands_to_project
+
+    if( nspin .gt. 1 ) then                                              &
+ &    write(seedname,                                                    &
+ &          "(a,'.manifold.',i1.1,'.spin.',i1.1)")                       &
+ &       trim(slabel),index_manifold,ispin
+    endif
+    write(6,*)seedname
 
     number_of_bands_in_manifold_local =                                  &
  &        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
@@ -1020,6 +1029,7 @@ module m_lowdin
     use m_switch_local_projection, only: nncount
     use m_switch_local_projection, only: numkpoints
     use m_switch_local_projection, only: eo
+    use m_spin,                    only: nspin
     use m_energies, only: ef                   ! Fermi energy
     use units     , only: eV                   ! Conversion factor from Ry to eV
     use lowdin_types,   only: nnlist_lowdin    ! Same as nnlist
@@ -1223,8 +1233,15 @@ module m_lowdin
                                            !   operator will be written
 
 !   Set up the variables related with the writing of the Hamiltonian
-    write(seedname,"(a,'.manifold.',i1.1)")                    &
- &       trim(slabel),index_manifold
+    if( nspin .eq. 1) then
+      write(seedname,"(a,'.manifold.',i1.1)")                    &
+ &         trim(slabel),index_manifold
+    if( nspin .gt. 1) then
+      write(seedname,                                            &
+ &          "(a,'.manifold.',i1.1,'.spin.',i1.1)")               &
+ &       trim(slabel),index_manifold,ispin
+    endif
+
     write_hr = .true. 
 
 !   Set up general variables
