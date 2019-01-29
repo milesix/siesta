@@ -2035,6 +2035,9 @@ contains
 !    if (restart.ne.' ') disentanglement=.false.
 
     if (disentanglement) then 
+!      jjunquer:
+       if (allocated(ndimwin)) deallocate(ndimwin)
+!      end jjunquer:
        allocate(ndimwin(num_kpts),stat=ierr)
        if (ierr/=0) call io_error('Error allocating ndimwin in param_read')
 !      jjunquer:

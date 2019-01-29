@@ -28,10 +28,10 @@
           integer                :: initial_band
           integer                :: final_band
           integer                :: number_of_bands
-                                       !< Number of bands passed to Wannier90
+                                       ! Number of bands passed to Wannier90
           integer                :: numbands_lowdin
-                                       !< Number of bands that will be 
-                                       !!   orthonormalized
+                                       ! Number of bands that will be 
+                                       !   orthonormalized
           integer                :: num_iter       ! Number of iterations for th
                                                    !   minimization of \Omega
           integer, pointer       :: orbital_indices(:)

@@ -86,9 +86,9 @@ C *********************************************************************
       use parallelsubs,       only : GlobalToLocalOrb
       use alloc,              only : re_alloc, de_alloc
 
-!     For debugging
-      use sys,                only : die
-!     End debugging
+!!     For debugging
+!      use sys,                only : die
+!!     End debugging
 
       implicit none 
 

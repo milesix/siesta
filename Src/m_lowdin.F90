@@ -49,9 +49,9 @@ module m_lowdin
   implicit none
 
 ! Routines
+  public :: setup_lowdin 
   public :: compute_matrices
   public :: compute_wannier
-  public :: setup_lowdin 
   public :: deallocate_wannier
 
   private
@@ -61,16 +61,18 @@ module m_lowdin
 !> \brief General purpose of the subroutine setup_lowdin
 !! Within this subroutine:
 !! 1. Include in the SystemName.bib file a citation to the papers where
-!!    the implementation is based, 
-!!    here the original paper by Marzari and Vanderbilt,
+!!    the implementation is based. Here:
+!!    the original paper by Marzari and Vanderbilt,
 !!    the last paper on the implementation of WANNIER90,
-!!    the pre-print in the arxiv where the Lowdin orthogonalization is explained
+!!    the pre-print by Íñiguez and Yildirim in the arxiv where the 
+!!    Lowdin orthogonalization is explained
 !!
-!! 2. Read from the LowdinProjection block in the fdf 
+!! 2. Read the LowdinProjection block in the fdf 
 !!    and set up the general information for every manifold,
 !!    including initial (initial_band) and final (final_band) bands,
 !!    number of bands that will be orthogonalized (numbands_lowdin),
-!!    the orbitals that will be used in the wannierization (orbital_indices),
+!!    the orbitals that will be used as initial guess in the projections
+!!    during the wannierization (orbital_indices),
 !!    number of iterations that will be performed in the Wannierization 
 !!    procedure (num_iter),
 !!    the energy windows for the disentanglement,
@@ -82,11 +84,11 @@ module m_lowdin
 !!    wannierization (isexcluded),
 !!    the orbitals that will be used as the localized projector functions
 !!    (orbexcluded),
-!!    and the new indexing of the orbitals within a manifold (orb_in_manifold)
+!!    and the new indexing of the orbitals within a manifold (orb_in_manifold).
 !!    This is done in the subroutine set_excluded_bands_lowdin
 !!
 !! 4. Generate the trial localized functions from the atomic orbitals in the
-!!    basis set of SIESTA
+!!    basis set of SIESTA.
 !!    This is done in the subroutine define_trial_orbitals
 !!
 !! 5. The derived variable manifold_bands_lowdin (where all the previous
@@ -102,7 +104,7 @@ module m_lowdin
 !!    required for the wannierization.
 !!    This is done in the subroutine read_kpoints_lowdin
 !!    by all the nodes simultaneously, so no need for broadcasting
-!!    these variables
+!!    these variables.
 !!
 
   subroutine setup_lowdin
@@ -137,7 +139,7 @@ module m_lowdin
 !     ... to the paper describing the WANNIER90 code
       call add_citation("10.1016/j.cpc.2014.05.003")
 !     ... to the paper describing the Löwdin orthogonalization
-      call add_citation("arXiv:cond-mat/0407677")
+      call add_citation("arXiv/cond-mat/0407677")
 
 !
 !     Read and set up the general information for every manifold,
@@ -417,9 +419,9 @@ module m_lowdin
         manifold_bands_lowdin(index_manifold)%dis_froz_max =  0.0_dp
       endif
 
-      write(manifold_bands_lowdin(index_manifold)%seedname_lowdin, &
- &          "(a,'.',i1.1)")                                        &
- &       trim(slabel), index_manifold
+      write(manifold_bands_lowdin(index_manifold)%seedname_lowdin,   &
+ &          "(a,'.manifold.',i1.1)")                                &
+ &       trim(slabel),index_manifold
 
 !    For debugging
 !      write(6,'(/,a,i2)')                                                      &
@@ -1221,7 +1223,8 @@ module m_lowdin
                                            !   operator will be written
 
 !   Set up the variables related with the writing of the Hamiltonian
-    write(seedname,"(a,'.',i1.1)") trim(slabel), index_manifold
+    write(seedname,"(a,'.manifold.',i1.1)")                    &
+ &       trim(slabel),index_manifold
     write_hr = .true. 
 
 !   Set up general variables

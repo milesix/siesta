@@ -166,6 +166,9 @@ contains
        rewind(page_unit)
        deallocate( m_matrix_orig, stat=ierr )
        if (ierr/=0) call io_error('Error deallocating m_matrix_orig in dis_main')
+!      jjunquer
+       if (allocated(m_matrix)) deallocate(m_matrix)
+!      end jjunquer
        allocate ( m_matrix( num_wann,num_wann,nntot,num_kpts),stat=ierr)
        if (ierr/=0) call io_error('Error in allocating m_matrix in dis_main')
        do nkp = 1, num_kpts  
@@ -177,6 +180,9 @@ contains
 
     else
 
+!      jjunquer
+       if (allocated(m_matrix)) deallocate(m_matrix)
+!      end jjunquer
 
        allocate ( m_matrix( num_wann,num_wann,nntot,num_kpts),stat=ierr)
        if (ierr/=0) call io_error('Error in allocating m_matrix in dis_main')

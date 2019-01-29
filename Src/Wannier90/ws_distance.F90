@@ -141,6 +141,22 @@ contains
     enddo
     ! apply translation
     irdist_ws = NINT(irdist_real)
+!!   jjunquer: for debugging
+!    do ir =1,nrpts
+!       do jw=1,num_wann
+!          do iw=1,num_wann
+!            do ideg = 1, ndegenx
+!              write(6,'(7i5,6f12.5)') ir, jw, iw, ideg, irdist_ws(:,ideg,iw,jw,ir), &
+! &                  irdist_real(:,ideg,iw,jw,ir), &
+! &                  dble(irdist_ws(:,ideg,iw,jw,ir)) - irdist_real(:,ideg,iw,jw,ir)
+!            if(abs(dble(irdist_ws(1,ideg,iw,jw,ir))-irdist_real(1,ideg,iw,jw,ir))>5.d-5) stop
+!            if(abs(dble(irdist_ws(2,ideg,iw,jw,ir))-irdist_real(2,ideg,iw,jw,ir))>5.d-5) stop
+!            if(abs(dble(irdist_ws(3,ideg,iw,jw,ir))-irdist_real(3,ideg,iw,jw,ir))>5.d-5) stop
+!            enddo
+!          enddo 
+!       enddo 
+!    enddo
+!!   end jjunquer
     !
     IF(iprint>3)then
        write(stdout,'(1x,a78)') repeat('-',78)
@@ -153,7 +169,10 @@ contains
        write(stdout,'(1x,a78)') repeat('-',78)
     endif
     !
-    IF(ANY(ABS(DBLE(irdist_ws)-irdist_real)>1.d-6)) &
+!   jjunquer
+!    IF(ANY(ABS(DBLE(irdist_ws)-irdist_real)>1.d-6)) &
+    IF(ANY(ABS(DBLE(irdist_ws)-irdist_real)>5.d-5)) &
+!   end jjunquer
          call io_error('wrong irdist_ws')
     !
     DEALLOCATE(wdist_wssc_frac, irdist_real)

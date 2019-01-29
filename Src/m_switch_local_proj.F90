@@ -297,8 +297,8 @@ module m_switch_local_projection
         nnfolding  = nnfolding_lowdin
 
 !        numbands(1)   = manifold_bands_lowdin(index_manifold)%number_of_bands
-        numbands(1)   = manifold_bands_lowdin(index_manifold)%final_band
-        numincbands(1)= manifold_bands_lowdin(index_manifold)%number_of_bands
+        numbands(:)   = manifold_bands_lowdin(index_manifold)%final_band
+        numincbands(:)= manifold_bands_lowdin(index_manifold)%number_of_bands
         blocksizeincbands =  &
  &         manifold_bands_lowdin(index_manifold)%blocksizeincbands_lowdin
 

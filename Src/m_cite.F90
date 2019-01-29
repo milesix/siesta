@@ -74,7 +74,7 @@ module m_cite
   ! Increment this after having added a new
   ! citation!
   ! OTHERWISE YOU WILL EXPERIENCE A SEG-FAULT.
-  integer, parameter :: N_citations = 11
+  integer, parameter :: N_citations = 12
 
   private
 
@@ -297,6 +297,21 @@ contains
        cit%page = "2309"
        cit%cite_key = "Wannier90"
        ID = 11
+
+    case ( "arXiv/cond-mat/0407677" )
+       ! article with the explanation of the Lowdin orthonormalization 
+       ! is explained
+       cit%comment = "Lowdin orthonormalization"
+       cit%author = "J. Iniguez and T. Yildirim"
+       cit%title = "Unusual structural tuning of magnetism in cuprate perovskites"
+       cit%doi = "https://arxiv.org/pdf/cond-mat/0407677v1.pdf"
+       cit%journal = "arXiv:cond-mat/0407677"
+       cit%year = 2004
+       cit%volume = ""
+       cit%issue = ""
+       cit%page = ""
+       cit%cite_key = "Lowdin"
+       ID = 12
        
     end select
 
