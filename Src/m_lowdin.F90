@@ -419,7 +419,7 @@ module m_lowdin
         manifold_bands_lowdin(index_manifold)%dis_froz_max =  0.0_dp
       endif
 
-      write(manifold_bands_lowdin(index_manifold)%seedname_lowdin,   &
+      write(manifold_bands_lowdin(index_manifold)%seedname_lowdin,  &
  &          "(a,'.manifold.',i1.1)")                                &
  &       trim(slabel),index_manifold
 
@@ -949,7 +949,10 @@ module m_lowdin
     use m_switch_local_projection, only: bvectorsfrac
     use m_switch_local_projection, only: Amnmat
     use m_switch_local_projection, only: Amnmat_man
-    use m_spin,                    only: nspin
+    use files,                     only: slabel        ! Short system label,
+                                                       !   used to generate file
+                                                       !   names
+    use m_spin,                    only: spin
 
     integer, intent(in) :: ispin           ! Spin component
     integer, intent(in) :: index_manifold  ! Index of the manifold
@@ -962,12 +965,14 @@ module m_lowdin
     integer :: number_of_bands_in_manifold_local
     integer :: number_of_bands_to_project
 
-    if( nspin .gt. 1 ) then                                              &
- &    write(seedname,                                                    &
- &          "(a,'.manifold.',i1.1,'.spin.',i1.1)")                       &
+    if( spin%H .eq. 1) then
+      write(seedname,"(a,'.manifold.',i1.1)")                    &
+ &         trim(slabel),index_manifold
+    else if( spin%H .gt. 1) then
+      write(seedname,                                            &
+ &          "(a,'.manifold.',i1.1,'.spin.',i1.1)")               &
  &       trim(slabel),index_manifold,ispin
     endif
-    write(6,*)seedname
 
     number_of_bands_in_manifold_local =                                  &
  &        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
@@ -1029,7 +1034,7 @@ module m_lowdin
     use m_switch_local_projection, only: nncount
     use m_switch_local_projection, only: numkpoints
     use m_switch_local_projection, only: eo
-    use m_spin,                    only: nspin
+    use m_spin,                    only: spin
     use m_energies, only: ef                   ! Fermi energy
     use units     , only: eV                   ! Conversion factor from Ry to eV
     use lowdin_types,   only: nnlist_lowdin    ! Same as nnlist
@@ -1233,10 +1238,10 @@ module m_lowdin
                                            !   operator will be written
 
 !   Set up the variables related with the writing of the Hamiltonian
-    if( nspin .eq. 1) then
+    if( spin%H .eq. 1) then
       write(seedname,"(a,'.manifold.',i1.1)")                    &
  &         trim(slabel),index_manifold
-    if( nspin .gt. 1) then
+    else if( spin%H .gt. 1) then
       write(seedname,                                            &
  &          "(a,'.manifold.',i1.1,'.spin.',i1.1)")               &
  &       trim(slabel),index_manifold,ispin
