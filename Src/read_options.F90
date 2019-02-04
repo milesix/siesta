@@ -1813,6 +1813,8 @@ subroutine read_options( na, ns, nspin )
   n_lowdin_manifolds = fdf_get( 'NumberOfBandManifoldsForLowdin', 0 )
   if( n_lowdin_manifolds .ne. 0 ) lowdin_processing = .true.
 
+  r_between_manifolds = fdf_get( 'R_between_manifolds', .false. )
+
   if (ionode) then
      write(6,'(2a)') 'redata: ', repeat('*', 71)
   endif

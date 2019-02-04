@@ -22,6 +22,10 @@ module m_lowdin
                                           ! Number of bands manifolds 
                                           !  that will be considered
                                           !  for Lowdin transformation
+  use siesta_options, only: r_between_manifolds     
+                                          ! Will the position operator matrix
+                                          !  elements be computed between bands
+                                          !  of different manifolds
   use parallel,       only: Node          ! Local processor number
   use parallel,       only: Nodes         ! Total number of processors in a 
                                           !  parallel run
@@ -200,6 +204,9 @@ module m_lowdin
  &                           blocksizeincbands_tmp, Node, 0, Nodes )
 !!      For debugging
 !       write(6,*) 
+!       write(6,'(a,l5)')                                                   & 
+! &       'setup_lowdin: r_between_manifolds = ',                           &
+! &       r_between_manifolds
 !       write(6,'(a,6i5)')                                                  & 
 ! &       'setup_lowdin: index_manifold, Node, Nodes, nincbands_loc_tmp, numincbands_tmp, Blocksize = ',  &
 ! &       index_manifold, Node, Nodes, nincbands_loc_tmp, numincbands_tmp,                  &
@@ -948,11 +955,11 @@ module m_lowdin
     use m_switch_local_projection, only: numkpoints
     use m_switch_local_projection, only: bvectorsfrac
     use m_switch_local_projection, only: Amnmat
-    use m_switch_local_projection, only: Amnmat_man
     use files,                     only: slabel        ! Short system label,
                                                        !   used to generate file
                                                        !   names
     use m_spin,                    only: spin
+    use sys,                       only: die
 
     integer, intent(in) :: ispin           ! Spin component
     integer, intent(in) :: index_manifold  ! Index of the manifold
@@ -964,6 +971,33 @@ module m_lowdin
 
     integer :: number_of_bands_in_manifold_local
     integer :: number_of_bands_to_project
+
+!   Variables related with the reading of the amn files
+    integer            :: iman          ! Counter for the manifolds
+    integer            :: amn_in        ! Logical unit for the file amn file
+    character(len=100) :: filename      ! Name of the files where the amn
+                                        !   matrices of the manifolds to be
+                                        !   mixed are stored
+    character(len=50)  :: dummy         ! Dummy variable
+    integer            :: nb_tmp        ! Number of bands (read from the file)
+    integer            :: nkp_tmp       ! Number of k-points (read from the file
+    integer            :: nw_tmp        ! Number of Wanniers (read from the file
+!    integer            :: m             ! Band index 
+!                                        !    (read from the loop in the file)  
+!    integer            :: n             ! Projector index 
+!                                        !    (read from the loop in the file)  
+    integer            :: nkp           ! k-point index 
+                                        !    (read from the loop in the file)  
+    integer            :: num_amn       ! Total number of entries in the Amn
+                                        !   matrix
+    integer            :: ncount        ! Counter for the Amn matrix elements
+    real(dp)           :: a_real        ! Real part of the Amn matrix element
+    real(dp)           :: a_imag        ! Imaginary part of the 
+                                        !    Amn matrix element
+
+    external     :: io_assign              ! Assign a logical unit
+    external     :: io_close               ! Close a logical unit
+
 
     if( spin%H .eq. 1) then
       write(seedname,"(a,'.manifold.',i1.1)")                    &
@@ -990,6 +1024,89 @@ module m_lowdin
 !   Compute the overlaps between Bloch states onto trial localized orbitals
     call amn( ispin )
 
+!   Check if the computations of the position operator matrix elements
+!   between manifolds has to be carried out
+    if( r_between_manifolds ) then
+      if( index_manifold .eq. 3) then
+        Amnmat = cmplx(0.0_dp,0.0_dp,kind=dp)
+        if( IONode ) then
+          ! Read the A_matrix of the first two manifolds
+          do iman = 1, 2 
+            ! Asign a logical unit to the file from which the Amn matrices 
+            !   will be read
+            call io_assign( amn_in )
+
+            if( spin%H .eq. 1) then
+              write(filename,"(a,'.manifold.',i1.1,'.amn')")               &
+ &            trim(slabel),iman
+            else if( spin%H .gt. 1) then
+              write(filename,"(a,'.manifold.',i1.1,'.spin.',i1.1,'.amn')") &
+ &            trim(slabel),iman,ispin
+            endif
+            filename = trim(filename)
+
+            open(unit=amn_in,file=filename,form='formatted',status='old',err=102)
+
+            write(6,'(/a,a)') ' Reading projections from filename : ',     &
+ &            filename
+
+!           Read the comment line
+            read(amn_in,*) dummy
+!            For debugging
+!            write(6,'(a)') trim(dummy)
+!            For debugging
+
+!           Read the number of bands, k-points and wannier functions
+            read(amn_in,*) nb_tmp, nkp_tmp, nw_tmp
+!            For debugging
+!            write(6,*) nb_tmp, nkp_tmp, nw_tmp
+!            End debugging
+
+!           Checks
+            if (nb_tmp.ne.manifold_bands_lowdin(iman)%number_of_bands) &
+                call die(trim(filename)//' has not the right number of bands')
+            if (nkp_tmp.ne.numkpoints) &
+                call die(trim(filename)//' has not the right number of k-points')
+            if (nw_tmp.ne.manifold_bands_lowdin(iman)%numbands_lowdin) &
+                call die(trim(filename)//' has not the right number of Wannier functions')
+
+!           Read the projections
+            num_amn = nb_tmp*nw_tmp*nkp_tmp
+            if (manifold_bands_lowdin(iman)%disentanglement) then
+              do ncount = 1, num_amn
+                read(amn_in,*) m,n,nkp,a_real,a_imag
+                if (iman .eq. 1)                                           & 
+ &                Amnmat(m,n,nkp) = cmplx(a_real,a_imag,kind=dp)
+                if (iman .eq. 2)                                           & 
+ &                Amnmat(m+manifold_bands_lowdin(1)%number_of_bands,       &
+ &                       n+manifold_bands_lowdin(1)%number_of_bands,nkp) = &
+ &                       cmplx(a_real,a_imag,kind=dp)
+              end do
+            else
+              do ncount = 1, num_amn
+                read(amn_in,*) m,n,nkp,a_real,a_imag
+                if (iman .eq. 1)                                         & 
+ &                Amnmat(m,n,nkp) = cmplx(a_real,a_imag,kind=dp)
+                if (iman .eq. 2)                                           & 
+ &                Amnmat(m+manifold_bands_lowdin(1)%number_of_bands,       &
+ &                       n+manifold_bands_lowdin(1)%number_of_bands,nkp) = &
+ &                       cmplx(a_real,a_imag,kind=dp)
+              end do
+            end if
+
+            call io_close(amn_in)
+          enddo 
+
+!         Write the Amn overlap matrices in a file, in the format required
+!         by Wannier90
+          call writeamn( ispin )
+
+        endif
+      endif
+    endif
+
+
+
 !   Write the selected eigenvalues within the manifold in the file
 !   SystemLabel.eigW
     if( IOnode ) call writeeig( ispin )
@@ -1015,6 +1132,9 @@ module m_lowdin
 !!   For debugging
 !    call die('Killing the program in compute_matrices')
 !!   End debugging
+     return 
+
+102  call die('Error: Problem opening input file '//trim(filename))
 
   end subroutine compute_matrices
 
