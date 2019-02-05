@@ -1265,8 +1265,10 @@ contains
     write_rmn                    = .false.
     call param_get_keyword('write_rmn',found,l_value=write_rmn)
 
-    write_tb = .false.
-    call param_get_keyword('write_tb',found,l_value=write_tb)
+!!   jjunquer: write_tb is passed from SIESTA
+!    write_tb = .false.
+!    call param_get_keyword('write_tb',found,l_value=write_tb)
+!!   end jjunquer
                                                                                            
     hr_cutoff                 = 0.0_dp
     call param_get_keyword('hr_cutoff',found,r_value=hr_cutoff)

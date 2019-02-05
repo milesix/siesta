@@ -93,6 +93,9 @@
                                                   !! Plot the Fermi surface?
           logical                :: write_hr      !! Write the Hamiltonian in 
                                                   !!   the WF basis?
+          logical                :: write_tb      !! Write lattice vectors, 
+                                                  !!   Hamiltonian, and position
+                                                  !!   operator in WF basis
           type(trialorbital), allocatable  :: proj_lowdin(:)
       end type lowdin_manifold_t
 

@@ -271,6 +271,7 @@ module m_lowdin
     character(len=30) :: string_plot    ! 
     character(len=30) :: string_plot_f  !
     character(len=30) :: string_write_h !
+    character(len=30) :: string_write_tb!
 
     type(block_fdf)            :: bfdf
     type(parsed_line), pointer :: pline
@@ -405,6 +406,13 @@ module m_lowdin
       string_write_h  = fdf_bnames(pline,1)
       manifold_bands_lowdin(index_manifold)%write_hr = .true.
 
+!     Read whether the lattice vectors, Hamiltonian, and position operator 
+!     are written in a WF basis
+      if (.not. fdf_bline(bfdf,pline)) &
+ &         call die("No writting of the Hamiltonian and position operator in a WF basis")
+      string_write_tb  = fdf_bnames(pline,1)
+      manifold_bands_lowdin(index_manifold)%write_tb = .true.
+
 !     If disentanglement is required, then read the outer and inner (frozen)
 !     energy windows
       if( manifold_bands_lowdin(index_manifold)%disentanglement ) then
@@ -511,6 +519,9 @@ module m_lowdin
 !      write(6,'(a,l5)')                                                    &
 ! &      'read_lowdin_specs: Write the Hamiltonian in the basis of WF? = ', &
 ! &      manifold_bands_lowdin(index_manifold)%write_hr
+!      write(6,'(a,l5)')                                                    &
+! &      'read_lowdin_specs: Write the tight-binding elements in the basis of WF? = ', &
+! &      manifold_bands_lowdin(index_manifold)%write_tb
 !!     End debugging
 
     enddo ! end loop over all the lines in the block LowdinProjections
@@ -1270,6 +1281,10 @@ module m_lowdin
     use w90_parameters, only : write_hr             ! are we going to dump in
                                                     !   a file the matrix 
                                                     !   elements of the 
+                                                    !   Hamiltonian? 
+    use w90_parameters, only : write_tb             ! are we going to dump in
+                                                    !   a file the matrix 
+                                                    !   elements of the 
                                                     !   Hamiltonian and position
                                                     !   operator?
     use w90_parameters,  only : eigval              ! Eigenvalues of the 
@@ -1368,6 +1383,7 @@ module m_lowdin
     endif
 
     write_hr = .true. 
+    write_tb = .true. 
 
 !   Set up general variables
 !    num_bands = manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
@@ -1459,6 +1475,7 @@ module m_lowdin
     fermi_energy       = ef / eV
 
     write_hr           = manifold_bands_lowdin(index_manifold)%write_hr
+    write_tb           = manifold_bands_lowdin(index_manifold)%write_tb
 
 !   Store the eigenvalues of the Hamiltonian in the array that will be passed
 !   to WANNIER90

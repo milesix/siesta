@@ -283,7 +283,9 @@ contains
        enddo
     endif                                                  !YN:
 
-    have_ham_k = .true.
+!! jjunquer
+!    have_ham_k = .true.
+!! end jjunquer
 
 100 continue
 
@@ -329,7 +331,9 @@ contains
           enddo
        enddo
 
-       have_translated = .true.
+!! jjunquer
+!       have_translated = .true.
+!! end jjunquer
 
     end if
 
@@ -343,7 +347,9 @@ contains
 !         call ws_translate_dist(nrpts, irvec)
 !     endif
 
-    have_ham_r = .true.
+!! jjunquer
+!    have_ham_r = .true.
+!! end jjunquer
 
 200 continue
 
@@ -769,7 +775,9 @@ contains
 
     close(file_unit)
 
-    tb_written=.true.
+!! jjunquer
+!    tb_written=.true.
+!! end jjunquer
 
     if (timing_level>1) call io_stopwatch('hamiltonian: write_tb',2)
 
