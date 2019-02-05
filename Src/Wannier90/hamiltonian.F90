@@ -486,7 +486,9 @@ contains
 
     close(file_unit)
 
-    hr_written=.true.
+!!   jjunquer: The hamiltonian can be written for different manifolds
+!    hr_written=.true.
+!!   end jjunquer
 
     if (timing_level>1) call io_stopwatch('hamiltonian: write_hr',2)
 
