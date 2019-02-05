@@ -1513,17 +1513,17 @@ module m_lowdin
     end if
 
 
-!   For debugging
-    write(6,'(a,i5)')                            &
- &    'compute_wannier: num_bands       = ', num_bands
-    write(6,'(a,i5)')                            &
- &    'compute_wannier: num_wann        = ', num_wann
-    write(6,'(a,f12.5)')                         &
- &    'compute_wannier: lenconfac       = ', lenconfac
-    write(6,'(a,i5)')                            &
- &    'compute_wannier: num_kpts        = ', num_kpts
-    write(6,'(a,i5)')                            &
- &    'compute_wannier: nntot           = ', nntot
+!!   For debugging
+!    write(6,'(a,i5)')                            &
+! &    'compute_wannier: num_bands       = ', num_bands
+!    write(6,'(a,i5)')                            &
+! &    'compute_wannier: num_wann        = ', num_wann
+!    write(6,'(a,f12.5)')                         &
+! &    'compute_wannier: lenconfac       = ', lenconfac
+!    write(6,'(a,i5)')                            &
+! &    'compute_wannier: num_kpts        = ', num_kpts
+!    write(6,'(a,i5)')                            &
+! &    'compute_wannier: nntot           = ', nntot
 !    write(6,'(1x,a)') '|            No.         b_k(x)      b_k(y)      b_k(z)        w_b           |'
 !    write(6,'(1x,a)') '|            ---        --------------------------------     --------        |'
 !    do i = 1, nntot
