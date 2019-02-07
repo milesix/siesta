@@ -116,14 +116,24 @@ C Explicit formulas up to L=2
 C        Label 999 is the exit point
          IF (LMAX.EQ.0) GOTO 999
 
+#ifdef HAVE_LIBINT
+         RLY(1)    = (C(1)*R(2))
+         GRLY(2,1) = C(1)
+#else
          RLY(1)    = -(C(1)*R(2))
          GRLY(2,1) = -C(1)
+#endif
 
          RLY(2)    =  C(2)*R(3)
          GRLY(3,2) =  C(2)
 
+#ifdef HAVE_LIBINT
+         RLY(3)    = (C(3)*R(1))
+         GRLY(1,3) = C(3)
+#else
          RLY(3)    = -(C(3)*R(1))
          GRLY(1,3) = -C(3)
+#endif
 
          IF (LMAX.EQ.1) GOTO 999
 
@@ -131,18 +141,30 @@ C        Label 999 is the exit point
          GRLY(1,4) =  C(4)*SIX*R(2)
          GRLY(2,4) =  C(4)*SIX*R(1)
 
+#ifdef HAVE_LIBINT
+         RLY(5)    = (C(5))*THREE*R(2)*R(3)
+         GRLY(2,5) = (C(5))*THREE*R(3)
+         GRLY(3,5) = (C(5))*THREE*R(2)
+#else
          RLY(5)    = (-C(5))*THREE*R(2)*R(3)
          GRLY(2,5) = (-C(5))*THREE*R(3)
          GRLY(3,5) = (-C(5))*THREE*R(2)
+#endif
 
          RLY(6)    =  C(6)*HALF*(TWO*R(3)*R(3)-R(1)*R(1)-R(2)*R(2))
          GRLY(1,6) = (-C(6))*R(1)
          GRLY(2,6) = (-C(6))*R(2)
          GRLY(3,6) =  C(6)*TWO*R(3)
 
+#ifdef HAVE_LIBINT
+         RLY(7)    = (C(7))*THREE*R(1)*R(3)
+         GRLY(1,7) = (C(7))*THREE*R(3)
+         GRLY(3,7) = (C(7))*THREE*R(1)
+#else
          RLY(7)    = (-C(7))*THREE*R(1)*R(3)
          GRLY(1,7) = (-C(7))*THREE*R(3)
          GRLY(3,7) = (-C(7))*THREE*R(1)
+#endif
 
          RLY(8)    =  C(8)*THREE*(R(1)*R(1)-R(2)*R(2))
          GRLY(1,8) =  C(8)*SIX*R(1)
