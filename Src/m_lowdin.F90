@@ -1122,15 +1122,6 @@ module m_lowdin
 !   SystemLabel.eigW
     if( IOnode ) call writeeig( ispin )
 
-!    Amnmat_man(index_manifold,:,:,:) = cmplx(0.0_dp,0.0_dp,kind=dp)
-!    do ik = 1, numkpoints
-!      do n = 1, number_of_bands_to_project
-!        do m = 1, number_of_bands_in_manifold_local
-!          Amnmat_man(index_manifold,m,n,ik) = Amnmat(m,n,ik) 
-!        enddo 
-!      enddo 
-!    enddo 
-
     call writeunk( ispin )
 
     if (IONode) then

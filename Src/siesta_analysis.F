@@ -56,7 +56,6 @@
       use m_partial_charges, only: want_partial_charges
       use m_iodm_old,        only: read_spmatrix
       use m_siesta2wannier90, only: siesta2wannier90
-      use m_switch_local_projection, only: Amnmat_man
       use m_switch_local_projection, only: switch_local_projection
       use lowdin_types,      only: numkpoints_lowdin
       use lowdin_types,      only: manifold_bands_lowdin
@@ -510,26 +509,6 @@ C
 !
         call setup_lowdin
 
-        if( n_lowdin_manifolds .eq. 1) then
-          call re_alloc( Amnmat_man,              
-     &                   1, n_lowdin_manifolds,  
-     &                   1, manifold_bands_lowdin(1)%number_of_bands,
-     &                   1, manifold_bands_lowdin(1)%number_of_bands,
-     &                   1, numkpoints_lowdin,                   
-     &                   'Amnmat_man',            
-     &                   'siesta_analysis'        )
-        else 
-          call re_alloc( Amnmat_man,              
-     &                   1, n_lowdin_manifolds,  
-     &                   1, manifold_bands_lowdin(1)%number_of_bands + 
-     &                      manifold_bands_lowdin(2)%number_of_bands,        
-     &                   1, manifold_bands_lowdin(1)%number_of_bands + 
-     &                      manifold_bands_lowdin(2)%number_of_bands, 
-     &                   1, numkpoints_lowdin,                   
-     &                   'Amnmat_man',            
-     &                   'siesta_analysis'        )
-        endif
-        Amnmat_man = cmplx(0.0_dp,0.0_dp,kind=dp)
         do index_manifold = 1, n_lowdin_manifolds
 !         Transfer all the parameters from the lowdin module to the variables
 !         that will be used in the wannierization routines
