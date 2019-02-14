@@ -509,7 +509,7 @@ C
 !
         call setup_lowdin
 
-        do index_manifold = 1, n_lowdin_manifolds
+        do index_manifold = 1, n_wannier_manifolds
 !         Transfer all the parameters from the lowdin module to the variables
 !         that will be used in the wannierization routines
           call switch_local_projection( index_manifold )

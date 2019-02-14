@@ -14,10 +14,10 @@
 
   use parallel,  only : Node, Nodes
   use files,     only: label_length       ! Number of characters in slabel
-  use siesta_options, only: n_lowdin_manifolds
+  use siesta_options, only: n_wannier_manifolds
                                           ! Number of bands manifolds
                                           !   that will be considered
-                                          !   for Lowdin transformation
+                                          !   for Wannier transformation
   use lowdin_types,   only: manifold_bands_lowdin  
                                           ! Variable where the initial
                                           !   and final band of each
@@ -58,10 +58,10 @@
   if (Nodes.eq.1) return
 
   if (Node.ne.0) then
-    allocate(manifold_bands_lowdin(n_lowdin_manifolds))
+    allocate(manifold_bands_lowdin(n_wannier_manifolds))
   end if
 
-  do i_man = 1, n_lowdin_manifolds
+  do i_man = 1, n_wannier_manifolds
     call MPI_Bcast(manifold_bands_lowdin(i_man)%seedname_lowdin,              &
  &                 label_length+3,MPI_character,0,                            &
  &                 MPI_Comm_World,MPIerror)
@@ -146,9 +146,9 @@
 
 !! For debugging
 !  write(6,'(a,2i5)')                                                         &
-! & 'broadcast_lowdin: Node, n_lowdin_manifolds = ',                          &
-! &  Node, n_lowdin_manifolds 
-!  do i_man = 1, n_lowdin_manifolds
+! & 'broadcast_lowdin: Node, n_wannier_manifolds = ',                         &
+! &  Node, n_wannier_manifolds 
+!  do i_man = 1, n_wannier_manifolds
 !    nlowdin = manifold_bands_lowdin(i_man)%numbands_lowdin
 !    write(6,'(a,2i5,2x,a)')                                                  &
 ! &   'broadcast_lowdin: Node, i_manifold, seedname        = ',               &

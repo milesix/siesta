@@ -18,10 +18,10 @@ module m_lowdin
 
 
   use precision,      only: dp            ! Real double precision type
-  use siesta_options, only: n_lowdin_manifolds     
+  use siesta_options, only: n_wannier_manifolds     
                                           ! Number of bands manifolds 
                                           !  that will be considered
-                                          !  for Lowdin transformation
+                                          !  for Wannier transformation
   use siesta_options, only: r_between_manifolds     
                                           ! Will the position operator matrix
                                           !  elements be computed between bands
@@ -103,7 +103,7 @@ module m_lowdin
 !!    parallel run
 !!
 !! 7. Read all the information regarding the 
-!!    k-point sampling (block kMeshforLowdin), 
+!!    k-point sampling (block kMeshforWannier), 
 !!    and the neighbours for all the k-points in the BZ,
 !!    required for the wannierization.
 !!    This is done in the subroutine read_kpoints_lowdin
@@ -166,14 +166,14 @@ module m_lowdin
 !     (orbexcluded) ,
 !     and the new indexing of the orbitals within a manifold (orb_in_manifold)
 !
-      do index_manifold = 1, n_lowdin_manifolds
+      do index_manifold = 1, n_wannier_manifolds
         call set_excluded_bands_lowdin( index_manifold )
       enddo 
 
 !     Generate the trial localized functions from the atomic orbitals in the
 !     basis set of SIESTA
 
-      do index_manifold = 1, n_lowdin_manifolds
+      do index_manifold = 1, n_wannier_manifolds
         call define_trial_orbitals( index_manifold )
       enddo
 
@@ -189,7 +189,7 @@ module m_lowdin
 !   Determine the number of bands that will be treated per node in a 
 !   parallel run
 !
-    do index_manifold = 1, n_lowdin_manifolds
+    do index_manifold = 1, n_wannier_manifolds
        numincbands_tmp = manifold_bands_lowdin(index_manifold)%number_of_bands
 
 !      Allocate memory related with the coefficients of the wavefunctions
@@ -243,7 +243,7 @@ module m_lowdin
 !!         band manifolds that will be treated in the 
 !!         Lowdin orthogonalization.
 !!         This information is contained in the block
-!!         %block LowdinProjections.
+!!         %block WannierProjections.
 !!         The derived variable manifold_bands_lowdin
 !!         is populated. 
 !!         The type of this variable is defined in the module lowdin_types,
@@ -278,12 +278,12 @@ module m_lowdin
 
 !   Allocate the pointer where all the data required for every manifold
 !   will be stored
-    allocate(manifold_bands_lowdin(n_lowdin_manifolds))
+    allocate(manifold_bands_lowdin(n_wannier_manifolds))
     
-!   Read the LowdinProjections block
+!   Read the WannierProjections block
 !   First check whether the block is present in the fdf file.
 !   If it is not present, do nothing
-    if (.not. fdf_block('LowdinProjections',bfdf)) RETURN
+    if (.not. fdf_block('WannierProjections',bfdf)) RETURN
 
 !   Read the content of the block, line by line
     do while(fdf_bline(bfdf, pline))       
@@ -294,7 +294,7 @@ module m_lowdin
                                            !   integer that is the sequential 
                                            !   number of the manifold. 
                                            !   That is the meaning of 'i'
- &      call die('Wrong format in the manifold index of the LowdinProjections')
+ &      call die('Wrong format in the manifold index of the WannierProjections')
         
 !     Assign the index of the manifold to the first integer found 
 !     in the digested line
@@ -310,7 +310,7 @@ module m_lowdin
                                            !   the initial and the final bands
                                            !   of the manifold.
                                            !   That is the meaning of 'ii'
- &      call die('Wrong format in the initial/final band in LowdinProjections')
+ &      call die('Wrong format in the initial/final band in WannierProjections')
 
 !     Assign the indices of the initial and final band of the manifold 
 !     as the first and second integer in the digested line, respectively
@@ -359,7 +359,7 @@ module m_lowdin
 !     Go to the next line to 
 !     read the indices of the atomic orbitals chosen as localized trial orbitals
       if (.not. fdf_bline(bfdf,pline)) &
- &      call die("No localized trial orbitals in LowdinProjections")
+ &      call die("No localized trial orbitals in WannierProjections")
 
 !     We need as many localized trial orbitals as Lowdin functions requested
       if( fdf_bnintegers(pline) .ne.                               &
@@ -524,7 +524,7 @@ module m_lowdin
 ! &      manifold_bands_lowdin(index_manifold)%write_tb
 !!     End debugging
 
-    enddo ! end loop over all the lines in the block LowdinProjections
+    enddo ! end loop over all the lines in the block WannierProjections
 
   endsubroutine read_lowdin_specs
 
@@ -533,11 +533,11 @@ module m_lowdin
 !! In this subroutine, we process the information in the fdf file 
 !! required to generate the k-point sampling that will be used inside 
 !! WANNIER90 for the Lowdin orthogonalization.
-!! The block that is readed and digested is kMeshforLowdin
+!! The block that is readed and digested is kMeshforWannier
 !! Example: 
-!! %block kMeshforLowdin
+!! %block kMeshforWannier
 !!   20  20  1
-!! %endblock kMeshforLowdin
+!! %endblock kMeshforWannier
 !! where the three integers are the number of k-points along the corresponding 
 !! reciprocal lattice vector
 !! The algorithm to generate the k-points in reciprocal units is borrowed from 
@@ -707,7 +707,7 @@ module m_lowdin
 
 !   Read the data to generate the grid in reciprocal space that will be used
 !   for the Lowdin Projections
-    if (.not. fdf_block('kMeshforLowdin',bfdf)) RETURN
+    if (.not. fdf_block('kMeshforWannier',bfdf)) RETURN
 
     do while(fdf_bline(bfdf, pline))     
       if (.not. fdf_bmatch(pline,'iii'))        &   ! We expect that each line
@@ -718,7 +718,7 @@ module m_lowdin
                                                     !   number of divisions 
                                                     !   the first reciprocal 
                                                     !   lattice vector and so on
- &      call die('Wrong format in kMeshforLowdin')
+ &      call die('Wrong format in kMeshforWannier')
       kmeshlowdin(1) = fdf_bintegers(pline,1)
       kmeshlowdin(2) = fdf_bintegers(pline,2)
       kmeshlowdin(3) = fdf_bintegers(pline,3)
@@ -1163,7 +1163,7 @@ module m_lowdin
                                                !    but in the module where the 
                                                !    variables that controls the
                                                !    Lowdin are stored
-    use siesta_options, only: n_lowdin_manifolds
+    use siesta_options, only: n_wannier_manifolds
     use files,         only: slabel        ! Short system label,
                                          !   used to generate file names
 

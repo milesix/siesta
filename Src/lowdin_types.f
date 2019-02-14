@@ -10,7 +10,7 @@
 !=======================================================================
 !
 !     This module defines data structures to handle the specification
-!     of the Lowdin orthonormalization. This specification
+!     of the Wannier90 transformation within SIESTA. This specification
 !     is read from the fdf file by routine 'read_lowdin_specs'.
 
       use precision, only: dp
@@ -60,28 +60,28 @@
                                                   !!   Units: energy
                                                   !!   Read from the fdf input
                                                   !!   in the 
-                                                  !!   %block LowdinProjections
+                                                  !!   %block WannierProjections
           real(dp)               :: dis_win_max   !< Top of the outer energy
                                                   !!   window for band 
                                                   !!   disentanglement
                                                   !!   Units: energy
                                                   !!   Read from the fdf input
                                                   !!   in the 
-                                                  !!   %block LowdinProjections
+                                                  !!   %block WannierProjections
           real(dp)               :: dis_froz_min  !< Bottom of the inner 
                                                   !!   (frozen) energy window 
                                                   !!   for band disentanglement
                                                   !!   Units: energy
                                                   !!   Read from the fdf input
                                                   !!   in the 
-                                                  !!   %block LowdinProjections
+                                                  !!   %block WannierProjections
           real(dp)               :: dis_froz_max  !< Top of the inner 
                                                   !!   (frozen) energy window 
                                                   !!   for band disentanglement
                                                   !!   Units: energy
                                                   !!   Read from the fdf input
                                                   !!   in the 
-                                                  !!   %block LowdinProjections
+                                                  !!   %block WannierProjections
           logical                :: disentanglement !< Is the disentanglement 
                                                   !!   procedure required for
                                                   !!   this manifold?

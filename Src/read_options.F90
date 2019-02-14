@@ -1807,11 +1807,11 @@ subroutine read_options( na, ns, nspin )
 #endif
 
   !
-  !   Lowdin orthonormalization -related flags
+  !   Wannier within SIESTA -related flags
   !
 
-  n_lowdin_manifolds = fdf_get( 'NumberOfBandManifoldsForLowdin', 0 )
-  if( n_lowdin_manifolds .ne. 0 ) lowdin_processing = .true.
+  n_wannier_manifolds = fdf_get( 'NumberOfBandManifoldsForWannier', 0 )
+  if( n_wannier_manifolds .ne. 0 ) lowdin_processing = .true.
 
   r_between_manifolds = fdf_get( 'R_between_manifolds', .false. )
 

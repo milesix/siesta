@@ -95,15 +95,15 @@ MODULE siesta_options
   integer :: nob              ! Number of bands for wannierization
                               !   (for non spin-polarized calculations).
 !----------------------------------------------------
-! Lowdin interface
+! Wannier90 within SIESTA interface
   logical :: lowdin_processing   ! Will we call produce the Lowdin-Mattheis
                                  !   transformation to obtain orthonormal 
                                  !   wave functions? 
   logical :: r_between_manifolds ! Will we compute the position operator
                                  !   matrix elements between bands in
                                  !   different manifolds?
-  integer :: n_lowdin_manifolds  ! Number of bands manifolds that will be 
-                                 !   considered for Lowdin transformation
+  integer :: n_wannier_manifolds ! Number of bands manifolds that will be 
+                                 !   considered for Wannier transformation
 
 !----------------------------------------------------
   logical :: writef        ! Write atomic forces at every geometry step?
