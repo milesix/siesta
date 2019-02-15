@@ -959,6 +959,14 @@ module m_lowdin
 !
 ! ------------------------------------------------------------------------------
 !
+!> \f{eqnarray*}{
+!! M_{m n}^{(\vec{k}, \vec{b})} =
+!!        \langle u_{m \vec{k}} \vert u_{n \vec{k} + \vec{b}} \rangle, 
+!! \f}
+!> \f{eqnarray*}{
+!! A_{mn} (\vec{k}) = \langle \psi_{m\vec{k}} \vert g_{n} \rangle
+!! \f}
+
   subroutine compute_matrices( ispin, index_manifold )
 
     use m_switch_local_projection, only: seedname
@@ -1140,16 +1148,6 @@ module m_lowdin
 
   end subroutine compute_matrices
 
-
-!> \f{eqnarray*}{
-!!    \langle \psi_{j} (\vec{k}) \vert \psi_{i} (\vec{k}) \rangle & = &
-!!    \sum_{\mu \nu} c_{j \nu} (\vec{k})
-!!    \langle \phi_{\nu} (\vec{k}) \vert \phi_{\mu} (\vec{k}) \rangle
-!!    c_{\mu i} (\vec{k})   \\
-!!    & = & \sum_{\mu \nu} c_{\nu j}^{\ast} (\vec{k})
-!!    S_{\nu \mu} (\vec{k}) c_{\mu i} (\vec{k})  \\
-!!    & = & \delta_{ij},
-!! \f}
 
   subroutine compute_wannier( ispin, index_manifold )
 
