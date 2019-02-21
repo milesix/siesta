@@ -11,11 +11,10 @@
      .                   nuotot, iscf, neigwanted)
 
 !
-      use precision
-      use sys
+      use precision, only: dp
+      use sys, only: die
       use parallel,      only : Node, Nodes, BlockSize
       use parallelsubs,  only : LocalToGlobalOrb
-      use m_spin, only: spin
 
 #ifdef MPI
       use mpi_siesta
@@ -54,7 +53,6 @@ C *************************** AUXILIARY *******************************
 C complex*16 Haux(2,nuotot,2,nuo): Auxiliary space for the hamiltonian matrix
 C complex*16 Saux(2,nuotot,2,nuo): Auxiliary space for the overlap matrix
 C complex*16 psi(2,nuotot,2*nuo) : Auxiliary space for the eigenvectors
-C complex*16 Dke(2,nuotot,nuo,2*nuotot) : Aux. space that may be the same as Haux
 C complex*16 caux(2,nuotot)      : Extra auxiliary space
 C *************************** UNITS ***********************************
 C xij and kpt must be in reciprocal coordinates of each other.
@@ -79,14 +77,13 @@ C *********************************************************************
       integer :: neigwanted
       
       complex(dp), dimension(2,nuotot,2,nuo) :: Haux, Saux
-      complex(dp), dimension(2,nuotot,2,nuo,maxo*2) :: Dke
       complex(dp), dimension(2,nuotot,2*nuo) :: psi
       complex(dp), dimension(2,nuotot) :: caux
       
 !     TEMPOS, INTERNAL VARIABLES etc.
       
       integer  BNode, BTest, ie, ierror, iie, ik, ind, io, iio
-      integer  iuo, j, jo, juo, neigneeded, Node0, iounit
+      integer  iuo, j, jo, juo, neigneeded, iounit
       real(dp) eV
 
       parameter ( eV = 1.d0 / 13.60580d0 )
@@ -111,6 +108,7 @@ C Start time counter
       call timer( 'spin_texture', 1 )
 
 C Check parameter maxbk
+      ! Make this more useful
       if (nbk .gt. maxbk) then
         if (Node.eq.0) then
           write(6,'(/,a,/,a)')
@@ -122,13 +120,12 @@ C Check parameter maxbk
 
 !     Find spin texture at every k point
 
-      Node0 = Node
-      iounit = 700 + Node
+      call io_assign(iounit)
 
 ! Spin texture is written in file spin_texture.dat
 
       open(unit=iounit,file='spin_texture.dat',status='unknown')
-      if(Node0.eq.0)
+      if(Node.eq.0)
      .write(iounit,'(A,i4,A,i4,A,f12.6)') "k-points = ", nbk, 
      .     ", eigenvalues = ", 2*neigwanted, ", E-fermi (eV) = ", ef/eV
       do ik = 1,nbk
@@ -171,7 +168,7 @@ C Check parameter maxbk
       enddo
       
       do ik = 1,nbk
-        if(Node0.eq.0) then
+        if(Node.eq.0) then
           write(iounit,'(/A,i4,A,3f12.6,A)') 
      .      "k-point ", ik, " (",(kpt(j,ik),j=1,3)," ) (Bohr^-1)"
           write(iounit,'(A)') 
@@ -243,99 +240,79 @@ C Check parameter maxbk
      .               neigneeded,iscf,ierror, 2*BlockSize)
         endif
       
-! Loop over energies to calculate Dke
-
-        Dke  = dcmplx(0.0_dp,0.0_dp)
-!
+        ! Loop over wavefunctions at this k-point
+        ! Note that each node keeps a certain number of wavefunctions
+        ! in block-cyclic form
         BNode = 0
-! Node = 0?
-        Node = Node0
+
         iie = 0
         do ie = 1,2*nuotot
-          if (Node.eq.BNode) then
-            iie = iie + 1
-          endif
+           st(:) = 0.0_dp
+           if (Node.eq.BNode) then
+              ! Local index for wfns kept in this node
+              iie = iie + 1
+           endif
       
-          caux(:,:) = dcmplx(0.0_dp,0.0_dp)
-            if (Node.eq.BNode) then
+           caux(:,:) = dcmplx(0.0_dp,0.0_dp)
+           if (Node.eq.BNode) then
               do j = 1,nuotot
-                caux(1,j)= psi(1,j,iie) ! c_{i,up}
+                caux(1,j)= psi(1,j,iie) ! c_{i,up} up part of spinor
                 caux(2,j)= psi(2,j,iie) ! c_{i,dn}
               enddo
-            endif
+           endif
 #ifdef MPI
-            call MPI_Bcast(caux(1,1),2*nuotot,MPI_double_complex,BNode,
-     .           MPI_Comm_World,MPIerror)
+           call MPI_Bcast(caux(1,1),2*nuotot,MPI_double_complex,BNode,
+     .          MPI_Comm_World,MPIerror)
 #endif
-            do iuo = 1,nuo
+           ! Now all the nodes have all the coeffs of the ie'th wavefunction
+           ! Compute the spin texture at this k-point and energy
+           do iuo = 1,nuo
               call LocalToGlobalOrb(iuo,Node,Nodes,iio)
-              do juo = 1,nuotot
+              do j = 1,numh(iuo)
+                 ind = listhptr(iuo) + j
+                 jo = listh(ind)
+                 juo = indxuo(jo)
+                 kxij = kpt(1,ik) * xij(1,ind) +
+     .                kpt(2,ik) * xij(2,ind) +
+     .                kpt(3,ik) * xij(3,ind)
+                 kphs = cdexp(dcmplx(0.0_dp,-1.0_dp)*kxij)
       
-!------- 1,1 -----------------------------------------------------------
-               cicj = caux(1,iio) * dconjg(caux(1,juo))
-               Dke(1,juo,1,iuo,ie) = Dke(1,juo,1,iuo,ie) + cicj
-!------- 2,2 -----------------------------------------------------------
-               cicj = caux(2,iio) * dconjg(caux(2,juo))
-               Dke(2,juo,2,iuo,ie) = Dke(2,juo,2,iuo,ie) + cicj
-!------- 1,2 -----------------------------------------------------------
-               cicj = caux(1,iio) * dconjg(caux(2,juo))
-               Dke(1,juo,2,iuo,ie) = Dke(1,juo,2,iuo,ie) + cicj
-!------- 2,1 -----------------------------------------------------------
-               cicj = caux(2,iio) * dconjg(caux(1,juo))
-               Dke(2,juo,1,iuo,ie) = Dke(2,juo,1,iuo,ie) + cicj
+                 D11 = caux(1,iio) * dconjg(caux(1,juo)) * kphs
+                 D22 = caux(2,iio) * dconjg(caux(2,juo)) * kphs
+                 D12 = caux(1,iio) * dconjg(caux(2,juo)) * kphs
+                 D21 = caux(2,iio) * dconjg(caux(1,juo)) * kphs
+      
+                 st(1) = st(1) + S(ind) * (dreal(D11) + dreal(D22))
+                 st(2) = st(2) + S(ind) * 2.0d0 * dreal(D12)
+                 st(3) = st(3) - S(ind) * 2.0d0 * dimag(D12)
+                 st(4) = st(4) + S(ind) * (dreal(D11) - dreal(D22))
               enddo
-            enddo
-!        
-          BTest = ie/(2*BlockSize)
-          if (BTest*2*BlockSize.eq.ie) then
-            BNode = BNode + 1
-            if (BNode .gt. Nodes-1) BNode = 0
-          endif
-        enddo
-
-! Loop in energy to calculate spin texture (st).
-
-       do ie = 1,2*nuotot
-        st(:) = 0.0_dp
-        do iuo = 1,nuo
-        do j = 1,numh(iuo)
-          ind = listhptr(iuo) + j
-          jo = listh(ind)
-          juo = indxuo(jo)
-          kxij = kpt(1,ik) * xij(1,ind) +
-     .           kpt(2,ik) * xij(2,ind) +
-     .           kpt(3,ik) * xij(3,ind)
-          kphs = cdexp(dcmplx(0.0_dp,-1.0_dp)*kxij)
-      
-          D11 = Dke(1,juo,1,iuo,ie) * kphs
-          D22 = Dke(2,juo,2,iuo,ie) * kphs
-          D12 = Dke(1,juo,2,iuo,ie) * kphs
-          D21 = Dke(2,juo,1,iuo,ie) * kphs
-      
-          st(1) = st(1) + S(ind) * (dreal(D11) + dreal(D22))
-          st(2) = st(2) + S(ind) * 2.0d0 * dreal(D12)
-          st(3) = st(3) - S(ind) * 2.0d0 * dimag(D12)
-          st(4) = st(4) + S(ind) * (dreal(D11) - dreal(D22))
-        enddo
-        enddo
+           enddo
 #ifdef MPI
-        call MPI_Barrier(MPI_Comm_World, MPIError) ! Wait for everybody
-        call MPI_Reduce(st(1),st_f(1),4,
-     .    MPI_double_precision,MPI_sum,0,MPI_Comm_World,MPIerror)
+           call MPI_Barrier(MPI_Comm_World, MPIError) ! Wait for everybody
+           call MPI_Reduce(st(1),st_f(1),4,
+     .          MPI_double_precision,MPI_sum,0,MPI_Comm_World,MPIerror)
 #endif
-        if(Node0.eq.0) then
-          write(iounit,'(i7,f12.5,3f8.4)') 
-     .      ie,eo(ie,ik)/eV,(st_f(j),j=2,4)
-        endif
-       enddo
-      enddo
+           if(Node.eq.0) then
+              write(iounit,'(i7,f12.5,3f8.4)') 
+     .             ie,eo(ie,ik)/eV,(st_f(j),j=2,4)
+           endif
 
-C This is the only exit point
+           ! We move on to the next node when we are done with a blocksize's worth
+           ! of wavefunctions
+           BTest = ie/(2*BlockSize)
+           if (BTest*2*BlockSize.eq.ie) then
+              BNode = BNode + 1
+              if (BNode .gt. Nodes-1) BNode = 0
+           endif
+        enddo ! over wfns at this k-point
+
+      enddo   ! over k-points
+
+      call io_close(iounit)
+      
   999 continue
       call timer( 'spin_texture', 2 )
       
-!***********************************************************************      
-      return
       end subroutine spin_texture
-!***********************************************************************      
       
