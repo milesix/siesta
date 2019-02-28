@@ -959,13 +959,22 @@ module m_lowdin
 !
 ! ------------------------------------------------------------------------------
 !
+!> \brief General purpose of the subroutine compute_matrices
+!! In this subroutine we compute:
+!! 1. The overlap matrices between the periodic part of wave functions
+!! at neighbour k-points,
 !> \f{eqnarray*}{
 !! M_{m n}^{(\vec{k}, \vec{b})} =
 !!        \langle u_{m \vec{k}} \vert u_{n \vec{k} + \vec{b}} \rangle, 
 !! \f}
+!! that is the Eq. (27) of the Ref. \cite Marzari-12, or
+!! Eq. (25) of Ref. \cite Marzari-97
+!! 2. The overlap matrices between the eigenstates of the one-particle
+!! Hamiltonian and the localized trial orbitals, taken as initial guess,
 !> \f{eqnarray*}{
-!! A_{mn} (\vec{k}) = \langle \psi_{m\vec{k}} \vert g_{n} \rangle
+!! A_{mn} (\vec{k}) = \langle \psi_{m\vec{k}} \vert g_{n} \rangle,
 !! \f}
+!! as presented right before Eq. (17) of Ref. \cite Marzari-12
 
   subroutine compute_matrices( ispin, index_manifold )
 

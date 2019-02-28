@@ -95,7 +95,7 @@ OBJS =  automatic_cell.o atom_options.o \
 	madelung.o mesh.o meshphi.o meshdscf.o memory.o meshsubs.o metaforce.o \
         m_supercell.o mulliken.o minvec.o naefs.o \
 	m_new_dm.o normalize_dm.o ordern.o outcell.o outcoor.o \
-	m_fft_gpfa.o m_lowdin.o m_switch_local_proj.o broadcast_lowdin.o \
+	m_fft_gpfa.o m_w90_in_siesta.o m_switch_local_proj.o broadcast_lowdin.o \
 	pdos.o pdosg.o pdosk.o pdoskp.o phirphi.o pixmol.o plcharge.o \
 	projected_DOS.o propor.o m_partial_charges.o \
 	randomg.o reclat.o redcel.o \
@@ -372,14 +372,14 @@ redata.o siesta.o diagon.o pdos.o plcharge.o: $(FDF)
 coor.o cgvc.o iocg.o ioeig.o iofa.o iokp.o iomd.o  ofc.o : $(FDF)
 readsp.o eggbox.o iopipes.o : $(FDF)
 atom.o basis_io.o basis_specs.o: $(FDF)
-ldau_specs.o m_lowdin.o: $(FDF)
+ldau_specs.o m_w90_in_siesta.o: $(FDF)
 
 cranknic_evolk.o: $(FDF)
 cranknic_evolg.o: $(FDF)
 sankey_change_basis.o iotdxv.o: $(FDF)
 
 # Routines using Wannier90 calls.
-m_lowdin.o: $(WANNIER90)
+m_w90_in_siesta.o: $(WANNIER90)
 
 #
 # Linear algebra routines
@@ -901,11 +901,11 @@ m_iostruct.o: siesta_geom.o sys.o units.o
 m_iotddft.o: files.o m_dipol.o m_io.o m_steps.o parallel.o siesta_options.o
 m_iotddft.o: units.o wavefunctions.o
 m_kinetic.o: precision.o
-m_lowdin.o: m_cite.o parallel.o lowdin_types.o precision.o alloc.o atm_types.o
-m_lowdin.o: siesta_options.o atomlist.o parallelsubs.o sys.o m_energies.o 
-m_lowdin.o: m_orderbands.o sys.o atmfuncs.o atomlist.o siesta_geom.o units.o
-m_lowdin.o: m_switch_local_proj.o m_digest_nnkp.o siesta_options.o files.o
-m_lowdin.o: atmfuncs.o chemical.o m_trialorbitalclass.o m_spin.o
+m_w90_in_siesta.o: m_cite.o parallel.o lowdin_types.o precision.o alloc.o atm_types.o
+m_w90_in_siesta.o: siesta_options.o atomlist.o parallelsubs.o sys.o m_energies.o 
+m_w90_in_siesta.o: m_orderbands.o sys.o atmfuncs.o atomlist.o siesta_geom.o units.o
+m_w90_in_siesta.o: m_switch_local_proj.o m_digest_nnkp.o siesta_options.o files.o
+m_w90_in_siesta.o: atmfuncs.o chemical.o m_trialorbitalclass.o m_spin.o
 m_mat_invert.o: intrinsic_missing.o m_pivot_array.o precision.o
 m_matdiag.o: precision.o
 m_matio.o: alloc.o parallel.o
@@ -1300,7 +1300,7 @@ siesta_analysis.o: m_pexsi_local_dos.o m_spin.o m_steps.o parallel.o
 siesta_analysis.o: projected_DOS.o siesta2wannier90.o siesta_cml.o
 siesta_analysis.o: siesta_geom.o siesta_options.o sparse_matrices.o units.o
 siesta_analysis.o: write_subs.o writewave.o zmatrix.o m_switch_local_proj.o
-siesta_analysis.o: lowdin_types.o m_lowdin.o
+siesta_analysis.o: lowdin_types.o m_w90_in_siesta.o
 siesta_cmlsubs.o: files.o m_uuid.o parallel.o siesta_cml.o timestamp.o
 siesta_cmlsubs.o: 
 siesta_dicts.o: atomlist.o class_SpData1D.o files.o kpoint_scf.o m_energies.o
