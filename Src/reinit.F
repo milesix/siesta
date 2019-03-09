@@ -26,7 +26,9 @@ C
       use files,       only : slabel
       use files,       only : stdin_file, stdout_file
       use siesta_master, only: input_file  ! fdf data file
-
+#ifdef MPI
+      use mpi_siesta, only: mpi_comm_world
+#endif
       implicit none
 
       character(len=*), intent(out) :: sname
@@ -176,8 +178,14 @@ C Set up fdf ...
       call system_clock( count )
       write(fileout,"(a,i5.5,a)") 'fdf-', mod(count,100000), ".log"
 
-      call fdf_init(stdin_file, trim(fileout))
-
+      if (Node .eq. 0) then
+         call fdf_init(stdin_file, trim(fileout))
+      else
+         !
+      endif
+#ifdef MPI      
+      call broadcast_fdf_struct(0,mpi_comm_world)
+#endif
 #ifndef NO_F2003
 !     Read special variables from the command line
 !     This is done by ALL nodes!

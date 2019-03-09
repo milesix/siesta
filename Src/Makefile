@@ -34,7 +34,7 @@ include $(ARCH_MAKE)
 .SUFFIXES: .f .f90 .F .F90 .c .o .a
 
 
-lib: libfdf.a libSiestaForces.a
+lib: libSiestaForces.a
 
 dist:
 	make -f makefile.lit dist
@@ -53,11 +53,12 @@ dep:
 #
 XC=$(GRIDXC_LIBS)
 
+FDF_INCFLAGS=-I $(FDF_ROOT)/include
 NCPS_INCFLAGS=-I $(MAIN_OBJDIR)/ncps/src
 PSOP_INCFLAGS=-I $(MAIN_OBJDIR)/psoplib/src
 INCFLAGS:= $(NETCDF_INCFLAGS)  $(PSML_INCFLAGS) $(NCPS_INCFLAGS) \
            $(PSOP_INCFLAGS) $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS) \
-           $(PEXSI_INCFLAGS) $(INCFLAGS)
+           $(PEXSI_INCFLAGS) $(FDF_INCFLAGS) $(INCFLAGS)
 #
 # For removing any -ipo compilation in sub directories...
 # Later compilers are also having this enabled, and it lets you
@@ -188,6 +189,8 @@ OBJS =  automatic_cell.o atom_options.o \
 
 OBJS += kpoint_t.o kpoint_scf.o kpoint_dos.o kpoint_pdos.o kpoint_ldos.o
 
+OBJS += broadcast_fdf_struct.o
+
 OBJS += init_output.o
 
 # Diagonalization algorithm
@@ -306,12 +309,7 @@ libmpi_f90.a:
                     "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" )
 
 #--------------------------------------------------------------
-FDF=libfdf.a
-$(FDF): $(MPI_INTERFACE)
-	(cd fdf ; $(MAKE) -j 1 "VPATH=$(VPATH)/fdf" \
-	MAIN_OBJDIR=$(MAIN_OBJDIR) \
-		    "FPPFLAGS=$(FPPFLAGS)" \
-		    "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module )
+FDF_LIBS=$(FDF_ROOT)/lib/libfdf.a
 
 #--------------------------------------------------------------
 MS=MatrixSwitch.a
@@ -370,9 +368,6 @@ $(NCDF): $(FDICT)
 	cp ncdf/obj/$(NCDF) ./
 
 #######################
-cranknic_evolk.o: $(FDF)
-cranknic_evolg.o: $(FDF)
-sankey_change_basis.o iotdxv.o: $(FDF)
 semicore_info_froyen.o: $(NCPS)
 
 #
@@ -491,12 +486,7 @@ OBJS += $(TS_OBJS)
 # Create all objects
 ALL_OBJS=$(OBJS) $(SYSOBJ) $(MAIN_OBJ)
 
-# All objects require the FDF library (in theory)
-# In practice they do not but it greatly simplifies the logic
-# here.
-# This will setup the correct compilation sequence as
-# FDF => MPI
-$(ALL_OBJS): $(FDF) $(COMP_LIBS)
+$(ALL_OBJS): $(COMP_LIBS)
 
 libSiestaForces.a: $(OBJS) $(SYSOBJ)
 	$(AR) $(ARFLAGS_EXTRA) cru libSiestaForces.a $(OBJS) $(SYSOBJ)
@@ -505,15 +495,16 @@ libSiestaForces.a: $(OBJS) $(SYSOBJ)
 	-$(RANLIB) libSiestaForces.a
 #
 siesta: what version \
-                $(MPI_INTERFACE) $(FDF) $(MS) $(NCPS) $(PSOP) \
+                $(MPI_INTERFACE) $(MS) $(NCPS) $(PSOP) \
                 $(COMP_LIBS) $(ALL_OBJS) 
 	$(FC) -o siesta \
-	       $(LDFLAGS) $(ALL_OBJS) $(FDF) $(MS)  \
+	       $(LDFLAGS) $(ALL_OBJS) $(MS)  \
                $(XC) $(MPI_INTERFACE) \
                $(COMP_LIBS) $(LIBS) \
 	       $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) \
-	       $(LIBS)
+	       $(FDF_LIBS) $(LIBS)
 	@echo "--- reference section "
+	@echo "FDF libs: $(FDF_LIBS)"
 	@echo "PSML-related libs: $(PSML_LIBS)"
 	@echo "XMLf90 libs: $(XMLF90_LIBS)"
 	@echo "GRIDXC libs: $(GRIDXC_LIBS)"
@@ -534,7 +525,6 @@ clean:
 	rm -f compinfo.F90 tmp.F90
 	rm -f *.bck *~
 	rm -f aux_*.f aux_*.f90
-	(cd fdf ; $(MAKE) clean)
 	(cd ncps/src ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean)
 	(cd psoplib/src ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean)
 	@if [ -d MPI ] ; then (cd MPI && $(MAKE) clean ) ; fi
@@ -582,6 +572,7 @@ born_charge.o: atomlist.o ksv.o ksvinit.o m_mpi_utils.o m_spin.o parallel.o
 born_charge.o: precision.o siesta_geom.o siesta_options.o sparse_matrices.o
 broadcast_basis.o: atm_types.o chemical.o ldau_specs.o m_mpi_utils.o parallel.o
 broadcast_basis.o: radial.o
+broadcast_fdf_struct.o: parallel.o
 broadcast_projections.o: m_trialorbitalclass.o parallel.o siesta2wannier90.o
 broyden_optim.o: m_broyddj_nocomm.o memory_log.o parallel.o precision.o
 broyden_optim.o: siesta_options.o sys.o units.o

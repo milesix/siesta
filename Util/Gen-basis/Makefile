@@ -81,23 +81,11 @@ OBJS_IONCAT=$(DEPS_IONCAT) $(IONCAT_LOCAL_OBJS)
 #
 XC = $(GRIDXC_LIBS)
 INCFLAGS:= $(INCFLAGS) $(GRIDXC_INCFLAGS)
+INCFLAGS:= $(INCFLAGS) $(FDF_INCFLAGS)
 
 #
 NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
 PSOP=$(MAIN_OBJDIR)/psoplib/src/libpsop.a
-#
-# Use the makefile in Src/fdf and all the sources there.
-#
-FDF=libfdf.a
-FDF_MAKEFILE=$(VPATH)/fdf/makefile
-FDF_INCFLAGS:=-I $(VPATH)/fdf $(INCFLAGS)
-$(FDF): 
-	(mkdir -p fdf ; cd fdf ; $(MAKE) -f $(FDF_MAKEFILE) "FC=$(FC)" "VPATH=$(VPATH)/fdf" \
-                          "ARCH_MAKE=$(ARCH_MAKE)" \
-                          "DEFS=$(DEFS)" \
-                          "FPPFLAGS=$(FPPFLAGS)" \
-                          "MPI_INTERFACE= " \
-                          "INCFLAGS=$(FDF_INCFLAGS)" "FFLAGS=$(FFLAGS)" module)
 
 #
 # Simple hack to link to any compiled lapack/blas code
@@ -108,19 +96,18 @@ link_linalg:
    [ -f ../../$(OBJDIR)/$$llibs ] && ln -sf ../../$(OBJDIR)/$$llibs . ; \
 	done
 
-gen-basis: $(FDF) $(NCPS) $(PSOP) $(OBJS_GEN-BASIS) link_linalg
+gen-basis: $(NCPS) $(PSOP) $(OBJS_GEN-BASIS) link_linalg
 	$(FC) -o gen-basis \
-	       $(LDFLAGS) $(OBJS_GEN-BASIS) $(FDF) $(XC) \
+	       $(LDFLAGS) $(OBJS_GEN-BASIS) $(FDF_LIBS) $(XC) \
               $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) $(NETCDF_LIBS) $(COMP_LIBS) $(LIBS)
-ioncat:  $(FDF) $(NCPS) $(PSOP) $(OBJS_IONCAT)
+ioncat:  $(NCPS) $(PSOP) $(OBJS_IONCAT)
 	$(FC) -o ioncat \
-	       $(LDFLAGS) $(OBJS_IONCAT) $(FDF) \
+	       $(LDFLAGS) $(OBJS_IONCAT) $(FDF_LIBS) \
               $(NCPS) $(PSOP) $(XC) $(PSML_LIBS) $(XMLF90_LIBS) $(NETCDF_LIBS) $(LIBS)
 clean:
 	@echo "==> Cleaning object, library, and executable files"
 	rm -f gen-basis ioncat *.o  *.a
 	rm -f *.mod
-	rm -rf fdf
 	rm -f _tmp_deps deps.list  protomake*
 
 ALL_OBJS=$(OBJS_IONCAT) $(OBJS_GEN-BASIS)

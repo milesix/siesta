@@ -162,12 +162,6 @@ C     Initialise MPI and set processor number
       PEXSINodes = Nodes
 
       call reset_messages_file()
-      
-
-      if (.not. fdf_parallel()) then
-        call die('siesta_init: ERROR: FDF module ' //
-     &           'doesn''t have parallel support')
-      endif
 #else
       call reset_messages_file()
 #endif
