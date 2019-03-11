@@ -12,7 +12,7 @@
       use mpi
 
       use fdf, only: serialize_fdf_struct, recreate_fdf_struct
-      use fdf, only: size_of_fdf_struct, set_fdf_started
+      use fdf, only: set_fdf_started
       
       implicit none
 
@@ -23,8 +23,10 @@
       integer                   :: ierr, nchars, rank
 
       call MPI_Comm_Rank( Comm, rank, ierr )
+      
       if (rank == reading_node) then
-         nchars = size_of_fdf_struct()
+         call serialize_fdf_struct(bufferFDF)
+         nchars = size(bufferFDF)
       endif
 
       call MPI_Bcast(nchars, 1,                                 &
@@ -33,16 +35,14 @@
         call die("Error broadcasting size of fdf struct")
       endif
 
-      ALLOCATE(bufferFDF(nchars), stat=ierr)
-      if (ierr .ne. 0) then
-        call die("Error allocating buffer")
+      if (rank /= reading_node) then
+         ALLOCATE(bufferFDF(nchars), stat=ierr)
+         if (ierr .ne. 0) then
+            call die("Error allocating buffer in non-root node")
+         endif
       endif
 
-      if (rank == reading_node) then
-         call serialize_fdf_struct(bufferFDF)
-      endif
-
-      call MPI_Bcast(bufferFDF, size(bufferFDF),              &
+      call MPI_Bcast(bufferFDF, nchars,              &
                      MPI_CHARACTER, reading_node, MPI_COMM_WORLD, ierr)
       if (ierr .ne. MPI_SUCCESS) then
         call die("Error Broadcasting bufferFDF")
