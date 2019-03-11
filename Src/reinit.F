@@ -22,7 +22,7 @@ C
 C  Modules
 C
       use parallel,    only : Node
-      use fdf
+      use fdf, fdf_print_struct=>fdf_printfdf
       use files,       only : slabel
       use files,       only : stdin_file, stdout_file
       use siesta_master, only: input_file  ! fdf data file
@@ -40,6 +40,9 @@ C  Internal variables .................................................
       integer :: in, length, lun, lun_tmp, iostat
       character(len=256) :: line, val
 
+      integer :: debug_level, output_level
+      character(len=40) :: prefix
+      
       logical debug_input, file_exists
       external :: bye
 
@@ -185,7 +188,21 @@ C Set up fdf ...
       endif
 #ifdef MPI      
       call broadcast_fdf_struct(0,mpi_comm_world)
+      !
+      ! Example of multi-node logging
+      ! 
+      if ( Node .ne. 0 .and.
+     $     fdf_get('fdf-log-in-all-nodes', .false.)) then
+
+         debug_level = fdf_get('fdf-debug', 0)
+         write(prefix,"(a,i0)") "fdf-node-", Node
+         call fdf_setdebug(debug_level,trim(prefix)//".debug")
+         output_level = fdf_get('fdf-output', 1)
+         call fdf_setoutput(output_level,trim(prefix)//".log")
+         if (debug_level >= 2) call fdf_print_struct()
+      endif
 #endif
+      
 #ifndef NO_F2003
 !     Read special variables from the command line
 !     This is done by ALL nodes!

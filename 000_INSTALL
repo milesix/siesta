@@ -1,10 +1,13 @@
 To compile this version of Siesta you need the following libraries:
 
+libfdf
 xmlf90
 libPSML
 libGridXC (optionally with libxc)
 
 These can be downloaded from Launchpad:
+
+(ask about fdf)
 
 https://launchpad.net/xmlf90/trunk/1.5/+download/xmlf90-1.5.4.tar.gz
 https://launchpad.net/libpsml/trunk/1.1/+download/libpsml-1.1.7.tgz
@@ -12,18 +15,19 @@ https://launchpad.net/libgridxc/trunk/0.8/+download/libgridxc-0.8.5.tgz
 
 
 NOTE: You need version 1.5.4 of the xmlf90 library,
-      at least version 0.8.5 of the libgridxc library, and
-      at least version 1.1.7 of the libpsml library.
+      at least version 0.8.5 of the libgridxc library,
+      at least version 1.1.7 of the libpsml library, and
+      at least version 0.2.0 of the libfdf library.
 
 ** Steps in detail
 
 - Dowload and unpack the library tarballs
 
-- Compile the xmlf90, libpsml, and libgridxc libraries (follow the
+- Compile the xmlf90, libpsml, libfdf, and libgridxc libraries (follow the
   instructions in the appropriate packages).
 
 - Go back to the Siesta building directory, review the settings of the
-  xmlf90, libpsml, and libgridxc import lines in the arch.make file, and type
+  xmlf90, libpsml, libfdf, and libgridxc import lines in the arch.make file, and type
 
     (sh ../Src/obj_setup.sh if you have not yet done so)
     make
