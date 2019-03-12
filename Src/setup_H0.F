@@ -31,7 +31,8 @@ C     and initializes data structures on the grid.
      &                    rmaxo, no_l
       use metaforce, only: lMetaForce, meta
       use molecularmechanics, only : twobody
-      use m_nlefsm,     only: nlefsm
+!      use m_nlefsm,     only: nlefsm
+      use new_nl_m,        only: new_nl
       use m_kinefsm,    only: kinefsm
       use m_naefs,      only: naefs
       use m_dnaefs,     only: dnaefs
@@ -131,7 +132,7 @@ C     Add on force field contribution to energy
       Eso = 0.0d0
 
       if ( .not.spin%SO_offsite ) then
-       call nlefsm(scell, na_u, na_s, isa, xa, indxua, 
+       call new_nl(scell, na_u, na_s, isa, xa, indxua, 
      &             maxnh, maxnh, lasto, lastkb, iphorb, iphKB, 
      &             numh, listhptr, listh, numh, listhptr, listh, 
      &             1,
