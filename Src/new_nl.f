@@ -4,7 +4,7 @@
       public :: new_nl
       
       CONTAINS
-      subroutine new_nl( scell, nua, na, isa, xa, indxua,
+      subroutine new_nl( ucell, nua, na, isa, xa, indxua,
      .                   maxnh, maxnd, lasto, lastkb, iphorb, 
      .                   iphKB, numd, listdptr, listd, numh, 
      .                   listhptr, listh, nspin, Dscf, Enl, 
@@ -16,7 +16,7 @@ C Energies in Ry. Lengths in Bohr.
 C     Written by A. Garcia (March 2019), based on
 C     code by J.Soler and P.Ordejon, June 1997.
 C **************************** INPUT **********************************
-C real*8  scell(3,3)       : Supercell vectors SCELL(IXYZ,IVECT)
+C real*8  ucell(3,3)       : Unit cell vectors UCELL(IXYZ,IVECT)
 C integer nua              : Number of atoms in unit cell
 C integer na               : Number of atoms in supercell
 C integer isa(na)          : Species index of each atom
@@ -64,12 +64,13 @@ C
       use parallelsubs,  only : GetNodeOrbs, LocalToGlobalOrb
       use atmfuncs,      only : rcut, epskb, orb_gindex, kbproj_gindex
       use m_new_matel,   only : new_matel
-      use kb_graph,      only : numkb, listkbptr, listkb
+      use kb_graph,      only : numkb, listkbptr, listkb, xik
       use kb_graph,      only : kb_graph_generate
       use kb_graph,      only : kb_graph_generate, kb_graph_print
       use intrinsic_missing, only: VNORM
       use atomlist,      only : iaorb
-
+      use sparse_matrices, only: xijo
+      
       integer, intent(in) ::
      .   maxnh, na, maxnd, nspin, nua
 
@@ -78,7 +79,7 @@ C
      .  lasto(0:na), lastkb(0:na), listd(maxnd), listh(maxnh),
      .  numd(*), numh(*), listdptr(*), listhptr(*)
 
-      real(dp), intent(in) :: scell(3,3), Dscf(maxnd,nspin),
+      real(dp), intent(in) :: ucell(3,3), Dscf(maxnd,nspin),
      .                        xa(3,na)
       real(dp), intent(inout) :: fa(3,nua), stress(3,3)
       real(dp), intent(inout) :: H(maxnh,nspin)
@@ -92,7 +93,7 @@ C
      .  ia, ik, ikb, ind, indkb, ja, js,
      .  io, iio, ioa, is, joa, ispin, ix, ig, jg, kg,
      .  j, jo, jx, ka, ko, koa, ks, kua,
-     .  no, nuo, nuotot
+     .  nuo, nuotot
 
       real(dp) :: rci, rcj, rck, dik, djk
       real(dp) :: Di, xki(3), xkj(3)
@@ -107,15 +108,14 @@ C Start time counter
       call timer( 'new_nl', 1 )
 
 C Find unit cell volume
-      volume = volcel( scell ) * nua / na
+      volume = volcel( ucell ) 
 
-      no = lasto(na)
       nuotot = lasto(nua)
       call GetNodeOrbs(nuotot,Node,Nodes,nuo)
 
       call timer( 'kb_graph', 1 )
-      call kb_graph_generate( scell, nua, na, isa, xa )
-      call kb_graph_print( nua, na, isa, xa )
+      call kb_graph_generate( ucell, nua, isa, xa )
+      call kb_graph_print( nua, isa, xa )
       call timer( 'kb_graph', 2 )
 
       Enl = 0.0d0
@@ -149,9 +149,9 @@ C Find unit cell volume
                ka = listkb(indkb)
                kua = indxua(ka) ! Used only if forces and energies are comp.
                ks = isa(ka)
-               ! xki is from k to i
-               xki(:) = xa(:,ia) - xa(:,ka)
-               xkj(:) = xa(:,ja) - xa(:,ka)
+               ! xik is from i to k; xki is from k to i
+               xki(:) = -xik(:,indkb)
+               xkj(:) = xijo(:,ind) - xik(:,indkb) 
                dik = VNORM( xki )
                djk = VNORM( xkj )
 

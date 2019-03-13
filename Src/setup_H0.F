@@ -24,7 +24,7 @@ C     and initializes data structures on the grid.
       use m_spin,          only: spin
 
       use sparse_matrices, only: listh, listhptr, numh, maxnh
-      use siesta_geom
+      use siesta_geom          ! ucell, scell, xa...
       use atmfuncs, only: uion
       use atomlist, only: no_u, iaorb, iphkb, indxuo, datm, 
      &                    lastkb, no_s, rmaxv, indxua, iphorb, lasto,
@@ -132,7 +132,7 @@ C     Add on force field contribution to energy
       Eso = 0.0d0
 
       if ( .not.spin%SO_offsite ) then
-       call new_nl(scell, na_u, na_s, isa, xa, indxua, 
+       call new_nl(ucell, na_u, na_s, isa, xa, indxua, 
      &             maxnh, maxnh, lasto, lastkb, iphorb, iphKB, 
      &             numh, listhptr, listh, numh, listhptr, listh, 
      &             1,

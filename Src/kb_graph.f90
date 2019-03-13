@@ -1,15 +1,18 @@
 module kb_graph
 
+  use precision, only: dp
+  
   implicit none
   
   public :: kb_graph_generate
   public :: kb_graph_print
   
   integer, allocatable, public :: numkb(:), listkbptr(:), listkb(:)
+  real(dp), allocatable, public :: xik(:,:)
 
 CONTAINS
   
-  subroutine kb_graph_generate( scell, na_u, na, isa, xa )
+  subroutine kb_graph_generate( cell, na_u, isa, xa )
 
     use precision, only: dp
     use atmfuncs, only : rcut, nofis, nkbfis, floating
@@ -20,11 +23,10 @@ CONTAINS
 
     use alloc, only : re_alloc, de_alloc
 
-    integer,  intent(in) :: na_u        ! num of atoms in unit cell
-    integer,  intent(in) :: na          ! num of atoms in supercell
-    integer,  intent(in) :: isa(na)
-    real(dp), intent(in) :: scell(3,3)  ! Aux super-cell vectors
-    real(dp), intent(in) :: xa(3,na)
+    integer,  intent(in) :: na_u       ! num of atoms in unit cell
+    integer,  intent(in) :: isa(na_u)
+    real(dp), intent(in) :: cell(3,3)  ! unit-cell vectors
+    real(dp), intent(in) :: xa(3,na_u)
     
 
     real(dp), allocatable :: rkbmax(:), rorbmax(:)
@@ -58,7 +60,7 @@ CONTAINS
     rmax = (rmaxo+rmaxkb)
     isel = 0
     ! Initialize internal data structures in neighb
-    call mneighb( scell, rmax, na, xa, 0, isel, nna )
+    call mneighb( cell, rmax, na_u, xa, 0, isel, nna )
 
     if (allocated(numkb)) deallocate(numkb)
     if (allocated(listkbptr)) deallocate(listkbptr)
@@ -71,7 +73,7 @@ CONTAINS
        numkb(ia) = 0
 
        ! Find neighbour atoms within maximum range
-       call mneighb( scell, rmax, na, xa, ia, isel, nna )
+       call mneighb( cell, rmax, na_u, xa, ia, isel, nna )
                                 ! in case neighbor arrays have expanded
        call re_alloc(index,1,maxna,name="index",routine="kb_graph")
 
@@ -84,7 +86,7 @@ CONTAINS
        rci = rorbmax(is)
 
        do kna = 1,nna
-          ka = jna(kna) !index in supercell
+          ka = jna(kna) !index in cell
           ks = isa(ka)
           if (floating(ks)) CYCLE
           rik = sqrt( r2ij(kna) )
@@ -104,6 +106,7 @@ CONTAINS
        listkbptr(ia) = listkbptr(ia-1) + numkb(ia-1)
     end do
     allocate(listkb(n_nzskb))
+    allocate(xik(3,n_nzskb))
 
     ! Now fill-in
     do ia = 1 , na_u
@@ -112,7 +115,7 @@ CONTAINS
        numkb(ia) = 0
 
        ! Find neighbour atoms within maximum range
-       call mneighb( scell, rmax, na, xa, ia, isel, nna )
+       call mneighb( cell, rmax, na_u, xa, ia, isel, nna )
                                 ! in case neighbor arrays have expanded
        call re_alloc(index,1,maxna,name="index",routine="kb_graph")
 
@@ -136,17 +139,18 @@ CONTAINS
              numkb(ia)   = numkb(ia) + 1
              ind         = listkbptr(ia) + numkb(ia)
              listkb(ind) = ka  ! supercell index
+             xik(:,ind)  = xij(:,kna)
           endif
        end do
     end do
   end subroutine kb_graph_generate
 
-    subroutine kb_graph_print(na_u,na,isa,xa)
+    subroutine kb_graph_print(na_u,isa,xa)
       use precision, only: dp
       
-    integer,  intent(in)    :: na_u, na
-    integer,  intent(in)    :: isa(na)
-    real(dp), intent(in)    :: xa(3,na)
+    integer,  intent(in)    :: na_u
+    integer,  intent(in)    :: isa(na_u)
+    real(dp), intent(in)    :: xa(3,na_u)
 
     integer :: ia, ind, ja, j
 
@@ -159,8 +163,8 @@ CONTAINS
        do j = 1 , numkb(ia)
           ind = listkbptr(ia) + j
           ja = listkb(ind)
-          write(*,fmt="(4x,i3,a,i2)") &
-               ja, " spec: ", isa(ja)
+          write(*,fmt="(4x,i3,a,i2,a,3(f10.5))") &
+               ja, " spec: ", isa(ja), ' at', xik(:,ind)
        end do
     end do
 
