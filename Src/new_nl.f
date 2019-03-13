@@ -1,4 +1,6 @@
       module new_nl_m
+      implicit none
+
       public :: new_nl
       
       CONTAINS
@@ -64,6 +66,7 @@ C
       use m_new_matel,   only : new_matel
       use kb_graph,      only : numkb, listkbptr, listkb
       use kb_graph,      only : kb_graph_generate
+      use kb_graph,      only : kb_graph_generate, kb_graph_print
       use intrinsic_missing, only: VNORM
       use atomlist,      only : iaorb
 
@@ -86,7 +89,7 @@ C
       external ::   timer, volcel
 
       integer
-     .  ia, ik, ikb, ind, indkb, 
+     .  ia, ik, ikb, ind, indkb, ja, js,
      .  io, iio, ioa, is, joa, ispin, ix, ig, jg, kg,
      .  j, jo, jx, ka, ko, koa, ks, kua,
      .  no, nuo, nuotot
@@ -112,6 +115,7 @@ C Find unit cell volume
 
       call timer( 'kb_graph', 1 )
       call kb_graph_generate( scell, nua, na, isa, xa )
+      call kb_graph_print( nua, na, isa, xa )
       call timer( 'kb_graph', 2 )
 
       Enl = 0.0d0
@@ -145,11 +149,14 @@ C Find unit cell volume
                ka = listkb(indkb)
                kua = indxua(ka) ! Used only if forces and energies are comp.
                ks = isa(ka)
-               dik = VNORM( xa(:,ka) - xa(:,ia) )
-               djk = VNORM( xa(:,ka) - xa(:,ja) )
+               ! xki is from k to i
+               xki(:) = xa(:,ia) - xa(:,ka)
+               xkj(:) = xa(:,ja) - xa(:,ka)
+               dik = VNORM( xki )
+               djk = VNORM( xkj )
 
                do ikb = lastkb(ka-1)+1,lastkb(ka)
-                  koa = iphKB(ikb)
+                  koa = iphKB(ikb)  ! koa is negative
                   rck = rcut(ks,koa)
                   !
                   if ( (rck + rci) < dik ) CYCLE
@@ -157,15 +164,13 @@ C Find unit cell volume
                   !
                   epsk = epskb(ks,koa)
                   kg = kbproj_gindex(ks,koa)
-                  ! xki is from k to i
-                  xki(:) = xa(:,ia) - xa(:,ka)
                   call new_MATEL( 'S', kg, ig, xki, Sik, grSik)
-                  xkj(:) = xa(:,ja) - xa(:,ka)
                   call new_MATEL( 'S', kg, jg, xkj, Sjk, grSjk)
                   !
                   do ispin = 1,nspin ! Only diagonal parts
                      H(ind,ispin) = H(ind,ispin) + epsk * Sik*Sjk
                   enddo
+
                   if (.not. matrix_elements_only) then
                      Cijk = Di * epsk    
                      Enl = Enl + Cijk * Sik * Sjk
@@ -179,6 +184,7 @@ C Find unit cell volume
                         enddo
                      enddo
                   endif
+                  
                enddo            ! ikb
             enddo               ! ik: atoms with KB close to ia
          enddo                  ! jo

@@ -1,7 +1,10 @@
 module kb_graph
 
+  implicit none
+  
   public :: kb_graph_generate
-
+  public :: kb_graph_print
+  
   integer, allocatable, public :: numkb(:), listkbptr(:), listkb(:)
 
 CONTAINS
@@ -28,6 +31,7 @@ CONTAINS
     integer, dimension(:),  pointer :: index => null()
 
     integer  :: is, io, ikb, isel, ia, kna, ka, ks, ind, nna
+    integer  :: n_nzskb
     real(dp) :: rmaxo, rmaxkb, rmax, rci, rik, rck
     ! tolerance for comparing vector-coordinates   -- probably superfluous
     real(dp), parameter        :: tol = 1.0d-8   
@@ -80,7 +84,7 @@ CONTAINS
        rci = rorbmax(is)
 
        do kna = 1,nna
-          ka = jna(kna)
+          ka = jna(kna) !index in supercell
           ks = isa(ka)
           if (floating(ks)) CYCLE
           rik = sqrt( r2ij(kna) )
@@ -136,5 +140,30 @@ CONTAINS
        end do
     end do
   end subroutine kb_graph_generate
+
+    subroutine kb_graph_print(na_u,na,isa,xa)
+      use precision, only: dp
+      
+    integer,  intent(in)    :: na_u, na
+    integer,  intent(in)    :: isa(na)
+    real(dp), intent(in)    :: xa(3,na)
+
+    integer :: ia, ind, ja, j
+
+    write(*,"(a,3i8)") "KB graph: na_u, nnzs: ", &
+         na_u, size(listkb)
+
+    do ia = 1 , na_u
+       write(*,"(/,a,i3,a,i2,i4)") "--Neighbors of atom ", &
+            ia, " spec: ", isa(ia), numkb(ia)
+       do j = 1 , numkb(ia)
+          ind = listkbptr(ia) + j
+          ja = listkb(ind)
+          write(*,fmt="(4x,i3,a,i2)") &
+               ja, " spec: ", isa(ja)
+       end do
+    end do
+
+  end subroutine kb_graph_print
   
 end module kb_graph
