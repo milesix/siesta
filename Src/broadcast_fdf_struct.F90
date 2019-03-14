@@ -11,21 +11,21 @@
 #else
       use mpi
 
-      use fdf, only: serialize_fdf_struct, recreate_fdf_struct
-      use fdf, only: set_fdf_started
+      use fdf, only: fdf_serialize_struct, fdf_recreate_struct
+      use fdf, only: fdf_set_started
       
       implicit none
 
       integer, intent(in)       :: reading_node         ! Node which contains the struct
       integer, intent(in)       :: comm
 
-      character, allocatable    :: bufferFDF(:)
+      character(len=1), allocatable    :: bufferFDF(:)
       integer                   :: ierr, nchars, rank
 
       call MPI_Comm_Rank( Comm, rank, ierr )
       
       if (rank == reading_node) then
-         call serialize_fdf_struct(bufferFDF)
+         call fdf_serialize_struct(bufferFDF)
          nchars = size(bufferFDF)
       endif
 
@@ -49,8 +49,8 @@
       endif
 
       if (rank /= reading_node) then
-         call recreate_fdf_struct(bufferFDF)
-         call set_fdf_started(.true.)
+         call fdf_recreate_struct(bufferFDF)
+         call fdf_set_started(.true.)
       endif
 
       DEALLOCATE(bufferFDF)

@@ -17,7 +17,7 @@ https://launchpad.net/libgridxc/trunk/0.8/+download/libgridxc-0.8.5.tgz
 NOTE: You need version 1.5.4 of the xmlf90 library,
       at least version 0.8.5 of the libgridxc library,
       at least version 1.1.7 of the libpsml library, and
-      at least version 0.2.0 of the libfdf library.
+      at least version 0.2.1 of the libfdf library.
 
 ** Steps in detail
 
