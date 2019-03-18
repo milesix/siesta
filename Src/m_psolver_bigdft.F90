@@ -1,5 +1,5 @@
 ! 
-! Copyright (C) 1996-2016	The SIESTA group
+! Copyyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt.
@@ -19,6 +19,7 @@
 !
       use precision,      only : dp, grid_p
       use parallel,       only : Node, Nodes, ionode, ProcessorY
+      use fdf 
       implicit none
 !
       public :: poisson_bigdft
@@ -63,17 +64,14 @@
 !!
 !! 1. Cleaning the overal implementation, this is a draft version.
 !!
-!! 2. Inclusion of other simmetries. This has been already worked-out
-!!    in serial so hard work is not expected here.
+!! 2. Inclusion of other simmetries. Pablo has already worked-out
+!!    small issues in the serial version. He has noticed that for 
+!!    shape=molecule, the gas-phase system has to be placed at the center
+!!    of the box, and that for shape=slab, the size of the simulation box
+!!    has to be larger than the one declared in the input file. 
 !!
-!! 3. Design of an additional subroutine (poisson_bigdft_enviroment ?)
-!!    to insert an implicit solvent effect. New arguments as atom kinds
-!!    and possitions must to be passed through.
-!!
-!! 4. Hardwired solution in the case of shape=molecule (i.e. gas-phase),
-!!    to move the molecule to the centre of the box. The same issue
-!!    has to be solved to 2D periodic systems.
-!!
+!! 3. Design of a fdf block to declare pkernel implicit solvent parameters.
+!!    As for this version options are hardwired. 
 !!
 ! 
 ! #################################################################### !
@@ -86,6 +84,10 @@
 ! #################################################################### !
 !
       use units,          only : eV
+      use siesta_options, only : bigdft_isf_order, bigdft_fd_order,    &
+                                 bigdft_verbose, bigdft_delta,         &
+                                 bigdft_fact_rigid, bigdft_cavity_type,&
+                                 bigdft_cavity, bigdft_radii_type
       use siesta_geom,    only : shape, na_u, na_s, xa
       use alloc,          only : re_alloc, de_alloc
       use Poisson_Solver, only : coulomb_operator,  Electrostatic_Solver, &
@@ -116,17 +118,19 @@
       integer                   :: isf_order, fd_order
       type(coulomb_operator)    :: pkernel
 !
-      real(grid_p), pointer :: Paux_3D( :, :, :)  ! 3D auxyliary array 
-      real(grid_p), pointer :: Paux_1D( :)        ! !D auxyliary array 
-      real(dp) :: alpha,beta,gamma !possible angles of the box axis
-      real(dp) :: angdeg( 3)
-      real(dp) :: delta, factor 
-      real(dp) :: radii(na_u) 
+      real(grid_p), pointer     :: Paux_1D( :)        ! 1D auxyliary array 
+      real(grid_p), pointer     :: Paux_3D( :, :, :)  ! 3D auxyliary array 
+      integer                   :: World_Comm, mpirank, ierr
+!
+      real(dp)                  :: alpha, beta, gamma ! box axis angles.  
+      real(dp)                  :: angdeg( 3)
+      real(dp)                  :: radii(na_u) 
       character( len= 2) :: atm_label( na_u) 
+      real(dp)                  :: delta, factor 
       real(dp), parameter   :: Ang= 1._dp/ 0.529177_dp
-      integer               :: World_Comm, mpirank, ierr
       integer, allocatable  :: local_grids( :)
       parameter( pi= 4.D0* DATAN( 1.D0))
+      logical, save         :: firsttime = .true. 
 ! #################################################################### !
 !
       call timer('BigDFT_solv',1)
@@ -146,36 +150,34 @@
 ! Initialise futil dictionary  
 !
       call dict_init(dict)
-      call set(dict//'setup'//'global_data',.true.)
-!      call set(dict//'setup'//'verbose',.true.)
-!      call dict_set(dict//'environment'//'cavity','sccs') ! or sccs
-!      call dict_set(dict//'environment'//'cavity','soft-sphere') ! or sccs
-!      call dict_set(dict//'environment'//'gps_algorithm','SC')  ! or SC
-!      call set(dict//'environment'//'radii_set','Bondi')  
-!      call dict_set(dict//'environment'//'delta',delta)          ! only for soft-sphere
+      call set( dict//'setup'//'global_data', .true.) ! Hardwired, it cannot be otherwise.
+! 
+! Set kernel and cavity variables: 
 !
-!! Rigid
-!      call set(dict//'environment'//'cavity','rigid')
-!      call set(dict//'environment'//'atomic_radii',12)
-!      call set(dict//'environment'//'delta','0.3')
-!      call set(dict//'environment'//'radii_set','UFF') 
-! Soft-sphere
-      call set(dict//'environment'//'cavity','soft-sphere')
-      call set(dict//'environment'//'delta','1.0')
-      !call set(dict//'environment'//'cavity','sccs')
-      call set(dict//'environment'//'fact_rigid','1.12')
 !
-!      call set(dict//'environment'//'gps_algorithm','PI')  ! or SC
-!      call set(dict//'environment'//'gps_algorithm','SC')  ! or SC
-!      isf_order=16 !  2, 4, 6, 8, 14, 16, 20, 24, 30, 40, 50, 60, 100
-!      fd_order=16
-!      call set(dict//'kernel'//'isf_order',isf_order)
-!      call set(dict//'environment'//'fd_order',fd_order)  
-!      call set(dict//'environment'//'pi_eta','0.6')
-
-
-!      call set(dict//'setup'//'verbose',.false.)
-!      call set(dict//'setup'//'taskgroup_size', 4)
+        call set( dict//'kernel'//'isf_order', bigdft_isf_order)
+        call set( dict//'environment'//'fd_order', bigdft_fd_order)  
+        call set( dict//'setup'//'verbose', bigdft_verbose)
+        call set( dict//'environment'//'delta', bigdft_delta)
+        call set( dict//'environment'//'fact_rigid', bigdft_fact_rigid)
+        call set( dict//'environment'//'cavity', bigdft_cavity_type) 
+        call set(dict//'environment'//'radii_set', bigdft_radii_type)
+!$      call set(dict//'environment'//'pi_eta','0.6') ??
+!
+      if (firsttime) then 
+        if (ionode) then 
+          write(6,"(a)") 'bigdft_solver: Poisson solver variables'
+          write(6,"(a, L2)")    'verbosity:', bigdft_verbose
+          write(6,"(a)")        'cavity type:', bigdft_cavity_type 
+          write(6,"(a, I3)")    'isf_order:', bigdft_isf_order 
+          write(6,"(a, I3)")    'fd_order:', bigdft_fd_order 
+          write(6,"(a, F10.5)") 'delta:', bigdft_delta 
+          write(6,"(a, F10.5)") 'fact_rigid:', bigdft_fact_rigid 
+          write(6,"(a)")        'radii_set:', bigdft_radii_type
+        endif
+        firsttime=.false.
+      endif 
+!
 !
       nullify(Paux_3D)
       nullify(Paux_1D)
@@ -230,36 +232,38 @@
         if (ionode) write(6,"(a)")                                     &
             'bigdft_solver: initialising kernel for a molecular system'
 !
-        pkernel=pkernel_init( Node, Nodes, dict, 'F', (/grid(1),       &
-                              grid(2), grid(3)/), hgrid)
+        pkernel=pkernel_init( Node, Nodes, dict, 'F', (/grid( 1),      &
+                              grid( 2), grid( 3)/), hgrid)
 !
-        call pkernel_set( pkernel, verbose=.true.)
+        call pkernel_set( pkernel, verbose=bigdft_verbose)
 !
-! set a radius for each atom in Angstroem (UFF, Bondi, Pauling, etc ...)
+! Implicit solvent?
 !
-      call set_label( atm_label)
-      do iatoms=1, na_u
-        radii( iatoms)=                                                &
-        pkernel_get_radius( pkernel, atname=atm_label(iatoms))
-      end do
-!      do iatoms=1, na_u
-!        write(6,*) "Pablo old_fashion #atom, atm_label and radii:", &
-!                    iatoms, radii( iatoms)
-!      end do
-!! Multiply for a constant prefactor (see the Soft-sphere paper JCTC 2017)
-        factor=pkernel%cavity%fact_rigid
-        do iatoms=1, na_u
-          radii(iatoms)=factor*radii(iatoms)*Ang
-        enddo
-        call pkernel_set_epsilon(pkernel,nat=na_u,rxyz=xa,radii=radii)
-        
-        call dict_free(dict)
+        if( bigdft_cavity) then
 !
-        call timer('PSolver',1)
-        call Electrostatic_Solver( pkernel, Paux_3D, ehartree = eh)
+! Set a radius for each atom in Angstroem (UFF, Bondi, Pauling, etc ...)
+!
+          call set_label( atm_label)
+          do iatoms= 1, na_u
+            radii( iatoms) = pkernel_get_radius( pkernel, atname= atm_label( iatoms))
+          end do
+!
+! Multiply for a constant prefactor (see the Soft-sphere paper JCTC 2017)
+!
+          factor= pkernel%cavity%fact_rigid
+          do iatoms= 1, na_u
+            radii(iatoms)= factor* radii( iatoms)*Ang
+          enddo
+          call pkernel_set_epsilon(pkernel, nat=na_u, rxyz=xa, radii= radii)
+        endif
+!        
+        call dict_free( dict)
+!
+        call timer( 'PSolver', 1)
+        call Electrostatic_Solver( pkernel, Paux_3D, ehartree= eh)
         call timer('PSolver',2)
 !
-! Enery must be devided by the total number of nodes because the way 
+! Energy must be devided by the total number of nodes because the way 
 ! Siesta computes the Hartree energy. Indeed, BigDFT provides the value
 ! alredy distributed. 
 !
