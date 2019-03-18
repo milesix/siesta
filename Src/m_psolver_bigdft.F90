@@ -6,81 +6,76 @@
 ! See Docs/Contributors.txt for a list of contributors.
 !
 
-!> \brief General purpose of the poisson_bigdft module 
-!! 
-!!  Interface module to call BigDFT solver instead of standar Siesta 
-!!  poison. It requires compilation of Siesta with additional
-!!  BigDFT libraries.
-!!  More info at:
-!!  http://bigdft.org/Wiki/index.php?title=BigDFT_website 
-!!
-!!  Created by Pablo Lopez-Tarifa and Daniel Sanchez Portal @CFM(2018)
+!  Interface module to call BigDFT solver instead of standar Siesta 
+!  poison subroutine. It requires compilation of Siesta with additional
+!  libraries.
+!  More info at:
+!  http://bigdft.org/Wiki/index.php?title=BigDFT_website 
+! 
+!  Created by Pablo Lopez-Tarifa and Daniel Sanchez Portal @CFM(2018)
 !
       module m_psolver_bigdft
 
 !
       use precision,      only : dp, grid_p
       use parallel,       only : Node, Nodes, ionode, ProcessorY
-#ifdef MPI
-      use mpi_siesta
-#endif
-!
       implicit none
+!
       public :: poisson_bigdft
 !
       CONTAINS
-!
 !> \brief General purpose of the subroutine poisson_bigdft
 !!
-!! This subroutine handles the full hartree potential calculation 
+!! This subroutine handles the full hartree potential calculation
 !! given by Psolver package of BigDFT. The main points are:
 !!
-!! 1. The system is classified accoring its symmetry (shape). 
-!! 
+!! 1. The system is classified accoring its symmetry (shape).
+!!
 !! 2. The potential is calculated in two scenarios:
 !!
-!!    In the case of a serial run: 
+!!    In the case of a serial run:
 !!
-!!    S.1 onetothreedarray, transforms array Rho from 1D to 3D  
-!!         (compulsory by BigDFT functions). 
-!!    S.2 pkernel_init and pkernel_set, set the coulomb kernel 
-!!         object.  
+!!    S.1 onetothreedarray, transforms array Rho from 1D to 3D
+!!         (compulsory by BigDFT functions).
+!!    S.2 pkernel_init and pkernel_set, set the coulomb kernel
+!!         object.
 !!    S.3 electrostatic_Solver, call the Hartree potential calculation.
-!!    S.4 threetoonedarray, transforms back V from 3D to 1D. 
-!! 
-!!    In the case of a parallel run: 
+!!    S.4 threetoonedarray, transforms back V from 3D to 1D.
 !!
-!!    P.1 call gather_rho, gather the partial Rho arrays carried by 
+!!    In the case of a parallel run:
+!!
+!!    P.1 call gather_rho, gather the partial Rho arrays carried by
 !!        each of the processors into a global Rho array.
 !!    P.2 local_grids, the information about the local grid extensions
 !!        is collected in this array and futher used in point P.4.
-!!    P.3 onetothreedarray, transforms array total Rho from 1D to 3D. 
-!!    P.4 pkernel_init and pkernel_set, set the coulomb kernel 
-!!         object.  
+!!    P.3 onetothreedarray, transforms array total Rho from 1D to 3D.
+!!    P.4 pkernel_init and pkernel_set, set the coulomb kernel
+!!         object.
 !!    P.5 electrostatic_Solver, call the Hartree potential calculation.
-!!    P.6 spread_potential, subroutine that spreads back the total 
-!!        potential just calculated into the processors , using the 
-!!        grid division stored in local_grids. 
-!! 
+!!    P.6 spread_potential, subroutine that spreads back the total
+!!        potential just calculated into the processors , using the
+!!        grid division stored in local_grids.
+!!
 !! 3. Memory deallocation.
-!! 
+!!
 !> \brief Further improvements
-!! We are currently working on: 
+!! We are currently working on:
 !!
-!! 1. Cleaning the overal implementation, this is a draft version. 
+!! 1. Cleaning the overal implementation, this is a draft version.
 !!
-!! 2. Inclusion of other simmetries. This has been already worked-out 
-!!    in serial so hard work is not expected here. 
-!! 
+!! 2. Inclusion of other simmetries. This has been already worked-out
+!!    in serial so hard work is not expected here.
+!!
 !! 3. Design of an additional subroutine (poisson_bigdft_enviroment ?)
 !!    to insert an implicit solvent effect. New arguments as atom kinds
-!!    and possitions must to be passed through. 
+!!    and possitions must to be passed through.
 !!
-!! 4. Hardwired solution in the case of shape=molecule (i.e. gas-phase), 
-!!    to move the molecule to the centre of the box. The same issue 
-!!    has to be solved to 2D periodic systems. 
-!!    
-!!  
+!! 4. Hardwired solution in the case of shape=molecule (i.e. gas-phase),
+!!    to move the molecule to the centre of the box. The same issue
+!!    has to be solved to 2D periodic systems.
+!!
+!!
+! 
 ! #################################################################### !
       subroutine poisson_bigdft(cell, lgrid, grid, ntm, RHO, V,  eh)
 ! #################################################################### !
@@ -90,17 +85,18 @@
 !                                                                      !
 ! #################################################################### !
 !
-      use units,          only: eV
-      use siesta_geom,    only: shape
+      use units,          only : eV
+      use siesta_geom,    only : shape, na_u, na_s, xa
       use alloc,          only : re_alloc, de_alloc
-      use Poisson_Solver, only: coulomb_operator,  electrostatic_solver, &
-                                pkernel_set
+      use Poisson_Solver, only : coulomb_operator,  Electrostatic_Solver, &
+                                 pkernel_set, pkernel_set_epsilon
       use mesh,           only : nsm
-      use PStypes,        only: pkernel_init, pkernel_free
+      use PStypes,        only : pkernel_init, pkernel_free, pkernel_get_radius
       use yaml_output
       use futile
       use f_utils
       use dictionaries, dict_set => set
+      use mpi_siesta
 !
 ! #################################################################### !
 !
@@ -113,7 +109,7 @@
       real(dp), intent(out)     :: eh              ! electrostatic energy 
 !
       real(dp), dimension(1,3)  :: hgrid !uniform mesh spacings in the three directions
-      integer                   :: i, j, k
+      integer                   :: i, j, k, iatoms
       real(dp)                  :: pi
       real(dp)                  :: einit
       type(dictionary), pointer :: dict            ! input parameters
@@ -123,12 +119,17 @@
       real(grid_p), pointer :: Paux_3D( :, :, :)  ! 3D auxyliary array 
       real(grid_p), pointer :: Paux_1D( :)        ! !D auxyliary array 
       real(dp) :: alpha,beta,gamma !possible angles of the box axis
-      real(dp) :: angdeg(3)
+      real(dp) :: angdeg( 3)
+      real(dp) :: delta, factor 
+      real(dp) :: radii(na_u) 
+      character( len= 2) :: atm_label( na_u) 
+      real(dp), parameter   :: Ang= 1._dp/ 0.529177_dp
       integer               :: World_Comm, mpirank, ierr
       integer, allocatable  :: local_grids( :)
-      parameter( pi = 4.D0 * DATAN( 1.D0))
-!
+      parameter( pi= 4.D0* DATAN( 1.D0))
 ! #################################################################### !
+!
+      call timer('BigDFT_solv',1)
 ! 
 ! f_util initialisation:
 ! 
@@ -142,17 +143,39 @@
                 /grid(i))
       enddo
 !
-! 
 ! Initialise futil dictionary  
 !
-!#ifdef
-!      call MPI_Init( error )
-!#endif
       call dict_init(dict)
-      dict=>dict_new()
       call set(dict//'setup'//'global_data',.true.)
-!      call set(dict//'setup'//'taskgroup_size', 2)
-!      call pkernel_lowpez()
+!      call set(dict//'setup'//'verbose',.true.)
+!      call dict_set(dict//'environment'//'cavity','sccs') ! or sccs
+!      call dict_set(dict//'environment'//'cavity','soft-sphere') ! or sccs
+!      call dict_set(dict//'environment'//'gps_algorithm','SC')  ! or SC
+!      call set(dict//'environment'//'radii_set','Bondi')  
+!      call dict_set(dict//'environment'//'delta',delta)          ! only for soft-sphere
+!
+!! Rigid
+!      call set(dict//'environment'//'cavity','rigid')
+!      call set(dict//'environment'//'atomic_radii',12)
+!      call set(dict//'environment'//'delta','0.3')
+!      call set(dict//'environment'//'radii_set','UFF') 
+! Soft-sphere
+      call set(dict//'environment'//'cavity','soft-sphere')
+      call set(dict//'environment'//'delta','1.0')
+      !call set(dict//'environment'//'cavity','sccs')
+      call set(dict//'environment'//'fact_rigid','1.12')
+!
+!      call set(dict//'environment'//'gps_algorithm','PI')  ! or SC
+!      call set(dict//'environment'//'gps_algorithm','SC')  ! or SC
+!      isf_order=16 !  2, 4, 6, 8, 14, 16, 20, 24, 30, 40, 50, 60, 100
+!      fd_order=16
+!      call set(dict//'kernel'//'isf_order',isf_order)
+!      call set(dict//'environment'//'fd_order',fd_order)  
+!      call set(dict//'environment'//'pi_eta','0.6')
+
+
+!      call set(dict//'setup'//'verbose',.false.)
+!      call set(dict//'setup'//'taskgroup_size', 4)
 !
       nullify(Paux_3D)
       nullify(Paux_1D)
@@ -168,10 +191,12 @@
 !!! Collection of RHO: 
 !
 ! RHO is collectedi to a common array.
+        call timer('gather_rho',1)
         call gather_rho( RHO, grid, 2, lgrid(1) * lgrid(2) * lgrid(3), Paux_1D)
 !
         call MPI_BCAST( Paux_1D, grid(1) * grid(2) * grid(3),         &
                         MPI_double_precision, 0, MPI_COMM_WORLD, ierr) 
+        call timer('gather_rho',2)
 !
 !!! Local grids: 
 !
@@ -201,23 +226,46 @@
 !
       if (shape .eq. 'molecule') then  
 !
-!!! BigDFT solver starts now:
-!
+!!! BigDFT solver starts now
         if (ionode) write(6,"(a)")                                     &
             'bigdft_solver: initialising kernel for a molecular system'
 !
         pkernel=pkernel_init( Node, Nodes, dict, 'F', (/grid(1),       &
                               grid(2), grid(3)/), hgrid)
 !
-        call pkernel_set( pkernel)
+        call pkernel_set( pkernel, verbose=.true.)
 !
-        call electrostatic_solver( pkernel, Paux_3D, ehartree = eh)
+! set a radius for each atom in Angstroem (UFF, Bondi, Pauling, etc ...)
+!
+      call set_label( atm_label)
+      do iatoms=1, na_u
+        radii( iatoms)=                                                &
+        pkernel_get_radius( pkernel, atname=atm_label(iatoms))
+      end do
+!      do iatoms=1, na_u
+!        write(6,*) "Pablo old_fashion #atom, atm_label and radii:", &
+!                    iatoms, radii( iatoms)
+!      end do
+!! Multiply for a constant prefactor (see the Soft-sphere paper JCTC 2017)
+        factor=pkernel%cavity%fact_rigid
+        do iatoms=1, na_u
+          radii(iatoms)=factor*radii(iatoms)*Ang
+        enddo
+        call pkernel_set_epsilon(pkernel,nat=na_u,rxyz=xa,radii=radii)
+        
+        call dict_free(dict)
+!
+        call timer('PSolver',1)
+        call Electrostatic_Solver( pkernel, Paux_3D, ehartree = eh)
+        call timer('PSolver',2)
 !
 ! Enery must be devided by the total number of nodes because the way 
 ! Siesta computes the Hartree energy. Indeed, BigDFT provides the value
 ! alredy distributed. 
 !
-        eh = eh / Nodes
+        eh = 2.0_dp * eh / Nodes
+        Paux_3D = 2.0_dp * Paux_3D - ( sum(2.0_dp * Paux_3D) /          &
+                 ( grid( 1) * grid( 2) * grid( 3)))
 !
 #ifdef MPI
 ! 
@@ -227,8 +275,10 @@
 !
 ! Now we spread back the potential on different nodes. 
 !
+        call timer('spread_pot',1)
         call spread_potential( Paux_1D, grid, 2, grid(1) * grid(2) * &
                    grid(3), local_grids, V) 
+        call timer('spread_pot',2)
 # else 
         call threetoonedarray(V, Paux_3D, grid) 
 #endif
@@ -259,11 +309,12 @@
 !
 ! Ending calculation:
 !
-        call dict_free(dict)
         call pkernel_free(pkernel)
-        call f_lib_finalize()
-        call de_alloc( Paux_1D, 'Paux', 'dhscf_init' )
-        call de_alloc( Paux_3D, 'Paux', 'dhscf_init' )
+        call f_lib_finalize_noreport() 
+        call de_alloc( Paux_1D, 'Paux', 'poisson_bigdft' )
+        call de_alloc( Paux_3D, 'Paux', 'poisson_bigdft' )
+ 
+      call timer('BigDFT_solv',2)
 !
       end subroutine poisson_bigdft 
 !
@@ -347,6 +398,7 @@
 ! #################################################################### !
 !
       use alloc,          only : re_alloc, de_alloc
+      use mpi_siesta
 !
       integer, intent(in)          ::     nsm         
       integer, intent(in)          ::     mesh(3)
@@ -355,13 +407,15 @@
       real(grid_p), pointer , intent(out) ::     rho_total(:) 
       integer  i, ip, iu, is, np, BlockSizeY, BlockSizeZ, ProcessorZ
       integer  meshnsm(3), NRemY, NRemZ, iy, iz, izm, Ind, Ind_rho, ir
-#ifdef MPI
       integer    Ind2, MPIerror, Request, Status(MPI_Status_Size), BNode, NBlock
-#endif
       real(grid_p), pointer     :: bdens(:) => null()
       real(grid_p),     pointer :: temp(:) => null()
 ! #################################################################### !
-#ifdef MPI
+!
+#ifdef DEBUG
+        call write_debug( 'ERROR: write_rho not ready yet' )
+        call write_debug( fname )
+#endif
 !
 ! Work out density block dimensions
 !
@@ -472,11 +526,6 @@
 !
       call de_alloc( bdens, 'bdens', 'write_rho' )
       call de_alloc( temp, 'temp', 'write_rho' )
-#else
-!
-      call die('Error gather_rho does not work in serial runs') 
-!
-#endif
 ! #################################################################### !
       end subroutine gather_rho
 ! #################################################################### !
@@ -504,6 +553,7 @@
 !
       use alloc,          only : re_alloc, de_alloc
       use parallelsubs, only: HowManyMeshPerNode
+      use mpi_siesta
 !
 ! #################################################################### !
 !
@@ -518,15 +568,13 @@
                  BlockSizeY, BlockSizeZ, ProcessorZ,   &
                  meshnsm(3), npl, NRemY, NRemZ,        &
                  iy, iz, izm, Ind, Ind_Vaux,  ir
-#ifdef MPI
+
       integer    Ind2, MPIerror, Request, meshl(3),     &
                  Status(MPI_Status_Size), BNode, NBlock
-#endif
       logical    ltmp
       real(grid_p), pointer :: bdens(:) => null()
       logical    baddim, found
 ! #################################################################### !
-#ifdef MPI
 !
 ! Work out density block dimensions
 !
@@ -624,7 +672,7 @@
 !
                 endif
 !
-                if (BNode .ne. 0) then
+                if( BNode .ne. 0) then
                   call MPI_Barrier( MPI_Comm_World, MPIerror)
                 endif
 !
@@ -641,12 +689,254 @@
 !
       call de_alloc( bdens, 'bdens', 'spread_potential' )
 !
-#else
-!
-      call die('Error spread_potential does not work in serial runs') 
-!
-#endif
       end subroutine spread_potential 
+!
+!-----------------------------------------------------------------------
+! 
+      subroutine set_label( atm_label)
+!
+! Assignation of atom labels. 
+!----------------------------------------------------------------------!
+      use siesta_geom,    only : na_u, isa
+      use chemical,       only : atomic_number
+!
+      character( len= 2), intent( out), dimension( na_u) :: atm_label
+      integer :: aux_Zatom( na_u)             ! Auxiliary array containing Z_atom for each atom. 
+      integer :: i
+!**********************************************************************!
+!
+       do i=1, na_u
+         aux_Zatom( i) = atomic_number( isa(i))
+       enddo
+!
+       do i= 1, na_u
+         select case(aux_Zatom( i))
+           case( 1) 
+            atm_label( i)="H "
+           case( 2)
+            atm_label( i)="He"
+           case( 3)
+            atm_label( i)="Li"
+           case( 4)
+            atm_label( i)="Be"
+           case( 5)
+            atm_label( i)="B "
+           case( 6)     
+            atm_label( i)="C "
+           case( 7)     
+            atm_label( i)="N "
+           case( 8)     
+            atm_label( i)="O "
+           case( 9)   
+            atm_label( i)="F "
+           case( 10)   
+            atm_label( i)="Ne"
+           case( 11) 
+            atm_label( i)="Na"
+           case( 12)   
+            atm_label( i)="Mg"
+           case( 13) 
+            atm_label( i)="Al"
+           case( 14)   
+            atm_label( i)="Si"
+           case( 15)    
+            atm_label( i)="P "
+           case( 16)    
+            atm_label( i)="S "
+           case( 17)   
+            atm_label( i)="Cl"
+           case( 18)  
+            atm_label( i)="Ar"
+           case( 19)   
+            atm_label( i)="K "
+           case( 20)  
+            atm_label( i)="Ca"
+           case( 21)
+            atm_label( i)="Sc"
+           case( 22)        
+            atm_label( i)="Ti"
+           case( 23)        
+            atm_label( i)="V "
+           case( 24)        
+            atm_label( i)="Cr"
+           case( 25)        
+            atm_label( i)="Mn"
+           case( 26)        
+            atm_label( i)="Fe"
+           case( 27)       
+            atm_label( i)="Co"
+           case( 28)       
+            atm_label( i)="Ni"
+           case( 29)       
+            atm_label( i)="Cu"
+           case( 30)       
+            atm_label( i)="Zn"
+           case( 31)       
+            atm_label( i)="Ga"
+           case( 32)       
+            atm_label( i)="Ge"
+           case( 33)       
+            atm_label( i)="As"
+           case( 34)       
+            atm_label( i)="Se"
+           case( 35)       
+            atm_label( i)="Br"
+           case( 36)       
+            atm_label( i)="Kr"
+           case( 37)       
+            atm_label( i)="Rb"
+           case( 38)       
+            atm_label( i)="Sr"
+           case( 39)        
+            atm_label( i)="Y "
+           case( 40)        
+            atm_label( i)="Zr"
+           case( 41)        
+            atm_label( i)="Nb"
+           case( 42)        
+            atm_label( i)="Mo"
+           case( 43)        
+            atm_label( i)="Tc"
+           case( 44)        
+            atm_label( i)="Ru"
+           case( 45)        
+            atm_label( i)="Rh"
+           case( 46)        
+            atm_label( i)="Pd"
+           case( 47)        
+            atm_label( i)="Ag"
+           case( 48)        
+            atm_label( i)="Cd"
+           case( 49)        
+            atm_label( i)="In"
+           case( 50)        
+            atm_label( i)="Sn"
+           case( 51)        
+            atm_label( i)="Sb"
+           case( 52)        
+            atm_label( i)="Te"
+           case( 53)        
+            atm_label( i)="I "
+           case( 54)        
+            atm_label( i)="Xe"
+           case( 55)        
+            atm_label( i)="Cs"
+           case( 56)        
+            atm_label( i)="Ba"
+           case( 57)        
+            atm_label( i)="La"
+           case( 58)        
+            atm_label( i)="Ce"
+           case( 59)        
+            atm_label( i)="Pr"
+           case( 60)        
+            atm_label( i)="Nd"
+           case( 61)        
+            atm_label( i)="Pm"
+           case( 62)        
+            atm_label( i)="Sm"
+           case( 63)        
+            atm_label( i)="Eu"
+           case( 64)        
+            atm_label( i)="Gd"
+           case( 65)        
+            atm_label( i)="Tb"
+           case( 66)        
+            atm_label( i)="Dy"
+           case( 67)        
+            atm_label( i)="Ho"
+           case( 68)        
+            atm_label( i)="Er"
+           case( 69)        
+            atm_label( i)="Tm"
+           case( 70)        
+            atm_label( i)="Yb"
+           case( 71)        
+            atm_label( i)="Lu"
+           case( 72)        
+            atm_label( i)="Hf"
+           case( 73)        
+            atm_label( i)="Ta"
+           case( 74)        
+            atm_label( i)="W "
+           case( 75)        
+            atm_label( i)="Re"
+           case( 76)        
+            atm_label( i)="Os"
+           case( 77)        
+            atm_label( i)="Ir"
+           case( 78)        
+            atm_label( i)="Pt"
+           case( 79)        
+            atm_label( i)="Au"
+           case( 80)        
+            atm_label( i)="Hg"
+           case( 81)        
+            atm_label( i)="Tl"
+           case( 82)        
+            atm_label( i)="Pb"
+           case( 83)        
+            atm_label( i)="Bi"
+           case( 84)        
+            atm_label( i)="Po"
+           case( 85)        
+            atm_label( i)="At"
+           case( 86)        
+            atm_label( i)="Rn"
+           case( 87)        
+            atm_label( i)="Fr"
+           case( 88)        
+            atm_label( i)="Ra"
+           case( 89)        
+            atm_label( i)="Ac"
+           case( 90)        
+            atm_label( i)="Th"
+           case( 91)        
+            atm_label( i)="Pa"
+           case( 92)        
+            atm_label( i)="U "
+           case( 93)        
+            atm_label( i)="Np"
+           case( 94)        
+            atm_label( i)="Pu"
+           case( 95)        
+            atm_label( i)="Am"
+           case( 96)        
+            atm_label( i)="Cm"
+           case( 97)        
+            atm_label( i)="Bk"
+           case( 98)        
+            atm_label( i)="Cf"
+           case( 99)        
+            atm_label( i)="Es"
+           case( 100)       
+            atm_label( i)="Fm"
+           case( 101)       
+            atm_label( i)="Md"
+           case( 102)       
+            atm_label( i)="No"
+           case( 103)       
+            atm_label( i)="Lr"
+           case( 104)       
+            atm_label( i)="Rf"
+           case( 105)       
+            atm_label( i)="Db"
+           case( 106)       
+            atm_label( i)="Sg"
+           case( 107)       
+            atm_label( i)="Bh"
+           case( 108) 
+            atm_label( i)="Hs"  
+           case( 109) 
+            atm_label( i)="Mt"  
+           case( 110) 
+            atm_label( i)="Ds"  
+         end select 
+
+       enddo
+!**********************************************************************!
+      end subroutine set_label 
+!**********************************************************************!
 !
 !-----------------------------------------------------------------------
 ! 
