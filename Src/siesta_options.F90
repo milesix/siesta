@@ -244,9 +244,11 @@ MODULE siesta_options
   logical  :: bigdft_verbose
   real(dp) :: bigdft_delta 
   real(dp) :: bigdft_fact_rigid
+  real(dp) :: bigdft_epsilon 
   logical  :: bigdft_cavity
   character(len=20) :: bigdft_cavity_type
   character(len=20) :: bigdft_radii_type
+  character(len=20) :: bigdft_gps_algorithm 
 
   character(len=164) :: sname   ! System name, used to initialise read
 

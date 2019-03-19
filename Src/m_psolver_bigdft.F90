@@ -87,7 +87,8 @@
       use siesta_options, only : bigdft_isf_order, bigdft_fd_order,    &
                                  bigdft_verbose, bigdft_delta,         &
                                  bigdft_fact_rigid, bigdft_cavity_type,&
-                                 bigdft_cavity, bigdft_radii_type
+                                 bigdft_cavity, bigdft_radii_type,     &
+                                 bigdft_gps_algorithm, bigdft_epsilon
       use siesta_geom,    only : shape, na_u, na_s, xa
       use alloc,          only : re_alloc, de_alloc
       use Poisson_Solver, only : coulomb_operator,  Electrostatic_Solver, &
@@ -161,7 +162,9 @@
         call set( dict//'environment'//'delta', bigdft_delta)
         call set( dict//'environment'//'fact_rigid', bigdft_fact_rigid)
         call set( dict//'environment'//'cavity', bigdft_cavity_type) 
-        call set(dict//'environment'//'radii_set', bigdft_radii_type)
+        call set( dict//'environment'//'radii_set', bigdft_radii_type)
+        call set( dict//'environment'//'gps_algorithm', bigdft_gps_algorithm)
+        call set( dict//'environment'//'epsilon', bigdft_epsilon)
 !$      call set(dict//'environment'//'pi_eta','0.6') ??
 !
       if (firsttime) then 
@@ -174,6 +177,8 @@
           write(6,"(a, F10.5)") 'delta:', bigdft_delta 
           write(6,"(a, F10.5)") 'fact_rigid:', bigdft_fact_rigid 
           write(6,"(a)")        'radii_set:', bigdft_radii_type
+          write(6,"(a)")        'gps_algorithm:', bigdft_gps_algorithm
+          write(6,"(a, F10.5)") 'epsilon:', bigdft_epsilon 
         endif
         firsttime=.false.
       endif 

@@ -1742,10 +1742,12 @@ subroutine read_options( na, ns, nspin )
   bigdft_verbose    =   fdf_get('Psolver.verbose', .false.)
   bigdft_cavity     =   fdf_get('Psolver.solvent', .false.) 
   if( bigdft_cavity) then 
-    bigdft_cavity_type= fdf_get('Psolver.cavity.type', 'soft-sphere') 
-    bigdft_radii_type = fdf_get('Psolver.radii.type', 'UFF') 
-    bigdft_delta      = fdf_get('Psolver.delta', 2.0D0)
-    bigdft_fact_rigid = fdf_get('Psolver.fact.rigid', 1.12D0)
+    bigdft_cavity_type  = fdf_get('Psolver.cavity.type', 'soft-sphere') 
+    bigdft_radii_type   = fdf_get('Psolver.radii.type', 'UFF') 
+    bigdft_delta        = fdf_get('Psolver.delta', 2.0_dp)
+    bigdft_fact_rigid   = fdf_get('Psolver.fact.rigid', 1.12_dp)
+    bigdft_gps_algorithm= fdf_get('Psolver.gps.algorithm', 'PCG')
+    bigdft_epsilon      = fdf_get('Psolver.epsilon', 78.36_dp)
   endif
 !!!
   !

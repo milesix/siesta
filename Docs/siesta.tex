@@ -5870,6 +5870,12 @@ Amplitude of the transition region in the rigid cavity (a.u.).
 \begin{fdfentry}{Psolver!fact!rigid}[real]<1.12>
 Multiplying factor for the whole rigid cavity, see Ref.\cite{Fisicaro2017}. 
 \end{fdfentry}
+\begin{fdfentry}{Psolver!gps!algorithm}[string]<PCG>
+ Algorithm for the generalised poisson equation. Options are PCG (Preconditioned Conjugate Gradient) and PI (Polarization Iteration) methods.
+\end{fdfentry}
+\begin{fdfentry}{Psolver!epsilon}[real]<78.36>
+Dielectric constant of the exterior region. Default value is water, 78.36.  
+\end{fdfentry}
 \vspace{5pt}
 \subsection{The real-space grid and the eggbox-effect}
 
