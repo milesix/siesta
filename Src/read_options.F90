@@ -1748,6 +1748,9 @@ subroutine read_options( na, ns, nspin )
     bigdft_fact_rigid   = fdf_get('Psolver.fact.rigid', 1.12_dp)
     bigdft_gps_algorithm= fdf_get('Psolver.gps.algorithm', 'PCG')
     bigdft_epsilon      = fdf_get('Psolver.epsilon', 78.36_dp)
+    bigdft_gammaS       = fdf_get('Psolver.gammaS', 72.0_dp)
+    bigdft_alphaS       = fdf_get('Psolver.alphaS', -22.0_dp)
+    bigdft_betaV        = fdf_get('Psolver.betaV', -0.35_dp)
   endif
 !!!
   !

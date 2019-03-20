@@ -88,7 +88,9 @@
                                  bigdft_verbose, bigdft_delta,         &
                                  bigdft_fact_rigid, bigdft_cavity_type,&
                                  bigdft_cavity, bigdft_radii_type,     &
-                                 bigdft_gps_algorithm, bigdft_epsilon
+                                 bigdft_gps_algorithm, bigdft_epsilon, &
+                                 bigdft_gammaS, bigdft_alphaS,         &
+                                 bigdft_betaV
       use siesta_geom,    only : shape, na_u, na_s, xa
       use alloc,          only : re_alloc, de_alloc
       use Poisson_Solver, only : coulomb_operator,  Electrostatic_Solver, &
@@ -128,7 +130,7 @@
       real(dp)                  :: radii(na_u) 
       character( len= 2) :: atm_label( na_u) 
       real(dp)                  :: delta, factor 
-      real(dp), parameter   :: Ang= 1._dp/ 0.529177_dp
+      real(dp), parameter   :: Ang= 1._dp/ 0.529177_dp   ! Ang to Bohr
       integer, allocatable  :: local_grids( :)
       parameter( pi= 4.D0* DATAN( 1.D0))
       logical, save         :: firsttime = .true. 
@@ -165,6 +167,9 @@
         call set( dict//'environment'//'radii_set', bigdft_radii_type)
         call set( dict//'environment'//'gps_algorithm', bigdft_gps_algorithm)
         call set( dict//'environment'//'epsilon', bigdft_epsilon)
+        call set( dict//'environment'//'gammaS', bigdft_gammaS)
+        call set( dict//'environment'//'alphaS', bigdft_alphaS)
+        call set( dict//'environment'//'betaV', bigdft_betaV) 
 !$      call set(dict//'environment'//'pi_eta','0.6') ??
 !
       if (firsttime) then 
@@ -179,6 +184,9 @@
           write(6,"(a)")        'radii_set:', bigdft_radii_type
           write(6,"(a)")        'gps_algorithm:', bigdft_gps_algorithm
           write(6,"(a, F10.5)") 'epsilon:', bigdft_epsilon 
+          write(6,"(a, F10.5)") 'gammaS:', bigdft_gammaS
+          write(6,"(a, F10.5)") 'alphaS:', bigdft_alphaS
+          write(6,"(a, F10.5)") 'betaV:', bigdft_betaV
         endif
         firsttime=.false.
       endif 
@@ -256,6 +264,7 @@
 ! Multiply for a constant prefactor (see the Soft-sphere paper JCTC 2017)
 !
           factor= pkernel%cavity%fact_rigid
+            write(6,*) "Pablo says factor and Ang", factor, Ang 
           do iatoms= 1, na_u
             radii(iatoms)= factor* radii( iatoms)*Ang
           enddo
