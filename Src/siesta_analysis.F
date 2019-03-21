@@ -500,11 +500,12 @@
       endif
 
 C    
-C     Call the Lowdin orthonormalization here, 
+C     Call Wannier90_in_Siesta here, 
 C
-      if( lowdin_processing ) then
+      if( w90_in_siesta_processing ) then
 !
-!       Set up all the variables required for the Lowdin orthonormalization
+!       Set up all the variables required to run WANNIER90 within SIESTA
+!       (not as a postprocessing tool)
 !       At this step, these variables are only known at the IONode
 !
         call setup_lowdin
@@ -520,7 +521,7 @@ C
           enddo 
         enddo
         if(IONode) call deallocate_wannier
-        lowdin_processing = .false.
+        w90_in_siesta_processing = .false.
       endif
 
 C    

@@ -96,9 +96,10 @@ MODULE siesta_options
                               !   (for non spin-polarized calculations).
 !----------------------------------------------------
 ! Wannier90 within SIESTA interface
-  logical :: lowdin_processing   ! Will we call produce the Lowdin-Mattheis
-                                 !   transformation to obtain orthonormal 
-                                 !   wave functions? 
+  logical :: w90_in_siesta_processing 
+                                 ! Will we call the Wannier90 subroutines
+                                 !   directly from SIESTA?
+                                 !   (not as an external post-processing tool)
   logical :: r_between_manifolds ! Will we compute the position operator
                                  !   matrix elements between bands in
                                  !   different manifolds?

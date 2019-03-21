@@ -1807,11 +1807,11 @@ subroutine read_options( na, ns, nspin )
 #endif
 
   !
-  !   Wannier within SIESTA -related flags
+  !   Wannier90 within SIESTA -related flags
   !
 
   n_wannier_manifolds = fdf_get( 'NumberOfBandManifoldsForWannier', 0 )
-  if( n_wannier_manifolds .ne. 0 ) lowdin_processing = .true.
+  if( n_wannier_manifolds .ne. 0 ) w90_in_siesta_processing = .true.
 
   r_between_manifolds = fdf_get( 'R_between_manifolds', .false. )
 

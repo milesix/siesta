@@ -18,8 +18,13 @@ module m_switch_local_projection
 
   use precision,      only: dp                ! Real double precision type
   use siesta_options, only: w90_processing    ! Will we call the interface with
-                                              !    WANNIER90
-  use siesta_options, only: lowdin_processing ! Will we call the interface with
+                                              !    WANNIER90 as a postprocessing
+                                              !    tool?
+  use siesta_options, only: w90_in_siesta_processing
+                                              ! Will we call the WANNIER90 
+                                              !   subroutines directly from 
+                                              !   SIESTA (not as a 
+                                              !   postprocessing tool)
                                               !   the Lowdin orthonormalization
   use atomlist,       only: no_u              ! Number of orbitals in unit cell
   use siesta_geom,    only: ucell             ! Unit cell lattice vectors
@@ -257,12 +262,12 @@ module m_switch_local_projection
     integer :: iorb           ! Counter for loop on atomic orbitals
     integer :: ivec           ! Counter for loop on vectors
 
-    if( lowdin_processing ) then
+    if( w90_in_siesta_processing ) then
       if(IONode) then
         write(6,'(/a)')                                                     & 
  &        'switch_local_projection: Populating the relevant matrices for '  
         write(6,'(a)')                                                      & 
- &        'switch_local_projection: the Lowdin orthonormalization'
+ &        'switch_local_projection: calling WANNIER90 directly from SIESTA'
         write(6,'(a,i5)')                                                   & 
  &        'switch_local_projection: band manifold = ', index_manifold
         numkpoints = numkpoints_lowdin
