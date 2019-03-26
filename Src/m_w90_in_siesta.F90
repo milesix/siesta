@@ -1,4 +1,4 @@
-! 
+ 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -1190,7 +1190,8 @@ module m_lowdin
                                                !   Ang to Bohrs
     use atm_types,      only : nspecies        ! number of different 
                                                !   chemical species
-    use atmfuncs,       only : labelfis        ! returns atom label
+    use atm_types,      only : species         ! information about the different
+                                               !   chemical species
     use chemical,       only : species_label   ! returns species label
 !
 !   Variables related with the atomic structure coming from WANNIER90
@@ -1429,7 +1430,6 @@ module m_lowdin
     integer :: counter 
     integer :: i, j
     integer :: max_sites        ! Maximum number of atomic species
-    character(len=maxlen), allocatable :: atoms_symbol_tmp(:)
     character(len=50) :: prog   ! Name of the program
     logical :: wout_found, dryrun
     integer :: len_seedname
@@ -1457,11 +1457,12 @@ module m_lowdin
  &       trim(slabel),index_manifold,ispin
     endif
 
-    write_hr = .true. 
-    write_tb = .true. 
+!   Set up whether the Hamiltonian and tight-binding matrix elements will
+!   be written in files
+    write_hr = manifold_bands_lowdin(index_manifold)%write_hr
+    write_tb = manifold_bands_lowdin(index_manifold)%write_tb
 
 !   Set up general variables
-!    num_bands = manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
     num_bands = manifold_bands_lowdin(index_manifold)%number_of_bands
     num_wann  = manifold_bands_lowdin(index_manifold)%numbands_lowdin
     num_proj  = num_wann
@@ -1470,34 +1471,25 @@ module m_lowdin
     num_atoms   = na_u
     num_species = nspecies
 
-!   Define the atomic symbols
-!   As defined in WANNIER90 parameters file,
-!   atoms_symbol is a character string with only two characters
-!   In SIESTA, the species_label might have more characters
-!   In order to do a comparison below between 
-!   atoms_label and labelfis we need here to save temporarily
-!   atoms_symbol_tmp, with more characters
+!   Define the atomic symbols and the atomic_labels
     if ( allocated(atoms_symbol)     ) deallocate(atoms_symbol)
-    if ( allocated(atoms_symbol_tmp) ) deallocate(atoms_symbol_tmp)
+    if ( allocated(atoms_label)      ) deallocate(atoms_label)
     allocate(atoms_symbol(num_species))
-    allocate(atoms_symbol_tmp(num_species))
+    allocate(atoms_label(num_species))
     do nsp = 1, num_species
-      atoms_symbol_tmp(nsp) = trim(species_label(nsp))
-      atoms_symbol(nsp)     = trim(species_label(nsp))
+      atoms_label(nsp)     = trim(species(nsp)%label)
+      atoms_symbol(nsp)    = trim(species(nsp)%symbol)
     end do
 
     if ( allocated(atoms_species_num) ) deallocate(atoms_species_num)
-    if ( allocated(atoms_label) )       deallocate(atoms_label)
     allocate(atoms_species_num(num_species))
-    allocate(atoms_label(num_species))
     atoms_species_num(:)=0
 
     do nsp = 1, num_species
-       atoms_label(nsp)=atoms_symbol_tmp(nsp)
        do nat = 1, num_atoms
-          if( trim(atoms_label(nsp))==trim(labelfis( isa(nat) ))) then
+          if( trim(atoms_label(nsp))==trim(species(isa(nat))%label)) then
 !!         For debugging
-!          write(6,'(2i5,a20,1x,a30,a20)') nsp, nat, atoms_symbol_tmp(nsp), atoms_label(nsp), labelfis( isa(nat) )
+!           write(6,'(2i5,a20)') nsp, nat, atoms_label(nsp)
 !!         End debugging
              atoms_species_num(nsp)=atoms_species_num(nsp)+1
           end if
@@ -1516,7 +1508,7 @@ module m_lowdin
     do nsp = 1, num_species
        counter=0
        do nat = 1, num_atoms
-          if( trim(atoms_label(nsp))==trim( labelfis( isa(nat) ))) then
+          if( trim(atoms_label(nsp))==trim( species(isa(nat))%label)) then
              counter=counter+1
              atoms_pos_cart(:,counter,nsp) = xa_last(:,nat)/Ang
           end if

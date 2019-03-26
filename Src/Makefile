@@ -45,7 +45,7 @@ dep:
 	@sed -i -e "/^siesta_cmlsubs.o:/s/version.o//" Makefile
 	@sed -i -e 's/\.T90\.o:/.o:/g' Makefile
 
-INCFLAGS:= $(NETCDF_INCFLAGS) $(PEXSI_INCFLAGS) $(INCFLAGS)
+INCFLAGS:= $(NETCDF_INCFLAGS) $(PEXSI_INCFLAGS) $(WANNIER90_INCFLAGS) $(INCFLAGS)
 
 
 # For removing any -ipo compilation in sub directories...
@@ -293,13 +293,6 @@ $(FDF): $(MPI_INTERFACE)
 		    "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module )
 
 #--------------------------------------------------------------
-WANNIER90=libwann90.a
-$(WANNIER90): 
-	(cd Wannier90 ; $(MAKE) -j 1 "VPATH=$(VPATH)/Wannier90" \
-		    "FPPFLAGS=$(FPPFLAGS)" \
-		    "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module )
-
-#--------------------------------------------------------------
 MS=MatrixSwitch.a
 $(MS): $(MPI_INTERFACE)
 	(cd MatrixSwitch/src ; \
@@ -377,9 +370,6 @@ ldau_specs.o m_w90_in_siesta.o: $(FDF)
 cranknic_evolk.o: $(FDF)
 cranknic_evolg.o: $(FDF)
 sankey_change_basis.o iotdxv.o: $(FDF)
-
-# Routines using Wannier90 calls.
-m_w90_in_siesta.o: $(WANNIER90)
 
 #
 # Linear algebra routines
@@ -509,10 +499,10 @@ libSiestaForces.a: $(OBJS) $(SYSOBJ)
 
 siesta: what version \
                 $(MPI_INTERFACE) $(FDF) $(WXML) $(XMLPARSER) \
-		$(XC) $(MS) $(WANNIER90) $(COMP_LIBS) $(ALL_OBJS) 
+		$(XC) $(MS) $(COMP_LIBS) $(ALL_OBJS) 
 	$(FC) -o siesta \
 	       $(LDFLAGS) $(ALL_OBJS) $(FDF) $(WXML) $(XMLPARSER) \
-               $(XC) $(MS) $(MPI_INTERFACE) $(WANNIER90) $(COMP_LIBS) $(LIBS) 
+               $(XC) $(MS) $(MPI_INTERFACE) $(COMP_LIBS) $(LIBS) 
 
 # Notify users of erroneous transiesta compilation
 transiesta:

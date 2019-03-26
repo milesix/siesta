@@ -137,6 +137,13 @@ COMP_LIBS =
 #NETCDF_INCFLAGS = -I$(NETCDF_ROOT)/include
 #NETCDF_LIBS = -L$(NETCDF_ROOT)/lib -lnetcdff -lnetcdf
 
+# For Wannier90 support. Make sure you build a modified version of Wannier90
+# as instructed in the Util/Wannier90/README file present in the SIESTA source
+# tree.
+#WANNIER90_ROOT = /software/dft/wannier90-3.0.0
+#WANNIER90_INCFLAGS = -I$(WANNIER90_ROOT)/src/obj
+#WANNIER90_LIBS = -L$(WANNIER90_ROOT) -lwannier
+
 # This (as well as the -DMPI definition) is essential for MPI support
 #MPI_INTERFACE = libmpi_f90.a
 #MPI_INCLUDE = .
@@ -158,7 +165,7 @@ FPPFLAGS = $(DEFS_PREFIX)-DFC_HAVE_ABORT
 # is included in SCALAPACK...). You might need to experiment if you find 
 # duplicate symbols. See examples in this directory.
 #
-LIBS = $(NETCDF_LIBS) $(SCALAPACK_LIBS) $(LAPACK_LIBS) $(MPI_LIBS) $(COMP_LIBS)
+LIBS = $(WANNIER90_LIBS) $(NETCDF_LIBS) $(SCALAPACK_LIBS) $(LAPACK_LIBS) $(MPI_LIBS) $(COMP_LIBS)
 
 # Dependency rules ---------
 
