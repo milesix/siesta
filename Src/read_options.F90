@@ -1751,6 +1751,7 @@ subroutine read_options( na, ns, nspin )
     bigdft_gammaS       = fdf_get('Psolver.gammaS', 72.0_dp)
     bigdft_alphaS       = fdf_get('Psolver.alphaS', -22.0_dp)
     bigdft_betaV        = fdf_get('Psolver.betaV', -0.35_dp)
+    bigdft_atomic_radii = fdf_get('Psolver.atomic.radii', 0)
   endif
 !!!
   !

@@ -248,6 +248,7 @@ MODULE siesta_options
   real(dp) :: bigdft_gammaS      ! Cavitation term, surface tension of the solvent (dyn/cm).
   real(dp) :: bigdft_alphaS      ! Proportionality of repulsion free energy in term of the surface integral (dyn/cm).
   real(dp) :: bigdft_betaV       ! Proportionality of dispersion free energy in term of volume integral (GPa).
+  integer  :: bigdft_atomic_radii ! Mapping of the radii that have to be used for each atomic species. 
   character(len=20) :: bigdft_cavity_type    ! Define type of cavity: none, soft-sphere or sccs.
   character(len=20) :: bigdft_radii_type     ! Define type of vdW radii: Options: UFF, Bondi or Pauling.
   character(len=20) :: bigdft_gps_algorithm  ! Algorithm for the generalised poisson equation: PCG or PI. 

@@ -64,14 +64,10 @@
 !!
 !! 1. Cleaning the overal implementation, this is a draft version.
 !!
-!! 2. Inclusion of other simmetries. Pablo has already worked-out
-!!    small issues in the serial version. He has noticed that for 
-!!    shape=molecule, the gas-phase system has to be placed at the center
-!!    of the box, and that for shape=slab, the size of the simulation box
-!!    has to be larger than the one declared in the input file. 
+!! 2. Parsing the stress tensor to Siesta dhscf.F.
 !!
 !! 3. Design of a fdf block to declare pkernel implicit solvent parameters.
-!!    As for this version options are hardwired. 
+!!    As for this version options handled by 'simple' input fdf keywords.
 !!
 ! 
 ! #################################################################### !
@@ -84,56 +80,51 @@
 ! #################################################################### !
 !
       use units,          only : eV
-      use siesta_options, only : bigdft_isf_order, bigdft_fd_order,    &
-                                 bigdft_verbose, bigdft_delta,         &
-                                 bigdft_fact_rigid, bigdft_cavity_type,&
-                                 bigdft_cavity, bigdft_radii_type,     &
-                                 bigdft_gps_algorithm, bigdft_epsilon, &
-                                 bigdft_gammaS, bigdft_alphaS,         &
-                                 bigdft_betaV
       use siesta_geom,    only : shape, na_u, na_s, xa
       use alloc,          only : re_alloc, de_alloc
       use Poisson_Solver, only : coulomb_operator,  Electrostatic_Solver, &
                                  pkernel_set, pkernel_set_epsilon
+      use siesta_options, only : bigdft_cavity
       use mesh,           only : nsm
       use PStypes,        only : pkernel_init, pkernel_free, pkernel_get_radius
       use yaml_output
-      use futile
+!      use futile
       use f_utils
       use dictionaries, dict_set => set
       use mpi_siesta
 !
 ! #################################################################### !
 !
-      real(dp), intent(in)      :: cell( 3, 3)
-      integer, intent(in)       :: lgrid( 3)       ! local mesh divisions 
-      integer, intent(in)       :: grid( 3)        ! total mesh divisions 
-      real(grid_p), intent(in)  :: RHO( :)         ! input density 
-      integer, intent(in)       :: ntm
-      real(grid_p), intent(out) :: V( :)           ! output potential 
-      real(dp), intent(out)     :: eh              ! electrostatic energy 
+      real( dp), intent( in)      :: cell( 3, 3)        ! Unit-cell vectors.
+      integer, intent( in)        :: lgrid( 3)          ! Local mesh divisions.
+      integer, intent( in)        :: grid( 3)           ! Total mesh divisions.
+      real( grid_p), intent( in)  :: RHO( :)            ! Input density.
+      integer, intent(in)         :: ntm
+      real( grid_p), intent(out)  :: V( :)              ! Output potential.
+      real( dp), intent(out)      :: eh                 ! Electrostatic energy.
 !
-      real(dp), dimension(1,3)  :: hgrid !uniform mesh spacings in the three directions
-      integer                   :: i, j, k, iatoms
-      real(dp)                  :: pi
-      real(dp)                  :: einit
-      type(dictionary), pointer :: dict            ! input parameters
-      integer                   :: isf_order, fd_order
-      type(coulomb_operator)    :: pkernel
+      real( dp), dimension( 1, 3) :: hgrid !uniform mesh spacings in the three directions
+      integer                     :: i, j, k, iatoms
+      real( dp)                   :: pi
+      real( dp)                   :: einit
+      type( dictionary), pointer  :: dict               ! Input parameters.
+      integer                     :: isf_order, fd_order
+      type( coulomb_operator)     :: pkernel
+      logical                     :: pkernel_verbose 
 !
-      real(grid_p), pointer     :: Paux_1D( :)        ! 1D auxyliary array 
-      real(grid_p), pointer     :: Paux_3D( :, :, :)  ! 3D auxyliary array 
-      integer                   :: World_Comm, mpirank, ierr
+      real(grid_p), pointer       :: Paux_1D( :)        ! 1D auxyliary array.
+      real(grid_p), pointer       :: Paux_3D( :, :, :)  ! 3D auxyliary array.
+      integer                     :: World_Comm, mpirank, ierr
 !
-      real(dp)                  :: alpha, beta, gamma ! box axis angles.  
-      real(dp)                  :: angdeg( 3)
-      real(dp)                  :: radii(na_u) 
-      character( len= 2) :: atm_label( na_u) 
-      real(dp)                  :: delta, factor 
-      real(dp), parameter   :: Ang= 1._dp/ 0.529177_dp   ! Ang to Bohr
-      integer, allocatable  :: local_grids( :)
+      real(dp)                    :: alpha, beta, gamma ! Box axis angles.  
+      real(dp)                    :: angdeg( 3)
+      real(dp)                    :: radii( na_u) 
+      character( len= 1)          :: boundary_case 
+      character( len= 2)          :: atm_label( na_u) 
+      real(dp)                    :: delta, factor 
+      real(dp), parameter         :: Ang= 1._dp/ 0.529177_dp   ! Ang to Bohr
+      integer, allocatable        :: local_grids( :)
       parameter( pi= 4.D0* DATAN( 1.D0))
-      logical, save         :: firsttime = .true. 
 ! #################################################################### !
 !
       call timer('BigDFT_solv',1)
@@ -153,43 +144,8 @@
 ! Initialise futil dictionary  
 !
       call dict_init(dict)
-      call set( dict//'setup'//'global_data', .true.) ! Hardwired, it cannot be otherwise.
-! 
-! Set kernel and cavity variables: 
+      call set_bigdft_variables( dict, boundary_case, pkernel_verbose)
 !
-!
-        call set( dict//'kernel'//'isf_order', bigdft_isf_order)
-        call set( dict//'environment'//'fd_order', bigdft_fd_order)  
-        call set( dict//'setup'//'verbose', bigdft_verbose)
-        call set( dict//'environment'//'delta', bigdft_delta)
-        call set( dict//'environment'//'fact_rigid', bigdft_fact_rigid)
-        call set( dict//'environment'//'cavity', bigdft_cavity_type) 
-        call set( dict//'environment'//'radii_set', bigdft_radii_type)
-        call set( dict//'environment'//'gps_algorithm', bigdft_gps_algorithm)
-        call set( dict//'environment'//'epsilon', bigdft_epsilon)
-        call set( dict//'environment'//'gammaS', bigdft_gammaS)
-        call set( dict//'environment'//'alphaS', bigdft_alphaS)
-        call set( dict//'environment'//'betaV', bigdft_betaV) 
-!$      call set(dict//'environment'//'pi_eta','0.6') ??
-!
-      if (firsttime) then 
-        if (ionode) then 
-          write(6,"(a)") 'bigdft_solver: Poisson solver variables'
-          write(6,"(a, L2)")    'verbosity:', bigdft_verbose
-          write(6,"(a)")        'cavity type:', bigdft_cavity_type 
-          write(6,"(a, I3)")    'isf_order:', bigdft_isf_order 
-          write(6,"(a, I3)")    'fd_order:', bigdft_fd_order 
-          write(6,"(a, F10.5)") 'delta:', bigdft_delta 
-          write(6,"(a, F10.5)") 'fact_rigid:', bigdft_fact_rigid 
-          write(6,"(a)")        'radii_set:', bigdft_radii_type
-          write(6,"(a)")        'gps_algorithm:', bigdft_gps_algorithm
-          write(6,"(a, F10.5)") 'epsilon:', bigdft_epsilon 
-          write(6,"(a, F10.5)") 'gammaS:', bigdft_gammaS
-          write(6,"(a, F10.5)") 'alphaS:', bigdft_alphaS
-          write(6,"(a, F10.5)") 'betaV:', bigdft_betaV
-        endif
-        firsttime=.false.
-      endif 
 !
 !
       nullify(Paux_3D)
@@ -245,10 +201,10 @@
         if (ionode) write(6,"(a)")                                     &
             'bigdft_solver: initialising kernel for a molecular system'
 !
-        pkernel=pkernel_init( Node, Nodes, dict, 'F', (/grid( 1),      &
-                              grid( 2), grid( 3)/), hgrid)
+        pkernel=pkernel_init( Node, Nodes, dict, boundary_case,        &
+                              (/grid( 1), grid( 2), grid( 3)/), hgrid)
 !
-        call pkernel_set( pkernel, verbose=bigdft_verbose)
+        call pkernel_set( pkernel, verbose=pkernel_verbose)
 !
 ! Implicit solvent?
 !
@@ -264,7 +220,6 @@
 ! Multiply for a constant prefactor (see the Soft-sphere paper JCTC 2017)
 !
           factor= pkernel%cavity%fact_rigid
-            write(6,*) "Pablo says factor and Ang", factor, Ang 
           do iatoms= 1, na_u
             radii(iatoms)= factor* radii( iatoms)*Ang
           enddo
@@ -303,28 +258,6 @@
 !
       endif
 !
-!     2D PERIODIC SYSTEM 
-!
-      if (shape .eq. 'slab') then  
-       if (ionode) write(6,"(a)")                                   &
-          'bigdft_solver: initialising kernel for a slab system'
-      endif
-!
-!     3D PERIODIC SYSTEM 
-!
-      if (shape .eq. 'bulk') then  
-       if (ionode) write(6,"(a)")                                   &
-          'bigdft_solver: initialising kernel for a periodic system'
-      endif
-!
-!      1D WIRE SYSTEM ===NOT IMPLEMENTED YET=== 
-!
-!       if (shape .eq. 'bulk') then  
-!        if (Node.eq.0) write(6,"(a)") 
-!     $    'bigdft_solver: initialising kernel for a periodic system'
-!        endif
-
-!
 ! Ending calculation:
 !
         call pkernel_free(pkernel)
@@ -336,6 +269,114 @@
 !
       end subroutine poisson_bigdft 
 !
+! #################################################################### !
+      subroutine set_bigdft_variables(dict, boundary_case, pkernel_verbose)
+! #################################################################### !
+      use dictionaries, dict_set => set
+      use futile
+      use siesta_geom,    only : shape
+      use siesta_options, only : bigdft_isf_order, bigdft_fd_order,    &
+                                 bigdft_verbose, bigdft_delta,         &
+                                 bigdft_fact_rigid, bigdft_cavity_type,&
+                                 bigdft_cavity, bigdft_radii_type,     &
+                                 bigdft_gps_algorithm, bigdft_epsilon, &
+                                 bigdft_gammaS, bigdft_alphaS,         &
+                                 bigdft_betaV, bigdft_atomic_radii
+! #################################################################### !
+! Subroutine to set-up BigDFT Poisson solver variables and boundary    !
+! condition.                                                           !
+! #################################################################### !
+      type( dictionary), pointer, intent(out) :: dict         ! Input parameters.
+      character( len= 1), intent(out)         :: boundary_case 
+      logical, intent(out)  :: pkernel_verbose 
+      logical, save         :: firsttime = .true. 
+! #################################################################### !
+!
+! Data distribution will be always global:
+!
+      call set( dict//'setup'//'global_data', .true.) ! Hardwired, it cannot be otherwise.
+!
+! Select the boundary condition:
+!
+      select case(shape)
+       case( 'molecule') 
+        boundary_case= "F"
+       case( 'slab')
+        boundary_case= "S"
+       case( 'bulk')
+        boundary_case= "P"
+!      1D WIRE SYSTEM ===NOT IMPLEMENTED YET=== 
+!       case( 'wire')  
+!        boundary_case= "W"
+      end select 
+! 
+! Set kernel and cavity variables: 
+!
+!
+      call set( dict//'kernel'//'isf_order', bigdft_isf_order)
+      call set( dict//'environment'//'fd_order', bigdft_fd_order)  
+      call set( dict//'setup'//'verbose', bigdft_verbose)
+      pkernel_verbose= bigdft_verbose   ! Verbose from setup is different from pkernel_init
+      call set( dict//'environment'//'delta', bigdft_delta)
+      call set( dict//'environment'//'fact_rigid', bigdft_fact_rigid)
+      call set( dict//'environment'//'cavity', bigdft_cavity_type) 
+      call set( dict//'environment'//'radii_set', bigdft_radii_type)
+      call set( dict//'environment'//'gps_algorithm', bigdft_gps_algorithm)
+      call set( dict//'environment'//'epsilon', bigdft_epsilon)
+      call set( dict//'environment'//'gammaS', bigdft_gammaS)
+      call set( dict//'environment'//'alphaS', bigdft_alphaS)
+      call set( dict//'environment'//'betaV', bigdft_betaV) 
+      call set( dict//'environment'//'atomic_radii', bigdft_atomic_radii)
+!$      call set(dict//'environment'//'pi_eta','0.6') ??
+! 
+! Printing some info and warnings:
+!
+!#ifdef DEBUG
+      if (firsttime) then 
+      if( boundary_case.eq. 'F') then  
+        if (ionode) write(6,'(/,a,/,a,/,a,/,a,/,a)')                    &
+            'bigdft_solver: initialising kernel for a molecular system',&
+            '#================= WARNING bigdft_solver ===============#',&
+            ' Molecular system must be place at the center of the box,',&
+            ' otherwise box edges effects might lead to wrong Hartree' ,&
+            ' energy values.                                          ',&
+            '#=======================================================#'
+      elseif (boundary_case.eq. 'S') then  
+        if (ionode) write(6,'(a,a,a,a,a)')                  &
+            'bigdft_solver: initialising kernel for a slab system',&
+            '#================= WARNING bigdft_solver ===============#',&
+            ' Simulation box for slab system musti be large enough to ',&
+            ' to avoid box edges effects in the Hartree potential.    ',&
+            '#=======================================================#'
+      elseif( boundary_case.eq. 'P') then  
+        if (ionode) write(6,"(a)")                                     &
+          'bigdft_solver: initialising kernel for a periodic system'
+!      1D WIRE SYSTEM ===NOT IMPLEMENTED YET=== 
+!        elseif (boundary_case .eq. 'W') then                          & 
+!          'bigdft_solver: initialising kernel for a 1D-wire system' 
+      endif 
+!
+        if (ionode) then 
+          write(6,"(a)") 'bigdft_solver: Poisson solver variables'
+          write(6,"(a)")        'Solver boundary condition', boundary_case 
+          write(6,"(a, L2)")    'verbosity:', bigdft_verbose
+          write(6,"(a)")        'cavity type:', bigdft_cavity_type 
+          write(6,"(a, I3)")    'isf_order:', bigdft_isf_order 
+          write(6,"(a, I3)")    'fd_order:', bigdft_fd_order 
+          write(6,"(a, F10.5)") 'delta:', bigdft_delta 
+          write(6,"(a, F10.5)") 'fact_rigid:', bigdft_fact_rigid 
+          write(6,"(a)")        'radii_set:', bigdft_radii_type
+          write(6,"(a)")        'gps_algorithm:', bigdft_gps_algorithm
+          write(6,"(a, F10.5)") 'epsilon:', bigdft_epsilon 
+          write(6,"(a, F10.5)") 'gammaS:', bigdft_gammaS
+          write(6,"(a, F10.5)") 'alphaS:', bigdft_alphaS
+          write(6,"(a, F10.5)") 'betaV:', bigdft_betaV
+        endif
+        firsttime=.false.
+      endif 
+!#endif
+! #################################################################### !
+      end subroutine set_bigdft_variables
 ! #################################################################### !
       subroutine onetothreedarray(rho, Paux, grid)
 ! #################################################################### !
