@@ -1406,9 +1406,6 @@ module m_lowdin
     use w90_sitesym,     only: sitesym_read    ! read the variables to impose
                                                !    the site symmetry during
                                                !    minimization of the spread
-    use w90_comms,       only: comms_setup     ! set up the communications
-                                               !    in WANNIER90
-    use w90_comms,       only: comms_end       ! called to finalise the comms 
     use w90_comms,       only: comms_bcast     ! send integar array from 
                                                !    root node to all nodes 
 
@@ -1579,9 +1576,6 @@ module m_lowdin
 !   From this line till the end of the subroutine, it is a copy 
 !   verbatim of the WANNIER90 main program
 
-!   Set up the variable related with the communications in WANNIER90
-!  call comms_setup
-
   time0 = io_time()
 
   if (on_root) then
@@ -1608,7 +1602,7 @@ module m_lowdin
       write (stdout, '(/,1x,a,i3,a/)') &
         'Running in parallel on ', num_nodes, ' CPUs'
     endif
-    call param_write()
+    if( index_manifold .eq. 1 ) call param_write()
 
     time1 = io_time()
     write (6, '(1x,a25,f11.3,a)') 'Time to read parameters  ', time1 - time0, ' (sec)'
@@ -1688,8 +1682,6 @@ module m_lowdin
     write (stdout, '(1x,a)') 'All done: wannier90 exiting'
 
   endif
-
-!  call comms_end
 
 !!   For debugging
 !    write(6,'(a,i5)')                            &
