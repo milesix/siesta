@@ -106,7 +106,7 @@ module m_lowdin
 !!    k-point sampling (block kMeshforWannier), 
 !!    and the neighbours for all the k-points in the BZ,
 !!    required for the wannierization.
-!!    This is done in the subroutine read_kpoints_lowdin
+!!    This is done in the subroutine read_kpoints_wannier
 !!    by all the nodes simultaneously, so no need for broadcasting
 !!    these variables.
 !!
@@ -229,7 +229,7 @@ module m_lowdin
 !   This is done by all the nodes simultaneously, so no need for broadcasting
 !   these variables
 !
-    call read_kpoints_lowdin
+    call read_kpoints_wannier
 
   endsubroutine setup_lowdin
 
@@ -528,7 +528,7 @@ module m_lowdin
 
   endsubroutine read_lowdin_specs
 
-!> \brief General purpose of the subroutine read_kpoints_lowdin
+!> \brief General purpose of the subroutine read_kpoints_wannier
 !! 
 !! In this subroutine, we process the information in the fdf file 
 !! required to generate the k-point sampling that will be used inside 
@@ -549,13 +549,13 @@ module m_lowdin
 !! and check whether the completeness relation is fully satisfied 
 !! [Eq. (B1) of Ref. \cite Marzari-97]  
 !! This is done within the subroutine kmesh_get, borrowed from 
-!! WANNIER90 (version 2.1.0) \cite Wannier90.
+!! WANNIER90 (version 3.0.0) \cite Wannier90.
 !!
 !! Finally, we populate the variables related with the neighbour k-points in 
 !! the Monkhorst-Pack mesh in the module where all the Lowdin parameters are
 !! stored
 
-  subroutine read_kpoints_lowdin
+  subroutine read_kpoints_wannier
 
     use fdf
     use siesta_geom,    only: ucell            ! Unit cell lattice vectors 
@@ -686,6 +686,7 @@ module m_lowdin
                                                !    vectors that connect each
                                                !    mesh k-point to its 
                                                !    nearest neighbours.
+    use w90_comms,      only: on_root          ! Set up the communications
 
 !   Internal variables
     integer :: ik                   
@@ -694,6 +695,7 @@ module m_lowdin
     integer :: nkp
     integer :: nn
 
+
     type(block_fdf)            :: bfdf
     type(parsed_line), pointer :: pline
     
@@ -701,8 +703,13 @@ module m_lowdin
     stdout = 6
     if( Node .eq. 0 ) then
       write_par_wan90 = 0
+!     Set on_root = .true. only if you want to print the information of the
+!     k-point sampling
+!      on_root = .true. 
+      on_root = .false.
     else 
       write_par_wan90 = 1
+      on_root = .false.
     endif
 
 !   Read the data to generate the grid in reciprocal space that will be used
@@ -730,7 +737,7 @@ module m_lowdin
 !   Compute and store the components of the k-points in fractional units
     nullify( kpointsfrac_lowdin )
     call re_alloc( kpointsfrac_lowdin, 1, 3, 1, numkpoints_lowdin,  &
- &                 name='kpointsfrac_lowdin', routine='read_kpoints_lowdin')
+ &                 name='kpointsfrac_lowdin', routine='read_kpoints_wannier')
 
 !   The algorithm to generate the k-points in fractional units 
 !   is borrowed from the utility kmesh.pl of Wannier90
@@ -747,12 +754,12 @@ module m_lowdin
     enddo 
 
 !!   For debugging
-!    write(6,'(a,a,3i5)')'read_kpoints_lowdin: Number of subdivisions ',  &  
+!    write(6,'(a,a,3i5)')'read_kpoints_wannier: Number of subdivisions ',  &  
 ! &    'of the reciprocal vectors for Lowdin = ', kmeshlowdin(:)
-!    write(6,'(a,a,3i5)')'read_kpoints_lowdin: Number of k-points used ', & 
+!    write(6,'(a,a,3i5)')'read_kpoints_wannier: Number of k-points used ', & 
 ! &    'in the Lowdin projection = ', numkpoints_lowdin
 !    do ik = 1, numkpoints_lowdin
-!      write(6,'(a,a,i5,3f12.5)')'read_kpoints_lowdin: k-points in ',     & 
+!      write(6,'(a,a,i5,3f12.5)')'read_kpoints_wannier: k-points in ',     & 
 ! &      'fractional units:', ik, kpointsfrac_lowdin(:,ik)
 !    enddo
 !!   End debugging
@@ -767,7 +774,7 @@ module m_lowdin
     real_lattice  = transpose(ucell) * 0.529177_dp
 !!   For debugging
 !    do ik = 1, 3
-!      write(6,'(a,3f12.5)')'read_kpoints_lowdin: real_lattice = ',   &
+!      write(6,'(a,3f12.5)')'read_kpoints_wannier: real_lattice = ',   &
 ! &      real_lattice(ik,:)
 !    enddo
 !!   End debugging
@@ -783,7 +790,7 @@ module m_lowdin
     recip_lattice = reclatvec_lowdin
 !!   For debugging
 !    do ik = 1, 3
-!      write(6,'(a,3f12.5)')'read_kpoints_lowdin: recip_lattice = ',   &
+!      write(6,'(a,3f12.5)')'read_kpoints_wannier: recip_lattice = ',   &
 ! &      recip_lattice(ik,:)
 !    enddo
 !!   End debugging
@@ -792,13 +799,13 @@ module m_lowdin
 !   that will be transferred to Wannier90
     mp_grid       = kmeshlowdin
 !!   For debugging
-!    write(6,'(a,3i5)')'read_kpoints_lowdin: mp_grid =',  mp_grid
+!    write(6,'(a,3i5)')'read_kpoints_wannier: mp_grid =',  mp_grid
 !!   End debugging
 
 !   Save the total number of k-points that will be transferred to Wannier90
     num_kpts      = numkpoints_lowdin
 !!   For debugging
-!    write(6,'(a,i5)')'read_kpoints_lowdin: num_kpts =', num_kpts 
+!    write(6,'(a,i5)')'read_kpoints_wannier: num_kpts =', num_kpts 
 !!   End debugging
 
 !   Set if only the gamma points will be used
@@ -808,7 +815,7 @@ module m_lowdin
       gamma_only    = .true.
     endif 
 !!   For debugging
-!    write(6,'(a,l5)')'read_kpoints_lowdin: gamma_only =', gamma_only
+!    write(6,'(a,l5)')'read_kpoints_wannier: gamma_only =', gamma_only
 !!   End debugging
 
 !   Allocate the variable where the k-points will be transferred to WANNIER90
@@ -817,19 +824,19 @@ module m_lowdin
     kpt_latt = kpointsfrac_lowdin
 !!   For debugging
 !    do ik = 1, num_kpts
-!      write(6,'(a,i5,3f12.5)')'read_kpoints_lowdin: kpt_latt = ',   &
+!      write(6,'(a,i5,3f12.5)')'read_kpoints_wannier: kpt_latt = ',   &
 ! &      ik, kpt_latt(:,ik)
-!    enddo
+!   enddo
 !!   End debugging
 
 !   Now, we generate the vectors that connect nearest-neighbour shells
 !   in reciprocal space, together with the completeness relation,
 !   Eq. (B1) in N. Marzari et al. Physical Review B 56, 12847 (1997)
 !   For that, we use the subroutine kmesh_get, directly borrowed
-!   from WANNIER90 (at this moment, from version 2.1.0)
+!   from WANNIER90 (at this moment, from version 3.0.0)
 !   But, before using this subroutine, we have to populate some parameters
 !   required in WANNIER90, also using the subroutine param_read
-!   borrowed from the version 2.1.0 of WANNIER90 with small modifications
+!   borrowed from the version 3.0.0 of WANNIER90 with small modifications
 !    
     call param_read
     call kmesh_get
@@ -874,7 +881,7 @@ module m_lowdin
 !      write(6,'(a/)') 'end nnkpts'
 !!     End debugging
 
-  endsubroutine read_kpoints_lowdin
+  endsubroutine read_kpoints_wannier
 
   subroutine set_excluded_bands_lowdin( index_manifold )
     
@@ -1160,192 +1167,260 @@ module m_lowdin
 
   subroutine compute_wannier( ispin, index_manifold )
 
-    use m_switch_local_projection, only: nncount
+!
+!   General WANNIER90 variables 
+!
+    use w90_parameters, only : num_bands       ! number of bands
+    use w90_parameters, only : num_wann        ! number of wannier 
+                                               !   functions
+    use w90_parameters, only : num_proj        ! number of projections
+    use w90_parameters, only : num_iter        ! number of iterations for
+                                               !   the minimization of
+                                               !   \Omega
+!
+!   Variables related with the atomic structure coming from SIESTA
+!
+    use siesta_geom,    only : na_u            ! number of atoms in the
+                                               !   unit cell
+    use siesta_geom,    only : xa_last         ! atomic positions 
+                                               !   in cartesian coordinates
+                                               !   units in Bohrs
+    use siesta_geom,    only : isa             ! species index of each atom
+    use units,          only : Ang             ! conversion factor from 
+                                               !   Ang to Bohrs
+    use atm_types,      only : nspecies        ! number of different 
+                                               !   chemical species
+    use atmfuncs,       only : labelfis        ! returns atom label
+    use chemical,       only : species_label   ! returns species label
+!
+!   Variables related with the atomic structure coming from WANNIER90
+!
+    use w90_parameters, only : lenconfac       ! conversion factor for
+                                               !   unit cell
+    use w90_parameters, only : num_atoms       ! number of atoms in the 
+                                               !   unit cell
+    use w90_parameters, only : num_species     ! number of atomic species
+    use w90_parameters, only : atoms_symbol    ! atomic symbols
+    use w90_parameters, only : atoms_label     ! atomic labels
+    use w90_parameters, only : atoms_species_num    
+                                               ! number of atoms of each
+                                               !   species
+    use w90_parameters, only : atoms_pos_cart  ! atomic positions
+                                               !   in cartesian coordinates
+                                               !   units in Angstroms
+    use w90_parameters, only : lenconfac       ! conversion factor for
+                                               !   length units
+                                               !   lenconfac = 1.0 means
+                                               !      that the lengths
+                                               !      are in Angstroms
+
+!
+!   Variables related with the k-points sampling coming from SIESTA
+!
     use m_switch_local_projection, only: numkpoints
-    use m_switch_local_projection, only: eo
-    use m_spin,                    only: spin
-    use m_energies, only: ef                   ! Fermi energy
-    use units     , only: eV                   ! Conversion factor from Ry to eV
-    use lowdin_types,   only: nnlist_lowdin    ! Same as nnlist
+                                               ! Number of k-points in the
+                                               !    Monkhorst-Pack grid that
+                                               !    will be used in the 
+                                               !    Wannierization
+    use m_switch_local_projection, only: nncount 
+                                               ! The number of nearest
+                                               !   neighbours belonging to
+                                               !   each k-point of the 
+                                               !   Monkhorst-Pack mesh
+!    use m_switch_local_projection, only: nnlist  
+                                               ! Index of the
+                                               !   inn-neighbour of ikp-point
+                                               !   in the Monkhorst-Pack grid
+    use lowdin_types,               only: nnlist_lowdin  
+                                               ! Same as nnlist
                                                !    but in the module where the 
                                                !    variables that controls the
                                                !    Lowdin are stored
-    use siesta_options, only: n_wannier_manifolds
-    use files,         only: slabel        ! Short system label,
-                                         !   used to generate file names
-
 !
-!   General variables
+!   Variables related with the k-points sampling coming from WANNIER90
 !
-    use w90_parameters, only : num_bands            ! number of bands
-    use w90_parameters, only : num_wann             ! number of wannier 
-                                                    !   functions
-    use w90_parameters, only : num_iter             ! number of iterations for
-                                                    !   the minimization of
-                                                    !   \Omega
-!
-!   Variables related with the atomic structure
-!
-    use siesta_geom,    only : na_u                 ! number of atoms in the
-                                                    !   unit cell
-    use siesta_geom,    only : xa_last              ! atomic positions 
-                                                    !   in cartesian coordinates
-                                                    !   units in Bohrs
-    use siesta_geom,    only : isa                  ! species index of each atom
-    use units,          only : Ang                  ! conversion factor from 
-                                                    !   Ang to Bohrs
-    use atm_types,      only : nspecies             ! number of different 
-                                                    !   chemical species
-    use atmfuncs,       only : labelfis             ! Returns atom label
-    use chemical,       only : species_label        ! species label
-    use w90_parameters, only : lenconfac            ! conversion factor for
-                                                    !   unit cell
-    use w90_parameters, only : num_atoms            ! number of atoms in the 
-                                                    !   unit cell
-    use w90_parameters, only : num_species          ! number of atomic species
-    use w90_parameters, only : atoms_symbol         ! atomic symbols
-    use w90_parameters, only : atoms_label          ! atomic symbols
-    use w90_parameters, only : atoms_species_num    ! number of atoms of each
-                                                    !   species
-    use w90_parameters, only : atoms_pos_cart       ! atomic positions
-                                                    !   in cartesian coordinates
-                                                    !   units in Angstroms
-    use w90_parameters, only : lenconfac            ! conversion factor for
-                                                    !   length units
-                                                    !   lenconfac = 1.0 means
-                                                    !      that the lengths
-                                                    !      are in Angstroms
-
-!
-!   Variables related with the k-points sampling
-!
-    use w90_parameters, only : gamma_only           ! Only the Gamma point?
-    use w90_parameters, only : num_kpts             ! number of k-points
-    use w90_parameters, only : nntot                ! total number of neighbours
-                                                    !   for each k-point
-    use w90_parameters, only : nnlist               ! list of neighbours for 
-                                                    !   each k-point
-    use w90_parameters, only : nncell               ! The vector, in 
-                                                    !   fractional reciprocal 
-                                                    !   lattice coordinates,
-                                                    !   that brings the
-                                                    !   nnth nearest neighbour
-                                                    !   of k-point nkp to its
-                                                    !   periodic image that is 
-                                                    !   needed for computing 
-                                                    !   the overlap M(k,b).
-    use w90_parameters, only : kpt_latt             ! kpoints in lattice vecs
-    use w90_parameters, only : bk                   ! the b-vectors that go 
-                                                    !   from each k-point to 
-                                                    !   its neighbours
-    use w90_parameters, only : wb                   ! weights associated with 
-                                                    !   neighbours of each 
-                                                    !   k-point
+    use w90_parameters, only : gamma_only      ! Only the Gamma point?
+    use w90_parameters, only : num_kpts        ! number of k-points
+    use w90_parameters, only : nntot           ! total number of neighbours
+                                               !   for each k-point
+    use w90_parameters, only : nnlist          ! list of neighbours for 
+                                               !   each k-point
+    use w90_parameters, only : nncell          ! The vector, in 
+                                               !   fractional reciprocal 
+                                               !   lattice coordinates,
+                                               !   that brings the
+                                               !   nnth nearest neighbour
+                                               !   of k-point nkp to its
+                                               !   periodic image that is 
+                                               !   needed for computing 
+                                               !   the overlap M(k,b).
+    use w90_parameters, only : kpt_latt        ! kpoints in lattice vectors
+    use w90_parameters, only : bk              ! the b-vectors that go 
+                                               !   from each k-point to 
+                                               !   its neighbours
+    use w90_parameters, only : wb              ! weights associated with 
+                                               !   neighbours of each 
+                                               !   k-point
 !
 !   Variables related with the disentanglement procedure
 !
     use w90_parameters, only : have_disentangled
-    use w90_parameters, only : disentanglement      ! logical value
-                                                    !   .true.:
-                                                    !   disentanglement active
-                                                    !   .false.:
-                                                    !   disentanglement inactive
-    use w90_parameters, only : dis_win_min          ! lower bound of the 
-                                                    !   disentanglement outer 
-                                                    !   window
-    use w90_parameters, only : dis_win_max          ! upper bound of the 
-                                                    !   disentanglement outer 
-                                                    !   window
-    use w90_parameters, only : dis_froz_min         ! lower bound of the 
-                                                    !   disentanglement inner
-                                                    !   (frozen) window
-    use w90_parameters, only : dis_froz_max         ! upper bound of the 
-                                                    !   disentanglement inner
-                                                    !   (frozen) window
-
+    use w90_parameters, only : disentanglement ! logical value
+                                               !   .true.:
+                                               !   disentanglement active
+                                               !   .false.:
+                                               !   disentanglement inactive
+    use w90_parameters, only : dis_win_min     ! lower bound of the 
+                                               !   disentanglement outer 
+                                               !   window
+    use w90_parameters, only : dis_win_max     ! upper bound of the 
+                                               !   disentanglement outer 
+                                               !   window
+    use w90_parameters, only : dis_froz_min    ! lower bound of the 
+                                               !   disentanglement inner
+                                               !   (frozen) window
+    use w90_parameters, only : dis_froz_max    ! upper bound of the 
+                                               !   disentanglement inner
+                                               !   (frozen) window
 !
-!   Variables related with the post-processing
+!   Variables related with the input/output coming from SIESTA   
 !
-    use w90_parameters, only : wannier_plot         ! are we going to plot the
-                                                    !   Wannier functions?
+    use files,          only: slabel           ! Short system label,
+                                               !   used to generate file names
+    use m_spin,         only: spin             ! Spin configuration for SIESTA
+!
+!   Variables related with the input/output coming from WANNIER90
+!
+    use w90_io,         only: stdout           ! unit on which stdout is
+                                               !    written
+    use w90_io,         only : seedname        ! Seed for the name of the  
+                                               !    file where the matrix 
+                                               !    elements of the
+                                               !    position and hamiltonian
+                                               !    operator will be written
+    use w90_io,         only : maxlen          ! max column width of 
+                                               !    input file
+!
+!   Variables related with the post-processing coming from SIESTA
+!
+    use m_switch_local_projection, only: eo    ! Eigenvalues of the Hamiltonian
+                                               !    at the numkpoints
+    use m_energies,     only: ef               ! Fermi energy
+    use units,          only: eV               ! Conversion factor from Ry to eV
+    use siesta_options, only: n_wannier_manifolds
+                                               ! Number of manifolds to be
+                                               !   wannierized
+!
+!   Variables related with the post-processing coming from WANNIER90
+!
+    use w90_parameters, only : wannier_plot    ! are we going to plot the
+                                               !   Wannier functions?
     use w90_parameters, only : wannier_plot_supercell 
-                                                    ! size of the supercell to 
-                                                    !   plot the WF
-    use w90_parameters, only : bands_plot           ! are we going to plot the
-                                                    !   band structure?
-    use w90_parameters, only : fermi_surface_plot   ! are we going to plot the
-                                                    !   Fermi surface
-    use w90_parameters, only : fermi_energy         ! Fermi energy (in eV)
-    use w90_parameters, only : write_hr             ! are we going to dump in
-                                                    !   a file the matrix 
-                                                    !   elements of the 
-                                                    !   Hamiltonian? 
-    use w90_parameters, only : write_tb             ! are we going to dump in
-                                                    !   a file the matrix 
-                                                    !   elements of the 
-                                                    !   Hamiltonian and position
-                                                    !   operator?
-    use w90_parameters,  only : eigval              ! Eigenvalues of the 
-                                                    !   Hamiltonian (in eV)
-    use w90_parameters,  only : lsitesymmetry       ! Symmetry-adapted 
-                                                    !   Wannier functions
-    use w90_parameters,  only : transport           ! Transport calculation? 
-    use w90_parameters,  only : tran_read_ht        ! Read the Hamiltonian for 
-                                                    !   transport calculation?
+                                               ! size of the supercell to 
+                                               !   plot the WF
+    use w90_parameters, only : fermi_surface_plot  
+                                               ! are we going to plot the
+                                               !   Fermi surface
+    use w90_parameters, only : fermi_energy    ! Fermi energy (in eV)
+    use w90_parameters, only : write_hr        ! are we going to dump in
+                                               !   a file the matrix 
+                                               !   elements of the 
+                                               !   Hamiltonian? 
+    use w90_parameters, only : write_tb        ! are we going to dump in
+                                               !   a file the matrix 
+                                               !   elements of the 
+                                               !   Hamiltonian and position
+                                               !   operator?
+    use w90_parameters,  only : eigval         ! Eigenvalues of the 
+                                               !   Hamiltonian (in eV)
+    use w90_parameters,  only : lsitesymmetry  ! Symmetry-adapted 
+                                               !   Wannier functions
+    use w90_parameters,  only : transport      ! Transport calculation? 
+    use w90_parameters,  only : tran_read_ht   ! Read the Hamiltonian for 
+                                               !   transport calculation?
     use w90_parameters,  only : timing_level
-    use w90_hamiltonian, only : ham_have_setup     ! Setup the variables related
-                                                   !    with the hamiltonian?
-    use w90_overlap,     only : overlap_read       ! Allocate and read the Mmn 
-                                                   !    and Amn from files
-    use w90_overlap,     only : overlap_project
-    use w90_io,          only : seedname           ! Seed for the name of the  
-                                                   !    file where the matrix 
-                                                   !    elements of the
-                                                   !    position and hamiltonian
-                                                   !    operator will be written
-    use w90_disentangle, only : dis_main           ! Main disentanglement 
-                                                   !    routine
-    use w90_parameters,  only: param_read          ! Subroutine to read the 
-                                                   !    parameters required by
-                                                   !    WANNIER90 and populate 
-                                                   !    derived values
-    use w90_io,          only: io_time             ! Subroutine to control the
-                                                   !    timing, borrowed from 
-                                                   !    WANNIER90
-    use w90_wannierise,  only: wann_main           ! Subroutine that calculates
-                                                   !    the Unitary Rotations
-                                                   !    to give Maximally 
-                                                   !    Localized Wannier 
-                                                   !    Functions.
-                                                   !    Borrowed from WANNIER90
-    use w90_wannierise,  only: wann_main_gamma     ! Subroutine that calculates
-                                                   !    the Unitary Rotations
-                                                   !    to give Maximally 
-                                                   !    Localized Wannier 
-                                                   !    Functions.
-                                                   !    Gamma version.
-                                                   !    Borrowed from WANNIER90
-                                                   !    version 2.1.0
-    use w90_plot,        only: plot_main           ! Main plotting routine 
-                                                   !    of quantities related
-                                                   !    with WANNIER90
-                                                   !    (bands, Fermi surface)
-                                                   !    Borrowed from WANNIER90
-                                                   !    version 2.1.0
-    use w90_transport,   only: tran_main           ! Main tranport routine in
-                                                   !    WANNIER90.
-                                                   !    Borrowed from WANNIER90
-                                                   !    version 2.1.0
-    use w90_io,          only: io_print_timings    ! Output timing information 
-                                                   !    to stdout
-                                                   !    Borrowed from WANNIER90
-                                                   !    version 2.1.0
+!
+!   Variables related with the parallelization, coming from SIESTA
+!
+    use parallel,        only: Node            ! ID of this node
+    use parallel,        only: Nodes           ! number of nodes
+    use parallel,        only: IOnode          ! input/output node?
+!
+!   Variables related with the parallelization, coming from WANNIER90
+!
+    use w90_comms,       only: on_root         ! are we the root node?
+    use w90_comms,       only: num_nodes       ! number of nodes
+    use w90_comms,       only: my_node_id      ! ID of this node 
+!
+!   Subroutines coming from WANNIER90 (version 3.0.0) that will be called
+!   from SIESTA 
+!
+    use w90_parameters,  only: param_read      ! Subroutine to read the 
+                                               !    parameters required by
+                                               !    WANNIER90 and populate 
+                                               !    derived values
+    use w90_parameters,  only: param_write_header  
+                                               ! write a suitable header for the
+                                               !    calculation 
+                                               !    (version authors etc)
+    use w90_parameters,  only: param_write     ! write wannier90 parameters
+                                               !    to stdout 
+    use w90_parameters,  only: param_dist      ! distribute the parameters 
+                                               !    across processors 
+    use w90_io,          only: io_time         ! subroutine to control the
+                                               !    timing, borrowed from 
+                                               !    WANNIER90
+    use w90_io,          only: io_error        ! abort the code giving an 
+                                               !    error message
+    use w90_io,          only: io_print_timings! output timing information 
+                                               !    to stdout
+    use w90_io,          only: io_date         ! returns two strings containing
+                                               !    the date and the time
+                                               !    in human-readable format. 
+                                               !    Uses a standard f90 call.
+    use w90_overlap,     only: overlap_allocate  
+                                               ! allocate memory to read Mmn
+                                               !    and Amn from files
+    use w90_overlap,     only: overlap_read    ! read the Mmn and Amn 
+                                               !    from files
+                                               !    and Amn from files
+    use w90_wannierise,  only: wann_main       ! subroutine that calculates
+                                               !    the Unitary Rotations
+                                               !    to give Maximally 
+                                               !    Localized Wannier 
+                                               !    Functions.
+    use w90_wannierise,  only: wann_main_gamma ! subroutine that calculates
+                                               !    the Unitary Rotations
+                                               !    to give Maximally 
+                                               !    Localized Wannier 
+                                               !    Functions.
+                                               !    Gamma version.
+    use w90_disentangle, only: dis_main        ! main disentanglement 
+                                               !    routine
+    use w90_plot,        only: plot_main       ! main plotting routine 
+                                               !    of quantities related
+                                               !    with WANNIER90
+                                               !    (bands, Fermi surface)
+    use w90_transport,   only: tran_main       ! main tranport routine in
+                                               !    WANNIER90.
+    use w90_sitesym,     only: sitesym_read    ! read the variables to impose
+                                               !    the site symmetry during
+                                               !    minimization of the spread
+    use w90_comms,       only: comms_setup     ! set up the communications
+                                               !    in WANNIER90
+    use w90_comms,       only: comms_end       ! called to finalise the comms 
+    use w90_comms,       only: comms_bcast     ! send integar array from 
+                                               !    root node to all nodes 
 
+!
+! Input variables
+!
+    integer, intent(in) :: ispin            ! Spin index
+    integer, intent(in) :: index_manifold   ! Index of the manifold 
+                                            !   that is wannierized
 !
 ! Internal variables
 !
-    integer :: ispin
-    integer :: index_manifold
     integer :: nn
     integer :: n
     integer :: nkp              ! Counter for loop on k-points
@@ -1357,6 +1432,11 @@ module m_lowdin
     integer :: counter 
     integer :: i, j
     integer :: max_sites        ! Maximum number of atomic species
+    character(len=maxlen), allocatable :: atoms_symbol_tmp(:)
+    character(len=50) :: prog   ! Name of the program
+    logical :: wout_found, dryrun
+    integer :: len_seedname
+    character(len=9) :: stat, pos, cdate, ctime
 
 ! 
 !   Variables to control the timing 
@@ -1387,16 +1467,26 @@ module m_lowdin
 !    num_bands = manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
     num_bands = manifold_bands_lowdin(index_manifold)%number_of_bands
     num_wann  = manifold_bands_lowdin(index_manifold)%numbands_lowdin
+    num_proj  = num_wann
 
 !   Set up the variables related with the structure
     num_atoms   = na_u
     num_species = nspecies
 
 !   Define the atomic symbols
-    if ( allocated(atoms_symbol) ) deallocate(atoms_symbol)
+!   As defined in WANNIER90 parameters file,
+!   atoms_symbol is a character string with only two characters
+!   In SIESTA, the species_label might have more characters
+!   In order to do a comparison below between 
+!   atoms_label and labelfis we need here to save temporarily
+!   atoms_symbol_tmp, with more characters
+    if ( allocated(atoms_symbol)     ) deallocate(atoms_symbol)
+    if ( allocated(atoms_symbol_tmp) ) deallocate(atoms_symbol_tmp)
     allocate(atoms_symbol(num_species))
+    allocate(atoms_symbol_tmp(num_species))
     do nsp = 1, num_species
-      atoms_symbol(nsp) = trim(species_label(nsp))
+      atoms_symbol_tmp(nsp) = trim(species_label(nsp))
+      atoms_symbol(nsp)     = trim(species_label(nsp))
     end do
 
     if ( allocated(atoms_species_num) ) deallocate(atoms_species_num)
@@ -1406,13 +1496,13 @@ module m_lowdin
     atoms_species_num(:)=0
 
     do nsp = 1, num_species
-       atoms_label(nsp)=atoms_symbol(nsp)
+       atoms_label(nsp)=atoms_symbol_tmp(nsp)
        do nat = 1, num_atoms
           if( trim(atoms_label(nsp))==trim(labelfis( isa(nat) ))) then
-             atoms_species_num(nsp)=atoms_species_num(nsp)+1
 !!         For debugging
-!          write(6,*) nsp, nat, atoms_label(nsp), labelfis( isa(nat) )
+!          write(6,'(2i5,a20,1x,a30,a20)') nsp, nat, atoms_symbol_tmp(nsp), atoms_label(nsp), labelfis( isa(nat) )
 !!         End debugging
+             atoms_species_num(nsp)=atoms_species_num(nsp)+1
           end if
        end do
     end do
@@ -1443,11 +1533,9 @@ module m_lowdin
 !      enddo
 !    enddo 
 !!   End debugging
-
   
 !   Set up number of iterations for the minimization of \Omega
     num_iter  = manifold_bands_lowdin(index_manifold)%num_iter
-
     timing_level      = 1
 
 !   Set up the variables related with the k-point sampling
@@ -1481,52 +1569,127 @@ module m_lowdin
     allocate( eigval(num_bands,num_kpts) )
     eigval = eo
 
+!
+!   Populate variables related with the parallelization
+!
+    num_nodes  = Nodes
+    my_node_id = Node
+    on_root    = IOnode
+
 !   From this line till the end of the subroutine, it is a copy 
 !   verbatim of the WANNIER90 main program
+
+!   Set up the variable related with the communications in WANNIER90
+!  call comms_setup
+
+  time0 = io_time()
+
+  if (on_root) then
+    prog = 'wannier90'
+    len_seedname = len(seedname)
+  end if
+  call comms_bcast(len_seedname, 1)
+  call comms_bcast(seedname, len_seedname)
+  call comms_bcast(dryrun, 1)
+
+  if (on_root) then
+    call io_date(cdate, ctime)
+    write (stdout, *) 'Wannier90: Execution started on ', cdate, ' at ', ctime
+
     call param_read
-    call overlap_read
-
-    have_disentangled = .false.
-
-    if (disentanglement) then
-      call dis_main()
-      have_disentangled=.true.
-    endif
-
-    call param_write_chkpt('postdis')
-
-!~  call param_write_um
-
-1001 time2=io_time()
-
-    if (.not. gamma_only) then
-       call wann_main()
+    if( index_manifold .eq. 1 ) call param_write_header()
+    if (num_nodes == 1) then
+#ifdef MPI
+      write (stdout, '(/,1x,a)') 'Running in serial (with parallel executable)'
+#else
+      write (stdout, '(/,1x,a)') 'Running in serial (with serial executable)'
+#endif
     else
-       call wann_main_gamma()
-    end if
+      write (stdout, '(/,1x,a,i3,a/)') &
+        'Running in parallel on ', num_nodes, ' CPUs'
+    endif
+    call param_write()
 
-    time1=io_time()
-    write(6,'(1x,a25,f11.3,a)')   &
- &    'Time for wannierise      ',time1-time2,' (sec)'
+    time1 = io_time()
+    write (6, '(1x,a25,f11.3,a)') 'Time to read parameters  ', time1 - time0, ' (sec)'
+  endif
 
-    call param_write_chkpt('postwann')
+  ! We now distribute the parameters to the other nodes
+  call param_dist
+  if (gamma_only .and. num_nodes > 1) &
+    call io_error('Gamma point branch is serial only at the moment')
 
-2002 time2=io_time()
+  if (transport .and. tran_read_ht) goto 3003
 
-    if (wannier_plot .or. bands_plot .or. fermi_surface_plot .or. write_hr) then
-      call plot_main()
-      time1=io_time()
-      write(6,'(1x,a25,f11.3,a)')  &
- &      'Time for plotting        ',time1-time2,' (sec)'
-    end if
+!  if (on_root) call kmesh_write()
 
+  if (lsitesymmetry) call sitesym_read()   ! update this to read on root and bcast - JRY
+  call overlap_allocate()
+  call overlap_read()
+
+  time1 = io_time()
+  if (on_root) write (stdout, '(/1x,a25,f11.3,a)') 'Time to read overlaps    ', time1 - time2, ' (sec)'
+
+  have_disentangled = .false.
+
+  if (disentanglement) then
+    call dis_main()
+    have_disentangled = .true.
+    time2 = io_time()
+    if (on_root) write (stdout, '(1x,a25,f11.3,a)') 'Time to disentangle bands', time2 - time1, ' (sec)'
+  endif
+
+  if (on_root) call param_write_chkpt('postdis')
+
+1001 time2 = io_time()
+
+  if (.not. gamma_only) then
+    call wann_main()
+  else
+    call wann_main_gamma()
+  end if
+
+  time1 = io_time()
+  if (on_root) write (stdout, '(1x,a25,f11.3,a)') 'Time for wannierise      ', time1 - time2, ' (sec)'
+
+  if (on_root) call param_write_chkpt('postwann')
+
+2002 continue
+  if (on_root) then
+    ! I call the routine always; the if statements to decide if/what
+    ! to plot are inside the function
+    time2 = io_time()
+    call plot_main()
+    time1 = io_time()
+    ! Now time is always printed, even if no plotting is done/required, but
+    ! it shouldn't be a problem.
+    write (stdout, '(1x,a25,f11.3,a)') 'Time for plotting        ', time1 - time2, ' (sec)'
+  endif
+
+3003 continue
+  if (on_root) then
+    time2 = io_time()
     if (transport) then
-       call tran_main()
-       time1=io_time()
-       write(6,'(1x,a25,f11.3,a)') 'Time for transport       ',time1-time2,' (sec)'
-       if (tran_read_ht) goto 4004
+      call tran_main()
+      time1 = io_time()
+      write (stdout, '(1x,a25,f11.3,a)') 'Time for transport       ', time1 - time2, ' (sec)'
+      if (tran_read_ht) goto 4004
     end if
+  endif
 
+4004 continue
+
+  if (on_root) then
+    write (stdout, '(1x,a25,f11.3,a)') 'Total Execution Time     ', io_time(), ' (sec)'
+
+    if (timing_level > 0) call io_print_timings()
+
+    write (stdout, *)
+    write (stdout, '(1x,a)') 'All done: wannier90 exiting'
+
+  endif
+
+!  call comms_end
 
 !!   For debugging
 !    write(6,'(a,i5)')                            &
@@ -1592,20 +1755,6 @@ module m_lowdin
 !      end do
 !    end do
 !!   End debugging
-
-4004 continue
-
-!   Force to setup again the Hamiltonian variables if multiple calls are done
-    ham_have_setup = .false.
-
-    write(6,'(1x,a25,f11.3,a)') 'Total Execution Time     ',io_time(),' (sec)'
-
-    if (timing_level>0) call io_print_timings()
-
-
-    write(6,*)
-    write(6,'(1x,a)') 'All done: wannier90 exiting'
-
 
     return
   end subroutine compute_wannier

@@ -93,7 +93,7 @@ module m_switch_local_projection
                                          !   First  index: orbital
                                          !   Second index: band
                                          !   Third  index: k-point
-  real(dp),    pointer :: eo(:,:) => null()        ! Eigenvalues of the Hamiltonian
+  real(dp),    pointer :: eo(:,:) => null()  ! Eigenvalues of the Hamiltonian
                                          !   at the numkpoints introduced in
                                          !   kpointsfrac
                                          !   First  index: band index

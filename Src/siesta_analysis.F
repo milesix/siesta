@@ -517,7 +517,8 @@ C
           do ispin = 1, nspin
             call diagonalizeHk( ispin, index_manifold )
             call compute_matrices( ispin, index_manifold )
-            if(IONode) call compute_wannier(ispin, index_manifold)
+!            if(IONode) call compute_wannier(ispin, index_manifold)
+            call compute_wannier(ispin, index_manifold)
           enddo 
         enddo
         if(IONode) call deallocate_wannier
