@@ -1,5 +1,5 @@
 ! ---
-! Copyright (C) 1996-2016	The SIESTA group
+! Copyright (C) 1996-2016       The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt .
@@ -228,8 +228,6 @@ contains
     use files, only: slabel
     use units, only: eV
 
-    use m_tbt_hs, only: spin_idx
-
     use m_ts_chem_pot, only : copy, chem_pot_add_Elec
 
     use m_ts_electype, only : fdf_nElec, fdf_Elec
@@ -288,16 +286,15 @@ contains
     Elecs(:)%Bulk = fdf_get('TS.Elecs.Bulk',.true.) ! default everything to bulk electrodes
     Elecs(:)%Bulk = fdf_get('TBT.Elecs.Bulk',Elecs(1)%Bulk)
 
-    rtmp = 1.e-4_dp * eV
-    rtmp = fdf_get('TS.Elecs.Eta',rtmp,'Ry')
+    rtmp = fdf_get('TS.Elecs.Eta',0.001_dp*eV,'Ry')
     rtmp = fdf_get('TBT.Elecs.Eta',rtmp,'Ry')
 #ifdef TBT_PHONON
     ! eta value needs to be squared as it is phonon spectrum
-    rtmp = rtmp ** 2
+    if ( rtmp > 0._dp ) rtmp = rtmp ** 2
 #endif
     Elecs(:)%Eta = rtmp
-    rtmp = 1.e-14_dp * eV
-    rtmp = fdf_get('TS.Elecs.Accuracy',rtmp,'Ry')
+    
+    rtmp = fdf_get('TS.Elecs.Accuracy',1.e-13_dp*eV,'Ry')
     rtmp = fdf_get('TBT.Elecs.Accuracy',rtmp,'Ry')
     Elecs(:)%accu = rtmp
 
@@ -369,13 +366,6 @@ contains
        end if
        ! set the placement in orbitals
        Elecs(i)%idx_o = lasto(Elecs(i)%idx_a-1)+1
-
-       if ( (rtmp > 0._dp .and. Elecs(i)%Eta < 0._dp) .or. &
-            (rtmp < 0._dp .and. Elecs(i)%Eta > 0._dp) ) then
-          call die('All Eta must be either positive or negative &
-               &to ensure that the retarded or advanced self-energy &
-               &is exclusively calculated.')
-       end if
 
        ! Initialize electrode parameters
        call init_Elec_sim(Elecs(i),cell,na_u,xa)
@@ -918,6 +908,14 @@ contains
        write(*,'(a)')' ** Disabling transport calculation using diagonal, &
             &not possible with N_elec > 3.'
     end if
+
+    do i = 1, N_Elec
+      if ( Elecs(i)%repeat .and. Elecs(i)%bloch%size() > 1 ) then
+        write(*,'(a)') 'Electrode '//trim(Elecs(i)%name)//' is &
+            &using Bloch unfolding using the repeat scheme! &
+            &Please use the tiling scheme (it is orders of magnitudes faster!).'
+      end if
+    end do
 
 #ifdef MPI
 #ifdef NCDF_PARALLEL

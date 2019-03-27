@@ -1,5 +1,5 @@
 ! ---
-! Copyright (C) 1996-2016	The SIESTA group
+! Copyright (C) 1996-2016       The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt .
@@ -328,6 +328,12 @@ contains
          i = Elecs(iEl)%pvt(1)
          call Sp_remove_crossterms(dit,sp,nsc,isc_off, i, sp, r = r_tmp2)
          i = Elecs(iEl)%pvt(2)
+       case ( 7 ) ! A-B-C
+         i = Elecs(iEl)%pvt(1)
+         call Sp_remove_crossterms(dit,sp,nsc,isc_off, i, sp, r = r_tmp2)
+         i = Elecs(iEl)%pvt(2)
+         call Sp_remove_crossterms(dit,sp,nsc,isc_off, i, sp, r = r_tmp2)
+         i = Elecs(iEl)%pvt(3)
        case default
          i = Elecs(iEl)%pvt(Elecs(iEl)%t_dir)
        end select

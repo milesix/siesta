@@ -112,6 +112,10 @@ contains
     integer :: N_F, i_F, ioerr
     real(dp), pointer :: Q_Ef(:,:) => null()
 
+    if ( nspin > 2 ) then
+      call die('transiesta does not work for non-collinear or spin-orbit')
+    end if
+
     ! Open GF files...
     ! Read-in header of Green functions
     ! Prepare for the calculation
@@ -181,7 +185,7 @@ contains
     do iEl = 1 , N_Elec
 
        ! Calculate number of Bloch expansion k-points
-       nq(iEl) = product(Elecs(iEl)%Bloch)
+       nq(iEl) = Elecs(iEl)%Bloch%size()
 
        ! Allocate the electrode quantities
        nullify(Elecs(iEl)%HA,Elecs(iEl)%SA,Elecs(iEl)%Gamma)

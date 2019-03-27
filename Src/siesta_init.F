@@ -32,9 +32,6 @@
      &                              initatomlists, no_l, rmaxldau
       use fdf
       use sys,                only: die, bye
-#ifdef BSC_CELLXC
-      use bsc_xcmod,          only: setXC
-#endif /* BSC_CELLXC */
       use molecularmechanics, only: inittwobody
       use metaforce,          only: initmeta
       use m_mpi_utils,        only: broadcast
@@ -170,7 +167,9 @@ C     Initialise MPI and set processor number
       call reset_messages_file()
 #endif
       if (Node==0) then
-         call system("/bin/rm -f 0_NORMAL_EXIT")
+         ! Make sure we delete this sentinel file
+         open(unit=1,file="0_NORMAL_EXIT",status="unknown")
+         close(unit=1,status="delete")
       endif
 
       ! Initialize the output file
@@ -359,6 +358,10 @@ C     Initialise MPI and set processor number
          use_parallel_timer = fdf_get('UseParallelTimer', .true.)
          use_tree_timer = fdf_get('UseTreeTimer', .false.)
       end if
+      ! Enable tree-timer for this case
+      if (fdf_get("timing-split-scf-steps",.false.)) then
+         use_tree_timer = fdf_get('UseTreeTimer', .true.)
+      endif
 
 !     Start time counter
 !     Note new placement of this first use, so that
@@ -384,11 +387,7 @@ C     Initialise MPI and set processor number
 
 
 !     Initialise exchange-correlation functional information
-#ifndef BSC_CELLXC
       call read_xc_info()
-#else /* BSC_CELLXC */
-      call setXC( )
-#endif /* BSC_CELLXC */
 
 !     Initialise force field component
       call inittwobody( )

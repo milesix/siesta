@@ -1,5 +1,5 @@
 ! ---
-! Copyright (C) 1996-2016	The SIESTA group
+! Copyright (C) 1996-2016       The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt .
@@ -16,7 +16,7 @@
 ! values in a sorted array.
 ! I.e. we will quite often search the same array for numerous data values
 ! either in consecutive order or not.
-module sorted_search_t
+module sorted_search_m
 
   use intrinsic_missing, only: SFIND
   implicit none
@@ -31,7 +31,7 @@ module sorted_search_t
 
     !< Index where we are to start from
     integer :: prev = 1
-    !< Index where we are to start from
+    !< Size of array `list`
     integer :: n = 0
 
   end type ssearch_t
@@ -74,5 +74,5 @@ contains
 
   end function ssearch_find
 
-end module sorted_search_t
+end module sorted_search_m
     

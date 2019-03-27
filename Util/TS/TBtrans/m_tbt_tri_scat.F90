@@ -1,5 +1,5 @@
 ! ---
-! Copyright (C) 1996-2016	The SIESTA group
+! Copyright (C) 1996-2016       The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt .
@@ -51,10 +51,10 @@ module m_tbt_tri_scat
 #endif
 
   ! Used for BLAS calls (local variables)
-  complex(dp), parameter :: z0  = dcmplx( 0._dp, 0._dp)
-  complex(dp), parameter :: z1  = dcmplx( 1._dp, 0._dp)
-  complex(dp), parameter :: zm1 = dcmplx(-1._dp, 0._dp)
-  complex(dp), parameter :: zi  = dcmplx( 0._dp, 1._dp)
+  complex(dp), parameter :: z0  = cmplx( 0._dp, 0._dp, dp)
+  complex(dp), parameter :: z1  = cmplx( 1._dp, 0._dp, dp)
+  complex(dp), parameter :: zm1 = cmplx(-1._dp, 0._dp, dp)
+  complex(dp), parameter :: zi  = cmplx( 0._dp, 1._dp, dp)
 
 contains
 
@@ -141,7 +141,7 @@ contains
         bc = pvt%r(l_col(ind))
         if ( bc > 0 ) then
           call calc_GfGfd(br, bc, GfGfd)
-          lDOS = lDOS + dimag( GfGfd * S(ind) )
+          lDOS = lDOS + aimag( GfGfd * S(ind) )
         end if
       end do
        
@@ -245,7 +245,7 @@ contains
         bc = pvt%r(l_col(ind))
         if ( bc > 0 ) then
           idx = index(A_tri, br, bc)
-          lDOS = lDOS + dreal( A(idx) * S(ind) )
+          lDOS = lDOS + real( A(idx) * S(ind), dp )
         end if
       end do
       
@@ -273,7 +273,7 @@ contains
     use class_Sparsity
     use class_dSpData1D
     use geom_helper,       only : UCORB
-    use sorted_search_t, only: ssearch_t, ssearch_init, ssearch_find
+    use sorted_search_m, only: ssearch_t, ssearch_init, ssearch_find
 
     type(tRgn), intent(in) :: r
     type(zTriMat), intent(inout) :: Gfd_tri, Gfo_tri
@@ -290,7 +290,7 @@ contains
     complex(dp), pointer :: Gfd(:), Gfo(:)
     complex(dp) :: GfGfd
     integer, pointer :: ncol(:), l_ptr(:), l_col(:)
-    integer, pointer :: cncol(:), cptr(:), ccol(:), c_col(:)
+    integer, pointer :: cncol(:), cptr(:), ccol(:)
     integer :: no_u, br, io, ind, iind, bc
     type(ssearch_t) :: ss
 
@@ -322,10 +322,10 @@ contains
     ! create S(-k) (which is S^T)
     ! and thus get the correct values.
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = cdexp(dcmplx(0._dp, - &
+      ph(io-1) = exp(cmplx(0._dp, - &
           k(1) * sc_off(1,io) - &
           k(2) * sc_off(2,io) - &
-          k(3) * sc_off(3,io))) / (2._dp * Pi)
+          k(3) * sc_off(3,io), kind=dp)) / (2._dp * Pi)
     end do
 
     call attach(sp,nrows_g=no_u, n_col=ncol,list_ptr=l_ptr,list_col=l_col)
@@ -447,10 +447,10 @@ contains
     ! Create the phases
     ! We are using the explicit H(j, i) and thus the phases are consistent with +
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = cdexp(dcmplx(0._dp, + &
+      ph(io-1) = exp(cmplx(0._dp, + &
           k(1) * sc_off(1,io) + &
           k(2) * sc_off(2,io) + &
-          k(3) * sc_off(3,io))) / (2._dp * Pi)
+          k(3) * sc_off(3,io), kind=dp)) / (2._dp * Pi)
     end do
 
     Gfd => val(Gfd_tri)
@@ -556,7 +556,7 @@ contains
     use class_Sparsity
     use class_dSpData1D
     use geom_helper,       only : UCORB
-    use sorted_search_t, only: ssearch_t, ssearch_init, ssearch_find
+    use sorted_search_m, only: ssearch_t, ssearch_init, ssearch_find
 
     type(tRgn), intent(in) :: r
     type(zTriMat), intent(inout) :: A_tri
@@ -602,10 +602,10 @@ contains
     ! create the S(-k) (which is S^T)
     ! and thus get the correct values.
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = cdexp(dcmplx(0._dp, - &
+      ph(io-1) = exp(cmplx(0._dp, - &
           k(1) * sc_off(1,io) - &
           k(2) * sc_off(2,io) - &
-          k(3) * sc_off(3,io))) / (2._dp * Pi)
+          k(3) * sc_off(3,io), kind=dp)) / (2._dp * Pi)
     end do
 
     call attach(sp,nrows_g=no_u, n_col=ncol,list_ptr=l_ptr,list_col=l_col)
@@ -702,10 +702,10 @@ contains
     ! Create the phases
     ! We are using the explicit H(j, i) and thus the phases are consistent with +
     do i = 1 , size(sc_off, dim=2)
-      ph(i-1) = cdexp(dcmplx(0._dp, + &
+      ph(i-1) = exp(cmplx(0._dp, + &
           k(1) * sc_off(1,i) + &
           k(2) * sc_off(2,i) + &
-          k(3) * sc_off(3,i))) / (2._dp * Pi)
+          k(3) * sc_off(3,i), kind=dp)) / (2._dp * Pi)
     end do
 
     A => val(A_tri)
@@ -939,7 +939,7 @@ contains
               ind = SFIND(lcol,r%r(off1+i))
               if ( ind == 0 ) cycle
               ind = l_ptr(jo) + ind
-              DOS(iD) = DOS(iD) - dimag( Gf(ii+i) * S(ind) )
+              DOS(iD) = DOS(iD) - aimag( Gf(ii+i) * S(ind) )
             end do
           end do
 !$OMP end parallel do
@@ -1200,7 +1200,7 @@ contains
     end do
     
     ! Calculate transmission
-    T = dreal(trace(no,work))
+    T = real(trace(no,work),dp)
     
     ! Now we have the square matrix product
     !   tt = G \Gamma_1 G^\dagger \Gamma_El
@@ -1247,7 +1247,7 @@ contains
     do i = 2 , n
       eig(i) = eig(i) - 1.e-3_dp
       do j = 1 , i - 1
-        if ( dreal(eig(j)) < dreal(eig(i)) ) then
+        if ( real(eig(j),dp) < real(eig(i),dp) ) then
           z = eig(j)
           eig(j) = eig(i)
           eig(i) = z
@@ -1574,7 +1574,7 @@ contains
     use class_zSpData1D
     use class_dSpData1D
     use geom_helper,       only : UCORB
-    use sorted_search_t, only: ssearch_t, ssearch_init, ssearch_find
+    use sorted_search_m, only: ssearch_t, ssearch_init, ssearch_find
 
     use m_ts_cctype, only: ts_c_idx
 
@@ -1621,10 +1621,10 @@ contains
     ! So since we are taking the complex part on the first entry we retrieve the H(j,i) (in k-space)
     ! component.
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = cdexp(dcmplx(0._dp, + &
+      ph(io-1) = exp(cmplx(0._dp, + &
           k(1) * sc_off(1,io) + &
           k(2) * sc_off(2,io) + &
-          k(3) * sc_off(3,io)))
+          k(3) * sc_off(3,io), kind=dp))
     end do
 
     A => val(A_tri)
@@ -1673,7 +1673,7 @@ contains
         ! We skip the pre-factors as the units are "never" used
 
         ! Jij                Hji    * Aij    Hij * Aji
-        J(iind) = aimag( dconjg(Hi) * A(jo) - Hi * A(ju) )
+        J(iind) = aimag( conjg(Hi) * A(jo) - Hi * A(ju) )
 
       end do
     end do
@@ -1732,10 +1732,10 @@ contains
     ! Create the phases
     ! We are using the explicit H(j, i) and thus the phases are consistent with +
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = cdexp(dcmplx(0._dp, + &
+      ph(io-1) = exp(cmplx(0._dp, + &
           k(1) * sc_off(1,io) + &
           k(2) * sc_off(2,io) + &
-          k(3) * sc_off(3,io)))
+          k(3) * sc_off(3,io), kind=dp))
     end do
 
     A => val(A_tri)
@@ -1875,10 +1875,10 @@ contains
     ! Since we have to do Gf.exp(ikR) we simply
     ! create exp(-ikR) for the supercell connections.
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = cdexp(dcmplx(0._dp, - &
+      ph(io-1) = exp(cmplx(0._dp, - &
           k(1) * sc_off(1,io) - &
           k(2) * sc_off(2,io) - &
-          k(3) * sc_off(3,io))) / (2._dp * Pi)
+          k(3) * sc_off(3,io), kind=dp)) / (2._dp * Pi)
     end do
 
     Gfd => val(Gfd_tri)
@@ -1976,10 +1976,10 @@ contains
     ! Since we have to do Gf.exp(ikR) we simply
     ! create exp(-ikR) for the supercell connections.
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = cdexp(dcmplx(0._dp, - &
+      ph(io-1) = exp(cmplx(0._dp, - &
           k(1) * sc_off(1,io) - &
           k(2) * sc_off(2,io) - &
-          k(3) * sc_off(3,io))) / (2._dp * Pi)
+          k(3) * sc_off(3,io), kind=dp)) / (2._dp * Pi)
     end do
 
     A => val(A_tri)
@@ -2032,13 +2032,13 @@ contains
     integer, intent(in) :: off1, off2
 
     ! local variables
-    integer :: j, je, i, ie, no
+    integer :: j, je, i, ie, no, idx
 
 #ifdef TBTRANS_TIMING
     call timer('insert-SE',1)
 #endif
 
-    El%idx_o = El%idx_o - 1
+    idx = El%idx_o - 1
     no = TotUsedOrbs(El)
 
     ! We are dealing with the intrinsic electrode
@@ -2050,11 +2050,11 @@ contains
     if ( El%Bulk ) then
 !$OMP parallel do default(shared), private(j,je,i,ie)
       do j = 1 , n2
-        je = r%r(off2+j) - El%idx_o
+        je = r%r(off2+j) - idx
         if ( 1 <= je .and. je <= no ) then
           je = (je - 1) * no
           do i = 1 , n1
-            ie = r%r(off1+i) - El%idx_o
+            ie = r%r(off1+i) - idx
             if ( ie < 1 ) cycle
             if ( no < ie ) cycle
              
@@ -2067,11 +2067,11 @@ contains
     else
 !$OMP parallel do default(shared), private(j,je,i,ie)
       do j = 1 , n2
-        je = r%r(off2+j) - El%idx_o
+        je = r%r(off2+j) - idx
         if ( 1 <= je .and. je <= no ) then
           je = (je - 1) * no
           do i = 1 , n1
-            ie = r%r(off1+i) - El%idx_o
+            ie = r%r(off1+i) - idx
             if ( ie < 1 ) cycle
             if ( no < ie ) cycle
 
@@ -2082,8 +2082,6 @@ contains
       end do
 !$OMP end parallel do
     end if
-    
-    El%idx_o = El%idx_o + 1
 
 #ifdef TBTRANS_TIMING
     call timer('insert-SE',2)
