@@ -15,6 +15,7 @@
 !! Example: band structure of SrTiO3
 !! \image html Bands_STO.png
 module m_lowdin
+#ifdef HAVE_WANNIER90
 
 
   use precision,      only: dp            ! Real double precision type
@@ -1518,7 +1519,7 @@ module m_lowdin
 !!   For debugging
 !    do nsp = 1, nspecies
 !      do nat = 1, max_sites
-!        write(6,*)'atoms_pos_cart = ', atoms_pos_cart(:,nat,nsp)
+!        write(6,*)'Node, atoms_pos_cart = ', Node, atoms_pos_cart(:,nat,nsp)
 !      enddo
 !    enddo 
 !!   End debugging
@@ -1918,4 +1919,5 @@ module m_lowdin
 
   end subroutine deallocate_wannier
 
+#endif
 endmodule m_lowdin

@@ -57,12 +57,14 @@
       use m_iodm_old,        only: read_spmatrix
       use m_siesta2wannier90, only: siesta2wannier90
       use m_switch_local_projection, only: switch_local_projection
+#ifdef HAVE_WANNIER90
       use lowdin_types,      only: numkpoints_lowdin
       use lowdin_types,      only: manifold_bands_lowdin
       use m_lowdin,          only: setup_lowdin
       use m_lowdin,          only: compute_matrices
       use m_lowdin,          only: compute_wannier
       use m_lowdin,          only: deallocate_wannier
+#endif
 
       use m_mpi_utils, only: barrier
 #ifdef SIESTA__FLOOK
@@ -502,6 +504,7 @@
 C    
 C     Call Wannier90_in_Siesta here, 
 C
+#ifdef HAVE_WANNIER90
       if( w90_in_siesta_processing ) then
 !
 !       Set up all the variables required to run WANNIER90 within SIESTA
@@ -524,6 +527,7 @@ C
         if(IONode) call deallocate_wannier
         w90_in_siesta_processing = .false.
       endif
+#endif
 
 C    
 C     Call the wannier90 interface here, as local_DOS destroys the DM...

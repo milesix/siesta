@@ -143,6 +143,7 @@ COMP_LIBS =
 #WANNIER90_ROOT = /software/dft/wannier90-3.0.0
 #WANNIER90_INCFLAGS = -I$(WANNIER90_ROOT)/src/obj
 #WANNIER90_LIBS = -L$(WANNIER90_ROOT) -lwannier
+#DEFS_WANNIER90 = $(DEFS_PREFIX)-DHAVE_WANNIER90
 
 # This (as well as the -DMPI definition) is essential for MPI support
 #MPI_INTERFACE = libmpi_f90.a
@@ -158,7 +159,7 @@ COMP_LIBS =
 # CDF and MPI are self-explanatory
 # Other definitions might be needed to work around some glitch in the compiler
 # See the manual for more details.
-FPPFLAGS = $(DEFS_PREFIX)-DFC_HAVE_ABORT
+FPPFLAGS = $(DEFS_PREFIX)-DFC_HAVE_ABORT $(DEFS_WANNIER90)
 
 # We put here all the neeeded libraries.
 # Sometimes the BLAS are included in LAPACK (or it could be that everything
