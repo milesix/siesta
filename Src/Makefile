@@ -535,7 +535,6 @@ clean:
 	(cd Libs ; $(MAKE) clean )
 	(cd SiestaXC ; $(MAKE) clean )
 	(cd MatrixSwitch/src ; $(MAKE) clean )
-	(cd Wannier90 ; $(MAKE) clean )
 
 
 # DO NOT DELETE THIS LINE - used by make depend
