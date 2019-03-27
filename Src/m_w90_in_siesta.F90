@@ -1579,6 +1579,8 @@ module m_lowdin
   call comms_bcast(seedname, len_seedname)
   call comms_bcast(dryrun, 1)
 
+  write(6,*)' Node, Hola 1', Node
+
   if (on_root) then
     call io_date(cdate, ctime)
     write (stdout, *) 'Wannier90: Execution started on ', cdate, ' at ', ctime
