@@ -5832,9 +5832,13 @@ be linked to the libPSolver-1.a library during the compilation process.
 This library can be compiled a side of the whole BigDFT code. 
 
 Module \texttt{m\_poisson\_bigdft} handles coulomb kernel for 
-both serial and parallel runs. It has been tested with guarantee for
-isolated and bulk systems, for 2D-systems, however, calculations must be
-taken with extra care (a larger box might be required). 
+both serial and parallel runs. For isolated and 1D-wire systems, only orthrombic
+cells are allowed. In the former case, the molecule has to be placed at the center of 
+the box to avoid edges effects (BigDFT solver might identify multiple replicas  
+if the molecule lays too close to the box edges). 
+For 2D-systems, however, user has to make sure that the empty direction of the periodic 
+system is set in the Y-axis direction, and also that the size of simulation box is large 
+enough to avoid edges effects (tipically doubling the standard size works fine).  
 %
 \begin{fdflogicalF}{Use!BigDFT!psolver}
   Logical variable to switch the standar \siesta\ Poisson to 
@@ -5856,7 +5860,7 @@ Additionally, \siesta\ calculations can be carried out considering implicit solv
 Activates the implicit solvent calculation.  
 \end{fdflogicalF}
 
-The following options will be read  only if \fdf{Psolver!solvent} is set to \fdftrue:
+The following options will be read only if \fdf{Psolver!solvent} is set to \fdftrue:
 
 \begin{fdfentry}{Psolver!cavity!type}[string]<soft-sphere>
 Type of cavity used in the implicit solvent calculation. Options: none, soft-sphere and sccs. 

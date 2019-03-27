@@ -1741,7 +1741,7 @@ subroutine read_options( na, ns, nspin )
   bigdft_fd_order   =   fdf_get('Psolver.fd.order', 16)
   bigdft_verbose    =   fdf_get('Psolver.verbose', .false.)
   bigdft_cavity     =   fdf_get('Psolver.solvent', .false.) 
-  if( bigdft_cavity) then 
+  if (bigdft_cavity) then 
     bigdft_cavity_type  = fdf_get('Psolver.cavity.type', 'soft-sphere') 
     bigdft_radii_type   = fdf_get('Psolver.radii.type', 'UFF') 
     bigdft_delta        = fdf_get('Psolver.delta', 2.0_dp)
@@ -1752,6 +1752,8 @@ subroutine read_options( na, ns, nspin )
     bigdft_alphaS       = fdf_get('Psolver.alphaS', -22.0_dp)
     bigdft_betaV        = fdf_get('Psolver.betaV', -0.35_dp)
     bigdft_atomic_radii = fdf_get('Psolver.atomic.radii', 0)
+  else 
+    bigdft_cavity_type='none'
   endif
 !!!
   !

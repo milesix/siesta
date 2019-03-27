@@ -20,6 +20,7 @@
       use precision,      only : dp, grid_p
       use parallel,       only : Node, Nodes, ionode, ProcessorY
       use fdf 
+      use units, only : Ang, pi
       implicit none
 !
       public :: poisson_bigdft
@@ -67,7 +68,7 @@
 !! 2. Parsing the stress tensor to Siesta dhscf.F.
 !!
 !! 3. Design of a fdf block to declare pkernel implicit solvent parameters.
-!!    As for this version options handled by 'simple' input fdf keywords.
+!!    As for this version options are handled by 'simple' input fdf keywords.
 !!
 ! 
 ! #################################################################### !
@@ -105,7 +106,7 @@
 !
       real( dp), dimension( 1, 3) :: hgrid !uniform mesh spacings in the three directions
       integer                     :: i, j, k, iatoms
-      real( dp)                   :: pi
+!      real( dp)                   :: pi
       real( dp)                   :: einit
       type( dictionary), pointer  :: dict               ! Input parameters.
       integer                     :: isf_order, fd_order
@@ -124,7 +125,7 @@
       real(dp)                    :: delta, factor 
       real(dp), parameter         :: Ang= 1._dp/ 0.529177_dp   ! Ang to Bohr
       integer, allocatable        :: local_grids( :)
-      parameter( pi= 4.D0* DATAN( 1.D0))
+!      parameter( pi= 4.0_dp* DATAN( 1.0_dp))
 ! #################################################################### !
 !
       call timer('BigDFT_solv',1)
@@ -145,6 +146,12 @@
 !
       call dict_init(dict)
       call set_bigdft_variables( dict, boundary_case, pkernel_verbose)
+      call set_cell_angles( cell, angdeg) 
+! 
+     
+      alpha = angdeg(1)/180.0_dp*pi
+      beta  = angdeg(2)/180.0_dp*pi
+      gamma = angdeg(3)/180.0_dp*pi
 !
 !
 !
@@ -161,7 +168,7 @@
 !
 !!! Collection of RHO: 
 !
-! RHO is collectedi to a common array.
+! RHO is collected to a common array.
         call timer('gather_rho',1)
         call gather_rho( RHO, grid, 2, lgrid(1) * lgrid(2) * lgrid(3), Paux_1D)
 !
@@ -193,16 +200,12 @@
         call onetothreedarray( RHO, Paux_3D, grid)
 #endif
 !
-!     MOLECULAR ISOLATED SYSTEM
-!
-      if (shape .eq. 'molecule') then  
-!
 !!! BigDFT solver starts now
-        if (ionode) write(6,"(a)")                                     &
-            'bigdft_solver: initialising kernel for a molecular system'
+!
 !
         pkernel=pkernel_init( Node, Nodes, dict, boundary_case,        &
-                              (/grid( 1), grid( 2), grid( 3)/), hgrid)
+                         (/ grid( 1), grid( 2), grid( 3)/), hgrid,     &
+                          alpha_bc=alpha, beta_ac=beta, gamma_ab=gamma)
 !
         call pkernel_set( pkernel, verbose=pkernel_verbose)
 !
@@ -255,8 +258,6 @@
 # else 
         call threetoonedarray(V, Paux_3D, grid) 
 #endif
-!
-      endif
 !
 ! Ending calculation:
 !
@@ -316,17 +317,19 @@
       call set( dict//'kernel'//'isf_order', bigdft_isf_order)
       call set( dict//'environment'//'fd_order', bigdft_fd_order)  
       call set( dict//'setup'//'verbose', bigdft_verbose)
+      if( bigdft_cavity) then
+        call set( dict//'environment'//'delta', bigdft_delta)
+        call set( dict//'environment'//'fact_rigid', bigdft_fact_rigid)
+        call set( dict//'environment'//'cavity', bigdft_cavity_type) 
+        call set( dict//'environment'//'radii_set', bigdft_radii_type)
+        call set( dict//'environment'//'gps_algorithm', bigdft_gps_algorithm)
+        call set( dict//'environment'//'epsilon', bigdft_epsilon)
+        call set( dict//'environment'//'gammaS', bigdft_gammaS)
+        call set( dict//'environment'//'alphaS', bigdft_alphaS)
+        call set( dict//'environment'//'betaV', bigdft_betaV) 
+        call set( dict//'environment'//'atomic_radii', bigdft_atomic_radii)
+      endif
       pkernel_verbose= bigdft_verbose   ! Verbose from setup is different from pkernel_init
-      call set( dict//'environment'//'delta', bigdft_delta)
-      call set( dict//'environment'//'fact_rigid', bigdft_fact_rigid)
-      call set( dict//'environment'//'cavity', bigdft_cavity_type) 
-      call set( dict//'environment'//'radii_set', bigdft_radii_type)
-      call set( dict//'environment'//'gps_algorithm', bigdft_gps_algorithm)
-      call set( dict//'environment'//'epsilon', bigdft_epsilon)
-      call set( dict//'environment'//'gammaS', bigdft_gammaS)
-      call set( dict//'environment'//'alphaS', bigdft_alphaS)
-      call set( dict//'environment'//'betaV', bigdft_betaV) 
-      call set( dict//'environment'//'atomic_radii', bigdft_atomic_radii)
 !$      call set(dict//'environment'//'pi_eta','0.6') ??
 ! 
 ! Printing some info and warnings:
@@ -334,18 +337,21 @@
 !#ifdef DEBUG
       if (firsttime) then 
       if( boundary_case.eq. 'F') then  
-        if (ionode) write(6,'(/,a,/,a,/,a,/,a,/,a)')                    &
+        if (ionode) write(6,'(/,a,/,a/,a,/,a,/,a,a)')                 &
             'bigdft_solver: initialising kernel for a molecular system',&
             '#================= WARNING bigdft_solver ===============#',&
+            '                                                         ',&
             ' Molecular system must be place at the center of the box,',&
-            ' otherwise box edges effects might lead to wrong Hartree' ,&
+            ' otherwise box-edge effects might lead to wrong Hartree'  ,&
             ' energy values.                                          ',&
             '#=======================================================#'
       elseif (boundary_case.eq. 'S') then  
-        if (ionode) write(6,'(a,a,a,a,a)')                  &
+        if (ionode) write(6,'(a,a,a,a,a,a)')                  &
             'bigdft_solver: initialising kernel for a slab system',&
             '#================= WARNING bigdft_solver ===============#',&
-            ' Simulation box for slab system musti be large enough to ',&
+            ' Empty direction of the periodic system has to be set in ',&
+            ' the Y-axis.                                             ',&
+            ' Additionally, simulation box must be large enough to '   ,&
             ' to avoid box edges effects in the Hartree potential.    ',&
             '#=======================================================#'
       elseif( boundary_case.eq. 'P') then  
@@ -363,20 +369,48 @@
           write(6,"(a)")        'cavity type:', bigdft_cavity_type 
           write(6,"(a, I3)")    'isf_order:', bigdft_isf_order 
           write(6,"(a, I3)")    'fd_order:', bigdft_fd_order 
-          write(6,"(a, F10.5)") 'delta:', bigdft_delta 
-          write(6,"(a, F10.5)") 'fact_rigid:', bigdft_fact_rigid 
-          write(6,"(a)")        'radii_set:', bigdft_radii_type
-          write(6,"(a)")        'gps_algorithm:', bigdft_gps_algorithm
-          write(6,"(a, F10.5)") 'epsilon:', bigdft_epsilon 
-          write(6,"(a, F10.5)") 'gammaS:', bigdft_gammaS
-          write(6,"(a, F10.5)") 'alphaS:', bigdft_alphaS
-          write(6,"(a, F10.5)") 'betaV:', bigdft_betaV
+          if( bigdft_cavity) then
+            write(6,"(a, F10.5)") 'delta:', bigdft_delta 
+            write(6,"(a, F10.5)") 'fact_rigid:', bigdft_fact_rigid 
+            write(6,"(a, F10.5)") 'epsilon:', bigdft_epsilon 
+            write(6,"(a, F10.5)") 'gammaS:', bigdft_gammaS
+            write(6,"(a, F10.5)") 'alphaS:', bigdft_alphaS
+            write(6,"(a, F10.5)") 'betaV:', bigdft_betaV
+            write(6,"(a)")        'radii_set:', bigdft_radii_type
+            write(6,"(a)")        'gps_algorithm:', bigdft_gps_algorithm
+          endif
         endif
         firsttime=.false.
       endif 
 !#endif
 ! #################################################################### !
       end subroutine set_bigdft_variables
+! #################################################################### !
+      subroutine set_cell_angles(cell, celang)
+! #################################################################### !
+!     Subroutine to calculate the cell angles. Roughly copied from     !
+!     outcell.f of E. Artacho, December 1997.
+! #################################################################### !
+! #################################################################### !
+      real( dp), intent( in)      :: cell( 3, 3)        ! Unit-cell vectors.
+      real( dp), intent( out)     :: celang( 3)
+      real( dp)                   :: cellm(3)
+      integer                     :: i
+! #################################################################### !
+      do i = 1,3
+        cellm(i) = dot_product(cell(:,i),cell(:,i))
+        cellm(i) = sqrt(cellm(i))
+      enddo
+!
+      celang(1) = dot_product(cell(:,1),cell(:,2))
+      celang(1) = acos(celang(1)/(cellm(1)*cellm(2)))*180._dp/pi
+      celang(2) = dot_product(cell(:,1),cell(:,3))
+      celang(2) = acos(celang(2)/(cellm(1)*cellm(3)))*180._dp/pi
+      celang(3) = dot_product(cell(:,2),cell(:,3))
+      celang(3) = acos(celang(3)/(cellm(2)*cellm(3)))*180._dp/pi
+! #################################################################### !
+      end subroutine set_cell_angles
+! #################################################################### !
 ! #################################################################### !
       subroutine onetothreedarray(rho, Paux, grid)
 ! #################################################################### !
