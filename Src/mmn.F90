@@ -46,17 +46,21 @@ subroutine Mmn( ispin )
                                              !   First  index: component
                                              !   Second index: k-point index 
                                              !      in the list
-  use m_switch_local_projection, only: nncount      ! Number of nearest k-pnt neighbors
-  use m_switch_local_projection, only: nnlist       ! nnlist(ikp,inn) is the index of
-                                             !   the inn-neighbour of ikp-point
+  use m_switch_local_projection, only: nncount  
+                                             ! Number of nearest k-pnt neighbors
+  use m_switch_local_projection, only: nnlist_neig  
+                                             ! nnlist_neig(ikp,inn) is the index
+                                             !   of the inn-neighbour of 
+                                             !   ikp-point
                                              !   in the Monkhorst-Pack grid 
                                              !   folded to first Brillouin zone
-  use m_switch_local_projection, only: nnfolding    ! nnfolding(i,ikp,inn) is the 
+  use m_switch_local_projection, only: nnfolding    
+                                             ! nnfolding(i,ikp,inn) is the 
                                              !   i-component of the reciprocal 
                                              !   lattice vector 
                                              !   (in reduced units) that brings
                                              !   the inn-neighbour specified 
-                                             !   in nnlist
+                                             !   in nnlist_neig
                                              !   (which is in the first BZ) to 
                                              !   the actual \vec{k} + \vec{b} 
                                              !   that we need.
@@ -139,7 +143,7 @@ subroutine Mmn( ispin )
                              !   wave functions will be computed
   real(dp) :: kvectorneig(3) ! Wave vector of the neighbor k-point
   real(dp) :: gfold(3)       ! Reciprocal lattice vector that brings
-                             !   the inn-neighbour specified in nnlist
+                             !   the inn-neighbour specified in nnlist_neig
                              !   (which is in the first BZ) to the
                              !   actual \vec{k} + \vec{b} that we need.
   real(dp) :: bvectoraux(3)  ! Auxiliary vector
@@ -203,7 +207,7 @@ kneighbour:                      &
     do inn = 1, nncount
 
 !     Get the coordinates of the neighbor k-point.
-      indexneig = nnlist(ik,inn)
+      indexneig = nnlist_neig(ik,inn)
       call getkvector( kpointsfrac(:,indexneig), kvectorneig )
 !!     For debugging
 !      if( IOnode ) then
@@ -218,7 +222,7 @@ kneighbour:                      &
 !     in the local node (nincbands_loc)
       coeffs2(:,:) = coeffs(:,:,indexneig)
 
-!     The neighbour k-point, as specified in the nnlist, 
+!     The neighbour k-point, as specified in the nnlist_neig, 
 !     is always in the first Brillouin zone.
 !     To find the actual k-point, we might have to add a vector of the
 !     reciprocal lattice, as specified in the nnfolding matrix
@@ -273,7 +277,7 @@ kneighbour:                      &
 !     Now we have to determine the position in the delkmatgen array,
 !     where exp^(i \vec{b} \cdot \vec{r}) is stored,
 !     where \vec{b} is the vector connecting kvector and kvectorneig.
-      bvectoraux(:) = kpointsfrac(:,nnlist(ik,inn)) +               &
+      bvectoraux(:) = kpointsfrac(:,nnlist_neig(ik,inn)) +               &
  &                     nnFolding(:,ik,inn) - kpointsfrac(:,ik)
       handle = getdelkmatgenhandle( bvectoraux, nncount, bvectorsfrac )
       call getkvector( bvectoraux, bvector )

@@ -6,7 +6,7 @@
 ! See Docs/Contributors.txt for a list of contributors.
 !
 
-!> \brief General purpose of the Lowdin module 
+!> \brief General purpose of the m_w90_in_siesta module 
 !! 
 !! In this module we perform a Lowdin orthonormalization of the Bloch functions
 !! corresponding to a given manifold of bands
@@ -14,7 +14,7 @@
 !!
 !! Example: band structure of SrTiO3
 !! \image html Bands_STO.png
-module m_lowdin
+module m_w90_in_siesta
 #ifdef HAVE_WANNIER90
 
 
@@ -40,7 +40,6 @@ module m_lowdin
                                              ! NOTE: When running in parallel,
                                              !   this is core independent
   use sys,                only : die         ! Termination routine
-  use w90_parameters,     only : param_write_chkpt
   use fdf
 
 !
@@ -49,12 +48,16 @@ module m_lowdin
   use alloc,              only: re_alloc     ! Reallocation routines
   use alloc,              only: de_alloc     ! Deallocation routines
 
+#ifdef MPI
+  use mpi_siesta
+#endif
+
   use parallelsubs,       only: LocalToGlobalOrb
 
   implicit none
 
 ! Routines
-  public :: setup_lowdin 
+  public :: setup_w90_in_siesta
   public :: compute_matrices
   public :: compute_wannier
   public :: deallocate_wannier
@@ -63,7 +66,7 @@ module m_lowdin
 
   CONTAINS
 
-!> \brief General purpose of the subroutine setup_lowdin
+!> \brief General purpose of the subroutine setup_w90_in_siesta
 !! Within this subroutine:
 !! 1. Include in the SystemName.bib file a citation to the papers where
 !!    the implementation is based. Here:
@@ -83,7 +86,7 @@ module m_lowdin
 !!    the energy windows for the disentanglement,
 !!    and other output options (if the wannier functions will be plotted,
 !!    or the Fermi surface computed).
-!!    This is done in the subroutine read_lowdin_specs 
+!!    This is done in the subroutine read_w90_in_siesta_specs 
 !!
 !! 3. Set up the indexing of the bands that will be excluded from the 
 !!    wannierization (isexcluded),
@@ -98,7 +101,7 @@ module m_lowdin
 !!
 !! 5. The derived variable manifold_bands_lowdin (where all the previous
 !!    information is stored) is broadcast
-!!    to the rest of the Nodes in the subroutine broadcast_lowdin
+!!    to the rest of the Nodes in the subroutine broadcast_w90_in_siesta
 !!
 !! 6. Determine the number of bands that will be treated per node in a 
 !!    parallel run
@@ -112,7 +115,7 @@ module m_lowdin
 !!    these variables.
 !!
 
-  subroutine setup_lowdin
+  subroutine setup_w90_in_siesta
 
     use m_cite,        only: add_citation          ! Subroutine used to cite 
                                                    !   the proper papers where 
@@ -158,7 +161,7 @@ module m_lowdin
 !     or the Fermi surface computed).
 !
 
-      call read_lowdin_specs
+      call read_w90_in_siesta_specs
 
 !
 !     Set up the indexing of the bands that will be excluded from the 
@@ -184,7 +187,7 @@ module m_lowdin
 !   Up to know, all the information is known from the IONode,
 !   Here we broadcast the information to all the other nodes.
 !
-    call broadcast_lowdin
+    call broadcast_w90_in_siesta
 
 !
 !   Determine the number of bands that will be treated per node in a 
@@ -206,10 +209,10 @@ module m_lowdin
 !!      For debugging
 !       write(6,*) 
 !       write(6,'(a,l5)')                                                   & 
-! &       'setup_lowdin: r_between_manifolds = ',                           &
+! &       'setup_w90_in_siesta: r_between_manifolds = ',                    &
 ! &       r_between_manifolds
 !       write(6,'(a,6i5)')                                                  & 
-! &       'setup_lowdin: index_manifold, Node, Nodes, nincbands_loc_tmp, numincbands_tmp, Blocksize = ',  &
+! &       'setup_w90_in_siesta: index_manifold, Node, Nodes, nincbands_loc_tmp, numincbands_tmp, Blocksize = ',  &
 ! &       index_manifold, Node, Nodes, nincbands_loc_tmp, numincbands_tmp,                  &
 ! &       blocksizeincbands_tmp
 !!      End debugging
@@ -230,9 +233,9 @@ module m_lowdin
 !   This is done by all the nodes simultaneously, so no need for broadcasting
 !   these variables
 !
-    call read_kpoints_wannier
+    if(IOnode) call read_kpoints_wannier
 
-  endsubroutine setup_lowdin
+  endsubroutine setup_w90_in_siesta
 
 !
 ! ------------------------------------------------------------------------------
@@ -254,7 +257,7 @@ module m_lowdin
 !!         input/output         
 !!
 
-   subroutine read_lowdin_specs
+   subroutine read_w90_in_siesta_specs
 !
 !   Processes the information in an fdf file
 !   regarding the bands that will enter into the orthonormalization procedure
@@ -441,53 +444,53 @@ module m_lowdin
 
 !    For debugging
 !      write(6,'(/,a,i2)')                                                      &
-! &      'read_lowdin_specs: Dumping the information for the manifold number ', &
+! &      'read_w90_in_siesta_specs: Dumping the information for the manifold number ', &
 ! &       index_manifold
 !
 !!     Write the seed of the name of the file to dump the output
 !      write(6,'(a,i1,1x,a)')                                                   &
-! &      'read_lowdin_specs: Seed of the file to dump the output for manifold:',&
+! &      'read_w90_in_siesta_specs: Seed of the file to dump the output for manifold:',&
 ! &       index_manifold,                                                       &
 ! &       manifold_bands_lowdin(index_manifold)%seedname_lowdin
 !
 !!     Write the initial and the final band of the manifold
-!      write(6,'(a,2i5)')                                                    & 
-! &      'read_lowdin_specs: Initial band, Final band              = ',      &
-! &      manifold_bands_lowdin(index_manifold)%initial_band,                 &
+!      write(6,'(a,2i5)')                                                      &
+! &      'read_w90_in_siesta_specs: Initial band, Final band              = ', &
+! &      manifold_bands_lowdin(index_manifold)%initial_band,                   &
 ! &      manifold_bands_lowdin(index_manifold)%final_band                    
 !
 !!     Write the total number of bands in the manifold
-!      write(6,'(a,i5)')                                                     &
-! &      'read_lowdin_specs: Total number of bands in the manifold = ',      &
+!      write(6,'(a,i5)')                                                       &
+! &      'read_w90_in_siesta_specs: Total number of bands in the manifold = ', &
 ! &      manifold_bands_lowdin(index_manifold)%number_of_bands
 !
 !!     Write the total number of bands to be orthogonalized
 !      write(6,'(a,i5)')                                                        &
-! &'read_lowdin_specs: Total number of bands in the Lowdin orthogonalization=', &
+! &'read_w90_in_siesta_specs: Total number of bands in the Lowdin orthogonalization=', &
 ! &      manifold_bands_lowdin(index_manifold)%numbands_lowdin
 !
 !      if(manifold_bands_lowdin(index_manifold)%disentanglement) then
 !         write(6,'(a)')                                                  &
-! &        'read_lowdin_specs: Number of bands in the manifold is different of'
+! &        'read_w90_in_siesta_specs: Number of bands in the manifold is different of'
 !         write(6,'(a)')                                                  &
-! &        'read_lowdin_specs: the number of bands to be orthogonalized.'
+! &        'read_w90_in_siesta_specs: the number of bands to be orthogonalized.'
 !         write(6,'(a)')                                                  &
-! &        'read_lowdin_specs: Disentanglement procedure required '
+! &        'read_w90_in_siesta_specs: Disentanglement procedure required '
 !      endif
 !
 !!     Write the indices of the orbitals used as initial localized guess
 !      do iorb = 1, manifold_bands_lowdin(index_manifold)%numbands_lowdin
 !        write(6,'(a,i5)')                                                      &
-! & 'read_lowdin_specs: Index of the orbital used as initial localized guess =',&
+! & 'read_w90_in_siesta_specs: Index of the orbital used as initial localized guess =',&
 ! &      manifold_bands_lowdin(index_manifold)%orbital_indices(iorb)
 !      enddo
 !
 !!     Write the values of the outer energy window for band disentanglement
 !      write(6,'(a,l5)')                                             &
-! &      'read_lowdin_specs: Disentanglement                    = ', &
+! &      'read_w90_in_siesta_specs: Disentanglement                    = ', &
 ! &      manifold_bands_lowdin(index_manifold)%disentanglement
 !      write(6,'(a,i5,2f12.5)')                                      &
-! &      'read_lowdin_specs: Outer energy window  (eV)          = ', &
+! &      'read_w90_in_siesta_specs: Outer energy window  (eV)          = ', &
 ! &      index_manifold,                                             &
 ! &      manifold_bands_lowdin(index_manifold)%dis_win_min,          &
 ! &      manifold_bands_lowdin(index_manifold)%dis_win_max 
@@ -495,7 +498,7 @@ module m_lowdin
 !!     Write the values of the inner (frozen) energy window for 
 !!     band disentanglement
 !      write(6,'(a,i5,2f12.5)')                                      &
-! &      'read_lowdin_specs: Inner (frozen) energy window  (eV) = ', &
+! &      'read_w90_in_siesta_specs: Inner (frozen) energy window  (eV) = ', &
 ! &      index_manifold,                                             &
 ! &      manifold_bands_lowdin(index_manifold)%dis_froz_min,         &
 ! &      manifold_bands_lowdin(index_manifold)%dis_froz_max 
@@ -503,31 +506,31 @@ module m_lowdin
 !!     Write the values of the inner (frozen) energy window for 
 !!     band disentanglement
 !      write(6,'(a,i5)')                                                    &
-! &      'read_lowdin_specs: Number of iterations for the minimization = ', &
+! &      'read_w90_in_siesta_specs: Number of iterations for the minimization = ', &
 ! &      manifold_bands_lowdin(index_manifold)%num_iter
 !
 !!     Write the values of the inner (frozen) energy window for 
 !!     band disentanglement
 !      write(6,'(a,l5)')                                                    &
-! &      'read_lowdin_specs: Plot the Wannier functions?               = ', &
+! &      'read_w90_in_siesta_specs: Plot the Wannier functions?               = ', &
 ! &      manifold_bands_lowdin(index_manifold)%wannier_plot
 !      write(6,'(a,i5)')                                                    &
-! &      'read_lowdin_specs: Plot the Wannier functions?               = ', &
+! &      'read_w90_in_siesta_specs: Plot the Wannier functions?               = ', &
 ! &      manifold_bands_lowdin(index_manifold)%wannier_plot_supercell(1)
 !      write(6,'(a,l5)')                                                    &
-! &      'read_lowdin_specs: Plot the Fermi surface?                     ', &
+! &      'read_w90_in_siesta_specs: Plot the Fermi surface?              ', &
 ! &      manifold_bands_lowdin(index_manifold)%fermi_surface_plot
 !      write(6,'(a,l5)')                                                    &
-! &      'read_lowdin_specs: Write the Hamiltonian in the basis of WF? = ', &
+! &      'read_w90_in_siesta_specs: Write the Hamiltonian in the basis of WF? = ', &
 ! &      manifold_bands_lowdin(index_manifold)%write_hr
 !      write(6,'(a,l5)')                                                    &
-! &      'read_lowdin_specs: Write the tight-binding elements in the basis of WF? = ', &
+! &      'read_w90_in_siesta_specs: Write the tight-binding elements in the basis of WF? = ', &
 ! &      manifold_bands_lowdin(index_manifold)%write_tb
 !!     End debugging
 
     enddo ! end loop over all the lines in the block WannierProjections
 
-  endsubroutine read_lowdin_specs
+  endsubroutine read_w90_in_siesta_specs
 
 !> \brief General purpose of the subroutine read_kpoints_wannier
 !! 
@@ -553,7 +556,7 @@ module m_lowdin
 !! WANNIER90 (version 3.0.0) \cite Wannier90.
 !!
 !! Finally, we populate the variables related with the neighbour k-points in 
-!! the Monkhorst-Pack mesh in the module where all the Lowdin parameters are
+!! the Monkhorst-Pack mesh in the module where all the Wannier90 parameters are
 !! stored
 
   subroutine read_kpoints_wannier
@@ -565,17 +568,17 @@ module m_lowdin
                                                !   First  index: component
                                                !   Second index: vector
                                                !   In Bohrs
-    use lowdin_types,   only: reclatvec_lowdin ! Reciprocal lattice vectors 
+    use lowdin_types,   only: reclatvec_w90_in ! Reciprocal lattice vectors 
                                                !   computed from real_lattice
                                                !   The factor 2.0 * pi 
                                                !   is included
                                                !   First  index: component
                                                !   Second index: vector
                                                !   In Angstroms^-1
-    use lowdin_types,   only: kmeshlowdin      ! Number of divisions along the
+    use lowdin_types,   only: kmesh_w90_in     ! Number of divisions along the
                                                !   reciprocal lattice vectors
-    use lowdin_types,   only: numkpoints_lowdin! Total number of k-points
-    use lowdin_types,   only: kpointsfrac_lowdin   
+    use lowdin_types,   only: numkpoints_w90_in! Total number of k-points
+    use lowdin_types,   only: kpointsfrac_w90_in   
                                                ! Coordinates of the k-points
                                                !   In fractional units, i. e.
                                                !   in units of the reciprocal
@@ -583,9 +586,6 @@ module m_lowdin
                                                !   First  index: component
                                                !   Second index: vector
     use w90_io,         only: stdout           ! Unit on which stdout is written
-    use w90_io,         only: write_par_wan90  ! Is this node in charge of 
-                                               !   writing the output of 
-                                               !   WANNIER90 in a parallel run?
     use w90_parameters, only: real_lattice     ! Unit cell lattice vectors
                                                !   in real space as used inside
                                                !   WANNIER90
@@ -615,7 +615,8 @@ module m_lowdin
                                                !   In Angstroms^-1
     use w90_parameters, only: mp_grid          ! Number of divisions along the
                                                !   reciprocal lattice vectors.
-                                               !   It is the same as kmeshlowdin
+                                               !   It is the same as 
+                                               !   kmesh_w90_in
                                                !   But this is the variable
                                                !   that will be transferred to 
                                                !   the Wannier90 subroutines
@@ -623,7 +624,7 @@ module m_lowdin
                                                !   will be used within 
                                                !   Wannier90
                                                !   It is the same as 
-                                               !   numkpoints_lowdin
+                                               !   numkpoints_w90_in
                                                !   But this is the variable
                                                !   that will be transferred to 
                                                !   the Wannier90 subroutines
@@ -638,7 +639,7 @@ module m_lowdin
                                                !   First  index: component
                                                !   Second index: vector
                                                !   It is the same as 
-                                               !   kpointsfrac_lowdin
+                                               !   kpointsfrac_w90_in
                                                !   but this is the variable that
                                                !   will be transferred to 
                                                !   Wannier90
@@ -667,19 +668,22 @@ module m_lowdin
                                                !    relation, Eq. (B1) in 
                                                !    N. Marzari et al.
                                                !    PRB 56, 12847 (1997)
-    use lowdin_types,   only: nncount_lowdin   ! Same as nntot
+    use lowdin_types,   only: nncount_w90_in   ! Same as nntot
                                                !    but in the module where the 
                                                !    variables that controls the
-                                               !    Lowdin are stored
-    use lowdin_types,   only: nnlist_lowdin    ! Same as nnlist
+                                               !    Wannier90 in SIESTA 
+                                               !    are stored
+    use lowdin_types,   only: nnlist_w90_in    ! Same as nnlist
                                                !    but in the module where the 
                                                !    variables that controls the
-                                               !    Lowdin are stored
-    use lowdin_types,   only: nnfolding_lowdin ! Same as nncell
+                                               !    Wannier90 in SIESTA 
+                                               !    are stored
+    use lowdin_types,   only: nnfolding_w90_in ! Same as nncell
                                                !    but in the module where the 
                                                !    variables that controls the
-                                               !    Lowdin are stored
-    use lowdin_types,   only: bvectorsfrac_lowdin
+                                               !    Wannier90 in SIESTA 
+                                               !    are stored
+    use lowdin_types,   only: bvectorsfrac_w90_in
                                                ! Vectors that connect each mesh
                                                !    k-point
                                                !    to its nearest neighbours
@@ -703,13 +707,11 @@ module m_lowdin
 !   Setup the output unit for WANNIER90
     stdout = 6
     if( Node .eq. 0 ) then
-      write_par_wan90 = 0
 !     Set on_root = .true. only if you want to print the information of the
 !     k-point sampling
 !      on_root = .true. 
       on_root = .false.
     else 
-      write_par_wan90 = 1
       on_root = .false.
     endif
 
@@ -727,41 +729,41 @@ module m_lowdin
                                                     !   the first reciprocal 
                                                     !   lattice vector and so on
  &      call die('Wrong format in kMeshforWannier')
-      kmeshlowdin(1) = fdf_bintegers(pline,1)
-      kmeshlowdin(2) = fdf_bintegers(pline,2)
-      kmeshlowdin(3) = fdf_bintegers(pline,3)
+      kmesh_w90_in(1) = fdf_bintegers(pline,1)
+      kmesh_w90_in(2) = fdf_bintegers(pline,2)
+      kmesh_w90_in(3) = fdf_bintegers(pline,3)
     enddo 
 
 !   Define the total number of k-points used in the Lowdin projection
-    numkpoints_lowdin = kmeshlowdin(1) * kmeshlowdin(2) * kmeshlowdin(3)
+    numkpoints_w90_in = kmesh_w90_in(1) * kmesh_w90_in(2) * kmesh_w90_in(3)
 
 !   Compute and store the components of the k-points in fractional units
-    nullify( kpointsfrac_lowdin )
-    call re_alloc( kpointsfrac_lowdin, 1, 3, 1, numkpoints_lowdin,  &
- &                 name='kpointsfrac_lowdin', routine='read_kpoints_wannier')
+    nullify( kpointsfrac_w90_in )
+    call re_alloc( kpointsfrac_w90_in, 1, 3, 1, numkpoints_w90_in,  &
+ &                 name='kpointsfrac_w90_in', routine='read_kpoints_wannier')
 
 !   The algorithm to generate the k-points in fractional units 
 !   is borrowed from the utility kmesh.pl of Wannier90
     ik = 0
-    do ikx = 0, kmeshlowdin(1) - 1
-      do iky = 0, kmeshlowdin(2) - 1
-        do ikz = 0, kmeshlowdin(3) - 1
+    do ikx = 0, kmesh_w90_in(1) - 1
+      do iky = 0, kmesh_w90_in(2) - 1
+        do ikz = 0, kmesh_w90_in(3) - 1
           ik = ik + 1
-          kpointsfrac_lowdin(1,ik) = (ikx*1.0_dp)/kmeshlowdin(1)
-          kpointsfrac_lowdin(2,ik) = (iky*1.0_dp)/kmeshlowdin(2)
-          kpointsfrac_lowdin(3,ik) = (ikz*1.0_dp)/kmeshlowdin(3)
+          kpointsfrac_w90_in(1,ik) = (ikx*1.0_dp)/kmesh_w90_in(1)
+          kpointsfrac_w90_in(2,ik) = (iky*1.0_dp)/kmesh_w90_in(2)
+          kpointsfrac_w90_in(3,ik) = (ikz*1.0_dp)/kmesh_w90_in(3)
         enddo 
       enddo 
     enddo 
 
 !!   For debugging
 !    write(6,'(a,a,3i5)')'read_kpoints_wannier: Number of subdivisions ',  &  
-! &    'of the reciprocal vectors for Lowdin = ', kmeshlowdin(:)
+! &    'of the reciprocal vectors for Lowdin = ', kmesh_w90_in(:)
 !    write(6,'(a,a,3i5)')'read_kpoints_wannier: Number of k-points used ', & 
-! &    'in the Lowdin projection = ', numkpoints_lowdin
-!    do ik = 1, numkpoints_lowdin
+! &    'in the Wannier90 projection = ', numkpoints_w90_in
+!    do ik = 1, numkpoints_w90_in
 !      write(6,'(a,a,i5,3f12.5)')'read_kpoints_wannier: k-points in ',     & 
-! &      'fractional units:', ik, kpointsfrac_lowdin(:,ik)
+! &      'fractional units:', ik, kpointsfrac_w90_in(:,ik)
 !    enddo
 !!   End debugging
 
@@ -782,13 +784,13 @@ module m_lowdin
 
 !   Compute the reciprocal lattice vectors as required by WANNIER90
 !   The factor 2.0 * pi is included
-    call reclat( real_lattice, reclatvec_lowdin, 1 )
+    call reclat( real_lattice, reclatvec_w90_in, 1 )
 !   Save the reciprocal lattice vectors in the variable that will be
 !   transferred to WANNIER90
 !   Since the reciprocal lattice vectors are already computed with the
 !   transpose matrix of real space lattice vectors, there is no need
-!   to transpose reclatvec_lowdin again
-    recip_lattice = reclatvec_lowdin
+!   to transpose reclatvec_w90_in again
+    recip_lattice = reclatvec_w90_in
 !!   For debugging
 !    do ik = 1, 3
 !      write(6,'(a,3f12.5)')'read_kpoints_wannier: recip_lattice = ',   &
@@ -798,15 +800,15 @@ module m_lowdin
 
 !   Save the number of subdivisions along the three reciprocal lattice vectors
 !   that will be transferred to Wannier90
-    mp_grid       = kmeshlowdin
+    mp_grid       = kmesh_w90_in
 !!   For debugging
 !    write(6,'(a,3i5)')'read_kpoints_wannier: mp_grid =',  mp_grid
 !!   End debugging
 
 !   Save the total number of k-points that will be transferred to Wannier90
-    num_kpts      = numkpoints_lowdin
+    num_kpts      = numkpoints_w90_in
 !!   For debugging
-!    write(6,'(a,i5)')'read_kpoints_wannier: num_kpts =', num_kpts 
+!    write(6,'(a,2i5)')'read_kpoints_wannier: Node, num_kpts =', Node, num_kpts 
 !!   End debugging
 
 !   Set if only the gamma points will be used
@@ -822,7 +824,7 @@ module m_lowdin
 !   Allocate the variable where the k-points will be transferred to WANNIER90
 !   in fractional units (i.e. in units of the reciprocal lattice vectors
     allocate ( kpt_latt(3,num_kpts) )
-    kpt_latt = kpointsfrac_lowdin
+    kpt_latt = kpointsfrac_w90_in
 !!   For debugging
 !    do ik = 1, num_kpts
 !      write(6,'(a,i5,3f12.5)')'read_kpoints_wannier: kpt_latt = ',   &
@@ -844,31 +846,31 @@ module m_lowdin
 
 !   Store the number of nearest neighbours belonging to each k-point of the 
 !   Monkhorst-Pack mesh
-    nncount_lowdin = nntot
+    nncount_w90_in = nntot
 
 !   Initialize the list of neighbour k-points
-    nullify( nnlist_lowdin    )
-    nullify( nnfolding_lowdin )
+    nullify( nnlist_w90_in    )
+    nullify( nnfolding_w90_in )
 
-    call re_alloc( nnlist_lowdin, 1, numkpoints_lowdin, 1, nncount_lowdin,   &
- &                 name = "nnlist_lowdin", routine = "read_lowdin_specs" )
-    call re_alloc( nnfolding_lowdin, 1, 3, 1, numkpoints_lowdin,             &
- &                 1, nncount_lowdin, name = "nnfolding_lowdin",             &
- &                 routine = "read_lowdin_specs" )
+    call re_alloc( nnlist_w90_in, 1, numkpoints_w90_in, 1, nncount_w90_in,   &
+ &                 name = "nnlist_w90_in", routine = "read_kpoints_wannier" )
+    call re_alloc( nnfolding_w90_in, 1, 3, 1, numkpoints_w90_in,             &
+ &                 1, nncount_w90_in, name = "nnfolding_w90_in",             &
+ &                 routine = "read_kpoints_wannier" )
 
 !   Store the list of nearest neighoburs for each k-point
-    nnlist_lowdin     = nnlist
+    nnlist_w90_in     = nnlist
 
 !   Store the vector, in fractional reciprocal lattice coordinates,
 !   that brings the nnth nearest neighbour of k-point nkp to its periodic image
 !   that is needed for computing the overlap matrices M_mn(k,b)
-    nnfolding_lowdin  = nncell
+    nnfolding_w90_in  = nncell
 
 !   Compute the vectors that connect each mesh k-point 
 !   to its nearest neighbours
-    call chosing_b_vectors( kpointsfrac_lowdin, nncount_lowdin,  &
- &                          nnlist_lowdin, nnfolding_lowdin,     &
- &                          bvectorsfrac_lowdin )
+    call chosing_b_vectors( kpointsfrac_w90_in, nncount_w90_in,  &
+ &                          nnlist_w90_in, nnfolding_w90_in,     &
+ &                          bvectorsfrac_w90_in )
 
 !!     For debugging
 !      write(6,'(a)') 'begin nnkpts'
@@ -1219,6 +1221,8 @@ module m_lowdin
 !
 !   Variables related with the k-points sampling coming from SIESTA
 !
+    use lowdin_types,   only: kmesh_w90_in     ! Number of divisions along the
+                                               !   reciprocal lattice vectors
     use m_switch_local_projection, only: numkpoints
                                                ! Number of k-points in the
                                                !    Monkhorst-Pack grid that
@@ -1229,18 +1233,31 @@ module m_lowdin
                                                !   neighbours belonging to
                                                !   each k-point of the 
                                                !   Monkhorst-Pack mesh
-!    use m_switch_local_projection, only: nnlist  
+    use m_switch_local_projection, only: nnlist_neig
                                                ! Index of the
                                                !   inn-neighbour of ikp-point
                                                !   in the Monkhorst-Pack grid
-    use lowdin_types,               only: nnlist_lowdin  
-                                               ! Same as nnlist
-                                               !    but in the module where the 
-                                               !    variables that controls the
-                                               !    Lowdin are stored
-!
+    use m_switch_local_projection, only: nnfolding
+                                               ! nnfolding(i,ikp,inn) is the
+                                               !   i-component of the reciprocal
+                                               !   lattice vector,
+                                               !   in reduced units, that brings
+                                               !   the inn-neighbour specified 
+                                               !   in nnlist_neig (which is in
+                                               !   the first BZ)
+                                               !   to the actual 
+                                               !   \vec{k} + \vec{b}
+                                               !   that we need.
+                                               !   In reciprocal lattice units.!
 !   Variables related with the k-points sampling coming from WANNIER90
 !
+    use w90_parameters, only: mp_grid          ! Number of divisions along the
+                                               !   reciprocal lattice vectors.
+                                               !   It is the same as 
+                                               !   kmesh_w90_in
+                                               !   But this is the variable
+                                               !   that will be transferred to 
+                                               !   the Wannier90 subroutines
     use w90_parameters, only : gamma_only      ! Only the Gamma point?
     use w90_parameters, only : num_kpts        ! number of k-points
     use w90_parameters, only : nntot           ! total number of neighbours
@@ -1369,6 +1386,8 @@ module m_lowdin
                                                !    to stdout 
     use w90_parameters,  only: param_dist      ! distribute the parameters 
                                                !    across processors 
+    use w90_parameters,  only : param_write_chkpt
+                                               ! write checkpoint file
     use w90_io,          only: io_time         ! subroutine to control the
                                                !    timing, borrowed from 
                                                !    WANNIER90
@@ -1432,9 +1451,8 @@ module m_lowdin
     integer :: i, j
     integer :: max_sites        ! Maximum number of atomic species
     character(len=50) :: prog   ! Name of the program
-    logical :: wout_found, dryrun
     integer :: len_seedname
-    character(len=9) :: stat, pos, cdate, ctime
+    character(len=9) :: cdate, ctime
 
 ! 
 !   Variables to control the timing 
@@ -1443,12 +1461,8 @@ module m_lowdin
     real(kind=dp) time1
     real(kind=dp) time2
 
-    character(len=len_trim(seedname)+6) :: posfilename
-                                           ! Name of the file where the 
-                                           !   matrix elements of the position
-                                           !   operator will be written
-
 !   Set up the variables related with the writing of the Hamiltonian
+    seedname=repeat(" ",len(seedname))
     if( spin%H .eq. 1) then
       write(seedname,"(a,'.manifold.',i1.1)")                    &
  &         trim(slabel),index_manifold
@@ -1498,8 +1512,8 @@ module m_lowdin
     end do
 
 !!   For debugging
-!    write(6,*) 'atoms_label       = ', atoms_label
-!    write(6,*) 'atoms_species_num = ', atoms_species_num
+!    write(6,*) 'atoms_label       = ', Node, atoms_label
+!    write(6,*) 'atoms_species_num = ', Node, atoms_species_num
 !!   End debugging
 
     max_sites=maxval(atoms_species_num)
@@ -1522,6 +1536,9 @@ module m_lowdin
 !        write(6,*)'Node, atoms_pos_cart = ', Node, atoms_pos_cart(:,nat,nsp)
 !      enddo
 !    enddo 
+!    write(6,*)'Node, num_iter   = ', Node, num_iter
+!    write(6,*)'Node, numkpoints = ', Node, numkpoints
+!    write(6,*)'Node, nncount    = ', Node, nncount
 !!   End debugging
   
 !   Set up number of iterations for the minimization of \Omega
@@ -1529,10 +1546,21 @@ module m_lowdin
     timing_level      = 1
 
 !   Set up the variables related with the k-point sampling
+    mp_grid   = kmesh_w90_in
     num_kpts  = numkpoints
     nntot     = nncount
-    nnlist    = nnlist_lowdin
+    if ( allocated(nnlist) ) deallocate(nnlist)
+    allocate(nnlist(num_kpts,nntot))
+    nnlist    = nnlist_neig
+    if ( allocated(nncell) ) deallocate(nncell)
+    allocate(nncell(3,num_kpts,nntot))
+    nncell = nnfolding
 
+!!   For debugging
+!    write(6,*)'Node, num_kpts = ', Node, num_kpts
+!    write(6,*)'Node, nntot    = ', Node, nntot
+!!   End debugging
+  
 !   Set up the variables related with the disentanglement
     disentanglement = manifold_bands_lowdin(index_manifold)%disentanglement
     dis_win_min     = manifold_bands_lowdin(index_manifold)%dis_win_min
@@ -1566,6 +1594,12 @@ module m_lowdin
     my_node_id = Node
     on_root    = IOnode
 
+!!   For debugging
+!    write(6,*)'my_node_id, num_nodes, on_root = ',  &
+! &             my_node_id, num_nodes, on_root 
+!!   End debugging
+  
+
 !   From this line till the end of the subroutine, it is a copy 
 !   verbatim of the WANNIER90 main program
 
@@ -1577,9 +1611,6 @@ module m_lowdin
   end if
   call comms_bcast(len_seedname, 1)
   call comms_bcast(seedname, len_seedname)
-  call comms_bcast(dryrun, 1)
-
-  write(6,*)' Node, Hola 1', Node
 
   if (on_root) then
     call io_date(cdate, ctime)
@@ -1605,16 +1636,22 @@ module m_lowdin
 
   ! We now distribute the parameters to the other nodes
   call param_dist
+
   if (gamma_only .and. num_nodes > 1) &
     call io_error('Gamma point branch is serial only at the moment')
 
   if (transport .and. tran_read_ht) goto 3003
 
-!  if (on_root) call kmesh_write()
-
   if (lsitesymmetry) call sitesym_read()   ! update this to read on root and bcast - JRY
+
   call overlap_allocate()
+
   call overlap_read()
+
+!! For debugging
+!  call MPI_barrier(MPI_Comm_world,i)
+!  call die()
+!! End debugging
 
   time1 = io_time()
   if (on_root) write (stdout, '(/1x,a25,f11.3,a)') 'Time to read overlaps    ', time1 - time2, ' (sec)'
@@ -1922,4 +1959,4 @@ module m_lowdin
   end subroutine deallocate_wannier
 
 #endif
-endmodule m_lowdin
+endmodule m_w90_in_siesta

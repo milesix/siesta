@@ -5,7 +5,7 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-  subroutine broadcast_lowdin()
+  subroutine broadcast_w90_in_siesta()
 !
 ! Globalizes the data related with the Lowdin orthogonalization
 !
@@ -43,7 +43,7 @@
 !
 ! Do nothing...
 !
-  end subroutine broadcast_lowdin
+  end subroutine broadcast_w90_in_siesta
 #else
   integer MPIerror
 
@@ -52,7 +52,7 @@
   integer nlowdin   ! Number of bands considered for Lowdin orthogonalizati
 
 #ifdef DEBUG
-  call write_debug( '  PRE broadcast_lowdin' )
+  call write_debug( '  PRE broadcast_w90_in_siesta' )
 #endif
 
   if (Nodes.eq.1) return
@@ -140,96 +140,96 @@
   enddo
 
 #ifdef DEBUG
-  call write_debug( '  POS broadcast_lowdin' )
+  call write_debug( '  POS broadcast_w90_in_siesta' )
 #endif
 
 
 !! For debugging
 !  write(6,'(a,2i5)')                                                         &
-! & 'broadcast_lowdin: Node, n_wannier_manifolds = ',                         &
+! & 'broadcast_w90_in_siesta: Node, n_wannier_manifolds = ',                  &
 ! &  Node, n_wannier_manifolds 
 !  do i_man = 1, n_wannier_manifolds
 !    nlowdin = manifold_bands_lowdin(i_man)%numbands_lowdin
 !    write(6,'(a,2i5,2x,a)')                                                  &
-! &   'broadcast_lowdin: Node, i_manifold, seedname        = ',               &
+! &   'broadcast_w90_in_siesta: Node, i_manifold, seedname        = ',        &
 ! &   Node, i_man, manifold_bands_lowdin(i_man)%seedname_lowdin
 !    write(6,'(a,3i5)')                                                       &
-! &   'broadcast_lowdin: Node, i_manifold, initial_band    = ',               &
+! &   'broadcast_w90_in_siesta: Node, i_manifold, initial_band    = ',        &
 ! &   Node, i_man, manifold_bands_lowdin(i_man)%initial_band
 !    write(6,'(a,3i5)')                                                       &
-! &   'broadcast_lowdin: Node, i_manifold, final_band      = ',               &
+! &   'broadcast_w90_in_siesta: Node, i_manifold, final_band      = ',        &
 ! &   Node, i_man, manifold_bands_lowdin(i_man)%final_band
 !    write(6,'(a,3i5)')                                                       & 
-! &   'broadcast_lowdin: Node, i_manifold, number_of_bands = ',               &
+! &   'broadcast_w90_in_siesta: Node, i_manifold, number_of_bands = ',        &
 ! &   Node, i_man, manifold_bands_lowdin(i_man)%number_of_bands
 !    write(6,'(a,3i5)')                                                       & 
-! &    'broadcast_lowdin: Node, i_manifold, numbands_lowdin = ',              &
+! &    'broadcast_w90_in_siesta: Node, i_manifold, numbands_lowdin = ',       &
 ! &    Node, i_man, manifold_bands_lowdin(i_man)%numbands_lowdin
 !    write(6,'(a,3i5)')                                                       &
-! &    'broadcast_lowdin: Node, i_manifold, num_iter        = ',              &
+! &    'broadcast_w90_in_siesta: Node, i_manifold, num_iter        = ',       &
 ! &    Node, i_man, manifold_bands_lowdin(i_man)%num_iter      
 !    write(6,'(a,3i5)')                                                       &
-! &    'broadcast_lowdin: Node, i_manifold, blocksize       = ',              &
+! &    'broadcast_w90_in_siesta: Node, i_manifold, blocksize       = ',       &
 ! &    Node, i_man, manifold_bands_lowdin(i_man)%blocksizeincbands_lowdin
 !    write(6,'(a,3i5)')                                                       &
-! &    'broadcast_lowdin: Node, i_manifold, nincbands_loc   = ',              &
+! &    'broadcast_w90_in_siesta: Node, i_manifold, nincbands_loc   = ',       &
 ! &    Node, i_man, manifold_bands_lowdin(i_man)%nincbands_loc_lowdin
 !    do iorb = 1, nlowdin
 !      write(6,'(a,4i5)')                                                     &
-! &     'broadcast_lowdin: Node, i_manifold, orbital_indices = ',             &
+! &     'broadcast_w90_in_siesta: Node, i_manifold, orbital_indices = ',      &
 ! &     Node, i_man, iorb,                                                    &
 ! &     manifold_bands_lowdin(i_man)%orbital_indices(iorb)
 !    enddo
 !    do iorb = 1, no_u
 !      write(6,'(a,3i5,l5)')                                                  &
-! &     'broadcast_lowdin: Node, i_manifold, isexcluded      = ',             &
+! &     'broadcast_w90_in_siesta: Node, i_manifold, isexcluded      = ',      &
 ! &     Node, i_man, iorb,                                                    &
 ! &     manifold_bands_lowdin(i_man)%isexcluded(iorb)
 !    enddo
 !    do iorb = 1, no_u
 !      write(6,'(a,3i5,l5)')                                                  &
-! &     'broadcast_lowdin: Node, i_manifold, orbexcluded     = ',             &
+! &     'broadcast_w90_in_siesta: Node, i_manifold, orbexcluded     = ',      &
 ! &     Node, i_man, iorb,                                                    &
 ! &     manifold_bands_lowdin(i_man)%orbexcluded(iorb)
 !    enddo
 !    do iorb = 1, no_u
 !      write(6,'(a,4i5)')                                                     &
-! &     'broadcast_lowdin: Node, i_manifold, orb_in_manifold = ',             &
+! &     'broadcast_w90_in_siesta: Node, i_manifold, orb_in_manifold = ',      &
 ! &     Node, i_man, iorb,                                                    &
 ! &     manifold_bands_lowdin(i_man)%orb_in_manifold(iorb)
 !    enddo
 !    write(6,'(a,2i5,f12.5)')                                                 &
-! &    'broadcast_lowdin: Node, i_manifold, dis_win_min     = ',              &
+! &    'broadcast_w90_in_siesta: Node, i_manifold, dis_win_min     = ',       &
 ! &    Node, i_man, manifold_bands_lowdin(i_man)%dis_win_min       
 !    write(6,'(a,2i5,f12.5)')                                                 &
-! &    'broadcast_lowdin: Node, i_manifold, dis_win_max     = ',              &
+! &    'broadcast_w90_in_siesta: Node, i_manifold, dis_win_max     = ',       &
 ! &    Node, i_man, manifold_bands_lowdin(i_man)%dis_win_max
 !    write(6,'(a,2i5,f12.5)')                                                 &
-! &    'broadcast_lowdin: Node, i_manifold, dis_froz_min    = ',              &
+! &    'broadcast_w90_in_siesta: Node, i_manifold, dis_froz_min    = ',       &
 ! &   Node, i_man, manifold_bands_lowdin(i_man)%dis_froz_min
 !    write(6,'(a,2i5,f12.5)')                                                 &
-! &    'broadcast_lowdin: Node, i_manifold, dis_froz_max    = ',              &
+! &    'broadcast_w90_in_siesta: Node, i_manifold, dis_froz_max    = ',       &
 ! &    Node, i_man, manifold_bands_lowdin(i_man)%dis_froz_max
 !    write(6,'(a,2i5,l5)')                                                    &
-! &    'broadcast_lowdin: Node, i_manifold, disentanglement = ',              &
+! &    'broadcast_w90_in_siesta: Node, i_manifold, disentanglement = ',       &
 ! &    Node, i_man, manifold_bands_lowdin(i_man)%disentanglement
 !    write(6,'(a,2i5,l5)')                                                    &
-! &    'broadcast_lowdin: Node, i_manifold, wannier_plot    = ',              &
+! &    'broadcast_w90_in_siesta: Node, i_manifold, wannier_plot    = ',       &
 ! &    Node, i_man, manifold_bands_lowdin(i_man)%wannier_plot
 !    write(6,'(a,5i5)')                                                       &
-! &    'broadcast_lowdin: Node, i_manifold, wannier_plot_su = ',              &
+! &    'broadcast_w90_in_siesta: Node, i_manifold, wannier_plot_su = ',       &
 ! &    Node, i_man,                                                           &
 ! &    manifold_bands_lowdin(i_man)%wannier_plot_supercell(:)
 !    write(6,'(a,2i5,l5)')                                                    &
-! &    'broadcast_lowdin: Node, i_manifold, fermi_surface_pl= ',              &
+! &    'broadcast_w90_in_siesta: Node, i_manifold, fermi_surface_pl= ',       &
 ! &    Node, i_man, manifold_bands_lowdin(i_man)%fermi_surface_plot
 !    write(6,'(a,2i5,l5)')                                                    &
-! &    'broadcast_lowdin: Node, i_manifold, write_hr        = ',              &
+! &    'broadcast_w90_in_siesta: Node, i_manifold, write_hr        = ',       &
 ! &    Node, i_man, manifold_bands_lowdin(i_man)%write_hr
 !  enddo 
 !! End debugging
 
-  end subroutine broadcast_lowdin
+  end subroutine broadcast_w90_in_siesta
 
 #endif
 

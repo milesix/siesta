@@ -103,10 +103,10 @@
      .     allocatable, save, target     :: manifold_bands_lowdin(:)
 
 
-      integer :: numkpoints_lowdin   ! Total number of k-points
-                                     !   used in the Lowdin normalization
+      integer :: numkpoints_w90_in   ! Total number of k-points
+                                     !   used in Wannier90
 
-      real(dp), pointer :: kpointsfrac_lowdin(:,:)
+      real(dp), pointer :: kpointsfrac_w90_in(:,:)
                                      ! List of k points relative
                                      !   to the reciprocal lattice vectors.
                                      !   First  index: component
@@ -114,15 +114,15 @@
 !
 ! Variables related with the neighbours of the k-points
 !
-      integer           :: nncount_lowdin
+      integer           :: nncount_w90_in
                              ! The number of nearest neighbours belonging to
                              !   each k-point of the Monkhorst-Pack mesh
-      integer, pointer  :: nnlist_lowdin(:,:)
+      integer, pointer  :: nnlist_w90_in(:,:)
                              ! nnlist(ikp,inn) is the index of the
                              !   inn-neighbour of ikp-point
                              !   in the Monkhorst-Pack grid folded to the
                              !   first Brillouin zone
-      integer, pointer  :: nnfolding_lowdin(:,:,:)
+      integer, pointer  :: nnfolding_w90_in(:,:,:)
                              ! nnfolding(i,ikp,inn) is the i-component
                              !   of the reciprocal lattice vector
                              !   (in reduced units) that brings
@@ -130,26 +130,20 @@
                              !   (which is in the first BZ) to the
                              !   actual \vec{k} + \vec{b} that we need.
                              !   In reciprocal lattice units. 
-      real(dp) :: latvec_lowdin(3,3)        !< Lattice vectors
-      real(dp) :: reclatvec_lowdin(3,3)     !< Reciprocal lattice vectors
+      real(dp) :: latvec_w90_in(3,3)        !< Lattice vectors
+      real(dp) :: reclatvec_w90_in(3,3)     !< Reciprocal lattice vectors
                                      !!  Cartesian coordinates in Bohr^-1
                                      !!  First  index: component
                                      !!  Second index: vector
       
-      real(dp), pointer :: bvectorsfrac_lowdin(:,:)
+      real(dp), pointer :: bvectorsfrac_w90_in(:,:)
                                          !! The vectors b that connect
                                          !!   each mesh-point k
                                          !!   to its nearest neighbours
-      complex(dp), pointer, save ::   overlaptilde(:,:)
-      complex(dp), pointer, save ::   coeffs_k(:,:)
-      complex(dp), pointer, save ::   overlap_sq(:,:)
-      complex(dp), pointer, save ::   phitilde(:,:)
-      complex(dp), pointer, save ::   invsqrtover(:,:)
-      complex(dp), pointer, save ::   coeffshatphi(:,:)
 
-      integer :: kmeshlowdin(3)      ! Number of divisions along the three
+      integer :: kmesh_w90_in(3)     ! Number of divisions along the three
                                      !   reciprocal lattice vectors that will be
-                                     !   used in the Lowdinn projections
+                                     !   used in Wannier90
 
 
 

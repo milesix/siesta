@@ -21,7 +21,8 @@ subroutine writemmn( ispin )
 ! based on a previous subroutine by R. Korytar
 ! 
   use precision, only: dp
-  use m_switch_local_projection, only: seedname ! Seed for the name of the file 
+  use m_switch_local_projection, only: seedname 
+                                         ! Seed for the name of the file 
                                          !   where the Wannier90
                                          !   code, when used as a postprocessing
                                          !   tool, dumps the information.
@@ -33,9 +34,11 @@ subroutine writemmn( ispin )
                                          !   periodic part of the wavefunct
                                          !   with a neighbour k-point will
                                          !   be computed
-  use m_switch_local_projection, only: nncount  ! Number of neighbour k-points
-  use m_switch_local_projection, only: nnlist   ! nnlist(ikp,inn) is the index of the 
-                                         !   inn-neighbour of ikp-point
+  use m_switch_local_projection, only: nncount  
+                                         ! Number of neighbour k-points
+  use m_switch_local_projection, only: nnlist_neig  
+                                         ! nnlist_neig(ikp,inn) is the index of
+                                         !   the inn-neighbour of ikp-point
                                          !   in the Monkhorst-Pack grid 
                                          !   folded to the 
                                          !   first Brillouin zone
@@ -44,7 +47,8 @@ subroutine writemmn( ispin )
                                          !   of the reciprocal lattice vector 
                                          !   (in reduced units) that brings
                                          !   the inn-neighbour specified in 
-                                         !   nnlist (which is in the first BZ)  
+                                         !   nnlist_neig 
+                                         !   (which is in the first BZ)  
                                          !   to the actual \vec{k} + \vec{b} 
                                          !   that we need.
                                          !   In reciprocal lattice units.
@@ -128,7 +132,7 @@ subroutine writemmn( ispin )
 !        to the actual \vec{k} + \vec{b} that we need.
 
       write( unit=mmnunit, fmt="(i5,i5,3x,3i4)", err=1984 )         &
- &      ik, nnlist(ik,inn), g
+ &      ik, nnlist_neig(ik,inn), g
 
 !     Subsequent numincbands x numincbands lines of each block: 
 !     two real numbers per line. 

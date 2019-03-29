@@ -58,12 +58,11 @@
       use m_siesta2wannier90, only: siesta2wannier90
       use m_switch_local_projection, only: switch_local_projection
 #ifdef HAVE_WANNIER90
-      use lowdin_types,      only: numkpoints_lowdin
       use lowdin_types,      only: manifold_bands_lowdin
-      use m_lowdin,          only: setup_lowdin
-      use m_lowdin,          only: compute_matrices
-      use m_lowdin,          only: compute_wannier
-      use m_lowdin,          only: deallocate_wannier
+      use m_w90_in_siesta,   only: setup_w90_in_siesta
+      use m_w90_in_siesta,   only: compute_matrices
+      use m_w90_in_siesta,   only: compute_wannier
+      use m_w90_in_siesta,   only: deallocate_wannier
 #endif
 
       use m_mpi_utils, only: barrier
@@ -511,7 +510,7 @@ C
 !       (not as a postprocessing tool)
 !       At this step, these variables are only known at the IONode
 !
-        call setup_lowdin
+        call setup_w90_in_siesta
 
         do index_manifold = 1, n_wannier_manifolds
 !         Transfer all the parameters from the lowdin module to the variables
