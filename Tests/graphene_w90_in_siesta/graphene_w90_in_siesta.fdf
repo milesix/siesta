@@ -22,13 +22,13 @@ NumberOfSpecies        2         # Number of different atomic species in the
                                  # - pseudo-Hydrogen atom 
                                  #   (with an atomic number of -1)
 %block ChemicalSpeciesLabel      # Chemical species label as indicated above
-  1   6  C.w90
+  1   6  C
   2  -1  Ghost-H
 %endblock ChemicalSpeciesLabel
 
 
 %block PAO.Basis                 # Define Basis set
-C.w90       2                    # Species label, number of l-shells
+C           2                    # Species label, number of l-shells
  n=2   0   1                     # n, l, Nzeta
    4.088    
    1.000    
@@ -148,12 +148,9 @@ NumberOfBandManifoldsForWannier   1
    20  20  1  
 %endblock kMeshforWannier
 
-#Siesta2Wannier90.UnkGrid1       30
-#Siesta2Wannier90.UnkGrid2       30
-#Siesta2Wannier90.UnkGrid3       30
-Siesta2Wannier90.UnkGrid1       5
-Siesta2Wannier90.UnkGrid2       5
-Siesta2Wannier90.UnkGrid3       5
+Siesta2Wannier90.UnkGrid1       30
+Siesta2Wannier90.UnkGrid2       30
+Siesta2Wannier90.UnkGrid3       30
 
 WriteMullikenPop    1
 

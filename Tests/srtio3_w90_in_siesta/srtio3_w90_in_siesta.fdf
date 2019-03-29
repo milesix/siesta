@@ -1,8 +1,7 @@
 SystemName      Strontium titanate (SrTiO3) cubic structure
 #               Cubic phase
-#               PBE-SOL functional
-#               Theoretical lattice constant obtained for the Hamann pseudos
-#               (taken from the pseudo-dojo web page)
+#               LDA functional, Ceperley-Alder parametrization
+#               Theoretical lattice constant 
 #               Mesh Cutoff: 600 Ry
 #               Monkhorst-Pack grid: 6 x 6 x 6 ; displaced 0.5 0.5 0.5 
 
@@ -248,11 +247,11 @@ NumberOfBandManifoldsForWannier   3
 %endblock WannierProjections
 
 %block kMeshforWannier
-   4  4  4
+   6  6  6
 %endblock kMeshforWannier
 
-Siesta2Wannier90.UnkGrid1       30
-Siesta2Wannier90.UnkGrid2       30
-Siesta2Wannier90.UnkGrid3       30
+Siesta2Wannier90.UnkGrid1       20
+Siesta2Wannier90.UnkGrid2       20
+Siesta2Wannier90.UnkGrid3       20
 
 
