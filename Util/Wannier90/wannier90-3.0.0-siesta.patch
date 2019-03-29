@@ -187,7 +187,7 @@ diff -urN wannier90-3.0.0.old/src/overlap.F90 wannier90-3.0.0.new/src/overlap.F9
        m_matrix_local = cmplx_0
 diff -urN wannier90-3.0.0.old/src/parameters.F90 wannier90-3.0.0.new/src/parameters.F90
 --- wannier90-3.0.0.old/src/parameters.F90	2019-02-27 15:28:29.000000000 +0100
-+++ wannier90-3.0.0.new/src/parameters.F90	2019-03-26 11:03:31.172063000 +0100
++++ wannier90-3.0.0.new/src/parameters.F90	2019-03-29 14:29:27.230905701 +0100
 @@ -151,7 +151,10 @@
    logical, public, save :: fermi_surface_plot
    integer, public, save :: fermi_surface_num_points
@@ -977,7 +977,27 @@ diff -urN wannier90-3.0.0.old/src/parameters.F90 wannier90-3.0.0.new/src/paramet
  
      return
  
-@@ -6043,6 +6184,9 @@
+@@ -6008,6 +6149,9 @@
+     call comms_bcast(num_exclude_bands, 1)
+     if (num_exclude_bands > 0) then
+       if (.not. on_root) then
++!       jjunquer
++        if (allocated( exclude_bands )) deallocate( exclude_bands )
++!       end jjunquer
+         allocate (exclude_bands(num_exclude_bands), stat=ierr)
+         if (ierr /= 0) &
+           call io_error('Error in allocating exclude_bands in param_dist')
+@@ -6028,6 +6172,9 @@
+     call comms_bcast(dis_spheres_num, 1)
+     if (dis_spheres_num > 0) then
+       if (.not. on_root) then
++!       jjunquer
++        if (allocated( dis_spheres )) deallocate( dis_spheres )
++!       end jjunquer
+         allocate (dis_spheres(4, dis_spheres_num), stat=ierr)
+         if (ierr /= 0) &
+           call io_error('Error in allocating dis_spheres in param_dist')
+@@ -6043,6 +6190,9 @@
      call comms_bcast(num_wannier_plot, 1)
      if (num_wannier_plot > 0) then
        if (.not. on_root) then
@@ -987,7 +1007,39 @@ diff -urN wannier90-3.0.0.old/src/parameters.F90 wannier90-3.0.0.new/src/paramet
          allocate (wannier_plot_list(num_wannier_plot), stat=ierr)
          if (ierr /= 0) &
            call io_error('Error in allocating wannier_plot_list in param_dist')
-@@ -6268,6 +6412,13 @@
+@@ -6063,6 +6213,9 @@
+ 
+     if (num_bands_project > 0) then
+       if (.not. on_root) then
++!       jjunquer
++        if (allocated( bands_plot_project )) deallocate( bands_plot_project )
++!       end jjunquer
+         allocate (bands_plot_project(num_bands_project), stat=ierr)
+         if (ierr /= 0) &
+           call io_error('Error in allocating bands_plot_project in param_dist')
+@@ -6239,6 +6392,10 @@
+     call comms_bcast(selective_loc, 1)
+     if (selective_loc .and. slwf_constrain) then
+       if (.not. on_root) then
++!       jjunquer
++        if (allocated( ccentres_frac )) deallocate( ccentres_frac )
++        if (allocated( ccentres_cart )) deallocate( ccentres_cart )
++!       end jjunquer
+         allocate (ccentres_frac(num_wann, 3), stat=ierr)
+         if (ierr /= 0) call io_error('Error allocating ccentres_frac in param_get_centre_constraints')
+         allocate (ccentres_cart(num_wann, 3), stat=ierr)
+@@ -6255,6 +6412,10 @@
+     call comms_bcast(lhasproj, 1)
+     if (lhasproj) then
+       if (.not. on_root) then
++!       jjunquer
++        if (allocated( input_proj_site )) deallocate( input_proj_site )
++        if (allocated( proj_site )) deallocate( proj_site )
++!       end jjunquer
+         allocate (input_proj_site(3, num_proj), stat=ierr)
+         if (ierr /= 0) call io_error('Error allocating input_proj_site in param_dist')
+         allocate (proj_site(3, num_wann), stat=ierr)
+@@ -6268,6 +6429,13 @@
      ! allocatable, and in param_read they were allocated on the root node only
      !
      if (.not. on_root) then
@@ -1001,7 +1053,7 @@ diff -urN wannier90-3.0.0.old/src/parameters.F90 wannier90-3.0.0.new/src/paramet
        allocate (fermi_energy_list(nfermi), stat=ierr)
        if (ierr /= 0) call io_error( &
          'Error allocating fermi_energy_read in postw90_param_dist')
-@@ -6279,10 +6430,16 @@
+@@ -6279,10 +6447,16 @@
          call io_error('Error allocating dos_project in postw90_param_dist')
        if (.not. effective_model) then
          if (eig_found) then
@@ -1018,7 +1070,7 @@ diff -urN wannier90-3.0.0.old/src/parameters.F90 wannier90-3.0.0.new/src/paramet
          allocate (kpt_latt(3, num_kpts), stat=ierr)
          if (ierr /= 0) &
            call io_error('Error allocating kpt_latt in postw90_param_dist')
-@@ -6314,6 +6471,14 @@
+@@ -6314,6 +6488,14 @@
        call comms_bcast(wbtot, 1)
  
        if (.not. on_root) then
@@ -1033,7 +1085,7 @@ diff -urN wannier90-3.0.0.old/src/parameters.F90 wannier90-3.0.0.new/src/paramet
          allocate (nnlist(num_kpts, nntot), stat=ierr)
          if (ierr /= 0) &
            call io_error('Error in allocating nnlist in param_dist')
-@@ -6349,6 +6514,10 @@
+@@ -6349,6 +6531,10 @@
      call comms_bcast(have_disentangled, 1)
  
      if (.not. on_root) then
@@ -1044,7 +1096,7 @@ diff -urN wannier90-3.0.0.old/src/parameters.F90 wannier90-3.0.0.new/src/paramet
        allocate (wannier_centres(3, num_wann), stat=ierr)
        if (ierr /= 0) call io_error('Error allocating wannier_centres in param_dist')
        wannier_centres = 0.0_dp
-@@ -6356,6 +6525,10 @@
+@@ -6356,6 +6542,10 @@
        if (ierr /= 0) call io_error('Error in allocating wannier_spreads in param_dist')
        wannier_spreads = 0.0_dp
        if (disentanglement) then
