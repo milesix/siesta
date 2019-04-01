@@ -23,17 +23,17 @@
       use units, only : Ang, pi
       implicit none
 !
+      logical, save         :: firsttime = .true.
+!
       public :: poisson_bigdft
 !
       CONTAINS
 !> \brief General purpose of the subroutine poisson_bigdft
 !!
 !! This subroutine handles the full hartree potential calculation
-!! given by Psolver package of BigDFT. The main points are:
+!! given by Psolver package of BigDFT. 
 !!
-!! 1. The system is classified accoring its symmetry (shape).
-!!
-!! 2. The potential is calculated in two scenarios:
+!! The potential is calculated in two scenarios:
 !!
 !!    In the case of a serial run:
 !!
@@ -89,7 +89,6 @@
       use mesh,           only : nsm
       use PStypes,        only : pkernel_init, pkernel_free, pkernel_get_radius
       use yaml_output
-!      use futile
       use f_utils
       use dictionaries, dict_set => set
       use mpi_siesta
@@ -103,10 +102,8 @@
       integer, intent(in)         :: ntm
       real( grid_p), intent(out)  :: V( :)              ! Output potential.
       real( dp), intent(out)      :: eh                 ! Electrostatic energy.
-!
-      real( dp), dimension( 1, 3) :: hgrid !uniform mesh spacings in the three directions
+      real( dp), dimension( 1, 3), save :: hgrid        ! Uniform mesh spacings in the three directions.
       integer                     :: i, j, k, iatoms
-!      real( dp)                   :: pi
       real( dp)                   :: einit
       type( dictionary), pointer  :: dict               ! Input parameters.
       integer                     :: isf_order, fd_order
@@ -117,64 +114,66 @@
       real(grid_p), pointer       :: Paux_3D( :, :, :)  ! 3D auxyliary array.
       integer                     :: World_Comm, mpirank, ierr
 !
-      real(dp)                    :: alpha, beta, gamma ! Box axis angles.  
+      real(dp), save              :: alpha, beta, gamma ! Box axis angles.  
       real(dp)                    :: angdeg( 3)
       real(dp)                    :: radii( na_u) 
       character( len= 1)          :: boundary_case 
       character( len= 2)          :: atm_label( na_u) 
       real(dp)                    :: delta, factor 
-      real(dp), parameter         :: Ang= 1._dp/ 0.529177_dp   ! Ang to Bohr
       integer, allocatable        :: local_grids( :)
-!      parameter( pi= 4.0_dp* DATAN( 1.0_dp))
+!
 ! #################################################################### !
 !
-      call timer('BigDFT_solv',1)
+      call timer( 'BigDFT_solv', 1)
 ! 
-! f_util initialisation:
+! f_util and dictionary initialisations:
 ! 
       call f_lib_initialize()
-!
-! Grid separation for psolver:
-!
-!
-      do i=1,3
-        hgrid(1,i)=(sqrt(cell(1,i)**2+cell(2,i)**2+cell(3,i)**2)       &
-                /grid(i))
-      enddo
-!
-! Initialise futil dictionary  
-!
       call dict_init(dict)
-      call set_bigdft_variables( dict, boundary_case, pkernel_verbose)
-      call set_cell_angles( cell, angdeg) 
-! 
-     
-      alpha = angdeg(1)/180.0_dp*pi
-      beta  = angdeg(2)/180.0_dp*pi
-      gamma = angdeg(3)/180.0_dp*pi
 !
+! Allocation:
 !
+      nullify( Paux_3D)
+      nullify( Paux_1D)
 !
-      nullify(Paux_3D)
-      nullify(Paux_1D)
-!
-      allocate( local_grids( Nodes*3))
-      call re_alloc( Paux_3D, 1, grid(1), 1, grid(2), 1, grid(3),     &
+      allocate( local_grids( Nodes* 3))
+      call re_alloc( Paux_3D, 1, grid( 1), 1, grid( 2), 1, grid( 3),   &
                      'Paux_3D', 'poison_bigdft' )
-      call re_alloc( Paux_1D, 1, grid(1)*grid(2)*grid(3),             &
+      call re_alloc( Paux_1D, 1, grid( 1)* grid( 2)* grid( 3),         &
                      'Paux_1D', 'poison_bigdft' )
+!
+! Calculation of cell angles and grid separation for psolver:
+!
+      if( firsttime) then
+!
+        call set_cell_angles( cell, angdeg) 
+! 
+        alpha= angdeg( 1)/ 180.0_dp* pi
+        beta = angdeg( 2)/ 180.0_dp* pi
+        gamma= angdeg( 3)/ 180.0_dp* pi
+!
+        do i= 1, 3
+          hgrid( 1, i)=( sqrt( cell( 1, i)**2 +cell( 2, i)**2 +        &
+                               cell( 3, i)**2)/ grid(i))
+        enddo
+      endif
+!
+! Setting of dictionary variables, done at every calling:  
+!
+      call set_bigdft_variables( dict, boundary_case, pkernel_verbose)
 !
 #ifdef MPI
 !
 !!! Collection of RHO: 
 !
 ! RHO is collected to a common array.
-        call timer('gather_rho',1)
+!
+!        call timer('gather_rho',1)
         call gather_rho( RHO, grid, 2, lgrid(1) * lgrid(2) * lgrid(3), Paux_1D)
 !
         call MPI_BCAST( Paux_1D, grid(1) * grid(2) * grid(3),         &
                         MPI_double_precision, 0, MPI_COMM_WORLD, ierr) 
-        call timer('gather_rho',2)
+!        call timer('gather_rho',2)
 !
 !!! Local grids: 
 !
@@ -195,6 +194,7 @@
 !!! Total density passes from a 1D to a 3D-aaray: (compulsory for BigDFT)
 !
 ! shame on me! I should find more elegant way to make it. 
+!
         call onetothreedarray( Paux_1D, Paux_3D, grid)
 #else
         call onetothreedarray( RHO, Paux_3D, grid)
@@ -205,7 +205,7 @@
 !
         pkernel=pkernel_init( Node, Nodes, dict, boundary_case,        &
                          (/ grid( 1), grid( 2), grid( 3)/), hgrid,     &
-                          alpha_bc=alpha, beta_ac=beta, gamma_ab=gamma)
+                        alpha_bc= alpha, beta_ac= beta, gamma_ab= gamma)
 !
         call pkernel_set( pkernel, verbose=pkernel_verbose)
 !
@@ -224,24 +224,24 @@
 !
           factor= pkernel%cavity%fact_rigid
           do iatoms= 1, na_u
-            radii(iatoms)= factor* radii( iatoms)*Ang
+            radii( iatoms)= factor* radii( iatoms)* Ang
           enddo
-          call pkernel_set_epsilon(pkernel, nat=na_u, rxyz=xa, radii= radii)
+          call pkernel_set_epsilon( pkernel, nat= na_u, rxyz= xa, radii= radii)
         endif
 !        
         call dict_free( dict)
 !
-        call timer( 'PSolver', 1)
+!        call timer( 'PSolver', 1)
         call Electrostatic_Solver( pkernel, Paux_3D, ehartree= eh)
-        call timer('PSolver',2)
+!        call timer('PSolver',2)
 !
 ! Energy must be devided by the total number of nodes because the way 
 ! Siesta computes the Hartree energy. Indeed, BigDFT provides the value
 ! alredy distributed. 
 !
-        eh = 2.0_dp * eh / Nodes
-        Paux_3D = 2.0_dp * Paux_3D - ( sum(2.0_dp * Paux_3D) /          &
-                 ( grid( 1) * grid( 2) * grid( 3)))
+        eh= 2.0_dp* eh/ Nodes
+        Paux_3D= 2.0_dp* Paux_3D-( sum( 2.0_dp* Paux_3D)/              &
+                 (grid( 1) * grid( 2) * grid( 3)))
 !
 #ifdef MPI
 ! 
@@ -252,8 +252,8 @@
 ! Now we spread back the potential on different nodes. 
 !
         call timer('spread_pot',1)
-        call spread_potential( Paux_1D, grid, 2, grid(1) * grid(2) * &
-                   grid(3), local_grids, V) 
+        call spread_potential( Paux_1D, grid, 2, grid( 1) * grid( 2) * &
+                   grid( 3), local_grids, V) 
         call timer('spread_pot',2)
 # else 
         call threetoonedarray(V, Paux_3D, grid) 
@@ -261,14 +261,19 @@
 !
 ! Ending calculation:
 !
-        call pkernel_free(pkernel)
+        call pkernel_free( pkernel)
         call f_lib_finalize_noreport() 
         call de_alloc( Paux_1D, 'Paux', 'poisson_bigdft' )
         call de_alloc( Paux_3D, 'Paux', 'poisson_bigdft' )
+        deallocate( local_grids)
  
-      call timer('BigDFT_solv',2)
+      call timer( 'BigDFT_solv', 2)
 !
+      firsttime=.false.
+!
+! #################################################################### !
       end subroutine poisson_bigdft 
+! #################################################################### !
 !
 ! #################################################################### !
       subroutine set_bigdft_variables(dict, boundary_case, pkernel_verbose)
@@ -290,7 +295,6 @@
       type( dictionary), pointer, intent(out) :: dict         ! Input parameters.
       character( len= 1), intent(out)         :: boundary_case 
       logical, intent(out)  :: pkernel_verbose 
-      logical, save         :: firsttime = .true. 
 ! #################################################################### !
 !
 ! Data distribution will be always global:
@@ -336,22 +340,22 @@
 !
 !#ifdef DEBUG
       if (firsttime) then 
-      if( boundary_case.eq. 'F') then  
-        if (ionode) write(6,'(/,a,/,a/,a,/,a,/,a,a)')                 &
+        if( boundary_case.eq. 'F') then  
+          if (ionode) write(6,'(/,a,/,a/,a,/,a,/,a,a)')                 &
             'bigdft_solver: initialising kernel for a molecular system',&
             '#================= WARNING bigdft_solver ===============#',&
             '                                                         ',&
             ' Molecular system must be place at the center of the box,',&
-            ' otherwise box-edge effects might lead to wrong Hartree'  ,&
+            ' otherwise box-edge effects might lead to wrong Hartree  ',&
             ' energy values.                                          ',&
             '#=======================================================#'
       elseif (boundary_case.eq. 'S') then  
         if (ionode) write(6,'(a,a,a,a,a,a)')                  &
             'bigdft_solver: initialising kernel for a slab system',&
             '#================= WARNING bigdft_solver ===============#',&
-            ' Empty direction of the periodic system has to be set in ',&
-            ' the Y-axis.                                             ',&
-            ' Additionally, simulation box must be large enough to '   ,&
+            ' Empty direction of the periodic system has to be set    ',&
+            ' along the Y-axis.                                       ',&
+            ' Additionally, simulation box must be large enough to    ',&
             ' to avoid box edges effects in the Hartree potential.    ',&
             '#=======================================================#'
       elseif( boundary_case.eq. 'P') then  
@@ -380,13 +384,12 @@
             write(6,"(a)")        'gps_algorithm:', bigdft_gps_algorithm
           endif
         endif
-        firsttime=.false.
       endif 
 !#endif
 ! #################################################################### !
       end subroutine set_bigdft_variables
 ! #################################################################### !
-      subroutine set_cell_angles(cell, celang)
+      subroutine set_cell_angles( cell, celang)
 ! #################################################################### !
 !     Subroutine to calculate the cell angles. Roughly copied from     !
 !     outcell.f of E. Artacho, December 1997.
@@ -394,20 +397,20 @@
 ! #################################################################### !
       real( dp), intent( in)      :: cell( 3, 3)        ! Unit-cell vectors.
       real( dp), intent( out)     :: celang( 3)
-      real( dp)                   :: cellm(3)
+      real( dp)                   :: cellm( 3)
       integer                     :: i
 ! #################################################################### !
       do i = 1,3
-        cellm(i) = dot_product(cell(:,i),cell(:,i))
-        cellm(i) = sqrt(cellm(i))
+        cellm( i) = dot_product( cell(:,i),cell(:,i))
+        cellm( i) = sqrt( cellm( i))
       enddo
 !
-      celang(1) = dot_product(cell(:,1),cell(:,2))
-      celang(1) = acos(celang(1)/(cellm(1)*cellm(2)))*180._dp/pi
-      celang(2) = dot_product(cell(:,1),cell(:,3))
-      celang(2) = acos(celang(2)/(cellm(1)*cellm(3)))*180._dp/pi
-      celang(3) = dot_product(cell(:,2),cell(:,3))
-      celang(3) = acos(celang(3)/(cellm(2)*cellm(3)))*180._dp/pi
+      celang( 1)= dot_product( cell(:,1),cell(:,2))
+      celang( 1)= acos( celang( 1)/(cellm( 1)*cellm( 2)))* 180._dp/ pi
+      celang( 2)= dot_product( cell( :,1), cell( :,3))
+      celang( 2)= acos( celang( 2)/(cellm(1)*cellm( 3)))* 180._dp/ pi
+      celang( 3)= dot_product( cell( :,2),cell(:,3))
+      celang( 3)= acos( celang( 3)/( cellm( 2)* cellm( 3)))* 180._dp/ pi
 ! #################################################################### !
       end subroutine set_cell_angles
 ! #################################################################### !
@@ -493,16 +496,17 @@
       use alloc,          only : re_alloc, de_alloc
       use mpi_siesta
 !
-      integer, intent(in)          ::     nsm         
-      integer, intent(in)          ::     mesh(3)
-      integer, intent(in)          ::     maxp
-      real(grid_p), intent(in)     ::     rho(maxp)
-      real(grid_p), pointer , intent(out) ::     rho_total(:) 
+      integer, intent( in)          ::     nsm         
+      integer, intent( in)          ::     mesh( 3)
+      integer, intent( in)          ::     maxp
+      real( grid_p), intent( in)    ::     rho( maxp)
+      real( grid_p), pointer , intent( out) ::     rho_total( :) 
       integer  i, ip, iu, is, np, BlockSizeY, BlockSizeZ, ProcessorZ
-      integer  meshnsm(3), NRemY, NRemZ, iy, iz, izm, Ind, Ind_rho, ir
-      integer    Ind2, MPIerror, Request, Status(MPI_Status_Size), BNode, NBlock
-      real(grid_p), pointer     :: bdens(:) => null()
-      real(grid_p),     pointer :: temp(:) => null()
+      integer  meshnsm( 3), NRemY, NRemZ, iy, iz, izm, Ind, Ind_rho, ir
+      integer  Ind2, MPIerror, Request, Status( MPI_Status_Size),      &
+               BNode, NBlock
+      real(grid_p), pointer         :: bdens( :) => null()
+      real(grid_p), pointer         :: temp( :) => null()
 ! #################################################################### !
 !
 #ifdef DEBUG
@@ -516,8 +520,8 @@
            call die('ERROR: ProcessorY must be a factor of the' //  &
            ' number of processors!')
 !
-      ProcessorZ = Nodes / ProcessorY
-      BlockSizeY = ((((mesh( 2) / nsm) - 1)/ProcessorY) + 1) *nsm
+      ProcessorZ= Nodes/ ProcessorY
+      BlockSizeY=((((mesh( 2)/ nsm)- 1)/ ProcessorY) + 1) *nsm
 !
       call re_alloc(bdens, 1, BlockSizeY*mesh(1), 'bdens', 'write_rho')
       call re_alloc( temp, 1, mesh(1), 'temp', 'write_rho' )
@@ -627,9 +631,9 @@
                      local_grids, V_local)
 ! #################################################################### !
 !                                                                      !
-!     Based on read_rho writen by J.Soler July 1997,                   !
-!     this subroutine takes a potential from a total array and         !
-!     distributes it into all nodes according to local_grids meshes.   !
+!     Based on read_rho writen by J.Soler July 1997.                   !
+!     This subroutine distributes a potential from a total array       !
+!     into all nodes according to local_grids meshes.                  !
 !                                                                      !
 ! #################################################################### !
 ! *************************** INPUT **********************************
