@@ -7,7 +7,7 @@
 !
   subroutine broadcast_w90_in_siesta()
 !
-! Globalizes the data related with the Lowdin orthogonalization
+! Globalizes the data related with the Wannier transformation
 !
 ! Javier Junquera, December 2018, based on broadcast_basis written by
 ! Alberto Garcia, June 2000--
@@ -18,7 +18,7 @@
                                           ! Number of bands manifolds
                                           !   that will be considered
                                           !   for Wannier transformation
-  use lowdin_types,   only: manifold_bands_lowdin  
+  use w90_in_siesta_types,   only: manifold_bands_w90_in
                                           ! Variable where the initial
                                           !   and final band of each
                                           !   manifold are stored
@@ -49,7 +49,7 @@
 
   integer i_man     ! Counter for loops on manifolds
   integer iorb      ! Counter for loops on orbitals
-  integer nlowdin   ! Number of bands considered for Lowdin orthogonalizati
+  integer nwannier90! Number of bands considered for Wannier transformation
 
 #ifdef DEBUG
   call write_debug( '  PRE broadcast_w90_in_siesta' )
@@ -58,82 +58,82 @@
   if (Nodes.eq.1) return
 
   if (Node.ne.0) then
-    allocate(manifold_bands_lowdin(n_wannier_manifolds))
+    allocate(manifold_bands_w90_in(n_wannier_manifolds))
   end if
 
   do i_man = 1, n_wannier_manifolds
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%seedname_lowdin,              &
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%seedname_w90_in,              &
  &                 label_length+3,MPI_character,0,                            &
  &                 MPI_Comm_World,MPIerror)
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%initial_band,                 &
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%initial_band,                 &
  &                 1,MPI_Integer,0,MPI_Comm_World,MPIerror)
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%final_band,                   &
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%final_band,                   &
  &                 1,MPI_Integer,0,MPI_Comm_World,MPIerror)
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%number_of_bands,              &
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%number_of_bands,              &
  &                 1,MPI_Integer,0,MPI_Comm_World,MPIerror)
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%numbands_lowdin,              &
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%numbands_w90_in,              &
  &                 1,MPI_Integer,0,MPI_Comm_World,MPIerror)
-    nlowdin = manifold_bands_lowdin(i_man)%numbands_lowdin
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%num_iter,                     &
+    nwannier90 = manifold_bands_w90_in(i_man)%numbands_w90_in
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%num_iter,                     &
  &                 1,MPI_Integer,0,MPI_Comm_World,MPIerror)
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%blocksizeincbands_lowdin,     &
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%blocksizeincbands_w90_in,     &
  &                 1,MPI_Integer,0,MPI_Comm_World,MPIerror)
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%nincbands_loc_lowdin,         &
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%nincbands_loc_w90_in,         &
  &                 1,MPI_Integer,0,MPI_Comm_World,MPIerror)
 
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%dis_win_min,                  &
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%dis_win_min,                  &
  &                 1,MPI_double_precision,                                    &
  &                 0,MPI_Comm_World,MPIerror)
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%dis_win_max,                  &
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%dis_win_max,                  &
  &                 1,MPI_double_precision,                                    &
  &                 0,MPI_Comm_World,MPIerror)
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%dis_froz_min,                 &
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%dis_froz_min,                 &
  &                 1,MPI_double_precision,                                    &
  &                 0,MPI_Comm_World,MPIerror)
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%dis_froz_max,                 &
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%dis_froz_max,                 &
  &                 1,MPI_double_precision,                                    &
  &                 0,MPI_Comm_World,MPIerror) 
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%disentanglement,              &
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%disentanglement,              &
  &                 1,MPI_logical,                                             &
  &                 0,MPI_Comm_World,MPIerror)
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%wannier_plot,                 &
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%wannier_plot,                 &
  &                 1,MPI_logical,                                             &
  &                 0,MPI_Comm_World,MPIerror)
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%wannier_plot_supercell,       & 
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%wannier_plot_supercell,       & 
  &                 3,MPI_integer,                                             &
  &                 0,MPI_Comm_World,MPIerror)
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%fermi_surface_plot,           &
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%fermi_surface_plot,           &
  &                 1,MPI_logical,                                             &
  &                 0,MPI_Comm_World,MPIerror)
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%write_hr,                     &
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%write_hr,                     &
  &                 1,MPI_logical,                                             &
  &                 0,MPI_Comm_World,MPIerror)
     if (Node .ne. 0) then
-      nullify( manifold_bands_lowdin(i_man)%orbital_indices )
-      nullify( manifold_bands_lowdin(i_man)%isexcluded      )
-      nullify( manifold_bands_lowdin(i_man)%orbexcluded     )
-      nullify( manifold_bands_lowdin(i_man)%orb_in_manifold )
+      nullify( manifold_bands_w90_in(i_man)%orbital_indices )
+      nullify( manifold_bands_w90_in(i_man)%isexcluded      )
+      nullify( manifold_bands_w90_in(i_man)%orbexcluded     )
+      nullify( manifold_bands_w90_in(i_man)%orb_in_manifold )
 
-      call re_alloc( manifold_bands_lowdin(i_man)%orbital_indices,            &
- &                   1, manifold_bands_lowdin(i_man)%numbands_lowdin )
-      call re_alloc( manifold_bands_lowdin(i_man)%isexcluded,                 &
+      call re_alloc( manifold_bands_w90_in(i_man)%orbital_indices,            &
+ &                   1, manifold_bands_w90_in(i_man)%numbands_w90_in )
+      call re_alloc( manifold_bands_w90_in(i_man)%isexcluded,                 &
  &                   1, no_u )
-      call re_alloc( manifold_bands_lowdin(i_man)%orbexcluded,                &
+      call re_alloc( manifold_bands_w90_in(i_man)%orbexcluded,                &
  &                   1, no_u )
-      call re_alloc( manifold_bands_lowdin(i_man)%orb_in_manifold,            &
+      call re_alloc( manifold_bands_w90_in(i_man)%orb_in_manifold,            &
  &                   1, no_u )
     end if
 
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%orbital_indices,              &
- &                 nlowdin,MPI_integer,0,                                     &
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%orbital_indices,              &
+ &                 nwannier90,MPI_integer,0,                                  &
  &                 MPI_Comm_World,MPIerror)
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%isexcluded,                   &
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%isexcluded,                   &
  &                 no_u,MPI_logical,0,                                        &
  &                 MPI_Comm_World,MPIerror)
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%orbexcluded,                  &
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%orbexcluded,                  &
  &                 no_u,MPI_logical,0,                                        &
  &                 MPI_Comm_World,MPIerror)
-    call MPI_Bcast(manifold_bands_lowdin(i_man)%orb_in_manifold,              &
+    call MPI_Bcast(manifold_bands_w90_in(i_man)%orb_in_manifold,              &
  &                 no_u,MPI_integer,0,                                        &
  &                 MPI_Comm_World,MPIerror)
 
@@ -149,83 +149,83 @@
 ! & 'broadcast_w90_in_siesta: Node, n_wannier_manifolds = ',                  &
 ! &  Node, n_wannier_manifolds 
 !  do i_man = 1, n_wannier_manifolds
-!    nlowdin = manifold_bands_lowdin(i_man)%numbands_lowdin
+!    nwannier90 = manifold_bands_w90_in(i_man)%numbands_w90_in
 !    write(6,'(a,2i5,2x,a)')                                                  &
 ! &   'broadcast_w90_in_siesta: Node, i_manifold, seedname        = ',        &
-! &   Node, i_man, manifold_bands_lowdin(i_man)%seedname_lowdin
+! &   Node, i_man, manifold_bands_w90_in(i_man)%seedname_w90_in
 !    write(6,'(a,3i5)')                                                       &
 ! &   'broadcast_w90_in_siesta: Node, i_manifold, initial_band    = ',        &
-! &   Node, i_man, manifold_bands_lowdin(i_man)%initial_band
+! &   Node, i_man, manifold_bands_w90_in(i_man)%initial_band
 !    write(6,'(a,3i5)')                                                       &
 ! &   'broadcast_w90_in_siesta: Node, i_manifold, final_band      = ',        &
-! &   Node, i_man, manifold_bands_lowdin(i_man)%final_band
+! &   Node, i_man, manifold_bands_w90_in(i_man)%final_band
 !    write(6,'(a,3i5)')                                                       & 
 ! &   'broadcast_w90_in_siesta: Node, i_manifold, number_of_bands = ',        &
-! &   Node, i_man, manifold_bands_lowdin(i_man)%number_of_bands
+! &   Node, i_man, manifold_bands_w90_in(i_man)%number_of_bands
 !    write(6,'(a,3i5)')                                                       & 
-! &    'broadcast_w90_in_siesta: Node, i_manifold, numbands_lowdin = ',       &
-! &    Node, i_man, manifold_bands_lowdin(i_man)%numbands_lowdin
+! &    'broadcast_w90_in_siesta: Node, i_manifold, numbands_w90_in = ',       &
+! &    Node, i_man, manifold_bands_w90_in(i_man)%numbands_w90_in
 !    write(6,'(a,3i5)')                                                       &
 ! &    'broadcast_w90_in_siesta: Node, i_manifold, num_iter        = ',       &
-! &    Node, i_man, manifold_bands_lowdin(i_man)%num_iter      
+! &    Node, i_man, manifold_bands_w90_in(i_man)%num_iter      
 !    write(6,'(a,3i5)')                                                       &
 ! &    'broadcast_w90_in_siesta: Node, i_manifold, blocksize       = ',       &
-! &    Node, i_man, manifold_bands_lowdin(i_man)%blocksizeincbands_lowdin
+! &    Node, i_man, manifold_bands_w90_in(i_man)%blocksizeincbands_w90_in
 !    write(6,'(a,3i5)')                                                       &
 ! &    'broadcast_w90_in_siesta: Node, i_manifold, nincbands_loc   = ',       &
-! &    Node, i_man, manifold_bands_lowdin(i_man)%nincbands_loc_lowdin
-!    do iorb = 1, nlowdin
+! &    Node, i_man, manifold_bands_w90_in(i_man)%nincbands_loc_w90_in
+!    do iorb = 1, nwannier90
 !      write(6,'(a,4i5)')                                                     &
 ! &     'broadcast_w90_in_siesta: Node, i_manifold, orbital_indices = ',      &
 ! &     Node, i_man, iorb,                                                    &
-! &     manifold_bands_lowdin(i_man)%orbital_indices(iorb)
+! &     manifold_bands_w90_in(i_man)%orbital_indices(iorb)
 !    enddo
 !    do iorb = 1, no_u
 !      write(6,'(a,3i5,l5)')                                                  &
 ! &     'broadcast_w90_in_siesta: Node, i_manifold, isexcluded      = ',      &
 ! &     Node, i_man, iorb,                                                    &
-! &     manifold_bands_lowdin(i_man)%isexcluded(iorb)
+! &     manifold_bands_w90_in(i_man)%isexcluded(iorb)
 !    enddo
 !    do iorb = 1, no_u
 !      write(6,'(a,3i5,l5)')                                                  &
 ! &     'broadcast_w90_in_siesta: Node, i_manifold, orbexcluded     = ',      &
 ! &     Node, i_man, iorb,                                                    &
-! &     manifold_bands_lowdin(i_man)%orbexcluded(iorb)
+! &     manifold_bands_w90_in(i_man)%orbexcluded(iorb)
 !    enddo
 !    do iorb = 1, no_u
 !      write(6,'(a,4i5)')                                                     &
 ! &     'broadcast_w90_in_siesta: Node, i_manifold, orb_in_manifold = ',      &
 ! &     Node, i_man, iorb,                                                    &
-! &     manifold_bands_lowdin(i_man)%orb_in_manifold(iorb)
+! &     manifold_bands_w90_in(i_man)%orb_in_manifold(iorb)
 !    enddo
 !    write(6,'(a,2i5,f12.5)')                                                 &
 ! &    'broadcast_w90_in_siesta: Node, i_manifold, dis_win_min     = ',       &
-! &    Node, i_man, manifold_bands_lowdin(i_man)%dis_win_min       
+! &    Node, i_man, manifold_bands_w90_in(i_man)%dis_win_min       
 !    write(6,'(a,2i5,f12.5)')                                                 &
 ! &    'broadcast_w90_in_siesta: Node, i_manifold, dis_win_max     = ',       &
-! &    Node, i_man, manifold_bands_lowdin(i_man)%dis_win_max
+! &    Node, i_man, manifold_bands_w90_in(i_man)%dis_win_max
 !    write(6,'(a,2i5,f12.5)')                                                 &
 ! &    'broadcast_w90_in_siesta: Node, i_manifold, dis_froz_min    = ',       &
-! &   Node, i_man, manifold_bands_lowdin(i_man)%dis_froz_min
+! &   Node, i_man, manifold_bands_w90_in(i_man)%dis_froz_min
 !    write(6,'(a,2i5,f12.5)')                                                 &
 ! &    'broadcast_w90_in_siesta: Node, i_manifold, dis_froz_max    = ',       &
-! &    Node, i_man, manifold_bands_lowdin(i_man)%dis_froz_max
+! &    Node, i_man, manifold_bands_w90_in(i_man)%dis_froz_max
 !    write(6,'(a,2i5,l5)')                                                    &
 ! &    'broadcast_w90_in_siesta: Node, i_manifold, disentanglement = ',       &
-! &    Node, i_man, manifold_bands_lowdin(i_man)%disentanglement
+! &    Node, i_man, manifold_bands_w90_in(i_man)%disentanglement
 !    write(6,'(a,2i5,l5)')                                                    &
 ! &    'broadcast_w90_in_siesta: Node, i_manifold, wannier_plot    = ',       &
-! &    Node, i_man, manifold_bands_lowdin(i_man)%wannier_plot
+! &    Node, i_man, manifold_bands_w90_in(i_man)%wannier_plot
 !    write(6,'(a,5i5)')                                                       &
 ! &    'broadcast_w90_in_siesta: Node, i_manifold, wannier_plot_su = ',       &
 ! &    Node, i_man,                                                           &
-! &    manifold_bands_lowdin(i_man)%wannier_plot_supercell(:)
+! &    manifold_bands_w90_in(i_man)%wannier_plot_supercell(:)
 !    write(6,'(a,2i5,l5)')                                                    &
 ! &    'broadcast_w90_in_siesta: Node, i_manifold, fermi_surface_pl= ',       &
-! &    Node, i_man, manifold_bands_lowdin(i_man)%fermi_surface_plot
+! &    Node, i_man, manifold_bands_w90_in(i_man)%fermi_surface_plot
 !    write(6,'(a,2i5,l5)')                                                    &
 ! &    'broadcast_w90_in_siesta: Node, i_manifold, write_hr        = ',       &
-! &    Node, i_man, manifold_bands_lowdin(i_man)%write_hr
+! &    Node, i_man, manifold_bands_w90_in(i_man)%write_hr
 !  enddo 
 !! End debugging
 

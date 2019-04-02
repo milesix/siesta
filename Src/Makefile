@@ -95,7 +95,7 @@ OBJS =  automatic_cell.o atom_options.o \
 	madelung.o mesh.o meshphi.o meshdscf.o memory.o meshsubs.o metaforce.o \
         m_supercell.o mulliken.o minvec.o naefs.o \
 	m_new_dm.o normalize_dm.o ordern.o outcell.o outcoor.o \
-	m_fft_gpfa.o m_w90_in_siesta.o m_switch_local_proj.o broadcast_lowdin.o \
+	m_fft_gpfa.o m_w90_in_siesta.o m_switch_local_proj.o broadcast_w90_in.o \
 	pdos.o pdosg.o pdosk.o pdoskp.o phirphi.o pixmol.o plcharge.o \
 	projected_DOS.o propor.o m_partial_charges.o \
 	randomg.o reclat.o redcel.o \
@@ -124,7 +124,7 @@ OBJS =  automatic_cell.o atom_options.o \
         atomlist.o atm_types.o radial.o \
         alloc.o spher_harm.o periodic_table.o version.o timestamp.o \
         basis_types.o xml.o pseudopotential.o basis_specs.o basis_io.o\
-	ldau.o ldau_specs.o lowdin_types.o\
+	ldau.o ldau_specs.o w90_in_types.o\
         onmod.o densematrix.o writewave.o on_subs.o fermid.o m_broyddj.o \
         electrostatic.o mneighb.o globalise.o siesta_cmlsubs.o siesta_cml.o \
         units.o zmatrix.o m_broyden_mixing.o forhar.o m_walltime.o m_wallclock.o m_iostruct.o \
@@ -576,8 +576,8 @@ born_charge.o: atomlist.o ksv.o ksvinit.o m_mpi_utils.o m_spin.o parallel.o
 born_charge.o: precision.o siesta_geom.o siesta_options.o sparse_matrices.o
 broadcast_basis.o: atm_types.o chemical.o ldau_specs.o m_mpi_utils.o parallel.o
 broadcast_basis.o: radial.o
-broadcast_lowdin.o: siesta_options.o m_mpi_utils.o parallel.o files.o 
-broadcast_lowdin.o: lowdin_types.o atomlist.o alloc.o
+broadcast_w90_in.o: siesta_options.o m_mpi_utils.o parallel.o files.o 
+broadcast_w90_in.o: w90_in_types.o atomlist.o alloc.o
 broadcast_projections.o: m_trialorbitalclass.o parallel.o m_switch_local_proj.o
 broyden_optim.o: m_broyddj_nocomm.o m_memory.o parallel.o precision.o
 broyden_optim.o: siesta_options.o sys.o units.o
@@ -829,7 +829,7 @@ local_DOS.o: alloc.o atomlist.o dhscf.o diagon.o files.o kpoint_ldos.o
 local_DOS.o: kpoint_scf.o m_energies.o m_eo.o m_forces.o m_ntm.o m_spin.o
 local_DOS.o: parallel.o precision.o siesta_geom.o siesta_options.o
 local_DOS.o: sparse_matrices.o sys.o units.o
-lowdin_types.o: precision.o files.o m_trialorbitalclass.o
+w90_in_types.o: precision.o files.o m_trialorbitalclass.o
 m_broyddj.o: alloc.o m_mpi_utils.o parallel.o precision.o sys.o
 m_broyddj_nocomm.o: alloc.o parallel.o precision.o sys.o
 m_broyden_mixing.o: alloc.o m_broyddj.o m_mpi_utils.o parallel.o precision.o
@@ -895,11 +895,11 @@ m_iostruct.o: siesta_geom.o sys.o units.o
 m_iotddft.o: files.o m_dipol.o m_io.o m_steps.o parallel.o siesta_options.o
 m_iotddft.o: units.o wavefunctions.o
 m_kinetic.o: precision.o
-m_w90_in_siesta.o: m_cite.o parallel.o lowdin_types.o precision.o alloc.o atm_types.o
+m_w90_in_siesta.o: m_cite.o parallel.o w90_in_types.o precision.o alloc.o atm_types.o
 m_w90_in_siesta.o: siesta_options.o atomlist.o parallelsubs.o sys.o m_energies.o 
 m_w90_in_siesta.o: m_orderbands.o sys.o atmfuncs.o atomlist.o siesta_geom.o units.o
 m_w90_in_siesta.o: m_switch_local_proj.o m_digest_nnkp.o siesta_options.o files.o
-m_w90_in_siesta.o: atmfuncs.o chemical.o m_trialorbitalclass.o m_spin.o
+m_w90_in_siesta.o: atmfuncs.o m_trialorbitalclass.o m_spin.o
 m_mat_invert.o: intrinsic_missing.o m_pivot_array.o precision.o
 m_matdiag.o: precision.o
 m_matio.o: alloc.o parallel.o
@@ -1240,7 +1240,7 @@ remove_intramol_pressure.o: precision.o zmatrix.o
 reoptical.o: m_spin.o parallel.o precision.o sys.o
 reord.o: alloc.o precision.o
 reordpsi.o: alloc.o m_orderbands.o parallel.o parallelsubs.o precision.o
-reordpsi.o: siesta2wannier90.o lowdin_types.o
+reordpsi.o: siesta2wannier90.o 
 restructSpData2D.o: class_Data2D.o class_OrbitalDistribution.o class_SpData2D.o
 restructSpData2D.o: class_Sparsity.o
 rhofft.o: cellsubs.o fft.o precision.o sys.o
@@ -1294,7 +1294,7 @@ siesta_analysis.o: m_pexsi_local_dos.o m_spin.o m_steps.o parallel.o
 siesta_analysis.o: projected_DOS.o siesta2wannier90.o siesta_cml.o
 siesta_analysis.o: siesta_geom.o siesta_options.o sparse_matrices.o units.o
 siesta_analysis.o: write_subs.o writewave.o zmatrix.o m_switch_local_proj.o
-siesta_analysis.o: lowdin_types.o m_w90_in_siesta.o
+siesta_analysis.o: m_w90_in_siesta.o
 siesta_cmlsubs.o: files.o m_uuid.o parallel.o siesta_cml.o timestamp.o
 siesta_cmlsubs.o: 
 siesta_dicts.o: atomlist.o class_SpData1D.o files.o kpoint_scf.o m_energies.o

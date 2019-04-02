@@ -5,13 +5,13 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors
 !
-      module lowdin_types
+      module w90_in_siesta_types
 !
 !=======================================================================
 !
 !     This module defines data structures to handle the specification
 !     of the Wannier90 transformation within SIESTA. This specification
-!     is read from the fdf file by routine 'read_lowdin_specs'.
+!     is read from the fdf file by routine 'read_w90_in_specs'.
 
       use precision, only: dp
       use files,     only: label_length         ! Number of characters in slabel
@@ -19,8 +19,8 @@
 
       implicit none
 
-      type, public ::  lowdin_manifold_t
-          character(label_length+3)  :: seedname_lowdin  
+      type, public ::  w90_in_manifold_t
+          character(label_length+3)  :: seedname_w90_in
                                        ! Seed of the name of the file 
                                        !   that will be used to dump the 
                                        !   information of the matrix elements
@@ -29,26 +29,26 @@
           integer                :: final_band
           integer                :: number_of_bands
                                        ! Number of bands passed to Wannier90
-          integer                :: numbands_lowdin
+          integer                :: numbands_w90_in
                                        ! Number of bands that will be 
                                        !   orthonormalized
           integer                :: num_iter       ! Number of iterations for th
                                                    !   minimization of \Omega
           integer, pointer       :: orbital_indices(:)
           logical, pointer       :: isexcluded(:)  ! List of bands excluded for
-                                                   !   Lowdin orthonormaliza
+                                                   !   Wannier transformation
           integer, pointer       :: isincluded(:)  ! List of bands included for
-                                                   !   Lowdin orthonormaliza
+                                                   !   Wannier transformation
           logical, pointer       :: orbexcluded(:) ! List of orbitals excluded 
-                                                   !   for Lowdin orthonormaliza
+                                                   !  for Wannier transformation
           integer, pointer       :: orb_in_manifold(:) 
                                                    ! List of orbitals excluded 
-                                                   !   for Lowdin orthonormaliza
-          integer                :: blocksizeincbands_lowdin 
+                                                   !  for Wannier transformation
+          integer                :: blocksizeincbands_w90_in
                                                    ! Blocking size for orbital
                                                    !   distribution across 
                                                    !   the nodes
-          integer                :: nincbands_loc_lowdin     
+          integer                :: nincbands_loc_w90_in
                                                    ! Number of included bands 
                                                    !   in the calc.
                                                    !   of the overlap and 
@@ -96,11 +96,11 @@
           logical                :: write_tb      !! Write lattice vectors, 
                                                   !!   Hamiltonian, and position
                                                   !!   operator in WF basis
-          type(trialorbital), allocatable  :: proj_lowdin(:)
-      end type lowdin_manifold_t
+          type(trialorbital), allocatable  :: proj_w90_in(:)
+      end type w90_in_manifold_t
 
-      type(lowdin_manifold_t), public,
-     .     allocatable, save, target     :: manifold_bands_lowdin(:)
+      type(w90_in_manifold_t), public,
+     .     allocatable, save, target     :: manifold_bands_w90_in(:)
 
 
       integer :: numkpoints_w90_in   ! Total number of k-points
@@ -147,5 +147,5 @@
 
 
 
-      end module lowdin_types
+      end module w90_in_siesta_types
 
