@@ -58,7 +58,6 @@
       use m_siesta2wannier90, only: siesta2wannier90
       use m_switch_local_projection, only: switch_local_projection
 #ifdef HAVE_WANNIER90
-      use lowdin_types,      only: manifold_bands_lowdin
       use m_w90_in_siesta,   only: setup_w90_in_siesta
       use m_w90_in_siesta,   only: compute_matrices
       use m_w90_in_siesta,   only: compute_wannier
@@ -512,18 +511,21 @@ C
 !
         call setup_w90_in_siesta
 
+!       Loop on the number of manifolds
+!       n_wannier_manifolds is defined in siesta_options
         do index_manifold = 1, n_wannier_manifolds
-!         Transfer all the parameters from the lowdin module to the variables
-!         that will be used in the wannierization routines
+!         Transfer all the parameters to the variables
+!         that will be used in the wannierization routines.
+!         Those routines comes from the WANNIER90 code.
           call switch_local_projection( index_manifold )
           do ispin = 1, nspin
             call diagonalizeHk( ispin, index_manifold )
             call compute_matrices( ispin, index_manifold )
-!            if(IONode) call compute_wannier(ispin, index_manifold)
-            call compute_wannier(ispin, index_manifold)
+            call compute_wannier( ispin, index_manifold )
           enddo 
         enddo
-        if(IONode) call deallocate_wannier
+!        if(IONode) call deallocate_wannier
+        call deallocate_wannier
         w90_in_siesta_processing = .false.
       endif
 #endif

@@ -10,8 +10,8 @@
 !=======================================================================
 !
 !     This module defines data structures to handle the specification
-!     of the Lowdin orthonormalization. This specification
-!     is read from the fdf file by routine 'read_lowdin_specs'.
+!     of the Wannier transformation. This specification
+!     is read from the fdf file by routine 'read_w90_in_specs'.
 
       use precision, only: dp
       use files,     only : label_length         ! Number of characters in slabel

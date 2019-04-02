@@ -8,9 +8,13 @@
 
 !> \brief General purpose of the m_w90_in_siesta module 
 !! 
-!! In this module we perform a Lowdin orthonormalization of the Bloch functions
+!! In this module we perform a Wannier transformation of the Bloch functions
 !! corresponding to a given manifold of bands
-!! We follow the recipe given in \cite Iniguez-04. 
+!! We follow the recipe given in \cite Marzari-97.
+!! In order to compute the transformation, SIESTA uses the low-level modules
+!! of the WANNIER90 code(\cite Wannier90), version 3.0.0, as building blocks
+!! A complete description of the theoty behind the maximally localized
+!! Wannier functions and its applications can be found in Ref. \cite Marzari-12
 !!
 !! Example: band structure of SrTiO3
 !! \image html Bands_STO.png
@@ -31,22 +35,23 @@ module m_w90_in_siesta
   use parallel,       only: Nodes         ! Total number of processors in a 
                                           !  parallel run
   use parallel,       only: IONode        ! Node for Input/output
-  use lowdin_types,   only: lowdin_manifold_t    
-  use lowdin_types,   only: manifold_bands_lowdin  ! Variable where the initial
-                                                   !   and final band of each
-                                                   !   manifold are stored
+  use w90_in_siesta_types,   only: w90_in_manifold_t    
+  use w90_in_siesta_types,   only: manifold_bands_w90_in
+                                          ! Variable where the initial
+                                          !   and final band of each
+                                          !   manifold are stored
 
-  use atomlist,           only: no_u         ! Number of orbitals in unit cell
-                                             ! NOTE: When running in parallel,
-                                             !   this is core independent
-  use sys,                only : die         ! Termination routine
+  use atomlist,           only: no_u      ! Number of orbitals in unit cell
+                                          ! NOTE: When running in parallel,
+                                          !   this is core independent
+  use sys,                only : die      ! Termination routine
   use fdf
 
 !
 ! Allocation/Deallocation routines
 !
-  use alloc,              only: re_alloc     ! Reallocation routines
-  use alloc,              only: de_alloc     ! Deallocation routines
+  use alloc,              only: re_alloc  ! Reallocation routines
+  use alloc,              only: de_alloc  ! Deallocation routines
 
 #ifdef MPI
   use mpi_siesta
@@ -72,13 +77,13 @@ module m_w90_in_siesta
 !!    the implementation is based. Here:
 !!    the original paper by Marzari and Vanderbilt,
 !!    the last paper on the implementation of WANNIER90,
-!!    the pre-print by Íñiguez and Yildirim in the arxiv where the 
+!!    and the pre-print by Íñiguez and Yildirim in the arxiv where the 
 !!    Lowdin orthogonalization is explained
 !!
-!! 2. Read the LowdinProjection block in the fdf 
+!! 2. Read the WannierProjections block in the fdf 
 !!    and set up the general information for every manifold,
 !!    including initial (initial_band) and final (final_band) bands,
-!!    number of bands that will be orthogonalized (numbands_lowdin),
+!!    number of bands that will be orthogonalized (numbands_w90_in),
 !!    the orbitals that will be used as initial guess in the projections
 !!    during the wannierization (orbital_indices),
 !!    number of iterations that will be performed in the Wannierization 
@@ -93,13 +98,13 @@ module m_w90_in_siesta
 !!    the orbitals that will be used as the localized projector functions
 !!    (orbexcluded),
 !!    and the new indexing of the orbitals within a manifold (orb_in_manifold).
-!!    This is done in the subroutine set_excluded_bands_lowdin
+!!    This is done in the subroutine set_excluded_bands_w90_in
 !!
 !! 4. Generate the trial localized functions from the atomic orbitals in the
 !!    basis set of SIESTA.
 !!    This is done in the subroutine define_trial_orbitals
 !!
-!! 5. The derived variable manifold_bands_lowdin (where all the previous
+!! 5. The derived variable manifold_bands_w90_in (where all the previous
 !!    information is stored) is broadcast
 !!    to the rest of the Nodes in the subroutine broadcast_w90_in_siesta
 !!
@@ -152,7 +157,7 @@ module m_w90_in_siesta
 !
 !     Read and set up the general information for every manifold,
 !     including initial (initial_band) and final (final_band) bands,
-!     number of bands that will be orthogonalized (numbands_lowdin),
+!     number of bands that will be orthogonalized (numbands_w90_in),
 !     number of iterations that will be performed in the Wannierization 
 !     procedure (num_iter),
 !     the orbitals that will be used in the wannierization (orbital_indices),
@@ -171,7 +176,7 @@ module m_w90_in_siesta
 !     and the new indexing of the orbitals within a manifold (orb_in_manifold)
 !
       do index_manifold = 1, n_wannier_manifolds
-        call set_excluded_bands_lowdin( index_manifold )
+        call set_excluded_bands_w90_in( index_manifold )
       enddo 
 
 !     Generate the trial localized functions from the atomic orbitals in the
@@ -194,7 +199,7 @@ module m_w90_in_siesta
 !   parallel run
 !
     do index_manifold = 1, n_wannier_manifolds
-       numincbands_tmp = manifold_bands_lowdin(index_manifold)%number_of_bands
+       numincbands_tmp = manifold_bands_w90_in(index_manifold)%number_of_bands
 
 !      Allocate memory related with the coefficients of the wavefunctions
 #ifdef MPI
@@ -220,9 +225,9 @@ module m_w90_in_siesta
        nincbands_loc_tmp = numincbands_tmp
 #endif
 
-       manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin =        &
+       manifold_bands_w90_in(index_manifold)%nincbands_loc_w90_in =        &
  &        nincbands_loc_tmp
-       manifold_bands_lowdin(index_manifold)%blocksizeincbands_lowdin =    &
+       manifold_bands_w90_in(index_manifold)%blocksizeincbands_w90_in =    &
  &        blocksizeincbands_tmp
     enddo  
 
@@ -245,13 +250,14 @@ module m_w90_in_siesta
 !> \brief  Subroutine that reads all the
 !!         info in the fdf file related with the
 !!         band manifolds that will be treated in the 
-!!         Lowdin orthogonalization.
+!!         Wannier transformation.
 !!         This information is contained in the block
 !!         %block WannierProjections.
-!!         The derived variable manifold_bands_lowdin
+!!         The derived variable manifold_bands_w90_in
 !!         is populated. 
-!!         The type of this variable is defined in the module lowdin_types,
-!!         in the file lowdin_types.f
+!!         The type of this variable is defined in the 
+!!         module w90_in_siesta_types,
+!!         in the file w90_in_types.f
 !!
 !!         This subroutine is used only by the Node responsible for the
 !!         input/output         
@@ -282,7 +288,7 @@ module m_w90_in_siesta
 
 !   Allocate the pointer where all the data required for every manifold
 !   will be stored
-    allocate(manifold_bands_lowdin(n_wannier_manifolds))
+    allocate(manifold_bands_w90_in(n_wannier_manifolds))
     
 !   Read the WannierProjections block
 !   First check whether the block is present in the fdf file.
@@ -318,21 +324,21 @@ module m_w90_in_siesta
 
 !     Assign the indices of the initial and final band of the manifold 
 !     as the first and second integer in the digested line, respectively
-      manifold_bands_lowdin(index_manifold)%initial_band =fdf_bintegers(pline,1)
-      manifold_bands_lowdin(index_manifold)%final_band   =fdf_bintegers(pline,2)
+      manifold_bands_w90_in(index_manifold)%initial_band =fdf_bintegers(pline,1)
+      manifold_bands_w90_in(index_manifold)%final_band   =fdf_bintegers(pline,2)
 
-      if( manifold_bands_lowdin(index_manifold)%initial_band .gt.      &
- &        manifold_bands_lowdin(index_manifold)%final_band )           &
+      if( manifold_bands_w90_in(index_manifold)%initial_band .gt.      &
+ &        manifold_bands_w90_in(index_manifold)%final_band )           &
  &      call die('The final band should be larger than the initial one')
 
 !     Compute the total number of bands in the manifold
-      manifold_bands_lowdin(index_manifold)%number_of_bands=      &
- &        ( manifold_bands_lowdin(index_manifold)%final_band   -  &
- &          manifold_bands_lowdin(index_manifold)%initial_band )  + 1
+      manifold_bands_w90_in(index_manifold)%number_of_bands=      &
+ &        ( manifold_bands_w90_in(index_manifold)%final_band   -  &
+ &          manifold_bands_w90_in(index_manifold)%initial_band )  + 1
 
 !     Go to the next line to 
 !     read the total number of bands that will enter the 
-!     Lowdin orthonormalization
+!     Wannier transformation
       if (.not. fdf_bline(bfdf,pline)) &
  &      call die("Number of bands to be orthogonalized not specified")
       if (.not. fdf_bmatch(pline,'i')) &   !  We expect that the third line
@@ -341,23 +347,23 @@ module m_w90_in_siesta
                                            !    the number of "Wannier" 
                                            !    functions that will be produced.
                                            !    That is the meaning of 'i'
- &      call die('Wrong format in the number of Lowdin orthogonal functions')
+ &      call die('Wrong format in the number of Wannier functions')
 
-!     Assign the number of Lowdin orthogonalized functions required to the 
+!     Assign the number of Wannier functions required to the 
 !     first integer in the digested line
-      manifold_bands_lowdin(index_manifold)%numbands_lowdin = &
+      manifold_bands_w90_in(index_manifold)%numbands_w90_in = &
  &      fdf_bintegers(pline,1)  
 
-      if( manifold_bands_lowdin(index_manifold)%numbands_lowdin .gt.   &
- &        manifold_bands_lowdin(index_manifold)%number_of_bands )      &
- &      call die('More Lowdin functions requested than bands in the manifold')
+      if( manifold_bands_w90_in(index_manifold)%numbands_w90_in .gt.   &
+ &        manifold_bands_w90_in(index_manifold)%number_of_bands )      &
+ &      call die('More Wannier functions requested than bands in the manifold')
 
 !     Check whether the disentanglement procedure will be required:
-      if( manifold_bands_lowdin(index_manifold)%number_of_bands /=      &
- &        manifold_bands_lowdin(index_manifold)%numbands_lowdin ) then
-        manifold_bands_lowdin(index_manifold)%disentanglement = .true. 
+      if( manifold_bands_w90_in(index_manifold)%number_of_bands /=      &
+ &        manifold_bands_w90_in(index_manifold)%numbands_w90_in ) then
+        manifold_bands_w90_in(index_manifold)%disentanglement = .true. 
       else
-        manifold_bands_lowdin(index_manifold)%disentanglement = .false.
+        manifold_bands_w90_in(index_manifold)%disentanglement = .false.
       endif
 
 !     Go to the next line to 
@@ -365,21 +371,21 @@ module m_w90_in_siesta
       if (.not. fdf_bline(bfdf,pline)) &
  &      call die("No localized trial orbitals in WannierProjections")
 
-!     We need as many localized trial orbitals as Lowdin functions requested
+!     We need as many localized trial orbitals as Wannier functions requested
       if( fdf_bnintegers(pline) .ne.                               &
- &        manifold_bands_lowdin(index_manifold)%numbands_lowdin )  &
- &      call die('We need as many localized trial orbitals as Lowdin functions requested')
+ &        manifold_bands_w90_in(index_manifold)%numbands_w90_in )  &
+ &      call die('We need as many localized trial orbitals as Wannier functions requested')
 
 !     Allocate the array where the indices of the orbitals used as 
 !     trial localized functions will be stored
-      nullify( manifold_bands_lowdin(index_manifold)%orbital_indices )
-      call re_alloc( manifold_bands_lowdin(index_manifold)%orbital_indices,  &
- &        1, manifold_bands_lowdin(index_manifold)%numbands_lowdin )
+      nullify( manifold_bands_w90_in(index_manifold)%orbital_indices )
+      call re_alloc( manifold_bands_w90_in(index_manifold)%orbital_indices,  &
+ &        1, manifold_bands_w90_in(index_manifold)%numbands_w90_in )
 
 !     Read the indices of the orbitals used as 
 !     trial localized functions will be stored
-      do iorb = 1, manifold_bands_lowdin(index_manifold)%numbands_lowdin
-        manifold_bands_lowdin(index_manifold)%orbital_indices(iorb) =        &
+      do iorb = 1, manifold_bands_w90_in(index_manifold)%numbands_w90_in
+        manifold_bands_w90_in(index_manifold)%orbital_indices(iorb) =        &
  &         fdf_bintegers(pline,iorb)
       enddo
 
@@ -387,58 +393,58 @@ module m_w90_in_siesta
       if (.not. fdf_bline(bfdf,pline)) &
  &         call die("No number of iterations for the minimization of \Omega")
       string_num    = fdf_bnames(pline,1)
-      manifold_bands_lowdin(index_manifold)%num_iter = fdf_bintegers(pline,1)
+      manifold_bands_w90_in(index_manifold)%num_iter = fdf_bintegers(pline,1)
 
 !     Read whether the Wannier functions are plotted
       if (.not. fdf_bline(bfdf,pline)) &
  &         call die("No plotting of the Wannier functions")
       string_plot    = fdf_bnames(pline,1)
-      manifold_bands_lowdin(index_manifold)%wannier_plot = .true.
-!      manifold_bands_lowdin(index_manifold)%wannier_plot_supercell(1) = &
-      manifold_bands_lowdin(index_manifold)%wannier_plot_supercell(:) = &
+      manifold_bands_w90_in(index_manifold)%wannier_plot = .true.
+!      manifold_bands_w90_in(index_manifold)%wannier_plot_supercell(1) = &
+      manifold_bands_w90_in(index_manifold)%wannier_plot_supercell(:) = &
  &       fdf_bintegers(pline,1)
 
 !     Read whether the Fermi surface is plotted
       if (.not. fdf_bline(bfdf,pline)) &
  &         call die("No plotting of the Fermi surface")
       string_plot_f  = fdf_bnames(pline,1)
-      manifold_bands_lowdin(index_manifold)%fermi_surface_plot = .true.
+      manifold_bands_w90_in(index_manifold)%fermi_surface_plot = .true.
 
 !     Read whether the Hamiltonian is written in a WF basis
       if (.not. fdf_bline(bfdf,pline)) &
  &         call die("No writting of the Hamiltonian in a WF basis")
       string_write_h  = fdf_bnames(pline,1)
-      manifold_bands_lowdin(index_manifold)%write_hr = .true.
+      manifold_bands_w90_in(index_manifold)%write_hr = .true.
 
 !     Read whether the lattice vectors, Hamiltonian, and position operator 
 !     are written in a WF basis
       if (.not. fdf_bline(bfdf,pline)) &
  &         call die("No writting of the Hamiltonian and position operator in a WF basis")
       string_write_tb  = fdf_bnames(pline,1)
-      manifold_bands_lowdin(index_manifold)%write_tb = .true.
+      manifold_bands_w90_in(index_manifold)%write_tb = .true.
 
 !     If disentanglement is required, then read the outer and inner (frozen)
 !     energy windows
-      if( manifold_bands_lowdin(index_manifold)%disentanglement ) then
+      if( manifold_bands_w90_in(index_manifold)%disentanglement ) then
         if (.not. fdf_bline(bfdf,pline)) &
  &         call die("No outer energy window")
-        manifold_bands_lowdin(index_manifold)%dis_win_min = fdf_bvalues(pline,1)
-        manifold_bands_lowdin(index_manifold)%dis_win_max = fdf_bvalues(pline,2)
+        manifold_bands_w90_in(index_manifold)%dis_win_min = fdf_bvalues(pline,1)
+        manifold_bands_w90_in(index_manifold)%dis_win_max = fdf_bvalues(pline,2)
 
         if (.not. fdf_bline(bfdf,pline)) & 
  &         call die("No inner (frozen) energy window")
-        manifold_bands_lowdin(index_manifold)%dis_froz_min =fdf_bvalues(pline,1)
-        manifold_bands_lowdin(index_manifold)%dis_froz_max =fdf_bvalues(pline,2)
+        manifold_bands_w90_in(index_manifold)%dis_froz_min =fdf_bvalues(pline,1)
+        manifold_bands_w90_in(index_manifold)%dis_froz_max =fdf_bvalues(pline,2)
       else 
 !       Set up the same default values as in WANNIER90 
 !       (in subroutine parameters.F90)
-        manifold_bands_lowdin(index_manifold)%dis_win_min =  -1.0_dp
-        manifold_bands_lowdin(index_manifold)%dis_win_max =   0.0_dp
-        manifold_bands_lowdin(index_manifold)%dis_froz_min = -1.0_dp
-        manifold_bands_lowdin(index_manifold)%dis_froz_max =  0.0_dp
+        manifold_bands_w90_in(index_manifold)%dis_win_min =  -1.0_dp
+        manifold_bands_w90_in(index_manifold)%dis_win_max =   0.0_dp
+        manifold_bands_w90_in(index_manifold)%dis_froz_min = -1.0_dp
+        manifold_bands_w90_in(index_manifold)%dis_froz_max =  0.0_dp
       endif
 
-      write(manifold_bands_lowdin(index_manifold)%seedname_lowdin,  &
+      write(manifold_bands_w90_in(index_manifold)%seedname_w90_in,  &
  &          "(a,'.manifold.',i1.1)")                                &
  &       trim(slabel),index_manifold
 
@@ -451,25 +457,25 @@ module m_w90_in_siesta
 !      write(6,'(a,i1,1x,a)')                                                   &
 ! &      'read_w90_in_siesta_specs: Seed of the file to dump the output for manifold:',&
 ! &       index_manifold,                                                       &
-! &       manifold_bands_lowdin(index_manifold)%seedname_lowdin
+! &       manifold_bands_w90_in(index_manifold)%seedname_w90_in
 !
 !!     Write the initial and the final band of the manifold
 !      write(6,'(a,2i5)')                                                      &
 ! &      'read_w90_in_siesta_specs: Initial band, Final band              = ', &
-! &      manifold_bands_lowdin(index_manifold)%initial_band,                   &
-! &      manifold_bands_lowdin(index_manifold)%final_band                    
+! &      manifold_bands_w90_in(index_manifold)%initial_band,                   &
+! &      manifold_bands_w90_in(index_manifold)%final_band                    
 !
 !!     Write the total number of bands in the manifold
 !      write(6,'(a,i5)')                                                       &
 ! &      'read_w90_in_siesta_specs: Total number of bands in the manifold = ', &
-! &      manifold_bands_lowdin(index_manifold)%number_of_bands
+! &      manifold_bands_w90_in(index_manifold)%number_of_bands
 !
 !!     Write the total number of bands to be orthogonalized
 !      write(6,'(a,i5)')                                                        &
-! &'read_w90_in_siesta_specs: Total number of bands in the Lowdin orthogonalization=', &
-! &      manifold_bands_lowdin(index_manifold)%numbands_lowdin
+! &'read_w90_in_siesta_specs: Total number of bands in the Wannier transformation =', &
+! &      manifold_bands_w90_in(index_manifold)%numbands_w90_in
 !
-!      if(manifold_bands_lowdin(index_manifold)%disentanglement) then
+!      if(manifold_bands_w90_in(index_manifold)%disentanglement) then
 !         write(6,'(a)')                                                  &
 ! &        'read_w90_in_siesta_specs: Number of bands in the manifold is different of'
 !         write(6,'(a)')                                                  &
@@ -479,53 +485,53 @@ module m_w90_in_siesta
 !      endif
 !
 !!     Write the indices of the orbitals used as initial localized guess
-!      do iorb = 1, manifold_bands_lowdin(index_manifold)%numbands_lowdin
+!      do iorb = 1, manifold_bands_w90_in(index_manifold)%numbands_w90_in
 !        write(6,'(a,i5)')                                                      &
 ! & 'read_w90_in_siesta_specs: Index of the orbital used as initial localized guess =',&
-! &      manifold_bands_lowdin(index_manifold)%orbital_indices(iorb)
+! &      manifold_bands_w90_in(index_manifold)%orbital_indices(iorb)
 !      enddo
 !
 !!     Write the values of the outer energy window for band disentanglement
 !      write(6,'(a,l5)')                                             &
 ! &      'read_w90_in_siesta_specs: Disentanglement                    = ', &
-! &      manifold_bands_lowdin(index_manifold)%disentanglement
+! &      manifold_bands_w90_in(index_manifold)%disentanglement
 !      write(6,'(a,i5,2f12.5)')                                      &
 ! &      'read_w90_in_siesta_specs: Outer energy window  (eV)          = ', &
 ! &      index_manifold,                                             &
-! &      manifold_bands_lowdin(index_manifold)%dis_win_min,          &
-! &      manifold_bands_lowdin(index_manifold)%dis_win_max 
+! &      manifold_bands_w90_in(index_manifold)%dis_win_min,          &
+! &      manifold_bands_w90_in(index_manifold)%dis_win_max 
 !
 !!     Write the values of the inner (frozen) energy window for 
 !!     band disentanglement
 !      write(6,'(a,i5,2f12.5)')                                      &
 ! &      'read_w90_in_siesta_specs: Inner (frozen) energy window  (eV) = ', &
 ! &      index_manifold,                                             &
-! &      manifold_bands_lowdin(index_manifold)%dis_froz_min,         &
-! &      manifold_bands_lowdin(index_manifold)%dis_froz_max 
+! &      manifold_bands_w90_in(index_manifold)%dis_froz_min,         &
+! &      manifold_bands_w90_in(index_manifold)%dis_froz_max 
 !
 !!     Write the values of the inner (frozen) energy window for 
 !!     band disentanglement
 !      write(6,'(a,i5)')                                                    &
 ! &      'read_w90_in_siesta_specs: Number of iterations for the minimization = ', &
-! &      manifold_bands_lowdin(index_manifold)%num_iter
+! &      manifold_bands_w90_in(index_manifold)%num_iter
 !
 !!     Write the values of the inner (frozen) energy window for 
 !!     band disentanglement
 !      write(6,'(a,l5)')                                                    &
 ! &      'read_w90_in_siesta_specs: Plot the Wannier functions?               = ', &
-! &      manifold_bands_lowdin(index_manifold)%wannier_plot
+! &      manifold_bands_w90_in(index_manifold)%wannier_plot
 !      write(6,'(a,i5)')                                                    &
 ! &      'read_w90_in_siesta_specs: Plot the Wannier functions?               = ', &
-! &      manifold_bands_lowdin(index_manifold)%wannier_plot_supercell(1)
+! &      manifold_bands_w90_in(index_manifold)%wannier_plot_supercell(1)
 !      write(6,'(a,l5)')                                                    &
 ! &      'read_w90_in_siesta_specs: Plot the Fermi surface?              ', &
-! &      manifold_bands_lowdin(index_manifold)%fermi_surface_plot
+! &      manifold_bands_w90_in(index_manifold)%fermi_surface_plot
 !      write(6,'(a,l5)')                                                    &
 ! &      'read_w90_in_siesta_specs: Write the Hamiltonian in the basis of WF? = ', &
-! &      manifold_bands_lowdin(index_manifold)%write_hr
+! &      manifold_bands_w90_in(index_manifold)%write_hr
 !      write(6,'(a,l5)')                                                    &
 ! &      'read_w90_in_siesta_specs: Write the tight-binding elements in the basis of WF? = ', &
-! &      manifold_bands_lowdin(index_manifold)%write_tb
+! &      manifold_bands_w90_in(index_manifold)%write_tb
 !!     End debugging
 
     enddo ! end loop over all the lines in the block WannierProjections
@@ -536,7 +542,7 @@ module m_w90_in_siesta
 !! 
 !! In this subroutine, we process the information in the fdf file 
 !! required to generate the k-point sampling that will be used inside 
-!! WANNIER90 for the Lowdin orthogonalization.
+!! WANNIER90 for the Wannier transformation.
 !! The block that is readed and digested is kMeshforWannier
 !! Example: 
 !! %block kMeshforWannier
@@ -568,17 +574,20 @@ module m_w90_in_siesta
                                                !   First  index: component
                                                !   Second index: vector
                                                !   In Bohrs
-    use lowdin_types,   only: reclatvec_w90_in ! Reciprocal lattice vectors 
+    use w90_in_siesta_types,   only: reclatvec_w90_in 
+                                               ! Reciprocal lattice vectors 
                                                !   computed from real_lattice
                                                !   The factor 2.0 * pi 
                                                !   is included
                                                !   First  index: component
                                                !   Second index: vector
                                                !   In Angstroms^-1
-    use lowdin_types,   only: kmesh_w90_in     ! Number of divisions along the
+    use w90_in_siesta_types,   only: kmesh_w90_in  
+                                               ! Number of divisions along the
                                                !   reciprocal lattice vectors
-    use lowdin_types,   only: numkpoints_w90_in! Total number of k-points
-    use lowdin_types,   only: kpointsfrac_w90_in   
+    use w90_in_siesta_types,   only: numkpoints_w90_in
+                                               ! Total number of k-points
+    use w90_in_siesta_types,   only: kpointsfrac_w90_in   
                                                ! Coordinates of the k-points
                                                !   In fractional units, i. e.
                                                !   in units of the reciprocal
@@ -611,7 +620,7 @@ module m_w90_in_siesta
                                                !   First  index: vector
                                                !   Second index: component
                                                !   The same as the transpose of
-                                               !   reclatvec_lowdin
+                                               !   reclatvec_w90_in
                                                !   In Angstroms^-1
     use w90_parameters, only: mp_grid          ! Number of divisions along the
                                                !   reciprocal lattice vectors.
@@ -668,22 +677,25 @@ module m_w90_in_siesta
                                                !    relation, Eq. (B1) in 
                                                !    N. Marzari et al.
                                                !    PRB 56, 12847 (1997)
-    use lowdin_types,   only: nncount_w90_in   ! Same as nntot
+    use w90_in_siesta_types,   only: nncount_w90_in   
+                                               ! Same as nntot
                                                !    but in the module where the 
                                                !    variables that controls the
                                                !    Wannier90 in SIESTA 
                                                !    are stored
-    use lowdin_types,   only: nnlist_w90_in    ! Same as nnlist
+    use w90_in_siesta_types,   only: nnlist_w90_in    
+                                               ! Same as nnlist
                                                !    but in the module where the 
                                                !    variables that controls the
                                                !    Wannier90 in SIESTA 
                                                !    are stored
-    use lowdin_types,   only: nnfolding_w90_in ! Same as nncell
+    use w90_in_siesta_types,   only: nnfolding_w90_in 
+                                               ! Same as nncell
                                                !    but in the module where the 
                                                !    variables that controls the
                                                !    Wannier90 in SIESTA 
                                                !    are stored
-    use lowdin_types,   only: bvectorsfrac_w90_in
+    use w90_in_siesta_types,   only: bvectorsfrac_w90_in
                                                ! Vectors that connect each mesh
                                                !    k-point
                                                !    to its nearest neighbours
@@ -716,7 +728,7 @@ module m_w90_in_siesta
     endif
 
 !   Read the data to generate the grid in reciprocal space that will be used
-!   for the Lowdin Projections
+!   for the Wannier Projections
     if (.not. fdf_block('kMeshforWannier',bfdf)) RETURN
 
     do while(fdf_bline(bfdf, pline))     
@@ -734,7 +746,7 @@ module m_w90_in_siesta
       kmesh_w90_in(3) = fdf_bintegers(pline,3)
     enddo 
 
-!   Define the total number of k-points used in the Lowdin projection
+!   Define the total number of k-points used in the Wannier projection
     numkpoints_w90_in = kmesh_w90_in(1) * kmesh_w90_in(2) * kmesh_w90_in(3)
 
 !   Compute and store the components of the k-points in fractional units
@@ -758,7 +770,7 @@ module m_w90_in_siesta
 
 !!   For debugging
 !    write(6,'(a,a,3i5)')'read_kpoints_wannier: Number of subdivisions ',  &  
-! &    'of the reciprocal vectors for Lowdin = ', kmesh_w90_in(:)
+! &    'of the reciprocal vectors for Wannier = ', kmesh_w90_in(:)
 !    write(6,'(a,a,3i5)')'read_kpoints_wannier: Number of k-points used ', & 
 ! &    'in the Wannier90 projection = ', numkpoints_w90_in
 !    do ik = 1, numkpoints_w90_in
@@ -886,7 +898,21 @@ module m_w90_in_siesta
 
   endsubroutine read_kpoints_wannier
 
-  subroutine set_excluded_bands_lowdin( index_manifold )
+!> \brief General purpose of the subroutine set_excluded_bands_w90_in
+!! Within this subroutine we:
+!! 1. Identify the bands that will be considered for the wannierization of
+!! a given manifold. These can be found in the variable:
+!! manifold_bands_w90_in(index_manifold)%isexcluded.
+!! 2. Identify the numerical atomic orbitals of the basis set that will
+!! be considered as local functions for the initial guess.
+!! These can be found in the variable
+!! manifold_bands_w90_in(index_manifold)%orbexcluded.
+!! 3. Set a sequential index for the orbitals that will be used
+!! as initial guess, stored in the variable
+!! manifold_bands_w90_in(index_manifold)%orb_in_manifold.
+!! This routine is called only by the IOnode.
+
+  subroutine set_excluded_bands_w90_in( index_manifold )
     
     integer, intent(in) :: index_manifold
 
@@ -896,82 +922,86 @@ module m_w90_in_siesta
     integer :: index
     integer :: index_orb_included
 
-    nullify( manifold_bands_lowdin(index_manifold)%isexcluded )
-    call re_alloc( manifold_bands_lowdin(index_manifold)%isexcluded,      &
+    nullify( manifold_bands_w90_in(index_manifold)%isexcluded )
+    call re_alloc( manifold_bands_w90_in(index_manifold)%isexcluded,      &
  &                 1, no_u,                                               &
  &                 name='isexcluded',                                     &
- &                 routine='set_excluded_bands_lowdin' )
+ &                 routine='set_excluded_bands_w90_in' )
 
-    nullify( manifold_bands_lowdin(index_manifold)%orbexcluded )
-    call re_alloc( manifold_bands_lowdin(index_manifold)%orbexcluded,     &
+    nullify( manifold_bands_w90_in(index_manifold)%orbexcluded )
+    call re_alloc( manifold_bands_w90_in(index_manifold)%orbexcluded,     &
  &                 1, no_u,                                               &
  &                 name='orbexcluded',                                    &
- &                 routine='set_excluded_bands_lowdin' )
+ &                 routine='set_excluded_bands_w90_in' )
 
-    nullify( manifold_bands_lowdin(index_manifold)%orb_in_manifold )
-    call re_alloc( manifold_bands_lowdin(index_manifold)%orb_in_manifold, &
+    nullify( manifold_bands_w90_in(index_manifold)%orb_in_manifold )
+    call re_alloc( manifold_bands_w90_in(index_manifold)%orb_in_manifold, &
  &                 1, no_u,                                               &
  &                 name='orb_in_manifold',                                &
- &                 routine='set_excluded_bands_lowdin' )
+ &                 routine='set_excluded_bands_w90_in' )
 
 
 !   By default, all the bands are excluded from the calculation
-    manifold_bands_lowdin(index_manifold)%isexcluded(:) = .true.
+    manifold_bands_w90_in(index_manifold)%isexcluded(:) = .true.
 
     do iband = 1, no_u
 !     Exclude the corresponding bands from the computation
-      if( (iband .ge. manifold_bands_lowdin(index_manifold)%initial_band) &
+      if( (iband .ge. manifold_bands_w90_in(index_manifold)%initial_band) &
  &        .and.                                                           &
- &        (iband .le. manifold_bands_lowdin(index_manifold)%final_band) ) then
-        manifold_bands_lowdin(index_manifold)%isexcluded( iband ) = .false.
+ &        (iband .le. manifold_bands_w90_in(index_manifold)%final_band) ) then
+        manifold_bands_w90_in(index_manifold)%isexcluded( iband ) = .false.
       endif
     enddo
 
 !!   For debugging
 !    write(6,*) 
 !    do iterex = 1, no_u
-!     write(6,'(a,2i5,l5)')                                                    &
-! &  'set_excluded_bands_lowdin: Node, excluded_bands_lowdin (iband, excluded)',&
-! &     Node, iterex, manifold_bands_lowdin(index_manifold)%isexcluded(iterex)
+!     write(6,'(a,2i5,l5)')                                                     &
+! &  'set_excluded_bands_w90_in: Node, excluded_bands_w90_in (iband, excluded)',&
+! &     Node, iterex, manifold_bands_w90_in(index_manifold)%isexcluded(iterex)
 !    enddo
 !!   End debugging
 
 !   By default, all the orbitals are excluded from the calculation
-    manifold_bands_lowdin(index_manifold)%orbexcluded(:) = .true.
-    do iorb = 1, manifold_bands_lowdin(index_manifold)%numbands_lowdin
+    manifold_bands_w90_in(index_manifold)%orbexcluded(:) = .true.
+    do iorb = 1, manifold_bands_w90_in(index_manifold)%numbands_w90_in
       index_orb_included =                                          & 
- &      manifold_bands_lowdin(index_manifold)%orbital_indices(iorb)
-      manifold_bands_lowdin(index_manifold)%orbexcluded(index_orb_included) = &
+ &      manifold_bands_w90_in(index_manifold)%orbital_indices(iorb)
+      manifold_bands_w90_in(index_manifold)%orbexcluded(index_orb_included) = &
  &      .false. 
     enddo
 
     index = 0
-    manifold_bands_lowdin(index_manifold)%orb_in_manifold(:) = 0
-    do iorb = 1, manifold_bands_lowdin(index_manifold)%numbands_lowdin
+    manifold_bands_w90_in(index_manifold)%orb_in_manifold(:) = 0
+    do iorb = 1, manifold_bands_w90_in(index_manifold)%numbands_w90_in
       index = index + 1
-      index_orb_included = manifold_bands_lowdin(index_manifold)%orbital_indices(iorb)
-      manifold_bands_lowdin(index_manifold)%orb_in_manifold(index_orb_included) = index
+      index_orb_included = manifold_bands_w90_in(index_manifold)%orbital_indices(iorb)
+      manifold_bands_w90_in(index_manifold)%orb_in_manifold(index_orb_included) = index
     enddo
 
 !!   For debugging
 !    write(6,*) 
 !    do iterex = 1, no_u
 !     write(6,'(a,2i5,l5,i5)')                                            &
-! &     'set_excluded_bands_lowdin: orbitals excluded: manifold, orb_unit cell, excluded, orb_mani', &
+! &     'set_excluded_bands_w90_in: orbitals excluded: manifold, orb_unit cell, excluded, orb_mani', &
 ! &     index_manifold, iterex,                                           &
-! &     manifold_bands_lowdin(index_manifold)%orbexcluded(iterex),        &
-! &     manifold_bands_lowdin(index_manifold)%orb_in_manifold(iterex)    
+! &     manifold_bands_w90_in(index_manifold)%orbexcluded(iterex),        &
+! &     manifold_bands_w90_in(index_manifold)%orb_in_manifold(iterex)    
 !    enddo
 !!   End debugging
 
-  endsubroutine set_excluded_bands_lowdin
+  endsubroutine set_excluded_bands_w90_in
 
 !
 ! ------------------------------------------------------------------------------
 !
 !> \brief General purpose of the subroutine compute_matrices
-!! In this subroutine we compute:
-!! 1. The overlap matrices between the periodic part of wave functions
+!! In this subroutine we compute and dump in the corresponding files:
+!! 1. The matrix elements of the plane waves connecting neighbour
+!! points in the first-Brillouin zone for Wannierization in a basis
+!! of atomic orbitals
+!! (done in the subroutine compute_pw_matrix)
+!! 2. The overlap matrices between the periodic part of wave functions
 !! at neighbour k-points,
 !> \f{eqnarray*}{
 !! M_{m n}^{(\vec{k}, \vec{b})} =
@@ -979,12 +1009,20 @@ module m_w90_in_siesta
 !! \f}
 !! that is the Eq. (27) of the Ref. \cite Marzari-12, or
 !! Eq. (25) of Ref. \cite Marzari-97
-!! 2. The overlap matrices between the eigenstates of the one-particle
+!! (done in the subroutine mmn)
+!! 3. The overlap matrices between the eigenstates of the one-particle
 !! Hamiltonian and the localized trial orbitals, taken as initial guess,
 !> \f{eqnarray*}{
 !! A_{mn} (\vec{k}) = \langle \psi_{m\vec{k}} \vert g_{n} \rangle,
 !! \f}
 !! as presented right before Eq. (17) of Ref. \cite Marzari-12
+!! (done in the subroutine amn)
+!! 4. The eigenvalues for the bands to be wannierized
+!! (done in the subroutine writeeig)
+!! 5. The values of the periodic part of the wavefunctions at the points
+!! of a real space grid. This must be done if we want to plot the 
+!! Wanniers
+!! (done in the subroutine writeunk)
 
   subroutine compute_matrices( ispin, index_manifold )
 
@@ -1047,9 +1085,9 @@ module m_w90_in_siesta
     endif
 
     number_of_bands_in_manifold_local =                                  &
- &        manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
+ &        manifold_bands_w90_in(index_manifold)%nincbands_loc_w90_in
     number_of_bands_to_project =                                         &
- &        manifold_bands_lowdin(index_manifold)%numbands_lowdin
+ &        manifold_bands_w90_in(index_manifold)%numbands_w90_in
 
 !   Compute the matrix elements of the plane wave,
 !   for all the wave vectors that connect a given k-point to its nearest
@@ -1101,23 +1139,23 @@ module m_w90_in_siesta
 !            End debugging
 
 !           Checks
-            if (nb_tmp.ne.manifold_bands_lowdin(iman)%number_of_bands) &
+            if (nb_tmp.ne.manifold_bands_w90_in(iman)%number_of_bands) &
                 call die(trim(filename)//' has not the right number of bands')
             if (nkp_tmp.ne.numkpoints) &
                 call die(trim(filename)//' has not the right number of k-points')
-            if (nw_tmp.ne.manifold_bands_lowdin(iman)%numbands_lowdin) &
+            if (nw_tmp.ne.manifold_bands_w90_in(iman)%numbands_w90_in) &
                 call die(trim(filename)//' has not the right number of Wannier functions')
 
 !           Read the projections
             num_amn = nb_tmp*nw_tmp*nkp_tmp
-            if (manifold_bands_lowdin(iman)%disentanglement) then
+            if (manifold_bands_w90_in(iman)%disentanglement) then
               do ncount = 1, num_amn
                 read(amn_in,*) m,n,nkp,a_real,a_imag
                 if (iman .eq. 1)                                           & 
  &                Amnmat(m,n,nkp) = cmplx(a_real,a_imag,kind=dp)
                 if (iman .eq. 2)                                           & 
- &                Amnmat(m+manifold_bands_lowdin(1)%number_of_bands,       &
- &                       n+manifold_bands_lowdin(1)%number_of_bands,nkp) = &
+ &                Amnmat(m+manifold_bands_w90_in(1)%number_of_bands,       &
+ &                       n+manifold_bands_w90_in(1)%number_of_bands,nkp) = &
  &                       cmplx(a_real,a_imag,kind=dp)
               end do
             else
@@ -1126,8 +1164,8 @@ module m_w90_in_siesta
                 if (iman .eq. 1)                                         & 
  &                Amnmat(m,n,nkp) = cmplx(a_real,a_imag,kind=dp)
                 if (iman .eq. 2)                                           & 
- &                Amnmat(m+manifold_bands_lowdin(1)%number_of_bands,       &
- &                       n+manifold_bands_lowdin(1)%number_of_bands,nkp) = &
+ &                Amnmat(m+manifold_bands_w90_in(1)%number_of_bands,       &
+ &                       n+manifold_bands_w90_in(1)%number_of_bands,nkp) = &
  &                       cmplx(a_real,a_imag,kind=dp)
               end do
             end if
@@ -1168,6 +1206,17 @@ module m_w90_in_siesta
   end subroutine compute_matrices
 
 
+!> \brief General purpose of the subroutine compute_wannier
+!! Within this subroutine:
+!! 1. We populate all the variables within the WANNIER90 modules
+!!    required to run WANNIER90.
+!!    Those variables are transferred from different modules in SIESTA,
+!!    mostly m_switch_local_projection
+!! 2. We call the different routines of the WANNIER90 code to perform
+!!    the Wannierization.
+!!    This part is a copy, almost verbatim, of the
+!!    subroutine wannier_prog.F90 in WANNIER90, version 3.0.0
+
   subroutine compute_wannier( ispin, index_manifold )
 
 !
@@ -1195,7 +1244,6 @@ module m_w90_in_siesta
                                                !   chemical species
     use atm_types,      only : species         ! information about the different
                                                !   chemical species
-    use chemical,       only : species_label   ! returns species label
 !
 !   Variables related with the atomic structure coming from WANNIER90
 !
@@ -1221,7 +1269,8 @@ module m_w90_in_siesta
 !
 !   Variables related with the k-points sampling coming from SIESTA
 !
-    use lowdin_types,   only: kmesh_w90_in     ! Number of divisions along the
+    use w90_in_siesta_types,   only: kmesh_w90_in  
+                                               ! Number of divisions along the
                                                !   reciprocal lattice vectors
     use m_switch_local_projection, only: numkpoints
                                                ! Number of k-points in the
@@ -1248,7 +1297,7 @@ module m_w90_in_siesta
                                                !   to the actual 
                                                !   \vec{k} + \vec{b}
                                                !   that we need.
-                                               !   In reciprocal lattice units.!
+                                               !   In reciprocal lattice units.
 !   Variables related with the k-points sampling coming from WANNIER90
 !
     use w90_parameters, only: mp_grid          ! Number of divisions along the
@@ -1319,6 +1368,8 @@ module m_w90_in_siesta
                                                !    operator will be written
     use w90_io,         only : maxlen          ! max column width of 
                                                !    input file
+    use w90_parameters, only : timing_level    ! Verbosity of timing output 
+                                               !   info
 !
 !   Variables related with the post-processing coming from SIESTA
 !
@@ -1357,7 +1408,7 @@ module m_w90_in_siesta
     use w90_parameters,  only : transport      ! Transport calculation? 
     use w90_parameters,  only : tran_read_ht   ! Read the Hamiltonian for 
                                                !   transport calculation?
-    use w90_parameters,  only : timing_level
+
 !
 !   Variables related with the parallelization, coming from SIESTA
 !
@@ -1431,6 +1482,13 @@ module m_w90_in_siesta
                                                !    root node to all nodes 
 
 !
+!   Variables related with the transformation between 
+!   Bloch and Wannier functions
+!
+    use w90_parameters,  only : u_matrix       ! Unitary matrices to 
+                                               !    transform Bloch functions
+                                               !    into Wannier functions
+!
 ! Input variables
 !
     integer, intent(in) :: ispin            ! Spin index
@@ -1461,6 +1519,13 @@ module m_w90_in_siesta
     real(kind=dp) time1
     real(kind=dp) time2
 
+!! 
+!!   Check the unitarity of the U matrices
+!!
+!    complex(kind=dp), allocatable :: u_conj(:,:)
+!    complex(kind=dp), allocatable :: u_conj_transpose(:,:)
+!    complex(kind=dp), allocatable :: check_unitary(:,:)
+
 !   Set up the variables related with the writing of the Hamiltonian
     seedname=repeat(" ",len(seedname))
     if( spin%H .eq. 1) then
@@ -1474,12 +1539,12 @@ module m_w90_in_siesta
 
 !   Set up whether the Hamiltonian and tight-binding matrix elements will
 !   be written in files
-    write_hr = manifold_bands_lowdin(index_manifold)%write_hr
-    write_tb = manifold_bands_lowdin(index_manifold)%write_tb
+    write_hr = manifold_bands_w90_in(index_manifold)%write_hr
+    write_tb = manifold_bands_w90_in(index_manifold)%write_tb
 
 !   Set up general variables
-    num_bands = manifold_bands_lowdin(index_manifold)%number_of_bands
-    num_wann  = manifold_bands_lowdin(index_manifold)%numbands_lowdin
+    num_bands = manifold_bands_w90_in(index_manifold)%number_of_bands
+    num_wann  = manifold_bands_w90_in(index_manifold)%numbands_w90_in
     num_proj  = num_wann
 
 !   Set up the variables related with the structure
@@ -1542,7 +1607,7 @@ module m_w90_in_siesta
 !!   End debugging
   
 !   Set up number of iterations for the minimization of \Omega
-    num_iter  = manifold_bands_lowdin(index_manifold)%num_iter
+    num_iter  = manifold_bands_w90_in(index_manifold)%num_iter
     timing_level      = 1
 
 !   Set up the variables related with the k-point sampling
@@ -1562,24 +1627,24 @@ module m_w90_in_siesta
 !!   End debugging
   
 !   Set up the variables related with the disentanglement
-    disentanglement = manifold_bands_lowdin(index_manifold)%disentanglement
-    dis_win_min     = manifold_bands_lowdin(index_manifold)%dis_win_min
-    dis_win_max     = manifold_bands_lowdin(index_manifold)%dis_win_max
-    dis_froz_min    = manifold_bands_lowdin(index_manifold)%dis_froz_min
-    dis_froz_max    = manifold_bands_lowdin(index_manifold)%dis_froz_max
+    disentanglement = manifold_bands_w90_in(index_manifold)%disentanglement
+    dis_win_min     = manifold_bands_w90_in(index_manifold)%dis_win_min
+    dis_win_max     = manifold_bands_w90_in(index_manifold)%dis_win_max
+    dis_froz_min    = manifold_bands_w90_in(index_manifold)%dis_froz_min
+    dis_froz_max    = manifold_bands_w90_in(index_manifold)%dis_froz_max
 
 !   Set up the variables for post-processing
-    wannier_plot    = manifold_bands_lowdin(index_manifold)%wannier_plot
+    wannier_plot    = manifold_bands_w90_in(index_manifold)%wannier_plot
     wannier_plot_supercell(1) =                                 &
- &     manifold_bands_lowdin(index_manifold)%wannier_plot_supercell(1)
+ &     manifold_bands_w90_in(index_manifold)%wannier_plot_supercell(1)
     wannier_plot_supercell(2) = wannier_plot_supercell(1)     
     wannier_plot_supercell(3) = wannier_plot_supercell(1)     
 
-    fermi_surface_plot =manifold_bands_lowdin(index_manifold)%fermi_surface_plot
+    fermi_surface_plot =manifold_bands_w90_in(index_manifold)%fermi_surface_plot
     fermi_energy       = ef / eV
 
-    write_hr           = manifold_bands_lowdin(index_manifold)%write_hr
-    write_tb           = manifold_bands_lowdin(index_manifold)%write_tb
+    write_hr           = manifold_bands_w90_in(index_manifold)%write_hr
+    write_tb           = manifold_bands_w90_in(index_manifold)%write_tb
 
 !   Store the eigenvalues of the Hamiltonian in the array that will be passed
 !   to WANNIER90
@@ -1679,6 +1744,25 @@ module m_w90_in_siesta
   if (on_root) write (stdout, '(1x,a25,f11.3,a)') 'Time for wannierise      ', time1 - time2, ' (sec)'
 
   if (on_root) call param_write_chkpt('postwann')
+
+!! write the unitary matrix
+!  do ik = 1, num_kpts
+!    if(allocated(u_conj)) deallocate(u_conj)
+!    if(allocated(u_conj_transpose)) deallocate(u_conj_transpose)
+!    if(allocated(check_unitary)) deallocate(check_unitary)
+!    allocate(u_conj(num_wann,num_wann))
+!    allocate(u_conj_transpose(num_wann,num_wann))
+!    allocate(check_unitary(num_wann,num_wann))
+!    u_conj           = conjg(u_matrix(:,:,ik)) 
+!    u_conj_transpose = transpose(u_conj)
+!    check_unitary    = matmul(u_conj_transpose,u_matrix(:,:,ik))
+!    do i = 1, num_wann
+!      do j = 1, num_wann
+!        write(6,'(a,3i5,4f20.12)')'ik, i, j, u_matrix = ', &
+! &        ik, i, j, u_matrix(i,j,ik),check_unitary(i,j)
+!      enddo 
+!    enddo 
+!  enddo 
 
 2002 continue
   if (on_root) then
@@ -1787,15 +1871,14 @@ module m_w90_in_siesta
 !! 
 !! In this subroutine we populate the derived variable where all the 
 !! information regarding the trial localized functions will be stored
-!! This variable, called proj_lowdin, is defined within the derived variable
-!! manifold_bands_lowdin.
-!! The dimension of proj_lowdin should be the same as the number
+!! This variable, called proj_w90_in, is defined within the derived variable
+!! manifold_bands_w90_in.
+!! The dimension of proj_w90_in should be the same as the number
 !! of bands to be wannierized
 !! Some default values (x-axis, z-axis, zovera, r) to define the 
 !! hydrogenoid functions are taken directly from WANNIER90.
 !! Indeed, this is not a major issue since they will not be used
-!! in SIESTA in the Lowdin orthonormalization, 
-!! where we will take directly the shape of the numerical 
+!! in SIESTA, where we will take directly the shape of the numerical 
 !! atomic orbitals in the basis set.
 !! The center of the localized projection functions are directly given in 
 !! cartesian Bohrs, and not in fractional units as it is done in WANNIER90.
@@ -1875,17 +1958,17 @@ module m_w90_in_siesta
 
 !   There should be as many localized trial orbitals as the number of bands
 !   to be projected
-    number_projections = manifold_bands_lowdin(i_manifold)%numbands_lowdin
+    number_projections = manifold_bands_w90_in(i_manifold)%numbands_w90_in
 
 !   Allocate the derived variable where all the data for the 
 !   localized trial orbitals will be stored
-    if (allocated(manifold_bands_lowdin(i_manifold)%proj_lowdin)) &
- &     deallocate( manifold_bands_lowdin(i_manifold)%proj_lowdin )
-    allocate(manifold_bands_lowdin(i_manifold)%proj_lowdin(number_projections))
+    if (allocated(manifold_bands_w90_in(i_manifold)%proj_w90_in)) &
+ &     deallocate( manifold_bands_w90_in(i_manifold)%proj_w90_in )
+    allocate(manifold_bands_w90_in(i_manifold)%proj_w90_in(number_projections))
 
     do iproj = 1, number_projections
 !     Identify the atomic orbitals on which we are going to project
-      iorb = manifold_bands_lowdin(i_manifold)%orbital_indices(iproj)
+      iorb = manifold_bands_w90_in(i_manifold)%orbital_indices(iproj)
       ia = iaorb(iorb)               ! Atom to which orbital belongs
       is = isa(ia)                   ! Atomic species of the atom where the
                                      !   orbital is centered
@@ -1893,20 +1976,20 @@ module m_w90_in_siesta
       l  = lofio( is, iao )          ! Orbital's angular mumentum number
       m  = mofio( is, iao )          ! (Real) orbital's magnetic quantum number
       rc = rcut(  is, iao )          ! Orbital's cutoff radius
-      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%center = xa(:,ia)
-      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%zaxis  = zaxis
-      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%xaxis  = xaxis
-      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%yaxis  = yaxis
-      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%zovera = zovera
-      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%r      = r
-      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%l      = l
-      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%mr     = m
-      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%rcut   = rc
-      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%lmax   = l
-      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%from_basis_orbital =&
+      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%center = xa(:,ia)
+      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%zaxis  = zaxis
+      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%xaxis  = xaxis
+      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%yaxis  = yaxis
+      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%zovera = zovera
+      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%r      = r
+      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%l      = l
+      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%mr     = m
+      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%rcut   = rc
+      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%lmax   = l
+      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%from_basis_orbital =&
  &                                                         .true.
-      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%iorb   = iorb
-      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%iorb_gindex = &
+      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%iorb   = iorb
+      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%iorb_gindex = &
  &                                     orb_gindex(is,iao) 
     enddo
 
@@ -1915,20 +1998,20 @@ module m_w90_in_siesta
 !    write(6,'(i6)') number_projections
 !    do iproj = 1, number_projections
 !      write(6,'(3(f10.5,1x),2x,3i3)') &
-! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%center(1), &
-! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%center(2), &
-! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%center(3), &
-! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%l,         &
-! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%mr,        &
-! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%r   
+! &      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%center(1), &
+! &      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%center(2), &
+! &      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%center(3), &
+! &      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%l,         &
+! &      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%mr,        &
+! &      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%r   
 !      write(6,'(2x,3f11.7,1x,3f11.7,1x,f7.2)') &
-! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%zaxis(1),  &
-! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%zaxis(2),  &
-! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%zaxis(3),  &
-! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%xaxis(1),  &
-! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%xaxis(2),  &
-! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%xaxis(3),  &
-! &      manifold_bands_lowdin(i_manifold)%proj_lowdin(iproj)%zovera
+! &      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%zaxis(1),  &
+! &      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%zaxis(2),  &
+! &      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%zaxis(3),  &
+! &      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%xaxis(1),  &
+! &      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%xaxis(2),  &
+! &      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%xaxis(3),  &
+! &      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%zovera
 !    enddo
 !    write(6,'(a)') 'end projections'
 !!   End debugging

@@ -9,7 +9,7 @@
 !> \brief General purpose of the switch_local_projection module:
 !!
 !! The interface between Siesta and WANNIER90 shares many similarities
-!! with the Lowdin projection algorithm.
+!! with the Wannier transformation algorithm.
 !! Here, depending on the kind of projection to localized orbitals 
 !! that will be carried out,
 !! the relevant matrices and arrays for the projections will be populated.
@@ -25,7 +25,7 @@ module m_switch_local_projection
                                               !   subroutines directly from 
                                               !   SIESTA (not as a 
                                               !   postprocessing tool)
-                                              !   the Lowdin orthonormalization
+                                              !   the Wannier transformation
   use atomlist,       only: no_u              ! Number of orbitals in unit cell
   use siesta_geom,    only: ucell             ! Unit cell lattice vectors
   use files,          only: label_length      ! Number of characters in slabel
@@ -147,42 +147,55 @@ module m_switch_local_projection
   CONTAINS
 
   subroutine switch_local_projection( index_manifold )
-    use lowdin_types, only: manifold_bands_lowdin ! Derived type where all 
+    use w90_in_siesta_types, only: manifold_bands_w90_in
+                                                  ! Derived type where all 
                                                   !   the details of the 
                                                   !   band manifolds for 
-                                                  !   Lowdin orthonomalization
+                                                  !   Wannier transformation
                                                   !   are stored
-    use lowdin_types, only: numkpoints_w90_in     ! Number of k-points in 
+    use w90_in_siesta_types, only: numkpoints_w90_in  
+                                                  ! Number of k-points in 
                                                   !   the Monkhorst-Pack grid
                                                   !   that will be used in
                                                   !   Wannier90
-    use lowdin_types, only: kpointsfrac_w90_in    ! List of k-points in 
+    use w90_in_siesta_types, only: kpointsfrac_w90_in  
+                                                  ! List of k-points in 
                                                   !   the Monkhorst-Pack grid
                                                   !   that will be used in
-                                                  !   the Lowdin 
-                                                  !   orthonormalization
+                                                  !   the Wannier
+                                                  !   transformation
                                                   !   (in fractional units, 
                                                   !   i.e. relative to the
                                                   !   reciprocal space 
                                                   !   lattice vectors)
-     use lowdin_types, only: nncount_w90_in       ! The number of nearest
+     use w90_in_siesta_types, only: nncount_w90_in    
+                                                  ! The number of nearest
                                                   !   neighbours belonging to
-                             !   each k-point of the Monkhorst-Pack mesh
-     use lowdin_types, only: nnlist_w90_in
-                             ! nnlist_w90_in(ikp,inn) is the index of the
-                             !   inn-neighbour of ikp-point
-                             !   in the Monkhorst-Pack grid folded to the
-                             !   first Brillouin zone
-     use lowdin_types, only: nnfolding_w90_in
-                             ! nnfolding(i,ikp,inn) is the i-component
-                             !   of the reciprocal lattice vector
-                             !   (in reduced units) that brings
-                             !   the inn-neighbour specified in nnlist_w90_in
-                             !   (which is in the first BZ) to the
-                             !   actual \vec{k} + \vec{b} that we need.
-                             !   In reciprocal lattice units.
-     use lowdin_types, only: bvectorsfrac_w90_in
-     use lowdin_types, only: latvec_w90_in
+                                                  !   each k-point of the 
+                                                  !   Monkhorst-Pack mesh
+     use w90_in_siesta_types, only: nnlist_w90_in
+                                                  ! nnlist_w90_in(ikp,inn)
+                                                  !   is the index of the
+                                                  !   inn-neighbour of ikp-point
+                                                  !   in the Monkhorst-Pack grid
+                                                  !   folded to the
+                                                  !   first Brillouin zone
+     use w90_in_siesta_types, only: nnfolding_w90_in
+                                                  ! nnfolding(i,ikp,inn) is the 
+                                                  !   i-component
+                                                  !   of the reciprocal lattice 
+                                                  !   vector
+                                                  !   (in reduced units) that 
+                                                  !   brings the inn-neighbour 
+                                                  !   specified in nnlist_w90_in
+                                                  !   (which is in the first BZ)
+                                                  !   to the actual
+                                                  !   \vec{k} + \vec{b} that we
+                                                  !   need.
+                                                  !   In reciprocal 
+                                                  !   lattice units.
+     use w90_in_siesta_types, only: bvectorsfrac_w90_in
+     use w90_in_siesta_types, only: latvec_w90_in
  
     use wannier90_types, only: numbands_wannier   !< Number of bands for 
     use wannier90_types, only: numkpoints_wannier !< Number of k-points in 
@@ -248,8 +261,8 @@ module m_switch_local_projection
     use alloc,           only: re_alloc           !< Reallocation routines
 
     integer, intent(in) :: index_manifold         !< Index of the band manifold
-                                                  !!   in the Lowdin 
-                                                  !!   orthonormalization
+                                                  !!   in the Wannier
+                                                  !!   transformation
 
 !
 ! Internal variables
@@ -296,24 +309,24 @@ module m_switch_local_projection
         nnlist_neig = nnlist_w90_in
         nnfolding   = nnfolding_w90_in
 
-        numbands(:)   = manifold_bands_lowdin(index_manifold)%final_band
-        numincbands(:)= manifold_bands_lowdin(index_manifold)%number_of_bands
+        numbands(:)   = manifold_bands_w90_in(index_manifold)%final_band
+        numincbands(:)= manifold_bands_w90_in(index_manifold)%number_of_bands
         blocksizeincbands =  &
- &         manifold_bands_lowdin(index_manifold)%blocksizeincbands_lowdin
+ &         manifold_bands_w90_in(index_manifold)%blocksizeincbands_w90_in
 
 !       Initialize the list of excluded bands
         nullify( isexcluded )
         call re_alloc( isexcluded, 1, no_u, name='isexcluded', &
  &                     routine='switch_local_projection' )
-        isexcluded = manifold_bands_lowdin(index_manifold)%isexcluded
+        isexcluded = manifold_bands_w90_in(index_manifold)%isexcluded
 
         latvec = ucell
 
 !       Initialize number of projectors
-        numproj = manifold_bands_lowdin(index_manifold)%numbands_lowdin
+        numproj = manifold_bands_w90_in(index_manifold)%numbands_w90_in
         if( allocated(projections) ) deallocate( projections )
         allocate(projections(numproj))
-        projections = manifold_bands_lowdin(index_manifold)%proj_lowdin
+        projections = manifold_bands_w90_in(index_manifold)%proj_w90_in
 
 !       Reciprocal lattice vectors
         call reclat( ucell, reclatvec, 1 )
@@ -323,9 +336,9 @@ module m_switch_local_projection
                        name="bvectorsfrac", routine = "chosing_b_vectors")
         bvectorsfrac = bvectorsfrac_w90_in
 
-        seedname = manifold_bands_lowdin(index_manifold)%seedname_lowdin
+        seedname = manifold_bands_w90_in(index_manifold)%seedname_w90_in
       endif   ! if (IONode .eq. 0)
-      nincbands_loc = manifold_bands_lowdin(index_manifold)%nincbands_loc_lowdin
+      nincbands_loc = manifold_bands_w90_in(index_manifold)%nincbands_loc_w90_in
       goto 100
     endif
 
