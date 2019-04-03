@@ -73,56 +73,57 @@ module m_w90_in_siesta
 
   CONTAINS
 
-!> \brief General purpose of the subroutine setup_w90_in_siesta
-!!
-!! Within this subroutine:
-!! 1. Include in the SystemName.bib file a citation to the papers where
-!!    the implementation is based. Here:
-!!    the original paper by Marzari and Vanderbilt,
-!!    the last paper on the implementation of WANNIER90,
-!!    and the pre-print by Íñiguez and Yildirim in the arxiv where the 
-!!    Lowdin orthogonalization is explained
-!!
-!! 2. Read the WannierProjections block in the fdf 
-!!    and set up the general information for every manifold,
-!!    including initial (initial_band) and final (final_band) bands,
-!!    number of bands that will be orthogonalized (numbands_w90_in),
-!!    the orbitals that will be used as initial guess in the projections
-!!    during the wannierization (orbital_indices),
-!!    number of iterations that will be performed in the Wannierization 
-!!    procedure (num_iter),
-!!    the energy windows for the disentanglement,
-!!    and other output options (if the wannier functions will be plotted,
-!!    or the Fermi surface computed).
-!!    This is done in the subroutine read_w90_in_siesta_specs 
-!!
-!! 3. Set up the indexing of the bands that will be excluded from the 
-!!    wannierization (isexcluded),
-!!    the orbitals that will be used as the localized projector functions
-!!    (orbexcluded),
-!!    and the new indexing of the orbitals within a manifold (orb_in_manifold).
-!!    This is done in the subroutine set_excluded_bands_w90_in
-!!
-!! 4. Generate the trial localized functions from the atomic orbitals in the
-!!    basis set of SIESTA.
-!!    This is done in the subroutine define_trial_orbitals
-!!
-!! 5. The derived variable manifold_bands_w90_in (where all the previous
-!!    information is stored) is broadcast
-!!    to the rest of the Nodes in the subroutine broadcast_w90_in_siesta
-!!
-!! 6. Determine the number of bands that will be treated per node in a 
-!!    parallel run
-!!
-!! 7. Read all the information regarding the 
-!!    k-point sampling (block kMeshforWannier), 
-!!    and the neighbours for all the k-points in the BZ,
-!!    required for the wannierization.
-!!    This is done in the subroutine read_kpoints_wannier
-!!    by all the nodes simultaneously, so no need for broadcasting
-!!    these variables.
-!!
-  subroutine setup_w90_in_siesta
+  !> \brief General purpose of the subroutine
+  !!
+  !! Within this subroutine:
+  !!
+  !! 1. Include in the SystemName.bib file a citation to the papers where
+  !!    the implementation is based. Here:
+  !!    the original paper by Marzari and Vanderbilt,
+  !!    the last paper on the implementation of WANNIER90,
+  !!    and the pre-print by Íñiguez and Yildirim in the arxiv where the 
+  !!    Lowdin orthogonalization is explained
+  !!
+  !! 2. Read the WannierProjections block in the fdf 
+  !!    and set up the general information for every manifold,
+  !!    including initial (initial_band) and final (final_band) bands,
+  !!    number of bands that will be orthogonalized (numbands_w90_in),
+  !!    the orbitals that will be used as initial guess in the projections
+  !!    during the wannierization (orbital_indices),
+  !!    number of iterations that will be performed in the Wannierization 
+  !!    procedure (num_iter),
+  !!    the energy windows for the disentanglement,
+  !!    and other output options (if the wannier functions will be plotted,
+  !!    or the Fermi surface computed).
+  !!    This is done in the subroutine read_w90_in_siesta_specs 
+  !!
+  !! 3. Set up the indexing of the bands that will be excluded from the 
+  !!    wannierization (isexcluded),
+  !!    the orbitals that will be used as the localized projector functions
+  !!    (orbexcluded),
+  !!    and the new indexing of the orbitals within a manifold (orb_in_manifold).
+  !!    This is done in the subroutine set_excluded_bands_w90_in
+  !!
+  !! 4. Generate the trial localized functions from the atomic orbitals in the
+  !!    basis set of SIESTA.
+  !!    This is done in the subroutine define_trial_orbitals
+  !!
+  !! 5. The derived variable manifold_bands_w90_in (where all the previous
+  !!    information is stored) is broadcast
+  !!    to the rest of the Nodes in the subroutine broadcast_w90_in_siesta
+  !!
+  !! 6. Determine the number of bands that will be treated per node in a 
+  !!    parallel run
+  !!
+  !! 7. Read all the information regarding the 
+  !!    k-point sampling (block kMeshforWannier), 
+  !!    and the neighbours for all the k-points in the BZ,
+  !!    required for the wannierization.
+  !!    This is done in the subroutine read_kpoints_wannier
+  !!    by all the nodes simultaneously, so no need for broadcasting
+  !!    these variables.
+  !!
+  subroutine setup_w90_in_siesta()
 
     use m_cite,        only: add_citation          ! Subroutine used to cite 
                                                    !   the proper papers where 
