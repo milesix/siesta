@@ -9,12 +9,14 @@
 !> \brief General purpose of the m_w90_in_siesta module 
 !! 
 !! In this module we perform a Wannier transformation of the Bloch functions
-!! corresponding to a given manifold of bands
+!! corresponding to a given manifold of bands.
 !! We follow the recipe given in \cite Marzari-97.
 !! In order to compute the transformation, SIESTA uses the low-level modules
 !! of the WANNIER90 code(\cite Wannier90), version 3.0.0, as building blocks
 !! A complete description of the theoty behind the maximally localized
 !! Wannier functions and its applications can be found in Ref. \cite Marzari-12
+!!
+!! <https://personales.unican.es/junqueraj/JavierJunquera_files/Metodos/Wannier/Exercise-Wannier-SrTiO3.pdf>
 !!
 !! Example: band structure of SrTiO3
 !! \image html Bands_STO.png
@@ -72,6 +74,7 @@ module m_w90_in_siesta
   CONTAINS
 
 !> \brief General purpose of the subroutine setup_w90_in_siesta
+!!
 !! Within this subroutine:
 !! 1. Include in the SystemName.bib file a citation to the papers where
 !!    the implementation is based. Here:
@@ -119,7 +122,6 @@ module m_w90_in_siesta
 !!    by all the nodes simultaneously, so no need for broadcasting
 !!    these variables.
 !!
-
   subroutine setup_w90_in_siesta
 
     use m_cite,        only: add_citation          ! Subroutine used to cite 
@@ -247,10 +249,11 @@ module m_w90_in_siesta
 !
 
 
-!> \brief  Subroutine that reads all the
+!> \brief  Subroutine read_w90_in_siesta_specs reads all the
 !!         info in the fdf file related with the
 !!         band manifolds that will be treated in the 
 !!         Wannier transformation.
+!!
 !!         This information is contained in the block
 !!         %block WannierProjections.
 !!         The derived variable manifold_bands_w90_in
@@ -262,7 +265,6 @@ module m_w90_in_siesta
 !!         This subroutine is used only by the Node responsible for the
 !!         input/output         
 !!
-
    subroutine read_w90_in_siesta_specs
 !
 !   Processes the information in an fdf file
@@ -564,7 +566,6 @@ module m_w90_in_siesta
 !! Finally, we populate the variables related with the neighbour k-points in 
 !! the Monkhorst-Pack mesh in the module where all the Wannier90 parameters are
 !! stored
-
   subroutine read_kpoints_wannier
 
     use fdf
@@ -899,6 +900,7 @@ module m_w90_in_siesta
   endsubroutine read_kpoints_wannier
 
 !> \brief General purpose of the subroutine set_excluded_bands_w90_in
+!!
 !! Within this subroutine we:
 !! 1. Identify the bands that will be considered for the wannierization of
 !! a given manifold. These can be found in the variable:
@@ -911,7 +913,6 @@ module m_w90_in_siesta
 !! as initial guess, stored in the variable
 !! manifold_bands_w90_in(index_manifold)%orb_in_manifold.
 !! This routine is called only by the IOnode.
-
   subroutine set_excluded_bands_w90_in( index_manifold )
     
     integer, intent(in) :: index_manifold
@@ -996,6 +997,7 @@ module m_w90_in_siesta
 ! ------------------------------------------------------------------------------
 !
 !> \brief General purpose of the subroutine compute_matrices
+!!
 !! In this subroutine we compute and dump in the corresponding files:
 !! 1. The matrix elements of the plane waves connecting neighbour
 !! points in the first-Brillouin zone for Wannierization in a basis
@@ -1023,7 +1025,6 @@ module m_w90_in_siesta
 !! of a real space grid. This must be done if we want to plot the 
 !! Wanniers
 !! (done in the subroutine writeunk)
-
   subroutine compute_matrices( ispin, index_manifold )
 
     use m_switch_local_projection, only: seedname
@@ -1207,6 +1208,7 @@ module m_w90_in_siesta
 
 
 !> \brief General purpose of the subroutine compute_wannier
+!!
 !! Within this subroutine:
 !! 1. We populate all the variables within the WANNIER90 modules
 !!    required to run WANNIER90.
@@ -1216,7 +1218,6 @@ module m_w90_in_siesta
 !!    the Wannierization.
 !!    This part is a copy, almost verbatim, of the
 !!    subroutine wannier_prog.F90 in WANNIER90, version 3.0.0
-
   subroutine compute_wannier( ispin, index_manifold )
 
 !
