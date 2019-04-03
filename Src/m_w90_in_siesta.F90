@@ -243,29 +243,29 @@ module m_w90_in_siesta
 !
     if(IOnode) call read_kpoints_wannier
 
-  endsubroutine setup_w90_in_siesta
+  end subroutine setup_w90_in_siesta
 
 !
 ! ------------------------------------------------------------------------------
 !
 
 
-!> \brief  Subroutine read_w90_in_siesta_specs reads all the
-!!         info in the fdf file related with the
-!!         band manifolds that will be treated in the 
-!!         Wannier transformation.
-!!
-!!         This information is contained in the block
-!!         %block WannierProjections.
-!!         The derived variable manifold_bands_w90_in
-!!         is populated. 
-!!         The type of this variable is defined in the 
-!!         module w90_in_siesta_types,
-!!         in the file w90_in_types.f
-!!
-!!         This subroutine is used only by the Node responsible for the
-!!         input/output         
-!!
+   !> \brief  Subroutine read_w90_in_siesta_specs reads all the
+   !!         info in the fdf file related with the
+   !!         band manifolds that will be treated in the 
+   !!         Wannier transformation.
+   !!
+   !!         This information is contained in the block
+   !!         %block WannierProjections.
+   !!         The derived variable manifold_bands_w90_in
+   !!         is populated. 
+   !!         The type of this variable is defined in the 
+   !!         module w90_in_siesta_types,
+   !!         in the file w90_in_types.f
+   !!
+   !!         This subroutine is used only by the Node responsible for the
+   !!         input/output         
+   !!
    subroutine read_w90_in_siesta_specs
 !
 !   Processes the information in an fdf file
@@ -539,34 +539,34 @@ module m_w90_in_siesta
 
     enddo ! end loop over all the lines in the block WannierProjections
 
-  endsubroutine read_w90_in_siesta_specs
+  end subroutine read_w90_in_siesta_specs
 
-!> \brief General purpose of the subroutine read_kpoints_wannier
-!! 
-!! In this subroutine, we process the information in the fdf file 
-!! required to generate the k-point sampling that will be used inside 
-!! WANNIER90 for the Wannier transformation.
-!! The block that is readed and digested is kMeshforWannier
-!! Example: 
-!! %block kMeshforWannier
-!!   20  20  1
-!! %endblock kMeshforWannier
-!! where the three integers are the number of k-points along the corresponding 
-!! reciprocal lattice vector
-!! The algorithm to generate the k-points in reciprocal units is borrowed from 
-!! the utility kmesh.pl of WANNIER90
-!!
-!! Then, and following the recipes given in the Appendix of \cite Marzari-97,
-!! we compute the distance to nearest-neighbour shells of k-points
-!! the vectors connecting neighbour k-points in the Monkhorst-Pack mesh,
-!! and check whether the completeness relation is fully satisfied 
-!! [Eq. (B1) of Ref. \cite Marzari-97]  
-!! This is done within the subroutine kmesh_get, borrowed from 
-!! WANNIER90 (version 3.0.0) \cite Wannier90.
-!!
-!! Finally, we populate the variables related with the neighbour k-points in 
-!! the Monkhorst-Pack mesh in the module where all the Wannier90 parameters are
-!! stored
+  !> \brief General purpose of the subroutine read_kpoints_wannier
+  !! 
+  !! In this subroutine, we process the information in the fdf file 
+  !! required to generate the k-point sampling that will be used inside 
+  !! WANNIER90 for the Wannier transformation.
+  !! The block that is readed and digested is kMeshforWannier
+  !! Example: 
+  !! %block kMeshforWannier
+  !!   20  20  1
+  !! %endblock kMeshforWannier
+  !! where the three integers are the number of k-points along the corresponding 
+  !! reciprocal lattice vector
+  !! The algorithm to generate the k-points in reciprocal units is borrowed from 
+  !! the utility kmesh.pl of WANNIER90
+  !!
+  !! Then, and following the recipes given in the Appendix of \cite Marzari-97,
+  !! we compute the distance to nearest-neighbour shells of k-points
+  !! the vectors connecting neighbour k-points in the Monkhorst-Pack mesh,
+  !! and check whether the completeness relation is fully satisfied 
+  !! [Eq. (B1) of Ref. \cite Marzari-97]  
+  !! This is done within the subroutine kmesh_get, borrowed from 
+  !! WANNIER90 (version 3.0.0) \cite Wannier90.
+  !!
+  !! Finally, we populate the variables related with the neighbour k-points in 
+  !! the Monkhorst-Pack mesh in the module where all the Wannier90 parameters are
+  !! stored
   subroutine read_kpoints_wannier
 
     use fdf
@@ -898,22 +898,22 @@ module m_w90_in_siesta
 !      write(6,'(a/)') 'end nnkpts'
 !!     End debugging
 
-  endsubroutine read_kpoints_wannier
+  end subroutine read_kpoints_wannier
 
-!> \brief General purpose of the subroutine set_excluded_bands_w90_in
-!!
-!! Within this subroutine we:
-!! 1. Identify the bands that will be considered for the wannierization of
-!! a given manifold. These can be found in the variable:
-!! manifold_bands_w90_in(index_manifold)%isexcluded.
-!! 2. Identify the numerical atomic orbitals of the basis set that will
-!! be considered as local functions for the initial guess.
-!! These can be found in the variable
-!! manifold_bands_w90_in(index_manifold)%orbexcluded.
-!! 3. Set a sequential index for the orbitals that will be used
-!! as initial guess, stored in the variable
-!! manifold_bands_w90_in(index_manifold)%orb_in_manifold.
-!! This routine is called only by the IOnode.
+  !> \brief General purpose of the subroutine set_excluded_bands_w90_in
+  !!
+  !! Within this subroutine we:
+  !! 1. Identify the bands that will be considered for the wannierization of
+  !! a given manifold. These can be found in the variable:
+  !! manifold_bands_w90_in(index_manifold)%isexcluded.
+  !! 2. Identify the numerical atomic orbitals of the basis set that will
+  !! be considered as local functions for the initial guess.
+  !! These can be found in the variable
+  !! manifold_bands_w90_in(index_manifold)%orbexcluded.
+  !! 3. Set a sequential index for the orbitals that will be used
+  !! as initial guess, stored in the variable
+  !! manifold_bands_w90_in(index_manifold)%orb_in_manifold.
+  !! This routine is called only by the IOnode.
   subroutine set_excluded_bands_w90_in( index_manifold )
     
     integer, intent(in) :: index_manifold
@@ -992,40 +992,40 @@ module m_w90_in_siesta
 !    enddo
 !!   End debugging
 
-  endsubroutine set_excluded_bands_w90_in
+  end subroutine set_excluded_bands_w90_in
 
 !
 ! ------------------------------------------------------------------------------
 !
-!> \brief General purpose of the subroutine compute_matrices
-!!
-!! In this subroutine we compute and dump in the corresponding files:
-!! 1. The matrix elements of the plane waves connecting neighbour
-!! points in the first-Brillouin zone for Wannierization in a basis
-!! of atomic orbitals
-!! (done in the subroutine compute_pw_matrix)
-!! 2. The overlap matrices between the periodic part of wave functions
-!! at neighbour k-points,
-!> \f{eqnarray*}{
-!! M_{m n}^{(\vec{k}, \vec{b})} =
-!!        \langle u_{m \vec{k}} \vert u_{n \vec{k} + \vec{b}} \rangle, 
-!! \f}
-!! that is the Eq. (27) of the Ref. \cite Marzari-12, or
-!! Eq. (25) of Ref. \cite Marzari-97
-!! (done in the subroutine mmn)
-!! 3. The overlap matrices between the eigenstates of the one-particle
-!! Hamiltonian and the localized trial orbitals, taken as initial guess,
-!> \f{eqnarray*}{
-!! A_{mn} (\vec{k}) = \langle \psi_{m\vec{k}} \vert g_{n} \rangle,
-!! \f}
-!! as presented right before Eq. (17) of Ref. \cite Marzari-12
-!! (done in the subroutine amn)
-!! 4. The eigenvalues for the bands to be wannierized
-!! (done in the subroutine writeeig)
-!! 5. The values of the periodic part of the wavefunctions at the points
-!! of a real space grid. This must be done if we want to plot the 
-!! Wanniers
-!! (done in the subroutine writeunk)
+  !> \brief General purpose of the subroutine compute_matrices
+  !!
+  !! In this subroutine we compute and dump in the corresponding files:
+  !! 1. The matrix elements of the plane waves connecting neighbour
+  !! points in the first-Brillouin zone for Wannierization in a basis
+  !! of atomic orbitals
+  !! (done in the subroutine compute_pw_matrix)
+  !! 2. The overlap matrices between the periodic part of wave functions
+  !! at neighbour k-points,
+  !! \f{eqnarray*}{
+  !! M_{m n}^{(\vec{k}, \vec{b})} =
+  !!        \langle u_{m \vec{k}} \vert u_{n \vec{k} + \vec{b}} \rangle, 
+  !! \f}
+  !! that is the Eq. (27) of the Ref. \cite Marzari-12, or
+  !! Eq. (25) of Ref. \cite Marzari-97
+  !! (done in the subroutine mmn)
+  !! 3. The overlap matrices between the eigenstates of the one-particle
+  !! Hamiltonian and the localized trial orbitals, taken as initial guess,
+  !! \f{eqnarray*}{
+  !! A_{mn} (\vec{k}) = \langle \psi_{m\vec{k}} \vert g_{n} \rangle,
+  !! \f}
+  !! as presented right before Eq. (17) of Ref. \cite Marzari-12
+  !! (done in the subroutine amn)
+  !! 4. The eigenvalues for the bands to be wannierized
+  !! (done in the subroutine writeeig)
+  !! 5. The values of the periodic part of the wavefunctions at the points
+  !! of a real space grid. This must be done if we want to plot the 
+  !! Wanniers
+  !! (done in the subroutine writeunk)
   subroutine compute_matrices( ispin, index_manifold )
 
     use m_switch_local_projection, only: seedname
@@ -1208,17 +1208,17 @@ module m_w90_in_siesta
   end subroutine compute_matrices
 
 
-!> \brief General purpose of the subroutine compute_wannier
-!!
-!! Within this subroutine:
-!! 1. We populate all the variables within the WANNIER90 modules
-!!    required to run WANNIER90.
-!!    Those variables are transferred from different modules in SIESTA,
-!!    mostly m_switch_local_projection
-!! 2. We call the different routines of the WANNIER90 code to perform
-!!    the Wannierization.
-!!    This part is a copy, almost verbatim, of the
-!!    subroutine wannier_prog.F90 in WANNIER90, version 3.0.0
+  !> \brief General purpose of the subroutine compute_wannier
+  !!
+  !! Within this subroutine:
+  !! 1. We populate all the variables within the WANNIER90 modules
+  !!    required to run WANNIER90.
+  !!    Those variables are transferred from different modules in SIESTA,
+  !!    mostly m_switch_local_projection
+  !! 2. We call the different routines of the WANNIER90 code to perform
+  !!    the Wannierization.
+  !!    This part is a copy, almost verbatim, of the
+  !!    subroutine wannier_prog.F90 in WANNIER90, version 3.0.0
   subroutine compute_wannier( ispin, index_manifold )
 
 !
@@ -1836,25 +1836,24 @@ module m_w90_in_siesta
     return
   end subroutine compute_wannier
 
-!> \brief General purpose of the define_trial_orbitals subroutine
-!! 
-!! In this subroutine we populate the derived variable where all the 
-!! information regarding the trial localized functions will be stored
-!! This variable, called proj_w90_in, is defined within the derived variable
-!! manifold_bands_w90_in.
-!! The dimension of proj_w90_in should be the same as the number
-!! of bands to be wannierized
-!! Some default values (x-axis, z-axis, zovera, r) to define the 
-!! hydrogenoid functions are taken directly from WANNIER90.
-!! Indeed, this is not a major issue since they will not be used
-!! in SIESTA, where we will take directly the shape of the numerical 
-!! atomic orbitals in the basis set.
-!! The center of the localized projection functions are directly given in 
-!! cartesian Bohrs, and not in fractional units as it is done in WANNIER90.
-!! The m-angular quantum number index is different in SIESTA and WANNIER90.
-!! In WANNIER90 they are defined as in Tables 3.1 and 3.2 of the User Guide.
-!! In SIESTA, they are defined as in the SystemName.ORB_INDX file.
-
+  !> \brief General purpose of the define_trial_orbitals subroutine
+  !! 
+  !! In this subroutine we populate the derived variable where all the 
+  !! information regarding the trial localized functions will be stored
+  !! This variable, called proj_w90_in, is defined within the derived variable
+  !! manifold_bands_w90_in.
+  !! The dimension of proj_w90_in should be the same as the number
+  !! of bands to be wannierized
+  !! Some default values (x-axis, z-axis, zovera, r) to define the 
+  !! hydrogenoid functions are taken directly from WANNIER90.
+  !! Indeed, this is not a major issue since they will not be used
+  !! in SIESTA, where we will take directly the shape of the numerical 
+  !! atomic orbitals in the basis set.
+  !! The center of the localized projection functions are directly given in 
+  !! cartesian Bohrs, and not in fractional units as it is done in WANNIER90.
+  !! The m-angular quantum number index is different in SIESTA and WANNIER90.
+  !! In WANNIER90 they are defined as in Tables 3.1 and 3.2 of the User Guide.
+  !! In SIESTA, they are defined as in the SystemName.ORB_INDX file.
   subroutine define_trial_orbitals( i_manifold )
     use trialorbitalclass,  only: trialorbital  
                                       ! Derived type to define the
@@ -1987,6 +1986,7 @@ module m_w90_in_siesta
 
   end subroutine define_trial_orbitals
 
+  !> \brief Routine to be documented
   subroutine deallocate_wannier
 
     use w90_parameters,  only : lsitesymmetry       ! Symmetry-adapted 
