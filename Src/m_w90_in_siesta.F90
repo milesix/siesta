@@ -1482,13 +1482,6 @@ module m_w90_in_siesta
                                                !    root node to all nodes 
 
 !
-!   Variables related with the transformation between 
-!   Bloch and Wannier functions
-!
-    use w90_parameters,  only : u_matrix       ! Unitary matrices to 
-                                               !    transform Bloch functions
-                                               !    into Wannier functions
-!
 ! Input variables
 !
     integer, intent(in) :: ispin            ! Spin index
@@ -1518,13 +1511,6 @@ module m_w90_in_siesta
     real(kind=dp) time0
     real(kind=dp) time1
     real(kind=dp) time2
-
-!! 
-!!   Check the unitarity of the U matrices
-!!
-!    complex(kind=dp), allocatable :: u_conj(:,:)
-!    complex(kind=dp), allocatable :: u_conj_transpose(:,:)
-!    complex(kind=dp), allocatable :: check_unitary(:,:)
 
 !   Set up the variables related with the writing of the Hamiltonian
     seedname=repeat(" ",len(seedname))
@@ -1744,25 +1730,6 @@ module m_w90_in_siesta
   if (on_root) write (stdout, '(1x,a25,f11.3,a)') 'Time for wannierise      ', time1 - time2, ' (sec)'
 
   if (on_root) call param_write_chkpt('postwann')
-
-!! write the unitary matrix
-!  do ik = 1, num_kpts
-!    if(allocated(u_conj)) deallocate(u_conj)
-!    if(allocated(u_conj_transpose)) deallocate(u_conj_transpose)
-!    if(allocated(check_unitary)) deallocate(check_unitary)
-!    allocate(u_conj(num_wann,num_wann))
-!    allocate(u_conj_transpose(num_wann,num_wann))
-!    allocate(check_unitary(num_wann,num_wann))
-!    u_conj           = conjg(u_matrix(:,:,ik)) 
-!    u_conj_transpose = transpose(u_conj)
-!    check_unitary    = matmul(u_conj_transpose,u_matrix(:,:,ik))
-!    do i = 1, num_wann
-!      do j = 1, num_wann
-!        write(6,'(a,3i5,4f20.12)')'ik, i, j, u_matrix = ', &
-! &        ik, i, j, u_matrix(i,j,ik),check_unitary(i,j)
-!      enddo 
-!    enddo 
-!  enddo 
 
 2002 continue
   if (on_root) then
