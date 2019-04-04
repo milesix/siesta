@@ -7,12 +7,18 @@
 !
 
 !> \brief General purpose of the switch_local_projection module:
-!!
-!! The interface between Siesta and WANNIER90 shares many similarities
-!! with the Wannier transformation algorithm.
+!! The subroutines that compute the overlap of the periodic part of the 
+!! wave functions at neighbour k-points, and the overlap between the wave 
+!! functions and the initial guess functions might be called coming from
+!! different inputs.
+!! For instance, using WANNIER90 as a postprocessing tool,
+!! or calling WANNIER90 directly from SIESTA.
+!! Depending of the procedence, the input information is read in a 
+!! different way.
 !! Here, depending on the kind of projection to localized orbitals 
 !! that will be carried out,
-!! the relevant matrices and arrays for the projections will be populated.
+!! the relevant matrices and arrays that will be used in the subroutines
+!! mmn and amn are populated.
 
 module m_switch_local_projection
 
@@ -33,31 +39,31 @@ module m_switch_local_projection
 
   implicit none
 
-  integer           :: numkpoints        !< Total number of k-points
-                                         !!   in the chosen method of projection
-  real(dp), pointer :: kpointsfrac(:,:)  !< List of k points relative
-                                         !!   to the reciprocal lattice vectors.
-                                         !!   First  index: components.
-                                         !!   Second index: k-point index in 
-                                         !!   the list
-  integer           :: numbands(2)       !< Number of bands for wannierization
-                                         !!   before excluding bands
-  integer           :: numincbands(2)    !< Number of included bands in the 
-                                         !!   calculation of the chosen 
-                                         !!   projection method after excluding
-                                         !!   bands
-  logical, pointer :: isexcluded(:)      !< Masks excluded bands
-  integer          :: blocksizeincbands  !< Maximum number of bands
-                                         !!   considered for wannierization 
-                                         !!   per node
-  integer          :: nincbands_loc      !! Number of included bands in the 
-                                         !!   calculation of the overlap and 
-                                         !!   projection matrices.
-  real(dp)         :: latvec(3,3) 
-  real(dp)         :: reclatvec(3,3)     !< Reciprocal lattice vectors
-                                         !!  Cartesian coordinates in Bohr^-1 
-                                         !!  First  index: component
-                                         !!  Second index: vector
+  integer           :: numkpoints        ! Total number of k-points
+                                         !   in the chosen method of projection
+  real(dp), pointer :: kpointsfrac(:,:)  ! List of k points relative
+                                         !   to the reciprocal lattice vectors.
+                                         !   First  index: components.
+                                         !   Second index: k-point index in 
+                                         !   the list
+  integer           :: numbands(2)       ! Number of bands for wannierization
+                                         !   before excluding bands
+  integer           :: numincbands(2)    ! Number of included bands in the 
+                                         !   calculation of the chosen 
+                                         !   projection method after excluding
+                                         !   bands
+  logical, pointer :: isexcluded(:)      ! Masks excluded bands
+  integer          :: blocksizeincbands  ! Maximum number of bands
+                                         !   considered for wannierization 
+                                         !   per node
+  integer          :: nincbands_loc      ! Number of included bands in the 
+                                         !   calculation of the overlap and 
+                                         !   projection matrices.
+  real(dp)         :: latvec(3,3)        ! Real space lattice vectors
+  real(dp)         :: reclatvec(3,3)     ! Reciprocal lattice vectors
+                                         !  Cartesian coordinates in Bohr^-1 
+                                         !  First  index: component
+                                         !  Second index: vector
 !
 ! Variables related with the k-point list for which the overlap
 ! matrices Mmn between a k-point and its neighbor will be computed
@@ -80,8 +86,7 @@ module m_switch_local_projection
                                          !   to the actual \vec{k} + \vec{b} 
                                          !   that we need.
                                          !   In reciprocal lattice units.
-  real(dp), pointer :: bvectorsfrac(:,:)
-                                         ! The vectors b that connect
+  real(dp), pointer :: bvectorsfrac(:,:) ! The vectors b that connect
                                          !   each mesh-point k
                                          !   to its nearest neighbours
 
@@ -90,11 +95,13 @@ module m_switch_local_projection
 ! Variables related with the coefficients of the wavefunctions and
 ! eigenvalues at the Wannier90 k-point mesh
 !
-  complex(dp), pointer :: coeffs(:,:,:) => null() ! Coefficients of the wavefunctions.
+  complex(dp), pointer :: coeffs(:,:,:) => null() 
+                                         ! Coefficients of the wavefunctions.
                                          !   First  index: orbital
                                          !   Second index: band
                                          !   Third  index: k-point
-  real(dp),    pointer :: eo(:,:) => null()  ! Eigenvalues of the Hamiltonian
+  real(dp),    pointer :: eo(:,:) => null()  
+                                         ! Eigenvalues of the Hamiltonian
                                          !   at the numkpoints introduced in
                                          !   kpointsfrac
                                          !   First  index: band index
@@ -104,8 +111,8 @@ module m_switch_local_projection
 ! Variables related with the projections with trial functions,
 ! initial approximations to the MLWF
 !
-  integer  :: numproj        ! Total number of projection centers,
-                             !   equal to the number of MLWF
+  integer  :: numproj                    ! Total number of projection centers,
+                                         !   equal to the number of MLWF
 
   type(trialorbital), target, allocatable  :: projections(:)
 
@@ -168,19 +175,19 @@ module m_switch_local_projection
                                                   !   i.e. relative to the
                                                   !   reciprocal space 
                                                   !   lattice vectors)
-     use w90_in_siesta_types, only: nncount_w90_in    
+    use w90_in_siesta_types, only: nncount_w90_in    
                                                   ! The number of nearest
                                                   !   neighbours belonging to
                                                   !   each k-point of the 
                                                   !   Monkhorst-Pack mesh
-     use w90_in_siesta_types, only: nnlist_w90_in
+    use w90_in_siesta_types, only: nnlist_w90_in
                                                   ! nnlist_w90_in(ikp,inn)
                                                   !   is the index of the
                                                   !   inn-neighbour of ikp-point
                                                   !   in the Monkhorst-Pack grid
                                                   !   folded to the
                                                   !   first Brillouin zone
-     use w90_in_siesta_types, only: nnfolding_w90_in
+    use w90_in_siesta_types, only: nnfolding_w90_in
                                                   ! nnfolding(i,ikp,inn) is the 
                                                   !   i-component
                                                   !   of the reciprocal lattice 
@@ -194,75 +201,80 @@ module m_switch_local_projection
                                                   !   need.
                                                   !   In reciprocal 
                                                   !   lattice units.
-     use w90_in_siesta_types, only: bvectorsfrac_w90_in
-     use w90_in_siesta_types, only: latvec_w90_in
+    use w90_in_siesta_types, only: bvectorsfrac_w90_in
+    use w90_in_siesta_types, only: latvec_w90_in
  
-    use wannier90_types, only: numbands_wannier   !< Number of bands for 
-    use wannier90_types, only: numkpoints_wannier !< Number of k-points in 
-                                                  !!   the Monkhorst-Pack grid
-                                                  !!   for which the overlap of
-                                                  !!   the periodic part of the
-                                                  !!   wavefunct with a 
-                                                  !!   k-point will be computed
-    use wannier90_types, only: kpointsfrac_wannier!< List of k-points in 
-                                                  !!   the Monkhorst-Pack grid
-                                                  !!   relative to the 
-                                                  !!   reciprocal lattice 
-                                                  !!   vectors.
-                                                  !!   First  index: components
-                                                  !!   Second index: k-point 
-                                                  !!   index in the list
-     use wannier90_types, only: nncount_wannier   !< The number of nearest
-                                                  !!   neighbours belonging to
-                             !   each k-point of the Monkhorst-Pack mesh
-     use wannier90_types, only: nnlist_wannier
-                             ! nnlist_wannier(ikp,inn) is the index of the
-                             !   inn-neighbour of ikp-point
-                             !   in the Monkhorst-Pack grid folded to the
-                             !   first Brillouin zone
-     use wannier90_types, only: nnfolding_wannier
-                             ! nnfolding(i,ikp,inn) is the i-component
-                             !   of the reciprocal lattice vector
-                             !   (in reduced units) that brings
-                             !   the inn-neighbour specified in nnlist_wannier
-                             !   (which is in the first BZ) to the
-                             !   actual \vec{k} + \vec{b} that we need.
-                             !   In reciprocal lattice units.
- 
-    use wannier90_types, only: numbands_wannier   !< Number of bands for 
-                                                  !!   wannierization before
-                                                  !!   excluding bands
-    use wannier90_types, only: numincbands_wannier!< Number of included bands
-                                                  !!   in the calculation of
-                                                  !!   the overlap and projec.
-                                                  !!   matrices after excluding
-                                                  !!   bands
+    use wannier90_types, only: numbands_wannier   ! Number of bands for 
+    use wannier90_types, only: numkpoints_wannier ! Number of k-points in 
+                                                  !   the Monkhorst-Pack grid
+                                                  !   for which the overlap of
+                                                  !   the periodic part of the
+                                                  !   wavefunct with a 
+                                                  !   k-point will be computed
+    use wannier90_types, only: kpointsfrac_wannier! List of k-points in 
+                                                  !   the Monkhorst-Pack grid
+                                                  !   relative to the 
+                                                  !   reciprocal lattice 
+                                                  !   vectors.
+                                                  !   First  index: components
+                                                  !   Second index: k-point 
+                                                  !   index in the list
+    use wannier90_types, only: nncount_wannier    ! The number of nearest
+                                                  !   neighbours belonging to
+                                                  !   each k-point of the 
+                                                  !   Monkhorst-Pack mesh
+    use wannier90_types, only: nnlist_wannier     ! nnlist_wannier(ikp,inn)
+                                                  !   is the index of the
+                                                  !   inn-neighbour of ikp-point
+                                                  !   in the Monkhorst-Pack grid
+                                                  !   folded to the
+                                                  !   first Brillouin zone
+    use wannier90_types, only: nnfolding_wannier  ! nnfolding(i,ikp,inn) is the
+                                                  !   i-component
+                                                  !   of the reciprocal lattice 
+                                                  !   vector (in reduced units) 
+                                                  !   that brings the 
+                                                  !   inn-neighbour specified 
+                                                  !   in nnlist_wannier
+                                                  !   (which is in the first BZ)
+                                                  !   to the actual 
+                                                  !   \vec{k} + \vec{b} that we
+                                                  !    need.
+                                                  !   In reciprocal lattice unit
+    use wannier90_types, only: numbands_wannier   ! Number of bands for 
+                                                  !   wannierization before
+                                                  !   excluding bands
+    use wannier90_types, only: numincbands_wannier! Number of included bands
+                                                  !   in the calculation of
+                                                  !   the overlap and projec.
+                                                  !   matrices after excluding
+                                                  !   bands
     use wannier90_types, only: nincbands_loc_wannier
-                                                  !< Number of bands in the 
-                                                  !!   local node for 
-                                                  !!   wannierization after
-                                                  !!   after excluding bands
+                                                  ! Number of bands in the 
+                                                  !   local node for 
+                                                  !   wannierization after
+                                                  !   after excluding bands
     use wannier90_types, only: blocksizeincbands_wannier
-                                                  !< Maximum number of bands per
-                                                  !!   node considered for 
-                                                  !!   for wannierization
-    use wannier90_types, only: isexcluded_wannier !< Masks excluded bands for
-                                                  !!   Wannier
-    use wannier90_types, only: latvec_wannier     !< Reciprocal lattice vectors
-    use wannier90_types, only: reclatvec_wannier  !< Reciprocal lattice vectors
+                                                  ! Maximum number of bands per
+                                                  !   node considered for 
+                                                  !   for wannierization
+    use wannier90_types, only: isexcluded_wannier ! Masks excluded bands for
+                                                  !   Wannier
+    use wannier90_types, only: latvec_wannier     ! Reciprocal lattice vectors
+    use wannier90_types, only: reclatvec_wannier  ! Reciprocal lattice vectors
     use wannier90_types, only: bvectorsfrac_wannier
-    use wannier90_types, only: numproj_wannier    !< Number of projectors
+    use wannier90_types, only: numproj_wannier    ! Number of projectors
     use wannier90_types, only: seedname_wannier
     use wannier90_types, only: projections_wannier
 
     use parallel,        only: IONode             ! Input/Output node
     use parallel,        only: Node               ! Local processor number
     use m_mpi_utils,     only: broadcast          ! Broadcasting routines
-    use alloc,           only: re_alloc           !< Reallocation routines
+    use alloc,           only: re_alloc           ! Reallocation routines
 
-    integer, intent(in) :: index_manifold         !< Index of the band manifold
-                                                  !!   in the Wannier
-                                                  !!   transformation
+    integer, intent(in) :: index_manifold         ! Index of the band manifold
+                                                  !   in the Wannier
+                                                  !   transformation
 
 !
 ! Internal variables
