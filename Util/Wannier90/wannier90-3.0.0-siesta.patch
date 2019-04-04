@@ -1,22 +1,24 @@
 diff -urN wannier90-3.0.0.old/src/disentangle.F90 wannier90-3.0.0.new/src/disentangle.F90
 --- wannier90-3.0.0.old/src/disentangle.F90	2019-02-27 15:28:29.000000000 +0100
-+++ wannier90-3.0.0.new/src/disentangle.F90	2019-03-26 11:10:53.199149048 +0100
-@@ -184,6 +184,9 @@
++++ wannier90-3.0.0.new/src/disentangle.F90	2019-04-03 13:48:53.957029103 +0200
+@@ -184,6 +184,10 @@
        rewind (page_unit)
        deallocate (m_matrix_orig_local, stat=ierr)
        if (ierr /= 0) call io_error('Error deallocating m_matrix_orig_local in dis_main')
 +!     jjunquer
 +      if (allocated(m_matrix)) deallocate(m_matrix)
++      if (allocated(m_matrix_local)) deallocate(m_matrix_local)
 +!     end jjunquer
        if (on_root) then
          allocate (m_matrix(num_wann, num_wann, nntot, num_kpts), stat=ierr)
          if (ierr /= 0) call io_error('Error in allocating m_matrix in dis_main')
-@@ -201,6 +204,10 @@
+@@ -201,6 +205,11 @@
  
      else
  
 +!     jjunquer
 +      if (allocated(m_matrix)) deallocate(m_matrix)
++      if (allocated(m_matrix_local)) deallocate(m_matrix_local)
 +!     end jjunquer
 +
        if (on_root) then

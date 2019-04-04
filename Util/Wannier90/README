@@ -1,0 +1,81 @@
+Preparing Wannier90 for SIESTA calculations
+===========================================
+
+
+Motivations
+-----------
+
+Wannier90 is mostly meant to be used as a standalone program, reading its
+parameters from input files and writing results to output files. In these
+conditions, performing a wannierisation with SIESTA would mean prepare the
+input data, interrupt the SIESTA calculation, run Wannier90 for each manifold
+of interest, and then continue with the SIESTA calculation. Such a procedure
+would invlove several manual steps, which would make it particularly
+error-prone.
+
+In order to streamline the whole process and have Wannier90 run embedded in
+SIESTA, it is necessary to build a modified version of its source code. These
+changes allow Wannier90 to receive its input directly from SIESTA and to be
+run several times with different input parameters without having to stop the
+program. They have been kept minimalistic, in order not to interfere with the
+internals of Wannier90 and make it easier to keep SIESTA synchronised with the
+evolution of the source code.
+
+
+Building a modified Wannier90
+-----------------------------
+
+To build a version of Wannier90 compatible with SIESTA, you first have to get
+a version of SIESTA able to perform Lowdin calculations:
+
+  https://launchpad.net/~javier-junquera/siesta/lowdin/
+
+A Util/Wannier90/ subdirectory is present at the top of the source tree.
+Within, you will find one or more patch files referring to specific Wannier90
+versions and this README file.
+
+The next step is to download an official release tarball from the Wannier90
+website:
+
+  http://www.wannier.org/download/
+
+The version to download must correspond exactly to the version of the patch
+you want to apply. For instance, if the patch is called
+"wannier90-3.0.0-siesta.patch", you have to download the 3.0.0 version of
+Wannier90. Applying the patch to other versions will likely fail. We will use
+this version as an example for the rest of these instructions.
+
+Uncompress the source code of Wannier90 and go to its top directory, e.g.:
+
+  tar xvzf wannier90-3.0.0.tar.gz
+  cd wannier90-3.0.0
+
+From there, you can apply the patch from SIESTA:
+
+  patch -p1 < /path/to/siesta/Util/Wannier90/wannier90-3.0.0-siesta.patch
+
+where you replace /path/to/siesta/Util/Wannier90 by the directory path
+containing the patch file.
+
+Once done, you can follow the instructions found in the README.install file of
+Wannier90 to configure the build. You should then type "make lib" to build the
+Wannier90 library, which is the only part of interest to SIESTA.
+
+
+Using a modified Wannier90 from SIESTA
+--------------------------------------
+
+To use the Wannier90 library you just have built with SIESTA, start by
+configuring your SIESTA object dir as instructed in the Obj/README file of the
+SIESTA source code.
+
+Then, make sure that your arch.make contains the following lines:
+
+  WANNIER90_ROOT = /path/to/wannier90
+  WANNIER90_INCFLAGS = -I$(WANNIER90_ROOT)/src/obj
+  WANNIER90_LIBS = -L$(WANNIER90_ROOT) -lwannier
+
+where you replace /path/to/wannier90 by the full path to the top source
+directory of Wannier90.
+
+Once done, you can proceed as usual with the build of SIESTA.
