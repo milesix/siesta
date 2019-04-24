@@ -83,15 +83,16 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   !
   use precision
   use sys
-  use units, only: eV
+  use units, only: eV, Ang
   use parallel,     only : Node, Nodes
   use parallelsubs, only : WhichNodeOrb, GlobalToLocalOrb
   use mpi_siesta
   use m_fermid,     only : fermid, fermispin, stepf
   use alloc,        only : re_alloc, de_alloc
   use t_spin, only: tSpin
-  use m_velocity_shift, only: velocity_shift
-  use intrinsic_missing, only: MODP
+  use m_velocity_shift, only: velocity_shift, calc_velocity_current, velocity_current
+  use siesta_geom, only: ucell, cell_periodic
+  use intrinsic_missing, only: MODP, VNORM
 
   implicit none
 
@@ -147,6 +148,11 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   real(dp) :: ee, qe, kxij, ckxij, skxij, t
   real(dp) :: pipj1, pipj2
 
+  ! Current calculation
+  real(dp) :: I
+  real(dp), parameter :: Coulomb = 1.6021766208e-19_dp
+  real(dp), parameter :: hbar_Rys = 4.8377647940592375e-17_dp
+
   ! Arrays for figuring out the degenerate states
   real(dp), parameter :: deg_EPS = 7.3498067e-06_dp ! 1e-4 eV
   integer :: ndeg
@@ -164,6 +170,9 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   real(dp), pointer :: dH(:,:,:), dS(:,:,:)
   real(dp), pointer :: paux(:,:), eig_aux(:)
 
+  real(dp) :: vcross(3)
+  real(dp), external :: volcel
+
 #ifdef DEBUG
   call write_debug( '    PRE diagkp_velocity' )
 #endif
@@ -172,7 +181,7 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   call MPI_AllReduce(nnz, g_nnz, 1, MPI_Integer, MPI_Sum, &
       MPI_Comm_World, MPIerror)
 
-  call diagkp_velocity_2d1d(no_u, aux(1,no_u+1), eig_aux)
+  call diagkp_velocity_2d1d(no_u, aux(1,no_u*2+1), eig_aux)
 
   ! Nullify arrays
   nullify(g_ncol, g_ptr, g_col, g_H, g_S, g_xij, g_DM, g_EDM)
@@ -277,7 +286,7 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
 
       ! After having decoupled the degenerate states we can calculate
       ! the velocities
-      call calculate_velocity(neigwanted)
+      call calculate_velocity(neigwanted, eo(:,is,ik))
 
       ! Shift eigenvalues according to the velocity projection onto the field
       call velocity_shift(+1, neigwanted, eo(:,is,ik), v)
@@ -307,6 +316,9 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
     ! This just means we can use efs independently on the used method
     efs(:) = ef
   end if
+
+  ! Initialize current
+  I = 0._dp
 
   ! Allocate globalized DM and EDM
   call re_alloc( g_DM, 1, g_nnz, 1, spin%DM, name='g_DM', routine= 'diagkp_velocity' )
@@ -340,15 +352,13 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
 
 !$OMP end parallel
 
-!!$  ! Calculate the total transmission by averaging the open bands in the "bias" window
-!!$  T = 0._dp
   do ik = 1 + Node, nk, Nodes
     do is = 1, spin%spinor
 
       ! Find maximum eigenvector that is required for this k point and spin
       ! Note that since eo has averaged out the degeneracy eigenvalues this below
       ! block will also group *all* degenerate eigenvalues!
-      neigneeded = 0
+      neigneeded = 1
       do ie = no_u, 1, -1
         if ( abs(qo(ie,is,ik)) > occtol ) then
           neigneeded = ie
@@ -369,7 +379,7 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
       end if
 
       ! Before expanding eigenvectors we need to decouple the degenerate
-      ! states so that we don't populate the degenaries wrongly
+      ! states so that we don't populate the degeneracies wrongly
       ! This assumes that the decoupling is stable.
       ndeg = 1
       do ie = 2, neigneeded
@@ -396,19 +406,11 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
       if ( ndeg > 1 ) &
           call degenerate_decouple(neigneeded, eig_aux, ndeg, neigneeded)
 
-      ! One could revert the eigenspectrum, via:
-      !   call calculate_velocity(neigneeded)
-      !   call velocity_shift(-1, neigneeded, eo(:,is,ik), v)
-      ! However it may be advantageous to consult the EIG file for post-processing.
-
-!!$      ! This transmission calculation is actually a bit wrong.
-!!$      ! Only states in the bias-window which are forward moving will contribute.
-!!$      ! But, nevertheless..
-!!$      do ie = 1, neigneeded
-!!$        if ( abs(eo(ie,is,ik) - efs(is)) <= abs(Vbias) ) then
-!!$          T = T + qo(ie,is,ik)
-!!$        end if
-!!$      end do
+      ! If we want to calculate the current and print it, we can do so here
+      if ( calc_velocity_current ) then
+        call calculate_velocity(neigneeded, eig_aux)
+        call velocity_current(neigneeded, eig_aux, v, Efs(is), wk(ik), Temp, I)
+      end if
 
       ! Expand the eigenvectors to the density matrix
       
@@ -506,12 +508,45 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   call de_alloc( g_DM, name='g_DM', routine= 'diagkp_velocity' )
   call de_alloc( g_EDM, name='g_EDM', routine= 'diagkp_velocity' )
 
-!!$  call MPI_Reduce(T, ee, 1, MPI_Double_Precision, &
-!!$      MPI_sum,0,MPI_Comm_World,MPIerror)
-!!$  if ( Node == 0 ) then
-!!$    write(*,'(a,e12.4)') 'Bulk current [G0 * V]: ', ee * Vbias
-!!$  end if
-  
+  if ( calc_velocity_current ) then
+    call MPI_Reduce(I, ee, 1, MPI_Double_Precision, &
+        MPI_sum,0,MPI_Comm_World,MPIerror)
+    ! Current I is in [e Bohr Ry]
+    I = ee / hbar_Rys
+    ! Now I is in [e Bohr/s]
+    ! Now figure out whether we are in a 1D, 2D or 3D system
+    ! and convert to micro-amps
+    I = I * Coulomb * 1.e6_dp * 2._dp / spin%spinor
+
+    if ( Node == 0 ) then
+      select case ( count( cell_periodic(:) ) )
+      case ( 3 )
+        ! We are dealing with the volume
+        I = I / volcel(ucell) * Ang ** 2
+        write(*,'(a,e14.6,tr1,a)') 'Bulk current: ', I, ' uA/Ang^2'
+      case ( 2 )
+        if ( .not. cell_periodic(1) ) then
+          call cross(ucell(:, 2), ucell(:, 3), vcross)
+        else if ( .not. cell_periodic(2) ) then
+          call cross(ucell(:, 1), ucell(:, 3), vcross)
+        else if ( .not. cell_periodic(3) ) then
+          call cross(ucell(:, 1), ucell(:, 2), vcross)
+        end if
+        I = I / VNORM(vcross) * Ang
+        write(*,'(a,e14.6,tr1,a)') 'Bulk current: ', I, ' uA/Ang'
+      case ( 1 )
+        if ( cell_periodic(1) ) then
+          I = I / VNORM(ucell(:,1))
+        else if ( cell_periodic(2) ) then
+          I = I / VNORM(ucell(:,2))
+        else if ( cell_periodic(3) ) then
+          I = I / VNORM(ucell(:,3))
+        end if
+        write(*,'(a,e14.6,tr1,a)') 'Bulk current: ', I, ' uA'
+      end select
+    end if
+  end if
+
   ! Exit point 
 999 continue
 
@@ -684,8 +719,9 @@ contains
 
   ! This routine calculates the velocities of all the states
   ! It uses the variable ie, so don't use this outside
-  subroutine calculate_velocity(neig)
+  subroutine calculate_velocity(neig, eig)
     integer, intent(in) :: neig
+    real(dp), intent(in) :: eig(neig)
     integer :: ix, ie
     
     do ix = 1, 3
@@ -700,7 +736,7 @@ contains
         call zgemv('N', no_u, no_u, dcmplx(1._dp, 0._dp), &
             dH, no_u, psi(1,1,ie), 1, dcmplx(0._dp, 0._dp), aux, 1)
         ! dH - e dS | psi >
-        call zgemv('N', no_u, no_u, dcmplx(-eo(ie,is,ik), 0._dp), &
+        call zgemv('N', no_u, no_u, dcmplx(-eig(ie), 0._dp), &
             dS, no_u, psi(1,1,ie), 1, dcmplx(1._dp, 0._dp), aux, 1)
 
         ! Now calculate the velocity along ix
@@ -715,7 +751,7 @@ contains
     end do
 
 !!$    do ie = 1, neigwanted
-!!$      print '(i5,3(tr1,f10.4))', ik, v(:,ie)
+!!$      print '(i5,3(tr1,f10.4))', ik, v(:,ie) / Ang / hbar_Rys * 1.e-12_dp
 !!$    end do
 
   end subroutine calculate_velocity

@@ -9803,13 +9803,24 @@ filling all right-moving states up to $E_F + V/2$ and emptying all
 left-moving states down to $E_F - V/2$ (for a positively defined
 $V$).
 
+When using this method the resulting eigenvalue spectrum in
+\sysfile{EIG} contains the shifted eigenvalues corresponding to
+whether they are left/right movers. 
+
 \begin{fdfentry}{BulkBias!V}[energy]<$0.\,\mathrm{eV}$>
-  \fdfdepend{BulkBias!Direction}
+  \fdfdepend{BulkBias!Direction,Diag!ParallelOverK,TimeReversalSymmetryForKpoints}
 
   The applied bias shift in the band-structure. All right-moving
   states will be shifted halve this value down in energy (more
   filled), while all left-moving states will be shifted halve this
   value up in energy (less filled).
+
+  Since states are filled differently close to the Fermi level it is
+  imperative that the $\mathbf k$-point sampling is very high to
+  discretize the integration around the Fermi level sufficiently.
+
+  \note this requires \fdf{Diag!ParallelOverK} to be set to \fdftrue,
+  and \fdf{TimeReversalSymmetryForKpoints} to be set to \fdffalse.
 
 \end{fdfentry}
 
@@ -9819,11 +9830,17 @@ $V$).
   The direction in which the electrons are moving. All electrons having
   velocities with a positive projection onto this direction are
   considered ``right-movers'' while all having a negative projection
-  are considered ``left-movers''.
+  are considered ``left-movers'': 
+  \begin{equation}
+    \label{eq:bulk-bias:projection}
+    p = \mathbf v \cdot \hat{\mathbf V},
+  \end{equation}
+  where $\mathbf v$ is the band velocity and $\hat{\mathbf V}$ is the
+  bias unit vector.
 
 \end{fdfentry}
 
-\begin{fdfentry}{BulkBias!Tolerance}[real]<$10^{-8}$>
+\begin{fdfentry}{BulkBias!Tolerance}[real]<$10^{-15}$>
 
   The tolerance used for determining whether the velocity projection
   is positive or negative. States with projections below this tolerance
@@ -9833,9 +9850,45 @@ $V$).
   having a larger value will only shift eigenstates with higher
   velocities projected onto the potential-direction. The current value
   corresponds roughly to a velocity of
-  $2\cdot10^{-4}\,\mathrm{Bohr}/\mathrm{ps}$.
+  $1\cdot10^{-11}\,\mathrm{Ang}/\mathrm{ps}$.
 
 \end{fdfentry}
+
+\begin{fdflogicalF}{BulkBias!Current}
+
+  Calculate and print out the bulk-bias current during each SCF.
+  The calculated current is given by the expression:
+  \begin{align}
+    p_{\mathbf k,i} &=\mathbf{v}_{\mathbf k,i}\cdot \hat{\mathbf V}
+    \\
+    \label{eq:bulk-bias:current}
+    I(V) &= \frac{2e}{\Omega}\sum_i\iint\!\!\mathrm{d}\mathbf k\,\,
+    p_{\mathbf k,i} \Theta(p_{\mathbf k,i})
+    \left[ n_F(\epsilon_{\mathbf k,i} - V/2) - n_F(\epsilon_{\mathbf k,i} + V/2)\right],
+  \end{align}
+  where $\mathbf{v}_{\mathbf k,i}$ is the velocity of the $i$th
+  eigenstate at $\mathbf k$, $\hat{\mathbf V}$ is the velocity unit
+  vector describing the direction of the field. $\Theta(x)$ is the
+  heaviside step function. Finally $\Omega$ is the Brillouin zone
+  volume which depends on the dimensionality of the system:
+  \begin{description}
+    \item[1D] $\Omega$ has unit length, and the resulting current is
+    in $\mathrm A$,
+
+    \item[2D] $\Omega$ has unit area, and the resulting current is
+    $\mathrm A/\AA$,
+    
+    \item[3D] $\Omega$ has unit volume, and the resulting current is
+    $\mathrm A/\AA^2$.
+
+  \end{description}
+  The factor $2$ comes from spin degeneracy.
+
+  \note there is a slight performance penalty of calculating the
+  current in the SCF. It requires the calculation of the velocities
+  one more time, however, it should be a relatively small overhead.
+
+\end{fdflogicalF}
 
 
 \subsection{Output of charge densities and potentials on the grid}
