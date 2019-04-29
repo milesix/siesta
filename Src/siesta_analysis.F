@@ -62,6 +62,7 @@
       use m_w90_in_siesta,   only: compute_matrices
       use m_w90_in_siesta,   only: compute_wannier
       use m_w90_in_siesta,   only: deallocate_wannier
+      use m_wannier_in_nao,  only: wannier_in_nao
 #endif
 
       use m_mpi_utils, only: barrier
@@ -522,6 +523,7 @@ C
             call diagonalizeHk( ispin, index_manifold )
             call compute_matrices( ispin, index_manifold )
             call compute_wannier( ispin, index_manifold )
+            call wannier_in_nao( )
           enddo 
         enddo
 !        if(IONode) call deallocate_wannier

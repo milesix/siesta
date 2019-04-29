@@ -16,7 +16,7 @@
       character(len=192), save, public :: wfs_filename
 
       integer,    save :: nwf = 1
-      logical,    save :: wwf = .false.
+      logical,    public, save :: wwf = .false.
       logical,    save :: scf_set = .false.
       logical,    save :: debug = .false.
 
@@ -108,6 +108,15 @@
       do j=1, nwfs
          iwf(1:nk,j) = wfs_band_min - 1 + j
       enddo
+
+!!     For debugging
+!      write(6,*)' nwfs = ', nwfs
+!      write(6,*)' nwfslist = ', nwflist
+!      do j=1, nwfs
+!         write(6,*) ' iwf = ', iwf(1:nk,j) 
+!      enddo
+!!     End debugging
+
 
 !     The energy window, if allowed, will take effect inside the routine
 !     that writes to file, as the energies are not yet known
@@ -818,6 +827,9 @@ C eigenvector is now stored in aux in Node 0, and can be printed
           write(iu) indwf
           write(iu) eo(indwf)/eV
           write(iu) (aux(1:,j), j=1,nuotot)
+!!         For debugging
+!          write(6,*) (aux(1:,j), j=1,nuotot)
+!!         End debugging
        endif
 
       enddo
