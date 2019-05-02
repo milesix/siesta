@@ -33,6 +33,7 @@ module m_wannier_in_nao
                                              !   First  index: wannier function
                                              !   Second index: NAO in the 
                                              !       supercell
+  complex(dp), pointer :: coeffs_opt(:,:,:) => null()
 
   CONTAINS
 
@@ -83,11 +84,18 @@ module m_wannier_in_nao
                                              !   Second index: component
                                              !   In Angstroms^-1
     use w90_parameters, only: num_proj       ! Number of projections
+    use w90_parameters, only: num_bands      ! Number of bands Wannierized
     use w90_parameters, only: u_matrix       ! Unitary rotations from the 
                                              !   optimal subspace to the
                                              !   optimally smooth states.
+    use w90_parameters, only: u_matrix_opt   ! Unitary rotations from the 
     use w90_parameters, only: gamma_only     ! Only the gamma point will be
                                              !   used within Wannier90?
+    use w90_parameters, only : disentanglement ! logical value
+                                             !   .true.:
+                                             !   disentanglement active
+                                             !   .false.:
+                                             !   disentanglement inactive
     use w90_constants,  only: bohr_angstrom_internal  
                                              ! Conversion factor from 
                                              !   Bohr to Ang
@@ -131,6 +139,7 @@ module m_wannier_in_nao
     integer  :: ik                           ! Counter for loop on k-points
     integer  :: iorb                         ! Counter for loop on atomic 
                                              !   orbitals
+    integer  :: iband                        ! Counter for loop on bands
     integer  :: iproj                        ! Counter for loop on projectors
     integer  :: iprojn                       ! Counter for loop on projectors
     integer  :: iprojm                       ! Counter for loop on projectors
@@ -176,6 +185,16 @@ module m_wannier_in_nao
  &                 name='coeffs_wan_nao', routine='wannier_in_nao')
     coeffs_wan_nao = cmplx(0.0_dp,0.0_dp,kind=dp)
 
+!   Allocate the array where the coefficients of the 
+    nullify( coeffs_opt )
+    call re_alloc( coeffs_opt,                                      &
+ &                 1, no_u,                                         &
+ &                 1, num_proj,                                     &
+ &                 1, num_kpts,                                     &
+ &                 name='coeffs_opt', routine='wannier_in_nao')
+    coeffs_opt = cmplx(0.0_dp,0.0_dp,kind=dp)
+
+
 !   Allocate the array where the coefficients of the Wannier functions
 !   in a basis of Numerical Atomic Orbitals will be stored
     nullify( psi )
@@ -198,6 +217,21 @@ module m_wannier_in_nao
 !      enddo 
 !    enddo 
 !    End debugging
+
+    if( disentanglement ) then
+      do ik = 1, num_kpts
+        do iorb = 1, no_u
+          do iprojn = 1, num_proj
+            do iband = 1, num_bands
+              coeffs_opt(iorb,iprojn,ik) = coeffs_opt(iorb,iprojn,ik) +  &
+ &              u_matrix_opt(iband,iprojn,ik) * coeffs(iorb,iband,ik)
+            enddo 
+          enddo 
+        enddo
+      enddo
+    else
+      coeffs_opt(:,:,:) = coeffs(:,:,:) 
+    endif
 
     do iprojn = 1, num_proj
       do ik = 1, num_kpts
@@ -228,8 +262,8 @@ module m_wannier_in_nao
            skxmu = dsin(kxmu)
 
            coeffs_wan_nao(iprojn,iorb) = coeffs_wan_nao(iprojn,iorb) +  &
- &            u_matrix(iprojm,iprojn,ik)            *                   &
- &            coeffs(index_orbital_unit,iprojm,ik)  *                   &
+ &            u_matrix(iprojm,iprojn,ik)                *               &
+ &            coeffs_opt(index_orbital_unit,iprojm,ik)  *               &
  &            cmplx(ckxmu,skxmu,kind=dp) 
          
           enddo ! End loop on orbitals in the supercell
@@ -244,15 +278,15 @@ module m_wannier_in_nao
 !      write(6,'(a,3i5,3f12.5)')'iorb, indxuo, iaorb = ',  &
 ! &      iorb, indxuo(iorb), iaorb(iorb), xa(:,iaorb(iorb))
 !    enddo
-     do iproj = 1, num_proj
-       do iorb = 1, no_s
-!         if( indxuo(iorb) .eq. 15) then
-         if( aimag(coeffs_wan_nao(iproj,iorb)) .gt. 1.d-5 ) then
-         write(6,'(a,2i5,5f12.5)') ' iproj, iorb, coeffs_wan_nao = ', &
- &         iproj, iorb, coeffs_wan_nao(iproj,iorb), xa(:,iaorb(iorb))
-         endif
-       enddo 
-     enddo 
+!     do iproj = 1, num_proj
+!       do iorb = 1, no_s
+!!         if( indxuo(iorb) .eq. 15) then
+!         if( aimag(coeffs_wan_nao(iproj,iorb)) .gt. 1.d-5 ) then
+!         write(6,'(a,2i5,5f12.5)') ' iproj, iorb, coeffs_wan_nao = ', &
+! &         iproj, iorb, coeffs_wan_nao(iproj,iorb), xa(:,iaorb(iorb))
+!         endif
+!       enddo 
+!     enddo 
 !!   End debugging
 
 !   Set up the variables to call writew
@@ -260,12 +294,12 @@ module m_wannier_in_nao
       do iorb = 1, no_s
         psi(1,iorb,iproj) = real(coeffs_wan_nao(iproj,iorb))
         psi(2,iorb,iproj) = aimag(coeffs_wan_nao(iproj,iorb))
-!       For debugging
-!        if( psi(2,iorb,iproj) .gt. 1.d-5) then
-        write(6,'(a,2i5,2f12.5)')' iproj, iorb, psi = ', &
- &        iproj, iorb, psi(1,iorb,iproj), psi(2,iorb,iproj)
-!        endif
-!       End debugging
+!!       For debugging
+!!        if( psi(2,iorb,iproj) .gt. 1.d-5) then
+!        write(6,'(a,2i5,2f12.5)')' iproj, iorb, psi = ', &
+! &        iproj, iorb, psi(1,iorb,iproj), psi(2,iorb,iproj)
+!!        endif
+!!       End debugging
       enddo 
     enddo
     aux          = 0.0_dp
