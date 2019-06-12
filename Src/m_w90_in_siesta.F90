@@ -38,6 +38,11 @@ module m_w90_in_siesta
                                           ! Will the position operator matrix
                                           !  elements be computed between bands
                                           !  of different manifolds
+  use siesta_options, only: w90_in_siesta_compute_unk
+                                          ! Shall SIESTA compute the files 
+                                          !   which contains the periodic part 
+                                          !   of the wave function in the 
+                                          !   unit cell on a grid
   use parallel,       only: Node          ! Local processor number
   use parallel,       only: Nodes         ! Total number of processors in a 
                                           !  parallel run
@@ -47,7 +52,12 @@ module m_w90_in_siesta
                                           ! Variable where the initial
                                           !   and final band of each
                                           !   manifold are stored
-
+  use w90_in_siesta_types,   only: chempotwann_val
+                                          ! Chemical potential
+                                          !   applied to shift the energy of a
+                                          !   the matrix elements in real space
+                                          !   associated with a given
+                                          !   Wannier function
   use atomlist,           only: no_u      ! Number of orbitals in unit cell
                                           ! NOTE: When running in parallel,
                                           !   this is core independent
@@ -67,6 +77,17 @@ module m_w90_in_siesta
   use parallelsubs,       only: LocalToGlobalOrb
 
   implicit none
+
+!
+! Variables related with the computation of the matrix elements
+! including the chemical potential for some Wannier functions
+!
+  logical, public :: compute_chempotwann = .false.
+  logical, public :: first_chempotwann   = .true.  
+!                       First time the calculation of the matrix
+!                       elements of the Hamiltonian with the 
+!                       chemical potential of the Wanniers is called?
+
 
 ! Routines
   public :: setup_w90_in_siesta
@@ -285,6 +306,8 @@ module m_w90_in_siesta
 !   Internal variables
     integer :: index_manifold           ! Counter for the number of manifolds
     integer :: iorb                     ! Counter for the number of atomic orb.
+    integer :: index_wannier            ! Variable to identify a given Wannier
+    real(dp):: factor                   ! Conversion factor for energy units
     character(len=30) :: string_num     ! Check whether the number of 
                                         !    iterations is in the input      
     character(len=30) :: string_plot    ! 
@@ -409,9 +432,14 @@ module m_w90_in_siesta
  &         call die("No plotting of the Wannier functions")
       string_plot    = fdf_bnames(pline,1)
       manifold_bands_w90_in(index_manifold)%wannier_plot = .true.
-!      manifold_bands_w90_in(index_manifold)%wannier_plot_supercell(1) = &
       manifold_bands_w90_in(index_manifold)%wannier_plot_supercell(:) = &
  &       fdf_bintegers(pline,1)
+!     If the UNK files are not written, then the Wannier functions will not
+!     be plotted using the algorithms included in WANNIER90
+!     They could be plotted using the coefficients of the wave functions
+!     and DENCHAR
+      if( .not. w90_in_siesta_compute_unk )    &
+ &      manifold_bands_w90_in(index_manifold)%wannier_plot = .false.
 
 !     Read whether the Fermi surface is plotted
       if (.not. fdf_bline(bfdf,pline)) &
@@ -545,6 +573,40 @@ module m_w90_in_siesta
 
     enddo ! end loop over all the lines in the block WannierProjections
 
+!   Allocate the pointer where the chemical potential associated with 
+!   a given Wannier function will be stored.
+!   The correction will be applied only on the bands associated with 
+!   the first manifold, that is why we are using this number of bands
+!   to allocate the variable.
+    allocate(chempotwann_val(manifold_bands_w90_in(1)%numbands_w90_in))
+    chempotwann_val = 0.0_dp
+    
+!   Read the chemical potential associated with a given Wannier function
+!   First check whether the block is present in the fdf file.
+!   If it is not present, do nothing
+    if (.not. fdf_block('ChemicalPotentialWannier',bfdf)) RETURN
+
+!   If the block with the chemical potentials is present,
+!   set to true the flag to compute the shifts of the matrix elements
+!    compute_chempotwann = .true. 
+
+!   Read the content of the block, line by line
+    do while(fdf_bline(bfdf, pline))       
+      if (.not. fdf_bmatch(pline,'ivn')) &   ! We expect that the first line
+ &      call die('Wrong format in ChemicalPotentialWannier')
+      factor = fdf_convfac( fdf_bnames(pline,1), 'Ry' )
+      index_wannier = fdf_bintegers(pline,1)
+      chempotwann_val(index_wannier) = fdf_breals(pline,1) * factor
+    enddo ! end loop over all the lines in the block ChemicalPotentialWannier
+
+!!   For debugging
+!    do index_wannier = 1, manifold_bands_w90_in(1)%numbands_w90_in
+!      write(6,'(a,i5,a,f12.5)')                                              &
+! &      'read_w90_in_siesta_specs: Chemical potential for Wannier number ',  &
+! &      index_wannier, ' = ' , chempotwann_val(index_wannier) 
+!    enddo 
+!!   End debugging
+        
   end subroutine read_w90_in_siesta_specs
 
 !> \brief General purpose of the subroutine read_kpoints_wannier:
@@ -1115,12 +1177,15 @@ module m_w90_in_siesta
 !   Compute the matrix elements of the plane wave,
 !   for all the wave vectors that connect a given k-point to its nearest
 !   neighbours
+!    if( first_chempotwann ) call compute_pw_matrix( nncount, bvectorsfrac )
     call compute_pw_matrix( nncount, bvectorsfrac )
 
 !   Compute the overlaps between Bloch orbitals at neighboring k points
+!    if( first_chempotwann ) call mmn( ispin )
     call mmn( ispin )
 
 !   Compute the overlaps between Bloch states onto trial localized orbitals
+!    if( first_chempotwann ) call amn( ispin )
     call amn( ispin )
 
 !   Check if the computations of the position operator matrix elements
@@ -1204,13 +1269,11 @@ module m_w90_in_siesta
       endif
     endif
 
-
-
 !   Write the selected eigenvalues within the manifold in the file
 !   SystemLabel.eigW
     if( IOnode ) call writeeig( ispin )
 
-    call writeunk( ispin )
+    if( w90_in_siesta_compute_unk ) call writeunk( ispin )
 
     if (IONode) then
       write(6,'(/,a)')  &
@@ -1260,6 +1323,9 @@ module m_w90_in_siesta
 !
     use siesta_geom,    only : na_u            ! number of atoms in the
                                                !   unit cell
+    use siesta_geom,    only : xa              ! atomic positions 
+                                               !   in cartesian coordinates
+                                               !   units in Bohrs
     use siesta_geom,    only : xa_last         ! atomic positions 
                                                !   in cartesian coordinates
                                                !   units in Bohrs
@@ -1463,7 +1529,7 @@ module m_w90_in_siesta
                                                !    to stdout 
     use w90_parameters,  only: param_dist      ! distribute the parameters 
                                                !    across processors 
-    use w90_parameters,  only : param_write_chkpt
+    use w90_parameters,  only: param_write_chkpt
                                                ! write checkpoint file
     use w90_io,          only: io_time         ! subroutine to control the
                                                !    timing, borrowed from 
@@ -1602,7 +1668,8 @@ module m_w90_in_siesta
        do nat = 1, num_atoms
           if( trim(atoms_label(nsp))==trim( species(isa(nat))%label)) then
              counter=counter+1
-             atoms_pos_cart(:,counter,nsp) = xa_last(:,nat)/Ang
+!             atoms_pos_cart(:,counter,nsp) = xa_last(:,nat)/Ang
+             atoms_pos_cart(:,counter,nsp) = xa(:,nat)/Ang
           end if
        end do
     end do
