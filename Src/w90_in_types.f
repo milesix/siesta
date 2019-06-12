@@ -16,7 +16,9 @@
 !! relevant information for a manifold of bands is stored.
 !!
 !! Then, we also define some relevant information regarding the k-point
-!! sampling and the atomic structure.
+!! sampling, the atomic structure, and eventually,
+!! the chemical potential that can be applied to a particular
+!! Wannier function
 
       module w90_in_siesta_types
 !
@@ -184,7 +186,19 @@
                                        !  Cartesian coordinates in Bohr^-1
                                        !  First  index: component
                                        !  Second index: vector
-      
+
+!
+! Variables related with the chemical potential
+!
+      real(dp), pointer :: chempotwann_val(:)
+                                       ! Chemical potential 
+                                       !   applied to shift the energy of a 
+                                       !   the matrix elements in real space
+                                       !   associated with a given 
+                                       !   Wannier function
+      integer           :: num_proj_local
+                                       ! Number of projections that will be 
+                                       !   handled in the local node
 
       end module w90_in_siesta_types
 
