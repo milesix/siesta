@@ -82,6 +82,10 @@
       use flook_siesta, only : slua_init, slua_call, LUA_INITIALIZE
 #endif
 
+#ifdef HAVE_WANNIER90
+      use m_w90_in_siesta,   only: setup_w90_in_siesta
+#endif
+
 #ifdef NCDF_4
       use netcdf_ncdf
 #endif
@@ -712,6 +716,19 @@ C     Initialise MPI and set processor number
 
       ! Call a preprocess step right after initialization
       call slua_call(LUA,LUA_INITIALIZE)
+
+#endif
+
+!     Initialize WANNIER90 to be run directly in SIESTA
+#ifdef HAVE_WANNIER90
+      if( w90_in_siesta_processing ) then
+!
+!       Set up all the variables required to run WANNIER90 within SIESTA
+!       (not as a postprocessing tool)
+!       At this step, these variables are only known at the IONode
+!
+        call setup_w90_in_siesta
+      endif
 
 #endif
 
