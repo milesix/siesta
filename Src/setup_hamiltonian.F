@@ -56,6 +56,23 @@
       use m_mpi_utils, only: globalize_sum
 #endif
 
+#ifdef HAVE_WANNIER90
+      use m_switch_local_projection, only: switch_local_projection
+      use m_w90_in_siesta,   only: compute_chempotwann
+      use m_w90_in_siesta,   only: first_chempotwann
+      use m_w90_in_siesta,   only: compute_matrices
+      use m_w90_in_siesta,   only: compute_wannier
+      use m_wannier_in_nao,  only: wannier_in_nao
+      use m_chempotwann,     only: chempotwann
+      use m_chempotwann,     only: add_Hamiltonian_chempotwann
+      use sparse_matrices,   only: DM_2D
+      use sparse_matrices,   only: EDM_2D
+      use sparse_matrices,   only: H_chempotwann_2D
+      use sparse_matrices,   only: DM_history
+      use class_dSpData2D,   only: val
+      use m_new_dm,          only: new_dm
+#endif
+
       implicit none
       integer, intent(in) :: iscf
       real(dp)            :: stressl(3,3)
@@ -76,7 +93,12 @@
       complex(dp), pointer:: H_so_off(:,:)
 
       complex(dp):: Dc
-      integer :: ind, i, j
+      integer :: ind, i, j, jneig
+
+#ifdef HAVE_WANNIER90
+      integer             :: index_manifold
+      real(dp), pointer   :: H_chempotwann(:,:)
+#endif
 
 !------------------------------------------------------------------------- BEGIN
 
@@ -254,7 +276,6 @@
       endif
 ! ..................
 
-
 ! Add SCF contribution to energy and matrix elements ..................
       g2max = g2cut
 
@@ -295,6 +316,37 @@
          H(:,8) = H(:,8) -aimag(H_so_off(:,4))
 
       endif
+
+! Energy term coming from the chemical potential added to the Wannier functions
+#ifdef HAVE_WANNIER90
+      if( w90_in_siesta_processing ) then
+        if( compute_chempotwann ) then
+          H_chempotwann => val(H_chempotwann_2D)
+          if( first_chempotwann ) then
+!           Transfer all the parameters to the variables
+!           that will be used in the wannierization routines.
+!           Those routines comes from the WANNIER90 code.
+            do index_manifold = 1, n_wannier_manifolds
+              call switch_local_projection( index_manifold )
+              do ispin = 1, spin%H
+                call diagonalizeHk( ispin, index_manifold )
+                call compute_matrices( ispin, index_manifold )
+                call compute_wannier( ispin, index_manifold )
+                if ( index_manifold .eq. 1 ) then
+                  call wannier_in_nao
+                  call chempotwann( ispin, H_chempotwann )
+                endif 
+              enddo 
+            enddo
+            first_chempotwann = .false.
+          endif
+          call add_Hamiltonian_chempotwann( H_chempotwann )
+        endif
+      endif
+#endif
+
+! ..................
+
 
       ! This statement will apply to iscf = 1, for example, when
       ! we do not use rhog_in. Rhog here is always the charge used to
