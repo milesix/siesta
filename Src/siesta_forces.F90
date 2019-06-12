@@ -103,6 +103,10 @@ contains
 
     use m_initwf, only: initwf
 
+#ifdef HAVE_WANNIER90
+    use m_w90_in_siesta, only: compute_chempotwann
+#endif
+
     integer, intent(inout)  :: istep
 
     integer :: iscf
@@ -341,7 +345,6 @@ contains
           end if
 
           ! This iteration has completed calculating the new DM
-
           call compute_energies( iscf )
           if ( mix_charge ) then
              call compute_charge_diff( drhog )
@@ -360,6 +363,30 @@ contains
                dDmax, dHmax, dEmax, &
                conv_harris, conv_freeE, &
                SCFconverged )
+
+#ifdef HAVE_WANNIER90
+          if( SCFconverged .and. (.not. compute_chempotwann) ) then
+            if ( IONode ) then
+               write(*,"(/,a)") &
+ &               "siesta_forces: Switching the computation of the "
+               write(*,"(a)")   &
+ &               "siesta_forces:   Hamiltonian matrix elements from the"
+               write(*,"(a)")   &
+ &               "siesta_forces:   chemical potential on the Wannier functions."
+               write(*,"(a)")   &  
+ &               "siesta_forces: Initiating self-consistency cicles again"
+               write(*,"(a)")   &
+ &               "siesta_forces:   adding the new hamiltonian matrix elements"
+               write(*,"(a)")   &
+ &               "siesta_forces:   assuming frozen shape of the Wanniers" 
+               write(*,"(a,/)")   &
+ &               "siesta_forces:   obtained after the first SCF" 
+            end if
+            compute_chempotwann  = .true.
+            SCFconverged        = .false.
+            mix_scf_first       = .false.
+          endif
+#endif
           
           ! ** Check this heuristic
           if ( mixH ) then
