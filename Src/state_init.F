@@ -32,6 +32,7 @@
 
       use sparse_matrices, only: H_kin_1D, H_vkb_1D
       use sparse_matrices, only: H_ldau_2D
+      use sparse_matrices, only: H_chempotwann_2D
       use sparse_matrices, only: H_so_on_2D, H_so_off_2D
 
       use sparse_matrices, only: sparse_pattern
@@ -625,6 +626,17 @@
             ldau_init = .true.
          end if
       end if
+
+      if ( w90_in_siesta_processing ) then
+         write(oname,"(a,i0)") "H_chempotwann at geom step ", istep
+         call newdSpData2D(sparse_pattern,spin%spinor,
+     &        block_dist,H_chempotwann_2D,name=oname)
+         ! Initialize to 0, but this matrix might be  
+         !   sporadically recalculated during the SCF.
+         ! Hence initialization MUST be performed upon
+         ! re-allocation.
+         call init_val(H_chempotwann_2D)
+      endif 
       
       if ( spin%SO_onsite ) then
         write(oname,"(a,i0)") "H_so (onsite) at geom step ", istep
