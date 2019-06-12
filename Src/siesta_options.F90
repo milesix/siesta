@@ -100,12 +100,15 @@ MODULE siesta_options
                                  ! Will we call the Wannier90 subroutines
                                  !   directly from SIESTA?
                                  !   (not as an external post-processing tool)
+  integer :: n_wannier_manifolds ! Number of bands manifolds that will be 
+                                 !   considered for Wannier transformation
   logical :: r_between_manifolds ! Will we compute the position operator
                                  !   matrix elements between bands in
                                  !   different manifolds?
-  integer :: n_wannier_manifolds ! Number of bands manifolds that will be 
-                                 !   considered for Wannier transformation
-
+  logical :: w90_in_siesta_compute_unk 
+                                 ! Shall SIESTA compute the files which contain
+                                 !   the periodic part of a Bloch function 
+                                 !   in the unit cell on a grid
 !----------------------------------------------------
   logical :: writef        ! Write atomic forces at every geometry step?
   logical :: writek        ! Write the k vectors of the BZ integration mesh?
