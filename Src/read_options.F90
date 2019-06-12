@@ -1825,6 +1825,8 @@ subroutine read_options( na, ns, nspin )
 
   r_between_manifolds = fdf_get( 'R_between_manifolds', .false. )
 
+  w90_in_siesta_compute_unk =fdf_get('Wannier90_in_SIESTA_compute_unk', .false.)
+
   if (ionode) then
      write(6,'(2a)') 'redata: ', repeat('*', 71)
   endif
