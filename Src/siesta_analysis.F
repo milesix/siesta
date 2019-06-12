@@ -58,11 +58,13 @@
       use m_siesta2wannier90, only: siesta2wannier90
       use m_switch_local_projection, only: switch_local_projection
 #ifdef HAVE_WANNIER90
-      use m_w90_in_siesta,   only: setup_w90_in_siesta
       use m_w90_in_siesta,   only: compute_matrices
       use m_w90_in_siesta,   only: compute_wannier
       use m_w90_in_siesta,   only: deallocate_wannier
       use m_wannier_in_nao,  only: wannier_in_nao
+      use m_chempotwann,     only: chempotwann
+      use sparse_matrices,   only: H_chempotwann_2D
+      use class_dSpData2D,   only: val
 #endif
 
       use m_mpi_utils, only: barrier
@@ -87,6 +89,8 @@
       integer           :: wfs_band_min, wfs_band_max
       real(dp)          :: g2max, current_ef
       type(filesOut_t)  :: filesOut  ! blank output file names
+
+      real(dp), pointer   :: H_chempotwann(:,:)
 
 !-----------------------------------------------------------------------BEGIN
 
@@ -505,12 +509,12 @@ C     Call Wannier90_in_Siesta here,
 C
 #ifdef HAVE_WANNIER90
       if( w90_in_siesta_processing ) then
-!
-!       Set up all the variables required to run WANNIER90 within SIESTA
-!       (not as a postprocessing tool)
-!       At this step, these variables are only known at the IONode
-!
-        call setup_w90_in_siesta
+!!
+!!       Set up all the variables required to run WANNIER90 within SIESTA
+!!       (not as a postprocessing tool)
+!!       At this step, these variables are only known at the IONode
+!!
+!        call setup_w90_in_siesta
 
 !       Loop on the number of manifolds
 !       n_wannier_manifolds is defined in siesta_options
@@ -519,14 +523,15 @@ C
 !         that will be used in the wannierization routines.
 !         Those routines comes from the WANNIER90 code.
           call switch_local_projection( index_manifold )
+          H_chempotwann => val(H_chempotwann_2D)
           do ispin = 1, nspin
             call diagonalizeHk( ispin, index_manifold )
             call compute_matrices( ispin, index_manifold )
             call compute_wannier( ispin, index_manifold )
-            call wannier_in_nao( )
+!            call wannier_in_nao( )
+!            call chempotwann( nspin, 1, H_chempotwann )
           enddo 
         enddo
-!        if(IONode) call deallocate_wannier
         call deallocate_wannier
         w90_in_siesta_processing = .false.
       endif
