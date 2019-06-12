@@ -73,6 +73,20 @@
       use ts_kpoint_scf_m, only: ts_kpoint_scf, ts_gamma_scf
       use m_ts_io,      only : ts_write_TSHS,fname_TSHS, FC_index
 
+#ifdef HAVE_WANNIER90
+      use siesta_options,    only: w90_in_siesta_processing
+      use m_switch_local_projection, only: switch_local_projection
+      use m_w90_in_siesta,   only: compute_chempotwann
+      use m_w90_in_siesta,   only: first_chempotwann
+      use m_w90_in_siesta,   only: compute_matrices
+      use m_w90_in_siesta,   only: compute_wannier
+      use m_wannier_in_nao,  only: wannier_in_nao
+      use m_chempotwann,     only: chempotwann
+      use m_chempotwann,     only: add_Hamiltonian_chempotwann
+      use sparse_matrices,   only: H_chempotwann_2D
+      use class_dSpData2D,   only: val
+#endif
+
 #ifdef FINAL_CHECK_HS
       use m_compute_max_diff, only: compute_max_diff
 #endif
@@ -94,6 +108,11 @@
 
 #ifdef FINAL_CHECK_HS
       real(dp) :: diff_H
+#endif
+#ifdef HAVE_WANNIER90
+      integer             :: index_manifold
+      integer             :: ispin
+      real(dp), pointer   :: H_chempotwann(:,:)
 #endif
 #ifdef MPI
       real(dp)              :: stresstmp(3,3)
@@ -246,6 +265,32 @@
       call overfsm( na_u, na_s, no_l, no_s, scell, xa, indxua, rmaxo,
      &              lasto, iphorb, isa, maxnh, numh, listhptr, listh,
      &              spin, Escf, fal, stressl ) 
+
+! Energy term coming from the chemical potential added to the Wannier functions
+#ifdef HAVE_WANNIER90
+      if( w90_in_siesta_processing ) then
+        if( compute_chempotwann ) then
+          if( first_chempotwann ) then
+            index_manifold = 1
+!           Transfer all the parameters to the variables
+!           that will be used in the wannierization routines.
+!           Those routines comes from the WANNIER90 code.
+            call switch_local_projection( index_manifold )
+            H_chempotwann => val(H_chempotwann_2D)
+            do ispin = 1, spin%H
+              call diagonalizeHk( ispin, index_manifold )
+              call compute_matrices( ispin, index_manifold )
+              call compute_wannier( ispin, index_manifold )
+              call wannier_in_nao
+              call chempotwann( ispin, H_chempotwann )
+            enddo
+          endif
+          first_chempotwann = .false.
+          H_chempotwann => val(H_chempotwann_2D)
+          call add_Hamiltonian_chempotwann( H_chempotwann )
+        endif
+      endif
+#endif
 
 !     Metadynamics forces
       if (lMetaForce) then
