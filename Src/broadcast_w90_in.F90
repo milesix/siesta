@@ -22,6 +22,12 @@
                                           ! Variable where the initial
                                           !   and final band of each
                                           !   manifold are stored
+  use w90_in_siesta_types,   only: chempotwann_val
+                                          ! Chemical potential
+                                          !   applied to shift the energy of 
+                                          !   the matrix elements in real space
+                                          !   associated with a given
+                                          !   Wannier function
   use atomlist,       only: no_u          ! Number of orbitals in unit cell
                                           ! NOTE: When running in parallel,
                                           !   this is core independent
@@ -138,6 +144,14 @@
  &                 MPI_Comm_World,MPIerror)
 
   enddo
+
+  if (Node.ne.0) then
+    allocate(chempotwann_val(manifold_bands_w90_in(1)%numbands_w90_in))
+  end if
+  call MPI_Bcast(chempotwann_val,                                            &
+ &               manifold_bands_w90_in(1)%numbands_w90_in,                   &
+ &               mpi_double_precision,0,                                     &
+ &               MPI_Comm_World,MPIerror)
 
 #ifdef DEBUG
   call write_debug( '  POS broadcast_w90_in_siesta' )
