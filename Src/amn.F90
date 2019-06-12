@@ -15,10 +15,10 @@ subroutine amn( ispin )
 !     N. Marzari et al., Review of Modern Physics 84, 1419 (2012),
 !     or Eq. (1.8) of the Wannier Users Guide, Version 1.2
 !     $A_{m n}^{(\vec{k})} = 
-!    \langle \psi_{m \vec{k}} \vbar g_{n} \rangle =
+!    \langle \psi_{m \vec{k}} \vert g_{n} \rangle =
 !    \sum_{\mu} \sum_{lcell} c_{\mu m}^{\ast} (\vec{k}) \times
-!    exp^{i \vec{k} \cdot \left( \tau_{\mu} + \vec{R}_{lcell} \right)} \times
-!    \langle \phi_{\mu} (\vec{r}-\tau_{\mu} - \vec{r}_{lcell} \vbar g_{n}\rangle
+!    \exp^{i \vec{k} \cdot \left( \tau_{\mu} + \vec{R}_{lcell} \right)} \times
+!    \langle \phi_{\mu} (\vec{r}-\tau_{\mu} - \vec{r}_{lcell} \vert g_{n}\rangle
 !     where $m$ runs between 1 and the number of bands for wannierization,
 !     $n$ runs between 1 and the number of projection functions, 
 !     $\vec{k}$ runs over all the k-points in the first BZ where these matrices 
@@ -215,10 +215,10 @@ subroutine amn( ispin )
 ! N. Marzari et al., Review of Modern Physics 84, 1419 (2012),
 ! or Eq. (1.8) of the Wannier Users Guide, Version 1.2
 ! $A_{m n}^{(\vec{k})} = 
-!    \langle \psi_{m \vec{k}} \vbar g_{n} \rangle =
+!    \langle \psi_{m \vec{k}} \vert g_{n} \rangle =
 !    \sum_{\mu} \sum_{lcell} c_{\mu m}^{\ast} (\vec{k}) \times
-!    exp^{i \vec{k} \cdot \left( \tau_{\mu} + \vec{R}_{lcell} \right)} \times
-!    \langle \phi_{\mu} (\vec{r}-\tau_{\mu} - \vec{r}_{lcell} \vbar g_{n}\rangle
+!    \exp^{i \vec{k} \cdot \left( \tau_{\mu} + \vec{R}_{lcell} \right)} \times
+!    \langle \phi_{\mu} (\vec{r}-\tau_{\mu} - \vec{r}_{lcell} \vert g_{n}\rangle
 ! where $m$ runs between 1 and the number of bands considered for wannierization
 ! $n$ runs between 1 and the number of projection functions, 
 ! $\vec{k}$ runs over all the k-points in the first BZ where these matrices 
@@ -235,7 +235,6 @@ subroutine amn( ispin )
 
 ! Initialize Amnmat
   Amnmat = cmplx( 0.0_dp, 0.0_dp, kind =dp )
-
 
 ! Allocate memory related with a local variable where the coefficients 
 ! of the eigenvector at the k-point will be stored
