@@ -149,6 +149,8 @@ module sparse_matrices
   type(dSpData1D), public :: H_vkb_1D, H_kin_1D
   ! LDA+U Hamiltonian
   type(dSpData2D), public :: H_ldau_2D
+  ! Rigid shift of the Hamiltonian matrix elements associated with a Wannier
+  type(dSpData2D), public :: H_chempotwann_2D
   ! Spin-orbit (on-site) Hamiltonian
   type(dSpData2D), public :: H_so_on_2D
   complex(dp), public, pointer :: H0_offsiteSO(:,:) => null()
@@ -181,6 +183,7 @@ contains
     call delete( H_kin_1D )
     call delete( H_vkb_1D )
     call delete( H_ldau_2D )
+    call delete( H_chempotwann_2D )
     call delete( H_so_on_2D )
     call delete( H_so_off_2D )
     nullify(H0_offsiteSO)
