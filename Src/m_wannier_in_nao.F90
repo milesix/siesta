@@ -312,8 +312,8 @@ module m_wannier_in_nao
 !    write(6,'(a,2i5,f12.5)')                        &
 ! &    'Nodes, Node, rangemax = ',                   &
 ! &     Nodes, Node, rangemax
-!    call MPI_barrier(MPI_Comm_world,i)
-!    call die()
+!!    call MPI_barrier(MPI_Comm_world,i)
+!!    call die()
 !!   End debugging
 
 !   Calculate the number of orbitals in the unit cell stored in the local node
@@ -366,11 +366,6 @@ module m_wannier_in_nao
 ! &       Nodes, Node, iorb, iorb_global, listedall(iorb_global)
 !!      End debugging
     enddo
-
-!!   For debugging
-!    call MPI_barrier(MPI_Comm_world,i)
-!    call die()
-!!   End debugging
 
 !   Allocate the array where the coefficients of the Wannier functions
 !   in a basis of Numerical Atomic Orbitals will be stored
@@ -614,14 +609,14 @@ module m_wannier_in_nao
 !    do iproj = 1, num_proj_local
 !      do iorb = 1, no_s
 !        write(6,'(a,5i5,5f12.5)')   &
-! &        'Node, Nodes, iproj, iorb, indxuo, coeffs_wan_nao(iproj,iorb) = ',   &
-! &         Node, Nodes, iproj, iorb, indxuo(iorb), coeffs_wan_nao(iproj,iorb),       &
+! &        'Node, Nodes, iproj, iorb, indxuo, coeffs_wan_nao(iproj,iorb) = ',  &
+! &         Node, Nodes, iproj, iorb, indxuo(iorb), coeffs_wan_nao(iproj,iorb),&
 ! &         xa(:,iaorb(iorb)) + wannier_centres(:,iproj) * Ang
 !      enddo 
 !    enddo 
 !    call MPI_barrier(MPI_Comm_world,i)
 !    call die()
-!!   End debugging
+!   End debugging
 
 !   Allocate the array where the coefficients of the Wannier functions
 !   in a basis of Numerical Atomic Orbitals will be stored
@@ -633,7 +628,7 @@ module m_wannier_in_nao
  &                 name='psi', routine='wannier_in_nao')
     psi = 0.0_dp
 
-!    For debugging
+!!    For debugging
 !    do ik = 1, num_kpts
 !      do iproj = 1, num_proj
 !        do iorb = 1, no_u
@@ -728,10 +723,10 @@ module m_wannier_in_nao
 
     call setup_wfs_list(nk,no_s,1,num_proj,.false.,.false.)
 
-    call writew( no_s, num_proj_local, 1, kdummy, 1, &
+    call writew( no_s, num_proj, 1, kdummy, 1, &
  &               aux, psi, gamma )
 
-    
+
   end subroutine wannier_in_nao
 
 end module m_wannier_in_nao

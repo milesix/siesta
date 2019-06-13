@@ -666,10 +666,12 @@ C This is the only exit point
 
       use precision
       use sys
-      use parallel,     only : Node, Nodes
+      use parallel,     only : Node, Nodes, BlockSize
       use parallelsubs, only : GlobalToLocalOrb, WhichNodeOrb
+      use parallelsubs, only : set_blocksizedefault
       use units,        only : eV
       use kpoint_scf_m, only: kpoint_scf
+      use siesta_options, only:  w90_in_siesta_processing
 
 #ifdef MPI
       use mpi_siesta
@@ -690,6 +692,8 @@ C  Internal variables .............................................
       integer  BNode, iie, iw, indwf, j, ind, iu
 
       integer number_of_wfns
+      integer blocksizeincbands_wannier
+      integer blocksizesave
       integer, allocatable  :: ind_wfn(:)
 
       real(dp)  :: kpoint_weight
@@ -709,6 +713,15 @@ C Allocate auxiliary arrays
          call memory('A','D',2*nuotot,'writewave')
       endif
 
+C Set BlockSize.
+C It might be different from the usual value if the 
+C Wannier functions are going to be printed instead of the bands
+      if( w90_in_siesta_processing ) then
+        call set_blocksizedefault( Nodes,nuo,blocksizeincbands_wannier )
+        blocksizesave = BlockSize
+        BlockSize     = blocksizeincbands_wannier
+      endif
+
 C Find file name, and open for Node 0
 
       if (Node .eq. 0) then
@@ -716,6 +729,7 @@ C Find file name, and open for Node 0
         open(iu,file=wfs_filename,form="unformatted",position='append',
      .        status='old')
       endif
+
 
       if (wfs_energy_window) then  
          allocate(ind_wfn(nwflist(ik)))
@@ -833,6 +847,10 @@ C eigenvector is now stored in aux in Node 0, and can be printed
        endif
 
       enddo
+
+      if( w90_in_siesta_processing ) then
+        BlockSize = blocksizesave
+      endif
 
 C Close output file
 
