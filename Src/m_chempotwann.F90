@@ -237,6 +237,7 @@
    nullify( H_chempotwann_new )
    call re_alloc( H_chempotwann_new, 1, maxnhg, 1, spin%H,                   &
  &                name='H_chempotwann_new', routine= 'chempotwann' )
+   H_chempotwann_new = 0.0_dp
 
 !!  For debugging
 !   do io_global = 1, no_l
@@ -331,7 +332,7 @@
 !   do io_local = 1, no_l
 !     do j = 1, numh(io_local)
 !       ind = listhptr(io_local) + j
-!       write(6,'(a,5i5,f12.5)')                                               & 
+!       write(6,'(a,5i5,f12.5)')                                               &
 ! &       'Node, Nodes, io_local, j, ind, H_chempotwann = ',                   &
 ! &        Node, Nodes, io_local, j, ind, H_chempotwann(ind,ispin)
 !     enddo 
