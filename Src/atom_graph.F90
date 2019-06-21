@@ -46,6 +46,8 @@ module atom_graph
   end type tAtomGraph
          
   public :: atom_graph_generate, atom_graph_print
+  public :: supercell_from_atom_graph
+  
 
   interface delete
      module procedure delete_
@@ -493,6 +495,74 @@ contains
     end do
 
   end subroutine atom_graph_print
+
+  subroutine supercell_from_atom_graph(ag,na_u,isa,xa,nsc)
+    
+    use class_OrbitalDistribution
+    
+    type(tAtomGraph), intent(in) :: ag
+    integer,  intent(in)    :: na_u
+    integer,  intent(in)    :: isa(na_u)
+    real(dp), intent(in)    :: xa(3,na_u)
+    integer, intent(out)    :: nsc(3)
+    
+
+    type(OrbitalDistribution), pointer :: dit
+    type(Sparsity), pointer :: sp
+    ! Pointers to the graph data structures
+    integer, pointer :: n_col(:), l_ptr(:), l_col(:)
+    integer, pointer :: sc(:,:)
+
+    integer :: na_l, lia, ia, n_nzs, ind, ja, j
+    integer, allocatable :: connect(:)
+    
+    ! The distribution
+    dit => dist(ag%s_int_1D)
+    sp  => spar(ag%s_int_1D)
+    call attach(sp, n_col=n_col,list_ptr=l_ptr,list_col=l_col, &
+         nrows = na_l , nnzs = n_nzs)
+
+    sc   => val(ag%sc_2D)
+
+!    write(*,"(a,3i8)") "Atom graph: na_l, nnzs, Node: ", &
+!         na_l, n_nzs, dist_node(dit)
+
+    allocate(connect(na_u))
+    
+    do lia = 1 , na_l
+       ia = index_local_to_global(dit,lia)
+
+       write(*,"(/,a,i3,a,i2,i4)") "-- For neighbors of atom ", &
+            ia, " spec: ", isa(ia), n_col(lia)
+
+       connect(:) = 0
+       nsc(:) = [0,0,0]
+
+       do j = 1 , n_col(lia)
+          ind = l_ptr(lia) + j
+          ja = l_col(ind)
+          connect(ja) = connect(ja) + 1
+       end do
+
+       do j = 1 , n_col(lia)
+          ind = l_ptr(lia) + j
+          ja = l_col(ind)
+          if (connect(ja) > 1) then
+             nsc(:) = max(nsc(:),abs(sc(:,ind)))
+             write(*,fmt="(4x,i3,a,i2,a,3x,3i4,1x,a)") &
+               ja, " spec: ", isa(ja), &
+               " sc: ", sc(1:3,ind), " duplicate."
+          endif
+       end do
+       
+       ! reset bookeeping array
+       connect(:) = 0
+       
+    end do
+
+    deallocate(connect)
+    
+  end subroutine supercell_from_atom_graph
 
 end module atom_graph
 

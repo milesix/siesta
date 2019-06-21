@@ -78,22 +78,23 @@ contains
     n_nzs = nnzs(ag%sc_2D)
     sc => val(ag%sc_2D)
 
+    ! DEBUG
+    call atom_graph_print(ag,na_u,isa,xa)
+
     !> Find the biggest supercell
     !> We make it symmetric on both sides.
-    nsc(:) = 0
-    do ia = 1 , n_nzs
-       if ( abs(sc(1,ia)) > nsc(1) ) nsc(1) = abs(sc(1,ia))
-       if ( abs(sc(2,ia)) > nsc(2) ) nsc(2) = abs(sc(2,ia))
-       if ( abs(sc(3,ia)) > nsc(3) ) nsc(3) = abs(sc(3,ia))
-    end do
+    !> This was too naive. We have to restrict the test to those
+    !> cases in which images of the same atom are present in the
+    !> neighbor list
+    call supercell_from_atom_graph(ag,na_u,isa,xa,nsc)
 
-    ! DEBUG
-    !call atom_graph_print(ag,na_u,isa,xa)
 
     ! Clean-up
     call delete(ag)
 
 #ifdef MPI
+    call MPI_Barrier(MPI_Comm_World, ia)
+
     ! Reduce the nsc
     nullify(sc) ; allocate(sc(3,1))
     call MPI_AllReduce(nsc(1),sc(1,1),3,MPI_Integer,MPI_MAX, &
@@ -108,6 +109,8 @@ contains
     ! Hence, the correct number of super-cells is:
     nsc(:) = nsc(:) * 2 + 1
 
+    write(6,*) 'Supercell indexes: ', nsc
+    
   end subroutine exact_sc_ag
   
 end module m_supercell
