@@ -95,6 +95,27 @@ subroutine amn( ispin )
   use atmfuncs,           only: orb_gindex          ! Subroutine that gives
                                                     !   the global index of an
                                                     !   atomic orbital
+  use m_w90_in_siesta,    only: compute_chempotwann ! Are we going to use the 
+                                                    !   unperturbed Wannier functions
+                                                    !   as trial guess to compute 
+                                                    !   the matrix elements of the 
+                                                    !   Wanniers with chemical potentials?
+  use m_w90_in_siesta,    only: first_chempotwann   ! First time the calculation 
+                                                    !   of the matrix elements of the 
+                                                    !   Hamiltonian with the chemical
+                                                    !   chemical potential of the 
+                                                    !   Wanniers is called?
+  use atomlist,           only: no_s                ! Number of atomic orbital
+                                                    !   in the supercell
+  use atomlist,           only: iaorb               ! Atomic index of each orbital
+  use atmfuncs,           only: rcut                ! Returns orbital cutoff radius
+  use atomlist,           only: iphorb              ! Orbital index of each  orbital
+                                                    !   in its atom
+  use siesta_geom,        only: isa                 ! Species index of each atom
+  use m_wannier_in_nao,   only: coeffs_wan_nao      ! Coefficients of the Wannier 
+                                                    !   functions in a basis of NAO
+                                                    !   in the supercell
+
 !
 ! Variables for the diagonalization
 !
@@ -148,6 +169,10 @@ subroutine amn( ispin )
   integer  :: ik              ! Counter for loop on k-points
   integer  :: iproj           ! Counter for loop on projections
   integer  :: io              ! Counter for loop on orbital 
+  integer  :: iorb            ! Counter for loop on orbital 
+  integer  :: iao             ! Atomic orbital within an atom
+  integer  :: iat             ! Atomic index of each orbital
+  integer  :: is              ! Species index
   integer  :: iband           ! Counter for loop on bands
   integer  :: nincbands       ! Number of bands for wannierization
   logical, save :: firsttime = .true. ! First time this subroutine is called?
@@ -166,6 +191,7 @@ subroutine amn( ispin )
   real(dp) :: trialcenter(3)  ! Position where the trial function is centered
                               !   (in Bohr)
   real(dp) :: trialrcut       ! Cutoff radius of the trial function
+  real(dp) :: rc              ! Cutoff radius of an atomic orbital
   real(dp) :: r12(3)          ! Relative position of the trial function with
                               !   respect to the neighbour orbital
   real(dp) :: overlap         ! Overlap between the trial function and a 
@@ -207,6 +233,11 @@ subroutine amn( ispin )
 
 ! Start time counter
   call timer( 'Amn', 1 )
+
+!! For debugging
+!  write(6,'(a,l5,2i5)') 'amn: compute_chempotwann = ', compute_chempotwann, Node, Nodes
+!  write(6,'(a,l5,2i5)') 'amn: first_chempotwann = ',   first_chempotwann, Node, Nodes
+!! End debugging
 
 ! Allocate memory related with the overlap matrix between the trial projection
 ! function and the Hamiltonian eigenstate.
@@ -311,6 +342,63 @@ kpoints:                 &
 #endif
       indexproj = iproj
 
+      if( compute_chempotwann .and. (.not. first_chempotwann) ) then
+!!       For debugging
+!        write(6,'(a,5i5)')'amn: no_s, Node, Nodes, ik, iproj = ',     &
+! &                              no_s, Node, Nodes, ik, iproj
+!        write(6,'(a,i5,f12.5,2i5)')'amn: na_s, rmaxo, Node, Nodes = ',     &
+! &                              na_s, rmaxo, Node, Nodes
+!!       End debugging
+        do iorb = 1, no_s
+          iat = iaorb(iorb)
+          is  = isa(iat)                ! Species index
+          iao = iphorb( iorb )          ! Orbital index within atom
+          rc = rcut( is, iao )          ! Orbital's cutoff radius
+          trialrcut   = rc
+          trialcenter = xa(:,iat)
+          globalindexproj = orb_gindex(is,iao)
+!!         For debugging
+!          write(6,'(a,2i5)')'amn: Node, nincbands = ', &
+! &                                Node, nincbands
+!          write(6,'(a,3i5,2f12.5)')'amn: Node, iproj, iorb, coeff_wan_nao = ', & 
+! &                                       Node, iproj, iorb, coeffs_wan_nao(iproj,iorb) 
+!          write(6,'(a,5i5,4f12.5)')'amn: iorb, iao, globalindex, iat, is, xa, rc = ',     &
+! &                                       iorb, iao, globalindexproj, iat, is, xa(:,iat),rc
+!!         End debugging
+!         Find the atomic orbitals that ovelap with our radial orbital
+!         centered at trialcenter and with range trialrcut
+          item => get_overlapping_orbitals( scell, rmaxo, trialrcut, na_s, &
+ &                                          xa, trialcenter )
+OrbitalQueue2:                                                        &
+          do while (associated(item))
+            r12 = trialcenter - item%center
+            globalindexorbital = orb_gindex( item%specie, item%specieindex )
+!            if( projections(indexproj)%from_basis_orbital )             &
+! &             globalindexproj = projections(indexproj)%iorb_gindex
+            call new_matel('S',                & ! Compute the overlap
+ &                         globalindexorbital, & ! Between orbital with globalinde
+ &                         globalindexproj,    & ! And projector with globalindex
+ &                         r12,                & 
+ &                         overlap,            & 
+ &                         gradient )
+            phase = -1.0_dp * dot_product( kvector, item%center )
+            exponential = exp( iu * phase )
+!           Loop over occupied bands
+Band_loop2:                                                           &
+            do iband = 1, nincbands
+              cstar = conjg( psiloc(item%globalindex,iband) )
+              Amnmat(iband,indexproj,ik) =      & 
+ &              Amnmat(iband,indexproj,ik) +    &
+ &              exponential * cstar * overlap * coeffs_wan_nao(iproj,iorb)
+            enddo Band_loop2  ! End loop on the bands
+
+            item => item%nextitem
+          enddo OrbitalQueue2
+        enddo
+        goto 999
+      endif
+
+
 !     Find the global index of the projector in the list of radial functions
 !     that will be evaluated by MATEL
       globalindexproj = projector_gindex(indexproj) 
@@ -365,7 +453,10 @@ Band_loop:                                                           &
         item => item%nextitem
       enddo OrbitalQueue
 
+ 999 continue
+
     enddo   ! Loop on projections on the local node
+
 
 !   We need all the matrix Amnmat in IOnode
 !   (to dump it into a file),but the results for some of the bands might
