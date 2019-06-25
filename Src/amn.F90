@@ -115,6 +115,13 @@ subroutine amn( ispin )
   use m_wannier_in_nao,   only: coeffs_wan_nao      ! Coefficients of the Wannier 
                                                     !   functions in a basis of NAO
                                                     !   in the supercell
+  use m_wannier_in_nao,   only: relpos_wan_nao      ! Relative position of the center
+                                                    !   of the Wannier with respect
+                                                    !   the atomic orbital in the supercell
+                                                    !   First  index: Cartesian direction
+                                                    !   Second index: Wannier function
+                                                    !   Third index: NAO in the
+                                                    !       supercell
 
 !
 ! Variables for the diagonalization
@@ -201,6 +208,9 @@ subroutine amn( ispin )
   real(dp) :: phase           ! Product of the k-vector with the position
                               !   where the neighbour orbital is centered
   real(dp) :: kvector(3)      ! k-point vector in the Wannier90 grid
+  real(dp) :: tiny            ! Threshold value that settles the limit of the
+                              !   coefficient of the Wannier in a basis of 
+                              !   Wanniers below which no neighbours are searched
 
 
   complex(dp), dimension(:,:), pointer :: psiloc => null() ! Coefficients of the wave
@@ -287,6 +297,8 @@ subroutine amn( ispin )
     firsttime = .false.
   endif
 
+  tiny = 1.d-10
+
 kpoints:                 &
   do ik = 1, numkpoints
 !   Compute the wave vector in bohr^-1 for every vector in the list
@@ -350,50 +362,53 @@ kpoints:                 &
 ! &                              na_s, rmaxo, Node, Nodes
 !!       End debugging
         do iorb = 1, no_s
-          iat = iaorb(iorb)
-          is  = isa(iat)                ! Species index
-          iao = iphorb( iorb )          ! Orbital index within atom
-          rc = rcut( is, iao )          ! Orbital's cutoff radius
-          trialrcut   = rc
-          trialcenter = xa(:,iat)
-          globalindexproj = orb_gindex(is,iao)
-!!         For debugging
-!          write(6,'(a,2i5)')'amn: Node, nincbands = ', &
-! &                                Node, nincbands
-!          write(6,'(a,3i5,2f12.5)')'amn: Node, iproj, iorb, coeff_wan_nao = ', & 
-! &                                       Node, iproj, iorb, coeffs_wan_nao(iproj,iorb) 
-!          write(6,'(a,5i5,4f12.5)')'amn: iorb, iao, globalindex, iat, is, xa, rc = ',     &
-! &                                       iorb, iao, globalindexproj, iat, is, xa(:,iat),rc
-!!         End debugging
-!         Find the atomic orbitals that ovelap with our radial orbital
-!         centered at trialcenter and with range trialrcut
-          item => get_overlapping_orbitals( scell, rmaxo, trialrcut, na_s, &
- &                                          xa, trialcenter )
-OrbitalQueue2:                                                        &
-          do while (associated(item))
-            r12 = trialcenter - item%center
-            globalindexorbital = orb_gindex( item%specie, item%specieindex )
-!            if( projections(indexproj)%from_basis_orbital )             &
-! &             globalindexproj = projections(indexproj)%iorb_gindex
-            call new_matel('S',                & ! Compute the overlap
- &                         globalindexorbital, & ! Between orbital with globalinde
- &                         globalindexproj,    & ! And projector with globalindex
- &                         r12,                & 
- &                         overlap,            & 
- &                         gradient )
-            phase = -1.0_dp * dot_product( kvector, item%center )
-            exponential = exp( iu * phase )
-!           Loop over occupied bands
-Band_loop2:                                                           &
-            do iband = 1, nincbands
-              cstar = conjg( psiloc(item%globalindex,iband) )
-              Amnmat(iband,indexproj,ik) =      & 
- &              Amnmat(iband,indexproj,ik) +    &
- &              exponential * cstar * overlap * coeffs_wan_nao(iproj,iorb)
-            enddo Band_loop2  ! End loop on the bands
+!          if(real(coeffs_wan_nao(iproj,iorb)) .gt. tiny) then 
+            iat = iaorb(iorb)
+            is  = isa(iat)                ! Species index
+            iao = iphorb( iorb )          ! Orbital index within atom
+            rc = rcut( is, iao )          ! Orbital's cutoff radius
+            trialrcut   = rc
+            trialcenter = xa(:,iat)
+            globalindexproj = orb_gindex(is,iao)
+!!           For debugging
+!            write(6,'(a,3i5)')'amn: Node, ik, nincbands = ', &
+! &                                  Node, ik, nincbands
+!            write(6,'(a,3i5,2f12.5)')'amn: Node, iproj, iorb, coeff_wan_nao = ', & 
+! &                                         Node, iproj, iorb, coeffs_wan_nao(iproj,iorb) 
+!            write(6,'(a,5i5,4f12.5)')'amn: iorb, iao, globalindex, iat, is, xa, rc = ',     &
+! &                                         iorb, iao, globalindexproj, iat, is, xa(:,iat),rc
+!!           End debugging
+!           Find the atomic orbitals that ovelap with our radial orbital
+!           centered at trialcenter and with range trialrcut
+            item => get_overlapping_orbitals( scell, rmaxo, trialrcut, na_s, &
+ &                                            xa, trialcenter )
+OrbitalQueue2:                                                          &
+            do while (associated(item))
+              r12 = trialcenter - item%center
+              globalindexorbital = orb_gindex( item%specie, item%specieindex )
+!              if( projections(indexproj)%from_basis_orbital )             &
+! &               globalindexproj = projections(indexproj)%iorb_gindex
+              call new_matel('S',                & ! Compute the overlap
+ &                           globalindexorbital, & ! Between orbital with globalinde
+ &                           globalindexproj,    & ! And projector with globalindex
+ &                           r12,                & 
+ &                           overlap,            & 
+ &                           gradient )
+!              phase = -1.0_dp * dot_product( kvector, item%center )
+              phase = -1.0_dp * dot_product( kvector, relpos_wan_nao(:,iproj,iorb)-r12 )
+              exponential = exp( iu * phase )
+!             Loop over occupied bands
+Band_loop2:                                                             &
+              do iband = 1, nincbands
+                cstar = conjg( psiloc(item%globalindex,iband) )
+                Amnmat(iband,indexproj,ik) =      & 
+ &                Amnmat(iband,indexproj,ik) +    &
+ &                exponential * cstar * overlap * coeffs_wan_nao(iproj,iorb)
+              enddo Band_loop2  ! End loop on the bands
 
-            item => item%nextitem
-          enddo OrbitalQueue2
+              item => item%nextitem
+            enddo OrbitalQueue2
+!          endif
         enddo
         goto 999
       endif

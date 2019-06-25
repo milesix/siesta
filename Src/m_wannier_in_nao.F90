@@ -33,6 +33,14 @@ module m_wannier_in_nao
                                              !   First  index: Wannier function
                                              !   Second index: NAO in the 
                                              !       supercell
+  real(dp), pointer :: relpos_wan_nao(:,:,:) => null()
+                                             ! Relative position of the center
+                                             !   of the Wannier with respect 
+                                             !   the atomic orbital in the supercell
+                                             !   First  index: Cartesian direction
+                                             !   Second index: Wannier function
+                                             !   Third index: NAO in the 
+                                             !       supercell
   complex(dp), pointer :: coeffs_opt(:,:,:) => null()
 
   CONTAINS
@@ -376,6 +384,16 @@ module m_wannier_in_nao
  &                 name='coeffs_wan_nao', routine='wannier_in_nao')
     coeffs_wan_nao = cmplx(0.0_dp,0.0_dp,kind=dp)
 
+!   Allocate the array where the relative position between the center 
+!   of a Wannier and the atomic orbitals in the supercell are stored
+    nullify( relpos_wan_nao )
+    call re_alloc( relpos_wan_nao,                                  &
+ &                 1, 3,                                            &
+ &                 1, num_proj_local,                               &
+ &                 1, no_s,                                         &
+ &                 name='coeffs_wan_nao', routine='wannier_in_nao')
+    relpos_wan_nao = cmplx(0.0_dp,0.0_dp,kind=dp)
+
 !   Allocate the array where the coefficients of the 
 !   bands that will be wannierized
 !   If there is no-disentanglement required, the coefficients are
@@ -558,8 +576,11 @@ module m_wannier_in_nao
 !       Loop on the atomic orbitals of the neighbour atom
         do iorb = lasto(ia-1)+1, lasto(ia) 
 
+          relpos_wan_nao(:,iprojn,iorb) = xki(:,ina)
+
 !         Identify the index of the atom in the unit cell
           index_orbital_unit = indxuo(iorb)
+ 
 
 !          call GlobalToLocalOrb(iorb,Node,Nodes,iorb_local)
 
