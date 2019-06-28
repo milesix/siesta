@@ -262,8 +262,7 @@ subroutine elsi_getdm_noncoll(iscf, no_s, h_spin_dim, no_l, maxnh, no_u,  &
       complex(dp), allocatable, dimension(:)    :: Dscf_u2, Escf_u2
 
       integer :: iuo, ispin, j, ind, ind_u, nnz_u, nnz_u2
-      integer :: nspin_one, kpt_comm, ierr
-      integer :: npPerK, npGlobal, mpirank, color
+      integer :: ierr
       
       external die
 
@@ -279,26 +278,13 @@ subroutine elsi_getdm_noncoll(iscf, no_s, h_spin_dim, no_l, maxnh, no_u,  &
                                  numh,listhptr,maxnh,listh, &
                                  numh_u2,listhptr_u2,nnz_u2,listh_u2, &
                                  h_spin_dim, H, S, H_u2, S_u2)
-            nspin_one = 1
+
             allocate( Dscf_u2(nnz_u2), Escf_u2(nnz_u2) )
-
-            ! Create the right k-point communicator, even if nkpnt=1
-            ! (basically, it would be a self comm for each process)
-
-            call MPI_Comm_Rank(elsi_global_comm, mpirank, ierr)
-            call MPI_Comm_Size(elsi_global_comm, npGlobal, ierr)
-
-            ! Split elsi_global_comm
-            npPerK    = npGlobal/nkpnt
-            ! Options for split: As many groups as nkpnt, so numbering is trivial
-            color = mpirank/npPerK !  :  color 0: 0,1,2,3  ; color 1: 4,5,6,7        
-            call MPI_Comm_Split(elsi_global_comm, color, mpirank, kpt_Comm, ierr)
             
-            call elsi_complex_solver(iscf, 2*no_u, 2*no_l, nspin_one, &
+            call elsi_complex_solver_noncoll_gamma(iscf, 2*no_u, 2*no_l, &
                  nnz_u2, numh_u2, listhptr_u2, listh_u2, qtot, temp, &
                  H_u2, S_u2, Dscf_u2, Escf_u2, ef, Entropy, &
-                 nkpnt=nkpnt, kpt_n=1, kpt=[0.0_dp,0.0_dp,0.0_dp], weight=1.0_dp, &
-                 kpt_comm=kpt_Comm, get_edm_only=Get_EDM_Only)
+                 get_edm_only=Get_EDM_Only)
 
             ! Repack into default sparsity pattern with spin blocks
             call repack_noncoll(no_l,  &
@@ -1731,6 +1717,152 @@ subroutine elsi_complex_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, numh, ro
 
 
 end subroutine elsi_complex_solver
+
+subroutine elsi_complex_solver_noncoll_gamma(iscf, n_basis, n_basis_l, &
+     nnz_l, numh, row_ptr, col_idx, qtot, temp, ham, ovlp,   &
+     dm, edm, ef, ets, Get_EDM_Only)
+
+  use m_mpi_utils, only: globalize_sum
+  use parallel,    only: BlockSize
+#ifdef MPI
+  use mpi_siesta
+#endif
+
+  implicit none
+
+  integer,  intent(in)    :: iscf      ! SCF step counter
+  integer,  intent(in)    :: n_basis   ! Global basis
+  integer,  intent(in)    :: n_basis_l ! Local basis
+  integer,  intent(in)    :: nnz_l     ! Local nonzero
+  integer,  intent(in), target    :: numh(n_basis_l)
+  integer,  intent(in)    :: row_ptr(n_basis_l)
+  integer,  intent(in), target    :: col_idx(nnz_l)
+  real(dp), intent(in)    :: qtot
+  real(dp), intent(in)    :: temp
+  complex(dp), intent(inout), target :: ham(nnz_l)
+  complex(dp), intent(inout), target :: ovlp(nnz_l)
+  complex(dp), intent(out)   :: dm(nnz_l)
+  complex(dp), intent(out)   :: edm(nnz_l)
+  real(dp), intent(out)   :: ef        ! Fermi energy
+  real(dp), intent(out)   :: ets       ! Entropy/k, dimensionless
+  logical, intent(in)     :: Get_EDM_Only
+
+  integer :: ierr
+  integer :: n_state
+  integer :: nnz_g
+
+  real(dp) :: energy
+
+  integer, allocatable, dimension(:) :: row_ptr2
+
+  integer  :: i, ih
+
+  integer :: date_stamp
+
+  external :: timer
+
+#ifndef MPI
+  call die("This ELSI solver interface needs MPI")
+#endif
+
+  call timer("elsi-complex-solver", 1)
+
+  ! Initialization
+  if (iscf == 1) then
+
+    ! Get ELSI options
+    call elsi_get_opts()
+
+    ! Number of states to solve when calling an eigensolver
+    n_state = min(n_basis, n_basis/2+5)
+
+    ! Now we have all ingredients to initialize ELSI
+    call elsi_init(elsi_h, which_solver, MULTI_PROC, SIESTA_CSC, n_basis, &
+      qtot, n_state)
+
+    ! Output
+    call elsi_set_output(elsi_h, out_level)
+    call elsi_set_output_log(elsi_h, out_json)
+    call elsi_set_write_unit(elsi_h, 6)
+
+    ! Possible ill-conditioning of S
+    call elsi_set_illcond_check(elsi_h, illcond_check)
+    call elsi_set_illcond_tol(elsi_h, illcond_tol)
+
+    ! Broadening
+    call elsi_set_mu_broaden_scheme(elsi_h, which_broad)
+    call elsi_set_mu_broaden_width(elsi_h, temp)
+    call elsi_set_mu_mp_order(elsi_h, mp_order)
+    call elsi_set_spin_degeneracy(elsi_h, 1.0_dp)
+    
+    ! Solver settings
+    call elsi_set_elpa_solver(elsi_h, elpa_flavor)
+
+    call elsi_set_omm_flavor(elsi_h, omm_flavor)
+    call elsi_set_omm_n_elpa(elsi_h, omm_n_elpa)
+    call elsi_set_omm_tol(elsi_h, omm_tol)
+
+    if (pexsi_tasks_per_pole /= ELSI_NOT_SET) then
+      call elsi_set_pexsi_np_per_pole(elsi_h, pexsi_tasks_per_pole)
+    end if
+
+    call elsi_set_pexsi_n_mu(elsi_h, pexsi_n_mu)
+    call elsi_set_pexsi_n_pole(elsi_h, pexsi_n_pole)
+    call elsi_set_pexsi_inertia_tol(elsi_h, pexsi_inertia_tol)
+
+    call elsi_set_pexsi_np_symbo(elsi_h, pexsi_tasks_symbolic)
+    call elsi_set_pexsi_temp(elsi_h, temp)
+
+!    call elsi_set_pexsi_gap(elsi_h, gap)
+!    call elsi_set_pexsi_delta_e(elsi_h, delta_e)
+
+    call elsi_set_pexsi_mu_min(elsi_h, -10.0_dp)
+    call elsi_set_pexsi_mu_max(elsi_h, 10.0_dp)
+
+    if (sips_n_slice /= ELSI_NOT_SET) then
+      call elsi_set_sips_n_slice(elsi_h, sips_n_slice)
+    end if
+
+    call elsi_set_sips_n_elpa(elsi_h, sips_n_elpa)
+    call elsi_set_sips_ev_min(elsi_h, -10.0_dp)
+    call elsi_set_sips_ev_max(elsi_h,  10.0_dp)
+
+    call elsi_set_ntpoly_method(elsi_h, ntpoly_method)
+    call elsi_set_ntpoly_filter(elsi_h, ntpoly_filter)
+    call elsi_set_ntpoly_tol(elsi_h, ntpoly_tol)
+
+ endif   ! iscf == 1
+
+       ! Sparsity pattern
+       call globalize_sum(nnz_l, nnz_g, comm=elsi_global_comm)
+
+       allocate(row_ptr2(n_basis_l+1))
+       row_ptr2(1:n_basis_l) = row_ptr(1:n_basis_l)+1
+       row_ptr2(n_basis_l+1) = nnz_l+1
+
+       call elsi_set_csc(elsi_h, nnz_g, nnz_l, n_basis_l, col_idx, row_ptr2)
+       deallocate(row_ptr2)
+
+       call elsi_set_csc_blk(elsi_h, 2*BlockSize)
+       call elsi_set_mpi(elsi_h, elsi_global_comm)
+
+  call timer("elsi-solver", 1)
+
+     if (.not.Get_EDM_Only) then
+       call elsi_dm_complex_sparse(elsi_h, ham, ovlp, DM, energy)
+       call elsi_get_entropy(elsi_h, ets)
+     else
+       call elsi_get_edm_complex_sparse(elsi_h, EDM)
+     endif
+
+  call elsi_get_mu(elsi_h, ef)
+  ets = ets/temp
+
+  call timer("elsi-solver", 2)
+
+  call timer("elsi-complex-solver", 2)
+
+end subroutine elsi_complex_solver_noncoll_gamma
 
 subroutine transpose(a,b)
   real(dp), intent(in) :: a(:,:)
