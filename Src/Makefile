@@ -95,7 +95,7 @@ OBJS =  automatic_cell.o atom_options.o \
 	madelung.o mesh.o meshphi.o meshdscf.o memory.o meshsubs.o metaforce.o \
         m_supercell.o mulliken.o minvec.o naefs.o \
 	m_new_dm.o normalize_dm.o ordern.o outcell.o outcoor.o \
-	m_fft_gpfa.o \
+	m_fft_gpfa.o m_noncoll_utils.o \
 	pdos.o pdosg.o pdosk.o pdoskp.o phirphi.o pixmol.o plcharge.o \
 	projected_DOS.o propor.o m_partial_charges.o \
 	randomg.o reclat.o redcel.o \
@@ -847,7 +847,8 @@ m_dscfcomm.o: alloc.o parallel.o parallelsubs.o precision.o schecomm.o
 m_efield.o: atmfuncs.o m_cite.o m_ts_global_vars.o mesh.o parallel.o
 m_efield.o: precision.o siesta_cml.o siesta_geom.o sys.o units.o
 m_elsi_interface.o: alloc.o class_Distribution.o fold_auxcell.o m_mpi_utils.o
-m_elsi_interface.o: m_redist_spmatrix.o parallel.o precision.o units.o
+m_elsi_interface.o: m_noncoll_utils.o m_redist_spmatrix.o parallel.o
+m_elsi_interface.o: precision.o units.o
 m_energies.o: precision.o
 m_eo.o: precision.o
 m_evolve.o: atomlist.o cranknic_evolg.o cranknic_evolk.o m_spin.o precision.o

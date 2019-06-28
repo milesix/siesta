@@ -38,6 +38,7 @@
 #endif
 #ifdef SIESTA__ELSI
       use m_elsi_interface,  only: elsi_getdm
+      use m_elsi_interface,  only: elsi_getdm_noncoll
 #endif
       use m_hsx, only      : write_hs_formatted
 #ifdef MPI
@@ -144,12 +145,8 @@
       if (isolve .eq. SOLVE_ELSI) then
         ! This test done in node 0 since NonCol and SpOrb
         ! are not set for ELSI-solver-only processes
-         if (ionode) then
-            if (spin%NCol .or. spin%SO) call die(
-     $               "The ELSI solver does not implement "//
-     $               "non-coll spins or Spin-orbit yet")
-         endif
-         call elsi_getdm(iscf, no_s, spin%spinor, 
+         if (spin%NCol .or. spin%SO) then
+            call elsi_getdm_noncoll(iscf, no_s, spin%H,
      &              no_l, maxnh, no_u,
      &              numh, listhptr, listh,
      &              H, S, qtot, temp, 
@@ -157,7 +154,18 @@
      &              kpoint_scf%N, kpoint_scf%k, kpoint_scf%w,
      &              eo, qo, Dscf, Escf, ef, Entropy,
      &              occtol, neigwanted, Get_EDM_Only=.false.)
-         Ecorrec = 0.0_dp
+            Ecorrec = 0.0_dp
+         else
+            call elsi_getdm(iscf, no_s, spin%spinor, 
+     &              no_l, maxnh, no_u,
+     &              numh, listhptr, listh,
+     &              H, S, qtot, temp, 
+     &              xijo,
+     &              kpoint_scf%N, kpoint_scf%k, kpoint_scf%w,
+     &              eo, qo, Dscf, Escf, ef, Entropy,
+     &              occtol, neigwanted, Get_EDM_Only=.false.)
+            Ecorrec = 0.0_dp
+         endif
       endif
       if (.not. SIESTA_worker) RETURN
 #endif

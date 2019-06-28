@@ -91,6 +91,7 @@ module m_elsi_interface
   real(dp), allocatable :: delta_v(:,:)   ! For mu update in PEXSI solver
 
   public :: elsi_getdm
+  public :: elsi_getdm_noncoll
   public :: elsi_finalize_scfloop
   public :: elsi_save_potential
 
@@ -217,6 +218,109 @@ subroutine elsi_getdm(iscf, no_s, nspin, no_l, maxnh, no_u,  &
       endif
 
 end subroutine elsi_getdm
+
+subroutine elsi_getdm_noncoll(iscf, no_s, h_spin_dim, no_l, maxnh, no_u,  &
+     numh, listhptr, listh, H, S, qtot, temp, &
+     xijo, nkpnt, kpoint, kweight,    &
+     eo, qo, Dscf, Escf, ef, Entropy, occtol, neigwanted, Get_EDM_Only)
+
+  !
+  ! Analogous to 'diagon', it dispatches ELSI solver routines as needed
+  !
+
+  use m_noncoll_utils, only: flatten_noncoll, repack_noncoll
+  use m_fold_auxcell, only: fold_sparse_arrays ! Could be called in state_init
+
+! Missing for now
+!  eo(no_u,nspin,nk)  : Eigenvalues
+!  qo(no_u,nspin,nk)  : Occupations of eigenstates
+
+
+     real(dp), intent(inout) :: H(:,:), S(:)    ! Note: we might overwrite these
+     integer, intent(in) ::  iscf, maxnh, no_u, no_l, no_s, nkpnt
+     integer, intent(in) ::  neigwanted
+     integer, intent(in) ::  h_spin_dim
+     
+     integer, intent(in) ::  listh(maxnh), numh(no_l), listhptr(no_l)
+     real(dp), intent(in)  ::  kpoint(3,nkpnt), qtot, temp, kweight(nkpnt), occtol,xijo(3,maxnh)
+
+      real(dp), intent(out) ::  Dscf(maxnh,h_spin_dim), ef, Escf(maxnh,4), Entropy
+      real(dp), intent(out) ::  eo(no_u,1,nkpnt), qo(no_u,1,nkpnt)
+
+      ! Interim flag to just get the EDM
+      ! Note that, if .true., the DM is NOT obtained
+      ! This needs to be refactored
+      
+      logical, intent(in) :: Get_EDM_Only 
+
+      logical :: gamma, using_aux_cell
+      integer, allocatable :: numh_u2(:), listhptr_u2(:), listh_u2(:)
+      integer, allocatable :: ind2ind_u2(:)
+
+      !
+      complex(dp), allocatable, dimension(:)    :: S_u2, H_u2
+      complex(dp), allocatable, dimension(:)    :: Dscf_u2, Escf_u2
+
+      integer :: iuo, ispin, j, ind, ind_u, nnz_u, nnz_u2
+      integer :: nspin_one, kpt_comm, ierr
+      integer :: npPerK, npGlobal, mpirank, color
+      
+      external die
+
+      gamma = ((nkpnt == 1) .and. (sum(abs(kpoint(:,1))) == 0.0_dp))
+      using_aux_cell =  (no_s /= no_u)
+
+      if (gamma) then
+
+         if  (.not. using_aux_cell) then
+
+            ! Re-compute the sparsity pattern when the spin blocks are flattened
+            call flatten_noncoll(no_l,  &
+                                 numh,listhptr,maxnh,listh, &
+                                 numh_u2,listhptr_u2,nnz_u2,listh_u2, &
+                                 h_spin_dim, H, S, H_u2, S_u2)
+            nspin_one = 1
+            allocate( Dscf_u2(nnz_u2), Escf_u2(nnz_u2) )
+
+            ! Create the right k-point communicator, even if nkpnt=1
+            ! (basically, it would be a self comm for each process)
+
+            call MPI_Comm_Rank(elsi_global_comm, mpirank, ierr)
+            call MPI_Comm_Size(elsi_global_comm, npGlobal, ierr)
+
+            ! Split elsi_global_comm
+            npPerK    = npGlobal/nkpnt
+            ! Options for split: As many groups as nkpnt, so numbering is trivial
+            color = mpirank/npPerK !  :  color 0: 0,1,2,3  ; color 1: 4,5,6,7        
+            call MPI_Comm_Split(elsi_global_comm, color, mpirank, kpt_Comm, ierr)
+            
+            call elsi_complex_solver(iscf, 2*no_u, 2*no_l, nspin_one, &
+                 nnz_u2, numh_u2, listhptr_u2, listh_u2, qtot, temp, &
+                 H_u2, S_u2, Dscf_u2, Escf_u2, ef, Entropy, &
+                 nkpnt=nkpnt, kpt_n=1, kpt=[0.0_dp,0.0_dp,0.0_dp], weight=1.0_dp, &
+                 kpt_comm=kpt_Comm, get_edm_only=Get_EDM_Only)
+
+            ! Repack into default sparsity pattern with spin blocks
+            call repack_noncoll(no_l,  &
+                 numh,listhptr,maxnh, &
+                 numh_u2,listhptr_u2,nnz_u2, &
+                 h_spin_dim, Dscf_u2, Escf_u2, Dscf, Escf)
+
+            deallocate(numh_u2, listhptr_u2, listh_u2)
+            deallocate(H_u2, S_u2, Dscf_u2, Escf_u2)
+
+         else
+
+            call die('non-coll aux-cell case not implemented yet')
+
+         endif  ! using auxiliary supercell with Gamma sampling
+
+      else
+
+         call die('non-coll k-points case not implemented yet')
+      endif
+
+    end subroutine elsi_getdm_noncoll
 
 subroutine elsi_get_opts()
 
@@ -1408,7 +1512,7 @@ subroutine elsi_complex_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, numh, ro
        call elsi_set_csc(elsi_h, nnz_g, nnz_l, n_basis_l, col_idx, row_ptr2)
        deallocate(row_ptr2)
 
-       call elsi_set_csc_blk(elsi_h, BlockSize)
+       call elsi_set_csc_blk(elsi_h, 2*BlockSize)
        call elsi_set_kpoint(elsi_h, nkpnt, kpt_n, weight)
        call elsi_set_mpi(elsi_h, kpt_comm)
        call elsi_set_mpi_global(elsi_h, elsi_global_comm)
