@@ -545,7 +545,7 @@ alloc.o: m_io.o parallel.o precision.o sys.o
 amn.o: alloc.o atmfuncs.o atomlist.o m_orderbands.o m_trialorbitalclass.o
 amn.o: matel_registry.o mneighb.o new_matel.o parallel.o parallelsubs.o
 amn.o: precision.o siesta_geom.o sys.o cellsubs.o m_wannier_in_nao.o
-amn.o: m_switch_local_proj.o m_w90_in_siesta.o
+amn.o: m_switch_local_proj.o m_w90_in_siesta.o siesta_options.o
 arw.o: alloc.o parallel.o precision.o sys.o
 atm_types.o: precision.o radial.o
 atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o sys.o

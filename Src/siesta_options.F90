@@ -109,6 +109,11 @@ MODULE siesta_options
                                  ! Shall SIESTA compute the files which contain
                                  !   the periodic part of a Bloch function 
                                  !   in the unit cell on a grid
+  real(dp):: w90_in_siesta_threshold_coeff
+                                 ! Threshold for the real part of the 
+                                 !   coefficients of a Wannier in a basis 
+                                 !   of NAO to compute the contribution to 
+                                 !   the tight-binding matrix elements
 !----------------------------------------------------
   logical :: writef        ! Write atomic forces at every geometry step?
   logical :: writek        ! Write the k vectors of the BZ integration mesh?

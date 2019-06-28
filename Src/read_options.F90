@@ -1827,6 +1827,9 @@ subroutine read_options( na, ns, nspin )
 
   w90_in_siesta_compute_unk =fdf_get('Wannier90_in_SIESTA_compute_unk', .false.)
 
+  w90_in_siesta_threshold_coeff =fdf_get('Wannier90_in_SIESTA_threshold_coeff',&
+ &                            1.d-6)
+
   if (ionode) then
      write(6,'(2a)') 'redata: ', repeat('*', 71)
   endif
