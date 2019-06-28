@@ -46,9 +46,14 @@ subroutine amn( ispin )
   use atomlist,           only: rmaxo               ! Max. cutoff atomic orbital
   use siesta_geom,        only: scell               ! Lattice vector of the
                                                     !   supercell in real space
+  use siesta_geom,        only: ucell               ! Unit cell lattice vectors
+  use siesta_geom,        only: nsc                 ! Diagonal element of 
+                                                    !   the supercell
   use siesta_geom,        only: na_s                ! Number of atoms in the
                                                     !   supercell
   use siesta_geom,        only: xa                  ! Atomic positions
+  use cellsubs,           only: reclat              ! Finds reciprocal unit cell
+                                                    !   vector
   use m_switch_local_projection, only: latvec       ! Lattice vectors in real 
                                                     !   space
   use m_switch_local_projection, only: numproj      ! Total number of projectors
@@ -108,20 +113,15 @@ subroutine amn( ispin )
   use atomlist,           only: no_s                ! Number of atomic orbital
                                                     !   in the supercell
   use atomlist,           only: iaorb               ! Atomic index of each orbital
-  use atmfuncs,           only: rcut                ! Returns orbital cutoff radius
-  use atomlist,           only: iphorb              ! Orbital index of each  orbital
-                                                    !   in its atom
+  use atmfuncs,           only: rcut                ! Returns orbital 
+                                                    !   cutoff radius
+  use atomlist,           only: iphorb              ! Orbital index of each  
+                                                    !   orbital in its atom
   use siesta_geom,        only: isa                 ! Species index of each atom
-  use m_wannier_in_nao,   only: coeffs_wan_nao      ! Coefficients of the Wannier 
-                                                    !   functions in a basis of NAO
-                                                    !   in the supercell
-  use m_wannier_in_nao,   only: relpos_wan_nao      ! Relative position of the center
-                                                    !   of the Wannier with respect
-                                                    !   the atomic orbital in the supercell
-                                                    !   First  index: Cartesian direction
-                                                    !   Second index: Wannier function
-                                                    !   Third index: NAO in the
-                                                    !       supercell
+  use m_wannier_in_nao,   only: coeffs_wan_nao      ! Coefficients of the 
+                                                    !   Wannier functions in a 
+                                                    !   basis of NAO in the 
+                                                    !   supercell
 
 !
 ! Variables for the diagonalization
@@ -182,6 +182,14 @@ subroutine amn( ispin )
   integer  :: is              ! Species index
   integer  :: iband           ! Counter for loop on bands
   integer  :: nincbands       ! Number of bands for wannierization
+  integer  :: iua             ! Equivalent atom in the
+                              !    first unit cell
+  integer  :: iuo             ! Equivalent orbital in the
+                              !    first unit cell
+  integer  :: ix              ! Counter for cartesian directions
+  integer  :: icell           ! Counter for unit cell lattice
+                              !    vectors
+
   logical, save :: firsttime = .true. ! First time this subroutine is called?
   integer  :: gindex          ! Global index of the trial projector function
                               !   in the list of functions that will be
@@ -195,6 +203,7 @@ subroutine amn( ispin )
   integer  :: indexproj       ! Index of the projector 
                               !   This index runs from 1 to the total number
                               !   of projections
+  integer  :: isc(3)
   real(dp) :: trialcenter(3)  ! Position where the trial function is centered
                               !   (in Bohr)
   real(dp) :: trialrcut       ! Cutoff radius of the trial function
@@ -210,7 +219,14 @@ subroutine amn( ispin )
   real(dp) :: kvector(3)      ! k-point vector in the Wannier90 grid
   real(dp) :: tiny            ! Threshold value that settles the limit of the
                               !   coefficient of the Wannier in a basis of 
-                              !   Wanniers below which no neighbours are searched
+                              !   Wanniers below which no neighbours are searche
+  real(dp) :: dxa(3)          ! Cell vector that translates a
+                              !   given atom in the unit cell
+                              !   to the equivalent in the supercell
+  real(dp) :: rcell(3,3)      ! Reciprocal unit cell vectors
+                              !   (without 2*pi factor)
+  real(dp) :: xatorb(3)       ! Position of the atomic orbital
+ 
 
 
   complex(dp), dimension(:,:), pointer :: psiloc => null() ! Coefficients of the wave
@@ -297,6 +313,9 @@ subroutine amn( ispin )
     firsttime = .false.
   endif
 
+! Find reciprocal unit cell vectors (without 2*pi factor)
+  call reclat( ucell, rcell, 0 )
+
   tiny = 1.d-10
 
 kpoints:                 &
@@ -363,18 +382,39 @@ kpoints:                 &
 !!       End debugging
         do iorb = 1, no_s
 !          if(real(coeffs_wan_nao(iproj,iorb)) .gt. tiny) then 
-            iat = iaorb(iorb)
-            is  = isa(iat)                ! Species index
-            iao = iphorb( iorb )          ! Orbital index within atom
-            rc = rcut( is, iao )          ! Orbital's cutoff radius
+            iuo = indxuo (iorb)                ! Equivalent orbital in 
+                                               !   first unit cell
+            iua = iaorb(iuo)                   ! Equivalent atom in 
+                                               !   first unit cell
+            iat = iaorb(iorb)                  ! Atom to which orbital belongs
+            is  = isa(iat)                     ! Species index
+            iao = iphorb( iorb )               ! Orbital index within atom
+            rc = rcut( is, iao )               ! Orbital's cutoff radius
+            dxa(:) = xa(:,iat) - xa(:,iua)     ! Cell vector of atom iat
+            isc(:) = nint( matmul(dxa,rcell) ) ! Cell index of atom iat
+!           Find the index of the unit cell within the supercell where this
+!           atom is located, centered on isc = 0
+            do ix = 1,3
+              ! Same centered in isc=0
+              if (isc(ix)>nsc(ix)/2) isc(ix) = isc(ix) - nsc(ix) 
+            enddo
+!           Find the translated position of the atom in the supercell that
+!           really takes a non-zero value in the unit cell
+            xatorb(:) = xa(:,iua)
+            do icell = 1, 3
+              do ix = 1, 3
+                xatorb(ix) = xatorb(ix) + isc(icell) * ucell(ix,icell)
+              enddo
+            enddo
+
             trialrcut   = rc
-            trialcenter = xa(:,iat)
+            trialcenter = xatorb
             globalindexproj = orb_gindex(is,iao)
 !!           For debugging
 !            write(6,'(a,3i5)')'amn: Node, ik, nincbands = ', &
 ! &                                  Node, ik, nincbands
-!            write(6,'(a,3i5,2f12.5)')'amn: Node, iproj, iorb, coeff_wan_nao = ', & 
-! &                                         Node, iproj, iorb, coeffs_wan_nao(iproj,iorb) 
+!            write(6,'(a,4i5,5f12.5)')'amn: Node, iproj, iorb, globalindexproj,  coeff_wan_nao, trialcenter = ', & 
+! &                                         Node, iproj, iorb, globalindexproj, coeffs_wan_nao(iproj,iorb), trialcenter
 !            write(6,'(a,5i5,4f12.5)')'amn: iorb, iao, globalindex, iat, is, xa, rc = ',     &
 ! &                                         iorb, iao, globalindexproj, iat, is, xa(:,iat),rc
 !!           End debugging
@@ -386,16 +426,13 @@ OrbitalQueue2:                                                          &
             do while (associated(item))
               r12 = trialcenter - item%center
               globalindexorbital = orb_gindex( item%specie, item%specieindex )
-!              if( projections(indexproj)%from_basis_orbital )             &
-! &               globalindexproj = projections(indexproj)%iorb_gindex
               call new_matel('S',                & ! Compute the overlap
  &                           globalindexorbital, & ! Between orbital with globalinde
  &                           globalindexproj,    & ! And projector with globalindex
  &                           r12,                & 
  &                           overlap,            & 
  &                           gradient )
-!              phase = -1.0_dp * dot_product( kvector, item%center )
-              phase = -1.0_dp * dot_product( kvector, relpos_wan_nao(:,iproj,iorb)-r12 )
+              phase = -1.0_dp * dot_product( kvector, item%center )
               exponential = exp( iu * phase )
 !             Loop over occupied bands
 Band_loop2:                                                             &

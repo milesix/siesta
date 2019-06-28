@@ -668,13 +668,13 @@ C This is the only exit point
       use sys
       use parallel,     only : Node, Nodes, BlockSize
       use parallelsubs, only : GlobalToLocalOrb, WhichNodeOrb
-      use parallelsubs, only : set_blocksizedefault
       use units,        only : eV
       use kpoint_scf_m, only: kpoint_scf
       use siesta_options, only:  w90_in_siesta_processing
 
 #ifdef MPI
       use mpi_siesta
+      use parallelsubs, only : set_blocksizedefault
 #endif
 
       implicit          none
@@ -716,11 +716,13 @@ C Allocate auxiliary arrays
 C Set BlockSize.
 C It might be different from the usual value if the 
 C Wannier functions are going to be printed instead of the bands
+#ifdef MPI
       if( w90_in_siesta_processing ) then
         call set_blocksizedefault( Nodes,nuo,blocksizeincbands_wannier )
         blocksizesave = BlockSize
         BlockSize     = blocksizeincbands_wannier
       endif
+#endif
 
 C Find file name, and open for Node 0
 
@@ -848,9 +850,11 @@ C eigenvector is now stored in aux in Node 0, and can be printed
 
       enddo
 
+#ifdef MPI
       if( w90_in_siesta_processing ) then
         BlockSize = blocksizesave
       endif
+#endif
 
 C Close output file
 

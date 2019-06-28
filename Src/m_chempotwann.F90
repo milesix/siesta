@@ -6,6 +6,23 @@
 ! See Docs/Contributors.txt for a list of contributors.
 ! ---
 !
+!> \brief General purpose of the m_chempotwann module:
+!! Here we compute the matrix elements of the Hamiltonian in real space
+!! between atomic orbitals in the basis (with the same sparsity as usual)
+!! when a "chemical potential" is applied to a given Wannier
+!!
+!! The matrix elements are stored in an array called
+!! H_chempotwann
+!! defined in sparse_matrices.F90 under the name of H_chempotwann_2D
+!! Then, these matrix elements are initialized in state_init.F
+!! The pointer H_chempotwann is forced to point over H_chempotwann_2D
+!! in setup_hamiltonian.F and siesta_analysis.F
+!!
+!! The analytical expressions can be found in
+!!
+!! <https://personales.unican.es/junqueraj/JavierJunquera_files/Notes/Wannier/wannier_in_nao.pdf>
+!!
+
   module m_chempotwann
 
   use precision,        only: dp               ! Double precision
@@ -53,9 +70,6 @@
                                                !   divide up the arrays over 
                                                !   the processes for the
                                                !   Scalapack routines.
-  use parallelsubs,     only: set_blocksizedefault
-                                               ! Finds a sensible default value
-                                               !   for the BlockSize default.
   use parallelsubs,     only: WhichNodeOrb     ! Which node handles the 
                                                !   the information of a given
                                                !   orbital in the unit cell
@@ -86,6 +100,12 @@
   use alloc,            only: re_alloc         ! Allocatation routines
   use alloc,            only: de_alloc         ! Deallocatation routines
 
+#ifdef MPI
+  use parallelsubs,     only: set_blocksizedefault
+                                               ! Finds a sensible default value
+                                               !   for the BlockSize default.
+#endif
+
   integer,  intent(in)    :: ispin             ! Counter of spin components
   real(dp), intent(inout) :: H_chempotwann(maxnh,spin%H)   
                                                ! Extra term in the Hamiltonian 
@@ -98,24 +118,28 @@
 
 ! Internal variables ................................................
 
-  integer :: io_local  ! Counter for the local atomic orbitals in a given node
-  integer :: io_global ! Global index of an atomic orbital
+  integer :: iuo       ! Counter on orbitals in the unit cell
   integer :: j         ! Counter of neighbours of a given orbital
   integer :: jneig     ! Index of the neighbour orbital (in supercell notation)
   integer :: ind       ! Index of the neighbour orbital in listh
   integer :: iproj_local  ! Local index within one node of the Wannier function
   integer :: iproj_global ! Global index of the Wannier function
 
-  integer :: maxnhg    ! Compute the maximum number of 
-                       !    interacting atomic orbitals neighbours
-  integer :: maxnumh   ! Maximum value in numh
-  integer :: blocksize_save
-  integer :: blocksizeincbands_wannier    
-                       !  BlockSize when the number of projectors are
-                       !    distributed over the nodes
+  real(dp), pointer :: H_chempotwann_full(:,:) => null() 
+                       ! New matrix elements coming from the chemical potential
+                       !   applied to the Wanniers
+                       !   Every nodes computes the full line in the 
+                       !   sparse matrix, but summing only over the 
+                       !   Wanniers known by the Node
+  integer :: jo        ! Counter for the loops on neighbour orbitals
+
+! Variable required to globalize the neighbour list
+  integer :: io_local  ! Counter for the local atomic orbitals in a given node
+  integer :: io_global ! Global index of an atomic orbital
   integer :: BNode     ! Node that contains the information of a given
                        !    orbital in the unit cell
-  integer :: jo        ! Counter for the loops on neighbour orbitals
+  integer :: maxnhg    ! Compute the maximum number of 
+                       !    interacting atomic orbitals neighbours
   integer,  pointer :: numhg(:) => null()
                        ! Temporal array used to broadcast the array numh,
                        ! with number of non-zero elements 
@@ -131,20 +155,26 @@
   integer,  pointer :: listhg(:) => null()
                        ! Temporal array used to broadcast the array listh
                        !      the column indices for the non-zero elements
-  real(dp), pointer :: H_chempotwann_new(:,:) => null()
-  real(dp), pointer :: H_loc(:) => null()
 
 #ifdef MPI
+  integer :: blocksize_save
+  integer :: blocksizeincbands_wannier    
+                       !  BlockSize when the number of projectors are
+                       !    distributed over the nodes
   integer :: MPIerror  ! MPI code error
-  integer :: MPIstatus(MPI_STATUS_SIZE)
-  integer :: MPItag
-  integer :: norb_loc
-  integer, external :: numroc
+  integer :: maxnumh   ! Maximum value in numh
+  real(dp), pointer :: H_loc(:) => null() 
+                       ! Sum of all the contributions to the Hamiltonian 
+                       !   from all the nodes (i.e. from all the projections)
+                       !   It takes the full rows of the Hamiltonian for
+                       !   the different nodes, adds them, and split
+                       !   according to the parallel sparsity
 #endif 
 
 !  Start time counter
    call timer( 'chempotwann', 1 )
 
+#ifdef MPI
 !  Calculate the default value for BlockSize, when we distribute the
 !  number of projectors over the nodes
    call set_blocksizedefault( Nodes, num_proj,                                &
@@ -161,14 +191,19 @@
 ! &     ' = ', chempotwann_val(iproj_global), Node, Nodes
 !   enddo 
 !   BlockSize = blocksize_save
-!!   call MPI_barrier(MPI_Comm_world,i)
+!!   call MPI_barrier(MPI_Comm_world,MPIerror)
 !!   call die()
 !!  End debugging
+#endif
 
+!  Initialize the matrix elements of the Hamiltonian coming from the
+!  chemical potential applied to the Wannier functions
    H_chempotwann(:,ispin) = 0.0_dp
 
-!  Globalise neighbour list arrays 
-!  All the nodes will know the list of neighbours of all the orbitals in the
+!  H_chempotwann follows the same sparsity pattern as the Hamiltonian in 
+!  real space.
+!  The first thing to do is to globalise the neighbour list arrays, so
+!  all the nodes will know the list of neighbours of all the orbitals in the
 !  unit cell
 !  Copy of the procedure implemented in subroutine diagkp
    nullify(numhg, listhptrg)
@@ -177,15 +212,6 @@
    call re_alloc( numhg, 1, no_u, name='numhg',                               &
  &                routine= 'chempotwann' )
    call re_alloc( listhptrg, 1, no_u, name='listhptrg',                       &
- &                routine= 'chempotwann' )
-
-!  Find maximum value in numh and create local storage
-   maxnumh = 0
-   do io_local = 1, no_l
-     maxnumh = max(maxnumh,numh(io_local))
-   enddo
-   nullify(H_loc)
-   call re_alloc( H_loc, 1, maxnumh, name='H_loc',                            &
  &                routine= 'chempotwann' )
 
 !  Globalise numh
@@ -201,9 +227,11 @@
        numhg(io_global) = numh(io_local)
      endif
 !    Transfer the information from the node that contains the information
-!    on the orbital io to all the other nodes
+!    on the orbital io_global to all the other nodes
+#ifdef MPI
      call MPI_Bcast( numhg(io_global),1,MPI_integer,BNode,                    &
  &                   MPI_Comm_World,MPIerror )
+#endif
    enddo
 
 !  Build global listhptr
@@ -228,16 +256,30 @@
  &         listh(listhptr(io_local)+1:listhptr(io_local)+numh(io_local))
        enddo
      endif
+#ifdef MPI
      call MPI_Bcast( listhg(listhptrg(io_global)+1),numhg(io_global),         &
  &                   MPI_integer,BNode,MPI_Comm_World,MPIerror )
+#endif 
    enddo
+
+#ifdef MPI
+!  Find maximum value in numh and create local storage
+   maxnumh = 0
+   do io_local = 1, no_l
+     maxnumh = max(maxnumh,numh(io_local))
+   enddo
+   nullify(H_loc)
+   call re_alloc( H_loc, 1, maxnumh, name='H_loc',                            &
+ &                routine= 'chempotwann' )
+#endif
+
 
 !  Create new distribution of the Hamiltonian matrix containing the 
 !  penalty for a given Wannier function
-   nullify( H_chempotwann_new )
-   call re_alloc( H_chempotwann_new, 1, maxnhg, 1, spin%H,                   &
- &                name='H_chempotwann_new', routine= 'chempotwann' )
-   H_chempotwann_new = 0.0_dp
+   nullify( H_chempotwann_full )
+   call re_alloc( H_chempotwann_full, 1, maxnhg, 1, spin%H,                   &
+ &                name='H_chempotwann_full', routine= 'chempotwann' )
+   H_chempotwann_full = 0.0_dp
 
 !!  For debugging
 !   do io_global = 1, no_l
@@ -256,55 +298,66 @@
 ! &      Node, Nodes, io_global, jo, listhg(ind)
 !     enddo 
 !   enddo 
-!   do iproj = 1, num_proj_local
+!   do iproj_local = 1, num_proj_local
 !     do io_global = 1, no_s
 !       write(6,'(a,4i5,2f12.5)') &
-! &       'Node, Nodes, iproj, iorb, coeffs_wan_nao(iproj,iorb) = ',   &
-! &        Node, Nodes, iproj, io_global, coeffs_wan_nao(iproj,io_global) 
+! &       'Node, Nodes, iproj, iorb, coeffs_wan_nao(iproj_local,iorb) = ',   &
+! &        Node, Nodes, iproj_local, io_global, coeffs_wan_nao(iproj_local,io_global) 
 !     enddo
 !   enddo
-!   call MPI_barrier(MPI_Comm_world,i)
+!#ifdef MPI
+!   call MPI_barrier(MPI_Comm_world,MPIerror)
+!#endif
 !   call die()
 !!  End debugging
 
 !  Compute the Hamiltonian elements with the penalty for the Wannier functions
 !  First loop on all the local orbitals in the unit cell
-   do io_global = 1, no_u
+   do iuo = 1, no_u
  
 !    Then, loop on all the neighbour orbitals
-     do j = 1, numhg(io_global)
+     do j = 1, numhg(iuo)
 
 !      Identify the neighbour orbital (in supercell notation)
-       ind   = listhptrg(io_global) + j
+       ind   = listhptrg(iuo) + j
        jneig = listhg(ind)
 
 !!      For debugging
-!       write(6,'(a,7i5)')                                             &
-! &       'Node, Nodes, io_global, j, ind, jneig, num_proj_local = ',  &
-! &        Node, Nodes, io_global, j, ind, jneig, num_proj_local
+!       write(6,'(a,7i5)')                                       &
+! &       'Node, Nodes, iuo, j, ind, jneig, num_proj_local = ',  &
+! &        Node, Nodes, iuo, j, ind, jneig, num_proj_local
 !!      End debugging
 
 !      Compute the extra term in the Hamiltonian
 !      One node knows the Hamiltonian with the penalty of all the Wannier
-!      projections handled locally,
+!      projections handled locally in that node,
 !      but it knows all the terms in the sparse matrix
+#ifdef MPI
        blocksize_save = BlockSize
        BlockSize = blocksizeincbands_wannier
+#endif
 !      Loop on the Wanniers stored in the local node
        do iproj_local = 1, num_proj_local
 !        Identify the global index of the Wannier
+#ifdef MPI
          call LocalToGlobalOrb(iproj_local, Node, Nodes, iproj_global)
-         H_chempotwann_new(ind,ispin) = H_chempotwann_new(ind,ispin)       +   &
- &                                   coeffs_wan_nao(iproj_local,io_global) *   &
+#else 
+         iproj_global = iproj_local
+#endif
+         H_chempotwann_full(ind,ispin) = H_chempotwann_full(ind,ispin)     +   &
+ &                                   coeffs_wan_nao(iproj_local,iuo)       *   &
  &                                   chempotwann_val(iproj_global)         *   &
  &                                   coeffs_wan_nao(iproj_local,jneig)  
        enddo 
+#ifdef MPI
        BlockSize = blocksize_save
+#endif
+
 !!      For debugging
-!       if( H_chempotwann_new(ind,ispin) .gt. 1.d-6)                           &
-! &     write(6,'(a,7i7,f12.5)')                                               &
-! & 'Node, Nodes, io_global, j, ind, jneig, ispin, H_chempotwann_new = ',      &
-! &  Node, Nodes, io_global, j, ind, jneig, ispin,                             &
+!       if( H_chempotwann_full(ind,ispin) .gt. 1.d-6)                    &
+! &     write(6,'(a,7i7,f12.5)')                                         &
+! & 'Node, Nodes, iuo, j, ind, jneig, ispin, H_chempotwann_full = ',     &
+! &  Node, Nodes, iuo, j, ind, jneig, ispin,                             &
 ! &  H_chempotwann_new(ind,ispin) 
 !!      End debugging
 
@@ -312,10 +365,11 @@
    enddo   ! End loop on atomic orbitals
 
 !  First loop on all the local orbitals in the unit cell
+#ifdef MPI
    do io_global = 1, no_u
      call WhichNodeOrb( io_global,Nodes,BNode )
      call GlobalToLocalOrb(io_global,BNode,Nodes,io_local)
-     call MPI_Reduce( H_chempotwann_new(listhptrg(io_global)+1,ispin),        &
+     call MPI_Reduce( H_chempotwann_full(listhptrg(io_global)+1,ispin),       &
  &                    H_loc(1),numhg(io_global),MPI_double_precision,         &
  &                    MPI_sum,BNode,MPI_Comm_World,MPIerror )
 
@@ -327,19 +381,35 @@
      endif
 
    enddo   ! End loop on atomic orbitals
+#else
+   H_chempotwann = H_chempotwann_full
+#endif
 
-!!  For debugging
-!   do io_local = 1, no_l
-!     do j = 1, numh(io_local)
-!       ind = listhptr(io_local) + j
-!       write(6,'(a,5i5,f12.5)')                                               &
-! &       'Node, Nodes, io_local, j, ind, H_chempotwann = ',                   &
-! &        Node, Nodes, io_local, j, ind, H_chempotwann(ind,ispin)
-!     enddo 
-!   enddo 
-!   call MPI_barrier(MPI_Comm_world,i)
+!  For debugging
+   do io_local = 1, no_l
+     do j = 1, numh(io_local)
+       ind = listhptr(io_local) + j
+       write(6,'(a,5i5,f12.5)')                                               &
+ &       'Node, Nodes, io_local, j, ind, H_chempotwann = ',                   &
+ &        Node, Nodes, io_local, j, ind, H_chempotwann(ind,ispin)
+     enddo 
+   enddo 
+
+!#ifdef MPI
+!   call MPI_barrier(MPI_Comm_world,MPIerror)
+!#endif
 !   call die()
 !!  End debugging
+
+#ifdef MPI
+!  Free local memory
+   call de_alloc( H_loc,     name='H_loc',     routine= 'chempotwann' )
+   call de_alloc( listhg,    name='listhg',    routine= 'chempotwann' )
+   call de_alloc( listhptrg, name='listhptrg', routine= 'chempotwann' )
+   call de_alloc( numhg,     name='numhg',     routine= 'chempotwann' )
+   call de_alloc( H_chempotwann_full, name='H_chempotwann_full', & 
+ &                routine= 'chempotwann' )
+#endif
 
         
 !  Stop time counter

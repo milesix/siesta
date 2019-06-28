@@ -10,6 +10,22 @@
 !! Here we write the expansion of a Wannier function, 
 !! output of the WANNIER-90 code, in the numerical atomic orbital (NAO)
 !! basis set of SIESTA.
+!!
+!! The coefficients of the expansion are stored in the public variable
+!! coeffs_wan_nao
+!!
+!! All the atomic orbitals *in the supercell* participate in the expansion
+!! although the coefficients will decay very fast with the distance from the
+!! center of the Wannier to the center of the atomic orbital
+!!
+!! It is parallelized in such a way that a given node knows all the coefficients
+!! for a subset of num_proj_local Wanniers
+!!
+!! Since both the Wannier functions and the localized atomic orbitals are real,
+!! the coefficients of this expansion are also expected to be real
+!!
+!! The coefficients are written in files with the .WFSX format that can be
+!! laterly read by DENCHAR for plotting
 !! 
 !! The analytical expressions can be found in
 !!
@@ -33,43 +49,27 @@ module m_wannier_in_nao
                                              !   First  index: Wannier function
                                              !   Second index: NAO in the 
                                              !       supercell
-  real(dp), pointer :: relpos_wan_nao(:,:,:) => null()
-                                             ! Relative position of the center
-                                             !   of the Wannier with respect 
-                                             !   the atomic orbital in the supercell
-                                             !   First  index: Cartesian direction
-                                             !   Second index: Wannier function
-                                             !   Third index: NAO in the 
-                                             !       supercell
   complex(dp), pointer :: coeffs_opt(:,:,:) => null()
 
   CONTAINS
 
   subroutine wannier_in_nao
-    use units,          only: Ang            ! Conversion factor from Bohr to Ang
     use parallel,       only: Nodes          ! Total number of Nodes
     use parallel,       only: Node           ! Local Node
     use parallel,       only: IONode         ! Input/output node
     use parallel,       only: BlockSize      ! Input/output node
-    use parallelsubs,   only: GetNodeOrbs    ! Calculates the number of orbitals stored 
-                                             !    on the local Node.
+    use parallelsubs,   only: GetNodeOrbs    ! Calculates the number of orbitals
+                                             !    stored on the local Node.
     use parallelsubs,   only: LocalToGlobalOrb
                                              ! Converts an orbital index in the 
-                                             !    local frame to the global frame
-    use parallelsubs,   only: GlobalToLocalOrb
-                                             ! Converts an orbital index in the
-                                             !    global frame to the local frame
-                                             !    if the orbital is local to this node. 
-                                             !    Otherwise the pointer is
-                                             !    return as zero and can therefore 
-                                             !    be used to test whether the
-                                             !  orbital is local or not.
-    use siesta_geom,    only: na_s           ! Number of atoms in the supercell
+                                             !   local frame to the global frame
     use siesta_geom,    only: xa             ! Atomic positions for all the
                                              !   atoms in the supercell
                                              !   In Bohrs
     use siesta_geom,    only: isa            ! Species index of each atom
-    use siesta_geom,    only: scell          ! Supercell lattice vectors
+    use siesta_geom,    only: ucell          ! Unit cell lattice vectors
+    use siesta_geom,    only: nsc            ! Diagonal element of the supercell
+    use cellsubs,       only: reclat         ! Finds reciprocal unit cell vector
     use atomlist,       only: no_s           ! Number of atomic orbitals in the
                                              !   supercell
     use atomlist,       only: no_u           ! Number of atomic orbitals in the
@@ -79,8 +79,6 @@ module m_wannier_in_nao
     use atomlist,       only: iaorb          ! Atomic index of each orbital
     use atomlist,       only: iphorb         ! Orbital index of each orbital 
                                              !   in its atom
-    use atomlist,       only: lasto          ! Position of last orbital
-                                             !   of each atom
     use atmfuncs,       only: labelfis       ! Atomic label
     use atmfuncs,       only: cnfigfio       ! Principal quantum number of the
                                              !   shell to what the orbital 
@@ -118,9 +116,7 @@ module m_wannier_in_nao
                                              !   optimal subspace to the
                                              !   optimally smooth states.
     use w90_parameters, only: u_matrix_opt   ! Unitary rotations from the 
-    use w90_parameters, only: gamma_only     ! Only the gamma point will be
-                                             !   used within Wannier90?
-    use w90_parameters, only : disentanglement ! logical value
+    use w90_parameters, only: disentanglement ! logical value
                                              !   .true.:
                                              !   disentanglement active
                                              !   .false.:
@@ -128,10 +124,8 @@ module m_wannier_in_nao
     use w90_constants,  only: bohr_angstrom_internal  
                                              ! Conversion factor from 
                                              !   Bohr to Ang
-    use w90_parameters, only: wannier_centres
-                                             ! Centres of the Wannier functions
     use w90_in_siesta_types,       only: num_proj_local
-                                             ! Number of projectors that will be 
+                                             ! Number of projectors that will be
                                              !   handled in the local node
     use m_switch_local_projection, only: coeffs
                                              ! Coefficients of the wavefunctions
@@ -157,47 +151,24 @@ module m_wannier_in_nao
     use writewave,      only: wwf            ! Write wave functions?
 
 !
-!   Variables related with the search for neighbour orbitals
-!   around a given Wannier center
-!
-    use neighbour,     only: maxnna          ! Maximum number of neighbours
-    use neighbour,     only: iana=>jan       ! Atom-index of neighbours
-    use neighbour,     only: r2ki=>r2ij      ! Squared distances to neighbors
-    use neighbour,     only: xki=>xij        ! Vector from a given atom
-                                             !   to its neighbours
-    use neighbour,     only: x0              ! Position of the point around
-                                             !   which we are going to compute
-                                             !   the neighbours
-    use neighbour,     only: mneighb         ! Subroutine to compute the
-                                             !   neighbour list
-
-
-!
 ! Allocation/Deallocation routines
 !
-    use m_switch_local_projection, only: coeffs
-                                             ! Coefficients of the wavefunctions
-    use alloc,                     only: re_alloc  
-                                             ! Reallocation routines
-    use alloc,                     only: de_alloc  
-                                             ! Deallocation routines
+    use alloc,          only: re_alloc       ! Reallocation routines
+    use alloc,          only: de_alloc       ! Deallocation routines
 
 !
 ! Termination routines
 !
-    
-    use sys,                       only: die
+    use sys,            only: die
 
 #ifdef MPI
     use mpi_siesta
-    use alloc,                     only: de_alloc  
-                                             ! Deallocation routines
-    use m_orderbands,              only: which_band_in_node  
+    use m_orderbands,   only: which_band_in_node  
                                              ! Given a node and a local index,
                                              !   this array gives the
                                              !   global index of the band
                                              !   stored there
-    use m_orderbands,              only: sequential_index_included_bands
+    use m_orderbands,   only: sequential_index_included_bands
                                              ! Sequential number of the
                                              !   bands included for
                                              !   wannierization
@@ -209,7 +180,9 @@ module m_wannier_in_nao
                                              !   wannierization
                                              !   after excluding bands
                                              !   in the local Node
-    use parallelsubs,              only: set_blocksizedefault
+    use parallelsubs,   only: set_blocksizedefault
+                                             ! Finds a sensible default value
+                                             !   for the BlockSize default.
 #endif
 
 ! 
@@ -217,21 +190,23 @@ module m_wannier_in_nao
 ! 
     integer  :: iu                           ! Logical unit
     integer  :: ik                           ! Counter for loop on k-points
-    integer  :: iorb                         ! Counter for loop on atomic 
-                                             !   orbitals
-    integer  :: iorb_global                  ! Counter for loop on atomic 
-                                             !   orbitals (global index)
-    integer  :: iorb_local                   ! Counter for loop on atomic 
-                                             !   orbitals (local index)
     integer  :: iband                        ! Counter for loop on bands
     integer  :: iproj                        ! Counter for loop on projectors
     integer  :: iproj_global                 ! Counter for loop on projectors
     integer  :: iprojn                       ! Counter for loop on projectors
     integer  :: iprojm                       ! Counter for loop on projectors
-    integer  :: index_orbital_unit           ! Equivalent index in the unit cell
-                                             !   of an orbital in the supercell
-    integer  :: index_atom                   ! Index of the atom to which an
-                                             !   atomic orbital belongs to
+    integer  :: nuo                          ! Number of orbitals stored in the 
+                                             !   local node
+    integer  :: iorb                         ! Counter for loop on atomic 
+                                             !   orbitals in the supercell
+    integer  :: ia                           ! Atom to which orbital belongs
+    integer  :: iua                          ! Equivalent atom in the
+                                             !    first unit cell
+    integer  :: iuo                          ! Equivalent orbital in the
+                                             !    first unit cell
+    integer  :: ix                           ! Counter for cartesian directions
+    integer  :: icell                        ! Counter for unit cell lattice
+                                             !    vectors
     integer  :: nk                           ! Number of k-points written in
                                              !   the .WFSX file
                                              !   Since the number of Wanniers 
@@ -246,12 +221,13 @@ module m_wannier_in_nao
                                              !    the coefficients, we set it
                                              !    up to .true.
     real(dp) :: kpoint(3)                    ! Coordinates of the k-point
+    real(dp) :: kdummy(3)                    ! Dummy variable for the k-points
     real(dp) :: kxmu                         ! Dot product of the k-point and
                                              !   the position of the atom in the
                                              !   supercell
     real(dp) :: ckxmu                        ! Cosine of kxmu
     real(dp) :: skxmu                        ! Sine of kxmu
-    real(dp) :: kdummy(3)                    ! Dummy variable for the k-points
+    real(dp) :: xatorb(3)                    ! Position of the atomic orbital
     real(dp), pointer :: psi(:,:,:)          ! Dummy variable to store the 
                                              !   coefficients of the Wanniers
                                              !   in a basis of atomic orbitals
@@ -259,34 +235,22 @@ module m_wannier_in_nao
     real(dp), target :: aux(2,no_s*5)        ! Dummy variable that will play
                                              !   the role of the eigenvalues
                                              !   in the call to writew
-    real(dp) :: rangemax                     ! Maximum module of the supercell
-                                             !   lattice vectors
-    real(dp) :: vecmod                       ! Module of the supercell
-                                             !   lattice vectors
-    integer  :: ivector                      ! Counter for supercell lattice 
-                                             !   vectors
-    integer  :: nuo                          ! Number of orbitals stored in the 
-                                             !   local node
-    integer  :: nneig                        ! Maximum number of neighbours
-    integer  :: ina                          ! Counter for loop on neighbours
-    integer  :: ia                           ! Index of neighbour atom
-    integer  :: is                           ! Species of neighbour atom
-    real(dp) :: rki                          ! Distance to neighbour
-    integer  :: no_local                     ! Number of orbitals in the 
-                                             !   supercell
-                                             !   stored in the local node
-    integer  :: blocksizeincbands_wannier    !  Maximum number of bands
-                                             !   considered for per node
-    integer  :: blocksize_save               !  Maximum number of bands
-    logical, dimension(:), pointer :: listed
-    logical, dimension(:), pointer :: listedall 
-                                             ! List of orbitals of the supercell
-                                             !   stored in the local node
     complex(dp), dimension(:,:), pointer :: psiloc => null() 
                                              ! Coefficients of the wave
                                              !   function (in complex format)
+    integer  :: no_local                     ! Number of orbitals in the 
+                                             !   supercell
+                                             !   stored in the local node
+    integer  :: isc(3)
+    integer  :: blocksizeincbands_wannier    !  Maximum number of bands
+                                             !   considered for per node
+    integer  :: blocksize_save               !  Maximum number of bands
+    real(dp) :: dxa(3)                       ! Cell vector that translates a
+                                             !   given atom in the unit cell
+                                             !   to the equivalent in the 
+    real(dp) :: rcell(3,3)                   ! Reciprocal unit cell vectors
+                                             !   (without 2*pi factor)
 #ifdef MPI
-    integer     :: i
     integer     :: iband_global              ! Global index for a band
     integer     :: iband_sequential          ! Sequential index of the band
     integer     :: MPIerror
@@ -296,34 +260,10 @@ module m_wannier_in_nao
     integer, external :: numroc
 #endif
 
-!!   For debugging
-!#ifdef MPI
-!    do iproj = 1, num_proj
-!      write(6,'(a,3i5,3f12.5)')                                     &
-! &      'Nodes, Node, iproj, wannier_centres = ',                   &
-! &      Nodes, Node, iproj, wannier_centres(:,iproj) 
-!    enddo 
-!    call MPI_barrier(MPI_Comm_world,i)
-!    call die()
-!#endif
-!!   End debugging
+!   Find reciprocal unit cell vectors (without 2*pi factor)
+    call reclat( ucell, rcell, 0 )
 
-! Find maximum range and maximum number of KB projectors
-    rangemax = 0.0_dp
-    do ivector = 1, 3
-      vecmod = sqrt(dot_product(scell(:,ivector),scell(:,ivector)))
-      rangemax = max(rangemax,vecmod)
-    enddo
-    rangemax = rangemax / 2.0_dp
-
-!!   For debugging
-!    write(6,'(a,2i5,f12.5)')                        &
-! &    'Nodes, Node, rangemax = ',                   &
-! &     Nodes, Node, rangemax
-!!    call MPI_barrier(MPI_Comm_world,i)
-!!    call die()
-!!   End debugging
-
+#ifdef MPI
 !   Calculate the number of orbitals in the unit cell stored in the local node
     call GetNodeOrbs(no_u,Node,Nodes,nuo)
 
@@ -335,6 +275,9 @@ module m_wannier_in_nao
  &                             blocksizeincbands_wannier )
     num_proj_local = numroc( num_proj, blocksizeincbands_wannier, &
  &                           Node, 0, Nodes )
+#else
+    num_proj_local = num_proj
+#endif
 
 !!   For debugging
 !    write(6,'(a,6i5)')                              &
@@ -351,29 +294,11 @@ module m_wannier_in_nao
 ! &                        Nodes, Node, iproj, iproj_global 
 !    enddo
 !    BlockSize = blocksize_save
-!    call MPI_barrier(MPI_Comm_world,i)
+!#ifdef MPI
+!    call MPI_barrier(MPI_Comm_world,MPIerror)
+!#endif
 !    call die()
 !!   End debugging
-
-!   Initialize the list of visited orbitals
-    nullify( listed )
-    call re_alloc( listed, 1, no_s, 'listed', 'wannier_in_nao' )
-    listed(:) = .false.
-    nullify( listedall )
-    call re_alloc( listedall, 1, no_s, 'listedall', 'wannier_in_nao' )
-    listedall(:) = .false.
-
-!   Make list of all orbitals needed for this node
-    do iorb = 1, no_local
-      ! we need this process's orbitals...
-      call LocalToGlobalOrb(iorb,Node,Nodes,iorb_global)
-      listedall(iorb_global) = .true.
-!!      For debugging
-!      write(6,'(a,4i5,l5)')                              &
-! &      'Nodes, Node, iorb, iorb_global, listedall = ',  &
-! &       Nodes, Node, iorb, iorb_global, listedall(iorb_global)
-!!      End debugging
-    enddo
 
 !   Allocate the array where the coefficients of the Wannier functions
 !   in a basis of Numerical Atomic Orbitals will be stored
@@ -384,15 +309,6 @@ module m_wannier_in_nao
  &                 name='coeffs_wan_nao', routine='wannier_in_nao')
     coeffs_wan_nao = cmplx(0.0_dp,0.0_dp,kind=dp)
 
-!   Allocate the array where the relative position between the center 
-!   of a Wannier and the atomic orbitals in the supercell are stored
-    nullify( relpos_wan_nao )
-    call re_alloc( relpos_wan_nao,                                  &
- &                 1, 3,                                            &
- &                 1, num_proj_local,                               &
- &                 1, no_s,                                         &
- &                 name='coeffs_wan_nao', routine='wannier_in_nao')
-    relpos_wan_nao = cmplx(0.0_dp,0.0_dp,kind=dp)
 
 !   Allocate the array where the coefficients of the 
 !   bands that will be wannierized
@@ -493,7 +409,7 @@ module m_wannier_in_nao
 ! &          Node, iprojn, iorb, coeffs_opt(iorb,iprojn,ik)
 !        enddo 
 !      enddo 
-!      call MPI_barrier(MPI_Comm_world,i)
+!      call MPI_barrier(MPI_Comm_world,MPIerror)
 !      call die()
 !!     End debugging
 
@@ -520,18 +436,6 @@ module m_wannier_in_nao
     enddo
 #endif
 
-!   Initialize neighb subroutine
-    nneig = 0
-    x0(:) = 0.0_dp
-    call mneighb( scell, rangemax, na_s, xa, 0, 0, nneig )
-!!   For debugging
-!    write(6,'(a,4i5)')                        &
-! &    'Nodes, Node, nneig = ',                  &
-! &     Nodes, Node, nneig
-!    call MPI_barrier(MPI_Comm_world,i)
-!    call die()
-!!   End debugging
-
 !   Loop over all the local Wannier functions
 !   All processes will be doing this loop over Wanniers
     do iprojn = 1, num_proj_local
@@ -540,103 +444,81 @@ module m_wannier_in_nao
       call LocalToGlobalOrb(iprojn, Node, Nodes, iproj_global)
       BlockSize = blocksize_save
 
-!     Search for all the atoms neighbour to that particular Wannier function.
-!     The relative vector xki between the Wannier and the atom is centered
-!     on the Wannier
-!
-!     The Wannier centers are assumed to be given in Angstroms.
-!     we transform them to Bohrs
-      x0(:) = wannier_centres(:,iproj_global) * Ang
-      call mneighb( scell, rangemax, na_s, xa, 0, 0, nneig )
+!     Loop on all the orbital of the supercell to compute the corresponding
+!     coefficient of the Wannier function on it.
+      do iorb = 1, no_s
+        iuo = indxuo(iorb)            ! Equivalent orbital in first unit cell
+        ia  = iaorb(iorb)             ! Atom to which orbital belongs
+        iua = iaorb(iuo)              ! Equivalent atom in first unit cell
+        dxa(:) = xa(:,ia) - xa(:,iua) ! Cell vector of atom ia
+        isc(:) = nint( matmul(dxa,rcell) )  ! Cell index of atom ia
+!       Find the index of the unit cell within the supercell where this
+!       atom is located, centered on isc = 0
+        do ix = 1,3
+          if (isc(ix)>nsc(ix)/2) isc(ix) = isc(ix) - nsc(ix) ! Same centered in isc=0
+        enddo
+!       Find the translated position of the atom in the supercell that 
+!       really takes a non-zero value in the unit cell 
+        xatorb(:) = xa(:,iua)
+        do icell = 1, 3
+          do ix = 1, 3
+            xatorb(ix) = xatorb(ix) + isc(icell) * ucell(ix,icell)
+          enddo 
+        enddo 
 
-      if ( nneig .gt. maxnna )                                     &
- &       call die('wannier_in_nao: insufficient array shapes; see neighb(..)')
+!!       For debugging          
+!        write(6,'(a,10i5,3f12.5)')                                    &
+! &        'wannier_in_nao: Node, iproj_local, iproj_global, iorb, iuo, ia, iua, isc = ', &
+! &                         Node, iprojn, iproj_global, iorb, iuo, ia, iua, isc(:), xatorb(:)
+!!       End debugging          
 
-!     From the position of the center of the Wannier
-!     with respect the origin, and
-!     the position of the atom with respect the Wannier,
-!     compute the position of the atom
-      do ina = 1, nneig
-        ia  = iana(ina)
-        is  = isa(ia)
-        xki(:,ina) = xki(:,ina) + x0(:)
+!       Up to here, we know:
+!       - the projector that will be expressed in a basis of NAO
+!       - the atomic orbital for which the coefficient will be found
+!       - the position of the atom where the atomic orbital is centered
+!       Now, we perform the sum on k-point in the Equation written
+!       in the header of the subroutine
 
-!!       For debugging
-!        write(6,'(a,5i5)')                                   &
-! &        'Nodes, Node, iprojn, iproj_global, nneig = ' ,    &
-! &         Nodes, Node, iprojn, iproj_global, nneig 
-!        rki = sqrt(r2ki(ina))
-!        ia  = iana(ina)
-!        is  = isa(ia)
-!        write(6,'(a,6i5,4f12.5)')                            &
-! &        'Nodes, Node, iprojn, ina, r2ki, rki, ia, is = ',   &
-! &         Nodes, Node, iprojn, ina, ia, is, xki(:,ina), rki
-!!       End debugging
+        do ik = 1, num_kpts
+!         Compute the coordinates of the k-point (in Ang^-1)
+          kpoint(:) = kpt_latt(1,ik) * recip_lattice(1,:) +      &
+ &                    kpt_latt(2,ik) * recip_lattice(2,:) +      &
+ &                    kpt_latt(3,ik) * recip_lattice(3,:) 
+!         Transform the coordinates of the k-point to Bohr^-1
+          kpoint(:) = kpoint(:) * bohr_angstrom_internal
 
-!       Loop on the atomic orbitals of the neighbour atom
-        do iorb = lasto(ia-1)+1, lasto(ia) 
+!         Compute the dot product between the k-point and the
+!         atomic position
+          kxmu = kpoint(1) * xatorb(1) +                        &
+ &               kpoint(2) * xatorb(2) +                        &
+ &               kpoint(3) * xatorb(3) 
+          ckxmu = dcos(kxmu)
+          skxmu = dsin(kxmu)
 
-          relpos_wan_nao(:,iprojn,iorb) = xki(:,ina)
+          do iprojm = 1, num_proj
+            coeffs_wan_nao(iprojn,iorb) =                   &
+ &            coeffs_wan_nao(iprojn,iorb)           +       &
+ &            u_matrix(iprojm,iproj_global,ik)      *       &
+ &            coeffs_opt(iuo,iprojm,ik)             *       &
+ &            cmplx(ckxmu,skxmu,kind=dp) 
+          enddo 
 
-!         Identify the index of the atom in the unit cell
-          index_orbital_unit = indxuo(iorb)
- 
-
-!          call GlobalToLocalOrb(iorb,Node,Nodes,iorb_local)
-
-!!         Only calculate if needed locally in our MPI process
-!          if (.not. listedall(iorb)) CYCLE
-
-!         Up to here, we know:
-!         - the projector that will be expressed in a basis of NAO
-!         - the atomic orbital for which the coefficient will be found
-!         - the position of the atom where the atomic orbital is centered
-!         Now, we perform the sum on k-point in the Equation written
-!         in the header of the subroutine
-
-          do ik = 1, num_kpts
-!           Compute the coordinates of the k-point (in Ang^-1)
-            kpoint(:) = kpt_latt(1,ik) * recip_lattice(1,:) +      &
- &                      kpt_latt(2,ik) * recip_lattice(2,:) +      &
- &                      kpt_latt(3,ik) * recip_lattice(3,:) 
-!           Transform the coordinates of the k-point to Bohr^-1
-            kpoint(:) = kpoint(:) * bohr_angstrom_internal
-
-!           Compute the dot product between the k-point and the
-!           atomic position
-            kxmu = kpoint(1) * xki(1,ina) +                        &
- &                 kpoint(2) * xki(2,ina) +                        &
- &                 kpoint(3) * xki(3,ina) 
-            ckxmu = dcos(kxmu)
-            skxmu = dsin(kxmu)
-
-            do iprojm = 1, num_proj
-              coeffs_wan_nao(iprojn,iorb) =                        &
- &              coeffs_wan_nao(iprojn,iorb) +                      &
- &              u_matrix(iprojm,iproj_global,ik)            *      &
- &              coeffs_opt(index_orbital_unit,iprojm,ik)    *      &
- &              cmplx(ckxmu,skxmu,kind=dp) 
-            enddo 
-
-          enddo ! End loop on k-points
-        enddo   ! End loop on atomic orbitals
-      enddo     ! End loop on neighbour atoms 
-    enddo       ! End loop on projections
+        enddo ! End loop on k-points
+     
+      enddo   ! End loop on atomic orbitals
+    enddo 
 
 !   Divide by the number of k-points
     coeffs_wan_nao = coeffs_wan_nao / num_kpts
 
-!!   For debugging
-!    do iproj = 1, num_proj_local
-!      do iorb = 1, no_s
-!        write(6,'(a,5i5,5f12.5)')   &
-! &        'Node, Nodes, iproj, iorb, indxuo, coeffs_wan_nao(iproj,iorb) = ',  &
-! &         Node, Nodes, iproj, iorb, indxuo(iorb), coeffs_wan_nao(iproj,iorb),&
-! &         xa(:,iaorb(iorb)) + wannier_centres(:,iproj) * Ang
-!      enddo 
-!    enddo 
-!    call MPI_barrier(MPI_Comm_world,i)
-!    call die()
+!   For debugging
+    do iproj = 1, num_proj_local
+      do iorb = 1, no_s
+        write(6,'(a,5i5,2f12.5)')   &
+ &        'Node, Nodes, iproj, iorb, indxuo, coeffs_wan_nao(iproj,iorb) = ',  &
+ &         Node, Nodes, iproj, iorb, indxuo(iorb), coeffs_wan_nao(iproj,iorb)
+      enddo 
+    enddo 
 !   End debugging
 
 !   Allocate the array where the coefficients of the Wannier functions
@@ -680,7 +562,9 @@ module m_wannier_in_nao
 !!         endif
 !       enddo 
 !     enddo 
-!     call MPI_barrier(MPI_Comm_world,i)
+!#ifdef MPI
+!     call MPI_barrier(MPI_Comm_world,MPIerror)
+!#endif
 !     call die()
 !!   End debugging
 
@@ -747,6 +631,19 @@ module m_wannier_in_nao
     call writew( no_s, num_proj, 1, kdummy, 1, &
  &               aux, psi, gamma )
 
+!   Deallocate some pointers
+    call de_alloc( psiloc )
+    call de_alloc( psi    )
+#ifdef MPI
+    call de_alloc( auxloc )
+#endif
+
+!!   For debugging
+!#ifdef MPI
+!    call MPI_barrier(MPI_Comm_world,MPIerror)
+!#endif
+!    call die()
+!!   End debugging
 
   end subroutine wannier_in_nao
 
