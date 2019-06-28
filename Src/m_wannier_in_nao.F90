@@ -57,7 +57,10 @@ module m_wannier_in_nao
     use parallel,       only: Nodes          ! Total number of Nodes
     use parallel,       only: Node           ! Local Node
     use parallel,       only: IONode         ! Input/output node
-    use parallel,       only: BlockSize      ! Input/output node
+    use parallel,       only: BlockSize      ! Blocking factor used to
+                                             !   divide up the arrays over
+                                             !   the processes for the
+                                             !   Scalapack routines.
     use parallelsubs,   only: GetNodeOrbs    ! Calculates the number of orbitals
                                              !    stored on the local Node.
     use parallelsubs,   only: LocalToGlobalOrb
@@ -242,9 +245,9 @@ module m_wannier_in_nao
                                              !   supercell
                                              !   stored in the local node
     integer  :: isc(3)
-    integer  :: blocksizeincbands_wannier    !  Maximum number of bands
-                                             !   considered for per node
-    integer  :: blocksize_save               !  Maximum number of bands
+    integer  :: blocksizeincbands_wannier    !  BlockSize when the number of projectors are
+                                             !    distributed over the nodes
+    integer  :: blocksize_save               ! Variable used to resort the BlockSize value 
     real(dp) :: dxa(3)                       ! Cell vector that translates a
                                              !   given atom in the unit cell
                                              !   to the equivalent in the 
@@ -511,15 +514,15 @@ module m_wannier_in_nao
 !   Divide by the number of k-points
     coeffs_wan_nao = coeffs_wan_nao / num_kpts
 
-!   For debugging
-    do iproj = 1, num_proj_local
-      do iorb = 1, no_s
-        write(6,'(a,5i5,2f12.5)')   &
- &        'Node, Nodes, iproj, iorb, indxuo, coeffs_wan_nao(iproj,iorb) = ',  &
- &         Node, Nodes, iproj, iorb, indxuo(iorb), coeffs_wan_nao(iproj,iorb)
-      enddo 
-    enddo 
-!   End debugging
+!!   For debugging
+!    do iproj = 1, num_proj_local
+!      do iorb = 1, no_s
+!        write(6,'(a,5i5,2f12.5)')   &
+! &        'Node, Nodes, iproj, iorb, indxuo, coeffs_wan_nao(iproj,iorb) = ',  &
+! &         Node, Nodes, iproj, iorb, indxuo(iorb), coeffs_wan_nao(iproj,iorb)
+!      enddo 
+!    enddo 
+!!   End debugging
 
 !   Allocate the array where the coefficients of the Wannier functions
 !   in a basis of Numerical Atomic Orbitals will be stored
