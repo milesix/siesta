@@ -278,6 +278,7 @@ subroutine amn( ispin )
   integer     :: MPIerror
   complex(dp), dimension(:,:), pointer :: auxloc => null()! Temporal array for the
                                              !   the global reduction of Amnmat
+  integer, external :: numroc
 #endif 
 
   external :: timer
@@ -346,7 +347,25 @@ subroutine amn( ispin )
 !  number of projectors over the nodes
    call set_blocksizedefault( Nodes, numproj,                                &
  &                            blocksize_projectors )
+   num_proj_local = numroc( numproj, blocksize_projectors,                   &
+ &                           Node, 0, Nodes )
+#else
+   num_proj_local = numproj
 #endif
+
+!!  For debugging
+!#ifdef MPI
+!   blocksize_save = BlockSize
+!   BlockSize = blocksize_projectors
+!   do iproj_local = 1, num_proj_local
+!     call LocalToGlobalOrb(iproj_local, Node, Nodes, iproj_global)
+!     write(6,'(a,6i5)')      &
+! &     'chempotwann: Node, Nodes, numproj, num_proj_local, iproj_local, iproj_global ',  &
+! &     Node, Nodes, numproj, num_proj_local, iproj_local, iproj_global
+!   enddo
+!   BlockSize = blocksize_save
+!#endif
+!!  End debugging
 
 kpoints:                 &
   do ik = 1, numkpoints
@@ -461,6 +480,9 @@ OrbitalQueue2:                                                          &
               phase = -1.0_dp * dot_product( kvector, item%center )
               exponential = exp( iu * phase )
 !             Loop over occupied bands
+              write(6,'(a,4i5,2f12.5)')'Node, ik, iproj_local, iproj_global =',&
+ &                        Node, ik, iproj_local, iproj_global, &
+ &                        real(coeffs_wan_nao(iproj_local,iorb)), overlap
 Band_loop2:                                                             &
               do iband = 1, nincbands
                 cstar = conjg( psiloc(item%globalindex,iband) )
