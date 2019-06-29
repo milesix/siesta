@@ -480,9 +480,9 @@ OrbitalQueue2:                                                          &
               phase = -1.0_dp * dot_product( kvector, item%center )
               exponential = exp( iu * phase )
 !             Loop over occupied bands
-              write(6,'(a,4i5,2f12.5)')'Node, ik, iproj_local, iproj_global =',&
- &                        Node, ik, iproj_local, iproj_global, &
- &                        real(coeffs_wan_nao(iproj_local,iorb)), overlap
+!              write(6,'(a,4i5,2f12.5)')'Node, ik, iproj_local, iproj_global =',&
+! &                        Node, ik, iproj_local, iproj_global, &
+! &                        real(coeffs_wan_nao(iproj_local,iorb)), overlap
 Band_loop2:                                                             &
               do iband = 1, nincbands
                 cstar = conjg( psiloc(item%globalindex,iband) )

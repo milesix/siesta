@@ -442,10 +442,14 @@ module m_wannier_in_nao
 !   Loop over all the local Wannier functions
 !   All processes will be doing this loop over Wanniers
     do iprojn = 1, num_proj_local
+#ifdef MPI
       blocksize_save = BlockSize
       BlockSize = blocksizeincbands_wannier
       call LocalToGlobalOrb(iprojn, Node, Nodes, iproj_global)
       BlockSize = blocksize_save
+#else
+      iproj_global = iprojn
+#endif
 
 !     Loop on all the orbital of the supercell to compute the corresponding
 !     coefficient of the Wannier function on it.
