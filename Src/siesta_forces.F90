@@ -104,7 +104,8 @@ contains
     use m_initwf, only: initwf
 
 #ifdef HAVE_WANNIER90
-    use m_w90_in_siesta, only: compute_chempotwann
+    use w90_in_siesta_types, only: compute_chempotwann
+    use w90_in_siesta_types, only: compute_chempotwann_after_scf
 #endif
 
     integer, intent(inout)  :: istep
@@ -365,7 +366,8 @@ contains
                SCFconverged )
 
 #ifdef HAVE_WANNIER90
-          if( SCFconverged .and. (.not. compute_chempotwann) ) then
+          if( SCFconverged .and. compute_chempotwann .and. &
+ &             (.not. compute_chempotwann_after_scf) ) then
             if ( IONode ) then
                write(*,"(/,a)") &
  &               "siesta_forces: Switching the computation of the "
@@ -382,9 +384,9 @@ contains
                write(*,"(a,/)")   &
  &               "siesta_forces:   obtained after the first SCF" 
             end if
-            compute_chempotwann  = .true.
-            SCFconverged        = .false.
-            mix_scf_first       = .false.
+            compute_chempotwann_after_scf  = .true.
+            SCFconverged                   = .false.
+            mix_scf_first                  = .false.
           endif
 #endif
           

@@ -54,12 +54,13 @@
       use m_rhog, only: rhog_in, rhog
 #ifdef MPI
       use m_mpi_utils, only: globalize_sum
+      use mpi_siesta
 #endif
 
 #ifdef HAVE_WANNIER90
       use m_switch_local_projection, only: switch_local_projection
-      use m_w90_in_siesta,   only: compute_chempotwann
-      use m_w90_in_siesta,   only: first_chempotwann
+      use w90_in_siesta_types,   only: compute_chempotwann_after_scf
+      use w90_in_siesta_types,   only: first_chempotwann
       use m_w90_in_siesta,   only: compute_matrices
       use m_w90_in_siesta,   only: compute_wannier
       use m_wannier_in_nao,  only: wannier_in_nao
@@ -79,6 +80,7 @@
       real(dp), pointer   :: fal(:,:)   ! Local-node part of atomic F
 #ifdef MPI
       real(dp)            :: buffer1
+      integer             :: MPIError
 #endif
       integer             :: io, is, ispin
       integer             :: ifa     ! Calc. forces?      0=>no, 1=>yes
@@ -320,7 +322,7 @@
 ! Energy term coming from the chemical potential added to the Wannier functions
 #ifdef HAVE_WANNIER90
       if( w90_in_siesta_processing ) then
-        if( compute_chempotwann ) then
+        if( compute_chempotwann_after_scf ) then
           H_chempotwann => val(H_chempotwann_2D)
           if( first_chempotwann ) then
 !           Transfer all the parameters to the variables
@@ -332,17 +334,23 @@
                 call diagonalizeHk( ispin, index_manifold )
                 call compute_matrices( ispin, index_manifold )
                 call compute_wannier( ispin, index_manifold )
+                call wannier_in_nao( index_manifold )
                 if ( index_manifold .eq. 1 ) then
-                  call wannier_in_nao
-                  call chempotwann( ispin, H_chempotwann )
+                  call chempotwann(index_manifold, ispin, H_chempotwann)
                 endif 
               enddo 
             enddo
             first_chempotwann = .false.
-          endif
+          endif  ! Endif first_chempotwann
           call add_Hamiltonian_chempotwann( H_chempotwann )
-        endif
-      endif
+!! For debugging
+!#ifdef MPI
+!          call MPI_barrier(MPI_Comm_world,MPIError)
+!#endif
+!          call die()  
+!! End debugging
+        endif    ! Endif compute_chempotwann_after_scf
+      endif      ! Endif w90_in_siesta_processing
 #endif
 
 ! ..................

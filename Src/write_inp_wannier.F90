@@ -232,6 +232,7 @@ subroutine writeamn( ispin )
 ! Asign a logical unit to the file where the Amn matrices will be written
   call io_assign( amnunit )
 
+
 ! Asign a name to the file where the Amn matrices will be written
   amnfilename = trim( seedname )// ".amn"
 

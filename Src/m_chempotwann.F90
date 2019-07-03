@@ -61,7 +61,7 @@
 !> \brief General purpose of the subroutine chempotwann
 !!
 !!
-  subroutine chempotwann ( ispin, H_chempotwann )
+  subroutine chempotwann ( index_manifold, ispin, H_chempotwann )
 
   use parallel,         only: Node             ! Local processor number
   use parallel,         only: Nodes            ! Total number of processors in a
@@ -81,20 +81,42 @@
                                                !   a local orbital index in 
                                                !   a given node to the global 
                                                !   atomic index
-  use m_wannier_in_nao, only: coeffs_wan_nao   ! Coefficients of the Wannier 
-                                               !   functions in a basis of NAO
-                                               !   First index: Wannier function
-                                               !   Second index: NAO in the 
-                                               !      supercell
+  use w90_in_siesta_types, only: coeffs_wan_nao
+                                               ! Coefficients of the
+                                               !   Wannier functions in a basis
+                                               !   of NAO
+                                               !   First  index: Index of the
+                                               !       manifold and Wannier func
+                                               !       handled by numh_man_proj,
+                                               !       listhptr_man_proj, and
+                                               !       listh_man_proj, and
+                                               !   Second index: NAO in the
+                                               !       supercell
   use w90_in_siesta_types, only: chempotwann_val
                                                ! Chemical potential
                                                !   applied to shift the energy 
                                                !   of a matrix elements in real
                                                !   space associated with a given
                                                !   Wannier function
-  use w90_in_siesta_types,   only: num_proj_local
+  use w90_in_siesta_types,   only: numh_man_proj
                                                ! Number of projections that will
                                                !  be  handled in the local node
+  use w90_in_siesta_types,   only: listhptr_man_proj
+                                       ! Index pointer to listh_man_proj such
+                                       ! listh_man_proj(listhptr_man_proj(1)+1)
+                                       !   is the first projector of the first
+                                       !   manifold handled by the local node
+                                       ! listh_man_proj(listhptr_man_proj(io)+1)                                       !   is thus the first projector of
+                                       !   of manifold 'io' while
+                                       ! listh_man_proj(listhptr_man_proj(io) +                                        !                numh_man_proj(io))
+                                       !   is the last projectors of manifold
+                                       !   'io'.
+                                       ! Dimension: number of manifolds
+  use w90_in_siesta_types,   only: listh_man_proj
+                                       ! The column indices for the projectors
+                                       !   of all the manifolds handled by
+                                       !   the local node
+
   use w90_parameters,   only: num_proj         ! Number of projections
   use sys,              only: die              ! Termination routine
   use alloc,            only: re_alloc         ! Allocatation routines
@@ -106,6 +128,8 @@
                                                !   for the BlockSize default.
 #endif
 
+  integer,  intent(in)    :: index_manifold    ! Index of the manifold to be
+                                               !   wannierized
   integer,  intent(in)    :: ispin             ! Counter of spin components
   real(dp), intent(inout) :: H_chempotwann(maxnh,spin%H)   
                                                ! Extra term in the Hamiltonian 
@@ -118,10 +142,13 @@
 
 ! Internal variables ................................................
 
-  integer :: iuo       ! Counter on orbitals in the unit cell
-  integer :: j         ! Counter of neighbours of a given orbital
-  integer :: jneig     ! Index of the neighbour orbital (in supercell notation)
-  integer :: ind       ! Index of the neighbour orbital in listh
+  integer :: iuo          ! Counter on orbitals in the unit cell
+  integer :: j            ! Counter of neighbours of a given orbital
+  integer :: jneig        ! Index of the neighbour orbital 
+                          !    (in supercell notation)
+  integer :: ind          ! Index of the neighbour orbital in listh
+  integer :: ind_proj     ! Counter for sequential indices
+                          !    of projections
   integer :: iproj_local  ! Local index within one node of the Wannier function
   integer :: iproj_global ! Global index of the Wannier function
 
@@ -158,9 +185,6 @@
 
 #ifdef MPI
   integer :: blocksize_save
-  integer :: blocksizeincbands_wannier    
-                       !  BlockSize when the number of projectors are
-                       !    distributed over the nodes
   integer :: MPIerror  ! MPI code error
   integer :: maxnumh   ! Maximum value in numh
   real(dp), pointer :: H_loc(:) => null() 
@@ -173,28 +197,6 @@
 
 !  Start time counter
    call timer( 'chempotwann', 1 )
-
-#ifdef MPI
-!  Calculate the default value for BlockSize, when we distribute the
-!  number of projectors over the nodes
-   call set_blocksizedefault( Nodes, num_proj,                                &
- &                            blocksizeincbands_wannier )
-
-!!  For debugging
-!   blocksize_save = BlockSize
-!   BlockSize = blocksizeincbands_wannier
-!   do iproj_local = 1, num_proj_local
-!     call LocalToGlobalOrb(iproj_local, Node, Nodes, iproj_global)
-!     write(6,'(a,i2,a,f12.5,2i5)')      &
-! &     'chempotwann: Node, Nodes, Chemical potential for Wannier ',           &
-! &     iproj_global,                                                          &
-! &     ' = ', chempotwann_val(iproj_global), Node, Nodes
-!   enddo 
-!   BlockSize = blocksize_save
-!!   call MPI_barrier(MPI_Comm_world,MPIerror)
-!!   call die()
-!!  End debugging
-#endif
 
 !  Initialize the matrix elements of the Hamiltonian coming from the
 !  chemical potential applied to the Wannier functions
@@ -298,17 +300,13 @@
 ! &      Node, Nodes, io_global, jo, listhg(ind)
 !     enddo 
 !   enddo 
-!   do iproj_local = 1, num_proj_local
+!   do iproj_local = 1, numh_man_proj(index_manifold)
 !     do io_global = 1, no_s
 !       write(6,'(a,4i5,2f12.5)') &
 ! &       'Node, Nodes, iproj, iorb, coeffs_wan_nao(iproj_local,iorb) = ',   &
 ! &        Node, Nodes, iproj_local, io_global, coeffs_wan_nao(iproj_local,io_global) 
 !     enddo
 !   enddo
-!#ifdef MPI
-!   call MPI_barrier(MPI_Comm_world,MPIerror)
-!#endif
-!   call die()
 !!  End debugging
 
 !  Compute the Hamiltonian elements with the penalty for the Wannier functions
@@ -324,34 +322,25 @@
 
 !!      For debugging
 !       write(6,'(a,7i5)')                                       &
-! &       'Node, Nodes, iuo, j, ind, jneig, num_proj_local = ',  &
-! &        Node, Nodes, iuo, j, ind, jneig, num_proj_local
+! &       'Node, Nodes, iuo, j, ind, jneig, numh_man_proj = ',  &
+! &        Node, Nodes, iuo, j, ind, jneig, numh_man_proj(index_manifold)
 !!      End debugging
 
 !      Compute the extra term in the Hamiltonian
 !      One node knows the Hamiltonian with the penalty of all the Wannier
 !      projections handled locally in that node,
 !      but it knows all the terms in the sparse matrix
-#ifdef MPI
-       blocksize_save = BlockSize
-       BlockSize = blocksizeincbands_wannier
-#endif
+!
 !      Loop on the Wanniers stored in the local node
-       do iproj_local = 1, num_proj_local
+       do iproj_local = 1, numh_man_proj(index_manifold)
 !        Identify the global index of the Wannier
-#ifdef MPI
-         call LocalToGlobalOrb(iproj_local, Node, Nodes, iproj_global)
-#else 
-         iproj_global = iproj_local
-#endif
+         ind_proj     = listhptr_man_proj(index_manifold) + iproj_local
+         iproj_global = listh_man_proj(ind_proj)
          H_chempotwann_full(ind,ispin) = H_chempotwann_full(ind,ispin)     +   &
  &                                   coeffs_wan_nao(iproj_local,iuo)       *   &
  &                                   chempotwann_val(iproj_global)         *   &
  &                                   coeffs_wan_nao(iproj_local,jneig)  
        enddo 
-#ifdef MPI
-       BlockSize = blocksize_save
-#endif
 
 !!      For debugging
 !       if( H_chempotwann_full(ind,ispin) .gt. 1.d-6)                    &

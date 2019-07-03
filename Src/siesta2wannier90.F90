@@ -252,7 +252,7 @@ subroutine siesta2wannier90
     if( w90_write_mmn ) call mmn( ispin )
 
 !   Compute the overlaps between Bloch states onto trial localized orbitals
-    if( w90_write_amn ) call amn( ispin )
+    if( w90_write_amn ) call amn( ispin, 1 )
 
 !   Write the eigenvalues in a file, in the format required by Wannier90
     if( IOnode .and. w90_write_eig ) call writeeig( ispin )

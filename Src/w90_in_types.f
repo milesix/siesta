@@ -186,19 +186,69 @@
                                        !  Cartesian coordinates in Bohr^-1
                                        !  First  index: component
                                        !  Second index: vector
+!
+! Variables related with the expansion of a Wannier in a basis of NAO
+!
+      complex(dp), pointer :: coeffs_wan_nao(:,:) 
+                                       ! Coefficients of the
+                                       !   Wannier functions in a basis
+                                       !   of NAO
+                                       !   First  index: Index of the 
+                                       !       manifold and Wannier function,
+                                       !       handled by numh_man_proj, 
+                                       !       listhptr_man_proj, and
+                                       !       listh_man_proj, and
+                                       !   Second index: NAO in the
+                                       !       supercell
 
 !
-! Variables related with the chemical potential
+! Variables related with the computation of the matrix elements
+! including the chemical potential for some Wannier functions
 !
+      logical, public :: compute_chempotwann = .false.
+                                       ! Compute the Hamiltonian matrix
+                                       !   elements between NAO
+                                       !   if a chemical potential in 
+                                       !   a Wannier is applied
+      logical, public :: compute_chempotwann_after_scf = .false.
+                                       ! If compute_chempotwann = .true.
+                                       !   this switch determines when
+                                       !   the new matrix elements are
+                                       !   added (only after regular scf)
+      logical, public :: first_chempotwann   = .true.
+                                       !  First time the calculation of the 
+                                       !   matrix elements of the Hamiltonian
+                                       !   with the chemical potential of the
+                                       !   Wanniers is called?
       real(dp), pointer :: chempotwann_val(:)
                                        ! Chemical potential 
                                        !   applied to shift the energy of a 
                                        !   the matrix elements in real space
                                        !   associated with a given 
                                        !   Wannier function
-      integer           :: num_proj_local
-                                       ! Number of projections that will be 
+      integer, pointer :: numh_man_proj(:)     => null()
+                                       ! Number of projections that will be
                                        !   handled in the local node
+                                       !   for a given manifolds
+                                       !   Dimension: number of manifolds
+      integer, pointer :: listhptr_man_proj(:) => null()
+                                       ! Index pointer to listh_man_proj such 
+                                       ! listh_man_proj(listhptr_man_proj(1)+1)
+                                       !   is the first projector of the first
+                                       !   manifold handled by the local node 
+                                       ! listh_man_proj(listhptr_man_proj(io)+1)
+                                       !   is thus the first projector of 
+                                       !   of manifold 'io' while 
+                                       ! listh_man_proj(listhptr_man_proj(io) + 
+                                       !                numh_man_proj(io)) 
+                                       !   is the last projectors of manifold 
+                                       !   'io'.
+                                       ! Dimension: number of manifolds
+      integer, pointer :: listh_man_proj(:)    => null()
+                                       ! The column indices for the projectors
+                                       !   of all the manifolds handled by 
+                                       !   the local node
+
 
       end module w90_in_siesta_types
 

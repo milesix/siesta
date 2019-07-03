@@ -5,7 +5,7 @@
 !  or http://www.gnu.org/copyleft/gpl.txt .
 ! See Docs/Contributors.txt for a list of contributors.
 ! ---
-subroutine amn( ispin )
+subroutine amn( ispin, index_manifold )
 !
 !     In this subroutine we compute the overlaps between Bloch states
 !     onto trial localized orbitals
@@ -43,10 +43,6 @@ subroutine amn( ispin )
   use parallel,           only: Nodes               ! Total number of Nodes
   use parallel,           only: Node                ! Local Node
   use parallel,           only: IONode              ! Input/output node
-  use parallel,           only: BlockSize           ! Blocking factor used to
-                                                    !  divide up the arrays over
-                                                    !   the processes for the
-                                                    !   Scalapack routines.
   use atomlist,           only: rmaxo               ! Max. cutoff atomic orbital
   use siesta_geom,        only: scell               ! Lattice vector of the
                                                     !   supercell in real space
@@ -102,12 +98,13 @@ subroutine amn( ispin )
   use atmfuncs,           only: orb_gindex          ! Subroutine that gives
                                                     !   the global index of an
                                                     !   atomic orbital
-  use m_w90_in_siesta,    only: compute_chempotwann ! Are we going to use the 
+  use w90_in_siesta_types,only: compute_chempotwann_after_scf 
+                                                    ! Are we going to use the 
                                                     !   unperturbed Wannier functions
                                                     !   as trial guess to compute 
                                                     !   the matrix elements of the 
                                                     !   Wanniers with chemical potentials?
-  use m_w90_in_siesta,    only: first_chempotwann   ! First time the calculation 
+  use w90_in_siesta_types,only: first_chempotwann   ! First time the calculation 
                                                     !   of the matrix elements of the 
                                                     !   Hamiltonian with the chemical
                                                     !   chemical potential of the 
@@ -120,13 +117,36 @@ subroutine amn( ispin )
   use atomlist,           only: iphorb              ! Orbital index of each  
                                                     !   orbital in its atom
   use siesta_geom,        only: isa                 ! Species index of each atom
-  use m_wannier_in_nao,   only: coeffs_wan_nao      ! Coefficients of the 
-                                                    !   Wannier functions in a 
-                                                    !   basis of NAO in the 
-                                                    !   supercell
-  use w90_in_siesta_types,   only: num_proj_local   ! Number of projections 
-                                                    !    that will be handled 
-                                                    !    in the local node
+  use w90_in_siesta_types,   only: numh_man_proj
+                                               ! Number of projections that will
+                                               !  be  handled in the local node
+  use w90_in_siesta_types,   only: listhptr_man_proj
+                                       ! Index pointer to listh_man_proj such
+                                       ! listh_man_proj(listhptr_man_proj(1)+1)
+                                       !   is the first projector of the first
+                                       !   manifold handled by the local node
+                                       ! listh_man_proj(listhptr_man_proj(io)+1)                                       !   is thus the first projector of
+                                       !   of manifold 'io' while
+                                       ! listh_man_proj(listhptr_man_proj(io) +                                        !                numh_man_proj(io))
+                                       !   is the last projectors of manifold
+                                       !   'io'.
+                                       ! Dimension: number of manifolds
+  use w90_in_siesta_types,   only: listh_man_proj
+                                               ! The column indices for 
+                                               !   the projectors
+                                               !   of all the manifolds handled
+                                               !   by the local node
+  use w90_in_siesta_types, only: coeffs_wan_nao
+                                               ! Coefficients of the
+                                               !   Wannier functions in a basis
+                                               !   of NAO
+                                               !   First  index: Index of the
+                                               !       manifold and Wannier func
+                                               !       handled by numh_man_proj,
+                                               !       listhptr_man_proj, and
+                                               !       listh_man_proj, and
+                                               !   Second index: NAO in the
+                                               !       supercell
   use siesta_options,     only: w90_in_siesta_threshold_coeff
                                                     ! Threshold for the real 
                                                     !   part of the coefficients
@@ -153,17 +173,6 @@ subroutine amn( ispin )
   use sys,                only: die          ! Termination routine
 
 #ifdef MPI
-  use parallelsubs,       only: GetNodeOrbs         ! Calculates the number of
-                                                    !   orbitals stored on the 
-                                                    !   local Node.
-  use parallelsubs,       only: set_blocksizedefault
-                                                    ! Finds a sensible default 
-                                                    !   value for the 
-                                                    !   BlockSize default.
-  use parallelsubs,       only: LocalToGlobalOrb    ! Subroutine that transforms
-                                                    !   a local orbital index in
-                                                    !   a given node to the 
-                                                    !   global atomic index
   use m_orderbands,       only: which_band_in_node  ! Given a node and a 
                                                     !   local index,
                                                     !   this array gives the
@@ -183,6 +192,8 @@ subroutine amn( ispin )
   implicit none
 
   integer, intent(in)     :: ispin               ! Spin component
+  integer, intent(in)     :: index_manifold      ! Index of the manifold
+                                                 !   that is wannierized
 
   type orbitallinkedlist
     real(dp),dimension(3)           :: center
@@ -201,6 +212,8 @@ subroutine amn( ispin )
   integer  :: iao             ! Atomic orbital within an atom
   integer  :: iat             ! Atomic index of each orbital
   integer  :: is              ! Species index
+  integer :: ind_proj         ! Counter for sequential indices
+                              !    of projections
   integer  :: iband           ! Counter for loop on bands
   integer  :: nincbands       ! Number of bands for wannierization
   integer  :: iua             ! Equivalent atom in the
@@ -210,11 +223,6 @@ subroutine amn( ispin )
   integer  :: ix              ! Counter for cartesian directions
   integer  :: icell           ! Counter for unit cell lattice
                               !    vectors
-  integer  :: blocksize_projectors
-                              ! Size of the Block when only the Wannier 
-                              !    projections are considered
-  integer  :: blocksize_save  ! Variable used to resort the BlockSize value
-
   logical, save :: firsttime = .true. ! First time this subroutine is called?
   integer  :: gindex          ! Global index of the trial projector function
                               !   in the list of functions that will be
@@ -342,31 +350,6 @@ subroutine amn( ispin )
 ! Find reciprocal unit cell vectors (without 2*pi factor)
   call reclat( ucell, rcell, 0 )
 
-#ifdef MPI
-!  Calculate the default value for BlockSize, when we distribute the
-!  number of projectors over the nodes
-   call set_blocksizedefault( Nodes, numproj,                                &
- &                            blocksize_projectors )
-   num_proj_local = numroc( numproj, blocksize_projectors,                   &
- &                           Node, 0, Nodes )
-#else
-   num_proj_local = numproj
-#endif
-
-!!  For debugging
-!#ifdef MPI
-!   blocksize_save = BlockSize
-!   BlockSize = blocksize_projectors
-!   do iproj_local = 1, num_proj_local
-!     call LocalToGlobalOrb(iproj_local, Node, Nodes, iproj_global)
-!     write(6,'(a,6i5)')      &
-! &     'chempotwann: Node, Nodes, numproj, num_proj_local, iproj_local, iproj_global ',  &
-! &     Node, Nodes, numproj, num_proj_local, iproj_local, iproj_global
-!   enddo
-!   BlockSize = blocksize_save
-!#endif
-!!  End debugging
-
 kpoints:                 &
   do ik = 1, numkpoints
 !   Compute the wave vector in bohr^-1 for every vector in the list
@@ -414,18 +397,13 @@ kpoints:                 &
 !   Hamiltonian tight-binding matrix elements,
 !   we are going to take as the localized guess functions 
 !   the Wannier functions obtained before including the chemical potential
-    if( compute_chempotwann .and. (.not. first_chempotwann) ) then
-      do iproj_local = 1, num_proj_local
-#ifdef MPI
-        blocksize_save = BlockSize
-        BlockSize = blocksize_projectors
-        call LocalToGlobalOrb(iproj_local, Node, Nodes, iproj_global)
-        BlockSize = blocksize_save
-#else
-        iproj_global = iproj_local
-#endif
+    if( compute_chempotwann_after_scf .and. (.not. first_chempotwann) ) then
+      do iproj_local = 1, numh_man_proj(index_manifold)
+!       Identify the global index of the Wannier
+        ind_proj     = listhptr_man_proj(index_manifold) + iproj_local
+        iproj_global = listh_man_proj(ind_proj)
         do iorb = 1, no_s
-          if( abs(real(coeffs_wan_nao(iproj_local,iorb))) .gt.       &
+          if( abs(real(coeffs_wan_nao(ind_proj,iorb))) .gt. &
  &            w90_in_siesta_threshold_coeff ) then 
             iuo = indxuo (iorb)                ! Equivalent orbital in 
                                                !   first unit cell
@@ -459,7 +437,7 @@ kpoints:                 &
 !           write(6,'(a,3i5)')'amn: Node, ik, nincbands = ', &
 ! &                                 Node, ik, nincbands
 !           write(6,'(a,4i5,5f12.5)')'amn: Node, iproj, iorb, globalindexproj,  coeff_wan_nao, trialcenter = ', & 
-! &                                        Node, iproj, iorb, globalindexproj, coeffs_wan_nao(iproj,iorb), trialcenter
+! &                                        Node, iproj, iorb, globalindexproj, coeffs_wan_nao(index_manifold,iorb), trialcenter
 !           write(6,'(a,5i5,4f12.5)')'amn: iorb, iao, globalindex, iat, is, xa, rc = ',     &
 ! &                                        iorb, iao, globalindexproj, iat, is, xa(:,iat),rc
 !!          End debugging
@@ -481,15 +459,16 @@ OrbitalQueue2:                                                          &
               exponential = exp( iu * phase )
 !             Loop over occupied bands
 !              write(6,'(a,4i5,2f12.5)')'Node, ik, iproj_local, iproj_global =',&
-! &                        Node, ik, iproj_local, iproj_global, &
-! &                        real(coeffs_wan_nao(iproj_local,iorb)), overlap
+! &                     Node, ik, iproj_local, iproj_global,                   &
+! &                     real(coeffs_wan_nao(index_manifold,iorb)), &
+! &                     overlap
 Band_loop2:                                                             &
               do iband = 1, nincbands
                 cstar = conjg( psiloc(item%globalindex,iband) )
                   Amnmat(iband,iproj_global,ik) =      & 
  &                  Amnmat(iband,iproj_global,ik) +    &
  &                  exponential * cstar * overlap *    &
- &                  coeffs_wan_nao(iproj_local,iorb)
+ &                  coeffs_wan_nao(ind_proj,iorb)
               enddo Band_loop2  ! End loop on the bands
 
               item => item%nextitem
@@ -585,7 +564,7 @@ Band_loop:                                                           &
     endif
 
     call MPI_Reduce( Amnmat(1,1,ik), auxloc(1,1),                       &
- &                      nincbands*numproj,                                 &
+ &                      nincbands*numproj,                              &
  &                      MPI_double_complex,MPI_sum,0,MPI_Comm_World,MPIerror )
     if (IONode) then
        Amnmat(:,:,ik) = auxloc(:,:)
@@ -600,8 +579,16 @@ Band_loop:                                                           &
 ! Deallocate some of the arrays
   call de_alloc( psiloc,  'psiloc',  'Amn' )
 #ifdef MPI
-  if (IOnode) call de_alloc( auxloc,  'auxloc',  'Amn' )
+!  if (IOnode) call de_alloc( auxloc,  'auxloc',  'Amn' )
+   call de_alloc( auxloc,  'auxloc',  'Amn' )
 #endif
+
+!! For debugging
+!#ifdef MPI
+!    call MPI_barrier(MPI_Comm_world,MPIError)
+!#endif
+!    call die()
+!! End debugging
 
 
 ! End time counter

@@ -543,9 +543,9 @@ Fstack.o: basic_type.inc
 Pair.o: basic_type.inc
 alloc.o: m_io.o parallel.o precision.o sys.o
 amn.o: alloc.o atmfuncs.o atomlist.o m_orderbands.o m_trialorbitalclass.o
-amn.o: matel_registry.o mneighb.o new_matel.o parallel.o parallelsubs.o
-amn.o: precision.o siesta_geom.o sys.o cellsubs.o m_wannier_in_nao.o
-amn.o: m_switch_local_proj.o m_w90_in_siesta.o siesta_options.o
+amn.o: matel_registry.o mneighb.o new_matel.o parallel.o 
+amn.o: precision.o siesta_geom.o sys.o cellsubs.o
+amn.o: m_switch_local_proj.o siesta_options.o w90_in_types.o
 arw.o: alloc.o parallel.o precision.o sys.o
 atm_types.o: precision.o radial.o
 atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o sys.o
@@ -756,7 +756,7 @@ final_H_f_stress.o: m_ncdf_siesta.o m_ntm.o m_spin.o m_stress.o m_ts_io.o
 final_H_f_stress.o: m_ts_options.o metaforce.o molecularmechanics.o naefs.o
 final_H_f_stress.o: nlefsm.o overfsm.o parallel.o siesta_geom.o
 final_H_f_stress.o: siesta_options.o sparse_matrices.o spinorbit.o sys.o
-final_H_f_stress.o: ts_kpoint_scf.o units.o
+final_H_f_stress.o: ts_kpoint_scf.o units.o w90_in_types.o
 final_H_f_stress.o: m_w90_in_siesta.o m_wannier_in_nao.o m_chempotwann.o
 final_H_f_stress.o: m_switch_local_proj.o
 find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
@@ -841,7 +841,7 @@ m_charge_add.o: intrinsic_missing.o m_cite.o m_geom_objects.o m_mesh_node.o
 m_charge_add.o: parallel.o precision.o units.o
 m_check_walltime.o: m_walltime.o
 m_chempotwann.o: precision.o parallel.o parallelsubs.o atomlist.o
-m_chempotwann.o: sparse_matrices.o m_spin.o m_wannier_in_nao.o w90_in_types.o
+m_chempotwann.o: sparse_matrices.o m_spin.o w90_in_types.o
 m_chempotwann.o: alloc.o sys.o
 m_chess.o: parallel.o parallelsubs.o precision.o
 m_digest_nnkp.o: alloc.o atomlist.o files.o m_mpi_utils.o m_noccbands.o
@@ -901,14 +901,14 @@ m_iostruct.o: siesta_geom.o sys.o units.o
 m_iotddft.o: files.o m_dipol.o m_io.o m_steps.o parallel.o siesta_options.o
 m_iotddft.o: units.o wavefunctions.o
 m_kinetic.o: precision.o
-m_wannier_in_nao.o: parallel.o parallelsubs.o precision.o siesta_geom.o atomlist.o 
+m_wannier_in_nao.o: parallel.o precision.o siesta_geom.o atomlist.o 
 m_wannier_in_nao.o: m_switch_local_proj.o writewave.o atmfuncs.o cellsubs.o
 m_wannier_in_nao.o: alloc.o sys.o m_orderbands.o w90_in_types.o
 m_w90_in_siesta.o: m_cite.o parallel.o w90_in_types.o precision.o alloc.o atm_types.o
 m_w90_in_siesta.o: siesta_options.o atomlist.o parallelsubs.o sys.o m_energies.o 
 m_w90_in_siesta.o: m_orderbands.o sys.o atmfuncs.o atomlist.o siesta_geom.o units.o
 m_w90_in_siesta.o: m_switch_local_proj.o m_digest_nnkp.o siesta_options.o files.o
-m_w90_in_siesta.o: atmfuncs.o m_trialorbitalclass.o m_spin.o
+m_w90_in_siesta.o: atmfuncs.o m_trialorbitalclass.o m_spin.o units.o
 m_mat_invert.o: intrinsic_missing.o m_pivot_array.o precision.o
 m_matdiag.o: precision.o
 m_matio.o: alloc.o parallel.o
@@ -1286,7 +1286,7 @@ setup_hamiltonian.o: m_ntm.o m_partial_charges.o m_rhog.o m_spin.o m_steps.o
 setup_hamiltonian.o: m_stress.o metaforce.o molecularmechanics.o parallel.o
 setup_hamiltonian.o: siesta_geom.o siesta_options.o sparse_matrices.o sys.o
 setup_hamiltonian.o: m_w90_in_siesta.o m_wannier_in_nao.o m_chempotwann.o
-setup_hamiltonian.o: m_switch_local_proj.o
+setup_hamiltonian.o: m_switch_local_proj.o w90_in_types.o
 setup_ordern_indexes.o: alloc.o domain_decom.o parallel.o spatial.o
 shaper.o: atmfuncs.o mneighb.o precision.o
 show_distribution.o: atomlist.o parallel.o parallelsubs.o siesta_geom.o sys.o
@@ -1331,7 +1331,7 @@ siesta_forces.o: save_density_matrix.o scfconvergence_test.o setup_H0.o
 siesta_forces.o: setup_hamiltonian.o siesta_cml.o siesta_dicts.o siesta_geom.o
 siesta_forces.o: siesta_master.o siesta_options.o sparse_matrices.o
 siesta_forces.o: state_analysis.o state_init.o sys.o timer.o units.o
-siesta_forces.o: write_subs.o m_w90_in_siesta.o
+siesta_forces.o: write_subs.o w90_in_types.o
 siesta_geom.o: precision.o
 siesta_init.o: alloc.o atomlist.o bands.o class_Fstack_Pair_Geometry_SpData2D.o
 siesta_init.o: diag_option.o files.o flook_siesta.o ioxv.o kpoint_ldos.o

@@ -76,8 +76,8 @@
 #ifdef HAVE_WANNIER90
       use siesta_options,    only: w90_in_siesta_processing
       use m_switch_local_projection, only: switch_local_projection
-      use m_w90_in_siesta,   only: compute_chempotwann
-      use m_w90_in_siesta,   only: first_chempotwann
+      use w90_in_siesta_types,   only: compute_chempotwann
+      use w90_in_siesta_types,   only: first_chempotwann
       use m_w90_in_siesta,   only: compute_matrices
       use m_w90_in_siesta,   only: compute_wannier
       use m_wannier_in_nao,  only: wannier_in_nao
@@ -281,8 +281,8 @@
               call diagonalizeHk( ispin, index_manifold )
               call compute_matrices( ispin, index_manifold )
               call compute_wannier( ispin, index_manifold )
-              call wannier_in_nao
-              call chempotwann( ispin, H_chempotwann )
+              call wannier_in_nao( index_manifold )
+              call chempotwann( index_manifold, ispin, H_chempotwann )
             enddo
           endif
           first_chempotwann = .false.

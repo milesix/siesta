@@ -22,6 +22,16 @@
                                           ! Variable where the initial
                                           !   and final band of each
                                           !   manifold are stored
+  use w90_in_siesta_types,   only: compute_chempotwann
+                                          ! Compute the Hamiltonian matrix
+                                          !   elements between NAO
+                                          !   if a chemical potential in 
+                                          !   a Wannier is applied
+  use w90_in_siesta_types,   only: first_chempotwann
+                                          ! Is this the first time that 
+                                          !   that the subroutines to call
+                                          !   the chemical potential 
+                                          !   are called?
   use w90_in_siesta_types,   only: chempotwann_val
                                           ! Chemical potential
                                           !   applied to shift the energy of 
@@ -144,6 +154,13 @@
  &                 MPI_Comm_World,MPIerror)
 
   enddo
+
+  call MPI_Bcast(compute_chempotwann,                                         &
+ &                 1,MPI_logical,                                             &
+ &                 0,MPI_Comm_World,MPIerror)
+  call MPI_Bcast(first_chempotwann,                                           &
+ &                 1,MPI_logical,                                             &
+ &                 0,MPI_Comm_World,MPIerror)
 
   if (Node.ne.0) then
     allocate(chempotwann_val(manifold_bands_w90_in(1)%numbands_w90_in))

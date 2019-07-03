@@ -49,19 +49,62 @@ module m_w90_in_siesta
   use parallel,       only: IONode        ! Node for Input/output
   use w90_in_siesta_types,   only: w90_in_manifold_t    
   use w90_in_siesta_types,   only: manifold_bands_w90_in
-                                          ! Variable where the initial
-                                          !   and final band of each
-                                          !   manifold are stored
+                                       ! Variable where the initial
+                                       !   and final band of each
+                                       !   manifold are stored
+  use w90_in_siesta_types,   only: compute_chempotwann
+                                       ! Compute the Hamiltonian matrix
+                                       !   elements between NAO
+                                       !   if a chemical potential in
+                                       !   a Wannier is applied
+  use w90_in_siesta_types,   only: first_chempotwann 
+                                       !  First time the calculation of the
+                                       !   matrix elements of the Hamiltonian
+                                       !   with the chemical potential of the 
+                                       !   Wanniers is called?
   use w90_in_siesta_types,   only: chempotwann_val
-                                          ! Chemical potential
-                                          !   applied to shift the energy of a
-                                          !   the matrix elements in real space
-                                          !   associated with a given
-                                          !   Wannier function
-  use atomlist,           only: no_u      ! Number of orbitals in unit cell
-                                          ! NOTE: When running in parallel,
-                                          !   this is core independent
-  use sys,                only : die      ! Termination routine
+                                       ! Chemical potential
+                                       !   applied to shift the energy of a
+                                       !   the matrix elements in real space
+                                       !   associated with a given
+                                       !   Wannier function
+  use w90_in_siesta_types,   only: numh_man_proj
+                                       ! Number of projections that will be
+                                       !   handled in the local node
+                                       !   for a given manifolds
+                                       !   Dimension: number of manifolds
+  use w90_in_siesta_types,   only: listhptr_man_proj
+                                       ! Index pointer to listh_man_proj such 
+                                       ! listh_man_proj(listhptr_man_proj(1)+1)
+                                       !   is the first projector of the first
+                                       !   manifold handled by the local node 
+                                       ! listh_man_proj(listhptr_man_proj(io)+1)                                       !   is thus the first projector of 
+                                       !   of manifold 'io' while 
+                                       ! listh_man_proj(listhptr_man_proj(io) +                                        !                numh_man_proj(io)) 
+                                       !   is the last projectors of manifold 
+                                       !   'io'.
+                                       ! Dimension: number of manifolds
+  use w90_in_siesta_types,   only: listh_man_proj
+                                       ! The column indices for the projectors
+                                       !   of all the manifolds handled by 
+                                       !   the local node
+  use w90_in_siesta_types,       only: coeffs_wan_nao
+                                       ! Coefficients of the
+                                       !   Wannier functions in a basis
+                                       !   of NAO
+                                       !   First  index: Index of the
+                                       !       manifold and projector,
+                                       !       handled by numh_man_proj,
+                                       !       listhptr_man_proj, and
+                                       !       listh_man_proj lists
+                                       !   Second index: NAO in the
+                                       !       supercell
+  use atomlist,           only: no_u   ! Number of orbitals in unit cell
+                                       ! NOTE: When running in parallel,
+                                       !   this is core independent
+  use atomlist,           only: no_s   ! Number of atomic orbitals in the
+                                       !   supercell
+  use sys,                only : die   ! Termination routine
   use fdf
 
 !
@@ -72,21 +115,11 @@ module m_w90_in_siesta
 
 #ifdef MPI
   use mpi_siesta
+  use parallelsubs,       only: LocalToGlobalOrb
 #endif
 
-  use parallelsubs,       only: LocalToGlobalOrb
 
   implicit none
-
-!
-! Variables related with the computation of the matrix elements
-! including the chemical potential for some Wannier functions
-!
-  logical, public :: compute_chempotwann = .false.
-  logical, public :: first_chempotwann   = .true.  
-!                       First time the calculation of the matrix
-!                       elements of the Hamiltonian with the 
-!                       chemical potential of the Wanniers is called?
 
 
 ! Routines
@@ -142,7 +175,12 @@ module m_w90_in_siesta
 !! 6. Determine the number of bands that will be treated per node in a 
 !!    parallel run.
 !!
-!! 7. Read all the information regarding the 
+!! 7. Populate the lists required to handle the matrix of coefficients of
+!!    a Wannier functions in terms of the numerical atomic orbitals of the
+!!    supercells. These matrices are very similar to numh, listhptr, and 
+!!    listh to handle the Hamiltonian and Overlap sparse matrices
+!!
+!! 8. Read all the information regarding the 
 !!    k-point sampling (block kMeshforWannier), 
 !!    and the neighbours for all the k-points in the BZ,
 !!    required for the wannierization.
@@ -161,17 +199,34 @@ module m_w90_in_siesta
     use parallelsubs,  only: set_blocksizedefault  ! Subroutine to find
                                                    !   a sensible default value
                                                    !   for the blocksize default
+    use parallel,      only: BlockSize             ! Blocking factor used to
+                                                   !   divide up the arrays over
+                                                   !   the processes for the
+                                                   !   Scalapack routines.
 #endif
 
+!
+! Internal parameters
+!
+
     integer :: index_manifold
-    integer :: numincbands_tmp
+    integer :: iproj_local
+    integer :: iproj_global
+    integer :: index
     integer :: blocksizeincbands_tmp 
+    integer :: numincbands_tmp
     integer :: nincbands_loc_tmp
+    integer :: numproj
+    integer :: maxnh_man_proj
 
 #ifdef MPI
     integer, external :: numroc                    ! Scalapack routine for 
                                                    !  block-cyclic distributions
+    integer :: MPIError
+    integer, allocatable :: blocksizeprojectors(:)
+    integer :: blocksize_tmp 
 #endif
+
 
     if( IONode ) then
 
@@ -261,14 +316,120 @@ module m_w90_in_siesta
  &        blocksizeincbands_tmp
     enddo  
 
+!   Compute the lists that will be required to handle the coefficients of 
+!   the Wannier functions as an expansion of Numerical Atomic Orbitals
+    if( compute_chempotwann ) then
+
+      nullify( numh_man_proj )
+      call re_alloc( numh_man_proj,  1, n_wannier_manifolds, &
+ &                   'numh_man_proj', 'setup_w90_in_siesta' )
+      numh_man_proj(:) = 0
+
+      nullify( listhptr_man_proj )
+      call re_alloc( listhptr_man_proj,  1, n_wannier_manifolds, &
+ &                   'listhptr_man_proj', 'setup_w90_in_siesta' )
+      listhptr_man_proj(:) = 0
+
+#ifdef MPI
+      allocate(blocksizeprojectors(n_wannier_manifolds))
+#endif
+
+      maxnh_man_proj = 0
+      do index_manifold = 1, n_wannier_manifolds
+        numproj = manifold_bands_w90_in(index_manifold)%numbands_w90_in
+#ifdef MPI
+!        Find the number of projectors that will be stored
+!        per node. Use a block-cyclic distribution of numproj over Nodes.
+         call set_blocksizedefault( Nodes, numproj,                  &
+ &                                  blocksizeprojectors(index_manifold) )
+         numh_man_proj(index_manifold) = numroc( numproj,           &
+ &                  blocksizeprojectors(index_manifold), Node, 0, Nodes )
+#else
+         numh_man_proj(index_manifold) = numproj
+#endif
+         maxnh_man_proj = maxnh_man_proj + numh_man_proj(index_manifold)
+      enddo  
+
+      listhptr_man_proj(1) = 0
+      do index_manifold = 2, n_wannier_manifolds
+        listhptr_man_proj(index_manifold)=listhptr_man_proj(index_manifold-1) +&
+ &         numh_man_proj(index_manifold-1)
+      enddo  
+
+      call re_alloc( listh_man_proj,  1, maxnh_man_proj, &
+ &                   'listh_man_proj', 'setup_w90_in_siesta' )
+
+
+      index = 0
+#ifdef MPI
+      blocksize_tmp = BlockSize
+#endif
+      do index_manifold = 1, n_wannier_manifolds
+        do iproj_local = 1, numh_man_proj( index_manifold )
+          index = index + 1
+#ifdef MPI
+          BlockSize = blocksizeprojectors(index_manifold)
+          call LocalToGlobalOrb(iproj_local, Node, Nodes, iproj_global)
+#else
+          iproj_global = iproj_local
+#endif
+          listh_man_proj(index) = iproj_global
+        enddo
+      enddo 
+#ifdef MPI
+      BlockSize = blocksize_tmp
+#endif
+
+!!     For debugging
+!      do index_manifold = 1, n_wannier_manifolds
+!         write(6,'(a,4i5)') &
+! &         'setup_w90_in_siesta: index_manifold, Node,numproj,numh_man_proj=',&
+! &         index_manifold, Node, numproj, numh_man_proj(index_manifold) 
+!         write(6,'(a,4i5)') &
+! &         'setup_w90_in_siesta: index_manifold, Node, numproj, listhptr_man_proj =',&
+! &         index_manifold, Node, numproj, listhptr_man_proj(index_manifold) 
+!      enddo  
+!      write(6,'(a,3i5)') &
+! &      'setup_w90_in_siesta: Node, maxnh_man_proj =',               &
+! &                            Node, maxnh_man_proj 
+!      do index = 1, maxnh_man_proj
+!        write(6,'(a,3i5)')                                             &
+!          'setup_w90_in_siesta: Node, index, listh_man_proj  =',       &
+! &                              Node, index, listh_man_proj(index)
+!      enddo 
+!!     End debugging
+
+!     Allocate the array where the coefficients of the Wannier functions
+!     in a basis of Numerical Atomic Orbitals will be stored
+      nullify( coeffs_wan_nao )
+      call re_alloc( coeffs_wan_nao,                                  &
+ &                   1, maxnh_man_proj,                               &
+ &                   1, no_s,                                         &
+ &                   name='coeffs_wan_nao', routine='wannier_in_nao')
+      coeffs_wan_nao = cmplx(0.0_dp,0.0_dp,kind=dp)
+
+#ifdef MPI
+      deallocate(blocksizeprojectors)
+#endif
+
+    endif ! End if compute_chempotwann 
+
+!! For debugging
+!#ifdef MPI
+!    call MPI_barrier(MPI_Comm_world,MPIError)
+!#endif
+!    call die()
+!! End debugging
+
 !
 !   Read all the information regarding the k-point sampling, 
-!   and the neighbours for all the k-points in the BZ,
+!   and the neighbours for all the k-points in the BZ
 !   required for the wannierization.
 !   This is done by all the nodes simultaneously, so no need for broadcasting
 !   these variables
 !
     if(IOnode) call read_kpoints_wannier
+
 
   end subroutine setup_w90_in_siesta
 
@@ -588,7 +749,7 @@ module m_w90_in_siesta
 
 !   If the block with the chemical potentials is present,
 !   set to true the flag to compute the shifts of the matrix elements
-!    compute_chempotwann = .true. 
+    compute_chempotwann = .true. 
 
 !   Read the content of the block, line by line
     do while(fdf_bline(bfdf, pline))       
@@ -1155,6 +1316,7 @@ module m_w90_in_siesta
     real(dp)           :: a_real        ! Real part of the Amn matrix element
     real(dp)           :: a_imag        ! Imaginary part of the 
                                         !    Amn matrix element
+    integer            :: MPIError
 
     external     :: io_assign              ! Assign a logical unit
     external     :: io_close               ! Close a logical unit
@@ -1185,8 +1347,8 @@ module m_w90_in_siesta
     call mmn( ispin )
 
 !   Compute the overlaps between Bloch states onto trial localized orbitals
-!    if( first_chempotwann ) call amn( ispin )
-    call amn( ispin )
+!    if( first_chempotwann ) call amn( ispin, index_manifold )
+    call amn( ispin, index_manifold )
 
 !   Check if the computations of the position operator matrix elements
 !   between manifolds has to be carried out
@@ -1282,12 +1444,18 @@ module m_w90_in_siesta
  &     'compute_matrices: End of the interface between Siesta and Wannier90'
     endif
 
-!!   For debugging
-!    call die('Killing the program in compute_matrices')
-!!   End debugging
+!! For debugging
+!#ifdef MPI
+!    call MPI_barrier(MPI_Comm_world,MPIError)
+!#endif
+!    call die()
+!! End debugging
+
      return 
 
 102  call die('Error: Problem opening input file '//trim(filename))
+
+
 
   end subroutine compute_matrices
 
