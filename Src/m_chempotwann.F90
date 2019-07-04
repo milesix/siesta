@@ -184,7 +184,6 @@
                        !      the column indices for the non-zero elements
 
 #ifdef MPI
-  integer :: blocksize_save
   integer :: MPIerror  ! MPI code error
   integer :: maxnumh   ! Maximum value in numh
   real(dp), pointer :: H_loc(:) => null() 

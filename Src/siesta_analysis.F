@@ -42,12 +42,11 @@
       use kpoint_scf_m, only: kpoint_scf, gamma_scf
       use parallel, only: IOnode
       use parallel, only: SIESTA_worker
-      use files,       only : label_length
       use m_energies
       use m_steps, only: final
       use m_ntm
       use m_spin,         only: nspin, spinor_dim, h_spin_dim
-      use m_spin,         only: SpOrb, NonCol, SPpol, NoMagn
+      use m_spin,         only: SpOrb, NonCol
       use m_dipol
       use m_eo
       use m_forces,          only: fa
@@ -63,7 +62,6 @@
       use m_w90_in_siesta,   only: deallocate_wannier
       use m_wannier_in_nao,  only: wannier_in_nao
       use m_chempotwann,     only: chempotwann
-      use sparse_matrices,   only: H_chempotwann_2D
       use class_dSpData2D,   only: val
 #endif
 
@@ -82,15 +80,12 @@
 
       real(dp)          :: polxyz(3,nspin)  ! Autom., small
       real(dp)          :: polR(3,nspin)    ! Autom., small
-      real(dp)          :: qaux
       real(dp), pointer :: ebk(:,:,:)       ! Band energies
 
-      integer           :: j, ix, ind, ik, io, ispin, index_manifold
+      integer           :: ix, ik, io, ispin, index_manifold
       integer           :: wfs_band_min, wfs_band_max
       real(dp)          :: g2max, current_ef
       type(filesOut_t)  :: filesOut  ! blank output file names
-
-      real(dp), pointer   :: H_chempotwann(:,:)
 
 !-----------------------------------------------------------------------BEGIN
 
@@ -509,13 +504,6 @@ C     Call Wannier90_in_Siesta here,
 C
 #ifdef HAVE_WANNIER90
       if( w90_in_siesta_processing ) then
-!!
-!!       Set up all the variables required to run WANNIER90 within SIESTA
-!!       (not as a postprocessing tool)
-!!       At this step, these variables are only known at the IONode
-!!
-!        call setup_w90_in_siesta
-
 !       Loop on the number of manifolds
 !       n_wannier_manifolds is defined in siesta_options
         do index_manifold = 1, n_wannier_manifolds
@@ -523,7 +511,6 @@ C
 !         that will be used in the wannierization routines.
 !         Those routines comes from the WANNIER90 code.
           call switch_local_projection( index_manifold )
-          H_chempotwann => val(H_chempotwann_2D)
           do ispin = 1, nspin
             call diagonalizeHk( ispin, index_manifold )
             call compute_matrices( ispin, index_manifold )

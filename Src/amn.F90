@@ -43,6 +43,15 @@ subroutine amn( ispin, index_manifold )
   use parallel,           only: Nodes               ! Total number of Nodes
   use parallel,           only: Node                ! Local Node
   use parallel,           only: IONode              ! Input/output node
+  use parallelsubs,       only: WhichNodeOrb        ! Which node handles the
+                                                    !   the information of a 
+                                                    !   given orbital in the
+                                                    !   unit cell
+  use parallelsubs,       only: GlobalToLocalOrb    ! Transformation from a 
+                                                    !   global index of a given
+                                                    !   orbital in the unit cell
+                                                    !   to the local index 
+                                                    !   within a node
   use atomlist,           only: rmaxo               ! Max. cutoff atomic orbital
   use siesta_geom,        only: scell               ! Lattice vector of the
                                                     !   supercell in real space
@@ -114,9 +123,20 @@ subroutine amn( ispin, index_manifold )
   use atomlist,           only: iaorb               ! Atomic index of each orbital
   use atmfuncs,           only: rcut                ! Returns orbital 
                                                     !   cutoff radius
-  use atomlist,           only: iphorb              ! Orbital index of each  
-                                                    !   orbital in its atom
-  use siesta_geom,        only: isa                 ! Species index of each atom
+  use sparse_matrices,    only: S                   ! Overlap matrix in 
+                                                    !   sparse format
+  use sparse_matrices,    only: xijo                ! Relative position between
+                                                    !   neighbour atoms
+  use sparse_matrices,    only: numh                ! Number of non-zero element
+                                                    !   per row in the matrices
+                                                    !   (local to MPI Node)
+  use sparse_matrices,    only: listhptr            ! Pointer to the start of
+                                                    !   ach row (-1) of the
+                                                    !   hamiltonian matrix
+  use sparse_matrices,    only: listh               ! Nonzero hamiltonian-matrix
+                                                    !   element column indices 
+                                                    !   for each matrix row
+
   use w90_in_siesta_types,   only: numh_man_proj
                                                ! Number of projections that will
                                                !  be  handled in the local node
@@ -209,10 +229,8 @@ subroutine amn( ispin, index_manifold )
   integer  :: iproj           ! Counter for loop on projections
   integer  :: io              ! Counter for loop on orbital 
   integer  :: iorb            ! Counter for loop on orbital 
-  integer  :: iao             ! Atomic orbital within an atom
   integer  :: iat             ! Atomic index of each orbital
-  integer  :: is              ! Species index
-  integer :: ind_proj         ! Counter for sequential indices
+  integer  :: ind_proj        ! Counter for sequential indices
                               !    of projections
   integer  :: iband           ! Counter for loop on bands
   integer  :: nincbands       ! Number of bands for wannierization
@@ -243,7 +261,6 @@ subroutine amn( ispin, index_manifold )
   real(dp) :: trialcenter(3)  ! Position where the trial function is centered
                               !   (in Bohr)
   real(dp) :: trialrcut       ! Cutoff radius of the trial function
-  real(dp) :: rc              ! Cutoff radius of an atomic orbital
   real(dp) :: r12(3)          ! Relative position of the trial function with
                               !   respect to the neighbour orbital
   real(dp) :: overlap         ! Overlap between the trial function and a 
@@ -260,6 +277,8 @@ subroutine amn( ispin, index_manifold )
                               !   (without 2*pi factor)
   real(dp) :: xatorb(3)       ! Position of the atomic orbital
  
+  integer  :: jneig, juo, ind, jo
+  real(dp) :: xneig(3)        ! Position of the atomic orbital
 
 
   complex(dp), dimension(:,:), pointer :: psiloc => null() ! Coefficients of the wave
@@ -280,6 +299,36 @@ subroutine amn( ispin, index_manifold )
                                              !   of a projector in the list of
                                              !   functions that will be
                                              !   evaluated by MATEL
+!
+! Variable required to globalize the neighbour list
+!
+  integer  :: io_local        ! Counter for the local atomic orbitals in a
+                              !    given node
+  integer  :: io_global       ! Global index of an atomic orbital
+  integer  :: BNode           ! Node that contains the information of a given
+                              !    orbital in the unit cell
+  integer  :: maxnhg          ! Compute the maximum number of
+                              !    interacting atomic orbitals neighbours
+  integer,  pointer :: numhg(:) => null()
+                       ! Temporal array used to broadcast the array numh,
+                       ! with number of non-zero elements
+                       ! each orbital connects to
+  integer,  pointer :: listhptrg(:) => null()
+                       ! Temporal array used to broadcast the array listhptr
+                       ! index pointer to listh such that listh(listhptr(1) + 1)
+                       ! is the first non-zero element of orbital 1.
+                       ! listh(listhptr(io) + 1) is thus the
+                       ! first non-zero element
+                       ! of orbital 'io' while listh(listhptr(io) + numh(io))
+                       ! is the last non-zero element of orbital 'io'.
+  integer,  pointer :: listhg(:) => null()
+                       ! Temporal array used to broadcast the array listh
+                       !      the column indices for the non-zero elements
+  real(dp), pointer :: xijloc(:,:) => null()
+                       ! Temporal array used to broadcast the relative
+                       !    position between neighbours
+  real(dp), pointer :: Sloc(:) => null()
+                       ! Temporal array used to broadcast the overlap matrix
 #ifdef MPI
   integer     :: iband_global                ! Global index for a band
   integer     :: iband_sequential            ! Sequential index of the band
@@ -350,6 +399,88 @@ subroutine amn( ispin, index_manifold )
 ! Find reciprocal unit cell vectors (without 2*pi factor)
   call reclat( ucell, rcell, 0 )
 
+  if( compute_chempotwann_after_scf .and. (.not. first_chempotwann) ) then
+!   Copy of the procedure implemented in subroutine diagkp
+    nullify(numhg, listhptrg)
+
+!   Allocate local memory for global list arrays
+    call re_alloc( numhg, 1, no_u, name='numhg',                               &
+ &                 routine= 'amn' )
+    call re_alloc( listhptrg, 1, no_u, name='listhptrg',                       &
+ &                 routine= 'amn' )
+
+!
+!   Globalise numh
+!   Loop over all the orbitals in the unit cell
+    do io_global = 1, no_u
+!     Localize which node handles the information related with the orbital io
+      call WhichNodeOrb(io_global,Nodes,BNode)
+      if ( Node .eq. BNode ) then
+!       Identify the local index for the orbital in the unit cell in the
+!       node that handles its information
+        call GlobalToLocalOrb(io_global,Node,Nodes,io_local)
+!       Assign the value of the number of neighbours of that particular orbital
+        numhg(io_global) = numh(io_local)
+      endif
+!     Transfer the information from the node that contains the information
+!     on the orbital io_global to all the other nodes
+#ifdef MPI
+      call MPI_Bcast( numhg(io_global),1,MPI_integer,BNode,                    &
+ &                    MPI_Comm_World,MPIerror )
+#endif
+    enddo
+
+!   Build global listhptr
+    listhptrg(1) = 0
+    do io_global = 2, no_u
+     listhptrg(io_global) = listhptrg(io_global-1) + numhg(io_global-1)
+    enddo
+
+!   Globalise listh
+!   Compute the maximum number of interacting atomic orbitals neighbours
+!   considering all the orbitals in the unit cell
+    maxnhg = listhptrg(no_u) + numhg(no_u)
+    nullify(listhg)
+    call re_alloc( listhg, 1, maxnhg, name='listhg',                           &
+ &                 routine= 'amn' )
+    do io_global = 1, no_u
+      call WhichNodeOrb(io_global,Nodes,BNode)
+      if (Node.eq.BNode) then
+        call GlobalToLocalOrb(io_global,Node,Nodes,io_local)
+        do jo = 1, numhg(io_global)
+          listhg(listhptrg(io_global)+1:listhptrg(io_global)+numhg(io_global))=&
+ &          listh(listhptr(io_local)+1:listhptr(io_local)+numh(io_local))
+        enddo
+      endif
+#ifdef MPI
+      call MPI_Bcast( listhg(listhptrg(io_global)+1),numhg(io_global),         &
+ &                    MPI_integer,BNode,MPI_Comm_World,MPIerror )
+#endif
+    enddo
+
+! Globalize the relative position of neighbours
+    call re_alloc( xijloc, 1, 3, 1, maxnhg, name='xijloc', routine= 'amn' ) 
+    call re_alloc( Sloc, 1, maxnhg, name='Sloc', routine= 'amn' ) 
+    do io_global = 1, no_u
+      call WhichNodeOrb(io_global,Nodes,BNode)
+      if (Node.eq.BNode) then
+        call GlobalToLocalOrb(io_global,Node,Nodes,io_local)
+        do jo = 1, numh(io_local)
+          Sloc(listhptrg(io_global)+jo) = S(listhptr(io_local)+jo)
+        enddo 
+        do jo = 1, numh(io_local)
+          xijloc(1:3,listhptrg(io_global)+jo) = xijo(1:3,listhptr(io_local)+jo)
+        enddo 
+      endif 
+#ifdef MPI
+      call MPI_Bcast(Sloc(listhptrg(io_global)+1),numhg(io_global),        &
+ &       MPI_double_precision,BNode,MPI_Comm_World,MPIerror)
+      call MPI_Bcast(xijloc(1,listhptrg(io_global)+1),3*numhg(io_global),  &
+ &       MPI_double_precision,BNode,MPI_Comm_World,MPIerror)
+#endif
+    enddo 
+  endif
+
 kpoints:                 &
   do ik = 1, numkpoints
 !   Compute the wave vector in bohr^-1 for every vector in the list
@@ -410,9 +541,6 @@ kpoints:                 &
             iua = iaorb(iuo)                   ! Equivalent atom in 
                                                !   first unit cell
             iat = iaorb(iorb)                  ! Atom to which orbital belongs
-            is  = isa(iat)                     ! Species index
-            iao = iphorb( iorb )               ! Orbital index within atom
-            rc = rcut( is, iao )               ! Orbital's cutoff radius
             dxa(:) = xa(:,iat) - xa(:,iua)     ! Cell vector of atom iat
             isc(:) = nint( matmul(dxa,rcell) ) ! Cell index of atom iat
 !           Find the index of the unit cell within the supercell where this
@@ -430,50 +558,23 @@ kpoints:                 &
               enddo
             enddo
 
-            trialrcut   = rc
-            trialcenter = xatorb
-            globalindexproj = orb_gindex(is,iao)
-!!          For debugging
-!           write(6,'(a,3i5)')'amn: Node, ik, nincbands = ', &
-! &                                 Node, ik, nincbands
-!           write(6,'(a,4i5,5f12.5)')'amn: Node, iproj, iorb, globalindexproj,  coeff_wan_nao, trialcenter = ', & 
-! &                                        Node, iproj, iorb, globalindexproj, coeffs_wan_nao(index_manifold,iorb), trialcenter
-!           write(6,'(a,5i5,4f12.5)')'amn: iorb, iao, globalindex, iat, is, xa, rc = ',     &
-! &                                        iorb, iao, globalindexproj, iat, is, xa(:,iat),rc
-!!          End debugging
-!           Find the atomic orbitals that ovelap with our radial orbital
-!           centered at trialcenter and with range trialrcut
-            item => get_overlapping_orbitals( scell, rmaxo, trialrcut, na_s, &
- &                                            xa, trialcenter )
-OrbitalQueue2:                                                          &
-            do while (associated(item))
-              r12 = trialcenter - item%center
-              globalindexorbital = orb_gindex( item%specie, item%specieindex )
-              call new_matel('S',                & ! Compute the overlap
- &                      globalindexorbital, & ! Between orbital with globalinde
- &                      globalindexproj,    & ! And projector with globalindex
- &                      r12,                & 
- &                      overlap,            & 
- &                      gradient )
-              phase = -1.0_dp * dot_product( kvector, item%center )
+            do jneig = 1, numhg(iuo)
+              ind  = listhptrg(iuo) + jneig
+              jo   = listhg(ind)
+              juo  = indxuo(jo)
+              xneig(:) = xijloc(:,ind) + xatorb(:)
+              phase = -1.0_dp * dot_product( kvector, xneig )
               exponential = exp( iu * phase )
-!             Loop over occupied bands
-!              write(6,'(a,4i5,2f12.5)')'Node, ik, iproj_local, iproj_global =',&
-! &                     Node, ik, iproj_local, iproj_global,                   &
-! &                     real(coeffs_wan_nao(index_manifold,iorb)), &
-! &                     overlap
 Band_loop2:                                                             &
               do iband = 1, nincbands
-                cstar = conjg( psiloc(item%globalindex,iband) )
-                  Amnmat(iband,iproj_global,ik) =      & 
- &                  Amnmat(iband,iproj_global,ik) +    &
- &                  exponential * cstar * overlap *    &
+                cstar = conjg( psiloc(juo,iband) )
+                  Amnmat(iband,iproj_global,ik) =         & 
+ &                  Amnmat(iband,iproj_global,ik)   +     &
+ &                  exponential * cstar * Sloc(ind) *     &
  &                  coeffs_wan_nao(ind_proj,iorb)
               enddo Band_loop2  ! End loop on the bands
-
-              item => item%nextitem
-            enddo OrbitalQueue2
-          endif ! End if the coefficients are larger than a threshold
+            enddo 
+          endif  ! End if the coefficients are larger than a threshold
         enddo    ! End loop on orbitals in the supercell
       enddo      ! End loop on projectors
       goto 999
@@ -579,9 +680,15 @@ Band_loop:                                                           &
 ! Deallocate some of the arrays
   call de_alloc( psiloc,  'psiloc',  'Amn' )
 #ifdef MPI
-!  if (IOnode) call de_alloc( auxloc,  'auxloc',  'Amn' )
    call de_alloc( auxloc,  'auxloc',  'Amn' )
 #endif
+  if( compute_chempotwann_after_scf .and. (.not. first_chempotwann) ) then
+    call de_alloc( listhg,    name='listhg',    routine= 'amn' )
+    call de_alloc( listhptrg, name='listhptrg', routine= 'amn' )
+    call de_alloc( numhg,     name='numhg',     routine= 'amn' )
+    call de_alloc( xijloc,    name='xijloc',    routine= 'amn' )
+    call de_alloc( Sloc,      name='Sloc',      routine= 'amn' )
+  endif
 
 !! For debugging
 !#ifdef MPI

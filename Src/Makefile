@@ -543,9 +543,9 @@ Fstack.o: basic_type.inc
 Pair.o: basic_type.inc
 alloc.o: m_io.o parallel.o precision.o sys.o
 amn.o: alloc.o atmfuncs.o atomlist.o m_orderbands.o m_trialorbitalclass.o
-amn.o: matel_registry.o mneighb.o new_matel.o parallel.o 
+amn.o: matel_registry.o mneighb.o new_matel.o parallel.o parallelsubs.o
 amn.o: precision.o siesta_geom.o sys.o cellsubs.o
-amn.o: m_switch_local_proj.o siesta_options.o w90_in_types.o
+amn.o: m_switch_local_proj.o siesta_options.o w90_in_types.o sparse_matrices.o
 arw.o: alloc.o parallel.o precision.o sys.o
 atm_types.o: precision.o radial.o
 atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o sys.o
@@ -757,8 +757,7 @@ final_H_f_stress.o: m_ts_options.o metaforce.o molecularmechanics.o naefs.o
 final_H_f_stress.o: nlefsm.o overfsm.o parallel.o siesta_geom.o
 final_H_f_stress.o: siesta_options.o sparse_matrices.o spinorbit.o sys.o
 final_H_f_stress.o: ts_kpoint_scf.o units.o w90_in_types.o
-final_H_f_stress.o: m_w90_in_siesta.o m_wannier_in_nao.o m_chempotwann.o
-final_H_f_stress.o: m_switch_local_proj.o
+final_H_f_stress.o: m_chempotwann.o
 find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
 fire_optim.o: alloc.o m_fire.o m_mpi_utils.o parallel.o precision.o
 fire_optim.o: siesta_options.o units.o
