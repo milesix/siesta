@@ -318,101 +318,97 @@ module m_w90_in_siesta
 
 !   Compute the lists that will be required to handle the coefficients of 
 !   the Wannier functions as an expansion of Numerical Atomic Orbitals
-    if( compute_chempotwann ) then
 
-      nullify( numh_man_proj )
-      call re_alloc( numh_man_proj,  1, n_wannier_manifolds, &
- &                   'numh_man_proj', 'setup_w90_in_siesta' )
-      numh_man_proj(:) = 0
+    nullify( numh_man_proj )
+    call re_alloc( numh_man_proj,  1, n_wannier_manifolds, &
+ &                 'numh_man_proj', 'setup_w90_in_siesta' )
+    numh_man_proj(:) = 0
 
-      nullify( listhptr_man_proj )
-      call re_alloc( listhptr_man_proj,  1, n_wannier_manifolds, &
- &                   'listhptr_man_proj', 'setup_w90_in_siesta' )
-      listhptr_man_proj(:) = 0
+    nullify( listhptr_man_proj )
+    call re_alloc( listhptr_man_proj,  1, n_wannier_manifolds, &
+ &                'listhptr_man_proj', 'setup_w90_in_siesta' )
+    listhptr_man_proj(:) = 0
 
 #ifdef MPI
-      allocate(blocksizeprojectors(n_wannier_manifolds))
+    allocate(blocksizeprojectors(n_wannier_manifolds))
 #endif
 
-      maxnh_man_proj = 0
-      do index_manifold = 1, n_wannier_manifolds
-        numproj = manifold_bands_w90_in(index_manifold)%numbands_w90_in
+    maxnh_man_proj = 0
+    do index_manifold = 1, n_wannier_manifolds
+      numproj = manifold_bands_w90_in(index_manifold)%numbands_w90_in
 #ifdef MPI
-!        Find the number of projectors that will be stored
-!        per node. Use a block-cyclic distribution of numproj over Nodes.
-         call set_blocksizedefault( Nodes, numproj,                  &
- &                                  blocksizeprojectors(index_manifold) )
-         numh_man_proj(index_manifold) = numroc( numproj,           &
- &                  blocksizeprojectors(index_manifold), Node, 0, Nodes )
+!     Find the number of projectors that will be stored
+!     per node. Use a block-cyclic distribution of numproj over Nodes.
+      call set_blocksizedefault( Nodes, numproj,                  &
+ &                               blocksizeprojectors(index_manifold) )
+      numh_man_proj(index_manifold) = numroc( numproj,           &
+ &               blocksizeprojectors(index_manifold), Node, 0, Nodes )
 #else
-         numh_man_proj(index_manifold) = numproj
+      numh_man_proj(index_manifold) = numproj
 #endif
-         maxnh_man_proj = maxnh_man_proj + numh_man_proj(index_manifold)
-      enddo  
+      maxnh_man_proj = maxnh_man_proj + numh_man_proj(index_manifold)
+    enddo  
 
-      listhptr_man_proj(1) = 0
-      do index_manifold = 2, n_wannier_manifolds
-        listhptr_man_proj(index_manifold)=listhptr_man_proj(index_manifold-1) +&
- &         numh_man_proj(index_manifold-1)
-      enddo  
+    listhptr_man_proj(1) = 0
+    do index_manifold = 2, n_wannier_manifolds
+      listhptr_man_proj(index_manifold)=listhptr_man_proj(index_manifold-1) +&
+ &       numh_man_proj(index_manifold-1)
+    enddo  
 
-      call re_alloc( listh_man_proj,  1, maxnh_man_proj, &
- &                   'listh_man_proj', 'setup_w90_in_siesta' )
+    call re_alloc( listh_man_proj,  1, maxnh_man_proj, &
+ &                'listh_man_proj', 'setup_w90_in_siesta' )
 
-
-      index = 0
+    index = 0
 #ifdef MPI
-      blocksize_tmp = BlockSize
+    blocksize_tmp = BlockSize
 #endif
-      do index_manifold = 1, n_wannier_manifolds
-        do iproj_local = 1, numh_man_proj( index_manifold )
-          index = index + 1
+    do index_manifold = 1, n_wannier_manifolds
+      do iproj_local = 1, numh_man_proj( index_manifold )
+        index = index + 1
 #ifdef MPI
-          BlockSize = blocksizeprojectors(index_manifold)
-          call LocalToGlobalOrb(iproj_local, Node, Nodes, iproj_global)
+        BlockSize = blocksizeprojectors(index_manifold)
+        call LocalToGlobalOrb(iproj_local, Node, Nodes, iproj_global)
 #else
-          iproj_global = iproj_local
+        iproj_global = iproj_local
 #endif
-          listh_man_proj(index) = iproj_global
-        enddo
-      enddo 
+        listh_man_proj(index) = iproj_global
+      enddo
+    enddo 
 #ifdef MPI
-      BlockSize = blocksize_tmp
+    BlockSize = blocksize_tmp
 #endif
 
-!!     For debugging
-!      do index_manifold = 1, n_wannier_manifolds
-!         write(6,'(a,4i5)') &
-! &         'setup_w90_in_siesta: index_manifold, Node,numproj,numh_man_proj=',&
-! &         index_manifold, Node, numproj, numh_man_proj(index_manifold) 
-!         write(6,'(a,4i5)') &
-! &         'setup_w90_in_siesta: index_manifold, Node, numproj, listhptr_man_proj =',&
-! &         index_manifold, Node, numproj, listhptr_man_proj(index_manifold) 
-!      enddo  
-!      write(6,'(a,3i5)') &
-! &      'setup_w90_in_siesta: Node, maxnh_man_proj =',               &
-! &                            Node, maxnh_man_proj 
-!      do index = 1, maxnh_man_proj
-!        write(6,'(a,3i5)')                                             &
-!          'setup_w90_in_siesta: Node, index, listh_man_proj  =',       &
-! &                              Node, index, listh_man_proj(index)
-!      enddo 
-!!     End debugging
+!!   For debugging
+!    do index_manifold = 1, n_wannier_manifolds
+!       write(6,'(a,4i5)') &
+! &       'setup_w90_in_siesta: index_manifold, Node,numproj,numh_man_proj=',&
+! &       index_manifold, Node, numproj, numh_man_proj(index_manifold) 
+!       write(6,'(a,4i5)') &
+! &       'setup_w90_in_siesta: index_manifold, Node, numproj, listhptr_man_proj =',&
+! &       index_manifold, Node, numproj, listhptr_man_proj(index_manifold) 
+!    enddo  
+!    write(6,'(a,3i5)') &
+! &    'setup_w90_in_siesta: Node, maxnh_man_proj =',               &
+! &                          Node, maxnh_man_proj 
+!    do index = 1, maxnh_man_proj
+!      write(6,'(a,3i5)')                                             &
+!        'setup_w90_in_siesta: Node, index, listh_man_proj  =',       &
+! &                            Node, index, listh_man_proj(index)
+!    enddo 
+!!   End debugging
 
-!     Allocate the array where the coefficients of the Wannier functions
-!     in a basis of Numerical Atomic Orbitals will be stored
-      nullify( coeffs_wan_nao )
-      call re_alloc( coeffs_wan_nao,                                  &
- &                   1, maxnh_man_proj,                               &
- &                   1, no_s,                                         &
- &                   name='coeffs_wan_nao', routine='wannier_in_nao')
-      coeffs_wan_nao = cmplx(0.0_dp,0.0_dp,kind=dp)
+!   Allocate the array where the coefficients of the Wannier functions
+!   in a basis of Numerical Atomic Orbitals will be stored
+    nullify( coeffs_wan_nao )
+    call re_alloc( coeffs_wan_nao,                                  &
+ &                 1, maxnh_man_proj,                               &
+ &                 1, no_s,                                         &
+ &                 name='coeffs_wan_nao', routine='wannier_in_nao')
+    coeffs_wan_nao = cmplx(0.0_dp,0.0_dp,kind=dp)
 
 #ifdef MPI
-      deallocate(blocksizeprojectors)
+    deallocate(blocksizeprojectors)
 #endif
-
-    endif ! End if compute_chempotwann 
 
 !! For debugging
 !#ifdef MPI
