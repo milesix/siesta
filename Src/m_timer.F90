@@ -276,6 +276,7 @@ subroutine print_report( prog )   ! Write a report of counted times
   logical :: found, opened
 #ifdef MPI
   integer:: MPIerror, MPIstatus(MPI_STATUS_SIZE), MPItag
+  real(dp) :: bc_times(nNodes)
 #endif
 
 ! If already writing a report, return to avoid an infinite recursion
@@ -537,6 +538,17 @@ subroutine print_report( prog )   ! Write a report of counted times
 
   else ! (prog/='all')  =>  write only one prog's time (only in root node)
 
+    iProg = prog_index( prog, found )
+    if (.not.found) call die(errHead//'not found prog = '//trim(prog))
+    totalTime = progData(iProg)%lastTime
+    call MPI_Gather( totalTime, 1, MPI_Double_Precision, &
+                     bc_times, 1, MPI_Double_Precision, 0, &
+                     MPI_Comm_World, MPIerror )
+    if (myNode==0) then
+      write(6,'(a,a10,a,3ES12.4)') 'timer(', prog,') : ', &
+        MINVAL(bc_times), SUM(bc_times)/nNodes, MAXVAL(bc_times)
+    endif
+#ifdef ORIG
     if (myNode==0) then
       ! Look for program name among those stored
       iProg = prog_index( prog, found )
@@ -546,7 +558,7 @@ subroutine print_report( prog )   ! Write a report of counted times
         prog, progData(iProg)%nCalls, progData(iProg)%totTime, &
         progData(iProg)%totTime/totalTime*100
     endif ! (myNode==0)
-
+#endif
   end if ! (prog=='all')
 
 ! Exit point
