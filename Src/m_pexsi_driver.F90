@@ -413,6 +413,7 @@ call check_info(info,"load_real_sym_hs_matrix")
 
 
 if (scf_step == 1) then
+   call timer( "pexsi-symb", 1 )
    ! This is only needed for inertia-counting
    call f_ppexsi_symbolic_factorize_real_symmetric_matrix(&
         plan, &
@@ -425,6 +426,7 @@ if (scf_step == 1) then
         options,&
         info)
    call check_info(info,"symbolic_factorize_complex_symmetric_matrix")
+   call timer( "pexsi-symb", 2 )
 endif
 options%isSymbolicFactorize = 0 ! We do not need it anymore
 !

@@ -7,8 +7,6 @@
 
   CONTAINS
   subroutine pexsi_local_dos( )
-    use m_energies
-  
     use sparse_matrices
     USE siesta_options
     use siesta_geom
@@ -24,7 +22,8 @@
     use m_forces,       only: fa
     use m_spin,         only: nspin
     use atomlist,       only: qs => qtots
-    use m_energies,     only: efs
+    use m_energies,     only: efs, Enaatm, Enascf, Uatm, Uscf, Duscf, &
+                              Duext, Exc, Dxc
     use m_dhscf,        only: dhscf
   
     implicit none

@@ -69,8 +69,6 @@ C     and initializes data structures on the grid.
 
       logical :: ill_defined_sr_so_split
       
-      real(dp)           :: lo_time
-
 #ifdef DEBUG
       call write_debug( '    PRE setup_H0' )
 #endif
@@ -89,18 +87,13 @@ C     Self-energy of isolated ions
 !     forces and stresses in this first pass, only energies.
 
 !     Neutral-atom: energy
-
       call naefs(na_u, na_s, scell, xa, indxua, rmaxv,
      &           isa, Ena, dummy_fa, dummy_stress,
      &           forces_and_stress=.false.)
 
-      call timer('dnaefs', 1)
       call dnaefs(na_u, na_s, scell, xa, indxua, rmaxv,
      &            isa, DEna, dummy_fa, dummy_stress,
      &            forces_and_stress=.false.) 
-      call timer('dnaefs', 2)
-
-      call timer('two-body', 1)
       Ena = Ena + DEna
  
 C     Metadynamics energy
@@ -112,8 +105,6 @@ C     Metadynamics energy
 C     Add on force field contribution to energy
       call twobody( na_u,xa,isa,ucell,Emm,
      &              ifa=0,fa=dummy_fa,istr=0,stress=dummy_stress)
-      call timer('two-body', 2)
-
 !
 !     Now we compute matrix elements of the Kinetic and Non-local
 !     parts of H
