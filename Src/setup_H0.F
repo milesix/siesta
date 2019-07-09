@@ -86,7 +86,6 @@ C     Self-energy of isolated ions
 !     forces and stresses in this first pass, only energies.
 
 !     Neutral-atom: energy
-
       call naefs(na_u, na_s, scell, xa, indxua, rmaxv,
      &           isa, Ena, dummy_fa, dummy_stress,
      &           forces_and_stress=.false.)
@@ -104,7 +103,6 @@ C     Metadynamics energy
 C     Add on force field contribution to energy
       call twobody( na_u,xa,isa,ucell,Emm,
      &              ifa=0,fa=dummy_fa,istr=0,stress=dummy_stress)
-
 !
 !     Now we compute matrix elements of the Kinetic and Non-local
 !     parts of H
