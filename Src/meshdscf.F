@@ -43,7 +43,7 @@ C ----------------------------------------------------------------------
 
       subroutine resetDscfPointers( )
       use alloc, only : de_alloc
-      use m_dscfcomm, only: resetdscfComm
+      use m_dscfComm, only: resetdscfComm
       implicit none
       call resetdscfComm( )
       call de_alloc( listdl,    'listdl',    'meshdscf' )
@@ -88,10 +88,10 @@ C
       use parallelsubs, only : GlobalToLocalOrb, WhichNodeOrb
       use precision
       use alloc
-      use m_dscfComm,   only : dscfcomm
-      use m_dscfComm,   only : DCsize, DCself, DCtotal, DCmax
-      use m_dscfComm,   only : DCmaxnd
-      use m_dscfComm,   only : DCsrc, DCdst, DCsic, DCinvp
+      use m_dscfComm,   only : dscfcomm, CommWaitRcv, CommWaitSnd,
+     &                         DCtotal, DCmax, DCmaxnd, DCncom, DCpid,
+     &                         DCsnd, DCrcv, DCreq, DCsrc, DCdst, DCsic,
+     &                         DCinvp, DCsize, DCself, DCrce, DCsne
 
 
 #ifdef MPI
@@ -109,8 +109,8 @@ C
 C
 C Local variables
 C
-      integer          :: i, ii, io, iio, ip, imp, iu, numdele,
-     &                    maxndmax, nsize, nn, mm 
+      integer          :: i, ii, j, io, iio, ip, imp, iu, numdele,
+     &                    maxndmax, nsize, nn, mm, oNode
       integer, pointer :: ibuffer(:)
 #ifdef MPI
       integer          :: MPIerror, Status(MPI_Status_Size)
@@ -160,54 +160,67 @@ C     Allocate/reallocate memory for numdl and listdlptr
       call re_alloc( listdlptr, 1, max(1,nrowsDscfL), 
      &               'listdlptr', 'meshdscf' )
 
-C     Distribute information about numd globally
-C     Use communications scheduling precomputed in dscfComm
-      nullify( ibuffer )
-      call re_alloc( ibuffer, 1, DCmax, 'ibuffer', 'meshdscf' )
-
 C     This data is in the current process. No communications needed
       do ii= 1, DCself
         io = DCinvp(ii)
-        call GlobalToLocalOrb(io,Node,Nodes,iio)
+        call GlobalToLocalOrb( io, Node, Nodes, iio )
         numdele              = numd(iio)
         numdl(NeedDscfL(io)) = numdele
       enddo
 
-      nn       = DCself + 1
-      maxndmax = 0
+C     Distribute information about numd globally
+C     Use communications scheduling precomputed in dscfComm
+      nullify( ibuffer )
+      call re_alloc( ibuffer, 1, DCtotal, 'ibuffer', 'meshdscf' )
+
+      i = DCself     ! index of ibuffer and DCinvp
+      numdele = 0
 #ifdef MPI
-      do i= 1, DCsize
-C       For all the needed communications
-        numdele = 0
-        if (DCsrc(i).eq.Node) then
-C         If this is the source node, copy data into a buffer
-C         and send it to the receiver.
-          do ii= 1, DCsic(i)
-            io = DCinvp(nn)
-            call GlobalToLocalOrb(io,Node,Nodes,iio)
-            ibuffer(ii) = numd(iio)
-            numdele = numdele + ibuffer(ii)
-            nn = nn + 1
+C     For all the needed communications
+      do ii= 1, DCncom
+        oNode = DCpid(ii)               ! Process Id of the other NODE
+        if (DCrcv(ii)/=0) then
+C         Asynchronous receive: Process data in the next loop
+          call MPI_Irecv( ibuffer(i+1), DCrcv(ii), MPI_INTEGER,
+     &      oNode, 0, MPI_COMM_WORLD, DCreq(1,ii), MPIerror )
+          i = i + DCrcv(ii)             ! Update ibuffer/DCinvp index
+        endif
+        if (DCsnd(ii)/=0) then
+C         Process data into a buffer and do an asynchronous send
+          do j= 1, DCsnd(ii)            ! Loop orbitals needed by oNode
+            io = DCinvp(i+j)
+            call GlobalToLocalOrb( io, Node, Nodes, iio )
+            ibuffer(i+j) = numd(iio)
+            numdele = numdele + ibuffer(i+j)
           enddo
-          call MPI_Send( ibuffer, DCsic(i), MPI_integer,
-     &                   DCdst(i), 1, MPI_Comm_World, MPIerror )
-        else
-C         If this is the destination node, receive data from source node.
-          call mpi_recv( ibuffer, DCsic(i), MPI_integer,
-     &                   DCsrc(i),  1, MPI_Comm_world, Status,
-     &                   MPIerror )
-          do ii= 1, DCsic(i)
-            io                   = DCinvp(nn)
-            numdl(NeedDscfL(io)) = ibuffer(ii)
-            numdele              = numdele + ibuffer(ii)
-            nn                   = nn + 1
+          call MPI_ISEND( ibuffer(i+1), DCsnd(ii), MPI_INTEGER,
+     &      oNode, 0, MPI_Comm_World, DCreq(2,ii), MPIerror )
+          i = i + DCsnd(ii)             ! Update ibuffer/DCinvp index    
+        endif
+      enddo
+
+C     Process asynchronous received data
+      i = DCself       ! Reset buffer index
+C     For all the needed communications
+      do ii= 1, DCncom
+        oNode = DCpid(ii)               ! Process Id of the other NODE
+        if (DCrcv(ii)/=0) then
+C         Wait until Receive communication is complete
+          call MPI_Wait( DCreq(1,ii), status, MPIerror )
+          do j= 1, DCrcv(ii)  ! Loop orbitals received from oNode
+            i = i + 1
+            io = DCinvp(i)
+            numdl(NeedDscfL(io)) = ibuffer(i)
+            numdele = numdele + ibuffer(i)
           enddo
         endif
-        if (numdele.gt.maxndmax) maxndmax = numdele
+        if (DCsnd(ii)/=0) i = i + DCsnd(ii)   ! Update buffer index
       enddo
+C     Check that all asynchronous Sent communication has finished
+      call CommWaitSnd( )
 #endif
       call de_alloc( ibuffer, 'ibuffer', 'meshdscf' )
-      DCmaxnd = maxndmax
+      DCmaxnd = numdele
 
 C     Create listdlptr using numdl
       listdlptr(1) = 0
@@ -223,11 +236,6 @@ C     Allocate/reallocate listdl
       endif
       call re_alloc( listdl, 1, nsize, 'listdl', 'meshdscf' )
 
-C     Distribute information about listd globally
-C     Use communications scheduling precomputed in dscfComm
-      nullify( ibuffer )
-      call re_alloc( ibuffer, 1, DCmaxnd, 'ibuffer', 'meshdscf' )
-
 C     This data is in the current process. No communications needed
       do ii= 1, DCself
         io = DCinvp(ii)
@@ -238,44 +246,73 @@ C     This data is in the current process. No communications needed
         enddo
       enddo
 
-      nn = DCself + 1
+C     Distribute information about listd globally
+C     Use communications scheduling precomputed in dscfComm
+      nullify( ibuffer )
+      call re_alloc( ibuffer, 1, DCmaxnd, 'ibuffer', 'meshdscf' )
+
+      i       = DCself                  ! Reset index of DCinvp
+      numdele = 0                       ! Reset index of ibuffer
 #ifdef MPI
-      do i= 1, DCsize
-C       For all the needed communications
-        if (DCsrc(i).eq.Node) then
-C         If this is the source node, copy data into a buffer
-C         and send it to the receiver.
-          mm = 0
-          do ii= 1, DCsic(i)
-            io = DCinvp(nn)
-            call GlobalToLocalOrb(io,Node,Nodes,iio)
+C     For all the needed communications
+      do ii= 1, DCncom
+        oNode = DCpid(ii)               ! Process Id of the other NODE
+        if (DCrcv(ii)/=0) then
+C         Count the size of the matrix that we will receive
+          DCrce(ii) = 0
+          do j= 1, DCrcv(ii)
+            i = i + 1
+            DCrce(ii) = DCrce(ii) + numdl(NeedDscfL(DCinvp(i)))
+          enddo
+C         Asynchronous receive: Process data in the next loop
+          call MPI_Irecv( ibuffer(numdele+1), DCrce(ii), MPI_INTEGER,
+     &      oNode, 0, MPI_COMM_WORLD, DCreq(1,ii), MPIerror )
+          numdele = numdele + DCrce(ii) ! Update ibuffer index
+        endif
+        if (DCsnd(ii)/=0) then
+C         Process data into a buffer and do an asynchronous send
+          mm = numdele
+          do j= 1, DCsnd(ii)            ! Loop orbitals needed by oNode
+C           Save matrix row in ibuffer
+            i = i + 1
+            io = DCinvp(i)
+            call GlobalToLocalOrb( io, Node, Nodes, iio )
             ibuffer(mm+1:mm+numd(iio)) = listd(listdptr(iio)+1:
      &                                         listdptr(iio)+numd(iio))
             mm = mm + numd(iio)
-            nn = nn + 1
           enddo
-          call MPI_Send( ibuffer, mm, MPI_integer, DCdst(i), 1, 
-     &                   MPI_Comm_World, MPIerror )
-        else
-C         If this is the destination node, receive data from source node.
-          mm = 0
-          do ii= 0, DCsic(i)-1
-            io = DCinvp(nn+ii)
-            mm = mm + numdl(NeedDscfL(io))
-          enddo
-          call mpi_recv( ibuffer, mm, MPI_integer, DCsrc(i), 1,
-     &                   MPI_Comm_world, Status, MPIerror )
-          mm = 0
-          do ii= 1, DCsic(i)
-            io = DCinvp(nn)
-            iu = NeedDscfL(io)
-            listdl(listdlptr(iu)+1:listdlptr(iu)+numdl(iu)) =
-     &              ibuffer(mm+1:mm+numdl(iu))
-            mm = mm + numdl(iu)
-            nn = nn + 1
-          enddo
+          DCsne(ii) = mm - numdele      ! Size of the communication
+          call MPI_ISend( ibuffer(numdele+1), DCsne(ii), MPI_INTEGER,
+     &      oNode, 0, MPI_COMM_WORLD, DCreq(2,ii), MPIerror )
+          numdele = mm                  ! Update ibuffer index
         endif
       enddo
+C     Process asynchronous received data
+      i       = DCself                  ! Reset index of DCinvp
+      numdele = 0                       ! Reset index of ibuffer
+C     For all the needed communications
+      do ii= 1, DCncom
+        oNode = DCpid(ii)               ! Process Id of the other NODE
+        if (DCrcv(ii)/=0) then
+C         Wait until Receive communication is complete
+          call MPI_Wait( DCreq(1,ii), status, MPIerror )
+          do j= 1, DCrcv(ii)  ! Loop orbitals received from oNode
+            i = i + 1
+            io = DCinvp(i)
+            iu = NeedDscfL(io)
+C           Update local matrix structure
+            listdl(listdlptr(iu)+1:listdlptr(iu)+numdl(iu)) =
+     &              ibuffer(numdele+1:numdele+numdl(iu))
+            numdele = numdele + numdl(iu) ! Update buffer index
+          enddo
+        endif
+        if (DCsnd(ii)/=0) then
+          numdele = numdele + DCsne(ii) ! Update buffer index
+          i = i + DCsnd(ii)             ! Update DCinvp index
+        endif
+      enddo
+C     Check that all asynchronous Sent comm has finished
+      call CommWaitSnd( )
 #endif
       call de_alloc( ibuffer, 'ibuffer', 'meshdscf' )
 
@@ -330,21 +367,18 @@ C Argument types and dimensions
 C Internal variables and arrays
       integer           :: io, ispin
 #ifdef MPI
-      integer           :: i, ii, iu, mm, nn, iio, MPIerror,
-     &                     Status(MPI_Status_Size)
+      integer           :: i, j, ii, iu, mm, nn, iio, ini, oNode,
+     &                     MPIerror, Status(MPI_Status_Size)
       real(dp), pointer :: buffer(:)
 #else
       integer           :: il
 #endif
 
+      call timer( "OtoM", 1 )
 C***********************
 C  Parallel execution  *
 C***********************
 #ifdef MPI
-C Allocate local Dscf storage array
-      nullify(buffer)
-      call re_alloc( buffer, 1, DCmaxnd*nspin, 'buffer', 'meshdscf' )
-
 C     Copy the data that is in the current process
       do ii= 1, DCself
         io = DCinvp(ii)
@@ -357,45 +391,73 @@ C     Copy the data that is in the current process
       enddo
       nn = DCself
 
-C     Send or receive the data from/to other processes
-      do i= 1, DCsize
-        if (DCsrc(i).eq.Node) then
-          mm = 0
-          do ispin = 1,nspin
-            do ii= 1, DCsic(i)
-              io = DCinvp(nn+ii)
-              call GlobalToLocalOrb(io,Node,Nodes,iio)
-              buffer(mm+1:mm+numd(iio)) = Dscf(listdptr(iio)+1:
-     &                           listdptr(iio)+numd(iio),ispin)
-              mm = mm + numd(iio)
-            enddo
-          enddo
-          call MPI_Send( buffer, mm, MPI_double_precision, DCdst(i), 1,
-     &                   MPI_Comm_World, MPIerror )
-        else
-          mm = 0
-          do ii= 1, DCsic(i)
-            io = DCinvp(nn+ii)
-            iu = NeedDscfL(io)
-            mm = mm + numdl(iu)
-          enddo
-          mm = mm*nspin
-          call mpi_recv( buffer, mm, MPI_double_precision, DCsrc(i), 1,
-     &                   MPI_Comm_world, Status, MPIerror )
-          mm = 0
-          do ispin = 1,nspin
-            do ii= 1, DCsic(i)
-              io = DCinvp(nn+ii)
-              iu = NeedDscfL(io)
-              DscfL(listdlptr(iu)+1:listdlptr(iu)+numdl(iu),ispin) =
-     &              buffer(mm+1:mm+numdl(iu))
-              mm = mm + numdl(iu)
-            enddo
-          enddo
+C Allocate local Dscf storage array
+      nullify(buffer)
+      call re_alloc( buffer, 1, DCmaxnd*nspin, 'buffer', 'meshdscf' )
+
+      i  = DCself                       ! Reset index of DCinvp
+      nn = 0                            ! Reset index of buffer
+C     For all the needed communications
+      do ii= 1, DCncom
+        oNode = DCpid(ii)               ! Process Id of the other NODE
+        if (DCrcv(ii)/=0) then
+C         Asynchronous receive: Process data in the next loop
+          call MPI_Irecv( buffer(nn+1), DCrce(ii)*nspin,
+     &      MPI_double_precision, oNode, 0, MPI_COMM_WORLD,
+     &      DCreq(1,ii), MPIerror )
+          nn = nn + DCrce(ii)*nspin ! Update buffer index
+          i  = i + DCrcv(ii)        ! Update DCinvp index
         endif
-        nn = nn + DCsic(i)
+        if (DCsnd(ii)/=0) then
+C         Process data into a buffer and do an asynchronous send
+          ini = nn + 1
+          do ispin = 1,nspin
+            do j= 1, DCsnd(ii)
+              io = DCinvp(i+j)
+              call GlobalToLocalOrb( io, Node, Nodes, iio )
+              buffer(nn+1:nn+numd(iio)) = Dscf(listdptr(iio)+1:
+     &                           listdptr(iio)+numd(iio),ispin)
+              nn = nn + numd(iio)       ! Update buffer index
+            enddo
+          enddo
+          call MPI_ISend( buffer(ini), DCsne(ii)*nspin,
+     &      MPI_double_precision, oNode, 0, MPI_COMM_WORLD,
+     &      DCreq(2,ii), MPIerror )
+          i  = i + DCsnd(ii)            ! Update DCinvp index
+        endif
       enddo
+C     Process asynchronous received data
+      i  = DCself                       ! Reset index of DCinvp
+      nn = 0                            ! Reset index of ibuffer
+C     For all the needed communications
+      do ii= 1, DCncom
+        oNode = DCpid(ii)               ! Process Id of the other NODE
+        if (DCrcv(ii)/=0) then
+C         Wait until Receive communication is complete
+          call MPI_Wait( DCreq(1,ii), status, MPIerror )
+          
+          do ispin = 1,nspin
+            do j= 1, DCrcv(ii)          ! Loop orbitals received from oNode
+              io = DCinvp(i+j)
+              iu = NeedDscfL(io)
+C             Save received values in the local matrix
+              DscfL(listdlptr(iu)+1:listdlptr(iu)+numdl(iu),ispin) =
+     &              buffer(nn+1:nn+numdl(iu))
+              nn = nn + numdl(iu)
+            enddo
+          enddo
+          i  = i + DCrcv(ii)        ! Update DCinvp index
+        endif
+        if (DCsnd(ii)/=0) then
+          nn = nn + DCsne(ii)*nspin     ! Update buffer index
+          i = i + DCsnd(ii)             ! Update DCinvp index
+        endif
+      enddo
+C     Check that all asynchronous Sent comm has finished
+      call CommWaitSnd( )
+
       call de_alloc( buffer, 'buffer', 'meshdscf' )
+
 #else
 C*********************
 C  Serial execution  *
@@ -414,7 +476,10 @@ C Get pointer for this row of Dscf and see if it is needed for DscfL
         enddo
       enddo
 #endif
+      call timer( "OtoM", 2 )
+      call timer( "OtoM", 3 )
       end subroutine matrixOtoM
+
 
       subroutine matrixMtoO( maxnvl, maxnv, numVs, listVsptr, nuo, 
      &                       nspin, VsL, Vs )
@@ -470,19 +535,15 @@ C Internal variables and arrays
      &  i, iu, ispin
 
 #ifdef MPI
-      integer           :: ii, MPIerror, Status(MPI_Status_Size), nn,
-     &                     mm, io, iio
+      integer           :: j, ii, ini, MPIerror, nn,mm, io, iio, oNode,
+     &                     Status(MPI_Status_Size)
       real(dp), pointer :: buffer(:)
 #endif
-
+      call timer( "MtoO", 1 )
 C***********************
 C  Parallel execution  *
 C***********************
 #ifdef MPI
-C     Allocate a buffer to Send/Receive data
-      nullify(buffer)
-      call re_alloc( buffer, 1, DCmaxnd*nspin, 'buffer', 'meshdscf' )
-
 C     Copy the data that is in the current process from VsL to Vs
       do ii= 1, DCself
         io = DCinvp(ii)
@@ -496,47 +557,72 @@ C     Copy the data that is in the current process from VsL to Vs
       enddo
       nn = DCself
 
-C     Send or receive the data from/to other processes
-      do i= 1, DCsize
-C       The communication is from dst to src
-        if (DCsrc(i).eq.Node) then
-          mm = 0
-          do ii= 1, DCsic(i)
-            io = DCinvp(nn+ii)
-            call GlobalToLocalOrb(io,Node,Nodes,iio)
-            mm = mm + numVs(iio)
-          enddo
-          mm = mm*nspin
+C     Allocate a buffer to Send/Receive data
+      nullify(buffer)
+      call re_alloc( buffer, 1, DCmaxnd*nspin, 'buffer', 'meshdscf' )
 
-          call mpi_recv( buffer, mm, MPI_double_precision, DCdst(i), 1,
-     &                   MPI_Comm_world, Status, MPIerror )
-          mm = 0
+      i  = DCself                       ! Reset index of DCinvp
+      nn = 0                            ! Reset index of buffer
+C     For all the needed communications
+      do ii= 1, DCncom
+        oNode = DCpid(ii)               ! Process Id of the other NODE
+        if (DCrcv(ii)/=0) then
+C         Process data into a buffer and do an asynchronous send
+          ini = nn + 1
           do ispin = 1,nspin
-            do ii= 1, DCsic(i)
-              io = DCinvp(nn+ii)
-              call GlobalToLocalOrb(io,Node,Nodes,iio)
+            do j= 1, DCrcv(ii)
+              io = DCinvp(i+j)
+              iio = NeedDscfL(io)
+              buffer(nn+1:nn+numdl(iio)) =
+     &        VsL(listdlptr(iio)+1:listdlptr(iio)+numdl(iio),ispin)
+              nn = nn + numdl(iio)       ! Update buffer index
+            enddo
+          enddo
+          call MPI_ISend( buffer(ini), DCrce(ii)*nspin,
+     &      MPI_double_precision, oNode, 0, MPI_COMM_WORLD,
+     &      DCreq(1,ii), MPIerror )
+          i  = i + DCrcv(ii)            ! Update DCinvp index
+        endif
+        if (DCsnd(ii)/=0) then
+C         Asynchronous receive: Process data in the next loop
+          call MPI_Irecv( buffer(nn+1), DCsne(ii)*nspin,
+     &      MPI_double_precision, oNode, 0, MPI_COMM_WORLD,
+     &      DCreq(2,ii), MPIerror )
+          nn = nn + DCsne(ii)*nspin ! Update buffer index
+          i  = i + DCsnd(ii)        ! Update DCinvp index
+        endif
+      enddo
+C     Process asynchronous received data
+      i  = DCself                       ! Reset index of DCinvp
+      nn = 0                            ! Reset index of ibuffer
+C     For all the needed communications
+      do ii= 1, DCncom
+        oNode = DCpid(ii)               ! Process Id of the other NODE
+        if (DCrcv(ii)/=0) then
+          nn = nn + DCrce(ii)*nspin     ! Update buffer index
+          i = i + DCrcv(ii)             ! Update DCinvp index
+        endif
+
+        if (DCsnd(ii)/=0) then
+C         Wait until Receive communication is complete
+          call MPI_Wait( DCreq(2,ii), status, MPIerror )
+          do ispin = 1,nspin
+            do j= 1, DCsnd(ii)          ! Loop orbitals received from oNode
+              io = DCinvp(i+j)
+              call GlobalToLocalOrb( io, Node, Nodes, iio )
+C             Accumulate received data into local VS
               Vs(listVsptr(iio)+1:listVsptr(iio)+numVs(iio),ispin) = 
      &        Vs(listVsptr(iio)+1:listVsptr(iio)+numVs(iio),ispin) + 
-     &        buffer(mm+1:mm+numVs(iio))
-              mm = mm + numVs(iio)
+     &        buffer(nn+1:nn+numVs(iio))
+              nn = nn + numVs(iio)      ! Update buffer index
             enddo
           enddo
-        else
-          mm = 0
-          do ispin = 1,nspin
-            do ii= 1, DCsic(i)
-              io = DCinvp(nn+ii)
-              iio = NeedDscfL(io)
-              buffer(mm+1:mm+numdl(iio)) =
-     &        VsL(listdlptr(iio)+1:listdlptr(iio)+numdl(iio),ispin)
-              mm = mm + numdl(iio)
-            enddo
-          enddo
-          call MPI_Send( buffer, mm, MPI_double_precision, DCsrc(i), 1,
-     &                   MPI_Comm_World, MPIerror )
+          i  = i + DCsnd(ii)            ! Update DCinvp index
         endif
-        nn = nn + DCsic(i)
       enddo
+C     Check that all asynchronous Sent comm has finished
+      call CommWaitRcv( )
+
       call de_alloc( buffer, 'buffer', 'meshdscf' )
 #else
 C*********************
@@ -555,6 +641,9 @@ C stored in the orbital oriented array
         enddo
       enddo
 #endif
+      call timer( "MtoO", 2 )
+      call timer( "MtoO", 3 )
+
       end subroutine matrixMtoO
 
       subroutine matrixMtoOC( maxnvl, maxnv, numVs, listVsptr, nuo, 
@@ -618,6 +707,7 @@ C Internal variables and arrays
      &                     mm, io, iio
       real(dp), pointer :: buffer(:)
 #endif
+      ! TO DO matrixMtoOC
 
 C***********************
 C  Parallel execution  *
