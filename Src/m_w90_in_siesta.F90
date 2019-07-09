@@ -99,6 +99,8 @@ module m_w90_in_siesta
                                        !       listh_man_proj lists
                                        !   Second index: NAO in the
                                        !       supercell
+                                       !   Third index: Spin component
+  use atomlist,           only: no_u   ! Number of orbitals in unit cell
   use atomlist,           only: no_u   ! Number of orbitals in unit cell
                                        ! NOTE: When running in parallel,
                                        !   this is core independent
@@ -194,7 +196,8 @@ module m_w90_in_siesta
                                                    !   the proper papers where 
                                                    !   the implementation is
                                                    !   based on
-
+    use m_spin,        only: spin                  ! Spin configuration
+                                                   !   for SIESTA
 #ifdef MPI
     use parallelsubs,  only: set_blocksizedefault  ! Subroutine to find
                                                    !   a sensible default value
@@ -403,6 +406,7 @@ module m_w90_in_siesta
     call re_alloc( coeffs_wan_nao,                                  &
  &                 1, maxnh_man_proj,                               &
  &                 1, no_s,                                         &
+ &                 1, spin%H,                                       &
  &                 name='coeffs_wan_nao', routine='wannier_in_nao')
     coeffs_wan_nao = cmplx(0.0_dp,0.0_dp,kind=dp)
 
@@ -1276,7 +1280,8 @@ module m_w90_in_siesta
     use files,                     only: slabel        ! Short system label,
                                                        !   used to generate file
                                                        !   names
-    use m_spin,                    only: spin
+    use m_spin,                    only: spin          ! Spin configuration 
+                                                       !   for SIESTA
     use sys,                       only: die
 
     integer, intent(in) :: ispin           ! Spin component
@@ -1312,10 +1317,13 @@ module m_w90_in_siesta
     real(dp)           :: a_real        ! Real part of the Amn matrix element
     real(dp)           :: a_imag        ! Imaginary part of the 
                                         !    Amn matrix element
-    integer            :: MPIError
 
     external     :: io_assign              ! Assign a logical unit
     external     :: io_close               ! Close a logical unit
+
+#ifdef MPI
+    integer            :: MPIError
+#endif
 
 
     if( spin%H .eq. 1) then
@@ -1350,6 +1358,9 @@ module m_w90_in_siesta
 !   between manifolds has to be carried out
     if( r_between_manifolds ) then
       if( index_manifold .eq. 3) then
+#ifdef MPI
+        call MPI_barrier(MPI_Comm_world,MPIError)
+#endif
         Amnmat = cmplx(0.0_dp,0.0_dp,kind=dp)
         if( IONode ) then
           ! Read the A_matrix of the first two manifolds

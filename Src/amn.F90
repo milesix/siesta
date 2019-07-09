@@ -167,6 +167,7 @@ subroutine amn( ispin, index_manifold )
                                                !       listh_man_proj, and
                                                !   Second index: NAO in the
                                                !       supercell
+                                               !   Third index: Spin component
   use siesta_options,     only: w90_in_siesta_threshold_coeff
                                                     ! Threshold for the real 
                                                     !   part of the coefficients
@@ -534,7 +535,7 @@ kpoints:                 &
         ind_proj     = listhptr_man_proj(index_manifold) + iproj_local
         iproj_global = listh_man_proj(ind_proj)
         do iorb = 1, no_s
-          if( abs(real(coeffs_wan_nao(ind_proj,iorb))) .gt. &
+          if( abs(real(coeffs_wan_nao(ind_proj,iorb,ispin))) .gt. &
  &            w90_in_siesta_threshold_coeff ) then 
             iuo = indxuo (iorb)                ! Equivalent orbital in 
                                                !   first unit cell
@@ -571,7 +572,7 @@ Band_loop2:                                                             &
                   Amnmat(iband,iproj_global,ik) =         & 
  &                  Amnmat(iband,iproj_global,ik)   +     &
  &                  exponential * cstar * Sloc(ind) *     &
- &                  coeffs_wan_nao(ind_proj,iorb)
+ &                  coeffs_wan_nao(ind_proj,iorb,ispin)
               enddo Band_loop2  ! End loop on the bands
             enddo 
           endif  ! End if the coefficients are larger than a threshold

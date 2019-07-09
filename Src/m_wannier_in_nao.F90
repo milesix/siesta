@@ -40,7 +40,7 @@ module m_wannier_in_nao
 
   CONTAINS
 
-  subroutine wannier_in_nao( index_manifold )
+  subroutine wannier_in_nao( ispin, index_manifold )
     use parallel,       only: Nodes          ! Total number of Nodes
     use parallel,       only: Node           ! Local Node
     use parallel,       only: IONode         ! Input/output node
@@ -134,6 +134,7 @@ module m_wannier_in_nao
                                              !       listh_man_proj, and
                                              !   Second index: NAO in the
                                              !       supercell
+                                             !   Third index: Spin component
     use m_switch_local_projection, only: coeffs
                                              ! Coefficients of the wavefunctions
                                              !   First  index: orbital
@@ -192,6 +193,7 @@ module m_wannier_in_nao
 !
 ! Input variables
 !
+    integer, intent(in) :: ispin            ! Spin component
     integer, intent(in) :: index_manifold   ! Index of the manifold
                                             !   that is wannierized
 
@@ -468,8 +470,8 @@ module m_wannier_in_nao
           skxmu = dsin(kxmu)
 
           do iprojm = 1, num_proj
-            coeffs_wan_nao(ind,iorb) =                         &
- &            coeffs_wan_nao(ind,iorb) +                       &
+            coeffs_wan_nao(ind,iorb,ispin) =                   &
+ &            coeffs_wan_nao(ind,iorb,ispin) +                 &
  &            u_matrix(iprojm,iproj_global,ik)           *     &
  &            coeffs_opt(iuo,iprojm,ik)                  *     &
  &            cmplx(ckxmu,skxmu,kind=dp) 
@@ -479,8 +481,8 @@ module m_wannier_in_nao
 
       enddo   ! End loop on atomic orbitals
 !     Divide by the number of k-points
-      coeffs_wan_nao(ind,:) =                                  &
- &      coeffs_wan_nao(ind,:) / num_kpts
+      coeffs_wan_nao(ind,:,ispin) =                                  &
+ &      coeffs_wan_nao(ind,:,ispin) / num_kpts
      
     enddo 
 
@@ -490,8 +492,9 @@ module m_wannier_in_nao
 !      iproj_global = listh_man_proj(ind)
 !      do iorb = 1, no_s
 !        write(6,'(a,7i5,2f12.5)')   &
-! &        'Node, Nodes, iproj, ind, iproj_global, iorb, indxuo, coeffs_wan_nao = ',  &
-! &         Node, Nodes, iproj, ind, iproj_global, iorb, indxuo(iorb), coeffs_wan_nao(ind,iorb)
+! &        'Node, Nodes, iproj, ind, iproj_global, iorb, indxuo, coeffs_wan=',&
+! &         Node, Nodes, iproj, ind, iproj_global, iorb, indxuo(iorb),        &
+! &         coeffs_wan_nao(ind,iorb,ispin)
 !      enddo 
 !    enddo 
 !!   End debugging
@@ -520,10 +523,11 @@ module m_wannier_in_nao
 !     do iproj = 1, numh_man_proj(index_manifold)
 !       do iorb = 1, no_s
 !!!         if( indxuo(iorb) .eq. 15) then
-!!         if( aimag(coeffs_wan_nao(index_manifold,iorb)) .gt. 1.d-5 ) then
+!!         if( aimag(coeffs_wan_nao(index_manifold,iorb,ispin)) .gt. 1.d-5 ) then
 !         if( Node .eq. 1) then
-!         write(6,'(a,4i5,5f12.5)') ' Node, Nodes, iproj, iorb, coeffs_wan_nao = ', &
-! &         Node, Nodes, iproj, iorb, coeffs_wan_nao(index_manifold,iorb), xa(:,iaorb(iorb))
+!         write(6,'(a,4i5,5f12.5)') ' Node, Nodes, iproj, iorb, coeffs_wan=', &
+! &         Node, Nodes, iproj, iorb,                                         &
+! &         coeffs_wan_nao(index_manifold,iorb,ispin), xa(:,iaorb(iorb))
 !         endif
 !!         endif
 !       enddo 
@@ -535,8 +539,8 @@ module m_wannier_in_nao
       ind          = listhptr_man_proj(index_manifold) + iproj
       iproj_global = listh_man_proj(ind)
       do iorb = 1, no_s
-        psi(1,iorb,iproj) = real(coeffs_wan_nao(ind,iorb))
-        psi(2,iorb,iproj) = aimag(coeffs_wan_nao(ind,iorb))
+        psi(1,iorb,iproj) = real(coeffs_wan_nao(ind,iorb,ispin))
+        psi(2,iorb,iproj) = aimag(coeffs_wan_nao(ind,iorb,ispin))
 !!       For debugging
 !        if( abs(psi(1,iorb,iproj)) .gt. 1.d-5) then
 !        if (iproj .eq. 4 ) then

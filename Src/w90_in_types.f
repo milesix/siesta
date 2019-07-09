@@ -189,7 +189,7 @@
 !
 ! Variables related with the expansion of a Wannier in a basis of NAO
 !
-      complex(dp), pointer :: coeffs_wan_nao(:,:) 
+      complex(dp), pointer :: coeffs_wan_nao(:,:,:) 
                                        ! Coefficients of the
                                        !   Wannier functions in a basis
                                        !   of NAO
@@ -200,6 +200,7 @@
                                        !       listh_man_proj, and
                                        !   Second index: NAO in the
                                        !       supercell
+                                       !   Third index: Spin
 
 !
 ! Variables related with the computation of the matrix elements

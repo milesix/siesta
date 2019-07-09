@@ -92,6 +92,7 @@
                                                !       listh_man_proj, and
                                                !   Second index: NAO in the
                                                !       supercell
+                                               !   Third index: Spin component
   use w90_in_siesta_types, only: chempotwann_val
                                                ! Chemical potential
                                                !   applied to shift the energy 
@@ -302,8 +303,9 @@
 !   do iproj_local = 1, numh_man_proj(index_manifold)
 !     do io_global = 1, no_s
 !       write(6,'(a,4i5,2f12.5)') &
-! &       'Node, Nodes, iproj, iorb, coeffs_wan_nao(iproj_local,iorb) = ',   &
-! &        Node, Nodes, iproj_local, io_global, coeffs_wan_nao(iproj_local,io_global) 
+! &       'Node, Nodes, iproj, iorb, coeffs_wan_nao = ',                     &
+! &        Node, Nodes, iproj_local, io_global,                              &
+! &        coeffs_wan_nao(iproj_local,io_global,ispin) 
 !     enddo
 !   enddo
 !!  End debugging
@@ -336,9 +338,9 @@
          ind_proj     = listhptr_man_proj(index_manifold) + iproj_local
          iproj_global = listh_man_proj(ind_proj)
          H_chempotwann_full(ind,ispin) = H_chempotwann_full(ind,ispin)     +   &
- &                                   coeffs_wan_nao(iproj_local,iuo)       *   &
+ &                                   coeffs_wan_nao(iproj_local,iuo,ispin) *   &
  &                                   chempotwann_val(iproj_global)         *   &
- &                                   coeffs_wan_nao(iproj_local,jneig)  
+ &                                   coeffs_wan_nao(iproj_local,jneig,ispin)  
        enddo 
 
 !!      For debugging

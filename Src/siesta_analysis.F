@@ -515,7 +515,7 @@ C
             call diagonalizeHk( ispin, index_manifold )
             call compute_matrices( ispin, index_manifold )
             call compute_wannier( ispin, index_manifold )
-            call wannier_in_nao( index_manifold )
+            call wannier_in_nao( ispin, index_manifold )
           enddo 
         enddo
         call deallocate_wannier
