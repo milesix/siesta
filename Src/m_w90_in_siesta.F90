@@ -463,6 +463,8 @@ module m_w90_in_siesta
     use fdf
     use files,    only: slabel          ! Short system label,
                                         !   used to generate file names
+    use m_spin,   only: spin            ! Spin configuration
+                                        !   for SIESTA
 
 !   Internal variables
     integer :: index_manifold           ! Counter for the number of manifolds
@@ -739,7 +741,12 @@ module m_w90_in_siesta
 !   The correction will be applied only on the bands associated with 
 !   the first manifold, that is why we are using this number of bands
 !   to allocate the variable.
-    allocate(chempotwann_val(manifold_bands_w90_in(1)%numbands_w90_in))
+    nullify( chempotwann_val )
+    call re_alloc( chempotwann_val,                              &
+ &                 1, manifold_bands_w90_in(1)%numbands_w90_in,  &
+ &                 1, spin%H,                                    & 
+ &                 name='chempotwann_val',                       &
+ &                 routine='read_w90_in_siesta_specs')
     chempotwann_val = 0.0_dp
     
 !   Read the chemical potential associated with a given Wannier function
@@ -753,18 +760,28 @@ module m_w90_in_siesta
 
 !   Read the content of the block, line by line
     do while(fdf_bline(bfdf, pline))       
-      if (.not. fdf_bmatch(pline,'ivn')) &   ! We expect that the first line
- &      call die('Wrong format in ChemicalPotentialWannier')
+      if( spin%H .eq. 1) then
+        if (.not. fdf_bmatch(pline,'ivn')) &   ! We expect that the first line
+ &        call die('Wrong format in ChemicalPotentialWannier')
+      elseif( spin%H .eq. 2) then
+        if (.not. fdf_bmatch(pline,'ivvn')) &  ! We expect that the first line
+ &        call die('Wrong format in ChemicalPotentialWannier')
+      endif
       factor = fdf_convfac( fdf_bnames(pline,1), 'Ry' )
       index_wannier = fdf_bintegers(pline,1)
-      chempotwann_val(index_wannier) = fdf_breals(pline,1) * factor
+      if( spin%H .eq. 1) then
+        chempotwann_val(index_wannier,1) = fdf_breals(pline,1) * factor
+      else if( spin%H .eq. 2) then
+        chempotwann_val(index_wannier,1) = fdf_breals(pline,1) * factor
+        chempotwann_val(index_wannier,2) = fdf_breals(pline,2) * factor
+      endif
     enddo ! end loop over all the lines in the block ChemicalPotentialWannier
 
 !!   For debugging
 !    do index_wannier = 1, manifold_bands_w90_in(1)%numbands_w90_in
-!      write(6,'(a,i5,a,f12.5)')                                              &
+!      write(6,'(a,i5,a,2f12.5)')                                              &
 ! &      'read_w90_in_siesta_specs: Chemical potential for Wannier number ',  &
-! &      index_wannier, ' = ' , chempotwann_val(index_wannier) 
+! &      index_wannier, ' = ' , chempotwann_val(index_wannier,:) 
 !    enddo 
 !!   End debugging
         

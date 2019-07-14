@@ -41,6 +41,8 @@
   use atomlist,       only: no_u          ! Number of orbitals in unit cell
                                           ! NOTE: When running in parallel,
                                           !   this is core independent
+  use m_spin,         only: spin          ! Spin configuration
+                                          !   for SIESTA
 !
 ! Allocation/Deallocation routines
 !
@@ -65,6 +67,7 @@
 
   integer i_man     ! Counter for loops on manifolds
   integer iorb      ! Counter for loops on orbitals
+  integer ispin     ! Counter for loops on spin
   integer nwannier90! Number of bands considered for Wannier transformation
 
 #ifdef DEBUG
@@ -163,12 +166,14 @@
  &                 0,MPI_Comm_World,MPIerror)
 
   if (Node.ne.0) then
-    allocate(chempotwann_val(manifold_bands_w90_in(1)%numbands_w90_in))
+    allocate(chempotwann_val(manifold_bands_w90_in(1)%numbands_w90_in,spin%H))
   end if
-  call MPI_Bcast(chempotwann_val,                                            &
- &               manifold_bands_w90_in(1)%numbands_w90_in,                   &
- &               mpi_double_precision,0,                                     &
- &               MPI_Comm_World,MPIerror)
+  do ispin = 1, spin%H
+    call MPI_Bcast(chempotwann_val(:,ispin),                                 &
+ &                 manifold_bands_w90_in(1)%numbands_w90_in,                 &
+ &                 mpi_double_precision,0,                                   &
+ &                 MPI_Comm_World,MPIerror)
+  enddo
 
 #ifdef DEBUG
   call write_debug( '  POS broadcast_w90_in_siesta' )
@@ -257,6 +262,11 @@
 !    write(6,'(a,2i5,l5)')                                                    &
 ! &    'broadcast_w90_in_siesta: Node, i_manifold, write_hr        = ',       &
 ! &    Node, i_man, manifold_bands_w90_in(i_man)%write_hr
+!  enddo 
+!  do i_man = 1, manifold_bands_w90_in(1)%numbands_w90_in
+!    write(6,'(a,2i5,2f12.5)')                                                &
+! &    'broadcast_w90_in_siesta: Node, iwannier, chempot = ',                 &
+! &    Node, i_man, chempotwann_val(i_man,:)
 !  enddo 
 !! End debugging
 

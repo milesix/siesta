@@ -221,12 +221,14 @@
                                        !   matrix elements of the Hamiltonian
                                        !   with the chemical potential of the
                                        !   Wanniers is called?
-      real(dp), pointer :: chempotwann_val(:)
+      real(dp), pointer :: chempotwann_val(:,:)
                                        ! Chemical potential 
                                        !   applied to shift the energy of a 
                                        !   the matrix elements in real space
                                        !   associated with a given 
                                        !   Wannier function
+                                       !   First index: Wannier function
+                                       !   Second index: Spin component 
       integer, pointer :: numh_man_proj(:)     => null()
                                        ! Number of projections that will be
                                        !   handled in the local node

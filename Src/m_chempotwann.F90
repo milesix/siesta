@@ -339,7 +339,7 @@
          iproj_global = listh_man_proj(ind_proj)
          H_chempotwann_full(ind,ispin) = H_chempotwann_full(ind,ispin)     +   &
  &                                   coeffs_wan_nao(iproj_local,iuo,ispin) *   &
- &                                   chempotwann_val(iproj_global)         *   &
+ &                                   chempotwann_val(iproj_global,ispin)   *   &
  &                                   coeffs_wan_nao(iproj_local,jneig,ispin)  
        enddo 
 

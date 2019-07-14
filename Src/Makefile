@@ -578,7 +578,7 @@ born_charge.o: precision.o siesta_geom.o siesta_options.o sparse_matrices.o
 broadcast_basis.o: atm_types.o chemical.o ldau_specs.o m_mpi_utils.o parallel.o
 broadcast_basis.o: radial.o
 broadcast_w90_in.o: siesta_options.o m_mpi_utils.o parallel.o files.o 
-broadcast_w90_in.o: w90_in_types.o atomlist.o alloc.o
+broadcast_w90_in.o: w90_in_types.o atomlist.o alloc.o m_spin.o
 broadcast_projections.o: m_trialorbitalclass.o parallel.o m_switch_local_proj.o
 broyden_optim.o: m_broyddj_nocomm.o m_memory.o parallel.o precision.o
 broyden_optim.o: siesta_options.o sys.o units.o
