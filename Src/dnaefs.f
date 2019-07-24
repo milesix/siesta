@@ -63,6 +63,8 @@ C Internal variables ......................................................
      .  dvdr, fij(3), rij, r2min, vij, volcel, volume
        
       parameter ( r2min = 1.d-15 )
+      call timer( 'dnaefs', 1 )
+
 C ......................
 
       call mneighb( scell, 2.0d0*rmaxv, na, xa, 0, 0, nnia )
@@ -100,5 +102,7 @@ C Find neighbour atoms
         enddo
       enddo
       call reset_neighbour_arrays( )
+
+      call timer( 'dnaefs', 2 )
       end subroutine dnaefs
       end module m_dnaefs

@@ -1350,7 +1350,7 @@ contains
     use mpi_siesta, only: MPI_Comm_World
     use elpa
 #endif
-
+    implicit none
     ! Passed variables
     integer, intent(out) :: ierror
     integer, intent(in) :: iscf
@@ -1416,7 +1416,6 @@ contains
 
     ! Local variables for loops etc.
     integer :: i
-
     integer, external :: numroc
 
     ! Start time count
@@ -2273,7 +2272,7 @@ subroutine rdiag( H, S, n, nm, nml, w, Z, neig, iscf, ierror, BlockSize)
   integer, intent(in) :: iscf
   integer, intent(out) :: ierror
   integer, intent(in) :: BlockSize
-  
+
   call diag_r(H, S, N, nm, nml, w, Z, neig, iscf, ierror, BlockSize)
   
 end subroutine rdiag
