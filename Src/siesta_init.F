@@ -136,20 +136,21 @@ C     Initialise MPI and set processor number
       call MPI_Initialized( initialized, MPIerror )
       if (.not.initialized) then
 #ifdef _OPENMP
-         call MPI_Init_Thread(MPI_Thread_Funneled, i, MPIerror)
-         if ( MPI_Thread_Funneled /= i ) then
-            ! the requested threading level cannot be asserted
-            ! Notify the user
-           write(*,'(a)') '!!! Could not assert funneled threads'
-         end if
+        call MPI_Init_Thread(MPI_Thread_Funneled, i, MPIerror)
+        if ( MPI_Thread_Funneled /= i ) then
+          ! the requested threading level cannot be asserted
+          ! Notify the user
+          write(*,'(a)') '!!! Could not assert funneled threads'
+        end if
 #else
-         call MPI_Init( MPIerror )
+        call MPI_Init( MPIerror )
 #endif
 #ifdef _TRACE_
-        call MPItrace_shutdown( )
+        call Extrae_init( )
+        call Extrae_Restart( )
 #endif
       endif ! (.not.initialized)
-      
+
       call MPI_Comm_Rank( MPI_Comm_World, Node, MPIerror )
       call MPI_Comm_Size( MPI_Comm_World, Nodes, MPIerror )
       

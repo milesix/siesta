@@ -477,7 +477,6 @@ C Get pointer for this row of Dscf and see if it is needed for DscfL
       enddo
 #endif
       call timer( "OtoM", 2 )
-      call timer( "OtoM", 3 )
       end subroutine matrixOtoM
 
 
@@ -642,7 +641,6 @@ C stored in the orbital oriented array
       enddo
 #endif
       call timer( "MtoO", 2 )
-      call timer( "MtoO", 3 )
 
       end subroutine matrixMtoO
 

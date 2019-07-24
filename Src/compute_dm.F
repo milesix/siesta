@@ -74,6 +74,10 @@
 
       if (SIESTA_worker) call timer( 'compute_dm', 1 )
 
+#ifdef _TRACE_
+      call Extrae_shutdown( )
+#endif
+
 #ifdef MPI
       call MPI_Bcast(isolve,1,MPI_integer,0,true_MPI_Comm_World,mpierr)
 #endif
@@ -289,9 +293,12 @@ c$$$     &           S, 'S.matrix')
       end if
 
       call timer( 'compute_dm', 2 )
-      call timer( 'compute_dm', 3 )
 #ifdef SIESTA__PEXSI
       if (ionode) call memory_snapshot("after compute_DM")
+#endif
+
+#ifdef _TRACE_
+      call Extrae_Restart( )
 #endif
 
 !-----------------------------------------------------------------------END

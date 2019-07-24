@@ -192,8 +192,6 @@ C     parameters
       this%NROWS = hi1 - lo1 + 1
       this%NCOLS = hi2 - lo2 + 1
 
-      print *, "init: rows, cols:", this%NROWS, this%NCOLS
-
       this%SpHa1 => SpHa1
       this%SpHa2 => SpHa2
 
@@ -219,9 +217,6 @@ C     parameters
       this%MAT_COLS = n_harms_hi - n_harms_lo
       this%BASE_SPHA2 = n_harms_lo
 
-      print *, "init: dim1, dim2:", this%MAT_ROWS, this%MAT_COLS
-      print *, "init: base1, base2:", this%BASE_SPHA1, this%BASE_SPHA2
-      
       ! Compute and reduce Radial Expansion
       call this%compute_RadExp( )
       call this%reduce_RadExp( )
@@ -654,9 +649,9 @@ C           Interpolate radial functions and obtain SH expansion
       logical,       save :: init = .false.
       TYPE(allocDefaults) :: OLDEFS
 
-      
       ! Initialize only once
       if (init) return
+      call timer( "iniMATEL", 1 )
       init = .true.
 
        ! Set allocation defaults
@@ -758,6 +753,8 @@ C           Interpolate radial functions and obtain SH expansion
       ! Restore allocation defaults
       CALL alloc_default( restore=oldefs )
       
+      call timer( "iniMATEL", 2 )
+
       end subroutine init_matel
 !--------------------------------------------------------------------
       subroutine init_matel_wannier( numproj )

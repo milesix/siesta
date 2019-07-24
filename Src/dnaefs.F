@@ -69,6 +69,8 @@ C Internal variables ......................................................
 
       integer  :: div, mod, first, last
 
+      call timer( 'dnaefs', 1 )
+
 C ......................
       div   = nua / Nodes
       mod   = nua - div*Nodes
@@ -120,6 +122,8 @@ C Find neighbour atoms
         endif
       endif
 #endif
+
+      call timer( 'dnaefs', 2 )
 
       end subroutine dnaefs
       end module m_dnaefs

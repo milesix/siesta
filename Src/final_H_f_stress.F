@@ -112,6 +112,7 @@
 
 
 !------------------------------------------------------------------------- BEGIN
+      call timer( 'FINAL_HF', 1 )
 
       not_using_auxcell = (no_s == no_u)
       
@@ -309,7 +310,10 @@
 
       ! Determine whether anything should be saved
       ! If not, return immediately
-      if ( .not. SCFconverged ) return
+      if ( .not. SCFconverged ) then
+        call timer( 'FINAL_HF', 2 )
+        return
+      endif
 
 ! Save Hamiltonian and overlap matrices ............................
 ! Only in HSX format now.  Use Util/HSX/hsx2hs to generate an HS file
@@ -405,6 +409,7 @@
         call daxpy(size(S_tmp),Efs(2)-Efs(1),S_tmp(1),1,H_tmp(1,2),1)
       end if
 
+      call timer( 'FINAL_HF', 2 )
 !----------------------------------------------------------------------- END
       END subroutine final_H_f_stress
       END module m_final_H_f_stress

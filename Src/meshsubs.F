@@ -121,6 +121,7 @@ C     Functions
 #ifdef DEBUG
       call write_debug( '      PRE InitMesh' )
 #endif
+      call timer( "InitMesh", 1 )
 
 ! ----------------------------------------------------------------------
 ! Mesh initialization
@@ -255,6 +256,8 @@ C     Find sub-points
 
 C     Create extended mesh arrays for the first data distribution
       call setupExtMesh( UNIFORM, rmax )
+
+      call timer( "InitMesh", 2 )
 
 #ifdef DEBUG
       call write_debug( '      POS InitMesh' )

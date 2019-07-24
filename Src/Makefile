@@ -841,7 +841,8 @@ m_diis.o: parallel.o precision.o
 m_dipol.o: precision.o
 m_dminim.o: densematrix.o files.o parallel.o parallelsubs.o precision.o
 m_dminim.o: siesta_options.o sys.o
-m_dscfcomm.o: alloc.o parallel.o parallelsubs.o precision.o schecomm.o
+m_dscfcomm.o: alloc.o m_mpi_utils.o parallel.o parallelsubs.o precision.o
+m_dscfcomm.o: schecomm.o
 m_efield.o: atmfuncs.o m_cite.o m_ts_global_vars.o mesh.o parallel.o
 m_efield.o: precision.o siesta_cml.o siesta_geom.o sys.o units.o
 m_energies.o: precision.o
@@ -1158,7 +1159,8 @@ mneighb.o: alloc.o precision.o sys.o
 molecularmechanics.o: alloc.o parallel.o precision.o sys.o units.o
 moments.o: atmfuncs.o parallel.o parallelsubs.o precision.o spinorbit.o
 moreParallelSubs.o: alloc.o m_io.o parallel.o precision.o sys.o
-moremeshsubs.o: alloc.o mesh.o parallel.o precision.o schecomm.o sys.o
+moremeshsubs.o: alloc.o m_mpi_inplace.o mesh.o parallel.o precision.o
+moremeshsubs.o: schecomm.o sys.o
 mulliken.o: alloc.o atmfuncs.o m_spin.o parallel.o parallelsubs.o precision.o
 mulliken.o: siesta_cml.o
 naefs.o: atmfuncs.o m_mpi_inplace.o matel_mod.o mneighb.o parallel.o
@@ -1274,9 +1276,9 @@ setup_hamiltonian.o: siesta_geom.o siesta_options.o sparse_matrices.o sys.o
 setup_ordern_indexes.o: alloc.o domain_decom.o parallel.o spatial.o
 shaper.o: atmfuncs.o mneighb.o precision.o
 show_distribution.o: atomlist.o parallel.o parallelsubs.o siesta_geom.o sys.o
-siesta.o: alloc.o extrae_module.o m_io_yaml.o m_mpi_utils.o m_steps.o
-siesta.o: parallel.o siesta_analysis.o siesta_end.o siesta_forces.o
-siesta.o: siesta_init.o siesta_move.o siesta_options.o siesta_tddft.o
+siesta.o: alloc.o m_io_yaml.o m_mpi_utils.o m_steps.o parallel.o
+siesta.o: siesta_analysis.o siesta_end.o siesta_forces.o siesta_init.o
+siesta.o: siesta_move.o siesta_options.o siesta_tddft.o
 siesta2wannier90.o: files.o m_digest_nnkp.o m_spin.o m_trialorbitalclass.o
 siesta2wannier90.o: parallel.o precision.o siesta_options.o sys.o
 siesta_analysis.o: alloc.o atomlist.o bands.o basis_enthalpy.o dhscf.o files.o

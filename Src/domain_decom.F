@@ -126,6 +126,8 @@ C     Input variables
       integer          :: MPIerror
       logical,    save :: firsttime = .true.
 
+      call timer( 'DomainDe', 1 )
+
       if (firsttime) then
         firsttime = .false.
       else
@@ -171,6 +173,7 @@ C       Set orbitals to partitions
         call de_alloc( gperm, 'gperm', 'domainDecom' )
 
       endif
+      call timer( 'DomainDe', 2 )
 
       end subroutine domainDecom
 
