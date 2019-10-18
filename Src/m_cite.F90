@@ -74,7 +74,7 @@ module m_cite
   ! Increment this after having added a new
   ! citation!
   ! OTHERWISE YOU WILL EXPERIENCE A SEG-FAULT.
-  integer, parameter :: N_citations = 12
+  integer, parameter :: N_citations = 13
 
   private
 
@@ -220,6 +220,15 @@ contains
       case ( "10.1088/0953-8984/24/8/086005" )
         ! Off-site SOC
         lID = 10
+      case ( "10.1103/PhysRevB.56.12847" )
+        ! Maximally Localized Wannier Function Paper
+        lID = 11
+      case ( "10.1016/j.cpc.2014.05.003" )
+        ! Wannier90 paper
+        lID = 12
+      case ( "arXiv/cond-mat/0407677" )
+        ! Lowdin orthogonalization
+        lID = 13
       end select
 
     end if
@@ -326,18 +335,6 @@ contains
       cit%cite_key = "FernandezSeivane2006"
       cit%doi = "10.1088/0953-8984/19/19/489001"
 
-    case ( "10.1103/PhysRevB.56.12847" )
-       ! Maximally Localized Wannier Function Paper
-       cit%comment = "Maximally Localized Wannier Function paper"
-       cit%author = "N. Marzari and D. Vanderbilt"
-       cit%title = "Maximally localized generalized Wannier functions for composite energy bands"
-       cit%doi = "10.1103/PhysRevB.56.12847"
-       cit%journal = "Physical Review B"
-       cit%year = 1997
-       cit%volume = "56"
-       cit%issue = "20"
-       cit%page = "12847"
-       cit%cite_key = "Marzari1997"
     case ( 10 )
       ! Off-site SOC
       cit%comment = "Spin-orbit coupling (off-site approximation)"
@@ -350,9 +347,21 @@ contains
       cit%issue = "086005"
       cit%cite_key = "Cuadrado2012"
       cit%doi = "10.1088/0953-8984/24/8/086005"
-       ID = 10
+
+    case ( 11 )
+       ! Maximally Localized Wannier Function Paper
+       cit%comment = "Maximally Localized Wannier Function paper"
+       cit%author = "N. Marzari and D. Vanderbilt"
+       cit%title = "Maximally localized generalized Wannier functions for composite energy bands"
+       cit%doi = "10.1103/PhysRevB.56.12847"
+       cit%journal = "Physical Review B"
+       cit%year = 1997
+       cit%volume = "56"
+       cit%issue = "20"
+       cit%page = "12847"
+       cit%cite_key = "Marzari1997"
        
-    case ( "10.1016/j.cpc.2014.05.003" )
+    case ( 12 )
        ! Wannier90 paper
        cit%comment = "Wannier90 paper"
        cit%author = "A. A. Mostofi and J. R. Yates and G. Pizzi and Y.-S. Lee and I. Souza and D. Vanderbilt and N. Marzari"
@@ -364,9 +373,8 @@ contains
        cit%issue = "8"
        cit%page = "2309"
        cit%cite_key = "Wannier90"
-       ID = 11
 
-    case ( "arXiv/cond-mat/0407677" )
+    case ( 13 )
        ! article with the explanation of the Lowdin orthonormalization 
        ! is explained
        cit%comment = "Lowdin orthonormalization"
@@ -379,7 +387,6 @@ contains
        cit%issue = ""
        cit%page = ""
        cit%cite_key = "Lowdin"
-       ID = 12
        
 
     case default

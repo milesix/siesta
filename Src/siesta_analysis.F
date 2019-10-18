@@ -546,7 +546,7 @@ C
 !         that will be used in the wannierization routines.
 !         Those routines comes from the WANNIER90 code.
           call switch_local_projection( index_manifold )
-          do ispin = 1, nspin
+          do ispin = 1, spin%H
             call diagonalizeHk( ispin )
             call compute_matrices( ispin, index_manifold )
             call compute_wannier( ispin, index_manifold )

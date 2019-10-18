@@ -43,6 +43,7 @@ module m_wannier_in_nao
   subroutine wannier_in_nao( ispin, index_manifold )
     use parallel,       only: Nodes          ! Total number of Nodes
     use parallel,       only: Node           ! Local Node
+    use parallel,       only: BlockSize      ! BlockSize
     use parallel,       only: IONode         ! Input/output node
     use siesta_geom,    only: xa             ! Atomic positions for all the
                                              !   atoms in the supercell
@@ -113,9 +114,9 @@ module m_wannier_in_nao
                                        ! listh_man_proj(listhptr_man_proj(1)+1)
                                        !   is the first projector of the first
                                        !   manifold handled by the local node
-                                       ! listh_man_proj(listhptr_man_proj(io)+1)                                       !   is thus the first projector of
+                                       ! listh_man_proj(listhptr_man_proj(io)+1)                                                                   !   is thus the first projector of
                                        !   of manifold 'io' while
-                                       ! listh_man_proj(listhptr_man_proj(io) +                                        !                numh_man_proj(io))
+                                       ! listh_man_proj(listhptr_man_proj(io) +                                                                    !   numh_man_proj(io))
                                        !   is the last projectors of manifold
                                        !   'io'.
                                        ! Dimension: number of manifolds
@@ -563,6 +564,7 @@ module m_wannier_in_nao
     nk           = 1
     gamma        = .false.
     maxspn       = 1
+    
 
 ! 
 !   Open the WFSX file and print the header of the file
@@ -596,8 +598,9 @@ module m_wannier_in_nao
 
     call setup_wfs_list(nk,no_s,1,num_proj,.false.,.false.)
 
-    call writew( no_s, num_proj, 1, kdummy, 1, &
- &               aux, psi, gamma )
+    call writew( no_s, num_proj, 1, kdummy, 1,                                &
+ &               aux,reshape(psi,(/ 2*no_s*numh_man_proj(index_manifold) /)), &
+ &               gamma, non_coll=.false., BlockSize=BlockSize  )
 
 !   Deallocate some pointers
     call de_alloc( psiloc     )

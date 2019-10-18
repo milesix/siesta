@@ -664,7 +664,7 @@ C This is the only exit point
 
       use precision
       use sys
-      use parallel,     only : Node, Nodes, BlockSize
+      use parallel,     only : Node, Nodes
       use parallel,     only : Module_Blocksize=>BlockSize
       use parallelsubs, only : GlobalToLocalOrb, WhichNodeOrb
       use units,        only : eV
@@ -723,8 +723,8 @@ C Wannier functions are going to be printed instead of the bands
 #ifdef MPI
       if( w90_in_siesta_processing ) then
         call set_blocksizedefault( Nodes,nuo,blocksizeincbands_wannier )
-        blocksizesave = BlockSize
-        BlockSize     = blocksizeincbands_wannier
+        blocksizesave = Module_Blocksize
+        Module_Blocksize     = blocksizeincbands_wannier
       endif
 #endif
 
@@ -886,7 +886,7 @@ C eigenvector is now stored in aux in Node 0, and can be printed
 
 #ifdef MPI
       if( w90_in_siesta_processing ) then
-        BlockSize = blocksizesave
+        Module_Blocksize = blocksizesave
       endif
 #endif
       
