@@ -11,13 +11,13 @@ module siesta_dicts
 #ifdef SIESTA__FLOOK
 
   ! A dictionary for all the options
-  type(dict) :: options
+  type(dictionary_t) :: options
 
   ! A dictionary for all transiesta options
-  type(dict) :: ts_options
+  type(dictionary_t) :: ts_options
 
   ! A dictionary for all variables
-  type(dict) :: variables
+  type(dictionary_t) :: variables
 
   private :: dict_variable_add_v_0d
   private :: dict_variable_add_a_1d
@@ -316,8 +316,17 @@ contains
          ('E.spin_orbit'.kvp.Eso)
     variables = variables // &
          ('E.ldau'.kvp.Eldau)
+    
     variables = variables // &
-         ('E.negf'.kvp.DE_NEGF)
+         ('E.negf.dN'.kvp.NEGF_DE)
+    variables = variables // &
+         ('E.negf.harris'.kvp.NEGF_Eharrs)
+    variables = variables // &
+         ('E.negf.total'.kvp.NEGF_Etot)
+    variables = variables // &
+         ('E.negf.kinetic'.kvp.NEGF_Ekin)
+    variables = variables // &
+         ('E.negf.band_structure'.kvp.NEGF_Ebs)
 
     ! Add the number of charges to the system
     variables = variables // &

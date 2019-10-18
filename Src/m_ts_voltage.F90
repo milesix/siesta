@@ -362,8 +362,7 @@ contains
 
       ! Loop the indices, and figure out whether
       ! each of them lies in the local grid
-      !$OMP parallel do default(shared), private(i1,i2,i3,ll,idx,imesh), &
-      !$OMP&collapse(3)
+!$OMP parallel do default(shared), private(i1,i2,i3,ll,idx,imesh)
       do i3 = imin(3) , imax(3)
         do i2 = imin(2) , imax(2)
           do i1 = imin(1) , imax(1)
@@ -394,7 +393,7 @@ contains
           end do
         end do
       end do
-      !$OMP end parallel do
+!$OMP end parallel do
 
     end do
 
@@ -680,7 +679,7 @@ contains
     integer, intent(in) :: nmesh(3)
 
     type(hNCDF) :: ncdf
-    type(dict) :: dic
+    type(dictionary_t) :: dic
     character(len=3), parameter :: XYZ = 'ABC'
     integer :: lnmesh(3), i
     logical :: found

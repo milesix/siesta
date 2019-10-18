@@ -101,8 +101,8 @@ module m_region
 
   ! Regions which has to do with atoms/orbitals
   public :: rgn_correct_atom
-  public :: rgn_atom2orb
-  public :: rgn_orb2atom
+  public :: rgn_Atom2Orb
+  public :: rgn_Orb2Atom
 
   interface sum
      module procedure rgn_sum
@@ -543,8 +543,6 @@ contains
 
     integer :: i
 
-    if ( vr%n == 0 ) return
-
     ! Insert all elements
     do i = 1, vr%n
       call rgn_consecutive_insert(r, vr%r(i))
@@ -581,8 +579,6 @@ contains
     type(tRgn), intent(in) :: vr
 
     integer :: i
-
-    if ( vr%n == 0 ) return
 
     do i = 1, vr%n
        call rgn_consecutive_remove(r, vr%r(i))
@@ -1755,6 +1751,8 @@ contains
     name_tmp = ar%name
     call rgn_copy(tmp, ar)
     ar%name = name_tmp
+    ! Clean-up
+    call rgn_delete(tmp)
 
   end subroutine rgn_Orb2Atom
 

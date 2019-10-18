@@ -48,7 +48,7 @@ contains
        sp_dist, sparse_pattern, &
        no_aux_cell, ucell, nsc, isc_off, no_u, na_u, lasto, xa, n_nzs, &
        H, S, DM, EDM, Ef, &
-       Qtot, Fermi_correct, DE_NEGF)
+       Qtot, Fermi_correct)
 
     use units, only : eV
     use alloc, only : re_alloc, de_alloc
@@ -75,6 +75,8 @@ contains
     use m_ts_gf, only : read_Green
     use m_interpolate
 
+    use m_energies, only: NEGF_DE
+
 ! ********************
 ! * INPUT variables  *
 ! ********************
@@ -94,7 +96,6 @@ contains
     real(dp), intent(in) :: Qtot
     real(dp), intent(inout) :: Ef
     logical, intent(in) :: Fermi_correct
-    real(dp), intent(inout) :: DE_NEGF
 
 ! ******************** IO descriptors ************************
     integer, allocatable :: uGF(:)
@@ -127,7 +128,7 @@ contains
     ! Note that this will *only* be updated in case V /= 0.
     ! This energy corresponds to the non-equilibrium energies:
     !   e \sum_i N_i * \mu_i
-    DE_NEGF = 0._dp
+    NEGF_DE = 0._dp
 
     if ( TSiscf == 1 ) then
        ! We need to initialize TRANSIESTA
@@ -256,14 +257,14 @@ contains
                   nq, uGF, nspin, na_u, lasto, &
                   sp_dist, sparse_pattern, &
                   no_u, n_nzs, &
-                  H, S, DM, EDM, Ef, DE_NEGF)
+                  H, S, DM, EDM, Ef, NEGF_DE)
           else
              call ts_fullk(N_Elec,Elecs, &
                   nq, uGF, &
                   ucell, nspin, na_u, lasto, &
                   sp_dist, sparse_pattern, &
                   no_u, n_nzs, &
-                  H, S, DM, EDM, Ef, DE_NEGF)
+                  H, S, DM, EDM, Ef, NEGF_DE)
           end if
        else if ( ts_method == TS_BTD ) then
           if ( ts_gamma_scf ) then
@@ -271,14 +272,14 @@ contains
                   nq, uGF, nspin, na_u, lasto, &
                   sp_dist, sparse_pattern, &
                   no_u, n_nzs, &
-                  H, S, DM, EDM, Ef, DE_NEGF)
+                  H, S, DM, EDM, Ef, NEGF_DE)
           else
              call ts_trik(N_Elec,Elecs, &
                   nq, uGF, &
                   ucell, nspin, na_u, lasto, &
                   sp_dist, sparse_pattern, &
                   no_u, n_nzs, &
-                  H, S, DM, EDM, Ef, DE_NEGF)
+                  H, S, DM, EDM, Ef, NEGF_DE)
           end if
 #ifdef SIESTA__MUMPS
        else if ( ts_method == TS_MUMPS ) then
@@ -287,14 +288,14 @@ contains
                   nq, uGF, nspin, na_u, lasto, &
                   sp_dist, sparse_pattern, &
                   no_u, n_nzs, &
-                  H, S, DM, EDM, Ef, DE_NEGF)
+                  H, S, DM, EDM, Ef, NEGF_DE)
           else
              call ts_mumpsk(N_Elec,Elecs, &
                   nq, uGF, &
                   ucell, nspin, na_u, lasto, &
                   sp_dist, sparse_pattern, &
                   no_u, n_nzs, &
-                  H, S, DM, EDM, Ef, DE_NEGF)
+                  H, S, DM, EDM, Ef, NEGF_DE)
           end if
 #endif
        else
@@ -621,7 +622,7 @@ contains
 
     use m_ts_tri_init, only : c_Tri
     use m_ts_tri_common, only : GFGGF_needed_worksize
-    use m_ts_tri_common, only : nnzs_tri, nnzs_tri_dp
+    use m_ts_tri_common, only : nnzs_tri_i8b
     use m_ts_method, only : no_Buf
 
     logical, intent(in) :: ts_Gamma ! transiesta Gamma
@@ -732,11 +733,11 @@ contains
                N_Elec, Elecs, padding, worksize)
        end if
 
-       zmem = nnzs_tri(c_Tri%n,c_Tri%r)
-       if ( zmem < int(nnzs_tri_dp(c_Tri%n, c_Tri%r)) ) then
-          call die('transiesta: Memory consumption is too large')
+       nel = nnzs_tri_i8b(c_Tri%n,c_Tri%r)
+       if ( nel > huge(1) ) then
+          call die('transiesta: Memory consumption is too large!')
        end if
-       zmem = (zmem * 2 + padding + worksize ) * 16._dp / 1024._dp ** 2
+       zmem = (nel * 2._dp + padding + worksize ) * 16._dp / 1024._dp ** 2
        if ( IONode ) &
             write(*,'(a,t55,f10.2,a)') &
             'transiesta: mem of tri-diagonal matrices: ', &
