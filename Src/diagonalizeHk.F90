@@ -5,7 +5,7 @@
 !  or http://www.gnu.org/copyleft/gpl.txt .
 ! See Docs/Contributors.txt for a list of contributors.
 ! ---
-subroutine diagonalizeHk( ispin, index_manifold )
+subroutine diagonalizeHk( ispin )
 !
 ! Solves H(k)c(k) = e(k)S(k)c(k), with the SCF hamiltonian and
 ! overlap matrices in k points of the Wannier90 Monkhorst-Pack.
@@ -176,7 +176,6 @@ subroutine diagonalizeHk( ispin, index_manifold )
   implicit none
 
   integer,intent(in)    :: ispin
-  integer,intent(in)    :: index_manifold
 
 ! Internal variables
   integer  :: ik            ! Counter for loops on k-points

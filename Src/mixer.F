@@ -58,6 +58,15 @@
          Xout => Dscf
       end if
 
+!     jjunquer
+      write(6,*)' mixer: iscf = ', iscf
+      write(6,*)' mixer: mix_scf_first = ', mix_scf_first
+      write(6,*)' mixer: mixH = ', mixH
+      write(6,*)' mixer: mix_spin = ', mix_spin
+      write(6,*)' mixer: Hold_before_mixing = ', Xin
+      write(6,*)' mixer: H_before_mixing = ', Xout
+!     end jjunquer
+      
 
       ! Create residual function to minimize
       allocate(F(maxnh,spin%H))
@@ -144,6 +153,13 @@
 
       end select
 
+!     jjunquer
+      write(6,*)' mixer: iscf = ', iscf
+      write(6,*)' mixer: mix_scf_first = ', mix_scf_first
+      write(6,*)' mixer: mixH = ', mixH
+      write(6,*)' mixer: Hold_after_mixing = ', Xin
+      write(6,*)' mixer: H_after_mixing = ', Xout
+!     end jjunquer
       
       ! Correctly handle mixed quantity
       ! move over mixed quantity to "input"

@@ -330,6 +330,9 @@ contains
              if ( converge_EDM ) &
                   call compute_max_diff(Eold, Escf, dEmax)
              call setup_hamiltonian( iscf )
+!            jjunquer
+             write(6,*)'siesta_forces, after setup_hamil: new H = ', H
+!            end jjunquer
              call compute_max_diff(Hold, H, dHmax)
              
           else

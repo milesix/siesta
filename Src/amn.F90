@@ -606,11 +606,11 @@ Band_loop2:                                                             &
 !     Find the cutoff radius of the trial function
       trialrcut   = projections(indexproj)%rcut
 
-!!     For debugging
+!     For debugging
 !      write(6,'(a,6i5,4f12.5,2i5,f12.5)')' ik, Node, nincbands, nincbands_loc, iproj, indexproj = ',  &
 ! &                ik, Node, nincbands, nincbands_loc, iproj,      &
 ! &                indexproj, trialcenter, trialrcut, globalindexproj, na_s, rmaxo
-!!     End debugging
+!     End debugging
 
 !     Find the atomic orbitals that ovelap with our radial orbital
 !     centered at trialcenter and with range trialrcut

@@ -2309,6 +2309,7 @@ contains
             nsub = n1 * nsub)
     else
        call mixing_1d( mix, n1*n2 , xin(1,1), F(1,1), xnext(1,1))
+       stop
     end if
     
   end subroutine mixing_2d

@@ -186,6 +186,11 @@ c$$$     &           no_u, no_s, maxnh, numh, listhptr, listh,
 c$$$     &           S, 'S.matrix')
 
       elseif ((isolve .eq. SOLVE_DIAGON) .or. (CallDiagon)) then
+! jjunquer
+        write(6,*)' compute_dm: Before diagon '
+        write(6,*)' compute_dm: Dscf_bef = ', Dscf
+        write(6,*)' compute_dm: H_bef = ', H
+! jjunquer
         call diagon(no_s, spin%spinor, 
      &              no_l, maxnh, maxnh, no_u,
      &              numh, listhptr, listh, numh, listhptr, listh, 
@@ -195,6 +200,11 @@ c$$$     &           S, 'S.matrix')
      &              eo, qo, Dscf, Escf, ef, efs, Entropy, no_u,
      &              occtol, iscf, neigwanted,
      &              dealloc_psi=.not. CallDiagon)
+! jjunquer
+        write(6,*)' compute_dm: After diagon '
+        write(6,*)' compute_dm: Dscf_after = ', Dscf
+        write(6,*)' compute_dm: H_after = ', H
+! jjunquer
         Ecorrec = 0.0_dp
         PreviousCallDiagon=.true.
       elseif (isolve .eq. SOLVE_ORDERN) then

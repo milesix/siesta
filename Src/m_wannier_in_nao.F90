@@ -491,9 +491,9 @@ module m_wannier_in_nao
 !      ind          = listhptr_man_proj(index_manifold) + iproj
 !      iproj_global = listh_man_proj(ind)
 !      do iorb = 1, no_s
-!        write(6,'(a,7i5,2f12.5)')   &
-! &        'Node, Nodes, iproj, ind, iproj_global, iorb, indxuo, coeffs_wan=',&
-! &         Node, Nodes, iproj, ind, iproj_global, iorb, indxuo(iorb),        &
+!        write(6,'(a,8i5,2f12.5)')   &
+! &        'Node, Nodes, ispin, iproj, ind, iproj_global, iorb, indxuo, coeffs_wan=',&
+! &         Node, Nodes, ispin, iproj, ind, iproj_global, iorb, indxuo(iorb),        &
 ! &         coeffs_wan_nao(ind,iorb,ispin)
 !      enddo 
 !    enddo 

@@ -78,9 +78,11 @@ module m_w90_in_siesta
                                        ! listh_man_proj(listhptr_man_proj(1)+1)
                                        !   is the first projector of the first
                                        !   manifold handled by the local node 
-                                       ! listh_man_proj(listhptr_man_proj(io)+1)                                       !   is thus the first projector of 
+                                       ! listh_man_proj(listhptr_man_proj(io)+1)
+                                       !   is thus the first projector of 
                                        !   of manifold 'io' while 
-                                       ! listh_man_proj(listhptr_man_proj(io) +                                        !                numh_man_proj(io)) 
+                                       ! listh_man_proj(listhptr_man_proj(io) +
+                                       !                numh_man_proj(io)) 
                                        !   is the last projectors of manifold 
                                        !   'io'.
                                        ! Dimension: number of manifolds
@@ -1331,6 +1333,8 @@ module m_w90_in_siesta
     integer            :: num_amn       ! Total number of entries in the Amn
                                         !   matrix
     integer            :: ncount        ! Counter for the Amn matrix elements
+    integer            :: iproj         ! Counter for the loop on projectors
+    integer            :: mband         ! Counter for the loop on bands
     real(dp)           :: a_real        ! Real part of the Amn matrix element
     real(dp)           :: a_imag        ! Imaginary part of the 
                                         !    Amn matrix element
@@ -1378,80 +1382,31 @@ module m_w90_in_siesta
 #ifdef MPI
         call MPI_barrier(MPI_Comm_world,MPIError)
 #endif
-        Amnmat = cmplx(0.0_dp,0.0_dp,kind=dp)
         if( IONode ) then
-          ! Read the A_matrix of the first two manifolds
-          do iman = 1, 2 
-            ! Asign a logical unit to the file from which the Amn matrices 
-            !   will be read
-            call io_assign( amn_in )
-
-            if( spin%H .eq. 1) then
-              write(filename,"(a,'.manifold.',i1.1,'.amn')")               &
- &            trim(slabel),iman
-            else if( spin%H .gt. 1) then
-              write(filename,"(a,'.manifold.',i1.1,'.spin.',i1.1,'.amn')") &
- &            trim(slabel),iman,ispin
-            endif
-            filename = trim(filename)
-
-            open(unit=amn_in,file=filename,form='formatted',status='old',err=102)
-
-            write(6,'(/a,a)') ' Reading projections from filename : ',     &
- &            filename
-
-!           Read the comment line
-            read(amn_in,*) dummy
-!            For debugging
-!            write(6,'(a)') trim(dummy)
-!            For debugging
-
-!           Read the number of bands, k-points and wannier functions
-            read(amn_in,*) nb_tmp, nkp_tmp, nw_tmp
-!            For debugging
-!            write(6,*) nb_tmp, nkp_tmp, nw_tmp
-!            End debugging
-
-!           Checks
-            if (nb_tmp.ne.manifold_bands_w90_in(iman)%number_of_bands) &
-                call die(trim(filename)//' has not the right number of bands')
-            if (nkp_tmp.ne.numkpoints) &
-                call die(trim(filename)//' has not the right number of k-points')
-            if (nw_tmp.ne.manifold_bands_w90_in(iman)%numbands_w90_in) &
-                call die(trim(filename)//' has not the right number of Wannier functions')
-
-!           Read the projections
-            num_amn = nb_tmp*nw_tmp*nkp_tmp
-            if (manifold_bands_w90_in(iman)%disentanglement) then
-              do ncount = 1, num_amn
-                read(amn_in,*) m,n,nkp,a_real,a_imag
-                if (iman .eq. 1)                                           & 
- &                Amnmat(m,n,nkp) = cmplx(a_real,a_imag,kind=dp)
-                if (iman .eq. 2)                                           & 
- &                Amnmat(m+manifold_bands_w90_in(1)%number_of_bands,       &
- &                       n+manifold_bands_w90_in(1)%number_of_bands,nkp) = &
- &                       cmplx(a_real,a_imag,kind=dp)
-              end do
-            else
-              do ncount = 1, num_amn
-                read(amn_in,*) m,n,nkp,a_real,a_imag
-                if (iman .eq. 1)                                         & 
- &                Amnmat(m,n,nkp) = cmplx(a_real,a_imag,kind=dp)
-                if (iman .eq. 2)                                           & 
- &                Amnmat(m+manifold_bands_w90_in(1)%number_of_bands,       &
- &                       n+manifold_bands_w90_in(1)%number_of_bands,nkp) = &
- &                       cmplx(a_real,a_imag,kind=dp)
-              end do
-            end if
-
-            call io_close(amn_in)
-          enddo 
+          do nkp = 1, numkpoints
+            do iproj = 1, manifold_bands_w90_in(1)%number_of_bands 
+              do mband = manifold_bands_w90_in(1)%number_of_bands+1,  &
+                         manifold_bands_w90_in(1)%number_of_bands +   & 
+                         manifold_bands_w90_in(2)%number_of_bands 
+                Amnmat(mband, iproj, nkp) = cmplx(0.0_dp,0.0_dp,kind=dp)
+              enddo
+            enddo
+            do iproj = manifold_bands_w90_in(1)%number_of_bands+1,    &
+                       manifold_bands_w90_in(3)%number_of_bands
+              do mband = 1, manifold_bands_w90_in(1)%number_of_bands 
+                Amnmat(mband, iproj, nkp) = cmplx(0.0_dp,0.0_dp,kind=dp)
+              enddo
+            enddo
+          enddo
 
 !         Write the Amn overlap matrices in a file, in the format required
 !         by Wannier90
           call writeamn( ispin )
 
         endif
+#ifdef MPI
+        call MPI_barrier(MPI_Comm_world,MPIError)
+#endif
       endif
     endif
 
@@ -1950,24 +1905,31 @@ module m_w90_in_siesta
 
   if (on_root) then
     call io_date(cdate, ctime)
-    write (stdout, *) 'Wannier90: Execution started on ', cdate, ' at ', ctime
+    if (.not. first_chempotwann) &
+ &     write (stdout, *) 'Wannier90: Execution started on ', cdate, ' at ', ctime
 
     call param_read
-    if( index_manifold .eq. 1 ) call param_write_header()
+    if( index_manifold .eq. 1 .and. (.not. first_chempotwann) ) &
+ &      call param_write_header()
     if (num_nodes == 1) then
 #ifdef MPI
-      write (stdout, '(/,1x,a)') 'Running in serial (with parallel executable)'
+    if (.not. first_chempotwann) &
+ &    write (stdout, '(/,1x,a)') 'Running in serial (with parallel executable)'
 #else
-      write (stdout, '(/,1x,a)') 'Running in serial (with serial executable)'
+    if (.not. first_chempotwann) &
+ &    write (stdout, '(/,1x,a)') 'Running in serial (with serial executable)'
 #endif
     else
-      write (stdout, '(/,1x,a,i3,a/)') &
+    if (.not. first_chempotwann) &
+ &    write (stdout, '(/,1x,a,i3,a/)') &
         'Running in parallel on ', num_nodes, ' CPUs'
     endif
-    if( index_manifold .eq. 1 ) call param_write()
+    if( index_manifold .eq. 1 .and. (.not. first_chempotwann) ) &
+ &       call param_write()
 
     time1 = io_time()
-    write (6, '(1x,a25,f11.3,a)') 'Time to read parameters  ', time1 - time0, ' (sec)'
+    if (.not. first_chempotwann) &
+ &    write (6, '(1x,a25,f11.3,a)') 'Time to read parameters  ', time1 - time0, ' (sec)'
   endif
 
   ! We now distribute the parameters to the other nodes
@@ -1990,7 +1952,10 @@ module m_w90_in_siesta
 !! End debugging
 
   time1 = io_time()
-  if (on_root) write (stdout, '(/1x,a25,f11.3,a)') 'Time to read overlaps    ', time1 - time2, ' (sec)'
+  if (on_root) then
+    if (.not. first_chempotwann) &
+ &    write (stdout, '(/1x,a25,f11.3,a)') 'Time to read overlaps    ', time1 - time2, ' (sec)'
+  endif 
 
   have_disentangled = .false.
 
@@ -1998,7 +1963,10 @@ module m_w90_in_siesta
     call dis_main()
     have_disentangled = .true.
     time2 = io_time()
-    if (on_root) write (stdout, '(1x,a25,f11.3,a)') 'Time to disentangle bands', time2 - time1, ' (sec)'
+    if (on_root) then
+      if (.not. first_chempotwann) &
+ &      write (stdout, '(1x,a25,f11.3,a)') 'Time to disentangle bands', time2 - time1, ' (sec)'
+    endif 
   endif
 
   if (on_root) call param_write_chkpt('postdis')
@@ -2012,7 +1980,10 @@ module m_w90_in_siesta
   end if
 
   time1 = io_time()
-  if (on_root) write (stdout, '(1x,a25,f11.3,a)') 'Time for wannierise      ', time1 - time2, ' (sec)'
+  if (on_root) then
+    if (.not. first_chempotwann) &
+ &    write (stdout, '(1x,a25,f11.3,a)') 'Time for wannierise      ', time1 - time2, ' (sec)'
+  endif 
 
   if (on_root) call param_write_chkpt('postwann')
 
@@ -2025,7 +1996,8 @@ module m_w90_in_siesta
     time1 = io_time()
     ! Now time is always printed, even if no plotting is done/required, but
     ! it shouldn't be a problem.
-    write (stdout, '(1x,a25,f11.3,a)') 'Time for plotting        ', time1 - time2, ' (sec)'
+    if (.not. first_chempotwann) &
+ &    write (stdout, '(1x,a25,f11.3,a)') 'Time for plotting        ', time1 - time2, ' (sec)'
   endif
 
 3003 continue
@@ -2034,7 +2006,8 @@ module m_w90_in_siesta
     if (transport) then
       call tran_main()
       time1 = io_time()
-      write (stdout, '(1x,a25,f11.3,a)') 'Time for transport       ', time1 - time2, ' (sec)'
+      if (.not. first_chempotwann) &
+ &      write (stdout, '(1x,a25,f11.3,a)') 'Time for transport       ', time1 - time2, ' (sec)'
       if (tran_read_ht) goto 4004
     end if
   endif
@@ -2042,12 +2015,18 @@ module m_w90_in_siesta
 4004 continue
 
   if (on_root) then
-    write (stdout, '(1x,a25,f11.3,a)') 'Total Execution Time     ', io_time(), ' (sec)'
+    if (.not. first_chempotwann) &
+ &    write (stdout, '(1x,a25,f11.3,a)') 'Total Execution Time     ', io_time(), ' (sec)'
 
-    if (timing_level > 0) call io_print_timings()
+    if (timing_level > 0) then
+      if (.not. first_chempotwann) &
+  &      call io_print_timings()
+    endif 
 
-    write (stdout, *)
-    write (stdout, '(1x,a)') 'All done: wannier90 exiting'
+    if (.not. first_chempotwann) then
+      write (stdout, *)
+      write (stdout, '(1x,a)') 'All done: wannier90 exiting'
+    endif 
 
   endif
 

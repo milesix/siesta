@@ -512,7 +512,7 @@ C
 !         Those routines comes from the WANNIER90 code.
           call switch_local_projection( index_manifold )
           do ispin = 1, nspin
-            call diagonalizeHk( ispin, index_manifold )
+            call diagonalizeHk( ispin )
             call compute_matrices( ispin, index_manifold )
             call compute_wannier( ispin, index_manifold )
             call wannier_in_nao( ispin, index_manifold )

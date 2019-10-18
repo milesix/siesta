@@ -107,9 +107,11 @@
                                        ! listh_man_proj(listhptr_man_proj(1)+1)
                                        !   is the first projector of the first
                                        !   manifold handled by the local node
-                                       ! listh_man_proj(listhptr_man_proj(io)+1)                                       !   is thus the first projector of
+                                       ! listh_man_proj(listhptr_man_proj(io)+1)
+                                       !   is thus the first projector of
                                        !   of manifold 'io' while
-                                       ! listh_man_proj(listhptr_man_proj(io) +                                        !                numh_man_proj(io))
+                                       ! listh_man_proj(listhptr_man_proj(io) +
+                                       !                numh_man_proj(io))
                                        !   is the last projectors of manifold
                                        !   'io'.
                                        ! Dimension: number of manifolds
@@ -428,6 +430,7 @@
      do j = 1, numh(io_local)
        ind = listhptr(io_local) + j
        do ispin = 1, spin%H
+         write(6,'(2i5,2f12.5)') ind, ispin, H(ind,ispin), H_chempotwann(ind,ispin)
          H(ind,ispin) = H(ind,ispin) + H_chempotwann(ind,ispin)
        enddo 
      enddo 
