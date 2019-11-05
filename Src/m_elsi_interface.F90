@@ -144,6 +144,7 @@ subroutine elsi_getdm(iscf, no_s, nspin, no_l, maxnh, no_u,  &
       real(dp), allocatable, dimension(:)    :: S_u
 
       integer :: iuo, ispin, j, ind, ind_u, nnz_u
+      integer :: n_S_eigenvals_below_tol
 
       external die
 
@@ -221,6 +222,14 @@ subroutine elsi_getdm(iscf, no_s, nspin, no_l, maxnh, no_u,  &
               xijo, nkpnt, kpoint, kweight,    &
               eo, qo, Dscf, Escf, ef, Entropy, occtol, neigwanted, Get_EDM_Only)
 
+      endif
+
+      if (iscf==1 .and. illcond_check > 0 .and. which_solver == ELPA_SOLVER) then
+         call elsi_get_n_illcond(elsi_h, n_S_eigenvals_below_tol)
+         if (ionode) then
+            write(6,"(a,i4)") 'ELSI: Number of S eigenvalues below tolerance: ', &
+                               n_S_eigenvals_below_tol
+         endif
       endif
 
 end subroutine elsi_getdm
