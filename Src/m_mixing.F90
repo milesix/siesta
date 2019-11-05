@@ -1933,6 +1933,10 @@ contains
          return
       end if
 
+! jjunquer
+     write(6,*)' ns = ', ns
+! end jjunquer
+
       ! Easy check for initial step...
       select case ( mix%v )
       case ( 0 , 2 ) ! Stable Pulay
@@ -1953,6 +1957,7 @@ contains
 
       end select
 
+
       ! In case we return we are actually doing
       ! linear mixing
       if ( lreturn ) then
@@ -1961,12 +1966,16 @@ contains
 !$OMP parallel do default(shared), private(i)
          do i = 1 , n
             xnext(i) = xin(i) + F(i) * mix%rv(1)
+!           jjunquer
+            write(6,*) xnext(i), xin(i), F(i), mix%rv(1)
+!           end jjunquer
          end do
 !$OMP end parallel do
 
          return
 
       end if
+      write(6,*)'LRETURN = ', lreturn
 
       ! Get the linear mixing term...
       G = mix%w
@@ -2041,6 +2050,7 @@ contains
          return
          
       end if
+
 
       ! Get the inverse Jacobian term...
       G = mix%w
@@ -2347,7 +2357,6 @@ contains
             nsub = n1 * nsub)
     else
        call mixing_1d( mix, n1*n2 , xin(1,1), F(1,1), xnext(1,1))
-       stop
     end if
     
   end subroutine mixing_2d
