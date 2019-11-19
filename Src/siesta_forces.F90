@@ -329,9 +329,6 @@ contains
              if ( converge_EDM ) &
                   call compute_max_diff(Eold, Escf, dEmax)
              call setup_hamiltonian( iscf )
-!            jjunquer
-             write(6,*)'siesta_forces, after setup_hamil: new H = ', H
-!            end jjunquer
              call compute_max_diff(Hold, H, dHmax)
              
           else
@@ -367,30 +364,6 @@ contains
                conv_harris, conv_freeE, &
                SCFconverged )
 
-#ifdef HAVE_WANNIER90
-          if( SCFconverged .and. compute_chempotwann .and. &
- &             (.not. compute_chempotwann_after_scf) ) then
-            if ( IONode ) then
-               write(*,"(/,a)") &
- &               "siesta_forces: Switching the computation of the "
-               write(*,"(a)")   &
- &               "siesta_forces:   Hamiltonian matrix elements from the"
-               write(*,"(a)")   &
- &               "siesta_forces:   chemical potential on the Wannier functions."
-               write(*,"(a)")   &  
- &               "siesta_forces: Initiating self-consistency cicles again"
-               write(*,"(a)")   &
- &               "siesta_forces:   adding the new hamiltonian matrix elements"
-               write(*,"(a)")   &
- &               "siesta_forces:   assuming frozen shape of the Wanniers" 
-               write(*,"(a,/)")   &
- &               "siesta_forces:   obtained after the first SCF" 
-            end if
-            compute_chempotwann_after_scf  = .true.
-            SCFconverged                   = .false.
-            mix_scf_first                  = .false.
-          endif
-#endif
           
           ! ** Check this heuristic
           if ( mixH ) then
@@ -401,7 +374,6 @@ contains
 
           ! Calculate current charge based on the density matrix
           call dm_charge(spin, DM_2D, S_1D, Qcur)
-
           
           ! Check whether we should step to the next mixer
           call mixing_scf_converged( SCFconverged )
@@ -437,6 +409,35 @@ contains
           end if
           
           if ( monitor_forces_in_scf ) call compute_forces()
+
+#ifdef HAVE_WANNIER90
+          if( SCFconverged .and. compute_chempotwann .and. &
+ &             (.not. compute_chempotwann_after_scf) ) then
+            if ( IONode ) then
+               write(*,"(/,a)") &
+ &               "siesta_forces: Switching the computation of the "
+               write(*,"(a)")   &
+ &               "siesta_forces:   Hamiltonian matrix elements from the"
+               write(*,"(a)")   &
+ &               "siesta_forces:   chemical potential on the Wannier functions."
+               write(*,"(a)")   &  
+ &               "siesta_forces: Initiating self-consistency cicles again"
+               write(*,"(a)")   &
+ &               "siesta_forces:   adding the new hamiltonian matrix elements"
+               write(*,"(a)")   &
+ &               "siesta_forces:   assuming frozen shape of the Wanniers" 
+               write(*,"(a,/)")   &
+ &               "siesta_forces:   obtained after the first SCF" 
+            end if
+            compute_chempotwann_after_scf  = .true.
+            SCFconverged                   = .false.
+            mix_scf_first                  = .false.
+            iscf                           = 0
+            call timer( timer_str_scf, 2 )
+            call print_timings( first_scf, istep == inicoor )
+            cycle
+          endif
+#endif
 
           ! Mix_after_convergence preserves the old behavior of
           ! the program.

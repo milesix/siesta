@@ -1933,10 +1933,6 @@ contains
          return
       end if
 
-! jjunquer
-     write(6,*)' ns = ', ns
-! end jjunquer
-
       ! Easy check for initial step...
       select case ( mix%v )
       case ( 0 , 2 ) ! Stable Pulay
@@ -1966,16 +1962,12 @@ contains
 !$OMP parallel do default(shared), private(i)
          do i = 1 , n
             xnext(i) = xin(i) + F(i) * mix%rv(1)
-!           jjunquer
-            write(6,*) xnext(i), xin(i), F(i), mix%rv(1)
-!           end jjunquer
          end do
 !$OMP end parallel do
 
          return
 
       end if
-      write(6,*)'LRETURN = ', lreturn
 
       ! Get the linear mixing term...
       G = mix%w

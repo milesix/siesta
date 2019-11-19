@@ -350,7 +350,7 @@
 ! &     write(6,'(a,7i7,f12.5)')                                         &
 ! & 'Node, Nodes, iuo, j, ind, jneig, ispin, H_chempotwann_full = ',     &
 ! &  Node, Nodes, iuo, j, ind, jneig, ispin,                             &
-! &  H_chempotwann_new(ind,ispin) 
+! &  H_chempotwann_full(ind,ispin) 
 !!      End debugging
 
      enddo ! End loop on neighbours
@@ -430,7 +430,6 @@
      do j = 1, numh(io_local)
        ind = listhptr(io_local) + j
        do ispin = 1, spin%H
-         write(6,'(2i5,2f12.5)') ind, ispin, H(ind,ispin), H_chempotwann(ind,ispin)
          H(ind,ispin) = H(ind,ispin) + H_chempotwann(ind,ispin)
        enddo 
      enddo 
