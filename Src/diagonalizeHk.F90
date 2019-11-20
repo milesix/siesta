@@ -138,10 +138,6 @@ subroutine diagonalizeHk( ispin )
                                              ! Number of bands for wannierizatio
                                              !   after excluding bands 
                                              !   in the local node
-  use m_switch_local_projection, only: blocksizeincbands 
-                                             ! Maximum number of bands
-                                             !   considered for wannierization
-                                             !   per node
   use m_switch_local_projection, only: isexcluded   
                                              ! Masks excluded bands
   use m_switch_local_projection, only: coeffs! Coefficients of the wavefunctions
@@ -169,7 +165,7 @@ subroutine diagonalizeHk( ispin )
   use alloc,              only: de_alloc     ! Deallocation routines
 
 ! For debugging
-  use parallel,           only: Node, Nodes, IOnode, BlockSize
+  use parallel,           only: Node, Nodes, IOnode
 ! End debugging
 
 

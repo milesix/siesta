@@ -884,12 +884,6 @@ C eigenvector is now stored in aux in Node 0, and can be printed
 
       enddo
 
-#ifdef MPI
-      if( w90_in_siesta_processing ) then
-        Module_Blocksize = blocksizesave
-      endif
-#endif
-      
 C Close output file
 
       if (Node .eq. 0) then
@@ -898,6 +892,13 @@ C Close output file
 
       ! Restore blocksize value in module
       Module_blocksize = blocksize_saved
+
+#ifdef MPI
+      if( w90_in_siesta_processing ) then
+        Module_Blocksize = blocksizesave
+      endif
+#endif
+      
 
 C Deallocate auxiliary arrays
 
