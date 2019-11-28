@@ -1953,7 +1953,6 @@ contains
 
       end select
 
-
       ! In case we return we are actually doing
       ! linear mixing
       if ( lreturn ) then
@@ -2042,7 +2041,6 @@ contains
          return
          
       end if
-
 
       ! Get the inverse Jacobian term...
       G = mix%w

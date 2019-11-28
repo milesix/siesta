@@ -94,7 +94,6 @@ C Solve eigenvalue problem .........................................
           endif
         enddo
       enddo
-
       if(ng.eq.2) then 
        call cdiag( Haux, Saux, nuotot, nuo, nuotot, eo, psi,
      .            nuotot, 1, ierror, BlockSize)

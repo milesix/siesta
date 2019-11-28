@@ -185,7 +185,7 @@ subroutine read_nnkp( seedname, latvec, reclatvec, numkpoints,          &
        enddo 
        write(6,'(a)')'read_nnkp:      - Reciprocal lattice is ok'
   endif ! IOnode
-!! Broadcast the lattice vectors in real space and the reciprocal lattice vectors
+! Broadcast the lattice vectors in real space and the reciprocal lattice vectors
   call broadcast( latvec     )
   call broadcast( reclatvec  )
 
