@@ -8539,6 +8539,12 @@ Here we shall focus only on those internal \siesta\ variables
 required to produce the files that will be processed
 by \program{wannier90}.
 
+The interface between \program{siesta} and  \program{wannier90} (version 3.0.0) has been 
+implemented, so the later code can be called directly from \program{siesta} as a library,
+or used as a post-processing tool.
+
+\subsubsection{\program{wannier90} as a postprocessing tool}
+
 A complete list of examples and tests (including molecules, metals, 
 semiconductors, insulators, magnetic systems, plotting of Fermi surfaces
 or interpolation of bands), can be downloaded from
@@ -8696,6 +8702,181 @@ or interpolation of bands), can be downloaded from
 \end{fdfentry}
 
 
+\subsubsection{\program{wannier90} called as a library within \program{siesta}}
+
+ The \program{wannier90} can be compiled in library mode and called directly 
+ from \program{siesta}. This presents several advantages:
+
+ \begin{itemize}
+   \item No need to prepare two different input files.
+   \item No need to run \program{wannier90} in pre-processing mode.
+   \item We can use the basis set of \program{siesta} (numerical 
+         atomic orbitals) as the initial guess for the projections.
+   \item Wannierization of different manifolds can be done in the 
+         same run of \program{siesta}.
+   \item The unitary matrices connecting the Bloch and the Wannier
+         representations are available within \program{siesta}.
+   \item The coefficients of the Wannier functions in the 
+         basis of the atomic orbitals of the supercell in \program{siesta} 
+         are written in a file with .WANNX extension. This can be plotted using
+         \program{denchar} using the same method as for the wave functions.
+ \end{itemize}
+
+ To run \program{wannier90} in this mode, you have to 
+ download the version 3.0.0 from
+
+ http://www.wannier.org/download
+
+ and then apply a patch available in the \program{siesta} distribution
+
+\begin{shellexample}
+ $ patch -p1 < /path/to/siesta/Util/Wannier90/wannier90-3.0.0-siesta.patch
+\end{shellexample}
+
+ In the near future, a version of the \program{wannier90} code will be
+ distributed directly within the siesta-bundle.
+
+ Farther details of the compilation of \program{siesta} with this  
+ functionality can be found in the file \file{README} in the
+ Util/Wannier90 directory and in the presentation below
+
+https://personales.unican.es/junqueraj/JavierJunquera\_files/Metodos/Wannier/Exercise-Wannier90-within-siesta.pdf
+
+\begin{fdfentry}{NumberOfBandManifoldsForWannier}[integer]<\fdfvalue{Number of band manifolds to be wannierized}>
+
+  Number of band manifolds that will be considered for Wannierization.
+
+  Multiple wannierizations on different band manifolds can be performed in the same 
+  \program{siesta} run. 
+
+  \note The default value will be 0.
+
+
+\end{fdfentry}
+
+\begin{fdfentry}{WannierProjections}[block]
+<\fdfvalue{Information on the band manifolds to be wannierized}>
+  
+  Specifies all the information required to Wannierized a given 
+  manifold of bands.
+  An example for an isolated manifold (top of the valence band of 
+  bulk SrTiO$_{3}$) is:
+
+  \begin{fdfexample}
+     %block WannierProjections
+       1                  # Sequential index of the manifold
+       12  20             # Indices of the initial and final band of the manifold
+       9                  # Number of bands for Wannier transformation
+       36 37 38 49 50 51 62 63 64  # Indices of the orbitals to be used as localized trial orbitals
+       num_iter 0         # Number of iterations for the minimization of \Omega
+       wannier_plot  3    # Plot the Wannier function
+       fermi_surface_plot # Plot the Fermi surface
+       write_hr           # Write the Hamiltonian in the WF basis
+       write_tb           # Write lattice vectors, Hamiltonian, and position operator in WF basis
+     %endblock WannierProjections
+  \end{fdfexample}
+
+  The first line is the sequential index of the manifold,
+  from 1 to \fdf{NumberOfBandManifoldsForWannier}.
+  The lines of this block must be repeated as many times as the
+  number of band manifolds that will be wannierized.
+
+  The second line refers to the initial and final band of the manifold  
+  to be wannierized.
+
+  The third line is the number of bands that will be retained for
+  wannierization.
+  This number is equal to the number of bands in the manifold if we are 
+  dealing with isolated group of bands.
+  But if the desired bands lie within a limited energy range but
+  overlap and hybridize with other bands which extend further in energy
+  (as is the case in metals),
+  then the number of Wannier functions might be different from the
+  number of bands in the manifolds.  
+  A disentanglement procedure is required, that will be carried out
+  following the recipe given by 
+  I. Souza, N. Marzari and D. Vanderbilt, 
+  Phys. Rev. B \textbf{65}, 035109 (2002) 
+  "Maximally localized Wannier functions for entangled energy bands".
+  
+  The fourth line refers to the indices of the orbitals that will be used 
+  as localized trial orbitals in the first step of the minimization 
+  of the spreading. 
+  The user has to specify the same number of atomic orbitals as the number
+  of Wannier functions required.
+  These indices can be found by inspection of the 
+  \file{SystemLabel.ORB\_INDX} file.
+
+  The fifth line is the number of iterations that \program{wannier90} 
+  will carry out to minimize the spreading.
+  If zero, then the procedure is the same as a L\"owdin orthonormalization.
+  In such a case, the resulting Wannier function will keep the symmetry
+  of the trial projection function, but it will not be maximally localized.
+
+  The sixth function instructs \program{wannier90} to produce the files
+  required to plot the Wannier functions 
+  (if \fdf{w90.in.siesta.compute.unk} is set to true).
+  The integer refers to the size of the supercell for plotting the 
+  Wannier functions (see the variable
+  \fdf{wannier.plot.supercell} in the \program{wannier90} User's Guide).
+  This will produce files with the .xsf extension, that can be directly plotted
+  with \program{xcrysden}.
+
+  The seventh line instructs \program{wannier90} to produce the files
+  required to plot the Fermi surface. 
+  This will produce files with the .bxsf extension, that can be directly plotted
+  with \program{xcrysden}.
+
+  The eigth line is a instruction to write the Hamiltonian in real space
+  in a basis of Wannier functions.
+  This will produce files with the \_hr.dat extension.
+
+  The nineth line is a instuction to write the lattice vectors, Hamiltonian
+  in real space, and position operator in a basis of Wannier functions.
+  This will produce files with the \_tb.dat extension.
+
+  If a disentanglement procedure is required two extra lines are mandatory:
+
+  The first extra line refers to the bottom and top of the outer 
+  energy window for band disentanglement (in eV).
+
+  The second extra line refers to the bottom and top of the inner 
+  energy window for band disentanglement (in eV).
+  This is the energy window where some Bloch states are forced to be
+  preserved identically in the projected manifold.
+
+\end{fdfentry}
+
+
+\begin{fdflogicalF}{Wannier90.in.SIESTA.compute.unk}
+  
+  Flag that determines whether the periodic part of the wave function
+  in the real space grid will be computed (as using Siesta2Wannier90.WriteUnk),
+  and whether the files .xsf directly readable by \program{xcrysden}
+  will be produced.
+
+  The computation of the UNK files might be rather expensive.
+  To plot the shape of the Wannier functions, the expansion of the Wannier functions
+  in the basis of Numerical Atomic Orbitals to produce .WFSX files, and the
+  subsequent use of \program{denchar} is recommended.
+  \note The default value will be false
+
+\end{fdflogicalF}
+
+\begin{fdfentry}{kMeshforWannier}[block]
+  \index{output!kpoint mesh for Wannierization}
+
+  Dimension of the Monkhorst-Pack grid of k-points that will be used
+  during the wannierization.
+  The overlap matrices between periodic parts of the wavefunctions
+  at neighbour k-points in this grid will be computed.
+ 
+  \begin{fdfexample}
+%block kMeshforWannier
+   4  4  4
+%endblock kMeshforWannier
+  \end{fdfexample}
+\end{fdfentry}
 
 \subsection{Systems with net charge or dipole, and electric fields}
 

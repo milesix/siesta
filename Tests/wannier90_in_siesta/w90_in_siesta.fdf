@@ -151,6 +151,10 @@ MD.UseSaveCG           .false.      # Instructs to read the conjugate-gradient
                                     #   hystory information stored in file 
                                     #   SystemLabel.CG by a previous run.
 
+#
+# Variables related with the Wannierization of the manifolds
+#
+
 NumberOfBandManifoldsForWannier   3
 
 %block WannierProjections
@@ -218,9 +222,9 @@ Denchar.MaxY            10.0  bohr      # Maximum coord of the window in Y-dir
 Denchar.MinZ           -10.0  bohr      # Minimum coord of the window in Z-dir
 Denchar.MaxZ            10.0  bohr      # Maximum coord of the window in Z-dir
 
-Denchar.NumberPointsX    40            # Number of points in X-axis
-Denchar.NumberPointsY    40            # Number of points in Y-axis
-Denchar.NumberPointsZ    40            # Number of points in Z-axis
+Denchar.NumberPointsX    20            # Number of points in X-axis
+Denchar.NumberPointsY    20            # Number of points in Y-axis
+Denchar.NumberPointsZ    20            # Number of points in Z-axis
 
 Denchar.PlaneGeneration  ThreeAtomicIndices      # Option to generate the plane
                                                  # NormalVector

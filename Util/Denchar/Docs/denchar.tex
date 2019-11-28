@@ -12,6 +12,7 @@
 %   Alberto Garcia,  2006-2012 -- fixes, use WFSX format
 %   Alberto Garcia,  2016 -- New files for 3D mode
 %   Alberto Garcia,  2019 -- NC/SOC support, stream mode
+%   Javier Junquera, 2019 -- Plotting Wannier functions
 
 
 \documentstyle[11pt]{article}
@@ -44,7 +45,8 @@
 
 \vspace{0.5 cm}
 
-{\Large {\it - A program to plot charge densities and wave functions 
+{\Large {\it - A program to plot charge densities,
+ wave functions and Wannier functions
 in real space -}}
 
 
@@ -261,8 +263,9 @@ and/or wavefunctions in 2D or 3D.
 Specifies if you want to calculate and plot a charge density
 in real space.
 
-{\it Use:} Either {\bf Denchar.PlotCharge} or
-{\bf Denchar.PlotWaveFunctions} must be .TRUE.
+{\it Use:} Either {\bf Denchar.PlotCharge},
+{\bf Denchar.PlotWaveFunctions} or 
+{\bf Denchar.PlotWannierFunctions} must be .TRUE.
 If set to .TRUE., file {\it SystemName}.DM should
 be present.
 
@@ -273,9 +276,23 @@ be present.
 Specifies if you wand to calculate and plot wavefunctions
 in real space.
 
-{\it Use:} Either {\bf Denchar.PlotCharge} or
-{\bf Denchar.PlotWaveFunctions} must be .TRUE.
+{\it Use:} Either {\bf Denchar.PlotCharge},
+{\bf Denchar.PlotWaveFunctions} or 
+{\bf Denchar.PlotWannierFunctions} must be .TRUE.
 If set to .TRUE., file {\it SystemName}.WFSX should
+be present.
+
+{\it Default value:} .FALSE.
+
+\item[{\bf Denchar.PlotWannierFunctions}] ({\it logical}): 
+
+Specifies if you wand to calculate and plot Wannier functions
+in real space.
+
+{\it Use:} Either {\bf Denchar.PlotCharge}, 
+{\bf Denchar.PlotWaveFunctions} or
+{\bf Denchar.PlotWannierFunctions} must be .TRUE.
+If set to .TRUE., file {\it SystemName}.WANNX should
 be present.
 
 {\it Default value:} .FALSE.

@@ -24,7 +24,7 @@
 !! Since both the Wannier functions and the localized atomic orbitals are real,
 !! the coefficients of this expansion are also expected to be real
 !!
-!! The coefficients are written in files with the .WFSX format that can be
+!! The coefficients are written in files with the .WANNX format that can be
 !! laterly read by DENCHAR for plotting
 !! 
 !! The analytical expressions can be found in
@@ -149,7 +149,7 @@ module m_wannier_in_nao
     use writewave,      only: writew         ! Subroutine to dump the 
                                              !   coefficients of the 
                                              !   wavefunction
-                                             !   in a .WFSX file
+                                             !   in a .WANNX file
     use writewave,      only: setup_wfs_list ! Subroutine to setup the
                                              !   list of wave functions 
                                              !   (in this case, Wannier func.)
@@ -221,7 +221,7 @@ module m_wannier_in_nao
     integer  :: icell                        ! Counter for unit cell lattice
                                              !    vectors
     integer  :: nk                           ! Number of k-points written in
-                                             !   the .WFSX file
+                                             !   the .WANNX file
                                              !   Since the number of Wanniers 
                                              !   functions to be plotted do not 
                                              !   depend in k-points,
@@ -559,7 +559,7 @@ module m_wannier_in_nao
 
     aux          = 0.0_dp
     kdummy       = 0.0_dp
-    wfs_filename = trim(seedname)//".WFSX"
+    wfs_filename = trim(seedname)//".WANNX"
     wwf          = .false.
     nk           = 1
     gamma        = .false.
@@ -567,7 +567,7 @@ module m_wannier_in_nao
     
 
 ! 
-!   Open the WFSX file and print the header of the file
+!   Open the WANNX file and print the header of the file
 !   with information of the atomic orbitals
 !   This was done in the subroutine wwave when the coefficients of the 
 !   wave functions at particular k-points are required
