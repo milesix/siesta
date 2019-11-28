@@ -561,11 +561,7 @@ C
 C    
 C     Call the wannier90 interface here, as local_DOS destroys the DM...
 C
-      if( w90_processing ) then
-        call siesta2wannier90()
-      endif
-
-
+      if( w90_processing ) call siesta2wannier90()
 
 C     Find local density of states
 !  It needs H,S, and xa, as it diagonalizes them again

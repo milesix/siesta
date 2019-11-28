@@ -95,6 +95,7 @@ MODULE siesta_options
   integer :: nobdown          ! Number of bands with spin down for wannierization
   integer :: nob              ! Number of bands for wannierization
                               !   (for non spin-polarized calculations).
+
 !----------------------------------------------------
 ! Wannier90 within SIESTA interface
   logical :: w90_in_siesta_processing 

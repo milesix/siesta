@@ -125,7 +125,6 @@
 !      enddo
 !!     End debugging
 
-
 !     The energy window, if allowed, will take effect inside the routine
 !     that writes to file, as the energies are not yet known
 

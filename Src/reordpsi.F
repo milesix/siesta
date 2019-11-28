@@ -52,6 +52,8 @@ C *********************************************************************
       real(dp), intent(in) ::   psi(2,nuotot,nuo)
       complex(dp), intent(out) :: psisave(nuotot,ninc)
 
+
+
 C**** Internal variables ***********************************************
 
       integer :: jband, jbandloc, iuo, juo, iband
@@ -61,7 +63,6 @@ C**** Internal variables ***********************************************
      .  MPIerror, iuog, juog, n, noccloc
       real(dp), dimension(:,:,:), pointer ::  psitmp
 #endif
-
 
 #ifdef MPI
 ! AG
@@ -131,6 +132,7 @@ C**** Internal variables ***********************************************
         endif
       enddo
 #endif
+
 
       end subroutine reordpsi
 

@@ -61,6 +61,7 @@
         nspin_mix = spin%DM
       end if
 
+
       ! Create residual function to minimize
       allocate(F(maxnh,nspin_mix))
 
@@ -142,6 +143,7 @@
 
       end select
 
+      
       ! Correctly handle mixed quantity
       ! move over mixed quantity to "input"
       if ( mix_scf_first ) then
@@ -163,6 +165,7 @@
           end do
         end do
 !$OMP end do nowait
+
       end if
 
 !$OMP end parallel

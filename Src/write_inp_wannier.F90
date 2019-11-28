@@ -229,11 +229,10 @@ subroutine writeamn( ispin )
   external     :: io_close  ! Close a logical unit
 
 
-! Asign a logical unit to the file where the Amn matrices will be written
+! Assign a logical unit to the file where the Amn matrices will be written
   call io_assign( amnunit )
 
-
-! Asign a name to the file where the Amn matrices will be written
+! Assign a name to the file where the Amn matrices will be written
   amnfilename = trim( seedname )// ".amn"
 
 ! Open the output file where the Amn matrices will be written
