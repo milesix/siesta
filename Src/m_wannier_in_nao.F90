@@ -157,7 +157,6 @@ module m_wannier_in_nao
     use writewave,      only: wfs_filename   ! Name of the file where the 
                                              !   coefficients of the Wanniers
                                              !   will be dumped
-    use writewave,      only: wwf            ! Write wave functions?
 
 !
 ! Allocation/Deallocation routines
@@ -560,7 +559,6 @@ module m_wannier_in_nao
     aux          = 0.0_dp
     kdummy       = 0.0_dp
     wfs_filename = trim(seedname)//".WANNX"
-    wwf          = .false.
     nk           = 1
     gamma        = .false.
     maxspn       = 1

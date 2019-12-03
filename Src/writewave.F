@@ -16,7 +16,7 @@
       character(len=192), save, public :: wfs_filename
 
       integer,    save :: nwf = 1
-      logical,    public, save :: wwf = .false.
+      logical,    save :: wwf = .false.
       logical,    save :: scf_set = .false.
       logical,    save :: debug = .false.
 
@@ -693,6 +693,7 @@ C  Internal variables .............................................
       integer number_of_wfns
       integer blocksizeincbands_wannier
       integer blocksizesave
+      logical wwfsave
       integer, allocatable  :: ind_wfn(:)
       real(dp)  :: kpoint_weight
       real(SP), dimension(:,:), allocatable :: aux   !! NOTE SP
@@ -724,6 +725,9 @@ C Wannier functions are going to be printed instead of the bands
         call set_blocksizedefault( Nodes,nuo,blocksizeincbands_wannier )
         blocksizesave = Module_Blocksize
         Module_Blocksize     = blocksizeincbands_wannier
+
+        wwfsave = wwf
+        wwf     = .false.
       endif
 #endif
 
@@ -892,6 +896,7 @@ C Close output file
 #ifdef MPI
       if( w90_in_siesta_processing ) then
         Module_Blocksize = blocksizesave
+        wwf = wwfsave 
       endif
 #endif
 
