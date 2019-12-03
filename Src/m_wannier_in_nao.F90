@@ -589,6 +589,7 @@ module m_wannier_in_nao
 !      write(6,'(a,i5,l5)')' nk, gamma = ', nk, gamma
 !      write(6,'(a,i5)')   ' maxspn = ', maxspn
 !      write(6,'(a,i5)')   ' no_s   = ', no_s
+!      write(6,'(a,i5)')   ' Node, BlockSize   = ', Node, BlockSize
 !      do iorb = 1, no_s
 !        write(6,*) iorb, iaorb(iorb),labelfis(isa(iaorb(iorb))),            &
 ! &                 iphorb(iorb), cnfigfio(isa(iaorb(iorb)),iphorb(iorb)),   &

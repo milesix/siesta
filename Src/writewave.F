@@ -889,15 +889,15 @@ C Close output file
         call io_close(iu)
       endif
 
-      ! Restore blocksize value in module
-      Module_blocksize = blocksize_saved
-
 #ifdef MPI
       if( w90_in_siesta_processing ) then
         Module_Blocksize = blocksizesave
       endif
 #endif
-      
+
+      ! Restore blocksize value in module
+      Module_blocksize = blocksize_saved
+
 
 C Deallocate auxiliary arrays
 

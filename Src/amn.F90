@@ -345,7 +345,7 @@ subroutine amn( ispin, index_manifold )
   call timer( 'Amn', 1 )
 
 !! For debugging
-!  write(6,'(a,l5,2i5)') 'amn: compute_chempotwann = ', compute_chempotwann, Node, Nodes
+!  write(6,'(a,l5,2i5)') 'amn: compute_chempotwann = ', compute_chempotwann_after_scf, Node, Nodes
 !  write(6,'(a,l5,2i5)') 'amn: first_chempotwann = ',   first_chempotwann, Node, Nodes
 !! End debugging
 
