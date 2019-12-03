@@ -74,7 +74,7 @@ module m_cite
   ! Increment this after having added a new
   ! citation!
   ! OTHERWISE YOU WILL EXPERIENCE A SEG-FAULT.
-  integer, parameter :: N_citations = 13
+  integer, parameter :: N_citations = 14
 
   private
 
@@ -229,6 +229,9 @@ contains
       case ( "arXiv/cond-mat/0407677" )
         ! Lowdin orthogonalization
         lID = 13
+      case ( "arXiv/1907.09788" )
+        ! Wannier90 paper (version 3.0.0)
+        lID = 14
       end select
 
     end if
@@ -389,6 +392,20 @@ contains
        cit%issue = ""
        cit%page = ""
        cit%cite_key = "Lowdin"
+
+    case ( 14 )
+       ! article describing the Wannier90 code, version 3.0.0
+       cit%comment = "Wannier90 paper, version 3.0.0"
+       cit%author = "G. Pizzi et al."
+       cit%title = "Wannier90 as a community code: new features and applications"
+       cit%doi = "https://arxiv.org/abs/1907.09788"
+       cit%journal = "arXiv:1907.09788"
+       cit%year = 2019
+       cit%volume = ""
+       cit%issue = ""
+       cit%page = ""
+       cit%cite_key = "Wannier90-v3.0.0"
+       
        
 
     case default

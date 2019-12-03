@@ -241,8 +241,10 @@ module m_w90_in_siesta
       call add_citation("10.1103/PhysRevB.56.12847")
 !     ... to the paper describing the WANNIER90 code
       call add_citation("10.1016/j.cpc.2014.05.003")
-!     ... to the paper describing the Löwdin orthogonalization
-      call add_citation("arXiv/cond-mat/0407677")
+!!     ... to the paper describing the Löwdin orthogonalization
+!      call add_citation("arXiv/cond-mat/0407677")
+!!     ... to the paper describing the WANNIER90 code, version 3.0.0
+      call add_citation("arXiv/1907.09788")
 
 !
 !     Read and set up the general information for every manifold,
