@@ -8754,7 +8754,7 @@ https://personales.unican.es/junqueraj/JavierJunquera\_files/Metodos/Wannier/Exe
 
 \end{fdfentry}
 
-\begin{fdfentry}{WannierProjections}[block]
+\begin{fdfentry}{WannierManifolds}[block]
 <\fdfvalue{Information on the band manifolds to be wannierized}>
   
   Specifies all the information required to Wannierized a given 
@@ -8763,7 +8763,7 @@ https://personales.unican.es/junqueraj/JavierJunquera\_files/Metodos/Wannier/Exe
   bulk SrTiO$_{3}$) is:
 
   \begin{fdfexample}
-     %block WannierProjections
+     %block WannierManifolds
        1                  # Sequential index of the manifold
        12  20             # Indices of the initial and final band of the manifold
        9                  # Number of bands for Wannier transformation
@@ -8773,7 +8773,7 @@ https://personales.unican.es/junqueraj/JavierJunquera\_files/Metodos/Wannier/Exe
        fermi_surface_plot # Plot the Fermi surface
        write_hr           # Write the Hamiltonian in the WF basis
        write_tb           # Write lattice vectors, Hamiltonian, and position operator in WF basis
-     %endblock WannierProjections
+     %endblock WannierManifolds
   \end{fdfexample}
 
   The first line is the sequential index of the manifold,
@@ -8844,6 +8844,76 @@ https://personales.unican.es/junqueraj/JavierJunquera\_files/Metodos/Wannier/Exe
   energy window for band disentanglement (in eV).
   This is the energy window where some Bloch states are forced to be
   preserved identically in the projected manifold.
+
+\end{fdfentry}
+
+\begin{fdfentry}{WannierProjectors}[block]
+<\fdfvalue{Information on the projection functions as in wannier90}>
+
+Information on the projection functions \`a-la-\program{wannier90},
+used to construct the
+initial guesses for the unitary transformations.
+
+These are used when some of the atomic orbitals in the 
+fourth line of the block \fdf{WannierManifolds} are negative.
+
+ For instance, to specify the projectors for the bottom of the 
+ conduction band of bulk SrTiO$_{3}$, we can write a 
+ block \fdf{WannierManifolds} as
+
+  \begin{fdfexample}
+  1                  # Sequential index of the manifold, from 1 to NumberOfBandManifoldsForWannier
+  21  23             # Indices of the initial and final band of the manifold
+  3                  # Number of bands for Wannier transformation
+  -1 -2 -3           # Indices of the orbitals that will be used as localized trial orbitals
+  num_iter 0         # Number of iterations for the minimization of \Omega
+  wannier_plot  3    # Plot the Wannier function
+  fermi_surface_plot # Plot the Fermi surface
+  write_hr           # Write the Hamiltonian in the WF basis
+  write_tb           # Write lattice vectors, Hamiltonian, and position operator in WF basis
+  \end{fdfexample}
+
+ Then, the three projector functions that will be generated
+ following the recipe of \program{wannier90} will be
+
+  \begin{fdfexample}
+%block WannierProjectors
+   1 3
+   0.5 0.5 0.5  2  2  1 0.00  0.00  1.00   1.00  0.00  0.00    1.00
+   0.5 0.5 0.5  2  3  1 0.00  0.00  1.00   1.00  0.00  0.00    1.00
+   0.5 0.5 0.5  2  5  1 0.00  0.00  1.00   1.00  0.00  0.00    1.00
+%endblock WannierProjectors
+  \end{fdfexample}
+
+ The first line contains two integers:
+ the first one refer to the index of manifold for which these projections
+ will be used;
+ the second one refers to the number of projections that will be read in this form
+ \`a-la-\program{wannier90}. This second integer should be the same as the 
+ number of negative numbers in the fourth line of the block \fdf{WannierManifolds}
+
+ The rest of the numbers are written following the \program{wannier90} format
+ provided in the .nnkp file.
+
+ centre: three real numbers; projection function centre in crystallographic 
+ co-ordinates relative to the direct lattice vectors.
+
+ $l$ $m_{r}$ $r$: three integers; $l$ and $m_{r}$ specify the angular part 
+ $\Theta_{l m_{r}}(\theta,\varphi)$, and $r$ specifies the radial part 
+ $R_{r} (r)$ of the projection function (see Tables 3.1, 3.2 and 3.3
+ of the \program{wannier90} User's Guide).
+ 
+ z-axis: three real numbers; default is 0.0 0.0 1.0; 
+ defines the axis from which the polar angle $\theta$ 
+ in spherical polar coordinates is measured.
+ 
+ x-axis: three real numbers; must be orthogonal to z-axis\; 
+ default is 1.0 0.0 0.0 or a vector perpendicular to z-axis 
+ if z-axis is given; defines the axis from with the azimuthal 
+ angle $\varphi$ in spherical polar coordinates is measured.
+
+ zona: real number; the value of $\frac{Z}{a}$ associated with 
+ the radial part of the atomic orbital. Units are in reciprocal Angstrom.
 
 \end{fdfentry}
 

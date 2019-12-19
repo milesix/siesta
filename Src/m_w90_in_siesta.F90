@@ -108,7 +108,7 @@ module m_w90_in_siesta
                                        !   this is core independent
   use atomlist,           only: no_s   ! Number of atomic orbitals in the
                                        !   supercell
-  use sys,                only : die   ! Termination routine
+  use sys,                only: die    ! Termination routine
   use fdf
 
 !
@@ -148,7 +148,7 @@ module m_w90_in_siesta
 !!    and the pre-print by Íñiguez and Yildirim in the arxiv where the 
 !!    Lowdin orthogonalization is explained.
 !!
-!! 2. Read the WannierProjections block in the fdf 
+!! 2. Read the WannierManifolds block in the fdf 
 !!    and set up the general information for every manifold,
 !!    including initial (initial_band) and final (final_band) bands,
 !!    number of bands that will be orthogonalized (numbands_w90_in),
@@ -448,7 +448,7 @@ module m_w90_in_siesta
 !!         Wannier transformation.
 !!
 !!         This information is contained in the 
-!!         block WannierProjections.
+!!         block WannierManifolds.
 !!         The derived variable manifold_bands_w90_in
 !!         is populated. 
 !!         The type of this variable is defined in the 
@@ -489,10 +489,10 @@ module m_w90_in_siesta
 !   will be stored
     allocate(manifold_bands_w90_in(n_wannier_manifolds))
     
-!   Read the WannierProjections block
+!   Read the WannierManifolds block
 !   First check whether the block is present in the fdf file.
 !   If it is not present, do nothing
-    if (.not. fdf_block('WannierProjections',bfdf)) RETURN
+    if (.not. fdf_block('WannierManifolds',bfdf)) RETURN
 
 !   Read the content of the block, line by line
     do while(fdf_bline(bfdf, pline))       
@@ -503,7 +503,7 @@ module m_w90_in_siesta
                                            !   integer that is the sequential 
                                            !   number of the manifold. 
                                            !   That is the meaning of 'i'
- &      call die('Wrong format in the manifold index of the WannierProjections')
+ &      call die('Wrong format in the manifold index of the WannierManifolds')
         
 !     Assign the index of the manifold to the first integer found 
 !     in the digested line
@@ -519,7 +519,7 @@ module m_w90_in_siesta
                                            !   the initial and the final bands
                                            !   of the manifold.
                                            !   That is the meaning of 'ii'
- &      call die('Wrong format in the initial/final band in WannierProjections')
+ &      call die('Wrong format in the initial/final band in WannierManifolds')
 
 !     Assign the indices of the initial and final band of the manifold 
 !     as the first and second integer in the digested line, respectively
@@ -568,7 +568,7 @@ module m_w90_in_siesta
 !     Go to the next line to 
 !     read the indices of the atomic orbitals chosen as localized trial orbitals
       if (.not. fdf_bline(bfdf,pline)) &
- &      call die("No localized trial orbitals in WannierProjections")
+ &      call die("No localized trial orbitals in WannierManifolds")
 
 !     We need as many localized trial orbitals as Wannier functions requested
       if( fdf_bnintegers(pline) .ne.                               &
@@ -688,7 +688,7 @@ module m_w90_in_siesta
 ! &        'read_w90_in_siesta_specs: Disentanglement procedure required '
 !      endif
 !
-!!     Write the indices of the orbitals used as initial localized guess
+!     Write the indices of the orbitals used as initial localized guess
 !      do iorb = 1, manifold_bands_w90_in(index_manifold)%numbands_w90_in
 !        write(6,'(a,i5)')                                                      &
 ! & 'read_w90_in_siesta_specs: Index of the orbital used as initial localized guess =',&
@@ -738,7 +738,7 @@ module m_w90_in_siesta
 ! &      manifold_bands_w90_in(index_manifold)%write_tb
 !!     End debugging
 
-    enddo ! end loop over all the lines in the block WannierProjections
+    enddo ! end loop over all the lines in the block WannierManifolds
 
 !   Allocate the pointer where the chemical potential associated with 
 !   a given Wannier function will be stored.
@@ -761,6 +761,7 @@ module m_w90_in_siesta
 !   If the block with the chemical potentials is present,
 !   set to true the flag to compute the shifts of the matrix elements
     compute_chempotwann = .true. 
+    first_chempotwann   = .true. 
 
 !   Read the content of the block, line by line
     do while(fdf_bline(bfdf, pline))       
@@ -1230,7 +1231,8 @@ module m_w90_in_siesta
     do iorb = 1, manifold_bands_w90_in(index_manifold)%numbands_w90_in
       index_orb_included =                                          & 
  &      manifold_bands_w90_in(index_manifold)%orbital_indices(iorb)
-      manifold_bands_w90_in(index_manifold)%orbexcluded(index_orb_included) = &
+      if( index_orb_included .gt. 0 )                                           &
+ &      manifold_bands_w90_in(index_manifold)%orbexcluded(index_orb_included) = &
  &      .false. 
     enddo
 
@@ -1239,7 +1241,8 @@ module m_w90_in_siesta
     do iorb = 1, manifold_bands_w90_in(index_manifold)%numbands_w90_in
       index = index + 1
       index_orb_included = manifold_bands_w90_in(index_manifold)%orbital_indices(iorb)
-      manifold_bands_w90_in(index_manifold)%orb_in_manifold(index_orb_included) = index
+      if( index_orb_included .gt. 0 )                                           &
+ &      manifold_bands_w90_in(index_manifold)%orb_in_manifold(index_orb_included) = index
     enddo
 
 !!   For debugging
@@ -1662,6 +1665,7 @@ module m_w90_in_siesta
     use w90_comms,       only: on_root         ! are we the root node?
     use w90_comms,       only: num_nodes       ! number of nodes
     use w90_comms,       only: my_node_id      ! ID of this node 
+
 !
 !   Subroutines coming from WANNIER90 (version 3.0.0) that will be called
 !   from SIESTA 
@@ -2083,6 +2087,7 @@ module m_w90_in_siesta
 ! &    'compute_wannier: dis_win_min     = ', dis_win_min
 !    write(6,'(a,f12.5)')                         &
 ! &    'compute_wannier: dis_win_max     = ', dis_win_max
+!    write(6,*) manifold_bands_w90_in(index_manifold)%dis_win_max
 !    write(6,'(a,f12.5)')                         &
 ! &    'compute_wannier: dis_froz_min    = ', dis_froz_min
 !    write(6,'(a,f12.5)')                         &
@@ -2126,6 +2131,9 @@ module m_w90_in_siesta
                                       ! Derived type to define the
                                       !    localized trial
                                       !    orbitals
+    use trialorbitalclass, only: cutoffs 
+                                      ! Cut-off radii in units of \alpha^-1
+    use units,       only: Ang        ! Conversion factor
     use atmfuncs,    only: lofio      ! Returns angular momentum number
     use atmfuncs,    only: mofio      ! Returns magnetic quantum number
     use atmfuncs,    only: rcut       ! Returns orbital cutoff radius
@@ -2136,6 +2144,17 @@ module m_w90_in_siesta
                                       !    in its atom
     use siesta_geom, only: xa         ! Atomic coordinates
     use siesta_geom, only: isa        ! Species index of each atom
+    use siesta_geom, only: ucell      ! Unit cell lattice vectors 
+                                      !   in real space as used inside
+                                      !   SIESTA
+                                      !   First  index: component
+                                      !   Second index: vector
+                                      !   In Bohrs
+    use m_digest_nnkp, only: vectorproduct
+                                      ! Cross product of two vectors    
+
+    type(block_fdf)            :: bfdf
+    type(parsed_line), pointer :: pline
 
     integer,  intent(in)  :: i_manifold
     integer  :: number_projections
@@ -2159,8 +2178,13 @@ module m_w90_in_siesta
                              !   Radial functions associated with different 
                              !   values of r should be orthogonal to each other.
     real(dp) :: xaxis(3)     ! Sets the x-axis direction. Default is x=(1,0,0)
-    real(dp) :: yaxis(3)     ! Sets the y-axis direction. Default is y=(0,1,0)
+    real(dp) :: xaxis_tmp(3) ! Sets the x-axis direction, read from WannierProjectors
+    real(dp) :: yaxis(3)     ! Sets the y-axis direction
+    real(dp) :: yaxis_tmp(3) ! Sets the y-axis direction, read from WannierProjectors
     real(dp) :: zaxis(3)     ! Sets the z-axis direction. Default is z=(0,0,1)
+    real(dp) :: zaxis_tmp(3) ! Sets the z-axis direction, read from WannierProjectors
+    real(dp) :: center_tmp(3)! Sets the center of the Wannier function,
+                             !   read from WannierProjectors
     real(dp) :: zovera       ! zovera (optional):
                              !   the value of Z for the radial part 
                              !   of the atomic orbital 
@@ -2168,6 +2192,28 @@ module m_w90_in_siesta
                              !   function). 
                              !   Units always in reciprocal Angstrom. 
                              !   Default is zovera = 1.0.
+    integer  :: index_proj_from_block 
+                             ! Number of projectors whose information will not 
+                             !   be read from the WannierManifolds block
+                             !   but from the WannierProjectors block
+                             !   Those projectors are generated according
+                             !   to the recipe given in the Wannier90 code
+                             !   and they allow the introduction of hybridized
+                             !   guess functions
+    integer  :: index_manifold_projectors_block
+                             ! Index of the manifold whose (part of the)
+                             !   projectors from the WannierProjectors block
+    integer  :: number_projectors_block
+                             ! Number of projectors whose information 
+                             !   is included in the WannierProjectors block
+    integer  :: index, i, j
+    real(dp) :: xnorm_tmp    ! Norm of the x-vector read from WannierProjectors
+    real(dp) :: znorm_tmp    ! Norm of the z-vector read from WannierProjectors
+    real(dp) :: coseno       ! Cosine between the x and z vectors
+
+    real(dp), parameter :: eps4  = 1.0e-4_dp
+    real(dp), parameter :: eps6  = 1.0e-6_dp
+
 
 !   Sets the default for the x-axis
     xaxis(1) = 1.0_dp
@@ -2201,36 +2247,161 @@ module m_w90_in_siesta
  &     deallocate( manifold_bands_w90_in(i_manifold)%proj_w90_in )
     allocate(manifold_bands_w90_in(i_manifold)%proj_w90_in(number_projections))
 
+    index_proj_from_block = 0
     do iproj = 1, number_projections
 !     Identify the atomic orbitals on which we are going to project
       iorb = manifold_bands_w90_in(i_manifold)%orbital_indices(iproj)
-      ia = iaorb(iorb)               ! Atom to which orbital belongs
-      is = isa(ia)                   ! Atomic species of the atom where the
-                                     !   orbital is centered
-      iao = iphorb( iorb )           ! Orbital index within atom
-      l  = lofio( is, iao )          ! Orbital's angular mumentum number
-      m  = mofio( is, iao )          ! (Real) orbital's magnetic quantum number
-      rc = rcut(  is, iao )          ! Orbital's cutoff radius
-      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%center = xa(:,ia)
-      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%zaxis  = zaxis
-      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%xaxis  = xaxis
-      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%yaxis  = yaxis
-      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%zovera = zovera
-      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%r      = r
-      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%l      = l
-      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%mr     = m
-      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%rcut   = rc
-      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%lmax   = l
-      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%from_basis_orbital =&
+      if( iorb .gt. 0 ) then
+        ia = iaorb(iorb)               ! Atom to which orbital belongs
+        is = isa(ia)                   ! Atomic species of the atom where the
+                                       !   orbital is centered
+        iao = iphorb( iorb )           ! Orbital index within atom
+        l  = lofio( is, iao )          ! Orbital's angular mumentum number
+        m  = mofio( is, iao )          ! (Real) orbital's magnetic quantum number
+        rc = rcut(  is, iao )          ! Orbital's cutoff radius
+        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%center = xa(:,ia)
+        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%zaxis  = zaxis
+        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%xaxis  = xaxis
+        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%yaxis  = yaxis
+        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%zovera = zovera
+        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%r      = r
+        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%l      = l
+        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%mr     = m
+        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%rcut   = rc
+        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%lmax   = l
+        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%from_basis_orbital =&
  &                                                         .true.
-      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%iorb   = iorb
-      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%iorb_gindex = &
+        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%iorb   = iorb
+        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%iorb_gindex = &
  &                                     orb_gindex(is,iao) 
+      else
+        index_proj_from_block = index_proj_from_block + 1
+      endif
     enddo
 
+!   Read the information for the projectors from the Block, 
+!   in case some hybrid trial functions are required
+    if(index_proj_from_block .gt. 0) then
+      if (.not. fdf_block('WannierProjectors',bfdf)) then
+        call die('Block WannierProjectors to define the trial guess functions required')
+      endif
+
+!     Read the content of the block, line by line
+      do while(fdf_bline(bfdf, pline))       
+!       Read the number of projectors included in the block
+        if (.not. fdf_bmatch(pline,'ii')) &   
+ &      call die('Wrong format in the description of the WannierProjectors block')
+        
+!       Assign the index of the manifold to the first integer found 
+!       in the digested line
+!       And the number of projectors defined in this block for that 
+!       manifold as the second index
+        index_manifold_projectors_block = fdf_bintegers(pline,1)
+        number_projectors_block = fdf_bintegers(pline,2)
+        if( index_manifold_projectors_block .ne. i_manifold ) cycle
+        if( number_projectors_block .ne. index_proj_from_block ) &
+ &        call die('Wrong number of projectors in the WannierProjectors block')
+        projectors: do iproj = 1, number_projectors_block
+          if (.not. fdf_bline(bfdf,pline)) call die("No center, l, m, xaxis, etc")
+          index = ( number_projections - index_proj_from_block ) + iproj
+          center_tmp(1) = fdf_breals(pline,1)
+          center_tmp(2) = fdf_breals(pline,2)
+          center_tmp(3) = fdf_breals(pline,3)
+          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zaxis(1)  = fdf_breals(pline,4)
+          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zaxis(2)  = fdf_breals(pline,5)
+          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zaxis(3)  = fdf_breals(pline,6)
+          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%xaxis(1)  = fdf_breals(pline,7)
+          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%xaxis(2)  = fdf_breals(pline,8)
+          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%xaxis(3)  = fdf_breals(pline,9)
+          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zovera    = fdf_breals(pline,10)
+          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l         = fdf_bintegers(pline,1)
+          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%mr        = fdf_bintegers(pline,2)
+          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%r         = fdf_bintegers(pline,3)
+          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%from_basis_orbital =&
+ &                                                         .false.
+
+          xaxis_tmp = manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%xaxis
+          zaxis_tmp = manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zaxis
+!         Check that the xaxis and the zaxis are orthogonal to each other
+          xnorm_tmp = sqrt( xaxis_tmp(1)*xaxis_tmp(1) +   &
+ &                          xaxis_tmp(2)*xaxis_tmp(2) +   &
+ &                          xaxis_tmp(3)*xaxis_tmp(3) )
+          if (xnorm_tmp < eps6) call die('define_trial_orbitals: |xaxis_tmp| < eps ')
+          znorm_tmp = sqrt( zaxis_tmp(1)*zaxis_tmp(1) +   &
+ &                          zaxis_tmp(2)*zaxis_tmp(2) +   &
+ &                          zaxis_tmp(3)*zaxis_tmp(3) )
+          if (znorm_tmp < eps6) call die('define_trial_orbitals: |zaxis_tmp| < eps ')
+
+          coseno = ( xaxis_tmp(1)*zaxis_tmp(1) +    &
+ &                   xaxis_tmp(2)*zaxis_tmp(2) +    & 
+ &                   xaxis_tmp(3)*zaxis_tmp(3) ) /  &
+ &                 xnorm_tmp/znorm_tmp
+          if (abs(coseno) > eps6) &
+            call die('define_trial_orbitals: xaxis_tmp and zaxis_tmp are not orthogonal')
+          if (manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zovera < eps6) &
+            call die('define_trial_orbitals: zovera value must be positive')
+
+!         Compute the y-axis
+          yaxis_tmp = vectorproduct(zaxis,xaxis)
+          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%yaxis = &
+ &          yaxis_tmp / sqrt(dot_product(yaxis_tmp,yaxis_tmp))
+
+!         Now convert "center" from ScaledByLatticeVectors to Bohrs
+          do i=1,3
+            manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%center(i) = 0.0_dp
+            do j=1,3
+              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%center(i) = &
+ &               center_tmp(j)*ucell(i,j) + &
+ &               manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%center(i)
+            enddo
+          enddo
+
+          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zovera = &
+ &           manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zovera*Ang  !To Bohr^-1
+
+!         Select the maximum angular momentum
+          select case(manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l)
+            case(0:3)
+              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%lmax = &
+ &            manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l
+            case(-3:-1)
+              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%lmax = 1 ! spN hybrids
+            case(-5:-4)
+              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%lmax = 2 ! spdN hybrids
+            case default
+              call die("Invalid l in define_trial_orbitals")
+          end select
+
+!         Further checks
+          if ( manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%mr .lt. 1 )      &
+ &          call die("Invalid mr in define_trial_orbitals ")
+          if ( manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%r .gt. 3 .or.    &
+ &             manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%r .lt. 1 ) then
+            call die("Invalid r in define_trial_orbitals")
+          elseif ( manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l  .ge. 0 .and. &
+ &                 manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%mr .gt.         &
+ &                   2*manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l+1 ) then
+            call die("Invalid mr_w in define_trial_orbitals")
+          elseif ( manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l  .lt. 0 .and.  &
+ &                 manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%mr .gt.          &
+ &                 1-manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l ) then
+            call die("Invalid mr_w in define_trial_orbitals")
+          endif
+
+!         Cut-off initialization (in Bohr)
+          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%rcut   =          &
+ &          cutoffs(manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%r) /    &
+ &          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zovera
+
+        enddo projectors
+      enddo
+
+    endif
+
 !!   For debugging
-!    write(6,'(a)') 'begin projections'
-!    write(6,'(i6)') number_projections
+!    write(6,'(a)')    'define_trial_orbitals: Begin projections'
+!    write(6,'(a,i6)') 'define_trial_orbitals: Number of projectors = ', number_projections
+!    write(6,'(a,i6)') 'define_trial_orbitals: Projections read from block = ', index_proj_from_block 
 !    do iproj = 1, number_projections
 !      write(6,'(3(f10.5,1x),2x,3i3)') &
 ! &      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%center(1), &
@@ -2248,7 +2419,7 @@ module m_w90_in_siesta
 ! &      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%xaxis(3),  &
 ! &      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%zovera
 !    enddo
-!    write(6,'(a)') 'end projections'
+    write(6,'(a)')    'define_trial_orbitals: End projections'
 !!   End debugging
 
   end subroutine define_trial_orbitals

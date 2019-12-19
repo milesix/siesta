@@ -216,7 +216,7 @@
                                        !   this switch determines when
                                        !   the new matrix elements are
                                        !   added (only after regular scf)
-      logical, public :: first_chempotwann   = .true.
+      logical, public :: first_chempotwann   = .false.
                                        !  First time the calculation of the 
                                        !   matrix elements of the Hamiltonian
                                        !   with the chemical potential of the
