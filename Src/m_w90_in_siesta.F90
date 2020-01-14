@@ -1,5 +1,5 @@
  
-! Copyright (C) 1996-2016	The SIESTA group
+!nn Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt.
@@ -474,6 +474,12 @@ module m_w90_in_siesta
     integer :: index_manifold           ! Counter for the number of manifolds
     integer :: iorb                     ! Counter for the number of atomic orb.
     integer :: index_wannier            ! Variable to identify a given Wannier
+    integer :: number_Wannier_unit_cell ! Number of Wannier functions per 
+                                        !   unit cell
+    integer :: number_unit_cells        ! Number of unit cells in the supercell
+    integer :: iunit_cell               ! Counter for the loop on unit cells
+    integer :: indexorb                 ! Index of the localized trial function
+                                        !   in case of more than one unit cell
     real(dp):: factor                   ! Conversion factor for energy units
     character(len=30) :: string_num     ! Check whether the number of 
                                         !    iterations is in the input      
@@ -538,24 +544,37 @@ module m_w90_in_siesta
 !     Go to the next line to 
 !     read the total number of bands that will enter the 
 !     Wannier transformation
+!     By default, the number of unit cells in the simulation box is setup to one
+      number_unit_cells = 1
       if (.not. fdf_bline(bfdf,pline)) &
  &      call die("Number of bands to be orthogonalized not specified")
-      if (.not. fdf_bmatch(pline,'i')) &   !  We expect that the third line
-                                           !    of the block contains only one
-                                           !    integer: 
-                                           !    the number of "Wannier" 
-                                           !    functions that will be produced.
-                                           !    That is the meaning of 'i'
- &      call die('Wrong format in the number of Wannier functions')
+      if (fdf_bnintegers(pline) .eq. 1) then ! If only one unit cell is used
+        if (.not. fdf_bmatch(pline,'i')) &   !  We expect that the third line
+                                             !   of the block contains only one
+                                             !   integer: 
+                                             !   the number of "Wannier" 
+                                             !   functions that will be produced
+                                             !   That is the meaning of 'i'
+ &        call die('Wrong format in the number of Wannier functions')
 
-!     Assign the number of Wannier functions required to the 
-!     first integer in the digested line
-      manifold_bands_w90_in(index_manifold)%numbands_w90_in = &
- &      fdf_bintegers(pline,1)  
+!       Assign the number of Wannier functions required to the 
+!       first integer in the digested line
+        manifold_bands_w90_in(index_manifold)%numbands_w90_in = &
+ &        fdf_bintegers(pline,1)  
+      else if (fdf_bnintegers(pline) .eq. 2) then ! More than one unit cell 
+        if (.not. fdf_bmatch(pline,'ii')) & 
+ &        call die('Wrong format in the number of Wannier functions')
+          number_Wannier_unit_cell = fdf_bintegers(pline,1) 
+          number_unit_cells        = fdf_bintegers(pline,2)
+!         Assign the number of Wannier functions required 
+          manifold_bands_w90_in(index_manifold)%numbands_w90_in = &
+ &           number_Wannier_unit_cell * number_unit_cells 
+      endif 
 
+!     Check if disentanglement is required
       if( manifold_bands_w90_in(index_manifold)%numbands_w90_in .gt.   &
  &        manifold_bands_w90_in(index_manifold)%number_of_bands )      &
- &      call die('More Wannier functions requested than bands in the manifold')
+ &     call die('More Wannier functions requested than bands in the manifold')
 
 !     Check whether the disentanglement procedure will be required:
       if( manifold_bands_w90_in(index_manifold)%number_of_bands /=      &
@@ -567,13 +586,7 @@ module m_w90_in_siesta
 
 !     Go to the next line to 
 !     read the indices of the atomic orbitals chosen as localized trial orbitals
-      if (.not. fdf_bline(bfdf,pline)) &
- &      call die("No localized trial orbitals in WannierManifolds")
-
 !     We need as many localized trial orbitals as Wannier functions requested
-      if( fdf_bnintegers(pline) .ne.                               &
- &        manifold_bands_w90_in(index_manifold)%numbands_w90_in )  &
- &      call die('We need as many localized trial orbitals as Wannier functions requested')
 
 !     Allocate the array where the indices of the orbitals used as 
 !     trial localized functions will be stored
@@ -581,12 +594,33 @@ module m_w90_in_siesta
       call re_alloc( manifold_bands_w90_in(index_manifold)%orbital_indices,  &
  &        1, manifold_bands_w90_in(index_manifold)%numbands_w90_in )
 
-!     Read the indices of the orbitals used as 
-!     trial localized functions will be stored
-      do iorb = 1, manifold_bands_w90_in(index_manifold)%numbands_w90_in
-        manifold_bands_w90_in(index_manifold)%orbital_indices(iorb) =        &
- &         fdf_bintegers(pline,iorb)
-      enddo
+      if( number_unit_cells .eq. 1 ) then
+        if (.not. fdf_bline(bfdf,pline)) &
+ &        call die("No localized trial orbitals in WannierManifolds")
+        if( fdf_bnintegers(pline) .ne.                               &
+ &          manifold_bands_w90_in(index_manifold)%numbands_w90_in )  &
+ &        call die('We need as many localized trial orbitals as Wannier functions requested')
+!       Read the indices of the orbitals used as 
+!       trial localized functions will be stored
+        do iorb = 1, manifold_bands_w90_in(index_manifold)%numbands_w90_in
+          manifold_bands_w90_in(index_manifold)%orbital_indices(iorb) =        &
+ &           fdf_bintegers(pline,iorb)
+        enddo
+      elseif( number_unit_cells .gt. 1 ) then
+        do iunit_cell = 1, number_unit_cells
+          if (.not. fdf_bline(bfdf,pline)) &
+ &          call die("No localized trial orbitals in WannierManifolds")
+          if( fdf_bnintegers(pline) .ne. number_Wannier_unit_cell )    &
+ &          call die('We need as many localized trial orbitals as Wannier functions requested')
+!         Read the indices of the orbitals used as 
+!         trial localized functions will be stored
+          do iorb = 1, number_Wannier_unit_cell
+            indexorb = (iunit_cell-1)*number_Wannier_unit_cell + iorb
+            manifold_bands_w90_in(index_manifold)%orbital_indices(indexorb) =  &
+ &             fdf_bintegers(pline,iorb)
+          enddo
+        enddo
+      endif
 
 !     Read the Number of iterations for the minimization of \Omega
       if (.not. fdf_bline(bfdf,pline)) &
@@ -1231,8 +1265,8 @@ module m_w90_in_siesta
     do iorb = 1, manifold_bands_w90_in(index_manifold)%numbands_w90_in
       index_orb_included =                                          & 
  &      manifold_bands_w90_in(index_manifold)%orbital_indices(iorb)
-      if( index_orb_included .gt. 0 )                                           &
- &      manifold_bands_w90_in(index_manifold)%orbexcluded(index_orb_included) = &
+      if( index_orb_included .gt. 0 )                               &
+ &      manifold_bands_w90_in(index_manifold)%orbexcluded(index_orb_included) =&
  &      .false. 
     enddo
 
@@ -2419,7 +2453,7 @@ module m_w90_in_siesta
 ! &      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%xaxis(3),  &
 ! &      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%zovera
 !    enddo
-    write(6,'(a)')    'define_trial_orbitals: End projections'
+!    write(6,'(a)')    'define_trial_orbitals: End projections'
 !!   End debugging
 
   end subroutine define_trial_orbitals
