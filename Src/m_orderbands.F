@@ -86,9 +86,9 @@ C *********************************************************************
       use parallelsubs,       only : GlobalToLocalOrb
       use alloc,              only : re_alloc, de_alloc
 
-!!     For debugging
-!      use sys,                only : die
-!!     End debugging
+!     For debugging
+      use sys,                only : die
+!     End debugging
 
       implicit none 
 
@@ -126,7 +126,12 @@ C *********************************************************************
 
 !     Define the maximum number of local bands to be stored in a Node
 !     after wannierization.
-      maxilocalb = numincbands/Nodes + 1
+      maxilocalb = numincbands
+!!     For debugging
+!      write(6,'(a,3i5)') 
+!     .   'Node, numincbands, maxilocalb = ', 
+!     .    Node, numincbands, numincbands/Nodes + 1
+!!     End debugging
 
 !     Allocate the arrays where the indices of the bands included for 
 !     wannierization, and the node that will contain its coefficients 
@@ -163,8 +168,9 @@ C *********************************************************************
       do n = 0, Nodes - 1
         call GetNodeOrbs( nuotot, n, Nodes, noccloc )
 !! For debugging
-!        write(6,'(a,4i5)')' order_index: Node, n, nuotot, noccloc = ', 
-!     .                       Node, n, nuotot, noccloc
+!        write(6,'(a,5i5)')
+!     .   ' order_index: Node, n, nuotot, noccloc, blocksizeincbands = ',      
+!     .                  Node, n, nuotot, noccloc, blocksizeincbands
 !! End debugging
         do ibandg = 1, nuotot
           call GlobalToLocalOrb(ibandg,n,Nodes,ibandl)
@@ -175,11 +181,11 @@ C *********************************************************************
       enddo 
 
 !! For debugging
-!        do ibandg = 1, nuotot
-!          write(6,'(a,4i5)')
-!     .     ' order_index: Node, ibandg, node_diagon_all=', 
-!     .                    Node, ibandg, node_diagon_all(ibandg)
-!        enddo 
+!      do ibandg = 1, nuotot
+!        write(6,'(a,4i5)')
+!     .    ' order_index: Node, ibandg, node_diagon_all=', 
+!     .                   Node, ibandg, node_diagon_all(ibandg)
+!      enddo 
 !! End debugging
 
 !     Set up the indices of the included bands
@@ -196,31 +202,68 @@ C *********************************************************************
 !     routines use implicitly the Blocksize determined at the
 !     beginning of the program.
 
-      jband = 0 
-      do n = 0, Nodes-1 
-        call GetNodeOrbs( nuotot, n, Nodes, noccloc )
-        do ibandl = 1, noccloc
-          call LocalToGlobalOrb( ibandl, n, Nodes, ibandg )
-          if( .not.  isexcluded(ibandg) ) then
-            jband = jband + 1
-!           Identify the global band index of the included band
-            index_included_band(jband) = ibandg
+!      jband = 0 
+!      do n = 0, Nodes-1 
+!        call GetNodeOrbs( nuotot, n, Nodes, noccloc )
+!        do ibandl = 1, noccloc
+!          call LocalToGlobalOrb( ibandl, n, Nodes, ibandg )
+!          if( .not.  isexcluded(ibandg) ) then
+!            jband = jband + 1
+!!           Identify the global band index of the included band
+!            index_included_band(jband) = ibandg
+!
+!!           Identify in which node the coefficients of this band will be stored
+!            ! Use scalapack helper routine with the appropriate blocksize
+!
+!            Nodeibandg = indxg2p(jband,blocksizeincbands,0,0,Nodes)
+!            node_included_band(jband) = Nodeibandg
+!!           For debugging
+!            write(6,'(a,6i5)')
+!     . 'Node, Nodes, ibandl, jband, index_included_band, 
+!     .  node_included_band =',       
+!     .  Node, Nodes, ibandl, jband, 
+!     .  index_included_band(jband), 
+!     .  node_included_band(jband) 
+!!           End debugging
+!          endif
+!        enddo
+!      enddo
 
-!           Identify in which node the coefficients of this band will be stored
-            ! Use scalapack helper routine with the appropriate blocksize
+      jband = 0
+      do ibandg = 1, nuotot
+        if( .not.  isexcluded(ibandg) ) then
+          jband = jband + 1
+!         Identify the global band index of the included band
+          index_included_band(jband) = ibandg
+!         Identify in which node the coefficients of this band will be stored
+          ! Use scalapack helper routine with the appropriate blocksize
 
-            Nodeibandg = indxg2p(jband,blocksizeincbands,0,0,Nodes)
-            node_included_band(jband) = Nodeibandg
-          endif
-        enddo
-      enddo
+          Nodeibandg = indxg2p(jband,blocksizeincbands,0,0,Nodes)
+          node_included_band(jband) = Nodeibandg
+!!         For debugging
+!          write(6,'(a,6i5)')
+!     .      'Node, Nodes, ibandg, jband, index_included_band, 
+!     .       node_included_band =',       
+!     .       Node, Nodes, ibandg, jband, 
+!     .       index_included_band(jband), 
+!     .       node_included_band(jband) 
+!!         End debugging
+        endif
+      enddo 
 
 !     Identify the local index of the included band inside the node
       bandspernode(:) = 0
+      
       do jband = 1, numincbands
         nodejband = node_included_band(jband)
         bandspernode(nodejband) = bandspernode(nodejband) + 1
         band_index_in_node(jband) = bandspernode(nodejband)
+!!       For debugging
+!        write(6,*)
+!     .   'Node, jband,  nodejband, bandspernode, band_index_in_node=', 
+!     .    node, jband,  nodejband, bandspernode(nodejband),     
+!     .    band_index_in_node(jband)
+!!       End debugging
 !       Given a band and a local index, identiy the global index 
 !       of the band that is stored there
         which_band_in_node(nodejband,band_index_in_node(jband)) = 

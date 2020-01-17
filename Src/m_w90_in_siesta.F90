@@ -1,5 +1,5 @@
  
-!nn Copyright (C) 1996-2016	The SIESTA group
+! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt.
@@ -1423,15 +1423,15 @@ module m_w90_in_siesta
 #endif
         if( IONode ) then
           do nkp = 1, numkpoints
-            do iproj = 1, manifold_bands_w90_in(1)%number_of_bands 
+            do iproj = 1, manifold_bands_w90_in(1)%numbands_w90_in
               do mband = manifold_bands_w90_in(1)%number_of_bands+1,  &
                          manifold_bands_w90_in(1)%number_of_bands +   & 
                          manifold_bands_w90_in(2)%number_of_bands 
                 Amnmat(mband, iproj, nkp) = cmplx(0.0_dp,0.0_dp,kind=dp)
               enddo
             enddo
-            do iproj = manifold_bands_w90_in(1)%number_of_bands+1,    &
-                       manifold_bands_w90_in(3)%number_of_bands
+            do iproj = manifold_bands_w90_in(1)%numbands_w90_in+1,    &
+                       manifold_bands_w90_in(3)%numbands_w90_in
               do mband = 1, manifold_bands_w90_in(1)%number_of_bands 
                 Amnmat(mband, iproj, nkp) = cmplx(0.0_dp,0.0_dp,kind=dp)
               enddo
@@ -2323,114 +2323,115 @@ module m_w90_in_siesta
 !     Read the content of the block, line by line
       do while(fdf_bline(bfdf, pline))       
 !       Read the number of projectors included in the block
-        if (.not. fdf_bmatch(pline,'ii')) &   
- &      call die('Wrong format in the description of the WannierProjectors block')
-        
-!       Assign the index of the manifold to the first integer found 
-!       in the digested line
-!       And the number of projectors defined in this block for that 
-!       manifold as the second index
-        index_manifold_projectors_block = fdf_bintegers(pline,1)
-        number_projectors_block = fdf_bintegers(pline,2)
-        if( index_manifold_projectors_block .ne. i_manifold ) cycle
-        if( number_projectors_block .ne. index_proj_from_block ) &
- &        call die('Wrong number of projectors in the WannierProjectors block')
-        projectors: do iproj = 1, number_projectors_block
-          if (.not. fdf_bline(bfdf,pline)) call die("No center, l, m, xaxis, etc")
-          index = ( number_projections - index_proj_from_block ) + iproj
-          center_tmp(1) = fdf_breals(pline,1)
-          center_tmp(2) = fdf_breals(pline,2)
-          center_tmp(3) = fdf_breals(pline,3)
-          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zaxis(1)  = fdf_breals(pline,4)
-          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zaxis(2)  = fdf_breals(pline,5)
-          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zaxis(3)  = fdf_breals(pline,6)
-          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%xaxis(1)  = fdf_breals(pline,7)
-          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%xaxis(2)  = fdf_breals(pline,8)
-          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%xaxis(3)  = fdf_breals(pline,9)
-          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zovera    = fdf_breals(pline,10)
-          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l         = fdf_bintegers(pline,1)
-          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%mr        = fdf_bintegers(pline,2)
-          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%r         = fdf_bintegers(pline,3)
-          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%from_basis_orbital =&
+        if (.not. fdf_bmatch(pline,'ii')) then
+          cycle
+        else 
+!         Assign the index of the manifold to the first integer found 
+!         in the digested line
+!         And the number of projectors defined in this block for that 
+!         manifold as the second index
+          index_manifold_projectors_block = fdf_bintegers(pline,1)
+          number_projectors_block = fdf_bintegers(pline,2)
+          if( index_manifold_projectors_block .eq. i_manifold ) then
+            if( number_projectors_block .ne. index_proj_from_block ) &
+ &            call die('Wrong number of projectors in the WannierProjectors block')
+            projectors: do iproj = 1, number_projectors_block
+              if (.not. fdf_bline(bfdf,pline)) call die("No center, l, m, xaxis, etc")
+              index = ( number_projections - index_proj_from_block ) + iproj
+              center_tmp(1) = fdf_breals(pline,1)
+              center_tmp(2) = fdf_breals(pline,2)
+              center_tmp(3) = fdf_breals(pline,3)
+              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zaxis(1)  = fdf_breals(pline,4)
+              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zaxis(2)  = fdf_breals(pline,5)
+              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zaxis(3)  = fdf_breals(pline,6)
+              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%xaxis(1)  = fdf_breals(pline,7)
+              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%xaxis(2)  = fdf_breals(pline,8)
+              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%xaxis(3)  = fdf_breals(pline,9)
+              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zovera    = fdf_breals(pline,10)
+              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l         = fdf_bintegers(pline,1)
+              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%mr        = fdf_bintegers(pline,2)
+              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%r         = fdf_bintegers(pline,3)
+              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%from_basis_orbital =&
  &                                                         .false.
 
-          xaxis_tmp = manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%xaxis
-          zaxis_tmp = manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zaxis
-!         Check that the xaxis and the zaxis are orthogonal to each other
-          xnorm_tmp = sqrt( xaxis_tmp(1)*xaxis_tmp(1) +   &
- &                          xaxis_tmp(2)*xaxis_tmp(2) +   &
- &                          xaxis_tmp(3)*xaxis_tmp(3) )
-          if (xnorm_tmp < eps6) call die('define_trial_orbitals: |xaxis_tmp| < eps ')
-          znorm_tmp = sqrt( zaxis_tmp(1)*zaxis_tmp(1) +   &
- &                          zaxis_tmp(2)*zaxis_tmp(2) +   &
- &                          zaxis_tmp(3)*zaxis_tmp(3) )
-          if (znorm_tmp < eps6) call die('define_trial_orbitals: |zaxis_tmp| < eps ')
+              xaxis_tmp = manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%xaxis
+              zaxis_tmp = manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zaxis
+!             Check that the xaxis and the zaxis are orthogonal to each other
+              xnorm_tmp = sqrt( xaxis_tmp(1)*xaxis_tmp(1) +   &
+ &                              xaxis_tmp(2)*xaxis_tmp(2) +   &
+ &                              xaxis_tmp(3)*xaxis_tmp(3) )
+              if (xnorm_tmp < eps6) call die('define_trial_orbitals: |xaxis_tmp| < eps ')
+              znorm_tmp = sqrt( zaxis_tmp(1)*zaxis_tmp(1) +   &
+ &                              zaxis_tmp(2)*zaxis_tmp(2) +   &
+ &                              zaxis_tmp(3)*zaxis_tmp(3) )
+              if (znorm_tmp < eps6) call die('define_trial_orbitals: |zaxis_tmp| < eps ')
 
-          coseno = ( xaxis_tmp(1)*zaxis_tmp(1) +    &
- &                   xaxis_tmp(2)*zaxis_tmp(2) +    & 
- &                   xaxis_tmp(3)*zaxis_tmp(3) ) /  &
- &                 xnorm_tmp/znorm_tmp
-          if (abs(coseno) > eps6) &
-            call die('define_trial_orbitals: xaxis_tmp and zaxis_tmp are not orthogonal')
-          if (manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zovera < eps6) &
-            call die('define_trial_orbitals: zovera value must be positive')
+              coseno = ( xaxis_tmp(1)*zaxis_tmp(1) +    &
+ &                       xaxis_tmp(2)*zaxis_tmp(2) +    & 
+ &                       xaxis_tmp(3)*zaxis_tmp(3) ) /  &
+ &                     xnorm_tmp/znorm_tmp
+              if (abs(coseno) > eps6) &
+                call die('define_trial_orbitals: xaxis_tmp and zaxis_tmp are not orthogonal')
+              if (manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zovera < eps6) &
+                call die('define_trial_orbitals: zovera value must be positive')
 
-!         Compute the y-axis
-          yaxis_tmp = vectorproduct(zaxis,xaxis)
-          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%yaxis = &
- &          yaxis_tmp / sqrt(dot_product(yaxis_tmp,yaxis_tmp))
+!             Compute the y-axis
+              yaxis_tmp = vectorproduct(zaxis,xaxis)
+              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%yaxis = &
+ &              yaxis_tmp / sqrt(dot_product(yaxis_tmp,yaxis_tmp))
 
-!         Now convert "center" from ScaledByLatticeVectors to Bohrs
-          do i=1,3
-            manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%center(i) = 0.0_dp
-            do j=1,3
-              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%center(i) = &
- &               center_tmp(j)*ucell(i,j) + &
- &               manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%center(i)
-            enddo
-          enddo
+!             Now convert "center" from ScaledByLatticeVectors to Bohrs
+              do i=1,3
+                manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%center(i) = 0.0_dp
+                do j=1,3
+                  manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%center(i) = &
+ &                   center_tmp(j)*ucell(i,j) + &
+ &                   manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%center(i)
+                enddo
+              enddo
 
-          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zovera = &
- &           manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zovera*Ang  !To Bohr^-1
+              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zovera = &
+ &               manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zovera*Ang  !To Bohr^-1
 
-!         Select the maximum angular momentum
-          select case(manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l)
-            case(0:3)
-              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%lmax = &
- &            manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l
-            case(-3:-1)
-              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%lmax = 1 ! spN hybrids
-            case(-5:-4)
-              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%lmax = 2 ! spdN hybrids
-            case default
-              call die("Invalid l in define_trial_orbitals")
-          end select
+!             Select the maximum angular momentum
+              select case(manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l)
+                case(0:3)
+                  manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%lmax = &
+ &                manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l
+                case(-3:-1)
+                  manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%lmax = 1 ! spN hybrids
+                case(-5:-4)
+                  manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%lmax = 2 ! spdN hybrids
+                case default
+                  call die("Invalid l in define_trial_orbitals")
+              end select
 
-!         Further checks
-          if ( manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%mr .lt. 1 )      &
- &          call die("Invalid mr in define_trial_orbitals ")
-          if ( manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%r .gt. 3 .or.    &
- &             manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%r .lt. 1 ) then
-            call die("Invalid r in define_trial_orbitals")
-          elseif ( manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l  .ge. 0 .and. &
- &                 manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%mr .gt.         &
- &                   2*manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l+1 ) then
-            call die("Invalid mr_w in define_trial_orbitals")
-          elseif ( manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l  .lt. 0 .and.  &
- &                 manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%mr .gt.          &
- &                 1-manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l ) then
-            call die("Invalid mr_w in define_trial_orbitals")
-          endif
+!             Further checks
+              if ( manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%mr .lt. 1 )      &
+ &              call die("Invalid mr in define_trial_orbitals ")
+              if ( manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%r .gt. 3 .or.    &
+ &                 manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%r .lt. 1 ) then
+                call die("Invalid r in define_trial_orbitals")
+              elseif ( manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l  .ge. 0 .and. &
+ &                     manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%mr .gt.         &
+ &                       2*manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l+1 ) then
+                call die("Invalid mr_w in define_trial_orbitals")
+              elseif ( manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l  .lt. 0 .and.  &
+ &                     manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%mr .gt.          &
+ &                     1-manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l ) then
+                call die("Invalid mr_w in define_trial_orbitals")
+              endif
 
-!         Cut-off initialization (in Bohr)
-          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%rcut   =          &
- &          cutoffs(manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%r) /    &
- &          manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zovera
+!             Cut-off initialization (in Bohr)
+              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%rcut   =          &
+ &              cutoffs(manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%r) /    &
+ &              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zovera
 
-        enddo projectors
-      enddo
-
-    endif
+            enddo projectors
+          endif   !  if( index_manifold_projectors_block .eq. i_manifold )
+        endif     !  if (.not. fdf_bmatch(pline,'ii')) 
+      enddo       !  do while lines in the fdf block
+    endif         !  if(index_proj_from_block .gt. 0) 
 
 !!   For debugging
 !    write(6,'(a)')    'define_trial_orbitals: Begin projections'

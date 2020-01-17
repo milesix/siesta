@@ -40,10 +40,8 @@ C *********************************************************************
       use parallelsubs,       only : GetNodeOrbs, LocalToGlobalOrb
       use parallelsubs,       only : GlobalToLocalOrb
       use mpi_siesta
-      use m_orderbands,       only : index_included_band
       use m_orderbands,       only : node_included_band
       use m_orderbands,       only : band_index_in_node
-      use m_orderbands,       only : which_band_in_node
 #endif
 
       implicit none
