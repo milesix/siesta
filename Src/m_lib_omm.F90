@@ -9,11 +9,12 @@ module m_lib_omm
 
 use MatrixSwitch
 
+use fdf,            only : fdf_integer
 use parallel,       only : BlockSize, Node, Nodes, ionode
 use precision,      only : dp
 use sys,            only : die
 #ifdef MPI
-use mpi_siesta,     only : mpi_comm_world
+use mpi_siesta
 use parallelsubs,   only : set_BlockSizeDefault
 #endif
 
@@ -71,23 +72,21 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
 
   logical :: init_C
 
-  integer :: mpi_rank
 #ifdef MPI
-  integer :: mpi_err, mpi_size, BlockSize_c_default
+  integer :: MPIerror, mpi_err, BlockSize_c_default, BlockSize_c
+  integer :: nbasis_i, nhmax_i
+  integer, allocatable, save :: h_dim_l2g(:) ! local-to-global index transform for AOs
+  integer, allocatable :: numh_i(:), listhptr_i(:), listh_i(:), h_dim_l2g_i(:)
+  real(dp), allocatable :: h_sparse_i(:), s_sparse_i(:), C_old_i(:)
 #endif
 
   integer :: i, j, io, jo, ind, k, l, N_occ
-  real(dp) :: he, se, e_min
+  real(dp) :: he, se, e_min, co, de
   type(matrix) :: H, S, D_min, T, C_min  
-  integer, allocatable, save :: h_dim_l2g(:) ! local-to-global index transform for AOs
   real(dp), allocatable, save :: C_old(:,:)
   logical, save :: first_call = .true.
 
   !**********************************************!
-  
-  if (ionode) then
-    print'(a)','OMM with libOMM'
-  end if
 
   if (nspin == 1) then
     N_occ = nint(0.5_dp*qs(1))
@@ -96,29 +95,29 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
   end if
   
 #ifdef MPI
-  call mpi_comm_size(mpi_comm_world,mpi_size,mpi_err)
-  call mpi_comm_rank(mpi_comm_world,mpi_rank,mpi_err)
-
 ! calculate the ScaLAPACK blocking factor for distributing the WF coeffs. matrix
   call set_blocksizedefault(Nodes,N_occ,BlockSize_c_default)
+  BlockSize_c=fdf_integer('OMM.BlockSize',BlockSize_c_default)
 
-  if (first_call) call ms_scalapack_setup(mpi_size,1,'c',BlockSize_c_default)
-
+  if (first_call) call ms_scalapack_setup(mpi_comm_world,1,'c',BlockSize_c)
+ 
   m_storage ='pddbc'
   m_operation ='lap'
 #else
-  mpi_rank = 0
   m_storage = 'sdden'
   m_operation = 'ref'
 #endif
   
-  if(first_call) then    
-    allocate(h_dim_l2g(1:nbasis))
-    h_dim_l2g(:) = 0
-    allocate(C_old(1:h_dim, 1:nbasis))
+  if(first_call) then
+    allocate(C_old(1:N_occ, 1:nbasis))
     C_old(:,:) = 0.0_dp
+    if (ionode) then
+      print'(a)','OMM with libOMM'
+    end if
 
 #ifdef MPI
+    allocate(h_dim_l2g(1:nbasis))
+    h_dim_l2g(:) = 0
     j = 0
     k = 0
     l = 0
@@ -134,12 +133,12 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
         if (j == Nodes) j = 0
       end if
     end do
-#else
-    do i = 1, nbasis
-      h_dim_l2g(i) = i
-    end do
 #endif
   end if
+
+  do i = 1, nbasis
+!    print'(a,i5,a,i5,a,i5)','Node = ', Node, ' i = ', i, ' l2g = ', h_dim_l2g(i) 
+  end do
 
   if (.not. H%is_initialized) call m_allocate(H,h_dim,h_dim,m_storage)
   if (.not. S%is_initialized) call m_allocate(S,h_dim,h_dim,m_storage)
@@ -148,63 +147,189 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
 
   init_C = .true.  
 
-  call m_set(H,m_operation,0.0_dp,0.0_dp)
-  call m_set(S,m_operation,0.0_dp,0.0_dp)
+  call m_set(H,'a',0.0_dp,0.0_dp,m_operation)
+  call m_set(S,'a',0.0_dp,0.0_dp,m_operation)
 
+#ifdef MPI
+  do i = 0, Nodes - 1
+    if(Node == i) then
+      nbasis_i = nbasis
+      nhmax_i = nhmax
+    end if
+    call MPI_Bcast(nbasis_i,1,MPI_Integer,i,MPI_Comm_World,MPIerror)
+    call MPI_Bcast(nhmax_i,1,MPI_Integer,i,MPI_Comm_World,MPIerror)
+    allocate(numh_i(1:nbasis_i))
+    allocate(listhptr_i(1:nbasis_i))
+    allocate(h_dim_l2g_i(1:nbasis_i))
+    allocate(listh_i(1:nhmax_i))
+    allocate(h_sparse_i(1:nhmax_i))
+    allocate(s_sparse_i(1:nhmax_i))
+    if(Node == i) then
+      numh_i(:) = numh(:)
+      h_dim_l2g_i(:) = h_dim_l2g(:)
+      listhptr_i(:) = listhptr(:)
+      listh_i(:) = listh(:)
+      h_sparse_i(:) = h_sparse(:,1)
+      s_sparse_i(:) = s_sparse(:)
+    end if
+    call MPI_Bcast(numh_i,nbasis_i,MPI_Integer,i,MPI_Comm_World,MPIerror)
+    call MPI_Bcast(h_dim_l2g_i,nbasis_i,MPI_Integer,i,MPI_Comm_World,MPIerror)
+    call MPI_Bcast(listhptr_i,nbasis_i,MPI_Integer,i,MPI_Comm_World,MPIerror)
+    call MPI_Bcast(listh_i,nhmax_i,MPI_Integer,i,MPI_Comm_World,MPIerror)
+    call MPI_Bcast(s_sparse_i,nhmax_i,MPI_Double_Precision,i,MPI_Comm_World,MPIerror)  
+    call MPI_Bcast(h_sparse_i,nhmax_i,MPI_Double_Precision,i,MPI_Comm_World,MPIerror)
+    do io = 1, nbasis_i
+      do j = 1, numh_i(io)
+        ind = listhptr_i(io)+j
+        jo = listh_i(ind)
+        he = h_sparse_i(ind)
+        se = s_sparse_i(ind)
+        call m_set_element(H,jo,h_dim_l2g_i(io),he,0.0_dp, m_operation)
+        call m_set_element(S,jo,h_dim_l2g_i(io),se,0.0_dp, m_operation)
+      end do
+    end do
+    deallocate(numh_i)
+    deallocate(h_dim_l2g_i)
+    deallocate(listh_i)
+    deallocate(listhptr_i)
+    deallocate(h_sparse_i)
+    deallocate(s_sparse_i)
+  end do
+#else
   do io = 1, nbasis
     do j = 1, numh(io)
       ind = listhptr(io)+j
       jo = listh(ind)
-      he = h_sparse(ind,1)
+      he = h_sparse(ind, 1)
       se = s_sparse(ind)
-      call m_set_element(H,io,jo,he,0.0_dp)
-      call m_set_element(S,io,jo,se,0.0_dp)
+      call m_set_element(H,jo,io,he,0.0_dp, m_operation)
+      call m_set_element(S,jo,io,se,0.0_dp, m_operation)
     end do
-  end do 
-   
+  end do
+#endif
+  
   call m_set(D_min,m_operation,0.0_dp,0.0_dp)  
   call m_set(C_min,m_operation,0.0_dp,0.0_dp)
 
+#ifdef MPI
+  do i = 0, Nodes - 1
+    if(Node == i) then
+      nbasis_i = nbasis
+    end if
+    call MPI_Bcast(nbasis_i,1,MPI_Integer,i,MPI_Comm_World,MPIerror)
+    allocate(h_dim_l2g_i(1:nbasis_i))
+    allocate(C_old_i(1:nbasis_i))
+    if(Node == i) h_dim_l2g_i(:) = h_dim_l2g(:)
+    call MPI_Bcast(h_dim_l2g_i,nbasis_i,MPI_Integer,i,MPI_Comm_World,MPIerror)
+    do io = 1, N_occ
+      if(Node == i) C_old_i(:) = C_old(io, :)
+      call MPI_Bcast(C_old_i(:),nbasis_i,MPI_Double_Precision,i,MPI_Comm_World,MPIerror)
+      do jo = 1, nbasis_i
+         call m_set_element(C_min,io,h_dim_l2g_i(jo),C_old_i(jo),0.0_dp)
+      end do
+    end do
+    deallocate(h_dim_l2g_i)
+    deallocate(C_old_i)
+  end do
+#else
   do io = 1, N_occ
     do jo = 1, nbasis
-      ind = h_dim_l2g(jo)
-      call m_set_element(C_min,io,ind,C_old(io,jo),0.0_dp)
+      call m_set_element(C_min,io,jo,C_old(io,jo),0.0_dp)
     end do
   end do
+#endif
 
   if(.not. calcE) then
     if(first_call) init_C = .false.
+    if(.not. init_C) print'(a,i5,a)','Node = ', Node, ' init_C = false '
     call omm(h_dim,N_occ,H,S,.true.,e_min,D_min,.false.,0.0_dp,&
       C_min,init_C,T,0.0_dp,0,nspin,1,-1.0_dp,.true.,.true.,&
-      m_storage,m_operation,mpi_rank)
-    C_old(:,:) = 0.0_dp
-    do io = 1, N_occ
-      do jo = 1, nbasis
-        ind = h_dim_l2g(jo)
-        call m_get_element(C_min,io,ind,C_old(io,jo))
+      m_storage,m_operation)
+#ifdef MPI
+    do i = 0, Nodes - 1
+      if(Node == i) then
+        nbasis_i = nbasis
+      end if
+      call MPI_Bcast(nbasis_i,1,MPI_Integer,i,MPI_Comm_World,MPIerror)
+      allocate(h_dim_l2g_i(1:nbasis_i))
+      if(Node == i) h_dim_l2g_i(:) = h_dim_l2g(:)
+      call MPI_Bcast(h_dim_l2g_i,nbasis_i,MPI_Integer,i,MPI_Comm_World,MPIerror)
+      do io = 1, N_occ
+        do jo = 1, nbasis_i
+           call m_get_element(C_min,io,h_dim_l2g_i(jo),co)
+           if(Node == i) C_old(io, jo) = co
+        end do
       end do
+    deallocate(h_dim_l2g_i)
+  end do
+#else
+  do io = 1, N_occ
+    do jo = 1, nbasis
+      call m_get_element(C_min,io,jo,C_old(io,jo))
     end do
+  end do
+#endif
   else
     call omm(h_dim,N_occ,H,S,.true.,e_min,D_min,.false.,0.0_dp,&
       C_min,init_C,T,0.0_dp,0,nspin,1,-1.0_dp,.true.,.false.,&
-      m_storage,m_operation,mpi_rank)
+      m_storage,m_operation)
     call omm(h_dim,N_occ,H,S,.false.,e_min,D_min,.true.,0.0_dp,&
       C_min,init_C,T,0.0_dp,0,nspin,1,-1.0_dp,.true.,.true.,&
-      m_storage,m_operation,mpi_rank)
+      m_storage,m_operation)
   end if	  
   if (ionode) then
     print'(a, f13.7)','e_min = ', e_min
-  end if
-  d_sparse(:,:) = 0.0_dp
+  end if 
+
+#ifdef MPI
+  do i = 0, Nodes - 1
+    if(Node == i) then
+      nbasis_i = nbasis
+      nhmax_i = nhmax
+    end if
+    call MPI_Bcast(nbasis_i,1,MPI_Integer,i,MPI_Comm_World,MPIerror)
+    call MPI_Bcast(nhmax_i,1,MPI_Integer,i,MPI_Comm_World,MPIerror)
+    allocate(numh_i(1:nbasis_i))
+    allocate(listhptr_i(1:nbasis_i))
+    allocate(h_dim_l2g_i(1:nbasis_i))
+    allocate(listh_i(1:nhmax_i))
+    if(Node == i) then
+      numh_i(:) = numh(:)
+      h_dim_l2g_i(:) = h_dim_l2g(:)
+      listhptr_i(:) = listhptr(:)
+      listh_i(:) = listh(:)
+    end if
+    call MPI_Bcast(numh_i,nbasis_i,MPI_Integer,i,MPI_Comm_World,MPIerror)
+    call MPI_Bcast(h_dim_l2g_i,nbasis_i,MPI_Integer,i,MPI_Comm_World,MPIerror)
+    call MPI_Bcast(listhptr_i,nbasis_i,MPI_Integer,i,MPI_Comm_World,MPIerror)
+    call MPI_Bcast(listh_i,nhmax_i,MPI_Integer,i,MPI_Comm_World,MPIerror)
+    do io = 1, nbasis_i
+      do j = 1, numh_i(io)
+        ind = listhptr_i(io) + j
+        jo = listh_i(ind)
+        call m_get_element(D_min,jo,h_dim_l2g_i(io),de)
+        if(i == Node) then
+          d_sparse(ind, 1) = 2.0*de 
+          if(nspin == 2) d_sparse(ind, 2) = d_sparse(ind, 1)
+        end if
+      end do
+    end do
+    deallocate(numh_i)
+    deallocate(h_dim_l2g_i)
+    deallocate(listh_i)
+    deallocate(listhptr_i)
+  end do
+#else
   do io = 1, nbasis
     do j = 1, numh(io)
       ind = listhptr(io) + j
       jo = listh(ind)
-      call m_get_element(D_min,io,jo,d_sparse(ind,1))
-      if(nspin == 1) d_sparse(ind,1) = 2.0_dp*d_sparse(ind,1)
-      if(nspin == 2) d_sparse(ind,2) = d_sparse(ind,1)
+      call m_get_element(D_min,jo,io,de)
+      d_sparse(ind, 1) = 2.0*de
+      if(nspin == 2) d_sparse(ind, 2) = d_sparse(ind, 1)
     end do
   end do
+#endif
 
   if(first_call) first_call = .false.
    
