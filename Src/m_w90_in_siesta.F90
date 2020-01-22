@@ -2320,6 +2320,9 @@ module m_w90_in_siesta
         call die('Block WannierProjectors to define the trial guess functions required')
       endif
 
+!     Initialize the number of projectors read in the block
+      number_projectors_block = 0
+
 !     Read the content of the block, line by line
       do while(fdf_bline(bfdf, pline))       
 !       Read the number of projectors included in the block
@@ -2331,8 +2334,8 @@ module m_w90_in_siesta
 !         And the number of projectors defined in this block for that 
 !         manifold as the second index
           index_manifold_projectors_block = fdf_bintegers(pline,1)
-          number_projectors_block = fdf_bintegers(pline,2)
           if( index_manifold_projectors_block .eq. i_manifold ) then
+            number_projectors_block = fdf_bintegers(pline,2)
             if( number_projectors_block .ne. index_proj_from_block ) &
  &            call die('Wrong number of projectors in the WannierProjectors block')
             projectors: do iproj = 1, number_projectors_block
@@ -2431,6 +2434,15 @@ module m_w90_in_siesta
           endif   !  if( index_manifold_projectors_block .eq. i_manifold )
         endif     !  if (.not. fdf_bmatch(pline,'ii')) 
       enddo       !  do while lines in the fdf block
+!     Sanity check in case the number of projectors in the block are not properly included
+      if( number_projectors_block .ne. index_proj_from_block ) then
+        write(6,'(a,i5)')                                                           &
+ &        'Wrong number of projectors in the WannierProjectors block for manifold', &
+ &        i_manifold
+        write(6,'(a,i5)')' number_projectors_block = ', number_projectors_block 
+        write(6,'(a,i5)')' index_proj_from_block   = ', index_proj_from_block
+        call die('Wrong number of projectors in the WannierProjectors block')
+      endif
     endif         !  if(index_proj_from_block .gt. 0) 
 
 !!   For debugging

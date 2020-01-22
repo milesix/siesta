@@ -104,11 +104,6 @@ module m_siesta2wannier90
 
 #ifdef MPI
   use parallelsubs,       only : set_blocksizedefault
-!
-! Subroutine to order the indices of the different bands after
-! excluding some of them for wannierization
-!
-  use m_orderbands,       only: order_index
 #endif
 
 !
@@ -231,13 +226,6 @@ subroutine siesta2wannier90
 !   to compute the projections
 !
     call switch_local_projection( 0 )
-
-!#ifdef MPI
-!!   Set up the arrays that control the indices of the bands to be
-!!   considered after excluding some of them for wannierization
-!!   This is done once and for all the k-points
-!    call order_index( no_l, no_u, numincbands(ispin) )
-!#endif
 
 !   Compute the matrix elements of the plane wave,
 !   for all the wave vectors that connect a given k-point to its nearest

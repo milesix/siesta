@@ -1302,7 +1302,7 @@ siesta.o: siesta_init.o siesta_move.o siesta_options.o siesta_tddft.o
 siesta2wannier90.o: files.o m_digest_nnkp.o m_spin.o 
 siesta2wannier90.o: parallel.o precision.o siesta_options.o sys.o
 siesta2wannier90.o: wannier90_types.o m_switch_local_proj.o atomlist.o
-siesta2wannier90.o: parallelsubs.o m_orderbands.o
+siesta2wannier90.o: parallelsubs.o 
 siesta_analysis.o: alloc.o atomlist.o bands.o basis_enthalpy.o dhscf.o files.o
 siesta_analysis.o: flook_siesta.o kpoint_scf.o ksv.o ksvinit.o local_DOS.o
 siesta_analysis.o: m_dipol.o m_energies.o m_eo.o m_forces.o m_iodm_old.o
