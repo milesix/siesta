@@ -7,21 +7,21 @@
 !
 
 #ifdef MPI
-subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
+subroutine diag3kp_velocity( spin, no_l, no_u, no_s, nnz, &
     ncol, ptr, col, H, S, getD, &
-    fixspin, qtot, qs, temp, e1, e2, xij, &
-    nk, kpoint, wk, eo, qo, DM, EDM, ef, efs, &
+    qtot, temp, e1, e2, xij, &
+    nk, kpoint, wk, eo, qo, DM, EDM, ef, &
     Entropy, Hk, Sk, psi, aux, &
     occtol, iscf, neigwanted)
   
   ! *********************************************************************
   ! Subroutine to calculate the eigenvalues and eigenvectors, density
   ! and energy-density matrices, and occupation weights of each 
-  ! eigenvector, for given Hamiltonian and Overlap matrices (including
-  ! spin polarization). K-sampling version.
+  ! eigenvector, for given Hamiltonian and Overlap matrices with spin-orbit
+  ! K-sampling version.
   ! This routine also calculates the velocities for the bands
   ! and shifts the eigenvalues according to the 
-  ! Created from diagkp, written by Nick Papior, 2018
+  ! Created by Nick Papior, 2020
   ! Uses parallelisation over K points instead of parallelisation 
   ! within them.
   ! **************************** INPUT **********************************
@@ -40,9 +40,7 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   ! real*8  H(nnz,spin%H)       : Hamiltonian in sparse form
   ! real*8  S(nnz)              : Overlap in sparse form
   ! logical getD                : Find occupations and density matrices?
-  ! logical fixspin             : Spin-dependent fermi-levels
   ! real*8  qtot                : Number of electrons in unit cell
-  ! real*8  qs                  : Number of electrons in unit cell per spin
   ! real*8  temp                : Electronic temperature 
   ! real*8  e1, e2              : Energy range for density-matrix states
   !                               (to find local density of states)
@@ -55,18 +53,18 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   ! real*8  occtol              : Occupancy threshold for DM build
   ! integer neigwanted          : maximum number of eigenvalues wanted
   ! *************************** OUTPUT **********************************
-  ! real*8 eo(maxo,spin%spinor,nk)   : Eigenvalues
+  ! real*8 eo(maxo*spin%spinor,nk)   : Eigenvalues
   ! ******************** OUTPUT (only if getD=.true.) *******************
-  ! real*8 qo(maxo,spin%spinor,nk)   : Occupations of eigenstates
+  ! real*8 qo(maxo*spin%spinor,nk)   : Occupations of eigenstates
   ! real*8 Dnew(maxnd,spin%DM)    : Output Density Matrix
   ! real*8 Enew(maxnd,spin%EDM)    : Output Energy-Density Matrix
   ! real*8 ef                   : Fermi energy
   ! real*8 Entropy              : Electronic entropy
   ! *************************** AUXILIARY *******************************
-  ! real*8 Hk(2,no_u,no_l) : Auxiliary space for the hamiltonian matrix
-  ! real*8 Sk(2,no_u,no_l) : Auxiliary space for the overlap matrix
-  ! real*8 psi(2,no_u,no_l)  : Auxiliary space for the eigenvectors
-  ! real*8 aux(2,no_u)       : Extra auxiliary space
+  ! complex*16 Hk(2,no_u,2,no_u) : Auxiliary space for the hamiltonian matrix
+  ! complex*16 Sk(2,no_u,2,no_u) : Auxiliary space for the overlap matrix
+  ! complex*16 psi(2,no_u,no_u*2)  : Auxiliary space for the eigenvectors
+  ! real*16 aux(2,no_u*3)          : Extra auxiliary space
   ! *************************** UNITS ***********************************
   ! xij and kpoint must be in reciprocal coordinates of each other.
   ! temp and H must be in the same energy units.
@@ -87,7 +85,7 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   use parallel,     only : Node, Nodes
   use parallelsubs, only : WhichNodeOrb, GlobalToLocalOrb
   use mpi_siesta
-  use m_fermid,     only : fermid, fermispin, stepf
+  use m_fermid,     only : fermid, stepf
   use alloc,        only : re_alloc, de_alloc
   use t_spin, only: tSpin
   use m_velocity_shift, only: velocity_shift, calc_velocity_current, velocity_current
@@ -117,20 +115,20 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   real(dp), intent(inout) :: DM(nnz,spin%DM), EDM(nnz,spin%EDM)
 
   ! Sought charges per spin
-  real(dp), intent(in) :: Qs(spin%spinor), Qtot
+  real(dp), intent(in) :: Qtot
   ! Fermi-levels
-  real(dp), intent(inout) :: Ef, Efs(spin%spinor)
+  real(dp), intent(inout) :: Ef
   ! Energy range of DM
   real(dp), intent(in) :: E1, E2
   
   ! Eigenvalues and occupations (charges)
-  real(dp), intent(inout) :: qo(no_u,spin%spinor,nk), eo(no_u,spin%spinor,nk)
+  real(dp), intent(inout) :: qo(no_u*spin%spinor,nk), eo(no_u*spin%spinor,nk)
   real(dp), intent(in) :: Occtol, Temp
   ! Calculated quantities
   real(dp), intent(inout) :: Entropy
 
-  ! Control whether DM/EDM is calculated and for fixed spin
-  logical, intent(in) :: getD, fixspin
+  ! Control whether DM/EDM is calculated
+  logical, intent(in) :: getD
 
   ! Current SCF step
   integer, intent(in) :: iSCF
@@ -139,14 +137,16 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   integer, intent(in) :: neigwanted
 
   ! Auxiliary arrays
-  real(dp), intent(inout), target :: Hk(2,no_u,no_u), Sk(2,no_u,no_u)
-  real(dp), intent(inout), target :: psi(2,no_u,no_u), aux(2,no_u*2)
+  complex(dp), intent(inout), target :: Hk(2,no_u,2,no_u), Sk(2,no_u,2,no_u)
+  complex(dp), intent(inout), target :: psi(2,no_u,no_u*2)
+  real(dp), intent(inout), target :: aux(2,no_u,3)
 
   ! Internal variables
   integer :: BNode, ie, ierror, ik, is
   integer :: io, iio, jo, ind, neigneeded
-  real(dp) :: ee, qe, kxij, ckxij, skxij, t
-  real(dp) :: pipj1, pipj2
+  integer :: no_u2, neigwanted2
+  real(dp) :: kxij, t
+  complex(dp) :: kph, D11, D22, D12, D21, cp
 
   ! Current calculation
   real(dp) :: I
@@ -166,35 +166,39 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   real(dp), pointer :: v(:,:)
 
   ! Not allocated, only pointers
-  real(dp), pointer :: Dk(:,:,:), Ek(:,:,:)
-  real(dp), pointer :: dH(:,:,:), dS(:,:,:)
+  complex(dp), pointer :: Dk(:,:,:,:), Ek(:,:,:,:)
+  complex(dp), pointer :: dH(:,:,:,:), dS(:,:,:,:)
   real(dp), pointer :: eig_aux(:)
 
   real(dp) :: vcross(3)
   real(dp), external :: volcel
+  complex(dp), external :: zdotc
 
 #ifdef DEBUG
-  call write_debug( '    PRE diagkp_velocity' )
+  call write_debug( '    PRE diag3kp_velocity' )
 #endif
+
+  no_u2 = no_u * 2
+  neigwanted2 = neigwanted * 2
+
+  call diag3kp_velocity_2d1d(no_u2, aux(1,1,3), eig_aux)
 
   ! Globalise sparsity pattern
   call MPI_AllReduce(nnz, g_nnz, 1, MPI_Integer, MPI_Sum, &
       MPI_Comm_World, MPIerror)
-
-  call diagkp_velocity_2d1d(no_u, aux(1,no_u+1), eig_aux)
 
   ! Nullify arrays
   nullify(g_ncol, g_ptr, g_col, g_H, g_S, g_xij, g_DM, g_EDM)
   nullify(v)
   
   ! Allocate local memory for global list arrays
-  call re_alloc( g_ncol, 1, no_u, name='g_ncol', routine= 'diagkp_velocity' )
-  call re_alloc( g_ptr, 1, no_u, name='g_ptr', routine= 'diagkp_velocity' )
-  call re_alloc( g_col, 1, g_nnz, name='g_col', routine= 'diagkp_velocity' )
-  call re_alloc( g_H, 1, g_nnz, 1, spin%spinor, name='g_H', routine= 'diagkp_velocity' )
-  call re_alloc( g_S, 1, g_nnz, name='g_S', routine= 'diagkp_velocity' )
-  call re_alloc( g_xij, 1, 3, 1, g_nnz, name='g_xij', routine= 'diagkp_velocity' )
-  call re_alloc( v, 1, 3, 1, no_u, name='v', routine= 'diagkp_velocity' )
+  call re_alloc( g_ncol, 1, no_u, name='g_ncol', routine= 'diag3kp_velocity' )
+  call re_alloc( g_ptr, 1, no_u, name='g_ptr', routine= 'diag3kp_velocity' )
+  call re_alloc( g_col, 1, g_nnz, name='g_col', routine= 'diag3kp_velocity' )
+  call re_alloc( g_H, 1, g_nnz, 1, spin%H, name='g_H', routine= 'diag3kp_velocity' )
+  call re_alloc( g_S, 1, g_nnz, name='g_S', routine= 'diag3kp_velocity' )
+  call re_alloc( g_xij, 1, 3, 1, g_nnz, name='g_xij', routine= 'diag3kp_velocity' )
+  call re_alloc( v, 1, 3, 1, no_u2, name='v', routine= 'diag3kp_velocity' )
 
   ! Create pointers for d* arrays
   ! Note that these arrays may then not be inter-used
@@ -241,100 +245,78 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   ! Perform diagonalization loop
   do ik = 1 + Node, nk, Nodes
     
-    do is = 1, spin%spinor
-      
+    call setup_k(kpoint(:,ik))
+
+    ! Since we want to calculate the velocities as well we do need the eigenstates
+    call cdiag(Hk,Sk,no_u2,no_u2,no_u2,eo(1,ik),psi, &
+        neigwanted2,iscf,ierror, -1)
+
+    ! Check error flag and take appropriate action
+    if ( ierror > 0 ) then
+      call die('Terminating due to failed diagonalisation')
+    else if ( ierror < 0 ) then
       call setup_k(kpoint(:,ik))
+      call cdiag(Hk,Sk,no_u2,no_u2,no_u2,eo(1,ik),psi, &
+          neigwanted2,iscf,ierror, -1)
+    end if
 
-      ! Since we want to calculate the velocities as well we do need the eigenstates
-      call cdiag(Hk,Sk,no_u,no_u,no_u,eo(1,is,ik),psi, &
-          neigwanted,iscf,ierror, -1)
+    ! Figure out the degenerate states
+    ndeg = 1
+    do ie = 2, neigwanted2
+        
+      ! Eigenvalues are sorted, so this will work fine
+      if ( eo(ie,ik) - eo(ie-1,ik) < deg_EPS ) then
 
-      ! Check error flag and take appropriate action
-      if ( ierror > 0 ) then
-        call die('Terminating due to failed diagonalisation')
-      else if ( ierror < 0 ) then
-        call setup_k(kpoint(:,ik))
-        call cdiag(Hk,Sk,no_u,no_u,no_u,eo(1,is,ik),psi, &
-            neigwanted,iscf,ierror, -1)
+        ndeg = ndeg + 1
+          
+      else if ( ndeg > 1 ) then
+
+        ! Decouple ndeg from ie - 1 and ndeg back
+        call degenerate_decouple(neigwanted2, eo(1,ik), ndeg, ie - 1)
+
+        ! To debug, one may calculate the velocities
+        ! before and after the degenerate decoupling
+        ndeg = 1
+          
       end if
-
-      ! Figure out the degenerate states
-      ndeg = 1
-      do ie = 2, neigwanted
         
-        ! Eigenvalues are sorted, so this will work fine
-        if ( eo(ie,is,ik) - eo(ie-1,is,ik) < deg_EPS ) then
-
-          ndeg = ndeg + 1
-          
-        else if ( ndeg > 1 ) then
-
-          ! Decouple ndeg from ie - 1 and ndeg back
-          call degenerate_decouple(neigwanted, eo(1,is,ik), ndeg, ie - 1)
-
-          ! To debug, one may calculate the velocities
-          ! before and after the degenerate decoupling
-          ndeg = 1
-          
-        end if
-        
-      end do
-
-      ! Decouple the last elements
-      if ( ndeg > 1 ) &
-          call degenerate_decouple(neigwanted, eo(1,is,ik), ndeg, neigwanted)
-
-      ! After having decoupled the degenerate states we can calculate
-      ! the velocities
-      call calculate_velocity(neigwanted, eo(:,is,ik))
-
-      ! Shift eigenvalues according to the velocity projection onto the field
-      call velocity_shift(+1, neigwanted, eo(:,is,ik), v)
-
     end do
-    
+
+    ! Decouple the last elements
+    if ( ndeg > 1 ) &
+        call degenerate_decouple(neigwanted2, eo(1,ik), ndeg, neigwanted2)
+
+    ! After having decoupled the degenerate states we can calculate
+    ! the velocities
+    call calculate_velocity(neigwanted2, eo(:,ik))
+
+    ! Shift eigenvalues according to the velocity projection onto the field
+    call velocity_shift(+1, neigwanted2, eo(:,ik), v)
+
   end do
 
   ! Globalise eigenvalues
-  if ( neigwanted /= no_u ) then
-    do ik = 1,nk
-      do is = 1,spin%spinor
-        BNode = mod(ik-1, Nodes)
-        call MPI_Bcast(eo(1,is,ik), neigwanted, MPI_Double_Precision, &
-            BNode,MPI_Comm_World,MPIerror)
-      end do
-    end do
-  else
-    io = no_u * 2
-    do ik = 1,nk
-      BNode = mod(ik-1, Nodes)
-      call MPI_Bcast(eo(1,1,ik), io, MPI_Double_Precision, &
-          BNode,MPI_Comm_World,MPIerror)
-    end do
-  end if
+  do ik = 1,nk
+    BNode = mod(ik-1, Nodes)
+    call MPI_Bcast(eo(1,ik), neigwanted2, MPI_Double_Precision, &
+        BNode,MPI_Comm_World,MPIerror)
+  end do
 
   ! Check if we are done ................................................
   if ( .not. getD ) goto 999
 
   ! Find new Fermi energy and occupation weights ........................
-  if ( fixspin ) then
-    call fermispin( spin%spinor, spin%spinor, nk, wk, no_u, &
-        neigwanted, eo, Temp, qs, qo, efs, Entropy )
-  else
-    call fermid( spin%spinor, spin%spinor, nk, wk, no_u, &
-        neigwanted, eo, Temp, qtot, qo, ef, Entropy )
-    ! This just means we can use efs independently on the used method
-    efs(:) = ef
-  end if
+  call fermid( spin%spinor, spin%spinor, nk, wk, no_u, &
+      neigwanted, eo, Temp, qtot, qo, ef, Entropy )
 
   ! Initialize current
   I = 0._dp
 
   ! Allocate globalized DM and EDM
-  call re_alloc( g_DM, 1, g_nnz, 1, spin%DM, name='g_DM', routine= 'diagkp_velocity' )
-  call re_alloc( g_EDM, 1, g_nnz, 1, spin%EDM, name='g_EDM', routine= 'diagkp_velocity' )
+  call re_alloc( g_DM, 1, g_nnz, 1, spin%DM, name='g_DM', routine= 'diag3kp_velocity' )
+  call re_alloc( g_EDM, 1, g_nnz, 1, spin%EDM, name='g_EDM', routine= 'diag3kp_velocity' )
 
-!$OMP parallel default(shared), private(t,ik,is,io)
+!$OMP parallel default(shared), private(t,ik,io)
 
   ! Find weights for local density of states ............................
   if ( e1 < e2 ) then
@@ -342,12 +324,9 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
     t = max( temp, 1.d-6 )
 !$OMP do
     do ik = 1,nk
-      do is = 1,spin%spinor
-        do io = 1,neigwanted
-          qo(io,is,ik) = wk(ik) * &
-              ( stepf((eo(io,is,ik)-e2)/t) - &
-              stepf((eo(io,is,ik)-e1)/t)) * 2.0d0 / spin%spinor
-        end do
+      do io = 1, neigwanted2
+        qo(io,ik) = wk(ik) * &
+            ( stepf((eo(io,ik)-e2)/t) - stepf((eo(io,ik)-e1)/t) )
       end do
     end do
 !$OMP end do nowait
@@ -363,117 +342,142 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
 !$OMP end parallel
 
   do ik = 1 + Node, nk, Nodes
-    do is = 1, spin%spinor
 
-      ! Find maximum eigenvector that is required for this k point and spin
-      ! Note that since eo has averaged out the degeneracy eigenvalues this below
-      ! block will also group *all* degenerate eigenvalues!
-      neigneeded = 1
-      do ie = neigwanted, 1, -1
-        if ( abs(qo(ie,is,ik)) > occtol ) then
-          neigneeded = ie
-          exit
-        end if
-      end do
+    ! Find maximum eigenvector that is required for this k point and spin
+    ! Note that since eo has averaged out the degeneracy eigenvalues this below
+    ! block will also group *all* degenerate eigenvalues!
+    neigneeded = 1
+    do ie = neigwanted2, 1, -1
+      if ( abs(qo(ie,ik)) > occtol ) then
+        neigneeded = ie
+        exit
+      end if
+    end do
 
-      ! Find eigenvectors
+    ! Find eigenvectors
+    call setup_k(kpoint(:,ik))
+    call cdiag(Hk,Sk,no_u2,no_u2,no_u2,eig_aux,psi,neigneeded,iscf,ierror, -1)
+
+    ! Check error flag and take appropriate action
+    if ( ierror > 0 ) then
+      call die('Terminating due to failed diagonalisation')
+    else if ( ierror < 0 ) then
       call setup_k(kpoint(:,ik))
-      call cdiag(Hk,Sk,no_u,no_u,no_u,eig_aux,psi,neigneeded,iscf,ierror, -1)
+      call cdiag(Hk,Sk,no_u2,no_u2,no_u2,eig_aux,psi,neigneeded,iscf,ierror, -1)
+    end if
 
-      ! Check error flag and take appropriate action
-      if ( ierror > 0 ) then
-        call die('Terminating due to failed diagonalisation')
-      else if ( ierror < 0 ) then
-        call setup_k(kpoint(:,ik))
-        call cdiag(Hk,Sk,no_u,no_u,no_u,eig_aux,psi,neigneeded,iscf,ierror, -1)
-      end if
-
-      ! Before expanding eigenvectors we need to decouple the degenerate
-      ! states so that we don't populate the degeneracies wrongly
-      ! This assumes that the decoupling is stable.
-      ndeg = 1
-      do ie = 2, neigneeded
+    ! Before expanding eigenvectors we need to decouple the degenerate
+    ! states so that we don't populate the degeneracies wrongly
+    ! This assumes that the decoupling is stable.
+    ndeg = 1
+    do ie = 2, neigneeded
         
-        ! Eigenvalues are sorted, so this will work fine
-        if ( eig_aux(ie) - eig_aux(ie-1) < deg_EPS ) then
+      ! Eigenvalues are sorted, so this will work fine
+      if ( eig_aux(ie) - eig_aux(ie-1) < deg_EPS ) then
 
-          ndeg = ndeg + 1
+        ndeg = ndeg + 1
           
-        else if ( ndeg > 1 ) then
+      else if ( ndeg > 1 ) then
 
-          ! Decouple ndeg from ie - 1 and ndeg back
-          call degenerate_decouple(neigneeded, eig_aux, ndeg, ie - 1)
+        ! Decouple ndeg from ie - 1 and ndeg back
+        call degenerate_decouple(neigneeded, eig_aux, ndeg, ie - 1)
 
-          ! To debug, one may calculate the velocities
-          ! before and after the degenerate decoupling
-          ndeg = 1
+        ! To debug, one may calculate the velocities
+        ! before and after the degenerate decoupling
+        ndeg = 1
           
-        end if
-        
-      end do
-
-      ! Decouple the last elements
-      if ( ndeg > 1 ) &
-          call degenerate_decouple(neigneeded, eig_aux, ndeg, neigneeded)
-
-      ! If we want to calculate the current and print it, we can do so here
-      if ( calc_velocity_current ) then
-        call calculate_velocity(neigneeded, eig_aux)
-        call velocity_current(neigneeded, eig_aux, v, Efs(is), wk(ik), Temp, I)
       end if
+        
+    end do
 
-      ! Expand the eigenvectors to the density matrix
+    ! Decouple the last elements
+    if ( ndeg > 1 ) &
+        call degenerate_decouple(neigneeded, eig_aux, ndeg, neigneeded)
+
+    ! If we want to calculate the current and print it, we can do so here
+    if ( calc_velocity_current ) then
+      call calculate_velocity(neigneeded, eig_aux)
+      call velocity_current(neigneeded, eig_aux, v, Ef, wk(ik), Temp, I)
+    end if
+
+    ! Expand the eigenvectors to the density matrix
       
 !$OMP parallel default(shared), &
-!$OMP&private(ie,qe,ee,io,jo,pipj1,pipj2,ind), &
-!$OMP&private(kxij,ckxij,skxij)
+!$OMP&private(ie,io,jo,ind), &
+!$OMP&private(kxij,kph,D11,D22,D12,D21,cp)
 
-      ! Add contribution to density matrices of unit-cell orbitals
+    ! Add contribution to density matrices of unit-cell orbitals
       
 !$OMP workshare
-      Dk = 0._dp
-      Ek = 0._dp
+    Dk = 0._dp
+    Ek = 0._dp
 !$OMP end workshare
 
-      ! Global operation to form new density matrix
-      do ie = 1, neigneeded
+    ! Global operation to form new density matrix
+    do ie = 1, neigneeded
         
-        qe = qo(ie,is,ik)
-        ee = qe * eig_aux(ie)
-        
-!$OMP do
-        do io = 1, no_u
-          do jo = 1, no_u
-            pipj1 = psi(1,io,ie) * psi(1,jo,ie) + psi(2,io,ie) * psi(2,jo,ie)
-            pipj2 = psi(1,io,ie) * psi(2,jo,ie) - psi(2,io,ie) * psi(1,jo,ie)
-            Dk(1,jo,io) = Dk(1,jo,io) + qe * pipj1
-            Dk(2,jo,io) = Dk(2,jo,io) + qe * pipj2
-            Ek(1,jo,io) = Ek(1,jo,io) + ee * pipj1
-            Ek(2,jo,io) = Ek(2,jo,io) + ee * pipj2
-          end do
-        end do
-!$OMP end do
-
-      end do
-      
 !$OMP do
       do io = 1, no_u
-        do ind = g_ptr(io) + 1, g_ptr(io) + g_ncol(io)
-          jo = modp(g_col(ind), no_u)
-          kxij = kpoint(1,ik) * g_xij(1,ind) + kpoint(2,ik) * g_xij(2,ind) + kpoint(3,ik) * g_xij(3,ind)
-          ckxij = cos(kxij)
-          skxij = sin(kxij)
-          
-          g_DM(ind,is) = g_DM(ind,is) + Dk(1,jo,io)*ckxij - Dk(2,jo,io)*skxij
-          g_EDM(ind,is) = g_EDM(ind,is) + Ek(1,jo,io)*ckxij - Ek(2,jo,io)*skxij
-          
+        D11 = qo(ie,ik) * psi(1,io,ie)
+        D22 = qo(ie,ik) * psi(2,io,ie)
+        D12 = D11 * eig_aux(ie)
+        D21 = D22 * eig_aux(ie)
+        do jo = 1, no_u
+
+          cp = conjg(psi(1,jo,ie))
+          Dk(1,jo,1,io) = Dk(1,jo,1,io) + D11 * cp
+          Ek(1,jo,1,io) = Ek(1,jo,1,io) + D12 * cp          
+          Dk(2,jo,1,io) = Dk(2,jo,1,io) + D22 * cp
+          Ek(2,jo,1,io) = Ek(2,jo,1,io) + D21 * cp
+
+          cp = conjg(psi(2,jo,ie))
+          Dk(1,jo,2,io) = Dk(1,jo,2,io) + D11 * cp
+          Ek(1,jo,2,io) = Ek(1,jo,2,io) + D12 * cp
+          Dk(2,jo,2,io) = Dk(2,jo,2,io) + D22 * cp
+          Ek(2,jo,2,io) = Ek(2,jo,2,io) + D21 * cp
+
         end do
       end do
+!$OMP end do
+
+    end do
+      
+!$OMP do
+    do io = 1, no_u
+      do ind = g_ptr(io) + 1, g_ptr(io) + g_ncol(io)
+        jo = modp(g_col(ind), no_u)
+        kxij = kpoint(1,ik) * g_xij(1,ind) + kpoint(2,ik) * g_xij(2,ind) + kpoint(3,ik) * g_xij(3,ind)
+        kph = exp(cmplx(0._dp, - kxij, dp))
+
+        D11 = Dk(1,jo,1,io) * kph
+        D22 = Dk(2,jo,2,io) * kph
+        D12 = Dk(1,jo,2,io) * kph
+        D21 = Dk(2,jo,1,io) * kph
+          
+        g_DM(ind,1) = g_DM(ind,1) + real(D11, dp)
+        g_DM(ind,2) = g_DM(ind,2) + real(D22, dp)
+        g_DM(ind,3) = g_DM(ind,3) + real(D12, dp)
+        g_DM(ind,4) = g_DM(ind,4) - aimag(D12)
+        g_DM(ind,5) = g_DM(ind,5) + aimag(D11)
+        g_DM(ind,6) = g_DM(ind,6) + aimag(D22)
+        g_DM(ind,7) = g_DM(ind,7) + real(D21, dp)
+        g_DM(ind,8) = g_DM(ind,8) + aimag(D21)
+
+        D11 = Ek(1,jo,1,io) * kph
+        D22 = Ek(2,jo,2,io) * kph
+        D12 = Ek(1,jo,2,io) * kph
+        D21 = Ek(2,jo,1,io) * kph
+
+        g_EDM(ind,1) = g_EDM(ind,1) + real(D11, dp)
+        g_EDM(ind,2) = g_EDM(ind,2) + real(D22, dp)
+        g_EDM(ind,3) = g_EDM(ind,3) + real(D12, dp)
+        g_EDM(ind,4) = g_EDM(ind,4) - aimag(D12)
+          
+      end do
+    end do
 !$OMP end do
     
 !$OMP end parallel
-
-    end do
 
   end do
 
@@ -486,10 +490,12 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
 
     if ( BNode == Node ) then
       
-      do is = 1, spin%spinor
+      do is = 1, spin%DM
         call MPI_Reduce(g_DM(g_ptr(io)+1,is), &
             DM(ptr(iio)+1,is),g_ncol(io),MPI_double_precision, &
             MPI_sum,BNode,MPI_Comm_World,MPIerror)
+      end do
+      do is = 1, spin%EDM
         call MPI_Reduce(g_EDM(g_ptr(io)+1,is), &
             EDM(ptr(iio)+1,is),g_ncol(io),MPI_double_precision, &
             MPI_sum,BNode,MPI_Comm_World,MPIerror)
@@ -499,20 +505,22 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
 
       ! This is because this is *NOT* the receiving node
       ! and hence the recv_buff is not important
-      do is = 1, spin%spinor
+      do is = 1, spin%DM
         call MPI_Reduce(g_DM(g_ptr(io)+1,is), &
-            aux(1,1),g_ncol(io),MPI_double_precision, &
+            eig_aux(1),g_ncol(io),MPI_double_precision, &
             MPI_sum,BNode,MPI_Comm_World,MPIerror)
+      end do
+      do is = 1, spin%EDM
         call MPI_Reduce(g_EDM(g_ptr(io)+1,is), &
-            aux(1,1),g_ncol(io),MPI_double_precision, &
+            eig_aux(1),g_ncol(io),MPI_double_precision, &
             MPI_sum,BNode,MPI_Comm_World,MPIerror)
       end do
       
     end if
   end do
 
-  call de_alloc( g_DM, name='g_DM', routine= 'diagkp_velocity' )
-  call de_alloc( g_EDM, name='g_EDM', routine= 'diagkp_velocity' )
+  call de_alloc( g_DM, name='g_DM', routine= 'diag3kp_velocity' )
+  call de_alloc( g_EDM, name='g_EDM', routine= 'diag3kp_velocity' )
 
   if ( calc_velocity_current ) then
     call MPI_Reduce(I, t, 1, MPI_Double_Precision, &
@@ -522,7 +530,7 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
     ! Now I is in [e Bohr/s]
     ! Now figure out whether we are in a 1D, 2D or 3D system
     ! and convert to micro-amps
-    I = I * Coulomb * 1.e6_dp * 2._dp / spin%spinor
+    I = I * Coulomb * 1.e6_dp
 
     if ( Node == 0 ) then
       select case ( count( cell_periodic(:) ) )
@@ -557,30 +565,30 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
 999 continue
 
   ! Clean-up the arrays required for degenerate decoupling
-  call de_alloc(vdeg, name='vdeg', routine= 'diagkp_velocity' )
-  call de_alloc(Identity, name='identity', routine= 'diagkp_velocity' )
+  call de_alloc(vdeg, name='vdeg', routine= 'diag3kp_velocity' )
+  call de_alloc(Identity, name='identity', routine= 'diag3kp_velocity' )
 
   ! Clean-up the velocities
-  call de_alloc( v, name='v', routine= 'diagkp_velocity' )
+  call de_alloc( v, name='v', routine= 'diag3kp_velocity' )
 
   ! Clean up memory
-  call de_alloc( g_ncol, name='g_ncol', routine= 'diagkp_velocity' )
-  call de_alloc( g_ptr, name='g_ptr', routine= 'diagkp_velocity' )
-  call de_alloc( g_col, name='g_col', routine= 'diagkp_velocity' )
-  call de_alloc( g_H, name='g_H', routine= 'diagkp_velocity' )
-  call de_alloc( g_S, name='g_S', routine= 'diagkp_velocity' )
-  call de_alloc( g_xij, name='g_xij', routine= 'diagkp_velocity' )
+  call de_alloc( g_ncol, name='g_ncol', routine= 'diag3kp_velocity' )
+  call de_alloc( g_ptr, name='g_ptr', routine= 'diag3kp_velocity' )
+  call de_alloc( g_col, name='g_col', routine= 'diag3kp_velocity' )
+  call de_alloc( g_H, name='g_H', routine= 'diag3kp_velocity' )
+  call de_alloc( g_S, name='g_S', routine= 'diag3kp_velocity' )
+  call de_alloc( g_xij, name='g_xij', routine= 'diag3kp_velocity' )
 
 #ifdef DEBUG
-  call write_debug( '    POS diagkp_velocity' )
+  call write_debug( '    POS diag3kp_velocity' )
 #endif
 
 contains
   
   subroutine setup_k(k)
     real(dp), intent(in) :: k(3)
-
-!$OMP parallel default(shared), private(io,jo,ind,kxij,ckxij,skxij)
+    
+!$OMP parallel default(shared), private(io,jo,ind,kxij,kph)
 
 !$OMP workshare
     Hk = cmplx(0._dp, 0._dp, dp)
@@ -592,16 +600,17 @@ contains
       do ind = g_ptr(io) + 1, g_ptr(io) + g_ncol(io)
         jo = modp(g_col(ind), no_u)
         kxij = k(1) * g_xij(1,ind) + k(2) * g_xij(2,ind) + k(3) * g_xij(3,ind)
+
+        ! Calculate the complex phase
+        kph = exp(cmplx(0._dp, - kxij, dp))
         
-        ckxij = cos(kxij)
-        skxij = sin(kxij)
-        
-        ! Note : sign of complex part changed to match change in order of io/jo
-        Sk(1,jo,io) = Sk(1,jo,io) + g_S(ind) * ckxij
-        Sk(2,jo,io) = Sk(2,jo,io) - g_S(ind) * skxij
-        Hk(1,jo,io) = Hk(1,jo,io) + g_H(ind,is) * ckxij
-        Hk(2,jo,io) = Hk(2,jo,io) - g_H(ind,is) * skxij
-        
+        Sk(1,jo,1,io) = Sk(1,jo,1,io) + g_S(ind) * kph
+        Sk(2,jo,2,io) = Sk(2,jo,2,io) + g_S(ind) * kph
+        Hk(1,jo,1,io) = Hk(1,jo,1,io) + cmplx(g_H(ind,1), g_H(ind,5), dp) * kph
+        Hk(2,jo,2,io) = Hk(2,jo,2,io) + cmplx(g_H(ind,2), g_H(ind,6), dp) * kph
+        Hk(1,jo,2,io) = Hk(1,jo,2,io) + cmplx(g_H(ind,3), -g_H(ind,4), dp) * kph
+        Hk(2,jo,1,io) = Hk(2,jo,1,io) + cmplx(g_H(ind,7), g_H(ind,8), dp) * kph
+
       end do
     end do
 !$OMP end do nowait
@@ -614,31 +623,28 @@ contains
     integer, intent(in) :: ix
     real(dp), intent(in) :: k(3)
 
-!$OMP parallel default(shared), private(io,jo,ind,kxij,ckxij,skxij)
+!$OMP parallel default(shared), private(io,jo,ind,kxij,kph)
 
 !$OMP workshare
     dS = cmplx(0._dp, 0._dp, dp)
     dH = cmplx(0._dp, 0._dp, dp)
 !$OMP end workshare
-
+    
 !$OMP do
     do io = 1, no_u
       do ind = g_ptr(io) + 1, g_ptr(io) + g_ncol(io)
         jo = modp(g_col(ind), no_u)
         kxij = k(1) * g_xij(1,ind) + k(2) * g_xij(2,ind) + k(3) * g_xij(3,ind)
-        
-        ckxij = cos(kxij) * g_xij(ix,ind)
-        skxij = sin(kxij) * g_xij(ix,ind)
-        
-        ! Note : sign of complex part changed to match change in order of io/jo
-        ! Since the phases are
-        !    exp(-i k xij)
-        ! we get:
-        !  - i xij exp(-i k xij)
-        dS(1,jo,io) = dS(1,jo,io) - g_S(ind) * skxij
-        dS(2,jo,io) = dS(2,jo,io) - g_S(ind) * ckxij
-        dH(1,jo,io) = dH(1,jo,io) - g_H(ind,is) * skxij
-        dH(2,jo,io) = dH(2,jo,io) - g_H(ind,is) * ckxij
+
+        ! Calculate the complex phase
+        kph = cmplx(0._dp, - g_xij(ix,ind), dp) * exp(cmplx(0._dp, - kxij, dp))
+
+        dS(1,jo,1,io) = dS(1,jo,1,io) + g_S(ind) * kph
+        dS(2,jo,2,io) = dS(2,jo,2,io) + g_S(ind) * kph
+        dH(1,jo,1,io) = dH(1,jo,1,io) + cmplx(g_H(ind,1), g_H(ind,5), dp) * kph
+        dH(2,jo,2,io) = dH(2,jo,2,io) + cmplx(g_H(ind,2), g_H(ind,6), dp) * kph
+        dH(1,jo,2,io) = dH(1,jo,2,io) + cmplx(g_H(ind,3), -g_H(ind,4), dp) * kph
+        dH(2,jo,1,io) = dH(2,jo,1,io) + cmplx(g_H(ind,7), g_H(ind,8), dp) * kph
         
       end do
     end do
@@ -658,9 +664,9 @@ contains
     integer :: io_start, ix
     real(dp) :: e_avg
     
-    call re_alloc(vdeg, 1, 2, 1, ndeg**2, name='vdeg', routine= 'diagkp_velocity', &
+    call re_alloc(vdeg, 1, 2, 1, ndeg**2, name='vdeg', routine= 'diag3kp_velocity', &
         copy=.false., shrink=.false.)
-    call re_alloc(Identity, 1, 2, 1, ndeg**2, name='identity', routine= 'diagkp_velocity', &
+    call re_alloc(Identity, 1, 2, 1, ndeg**2, name='identity', routine= 'diag3kp_velocity', &
         copy=.false., shrink=.false.)
 
     ! Figure out the start and end of the orbitals
@@ -691,15 +697,15 @@ contains
         jo = io_start + io - 1
 
         ! dH | psi_i >
-        call zgemv('N', no_u, no_u, dcmplx(1._dp, 0._dp), &
-            dH, no_u, psi(1,1,jo), 1, dcmplx(0._dp, 0._dp), aux, 1)
+        call zgemv('N', no_u2, no_u2, dcmplx(1._dp, 0._dp), &
+            dH, no_u2, psi(1,1,jo), 1, dcmplx(0._dp, 0._dp), aux, 1)
         ! dH - e dS | psi_i >
-        call zgemv('N', no_u, no_u, dcmplx(-e_avg, 0._dp), &
-            dS, no_u, psi(1,1,jo), 1, dcmplx(1._dp, 0._dp), aux, 1)
+        call zgemv('N', no_u2, no_u2, dcmplx(-e_avg, 0._dp), &
+            dS, no_u2, psi(1,1,jo), 1, dcmplx(1._dp, 0._dp), aux, 1)
 
         ! Calculte < psi_: | dH - e dS | psi_i >
-        call zgemv('C', no_u, ndeg, dcmplx(1._dp, 0._dp), &
-            psi(1,1,io_start), no_u, aux, 1, dcmplx(0._dp, 0._dp), vdeg(1,(io-1)*ndeg+1), 1)
+        call zgemv('C', no_u2, ndeg, dcmplx(1._dp, 0._dp), &
+            psi(1,1,io_start), no_u2, aux, 1, dcmplx(0._dp, 0._dp), vdeg(1,(io-1)*ndeg+1), 1)
 
         ! Initialize identity matrix
         Identity(1,(io-1)*ndeg+io) = 1._dp
@@ -716,11 +722,11 @@ contains
       ! Re-create the new states
       ! Now Hk contains the linear combination of the states that
       ! should decouple the degenerate subspace
-      call zgemm('N', 'N', no_u, ndeg, ndeg, dcmplx(1._dp, 0._dp), &
-          psi(1,1,io_start), no_u, Hk, ndeg, dcmplx(0._dp, 0._dp), Sk, no_u)
+      call zgemm('N', 'N', no_u2, ndeg, ndeg, dcmplx(1._dp, 0._dp), &
+          psi(1,1,io_start), no_u2, Hk, ndeg, dcmplx(0._dp, 0._dp), Sk, no_u2)
 
       ! Copy back the new states
-      call zcopy(ndeg*no_u, Sk, 1, psi(1,1,io_start), 1)
+      call zcopy(ndeg*no_u2, Sk, 1, psi(1,1,io_start), 1)
       
     end do
 
@@ -742,18 +748,15 @@ contains
       do ie = 1, neig
 
         ! dH | psi >
-        call zgemv('N', no_u, no_u, dcmplx(1._dp, 0._dp), &
-            dH, no_u, psi(1,1,ie), 1, dcmplx(0._dp, 0._dp), aux, 1)
+        call zgemv('N', no_u2, no_u2, dcmplx(1._dp, 0._dp), &
+            dH, no_u2, psi(1,1,ie), 1, dcmplx(0._dp, 0._dp), aux, 1)
         ! dH - e dS | psi >
-        call zgemv('N', no_u, no_u, dcmplx(-eig(ie), 0._dp), &
-            dS, no_u, psi(1,1,ie), 1, dcmplx(1._dp, 0._dp), aux, 1)
+        call zgemv('N', no_u2, no_u2, dcmplx(-eig(ie), 0._dp), &
+            dS, no_u2, psi(1,1,ie), 1, dcmplx(1._dp, 0._dp), aux, 1)
 
         ! Now calculate the velocity along ix
         ! < psi | H - e dS | psi >
-        v(ix,ie) = 0._dp
-        do io = 1, no_u
-          v(ix,ie) = v(ix,ie) + psi(1,io,ie) * aux(1,io) + psi(2,io,ie) * aux(2,io)
-        end do
+        v(ix,ie) = real(zdotc(no_u2,psi(1,1,ie),1,aux,1), dp)
 
       end do
       
@@ -765,19 +768,19 @@ contains
 
   end subroutine calculate_velocity
 
-  subroutine diagkp_velocity_2d1d(n,from,to)
+  subroutine diag3kp_velocity_2d1d(n,from,to)
     integer, intent(in) :: n
     real(dp), intent(in), target :: from(n)
     real(dp), pointer :: to(:)
     to => from(:)
-  end subroutine diagkp_velocity_2d1d
+  end subroutine diag3kp_velocity_2d1d
 
-end subroutine diagkp_velocity
+end subroutine diag3kp_velocity
 
 
 #else
 
-subroutine diagkp_velocity_dummy()
-end subroutine diagkp_velocity_dummy
+subroutine diag3kp_velocity_dummy()
+end subroutine diag3kp_velocity_dummy
 
 #endif

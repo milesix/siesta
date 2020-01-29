@@ -251,7 +251,7 @@ OBJS += dm_charge.o
 
 OBJS += grimme_dispersion_m.o
 # Bulk-bias codes
-OBJS += velocity_shift.o diagkp_velocity.o
+OBJS += velocity_shift.o diagkp_velocity.o diag2kp_velocity.o diag3kp_velocity.o
 
 # Pivot (of sparsity pattern) routines
 OBJS += m_pivot.o m_pivot_methods.o
@@ -614,12 +614,18 @@ diag2g.o: sys.o writewave.o
 diag2k.o: fermid.o parallel.o parallelsubs.o precision.o sys.o writewave.o
 diag2kp.o: alloc.o fermid.o intrinsic_missing.o m_spin.o parallel.o
 diag2kp.o: parallelsubs.o precision.o sys.o
+diag2kp_velocity.o: alloc.o fermid.o intrinsic_missing.o m_spin.o parallel.o
+diag2kp_velocity.o: parallelsubs.o precision.o siesta_geom.o sys.o units.o
+diag2kp_velocity.o: velocity_shift.o
 diag2kspiral.o: fermid.o parallel.o parallelsubs.o precision.o sys.o
 diag3g.o: fermid.o intrinsic_missing.o parallel.o parallelsubs.o precision.o
 diag3g.o: sys.o writewave.o
 diag3k.o: fermid.o parallel.o parallelsubs.o precision.o sys.o writewave.o
 diag3kp.o: alloc.o fermid.o intrinsic_missing.o m_spin.o parallel.o
 diag3kp.o: parallelsubs.o precision.o sys.o
+diag3kp_velocity.o: alloc.o fermid.o intrinsic_missing.o m_spin.o parallel.o
+diag3kp_velocity.o: parallelsubs.o precision.o siesta_geom.o sys.o units.o
+diag3kp_velocity.o: velocity_shift.o
 diag_option.o: parallel.o precision.o
 diagg.o: alloc.o fermid.o intrinsic_missing.o m_spin.o parallel.o
 diagg.o: parallelsubs.o precision.o sys.o writewave.o

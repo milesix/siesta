@@ -33,7 +33,7 @@ module m_velocity_shift
   !< Logical to control whether the current is calculated
   logical :: calc_velocity_current = .true.
 
-  !< The bias applied to the bands
+  !< The halve bias applied to the bands (we shift V/2 up and V/2 down)
   real(dp) :: velocity_h_bias = 0._dp
 
   !< The direction along which the bands will be displaced.
