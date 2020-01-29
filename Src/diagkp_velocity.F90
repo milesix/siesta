@@ -296,12 +296,22 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   end do
 
   ! Globalise eigenvalues
-  io = no_u * spin%spinor
-  do ik = 1,nk
-    BNode = mod(ik-1, Nodes)
-    call MPI_Bcast(eo(1,1,ik), io, MPI_Double_Precision, &
-        BNode,MPI_Comm_World,MPIerror)
-  end do
+  if ( neigwanted /= no_u ) then
+    do ik = 1,nk
+      do is = 1,spin%spinor
+        BNode = mod(ik-1, Nodes)
+        call MPI_Bcast(eo(1,is,ik), neigwanted, MPI_Double_Precision, &
+            BNode,MPI_Comm_World,MPIerror)
+      end do
+    end do
+  else
+    io = no_u * 2
+    do ik = 1,nk
+      BNode = mod(ik-1, Nodes)
+      call MPI_Bcast(eo(1,1,ik), io, MPI_Double_Precision, &
+          BNode,MPI_Comm_World,MPIerror)
+    end do
+  end if
 
   ! Check if we are done ................................................
   if ( .not. getD ) goto 999
@@ -333,7 +343,7 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
 !$OMP do collapse(3)
     do ik = 1,nk
       do is = 1,spin%spinor
-        do io = 1,no_u
+        do io = 1,neigwanted
           qo(io,is,ik) = wk(ik) * &
               ( stepf((eo(io,is,ik)-e2)/t) - &
               stepf((eo(io,is,ik)-e1)/t)) * 2.0d0 / spin%spinor
@@ -359,7 +369,7 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
       ! Note that since eo has averaged out the degeneracy eigenvalues this below
       ! block will also group *all* degenerate eigenvalues!
       neigneeded = 1
-      do ie = no_u, 1, -1
+      do ie = neigwanted, 1, -1
         if ( abs(qo(ie,is,ik)) > occtol ) then
           neigneeded = ie
           exit
