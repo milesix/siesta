@@ -231,8 +231,8 @@ C     Initialise MPI and set processor number
 !$    write(*,'(a,i0)') '* OpenMP runtime schedule DYNAMIC, chunks ',is
 !$    if ( is == 1 ) then
 !$     ! this is the default scheduling, probably the user
-!$     ! have not set the value, predefine it to 16
-!$     is = 16
+!$     ! have not set the value, predefine it to 32
+!$     is = 32
 !$     write(*,'(a,i0)')'** OpenMP runtime schedule DYNAMIC, chunks ',is
 !$    end if
 !$    case ( OMP_SCHED_GUIDED ) 
@@ -355,7 +355,12 @@ C     Initialise MPI and set processor number
       else
          use_parallel_timer = fdf_get('UseParallelTimer', .true.)
          use_tree_timer = fdf_get('UseTreeTimer', .false.)
+
       end if
+      ! Enable tree-timer for this case
+      if (fdf_get("timing-split-scf-steps",.false.)) then
+         use_tree_timer = fdf_get('UseTreeTimer', .true.)
+      endif
       use_walltime = fdf_get('use-walltime', use_tree_timer)
 
 !     Start time counter
@@ -382,8 +387,7 @@ C     Initialise MPI and set processor number
 !     Initialise exchange-correlation functional information
       call read_xc_info()
 #ifdef MPI
-      call gridxc_init(comm=MPI_Comm_World,
-     $     time_mpi_calls=fdf_get('gridxc-time-mpi-calls',.false.))
+      call gridxc_init(comm=MPI_Comm_World)
 #else
       call gridxc_init()
 #endif

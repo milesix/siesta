@@ -53,7 +53,7 @@ module m_tbt_options
   ! if ( 'DOS-Gf' .in. save_DATA ) then
   !   calculate DOS of Gf
   ! end fi
-  type(dict) :: save_DATA
+  type(dictionary_t) :: save_DATA
 
   ! Number of eigenchannels to calculate
   integer :: N_eigen = 0
@@ -908,6 +908,14 @@ contains
        write(*,'(a)')' ** Disabling transport calculation using diagonal, &
             &not possible with N_elec > 3.'
     end if
+
+    do i = 1, N_Elec
+      if ( Elecs(i)%repeat .and. Elecs(i)%bloch%size() > 1 ) then
+        write(*,'(a)') 'Electrode '//trim(Elecs(i)%name)//' is &
+            &using Bloch unfolding using the repeat scheme! &
+            &Please use the tiling scheme (it is orders of magnitudes faster!).'
+      end if
+    end do
 
 #ifdef MPI
 #ifdef NCDF_PARALLEL

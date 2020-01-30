@@ -53,7 +53,8 @@ contains
 
     character(*), parameter :: fortran_static_lua = '&
 siesta = { &
-    Node = 1, &
+    Node = 0, &
+    Nodes = 1, &
     INITIALIZE = 1, &
     INIT_MD = 2, &
     SCF_LOOP = 3, &
@@ -174,7 +175,7 @@ siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
     call lua_register(LUA,'_internal_print_allowed', slua_siesta_print_objects)
     call lua_run(LUA, code = 'siesta.print_allowed = _internal_print_allowed' )
 
-    write(fortran_msg,'(a,i0)') 'siesta.Node = ',Node + 1
+    write(fortran_msg,'(a,i0)') 'siesta.Node = ',Node
     call lua_run(LUA, code = fortran_msg )
     write(fortran_msg,'(a,i0)') 'siesta.Nodes = ',Nodes
     call lua_run(LUA, code = fortran_msg )
@@ -391,6 +392,7 @@ siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
    end subroutine interactive_run
    
    subroutine interactive_execute()
+     use variable, only: cunpack
      character, allocatable :: interactive(:)
      type(ll_line), pointer :: next, nnext
      integer :: i_chars
@@ -400,7 +402,7 @@ siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
      call interactive_clean()
 
      if ( size(interactive) > 0 ) then
-       call lua_run(lua, code = array2str(interactive), error=err, message=err_msg )
+       call lua_run(lua, code = cunpack(interactive), error=err, message=err_msg )
        if ( err /= 0 ) then
          write(*,'(a)') trim(err_msg)
        end if
@@ -433,6 +435,7 @@ siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
    end subroutine interactive_collect
 
    subroutine interactive_show()
+     use variable, only: cunpack
      character, allocatable :: interactive(:)
      integer :: old_n_chars
 
@@ -441,7 +444,7 @@ siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
      call interactive_collect(interactive)
      
      if ( size(interactive) > 0 ) then
-       write(*,'(a)') array2str(interactive)
+       write(*,'(a)') cunpack(interactive)
      end if
      deallocate(interactive)
 
@@ -469,15 +472,6 @@ siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
 
    end subroutine interactive_clean
    
-   pure function array2str(arr) result(str)
-     character(len=1), intent(in) :: arr(:)
-     character(len=size(arr)) :: str
-     integer :: i
-     do i = 1, size(arr)
-       str(i:i) = arr(i)
-     end do
-   end function array2str
-   
   end subroutine slua_call
 
   subroutine slua_close(LUA)
@@ -494,6 +488,10 @@ siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
   ! ! ! ! ! ! !
 
 
+  !> Lua-exposed function to retrieve data from Siesta
+  !!
+  !! This function is called from Lua for asking for data transfer
+  !! from Siesta.
   function slua_receive_siesta(state) result(nret) bind(c)
     use, intrinsic :: iso_c_binding, only: c_ptr, c_int
 
@@ -508,7 +506,7 @@ siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
     type(luaState) :: lua
     type(luaTbl) :: tbl
 
-    type(dict) :: keys
+    type(dictionary_t) :: keys
 
     if ( slua_debug ) then
        write(*,'(a,i0)') '  lua: siesta_receive, Node = ',Node + 1
@@ -538,6 +536,10 @@ siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
 
   end function slua_receive_siesta
 
+  !> Lua-exposed function to send data to Siesta
+  !!
+  !! This function is called from Lua to transfer data from Lua
+  !! to Siesta.
   function slua_send_siesta(state) result(nret) bind(c)
     use, intrinsic :: iso_c_binding, only: c_ptr, c_int
 
@@ -551,7 +553,7 @@ siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
 
     type(luaState) :: lua
     type(luaTbl) :: tbl
-    type(dict) :: keys
+    type(dictionary_t) :: keys
 
     if ( slua_debug ) then
        write(*,'(a,i0)') '  lua: siesta_send, Node = ',Node + 1
@@ -573,6 +575,11 @@ siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
 
     call lua_close_tree(tbl)
 
+    ! Check whether the user has requested to abort siesta
+    if ( 'Stop' .in. keys ) then
+      call bye('LUA code has asked to stop execution!') ! Exit siesta
+    end if
+
     ! Clean-up
     call delete(keys)
 
@@ -587,7 +594,7 @@ siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
     use dictionary
 
     type(luaState), intent(inout) :: lua
-    type(dict), intent(inout) :: keys
+    type(dictionary_t), intent(inout) :: keys
 
     type(luaTbl) :: tbl
     character(len=255) :: name
@@ -613,12 +620,12 @@ siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
   subroutine slua_expand_tbl_dict(keys, d)
     use dictionary
 
-    type(dict), intent(inout) :: keys
-    type(dict), intent(inout) :: d
+    type(dictionary_t), intent(inout) :: keys
+    type(dictionary_t), intent(inout) :: d
 
-    character(len=DICT_KEY_LENGTH) :: d_key, key
-    type(dict) :: pd, pk ! pointer to the dictionary
-    type(dict) :: added
+    character(len=DICTIONARY_KEY_LENGTH) :: d_key, key
+    type(dictionary_t) :: pd, pk ! pointer to the dictionary
+    type(dictionary_t) :: added
 
     pd = .first. d
     do while ( .not. (.empty. pd) )
@@ -660,14 +667,14 @@ siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
     use dictionary
 
     type(luaTbl), intent(inout) :: tbl
-    type(dict), intent(inout) :: dic
-    type(dict), intent(inout), optional :: keys
+    type(dictionary_t), intent(inout) :: dic
+    type(dictionary_t), intent(inout), optional :: keys
 
     ! Sadly we need a pointer for all variables that we might
     ! expect to handle.
-    character(len=DICT_KEY_LENGTH) :: key
-    type(dict) :: pd ! pointer to the dictionary
-    type(var) :: v
+    character(len=DICTIONARY_KEY_LENGTH) :: key
+    type(dictionary_t) :: pd ! pointer to the dictionary
+    type(variable_t) :: v
 
     if ( present(keys) ) then
 
@@ -706,7 +713,7 @@ siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
       integer, pointer :: i0, i1(:), i2(:,:)
       real(sp), pointer :: s0, s1(:), s2(:,:)
       real(dp), pointer :: d0, d1(:), d2(:,:)
-      character(len=4) :: t
+      character(len=VARIABLE_TYPE_LENGTH) :: t
       character(len=255) :: lkey, rkey
       integer :: lvls
       lvls = 0
@@ -780,14 +787,14 @@ siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
     use dictionary
 
     type(luaTbl), intent(inout) :: tbl
-    type(dict), intent(inout) :: dic
-    type(dict), intent(in), optional :: keys
+    type(dictionary_t), intent(inout) :: dic
+    type(dictionary_t), intent(in), optional :: keys
 
     ! Sadly we need a pointer for all variables that we might
     ! expect to handle.
-    character(len=DICT_KEY_LENGTH) :: key
-    type(dict) :: pd ! pointer to the dictionary
-    type(var) :: v
+    character(len=DICTIONARY_KEY_LENGTH) :: key
+    type(dictionary_t) :: pd ! pointer to the dictionary
+    type(variable_t) :: v
 
     if ( present(keys) ) then
 
@@ -827,7 +834,7 @@ siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
       integer, pointer :: i0, i1(:), i2(:,:)
       real(sp), pointer :: s0, s1(:), s2(:,:)
       real(dp), pointer :: d0, d1(:), d2(:,:)
-      character(len=4) :: t
+      character(len=VARIABLE_TYPE_LENGTH) :: t
       character(len=255) :: lkey, rkey
       integer :: na1
       integer :: lvls
@@ -926,9 +933,9 @@ siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
     ! Define the in/out
     integer(c_int) :: nret
 
-    type(dict) :: et
-    character(len=DICT_KEY_LENGTH) :: key
-    character(len=12) :: fmt = '(tr2,a,'','')'
+    type(dictionary_t) :: et
+    character(len=DICTIONARY_KEY_LENGTH) :: key
+    character(len=*), parameter :: fmt = '(tr2,a,'','')'
 
     ! Currently we only let the current io-node
     ! print out information.

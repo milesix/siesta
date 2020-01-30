@@ -52,11 +52,7 @@ module m_ts_options
   integer :: N_mu = 0
   type(ts_mu), allocatable, target :: mus(:)
 
-  ! Controls how the initial guess for the density matrix will be formed
-  ! Either it can be 'diagon' == 0, or 'transiesta' == 1 where the 
-  ! latter is reading in the electrode DM and EDM
   integer :: TS_scf_mode = 0
-  integer :: DM_bulk = 0
 
   ! Flag to control whether we should update the forces (i.e. calculate energy-density matrix)
   logical :: Calc_Forces = .true.
@@ -65,11 +61,6 @@ module m_ts_options
   integer :: BTD_method = 0 ! Optimization method for determining the best tri-diagonal matrix split
   ! 0  == We optimize for speed
   ! 1  == We optimize for memory
-
-  ! Determines whether the voltage-drop should be located in the constriction
-  ! I.e. if the electrode starts at 10 Ang and the central region ends at 20 Ang
-  ! then the voltage drop will only take place between 10.125 Ang and 19.875 Ang
-  logical :: VoltageInC = .false.
 
   ! File name for reading in the grid for the Hartree potential
   character(len=150) :: Hartree_fname = ' '
@@ -325,6 +316,7 @@ contains
     use m_ts_electype, only : init_Elec_sim
 
     use m_ts_method, only : ts_init_electrodes, a_isBuffer
+    use m_cite, only : add_citation
 
     implicit none
     
@@ -375,66 +367,37 @@ contains
     ! To determine the same coordinate nature of the electrodes
     Elecs_xa_EPS = fdf_get('TS.Elecs.Coord.Eps',0.001_dp*Ang, 'Bohr')
 
-    ! Whether we should always set the DM to bulk
-    ! values (by reading in from electrode DM)
-    if ( TS_scf_mode == 1 ) then
-       chars = 'bulk'
-    else
-       chars = 'diagon'
-    end if
-    chars = fdf_get('TS.Elecs.DM.Init',trim(chars))
-    DM_bulk = 0
-    if ( leqi(chars,'bulk') ) then
-      DM_bulk = 1
-    !else if ( leqi(chars,'scf') ) then
-    !   DM_bulk = 2
-    end if
-    if ( IsVolt ) then
-      if ( DM_bulk /= 0 .and. IONode) then
-        if ( IONode ) then
-          c = '(''transiesta: *** '',a,/)'
-          write(*,c)'Will not read in electrode DM, only applicable for V = 0 calculations'
-        end if
-      end if
-      DM_bulk = 0
-    end if
-    if ( leqi(chars,'force-bulk') ) then
-      DM_bulk = 1
-    !else if ( leqi(chars,'scf') ) then
-    !   DM_bulk = 2
-    end if
-
     ! detect how many electrodes we have
     N_Elec = fdf_nElec('TS',Elecs)
     if ( N_Elec < 1 ) then
-       ! We initialize to 2 electrodes (Left/Right)
-       N_Elec = 2
-       allocate(Elecs(N_Elec))
-       Elecs(1)%name = 'Left'
-       Elecs(1)%ID = 1
-       Elecs(2)%name = 'Right'
-       Elecs(2)%ID = 2
-       ! if they do-not exist, the user will be told
-       if ( IONode ) then
-          c = '(''transiesta: *** '',a,/)'
-          write(*,c)'No electrode names were found, default Left/Right are expected'
-       end if
+      ! We initialize to 2 electrodes (Left/Right)
+      N_Elec = 2
+      allocate(Elecs(N_Elec))
+      Elecs(1)%name = 'Left'
+      Elecs(1)%ID = 1
+      Elecs(2)%name = 'Right'
+      Elecs(2)%ID = 2
+      ! if they do-not exist, the user will be told
+      if ( IONode ) then
+        c = '(''transiesta: *** '',a,/)'
+        write(*,c)'No electrode names were found, default Left/Right are expected'
+      end if
     end if
-
+    
     ! If only one electrode you are not allowed to move the Fermi-level
     ! of the electrode. That should be done by other means (i.e. use NetCharge)
     if ( N_Elec == 1 ) then
-       ! Notice that below the chemical potential gets corrected
-       ! EVEN if the user supplied a bias.
-       if ( IsVolt .and. IONode ) then
-          c = '(''transiesta: *** '',a)'
-          write(*,c) 'Single electrode calculations does not allow shifting the chemical potential.'
-          write(*,c) 'You should do that by changing the states filled in the system.'
-          write(*,c) 'Consult the manual on how to do this.'
-          call die('Please set the chemical potential to zero for your one electrode')
-       end if
+      ! Notice that below the chemical potential gets corrected
+      ! EVEN if the user supplied a bias.
+      if ( IsVolt .and. IONode ) then
+        c = '(''transiesta: *** '',a)'
+        write(*,c) 'Single electrode calculations does not allow shifting the chemical potential.'
+        write(*,c) 'You should do that by changing the states filled in the system.'
+        write(*,c) 'Consult the manual on how to do this.'
+        call die('Please set the chemical potential to zero for your one electrode')
+      end if
     end if
-
+    
     ! Setup default parameters for the electrodes
     ! first electrode is the "left"
     ! last electrode is the "right"
@@ -446,23 +409,50 @@ contains
     Elecs(:)%Eta  = fdf_get('TS.Elecs.Eta',0.001_dp*eV,'Ry')
     Elecs(:)%Bulk = fdf_get('TS.Elecs.Bulk',.true.) ! default everything to bulk electrodes
     if ( Elecs(1)%Bulk ) then
-       ! Default is cross-terms if we use bulk electrodes
-       chars = 'cross-terms'
+      ! Default is cross-terms if we use bulk electrodes
+      chars = 'cross-terms'
     else
-       ! For non-bulk systems, we default to all
-       chars = 'all'
+      ! For non-bulk systems, we default to all
+      chars = 'all'
     end if
     c = fdf_get('TS.Elecs.DM.Update',trim(chars))
     if ( leqi(c,'none') ) then
-       Elecs(:)%DM_update = 0
+      Elecs(:)%DM_update = 0
     else if ( leqi(c,'cross-terms') .or. &
-         leqi(c,'cross-term') ) then
-       Elecs(:)%DM_update = 1
+        leqi(c,'cross-term') ) then
+      Elecs(:)%DM_update = 1
     else if ( leqi(c,'all') ) then
-       Elecs(:)%DM_update = 2
+      Elecs(:)%DM_update = 2
     else
-       call die('TS.Elecs.DM.Update [cross-terms,none,all]: &
-            &unrecognized option: '//trim(c))
+      call die('TS.Elecs.DM.Update [cross-terms,none,all]: &
+          &unrecognized option: '//trim(c))
+    end if
+
+    ! Whether we should always set the DM to bulk
+    ! values (by reading in from electrode DM)
+    if ( TS_scf_mode == 1 .or. .not. IsVolt ) then
+      chars = 'bulk'
+    else
+      chars = 'diagon'
+    end if
+    chars = fdf_get('TS.Elecs.DM.Init',trim(chars))
+    if ( leqi(chars,'diagon') ) then
+      Elecs(:)%DM_init = 0
+    else if ( leqi(chars,'bulk') ) then
+      Elecs(:)%DM_init = 1
+    else if ( leqi(chars,'force-bulk') ) then
+      Elecs(:)%DM_init = 2
+    else
+      call die('TS.Elecs.DM.Init unknown value [diagon,bulk,force-bulk]')
+    end if
+    if ( IsVolt ) then
+      if ( Elecs(1)%DM_init == 1 .and. IONode) then
+        if ( IONode ) then
+          c = '(''transiesta: *** '',a,/)'
+          write(*,c)'Will default to not read in electrode DM, only applicable for V = 0 calculations'
+        end if
+      end if
+      Elecs(:)%DM_init = 0
     end if
 
     ! Whether we should try and re-use the surface Green function 
@@ -529,6 +519,12 @@ contains
     ! Hence we use this as an error-check (also for N_Elec == 1)
     if ( any(Elecs(:)%t_dir > 3) ) then
       ts_tidx = - N_Elec
+
+      ! We add the real-space self-energy article
+      if ( IONode ) then
+        call add_citation("10.1103/PhysRevB.100.195417")
+      end if
+
     else
       select case ( N_Elec )
       case ( 1 )
@@ -607,10 +603,9 @@ contains
     ! is applied.
     ! For N-terminal calculations we advice the user
     ! to use a Poisson solution they add.
-    VoltageInC = .false.
     if ( ts_tidx > 0 ) then
        ! We have a single unified semi-inifinite direction
-       chars = fdf_get('TS.Poisson','ramp-central')
+       chars = fdf_get('TS.Poisson','ramp-cell')
     else
        chars = fdf_get('TS.Poisson','elec-box')
     end if
@@ -625,15 +620,8 @@ contains
 #endif
        Hartree_fname = ' '
        if ( leqi(chars,'ramp-cell') ) then
-          VoltageInC = .false.
           if ( ts_tidx <= 0 ) then
              call die('TS.Poisson cannot be ramp-cell for &
-                  &anything but 2-electrodes with aligned transport direction.')
-          end if
-       else if ( leqi(chars, 'ramp-central') ) then
-          VoltageInC = .true.
-          if ( ts_tidx <= 0 ) then
-             call die('TS.Poisson cannot be ramp-central for &
                   &anything but 2-electrodes with aligned transport direction.')
           end if
        else if ( leqi(chars,'elec-box') ) then
@@ -641,10 +629,10 @@ contains
        else
 #ifdef NCDF_4
           call die('Error in specifying how the Hartree potential &
-               &should be placed. [ramp-cell|ramp-central|elec-box|NetCDF-file]')
+               &should be placed. [ramp-cell|elec-box|NetCDF-file]')
 #else
           call die('Error in specifying how the Hartree potential &
-               &should be placed. [ramp-cell|ramp-central|elec-box]')
+               &should be placed. [ramp-cell|elec-box]')
 #endif
        end if
 #ifdef NCDF_4
@@ -735,7 +723,6 @@ contains
     use m_ts_charge, only : read_ts_charge_cor
     
     use m_ts_hartree, only: read_ts_hartree_options
-    use m_ts_hartree, only: ts_hartree_elec
 
 #ifdef SIESTA__MUMPS
     use m_ts_mumps_init, only : read_ts_mumps
@@ -775,7 +762,7 @@ contains
     
     ! Read in options again, at this point we have
     ! the correct ts_tidx
-    call read_ts_hartree_options(N_Elec, Elecs, cell, na_u, xa)
+    call read_ts_hartree_options()
     
     ! read in contour options
     call read_contour_options( N_Elec, Elecs, N_mu, mus, ts_kT, IsVolt, Volt )
@@ -847,8 +834,7 @@ contains
     use m_ts_mumps_init, only: MUMPS_mem, MUMPS_ordering, MUMPS_block
 #endif
 
-    use m_ts_hartree, only: TS_HA, Vha_frac, Vha_offset, El
-    use m_ts_hartree, only: TS_HA_NONE, TS_HA_PLANE, TS_HA_ELEC, TS_HA_ELEC_BOX
+    use m_ts_hartree, only: TS_HA_PLANES, TS_HA_frac, TS_HA_offset
 
     implicit none
 
@@ -872,21 +858,6 @@ contains
        
        write(*,f1) 'Save H and S matrices', TS_HS_save
        write(*,f1) 'Save DM and EDM matrices', TS_DE_save
-       select case ( TS_HA )
-       case ( TS_HA_PLANE )
-          select case ( ts_tidx ) 
-          case ( 1 )
-             write(*,f10) 'Fix Hartree potential at cell boundary', 'A1'
-          case ( 2 )
-             write(*,f10) 'Fix Hartree potential at cell boundary', 'A2'
-          case ( 3 )
-             write(*,f10) 'Fix Hartree potential at cell boundary', 'A3'
-          end select
-       case ( TS_HA_NONE ) 
-          write(*,f1) 'Fix Hartree potential',.false.
-       case default
-          call die('Error in coding setup, Vha_fix')
-       end select
        write(*,f1) 'Only save the overlap matrix S', onlyS
 
        write(*,f11) repeat('*', 62)
@@ -917,17 +888,17 @@ contains
        case ( 3 )
           write(*,f10) 'Transport along Cartesian vector','Z'
        end select
-    end if
-    select case ( TS_HA )
-    case ( TS_HA_PLANE , TS_HA_ELEC )
-       write(*,f10) 'Fixing Hartree potential at electrode-plane',trim(El%name)
-    case ( TS_HA_ELEC_BOX )
-       write(*,f10) 'Fixing Hartree potential in electrode-box',trim(El%name)
-    case default
-       call die('Vha, error in option collecting')
-    end select
-    write(*,f8) 'Fix Hartree potential fraction', Vha_frac
-    write(*,f7) 'Hartree potential offset', Vha_offset/eV, 'eV'
+     end if
+     chars = ' '
+     if ( TS_HA_PLANES(1, 1) ) chars = trim(chars) // '-A'
+     if ( TS_HA_PLANES(2, 1) ) chars = trim(chars) // '+A'
+     if ( TS_HA_PLANES(1, 2) ) chars = trim(chars) // '-B'
+     if ( TS_HA_PLANES(2, 2) ) chars = trim(chars) // '+B'
+     if ( TS_HA_PLANES(1, 3) ) chars = trim(chars) // '-C'
+     if ( TS_HA_PLANES(2, 3) ) chars = trim(chars) // '+C'
+     write(*,f10) 'Fixing Hartree potential at cell boundary', trim(chars)
+    write(*,f8) 'Fix Hartree potential fraction', TS_HA_frac
+    write(*,f7) 'Hartree potential offset', TS_HA_offset/eV, 'eV'
 
     if ( ts_method == TS_FULL ) then
        write(*,f10)'Solution method', 'Full inverse'
@@ -983,24 +954,13 @@ contains
     case ( 1 )
        write(*,f10) 'Initialize DM by','transiesta'
     end select
-    select case ( DM_bulk ) 
-    case ( 0 ) 
-       write(*,f10) 'Initial DM for electrodes','this'
-    case ( 1 )
-       write(*,f10) 'Initial DM for electrodes','bulk DM'
-    end select
     if ( IsVolt ) then
        if ( len_trim(Hartree_fname) > 0 ) then
           write(*,f10) 'User supplied Hartree potential', &
                trim(Hartree_fname)
        else
           if ( ts_tidx > 0 ) then
-             write(*,f11) 'Hartree potential as linear ramp'
-             if ( VoltageInC ) then
-                write(*,f11) 'Hartree potential ramp across central region'
-             else
-                write(*,f11) 'Hartree potential ramp across entire cell'    
-             end if
+             write(*,f11) 'Hartree potential ramp across entire cell'
           else
              write(*,f11) 'Hartree potential will be placed in electrode box'
           end if
@@ -1072,10 +1032,8 @@ contains
 
     write(*,f11)'          >> Electrodes << '
     ltmp = ts_tidx < 1 .and. IsVolt
-    ltmp = ltmp .or. TS_HA == TS_HA_ELEC_BOX
     do i = 1 , size(Elecs)
        call print_settings(Elecs(i), 'ts', &
-            plane = TS_HA == TS_HA_ELEC , &
             box = ltmp)
     end do
 
@@ -1108,8 +1066,7 @@ contains
     use m_ts_contour_eq, only: N_Eq_E
     use m_ts_contour_neq, only: contour_neq_warnings
 
-    use m_ts_hartree, only: TS_HA, Vha_frac
-    use m_ts_hartree, only: TS_HA_NONE, TS_HA_PLANE, TS_HA_ELEC, TS_HA_ELEC_BOX
+    use m_ts_hartree, only: TS_HA_frac
 
     ! Input variables
     logical, intent(in) :: Gamma
@@ -1143,44 +1100,20 @@ contains
       end if
     end if
 
-    if ( .not. TSmode ) then
-       if ( TS_HA == TS_HA_ELEC ) then
-          call die('Hartree potiental cannot use electrodes without TranSiesta')
-       else if ( TS_HA == TS_HA_ELEC_BOX ) then
-          call die('Hartree potiental cannot use electrodes without TranSiesta')
-       end if
+    if ( TS_HA_frac /= 1._dp ) then
+      write(*,'(a)') 'Fraction of Hartree potential is NOT 1.'
+      warn = .true.
     end if
-
-    if ( TS_HA /= TS_HA_NONE ) then
-       if ( Vha_frac /= 1._dp ) then
-          write(*,'(a)') 'Fraction of Hartree potential is NOT 1.'
-          warn = .true.
-       end if
-       if ( Vha_frac < 0._dp .or. 1._dp < Vha_frac ) then
-          write(*,'(a)') 'Fraction of Hartree potential is below 0.'
-          write(*,'(a)') '  MUST be in range [0;1]'
-          call die('Vha fraction erronously set.')
-       end if
-    else if ( TS_DE_save ) then
-       ! means TS_HA == TS_HA_NONE
+    if ( TS_HA_frac < 0._dp .or. 1._dp < TS_HA_frac ) then
+      write(*,'(a)') 'Fraction of Hartree potential is below 0.'
+      write(*,'(a)') '  MUST be in range [0;1]'
+      call die('Vha fraction erronously set.')
     end if
-
     
     ! Return if not a transiesta calculation
     if ( onlyS .or. .not. TSmode ) then
        write(*,'(3a,/)') repeat('*',24),' End: TS CHECKS AND WARNINGS ',repeat('*',26)
        return
-    end if
-
-    if ( TS_HA == TS_HA_NONE ) then
-       write(*,'(a)') 'Hartree potiental fix REQUIRED when running TranSiesta'
-       err = .true.
-    end if
-
-    if ( ts_tidx < 1 .and. TS_HA == TS_HA_PLANE ) then
-       write(*,'(a)') 'Hartree potiental fix *must* be electrode as no transport &
-            &plane is well-defined.'
-       err = .true.
     end if
 
     if ( ts_tidx < 1 .and. len_trim(Hartree_fname) == 0 .and. IsVolt ) then
@@ -1408,7 +1341,7 @@ contains
     if ( ts_tidx < 1 ) then
 
        write(*,'(a)') '*** TranSiesta semi-infinite directions are individual ***'
-       write(*,'(a)') '*** It is heavily adviced to have any electrodes with no &
+       write(*,'(a)') '*** It is heavily advised to have any electrodes with no &
             &periodicity'
        write(*,'(a)') '    in the transverse directions be located as far from any &
             &cell-boundaries'
@@ -1534,12 +1467,13 @@ contains
     ! If the user has requested to initialize using transiesta
     ! and the user does not utilize the bulk DM, they should be
     ! warned
-    if ( TS_scf_mode == 1 .and. DM_bulk == 0 ) then
+    if ( TS_scf_mode == 1 .and. any(Elecs(:)%DM_init == 0) ) then
        write(*,'(a)') 'You are not initializing the electrode DM/EDM. &
             &This may result in very wrong electrostatic potentials close to &
             &the electrode/device boundary region.'
        if ( IsVolt ) then
          write(*,'(a)') '    This warning is only applicable for V == 0 calculations!'
+         write(*,'(a)') '    I give this warning because it is not clear how your V = 0 calcualtion was done.'
        end if
        warn = .true.
     end if
@@ -1573,11 +1507,23 @@ contains
                &not check the k-grid sampling vs. system k-grid &
                &sampling. Ensure appropriate sampling.'
        end if
-       if ( Elecs(i)%Ef_frac_CT /= 0._dp ) then
+       if ( Elecs(i)%V_frac_CT /= 0._dp ) then
           write(*,'(a)') 'Electrode '//trim(Elecs(i)%name)//' will &
                &shift coupling Hamiltonian with a shift in energy &
                &corresponding to the applied bias. Be careful here.'
           warn = .true.
+       end if
+       if ( Elecs(i)%delta_Ef /= 0._dp ) then
+          write(*,'(a)') 'Electrode '//trim(Elecs(i)%name)//' will &
+               &shift the electronic structure manually. Be careful here.'
+          warn = .true.
+       end if
+
+       if ( Elecs(i)%repeat .and. Elecs(i)%bloch%size() > 1 ) then
+         write(*,'(a)') 'Electrode '//trim(Elecs(i)%name)//' is &
+             &using Bloch unfolding using the repeat scheme! &
+             &Please use the tiling scheme (it is orders of magnitudes faster!).'
+         warn = .true.
        end if
 
        ! if any buffer atoms exist, we should suggest to the user
@@ -1605,13 +1551,13 @@ contains
 
        ! In case DM_bulk is requested we assert that the file exists
        ltmp = file_exist(Elecs(i)%DEfile)
-       if ( DM_bulk == 1 .and. .not. ltmp ) then
+       if ( Elecs(i)%DM_init > 0 .and. .not. ltmp ) then
           write(*,'(a,/,a)') 'Electrode '//trim(Elecs(i)%name)//' TSDE &
                &file cannot be located in: '//trim(Elecs(i)%DEfile)//'.', &
                '  Please add TS.DE.Save T to the electrode calculation or &
                &specify the exact file position using ''TSDE-file'' in the&
                & TS.Elec block.'
-          warn = .true.
+          err = .true.
        end if
 
     end do
@@ -1629,7 +1575,7 @@ contains
           write(*,'(a,/,a)') 'The pivoting table for the electrode unit-cell, &
                &onto the simulation unit-cell is not unique: '//trim(Elecs(iEl)%name), &
                '  Please check your electrode and device cell parameters!'
-          write(*,'(a)') '  Combining this with electric fields or dipole-corrections is ill-adviced!'
+          write(*,'(a)') '  Combining this with electric fields or dipole-corrections is NOT advised!'
           warn = .true.
        end if
     end do

@@ -67,7 +67,7 @@ contains
     use m_ts_global_vars,only: TSrun
     use m_ts_electype, only : copy_DM
     use m_ts_options, only : TS_analyze
-    use m_ts_options, only : N_Elec, Elecs, DM_bulk
+    use m_ts_options, only : N_Elec, Elecs
     use m_ts_method
     use m_energies, only: Ef
 
@@ -79,6 +79,16 @@ contains
     logical :: DM_init ! Initialize density matrix from file or from atomic density
     logical :: read_DM
     integer :: DM_in_history, n_depth
+
+    ! Variable to signal how the initialization was performed.
+    ! The following table lists the (current) possibilities:
+    !  0: DM is filled from atomic information (no information present)
+    !  1: .DM file is read, Siesta continuation
+    !  2: An extrapolation of previous geometries.
+    !     The DM's from the previous coordinates are kept in memory
+    !  3: .TSDE file is read, TranSiesta continuation
+    ! If the value is negative it means that one cannot mix in the
+    ! first step, unless SCF.Mix.First.Force is true!
     integer :: init_method
 
     real(dp), pointer :: DM(:,:), EDM(:,:)
@@ -192,8 +202,8 @@ contains
           call print_type(DM_2D)
        end if
 
-       ! Defines the initialiazation to be re-using
-       init_method = -1
+       ! A negative value specifies that one cannot mix in the initial step
+       init_method = -2
 
     end if
 
@@ -218,7 +228,7 @@ contains
        ! If the Fermi-level has not been
        ! set, we initialize it to the mean of the
        ! electrode chemical potentials
-       if ( DM_bulk > 0 ) then
+       if ( any(Elecs(:)%DM_init > 0) ) then
 
           set_Ef = abs(Ef) < 0.00001_dp .and. &
                (.not. fdf_defined('TS.Fermi.Initial') ) 
@@ -244,20 +254,33 @@ contains
             ! Not in buffer
             na_a = 0
             do iElec = 1 , na_u
-              if ( a_isElec(iElec) ) na_a = na_a + 1
+              if ( a_isElec(iElec) ) then
+                if ( Elecs(atom_type(iElec))%DM_init > 0 ) then
+                  na_a = na_a + 1
+                end if
+              end if
             end do
             allocate(allowed_a(na_a))
             na_a = 0 
             do iElec = 1 , na_u
               if ( a_isElec(iElec) ) then
-                na_a = na_a + 1
-                allowed_a(na_a) = iElec
+                if ( Elecs(atom_type(iElec))%DM_init > 0 ) then
+                  na_a = na_a + 1
+                  allowed_a(na_a) = iElec
+                end if
               end if
             end do
           end if
 
           do iElec = 1 , N_Elec
 
+            ! We shift the mean by one fraction of the electrode
+            if ( set_Ef ) then
+              Ef = Ef + Elecs(iElec)%Ef / N_Elec
+            end if
+
+            if ( Elecs(iElec)%DM_init == 0 ) cycle
+            
             if ( IONode ) then
               write(*,'(/,2a)') 'transiesta: Reading in electrode TSDE for ', &
                   trim(Elecs(iElec)%Name)
@@ -268,11 +291,6 @@ contains
             ! will be equivalent at Ef == 0
             call copy_DM(Elecs(iElec),na_u,xa,lasto,nsc,isc_off, &
                 ucell, DM_2D, EDM_2D, na_a, allowed_a)
-            
-            ! We shift the mean by one fraction of the electrode
-            if ( set_Ef ) then
-              Ef = Ef + Elecs(iElec)%Ef / N_Elec
-            end if
             
           end do
 
@@ -290,7 +308,7 @@ contains
 
           old_Ef = Ef
           Ef = fdf_get('TS.Fermi.Initial',Ef,'Ry')
-          if ( init_method == 2 ) then
+          if ( abs(init_method) == 2 ) then
              ! As the fermi-level has been read in from a previous
              ! calculation (TSDE), the EDM should only be shifted by the difference
              diff_Ef = Ef - old_Ef
@@ -301,10 +319,10 @@ contains
 
           if ( IONode ) then
              write(*,*) ! new-line
-             if ( init_method < 2 ) then
+             if ( abs(init_method) < 2 ) then
                 write(*,'(a,f9.5,a)')'transiesta: Setting the Fermi-level to: ', &
                      Ef / eV,' eV'
-             else if ( init_method == 2 ) then
+             else if ( abs(init_method) == 2 ) then
                 write(*,'(a,2(f10.6,a))')'transiesta: Changing Fermi-level from -> to: ', &
                      old_Ef / eV,' -> ',Ef / eV, ' eV'
              end if
@@ -325,7 +343,7 @@ contains
     ! Determine how the mixing of the first step should be performed
     !
     ! The idea is that one will allow mixing on the first SCF step
-    ! only for atomicly filled orbitals. This will in most cases
+    ! only for atomically filled orbitals. This will in most cases
     ! be a good initial choice, while in certain systems (spin-orbit)
     ! it may not be so good.
     ! Subsequently for any MD steps beyond the initial step, we will not
@@ -336,8 +354,19 @@ contains
     ! iterations. For instance when performing FC runs (externally driven)
     ! this would lead to non-degenerate transverse eigenmodes for simple molecules
     if ( init_method == 0 ) then ! atomicly filled data
-       ! allow mix_scf_first
-    else if ( mix_scf_first ) then
+      ! allow mix_scf_first
+    else if ( mix_scf_first_force ) then
+      ! user requested a mix in the first step
+      mix_scf_first = .true.
+      if ( IONode .and. init_method < 0 ) then
+        ! Warn the user about this
+        write(*,"(a)") "Mixing first scf iteration is *forced* although the sparsity pattern has changed..."
+        write(*,"(a)") "Mixing non-compatible matrices might result in problems."
+        write(*,"(a)") "Please use a linear mixer for the first few steps to remove history effects."
+      end if
+    else if ( mix_scf_first .and. init_method < 0 ) then
+       ! Do not allow mixing first SCF step since we are reusing a DM
+       ! from another geometry.
        mix_scf_first = .false.
     end if
     
@@ -360,10 +389,11 @@ contains
     use class_Sparsity
     use class_dSpData2D
     use class_Fstack_dData1D, only: reset
-    use m_ts_global_vars,only: ts_method_init, TSinit, TSrun
+    use m_ts_global_vars,only: ts_method_init, TSinit, TSrun, TSmode
     use m_ts_options,   only : TS_scf_mode, ts_hist_keep
     use m_ts_options,   only : val_swap, ts_scf_mixs
     use m_ts_options,   only : ts_Dtol, ts_Htol
+    use m_ts_options,   only : IsVolt
     use siesta_options, only : dDtol, dHtol
 
     use m_mixing, only: mixers_history_init
@@ -451,33 +481,43 @@ contains
     
     if ( TS_scf_mode == 1 .and. TSinit ) then
 
-       ! if the user requests to start the transiesta SCF immediately.
-       call ts_method_init( .true. )
+      ! if the user requests to start the transiesta SCF immediately.
+      call ts_method_init( .true. )
 
     else 
 
-       ! Print-out whether transiesta is starting, or siesta is starting
-       call ts_method_init( init_method == 2 )
+      ! Print-out whether transiesta is starting, or siesta is starting
+      call ts_method_init( abs(init_method) == 2 )
 
+    end if
+
+    if ( TSmode .and. IsVolt .and. abs(init_method) /= 2 ) then
+      if ( IONode ) then
+        write(*,'(a)') 'ts: Before doing a bias calculation one have to do the 0-bias calculation'
+        write(*,'(a)') 'ts: The implementation does not allow starting, &
+            &from scratch, a bias calculation!'
+      end if
+      call die('ts: You have to calculate the 0 V and re-use the TSDE from &
+          &that calculation.')
     end if
 
     if ( TSrun ) then
 
-       ! Correct the convergence parameters in transiesta
-       call val_swap(dDtol,ts_Dtol)
-       call val_swap(dHtol,ts_Htol)
+      ! Correct the convergence parameters in transiesta
+      call val_swap(dDtol,ts_Dtol)
+      call val_swap(dHtol,ts_Htol)
 
-       ! From now on, a new mixing cycle starts,
-       ! Check in mixer.F for new mixing schemes.
-       if ( associated(ts_scf_mixs, target=scf_mixs) ) then
-          do i = 1 , size(scf_mix%stack)
-             call reset(scf_mix%stack(i), -ts_hist_keep)
-          end do
-       else
-          call mixers_history_init(scf_mixs)
-       end if
-       ! Transfer scf_mixing to the transiesta mixing routine
-       scf_mix => ts_scf_mixs(1)
+      ! From now on, a new mixing cycle starts,
+      ! Check in mixer.F for new mixing schemes.
+      if ( associated(ts_scf_mixs, target=scf_mixs) ) then
+        do i = 1 , size(scf_mix%stack)
+          call reset(scf_mix%stack(i), -ts_hist_keep)
+        end do
+      else
+        call mixers_history_init(scf_mixs)
+      end if
+      ! Transfer scf_mixing to the transiesta mixing routine
+      scf_mix => ts_scf_mixs(1)
 
     end if
 
@@ -592,6 +632,7 @@ contains
 
     ! The currently read stuff
     type(dSpData2D) :: DM_read
+    type(Sparsity), pointer :: sp_read
     type(dSpData2D) :: EDM_read
 
     ! Signal the file has not been found.
@@ -669,6 +710,16 @@ contains
 
     ! Density matrix size checks
     if ( DM_found ) then
+
+      ! Specify the *correct* init_method
+      ! In cases where the sparsity pattern changes, we assume this has to do with
+      ! MD simulations and thus a geometry change.
+      ! By default we do not allow mixing the first step when re-using a DM from another
+      ! geometry. This is because of idempotency.
+      sp_read => spar(DM_read)
+      if ( .not. equivalent(sp, sp_read) ) then
+        init_method = -init_method
+      end if
 
       corrected_nsc = .false.
       if ( nsc_read(1) /= 0 .and. any(nsc /= nsc_read) ) then
@@ -895,6 +946,8 @@ contains
 
     ! *** Local variables
     type(block_fdf) :: bfdf
+    character(len=32) :: method
+    integer :: i_method ! 1 == atomic
     logical :: init_spin_block
     type(dData2D) :: arr_2D
     ! The pointers for the sparse pattern
@@ -902,14 +955,21 @@ contains
     integer :: io, gio, i, ind, jo
     integer, pointer :: ncol(:), ptr(:), col(:)
     real(dp), pointer :: DM(:,:)
+
+    method = fdf_get('DM.Init', 'atomic')
+    if ( leqi(method, 'atomic') ) then
+      i_method = 1
+    else
+      call die('m_new_dm: erroneous option: DM.Init [atomic]')
+    end if
     
     ! First we need to figure out the options
     if ( spin%DM > 1 ) then
-       init_spin_block = fdf_block('DM.InitSpin', bfdf)
+      init_spin_block = fdf_block('DM.InitSpin', bfdf)
     else
-       ! Do not read the initspin block in case of
-       ! non-polarized calculation
-       init_spin_block = .false.
+      ! Do not read the initspin block in case of
+      ! non-polarized calculation
+      init_spin_block = .false.
     end if
 
     ! Retrieve pointers to data
@@ -923,10 +983,10 @@ contains
     call delete(arr_2D)
     DM => val(DM_2D)
 
-    if ( .not. init_spin_block ) then
-       call init_atomic()
-    else
-       call init_user()
+    if ( init_spin_block ) then
+      call init_user()
+    else if ( i_method == 1 ) then
+      call init_atomic()
     end if
 
     ! We have initialized with atomic information. Correct in case we
@@ -935,18 +995,27 @@ contains
     ! Gamma-point only. Otherwise S(diagonal) is always 1.0 and the
     ! simple atomic-orbital superposition works as intended.
 
+    if ( init_spin_block .or. i_method == 1 ) then
+      
       do io = 1, no_l
-         ! Retrieve global orbital index
-         gio = index_local_to_global(dit, io)
-         do i = 1 , ncol(io)
-            ind = ptr(io) + i
-            jo = col(ind)
-            ! Check for diagonal element
-            if ( gio == jo ) then
-               DM(ind,:) = DM(ind,:) / S(ind)
-            endif
-         end do
+        ! Retrieve global orbital index
+        gio = index_local_to_global(dit, io)
+        do i = 1 , ncol(io)
+          ind = ptr(io) + i
+          jo = col(ind)
+          ! Check for diagonal element
+          if ( gio == jo ) then
+            DM(ind,:) = DM(ind,:) / S(ind)
+          endif
+        end do
       end do
+     
+    end if
+      
+    ! Check if we should randomize some states
+    ! The default is *no* states are randomized
+    ! Also, this method does not obey anti-ferro!
+    call init_randomize()
 
   contains
 
@@ -959,14 +1028,15 @@ contains
 !$OMP parallel default(shared), private(i1,i2)
 
       ! Initialize to 0
-!$OMP do collapse(2)
       do i2 = 1 , spin%DM
+!$OMP do
          do i1 = 1 , nnz
             DM(i1,i2) = 0._dp
          end do
+!$OMP end do nowait
       end do
-!$OMP end do
-
+       
+!$OMP barrier
       
       ! Automatic, for non magnetic (nspin=1) or for Ferro or Antiferro
 !$OMP single
@@ -1164,14 +1234,16 @@ contains
 !$OMP parallel default(shared), private(i,ind,is,jo,gio,ia,io)
 
        ! Initialize to 0
-!$OMP do collapse(2)
        do is = 1 , spin%DM
+!$OMP do
           do i = 1 , nnz
              DM(i,is) = 0._dp
           end do
+!$OMP end do nowait
        end do
-!$OMP end do
 
+!$OMP barrier
+       
        ! Initialize the paramagnetic case
 !$OMP single
        do io = 1 , no_l
@@ -1303,9 +1375,116 @@ contains
 
     end subroutine init_user
 
+    subroutine init_randomize()
+
+      use parallel, only: Node
+      use geom_helper, only: ucorb
+#ifdef MPI
+      use mpi_siesta
+#endif
+
+      integer :: io, gio, i, ind, jo, i1, i2
+      integer :: n_random, ir
+      real(dp), allocatable :: rs(:)
+      real(dp) :: qtot, qinit, scale
+#ifdef MPI
+      integer :: ierr
+#endif
+      
+      n_random = fdf_get('DM.Init.RandomStates', 0)
+
+      ! If the user does not request any randomization, simply return
+      if ( n_random == 0 ) return
+
+      ! Calculate the number of charges in the current DM (this will be our target!)
+      qtot = 0._dp
+      do i2 = 1 , spin%DM
+        do i1 = 1 , nnz
+          qtot = qtot + DM(i1,i2) * S(i1)
+        end do
+      end do
+#ifdef MPI
+      call MPI_AllReduce(qtot, qinit, 1, mpi_double_precision, MPI_SUM, &
+          MPI_COMM_WORLD, ierr)
+      qtot = qinit
+#endif
+
+      ! Truncate number of random states (NOT nint)
+      if ( qtot < n_random ) n_random = int(qtot)
+
+      ! Calculate the target *initial DM*
+      qinit = qtot - n_random
+      scale = qinit / qtot
+
+      ! Rescale DM to remove n_random electrons
+      do i2 = 1 , spin%spinor
+        do i1 = 1 , nnz
+          DM(i1,i2) = DM(i1,i2) * scale
+        end do
+      end do
+      
+      ! Allocate for random states
+      ! TODO allocate all states and make them orthogonal
+      allocate(rs(no_u))
+
+      do ir = 1, n_random
+
+        if ( Node == 0 ) then
+          call random_number(rs)
+          ! Scale with atomic weights to not have *random* states
+          ! on, say, f-shells ;)
+          do io = 1 , no_u
+            rs(io) = (rs(io) - 0.5_dp) * DM_atom(io)
+          end do
+        end if
+#ifdef MPI
+        call MPI_Bcast(rs,no_u,MPI_Double_Precision,0,Mpi_Comm_World,ierr)
+#endif
+
+        ! Calculate inner product to rescale for 1 electron for this state
+        scale = 0._dp
+        do io = 1, no_l
+          gio = index_local_to_global(dit, io)
+          do ind = ptr(io) + 1 , ptr(io) + ncol(io)
+            jo = ucorb(col(ind), no_u)
+            scale = scale + rs(gio) * S(ind) * rs(jo)
+          end do
+        end do
+#ifdef MPI
+        call MPI_AllReduce(scale, qinit, 1, mpi_double_precision, MPI_SUM, &
+            MPI_COMM_WORLD, ierr)
+        scale = qinit
+#endif
+        ! Inner product value for getting a charge of 1
+        scale = sqrt(scale)
+        if ( spin%spinor > 1 ) then
+          ! Same state for spin-up/down
+          rs(:) = rs(:) / (scale * 2)
+        else
+          rs(:) = rs(:) / scale
+        end if
+
+        do io = 1, no_l
+          gio = index_local_to_global(dit, io)
+          do ind = ptr(io) + 1 , ptr(io) + ncol(io)
+            jo = ucorb(col(ind), no_u)
+            DM(ind,1:spin%spinor) = DM(ind,1:spin%spinor) + rs(gio) * rs(jo)
+          end do
+        end do
+      end do
+
+      ! Clean-up
+      deallocate(rs)
+
+      if ( IONode ) then
+        write(*,'(a,i0,a)') 'DM randomized ', n_random, ' states'
+      end if
+      
+    end subroutine init_randomize
+
   end subroutine init_DM_atomic
 
-  
+
   subroutine extrapolate_dm_with_coords(DM_history,na_u,xa,sparse_pattern,DMnew)
     use class_Sparsity
     use class_dData2D

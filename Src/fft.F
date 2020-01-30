@@ -53,8 +53,8 @@
       use sys,          only : die
       use alloc,        only : re_alloc, de_alloc
       use mesh,         only : nsm
-      use m_fft_gpfa,   only : gpfa        ! 1-D FFT routine
-      use m_fft_gpfa,   only : setgpfa=>setgpfa_check     ! Sets gpfa routine
+      use gpfa_fft,     only : gpfa        ! 1-D FFT routine
+      use gpfa_fft,     only : setgpfa=>setgpfa_check     ! Sets gpfa routine
       use m_timer,      only : timer_start ! Start counting CPU time
       use m_timer,      only : timer_stop  ! Stop counting CPU time
 #ifdef MPI
@@ -190,7 +190,7 @@ C
 C  FFT in X direction
 C
       if (LocalPoints) then
-        call gpfa(f,f(2:nf),trigs(:,1),2,2*n1,n1,n2l*n3l,-isn)
+        call gpfa(f(1:nf),f(2:nf),trigs(:,1),2,2*n1,n1,n2l*n3l,-isn)
       endif
 #ifdef MPI
 C***********************
@@ -251,7 +251,8 @@ C  FFT in Z direction
 C
       if (LocalPoints) then
         nft = size(ft)
-        call gpfa(ft,ft(2:nft),trigs(:,3),2*n1lf*n2l,2,n3,n1lf*n2l,-isn)
+        call gpfa(ft(1:nft),ft(2:nft),trigs(:,3),
+     $            2*n1lf*n2l,2,n3,n1lf*n2l,-isn)
       endif
 C
 C  Redistribute data to be distributed by Z again
@@ -275,7 +276,7 @@ C
 C
 C  FFT in Z direction
 C
-      call gpfa(f,f(2:nf),trigs(:,3),2*n1*n2,2,n3,n1*n2,-isn)
+      call gpfa(f(1:nf),f(2:nf),trigs(:,3),2*n1*n2,2,n3,n1*n2,-isn)
 #endif
 
 C
@@ -388,7 +389,7 @@ C
       call re_alloc( ftmp2, 1, 2, 1, n1lmax, 1, BlockSizeYMax, 1, n3l,
      &               name='ftmp2', routine='redistribXZ' )
 
-!$OMP parallel do default(shared), private(i,j,k), collapse(3)
+!$OMP parallel do default(shared), private(i,j,k)
       do i = 1,n3l
         do j = 1,BlockSizeYMax
           do k = 1,n1lmax
@@ -654,7 +655,7 @@ C
       call re_alloc( ftmp2, 1, 2, 1, n1lmax, 1, n2l, 1, BlockSizeZMax,
      &               name='ftmp2', routine='redistribXY' )
 
-!$OMP parallel do default(shared), private(i,j,k), collapse(3)
+!$OMP parallel do default(shared), private(i,j,k)
       do i = 1,BlockSizeZMax
         do j = 1,n2l
           do k = 1,n1lmax
