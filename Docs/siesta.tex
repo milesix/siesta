@@ -8786,6 +8786,9 @@ https://personales.unican.es/junqueraj/JavierJunquera\_files/Metodos/Wannier/Exe
 
   The third line is the number of bands that will be retained for
   wannierization.
+  The number of bands retained for Wannierization must be the same
+  as the number of localized orbitals that will be introduced
+  as a first guess in the following lines.
   This number is equal to the number of bands in the manifold if we are 
   dealing with isolated group of bands.
   But if the desired bands lie within a limited energy range but
@@ -8798,14 +8801,24 @@ https://personales.unican.es/junqueraj/JavierJunquera\_files/Metodos/Wannier/Exe
   I. Souza, N. Marzari and D. Vanderbilt, 
   Phys. Rev. B \textbf{65}, 035109 (2002) 
   "Maximally localized Wannier functions for entangled energy bands".
+  If there are more than two integers in this third line,
+  the total number of bands for Wannierization will be the product 
+  of the two, and we will need as many lines to introduce the 
+  initial localized functions as the number indicated by the second integer.
   
-  The fourth line refers to the indices of the orbitals that will be used 
+  The fourth line (and subsequents if there are more than two integers
+  in the third line) refers to the indices of the orbitals that will be used 
   as localized trial orbitals in the first step of the minimization 
   of the spreading. 
   The user has to specify the same number of atomic orbitals as the number
   of Wannier functions required.
   These indices can be found by inspection of the 
   \file{SystemLabel.ORB\_INDX} file.
+  If there are negative integers in this line, then the projectors will
+  be generated \`a-la-Wannier90, with the instructions given in the
+  WannierProjectors block. 
+  If there are negative numbers, then they must appear always after
+  the list of positive indices.
 
   The fifth line is the number of iterations that \program{wannier90} 
   will carry out to minimize the spreading.
