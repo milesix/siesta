@@ -20,6 +20,8 @@ OBJDIR=Obj
 ARCH_MAKE=../../../$(OBJDIR)/arch.make
 include $(ARCH_MAKE)
 
+INCFLAGS += $(FDF_INCFLAGS)
+
 # Set the default non-mpi routines
 FC_DEFAULT := $(FC)
 FC_SERIAL  ?= $(FC_DEFAULT)
@@ -175,16 +177,6 @@ libmpi_f90.a:
 	"MAKEFILES=$(MPI_MAKEFILE)" "ARCH_MAKE=../$(ARCH_MAKE)" \
 	"FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module_built)
 
-FDF=libfdf.a
-FDF_MAKEFILE=$(VPATH)/fdf/makefile
-FDF_INCFLAGS:=-I$(VPATH)/fdf -I../MPI $(INCFLAGS)
-$(FDF): $(MPI_INTERFACE)
-	-mkdir -p fdf
-	(cd fdf ; \
-	$(MAKE) -f $(FDF_MAKEFILE) -j 1 "FC=$(FC)" "VPATH=$(VPATH)/fdf" \
-	"ARCH_MAKE=../$(ARCH_MAKE)" \
-	"INCFLAGS=$(FDF_INCFLAGS)" "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module)
-
 #######################
 #  TS-TBT libs:
 #
@@ -253,12 +245,9 @@ libsiestaLAPACK.a: $(VPATH)/Libs/lapack.F
 	@cp Libs/libsiestaLAPACK.a .
 
 
-# All objects require the FDF library
-# In practice they do not but it greatly simplifies the logic
-# here.
-# This will setup the correct compilation sequence as
-# FDF => MPI
-$(DEP_OBJS): $(FDF) $(COMP_LIBS) $(FDICT)
+# This will setup the correct compilation sequence
+
+$(DEP_OBJS): $(COMP_LIBS) $(FDICT)
 #$(TBTOBJS): $(DEP_OBJS)
 
 .PHONY: check-tbtrans
@@ -293,19 +282,19 @@ pht: phtrans
 # We append the -DTBTRANS as some special routines
 # which could take advantage of this preprocessing flag
 tbtrans: FPPFLAGS += -DTBTRANS
-tbtrans: version $(MPI_INTERFACE) $(FDF) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(DEP_OBJS) $(TBTOBJS) 
+tbtrans: version $(MPI_INTERFACE) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(DEP_OBJS) $(TBTOBJS) 
 	$(FC) $(FFLAGS) $(LDFLAGS) -o tbtrans \
               $(DEP_OBJS) $(TBTOBJS) $(MPI_INTERFACE) \
-              $(FDF) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(LIBS)
+              $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(LIBS)
 
 # We append the -DTBTRANS as some special routines
 # which could take advantage of this preprocessing flag
 # Tbtrans has TBT_PHONON flags to compile special capabilities
 phtrans: FPPFLAGS += -DTBTRANS -DTBT_PHONON
-phtrans: version $(MPI_INTERFACE) $(FDF) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(DEP_OBJS) $(TBTOBJS)
+phtrans: version $(MPI_INTERFACE) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(DEP_OBJS) $(TBTOBJS)
 	$(FC) $(FFLAGS) $(LDFLAGS) -o phtrans \
               $(DEP_OBJS) $(TBTOBJS) $(MPI_INTERFACE) \
-              $(FDF) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(LIBS)
+              $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(LIBS)
 
 .PHONY: clean-tbt
 clean-tbt:
@@ -319,7 +308,6 @@ clean:
 	@echo "==> Cleaning object, library, and executable files"
 	-rm -f tbtrans phtrans *.o *.a *.mod
 	-rm -f .phtrans .tbtrans
-	-rm -rf ./fdf
 	-rm -rf ./MPI
 	-rm -rf ./fdict
 	-rm -rf ./ncdf
@@ -337,8 +325,6 @@ dep:
 
 	@sed -i -e 's/\.T90\.o:/.o:/g' Makefile
 
-# Assert that FDF is compiled on before hand
-$(DEP_OBJS): $(FDF)
 
 # DO NOT DELETE THIS LINE - used by make depend
 bloch_unfold.o: units.o
