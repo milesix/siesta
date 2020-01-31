@@ -53,7 +53,6 @@ dep:
 #
 XC=$(GRIDXC_LIBS)
 
-FDF_INCFLAGS=-I $(FDF_ROOT)/include
 NCPS_INCFLAGS=-I $(MAIN_OBJDIR)/ncps/src
 PSOP_INCFLAGS=-I $(MAIN_OBJDIR)/psoplib/src
 INCFLAGS:= $(NETCDF_INCFLAGS)  $(PSML_INCFLAGS) $(NCPS_INCFLAGS) \
@@ -310,9 +309,6 @@ libmpi_f90.a:
 	             MAIN_OBJDIR=$(MAIN_OBJDIR) \
 		    "FPPFLAGS=$(FPPFLAGS)" \
                     "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" )
-
-#--------------------------------------------------------------
-FDF_LIBS=$(FDF_ROOT)/lib/libfdf.a
 
 #--------------------------------------------------------------
 MS=MatrixSwitch.a

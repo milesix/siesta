@@ -24,7 +24,8 @@ MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
 
-# Set the default non-mpi routines
+INCFLAGS += $(FDF_INCFLAGS)
+
 FC_DEFAULT := $(FC)
 FC_SERIAL  ?= $(FC_DEFAULT)
 
@@ -76,7 +77,7 @@ SIESTA_OBJS= bye.o precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
              m_cite.o m_spin_orbit_potentials.o \
              coor.o chkdim.o semicore_info_froyen.o \
              zmatrix.o m_cell.o  periodic_table.o volcel.o digcel.o \
-             arw.o redcel.o
+             arw.o redcel.o broadcast_fdf_struct.o
 # Siesta timings
 SIESTA_OBJS += m_walltime.o timer_tree.o m_timer.o timer.o
 
@@ -104,15 +105,6 @@ UNFOLD_OBJS += unfold.o
 # Handlers and resolvers of last resort
 UNFOLD_OBJS += handlers.o local_sys.o
 #
-# Extract information of the compiler version used.
-# This is very basic but for intel, gcc, pgi and open64
-# this at least contain the version string of the compiler.
-# Possibly later the used compiler version may be extracted.
-COMPILER_VERSION := $(shell $(FC) --version | sed '/^[ ]*$$/d;q')
-ifeq ($(COMPILER_VERSION),)
-  # Just try and capture the case were it can not figure out anything
-  COMPILER_VERSION := Unknown version
-endif
 
 # Interfaces to libraries
 MPI_MAKEFILE=$(VPATH)/MPI/Makefile
@@ -122,16 +114,6 @@ libmpi_f90.a:
 	$(MAKE) -f $(MPI_MAKEFILE) -j 1 "VPATH=$(VPATH)/MPI" \
 	"MAKEFILES=$(MPI_MAKEFILE)" "ARCH_MAKE=$(ARCH_MAKE)" \
 	"FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module_built)
-
-FDF=libfdf.a
-FDF_MAKEFILE=$(VPATH)/fdf/makefile
-FDF_INCFLAGS:=-I$(VPATH)/fdf -I../MPI $(INCFLAGS)
-$(FDF): $(MPI_INTERFACE)
-	-mkdir -p fdf
-	(cd fdf ; \
-	$(MAKE) -f $(FDF_MAKEFILE) -j 1 "FC=$(FC)" "VPATH=$(VPATH)/fdf" \
-	"ARCH_MAKE=$(ARCH_MAKE)" \
-	"INCFLAGS=$(FDF_INCFLAGS)" "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module)
 
 #######################
 #
@@ -155,23 +137,17 @@ libsiestaLAPACK.a: $(VPATH)/Libs/lapack.F
 	@cp Libs/libsiestaLAPACK.a .
 
 
-# All objects require the FDF library
-# In practice they do not but it greatly simplifies the logic
-# here.
-# This will setup the correct compilation sequence as
-# FDF => MPI
-$(DEP_OBJS): $(FDF) $(COMP_LIBS) 
+$(DEP_OBJS): $(COMP_LIBS) 
 
-unfold: $(MPI_INTERFACE) $(FDF) $(COMP_LIBS) $(DEP_OBJS) $(UNFOLD_OBJS) 
+unfold: $(MPI_INTERFACE) $(COMP_LIBS) $(DEP_OBJS) $(UNFOLD_OBJS) 
 	$(FC) $(FFLAGS) $(LDFLAGS) -o unfold \
               $(DEP_OBJS) $(UNFOLD_OBJS) $(MPI_INTERFACE) \
-              $(FDF) $(XC) $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) $(COMP_LIBS) $(LIBS)
+              $(XC) $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) $(FDF_LIBS) $(COMP_LIBS) $(LIBS)
 
 .PHONY: clean
 clean: 
 	@echo "==> Cleaning object, library, and executable files"
 	-rm -f unfold *.o *.a *.mod
-	-rm -rf ./fdf
 	-rm -rf ./MPI
 	-rm -rf ./Libs
 
@@ -186,9 +162,6 @@ dep:
 		$(UNFOLD_OBJS:.o=.f) $(UNFOLD_OBJS:.o=.F) || true
 
 	@sed -i -e 's/\.T90\.o:/.o:/g' Makefile
-
-# Assert that FDF is compiled on before hand
-$(DEP_OBJS): $(FDF)
 
 # DO NOT DELETE THIS LINE - used by make depend
 arw.o: alloc.o local_sys.o parallel.o precision.o

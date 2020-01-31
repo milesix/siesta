@@ -20,6 +20,7 @@ WITH_GRID_SP=
 #PSML_ROOT=$(HOME)/lib/gfortran-5.2.0/libpsml-1.1.7
 #XMLF90_ROOT=$(HOME)/lib/gfortran-5.2.0/xmlf90-1.5.4
 #GRIDXC_ROOT=$(HOME)/lib/gfortran-5.2.0/gridxc-0.8.5
+#FDF_ROOT=
 #
 #----------------------------------------------------
 #SCALAPACK_LIBS=....
@@ -82,6 +83,8 @@ FPPFLAGS= $(FPPFLAGS_CDF) $(FPPFLAGS_GRID) $(FPPFLAGS_MPI)  -DF2003
 include $(XMLF90_ROOT)/share/org.siesta-project/xmlf90.mk
 include $(PSML_ROOT)/share/org.siesta-project/psml.mk
 include $(GRIDXC_ROOT)/share/org.siesta-project/gridxc_$(GRIDXC_CONFIG_PREFIX).mk
+FDF_INCFLAGS=-I $(FDF_ROOT)/include
+FDF_LIBS=$(FDF_ROOT)/lib/libfdf.a
 #---------------------------------------------
 #
 .F.o:

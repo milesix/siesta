@@ -25,6 +25,7 @@ WITH_GRID_SP=
 #XMLF90_ROOT=
 #PSML_ROOT=
 #GRIDXC_ROOT=
+#FDF_ROOT=
 #NETCDF_ROOT=/usr/include  
 SCALAPACK_LIBS=-L$(MKLROOT)/lib/intel64 -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
 LAPACK_LIBS=-L$(MKLROOT)/lib/intel64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
@@ -145,6 +146,8 @@ FPPFLAGS += $(FPPFLAGS_CDF) $(FPPFLAGS_GRID) $(FPPFLAGS_MPI) $(FPPFLAGS_FLOOK)
 include $(XMLF90_ROOT)/share/org.siesta-project/xmlf90.mk
 include $(PSML_ROOT)/share/org.siesta-project/psml.mk
 include $(GRIDXC_ROOT)/gridxc.mk
+FDF_INCFLAGS=-I $(FDF_ROOT)/include
+FDF_LIBS=$(FDF_ROOT)/lib/libfdf.a
 #
 # We assume that libgridxc
 # includes libxc. If not, delete '-lxc90 -lxc' from GRIDXC_LIBS above.

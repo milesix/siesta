@@ -15,6 +15,7 @@ NETCDF_ROOT=/usr/local
 #PSML_ROOT=$(HOME)/lib/gfortran-5.2.0/libpsml-1.1.6
 #XMLF90_ROOT=$(HOME)/lib/gfortran-5.2.0/xmlf90-1.5.3
 #GRIDXC_ROOT=$(HOME)/lib/gfortran-5.2.0/gridxc-0.8.0
+#FDF_ROOT=
 #
 #----------------------------------------------------
 # Libraries
@@ -69,6 +70,8 @@ FPPFLAGS= $(FPPFLAGS_CDF) $(FPPFLAGS_MPI)  -DF2003
 include $(XMLF90_ROOT)/share/org.siesta-project/xmlf90.mk
 include $(PSML_ROOT)/share/org.siesta-project/psml.mk
 include $(GRIDXC_ROOT)/gridxc.mk
+FDF_INCFLAGS=-I $(FDF_ROOT)/include
+FDF_LIBS=$(FDF_ROOT)/lib/libfdf.a
 #---------------------------------------------
 #
 .F.o:

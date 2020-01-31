@@ -25,6 +25,7 @@ WITH_GRID_SP=
 #NETCDF_ROOT=/usr/local
 PSML_ROOT=$(BUNDLE_DIR)
 XMLF90_ROOT=$(BUNDLE_DIR)
+FDF_ROOT=$(BUNDLE_DIR)
 #
 #----------------------------------------------------
 #SCALAPACK_LIBS=....
@@ -86,6 +87,8 @@ FPPFLAGS= $(FPPFLAGS_CDF) $(FPPFLAGS_GRID) $(FPPFLAGS_MPI)  -DF2003
 #---------------------------------------------
 include $(XMLF90_ROOT)/share/org.siesta-project/xmlf90.mk
 include $(PSML_ROOT)/share/org.siesta-project/psml.mk
+FDF_INCFLAGS=-I $(FDF_ROOT)/include
+FDF_LIBS=$(FDF_ROOT)/lib/libfdf.a
 #
 # GRIDXC is treated differently (see above) since the bundle might
 # not provide consistent .mk files for it. Note that the bundle must

@@ -25,6 +25,7 @@ COMP_LIBS=
 #PSML_ROOT=
 #XMLF90_ROOT=
 #GRIDXC_ROOT=   (Must be 0.8.5....)
+#FFTW_ROOT=
 #
 #----------------------------------------------------
 #SCALAPACK_LIBS=....
