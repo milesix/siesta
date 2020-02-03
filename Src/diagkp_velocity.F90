@@ -682,6 +682,8 @@ contains
     end do
 
     do ix = 1, 3
+      ! Only decouple for periodic directions
+      if ( .not. cell_periodic(ix) ) cycle
       
       call setup_dk(ix, kpoint(:,ik))
 
