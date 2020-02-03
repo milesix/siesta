@@ -181,6 +181,9 @@ C     Check internal dimensions ..........................................
         if ( ParallelOverK ) then
           nhs  = 2 * nuotot * nuotot
           npsi = 2 * nuotot * nuotot
+          if ( use_velocity_shift ) then
+            naux = 2 * nuotot
+          end if
         endif
 #endif
        endif
@@ -192,7 +195,11 @@ C     Check internal dimensions ..........................................
         if ( ParallelOverK ) then
           nhs  = 2 * 2 * nuotot * 2 * nuotot
           npsi = 2 * 2 * nuotot * 2 * nuotot
-          naux = 2 * nuotot     ! REAL
+          if ( use_velocity_shift ) then
+            naux = 2 * nuotot * 3 ! 2*nuotot REAL + 2*nuotot COMPLEX
+          else
+            naux = 2 * nuotot   ! REAL
+          end if
           if ( Spiral ) call die('diagon: ParallelOverK and Spiral &
      &are not compatible.')
         end if

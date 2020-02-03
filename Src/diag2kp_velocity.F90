@@ -63,8 +63,8 @@ subroutine diag2kp_velocity( spin, no_l, no_u, no_s, nnz, &
   ! *************************** AUXILIARY *******************************
   ! complex*16 Hk(2,no_u,2,no_u) : Auxiliary space for the hamiltonian matrix
   ! complex*16 Sk(2,no_u,2,no_u) : Auxiliary space for the overlap matrix
-  ! complex*16 psi(2,no_u,no_u*2)  : Auxiliary space for the eigenvectors
-  ! real*16 aux(2,no_u*3)          : Extra auxiliary space
+  ! complex*16 psi(2,no_u,no_u*2) : Auxiliary space for the eigenvectors
+  ! real*8 aux(2,no_u*3)          : Extra auxiliary space
   ! *************************** UNITS ***********************************
   ! xij and kpoint must be in reciprocal coordinates of each other.
   ! temp and H must be in the same energy units.
@@ -409,8 +409,8 @@ subroutine diag2kp_velocity( spin, no_l, no_u, no_s, nnz, &
     ! Add contribution to density matrices of unit-cell orbitals
       
 !$OMP workshare
-    Dk = 0._dp
-    Ek = 0._dp
+    Dk = cmplx(0._dp, 0._dp, dp)
+    Ek = cmplx(0._dp, 0._dp, dp)
 !$OMP end workshare
 
     ! Global operation to form new density matrix
