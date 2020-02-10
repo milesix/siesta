@@ -44,7 +44,7 @@
       use iodmhs_netcdf, only: write_dmh_netcdf
 #endif
       use m_dminim,        only : dminim
-      use m_lib_omm,       only : omm_min
+      use m_lib_omm,       only : omm_min, omm_min_block
       use m_zminim,        only : zminim
       use m_ordern,        only : ordern
       use m_steps,         only : istp
@@ -255,6 +255,31 @@ c$$$     &           S, 'S.matrix')
         Ecorrec = 0.0_dp
         Entropy = 0.0_dp
         PreviousCallDiagon=.false.
+
+      elseif (isolve .eq. SOLVE_OMM_BLOCK) then
+        if ( spin%NCol .or. spin%SO )
+     &      call die('ERROR: Non-collinear spin calculations
+     &                       not yet implemented with OMM!')
+        H_kin => val(H_kin_1D)
+
+        ! Decide which version of OMM to use.
+        ! Test based on use of auxiliary supercell
+        ! It might still be possible to avoid the complex version
+
+        if ( no_u == no_s ) then    ! Not using an auxiliary supercell
+          call omm_min_block(.false., PreviousCallDiagon, 
+     &                 iscf, istp, no_l,
+     &                 spin%H, no_u, maxnh, numh, listhptr, listh, Dscf,
+     &                 eta, qtots, H, S, H_kin)
+        else
+          ! When using an auxiliary supercell
+!          call die('ERROR: Auxilary supercell yet implemented with OMM!')
+        end if
+        Ecorrec = 0.0_dp
+        Entropy = 0.0_dp
+        PreviousCallDiagon=.false.
+
+
 #ifdef SIESTA__CHESS
       elseif (isolve .eq. SOLVE_CHESS) then
         ! FOE solver from the CheSS library

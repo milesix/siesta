@@ -37,7 +37,7 @@
       use m_diagon,       only : diagon 
       use m_dminim,       only : dminim
       use m_zminim,       only : zminim
-      use m_lib_omm,      only : omm_min
+      use m_lib_omm,      only : omm_min, omm_min_block
       use m_steps,        only : istp, inicoor
       use m_compute_dm,   only : PreviousCallDiagon
       use m_eo
@@ -108,6 +108,17 @@
         end if
       endif
 
+      if (isolve .eq. SOLVE_OMM_BLOCK) then
+        if ( no_u == no_s ) then ! Not using an auxiliary supercell
+          call omm_min_block(.true., .false., iscf, istp, 
+     &                  no_l, nspin, no_u,
+     &                  maxnh, numh, listhptr, listh, Escf,
+     &                  eta, qtots, H, S)
+        else
+          ! When using an auxiliary supercell
+!          call die('ERROR: Auxilary supercell yet implemented with OMM!')
+        end if
+      endif
 
 !     Find final energy, forces and stress.
 
