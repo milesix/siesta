@@ -9,6 +9,7 @@ module m_lib_omm
 
 use MatrixSwitch
 use omm_rand
+use libomm
 
 use fdf,            only : fdf_integer
 use parallel,       only : BlockSize, Node, Nodes, ionode
@@ -275,14 +276,13 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
 
 #ifdef MPI
   integer :: MPIerror, MPI_Size
-  logical, allocatable :: found_c(:)
 #endif
-  integer, dimension(2), save :: dims
-  integer, dimension(:), pointer, save :: row_blk_sizes, col_blk_sizes, row_blk_sizes1
+  integer, dimension(2) :: dims
+  integer, dimension(:), pointer, save :: row_blk_sizes, col_blk_sizes, row_blk_sizes1, col_blk_sizes1
   integer, save :: nblocks_r, nblocks_c, nblocks_r1, nblocks_c1
-
-  integer :: ind_c, ind_r, ib_r, ib_c, ind_c2, ind1, jo1, ib
-  integer :: i, j, io, jo, ind, k, l, N_occ, kk, i_node
+  integer :: ind_c, ind_r, ib_r, ib_c, ind_c2, ind1, jo1, ib, blk_c, blk_r, num_c
+  integer :: i, j, io, jo, ind, k, l, N_occ, kk, i_node, BlockSize_c
+  integer :: blk_co, blk_ro
   integer, allocatable :: ind_o(:), ind_u(:)
   real(dp) :: he, se, e_min
   real(dp), allocatable :: block_data(:,:), block_data_s(:,:)
@@ -290,6 +290,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
   type(matrix), save :: H, S, D_min, T, C_min  
   logical, save :: first_call = .true.
   logical :: found
+  logical, allocatable :: found_c(:)
   integer :: seed
   real(dp) :: rn(2), el
 
@@ -299,21 +300,28 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
   else
     N_occ = nint(qs(1))
   end if
-  
+   
 #ifdef MPI
-
   if (first_call) then 
-    call MPI_Comm_Size(MPI_Comm_World,MPI_Size,MPIerror)
-    call MPI_Dims_Create(MPI_Size, 2, dims, MPIerror)
+!    call MPI_Comm_Size(MPI_Comm_World,MPI_Size,MPIerror)
+    dims(:) = 2
+!    call MPI_Dims_Create(MPI_Size, 2, dims, MPIerror)
     call ms_dbcsr_setup(MPI_Comm_World)
   end if
   m_storage ='pdcsr' 
   m_operation ='lap'
+  BlockSize_c = BlockSize
+  if (ionode) print'(a,i5)','BlockSize_c = ', BlockSize_c
 #else
   dims(1) = 1
   dims(2) = 1
   m_storage = 'sdcsr'
   m_operation = 'ref'
+  BlockSize_c = h_dim
+  if(ionode) then
+    write(6,*) 'omm_min: Block matrices are not supported in serial'
+  endif
+  call die()
 #endif
     
   if(first_call) then
@@ -329,7 +337,9 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     row_blk_sizes(:) = dims(1)
     col_blk_sizes(:) = dims(2)
     allocate(row_blk_sizes1(1:nblocks_r1))
+    allocate(col_blk_sizes1(1:nblocks_c1))
     row_blk_sizes1(:) = dims(1)
+    col_blk_sizes1(:) = dims(2)
   end if
       
   allocate(ind_o(1:nhmax))
@@ -361,32 +371,50 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     if (.not. C_min%is_initialized) call m_allocate(C_min,row_blk_sizes1,col_blk_sizes,m_storage)
   end if
 
-  allocate(block_data(1:dims(1),1:dims(2)))
-  allocate(block_data_s(1:dims(1),1:dims(2)))
-  
-#ifdef MPI
-  allocate(found_c(1:dims(2)))
+  ib_c = 1
+  ib_r = 1 
+  blk_co = col_blk_sizes(ib_c)
+  blk_ro = row_blk_sizes(ib_r)
+  allocate(block_data(1:blk_ro,1:blk_co))
+  allocate(block_data_s(1:blk_ro,1:blk_co))
+  allocate(found_c(1:blk_co))
+  num_c = 0
   do ib_c = 1, nblocks_c
-    ind_c2 = dims(2)
-    if(ib_c == nblocks_c) ind_c2 = mod((h_dim-1), dims(2)) + 1
-    do ib_r = 1, nblocks_r
+    ind_c2 = col_blk_sizes(ib_c)
+    if(ib_c == nblocks_c) ind_c2 = h_dim - num_c
+    do ib_r = 1, nblocks_r  
+      blk_c = col_blk_sizes(ib_c)
+      blk_r = row_blk_sizes(ib_r)
+      if(blk_co .ne. blk_c) then
+        deallocate(found_c) 
+        allocate(found_c(1:blk_c))
+      end if
+      if((blk_ro .ne. blk_r) .or. (blk_co .ne. blk_c)) then
+        deallocate(block_data)
+        deallocate(block_data_s) 
+        allocate(block_data(1:blk_r,1:blk_c))
+        allocate(block_data_s(1:blk_r,1:blk_c))
+        blk_co = blk_c
+        blk_ro = blk_r
+      end if
       block_data(:,:) = 0.0_dp 
       block_data_s(:,:) = 0.0_dp
       found_c(:) = .false.
+      found = .false.
       do ind_c = 1, ind_c2
-        i_node = int(((ib_c - 1) * dims(2) + ind_c - 1) / BlockSize)
+        i_node = int((num_c + ind_c - 1) / BlockSize_c)
         if(Node == i_node) then
-          io = mod(((ib_c - 1) * dims(2) + ind_c - 1), BlockSize) + 1
+          io = mod((num_c + ind_c - 1), BlockSize_c) + 1
           ind = ind_u(io)
           if(ind .le. (listhptr(io) + numh(io))) then
             jo = listh(ind_o(ind))
-            ib = int((jo - 1) / dims(1)) + 1
+            call get_index(jo, row_blk_sizes, nblocks_r, ib, ind_r) 
           else
             ib = 0
           end if
           do while(ib == ib_r) 
             found_c(ind_c) = .true.
-            ind_r = mod((jo - 1), dims(1)) + 1
+            found = .true.
             he = h_sparse(ind_o(ind), 1)
             se = s_sparse(ind_o(ind))
          !   print'(a,i5,a,i5,a,i5,a,i5,a,i5,a,f15.10)','H i_node = ',i_node,' ib_c=',ib_c,&
@@ -397,83 +425,46 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
             ind = ind_u(io)
             if(ind .le. (listhptr(io) + numh(io))) then
               jo = listh(ind_o(ind))
-              ib = int((jo-1) / dims(1)) + 1
+              call get_index(jo, row_blk_sizes, nblocks_r, ib, ind_r)
             else
               ib = 0
             end if 
           end do
         end if
       end do
-      
-      found = .false. 
+#ifdef MPI      
       do ind_c = 1, ind_c2
-        i_node = int(((ib_c - 1) * dims(2) + ind_c - 1) / BlockSize) 
+        i_node = int((num_c + ind_c - 1) / BlockSize_c) 
         call MPI_Bcast(found_c(ind_c),1,MPI_Logical,i_node,MPI_Comm_World,MPIerror)
         if(found_c(ind_c)) then
           found = .true.
-          call MPI_Bcast(block_data(:,ind_c),dims(1),MPI_Double_Precision,i_node,MPI_Comm_World,MPIerror)
-          call MPI_Bcast(block_data_s(:,ind_c),dims(1),MPI_Double_Precision,i_node,MPI_Comm_World,MPIerror)
+          call MPI_Bcast(block_data(:,ind_c),blk_r,MPI_Double_Precision,i_node,MPI_Comm_World,MPIerror)
+          call MPI_Bcast(block_data_s(:,ind_c),blk_r,MPI_Double_Precision,i_node,MPI_Comm_World,MPIerror)
         end if
       end do
-      
+#endif      
       if(found) then
         call m_set_element(H,ib_r,ib_c,block_data,0.0_dp)     
         call m_set_element(S,ib_r,ib_c,block_data_s,0.0_dp)
       end if
     end do
-  end do      
-
-#else
-
-  do ib_c = 1, nblocks_c
-    ind_c2 = dims(2)
-    if(ib_c == nblocks_c) ind_c2 = mod((h_dim-1), dims(2)) + 1
-    do ib_r = 1, nblocks_r
-      block_data(:,:) = 0.0_dp
-      block_data_s(:,:) = 0.0_dp
-      found = .false.      
-      do ind_c = 1, ind_c2
-        io = (ib_c - 1) * dims(2) + ind_c 
-        ind = ind_u(io)
-        if(ind .le. (listhptr(io) + numh(io))) then
-          jo = listh(ind_o(ind))
-          ib = int((jo - 1) / dims(1)) + 1
-        else
-          ib = 0
-        end if
-        do while(ib == ib_r)
-          found = .true.
-          ind_r = mod((jo - 1), dims(1)) + 1
-          he = h_sparse(ind_o(ind), 1)
-          se = s_sparse(ind_o(ind))
-         !   print'(a,i5,a,i5,a,i5,a,i5,a,i5,a,f15.10)','H i_node = ',i_node,' ib_c=',ib_c,&
-         !      ' ib_r=',ib_r,' ind_c=',ind_c,' ind_r=',ind_r,' h=',he  
-          block_data(ind_r,ind_c) = he
-          block_data_s(ind_r,ind_c) = se
-          ind_u(io) = ind + 1
-          ind = ind_u(io)
-          if(ind .le. (listhptr(io) + numh(io))) then
-            jo = listh(ind_o(ind))
-            ib = int((jo-1) / dims(1)) + 1
-          else
-            ib = 0
-          end if
-        end do
-      end do
-
-      if(found) then
-        call m_set_element(H,ib_r,ib_c,block_data,0.0_dp)
-        call m_set_element(S,ib_r,ib_c,block_data_s,0.0_dp)
-      end if
-    end do
-  end do
-#endif
-
+    num_c = num_c + ind_c2
+  end do     
+  deallocate(block_data_s) 
 
   if(first_call) then
     seed = omm_rand_seed()
     do i = 1, nblocks_c
       do j = 1, nblocks_r1
+        blk_c = col_blk_sizes(i)
+        blk_r = row_blk_sizes1(j)
+        if((blk_ro .ne. blk_r) .or. (blk_co .ne. blk_c)) then
+          deallocate(block_data)
+          allocate(block_data(1:blk_r,1:blk_c))
+          blk_co = blk_c
+          blk_ro = blk_r
+        end if        
+        block_data(:,:) = 0.0_dp
         do io = 1, dims(2) 
           do jo = 1, dims(1)
             el = 0.0_dp
@@ -492,80 +483,84 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
       end do
     end do
     call m_scale(C_min,1.0d-2/sqrt(real(h_dim,dp)),m_operation)
+    deallocate(found_c)
+    allocate(found_c(1:blk_co))
   end if  
   
   init_C = .true.
   if(.not. calcE) then
     call omm(h_dim,N_occ,H,S,.true.,e_min,D_min,.false.,0.0_dp,&
       C_min,init_C,T,0.0_dp,0,nspin,1,-1.0_dp,.true.,.false.,&
-      m_storage,m_operation,dims)
+      m_storage,m_operation,row_blk_sizes,col_blk_sizes,&
+      row_blk_sizes1,col_blk_sizes1)
     if(ionode) print'(a, f13.7)','e_min = ', e_min
   else
     call omm(h_dim,N_occ,H,S,.false.,e_min,D_min,.true.,0.0_dp,&
       C_min,init_C,T,0.0_dp,0,nspin,1,-1.0_dp,.true.,.true.,&
-      m_storage,m_operation,dims)
-  end if          
+      m_storage,m_operation,row_blk_sizes,col_blk_sizes,& 
+      row_blk_sizes1,col_blk_sizes1)
+  end if
+          
   do io = 1, nbasis
     ind_u(io) = listhptr(io) + 1
   end do
-
-#ifdef MPI
+  num_c = 0
   do ib_c = 1, nblocks_c
-    ind_c2 = dims(2)
-    if(ib_c == nblocks_c) ind_c2 = mod((h_dim - 1), dims(2)) + 1
+    ind_c2 = col_blk_sizes(ib_c)
+    if(ib_c == nblocks_c) ind_c2 = h_dim - num_c
     do ib_r = 1, nblocks_r
+      blk_c = col_blk_sizes(ib_c)
+      blk_r = row_blk_sizes(ib_r)
+      if(blk_co .ne. blk_c) then
+        deallocate(found_c)
+        allocate(found_c(1:blk_c))
+      end if
+      if((blk_ro .ne. blk_r) .or. (blk_co .ne. blk_c)) then
+        deallocate(block_data)
+        allocate(block_data(1:blk_r,1:blk_c))
+        blk_co = blk_c
+        blk_ro = blk_r
+      end if
       block_data(:,:) = 0.0_dp
       found_c(:) = .false.
+      found = .false.
       do ind_c = 1, ind_c2
-        i_node = int(((ib_c - 1) * dims(2) + ind_c - 1) / BlockSize)
+        i_node = int((num_c + ind_c - 1) / BlockSize_c)
         if(Node == i_node) then
-          io = mod(((ib_c - 1) * dims(2) + ind_c-1), BlockSize) + 1
+          io = mod((num_c + ind_c - 1), BlockSize_c) + 1
           ind = ind_u(io)
           if(ind .le. (listhptr(io) + numh(io))) then
             jo = listh(ind_o(ind))
-            ib = int((jo-1)/dims(1)) + 1
+            call get_index(jo, row_blk_sizes, nblocks_r, ib, ind_r)
           else
             ib = 0
           end if
-          if(ib == ib_r) found_c(ind_c) = .true.
+          if(ib == ib_r) then
+            found_c(ind_c) = .true.
+            found = .true.
+          end if
         end if
       end do
-
-      found = .false.
+#ifdef MPI
       do ind_c = 1, ind_c2
-        i_node = int(((ib_c-1) * dims(2) + ind_c - 1)/BlockSize)
+        i_node = int((num_c + ind_c - 1) / BlockSize_c)
         call MPI_Bcast(found_c(ind_c),1,MPI_Logical,i_node,MPI_Comm_World,MPIerror)
         if(found_c(ind_c)) then
           found = .true.
         end if
       end do
-
-      if(found) then
-        call m_get_element(D_min,ib_r,ib_c,myblock,found)
-        i_node = 0
-        if(found) then
-          i_node = Node
-          do ind_c = 1, dims(2)
-            do ind_r = 1, dims(1)
-              block_data(ind_r,ind_c) = myblock(ind_r,ind_c)
-            end do
-          end do
-        end if
-        call MPI_Allreduce(i_node,i,1,MPI_Integer,MPI_Sum,MPI_Comm_World,MPIerror)
-        i_node = i
-        do ind_c = 1, ind_c2
-          call MPI_Bcast(block_data(:,ind_c),dims(1),MPI_Double_Precision,i_node,MPI_Comm_World,MPIerror)
-        end do
-      end if
+#endif
+      
+      if(found) call get_block(D_min,ib_r,ib_c,blk_r,blk_c,block_data)
+      
       do ind_c = 1, ind_c2
-        i_node = int(((ib_c-1) * dims(2) + ind_c - 1) / BlockSize)
+        i_node = int((num_c + ind_c - 1) / BlockSize_c)
         if(Node == i_node) then
-          io = mod(((ib_c-1) * dims(2) + ind_c - 1), BlockSize) + 1
+          io = mod((num_c + ind_c - 1), BlockSize_c) + 1
           ind = ind_u(io)
           jo = listh(ind_o(ind))
-          ib = int((jo - 1) / dims(1)) + 1
+          call get_index(jo, row_blk_sizes, nblocks_r, ib, ind_r)
           do while(ib == ib_r)
-            ind_r = mod((jo - 1), dims(1)) + 1
             d_sparse(ind_o(ind), 1) = 2.0_dp * block_data(ind_r, ind_c)
 !            print'(a,i5,a,i5,a,i5,a,i5,a,f15.10)','Output  ib_c=',ib_c,&
 !               ' ib_r=',ib_r,' ind_c=',ind_c,' ind_r=',ind_r,' h=',block_data(ind_r,ind_c)
@@ -574,7 +569,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
             ind = ind_u(io)
             if(ind .le. (listhptr(io) + numh(io))) then
               jo = listh(ind_o(ind))
-              ib = int((jo - 1) / dims(1)) + 1
+              call get_index(jo, row_blk_sizes, nblocks_r, ib, ind_r)
             else
               ib = 0
             end if
@@ -582,61 +577,8 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
         end if
       end do
     end do
+    num_c = num_c + ind_c2
   end do
-  deallocate(found_c)
-#else
-  do ib_c = 1, nblocks_c
-    ind_c2 = dims(2)
-    if(ib_c == nblocks_c) ind_c2 = mod((h_dim - 1), dims(2)) + 1
-    do ib_r = 1, nblocks_r
-      block_data(:,:) = 0.0_dp
-      found = .false.
-      do ind_c = 1, ind_c2
-        io = (ib_c - 1) * dims(2) + ind_c
-        ind = ind_u(io)
-        if(ind .le. (listhptr(io) + numh(io))) then
-          jo = listh(ind_o(ind))
-          ib = int((jo-1)/dims(1)) + 1
-        else
-          ib = 0
-        end if
-        if(ib == ib_r) found = .true.
-      end do
-
-      if(found) then
-        call m_get_element(D_min,ib_r,ib_c,myblock,found)
-        if(found) then
-          do ind_c = 1, dims(2)
-            do ind_r = 1, dims(1)
-              block_data(ind_r,ind_c) = myblock(ind_r,ind_c)
-            end do
-          end do
-        end if
-      end if
-      do ind_c = 1, ind_c2
-        io = (ib_c-1) * dims(2) + ind_c
-        ind = ind_u(io)
-        jo = listh(ind_o(ind))
-        ib = int((jo - 1) / dims(1)) + 1
-        do while(ib == ib_r)
-          ind_r = mod((jo - 1), dims(1)) + 1
-          d_sparse(ind_o(ind), 1) = 2.0_dp * block_data(ind_r, ind_c)
-!            print'(a,i5,a,i5,a,i5,a,i5,a,f15.10)','Output  ib_c=',ib_c,&
-!               ' ib_r=',ib_r,' ind_c=',ind_c,' ind_r=',ind_r,' h=',block_data(ind_r,ind_c)
-          if(nspin == 2) d_sparse(ind_o(ind), 2) = d_sparse(ind_o(ind), 1)
-          ind_u(io) = ind + 1
-          ind = ind_u(io)
-          if(ind .le. (listhptr(io) + numh(io))) then
-            jo = listh(ind_o(ind))
-            ib = int((jo - 1) / dims(1)) + 1
-          else
-            ib = 0
-          end if
-        end do
-      end do
-    end do
-  end do
-#endif
 
   if(first_call) first_call = .false.
    
@@ -646,10 +588,74 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
 !  call m_deallocate(C_min)
 !  call ms_dbcsr_finalize()
 
-  deallocate(block_data)
-  deallocate(block_data_s)
   deallocate(ind_o)
   deallocate(ind_u)
+  deallocate(found_c)
+  deallocate(block_data)
 
 end subroutine omm_min_block
+
+subroutine get_index(num, blk_sizes, num_blks, ib, ind)
+  implicit none
+
+  integer, intent(in)     :: num
+  integer, intent(inout)  :: blk_sizes(:) 
+  integer, intent(in)     :: num_blks
+  integer, intent(out)    :: ib, ind
+
+  ib = 0
+  ind = num
+
+  do while((ib .lt. num_blks) .and. (ind .gt. 0))
+    ib = ib + 1
+    ind = ind - blk_sizes(ib)
+  end do
+  if(ind .le. 0) then
+    ind = ind + blk_sizes(ib)
+  else    
+    if(ionode) then
+      write(6,*) 'omm_min: Wrong matrix index'
+    endif
+    call die()
+  end if
+end subroutine get_index
+
+
+subroutine get_block(mat, ib_r, ib_c, blk_r, blk_c, block_data)
+  implicit none
+
+  type(matrix), intent(inout)   :: mat
+  integer, intent(in)        :: ib_r, ib_c
+  integer, intent(in)        :: blk_r, blk_c
+  real(dp), intent(inout)    :: block_data(:,:)
+
+  logical :: found
+  integer :: i_node, ind_r, ind_c
+  real(dp),pointer :: myblock(:,:)
+
+#ifdef MPI
+  integer :: MPIerror, i_mpi
+#endif
+
+  call m_get_element(mat,ib_r,ib_c,myblock,found)
+  i_node = 0
+  if(found) then
+    i_node = Node
+    do ind_c = 1, blk_c
+      do ind_r = 1, blk_r
+        block_data(ind_r,ind_c) = myblock(ind_r,ind_c)
+      end do
+    end do
+  end if
+
+#ifdef MPI
+  call MPI_Allreduce(i_node,i_mpi,1,MPI_Integer,MPI_Sum,MPI_Comm_World,MPIerror)
+  i_node = i_mpi
+  do ind_c = 1, blk_c
+    call MPI_Bcast(block_data(:,ind_c),blk_r,MPI_Double_Precision,i_node,MPI_Comm_World,MPIerror)
+  end do
+#endif
+end subroutine get_block
+
+
 end module m_lib_omm
