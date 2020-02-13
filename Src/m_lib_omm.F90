@@ -282,7 +282,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
   integer, save :: nblocks_r, nblocks_c, nblocks_r1, nblocks_c1
   integer :: ind_c, ind_r, ib_r, ib_c, ind_c2, ind1, jo1, ib, blk_c, blk_r, num_c
   integer :: i, j, io, jo, ind, k, l, N_occ, kk, i_node, BlockSize_c
-  integer :: blk_co, blk_ro
+  integer :: blk_co, blk_ro, blk_f
   integer, allocatable :: ind_o(:), ind_u(:)
   real(dp) :: he, se, e_min
   real(dp), allocatable :: block_data(:,:), block_data_s(:,:)
@@ -303,7 +303,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
    
 #ifdef MPI
   if (first_call) then 
-!    call MPI_Comm_Size(MPI_Comm_World,MPI_Size,MPIerror)
+    call MPI_Comm_Size(MPI_Comm_World,MPI_Size,MPIerror)
     dims(:) = 2
 !    call MPI_Dims_Create(MPI_Size, 2, dims, MPIerror)
     call ms_dbcsr_setup(MPI_Comm_World)
@@ -375,9 +375,10 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
   ib_r = 1 
   blk_co = col_blk_sizes(ib_c)
   blk_ro = row_blk_sizes(ib_r)
+  blk_f = col_blk_sizes(ib_c)
   allocate(block_data(1:blk_ro,1:blk_co))
   allocate(block_data_s(1:blk_ro,1:blk_co))
-  allocate(found_c(1:blk_co))
+  allocate(found_c(1:blk_f))
   num_c = 0
   do ib_c = 1, nblocks_c
     ind_c2 = col_blk_sizes(ib_c)
@@ -385,20 +386,11 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     do ib_r = 1, nblocks_r  
       blk_c = col_blk_sizes(ib_c)
       blk_r = row_blk_sizes(ib_r)
-      if(blk_co .ne. blk_c) then
+      if(blk_f .ne. blk_c) then
         deallocate(found_c) 
         allocate(found_c(1:blk_c))
+        blk_f = blk_c
       end if
-      if((blk_ro .ne. blk_r) .or. (blk_co .ne. blk_c)) then
-        deallocate(block_data)
-        deallocate(block_data_s) 
-        allocate(block_data(1:blk_r,1:blk_c))
-        allocate(block_data_s(1:blk_r,1:blk_c))
-        blk_co = blk_c
-        blk_ro = blk_r
-      end if
-      block_data(:,:) = 0.0_dp 
-      block_data_s(:,:) = 0.0_dp
       found_c(:) = .false.
       found = .false.
       do ind_c = 1, ind_c2
@@ -408,42 +400,68 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
           ind = ind_u(io)
           if(ind .le. (listhptr(io) + numh(io))) then
             jo = listh(ind_o(ind))
-            call get_index(jo, row_blk_sizes, nblocks_r, ib, ind_r) 
+            call get_index(jo, row_blk_sizes, nblocks_r, ib, ind_r)
           else
             ib = 0
           end if
-          do while(ib == ib_r) 
+          if(ib == ib_r) then
             found_c(ind_c) = .true.
             found = .true.
-            he = h_sparse(ind_o(ind), 1)
-            se = s_sparse(ind_o(ind))
-         !   print'(a,i5,a,i5,a,i5,a,i5,a,i5,a,f15.10)','H i_node = ',i_node,' ib_c=',ib_c,&
-         !      ' ib_r=',ib_r,' ind_c=',ind_c,' ind_r=',ind_r,' h=',he
-            block_data(ind_r,ind_c) = he
-            block_data_s(ind_r,ind_c) = se
-            ind_u(io) = ind + 1
-            ind = ind_u(io)
-            if(ind .le. (listhptr(io) + numh(io))) then
-              jo = listh(ind_o(ind))
-              call get_index(jo, row_blk_sizes, nblocks_r, ib, ind_r)
-            else
-              ib = 0
-            end if 
-          end do
+          end if
         end if
       end do
-#ifdef MPI      
+#ifdef MPI
       do ind_c = 1, ind_c2
-        i_node = int((num_c + ind_c - 1) / BlockSize_c) 
+        i_node = int((num_c + ind_c - 1) / BlockSize_c)
         call MPI_Bcast(found_c(ind_c),1,MPI_Logical,i_node,MPI_Comm_World,MPIerror)
         if(found_c(ind_c)) then
           found = .true.
-          call MPI_Bcast(block_data(:,ind_c),blk_r,MPI_Double_Precision,i_node,MPI_Comm_World,MPIerror)
-          call MPI_Bcast(block_data_s(:,ind_c),blk_r,MPI_Double_Precision,i_node,MPI_Comm_World,MPIerror)
         end if
       end do
-#endif      
+#endif
       if(found) then
+        if((blk_ro .ne. blk_r) .or. (blk_co .ne. blk_c)) then
+          deallocate(block_data)
+          deallocate(block_data_s)
+          allocate(block_data(1:blk_r,1:blk_c))
+          allocate(block_data_s(1:blk_r,1:blk_c))
+          blk_co = blk_c
+          blk_ro = blk_r
+        end if
+        block_data(:,:) = 0.0_dp
+        block_data_s(:,:) = 0.0_dp
+        do ind_c = 1, ind_c2
+          i_node = int((num_c + ind_c - 1) / BlockSize_c)
+          if(Node == i_node) then
+            io = mod((num_c + ind_c - 1), BlockSize_c) + 1
+            ind = ind_u(io)
+            jo = listh(ind_o(ind))
+            call get_index(jo, row_blk_sizes, nblocks_r, ib, ind_r) 
+            do while(ib == ib_r) 
+              he = h_sparse(ind_o(ind), 1)
+              se = s_sparse(ind_o(ind))
+         !   print'(a,i5,a,i5,a,i5,a,i5,a,i5,a,f15.10)','H i_node = ',i_node,' ib_c=',ib_c,&
+         !      ' ib_r=',ib_r,' ind_c=',ind_c,' ind_r=',ind_r,' h=',he
+              block_data(ind_r,ind_c) = he
+              block_data_s(ind_r,ind_c) = se
+              ind_u(io) = ind + 1
+              ind = ind_u(io)
+              if(ind .le. (listhptr(io) + numh(io))) then
+                jo = listh(ind_o(ind))
+                call get_index(jo, row_blk_sizes, nblocks_r, ib, ind_r)
+              else
+                ib = 0
+              end if 
+            end do
+          end if
+        end do
+#ifdef MPI      
+        do ind_c = 1, ind_c2
+          i_node = int((num_c + ind_c - 1) / BlockSize_c) 
+          call MPI_Bcast(block_data(:,ind_c),blk_r,MPI_Double_Precision,i_node,MPI_Comm_World,MPIerror)
+          call MPI_Bcast(block_data_s(:,ind_c),blk_r,MPI_Double_Precision,i_node,MPI_Comm_World,MPIerror)      
+        end do
+#endif      
         call m_set_element(H,ib_r,ib_c,block_data,0.0_dp)     
         call m_set_element(S,ib_r,ib_c,block_data_s,0.0_dp)
       end if
@@ -483,8 +501,6 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
       end do
     end do
     call m_scale(C_min,1.0d-2/sqrt(real(h_dim,dp)),m_operation)
-    deallocate(found_c)
-    allocate(found_c(1:blk_co))
   end if  
   
   init_C = .true.
@@ -511,9 +527,10 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     do ib_r = 1, nblocks_r
       blk_c = col_blk_sizes(ib_c)
       blk_r = row_blk_sizes(ib_r)
-      if(blk_co .ne. blk_c) then
+      if(blk_f .ne. blk_c) then
         deallocate(found_c)
         allocate(found_c(1:blk_c))
+        blk_f = blk_c
       end if
       if((blk_ro .ne. blk_r) .or. (blk_co .ne. blk_c)) then
         deallocate(block_data)
@@ -551,31 +568,40 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
       end do
 #endif
       
-      if(found) call get_block(D_min,ib_r,ib_c,blk_r,blk_c,block_data)
+      if(found) then
+        if((blk_ro .ne. blk_r) .or. (blk_co .ne. blk_c)) then
+          deallocate(block_data)
+          allocate(block_data(1:blk_r,1:blk_c))
+          blk_co = blk_c
+          blk_ro = blk_r
+        end if
+        block_data(:,:) = 0.0_dp
+        call get_block(D_min,ib_r,ib_c,blk_r,blk_c,block_data)
       
-      do ind_c = 1, ind_c2
-        i_node = int((num_c + ind_c - 1) / BlockSize_c)
-        if(Node == i_node) then
-          io = mod((num_c + ind_c - 1), BlockSize_c) + 1
-          ind = ind_u(io)
-          jo = listh(ind_o(ind))
-          call get_index(jo, row_blk_sizes, nblocks_r, ib, ind_r)
-          do while(ib == ib_r)
-            d_sparse(ind_o(ind), 1) = 2.0_dp * block_data(ind_r, ind_c)
+        do ind_c = 1, ind_c2
+          i_node = int((num_c + ind_c - 1) / BlockSize_c)
+          if(Node == i_node) then
+            io = mod((num_c + ind_c - 1), BlockSize_c) + 1
+            ind = ind_u(io)
+            jo = listh(ind_o(ind))
+            call get_index(jo, row_blk_sizes, nblocks_r, ib, ind_r)
+            do while(ib == ib_r)
+              d_sparse(ind_o(ind), 1) = 2.0_dp * block_data(ind_r, ind_c)
 !            print'(a,i5,a,i5,a,i5,a,i5,a,f15.10)','Output  ib_c=',ib_c,&
 !               ' ib_r=',ib_r,' ind_c=',ind_c,' ind_r=',ind_r,' h=',block_data(ind_r,ind_c)
-            if(nspin == 2) d_sparse(ind_o(ind), 2) = d_sparse(ind_o(ind), 1)
-            ind_u(io) = ind + 1
-            ind = ind_u(io)
-            if(ind .le. (listhptr(io) + numh(io))) then
-              jo = listh(ind_o(ind))
-              call get_index(jo, row_blk_sizes, nblocks_r, ib, ind_r)
-            else
-              ib = 0
-            end if
-          end do
-        end if
-      end do
+              if(nspin == 2) d_sparse(ind_o(ind), 2) = d_sparse(ind_o(ind), 1)
+              ind_u(io) = ind + 1
+              ind = ind_u(io)
+              if(ind .le. (listhptr(io) + numh(io))) then
+                jo = listh(ind_o(ind))
+                call get_index(jo, row_blk_sizes, nblocks_r, ib, ind_r)
+              else
+                ib = 0
+              end if
+            end do
+          end if
+        end do
+      end if
     end do
     num_c = num_c + ind_c2
   end do
