@@ -11,6 +11,7 @@ use MatrixSwitch
 use omm_rand
 use libomm
 
+use atomlist,       only : qa, lasto
 use fdf,            only : fdf_integer
 use parallel,       only : BlockSize, Node, Nodes, ionode
 use precision,      only : dp
@@ -239,7 +240,10 @@ end subroutine omm_min
 subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,numh,listhptr,listh,d_sparse,&
     eta,qs,h_sparse,s_sparse,t_sparse)
   
-
+  use neighbour,      only : jan, mneighb
+  use siesta_geom,    only : na_u, xa, ucell
+  use siesta_options, only : rcoor
+ 
   implicit none
 
   !**** INPUT ***********************************!
@@ -280,10 +284,11 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
   integer, dimension(2) :: dims
   integer, dimension(:), pointer, save :: row_blk_sizes, col_blk_sizes, row_blk_sizes1, col_blk_sizes1
   integer, save :: nblocks_r, nblocks_c, nblocks_r1, nblocks_c1
-  integer :: ind_c, ind_r, ib_r, ib_c, ind_c2, ind1, jo1, ib, blk_c, blk_r, num_c
+  integer :: ind_c, ind_r, ib_r, ib_c, ind_c2, ind1, jo1, ib, blk_c, blk_r, num_c, ia_off, ib_co, ind_co
   integer :: i, j, io, jo, ind, k, l, N_occ, kk, i_node, BlockSize_c
   integer :: blk_co, blk_ro, blk_f
-  integer, allocatable :: ind_o(:), ind_u(:)
+  integer :: index, neib0, nna, ind_r1, ind_r2, ind_a1, ind_a2, ia, ib_r1, ib_r2, indexi, iorb, norb, ja
+  integer, allocatable :: ind_o(:), ind_u(:), neib(:)
   real(dp) :: he, se, e_min
   real(dp), allocatable :: block_data(:,:), block_data_s(:,:)
   real(dp),pointer :: myblock(:,:)
@@ -293,6 +298,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
   logical, allocatable :: found_c(:)
   integer :: seed
   real(dp) :: rn(2), el
+  real(dp) :: rmax,rr(3),rrmod, cgval
 
   !**********************************************!
   if (nspin == 1) then
@@ -302,9 +308,9 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
   end if
    
 #ifdef MPI
+  dims(:) = 2
   if (first_call) then 
     call MPI_Comm_Size(MPI_Comm_World,MPI_Size,MPIerror)
-    dims(:) = 2
 !    call MPI_Dims_Create(MPI_Size, 2, dims, MPIerror)
     call ms_dbcsr_setup(MPI_Comm_World)
   end if
@@ -371,6 +377,8 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     if (.not. C_min%is_initialized) call m_allocate(C_min,row_blk_sizes1,col_blk_sizes,m_storage)
   end if
 
+  if(ionode) print'(a)',    'Allocation'
+  
   ib_c = 1
   ib_r = 1 
   blk_co = col_blk_sizes(ib_c)
@@ -469,39 +477,215 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     num_c = num_c + ind_c2
   end do     
   deallocate(block_data_s) 
-
+  if(ionode) print'(a)',    'H and S set'
+  
   if(first_call) then
+!    seed = omm_rand_seed()
+!    do i = 1, nblocks_c
+!      do j = 1, nblocks_r1
+!        blk_c = col_blk_sizes(i)
+!        blk_r = row_blk_sizes1(j)
+!        if((blk_ro .ne. blk_r) .or. (blk_co .ne. blk_c)) then
+!          deallocate(block_data)
+!          allocate(block_data(1:blk_r,1:blk_c))
+!          blk_co = blk_c
+!          blk_ro = blk_r
+!        end if        
+!        block_data(:,:) = 0.0_dp
+!        do io = 1, dims(2) 
+!          do jo = 1, dims(1)
+!            el = 0.0_dp
+!            ind = (i-1) * dims(2) + io
+!            ind1 = (j-1) * dims(1) + jo
+!            if((ind .le. h_dim) .and. (ind1 .le. N_occ)) then
+!              do k = 1, 2
+!                call omm_bsd_lcg(seed, rn(k))
+!              end do
+!              el = sign(0.5_dp * rn(1), rn(2) - 0.5_dp)
+!            end if
+!            block_data(jo, io) = el 
+!          end do
+!        end do
+!        call m_set_element(C_min,j,i,block_data(:,:),0.0_dp)
+!      end do
+!    end do
+!    call m_scale(C_min,1.0d-2/sqrt(real(h_dim,dp)),m_operation)
+
+    rmax = 0.0_dp
+    do i = -1,1
+      do j = -1,1
+        do k = -1,1
+          rr(1) = i*ucell(1,1) + j*ucell(1,2) + k*ucell(1,3)
+          rr(2) = i*ucell(2,1) + j*ucell(2,2) + k*ucell(2,3)
+          rr(3) = i*ucell(3,1) + j*ucell(3,2) + k*ucell(3,3)
+          rrmod = sqrt( rr(1)**2 + rr(2)**2 + rr(3)**2 )
+          if (rrmod .gt. rmax) rmax = rrmod
+        enddo
+      enddo
+    enddo
+    if(ionode) print'(a,f13.7)',    'rmax = ', rmax
+    
+    call mneighb(ucell,rcoor,na_u,xa,0,0,nna)
+    if(ionode) print'(a,f13.7)',    'rcoor = ', rcoor
+    
     seed = omm_rand_seed()
-    do i = 1, nblocks_c
-      do j = 1, nblocks_r1
-        blk_c = col_blk_sizes(i)
-        blk_r = row_blk_sizes1(j)
-        if((blk_ro .ne. blk_r) .or. (blk_co .ne. blk_c)) then
-          deallocate(block_data)
-          allocate(block_data(1:blk_r,1:blk_c))
-          blk_co = blk_c
-          blk_ro = blk_r
-        end if        
-        block_data(:,:) = 0.0_dp
-        do io = 1, dims(2) 
-          do jo = 1, dims(1)
-            el = 0.0_dp
-            ind = (i-1) * dims(2) + io
-            ind1 = (j-1) * dims(1) + jo
-            if((ind .le. h_dim) .and. (ind1 .le. N_occ)) then
+
+    ia_off = 0
+    do ia =  1, na_u !! loop_ia
+      if(2.0 * rcoor .lt. rmax) then
+        call mneighb(ucell,rcoor,na_u,xa,ia,0,nna) ! 
+      else
+        nna = na_u
+        do j = 1, na_u
+          jan(j) = j
+        end do
+      end if
+      allocate(neib(1:nna))
+      neib(:) = 0
+      index = 0
+      do i = 1, nna
+        found = .false.
+        do j = 1, index
+          if(neib(j) == jan(i)) found = .true.
+        end do
+        if(.not. found) then
+          index = index + 1
+          neib(index) = jan(j)
+        end if
+      end do
+      nna = index
+      do i = 2, nna
+        neib0 = neib(i)
+        j = i - 1
+        do while (neib0 .lt. neib(j)) 
+            neib(j + 1) = neib(j)
+            neib(j) = neib0
+            j = j - 1        
+        end do
+      end do
+           
+!      if(ionode) print'(a,i5,a,i5)',  'ia = ', ia,  '    nna = ', nna 
+!      if(ionode) then 
+!        do i = 1, nna
+!          print'(a,i5,a,i5,a,i5)',  'ia = ', ia,  '    i_neib = ', i, ' neib = ', neib(i)
+!        end do
+!      end if 
+
+      call get_number_of_lwfs_on_atom(ia, indexi)  ! gets indexi, nelectr       
+!      if(ionode) print'(a,i5,a,i5)',  'ia = ', ia,  '    indexi = ', indexi
+       
+      ind_c = 0
+      ib_r1 = 0
+      ib_r2 = -1
+      if(indexi .gt. 0) then
+        call get_index(ia_off+1, row_blk_sizes1, nblocks_r1, ib_r1, ind_a1)
+        call get_index(ia_off+indexi, row_blk_sizes1, nblocks_r1, ib_r2, ind_a2)
+        ia_off = ia_off + indexi
+      end if
+
+ !    if(ionode) print'(a,i5,a,i5,a,i5,a,i5,a,i5)','ia =', ia,' ib_r1= ',ib_r1,' ib_r2= ',ib_r2 ,&
+ !          ' ind_a1= ',ind_a1,' ind_a2= ',ind_a2 
+      
+      do ib_r = ib_r1, ib_r2
+        ind_r1 = 1
+        blk_r = row_blk_sizes1(ib_r)
+        ind_r2 = blk_r
+        if(ib_r == ib_r1) ind_r1 = ind_a1
+        if(ib_r == ib_r2) ind_r2 = ind_a2
+        ib_co = 0
+        ind_co = blk_co
+        do  j = 1, nna   !!loop_neighbor_atoms
+          ja = neib(j)
+          norb = lasto(ja) - lasto(ja-1)
+          call get_index(lasto(ja-1)+1, col_blk_sizes, nblocks_c, ib_c, ind_c)
+          blk_c = col_blk_sizes(ib_c)
+
+ !         if(ionode) print'(a,i5,a,i5,a,i5,a,i5)','ia =', ia,' ib_r= ',ib_r,' ib_c= ',ib_c ,&
+ !          ' ind_c= ',ind_c
+          if(ib_c .gt. ib_co) then
+            if(ind_co .lt. blk_co) then
+              call m_set_element(C_min,ib_r,ib_co,block_data(:,:),0.0_dp)
+!             do io = 1, blk_r
+!                do jo = 1, blk_co
+!                  if(ionode) print'(a,i5,a,i5,a,i5,a,i5,a,f15.10)','Block_set0 ib_r= ',ib_r,' ib_c= ',ib_c ,&
+!                     ' ind_r= ',io, ' ind_c=', jo, ' bl = ', block_data(io,jo)
+!                 end do
+!              end do
+            end if
+            if((blk_ro .ne. blk_r) .or. (blk_co .ne. blk_c)) then
+              deallocate(block_data)
+              allocate(block_data(1:blk_r,1:blk_c))
+              blk_co = blk_c
+              blk_ro = blk_r
+            end if            
+            block_data(:,:) = 0.0_dp
+            if(ind_r1 .gt. 1) then
+              call get_block(C_min,ib_r,ib_c,blk_r,blk_c,block_data)
+!              do io = 1, blk_r
+!                 do jo = 1, blk_c
+!                   if(ionode) print'(a,i5,a,i5,a,i5,a,i5,a,f15.10)','Block_read ib_r= ',ib_r,' ib_c= ',ib_c ,&
+!                  ' ind_r= ',io, ' ind_c=', jo, ' bl = ', block_data(io,jo)
+!                 end do
+!              end do 
+            end if
+          end if 
+          do iorb = 1, norb  !!loop_orbs_on_neighbor            
+            do ind_r = ind_r1, ind_r2
               do k = 1, 2
                 call omm_bsd_lcg(seed, rn(k))
               end do
-              el = sign(0.5_dp * rn(1), rn(2) - 0.5_dp)
+              cgval = sign(0.5_dp * rn(1), rn(2) - 0.5_dp)
+              block_data(ind_r,ind_c) = cgval
+            end do
+            if(ind_c == blk_c) then
+              call m_set_element(C_min,ib_r,ib_c,block_data(:,:),0.0_dp)
+ !             do io = 1, blk_r
+ !                do jo = 1, blk_c
+ !                  if(ionode) print'(a,i5,a,i5,a,i5,a,i5,a,f15.10)','Block_set ib_r= ',ib_r,' ib_c= ',ib_c ,&
+ !                 ' ind_r= ',io, ' ind_c=', jo, ' bl = ', block_data(io,jo)
+ !                end do
+ !             end do
+              ind_c = ind_c - blk_c
+              ib_c = ib_c + 1
+              blk_c = col_blk_sizes(ib_c)
+              if((ib_c .le. nblocks_c) .and. (iorb .lt. norb)) then
+                if((blk_ro .ne. blk_r) .or. (blk_co .ne. blk_c)) then
+                  deallocate(block_data)
+                  allocate(block_data(1:blk_r,1:blk_c))
+                  blk_co = blk_c
+                  blk_ro = blk_r
+                end if
+                block_data(:,:) = 0.0_dp
+                if(ind_r1 .gt. 1) then
+                  call get_block(C_min,ib_r,ib_c,blk_r,blk_c,block_data)
+ !             do io = 1, blk_r
+ !                do jo = 1, blk_c
+ !                  if(ionode) print'(a,i5,a,i5,a,i5,a,i5,a,f15.10)','Block_read2 ib_r= ',ib_r,' ib_c= ',ib_c ,&
+ !                 ' ind_r= ',io, ' ind_c=', jo, ' bl = ', block_data(io,jo)
+ !                end do
+ !             end do
+                end if
+              end if
             end if
-            block_data(jo, io) = el 
+            ind_co  = ind_c
+            ind_c = ind_c + 1
+            ib_co = ib_c
           end do
         end do
-        call m_set_element(C_min,j,i,block_data(:,:),0.0_dp)
+        if((ib_co .gt. 0) .and. (ind_co .lt. blk_co)) then
+          call m_set_element(C_min,ib_r,ib_co,block_data(:,:),0.0_dp)
+!              do io = 1, blk_r
+!                 do jo = 1, blk_co
+!                   if(ionode) print'(a,i5,a,i5,a,i5,a,i5,a,f15.10)','Block_set2 ib_r= ',ib_r,' ib_c= ',ib_c ,&
+!                  ' ind_r= ',io, ' ind_c=', jo, ' bl = ', block_data(io,jo)
+!                 end do
+!              end do
+        end if
       end do
+      deallocate(neib)
     end do
     call m_scale(C_min,1.0d-2/sqrt(real(h_dim,dp)),m_operation)
-  end if  
+  end if
   
   init_C = .true.
   if(.not. calcE) then
@@ -683,5 +867,37 @@ subroutine get_block(mat, ib_r, ib_c, blk_r, blk_c, block_data)
 #endif
 end subroutine get_block
 
+subroutine get_number_of_lwfs_on_atom(ia, indexi)
+  implicit none
+  
+  integer, intent(in)  :: ia
+  integer, intent(out) :: indexi
+  
+  real(dp) :: tiny
+  integer  :: nelectr
+  logical, save :: secondodd = .false.
+ 
+  tiny = 1.d-10
+  nelectr = qa(ia) + tiny 
+  if (abs(nelectr - qa(ia) + tiny) .gt. 1e-3) then
+    if(ionode) then
+      write(6,*) 'omm_min: Wrong atomic charge for atom ',ia
+      write(6,*) '      qa = ',qa(ia),' must be an integer'
+    endif
+    call die()
+  endif
+  if ( (nelectr / 2) * 2 .ne. nelectr) then
+    if (secondodd) then
+      indexi = ( ( nelectr - 1 ) / 2 )
+      secondodd = .false.
+    else
+      indexi = ( ( nelectr + 1 ) / 2 )
+      secondodd = .true.
+    endif
+  else
+    indexi = ( ( nelectr ) / 2 )
+  endif
+
+end subroutine get_number_of_lwfs_on_atom
 
 end module m_lib_omm
