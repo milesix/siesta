@@ -341,7 +341,7 @@
 !#ifdef DEBUG
       if (firsttime) then 
         if( boundary_case.eq. 'F') then  
-          if (ionode) write(6,'(/,a,/,a/,a,/,a,/,a,a)')                 &
+          if (ionode) write(6,'(/,a,/,a/,a,/,a,/,a,/,a)')               &
             'bigdft_solver: initialising kernel for a molecular system',&
             '#================= WARNING bigdft_solver ===============#',&
             '                                                         ',&
@@ -350,8 +350,8 @@
             ' energy values.                                          ',&
             '#=======================================================#'
       elseif (boundary_case.eq. 'S') then  
-        if (ionode) write(6,'(a,a,a,a,a,a)')                  &
-            'bigdft_solver: initialising kernel for a slab system',&
+        if (ionode) write(6,'(/,a,/,a/,a,/,a,/,a,/,a)')                 &
+            'bigdft_solver: initialising kernel for a slab system',     &
             '#================= WARNING bigdft_solver ===============#',&
             ' Empty direction of the periodic system has to be set    ',&
             ' along the Y-axis.                                       ',&
