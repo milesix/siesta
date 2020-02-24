@@ -46,14 +46,11 @@ contains
   !!
   !!    P.1 call gather_rho, gather the partial Rho arrays carried by
   !!        each of the processors into a global Rho array.
-  !!    P.2 local_grids, the information about the local grid extensions
-  !!        is collected in this array and futher used in point P.3.
-  !!    P.3 pkernel_init and pkernel_set, set the coulomb kernel
+  !!    P.2 pkernel_init and pkernel_set, set the coulomb kernel
   !!         object.
-  !!    P.4 electrostatic_Solver, call the Hartree potential calculation.
-  !!    P.5 spread_potential, subroutine that spreads back the total
-  !!        potential just calculated into the processors , using the
-  !!        grid division stored in local_grids.
+  !!    P.3 electrostatic_Solver, call the Hartree potential calculation.
+  !!    P.4 spread_potential, subroutine that spreads back the total
+  !!        potential just calculated into the processors.
   !!
   !! 3. Memory deallocation.
   !!
@@ -71,15 +68,14 @@ contains
   ! #################################################################### !
   subroutine poisson_psolver(cell, lgrid, grid, ntm, RHO, V,  eh, stress, calc_stress)
 
-    use units,          only : eV
-    use siesta_geom,    only : shape, na_u, na_s, xa
-    use alloc,          only : re_alloc, de_alloc
-    use Poisson_Solver, only : coulomb_operator,  Electrostatic_Solver, &
+    use units,          only: eV
+    use siesta_geom,    only: na_u, xa
+    use alloc,          only: re_alloc, de_alloc
+    use Poisson_Solver, only: coulomb_operator,  Electrostatic_Solver, &
         pkernel_set, pkernel_set_epsilon
-    use siesta_options, only : psolver_cavity
-    use mesh,           only : nsm
-    use PStypes,        only : PSolver_energies
-    use PStypes,        only : pkernel_init, pkernel_free, pkernel_get_radius
+    use siesta_options, only: psolver_cavity
+    use PStypes,        only: PSolver_energies
+    use PStypes,        only: pkernel_init, pkernel_free, pkernel_get_radius
     use yaml_output
     use f_utils
     use dictionaries, dict_set => set
@@ -99,26 +95,23 @@ contains
     logical, intent(in) :: calc_stress
 
     real(dp), dimension(3) :: hgrid        ! Uniform mesh spacings in the three directions.
-    integer :: i, j, k, iatoms
-    real(dp) :: einit
+    integer :: i, iatoms
     type(dictionary), pointer :: dict               ! Input parameters.
-    integer :: isf_order, fd_order
     type(coulomb_operator) :: pkernel
     logical :: pkernel_verbose 
 
     real(grid_p), pointer :: Paux_1D(:)        ! 1D auxyliary array.
     real(grid_p), pointer :: Paux_3D(:,:,:)  ! 3D auxyliary array.
     integer :: ngrid
-    integer :: World_Comm, mpirank, ierr
+    integer :: ierr
 
     real(dp) :: radii(na_u) 
     character(len=2) :: atm_label(na_u) 
-    real(dp) :: delta, factor 
-    integer, allocatable :: local_grids(:,:)
+    real(dp) :: factor
     type(domain) :: dom
     type(PSolver_energies) :: energies
 
-    call timer( 'poisson_psolver', 1)
+    call timer('poisson_psolver', 1)
 
     ! f_util and dictionary initialisations:
     call f_lib_initialize()
@@ -130,7 +123,6 @@ contains
     ! Total number of mesh-points
     ngrid = product(grid)
 
-    allocate(local_grids(3,Nodes))
     call re_alloc(Paux_1D, 1, ngrid, 'Paux_1D', 'poisson_psolver' )
 
     ! Calculation of cell angles and grid separation for psolver:
@@ -144,9 +136,6 @@ contains
 #ifdef MPI
     ! RHO is collected to a global array for all processors
     call gather_rho(RHO, grid, 2, lgrid(1) * lgrid(2) * lgrid(3), Paux_1D)
-
-    call MPI_AllGather(lgrid, 3, MPI_Integer, &
-        local_grids(1,1), 3, MPI_Integer, MPI_COMM_WORLD, ierr)
 
     ! PSolver interface requires a 3D array
     ! We will use pointer tricks
@@ -212,7 +201,7 @@ contains
     ! Now we spread back the potential on different nodes. 
     call timer('spread_pot', 1)
     Paux_1D(:) = 2 * Paux_1D(:) - 2 * sum(Paux_1D) / ngrid
-    call spread_potential(Paux_1D, grid, 2, ngrid, local_grids, V)
+    call spread_potential(Paux_1D, grid, 2, ngrid, V)
     call timer('spread_pot', 2)
 #else
     V(:) = 2 * Paux_1D(:) - 2 * sum(Paux_1D(:)) / ngrid
@@ -223,14 +212,17 @@ contains
     call f_lib_finalize_noreport()
     
     call de_alloc(Paux_1D, 'Paux', 'poisson_psolver')
-    deallocate(local_grids)
 
     firsttime = .false.
 
-    call timer( 'poisson_psolver', 2)
+    call timer('poisson_psolver', 2)
     
   end subroutine poisson_psolver
 
+  !< Setup PSolver variables to the dictionary
+  !!
+  !! This uses the PSolver dictionary to setup variables and passes
+  !! from Siesta-options into the PSolver arguments.
   subroutine set_variables(dom, cell, calc_stress, dict, pkernel_verbose)
 
     use dictionaries, dict_set => set
@@ -245,16 +237,11 @@ contains
         psolver_gammaS, psolver_alphaS,         &
         psolver_betaV, psolver_atomic_radii
 
-    ! #################################################################### !
-    ! Subroutine to set-up BigDFT Poisson solver variables and boundary    !
-    ! condition.                                                           !
-    ! #################################################################### !
     type(domain), intent(inout) :: dom
     real(dp), intent(in) :: cell(3,3)
     logical, intent(in) :: calc_stress
-    type(dictionary), pointer, intent(out) :: dict         ! Input parameters.
+    type(dictionary), pointer :: dict         ! Input parameters.
     logical, intent(out)  :: pkernel_verbose 
-    ! #################################################################### !
 
     ! Initialize domain
     select case ( shape )
@@ -368,10 +355,9 @@ contains
     integer, intent( in)          ::     maxp
     real( grid_p), intent( in)    ::     rho( maxp)
     real( grid_p), pointer , intent( out) ::     rho_total( :) 
-    integer :: i, ip, iu, is, np, BlockSizeY, BlockSizeZ, ProcessorZ
+    integer :: i, np, BlockSizeY, BlockSizeZ, ProcessorZ
     integer :: meshnsm( 3), NRemY, NRemZ, iy, iz, izm, Ind, Ind_rho, ir
-    integer :: Ind2, MPIerror, Status( MPI_Status_Size), BNode, NBlock
-    real(grid_p), pointer :: bdens( :) => null()
+    integer :: Ind2, MPIerror, BNode, NBlock
 
 #ifdef DEBUG
     call write_debug( 'ERROR: write_rho not ready yet' )
@@ -384,8 +370,6 @@ contains
         ' number of processors!')
     ProcessorZ = Nodes/ ProcessorY
     BlockSizeY =((((mesh( 2)/ nsm)- 1)/ ProcessorY) + 1) *nsm
-
-    call re_alloc(bdens, 1, BlockSizeY*mesh(1), 'bdens', 'write_rho')
 
     np = mesh(1) * mesh(2) * mesh(3)
 
@@ -441,13 +425,9 @@ contains
       end do
     end do
     
-    ! Deallocate density buffer memory
-    call de_alloc( bdens, 'bdens', 'write_rho' )
-
   end subroutine gather_rho
 
-  subroutine spread_potential( V_total, mesh, nsm, maxp,           &
-      local_grids, V_local)
+  subroutine spread_potential( V_total, mesh, nsm, maxp, V_local)
 
     ! #################################################################### !
     !                                                                      !
@@ -473,22 +453,18 @@ contains
     use mpi_siesta
 
     real(grid_p), pointer,intent(in) :: V_total(:) 
-    real(grid_p), intent(out) :: V_local(:) 
-    integer, intent(in)      ::     nsm, maxp
-    integer, intent(in)      ::     mesh(3)
-    integer, intent(in) ::  local_grids(:,:)
-    real(grid_p)             ::     V_aux(maxp)
-    external          io_assign, io_close, memory
-    integer    ip, iu, is, np, ns,                   & 
-        BlockSizeY, BlockSizeZ, ProcessorZ,   &
-        meshnsm(3), npl, NRemY, NRemZ,        &
-        iy, iz, izm, Ind, Ind_Vaux,  ir
+    real(grid_p), intent(inout) :: V_local(:) 
+    integer, intent(in) :: nsm, maxp
+    integer, intent(in) :: mesh(3)
+    integer :: ip, np
+    integer :: BlockSizeY, BlockSizeZ, ProcessorZ
+    integer :: meshnsm(3), npl, NRemY, NRemZ
+    integer :: iy, iz, izm, ind_local, ind_global
 
-    integer    Ind2, MPIerror, Request, meshl(3),     &
-        Status(MPI_Status_Size), BNode, NBlock
-    logical    ltmp
-    real(grid_p), pointer :: bdens(:) => null()
-    logical    baddim, found
+    integer :: MPIerror
+    integer :: meshl(3), BNode, NBlock
+    logical :: ltmp
+    logical :: baddim
 
     ! Work out density block dimensions
     if (mod(Nodes,ProcessorY).gt.0)                               &
@@ -496,8 +472,6 @@ contains
         ' number of processors!')
     ProcessorZ = Nodes / ProcessorY
     BlockSizeY = (((mesh(2) / nsm) - 1) / ProcessorY + 1) * nsm
-
-    call re_alloc(bdens, 1, BlockSizeY*mesh(1), 'bdens', 'spread_potential' )
 
     np = mesh(1) * mesh(2) * mesh(3)
 
@@ -519,8 +493,8 @@ contains
       call die("Dim of array V_total too small in spread_potential")
     endif
 
-    Ind = 0
-    Ind_Vaux = 1
+    ind_local = 0
+    ind_global = 0
 
     ! Loop over Z mesh direction
     do iz = 1, ProcessorZ
@@ -540,55 +514,30 @@ contains
           ! Work out size of density sub-matrix to be transfered
           BlockSizeY = meshnsm(2) / ProcessorY
           NRemY = meshnsm(2) - BlockSizeY * ProcessorY
-          if ( iy -1 < NRemY ) BlockSizeY = BlockSizeY + 1
+          if ( iy - 1 < NRemY ) BlockSizeY = BlockSizeY + 1
           BlockSizeY = BlockSizeY * nsm
           NBlock = BlockSizeY * mesh(1)
 
           ! Work out which node block is stored on
           BNode = (iy - 1) * ProcessorZ + iz - 1
-          if (BNode == 0 .and. Node == BNode ) then
-            ! If density sub-matrix is local Node 0 then just read it in
-            do ir = 1, BlockSizeY
-              do ip = 1, mesh( 1) 
-                V_aux(Ind + ip) = V_total(Ind_Vaux)
-                Ind_Vaux = Ind_Vaux + 1
-              enddo
-              Ind = Ind + mesh( 1)
-            enddo
 
-          elseif ( Node == 0 ) then
+          if ( Node == BNode ) then
+            ! PSolver returns the potential globalized, so we do not need
+            ! any communication
 
-            ! If this is Node 0 then read and send density sub-matrix
-            Ind2 = 0
-            do ir = 1, BlockSizeY
-              do ip = 1, mesh(1)
-                bdens(Ind2 + ip) = V_total(Ind_Vaux)
-                Ind_Vaux = Ind_Vaux + 1
-              end do
-              Ind2 = Ind2 + mesh( 1)
+            do ip = 1 , NBlock
+              V_local(ind_local + ip) = V_total(ind_global + ip)
             end do
-            call MPI_Send(bdens, NBlock, MPI_grid_real, BNode, &
-                1, MPI_Comm_World, MPIerror)
-
-          else if ( Node == BNode ) then
-            
-            ! If this is the Node where the density sub-matrix is, then receive
-            call MPI_Recv(V_aux(Ind + 1), NBlock, &
-                MPI_grid_real, 0, 1, MPI_Comm_World, Status, MPIerror)
-            Ind = Ind + NBlock
+            ind_local = ind_local + NBlock
 
           end if
+          ind_global = ind_global + Nblock
 
         end do
 
       end do
 
     end do
-
-    V_local(:) = V_aux(1:product(local_grids(:,Node+1)))
-
-    ! Deallocate density buffer memory
-    call de_alloc( bdens, 'bdens', 'spread_potential' )
 
   end subroutine spread_potential
 
@@ -598,7 +547,7 @@ contains
     use siesta_geom,    only : na_u, isa
     use chemical,       only : atomic_number
 
-    character(len=2), intent(out), dimension(na_u) :: atm_label
+    character(len=2), intent(inout), dimension(na_u) :: atm_label
     integer :: aux_Zatom(na_u)             ! Auxiliary array containing Z_atom for each atom. 
     integer :: i
 
