@@ -297,23 +297,23 @@ contains
     ! Data distribution will be always global:
     call set( dict//'setup'//'global_data', .true.) ! Hardwired, it cannot be otherwise.
 
-    ! Set kernel and cavity variables: 
+    ! Set kernel and cavity variables:
     call set( dict//'kernel'//'isf_order', psolver_isf_order)
     call set( dict//'kernel'//'stress_tensor', calc_stress)
-    call set( dict//'environment'//'fd_order', psolver_fd_order)  
+    call set( dict//'environment'//'fd_order', psolver_fd_order)
     call set( dict//'setup'//'verbose', psolver_verbose)
-    if( psolver_cavity) then
+    if ( psolver_cavity ) then
       call set( dict//'environment'//'delta', psolver_delta)
       call set( dict//'environment'//'fact_rigid', psolver_fact_rigid)
-      call set( dict//'environment'//'cavity', psolver_cavity_type) 
+      call set( dict//'environment'//'cavity', psolver_cavity_type)
       call set( dict//'environment'//'radii_set', psolver_radii_type)
       call set( dict//'environment'//'gps_algorithm', psolver_gps_algorithm)
       call set( dict//'environment'//'epsilon', psolver_epsilon)
       call set( dict//'environment'//'gammaS', psolver_gammaS)
       call set( dict//'environment'//'alphaS', psolver_alphaS)
-      call set( dict//'environment'//'betaV', psolver_betaV) 
+      call set( dict//'environment'//'betaV', psolver_betaV)
       call set( dict//'environment'//'atomic_radii', psolver_atomic_radii)
-    endif
+    end if
     pkernel_verbose = psolver_verbose   ! Verbose from setup is different from pkernel_init
     !$      call set(dict//'environment'//'pi_eta','0.6') ??
 
@@ -323,19 +323,19 @@ contains
         write(6,"(a)") 'psolver: Poisson solver variables'
         write(6,"(2a)")        'Solver boundary condition', shape
         write(6,"(a, L2)")    'verbosity:', psolver_verbose
-        write(6,"(a)")        'cavity type:', psolver_cavity_type 
-        write(6,"(a, I3)")    'isf_order:', psolver_isf_order 
-        write(6,"(a, I3)")    'fd_order:', psolver_fd_order 
+        write(6,"(a)")        'cavity type:', psolver_cavity_type
+        write(6,"(a, I3)")    'isf_order:', psolver_isf_order
+        write(6,"(a, I3)")    'fd_order:', psolver_fd_order
         if( psolver_cavity ) then
-          write(6,"(a, F10.5)") 'delta:', psolver_delta 
-          write(6,"(a, F10.5)") 'fact_rigid:', psolver_fact_rigid 
-          write(6,"(a, F10.5)") 'epsilon:', psolver_epsilon 
+          write(6,"(a, F10.5)") 'delta:', psolver_delta
+          write(6,"(a, F10.5)") 'fact_rigid:', psolver_fact_rigid
+          write(6,"(a, F10.5)") 'epsilon:', psolver_epsilon
           write(6,"(a, F10.5)") 'gammaS:', psolver_gammaS
           write(6,"(a, F10.5)") 'alphaS:', psolver_alphaS
           write(6,"(a, F10.5)") 'betaV:', psolver_betaV
           write(6,"(a)")        'radii_set:', psolver_radii_type
           write(6,"(a)")        'gps_algorithm:', psolver_gps_algorithm
-        endif
+        end if
       end if
     end if
 
