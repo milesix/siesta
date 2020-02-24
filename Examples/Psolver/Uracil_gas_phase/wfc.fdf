@@ -1,0 +1,63 @@
+SystemName wfc 
+SystemLabel wfc 
+
+################################################################
+
+xc.functional GGA 
+xc.authors PBE 
+Atom.Ignore.Ghosts
+
+MeshCutoff 50.0 Ry
+
+SolutionMethod diagon
+ElectronicTemperature 5 meV
+
+DM.MixingWeight 0.2
+DM.NumberPulay 3
+%SaveBaderCharge
+
+################################################################
+
+#TDED.WF.Initialize
+WriteCoorXmol .true.
+#SaveRho .true.
+#SaveElectrostaticPotential .true.
+
+###############################################################
+NumberOfAtoms 12
+NumberOfSpecies 4
+
+%block ChemicalSpeciesLabel
+1 8 O_pbe
+2 1 H_pbe
+3 6 C_pbe
+4 7 N_pbe
+%endblock ChemicalSpeciesLabel
+PAO.BasisSize DZP 
+PAO.EnergyShift 20 meV 
+UseBIGDFTsolver .true.
+
+LatticeConstant 20.0 Ang
+
+%block LatticeVectors
+1.0 0.0 0.0
+0.0 1.0 0.0
+0.0 0.0 1.0
+%endblock LatticeVectors
+
+AtomicCoordinatesFormat NotScaledCartesianAng
+
+%block AtomicCoordinatesAndAtomicSpecies
+ 8.83951143908985033391 11.15651941288303247732 11.97761028092852648893   1
+ 10.46878441908985033391 10.63438912288303247732 7.62480383092852648893   1
+ 9.95821193908985033391 8.50399274288303247732 12.41502986092852648893    2
+ 9.34021926908985033391 11.85020750288303247732 9.63408266092852648893    2
+ 11.17052381908985033391 8.47980542288303247732 8.29834519092852648893    2
+ 11.09495517908985033391 7.43483425288303247732 10.52538485092852648893   2
+ 10.01629762908985033391 9.05614563288303247732 11.39475378092852648893   3
+ 9.47818539908985033391 10.43793581288303247732 11.16482861092852648893   3
+ 10.31837053908985033391 10.23191900288303247732 8.76987226092852648893   3
+ 10.57821570908985033391 8.38693932288303247732 10.41318535092852648893   3
+ 9.65202008908985033391 10.92633263288303247732 9.78280353092852648893    4
+ 10.69020856908985033391 8.91461806288303247732 9.11423007092852648893    4
+%endblock AtomicCoordinatesAndAtomicSpecies

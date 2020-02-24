@@ -368,20 +368,20 @@
 !
         if (ionode) then 
           write(6,"(a)") 'bigdft_solver: Poisson solver variables'
-          write(6,"(a)")        'Solver boundary condition', boundary_case 
-          write(6,"(a, L2)")    'verbosity:', bigdft_verbose
-          write(6,"(a)")        'cavity type:', bigdft_cavity_type 
-          write(6,"(a, I3)")    'isf_order:', bigdft_isf_order 
-          write(6,"(a, I3)")    'fd_order:', bigdft_fd_order 
+          write(6,* )    'Solver boundary condition: ', boundary_case 
+          write(6,"(a, L2)")    ' verbosity:', bigdft_verbose
+          write(6,"(a)")        ' cavity type:', bigdft_cavity_type 
+          write(6,"(a, I3)")    ' isf_order:', bigdft_isf_order 
+          write(6,"(a, I3)")    ' fd_order:', bigdft_fd_order 
           if( bigdft_cavity) then
-            write(6,"(a, F10.5)") 'delta:', bigdft_delta 
-            write(6,"(a, F10.5)") 'fact_rigid:', bigdft_fact_rigid 
-            write(6,"(a, F10.5)") 'epsilon:', bigdft_epsilon 
-            write(6,"(a, F10.5)") 'gammaS:', bigdft_gammaS
-            write(6,"(a, F10.5)") 'alphaS:', bigdft_alphaS
-            write(6,"(a, F10.5)") 'betaV:', bigdft_betaV
-            write(6,"(a)")        'radii_set:', bigdft_radii_type
-            write(6,"(a)")        'gps_algorithm:', bigdft_gps_algorithm
+            write(6,"(a, F10.5)") ' delta:', bigdft_delta 
+            write(6,"(a, F10.5)") ' fact_rigid:', bigdft_fact_rigid 
+            write(6,"(a, F10.5)") ' epsilon:', bigdft_epsilon 
+            write(6,"(a, F10.5)") ' gammaS:', bigdft_gammaS
+            write(6,"(a, F10.5)") ' alphaS:', bigdft_alphaS
+            write(6,"(a, F10.5)") ' betaV:', bigdft_betaV
+            write(6,"(a)")        ' radii_set:', bigdft_radii_type
+            write(6,"(a)")        ' gps_algorithm:', bigdft_gps_algorithm
           endif
         endif
       endif 
