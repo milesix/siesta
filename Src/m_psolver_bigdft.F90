@@ -72,7 +72,7 @@ contains
   !!
   ! 
   ! #################################################################### !
-  subroutine poisson_bigdft(cell, lgrid, grid, ntm, RHO, V,  eh)
+  subroutine poisson_bigdft(cell, lgrid, grid, ntm, RHO, V,  eh, stress, calc_stress)
     ! #################################################################### !
     !                                                                      !
     !   This subroutine sets up the kernel object for a bigDFT Poisson     !
@@ -87,6 +87,7 @@ contains
         pkernel_set, pkernel_set_epsilon
     use siesta_options, only : bigdft_cavity
     use mesh,           only : nsm
+    use PStypes,        only : PSolver_energies
     use PStypes,        only : pkernel_init, pkernel_free, pkernel_get_radius
     use yaml_output
     use f_utils
@@ -96,14 +97,17 @@ contains
     ! PSolver uses atlab to handle geometry etc.
     use at_domain
 
-    real( dp), intent(in)      :: cell(3,3)        ! Unit-cell vectors.
-    integer, intent(in)        :: lgrid(3)          ! Local mesh divisions.
-    integer, intent(in)        :: grid(3)           ! Total mesh divisions.
-    real( grid_p), intent(in)  :: RHO(:)            ! Input density.
-    integer, intent(in)         :: ntm
-    real( grid_p), intent(out)  :: V(:)              ! Output potential.
-    real( dp), intent(out)      :: eh                 ! Electrostatic energy.
-    real( dp), dimension(1,3), save :: hgrid        ! Uniform mesh spacings in the three directions.
+    real(dp), intent(in) :: cell(3,3)        ! Unit-cell vectors.
+    integer, intent(in) :: lgrid(3)          ! Local mesh divisions.
+    integer, intent(in) :: grid(3)           ! Total mesh divisions.
+    real(grid_p), intent(in) :: RHO(:)            ! Input density.
+    integer, intent(in) :: ntm
+    real(grid_p), intent(inout) :: V(:)              ! Output potential.
+    real(dp), intent(out) :: eh                 ! Electrostatic energy.
+    real(dp), intent(inout) :: stress(3,3) ! stress-tensor contribution
+    logical, intent(in) :: calc_stress
+
+    real(dp), dimension(3) :: hgrid        ! Uniform mesh spacings in the three directions.
     integer                     :: i, j, k, iatoms
     real(dp)                   :: einit
     type(dictionary), pointer  :: dict               ! Input parameters.
@@ -121,6 +125,7 @@ contains
     real(dp)                    :: delta, factor 
     integer, allocatable        :: local_grids(:,:)
     type(domain) :: dom
+    type(PSolver_energies) :: energies
 
     call timer( 'BigDFT_solv', 1)
 
@@ -135,28 +140,19 @@ contains
     ngrid = product(grid)
 
     allocate(local_grids(3,Nodes))
-    call re_alloc(Paux_1D, 1, ngrid, &
-        'Paux_1D', 'poison_bigdft' )
+    call re_alloc(Paux_1D, 1, ngrid, 'Paux_1D', 'poison_bigdft' )
 
     ! Calculation of cell angles and grid separation for psolver:
-    if ( firsttime ) then
-      do i = 1, 3
-        hgrid(1,i)= sqrt(cell(1, i)**2 + cell(2,i)**2 + cell(3,i)**2) / grid(i)
-      end do
-    end if
+    do i = 1, 3
+      hgrid(i)= sqrt(dot_product(cell(:,i), cell(:,i))) / grid(i)
+    end do
 
-    ! Setting of dictionary variables, done at every calling:  
-    call set_bigdft_variables(dom, cell, dict, pkernel_verbose)
+    ! Setting of dictionary variables, done at every calling:
+    call set_bigdft_variables(dom, cell, calc_stress, dict, pkernel_verbose)
 
 #ifdef MPI
-!!! Collection of RHO: 
-
-    ! RHO is collected to a global array.
+    ! RHO is collected to a global array for all processors
     call gather_rho(RHO, grid, 2, lgrid(1) * lgrid(2) * lgrid(3), Paux_1D)
-
-    ! Distribute (now all have the same grid)
-    call MPI_Bcast(Paux_1D, ngrid, &
-        MPI_double_precision, 0, MPI_COMM_WORLD, ierr) 
 
     call MPI_AllGather(lgrid, 3, MPI_Integer, &
         local_grids(1,1), 3, MPI_Integer, MPI_COMM_WORLD, ierr)
@@ -168,9 +164,11 @@ contains
     call pointer_1D_3D(Rho, grid(1), grid(2), grid(3), Paux_3D)
 #endif
 
+    ! Initialize poisson-kernel
     pkernel = pkernel_init(Node, Nodes, dict, dom, grid, hgrid)
 
-    call pkernel_set( pkernel, verbose=pkernel_verbose)
+    ! Specify the verbosity
+    call pkernel_set(pkernel, verbose=pkernel_verbose)
 
     ! Implicit solvent?
     if ( bigdft_cavity ) then
@@ -192,26 +190,45 @@ contains
     ! Free calling dictionary
     call dict_free(dict)
 
-    call Electrostatic_Solver(pkernel, Paux_3D, ehartree=eh)
+    ! Solve the Poisson equation and retrieve also energies and stress-tensor
+    call Electrostatic_Solver(pkernel, Paux_3D, energies)
+    eh = 2 * energies%hartree / Nodes
 
-    ! Energy must be devided by the total number of nodes because the way 
-    ! Siesta computes the Hartree energy. Indeed, BigDFT provides the value
-    ! alredy distributed. 
-    eh = 2.0_dp * eh / Nodes
+    ! The stress-tensor is definitely wrong. However, it seems that the Siesta
+    ! convention is different than PSolver
+    if ( calc_stress ) then
+      stress(1,1) = 2 * energies%strten(1) / Nodes
+      stress(2,2) = 2 * energies%strten(2) / Nodes
+      stress(3,3) = 2 * energies%strten(3) / Nodes
+      stress(3,2) = 2 * energies%strten(4) / Nodes
+      stress(2,3) = 2 * energies%strten(4) / Nodes
+      stress(3,1) = 2 * energies%strten(5) / Nodes
+      stress(1,3) = 2 * energies%strten(5) / Nodes
+      stress(1,2) = 2 * energies%strten(6) / Nodes
+      stress(2,1) = 2 * energies%strten(6) / Nodes
+    else
+      stress(:,:) = 0._dp
+    end if
+
+    ! In siesta poison.F the energies and stress tensors are calculated
+    ! distributed. I.e. Siesta expects the Hartree energy and the
+    ! stress tensor to be distributed.
+    ! However, PSolver returns summed values. We have to correct
+    ! The factor two comes from Hartree => Rydberg
 #ifdef MPI
     ! Now we spread back the potential on different nodes. 
     call timer('spread_pot', 1)
-    Paux_1D = 2.0_dp * Paux_1D - sum(2.0_dp * Paux_1D) / ngrid
-    call spread_potential(Paux_1D, grid, 2, ngrid, local_grids, V) 
+    Paux_1D = 2 * Paux_1D - 2 * sum(Paux_1D) / ngrid
+    call spread_potential(Paux_1D, grid, 2, ngrid, local_grids, V)
     call timer('spread_pot', 2)
 #else
-    V(:) = 2.0_dp * Paux_1D - sum(2.0_dp * Paux_1D) / ngrid
+    V(:) = 2 * Paux_1D(:) - 2 * sum(Paux_1D(:)) / ngrid
 #endif
 
     ! Ending calculation
-    call pkernel_free( pkernel)
+    call pkernel_free(pkernel)
     call f_lib_finalize_noreport() 
-    call de_alloc( Paux_1D, 'Paux', 'poisson_bigdft' )
+    call de_alloc(Paux_1D, 'Paux', 'poisson_bigdft')
     deallocate(local_grids)
 
     firsttime = .false.
@@ -220,7 +237,7 @@ contains
     
   end subroutine poisson_bigdft
 
-  subroutine set_bigdft_variables(dom, cell, dict, pkernel_verbose)
+  subroutine set_bigdft_variables(dom, cell, calc_stress, dict, pkernel_verbose)
 
     use dictionaries, dict_set => set
     use at_domain
@@ -240,6 +257,7 @@ contains
     ! #################################################################### !
     type(domain), intent(inout) :: dom
     real(dp), intent(in) :: cell(3,3)
+    logical, intent(in) :: calc_stress
     type(dictionary), pointer, intent(out) :: dict         ! Input parameters.
     logical, intent(out)  :: pkernel_verbose 
     ! #################################################################### !
@@ -298,6 +316,7 @@ contains
 
     ! Set kernel and cavity variables: 
     call set( dict//'kernel'//'isf_order', bigdft_isf_order)
+    call set( dict//'kernel'//'stress_tensor', calc_stress)
     call set( dict//'environment'//'fd_order', bigdft_fd_order)  
     call set( dict//'setup'//'verbose', bigdft_verbose)
     if( bigdft_cavity) then
@@ -406,35 +425,23 @@ contains
 
           ! Work out which node block is stored on
           BNode = (iy -1) * ProcessorZ + iz - 1
-          if ( BNode == 0 .and. Node == BNode ) then
+
+          if ( Node == BNode ) then
+            ! Storage of current rho_total index
+            Ind2 = Ind_rho
             do ir = 1, BlockSizeY
               do i =  1, mesh(1)
-                rho_total(Ind_rho) = rho(Ind+i)
-                Ind_rho = Ind_rho + 1
+                rho_total(Ind2) = rho(Ind+i)
+                Ind2 = Ind2 + 1
               end do
               Ind = Ind + mesh(1)
             end do
-          else if ( Node == 0 ) then
-            call MPI_Recv( bdens, NBlock, MPI_grid_real, BNode,  &
-                1, MPI_Comm_World, Status,  MPIerror)
-          else if ( Node == BNode ) then
-            call MPI_Send(rho(Ind + 1), NBlock, MPI_grid_real,&
-                0, 1, MPI_Comm_World, MPIerror)
-            Ind = Ind + NBlock
           end if
+          
+          call MPI_Bcast(rho_total(Ind_rho), NBlock, MPI_grid_real, BNode, &
+              Mpi_Comm_World, MPIerror)
+          Ind_rho = Ind_rho + NBlock
 
-          if ( BNode /= 0 ) then
-            if ( Node == 0 ) then
-              Ind2 = 0
-              do ir = 1, BlockSizeY
-                do i =  1 ,  mesh( 1) 
-                  rho_total(Ind_rho) = bdens(Ind2+i)
-                  Ind_rho = Ind_rho + 1
-                end do
-                Ind2 = Ind2 + mesh( 1)
-              end do
-            end if
-          end if
         end do
 
       end do

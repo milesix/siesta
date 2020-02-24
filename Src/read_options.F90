@@ -1734,9 +1734,12 @@ subroutine read_options( na, ns, nspin )
   change_kgrid_in_md           = fdf_get('ChangeKgridInMD', .false.)
   RelaxCellOnly                = fdf_get('MD.RelaxCellOnly', .false.)
   RemoveIntraMolecularPressure = fdf_get( &
-       'MD.RemoveIntraMolecularPressure', .false.)
-  ! BigDFT Solver
-  use_bigdft_psolver=   fdf_get( 'UseBigDFTSolver', .false.)
+      'MD.RemoveIntraMolecularPressure', .false.)
+  
+  ! PSolver (another poisson solver)
+  ctmp = fdf_get('Poisson.Method', 'fft')
+  use_bigdft_psolver = leqi(ctmp, 'psolver')
+  
   bigdft_isf_order  =   fdf_get('Psolver.isf.order', 16)
   bigdft_fd_order   =   fdf_get('Psolver.fd.order', 16)
   bigdft_verbose    =   fdf_get('Psolver.verbose', .false.)

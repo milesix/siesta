@@ -406,7 +406,8 @@ C     Uharrs is computed (and saved)
 C     DStres is computed but not used later
       if (use_bigdft_psolver) then
         call poisson_bigdft(cell, ntml, ntm, nsm, rhoatm,
-     $                    Vscf(:,1), Uharrs)
+     $      Vscf(:,1), Uharrs, DStres,
+     &      calc_stress=.false.)
       else
         call poison( cell, ntml(1), ntml(2), ntml(3), ntm, rhoatm,
      &             Uharrs, Vscf, DStres, nsm )
@@ -1259,10 +1260,11 @@ C ----------------------------------------------------------------------
 
       if (use_bigdft_psolver) then
         call poisson_bigdft(cell, ntml, ntm, nsm, DRho(:,1), 
-     &             Vaux, DUscf)
+     &      Vaux, DUscf, DStres, calc_stress = istr == 1)
       else
         call poison( cell, ntml(1), ntml(2), ntml(3), ntm, DRho,
-     &             DUscf, Vaux, DStres, nsm )
+     &      DUscf, Vaux, DStres, nsm )
+        print *, Dstres(3,2), dstres(3,1),dstres(1,2)
       endif
       if ( debug_dhscf ) then
          write(*,debug_fmt) Node,'Poisson',sqrt(sum(Vaux(:)**2))
