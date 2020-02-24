@@ -346,8 +346,6 @@ contains
     ! Based on write_rho subroutine writen by J.Soler July 1997.
     ! Modifications are meant to send information to rho_total array
     ! instead to a *.RHO file.
-
-    use alloc,          only : re_alloc, de_alloc
     use mpi_siesta
 
     integer, intent(in) :: nsm
@@ -355,8 +353,9 @@ contains
     integer, intent(in) :: maxp
     real(grid_p), intent(in) :: rho(maxp)
     real(grid_p), intent(inout) :: rho_total(:)
-    integer :: i, np, BlockSizeY, BlockSizeZ, ProcessorZ
-    integer :: meshnsm(3), NRemY, NRemZ, iy, iz, izm, Ind, Ind_rho, ir
+    integer :: ip, BlockSizeY, BlockSizeZ, ProcessorZ
+    integer :: meshnsm(3), NRemY, NRemZ, iy, iz, izm
+    integer :: ind_local, ind_global
     integer :: Ind2, MPIerror, BNode, NBlock
 
 #ifdef DEBUG
@@ -371,14 +370,12 @@ contains
     ProcessorZ = Nodes/ ProcessorY
     BlockSizeY = (((mesh(2) / nsm) - 1)/ ProcessorY + 1) *nsm
 
-    np = mesh(1) * mesh(2) * mesh(3)
-
     meshnsm(1) = mesh(1) / nsm
     meshnsm(2) = mesh(2) / nsm
     meshnsm(3) = mesh(3) / nsm
 
-    Ind = 0
-    Ind_rho = 1
+    ind_local = 0
+    ind_global = 0
 
     ! Loop over Z dimension of processor grid
     do iz = 1, ProcessorZ
@@ -405,20 +402,17 @@ contains
           BNode = (iy -1) * ProcessorZ + iz - 1
 
           if ( Node == BNode ) then
-            ! Storage of current rho_total index
-            Ind2 = Ind_rho
-            do ir = 1, BlockSizeY
-              do i =  1, mesh(1)
-                rho_total(Ind2) = rho(Ind+i)
-                Ind2 = Ind2 + 1
-              end do
-              Ind = Ind + mesh(1)
+
+            do ip = 1, NBlock
+              rho_total(ind_global + ip) = rho(ind_local + ip)
             end do
+            ind_local = ind_local + NBlock
+
           end if
-          
-          call MPI_Bcast(rho_total(Ind_rho), NBlock, MPI_grid_real, BNode, &
+
+          call MPI_Bcast(rho_total(ind_global + 1), NBlock, MPI_grid_real, BNode, &
               Mpi_Comm_World, MPIerror)
-          Ind_rho = Ind_rho + NBlock
+          ind_global = ind_global + NBlock
 
         end do
 
@@ -448,7 +442,6 @@ contains
     ! real    rho(maxp) : Electron density
     ! #################################################################### !
 
-    use alloc,          only : re_alloc, de_alloc
     use parallelsubs, only: HowManyMeshPerNode
     use mpi_siesta
 
@@ -531,7 +524,7 @@ contains
             ind_local = ind_local + NBlock
 
           end if
-          ind_global = ind_global + Nblock
+          ind_global = ind_global + NBlock
 
         end do
 
