@@ -237,7 +237,8 @@ MODULE siesta_options
   real(dp) :: tt            ! Target temperature. Read in redata. Used in dynamics rout.
   real(dp) :: wmix          ! Mixing weight for DM in SCF iteration
   real(dp) :: wmixkick      ! Mixing weight for DM in special 'kick' SCF steps
-  
+
+#ifdef SIESTA__PSOLVER
   logical  :: use_psolver ! Use Poisson solver from BigDFT package instead of Siesta solver
   logical  :: psolver_cavity      ! Implicit solvent effects?
   integer  :: psolver_isf_order   ! Order of the Interpolating Scaling Function family.
@@ -253,6 +254,7 @@ MODULE siesta_options
   character(len=20) :: psolver_cavity_type    ! Define type of cavity: none, soft-sphere or sccs.
   character(len=20) :: psolver_radii_type     ! Define type of vdW radii: Options: UFF, Bondi or Pauling.
   character(len=20) :: psolver_gps_algorithm  ! Algorithm for the generalised poisson equation: PCG or PI.
+#endif
 
   character(len=164) :: sname   ! System name, used to initialise read
 

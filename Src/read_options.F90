@@ -1738,6 +1738,7 @@ subroutine read_options( na, ns, nspin )
   
   ! PSolver (another poisson solver)
   ctmp = fdf_get('Poisson.Method', 'fft')
+#ifdef SIESTA__PSOLVER
   use_psolver = leqi(ctmp, 'psolver')
   
   psolver_isf_order  =   fdf_get('Psolver.isf.order', 16)
@@ -1758,7 +1759,8 @@ subroutine read_options( na, ns, nspin )
   else 
     psolver_cavity_type = 'none'
   end if
-!!!
+#endif
+
   !
   !   COOP-related flags
   !

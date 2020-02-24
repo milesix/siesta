@@ -16,6 +16,7 @@
 !  Optimizations (mainly memory) done by Nick Papior (2020)
 module psolver_m
 
+#ifdef SIESTA__PSOLVER
   use precision,      only : dp, grid_p
   use parallel,       only : Node, Nodes, ionode, ProcessorY
   use fdf 
@@ -783,4 +784,11 @@ contains
     A3D => A1D(:,:,:)
   end subroutine pointer_1D_3D
 
+#else
+contains
+
+  subroutine psolver_dummy()
+  end subroutine psolver_dummy
+
+#endif
 end module psolver_m

@@ -70,7 +70,6 @@
       use parsing
 
       use alloc,          only : re_alloc, de_alloc
-      use siesta_options, only : harrisfun, use_psolver
       use meshsubs,       only : PartialCoreOnMesh
       use meshsubs,       only : NeutralAtomOnMesh
       use meshsubs,       only : PhiOnMesh
@@ -101,6 +100,7 @@
      $                                  doping_active
       use m_rhog,                 only: rhog, rhog_in
       use m_rhog,                 only: order_rhog
+      use siesta_options,         only: harrisfun
       use siesta_options,         only: mix_charge
 #ifdef NCDF_4
       use siesta_options,         only: write_cdf
@@ -108,7 +108,10 @@
 #ifdef MPI
       use mpi_siesta
 #endif
-      use psolver_m,       only: poisson_psolver
+#ifdef SIESTA__PSOLVER
+      use siesta_options, only : use_psolver
+      use psolver_m, only: poisson_psolver
+#endif
 
       use m_mesh_node,   only: init_mesh_node
       use m_charge_add,  only: init_charge_add
@@ -404,14 +407,18 @@ C     Allocate Temporal array
 C     Vscf is filled here but not used later
 C     Uharrs is computed (and saved)
 C     DStres is computed but not used later
+#ifdef SIESTA__PSOLVER
       if ( use_psolver ) then
         call poisson_psolver(cell, ntml, ntm, nsm, rhoatm,
      $      Vscf(:,1), Uharrs, DStres,
      &      calc_stress=.false.)
       else
+#endif
         call poison( cell, ntml(1), ntml(2), ntml(3), ntm, rhoatm,
      &             Uharrs, Vscf, DStres, nsm )
+#ifdef SIESTA__PSOLVER
       endif
+#endif
       call de_alloc( Vscf, 'Vscf', 'dhscf_init' )
 
 !     Always deallocate rhoatm_par, as it was used even if nodes=1
@@ -650,13 +657,16 @@ C     Modules
 #ifdef MPI
       use mpi_siesta
 #endif
-      use psolver_m,       only: poisson_psolver
+#ifdef SIESTA__PSOLVER
+      use psolver_m,      only: poisson_psolver
+      use siesta_options, only: use_psolver
+#endif
       use iogrid_netcdf, only: write_grid_netcdf
       use iogrid_netcdf, only: read_grid_netcdf
       use siesta_options, only: read_charge_cdf
       use siesta_options, only: savebader
       use siesta_options, only: read_deformation_charge_cdf
-      use siesta_options, only: mix_charge, use_psolver
+      use siesta_options, only: mix_charge
 
       use m_efield,       only: get_field_from_dipole, dipole_correction
       use m_efield,       only: add_potential_from_field
@@ -1258,13 +1268,17 @@ C ----------------------------------------------------------------------
 !     Solve Poisson's equation
       call re_alloc( Vaux, 1, ntpl, 'Vaux', 'dhscf' )
 
+#ifdef SIESTA__PSOLVER
       if ( use_psolver ) then
         call poisson_psolver(cell, ntml, ntm, nsm, DRho(:,1),
      &      Vaux, DUscf, DStres, calc_stress = istr == 1)
       else
+#endif
         call poison( cell, ntml(1), ntml(2), ntml(3), ntm, DRho,
      &      DUscf, Vaux, DStres, nsm )
+#ifdef SIESTA__PSOLVER
       endif
+#endif
       if ( debug_dhscf ) then
          write(*,debug_fmt) Node,'Poisson',sqrt(sum(Vaux(:)**2))
       end if

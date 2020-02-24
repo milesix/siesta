@@ -1222,7 +1222,7 @@ propor.o: precision.o sys.o
 proximity_check.o: chemical.o m_ts_global_vars.o mneighb.o parallel.o
 proximity_check.o: precision.o siesta_geom.o siesta_options.o units.o
 pseudopotential.o: alloc.o atom_options.o interpolation.o precision.o sys.o
-psolver_m.o: alloc.o chemical.o mesh.o parallel.o parallelsubs.o precision.o
+psolver_m.o: alloc.o chemical.o parallel.o parallelsubs.o precision.o
 psolver_m.o: siesta_geom.o siesta_options.o units.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radial.o: alloc.o interpolation.o precision.o xml.o
