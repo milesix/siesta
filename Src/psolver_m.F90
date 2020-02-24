@@ -366,10 +366,10 @@ contains
 
     ! Work out density block dimensions
     if ( mod(Nodes,ProcessorY) > 0 ) &
-        call die('ERROR: ProcessorY must be a factor of the' //  &
+        call die('ERROR: ProcessorY must be a factor of the' // &
         ' number of processors!')
-    ProcessorZ = Nodes/ ProcessorY
-    BlockSizeY = (((mesh(2) / nsm) - 1)/ ProcessorY + 1) *nsm
+    ProcessorZ = Nodes / ProcessorY
+    BlockSizeY = ((mesh(2) / nsm - 1)/ ProcessorY + 1) * nsm
 
     meshnsm(1) = mesh(1) / nsm
     meshnsm(2) = mesh(2) / nsm
@@ -395,12 +395,12 @@ contains
           ! Work out size of density sub-matrix to be transfered
           BlockSizeY = meshnsm(2) / ProcessorY
           NRemY = meshnsm(2) - BlockSizeY * ProcessorY
-          if ( iy-1 < NRemY ) BlockSizeY = BlockSizeY + 1
+          if ( iy - 1 < NRemY ) BlockSizeY = BlockSizeY + 1
           BlockSizeY = BlockSizeY * nsm
           NBlock = BlockSizeY * mesh(1)
 
           ! Work out which node block is stored on
-          BNode = (iy -1) * ProcessorZ + iz - 1
+          BNode = (iy - 1) * ProcessorZ + iz - 1
 
           if ( Node == BNode ) then
 
@@ -461,13 +461,13 @@ contains
     logical :: baddim
 
     ! Work out density block dimensions
-    if (mod(Nodes,ProcessorY).gt.0)                               &
-        call die('ERROR: ProcessorY must be a factor of the' //  &
+    if ( mod(Nodes,ProcessorY) > 0 ) &
+        call die('ERROR: ProcessorY must be a factor of the' // &
         ' number of processors!')
     ProcessorZ = Nodes / ProcessorY
-    BlockSizeY = (((mesh(2) / nsm) - 1) / ProcessorY + 1) * nsm
+    BlockSizeY = ((mesh(2) / nsm - 1) / ProcessorY + 1) * nsm
 
-    np = mesh(1) * mesh(2) * mesh(3)
+    np = product(mesh)
 
     ! Get local dimensions
     meshnsm(:) = mesh(:) / nsm
@@ -477,7 +477,7 @@ contains
     ! Check dimensions
     baddim = .false.
 
-    if ( npl .gt. maxp ) baddim = .true.
+    if ( npl > maxp ) baddim = .true.
 
     ! Globalise dimension check
     call MPI_AllReduce(baddim,ltmp,1,MPI_logical,MPI_Lor,  &
@@ -485,7 +485,7 @@ contains
     baddim = ltmp
     if ( baddim ) then
       call die("Dim of array V_total too small in spread_potential")
-    endif
+    end if
 
     ind_local = 0
     ind_global = 0
@@ -519,7 +519,7 @@ contains
             ! PSolver returns the potential globalized, so we do not need
             ! any communication
 
-            do ip = 1 , NBlock
+            do ip = 1, NBlock
               V_local(ind_local + ip) = V_total(ind_global + ip)
             end do
             ind_local = ind_local + NBlock
@@ -538,8 +538,8 @@ contains
   subroutine set_label(atm_label)
 
     ! Assignation of atom labels. 
-    use siesta_geom,    only : na_u, isa
-    use chemical,       only : atomic_number
+    use siesta_geom, only: na_u, isa
+    use chemical, only: atomic_number
 
     character(len=2), intent(inout), dimension(na_u) :: atm_label
     integer :: aux_Zatom(na_u)             ! Auxiliary array containing Z_atom for each atom. 
