@@ -66,7 +66,7 @@ contains
   !!
   ! 
   ! #################################################################### !
-  subroutine poisson_psolver(cell, lgrid, grid, ntm, RHO, V,  eh, stress, calc_stress)
+  subroutine poisson_psolver(cell, lgrid, grid, nsm, RHO, V,  eh, stress, calc_stress)
 
     use units,          only: eV
     use siesta_geom,    only: na_u, xa
@@ -88,15 +88,15 @@ contains
     integer, intent(in) :: lgrid(3)          ! Local mesh divisions.
     integer, intent(in) :: grid(3)           ! Total mesh divisions.
     real(grid_p), intent(in) :: RHO(:)            ! Input density.
-    integer, intent(in) :: ntm
+    integer, intent(in) :: nsm
     real(grid_p), intent(inout) :: V(:)              ! Output potential.
     real(dp), intent(out) :: eh                 ! Electrostatic energy.
     real(dp), intent(inout) :: stress(3,3) ! stress-tensor contribution
     logical, intent(in) :: calc_stress
 
-    real(dp), dimension(3) :: hgrid        ! Uniform mesh spacings in the three directions.
-    integer :: i, iatoms
-    type(dictionary), pointer :: dict               ! Input parameters.
+    real(dp), dimension(3) :: hgrid ! Uniform mesh spacings in the three directions.
+    integer :: iatoms
+    type(dictionary), pointer :: dict => null() ! Input parameters.
     type(coulomb_operator) :: pkernel
     logical :: pkernel_verbose 
 
@@ -126,16 +126,16 @@ contains
     call re_alloc(Paux_1D, 1, ngrid, 'Paux_1D', 'poisson_psolver' )
 
     ! Calculation of cell angles and grid separation for psolver:
-    do i = 1, 3
-      hgrid(i)= sqrt(dot_product(cell(:,i), cell(:,i))) / grid(i)
-    end do
+    hgrid(1) = sqrt(dot_product(cell(:,1), cell(:,1))) / grid(1)
+    hgrid(2) = sqrt(dot_product(cell(:,2), cell(:,2))) / grid(2)
+    hgrid(3) = sqrt(dot_product(cell(:,3), cell(:,3))) / grid(3)
 
     ! Setting of dictionary variables, done at every calling:
     call set_variables(dom, cell, calc_stress, dict, pkernel_verbose)
 
 #ifdef MPI
     ! RHO is collected to a global array for all processors
-    call gather_rho(RHO, grid, 2, lgrid(1) * lgrid(2) * lgrid(3), Paux_1D)
+    call gather_rho(RHO, grid, nsm, lgrid(1) * lgrid(2) * lgrid(3), Paux_1D)
 
     ! PSolver interface requires a 3D array
     ! We will use pointer tricks
@@ -174,34 +174,36 @@ contains
 
     ! Solve the Poisson equation and retrieve also energies and stress-tensor
     call Electrostatic_Solver(pkernel, Paux_3D, energies)
-    eh = 2 * energies%hartree / Nodes
-
-    ! The stress-tensor is definitely wrong. However, it seems that the Siesta
-    ! convention is different than PSolver
-    if ( calc_stress ) then
-      stress(1,1) = 2 * energies%strten(1) / Nodes
-      stress(2,2) = 2 * energies%strten(2) / Nodes
-      stress(3,3) = 2 * energies%strten(3) / Nodes
-      stress(3,2) = 2 * energies%strten(4) / Nodes
-      stress(2,3) = 2 * energies%strten(4) / Nodes
-      stress(3,1) = 2 * energies%strten(5) / Nodes
-      stress(1,3) = 2 * energies%strten(5) / Nodes
-      stress(1,2) = 2 * energies%strten(6) / Nodes
-      stress(2,1) = 2 * energies%strten(6) / Nodes
-    else
-      stress(:,:) = 0._dp
-    end if
 
     ! In siesta poison.F the energies and stress tensors are calculated
     ! distributed. I.e. Siesta expects the Hartree energy and the
     ! stress tensor to be distributed.
     ! However, PSolver returns summed values. We have to correct
     ! The factor two comes from Hartree => Rydberg
+
+    eh = 2._dp * energies%hartree / Nodes
+
+    ! The stress-tensor is definitely wrong. However, it seems that the Siesta
+    ! convention is different than PSolver
+    if ( calc_stress ) then
+      stress(1,1) = 2._dp * energies%strten(1) / Nodes
+      stress(2,2) = 2._dp * energies%strten(2) / Nodes
+      stress(3,3) = 2._dp * energies%strten(3) / Nodes
+      stress(3,2) = 2._dp * energies%strten(4) / Nodes
+      stress(2,3) = 2._dp * energies%strten(4) / Nodes
+      stress(3,1) = 2._dp * energies%strten(5) / Nodes
+      stress(1,3) = 2._dp * energies%strten(5) / Nodes
+      stress(1,2) = 2._dp * energies%strten(6) / Nodes
+      stress(2,1) = 2._dp * energies%strten(6) / Nodes
+    else
+      stress(:,:) = 0._dp
+    end if
+
 #ifdef MPI
     ! Now we spread back the potential on different nodes. 
     call timer('spread_pot', 1)
     Paux_1D(:) = 2 * Paux_1D(:) - 2 * sum(Paux_1D) / ngrid
-    call spread_potential(Paux_1D, grid, 2, ngrid, V)
+    call spread_potential(Paux_1D, grid, nsm, ngrid, V)
     call timer('spread_pot', 2)
 #else
     V(:) = 2 * Paux_1D(:) - 2 * sum(Paux_1D(:)) / ngrid
@@ -341,22 +343,20 @@ contains
 
   subroutine gather_rho(rho, mesh, nsm, maxp, rho_total)
 
-    ! Based on write_rho subroutine writen by J.Soler July 1997.           !
-    ! Modifications are meant to send information to rho_total array       !
-    ! istead to a *.RHO file.                                              !
-    !                                                                      !
-    ! #################################################################### !
+    ! Based on write_rho subroutine writen by J.Soler July 1997.
+    ! Modifications are meant to send information to rho_total array
+    ! instead to a *.RHO file.
 
     use alloc,          only : re_alloc, de_alloc
     use mpi_siesta
 
-    integer, intent( in)          ::     nsm         
-    integer, intent( in)          ::     mesh( 3)
-    integer, intent( in)          ::     maxp
-    real( grid_p), intent( in)    ::     rho( maxp)
-    real( grid_p), pointer , intent( out) ::     rho_total( :) 
+    integer, intent(in) :: nsm
+    integer, intent(in) :: mesh(3)
+    integer, intent(in) :: maxp
+    real(grid_p), intent(in) :: rho(maxp)
+    real(grid_p), intent(inout) :: rho_total(:)
     integer :: i, np, BlockSizeY, BlockSizeZ, ProcessorZ
-    integer :: meshnsm( 3), NRemY, NRemZ, iy, iz, izm, Ind, Ind_rho, ir
+    integer :: meshnsm(3), NRemY, NRemZ, iy, iz, izm, Ind, Ind_rho, ir
     integer :: Ind2, MPIerror, BNode, NBlock
 
 #ifdef DEBUG
@@ -365,11 +365,11 @@ contains
 #endif
 
     ! Work out density block dimensions
-    if (mod(Nodes,ProcessorY).gt.0)                               &
+    if ( mod(Nodes,ProcessorY) > 0 ) &
         call die('ERROR: ProcessorY must be a factor of the' //  &
         ' number of processors!')
     ProcessorZ = Nodes/ ProcessorY
-    BlockSizeY =((((mesh( 2)/ nsm)- 1)/ ProcessorY) + 1) *nsm
+    BlockSizeY = (((mesh(2) / nsm) - 1)/ ProcessorY + 1) *nsm
 
     np = mesh(1) * mesh(2) * mesh(3)
 
@@ -452,8 +452,8 @@ contains
     use parallelsubs, only: HowManyMeshPerNode
     use mpi_siesta
 
-    real(grid_p), pointer,intent(in) :: V_total(:) 
-    real(grid_p), intent(inout) :: V_local(:) 
+    real(grid_p), intent(in) :: V_total(:)
+    real(grid_p), intent(inout) :: V_local(:)
     integer, intent(in) :: nsm, maxp
     integer, intent(in) :: mesh(3)
     integer :: ip, np
