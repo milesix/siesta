@@ -93,6 +93,9 @@ contains
     use dictionaries, dict_set => set
     use mpi_siesta
 
+    ! PSolver uses atlab to handle geometry etc.
+    use at_domain
+
     real( dp), intent(in)      :: cell(3,3)        ! Unit-cell vectors.
     integer, intent(in)        :: lgrid(3)          ! Local mesh divisions.
     integer, intent(in)        :: grid(3)           ! Total mesh divisions.
@@ -113,13 +116,11 @@ contains
     integer :: ngrid
     integer                     :: World_Comm, mpirank, ierr
 
-    real(dp), save              :: alpha, beta, gamma ! Box axis angles.  
-    real(dp)                    :: angdeg(3)
     real(dp)                    :: radii(na_u) 
-    character(len=1)          :: boundary_case 
     character(len=2)          :: atm_label(na_u) 
     real(dp)                    :: delta, factor 
     integer, allocatable        :: local_grids(:,:)
+    type(domain) :: dom
 
     call timer( 'BigDFT_solv', 1)
 
@@ -139,21 +140,13 @@ contains
 
     ! Calculation of cell angles and grid separation for psolver:
     if ( firsttime ) then
-
-      call set_cell_angles( cell, angdeg) 
-
-      alpha = angdeg(1) / 180.0_dp * pi
-      beta = angdeg(2) / 180.0_dp * pi
-      gamma = angdeg(3) / 180.0_dp * pi
-
       do i = 1, 3
         hgrid(1,i)= sqrt(cell(1, i)**2 + cell(2,i)**2 + cell(3,i)**2) / grid(i)
       end do
-      
     end if
 
     ! Setting of dictionary variables, done at every calling:  
-    call set_bigdft_variables( dict, boundary_case, pkernel_verbose)
+    call set_bigdft_variables(dom, cell, dict, pkernel_verbose)
 
 #ifdef MPI
 !!! Collection of RHO: 
@@ -175,9 +168,7 @@ contains
     call pointer_1D_3D(Rho, grid(1), grid(2), grid(3), Paux_3D)
 #endif
 
-    pkernel = pkernel_init(Node, Nodes, dict, boundary_case, &
-        grid, hgrid, &
-        alpha_bc=alpha, beta_ac=beta, gamma_ab=gamma)
+    pkernel = pkernel_init(Node, Nodes, dict, dom, grid, hgrid)
 
     call pkernel_set( pkernel, verbose=pkernel_verbose)
 
@@ -207,15 +198,14 @@ contains
     ! Siesta computes the Hartree energy. Indeed, BigDFT provides the value
     ! alredy distributed. 
     eh = 2.0_dp * eh / Nodes
-    Paux_3D = 2.0_dp * Paux_3D - sum(2.0_dp * Paux_3D) / ngrid
-
 #ifdef MPI
     ! Now we spread back the potential on different nodes. 
     call timer('spread_pot', 1)
-    call spread_potential( Paux_1D, grid, 2, ngrid, local_grids, V) 
+    Paux_1D = 2.0_dp * Paux_1D - sum(2.0_dp * Paux_1D) / ngrid
+    call spread_potential(Paux_1D, grid, 2, ngrid, local_grids, V) 
     call timer('spread_pot', 2)
 #else
-    V(:) = Paux_1D(:)
+    V(:) = 2.0_dp * Paux_1D - sum(2.0_dp * Paux_1D) / ngrid
 #endif
 
     ! Ending calculation
@@ -230,9 +220,10 @@ contains
     
   end subroutine poisson_bigdft
 
-  subroutine set_bigdft_variables(dict, boundary_case, pkernel_verbose)
+  subroutine set_bigdft_variables(dom, cell, dict, pkernel_verbose)
 
     use dictionaries, dict_set => set
+    use at_domain
     use futile
     use siesta_geom,    only : shape
     use siesta_options, only : bigdft_isf_order, bigdft_fd_order,    &
@@ -242,30 +233,68 @@ contains
         bigdft_gps_algorithm, bigdft_epsilon, &
         bigdft_gammaS, bigdft_alphaS,         &
         bigdft_betaV, bigdft_atomic_radii
+
     ! #################################################################### !
     ! Subroutine to set-up BigDFT Poisson solver variables and boundary    !
     ! condition.                                                           !
     ! #################################################################### !
-    type( dictionary), pointer, intent(out) :: dict         ! Input parameters.
-    character( len= 1), intent(out)         :: boundary_case 
+    type(domain), intent(inout) :: dom
+    real(dp), intent(in) :: cell(3,3)
+    type(dictionary), pointer, intent(out) :: dict         ! Input parameters.
     logical, intent(out)  :: pkernel_verbose 
     ! #################################################################### !
 
+    ! Initialize domain
+    select case ( shape )
+    case ( 'molecule' )
+      dom = domain_new(ATOMIC_UNITS, [FREE_BC, FREE_BC, FREE_BC], abc=cell)
+      if ( firsttime .and. IONode ) then
+        write(6,'(/,a,/,a/,a,/,a,/,a,/,a)')               &
+            'bigdft_solver: initialising kernel for a molecular system',&
+            '#================= WARNING bigdft_solver ===============#',&
+            '                                                         ',&
+            ' Molecular system must be place at the center of the box,',&
+            ' otherwise box-edge effects might lead to wrong Hartree  ',&
+            ' energy values.                                          ',&
+            '#=======================================================#'
+      end if
+    case ( 'slab' )
+      dom = domain_new(ATOMIC_UNITS, [PERIODIC_BC, FREE_BC, PERIODIC_BC], abc=cell)
+      if ( firsttime .and. IONode ) then
+        write(6,'(/,a,/,a/,a,/,a,/,a,/,a)')                 &
+            'bigdft_solver: initialising kernel for a slab system',     &
+            '#================= WARNING bigdft_solver ===============#',&
+            ' Empty direction of the periodic system has to be set    ',&
+            ' along the Y-axis.                                       ',&
+            ' Additionally, simulation box must be large enough to    ',&
+            ' to avoid box edges effects in the Hartree potential.    ',&
+            '#=======================================================#'
+      end if
+    case ( 'bulk' )
+      dom = domain_new(ATOMIC_UNITS, [PERIODIC_BC, PERIODIC_BC, PERIODIC_BC], abc=cell)
+      if ( firsttime .and. IONode ) then
+        write(6,"(a)")                                     &
+            'bigdft_solver: initialising kernel for a periodic system'
+      end if
+    case ( 'wire' )
+      dom = domain_new(ATOMIC_UNITS, [FREE_BC, FREE_BC, PERIODIC_BC], abc=cell)
+      if ( firsttime .and. IONode ) then
+        write(6,'(/,a,/,a/,a,/,a,/,a,/,a)')                 &
+            'bigdft_solver: initialising kernel for a 1D-wire system  ',&
+            '#================= WARNING bigdft_solver ===============#',&
+            ' Empty directions of the wire system has to be set       ',&
+            ' along the X and Y-axis.                                 ',&
+            ' Additionally, simulation box must be large enough to    ',&
+            ' to avoid box edges effects in the Hartree potential.    ',&
+            '#=======================================================#'
+      end if
+    case default
+      ! This should be enough to break PSolver ;)
+      dom = domain_null()
+    end select
+
     ! Data distribution will be always global:
     call set( dict//'setup'//'global_data', .true.) ! Hardwired, it cannot be otherwise.
-
-    ! Select the boundary condition:
-    select case(shape)
-    case( 'molecule' )
-      boundary_case = "F"
-    case( 'slab' )
-      boundary_case = "S"
-    case( 'bulk' )
-      boundary_case = "P"
-      !      1D WIRE SYSTEM ===NOT IMPLEMENTED YET=== 
-      !       case( 'wire')  
-      !        boundary_case= "W"
-    end select
 
     ! Set kernel and cavity variables: 
     call set( dict//'kernel'//'isf_order', bigdft_isf_order)
@@ -289,35 +318,8 @@ contains
     ! Printing some info and warnings:
     if ( firsttime ) then
       if ( IONode ) then
-        select case ( boundary_case )
-        case ( 'F' )
-          write(6,'(/,a,/,a/,a,/,a,/,a,/,a)')               &
-              'bigdft_solver: initialising kernel for a molecular system',&
-              '#================= WARNING bigdft_solver ===============#',&
-              '                                                         ',&
-              ' Molecular system must be place at the center of the box,',&
-              ' otherwise box-edge effects might lead to wrong Hartree  ',&
-              ' energy values.                                          ',&
-              '#=======================================================#'
-        case ( 'S' )
-          write(6,'(/,a,/,a/,a,/,a,/,a,/,a)')                 &
-              'bigdft_solver: initialising kernel for a slab system',     &
-              '#================= WARNING bigdft_solver ===============#',&
-              ' Empty direction of the periodic system has to be set    ',&
-              ' along the Y-axis.                                       ',&
-              ' Additionally, simulation box must be large enough to    ',&
-              ' to avoid box edges effects in the Hartree potential.    ',&
-              '#=======================================================#'
-        case ( 'P' )
-          write(6,"(a)")                                     &
-              'bigdft_solver: initialising kernel for a periodic system'
-          !case ( 'W' )
-          !write(6,"(a)")                                     &
-          !   'bigdft_solver: initialising kernel for a 1D-wire system'
-        end select
-        
         write(6,"(a)") 'bigdft_solver: Poisson solver variables'
-        write(6,"(a)")        'Solver boundary condition', boundary_case 
+        write(6,"(2a)")        'Solver boundary condition', shape
         write(6,"(a, L2)")    'verbosity:', bigdft_verbose
         write(6,"(a)")        'cavity type:', bigdft_cavity_type 
         write(6,"(a, I3)")    'isf_order:', bigdft_isf_order 
@@ -336,31 +338,6 @@ contains
     end if
 
   end subroutine set_bigdft_variables
-
-  subroutine set_cell_angles( cell, celang)
-    
-    ! #################################################################### !
-    !     Subroutine to calculate the cell angles. Roughly copied from     !
-    !     outcell.f of E. Artacho, December 1997.
-    ! #################################################################### !
-    ! #################################################################### !
-    real( dp), intent( in)      :: cell( 3, 3)        ! Unit-cell vectors.
-    real( dp), intent( out)     :: celang( 3)
-    real( dp)                   :: cellm( 3)
-    integer                     :: i
-    ! #################################################################### !
-    do i = 1,3
-      cellm(i) = sqrt(dot_product(cell(:,i), cell(:,i)))
-    end do
-
-    celang(1) = dot_product(cell(:,1), cell(:,2))
-    celang(1) = acos( celang(1)/(cellm(1)*cellm(2))) * 180._dp / Pi
-    celang(2) = dot_product(cell(:,1), cell(:,3))
-    celang(2) = acos(celang(2)/(cellm(1)*cellm(3))) * 180._dp / Pi
-    celang(3) = dot_product(cell(:,2), cell(:,3))
-    celang(3) = acos(celang(3)/(cellm(2)*cellm(3))) * 180._dp / Pi
-
-  end subroutine set_cell_angles
 
   subroutine gather_rho(rho, mesh, nsm, maxp, rho_total)
 
