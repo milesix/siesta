@@ -1738,26 +1738,26 @@ subroutine read_options( na, ns, nspin )
   
   ! PSolver (another poisson solver)
   ctmp = fdf_get('Poisson.Method', 'fft')
-  use_bigdft_psolver = leqi(ctmp, 'psolver')
+  use_psolver = leqi(ctmp, 'psolver')
   
-  bigdft_isf_order  =   fdf_get('Psolver.isf.order', 16)
-  bigdft_fd_order   =   fdf_get('Psolver.fd.order', 16)
-  bigdft_verbose    =   fdf_get('Psolver.verbose', .false.)
-  bigdft_cavity     =   fdf_get('Psolver.solvent', .false.) 
-  if (bigdft_cavity) then 
-    bigdft_cavity_type  = fdf_get('Psolver.cavity.type', 'soft-sphere') 
-    bigdft_radii_type   = fdf_get('Psolver.radii.type', 'UFF') 
-    bigdft_delta        = fdf_get('Psolver.delta', 2.0_dp)
-    bigdft_fact_rigid   = fdf_get('Psolver.fact.rigid', 1.12_dp)
-    bigdft_gps_algorithm= fdf_get('Psolver.gps.algorithm', 'PCG')
-    bigdft_epsilon      = fdf_get('Psolver.epsilon', 78.36_dp)
-    bigdft_gammaS       = fdf_get('Psolver.gammaS', 72.0_dp)
-    bigdft_alphaS       = fdf_get('Psolver.alphaS', -22.0_dp)
-    bigdft_betaV        = fdf_get('Psolver.betaV', -0.35_dp)
-    bigdft_atomic_radii = fdf_get('Psolver.atomic.radii', 0)
+  psolver_isf_order  =   fdf_get('Psolver.isf.order', 16)
+  psolver_fd_order   =   fdf_get('Psolver.fd.order', 16)
+  psolver_verbose    =   fdf_get('Psolver.verbose', .false.)
+  psolver_cavity     =   fdf_get('Psolver.solvent', .false.)
+  if ( psolver_cavity ) then
+    psolver_cavity_type  = fdf_get('Psolver.cavity.type', 'soft-sphere')
+    psolver_radii_type   = fdf_get('Psolver.radii.type', 'UFF')
+    psolver_delta        = fdf_get('Psolver.delta', 2.0_dp)
+    psolver_fact_rigid   = fdf_get('Psolver.fact.rigid', 1.12_dp)
+    psolver_gps_algorithm= fdf_get('Psolver.gps.algorithm', 'PCG')
+    psolver_epsilon      = fdf_get('Psolver.epsilon', 78.36_dp)
+    psolver_gammaS       = fdf_get('Psolver.gammaS', 72.0_dp)
+    psolver_alphaS       = fdf_get('Psolver.alphaS', -22.0_dp)
+    psolver_betaV        = fdf_get('Psolver.betaV', -0.35_dp)
+    psolver_atomic_radii = fdf_get('Psolver.atomic.radii', 0)
   else 
-    bigdft_cavity_type='none'
-  endif
+    psolver_cavity_type = 'none'
+  end if
 !!!
   !
   !   COOP-related flags

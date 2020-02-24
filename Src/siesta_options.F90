@@ -237,21 +237,22 @@ MODULE siesta_options
   real(dp) :: tt            ! Target temperature. Read in redata. Used in dynamics rout.
   real(dp) :: wmix          ! Mixing weight for DM in SCF iteration
   real(dp) :: wmixkick      ! Mixing weight for DM in special 'kick' SCF steps
-  logical  :: use_bigdft_psolver ! Use Poisson solver from BigDFT package instead of Siesta solver
-  logical  :: bigdft_cavity      ! Implicit solvent effects?
-  integer  :: bigdft_isf_order   ! Order of the Interpolating Scaling Function family. 
-  integer  :: bigdft_fd_order    ! Order of the Finite-difference derivatives for the GPS solver. 
-  logical  :: bigdft_verbose     ! Verbosity in kernel set-ups. 
-  real(dp) :: bigdft_delta       ! Amplitude of the transition region in the rigid cavity (a.u.).
-  real(dp) :: bigdft_fact_rigid  ! Multiplying factor for the whole rigid cavity. 
-  real(dp) :: bigdft_epsilon     ! Dielectric constant of the exterior region.  
-  real(dp) :: bigdft_gammaS      ! Cavitation term, surface tension of the solvent (dyn/cm).
-  real(dp) :: bigdft_alphaS      ! Proportionality of repulsion free energy in term of the surface integral (dyn/cm).
-  real(dp) :: bigdft_betaV       ! Proportionality of dispersion free energy in term of volume integral (GPa).
-  integer  :: bigdft_atomic_radii ! Mapping of the radii that have to be used for each atomic species. 
-  character(len=20) :: bigdft_cavity_type    ! Define type of cavity: none, soft-sphere or sccs.
-  character(len=20) :: bigdft_radii_type     ! Define type of vdW radii: Options: UFF, Bondi or Pauling.
-  character(len=20) :: bigdft_gps_algorithm  ! Algorithm for the generalised poisson equation: PCG or PI. 
+  
+  logical  :: use_psolver ! Use Poisson solver from BigDFT package instead of Siesta solver
+  logical  :: psolver_cavity      ! Implicit solvent effects?
+  integer  :: psolver_isf_order   ! Order of the Interpolating Scaling Function family.
+  integer  :: psolver_fd_order    ! Order of the Finite-difference derivatives for the GPS solver.
+  logical  :: psolver_verbose     ! Verbosity in kernel set-ups.
+  real(dp) :: psolver_delta       ! Amplitude of the transition region in the rigid cavity (a.u.).
+  real(dp) :: psolver_fact_rigid  ! Multiplying factor for the whole rigid cavity.
+  real(dp) :: psolver_epsilon     ! Dielectric constant of the exterior region.
+  real(dp) :: psolver_gammaS      ! Cavitation term, surface tension of the solvent (dyn/cm).
+  real(dp) :: psolver_alphaS      ! Proportionality of repulsion free energy in term of the surface integral (dyn/cm).
+  real(dp) :: psolver_betaV       ! Proportionality of dispersion free energy in term of volume integral (GPa).
+  integer  :: psolver_atomic_radii ! Mapping of the radii that have to be used for each atomic species.
+  character(len=20) :: psolver_cavity_type    ! Define type of cavity: none, soft-sphere or sccs.
+  character(len=20) :: psolver_radii_type     ! Define type of vdW radii: Options: UFF, Bondi or Pauling.
+  character(len=20) :: psolver_gps_algorithm  ! Algorithm for the generalised poisson equation: PCG or PI.
 
   character(len=164) :: sname   ! System name, used to initialise read
 

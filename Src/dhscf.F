@@ -70,7 +70,7 @@
       use parsing
 
       use alloc,          only : re_alloc, de_alloc
-      use siesta_options, only : harrisfun, use_bigdft_psolver
+      use siesta_options, only : harrisfun, use_psolver
       use meshsubs,       only : PartialCoreOnMesh
       use meshsubs,       only : NeutralAtomOnMesh
       use meshsubs,       only : PhiOnMesh
@@ -108,7 +108,7 @@
 #ifdef MPI
       use mpi_siesta
 #endif
-      use m_psolver_bigdft,       only: poisson_bigdft
+      use psolver_m,       only: poisson_psolver
 
       use m_mesh_node,   only: init_mesh_node
       use m_charge_add,  only: init_charge_add
@@ -404,8 +404,8 @@ C     Allocate Temporal array
 C     Vscf is filled here but not used later
 C     Uharrs is computed (and saved)
 C     DStres is computed but not used later
-      if (use_bigdft_psolver) then
-        call poisson_bigdft(cell, ntml, ntm, nsm, rhoatm,
+      if ( use_psolver ) then
+        call poisson_psolver(cell, ntml, ntm, nsm, rhoatm,
      $      Vscf(:,1), Uharrs, DStres,
      &      calc_stress=.false.)
       else
@@ -650,13 +650,13 @@ C     Modules
 #ifdef MPI
       use mpi_siesta
 #endif
-      use m_psolver_bigdft,       only: poisson_bigdft
+      use psolver_m,       only: poisson_psolver
       use iogrid_netcdf, only: write_grid_netcdf
       use iogrid_netcdf, only: read_grid_netcdf
       use siesta_options, only: read_charge_cdf
       use siesta_options, only: savebader
       use siesta_options, only: read_deformation_charge_cdf
-      use siesta_options, only: mix_charge, use_bigdft_psolver
+      use siesta_options, only: mix_charge, use_psolver
 
       use m_efield,       only: get_field_from_dipole, dipole_correction
       use m_efield,       only: add_potential_from_field
@@ -1258,13 +1258,12 @@ C ----------------------------------------------------------------------
 !     Solve Poisson's equation
       call re_alloc( Vaux, 1, ntpl, 'Vaux', 'dhscf' )
 
-      if (use_bigdft_psolver) then
-        call poisson_bigdft(cell, ntml, ntm, nsm, DRho(:,1), 
+      if ( use_psolver ) then
+        call poisson_psolver(cell, ntml, ntm, nsm, DRho(:,1),
      &      Vaux, DUscf, DStres, calc_stress = istr == 1)
       else
         call poison( cell, ntml(1), ntml(2), ntml(3), ntm, DRho,
      &      DUscf, Vaux, DStres, nsm )
-        print *, Dstres(3,2), dstres(3,1),dstres(1,2)
       endif
       if ( debug_dhscf ) then
          write(*,debug_fmt) Node,'Poisson',sqrt(sum(Vaux(:)**2))

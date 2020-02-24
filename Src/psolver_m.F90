@@ -14,7 +14,7 @@
 ! 
 !  Created by Pablo Lopez-Tarifa and Daniel Sanchez Portal @CFM(2018)
 !  Optimizations (mainly memory) done by Nick Papior (2020)
-module m_psolver_bigdft
+module psolver_m
 
   use precision,      only : dp, grid_p
   use parallel,       only : Node, Nodes, ionode, ProcessorY
@@ -24,11 +24,11 @@ module m_psolver_bigdft
 
   logical, save         :: firsttime = .true.
 
-  public :: poisson_bigdft
+  public :: poisson_psolver
 
 contains
 
-  !> \brief General purpose of the subroutine poisson_bigdft
+  !> \brief General purpose of the subroutine poisson_psolver
   !!
   !! This subroutine handles the full hartree potential calculation
   !! given by Psolver package of BigDFT. 
@@ -37,24 +37,21 @@ contains
   !!
   !!    In the case of a serial run:
   !!
-  !!    S.1 onetothreedarray, transforms array Rho from 1D to 3D
-  !!         (compulsory by BigDFT functions).
-  !!    S.2 pkernel_init and pkernel_set, set the coulomb kernel
+  !!    S.1 pkernel_init and pkernel_set, set the coulomb kernel
   !!         object.
-  !!    S.3 electrostatic_Solver, call the Hartree potential calculation.
-  !!    S.4 threetoonedarray, transforms back V from 3D to 1D.
+  !!    S.2 electrostatic_Solver, call the Hartree potential calculation.
+  !!    S.3 threetoonedarray, transforms back V from 3D to 1D.
   !!
   !!    In the case of a parallel run:
   !!
   !!    P.1 call gather_rho, gather the partial Rho arrays carried by
   !!        each of the processors into a global Rho array.
   !!    P.2 local_grids, the information about the local grid extensions
-  !!        is collected in this array and futher used in point P.4.
-  !!    P.3 onetothreedarray, transforms array total Rho from 1D to 3D.
-  !!    P.4 pkernel_init and pkernel_set, set the coulomb kernel
+  !!        is collected in this array and futher used in point P.3.
+  !!    P.3 pkernel_init and pkernel_set, set the coulomb kernel
   !!         object.
-  !!    P.5 electrostatic_Solver, call the Hartree potential calculation.
-  !!    P.6 spread_potential, subroutine that spreads back the total
+  !!    P.4 electrostatic_Solver, call the Hartree potential calculation.
+  !!    P.5 spread_potential, subroutine that spreads back the total
   !!        potential just calculated into the processors , using the
   !!        grid division stored in local_grids.
   !!
@@ -72,20 +69,14 @@ contains
   !!
   ! 
   ! #################################################################### !
-  subroutine poisson_bigdft(cell, lgrid, grid, ntm, RHO, V,  eh, stress, calc_stress)
-    ! #################################################################### !
-    !                                                                      !
-    !   This subroutine sets up the kernel object for a bigDFT Poisson     !
-    !   solver calculation of the Hartree potential.                       !
-    !                                                                      !
-    ! #################################################################### !
+  subroutine poisson_psolver(cell, lgrid, grid, ntm, RHO, V,  eh, stress, calc_stress)
 
     use units,          only : eV
     use siesta_geom,    only : shape, na_u, na_s, xa
     use alloc,          only : re_alloc, de_alloc
     use Poisson_Solver, only : coulomb_operator,  Electrostatic_Solver, &
         pkernel_set, pkernel_set_epsilon
-    use siesta_options, only : bigdft_cavity
+    use siesta_options, only : psolver_cavity
     use mesh,           only : nsm
     use PStypes,        only : PSolver_energies
     use PStypes,        only : pkernel_init, pkernel_free, pkernel_get_radius
@@ -108,26 +99,26 @@ contains
     logical, intent(in) :: calc_stress
 
     real(dp), dimension(3) :: hgrid        ! Uniform mesh spacings in the three directions.
-    integer                     :: i, j, k, iatoms
-    real(dp)                   :: einit
-    type(dictionary), pointer  :: dict               ! Input parameters.
-    integer                     :: isf_order, fd_order
-    type(coulomb_operator)     :: pkernel
-    logical                     :: pkernel_verbose 
+    integer :: i, j, k, iatoms
+    real(dp) :: einit
+    type(dictionary), pointer :: dict               ! Input parameters.
+    integer :: isf_order, fd_order
+    type(coulomb_operator) :: pkernel
+    logical :: pkernel_verbose 
 
-    real(grid_p), pointer       :: Paux_1D(:)        ! 1D auxyliary array.
-    real(grid_p), pointer       :: Paux_3D(:,:,:)  ! 3D auxyliary array.
+    real(grid_p), pointer :: Paux_1D(:)        ! 1D auxyliary array.
+    real(grid_p), pointer :: Paux_3D(:,:,:)  ! 3D auxyliary array.
     integer :: ngrid
-    integer                     :: World_Comm, mpirank, ierr
+    integer :: World_Comm, mpirank, ierr
 
-    real(dp)                    :: radii(na_u) 
-    character(len=2)          :: atm_label(na_u) 
-    real(dp)                    :: delta, factor 
-    integer, allocatable        :: local_grids(:,:)
+    real(dp) :: radii(na_u) 
+    character(len=2) :: atm_label(na_u) 
+    real(dp) :: delta, factor 
+    integer, allocatable :: local_grids(:,:)
     type(domain) :: dom
     type(PSolver_energies) :: energies
 
-    call timer( 'BigDFT_solv', 1)
+    call timer( 'poisson_psolver', 1)
 
     ! f_util and dictionary initialisations:
     call f_lib_initialize()
@@ -140,7 +131,7 @@ contains
     ngrid = product(grid)
 
     allocate(local_grids(3,Nodes))
-    call re_alloc(Paux_1D, 1, ngrid, 'Paux_1D', 'poison_bigdft' )
+    call re_alloc(Paux_1D, 1, ngrid, 'Paux_1D', 'poisson_psolver' )
 
     ! Calculation of cell angles and grid separation for psolver:
     do i = 1, 3
@@ -148,7 +139,7 @@ contains
     end do
 
     ! Setting of dictionary variables, done at every calling:
-    call set_bigdft_variables(dom, cell, calc_stress, dict, pkernel_verbose)
+    call set_variables(dom, cell, calc_stress, dict, pkernel_verbose)
 
 #ifdef MPI
     ! RHO is collected to a global array for all processors
@@ -171,7 +162,7 @@ contains
     call pkernel_set(pkernel, verbose=pkernel_verbose)
 
     ! Implicit solvent?
-    if ( bigdft_cavity ) then
+    if ( psolver_cavity ) then
 
       ! Set a radius for each atom in Angstroem (UFF, Bondi, Pauling, etc ...)
       call set_label(atm_label)
@@ -184,7 +175,9 @@ contains
       do iatoms = 1 , na_u
         radii(iatoms) = factor * radii(iatoms) * Ang
       end do
+
       call pkernel_set_epsilon(pkernel, nat=na_u, rxyz=xa, radii=radii)
+
     end if
 
     ! Free calling dictionary
@@ -218,7 +211,7 @@ contains
 #ifdef MPI
     ! Now we spread back the potential on different nodes. 
     call timer('spread_pot', 1)
-    Paux_1D = 2 * Paux_1D - 2 * sum(Paux_1D) / ngrid
+    Paux_1D(:) = 2 * Paux_1D(:) - 2 * sum(Paux_1D) / ngrid
     call spread_potential(Paux_1D, grid, 2, ngrid, local_grids, V)
     call timer('spread_pot', 2)
 #else
@@ -227,29 +220,30 @@ contains
 
     ! Ending calculation
     call pkernel_free(pkernel)
-    call f_lib_finalize_noreport() 
-    call de_alloc(Paux_1D, 'Paux', 'poisson_bigdft')
+    call f_lib_finalize_noreport()
+    
+    call de_alloc(Paux_1D, 'Paux', 'poisson_psolver')
     deallocate(local_grids)
 
     firsttime = .false.
 
-    call timer( 'BigDFT_solv', 2)
+    call timer( 'poisson_psolver', 2)
     
-  end subroutine poisson_bigdft
+  end subroutine poisson_psolver
 
-  subroutine set_bigdft_variables(dom, cell, calc_stress, dict, pkernel_verbose)
+  subroutine set_variables(dom, cell, calc_stress, dict, pkernel_verbose)
 
     use dictionaries, dict_set => set
     use at_domain
     use futile
     use siesta_geom,    only : shape
-    use siesta_options, only : bigdft_isf_order, bigdft_fd_order,    &
-        bigdft_verbose, bigdft_delta,         &
-        bigdft_fact_rigid, bigdft_cavity_type,&
-        bigdft_cavity, bigdft_radii_type,     &
-        bigdft_gps_algorithm, bigdft_epsilon, &
-        bigdft_gammaS, bigdft_alphaS,         &
-        bigdft_betaV, bigdft_atomic_radii
+    use siesta_options, only : psolver_isf_order, psolver_fd_order,    &
+        psolver_verbose, psolver_delta,         &
+        psolver_fact_rigid, psolver_cavity_type,&
+        psolver_cavity, psolver_radii_type,     &
+        psolver_gps_algorithm, psolver_epsilon, &
+        psolver_gammaS, psolver_alphaS,         &
+        psolver_betaV, psolver_atomic_radii
 
     ! #################################################################### !
     ! Subroutine to set-up BigDFT Poisson solver variables and boundary    !
@@ -268,8 +262,8 @@ contains
       dom = domain_new(ATOMIC_UNITS, [FREE_BC, FREE_BC, FREE_BC], abc=cell)
       if ( firsttime .and. IONode ) then
         write(6,'(/,a,/,a/,a,/,a,/,a,/,a)')               &
-            'bigdft_solver: initialising kernel for a molecular system',&
-            '#================= WARNING bigdft_solver ===============#',&
+            'PSolver: initialising kernel for a molecular system',&
+            '#==================== WARNING PSolver ==================#',&
             '                                                         ',&
             ' Molecular system must be place at the center of the box,',&
             ' otherwise box-edge effects might lead to wrong Hartree  ',&
@@ -280,8 +274,8 @@ contains
       dom = domain_new(ATOMIC_UNITS, [PERIODIC_BC, FREE_BC, PERIODIC_BC], abc=cell)
       if ( firsttime .and. IONode ) then
         write(6,'(/,a,/,a/,a,/,a,/,a,/,a)')                 &
-            'bigdft_solver: initialising kernel for a slab system',     &
-            '#================= WARNING bigdft_solver ===============#',&
+            'PSolver: initialising kernel for a slab system',&
+            '#==================== WARNING PSolver ==================#',&
             ' Empty direction of the periodic system has to be set    ',&
             ' along the Y-axis.                                       ',&
             ' Additionally, simulation box must be large enough to    ',&
@@ -292,14 +286,14 @@ contains
       dom = domain_new(ATOMIC_UNITS, [PERIODIC_BC, PERIODIC_BC, PERIODIC_BC], abc=cell)
       if ( firsttime .and. IONode ) then
         write(6,"(a)")                                     &
-            'bigdft_solver: initialising kernel for a periodic system'
+            'PSolver: initialising kernel for a periodic system'
       end if
     case ( 'wire' )
       dom = domain_new(ATOMIC_UNITS, [FREE_BC, FREE_BC, PERIODIC_BC], abc=cell)
       if ( firsttime .and. IONode ) then
         write(6,'(/,a,/,a/,a,/,a,/,a,/,a)')                 &
-            'bigdft_solver: initialising kernel for a 1D-wire system  ',&
-            '#================= WARNING bigdft_solver ===============#',&
+            'PSolver: initialising kernel for a 1D wire system',&
+            '#==================== WARNING PSolver ==================#',&
             ' Empty directions of the wire system has to be set       ',&
             ' along the X and Y-axis.                                 ',&
             ' Additionally, simulation box must be large enough to    ',&
@@ -315,48 +309,48 @@ contains
     call set( dict//'setup'//'global_data', .true.) ! Hardwired, it cannot be otherwise.
 
     ! Set kernel and cavity variables: 
-    call set( dict//'kernel'//'isf_order', bigdft_isf_order)
+    call set( dict//'kernel'//'isf_order', psolver_isf_order)
     call set( dict//'kernel'//'stress_tensor', calc_stress)
-    call set( dict//'environment'//'fd_order', bigdft_fd_order)  
-    call set( dict//'setup'//'verbose', bigdft_verbose)
-    if( bigdft_cavity) then
-      call set( dict//'environment'//'delta', bigdft_delta)
-      call set( dict//'environment'//'fact_rigid', bigdft_fact_rigid)
-      call set( dict//'environment'//'cavity', bigdft_cavity_type) 
-      call set( dict//'environment'//'radii_set', bigdft_radii_type)
-      call set( dict//'environment'//'gps_algorithm', bigdft_gps_algorithm)
-      call set( dict//'environment'//'epsilon', bigdft_epsilon)
-      call set( dict//'environment'//'gammaS', bigdft_gammaS)
-      call set( dict//'environment'//'alphaS', bigdft_alphaS)
-      call set( dict//'environment'//'betaV', bigdft_betaV) 
-      call set( dict//'environment'//'atomic_radii', bigdft_atomic_radii)
+    call set( dict//'environment'//'fd_order', psolver_fd_order)  
+    call set( dict//'setup'//'verbose', psolver_verbose)
+    if( psolver_cavity) then
+      call set( dict//'environment'//'delta', psolver_delta)
+      call set( dict//'environment'//'fact_rigid', psolver_fact_rigid)
+      call set( dict//'environment'//'cavity', psolver_cavity_type) 
+      call set( dict//'environment'//'radii_set', psolver_radii_type)
+      call set( dict//'environment'//'gps_algorithm', psolver_gps_algorithm)
+      call set( dict//'environment'//'epsilon', psolver_epsilon)
+      call set( dict//'environment'//'gammaS', psolver_gammaS)
+      call set( dict//'environment'//'alphaS', psolver_alphaS)
+      call set( dict//'environment'//'betaV', psolver_betaV) 
+      call set( dict//'environment'//'atomic_radii', psolver_atomic_radii)
     endif
-    pkernel_verbose = bigdft_verbose   ! Verbose from setup is different from pkernel_init
+    pkernel_verbose = psolver_verbose   ! Verbose from setup is different from pkernel_init
     !$      call set(dict//'environment'//'pi_eta','0.6') ??
 
     ! Printing some info and warnings:
     if ( firsttime ) then
       if ( IONode ) then
-        write(6,"(a)") 'bigdft_solver: Poisson solver variables'
+        write(6,"(a)") 'psolver: Poisson solver variables'
         write(6,"(2a)")        'Solver boundary condition', shape
-        write(6,"(a, L2)")    'verbosity:', bigdft_verbose
-        write(6,"(a)")        'cavity type:', bigdft_cavity_type 
-        write(6,"(a, I3)")    'isf_order:', bigdft_isf_order 
-        write(6,"(a, I3)")    'fd_order:', bigdft_fd_order 
-        if( bigdft_cavity ) then
-          write(6,"(a, F10.5)") 'delta:', bigdft_delta 
-          write(6,"(a, F10.5)") 'fact_rigid:', bigdft_fact_rigid 
-          write(6,"(a, F10.5)") 'epsilon:', bigdft_epsilon 
-          write(6,"(a, F10.5)") 'gammaS:', bigdft_gammaS
-          write(6,"(a, F10.5)") 'alphaS:', bigdft_alphaS
-          write(6,"(a, F10.5)") 'betaV:', bigdft_betaV
-          write(6,"(a)")        'radii_set:', bigdft_radii_type
-          write(6,"(a)")        'gps_algorithm:', bigdft_gps_algorithm
+        write(6,"(a, L2)")    'verbosity:', psolver_verbose
+        write(6,"(a)")        'cavity type:', psolver_cavity_type 
+        write(6,"(a, I3)")    'isf_order:', psolver_isf_order 
+        write(6,"(a, I3)")    'fd_order:', psolver_fd_order 
+        if( psolver_cavity ) then
+          write(6,"(a, F10.5)") 'delta:', psolver_delta 
+          write(6,"(a, F10.5)") 'fact_rigid:', psolver_fact_rigid 
+          write(6,"(a, F10.5)") 'epsilon:', psolver_epsilon 
+          write(6,"(a, F10.5)") 'gammaS:', psolver_gammaS
+          write(6,"(a, F10.5)") 'alphaS:', psolver_alphaS
+          write(6,"(a, F10.5)") 'betaV:', psolver_betaV
+          write(6,"(a)")        'radii_set:', psolver_radii_type
+          write(6,"(a)")        'gps_algorithm:', psolver_gps_algorithm
         endif
       end if
     end if
 
-  end subroutine set_bigdft_variables
+  end subroutine set_variables
 
   subroutine gather_rho(rho, mesh, nsm, maxp, rho_total)
 
@@ -503,8 +497,7 @@ contains
     ProcessorZ = Nodes / ProcessorY
     BlockSizeY = (((mesh(2) / nsm) - 1) / ProcessorY + 1) * nsm
 
-    call re_alloc(bdens, 1, BlockSizeY*mesh(1), 'bdens', &
-        'spread_potential' )
+    call re_alloc(bdens, 1, BlockSizeY*mesh(1), 'bdens', 'spread_potential' )
 
     np = mesh(1) * mesh(2) * mesh(3)
 
@@ -599,7 +592,6 @@ contains
 
   end subroutine spread_potential
 
-  
   subroutine set_label(atm_label)
 
     ! Assignation of atom labels. 
@@ -849,4 +841,4 @@ contains
     A3D => A1D(:,:,:)
   end subroutine pointer_1D_3D
 
-end module m_psolver_bigdft
+end module psolver_m
