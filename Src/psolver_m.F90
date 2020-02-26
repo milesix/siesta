@@ -721,6 +721,7 @@ contains
     ! Quick return if we don't need to shift last lattice vector
     if ( shift(3) == 0 ) return
 
+    write(*,'(a,i4)') 'Number of grid-points required for shift: ', shift(3)
     call die('psolver: Please manually shift geometry such that &
         &the center of mass along Z direction is at the center of &
         &the cell. &

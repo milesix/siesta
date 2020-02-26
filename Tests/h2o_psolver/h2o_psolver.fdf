@@ -1,0 +1,27 @@
+SystemName          Water molecule with PSolver
+SystemLabel         h2o_psolver
+
+MeshCutoff  50 Ry
+MeshSubDivisions 1
+
+%block ChemicalSpeciesLabel
+ 1  8  O      # Species index, atomic number, species label
+ 2  1  H
+%endblock ChemicalSpeciesLabel
+
+LatticeConstant 1. Ang
+%block LatticeVectors
+  7.286412    0.000000    0.000000
+  0.000000    5.746952    0.000000
+  0.000000    0.000000    5.621012
+%endblock
+
+AtomicCoordinatesFormat  Ang
+%block AtomicCoordinatesAndAtomicSpecies
+ 0.000  0.000  0.000  1
+ 0.757  0.586  0.000  2
+-0.757  0.586  0.000  2
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+Poisson.Method PSolver
+AtomicCoordinatesOrigin COP
