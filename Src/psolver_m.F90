@@ -55,20 +55,12 @@ module psolver_m
   !< Algorithm used in the generalized Poisson equation: [PCG, PI]
   character(len=16), public :: psolver_gps_algorithm = 'PCG'
 
-  !< Permutations of lattice vectors
-  !!
-  !! All values should be unique. If lat_perm(1) == 2 it
-  !! means that cell(:,1) needs to be psolver_cell(:,2)
-  !! and we need to swap data.
-  integer, private :: lat_perm(3) = [1, 2, 3]
   !< Offsets in grids for lattices
   !!
   !! The individual offsets in the grids to ensure PSolver
   !! method is obeyed. I.e. for molecules it is important that
   !! the atomic center of mass is at the center of the grid.
   !! Using offsets we can rotate values.
-  !! lat_offset corresponds to the PSolver lattice vectors
-  !! I.e. AFTER permutation.
   integer, private :: lat_offset(3) = 0
 
   ! NOTE
@@ -100,6 +92,8 @@ contains
 
     ! Quick return
     if ( .not. use_psolver ) return
+
+    if ( dp /= grid_p ) call die('Error in compilation, please ensure -DGRID_DP')
 
     ! Parse the PSolver block
     ! If it does not exist, then use default values
@@ -195,7 +189,7 @@ contains
   !!
   !! PSolver requires a different potential distribution than
   !! Siesta and we need to create routines for re-arranging them.
-  subroutine poisson_psolver_init(cell, nbcell, bcell, nm, ntm, nsm)
+  subroutine poisson_psolver_init(cell, na_u, xa, nbcell, bcell, nm, ntm, nsm)
 
     use parallel, only: Node, Nodes
 #ifdef MPI
@@ -206,14 +200,15 @@ contains
     use moremeshsubs, only: initMeshDistr, UNIFORM, UNIFORM_PSOLVER
     use poisson_solver, only: PS_dim4allocation
 
-    integer, intent(in) :: nbcell
+    integer, intent(in) :: nbcell, na_u
+    real(dp), intent(in) :: xa(3,na_u)
     real(dp), intent(in) :: cell(3,3), bcell(3,nbcell)
     integer, intent(in) :: nm(3), ntm(3), nsm
 
     ! Local variables
     integer :: nz_d, nz_d_cum, nz_d_vion, nz_d_xc_offset, nz_d_start
     integer :: start_nm(3), end_nm(3)
-    real(dp) :: sca_proj(3), com(3)
+    real(dp) :: sca_proj(3), cop(3), l_cell(3)
     real(dp), parameter :: ortho_tol = 0.0000001_dp
     character(len=1) :: boundary_type
 #ifdef MPI
@@ -222,7 +217,6 @@ contains
 #endif
 
     ! Initialize permutations and offsets
-    lat_perm(:) = (/1, 2, 3/)
     lat_offset(:) = 0
 
     ! Our first task is to figure out which type of boundary we are using.
@@ -237,8 +231,102 @@ contains
       boundary_type = 'P'
     end select
 
+    ! Calculate center of mass
+    cop(:) = sum(xa, dim=2) / na_u
+    l_cell(1) = VNORM(cell(:,1))
+    l_cell(2) = VNORM(cell(:,2))
+    l_cell(3) = VNORM(cell(:,3))
+
+    ! Then we have figure out how to correct the grid to ensure our
+    ! boundaries are correct.
+    ! We will allow a couple of cases
+    select case ( boundary_type )
+    case ( 'P' ) ! bulk
+      ! We do not have to do anything. PSolver is compatible with this configuration
+    case ( 'S' ) ! slab
+
+      ! The open BC *has* to be along the 2nd lattice vector.
+      ! So we have to check whether the bulk directions are along AC
+      sca_proj(1) = abs(VEC_PROJ_SCA(bcell(:,1), cell(:,3)))
+      sca_proj(2) = abs(VEC_PROJ_SCA(bcell(:,2), cell(:,3)))
+      if ( all(sca_proj < ortho_tol) ) then
+        write(6,'(/,a,/,a/,a,/,a,/,a,/,a)')                 &
+            '#==================== WARNING PSolver ==================#',&
+            ' Empty direction of the slab system has to be set        ',&
+            ' along the 1st or 2nd lattice vector. NOT along 3rd.     ',&
+            '#=======================================================#'
+
+        call die('poisson_psolver_init: last lattice vector has to be periodic &
+            &in slab calculations, please correct your geometry!')
+      end if
+
+      ! Figure out whether we have to swap 1 and 2
+      sca_proj(1) = abs(VEC_PROJ_SCA(cell(:,2), bcell(:,1)))
+      sca_proj(2) = abs(VEC_PROJ_SCA(cell(:,2), bcell(:,2)))
+      if ( any(sca_proj > ortho_tol) ) then
+        write(*,'(a)') 'PSolver lattice vector permutations'
+        write(*,'(a)') '  A <-> B'
+        call die('psolver: Siesta cannot convert the mesh-grid to be compatible with &
+            &PSolver requirements. Please manually swap A-B lattice vectors &
+            &to fulfil the above lattice permutation table.')
+      end if
+
+      ! Calculate integer offset
+      ! First we project COP onto the vacuum region lattice
+      ! vector.
+      ! Then we want the projection point of the COP to
+      ! be in the middle (0.5)
+      sca_proj(1) = VEC_PROJ_SCA(cell(:,2), cop) / l_cell(2) - 0.5_dp
+
+      ! Retrieve nearest integer offset
+      lat_offset(2) = mod(nint(sca_proj(1) * ntm(2)), ntm(2))
+
+    case ( 'W' )
+
+      ! The open BC *has* to be along the 1st and 2nd lattice vector.
+      ! So we have to check whether the bulk direction is along C.
+      sca_proj(1) = abs(VEC_PROJ_SCA(bcell(:,1), cell(:,3)))
+      if ( sca_proj(1) < ortho_tol ) then
+        write(6,'(/,a,/,a/,a,/,a,/,a,/,a)')                 &
+            '#==================== WARNING PSolver ==================#',&
+            ' Empty direction of the wire system has to be set        ',&
+            ' along the 1st and 2nd lattice vectors. NOT along 3rd.   ',&
+            '#=======================================================#'
+
+        call die('poisson_psolver_init: last lattice vector has to be periodic &
+            &in wire calculations, please correct your geometry!')
+      end if
+
+      ! Calculate integer offset
+      ! We do not need to offset grids
+      ! First we project the COP onto the vacuum region lattice
+      ! vector.
+      ! Then we want the projection point of the COP to
+      ! be in the middle (0.5)
+      sca_proj(1) = VEC_PROJ_SCA(cell(:,1), cop) / l_cell(1) - 0.5_dp
+      ! Retrieve nearest integer offset
+      lat_offset(1) = mod(nint(sca_proj(1) * ntm(1)), ntm(1))
+      sca_proj(2) = VEC_PROJ_SCA(cell(:,2), cop) / l_cell(2) - 0.5_dp
+      lat_offset(2) = mod(nint(sca_proj(2) * ntm(2)), ntm(2))
+
+    case ( 'F' )
+
+      sca_proj(1) = VEC_PROJ_SCA(cell(:,1), cop) / l_cell(1) - 0.5_dp
+      lat_offset(1) = mod(nint(sca_proj(1) * ntm(1)), ntm(1))
+      sca_proj(2) = VEC_PROJ_SCA(cell(:,2), cop) / l_cell(2) - 0.5_dp
+      lat_offset(2) = mod(nint(sca_proj(2) * ntm(2)), ntm(2))
+      sca_proj(3) = VEC_PROJ_SCA(cell(:,3), cop) / l_cell(3) - 0.5_dp
+      lat_offset(3) = mod(nint(sca_proj(3) * ntm(3)), ntm(3))
+
+    end select
+
 #ifdef MPI
     if ( Nodes > 1 ) then
+
+      ! If moremeshsubs could be made *periodic* in its mesh
+      ! interpretation, then we could add lat_offset to start_nm/end_nm
+      ! and by that acheive the correct grid. However, moremeshsubs is
+      ! not periodic.
 
       ! The current distributed version requires the mesh
       ! to be commensurate with PSolver's internal representation.
@@ -284,7 +372,9 @@ contains
 
       if ( .not. check_sub ) then
         write(*,*) 'poisson_psolver: Please try with MeshSubdivisions 1'
-        call die('poisson_psolver: Siesta mesh is not commensurate with PSolver grid.')
+        write(0,*) 'poisson_psolver: Please try with MeshSubdivisions 1'
+        call die('poisson_psolver: Siesta mesh is not commensurate with PSolver grid. &
+            &Please try with MeshSubdivisions 1')
       end if
 
       ! Create a new explicit mesh distribution for the PSolver library
@@ -292,120 +382,6 @@ contains
 
     end if
 #endif
-
-    ! Calculate center of mass
-    call center_of_mass(com)
-
-    ! Then we have figure out how to correct the grid to ensure our
-    ! boundaries are correct.
-    ! We will allow a couple of cases
-    select case ( boundary_type )
-    case ( 'P' ) ! bulk
-      ! We do not have to do anything. PSolver is compatible with this configuration
-    case ( 'S' ) ! slab
-
-      ! The open BC *has* to be along the 2nd lattice vector.
-      ! So we have to check whether the bulk directions are along AC
-      sca_proj(1) = abs(VEC_PROJ_SCA(bcell(:,1), cell(:,3)))
-      sca_proj(2) = abs(VEC_PROJ_SCA(bcell(:,2), cell(:,3)))
-      if ( all(sca_proj < ortho_tol) ) then
-        write(6,'(/,a,/,a/,a,/,a,/,a,/,a)')                 &
-            '#==================== WARNING PSolver ==================#',&
-            ' Empty direction of the slab system has to be set        ',&
-            ' along the 1st or 2nd lattice vector. NOT along 3rd.     ',&
-            '#=======================================================#'
-
-        call die('poisson_psolver_init: last lattice vector has to be periodic &
-            &in slab calculations, please correct your geometry!')
-      end if
-
-      ! Figure out whether we have to swap 1 and 2
-      sca_proj(1) = abs(VEC_PROJ_SCA(cell(:,2), bcell(:,1)))
-      sca_proj(2) = abs(VEC_PROJ_SCA(cell(:,2), bcell(:,2)))
-      if ( any(sca_proj > ortho_tol) ) then
-        ! We need to swap 1 and 2
-        lat_perm(1) = 2
-        lat_perm(2) = 1
-      end if
-
-      ! Calculate integer offset
-      ! First we project the COM onto the vacuum region lattice
-      ! vector.
-      ! Then we want the projection point of the COM to
-      ! be in the middle (0.5)
-      sca_proj(1) = VEC_PROJ_SCA(cell(:,lat_perm(2)), com) - 0.5_dp
-
-      ! Retrieve nearest integer offset
-      lat_offset(lat_perm(2)) = nint(sca_proj(1) * ntm(lat_perm(2)))
-
-    case ( 'W' )
-
-      ! The open BC *has* to be along the 1st and 2nd lattice vector.
-      ! So we have to check whether the bulk direction is along C.
-      sca_proj(1) = abs(VEC_PROJ_SCA(bcell(:,1), cell(:,3)))
-      if ( sca_proj(1) < ortho_tol ) then
-        write(6,'(/,a,/,a/,a,/,a,/,a,/,a)')                 &
-            '#==================== WARNING PSolver ==================#',&
-            ' Empty direction of the wire system has to be set        ',&
-            ' along the 1st and 2nd lattice vectors. NOT along 3rd.   ',&
-            '#=======================================================#'
-
-        call die('poisson_psolver_init: last lattice vector has to be periodic &
-            &in wire calculations, please correct your geometry!')
-      end if
-
-      ! Calculate integer offset
-      ! We do not need to offset grids
-      ! First we project the COM onto the vacuum region lattice
-      ! vector.
-      ! Then we want the projection point of the COM to
-      ! be in the middle (0.5)
-      sca_proj(1) = VEC_PROJ_SCA(cell(:,1), com) - 0.5_dp
-      ! Retrieve nearest integer offset
-      lat_offset(1) = nint(sca_proj(1) * ntm(1))
-      sca_proj(2) = VEC_PROJ_SCA(cell(:,2), com) - 0.5_dp
-      lat_offset(2) = nint(sca_proj(2) * ntm(2))
-
-    case ( 'F' )
-
-      sca_proj(1) = VEC_PROJ_SCA(cell(:,1), com) - 0.5_dp
-      lat_offset(1) = nint(sca_proj(1) * ntm(1))
-      sca_proj(2) = VEC_PROJ_SCA(cell(:,2), com) - 0.5_dp
-      lat_offset(2) = nint(sca_proj(2) * ntm(2))
-      sca_proj(3) = VEC_PROJ_SCA(cell(:,3), com) - 0.5_dp
-      lat_offset(3) = nint(sca_proj(3) * ntm(3))
-
-    end select
-
-  contains
-
-    subroutine center_of_mass(com)
-      use atmfuncs, only: floating
-      use siesta_geom, only: na_u, xa, isa
-      use atomlist, only: amass
-
-      real(dp), intent(out) :: com(3)
-      real(dp) :: totm, am
-      integer :: ia
-
-      com(:) = 0._dp
-      totm = 0._dp
-
-      do ia = 1 , na_u
-
-        ! Skip ghost atoms
-        if ( floating(isa(ia)) ) cycle
-
-        am = amass(ia)
-        com(:) = com(:) + xa(:,ia) * am
-        totm = totm + am
-
-      end do
-
-      ! get the center of mass
-      com(:) = com(:) / totm
-
-    end subroutine center_of_mass
 
   end subroutine poisson_psolver_init
 
@@ -431,11 +407,12 @@ contains
   !! Currently the stress-tensor is not calculated correctly.
   !! I do not know how to fix this but it is *not* a matter of units since
   !! I get a sign change.
-  subroutine poisson_psolver(cell, ntm, nsm, nsp, rho, V,  eh, stress, calc_stress)
+  subroutine poisson_psolver(cell, na_u, xa, ntm, nsm, nsp, rho, V,  eh, stress, calc_stress)
 
     use parallel, only: Node, Nodes
     use units,          only: eV, Ang
-    use siesta_geom,    only: na_u, xa, isa
+    use atmfuncs, only: floating
+    use siesta_geom,    only: isa
     use periodic_table, only: symbol
     use chemical, only: atomic_number
     use alloc,          only: re_alloc, de_alloc
@@ -456,6 +433,8 @@ contains
     use at_domain
 
     real(dp), intent(in) :: cell(3,3)        ! Unit-cell vectors.
+    integer, intent(in) :: na_u
+    real(dp), intent(in) :: xa(3,na_u)
     integer, intent(in) :: ntm(3)           ! Total mesh divisions.
     real(grid_p), intent(in) :: rho(:) ! Input density.
     integer, intent(in) :: nsm, nsp
@@ -473,9 +452,11 @@ contains
     real(grid_p), pointer :: Vaux(:) => null() ! 1D auxiliary array.
     real(grid_p), pointer :: Vaux3D(:,:,:)  ! 3D auxiliary array.
 
+    real(dp), pointer :: xa_cavity(:,:) => null()
     real(dp) :: hgrid(3) ! Uniform mesh spacings in the three directions.
+    real(dp) :: lat_doffset(3)
     integer :: ia
-    real(dp) :: radii(na_u) 
+    real(dp) :: radii(na_u)
     real(dp) :: factor
 
     integer :: p_nml(3), p_nnml, p_ntml(3), p_ntpl
@@ -487,9 +468,9 @@ contains
     call dict_init(dict)
 
     ! Calculation of cell angles and grid separation for psolver:
-    hgrid(1) = VNORM(cell(:,lat_perm(1))) / ntm(lat_perm(1))
-    hgrid(2) = VNORM(cell(:,lat_perm(2))) / ntm(lat_perm(2))
-    hgrid(3) = VNORM(cell(:,lat_perm(3))) / ntm(lat_perm(3))
+    hgrid(1) = VNORM(cell(:,1)) / ntm(1)
+    hgrid(2) = VNORM(cell(:,2)) / ntm(2)
+    hgrid(3) = VNORM(cell(:,3)) / ntm(3)
 
     ! Setting of dictionary variables, done at every calling:
     call set_variables(dom, cell, calc_stress, dict)
@@ -517,6 +498,9 @@ contains
     ! We will use pointer tricks
     call pointer_1D_3D(Vaux, p_ntml(1), p_ntml(2), p_ntml(3), Vaux3D)
 
+    ! Shift data to center molecule/slab in mesh
+    call mesh_cshift(p_ntml, Vaux3D, -lat_offset)
+
     ! Initialize poisson-kernel
     pkernel = pkernel_init(Node, Nodes, dict, dom, ntm, hgrid)
 
@@ -526,16 +510,31 @@ contains
     ! Implicit solvent?
     if ( psolver_cavity ) then
 
+      ! Calculate offset due to mesh shift
+      lat_doffset(:) = 0._dp
+      do ia = 1, 3
+        lat_doffset(:) = lat_doffset(:) - (cell(:,ia) / ntm(ia)) * lat_offset(:)
+      end do
+
+      call re_alloc(xa_cavity, 1, 3, 1, na_u, 'xa_cavity', 'poisson_psolver')
+
       ! Set a radius for each atom in Angstroem (UFF, Bondi, Pauling, etc ...)
       ! Multiply for a constant prefactor (see the Soft-sphere paper JCTC 2017)
       ! The pkernel_get_radius returns in Ang, so we have to convert to Bohr
       factor = pkernel%cavity%fact_rigid * Ang
       do ia = 1 , na_u
-        radii(ia) = factor * &
-            pkernel_get_radius(pkernel, atname=symbol(atomic_number(isa(ia))))
+        if ( floating(isa(ia)) ) then
+          radii(ia) = 0._dp
+        else
+          radii(ia) = factor * &
+              pkernel_get_radius(pkernel, atname=symbol(atomic_number(isa(ia))))
+        end if
+        xa_cavity(:,ia) = xa(:,ia) + lat_doffset(:)
       end do
 
-      call pkernel_set_epsilon(pkernel, nat=na_u, rxyz=xa, radii=radii)
+      call pkernel_set_epsilon(pkernel, nat=na_u, rxyz=xa_cavity, radii=radii)
+
+      call de_alloc(xa_cavity, 'xa_cavity', 'poisson_psolver')
 
     end if
 
@@ -544,6 +543,9 @@ contains
 
     ! Solve the Poisson equation and retrieve also energies and stress-tensor
     call Electrostatic_Solver(pkernel, Vaux3D, energies)
+
+    ! Shift data back
+    call mesh_cshift(p_ntml, Vaux3D, lat_offset)
 
     ! In siesta poison.F the energies and stress tensors are calculated
     ! distributed. I.e. Siesta expects the Hartree energy and the
@@ -588,6 +590,155 @@ contains
 
   end subroutine poisson_psolver
 
+
+  !< Grid mesh center-of-mass shifting
+  !!
+  !! Shift entire mesh depending on the center-of mass for each lattice
+  !! vector.
+  !! This should enable users to not rely on PSolver's requirements by
+  !! shifting the data.
+  !! Needless to say that performance will be greater if one ensures
+  !! PSolvers requirements are fulfilled.
+  !!
+  !! Note: One cannot create the offsets in the initMeshDistr
+  !! since that routine does not consider the mesh as periodic.
+  !! If moremeshsubs would be altered for that it would make things
+  !! much easier since it could *all* be handled in the distMeshData
+  !! routine.
+  subroutine mesh_cshift(ntml, V, shift)
+
+    use parallel, only: Nodes
+    use alloc, only: re_alloc, de_alloc
+#ifdef MPI
+    use mpi_siesta
+#endif
+
+    integer, intent(in) :: ntml(3)
+    real(grid_p), intent(inout) :: V(ntml(1),ntml(2),ntml(3))
+    integer, intent(in) :: shift(3)
+
+    integer :: i1, i2, i3, j1, j2
+    real(grid_p), pointer :: Vaux(:,:) => null()
+
+    ! Luckily PSolver requires only distribution in C-axis.
+    ! So A and B axis are easy to shift
+
+    if ( shift(1) /= 0 .and. shift(2) /= 0 ) then
+      call re_alloc(Vaux, 1, ntml(1), 1, ntml(2), 'Vaux', 'poisson_psolver_shift')
+
+      ! Loop outer regions
+      do i3 = 1, ntml(3)
+
+        if ( shift(2) < 0 ) then
+          j2 = ntml(2) + shift(2) + 1
+        else
+          j2 = shift(2)
+        end if
+        do i2 = 1, ntml(2)
+
+          if ( shift(1) < 0 ) then
+            j1 = ntml(1) + shift(1) + 1
+          else
+            j1 = shift(1)
+          end if
+          do i1 = 1 , ntml(1)
+            Vaux(j1,j2) = V(i1,i2,i3)
+            j1 = j1 + 1
+            if ( j1 > ntml(1) ) j1 = 1
+          end do
+
+          j2 = j2 + 1
+          if ( j2 > ntml(2) ) j2 = 1
+        end do
+
+        !call dcopy(ntml(1)*ntml(2), Vaux(1,1), 1, V(1,1,i3), 1)
+        do i2 = 1, ntml(2)
+          do i1 = 1, ntml(1)
+            V(i1,i2,i3) = Vaux(i1,i2)
+          end do
+        end do
+
+      end do
+
+    else if ( shift(1) /= 0 ) then
+      call re_alloc(Vaux, 1, ntml(1), 1, 1, 'Vaux', 'poisson_psolver_shift')
+
+      ! Loop outer regions
+      do i3 = 1, ntml(3)
+        do i2 = 1, ntml(2)
+
+          if ( shift(1) < 0 ) then
+            j1 = ntml(1) + shift(1) + 1
+          else
+            j1 = shift(1)
+          end if
+          do i1 = 1 , ntml(1)
+            Vaux(j1,1) = V(i1,i2,i3)
+            j1 = j1 + 1
+            if ( j1 > ntml(1) ) j1 = 1
+          end do
+
+          !call dcopy(ntml(1), Vaux(1,1), 1, V(1,i2,i3), 1)
+          do i1 = 1, ntml(1)
+            V(i1,i2,i3) = Vaux(i1,1)
+          end do
+
+        end do
+      end do
+
+    else if ( shift(2) /= 0 ) then
+      call re_alloc(Vaux, 1, ntml(1), 1, ntml(2), 'Vaux', 'poisson_psolver_shift')
+
+      ! Loop outer regions
+      do i3 = 1, ntml(3)
+
+        if ( shift(2) < 0 ) then
+          j2 = ntml(2) + shift(2) + 1
+        else
+          j2 = shift(2)
+        end if
+        do i2 = 1, ntml(2)
+          do i1 = 1, ntml(1)
+            Vaux(i1,j2) = V(i1,i2,i3)
+          end do
+          j2 = j2 + 1
+          if ( j2 > ntml(2) ) j2 = 1
+        end do
+
+        !call dcopy(ntml(1)*ntml(2), Vaux(1,1), 1, V(1,1,i3), 1)
+        do i2 = 1, ntml(2)
+          do i1 = 1, ntml(1)
+            V(i1,i2,i3) = Vaux(i1,i2)
+          end do
+        end do
+
+      end do
+
+    end if
+
+    call de_alloc(Vaux, 'Vaux', 'poisson_psolver_shift')
+
+    ! Quick return if we don't need to shift last lattice vector
+    if ( shift(3) == 0 ) return
+
+    call die('psolver: Please manually shift geometry such that &
+        &the center of mass along Z direction is at the center of &
+        &the cell. &
+        &AtomicCoordinatesOrigin COP!')
+
+#ifdef MPI
+    if ( Nodes > 1 ) then
+
+    else
+#endif
+
+#ifdef MPI
+    end if
+#endif
+
+  end subroutine mesh_cshift
+
+
   !< Setup PSolver variables to the dictionary
   !!
   !! This uses the PSolver dictionary to setup variables and passes
@@ -605,24 +756,16 @@ contains
     logical, intent(in) :: calc_stress
     type(dictionary), pointer :: dict ! Input parameters.
 
-    real(dp) :: cell_psolver(3,3)
-    integer :: i
-
-    ! Permute lattice vectors
-    do i = 1, 3
-      cell_psolver(:,i) = cell(:,lat_perm(i))
-    end do
-
     ! Initialize domain
     select case ( shape )
     case ( 'molecule' )
-      dom = domain_new(ATOMIC_UNITS, [FREE_BC, FREE_BC, FREE_BC], abc=cell_psolver)
+      dom = domain_new(ATOMIC_UNITS, [FREE_BC, FREE_BC, FREE_BC], abc=cell)
     case ( 'slab' )
-      dom = domain_new(ATOMIC_UNITS, [PERIODIC_BC, FREE_BC, PERIODIC_BC], abc=cell_psolver)
+      dom = domain_new(ATOMIC_UNITS, [PERIODIC_BC, FREE_BC, PERIODIC_BC], abc=cell)
     case ( 'bulk' )
-      dom = domain_new(ATOMIC_UNITS, [PERIODIC_BC, PERIODIC_BC, PERIODIC_BC], abc=cell_psolver)
+      dom = domain_new(ATOMIC_UNITS, [PERIODIC_BC, PERIODIC_BC, PERIODIC_BC], abc=cell)
     case ( 'wire' )
-      dom = domain_new(ATOMIC_UNITS, [FREE_BC, FREE_BC, PERIODIC_BC], abc=cell_psolver)
+      dom = domain_new(ATOMIC_UNITS, [FREE_BC, FREE_BC, PERIODIC_BC], abc=cell)
     case default
       ! This should be enough to break PSolver ;)
       dom = domain_null()

@@ -179,7 +179,7 @@ C Find origin with which to translate all coordinates
 
       if (fdf_block('AtomicCoordinatesOrigin',bfdf)) then 
         if (.not. fdf_bline(bfdf,pline))
-     .      call die('coor: ERROR in AtomicCoordinatesOrigin block')
+     &      call die('coor: ERROR in AtomicCoordinatesOrigin block')
         if ( fdf_bnvalues(pline) == 3 ) then
           origin(1) = fdf_bvalues(pline,1)
           origin(2) = fdf_bvalues(pline,2)
@@ -195,6 +195,7 @@ C Find origin with which to translate all coordinates
           else if ( leqi('MIN', acf(1:3)) ) then
             origin_method = 3
           end if
+
           ! Check whether there is a direction specification
           if ( leqi('X', acf(5:7)) ) then
             origin_xyz = 1
@@ -211,6 +212,7 @@ C Find origin with which to translate all coordinates
           else
             origin_xyz = 7
           end if
+
         end if
         call fdf_bclose(bfdf)
       else
@@ -278,7 +280,6 @@ C If Z matrix hasn't been found, read regular atomic coordinates
             ! This is needed here because an explicit origin shift
             ! is assumed to be using the same scaling convention as
             ! the coordinates, and the scaling is applied later
-          
             if (explicit_origin_given) then
               xa(1:3,ia) = xa(1:3,ia) + origin(1:3)
             endif

@@ -412,12 +412,16 @@ C     DStres is computed but not used later
       if ( use_psolver ) then
 
         ! Initialize poisson solver
-        call poisson_psolver_init(cell, nbcell, bcell, nm, ntm, nsm)
+        call poisson_psolver_init(cell, nua, xa,
+     &      nbcell, bcell, nm, ntm, nsm)
 
         ! Solve initial poisson problem with atomic charge
-        call poisson_psolver(cell, ntm, nsm, nsp, rhoatm,
+        ! Note, we call:
+        !   setMeshDistr(UNIFORM_PSOLVER, ...)
+        !   ... calc potential
+        !   setMeshDistr(UNIFORM, ...)
+        call poisson_psolver(cell, nua, xa, ntm, nsm, nsp, rhoatm,
      $      Vscf(:,1), Uharrs, DStres, calc_stress=.false.)
-
       else
 #endif
         call poison( cell, ntml(1), ntml(2), ntml(3), ntm, rhoatm,
@@ -1276,7 +1280,11 @@ C ----------------------------------------------------------------------
 
 #ifdef SIESTA__PSOLVER
       if ( use_psolver ) then
-        call poisson_psolver(cell, ntm, nsm, nsp, DRho(:,1),
+        ! Note, we call:
+        !   setMeshDistr(UNIFORM_PSOLVER, ...)
+        !   ... calc potential
+        !   setMeshDistr(UNIFORM, ...)
+        call poisson_psolver(cell, nua, xa, ntm, nsm, nsp, DRho(:,1),
      &      Vaux, DUscf, DStres, calc_stress = istr == 1)
       else
 #endif
