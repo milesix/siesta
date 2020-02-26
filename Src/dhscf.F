@@ -109,7 +109,8 @@
       use mpi_siesta
 #endif
 #ifdef SIESTA__PSOLVER
-      use siesta_options, only : use_psolver
+      use psolver_m, only: use_psolver
+      use psolver_m, only: poisson_psolver_init
       use psolver_m, only: poisson_psolver
 #endif
 
@@ -409,9 +410,14 @@ C     Uharrs is computed (and saved)
 C     DStres is computed but not used later
 #ifdef SIESTA__PSOLVER
       if ( use_psolver ) then
-        call poisson_psolver(cell, ntml, ntm, nsm, rhoatm,
-     $      Vscf(:,1), Uharrs, DStres,
-     &      calc_stress=.false.)
+
+        ! Initialize poisson solver
+        call poisson_psolver_init(cell, nbcell, bcell, nm, ntm, nsm)
+
+        ! Solve initial poisson problem with atomic charge
+        call poisson_psolver(cell, ntm, nsm, nsp, rhoatm,
+     $      Vscf(:,1), Uharrs, DStres, calc_stress=.false.)
+
       else
 #endif
         call poison( cell, ntml(1), ntml(2), ntml(3), ntm, rhoatm,
@@ -658,8 +664,8 @@ C     Modules
       use mpi_siesta
 #endif
 #ifdef SIESTA__PSOLVER
+      use psolver_m,      only: use_psolver
       use psolver_m,      only: poisson_psolver
-      use siesta_options, only: use_psolver
 #endif
       use iogrid_netcdf, only: write_grid_netcdf
       use iogrid_netcdf, only: read_grid_netcdf
@@ -1270,7 +1276,7 @@ C ----------------------------------------------------------------------
 
 #ifdef SIESTA__PSOLVER
       if ( use_psolver ) then
-        call poisson_psolver(cell, ntml, ntm, nsm, DRho(:,1),
+        call poisson_psolver(cell, ntm, nsm, nsp, DRho(:,1),
      &      Vaux, DUscf, DStres, calc_stress = istr == 1)
       else
 #endif

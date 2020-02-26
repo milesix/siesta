@@ -39,6 +39,11 @@ subroutine read_options( na, ns, nspin )
 #ifdef SIESTA__CHESS
   use m_chess, only: set_CheSS_parameter
 #endif
+
+#ifdef SIESTA__PSOLVER
+  use psolver_m, only: poisson_psolver_options
+  use psolver_m, only: poisson_psolver_options_print
+#endif
   
   implicit none
   !----------------------------------------------------------- Input Variables
@@ -1735,30 +1740,10 @@ subroutine read_options( na, ns, nspin )
   RelaxCellOnly                = fdf_get('MD.RelaxCellOnly', .false.)
   RemoveIntraMolecularPressure = fdf_get( &
       'MD.RemoveIntraMolecularPressure', .false.)
-  
-  ! PSolver (another poisson solver)
-  ctmp = fdf_get('Poisson.Method', 'fft')
+
 #ifdef SIESTA__PSOLVER
-  use_psolver = leqi(ctmp, 'psolver')
-  
-  psolver_isf_order  =   fdf_get('Psolver.isf.order', 16)
-  psolver_fd_order   =   fdf_get('Psolver.fd.order', 16)
-  psolver_verbose    =   fdf_get('Psolver.verbose', .false.)
-  psolver_cavity     =   fdf_get('Psolver.solvent', .false.)
-  if ( psolver_cavity ) then
-    psolver_cavity_type  = fdf_get('Psolver.cavity.type', 'soft-sphere')
-    psolver_radii_type   = fdf_get('Psolver.radii.type', 'UFF')
-    psolver_delta        = fdf_get('Psolver.delta', 2.0_dp)
-    psolver_fact_rigid   = fdf_get('Psolver.fact.rigid', 1.12_dp)
-    psolver_gps_algorithm= fdf_get('Psolver.gps.algorithm', 'PCG')
-    psolver_epsilon      = fdf_get('Psolver.epsilon', 78.36_dp)
-    psolver_gammaS       = fdf_get('Psolver.gammaS', 72.0_dp)
-    psolver_alphaS       = fdf_get('Psolver.alphaS', -22.0_dp)
-    psolver_betaV        = fdf_get('Psolver.betaV', -0.35_dp)
-    psolver_atomic_radii = fdf_get('Psolver.atomic.radii', 0)
-  else 
-    psolver_cavity_type = 'none'
-  end if
+  call poisson_psolver_options()
+  call poisson_psolver_options_print()
 #endif
 
   !

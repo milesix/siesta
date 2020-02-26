@@ -45,6 +45,10 @@ C
       integer, parameter, public :: UNIFORM = 1
       integer, parameter, public :: QUADRATIC = 2
       integer, parameter, public :: LINEAR = 3
+#ifdef SIESTA__PSOLVER
+      !< Distribution required for PSolver, only z-plane is distributed seemingly uniformly
+      integer, parameter, public :: UNIFORM_PSOLVER = 4
+#endif
 
 ! Nick Papior, June 2020.
 ! The current implementation allows different distributions
@@ -140,7 +144,6 @@ C ----------------------------------------------------------------------
 #endif
 
       CONTAINS
-
 
       subroutine initMeshDistr_wload( iDistr, oDistr, nm, nsm, wload)
 C ==================================================================
@@ -315,7 +318,7 @@ C integer start_nml(3) : starting of local Mesh divisions
 C integer end_nml(3) : end of local Mesh divisions
 C integer nsm     : Number of mesh-sub-divisions for this
 C                   particular distribution
-
+C
 C OUTPUT:
 C The output values are stored in the current module:
 C        meshDistr(oDistr)
