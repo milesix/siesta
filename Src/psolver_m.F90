@@ -112,12 +112,12 @@ contains
       else if ( leqi('fd.order', ctmp) ) then
         psolver_fd_order = fdf_bintegers(pline, 1)
 
-      else if ( leqi('gps.algorithm', ctmp) ) then
-        psolver_gps_algorithm = fdf_bnames(pline, 2)
-
       else if ( leqi('cavity', ctmp) ) then
         psolver_cavity_type = fdf_bnames(pline, 2)
         psolver_cavity = .not. leqi('none', psolver_cavity_type)
+
+      else if ( leqi('gps.algorithm', ctmp) ) then
+        psolver_gps_algorithm = fdf_bnames(pline, 2)
 
       else if ( leqi('radii.type', ctmp) ) then
         psolver_radii_type = fdf_bnames(pline, 2)
@@ -432,14 +432,14 @@ contains
     ! PSolver uses atlab to handle geometry etc.
     use at_domain
 
-    real(dp), intent(in) :: cell(3,3)        ! Unit-cell vectors.
-    integer, intent(in) :: na_u
-    real(dp), intent(in) :: xa(3,na_u)
-    integer, intent(in) :: ntm(3)           ! Total mesh divisions.
-    real(grid_p), intent(in) :: rho(:) ! Input density.
+    real(dp), intent(in) :: cell(3,3) ! Unit-cell vectors
+    integer, intent(in) :: na_u ! number of atoms in unit cell
+    real(dp), intent(in) :: xa(3,na_u) ! atomic coordinates
+    integer, intent(in) :: ntm(3) ! Total mesh divisions
+    real(grid_p), intent(in) :: rho(:) ! Input density
     integer, intent(in) :: nsm, nsp
-    real(grid_p), intent(inout), target :: V(:)              ! Output potential.
-    real(dp), intent(out) :: eh                 ! Electrostatic energy.
+    real(grid_p), intent(inout), target :: V(:) ! Output potential.
+    real(dp), intent(out) :: eh ! Electrostatic energy.
     real(dp), intent(inout) :: stress(3,3) ! stress-tensor contribution
     logical, intent(in) :: calc_stress
 
@@ -450,7 +450,6 @@ contains
     type(PSolver_energies) :: energies
 
     real(grid_p), pointer :: Vaux(:) => null() ! 1D auxiliary array.
-    real(grid_p), pointer :: Vaux3D(:,:,:)  ! 3D auxiliary array.
 
     real(dp), pointer :: xa_cavity(:,:) => null()
     real(dp) :: hgrid(3) ! Uniform mesh spacings in the three directions.
@@ -467,7 +466,7 @@ contains
     call f_lib_initialize()
     call dict_init(dict)
 
-    ! Calculation of cell angles and grid separation for psolver:
+    ! Calculation of cell divisions
     hgrid(1) = VNORM(cell(:,1)) / ntm(1)
     hgrid(2) = VNORM(cell(:,2)) / ntm(2)
     hgrid(3) = VNORM(cell(:,3)) / ntm(3)
@@ -494,12 +493,8 @@ contains
 
     end if
 
-    ! PSolver interface requires a 3D array
-    ! We will use pointer tricks
-    call pointer_1D_3D(Vaux, p_ntml(1), p_ntml(2), p_ntml(3), Vaux3D)
-
     ! Shift data to center molecule/slab in mesh
-    call mesh_cshift(p_ntml, Vaux3D, -lat_offset)
+    call mesh_cshift(p_ntml, Vaux, -lat_offset)
 
     ! Initialize poisson-kernel
     pkernel = pkernel_init(Node, Nodes, dict, dom, ntm, hgrid)
@@ -542,15 +537,15 @@ contains
     call dict_free(dict)
 
     ! Solve the Poisson equation and retrieve also energies and stress-tensor
-    call Electrostatic_Solver(pkernel, Vaux3D, energies)
+    call Electrostatic_Solver(pkernel, Vaux, energies)
 
     ! Shift data back
-    call mesh_cshift(p_ntml, Vaux3D, lat_offset)
+    call mesh_cshift(p_ntml, Vaux, lat_offset)
 
     ! In siesta poison.F the energies and stress tensors are calculated
     ! distributed. I.e. Siesta expects the Hartree energy and the
     ! stress tensor to be distributed.
-    ! However, PSolver returns summed values. We have to correct
+    ! However, PSolver returns summed values.
     ! The factor two comes from Hartree => Rydberg
 
     Vaux(:) = 2._dp * Vaux(:)
@@ -755,7 +750,7 @@ contains
     type(domain), intent(inout) :: dom
     real(dp), intent(in) :: cell(3,3)
     logical, intent(in) :: calc_stress
-    type(dictionary), pointer :: dict ! Input parameters.
+    type(dictionary), pointer :: dict ! Input parameters
 
     ! Initialize domain
     select case ( shape )
@@ -794,13 +789,6 @@ contains
     end if
 
   end subroutine set_variables
-
-  subroutine pointer_1D_3D(A1D, n1, n2, n3, A3D)
-    integer, intent(in) :: n1, n2, n3
-    real(grid_p), target, intent(in) :: A1D(n1, n2, n3)
-    real(grid_p), pointer :: A3D(:,:,:)
-    A3D => A1D(:,:,:)
-  end subroutine pointer_1D_3D
 
 #else
 contains
