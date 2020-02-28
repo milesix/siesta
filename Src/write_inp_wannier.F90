@@ -249,7 +249,7 @@ subroutine writeamn( ispin )
 !      periodic part of the wavefunction with a neighbour k-point will be 
 !      computed
 !   numproj:     the number of projections
-  write( unit=amnunit, fmt="(i5,1x,i5,1x,i2)", err=1992 )             &
+  write( unit=amnunit, fmt="(i5,1x,i5,1x,i5)", err=1992 )             &
  &  numincbands(ispin), numkpoints, numproj
 
 ! Subsequent numincbands x numproj x numkpoint lines:  
