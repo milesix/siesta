@@ -59,7 +59,7 @@ module psolver_m
   !!
   !! The individual offsets in the grids to ensure PSolver
   !! method is obeyed. I.e. for molecules it is important that
-  !! the atomic center of mass is at the center of the grid.
+  !! the atomic center of positions is at the center of the grid.
   !! Using offsets we can rotate values.
   integer, private :: lat_offset(3) = 0
 
@@ -231,7 +231,7 @@ contains
       boundary_type = 'P'
     end select
 
-    ! Calculate center of mass
+    ! Calculate center of positions
     cop(:) = sum(xa, dim=2) / na_u
     l_cell(1) = VNORM(cell(:,1))
     l_cell(2) = VNORM(cell(:,2))
@@ -588,7 +588,7 @@ contains
 
   !< Grid mesh center-of-mass shifting
   !!
-  !! Shift entire mesh depending on the center-of mass for each lattice
+  !! Shift entire mesh depending on the center-of positions for each lattice
   !! vector.
   !! This should enable users to not rely on PSolver's requirements by
   !! shifting the data.
@@ -718,7 +718,7 @@ contains
 
     write(*,'(a,i4)') 'Number of grid-points required for shift: ', shift(3)
     call die('psolver: Please manually shift geometry such that &
-        &the center of mass along Z direction is at the center of &
+        &the center of position along Z direction is at the center of &
         &the cell. &
         &AtomicCoordinatesOrigin COP!')
 
