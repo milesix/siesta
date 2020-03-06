@@ -965,7 +965,7 @@ libraries
   use of the Order-N method \program{CheSS}\footnote{See
       \url{https://launchpad.net/chess}.}. To enable this solver (see
   \fdf{SolutionMethod}) one needs to first compile the
-  \program{CheSS}-suite and subsequently to add the following to the
+  \program{CheSS}-suite and subsequently add the following to the
   \file{arch.make}. Here \program{<build-dir>} is the build-directory
   of the \program{CheSS} suite:  
 
@@ -996,6 +996,28 @@ libraries
 
   To easily install \program{flook} please see the installation file:
   \shell{Docs/install\_flook.bash}.
+
+
+  \item[PSolver]%
+  \index{Poisson!PSolver}
+  \index{External library!PSolver}%
+  \siesta\ allows solving the Poisson equation using PSolver\footnote{\url{https://gitlab.com/l_sim/psolver}}, see
+  Sec.~\ref{sec:poisson:psolver}.
+
+  To enable this solver (see \fdf{Poisson.Method}) one needs to first
+  compile the \program{PSolver}-suite and subsequently add the
+  following to the \file{arch.make}. Here \program{<build-dir>} is the
+  build-directory of the \program{PSolver} suite (note the additional sub-tree):
+
+\begin{shellexample}
+  LIBS += -L<build-dir>/install/lib -lPSolver-1 -latlab-1 -lfutile-1 -ldicts -lfmalloc-1 -lyaml
+  INCFLAGS += -I<build-dir>/install/include
+  FPPFLAGS += -DSIESTA__PSOLVER
+\end{shellexample}
+\index{compile!pre-processor!-DSIESTA\_\_PSOLVER}
+
+  The current support PSolver version corresponds to the version
+  shipped with BigDFT 1.9.0.
 
 \end{description}
 
@@ -5827,9 +5849,9 @@ simultaneously for complete control.
 \end{fdfentry}
 
 \subsection{Poisson solver}
+\label{sec:poisson}
 
 \begin{fdfentry}{Poisson.Method}[string]<fft|psolver>
-
   \siesta\ allows these methods for solving the Poisson equation.
 
   \begin{fdfoptions}
@@ -5842,6 +5864,8 @@ simultaneously for complete control.
 
     \option[psolver]%
     \fdfindex*{Poisson.Method:psolver}
+    \index{Poisson!PSolver}
+    \index{External library!PSolver}%
 
     The PSolver\cite{Fisicaro2017} library\footnote{The PSolver
         library originated from the BigDFT code.} is an alternate
@@ -5907,6 +5931,9 @@ simultaneously for complete control.
 \end{fdfentry}
 
 \subsubsection{PSolver options}
+\label{sec:poisson:psolver}
+\index{Poisson!PSolver}
+\index{External library!PSolver}%
 
 The PSolver options are provided in a PSolver block
 
@@ -5936,7 +5963,7 @@ The PSolver options are provided in a PSolver block
   Additionally, PSolver allows calculations of implicit solvent
   effects using the soft-sphere model\cite{Fisicaro2017}.
 
-  The below options are used, only if \fdf{PSolver:cavity} is
+  The below options are used, only if \fdf*{PSolver:cavity} is
   different from \fdf*{none}.
 
   \begin{fdfentry}{cavity}[string]<none|soft-sphere|SCCS>
@@ -12414,7 +12441,7 @@ ts-q:   436.147   392.146     3.871   392.146     3.871  7.996E-3
       \fdf{TS!Elec.<>} block)
       
       \item Perform a \tsiesta\ calculation with the option
-      \fdf{TS!Elecs!DM.init:bulk}
+      \fdf{TS!Elecs!DM.Init:bulk}
        (please note that the electrode
       option has precedence, so remove the entry from the
       \fdf{TS!Elec.<>} block)
