@@ -61,7 +61,6 @@
       use m_w90_in_siesta,   only: compute_wannier
       use m_w90_in_siesta,   only: deallocate_wannier
       use m_wannier_in_nao,  only: wannier_in_nao
-      use m_chempotwann,     only: chempotwann
       use class_dSpData2D,   only: val
 #endif
 

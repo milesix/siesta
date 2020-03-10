@@ -1312,7 +1312,6 @@ siesta_analysis.o: parallel.o projected_DOS.o siesta2wannier90.o siesta_cml.o
 siesta_analysis.o: siesta_geom.o siesta_options.o sparse_matrices.o units.o
 siesta_analysis.o: write_subs.o writewave.o zmatrix.o
 siesta_analysis.o: m_switch_local_proj.o m_w90_in_siesta.o m_wannier_in_nao.o
-siesta_analysis.o: m_chempotwann.o
 siesta_cmlsubs.o: files.o m_uuid.o parallel.o siesta_cml.o timestamp.o
 siesta_cmlsubs.o: 
 siesta_dicts.o: atomlist.o class_SpData1D.o files.o kpoint_scf.o m_energies.o
