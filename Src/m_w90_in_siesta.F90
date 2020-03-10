@@ -1945,30 +1945,30 @@ module m_w90_in_siesta
 
   if (on_root) then
     call io_date(cdate, ctime)
-    if (.not. first_chempotwann) &
+    if (ispin .eq. 1 .and. .not. first_chempotwann) &
  &     write (stdout, *) 'Wannier90: Execution started on ', cdate, ' at ', ctime
 
     call param_read
-    if( index_manifold .eq. 1 .and. (.not. first_chempotwann) ) &
+    if( ispin .eq. 1 .and. index_manifold .eq. 1 .and. (.not. first_chempotwann) ) &
  &      call param_write_header()
     if (num_nodes == 1) then
 #ifdef MPI
-    if (.not. first_chempotwann) &
+    if (ispin .eq. 1 .and. index_manifold .eq. 1 .and. .not. first_chempotwann) &
  &    write (stdout, '(/,1x,a)') 'Running in serial (with parallel executable)'
 #else
-    if (.not. first_chempotwann) &
+    if (ispin .eq. 1 .and. index_manifold .eq. 1 .and. .not. first_chempotwann) &
  &    write (stdout, '(/,1x,a)') 'Running in serial (with serial executable)'
 #endif
     else
-    if (.not. first_chempotwann) &
+    if (ispin .eq. 1 .and. index_manifold .eq. 1 .and.  .not. first_chempotwann) &
  &    write (stdout, '(/,1x,a,i3,a/)') &
         'Running in parallel on ', num_nodes, ' CPUs'
     endif
-    if( index_manifold .eq. 1 .and. (.not. first_chempotwann) ) &
+    if( ispin .eq. 1 .and. index_manifold .eq. 1 .and. (.not. first_chempotwann) ) &
  &       call param_write()
 
     time1 = io_time()
-    if (.not. first_chempotwann) &
+    if (ispin .eq. 1 .and. .not. first_chempotwann) &
  &    write (6, '(1x,a25,f11.3,a)') 'Time to read parameters  ', time1 - time0, ' (sec)'
   endif
 
