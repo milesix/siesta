@@ -64,9 +64,10 @@ C Dimension parameters for internal variables
       PARAMETER ( MAXL = 10, MAXLP1 = MAXL+1 )
 
 C Other internal parameters
-      REAL(DP) TINY, ZERO, HALF, ONE, TWO, THREE, SIX
+      REAL(DP) TINY, ZERO, HALF, ONE, TWO, THREE, SIX, FIFTEEN, THIRTY
       PARAMETER (TINY=1.e-14_dp, ZERO=0._dp, HALF=0.5_dp, ONE=1._dp,
-     .           TWO=2._dp, THREE=3._dp, SIX=6._dp)
+     .           TWO=2._dp, THREE=3._dp, SIX=6._dp, 
+     .           FIFTEEN=15._dp, THIRTY=30._dp)
 
       real(dp), parameter :: pi = 3.14159265358979323846264338327950_dp
       real(dp), parameter :: pi4 = 4 * pi
@@ -97,6 +98,14 @@ C Evaluate normalization constants once and for all
 C              Next line because YY's are real combinations of M and -M
                IF (M.NE.0) C(ILM0+M)=C(ILM0+M)*SQRT(TWO)
                C(ILM0-M)=C(ILM0+M)
+!! For debugging
+!               write(6,'(a,5i5,f14.7)')
+!     .           'Lmax, l, ilm0, m, ilm0+m, C(ILM0+M) = ',
+!     .            Lmax, l, ilm0, m, ilm0+m, C(ILM0+M) 
+!               write(6,'(a,5i5,f14.7)')
+!     .           'Lmax, l, ilm0, m, ilm0-m, C(ILM0-M) = ',
+!     .            Lmax, l, ilm0, m, ilm0-m, C(ILM0-M) 
+!! End debugging
    15       CONTINUE
    20    CONTINUE
          LMXMX=LMAX
@@ -110,8 +119,33 @@ C Initalize to zero
         GRLY(3,ILM) = ZERO
    25 CONTINUE
 
+! In the original version of SIESTA,
+! the symmetry of some p and d orbitals was not implemented
+! in the standard way.
+! That is the case, for instance, of the p_y orbital,
+! than in the original implementation of SIESTA was defined as
+!         RLY(1)    = -(C(1)*R(2))
+! where C(1) is a normalization constant and R(2) is the y-component of the
+! position vector.
+! The term 1.0/r that appears in the expression of the 
+! real spherical harmonics for the p-orbitals is not explicitly included, 
+! since SIESTA will require r^{l}*Y_{lm},
+! with l = 1 in this case, so the r^{1} cancels with the 1/r in the
+! denominator of the real spherical harmonic.
+! 
+! In cases when we are interfering with other codes (WANNIER90)
+! or libraries (LIBINT) we have to respect the standard definition
+! of the real spherical harmonics for internal consistency.
+! That means that we have to replace the former definition by
+!         RLY(1)    = (C(1)*R(2))   
+!
+
 C Explicit formulas up to L=2
+#ifdef HAVE_WANNIER90
+      IF (LMAX.LE.3) THEN
+#else
       IF (LMAX.LE.2) THEN
+#endif
 
          RLY(0) = C(0)
 
@@ -119,32 +153,40 @@ C        Label 999 is the exit point
          IF (LMAX.EQ.0) GOTO 999
 
 #ifdef HAVE_WANNIER90
-         RLY(1)    = (C(1)*R(2))
+         RLY(1)    = (C(1)*R(2))     ! The first value in the "loop" corresponds
+                                     !    to m = -l. 
+                                     !    Here l = 1, so m = -1
+                                     !    i.e. this is the p_y
          GRLY(2,1) = C(1)
 #else
          RLY(1)    = -(C(1)*R(2))
          GRLY(2,1) = -C(1)
 #endif
 
-         RLY(2)    =  C(2)*R(3)
+         RLY(2)    =  C(2)*R(3)      ! The second value in the loop corresponds
+                                     !    to m = -l + 1 . 
+                                     !    Here l = 1, so m = 0
+                                     !    i.e. this is the p_z
          GRLY(3,2) =  C(2)
 
 #ifdef HAVE_WANNIER90
-         RLY(3)    = (C(3)*R(1))
+         RLY(3)    = (C(3)*R(1))     ! The third value in the loop corresponds
+                                     !    to m = -l + 2.
+                                     !    Here l = 1, so m = +1
+                                     !    i.e. this is the p_x
          GRLY(1,3) = C(3)
 #else
          RLY(3)    = -(C(3)*R(1))
          GRLY(1,3) = -C(3)
 #endif
-
          IF (LMAX.EQ.1) GOTO 999
 
-         RLY(4)    =  C(4)*SIX*R(1)*R(2)
+         RLY(4)    =  C(4)*SIX*R(1)*R(2)    ! d_xy orbital
          GRLY(1,4) =  C(4)*SIX*R(2)
          GRLY(2,4) =  C(4)*SIX*R(1)
 
 #ifdef HAVE_WANNIER90
-         RLY(5)    = (C(5))*THREE*R(2)*R(3)
+         RLY(5)    = (C(5))*THREE*R(2)*R(3) ! d_yz orbital
          GRLY(2,5) = (C(5))*THREE*R(3)
          GRLY(3,5) = (C(5))*THREE*R(2)
 #else
@@ -153,13 +195,13 @@ C        Label 999 is the exit point
          GRLY(3,5) = (-C(5))*THREE*R(2)
 #endif
 
-         RLY(6)    =  C(6)*HALF*(TWO*R(3)*R(3)-R(1)*R(1)-R(2)*R(2))
+         RLY(6)    =  C(6)*HALF*(TWO*R(3)*R(3)-R(1)*R(1)-R(2)*R(2)) ! d_r^2-3z^2
          GRLY(1,6) = (-C(6))*R(1)
          GRLY(2,6) = (-C(6))*R(2)
          GRLY(3,6) =  C(6)*TWO*R(3)
 
 #ifdef HAVE_WANNIER90
-         RLY(7)    = (C(7))*THREE*R(1)*R(3)
+         RLY(7)    = (C(7))*THREE*R(1)*R(3)   ! d_xz orbital
          GRLY(1,7) = (C(7))*THREE*R(3)
          GRLY(3,7) = (C(7))*THREE*R(1)
 #else
@@ -168,11 +210,87 @@ C        Label 999 is the exit point
          GRLY(3,7) = (-C(7))*THREE*R(1)
 #endif
 
-         RLY(8)    =  C(8)*THREE*(R(1)*R(1)-R(2)*R(2))
+         RLY(8)    =  C(8)*THREE*(R(1)*R(1)-R(2)*R(2))  !d_x^2-y^2
          GRLY(1,8) =  C(8)*SIX*R(1)
          GRLY(2,8) = (-C(8))*SIX*R(2)
 
+#ifdef HAVE_WANNIER90
+         IF (LMAX.EQ.2) GOTO 999
+#else
          GOTO 999
+#endif
+
+#ifdef HAVE_WANNIER90
+!        If the WANNIER90 interface is required, then we define
+!        the real spherical harmonics for l = 3,
+!        taken from
+!        https://en.wikipedia.org/wiki/Table_of_spherical_harmonics
+!        The normalization functions are computed from the C matrix
+!        defined above
+!        The term 1.0/r^3 that appears in the expression of the 
+!        real spherical harmonics is not explicitly included, 
+!        since SIESTA will require r^{l}*Y_{lm},
+!        with l = 3 in this case.
+
+!        Real spherical harmonic for the Y_(3,-3)
+!        Y_{3,-3} = 1.0/4.0 * sqrt(35.0/(2.0*pi)) * (3x^2-y^2)*y / r^3
+         RLY(9)  =  C(9) *FIFTEEN*(3.0*R(1)*R(1)-R(2)*R(2))*R(2)
+         GRLY(1,9) =  C(9)*FIFTEEN*SIX*R(1)*R(2)
+         GRLY(2,9) =  C(9)*FIFTEEN*THREE*(R(1)*R(1)-R(2)*R(2))
+         GRLY(3,9) =  0.0_dp
+
+!        Real spherical harmonic for the Y_(3,-2)
+!        Y_{3,-2} = 1.0/2.0 * sqrt(105.0/pi) * (x*y*z) / r^3
+         RLY(10) =  C(10)*THIRTY*(R(1)*R(2)*R(3))
+         GRLY(1,10) =  C(10)*THIRTY*R(2)*R(3)
+         GRLY(2,10) =  C(10)*THIRTY*R(1)*R(3)
+         GRLY(3,10) =  C(10)*THIRTY*R(1)*R(2)
+
+!        Real spherical harmonic for the Y_(3,-1)
+!        Y_{3,-1} = 1.0/4.0 * sqrt(21.0/(2.0*pi)) * y*(4z^2 -x^2 -y^2)/r^3
+         RLY(11) =  C(11)*THREE*HALF*
+     .              R(2)*(4.0*R(3)*R(3)-R(1)*R(1)-R(2)*R(2))     
+         GRLY(1,11) =  C(11)*THREE*HALF*(-2.0_dp*R(1)*R(2))
+         GRLY(2,11) =  C(11)*THREE*HALF*
+     .                 (4.0_dp*R(3)*R(3)-R(1)*R(1)-3.0_dp*R(2)*R(2))
+         GRLY(3,11) =  C(11)*THREE*HALF*(8.0_dp*R(3)*R(2))
+
+!        Real spherical harmonic for the Y_(3,0)
+!        Y_{3,0} = 1.0/4.0 * sqrt(7.0/pi) * z*(2*z^2 -3*x^2 -3*y^2)/r^3
+         RLY(12) =  C(12)*HALF*
+     .        R(3)*(2.0*R(3)*R(3)-3.0*R(1)*R(1)-3.0*R(2)*R(2))
+         GRLY(1,12) =  C(12)*HALF*(-6.0_dp*R(1)*R(3))
+         GRLY(2,12) =  C(12)*HALF*(-6.0_dp*R(2)*R(3))
+         GRLY(3,12) =  C(12)*HALF*
+     .       (6.0_dp*R(3)*R(3) - 3.0_dp*R(1)*R(1) - 3.0_dp*R(2)*R(2))
+
+!        Real spherical harmonic for the Y_(3,1)
+!        Y_{3,1} = 1.0/4.0 * sqrt(21.0/(2.0*pi)) * x*(4*z^2 -x^2 -y^2)/r^3
+         RLY(13) =  C(13)*THREE*HALF*
+     .        R(1)*(4.0*R(3)*R(3)-R(1)*R(1)-R(2)*R(2))     
+         GRLY(1,13) =  C(13)*THREE*HALF*
+     .        (4.0_dp*R(3)*R(3) - 3.0_dp*R(1)*R(1)-R(2)*R(2))
+         GRLY(2,13) =  C(13)*THREE*HALF*(-2.0_dp*R(2)*R(1))
+         GRLY(3,13) =  C(13)*THREE*HALF*(8.0_dp*R(3)*R(1))
+
+!        Real spherical harmonic for the Y_(3,2)
+!        Y_{3,2} = 1.0/4.0 * sqrt(105.0/pi) * (x^2-y^2)*z/r^3
+         RLY(14)   =  C(14)*FIFTEEN*
+     .        (R(1)*R(1)-R(2)*R(2))*R(3)
+         GRLY(1,14) =  C(14)*FIFTEEN*(2.0_dp*R(1)*R(3))
+         GRLY(2,14) =  C(14)*FIFTEEN*(-2.0_dp*R(2)*R(3))
+         GRLY(3,14) =  C(14)*FIFTEEN*(R(1)*R(1)-R(2)*R(2))
+
+!        Real spherical harmonic for the Y_(3,3)
+!        Y_{3,3} = 1.0/4.0 * sqrt(35.0/(2.0*pi)) * (x^2-3*y^2)*x/r^3
+         RLY(15)   =  C(15)*FIFTEEN*
+     .        (R(1)*R(1)-3.0*R(2)*R(2))*R(1)
+         GRLY(1,15) =  C(15)*FIFTEEN*(3.0_dp*R(1)*R(1)-3.0_dp*R(2)*R(2))       
+         GRLY(2,15) =  C(15)*FIFTEEN*(-6.0*R(2)*R(1))
+         GRLY(3,15) =  0.0_dp
+
+         GOTO 999
+#endif
       ENDIF
 
 C Special case for R=0
