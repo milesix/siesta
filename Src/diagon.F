@@ -115,6 +115,7 @@ C
       use m_diag_option, only: ParallelOverK
       use mpi_siesta
 #endif
+      use velocity_shift_m, only: use_velocity_shift
       use siesta_options, only: diag_wfs_cache
       use m_velocity_shift, only: use_velocity_shift
 

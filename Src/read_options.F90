@@ -33,7 +33,7 @@ subroutine read_options( na, ns, nspin )
   use m_charge_add, only : read_charge_add
   use m_hartree_add, only : read_hartree_add
 
-  use m_velocity_shift, only : read_velocity_shift
+  use velocity_shift_m, only : read_velocity_shift
 
   use m_mixing_scf, only: mixers_scf_init
   use m_mixing_scf, only: mixers_scf_print, mixers_scf_print_block

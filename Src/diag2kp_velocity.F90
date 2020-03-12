@@ -88,9 +88,9 @@ subroutine diag2kp_velocity( spin, no_l, no_u, no_s, nnz, &
   use m_fermid,     only : fermid, stepf
   use alloc,        only : re_alloc, de_alloc
   use t_spin, only: tSpin
-  use m_velocity_shift, only: velocity_shift, calc_velocity_current, velocity_current
+  use velocity_shift_m, only: velocity_shift, calc_velocity_current, velocity_results, velocity_results_print
   use siesta_geom, only: ucell, cell_periodic
-  use intrinsic_missing, only: MODP, VNORM
+  use intrinsic_missing, only: MODP
 
   implicit none
 
@@ -148,10 +148,11 @@ subroutine diag2kp_velocity( spin, no_l, no_u, no_s, nnz, &
   real(dp) :: kxij, t
   complex(dp) :: kph, D11, D22, D12, D21, cp
 
-  ! Current calculation
-  real(dp) :: I
-  real(dp), parameter :: Coulomb = 1.6021766208e-19_dp
-  real(dp), parameter :: hbar_Rys = 4.8377647940592375e-17_dp
+  !< Current calculation
+  real(dp) :: BB_res(7) ! I[along direction, [x, y, z]] + qPN[+, -, 0]
+#ifdef MPI
+  real(dp) :: mpiBB_res(7) ! for reduction of I + qPN
+#endif
 
   ! Arrays for figuring out the degenerate states
   real(dp), parameter :: deg_EPS = 7.3498067e-06_dp ! 1e-4 eV
@@ -170,8 +171,6 @@ subroutine diag2kp_velocity( spin, no_l, no_u, no_s, nnz, &
   complex(dp), pointer :: dH(:,:,:,:), dS(:,:,:,:)
   real(dp), pointer :: eig_aux(:)
 
-  real(dp) :: vcross(3)
-  real(dp), external :: volcel
   complex(dp), external :: zdotc
 
 #ifdef DEBUG
@@ -310,7 +309,7 @@ subroutine diag2kp_velocity( spin, no_l, no_u, no_s, nnz, &
       neigwanted, eo, Temp, qtot, qo, ef, Entropy )
 
   ! Initialize current
-  I = 0._dp
+  BB_res(:) = 0._dp
 
   ! Allocate globalized DM and EDM
   call re_alloc( g_DM, 1, g_nnz, 1, spin%DM, name='g_DM', routine= 'diag2kp_velocity' )
@@ -397,7 +396,8 @@ subroutine diag2kp_velocity( spin, no_l, no_u, no_s, nnz, &
     ! If we want to calculate the current and print it, we can do so here
     if ( calc_velocity_current ) then
       call calculate_velocity(neigneeded, eig_aux)
-      call velocity_current(neigneeded, eig_aux, v, Ef, wk(ik), Temp, I)
+      call velocity_results(neigneeded, eig_aux, qo(:,ik), &
+          v, Ef, wk(ik), Temp, BB_res)
     end if
 
     ! Expand the eigenvectors to the density matrix
@@ -519,42 +519,9 @@ subroutine diag2kp_velocity( spin, no_l, no_u, no_s, nnz, &
   call de_alloc( g_EDM, name='g_EDM', routine= 'diag2kp_velocity' )
 
   if ( calc_velocity_current ) then
-    call MPI_Reduce(I, t, 1, MPI_Double_Precision, &
+    call MPI_Reduce(BB_res, mpiBB_res, 7, MPI_Double_Precision, &
         MPI_sum,0,MPI_Comm_World,MPIerror)
-    ! Current I is in [e Bohr Ry]
-    I = t / hbar_Rys
-    ! Now I is in [e Bohr/s]
-    ! Now figure out whether we are in a 1D, 2D or 3D system
-    ! and convert to micro-amps
-    I = I * Coulomb * 1.e6_dp
-
-    if ( Node == 0 ) then
-      select case ( count( cell_periodic(:) ) )
-      case ( 3 )
-        ! We are dealing with the volume
-        I = I / volcel(ucell) * Ang ** 2
-        write(*,'(a,e14.6,tr1,a)') 'Bulk current: ', I, ' uA/Ang^2'
-      case ( 2 )
-        if ( .not. cell_periodic(1) ) then
-          call cross(ucell(:, 2), ucell(:, 3), vcross)
-        else if ( .not. cell_periodic(2) ) then
-          call cross(ucell(:, 1), ucell(:, 3), vcross)
-        else if ( .not. cell_periodic(3) ) then
-          call cross(ucell(:, 1), ucell(:, 2), vcross)
-        end if
-        I = I / VNORM(vcross) * Ang
-        write(*,'(a,e14.6,tr1,a)') 'Bulk current: ', I, ' uA/Ang'
-      case ( 1 )
-        if ( cell_periodic(1) ) then
-          I = I / VNORM(ucell(:,1))
-        else if ( cell_periodic(2) ) then
-          I = I / VNORM(ucell(:,2))
-        else if ( cell_periodic(3) ) then
-          I = I / VNORM(ucell(:,3))
-        end if
-        write(*,'(a,e14.6,tr1,a)') 'Bulk current: ', I, ' uA'
-      end select
-    end if
+    call velocity_results_print(spin, ucell, cell_periodic, mpiBB_res)
   end if
 
   ! Exit point 
@@ -695,15 +662,15 @@ contains
         jo = io_start + io - 1
 
         ! dH | psi_i >
-        call zgemv('N', no_u2, no_u2, dcmplx(1._dp, 0._dp), &
-            dH, no_u2, psi(1,1,jo), 1, dcmplx(0._dp, 0._dp), aux, 1)
+        call zgemv('N', no_u2, no_u2, cmplx(1._dp, 0._dp, dp), &
+            dH, no_u2, psi(1,1,jo), 1, cmplx(0._dp, 0._dp, dp), aux, 1)
         ! dH - e dS | psi_i >
-        call zgemv('N', no_u2, no_u2, dcmplx(-e_avg, 0._dp), &
-            dS, no_u2, psi(1,1,jo), 1, dcmplx(1._dp, 0._dp), aux, 1)
+        call zgemv('N', no_u2, no_u2, cmplx(-e_avg, 0._dp, dp), &
+            dS, no_u2, psi(1,1,jo), 1, cmplx(1._dp, 0._dp, dp), aux, 1)
 
         ! Calculte < psi_: | dH - e dS | psi_i >
-        call zgemv('C', no_u2, ndeg, dcmplx(1._dp, 0._dp), &
-            psi(1,1,io_start), no_u2, aux, 1, dcmplx(0._dp, 0._dp), vdeg(1,(io-1)*ndeg+1), 1)
+        call zgemv('C', no_u2, ndeg, cmplx(1._dp, 0._dp, dp), &
+            psi(1,1,io_start), no_u2, aux, 1, cmplx(0._dp, 0._dp, dp), vdeg(1,(io-1)*ndeg+1), 1)
 
         ! Initialize identity matrix
         Identity(1,(io-1)*ndeg+io) = 1._dp
@@ -720,8 +687,8 @@ contains
       ! Re-create the new states
       ! Now Hk contains the linear combination of the states that
       ! should decouple the degenerate subspace
-      call zgemm('N', 'N', no_u2, ndeg, ndeg, dcmplx(1._dp, 0._dp), &
-          psi(1,1,io_start), no_u2, Hk, ndeg, dcmplx(0._dp, 0._dp), Sk, no_u2)
+      call zgemm('N', 'N', no_u2, ndeg, ndeg, cmplx(1._dp, 0._dp, dp), &
+          psi(1,1,io_start), no_u2, Hk, ndeg, cmplx(0._dp, 0._dp, dp), Sk, no_u2)
 
       ! Copy back the new states
       call zcopy(ndeg*no_u2, Sk, 1, psi(1,1,io_start), 1)
@@ -746,11 +713,11 @@ contains
       do ie = 1, neig
 
         ! dH | psi >
-        call zgemv('N', no_u2, no_u2, dcmplx(1._dp, 0._dp), &
-            dH, no_u2, psi(1,1,ie), 1, dcmplx(0._dp, 0._dp), aux, 1)
+        call zgemv('N', no_u2, no_u2, cmplx(1._dp, 0._dp, dp), &
+            dH, no_u2, psi(1,1,ie), 1, cmplx(0._dp, 0._dp, dp), aux, 1)
         ! dH - e dS | psi >
-        call zgemv('N', no_u2, no_u2, dcmplx(-eig(ie), 0._dp), &
-            dS, no_u2, psi(1,1,ie), 1, dcmplx(1._dp, 0._dp), aux, 1)
+        call zgemv('N', no_u2, no_u2, cmplx(-eig(ie), 0._dp, dp), &
+            dS, no_u2, psi(1,1,ie), 1, cmplx(1._dp, 0._dp, dp), aux, 1)
 
         ! Now calculate the velocity along ix
         ! < psi | H - e dS | psi >

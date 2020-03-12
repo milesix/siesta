@@ -635,7 +635,7 @@ diagk_file.o: fermid.o iowfs_netcdf.o parallel.o parallelsubs.o precision.o
 diagk_file.o: sys.o writewave.o
 diagkp.o: alloc.o fermid.o parallel.o parallelsubs.o precision.o sys.o
 diagkp_velocity.o: alloc.o fermid.o intrinsic_missing.o m_spin.o parallel.o
-diagkp_velocity.o: parallelsubs.o precision.o siesta_geom.o sys.o units.o
+diagkp_velocity.o: parallelsubs.o precision.o siesta_geom.o sys.o
 diagkp_velocity.o: velocity_shift.o
 diagmemory.o: precision.o
 diagon.o: alloc.o densematrix.o diag_option.o m_spin.o memory_log.o parallel.o
@@ -1318,8 +1318,8 @@ typecell.o: precision.o
 uncell.o: precision.o
 units.o: precision.o
 vacuum_level.o: moreParallelSubs.o precision.o
-velocity_shift.o: intrinsic_missing.o parallel.o precision.o siesta_cml.o
-velocity_shift.o: units.o
+velocity_shift.o: intrinsic_missing.o m_spin.o parallel.o precision.o
+velocity_shift.o: siesta_cml.o units.o
 vmat.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o m_spin.o mesh.o
 vmat.o: meshdscf.o meshphi.o parallel.o parallelsubs.o precision.o
 vmatsp.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o mesh.o meshdscf.o
@@ -1504,7 +1504,6 @@ m_struct_init.o: struct_init.o
 m_timer_tree.o: timer_tree.o
 m_timestamp.o: timestamp.o
 m_ts_init.o: ts_init.o
-m_velocity_shift.o: velocity_shift.o
 m_vmat.o: vmat.o
 m_vmatsp.o: vmatsp.o
 m_zm_broyden_optim.o: zm_broyden_optim.o
@@ -1526,6 +1525,7 @@ ts_dq_m.o: ts_dq.o
 ts_electrode_m.o: ts_electrode.o
 ts_energies_m.o: ts_energies.o
 ts_kpoint_scf_m.o: ts_kpoint_scf.o
+velocity_shift_m.o: velocity_shift.o
 version_info.o: version.o
 write_subs_energies.o: write_subs.o
 write_subs_positions.o: write_subs.o

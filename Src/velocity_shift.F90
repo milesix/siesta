@@ -18,7 +18,7 @@
 !<    The group velocity is projected onto a "field" direction and if the scalar projection
 !<    is positive (> 0) the eigenspectrum is shifted V / 2 down, to fill it, while negative
 !<    projections are shifted V / 2 up, to empty it.
-module m_velocity_shift
+module velocity_shift_m
 
   use precision, only: dp
 
@@ -46,7 +46,8 @@ module m_velocity_shift
   public :: calc_velocity_current
   public :: read_velocity_shift
   public :: velocity_shift
-  public :: velocity_current
+  public :: velocity_results
+  public :: velocity_results_print
 
 contains
 
@@ -180,27 +181,44 @@ contains
   end subroutine velocity_shift
 
   !< Calculate current from an eigenspectrum according to the velocities and calculate current
-  subroutine velocity_current(ne, e, v, Ef, w, Temp, I)
+  subroutine velocity_results(ne, e, o, v, Ef, w, Temp, results)
     integer, intent(in) :: ne
     ! The eigenvalues `e` *must* be un-shifted
-    real(dp), intent(in) :: e(ne), v(3,ne), Ef, w, Temp
-    real(dp), intent(inout) :: I
+    real(dp), intent(in) :: e(ne), o(ne), v(3,ne), Ef, w, Temp
+    real(dp), intent(inout) :: results(7)
 
     integer :: ie
-    real(dp) :: p, lI
+    real(dp) :: p, lresults(4), oc
 
-    lI = 0._dp
+    lresults(:) = 0._dp
     do ie = 1, ne
-      
+
+      ! Calculate occupation
+      oc = dnf(e(ie), Ef, velocity_h_bias, Temp)
+
+      ! velocity_dir is normalized, so this gives the correct
+      ! scalar value.
       p = dot_product(velocity_dir, v(:,ie))
+
       ! this is velocity projected onto bias direction
+      lresults(1) = lresults(1) + p * oc
+      lresults(2) = lresults(2) + v(1, ie) * oc
+      lresults(3) = lresults(3) + v(2, ie) * oc
+      lresults(4) = lresults(4) + v(3, ie) * oc
+
+      ! Calculate number of electrons for positive/negative direction
       if ( p > velocity_tolerance ) then
-        lI = lI + p * dnf(e(ie), Ef, velocity_h_bias, Temp)
+        results(5) = results(5) + o(ie)
+      else if ( p < - velocity_tolerance ) then
+        results(6) = results(6) + o(ie)
+      else
+        ! Orthogonal to the bulk-bias direction
+        results(7) = results(7) + o(ie)
       end if
-      
+
     end do
 
-    I = I + lI * w
+    results(1:4) = results(1:4) + lresults(1:4) * w
 
   contains
     
@@ -233,6 +251,65 @@ contains
       
     end function dnf
     
-  end subroutine velocity_current
+  end subroutine velocity_results
 
-end module m_velocity_shift
+  subroutine velocity_results_print(spin, ucell, cell_periodic, results)
+    use parallel, only: IONode
+    use intrinsic_missing, only: VNORM
+    use units, only: eV, Ang
+    use t_spin, only: tSpin
+
+    type(tSpin), intent(in) :: spin
+    real(dp), intent(in) :: ucell(3,3)
+    logical, intent(in) :: cell_periodic(3)
+    real(dp), intent(in) :: results(7)
+
+    real(dp), external :: volcel
+    real(dp) :: vcross(3)
+    real(dp) :: I(4), qPN(3)
+    character(len=8) :: suffix
+    real(dp), parameter :: Coulomb = 1.6021766208e-19_dp
+    real(dp), parameter :: hbar_Rys = 4.8377647940592375e-17_dp
+
+    ! Quick escape
+    if ( .not. IONode ) return
+    
+    ! Current I is in [e Bohr Ry], then convert to [e Bohr/s]
+    I(:) = results(1:4) / hbar_Rys * Coulomb * 1.e6_dp * 2._dp / spin%spinor
+    ! Copy charges
+    qPN(:) = results(5:7)
+
+    select case ( count( cell_periodic(:) ) )
+    case ( 3 )
+      ! We are dealing with the volume
+      I(:) = I(:) / volcel(ucell) * Ang ** 2
+      suffix = 'uA/Ang^2'
+    case ( 2 )
+      if ( .not. cell_periodic(1) ) then
+        call cross(ucell(:, 2), ucell(:, 3), vcross)
+      else if ( .not. cell_periodic(2) ) then
+        call cross(ucell(:, 1), ucell(:, 3), vcross)
+      else if ( .not. cell_periodic(3) ) then
+        call cross(ucell(:, 1), ucell(:, 2), vcross)
+      end if
+      I(:) = I(:) / VNORM(vcross) * Ang
+      suffix = 'uA/Ang'
+    case ( 1 )
+      if ( cell_periodic(1) ) then
+        I(:) = I(:) / VNORM(ucell(:,1))
+      else if ( cell_periodic(2) ) then
+        I(:) = I(:) / VNORM(ucell(:,2))
+      else if ( cell_periodic(3) ) then
+        I(:) = I(:) / VNORM(ucell(:,3))
+      end if
+      suffix = 'uA'
+    end select
+    
+    ! Write out the current along the bulk-bias direction and each of the other ones
+    write(*,'(a,e14.6,tr1,a)') 'Bulk current     [v]: ', I(1), trim(suffix)
+    write(*,'(a,3(e14.6,tr1),a)') 'Bulk current [x,y,z]: ', I(2:4), trim(suffix)
+    write(*,'(a,2(f12.6,tr1),e14.6)') 'Bulk charge  [+,-,0]: ', qPN(:)
+    
+  end subroutine velocity_results_print
+
+end module velocity_shift_m
