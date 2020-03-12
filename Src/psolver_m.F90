@@ -138,7 +138,7 @@ contains
         psolver_alphaS = fdf_bvalues(pline, 1)
 
       else if ( leqi('betaV', ctmp) ) then
-        psolver_betaV = fdf_bvalues(pline, 1)
+        psolver_betaV = fdf_bphysical(pline, -0.35_dp, 'GPa'))
 
       else if ( leqi('atomic.radii', ctmp) ) then
         psolver_atomic_radii = fdf_bvalues(pline, 1)
