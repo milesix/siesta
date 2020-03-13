@@ -2246,6 +2246,7 @@
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/clangb.f
       REAL             FUNCTION CLANGB( NORM, N, KL, KU, AB, LDAB,
      $                 WORK )
+      IMPLICIT NONE
       CHARACTER          NORM
       INTEGER            KL, KU, LDAB, N
       REAL               WORK( * )
@@ -2253,10 +2254,11 @@
       REAL               ONE, ZERO
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       INTEGER            I, J, K, L
-      REAL               SCALE, SUM, VALUE, TEMP
+      REAL               SUM, VALUE, TEMP
+      REAL               SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
-      EXTERNAL           CLASSQ
+      EXTERNAL           CLASSQ, SCOMBSSQ
       INTRINSIC          ABS, MAX, MIN, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -2293,20 +2295,25 @@
             IF( VALUE.LT.TEMP .OR. SISNAN( TEMP ) ) VALUE = TEMP
    80    CONTINUE
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          DO 90 J = 1, N
             L = MAX( 1, J-KU )
             K = KU + 1 - J + L
-            CALL CLASSQ( MIN( N, J+KL )-L+1, AB( K, J ), 1, SCALE, SUM )
+            COLSSQ( 1 ) = ZERO
+            COLSSQ( 2 ) = ONE
+            CALL CLASSQ( MIN( N, J+KL )-L+1, AB( K, J ), 1,
+     $                   COLSSQ( 1 ), COLSSQ( 2 ) )
+            CALL SCOMBSSQ( SSQ, COLSSQ )
    90    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       CLANGB = VALUE
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/clange.f
       REAL             FUNCTION CLANGE( NORM, M, N, A, LDA, WORK )
+      IMPLICIT NONE
       CHARACTER          NORM
       INTEGER            LDA, M, N
       REAL               WORK( * )
@@ -2314,10 +2321,11 @@
       REAL               ONE, ZERO
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       INTEGER            I, J
-      REAL               SCALE, SUM, VALUE, TEMP
+      REAL               SUM, VALUE, TEMP
+      REAL               SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
-      EXTERNAL           CLASSQ
+      EXTERNAL           CLASSQ, SCOMBSSQ
       INTRINSIC          ABS, MIN, SQRT
       IF( MIN( M, N ).EQ.0 ) THEN
          VALUE = ZERO
@@ -2353,12 +2361,15 @@
             IF( VALUE.LT.TEMP .OR. SISNAN( TEMP ) ) VALUE = TEMP
    80    CONTINUE
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          DO 90 J = 1, N
-            CALL CLASSQ( M, A( 1, J ), 1, SCALE, SUM )
+            COLSSQ( 1 ) = ZERO
+            COLSSQ( 2 ) = ONE
+            CALL CLASSQ( M, A( 1, J ), 1, COLSSQ( 1 ), COLSSQ( 2 ) )
+            CALL SCOMBSSQ( SSQ, COLSSQ )
    90    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       CLANGE = VALUE
       RETURN
@@ -2428,6 +2439,7 @@
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/clanhb.f
       REAL             FUNCTION CLANHB( NORM, UPLO, N, K, AB, LDAB,
      $                 WORK )
+      IMPLICIT NONE
       CHARACTER          NORM, UPLO
       INTEGER            K, LDAB, N
       REAL               WORK( * )
@@ -2435,10 +2447,11 @@
       REAL               ONE, ZERO
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       INTEGER            I, J, L
-      REAL               ABSA, SCALE, SUM, VALUE
+      REAL               ABSA, SUM, VALUE
+      REAL               SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
-      EXTERNAL           CLASSQ
+      EXTERNAL           CLASSQ, SCOMBSSQ
       INTRINSIC          ABS, MAX, MIN, REAL, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -2497,44 +2510,54 @@
   100       CONTINUE
          END IF
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          IF( K.GT.0 ) THEN
             IF( LSAME( UPLO, 'U' ) ) THEN
                DO 110 J = 2, N
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
                   CALL CLASSQ( MIN( J-1, K ), AB( MAX( K+2-J, 1 ), J ),
-     $                         1, SCALE, SUM )
+     $                         1, COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
   110          CONTINUE
                L = K + 1
             ELSE
                DO 120 J = 1, N - 1
-                  CALL CLASSQ( MIN( N-J, K ), AB( 2, J ), 1, SCALE,
-     $                         SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL CLASSQ( MIN( N-J, K ), AB( 2, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
   120          CONTINUE
                L = 1
             END IF
-            SUM = 2*SUM
+            SSQ( 2 ) = 2*SSQ( 2 )
          ELSE
             L = 1
          END IF
+         COLSSQ( 1 ) = ZERO
+         COLSSQ( 2 ) = ONE
          DO 130 J = 1, N
             IF( REAL( AB( L, J ) ).NE.ZERO ) THEN
                ABSA = ABS( REAL( AB( L, J ) ) )
-               IF( SCALE.LT.ABSA ) THEN
-                  SUM = ONE + SUM*( SCALE / ABSA )**2
-                  SCALE = ABSA
+               IF( COLSSQ( 1 ).LT.ABSA ) THEN
+                  COLSSQ( 2 ) = ONE + COLSSQ(2)*( COLSSQ(1) / ABSA )**2
+                  COLSSQ( 1 ) = ABSA
                ELSE
-                  SUM = SUM + ( ABSA / SCALE )**2
+                  COLSSQ( 2 ) = COLSSQ( 2 ) + ( ABSA / COLSSQ( 1 ) )**2
                END IF
             END IF
   130    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         CALL SCOMBSSQ( SSQ, COLSSQ )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       CLANHB = VALUE
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/clanhe.f
       REAL             FUNCTION CLANHE( NORM, UPLO, N, A, LDA, WORK )
+      IMPLICIT NONE
       CHARACTER          NORM, UPLO
       INTEGER            LDA, N
       REAL               WORK( * )
@@ -2542,10 +2565,11 @@
       REAL               ONE, ZERO
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       INTEGER            I, J
-      REAL               ABSA, SCALE, SUM, VALUE
+      REAL               ABSA, SUM, VALUE
+      REAL               SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
-      EXTERNAL           CLASSQ
+      EXTERNAL           CLASSQ, SCOMBSSQ
       INTRINSIC          ABS, REAL, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -2602,30 +2626,38 @@
   100       CONTINUE
          END IF
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          IF( LSAME( UPLO, 'U' ) ) THEN
             DO 110 J = 2, N
-               CALL CLASSQ( J-1, A( 1, J ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL CLASSQ( J-1, A( 1, J ), 1,
+     $                      COLSSQ( 1 ), COLSSQ( 2 ) )
+               CALL SCOMBSSQ( SSQ, COLSSQ )
   110       CONTINUE
          ELSE
             DO 120 J = 1, N - 1
-               CALL CLASSQ( N-J, A( J+1, J ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL CLASSQ( N-J, A( J+1, J ), 1,
+     $                      COLSSQ( 1 ), COLSSQ( 2 ) )
+               CALL SCOMBSSQ( SSQ, COLSSQ )
   120       CONTINUE
          END IF
-         SUM = 2*SUM
+         SSQ( 2 ) = 2*SSQ( 2 )
          DO 130 I = 1, N
             IF( REAL( A( I, I ) ).NE.ZERO ) THEN
                ABSA = ABS( REAL( A( I, I ) ) )
-               IF( SCALE.LT.ABSA ) THEN
-                  SUM = ONE + SUM*( SCALE / ABSA )**2
-                  SCALE = ABSA
+               IF( SSQ( 1 ).LT.ABSA ) THEN
+                  SSQ( 2 ) = ONE + SSQ( 2 )*( SSQ( 1 ) / ABSA )**2
+                  SSQ( 1 ) = ABSA
                ELSE
-                  SUM = SUM + ( ABSA / SCALE )**2
+                  SSQ( 2 ) = SSQ( 2 ) + ( ABSA / SSQ( 1 ) )**2
                END IF
             END IF
   130    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       CLANHE = VALUE
       RETURN
@@ -3692,6 +3724,7 @@
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/clanhp.f
       REAL             FUNCTION CLANHP( NORM, UPLO, N, AP, WORK )
+      IMPLICIT NONE
       CHARACTER          NORM, UPLO
       INTEGER            N
       REAL               WORK( * )
@@ -3699,10 +3732,11 @@
       REAL               ONE, ZERO
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       INTEGER            I, J, K
-      REAL               ABSA, SCALE, SUM, VALUE
+      REAL               ABSA, SUM, VALUE
+      REAL               SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
-      EXTERNAL           CLASSQ
+      EXTERNAL           CLASSQ, SCOMBSSQ
       INTRINSIC          ABS, REAL, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -3768,30 +3802,38 @@
   100       CONTINUE
          END IF
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          K = 2
          IF( LSAME( UPLO, 'U' ) ) THEN
             DO 110 J = 2, N
-               CALL CLASSQ( J-1, AP( K ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL CLASSQ( J-1, AP( K ), 1, COLSSQ( 1 ), COLSSQ( 2 ) )
+               CALL SCOMBSSQ( SSQ, COLSSQ )
                K = K + J
   110       CONTINUE
          ELSE
             DO 120 J = 1, N - 1
-               CALL CLASSQ( N-J, AP( K ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL CLASSQ( N-J, AP( K ), 1, COLSSQ( 1 ), COLSSQ( 2 ) )
+               CALL SCOMBSSQ( SSQ, COLSSQ )
                K = K + N - J + 1
   120       CONTINUE
          END IF
-         SUM = 2*SUM
+         SSQ( 2 ) = 2*SSQ( 2 )
          K = 1
+         COLSSQ( 1 ) = ZERO
+         COLSSQ( 2 ) = ONE
          DO 130 I = 1, N
             IF( REAL( AP( K ) ).NE.ZERO ) THEN
                ABSA = ABS( REAL( AP( K ) ) )
-               IF( SCALE.LT.ABSA ) THEN
-                  SUM = ONE + SUM*( SCALE / ABSA )**2
-                  SCALE = ABSA
+               IF( COLSSQ( 1 ).LT.ABSA ) THEN
+                  COLSSQ( 2 ) = ONE + COLSSQ(2)*( COLSSQ(1) / ABSA )**2
+                  COLSSQ( 1 ) = ABSA
                ELSE
-                  SUM = SUM + ( ABSA / SCALE )**2
+                  COLSSQ( 2 ) = COLSSQ( 2 ) + ( ABSA / COLSSQ( 1 ) )**2
                END IF
             END IF
             IF( LSAME( UPLO, 'U' ) ) THEN
@@ -3800,13 +3842,15 @@
                K = K + N - I + 1
             END IF
   130    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         CALL SCOMBSSQ( SSQ, COLSSQ )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       CLANHP = VALUE
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/clanhs.f
       REAL             FUNCTION CLANHS( NORM, N, A, LDA, WORK )
+      IMPLICIT NONE
       CHARACTER          NORM
       INTEGER            LDA, N
       REAL               WORK( * )
@@ -3814,10 +3858,11 @@
       REAL               ONE, ZERO
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       INTEGER            I, J
-      REAL               SCALE, SUM, VALUE
+      REAL               SUM, VALUE
+      REAL               SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
-      EXTERNAL           CLASSQ
+      EXTERNAL           CLASSQ, SCOMBSSQ
       INTRINSIC          ABS, MIN, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -3853,12 +3898,16 @@
             IF( VALUE .LT. SUM .OR. SISNAN( SUM ) ) VALUE = SUM
    80    CONTINUE
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          DO 90 J = 1, N
-            CALL CLASSQ( MIN( N, J+1 ), A( 1, J ), 1, SCALE, SUM )
+            COLSSQ( 1 ) = ZERO
+            COLSSQ( 2 ) = ONE
+            CALL CLASSQ( MIN( N, J+1 ), A( 1, J ), 1,
+     $                   COLSSQ( 1 ), COLSSQ( 2 ) )
+            CALL SCOMBSSQ( SSQ, COLSSQ )
    90    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       CLANHS = VALUE
       RETURN
@@ -3916,6 +3965,7 @@
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/clansb.f
       REAL             FUNCTION CLANSB( NORM, UPLO, N, K, AB, LDAB,
      $                 WORK )
+      IMPLICIT NONE
       CHARACTER          NORM, UPLO
       INTEGER            K, LDAB, N
       REAL               WORK( * )
@@ -3923,10 +3973,11 @@
       REAL               ONE, ZERO
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       INTEGER            I, J, L
-      REAL               ABSA, SCALE, SUM, VALUE
+      REAL               ABSA, SUM, VALUE
+      REAL               SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
-      EXTERNAL           CLASSQ
+      EXTERNAL           CLASSQ, SCOMBSSQ
       INTRINSIC          ABS, MAX, MIN, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -3981,34 +4032,44 @@
   100       CONTINUE
          END IF
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          IF( K.GT.0 ) THEN
             IF( LSAME( UPLO, 'U' ) ) THEN
                DO 110 J = 2, N
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
                   CALL CLASSQ( MIN( J-1, K ), AB( MAX( K+2-J, 1 ), J ),
-     $                         1, SCALE, SUM )
+     $                         1, COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
   110          CONTINUE
                L = K + 1
             ELSE
                DO 120 J = 1, N - 1
-                  CALL CLASSQ( MIN( N-J, K ), AB( 2, J ), 1, SCALE,
-     $                         SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL CLASSQ( MIN( N-J, K ), AB( 2, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
   120          CONTINUE
                L = 1
             END IF
-            SUM = 2*SUM
+            SSQ( 2 ) = 2*SSQ( 2 )
          ELSE
             L = 1
          END IF
-         CALL CLASSQ( N, AB( L, 1 ), LDAB, SCALE, SUM )
-         VALUE = SCALE*SQRT( SUM )
+         COLSSQ( 1 ) = ZERO
+         COLSSQ( 2 ) = ONE
+         CALL CLASSQ( N, AB( L, 1 ), LDAB, COLSSQ( 1 ), COLSSQ( 2 ) )
+         CALL SCOMBSSQ( SSQ, COLSSQ )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       CLANSB = VALUE
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/clansp.f
       REAL             FUNCTION CLANSP( NORM, UPLO, N, AP, WORK )
+      IMPLICIT NONE
       CHARACTER          NORM, UPLO
       INTEGER            N
       REAL               WORK( * )
@@ -4016,10 +4077,11 @@
       REAL               ONE, ZERO
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       INTEGER            I, J, K
-      REAL               ABSA, SCALE, SUM, VALUE
+      REAL               ABSA, SUM, VALUE
+      REAL               SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
-      EXTERNAL           CLASSQ
+      EXTERNAL           CLASSQ, SCOMBSSQ
       INTRINSIC          ABS, AIMAG, REAL, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -4081,39 +4143,47 @@
   100       CONTINUE
          END IF
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          K = 2
          IF( LSAME( UPLO, 'U' ) ) THEN
             DO 110 J = 2, N
-               CALL CLASSQ( J-1, AP( K ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL CLASSQ( J-1, AP( K ), 1, COLSSQ( 1 ), COLSSQ( 2 ) )
+               CALL SCOMBSSQ( SSQ, COLSSQ )
                K = K + J
   110       CONTINUE
          ELSE
             DO 120 J = 1, N - 1
-               CALL CLASSQ( N-J, AP( K ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL CLASSQ( N-J, AP( K ), 1, COLSSQ( 1 ), COLSSQ( 2 ) )
+               CALL SCOMBSSQ( SSQ, COLSSQ )
                K = K + N - J + 1
   120       CONTINUE
          END IF
-         SUM = 2*SUM
+         SSQ( 2 ) = 2*SSQ( 2 )
          K = 1
+         COLSSQ( 1 ) = ZERO
+         COLSSQ( 2 ) = ONE
          DO 130 I = 1, N
             IF( REAL( AP( K ) ).NE.ZERO ) THEN
                ABSA = ABS( REAL( AP( K ) ) )
-               IF( SCALE.LT.ABSA ) THEN
-                  SUM = ONE + SUM*( SCALE / ABSA )**2
-                  SCALE = ABSA
+               IF( COLSSQ( 1 ).LT.ABSA ) THEN
+                  COLSSQ( 2 ) = ONE + COLSSQ(2)*( COLSSQ(1) / ABSA )**2
+                  COLSSQ( 1 ) = ABSA
                ELSE
-                  SUM = SUM + ( ABSA / SCALE )**2
+                  COLSSQ( 2 ) = COLSSQ( 2 ) + ( ABSA / COLSSQ( 1 ) )**2
                END IF
             END IF
             IF( AIMAG( AP( K ) ).NE.ZERO ) THEN
                ABSA = ABS( AIMAG( AP( K ) ) )
-               IF( SCALE.LT.ABSA ) THEN
-                  SUM = ONE + SUM*( SCALE / ABSA )**2
-                  SCALE = ABSA
+               IF( COLSSQ( 1 ).LT.ABSA ) THEN
+                  COLSSQ( 2 ) = ONE + COLSSQ(2)*( COLSSQ(1) / ABSA )**2
+                  COLSSQ( 1 ) = ABSA
                ELSE
-                  SUM = SUM + ( ABSA / SCALE )**2
+                  COLSSQ( 2 ) = COLSSQ( 2 ) + ( ABSA / COLSSQ( 1 ) )**2
                END IF
             END IF
             IF( LSAME( UPLO, 'U' ) ) THEN
@@ -4122,13 +4192,15 @@
                K = K + N - I + 1
             END IF
   130    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         CALL SCOMBSSQ( SSQ, COLSSQ )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       CLANSP = VALUE
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/clansy.f
       REAL             FUNCTION CLANSY( NORM, UPLO, N, A, LDA, WORK )
+      IMPLICIT NONE
       CHARACTER          NORM, UPLO
       INTEGER            LDA, N
       REAL               WORK( * )
@@ -4136,10 +4208,11 @@
       REAL               ONE, ZERO
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       INTEGER            I, J
-      REAL               ABSA, SCALE, SUM, VALUE
+      REAL               ABSA, SUM, VALUE
+      REAL               SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
-      EXTERNAL           CLASSQ
+      EXTERNAL           CLASSQ, SCOMBSSQ
       INTRINSIC          ABS, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -4192,20 +4265,29 @@
   100       CONTINUE
          END IF
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          IF( LSAME( UPLO, 'U' ) ) THEN
             DO 110 J = 2, N
-               CALL CLASSQ( J-1, A( 1, J ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL CLASSQ( J-1, A( 1, J ), 1, COLSSQ(1), COLSSQ(2) )
+               CALL SCOMBSSQ( SSQ, COLSSQ )
   110       CONTINUE
          ELSE
             DO 120 J = 1, N - 1
-               CALL CLASSQ( N-J, A( J+1, J ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL CLASSQ( N-J, A( J+1, J ), 1, COLSSQ(1), COLSSQ(2) )
+               CALL SCOMBSSQ( SSQ, COLSSQ )
   120       CONTINUE
          END IF
-         SUM = 2*SUM
-         CALL CLASSQ( N, A, LDA+1, SCALE, SUM )
-         VALUE = SCALE*SQRT( SUM )
+         SSQ( 2 ) = 2*SSQ( 2 )
+         COLSSQ( 1 ) = ZERO
+         COLSSQ( 2 ) = ONE
+         CALL CLASSQ( N, A, LDA+1, COLSSQ( 1 ), COLSSQ( 2 ) )
+         CALL SCOMBSSQ( SSQ, COLSSQ )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       CLANSY = VALUE
       RETURN
@@ -4213,6 +4295,7 @@
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/clantb.f
       REAL             FUNCTION CLANTB( NORM, UPLO, DIAG, N, K, AB,
      $                 LDAB, WORK )
+      IMPLICIT NONE
       CHARACTER          DIAG, NORM, UPLO
       INTEGER            K, LDAB, N
       REAL               WORK( * )
@@ -4221,10 +4304,11 @@
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       LOGICAL            UDIAG
       INTEGER            I, J, L
-      REAL               SCALE, SUM, VALUE
+      REAL               SUM, VALUE
+      REAL               SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
-      EXTERNAL           CLASSQ
+      EXTERNAL           CLASSQ, SCOMBSSQ
       INTRINSIC          ABS, MAX, MIN, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -4352,49 +4436,62 @@
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
          IF( LSAME( UPLO, 'U' ) ) THEN
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = N
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = N
                IF( K.GT.0 ) THEN
                   DO 280 J = 2, N
+                     COLSSQ( 1 ) = ZERO
+                     COLSSQ( 2 ) = ONE
                      CALL CLASSQ( MIN( J-1, K ),
-     $                            AB( MAX( K+2-J, 1 ), J ), 1, SCALE,
-     $                            SUM )
+     $                            AB( MAX( K+2-J, 1 ), J ), 1,
+     $                            COLSSQ( 1 ), COLSSQ( 2 ) )
+                     CALL SCOMBSSQ( SSQ, COLSSQ )
   280             CONTINUE
                END IF
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                DO 290 J = 1, N
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
                   CALL CLASSQ( MIN( J, K+1 ), AB( MAX( K+2-J, 1 ), J ),
-     $                         1, SCALE, SUM )
+     $                         1, COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
   290          CONTINUE
             END IF
          ELSE
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = N
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = N
                IF( K.GT.0 ) THEN
                   DO 300 J = 1, N - 1
-                     CALL CLASSQ( MIN( N-J, K ), AB( 2, J ), 1, SCALE,
-     $                            SUM )
+                     COLSSQ( 1 ) = ZERO
+                     COLSSQ( 2 ) = ONE
+                     CALL CLASSQ( MIN( N-J, K ), AB( 2, J ), 1,
+     $                            COLSSQ( 1 ), COLSSQ( 2 ) )
+                     CALL SCOMBSSQ( SSQ, COLSSQ )
   300             CONTINUE
                END IF
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                DO 310 J = 1, N
-                  CALL CLASSQ( MIN( N-J+1, K+1 ), AB( 1, J ), 1, SCALE,
-     $                         SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL CLASSQ( MIN( N-J+1, K+1 ), AB( 1, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
   310          CONTINUE
             END IF
          END IF
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       CLANTB = VALUE
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/clantp.f
       REAL             FUNCTION CLANTP( NORM, UPLO, DIAG, N, AP, WORK )
+      IMPLICIT NONE
       CHARACTER          DIAG, NORM, UPLO
       INTEGER            N
       REAL               WORK( * )
@@ -4403,10 +4500,11 @@
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       LOGICAL            UDIAG
       INTEGER            I, J, K
-      REAL               SCALE, SUM, VALUE
+      REAL               SUM, VALUE
+      REAL               SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
-      EXTERNAL           CLASSQ
+      EXTERNAL           CLASSQ, SCOMBSSQ
       INTRINSIC          ABS, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -4545,42 +4643,58 @@
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
          IF( LSAME( UPLO, 'U' ) ) THEN
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = N
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = N
                K = 2
                DO 280 J = 2, N
-                  CALL CLASSQ( J-1, AP( K ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL CLASSQ( J-1, AP( K ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
                   K = K + J
   280          CONTINUE
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                K = 1
                DO 290 J = 1, N
-                  CALL CLASSQ( J, AP( K ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL CLASSQ( J, AP( K ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
                   K = K + J
   290          CONTINUE
             END IF
          ELSE
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = N
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = N
                K = 2
                DO 300 J = 1, N - 1
-                  CALL CLASSQ( N-J, AP( K ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL CLASSQ( N-J, AP( K ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
                   K = K + N - J + 1
   300          CONTINUE
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                K = 1
                DO 310 J = 1, N
-                  CALL CLASSQ( N-J+1, AP( K ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL CLASSQ( N-J+1, AP( K ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
                   K = K + N - J + 1
   310          CONTINUE
             END IF
          END IF
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       CLANTP = VALUE
       RETURN
@@ -4588,6 +4702,7 @@
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/clantr.f
       REAL             FUNCTION CLANTR( NORM, UPLO, DIAG, M, N, A, LDA,
      $                 WORK )
+      IMPLICIT NONE
       CHARACTER          DIAG, NORM, UPLO
       INTEGER            LDA, M, N
       REAL               WORK( * )
@@ -4596,10 +4711,11 @@
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       LOGICAL            UDIAG
       INTEGER            I, J
-      REAL               SCALE, SUM, VALUE
+      REAL               SUM, VALUE
+      REAL               SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
-      EXTERNAL           CLASSQ
+      EXTERNAL           CLASSQ, SCOMBSSQ
       INTRINSIC          ABS, MIN, SQRT
       IF( MIN( M, N ).EQ.0 ) THEN
          VALUE = ZERO
@@ -4696,7 +4812,7 @@
             END IF
          ELSE
             IF( LSAME( DIAG, 'U' ) ) THEN
-               DO 210 I = 1, N
+               DO 210 I = 1, MIN( M, N )
                   WORK( I ) = ONE
   210          CONTINUE
                DO 220 I = N + 1, M
@@ -4726,35 +4842,50 @@
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
          IF( LSAME( UPLO, 'U' ) ) THEN
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = MIN( M, N )
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = MIN( M, N )
                DO 290 J = 2, N
-                  CALL CLASSQ( MIN( M, J-1 ), A( 1, J ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL CLASSQ( MIN( M, J-1 ), A( 1, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
   290          CONTINUE
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                DO 300 J = 1, N
-                  CALL CLASSQ( MIN( M, J ), A( 1, J ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL CLASSQ( MIN( M, J ), A( 1, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
   300          CONTINUE
             END IF
          ELSE
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = MIN( M, N )
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = MIN( M, N )
                DO 310 J = 1, N
-                  CALL CLASSQ( M-J, A( MIN( M, J+1 ), J ), 1, SCALE,
-     $                         SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL CLASSQ( M-J, A( MIN( M, J+1 ), J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
   310          CONTINUE
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                DO 320 J = 1, N
-                  CALL CLASSQ( M-J+1, A( J, J ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL CLASSQ( M-J+1, A( J, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
   320          CONTINUE
             END IF
          END IF
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       CLANTR = VALUE
       RETURN
@@ -5464,6 +5595,21 @@
      $      INFO = INFO + 1
   210 CONTINUE
   220 CONTINUE
+      RETURN
+      END
+! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/dcombssq.f
+      SUBROUTINE DCOMBSSQ( V1, V2 )
+      DOUBLE PRECISION   V1( 2 ), V2( 2 )
+      DOUBLE PRECISION   ZERO
+      PARAMETER          ( ZERO = 0.0D+0 )
+      IF( V1( 1 ).GE.V2( 1 ) ) THEN
+         IF( V1( 1 ).NE.ZERO ) THEN
+            V1( 2 ) = V1( 2 ) + ( V2( 1 ) / V1( 1 ) )**2 * V2( 2 )
+         END IF
+      ELSE
+         V1( 2 ) = V2( 2 ) + ( V1( 1 ) / V2( 1 ) )**2 * V1( 2 )
+         V1( 1 ) = V2( 1 )
+      END IF
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/dgbtrs.f
@@ -11996,16 +12142,18 @@
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/dlangb.f
       DOUBLE PRECISION FUNCTION DLANGB( NORM, N, KL, KU, AB, LDAB,
      $                 WORK )
+      IMPLICIT NONE
       CHARACTER          NORM
       INTEGER            KL, KU, LDAB, N
       DOUBLE PRECISION   AB( LDAB, * ), WORK( * )
       DOUBLE PRECISION   ONE, ZERO
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       INTEGER            I, J, K, L
-      DOUBLE PRECISION   SCALE, SUM, VALUE, TEMP
-      EXTERNAL           DLASSQ
+      DOUBLE PRECISION   SUM, VALUE, TEMP
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
+      EXTERNAL           DLASSQ, DCOMBSSQ
       INTRINSIC          ABS, MAX, MIN, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -12042,28 +12190,34 @@
             IF( VALUE.LT.TEMP .OR. DISNAN( TEMP ) ) VALUE = TEMP
    80    CONTINUE
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          DO 90 J = 1, N
             L = MAX( 1, J-KU )
             K = KU + 1 - J + L
-            CALL DLASSQ( MIN( N, J+KL )-L+1, AB( K, J ), 1, SCALE, SUM )
+            COLSSQ( 1 ) = ZERO
+            COLSSQ( 2 ) = ONE
+            CALL DLASSQ( MIN( N, J+KL )-L+1, AB( K, J ), 1,
+     $                   COLSSQ( 1 ), COLSSQ( 2 ) )
+            CALL DCOMBSSQ( SSQ, COLSSQ )
    90    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       DLANGB = VALUE
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/dlange.f
       DOUBLE PRECISION FUNCTION DLANGE( NORM, M, N, A, LDA, WORK )
+      IMPLICIT NONE
       CHARACTER          NORM
       INTEGER            LDA, M, N
       DOUBLE PRECISION   A( LDA, * ), WORK( * )
       DOUBLE PRECISION   ONE, ZERO
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       INTEGER            I, J
-      DOUBLE PRECISION   SCALE, SUM, VALUE, TEMP
-      EXTERNAL           DLASSQ
+      DOUBLE PRECISION   SUM, VALUE, TEMP
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
+      EXTERNAL           DLASSQ, DCOMBSSQ
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
       INTRINSIC          ABS, MIN, SQRT
@@ -12101,12 +12255,15 @@
             IF( VALUE.LT.TEMP .OR. DISNAN( TEMP ) ) VALUE = TEMP
    80    CONTINUE
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          DO 90 J = 1, N
-            CALL DLASSQ( M, A( 1, J ), 1, SCALE, SUM )
+            COLSSQ( 1 ) = ZERO
+            COLSSQ( 2 ) = ONE
+            CALL DLASSQ( M, A( 1, J ), 1, COLSSQ( 1 ), COLSSQ( 2 ) )
+            CALL DCOMBSSQ( SSQ, COLSSQ )
    90    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       DLANGE = VALUE
       RETURN
@@ -12175,16 +12332,18 @@
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/dlanhs.f
       DOUBLE PRECISION FUNCTION DLANHS( NORM, N, A, LDA, WORK )
+      IMPLICIT NONE
       CHARACTER          NORM
       INTEGER            LDA, N
       DOUBLE PRECISION   A( LDA, * ), WORK( * )
       DOUBLE PRECISION   ONE, ZERO
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       INTEGER            I, J
-      DOUBLE PRECISION   SCALE, SUM, VALUE
-      EXTERNAL           DLASSQ
+      DOUBLE PRECISION   SUM, VALUE
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
+      EXTERNAL           DLASSQ, DCOMBSSQ
       INTRINSIC          ABS, MIN, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -12220,12 +12379,16 @@
             IF( VALUE .LT. SUM .OR. DISNAN( SUM ) ) VALUE = SUM
    80    CONTINUE
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          DO 90 J = 1, N
-            CALL DLASSQ( MIN( N, J+1 ), A( 1, J ), 1, SCALE, SUM )
+            COLSSQ( 1 ) = ZERO
+            COLSSQ( 2 ) = ONE
+            CALL DLASSQ( MIN( N, J+1 ), A( 1, J ), 1,
+     $                   COLSSQ( 1 ), COLSSQ( 2 ) )
+            CALL DCOMBSSQ( SSQ, COLSSQ )
    90    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       DLANHS = VALUE
       RETURN
@@ -12233,16 +12396,18 @@
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/dlansb.f
       DOUBLE PRECISION FUNCTION DLANSB( NORM, UPLO, N, K, AB, LDAB,
      $                 WORK )
+      IMPLICIT NONE
       CHARACTER          NORM, UPLO
       INTEGER            K, LDAB, N
       DOUBLE PRECISION   AB( LDAB, * ), WORK( * )
       DOUBLE PRECISION   ONE, ZERO
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       INTEGER            I, J, L
-      DOUBLE PRECISION   ABSA, SCALE, SUM, VALUE
-      EXTERNAL           DLASSQ
+      DOUBLE PRECISION   ABSA, SUM, VALUE
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
+      EXTERNAL           DLASSQ, DCOMBSSQ
       INTRINSIC          ABS, MAX, MIN, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -12297,28 +12462,37 @@
   100       CONTINUE
          END IF
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          IF( K.GT.0 ) THEN
             IF( LSAME( UPLO, 'U' ) ) THEN
                DO 110 J = 2, N
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
                   CALL DLASSQ( MIN( J-1, K ), AB( MAX( K+2-J, 1 ), J ),
-     $                         1, SCALE, SUM )
+     $                         1, COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
   110          CONTINUE
                L = K + 1
             ELSE
                DO 120 J = 1, N - 1
-                  CALL DLASSQ( MIN( N-J, K ), AB( 2, J ), 1, SCALE,
-     $                         SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL DLASSQ( MIN( N-J, K ), AB( 2, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
   120          CONTINUE
                L = 1
             END IF
-            SUM = 2*SUM
+            SSQ( 2 ) = 2*SSQ( 2 )
          ELSE
             L = 1
          END IF
-         CALL DLASSQ( N, AB( L, 1 ), LDAB, SCALE, SUM )
-         VALUE = SCALE*SQRT( SUM )
+         COLSSQ( 1 ) = ZERO
+         COLSSQ( 2 ) = ONE
+         CALL DLASSQ( N, AB( L, 1 ), LDAB, COLSSQ( 1 ), COLSSQ( 2 ) )
+         CALL DCOMBSSQ( SSQ, COLSSQ )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       DLANSB = VALUE
       RETURN
@@ -12879,16 +13053,18 @@
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/dlansp.f
       DOUBLE PRECISION FUNCTION DLANSP( NORM, UPLO, N, AP, WORK )
+      IMPLICIT NONE
       CHARACTER          NORM, UPLO
       INTEGER            N
       DOUBLE PRECISION   AP( * ), WORK( * )
       DOUBLE PRECISION   ONE, ZERO
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       INTEGER            I, J, K
-      DOUBLE PRECISION   ABSA, SCALE, SUM, VALUE
-      EXTERNAL           DLASSQ
+      DOUBLE PRECISION   ABSA, SUM, VALUE
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
+      EXTERNAL           DLASSQ, DCOMBSSQ
       INTRINSIC          ABS, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -12950,30 +13126,38 @@
   100       CONTINUE
          END IF
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          K = 2
          IF( LSAME( UPLO, 'U' ) ) THEN
             DO 110 J = 2, N
-               CALL DLASSQ( J-1, AP( K ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL DLASSQ( J-1, AP( K ), 1, COLSSQ( 1 ), COLSSQ( 2 ) )
+               CALL DCOMBSSQ( SSQ, COLSSQ )
                K = K + J
   110       CONTINUE
          ELSE
             DO 120 J = 1, N - 1
-               CALL DLASSQ( N-J, AP( K ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL DLASSQ( N-J, AP( K ), 1, COLSSQ( 1 ), COLSSQ( 2 ) )
+               CALL DCOMBSSQ( SSQ, COLSSQ )
                K = K + N - J + 1
   120       CONTINUE
          END IF
-         SUM = 2*SUM
+         SSQ( 2 ) = 2*SSQ( 2 )
          K = 1
+         COLSSQ( 1 ) = ZERO
+         COLSSQ( 2 ) = ONE
          DO 130 I = 1, N
             IF( AP( K ).NE.ZERO ) THEN
                ABSA = ABS( AP( K ) )
-               IF( SCALE.LT.ABSA ) THEN
-                  SUM = ONE + SUM*( SCALE / ABSA )**2
-                  SCALE = ABSA
+               IF( COLSSQ( 1 ).LT.ABSA ) THEN
+                  COLSSQ( 2 ) = ONE + COLSSQ(2)*( COLSSQ(1) / ABSA )**2
+                  COLSSQ( 1 ) = ABSA
                ELSE
-                  SUM = SUM + ( ABSA / SCALE )**2
+                  COLSSQ( 2 ) = COLSSQ( 2 ) + ( ABSA / COLSSQ( 1 ) )**2
                END IF
             END IF
             IF( LSAME( UPLO, 'U' ) ) THEN
@@ -12982,7 +13166,8 @@
                K = K + N - I + 1
             END IF
   130    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         CALL DCOMBSSQ( SSQ, COLSSQ )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       DLANSP = VALUE
       RETURN
@@ -13038,16 +13223,18 @@
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/dlansy.f
       DOUBLE PRECISION FUNCTION DLANSY( NORM, UPLO, N, A, LDA, WORK )
+      IMPLICIT NONE
       CHARACTER          NORM, UPLO
       INTEGER            LDA, N
       DOUBLE PRECISION   A( LDA, * ), WORK( * )
       DOUBLE PRECISION   ONE, ZERO
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       INTEGER            I, J
-      DOUBLE PRECISION   ABSA, SCALE, SUM, VALUE
-      EXTERNAL           DLASSQ
+      DOUBLE PRECISION   ABSA, SUM, VALUE
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
+      EXTERNAL           DLASSQ, DCOMBSSQ
       INTRINSIC          ABS, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -13100,20 +13287,29 @@
   100       CONTINUE
          END IF
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          IF( LSAME( UPLO, 'U' ) ) THEN
             DO 110 J = 2, N
-               CALL DLASSQ( J-1, A( 1, J ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL DLASSQ( J-1, A( 1, J ), 1, COLSSQ(1), COLSSQ(2) )
+               CALL DCOMBSSQ( SSQ, COLSSQ )
   110       CONTINUE
          ELSE
             DO 120 J = 1, N - 1
-               CALL DLASSQ( N-J, A( J+1, J ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL DLASSQ( N-J, A( J+1, J ), 1, COLSSQ(1), COLSSQ(2) )
+               CALL DCOMBSSQ( SSQ, COLSSQ )
   120       CONTINUE
          END IF
-         SUM = 2*SUM
-         CALL DLASSQ( N, A, LDA+1, SCALE, SUM )
-         VALUE = SCALE*SQRT( SUM )
+         SSQ( 2 ) = 2*SSQ( 2 )
+         COLSSQ( 1 ) = ZERO
+         COLSSQ( 2 ) = ONE
+         CALL DLASSQ( N, A, LDA+1, COLSSQ( 1 ), COLSSQ( 2 ) )
+         CALL DCOMBSSQ( SSQ, COLSSQ )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       DLANSY = VALUE
       RETURN
@@ -13121,6 +13317,7 @@
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/dlantb.f
       DOUBLE PRECISION FUNCTION DLANTB( NORM, UPLO, DIAG, N, K, AB,
      $                 LDAB, WORK )
+      IMPLICIT NONE
       CHARACTER          DIAG, NORM, UPLO
       INTEGER            K, LDAB, N
       DOUBLE PRECISION   AB( LDAB, * ), WORK( * )
@@ -13128,10 +13325,11 @@
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       LOGICAL            UDIAG
       INTEGER            I, J, L
-      DOUBLE PRECISION   SCALE, SUM, VALUE
-      EXTERNAL           DLASSQ
+      DOUBLE PRECISION   SUM, VALUE
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
+      EXTERNAL           DLASSQ, DCOMBSSQ
       INTRINSIC          ABS, MAX, MIN, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -13259,49 +13457,62 @@
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
          IF( LSAME( UPLO, 'U' ) ) THEN
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = N
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = N
                IF( K.GT.0 ) THEN
                   DO 280 J = 2, N
+                     COLSSQ( 1 ) = ZERO
+                     COLSSQ( 2 ) = ONE
                      CALL DLASSQ( MIN( J-1, K ),
-     $                            AB( MAX( K+2-J, 1 ), J ), 1, SCALE,
-     $                            SUM )
+     $                            AB( MAX( K+2-J, 1 ), J ), 1,
+     $                            COLSSQ( 1 ), COLSSQ( 2 ) )
+                     CALL DCOMBSSQ( SSQ, COLSSQ )
   280             CONTINUE
                END IF
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                DO 290 J = 1, N
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
                   CALL DLASSQ( MIN( J, K+1 ), AB( MAX( K+2-J, 1 ), J ),
-     $                         1, SCALE, SUM )
+     $                         1, COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
   290          CONTINUE
             END IF
          ELSE
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = N
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = N
                IF( K.GT.0 ) THEN
                   DO 300 J = 1, N - 1
-                     CALL DLASSQ( MIN( N-J, K ), AB( 2, J ), 1, SCALE,
-     $                            SUM )
+                     COLSSQ( 1 ) = ZERO
+                     COLSSQ( 2 ) = ONE
+                     CALL DLASSQ( MIN( N-J, K ), AB( 2, J ), 1,
+     $                            COLSSQ( 1 ), COLSSQ( 2 ) )
+                     CALL DCOMBSSQ( SSQ, COLSSQ )
   300             CONTINUE
                END IF
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                DO 310 J = 1, N
-                  CALL DLASSQ( MIN( N-J+1, K+1 ), AB( 1, J ), 1, SCALE,
-     $                         SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL DLASSQ( MIN( N-J+1, K+1 ), AB( 1, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
   310          CONTINUE
             END IF
          END IF
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       DLANTB = VALUE
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/dlantp.f
       DOUBLE PRECISION FUNCTION DLANTP( NORM, UPLO, DIAG, N, AP, WORK )
+      IMPLICIT NONE
       CHARACTER          DIAG, NORM, UPLO
       INTEGER            N
       DOUBLE PRECISION   AP( * ), WORK( * )
@@ -13309,10 +13520,11 @@
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       LOGICAL            UDIAG
       INTEGER            I, J, K
-      DOUBLE PRECISION   SCALE, SUM, VALUE
-      EXTERNAL           DLASSQ
+      DOUBLE PRECISION   SUM, VALUE
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
+      EXTERNAL           DLASSQ, DCOMBSSQ
       INTRINSIC          ABS, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -13451,42 +13663,58 @@
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
          IF( LSAME( UPLO, 'U' ) ) THEN
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = N
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = N
                K = 2
                DO 280 J = 2, N
-                  CALL DLASSQ( J-1, AP( K ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL DLASSQ( J-1, AP( K ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
                   K = K + J
   280          CONTINUE
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                K = 1
                DO 290 J = 1, N
-                  CALL DLASSQ( J, AP( K ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL DLASSQ( J, AP( K ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
                   K = K + J
   290          CONTINUE
             END IF
          ELSE
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = N
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = N
                K = 2
                DO 300 J = 1, N - 1
-                  CALL DLASSQ( N-J, AP( K ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL DLASSQ( N-J, AP( K ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
                   K = K + N - J + 1
   300          CONTINUE
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                K = 1
                DO 310 J = 1, N
-                  CALL DLASSQ( N-J+1, AP( K ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL DLASSQ( N-J+1, AP( K ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
                   K = K + N - J + 1
   310          CONTINUE
             END IF
          END IF
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       DLANTP = VALUE
       RETURN
@@ -13494,6 +13722,7 @@
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/dlantr.f
       DOUBLE PRECISION FUNCTION DLANTR( NORM, UPLO, DIAG, M, N, A, LDA,
      $                 WORK )
+      IMPLICIT NONE
       CHARACTER          DIAG, NORM, UPLO
       INTEGER            LDA, M, N
       DOUBLE PRECISION   A( LDA, * ), WORK( * )
@@ -13501,10 +13730,11 @@
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       LOGICAL            UDIAG
       INTEGER            I, J
-      DOUBLE PRECISION   SCALE, SUM, VALUE
-      EXTERNAL           DLASSQ
+      DOUBLE PRECISION   SUM, VALUE
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
+      EXTERNAL           DLASSQ, DCOMBSSQ
       INTRINSIC          ABS, MIN, SQRT
       IF( MIN( M, N ).EQ.0 ) THEN
          VALUE = ZERO
@@ -13601,7 +13831,7 @@
             END IF
          ELSE
             IF( LSAME( DIAG, 'U' ) ) THEN
-               DO 210 I = 1, N
+               DO 210 I = 1, MIN( M, N )
                   WORK( I ) = ONE
   210          CONTINUE
                DO 220 I = N + 1, M
@@ -13631,35 +13861,50 @@
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
          IF( LSAME( UPLO, 'U' ) ) THEN
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = MIN( M, N )
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = MIN( M, N )
                DO 290 J = 2, N
-                  CALL DLASSQ( MIN( M, J-1 ), A( 1, J ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL DLASSQ( MIN( M, J-1 ), A( 1, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
   290          CONTINUE
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                DO 300 J = 1, N
-                  CALL DLASSQ( MIN( M, J ), A( 1, J ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL DLASSQ( MIN( M, J ), A( 1, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
   300          CONTINUE
             END IF
          ELSE
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = MIN( M, N )
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = MIN( M, N )
                DO 310 J = 1, N
-                  CALL DLASSQ( M-J, A( MIN( M, J+1 ), J ), 1, SCALE,
-     $                         SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL DLASSQ( M-J, A( MIN( M, J+1 ), J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
   310          CONTINUE
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                DO 320 J = 1, N
-                  CALL DLASSQ( M-J+1, A( J, J ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL DLASSQ( M-J+1, A( J, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
   320          CONTINUE
             END IF
          END IF
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       DLANTR = VALUE
       RETURN
@@ -26883,7 +27128,13 @@
       GO TO ( 50, 60, 70 )ISPEC
    50 CONTINUE
       NB = 1
-      IF( C2.EQ.'GE' ) THEN
+      IF( SUBNAM(2:6).EQ.'LAORH' ) THEN
+         IF( SNAME ) THEN
+             NB = 32
+         ELSE
+             NB = 32
+         END IF
+      ELSE IF( C2.EQ.'GE' ) THEN
          IF( C3.EQ.'TRF' ) THEN
             IF( SNAME ) THEN
                NB = 64
@@ -27729,6 +27980,21 @@
    10 CONTINUE
       LSAMEN = .TRUE.
    20 CONTINUE
+      RETURN
+      END
+! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/scombssq.f
+      SUBROUTINE SCOMBSSQ( V1, V2 )
+      REAL               V1( 2 ), V2( 2 )
+      REAL               ZERO
+      PARAMETER          ( ZERO = 0.0D+0 )
+      IF( V1( 1 ).GE.V2( 1 ) ) THEN
+         IF( V1( 1 ).NE.ZERO ) THEN
+            V1( 2 ) = V1( 2 ) + ( V2( 1 ) / V1( 1 ) )**2 * V2( 2 )
+         END IF
+      ELSE
+         V1( 2 ) = V2( 2 ) + ( V1( 1 ) / V2( 1 ) )**2 * V1( 2 )
+         V1( 1 ) = V2( 1 )
+      END IF
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/scsum1.f
@@ -28943,16 +29209,18 @@
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/slangb.f
       REAL             FUNCTION SLANGB( NORM, N, KL, KU, AB, LDAB,
      $                 WORK )
+      IMPLICIT NONE
       CHARACTER          NORM
       INTEGER            KL, KU, LDAB, N
       REAL               AB( LDAB, * ), WORK( * )
       REAL               ONE, ZERO
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       INTEGER            I, J, K, L
-      REAL               SCALE, SUM, VALUE, TEMP
-      EXTERNAL           SLASSQ
+      REAL               SUM, VALUE, TEMP
+      REAL               SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
+      EXTERNAL           SLASSQ, SCOMBSSQ
       INTRINSIC          ABS, MAX, MIN, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -28989,28 +29257,34 @@
             IF( VALUE.LT.TEMP .OR. SISNAN( TEMP ) ) VALUE = TEMP
    80    CONTINUE
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          DO 90 J = 1, N
             L = MAX( 1, J-KU )
             K = KU + 1 - J + L
-            CALL SLASSQ( MIN( N, J+KL )-L+1, AB( K, J ), 1, SCALE, SUM )
+            COLSSQ( 1 ) = ZERO
+            COLSSQ( 2 ) = ONE
+            CALL SLASSQ( MIN( N, J+KL )-L+1, AB( K, J ), 1,
+     $                   COLSSQ( 1 ), COLSSQ( 2 ) )
+            CALL SCOMBSSQ( SSQ, COLSSQ )
    90    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       SLANGB = VALUE
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/slange.f
       REAL             FUNCTION SLANGE( NORM, M, N, A, LDA, WORK )
+      IMPLICIT NONE
       CHARACTER          NORM
       INTEGER            LDA, M, N
       REAL               A( LDA, * ), WORK( * )
       REAL               ONE, ZERO
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       INTEGER            I, J
-      REAL               SCALE, SUM, VALUE, TEMP
-      EXTERNAL           SLASSQ
+      REAL               SUM, VALUE, TEMP
+      REAL               SSQ( 2 ), COLSSQ( 2 )
+      EXTERNAL           SLASSQ, SCOMBSSQ
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
       INTRINSIC          ABS, MIN, SQRT
@@ -29048,12 +29322,15 @@
             IF( VALUE.LT.TEMP .OR. SISNAN( TEMP ) ) VALUE = TEMP
    80    CONTINUE
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          DO 90 J = 1, N
-            CALL SLASSQ( M, A( 1, J ), 1, SCALE, SUM )
+            COLSSQ( 1 ) = ZERO
+            COLSSQ( 2 ) = ONE
+            CALL SLASSQ( M, A( 1, J ), 1, COLSSQ( 1 ), COLSSQ( 2 ) )
+            CALL SCOMBSSQ( SSQ, COLSSQ )
    90    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       SLANGE = VALUE
       RETURN
@@ -29122,16 +29399,18 @@
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/slanhs.f
       REAL             FUNCTION SLANHS( NORM, N, A, LDA, WORK )
+      IMPLICIT NONE
       CHARACTER          NORM
       INTEGER            LDA, N
       REAL               A( LDA, * ), WORK( * )
       REAL               ONE, ZERO
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       INTEGER            I, J
-      REAL               SCALE, SUM, VALUE
-      EXTERNAL           SLASSQ
+      REAL               SUM, VALUE
+      REAL               SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
+      EXTERNAL           SLASSQ, SCOMBSSQ
       INTRINSIC          ABS, MIN, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -29167,12 +29446,16 @@
             IF( VALUE .LT. SUM .OR. SISNAN( SUM ) ) VALUE = SUM
    80    CONTINUE
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          DO 90 J = 1, N
-            CALL SLASSQ( MIN( N, J+1 ), A( 1, J ), 1, SCALE, SUM )
+            COLSSQ( 1 ) = ZERO
+            COLSSQ( 2 ) = ONE
+            CALL SLASSQ( MIN( N, J+1 ), A( 1, J ), 1,
+     $                   COLSSQ( 1 ), COLSSQ( 2 ) )
+            CALL SCOMBSSQ( SSQ, COLSSQ )
    90    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       SLANHS = VALUE
       RETURN
@@ -29180,16 +29463,18 @@
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/slansb.f
       REAL             FUNCTION SLANSB( NORM, UPLO, N, K, AB, LDAB,
      $                 WORK )
+      IMPLICIT NONE
       CHARACTER          NORM, UPLO
       INTEGER            K, LDAB, N
       REAL               AB( LDAB, * ), WORK( * )
       REAL               ONE, ZERO
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       INTEGER            I, J, L
-      REAL               ABSA, SCALE, SUM, VALUE
-      EXTERNAL           SLASSQ
+      REAL               ABSA, SUM, VALUE
+      REAL               SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
+      EXTERNAL           SLASSQ, SCOMBSSQ
       INTRINSIC          ABS, MAX, MIN, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -29244,28 +29529,37 @@
   100       CONTINUE
          END IF
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          IF( K.GT.0 ) THEN
             IF( LSAME( UPLO, 'U' ) ) THEN
                DO 110 J = 2, N
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
                   CALL SLASSQ( MIN( J-1, K ), AB( MAX( K+2-J, 1 ), J ),
-     $                         1, SCALE, SUM )
+     $                         1, COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
   110          CONTINUE
                L = K + 1
             ELSE
                DO 120 J = 1, N - 1
-                  CALL SLASSQ( MIN( N-J, K ), AB( 2, J ), 1, SCALE,
-     $                         SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL SLASSQ( MIN( N-J, K ), AB( 2, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
   120          CONTINUE
                L = 1
             END IF
-            SUM = 2*SUM
+            SSQ( 2 ) = 2*SSQ( 2 )
          ELSE
             L = 1
          END IF
-         CALL SLASSQ( N, AB( L, 1 ), LDAB, SCALE, SUM )
-         VALUE = SCALE*SQRT( SUM )
+         COLSSQ( 1 ) = ZERO
+         COLSSQ( 2 ) = ONE
+         CALL SLASSQ( N, AB( L, 1 ), LDAB, COLSSQ( 1 ), COLSSQ( 2 ) )
+         CALL SCOMBSSQ( SSQ, COLSSQ )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       SLANSB = VALUE
       RETURN
@@ -29826,16 +30120,18 @@
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/slansp.f
       REAL             FUNCTION SLANSP( NORM, UPLO, N, AP, WORK )
+      IMPLICIT NONE
       CHARACTER          NORM, UPLO
       INTEGER            N
       REAL               AP( * ), WORK( * )
       REAL               ONE, ZERO
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       INTEGER            I, J, K
-      REAL               ABSA, SCALE, SUM, VALUE
-      EXTERNAL           SLASSQ
+      REAL               ABSA, SUM, VALUE
+      REAL               SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
+      EXTERNAL           SLASSQ, SCOMBSSQ
       INTRINSIC          ABS, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -29897,30 +30193,38 @@
   100       CONTINUE
          END IF
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          K = 2
          IF( LSAME( UPLO, 'U' ) ) THEN
             DO 110 J = 2, N
-               CALL SLASSQ( J-1, AP( K ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL SLASSQ( J-1, AP( K ), 1, COLSSQ( 1 ), COLSSQ( 2 ) )
+               CALL SCOMBSSQ( SSQ, COLSSQ )
                K = K + J
   110       CONTINUE
          ELSE
             DO 120 J = 1, N - 1
-               CALL SLASSQ( N-J, AP( K ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL SLASSQ( N-J, AP( K ), 1, COLSSQ( 1 ), COLSSQ( 2 ) )
+               CALL SCOMBSSQ( SSQ, COLSSQ )
                K = K + N - J + 1
   120       CONTINUE
          END IF
-         SUM = 2*SUM
+         SSQ( 2 ) = 2*SSQ( 2 )
          K = 1
+         COLSSQ( 1 ) = ZERO
+         COLSSQ( 2 ) = ONE
          DO 130 I = 1, N
             IF( AP( K ).NE.ZERO ) THEN
                ABSA = ABS( AP( K ) )
-               IF( SCALE.LT.ABSA ) THEN
-                  SUM = ONE + SUM*( SCALE / ABSA )**2
-                  SCALE = ABSA
+               IF( COLSSQ( 1 ).LT.ABSA ) THEN
+                  COLSSQ( 2 ) = ONE + COLSSQ(2)*( COLSSQ(1) / ABSA )**2
+                  COLSSQ( 1 ) = ABSA
                ELSE
-                  SUM = SUM + ( ABSA / SCALE )**2
+                  COLSSQ( 2 ) = COLSSQ( 2 ) + ( ABSA / COLSSQ( 1 ) )**2
                END IF
             END IF
             IF( LSAME( UPLO, 'U' ) ) THEN
@@ -29929,7 +30233,8 @@
                K = K + N - I + 1
             END IF
   130    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         CALL SCOMBSSQ( SSQ, COLSSQ )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       SLANSP = VALUE
       RETURN
@@ -29985,16 +30290,18 @@
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/slansy.f
       REAL             FUNCTION SLANSY( NORM, UPLO, N, A, LDA, WORK )
+      IMPLICIT NONE
       CHARACTER          NORM, UPLO
       INTEGER            LDA, N
       REAL               A( LDA, * ), WORK( * )
       REAL               ONE, ZERO
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       INTEGER            I, J
-      REAL               ABSA, SCALE, SUM, VALUE
-      EXTERNAL           SLASSQ
+      REAL               ABSA, SUM, VALUE
+      REAL               SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
+      EXTERNAL           SLASSQ, SCOMBSSQ
       INTRINSIC          ABS, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -30047,20 +30354,29 @@
   100       CONTINUE
          END IF
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          IF( LSAME( UPLO, 'U' ) ) THEN
             DO 110 J = 2, N
-               CALL SLASSQ( J-1, A( 1, J ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL SLASSQ( J-1, A( 1, J ), 1, COLSSQ(1), COLSSQ(2) )
+               CALL SCOMBSSQ( SSQ, COLSSQ )
   110       CONTINUE
          ELSE
             DO 120 J = 1, N - 1
-               CALL SLASSQ( N-J, A( J+1, J ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL SLASSQ( N-J, A( J+1, J ), 1, COLSSQ(1), COLSSQ(2) )
+               CALL SCOMBSSQ( SSQ, COLSSQ )
   120       CONTINUE
          END IF
-         SUM = 2*SUM
-         CALL SLASSQ( N, A, LDA+1, SCALE, SUM )
-         VALUE = SCALE*SQRT( SUM )
+         SSQ( 2 ) = 2*SSQ( 2 )
+         COLSSQ( 1 ) = ZERO
+         COLSSQ( 2 ) = ONE
+         CALL SLASSQ( N, A, LDA+1, COLSSQ( 1 ), COLSSQ( 2 ) )
+         CALL SCOMBSSQ( SSQ, COLSSQ )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       SLANSY = VALUE
       RETURN
@@ -30068,6 +30384,7 @@
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/slantb.f
       REAL             FUNCTION SLANTB( NORM, UPLO, DIAG, N, K, AB,
      $                 LDAB, WORK )
+      IMPLICIT NONE
       CHARACTER          DIAG, NORM, UPLO
       INTEGER            K, LDAB, N
       REAL               AB( LDAB, * ), WORK( * )
@@ -30075,10 +30392,11 @@
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       LOGICAL            UDIAG
       INTEGER            I, J, L
-      REAL               SCALE, SUM, VALUE
-      EXTERNAL           SLASSQ
+      REAL               SUM, VALUE
+      REAL               SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
+      EXTERNAL           SLASSQ, SCOMBSSQ
       INTRINSIC          ABS, MAX, MIN, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -30206,49 +30524,62 @@
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
          IF( LSAME( UPLO, 'U' ) ) THEN
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = N
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = N
                IF( K.GT.0 ) THEN
                   DO 280 J = 2, N
+                     COLSSQ( 1 ) = ZERO
+                     COLSSQ( 2 ) = ONE
                      CALL SLASSQ( MIN( J-1, K ),
-     $                            AB( MAX( K+2-J, 1 ), J ), 1, SCALE,
-     $                            SUM )
+     $                            AB( MAX( K+2-J, 1 ), J ), 1,
+     $                            COLSSQ( 1 ), COLSSQ( 2 ) )
+                     CALL SCOMBSSQ( SSQ, COLSSQ )
   280             CONTINUE
                END IF
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                DO 290 J = 1, N
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
                   CALL SLASSQ( MIN( J, K+1 ), AB( MAX( K+2-J, 1 ), J ),
-     $                         1, SCALE, SUM )
+     $                         1, COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
   290          CONTINUE
             END IF
          ELSE
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = N
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = N
                IF( K.GT.0 ) THEN
                   DO 300 J = 1, N - 1
-                     CALL SLASSQ( MIN( N-J, K ), AB( 2, J ), 1, SCALE,
-     $                            SUM )
+                     COLSSQ( 1 ) = ZERO
+                     COLSSQ( 2 ) = ONE
+                     CALL SLASSQ( MIN( N-J, K ), AB( 2, J ), 1,
+     $                            COLSSQ( 1 ), COLSSQ( 2 ) )
+                     CALL SCOMBSSQ( SSQ, COLSSQ )
   300             CONTINUE
                END IF
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                DO 310 J = 1, N
-                  CALL SLASSQ( MIN( N-J+1, K+1 ), AB( 1, J ), 1, SCALE,
-     $                         SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL SLASSQ( MIN( N-J+1, K+1 ), AB( 1, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
   310          CONTINUE
             END IF
          END IF
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       SLANTB = VALUE
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/slantp.f
       REAL             FUNCTION SLANTP( NORM, UPLO, DIAG, N, AP, WORK )
+      IMPLICIT NONE
       CHARACTER          DIAG, NORM, UPLO
       INTEGER            N
       REAL               AP( * ), WORK( * )
@@ -30256,10 +30587,11 @@
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       LOGICAL            UDIAG
       INTEGER            I, J, K
-      REAL               SCALE, SUM, VALUE
-      EXTERNAL           SLASSQ
+      REAL               SUM, VALUE
+      REAL               SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
+      EXTERNAL           SLASSQ, SCOMBSSQ
       INTRINSIC          ABS, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -30398,42 +30730,58 @@
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
          IF( LSAME( UPLO, 'U' ) ) THEN
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = N
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = N
                K = 2
                DO 280 J = 2, N
-                  CALL SLASSQ( J-1, AP( K ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL SLASSQ( J-1, AP( K ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
                   K = K + J
   280          CONTINUE
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                K = 1
                DO 290 J = 1, N
-                  CALL SLASSQ( J, AP( K ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL SLASSQ( J, AP( K ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
                   K = K + J
   290          CONTINUE
             END IF
          ELSE
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = N
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = N
                K = 2
                DO 300 J = 1, N - 1
-                  CALL SLASSQ( N-J, AP( K ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL SLASSQ( N-J, AP( K ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
                   K = K + N - J + 1
   300          CONTINUE
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                K = 1
                DO 310 J = 1, N
-                  CALL SLASSQ( N-J+1, AP( K ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL SLASSQ( N-J+1, AP( K ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
                   K = K + N - J + 1
   310          CONTINUE
             END IF
          END IF
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       SLANTP = VALUE
       RETURN
@@ -30441,6 +30789,7 @@
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/slantr.f
       REAL             FUNCTION SLANTR( NORM, UPLO, DIAG, M, N, A, LDA,
      $                 WORK )
+      IMPLICIT NONE
       CHARACTER          DIAG, NORM, UPLO
       INTEGER            LDA, M, N
       REAL               A( LDA, * ), WORK( * )
@@ -30448,10 +30797,11 @@
       PARAMETER          ( ONE = 1.0E+0, ZERO = 0.0E+0 )
       LOGICAL            UDIAG
       INTEGER            I, J
-      REAL               SCALE, SUM, VALUE
-      EXTERNAL           SLASSQ
+      REAL               SUM, VALUE
+      REAL               SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, SISNAN
       EXTERNAL           LSAME, SISNAN
+      EXTERNAL           SLASSQ, SCOMBSSQ
       INTRINSIC          ABS, MIN, SQRT
       IF( MIN( M, N ).EQ.0 ) THEN
          VALUE = ZERO
@@ -30548,7 +30898,7 @@
             END IF
          ELSE
             IF( LSAME( DIAG, 'U' ) ) THEN
-               DO 210 I = 1, N
+               DO 210 I = 1, MIN( M, N )
                   WORK( I ) = ONE
   210          CONTINUE
                DO 220 I = N + 1, M
@@ -30578,35 +30928,50 @@
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
          IF( LSAME( UPLO, 'U' ) ) THEN
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = MIN( M, N )
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = MIN( M, N )
                DO 290 J = 2, N
-                  CALL SLASSQ( MIN( M, J-1 ), A( 1, J ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL SLASSQ( MIN( M, J-1 ), A( 1, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
   290          CONTINUE
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                DO 300 J = 1, N
-                  CALL SLASSQ( MIN( M, J ), A( 1, J ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL SLASSQ( MIN( M, J ), A( 1, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
   300          CONTINUE
             END IF
          ELSE
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = MIN( M, N )
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = MIN( M, N )
                DO 310 J = 1, N
-                  CALL SLASSQ( M-J, A( MIN( M, J+1 ), J ), 1, SCALE,
-     $                         SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL SLASSQ( M-J, A( MIN( M, J+1 ), J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
   310          CONTINUE
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                DO 320 J = 1, N
-                  CALL SLASSQ( M-J+1, A( J, J ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL SLASSQ( M-J+1, A( J, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL SCOMBSSQ( SSQ, COLSSQ )
   320          CONTINUE
             END IF
          END IF
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       SLANTR = VALUE
       RETURN
@@ -41495,6 +41860,7 @@
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zlangb.f
       DOUBLE PRECISION FUNCTION ZLANGB( NORM, N, KL, KU, AB, LDAB,
      $                 WORK )
+      IMPLICIT NONE
       CHARACTER          NORM
       INTEGER            KL, KU, LDAB, N
       DOUBLE PRECISION   WORK( * )
@@ -41502,10 +41868,11 @@
       DOUBLE PRECISION   ONE, ZERO
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       INTEGER            I, J, K, L
-      DOUBLE PRECISION   SCALE, SUM, VALUE, TEMP
+      DOUBLE PRECISION   SUM, VALUE, TEMP
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
-      EXTERNAL           ZLASSQ
+      EXTERNAL           ZLASSQ, DCOMBSSQ
       INTRINSIC          ABS, MAX, MIN, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -41542,20 +41909,25 @@
             IF( VALUE.LT.TEMP .OR. DISNAN( TEMP ) ) VALUE = TEMP
    80    CONTINUE
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          DO 90 J = 1, N
             L = MAX( 1, J-KU )
             K = KU + 1 - J + L
-            CALL ZLASSQ( MIN( N, J+KL )-L+1, AB( K, J ), 1, SCALE, SUM )
+            COLSSQ( 1 ) = ZERO
+            COLSSQ( 2 ) = ONE
+            CALL ZLASSQ( MIN( N, J+KL )-L+1, AB( K, J ), 1,
+     $                   COLSSQ( 1 ), COLSSQ( 2 ) )
+            CALL DCOMBSSQ( SSQ, COLSSQ )
    90    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       ZLANGB = VALUE
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zlange.f
       DOUBLE PRECISION FUNCTION ZLANGE( NORM, M, N, A, LDA, WORK )
+      IMPLICIT NONE
       CHARACTER          NORM
       INTEGER            LDA, M, N
       DOUBLE PRECISION   WORK( * )
@@ -41563,10 +41935,11 @@
       DOUBLE PRECISION   ONE, ZERO
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       INTEGER            I, J
-      DOUBLE PRECISION   SCALE, SUM, VALUE, TEMP
+      DOUBLE PRECISION   SUM, VALUE, TEMP
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
-      EXTERNAL           ZLASSQ
+      EXTERNAL           ZLASSQ, DCOMBSSQ
       INTRINSIC          ABS, MIN, SQRT
       IF( MIN( M, N ).EQ.0 ) THEN
          VALUE = ZERO
@@ -41602,12 +41975,15 @@
             IF( VALUE.LT.TEMP .OR. DISNAN( TEMP ) ) VALUE = TEMP
    80    CONTINUE
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          DO 90 J = 1, N
-            CALL ZLASSQ( M, A( 1, J ), 1, SCALE, SUM )
+            COLSSQ( 1 ) = ZERO
+            COLSSQ( 2 ) = ONE
+            CALL ZLASSQ( M, A( 1, J ), 1, COLSSQ( 1 ), COLSSQ( 2 ) )
+            CALL DCOMBSSQ( SSQ, COLSSQ )
    90    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       ZLANGE = VALUE
       RETURN
@@ -41677,6 +42053,7 @@
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zlanhb.f
       DOUBLE PRECISION FUNCTION ZLANHB( NORM, UPLO, N, K, AB, LDAB,
      $                 WORK )
+      IMPLICIT NONE
       CHARACTER          NORM, UPLO
       INTEGER            K, LDAB, N
       DOUBLE PRECISION   WORK( * )
@@ -41684,10 +42061,11 @@
       DOUBLE PRECISION   ONE, ZERO
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       INTEGER            I, J, L
-      DOUBLE PRECISION   ABSA, SCALE, SUM, VALUE
+      DOUBLE PRECISION   ABSA, SUM, VALUE
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
-      EXTERNAL           ZLASSQ
+      EXTERNAL           ZLASSQ, DCOMBSSQ
       INTRINSIC          ABS, DBLE, MAX, MIN, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -41746,44 +42124,54 @@
   100       CONTINUE
          END IF
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          IF( K.GT.0 ) THEN
             IF( LSAME( UPLO, 'U' ) ) THEN
                DO 110 J = 2, N
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
                   CALL ZLASSQ( MIN( J-1, K ), AB( MAX( K+2-J, 1 ), J ),
-     $                         1, SCALE, SUM )
+     $                         1, COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
   110          CONTINUE
                L = K + 1
             ELSE
                DO 120 J = 1, N - 1
-                  CALL ZLASSQ( MIN( N-J, K ), AB( 2, J ), 1, SCALE,
-     $                         SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL ZLASSQ( MIN( N-J, K ), AB( 2, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
   120          CONTINUE
                L = 1
             END IF
-            SUM = 2*SUM
+            SSQ( 2 ) = 2*SSQ( 2 )
          ELSE
             L = 1
          END IF
+         COLSSQ( 1 ) = ZERO
+         COLSSQ( 2 ) = ONE
          DO 130 J = 1, N
             IF( DBLE( AB( L, J ) ).NE.ZERO ) THEN
                ABSA = ABS( DBLE( AB( L, J ) ) )
-               IF( SCALE.LT.ABSA ) THEN
-                  SUM = ONE + SUM*( SCALE / ABSA )**2
-                  SCALE = ABSA
+               IF( COLSSQ( 1 ).LT.ABSA ) THEN
+                  COLSSQ( 2 ) = ONE + COLSSQ(2)*( COLSSQ(1) / ABSA )**2
+                  COLSSQ( 1 ) = ABSA
                ELSE
-                  SUM = SUM + ( ABSA / SCALE )**2
+                  COLSSQ( 2 ) = COLSSQ( 2 ) + ( ABSA / COLSSQ( 1 ) )**2
                END IF
             END IF
   130    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         CALL DCOMBSSQ( SSQ, COLSSQ )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       ZLANHB = VALUE
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zlanhe.f
       DOUBLE PRECISION FUNCTION ZLANHE( NORM, UPLO, N, A, LDA, WORK )
+      IMPLICIT NONE
       CHARACTER          NORM, UPLO
       INTEGER            LDA, N
       DOUBLE PRECISION   WORK( * )
@@ -41791,10 +42179,11 @@
       DOUBLE PRECISION   ONE, ZERO
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       INTEGER            I, J
-      DOUBLE PRECISION   ABSA, SCALE, SUM, VALUE
+      DOUBLE PRECISION   ABSA, SUM, VALUE
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
-      EXTERNAL           ZLASSQ
+      EXTERNAL           ZLASSQ, DCOMBSSQ
       INTRINSIC          ABS, DBLE, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -41851,30 +42240,38 @@
   100       CONTINUE
          END IF
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          IF( LSAME( UPLO, 'U' ) ) THEN
             DO 110 J = 2, N
-               CALL ZLASSQ( J-1, A( 1, J ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL ZLASSQ( J-1, A( 1, J ), 1,
+     $                      COLSSQ( 1 ), COLSSQ( 2 ) )
+               CALL DCOMBSSQ( SSQ, COLSSQ )
   110       CONTINUE
          ELSE
             DO 120 J = 1, N - 1
-               CALL ZLASSQ( N-J, A( J+1, J ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL ZLASSQ( N-J, A( J+1, J ), 1,
+     $                      COLSSQ( 1 ), COLSSQ( 2 ) )
+               CALL DCOMBSSQ( SSQ, COLSSQ )
   120       CONTINUE
          END IF
-         SUM = 2*SUM
+         SSQ( 2 ) = 2*SSQ( 2 )
          DO 130 I = 1, N
             IF( DBLE( A( I, I ) ).NE.ZERO ) THEN
                ABSA = ABS( DBLE( A( I, I ) ) )
-               IF( SCALE.LT.ABSA ) THEN
-                  SUM = ONE + SUM*( SCALE / ABSA )**2
-                  SCALE = ABSA
+               IF( SSQ( 1 ).LT.ABSA ) THEN
+                  SSQ( 2 ) = ONE + SSQ( 2 )*( SSQ( 1 ) / ABSA )**2
+                  SSQ( 1 ) = ABSA
                ELSE
-                  SUM = SUM + ( ABSA / SCALE )**2
+                  SSQ( 2 ) = SSQ( 2 ) + ( ABSA / SSQ( 1 ) )**2
                END IF
             END IF
   130    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       ZLANHE = VALUE
       RETURN
@@ -42941,6 +43338,7 @@
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zlanhp.f
       DOUBLE PRECISION FUNCTION ZLANHP( NORM, UPLO, N, AP, WORK )
+      IMPLICIT NONE
       CHARACTER          NORM, UPLO
       INTEGER            N
       DOUBLE PRECISION   WORK( * )
@@ -42948,10 +43346,11 @@
       DOUBLE PRECISION   ONE, ZERO
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       INTEGER            I, J, K
-      DOUBLE PRECISION   ABSA, SCALE, SUM, VALUE
+      DOUBLE PRECISION   ABSA, SUM, VALUE
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
-      EXTERNAL           ZLASSQ
+      EXTERNAL           ZLASSQ, DCOMBSSQ
       INTRINSIC          ABS, DBLE, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -43017,30 +43416,38 @@
   100       CONTINUE
          END IF
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          K = 2
          IF( LSAME( UPLO, 'U' ) ) THEN
             DO 110 J = 2, N
-               CALL ZLASSQ( J-1, AP( K ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL ZLASSQ( J-1, AP( K ), 1, COLSSQ( 1 ), COLSSQ( 2 ) )
+               CALL DCOMBSSQ( SSQ, COLSSQ )
                K = K + J
   110       CONTINUE
          ELSE
             DO 120 J = 1, N - 1
-               CALL ZLASSQ( N-J, AP( K ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL ZLASSQ( N-J, AP( K ), 1, COLSSQ( 1 ), COLSSQ( 2 ) )
+               CALL DCOMBSSQ( SSQ, COLSSQ )
                K = K + N - J + 1
   120       CONTINUE
          END IF
-         SUM = 2*SUM
+         SSQ( 2 ) = 2*SSQ( 2 )
          K = 1
+         COLSSQ( 1 ) = ZERO
+         COLSSQ( 2 ) = ONE
          DO 130 I = 1, N
             IF( DBLE( AP( K ) ).NE.ZERO ) THEN
                ABSA = ABS( DBLE( AP( K ) ) )
-               IF( SCALE.LT.ABSA ) THEN
-                  SUM = ONE + SUM*( SCALE / ABSA )**2
-                  SCALE = ABSA
+               IF( COLSSQ( 1 ).LT.ABSA ) THEN
+                  COLSSQ( 2 ) = ONE + COLSSQ(2)*( COLSSQ(1) / ABSA )**2
+                  COLSSQ( 1 ) = ABSA
                ELSE
-                  SUM = SUM + ( ABSA / SCALE )**2
+                  COLSSQ( 2 ) = COLSSQ( 2 ) + ( ABSA / COLSSQ( 1 ) )**2
                END IF
             END IF
             IF( LSAME( UPLO, 'U' ) ) THEN
@@ -43049,13 +43456,15 @@
                K = K + N - I + 1
             END IF
   130    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         CALL DCOMBSSQ( SSQ, COLSSQ )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       ZLANHP = VALUE
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zlanhs.f
       DOUBLE PRECISION FUNCTION ZLANHS( NORM, N, A, LDA, WORK )
+      IMPLICIT NONE
       CHARACTER          NORM
       INTEGER            LDA, N
       DOUBLE PRECISION   WORK( * )
@@ -43063,10 +43472,11 @@
       DOUBLE PRECISION   ONE, ZERO
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       INTEGER            I, J
-      DOUBLE PRECISION   SCALE, SUM, VALUE
+      DOUBLE PRECISION   SUM, VALUE
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
-      EXTERNAL           ZLASSQ
+      EXTERNAL           ZLASSQ, DCOMBSSQ
       INTRINSIC          ABS, MIN, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -43102,12 +43512,16 @@
             IF( VALUE .LT. SUM .OR. DISNAN( SUM ) ) VALUE = SUM
    80    CONTINUE
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          DO 90 J = 1, N
-            CALL ZLASSQ( MIN( N, J+1 ), A( 1, J ), 1, SCALE, SUM )
+            COLSSQ( 1 ) = ZERO
+            COLSSQ( 2 ) = ONE
+            CALL ZLASSQ( MIN( N, J+1 ), A( 1, J ), 1,
+     $                   COLSSQ( 1 ), COLSSQ( 2 ) )
+            CALL DCOMBSSQ( SSQ, COLSSQ )
    90    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       ZLANHS = VALUE
       RETURN
@@ -43165,6 +43579,7 @@
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zlansb.f
       DOUBLE PRECISION FUNCTION ZLANSB( NORM, UPLO, N, K, AB, LDAB,
      $                 WORK )
+      IMPLICIT NONE
       CHARACTER          NORM, UPLO
       INTEGER            K, LDAB, N
       DOUBLE PRECISION   WORK( * )
@@ -43172,10 +43587,11 @@
       DOUBLE PRECISION   ONE, ZERO
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       INTEGER            I, J, L
-      DOUBLE PRECISION   ABSA, SCALE, SUM, VALUE
+      DOUBLE PRECISION   ABSA, SUM, VALUE
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
-      EXTERNAL           ZLASSQ
+      EXTERNAL           ZLASSQ, DCOMBSSQ
       INTRINSIC          ABS, MAX, MIN, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -43230,34 +43646,44 @@
   100       CONTINUE
          END IF
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          IF( K.GT.0 ) THEN
             IF( LSAME( UPLO, 'U' ) ) THEN
                DO 110 J = 2, N
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
                   CALL ZLASSQ( MIN( J-1, K ), AB( MAX( K+2-J, 1 ), J ),
-     $                         1, SCALE, SUM )
+     $                         1, COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
   110          CONTINUE
                L = K + 1
             ELSE
                DO 120 J = 1, N - 1
-                  CALL ZLASSQ( MIN( N-J, K ), AB( 2, J ), 1, SCALE,
-     $                         SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL ZLASSQ( MIN( N-J, K ), AB( 2, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
   120          CONTINUE
                L = 1
             END IF
-            SUM = 2*SUM
+            SSQ( 2 ) = 2*SSQ( 2 )
          ELSE
             L = 1
          END IF
-         CALL ZLASSQ( N, AB( L, 1 ), LDAB, SCALE, SUM )
-         VALUE = SCALE*SQRT( SUM )
+         COLSSQ( 1 ) = ZERO
+         COLSSQ( 2 ) = ONE
+         CALL ZLASSQ( N, AB( L, 1 ), LDAB, COLSSQ( 1 ), COLSSQ( 2 ) )
+         CALL DCOMBSSQ( SSQ, COLSSQ )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       ZLANSB = VALUE
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zlansp.f
       DOUBLE PRECISION FUNCTION ZLANSP( NORM, UPLO, N, AP, WORK )
+      IMPLICIT NONE
       CHARACTER          NORM, UPLO
       INTEGER            N
       DOUBLE PRECISION   WORK( * )
@@ -43265,10 +43691,11 @@
       DOUBLE PRECISION   ONE, ZERO
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       INTEGER            I, J, K
-      DOUBLE PRECISION   ABSA, SCALE, SUM, VALUE
+      DOUBLE PRECISION   ABSA, SUM, VALUE
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
-      EXTERNAL           ZLASSQ
+      EXTERNAL           ZLASSQ, DCOMBSSQ
       INTRINSIC          ABS, DBLE, DIMAG, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -43330,39 +43757,47 @@
   100       CONTINUE
          END IF
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          K = 2
          IF( LSAME( UPLO, 'U' ) ) THEN
             DO 110 J = 2, N
-               CALL ZLASSQ( J-1, AP( K ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL ZLASSQ( J-1, AP( K ), 1, COLSSQ( 1 ), COLSSQ( 2 ) )
+               CALL DCOMBSSQ( SSQ, COLSSQ )
                K = K + J
   110       CONTINUE
          ELSE
             DO 120 J = 1, N - 1
-               CALL ZLASSQ( N-J, AP( K ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL ZLASSQ( N-J, AP( K ), 1, COLSSQ( 1 ), COLSSQ( 2 ) )
+               CALL DCOMBSSQ( SSQ, COLSSQ )
                K = K + N - J + 1
   120       CONTINUE
          END IF
-         SUM = 2*SUM
+         SSQ( 2 ) = 2*SSQ( 2 )
          K = 1
+         COLSSQ( 1 ) = ZERO
+         COLSSQ( 2 ) = ONE
          DO 130 I = 1, N
             IF( DBLE( AP( K ) ).NE.ZERO ) THEN
                ABSA = ABS( DBLE( AP( K ) ) )
-               IF( SCALE.LT.ABSA ) THEN
-                  SUM = ONE + SUM*( SCALE / ABSA )**2
-                  SCALE = ABSA
+               IF( COLSSQ( 1 ).LT.ABSA ) THEN
+                  COLSSQ( 2 ) = ONE + COLSSQ(2)*( COLSSQ(1) / ABSA )**2
+                  COLSSQ( 1 ) = ABSA
                ELSE
-                  SUM = SUM + ( ABSA / SCALE )**2
+                  COLSSQ( 2 ) = COLSSQ( 2 ) + ( ABSA / COLSSQ( 1 ) )**2
                END IF
             END IF
             IF( DIMAG( AP( K ) ).NE.ZERO ) THEN
                ABSA = ABS( DIMAG( AP( K ) ) )
-               IF( SCALE.LT.ABSA ) THEN
-                  SUM = ONE + SUM*( SCALE / ABSA )**2
-                  SCALE = ABSA
+               IF( COLSSQ( 1 ).LT.ABSA ) THEN
+                  COLSSQ( 2 ) = ONE + COLSSQ(2)*( COLSSQ(1) / ABSA )**2
+                  COLSSQ( 1 ) = ABSA
                ELSE
-                  SUM = SUM + ( ABSA / SCALE )**2
+                  COLSSQ( 2 ) = COLSSQ( 2 ) + ( ABSA / COLSSQ( 1 ) )**2
                END IF
             END IF
             IF( LSAME( UPLO, 'U' ) ) THEN
@@ -43371,13 +43806,15 @@
                K = K + N - I + 1
             END IF
   130    CONTINUE
-         VALUE = SCALE*SQRT( SUM )
+         CALL DCOMBSSQ( SSQ, COLSSQ )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       ZLANSP = VALUE
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zlansy.f
       DOUBLE PRECISION FUNCTION ZLANSY( NORM, UPLO, N, A, LDA, WORK )
+      IMPLICIT NONE
       CHARACTER          NORM, UPLO
       INTEGER            LDA, N
       DOUBLE PRECISION   WORK( * )
@@ -43385,10 +43822,11 @@
       DOUBLE PRECISION   ONE, ZERO
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       INTEGER            I, J
-      DOUBLE PRECISION   ABSA, SCALE, SUM, VALUE
+      DOUBLE PRECISION   ABSA, SUM, VALUE
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
-      EXTERNAL           ZLASSQ
+      EXTERNAL           ZLASSQ, DCOMBSSQ
       INTRINSIC          ABS, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -43441,20 +43879,29 @@
   100       CONTINUE
          END IF
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
-         SCALE = ZERO
-         SUM = ONE
+         SSQ( 1 ) = ZERO
+         SSQ( 2 ) = ONE
          IF( LSAME( UPLO, 'U' ) ) THEN
             DO 110 J = 2, N
-               CALL ZLASSQ( J-1, A( 1, J ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL ZLASSQ( J-1, A( 1, J ), 1, COLSSQ(1), COLSSQ(2) )
+               CALL DCOMBSSQ( SSQ, COLSSQ )
   110       CONTINUE
          ELSE
             DO 120 J = 1, N - 1
-               CALL ZLASSQ( N-J, A( J+1, J ), 1, SCALE, SUM )
+               COLSSQ( 1 ) = ZERO
+               COLSSQ( 2 ) = ONE
+               CALL ZLASSQ( N-J, A( J+1, J ), 1, COLSSQ(1), COLSSQ(2) )
+               CALL DCOMBSSQ( SSQ, COLSSQ )
   120       CONTINUE
          END IF
-         SUM = 2*SUM
-         CALL ZLASSQ( N, A, LDA+1, SCALE, SUM )
-         VALUE = SCALE*SQRT( SUM )
+         SSQ( 2 ) = 2*SSQ( 2 )
+         COLSSQ( 1 ) = ZERO
+         COLSSQ( 2 ) = ONE
+         CALL ZLASSQ( N, A, LDA+1, COLSSQ( 1 ), COLSSQ( 2 ) )
+         CALL DCOMBSSQ( SSQ, COLSSQ )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       ZLANSY = VALUE
       RETURN
@@ -43462,6 +43909,7 @@
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zlantb.f
       DOUBLE PRECISION FUNCTION ZLANTB( NORM, UPLO, DIAG, N, K, AB,
      $                 LDAB, WORK )
+      IMPLICIT NONE
       CHARACTER          DIAG, NORM, UPLO
       INTEGER            K, LDAB, N
       DOUBLE PRECISION   WORK( * )
@@ -43470,10 +43918,11 @@
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       LOGICAL            UDIAG
       INTEGER            I, J, L
-      DOUBLE PRECISION   SCALE, SUM, VALUE
+      DOUBLE PRECISION   SUM, VALUE
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
-      EXTERNAL           ZLASSQ
+      EXTERNAL           ZLASSQ, DCOMBSSQ
       INTRINSIC          ABS, MAX, MIN, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -43601,49 +44050,62 @@
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
          IF( LSAME( UPLO, 'U' ) ) THEN
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = N
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = N
                IF( K.GT.0 ) THEN
                   DO 280 J = 2, N
+                     COLSSQ( 1 ) = ZERO
+                     COLSSQ( 2 ) = ONE
                      CALL ZLASSQ( MIN( J-1, K ),
-     $                            AB( MAX( K+2-J, 1 ), J ), 1, SCALE,
-     $                            SUM )
+     $                            AB( MAX( K+2-J, 1 ), J ), 1,
+     $                            COLSSQ( 1 ), COLSSQ( 2 ) )
+                     CALL DCOMBSSQ( SSQ, COLSSQ )
   280             CONTINUE
                END IF
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                DO 290 J = 1, N
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
                   CALL ZLASSQ( MIN( J, K+1 ), AB( MAX( K+2-J, 1 ), J ),
-     $                         1, SCALE, SUM )
+     $                         1, COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
   290          CONTINUE
             END IF
          ELSE
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = N
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = N
                IF( K.GT.0 ) THEN
                   DO 300 J = 1, N - 1
-                     CALL ZLASSQ( MIN( N-J, K ), AB( 2, J ), 1, SCALE,
-     $                            SUM )
+                     COLSSQ( 1 ) = ZERO
+                     COLSSQ( 2 ) = ONE
+                     CALL ZLASSQ( MIN( N-J, K ), AB( 2, J ), 1,
+     $                            COLSSQ( 1 ), COLSSQ( 2 ) )
+                     CALL DCOMBSSQ( SSQ, COLSSQ )
   300             CONTINUE
                END IF
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                DO 310 J = 1, N
-                  CALL ZLASSQ( MIN( N-J+1, K+1 ), AB( 1, J ), 1, SCALE,
-     $                         SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL ZLASSQ( MIN( N-J+1, K+1 ), AB( 1, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
   310          CONTINUE
             END IF
          END IF
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       ZLANTB = VALUE
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zlantp.f
       DOUBLE PRECISION FUNCTION ZLANTP( NORM, UPLO, DIAG, N, AP, WORK )
+      IMPLICIT NONE
       CHARACTER          DIAG, NORM, UPLO
       INTEGER            N
       DOUBLE PRECISION   WORK( * )
@@ -43652,10 +44114,11 @@
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       LOGICAL            UDIAG
       INTEGER            I, J, K
-      DOUBLE PRECISION   SCALE, SUM, VALUE
+      DOUBLE PRECISION   SUM, VALUE
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
-      EXTERNAL           ZLASSQ
+      EXTERNAL           ZLASSQ, DCOMBSSQ
       INTRINSIC          ABS, SQRT
       IF( N.EQ.0 ) THEN
          VALUE = ZERO
@@ -43794,42 +44257,58 @@
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
          IF( LSAME( UPLO, 'U' ) ) THEN
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = N
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = N
                K = 2
                DO 280 J = 2, N
-                  CALL ZLASSQ( J-1, AP( K ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL ZLASSQ( J-1, AP( K ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
                   K = K + J
   280          CONTINUE
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                K = 1
                DO 290 J = 1, N
-                  CALL ZLASSQ( J, AP( K ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL ZLASSQ( J, AP( K ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
                   K = K + J
   290          CONTINUE
             END IF
          ELSE
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = N
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = N
                K = 2
                DO 300 J = 1, N - 1
-                  CALL ZLASSQ( N-J, AP( K ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL ZLASSQ( N-J, AP( K ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
                   K = K + N - J + 1
   300          CONTINUE
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                K = 1
                DO 310 J = 1, N
-                  CALL ZLASSQ( N-J+1, AP( K ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL ZLASSQ( N-J+1, AP( K ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
                   K = K + N - J + 1
   310          CONTINUE
             END IF
          END IF
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       ZLANTP = VALUE
       RETURN
@@ -43837,6 +44316,7 @@
 ! SOURCE-FILE = /home/nicpa/LA/lapack/SRC/zlantr.f
       DOUBLE PRECISION FUNCTION ZLANTR( NORM, UPLO, DIAG, M, N, A, LDA,
      $                 WORK )
+      IMPLICIT NONE
       CHARACTER          DIAG, NORM, UPLO
       INTEGER            LDA, M, N
       DOUBLE PRECISION   WORK( * )
@@ -43845,10 +44325,11 @@
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
       LOGICAL            UDIAG
       INTEGER            I, J
-      DOUBLE PRECISION   SCALE, SUM, VALUE
+      DOUBLE PRECISION   SUM, VALUE
+      DOUBLE PRECISION   SSQ( 2 ), COLSSQ( 2 )
       LOGICAL            LSAME, DISNAN
       EXTERNAL           LSAME, DISNAN
-      EXTERNAL           ZLASSQ
+      EXTERNAL           ZLASSQ, DCOMBSSQ
       INTRINSIC          ABS, MIN, SQRT
       IF( MIN( M, N ).EQ.0 ) THEN
          VALUE = ZERO
@@ -43945,7 +44426,7 @@
             END IF
          ELSE
             IF( LSAME( DIAG, 'U' ) ) THEN
-               DO 210 I = 1, N
+               DO 210 I = 1, MIN( M, N )
                   WORK( I ) = ONE
   210          CONTINUE
                DO 220 I = N + 1, M
@@ -43975,35 +44456,50 @@
       ELSE IF( ( LSAME( NORM, 'F' ) ) .OR. ( LSAME( NORM, 'E' ) ) ) THEN
          IF( LSAME( UPLO, 'U' ) ) THEN
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = MIN( M, N )
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = MIN( M, N )
                DO 290 J = 2, N
-                  CALL ZLASSQ( MIN( M, J-1 ), A( 1, J ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL ZLASSQ( MIN( M, J-1 ), A( 1, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
   290          CONTINUE
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                DO 300 J = 1, N
-                  CALL ZLASSQ( MIN( M, J ), A( 1, J ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL ZLASSQ( MIN( M, J ), A( 1, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
   300          CONTINUE
             END IF
          ELSE
             IF( LSAME( DIAG, 'U' ) ) THEN
-               SCALE = ONE
-               SUM = MIN( M, N )
+               SSQ( 1 ) = ONE
+               SSQ( 2 ) = MIN( M, N )
                DO 310 J = 1, N
-                  CALL ZLASSQ( M-J, A( MIN( M, J+1 ), J ), 1, SCALE,
-     $                         SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL ZLASSQ( M-J, A( MIN( M, J+1 ), J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
   310          CONTINUE
             ELSE
-               SCALE = ZERO
-               SUM = ONE
+               SSQ( 1 ) = ZERO
+               SSQ( 2 ) = ONE
                DO 320 J = 1, N
-                  CALL ZLASSQ( M-J+1, A( J, J ), 1, SCALE, SUM )
+                  COLSSQ( 1 ) = ZERO
+                  COLSSQ( 2 ) = ONE
+                  CALL ZLASSQ( M-J+1, A( J, J ), 1,
+     $                         COLSSQ( 1 ), COLSSQ( 2 ) )
+                  CALL DCOMBSSQ( SSQ, COLSSQ )
   320          CONTINUE
             END IF
          END IF
-         VALUE = SCALE*SQRT( SUM )
+         VALUE = SSQ( 1 )*SQRT( SSQ( 2 ) )
       END IF
       ZLANTR = VALUE
       RETURN
