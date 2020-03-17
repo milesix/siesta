@@ -232,6 +232,7 @@ C        Label 999 is the exit point
 !        since SIESTA will require r^{l}*Y_{lm},
 !        with l = 3 in this case.
 
+
 !        Real spherical harmonic for the Y_(3,-3)
 !        Y_{3,-3} = 1.0/4.0 * sqrt(35.0/(2.0*pi)) * (3x^2-y^2)*y / r^3
          RLY(9)  =  C(9) *FIFTEEN*(3.0*R(1)*R(1)-R(2)*R(2))*R(2)
@@ -353,6 +354,12 @@ C     Find spherical harmonics and their gradient
           GRLY(1,ILM)= RX*L*RL(L-1)*YY + RL(L)*GY(1)*C(ILM)/RSIZE
           GRLY(2,ILM)= RY*L*RL(L-1)*YY + RL(L)*GY(2)*C(ILM)/RSIZE
           GRLY(3,ILM)= RZ*L*RL(L-1)*YY + RL(L)*GY(3)*C(ILM)/RSIZE
+#ifdef HAVE_WANNIER90
+          IF (MOD(ILM,2) .NE. 0) THEN
+            RLY(ILM) = -1.0_dp * RLY(ILM)
+            GRLY(:,ILM) = -1.0_dp * GRLY(:,ILM)
+          ENDIF 
+#endif
           
           ILM=L*L+L+M
           GY(1)=(-ZP(L,M))*RX *RZ *COSM + P(L,M)*M*SINM*SINPHI/RXY
@@ -364,6 +371,13 @@ C     Find spherical harmonics and their gradient
           GRLY(2,ILM)= RY*L*RL(L-1)*YY + RL(L)*GY(2)*C(ILM)/RSIZE
           GRLY(3,ILM)= RZ*L*RL(L-1)*YY + RL(L)*GY(3)*C(ILM)/RSIZE
    75     CONTINUE
+#ifdef HAVE_WANNIER90
+          IF (MOD(ILM,2) .NE. 0) THEN
+            RLY(ILM) = -1.0_dp * RLY(ILM)
+            GRLY(:,ILM) = -1.0_dp * GRLY(:,ILM)
+          ENDIF 
+#endif
+
    80   CONTINUE
         COSMM1=COSM
         SINMM1=SINM
