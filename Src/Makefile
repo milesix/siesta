@@ -571,7 +571,7 @@ basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
 basis_io.o: precision.o pseudopotential.o radial.o sys.o xml.o
 basis_specs.o: basis_types.o chemical.o periodic_table.o precision.o
 basis_specs.o: pseudopotential.o sys.o
-basis_types.o: alloc.o atmparams.o precision.o pseudopotential.o sys.o
+basis_types.o: alloc.o atmparams.o precision.o pseudopotential.o sys.o m_spin.o
 bessph.o: precision.o sys.o
 bloch_unfold.o: units.o
 bonds.o: alloc.o atmfuncs.o mneighb.o precision.o sorting.o units.o
@@ -828,7 +828,8 @@ ldau.o: m_mpi_utils.o mneighb.o new_matel.o parallel.o parallelsubs.o
 ldau.o: precision.o radial.o
 ldau_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
 ldau_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o parallel.o
-ldau_specs.o: precision.o pseudopotential.o radial.o sys.o units.o
+ldau_specs.o: precision.o pseudopotential.o radial.o sys.o units.o m_spin.o
+ldau_specs.o: m_vee_integrals.o
 listsc.o: alloc.o
 local_DOS.o: alloc.o atomlist.o dhscf.o diagon.o files.o kpoint_ldos.o
 local_DOS.o: kpoint_scf.o m_energies.o m_eo.o m_forces.o m_ntm.o
@@ -1127,7 +1128,7 @@ m_ts_weight.o: class_OrbitalDistribution.o class_SpData2D.o class_Sparsity.o
 m_ts_weight.o: geom_helper.o intrinsic_missing.o m_ts_chem_pot.o
 m_ts_weight.o: m_ts_contour_neq.o m_ts_electype.o parallel.o precision.o
 m_ts_weight.o: units.o
-m_vee_integrals.o: precision.o
+m_vee_integrals.o: precision.o sys.o
 m_wallclock.o: m_walltime.o
 m_writedelk.o: atm_types.o atmfuncs.o atomlist.o files.o parallel.o
 m_writedelk.o: parallelsubs.o precision.o siesta_geom.o sys.o

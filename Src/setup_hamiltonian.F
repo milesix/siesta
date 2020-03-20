@@ -224,12 +224,14 @@
 
 ! Hubbard term for LDA+U: energy, forces, stress and matrix elements ....
       if( switch_ldau ) then
+!       jjunquer
         if ( spin%NCol ) then
          call die('LDA+U cannot be used with non-collinear spin.')
         end if
         if ( spin%SO ) then
          call die('LDA+U cannot be used with spin-orbit coupling.')
         end if
+!       end jjunquer
 
         call re_alloc( fal, 1, 3, 1, na_u, 'fal', 'setup_hamiltonian' )
 

@@ -222,6 +222,8 @@
                                                 !   functions
       use interpolation, only: spline           ! set spline interpolation
       use interpolation, only: polint           ! polynomial interpolation
+      use m_spin,        only: spin             ! relevant information regarding
+                                                !   spin configuration
 
 
       implicit none
@@ -322,6 +324,7 @@
       use fdf
       use m_cite, only: add_citation
       use parallel, only: IONode
+      use m_vee_integrals, only: ee_4index_int_real
 
       type(basis_def_t), pointer :: basp
       type(ldaushell_t), pointer :: ldau
@@ -596,6 +599,35 @@
             endif
           endif
 
+          if ( spin%NCol .or. spin%SO ) then
+            call re_alloc( ldau%Slater_F, 0, 2*ldau%l, 'Slater_F', 
+     .        'read_ldau_specs' )
+            ldau%Slater_F = 0.0_dp
+            if( ldau%l .eq. 2 ) then
+              ldau%Slater_F(0) = ldau%u
+              ldau%Slater_F(2) = (5390.0_dp/637.0_dp) * ldau%j
+              ldau%Slater_F(4) = (3528.0_dp/637.0_dp) * ldau%j
+            else 
+              call die('Slater integrals not implemented')
+            endif
+
+            call re_alloc( ldau%vee_4center_integrals, 
+     .        1, 2*ldau%l + 1, 
+     .        1, 2*ldau%l + 1, 
+     .        1, 2*ldau%l + 1, 
+     .        1, 2*ldau%l + 1, 
+     .        'vee_4center_integrals', 
+     .        'read_ldau_specs' )
+            ldau%vee_4center_integrals = 0.0_dp
+            call ee_4index_int_real( ldau%l, 
+     .                               ldau%Slater_F, 
+     .                               ldau%vee_4center_integrals )
+          end if
+!         For debugging
+          call print_ldaushell( ldau )
+          call die('Testing LDA+U and SO')
+!         End debugging
+
         enddo shells     ! end of loop over shells for species isp
 
 
@@ -632,7 +664,6 @@
      .               1, nrmax, 
      .               'projector', 'ldau_proj_gen' )
       projector = 0.0_dp
-
 
 !!     For debugging
 !      call die('Testing read_ldau_specs')
