@@ -197,7 +197,7 @@ OBJS =  automatic_cell.o atom_options.o \
 
 OBJS += kpoint_t.o kpoint_scf.o kpoint_dos.o kpoint_pdos.o kpoint_ldos.o
 
-OBJS += init_output.o
+OBJS += init_output.o byte_count.o
 
 # Diagonalization algorithm
 OBJS += diag_option.o diag.o
@@ -607,6 +607,7 @@ broyden_optim.o: siesta_options.o sys.o units.o
 bsc_cellxc.o: alloc.o mesh.o moremeshsubs.o parallel.o parallelsubs.o
 bsc_cellxc.o: precision.o sys.o
 bye.o: siesta_cml.o
+byte_count.o: m_char.o precision.o
 cart2frac.o: precision.o sys.o
 cell_broyden_optim.o: m_broyddj_nocomm.o parallel.o precision.o sys.o units.o
 cell_broyden_optim.o: zmatrix.o
@@ -1455,6 +1456,7 @@ zmatrix.o: alloc.o m_cell.o parallel.o precision.o siesta_geom.o sys.o units.o
 aux_proj.o: atom.o
 band.o: bands.o
 bloch_unfold_m.o: bloch_unfold.o
+byte_count_m.o: byte_count.o
 class_ctrimat.o: class_TriMat.o
 class_ddata1d.o: class_Data1D.o
 class_ddata2d.o: class_Data2D.o

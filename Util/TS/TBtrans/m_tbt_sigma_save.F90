@@ -148,15 +148,16 @@ contains
 
     use parallel, only : IONode
     use m_os, only : file_exist
+    use byte_count_m, only: byte_count_t
 
     use netcdf_ncdf, ncdf_parallel => parallel
-    use m_timestamp, only : datestring
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD, MPI_Bcast, MPI_Logical, MPI_Barrier
 #endif
     use m_ts_electype
     use m_region
     use dictionary
+    use m_tbt_save, only: add_cdf_common
 
     ! The file name that we save in
     character(len=*), intent(in) :: fname
@@ -186,9 +187,8 @@ contains
 
     logical :: prec_Sigma
     logical :: exist, same
-    character(len=256) :: char
-    real(dp) :: mem
-    character(len=2) :: unit
+    character(len=256) :: c_tmp
+    type(byte_count_t) :: mem
     integer :: i, iEl, no_e
     real(dp), allocatable :: r2(:,:)
 #ifdef MPI
@@ -198,8 +198,6 @@ contains
     if ( .not. sigma_save ) return
 
     exist = file_exist(fname, Bcast = .true. )
-
-    mem = 0._dp
 
     call tbt_cdf_precision('SelfEnergy','single',prec_Sigma)
 
@@ -305,220 +303,21 @@ contains
     call ncdf_create(ncdf,fname, mode=NF90_NETCDF4, overwrite=.true.)
 #endif
 
-    ! Save the current system size
-    call ncdf_def_dim(ncdf,'no_u',TSHS%no_u)
-    call ncdf_def_dim(ncdf,'na_u',TSHS%na_u)
-    call ncdf_def_dim(ncdf,'nkpt',nkpt) ! Even for Gamma, it makes files unified
-    call ncdf_def_dim(ncdf,'xyz',3)
-    call ncdf_def_dim(ncdf,'one',1)
-    call ncdf_def_dim(ncdf,'na_d',a_Dev%n)
-    call ncdf_def_dim(ncdf,'no_d',r%n)
-    call ncdf_def_dim(ncdf,'ne',NE)
-    call ncdf_def_dim(ncdf,'n_s',product(TSHS%nsc))
-    call ncdf_def_dim(ncdf,'n_btd',btd%n)
-    if ( a_Buf%n > 0 ) then
-      call ncdf_def_dim(ncdf,'na_b',a_Buf%n) ! number of buffer-atoms
-    end if
+    ! Reset memory counter
+    call mem%reset()
 
-#ifdef TBT_PHONON
-    dic = ('source'.kv.'PHtrans-SE')
-#else
-    dic = ('source'.kv.'TBtrans-SE')
-#endif
-
-    char = datestring()
-    dic = dic//('date'.kv.char(1:10))
-    if ( all(TSHS%nsc(:) == 1) ) then
-      dic = dic // ('Gamma'.kv.'true')
-    else
-      dic = dic // ('Gamma'.kv.'false')
-    end if
-    if ( TSHS%nspin > 1 ) then
-      if ( ispin == 1 ) then
-        dic = dic // ('spin'.kv.'UP')
-      else
-        dic = dic // ('spin'.kv.'DOWN')
-      end if
-    end if
-    call ncdf_put_gatt(ncdf, atts = dic )
-    call delete(dic)
-
-    ! Create all the variables needed to save the states
-    dic = ('info'.kv.'Last orbitals of the equivalent atom')
-    call ncdf_def_var(ncdf,'lasto',NF90_INT,(/'na_u'/), &
-        atts = dic)
-    mem = mem + calc_mem(NF90_INT, TSHS%na_u)
-
-    dic = dic//('info'.kv.'Unit cell')
-    dic = dic//('unit'.kv.'Bohr')
-    call ncdf_def_var(ncdf,'cell',NF90_DOUBLE,(/'xyz','xyz'/), &
-        atts = dic)
-    dic = dic//('info'.kv.'Atomic coordinates')
-    call ncdf_def_var(ncdf,'xa',NF90_DOUBLE,(/'xyz ','na_u'/), &
-        atts = dic)
-    call delete(dic)
-    mem = mem + calc_mem(NF90_DOUBLE, 3, TSHS%na_u + 3)
-
-    dic = ('info'.kv.'Supercell offsets')
-    call ncdf_def_var(ncdf,'isc_off',NF90_INT,(/'xyz', 'n_s'/), &
-        atts = dic)
-    mem = mem + calc_mem(NF90_INT, 3, product(TSHS%nsc))
+    ! Define all default variables
+    call add_cdf_common(ncdf, TSHS, ispin, r, btd, &
+        N_Elec, Elecs, raEl, roElpd, btd_El, &
+        nkpt, kpt, wkpt, NE, Eta, &
+        a_Dev, a_Buf, mem)
     
-    dic = dic//('info'.kv.'Number of supercells in each direction')
-    call ncdf_def_var(ncdf,'nsc',NF90_INT,(/'xyz'/), &
-        atts = dic)
-    mem = mem + calc_mem(NF90_INT, 3)
-    
-    dic = ('info'.kv.'Device region orbital pivot table')
-    call ncdf_def_var(ncdf,'pivot',NF90_INT,(/'no_d'/), &
-        atts = dic)
-    mem = mem + calc_mem(NF90_INT, r%n)
-
-    dic = dic // ('info'.kv.'Blocks in BTD for the pivot table')
-    call ncdf_def_var(ncdf,'btd',NF90_INT,(/'n_btd'/), &
-        atts = dic)
-    mem = mem + calc_mem(NF90_INT, btd%n)
-
-    dic = dic//('info'.kv.'Index of device atoms')
-    call ncdf_def_var(ncdf,'a_dev',NF90_INT,(/'na_d'/), &
-        atts = dic)
-    mem = mem + calc_mem(NF90_INT, a_Dev%n)
-
-    if ( a_Buf%n > 0 ) then
-      dic = dic//('info'.kv.'Index of buffer atoms')
-      call ncdf_def_var(ncdf,'a_buf',NF90_INT,(/'na_b'/), &
-          atts = dic)
-      mem = mem + calc_mem(NF90_INT, a_Buf%n)
-    end if
-
-    dic = dic//('info'.kv.'k point')//('unit'.kv.'b')
-    call ncdf_def_var(ncdf,'kpt',NF90_DOUBLE,(/'xyz ','nkpt'/), &
-        atts = dic)
-    call delete(dic)
-    dic = dic//('info'.kv.'k point weights')
-    call ncdf_def_var(ncdf,'wkpt',NF90_DOUBLE,(/'nkpt'/), &
-        atts = dic)
-    mem = mem + calc_mem(NF90_DOUBLE, 4, nkpt)
-
-#ifdef TBT_PHONON
-    dic = dic//('info'.kv.'Frequency')//('unit'.kv.'Ry')
-#else
-    dic = dic//('info'.kv.'Energy')//('unit'.kv.'Ry')
-#endif
-    call ncdf_def_var(ncdf,'E',NF90_DOUBLE,(/'ne'/), atts = dic)
-    mem = mem + calc_mem(NF90_DOUBLE, NE)
-
-    dic = dic//('info'.kv.'Imaginary part for device')
-#ifdef TBT_PHONON
-    dic = dic//('unit'.kv.'Ry**2')
-#endif
-    call ncdf_def_var(ncdf,'eta',NF90_DOUBLE,(/'one'/), atts = dic)
-    mem = mem + calc_mem(NF90_DOUBLE, 1)
-
-    call delete(dic)
-
-    call ncdf_put_var(ncdf,'nsc',TSHS%nsc)
-    call ncdf_put_var(ncdf,'isc_off',TSHS%isc_off)
-    call ncdf_put_var(ncdf,'pivot',r%r)
-    call ncdf_put_var(ncdf,'cell',TSHS%cell)
-    call ncdf_put_var(ncdf,'xa',TSHS%xa)
-    call ncdf_put_var(ncdf,'lasto',TSHS%lasto(1:TSHS%na_u))
-    call rgn_copy(a_Dev, r_tmp)
-    call rgn_sort(r_tmp)
-    call ncdf_put_var(ncdf,'a_dev',r_tmp%r)
-    call ncdf_put_var(ncdf,'btd',btd%r)
-    call rgn_delete(r_tmp)
-    if ( a_Buf%n > 0 ) then
-      call ncdf_put_var(ncdf,'a_buf',a_Buf%r)
-      mem = mem + calc_mem(NF90_INT, a_Buf%n)
-    end if
-
-    ! Save all k-points
-    allocate(r2(3,nkpt))
-    do i = 1 , nkpt
-      call kpoint_convert(TSHS%cell,kpt(:,i),r2(:,i),1)
-    end do
-    call ncdf_put_var(ncdf,'kpt',r2)
-    call ncdf_put_var(ncdf,'wkpt',wkpt)
-    deallocate(r2)
-
-    call ncdf_put_var(ncdf,'eta',Eta)
-
     do iEl = 1 , N_Elec
 
-      call ncdf_def_grp(ncdf,trim(Elecs(iEl)%name),grp)
-
-      ! Define atoms etc.
-      i = TotUsedAtoms(Elecs(iEl))
-      call ncdf_def_dim(grp,'na',i)
-
-      dic = dic//('info'.kv.'Electrode atoms')
-      call rgn_range(r_tmp, ELecs(iEl)%idx_a, ELecs(iEl)%idx_a + i - 1)
-      call ncdf_def_var(grp,'a',NF90_INT,(/'na'/), atts = dic)
-      call ncdf_put_var(grp,'a',r_tmp%r)
-      mem = mem + calc_mem(NF90_INT, r_tmp%n)
-      call rgn_delete(r_tmp)
-
-      call ncdf_def_dim(grp,'na_down',raEl(iEl)%n)
-      dic = dic//('info'.kv.'Electrode + downfolding atoms')
-      call ncdf_def_var(grp,'a_down',NF90_INT,(/'na_down'/), atts = dic)
-      call ncdf_put_var(grp,'a_down',raEl(iEl)%r)
-      mem = mem + calc_mem(NF90_INT, raEl(iEl)%n)
-
-      ! Save generic information about electrode
-      dic = dic//('info'.kv.'Bloch expansion')
-      call ncdf_def_var(grp,'bloch',NF90_INT,(/'xyz'/), atts = dic)
-      call ncdf_put_var(grp,'bloch',Elecs(iEl)%Bloch%B)
-      mem = mem + calc_mem(NF90_INT, 3)
-
-      call ncdf_def_dim(grp,'no_down',roElpd(iEl)%n)
-
-      dic = dic//('info'.kv.'Downfolding region orbital pivot table')
-      call ncdf_def_var(grp,'pivot_down',NF90_INT,(/'no_down'/), atts = dic)
-      call ncdf_put_var(grp,'pivot_down',roElpd(iEl)%r)
-      mem = mem + calc_mem(NF90_INT, roElpd(iEl)%n)
-
-      call ncdf_def_dim(grp,'n_btd',btd_El(iEl)%n)
-      
-      dic = dic//('info'.kv.'Blocks in BTD downfolding for the pivot_down table')
-      call ncdf_def_var(grp,'btd',NF90_INT,(/'n_btd'/), atts = dic)
-      call ncdf_put_var(grp,'btd',btd_El(iEl)%r)
-      mem = mem + calc_mem(NF90_INT, btd_El(iEl)%n)
+      call ncdf_open_grp(ncdf,trim(Elecs(iEl)%name),grp)
 
       no_e = Elecs(iEl)%o_inD%n
-      call ncdf_def_dim(grp,'no_e',no_e)
-
-      dic = ('info'.kv.'Orbital pivot table for self-energy')
-      call ncdf_def_var(grp,'pivot',NF90_INT,(/'no_e'/), atts = dic)
-      call ncdf_put_var(grp,'pivot',Elecs(iEl)%o_inD%r)
-      mem = mem + calc_mem(NF90_INT, no_e)
-
-      dic = dic//('info'.kv.'Chemical potential')//('unit'.kv.'Ry')
-      call ncdf_def_var(grp,'mu',NF90_DOUBLE,(/'one'/), atts = dic)
-      call ncdf_put_var(grp,'mu',Elecs(iEl)%mu%mu)
-
-#ifdef TBT_PHONON
-      dic = dic//('info'.kv.'Phonon temperature')
-#else
-      dic = dic//('info'.kv.'Electronic temperature')
-#endif
-      call ncdf_def_var(grp,'kT',NF90_DOUBLE,(/'one'/), atts = dic)
-      call ncdf_put_var(grp,'kT',Elecs(iEl)%mu%kT)
-
-      dic = dic//('info'.kv.'Imaginary part of self-energy')
-#ifdef TBT_PHONON
-      dic = dic//('unit'.kv.'Ry**2')
-#endif
-      call ncdf_def_var(grp,'eta',NF90_DOUBLE,(/'one'/), atts = dic)
-      call ncdf_put_var(grp,'eta',Elecs(iEl)%Eta)
-
-      dic = dic//('info'.kv.'Accuracy of the self-energy')//('unit'.kv.'Ry')
-      call ncdf_def_var(grp,'Accuracy',NF90_DOUBLE,(/'one'/), atts = dic)
-      call ncdf_put_var(grp,'Accuracy',Elecs(iEl)%accu)
-      call delete(dic)
-
-      mem = mem + calc_mem(NF90_DOUBLE, 4) ! mu, kT, eta, Accuracy
-
+      
       dic = dic//('info'.kv.'Downfolded self-energy')
 #ifdef TBT_PHONON
       dic = dic//('unit'.kv.'Ry**2')
@@ -531,11 +330,11 @@ contains
           atts = dic , chunks = (/no_e,no_e,1,1/) )
       call delete(dic)
 
-      if ( prec_Sigma ) then
-        ! real + imag
-        mem = mem + calc_mem(NF90_DOUBLE, no_e, no_e, NE, nkpt) * 2
-      else
-        mem = mem + calc_mem(NF90_DOUBLE, no_e, no_e, NE, nkpt)
+      call mem%add_cdf(prec_Sigma, no_e, no_e, NE, nkpt)
+
+      if ( sigma_mean_save ) then
+        ! Add mean sigma
+        call mem%add_cdf(prec_Sigma, no_e, no_e, NE)
       end if
 
     end do
@@ -548,53 +347,9 @@ contains
 #endif
 
     if ( IONode ) then
-      call pretty_memory(mem, unit)
-      write(*,'(3a,f8.3,tr1,a/)') 'tbt: Estimated file size of ', trim(fname), ':', &
-          mem, unit
+      call mem%get_string(c_tmp)
+      write(*,'(4a/)') 'tbt: Estimated file size of ', trim(fname), ': ', trim(c_tmp)
     end if
-
-  contains
-
-    pure function calc_mem(prec_nf90, n1, n2, n3, n4) result(kb)
-      use precision, only: dp
-      integer, intent(in) :: prec_nf90, n1
-      integer, intent(in), optional :: n2, n3, n4
-      real(dp) :: kb
-
-      kb = real(n1, dp) / 1024._dp
-      if ( present(n2) ) kb = kb * real(n2, dp)
-      if ( present(n3) ) kb = kb * real(n3, dp)
-      if ( present(n4) ) kb = kb * real(n4, dp)
-
-      select case ( prec_nf90 )
-      case ( NF90_INT, NF90_FLOAT )
-        kb = kb * 4
-      case ( NF90_DOUBLE )
-        kb = kb * 8
-      end select
-
-    end function calc_mem
-
-    pure subroutine pretty_memory(mem, unit)
-      use precision, only: dp
-      real(dp), intent(inout) :: mem
-      character(len=2), intent(out) :: unit
-
-      unit = 'KB'
-      if ( mem > 1024._dp ) then
-        mem = mem / 1024._dp
-        unit = 'MB'
-        if ( mem > 1024._dp ) then
-          mem = mem / 1024._dp
-          unit = 'GB'
-          if ( mem > 1024._dp ) then
-            mem = mem / 1024._dp
-            unit = 'TB'
-          end if
-        end if
-      end if
-
-    end subroutine pretty_memory
 
   end subroutine init_Sigma_save
 
