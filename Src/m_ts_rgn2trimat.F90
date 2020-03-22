@@ -29,7 +29,7 @@ module m_ts_rgn2trimat
 
   use m_ts_electype
   use m_ts_tri_common, only : GFGGF_needed_worksize
-  use m_ts_tri_common, only : nnzs_tri_i8b
+  use m_ts_tri_common, only : nnzs_tri
 
   ! method of BTD matrix
   use m_ts_method, only: TS_BTD_A_PROPAGATION, TS_BTD_A_COLUMN
@@ -350,8 +350,8 @@ contains
         end if
 
         ! Difference between the two BTD matrices
-        guess_pad = nnzs_tri_i8b(nblock_cur, blocks_cur) - &
-            nnzs_tri_i8b(nblock_guess, blocks_guess)
+        guess_pad = nnzs_tri(nblock_cur, blocks_cur) - &
+            nnzs_tri(nblock_guess, blocks_guess)
 
         ! total difference in number of elements
         ! If this is positive the guessed BTD matrix has fewer

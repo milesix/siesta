@@ -203,7 +203,7 @@ contains
     end if
     ! Now figure out the required worksize for SE expansion
     call UC_minimum_worksize(IsVolt, N_Elec, Elecs, idx)
-    io = nnzs_tri(c_Tri%n, c_Tri%r)
+    io = int( nnzs_tri(c_Tri%n, c_Tri%r) )
     padding = max(padding, idx - io)
     call newzTriMat(zwork_tri,c_Tri%n,c_Tri%r,'GFinv', &
          padding=padding)

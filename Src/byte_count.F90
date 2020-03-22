@@ -48,8 +48,14 @@ module byte_count_m
 #endif
     procedure, pass, private :: add_i4_, add_i8_, add_i8i8_
     procedure, pass, private :: add_ai4_, add_ai8_, add_ai8i8_
-    generic :: add => add_i4_, add_i8_, add_i8i8_, &
+    procedure, pass, private :: add_bc_
+    generic :: add => add_bc_, add_i4_, add_i8_, add_i8i8_, &
         add_ai4_, add_ai8_, add_ai8i8_
+
+    ! Mathematical stuff
+    procedure, pass, private :: assign_, add_
+    generic :: assignment(=) => assign_
+    generic :: operator(+) => add_
     
   end type byte_count_t
 
@@ -57,16 +63,44 @@ module byte_count_m
   
 contains
 
+  subroutine assign_(this, other)
+    class(byte_count_t), intent(inout) :: this
+    class(byte_count_t), intent(in) :: other
+    this%kB = other%kB
+  end subroutine assign_
+
+  function add_(this, other) result(res)
+    class(byte_count_t), intent(in) :: this
+    class(byte_count_t), intent(in) :: other
+    type(byte_count_t) :: res
+    res%kB = this%kB + other%kB
+  end function add_
+
   subroutine reset_(this)
     class(byte_count_t), intent(inout) :: this
     this%kB = 0._dp
   end subroutine reset_
 
-  subroutine add_i4_(this, bytes, n1, n2, n3, n4, n5)
+  subroutine add_bc_(this, o1, o2, o3, o4, o5, o6)
+    class(byte_count_t), intent(inout) :: this
+    class(byte_count_t), intent(in) :: o1
+    class(byte_count_t), intent(in), optional :: o2, o3, o4, o5, o6
+
+    ! Number of elements
+    this%kB = this%kB + o1%kB
+    if ( present(o2) ) this%kB = this%kB + o2%kB
+    if ( present(o3) ) this%kB = this%kB + o3%kB
+    if ( present(o4) ) this%kB = this%kB + o4%kB
+    if ( present(o5) ) this%kB = this%kB + o5%kB
+    if ( present(o6) ) this%kB = this%kB + o6%kB
+
+  end subroutine add_bc_
+
+  subroutine add_i4_(this, bytes, n1, n2, n3, n4, n5, n6)
     class(byte_count_t), intent(inout) :: this
     integer(i4b), intent(in) :: bytes
     integer(i4b), intent(in) :: n1
-    integer(i4b), intent(in), optional :: n2, n3, n4, n5
+    integer(i4b), intent(in), optional :: n2, n3, n4, n5, n6
 
     real(dp) :: kB
 
@@ -76,6 +110,7 @@ contains
     if ( present(n3) ) kB = kB * real(n3, dp)
     if ( present(n4) ) kB = kB * real(n4, dp)
     if ( present(n5) ) kB = kB * real(n5, dp)
+    if ( present(n6) ) kB = kB * real(n6, dp)
 
     this%kB = this%kB + kB
 
@@ -132,11 +167,11 @@ contains
 
   end subroutine add_ai8i8_
 
-  subroutine add_i8_(this, bytes, n1, n2, n3, n4, n5)
+  subroutine add_i8_(this, bytes, n1, n2, n3, n4, n5, n6)
     class(byte_count_t), intent(inout) :: this
     integer(i4b), intent(in) :: bytes
     integer(i8b), intent(in) :: n1
-    integer(i8b), intent(in), optional :: n2, n3, n4, n5
+    integer(i8b), intent(in), optional :: n2, n3, n4, n5, n6
 
     real(dp) :: kB
 
@@ -146,16 +181,17 @@ contains
     if ( present(n3) ) kB = kB * real(n3, dp)
     if ( present(n4) ) kB = kB * real(n4, dp)
     if ( present(n5) ) kB = kB * real(n5, dp)
+    if ( present(n6) ) kB = kB * real(n6, dp)
 
     this%kB = this%kB + kB
 
   end subroutine add_i8_
   
-  subroutine add_i8i8_(this, bytes, n1, n2, n3, n4, n5)
+  subroutine add_i8i8_(this, bytes, n1, n2, n3, n4, n5, n6)
     class(byte_count_t), intent(inout) :: this
     integer(i8b), intent(in) :: bytes
     integer(i8b), intent(in) :: n1
-    integer(i8b), intent(in), optional :: n2, n3, n4, n5
+    integer(i8b), intent(in), optional :: n2, n3, n4, n5, n6
 
     real(dp) :: kB
 
@@ -165,20 +201,21 @@ contains
     if ( present(n3) ) kB = kB * real(n3, dp)
     if ( present(n4) ) kB = kB * real(n4, dp)
     if ( present(n5) ) kB = kB * real(n5, dp)
+    if ( present(n6) ) kB = kB * real(n6, dp)
 
     this%kB = this%kB + kB
 
   end subroutine add_i8i8_
 
 #ifdef NCDF_4
-  subroutine add_cdf_basic_(this, nf_var, n1, n2, n3, n4, n5)
+  subroutine add_cdf_basic_(this, nf_var, n1, n2, n3, n4, n5, n6)
     use netcdf_ncdf, only: NF90_INT
     use netcdf_ncdf, only: NF90_FLOAT, NF90_DOUBLE
 
     class(byte_count_t), intent(inout) :: this
     integer, intent(in) :: nf_var
     integer, intent(in) :: n1
-    integer, intent(in), optional :: n2, n3, n4, n5
+    integer, intent(in), optional :: n2, n3, n4, n5, n6
 
     real(dp) :: kB
 
@@ -188,6 +225,7 @@ contains
     if ( present(n3) ) kB = kB * real(n3, dp)
     if ( present(n4) ) kB = kB * real(n4, dp)
     if ( present(n5) ) kB = kB * real(n5, dp)
+    if ( present(n6) ) kB = kB * real(n6, dp)
 
     select case ( nf_var )
     case ( NF90_INT, NF90_FLOAT )
@@ -200,13 +238,13 @@ contains
 
   end subroutine add_cdf_basic_
 
-  subroutine add_cdf_complex_(this, nf_var, n1, n2, n3, n4, n5)
+  subroutine add_cdf_complex_(this, nf_var, n1, n2, n3, n4, n5, n6)
     use netcdf_ncdf, only: NF90_FLOAT_COMPLEX, NF90_DOUBLE_COMPLEX
 
     class(byte_count_t), intent(inout) :: this
     logical, intent(in) :: nf_var
     integer, intent(in) :: n1
-    integer, intent(in), optional :: n2, n3, n4, n5
+    integer, intent(in), optional :: n2, n3, n4, n5, n6
 
     real(dp) :: kB
 
@@ -216,6 +254,7 @@ contains
     if ( present(n3) ) kB = kB * real(n3, dp)
     if ( present(n4) ) kB = kB * real(n4, dp)
     if ( present(n5) ) kB = kB * real(n5, dp)
+    if ( present(n6) ) kB = kB * real(n6, dp)
 
     if ( nf_var .eqv. NF90_FLOAT_COMPLEX ) then
       kB = kB * 8
@@ -277,19 +316,19 @@ contains
         mem = this%kB
       case ( 'mb' )
         lunit = 'MB'
-        mem = this%kB / 1024._dp ** 2
+        mem = this%kB / 1024._dp
       case ( 'gb' )
         lunit = 'GB'
-        mem = this%kB / 1024._dp ** 3
+        mem = this%kB / 1024._dp ** 2
       case ( 'tb' )
         lunit = 'TB'
-        mem = this%kB / 1024._dp ** 4
+        mem = this%kB / 1024._dp ** 3
       case ( 'pb' )
         lunit = 'PB'
-        mem = this%kB / 1024._dp ** 5
+        mem = this%kB / 1024._dp ** 4
       case default
         lunit = 'GB'
-        mem = this%kB / 1024._dp ** 3
+        mem = this%kB / 1024._dp ** 2
       end select
     end if
 

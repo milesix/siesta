@@ -643,6 +643,7 @@ contains
     use precision,  only : dp
     use parallel, only: IONode
     use units,      only : eV
+    use byte_count_m, only: byte_count_t
 
     use m_ts_electype
 
@@ -654,8 +655,9 @@ contains
     integer :: nkpt
 
     ! Local variables
+    type(byte_count_t) :: mem
+    character(len=32) :: c_tmp
     integer :: i, j
-    real(dp) :: b
     ! Whether the electrode is pre-expanded...
     integer :: nq
     logical :: pre_expand
@@ -687,28 +689,22 @@ contains
 
     write(*,'(2a)') ' Saving surface Green functions in: ',trim(El%GFfile)
 
+    call mem%reset()
+    if ( pre_expand ) then
+      i = nq
+    else
+      i = 1
+    end if
     if ( pre_expand .and. El%pre_expand == 1 ) then
-       ! only the SSG is expanded
-       b = El%nspin * nkpt * ( 2 + NE * nq )
+      ! only the SSG is expanded
+      call mem%add(16, El%no_used ** 2, El%nspin, nkpt, 2 + NE * nq, i)
     else
-       b = El%nspin * nkpt * ( 2 + NE ) * nq
+      call mem%add(16, El%no_used ** 2, El%nspin, nkpt, 2 + NE, nq, i)
     end if
 
-    ! Correct estimated file-size for fully expanded
-    if ( pre_expand ) b = b * nq
 
-    ! to complex double precision
-    b = b * El%no_used ** 2 * 16._dp
-
-    ! to MB
-    b = b / 1024._dp ** 2
-
-    if ( b > 2001._dp ) then
-       b = b / 1024._dp
-       write(*,'(a,f10.3,a)') ' Estimated file size: ',b,' GB'
-    else
-       write(*,'(a,f10.3,a)') ' Estimated file size: ',b,' MB'
-    end if
+    call mem%get_string(c_tmp)
+    write(*,'(2a)') ' Estimated file size: ', trim(c_tmp)
 
   end subroutine print_Elec_Green
 

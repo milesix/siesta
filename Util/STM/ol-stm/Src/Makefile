@@ -162,103 +162,57 @@ dep:
 
 # DO NOT DELETE THIS LINE - used by make depend
 atm_types.o: precision.o radial.o
-atm_types.o: precision.o radial.o
 atmfuncs.o: atm_types.o local_sys.o precision.o radial.o spher_harm.o
-atmfuncs.o: atm_types.o local_sys.o precision.o radial.o spher_harm.o
-atom_options.o: local_sys.o
 atom_options.o: local_sys.o
 basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
 basis_io.o: local_sys.o precision.o radial.o xml.o
-basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
-basis_io.o: local_sys.o precision.o radial.o xml.o
-basis_types.o: alloc.o atmparams.o local_sys.o precision.o
 basis_types.o: alloc.o atmparams.o local_sys.o precision.o
 bessph.o: local_sys.o precision.o
-bessph.o: local_sys.o precision.o
 chemical.o: local_sys.o parallel.o precision.o
-chemical.o: local_sys.o parallel.o precision.o
-chkdim.o: local_sys.o
 chkdim.o: local_sys.o
 class_Data1D.o: alloc.o
 class_Data2D.o: alloc.o
 class_Data3D.o: alloc.o
 class_Fstack_Pair_Data1D.o: class_Pair_Data1D.o class_Pair_Data1D.o
-class_Fstack_Pair_Data1D.o: class_Pair_Data1D.o class_Pair_Data1D.o
-class_Fstack_Pair_Geometry_SpData2D.o: class_Pair_Geometry_SpData2D.o
 class_Fstack_Pair_Geometry_SpData2D.o: class_Pair_Geometry_SpData2D.o
 class_Geometry.o: alloc.o
-class_Geometry.o: alloc.o
 class_Pair_Data1D.o: class_Data1D.o class_Data1D.o
-class_Pair_Data1D.o: class_Data1D.o class_Data1D.o
-class_Pair_Geometry_SpData2D.o: class_Geometry.o class_SpData2D.o
 class_Pair_Geometry_SpData2D.o: class_Geometry.o class_SpData2D.o
 class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
 class_SpData1D.o: class_Data1D.o
 class_SpData1D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
-class_SpData1D.o: class_Data1D.o
 class_SpData2D.o: class_Data2D.o class_Data2D.o class_Data2D.o
 class_SpData2D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData2D.o: class_Data2D.o class_Data2D.o class_Data2D.o
 class_SpData3D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_Sparsity.o: alloc.o
 class_Sparsity.o: alloc.o
 class_TriMat.o: alloc.o
 domain_decom.o: alloc.o local_sys.o parallel.o precision.o printmatrix.o
 domain_decom.o: schecomm.o sparse_matrices.o
-domain_decom.o: alloc.o local_sys.o parallel.o precision.o printmatrix.o
-domain_decom.o: schecomm.o sparse_matrices.o
-io.o: m_io.o
 io.o: m_io.o
 iodm.o: alloc.o files.o local_sys.o parallel.o parallelsubs.o precision.o
-iodm.o: alloc.o files.o local_sys.o parallel.o parallelsubs.o precision.o
-listsc.o: alloc.o
 listsc.o: alloc.o
 m_io.o: local_sys.o
-m_io.o: local_sys.o
-memory.o: memory_log.o parallel.o
-memory.o: memory_log.o parallel.o
-memory_log.o: m_io.o parallel.o precision.o
+memory.o: memory_log.o
 memory_log.o: m_io.o parallel.o precision.o
 parallelsubs.o: domain_decom.o local_sys.o parallel.o precision.o spatial.o
-parallelsubs.o: domain_decom.o local_sys.o parallel.o precision.o spatial.o
-printmatrix.o: alloc.o
 printmatrix.o: alloc.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
-radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radial.o: alloc.o interpolation.o precision.o xml.o
-radial.o: alloc.o interpolation.o precision.o xml.o
-schecomm.o: alloc.o
 schecomm.o: alloc.o
 sparse_matrices.o: alloc.o class_Fstack_Pair_Geometry_SpData2D.o
 sparse_matrices.o: class_OrbitalDistribution.o class_SpData1D.o
 sparse_matrices.o: class_SpData2D.o class_SpData2D.o class_Sparsity.o
 sparse_matrices.o: precision.o
-sparse_matrices.o: alloc.o class_Fstack_Pair_Geometry_SpData2D.o
-sparse_matrices.o: class_OrbitalDistribution.o class_SpData1D.o
-sparse_matrices.o: class_SpData2D.o class_SpData2D.o class_Sparsity.o
-sparse_matrices.o: precision.o
-spatial.o: precision.o
 spatial.o: precision.o
 spher_harm.o: alloc.o local_sys.o precision.o
-spher_harm.o: alloc.o local_sys.o precision.o
-units.o: precision.o
 units.o: precision.o
 xml.o: precision.o
-xml.o: precision.o
-extrapolate.o: fftw3_mymod.o precision.o
 extrapolate.o: fftw3_mymod.o precision.o
 handlers.o: memory_log.o
-handlers.o: memory_log.o
-mainstm.o: basis_io.o listsc.o precision.o sts.o
 mainstm.o: basis_io.o listsc.o precision.o sts.o
 ranger.o: precision.o
-ranger.o: precision.o
-stm.o: atmfuncs.o chemical.o precision.o
 stm.o: atmfuncs.o chemical.o precision.o
 sts.o: atmfuncs.o chemical.o precision.o
-sts.o: atmfuncs.o chemical.o precision.o
-vacpot.o: precision.o units.o
 vacpot.o: precision.o units.o
 broadening.o: sts.o
 class_ddata1d.o: class_Data1D.o

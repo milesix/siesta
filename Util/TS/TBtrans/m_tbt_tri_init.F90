@@ -138,7 +138,7 @@ contains
 
     use m_ts_rgn2trimat
     use m_ts_tri_common, only : ts_pivot_tri_sort_El
-    use m_ts_tri_common, only : nnzs_tri_i8b
+    use m_ts_tri_common, only : nnzs_tri
     use m_ts_electype
 #ifdef TRANSIESTA_DEBUG
     use m_ts_debug
@@ -291,7 +291,7 @@ contains
        ! Print out stuff
        call rgn_print(DevTri, seq_max = 8 , repeat = .true.)
        ! Print out memory estimate
-       els = nnzs_tri_i8b(DevTri%n,DevTri%r)
+       els = nnzs_tri(DevTri%n,DevTri%r)
        ! check if there are overflows
        if ( els > huge(1) ) then
          write(*,'(a,i0)') 'Elements: ', els
@@ -419,7 +419,7 @@ contains
        cell, na_u, xa, lasto, r_pvt, method)
     
     use parallel, only : IONode
-    use fdf, only : fdf_get, leqi
+    use fdf, only : fdf_get, leqi, fdf_overwrite
 #ifdef MPI
     use mpi_siesta, only : MPI_Comm_Self
 #endif
@@ -479,6 +479,10 @@ contains
 
     ! Write out all pivoting etc. analysis steps
     if ( IONode ) write(*,'(/,a)') 'tbt: BTD analysis'
+
+    ! Ensure we do not overwrite TS.BTD.Output
+    ! This will be handled in the ts_rgn2trimat routine.
+    call fdf_overwrite('TS.BTD.Output ')
 
     ! Copy over the sparse matrix to tmpSp1
     tmpSp1 = sp
@@ -771,7 +775,7 @@ contains
          write(*,'(a,/)') ' You should analyze the pivoting schemes!'
          write(*,'(a)') ' Minimum memory required pivoting scheme:'
          write(*,'(a,a)') '  TBT.BTD.Pivot.Device ', trim(min_mem_method)
-         write(*,'(a,en11.3,a)') '  Memory: ', min_mem, ' GB'
+         write(*,'(a,en11.3,a)') '  Memory: ', min_mem / 1024._dp ** 2, ' GB'
        end if
        write(*,*) ! new-line
     end if
@@ -783,23 +787,37 @@ contains
     ! Print out all relevant information for this
     ! pivoting scheme
     subroutine tri(r_pvt)
+      use m_ts_method, only: ts_A_method, TS_BTD_A_COLUMN
       use m_pivot_methods, only : bandwidth, profile
+      use byte_count_m, only: byte_count_t
+      use fdf, only: fdf_overwrite
+
       type(tRgn), intent(in) :: r_pvt
 
       type(tRgn) :: cur, cTri
 
-      integer :: bw
+      type(byte_count_t) :: mem
+      integer :: prof, bw
+      integer :: pad, work
       ! Possibly very large numbers
-      integer(i8b) :: prof, els
+      integer(i8b) :: els
       logical :: is_suitable
+      character(len=132) :: fname
       real(dp) :: total
 
       call rgn_copy(r_pvt, cur)
 
+      ! Only if it is defined
+      fname = fdf_get('TBT.BTD.Output',' ')
+      if ( len_trim(fname) > 0 ) then
+        write(fname,'(4a)') 'TS.BTD.Output ', trim(fname), '.', trim(fmethod)
+        call fdf_overwrite(fname)
+      end if
+
       ! Create a new tri-diagonal matrix, do it in parallel
       call ts_rgn2TriMat(N_Elec, Elecs, .true., &
-           dit, tmpSp1, cur, ctri%n, ctri%r, &
-           method, 0, par = .true. )
+          dit, tmpSp1, cur, ctri%n, ctri%r, &
+          method, 0, par = .true. )
       
       ! Sort the pivoting table for the electrodes
       ! such that we reduce the Gf.Gamma.Gf
@@ -811,12 +829,12 @@ contains
       bw   = bandwidth(no,n_nzs,ncol,l_ptr,l_col,cur)
       prof = profile(no,n_nzs,ncol,l_ptr,l_col,cur)
       if ( IONode ) then
-         write(*,'(tr3,a,t23,i10,/,tr3,a,t13,i20)') &
-              'Bandwidth: ',bw,'Profile: ',prof
+        write(*,'(tr3,a,t23,i10,/,tr3,a,t13,i20)') &
+            'Bandwidth: ',bw,'Profile: ',prof
       end if
 
       ! Calculate size of the tri-diagonal matrix
-      els = nnzs_tri_i8b(ctri%n,ctri%r)
+      els = nnzs_tri(ctri%n,ctri%r)
       ! check if there are overflows
       if ( els > huge(1) ) then
         write(*,'(tr3,a,i0,'' / '',i0)')'*** Number of elements exceeds integer limits [elements / max] ', &
@@ -841,25 +859,31 @@ contains
             real(els,dp)/total * 100._dp
       end if
 
-      total = size2gb(els) * 2
-      if ( IONode ) then
-        write(*,'(tr3,a,t39,en11.3,a)') 'Rough estimation of MEMORY: ', &
-            total,' GB'
+      if ( ts_A_method == TS_BTD_A_COLUMN ) then
+        ! Get the padding for the array to hold the entire column
+        call GFGGF_needed_worksize(ctri%n, ctri%r, &
+            N_Elec, Elecs, pad, work)
+      else
+        pad = 0
+        work = 0
       end if
-      if ( total < min_mem .and. is_suitable ) then
-        min_mem = total
+
+      call mem%add(16, els, 2_i8b)
+      call mem%add(16, pad)
+      call mem%add(16, work)
+
+      if ( IONode ) then
+        call mem%get_string(fname)
+        write(*,'(tr3,a,t39,a17)') 'BTD memory for inversion: ', trim(fname)
+      end if
+      if ( mem%kB < min_mem .and. is_suitable ) then
+        min_mem = mem%kB
         min_mem_method = fmethod
       end if
 
       call rgn_delete(ctri, cur)
       
     end subroutine tri
-
-    function size2gb(i) result(b)
-      integer(i8b) :: i
-      real(dp) :: b
-      b = real(i, dp) * 16._dp / 1024._dp ** 3
-    end function size2gb
 
   end subroutine tbt_tri_analyze
   

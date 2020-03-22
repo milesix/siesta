@@ -374,87 +374,71 @@ contains
       use precision, only: i8b
       use m_verbosity, only : verbosity
       use m_tbt_regions, only : sp_uc, sp_dev_sc
+      use byte_count_m, only: byte_count_t
 
-      integer(i8b) :: nsize
-      real(dp) :: mem, elec_mem, out
+      integer :: nsize
 
-      character(len=2) :: unit
+      character(len=32) :: c_tmp
+      type(byte_count_t) :: mem, spaux
       integer :: iEl
 
       if ( .not. IONode ) return
       if ( verbosity <= 4 ) return
-      
+
+      call mem%reset()
+
       ! Calculate size of electrodes
       nsize = 0
       do iEl = 1 , N_Elec
         ! These are doubles (not complex)
         ! hence, we need not count the overlap matrices as they are already
         ! doubled in the complex conversion
-        nsize = nsize + nnzs(Elecs(iEl)%H00) + nnzs(Elecs(iEl)%H01) ! double
-        nsize = nsize + (nnzs(Elecs(iEl)%H00) + nnzs(Elecs(iEl)%H01))/4 ! integer (SP)
+        nsize = nnzs(Elecs(iEl)%H00)
+        call mem%add(8, nsize, 2) ! H, S
+        call mem%add(4, nsize) ! sparse pattern
+        nsize = nnzs(Elecs(iEl)%H01)
+        call mem%add(8, nsize, 2) ! H, S
+        call mem%add(4, nsize) ! sparse pattern
 
         if ( .not. Elecs(iEl)%Bulk ) then
-          nsize = nsize + 2 * size(Elecs(iEl)%HA) ! double complex
+          call mem%add(16, size(Elecs(iEl)%HA), 2) ! H, S
         end if
-        nsize = nsize + size(Elecs(iEl)%Gamma) ! double complex
+        call mem%add(16, size(Elecs(iEl)%Gamma))
       end do
 
       ! Electrode memory usage in KB
-      elec_mem = nsize * 16._dp / 1024._dp
-      call pretty_memory(elec_mem, out, unit)
-      write(*,'(a,f8.3,tr1,a)') 'tbt: Electrode memory: ', out, unit
+      call mem%get_string(c_tmp)
+      write(*,'(2a)') 'tbt: Electrode memory: ', trim(c_tmp)
 
+      call spaux%reset()
       ! first the size of the real matrices (H and S)
       ! Since we immediately reduce to only one spin-component we never
       ! have spin-degeneracy as a memory requirement.
-      nsize = nnzs(TSHS%sp) * 2 ! double
-      nsize = nsize + nnzs(TSHS%sp) / 2 ! integer (SP)
+      nsize = nnzs(TSHS%sp)
+      call spaux%add(8, nsize, 2) ! H, S
+      call spaux%add(4, nsize) ! sparse pattern
 #ifdef NCDF_4
       if ( initialized(sp_dev_sc) ) then
         ! this is the sparse orbital currents/COOP/COHP
-        nsize = nsize + nnzs(sp_dev_sc) ! double
-        nsize = nsize + nnzs(sp_dev_sc) / 2 ! integer (SP)
+        nsize = nnzs(sp_dev_sc)
+        call spaux%add(8, nsize)
+        call spaux%add(4, nsize) ! sparse pattern
       end if
 #endif
-      mem = nsize * 8._dp / 1024._dp
+
       ! Now the complex sparse matrices H, S, these could essentially be removed
       nsize = nnzs(sp_uc)
-      nsize = nsize * 2 + nsize / 4 ! double complex (H,S) / integer (SP)
-      mem = mem + nsize * 16._dp / 1024._dp ! double complex
-      call pretty_memory(mem, out, unit)
-      write(*,'(a,f8.3,tr1,a)') 'tbt: Sparse H, S and auxiliary matrices memory: ', &
-          out, unit
+      call spaux%add(16, nsize) ! H, S
+      call spaux%add(4, nsize) ! sparse pattern
+      call spaux%get_string(c_tmp)
+      write(*,'(2a)') 'tbt: Sparse H, S and auxiliary matrices memory: ', trim(c_tmp)
 
       ! Total memory
-      mem = elec_mem + mem
-      call pretty_memory(mem, out, unit)
-      write(*,'(a,f8.3,tr1,a/)') 'tbt: Sum of electrode and sparse memory: ', &
-          out, unit
+      mem = mem + spaux
+      call mem%get_string(c_tmp)
+      write(*,'(2a/)') 'tbt: Sum of electrode and sparse memory: ', trim(c_tmp)
 
     end subroutine print_memory
-
-    pure subroutine pretty_memory(in_mem, out_mem, unit)
-      use precision, only: dp
-      real(dp), intent(in) :: in_mem
-      real(dp), intent(out) :: out_mem
-      character(len=2), intent(out) :: unit
-
-      unit = 'KB'
-      out_mem = in_mem
-      if ( out_mem > 1024._dp ) then
-        out_mem = out_mem / 1024._dp
-        unit = 'MB'
-        if ( out_mem > 1024._dp ) then
-          out_mem = out_mem / 1024._dp
-          unit = 'GB'
-          if ( out_mem > 1024._dp ) then
-            out_mem = out_mem / 1024._dp
-            unit = 'TB'
-          end if
-        end if
-      end if
-
-    end subroutine pretty_memory
 
     subroutine init_Electrode_HS(El, spin_idx)
       use class_Sparsity

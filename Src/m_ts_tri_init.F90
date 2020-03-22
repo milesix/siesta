@@ -236,7 +236,7 @@ contains
 
     
     ! Calculate size of the tri-diagonal matrix
-    els = nnzs_tri_i8b(c_Tri%n,c_Tri%r)
+    els = nnzs_tri(c_Tri%n,c_Tri%r)
     ! check if there are overflows
     if ( els > huge(1) ) then
        call die('transiesta: Memory consumption is too large')
@@ -729,7 +729,7 @@ contains
          write(*,'(a,/)') ' You should analyze the pivoting schemes!'
          write(*,'(a)') ' Minimum memory required pivoting scheme:'
          write(*,'(a,a)') '  TS.BTD.Pivot ', trim(min_mem_method)
-         write(*,'(a,en11.3,a)') '  Memory: ', min_mem, ' GB'
+         write(*,'(a,en11.3,a)') '  Memory: ', min_mem / 1024._dp ** 2, ' GB'
        end if
        write(*,*) ! new-line
     end if
@@ -743,44 +743,50 @@ contains
     subroutine tri(r_pvt)
       use m_pivot_methods, only : bandwidth, profile
       use fdf, only : fdf_overwrite
+      use byte_count_m, only: byte_count_t
+
       type(tRgn), intent(inout) :: r_pvt
 
-      integer :: bw, i
       ! Possibly very large numbers
-      integer(i8b) :: prof, els, pad, work
+      type(byte_count_t) :: mem
+      integer :: i, prof, bw
+      integer :: pad, work
+      integer(i8b) :: els
       logical :: is_suitable
-      type(tRgn) :: ctri
+      type(tRgn) :: cur, ctri
       character(len=132) :: fname
       real(dp) :: total
+
+      call rgn_copy(r_pvt, cur)
 
       ! Only if it is defined
       fname = fdf_get('TS.BTD.Output',' ')
       if ( len_trim(fname) > 0 ) then
-         fname = 'TS.BTD.Output '//trim(fmethod)
-         call fdf_overwrite(fname)
+        write(fname,'(4a)') 'TS.BTD.Output ', trim(fname), '.', trim(fmethod)
+        call fdf_overwrite(fname)
       end if
 
       ! Create a new tri-diagonal matrix, do it in parallel
       call ts_rgn2TriMat(N_Elec, Elecs, .true., &
-           fdit, tmpSp1, r_pvt, ctri%n, ctri%r, &
-           method, 0, par = .true. )
+          fdit, tmpSp1, cur, ctri%n, ctri%r, &
+          method, 0, par = .true. )
 
       ! Sort the pivoting table for the electrodes
       ! such that we reduce the Gf.Gamma.Gf
       ! However, this also makes it easier to
       ! insert the self-energy as they become consecutive
       ! in index, all-in-all, win-win!
-      call ts_pivot_tri_sort_El(nrows_g(tmpSp1), r_pvt, N_Elec, Elecs, ctri)
+      call ts_pivot_tri_sort_El(nrows_g(tmpSp1), cur, N_Elec, Elecs, ctri)
 
-      bw = bandwidth(no,n_nzs,ncol,l_ptr,l_col,r_pvt)
-      prof = profile(no,n_nzs,ncol,l_ptr,l_col,r_pvt)
+      bw = bandwidth(no,n_nzs,ncol,l_ptr,l_col,cur)
+      prof = profile(no,n_nzs,ncol,l_ptr,l_col,cur)
       if ( IONode ) then
-         write(*,'(tr3,a,t23,i10,/,tr3,a,t13,i20)') &
-              'Bandwidth: ',bw,'Profile: ',prof
+        write(*,'(tr3,a,t23,i10,/,tr3,a,t13,i20)') &
+            'Bandwidth: ',bw,'Profile: ',prof
       end if
 
       ! Calculate size of the tri-diagonal matrix
-      els = nnzs_tri_i8b(ctri%n,ctri%r)
+      els = nnzs_tri(ctri%n,ctri%r)
       ! check if there are overflows
       is_suitable = els <= huge(1)
       if ( .not. is_suitable ) then
@@ -791,59 +797,52 @@ contains
       
       total = real(no_u_ts, dp) ** 2
       if ( IONode ) then
-         call rgn_print(ctri, name = 'BTD partitions' , &
-              seq_max = 10 , indent = 3 , repeat = .true. )
+        call rgn_print(ctri, name = 'BTD partitions' , &
+            seq_max = 10 , indent = 3 , repeat = .true. )
          
-         write(*,'(tr3,a,i0,'' / '',f10.3)') &
-              'BTD matrix block size [max] / [average]: ', &
-              maxval(ctri%r), sum(real(ctri%r)) / ctri%n
+        write(*,'(tr3,a,i0,'' / '',f10.3)') &
+            'BTD matrix block size [max] / [average]: ', &
+            maxval(ctri%r), sum(real(ctri%r)) / ctri%n
 
-         write(*,'(tr3,a,f9.5,'' %'')') &
-              'BTD matrix elements in % of full matrix: ', &
-              real(els,dp)/total * 100._dp
+        write(*,'(tr3,a,f9.5,'' %'')') &
+            'BTD matrix elements in % of full matrix: ', &
+            real(els,dp)/total * 100._dp
       end if
 
       if ( ts_A_method == TS_BTD_A_COLUMN ) then
-         ! Get the padding for the array to hold the entire column
-         call GFGGF_needed_worksize(ctri%n, ctri%r, &
-              N_Elec, Elecs, i, bw)
-         pad = i
-         work = bw
+        ! Get the padding for the array to hold the entire column
+        call GFGGF_needed_worksize(ctri%n, ctri%r, &
+            N_Elec, Elecs, pad, work)
       else
-         pad = 0
-         work = 0
+        pad = 0
+        work = 0
       end if
 
-      ! Total size of the system
-      total = size2gb(pad + work) + size2gb(els) * 2
+      ! Accummulate memory
+      call mem%add(16, els, 2_i8b)
+      call mem%add(16, pad)
+      call mem%add(16, work)
+
       if ( IONode ) then
-         write(*,'(tr3,a,t39,en11.3,a)') 'BTD x 2 MEMORY: ', &
-              size2gb(els) * 2, ' GB'
-         write(*,'(tr3,a,t39,en11.3,a)') 'Rough estimation of MEMORY: ', &
-              total,' GB'
+        call mem%get_string(fname)
+        write(*,'(tr3,a,t39,a17)') 'BTD memory for inversion: ', trim(fname)
       end if
-      if ( total < min_mem .and. is_suitable ) then
-         min_mem = total
+      if ( mem%kB < min_mem .and. is_suitable ) then
+         min_mem = mem%kB
          min_mem_method = fmethod
       end if
       do i = 1 , N_Elec
-         work = consecutive_Elec_orb(Elecs(i),r_pvt)
+         work = consecutive_Elec_orb(Elecs(i),cur)
          if ( IONode ) then
             write(*,'(tr3,2a,t39,i0)') trim(Elecs(i)%name), &
                  ' splitting Gamma:',work-1
          end if
       end do
 
-      call rgn_delete(ctri)
+      call rgn_delete(ctri, cur)
       
     end subroutine tri
 
-    function size2gb(i) result(b)
-      integer(i8b) :: i
-      real(dp) :: b
-      b = real(i, dp) * 16._dp / 1024._dp ** 3
-    end function size2gb
-    
   end subroutine ts_tri_analyze
 
 end module m_ts_tri_init

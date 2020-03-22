@@ -83,8 +83,5 @@ dep:
 
 # DO NOT DELETE THIS LINE - used by make depend
 m_io.o: sys.o
-m_io.o: sys.o
 units.o: precision.o
-units.o: precision.o
-ts2ts.o: precision.o units.o
 ts2ts.o: precision.o units.o

@@ -1683,38 +1683,29 @@ contains
     subroutine print_memory(name,padding)
       use m_verbosity, only : verbosity
       use precision, only : i8b
-      use m_ts_tri_common, only : nnzs_tri_i8b
+      use m_ts_tri_common, only : nnzs_tri
+
+      use byte_count_m, only: byte_count_t
+
       character(len=*), intent(in) :: name
       integer, intent(in) :: padding
+
+      type(byte_count_t) :: mem
+
+      character(len=32) :: c_tmp
       integer(i8b) :: nsize
-      real(dp) :: mem
       character(len=2) :: unit
-
-      ! Total number of elements
-      nsize = nnzs_tri_i8b(DevTri%n,DevTri%r)
-      nsize = nsize + padding
-
-      if ( nsize > huge(1) ) then
-        call die('tbt_trik: required contiguous allocated space requires long &
-            &integers. Currently not supported.')
-      end if
 
       if ( .not. IONode ) return
       if ( verbosity < 5 ) return
 
-      unit = 'KB'
-      mem = real(nsize, dp) * 16._dp / 1024._dp
-      if ( mem > 1024._dp ) then
-        mem = mem / 1024._dp
-        unit = 'MB'
-        if ( mem > 1024._dp ) then
-          mem = mem / 1024._dp
-          unit = 'GB'
-        end if
-      end if
+      ! Total number of elements
+      nsize = nnzs_tri(DevTri%n,DevTri%r)
+      call mem%add(16, nsize)
+      call mem%add(16, padding)
 
-      write(*,'(3a,i0,a,f8.3,tr1,a)') 'tbt: ',name,' Green function padding / memory: ', &
-          padding,' / ',mem, unit
+      call mem%get_string(c_tmp)
+      write(*,'(4a)') 'tbt: ',name,' Green function + padding memory: ', trim(c_tmp)
       
     end subroutine print_memory
 

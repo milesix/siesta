@@ -18,7 +18,7 @@ module m_ts_tri_common
   private
 
   public :: GFGGF_needed_worksize
-  public :: nnzs_tri, nnzs_tri_i8b
+  public :: nnzs_tri
 
   public :: ts_pivot_tri_sort
   public :: ts_pivot_tri_sort_El
@@ -65,7 +65,7 @@ contains
     ! of the last two parts due to that being calculated
     ! last.
 
-    els = nnzs_tri_i8b(N_tri,tri)
+    els = nnzs_tri(N_tri,tri)
     worksize = maxval(tri(:)) * no_max
 
     ! subtract total column size
@@ -122,17 +122,6 @@ contains
 
   pure function nnzs_tri(N_tri,tri) result(elem)
     integer, intent(in) :: N_tri, tri(N_tri)
-    integer :: elem, i
-    
-    elem = tri(1) ** 2
-    do i = 2 , N_tri
-      elem = elem + tri(i)*( tri(i) + 2 * tri(i-1) )
-    end do
-    
-  end function nnzs_tri
-
-  pure function nnzs_tri_i8b(N_tri,tri) result(elem)
-    integer, intent(in) :: N_tri, tri(N_tri)
     integer(i8b) :: elem
     integer :: i
     
@@ -141,7 +130,7 @@ contains
        elem = elem + int(tri(i), i8b)*( int(tri(i),i8b) + 2 * int(tri(i-1),i8b) )
     end do
     
-  end function nnzs_tri_i8b
+  end function nnzs_tri
 
   ! This routine sorts the orbitals/atoms within each
   ! block to create the most consecutive blocks.
