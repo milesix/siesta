@@ -23,6 +23,7 @@ module m_tbt_tri_init
 
   public :: tbt_tri_init
   public :: tbt_tri_print_opti
+  public :: tbt_tri_reset
 
   type(tRgn), save, allocatable, target :: ElTri(:)
   type(tRgn), save :: DevTri
@@ -100,7 +101,7 @@ contains
 
     ! The i'th processor has the following electrodes
     do iEl = 1 , N_Elec
-                 
+
 #ifdef MPI
        ! The node having this electrode is
        i = mod(iEl-1,Nodes)
@@ -886,5 +887,18 @@ contains
     end subroutine tri
 
   end subroutine tbt_tri_analyze
-  
+
+  subroutine tbt_tri_reset()
+    integer :: iEl
+
+    if ( allocated(ElTri) ) then
+      do iEl = 1, size(ElTri)
+        call rgn_delete(ElTri(iEl))
+      end do
+      deallocate(ElTri)
+    end if
+    call rgn_delete(DevTri)
+
+  end subroutine tbt_tri_reset
+
 end module m_tbt_tri_init

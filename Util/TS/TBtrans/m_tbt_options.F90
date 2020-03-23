@@ -75,9 +75,9 @@ module m_tbt_options
 
 #ifdef NCDF_4
   ! Save file names for data files
-  character(len=250) :: cdf_fname = ' '
-  character(len=250) :: cdf_fname_sigma = ' '
-  character(len=250) :: cdf_fname_proj = ' '
+  character(len=256) :: cdf_fname = ' '
+  character(len=256) :: cdf_fname_sigma = ' '
+  character(len=256) :: cdf_fname_proj = ' '
 #endif
 
 
@@ -93,7 +93,6 @@ module m_tbt_options
   character(len=*), parameter, private :: f8 ='(''tbt: '',a,t53,''='',f10.4)'
   character(len=*), parameter, private :: f9 ='(''tbt: '',a,t53,''='',tr1,e9.3)'
   character(len=*), parameter, private :: f15='(''tbt: '',a,t53,''='',2(tr1,i0,'' x''),'' '',i0)'
-
 
 contains
 
@@ -499,7 +498,7 @@ contains
 
     chars = fdf_get('TS.BTD.Optimize','speed')
     chars = fdf_get('TBT.BTD.Optimize',trim(chars))
-    if ( leqi(chars,'speed') ) then
+    if ( leqi(chars,'speed') .or. leqi(chars, 'performance') ) then
       BTD_method = 0
     else if ( leqi(chars,'memory') ) then
       BTD_method = 1
@@ -551,6 +550,7 @@ contains
     if ( ltmp ) then
       ! when calculating the DOS for the electrode
       ! we also get the bulk transmission.
+      call delete(save_DATA, key='DOS-Elecs')
       save_DATA = save_DATA // ('DOS-Elecs'.kv.1)
     end if
     
@@ -571,6 +571,7 @@ contains
     ! Should we calculate DOS of all spectral functions
     ltmp = fdf_get('TBT.DOS.A.All', N_Elec == 1)
     if ( ltmp ) then
+      call delete(save_DATA, key='DOS-A')
       save_DATA = save_DATA // ('DOS-A'.kv.1)
       save_DATA = save_DATA // ('DOS-A-all'.kv.1)
       only_T_Gf = .false.
@@ -579,6 +580,7 @@ contains
     ! Should we calculate orbital current
     ltmp = fdf_get('TBT.Current.Orb', .false. )
     if ( ltmp ) then
+      call delete(save_DATA, key='DOS-A')
       save_DATA = save_DATA // ('DOS-A'.kv.1)
       save_DATA = save_DATA // ('orb-current'.kv.1)
       only_T_Gf = .false.
@@ -587,12 +589,14 @@ contains
     ! Options for density-matrix calculations
     ltmp = fdf_get('TBT.DM.Gf', .false.)
     if ( ltmp ) then
+      call delete(save_DATA, key='DOS-Gf')
       save_DATA = save_DATA // ('DOS-Gf'.kv.1)
       save_DATA = save_DATA // ('DM-Gf'.kv.1)
     end if
 
     ltmp = fdf_get('TBT.DM.A', .false.)
     if ( ltmp ) then
+      call delete(save_DATA, key='DOS-A')
       save_DATA = save_DATA // ('DOS-A'.kv.1)
       save_DATA = save_DATA // ('DM-A'.kv.1)
     end if
@@ -603,24 +607,28 @@ contains
     ! bonding nature of the material.
     ltmp = fdf_get('TBT.COOP.Gf', .false.)
     if ( ltmp ) then
+      call delete(save_DATA, key='DOS-Gf')
       save_DATA = save_DATA // ('DOS-Gf'.kv.1)
       save_DATA = save_DATA // ('COOP-Gf'.kv.1)
     end if
 
     ltmp = fdf_get('TBT.COOP.A', .false. )
     if ( ltmp ) then
+      call delete(save_DATA, key='DOS-A')
       save_DATA = save_DATA // ('DOS-A'.kv.1)
       save_DATA = save_DATA // ('COOP-A'.kv.1)
     end if
 
     ltmp = fdf_get('TBT.COHP.Gf', .false. )
     if ( ltmp ) then
+      call delete(save_DATA, key='DOS-Gf')
       save_DATA = save_DATA // ('DOS-Gf'.kv.1)
       save_DATA = save_DATA // ('COHP-Gf'.kv.1)
     end if
 
     ltmp = fdf_get('TBT.COHP.A', .false. )
     if ( ltmp ) then
+      call delete(save_DATA, key='DOS-A')
       save_DATA = save_DATA // ('DOS-A'.kv.1)
       save_DATA = save_DATA // ('COHP-A'.kv.1)
     end if
@@ -652,6 +660,7 @@ contains
         ! we *must* calculate all transmissions
         ! to be able to get the actual transmissions
         ! using the diagonal Green function
+        call delete(save_DATA, key='T-all')
         save_DATA = save_DATA // ('T-all'.kv.1)
       end if
 
@@ -933,5 +942,23 @@ contains
     write(*,'(3a,/)') repeat('*',24),' End: TBT CHECKS AND WARNINGS ',repeat('*',26)
 
   end subroutine print_tbt_warnings
+
+
+  subroutine tbt_options_reset()
+
+    integer :: i
+
+    do i = 1, N_Elec
+      call delete(Elecs(i), all=.true.)
+    end do
+    deallocate(Elecs)
+    do i = 1, N_mu
+      call delete(mus(i))
+    end do
+    deallocate(mus)
+
+    call delete(save_DATA)
+
+  end subroutine tbt_options_reset
 
 end module m_tbt_options

@@ -87,6 +87,8 @@ module m_ts_contour_neq
   public :: c2weight_neq
   public :: ID2mu
 
+  public :: ts_contour_neq_reset
+
   private
 
 contains
@@ -969,5 +971,26 @@ contains
     call die(msg)
 
   end subroutine neq_die
+
+  subroutine ts_contour_neq_reset
+
+    integer :: i
+
+    if ( N_nEq <= 0 ) return
+
+    do i = 1, N_nEq
+      call delete(nEq_io(i))
+      deallocate(nEq_c(i)%ID)
+      deallocate(nEq_c(i)%c)
+      deallocate(nEq_c(i)%w)
+      nullify(nEq_c(i)%c_io)
+    end do
+
+    deallocate(nEq_io, nEq_c)
+    if ( N_nEq_id > 0 ) then
+      deallocate(nEq_ID)
+    end if
+
+  end subroutine ts_contour_neq_reset
     
 end module m_ts_contour_neq

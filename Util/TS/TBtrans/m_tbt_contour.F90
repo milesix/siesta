@@ -45,6 +45,7 @@ module m_tbt_contour
   public :: N_tbt_E
   public :: tbt_E
   public :: c2weight
+  public :: tbt_contour_reset
 
   private
 
@@ -639,5 +640,22 @@ contains
     call die(msg)
 
   end subroutine neq_die
-    
+
+  subroutine tbt_contour_reset
+
+    integer :: i
+
+    if ( N_tbt <= 0 ) return
+
+    do i = 1, N_tbt
+      call delete(tbt_io(i))
+      deallocate(tbt_c(i)%c)
+      deallocate(tbt_c(i)%w)
+      nullify(tbt_c(i)%c_io)
+    end do
+
+    deallocate(tbt_io, tbt_c)
+
+  end subroutine tbt_contour_reset
+
 end module m_tbt_contour

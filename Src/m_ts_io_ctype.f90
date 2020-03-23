@@ -62,7 +62,32 @@ module m_ts_io_ctype
   end interface 
   private :: equal_
 
+  interface delete
+    module procedure delete_
+  end interface delete
+  public :: delete
+
 contains
+
+  subroutine delete_(this)
+    type(ts_c_io), intent(inout) :: this
+
+    type(ts_c_opt_ll), pointer :: cur, del
+
+    if ( associated(this%opt) ) then
+
+      cur => this%opt
+      do while ( associated(cur%next) )
+        del => cur
+        cur => cur%next
+        deallocate(del)
+      end do
+      deallocate(cur)
+
+      nullify(this%opt)
+    end if
+
+  end subroutine delete_
 
   function equal_(a,b) result(eq)
     type(ts_c_io), intent(in) :: a, b

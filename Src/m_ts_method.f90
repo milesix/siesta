@@ -306,5 +306,16 @@ contains
     typ = a_type(ia) == TYP_DEVICE
   end function a_isDev
 
+  subroutine ts_method_reset()
+
+    call rgn_delete(r_aBuf, r_oBuf, r_aC, r_oC, r_pvt)
+
+    if ( allocated(a_type) ) deallocate(a_type)
+    if ( allocated(o_type) ) deallocate(o_type)
+    if ( allocated(a_offset) ) deallocate(a_offset)
+    if ( allocated(o_offset) ) deallocate(o_offset)
+
+  end subroutine ts_method_reset
+
 end module m_ts_method
 

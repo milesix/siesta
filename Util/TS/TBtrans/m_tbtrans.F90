@@ -360,6 +360,8 @@ contains
           call de_alloc(Elecs(iEl)%SA,routine='tbtrans')
        end if
        call de_alloc(Elecs(iEl)%Gamma,routine='tbtrans')
+       ! Clean pointer
+       nullify(Elecs(iEl)%GA)
     end do
 
     deallocate(uGF,nq)

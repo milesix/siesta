@@ -400,7 +400,7 @@ contains
 
     ! Correct the actual padding by subtracting the 
     ! initial size of the tri-diagonal matrix
-    pad_LHS = pad_LHS - nnzs_tri(DevTri%n,DevTri%r)
+    pad_LHS = pad_LHS - int( nnzs_tri(DevTri%n,DevTri%r) )
 
     ! We now have the maximum size of the electrode down-folding
     ! region.
@@ -441,7 +441,7 @@ contains
     ! The minimum padding must be the maximum value of the 
     ! 1) padding required to contain a down-folding region
     ! 2) padding required to calculate the entire Gf column (not always)
-    pad_LHS = max(pad_LHS,pad_RHS)
+    pad_LHS = max(pad_LHS, pad_RHS)
 
     ! In case the user requests eigenchannel calculations
     ! we need to do a work-query from lapack
@@ -489,7 +489,7 @@ contains
     ! self-energies and nothing more.
     ! Here we pad with the missing elements to contain
     ! all self-energies.
-    pad_RHS = nnzs_tri(DevTri%n,DevTri%r)
+    pad_RHS = int( nnzs_tri(DevTri%n,DevTri%r) )
     io = 0
     do iEl = 1 , N_Elec
        io = io + max(TotUsedOrbs(Elecs(iEl)),Elecs(iEl)%o_inD%n)**2
@@ -500,7 +500,7 @@ contains
     ! allocating a new region, 
     ! this is only preferred in tbtrans as there might be 
     ! padding any-way.
-    pad_RHS = max(pad_RHS,nGFGGF)
+    pad_RHS = max(pad_RHS, nGFGGF)
 
     ! Note that padding is the extra size to be able to calculate
     ! the spectral function in the BTD format
@@ -554,7 +554,7 @@ contains
     ! initialize the matrix inversion tool
     no = maxval(DevTri%r)
     do iEl = 1 , N_Elec
-       no = max(no,maxval(ElTri(iEl)%r))
+       no = max(no, maxval(ElTri(iEl)%r))
     end do
     call init_mat_inversion(no)
 
@@ -589,7 +589,7 @@ contains
     ! Notice that we DO need it to be the SIESTA size.
     no = nrows_g(sp_uc)
 #ifdef MPI
-    call newDistribution(no,MPI_Comm_Self,fdist,name='TBT-fake dist')
+    call newDistribution(no, MPI_Comm_Self,fdist,name='TBT-fake dist')
 #else
     call newDistribution(no,-1           ,fdist,name='TBT-fake dist')
 #endif
@@ -778,7 +778,7 @@ contains
     ! record the initial time to take that into account
     call timer_start('E-loop')
     call timer_stop('E-loop')
-    call timer_get('E-loop',totTime=init_time)
+    call timer_get('E-loop', totTime=init_time)
 
     do while ( .not. itt_step(Kp) )
 
@@ -888,7 +888,7 @@ contains
              call timer_stop('E-loop')
 
              ! Calculate time passed by correcting for the initial time
-             call timer_get('E-loop',totTime=loop_time)
+             call timer_get('E-loop', totTime=loop_time)
              loop_time = loop_time - init_time
 
              if ( IONode ) then
@@ -925,13 +925,13 @@ contains
                      DOS_El, T(:,1), save_DATA)
 #else
                 call state_save_Elec(iounits_El,nE,N_Elec,Elecs, &
-                     DOS_El, T(:,1), save_DATA )
+                     DOS_El, T(:,1), save_DATA)
 #endif
 
              else
                 call read_next_GS(1, ikpt, bkpt, &
                      cE, N_Elec, uGF, Elecs, &
-                     nzwork, zwork, .false., forward=.false. )
+                     nzwork, zwork, .false., forward=.false.)
              end if
           else
              call calc_GS_k(1, cE, N_Elec, Elecs, uGF, &
@@ -959,7 +959,7 @@ contains
              ! create the Gamma.
              ! Hence it is a waste of time if this is done in this
              ! loop....
-             call UC_expansion(cE, Elecs(iEl), nzwork, zwork, non_Eq=.false. ) 
+             call UC_expansion(cE, Elecs(iEl), nzwork, zwork, non_Eq=.false.)
 
              ! Down-fold immediately :)
 #ifdef TBT_PHONON
@@ -1025,10 +1025,10 @@ contains
           ! *******************
 #ifdef TBT_PHONON
           call prepare_invGF(cOmega, zwork_tri, r_oDev, pvt, &
-               N_Elec, Elecs, spH , spS, TSHS%sc_off, kpt)
+               N_Elec, Elecs, spH, spS, TSHS%sc_off, kpt)
 #else
           call prepare_invGF(cE, zwork_tri, r_oDev, pvt, &
-               N_Elec, Elecs, spH , spS, TSHS%sc_off, kpt)
+               N_Elec, Elecs, spH, spS, TSHS%sc_off, kpt)
 #endif
 
           ! ********************
@@ -1672,6 +1672,11 @@ contains
     end if
 #endif
 
+    do iEl = 1 , N_Elec
+      ! Remove pointer of sigma
+      nullify(Elecs(iEl)%Sigma)
+    end do
+
 #ifdef MPI
     ! Ensure that we are finished will ALL IO before we
     ! proceed. Otherwise some routines may finalized before actual end...
@@ -1694,7 +1699,6 @@ contains
 
       character(len=32) :: c_tmp
       integer(i8b) :: nsize
-      character(len=2) :: unit
 
       if ( .not. IONode ) return
       if ( verbosity < 5 ) return
@@ -1705,7 +1709,7 @@ contains
       call mem%add(16, padding)
 
       call mem%get_string(c_tmp)
-      write(*,'(4a)') 'tbt: ',name,' Green function + padding memory: ', trim(c_tmp)
+      write(*,'(4a)') 'tbt: [memory] ',name,' inversion + padding: ', trim(c_tmp)
       
     end subroutine print_memory
 

@@ -312,18 +312,18 @@ contains
         nkpt, kpt, wkpt, NE, Eta, &
         a_Dev, a_Buf, mem)
     
+    dic = ('info'.kv.'Downfolded self-energy')
+#ifdef TBT_PHONON
+    dic = dic//('unit'.kv.'Ry**2')
+#else
+    dic = dic//('unit'.kv.'Ry')
+#endif
     do iEl = 1 , N_Elec
 
       call ncdf_open_grp(ncdf,trim(Elecs(iEl)%name),grp)
 
       no_e = Elecs(iEl)%o_inD%n
       
-      dic = dic//('info'.kv.'Downfolded self-energy')
-#ifdef TBT_PHONON
-      dic = dic//('unit'.kv.'Ry**2')
-#else
-      dic = dic//('unit'.kv.'Ry')
-#endif
       ! Chunking greatly reduces IO cost
       call ncdf_def_var(grp,'SelfEnergy', prec_Sigma, &
           (/'no_e','no_e','ne  ','nkpt'/), compress_lvl = cmp_lvl, &
@@ -338,6 +338,8 @@ contains
       end if
 
     end do
+
+    call delete(dic)
 
     call ncdf_close(ncdf)
 

@@ -292,15 +292,19 @@ contains
     ! Determine default unit
     lunit = 'kB'
     mem = this%kB
-    if ( mem > 1024._dp ) then
+    if ( mem >= 1000._dp ) then
       lunit = 'MB'
       mem = mem / 1024._dp
-      if ( mem > 1024._dp ) then
+      if ( mem >= 1000._dp ) then
         lunit = 'GB'
         mem = mem / 1024._dp
-        if ( mem > 1024._dp ) then
+        if ( mem >= 1000._dp ) then
           lunit = 'TB'
           mem = mem / 1024._dp
+          if ( mem >= 1000._dp ) then
+            lunit = 'PB'
+            mem = mem / 1024._dp
+          end if
         end if
       end if
     end if

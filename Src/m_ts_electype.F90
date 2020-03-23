@@ -1908,8 +1908,14 @@ contains
 
   end subroutine create_sp2sp01
 
-  subroutine delete_(this)
+  subroutine delete_(this, all)
     type(Elec), intent(inout) :: this
+    logical, intent(in), optional :: all
+
+    logical :: lall
+
+    lall = .false.
+    if ( present(all) ) lall = all
 
     ! Full matrices
     call delete(this%H)
@@ -1926,13 +1932,28 @@ contains
     call delete(this%S01)
     call delete(this%sp01)
 
+
     if ( associated(this%xa) ) deallocate(this%xa)
     if ( associated(this%lasto) ) deallocate(this%lasto)
     nullify(this%xa,this%lasto)
     if ( associated(this%isc_off) ) deallocate(this%isc_off)
-    !if ( associated(this%xa_used) ) deallocate(this%xa_used)
-    !if ( associated(this%lasto_used) ) deallocate(this%lasto_used)
-    !nullify(this%xa_used,this%lasto_used)
+
+    if ( lall ) then
+      nullify(this%mu)
+
+      if ( associated(this%xa_used) ) deallocate(this%xa_used)
+      if ( associated(this%lasto_used) ) deallocate(this%lasto_used)
+      nullify(this%xa_used,this%lasto_used)
+
+      if ( associated(this%HA) ) deallocate(this%HA)
+      if ( associated(this%SA) ) deallocate(this%SA)
+      if ( associated(this%GA) ) deallocate(this%GA)
+
+      if ( associated(this%Gamma) ) deallocate(this%Gamma)
+      if ( associated(this%Sigma) ) deallocate(this%Sigma)
+
+      call rgn_delete(this%o_inD, this%inDpvt)
+    end if
 
   end subroutine delete_
 

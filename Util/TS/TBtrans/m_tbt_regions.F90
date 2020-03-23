@@ -50,13 +50,14 @@ module m_tbt_regions
   ! The buffer region, just for completeness
   public :: r_aBuf, r_oBuf
 
-  public :: tbt_init_regions
-  public :: tbt_region_options
-  public :: tbt_print_regions
+  public :: tbt_regions_init
+  public :: tbt_regions_options
+  public :: tbt_regions_print
+  public :: tbt_regions_reset
 
 contains
 
-  subroutine tbt_init_regions(N_Elec, Elecs, cell, na_u, xa, lasto, &
+  subroutine tbt_regions_init(N_Elec, Elecs, cell, na_u, xa, lasto, &
        dit, sp, &
        nsc, isc_off)
 
@@ -787,10 +788,10 @@ contains
       
     end function sort_contain
 
-  end subroutine tbt_init_regions
+  end subroutine tbt_regions_init
 
 
-  subroutine tbt_region_options( sp, save_DATA )
+  subroutine tbt_regions_options( sp, save_DATA )
     use dictionary
 #ifdef MPI
     use mpi_siesta, only : MPI_Comm_Self
@@ -841,9 +842,9 @@ contains
     end if
 #endif
 
-  end subroutine tbt_region_options
+  end subroutine tbt_regions_options
 
-  subroutine tbt_print_regions(na_u, lasto, N_Elec, Elecs)
+  subroutine tbt_regions_print(na_u, lasto, N_Elec, Elecs)
 
     use parallel, only : Node
     use m_verbosity, only : verbosity
@@ -928,6 +929,24 @@ contains
 
     end subroutine local_print
 
-  end subroutine tbt_print_regions
+  end subroutine tbt_regions_print
+
+  subroutine tbt_regions_reset()
+    integer :: iEl
+
+    call rgn_delete(r_aBuf, r_oBuf, r_aDev, r_oDev)
+    call delete(sp_uc)
+    call delete(sp_dev_sc)
+
+    if ( allocated(r_aEl) ) then
+      do iEl = 1, size(r_aEl)
+        call rgn_delete(r_aEl(iEl))
+        call rgn_delete(r_oEl(iEl))
+        call rgn_delete(r_oElpD(iEl))
+      end do
+      deallocate(r_aEl, r_oEl, r_oElpD)
+    end if
+
+  end subroutine tbt_regions_reset
 
 end module m_tbt_regions

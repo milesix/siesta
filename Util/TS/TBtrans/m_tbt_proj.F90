@@ -1624,7 +1624,8 @@ contains
       call mem%add_cdf(NF90_INT, mols(im)%lvls%n)
       call ncdf_put_var(grp,'lvl',mols(im)%lvls%r)
 
-      dic = dic//('info'.kv.'|i> = S^(1/2)|v_i> for unique projections')
+      call delete(dic)
+      dic = ('info'.kv.'|i> = S^(1/2)|v_i> for unique projections')
       if ( isGamma ) then
         call ncdf_def_var(grp,'state',NF90_DOUBLE,(/'no  ','nlvl'/),atts=dic , &
             compress_lvl = cmp_lvl , chunks = (/no,1/) )
@@ -1637,18 +1638,21 @@ contains
       end if
 
       ! Define variables to contain the molecule
-      dic = dic//('info'.kv.'Projection atoms')
+      call delete(dic)
+      dic = ('info'.kv.'Projection atoms')
       call ncdf_def_var(grp,'atom',NF90_INT,(/'na'/),atts=dic)
       call ncdf_put_var(grp,'atom',mols(im)%atom%r)
       call mem%add_cdf(NF90_INT, mols(im)%atom%n)
 
-      dic = dic//('info'.kv.'Projection orbitals')
+      call delete(dic)
+      dic = ('info'.kv.'Projection orbitals')
       call ncdf_def_var(grp,'orb',NF90_INT,(/'no'/),atts=dic)
       call ncdf_put_var(grp,'orb',mols(im)%orb%r)
       call mem%add_cdf(NF90_INT, no)
 
       if ( save_state ) then
-        dic = dic//('info'.kv.'State |i> = |v_i> for all i')
+        call delete(dic)
+        dic = ('info'.kv.'State |i> = |v_i> for all i')
         if ( isGamma ) then
           call ncdf_def_var(grp,'states',NF90_DOUBLE,(/'no','no'/),atts=dic, &
               compress_lvl = cmp_lvl , chunks = (/no,1/) )
@@ -1660,10 +1664,12 @@ contains
           call mem%add_cdf(NF90_DOUBLE_COMPLEX, no, no, nkpt)
         end if
       end if
+
+      call delete(dic)
 #ifdef TBT_PHONON
-      dic = dic//('info'.kv.'Eigen frequency')//('unit'.kv.'Ry')
+      dic = ('info'.kv.'Eigen frequency')//('unit'.kv.'Ry')
 #else
-      dic = dic//('info'.kv.'Eigenstate energy')//('unit'.kv.'Ry')
+      dic = ('info'.kv.'Eigenstate energy')//('unit'.kv.'Ry')
 #endif
       if ( isGamma ) then
         call ncdf_def_var(grp,'eig',NF90_DOUBLE,(/'no'/),atts=dic, &
@@ -1749,6 +1755,7 @@ contains
               end if
 
               if ( 'proj-DM-A' .in. save_DATA ) then
+                call delete(dic, key='info')
                 dic = dic//('info'.kv.'Spectral function density matrix')
                 call ncdf_def_var(grp3,'DM',prec_DM,(/'nnzs','ne  ','nkpt'/), &
                     atts = dic , chunks = (/nnzs_dev/), compress_lvl=cmp_lvl)
@@ -1756,6 +1763,7 @@ contains
               end if
 
               if ( 'proj-COOP-A' .in. save_DATA ) then
+                call delete(dic, key='info')
                 dic = dic//('info'.kv.'Crystal orbital overlap population')
                 call ncdf_def_var(grp3,'COOP',prec_COOP,(/'nnzs','ne  ','nkpt'/), &
                     atts = dic , chunks = (/nnzs_dev/), compress_lvl=cmp_lvl)
@@ -1763,6 +1771,7 @@ contains
               end if
 
               if ( 'proj-COHP-A' .in. save_DATA ) then
+                call delete(dic)
                 dic = dic//('info'.kv.'Crystal orbital Hamilton population')//('unit'.kv.COHP_unit)
                 call ncdf_def_var(grp3,'COHP',prec_COHP,(/'nnzs','ne  ','nkpt'/), &
                     atts = dic , chunks = (/nnzs_dev/), compress_lvl=cmp_lvl)
@@ -1783,15 +1792,18 @@ contains
               ! Now we create all transport related quantities
               do ipt = 1 , size(proj_T(it)%R)
 
+                call delete(dic, key='info')
                 dic = dic//('info'.kv.'Transmission')
 
                 i = proj_T(it)%R(ipt)%idx
                 if ( i < 0 ) then
                   c_tmp = trim(Elecs(-i)%name)
                   if ( i == -iE ) then
+                    call delete(dic, key='info')
                     dic = dic//('info'.kv.'Gf transmission')
                     call ncdf_def_var(grp3,trim(c_tmp)//'.T',prec_T, (/'ne  ','nkpt'/), &
                         atts = dic, chunks =(/NE, 1/) )
+                    call delete(dic, key='info')
                     dic = dic//('info'.kv.'Out transmission correction')
                     call mem%add_cdf(prec_T, NE, nkpt)
                     c_tmp = trim(c_tmp)//'.C'
@@ -1801,9 +1813,11 @@ contains
                 else
                   c_tmp = proj_ME_name(proj_T(it)%R(ipt))
                   if ( proj_T(it)%R(ipt)%ME%El == Elecs(iE) ) then
+                    call delete(dic, key='info')
                     dic = dic//('info'.kv.'Gf transmission')
                     call ncdf_def_var(grp3,trim(c_tmp)//'.T',prec_T, (/'ne  ','nkpt'/), &
                         atts = dic, chunks =(/NE, 1/) )
+                    call delete(dic, key='info')
                     dic = dic//('info'.kv.'Out transmission correction')
                     call mem%add_cdf(prec_T, NE, nkpt)
                     c_tmp = trim(c_tmp)//'.C'
@@ -1817,6 +1831,7 @@ contains
                 call mem%add_cdf(prec_T, NE, nkpt)
 
                 if ( N_eigen > 0 ) then
+                  call delete(dic, key='info')
                   dic = dic//('info'.kv.'Transmission eigenvalues')
                   call ncdf_def_var(grp3,trim(c_tmp)//'.Eig',prec_Teig, &
                       (/'neig','ne  ','nkpt'/), &
@@ -2098,8 +2113,8 @@ contains
     end do
 
     ! Loop on all electrode projections
-    dic = dic//('info'.kv.'Projected scattering rate <i|Gam|j>')
-    dic = dic//('unit'.kv.'Ry')
+    call delete(dic)
+    dic = ('info'.kv.'Projected scattering rate <i|Gam|j>')//('unit'.kv.'Ry')
     do it = 1 , N_proj_ME
 
       call ncdf_open_grp(ncdf,trim(proj_ME(it)%mol%name),grp)
@@ -2138,13 +2153,16 @@ contains
         end if
         c_tmp = proj_ME_name(proj_T(it)%R(ipt))
         if ( proj_T(it)%R(ipt)%ME%El == Elecs(-i) ) then
+          call delete(dic, key='info')
           dic = dic//('info'.kv.'Gf transmission')
           call ncdf_def_var(grp,trim(c_tmp)//'.T',prec_T, (/'ne  ','nkpt'/), &
               atts = dic)
+          call delete(dic, key='info')
           dic = dic//('info'.kv.'Out transmission correction')
           call mem%add_cdf(prec_T, NE, nkpt)
           c_tmp = trim(c_tmp)//'.C'
         else
+          call delete(dic, key='info')
           dic = dic//('info'.kv.'Transmission')
           c_tmp = trim(c_tmp)//'.T'
         end if
@@ -2154,6 +2172,7 @@ contains
         call mem%add_cdf(prec_T, NE, nkpt)
 
         if ( N_eigen > 0 ) then
+          call delete(dic, key='info')
           dic = dic//('info'.kv.'Transmission eigenvalues')
           call ncdf_def_var(grp,trim(c_tmp)//'.Eig',prec_Teig, &
               (/'neig','ne  ','nkpt'/), atts = dic )

@@ -157,7 +157,7 @@ subroutine tbt_init()
   ! do interpolation due to bias not matching any TSHS files
   ! passed to the program.
   ! This will also read in the required information about the system
-  call tbt_init_HSfile( )
+  call tbt_HS_init( )
 
   ! Read in generic options
   call read_tbt_generic(TSHS%na_u, TSHS%lasto)
@@ -241,7 +241,7 @@ subroutine tbt_init()
   ! Hence, in order to change the sparsity patterns of the data
   ! we need to retain both!
   tmp_sp = TSHS%sp
-  call tbt_init_regions(N_Elec,Elecs,TSHS%cell, &
+  call tbt_regions_init(N_Elec,Elecs,TSHS%cell, &
        TSHS%na_u,TSHS%xa,TSHS%lasto, &
        TSHS%dit,tmp_sp, &
        product(TSHS%nsc),TSHS%isc_off)
@@ -266,9 +266,9 @@ subroutine tbt_init()
   call delete(tmp_sp)
 
   ! Create the device region sparsity pattern
-  call tbt_region_options( TSHS%sp, save_DATA )
+  call tbt_regions_options( TSHS%sp, save_DATA )
 
-  call tbt_print_regions( TSHS%na_u, TSHS%lasto, N_Elec, Elecs)
+  call tbt_regions_print( TSHS%na_u, TSHS%lasto, N_Elec, Elecs)
 
   call tbt_print_kRegions( TSHS%cell )
 

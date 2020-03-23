@@ -511,7 +511,7 @@ contains
     end if
 
     if ( 'DOS-Gf' .in. save_DATA ) then
-      dic = dic // ('info'.kv.'Density of states')//('unit'.kv.'1/Ry')
+      dic = ('info'.kv.'Density of states')//('unit'.kv.'1/Ry')
       call ncdf_def_var(ncdf,'DOS',prec_DOS,(/'no_d','ne  ','nkpt'/), &
           atts = dic , chunks = (/r%n,1,1/) , compress_lvl = cmp_lvl )
       call mem%add_cdf(prec_DOS, r%n, NE, nkpt)
@@ -532,21 +532,24 @@ contains
       call add_cdf_sparse(ncdf, sp_dev_sc, mem)
     end if
 
-    dic = dic // ('unit'.kv.'1/Ry')
+    dic = ('unit'.kv.'1/Ry')
     if ( 'DM-Gf' .in. save_DATA ) then
+      call delete(dic, key='info')
       dic = dic // ('info'.kv.'Green function density matrix')
       call ncdf_def_var(ncdf,'DM',prec_DM,(/'nnzs','ne  ','nkpt'/), &
           atts = dic , chunks = (/nnzs_dev/) , compress_lvl=cmp_lvl)
       call mem%add_cdf(prec_DM, nnzs_dev, NE, nkpt)
     end if
     if ( 'COOP-Gf' .in. save_DATA ) then
+      call delete(dic, key='info')
       dic = dic // ('info'.kv.'Crystal orbital overlap population')
       call ncdf_def_var(ncdf,'COOP',prec_COOP,(/'nnzs','ne  ','nkpt'/), &
           atts = dic , chunks = (/nnzs_dev/) , compress_lvl=cmp_lvl)
       call mem%add_cdf(prec_COOP, nnzs_dev, NE, nkpt)
     end if
     if ( 'COHP-Gf' .in. save_DATA ) then
-      dic = dic // ('info'.kv.'Crystal orbital Hamilton population')//('unit'.kv.COHP_unit)
+      call delete(dic)
+      dic = ('info'.kv.'Crystal orbital Hamilton population')//('unit'.kv.COHP_unit)
       call ncdf_def_var(ncdf,'COHP',prec_COHP,(/'nnzs','ne  ','nkpt'/), &
           atts = dic , chunks = (/nnzs_dev/) , compress_lvl=cmp_lvl)
       call mem%add_cdf(prec_COHP, nnzs_dev, NE, nkpt)
@@ -562,19 +565,18 @@ contains
 
       if ( ('DOS-Elecs' .in. save_DATA) .and. .not. Elecs(iEl)%out_of_core ) then
 
-        dic = dic//('info'.kv.'Bulk transmission')//('unit'.kv.T_unit)
+        dic = ('info'.kv.'Bulk transmission')//('unit'.kv.T_unit)
         call ncdf_def_var(grp,'T',prec_T,(/'ne  ','nkpt'/), &
             atts = dic)
         call mem%add_cdf(prec_T, NE, nkpt)
 
-        dic = dic//('info'.kv.'Bulk density of states of electrode')
-        dic = dic//('unit'.kv.'1/Ry')
+        call delete(dic)
+        dic = ('info'.kv.'Bulk density of states of electrode') // ('unit'.kv.'1/Ry')
         call ncdf_def_var(grp,'DOS',prec_DOS,(/'no_u','ne  ','nkpt'/), &
             atts = dic, chunks = (/Elecs(iEl)%no_u,1,1/) , compress_lvl=cmp_lvl)
         call mem%add_cdf(prec_DOS, Elecs(iEl)%no_u, NE, nkpt)
 
       end if
-      call delete(dic)
 
       ! Now we will only add information that is calculated
       if ( iEl == N_Elec ) then
@@ -584,6 +586,7 @@ contains
       end if
 
       ! All have this unit
+      call delete(dic)
       dic = ('unit'.kv.'1/Ry')
 
       if ( 'DM-A' .in. save_DATA ) then
@@ -594,6 +597,7 @@ contains
       end if
 
       if ( 'DOS-A' .in. save_DATA ) then
+        call delete(dic, key='info')
         dic = dic//('info'.kv.'Spectral function density of states')
         call ncdf_def_var(grp,'ADOS',prec_DOS,(/'no_d','ne  ','nkpt'/), &
             atts = dic, chunks = (/r%n,1,1/) , compress_lvl=cmp_lvl)
@@ -601,6 +605,7 @@ contains
       end if
 
       if ( 'COOP-A' .in. save_DATA ) then
+        call delete(dic, key='info')
         dic = dic//('info'.kv.'Crystal orbital overlap population')
         call ncdf_def_var(grp,'COOP',prec_COOP,(/'nnzs','ne  ','nkpt'/), &
             atts = dic , chunks = (/nnzs_dev/) , compress_lvl=cmp_lvl)
@@ -608,14 +613,16 @@ contains
       end if
 
       if ( 'COHP-A' .in. save_DATA ) then
-        dic = dic//('info'.kv.'Crystal orbital Hamilton population')//('unit'.kv.COHP_unit)
+        call delete(dic)
+        dic = ('info'.kv.'Crystal orbital Hamilton population')//('unit'.kv.COHP_unit)
         call ncdf_def_var(grp,'COHP',prec_COHP,(/'nnzs','ne  ','nkpt'/), &
             atts = dic , chunks = (/nnzs_dev/) , compress_lvl=cmp_lvl)
         call mem%add_cdf(prec_COHP, nnzs_dev, NE, nkpt)
       end if
 
+      call delete(dic)
       ! All quantities here are transmissions.
-      dic = dic//('unit'.kv.T_unit)
+      dic = ('unit'.kv.T_unit)
 
       if ( 'orb-current' .in. save_DATA ) then
         dic = dic//('info'.kv.'Orbital transmission')
@@ -633,12 +640,14 @@ contains
 
         if ( iEl /= jEl ) then
 
+          call delete(dic, key='info')
           dic = dic//('info'.kv.'Transmission')
           call ncdf_def_var(grp,trim(Elecs(jEl)%name)//'.T',prec_T,(/'ne  ','nkpt'/), &
               atts = dic )
           call mem%add_cdf(prec_T, NE, nkpt)
 
           if ( N_eigen > 0 ) then
+            call delete(dic, key='info')
             dic = dic//('info'.kv.'Transmission eigenvalues')
             call ncdf_def_var(grp,trim(Elecs(jEl)%name)//'.T.Eig',prec_Teig, &
                 (/'neig','ne  ','nkpt'/), &
@@ -650,12 +659,14 @@ contains
 
           ! For the same electrode we retain the group
           ! and utilise this for saving the reflection.
+          call delete(dic, key='info')
           dic = dic//('info'.kv.'Out transmission correction')
           call ncdf_def_var(grp,trim(c_tmp)//'.C',prec_T,(/'ne  ','nkpt'/), &
               atts = dic )
           call mem%add_cdf(prec_T, NE, nkpt)
 
           if ( N_eigen > 0 ) then
+            call delete(dic, key='info')
             dic = dic//('info'.kv.'Out transmission eigenvalues')
             call ncdf_def_var(grp,trim(c_tmp)//'.C.Eig',prec_Teig, &
                 (/'neig','ne  ','nkpt'/), &
@@ -663,6 +674,7 @@ contains
             call mem%add_cdf(prec_Teig, N_eigen, NE, nkpt)
           end if
 
+          call delete(dic, key='info')
           dic = dic//('info'.kv.'Gf transmission')
           call ncdf_def_var(grp,trim(c_tmp)//'.T',prec_T,(/'ne  ','nkpt'/), &
               atts = dic )
@@ -788,11 +800,13 @@ contains
         atts = dic)
     call mem%add_cdf(NF90_INT, TSHS%na_u)
 
+    call delete(dic, key='info')
     dic = dic//('info'.kv.'Unit cell')//('unit'.kv.'Bohr')
     call ncdf_def_var(ncdf,'cell',NF90_DOUBLE,(/'xyz','xyz'/), &
         atts = dic)
     call mem%add_cdf(NF90_DOUBLE, 3, 3)
 
+    call delete(dic, key='info')
     dic = dic//('info'.kv.'Atomic coordinates')
     call ncdf_def_var(ncdf,'xa',NF90_DOUBLE,(/'xyz ','na_u'/), &
         atts = dic , chunks = (/3, TSHS%na_u/) )
@@ -804,42 +818,50 @@ contains
         atts = dic)
     call mem%add_cdf(NF90_INT, 3, product(TSHS%nsc))
 
+    call delete(dic, key='info')
     dic = dic // ('info'.kv.'Number of supercells in each direction')
     call ncdf_def_var(ncdf,'nsc',NF90_INT,(/'xyz'/), &
          atts = dic)
     call mem%add_cdf(NF90_INT, 3)
 
+    call delete(dic, key='info')
     dic = dic // ('info'.kv.'Device region orbital pivot table')
     call ncdf_def_var(ncdf,'pivot',NF90_INT,(/'no_d'/), &
          atts = dic)
     call mem%add_cdf(NF90_INT, r%n)
 
+    call delete(dic, key='info')
     dic = dic // ('info'.kv.'Blocks in BTD for the pivot table')
     call ncdf_def_var(ncdf,'btd',NF90_INT,(/'n_btd'/), &
          atts = dic)
     call mem%add_cdf(NF90_INT, btd%n)
 
+    call delete(dic, key='info')
     dic = dic // ('info'.kv.'Index of device atoms')
     call ncdf_def_var(ncdf,'a_dev',NF90_INT,(/'na_d'/), &
          atts = dic)
     call mem%add_cdf(NF90_INT, a_Dev%n)
 
     if ( a_Buf%n > 0 ) then
+      call delete(dic, key='info')
        dic = dic // ('info'.kv.'Index of buffer atoms')
        call ncdf_def_var(ncdf,'a_buf',NF90_INT,(/'na_b'/), &
             atts = dic)
        call mem%add_cdf(NF90_INT, a_Buf%n)
     end if
 
+    call delete(dic, key='info')
     dic = dic // ('info'.kv.'k point')//('unit'.kv.'b')
     call ncdf_def_var(ncdf,'kpt',NF90_DOUBLE,(/'xyz ','nkpt'/), &
          atts = dic)
     call delete(dic)
+
     dic = ('info'.kv.'k point weights')
     call ncdf_def_var(ncdf,'wkpt',NF90_DOUBLE,(/'nkpt'/), &
          atts = dic , chunks = (/1/) )
     call mem%add_cdf(NF90_DOUBLE, 4, nkpt)
 
+    call delete(dic, key='info')
 #ifdef TBT_PHONON
     dic = dic//('info'.kv.'Frequency')//('unit'.kv.'Ry')
 #else
@@ -848,6 +870,7 @@ contains
     call ncdf_def_var(ncdf,'E',NF90_DOUBLE,(/'ne'/), atts = dic)
     call mem%add_cdf(NF90_DOUBLE, NE)
 
+    call delete(dic)
     dic = dic//('info'.kv.'Imaginary part for device')
 #ifdef TBT_PHONON
     dic = dic//('unit'.kv.'Ry**2')
@@ -906,12 +929,14 @@ contains
       call rgn_delete(r_tmp)
 
       call ncdf_def_dim(grp,'na_down',raEl(iEl)%n)
+      call delete(dic, key='info')
       dic = dic//('info'.kv.'Electrode + downfolding atoms')
       call ncdf_def_var(grp,'a_down',NF90_INT,(/'na_down'/), atts = dic)
       call ncdf_put_var(grp,'a_down',raEl(iEl)%r)
       call mem%add_cdf(NF90_INT, raEl(iEl)%n)
 
       ! Save generic information about electrode
+      call delete(dic, key='info')
       dic = dic//('info'.kv.'Bloch expansion')
       call ncdf_def_var(grp,'bloch',NF90_INT,(/'xyz'/), atts = dic)
       call ncdf_put_var(grp,'bloch',Elecs(iEl)%Bloch%B)
@@ -919,6 +944,7 @@ contains
 
       call ncdf_def_dim(grp,'no_down',roElpd(iEl)%n)
 
+      call delete(dic, key='info')
       dic = dic//('info'.kv.'Downfolding region orbital pivot table')
       call ncdf_def_var(grp,'pivot_down',NF90_INT,(/'no_down'/), atts = dic)
       call ncdf_put_var(grp,'pivot_down',roElpd(iEl)%r)
@@ -926,6 +952,7 @@ contains
 
       call ncdf_def_dim(grp,'n_btd',btd_El(iEl)%n)
 
+      call delete(dic, key='info')
       dic = dic//('info'.kv.'Blocks in BTD downfolding for the pivot table')
       call ncdf_def_var(grp,'btd',NF90_INT,(/'n_btd'/), atts = dic)
       call ncdf_put_var(grp,'btd',btd_El(iEl)%r)
@@ -934,15 +961,18 @@ contains
       no_e = Elecs(iEl)%o_inD%n
       call ncdf_def_dim(grp,'no_e',no_e)
 
+      call delete(dic, key='info')
       dic = dic//('info'.kv.'Device region orbital pivot table')
       call ncdf_def_var(grp,'pivot',NF90_INT,(/'no_e'/), atts = dic)
       call ncdf_put_var(grp,'pivot',Elecs(iEl)%o_inD%r)
       call mem%add_cdf(NF90_INT, no_e)
 
+      call delete(dic, key='info')
       dic = dic//('info'.kv.'Chemical potential')//('unit'.kv.'Ry')
       call ncdf_def_var(grp,'mu',NF90_DOUBLE,(/'one'/), atts = dic)
       call ncdf_put_var(grp,'mu',Elecs(iEl)%mu%mu)
 
+      call delete(dic, key='info')
 #ifdef TBT_PHONON
       dic = dic//('info'.kv.'Phonon temperature')
 #else
@@ -951,13 +981,15 @@ contains
       call ncdf_def_var(grp,'kT',NF90_DOUBLE,(/'one'/), atts = dic)
       call ncdf_put_var(grp,'kT',Elecs(iEl)%mu%kT)
 
-      dic = dic//('info'.kv.'Imaginary part for self-energies')
+      call delete(dic)
+      dic = ('info'.kv.'Imaginary part for self-energies')
 #ifdef TBT_PHONON
       dic = dic//('unit'.kv.'Ry**2')
 #endif
       call ncdf_def_var(grp,'eta',NF90_DOUBLE,(/'one'/), atts = dic)
       call ncdf_put_var(grp,'eta',Elecs(iEl)%Eta)
 
+      call delete(dic)
       dic = dic//('info'.kv.'Accuracy of the self-energy')//('unit'.kv.'Ry')
       call ncdf_def_var(grp,'Accuracy',NF90_DOUBLE,(/'one'/), atts = dic)
       call ncdf_put_var(grp,'Accuracy',Elecs(iEl)%accu)
@@ -965,21 +997,23 @@ contains
 
       call mem%add_cdf(NF90_DOUBLE, 4)
 
-      call delete(dic)
 
       call ncdf_def_dim(grp,'no_u',Elecs(iEl)%no_u)
       call ncdf_def_dim(grp,'na_u',Elecs(iEl)%na_u)
 
+      call delete(dic)
       dic = ('info'.kv.'Last orbitals of the equivalent atom')
       call ncdf_def_var(grp,'lasto',NF90_INT,(/'na_u'/), &
           atts = dic)
       call mem%add_cdf(NF90_INT, Elecs(iEl)%na_u)
           
-      dic = dic//('info'.kv.'Unit cell')//('unit'.kv.'Bohr')
+      call delete(dic)
+      dic = ('info'.kv.'Unit cell')//('unit'.kv.'Bohr')
       call ncdf_def_var(grp,'cell',NF90_DOUBLE,(/'xyz','xyz'/), &
           atts = dic)
       call mem%add_cdf(NF90_DOUBLE, 3, 3)
 
+      call delete(dic, key='info')
       dic = dic//('info'.kv.'Atomic coordinates')
       call ncdf_def_var(grp,'xa',NF90_DOUBLE,(/'xyz ','na_u'/), &
           atts = dic , chunks = (/3, Elecs(iEl)%na_u/) )
@@ -1030,8 +1064,8 @@ contains
         atts=dic)
     call mem%add_cdf(NF90_INT, no_u)
 
-    dic = dic//('info'.kv. &
-        'Supercell column indices in the sparse format ')
+    call delete(dic)
+    dic = ('info'.kv. 'Supercell column indices in the sparse format ')
     call ncdf_def_var(ncdf,'list_col',NF90_INT,(/'nnzs'/), &
         compress_lvl=cmp_lvl,atts=dic, chunks = (/nnzs_dev/) )
     call mem%add(NF90_INT, nnzs_dev)
