@@ -167,7 +167,8 @@ OBJS =  automatic_cell.o atom_options.o \
 	m_target_stress.o compute_max_diff.o \
 	m_initwf.o wavefunctions.o \
 	m_evolve.o cranknic_evolk.o cranknic_evolg.o sankey_change_basis.o m_iotddft.o \
-	m_matdiag.o m_matswinvers.o iotdxv.o  m_inversemm.o m_vee_integrals.o
+	m_matdiag.o m_matswinvers.o iotdxv.o  m_inversemm.o m_vee_integrals.o \
+	m_ldau_so.o
 
 OBJS += kpoint_t.o kpoint_scf.o kpoint_dos.o kpoint_pdos.o kpoint_ldos.o
 
@@ -900,6 +901,7 @@ m_iostruct.o: siesta_geom.o sys.o units.o
 m_iotddft.o: files.o m_dipol.o m_io.o m_steps.o parallel.o siesta_options.o
 m_iotddft.o: units.o wavefunctions.o
 m_kinetic.o: precision.o
+m_ldau_so.o: precision.o sys.o
 m_mat_invert.o: intrinsic_missing.o m_pivot_array.o precision.o
 m_matdiag.o: precision.o
 m_matio.o: alloc.o parallel.o

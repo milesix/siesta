@@ -305,11 +305,11 @@ module m_vee_integrals
  &                      (-1)**m * wigner_3j(l_value,k,l_value,0,0,0)    *    &
  &                      wigner_3j(l_value,k,l_value,-m,m-mprime,mprime)
 
-!!                 For debugging
-!                  write(6,'(a,4i5,f12.5)')                                  &
-! &                  'ee_integrals_cmplx: m,       mprime , k, q, Gab   = ', &
-! &                  m, mprime, k, q, Gab
-!!                 End debugging
+!                 For debugging
+                  write(6,'(a,4i5,f12.5)')                                  &
+ &                  'ee_integrals_cmplx: m,       mprime , k, q, Gab   = ', &
+ &                  m, mprime, k, q, Gab
+!                 End debugging
 
 !
 !                 Gapbp = <lm''|Y*_{kq}|lm'''>
@@ -320,11 +320,11 @@ module m_vee_integrals
  &                 wigner_3j(l_value,k,l_value,0,0,0)                   *    &
  &                 wigner_3j(l_value,k,l_value,-m2prime,m2prime-m3prime,m3prime)
 
-!!                 For debugging
-!                  write(6,'(a,4i5,f12.5)')                                  &
-! &                  'ee_integrals_cmplx: m2prime, m3prime, k, q, Gapbp = ', &
-! &                  m2prime, m3prime, k, q, Gapbp
-!!                 End debugging
+!                 For debugging
+                  write(6,'(a,4i5,f12.5)')                                  &
+ &                  'ee_integrals_cmplx: m2prime, m3prime, k, q, Gapbp = ', &
+ &                  m2prime, m3prime, k, q, Gapbp
+!                 End debugging
 
 !                 Add values to the four-center integral
                   myint = myint + (4*pi/(2*k+1))        *        &
