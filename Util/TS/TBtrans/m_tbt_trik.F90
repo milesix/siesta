@@ -1000,8 +1000,10 @@ contains
 
              end do
 
-             ! Save the energies
-             call cdf_save_E(PROJcdf,nE)
+             if ( ikpt == 1 ) then
+               ! Save the energies
+               call cdf_save_E(PROJcdf,nE)
+             end if
 
              ! Save the projected values
              call proj_cdf_save_bGammak(PROJcdf,N_proj_ME,proj_ME, &

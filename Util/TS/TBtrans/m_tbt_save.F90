@@ -1356,6 +1356,7 @@ contains
     NT = ( N_Elec + 1 ) * N_Elec
 #endif
 
+    ikpt_if: if ( ikpt == 1 ) then
     if ( save_parallel ) then
 
       idx(1) = nE%iE(Node)
@@ -1380,6 +1381,7 @@ contains
 #endif
 
     end if
+    end if ikpt_if
 
     if ( 'DOS-Gf' .in. save_DATA ) then
 

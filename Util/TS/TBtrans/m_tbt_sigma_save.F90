@@ -407,6 +407,7 @@ contains
     if ( .not. sigma_save ) return
 
     ! Save the energy-point
+    ikpt_if: if ( ikpt == 1 ) then
     if ( parallel_io(ncdf) ) then
       if ( nE%iE(Node) > 0 ) then
         call ncdf_put_var(ncdf,'E',nE%E(Node),start = (/nE%iE(Node)/) )
@@ -419,6 +420,7 @@ contains
         call ncdf_put_var(ncdf,'E',nE%E(iN),start = (/nE%iE(iN)/) )
       end do
     end if
+    end if ikpt_if
 
 #ifdef MPI
     if ( .not. sigma_parallel .and. Nodes > 1 ) then
