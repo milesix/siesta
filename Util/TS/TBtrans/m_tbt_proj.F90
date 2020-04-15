@@ -170,7 +170,7 @@ contains
     use dictionary
 
     integer, intent(in) :: na_u
-    integer, intent(in) :: lasto(0:na_u)
+    integer, intent(in) :: lasto(0:)
     type(tRgn), intent(in) :: a_Dev, o_Dev
     type(dictionary_t), intent(inout) :: save_DATA
 
@@ -1283,11 +1283,11 @@ contains
     type(tRgn), intent(in) :: r, btd
     integer, intent(in) :: ispin
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
-    type(tRgn), intent(in) :: raEl(N_Elec), roElpd(N_Elec), btd_El(N_Elec)
+    type(Elec), intent(in) :: Elecs(:)
+    type(tRgn), intent(in) :: raEl(:), roElpd(:), btd_El(:)
     integer, intent(in) :: nkpt, NE
     real(dp), intent(in) :: Eta
-    real(dp), intent(in) :: kpt(3,nkpt), wkpt(nkpt)
+    real(dp), intent(in) :: kpt(:,:), wkpt(:)
     type(tRgn), intent(in) :: a_Dev
     type(tRgn), intent(in) :: a_Buf
     type(Sparsity), intent(inout) :: sp_dev_sc
@@ -1991,8 +1991,8 @@ contains
           ! Ensure the orthogonality
           if ( isGamma ) then
             call dgemm('T','N',no,no,no,1._dp, &
-                rv,no,rv,no, &
-                0._dp, rS_sq, no)
+                rv(1,1),no,rv(1,1),no, &
+                0._dp, rS_sq(1,1), no)
             ! Print the norm and the diagonal element
             do i = 1 , no
               dn = VNORM(rS_sq(:,i))
@@ -2001,8 +2001,8 @@ contains
             end do
           else
             call zgemm('C','N',no,no,no,cmplx(1._dp,0._dp,dp), &
-                zv,no,zv,no, &
-                cmplx(0._dp,0._dp,dp), zS_sq, no)
+                zv(1,1),no,zv(1,1),no, &
+                cmplx(0._dp,0._dp,dp), zS_sq(1,1), no)
             ! Print the norm and the diagonal element
             do i = 1 , no
               zn = VNORM(zS_sq(:,i))
@@ -2256,7 +2256,7 @@ contains
     integer, intent(in) :: ikpt
     type(tNodeE), intent(in) :: nE
     integer, intent(in) :: N_proj_T
-    type(tProjT), intent(in) :: proj_T(N_proj_T)
+    type(tProjT), intent(in) :: proj_T(:)
     real(dp), intent(in) :: pDOS(:,:,:)
     real(dp), intent(in) :: T(:,:)
     integer, intent(in) :: N_eigen
@@ -2372,12 +2372,13 @@ contains
           ctmp = trim(ctmp) // '.T'
         end if
 
-        idx = (/nE%iE(Node),ikpt/)
+        idx(1) = nE%iE(Node)
+        idx(2) = ikpt
         cnt(:) = 1
         if ( idx(1) <= 0 ) then
           idx(1) = 1
           ! Denote no storage 
-          cnt = 0
+          cnt(:) = 0
         end if
 
         ! Store data
@@ -2387,8 +2388,9 @@ contains
         if ( Node == 0 .and. .not. save_parallel ) then
           do iN = 1 , Nodes - 1
             if ( nE%iE(iN) > 0 ) then
+              idx(1) = nE%iE(iN)
               call ncdf_put_var(gEl,ctmp,rT(ip,iN), &
-                  start = (/nE%iE(iN),ikpt/) )
+                  start = idx)
             end if
           end do
         end if
@@ -2575,7 +2577,7 @@ contains
     integer, intent(in) :: ikpt
     type(zSpData1D), intent(inout) :: S_1D
     integer, intent(in) :: nwork
-    complex(dp), intent(inout) :: zwork(nwork)
+    complex(dp), intent(inout) :: zwork(:)
 
     ! Local variables
     type(hNCDF) :: ncdf, grp, grp2
@@ -2851,7 +2853,7 @@ contains
           ! position exists
           idx(3) = 1
           ! Tell to not store any data
-          cnt = 0
+          cnt(:) = 0
         end if
 
         ! In the code bGk is _without_ factor "i".
@@ -2860,7 +2862,7 @@ contains
 
         ! ALL nodes _have_ to participate
         call ncdf_put_var(gmol,ctmp,proj_ME(iE)%bGk, &
-            start = idx, count=cnt )
+            start=idx, count=cnt)
 
         ! and back
         proj_ME(iE)%bGk = proj_ME(iE)%bGk * cmplx(0._dp, -1._dp, dp)
@@ -2954,41 +2956,53 @@ contains
   subroutine proj_Mt_mix(mol,ip,Mt,bGk)
     type(tProjMol), intent(in) :: mol
     integer, intent(in) :: ip ! projection index
-    complex(dp), intent(out) :: Mt(mol%orb%n,mol%orb%n)
-    complex(dp), intent(in) :: bGk(mol%lvls%n,mol%lvls%n)
-    complex(dp) :: p(mol%orb%n), tmp(mol%orb%n)
-    integer :: i, j, gi, gj
+    complex(dp), intent(inout) :: Mt(:)
+    complex(dp), intent(in) :: bGk(:,:)
 
     if ( ip == 0 ) then
       call die('Error in programming, proj_Mt_mix')
     end if
 
+    call mix(mol%orb%n, Mt(1:), mol%lvls%n, bGk)
+
+  contains
+
+    subroutine mix(n, Mt, nlvls, bGk)
+      integer, intent(in) :: n, nlvls
+      complex(dp), intent(inout) :: Mt(n,n)
+      complex(dp), intent(in) :: bGk(nlvls,nlvls)
+
+      complex(dp) :: p(n), tmp(n)
+      integer :: i, j, gi, gj
+
     ! loop over number of levels associated with
     ! this projection
-    do j = 1 , mol%proj(ip)%n
-      gj = mol%proj(ip)%r(j)
+      do j = 1 , mol%proj(ip)%n
+        gj = mol%proj(ip)%r(j)
 
-      p(:) = cmplx(0._dp,0._dp,dp)
-      do i = 1 , mol%proj(ip)%n
-        gi = mol%proj(ip)%r(i)
-        ! Create summation |i> . <i|Gam|j>
-        p(:) = p(:) + mol%p(:,gi) * bGk(gi,gj)
+        p(:) = cmplx(0._dp,0._dp,dp)
+        do i = 1 , mol%proj(ip)%n
+          gi = mol%proj(ip)%r(i)
+          ! Create summation |i> . <i|Gam|j>
+          p(:) = p(:) + mol%p(:,gi) * bGk(gi,gj)
+        end do
+
+        ! Do last product |i> . <i|Gam|j> . <j|
+        ! and take the transpose
+        tmp(:) = conjg(mol%p(:,gj))
+        if ( j == 1 ) then
+          do i = 1 , mol%orb%n
+            Mt(:,i) = p(i) * tmp(:)
+          end do
+        else
+          do i = 1 , mol%orb%n
+            Mt(:,i) = Mt(:,i) + p(i) * tmp(:)
+          end do
+        end if
+
       end do
 
-      ! Do last product |i> . <i|Gam|j> . <j|
-      ! and take the transpose
-      tmp(:) = conjg(mol%p(:,gj))
-      if ( j == 1 ) then
-        do i = 1 , mol%orb%n
-          Mt(:,i) = p(i) * tmp(:)
-        end do
-      else
-        do i = 1 , mol%orb%n
-          Mt(:,i) = Mt(:,i) + p(i) * tmp(:)
-        end do
-      end if
-
-    end do
+    end subroutine mix
     
   end subroutine proj_Mt_mix
 
@@ -2996,40 +3010,39 @@ contains
   subroutine proj_bMtk(mol,orb,Mt,bMk,nwork,work)
     type(tProjMol), intent(in) :: mol
     type(tRgn), intent(in) :: orb ! The orbitals of the current matrix
-    complex(dp), intent(in) :: Mt(orb%n,orb%n)
-    complex(dp), intent(out) :: bMk(mol%lvls%n,mol%lvls%n)
+    complex(dp), intent(in) :: Mt(:)
+    complex(dp), intent(inout) :: bMk(mol%lvls%n,mol%lvls%n)
     integer, intent(in) :: nwork
-    complex(dp), intent(inout), target :: work(nwork)
+    complex(dp), intent(inout), target :: work(:)
     complex(dp), pointer :: tmp(:), pl(:)
-    integer :: i, j
+    integer :: i, j, n
     complex(dp), external :: zdotc
     
-    if ( nwork < orb%n*(1+mol%lvls%n) ) then
+    n = mol%lvls%n
+    if ( nwork < (n+1) * orb%n ) then
       call die('Projection proj_bMtk, not enough work space.')
     end if
 
-    do j = 1 , mol%lvls%n
+    do j = 1 , n
       ! point to the |j>
       pl => work((j-1)*orb%n+1:j*orb%n)
       call proj_sort(orb,mol,j,pl)
     end do
-    j = mol%lvls%n + 1
-    tmp => work((j-1)*orb%n+1:j*orb%n)
+    tmp => work(n*orb%n+1:(n+1)*orb%n)
 
     ! |j>
-    do j = 1 , mol%lvls%n
+    do j = 1 , n
 
       pl => work((j-1)*orb%n+1:j*orb%n)
 
       ! Note that Mt is a transposed matrix, hence we need to 
       ! transpose back
-      call zgemv('T',orb%n,orb%n,cmplx(1._dp,0._dp,dp),Mt(1,1),orb%n, &
-          pl,1,cmplx(0._dp,0._dp,dp),tmp,1)
+      call zgemv('T',orb%n,orb%n,cmplx(1._dp,0._dp,dp),Mt(1),orb%n, &
+          pl(1),1,cmplx(0._dp,0._dp,dp),tmp(1),1)
 
       ! <i|
-      do i = 1 , mol%lvls%n
-        pl => work((i-1)*orb%n+1:i*orb%n)
-        bMk(i,j) = zdotc(orb%n,pl,1,tmp,1)
+      do i = 1 , n
+        bMk(i,j) = zdotc(orb%n,work((i-1)*orb%n+1),1,tmp(1),1)
       end do
 
     end do
@@ -3043,7 +3056,7 @@ contains
     type(tProjMol), intent(in) :: mol
     type(tRgn), intent(in) :: proj
     integer, intent(in) :: j ! column j (corresponds to the index of p)
-    complex(dp), intent(out) :: p(mol%orb%n)
+    complex(dp), intent(inout) :: p(mol%orb%n)
     
     integer :: ip, i
 
@@ -3074,7 +3087,7 @@ contains
     ! The level that we want to create the ket of
     integer, intent(in) :: il
     ! The full projector aligned to the requested projector
-    complex(dp), intent(out) :: psort(r%n)
+    complex(dp), intent(inout) :: psort(:)
 
     ! Local variables
     integer :: i

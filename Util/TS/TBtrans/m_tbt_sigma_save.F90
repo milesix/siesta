@@ -115,8 +115,9 @@ contains
 
 #ifdef NCDF_4
 
-  subroutine open_cdf_Sigma(fname, ncdf)
+  subroutine open_cdf_Sigma(fname, ncdf, N_Elec, Elecs)
     use netcdf_ncdf, ncdf_parallel => parallel
+    use m_ts_electype, only: Elec
 
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD
@@ -125,13 +126,30 @@ contains
     character(len=*), intent(in) :: fname
     type(hNCDF), intent(inout) :: ncdf
 
+    integer, intent(in) :: N_Elec
+    type(Elec), intent(in) :: Elecs(:)
+
+#ifdef NCDF_PARALLEL
+    integer :: iEl
+    type(hNCDF) :: grp
+#endif
+
     if ( .not. sigma_save ) return
 
 #ifdef NCDF_PARALLEL
     if ( sigma_parallel ) then
-       call ncdf_open(ncdf,fname, mode=ior(NF90_WRITE,NF90_MPIIO), &
-            comm = MPI_COMM_WORLD )
-    else
+      call ncdf_open(ncdf,fname, mode=ior(NF90_WRITE,NF90_MPIIO), &
+          comm = MPI_COMM_WORLD )
+
+      ! Assign all writes to be collective
+      ! Collective is faster since we don't need syncronization
+      call ncdf_par_access(ncdf, access=NF90_COLLECTIVE)
+      do iEl = 1 , N_Elec
+        call ncdf_open_grp(ncdf,trim(Elecs(iEl)%name),grp)
+        call ncdf_par_access(grp, access=NF90_COLLECTIVE)
+      end do
+
+     else
 #endif
        call ncdf_open(ncdf,fname, mode=NF90_WRITE)
 #ifdef NCDF_PARALLEL
@@ -169,10 +187,10 @@ contains
     type(tRgn), intent(in) :: r, btd
     integer, intent(in) :: ispin
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
-    type(tRgn), intent(in) :: raEl(N_Elec), roElpd(N_Elec), btd_El(N_Elec)
+    type(Elec), intent(in) :: Elecs(:)
+    type(tRgn), intent(in) :: raEl(:), roElpd(:), btd_El(:)
     integer, intent(in) :: nkpt
-    real(dp), intent(in) :: kpt(3,nkpt), wkpt(nkpt)
+    real(dp), intent(in) :: kpt(:,:), wkpt(:)
     integer, intent(in) :: NE
     real(dp), intent(in) :: Eta
 
@@ -264,7 +282,7 @@ contains
       ! Check the k-points
       allocate(r2(3,nkpt))
       do i = 1 , nkpt
-        call kpoint_convert(TSHS%cell,kpt(:,i),r2(:,i),1)
+        call kpoint_convert(TSHS%cell,kpt(1,i),r2(1,i),1)
       end do
       dic = ('kpt'.kvp. r2) // ('wkpt'.kvp. wkpt)
       call ncdf_assert(ncdf,same,vars=dic, d_EPS = 1.e-7_dp )
@@ -327,7 +345,7 @@ contains
       ! Chunking greatly reduces IO cost
       call ncdf_def_var(grp,'SelfEnergy', prec_Sigma, &
           (/'no_e','no_e','ne  ','nkpt'/), compress_lvl = cmp_lvl, &
-          atts = dic , chunks = (/no_e,no_e,1,1/) )
+          atts = dic , chunks = (/no_e,no_e,1,1/))
       call delete(dic)
 
       call mem%add_cdf(prec_Sigma, no_e, no_e, NE, nkpt)
@@ -357,6 +375,7 @@ contains
 
   subroutine state_Sigma_save(ncdf, ikpt, nE, N_Elec, Elecs, nzwork,zwork)
 
+    use iso_c_binding
     use parallel, only : Node, Nodes
 
     use netcdf_ncdf, ncdf_parallel => parallel
@@ -375,10 +394,11 @@ contains
     integer, intent(in) :: N_Elec
     type(Elec), intent(in) :: Elecs(N_Elec)
     integer, intent(in) :: nzwork
-    complex(dp), intent(inout), target :: zwork(nzwork)
+    complex(dp), intent(inout), target :: zwork(:)
 
     type(hNCDF) :: grp
     integer :: iEl, iN, no_e, n_e
+    type(c_ptr) :: sigma_ptr
     complex(dp), pointer :: Sigma2D(:,:)
 #ifdef MPI
     integer :: MPIerror, status(MPI_STATUS_SIZE)
@@ -388,62 +408,69 @@ contains
 
     ! Save the energy-point
     if ( parallel_io(ncdf) ) then
-       if ( nE%iE(Node) > 0 ) then
-          call ncdf_put_var(ncdf,'E',nE%E(Node),start = (/nE%iE(Node)/) )
-       end if
+      if ( nE%iE(Node) > 0 ) then
+        call ncdf_put_var(ncdf,'E',nE%E(Node),start = (/nE%iE(Node)/) )
+      else
+        call ncdf_put_var(ncdf,'E',nE%E(Node),start = (/1/), count=(/0/))
+      end if
     else
-       do iN = 0 , Nodes - 1
-          if ( nE%iE(iN) <= 0 ) cycle
-          call ncdf_put_var(ncdf,'E',nE%E(iN),start = (/nE%iE(iN)/) )
-       end do
+      do iN = 0 , Nodes - 1
+        if ( nE%iE(iN) <= 0 ) cycle
+        call ncdf_put_var(ncdf,'E',nE%E(iN),start = (/nE%iE(iN)/) )
+      end do
     end if
 
 #ifdef MPI
     if ( .not. sigma_parallel .and. Nodes > 1 ) then
-       no_e = 0
-       do iEl = 1 , N_Elec
-          no_e = max(no_e,Elecs(iEl)%o_inD%n)
-       end do
-       n_e = no_e ** 2
-       if ( n_e > nzwork ) then
-          call die('Could not re-use the work array for Sigma &
-               &communication.')
-       end if
+      no_e = 0
+      do iEl = 1 , N_Elec
+        no_e = max(no_e,Elecs(iEl)%o_inD%n)
+      end do
+      n_e = no_e ** 2
+      if ( n_e > nzwork ) then
+        call die('Could not re-use the work array for Sigma &
+            &communication.')
+      end if
     end if
 #endif
 
     do iEl = 1 , N_Elec
        
-       call ncdf_open_grp(ncdf,trim(Elecs(iEl)%name),grp)
+      call ncdf_open_grp(ncdf,trim(Elecs(iEl)%name),grp)
 
-       no_e = Elecs(iEl)%o_inD%n
+      no_e = Elecs(iEl)%o_inD%n
 
-       ! Create new pointer to make the below things much easier
-       call pass2pnt(no_e, Elecs(iEl)%Sigma, Sigma2D)
+      sigma_ptr = c_loc(Elecs(iEl)%Sigma)
+      call c_f_pointer(sigma_ptr, Sigma2D, [no_e, no_e])
 
-       if ( nE%iE(Node) > 0 ) then
-          call ncdf_put_var(grp,'SelfEnergy', Sigma2D, &
-               start = (/1,1,nE%iE(Node),ikpt/) )
-       end if
+      if ( nE%iE(Node) > 0 ) then
+        call ncdf_put_var(grp,'SelfEnergy', Sigma2D, &
+            start = (/1,1,nE%iE(Node),ikpt/) )
+      else if ( sigma_parallel ) then
+        ! Collective!!!
+        call ncdf_put_var(grp,'SelfEnergy', Sigma2D, &
+            start = (/1,1,1,ikpt/), count=(/0,0,0,0/))
+      end if
 
 #ifdef MPI
-       if ( .not. sigma_parallel .and. Nodes > 1 ) then
-          n_e = no_e ** 2
-          if ( Node == 0 ) then
-             ! Because we are using a work-array to retrieve data
-             call pass2pnt(no_e, zwork, Sigma2D)
-             do iN = 1 , Nodes - 1
-                if ( nE%iE(iN) <= 0 ) cycle
-                call MPI_Recv(Sigma2D(1,1),n_e,MPI_Double_Complex,iN,iN, &
-                     Mpi_comm_world,status,MPIerror)
-                call ncdf_put_var(grp,'SelfEnergy',Sigma2D, &
-                     start = (/1,1,nE%iE(iN),ikpt/) )
-             end do
-          else if ( nE%iE(Node) > 0 ) then
-             call MPI_Send(Sigma2D(1,1),n_e,MPI_Double_Complex,0,Node, &
-                  Mpi_comm_world,MPIerror)
-          end if
-       end if
+      if ( .not. sigma_parallel .and. Nodes > 1 ) then
+        n_e = no_e ** 2
+        if ( Node == 0 ) then
+          sigma_ptr = c_loc(zwork)
+          ! Because we are using a work-array to retrieve data
+          call c_f_pointer(sigma_ptr, Sigma2D, [no_e, no_e])
+          do iN = 1 , Nodes - 1
+            if ( nE%iE(iN) <= 0 ) cycle
+            call MPI_Recv(Sigma2D(1,1),n_e,MPI_Double_Complex,iN,iN, &
+                Mpi_comm_world,status,MPIerror)
+            call ncdf_put_var(grp,'SelfEnergy',Sigma2D, &
+                start = (/1,1,nE%iE(iN),ikpt/) )
+          end do
+        else if ( nE%iE(Node) > 0 ) then
+          call MPI_Send(Sigma2D(1,1),n_e,MPI_Double_Complex,0,Node, &
+              Mpi_comm_world,MPIerror)
+        end if
+      end if
 #endif
 
     end do
@@ -451,6 +478,8 @@ contains
   end subroutine state_Sigma_save
 
   subroutine state_Sigma2mean(fname, N_Elec, Elecs)
+
+    use iso_c_binding
 
     use parallel, only : IONode
 
@@ -476,6 +505,7 @@ contains
     integer :: NE, nkpt, no_e
     real(dp), allocatable :: rwkpt(:)
     complex(dp), allocatable :: c2(:,:)
+    type(c_ptr) :: sigma_ptr
     complex(dp), pointer :: Sigma(:,:)
 
 #ifdef MPI
@@ -537,7 +567,8 @@ contains
 
        ! Point the sigma
        ! This is a hack to ease the processing
-       call pass2pnt(no_e,Elecs(iEl)%Sigma(1:no_e**2),Sigma)
+       sigma_ptr = c_loc(Elecs(iEl)%Sigma)
+       call c_f_pointer(sigma_ptr, Sigma, [no_e, no_e])
 
        ! loop over all energy points
        do iE = 1 , NE
@@ -578,16 +609,6 @@ contains
 
   end subroutine state_Sigma2mean
 
-  subroutine pass2pnt(no,Sigma,new_pnt)
-    integer :: no
-    complex(dp), target :: Sigma(no,no)
-    complex(dp), pointer :: new_pnt(:,:)
-    new_pnt => Sigma(:,:)
-  end subroutine pass2pnt
-
 #endif
 
 end module m_tbt_sigma_save
-
-  
-

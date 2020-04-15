@@ -419,7 +419,7 @@ contains
     integer, intent(in) :: N_Elec, uGF(N_Elec)
     type(Elec), intent(inout) :: Elecs(N_Elec)
     integer, intent(in) :: nzwork
-    complex(dp), intent(inout), target :: zwork(nzwork)
+    complex(dp), intent(inout), target :: zwork(:)
     logical, intent(in), optional :: reread, forward
     ! When requesting density of states
     real(dp), intent(out), optional :: DOS(:,:), T(:)

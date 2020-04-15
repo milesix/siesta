@@ -711,13 +711,13 @@ contains
       if ( lvl == 1 .or. lvl == 2 ) then
          if ( is_real ) then
             call ncdf_get_var(grp,'delta',rM, start = start )
-            call MPI_Bcast(rM,nnz,MPI_Double_Precision, 0, &
+            call MPI_Bcast(rM(1),nnz,MPI_Double_Precision, 0, &
                 MPI_Comm_World, MPIerror)
             zM(:) = rM(:)
             deallocate(rM)
          else
             call ncdf_get_var(grp,'delta',zM, start = start )
-            call MPI_Bcast(zM,nnz,MPI_Double_Complex, 0, &
+            call MPI_Bcast(zM(1),nnz,MPI_Double_Complex, 0, &
                  MPI_Comm_World, MPIerror)
          end if
 
@@ -732,11 +732,11 @@ contains
             start(3) = oE
             if ( is_real ) then
                call ncdf_get_var(grp,'delta',rM, start = start )
-               call MPI_Send(rM,nnz,MPI_Double_Precision, iN, iN, &
+               call MPI_Send(rM(1),nnz,MPI_Double_Precision, iN, iN, &
                     MPI_Comm_World, MPIerror)
             else
                call ncdf_get_var(grp,'delta',zM, start = start )
-               call MPI_Send(zM,nnz,MPI_Double_Complex, iN, iN, &
+               call MPI_Send(zM(1),nnz,MPI_Double_Complex, iN, iN, &
                     MPI_Comm_World, MPIerror)
             end if
          end do
@@ -746,10 +746,10 @@ contains
          call MPI_Send(iE,1,MPI_Integer, 0, Node, &
               MPI_Comm_World, MPIerror)
          if ( is_real ) then
-            call MPI_Recv(rM,nnz,MPI_Double_Precision, 0, Node, &
+            call MPI_Recv(rM(1),nnz,MPI_Double_Precision, 0, Node, &
                  MPI_Comm_World, status, MPIerror)
          else
-            call MPI_Recv(zM,nnz,MPI_Double_Complex, 0, Node, &
+            call MPI_Recv(zM(1),nnz,MPI_Double_Complex, 0, Node, &
                  MPI_Comm_World, status, MPIerror)
          end if
       end if
@@ -906,9 +906,9 @@ contains
     type(tRgn), intent(in) :: r
     ! The sizes and offsets of the matrix
     integer, intent(in) :: off1, n1, off2, n2
-    complex(dp), intent(inout) :: M(n1,n2)
+    complex(dp), intent(inout) :: M(:,:)
     ! Super-cell offset and k-point
-    real(dp), intent(in) :: sc_off(:,:), k(3)
+    real(dp), intent(in) :: sc_off(:,:), k(:)
 
     type(Sparsity), pointer :: sp
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)

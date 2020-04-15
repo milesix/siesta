@@ -156,7 +156,7 @@ contains
     type(zTriMat), intent(inout) :: M
     integer, intent(in) :: N_Elec
     type(Elec), intent(in) :: Elecs(N_Elec)
-    logical, intent(in) :: has_El(N_Elec)
+    logical, intent(in) :: has_El(:)
     integer, intent(inout), allocatable :: part_cols(:,:)
 
     integer :: iEl, off, sCol, eCol
@@ -354,7 +354,7 @@ contains
         Mp => val(M,n+1,n+1)
 
         call GEMM ('N','N',sN,sNc,sNp1,zm1, &
-            Yn,sN,Mp(1),sNp1,z0,Mpinv(eIdxT+1),sN)
+            Yn(1),sN,Mp(1),sNp1,z0,Mpinv(eIdxT+1),sN)
 
       else if ( n == ePart ) then
         ! we miss the left part of Mnn
@@ -368,7 +368,7 @@ contains
         s = sNm1 ** 2
 
         call GEMM ('N','N',sN,sNc,sNm1,zm1, &
-            Xn,sN,Mp(s-sNm1*sNc+1),sNm1,z0,Mpinv(1),sN)
+            Xn(1),sN,Mp(s-sNm1*sNc+1),sNm1,z0,Mpinv(1),sN)
 
       end if
 
@@ -416,7 +416,7 @@ contains
       Mpinv => z(sIdxF:eIdxF)
 
       call GEMM ('N','N',sN,no,sNp1,zm1, &
-          Yn,sN,Mp(1),sNp1,z0,Mpinv(1),sN)
+          Yn(1),sN,Mp(1),sNp1,z0,Mpinv(1),sN)
        
     end do
 
@@ -438,7 +438,7 @@ contains
       Mpinv => z(sIdxF:eIdxF)
 
       call GEMM ('N','N',sN,no,sNm1,zm1, &
-          Xn,sN,Mp(1),sNm1,z0,Mpinv(1),sN)
+          Xn(1),sN,Mp(1),sNm1,z0,Mpinv(1),sN)
        
     end do
 
@@ -598,7 +598,7 @@ contains
         sIdxT = (i_Elec - 1) * sNo + 1
 
         call GEMM ('N','N',sNo,nb,sN,zm1, &
-            XY,sNo,Mp(1),sN,z0,Mpinv(sIdxT),sNo)
+            XY(1),sNo,Mp(1),sN,z0,Mpinv(sIdxT),sNo)
 
         Mp => Mpinv(sIdxT:)
         sN = sNo
@@ -627,7 +627,7 @@ contains
         sIdxT = (i_Elec - 1) * sNo + 1
 
         call GEMM ('N','N',sNo,nb,sN,zm1, &
-            XY,sNo,Mp(1),sN,z0,Mpinv(sIdxT),sNo)
+            XY(1),sNo,Mp(1),sN,z0,Mpinv(sIdxT),sNo)
 
         Mp => Mpinv(sIdxT:)
         sN = sNo
@@ -666,7 +666,7 @@ contains
       Mpinv => z(sIdxF:eIdxF)
 
       call GEMM ('N','N',sN,r_col%n,sNo,zm1, &
-          XY,sN,Mp(1),sNo,z0,Mpinv(1),sN)
+          XY(1),sN,Mp(1),sNo,z0,Mpinv(1),sN)
 
     end do
 
@@ -688,7 +688,7 @@ contains
       Mpinv => z(sIdxF:eIdxF)
 
       call GEMM ('N','N',sN,r_col%n,sNo,zm1, &
-          XY,sN,Mp(1),sNo,z0,Mpinv(1),sN)
+          XY(1),sN,Mp(1),sNo,z0,Mpinv(1),sN)
 
     end do
 
@@ -756,7 +756,7 @@ contains
 
       ! Calculate: A1 - X1
       call GEMM ('N','N',sN,sN,sNp1,zm1, &
-          Cn,sN,Xn,sNp1,z1,Mp,sN)
+          Cn(1),sN,Xn(1),sNp1,z1,Mp(1),sN)
 
     else if ( n == parts(M) ) then
 
@@ -767,7 +767,7 @@ contains
 
       ! Calculate: An - Yn
       call GEMM ('N','N',sN,sN,sNm1,zm1, &
-          Bn,sN,Yn,sNm1,z1,Mp,sN)
+          Bn(1),sN,Yn(1),sNm1,z1,Mp(1),sN)
 
     else
       ! Retrieve the Xn/Cn+1 array
@@ -777,7 +777,7 @@ contains
 
       ! Calculate: An - Xn
       call GEMM ('N','N',sN,sN,sNp1,zm1, &
-          Cn,sN,Xn,sNp1,z1,Mp,sN)
+          Cn(1),sN,Xn(1),sNp1,z1,Mp(1),sN)
 
       ! Retrieve the Yn/Bn-1 array
       Yn => Yn_div_Bn_m1(Minv,n)
@@ -786,7 +786,7 @@ contains
 
       ! Calculate: An - Xn - Yn
       call GEMM ('N','N',sN,sN,sNm1,zm1, &
-          Bn,sN,Yn,sNm1,z1,Mp,sN)
+          Bn(1),sN,Yn(1),sNm1,z1,Mp(1),sN)
   
     end if
 
@@ -798,7 +798,7 @@ contains
     end do
 
     i = eCol - sCol + 1
-    call zgesv(sN,i,Mp,sN,ipiv,Mpinv((sCol-1)*sN+1),sN,ierr)
+    call zgesv(sN,i,Mp(1),sN,ipiv,Mpinv((sCol-1)*sN+1),sN,ierr)
     if ( ierr /= 0 ) then
       call die('Error in inverting the partial bias block')
     end if

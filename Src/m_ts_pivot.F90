@@ -62,8 +62,8 @@ contains
     integer, intent(in) :: N_Elec
     type(Elec), intent(inout) :: Elecs(N_Elec)
     real(dp), intent(in) :: cell(3,3)
-    integer, intent(in) :: na_u, lasto(0:na_u)
-    real(dp), intent(in) :: xa(3,na_u)
+    integer, intent(in) :: na_u, lasto(0:)
+    real(dp), intent(in) :: xa(:,:)
     ! Initially the region that we want to pivot
     type(tRgn), intent(inout) :: r_pvt
     ! The pivoting string

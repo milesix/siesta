@@ -20,6 +20,7 @@ module m_ts_elec_se
   !public :: UC_expansion_Sigma
   !public :: UC_expansion_Sigma_GammaT
   public :: update_UC_expansion_A
+  public :: update_UC_expansion_A1D
 
 contains
 
@@ -66,7 +67,7 @@ contains
 ! * WORK variables   *
 ! ********************
     integer,  intent(in) :: nwork
-    complex(dp), intent(inout) :: work(nwork)
+    complex(dp), intent(inout) :: work(:)
     
     logical,  intent(in), optional :: non_Eq
     
@@ -149,14 +150,14 @@ contains
     integer,  intent(in) :: no_u, no_s
     type(Elec), intent(in) :: El
     integer,  intent(in) :: nq
-    complex(dp), dimension(no_u,no_u,nq), intent(inout) :: GS
+    complex(dp), intent(inout) :: GS(:)
 ! ********************
 ! * OUTPUT variables *
 ! ********************
-    complex(dp), intent(inout) :: Sigma(no_s,no_s)
+    complex(dp), intent(inout) :: Sigma(:)
 
     integer,  intent(in) :: nwork
-    complex(dp), intent(inout) :: work(no_s,no_s)
+    complex(dp), intent(inout) :: work(:)
 ! ********************
 ! * LOCAL variables  *
 ! ********************
@@ -169,7 +170,7 @@ contains
 #endif
 
       ! When no repetition we save it "as is"
-      call zcopy(no_s*no_s,GS(1,1,1),1,Sigma(1,1),1)
+      call zcopy(no_s*no_s,GS(1),1,Sigma(1),1)
 
     else
       
@@ -180,21 +181,21 @@ contains
 
       if ( El%no_u /= El%no_used ) then
 
-        call update_UC_expansion_A(no_u,no_s,El,nq, &
-            El%na_used,El%lasto_used,GS,Sigma(1,1))
+        call update_UC_expansion_A1D(no_u,no_s,El,nq, &
+            El%na_used,El%lasto_used,GS,Sigma)
 
-        call zgetrf(no_s, no_s, Sigma, no_s, ipvt, ierr)
+        call zgetrf(no_s, no_s, Sigma(1), no_s, ipvt, ierr)
         if ( ierr /= 0 ) &
             write(*,'(a,i0)') &
             'LU factorization of surface Green function failed: ',ierr
-        call zgetri(no_s, Sigma, no_s, ipvt, work(1,1), no_s*no_s, ierr)
+        call zgetri(no_s, Sigma(1), no_s, ipvt, work(1), no_s*no_s, ierr)
         if ( ierr /= 0 ) &
             write(*,'(a,i0)') &
             'Inversion of surface Green function failed: ',ierr
 
       else
 
-        call update_UC_expansion_A(no_u,no_s,El,nq, &
+        call update_UC_expansion_A1D(no_u,no_s,El,nq, &
             El%na_used,El%lasto_used,GS,Sigma)
 
 
@@ -215,29 +216,30 @@ contains
     integer,  intent(in) :: no_u, no_s
     type(Elec), intent(in) :: El
     integer,  intent(in) :: nq
-    complex(dp), dimension(no_u,no_u,nq), intent(inout) :: GS
+    complex(dp), intent(inout) :: GS(:)
 ! ********************
 ! * OUTPUT variables *
 ! ********************
-    complex(dp), intent(inout) :: Sigma(no_s,no_s)
+    complex(dp), intent(inout) :: Sigma(:)
 
     integer,     intent(in)    :: nwork
-    complex(dp), intent(inout) :: work(no_s,no_s,2)
+    complex(dp), intent(inout) :: work(:)
 ! ********************
 ! * LOCAL variables  *
 ! ********************
     integer :: ierr
-    integer :: io, jo
+    integer :: io, jo, no_s2
     integer :: ipvt(no_s)
 
 #ifndef TS_NOCHECKS
     if ( nwork < no_s ** 2 * 2 ) &
         call die('elec_se-Sigma: worksize too small!')
 #endif
-    
+
+    no_s2 = no_s * no_s
     call update_UC_expansion(ZEnergy,no_u,no_s,El,nq, &
-        El%na_used,El%lasto_used,El%HA,El%SA,GS,nwork, &
-        work(1,1,2), Sigma(1,1))
+        El%na_used,El%lasto_used,El%HA,El%SA,GS,&
+        work(no_s2+1:), Sigma(1:))
 
     ! We do not need to check for nq > 1 since
     ! the above call ensures correct handling
@@ -248,18 +250,18 @@ contains
 #endif
 
       ! When no repetition we save it "as is"
-      call zcopy(no_s*no_s,GS(1,1,1),1,Sigma(1,1),1)
+      call zcopy(no_s2,GS(1),1,Sigma(1),1)
       
     else if ( El%no_u /= El%no_used ) then
 
       ! Invert Sigma only when the electrode size is
       ! reduced, and not pre-expanded
 
-      call zgetrf(no_s, no_s, Sigma, no_s, ipvt, ierr )
+      call zgetrf(no_s, no_s, Sigma(1), no_s, ipvt, ierr )
       if ( ierr /= 0 ) &
           write(*,'(a,i0)') &
           'Inversion of surface Green (A) function failed: ',ierr
-      call zgetri(no_s, Sigma, no_s, ipvt, work(1,1,1), no_s**2, ierr)
+      call zgetri(no_s, Sigma(1), no_s, ipvt, work(1), no_s2, ierr)
       if ( ierr /= 0 ) &
           write(*,'(a,i0)') &
           'Inversion of surface Green (B) function failed: ',ierr
@@ -268,13 +270,9 @@ contains
     
     ! Do:
     ! \Sigma = Z*S - H - \Sigma_bulk
-!$OMP parallel do default(shared), private(io,jo)
-    do jo = 1 , no_s
-      do io = 1 , no_s
-        Sigma(io,jo) = work(io,jo,2) - Sigma(io,jo)
-      end do
+    do io = 1 , no_s2
+        Sigma(io) = work(no_s2+io) - Sigma(io)
     end do
-!$OMP end parallel do
 
   end subroutine UC_expansion_Sigma
 
@@ -302,7 +300,7 @@ contains
 ! ********************
     complex(dp), parameter :: zi = cmplx(0._dp,1._dp,dp)
     integer :: ierr
-    integer :: io,jo
+    integer :: io, jo, no_s2
     integer :: ipvt(no_s)
     integer, pointer :: p_G(:)
 
@@ -316,8 +314,10 @@ contains
         &TBtrans. Will produce erroneous results.')
 #endif
 
+    no_s2 = no_s * no_s
+
     call update_UC_expansion(ZEnergy,no_u,no_s,El,nq, &
-        El%na_used,El%lasto_used,El%HA,El%SA,GS,nwork, &
+        El%na_used,El%lasto_used,El%HA,El%SA,GS,&
         work(1,1,2), Sigma(1,1))
 
     if ( nq == 1 ) then
@@ -326,18 +326,18 @@ contains
 #endif
 
       ! When no repetition we save it "as is"
-      call zcopy(no_s*no_s,GS(1,1,1),1,Sigma(1,1),1)
+      call zcopy(no_s2,GS(1,1,1),1,Sigma(1,1),1)
       
     else if ( El%no_u /= El%no_used ) then
 
       ! Invert Sigma only when the electrode size is
       ! reduced, and not pre-expanded
 
-      call zgetrf(no_s, no_s, Sigma, no_s, ipvt, ierr )
+      call zgetrf(no_s, no_s, Sigma(1,1), no_s, ipvt, ierr)
       if ( ierr /= 0 ) &
           write(*,'(a,i0)') &
           'Inversion of surface Green (A) function failed (G): ',ierr
-      call zgetri(no_s, Sigma, no_s, ipvt, work(1,1,1), no_s**2, ierr)
+      call zgetri(no_s, Sigma(1,1), no_s, ipvt, work(1,1,1), no_s2, ierr)
       if ( ierr /= 0 ) &
           write(*,'(a,i0)') &
           'Inversion of surface Green (B) function failed (G): ',ierr
@@ -441,10 +441,14 @@ contains
 
 !$OMP end parallel 
 
+
+  contains
+
+    
   end subroutine UC_expansion_Sigma_GammaT
 
   subroutine update_UC_expansion(ZEnergy,no_u,no_s,El,nq,&
-       na_u,lasto,H,S,GS,nwork,HSE,GSE)
+       na_u,lasto,H,S,GS,HSE,GSE)
     use units, only : Pi
 ! ********************
 ! * INPUT variables  *
@@ -452,12 +456,11 @@ contains
     complex(dp), intent(in) :: ZEnergy
     integer,  intent(in) :: no_u, no_s
     type(Elec), intent(in) :: El
-    integer,  intent(in) :: nq, na_u,lasto(0:na_u)
+    integer,  intent(in) :: nq, na_u,lasto(0:)
     complex(dp), dimension(no_u,no_u,nq), intent(in) :: H, S, GS
 ! ********************
 ! * OUTPUT variables *
 ! ********************
-    integer,     intent(in)    :: nwork
     complex(dp), intent(inout) :: HSE(no_s,no_s), GSE(no_s,no_s)
 ! ********************
 ! * LOCAL variables  *
@@ -483,8 +486,8 @@ contains
         end do
 !$OMP end parallel do
         
-        call update_UC_expansion_A(no,no_s,El,El%bloch%size(),na_u,lasto,&
-            GSE(1,1),HSE(1,1))
+        call update_UC_expansion_A2D(no,no_s,El,El%bloch%size(),na_u,lasto,&
+            GSE,HSE)
 
       else
 
@@ -585,20 +588,112 @@ contains
 
   end subroutine update_UC_expansion
 
-  subroutine update_UC_expansion_A(no_u,no_s,El,nq, &
+  subroutine update_UC_expansion_A1D(no_u,no_s,El,nq, &
       na_u,lasto,A,AE)
-    use units, only : Pi
+
+    use iso_c_binding
+    
 ! ********************
 ! * INPUT variables  *
 ! ********************
     integer,  intent(in) :: no_u, no_s
     type(Elec), intent(in) :: El
-    integer,  intent(in) :: nq, na_u, lasto(0:na_u)
-    complex(dp), intent(in) :: A(no_u,no_u,El%Bloch%B(1),El%Bloch%B(2),El%Bloch%B(3))
+    integer,  intent(in) :: nq, na_u, lasto(0:)
+    complex(dp), intent(in), target :: A(:)
 ! ********************
 ! * OUTPUT variables *
 ! ********************
-    complex(dp), intent(inout) :: AE(no_s,no_s)
+    complex(dp), intent(inout), target :: AE(:)
+
+    complex(dp), pointer :: A5D(:,:,:,:,:) => null()
+    complex(dp), pointer :: AE2D(:,:) => null()
+    type(c_ptr) :: m_loc
+
+    m_loc = c_loc(A)
+    call c_f_pointer(m_loc, A5D, [no_u, no_u, El%bloch%B(1), El%bloch%B(2), El%bloch%B(3)])
+    m_loc = c_loc(AE)
+    call c_f_pointer(m_loc, AE2D, [no_s, no_s])
+
+    call update_UC_expansion_A(no_u, no_s, El, nq, na_u, lasto, A5D, AE2D)
+
+    nullify(A5D, AE2D)
+
+  end subroutine update_UC_expansion_A1D
+
+  subroutine update_UC_expansion_A2D(no_u,no_s,El,nq, &
+      na_u,lasto,A,AE)
+
+    use iso_c_binding
+    
+    integer,  intent(in) :: no_u, no_s
+    type(Elec), intent(in) :: El
+    integer,  intent(in) :: nq, na_u, lasto(0:)
+    complex(dp), intent(in), target :: A(:,:)
+! ********************
+! * OUTPUT variables *
+! ********************
+    complex(dp), intent(inout), target :: AE(:,:)
+
+    complex(dp), pointer :: A5D(:,:,:,:,:) => null()
+    complex(dp), pointer :: AE2D(:,:) => null()
+    type(c_ptr) :: m_loc
+
+    m_loc = c_loc(A)
+    call c_f_pointer(m_loc, A5D, [no_u, no_u, El%bloch%B(1), El%bloch%B(2), El%bloch%B(3)])
+    m_loc = c_loc(AE)
+    call c_f_pointer(m_loc, AE2D, [no_s, no_s])
+
+    call update_UC_expansion_A(no_u, no_s, El, nq, na_u, lasto, A5D, AE2D)
+
+    nullify(A5D, AE2D)
+    
+  end subroutine update_UC_expansion_A2D
+
+  subroutine update_UC_expansion_A3D(no_u,no_s,El,nq, &
+      na_u,lasto,A,AE)
+
+    use iso_c_binding
+    
+    integer,  intent(in) :: no_u, no_s
+    type(Elec), intent(in) :: El
+    integer,  intent(in) :: nq, na_u, lasto(0:)
+    complex(dp), intent(in), target :: A(:,:,:)
+! ********************
+! * OUTPUT variables *
+! ********************
+    complex(dp), intent(inout), target :: AE(:,:)
+
+    complex(dp), pointer :: A5D(:,:,:,:,:) => null()
+    complex(dp), pointer :: AE2D(:,:) => null()
+    type(c_ptr) :: m_loc
+
+    m_loc = c_loc(A)
+    call c_f_pointer(m_loc, A5D, [no_u, no_u, El%bloch%B(1), El%bloch%B(2), El%bloch%B(3)])
+    m_loc = c_loc(AE)
+    call c_f_pointer(m_loc, AE2D, [no_s, no_s])
+
+    call update_UC_expansion_A(no_u, no_s, El, nq, na_u, lasto, A5D, AE2D)
+
+    nullify(A5D, AE2D)
+    
+  end subroutine update_UC_expansion_A3D
+
+  subroutine update_UC_expansion_A(no_u,no_s,El,nq, &
+      na_u,lasto,A,AE)
+
+    use units, only : Pi
+
+! ********************
+! * INPUT variables  *
+! ********************
+    integer,  intent(in) :: no_u, no_s
+    type(Elec), intent(in) :: El
+    integer,  intent(in) :: nq, na_u, lasto(0:)
+    complex(dp), intent(in), target :: A(:,:,:,:,:)
+! ********************
+! * OUTPUT variables *
+! ********************
+    complex(dp), intent(inout), target :: AE(:,:)
 
     if ( no_u == no_s ) then
       call die('update_UC_expansion_A: error!')

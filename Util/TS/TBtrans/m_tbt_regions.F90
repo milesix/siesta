@@ -97,15 +97,15 @@ contains
     ! The device region unit-cell
     real(dp), intent(in) :: cell(3,3)
     ! Last orbital of each atom
-    integer, intent(in) :: na_u, lasto(0:na_u)
+    integer, intent(in) :: na_u, lasto(0:)
     ! The atomic coordinates
-    real(dp), intent(in) :: xa(3,na_u)
+    real(dp), intent(in) :: xa(:,:)
     ! The distribution for the sparsity pattern
     type(OrbitalDistribution), intent(inout) :: dit
     ! The sparsity pattern
     type(Sparsity), intent(inout) :: sp
     ! The supercell information
-    integer, intent(in) :: nsc, isc_off(3,nsc)
+    integer, intent(in) :: nsc, isc_off(:,:)
 
     integer :: iEl, jEl
 
@@ -851,7 +851,7 @@ contains
     use m_ts_electype
 
     integer, intent(in) :: na_u
-    integer, intent(in) :: lasto(0:na_u)
+    integer, intent(in) :: lasto(0:)
     integer, intent(in) :: N_Elec
     type(Elec), intent(in) :: Elecs(N_Elec)
     integer :: i

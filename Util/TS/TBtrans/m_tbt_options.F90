@@ -109,7 +109,7 @@ contains
     ! The number of atoms
     integer, intent(in) :: na_u
     ! A summated list of last orbitals on atoms.
-    integer, intent(in) :: lasto(0:na_u)
+    integer, intent(in) :: lasto(0:)
 
     ! Initialize the buffer regions
     if ( fdf_defined('TBT.Atoms.Buffer') ) then
@@ -243,8 +243,8 @@ contains
     ! * INPUT variables *
     ! *******************
     real(dp), intent(in) :: cell(3,3)
-    integer,  intent(in) :: na_u, lasto(0:na_u)
-    real(dp), intent(in) :: xa(3,na_u)
+    integer,  intent(in) :: na_u, lasto(0:)
+    real(dp), intent(in) :: xa(:,:)
 
     ! *******************
     ! * LOCAL variables *
@@ -472,8 +472,8 @@ contains
     ! *******************
     integer, intent(in) :: nspin
     real(dp), intent(in) :: cell(3,3)
-    integer,  intent(in) :: na_u, lasto(0:na_u)
-    real(dp), intent(in) :: xa(3,na_u)
+    integer,  intent(in) :: na_u, lasto(0:)
+    real(dp), intent(in) :: xa(:,:)
     integer, intent(in) :: no_u
     integer,  intent(in) :: kscell(3,3)
     real(dp), intent(in) :: kdispl(3)

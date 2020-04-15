@@ -32,7 +32,7 @@ contains
     use m_ts_electype
 
     integer, intent(in) :: N_tri
-    integer, intent(in) :: tri(N_tri)
+    integer, intent(in) :: tri(:)
     integer, intent(in) :: N_Elec
     type(Elec), intent(in) :: Elecs(N_Elec)
     integer, intent(out) :: padding, worksize
@@ -121,7 +121,7 @@ contains
   end subroutine GFGGF_needed_worksize
 
   pure function nnzs_tri(N_tri,tri) result(elem)
-    integer, intent(in) :: N_tri, tri(N_tri)
+    integer, intent(in) :: N_tri, tri(:)
     integer(i8b) :: elem
     integer :: i
     

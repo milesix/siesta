@@ -488,7 +488,7 @@ contains
     ! Index of the k-region that belongs to the electrode
     integer, intent(in) :: k_idx(N_Elec)
     integer, intent(in) :: nzwork
-    complex(dp), intent(inout), target :: zwork(nzwork)
+    complex(dp), intent(inout), target :: zwork(:)
 
     integer :: i
     type(ts_c_idx) :: c

@@ -107,9 +107,10 @@ contains
 #ifdef NCDF_4
 
   ! Opens the save file accordingly to the setup parameters
-  subroutine open_cdf_save(fname,ncdf)
+  subroutine open_cdf_save(fname, ncdf, N_Elec, Elecs)
 
     use netcdf_ncdf, ncdf_parallel => parallel
+    use m_ts_electype, only: Elec
     
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD
@@ -118,14 +119,31 @@ contains
     ! The file-name to be opened
     character(len=*), intent(in) :: fname
     type(hNCDF), intent(inout) :: ncdf
+    integer, intent(in) :: N_Elec
+    type(Elec), intent(in) :: Elecs(:)
+
+#ifdef NCDF_PARALLEL
+    integer :: iEl
+    type(hNCDF) :: grp
+#endif
 
 #ifdef MPI
     ! Open the netcdf file
     if ( save_parallel ) then
-       call ncdf_open(ncdf,fname, mode=ior(NF90_WRITE,NF90_MPIIO), &
-            comm = MPI_COMM_WORLD )
+      call ncdf_open(ncdf,fname, mode=ior(NF90_WRITE,NF90_MPIIO), &
+          comm = MPI_COMM_WORLD )
+
+      ! Prepare collective operations...
+      ! Assign all writes to be collective
+      ! Collective is faster since we don't need syncronization
+      call ncdf_par_access(ncdf, access=NF90_COLLECTIVE)
+      do iEl = 1 , N_Elec
+        call ncdf_open_grp(ncdf,trim(Elecs(iEl)%name),grp)
+        call ncdf_par_access(grp, access=NF90_COLLECTIVE)
+      end do
+
     else
-       call ncdf_open(ncdf,fname, mode=NF90_WRITE)
+      call ncdf_open(ncdf,fname, mode=NF90_WRITE)
     end if
 #else
     call ncdf_open(ncdf,fname, mode=NF90_WRITE)
@@ -351,7 +369,7 @@ contains
     type(Elec), intent(in) :: Elecs(N_Elec)
     type(tRgn), intent(in) :: raEl(N_Elec), roElpd(N_Elec), btd_El(N_Elec)
     integer, intent(in) :: nkpt
-    real(dp), intent(in), target :: kpt(3,nkpt), wkpt(nkpt)
+    real(dp), intent(in), target :: kpt(:,:), wkpt(:)
     integer, intent(in) :: NE
     real(dp), intent(in) :: Eta
     type(tRgn), intent(in) :: a_Dev
@@ -451,7 +469,7 @@ contains
       ! Check the k-points
       allocate(r2(3,nkpt))
       do i = 1 , nkpt
-        call kpoint_convert(TSHS%cell,kpt(:,i),r2(:,i),1)
+        call kpoint_convert(TSHS%cell(1,1),kpt(1,i),r2(1,i),1)
       end do
       dic = ('kpt'.kvp.r2) // ('wkpt'.kvp. wkpt)
       call ncdf_assert(ncdf,sme,vars=dic, d_EPS = 1.e-7_dp )
@@ -729,10 +747,10 @@ contains
     ! Btd is the blocks in the BTD
     type(tRgn), intent(in) :: r, btd
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
-    type(tRgn), intent(in) :: raEl(N_Elec), roElpd(N_Elec), btd_El(N_Elec)
+    type(Elec), intent(in) :: Elecs(:)
+    type(tRgn), intent(in) :: raEl(:), roElpd(:), btd_El(:)
     integer, intent(in) :: nkpt
-    real(dp), intent(in), target :: kpt(3,nkpt), wkpt(nkpt)
+    real(dp), intent(in), target :: kpt(:,:), wkpt(:)
     integer, intent(in) :: NE
     real(dp), intent(in) :: Eta
     type(tRgn), intent(in) :: a_Dev
@@ -885,7 +903,7 @@ contains
     call ncdf_put_var(ncdf,'isc_off',TSHS%isc_off)
     call ncdf_put_var(ncdf,'pivot',r%r)
     call ncdf_put_var(ncdf,'cell',TSHS%cell)
-    call ncdf_put_var(ncdf,'xa',TSHS%xa)
+    call ncdf_put_var(ncdf,'xa',TSHS%xa(:,:))
     call ncdf_put_var(ncdf,'lasto',TSHS%lasto(1:TSHS%na_u))
     call rgn_copy(a_Dev, r_tmp)
     call rgn_sort(r_tmp)
@@ -903,7 +921,7 @@ contains
     ! the same k-points in the same go.
     allocate(r2(3,nkpt))
     do i = 1 , nkpt
-       call kpoint_convert(TSHS%cell,kpt(:,i),r2(:,i),1)
+       call kpoint_convert(TSHS%cell,kpt(1,i),r2(1,i),1)
     end do
     call ncdf_put_var(ncdf,'kpt',r2)
     call ncdf_put_var(ncdf,'wkpt',wkpt)
@@ -1252,32 +1270,32 @@ contains
     type(hNCDF), intent(inout) :: ncdf
     type(tNodeE), intent(in) :: nE
 
-    integer :: iN, idx
+    integer :: iN, idx(1), cnt(1)
 
+    idx(1) = nE%iE(Node)
     if ( save_parallel ) then
+      cnt(1) = 1
        
        ! Create count
-       idx = nE%iE(Node)
-       if ( idx <= 0 ) then
-          idx = 1
-          iN = 0
-       else
-          iN = 1
-       end if
-       
-       call ncdf_put_var(ncdf,'E',nE%E(Node), &
-            start = (/idx/), count = (/iN/) )
+      if ( idx(1) <= 0 ) then
+        idx(1) = 1
+        cnt(1) = 0
+      end if
+
+      call ncdf_put_var(ncdf,'E',nE%E(Node), &
+          start = idx, count = cnt )
        
     else
 
-       ! We save the energy
+      ! We save the energy
 #ifdef MPI
-       do iN = 0 , Nodes - 1
-          if ( nE%iE(iN) <= 0 ) cycle
-          call ncdf_put_var(ncdf,'E',nE%E(iN),start = (/nE%iE(iN)/) )
-       end do
+      do iN = 0 , Nodes - 1
+        if ( nE%iE(iN) <= 0 ) cycle
+        idx(1) = nE%iE(iN)
+        call ncdf_put_var(ncdf,'E',nE%E(iN),start = idx)
+      end do
 #else
-       call ncdf_put_var(ncdf,'E',nE%E(Node),start = (/nE%iE(Node)/) )
+      call ncdf_put_var(ncdf,'E',nE%E(Node),start = idx)
 #endif
        
     end if
@@ -1305,9 +1323,9 @@ contains
     integer, intent(in) :: N_Elec
     type(Elec), intent(in) :: Elecs(N_Elec)
     real(dp), intent(in) :: DOS(:,:)
-    real(dp), intent(in) :: T(N_Elec+1,N_Elec)
+    real(dp), intent(in) :: T(:,:)
     integer, intent(in) :: N_eigen
-    real(dp), intent(in) :: Teig(N_eigen,N_Elec,N_Elec)
+    real(dp), intent(in) :: Teig(:,:,:)
     type(dictionary_t), intent(in) :: save_DATA
 
     type(hNCDF) :: grp
@@ -1328,66 +1346,65 @@ contains
            
 #ifdef MPI
     if ( .not. save_parallel ) then
-       if ( N_eigen > NDOS ) then
-          allocate(thisDOS(N_eigen))
-       else
-          allocate(thisDOS(NDOS))
-       end if
-       call save_attach_buffer(thisDOS)
+      if ( N_eigen > NDOS ) then
+        allocate(thisDOS(N_eigen))
+      else
+        allocate(thisDOS(NDOS))
+      end if
+      call save_attach_buffer(thisDOS)
     end if
     NT = ( N_Elec + 1 ) * N_Elec
 #endif
 
     if ( save_parallel ) then
 
-       idx(1) = nE%iE(Node)
-       cnt(1) = 1
-       if ( idx(1) <= 0 ) then
-          idx(1) = 1
-          cnt(1) = 0
-       end if
-       call ncdf_put_var(ncdf,'E',nE%E(Node),start=idx(1:1), &
-            count = cnt(1:1) )
+      idx(1) = nE%iE(Node)
+      cnt(1) = 1
+      if ( idx(1) <= 0 ) then
+        idx(1) = 1
+        cnt(1) = 0
+      end if
+      call ncdf_put_var(ncdf,'E',nE%E(Node),start=idx(1:1), count=cnt(1:1))
 
     else
 
-       ! Save the different options given to this routine
-       ! We need to save the energy
+      ! Save the different options given to this routine
+      ! We need to save the energy
 #ifdef MPI
-       do iN = 0 , Nodes - 1
-          if ( nE%iE(iN) <= 0 ) cycle
-          call ncdf_put_var(ncdf,'E',nE%E(iN),start = (/nE%iE(iN)/) )
-       end do
+      do iN = 0 , Nodes - 1
+        if ( nE%iE(iN) <= 0 ) cycle
+        call ncdf_put_var(ncdf,'E',nE%E(iN),start=nE%iE(iN:iN) )
+      end do
 #else
-       call ncdf_put_var(ncdf,'E',nE%E(Node),start = (/nE%iE(Node)/) )
+      call ncdf_put_var(ncdf,'E',nE%E(Node),start=nE%iE(Node:Node) )
 #endif
 
     end if
 
     if ( 'DOS-Gf' .in. save_DATA ) then
 
-       ! We save the DOS
-       ! This is the DOS from the Green's function
-       call local_save_DOS(ncdf,'DOS',ikpt,nE,NDOS,DOS(1:NDOS,1))
+      ! We save the DOS
+      ! This is the DOS from the Green's function
+      call local_save_DOS(ncdf,'DOS',ikpt,nE,NDOS,DOS(1:NDOS,1))
 
     end if
 
     if ( 'DOS-A' .in. save_DATA ) then
 
-       ! We save the DOS calculated from the spectral function
+      ! We save the DOS calculated from the spectral function
 
-       do iEl = 1 , N_Elec
-          if ( iEl == N_Elec ) then
-             ! check if all are calculated
-             if ( ('DOS-A-all' .nin. save_DATA) .and. &
-                  ('T-all'.nin. save_DATA) ) cycle
-          end if
+      do iEl = 1 , N_Elec
+        if ( iEl == N_Elec ) then
+          ! check if all are calculated
+          if ( ('DOS-A-all' .nin. save_DATA) .and. &
+              ('T-all'.nin. save_DATA) ) cycle
+        end if
           
-          call ncdf_open_grp(ncdf,trim(Elecs(iEl)%name),grp)
+        call ncdf_open_grp(ncdf,trim(Elecs(iEl)%name),grp)
           
-          call local_save_DOS(grp,'ADOS',ikpt,nE,NDOS,DOS(1:NDOS,1+iEl))
+        call local_save_DOS(grp,'ADOS',ikpt,nE,NDOS,DOS(1:NDOS,1+iEl))
 
-       end do
+      end do
        
     end if
 
@@ -1408,59 +1425,60 @@ contains
 
     ! Save transmission function
     do iEl = 1 , N_Elec
-       if ( iEl == N_Elec .and. ('T-all' .nin. save_DATA) ) cycle
+      if ( iEl == N_Elec .and. ('T-all' .nin. save_DATA) ) cycle
 
-       ! Open group of electrode
-       call ncdf_open_grp(ncdf,trim(Elecs(iEl)%name),grp)
+      ! Open group of electrode
+      call ncdf_open_grp(ncdf,trim(Elecs(iEl)%name),grp)
 
-       do jEl = 1 , N_Elec
-          if ( ('T-all' .nin. save_DATA ) .and. &
-               jEl < iEl ) cycle
-          if ( ('T-sum-out' .nin. save_DATA ) .and. &
-               iEl == jEl ) cycle
+      do jEl = 1 , N_Elec
+        if ( ('T-all' .nin. save_DATA ) .and. &
+            jEl < iEl ) cycle
+        if ( ('T-sum-out' .nin. save_DATA ) .and. &
+            iEl == jEl ) cycle
 
-          if ( jEl == iEl ) then
-             c_tmp  = trim(Elecs(jEl)%name)//'.C'
-             c_tmp2 = trim(Elecs(jEl)%name)//'.T'
-          else
-             c_tmp  = trim(Elecs(jEl)%name)//'.T'
-          end if
+        if ( jEl == iEl ) then
+          c_tmp  = trim(Elecs(jEl)%name)//'.C'
+          c_tmp2 = trim(Elecs(jEl)%name)//'.T'
+        else
+          c_tmp  = trim(Elecs(jEl)%name)//'.T'
+        end if
 
-          idx = (/nE%iE(Node),ikpt/)
-          cnt(:) = 1
-          if ( idx(1) <= 0 ) then
-             cnt = 0
-             idx = 1
-          end if
-          ! Save data
-          call ncdf_put_var(grp,c_tmp,T(jEl,iEl),start = idx, &
-               count = cnt )
-          if ( iEl == jEl ) then
-             call ncdf_put_var(grp,c_tmp2,T(N_Elec+1,iEl), &
-                  start = idx, count = cnt )
-          end if
+        idx(1) = nE%iE(Node)
+        idx(2) = ikpt
+        cnt(:) = 1
+        if ( idx(1) <= 0 ) then
+          cnt(:) = 0
+          idx(1) = 1
+        end if
+        ! Save data
+        call ncdf_put_var(grp,c_tmp,T(jEl,iEl),start = idx, &
+            count = cnt )
+        if ( iEl == jEl ) then
+          call ncdf_put_var(grp,c_tmp2,T(N_Elec+1,iEl), &
+              start = idx, count = cnt )
+        end if
        
 #ifdef MPI
-          if ( Node == 0 .and. .not. save_parallel ) then
-             do iN = 1 , Nodes - 1
-                if ( nE%iE(iN) > 0 ) then
-                   call ncdf_put_var(grp,c_tmp,rT(jEl,iEl,iN), &
-                        start = (/nE%iE(iN),ikpt/) )
-                   if ( iEl == jEl ) then
-                      call ncdf_put_var(grp,c_tmp2,rT(N_Elec+1,iEl,iN), &
-                           start = (/nE%iE(iN),ikpt/) )
-                   end if
-                end if
-             end do
-          end if
+        if ( Node == 0 .and. .not. save_parallel ) then
+          do iN = 1 , Nodes - 1
+            if ( nE%iE(iN) > 0 ) then
+              idx(1) = nE%iE(iN)
+              call ncdf_put_var(grp,c_tmp,rT(jEl,iEl,iN), start = idx)
+              if ( iEl == jEl ) then
+                call ncdf_put_var(grp,c_tmp2,rT(N_Elec+1,iEl,iN), &
+                    start = idx)
+              end if
+            end if
+          end do
+        end if
 #endif
 
-          if ( N_eigen > 0 ) then
-             call local_save_DOS(grp,trim(c_tmp)//'.Eig',ikpt,nE,&
-                  N_eigen,Teig(:,jEl,iEl))
-          end if
+        if ( N_eigen > 0 ) then
+          call local_save_DOS(grp,trim(c_tmp)//'.Eig',ikpt,nE,&
+              N_eigen,Teig(:,jEl,iEl))
+        end if
 
-       end do
+      end do
     end do
 
 #ifdef MPI
@@ -1492,7 +1510,7 @@ contains
     type(tNodeE), intent(in) :: nE
     integer, intent(in) :: N_Elec
     type(Elec), intent(in) :: Elecs(N_Elec)
-    real(dp), intent(in) :: DOS(:,:), T(N_Elec)
+    real(dp), intent(in) :: DOS(:,:), T(:)
     type(dictionary_t), intent(in) :: save_DATA
 
     type(hNCDF) :: grp
@@ -1511,50 +1529,52 @@ contains
     if ( 'DOS-Elecs' .in. save_DATA ) then
 
 #ifdef MPI
-       if ( .not. save_parallel ) then
-          allocate(thisDOS(size(DOS,1)))
-          call save_attach_buffer(thisDOS)
-          allocate(rT(N_Elec,0:Nodes-1))
-          call MPI_Gather(T(1),N_Elec,Mpi_Double_Precision, &
-               rT(1,0),N_Elec,Mpi_Double_Precision, &
-               0,MPI_COMM_WORLD,iEl)
-       end if
+      if ( .not. save_parallel ) then
+        allocate(thisDOS(size(DOS,1)))
+        call save_attach_buffer(thisDOS)
+        allocate(rT(N_Elec,0:Nodes-1))
+        call MPI_Gather(T(1),N_Elec,Mpi_Double_Precision, &
+            rT(1,0),N_Elec,Mpi_Double_Precision, &
+            0,MPI_COMM_WORLD,iEl)
+      end if
 #endif
 
-       do iEl = 1 , N_Elec
-          ! Skip electrodes which uses the out-of-core ability
-          if ( Elecs(iEl)%out_of_core ) cycle
-          
-          call ncdf_open_grp(ncdf,trim(Elecs(iEl)%name),grp)
+      do iEl = 1 , N_Elec
+        ! Skip electrodes which uses the out-of-core ability
+        if ( Elecs(iEl)%out_of_core ) cycle
 
-          idx = (/nE%iE(Node),ikpt/)
-          cnt(:) = 1
-          if ( idx(1) <= 0 ) then
-             cnt = 0
-             idx = 1
-          end if
+        call ncdf_open_grp(ncdf,trim(Elecs(iEl)%name),grp)
 
-          ! DOS-elecs also calculates the transport
-          call ncdf_put_var(grp,'T',T(iEl),start = idx, &
-               count = cnt )
+        idx(1) = nE%iE(Node)
+        idx(2) = ikpt
+        cnt(:) = 1
+        if ( idx(1) <= 0 ) then
+          cnt(:) = 0
+          idx(1) = 1
+        end if
+
+        ! DOS-elecs also calculates the transport
+        call ncdf_put_var(grp,'T',T(iEl),start = idx, &
+            count = cnt )
 #ifdef MPI
-          if ( .not. save_parallel ) then
-             do iN = 1 , Nodes - 1
-                if ( nE%iE(iN) <= 0 ) cycle
-                call ncdf_put_var(grp,'T',rT(iEl,iN), &
-                     start = (/nE%iE(iN),ikpt/) )
-             end do
-          end if
+        if ( .not. save_parallel ) then
+          do iN = 1 , Nodes - 1
+            if ( nE%iE(iN) <= 0 ) cycle
+            idx(1) = nE%iE(iN)
+            call ncdf_put_var(grp,'T',rT(iEl,iN), &
+                start = idx )
+          end do
+        end if
 #endif
-          
-          N = Elecs(iEl)%no_u
-          call local_save_DOS(grp,'DOS',ikpt,nE,N,DOS(1:N,iEl))
-          
-       end do
+
+        N = Elecs(iEl)%no_u
+        call local_save_DOS(grp,'DOS',ikpt,nE,N,DOS(1:N,iEl))
+
+      end do
 
 #ifdef MPI
-       if ( allocated(thisDOS) ) deallocate(thisDOS)
-       if ( allocated(rT) ) deallocate(rT)
+      if ( allocated(thisDOS) ) deallocate(thisDOS)
+      if ( allocated(rT) ) deallocate(rT)
 #endif
 
     end if
@@ -1582,47 +1602,49 @@ contains
     integer, intent(in) :: ikpt
     type(tNodeE), intent(in) :: nE
     integer, intent(in) :: N
-    real(dp), intent(in) :: DOS(N)
+    real(dp), intent(in) :: DOS(:)
 
     integer :: iN, cnt(3), idx(3)
 #ifdef MPI
     integer :: MPIerror, status(MPI_STATUS_SIZE)
 #endif
 
+    idx(1) = 1
+    idx(2) = nE%iE(Node)
+    idx(3) = ikpt
     if ( save_parallel ) then
 
-       idx = (/1,nE%iE(Node),ikpt/)
-       cnt(1) = N
-       cnt(2) = 1
-       cnt(3) = 1
-       if ( idx(2) <= 0 ) then
-          cnt = 0
-          idx = 1
-       end if
-       call ncdf_put_var(grp,var,DOS,start = idx, &
-            count = cnt )
+      cnt(1) = N
+      cnt(2) = 1
+      cnt(3) = 1
+      if ( idx(2) <= 0 ) then
+        cnt(:) = 0
+        idx(2) = 1
+      end if
+      call ncdf_put_var(grp,var,DOS, start=idx, count=cnt)
 
-       return
+      return
 
     end if
 
     if ( nE%iE(Node) > 0 ) then
-       call ncdf_put_var(grp,var,DOS,start = (/1,nE%iE(Node),ikpt/) )
+      call ncdf_put_var(grp,var,DOS,start = idx )
     end if
     
 #ifdef MPI
     if ( .not. save_parallel ) then
-       if ( Node == 0 ) then
-          do iN = 1 , Nodes - 1
-             if ( nE%iE(iN) <= 0 ) cycle
-             call MPI_Recv(rbuff1d(1),N,MPI_double_precision,iN,iN, &
-                  Mpi_comm_world,status,MPIerror)
-             call ncdf_put_var(grp,var,rbuff1d(1:N),start = (/1,nE%iE(iN),ikpt/) )
-          end do
-       else if ( nE%iE(Node) > 0 ) then
-          call MPI_Send(DOS(1),N,MPI_double_precision,0,Node, &
-               Mpi_comm_world,MPIerror)
-       end if
+      if ( Node == 0 ) then
+        do iN = 1 , Nodes - 1
+          if ( nE%iE(iN) <= 0 ) cycle
+          call MPI_Recv(rbuff1d(1),N,MPI_double_precision,iN,iN, &
+              Mpi_comm_world,status,MPIerror)
+          idx(2) = nE%iE(iN)
+          call ncdf_put_var(grp,var,rbuff1d(1:N),start = idx)
+        end do
+      else if ( nE%iE(Node) > 0 ) then
+        call MPI_Send(DOS(1),N,MPI_double_precision,0,Node, &
+            Mpi_comm_world,MPIerror)
+      end if
     end if
 #endif
     
@@ -1672,30 +1694,33 @@ contains
     nnzs_dev = size(D)
     
     ! Save the current
-    idx = (/1,nE%iE(Node),ikpt/)
+    idx(1) = 1
+    idx(2) = nE%iE(Node)
+    idx(3) = ikpt
     cnt(1) = nnzs_dev
     cnt(2) = 1
     cnt(3) = 1
     if ( idx(2) <= 0 ) then
-       cnt = 0
-       idx = 1
+      cnt(:) = 0
+      idx(2) = 1
     end if
     call ncdf_put_var(grp,var_name,D,start = idx, count = cnt )
 
 #ifdef MPI
     if ( .not. save_parallel ) then
-       if ( Node == 0 ) then
-          do iN = 1 , Nodes - 1
-             if ( nE%iE(iN) > 0 ) then
-                call MPI_Recv(D(1),nnzs_dev,Mpi_double_precision, &
-                     iN, iN, Mpi_comm_world,status,MPIerror)
-                call ncdf_put_var(grp,var_name,D,start = (/1,nE%iE(iN),ikpt/) )
-             end if
-          end do
-       else if ( nE%iE(Node) > 0 ) then
-          call MPI_Send(D(1),nnzs_dev,Mpi_double_precision, &
-               0, Node, Mpi_comm_world,MPIerror)
-       end if
+      if ( Node == 0 ) then
+        do iN = 1 , Nodes - 1
+          if ( nE%iE(iN) > 0 ) then
+            call MPI_Recv(D(1),nnzs_dev,Mpi_double_precision, &
+                iN, iN, Mpi_comm_world,status,MPIerror)
+            idx(2) = nE%iE(iN)
+            call ncdf_put_var(grp,var_name,D,start = idx)
+          end if
+        end do
+      else if ( nE%iE(Node) > 0 ) then
+        call MPI_Send(D(1),nnzs_dev,Mpi_double_precision, &
+            0, Node, Mpi_comm_world,MPIerror)
+      end if
     end if
 #endif
 
@@ -1731,7 +1756,7 @@ contains
     type(Elec), intent(in) :: Elecs(N_Elec)
     integer, intent(in) :: N_E
     ! This quantity is the dE weight, with dE in Ry units
-    real(dp), intent(in) :: rW(N_E)
+    real(dp), intent(in) :: rW(:)
     type(dictionary_t), intent(in) :: save_DATA
 
     character(len=256) :: ascii_file, c_tmp
@@ -2113,9 +2138,9 @@ contains
 
     subroutine save_DAT(fname,nkpt,kpt,wkpt,N,NE,E,ipiv,DAT,value,header)
       character(len=*), intent(in) :: fname
-      integer, intent(in) :: nkpt, NE, ipiv(NE), N
-      real(dp), intent(in) :: kpt(3,nkpt), wkpt(nkpt), E(NE)
-      real(dp), intent(inout) :: DAT(NE,nkpt)
+      integer, intent(in) :: nkpt, NE, ipiv(:), N
+      real(dp), intent(in) :: kpt(:,:), wkpt(:), E(:)
+      real(dp), intent(inout) :: DAT(:,:)
       character(len=*), intent(in) :: value, header
 
       integer :: iu, ik, i
@@ -2158,9 +2183,9 @@ contains
 
     subroutine save_EIG(fname,nkpt,kpt,wkpt,NE,E,ipiv,neig,EIG,value,header)
       character(len=*), intent(in) :: fname
-      integer, intent(in) :: nkpt, NE, neig, ipiv(NE)
-      real(dp), intent(in) :: kpt(3,nkpt), wkpt(nkpt), E(NE)
-      real(dp), intent(inout) :: EIG(neig,NE,nkpt)
+      integer, intent(in) :: nkpt, NE, neig, ipiv(:)
+      real(dp), intent(in) :: kpt(:,:), wkpt(:), E(:)
+      real(dp), intent(inout) :: EIG(:,:,:)
       character(len=*), intent(in) :: value, header
 
       integer :: iu, ik, i
@@ -2585,7 +2610,7 @@ contains
     type(Elec), intent(in) :: Elecs(N_Elec)
     real(dp), intent(in)   :: DOS(:,:), T(:,:)
     integer, intent(in)    :: N_eigen
-    real(dp), intent(in)   :: Teig(N_eigen,N_Elec,N_Elec)
+    real(dp), intent(in)   :: Teig(:,:,:)
     type(dictionary_t), intent(in) :: save_DATA
 
     integer :: cu
@@ -2707,7 +2732,7 @@ contains
     type(tNodeE), intent(in) :: nE
     integer, intent(in)    :: N_Elec
     type(Elec), intent(in) :: Elecs(N_Elec)
-    real(dp), intent(in)   :: DOS(:,:), T(N_Elec)
+    real(dp), intent(in)   :: DOS(:,:), T(:)
     type(dictionary_t), intent(in) :: save_DATA
 
     integer :: cu, N
@@ -2774,7 +2799,7 @@ contains
     integer, intent(in) :: iu
     type(tNodeE), intent(in) :: nE
     integer, intent(in) :: ipvt(:), N
-    real(dp), intent(in) :: DATA(N)
+    real(dp), intent(in) :: DATA(:)
     real(dp), intent(in), optional :: fact
 
     integer :: iN, i
@@ -2831,7 +2856,7 @@ contains
     integer, intent(in) :: iu
     type(tNodeE), intent(in) :: nE
     integer, intent(in) :: ipvt(:), N
-    real(dp), intent(in) :: EIG(N)
+    real(dp), intent(in) :: EIG(:)
 
     integer :: iN, i
     character(len=20) :: fmt

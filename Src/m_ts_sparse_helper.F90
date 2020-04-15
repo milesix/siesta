@@ -113,9 +113,9 @@ contains
     ! The number of elements in the sparse arrays
     integer, intent(in) :: n_nzs
     ! The hamiltonian and overlap sparse matrices 
-    real(dp), intent(in) :: H(n_nzs),S(n_nzs)
+    real(dp), intent(in) :: H(:), S(:)
     ! The supercell offsets
-    real(dp), intent(in) :: sc_off(3,0:n_s-1)
+    real(dp), intent(in) :: sc_off(:,0:)
     ! The arrays we will save in...
     type(zSpData1D), intent(inout) :: SpArrH, SpArrS
     ! The k-point we will create
@@ -123,7 +123,7 @@ contains
     ! we pass a work array
     integer, intent(in) :: nwork
     ! work-array
-    complex(dp), intent(in out) :: work(nwork)
+    complex(dp), intent(inout) :: work(:)
 
 ! *********************
 ! * LOCAL variables   *
@@ -293,13 +293,13 @@ contains
     ! The number of elements in the sparse arrays
     integer, intent(in) :: n_nzs
     ! The hamiltonian and overlap sparse matrices 
-    real(dp), intent(in) :: H(n_nzs),S(n_nzs)
+    real(dp), intent(in) :: H(:), S(:)
     ! The arrays we will save in... these are the entire TS-region sparsity
     type(dSpData1D), intent(inout) :: SpArrH, SpArrS
     ! we pass a work array
     integer, intent(in) :: nwork
     ! work-array
-    real(dp), intent(in out) :: work(nwork)
+    real(dp), intent(in out) :: work(:)
 
 ! *********************
 ! * LOCAL variables   *
@@ -448,9 +448,9 @@ contains
     type(tRgn), intent(in) :: r
     ! The number of elements in the sparse arrays
     integer, intent(in) :: n_nzs
-    real(dp), intent(in) :: A(n_nzs)
+    real(dp), intent(in) :: A(:)
     ! The UT format matrix
-    real(dp), intent(out) :: A_UT(no*(no+1)/2)
+    real(dp), intent(out) :: A_UT(:)
 
 ! *********************
 ! * LOCAL variables   *
@@ -543,7 +543,7 @@ contains
     type(tRgn), intent(in) :: r
     ! The number of elements in the sparse arrays
     integer, intent(in) :: n_nzs
-    real(dp), intent(in) :: A(n_nzs)
+    real(dp), intent(in) :: A(:)
     ! The matrix
     real(dp), intent(out) :: A_full(no,no)
 
@@ -626,11 +626,11 @@ contains
     type(tRgn), intent(in) :: r
     ! The number of elements in the sparse arrays
     integer, intent(in) :: n_nzs, n_s
-    real(dp), intent(in) :: A(n_nzs), sc_off(3,0:n_s-1)
+    real(dp), intent(in) :: A(:), sc_off(:,0:)
     ! The k-point we will create
-    real(dp), intent(in) :: k(3)
+    real(dp), intent(in) :: k(:)
     ! The UT format matrix
-    complex(dp), intent(out) :: A_UT(no*(no+1)/2)
+    complex(dp), intent(out) :: A_UT(:)
 
 ! *********************
 ! * LOCAL variables   *
@@ -734,7 +734,7 @@ contains
     type(tRgn), intent(in) :: r
     ! The number of elements in the sparse arrays
     integer, intent(in) :: n_nzs, n_s
-    real(dp), intent(in) :: A(n_nzs), sc_off(3,0:n_s-1)
+    real(dp), intent(in) :: A(:), sc_off(:,0:)
     ! The k-point we will create
     real(dp), intent(in) :: k(3)
     ! The UT format matrix
@@ -811,9 +811,9 @@ contains
   subroutine AllReduce_z1D(nnzs,arr,nwork,work)
     use mpi_siesta
     integer, intent(in) :: nnzs
-    complex(dp), intent(inout) :: arr(nnzs)
+    complex(dp), intent(inout) :: arr(:)
     integer, intent(in) :: nwork
-    complex(dp), intent(inout) :: work(nwork)
+    complex(dp), intent(inout) :: work(:)
     integer :: MPIerror, i
     i = 0
     do while ( i + nwork <= nnzs )
@@ -834,7 +834,7 @@ contains
     use class_zSpData1D
     type(zSpData1D), intent(inout) :: sp_arr
     integer, intent(in) :: nwork
-    complex(dp), intent(inout) :: work(nwork)
+    complex(dp), intent(inout) :: work(:)
     complex(dp), pointer :: arr(:)
     integer :: n_nzs
     n_nzs = nnzs(sp_arr)
@@ -847,15 +847,17 @@ contains
     use class_zSpData2D
     type(zSpData2D), intent(inout) :: sp_arr
     integer, intent(in) :: nwork
-    complex(dp), intent(inout) :: work(nwork)
+    complex(dp), intent(inout) :: work(:)
     integer, intent(in), optional :: dim2_count
     complex(dp), pointer :: arr(:,:)
-    integer :: n_nzs, d2
+    integer :: n_nzs, d2, i2
     arr => val(sp_arr)
     d2 = size(arr,dim=2)
     if ( present(dim2_count) ) d2 = dim2_count
-    n_nzs = nnzs(sp_arr) * d2
-    call AllReduce_z1D(n_nzs,arr,nwork,work)
+    n_nzs = nnzs(sp_arr)
+    do i2 = 1 , d2
+      call AllReduce_z1D(n_nzs,arr(:,i2),nwork,work)
+    end do
   end subroutine AllReduce_zSpData2D
 
 
@@ -864,9 +866,9 @@ contains
   subroutine AllReduce_d1D(nnzs,arr,nwork,work)
     use mpi_siesta
     integer, intent(in) :: nnzs
-    real(dp), intent(inout) :: arr(nnzs)
+    real(dp), intent(inout) :: arr(:)
     integer, intent(in) :: nwork
-    real(dp), intent(inout) :: work(nwork)
+    real(dp), intent(inout) :: work(:)
     integer :: MPIerror, i
     i = 0
     do while ( i + nwork <= nnzs )
@@ -887,7 +889,7 @@ contains
     use class_dSpData1D
     type(dSpData1D), intent(inout) :: sp_arr
     integer, intent(in)     :: nwork
-    real(dp), intent(inout) :: work(nwork)
+    real(dp), intent(inout) :: work(:)
     real(dp), pointer :: arr(:)
     integer :: n_nzs
     n_nzs = nnzs(sp_arr)
@@ -900,15 +902,17 @@ contains
     use class_dSpData2D
     type(dSpData2D), intent(inout) :: sp_arr
     integer, intent(in) :: nwork
-    real(dp), intent(inout) :: work(nwork)
+    real(dp), intent(inout) :: work(:)
     integer, intent(in), optional :: dim2_count
     real(dp), pointer :: arr(:,:)
-    integer :: n_nzs, d2
+    integer :: n_nzs, d2, i2
     arr => val(sp_arr)
     d2 = size(arr,dim=2)
     if ( present(dim2_count) ) d2 = dim2_count
-    n_nzs = nnzs(sp_arr) * d2
-    call AllReduce_d1D(n_nzs,arr,nwork,work)
+    n_nzs = nnzs(sp_arr)
+    do i2 = 1, d2
+      call AllReduce_d1D(n_nzs,arr(:,i2),nwork,work)
+    end do
   end subroutine AllReduce_dSpData2D
 
 #endif

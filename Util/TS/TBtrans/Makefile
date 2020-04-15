@@ -24,6 +24,9 @@ include $(ARCH_MAKE)
 FC_DEFAULT := $(FC)
 FC_SERIAL  ?= $(FC_DEFAULT)
 
+# We need to at least add the TBTRANS flag
+FPPFLAGS += -DTBTRANS
+
 # For removing any -ipo compilation in sub directories...
 # Later compilers are also having this enabled, and it lets you
 # specify what to not be used in libraries.
@@ -299,7 +302,6 @@ pht: phtrans
 
 # We append the -DTBTRANS as some special routines
 # which could take advantage of this preprocessing flag
-tbtrans: FPPFLAGS += -DTBTRANS
 tbtrans: version $(MPI_INTERFACE) $(FDF) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(DEP_OBJS) $(TBTOBJS) 
 	$(FC) $(FFLAGS) $(LDFLAGS) -o tbtrans \
               $(DEP_OBJS) $(TBTOBJS) $(MPI_INTERFACE) \
@@ -308,7 +310,7 @@ tbtrans: version $(MPI_INTERFACE) $(FDF) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) 
 # We append the -DTBTRANS as some special routines
 # which could take advantage of this preprocessing flag
 # Tbtrans has TBT_PHONON flags to compile special capabilities
-phtrans: FPPFLAGS += -DTBTRANS -DTBT_PHONON
+phtrans: FPPFLAGS += -DTBT_PHONON
 phtrans: version $(MPI_INTERFACE) $(FDF) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(DEP_OBJS) $(TBTOBJS)
 	$(FC) $(FFLAGS) $(LDFLAGS) -o phtrans \
               $(DEP_OBJS) $(TBTOBJS) $(MPI_INTERFACE) \

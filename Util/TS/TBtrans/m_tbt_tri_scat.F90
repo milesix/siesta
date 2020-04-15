@@ -82,7 +82,7 @@ contains
     type(zTriMat), intent(inout) :: Gfd_tri, Gfo_tri
     type(zSpData1D), intent(inout) :: S_1D ! (transposed S(k))
     type(tRgn), intent(in) :: pvt
-    real(dp), intent(out) :: DOS(r%n)
+    real(dp), intent(out) :: DOS(:)
 
     type(Sparsity), pointer :: sp
     complex(dp), pointer :: S(:)
@@ -172,7 +172,7 @@ contains
       ! We need to calculate the 
       ! Mnm1n/Mnp1n Green's function
       call GEMM ('N','N',no_i,no_o,no_o, &
-          zm1, XY,no_i, Mnn,no_o,z0, Gf,no_i)
+          zm1,XY(1),no_i,Mnn(1),no_o,z0,Gf(1),no_i)
       
     end subroutine calc
 
@@ -212,7 +212,7 @@ contains
     type(zTriMat), intent(inout) :: A_tri
     type(zSpData1D), intent(inout) :: S_1D ! (transposed S(k))
     type(tRgn), intent(in) :: pvt ! from sparse matrix to BTD
-    real(dp), intent(out) :: DOS(r%n)
+    real(dp), intent(out) :: DOS(:)
 
     type(Sparsity), pointer :: sp
     complex(dp), pointer :: S(:), A(:)
@@ -885,7 +885,7 @@ contains
             ! We need to calculate the 
             ! Mnm1n/Mnp1n Green's function
             call GEMM ('N','N',no_i,step_o,no_o, &
-                zm1, XY,no_i, Mnn,no_o,z0, Gf,no_i)
+                zm1,XY(1),no_i,Mnn(1),no_o,z0,Gf(1),no_i)
 
           end if
 
@@ -1061,7 +1061,7 @@ contains
     type(Elec), intent(inout) :: El
     real(dp), intent(out) :: T
     integer, intent(in) :: nwork
-    complex(dp), intent(inout) :: work(nwork)
+    complex(dp), intent(inout) :: work(:)
 
     ! Here we need a double loop
     integer :: no
@@ -1152,7 +1152,7 @@ contains
     end do
     
     ! Calculate transmission
-    T = real(trace(no,work),dp)
+    T = real( trace(no, work(:)), dp)
     
     ! Now we have the square matrix product
     !   tt = G \Gamma_1 G^\dagger \Gamma_El
@@ -1168,10 +1168,10 @@ contains
 
   subroutine TT_eigen(n,tt,nwork,work,eig)
     integer, intent(in) :: n
-    complex(dp), intent(inout) :: tt(n*n)
+    complex(dp), intent(inout) :: tt(:)
     integer, intent(in) :: nwork
-    complex(dp), intent(inout) :: work(nwork)
-    complex(dp), intent(inout) :: eig(n)
+    complex(dp), intent(inout) :: work(:)
+    complex(dp), intent(inout) :: eig(:)
 
     real(dp) :: rwork(n*2)
     complex(dp) :: z
@@ -1186,8 +1186,8 @@ contains
       tt((i-1)*n+i) = tt((i-1)*n+i) + 1.e-3_dp
     end do
 
-    call zgeev('N','N',n,tt,n,eig,work(1),1,work(1),1, &
-        work,nwork,rwork,i)
+    call zgeev('N','N',n,tt(1),n,eig(1),work(1),1,work(1),1, &
+        work(1),nwork,rwork(1),i)
     if ( i /= 0 ) then
       print *,i
       call die('TT_eigen: Could not calculate eigenvalues.')
@@ -1319,7 +1319,7 @@ contains
     type(Elec), intent(inout) :: El
     real(dp), intent(out) :: T_Gf, T_self
     integer, intent(in) :: nzwork
-    complex(dp), intent(out) :: zwork(nzwork)
+    complex(dp), intent(inout) :: zwork(:)
 
     complex(dp), pointer :: z(:)
 
@@ -1383,8 +1383,7 @@ contains
     !    Tr[(G \Gamma)^\dagger]
     ! Now we have:
     !    = G \Gamma
-    T_Gf = - aimag( TRACE(no,zwork) ) * 2._dp
-
+    T_Gf = - aimag( TRACE(no, zwork) ) * 2._dp
 
     ! Now we need to correct for the current electrode
     
@@ -1930,7 +1929,7 @@ contains
 
     ! The sizes of the matrix
     integer, intent(in) :: n1, n2
-    complex(dp), intent(inout) :: M(n1,n2)
+    complex(dp), intent(inout) :: M(:,:)
     ! the region which describes the current segment of insertion
     type(tRgn), intent(in) :: r
     ! Electrodes...

@@ -410,7 +410,7 @@ contains
 
       ! Electrode memory usage in KB
       call mem%get_string(c_tmp)
-      write(*,'(2a)') 'tbt: Electrode memory: ', trim(c_tmp)
+      write(*,'(2a)') 'tbt: [memory] electrode: ', trim(c_tmp)
 
       call spaux%reset()
       ! first the size of the real matrices (H and S)
@@ -433,12 +433,12 @@ contains
       call spaux%add(16, nsize) ! H, S
       call spaux%add(4, nsize) ! sparse pattern
       call spaux%get_string(c_tmp)
-      write(*,'(2a)') 'tbt: Sparse H, S and auxiliary matrices memory: ', trim(c_tmp)
+      write(*,'(2a)') 'tbt: [memory] H, S and auxiliary matrices: ', trim(c_tmp)
 
       ! Total memory
       mem = mem + spaux
       call mem%get_string(c_tmp)
-      write(*,'(2a/)') 'tbt: Sum of electrode and sparse memory: ', trim(c_tmp)
+      write(*,'(2a/)') 'tbt: [memory] sum of electrode and sparse: ', trim(c_tmp)
 
     end subroutine print_memory
 

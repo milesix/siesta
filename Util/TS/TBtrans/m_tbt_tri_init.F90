@@ -153,8 +153,8 @@ contains
     type(Sparsity), intent(inout) :: sp
     real(dp), intent(in) :: cell(3,3)
     integer, intent(in) :: na_u
-    real(dp), intent(in) :: xa(3,na_u)
-    integer, intent(in) :: lasto(0:na_u)
+    real(dp), intent(in) :: xa(:,:)
+    integer, intent(in) :: lasto(0:)
     ! An array of additional projection regions
     ! which determines the projection of a molecule
     ! onto seperate regions
@@ -290,9 +290,9 @@ contains
     if ( IONode ) then
        
        ! Print out stuff
-       call rgn_print(DevTri, seq_max = 8 , repeat = .true.)
+       call rgn_print(DevTri, seq_max = 10 , repeat = .true.)
        ! Print out memory estimate
-       els = nnzs_tri(DevTri%n,DevTri%r)
+       els = nnzs_tri(DevTri%n, DevTri%r)
        ! check if there are overflows
        if ( els > huge(1) ) then
          write(*,'(a,i0)') 'Elements: ', els
@@ -300,11 +300,10 @@ contains
          call die('tbt: Memory consumption is too large, try &
              &another pivoting scheme.')
        end if
-       write(*,'(a,i0)') 'tbt: Matrix elements in BTD: ', els
 
        write(*,'(/,a)') 'tbt: Electrodes tri-diagonal matrices'
        do i = 1 , N_Elec
-          call rgn_print(ElTri(i), seq_max = 8 , repeat = .true.)
+          call rgn_print(ElTri(i), seq_max = 10 , repeat = .true.)
        end do
        
     end if
@@ -317,7 +316,7 @@ contains
     use parallel, only : IONode
     use m_region
     use m_verbosity, only : verbosity
-    integer, intent(in) :: na_u, lasto(0:na_u)
+    integer, intent(in) :: na_u, lasto(0:)
     type(tRgn), intent(in) :: r_oDev
     integer, intent(in) :: N_Elec
 
@@ -401,7 +400,7 @@ contains
   end subroutine tbt_tri_print_opti
 
   function fold_elements(N_tri,tri) result(elem)
-    integer, intent(in) :: N_tri, tri(N_tri)
+    integer, intent(in) :: N_tri, tri(:)
     integer :: elem, i, tmp
 
     elem = 0
@@ -449,8 +448,8 @@ contains
     type(Elec), intent(inout) :: Elecs(N_Elec)
     real(dp), intent(in) :: cell(3,3)
     integer, intent(in) :: na_u
-    real(dp), intent(in) :: xa(3,na_u)
-    integer, intent(in) :: lasto(0:na_u)
+    real(dp), intent(in) :: xa(:,:)
+    integer, intent(in) :: lasto(0:)
     type(tRgn), intent(inout) :: r_pvt
 
     ! The method used to partition the BTD format

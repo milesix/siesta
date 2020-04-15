@@ -462,7 +462,7 @@ contains
        
        ! 'no' is the maximum size of the electrodes
        ! Work-query of eigenvalue calculations
-       call zgeev('N','N',no,zwork(2),no,eig,zwork(2),1,zwork(2),1, &
+       call zgeev('N','N',no,zwork(2),no,eig(1),zwork(2),1,zwork(2),1, &
             zwork(1),-1,Teig(1,1,1),info)
        if ( info /= 0 ) then
          print *,info
@@ -744,12 +744,12 @@ contains
     ! Open the NetCDF handles
     if ( .not. (only_proj .or. only_sigma) ) then
       ! *.TBT.nc file
-      call open_cdf_save(cdf_fname, TBTcdf)
+      call open_cdf_save(cdf_fname, TBTcdf, N_Elec, Elecs)
     end if
     ! *.TBT.Proj.nc file
     call open_cdf_proj(cdf_fname_proj, PROJcdf)
     ! *.TBT.SE.nc file
-    call open_cdf_Sigma(cdf_fname_sigma, SEcdf)
+    call open_cdf_Sigma(cdf_fname_sigma, SEcdf, N_Elec, Elecs)
 
 #else
     ! Allocate units for IO ASCII
@@ -1830,12 +1830,12 @@ contains
     ! number of parts that constitute the tri-diagonal region
     integer, intent(in) :: np
     ! parts associated
-    integer, intent(in) :: p(np)
+    integer, intent(in) :: p(:)
     ! super-cell offsets and k-point
     real(dp), intent(in) :: sc_off(:,:), kpt(3)
     ! Work-arrays...
     integer, intent(in) :: nwork
-    complex(dp), intent(inout), target :: work(nwork)
+    complex(dp), intent(inout), target :: work(:)
 
     ! All our work-arrays...
     complex(dp), pointer :: A(:), B(:), C(:), Y(:)
@@ -1899,7 +1899,7 @@ contains
       call prep_HS(cE%E,El,spH,spS,r,off,sNm1,off,sNm1,A, sc_off, kpt)
 
       if ( ip > 2 ) then
-        call zaxpy(sNm1SQ, zm1, Y, 1, A, 1)
+        call zaxpy(sNm1SQ, zm1, Y(1), 1, A(1), 1)
       end if
 
       ! Ensures that Y is not overwritten
@@ -1925,17 +1925,17 @@ contains
       ! For n,m n>m*2 zgetrf+zgetri+zgemm is faster than zgesv
       ! Here n = sNm1, m = sN
       if ( sNm1 * 2 > sN ) then
-        call zgesv(sNm1,sN,A,sNm1,ipiv,C,sNm1,ierr)
+        call zgesv(sNm1,sN,A(1),sNm1,ipiv,C(1),sNm1,ierr)
       else
         ! Here we know that sNm1 * 2 < sN and thus we
         ! can use the result array (Y) as work array
         ! Since Y has dimensions sNm1,sN > sNm1,sNm1
-        call zgetrf(sNm1, sNm1, A, sNm1, ipiv, ierr)
+        call zgetrf(sNm1, sNm1, A(1), sNm1, ipiv, ierr)
         if ( ierr == 0 ) then
-          call zgetri(sNm1, A, sNm1, ipiv, Y, sNm1SQ, ierr)
+          call zgetri(sNm1, A(1), sNm1, ipiv, Y(1), sNm1SQ, ierr)
           call GEMM ('N', 'N', sNm1, sN, sNm1, z1, &
-              A, sNm1, C, sNm1, z0, Y, sNm1)
-          call zcopy(sNm1*sN, Y, 1, C, 1)
+              A(1), sNm1, C(1), sNm1, z0, Y(1), sNm1)
+          call zcopy(sNm1*sN, Y(1), 1, C(1), 1)
         end if
       end if
       if ( ierr /= 0 ) then
@@ -1944,7 +1944,7 @@ contains
        
       ! Calculate: Bn-1 [An-1 - Yn-1] ^-1 Cn
       call GEMM ('N','N',sN,sN,sNm1,z1, &
-          B,sN,C,sNm1,z0,Y,sN)
+          B(1),sN,C(1),sNm1,z0,Y(1),sN)
        
     end do
 
@@ -2101,9 +2101,9 @@ contains
 
       ! Calculate matrix product
       call GEMM ('N','T',ierr,ierr,ierr,cmplx(1._dp,0._dp,dp), &
-          A,ierr,C,ierr,cmplx(0._dp,0._dp,dp),B,ierr)
+          A(1),ierr,C(1),ierr,cmplx(0._dp,0._dp,dp),B(1),ierr)
       call GEMM ('N','C',ierr,ierr,ierr,cmplx(1._dp,0._dp,dp), &
-          B,ierr,A,ierr,cmplx(0._dp,0._dp,dp),El%Sigma,ierr)
+          B(1),ierr,A(1),ierr,cmplx(0._dp,0._dp,dp),El%Sigma(1),ierr)
 
       ! Calculate trace
       do i = 1 , ierr
@@ -2137,14 +2137,14 @@ contains
 
       ! Calculate: [An-1 - Yn-1] ^-1 Cn
       call GEMM ('N','N',p(ip-1),p(ip),p(ip-1),cmplx(1._dp,0._dp,dp), &
-          A,p(ip-1),B,p(ip-1),cmplx(0._dp,0._dp,dp),C,p(ip))
+          A,p(ip-1),B,p(ip-1),cmplx(0._dp,0._dp,dp),C(1),p(ip))
 
       call prep_HS(cE%E,El,spH,spS,r,i,p(ip),off,p(ip-1),B, &
           sc_off, kpt)
 
       ! Calculate: Bn-1 [An-1 - Yn-1] ^-1 Cn
       call GEMM ('N','N',p(ip),p(ip),p(ip-1),cmplx(1._dp,0._dp,dp), &
-          B,p(ip),C,p(ip-1),cmplx(0._dp,0._dp,dp),Y,p(ip))
+          B,p(ip),C,p(ip-1),cmplx(0._dp,0._dp,dp),Y(1),p(ip))
 
     end do
 
@@ -2185,6 +2185,8 @@ contains
   subroutine prep_HS(Z, El, spH, spS, &
        r,off1,n1,off2,n2,M, sc_off, kpt)
 
+    use iso_c_binding
+
     use class_Sparsity
     use class_zSpData1D
     use m_tbt_tri_scat, only : insert_Self_Energy
@@ -2206,13 +2208,13 @@ contains
     type(tRgn), intent(in) :: r
     ! The sizes and offsets of the matrix
     integer, intent(in) :: off1, n1, off2, n2
-    complex(dp), intent(out) :: M(n1,n2)
+    complex(dp), target, intent(inout) :: M(:)
     real(dp), intent(in) :: sc_off(:,:), kpt(3)
 
     ! Local variables
     type(Sparsity), pointer :: sp
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
-    complex(dp), pointer :: H(:), S(:)
+    complex(dp), pointer :: H(:), S(:), M2D(:,:)
     integer :: io, iu, ind, ju
     type(ssearch_t) :: ss
 
@@ -2222,15 +2224,17 @@ contains
 
     call attach(sp, n_col=l_ncol, list_ptr=l_ptr, list_col=l_col)
 
+    call c_f_pointer(c_loc(M), M2D, [n1, n2])
+
+    ! Initialize
+    M2D(:, :) = cmplx(0._dp, 0._dp, dp)
+
     ! We will only loop in the region
 !$OMP parallel default(shared), private(iu,io,ind,ju,ss)
 
 !$OMP do
     do iu = 1 , n2
       io = r%r(off2+iu) ! get the orbital in the sparsity pattern
-
-      ! Initialize to zero
-      M(:,iu) = cmplx(0._dp,0._dp,dp)
 
       if ( l_ncol(io) /= 0 ) then
 
@@ -2242,28 +2246,29 @@ contains
           ! Check if the orbital exists in the region
           ! We are dealing with a UC sparsity pattern.
           ind = ssearch_find(ss, r%r(off1+ju))
-          if ( ind == 0 ) cycle
-          ind = l_ptr(io) + ind
+          if ( ind > 0 ) then
+            ind = l_ptr(io) + ind
 
-          M(ju,iu) = Z * S(ind) - H(ind)
+            M2D(ju,iu) = Z * S(ind) - H(ind)
+          end if
 
         end do
       end if
     end do
 !$OMP end do
 
-    call insert_Self_Energy(n1,n2,M,r,El,off1,off2)
+    call insert_Self_Energy(n1,n2,M2D,r,El,off1,off2)
 
 !$OMP end parallel
 
 #ifdef NCDF_4
     if ( dH%lvl > 0 ) then
       ! Add dH
-      call add_zdelta_Mat(dH%d, r, off1,n1,off2,n2, M, sc_off, kpt)
+      call add_zdelta_Mat(dH%d, r, off1,n1,off2,n2, M2D, sc_off, kpt)
     end if
     if ( dSE%lvl > 0 ) then
       ! Add dSE
-      call add_zdelta_Mat(dSE%d, r, off1,n1,off2,n2, M, sc_off, kpt)
+      call add_zdelta_Mat(dSE%d, r, off1,n1,off2,n2, M2D, sc_off, kpt)
     end if
 #endif
 

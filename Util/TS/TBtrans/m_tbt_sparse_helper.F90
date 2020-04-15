@@ -80,9 +80,9 @@ contains
     ! Number of different k-regions
     integer, intent(in) :: n_k
     ! Different k-regions (0 is Gamma)
-    type(kRegion), intent(in) :: r_k(0:n_k)
+    type(kRegion), intent(in) :: r_k(0:)
     ! Number of atoms, and the last orbital per atom
-    integer, intent(in) :: na_u, lasto(0:na_u)
+    integer, intent(in) :: na_u, lasto(0:)
     ! The electrodes
     integer, intent(in) :: N_Elec
     type(Elec), intent(in) :: Elecs(N_Elec)
@@ -90,15 +90,15 @@ contains
     ! The number of elements in the sparse arrays
     integer, intent(in) :: n_nzs
     ! The hamiltonian and overlap sparse matrices 
-    real(dp), intent(in) :: H(n_nzs),S(n_nzs)
+    real(dp), intent(in) :: H(:),S(:)
     ! The supercell offsets
-    real(dp), intent(in) :: sc_off(3,0:n_s-1)
+    real(dp), intent(in) :: sc_off(:,0:)
     ! The arrays we will save in...
     type(zSpData1D), intent(inout) :: SpArrH, SpArrS
     ! we pass a work array
     integer, intent(in) :: nwork
     ! work-array
-    complex(dp), intent(in out) :: work(nwork)
+    complex(dp), intent(inout) :: work(:)
 
 ! *********************
 ! * LOCAL variables   *

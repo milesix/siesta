@@ -62,7 +62,7 @@ contains
 ! * OUTPUT variables  *
 ! *********************
     integer, intent(in) :: nwork
-    complex(dp), intent(inout) :: work(nwork)
+    complex(dp), intent(inout) :: work(:)
 
 
     ! local variables
@@ -127,8 +127,8 @@ contains
       call TriMat_Bias_idxs(Gf_tri,no,n,sIdx,eIdx)
       ! obtain the Gf in the respective column
       Gf => fGf(sIdx:eIdx)
-      call GEMM ('T','C',no,sN,no, z1, El%Gamma, no, &
-          Gf, sN, z0, work, no)
+      call GEMM ('T','C',no,sN,no, z1, El%Gamma(1), no, &
+          Gf(1), sN, z0, work(1), no)
        
       ! Now we are ready to perform the multiplication
       ! for the requested region
@@ -155,7 +155,7 @@ contains
         ! We need only do the product in the closest
         ! regions (we don't have information anywhere else)
         call GEMM ('N','N', sNc, sN, no, z1, &
-            Gf, sNc, work, no, z0, GGG, sNc)
+            Gf(1), sNc, work(1), no, z0, GGG(1), sNc)
 
       end do
 
@@ -210,7 +210,7 @@ contains
 ! **********************
 ! * OUTPUT variables   *
 ! **********************
-    real(dp), intent(out), optional :: TrGfG
+    real(dp), intent(inout), optional :: TrGfG
 #endif
 
     
@@ -430,7 +430,9 @@ contains
       sIdx = idx
       eIdx = sN - 1
       do i = 1 , nb
-        zwork(sIdx:sIdx+eIdx) = Gf(sIdxF:sIdxF+eIdx)
+        do in = 0, eIdx
+          zwork(sIdx+in) = Gf(sIdxF+in)
+        end do
         sIdx = sIdx + sNc
         sIdxF = sIdxF + sN
       end do
@@ -453,7 +455,7 @@ contains
         ! Gf off-diagonal calculation.
         Gf => Yn_div_Bn_m1(Gf_tri,in+1)
 
-        call GEMM ('N','N',sNo,nb,i, zm1, Gf, sNo, &
+        call GEMM ('N','N',sNo,nb,i, zm1, Gf(1), sNo, &
             zwork(eIdx), sNc, z0, zwork(sIdx), sNc)
 
         ! correct next multiplication step
@@ -477,7 +479,7 @@ contains
         ! Gf off-diagonal calculation.
         Gf => Xn_div_Cn_p1(Gf_tri,in-1)
 
-        call GEMM ('N','N',sNo,nb,i, zm1, Gf, sNo, &
+        call GEMM ('N','N',sNo,nb,i, zm1, Gf(1), sNo, &
             zwork(sIdx), sNc, z0, zwork(eIdx), sNc)
 
         sIdx = eIdx
@@ -522,7 +524,7 @@ contains
 
       ! do Gf.Gamma
       call GEMM ('N','T',nb,no,no, z1, zwork(i_Elec), sNc, &
-          El%Gamma, no, z0, ztmp(1), nb)
+          El%Gamma(1), no, z0, ztmp(1), nb)
 
 #ifdef TBTRANS
       if ( present(TrGfG) ) then
@@ -629,8 +631,8 @@ contains
         ! Get Y
         ztmp => Yn_div_Bn_m1(Gf_tri,n+1)
 
-        call GEMM ('N','N',sN,sNo,sNo, zm1, ztmp, sN, &
-            Gf, sNo, z0, A, sN)
+        call GEMM ('N','N',sN,sNo,sNo, zm1, ztmp(1), sN, &
+            Gf(1), sNo, z0, A(1), sN)
 
         ! skip calculating the diagonal block
         if ( n == lPart .and. .not. calc_parts(n) ) exit
@@ -639,8 +641,8 @@ contains
         Gf => A(:)
         A => val(A_tri,n,n)
 
-        call GEMM ('N','C',sN,sN,sNo, zm1, Gf, sN, &
-            ztmp, sN, z0, A, sN)
+        call GEMM ('N','C',sN,sN,sNo, zm1, Gf(1), sN, &
+            ztmp(1), sN, z0, A(1), sN)
 
       end if
 
@@ -654,8 +656,8 @@ contains
       ! Get Y
       ztmp => Yn_div_Bn_m1(Gf_tri,n)
 
-      call GEMM ('N','C',sN,sNo,sN, zm1, Gf, sN, &
-          ztmp, sNo, z0, A, sN)
+      call GEMM ('N','C',sN,sNo,sN, zm1, Gf(1), sN, &
+          ztmp(1), sNo, z0, A(1), sN)
 
     end do
 
@@ -688,8 +690,8 @@ contains
         ! Get X
         ztmp => Xn_div_Cn_p1(Gf_tri,n-1)
 
-        call GEMM ('N','N',sN,sNo,sNo, zm1, ztmp, sN, &
-            Gf, sNo, z0, A, sN)
+        call GEMM ('N','N',sN,sNo,sNo, zm1, ztmp(1), sN, &
+            Gf(1), sNo, z0, A(1), sN)
 
         ! skip calculating the diagonal block
         if ( n == lPart .and. .not. calc_parts(n) ) exit
@@ -698,8 +700,8 @@ contains
         Gf => A(:)
         A => val(A_tri,n,n)
 
-        call GEMM ('N','C',sN,sN,sNo, zm1, Gf, sN, &
-            ztmp, sN, z0, A, sN)
+        call GEMM ('N','C',sN,sN,sNo, zm1, Gf(1), sN, &
+            ztmp(1), sN, z0, A(1), sN)
 
       end if
       
@@ -713,8 +715,8 @@ contains
       ! Get X
       ztmp => Xn_div_Cn_p1(Gf_tri,n)
 
-      call GEMM ('N','C',sN,sNo,sN, zm1, Gf, sN, &
-          ztmp, sNo, z0, A, sN)
+      call GEMM ('N','C',sN,sNo,sN, zm1, Gf(1), sN, &
+          ztmp(1), sNo, z0, A(1), sN)
 
     end do
 
@@ -738,7 +740,7 @@ contains
 
   function has_full_part(N_tri_part,tri_parts, &
        part,io1,io2) result(has)
-    integer, intent(in) :: N_tri_part, tri_parts(N_tri_part), part, io1, io2
+    integer, intent(in) :: N_tri_part, tri_parts(:), part, io1, io2
     logical :: has
     integer :: i, io
 

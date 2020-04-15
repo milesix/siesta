@@ -1933,12 +1933,13 @@ contains
     call delete(this%sp01)
 
 
-    if ( associated(this%xa) ) deallocate(this%xa)
-    if ( associated(this%lasto) ) deallocate(this%lasto)
-    nullify(this%xa,this%lasto)
     if ( associated(this%isc_off) ) deallocate(this%isc_off)
 
     if ( lall ) then
+      if ( associated(this%xa) ) deallocate(this%xa)
+      if ( associated(this%lasto) ) deallocate(this%lasto)
+      nullify(this%xa,this%lasto)
+
       nullify(this%mu)
 
       if ( associated(this%xa_used) ) deallocate(this%xa_used)
