@@ -645,10 +645,10 @@ contains
     use units,      only : eV
     use byte_count_m, only: byte_count_t
 
-    use m_ts_electype
+    use ts_electrode_m
 
     ! Input variables
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
     ! Number of energy-points
     integer :: NE
     ! Number of k-points
@@ -657,7 +657,7 @@ contains
     ! Local variables
     type(byte_count_t) :: mem
     character(len=32) :: c_tmp
-    integer :: i, j
+    integer :: i
     ! Whether the electrode is pre-expanded...
     integer :: nq
     logical :: pre_expand
@@ -667,7 +667,7 @@ contains
     nq = El%Bloch%size()
     pre_expand = El%pre_expand > 0 .and. nq > 1
 
-    write(*,'(/,2a)') 'Calculating all surface Green functions for: ',trim(name(El))
+    write(*,'(/,2a)') 'Calculating all surface Green functions for: ',trim(El%name)
     write(*,'(a,f14.5,1x,a)') &
          ' Fermi level shift in electrode (chemical potential) : ',El%mu%mu/eV,' eV'
 
@@ -734,7 +734,7 @@ contains
     use mpi_siesta, only : MPI_double_complex
     use mpi_siesta, only : MPI_double_precision
 #endif
-    use m_ts_electype
+    use ts_electrode_m
     use m_mat_invert
 
     use m_ts_elec_se, only : update_UC_expansion_A1D
@@ -748,7 +748,7 @@ contains
 ! ***********************
 ! * INPUT variables     *
 ! ***********************
-    type(Elec), intent(inout) :: El  ! The electrode 
+    type(electrode_t), intent(inout) :: El  ! The electrode 
     integer,  intent(in)      :: nkpnt ! Number of k-points
     real(dp), intent(in)      :: kpoint(3,nkpnt) ! k-points
     real(dp), intent(in)      :: kweight(nkpnt) ! weights of kpoints
@@ -977,7 +977,7 @@ contains
        end if
        
        ! Init kpoint, in reciprocal vector units ( from CONTACT ucell)
-       call Elec_kpt(El,ucell,kpoint(:,ikpt),bkpt, opt = 2)
+       call El%kpoint_convert(ucell,kpoint(:,ikpt),bkpt, opt = 2)
        ! We need to save the k-point for the "expanded" super-cell
        El%bkpt_cur = bkpt
        
@@ -991,7 +991,7 @@ contains
           S01 => zHS((3*nq+iqpt-1)*nS+1:(3*nq+iqpt)*nS)
 
           ! init qpoint in reciprocal lattice vectors
-          kpt(:) = bkpt(:) + q_exp(El,iqpt)
+          kpt(:) = bkpt(:) + El%unfold_k(iqpt)
           ! Convert to 1/Bohr
           call kpoint_convert(rcell,kpt(1),kq(1),-2)
 
@@ -1313,7 +1313,7 @@ contains
       allocate(kE(3,nkpnt))
       do i = 1 , nkpnt
          ! Store the k-points in units of reciprocal lattice
-         call Elec_kpt(El,ucell,kpoint(:,i),kE(:,i), opt = 2)
+         call El%kpoint_convert(ucell,kpoint(:,i),kE(:,i), opt = 2)
       end do
       write(uGF) kE, kweight
       deallocate(kE)
@@ -1403,17 +1403,17 @@ contains
     use class_Sparsity
     use class_dSpData1D
     use class_dSpData2D
-    use m_ts_electype
+    use ts_electrode_m
 
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
 #ifdef MPI
     integer :: error
 #endif
     logical :: neglect_conn
     
     ! Read-in and create the corresponding transfer-matrices
-    call delete(El) ! ensure clean electrode
-    call read_Elec(El,Bcast=.true.)
+    call El%delete() ! ensure clean electrode
+    call El%read_HS(Bcast=.true.)
 
     if ( .not. associated(El%isc_off) ) then
        call die('An electrode file needs to be a non-Gamma calculation. &
@@ -1424,11 +1424,11 @@ contains
     ! for the self-energy calculations
     ! This is also important to create before running
     ! check_connectivity because of used-atoms possibly being set.
-    call create_sp2sp01(El)
+    call El%create_sp2sp01()
 
     ! print out the precision of the electrode (whether it extends
     ! beyond first principal layer)
-    if ( check_connectivity(El) ) then
+    if ( El%check_connectivity() ) then
        neglect_conn = .true.
     else
        neglect_conn = fdf_get('TS.Elecs.Neglect.Principal', .false.)
@@ -1471,7 +1471,7 @@ contains
     
     use sys, only : die
     use precision, only : dp
-    use m_ts_electype
+    use ts_electrode_m
     use geom_helper, only : ucorb
     use class_Sparsity
     use class_dSpData1D
@@ -1481,7 +1481,7 @@ contains
 ! * INPUT variables     *
 ! ***********************
     integer, intent(in)    :: ispin, no
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     integer, intent(in) :: n_s
     real(dp), intent(in) :: sc_off(3,0:n_s-1)
     real(dp), intent(in) :: kq(3)   ! k + q-point in [1/Bohr]
@@ -1511,7 +1511,7 @@ contains
        no,Hk,Sk,Hk_T,Sk_T)
     use sys, only : die
     use precision, only : dp
-    use m_ts_electype
+    use ts_electrode_m
     use geom_helper, only : ucorb
     use class_Sparsity
     use class_dSpData1D
@@ -1521,7 +1521,7 @@ contains
 ! * INPUT variables     *
 ! ***********************
     integer, intent(in) :: ispin, no
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     integer, intent(in) :: n_s
     real(dp), intent(in) :: sc_off(3,0:n_s-1)
     real(dp), intent(in) :: kq(3) ! k + q-point in [1/Bohr]
@@ -1615,7 +1615,7 @@ contains
     use iso_c_binding
     use precision,  only : dp
 
-    use m_ts_electype
+    use ts_electrode_m
     use m_mat_invert
 
     use class_Sparsity
@@ -1627,7 +1627,7 @@ contains
     ! ***********************
     ! * INPUT variables     *
     ! ***********************
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     integer, intent(in) :: ispin
     ! the k-point in reciprocal units of the electrode
     ! also with / Rep
@@ -1679,14 +1679,14 @@ contains
     ! constants for this electrode
     nuo_E  = El%no_u
     nS     = nuo_E ** 2
-    nuou_E = El%no_used
+    nuou_E = El%used_orbitals()
     nuS    = nuou_E ** 2
     ! create expansion k-points
     nq     = El%Bloch%size()
     ! We also need to invert to get the contribution in the
     ! reduced region
     reduce_size = nuo_E /= nuou_E
-    nuouT_E = TotUsedOrbs(El)
+    nuouT_E = El%device_orbitals()
 
     if ( calc_DOS ) then
        if ( nuo_E > size(DOS) ) &
@@ -1819,7 +1819,7 @@ contains
     q_loop: do iq = 1 , nq
 
        ! init qpoint in reciprocal lattice vectors
-       kpt(:) = bkpt(:) + q_exp(El,iq)
+       kpt(:) = bkpt(:) + El%unfold_k(iq)
       
        ! Convert to 1/Bohr
        call kpoint_convert(rcell,kpt(1),kq(1),-2)

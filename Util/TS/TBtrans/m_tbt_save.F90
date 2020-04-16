@@ -110,7 +110,7 @@ contains
   subroutine open_cdf_save(fname, ncdf, N_Elec, Elecs)
 
     use netcdf_ncdf, ncdf_parallel => parallel
-    use m_ts_electype, only: Elec
+    use ts_electrode_m, only: electrode_t
     
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD
@@ -120,7 +120,7 @@ contains
     character(len=*), intent(in) :: fname
     type(hNCDF), intent(inout) :: ncdf
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(:)
+    type(electrode_t), intent(in) :: Elecs(:)
 
 #ifdef NCDF_PARALLEL
     integer :: iEl
@@ -350,7 +350,7 @@ contains
     use mpi_siesta, only : MPI_Comm_Self, MPI_Barrier
 #endif
     use m_tbt_hs, only : tTSHS
-    use m_ts_electype
+    use ts_electrode_m
     use m_region
     use class_OrbitalDistribution
     use class_Sparsity
@@ -366,7 +366,7 @@ contains
     type(tRgn), intent(in) :: r, btd
     integer, intent(in) :: ispin
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     type(tRgn), intent(in) :: raEl(N_Elec), roElpd(N_Elec), btd_El(N_Elec)
     integer, intent(in) :: nkpt
     real(dp), intent(in), target :: kpt(:,:), wkpt(:)
@@ -732,7 +732,7 @@ contains
     use m_ncdf_io, only : cdf_w_Sp
     use m_timestamp, only : datestring
     use m_tbt_hs, only : tTSHS
-    use m_ts_electype
+    use ts_electrode_m
     use m_region
     use class_Sparsity
 
@@ -747,7 +747,7 @@ contains
     ! Btd is the blocks in the BTD
     type(tRgn), intent(in) :: r, btd
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(:)
+    type(electrode_t), intent(in) :: Elecs(:)
     type(tRgn), intent(in) :: raEl(:), roElpd(:), btd_El(:)
     integer, intent(in) :: nkpt
     real(dp), intent(in), target :: kpt(:,:), wkpt(:)
@@ -936,7 +936,7 @@ contains
       call ncdf_def_grp(ncdf,trim(Elecs(iEl)%name),grp)
 
       ! Define atoms etc.
-      i = TotUsedAtoms(Elecs(iEl))
+      i = Elecs(iEl)%device_atoms()
       call ncdf_def_dim(grp,'na',i)
 
       dic = ('info'.kv.'Electrode atoms')
@@ -1315,13 +1315,13 @@ contains
     use mpi_siesta, only : MPI_Integer, MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
 #endif
-    use m_ts_electype
+    use ts_electrode_m
 
     type(hNCDF), intent(inout) :: ncdf
     integer, intent(in) :: ikpt
     type(tNodeE), intent(in) :: nE
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     real(dp), intent(in) :: DOS(:,:)
     real(dp), intent(in) :: T(:,:)
     integer, intent(in) :: N_eigen
@@ -1505,13 +1505,13 @@ contains
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD, MPI_Double_Precision
 #endif
-    use m_ts_electype
+    use ts_electrode_m
 
     type(hNCDF), intent(inout) :: ncdf
     integer, intent(in) :: ikpt
     type(tNodeE), intent(in) :: nE
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     real(dp), intent(in) :: DOS(:,:), T(:)
     type(dictionary_t), intent(in) :: save_DATA
 
@@ -1664,14 +1664,14 @@ contains
     use mpi_siesta, only : MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
 #endif
-    use m_ts_electype
+    use ts_electrode_m
 
     type(hNCDF), intent(inout) :: ncdf
     integer, intent(in) :: ikpt
     type(tNodeE), intent(in) :: nE
     character(len=*), intent(in) :: var_name
     type(dSpData1D), intent(inout) :: dat
-    type(Elec), intent(inout), optional :: El
+    type(electrode_t), intent(inout), optional :: El
 
     type(hNCDF) :: grp
     integer :: nnzs_dev, iN, cnt(3), idx(3)
@@ -1750,12 +1750,12 @@ contains
     use m_interpolate, only : crt_pivot
 
     use m_timestamp, only : datestring
-    use m_ts_electype
+    use ts_electrode_m
 
     character(len=*), intent(in) :: fname
     integer, intent(in) :: nspin, ispin
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     integer, intent(in) :: N_E
     ! This quantity is the dE weight, with dE in Ry units
     real(dp), intent(in) :: rW(:)
@@ -2272,11 +2272,11 @@ contains
   ! Get the file name
   subroutine name_save(ispin,nspin,fname,end,El1,El2)
     use files, only : slabel
-    use m_ts_electype
+    use ts_electrode_m
     integer, intent(in) :: ispin, nspin
     character(len=*), intent(out) :: fname
     character(len=*), intent(in), optional :: end ! designator of the file
-    type(Elec), intent(in), optional :: El1, El2
+    type(electrode_t), intent(in), optional :: El1, El2
 
     fname = ' '
 #ifdef TBT_PHONON
@@ -2321,13 +2321,13 @@ contains
 
     use dictionary
     use m_timestamp, only : datestring
-    use m_ts_electype
+    use ts_electrode_m
 
     integer, intent(inout) :: iounits(:)
     integer, intent(in)    :: ispin, nspin
     integer, intent(in)    :: no_d
     integer, intent(in)    :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     integer, intent(in) :: N_eigen
     type(dictionary_t), intent(in) :: save_DATA
 
@@ -2470,12 +2470,12 @@ contains
 
     use dictionary
     use m_timestamp, only : datestring
-    use m_ts_electype
+    use ts_electrode_m
 
     integer, intent(inout) :: iounits(:)
     integer, intent(in)    :: ispin, nspin
     integer, intent(in)    :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     type(dictionary_t), intent(in) :: save_DATA
 
     character(len=128) :: ascii_file, c_tmp
@@ -2603,13 +2603,13 @@ contains
     use m_interpolate, only : crt_pivot
 
     use dictionary
-    use m_ts_electype
+    use ts_electrode_m
 
     integer, intent(in)    :: iounits(:)
     integer, intent(in)    :: no_d
     type(tNodeE), intent(in) :: nE
     integer, intent(in)    :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     real(dp), intent(in)   :: DOS(:,:), T(:,:)
     integer, intent(in)    :: N_eigen
     real(dp), intent(in)   :: Teig(:,:,:)
@@ -2728,12 +2728,12 @@ contains
     use m_interpolate, only : crt_pivot
 
     use dictionary
-    use m_ts_electype
+    use ts_electrode_m
 
     integer, intent(in)    :: iounits(:)
     type(tNodeE), intent(in) :: nE
     integer, intent(in)    :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     real(dp), intent(in)   :: DOS(:,:), T(:)
     type(dictionary_t), intent(in) :: save_DATA
 

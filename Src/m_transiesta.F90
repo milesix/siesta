@@ -62,7 +62,7 @@ contains
 
     use ts_kpoint_scf_m, only : ts_kpoint_scf, ts_gamma_scf
 
-    use m_ts_electype
+    use ts_electrode_m
 
     use m_ts_options, only : N_Elec, Elecs
     use m_ts_options, only : IsVolt, Calc_Forces
@@ -197,7 +197,7 @@ contains
        ! Allocate the non-repeated hamiltonian and overlaps...
        no_used = Elecs(iEl)%no_used
        if ( Elecs(iEl)%pre_expand > 1 ) then ! > 1 also expand H, S before writing
-          no_used = TotUsedOrbs(Elecs(iEl))
+          no_used = Elecs(iEl)%device_orbitals()
           nq(iEl) = 1
        end if
 
@@ -208,7 +208,7 @@ contains
           call re_alloc(Elecs(iEl)%SA,1,no_used,1,no_used,1,nq(iEl),routine='transiesta')
        end if
 
-       no_used = TotUsedOrbs(Elecs(iEl))
+       no_used = Elecs(iEl)%device_orbitals()
        if ( IsVolt ) then
           ! We need Gamma's with voltages (now they are both GAA and GammaT)
           no_used2 = no_used
@@ -474,7 +474,7 @@ contains
     !***********************
     do iEl = 1 , N_Elec
       if ( .not. Elecs(iEl)%out_of_core ) then
-        call delete(Elecs(iEl))
+        call Elecs(iEl)%delete()
       end if
     end do
 
@@ -512,22 +512,22 @@ contains
       use class_dSpData1D
       use class_dSpData2D
       use alloc, only : re_alloc
-      use m_ts_electype
-      type(Elec), intent(inout) :: El
+      use ts_electrode_m
+      type(electrode_t), intent(inout) :: El
       
       ! If already initialized, return immediately
       if ( initialized(El%sp) ) return
 
       ! Read-in and create the corresponding transfer-matrices
-      call delete(El) ! ensure clean electrode
-      call read_Elec(El,Bcast=.true., IO = .false.)
+      call El%delete() ! ensure clean electrode
+      call El%read_HS(Bcast=.true., IO = .false.)
       
       if ( .not. associated(El%isc_off) ) then
         call die('An electrode file needs to be a non-Gamma calculation. &
             &Ensure at least two k-points in the T-direction.')
       end if
       
-      call create_sp2sp01(El, IO = .false.)
+      call El%create_sp2sp01(IO = .false.)
 
       ! Clean-up, we will not need these!
       ! we should not be very memory hungry now, but just in case...
@@ -545,7 +545,7 @@ contains
 
     subroutine open_GF(N_Elec,Elecs,uGF,NEn)
       integer, intent(in) :: N_Elec
-      type(Elec), intent(inout) :: Elecs(N_Elec)
+      type(electrode_t), intent(inout) :: Elecs(N_Elec)
       integer, intent(out) :: uGF(N_Elec)
       integer, intent(in) :: NEn
 
@@ -597,7 +597,7 @@ contains
     use m_ts_options, only : N_mu, N_Elec, Elecs
     use m_ts_contour_neq, only : N_nEq_id
     use m_ts_sparse, only : ts_sp_uc, tsup_sp_uc, ltsup_sp_sc
-    use m_ts_electype
+    use ts_electrode_m
 
     use m_ts_tri_init, only : c_Tri
     use m_ts_tri_common, only : GFGGF_needed_worksize
@@ -619,7 +619,7 @@ contains
     do i = 1 , N_Elec
 
       no_used = Elecs(i)%no_used
-      no_E = TotUsedOrbs(Elecs(i))
+      no_E = Elecs(i)%device_orbitals()
 
       if ( IsVolt .or. .not. Elecs(i)%Bulk ) then
         ! Hamiltonian and overlap
@@ -723,13 +723,13 @@ contains
 
       ! Calculate size of the full matrices
       ! Here we calculate number of electrodes not needed to update the cross-terms
-      no_E = sum(TotUsedOrbs(Elecs),Elecs(:)%DM_update==0)
+      no_E = sum(Elecs(:)%device_orbitals(),Elecs(:)%DM_update==0)
       i = nrows_g(ts_sp_uc) - no_Buf
       ! LHS
       call m_inv%add(16, i, i)
       ! RHS
       if ( IsVolt ) then
-        call m_inv%add(16, i, max(i-no_E,sum(TotUsedOrbs(Elecs))))
+        call m_inv%add(16, i, max(i-no_E,sum(Elecs%device_orbitals())))
       else
         call m_inv%add(16, i, i-no_E)
       end if

@@ -29,12 +29,12 @@ contains
   subroutine GFGGF_needed_worksize(N_tri, tri, &
        N_Elec, Elecs, padding, worksize)
 
-    use m_ts_electype
+    use ts_electrode_m
 
     integer, intent(in) :: N_tri
     integer, intent(in) :: tri(:)
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     integer, intent(out) :: padding, worksize
 
     ! els "could" be very large
@@ -53,7 +53,7 @@ contains
       no_max = max(no_max,Elecs(io)%o_inD%n)
     end do
 #else
-    no_max = maxval(TotUsedOrbs(Elecs))
+    no_max = maxval(Elecs%device_orbitals())
 #endif
 
     ! We just need to find the maximum overlap of
@@ -185,7 +185,7 @@ contains
   subroutine ts_pivot_tri_sort_el(no_u, pvt, N_Elec, Elecs, tri)
 
     use m_region
-    use m_ts_electype
+    use ts_electrode_m
 
     ! Total number of orbitals (including buffer atoms)
     integer, intent(in) :: no_u
@@ -197,7 +197,7 @@ contains
     ! part, at will.
     type(tRgn), intent(inout) :: pvt
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     ! The tri-diagonal parts
     type(tRgn), intent(in) :: tri
 
@@ -223,7 +223,7 @@ contains
       call rgn_sort(rEl)
 #else
       call rgn_range(rEl,Elecs(iE)%idx_o, &
-          Elecs(iE)%idx_o + TotUsedOrbs(Elecs(iE))-1)
+          Elecs(iE)%idx_o + Elecs(iE)%device_orbitals()-1)
 #endif
 
       ! Figure out the parts of the electrode

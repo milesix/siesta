@@ -15,7 +15,7 @@ module m_ts_contour_neq
 ! Use the type associated with the contour
 ! Maybe they should be collected to this module.
 ! However, I like this partition.
-  use m_ts_electype
+  use ts_electrode_m
 
   use m_ts_chem_pot
   use m_ts_cctype
@@ -60,7 +60,7 @@ module m_ts_contour_neq
      type(ts_mu), pointer :: mu => null()
      ! The index for the electrode attached to this
      ! integration quantity
-     type(Elec), pointer :: El => null()
+     type(electrode_t), pointer :: El => null()
      ! The index associated with the non-equilibrium 
      ! array index as calculated in the tri|full|mumps[gk] routines
      integer :: ID = 0
@@ -96,11 +96,11 @@ contains
   subroutine read_contour_neq_options(N_Elec,Elecs,N_mu,mus,kT,Volt)
 
     use fdf
-    use m_ts_electype
+    use ts_electrode_m
 
     ! only to gain access to the chemical shifts
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in), target :: Elecs(N_Elec)
+    type(electrode_t), intent(in), target :: Elecs(N_Elec)
     integer, intent(in) :: N_mu
     type(ts_mu), intent(in), target :: mus(N_mu)
     ! This temperature is the SIESTA electronic temperature

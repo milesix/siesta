@@ -117,7 +117,7 @@ contains
 
   subroutine open_cdf_Sigma(fname, ncdf, N_Elec, Elecs)
     use netcdf_ncdf, ncdf_parallel => parallel
-    use m_ts_electype, only: Elec
+    use ts_electrode_m, only: electrode_t
 
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD
@@ -127,7 +127,7 @@ contains
     type(hNCDF), intent(inout) :: ncdf
 
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(:)
+    type(electrode_t), intent(in) :: Elecs(:)
 
 #ifdef NCDF_PARALLEL
     integer :: iEl
@@ -172,7 +172,7 @@ contains
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD, MPI_Bcast, MPI_Logical, MPI_Barrier
 #endif
-    use m_ts_electype
+    use ts_electrode_m
     use m_region
     use dictionary
     use m_tbt_save, only: add_cdf_common
@@ -187,7 +187,7 @@ contains
     type(tRgn), intent(in) :: r, btd
     integer, intent(in) :: ispin
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(:)
+    type(electrode_t), intent(in) :: Elecs(:)
     type(tRgn), intent(in) :: raEl(:), roElpd(:), btd_El(:)
     integer, intent(in) :: nkpt
     real(dp), intent(in) :: kpt(:,:), wkpt(:)
@@ -385,14 +385,14 @@ contains
     use mpi_siesta, only : MPI_Integer, MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
 #endif
-    use m_ts_electype
+    use ts_electrode_m
 
     ! The file name we save too
     type(hNCDF), intent(inout) :: ncdf
     integer, intent(in) :: ikpt
     type(tNodeE), intent(in) :: nE
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     integer, intent(in) :: nzwork
     complex(dp), intent(inout), target :: zwork(:)
 
@@ -494,12 +494,12 @@ contains
     use mpi_siesta, only : Mpi_double_precision
     use mpi_siesta, only : MPI_Barrier
 #endif
-    use m_ts_electype
+    use ts_electrode_m
 
     ! The file name we save too
     character(len=*), intent(in) :: fname
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
 
     type(dictionary_t) :: dic
     type(hNCDF) :: ncdf, grp

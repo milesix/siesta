@@ -17,7 +17,7 @@ module m_ts_pivot
   use precision, only : dp, i8b
   use m_region
 
-  use m_ts_electype
+  use ts_electrode_m
 
   implicit none
 
@@ -60,7 +60,7 @@ contains
     ! This sparsity pattern *MUST* be in a unit-cell format
     type(Sparsity), intent(inout) :: sp
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     real(dp), intent(in) :: cell(3,3)
     integer, intent(in) :: na_u, lasto(0:)
     real(dp), intent(in) :: xa(:,:)
@@ -1084,7 +1084,7 @@ contains
 
   subroutine crt_El_priority(N_Elec,Elecs,pr,na_u,lasto,is_orb)
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     type(tRgn), intent(inout) :: pr ! Needs to be pre-allocated
     integer, intent(in) :: na_u, lasto(0:na_u)
     logical, intent(in) :: is_orb
@@ -1111,14 +1111,14 @@ contains
   end subroutine crt_El_priority
 
   function consecutive_Elec_orb(El,r) result(con)
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
     type(tRgn), intent(in) :: r
     type(tRgn) :: o_inD, r_tmp
     integer :: con
     integer :: i_Elec, io, idx_Elec, idx, no
 
     idx = El%idx_o - 1
-    no = TotUsedOrbs(El)
+    no = El%device_orbitals()
 
     ! Create the pivoting table for the electrodes
     call rgn_init(r_tmp,no)

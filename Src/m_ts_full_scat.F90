@@ -13,7 +13,7 @@ module m_ts_full_scat
 
   use precision, only : dp
 
-  use m_ts_electype
+  use ts_electrode_m
   use m_ts_cctype
 
   implicit none
@@ -50,7 +50,7 @@ contains
 ! * INPUT variables   *
 ! *********************
     ! electrode self-energy
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
     integer, intent(in) :: no_u_TS ! no. states in contact region
     integer, intent(in) :: no      ! no. states for this electrode
     ! The Green function (it has to be the column that corresponds to the electrode)
@@ -244,7 +244,7 @@ contains
     integer, intent(in) :: no_u_TS, no_Els
     ! Electrodes
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! Work should already contain Z*S - H
     ! This may seem strange, however, it will clean up this routine extensively
     ! as we dont need to make two different routines for real and complex
@@ -272,7 +272,7 @@ contains
     do iEl = 1 , N_Elec
       i = Elecs(iEl)%idx_o
       off_row = i - orb_offset(i) - 1
-      do i = 1 , TotUsedOrbs(Elecs(iEl))
+      do i = 1 , Elecs(iEl)%device_orbitals()
         o = o + 1
         GF(off_row+i,o) = cmplx(1._dp,0._dp, dp)
       end do
@@ -314,7 +314,7 @@ contains
     ! Sizes of the different regions...
     integer, intent(in) :: no_u, no_u_TS, no_col
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! Work should already contain Z*S - H
     ! This may seem strange, however, it will clean up this routine extensively
     ! as we dont need to make two different routines for real and complex
@@ -346,7 +346,7 @@ contains
 
       ! if buffer, skip!
       if ( orb_type(jo) == TYP_BUFFER ) cycle
-      if ( any(OrbInElec(Elecs, jo) .and. dm_update_0(:)) ) then
+      if ( any(Elecs%has_orbital(jo) .and. dm_update_0(:)) ) then
         i = i + 1
         cycle
       end if
@@ -373,12 +373,12 @@ contains
   subroutine insert_Self_Energies(no_u, Gfinv, El)
     use m_ts_method, only : orb_offset
     integer, intent(in) :: no_u
-    complex(dp), intent(in out) :: GFinv(no_u,no_u)
-    type(Elec), intent(in) :: El
+    complex(dp), intent(inout) :: GFinv(no_u,no_u)
+    type(electrode_t), intent(in) :: El
     
     integer :: i, j, ii, jj, iii, off, no
     
-    no = TotUsedOrbs(El)
+    no = El%device_orbitals()
     off = El%idx_o - orb_offset(El%idx_o) - 1
     
     if ( El%Bulk ) then

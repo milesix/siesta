@@ -18,7 +18,7 @@ module m_ts_tri_init
   use precision, only : dp, i8b
   use m_region
 
-  use m_ts_electype
+  use ts_electrode_m
 
   use m_ts_pivot
 
@@ -54,7 +54,7 @@ contains
 
     use m_pivot
 
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_sparse, only : ts_sp_calculation
 
     use m_ts_method ! has r_pvt
@@ -69,7 +69,7 @@ contains
     type(OrbitalDistribution), intent(inout) :: dit
     type(Sparsity), intent(inout) :: sparse_pattern ! the local sparse pattern
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     logical, intent(in) :: IsVolt
     real(dp), intent(in) :: ucell(3,3)
     integer, intent(in) :: na_u, lasto(0:na_u)
@@ -122,7 +122,7 @@ contains
     do iEl = 1 , N_Elec
 
        idx = Elecs(iEl)%idx_o
-       no  = TotUsedOrbs(Elecs(iEl))
+       no  = Elecs(iEl)%device_orbitals()
 
        ! we first create the super-set sparsity
        tmpSp1 = tmpSp2
@@ -205,7 +205,7 @@ contains
     do i = 1 , N_Elec
 
        idx = Elecs(i)%idx_o
-       no = TotUsedOrbs(Elecs(i))
+       no = Elecs(i)%device_orbitals()
 
        ! Create the pivoting table for the electrodes
        call rgn_init(r_tmp,no)
@@ -222,7 +222,7 @@ contains
        call rgn_init(Elecs(i)%o_inD,no)
        call rgn_init(Elecs(i)%inDpvt,no)
        do io = 1 , no 
-          Elecs(i)%o_inD%r(io)  = r_pvt%r(r_tmp%r(io))
+          Elecs(i)%o_inD%r(io) = r_pvt%r(r_tmp%r(io))
 
           ! Create the pivot table for the electrode scattering matrix
           !  (1) = an electrode orbital which is seen first in the device
@@ -274,7 +274,7 @@ contains
     use m_pivot
     use m_pivot_methods, only : sp2graphviz
 
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_sparse, only : ts_sp_calculation
 
     use m_ts_method ! r_pvt
@@ -289,7 +289,7 @@ contains
     type(OrbitalDistribution), intent(inout) :: dit
     type(Sparsity), intent(inout) :: sparse_pattern ! the local sparse pattern
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     real(dp), intent(in) :: ucell(3,3)
     integer, intent(in) :: na_u, lasto(0:na_u)
     integer, intent(in) :: nsc(3), isc_off(3,product(nsc))
@@ -348,7 +348,7 @@ contains
     do iEl = 1 , N_Elec
 
        i  = Elecs(iEl)%idx_o
-       no = TotUsedOrbs(Elecs(iEl))
+       no = Elecs(iEl)%device_orbitals()
 
        ! we first create the super-set sparsity
        tmpSp1 = tmpSp2

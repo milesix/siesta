@@ -39,7 +39,7 @@ contains
     use class_OrbitalDistribution
     use class_Sparsity
     use geom_helper, only : UCORB
-    use m_ts_electype
+    use ts_electrode_m
 
 ! **********************
 ! * INPUT variables    *
@@ -137,7 +137,7 @@ contains
       nspin, n_nzs, DM, S, &
       method)
     use parallel, only : IONode
-    use m_ts_electype
+    use ts_electrode_m
 #ifdef MPI
     use mpi_siesta
 #endif
@@ -149,7 +149,7 @@ contains
     ! * INPUT variables    *
     ! **********************
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! The requested number of electrons in the simulation
     real(dp), intent(in) :: Qtot
     type(OrbitalDistribution), intent(inout) :: dit
@@ -167,7 +167,7 @@ contains
     ! **********************
     integer :: i
     real(dp), allocatable :: Q(:,:)
-    integer :: ispin, lmethod
+    integer :: lmethod
     logical :: has_buffer
 
     lmethod = TS_Q_INFO_FULL
@@ -193,11 +193,11 @@ contains
         write(*,'(a,2(tr1,f12.5))') &
             'Device                        [D]  :',Q(2,1), Q(2,2)
         do i = 1 , N_Elec
-          write(*,'(a,t31,a,i0,a,2(tr1,f12.5))') &
-              trim(name(Elecs(i))),'[E',i,'] :', &
+          write(*,'(a,t31,a,i0,a,2(f12.5,tr1))') &
+              trim(Elecs(i)%name),'[E',i,'] :', &
               Q(3+(i-1)*2,1), Q(3+(i-1)*2,2)
-          write(*,'(a,t22,a,i0,a,2(tr1,f12.5))') &
-              trim(name(Elecs(i))),'/ device [C',i,'] :', &
+          write(*,'(a,t22,a,i0,a,2(f12.5,tr1))') &
+              trim(Elecs(i)%name),'/ device [C',i,'] :', &
               Q(4+(i-1)*2,1), Q(4+(i-1)*2,2)
         end do
         write(*,'(a,2(tr1,f12.5))') &
@@ -212,10 +212,10 @@ contains
         write(*,'(a,tr1,f12.5)') &
             'Device                        [D]  :',Q(2,1)
         do i = 1 , N_Elec
-          write(*,'(a,t31,a,i0,a,tr1,f12.5)') &
-              trim(name(Elecs(i)))         ,'[E',i,'] :',Q(3+(i-1)*2,1)
-          write(*,'(a,t22,a,i0,a,tr1,f12.5)') &
-              trim(name(Elecs(i))),'/ device [C',i,'] :',Q(4+(i-1)*2,1)
+          write(*,'(a,t31,a,i0,a,f12.5)') &
+              trim(Elecs(i)%name)         ,'[E',i,'] :',Q(3+(i-1)*2,1)
+          write(*,'(a,t22,a,i0,a,f12.5)') &
+              trim(Elecs(i)%name),'/ device [C',i,'] :',Q(4+(i-1)*2,1)
         end do
         if ( has_buffer ) then
           write(*,'(a,tr1,f12.5)') &

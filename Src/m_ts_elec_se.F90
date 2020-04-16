@@ -7,7 +7,7 @@ module m_ts_elec_se
 
   use precision, only : dp
 
-  use m_ts_electype
+  use ts_electrode_m
   use m_ts_cctype
 
   implicit none
@@ -31,7 +31,7 @@ contains
     !> Number of electrodes
     integer, intent(in) :: NElec
     !> Electrodes
-    type(Elec), intent(in) :: Elecs(NElec)
+    type(electrode_t), intent(in) :: Elecs(NElec)
     !> Minimum worksize required by UC_expansion
     integer, intent(out) :: nwork
 
@@ -42,14 +42,14 @@ contains
     nwork = 0
     if ( IsVolt ) then
       do iE = 1, NElec
-        nwork = max(nwork, TotUsedOrbs(Elecs(iE)) ** 2 * 2)
+        nwork = max(nwork, Elecs(iE)%device_orbitals() ** 2 * 2)
       end do
     else
       do iE = 1, NElec
         if ( Elecs(iE)%Bulk ) then
-          nwork = max(nwork, TotUsedOrbs(Elecs(iE)) ** 2)
+          nwork = max(nwork, Elecs(iE)%device_orbitals() ** 2)
         else
-          nwork = max(nwork, TotUsedOrbs(Elecs(iE)) ** 2 * 2)
+          nwork = max(nwork, Elecs(iE)%device_orbitals() ** 2 * 2)
         end if
       end do
     end if
@@ -61,7 +61,7 @@ contains
 ! * INPUT variables  *
 ! ********************
     type(ts_c_idx), intent(in) :: cE
-    type(Elec), intent(in out) :: El
+    type(electrode_t), intent(in out) :: El
 
 ! ********************
 ! * WORK variables   *
@@ -79,8 +79,8 @@ contains
     
     call timer('ts_expand',1)
     
-    no_used = El%no_used
-    no_tot = TotUsedOrbs(El)
+    no_used = El%used_orbitals()
+    no_tot = El%device_orbitals()
     nq = El%Bloch%size()
     if ( nq > 1 ) then
       if ( El%pre_expand > 0 ) then
@@ -148,7 +148,7 @@ contains
 ! * INPUT variables  *
 ! ********************
     integer,  intent(in) :: no_u, no_s
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
     integer,  intent(in) :: nq
     complex(dp), intent(inout) :: GS(:)
 ! ********************
@@ -214,7 +214,7 @@ contains
 ! ********************
     complex(dp), intent(in) :: ZEnergy
     integer,  intent(in) :: no_u, no_s
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
     integer,  intent(in) :: nq
     complex(dp), intent(inout) :: GS(:)
 ! ********************
@@ -284,7 +284,7 @@ contains
 ! ********************
     complex(dp), intent(in) :: ZEnergy
     integer,  intent(in) :: no_u, no_s
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
     integer,  intent(in) :: nq
     complex(dp), dimension(no_u,no_u,nq), intent(inout) :: GS
 ! ********************
@@ -455,7 +455,7 @@ contains
 ! ********************
     complex(dp), intent(in) :: ZEnergy
     integer,  intent(in) :: no_u, no_s
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
     integer,  intent(in) :: nq, na_u,lasto(0:)
     complex(dp), dimension(no_u,no_u,nq), intent(in) :: H, S, GS
 ! ********************
@@ -597,7 +597,7 @@ contains
 ! * INPUT variables  *
 ! ********************
     integer,  intent(in) :: no_u, no_s
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
     integer,  intent(in) :: nq, na_u, lasto(0:)
     complex(dp), intent(in), target :: A(:)
 ! ********************
@@ -626,7 +626,7 @@ contains
     use iso_c_binding
     
     integer,  intent(in) :: no_u, no_s
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
     integer,  intent(in) :: nq, na_u, lasto(0:)
     complex(dp), intent(in), target :: A(:,:)
 ! ********************
@@ -655,7 +655,7 @@ contains
     use iso_c_binding
     
     integer,  intent(in) :: no_u, no_s
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
     integer,  intent(in) :: nq, na_u, lasto(0:)
     complex(dp), intent(in), target :: A(:,:,:)
 ! ********************
@@ -687,7 +687,7 @@ contains
 ! * INPUT variables  *
 ! ********************
     integer,  intent(in) :: no_u, no_s
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
     integer,  intent(in) :: nq, na_u, lasto(0:)
     complex(dp), intent(in), target :: A(:,:,:,:,:)
 ! ********************

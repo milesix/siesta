@@ -40,7 +40,7 @@ contains
     use ts_kpoint_scf_m, only : setup_ts_kpoint_scf
     use ts_kpoint_scf_m, only : ts_kpoint_scf, ts_Gamma_scf
     use m_ts_cctype
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_options ! Just everything (easier)
     use m_ts_method
 
@@ -123,7 +123,7 @@ contains
           end if
        end do
        do i = 1 , N_Elec
-          do ia = Elecs(i)%idx_a , Elecs(i)%idx_a + TotUsedAtoms(Elecs(i)) - 1
+          do ia = Elecs(i)%idx_a , Elecs(i)%idx_a + Elecs(i)%device_atoms() - 1
              if ( .not. ( is_constr(ia,'rigid') .or. is_constr(ia,'rigid-dir') &
                   .or. is_constr(ia,'rigid-max') .or. is_constr(ia,'rigid-max-dir') &
                   .or. is_fixed(ia) ) ) then
@@ -145,13 +145,13 @@ contains
     ! First calculate L/C/R sizes (we remember to subtract the buffer
     ! orbitals)
     nTS = no_u - no_Buf
-    nC  = nTS  - sum(TotUsedOrbs(Elecs))
+    nC  = nTS  - sum(Elecs%device_orbitals())
     if ( nC < 1 ) &
          call die("The contact region size is &
          &smaller than the electrode size. &
          &What have you done? Please correct this insanity...")
     
-    if ( minval(TotUsedOrbs(Elecs)) < 2 ) &
+    if ( minval(Elecs%device_orbitals()) < 2 ) &
          call die('We cannot perform sparse pattern on the electrode &
          &system.')
     
@@ -178,7 +178,7 @@ contains
           end if
           
           ! clean-up
-          call delete(Elecs(i))
+          call Elecs(i)%delete()
           
        end do
     else
@@ -186,18 +186,18 @@ contains
        neglect_conn = .false.
 
        do i = 1 , N_Elec
-          call delete(Elecs(i)) ! ensure clean electrode
-          call read_Elec(Elecs(i),Bcast=.true.)
+          call Elecs(i)%delete() ! ensure clean electrode
+          call Elecs(i)%read_HS(Bcast=.true.)
           
           ! print out the precision of the electrode (whether it extends
           ! beyond first principal layer)
-          if ( .not. check_Connectivity(Elecs(i)) ) then
+          if ( .not. Elecs(i)%check_connectivity() ) then
 
              neglect_conn = .true.
              
           end if
 
-          call delete(Elecs(i))
+          call Elecs(i)%delete()
        end do
 
        if ( neglect_conn ) then

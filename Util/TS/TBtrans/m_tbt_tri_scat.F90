@@ -21,7 +21,7 @@ module m_tbt_tri_scat
   use m_ts_tri_scat, only : GF_Gamma_GF, dir_GF_Gamma_GF
   use m_ts_tri_common, only : GFGGF_needed_worksize
 
-  use m_ts_electype
+  use ts_electrode_m
 
   implicit none
 
@@ -954,7 +954,7 @@ contains
   subroutine A_Gamma(A_tri,El,T)
 
     type(zTriMat), intent(inout) :: A_tri ! Spectral function
-    type(Elec), intent(in) :: El ! contains Gamma == (Sigma - Sigma^\dagger)^T
+    type(electrode_t), intent(in) :: El ! contains Gamma == (Sigma - Sigma^\dagger)^T
     real(dp), intent(out) :: T
 
     ! Here we need a double loop
@@ -1058,7 +1058,7 @@ contains
     use intrinsic_missing, only : transpose, trace
     
     type(zTriMat), intent(inout) :: A_tri ! Spectral function
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     real(dp), intent(out) :: T
     integer, intent(in) :: nwork
     complex(dp), intent(inout) :: work(:)
@@ -1217,7 +1217,7 @@ contains
     use m_ts_trimat_invert, only : TriMat_Bias_idxs
 
     type(zTriMat), intent(inout) :: Gfcol
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     real(dp), intent(out) :: T
 
     complex(dp), pointer :: Gf(:)
@@ -1316,7 +1316,7 @@ contains
     use m_ts_trimat_invert, only : TriMat_Bias_idxs
 
     type(zTriMat), intent(inout) :: Gfcol
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     real(dp), intent(out) :: T_Gf, T_self
     integer, intent(in) :: nzwork
     complex(dp), intent(inout) :: zwork(:)
@@ -1479,7 +1479,7 @@ contains
 
   subroutine consecutive_index(Tri,El,current,p,n)
     type(zTriMat), intent(inout) :: Tri
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
     integer, intent(in) :: current
     integer, intent(out) :: p, n
 
@@ -1933,7 +1933,7 @@ contains
     ! the region which describes the current segment of insertion
     type(tRgn), intent(in) :: r
     ! Electrodes...
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     ! The offsets of the matrix
     integer, intent(in) :: off1, off2
 
@@ -1941,7 +1941,7 @@ contains
     integer :: j, je, i, ie, no, idx
 
     idx = El%idx_o - 1
-    no = TotUsedOrbs(El)
+    no = El%device_orbitals()
 
     ! We are dealing with the intrinsic electrode
     ! self energy
@@ -1990,7 +1990,7 @@ contains
     complex(dp), intent(inout) :: Gfinv(:)
     ! the region which describes the current segment of insertion
     type(tRgn), intent(in) :: r
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
 
     ! local variables
     integer :: j, je, i, ii, idx, no

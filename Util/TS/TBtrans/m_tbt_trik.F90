@@ -33,7 +33,7 @@ module m_tbt_trik
   use m_region
 
   use m_ts_method, only: ts_A_method, TS_BTD_A_COLUMN, TS_BTD_A_PROPAGATION
-  use m_ts_electype
+  use ts_electrode_m
   use m_ts_sparse_helper, only : create_HS
   use m_ts_tri_common, only : nnzs_tri
 
@@ -82,7 +82,7 @@ contains
     use netcdf_ncdf, only: hNCDF, ncdf_close
 #endif
 
-    use m_ts_electype
+    use ts_electrode_m
     ! Self-energy read
     use m_tbt_gf
     ! Self-energy expansion
@@ -139,7 +139,7 @@ contains
 ! ********************
     integer, intent(in) :: ispin
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     type(tTSHS), intent(inout) :: TSHS
     integer, intent(in) :: nq(N_Elec)
     integer, intent(in) :: uGF(N_Elec)
@@ -200,7 +200,7 @@ contains
     ! We will at each energy re-create the projection
     ! Matrix. This will take a little time, but it should
     ! be rather fast.
-    type(Elec) :: El_p
+    type(electrode_t) :: El_p
     type(tLvlMolEl), pointer :: p_E
     real(dp), allocatable :: pDOS(:,:,:)
     real(dp), allocatable :: bTk(:,:), bTkeig(:,:,:)
@@ -492,7 +492,7 @@ contains
     pad_RHS = int( nnzs_tri(DevTri%n,DevTri%r) )
     io = 0
     do iEl = 1 , N_Elec
-       io = io + max(TotUsedOrbs(Elecs(iEl)),Elecs(iEl)%o_inD%n)**2
+       io = io + max(Elecs(iEl)%device_orbitals(),Elecs(iEl)%o_inD%n)**2
     end do
     pad_RHS = io - pad_RHS
     pad_RHS = max(pad_RHS,0) ! truncate at 0
@@ -570,7 +570,7 @@ contains
        ! it is required that prepare_GF_inv is called
        ! immediately (which it is)
        ! Hence the GF must NOT be used in between these two calls!
-       io = max(TotUsedOrbs(Elecs(iEl)),Elecs(iEl)%o_inD%n) ** 2
+       io = max(Elecs(iEl)%device_orbitals(),Elecs(iEl)%o_inD%n) ** 2
        Elecs(iEl)%Sigma => Gfwork(no+1:no+io)
        no = no + io
 
@@ -578,7 +578,7 @@ contains
 
 #ifdef NOT_WORKING
        ! Calculate size of life-time array
-       io = r_oEl(iEl)%n - TotUsedOrbs(Elecs(iEl))
+       io = r_oEl(iEl)%n - Elecs(iEl)%device_orbitals()
        allocate(life(iEl)%life(io))
 #endif
 
@@ -1738,7 +1738,7 @@ contains
     type(zTriMat), intent(inout) :: GFinv_tri
     type(tRgn), intent(in) :: r, pvt
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     ! The Hamiltonian and overlap sparse matrices
     type(zSpData1D), intent(inout) :: spH,  spS
     real(dp), intent(in) :: sc_off(:,:), kpt(3)
@@ -1817,14 +1817,14 @@ contains
 
     use class_Sparsity
     use class_zSpData1D
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_cctype, only : ts_c_idx
 
     ! the current energy point
     type(ts_c_idx), intent(in) :: cE
     ! Electrode, this *REQUIRES* that the down-folding region
     ! only contains the self-energies of this electrode... :(
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     ! The hamiltonian and overlap
     type(zSpData1D), intent(in) :: spH, spS
     ! The region of downfolding... (+ the region connecting to the device..)
@@ -1986,7 +1986,7 @@ contains
 
     use class_Sparsity
     use class_zSpData1D
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_cctype, only : ts_c_idx
 
     use m_mat_invert
@@ -1995,7 +1995,7 @@ contains
     type(ts_c_idx), intent(in) :: cE
     ! Electrode, this *REQUIRES* that the down-folding region
     ! only contains the self-energies of this electrode... :(
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     ! The hamiltonian and overlap
     type(zSpData1D), intent(in) :: spH, spS
     ! The region of downfolding... (+ the region connecting to the device..)
@@ -2203,7 +2203,7 @@ contains
     ! the current energy point
     complex(dp), intent(in) :: Z
     ! Electrode
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     ! The Hamiltonian and overlap sparse matrices
     type(zSpData1D), intent(in) :: spH,  spS
     ! the region which describes the current segment of insertion

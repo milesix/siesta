@@ -18,7 +18,7 @@ module m_tbt_contour
 ! Use the type associated with the contour
 ! Maybe they should be collected to this module.
 ! However, I like this partition.
-  use m_ts_electype
+  use ts_electrode_m
 
   use m_ts_chem_pot
   use m_ts_cctype
@@ -55,11 +55,11 @@ contains
 
     use parallel, only : Node
     use fdf
-    use m_ts_electype
+    use ts_electrode_m
 
     ! only to gain access to the chemical shifts
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in), target :: Elecs(N_Elec)
+    type(electrode_t), intent(in), target :: Elecs(N_Elec)
     integer, intent(in) :: N_mu
     type(ts_mu), intent(in), target :: mus(N_mu)
     

@@ -45,7 +45,7 @@ contains
 
     use class_zTriMat
     use m_ts_trimat_invert, only : TriMat_Bias_idxs
-    use m_ts_electype
+    use ts_electrode_m
 
     implicit none
 
@@ -54,7 +54,7 @@ contains
 ! *********************
     ! The Green function column
     type(zTriMat), intent(inout) :: Gf_tri
-    type(Elec), intent(in) :: El ! contains: (Sigma - Sigma^dagger) ^T
+    type(electrode_t), intent(in) :: El ! contains: (Sigma - Sigma^dagger) ^T
     integer, intent(in) :: no ! The dimension of (Sigma - Sigma^dagger) ^T
     logical, intent(in) :: calc_parts(:)
 
@@ -185,7 +185,7 @@ contains
     use alloc, only : re_alloc, de_alloc
 
     use class_zTriMat
-    use m_ts_electype
+    use ts_electrode_m
 
     use m_trimat_invert, only: Xn_div_Cn_p1, Yn_div_Bn_m1
 
@@ -204,7 +204,7 @@ contains
 
     type(tRgn), intent(in) :: r ! the pivoting array for the sparse pattern
     type(tRgn), intent(in) :: pvt ! the pivoting of r back to the sparse pattern
-    type(Elec), intent(in) :: El ! contains: (Sigma - Sigma^dagger) ^T
+    type(electrode_t), intent(in) :: El ! contains: (Sigma - Sigma^dagger) ^T
     logical, intent(in) :: calc_parts(:)
 #ifdef TBTRANS
 ! **********************
@@ -757,16 +757,16 @@ contains
   ! tri-diagonal matrices
   subroutine insert_Self_Energies(Gfinv_tri, Gfinv, pvt, El)
     use m_region
-    use m_ts_electype
+    use ts_electrode_m
     use class_zTriMat
     type(zTriMat), intent(inout) :: GFinv_tri
     complex(dp), intent(inout) :: Gfinv(:)
     type(tRgn), intent(in) :: pvt
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
 
     integer :: no, off, i, j, ii, idx
     
-    no = TotUsedOrbs(El)
+    no = El%device_orbitals()
     off = El%idx_o - 1
 
     if ( El%Bulk ) then

@@ -40,7 +40,7 @@ subroutine tbt_init()
   use dictionary
 
   use m_ts_electrode, only : init_Electrode_HS
-  use m_ts_electype
+  use ts_electrode_m
 
   use m_tbt_kpoint
   use m_tbt_regions
@@ -216,7 +216,7 @@ subroutine tbt_init()
      end if
      
      ! clean-up
-     call delete(Elecs(iEl))
+     call Elecs(iEl)%delete()
      
   end do
 

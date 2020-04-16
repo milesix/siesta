@@ -95,7 +95,7 @@ contains
     use intrinsic_missing, only : SFIND
     use geom_helper,       only : UCORB
 
-    use m_ts_electype
+    use ts_electrode_m
 
 ! *********************
 ! * INPUT variables   *
@@ -108,7 +108,7 @@ contains
     real(dp), intent(in) :: Ef
     ! The electrodes
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     integer, intent(in) :: no_u, n_s
     ! The number of elements in the sparse arrays
     integer, intent(in) :: n_nzs
@@ -275,7 +275,7 @@ contains
     use intrinsic_missing, only : SFIND
     use geom_helper,       only : UCORB
 
-    use m_ts_electype
+    use ts_electrode_m
 
 ! *********************
 ! * INPUT variables   *
@@ -288,7 +288,7 @@ contains
     real(dp), intent(in) :: Ef
     ! The electrodes
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     integer, intent(in) :: no_u
     ! The number of elements in the sparse arrays
     integer, intent(in) :: n_nzs
@@ -419,7 +419,6 @@ contains
     ! on order of summation.
 
   end subroutine create_HS_Gamma
-
 
   ! Helper routine to create and distribute an upper
   ! tri-angular matrix of the hamiltonian in a specified

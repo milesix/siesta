@@ -28,7 +28,7 @@ contains
 
   subroutine GF_Gamma_GF(El, mum, no_u_TS, no, GF)
     use iso_c_binding, only: c_loc, c_f_pointer
-    use m_ts_electype
+    use ts_electrode_m
 
     implicit none
 
@@ -38,7 +38,7 @@ contains
 ! * INPUT variables   *
 ! *********************
     ! electrode self-energy
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
     type(zMUMPS_STRUC), intent(inout) :: mum
     integer, intent(in) :: no_u_TS ! no. states in contact region
     integer, intent(in) :: no      ! no. states for all electrodes

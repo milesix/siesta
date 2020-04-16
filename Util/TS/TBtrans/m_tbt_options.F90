@@ -17,7 +17,7 @@ module m_tbt_options
 
   use m_ts_tdir, only: ts_tidx
 
-  use m_ts_electype
+  use ts_electrode_m
   use m_ts_chem_pot
 
   use dictionary
@@ -40,7 +40,7 @@ module m_tbt_options
 
   ! Electrodes and different chemical potentials
   integer :: N_Elec = 0
-  type(Elec), allocatable, target :: Elecs(:)
+  type(electrode_t), allocatable, target :: Elecs(:)
   integer :: N_mu = 0
   type(ts_mu), allocatable, target :: mus(:)
 
@@ -231,9 +231,7 @@ contains
 
     use m_ts_chem_pot, only : copy, chem_pot_add_Elec
 
-    use m_ts_electype, only : fdf_nElec, fdf_Elec
-    use m_ts_electype, only : Name, TotUsedOrbs, TotUsedAtoms
-    use m_ts_electype, only : init_Elec_sim
+    use ts_electrode_m, only : fdf_nElec, fdf_Elec
 
     use m_ts_method, only : ts_init_electrodes, a_isBuffer
 
@@ -339,7 +337,7 @@ contains
                name_prefix = name_prefix)
        end if
        if ( .not. err ) then
-          call die('Could not find electrode: '//trim(name(Elecs(i))))
+          call die('Could not find electrode: '//trim(Elecs(i)%name))
        end if
        if ( Elecs(i)%idx_a < 0 ) &
             Elecs(i)%idx_a = na_u + Elecs(i)%idx_a + 1
@@ -358,18 +356,18 @@ contains
              end do
              Elecs(i)%idx_a = j
           else
-             j = Elecs(i)%idx_a + TotUsedAtoms(Elecs(i)) - 1
+             j = Elecs(i)%idx_a + Elecs(i)%device_atoms() - 1
              do while ( a_isBuffer(j) )
                 j = j - 1
              end do
-             Elecs(i)%idx_a = j - TotUsedAtoms(Elecs(i)) + 1
+             Elecs(i)%idx_a = j - Elecs(i)%device_atoms() + 1
           end if
        end if
        ! set the placement in orbitals
        Elecs(i)%idx_o = lasto(Elecs(i)%idx_a-1)+1
 
        ! Initialize electrode parameters
-       call init_Elec_sim(Elecs(i),cell,na_u,xa)
+       call Elecs(i)%init_electrode_in_cell(cell, na_u, xa)
 
     end do
 
@@ -445,7 +443,7 @@ contains
             &All chemical potentials *MUST* be assigned an electrode')
     end if
 
-    if ( na_u <= sum(TotUsedAtoms(Elecs)) ) then
+    if ( na_u <= sum(Elecs(:)%device_atoms()) ) then
        write(*,'(a)') 'Please stop this madness. What where you thinking?'
        call die('Electrodes occupy the entire device!!!')
     end if
@@ -693,7 +691,7 @@ contains
     
     do i = 1 , N_Elec
       ! Initialize the electrode quantities for the stored values
-      call check_Elec_sim(Elecs(i), nspin, cell, na_u, xa, &
+      call Elecs(i)%check_electrode_in_cell(nspin, cell, na_u, xa, &
           Elecs_xa_EPS, lasto, Gamma3)
     end do
 
@@ -798,7 +796,7 @@ contains
 
     write(*,f11)'          >> Electrodes << '
     do i = 1 , size(Elecs)
-       call print_settings(Elecs(i),'tbt')
+       call Elecs(i)%print_settings('tbt')
     end do
     
     call print_contour_tbt_options( 'TBT' )
@@ -886,7 +884,7 @@ contains
        if ( IONode ) then
           write(*,'(a)') 'Chemical potentials [eV]:'
           do i = 1 , N_Elec
-             write(*,'(a,f10.5,a)') trim(Name(Elecs(i)))//' at ',Elecs(i)%mu%mu/eV,' eV'
+             write(*,'(a,f10.5,a)') trim(Elecs(i)%name)//' at ',Elecs(i)%mu%mu/eV,' eV'
           end do
           write(*,'(a)') 'The difference must satisfy: "max(ChemPots)-min(ChemPots) - abs(Volt) < 1e-8 eV"'
           write(*,'(a,f10.5,a)') 'max(ChemPots) at ', maxval(mus(:)%mu)/eV,' eV'
@@ -949,7 +947,7 @@ contains
     integer :: i
 
     do i = 1, N_Elec
-      call delete(Elecs(i), all=.true.)
+      call Elecs(i)%delete(all=.true.)
     end do
     deallocate(Elecs)
     do i = 1, N_mu

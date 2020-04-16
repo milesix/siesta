@@ -31,7 +31,7 @@ module m_tbt_proj
 
   use precision, only : dp
   use m_region
-  use m_ts_electype
+  use ts_electrode_m
   use m_tbt_save, only : tNodeE, save_parallel
 
 #ifdef NCDF_4
@@ -103,7 +103,7 @@ module m_tbt_proj
     ! The molecule that needs projection.
     type(tProjMol), pointer :: mol => null()
     ! The electrode that will be projected onto
-    type(Elec), pointer :: El => null()
+    type(electrode_t), pointer :: El => null()
     ! All <|Gamma|> projections
     ! this contains all <i|Gamma|j>:
     complex(dp), allocatable :: bGk(:,:)
@@ -431,13 +431,13 @@ contains
     use fdf, only : leqi
     
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in), target :: Elecs(N_Elec)
+    type(electrode_t), intent(in), target :: Elecs(N_Elec)
     
     integer :: im, ip
     integer :: it, iE
     integer :: ipt, idx
     logical :: first_P
-    type(Elec), pointer :: El_L, El
+    type(electrode_t), pointer :: El_L, El
     type(tProjMol), pointer :: mol
     type(tRgn) :: r_tmp
     logical, allocatable :: checked(:,:)
@@ -647,7 +647,7 @@ contains
     use dictionary
 
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     type(dictionary_t), intent(inout) :: save_DATA
 
     character(len=100) :: char
@@ -1075,7 +1075,7 @@ contains
     !  'E1.M1.P1' will result in 1 projection.
     subroutine parse_T(N_Elec,Elecs,N_mol,mols,EMP,iE,im,N_p)
       integer, intent(in) :: N_Elec
-      type(Elec), intent(in) :: Elecs(N_Elec)
+      type(electrode_t), intent(in) :: Elecs(N_Elec)
       integer, intent(in) :: N_mol
       type(tProjMol), intent(in) :: mols(N_mol)
       character(len=*), intent(in) :: EMP
@@ -1149,7 +1149,7 @@ contains
     function perm_exist(N_LME,LME,El,mol,ip) result(i)
       integer, intent(in) :: N_LME
       type(tLvlMolEl), intent(in) :: LME(N_LME)
-      type(Elec), intent(in) :: El
+      type(electrode_t), intent(in) :: El
       type(tProjMol), intent(in) :: mol
       integer, intent(in) :: ip
       integer :: i
@@ -1176,7 +1176,7 @@ contains
 
     subroutine init_ME(ME,El,mol)
       type(tProjMolEl), intent(inout) :: ME
-      type(Elec), target :: El
+      type(electrode_t), target :: El
       type(tProjMol), target :: mol
       ME%El => El
       ME%mol => mol
@@ -1184,7 +1184,7 @@ contains
     function ME_idx(N,ME,El,mol) result(i)
       integer, intent(in) :: N
       type(tProjMolEl), intent(in) :: ME(N)
-      type(Elec), intent(in) :: El
+      type(electrode_t), intent(in) :: El
       type(tProjMol), intent(in) :: mol
       integer :: i
       logical :: exist
@@ -1219,7 +1219,7 @@ contains
 
   function ProjMolEl_same(pLME,El,mol,ip) result(same)
     type(tLvlMolEl), intent(in) :: pLME
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
     type(tProjMol), intent(in) :: mol
     integer, intent(in) :: ip
     logical :: same
@@ -1283,7 +1283,7 @@ contains
     type(tRgn), intent(in) :: r, btd
     integer, intent(in) :: ispin
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(:)
+    type(electrode_t), intent(in) :: Elecs(:)
     type(tRgn), intent(in) :: raEl(:), roElpd(:), btd_El(:)
     integer, intent(in) :: nkpt, NE
     real(dp), intent(in) :: Eta
@@ -2248,11 +2248,11 @@ contains
     use mpi_siesta, only : MPI_Integer, MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
 #endif
-    use m_ts_electype
+    use ts_electrode_m
 
     type(hNCDF), intent(inout) :: ncdf
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     integer, intent(in) :: ikpt
     type(tNodeE), intent(in) :: nE
     integer, intent(in) :: N_proj_T
@@ -2426,7 +2426,7 @@ contains
     use mpi_siesta, only : MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
 #endif
-    use m_ts_electype
+    use ts_electrode_m
 
     type(hNCDF), intent(inout) :: ncdf
     integer, intent(in) :: ikpt
@@ -2944,7 +2944,7 @@ contains
 
     use m_timestamp, only : datestring
     use netcdf_ncdf
-    use m_ts_electype
+    use ts_electrode_m
 
     character(len=*), intent(in) :: fname
     integer, intent(in) :: N_proj_T

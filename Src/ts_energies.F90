@@ -51,7 +51,7 @@ contains
     use class_dSpData2D
 
     use geom_helper, only : UCORB
-    use m_ts_electype, only: Elec
+    use ts_electrode_m, only: electrode_t
     use m_energies, only: NEGF_Ebs, NEGF_Ekin, NEGF_Etot, NEGF_Enl
     use m_energies, only: NEGF_DEharr
 

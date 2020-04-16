@@ -1,4 +1,4 @@
-module m_ts_electype
+module ts_electrode_m
 
   use precision, only : dp
 
@@ -19,44 +19,17 @@ module m_ts_electype
 
   private
 
-  ! Name is part of the class-system, we need
-  ! it as an interface
-  interface name
-     module procedure name_
-  end interface name
-
-  interface delete
-     module procedure delete_
-  end interface delete
+  public :: fdf_nElec, fdf_elec
+  public :: electrode_t
 
   interface operator(.eq.)
      module procedure equal_el_el
      module procedure equal_el_str
      module procedure equal_str_el
   end interface
-
-  public :: Elec, Name, Elec_idx
-  public :: TotUsedAtoms, TotUsedOrbs
-  public :: AtomInElec, OrbInElec
-  public :: q_exp, Elec_kpt
-
-  public :: fdf_nElec, fdf_elec
-
-  public :: read_Elec
-  public :: create_sp2sp01
-  public :: print_settings
-  public :: init_Elec_sim, check_Elec_sim
-  public :: check_connectivity
-  public :: delete
-
-  public :: Elec_ortho2semi_inf
-  public :: Elec_box2grididx, Elec_frac
-
-  public :: in_Elec
-
   public :: operator(.eq.)
 
-  public :: copy_DM
+  public :: in_Elec
 
   integer, parameter, public :: FILE_LEN = 256
   integer, parameter, public :: NAME_LEN = 32
@@ -64,137 +37,160 @@ module m_ts_electype
   integer, parameter, public :: INF_NEGATIVE = 0 ! old 'left'
   integer, parameter, public :: INF_POSITIVE = 1 ! old 'right'
 
-  type :: Elec
-     integer :: ID = 0
-     character(len=FILE_LEN) :: HSfile = ' ', DEfile = ' ', GFfile  = ' '
-     character(len=NAME_LEN) :: Name   = ' '
-     ! These variables are relative to the big system
-     integer :: idx_a = 0, idx_o = 0
-     ! atoms used
-     integer :: na_used = 0
-     ! orbitals used
-     integer :: no_used = 0
-     ! Whether the geometry is tiled or repeated
-     ! Old behaviour is repeated, but tiling is more efficient
-     logical :: repeat = .true.
-     ! Bloch expansions (repetitions)
-     type(bloch_unfold_t) :: bloch
-     ! Pre-expand before saving Gf
-     !   == 0 do no pre-expansion
-     !   == 1 pre-expand only the surface Green function
-     !   == 2 pre-expand surface Green function, H and S
-     integer :: pre_expand = 2
-     ! Flag to signal how the DM should be initialized
-     !   == 0 'diagon', use DM from Siesta
-     !   == 1 'bulk' from the bulk DM electrode files
-     ! This defaults to 0
-     integer :: DM_init = 0
-     ! chemical potential of the electrode
-     type(ts_mu), pointer :: mu => null()
-     ! infinity direction
-     integer :: inf_dir = INF_POSITIVE
-     ! transport direction (determines H01)
-     ! And is considered with respect to the electrode direction...
-     !  t_dir is with respect to the electrode unit-cell
-     ! This number defines the semi-infinite direction.
-     ! 1 - 3: corresponds to the electrode lattice directions
-     ! 4 : E2 + E3 (double semi-infinite)
-     ! 5 : E1 + E3 (double semi-infinite)
-     ! 6 : E1 + E2 (double semi-infinite)
-     ! 7 : E1 + E2 + E3 (completely semi-infinite)
-     integer :: t_dir = 3
-     ! This is the cell pivoting table from the
-     ! electrode unit-cell to the simulation unit-cell
-     ! So: cell(:,pvt(1)) ~= this%cell(:,1)
-     integer :: pvt(3)
-     ! whether the electrode should be bulk
-     logical :: Bulk = .true.
-     integer :: DM_update = 1 ! This determines the update scheme for the crossterms
-                              ! == 0 means no update
-                              ! == 1 means update cross-terms
-                              ! == 2 means update everything (no matter Bulk)
-     ! whether to re-calculate the GF-file
-     logical :: ReUseGF = .true.
-     ! Create a GF-file or re-calculate the self-energies everytime
-     logical :: out_of_core = .true. 
-     ! In case of 'out_of_core == .false.' we can reduce the number of operations
-     ! by skipping the copying of H00, S00. Hence we need to compare when the 
-     ! k-point changes...
-     real(dp) :: bkpt_cur(3)
-     ! Used xa and lasto
-     real(dp), pointer :: xa_used(:,:) => null()
-     integer,  pointer :: lasto_used(:) => null()
+  type :: electrode_t
+    integer :: ID = 0
+    character(len=FILE_LEN) :: HSfile = ' ', DEfile = ' ', GFfile  = ' '
+    character(len=NAME_LEN) :: Name   = ' '
+    ! These variables are relative to the big system
+    integer :: idx_a = 0, idx_o = 0
+    ! atoms used
+    integer :: na_used = 0
+    ! orbitals used
+    integer :: no_used = 0
+    ! Whether the geometry is tiled or repeated
+    ! Old behaviour is repeated, but tiling is more efficient
+    logical :: repeat = .true.
+    ! Bloch expansions (repetitions)
+    type(bloch_unfold_t) :: bloch
+    ! Pre-expand before saving Gf
+    !   == 0 do no pre-expansion
+    !   == 1 pre-expand only the surface Green function
+    !   == 2 pre-expand surface Green function, H and S
+    integer :: pre_expand = 2
+    ! Flag to signal how the DM should be initialized
+    !   == 0 'diagon', use DM from Siesta
+    !   == 1 'bulk' from the bulk DM electrode files
+    ! This defaults to 0
+    integer :: DM_init = 0
+    ! chemical potential of the electrode
+    type(ts_mu), pointer :: mu => null()
+    ! infinity direction
+    integer :: inf_dir = INF_POSITIVE
+    ! transport direction (determines H01)
+    ! And is considered with respect to the electrode direction...
+    !  t_dir is with respect to the electrode unit-cell
+    ! This number defines the semi-infinite direction.
+    ! 1 - 3: corresponds to the electrode lattice directions
+    ! 4 : E2 + E3 (double semi-infinite)
+    ! 5 : E1 + E3 (double semi-infinite)
+    ! 6 : E1 + E2 (double semi-infinite)
+    ! 7 : E1 + E2 + E3 (completely semi-infinite)
+    integer :: t_dir = 3
+    ! This is the cell pivoting table from the
+    ! electrode unit-cell to the simulation unit-cell
+    ! So: cell(:,pvt(1)) ~= this%cell(:,1)
+    integer :: pvt(3)
+    ! whether the electrode should be bulk
+    logical :: Bulk = .true.
+    integer :: DM_update = 1 ! This determines the update scheme for the crossterms
+    !                           == 0 means no update
+    !                           == 1 means update cross-terms
+    !                           == 2 means update everything (no matter Bulk)
+    ! whether to re-calculate the GF-file
+    logical :: ReUseGF = .true.
+    ! Create a GF-file or re-calculate the self-energies everytime
+    logical :: out_of_core = .true. 
+    ! In case of 'out_of_core == .false.' we can reduce the number of operations
+    ! by skipping the copying of H00, S00. Hence we need to compare when the 
+    ! k-point changes...
+    real(dp) :: bkpt_cur(3)
+    ! Used xa and lasto
+    real(dp), pointer :: xa_used(:,:) => null()
+    integer,  pointer :: lasto_used(:) => null()
 
-     ! Advanced stuff...
-     logical :: kcell_check = .true.
-     ! If the user requests to assign different "spill-in bias"
-     ! we allow that
-     real(dp) :: V_frac_CT = 0._dp
-     real(dp) :: delta_Ef = 0._dp
+    ! Advanced stuff...
+    logical :: kcell_check = .true.
+    ! If the user requests to assign different "spill-in bias"
+    ! we allow that
+    real(dp) :: V_frac_CT = 0._dp
+    real(dp) :: delta_Ef = 0._dp
 
-     ! ---v--- Below we have the content of the TSHS file
-     integer  :: nspin = 0, na_u = 0, no_u = 0, no_s = 0
-     real(dp) :: cell(3,3) = 0._dp, Ef = 0._dp, Qtot = 0._dp
-     ! The inter-layer distance between succeeding layers along
-     ! the semi-infinite direction
-     real(dp) :: dINF_layer
-     real(dp), pointer :: xa(:,:) => null()
-     integer,  pointer :: lasto(:) => null()
-     type(Sparsity)  :: sp
-     type(dSpData2D) :: H
-     type(dSpData1D) :: S
-     ! If .false. the self-energy and H, S matrices are k-dependent.
-     ! If .true. it means that the parent system only had periodicity along
-     ! the semi-infinite direction
-     logical :: is_gamma = .false.
-     ! Supercell offsets
-     integer :: nsc(3)
-     integer, pointer :: isc_off(:,:) => null()
-     ! --- --- completed the content of the TSHS file
-     ! Below we create the content for the self-energy creation
-     ! Notice that we can save some elements simply by extracting the 0-1 connections
-     ! for large systems this is a non-negligeable part of the memory...
-     type(Sparsity)  :: sp00, sp01
-     type(dSpData2D) :: H00, H01
-     type(dSpData1D) :: S00, S01
+    ! ---v--- Below we have the content of the TSHS file
+    integer  :: nspin = 0, na_u = 0, no_u = 0, no_s = 0
+    real(dp) :: cell(3,3) = 0._dp, Ef = 0._dp, Qtot = 0._dp
+    ! The inter-layer distance between succeeding layers along
+    ! the semi-infinite direction
+    real(dp) :: dINF_layer
+    real(dp), pointer :: xa(:,:) => null()
+    integer,  pointer :: lasto(:) => null()
+    type(Sparsity)  :: sp
+    type(dSpData2D) :: H
+    type(dSpData1D) :: S
+    ! If .false. the self-energy and H, S matrices are k-dependent.
+    ! If .true. it means that the parent system only had periodicity along
+    ! the semi-infinite direction
+    logical :: is_gamma = .false.
+    ! Supercell offsets
+    integer :: nsc(3)
+    integer, pointer :: isc_off(:,:) => null()
+    ! --- --- completed the content of the TSHS file
+    ! Below we create the content for the self-energy creation
+    ! Notice that we can save some elements simply by extracting the 0-1 connections
+    ! for large systems this is a non-negligeble part of the memory...
+    type(Sparsity)  :: sp00, sp01
+    type(dSpData2D) :: H00, H01
+    type(dSpData1D) :: S00, S01
 
-     ! These arrays are used to construct the full Hamiltonian and overlap and Green function
-     complex(dp), pointer :: HA(:,:,:), SA(:,:,:), GA(:)
+    ! These arrays are used to construct the full Hamiltonian and overlap and Green function
+    complex(dp), pointer :: HA(:,:,:), SA(:,:,:), GA(:)
 
-     ! Arrays needed to partition the scattering matrix and self-energies
+    ! Arrays needed to partition the scattering matrix and self-energies
 
-     ! Gamma stored is actually this: i (Sigma - Sigma^\dagger) ^ T
-     ! and NOT: i (Sigma - Sigma^\dagger)
-     ! Using the transposed Gamma allows certain optimizations
-     complex(dp), pointer :: Gamma(:), Sigma(:)
+    ! Gamma stored is actually this: i (Sigma - Sigma^\dagger) ^ T
+    ! and NOT: i (Sigma - Sigma^\dagger)
+    ! Using the transposed Gamma allows certain optimizations
+    complex(dp), pointer :: Gamma(:), Sigma(:)
 
-     ! The accuracy required for the self-energy
-     !  == 1e-13 * eV
-     real(dp) :: accu = 7.349806700083788e-15_dp
+    ! The accuracy required for the self-energy
+    !  == 1e-13 * eV
+    real(dp) :: accu = 7.349806700083788e-15_dp
 
-     ! The imaginary part in the electrode
-     !  == 0.001 * eV
-     ! Note these values are always set in m_ts/tbt_options
-     ! so the values here are not important (more for reference)
+    ! The imaginary part in the electrode
+    !  == 0.001 * eV
+    ! Note these values are always set in m_ts/tbt_options
+    ! so the values here are not important (more for reference)
 #ifdef TBTRANS
 #ifdef TBT_PHONON
-     ! Squared!
-     real(dp) :: Eta = 5.401965852736489e-09_dp
+    ! Squared!
+    real(dp) :: Eta = 5.401965852736489e-09_dp
 #else
-     real(dp) :: Eta = 7.3498067e-5_dp
+    real(dp) :: Eta = 7.3498067e-5_dp
 #endif
 #else
-     real(dp) :: Eta = 7.3498067e-5_dp
+    real(dp) :: Eta = 7.3498067e-5_dp
 #endif
 
-     ! The region of the down-folded region
-     type(tRgn) :: o_inD, inDpvt
+    ! The region of the down-folded region
+    type(tRgn) :: o_inD, inDpvt
 
-     ! A box containing all atoms of the electrode in the
-     ! simulation box
-     type(geo_box_delta) :: box
+    ! A box containing all atoms of the electrode in the
+    ! simulation box
+    type(geo_box_delta) :: box
 
-  end type Elec
+  contains
+
+    procedure, pass :: delete => delete_
+
+    procedure, pass :: device_orbitals, used_orbitals
+    procedure, pass :: device_atoms, used_atoms
+    procedure, pass :: has_atom, has_orbital
+    procedure, pass :: init_electrode_in_cell
+    procedure, pass :: check_electrode_in_cell
+    procedure, pass :: fractional_cell
+    procedure, pass :: box_in_grid
+
+    procedure, pass :: kpoint_convert => kpoint_convert_
+    procedure, pass :: unfold_k
+
+    procedure, pass :: read_HS
+    procedure, pass :: create_sp2sp01
+    procedure, pass :: check_connectivity
+    procedure, pass :: copy_DM
+    procedure, pass :: index => index_
+    procedure, pass :: is_semi_inf_orthogonal
+    procedure, pass :: print_settings
+ 
+  end type electrode_t
 
   ! Fraction of alignment for considering two vectors having a similar
   ! component
@@ -207,7 +203,7 @@ contains
     use m_char, only: lcase
 
     character(len=*), intent(in) :: prefix
-    type(Elec), allocatable :: this_n(:)
+    type(electrode_t), allocatable :: this_n(:)
     integer :: n
 
     ! prepare to read in the data...
@@ -279,7 +275,7 @@ contains
     use m_ts_io_ctype, only : pline_E_parse
 
     character(len=*), intent(in) :: prefix,slabel
-    type(Elec), intent(inout) :: this
+    type(electrode_t), intent(inout) :: this
     integer, intent(in) :: N_mu
     type(ts_mu), intent(in), target :: mus(N_mu)
     integer, intent(in), optional :: idx_a
@@ -866,7 +862,7 @@ contains
 
     ! if the user has specified text for the electrode position
     if ( cidx_a == -1 ) then
-       this%idx_a = this%idx_a + 1 - TotUsedAtoms(this)
+       this%idx_a = this%idx_a + 1 - this%device_atoms()
     end if
 
     ! For in-core calculations of the Self-energy,
@@ -927,26 +923,26 @@ contains
 
   ! Initialize variables for the electrode according
   ! to the simulation variables
-  subroutine init_Elec_sim(this,cell,na_u,xa)
-
+  subroutine init_electrode_in_cell(this, cell, na_u, xa)
+    
     use units, only : Pi
     use intrinsic_missing, only : VNORM, SPC_PROJ, IDX_SPC_PROJ
     use intrinsic_missing, only : VEC_PROJ_SCA
 
     ! The electrode that needs to be processed
-    type(Elec), intent(inout) :: this
+    class(electrode_t), intent(inout) :: this
     ! The simulation parameters.
     ! Unit-cell of simulation cell
     real(dp), intent(in) :: cell(3,3)
     integer, intent(in) :: na_u
-    real(dp), intent(in) :: xa(3,na_u)
+    real(dp), intent(in) :: xa(:,:)
     
     real(dp) :: p(3), contrib, work(12)
     integer :: i, j, ia, na, ipiv(3)
 
     ! First figure out the minimum bond-length
     ia = this%idx_a
-    na = TotUsedAtoms(this)
+    na = this%device_atoms()
 
     ! Calculate the pivoting table
     do i = 1 , 3
@@ -1002,26 +998,26 @@ contains
     ! If we do not use all the atoms we need to reduce
     ! the cell vector in the semi-infinite direction
     if ( this%na_u /= this%na_used ) then
-       contrib = real(this%na_used,dp) / real(this%na_u,dp)
-       i = this%t_dir
-       ! Scale vector
-       this%box%v(:,i) = this%box%v(:,i) * contrib
+      contrib = real(this%na_used,dp) / real(this%na_u,dp)
+      i = this%t_dir
+      ! Scale vector
+      this%box%v(:,i) = this%box%v(:,i) * contrib
     end if
 
     call dgetrf(3,3,this%box%v,3,ipiv,i)
     if ( i /= 0 ) then
-       call die('Electrode inversion of cell vectors failed')
+      call die('Electrode inversion of cell vectors failed')
     end if
     call dgetri(3,this%box%v,3,ipiv,work,12,i)
     if ( i /= 0 ) then
-       call die('Electrode inversion of cell vectors failed')
-     end if
+      call die('Electrode inversion of cell vectors failed')
+    end if
 
-  end subroutine init_Elec_sim
+  end subroutine init_electrode_in_cell
 
   ! Initialize variables for the electrode according
   ! to the simulation variables
-  subroutine check_Elec_sim(this,nspin,s_cell,na_u,xa,xa_EPS,&
+  subroutine check_electrode_in_cell(this,nspin,s_cell,na_u,xa,xa_EPS,&
        lasto, Gamma3, &
        kcell, kdispl )
 
@@ -1033,7 +1029,7 @@ contains
     use m_ts_io, only: ts_read_TSHS_opt
 
     ! The electrode that needs to be processed
-    type(Elec), intent(inout) :: this
+    class(electrode_t), intent(inout) :: this
     ! The number of spin components from the siesta calculation
     integer, intent(in) :: nspin
     ! The simulation parameters.
@@ -1058,7 +1054,7 @@ contains
     integer :: i, j, k, ia, na, pvt(3), iaa, idir(3)
     logical :: ldie, er, Gamma, orbs
     
-    na = TotUsedAtoms(this)
+    na = this%device_atoms()
 
     ldie = .false.
 
@@ -1095,7 +1091,7 @@ contains
        write(*,*)
 
        i = iaa
-       j = iaa + TotUsedAtoms(this) - 1
+       j = iaa + this%device_atoms() - 1
        write(*,'(a,e10.5,a)') 'The electrode coordinates does not overlap within the &
             &required accuracy: ',xa_EPS/Ang,' Ang'
        write(*,'(a,3(tr1,g10.4))') 'The maximal offset repeating vector is [Ang]:',max_xa(:,1)/Ang
@@ -1414,16 +1410,16 @@ contains
 
     end subroutine check_tile
     
-  end subroutine check_Elec_sim
+  end subroutine check_electrode_in_cell
 
   function equal_el_el(this1,this2) result(equal)
-    type(Elec), intent(in) :: this1, this2
+    type(electrode_t), intent(in) :: this1, this2
     logical :: equal
     equal = trim(this1%name) == trim(this2%name)
   end function equal_el_el
 
   function equal_el_str(this,str) result(equal)
-    type(Elec), intent(in) :: this
+    type(electrode_t), intent(in) :: this
     character(len=*), intent(in) :: str
     logical :: equal
     equal = trim(this%name) == trim(str)
@@ -1431,24 +1427,12 @@ contains
 
   function equal_str_el(str,this) result(equal)
     character(len=*), intent(in) :: str
-    type(Elec), intent(in) :: this
+    type(electrode_t), intent(in) :: this
     logical :: equal
     equal = trim(this%name) == trim(str)
   end function equal_str_el
 
-  elemental function Name_(this) result(name)
-    type(Elec), intent(in) :: this
-    character(len=NAME_LEN) :: Name
-    name = this%name
-  end function Name_
-
-  elemental function TotUsedAtoms(this) result(val)
-    type(Elec), intent(in) :: this
-    integer :: val
-    val = this%na_used * this%Bloch%size()
-  end function TotUsedAtoms
-
-  pure function q_exp(this, idx) result(q)
+  pure function unfold_k(this, idx) result(q)
     ! TODO, the current implementation assumes k-symmetry
     ! of the electrode electronic structure.
     ! Using Bloch expansion with non-symmetry will, likely, produce
@@ -1456,7 +1440,7 @@ contains
     ! Luckily this is not a problem currently.
     ! Perhaps one should consider this in tbtrans
 
-    type(Elec), intent(in) :: this
+    class(electrode_t), intent(in) :: this
     integer, intent(in) :: idx
     real(dp) :: q(3)
     integer :: i(3)
@@ -1464,8 +1448,8 @@ contains
     q(:) = this%bloch%get_k(i(1), i(2), i(3))
   end function q_exp
 
-  subroutine Elec_kpt(this,cell,k1,k2,opt)
-    type(Elec), intent(in) :: this
+  subroutine kpoint_convert_(this,cell,k1,k2,opt)
+    class(electrode_t), intent(in) :: this
     ! Device unit-cell
     real(dp), intent(in) :: cell(3,3)
     ! Input k-point
@@ -1538,32 +1522,54 @@ contains
 
     end select
 
-  end subroutine Elec_kpt
+  end subroutine kpoint_convert_
 
-  elemental function TotUsedOrbs(this) result(val)
-    type(Elec), intent(in) :: this
-    integer :: val
-    val = this%no_used * this%Bloch%size()
-  end function TotUsedOrbs
+!  elemental function TotUsedOrbs(this) result(val)
+  elemental function device_orbitals(this) result(no)
+    class(electrode_t), intent(in) :: this
+    integer :: no
+    no = this%no_used * this%Bloch%size()
+  end function device_orbitals
 
-  elemental function OrbInElec(this,io) result(in)
-    type(Elec), intent(in) :: this
+  !  elemental function UsedOrbs(this) result(val)
+  elemental function used_orbitals(this) result(no)
+    class(electrode_t), intent(in) :: this
+    integer :: no
+    no = this%no_used
+  end function used_orbitals
+
+  elemental function device_atoms(this) result(na)
+    class(electrode_t), intent(in) :: this
+    integer :: na
+    na = this%na_used * this%Bloch%size()
+  end function device_atoms
+
+  elemental function used_atoms(this) result(na)
+    class(electrode_t), intent(in) :: this
+    integer :: na
+    na = this%na_used
+  end function used_atoms
+
+  !elemental function OrbInElec(this,io) result(in)
+  elemental function has_orbital(this, io) result(has)
+    class(electrode_t), intent(in) :: this
     integer, intent(in) :: io
-    logical :: in
-    in = this%idx_o <= io .and. io < (this%idx_o + TotUsedOrbs(this))
-  end function OrbInElec
+    logical :: has
+    has = this%idx_o <= io .and. io < (this%idx_o + this%device_orbitals())
+  end function has_orbital
 
-  elemental function AtomInElec(this,ia) result(in)
-    type(Elec), intent(in) :: this
+!  elemental function AtomInElec(this,ia) result(in)
+  elemental function has_atom(this, ia) result(has)
+    class(electrode_t), intent(in) :: this
     integer, intent(in) :: ia
-    logical :: in
-    in = this%idx_a <= ia .and. ia < (this%idx_a + TotUsedAtoms(this))
-  end function AtomInElec
+    logical :: has
+    has = this%idx_a <= ia .and. ia < (this%idx_a + this%device_atoms())
+  end function has_atom
 
-  subroutine Elec_box2grididx(this,mesh,dL,imin,imax)
+  subroutine box_in_grid(this,mesh,dL,imin,imax)
     ! Returns grid indices for the minimum and maximum of
     ! the electrode box
-    type(Elec), intent(in) :: this
+    class(electrode_t), intent(in) :: this
     ! The global mesh size
     integer, intent(in) :: mesh(3)
     ! The mesh stepping per increment
@@ -1627,7 +1633,7 @@ contains
       ! Calculate pqosition in the grid
       call dgesv(3,1,LHS,3,idx,RHS,3,i)
       if ( i /= 0 ) then
-         call die('ts_electype: Could not solve linear system.')
+         call die('ts_electrode: Could not solve linear system.')
       end if
       
       ! Convert to integer position
@@ -1642,15 +1648,15 @@ contains
       
     end subroutine get_idx
     
-  end subroutine Elec_box2grididx
+  end subroutine box_in_grid
 
   ! Returns the fractional coordinates of the
   ! electrode atoms in the unit-cell.
   ! It can do so along any of the three cell
   ! directions.
-  subroutine Elec_frac(this,cell,na_u,xa,dir, &
+  subroutine fractional_cell(this,cell,na_u,xa,dir, &
        fmin, fmax)
-    type(Elec), intent(in) :: this
+    class(electrode_t), intent(in) :: this
     real(dp), intent(in) :: cell(3,3)
     integer, intent(in) :: na_u
     real(dp), intent(in) :: xa(3,na_u)
@@ -1666,7 +1672,7 @@ contains
     call reclat(cell,rcell,0) ! without 2pi
     lfmin =  huge(1._dp)
     lfmax = -huge(1._dp)
-    do i = this%idx_a , this%idx_a + TotUsedAtoms(this) - 1
+    do i = this%idx_a , this%idx_a + this%device_atoms() - 1
        ! Get supercell in the transport direction
        r = sum(xa(:,i) * rcell(:,dir))
        lfmin = min(lfmin,r)
@@ -1676,10 +1682,10 @@ contains
     if ( present(fmin) ) fmin = lfmin
     if ( present(fmax) ) fmax = lfmax
 
-  end subroutine Elec_frac
+  end subroutine fractional_cell
        
 
-  subroutine read_Elec(this,Bcast,io,ispin)
+  subroutine read_HS(this,Bcast,io,ispin)
     use fdf
     use parallel
 
@@ -1689,7 +1695,7 @@ contains
     use mpi_siesta
 #endif
 
-    type(Elec), intent(inout) :: this
+    class(electrode_t), intent(inout) :: this
     logical, intent(in), optional :: Bcast ! Bcast information
     logical, intent(in), optional :: IO ! Write to STD-out
     integer, intent(in), optional :: ispin ! select one spin-channel
@@ -1729,9 +1735,9 @@ contains
 
     if ( IONode .and. lio ) call print_type(this%sp)
 
-  end subroutine read_Elec
+  end subroutine read_HS
 
-  subroutine create_sp2sp01(this,IO)
+  subroutine create_sp2sp01(this, IO)
 
     use parallel, only : IONode
 #ifdef MPI
@@ -1742,7 +1748,7 @@ contains
     use create_Sparsity_SC
     use geom_helper, only : iaorb
 
-    type(Elec), intent(inout) :: this
+    class(electrode_t), intent(inout) :: this
     logical, intent(in), optional :: io
 
     logical :: lio, has_01
@@ -1909,7 +1915,7 @@ contains
   end subroutine create_sp2sp01
 
   subroutine delete_(this, all)
-    type(Elec), intent(inout) :: this
+    class(electrode_t), intent(inout) :: this
     logical, intent(in), optional :: all
 
     logical :: lall
@@ -1931,7 +1937,6 @@ contains
     call delete(this%H01)
     call delete(this%S01)
     call delete(this%sp01)
-
 
     if ( associated(this%isc_off) ) deallocate(this%isc_off)
 
@@ -1970,7 +1975,7 @@ contains
     use mpi_siesta
 #endif
 
-    type(Elec), intent(inout) :: this
+    class(electrode_t), intent(inout) :: this
     logical :: good
 
     real(dp), pointer :: H(:,:)
@@ -2162,7 +2167,7 @@ contains
     use m_ts_iodm
     
     ! We will copy over the density matrix and "fix it in the leads
-    type(Elec), intent(inout) :: this
+    class(electrode_t), intent(inout) :: this
     integer, intent(in) :: na_u, lasto(0:na_u), nsc(3), isc_off(3,product(nsc))
     real(dp), intent(in) :: xa(3,na_u), cell(3,3)
     type(dSpData2D), intent(inout) :: DM_2D, EDM_2D
@@ -2182,7 +2187,7 @@ contains
     alloc(3) = associated(this%isc_off)
 
     ! We *must* read in the isc_off array
-    call read_Elec(this, Bcast=.true., IO=.false.)
+    call this%read_HS(Bcast=.true., IO=.false.)
 
     i = len_trim(this%DEfile)
     is_TSDE = ( this%DEfile(i-3:i) == 'TSDE' )
@@ -2265,7 +2270,7 @@ contains
   subroutine print_settings(this,prefix,plane,box)
     use units, only : eV, Ang, Kelvin
     use parallel, only : Node
-    type(Elec), intent(in) :: this
+    class(electrode_t), intent(in) :: this
     character(len=*), intent(in) :: prefix
     logical, intent(in), optional :: plane, box
 
@@ -2292,7 +2297,7 @@ contains
     f16 = '('''//trim(prefix)//': '',a,t53,''= A'',2(i0,'', A''),i0)'
 
 
-    write(*,f11) '>> '//trim(name(this))
+    write(*,f11) '>> '//trim(this%name)
     write(*,f16) '  Electrode cell pivoting: E1, E2, E3', this%pvt
     if ( this%out_of_core ) then
        write(*,f10) '  GF file', trim(this%GFfile)
@@ -2313,7 +2318,7 @@ contains
       write(*,f15) '  Electrode Bloch unity [E1 x E2 x E3]', this%Bloch%B(:)
     end if
     write(*,f20) '  Position in geometry', this%idx_a, &
-        this%idx_a + TotUsedAtoms(this) - 1
+        this%idx_a + this%device_atoms() - 1
     select case ( this%t_dir )
     case ( 1 )
       chars = 'E1'
@@ -2414,18 +2419,8 @@ contains
 
   end subroutine print_settings
 
-  function Elec_idx(N_Elec,Elecs,El) result(idx)
-    integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec), El
-    integer :: idx
-    do idx = 1 , N_Elec
-       if ( Elecs(idx) == El ) return
-    end do
-    idx = 0
-  end function Elec_idx
-
-  function Elec_ortho2semi_inf(this, vec) result(ortho)
-    type(Elec), intent(in) :: this
+  function is_semi_inf_orthogonal(this, vec) result(ortho)
+    class(electrode_t), intent(in) :: this
     real(dp), intent(in) :: vec(3)
     logical :: ortho
     real(dp) :: proj
@@ -2456,6 +2451,17 @@ contains
       ortho = proj < 1.e-9_dp
     end select
 
-  end function Elec_ortho2semi_inf
+  end function is_semi_inf_orthogonal
+
+  function index_(this, n, electrodes) result(idx)
+    class(electrode_t), intent(in) :: this
+    integer, intent(in) :: n
+    type(electrode_t), intent(in) :: electrodes(n)
+    integer :: idx
+    do idx = 1 , n
+       if ( this == electrodes(idx) ) return
+    end do
+    idx = 0
+  end function index_
   
-end module m_ts_electype
+end module ts_electrode_m

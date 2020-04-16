@@ -759,7 +759,7 @@ contains
       use m_ts_options,          only: ts_hist_keep
       use m_ts_options,          only: ts_siesta_stop
       use m_ts_options,          only: ts_scf_mixs
-      use m_ts_electype
+      use ts_electrode_m
 
       integer :: iEl, na_a
       integer, allocatable :: allowed_a(:)
@@ -873,7 +873,7 @@ contains
           ! Copy over the DM in the lead
           ! Notice that the EDM matrix that is copied over
           ! will be equivalent at Ef == 0
-          call copy_DM(Elecs(iEl),na_u,xa,lasto,nsc,isc_off, &
+          call Elecs(iEl)%copy_DM(na_u,xa,lasto,nsc,isc_off, &
               ucell, DM_2D, EDM_2D, na_a, allowed_a)
            
         end do

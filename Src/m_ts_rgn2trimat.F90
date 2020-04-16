@@ -27,7 +27,7 @@ module m_ts_rgn2trimat
   use precision, only : dp, i8b
   use m_region
 
-  use m_ts_electype
+  use ts_electrode_m
   use m_ts_tri_common, only : GFGGF_needed_worksize
   use m_ts_tri_common, only : nnzs_tri
 
@@ -64,7 +64,7 @@ contains
 
     ! electrodes
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! Whether an entire column should be calculated
     logical, intent(in) :: IsVolt
     ! the distribution

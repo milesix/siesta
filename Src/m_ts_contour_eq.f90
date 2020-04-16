@@ -16,7 +16,7 @@ module m_ts_contour_eq
 ! Use the type associated with the contour
 ! Maybe they should be collected to this module.
 ! However, I like this partition.
-  use m_ts_electype
+  use ts_electrode_m
 
   use m_ts_cctype
   use m_ts_chem_pot

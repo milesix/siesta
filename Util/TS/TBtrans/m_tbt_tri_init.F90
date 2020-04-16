@@ -44,7 +44,7 @@ contains
 
     use m_ts_tri_common, only: ts_pivot_tri_sort_El
     use m_ts_rgn2trimat
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_method, only: TS_BTD_A_COLUMN, TS_BTD_A_PROPAGATION
 
 #ifdef MPI
@@ -77,7 +77,7 @@ contains
        call Sp_retain_region(dit,sp,r_oElpD(i),tmpSp2)
 
        ! Add the self-energy of the electrode (in its original position)
-       call rgn_range(tmp_roEl, Elecs(i)%idx_o, Elecs(i)%idx_o + TotUsedOrbs(Elecs(i)) - 1)
+       call rgn_range(tmp_roEl, Elecs(i)%idx_o, Elecs(i)%idx_o + Elecs(i)%device_orbitals() - 1)
        call crtSparsity_Union(dit,tmpSp2, tmp_roEl,tmpSp1)
        call delete(tmpSp2)
 
@@ -140,7 +140,7 @@ contains
     use m_ts_rgn2trimat
     use m_ts_tri_common, only : ts_pivot_tri_sort_El
     use m_ts_tri_common, only : nnzs_tri
-    use m_ts_electype
+    use ts_electrode_m
 #ifdef TRANSIESTA_DEBUG
     use m_ts_debug
 #endif
@@ -432,7 +432,7 @@ contains
     use m_pivot
 
     use m_ts_pivot, only: crt_el_priority
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_sparse, only : ts_sp_calculation
 
     use m_ts_tri_common
@@ -445,7 +445,7 @@ contains
     type(OrbitalDistribution), intent(inout) :: dit
     type(Sparsity), intent(inout) :: sp ! the local sparse pattern
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     real(dp), intent(in) :: cell(3,3)
     integer, intent(in) :: na_u
     real(dp), intent(in) :: xa(:,:)

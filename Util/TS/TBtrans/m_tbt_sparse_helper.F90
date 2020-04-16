@@ -64,7 +64,7 @@ contains
     use intrinsic_missing, only : SFIND
     use geom_helper,       only : UCORB
 
-    use m_ts_electype
+    use ts_electrode_m
 
     use m_tbt_kregions, only : kRegion, kregion_k
 
@@ -85,7 +85,7 @@ contains
     integer, intent(in) :: na_u, lasto(0:)
     ! The electrodes
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     integer, intent(in) :: no_u, n_s
     ! The number of elements in the sparse arrays
     integer, intent(in) :: n_nzs

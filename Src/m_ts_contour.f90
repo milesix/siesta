@@ -16,7 +16,7 @@ module m_ts_contour
 ! Use the type associated with the contour
 ! Maybe they should be collected to this module.
 ! However, I like this partition.
-  use m_ts_electype
+  use ts_electrode_m
   use m_ts_chem_pot
 
   use m_ts_cctype
@@ -60,7 +60,7 @@ contains
     use m_ts_contour_neq, only : read_contour_neq_options
 
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     integer, intent(in) :: N_mu
     type(ts_mu), intent(inout) :: mus(N_mu)
     ! SIESTA electronic temperature

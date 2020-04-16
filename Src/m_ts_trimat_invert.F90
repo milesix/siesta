@@ -151,11 +151,11 @@ contains
 #ifdef TBTRANS
   subroutine BiasTrimat_prep(M,N_Elec,Elecs,has_El,part_cols)
 
-    use m_ts_electype
+    use ts_electrode_m
 
     type(zTriMat), intent(inout) :: M
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     logical, intent(in) :: has_El(:)
     integer, intent(inout), allocatable :: part_cols(:,:)
 
@@ -218,11 +218,11 @@ contains
 
   subroutine invert_BiasTriMat_col(M,Minv,El,calc_parts)
 
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_method, only : orb_offset
 
     type(zTriMat), intent(inout) :: M, Minv
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
     logical, intent(in) :: calc_parts(:)
 
     complex(dp), pointer :: Mpinv(:), Mp(:)
@@ -268,7 +268,7 @@ contains
     np = parts(M)
 
     idx_o = El%idx_o - orb_offset(El%idx_o)
-    no = TotUsedOrbs(El)
+    no = El%device_orbitals()
 
     sPart = which_part(M,idx_o)
     ePart = which_part(M,idx_o+no-1)

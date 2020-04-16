@@ -40,7 +40,7 @@ contains
 
     use m_region
 
-    use m_ts_electype
+    use ts_electrode_m
     use m_tbt_options, only : N_Elec, Elecs
 
     use m_tbt_hs, only: tTSHS, spin_idx, Volt, prep_next_HS
@@ -174,7 +174,7 @@ contains
        ! Allocate the non-repeated hamiltonian and overlaps...
        no_used = Elecs(iEl)%no_used
        if ( Elecs(iEl)%pre_expand > 1 ) then ! > 1 also expand H, S before writing
-          no_used = TotUsedOrbs(Elecs(iEl))
+          no_used = Elecs(iEl)%device_orbitals()
           nq(iEl) = 1
        end if
 
@@ -190,7 +190,7 @@ contains
        ! We need to retain the maximum size of Gamma
        ! I.e. take into account that the down-projected region
        ! could be larger than the read in self-energy
-       no_used = TotUsedOrbs(Elecs(iEl))
+       no_used = Elecs(iEl)%device_orbitals()
        no_used2 = no_used
        if ( Elecs(iEl)%pre_expand == 0 ) then
           no_used2 = Elecs(iEl)%no_used
@@ -347,7 +347,7 @@ contains
     !***********************
     do iEl = 1 , N_Elec
        if ( .not. Elecs(iEl)%out_of_core ) then
-          call delete(Elecs(iEl))
+          call Elecs(iEl)%delete()
        end if
     end do
 
@@ -447,22 +447,22 @@ contains
       use class_dSpData1D
       use class_dSpData2D
       use alloc, only : re_alloc
-      type(Elec), intent(inout) :: El
+      type(electrode_t), intent(inout) :: El
       integer, intent(in) :: spin_idx
 
       ! If already initialized, return immediately
       if ( initialized(El%sp) ) return
 
       ! Read-in and create the corresponding transfer-matrices
-      call delete(El) ! ensure clean electrode
-      call read_Elec(El, Bcast=.true., IO = .false., ispin = spin_idx )
+      call El%delete() ! ensure clean electrode
+      call El%read_HS(Bcast=.true., IO = .false., ispin = spin_idx )
       
       if ( .not. associated(El%isc_off) ) then
          call die('An electrode file needs to be a non-Gamma calculation. &
               &Ensure at least two k-points in the T-direction.')
       end if
       
-      call create_sp2sp01(El, IO = .false.)
+      call El%create_sp2sp01(IO = .false.)
 
       ! Clean-up, we will not need these!
       ! we should not be very memory hungry now, but just in case...
@@ -480,7 +480,7 @@ contains
 
     subroutine open_GF(N_Elec,Elecs,uGF,nkpnt,NEn,spin_idx)
       integer, intent(in) :: N_Elec
-      type(Elec), intent(inout) :: Elecs(N_Elec)
+      type(electrode_t), intent(inout) :: Elecs(N_Elec)
       integer, intent(out) :: uGF(N_Elec)
       integer, intent(in) :: nkpnt, NEn, spin_idx
 

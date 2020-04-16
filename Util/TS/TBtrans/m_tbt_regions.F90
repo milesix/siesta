@@ -78,7 +78,7 @@ contains
     use create_Sparsity_SC
     use create_Sparsity_Union
 
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_method, only : atom_type, TYP_DEVICE, TYP_BUFFER
 
     use m_ts_sparse, only : ts_Sparsity_Global
@@ -93,7 +93,7 @@ contains
     ! Number of electrodes
     integer, intent(in) :: N_Elec
     ! electrodes
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     ! The device region unit-cell
     real(dp), intent(in) :: cell(3,3)
     ! Last orbital of each atom
@@ -145,11 +145,11 @@ contains
 
        ! Create electrode region
        ia1 = Elecs(iEl)%idx_a
-       ia2 = ia1 - 1 + TotUsedAtoms(Elecs(iEl))
+       ia2 = ia1 - 1 + Elecs(iEl)%device_atoms()
        call rgn_range(r_aEl_alone(iEl), ia1, ia2)
 
        ia1 = Elecs(iEl)%idx_o
-       ia2 = ia1 - 1 + TotUsedOrbs(Elecs(iEl))
+       ia2 = ia1 - 1 + Elecs(iEl)%device_orbitals()
        call rgn_range(r_oEl_alone(iEl), ia1, ia2)
        
        ! Check that we have a legal region
@@ -848,12 +848,12 @@ contains
 
     use parallel, only : Node
     use m_verbosity, only : verbosity
-    use m_ts_electype
+    use ts_electrode_m
 
     integer, intent(in) :: na_u
     integer, intent(in) :: lasto(0:)
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     integer :: i
     type(tRgn) :: r
 
