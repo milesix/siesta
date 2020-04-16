@@ -31,7 +31,7 @@ module m_ts_contour_neq
   ! For further attributions see the original paper by Brandbyge, et. al, 2002: DOI: 10.1103/PhysRevB.65.165401
   
   ! The non-equilibrium contour IO-segments
-  integer, save, public :: N_nEq
+  integer, save, public :: N_nEq = 0
   type(ts_c_io), pointer, save, public :: nEq_io(:) => null()
   type(ts_cw)  , pointer, save, public :: nEq_c(:) => null()
 
@@ -980,7 +980,6 @@ contains
 
     do i = 1, N_nEq
       call delete(nEq_io(i))
-      deallocate(nEq_c(i)%ID)
       deallocate(nEq_c(i)%c)
       deallocate(nEq_c(i)%w)
       nullify(nEq_c(i)%c_io)

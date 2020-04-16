@@ -77,6 +77,6 @@ _CLEAN_JOBS = $(addprefix clean-,$(LIST))
 
 clean: $(_CLEAN_JOBS)
 $(_CLEAN_JOBS): clean-%:
-	@echo ">>>> Cleaning $(name)_$* test..."
+	@echo ">>>> Cleaning $(name)_$* [label=$(label)] test..."
 	rm -rf $(label)_$* completed_$(label)_$* $(name)_$*.out $(name)_$*.xml
 

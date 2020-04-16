@@ -132,14 +132,17 @@ module ts_electrode_m
     type(dSpData1D) :: S00, S01
 
     ! These arrays are used to construct the full Hamiltonian and overlap and Green function
-    complex(dp), pointer :: HA(:,:,:), SA(:,:,:), GA(:)
+    complex(dp), pointer :: HA(:,:,:) => null()
+    complex(dp), pointer :: SA(:,:,:) => null()
+    complex(dp), pointer :: GA(:) => null()
 
     ! Arrays needed to partition the scattering matrix and self-energies
 
     ! Gamma stored is actually this: i (Sigma - Sigma^\dagger) ^ T
     ! and NOT: i (Sigma - Sigma^\dagger)
     ! Using the transposed Gamma allows certain optimizations
-    complex(dp), pointer :: Gamma(:), Sigma(:)
+    complex(dp), pointer :: Gamma(:) => null()
+    complex(dp), pointer :: Sigma(:) => null()
 
     ! The accuracy required for the self-energy
     !  == 1e-13 * eV

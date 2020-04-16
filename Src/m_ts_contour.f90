@@ -36,6 +36,7 @@ module m_ts_contour
   public :: print_contour_block
   public :: io_contour
   public :: sort_contour
+  public :: ts_contour_reset
 
 contains
 
@@ -144,5 +145,14 @@ contains
     end do
 
   end subroutine sort_contour
+
+  subroutine ts_contour_reset
+    use m_ts_contour_eq, only: ts_contour_eq_reset
+    use m_ts_contour_neq, only: ts_contour_neq_reset
+
+    call ts_contour_eq_reset()
+    call ts_contour_neq_reset()
+
+  end subroutine ts_contour_reset
 
 end module m_ts_contour
