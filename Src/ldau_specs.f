@@ -216,6 +216,11 @@
                                                 !   stored
       use atm_types,   only : nspecies          ! Total number of different  
                                                 !   atomic species
+      use atm_types,   only : ldau_so_integrals_type
+                                                ! Derived type for the 
+                                                !   definition of the on-site 
+                                                !   four-center-integrals
+                                                !   required for LDA+U+Spinorbit
       use units,       only : pi, eV            ! Conversions
       use alloc,       only : re_alloc          ! Allocation routines
       use radial                                ! Derived type for the radial
@@ -324,7 +329,6 @@
       use fdf
       use m_cite, only: add_citation
       use parallel, only: IONode
-      use m_vee_integrals, only: ee_4index_int_real
 
       type(basis_def_t), pointer :: basp
       type(ldaushell_t), pointer :: ldau
@@ -599,34 +603,34 @@
             endif
           endif
 
-          if ( spin%NCol .or. spin%SO ) then
-            call re_alloc( ldau%Slater_F, 0, 2*ldau%l, 'Slater_F', 
-     .        'read_ldau_specs' )
-            ldau%Slater_F = 0.0_dp
-            if( ldau%l .eq. 2 ) then
-              ldau%Slater_F(0) = ldau%u
-              ldau%Slater_F(2) = (5390.0_dp/637.0_dp) * ldau%j
-              ldau%Slater_F(4) = (3528.0_dp/637.0_dp) * ldau%j
-            else 
-              call die('Slater integrals not implemented')
-            endif
-
-            call re_alloc( ldau%vee_4center_integrals, 
-     .        1, 2*ldau%l + 1, 
-     .        1, 2*ldau%l + 1, 
-     .        1, 2*ldau%l + 1, 
-     .        1, 2*ldau%l + 1, 
-     .        'vee_4center_integrals', 
-     .        'read_ldau_specs' )
-            ldau%vee_4center_integrals = 0.0_dp
-            call ee_4index_int_real( ldau%l, 
-     .                               ldau%Slater_F, 
-     .                               ldau%vee_4center_integrals )
-          end if
-!         For debugging
-          call print_ldaushell( ldau )
-          call die('Testing LDA+U and SO')
-!         End debugging
+!          if ( spin%NCol .or. spin%SO ) then
+!            call re_alloc( ldau%Slater_F, 0, 2*ldau%l, 'Slater_F', 
+!     .        'read_ldau_specs' )
+!            ldau%Slater_F = 0.0_dp
+!            if( ldau%l .eq. 2 ) then
+!              ldau%Slater_F(0) = ldau%u
+!              ldau%Slater_F(2) = (5390.0_dp/637.0_dp) * ldau%j
+!              ldau%Slater_F(4) = (3528.0_dp/637.0_dp) * ldau%j
+!            else 
+!              call die('Slater integrals not implemented')
+!            endif
+!
+!            call re_alloc( ldau%vee_4center_integrals, 
+!     .        1, 2*ldau%l + 1, 
+!     .        1, 2*ldau%l + 1, 
+!     .        1, 2*ldau%l + 1, 
+!     .        1, 2*ldau%l + 1, 
+!     .        'vee_4center_integrals', 
+!     .        'read_ldau_specs' )
+!            ldau%vee_4center_integrals = 0.0_dp
+!            call ee_4index_int_real( ldau%l, 
+!     .                               ldau%Slater_F, 
+!     .                               ldau%vee_4center_integrals )
+!          end if
+!!         For debugging
+!          call print_ldaushell( ldau )
+!!          call die('Testing LDA+U and SO')
+!!         End debugging
 
         enddo shells     ! end of loop over shells for species isp
 
@@ -1674,11 +1678,14 @@
 !     derived type related with the LDA+U projectors.
 !
       use alloc, only : de_alloc
-      type(species_info),      pointer :: spp
-      type(basis_def_t),       pointer :: basp
-      type(ldaushell_t),       pointer :: ldaushell
-      type(rad_func),          pointer :: pp
-      type(pseudopotential_t), pointer :: vps   
+      use m_vee_integrals, only: ee_4index_int_real
+
+      type(species_info),           pointer :: spp
+      type(basis_def_t),            pointer :: basp
+      type(ldaushell_t),            pointer :: ldaushell
+      type(ldau_so_integrals_type), pointer :: ldauintegrals
+      type(rad_func),               pointer :: pp
+      type(pseudopotential_t),      pointer :: vps   
 
 !     Internal variables
       integer  :: is      ! Counter for the loop on atomic species
@@ -1740,12 +1747,20 @@
 !       for each atomic specie
         spp%lmax_ldau_projs = basp%lmxldaupj
 
+!       Allocate the pointers for the value of the Slater and four center 
+!       integrals required in the case of spin-orbit and non-collinear spin
+        if ( spin%NCol .or. spin%SO ) then
+          nullify( spp%ldau_so_integrals ) 
+          allocate( spp%ldau_so_integrals(spp%n_pjldaunl) )
+        endif 
+
 !       Loop on all the projectors for a given specie
 !       This loop is done only on the different radial shapes,
 !       without considering the (2l + 1) possible angular dependencies
         imcount = 0
         loop_projectors: do iproj = 1, spp%n_pjldaunl
           ldaushell => basp%ldaushell(iproj)
+          ldauintegrals => spp%ldau_so_integrals(iproj)
 
           spp%pjldaunl_n(iproj) = 1
           spp%pjldaunl_l(iproj) = ldaushell%l
@@ -1761,6 +1776,33 @@
             spp%pjldau_m(imcount)     = im
             spp%pjldau_index(imcount) = iproj
           enddo 
+
+          if ( spin%NCol .or. spin%SO ) then
+            nullify( ldauintegrals%Slater_F ) 
+            allocate( ldauintegrals%Slater_F(0:2*l) )
+            ldauintegrals%Slater_F = 0.0_dp
+            if( spp%pjldaunl_l(iproj) .eq. 2 ) then
+              ldauintegrals%Slater_F(0) = spp%pjldaunl_U(iproj)
+              ldauintegrals%Slater_F(2) = (5390.0_dp/637.0_dp) * 
+     .                                     spp%pjldaunl_J(iproj)
+              ldauintegrals%Slater_F(4) = (3528.0_dp/637.0_dp) * 
+     .                                     spp%pjldaunl_J(iproj)
+            else 
+              call die('Slater integrals not implemented')
+            endif
+
+            nullify( ldauintegrals%vee_4center_integrals )
+            allocate(ldauintegrals%vee_4center_integrals(
+     .               2 * spp%pjldaunl_l(iproj) + 1, 
+     .               2 * spp%pjldaunl_l(iproj) + 1, 
+     .               2 * spp%pjldaunl_l(iproj) + 1, 
+     .               2 * spp%pjldaunl_l(iproj) + 1  ) )
+            ldauintegrals%vee_4center_integrals = 0.0_dp
+            call ee_4index_int_real( spp%pjldaunl_l(iproj),
+     .                             ldauintegrals%Slater_F, 
+     .                             ldauintegrals%vee_4center_integrals )
+          endif 
+
         enddo loop_projectors ! End loop on projectors for a given specie
         if( imcount .ne. spp%nprojsldau ) call die('LDA+U indexing...')
 

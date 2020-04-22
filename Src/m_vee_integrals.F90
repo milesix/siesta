@@ -305,11 +305,11 @@ module m_vee_integrals
  &                      (-1)**m * wigner_3j(l_value,k,l_value,0,0,0)    *    &
  &                      wigner_3j(l_value,k,l_value,-m,m-mprime,mprime)
 
-!                 For debugging
-                  write(6,'(a,4i5,f12.5)')                                  &
- &                  'ee_integrals_cmplx: m,       mprime , k, q, Gab   = ', &
- &                  m, mprime, k, q, Gab
-!                 End debugging
+!!                 For debugging
+!                  write(6,'(a,4i5,f12.5)')                                  &
+! &                  'ee_integrals_cmplx: m,       mprime , k, q, Gab   = ', &
+! &                  m, mprime, k, q, Gab
+!!                 End debugging
 
 !
 !                 Gapbp = <lm''|Y*_{kq}|lm'''>
@@ -320,11 +320,11 @@ module m_vee_integrals
  &                 wigner_3j(l_value,k,l_value,0,0,0)                   *    &
  &                 wigner_3j(l_value,k,l_value,-m2prime,m2prime-m3prime,m3prime)
 
-!                 For debugging
-                  write(6,'(a,4i5,f12.5)')                                  &
- &                  'ee_integrals_cmplx: m2prime, m3prime, k, q, Gapbp = ', &
- &                  m2prime, m3prime, k, q, Gapbp
-!                 End debugging
+!!                 For debugging
+!                  write(6,'(a,4i5,f12.5)')                                  &
+! &                  'ee_integrals_cmplx: m2prime, m3prime, k, q, Gapbp = ', &
+! &                  m2prime, m3prime, k, q, Gapbp
+!!                 End debugging
 
 !                 Add values to the four-center integral
                   myint = myint + (4*pi/(2*k+1))        *        &
@@ -583,20 +583,23 @@ module m_vee_integrals
 !
 !   Define the transformation matrices:
 !   The transformations below are from the 
-!   imaginary to the real spherical spherical harmonics.
-!   This transformations are unitary.
-!   Since we are interested in the transformation from real to imaginary,
-!   we have to invert the transformations as defined below,
-!   but since the transformations are unitary the inverse is equal
-!   to the transpose
-!
+!   complex to the real spherical spherical harmonics.
+!   The first index of transmat refers to the real spherical harmonic
+!   The second index of transmat refers to the complex spherical harmonic
+!   real_spherical_harmonic(first_index) = 
+!       \sum_{second_index} transmat(first_index,second_index) \times
+!                           complex_spherical_harmonic(second_index)
+!   These transformations are unitary.
+!   Due to the way reshape is defined here, we need to take the transpose
+!   of the matrix to adapt to the former convention.
+
     if ( l_value .eq. 0 ) then
 !     if l = 0, then the transformation matrix is trivial
       transmat = 1.0_dp
 
     elseif ( l_value .eq. 1 ) then  
 !       if l = 1, then the transformation matrix is a (3x3) matrix
-!       from the three imaginary spherical harmonic (1,-1), (1, 0), and (1,1)
+!       from the three complex spherical harmonic (1,-1), (1, 0), and (1,1)
 !       to the real spherical harmonic,
 !       with the convention that
 !       (1, -1) => p_y
@@ -610,7 +613,7 @@ module m_vee_integrals
 
     elseif ( l_value .eq. 2 ) then 
 !       if l = 2, then the transformation matrix is a (5x5) matrix
-!       from the three imaginary spherical harmonic 
+!       from the five complex spherical harmonic 
 !       (2,-2), (2, -1), (2,0), (2,1), and (2,2)
 !       to the real spherical harmonic,
 !       with the convention that
@@ -629,7 +632,7 @@ module m_vee_integrals
 
     else if (l_value.eq.3) then
 !       if l = 3, then the transformation matrix is a (7x7) matrix
-!       from the three imaginary spherical harmonic 
+!       from the seven complex spherical harmonic 
 !       (3,-3), (3, -2), (3,-1), (3,0), (3,1), (3,2), and (3,3)
 !       to the real spherical harmonic,
 !       with the convention that
@@ -697,7 +700,9 @@ module m_vee_integrals
 
     integer  :: nfuns
                                   ! Total number of magnetic quantum numbers
-    integer  :: a, m_a, b, m_b, ap, m_ap, bp, m_bp
+    integer  :: m_a, m_b, m_ap, m_bp
+                                  ! Counters for the loop on angular momenta
+    integer  :: m, mprime, m2prime, m3prime
                                   ! Counters for the loop on angular momenta
     real(dp) :: imag_ints( 2*l_value+1, 2*l_value+1, 2*l_value+1, 2*l_value+1 )
                                   ! Value of the four center integral
@@ -736,13 +741,14 @@ module m_vee_integrals
     if( ee_integrals_cmplx( l_value, Slater_F, imag_ints ) ) return 
 
 !!   For debugging
-!    do a = 1, 2*l_value + 1
-!      do b = 1, 2*l_value + 1
-!        do ap = 1, 2*l_value + 1
-!          do bp = 1, 2*l_value + 1
-!            write(6,'(a,4i5,f12.5)')                              &
-! &            'ee_4index_int_real: a, b, ap, bp, imag_ints = ',   &
-! &            a, b, ap, bp, imag_ints(a, b, ap, bp) 
+!    do m = 1, 2*l_value + 1
+!      do mprime = 1, 2*l_value + 1
+!        do m2prime = 1, 2*l_value + 1
+!          do m3prime = 1, 2*l_value + 1
+!            write(6,'(a,4i5,f12.5)')                                  &
+! &            'ee_4index_int_real: m, mp, m2p, m3p, imag_ints = ',    &
+! &            m, mprime, m2prime, m3prime,                            &
+! &            imag_ints(m, mprime, m2prime, m3prime)
 !          enddo 
 !        enddo 
 !      enddo 
@@ -752,7 +758,18 @@ module m_vee_integrals
 !   Get the transformation matrix from imaginary to real harmonics  
     if( complex_to_real_harmonics( l_value, transmat ) ) return 
                                                              ! something failed
-!   It is a unitary matrix, the inverse is the transpose
+
+!!   For debugging
+!    do m = 1, 2*l_value +1 
+!      do m_a = 1, 2*l_value +1 
+!        write(6,'(a,2i5,2f12.5)')                          &
+! &        'ee_4index_int_real: a, b, transmat(a,b) = ',    &
+! &        m, m_a, transmat(m,m_a)
+!      enddo 
+!    enddo 
+!!   End debugging
+
+!   It is a unitary matrix, the inverse is the adjoint (conjugate transpose)
     trans_inv = transpose( conjg(transmat) )
 
 !   Prepare the integrals
@@ -762,17 +779,18 @@ module m_vee_integrals
 
 !   Transform the integrals between imaginary spherical harmonics
 !   into the integrals between real spherical harmonics 
-    do a = 1,nfuns
-      do m_a = 1, 2*l_value+1
-        do b = 1, nfuns
-          do m_b = 1, 2*l_value+1
-            do ap = 1, nfuns
-              do m_ap = 1, 2*l_value+1
-                do bp = 1, nfuns
-                  do m_bp = 1, 2*l_value+1
-                    real_ints(a,b,ap,bp) = real_ints(a,b,ap,bp)    +    & 
- &                     trans_inv( m_a, a ) * trans_inv( m_ap, ap ) *    &
- &                     transmat( b, m_b ) * transmat( bp, m_bp )   *    &
+    do m = 1,nfuns
+      do m_a = 1, nfuns
+        do mprime = 1, nfuns
+          do m_b = 1, nfuns
+            do m2prime = 1, nfuns
+              do m_ap = 1, nfuns
+                do m3prime = 1, nfuns
+                  do m_bp = 1, nfuns
+                    real_ints(m,mprime,m2prime,m3prime) =                      &
+ &                    real_ints(m,mprime,m2prime,m3prime)    +                 &
+ &                    trans_inv( m_a, m )        * transmat( mprime, m_b )   * &
+ &                    trans_inv( m_ap, m2prime ) * transmat( m3prime, m_bp ) * &
  &                     imag_ints( m_a, m_b, m_ap, m_bp )
                   enddo
                 enddo
@@ -783,15 +801,32 @@ module m_vee_integrals
       enddo
     enddo
     
-    do a = 1, nfuns
-      do b = 1, nfuns
-        do ap = 1, nfuns
-          do bp = 1, nfuns
-            vee_integral_real(a,b,ap,bp)=real(real_ints(a,b,ap,bp) )
+    do m = 1, nfuns
+      do mprime = 1, nfuns
+        do m2prime = 1, nfuns
+          do m3prime = 1, nfuns
+            vee_integral_real(m, mprime, m2prime, m3prime) =        &
+ &               real( real_ints(m, mprime, m2prime, m3prime) )
           enddo
         enddo
       enddo
     enddo
+
+!! For debugging
+!    do m = 1, nfuns
+!      do mprime = 1, nfuns
+!        do m2prime = 1, nfuns
+!          do m3prime = 1, nfuns
+!            write(6,'(a,4i5,3f12.5)')                                 &
+! &            'ee_4index_int_real: m, mp, m2p, m3p, real_ints = ',    &
+! &            m, mprime, m2prime, m3prime,                            &
+! &            real_ints(m, mprime, m2prime, m3prime),                 &
+! &            vee_integral_real(m, mprime, m2prime, m3prime) 
+!          enddo
+!        enddo
+!      enddo
+!    enddo
+!! End debugging
 
 ! Check the results are correct
 !do a = 1,nfuns
@@ -802,14 +837,6 @@ module m_vee_integrals
 !end do
 !end do
 !end do
-!end do
-!write(*,*) "reprintout b"
-!do a=-l_value,l_value
-!write(*,'(10(f14.8,x))') (49*9*real_ints(a+l_value+1,a+l_value+1,b+l_value+1,b+l_value+1),b=-l_value,l_value)
-!end do
-!write(*,*) "reprintout c"
-!do a=-l_value,l_value
-!write(*,'(10(f14.8,x))') (49*9*real_ints(a+l_value+1,b+l_value+1,b+l_value+1,a+l_value+1),b=-l_value,l_value)
 !end do
     
   end subroutine ee_4index_int_real 

@@ -572,7 +572,7 @@ basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
 basis_io.o: precision.o pseudopotential.o radial.o sys.o xml.o
 basis_specs.o: basis_types.o chemical.o periodic_table.o precision.o
 basis_specs.o: pseudopotential.o sys.o
-basis_types.o: alloc.o atmparams.o precision.o pseudopotential.o sys.o m_spin.o
+basis_types.o: alloc.o atmparams.o precision.o pseudopotential.o sys.o 
 bessph.o: precision.o sys.o
 bloch_unfold.o: units.o
 bonds.o: alloc.o atmfuncs.o mneighb.o precision.o sorting.o units.o
@@ -901,7 +901,8 @@ m_iostruct.o: siesta_geom.o sys.o units.o
 m_iotddft.o: files.o m_dipol.o m_io.o m_steps.o parallel.o siesta_options.o
 m_iotddft.o: units.o wavefunctions.o
 m_kinetic.o: precision.o
-m_ldau_so.o: precision.o sys.o
+m_ldau_so.o: precision.o sys.o atm_types.o siesta_geom.o sparse_matrices.o
+m_ldau_so.o: parallel.o parallelsubs.o atomlist.o
 m_mat_invert.o: intrinsic_missing.o m_pivot_array.o precision.o
 m_matdiag.o: precision.o
 m_matio.o: alloc.o parallel.o
@@ -1274,6 +1275,7 @@ setup_hamiltonian.o: ldau_specs.o m_dipol.o m_energies.o m_hsx.o m_mpi_utils.o
 setup_hamiltonian.o: m_ntm.o m_partial_charges.o m_rhog.o m_spin.o m_steps.o
 setup_hamiltonian.o: m_stress.o metaforce.o molecularmechanics.o parallel.o
 setup_hamiltonian.o: siesta_geom.o siesta_options.o sparse_matrices.o sys.o
+setup_hamiltonian.o: m_ldau_so.o
 setup_ordern_indexes.o: alloc.o domain_decom.o parallel.o spatial.o
 shaper.o: atmfuncs.o mneighb.o precision.o
 show_distribution.o: atomlist.o parallel.o parallelsubs.o siesta_geom.o sys.o

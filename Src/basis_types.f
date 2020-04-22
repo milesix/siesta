@@ -101,29 +101,6 @@
                                                    !   are now defined in the 
                                                    !   derived type "species"
                                                    !   in module atm_types
-          real(dp), pointer         :: Slater_F(:)
-                                                   ! Slater integrals, 
-                                                   !   involving the radial part
-                                                   !   of the atomic wave funcs.
-                                                   !   Used when LDA+U is used 
-                                                   !   together with Spin-Orbit
-                                                   !   or non-collinear
-                                                   !   magnetism
-          real(dp), pointer         :: vee_4center_integrals(:,:,:,:)
-                                                   ! Values of the four center
-                                                   !   integrals with the 
-                                                   !   electron–electron 
-                                                   !   interactions, that are
-                                                   !   expressed as the 
-                                                   !   integrals of the Coulomb
-                                                   !   kernel on the 
-                                                   !   wave functions of the 
-                                                   !   localized basis set 
-                                                   !   (e.g. d atomic states)
-                                                   !   Used when LDA+U is used 
-                                                   !   together with Spin-Orbit
-                                                   !   or non-collinear
-                                                   !   magnetism
       end type ldaushell_t
 !
 !     Main data structure
@@ -291,8 +268,6 @@
       p%lambda  = 1.0_dp
       p%dnrm_rc = 0.9_dp
       p%width   = 0.5_dp
-      nullify(p%Slater_F)
-      nullify(p%vee_4center_integrals)
       end subroutine init_ldaushell
 
 !-----------------------------------------------------------------------
@@ -422,8 +397,6 @@
 
 !-----------------------------------------------------------------------
       subroutine print_ldaushell(p)
-      use m_spin,        only: spin             ! relevant information regarding
-                                                !   spin configuration
 
       type(ldaushell_t)            :: p
       integer :: i
@@ -440,12 +413,6 @@
       write(6,'(5x,a25,g20.5)') 'dnrm_rc:',     p%dnrm_rc
       write(6,'(5x,a25,g20.5)') 'rc:',          p%rc
       write(6,'(5x,a25,i10)')   'nrc:',         p%nrc
-      if ( spin%NCol .or. spin%SO ) then
-        do i = 0, 2*p%l
-          write(6,'(5x,a25,i5,g20.5,a3)') 'Slater_F:', i, p%Slater_F(i),
-     .      ' Ry'
-        enddo 
-      endif 
       write(6,*) '---------------------LDAUSHELL'
 
       end subroutine print_ldaushell

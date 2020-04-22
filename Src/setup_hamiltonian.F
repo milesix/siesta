@@ -52,6 +52,7 @@
       use m_partial_charges, only: want_partial_charges
       use files, only : filesOut_t    ! derived type for output file names
       use m_rhog, only: rhog_in, rhog
+      use m_ldau_so, only: ldau_so_hamil
 #ifdef MPI
       use m_mpi_utils, only: globalize_sum
 #endif
@@ -225,6 +226,7 @@
 ! Hubbard term for LDA+U: energy, forces, stress and matrix elements ....
       if( switch_ldau ) then
 !       jjunquer
+        call ldau_so_hamil
         if ( spin%NCol ) then
          call die('LDA+U cannot be used with non-collinear spin.')
         end if
