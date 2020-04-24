@@ -14,7 +14,7 @@
 
       USE siesta_options
       use sparse_matrices, only: H_kin_1D, H_vkb_1D
-      use sparse_matrices, only: H_ldau_2D
+      use sparse_matrices, only: H_ldau_2D, H_ldau_so_2D
       use sparse_matrices, only: H_so_on_2D, H_so_off_2D
       use sparse_matrices, only: listh, listhptr, numh, maxnh
       use sparse_matrices, only: H, S, Hold
@@ -74,6 +74,7 @@
 
       real(dp), pointer   :: H_vkb(:), H_kin(:), H_ldau(:,:)
       real(dp), pointer   :: H_so_on(:,:)
+      complex(dp), pointer:: H_ldau_so(:,:)
       complex(dp), pointer:: H_so_off(:,:)
 
       complex(dp):: Dc
@@ -226,12 +227,13 @@
 ! Hubbard term for LDA+U: energy, forces, stress and matrix elements ....
       if( switch_ldau ) then
 !       jjunquer
-        call ldau_so_hamil
         if ( spin%NCol ) then
          call die('LDA+U cannot be used with non-collinear spin.')
         end if
         if ( spin%SO ) then
-         call die('LDA+U cannot be used with spin-orbit coupling.')
+          H_ldau_so => val(H_ldau_so_2D)
+          call ldau_so_hamil( H_ldau_so )
+          call die('LDA+U cannot be used with spin-orbit coupling.')
         end if
 !       end jjunquer
 

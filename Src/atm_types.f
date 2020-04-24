@@ -168,6 +168,12 @@
                                              !   together with Spin-Orbit
                                              !   or non-collinear
                                              !   magnetism
+        integer, dimension(:,:), pointer :: index_neig_orb_corr
+                                             ! Within the correlated shell,
+                                             !   it gives the index in the
+                                             !   neighbour list that relates
+                                             !   two orbitals of magnetic 
+                                             !   quantum numbers m and m'
       end type ldau_so_integrals_type
 
 
