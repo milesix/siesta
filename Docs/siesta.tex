@@ -960,7 +960,7 @@ libraries
   \index{External library!ELSI}%
   The ELSI library may be used with \siesta\ for access to a range of
   solvers, see Sec.~\ref{SolverELSI}. Currently the interface is
-  implemented (tested) for ELSI 2.2.0 to 2.4.1 (avoid 2.4.0, as it is buggy). If
+  implemented (tested) for ELSI 2.2.0 to 2.5.0 (avoid 2.4.0, as it is buggy). If
   newer versions retain the same interface they may also be used.
 
   (This description applies to the standard ELSI library without
@@ -7190,6 +7190,17 @@ ELSI manual:
 \end{fdfentry}
 
 \begin{fdfentry}{ELSI!OMM!Tolerance}[real]<$10^{-9}$>
+\end{fdfentry}
+
+\begin{fdfentry}{ELSI!PEXSI!Method}[integer]< {\bf 3}>
+  Method for computing the poles: 1: Contour integral,
+  2: Minimax rational approximation, 3 (default): Adaptive Antoulas-Anderson
+  (AAA). Please see the manual for a fuller discussion.
+
+  Support for this parameter was introduced in ELSI in early 2020. If
+  your library does not have it, please define the preprocessor flag
+  \texttt{-DSIESTA\_\_ELSI\_DOES\_NOT\_HAVE\_PEXSI\_METHOD} at compile time.
+
 \end{fdfentry}
 
 \begin{fdfentry}{ELSI!PEXSI!TasksPerPole}[integer]< {\bf no default}>
