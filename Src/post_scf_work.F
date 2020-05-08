@@ -73,7 +73,16 @@
          ! Note that we do not care about the content of H and S
          ! Only that the appropriate elsi_h handle is still active
          ! and allows us to get the appropriate EDM
-         call elsi_getdm(iscf, no_s, spin%spinor, 
+
+         ! If the scf cycle only takes one iteration, iscf here will
+         ! be still 1, and the initialization logic in the ELSI module
+         ! will re-create all the data structures, spoiling the context
+         ! for the retrieval of the EDM. Hence the kludge: we set
+         ! iscf to a safe value (large to catch any cosmetic use in the future)
+         ! To really fix this, the code should be updated to avoid re-initializations
+         ! (including communicators, etc) when 'Get_EDM_Only' is set.
+         
+         call elsi_getdm(iscf+20000, no_s, spin%spinor, 
      &              no_l, maxnh, no_u,
      &              numh, listhptr, listh,
      &              H, S, qtot, temp, 
