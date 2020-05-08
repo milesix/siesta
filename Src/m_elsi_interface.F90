@@ -93,6 +93,7 @@ module m_elsi_interface
   integer  :: omm_n_elpa
   real(dp) :: omm_tol
   
+  integer :: pexsi_method
   integer :: pexsi_tasks_per_pole
   integer :: pexsi_n_pole
   integer :: pexsi_n_mu
@@ -271,6 +272,7 @@ subroutine elsi_get_opts()
   omm_n_elpa           = fdf_get("ELSI-OMM-ELPA-Steps", 3)
   omm_tol              = fdf_get("ELSI-OMM-Tolerance", 1.0e-9_dp)
 
+  pexsi_method         = fdf_get("ELSI-PEXSI-Method", 3)
   pexsi_tasks_per_pole = fdf_get("ELSI-PEXSI-Tasks-Per-Pole", ELSI_NOT_SET)
   pexsi_tasks_symbolic = fdf_get("ELSI-PEXSI-Tasks-Symbolic", 1)
   pexsi_n_pole         = fdf_get("ELSI-PEXSI-Number-Of-Poles", 20)
@@ -418,7 +420,7 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
     call elsi_get_opts()
       
     ! Number of states to solve when calling an eigensolver
-    n_state = min(n_basis, n_basis/2+5)
+    n_state = min(n_basis, ceiling(qtot/2+5))
 
     ! Now we have all ingredients to initialize ELSI
     call elsi_init(elsi_h, which_solver, MULTI_PROC, SIESTA_CSC, n_basis, &
@@ -451,7 +453,11 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
     call elsi_set_omm_tol(elsi_h, omm_tol)
 
 ! --- PEXSI
-    
+
+#ifndef SIESTA__ELSI_DOES_NOT_HAVE_PEXSI_METHOD
+    call elsi_set_pexsi_method(elsi_h, pexsi_method)
+#endif
+
     if (pexsi_tasks_per_pole /= ELSI_NOT_SET) then
       call elsi_set_pexsi_np_per_pole(elsi_h, pexsi_tasks_per_pole)
     end if
@@ -1412,7 +1418,7 @@ subroutine elsi_complex_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, numh, ro
     call elsi_get_opts()
 
     ! Number of states to solve when calling an eigensolver
-    n_state = min(n_basis, n_basis/2+5)
+    n_state = min(n_basis, ceiling(qtot/2+5))
 
     ! Now we have all ingredients to initialize ELSI
     call elsi_init(elsi_h, which_solver, MULTI_PROC, SIESTA_CSC, n_basis, &
@@ -1443,6 +1449,12 @@ subroutine elsi_complex_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, numh, ro
     call elsi_set_omm_flavor(elsi_h, omm_flavor)
     call elsi_set_omm_n_elpa(elsi_h, omm_n_elpa)
     call elsi_set_omm_tol(elsi_h, omm_tol)
+
+! --- PEXSI
+
+#ifndef SIESTA__ELSI_DOES_NOT_HAVE_PEXSI_METHOD
+    call elsi_set_pexsi_method(elsi_h, pexsi_method)
+#endif
 
     if (pexsi_tasks_per_pole /= ELSI_NOT_SET) then
       call elsi_set_pexsi_np_per_pole(elsi_h, pexsi_tasks_per_pole)
