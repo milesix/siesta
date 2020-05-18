@@ -226,37 +226,35 @@
 
 ! Hubbard term for LDA+U: energy, forces, stress and matrix elements ....
       if( switch_ldau ) then
-!       jjunquer
         if ( spin%NCol ) then
          call die('LDA+U cannot be used with non-collinear spin.')
         end if
         if ( spin%SO ) then
           H_ldau_so => val(H_ldau_so_2D)
           call ldau_so_hamil( H_ldau_so )
-          call die('LDA+U cannot be used with spin-orbit coupling.')
-        end if
-!       end jjunquer
+!          call die('LDA+U cannot be used with spin-orbit coupling.')
+        else
+          call re_alloc(fal, 1, 3, 1, na_u, 'fal', 'setup_hamiltonian')      
 
-        call re_alloc( fal, 1, 3, 1, na_u, 'fal', 'setup_hamiltonian' )
-
-        H_ldau => val(H_ldau_2D)
-        call hubbard_term(scell, na_u, na_s, isa, xa, indxua,
-     .                    maxnh, maxnh, lasto, iphorb, no_u, no_l, 
-     .                    numh, listhptr, listh, numh, listhptr, listh,
-     .                    spin%spinor, Dscf, Eldau, DEldau, H_ldau, 
-     .                    fal, stressl, H, iscf,
-     .                    matrix_elements_only=.true.)
+          H_ldau => val(H_ldau_2D)
+          call hubbard_term(scell, na_u, na_s, isa, xa, indxua,
+     .                      maxnh, maxnh, lasto, iphorb, no_u, no_l, 
+     .                      numh, listhptr, listh, numh, listhptr,listh,      
+     .                      spin%spinor, Dscf, Eldau, DEldau, H_ldau, 
+     .                      fal, stressl, H, iscf,
+     .                      matrix_elements_only=.true.)
 
 #ifdef MPI
-        ! Global reduction of energy terms
-        call globalize_sum(Eldau,buffer1)
-        Eldau = buffer1
-        ! DEldau should not be globalized
-        ! as it is based on globalized occupations
+          ! Global reduction of energy terms
+          call globalize_sum(Eldau,buffer1)
+          Eldau = buffer1
+          ! DEldau should not be globalized
+          ! as it is based on globalized occupations
 #endif
-        Eldau = Eldau + DEldau
+          Eldau = Eldau + DEldau
 
-        call de_alloc( fal, 'fal', 'setup_hamiltonian' ) 
+          call de_alloc( fal, 'fal', 'setup_hamiltonian' ) 
+        endif
       endif
 ! ..................
 
@@ -299,6 +297,13 @@
 !------- H(d,u)
          H(:,7) = H(:,7) + real(H_so_off(:,4), dp)
          H(:,8) = H(:,8) -aimag(H_so_off(:,4))
+
+!!        For debugging
+!         do ind = 1, maxnh
+!           write(6,'(a,i5,8f12.5)')' H-SO = ', ind, H_so_off(ind,:)
+!         enddo
+!         stop
+!!        End debugging
 
       endif
 
