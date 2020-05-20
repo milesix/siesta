@@ -22,7 +22,7 @@
       use siesta_options, only: recompute_H_after_scf
       use sparse_matrices, only: numh, listh, listhptr
       use sparse_matrices, only: H, S, Dscf, Escf, maxnh, xijo
-      use sparse_matrices, only: H_ldau_2D, H_so_off_2D
+      use sparse_matrices, only: H_ldau_2D, H_so_off_2D, H_ldau_so_2D
       use class_dSpData1D, only: val
       use class_dSpData2D, only: val
       use class_zSpData2D, only: val
@@ -45,6 +45,7 @@
                                               !   or not
       use m_ldau,       only: hubbard_term    ! Subroutine that compute the
                                               !   Hubbard terms
+      use m_ldau_so, only: ldau_so_hamil
       use m_stress
       use m_energies
       use m_ntm
@@ -91,6 +92,7 @@
       real(dp), pointer :: H_tmp(:,:) => null()
       real(dp), pointer :: H_ldau(:,:), S_tmp(:)
       complex(dp), pointer  :: H_so_off(:,:)
+      complex(dp), pointer  :: H_ldau_so(:,:)
 
 #ifdef FINAL_CHECK_HS
       real(dp) :: diff_H
@@ -196,21 +198,26 @@
 
 ! Hubbard term for LDA+U: energy, forces, stress and matrix elements ....
       if( switch_ldau ) then
-         H_ldau => val(H_ldau_2D)
-         call hubbard_term(scell, na_u, na_s, isa, xa, indxua,
-     .        maxnh, maxnh, lasto, iphorb, no_u, no_l, 
-     .        numh, listhptr, listh, numh, listhptr, listh,
-     .        spin%spinor, Dscf, Eldau, DEldau, H_ldau, 
-     .        fal, stressl, H_tmp, iscf,
-     .        matrix_elements_only=.false.)
+        if ( spin%SO ) then
+          H_ldau_so => val(H_ldau_so_2D)
+          call ldau_so_hamil( H_ldau_so )
+        else
+          H_ldau => val(H_ldau_2D)
+          call hubbard_term(scell, na_u, na_s, isa, xa, indxua,
+     .         maxnh, maxnh, lasto, iphorb, no_u, no_l, 
+     .         numh, listhptr, listh, numh, listhptr, listh,
+     .         spin%spinor, Dscf, Eldau, DEldau, H_ldau, 
+     .         fal, stressl, H_tmp, iscf,
+     .         matrix_elements_only=.false.)
 #ifdef MPI
-         ! Global reduction of energy terms
-         call globalize_sum(Eldau,buffer1)
-         Eldau = buffer1
-         ! DEldau should not be globalized as it 
-         ! is based on globalized occupations
+          ! Global reduction of energy terms
+          call globalize_sum(Eldau,buffer1)
+          Eldau = buffer1
+          ! DEldau should not be globalized as it 
+          ! is based on globalized occupations
 #endif
-         Eldau = Eldau + DEldau
+          Eldau = Eldau + DEldau
+        endif
       endif
 ! ..................
 

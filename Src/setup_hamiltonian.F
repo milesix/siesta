@@ -227,12 +227,10 @@
 ! Hubbard term for LDA+U: energy, forces, stress and matrix elements ....
       if( switch_ldau ) then
         if ( spin%NCol ) then
-         call die('LDA+U cannot be used with non-collinear spin.')
-        end if
-        if ( spin%SO ) then
+          call die('LDA+U cannot be used with non-collinear spin.')
+        else if ( spin%SO ) then
           H_ldau_so => val(H_ldau_so_2D)
           call ldau_so_hamil( H_ldau_so )
-!          call die('LDA+U cannot be used with spin-orbit coupling.')
         else
           call re_alloc(fal, 1, 3, 1, na_u, 'fal', 'setup_hamiltonian')      
 
@@ -282,6 +280,8 @@
      .            use_rhog_in)
 
       if ( spin%SO_offsite ) then
+
+        if( switch_ldau ) H_so_off = H_so_off + H_ldau_so
 
 ! H(:, [5, 6]) are not updated in dhscf, see vmat for details.
         
