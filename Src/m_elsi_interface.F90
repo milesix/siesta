@@ -32,6 +32,7 @@ module m_elsi_interface
   use precision, only: dp
   use parallel, only: ionode
   use units, only:    eV
+  use m_eo, only: eo, qo
   use elsi
   use class_Distribution
   use m_cite, only: add_citation
@@ -407,6 +408,7 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
   logical :: Get_EDM_Only
 
   external :: timer
+  external :: ioeig
 
 #ifndef MPI
   call die("This ELSI solver interface needs MPI")
@@ -637,41 +639,61 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
 
   call timer("elsi-solver", 1)
 
-  if (n_spin == 1) then
-     if (.not.Get_EDM_Only) then
-       call elsi_dm_real_sparse(elsi_h, ham, ovlp, DM, energy)
-       call elsi_get_entropy(elsi_h, ets)
-
-       if ( (which_solver == ELPA_SOLVER) .and. &
-            (elpa_monitor_occs) ) then
-          allocate(occs(neigwanted))
-          allocate(eigvals(neigwanted))
-          call elsi_get_eval( elsi_h, eigvals )
-          call elsi_get_occ( elsi_h, occs )
-          if (ionode) then
-             call print_occs ( eigvals, occs, iscf)
-          endif
-          deallocate(occs,eigvals)
-       endif
-
+  if (Get_EDM_Only) then
+     if (n_spin == 1) then
+        call elsi_get_edm_real_sparse(elsi_h, DM)
      else
-       call elsi_get_edm_real_sparse(elsi_h, DM)
+        call elsi_get_edm_real_sparse(elsi_h, my_DM)
      endif
+
   else
-     ! Solve DM, and get (at every step for now) EDM, Fermi energy, and entropy
-     ! Energy and entropy are already summed over spins
-     if (.not.Get_EDM_Only) then
-       call elsi_dm_real_sparse(elsi_h, my_H, my_S, my_DM, energy)
-       call elsi_get_entropy(elsi_h, ets)
+     
+     if (n_spin == 1) then
+        call elsi_dm_real_sparse(elsi_h, ham, ovlp, DM, energy)
      else
-       call elsi_get_edm_real_sparse(elsi_h, my_DM)
+        ! Solve DM, and get (at every step for now) EDM, Fermi energy, and entropy
+        ! Energy and entropy are already summed over spins
+        call elsi_dm_real_sparse(elsi_h, my_H, my_S, my_DM, energy)
      endif
+     
+     call elsi_get_entropy(elsi_h, ets)
+     call elsi_get_mu(elsi_h, ef)
+     ets = ets/temp
+     
+     if ( (which_solver == ELPA_SOLVER) .and. &
+          (elpa_monitor_occs) ) then
+        allocate(occs(neigwanted))
+        allocate(eigvals(neigwanted))
+        call elsi_get_eval( elsi_h, eigvals )
+        call elsi_get_occ( elsi_h, occs )
+        ! if (ionode) then
+        !   call print_occs ( eigvals, occs, iscf)
+        ! endif
+
+        if  (n_spin == 1 ) then
+           qo(1:neigwanted,1,1) = occs(1:neigwanted)
+           eo(1:neigwanted,1,1) = eigvals(1:neigwanted)
+        else
+           call MPI_AllGatherV(eigvals,neigwanted,MPI_Double_Precision, &
+                eo(1,1,1), [ neigwanted, neigwanted ], [ 0, size(eo,dim=1) ], &
+                MPI_Double_Precision,elsi_Spin_Comm,ierr)
+           call MPI_AllGatherV(occs,neigwanted,MPI_Double_Precision, &
+                qo(1,1,1), [ neigwanted, neigwanted ], [ 0, size(qo,dim=1) ], &
+                MPI_Double_Precision,elsi_Spin_Comm,ierr)
+        endif
+        deallocate(occs,eigvals)
+
+        call ioeig(eo,ef,neigwanted,n_spin,1,   &
+             n_basis, n_spin,                       &
+             1 , [0.0_dp, 0.0_dp, 0.0_dp], [ 1.0_dp ])
+
+     endif
+     
   endif
 
-  call elsi_get_mu(elsi_h, ef)
-  ets = ets/temp
 
   ! Ef, energy, and ets are known to all nodes
+
 
   call timer("elsi-solver", 2)
 
