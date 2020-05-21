@@ -88,6 +88,7 @@ module m_elsi_interface
   integer :: elpa_gpu
   integer :: elpa_n_single
   integer :: elpa_autotune
+  logical :: elpa_monitor_occs
 
   integer  :: omm_flavor
   integer  :: omm_n_elpa
@@ -182,7 +183,7 @@ subroutine elsi_getdm(iscf, no_s, nspin, no_l, maxnh, no_u,  &
 
             call elsi_real_solver(iscf, no_u, no_l, nspin, &
                      maxnh, listhptr, listh, qtot, temp, &
-                     H, S, Dscf, ef, Entropy, Get_EDM_Only)
+                     H, S, Dscf, ef, Entropy, neigwanted, Get_EDM_Only)
 
          else
 
@@ -217,7 +218,7 @@ subroutine elsi_getdm(iscf, no_s, nspin, no_l, maxnh, no_u,  &
 
             call elsi_real_solver(iscf, no_u, no_l, nspin, &
                      nnz_u, listhptr_u, listh_u, qtot, temp, &
-                     H_u, S_u, Dscf_u, ef, Entropy, Get_EDM_Only)
+                     H_u, S_u, Dscf_u, ef, Entropy, neigwanted, Get_EDM_Only)
 
             deallocate(H_u, S_u)
             deallocate(numh_u, listhptr_u, listh_u)
@@ -267,6 +268,7 @@ subroutine elsi_get_opts()
   elpa_gpu             = fdf_get("ELSI-ELPA-GPU", 0)
   elpa_n_single        = fdf_get("ELSI-ELPA-N-single-precision", 0)
   elpa_autotune        = fdf_get("ELSI-ELPA-Autotune", 0)
+  elpa_monitor_occs    = fdf_get("ELSI-ELPA-Monitor-Occupations", .false.)
 
   omm_flavor           = fdf_get("ELSI-OMM-Flavor", 0)
   omm_n_elpa           = fdf_get("ELSI-OMM-ELPA-Steps", 3)
@@ -343,7 +345,7 @@ end subroutine elsi_get_opts
 ! operations.
 !
 subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
-  col_idx, qtot, temp, ham, ovlp, DM, ef, ets, Get_EDM_Only)
+  col_idx, qtot, temp, ham, ovlp, DM, ef, ets, neigwanted, Get_EDM_Only)
 
   use fdf,         only: fdf_get
   use m_mpi_utils, only: globalize_sum
@@ -371,6 +373,7 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
   real(dp), intent(out)   :: DM(nnz_l,n_spin)    ! It can be the DM or the EDM
   real(dp), intent(out)   :: ef        ! Fermi energy
   real(dp), intent(out)   :: ets       ! Entropy/k, dimensionless
+  integer, intent(in)     :: neigwanted
 
   integer :: ierr
   integer :: n_state
@@ -397,6 +400,8 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
   real(dp), pointer :: my_H(:)
   real(dp), allocatable, target :: my_DM(:) 
 
+  real(dp), allocatable :: occs(:), eigvals(:)
+
   integer :: date_stamp
 
   logical :: Get_EDM_Only
@@ -420,7 +425,8 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
     call elsi_get_opts()
       
     ! Number of states to solve when calling an eigensolver
-    n_state = min(n_basis, ceiling(qtot/2+5))
+!!    n_state = min(n_basis, ceiling(qtot/2+5))
+    n_state = neigwanted
 
     ! Now we have all ingredients to initialize ELSI
     call elsi_init(elsi_h, which_solver, MULTI_PROC, SIESTA_CSC, n_basis, &
@@ -635,6 +641,19 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
      if (.not.Get_EDM_Only) then
        call elsi_dm_real_sparse(elsi_h, ham, ovlp, DM, energy)
        call elsi_get_entropy(elsi_h, ets)
+
+       if ( (which_solver == ELPA_SOLVER) .and. &
+            (elpa_monitor_occs) ) then
+          allocate(occs(neigwanted))
+          allocate(eigvals(neigwanted))
+          call elsi_get_eval( elsi_h, eigvals )
+          call elsi_get_occ( elsi_h, occs )
+          if (ionode) then
+             call print_occs ( eigvals, occs, iscf)
+          endif
+          deallocate(occs,eigvals)
+       endif
+
      else
        call elsi_get_edm_real_sparse(elsi_h, DM)
      endif
@@ -725,6 +744,25 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
 
   call timer("elsi", 2)
 
+CONTAINS
+
+  subroutine print_occs ( eigs, occupations, scf_step)
+    real(dp), intent(in) :: eigs(:)
+    real(dp), intent(in) :: occupations(:)
+    integer, intent(in)  :: scf_step
+
+    character(len=8) :: str
+    integer :: i
+
+    write(str,"(a,i3.3)") "OCCS.", scf_step
+    open(unit=71,file=str,form="formatted", status="unknown", &
+         position="rewind")
+    do i = 1, size(occupations)
+       write(71,"(i8,f20.10,2x,f10.6)") i, eigs(i)/eV, occupations(i)
+    enddo
+    close(71)
+
+  end subroutine print_occs
 
 end subroutine elsi_real_solver
 
@@ -995,7 +1033,7 @@ subroutine elsi_kpoints_dispatcher(iscf, no_s, nspin, no_l, maxnh, no_u,  &
       call elsi_complex_solver(iscf, no_u, my_no_l, nspin, nnz_u, numh_u, listhptr_u, &
                                listh_u, qtot, temp, Hk, Sk, DM_k, Ef, Entropy,  &
                                nkpnt, my_kpt_n, kpoint(:,my_kpt_n), kweight(my_kpt_n),    &
-                               kpt_Comm, Get_EDM_Only )
+                               kpt_Comm, neigwanted, Get_EDM_Only )
 
       !print *, mpirank, "| ", "k-point ", my_kpt_n, " Done elsi_complex_solver"
       deallocate(listhptr_u, numh_u, listh_u)
@@ -1340,7 +1378,7 @@ end subroutine get_spin_comms_and_dists
 
 subroutine elsi_complex_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, numh, row_ptr, &
      col_idx, qtot, temp, ham, ovlp, DM, ef, ets, &
-     nkpnt, kpt_n, kpt, weight, kpt_comm, Get_EDM_Only)
+     nkpnt, kpt_n, kpt, weight, kpt_comm, neigwanted, Get_EDM_Only)
 
   use fdf,         only: fdf_get
   use m_mpi_utils, only: globalize_sum
@@ -1375,6 +1413,7 @@ subroutine elsi_complex_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, numh, ro
   real(dp), intent(in)    :: kpt(3:)
   real(dp), intent(in)    :: weight
   integer,  intent(in)    :: kpt_comm
+  integer,  intent(in)    :: neigwanted
 
   integer :: ierr
   integer :: n_state
@@ -1418,7 +1457,8 @@ subroutine elsi_complex_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, numh, ro
     call elsi_get_opts()
 
     ! Number of states to solve when calling an eigensolver
-    n_state = min(n_basis, ceiling(qtot/2+5))
+!!!    n_state = min(n_basis, ceiling(qtot/2+5))
+    n_state = neigwanted
 
     ! Now we have all ingredients to initialize ELSI
     call elsi_init(elsi_h, which_solver, MULTI_PROC, SIESTA_CSC, n_basis, &
