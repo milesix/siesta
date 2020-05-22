@@ -32,7 +32,7 @@ module m_elsi_interface
   use precision, only: dp
   use parallel, only: ionode
   use units, only:    eV
-  use m_eo, only: eo, qo
+  use m_eo, only: eo, qo, scf_eigenvalues_available
   use elsi
   use class_Distribution
   use m_cite, only: add_citation
@@ -660,16 +660,15 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
      call elsi_get_mu(elsi_h, ef)
      ets = ets/temp
      
-     if ( (which_solver == ELPA_SOLVER) .and. &
-          (elpa_monitor_occs) ) then
+     if (which_solver == ELPA_SOLVER) then
         allocate(occs(neigwanted))
         allocate(eigvals(neigwanted))
         call elsi_get_eval( elsi_h, eigvals )
         call elsi_get_occ( elsi_h, occs )
-        ! if (ionode) then
-        !   call print_occs ( eigvals, occs, iscf)
-        ! endif
 
+        qo = 0.0_dp
+        eo = 0.0_dp
+        
         if  (n_spin == 1 ) then
            qo(1:neigwanted,1,1) = occs(1:neigwanted)
            eo(1:neigwanted,1,1) = eigvals(1:neigwanted)
@@ -682,10 +681,21 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
                 MPI_Double_Precision,elsi_Spin_Comm,ierr)
         endif
         deallocate(occs,eigvals)
+        scf_eigenvalues_available = .true.
 
-        call ioeig(eo,ef,neigwanted,n_spin,1,   &
-             n_basis, n_spin,                       &
-             1 , [0.0_dp, 0.0_dp, 0.0_dp], [ 1.0_dp ])
+        if (elpa_monitor_occs) then
+           ! This will actually include occupations in a forthcoming
+           ! version
+           block
+             character(len=8) :: filename
+             write(filename,"(a,i3.3)") "EIG.", iscf
+             if (ionode) then
+                call simple_ioeig(filename,eo,ef,temp,neigwanted,n_spin,1,   &
+                     n_basis, n_spin,                       &
+                     1 , [0.0_dp, 0.0_dp, 0.0_dp], [ 1.0_dp ])
+             end if
+           end block
+        endif
 
      endif
      
@@ -785,6 +795,7 @@ CONTAINS
     close(71)
 
   end subroutine print_occs
+
 
 end subroutine elsi_real_solver
 
@@ -1807,5 +1818,72 @@ subroutine transpose(a,b)
 end subroutine transpose
 
 # endif
+
+  subroutine simple_ioeig(filename, eo, ef, temp, no, nspin, nk, maxo, nspinor, maxk, &
+                          kpoints, kweights)
+
+    implicit          none
+
+    character(len=*), intent(in)  :: filename
+    integer,  intent(in) :: no     ! no_u: number of orbitals in unit cell
+    integer,  intent(in) :: nspin  ! 'nspin_grid': 1, 2, 4 or 8
+    integer,  intent(in) :: nk
+    integer,  intent(in) :: maxo   ! no_u again
+    integer,  intent(in) :: nspinor
+    integer,  intent(in) :: maxk
+    real(dp), intent(in) :: ef    ! Fermi level
+    real(dp), intent(in) :: temp  ! electronic temperature in Ryd.
+    real(dp), intent(in), target :: eo(maxo, nspinor, maxk)
+    real(dp), intent(in) :: kpoints(3,nk)
+    real(dp), intent(in) :: kweights(nk)
+      
+    external          io_assign, io_close
+
+    integer           ik, iu, io, is
+    real(dp), pointer :: eok(:)
+
+    call io_assign( iu )
+    open( iu, file=filename, form='formatted', status='unknown' )      
+
+    write(iu,"(2e17.9)") ef/eV, temp/eV
+    ! The output corresponds to the number of bands.
+    ! Thus it shouldn't be confused with the number of orbitals,
+    ! although they are related!
+    if ( nspin > nspinor ) then
+       write(iu,"(tr1,i10,tr1,i0,tr1,i10)") 2*no, nspin, nk
+    else
+       ! This will always be nspin == nspinor with max(nspinor) == 2
+       write(iu,"(tr1,i10,tr1,i0,tr1,i10)") no, nspin, nk
+    end if
+    do ik = 1,nk
+       if ( nspin > nspinor ) then
+          ! ensure we catch users doing neigwanted calculations
+          ! In the NC/SOC case, the eigenvalues are written
+          ! by the diag{2,3} routines to an eo(no_u*2,nk) array.
+          ! So if neigwanted is, say, 0.8*no_u, there are 1.6*no_u
+          ! bands, and independent loops over io and is, as in the
+          ! second form below, would be wrong.
+          call ravel(maxo * nspinor, eo(1,1,ik), eok)
+          write(iu,"(i10,10(tr1,e17.9),/,(tr10,10(tr1,e17.9)))") &
+             ik, (eok(io)/eV,io=1,no*nspinor)
+       else
+          write(iu,"(i10,10(tr1,e17.9),/,(tr10,10(tr1,e17.9)))") &
+             ik, ((eo(io,is,ik)/eV,io=1,no),is=1,nspinor)
+       end if
+    enddo
+
+    call io_close( iu )
+
+  contains
+
+    subroutine ravel(n, eo, eop)
+      integer, intent(in) :: n
+      real(dp), intent(in), target :: eo(n)
+      real(dp), pointer :: eop(:)
+      eop => eo(:)
+    end subroutine ravel
+      
+  end subroutine simple_ioeig
+
 
 end module m_elsi_interface
