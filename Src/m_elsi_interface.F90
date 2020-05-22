@@ -32,6 +32,7 @@ module m_elsi_interface
   use precision, only: dp
   use parallel, only: ionode
   use units, only:    eV
+  use m_eo, only: eo, qo, scf_eigenvalues_available
   use elsi
   use class_Distribution
   use m_cite, only: add_citation
@@ -88,6 +89,7 @@ module m_elsi_interface
   integer :: elpa_gpu
   integer :: elpa_n_single
   integer :: elpa_autotune
+  logical :: elpa_monitor_occs
 
   integer  :: omm_flavor
   integer  :: omm_n_elpa
@@ -182,7 +184,7 @@ subroutine elsi_getdm(iscf, no_s, nspin, no_l, maxnh, no_u,  &
 
             call elsi_real_solver(iscf, no_u, no_l, nspin, &
                      maxnh, listhptr, listh, qtot, temp, &
-                     H, S, Dscf, ef, Entropy, Get_EDM_Only)
+                     H, S, Dscf, ef, Entropy, neigwanted, Get_EDM_Only)
 
          else
 
@@ -217,7 +219,7 @@ subroutine elsi_getdm(iscf, no_s, nspin, no_l, maxnh, no_u,  &
 
             call elsi_real_solver(iscf, no_u, no_l, nspin, &
                      nnz_u, listhptr_u, listh_u, qtot, temp, &
-                     H_u, S_u, Dscf_u, ef, Entropy, Get_EDM_Only)
+                     H_u, S_u, Dscf_u, ef, Entropy, neigwanted, Get_EDM_Only)
 
             deallocate(H_u, S_u)
             deallocate(numh_u, listhptr_u, listh_u)
@@ -267,6 +269,7 @@ subroutine elsi_get_opts()
   elpa_gpu             = fdf_get("ELSI-ELPA-GPU", 0)
   elpa_n_single        = fdf_get("ELSI-ELPA-N-single-precision", 0)
   elpa_autotune        = fdf_get("ELSI-ELPA-Autotune", 0)
+  elpa_monitor_occs    = fdf_get("ELSI-ELPA-Monitor-Occupations", .false.)
 
   omm_flavor           = fdf_get("ELSI-OMM-Flavor", 0)
   omm_n_elpa           = fdf_get("ELSI-OMM-ELPA-Steps", 3)
@@ -343,7 +346,7 @@ end subroutine elsi_get_opts
 ! operations.
 !
 subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
-  col_idx, qtot, temp, ham, ovlp, DM, ef, ets, Get_EDM_Only)
+  col_idx, qtot, temp, ham, ovlp, DM, ef, ets, neigwanted, Get_EDM_Only)
 
   use fdf,         only: fdf_get
   use m_mpi_utils, only: globalize_sum
@@ -371,6 +374,7 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
   real(dp), intent(out)   :: DM(nnz_l,n_spin)    ! It can be the DM or the EDM
   real(dp), intent(out)   :: ef        ! Fermi energy
   real(dp), intent(out)   :: ets       ! Entropy/k, dimensionless
+  integer, intent(in)     :: neigwanted
 
   integer :: ierr
   integer :: n_state
@@ -397,11 +401,14 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
   real(dp), pointer :: my_H(:)
   real(dp), allocatable, target :: my_DM(:) 
 
+  real(dp), allocatable :: occs(:), eigvals(:)
+
   integer :: date_stamp
 
   logical :: Get_EDM_Only
 
   external :: timer
+  external :: ioeig
 
 #ifndef MPI
   call die("This ELSI solver interface needs MPI")
@@ -420,7 +427,8 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
     call elsi_get_opts()
       
     ! Number of states to solve when calling an eigensolver
-    n_state = min(n_basis, ceiling(qtot/2+5))
+!!    n_state = min(n_basis, ceiling(qtot/2+5))
+    n_state = neigwanted
 
     ! Now we have all ingredients to initialize ELSI
     call elsi_init(elsi_h, which_solver, MULTI_PROC, SIESTA_CSC, n_basis, &
@@ -631,28 +639,71 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
 
   call timer("elsi-solver", 1)
 
-  if (n_spin == 1) then
-     if (.not.Get_EDM_Only) then
-       call elsi_dm_real_sparse(elsi_h, ham, ovlp, DM, energy)
-       call elsi_get_entropy(elsi_h, ets)
+  if (Get_EDM_Only) then
+     if (n_spin == 1) then
+        call elsi_get_edm_real_sparse(elsi_h, DM)
      else
-       call elsi_get_edm_real_sparse(elsi_h, DM)
+        call elsi_get_edm_real_sparse(elsi_h, my_DM)
      endif
+
   else
-     ! Solve DM, and get (at every step for now) EDM, Fermi energy, and entropy
-     ! Energy and entropy are already summed over spins
-     if (.not.Get_EDM_Only) then
-       call elsi_dm_real_sparse(elsi_h, my_H, my_S, my_DM, energy)
-       call elsi_get_entropy(elsi_h, ets)
+     
+     if (n_spin == 1) then
+        call elsi_dm_real_sparse(elsi_h, ham, ovlp, DM, energy)
      else
-       call elsi_get_edm_real_sparse(elsi_h, my_DM)
+        ! Solve DM, and get (at every step for now) EDM, Fermi energy, and entropy
+        ! Energy and entropy are already summed over spins
+        call elsi_dm_real_sparse(elsi_h, my_H, my_S, my_DM, energy)
      endif
+     
+     call elsi_get_entropy(elsi_h, ets)
+     call elsi_get_mu(elsi_h, ef)
+     ets = ets/temp
+     
+     if (which_solver == ELPA_SOLVER) then
+        allocate(occs(neigwanted))
+        allocate(eigvals(neigwanted))
+        call elsi_get_eval( elsi_h, eigvals )
+        call elsi_get_occ( elsi_h, occs )
+
+        qo = 0.0_dp
+        eo = 0.0_dp
+        
+        if  (n_spin == 1 ) then
+           qo(1:neigwanted,1,1) = occs(1:neigwanted)
+           eo(1:neigwanted,1,1) = eigvals(1:neigwanted)
+        else
+           call MPI_AllGatherV(eigvals,neigwanted,MPI_Double_Precision, &
+                eo(1,1,1), [ neigwanted, neigwanted ], [ 0, size(eo,dim=1) ], &
+                MPI_Double_Precision,elsi_Spin_Comm,ierr)
+           call MPI_AllGatherV(occs,neigwanted,MPI_Double_Precision, &
+                qo(1,1,1), [ neigwanted, neigwanted ], [ 0, size(qo,dim=1) ], &
+                MPI_Double_Precision,elsi_Spin_Comm,ierr)
+        endif
+        deallocate(occs,eigvals)
+        scf_eigenvalues_available = .true.
+
+        if (elpa_monitor_occs) then
+           ! This will actually include occupations in a forthcoming
+           ! version
+           block
+             character(len=8) :: filename
+             write(filename,"(a,i3.3)") "EIG.", iscf
+             if (ionode) then
+                call simple_ioeig(filename,eo,ef,temp,neigwanted,n_spin,1,   &
+                     n_basis, n_spin,                       &
+                     1 , [0.0_dp, 0.0_dp, 0.0_dp], [ 1.0_dp ])
+             end if
+           end block
+        endif
+
+     endif
+     
   endif
 
-  call elsi_get_mu(elsi_h, ef)
-  ets = ets/temp
 
   ! Ef, energy, and ets are known to all nodes
+
 
   call timer("elsi-solver", 2)
 
@@ -724,6 +775,26 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
   endif
 
   call timer("elsi", 2)
+
+CONTAINS
+
+  subroutine print_occs ( eigs, occupations, scf_step)
+    real(dp), intent(in) :: eigs(:)
+    real(dp), intent(in) :: occupations(:)
+    integer, intent(in)  :: scf_step
+
+    character(len=8) :: str
+    integer :: i
+
+    write(str,"(a,i3.3)") "OCCS.", scf_step
+    open(unit=71,file=str,form="formatted", status="unknown", &
+         position="rewind")
+    do i = 1, size(occupations)
+       write(71,"(i8,f20.10,2x,f10.6)") i, eigs(i)/eV, occupations(i)
+    enddo
+    close(71)
+
+  end subroutine print_occs
 
 
 end subroutine elsi_real_solver
@@ -995,7 +1066,7 @@ subroutine elsi_kpoints_dispatcher(iscf, no_s, nspin, no_l, maxnh, no_u,  &
       call elsi_complex_solver(iscf, no_u, my_no_l, nspin, nnz_u, numh_u, listhptr_u, &
                                listh_u, qtot, temp, Hk, Sk, DM_k, Ef, Entropy,  &
                                nkpnt, my_kpt_n, kpoint(:,my_kpt_n), kweight(my_kpt_n),    &
-                               kpt_Comm, Get_EDM_Only )
+                               kpt_Comm, neigwanted, Get_EDM_Only )
 
       !print *, mpirank, "| ", "k-point ", my_kpt_n, " Done elsi_complex_solver"
       deallocate(listhptr_u, numh_u, listh_u)
@@ -1340,7 +1411,7 @@ end subroutine get_spin_comms_and_dists
 
 subroutine elsi_complex_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, numh, row_ptr, &
      col_idx, qtot, temp, ham, ovlp, DM, ef, ets, &
-     nkpnt, kpt_n, kpt, weight, kpt_comm, Get_EDM_Only)
+     nkpnt, kpt_n, kpt, weight, kpt_comm, neigwanted, Get_EDM_Only)
 
   use fdf,         only: fdf_get
   use m_mpi_utils, only: globalize_sum
@@ -1375,6 +1446,7 @@ subroutine elsi_complex_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, numh, ro
   real(dp), intent(in)    :: kpt(3:)
   real(dp), intent(in)    :: weight
   integer,  intent(in)    :: kpt_comm
+  integer,  intent(in)    :: neigwanted
 
   integer :: ierr
   integer :: n_state
@@ -1418,7 +1490,8 @@ subroutine elsi_complex_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, numh, ro
     call elsi_get_opts()
 
     ! Number of states to solve when calling an eigensolver
-    n_state = min(n_basis, ceiling(qtot/2+5))
+!!!    n_state = min(n_basis, ceiling(qtot/2+5))
+    n_state = neigwanted
 
     ! Now we have all ingredients to initialize ELSI
     call elsi_init(elsi_h, which_solver, MULTI_PROC, SIESTA_CSC, n_basis, &
@@ -1745,5 +1818,72 @@ subroutine transpose(a,b)
 end subroutine transpose
 
 # endif
+
+  subroutine simple_ioeig(filename, eo, ef, temp, no, nspin, nk, maxo, nspinor, maxk, &
+                          kpoints, kweights)
+
+    implicit          none
+
+    character(len=*), intent(in)  :: filename
+    integer,  intent(in) :: no     ! no_u: number of orbitals in unit cell
+    integer,  intent(in) :: nspin  ! 'nspin_grid': 1, 2, 4 or 8
+    integer,  intent(in) :: nk
+    integer,  intent(in) :: maxo   ! no_u again
+    integer,  intent(in) :: nspinor
+    integer,  intent(in) :: maxk
+    real(dp), intent(in) :: ef    ! Fermi level
+    real(dp), intent(in) :: temp  ! electronic temperature in Ryd.
+    real(dp), intent(in), target :: eo(maxo, nspinor, maxk)
+    real(dp), intent(in) :: kpoints(3,nk)
+    real(dp), intent(in) :: kweights(nk)
+      
+    external          io_assign, io_close
+
+    integer           ik, iu, io, is
+    real(dp), pointer :: eok(:)
+
+    call io_assign( iu )
+    open( iu, file=filename, form='formatted', status='unknown' )      
+
+    write(iu,"(2e17.9)") ef/eV, temp/eV
+    ! The output corresponds to the number of bands.
+    ! Thus it shouldn't be confused with the number of orbitals,
+    ! although they are related!
+    if ( nspin > nspinor ) then
+       write(iu,"(tr1,i10,tr1,i0,tr1,i10)") 2*no, nspin, nk
+    else
+       ! This will always be nspin == nspinor with max(nspinor) == 2
+       write(iu,"(tr1,i10,tr1,i0,tr1,i10)") no, nspin, nk
+    end if
+    do ik = 1,nk
+       if ( nspin > nspinor ) then
+          ! ensure we catch users doing neigwanted calculations
+          ! In the NC/SOC case, the eigenvalues are written
+          ! by the diag{2,3} routines to an eo(no_u*2,nk) array.
+          ! So if neigwanted is, say, 0.8*no_u, there are 1.6*no_u
+          ! bands, and independent loops over io and is, as in the
+          ! second form below, would be wrong.
+          call ravel(maxo * nspinor, eo(1,1,ik), eok)
+          write(iu,"(i10,10(tr1,e17.9),/,(tr10,10(tr1,e17.9)))") &
+             ik, (eok(io)/eV,io=1,no*nspinor)
+       else
+          write(iu,"(i10,10(tr1,e17.9),/,(tr10,10(tr1,e17.9)))") &
+             ik, ((eo(io,is,ik)/eV,io=1,no),is=1,nspinor)
+       end if
+    enddo
+
+    call io_close( iu )
+
+  contains
+
+    subroutine ravel(n, eo, eop)
+      integer, intent(in) :: n
+      real(dp), intent(in), target :: eo(n)
+      real(dp), pointer :: eop(:)
+      eop => eo(:)
+    end subroutine ravel
+      
+  end subroutine simple_ioeig
+
 
 end module m_elsi_interface

@@ -376,8 +376,7 @@
 
 !     Print eigenvalues
       if ( IOnode .and. writeig .and. no_l < 1000 .and. 
-     &    (isolve.eq.SOLVE_DIAGON .or.
-     &    (isolve.eq.SOLVE_MINIM .and. minim_calc_eigenvalues)) ) then
+     &     scf_eigenvalues_available ) then
 
         if ( spin%Grid == 4 ) then
           write(6,'(/,a)') 'siesta: Eigenvalues (eV):'
@@ -401,12 +400,14 @@
         write(6,'(a,f15.6,a)') 'siesta: Fermi energy =', ef/eV, ' eV'
       endif
 
-      if (((isolve.eq.SOLVE_DIAGON).or.
-     &     ((isolve.eq.SOLVE_MINIM).and.minim_calc_eigenvalues))
-     &     .and.IOnode)
-     &    call ioeig(eo,ef,neigwanted,spin%H,kpoint_scf%N,
-     &     no_u,spin%spinor,
-     &     kpoint_scf%N, kpoint_scf%k, kpoint_scf%w)
+      if (scf_eigenvalues_available) then
+         
+         call ioeig(eo,ef,neigwanted,spin%H,kpoint_scf%N,
+     &        no_u,spin%spinor,
+     &        kpoint_scf%N, kpoint_scf%k, kpoint_scf%w)
+         
+      endif
+
 
 
 !**   This uses H,S, and xa, as it diagonalizes them again

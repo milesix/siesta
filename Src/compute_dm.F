@@ -81,6 +81,7 @@
       call MPI_Bcast(isolve,1,MPI_integer,0,MPI_Comm_DFT,mpierr)
 #endif     
 
+      scf_eigenvalues_available = .false.
       if (SIESTA_worker) then
         ! Save present density matrix
         call dcopy(size(Dscf), Dscf(1,1), 1, Dold(1,1), 1)
@@ -213,6 +214,7 @@ c$$$     &           S, 'S.matrix')
      &              eo, qo, Dscf, Escf, ef, efs, Entropy, no_u,
      &              occtol, iscf, neigwanted,
      &              dealloc_psi=.not. CallDiagon)
+        scf_eigenvalues_available = .true.
         Ecorrec = 0.0_dp
         PreviousCallDiagon=.true.
       elseif (isolve .eq. SOLVE_ORDERN) then

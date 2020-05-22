@@ -6,6 +6,10 @@
 
 (Please see the file README_ELSI in the top directory for important information)
 
+* The ELSI interface now honors the "number-of-eigenstates" setting, and an EIG file
+  is generated (for the ELPA solver).
+* ELSI-DM interface as a new "solution-method", with various solvers available.
+
 ### PSML support
 
 (Please see the file README_PSML in the top directory for important information)

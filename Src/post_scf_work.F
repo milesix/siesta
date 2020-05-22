@@ -40,7 +40,7 @@
       use m_zminim,       only : zminim
       use m_steps,        only : istp, inicoor
       use m_compute_dm,   only : PreviousCallDiagon
-      use m_eo
+      use m_eo,           only : eo, qo, scf_eigenvalues_available
       use units,          only : eV
       use m_normalize_dm, only : trace_with_S
       use kpoint_scf_m, only: kpoint_scf, gamma_scf
@@ -120,6 +120,7 @@
      &                eo, qo, Dscf, Escf, ef, efs, Entropy, no_u,
      &                occtol, iscf, neigwanted)
           Ecorrec = 0.0_dp
+          scf_eigenvalues_available = .true.
         else
             if ( no_u == no_s ) then ! Not using an auxiliary supercell
             call dminim(.true., .false., iscf, istp, no_l, nspin, no_u,
