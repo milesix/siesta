@@ -23,8 +23,9 @@ program matel_test
 
       
       character(len=20), allocatable, dimension(:) :: species_label
-      integer :: io
+      integer :: io, jpx, jpy, jpz, i
       real(dp) :: val, grad(3)
+      real(dp) :: x, y, z
       
       nspecies = 1
       allocate(species_label(1))
@@ -40,6 +41,9 @@ program matel_test
       call init_matel()
 
       io = species(1)%orb_gindex(1)
+      jpy = species(1)%orb_gindex(2)  
+      jpz = species(1)%orb_gindex(3)  
+      jpx = species(1)%orb_gindex(4)  
 
       call new_MATEL('S', io, io, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
       print "(a,f10.4,2x,3f10.4)", "<3s|  | 3s(1.0)> : ", val, grad
@@ -49,6 +53,23 @@ program matel_test
       print "(a,f10.4,2x,3f10.4)", "<3s| Y | 3s(1.0)> : ", val, grad
       call new_MATEL('Z', io, io, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
       print "(a,f10.4,2x,3f10.4)", "<3s| Z | 3s(1.0)> : ", val, grad
+
+      call new_MATEL('S', io, jpx, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
+      print "(a,f10.4,2x,3f10.4)", "<s|  | px(1.0)> : ", val, grad
+      call new_MATEL('X', io, jpx, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
+      print "(a,f10.4,2x,3f10.4)", "<s| X | px(1.0)> : ", val, grad
+      call new_MATEL('Y', io, jpx, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
+      print "(a,f10.4,2x,3f10.4)", "<s| Y | px(1.0)> : ", val, grad
+      call new_MATEL('Z', io, jpx, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
+      print "(a,f10.4,2x,3f10.4)", "<s| Z | px(1.0)> : ", val, grad
+
+      do i = 1, 100
+         x = (i-1) * 0.1
+         call new_MATEL('X', io, io, [ x, 0.0_dp, 0.0_dp ], val, grad)
+         print "(a,2f10.4,2x,3f10.4)", "<s|X|s(x)>: ", x, val, grad
+      enddo
+
+
     end program  matel_test
 
 

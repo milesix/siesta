@@ -178,7 +178,7 @@
      $                         ylmk_y_orbs, 1, num_orb)
 
          call ylmk_z_orbs%compute_spha(1, num_orb, EVALUATE_Z, 1)
-         call tab_X%init( MODE_XYZ, ylmk_val_all, 1, num_orb,
+         call tab_Z%init( MODE_XYZ, ylmk_val_all, 1, num_orb,
      $                         ylmk_z_orbs, 1, num_orb)
 
       endif
