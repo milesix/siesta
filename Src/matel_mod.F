@@ -102,15 +102,16 @@
 
       subroutine init_matel( )
 
-      use fdf,       only : fdf_boolean
+!      use fdf,       only : fdf_boolean
       use atm_types, only : nspecies, species
-      use siesta_options, only : bornz
-      use ldau_specs, only : switch_ldau
+!      use siesta_options, only : bornz
+!      use ldau_specs, only : switch_ldau
 
       implicit none
       ! Local Variables
       integer             :: is, top, top_vna
-      logical             :: optical
+      logical             :: optical=.true., bornz=.true.
+      logical             :: switch_ldau=.false.
       logical,       save :: init = .false.
       TYPE(allocDefaults) :: OLDEFS
 
@@ -182,7 +183,7 @@
 
       endif
 
-      optical = fdf_boolean('OpticalCalculation',.false.)
+!!      optical = fdf_boolean('OpticalCalculation',.false.)
 
       ! This section executed only if an 'optical' calculation
       ! is requested 
