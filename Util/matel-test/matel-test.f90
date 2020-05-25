@@ -18,6 +18,7 @@ program matel_test
       use atm_types, only: species, nspecies
       use m_matel_registry, only: show_pool
       use matel_mod, only: init_matel, new_matel
+      use m_old_matel, only: old_matel
       
       implicit none
 
@@ -47,6 +48,7 @@ program matel_test
 
       call new_MATEL('S', io, io, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
       print "(a,f10.4,2x,3f10.4)", "<3s|  | 3s(1.0)> : ", val, grad
+
       call new_MATEL('X', io, io, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
       print "(a,f10.4,2x,3f10.4)", "<3s| X | 3s(1.0)> : ", val, grad
       call new_MATEL('Y', io, io, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
@@ -56,6 +58,19 @@ program matel_test
 
       call new_MATEL('S', io, jpx, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
       print "(a,f10.4,2x,3f10.4)", "<s|  | px(1.0)> : ", val, grad
+      call old_MATEL('S', io, jpx, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
+      print "(a,f10.4,2x,3f10.4)", "OLD<s|  | px(1.0)> : ", val, grad
+
+      call new_MATEL('S', io, jpy, [ 0.0_dp, 1.0_dp, 0.0_dp ], val, grad)
+      print "(a,f10.4,2x,3f10.4)", "<s|  | py(1.0)> : ", val, grad
+      call old_MATEL('S', io, jpy, [ 0.0_dp, 1.0_dp, 0.0_dp ], val, grad)
+      print "(a,f10.4,2x,3f10.4)", "OLD<s|  | py(1.0)> : ", val, grad
+      
+      call new_MATEL('S', io, jpz, [ 0.0_dp, 0.0_dp, 1.0_dp ], val, grad)
+      print "(a,f10.4,2x,3f10.4)", "<s|  | pz(1.0)> : ", val, grad
+      call old_MATEL('S', io, jpz, [ 0.0_dp, 0.0_dp, 1.0_dp ], val, grad)
+      print "(a,f10.4,2x,3f10.4)", "OLD<s|  | pz(1.0)> : ", val, grad
+
       call new_MATEL('X', io, jpx, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
       print "(a,f10.4,2x,3f10.4)", "<s| X | px(1.0)> : ", val, grad
       call new_MATEL('Y', io, jpx, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
@@ -65,8 +80,8 @@ program matel_test
 
       do i = 1, 100
          x = (i-1) * 0.1
-         call new_MATEL('X', io, io, [ x, 0.0_dp, 0.0_dp ], val, grad)
-         print "(a,2f10.4,2x,3f10.4)", "<s|X|s(x)>: ", x, val, grad
+!         call new_MATEL('X', io, io, [ x, 0.0_dp, 0.0_dp ], val, grad)
+!         print "(a,2f10.4,2x,3f10.4)", "<s|X|s(x)>: ", x, val, grad
       enddo
 
 

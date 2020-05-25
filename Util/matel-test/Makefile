@@ -51,10 +51,10 @@ SYSOBJ=$(SYS).o
 # Note that machine-specific files are now in top Src directory.
 #
 DEPS_MATEL-TEST=io.o m_io.o precision.o  parallel.o \
-          atm_types.o chkdim.o propor.o \
+          atm_types.o chkdim.o propor.o errorf.o \
           matel_mod.o matel_params.o matel_table.o matel_ylm.o \
           radial.o interpolation.o xml.o alloc.o \
-          radfft.o  bessph.o m_fft_gpfa.o \
+          radfft.o  bessph.o m_fft_gpfa.o old_matel.o \
           pxf.o dot.o register_rfs.o matel_registry.o  \
           m_trialorbitalclass.o units.o $(SYSOBJ) spher_harm.o
 
@@ -130,6 +130,7 @@ gpfa_core_dp.o: m_fft_gpfa.o
 gpfa_core_sp.o: m_fft_gpfa.o
 gpfa_fft.o: m_fft_gpfa.o
 m_bessph.o: bessph.o
+m_errorf.o: errorf.o
 m_matel_registry.o: matel_registry.o
 m_radfft.o: radfft.o
 trialorbitalclass.o: m_trialorbitalclass.o
