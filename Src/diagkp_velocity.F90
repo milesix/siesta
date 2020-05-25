@@ -332,13 +332,11 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   call re_alloc( g_DM, 1, g_nnz, 1, spin%DM, name='g_DM', routine= 'diagkp_velocity' )
   call re_alloc( g_EDM, 1, g_nnz, 1, spin%EDM, name='g_EDM', routine= 'diagkp_velocity' )
 
-!$OMP parallel default(shared), private(t,ik,is,io)
-
   ! Find weights for local density of states ............................
   if ( e1 < e2 ) then
     
     t = max( temp, 1.d-6 )
-!$OMP do
+!$OMP parallel do default(shared), private(ik,is,io), firstprivate(t)
     do ik = 1,nk
       do is = 1,spin%spinor
         do io = 1,neigwanted
@@ -348,17 +346,13 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
         end do
       end do
     end do
-!$OMP end do nowait
+!$OMP end parallel do
 
   end if
 
   ! Initialize to 0
-!$OMP workshare
   g_DM(:,:) = 0._dp
   g_EDM(:,:) = 0._dp
-!$OMP end workshare nowait
-
-!$OMP end parallel
 
   do ik = 1 + Node, nk, Nodes
     do is = 1, spin%spinor
@@ -611,7 +605,7 @@ contains
     integer, intent(in) :: neig
     real(dp), intent(inout) :: eig(neig)
     integer, intent(in) :: ndeg, io_end
-    integer :: io_start, ix, io
+    integer :: io_start, ix, io, jo
     real(dp) :: e_avg
 
     call re_alloc(vdeg, 1, 2, 1, ndeg**2, name='vdeg', routine= 'diagkp_velocity', &
