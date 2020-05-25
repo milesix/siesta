@@ -183,7 +183,7 @@ C     Check internal dimensions ..........................................
           nhs  = 2 * nuotot * nuotot
           npsi = 2 * nuotot * nuotot
           if ( use_velocity_shift ) then
-            naux = 2 * nuotot
+            naux = 2 * nuotot * 2
           end if
         endif
 #endif

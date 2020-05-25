@@ -171,7 +171,6 @@ subroutine diag2kp_velocity( spin, no_l, no_u, no_s, nnz, &
   complex(dp), pointer :: dH(:,:,:,:), dS(:,:,:,:)
   real(dp), pointer :: eig_aux(:)
 
-  complex(dp), external :: zdotc
 
 #ifdef DEBUG
   call write_debug( '    PRE diag2kp_velocity' )
@@ -214,6 +213,7 @@ subroutine diag2kp_velocity( spin, no_l, no_u, no_s, nnz, &
     
     if ( Node == BNode ) then
       call GlobalToLocalOrb(io,Node,Nodes,iio)
+
       g_ncol(io) = ncol(iio)
       do jo = 1, ncol(iio)
         g_col(g_ptr(io)+jo) = col(ptr(iio)+jo)
@@ -305,8 +305,8 @@ subroutine diag2kp_velocity( spin, no_l, no_u, no_s, nnz, &
   if ( .not. getD ) goto 999
 
   ! Find new Fermi energy and occupation weights ........................
-  call fermid( spin%spinor, spin%spinor, nk, wk, no_u, &
-      neigwanted, eo, Temp, qtot, qo, ef, Entropy )
+  call fermid(1, 1, nk, wk, no_u2, &
+      neigwanted2, eo, Temp, qtot, qo, ef, Entropy )
 
   ! Initialize current
   BB_res(:) = 0._dp
@@ -401,17 +401,14 @@ subroutine diag2kp_velocity( spin, no_l, no_u, no_s, nnz, &
     end if
 
     ! Expand the eigenvectors to the density matrix
+    Dk = cmplx(0._dp, 0._dp, dp)
+    Ek = cmplx(0._dp, 0._dp, dp)
       
 !$OMP parallel default(shared), &
 !$OMP&private(ie,io,jo,ind), &
 !$OMP&private(kxij,kph,D11,D22,D12,D21,cp)
 
     ! Add contribution to density matrices of unit-cell orbitals
-      
-!$OMP workshare
-    Dk = cmplx(0._dp, 0._dp, dp)
-    Ek = cmplx(0._dp, 0._dp, dp)
-!$OMP end workshare
 
     ! Global operation to form new density matrix
     do ie = 1, neigneeded
@@ -482,9 +479,9 @@ subroutine diag2kp_velocity( spin, no_l, no_u, no_s, nnz, &
   do io = 1, no_u
     
     call WhichNodeOrb(io,Nodes,BNode)
-    call GlobalToLocalOrb(io,BNode,Nodes,iio)
 
     if ( BNode == Node ) then
+      call GlobalToLocalOrb(io,BNode,Nodes,iio)
       
       do is = 1, spin%DM
         call MPI_Reduce(g_DM(g_ptr(io)+1,is), &
@@ -550,15 +547,12 @@ contains
   
   subroutine setup_k(k)
     real(dp), intent(in) :: k(3)
-    
-!$OMP parallel default(shared), private(io,jo,ind,kxij,kph)
+    integer :: io, ind, jo
 
-!$OMP workshare
     Hk = cmplx(0._dp, 0._dp, dp)
     Sk = cmplx(0._dp, 0._dp, dp)
-!$OMP end workshare
 
-!$OMP do
+!$OMP parallel do default(shared), private(io,jo,ind,kxij,kph)
     do io = 1,no_u
       do ind = g_ptr(io) + 1, g_ptr(io) + g_ncol(io)
         jo = modp(g_col(ind), no_u)
@@ -576,9 +570,7 @@ contains
 
       end do
     end do
-!$OMP end do nowait
-
-!$OMP end parallel
+!$OMP end parallel do
 
   end subroutine setup_k
   
@@ -586,14 +578,12 @@ contains
     integer, intent(in) :: ix
     real(dp), intent(in) :: k(3)
 
-!$OMP parallel default(shared), private(io,jo,ind,kxij,kph)
+    integer :: io, ind, jo
 
-!$OMP workshare
     dS = cmplx(0._dp, 0._dp, dp)
     dH = cmplx(0._dp, 0._dp, dp)
-!$OMP end workshare
-    
-!$OMP do
+
+!$OMP parallel do default(shared), private(io,jo,ind,kxij,kph)
     do io = 1, no_u
       do ind = g_ptr(io) + 1, g_ptr(io) + g_ncol(io)
         jo = modp(g_col(ind), no_u)
@@ -611,9 +601,7 @@ contains
         
       end do
     end do
-!$OMP end do nowait
-
-!$OMP end parallel
+!$OMP end parallel do
 
   end subroutine setup_dk
 
@@ -624,9 +612,9 @@ contains
     integer, intent(in) :: neig
     real(dp), intent(inout) :: eig(neig)
     integer, intent(in) :: ndeg, io_end
-    integer :: io_start, ix
+    integer :: io_start, ix, io, jo
     real(dp) :: e_avg
-    
+
     call re_alloc(vdeg, 1, 2, 1, ndeg**2, name='vdeg', routine= 'diag2kp_velocity', &
         copy=.false., shrink=.false.)
     call re_alloc(Identity, 1, 2, 1, ndeg**2, name='identity', routine= 'diag2kp_velocity', &
@@ -663,14 +651,17 @@ contains
 
         ! dH | psi_i >
         call zgemv('N', no_u2, no_u2, cmplx(1._dp, 0._dp, dp), &
-            dH, no_u2, psi(1,1,jo), 1, cmplx(0._dp, 0._dp, dp), aux, 1)
+            dH(1,1,1,1), no_u2, psi(1,1,jo), 1, &
+            cmplx(0._dp, 0._dp, dp), aux(1,1,1), 1)
         ! dH - e dS | psi_i >
         call zgemv('N', no_u2, no_u2, cmplx(-e_avg, 0._dp, dp), &
-            dS, no_u2, psi(1,1,jo), 1, cmplx(1._dp, 0._dp, dp), aux, 1)
+            dS(1,1,1,1), no_u2, psi(1,1,jo), 1, &
+            cmplx(1._dp, 0._dp, dp), aux(1,1,1), 1)
 
         ! Calculte < psi_: | dH - e dS | psi_i >
         call zgemv('C', no_u2, ndeg, cmplx(1._dp, 0._dp, dp), &
-            psi(1,1,io_start), no_u2, aux, 1, cmplx(0._dp, 0._dp, dp), vdeg(1,(io-1)*ndeg+1), 1)
+            psi(1,1,io_start), no_u2, aux(1,1,1), 1, &
+            cmplx(0._dp, 0._dp, dp), vdeg(1,(io-1)*ndeg+1), 1)
 
         ! Initialize identity matrix
         Identity(1,(io-1)*ndeg+io) = 1._dp
@@ -688,10 +679,11 @@ contains
       ! Now Hk contains the linear combination of the states that
       ! should decouple the degenerate subspace
       call zgemm('N', 'N', no_u2, ndeg, ndeg, cmplx(1._dp, 0._dp, dp), &
-          psi(1,1,io_start), no_u2, Hk, ndeg, cmplx(0._dp, 0._dp, dp), Sk, no_u2)
+          psi(1,1,io_start), no_u2, Hk(1,1,1,1), ndeg, &
+          cmplx(0._dp, 0._dp, dp), Sk(1,1,1,1), no_u2)
 
       ! Copy back the new states
-      call zcopy(ndeg*no_u2, Sk, 1, psi(1,1,io_start), 1)
+      call zcopy(ndeg*no_u2, Sk(1,1,1,1), 1, psi(1,1,io_start), 1)
       
     end do
 
@@ -703,7 +695,9 @@ contains
     integer, intent(in) :: neig
     real(dp), intent(in) :: eig(neig)
     integer :: ix, ie
-    
+
+    complex(dp), external :: zdotc
+
     do ix = 1, 3
       
       ! Calculate velocities using the analytic d H(k) / d k_alpha where
@@ -714,14 +708,16 @@ contains
 
         ! dH | psi >
         call zgemv('N', no_u2, no_u2, cmplx(1._dp, 0._dp, dp), &
-            dH, no_u2, psi(1,1,ie), 1, cmplx(0._dp, 0._dp, dp), aux, 1)
+            dH(1,1,1,1), no_u2, psi(1,1,ie), 1, &
+            cmplx(0._dp, 0._dp, dp), aux(1,1,1), 1)
         ! dH - e dS | psi >
         call zgemv('N', no_u2, no_u2, cmplx(-eig(ie), 0._dp, dp), &
-            dS, no_u2, psi(1,1,ie), 1, cmplx(1._dp, 0._dp, dp), aux, 1)
+            dS(1,1,1,1), no_u2, psi(1,1,ie), 1, &
+            cmplx(1._dp, 0._dp, dp), aux(1,1,1), 1)
 
         ! Now calculate the velocity along ix
         ! < psi | H - e dS | psi >
-        v(ix,ie) = real(zdotc(no_u2,psi(1,1,ie),1,aux,1), dp)
+        v(ix,ie) = real(zdotc(no_u2,psi(1,1,ie),1,aux(1,1,1),1), dp)
 
       end do
       
