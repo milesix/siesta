@@ -143,15 +143,16 @@ C
 
       logical, intent(in), optional :: dealloc_psi
       
-      external
-     .  diag2g, diag2k, diag2kspiral
+      external :: diag2g, diag2k, diag2kspiral
+#ifdef MPI
+      external :: diagkp, diag2kp, diag3kp
+      external :: diagkp_velocity
+      external :: diag2kp_velocity, diag3kp_velocity
+#endif
 #ifdef CDF
       external diagk_file
 #endif
 
-#ifdef MPI
-      external           :: diagkp
-#endif
       integer            :: io, iuo, naux, nhs, npsi, nuo
       real(dp),  pointer :: aux(:)
 C  ....................
@@ -307,12 +308,21 @@ C Call apropriate routine
      .               iscf, neigwanted)
 #ifdef MPI
        else if ( ParallelOverK ) then
-         call diag2kp( spin, maxuo, nuotot, no,
-     .       maxnh, numh, listhptr, listh, H, S, getD,
-     .       qtot, temp, e1, e2, xij,
-     .       nk, kpoint, wk,
-     .       eo, qo, Dnew, Enew, Ef, Entropy,
-     .       Haux, Saux, psi, aux, occtol, iscf, neigwanted)
+         if ( use_velocity_shift ) then
+           call diag2kp_velocity( spin, maxuo, nuotot, no,
+     .         maxnh, numh, listhptr, listh, H, S, getD,
+     .         qtot, temp, e1, e2, xij,
+     .         nk, kpoint, wk,
+     .         eo, qo, Dnew, Enew, Ef, Entropy,
+     .         Haux, Saux, psi, aux, occtol, iscf, neigwanted)
+         else
+           call diag2kp( spin, maxuo, nuotot, no,
+     .         maxnh, numh, listhptr, listh, H, S, getD,
+     .         qtot, temp, e1, e2, xij,
+     .         nk, kpoint, wk,
+     .         eo, qo, Dnew, Enew, Ef, Entropy,
+     .         Haux, Saux, psi, aux, occtol, iscf, neigwanted)
+         end if
 #endif
        else
          call diag2k( nuo, no, maxnh, maxnd, maxo, numh,
@@ -333,12 +343,21 @@ C Call apropriate routine
      .                 nuotot, occtol, iscf, neigwanted )
 #ifdef MPI
         else if ( ParallelOverK ) then
-          call diag3kp( spin, maxuo, nuotot, no,
-     .        maxnh, numh, listhptr, listh, H, S, getD,
-     .        qtot, temp, e1, e2, xij,
-     .        nk, kpoint, wk,
-     .        eo, qo, Dnew, Enew, Ef, Entropy,
-     .        Haux, Saux, psi, aux, occtol, iscf, neigwanted)
+          if ( use_velocity_shift ) then
+            call diag3kp_velocity( spin, maxuo, nuotot, no,
+     .          maxnh, numh, listhptr, listh, H, S, getD,
+     .          qtot, temp, e1, e2, xij,
+     .          nk, kpoint, wk,
+     .          eo, qo, Dnew, Enew, Ef, Entropy,
+     .          Haux, Saux, psi, aux, occtol, iscf, neigwanted)
+          else            
+            call diag3kp( spin, maxuo, nuotot, no,
+     .          maxnh, numh, listhptr, listh, H, S, getD,
+     .          qtot, temp, e1, e2, xij,
+     .          nk, kpoint, wk,
+     .          eo, qo, Dnew, Enew, Ef, Entropy,
+     .          Haux, Saux, psi, aux, occtol, iscf, neigwanted)
+        end if
 #endif
         else
           call diag3k( nuo, no, maxnh, maxnd, maxo, numh,
