@@ -82,6 +82,11 @@ module m_matel_registry
   public :: register_in_rf_pool, register_in_tf_pool
   public :: evaluate, rcut, lcut
   public :: evaluate_x, evaluate_y, evaluate_z
+  public :: evaluate_grad_x
+  public :: x_eval_grad_x
+  public :: y_eval_grad_x
+!  public :: evaluate_grad_y
+!  public :: evaluate_grad_z
   public :: show_pool
   public :: get_nfuncs
 
@@ -259,6 +264,77 @@ CONTAINS
        call die("Invalid gindex")
     endif
   end subroutine evaluate
+!--------------------------------------------------------------
+  subroutine evaluate_grad_x(gindex,r,f,grad)
+  use trialorbitalclass, only: gettrialwavefunction
+
+    integer, intent(in)    :: gindex
+    real(dp), intent(in)   :: r(3)
+    real(dp), intent(out)  :: f
+    real(dp), intent(out)  :: grad(3)
+
+    real(dp) :: f_tmp
+    
+    if (valid(gindex)) then
+       if (associated(matel_pool(gindex)%rf)) then
+          call evaluate_ext_radfunc(matel_pool(gindex)%rf,r,f_tmp,grad)
+          f = grad(1)
+       else if (associated(matel_pool(gindex)%tf)) then
+          f_tmp = gettrialwavefunction(matel_pool(gindex)%tf,r)
+          grad = 0.0_dp   ! do not know how to get this...
+       endif
+    else
+       call die("Invalid gindex")
+    endif
+  end subroutine evaluate_grad_x
+
+!--------------------------------------------------------------
+  subroutine x_eval_grad_x(gindex,r,f,grad)
+  use trialorbitalclass, only: gettrialwavefunction
+
+    integer, intent(in)    :: gindex
+    real(dp), intent(in)   :: r(3)
+    real(dp), intent(out)  :: f
+    real(dp), intent(out)  :: grad(3)
+
+    real(dp) :: f_tmp
+    
+    if (valid(gindex)) then
+       if (associated(matel_pool(gindex)%rf)) then
+          call evaluate_ext_radfunc(matel_pool(gindex)%rf,r,f_tmp,grad)
+          f = grad(1) * r(1)
+       else if (associated(matel_pool(gindex)%tf)) then
+          f_tmp = gettrialwavefunction(matel_pool(gindex)%tf,r)
+          grad = 0.0_dp   ! do not know how to get this...
+       endif
+    else
+       call die("Invalid gindex")
+    endif
+  end subroutine x_eval_grad_x
+
+  !--------------------------------------------------------------
+  subroutine y_eval_grad_x(gindex,r,f,grad)
+  use trialorbitalclass, only: gettrialwavefunction
+
+    integer, intent(in)    :: gindex
+    real(dp), intent(in)   :: r(3)
+    real(dp), intent(out)  :: f
+    real(dp), intent(out)  :: grad(3)
+
+    real(dp) :: f_tmp
+    
+    if (valid(gindex)) then
+       if (associated(matel_pool(gindex)%rf)) then
+          call evaluate_ext_radfunc(matel_pool(gindex)%rf,r,f_tmp,grad)
+          f = grad(1) * r(2)
+       else if (associated(matel_pool(gindex)%tf)) then
+          f_tmp = gettrialwavefunction(matel_pool(gindex)%tf,r)
+          grad = 0.0_dp   ! do not know how to get this...
+       endif
+    else
+       call die("Invalid gindex")
+    endif
+  end subroutine y_eval_grad_x
 
   SUBROUTINE evaluate_x(gindex,r,xphi,grxphi)
     !      Calculates x*phiatm and its gradient

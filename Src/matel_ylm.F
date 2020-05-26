@@ -60,17 +60,27 @@ C     parameters
                                          ! Index of harmonics (after REDUCE_SPHA)
         integer,  POINTER :: INVP(:)     ! Map from harmonic components to the associated function
 
+        logical           :: debug = .true.
+
         CONTAINS
           procedure :: COMPUTE_SPHA
           procedure :: GET_DIM
           procedure :: HARM2ORB
           procedure :: INDF
+          procedure :: set_debug
           ! now called internally by 'compute_spha'
           procedure, private :: REDUCE_SPHA
       END TYPE SPHER_HARM_t
 
       contains
 
+      subroutine set_debug( this, want_debug)
+      class(SPHER_HARM_t) :: this
+      logical, intent(in)  :: want_debug
+
+      this%debug = want_debug
+      end subroutine set_debug
+           
       subroutine COMPUTE_SPHA( this, first_gindex, last_gindex,
      $                         func, l_inc )
 
@@ -107,7 +117,7 @@ C     parameters
 
 !     Local variables
       integer             :: i, ig, il, first, last, nlocal, nf, mf,
-     &                       l, nilm, jlm
+     &                       l, nilm, jlm, m, ny
 
       this%N      = last_gindex - first_gindex + 1
       this%BASE   = first_gindex - 1  ! this is the base for counting
@@ -129,7 +139,8 @@ C     parameters
         ! Get the Global Index of the orbital
         IG = this%BASE+IL
         l = LCUT( IG )            ! Maximum l
-        nilm = (l+2)**2           ! Total maximum number of l,m indexes
+        nilm = ((l+l_inc)+1)**2   ! Total maximum number of l,m indexes
+                                  ! taking into account l_inc 
         ! Check if we have enough memory
         if (nf+nilm > mf ) THEN
           mf = (nf+NILM)*EXPAND
@@ -138,19 +149,26 @@ C     parameters
           CALL RE_ALLOC( this%ILM, 1, mf, 'ILM', MYNAME )
         endif
         ! Compute Spherical harmonic expansion of orbital IG
-        CALL YLMEXP( L+L_INC, RLYLM, func, IG, 0, NQ, RMAX, NILM,
+        CALL YLMEXP( L+L_INC, RLYLM, func, IG, 0, NQ, RMAX, NY,
      &             this%ILM(nf+1:), this%F(:,nf+1:) )
         ! Store orbital in Fourier space
-        DO JLM = 1, NILM
+        if (this%debug) then
+           print *, " --- Number of spherical harms: ", ny
+        endif
+        DO JLM = 1, NY
           nf = nf + 1
           ! Save the orbital ID of current harmonic
           this%INVP(nf) = IL
           l = LOFILM( this%ILM(nf) )
+          m = this%ILM(nf) - l*l - l - 1
+          if (this%debug) then
+             print *, "   l, m:", l, m
+          endif
           CALL RADFFT( L, NQ, RMAX, this%F(0:NQ,NF),
      &      this%F(0:NQ,NF) )
           ! F(NQ,NF) = 0._dp
         ENDDO
-        this%IND(IL) = NILM
+        this%IND(IL) = NY
       enddo
 
       ! Replicate data to all processors

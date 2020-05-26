@@ -28,7 +28,9 @@
 
       use m_radfft,  only : reset_radfft
       use m_matel_registry, ONLY : EVALUATE,
-     &                             EVALUATE_X, EVALUATE_Y, EVALUATE_Z
+     &                             EVALUATE_X, EVALUATE_Y, EVALUATE_Z,
+     $                             EVALUATE_GRAD_X, X_EVAL_GRAD_X,
+     $                             Y_EVAL_GRAD_X
 
       PRIVATE
       
@@ -49,6 +51,8 @@
       !> k-space spherical-harmonic decomposition of
       !> registered functions
       type(spher_harm_t), target :: ylmk_val_all
+      type(spher_harm_t), target :: ylmk_val_grad_kbs(3)
+      type(spher_harm_t), target :: ylmk_xyz_grad_kbs(3,3)
       type(spher_harm_t), target :: ylmk_x_orbs
       type(spher_harm_t), target :: ylmk_y_orbs
       type(spher_harm_t), target :: ylmk_z_orbs
@@ -67,6 +71,8 @@
 
       !> Overlaps of PAOs, KBs, or LDAUprojs with PAOs
       TYPE(MATEL) :: tab_S           ! Unity (overlap). 
+      TYPE(MATEL) :: tab_S_Grad_KB(3)           ! Unity (overlap), with gradients of KB
+      TYPE(MATEL) :: tab_XYZ_Grad_KB(3,3)       ! XYZ, with gradients of KB
       !> Laplacian among PAOs
       TYPE(MATEL) :: tab_T           ! -Laplacian.      
       !> Laplacian among Vna functions
@@ -111,6 +117,7 @@
       ! Local Variables
       integer             :: is, top, top_vna
       logical             :: optical=.true., bornz=.true.
+      logical             :: thermal_transport=.true.
       logical             :: switch_ldau=.false.
       logical,       save :: init = .false.
       TYPE(allocDefaults) :: OLDEFS
@@ -145,6 +152,7 @@
       ! except the wannier trial functions
       top = num_orb + num_kb + num_ldau 
       top_vna = top + num_va
+      print *, "val_all"
       call ylmk_val_all%compute_spha(1, top_vna, EVALUATE, 0)
 
       ! Overlap table from PAOs, KBs, and LDAU projs to PAOs.
@@ -159,6 +167,32 @@
       call tab_TA%init(MODE_T, ylmk_val_all, top+1, top_vna,
      $                     ylmk_val_all, top+1, top_vna)
 
+      if (thermal_transport) then
+         print *, "val_grad_kbs(1)"
+         call ylmk_val_grad_kbs(1)%compute_spha(num_orb+1,
+     $                                          num_orb+num_kb,
+     $                                          EVALUATE_GRAD_X, 1)
+      ! Overlap table from PAOs to grad_KBs.
+         call tab_S_Grad_KB(1)%init(MODE_S, ylmk_val_all, 1, num_orb,
+     $                    ylmk_val_grad_kbs(1), 1, num_kb)
+
+         print *, "x_grad_kbs(1)"
+         call ylmk_xyz_grad_kbs(1,1)%compute_spha(num_orb+1,
+     $                                          num_orb+num_kb,
+     $                                          X_EVAL_GRAD_X, 2)
+      ! Overlap table from PAOs to grad_KBs.
+         call tab_XYZ_Grad_KB(1,1)%init(MODE_XYZ, ylmk_val_all,
+     $                    1, num_orb,
+     $                    ylmk_xyz_grad_kbs(1,1), 1, num_kb)
+         print *, "y_grad_kbs(1)"
+         call ylmk_xyz_grad_kbs(2,1)%compute_spha(num_orb+1,
+     $                                          num_orb+num_kb,
+     $                                          Y_EVAL_GRAD_X, 2)
+      ! Overlap table from PAOs to grad_KBs.
+         call tab_XYZ_Grad_KB(2,1)%init(MODE_XYZ, ylmk_val_all,
+     $                    1, num_orb,
+     $                    ylmk_xyz_grad_kbs(2,1), 1, num_kb)
+      endif
 
       ! This section executed only if polarization calculations
       ! are requested (they need matrix elements of the position operator)
@@ -169,14 +203,17 @@
 
       ! The X, Y, and Z tables are then overlaps of PAOs and xPAOs
 
+         print *, "x_orbs"
          call ylmk_x_orbs%compute_spha(1, num_orb, EVALUATE_X, 1)
          call tab_X%init( MODE_XYZ, ylmk_val_all, 1, num_orb,
      $                         ylmk_x_orbs, 1, num_orb)
 
+         print *, "y_orbs"
          call ylmk_y_orbs%compute_spha(1, num_orb, EVALUATE_Y, 1)
          call tab_Y%init( MODE_XYZ, ylmk_val_all, 1, num_orb,
      $                         ylmk_y_orbs, 1, num_orb)
 
+         print *, "z_orbs"
          call ylmk_z_orbs%compute_spha(1, num_orb, EVALUATE_Z, 1)
          call tab_Z%init( MODE_XYZ, ylmk_val_all, 1, num_orb,
      $                         ylmk_z_orbs, 1, num_orb)
@@ -198,18 +235,21 @@
 
       ! The X_opt, Y_opt, and Z_opt tables are then overlaps of PAOs and xKBs
 
+         print *, "x_kbs"
          call ylmk_x_kbs%compute_spha(num_orb+1, num_orb+num_kb,
      $                                EVALUATE_X, 1)
 
          call tab_X_opt%init( MODE_XYZ, ylmk_val_all, 1, num_orb,
      $                         ylmk_x_kbs, 1, num_kb)
 
+         print *, "y_kbs"
          call ylmk_y_kbs%compute_spha(num_orb+1, num_orb+num_kb,
      $                                EVALUATE_Y, 1)
 
          call tab_Y_opt%init( MODE_XYZ, ylmk_val_all, 1, num_orb,
      $                         ylmk_y_kbs, 1, num_kb)
 
+         print *, "z_kbs"
          call ylmk_z_kbs%compute_spha(num_orb+1, num_orb+num_kb,
      $                                EVALUATE_Z, 1)
 
@@ -298,7 +338,7 @@ C ************************* BEHAVIOUR *******************************
 C If |R12| > RCUT(IS1,IO1) + RCUT(IS2,IO2), returns exactly zero.
 
       !> Operation code
-      character(len=1), intent(in) :: OPERAT
+      character(len=*), intent(in) :: OPERAT
       !> Global index of 1st function
       integer, intent(in)      :: IG1
       !> Global index of 2nd function
@@ -327,6 +367,32 @@ C If |R12| > RCUT(IS1,IO1) + RCUT(IS2,IO2), returns exactly zero.
             call tab_S_wann%get_matel(IG1, IG2, R12, S12, DSDR)
          else
             call die("Cannot process 'S' in matel")
+         endif
+
+      case ( 'SGX' )
+
+         if (is_orb(ig1) .and. (is_kb(ig2))) then
+            call tab_S_Grad_KB(1)%get_matel(IG1, IG2, R12, S12, DSDR)
+         else
+            call die("Cannot process 'SGX' in matel")
+         endif
+
+      case ( 'XGX' )
+
+         if (is_orb(ig1) .and. (is_kb(ig2))) then
+            call tab_XYZ_Grad_KB(1,1)%get_matel(
+     $           IG1, IG2, R12, S12, DSDR)
+         else
+            call die("Cannot process 'XGX' in matel")
+         endif
+
+      case ( 'YGX' )
+
+         if (is_orb(ig1) .and. (is_kb(ig2))) then
+            call tab_XYZ_Grad_KB(2,1)%get_matel(
+     $           IG1, IG2, R12, S12, DSDR)
+         else
+            call die("Cannot process 'YGX' in matel")
          endif
 
       case ( 'T' )
