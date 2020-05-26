@@ -241,6 +241,4 @@ echo "Please add the following to the BOTTOM of your arch.make file (for double-
 echo ""
 echo "GRIDXC_ROOT = $gridxc_dir"
 echo "include \$(GRIDXC_ROOT)/share/org.siesta-project/gridxc_dp_mpi.mk"
-echo "INCFLAGS += $(GRIDXC_INCFLAGS)"
-echo "LIBS += $(GRIDXC_LIBS)"
 echo ""
