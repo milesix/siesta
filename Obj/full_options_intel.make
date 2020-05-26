@@ -43,7 +43,7 @@ FC_SERIAL=ifort
 #
 FPP = $(FC_SERIAL) -E -P -x c
 #
-FFLAGS = $(FCFLAGS)
+FFLAGS = $(FFLAGS)
 FFLAGS_DEBUG= -g -O0
 
 RANLIB=echo

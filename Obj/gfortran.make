@@ -75,7 +75,7 @@ atom.o: atom.F
 .F90.o:
 	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_free_F90) $< 
 .f.o:
-	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FCFLAGS_fixed_f)  $<
+	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FFLAGS_fixed_f)  $<
 .f90.o:
-	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FCFLAGS_free_f90)  $<
+	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FFLAGS_free_f90)  $<
 
