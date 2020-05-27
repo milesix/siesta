@@ -125,7 +125,23 @@ C Explicit formulas up to L=2
 
 C        Label 999 is the exit point
          IF (LMAX.EQ.0) GOTO 999
+!
+! (From Wikipedia: https://en.wikipedia.org/wiki/Spherical_harmonics)
+! One source of confusion with the definition of the spherical harmonic
+! functions concerns a phase factor of (−1)^m, commonly referred to as
+! the Condon–Shortley phase in the quantum mechanical literature. In the
+! quantum mechanics community, it is common practice to either include
+! this phase factor in the definition of the associated Legendre
+! polynomials, or to append it to the definition of the spherical
+! harmonic functions. There is no requirement to use the Condon–Shortley
+! phase in the definition of the spherical harmonic functions, but
+! including it can simplify some quantum mechanical operations,
+! especially the application of raising and lowering operators.
 
+! In particular, here, for l=1, we have -y,z,-x instead of y,z,x for
+! m=-1,0,1, respectively.  Take this into account when you need to
+! account for the signs of the lobes in matrix elements.
+         
          RLY(1)    = -(C(1)*R(2))
          GRLY(2,1) = -C(1)
 
