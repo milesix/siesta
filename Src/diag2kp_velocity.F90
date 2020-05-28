@@ -305,8 +305,9 @@ subroutine diag2kp_velocity( spin, no_l, no_u, no_s, nnz, &
   if ( .not. getD ) goto 999
 
   ! Find new Fermi energy and occupation weights ........................
-  call fermid(1, 1, nk, wk, no_u2, &
-      neigwanted2, eo, Temp, qtot, qo, ef, Entropy )
+  if ( neigwanted /= no_u ) call die("NumberOfEigenstates not supported")
+  call fermid(2, 2, nk, wk, no_u, &
+      neigwanted, eo, Temp, qtot, qo, ef, Entropy )
 
   ! Initialize current
   BB_res(:) = 0._dp
