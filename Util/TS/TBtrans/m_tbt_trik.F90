@@ -256,6 +256,7 @@ contains
 
 ! ******************** Timer variables ***********************
     real(dp) :: loop_time, init_time
+    integer :: n_loops
     real :: last_progress, cur_progress
 ! ************************************************************
 
@@ -740,6 +741,14 @@ contains
     ! Number of energy points
     N_E = N_TBT_E()
 
+    ! For tracking time
+    if ( mod(N_E, Nodes) == 0 ) then
+      n_loops = itt_steps(Kp) * N_E / Nodes
+    else
+      n_loops = itt_steps(Kp) * (N_E / Nodes + 1)
+    end if
+    n_loops = n_loops * Nodes
+
 #ifdef NCDF_4
     ! Open the NetCDF handles
     if ( .not. (only_proj .or. only_sigma) ) then
@@ -875,31 +884,28 @@ contains
           ! Print out information about current progress.
           ! We print out a progress report every 5 %
           ! Calculate progress
-          jEl = (itt_cur_step(Kp) - 1) * N_E + iE
-          iEl = itt_steps(Kp) * N_E
-          cur_progress = 100. * real(jEl)/real(iEl)
+          cur_progress = real((itt_cur_step(Kp) - 1) * N_E + iE) / n_loops
           if ( cur_progress - last_progress >= percent_tracker ) then
-             ! We have passed another 'percent_tracker'% of calculation time
+            ! We have passed another 'percent_tracker'% of calculation time
 
-             ! save current progress in integer form
-             last_progress = cur_progress
+            ! save current progress
+            last_progress = cur_progress
 
-             ! Stop timer
-             call timer_stop('E-loop')
+            ! Stop timer
+            call timer_stop('E-loop')
 
-             ! Calculate time passed by correcting for the initial time
-             call timer_get('E-loop', totTime=loop_time)
-             loop_time = loop_time - init_time
+            ! Calculate time passed by correcting for the initial time
+            call timer_get('E-loop', totTime=loop_time)
+            loop_time = loop_time - init_time
 
-             if ( IONode ) then
-                loop_time = loop_time / cur_progress
-                loop_time = loop_time * ( 100._dp - cur_progress )
-                write(*,'(a,f7.3,'' %, ETA in '',f20.3,'' s'')') &
-                     'tbt: Calculated ', cur_progress, loop_time
-             end if
+            if ( IONode ) then
+              loop_time = loop_time / cur_progress - loop_time
+              write(*,'(a,f7.2,'' %, ETA in '',f20.1,'' s'')') &
+                  'tbt: Calculated ', cur_progress * 100., loop_time
+            end if
 
-             ! Start the timer again
-             call timer_start('E-loop')
+            ! Start the timer again
+            call timer_start('E-loop')
 
           end if
 
@@ -1544,14 +1550,12 @@ contains
              call timer_stop('E-loop')
 
              ! Calculate time passed
-             call timer_get('E-loop',totTime=loop_time)
+             call timer_get('E-loop', totTime=loop_time)
              loop_time = loop_time - init_time
 
              if ( IONode ) then
-                iEl = itt_steps(Kp) * N_E
-                loop_time = iEl * loop_time / real(Nodes,dp) - loop_time
-                write(*,'(a,f20.3,'' s'')') 'tbt: Initial ETA in ', &
-                     loop_time
+               loop_time = n_loops * loop_time / Nodes - loop_time
+               write(*,'(a,f20.1,'' s'')') 'tbt: Initial ETA in ', loop_time
              end if
 
              ! Start the timer again
@@ -1863,8 +1867,8 @@ contains
     ! Check that there is space enough in the work array.
     do ip = 1 , np - 1
       itmp = p(ip) * p(ip+1) * 2 ! B,C
-      itmp = itmp  + p(ip) ** 2   ! A
-      itmp = itmp  + p(ip+1) ** 2 ! Y
+      itmp = itmp + p(ip) ** 2 ! A
+      itmp = itmp + p(ip+1) ** 2 ! Y
       if ( itmp > nwork ) then
         call die('Work array is too small... A, B, C, Y')
       end if
@@ -2031,7 +2035,7 @@ contains
     ! Check that there is space enough in the work array.
     do ip = 1 , np - 1
       itmp = p(ip) * p(ip+1) * 2 ! B,C
-      itmp = itmp  + p(ip) ** 2   ! A
+      itmp = itmp  + p(ip) ** 2 ! A
       itmp = itmp  + p(ip+1) ** 2 ! Y
       if ( itmp > nwork ) then
         call die('Work array is too small... A, B, C, Y')

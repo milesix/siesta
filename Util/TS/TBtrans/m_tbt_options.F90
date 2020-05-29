@@ -483,8 +483,8 @@ contains
     ! we must have read the electrodes first
     if ( N_Elec == 0 ) call die('read_tbt_options: Error in programming')
 
-    percent_tracker = fdf_get('TBT.Progress',5.)
-    percent_tracker = max(0., percent_tracker)
+    percent_tracker = fdf_get('TBT.Progress', 5.)
+    percent_tracker = max(0., percent_tracker) / 100.
     
     ! Reading the Transiesta solution method
     chars = fdf_get('TBT.SolutionMethod','BTD')
