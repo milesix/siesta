@@ -18,7 +18,7 @@
 ! The module also exports the "elsi_finalize_scfloop" routine, to be called from
 ! the appropriate place. Some variables are kept at the module level for this.
 !
-! This interface has been tested with ELSI-v2.0.2 --> 2.3.1 
+! This interface has been tested with ELSI-v2.0.2 --> 2.3.1
 !
 ! Usage: Compile Siesta with -DSIESTA__ELSI
 !        Define
@@ -50,7 +50,7 @@ module m_elsi_interface
   integer, parameter :: EIGENEXA_SOLVER   = 4 ! solver
   integer, parameter :: MAGMA_SOLVER      = 7 ! solver
 #endif
-  
+
   integer, parameter :: MULTI_PROC        = 1 ! parallel_mode
   integer, parameter :: SIESTA_CSC        = 2 ! distribution
 
@@ -84,7 +84,7 @@ module m_elsi_interface
   integer :: mp_order
   integer :: illcond_check
   real(dp) :: illcond_tol
-  
+
   integer :: elpa_flavor
   integer :: elpa_gpu
   integer :: elpa_n_single
@@ -94,7 +94,7 @@ module m_elsi_interface
   integer  :: omm_flavor
   integer  :: omm_n_elpa
   real(dp) :: omm_tol
-  
+
   integer :: pexsi_method
   integer :: pexsi_tasks_per_pole
   integer :: pexsi_n_pole
@@ -111,11 +111,11 @@ module m_elsi_interface
   real(dp) :: ntpoly_filter
   real(dp) :: ntpoly_tol
 
-#ifdef SIESTA__ELSI_2_4_SOLVERS     
+#ifdef SIESTA__ELSI_2_4_SOLVERS
   integer  :: eigenexa_method
   integer  :: magma_solver_type
 #endif
-  
+
   character(len=6) :: solver_string
   character(len=5) :: broad_string
 
@@ -153,8 +153,8 @@ subroutine elsi_getdm(iscf, no_s, nspin, no_l, maxnh, no_u,  &
       ! Interim flag to just get the EDM
       ! Note that, if .true., the DM is NOT obtained
       ! This needs to be refactored
-      
-      logical, intent(in) :: Get_EDM_Only 
+
+      logical, intent(in) :: Get_EDM_Only
 
 
       logical :: gamma, using_aux_cell
@@ -264,7 +264,7 @@ subroutine elsi_get_opts()
   mp_order             = fdf_get("ELSI-Broadening-MPOrder", 1)
   illcond_check        = fdf_get("ELSI-Ill-Condition-Check", 0 )
   illcond_tol          = fdf_get("ELSI-Ill-Condition-Tolerance", 1.0e-5_dp )
-  
+
   elpa_flavor          = fdf_get("ELSI-ELPA-Flavor", 2)
   elpa_gpu             = fdf_get("ELSI-ELPA-GPU", 0)
   elpa_n_single        = fdf_get("ELSI-ELPA-N-single-precision", 0)
@@ -292,11 +292,11 @@ subroutine elsi_get_opts()
   ntpoly_filter        = fdf_get("ELSI-NTPOLY-Filter", 1.0e-9_dp)
   ntpoly_tol           = fdf_get("ELSI-NTPOLY-Tolerance", 1.0e-6_dp)
 
-#ifdef SIESTA__ELSI_2_4_SOLVERS     
+#ifdef SIESTA__ELSI_2_4_SOLVERS
   eigenexa_method      = fdf_get("ELSI-EIGENEXA-Method", 2)
   magma_solver_type    = fdf_get("ELSI-MAGMA-Solver-Type", 1)
 #endif
-  
+
   select case (solver_string)
   case ("elpa", "ELPA")
     which_solver = ELPA_SOLVER
@@ -311,12 +311,12 @@ subroutine elsi_get_opts()
     which_solver = SIPS_SOLVER
   case ("ntpoly", "NTPOLY", "NTPoly")
     which_solver = NTPOLY_SOLVER
-#ifdef SIESTA__ELSI_2_4_SOLVERS     
+#ifdef SIESTA__ELSI_2_4_SOLVERS
   case ("eigenexa", "EigenExa", "EIGENEXA")
     which_solver = EIGENEXA_SOLVER
   case ("MAGMA", "magma")
     which_solver = MAGMA_SOLVER
-#endif     
+#endif
   case default
     which_solver = ELPA_SOLVER
   end select
@@ -399,7 +399,7 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
   integer, pointer  :: my_col_idx(:)
   real(dp), pointer :: my_S(:)
   real(dp), pointer :: my_H(:)
-  real(dp), allocatable, target :: my_DM(:) 
+  real(dp), allocatable, target :: my_DM(:)
 
   real(dp), allocatable :: occs(:), eigvals(:)
 
@@ -425,7 +425,7 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
 
     ! Get ELSI options
     call elsi_get_opts()
-      
+
     ! Number of states to solve when calling an eigensolver
 !!    n_state = min(n_basis, ceiling(qtot/2+5))
     n_state = neigwanted
@@ -473,12 +473,12 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
     call elsi_set_pexsi_n_mu(elsi_h, pexsi_n_mu)
     call elsi_set_pexsi_n_pole(elsi_h, pexsi_n_pole)
     call elsi_set_pexsi_inertia_tol(elsi_h, pexsi_inertia_tol)
-    
+
     call elsi_set_pexsi_np_symbo(elsi_h, pexsi_tasks_symbolic)
     call elsi_set_pexsi_temp(elsi_h, temp)
 
 ! --- SIPs
-    
+
     if (sips_n_slice /= ELSI_NOT_SET) then
       call elsi_set_sips_n_slice(elsi_h, sips_n_slice)
     end if
@@ -493,12 +493,12 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
 
 #ifdef SIESTA__ELSI_2_4_SOLVERS
 ! --- EigenExa
-    call elsi_set_eigenexa_method(elsi_h, eigenexa_method)    
+    call elsi_set_eigenexa_method(elsi_h, eigenexa_method)
 
 ! --- MAGMA
-    call elsi_set_magma_solver(elsi_h, magma_solver_type)    
+    call elsi_set_magma_solver(elsi_h, magma_solver_type)
 #endif
-    
+
  endif
 
  if ( (which_solver == PEXSI_SOLVER) .and. &
@@ -647,7 +647,7 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
      endif
 
   else
-     
+
      if (n_spin == 1) then
         call elsi_dm_real_sparse(elsi_h, ham, ovlp, DM, energy)
      else
@@ -655,11 +655,11 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
         ! Energy and entropy are already summed over spins
         call elsi_dm_real_sparse(elsi_h, my_H, my_S, my_DM, energy)
      endif
-     
+
      call elsi_get_entropy(elsi_h, ets)
      call elsi_get_mu(elsi_h, ef)
      ets = ets/temp
-     
+
      if (which_solver == ELPA_SOLVER) then
         allocate(occs(neigwanted))
         allocate(eigvals(neigwanted))
@@ -668,7 +668,7 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
 
         qo = 0.0_dp
         eo = 0.0_dp
-        
+
         if  (n_spin == 1 ) then
            qo(1:neigwanted,1,1) = occs(1:neigwanted)
            eo(1:neigwanted,1,1) = eigvals(1:neigwanted)
@@ -698,7 +698,7 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
         endif
 
      endif
-     
+
   endif
 
 
@@ -1228,26 +1228,26 @@ end subroutine elsi_finalize_scfloop
 
 ! This is a routine that is meant to be called by dhscf after
 ! computing the total potential V_scf.
-! 
+!
 ! It will find its minimum and maximum change between two invocations
 ! of dhscf (that is, between two buildings of the Hamiltonian from a DM: DM->H)
 !
 ! When mixing the DM, the change in H between two solver steps (H->DM
 ! operation) (Delta_H below) is indeed related directly to the
 ! Delta_Vscf (see Lin Lin's paper).
-! iscf = 1 DM(0) -> H(0) -> DM_out(1) -~> DM_mix(1)  
-! iscf = 2 DM_mix(1) -> H(1) -> DM_out(2) -~> DM_mix(2)  
+! iscf = 1 DM(0) -> H(0) -> DM_out(1) -~> DM_mix(1)
+! iscf = 2 DM_mix(1) -> H(1) -> DM_out(2) -~> DM_mix(2)
 ! Delta_H = H(1) - H(0) = (Delta_Vscf)
 
 ! When mixing H there is an extra mixing step that destroys this correspondence.
-! iscf = 1 DM(0) -> H(0) -> DM_out(1) -> H_out(1) -~> H_mix(1)  
-! iscf = 2 H_mix(1) -> DM_out(2) -> H_out(2) -~> H_mix(2)  
+! iscf = 1 DM(0) -> H(0) -> DM_out(1) -> H_out(1) -~> H_mix(1)
+! iscf = 2 H_mix(1) -> DM_out(2) -> H_out(2) -~> H_mix(2)
 ! Delta_H = H_mix(1) - H(0) /= (Delta_Vscf)
 ! However, for the simple case of linear mixing:
 ! H_mix(1) = alpha*H_out(1) + (1-alpha)*H(0), it can be seen that
 ! Delta_H = H_mix(1) - H(0) = alpha*(H_out(1)-H(0))
 ! so Delta_H in this case is a "damped" (Delta_Vscf)
-! 
+!
 ! It is then heuristically useful to employ the (Delta_Vscf)
 ! bracketing shifts, as described in the paper, for both cases. In the
 ! case of mixing H, the bracketing shift will be more conservative.
@@ -1550,12 +1550,12 @@ subroutine elsi_complex_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, numh, ro
 
 #ifdef SIESTA__ELSI_2_4_SOLVERS
 ! --- EigenExa
-    call elsi_set_eigenexa_method(elsi_h, eigenexa_method)    
+    call elsi_set_eigenexa_method(elsi_h, eigenexa_method)
 
 ! --- MAGMA
-    call elsi_set_magma_solver(elsi_h, magma_solver_type)    
+    call elsi_set_magma_solver(elsi_h, magma_solver_type)
 #endif
-    
+
  endif   ! iscf == 1
 
  if ( (which_solver == PEXSI_SOLVER) .and. &
@@ -1830,14 +1830,14 @@ end subroutine transpose
     real(dp), intent(in), target :: eo(maxo, nspinor, maxk)
     real(dp), intent(in) :: kpoints(3,nk)
     real(dp), intent(in) :: kweights(nk)
-      
+
     external          io_assign, io_close
 
     integer           ik, iu, io, is
     real(dp), pointer :: eok(:)
 
     call io_assign( iu )
-    open( iu, file=filename, form='formatted', status='unknown' )      
+    open( iu, file=filename, form='formatted', status='unknown' )
 
     write(iu,"(2e17.9)") ef/eV, temp/eV
     ! The output corresponds to the number of bands.
@@ -1876,7 +1876,7 @@ end subroutine transpose
       real(dp), pointer :: eop(:)
       eop => eo(:)
     end subroutine ravel
-      
+
   end subroutine simple_ioeig
 
 #endif  /* SIESTA__ELSI */
