@@ -28,7 +28,10 @@
       use sparse_matrices, only: Hold, H, H_2D
       use sparse_matrices, only: xijo, xij_2D
       use sparse_matrices, only: S, S_1D
-      use sparse_matrices, only: gradS_2D
+      use sparse_matrices, only: gradS, gradS_2D
+
+      use m_rmatrix, only: rmatrix
+      use sparse_matrices, only: Rmat, Rmat_2D
 
       use sparse_matrices, only: H_kin_1D, H_vkb_1D
       use sparse_matrices, only: H_ldau_2D
@@ -129,6 +132,9 @@
       use m_restruct_SpData2D, only: restruct_dSpData2D
       use matel_mod, only : init_matel_main_tables
 
+      use m_virtual_step_data, only: substep, BASE_STEP, VIRTUAL_STEP
+      use ks_flux_data, only: base_step_sparse_pattern
+
       implicit none
 
       integer            :: istep, nnz
@@ -163,7 +169,7 @@
       integer :: MPIerror
 #endif
 #endif
-      
+
       character(len=256)            :: oname
 
       type(dData2D) :: tmp_2D
@@ -202,7 +208,7 @@
             if (cml_p) call cmlStartStep(mainXML, type='Geom. Optim',
      $           index=istp)
          endif
-         
+
 !        Print Z-matrix coordinates
          if (lUseZmatrix) then
             call write_Zmatrix()
@@ -225,7 +231,7 @@
       case (6)
           write(6,'(t25,a,i6)') 'Begin FC step = ',istep
           if (cml_p) call cmlStartStep(mainXML, type='FC', index=istep)
-          
+
           if (istep .eq. 0) then
             write(6,'(t25,a)') 'Undisplaced coordinates'
          else
@@ -235,11 +241,11 @@
             write(6,'(t26,a,i0,/,t26,a,i1,a,f10.6,a)') 'displace atom ',
      &           iadispl,'in direction ',ixdispl,' by', dx/Ang,' Ang'
          endif
-         
+
       case (8)
          write(6,'(t25,a,i6)') 'Begin Server step = ',istep
          if (cml_p) call cmlStartStep(mainXML, type='FS', index=istep)
-         
+
       case (9)
          if ( istep == 0 ) then
             write(6,'(t25,a,i7)')'Explicit coord. initialization'
@@ -247,34 +253,34 @@
             write(6,'(t25,a,i7)')'Explicit coord. step =',istep
          end if
          if (cml_p) call cmlStartStep(mainXML, type='ECS', index=istep)
-         
+
       case (10)
          write(6,'(t25,a,i7)')'LUA coord. step =',istep
          if (cml_p) call cmlStartStep(mainXML, type='LUA', index=istep)
-         
+
       end select
-      
+
       write(6,'(t22,a)') repeat('=',36)
-      
+
 !     Print atomic coordinates
       call outcoor( ucell, xa, na_u, ' ', writec )
 
 !     Save structural information in crystallographic format
 !     (in file SystemLabel.STRUCT_OUT),
 !     canonical Zmatrix (if applicable), and CML record
-      
+
       call siesta_write_positions(moved=.false.)
-       
+
       endif ! IONode
 
       ! Write the XV file for single-point calculations, so that
       ! it is there at the end for those users who rely on it
-      call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va, 
+      call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va,
      &           foundxv)
       ! Write TDXV file for TDDFT restart.
       if(writetdwf .or. td_elec_dyn) then
       call iotdxv('write',ucell,vcell,na_u,isa,iza,xa,va,foundxv)
-      end if  
+      end if
 
 !     Actualize things if variable cell
 !     These checks are made to ensure that the k-points
@@ -291,7 +297,7 @@
 
       if ( cell_can_change .and. istep /= inicoor ) then
 
-!       Madelung correction for charged systems 
+!       Madelung correction for charged systems
         if (charnet .ne. 0.0_dp) then
           call madelung(ucell, shape, charnet, Emad)
         end if
@@ -308,12 +314,12 @@
             call kpoint_nullify( ts_kpoint_scf )
           end if
           call setup_ts_kpoint_scf( ucell, kpoint_scf )
-          
+
           call re_alloc( eo, 1, no_u, 1, spin%spinor, 1, kpoint_scf%N,
      &        'eo', 'state_init')
-          call re_alloc( qo, 1, no_u, 1, spin%spinor, 1, kpoint_scf%N, 
+          call re_alloc( qo, 1, no_u, 1, spin%spinor, 1, kpoint_scf%N,
      &        'qo', 'state_init' )
-          
+
         end if
       end if
 !     End variable cell actualization
@@ -322,17 +328,17 @@
       auxchanged = .false.
       if ( use_aux_cell ) then
 !       Determine the tightest auxiliary supercell using
-!       also the atomic positions 
+!       also the atomic positions
         call exact_sc_ag(negl,ucell,na_u,isa,xa,nsc)
-        
+
         mscell = 0.0_dp
         do i = 1, 3
           mscell(i,i) = nsc(i)
           if (nsc(i) /= nsc_old(i)) auxchanged = .true.
         end do
-        
+
       end if
-      
+
 !     Auxiliary supercell
 !     Do not move from here, as the coordinates might have changed
 !     even if not the unit cell
@@ -342,7 +348,7 @@
 #endif
 
 !     Print unit cell and compute cell volume
-!     Possible BUG: 
+!     Possible BUG:
 !     Note that this volume is later used in write_subs and the md output
 !     routines, even if the cell later changes.
       if (IOnode) call outcell(ucell)
@@ -386,7 +392,7 @@
 !         for CheSS
           chess_value = get_chess_parameter('chess_buffer_kernel')
           call hsparse( negl, scell, nsc, na_s, isa, xa, lasto,
-     &              lastkb, iphorb, iphKB, maxnh, gamma, 
+     &              lastkb, iphorb, iphKB, maxnh, gamma,
      &              set_xijo=.true., folding=folding1,
      $              diagonal_folding=diag_folding1,
      $              buffer=chess_value)
@@ -396,7 +402,7 @@
           allocate(numh_kernel(no_l_kernel))
           listh_kernel = listh
           numh_kernel = numh
-    
+
           chess_value = get_chess_parameter('chess_buffer_mult')
           call hsparse( negl, scell, nsc, na_s, isa, xa, lasto,
      &                  lastkb, iphorb, iphKB, maxnh, gamma,
@@ -418,13 +424,16 @@
 !     Listh and xijo are allocated inside hsparse
 !     Note: We always generate xijo now, for COOP and other
 !           analyses.
+      IF (.not. ( want_virtual_step_md .AND.
+     $     (substep .eq. VIRTUAL_STEP) )) THEN
       call delete(xij_2D) ! as xijo will be reallocated
       nullify(xijo)
       call hsparse( negl, scell, nsc, na_s, isa, xa, lasto,
      &              lastkb, iphorb, iphKB, maxnh, .not. use_aux_cell,
      $              set_xijo=.true., folding=folding1,
      $              diagonal_folding=diag_folding1,
-     $              debug_folding=fdf_get('debug-folding',.false.))
+     $              debug_folding=fdf_get('debug-folding',.false.),
+     $              buffer=fdf_get('MD.Virtual.BufferLength', 0.0_dp))
 !
       call globalize_or(diag_folding1,diag_folding)
       call globalize_or(folding1,folding)
@@ -454,6 +463,7 @@
             call die("Inadequate auxiliary supercell")
          endif
       endif
+      END IF                    ! <- `Base` step in V.MD
 !
       call globalize_sum(maxnh,nnz)
       if (cml_p) then
@@ -469,9 +479,9 @@
       !
 #ifdef SIESTA__CHESS
       if (isolve == SOLVE_CHESS) then
-          call CheSS_init(node, nodes, maxnh, maxnh_kernel, maxnh_mult, 
-     &         no_u, no_l, no_l_kernel, no_l_mult, BlockSize, 
-     &         spin%spinor, qtots, listh, listh_kernel, listh_mult, 
+          call CheSS_init(node, nodes, maxnh, maxnh_kernel, maxnh_mult,
+     &         no_u, no_l, no_l_kernel, no_l_mult, BlockSize,
+     &         spin%spinor, qtots, listh, listh_kernel, listh_mult,
      &         numh, numh_kernel, numh_mult)
           deallocate(listh_kernel)
           deallocate(numh_kernel)
@@ -481,12 +491,12 @@
 #endif /* CHESS */
       !
       ! If using domain decomposition, redistribute orbitals
-      ! for this geometry, based on the hsparse info. 
+      ! for this geometry, based on the hsparse info.
       ! The first time round, the initial distribution is a
       ! simple block one (given by preSetOrbitLimits).
       !
       ! Any DM, etc, read from file will be redistributed according
-      ! to the new pattern. 
+      ! to the new pattern.
       ! Inherited DMs from a previous geometry cannot be used if the
       ! orbital distribution changes. For now, we avoid changing the
       ! distribution (the variable use_dd_perm is .true. if domain
@@ -507,10 +517,27 @@
       ! However, this poses a problem with intel compilers,
       ! as it apparently errors out when de-allocating a target pointer
       write(oname,"(a,i0)") "sparsity for geom step ", istep
-      call newSparsity(sparse_pattern,no_l,no_u,maxnh,
+      if (want_virtual_step_md) then
+         if ( substep .eq. BASE_STEP ) then
+            ! `Base` step: generate sparse pattern
+            ! and store it in ks_flux_data
+            call delete(base_step_sparse_pattern)
+            call newSparsity(sparse_pattern,no_l,no_u,maxnh,
      &     numh,listhptr,listh, name = oname)
-      deallocate(numh,listhptr,listh)
-      call attach(sparse_pattern, 
+            call print_type(sparse_pattern)
+            base_step_sparse_pattern = sparse_pattern
+            call print_type(sparse_pattern)
+            deallocate(numh,listhptr,listh)
+         else
+            ! `Virtual` step: restore the pattern from the previous `Base` step
+            sparse_pattern = base_step_sparse_pattern
+         end if
+      else  ! no `Virtual` step, generate sparsity as usual
+         call newSparsity(sparse_pattern,no_l,no_u,maxnh,
+     &     numh,listhptr,listh, name = oname)
+         deallocate(numh,listhptr,listh)
+      end if
+      call attach(sparse_pattern,
      &     n_col = numh, list_ptr = listhptr, list_col = listh )
 
       ! In case the user requests to create the connectivity graph
@@ -522,7 +549,7 @@
          if ( IONode ) then
             if ( write_GRAPHVIZ /= 2 )
      &           call sp2graphviz(trim(slabel)//'.ORB.gv', g_Sp)
-            ! Convert to atomic 
+            ! Convert to atomic
             if ( write_GRAPHVIZ /= 1 ) then
                call SpOrb_to_SpAtom(single_dist,g_Sp,na_u,lasto,g_Sp)
                call sp2graphviz(trim(slabel)//'.ATOM.gv', g_Sp)
@@ -531,15 +558,18 @@
          call delete(g_Sp)
       end if
 
-             
+
       ! Copy over xijo array (we can first do it here... :( )
-      call newdData2D(tmp_2D,xijo,'xijo')
-      deallocate(xijo)
-      write(oname,"(a,i0)") "xijo at geom step ", istep
-      call newdSpData2D(sparse_pattern,tmp_2D,block_dist,xij_2D, 
+      if (.not. ( want_virtual_step_md .and.
+     $     (substep .eq. VIRTUAL_STEP) )) then
+         call newdData2D(tmp_2D,xijo,'xijo')
+         deallocate(xijo)
+         write(oname,"(a,i0)") "xijo at geom step ", istep
+         call newdSpData2D(sparse_pattern,tmp_2D,block_dist,xij_2D,
      &     name=oname)
-      call delete(tmp_2D) ! decrement container...
-      xijo => val(xij_2D)
+         call delete(tmp_2D)    ! decrement container...
+         xijo => val(xij_2D)
+      end if
 
 !     Convert the xijo array into a super cell offset array
 !     isc_off (located in siesta_geom).
@@ -551,18 +581,18 @@
          call re_alloc(isc_off,1,3,1,1)
          isc_off(:,:) = 0
       else
-         call xij_offset(ucell,nsc, na_u,xa,lasto, 
+         call xij_offset(ucell,nsc, na_u,xa,lasto,
      &        xij_2D, isc_off, Bcast=.true.)
       end if
 
-      
+
       ! When the user requests to only do an analyzation, we can call
       ! appropriate routines and quit
       if ( TS_Analyze ) then
 
          ! Force the creation of the full sparsity pattern
-         call ts_sparse_init(slabel,IsVolt, N_Elec, Elecs, 
-     &        ucell, nsc, na_u, xa, lasto, block_dist, sparse_pattern, 
+         call ts_sparse_init(slabel,IsVolt, N_Elec, Elecs,
+     &        ucell, nsc, na_u, xa, lasto, block_dist, sparse_pattern,
      &        .not. use_aux_cell, isc_off)
 
          ! create the tri-diagonal matrix
@@ -575,7 +605,7 @@
 
          ! Bye also waits for all processors
          call bye('transiesta analyzation performed')
-         
+
       end if
 
 
@@ -613,7 +643,7 @@
          write(oname,"(a,i0)") "H_ldau at geom step ", istep
          call newdSpData2D(sparse_pattern,spin%spinor,
      &        block_dist,H_ldau_2D,name=oname)
-         
+
          ! Initialize to 0, LDA+U may re-calculate
          !   this matrix sporadically doing the SCF.
          ! Hence initialization MUST be performed upon
@@ -627,7 +657,7 @@
             ldau_init = .true.
          end if
       end if
-      
+
       if ( spin%SO_onsite ) then
         write(oname,"(a,i0)") "H_so (onsite) at geom step ", istep
         call newdSpData2D(sparse_pattern,spin%H - 2,
@@ -642,6 +672,15 @@
       call newdSpData1D(sparse_pattern,block_dist,S_1D,name=oname)
       if (ionode) call print_type(S_1D)
       S => val(S_1D)
+
+      if ( virtual_md_Jks ) then
+         write(oname,"(a,i0)") "Rmat at geom step ", istep
+         ! Extra dimension is (x,y,z), i.e., of size 3
+         call newdSpData2D(sparse_pattern,3,
+     $                     block_dist,Rmat_2D,name=oname)
+         if (ionode) call print_type(Rmat_2D)
+         Rmat => val(Rmat_2D)
+      endif
 
 !>    Before proceeding we need to "fix" a few things before we can
 !>    successfully read the new DM.
@@ -670,13 +709,26 @@
       ! Prepare MATEL
       call init_matel_main_tables( )
 
-!     Find overlap matrix 
+!     Find overlap matrix
       call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
      &    lasto, iphorb, isa, numh, listhptr, listh, S )
 
-      if ( fdf_get('Save.Overlap.Gradient', .false.) ) then
+      if ((virtual_md_Jks) .and. (substep .eq. BASE_STEP)) then
+      !     Find rmatrix, that we need for Kohn-Sham J-flux component (ThTr)
+         call rmatrix(na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
+     &        lasto, iphorb, isa, numh, listhptr, listh, Rmat )
+      endif
+
+      if ( fdf_get('Save.Overlap.Gradient', .false.) .or.
+!     We need gradient of overlap for the Virtual step
+!     during Kohn-Sham J flux component calculation:
+     $     ((virtual_md_Jks) .and. (substep .eq. BASE_STEP)) ) then
+        ! Clean-up, regardless of specified
+        call delete(gradS_2D)
         call newdSpData2D(sparse_pattern,3,block_dist,gradS_2D)
+        if (ionode) call print_type(gradS_2D)
         call overlap_gradient(na_U, lasto, isa, maxnh, xijo, gradS_2D)
+        gradS => val(gradS_2D)
       end if
 
 #ifdef NCDF_4
@@ -711,10 +763,8 @@
       end if
 #endif
 
-      ! Clean-up (regardless of specified
-      call delete(gradS_2D)
 
-!     
+!
 !     Here we could also read a Hamiltonian, either to proceed to
 !     the analysis section (with nscf=0) or to start a mix-H scf cycle.
 !
@@ -746,7 +796,7 @@
 #ifdef SIESTA__FLOOK
       call dict_repopulate_sparse_matrices()
 #endif
-      
+
 !     Write out the ORB_INDX file (if requested)
       if ( save_ORB_INDX ) then
         if ( IOnode .and. istep == inicoor ) then
@@ -754,22 +804,22 @@
      .        iaorb, iphorb, indxuo, nsc, ucell )
         end if
       end if
-      
+
 !     If onlyS, Save overlap matrix and exit
       if ( onlyS ) then
          fname = fname_TSHS(slabel, onlyS = .true. )
          ! We include H as S, well-knowing that we only write one of
          ! them, there is no need to allocate space for no reason!
-         call ts_write_tshs(fname, 
+         call ts_write_tshs(fname,
      &        .true., .not. use_aux_cell, ts_Gamma_file,
      &        ucell, nsc, isc_off, na_u, no_s, spin%H,
      &        ts_kscell_file, ts_kdispl_file,
-     &        xa, lasto, 
-     &        H_2D, S_1D, indxuo, 
+     &        xa, lasto,
+     &        H_2D, S_1D, indxuo,
      &        dummyEf, dummyQtot, Temp,0,0)
          call bye( 'Save overlap matrix and exit' ) ! Exit siesta
-         
-      endif 
+
+      endif
 
 #ifdef CDF
       if (writedm_cdf) then
@@ -808,7 +858,7 @@
       subroutine check_cohp()
       use siesta_options, only: write_coop
       use sys,            only: message
-      
+
       if (write_coop) then
          call message("WARNING","There are multiply-connected "//
      $                          "orbitals.")

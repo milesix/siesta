@@ -37,6 +37,8 @@
       use m_rhog,          only : resetRhog
       ! NP, new mixing
       use m_mixing_scf,    only : mixers_scf_reset
+      ! MD Virtual step
+      use m_virtual_step_procs, only: reset_virtual_step_md
       USE siesta_options,  only : isolve, SOLVE_CHESS
 
       use kpoint_scf_m, only: reset_kpoint_scf
@@ -99,6 +101,8 @@
       ! they may be associated with SCF
       call reset_ts_kpoint_scf()
       call reset_kpoint_scf()
+      ! MD Virtual step
+      call reset_virtual_step_md()
 
       ! Clean diagonalization
       call diag_exit()
@@ -108,7 +112,7 @@
           call CheSS_finalize()
       end if
 #endif
-      
+
 !     Output memory use up to the end of the program
 !!      call printmemory( 6, 1 )
 
@@ -145,7 +149,7 @@
       if (cml_p) then
         call cmlEndModule(mainXML)
         call siesta_cml_exit()
-      endif      
+      endif
       endif  ! SIESTA_worker
 
 ! Finalize MPI, unless siesta is running as a subroutine

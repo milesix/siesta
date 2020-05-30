@@ -336,7 +336,12 @@ C Call apropriate routine
 C Free local arrays
       call de_alloc( aux, name='aux', routine='diagon' )
 
-      call resetDenseMatrix(dealloc_psi=dealloc_psi)
+       !! We do not heed the dealloc_psi flag, to keep the wavefunctions all
+       !! the time (and in particular after the end of the
+       !! cycle, for thermal transport
+
+!      call  resetDenseMatrix(dealloc_psi=dealloc_psi)
+      call  resetDenseMatrix(dealloc_psi=.FALSE.)
 
 C Stop time counter
       call timer( 'diagon', 2 )

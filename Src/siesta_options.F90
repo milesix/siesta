@@ -12,7 +12,7 @@ MODULE siesta_options
 #endif
 
   implicit none
-  
+
   integer, parameter, private :: dp = selected_real_kind(10,100)
 
   PUBLIC
@@ -37,7 +37,7 @@ MODULE siesta_options
   logical :: fire_mix      ! SCF mixing with FIRE method
   logical :: fixspin       ! Keep the total spin fixed?
   logical :: init_anti_ferro ! Antiferro spin ordering in initdm?
-  logical :: initdmaux     ! Re-initialize DM when auxiliary supercell changes?        
+  logical :: initdmaux     ! Re-initialize DM when auxiliary supercell changes?
   logical :: allow_dm_reuse! Allow re-use of the previous geometry DM ? (with possible extrapolation)
   logical :: allow_dm_extrapolation ! Allow the extrapolation of previous geometries' DM ?
   logical :: change_kgrid_in_md ! Allow k-point grid to change in MD calculations
@@ -68,7 +68,7 @@ MODULE siesta_options
   logical :: usesavezm     ! Use cont. file for Z-matrix?
   logical :: writeig       ! Write eigenvalues?
   logical :: writbk        ! Write k vectors of bands?
-  logical :: writmd        
+  logical :: writmd
   logical :: writpx        ! Write atomic coordinates at every geometry step?
   logical :: writb         ! Write band eigenvalues?
   logical :: writec        ! Write atomic coordinates at every geometry step?
@@ -85,9 +85,9 @@ MODULE siesta_options
   logical :: w90_write_amn    ! Write the Amn matrix for the interface with Wannier
   logical :: w90_write_eig    ! Write the eigenvalues or the interface with Wannier
   logical :: w90_write_unk    ! Write the unks for the interface with Wannier
-  logical :: hasnobup         ! Is the number of bands with spin up for 
+  logical :: hasnobup         ! Is the number of bands with spin up for
                               !   wannierization defined?
-  logical :: hasnobdown       ! Is the number of bands with spin down for 
+  logical :: hasnobdown       ! Is the number of bands with spin down for
                               !   wannierization defined?
   logical :: hasnob           ! Is the number of bands for wannierization defined?
                               !   (for non spin-polarized calculations).
@@ -108,7 +108,7 @@ MODULE siesta_options
   logical :: writedm       ! Write file with density matrix?
   logical :: write_dm_at_end_of_cycle ! Write DM at end of SCF cycle? (converged or not)
   logical :: writeH        ! Write file with Hamiltonian? (in "DM" format)
-  logical :: write_H_at_end_of_cycle ! Write H at end of SCF cycle? 
+  logical :: write_H_at_end_of_cycle ! Write H at end of SCF cycle?
   logical :: writedm_cdf   ! Write file with density matrix in netCDF form?
 #ifdef NCDF_4
   logical :: write_cdf     ! Write file with all information attached
@@ -143,7 +143,7 @@ MODULE siesta_options
   real(dp):: dDtol            ! Tolerance in change of DM elements to finish SCF iteration
   logical :: converge_H       ! to finish SCF iteration?
   real(dp):: dHtol            ! Tolerance in change of H elements to finish SCF iteration
-  
+
   logical :: broyden_optim ! Use Broyden method to optimize geometry?
   logical :: fire_optim    ! Use FIRE method to optimize geometry?
   logical :: struct_only   ! Output initial structure only?
@@ -151,7 +151,7 @@ MODULE siesta_options
   logical :: bornz          ! Calculate Born polarization charges?
   logical :: SCFMustConverge ! Do we have to converge for each SCF calculation?
   logical :: GeometryMustConverge ! Do we *have to* converge the relaxation?
-  logical :: want_domain_decomposition ! Use domain decomposition for orbitals 
+  logical :: want_domain_decomposition ! Use domain decomposition for orbitals
   logical :: want_spatial_decomposition ! Use spatial decomposition for orbitals
   logical :: hirshpop        ! Perform Hirshfeld population analysis?
   logical :: voropop         ! Perform Voronoi population analysis?
@@ -160,8 +160,8 @@ MODULE siesta_options
   logical :: monitor_forces_in_scf ! Compute forces and stresses at every step
 
   logical :: minim_calc_eigenvalues ! Use diagonalization at the end of each MD step to find eigenvalues for OMM
- 
-!TDDFT Feb 17, 2014 
+
+!TDDFT Feb 17, 2014
   logical :: writetdwf        ! To write the wavefuctions at the end of SCF. These
                               ! would serve as the initial states for time evolution
                               ! of KS states in TD-DFT.
@@ -175,14 +175,14 @@ MODULE siesta_options
   logical :: td_inverse_linear   ! Matrix inversion option?
   integer :: ntdsaverho     ! Each number of steps TD-Rho is saved.
   integer :: itded          ! a TDDFT counterpart of iscf
-  integer :: ntded          ! Number of TDED steps in each MD iteration. 
+  integer :: ntded          ! Number of TDED steps in each MD iteration.
                             ! Or total number of TDED steps in an only electron calcuation
                             ! (MD.FinalTimeStep = 1)
   integer  :: ntded_sub     ! Number of TDED sub-steps extrapolate H is applied to TDKS states.
-  real(dp) :: td_dt         ! Time step in electron dynamics. In case of doing electron dyanmics 
+  real(dp) :: td_dt         ! Time step in electron dynamics. In case of doing electron dyanmics
                             ! with MD, the dt in MD would be dt = td_dt x ntded
   real(dp) :: rstart_time   ! Restart time
-  real(dp) :: totime        ! Total time including the restart time mainly for plotting 
+  real(dp) :: totime        ! Total time including the restart time mainly for plotting
 
   integer :: ia1           ! Atom index
   integer :: ia2           ! Atom index
@@ -202,7 +202,7 @@ MODULE siesta_options
   integer :: nmove         ! Number of geometry iterations
   integer :: nscf          ! Number of SCF iteration steps
   integer :: min_nscf      ! Minimum number of SCF iteration steps
-  integer :: pmax          
+  integer :: pmax
   integer :: neigwanted    ! Wanted number of eigenstates (per k point)
   integer :: call_diagon_default    ! Default number of SCF steps for which to use diagonalization before OMM
   integer :: call_diagon_first_step ! Number of SCF steps for which to use diagonalization before OMM (first MD step)
@@ -212,8 +212,9 @@ MODULE siesta_options
   real(dp) :: charnet       ! Net electric charge
   real(dp) :: rijmin        ! Min. permited interatomic distance without warning
   real(dp) :: dm_normalization_tol    ! Threshold for DM normalization mismatch error
-  logical  :: normalize_dm_during_scf ! Whether we normalize the DM 
+  logical  :: normalize_dm_during_scf ! Whether we normalize the DM
   real(dp) :: dt            ! Time step in dynamics
+  real(dp) :: virtual_dt    !! Virtual time step for projection of positions for time derivatives
   real(dp) :: dx            ! Atomic displacement used to calculate Hessian matrix
   real(dp) :: dxmax         ! Max. atomic displacement allowed during geom. relaxation
   real(dp) :: eta(2)        ! Chemical-potential param. Read by redata used in ordern
@@ -228,13 +229,22 @@ MODULE siesta_options
   real(dp) :: rmax_bonds    ! Cutoff length for bond definition
   real(dp) :: strtol        ! Stress tolerance in relaxing the unit cell
   real(dp) :: taurelax      ! Relaxation time to reach desired T and P in anneal
-  real(dp) :: temp          
+  real(dp) :: temp
   real(dp) :: tempinit      ! Initial ionic temperature read in redata
   real(dp) :: tp            ! Target pressure. Read in redata. Used in dynamics routines
   real(dp) :: total_spin    ! Total spin used in spin-polarized calculations
   real(dp) :: tt            ! Target temperature. Read in redata. Used in dynamics rout.
   real(dp) :: wmix          ! Mixing weight for DM in SCF iteration
   real(dp) :: wmixkick      ! Mixing weight for DM in special 'kick' SCF steps
+
+  ! Thermal transport <2020-05-30>
+  logical :: want_virtual_step_md  !! Tells main program that it should perform two-step MD
+  logical :: want_vmd_in_dhscf     !! Tells dhscf that thermal transport Jhart/Jxc components are requested
+  logical :: virtual_md_verbose    !! Turns on verbose reporting of two-step MD's subroutines
+  logical :: virtual_md_Jks        !! Compute Kohn-Sham contribution to the heat flux
+  logical :: virtual_md_Jxc        !! Compute XC-contribution to the heat flux
+  logical :: virtual_md_Jhart      !! Compute Hartree contribution to the heat flux
+  logical :: virtual_md_Jion       !! Compute ionic contribution to the heat flux
 
   character(len=164) :: sname   ! System name, used to initialise read
 
@@ -247,7 +257,7 @@ MODULE siesta_options
   integer,  parameter :: SOLVE_CHESS  = 6
   integer,  parameter :: SOLVE_ELSI   = 7
   integer,  parameter :: SOLVE_DUMMY  = 10
-  
+
 #ifdef SIESTA__FLOOK
   ! LUA-handle
   type(luaState) :: LUA

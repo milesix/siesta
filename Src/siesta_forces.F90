@@ -598,6 +598,7 @@ contains
     if (siesta_server) &
          call forcesToMaster( na_u, Etot, cfa, cstress )
 
+    call timer( 'IterGeom', 2 )
 #ifdef DEBUG
     call write_debug( '    POS siesta_forces' )
 #endif

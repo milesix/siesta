@@ -1,0 +1,71 @@
+## VMD settings ##
+
+MD.Virtual
+MD.Virtual.Verbose
+MD.Virtual.Jks
+MD.Virtual.Jhart
+MD.Virtual.Jxc
+
+MD.TypeOfRun              Verlet
+MD.Initial.Time.Step      1
+MD.Final.Time.Step        5
+MD.Length.Time.Step               1.0 fs
+MD.Length.Virtual.Time.Step       0.1 fs
+MD.Initial.Temperature    800 K
+
+## Siesta calculation template file ##
+
+SystemName    Si-8
+SystemLabel   si8
+
+## Structure specification ##
+
+NumberOfAtoms	 8
+NumberOfSpecies	 1
+
+%block ChemicalSpeciesLabel
+       1      14      Si
+%endblock ChemicalSpeciesLabel
+
+LatticeConstant 10.260000 Bohr
+
+%block LatticeParameters
+1.0  1.0  1.0  90  90  90
+%endblock LatticeParameters
+
+AtomicCoordinatesFormat  ScaledCartesian
+%block AtomicCoordinatesAndAtomicSpecies
+0.000000000000   0.000000000000   0.000000000000   1
+0.500000000000   0.500000000000   0.000000000000   1
+0.000000000000   0.500000000000   0.500000000000   1
+0.500000000000   0.000000000000   0.500000000000   1
+0.250000000000   0.250000000000   0.250000000000   1
+0.750000000000   0.750000000000   0.250000000000   1
+0.750000000000   0.250000000000   0.750000000000   1
+0.250000000000   0.750000000000   0.750000000000   1
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+## Calculation parameters ##
+XC.Functional	GGA
+XC.Authors	PBE
+
+MeshCutoff	224 Ry
+SaveRho .true.
+
+%block PAO.Basis
+  Si   3      0.71285
+  N=3   0   2   E   123.97722     5.38915
+       6.07212     5.13871
+       1.00000     1.00000
+  N=3   1   2   E    32.63257     5.52809
+       6.21191     3.82157
+       1.00000     1.00000
+  N=3   2   1   E    18.53398     0.26414
+       4.20812
+       1.00000
+  %endblock PAO.Basis
+
+
+DM.MixingWeight      0.3
+DM.Tolerance         1.d-6
+SolutionMethod       diagon
