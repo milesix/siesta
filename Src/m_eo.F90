@@ -8,7 +8,7 @@
 module m_eo
 
   use precision, only: dp
-        implicit none
+  implicit none
 
   public
 
