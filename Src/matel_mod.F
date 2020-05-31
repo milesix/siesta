@@ -177,7 +177,7 @@
      $                         ylmk_y_orbs, 1, num_orb)
 
          call ylmk_z_orbs%compute_spha(1, num_orb, EVALUATE_Z, 1)
-         call tab_X%init( MODE_XYZ, ylmk_val_all, 1, num_orb,
+         call tab_Z%init( MODE_XYZ, ylmk_val_all, 1, num_orb,
      $                         ylmk_z_orbs, 1, num_orb)
 
       endif
@@ -190,7 +190,7 @@
          
       ! Overlap table from PAOs to KBs.
          call tab_S_opt%init(MODE_S, ylmk_val_all, 1, num_orb,
-     $                    ylmk_val_all, num_orb+1, num_kb)
+     $                    ylmk_val_all, num_orb+1, num_orb + num_kb)
 
       ! Find the spherical harmonic decomposition and
       ! Fourier transform of {x,y,z}*\chi, where \chi is a KB proj.
