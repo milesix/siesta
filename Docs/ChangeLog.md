@@ -6,6 +6,7 @@
 
 (Please see the file README_ELSI in the top directory for important information)
 
+* Wrap new routines in m_elsi_interface in SIESTA__ELSI block
 * The ELSI interface now honors the "number-of-eigenstates" setting, and an EIG file
   is generated (for the ELPA solver).
 * ELSI-DM interface as a new "solution-method", with various solvers available.
@@ -25,6 +26,8 @@
 
 ### Optimized setup of matrix-element tables
 
+* Modularize the initialization of matel tables 
+* Fix indexes for tab_S_opt; typo in tab_Z
 * Tables are now built in parallel, at the beginning of the program.
 
 ## Master version updates
@@ -34,6 +37,8 @@
 * The labels in the Mulliken analysis CML blocks have been changed to use "population" instead of "charge".
 
 ### Changes
+
+* Cleanup of vibra/fcbuild code: use dynamic arrays, and LAPACK solver by default
 
 * Extended Hirshfeld and Voronoi partition analysis to spin. Update of output, including new CML blocks.
 
@@ -95,6 +100,8 @@ look at the 4.1 ChangeLog to get a complete picture of the changes in
 
 * Siesta is now developed on the GitLab platform: www.gitlab.com/siesta-project/siesta
   A number of Siesta-related packages are developed here: www.gitlab.com/siesta-project
+
+* Fix reading of wave-functions in Util/COOP/fat.f90
 
 * Added Obj/ARCH-EXPERIMENTAL for suggested more modular building scheme
 

@@ -1405,10 +1405,6 @@ subroutine get_spin_comms_and_dists(global_comm, base_comm, blocksize, n_spin,&
 
 end subroutine get_spin_comms_and_dists
 
-#endif  /* SIESTA__ELSI */
-
-#if SIESTA__ELSI || SIESTA__PEXSI
-
 subroutine elsi_complex_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, numh, row_ptr, &
      col_idx, qtot, temp, ham, ovlp, DM, ef, ets, &
      nkpnt, kpt_n, kpt, weight, kpt_comm, neigwanted, Get_EDM_Only)
@@ -1817,8 +1813,6 @@ subroutine transpose(a,b)
   enddo
 end subroutine transpose
 
-# endif
-
   subroutine simple_ioeig(filename, eo, ef, temp, no, nspin, nk, maxo, nspinor, maxk, &
                           kpoints, kweights)
 
@@ -1884,6 +1878,8 @@ end subroutine transpose
     end subroutine ravel
       
   end subroutine simple_ioeig
+
+#endif  /* SIESTA__ELSI */
 
 
 end module m_elsi_interface
