@@ -12,12 +12,13 @@
 !> the computation of two-center integrals (See Siesta paper). In this
 !> context, several "functions" might be associated to the same object
 !> in the registry: for example, a given PAO with index 'ig' might be
-!> just 'evaluate'd, or 'x_evaluate'd, etc.  Note that *most* of the
-!> functions we deal with are "pure" (PAOs, KBs, and LDAU projectors are
-!> of the form f(r)Y_lm(theta,phi) already, so most of the dereferencing
-!> done here is superfluous.  We have, on the other hand,
-!> {x,y,z}*{PAO,KB} (but they might be simply Y_(l+1),m for a given m?)
-!> and the wannier projectors, which might not be "pure".
+!> just 'evaluate'd, or 'x_evaluate'd (multiplied by x), etc.  Note that
+!> *most* of the functions we deal with are "pure" (PAOs, KBs, and LDAU
+!> projectors are of the form f(r)Y_lm(theta,phi) already, so most of
+!> the dereferencing done here is superfluous.  We have, on the other
+!> hand, {x,y,z}*{PAO,KB} (which involve Y_(l+1),m)
+!> and the wannier projectors, which might not be "pure". 
+!> More complex matrix elements might conceivably be implemented.      
 
 !> The computations are done in parallel and the results replicated
 !> ("all-reduced") in in all processors.

@@ -17,7 +17,9 @@ program matel_test
       use m_ion_io
       use atm_types, only: species, nspecies
       use m_matel_registry, only: show_pool
-      use matel_mod, only: init_matel, new_matel
+      use matel_mod, only: init_matel_main_tables
+      use matel_mod, only: init_matel_thermal_transport
+      use matel_mod, only: new_matel
       use m_old_matel, only: old_matel
       
       implicit none
@@ -40,7 +42,8 @@ program matel_test
       
       call register_rfs()
       call show_pool()
-      call init_matel()
+      call init_matel_main_tables()
+      call init_matel_thermal_transport()
 
       io = species(1)%orb_gindex(1)
       jpy = species(1)%orb_gindex(2)  

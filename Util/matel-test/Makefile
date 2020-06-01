@@ -31,6 +31,8 @@ VPATH:=$(shell pwd)/../../Src
 default: matel-test
 
 override WITH_MPI=
+override WITH_FLOOK=
+override WITH_NCDF=
 
 MAIN_OBJDIR:=$(shell cd -P -- ../../\$(OBJDIR) && pwd -P)
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make

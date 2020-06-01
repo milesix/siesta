@@ -55,7 +55,7 @@
       use m_partial_charges, only: want_partial_charges
       use m_iodm_old,        only: read_spmatrix
       use m_siesta2wannier90, only: siesta2wannier90
-
+      use matel_mod,          only: init_matel_orb_XYZ_orb
       use m_ts_global_vars, only: TSrun
       
       use m_mpi_utils, only: barrier
@@ -473,6 +473,7 @@
      .       'siesta_analysis: paramagnetic or collinear spin runs'
           endif
         else
+         call init_matel_orb_XYZ_orb()
          call KSV_pol(na_u, na_s, xa_last, rmaxo, scell_last, 
      &               ucell_last,no_u, no_l, no_s, spin%Grid, qspin, 
      &               maxnh, nkpol, numh, listhptr, listh, 
