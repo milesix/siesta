@@ -61,16 +61,16 @@ DEPS_MATEL-TEST=io.o m_io.o precision.o  parallel.o \
           m_trialorbitalclass.o units.o $(SYSOBJ) spher_harm.o
 
 #
-MATEL-TEST_LOCAL_OBJS=local_sys.o handlers.o m_ion_io.o matel-test.o 
+MATEL-TEST_LOCAL_OBJS=local_sys.o handlers.o m_ion_io.o 
 OBJS_MATEL-TEST=$(MATEL-TEST_LOCAL_OBJS) $(DEPS_MATEL-TEST) 
 
 #
-matel-test: $(OBJS_MATEL-TEST) 
+matel-test: $(OBJS_MATEL-TEST)  matel-test.o
 	$(FC) -o matel-test \
-	       $(LDFLAGS) $(OBJS_MATEL-TEST) $(NETCDF_LIBS) $(COMP_LIBS) $(LIBS)
+	       $(LDFLAGS) matel-test.o $(OBJS_MATEL-TEST) $(NETCDF_LIBS) $(COMP_LIBS) $(LIBS)
 
 m_ion_io.o: atm_types.o
-matel-test.o: matel_mod.o m_ion_io.o
+matel-test.o: matel_mod.o m_ion_io.o old_matel.o
 
 clean:
 	@echo "==> Cleaning object, library, and executable files"
