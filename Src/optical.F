@@ -75,6 +75,8 @@ C *********************************************************************
       use m_fermid,     only : stepf
       use files,        only : slabel, label_length
       use units,        only : pi
+      use matel_mod,    only : init_matel_optical_P
+      use matel_mod,    only : init_matel_orb_XYZ_orb
 #ifdef MPI
       use mpi_siesta
 #endif
@@ -417,7 +419,16 @@ C     For infinte media we will need caculate everything
 C     using the momentum
       matrix = 'P' 
       if (((shape.eq.'atom').or.(shape.eq.'molecule'))
-     &    .and.gamma) matrix = 'R' 
+     &     .and.gamma) matrix = 'R'
+
+!     Build the appropriate matel tables      
+      select case (matrix)
+      case ( 'P')
+         call init_matel_optical_P()
+      case ('R')
+         call init_matel_orb_XYZ_orb()
+      end select
+
 C     parameter npol
       if (option.eq.'polarized') then
         npol = 1
