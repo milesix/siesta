@@ -31,24 +31,48 @@
      &                             EVALUATE_X, EVALUATE_Y, EVALUATE_Z
 
       PRIVATE
+
+      !> Initialize main tables: S, T, TA
+      public :: init_matel_main_tables
+      !> Initialize tables X, Y, Z, for use in "molecule" optical calculations and
+      !> Berry-phase-based polarization calculations
+      public :: init_matel_orb_XYZ_orb   
+      !> Initialize tables S_opt, X_opt, Y_opt, Z_opt for use in solid-state optical calculations
+      public :: init_matel_optical_P
+      !> Initialize table S_wann for overlaps of Wannier90 trial functions
+      public :: init_matel_wannier       
+
+      ! Main routine that evaluates matrix elements, keeping the old interface
+      public :: new_matel
+
+      ! These variables allow to call the initialization routines repeatedly 
+
+      logical :: main_tables_initialized = .false.
+      logical :: optical_P_initialized = .false.
+      logical :: orb_XYZ_orb_initialized = .false.
+      logical :: wannier_initialized = .false.
       
-      public :: init_matel     ! Initialize tables S, T, TA, X, Y, Z, S_opt, X_opt, Y_opt, Z_opt
-      public :: init_matel_wannier ! Initialize table S_wann
+      !> These relate to the functions recorded in the 'matel registry';
+      !> the number of each kind serve as markers for the different
+      !> sections needed in the tables.  'init_matel_main_tables' fills
+      !> the essential first four values, so that routine must be
+      !> called first.  This is enforced by 'check_main_tables'
+
+      !> A prerequisite for the correct setup is that the
+      !> atomic-information tables (in the 'species' data structure) has
+      !> been correctly filled up In future, this module might be more
+      !> integrated with that data structure.
       
-      public :: new_matel   ! Evaluates matrix elements with the old interface
-      
-      !> These relate to the functions recorded in the 'matel registry'; the number of each kind
-      !> serve as markers for the different sections needed in the tables.
-      !> 
       integer           :: num_orb  ! Number of different orbitals
       integer           :: num_kb  ! Number of different KB projectors
       integer           :: num_ldau ! Number of different LDA+U functions
       integer           :: num_va  ! Number of different Vna functions
       integer           :: num_wannier_projs  ! Number of different Wannier trial orbitals
 
-      !> k-space spherical-harmonic decomposition of
-      !> registered functions
-      type(spher_harm_t), target :: ylmk_val_all
+      !> k-space spherical-harmonic decomposition of registered
+      !> functions and composite functions (such as x*Orb, y*KB, etc)
+      
+      type(spher_harm_t), target :: ylmk_val_all   ! orbs, kb, ldauprojs, vna
       type(spher_harm_t), target :: ylmk_x_orbs
       type(spher_harm_t), target :: ylmk_y_orbs
       type(spher_harm_t), target :: ylmk_z_orbs
@@ -61,10 +85,14 @@
       !> There are different tables, each appropriate to a given operation and kind of function.
       !> The indexing is a bit cumbersome due to the one-dimensional nature of the matel_registry,
       !> in which all functions are stored in the same section: first orbitals, then KB projectors,
-      !> then Vna, and finally LDA+U projectors.
+      !> then LDA+U projectors, and finally Vna.
       !> In addition, when using the Wannier interface, "trial orbitals" (called also "projectors"
       !> in the code (numproj of them) need to be dealt with.
 
+      !> The tables are created once and for all for the duration of the program. There is currently
+      !> no support for "coexisting qualities" or "on-the-fly" changes (such as could conceivably be
+      !> done one day via the Lua interface)
+      
       !> Overlaps of PAOs, KBs, or LDAUprojs with PAOs
       TYPE(MATEL) :: tab_S           ! Unity (overlap). 
       !> Laplacian among PAOs
@@ -72,54 +100,43 @@
       !> Laplacian among Vna functions
       TYPE(MATEL) :: tab_TA         ! -Laplacian.
       
-      !> X, Y, Z among orbitals (for dielectric polarization calculations)
+      !> X, Y, Z among orbitals (for dielectric polarization calculations
+      !> and "r" optical calculations
       TYPE(MATEL) :: tab_X           ! X projection.   
       TYPE(MATEL) :: tab_Y           ! Y projection.   
       TYPE(MATEL) :: tab_Z           ! Z projection.   
 
-      !> Overlaps of PAOs with wannier projectors
-      TYPE(MATEL) :: tab_S_wann      ! Unity (overlap).
-
-      !> Overlaps of PAOs with KBs for optical calculations (different from table "S" because
+      !> Overlaps of PAOs with KBs for "momentum" optical calculations (different from table "S" because
       !> the KBs are "function 2")
       TYPE(MATEL) :: tab_S_opt        ! Unity (overlap)
 
-      !> X,Y,Z  PAOs with KBs for optical calculations
+      !> X,Y,Z  PAOs with KBs for "momentum" optical calculations
       TYPE(MATEL) :: tab_X_opt        ! X projection
       TYPE(MATEL) :: tab_Y_opt        ! Y projection
       TYPE(MATEL) :: tab_Z_opt        ! Z projection
 
+      !> Overlaps of PAOs with wannier projectors
+      TYPE(MATEL) :: tab_S_wann      ! Unity (overlap).
+
+      ! convenience variable
+      TYPE(allocDefaults) :: OLDEFS
+
       CONTAINS
 
-      !>  Initialize the MATEL tables S, T, TA, X, Y, Z, S_opt,
-      !>  X_opt, Y_opt, Z_opt
 
-      !> *NOTE: Optical and Polarization tables are initialized
-      !> on the basis of "static" information in the fdf file. If
-      !> and when those operations can be launched "after-the-fact"
-      !> this might have to be changed.
-      !> Same if the 'LDAU' features are turned on after the first reading.
+      !>  Initialize the main MATEL tables S, T, TA
 
-      subroutine init_matel( )
+      subroutine init_matel_main_tables( )
 
-      use fdf,       only : fdf_boolean
       use atm_types, only : nspecies, species
-      use siesta_options, only : bornz
-      use ldau_specs, only : switch_ldau
 
       implicit none
       ! Local Variables
       integer             :: is, top, top_vna
-      logical             :: optical
-      logical,       save :: init = .false.
-      TYPE(allocDefaults) :: OLDEFS
 
-      
-      ! Initialize only once
-      if (init) return
-      init = .true.
+      if (main_tables_initialized) RETURN
 
-       ! Set allocation defaults
+      ! Set allocation defaults
       call alloc_default( old=oldefs, copy=.true., shrink=.false. )
 
       CALL RESET_RADFFT( )
@@ -142,6 +159,7 @@
       ! Find the spherical harmonic decomposition and
       ! Fourier transform of all the registry objects
       ! except the wannier trial functions
+
       top = num_orb + num_kb + num_ldau 
       top_vna = top + num_va
       call ylmk_val_all%compute_spha(1, top_vna, EVALUATE, 0)
@@ -158,10 +176,23 @@
       call tab_TA%init(MODE_T, ylmk_val_all, top+1, top_vna,
      $                     ylmk_val_all, top+1, top_vna)
 
+      main_tables_initialized = .true.
+      
+      ! Restore allocation defaults
+      CALL alloc_default( restore=oldefs )
+      
+      end subroutine init_matel_main_tables
+!-------------------------------------------------------------
+      subroutine init_matel_orb_XYZ_orb()
 
-      ! This section executed only if polarization calculations
-      ! are requested (they need matrix elements of the position operator)
-      if (bornz) then
+      if (orb_XYZ_orb_initialized) RETURN
+
+      call check_for_main_tables()
+      
+      ! Set allocation defaults
+      call alloc_default( old=oldefs, copy=.true., shrink=.false. )
+
+      CALL RESET_RADFFT( )
 
       ! Find the spherical harmonic decomposition and
       ! Fourier transform of {x,y,z}*\phi, where \phi is a PAO
@@ -180,22 +211,34 @@
          call tab_Z%init( MODE_XYZ, ylmk_val_all, 1, num_orb,
      $                         ylmk_z_orbs, 1, num_orb)
 
-      endif
+      
+      orb_XYZ_orb_initialized = .true.
 
-      optical = fdf_boolean('OpticalCalculation',.false.)
+      ! Restore allocation defaults
+      CALL alloc_default( restore=oldefs )
 
-      ! This section executed only if an 'optical' calculation
-      ! is requested 
-      if (optical) then
-         
-      ! Overlap table from PAOs to KBs.
+      end subroutine init_matel_orb_XYZ_orb
+!-------------------------------------------------------------
+
+      subroutine init_matel_optical_P()
+
+      if (optical_P_initialized) RETURN
+
+      call check_for_main_tables()
+
+      ! Set allocation defaults
+      call alloc_default( old=oldefs, copy=.true., shrink=.false. )
+
+      CALL RESET_RADFFT( )
+
+         ! Overlap table from PAOs to KBs.
          call tab_S_opt%init(MODE_S, ylmk_val_all, 1, num_orb,
      $                    ylmk_val_all, num_orb+1, num_orb + num_kb)
 
-      ! Find the spherical harmonic decomposition and
-      ! Fourier transform of {x,y,z}*\chi, where \chi is a KB proj.
+         ! Find the spherical harmonic decomposition and
+         ! Fourier transform of {x,y,z}*\chi, where \chi is a KB proj.
 
-      ! The X_opt, Y_opt, and Z_opt tables are then overlaps of PAOs and xKBs
+         ! The X_opt, Y_opt, and Z_opt tables are then overlaps of PAOs and xKBs
 
          call ylmk_x_kbs%compute_spha(num_orb+1, num_orb+num_kb,
      $                                EVALUATE_X, 1)
@@ -216,12 +259,13 @@
      $                         ylmk_z_kbs, 1, num_kb)
 
          
-      endif
+      if (optical_P_initialized) RETURN
 
       ! Restore allocation defaults
       CALL alloc_default( restore=oldefs )
+
+      end subroutine init_matel_optical_P
       
-      end subroutine init_matel
 !--------------------------------------------------------------------
       subroutine init_matel_wannier( numproj )
 !
@@ -232,16 +276,15 @@
       integer, intent(in) :: numproj
 
       ! Local Variables
-      logical, save :: init = .false.
-      TYPE(allocDefaults) :: OLDEFS
       integer :: top_vna
       
-      ! Initialize only once
-      if (init) return
-      init = .true.
+      if (wannier_initialized) RETURN
+      
+      call check_for_main_tables()
 
       ! Set allocation defaults
       call alloc_default( old=oldefs, copy=.true., shrink=.false. )
+      CALL RESET_RADFFT( )
 
       ! This table refers to overlaps between orbitals and
       ! Wannier trial functions, which are registered in the
@@ -256,10 +299,20 @@
       call tab_S_wann%init(MODE_S, ylmk_val_all, 1, num_orb,
      $                     ylmk_val_wannier_projs, 1, numproj)
 
+      wannier_initialized = .true.
+
       ! Restore allocation defaults
       CALL alloc_default( restore=oldefs )
+
       end subroutine init_matel_wannier
 
+      subroutine check_for_main_tables()
+      if (.not. main_tables_initialized) then
+         call init_matel_main_tables()
+      endif
+      end subroutine check_for_main_tables
+      
+!===================================================================
       SUBROUTINE new_MATEL( OPERAT, IG1, IG2, R12, S12, DSDR )
 
 ! Finds two-center matrix elements between 'atomic orbitals' 
@@ -269,8 +322,8 @@
 ! module, but the routine itself only dispatches execution
 ! to the new table objects (Alberto Garcia, July 2019, after Rogeli Grima)      
 
-! The tables must be initialized previously by calls to init_matel and
-! (if needed) init_matel_wannier.
+! The tables must be initialized previously by calls to the init_matel_XXXX
+! routines. 
       
 ! INPUT 
 
@@ -278,7 +331,7 @@ C CHARACTER OPERAT : Operator to be used. The valid options are:
 C   'S' => Unity (overlap). Uppercase required for all values.
 C   'T' => -Laplacian
 C   'U' => 1/|r'-r| (with evaluate returning charge distributions) *NOT IMPLEMENTED
-C   'X' => x, returning <phi1(r-R12)|x|phi2(r)> (origin on second atom)
+C   'X' => x, returning <phi1(r-R12)|x|phi2(r)> (**origin on second atom**)
 C   'Y' => y, returning <phi1(r-R12)|y|phi2(r)>
 C   'Z' => z, returning <phi1(r-R12)|z|phi2(r)>
 C INTEGER IG1    : Global index of 1st function (must be positive)
@@ -378,6 +431,9 @@ C If |R12| > RCUT(IS1,IO1) + RCUT(IS2,IO2), returns exactly zero.
 
       end subroutine new_matel
 
+!----------
+!     Convenience functions
+      
       function is_orb(ig) result(res)
       integer, intent(in) :: ig
       logical             :: res

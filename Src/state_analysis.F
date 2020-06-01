@@ -36,7 +36,8 @@
       use m_forces
       use m_energies, only: update_FreeE, update_FreeEHarris
       use m_intramol_pressure, only: remove_intramol_pressure
-
+      use matel_mod, only: init_matel_orb_XYZ_orb
+      
 #ifdef SIESTA__FLOOK
       use flook_siesta, only : slua_call, LUA_FORCES
 #endif
@@ -180,6 +181,7 @@
 !     Call the born effective charge routine only in those steps (even) 
 !     in which the dx  is positive.
       if (bornz .and. (mod(istep,2) .eq. 0)) then
+         call init_matel_orb_XYZ_orb()  ! Will be done only once
          call born_charge()
       endif
 
