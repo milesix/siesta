@@ -247,7 +247,7 @@ contains
           enddo
        enddo
 
-       print*, "[Jhart]: ", h_flux_Jhart
+       !print*, "[Jhart] ", h_flux_Jhart
 
        nullify(tc_v)
        nullify(tc_dot)

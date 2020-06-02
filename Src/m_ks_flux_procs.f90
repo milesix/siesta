@@ -411,8 +411,7 @@ subroutine compute_Jks ()
      end do
   end do
 
-  Print *, "[Jks] ------ compute J_ks flux ------"
-  Print *, ks_flux_Jks(1), ks_flux_Jks(2), ks_flux_Jks(3)
+  Print *, "[Jks] ", ks_flux_Jks
 
   deallocate(psi_hat_c)
   deallocate(psi_dot_c)

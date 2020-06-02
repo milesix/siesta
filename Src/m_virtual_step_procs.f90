@@ -2,6 +2,7 @@ module m_virtual_step_procs
   use precision, only: dp, grid_p
 
   use siesta_options, only: virtual_dt
+  use siesta_options, only: virtual_md_Jhart
   use siesta_options, only: virtual_md_Jks
   use siesta_options, only: virtual_md_Jxc
   use siesta_options, only: virtual_md_Jion
@@ -48,6 +49,8 @@ contains
 
     use sparse_matrices, only: Dscf, gradS
 
+    use hartree_flux_data, only: h_flux_Jhart
+
     use ks_flux_data, only: Dscf_deriv
     use ks_flux_data, only: reset_ks_flux_data
     use ks_flux_procs, only: compute_Jks
@@ -66,6 +69,10 @@ contains
     ! use ion_flux_data, only: ion_flux_mesh, ion_flux_cell
 
     integer :: i
+
+    if ( virtual_md_Jhart ) then
+       print*, "[Jhart] ", h_flux_Jhart(:)
+    end if
 
     if ( virtual_md_Jks ) then
        Dscf_deriv(:,:) = (Dscf_deriv(:,:)-Dscf(:,:))/virtual_dt

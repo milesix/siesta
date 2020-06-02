@@ -125,7 +125,9 @@ C     Begin of coordinate relaxation iteration
               substep = VIRTUAL_STEP
               call siesta_forces( istep )
 
+              print*, "[VMD.Logic.Start] ", istep_vmd
               call virtual_md_step_logic()
+              print*, "[VMD.Logic.Stop] ", istep_vmd
               ! This should essentially do two things:
               ! 1. compute derivatives e.g. Dscf_deriv
               ! 2. compute Jks-flux components for `istep` iteration,
