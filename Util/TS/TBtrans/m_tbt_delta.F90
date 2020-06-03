@@ -129,7 +129,7 @@ contains
     ! Option name used (dH or dSE)
     character(len=*), intent(in) :: opt
     type(tDelta), intent(inout) :: delta
-    
+
 #ifdef NCDF_4
     type(hNCDF) :: ndelta, grp
 #endif
@@ -145,15 +145,18 @@ contains
 
 #ifdef NCDF_4
 
+    ! Check if file name is defined, if so it *must* be a valid file
+    if ( .not. fdf_defined("TBT." // opt) ) then
+      delta%fname = " "
+      return
+    end if
+
     ! just set a file-name that should never be created by any user :).
     delta%fname = fdf_get('TBT.'//opt,'NONE 1234567890')
 
-    ! If the file exists, use it
+    ! If the file does not exists, then stop and tell user!
     if ( .not. file_exist(delta%fname, Bcast = .true.) ) then
-       
-       delta%fname = ' '
-       return
-       
+      call die('TBT.'//opt//' file does not exist: '//trim(delta%fname))
     end if
 
     ! Ok, the file exists, lets see if all can see the file...

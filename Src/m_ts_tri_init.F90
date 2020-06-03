@@ -754,7 +754,7 @@ contains
       integer(i8b) :: els
       logical :: is_suitable
       type(tRgn) :: cur, ctri
-      character(len=132) :: fname
+      character(len=132) :: fname, output
       real(dp) :: total
 
       call rgn_copy(r_pvt, cur)
@@ -762,14 +762,20 @@ contains
       ! Only if it is defined
       fname = fdf_get('TS.BTD.Output',' ')
       if ( len_trim(fname) > 0 ) then
-        write(fname,'(4a)') 'TS.BTD.Output ', trim(fname), '.', trim(fmethod)
-        call fdf_overwrite(fname)
+        write(output,'(4a)') 'TS.BTD.Output ', trim(fname), '.', trim(fmethod)
+        call fdf_overwrite(output)
       end if
 
       ! Create a new tri-diagonal matrix, do it in parallel
       call ts_rgn2TriMat(N_Elec, Elecs, .true., &
           fdit, tmpSp1, cur, ctri%n, ctri%r, &
           method, 0, par = .true. )
+
+      if ( len_trim(fname) > 0 ) then
+        ! Reset
+        write(output,'(2a)') 'TS.BTD.Output ', trim(fname)
+        call fdf_overwrite(output)
+      end if
 
       ! Sort the pivoting table for the electrodes
       ! such that we reduce the Gf.Gamma.Gf

@@ -802,16 +802,16 @@ contains
       ! Possibly very large numbers
       integer(i8b) :: els
       logical :: is_suitable
-      character(len=132) :: fname
+      character(len=132) :: fname, output
       real(dp) :: total
 
       call rgn_copy(r_pvt, cur)
 
       ! Only if it is defined
-      fname = fdf_get('TBT.BTD.Output',' ')
+      fname = fdf_get('TBT.BTD.Output', ' ')
       if ( len_trim(fname) > 0 ) then
-        write(fname,'(4a)') 'TS.BTD.Output ', trim(fname), '.', trim(fmethod)
-        call fdf_overwrite(fname)
+        write(output,'(4a)') 'TS.BTD.Output ', trim(fname), '.', trim(fmethod)
+        call fdf_overwrite(output)
       end if
 
       ! Create a new tri-diagonal matrix, do it in parallel
@@ -826,7 +826,7 @@ contains
       ! in index, all-in-all, win-win!
       call ts_pivot_tri_sort_El(nrows_g(tmpSp1), cur, N_Elec, Elecs, ctri)
 
-      bw   = bandwidth(no,n_nzs,ncol,l_ptr,l_col,cur)
+      bw = bandwidth(no,n_nzs,ncol,l_ptr,l_col,cur)
       prof = profile(no,n_nzs,ncol,l_ptr,l_col,cur)
       if ( IONode ) then
         write(*,'(tr3,a,t23,i10,/,tr3,a,t13,i20)') &
@@ -836,13 +836,11 @@ contains
       ! Calculate size of the tri-diagonal matrix
       els = nnzs_tri(ctri%n,ctri%r)
       ! check if there are overflows
-      if ( els > huge(1) ) then
+      is_suitable = els <= huge(1)
+      if ( .not. is_suitable ) then
         write(*,'(tr3,a,i0,'' / '',i0)')'*** Number of elements exceeds integer limits [elements / max] ', &
             els, huge(1)
         write(*,'(tr3,a)')'*** Will not be able to use this pivoting scheme!'
-        is_suitable = .false.
-      else
-        is_suitable = .true.
       end if
 
       if ( IONode ) then

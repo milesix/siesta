@@ -568,8 +568,11 @@ contains
   subroutine delete_(this)
     type(ts_mu), intent(inout) :: this
 
-    deallocate(this%Eq_seg)
+    if ( allocated(this%Eq_seg) ) then
+      deallocate(this%Eq_seg)
+    end if
     nullify(this%el)
+    this%N_El = 0
 
   end subroutine delete_
 

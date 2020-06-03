@@ -404,22 +404,27 @@ contains
         pvt%r(r%r(i)) = i
       end do
 
-      ! Write out the BTD format in a file to easily be processed
-      ! by python, this is the pivoted sparsity pattern
-      call io_assign(iu)
-      open(iu, file=trim(fname)//'.sp',action='write')
-      write(iu,'(i0)') r%n
-      do i = 1 , r%n
-        io = r%r(i)
-        if ( l_ncol(io) == 0 ) cycle
-        do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
-          jo = UCORB(l_col(ind),no_u)
-          j = pvt%r(jo)
-          if ( j > i ) cycle ! only print upper half (it is hermitian)
-          write(iu,'(2(i0,tr1),i1)') i, j, 1
+      ! This write-out is very heavy, and we should limit it
+      if ( fdf_get('TS.BTD.Output.Sparse',.false.) ) then
+        ! Write out the BTD format in a file to easily be processed
+        ! by python, this is the pivoted sparsity pattern
+        call io_assign(iu)
+        open(iu, file=trim(fname)//'.sp',action='write')
+        write(iu,'(i0)') r%n
+        do i = 1 , r%n
+          io = r%r(i)
+          if ( l_ncol(io) == 0 ) cycle
+          write(iu,'(i0)', advance='no') i
+          do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
+            jo = UCORB(l_col(ind),no_u)
+            j = pvt%r(jo)
+            if ( j > i ) cycle ! only print upper half (it is hermitian)
+            write(iu,'(tr1,i0)', advance='no') j
+          end do
+          write(iu,*) ! empty line
         end do
-      end do
-      call io_close(iu)
+        call io_close(iu)
+      end if
 
       call io_assign(iu)
       open(iu, file=trim(fname)//'.pvt',action='write')
