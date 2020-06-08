@@ -15,6 +15,10 @@ module m_diag_option
   
   implicit none
   
+!  public :: read_diag, print_diag
+!  public :: diag_recognizes_neigwanted
+
+  
   save
 
   !-----------------------------------------------------------------------------
@@ -83,6 +87,9 @@ module m_diag_option
 
   !> Flag to account for printing of options
   !  logical, protected :: diag_options_printed = .false.
+#ifdef SIESTA__ELPA
+  logical :: elpa_use_gpu = .false.
+#endif
   
 contains
 
@@ -107,7 +114,6 @@ contains
 #ifdef MPI
     if ( Nodes > 1 .and. .not. Gamma ) then
        ParallelOverK = fdf_get( 'Diag.ParallelOverK', .false.)
-       if ( nspin > 2 ) ParallelOverK = .false.
     end if
 
     if ( Nodes == 1 ) then
@@ -314,6 +320,9 @@ contains
 
     end if
 
+#ifdef SIESTA__ELPA
+    elpa_use_gpu = fdf_get('Diag.ELPA.UseGPU',.false.)
+#endif
 
     ! Retrieve tolerances for the expert drivers
     abstol = fdf_get('Diag.AbsTol', 1.e-16_dp)
@@ -324,6 +333,20 @@ contains
     mem_factor = max(mem_factor, 1.0_dp)
 
   end subroutine read_diag
+
+  !> A convenience function to keep track of which solvers in 'diag' are
+  !> capable of working with a reduced number of eigenvectors/eigenvalues
+  
+  function diag_recognizes_neigwanted() result (neig_capable)
+    logical :: neig_capable
+    
+    neig_capable =  ( algorithm == MRRR .or. &
+                     algorithm == MRRR_2stage .or. &
+                     algorithm == Expert .or.  &
+                     algorithm == Expert_2stage .or. &
+                     algorithm == ELPA_1stage .or. &
+                     algorithm == ELPA_2stage )
+  end function diag_recognizes_neigwanted
 
   subroutine print_diag()
     use parallel, only: IONode, Nodes

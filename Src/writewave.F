@@ -561,11 +561,24 @@ c fixspin and qs are not used in diagk, since getD=.false. ...
       qs(1) = 0.0d0
       qs(2) = 0.0d0
 
+         call print_diag()
+C Handle parallel over K points option which is not allowed for here
+      SaveParallelOverK = ParallelOverK
+      if ( ParallelOverK ) then
+        if ( Node .eq. 0 ) then
+          write(*,"(a)")
+     $        "*** Note: ParallelOverK option not used for "//
+     &        "WF info generation"
+        end if
+        ParallelOverK = .false.
+        Serial = (Nodes == 1)
+        call diag_init()
+      end if
+         call print_diag()
 C Call appropriate diagonalization routine
 
-      if ( spin%Grid <= 2 ) then
+      if ( spin%none .or. spin%Col ) then
        if (gamma) then
-         call print_diag()
          call diagg( spin%H, nuo, maxuo, maxnh, maxnh, 
      .               maxo, numh, listhptr, listh, numh, listhptr, 
      .               listh, H, S, getD, getPSI,
@@ -573,19 +586,6 @@ C Call appropriate diagonalization routine
      .               e1, e2, ek, qk, Dnew, Enew, ef, efs, Entropy,
      .               Haux, Saux, psi, nuotot, occtol, 1, nuotot )
        else
-C Handle parallel over K points option which is not allowed for here
-          SaveParallelOverK = ParallelOverK
-          if ( ParallelOverK ) then
-             if ( Node .eq. 0 ) then
-                write(*,"(a)")
-     $               "*** Note: ParallelOverK option not used for "//
-     &               "WF info generation"
-             end if
-             ParallelOverK = .false.
-             Serial = (Nodes == 1)
-             call diag_init()
-          end if
-         call print_diag()
          call diagk( spin%H, nuo, no, spin%spinor, maxnh, maxnh,
      .               maxo, numh, listhptr, listh, numh, listhptr, 
      .               listh, H, S, getD, getPSI,
@@ -594,10 +594,6 @@ C Handle parallel over K points option which is not allowed for here
      .               ek, qk, Dnew, Enew, ef, efs, Entropy,
      .               Haux, Saux, psi, Haux, Saux, aux, nuotot,
      .               occtol, 1, nuotot )
-
-         ParallelOverK = SaveParallelOverK
-         if ( ParallelOverK ) Serial = .true.
-         
        endif
 
       elseif ( spin%NCol) then
@@ -638,6 +634,9 @@ C Handle parallel over K points option which is not allowed for here
         endif
       endif
 
+      ! Restore ParallelOverK
+      ParallelOverK = SaveParallelOverK
+      if ( ParallelOverK ) Serial = .true.
 
       call resetDenseMatrix()
 C Free local arrays 
