@@ -6,6 +6,7 @@
 
 (Please see the file README_ELSI in the top directory for important information)
 
+* Print 'neigwanted' if used
 * Wrap new routines in m_elsi_interface in SIESTA__ELSI block
 * The ELSI interface now honors the "number-of-eigenstates" setting, and an EIG file
   is generated (for the ELPA solver).
@@ -100,6 +101,11 @@ look at the 4.1 ChangeLog to get a complete picture of the changes in
 
 * Siesta is now developed on the GitLab platform: www.gitlab.com/siesta-project/siesta
   A number of Siesta-related packages are developed here: www.gitlab.com/siesta-project
+
+* Document the setting of 'neigwanted' and print them if the diag solver allows it.
+
+* Fix computation of NC/SOC occupations when the (optional) number of
+  eigenstates handled ('neigwanted') is less than the number of orbitals.
 
 * Fix reading of wave-functions in Util/COOP/fat.f90
 
