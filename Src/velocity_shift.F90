@@ -71,6 +71,7 @@ contains
 
     ! Read in the velocity related options
     velocity_bias = fdf_get('BulkBias.V', 0._dp, 'Ry')
+    velocity_bias = fdf_get('BulkBias.Voltage', velocity_bias, 'Ry')
 
     ! The velocity tolerance in atomic units
     velocity_tolerance = fdf_get('BulkBias.Tolerance', 1.e-15_dp)
@@ -275,6 +276,8 @@ contains
     if ( .not. IONode ) return
     
     ! Current I is in [e Bohr Ry], then convert to [e Bohr/s]
+    ! Note this equation also holds for NC/SOC since there spinor will
+    ! be 2.
     I(:) = results(1:4) / hbar_Rys * Coulomb * 1.e6_dp * 2._dp / spin%spinor
     ! Copy charges
     qPN(:) = results(5:7)
