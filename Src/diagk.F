@@ -75,7 +75,7 @@ C integer e_spin_dim          : Number of spin components of E_dm
 C real*8 Haux(2,nuotot,nuo) : Auxiliary space for the hamiltonian matrix
 C real*8 Saux(2,nuotot,nuo) : Auxiliary space for the overlap matrix
 C real*8 psi(2,nuotot,nuo)  : Auxiliary space for the eigenvectors
-C real*8 aux(2,nuotot*5)    : Extra auxiliary space
+C real*8 aux(2,nuotot)      : Extra auxiliary space
 C real*8 Dk(2,nuotot,nuo)   : Aux. space that may be the same as Haux
 C real*8 Ek(2,nuotot,nuo)   : Aux. space that may be the same as Saux
 C *************************** UNITS ***********************************
@@ -101,6 +101,7 @@ C
       use writewave,     only : writew
       use m_fermid,      only : fermid, fermispin, stepf
       use m_spin,        only : spinor_dim, e_spin_dim
+      use iso_c_binding, only : c_loc, c_f_pointer
 #ifdef MPI
       use mpi_siesta
 #endif
@@ -129,7 +130,7 @@ C
      .                  xij(3,maxnh), qs(spinor_dim)
       real(dp)          Dk(2,nuotot,nuo), Ek(2,nuotot,nuo),
      .                  Haux(2,nuotot,nuo), Saux(2,nuotot,nuo)
-      real(dp), target :: psi(2,nuotot,nuo), aux(2,nuotot*5)
+      real(dp), target :: psi(2,nuotot,nuo), aux(2,nuotot)
       logical           getD, getPSI, fixspin
       external          cdiag
 
@@ -143,6 +144,7 @@ C  Internal variables .............................................
       real(dp) :: qp1, qp2, eqp1, eqp2
 
       real(dp), pointer :: lpsi(:,:)
+      real(dp), pointer :: psi_real_1d(:)
 
       logical, allocatable :: done_juo(:)
 C     ....................
@@ -211,15 +213,11 @@ C Find new Fermi energy and occupation weights ........................
          call fermispin( spinor_dim, spinor_dim, nk, wk, maxo,
      &        neigwanted, eo, temp, qs, qo, efs, Entropy )
       else
-         call fermid( spinor_dim, spinor_dim, nk, wk, maxo,
+         call fermid(spinor_dim, spinor_dim, nk, wk, maxo,
      &        neigwanted, eo, temp, qtot, qo, ef, Entropy )
       endif
 
       nd = listdptr(nuo) + numd(nuo)
-
-! NPA:
-! I have tried putting the parallel section out here
-! However, the intel compilers cannot figure it out :(
 
 C Find weights for local density of states ............................
       if (e1 .lt. e2) then
@@ -227,7 +225,7 @@ C Find weights for local density of states ............................
 *       e2 = e2 - ef
         t = max( temp, 1.e-6_dp )
         rt = 1._dp / t
-!$OMP parallel do default(shared), collapse(3), private(ik,ispin,io)
+!$OMP parallel do default(shared), private(ik,ispin,io)
         do ik = 1,nk
           do ispin = 1,spinor_dim
             do io = 1,nuotot
@@ -242,10 +240,8 @@ C Find weights for local density of states ............................
 
 C New density and energy-density matrices of unit-cell orbitals .......
       if (nuo.gt.0) then
-!$OMP parallel workshare
         Dnew(1:nd,1:h_spin_dim) = 0.0_dp
         Enew(1:nd,1:e_spin_dim) = 0.0_dp
-!$OMP end parallel workshare
       endif
 
 
@@ -345,10 +341,12 @@ C Repeat diagonalisation with increased memory to handle clustering
              if (.not. getD) then
                 ! Fill in the missing eigenvalue information
                 ! This is useful if we are requesting WFS in a "bands" setting
-                call kludge_copy(nuotot,eo(1,ispin,ik),aux)
+               call dcopy(nuotot, aux(1,1), 1, eo(1,ispin,ik), 1)
              endif
+             call c_f_pointer(c_loc(psi),psi_real_1d,[size(psi)])
              call writew(nuotot,nuo,ik,kpoint(1,ik),ispin,
-     .                 aux,psi,.false.)
+     .                 aux,psi_real_1d,gamma=.false.,non_coll=.false.,
+     $                 blocksize=BlockSize)
           endif
 
           if (getD) then
@@ -356,8 +354,7 @@ C Repeat diagonalisation with increased memory to handle clustering
 
 C Add contribution to density matrices of unit-cell orbitals
 C WARNING: Dk and Ek may be EQUIVALENCE'd to Haux and Saux
-!$OMP parallel do default(shared), collapse(2)
-!$OMP&private(iuo,juo)
+!$OMP parallel do default(shared), private(iuo,juo)
             do iuo = 1,nuo
               do juo = 1,nuotot
                 Dk(1,juo,iuo) = 0.0_dp
@@ -448,18 +445,5 @@ C Global operation to form new density matrix
         enddo
       enddo
       deallocate(done_juo)
-
-      CONTAINS
-
-      ! Work around shape of aux array
-      subroutine kludge_copy(n,a,b)
-      integer, intent(in) :: n
-      real(dp), intent(out) :: a(n)
-      real(dp), intent(in)  :: b(n)
-!$OMP parallel workshare default(shared)
-      a(1:n) = b(1:n)
-!$OMP end parallel workshare
-      end subroutine kludge_copy
-
 
       end subroutine diagk

@@ -12,39 +12,49 @@ module m_normalize_dm
   private
   
   public :: normalize_dm, dm_norm
+  public :: trace_with_S
 
 contains
-  subroutine dm_norm(qsol)
+
+  subroutine trace_with_S(Mat,val)
     use precision, only: dp
-    use sparse_matrices, only: Dscf, maxnh, S
+    use sparse_matrices, only:  maxnh, S
     use m_spin,   only: spin
 #ifdef MPI
     use m_mpi_utils, only: globalize_sum
 #endif
 
-    real(dp), intent(out) :: qsol
-
+    real(dp), intent(out) :: val
+    real(dp), intent(in)  :: Mat(:,:)
     integer :: is, io
 #ifdef MPI
     real(dp):: buffer1
 #endif
     
-      qsol = 0.0_dp
-!$OMP parallel do default(shared), collapse(2), &
-!$OMP& private(is,io), reduction(+:qsol)
+    val = 0.0_dp
+!$OMP parallel do default(shared), private(is,io), reduction(+:val)
     do is = 1 , spin%spinor
        do io = 1 , maxnh
-          qsol = qsol + Dscf(io,is) * S(io)
+          val = val + Mat(io,is) * S(io)
        end do
     end do
 !$OMP end parallel do
     
 #ifdef MPI
-    call globalize_sum(qsol, buffer1)
-    qsol = buffer1
+    call globalize_sum(val, buffer1)
+    val = buffer1
 #endif
+  end subroutine trace_with_S
+
+  subroutine dm_norm(qsol)
+    use precision, only: dp
+    use sparse_matrices, only: Dscf
+
+    real(dp), intent(out) :: qsol
+
+    call trace_with_S(Dscf,qsol)
   end subroutine dm_norm
-  
+
   subroutine normalize_dm( first )
     
     use precision, only: dp
@@ -72,7 +82,6 @@ contains
     ! Normalize density matrix to exact charge
     call dm_norm(qsol)
     
-
     ! Calculate the relative difference from the total charge
     scale = abs(qsol / qtot - 1._dp)
     
@@ -100,6 +109,10 @@ contains
     else
        ! In later steps, the lack of normalization is more serious
        ! The tolerance is tighter by default
+       !!if (IOnode) then
+       !!   write(6,'(a,2f20.8,1x,f14.8)') &
+       !!        'Note: For computed DM, Qtot, Tr[D*S] =', qtot, qsol, scale
+       !!end if
        if ( scale > dm_normalization_tol ) then
           write(msg,'(a,2f20.8)') &
                'Bad DM normalization: Qtot, Tr[D*S] =', qtot, qsol
@@ -115,21 +128,21 @@ contains
        
 !$OMP parallel default(shared), private(is,io)
        
-!$OMP do collapse(2)
        do is = 1 , spin%DM
-          do io = 1 , maxnh
+!$OMP do
+         do io = 1 , maxnh
              Dscf(io,is) = Dscf(io,is) * scale
           end do
-       end do
 !$OMP end do nowait
+       end do
 
-!$OMP do collapse(2)
        do is = 1 , spin%EDM
+!$OMP do
           do io = 1 , maxnh
              Escf(io,is) = Escf(io,is) * scale
           end do
-       end do
 !$OMP end do nowait
+       end do
 
 !$OMP end parallel
 

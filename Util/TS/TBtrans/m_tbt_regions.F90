@@ -231,7 +231,7 @@ contains
     call rgn_delete(r_Els)
 
     if ( r_aDev%n == 0 ) then
-       call die('Zero atoms are in the device region...???')
+       call die('Zero atoms are in the device region...?')
     end if
 
     ! Create device region
@@ -802,7 +802,7 @@ contains
 #endif
 
     type(Sparsity), intent(inout) :: sp
-    type(dict), intent(in) :: save_DATA
+    type(dictionary_t), intent(in) :: save_DATA
 #ifdef NCDF_4
     type(OrbitalDistribution) :: fdit
 

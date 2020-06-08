@@ -24,8 +24,8 @@
      &                    qtot, Qtots, no_l
       use sys, only: die, bye
       use kpoint_scf_m, only: kpoint_scf, gamma_scf
-      use m_energies,   only: Ebs, Ecorrec, Entropy, DE_NEGF
-      use m_energies,   only: Ef, Efs, Ebs
+      use m_energies,   only: Ebs, Ecorrec, Entropy
+      use m_energies,   only: Ef, Efs
       use m_rmaxh
       use m_eo
       use m_spin,   only: spin
@@ -55,7 +55,6 @@
 #ifdef SIESTA__CHESS
       use m_chess, only: CheSS_wrapper
 #endif
-      use m_energies,   only: DE_NEGF
       use m_ts_global_vars, only : TSmode, TSinit, TSrun
       use m_transiesta,     only : transiesta
       
@@ -82,20 +81,15 @@
       call MPI_Bcast(isolve,1,MPI_integer,0,MPI_Comm_DFT,mpierr)
 #endif     
 
+      scf_eigenvalues_available = .false.
       if (SIESTA_worker) then
-         ! Save present density matrix
-!$OMP parallel default(shared)
-         if ( converge_EDM ) then
-!$OMP workshare
-            Eold(:,:) = Escf(:,:)
-            Dold(:,:) = Dscf(:,:)
-!$OMP end workshare
-         else
-!$OMP workshare
-            Dold(:,:) = Dscf(:,:)
-!$OMP end workshare
-         end if
-!$OMP end parallel
+        ! Save present density matrix
+        call dcopy(size(Dscf), Dscf(1,1), 1, Dold(1,1), 1)
+        if ( converge_EDM ) then
+          call dcopy(size(Escf), Escf(1,1), 1, Eold(1,1), 1)
+            ! Not all solvers handle Escf during the SCF cycle
+            ! For those, converge_EDM should be disabled
+        end if
       end if
 
       ! Compute shift in Tr(H*DM) for fermi-level bracketting
@@ -152,7 +146,7 @@
      &              H, S, qtot, temp, 
      &              xijo,
      &              kpoint_scf%N, kpoint_scf%k, kpoint_scf%w,
-     &              eo, qo, Dscf, Escf, ef, Entropy,
+     &              Dscf, Escf, ef, Entropy,
      &              occtol, neigwanted, Get_EDM_Only=.false.)
             Ecorrec = 0.0_dp
          else
@@ -162,7 +156,7 @@
      &              H, S, qtot, temp, 
      &              xijo,
      &              kpoint_scf%N, kpoint_scf%k, kpoint_scf%w,
-     &              eo, qo, Dscf, Escf, ef, Entropy,
+     &              Dscf, ef, Entropy,
      &              occtol, neigwanted, Get_EDM_Only=.false.)
             Ecorrec = 0.0_dp
          endif
@@ -227,6 +221,7 @@ c$$$     &           S, 'S.matrix')
      &              eo, qo, Dscf, Escf, ef, efs, Entropy, no_u,
      &              occtol, iscf, neigwanted,
      &              dealloc_psi=.not. CallDiagon)
+        scf_eigenvalues_available = .true.
         Ecorrec = 0.0_dp
         PreviousCallDiagon=.true.
       elseif (isolve .eq. SOLVE_ORDERN) then
@@ -296,7 +291,7 @@ c$$$     &           S, 'S.matrix')
          call transiesta(iscf,spin%H, block_dist, sparse_pattern,
      &        no_u == no_s, ucell, nsc, isc_off, no_u, na_u,
      &        lasto, xa, maxnh,
-     &        H, S, Dscf, Escf, Ef, Qtot, .false., DE_NEGF )
+     &        H, S, Dscf, Escf, Ef, Qtot)
 
          Ecorrec = 0._dp
          Entropy = 0.0_dp

@@ -13,31 +13,42 @@
 
 OBJDIR=Obj
 
-all: plstm
+all: plstm plsts
 
 include ../../../$(OBJDIR)/arch.make
+vpath %.F90 ../../Grid
 
 #
-# This is needed on some systems to avoid loading the parallel libraries, which
-# sometimes force running on queuing systems
+# The m_gridfunc module (a dependency) has netCDF support, which is currently
+# not used by plstm.
+# Compiling with netCDF in some systems forces loading the parallel libraries, which
+# sometimes prevents interactive use of the program.
+# For now we deactivate netCDF in m_gridfunc in this Makefile.
+# When netCDF support is added to plstm, the proper symbol below can be defined, if needed.
 #
+USE_NETCDF_IN_PLSTM=
+ifdef USE_NETCDF_IN_PLSTM
+   INCFLAGS += $(NETCDF_INCFLAGS)
+   LIBS = $(NETCDF_LIBS)
+else
+   # Remove netCDF functionality from m_gridfunc
+   FPPFLAGS += $(DEFS_PREFIX)-UCDF
+endif
 
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
-plstm: plstm.o
-	$(FC) $(LDFLAGS) -o $@  plstm.o 
+plstm.o: m_gridfunc.o options.o
+plsts.o: m_gridfunc.o
+plstm: options.o plstm.o m_gridfunc.o
+	$(FC) $(LDFLAGS) -o $@  plstm.o m_gridfunc.o options.o $(LIBS)
+
+
+plsts: plsts.o m_gridfunc.o 
+	$(FC) $(LDFLAGS) -o $@  plsts.o m_gridfunc.o $(LIBS)
+
 
 clean: 
-	rm -f *.o plstm *.*d
+	rm -f *.o *.mod plstm plsts
 
-
-dep:
-	-sfmakedepend --depend=obj --modext=o \
-		$(VPATH)/*.f $(VPATH)/*.f90 $(VPATH)/*.F $(VPATH)/*.F90 \
-		*.f *.f90 *.F *.F90
-	@sed '/^siesta_cmlsubs.o:/s/version.o//'  Makefile > tmp.Makefile
-	@mv tmp.Makefile Makefile
-
-# DO NOT DELETE THIS LINE - used by make depend

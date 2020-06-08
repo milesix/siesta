@@ -115,8 +115,8 @@
 
       use m_ts_global_vars,only: TSmode
       use m_ts_options,   only : IsVolt, N_Elec, Elecs
+      use m_ts_electype,  only : Elec_ortho2semi_inf
       use m_ts_voltage,   only : ts_init_voltage
-      use m_ts_hartree,   only : ts_init_hartree_fix
 
       implicit none
       integer, intent(in)     :: nspin, norb, iaorb(norb), iphorb(norb),
@@ -144,7 +144,7 @@
       
       ! Transport direction (unit-cell aligned)
       integer                 :: iE
-      real(dp)                :: ortho, field(3), field2(3)
+      logical :: is_ortho
 !--------------------------------------------------------------------- BEGIN
 #ifdef DEBUG
       call write_debug( '    PRE dhscf_init' )
@@ -401,7 +401,7 @@ C     Create Rhoatm using UNIFORM distr, in sequential form
         endif
 
 C     Allocate Temporal array
-      call re_alloc( Vscf, 1, ntpl, 1, nspin, 'Vscf', 'dhscf_init' )
+      call re_alloc( Vscf, 1, ntpl, 1, 1, 'Vscf', 'dhscf_init' )
 
 C     Vscf is filled here but not used later
 C     Uharrs is computed (and saved)
@@ -438,7 +438,6 @@ C ----------------------------------------------------------------------
       ! corresponding to the voltage-drop.
       if ( TSmode ) then
         ! These routines are important if there are cell-changes
-        call ts_init_hartree_fix( cell, nua, xa, ntm, ntml)
         if ( IsVolt ) then
            call ts_init_voltage( cell, nua, xa, ntm)
         end if
@@ -466,37 +465,33 @@ C ----------------------------------------------------------------------
          end if
 
          ! This is either dipole or user, or both
-         field(:) = user_specified_field(:)
-         ortho = 0._dp
-         do iE = 1 , N_Elec
-           select case ( Elecs(iE)%t_dir )
-           case ( 4 )           ! B-C
-             field2 = Elecs(iE)%cell(:,2)
-             ortho = abs(ddot(3,field2,1,field,1))
-             field2 = Elecs(iE)%cell(:,3)
-             ortho = max(ortho, abs(ddot(3,field2,1,field,1)))
-           case ( 5 )           ! A-C
-             field2 = Elecs(iE)%cell(:,1)
-             ortho = abs(ddot(3,field2,1,field,1))
-             field2 = Elecs(iE)%cell(:,3)
-             ortho = max(ortho, abs(ddot(3,field2,1,field,1)))
-           case ( 6 )           ! A-B
-             field2 = Elecs(iE)%cell(:,1)
-             ortho = abs(ddot(3,field2,1,field,1))
-             field2 = Elecs(iE)%cell(:,2)
-             ortho = max(ortho, abs(ddot(3,field2,1,field,1)))
-           case ( 7 )           ! A-B-C
-             call die('dhscf: cannot use dipole correction when
-     &having all directions semi-infinite.')
-           case default
-             field2 = Elecs(iE)%cell(:,Elecs(iE)%t_dir)
-             ortho = ddot(3,field2,1,field,1)
+         is_ortho = .true.
+         if ( N_Elec == 1 ) then
+           ! When using a single electrode
+           ! one may always have an electric field.
+           ! For fields along the semi-infinite direction
+           ! it corresponds to a capacitor setup
+           ! For other fields it is simply a gate-like field.
+           ! However, when the electrode uses real space self-energies
+           ! then we do not allow *any* fields along the semi-inf
+           ! directions since that would mean an infinite field.
+           select case ( Elecs(1)%t_dir )
+           case ( 4 , 5 , 6, 7 )
+             is_ortho = Elec_ortho2semi_inf(Elecs(1),
+     &           user_specified_field)
            end select
-           if ( abs(ortho) > 1.e-9_dp ) then
-             call die('User defined E-field must be
-     &perpendicular to semi-infinite directions')
-           end if
-         end do
+         else
+           ! For more than 1 electrode we do not allow any electric
+           ! fields along the semi-infinite directions.
+           do iE = 1 , N_Elec
+             is_ortho = is_ortho .and.
+     &           Elec_ortho2semi_inf(Elecs(iE), user_specified_field)
+           end do
+         end if
+         if ( .not. is_ortho ) then
+           call die('User defined E-field must be
+     &perpendicular to semi-infinite directions.')
+         end if
         end if ! acting_efield
          
         ! We know that we currently allow people to do more than
@@ -952,7 +947,7 @@ C       Set the UNIFORM distribution again and copy DRho to it
         call de_alloc( DRho_par, 'DRho_par','dhscf' )
 
         if ( debug_dhscf ) then
-           write(*,debug_fmt) Node,'DRho',
+           write(*,debug_fmt) Node,'Rho',
      &          (sqrt(sum(DRho(:,ispin)**2)),ispin=1,nspin)
         end if
 
@@ -993,6 +988,7 @@ C       Set the UNIFORM distribution again and copy DRho to it
 !     since we have just computed rhoatm and Rho.
 
       if (want_partial_charges) then
+        call timer( 'partial-charges' , 1 )
         ! The endpht array is in the quadratic distribution, so
         ! we need to use it for this...
         if (nodes.gt.1) then
@@ -1024,6 +1020,7 @@ C       Set the UNIFORM distribution again and copy DRho to it
            call setMeshDistr( UNIFORM, nsm, nsp,
      &                        nml, nmpl, ntml, ntpl )
         endif
+        call timer( 'partial-charges' , 2 )
       endif
 
 C ----------------------------------------------------------------------
@@ -1146,14 +1143,20 @@ C ----------------------------------------------------------------------
 C Find difference between selfconsistent and atomic densities
 
       !Both DRho and rhoatm are using a UNIFORM, sequential form
-!$OMP parallel do default(shared), private(ispin,ip),
-!$OMP&collapse(2)
+!$OMP parallel default(shared), private(ispin,ip)
       do ispin = 1,nsd
+!$OMP do
         do ip = 1,ntpl
           DRho(ip,ispin) = DRho(ip,ispin) - rhoatm(ip) * rnsd
         enddo
+!$OMP end do nowait
       enddo
-!$OMP end parallel do
+!$OMP end parallel
+
+      if ( debug_dhscf ) then
+        write(*,debug_fmt) Node,'DRho',
+     &      (sqrt(sum(DRho(:,ispin)**2)),ispin=1,nspin)
+      end if
 
 C ----------------------------------------------------------------------
 C Save electron density difference
@@ -1249,57 +1252,6 @@ C Find dipole
           dipol(1:3) = const * b1Xb2(1:3)
        end if
 
-       if ( TSmode ) then
-         if ( N_elec > 1 ) then
-           ! Orthogonalize dipole to electrode transport directions
-           do ia = 1 , N_Elec
-             select case ( Elecs(ia)%t_dir )
-             case ( 4 )         ! B-C
-               x0 = Elecs(ia)%cell(:,2)
-               const = ddot(3,dipol,1,x0,1) / ddot(3,x0,1,x0,1)
-               dipol(1:3) = dipol(1:3) - const * x0
-               x0 = Elecs(ia)%cell(:,3)
-               const = ddot(3,dipol,1,x0,1) / ddot(3,x0,1,x0,1)
-               dipol(1:3) = dipol(1:3) - const * x0
-             case ( 5 )         ! A-C
-               x0 = Elecs(ia)%cell(:,1)
-               const = ddot(3,dipol,1,x0,1) / ddot(3,x0,1,x0,1)
-               dipol(1:3) = dipol(1:3) - const * x0
-               x0 = Elecs(ia)%cell(:,3)
-               const = ddot(3,dipol,1,x0,1) / ddot(3,x0,1,x0,1)
-               dipol(1:3) = dipol(1:3) - const * x0
-             case ( 6 )         ! A-B
-               x0 = Elecs(ia)%cell(:,1)
-               const = ddot(3,dipol,1,x0,1) / ddot(3,x0,1,x0,1)
-               dipol(1:3) = dipol(1:3) - const * x0
-               x0 = Elecs(ia)%cell(:,2)
-               const = ddot(3,dipol,1,x0,1) / ddot(3,x0,1,x0,1)
-               dipol(1:3) = dipol(1:3) - const * x0
-             case ( 7 )         ! A-B-C
-               call die('dhscf: no dipole moment in infinite systems')
-             case default
-               x0 = Elecs(ia)%cell(:,Elecs(ia)%t_dir)
-               const = ddot(3,dipol,1,x0,1) / ddot(3,x0,1,x0,1)
-               dipol(1:3) = dipol(1:3) - const * x0
-             end select
-           end do
-         else if ( (shape == 'molecule') .or. (shape == 'chain') ) then
-           ! Only allow dipole correction for chains and molecules
-           ! along the semi-infinite direciton.
-           ! Note this is *only* for 1-electrode setups
-           ! Note that since the above removes the periodic directions
-           ! this should not do anything for 'chain' with the same semi-infinite
-           ! direction
-           if ( Elecs(1)%t_dir > 3 ) then
-             call die('A real-space self-energy requires some &
-     &kind of periodicity')
-           end if
-           x0 = Elecs(1)%cell(:,Elecs(1)%t_dir)
-           const = ddot(3,dipol,1,x0,1) / ddot(3,x0,1,x0,1)
-           dipol(1:3) = const * x0
-         end if
-       end if
-          
       endif
 
 C ----------------------------------------------------------------------
@@ -1409,18 +1361,7 @@ C ----------------------------------------------------------------------
       if (TSmode.and.IsVolt.and.TSrun) then
          ! This routine expects a sequential array,
          ! in whatever distribution
-#ifdef TRANSIESTA_VOLTAGE_DEBUG
-!$OMP parallel workshare default(shared)
-         Vaux(:) = 0._dp
-!$OMP end parallel workshare
-#endif
          call ts_voltage(cell, ntm, ntml, Vaux)
-#ifdef TRANSIESTA_VOLTAGE_DEBUG
-         call write_grid_netcdf( cell, ntm, 1, ntpl, Vaux, 
-     &        "TransiestaHartreePotential")
-         call timer('ts_volt', 3)
-         call bye('transiesta debug for Hartree potential')
-#endif
       endif
 
 ! ----------------------------------------------------------------------
@@ -1468,25 +1409,29 @@ C ----------------------------------------------------------------------
 
       if (npcc .eq. 1) then
          
-!$OMP parallel do default(shared), private(ip,ispin), collapse(2)
+!$OMP parallel default(shared), private(ip,ispin)
        do ispin = 1,nsd
+!$OMP do
           do ip= 1, ntpl
              DRho(ip,ispin) = DRho(ip,ispin) +
      &            (rhopcc(ip)+rhoatm(ip)) * rnsd
           enddo
+!$OMP end do nowait
        enddo
-!$OMP end parallel do
+!$OMP end parallel
 
       else
 
-!$OMP parallel do default(shared), private(ip,ispin), collapse(2)
+!$OMP parallel default(shared), private(ip,ispin)
        do ispin = 1,nsd
+!$OMP do
           do ip= 1, ntpl
              DRho(ip,ispin) = DRho(ip,ispin) +
      &            rhoatm(ip) * rnsd
           enddo
+!$OMP end do nowait
        enddo
-!$OMP end parallel do
+!$OMP end parallel
 
       end if
 

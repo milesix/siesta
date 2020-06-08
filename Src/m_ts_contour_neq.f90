@@ -778,7 +778,7 @@ contains
        if ( i <= nEq_c(j)%c_io%N ) then
           c%exist = .true.
           c%e     = nEq_c(j)%c(i)
-          c%idx(1) = 2 ! designates the non-equilibrium contours
+          c%idx(1) = CONTOUR_NEQ ! designates the non-equilibrium contours
           c%idx(2) = j ! designates the index of the non-equilibrium contour
           c%idx(3) = i ! is the index of the non-equilibrium contour
           return
@@ -924,7 +924,7 @@ contains
        write(cm2,'(a,g10.4)')'- ',m2
     end if
     write(kT2,'(g10.4)') nEq_ID%mu%kT / Kelvin
-    write(unit,'(a,/,9a)') '# Approximated Fermi function: ', &
+    write(unit,'(a,/,9a)') '# Window Fermi function: ', &
          '#   nF(E ', trim(cm1),' eV, ',trim(kT1),' K) &
          &- nF(E ',trim(cm2),' eV, ',trim(kT2),' K)'
     write(unit,'(a,a24,2(tr1,a25))') '#','Re(c) [eV]','Im(c) [eV]','w [eV]'

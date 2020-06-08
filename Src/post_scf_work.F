@@ -40,7 +40,9 @@
       use m_zminim,       only : zminim
       use m_steps,        only : istp, inicoor
       use m_compute_dm,   only : PreviousCallDiagon
-      use m_eo
+      use m_eo,           only : eo, qo, scf_eigenvalues_available
+      use units,          only : eV
+      use m_normalize_dm, only : trace_with_S
       use kpoint_scf_m, only: kpoint_scf, gamma_scf
 #ifdef SIESTA__ELSI
       use m_elsi_interface,  only: elsi_getdm
@@ -55,8 +57,7 @@
       type(Pair_Geometry_dSpData2D)  :: pair
       type(Geometry)                :: geom
 
-      real(dp), allocatable :: Dscf_dummy(:,:)
-      real(dp)              :: ef_dummy
+      real(dp)              :: ef_dummy, E_bs_from_S_EDM
       real(dp)              :: Entropy_dummy
       
       call timer( 'PostSCF', 1 )
@@ -69,19 +70,26 @@
       
 #ifdef SIESTA__ELSI
       if (isolve .eq. SOLVE_ELSI) then
-         allocate(Dscf_dummy(maxnh,spin%DM))
          ! Note that we do not care about the content of H and S
          ! Only that the appropriate elsi_h handle is still active
          ! and allows us to get the appropriate EDM
-         call elsi_getdm(iscf, no_s, spin%spinor, 
+
+         ! If the scf cycle only takes one iteration, iscf here will
+         ! be still 1, and the initialization logic in the ELSI module
+         ! will re-create all the data structures, spoiling the context
+         ! for the retrieval of the EDM. Hence the kludge: we set
+         ! iscf to a safe value (large to catch any cosmetic use in the future)
+         ! To really fix this, the code should be updated to avoid re-initializations
+         ! (including communicators, etc) when 'Get_EDM_Only' is set.
+         
+         call elsi_getdm(iscf+20000, no_s, spin%spinor, 
      &              no_l, maxnh, no_u,
      &              numh, listhptr, listh,
      &              H, S, qtot, temp, 
      &              xijo,
      &              kpoint_scf%N, kpoint_scf%k, kpoint_scf%w,
-     &              eo, qo, Dscf_dummy, Escf, ef_dummy, Entropy_dummy,
+     &              Escf, ef_dummy, Entropy_dummy,
      &              occtol, neigwanted, Get_EDM_Only=.true.)
-         deallocate(Dscf_dummy)
       endif
       if (.not. SIESTA_worker) RETURN
 #endif
@@ -112,6 +120,7 @@
      &                eo, qo, Dscf, Escf, ef, efs, Entropy, no_u,
      &                occtol, iscf, neigwanted)
           Ecorrec = 0.0_dp
+          scf_eigenvalues_available = .true.
         else
             if ( no_u == no_s ) then ! Not using an auxiliary supercell
             call dminim(.true., .false., iscf, istp, no_l, nspin, no_u,
@@ -146,6 +155,11 @@
             write(6,"(/,a)")
      $      "Using DM_out to compute the final energy and forces"
          endif
+      endif
+
+      call trace_with_S(Escf, E_bs_from_S_EDM)
+      if (ionode) then
+         print *, "E_bs from EDM:", E_bs_from_S_EDM/eV
       endif
 
       call final_H_f_stress( istep , iscf , SCFconverged )

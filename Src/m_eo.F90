@@ -8,13 +8,15 @@
 module m_eo
 
   use precision, only: dp
-        implicit none
+  implicit none
 
   public
 
   real(dp), pointer, save :: eo(:,:,:)  ! Hamiltonian eigenvalues
   real(dp), pointer, save :: qo(:,:,:)  ! Occupations of eigenstates
 
+  logical, save :: scf_eigenvalues_available
+  
 end module m_eo
 
 

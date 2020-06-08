@@ -7,11 +7,9 @@ module m_ts_electype
   use class_dSpData2D
   use m_region
 
-  use m_geom_plane, only: geo_plane_delta
-  use m_geom_plane, only: in_basal_Elec => voxel_in_plane_delta
-
   use m_geom_box, only: geo_box_delta
   use m_geom_box, only: in_Elec => voxel_in_box_delta
+
   use bloch_unfold_m, only: bloch_unfold_t
 
   use m_ts_chem_pot, only : ts_mu, name
@@ -50,9 +48,10 @@ module m_ts_electype
   public :: check_connectivity
   public :: delete
 
+  public :: Elec_ortho2semi_inf
   public :: Elec_box2grididx, Elec_frac
 
-  public :: in_basal_Elec, in_Elec
+  public :: in_Elec
 
   public :: operator(.eq.)
 
@@ -84,6 +83,12 @@ module m_ts_electype
      !   == 1 pre-expand only the surface Green function
      !   == 2 pre-expand surface Green function, H and S
      integer :: pre_expand = 2
+     ! Flag to signal how the DM should be initialized
+     !   == 0 'diagon', use DM from Siesta
+     !   == 1 'bulk' from the bulk DM electrode files
+     ! This should default to 1 IFF the DM/TSDE files are
+     ! present.
+     integer :: DM_init = 1
      ! chemical potential of the electrode
      type(ts_mu), pointer :: mu => null()
      ! infinity direction
@@ -122,9 +127,10 @@ module m_ts_electype
 
      ! Advanced stuff...
      logical :: kcell_check = .true.
-     ! If the user requests to assign different "spill-in fermi-level" 
+     ! If the user requests to assign different "spill-in bias"
      ! we allow that
-     real(dp) :: Ef_frac_CT = 0._dp
+     real(dp) :: V_frac_CT = 0._dp
+     real(dp) :: delta_Ef = 0._dp
 
      ! ---v--- Below we have the content of the TSHS file
      integer  :: nspin = 0, na_u = 0, no_u = 0, no_s = 0
@@ -184,8 +190,6 @@ module m_ts_electype
      ! The region of the down-folded region
      type(tRgn) :: o_inD, inDpvt
 
-     ! The basal plane of the electrode
-     type(geo_plane_delta) :: p
      ! A box containing all atoms of the electrode in the
      ! simulation box
      type(geo_box_delta) :: box
@@ -268,6 +272,7 @@ contains
     use parallel, only : IONode
 
     use fdf
+    use units, only: eV
     use intrinsic_missing, only: VNORM
     use m_os, only : file_exist
     use m_ts_io, only : ts_read_TSHS_opt
@@ -288,11 +293,12 @@ contains
     ! prepare to read in the data...
     type(block_fdf) :: bfdf
     type(parsed_line), pointer :: pline => null()
-    logical :: info(5)
+    logical :: info(6)
     integer :: i, j, Bloch(3)
     integer :: cidx_a 
     real(dp) :: rcell(3,3), fmin, fmax, rc
 
+    logical :: is_volt
     character(len=FILE_LEN) :: bName, name, ln, tmp
 
     info(:) = .false.
@@ -327,7 +333,7 @@ contains
           info(3) = .true.
           exit
        end if
-    end do
+     end do
     ! If there is only one chemical potential
     ! then, of course, they are associated.
     if ( N_mu == 1 ) then
@@ -335,11 +341,16 @@ contains
        info(3) = .true.
     end if
 
-    
+    ! Check for bias
+    is_volt = .false.
+    do i = 1 , N_mu
+      is_volt = is_volt .or. abs(mus(i)%mu)/eV > 0.000001_dp
+    end do
+
     ! Figure out if we should return immediately
     found = fdf_block(trim(bName),bfdf)
+    ! Outside of this routine we die since information *needs* specified
     if ( .not. found ) return
-
     
     cidx_a = 0
 
@@ -405,7 +416,8 @@ contains
             leqi(ln,'semi-inf-dir') .or. leqi(ln,'semi-inf') ) then
          
          tmp = 'Semi-infinite direction not understood correctly, &
-             &allowed format: [-+][a-c|a[1-3]]'
+             &allowed format: [-+][abc|a[1-3]] or any two/three directions &
+             &without direction ab|ac|bc|abc'
 
          ! This possibility exists
          !  semi-inf [-+][ ][a-c|a[1-3]] -> [direction] [vector]
@@ -548,7 +560,21 @@ contains
           end if
           info(5) = .true.
 
-       else if ( leqi(ln,'Ef-fraction') ) then
+        else if ( leqi(ln,'DM-init') ) then
+          
+          tmp = fdf_bnames(pline,2)
+          if ( leqi(tmp,'diagon') ) then
+             this%DM_init = 0
+          else if ( leqi(tmp,'bulk') ) then
+             this%DM_init = 1
+          else if ( leqi(tmp,'force-bulk') ) then
+             this%DM_init = 2
+          else
+             call die('DM-init: unrecognized option: '//trim(tmp))
+          end if
+          info(6) = .true.
+
+       else if ( leqi(ln,'V-fraction') ) then
 
           ! highly experimental feature,
           ! it determines the fraction of the electrode fermi-level
@@ -557,11 +583,20 @@ contains
           if ( fdf_bnvalues(pline) < 1 ) &
                call die('Fraction specification missing.')
           
-          this%Ef_frac_CT = fdf_bvalues(pline,1,after=1)
-          if ( this%Ef_frac_CT < 0._dp .or. &
-               1._dp < this%Ef_frac_CT ) then
-             call die('Fraction for fermi-level must be in [0;1] range')
+          this%V_frac_CT = fdf_bvalues(pline,1,after=1)
+          if ( this%V_frac_CT < 0._dp .or. &
+               1._dp < this%V_frac_CT ) then
+             call die('Fraction for bias must be in [0;1] range')
           end if
+
+        else if ( leqi(ln,'delta-Ef') ) then
+
+          ! highly experimental feature,
+          ! additional shifting of the Fermi-level
+          if ( fdf_bnvalues(pline) < 1 ) &
+               call die('delta-Ef specification missing.')
+
+          call pline_E_parse(pline, 1,ln, val=this%delta_Ef, before=3)
 
        else if ( leqi(ln,'GF') .or. &
             leqi(ln,'GF-file') ) then
@@ -676,6 +711,7 @@ contains
          nspin=this%nspin, Ef=this%Ef, ucell=this%cell, Qtot=this%Qtot, &
          nsc = this%nsc , &
          Bcast=.true.)
+    this%Ef = this%Ef + this%delta_Ef
 
     allocate(this%xa(3,this%na_u),this%lasto(0:this%na_u))
     call ts_read_TSHS_opt(this%HSfile,xa=this%xa,lasto=this%lasto, &
@@ -818,11 +854,15 @@ contains
     end if
 
                                  ! Same criteria as IsVolt
-    if ( this%DM_update > 0 .or. abs(this%mu%mu) < 0.000000735_dp ) then
-       ! when updating the cross-terms
-       ! there is no need to also shift the energy
-       ! I think this will battle each other out...
-       this%Ef_frac_CT = 0._dp
+    if ( abs(this%mu%mu) < 0.000000735_dp ) then
+      ! when updating the cross-terms
+      ! there is no need to also shift the energy
+      ! I think this will battle each other out...
+      if ( this%DM_update > 0 ) then
+        ! In TS runs when updating the cross terms the bias
+        ! is also taken into account.
+        this%V_frac_CT = 0._dp
+      end if
     end if
 
     ! if the user has specified text for the electrode position
@@ -840,17 +880,48 @@ contains
     ! In case the user has not supplied a DM file for the
     ! electrode we might as well try and guess one... :)
     if ( len_trim(this%DEfile) == 0 ) then
-       i = len_trim(this%HSfile)
+      i = len_trim(this%HSfile)
 #ifdef NCDF_4
-       ! If the TSHS file is a netcdf file we re-use it
-       if ( this%HSfile(i-1:i) == 'nc' ) then
-          this%DEfile = this%HSfile
-       else
-          this%DEfile = this%HSfile(1:i-4)//'TSDE'
-       end if
+      ! If the TSHS file is a netcdf file we re-use it
+      if ( this%HSfile(i-1:i) == 'nc' ) then
+        this%DEfile = this%HSfile
+      else
+        this%DEfile = this%HSfile(1:i-4)//'TSDE'
+      end if
 #else
-       this%DEfile = this%HSfile(1:i-4)//'TSDE'
+      this%DEfile = this%HSfile(1:i-4)//'TSDE'
 #endif
+    end if
+    
+    ! Check that the DE file exists (if the user requested
+    ! this)
+    if ( this%DM_init == 1 ) then
+      ! We have a basic request for specifying the initialization
+      ! of the DM
+      if ( file_exist(this%DEfile, Bcast = .true.) ) then
+        ! The file has been found! Great!
+      else if ( info(6) ) then ! the user has explicitly requested this!
+        call die('Requested initialization of the DM, however the DM/TSDE file &
+            &does not exist!')
+      else
+        ! disable reading the DM file, it does not exist
+        this%DM_init = 0
+      end if
+      ! We do not allow the DM file to be written if the chemical potential
+      ! is not 0.
+      if ( is_volt ) &
+          this%DM_init = 0
+
+    else if ( this%DM_init == 2 ) then
+      ! User has forcefully requested an initialization
+      if ( file_exist(this%DEfile, Bcast = .true.) ) then
+        ! The file has been found! Great!
+      else if ( info(6) ) then ! the user has explicitly requested this!
+        call die('Forcefully requested initialization of the DM, however the DM/TSDE &
+            &file does not exist!')
+      end if
+      ! Signal we should read
+      this%DM_init = 1
     end if
 
   end function fdf_Elec
@@ -905,103 +976,6 @@ contains
        
     end do
     
-    ! Create the basal plane of the electrode
-    ! Decide which end of the electrode we use
-    ! Calculate planes of the electrodes
-    select case ( this%t_dir )
-    case ( 4 ) ! B-C
-      call cross(this%cell(:,1), this%cell(:,2), p)
-      contrib = VNORM(p)
-      call cross(this%cell(:,1), this%cell(:,3), p)
-      if ( contrib > VNORM(p) ) then
-        ! the area on A-B is biggest, hence the normal plane is along C
-        p = this%cell(:,3)
-      else
-        p = this%cell(:,2)
-      end if
-    case ( 5 ) ! A-C
-      call cross(this%cell(:,2), this%cell(:,1), p)
-      contrib = VNORM(p)
-      call cross(this%cell(:,2), this%cell(:,3), p)
-      if ( contrib > VNORM(p) ) then
-        p = this%cell(:,3)
-      else
-        p = this%cell(:,1)
-      end if
-    case ( 6 ) ! A-B
-      call cross(this%cell(:,3), this%cell(:,1), p)
-      contrib = VNORM(p)
-      call cross(this%cell(:,3), this%cell(:,2), p)
-      if ( contrib > VNORM(p) ) then
-        p = this%cell(:,2)
-      else
-        p = this%cell(:,1)
-      end if
-    case ( 7 ) ! A-B-C
-      call cross(this%cell(:,1), this%cell(:,2), p)
-      contrib = VNORM(p)
-      call cross(this%cell(:,1), this%cell(:,3), p)
-      if ( contrib > VNORM(p) ) then
-        i = 3
-      else
-        i = 2
-        contrib = VNORM(p)
-      end if
-      call cross(this%cell(:,2), this%cell(:,3), p)
-      if ( VNORM(p) > contrib ) then
-        i = 1
-      end if
-      p = this%cell(:, i)
-    case default
-      p = this%cell(:,this%t_dir)
-    end select
-    p = p / VNORM(p)
-
-    ! Select the atom farthest from the device region
-    ! along the semi-infinite direction
-    j = ia
-    contrib = VEC_PROJ_SCA(p,xa(:,j))
-    if ( this%inf_dir == INF_POSITIVE ) then
-       ! We need to utilize the last atom 
-       do i = ia + 1, ia + na - 1
-          if ( VEC_PROJ_SCA(p,xa(:,i)) > contrib ) then
-             j = i
-             contrib = VEC_PROJ_SCA(p,xa(:,j))
-          end if
-       end do
-    else
-       ! We need to utilize the first atom
-       do i = ia + 1, ia + na - 1
-          if ( VEC_PROJ_SCA(p,xa(:,i)) < contrib ) then
-             j = i
-             contrib = VEC_PROJ_SCA(p,xa(:,j))
-          end if
-       end do
-    end if
-    this%p%c = xa(:,j)
-
-    ! We add a vector with length of half the minimal bond length
-    ! to the vector, to do the averaging 
-    ! not on-top of an electrode atom.
-    contrib = this%dINF_layer * 0.5_dp
-    if ( this%inf_dir == INF_POSITIVE ) then
-       this%p%c = this%p%c + p * contrib ! add vector
-    else
-       this%p%c = this%p%c - p * contrib ! subtract vector
-    end if
-
-    ! Normal vector to electrode basal plane.
-    ! This coincides with the electrode semi-infinite direction
-    this%p%n = p ! normalized semi-infinite direction vector
-
-    ! The distance parameter used when calculating
-    ! the +/- voxel placements
-    this%p%d = sum( this%p%n(:) * this%p%c(:) )
-
-    ! *** Now we have created the Hartree plane
-    !     where the potential is fixed.         ***
-
-
     ! *** Calculate the electrode box for N-electrodes
     ! We do this by:
     !  1. find the average Cartesian coordinate.
@@ -1055,6 +1029,7 @@ contains
     use parallel, only : IONode
     use units, only : Pi, Ang
     use intrinsic_missing, only : VNORM, VEC_PROJ_SCA
+    use m_os, only: file_exist
 
     use m_ts_io, only: ts_read_TSHS_opt
 
@@ -1273,6 +1248,40 @@ contains
     else
       
       call ts_read_TSHS_opt(this%HSfile, Gamma=Gamma, Bcast=.true.)
+      
+    end if
+
+    ! Ensure the user has requested a GF file for real-space SE
+    if ( this%t_dir > 3 ) then
+      ! Ensure a GF file is requested and present
+      if ( .not. this%ReUseGF ) then
+        er = .true.
+        if ( IONode ) then
+          write(*,'(a)') 'Electrode: '//trim(this%name)//' uses real-space SE, &
+              &but a re-use of the GF file has not been requested.'
+        end if
+      end if
+
+      if ( .not. this%out_of_core ) then
+        er = .true.
+        if ( IONode ) then
+          write(*,'(a)') 'Electrode: '//trim(this%name)//' uses real-space SE, &
+              &but in-core SE calculations are requested'
+          write(*,'(a)') '   In-core self-energy calculations is currently not implemented'
+          write(*,'(a)') '   Please use sisl to create the TBTGF file.'
+        end if
+      end if
+
+      ! And check that the GF file exists
+      if ( .not. file_exist(this%GFfile, Bcast = .true.) ) then
+        er = .true.
+        if ( IONode ) then
+          write(*,'(a)') 'Electrode: '//trim(this%name)//' uses real-space SE, &
+              &but the GF file is not present!'
+          write(*,'(a)') '   In-core self-energy calculations is currently not implemented'
+          write(*,'(a)') '   Please use sisl to create the TBTGF file.'
+        end if
+      end if
       
     end if
 
@@ -1708,6 +1717,8 @@ contains
          Ef, Qtot, Temp, &
          istep, ia1, &
          Bcast=Bcast)
+    ! Correct fermi-level
+    Ef = Ef + this%delta_Ef
 
     if ( present(ispin) ) then
        if ( ispin > 0 ) then
@@ -2244,16 +2255,16 @@ contains
 
     integer :: nq
     real(dp) :: contrib, cell(3,3)
-    character(len=100) :: chars
-    character(len=60) :: f1, f5, f20, f6, f7, f8, f9, f10, f11, f15, f3, f16
+    character(len=128) :: chars
+    character(len=64) :: f1, f5, f20, f6, f7, f8, f9, f10, f11, f15, f3, f16
 
     if ( Node /= 0 ) return
     
     ! Write out the settings
     ! First create the different out-put options
     f1  = '('''//trim(prefix)//': '',a,t53,''='',4x,l1)'
-    f3  = '('''//trim(prefix)//': '',a,t53,''= { '',2(e12.5,'','',tr1),e12.5,''}'',a)'
-    f5  = '('''//trim(prefix)//': '',a,t53,''='',i5,a)'
+    f3  = '('''//trim(prefix)//': '',a,t53,''= { '',2(e12.5,'','',tr1),e12.5,''}'',tr1,a)'
+    f5  = '('''//trim(prefix)//': '',a,t53,''='',i5,tr1,a)'
     f20 = '('''//trim(prefix)//': '',a,t53,''= '',i0,'' -- '',i0)'
     f6  = '('''//trim(prefix)//': '',a,t53,''='',f10.4,tr1,a)'
     f7  = '('''//trim(prefix)//': '',a,t53,''='',f12.6,tr1,a)'
@@ -2311,10 +2322,18 @@ contains
       end if
     end if
     write(*,f10) '  Semi-infinite direction for electrode', trim(chars)
-    write(*,f7)  '  Chemical shift', this%mu%mu/eV,'eV'
-    write(*,f7)  '  Electronic temperature', this%mu%kT/Kelvin,'K'
+    write(*,f7)  '  Chemical shift', this%mu%mu/eV, 'eV'
+    write(*,f7)  '  Electronic temperature', this%mu%kT/Kelvin, 'K'
     write(*,f1)  '  Gamma-only electrode', this%is_gamma
     write(*,f1)  '  Bulk H, S in electrode region', this%Bulk
+#ifndef TBTRANS
+    select case ( this%DM_init ) 
+    case ( 0 ) 
+      write(*,f10) '  Initial DM for electrodes','diagon'
+    case ( 1 )
+      write(*,f10) '  Initial DM for electrodes','bulk DM'
+    end select
+#endif
     if ( this%Bloch%size() > 1 .and. this%out_of_core ) then
        if ( this%pre_expand == 0 ) then
           chars = 'none'
@@ -2334,8 +2353,9 @@ contains
        write(*,f11)  '  Cross-terms and electrode region are updated'
     end if
 #endif
+    write(*,f7)  '  Manual delta-Ef shift', this%delta_Ef, 'eV'
     if ( abs(this%mu%mu) > 1.e-10_dp ) then
-       write(*,f8)  '  Hamiltonian E-C Ef fractional shift', this%Ef_frac_CT
+       write(*,f8)  '  Hamiltonian E-C bias fractional shift', this%V_frac_CT
     end if
 #ifndef TBTRANS
     if ( .not. this%kcell_check ) then
@@ -2347,26 +2367,19 @@ contains
     else
 #ifdef TBTRANS
 # ifdef TBT_PHONON
-      write(*,f9)  '  Electrode self-energy imaginary Eta', this%Eta/eV**2,' eV**2'
+      write(*,f9)  '  Electrode self-energy imaginary Eta', this%Eta/eV**2, 'eV**2'
 # else
-      write(*,f9)  '  Electrode self-energy imaginary Eta', this%Eta/eV,' eV'
+      write(*,f9)  '  Electrode self-energy imaginary Eta', this%Eta/eV, 'eV'
 # endif
 #else
-      write(*,f9)  '  Electrode self-energy imaginary Eta', this%Eta/eV,' eV'
+      write(*,f9)  '  Electrode self-energy imaginary Eta', this%Eta/eV, 'eV'
 #endif
     end if
-    write(*,f9)  '  Electrode self-energy accuracy', this%accu/eV,' eV'
-    write(*,f6)  '  Electrode inter-layer distance (semi-inf)', this%dINF_layer/Ang,' Ang'
+    write(*,f9)  '  Electrode self-energy accuracy', this%accu/eV, 'eV'
+    write(*,f6)  '  Electrode inter-layer distance (semi-inf)', this%dINF_layer/Ang, 'Ang'
 
 
 #ifndef TBTRANS
-    if ( present(plane) ) then
-    if ( plane ) then
-       write(*,f11) '  Hartree fix plane:'
-       write(*,f3)  '    plane origo',this%p%c / Ang, ' Ang'
-       write(*,f3)  '    plane normal vector',this%p%n
-    end if
-    end if
     if ( present(box) ) then
     if ( box ) then
       write(*,f11) '  Hartree potential box:'
@@ -2375,10 +2388,10 @@ contains
         contrib = real(this%na_used,dp) / real(this%na_u,dp)
         cell(:,this%t_dir) = cell(:,this%t_dir) * contrib
       end if
-      write(*,f3)  '    box origo',this%box%c / Ang, ' Ang'
-      write(*,f3)  '    box v1', cell(:,1) / Ang, ' Ang'
-      write(*,f3)  '    box v2', cell(:,2) / Ang, ' Ang'
-      write(*,f3)  '    box v3', cell(:,3) / Ang, ' Ang'
+      write(*,f3)  '    box origo',this%box%c / Ang, 'Ang'
+      write(*,f3)  '    box v1', cell(:,1) / Ang, 'Ang'
+      write(*,f3)  '    box v2', cell(:,2) / Ang, 'Ang'
+      write(*,f3)  '    box v3', cell(:,3) / Ang, 'Ang'
     end if
     end if
 #endif
@@ -2394,5 +2407,39 @@ contains
     end do
     idx = 0
   end function Elec_idx
+
+  function Elec_ortho2semi_inf(this, vec) result(ortho)
+    type(Elec), intent(in) :: this
+    real(dp), intent(in) :: vec(3)
+    logical :: ortho
+    real(dp) :: proj
+
+    select case ( this%t_dir )
+    case ( 4 )
+      proj = abs(dot_product(this%cell(:, 2), vec))
+      ortho = proj < 1.e-9_dp
+      proj = abs(dot_product(this%cell(:, 3), vec))
+      ortho = ortho .and. proj < 1.e-9_dp
+    case ( 5 )
+      proj = abs(dot_product(this%cell(:, 1), vec))
+      ortho = proj < 1.e-9_dp
+      proj = abs(dot_product(this%cell(:, 3), vec))
+      ortho = ortho .and. proj < 1.e-9_dp
+    case ( 6 )
+      proj = abs(dot_product(this%cell(:, 1), vec))
+      ortho = proj < 1.e-9_dp
+      proj = abs(dot_product(this%cell(:, 2), vec))
+      ortho = ortho .and. proj < 1.e-9_dp
+    case ( 7 )
+      ! Only for the zero vector will it be *orthogonal*
+      proj = abs(dot_product(vec, vec))
+      ortho = proj < 1.e-9_dp
+    case default
+      ! Regular single direction
+      proj = abs(dot_product(this%cell(:, this%t_dir), vec))
+      ortho = proj < 1.e-9_dp
+    end select
+
+  end function Elec_ortho2semi_inf
   
 end module m_ts_electype
