@@ -28,9 +28,7 @@
 
       use m_radfft,  only : reset_radfft
       use m_matel_registry, ONLY : EVALUATE,
-     &                             EVALUATE_X, EVALUATE_Y, EVALUATE_Z,
-     $                             EVALUATE_GRAD_X, X_EVAL_GRAD_X,
-     $                             Y_EVAL_GRAD_X
+     &                             EVALUATE_X, EVALUATE_Y, EVALUATE_Z
 
       PRIVATE
 
@@ -215,17 +213,17 @@
          print *, "x_orbs"
          call ylmk_x_orbs%compute_spha(1, num_orb, EVALUATE_X, 1)
          call tab_X%init( MODE_XYZ, ylmk_val_all, 1, num_orb,
-     $                         ylmk_x_orbs, 1, num_orb)
+     $                         ylmk_x_orbs, 1, num_orb, name="tabX")
 
          print *, "y_orbs"
          call ylmk_y_orbs%compute_spha(1, num_orb, EVALUATE_Y, 1)
          call tab_Y%init( MODE_XYZ, ylmk_val_all, 1, num_orb,
-     $                         ylmk_y_orbs, 1, num_orb)
+     $                         ylmk_y_orbs, 1, num_orb, name="tabY")
 
          print *, "z_orbs"
          call ylmk_z_orbs%compute_spha(1, num_orb, EVALUATE_Z, 1)
          call tab_Z%init( MODE_XYZ, ylmk_val_all, 1, num_orb,
-     $                         ylmk_z_orbs, 1, num_orb)
+     $                         ylmk_z_orbs, 1, num_orb, name="tabZ")
 
       
       orb_XYZ_orb_initialized = .true.
@@ -316,7 +314,8 @@
      $                           top_vna+numproj, EVALUATE, 0)
 
       call tab_S_wann%init(MODE_S, ylmk_val_all, 1, num_orb,
-     $                     ylmk_val_wannier_projs, 1, numproj)
+     $                     ylmk_val_wannier_projs, 1, numproj,
+     $                     name = "wannier table")
 
       wannier_initialized = .true.
 
@@ -333,7 +332,14 @@
       
 !------------------------------------------------------
       subroutine init_matel_thermal_transport()
+
+      use m_matel_registry, only: idx_r, idx_grad
+      use m_matel_registry, only: EVALUATE_GRAD
+      use m_matel_registry, only: EVALUATE_R_GRAD
       
+      integer :: i_r, i_grad
+      character(len=40) :: name
+
       if (thermal_transport_initialized) RETURN
       call check_for_main_tables()
       
@@ -342,30 +348,37 @@
 
       CALL RESET_RADFFT( )
 
-         print *, "val_grad_kbs(1)"
-         call ylmk_val_grad_kbs(1)%compute_spha(num_orb+1,
+      do i_grad = 1, 3
+         ! Set module variable for evaluation 
+         idx_grad = i_grad
+         print *, "val_grad_kbs", i_grad
+         call ylmk_val_grad_kbs(i_grad)%compute_spha(num_orb+1,
      $                                          num_orb+num_kb,
-     $                                          EVALUATE_GRAD_X, 1)
+     $                                          EVALUATE_GRAD, 1)
       ! Overlap table from PAOs to grad_KBs.
-         call tab_S_Grad_KB(1)%init(MODE_S, ylmk_val_all, 1, num_orb,
-     $                    ylmk_val_grad_kbs(1), 1, num_kb)
+         write(name,"(a,i1)") "PAO-GradKB-", i_grad
+         call tab_S_Grad_KB(i_grad)%init(MODE_S, ylmk_val_all,
+     $        1, num_orb,
+     $        ylmk_val_grad_kbs(i_grad), 1, num_kb, name)
+      end do
 
-         print *, "x_grad_kbs(1)"
-         call ylmk_xyz_grad_kbs(1,1)%compute_spha(num_orb+1,
-     $                                          num_orb+num_kb,
-     $                                          X_EVAL_GRAD_X, 2)
-      ! Overlap table from PAOs to grad_KBs.
-         call tab_XYZ_Grad_KB(1,1)%init(MODE_XYZ, ylmk_val_all,
-     $                    1, num_orb,
-     $                    ylmk_xyz_grad_kbs(1,1), 1, num_kb)
-         print *, "y_grad_kbs(1)"
-         call ylmk_xyz_grad_kbs(2,1)%compute_spha(num_orb+1,
-     $                                          num_orb+num_kb,
-     $                                          Y_EVAL_GRAD_X, 2)
-      ! Overlap table from PAOs to grad_KBs.
-         call tab_XYZ_Grad_KB(2,1)%init(MODE_XYZ, ylmk_val_all,
-     $                    1, num_orb,
-     $                    ylmk_xyz_grad_kbs(2,1), 1, num_kb)
+      do i_r = 1, 3
+         do i_grad = 1, 3
+
+            ! Set module variables for evaluation
+            idx_r = i_r
+            idx_grad = i_grad
+            print *, "r_grad_kbs: ", i_r, i_grad
+            call ylmk_xyz_grad_kbs(i_r,i_grad)%compute_spha(num_orb+1,
+     $           num_orb+num_kb,
+     $           EVALUATE_R_GRAD, 2)
+            ! Overlap table from PAOs to grad_KBs.
+            write(name,"(a,2i1)") "PAO-R_GradKB-", i_r, i_grad
+            call tab_XYZ_Grad_KB(i_r,i_grad)%init(MODE_XYZ,
+     $           ylmk_val_all, 1, num_orb,
+     $           ylmk_xyz_grad_kbs(i_r,i_grad), 1, num_kb, name)
+         end do
+      end do
       
       thermal_transport_initialized = .true.
 
@@ -396,6 +409,11 @@ C   'U' => 1/|r'-r| (with evaluate returning charge distributions) *NOT IMPLEMEN
 C   'X' => x, returning <phi1(r-R12)|x|phi2(r)> (**origin on second atom**)
 C   'Y' => y, returning <phi1(r-R12)|y|phi2(r)>
 C   'Z' => z, returning <phi1(r-R12)|z|phi2(r)>
+!
+!   For thermal transport
+!   'G{X,Y,Z}': <phi1 | (Grad phi2) >
+!   'H{X,Y,Z}{X,Y,Z}': <phi1 | {XYZ}(Grad phi2) > (origin on second atom)
+      
 C INTEGER IG1    : Global index of 1st function (must be positive)
 C INTEGER IG2    : Global index of 2nd function
 C                    Indexes IG1, IG2 are used only to call 
@@ -430,7 +448,7 @@ C If |R12| > RCUT(IS1,IO1) + RCUT(IS2,IO2), returns exactly zero.
       
       top = num_orb + num_kb + num_ldau 
 
-      select case (operat)
+      select case (operat(1:1))
       case ( 'S' )
 
          if ( (ig1 <= top) .and. (is_orb(ig2)) ) then
@@ -443,30 +461,28 @@ C If |R12| > RCUT(IS1,IO1) + RCUT(IS2,IO2), returns exactly zero.
             call die("Cannot process 'S' in matel")
          endif
 
-      case ( 'SGX' )
+      case ( 'G' )
 
+         ! Get index from rest of string
+         i_grad = coord_spec_to_index(operat(2:2))
          if (is_orb(ig1) .and. (is_kb(ig2))) then
-            call tab_S_Grad_KB(1)%get_matel(IG1, IG2, R12, S12, DSDR)
+            call tab_S_Grad_KB(i_grad)%get_matel(IG1, IG2,
+     $                         R12, S12, DSDR)
          else
-            call die("Cannot process 'SGX' in matel")
+            call die("Cannot process 'G' in matel")
          endif
 
-      case ( 'XGX' )
+      case ( 'H' )
+
+         ! Get indexes from rest of string
+         i_r = coord_spec_to_index(operat(2:2))
+         i_grad = coord_spec_to_index(operat(3:3))
 
          if (is_orb(ig1) .and. (is_kb(ig2))) then
-            call tab_XYZ_Grad_KB(1,1)%get_matel(
+            call tab_XYZ_Grad_KB(i_r,i_grad)%get_matel(
      $           IG1, IG2, R12, S12, DSDR)
          else
-            call die("Cannot process 'XGX' in matel")
-         endif
-
-      case ( 'YGX' )
-
-         if (is_orb(ig1) .and. (is_kb(ig2))) then
-            call tab_XYZ_Grad_KB(2,1)%get_matel(
-     $           IG1, IG2, R12, S12, DSDR)
-         else
-            call die("Cannot process 'YGX' in matel")
+            call die("Cannot process 'H' in matel")
          endif
 
       case ( 'T' )
@@ -521,6 +537,23 @@ C If |R12| > RCUT(IS1,IO1) + RCUT(IS2,IO2), returns exactly zero.
 
 !----------
 !     Convenience functions
+
+      !> Translates {X,Y,Z} to {1, 2, 3}
+      function coord_spec_to_index(c) result (i)
+      character(len=1) :: c
+      integer i
+
+      select case (c)
+      case ( 'X' )
+         i = 1
+      case ( 'Y' )
+         i = 2
+      case ( 'Z' )
+         i = 3
+      case default
+         call die("wrong coord spec in matel string")
+      end select
+      end function coord_spec_to_index
       
       function is_orb(ig) result(res)
       integer, intent(in) :: ig

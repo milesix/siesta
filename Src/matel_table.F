@@ -70,6 +70,9 @@
         !> Work space for computation of rlylm
         real(dp), POINTER :: Y(:), DYDR(:,:)
 
+        logical :: initialized = .false.
+        character(len=30) :: name ="unknown"
+        
         CONTAINS
         procedure :: INIT
         procedure :: GET_MATEL
@@ -90,7 +93,7 @@
       CONTAINS
       
       subroutine INIT( this, IOPER, SpHa1, lo1, hi1,
-     $                              SpHa2, lo2, hi2)
+     $                              SpHa2, lo2, hi2, name)
 
 !     Initialize a MATEL table structure using the previously calculated expansions
 !     in spherical harmonics of the fourier transforms of the functions.
@@ -117,8 +120,13 @@
       integer, intent(in) :: lo1, hi1
       !> First and last entries to consider in SpHa2
       integer, intent(in) :: lo2, hi2
+      character(len=*), intent(in), optional :: name
 
       integer :: n_harms_hi, n_harms_lo
+
+      if (present(name)) then
+         this%name = name
+      endif
       
       this%MODE  = IOPER
 
@@ -156,6 +164,8 @@
       call this%compute_RadExp( )
       call this%reduce_RadExp( )
 
+      this%initialized = .true.
+      
       end subroutine INIT
 
       subroutine compute_RadExp( this )
@@ -519,7 +529,13 @@ C *******************************************************************
 
       integer  :: IX, IH, LMAX, IFFY, JLM, JFFR, IFLM1, IFLM2
       real(dp) ::  X12(3), R, SR, DSRDR
-
+      character(len=80) :: msg
+      
+      if (.not. this%initialized) then
+         msg = "Matel table " // trim(this%name) // " not initialized"
+         call die(msg)
+      endif
+      
       if ( (ig1 < this%min_ig1) .or. (ig1 > this%max_ig1) ) then
          call die("IG1 out of range in get_matel")
       endif

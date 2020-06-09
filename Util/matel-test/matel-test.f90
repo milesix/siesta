@@ -28,8 +28,15 @@ program matel_test
       character(len=20), allocatable, dimension(:) :: species_label
       integer :: io, jpx, jpy, jpz, i
       integer :: ko, kpx, kpy, kpz
+      integer :: i_r, i_grad
       real(dp) :: val, grad(3)
       real(dp) :: x, y, z
+
+      logical :: xtables = .false.
+      
+      character(len=1), dimension(3), parameter :: coord_table = [ 'X', 'Y', 'Z' ]
+
+      ! ----------------------
       
       nspecies = 1
       allocate(species_label(1))
@@ -57,28 +64,27 @@ program matel_test
       call new_MATEL('S', io, io, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
       print "(a,f10.4,2x,3f10.4)", "<3s|  | 3s(1.0)> : ", val, grad
 
-      call new_MATEL('SGX', io, ko, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
-      print "(a,f10.4,2x,3f10.4)", "<s|GX|ks(1.0)> : ", val, grad
-      call new_MATEL('SGX', io, kpx, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
-      print "(a,f10.4,2x,3f10.4)", "<s|GX|kpx(1.0)> : ", val, grad
+      do i_grad = 1, 3
+         call new_MATEL(SG(i_grad), io, ko, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
+         print "(a,f10.4,2x,3f10.4)", "<s|" // SG(i_grad) // "|ks(1.0)> : ", val, grad
+      
+         call new_MATEL(SG(i_grad), io, kpx, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
+         print "(a,f10.4,2x,3f10.4)", "<s|" // SG(i_grad) // "|kpx(1.0)> : ", val, grad
+      enddo
+   
+      do i_r = 1, 3
+         do i_grad = 1, 3
+         
+            call new_MATEL(RG(i_r,i_grad), io, ko, [ 0.0_dp, 0.0_dp, 0.0_dp ], val, grad)
+            print "(a,f10.4,2x,3f10.4)", "<s|" // RG(i_r,i_grad) // "|ks(0.0)> : ", val, grad
+            call new_MATEL(RG(i_r,i_grad), io, ko, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
+            print "(a,f10.4,2x,3f10.4)", "<s|" // RG(i_r,i_grad) // "|ks(1.0)> : ", val, grad
 
-      call new_MATEL('XGX', io, ko, [ 0.0_dp, 0.0_dp, 0.0_dp ], val, grad)
-      print "(a,f10.4,2x,3f10.4)", "<s|XGX|ks(0.0)> : ", val, grad
-      call new_MATEL('YGX', io, ko, [ 0.0_dp, 0.0_dp, 0.0_dp ], val, grad)
-      print "(a,f10.4,2x,3f10.4)", "<s|YGX|ks(0.0)> : ", val, grad
+         enddo
+      enddo
 
-      call new_MATEL('XGX', io, ko, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
-      print "(a,f10.4,2x,3f10.4)", "<s|XGX|ks(1.0)> : ", val, grad
-      call new_MATEL('YGX', io, ko, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
-      print "(a,f10.4,2x,3f10.4)", "<s|YGX|ks(1.0)> : ", val, grad
-
-      call new_MATEL('X', io, io, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
-      print "(a,f10.4,2x,3f10.4)", "<3s| X | 3s(1.0)> : ", val, grad
-      call new_MATEL('Y', io, io, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
-      print "(a,f10.4,2x,3f10.4)", "<3s| Y | 3s(1.0)> : ", val, grad
-      call new_MATEL('Z', io, io, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
-      print "(a,f10.4,2x,3f10.4)", "<3s| Z | 3s(1.0)> : ", val, grad
-
+      print *, "Done thermal transport"
+      
       call new_MATEL('S', io, jpx, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
       print "(a,f10.4,2x,3f10.4)", "<s|  | px(1.0)> : ", val, grad
       call old_MATEL('S', io, jpx, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
@@ -94,6 +100,18 @@ program matel_test
       call old_MATEL('S', io, jpz, [ 0.0_dp, 0.0_dp, 1.0_dp ], val, grad)
       print "(a,f10.4,2x,3f10.4)", "OLD<s|  | pz(1.0)> : ", val, grad
 
+      if ( xtables ) then
+
+      call new_MATEL('X', io, io, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
+      print "(a,f10.4,2x,3f10.4)", "<3s| X | 3s(1.0)> : ", val, grad
+
+      call new_MATEL('Y', io, io, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
+      print "(a,f10.4,2x,3f10.4)", "<3s| Y | 3s(1.0)> : ", val, grad
+
+      call new_MATEL('Z', io, io, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
+      print "(a,f10.4,2x,3f10.4)", "<3s| Z | 3s(1.0)> : ", val, grad
+
+
       call new_MATEL('X', io, jpx, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
       print "(a,f10.4,2x,3f10.4)", "<s| X | px(1.0)> : ", val, grad
       call new_MATEL('Y', io, jpx, [ 1.0_dp, 0.0_dp, 0.0_dp ], val, grad)
@@ -106,7 +124,20 @@ program matel_test
 !         call new_MATEL('X', io, io, [ x, 0.0_dp, 0.0_dp ], val, grad)
 !         print "(a,2f10.4,2x,3f10.4)", "<s|X|s(x)>: ", x, val, grad
       enddo
+   endif
 
+    contains
+      function SG(i) result (s)
+        integer, intent(in) :: i
+        character (len=2)   :: s
+        s = 'G' // coord_table(i)
+      end function SG
+
+      function RG(i,j) result (s)
+        integer, intent(in) :: i, j
+        character (len=3)   :: s
+        s = 'H' // coord_table(i) // coord_table(j)
+      end function RG
 
     end program  matel_test
 
