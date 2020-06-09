@@ -47,7 +47,7 @@ dep:
 	@mv tmp.Makefile Makefile
 #
 include arch.make
-INCFLAGS:= $(NETCDF_INCFLAGS) $(INCFLAGS)
+INCFLAGS:= $(NETCDF_INCFLAGS) $(INCFLAGS) -I./
 # For removing any -ipo compilation in sub directories...
 # Later compilers are also having this enabled, and it lets you
 # specify what to not be used in libraries.
@@ -157,12 +157,15 @@ OBJS =  automatic_cell.o atom_options.o \
         save_density_matrix.o \
         m_rhog.o rhofft.o m_diis.o compute_energies.o \
         class_Vector.o class_Pair_Vectors.o class_Fstack_Pair_Vectors.o\
-        m_target_stress.o\
+        m_target_stress.o m_genq.o genq_broyden_optim.o\
 	matel_registry.o register_rfs.o new_matel.o\
 	m_trialorbitalclass.o siesta2wannier90.o m_planewavematrixvar.o \
 	delk.o m_planewavematrix.o m_digest_nnkp.o broadcast_projections.o \
 	compute_pw_matrix.o m_writedelk.o mmn.o m_noccbands.o amn.o \
 	m_overkkneig.o write_inp_wannier.o diagonalizeHk.o m_orderbands.o
+#
+m_genq.o: geom.inc
+#
 #--------------------------------------------------------------
 # FoX whatnot
 #
@@ -439,7 +442,7 @@ compute_rhog.o: m_gamma.o m_ntm.o m_spin.o m_stress.o siesta_geom.o
 compute_rhog.o: siesta_options.o sparse_matrices.o
 conjgr.o: precision.o
 conjgr_old.o: precision.o
-coor.o: alloc.o parallel.o precision.o siesta_geom.o sys.o zmatrix.o
+coor.o: alloc.o m_genq.o parallel.o precision.o siesta_geom.o sys.o zmatrix.o
 coxmol.o: files.o periodic_table.o precision.o
 debugmpi.o: parallel.o
 delk.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o
@@ -509,6 +512,8 @@ forhar.o: alloc.o mesh.o moremeshsubs.o parallel.o precision.o
 fsiesta_mpi.o: precision.o siesta_analysis.o siesta_end.o siesta_forces.o
 fsiesta_mpi.o: siesta_init.o siesta_master.o siesta_move.o sys.o
 fsiesta_sockets.o: fsockets.o
+genq_broyden_optim.o: m_broyddj_nocomm.o m_fdf_global.o m_genq.o parallel.o
+genq_broyden_optim.o: precision.o sys.o units.o
 get_target_stress.o: parallel.o precision.o sys.o units.o
 globalise.o: alloc.o onmod.o onmod.o precision.o spatial.o
 gradient.o: alloc.o globalise.o m_mpi_utils.o onmod.o precision.o
@@ -582,6 +587,8 @@ m_fire_mixing.o: alloc.o m_fdf_global.o m_fire_para.o m_mpi_utils.o parallel.o
 m_fire_mixing.o: precision.o
 m_fire_para.o: m_mpi_utils.o parallel.o precision.o
 m_forces.o: precision.o
+m_genq.o: m_mpi_utils.o parallel.o precision.o sys.o
+m_genq_scheme.o: m_mpi_utils.o parallel.o precision.o sys.o
 m_getopts.o: f2kcli.o
 m_glob_sparse.o: parallel.o parallelsubs.o precision.o
 m_history.o: alloc.o
@@ -806,11 +813,11 @@ siesta_init.o: siesta_options.o sparse_matrices.o struct_init.o sys.o timer.o
 siesta_init.o: timestamp.o ts_init.o writewave.o zmatrix.o
 siesta_master.o: iopipes.o iosockets.o m_fdf_global.o precision.o sys.o
 siesta_move.o: atomlist.o broyden_optim.o cell_broyden_optim.o
-siesta_move.o: cell_fire_optim.o dynamics.o fire_optim.o ioxv.o m_energies.o
-siesta_move.o: m_forces.o m_kinetic.o m_steps.o m_stress.o m_target_stress.o
-siesta_move.o: parallel.o siesta_cml.o siesta_geom.o siesta_master.o
-siesta_move.o: siesta_options.o sys.o units.o write_subs.o zm_broyden_optim.o
-siesta_move.o: zm_fire_optim.o zmatrix.o
+siesta_move.o: cell_fire_optim.o dynamics.o fire_optim.o genq_broyden_optim.o
+siesta_move.o: ioxv.o m_energies.o m_forces.o m_genq.o m_kinetic.o m_steps.o
+siesta_move.o: m_stress.o m_target_stress.o parallel.o siesta_cml.o
+siesta_move.o: siesta_geom.o siesta_master.o siesta_options.o sys.o units.o
+siesta_move.o: write_subs.o zm_broyden_optim.o zm_fire_optim.o zmatrix.o
 sparse_matrices.o: alloc.o precision.o
 spatial.o: precision.o
 spher_harm.o: alloc.o precision.o sys.o
@@ -899,6 +906,7 @@ m_find_kgrid.o: find_kgrid.o
 m_fire_optim.o: fire_optim.o
 m_fixed.o: fixed.o
 m_forhar.o: forhar.o
+m_genq_broyden_optim.o: genq_broyden_optim.o
 m_gradient.o: gradient.o
 m_grdsam.o: grdsam.o
 m_hsparse.o: hsparse.o

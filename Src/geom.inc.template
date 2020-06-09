@@ -1,0 +1,89 @@
+!---------------------------
+!   This is a template for an include-file used by
+!   the "generalized-coordinates" feature.
+!   Its contents are the body of the routine giving
+!   the transformation xa = xa(q_1, ..., q_M) where
+!   xa are the cartesian coordinates used in Siesta and
+!   q_1 ... q_M the generalized coordinates.
+!
+!   This is the routine interface:
+!
+!    subroutine geom_from_genq(M,q,xa,spec_no)
+
+!    integer, parameter    :: p = selected_real_kind(10,100)
+
+!    Number of generalized coordinates
+!    integer, intent(in)                         :: M
+!
+!    Values of the generalized coordinates
+!    real(p), intent(in), target                 :: q(M)
+!    Cartesian coordinates in Bohr (xa(3,natoms))
+!    real(p), target, intent(inout)              :: xa(:,:)
+!    Species numbers: spec_no(1:natoms)
+!    integer, intent(inout), optional            :: spec_no(:)
+!
+!   Note that the global number of atoms and species is already
+!   known to the program when this routine is called, so they
+!   will have to be consistent
+!
+!    integer :: natoms      ! Declaration already provided
+!
+!--------------------------------------------------------------
+!
+!  This template is an actual 'geom.inc' file for a water molecule
+!  with an extra line to trigger an error. Users will have to replace
+!  this file with their own if they use the generalized-coordinates
+!  feature.
+!
+!.........................
+!   Geometry specification
+!   Water molecule
+
+    ! Convenient symbolic names for generalized coordinates
+    !
+    real(p), pointer        :: doh, alpha
+
+    ! Convenient symbolic names for Wyckoff orbits or atom sets.
+    !
+    real(p), pointer, dimension(:,:)  :: H_at, O_at
+
+    !  This has to be specified here
+
+    natoms = 0
+    if (natoms == 0) call die("To use the generalized-coordinates" // &
+                              " feature, please provide a proper 'geom.inc'" &
+			      // " file in the compilation directory")
+
+    !!     natoms = 3    ! The real line
+    if (size(xa,dim=2) /= natoms) call die("natoms, na mismatch")
+
+    if (present(spec_no)) then
+       spec_no(1)  = 1          ! O
+       spec_no(2:3)  = 2        ! H
+    endif
+
+    ! Wyckoff-orbit blocks are convenient, but care should be taken
+    ! to double-check the numbering!!
+
+    O_at => xa(:,1:1)
+    H_at => xa(:,2:3)
+
+    !
+    !  Now, the coordinates
+    !  We can use all of Fortran's operators, so this is a more
+    !  readable format. 
+
+    !  For convenience, we could group the blocks by species or
+    !  Wyckoff-position symbol, and/or use block indices or pointers
+    !
+    !  Some atoms might not use any q's
+    !
+    doh => q(1)
+    alpha => q(2)
+    !
+    H_at(:,1)   = (/  doh , 0.0_dp, 0.0_dp /)
+    H_at(:,2)   = (/  doh*cos(alpha) , doh*sin(alpha), 0.0_dp /)
+    O_at(:,1)   = (/  0.0_dp , 0.0_dp, 0.0_dp /)
+    !
+    !-----------------------------------
+!........................ end of 'geom.inc'

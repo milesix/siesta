@@ -7373,6 +7373,9 @@ create custom-made MD scripts.
 
 \subsection{Use of general constraints}
 
+  
+\subsubsection{Explicit geometry constraints}
+  
 {\bf Note:} The Zmatrix format (see Sec.~\ref{sec:Zmatrix}) provides
 an alternative constraint formulation which can be useful for system
 involving molecules.
@@ -7490,6 +7493,55 @@ before applying them to move the atoms. For nonlinear constraints
 constrained magnitude, unless the displacement steps are very small.
 
 {\it Default value:} No constraints
+
+\end{description}
+
+\subsubsection{Generalized coordinates}
+
+\begin{description}
+\itemsep 10pt
+\parsep 0pt
+
+\item[{\bf UseGeneralizedCoordinates}] ({\it boolean})
+  \index{UseGeneralizedCoordinates@{\bf UseGeneralizedCoordinates}}
+  This is an experimental option to specify the geometry in terms of a
+  reduced set of generalized coordinates. The user must choose this
+  set, and prepare:
+  \begin{itemize}
+    \item A {\tt GENQ} file containing the symbolic names and initial
+      values for the generalized coordinates.
+    \item A {\tt geom.inc} file containing fortran code for a
+      subroutine that generates the cartesian coordinates from the
+      generalized coordinates. An example can be found in {\tt
+        Src/geom.inc.template}. Note that this file must produce {\it
+        fractional} coordinates. This might be considered inconvenient
+      for molecules (the file is cell-dependent), but it is more
+      appropriate for the direct use of space-group Wyckoff variables.
+      The {\tt geom.inc} file must be placed in the compilation
+      directory, and the resulting executable file can only deal with
+      the specific set of generalized-coordinates it was compiled for
+      (but it can still deal with all the other standard geometry
+      options).
+      
+  \end{itemize}
+  An example can be found in {\tt Tests/h2o-genq}.
+
+  The generalized-coordinate feature is useful to reduce the number of
+  degrees of freedom used in relaxation in a natural and clean way.
+
+  {\it Default value:} {\it .false.}
+
+
+\item[{\bf MD.Genq.UseCartForceTol}] ({\it boolean})
+  \index{MD.Genq.UseCartForceTol@{\bf MD.Genq.UseCartForceTol}}
+
+  If {\it .true.}, the criterion for relaxation convergence is based
+  on monitoring the cartesian forces (with the prescribed force
+  tolerance). Otherwise, the program uses its own estimation of the
+  tolerance for each generalized force. The heuristics employed are
+  quite basic, so there is room for improvement.
+  
+  {\it Default value:} {\it .false.}
 
 \end{description}
 

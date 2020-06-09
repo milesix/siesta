@@ -1,0 +1,24 @@
+Water molecule with generalized coordinates:
+
+doh: O-H distance
+alpha: H-O-H angle in radians
+
+File h2o.geom contains the code to generate the fractional coordinates
+from the generalizeed coordinates. Note that since it is a molecule,
+doh is 1/L times smaller than the real D(OH), where L is the lattice constant
+of the box (in this case 10 Ang).
+
+File h2o.geom should be linked to geom.inc in the build directory, to be
+included from m_genq.f90:
+
+mkdir Obj-h2o
+cd Obj-h2o
+
+(create arch.make ...)
+
+ln -sf h2o.geom geom.inc
+sh ../Src/obj_setup.sh
+make
+cd h2o-genq
+(get the pseudos)
+../../siesta < h2o-genq.fdf | tee OUT  

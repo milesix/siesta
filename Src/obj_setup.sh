@@ -38,6 +38,17 @@ destdir=$(pwd)
     cp -f $relpath/*.h ${destdir}/$relpath
   done
 )
+# Copy the geom.inc template to the compilation directory
+# Do not overwrite an existing geom.inc. Give a message in this case.
+#
+(cd $srcdir;
+ if [ -f ${destdir}/geom.inc ]
+ then
+     echo "Not overwriting ${destdir}/geom.inc"
+ else
+     cp geom.inc.template ${destdir}/geom.inc
+ fi
+)
 #
 sed "s#VPATH=\.#VPATH=${srcdir}#g" ${srcdir}/Makefile > ${destdir}/Makefile
 
