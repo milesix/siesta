@@ -1,4 +1,10 @@
-!!@LICENSE
+! ---
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt .
+! See Docs/Contributors.txt for a list of contributors.
+! ---
 
 !*****************************************************************************
 ! module iosockets
@@ -14,7 +20,6 @@
 ! use precision,    only: dp
 ! use parallel,     only: IOnode
 ! use fdf
-! use m_fdf_global, only: fdf_global_get
 ! use f90sockets,   only: open_socket, writebuffer, readbuffer
 ! use sys,          only: die, bye
 ! use m_mpi_utils,  only: broadcast
@@ -50,7 +55,6 @@ module iosockets
   use precision,    only: dp
   use parallel,     only: IOnode
   use fdf
-  use m_fdf_global, only: fdf_global_get
   use f90sockets,   only: open_socket, writebuffer, readbuffer, close_socket
   use sys,          only: die, bye
   use m_mpi_utils,  only: broadcast
@@ -112,10 +116,10 @@ subroutine coordsFromSocket( na, xa, cell )
 
 ! Open the socket, shared by the receive and send sides of communication
   if (firstTime) then
-    call fdf_global_get(master, "Master.code", "fsiesta")
-    call fdf_global_get(host,   "Master.address", "localhost")
-    call fdf_global_get(port,   "Master.port", 10001)
-    call fdf_global_get(stype,  "Master.socketType", "inet")
+    master = fdf_get( "Master.code",  "fsiesta")
+    host = fdf_get(   "Master.address",  "localhost")
+    port = fdf_get(   "Master.port",  10001)
+    stype = fdf_get(  "Master.socketType",  "inet")
 
     if (leqi(stype,'unix')) then
       inet = 0
@@ -126,8 +130,8 @@ subroutine coordsFromSocket( na, xa, cell )
     endif
 
     if (IOnode) then
-      print'(/,a,i4,i8,2x,a)', &
-        myName//'opening socket: inet,port,host=',inet,port,trim(host)
+      write(*,'(/,a,i4,i8,2x,a)') &
+          myName//'opening socket: inet,port,host=',inet,port,trim(host)
       call open_socket(socket, inet, port, host)
     endif
 
@@ -140,11 +144,20 @@ subroutine coordsFromSocket( na, xa, cell )
     do
       if (leqi(master,'i-pi')) then
         call readbuffer(socket, header, IPI_MSGLEN)
+
+        ! Immediately stop if requested
+        if (trim(header)=='EXIT') then ! we are done!
+          call close_socket(socket)
+          call bye(myName//'STOP requested by driver')
+        end if
+        
         if (trim(header)/='STATUS') exit ! do loop
-        message = "READY"
+        message = 'READY'
         call writebuffer(socket, message, IPI_MSGLEN)
       elseif (leqi(master,'fsiesta')) then
         call readbuffer(socket, header)
+
+        ! Immediately stop if requested
         if (trim(header)=='quit') then
           call writebuffer(socket,'quitting')
           call close_socket(socket)
@@ -168,6 +181,8 @@ subroutine coordsFromSocket( na, xa, cell )
   if (IOnode) then
     if (leqi(master,"i-pi") .and. trim(header)=="POSDATA") then 
       call readbuffer(socket, c, 9)
+      ! Please see below for the cell array
+      ! If this is to be used, it should *ALSO* be transposed!
       call readbuffer(socket, aux, 9)    ! not used in siesta
       master_xunit = ipi_xunit
       master_eunit = ipi_eunit
@@ -188,7 +203,15 @@ subroutine coordsFromSocket( na, xa, cell )
                  MPI_Comm_World, MPIerror)
   call MPI_Bcast(c,9, MPI_Double_Precision,0, MPI_Comm_World, MPIerror)
 #endif
-  cell = RESHAPE( c, (/3,3/) )
+  ! I-Pi assumes row-major order of *only* the cell parameters
+  ! So we need to transpose the cell
+  ! This is a very bad practice since the same is happening in
+  ! ASE I-pi implementation.
+  ! The cell is transposed when transfering, but not the coordinates.
+  ! Essentially one could leave out *any* transposes in all implementations
+  ! and it would work! However, this is now a legacy implementation
+  ! that should not be changed, neither in I-pi, nor ASE.
+  cell = TRANSPOSE( RESHAPE( c, (/3,3/) ) )
 
 ! Read and check number of atoms
   if (ionode) then
@@ -213,9 +236,11 @@ subroutine coordsFromSocket( na, xa, cell )
     end if
   endif
 
-! Print coordinates and cell vectors received
-  print '(/,4a,/,(3f12.6))', myName,'cell (',trim(master_xunit),') =', cell
-  print '(  4a,/,(3f12.6))', myName,'coords (',trim(master_xunit),') =', xa
+  if ( IONode ) then
+    ! Print coordinates and cell vectors received
+    write(*,'(/,4a,/,(3f12.6))') myName,'cell (',trim(master_xunit),') =', cell
+    write(*,'(4a,/,(3f12.6))') myName,'coords (',trim(master_xunit),') =', xa
+  end if
 
 ! Convert physical units
   cell = cell * fdf_convfac( master_xunit, siesta_xunit )
@@ -247,18 +272,18 @@ subroutine forcesToSocket( na, energy, forces, stress )
 ! Copy input to local variables
   allocate(f(3*na))
   e = energy
-  f = reshape( forces, (/3*na/) )
-  s = reshape( stress, (/9/) )
+  f(:) = reshape( forces, (/3*na/) )
+  s(:) = reshape( stress, (/9/) )
   
 ! Convert physical units
   e = e * fdf_convfac( siesta_eunit, master_eunit )
-  f = f * fdf_convfac( siesta_eunit, master_eunit ) &
+  f(:) = f(:) * fdf_convfac( siesta_eunit, master_eunit ) &
         / fdf_convfac( siesta_xunit, master_xunit )
-  s = s * fdf_convfac( siesta_eunit, master_eunit ) &
+  s(:) = s(:) * fdf_convfac( siesta_eunit, master_eunit ) &
         / fdf_convfac( siesta_xunit, master_xunit )**3
 
 ! Find virial tensor for i-pi, in master's units
-  vir = -s * cellv * fdf_convfac( siesta_xunit, master_xunit )**3
+  vir(:) = -s * cellv * fdf_convfac( siesta_xunit, master_xunit )**3
 
 ! Write forces to socket
   if (IOnode) then
@@ -303,13 +328,12 @@ subroutine forcesToSocket( na, energy, forces, stress )
     endif ! leqi(master)
   end if ! IOnode
 
-! Print energy, forces, and stress tensor sent to master
-  print '(/,a,f12.6)',      myName// &
-    'energy ('//trim(master_eunit)//') =', e
-  print '(  a,/,(3f12.6))', myName// &
-    'stress ('//trim(master_eunit)//'/'//trim(master_xunit)//'^3) =', s
-  print '(  a,/,(3f12.6))', myName// &
-    'forces ('//trim(master_eunit)//'/'//trim(master_xunit)//') =', f
+  if ( IONode ) then
+    ! Print energy, forces, and stress tensor sent to master
+    write(*,'(/,a,f12.6)') myName// 'energy ('//trim(master_eunit)//') =', e
+    write(*,'(a,/,(3f12.6))') myName//'stress ('//trim(master_eunit)//'/'//trim(master_xunit)//'^3) =', s
+    write(*,'(a,/,(3f12.6))') myName//'forces ('//trim(master_eunit)//'/'//trim(master_xunit)//') =', f
+  end if
   deallocate(f)
 
 end subroutine forcesToSocket

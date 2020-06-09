@@ -1,3 +1,10 @@
+! ---
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt .
+! See Docs/Contributors.txt for a list of contributors.
+! ---
       subroutine write_md_record( istep )
         Use siesta_options
         use siesta_geom
@@ -38,12 +45,11 @@
      .        volume_of_some_cell/Ang**3, Psol/kbar)
           call md_v_format(na_u,isa,xa,ucell)
 #ifdef CDF
-            call md_netcdf( na_u, isa, iza, 
-     .        xa, va, ucell, vcell, varcel, 
-     .        tempion, Etot_output, getot,
-     .        volume_of_some_cell/Ang**3, Psol/kbar)
+          call md_netcdf( na_u, isa, iza, 
+     .         xa, va, ucell, vcell, varcel, 
+     .         tempion, Etot_output, getot,
+     .         volume_of_some_cell/Ang**3, Psol/kbar)
 #endif
-
         endif
 
         ! Accumulate coor in Xmol file for animation 

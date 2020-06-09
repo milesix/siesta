@@ -1,3 +1,10 @@
+! ---
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt .
+! See Docs/Contributors.txt for a list of contributors.
+! ---
 !!@LICENSE
 !
 ! ==================================================================
@@ -38,7 +45,7 @@
 ! Notice that, if the restore call is skipped, the new defaults will
 ! stay in effect until a new call to alloc_dafault is made.
 ! ==================================================================
-! SUBROUTINE alloc_report( level, unit, file, printNow, threshold )
+! SUBROUTINE alloc_report( level, unit, file, printNow, threshold, shutdown )
 !   Sets the output file for the allocation report
 ! INPUT (optional):
 !   integer      :: level     : Level (detail) of report
@@ -46,7 +53,8 @@
 !   character*(*):: file      : Output file name
 !   logical      :: printNow  : If present & true => print report now
 !   real(dp)     :: threshold : Memory threshold (in bytes) to print
-!                               the memory use of any given array 
+!                               the memory use of any given array
+!   logical      :: shutdown  : If present & true then close output unit.
 ! BEHAVIOR:
 !   The detail/extent of the report increses with the value of level:
 ! level=0 : no report at all (the default)
@@ -66,6 +74,13 @@
 ! reports are written consecutively in the same file, each with a 
 ! time stamp header.
 !   If threshold is not present, threshold=0 is assumed.
+!   When performing library invocations of this module in say
+! external methods it is vital to close units before exiting the
+! library to ensure that no dangling files are kept open.
+! To ensure the file is closed before return one can use
+! the shutdown=.true. argument to forcefully close (and free)
+! the unit used to report. If not present or .false. the unit
+! will be kept open.
 !   In parallel execution, the report sections that involve every
 ! reallocation (levels 1, 3, and 4) are written only by node 0.
 ! The section that is written upon request (level 2) is written
@@ -197,6 +212,7 @@ MODULE alloc
 
   use precision, only: sp        ! Single precision real type
   use precision, only: dp        ! Double precision real type
+  use precision, only: i8b       ! 8-byte integer
   use parallel,  only: Node      ! My processor node index
   use parallel,  only: Nodes     ! Number of parallel processors
   use parallel,  only: ionode    ! Am I the I/O processor?
@@ -204,14 +220,7 @@ MODULE alloc
   use sys,       only: die       ! Termination routine
   use m_io,      only: io_assign ! Get and reserve an available IO unit
 #ifdef MPI
-!  use mpi_siesta
-  use mpi_siesta, only: MPI_AllGather
-  use mpi_siesta, only: MPI_Barrier
-  use mpi_siesta, only: MPI_Bcast
-  use mpi_siesta, only: MPI_Comm_World
-  use mpi_siesta, only: MPI_double_precision
-  use mpi_siesta, only: MPI_integer
-  use mpi_siesta, only: MPI_character
+  use mpi_siesta
 #endif
 
   implicit none
@@ -232,6 +241,7 @@ PRIVATE      ! Nothing is declared public beyond this point
       dealloc_E1,                                     &
       dealloc_r1, dealloc_r2, dealloc_r3, dealloc_r4, &
       dealloc_d1, dealloc_d2, dealloc_d3, dealloc_d4, &
+      dealloc_c1, dealloc_c2,                         &
       dealloc_z1, dealloc_z2, dealloc_z3, dealloc_z4, &
       dealloc_l1, dealloc_l2, dealloc_l3,             &
       dealloc_s1
@@ -243,6 +253,7 @@ PRIVATE      ! Nothing is declared public beyond this point
       realloc_E1,                                     &
       realloc_r1, realloc_r2, realloc_r3, realloc_r4, &
       realloc_d1, realloc_d2, realloc_d3, realloc_d4, &
+      realloc_c1, realloc_c2,                         &
       realloc_z1, realloc_z2, realloc_z3, realloc_z4, & 
       realloc_l1, realloc_l2, realloc_l3,             &
       realloc_s1
@@ -330,7 +341,8 @@ END SUBROUTINE alloc_default
 
 ! ==================================================================
 
-SUBROUTINE alloc_report( level, unit, file, printNow, threshold )
+SUBROUTINE alloc_report( level, unit, file, printNow, threshold, &
+  shutdown)
 
 implicit none
 
@@ -338,16 +350,19 @@ integer,          optional, intent(in) :: level, unit
 character(len=*), optional, intent(in) :: file
 logical,          optional, intent(in) :: printNow
 real(dp),         optional, intent(in) :: threshold
+logical,          optional, intent(in) :: shutdown
 
-logical open
+logical :: is_open
 
 #ifdef MPI
-integer MPIerror
+integer :: MPIerror
 #endif
 
 if (present(level)) then
-  REPORT_LEVEL = level
+   REPORT_LEVEL = level
 end if
+
+if (REPORT_LEVEL <= 0) RETURN
 
 if (node == 0) then
   if (present(unit)) then  ! Assume that unit has been open outside
@@ -362,8 +377,8 @@ if (node == 0) then
   else if (present(file)) then    ! If file is the same, do nothing
     if (file /= REPORT_FILE) then ! Check if file was open outside
       REPORT_FILE = file
-      inquire( file=REPORT_FILE, opened=open, number=REPORT_UNIT )
-      if (.not.open) then         ! Open new file
+      inquire( file=REPORT_FILE, opened=is_open, number=REPORT_UNIT )
+      if (.not.is_open) then         ! Open new file
         call io_assign(REPORT_UNIT)
         open( REPORT_UNIT, file=REPORT_FILE, status='unknown')
         write(REPORT_UNIT,*) ' '  ! Overwrite previous reports
@@ -379,8 +394,13 @@ end if
 
 #ifdef MPI
 ! Distribute information to other nodes and open REPORT_UNIT
-call MPI_Bcast(REPORT_LEVEL,1,MPI_integer,0,MPI_Comm_World,MPIerror)
-call MPI_Bcast(REPORT_UNIT,1,MPI_integer,0,MPI_Comm_World,MPIerror)
+! NP:
+!   I am not too happy about this
+!   This forces a certain unit to be Bcasted to the others.
+!   If that unit is already open on the other nodes then you will have
+!   this module and some other module write to the same file.
+!   Perhaps we should just open the file from this node with
+!   the node id appended?
 call MPI_Bcast(REPORT_FILE,50,MPI_character,0,MPI_Comm_World,MPIerror)
 ! JMS: open file only in node 0
 !if (node > 0) then
@@ -392,6 +412,13 @@ if (present(threshold)) REPORT_THRESHOLD = threshold
 
 if (present(printNow)) then
   if (printNow) call print_report( )
+end if
+
+if (present(shutdown)) then
+   if ( shutdown .and. REPORT_UNIT /= 0 ) then
+      inquire( REPORT_UNIT, opened=is_open )
+      if ( is_open ) call io_close(REPORT_UNIT)
+   end if
 end if
 
 END SUBROUTINE alloc_report
@@ -545,7 +572,7 @@ SUBROUTINE realloc_E1( array, i1min, i1max, &
                        name, routine, copy, shrink )
 ! Arguments
 implicit none
-integer*8, dimension(:),    pointer    :: array
+integer(i8b), dimension(:),    pointer    :: array
 integer,                    intent(in) :: i1min
 integer,                    intent(in) :: i1max
 character(len=*), optional, intent(in) :: name
@@ -556,7 +583,7 @@ logical,          optional, intent(in) :: shrink
 ! Internal variables and arrays
 character, parameter                   :: type='I'
 integer, parameter                     :: rank=1
-integer*8, dimension(:), pointer       :: old_array
+integer(i8b), dimension(:), pointer       :: old_array
 integer, dimension(2,rank)             :: b, c, new_bounds, old_bounds
 
 ! Get old array bounds
@@ -939,6 +966,93 @@ if (NEEDS_COPY) then
   call alloc_err( IERR, name, routine, old_bounds )
 end if
 END SUBROUTINE realloc_d4
+
+! ==================================================================
+! Single precision complex array reallocs
+! ==================================================================
+SUBROUTINE realloc_c1( array, i1min, i1max,        &
+                       name, routine, copy, shrink )
+implicit none
+character, parameter                   :: type='S'
+integer, parameter                     :: rank=1
+complex(SP), dimension(:),  pointer    :: array, old_array
+integer,                    intent(in) :: i1min, i1max
+character(len=*), optional, intent(in) :: name, routine
+logical,          optional, intent(in) :: copy, shrink
+integer, dimension(2,rank)             :: b, c, new_bounds, old_bounds
+ASSOCIATED_ARRAY = associated(array)
+if (ASSOCIATED_ARRAY) then
+  old_array => array
+  old_bounds(1,:) = lbound(old_array)
+  old_bounds(2,:) = ubound(old_array)
+end if
+new_bounds(1,:) = (/ i1min /)
+new_bounds(2,:) = (/ i1max /)
+call options( b, c, old_bounds, new_bounds, copy, shrink )
+if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
+  call alloc_count( -2*size(old_array), type, name, routine ) 
+  deallocate(old_array,stat=IERR)
+  call alloc_err( IERR, name, routine, old_bounds )
+end if
+if (NEEDS_ALLOC) then
+  allocate( array(b(1,1):b(2,1)), stat=IERR )
+  call alloc_err( IERR, name, routine, new_bounds )
+  call alloc_count( 2*size(array), type, name, routine )
+  array = 0._dp
+end if
+if (NEEDS_COPY) then
+  array(c(1,1):c(2,1)) = old_array(c(1,1):c(2,1))
+  call alloc_count( -2*size(old_array), type, name, routine ) 
+  deallocate(old_array,stat=IERR)
+  call alloc_err( IERR, name, routine, old_bounds )
+end if
+END SUBROUTINE realloc_c1
+! ==================================================================
+SUBROUTINE realloc_c2( array, i1min,i1max, i2min,i2max, &
+                       name, routine, copy, shrink )
+implicit none
+character, parameter                   :: type='S'
+integer, parameter                     :: rank=2
+complex(SP), dimension(:,:),  pointer  :: array, old_array
+integer,                    intent(in) :: i1min, i1max, i2min, i2max
+character(len=*), optional, intent(in) :: name, routine
+logical,          optional, intent(in) :: copy, shrink
+integer, dimension(2,rank)             :: b, c, new_bounds, old_bounds
+integer                                :: i1, i2
+ASSOCIATED_ARRAY = associated(array)
+if (ASSOCIATED_ARRAY) then
+  old_array => array 
+  old_bounds(1,:) = lbound(old_array)
+  old_bounds(2,:) = ubound(old_array)
+end if
+new_bounds(1,:) = (/ i1min, i2min /)
+new_bounds(2,:) = (/ i1max, i2max /)
+call options( b, c, old_bounds, new_bounds, copy, shrink )
+if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
+  call alloc_count( -2*size(old_array), type, name, routine ) 
+  deallocate(old_array,stat=IERR)
+  call alloc_err( IERR, name, routine, old_bounds )
+end if
+if (NEEDS_ALLOC) then
+  allocate( array(b(1,1):b(2,1),b(1,2):b(2,2)), stat=IERR )
+  call alloc_err( IERR, name, routine, new_bounds )
+  call alloc_count( 2*size(array), type, name, routine )
+  array = 0._dp
+end if
+if (NEEDS_COPY) then
+!      array(c(1,1):c(2,1),c(1,2):c(2,2)) =  &
+!  old_array(c(1,1):c(2,1),c(1,2):c(2,2))
+  do i2 = c(1,2),c(2,2)
+  do i1 = c(1,1),c(2,1)
+    array(i1,i2) = old_array(i1,i2)
+  end do
+  end do
+  call alloc_count( -2*size(old_array), type, name, routine ) 
+  deallocate(old_array,stat=IERR)
+  call alloc_err( IERR, name, routine, old_bounds )
+end if
+END SUBROUTINE realloc_c2
+
 ! ==================================================================
 ! Double precision complex array reallocs
 ! ==================================================================
@@ -1024,22 +1138,21 @@ if (NEEDS_COPY) then
   call alloc_err( IERR, name, routine, old_bounds )
 end if
 END SUBROUTINE realloc_z2
-! ==================================================================
 SUBROUTINE realloc_z3( array, i1min,i1max, i2min,i2max, i3min,i3max, &
                        name, routine, copy, shrink )
 implicit none
-character, parameter                    :: type='D'
-integer, parameter                      :: rank=3
-complex(DP), dimension(:,:,:),  pointer :: array, old_array
-integer,                    intent(in)  :: i1min, i1max, i2min, i2max, &
-                                           i3min, i3max
-character(len=*), optional, intent(in)  :: name, routine
-logical,          optional, intent(in)  :: copy, shrink
-integer, dimension(2,rank)              :: b, c, new_bounds, old_bounds
-integer                                 :: i1, i2, i3
+character, parameter                   :: type='D'
+integer, parameter                     :: rank=3
+complex(DP), dimension(:,:,:), pointer :: array, old_array
+integer,                    intent(in) :: i1min, i1max, i2min, i2max
+integer,                    intent(in) :: i3min, i3max
+character(len=*), optional, intent(in) :: name, routine
+logical,          optional, intent(in) :: copy, shrink
+integer, dimension(2,rank)             :: b, c, new_bounds, old_bounds
+integer                                :: i1, i2, i3
 ASSOCIATED_ARRAY = associated(array)
 if (ASSOCIATED_ARRAY) then
-  old_array => array
+  old_array => array 
   old_bounds(1,:) = lbound(old_array)
   old_bounds(2,:) = ubound(old_array)
 end if
@@ -1047,7 +1160,7 @@ new_bounds(1,:) = (/ i1min, i2min, i3min /)
 new_bounds(2,:) = (/ i1max, i2max, i3max /)
 call options( b, c, old_bounds, new_bounds, copy, shrink )
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -2*size(old_array), type, name, routine )
+  call alloc_count( -2*size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -1058,8 +1171,8 @@ if (NEEDS_ALLOC) then
   array = 0._dp
 end if
 if (NEEDS_COPY) then
-!      array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3)) =  &
-!  old_array(c(1,1):c(2,1),c(1,2):c(2,2),c(1:3):c(2,3))
+!      array(c(1,1):c(2,1),c(1,2):c(2,2)) =  &
+!  old_array(c(1,1):c(2,1),c(1,2):c(2,2))
   do i3 = c(1,3),c(2,3)
   do i2 = c(1,2),c(2,2)
   do i1 = c(1,1),c(2,1)
@@ -1067,12 +1180,11 @@ if (NEEDS_COPY) then
   end do
   end do
   end do
-  call alloc_count( -2*size(old_array), type, name, routine )
+  call alloc_count( -2*size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
 END SUBROUTINE realloc_z3
-! ==================================================================
 SUBROUTINE realloc_z4( array, i1min,i1max, i2min,i2max, &
                               i3min,i3max, i4min,i4max, &
                        name, routine, copy, shrink )
@@ -1528,7 +1640,7 @@ SUBROUTINE dealloc_E1( array, name, routine )
 
 ! Arguments
 implicit none
-integer*8, dimension(:),      pointer    :: array
+integer(i8b), dimension(:),      pointer    :: array
 character(len=*), optional, intent(in) :: name
 character(len=*), optional, intent(in) :: routine
 
@@ -1632,6 +1744,28 @@ END SUBROUTINE dealloc_d4
 ! ==================================================================
 ! COMPLEX versions
 !
+SUBROUTINE dealloc_c1( array, name, routine )
+implicit none
+complex(SP), dimension(:),   pointer   :: array
+character(len=*), optional, intent(in) :: name, routine
+if (associated(array)) then
+  call alloc_count( -2*size(array), 'S', name, routine ) 
+  deallocate(array,stat=IERR)
+  call alloc_err( IERR, name, routine )
+end if
+END SUBROUTINE dealloc_c1
+! ==================================================================
+SUBROUTINE dealloc_c2( array, name, routine )
+implicit none
+complex(SP), dimension(:,:),  pointer  :: array
+character(len=*), optional, intent(in) :: name, routine
+if (associated(array)) then
+  call alloc_count( -2*size(array), 'S', name, routine ) 
+  deallocate(array,stat=IERR)
+  call alloc_err( IERR, name, routine )
+end if
+END SUBROUTINE dealloc_c2
+! ==================================================================
 SUBROUTINE dealloc_z1( array, name, routine )
 implicit none
 complex(DP), dimension(:),   pointer   :: array
@@ -1656,10 +1790,10 @@ END SUBROUTINE dealloc_z2
 ! ==================================================================
 SUBROUTINE dealloc_z3( array, name, routine )
 implicit none
-complex(DP), dimension(:,:,:),  pointer  :: array
+complex(DP), dimension(:,:,:), pointer :: array
 character(len=*), optional, intent(in) :: name, routine
 if (associated(array)) then
-  call alloc_count( -2*size(array), 'D', name, routine )
+  call alloc_count( -2*size(array), 'D', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 end if
@@ -1914,7 +2048,7 @@ end if
 
 if (newPeak .and. (REPORT_LEVEL==1 .or. REPORT_LEVEL==3) .and. &
     node == 0) then
-  call print_report
+  call print_report(.false.)
 end if
 
 if (REPORT_LEVEL == 4 .and. node == 0) then
@@ -2051,25 +2185,40 @@ END SUBROUTINE tree_print
 
 ! ==================================================================
 
-SUBROUTINE print_report
+SUBROUTINE print_report(all)
 
 implicit none
+
+! Whether MPI reductions should be performed
+! If, not then ensure that no MPI calls are performed
+logical, intent(in), optional :: all 
 
 character(len=80)   :: string = 'Name'
 character           :: date*8, time*10, zone*5
 integer             :: iNode, peakNode
 real(dp)            :: maxPeak
 real(dp),allocatable:: nodeMem(:), nodePeak(:)
+logical             :: lall
 
 #ifdef MPI
 integer           :: MPIerror
 #endif
 
+! Enables parallel call of print-report
+lall = .true.
+if ( present(all) ) lall = all
+
+! Only if MPI should all be used
+if ( lall ) then
 ! Make sure that variables node and Nodes are initialized
 call parallel_init()
+end if
 
 ! Allocate and initialize two small arrays
 allocate( nodeMem(0:Nodes-1), nodePeak(0:Nodes-1) )
+! initialize (in case all == .false.)
+nodeMem = 0._dp
+nodePeak = 0._dp
 
 ! Initializations for Nodes=1 (serial case)
 nodeMem(node) = TOT_MEM
@@ -2078,7 +2227,7 @@ peakNode = node
 
 ! In parallel, find the memory values of all nodes
 #ifdef MPI
-if (Nodes > 1) then
+if (Nodes > 1 .and. lall ) then
   ! Gather the present and peak memories of all nodes
   call MPI_AllGather( TOT_MEM, 1, MPI_double_precision, &
                       nodeMem, 1, MPI_double_precision, &
@@ -2095,11 +2244,13 @@ if (Nodes > 1) then
     end if
   end do ! iNode
   ! Change the writing node for the peak-node information
-  if (node==0 .and. peakNode/=0) close( unit=REPORT_UNIT )
+  if (node==0 .and. peakNode/=0) close( REPORT_UNIT )
   call MPI_Barrier( MPI_COMM_WORLD, MPIerror )
-  if (node==peakNode .and. peakNode/=0) &
-    open( unit=REPORT_UNIT, file=REPORT_FILE, &
+  if (node==peakNode .and. peakNode/=0) then
+     call io_assign(REPORT_UNIT)
+     open( unit=REPORT_UNIT, file=REPORT_FILE, &
           status='unknown', position='append' )
+  end if
 end if ! (Nodes>1)
 #endif
 
@@ -2151,15 +2302,16 @@ if (node == peakNode) then
     call tree_print( report_tree )
   end if
 
+  ! Close file if not common IO node
+  if ( node /= 0 ) call io_close(REPORT_UNIT)
 end if ! (node == peakNode)
 
 ! Change again the writing node for the rest of the report
 #ifdef MPI
-if (node==peakNode .and. peakNode/=0) close( unit=REPORT_UNIT )
-call MPI_Barrier( MPI_COMM_WORLD, MPIerror )
+if (lall) call MPI_Barrier( MPI_COMM_WORLD, MPIerror )
 if (node==0 .and. peakNode/=0) &
-  open( unit=REPORT_UNIT, file=REPORT_FILE, &
-        status='unknown', position='append' )
+     open( unit=REPORT_UNIT, file=REPORT_FILE, &
+     status='unknown', position='append' )
 #endif
 
 deallocate( nodeMem, nodePeak )
@@ -2169,9 +2321,7 @@ END SUBROUTINE print_report
 ! ==================================================================
 
 SUBROUTINE alloc_err( ierr, name, routine, bounds )
-#ifdef DEBUG
-      use debugMpi, only : mpiUnit
-#endif
+
 implicit none
 
 integer,                    intent(in) :: ierr
@@ -2197,20 +2347,6 @@ if (ierr/=0) then
     print '(a,i3,2i10)', ('alloc_err: dim, lbound, ubound:',  &
           i,bounds(1,i),bounds(2,i),                         &
           i=1,size(bounds,dim=2))            
-#ifdef DEBUG
-  write(mpiUnit,*) 'alloc_err: allocate status error', ierr
-  if (present(name).and.present(routine)) then
-    write(mpiUnit,*) 'alloc_err: array ', name, ' requested by ', routine
-  elseif (present(name)) then
-    write(mpiUnit,*) 'alloc_err: array ', name, ' requested by unknown'
-  elseif (present(routine)) then
-    write(mpiUnit,*) 'alloc_err: array unknown requested by ', routine
-  endif
-  write(mpiUnit,'(a,i3,2i10)') ('alloc_err: dim, lbound, ubound:', &
-                      i,bounds(1,i),bounds(2,i),         &
-                      i=1,size(bounds,dim=2))
-  call pxfflush(mpiUnit)
-#endif
 
   call die('alloc_err: allocate error')
 end if

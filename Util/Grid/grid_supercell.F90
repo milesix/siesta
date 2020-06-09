@@ -1,12 +1,9 @@
 ! 
-! This file is part of the SIESTA package.
-!
-! Copyright (c) Fundacion General Universidad Autonoma de Madrid:
-! E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
-! and J.M.Soler, 1996- .
-! 
-! Use of this software constitutes agreement with the full conditions
-! given in the SIESTA license, as signed by all legitimate users.
+! Copyright (C) 1996-2016       The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt.
+! See Docs/Contributors.txt for a list of contributors.
 !
 program grid_supercell
 !
@@ -78,11 +75,11 @@ allocate(ngridfunc(1:nmesh(1),1:nmesh(2),1:nmesh(3)))
              enddo
           enddo
 
-	  do i1=0,n1-1
-	  do i2=0,n2-1
+          do i1=0,n1-1
+          do i2=0,n2-1
           do i3=0,n3-1
              do iz=1,mesh(3)
-	        jz = iz + i3*n3
+                jz = iz + i3*n3
                 do iy=1,mesh(2)
                    jy = iy + i2*n2
                    do ix=1,mesh(1)

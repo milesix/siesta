@@ -1,12 +1,9 @@
 ! 
-! This file is part of the SIESTA package.
-!
-! Copyright (c) Fundacion General Universidad Autonoma de Madrid:
-! E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
-! and J.M.Soler, 1996- .
-! 
-! Use of this software constitutes agreement with the full conditions
-! given in the SIESTA license, as signed by all legitimate users.
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt.
+! See Docs/Contributors.txt for a list of contributors.
 !
 module fsiesta
 
@@ -76,10 +73,6 @@ module fsiesta
 ! Make sure that you have a working "flush" subroutine in your system,
 ! otherwise the process might hang.
 
-#ifdef __NAG__
-  use f90_unix_proc, only: system
-#endif
-
   implicit none
 
 PUBLIC :: siesta_launch, siesta_units, siesta_forces, siesta_quit
@@ -108,6 +101,7 @@ CONTAINS
 !---------------------------------------------------
 
 subroutine siesta_launch( label, nnodes, mpi_comm, launcher, localhost )
+  use posix_calls, only: system
   implicit none
   character(len=*),         intent(in) :: label
   integer,         optional,intent(in) :: nnodes

@@ -1,12 +1,9 @@
 ! 
-! This file is part of the SIESTA package.
-!
-! Copyright (c) Fundacion General Universidad Autonoma de Madrid:
-! E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
-! and J.M.Soler, 1996- .
-! 
-! Use of this software constitutes agreement with the full conditions
-! given in the SIESTA license, as signed by all legitimate users.
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt.
+! See Docs/Contributors.txt for a list of contributors.
 !
       module m_overlap
 
@@ -18,6 +15,10 @@
      &                          reset_neighbour_arrays
       use alloc,         only : re_alloc, de_alloc
       use m_new_matel,   only : new_matel
+      use m_iodm_old,    only : write_dm
+      use m_matio,       only : write_mat
+      use atomlist, only: no_l
+      use fdf
 
       implicit none
 
@@ -64,14 +65,12 @@ C real*8  S(maxnh)         : Sparse overlap matrix
 C Internal variables ......................................................
       integer               :: ia, ind, io, ioa, is,  iio, j, ja, jn,
      &                         jo, joa, js, jua, nnia, ig, jg
-      real(dp)              :: grSij(3) , rij, Sij, volcel, volume
+      real(dp)              :: grSij(3) , rij, Sij
       real(dp),     pointer :: Si(:)
       external  timer
 
 C     Start timer
       call timer( 'overlap', 1 )
-
-      volume = nua * volcel(scell) / na
 
 C     Initialize neighb subroutine 
       call mneighb( scell, 2.d0*rmaxo, na, xa, 0, 0, nnia )
@@ -124,6 +123,23 @@ C     Deallocate local memory
 !      call new_MATEL( 'S', 0, 0, xij, Sij, grSij )
       call reset_neighbour_arrays( )
       call de_alloc( Si, 'Si', 'overlap' )
+
+      if (fdf_get("Sonly",.false.)) then
+         call write_dm(maxnh, no_l, 1,
+     &               numh, listhptr, listh, S,
+     $               userfile="SOLD")
+
+         call write_mat(maxnh, no_l, 1,
+     &               numh, listhptr, listh, S,
+     $               userfile="SMAT")
+
+         call timer("fastWriteMat",1)
+         call write_mat(maxnh, no_l, 1,
+     &               numh, listhptr, listh, S,
+     $               userfile="SMATBS",compatible=.false.)
+         call timer("fastWriteMat",2)
+      endif
+
 
 C     Finish timer
       call timer( 'overlap', 2 )

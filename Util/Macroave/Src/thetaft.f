@@ -1,14 +1,11 @@
 ! 
-! This file is part of the SIESTA package.
+! Copyright (C) 1996-2016       The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt.
+! See Docs/Contributors.txt for a list of contributors.
 !
-! Copyright (c) Fundacion General Universidad Autonoma de Madrid:
-! E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
-! and J.M.Soler, 1996- .
-! 
-! Use of this software constitutes agreement with the full conditions
-! given in the SIESTA license, as signed by all legitimate users.
-!
-	subroutine thetaft(n,L,lav,ft)
+        subroutine thetaft(n,L,lav,ft)
 C
 C Calculates the Fourier coefficients of the convoluting function
 C    w(x) = (1/lav) theta(lav/2 - abs(x))
@@ -20,18 +17,16 @@ C       |          |                     |         |
 C       |__________|_____________________|_________|___
 C       0         lav/2               L-lav/2     L
 C
-
+        use defs_basis, only: dp, pi
+        
         implicit none
 
-	integer n,j
-        real*8 L,lav
-	real*8 ft(2*n),x,phi
-        real*8 pi
-
-	pi=4.0d0*datan(1.0d0)
+        integer n,j
+        real(dp) L,lav
+        real(dp) ft(2*n),x,phi
 
         ft(1)=n/L
-	ft(2)=0.0
+        ft(2)=0.0
 
         do j=2,n/2+1
           ft(2*(j-1)+1) = (n/(pi*lav*(j-1)/2.))*
@@ -56,5 +51,5 @@ C
         enddo
 
 
-	return
-	end
+        return
+        end

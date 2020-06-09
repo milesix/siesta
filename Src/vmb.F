@@ -1,12 +1,9 @@
 ! 
-! This file is part of the SIESTA package.
-!
-! Copyright (c) Fundacion General Universidad Autonoma de Madrid:
-! E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
-! and J.M.Soler, 1996- .
-! 
-! Use of this software constitutes agreement with the full conditions
-! given in the SIESTA license, as signed by all legitimate users.
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt.
+! See Docs/Contributors.txt for a list of contributors.
 !
       subroutine vmb(nat,ttemp,mass,xa,isa,va)
 C *************************************************************************
@@ -120,6 +117,8 @@ C call to constrains routine)
       ! as stress and fa in the call to fixed. Quick 
       ! workaround is to make the use of a temporary
       ! variable thus:
+      ! The "forces" are already mass-scaled,
+      ! so regardless of the dynamics the call is correct.
       call fixed( cell, stress, nat, isa, mass, xa, fa,
      .                  tmpstress, tmpfa, ntcon )
       stress = tmpstress
@@ -152,7 +151,7 @@ C Correct velocity to exact temperature .....................
 
 
 
-      real*8 function velo(iseed,temp,mass)
+      function velo(iseed,temp,mass) 
 C *************************************************************************
 C This function assigns velocities to atoms according to the 
 C Maxwell-Boltzman distribution.
@@ -173,17 +172,21 @@ C ************************* OUTPUT ****************************************
 C real*8  velo             : Velocity component 
 C *************************************************************************
 
+      use precision
+
       implicit none
 
       integer 
      . iseed
 
-      real*8
+      real(dp)
      . mass,temp
+
+      real(dp) :: velo
 
 C Internal variables .................
 
-      real*8
+      real(dp)
      .  arg1, arg2, gauss, med, pi, randomg, var
       
       external

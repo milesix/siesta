@@ -1,12 +1,9 @@
 ! 
-! This file is part of the SIESTA package.
-!
-! Copyright (c) Fundacion General Universidad Autonoma de Madrid:
-! E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
-! and J.M.Soler, 1996- .
-! 
-! Use of this software constitutes agreement with the full conditions
-! given in the SIESTA license, as signed by all legitimate users.
+! Copyright (C) 1996-2016       The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt.
+! See Docs/Contributors.txt for a list of contributors.
 !
       module neighbour
       use precision, only: dp
@@ -912,7 +909,7 @@ C   mesh with periodic boundary conditions. This modulus operation is
 C   also done with J, so that the output I() are always within range.
 C If IOPT=0, nothing is done.
 C *********** USAGE **************************************************
-C 	Sample usage to find the Laplacian of a function defined in a mesh 
+C       Sample usage to find the Laplacian of a function defined in a mesh 
 C with periodic boundary conditions in a space of variable dimension
 C    SUBROUTINE LAPLACIAN( ND, N, DX, F, FLAPL )
 C    PARAMETER (MAXD = 3)

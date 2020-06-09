@@ -1,12 +1,9 @@
 # 
-# This file is part of the SIESTA package.
-#
-# Copyright (c) Fundacion General Universidad Autonoma de Madrid:
-# E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
-# and J.M.Soler, 1996- .
-# 
-# Use of this software constitutes agreement with the full conditions
-# given in the SIESTA license, as signed by all legitimate users.
+# Copyright (C) 1996-2016	The SIESTA group
+#  This file is distributed under the terms of the
+#  GNU General Public License: see COPYING in the top directory
+#  or http://www.gnu.org/copyleft/gpl.txt.
+# See Docs/Contributors.txt for a list of contributors.
 #
 # Makefile for Client-Server example
 #
@@ -42,16 +39,17 @@ FPPFLAGS:=$(FPPFLAGS) $(DEFS_PREFIX)-UMPI $(DEFS_PREFIX)-UCDF
 #
 driver.o: fmixmd.o sample.o
 fmixmd.o: sample.o
+fsiesta_pipes.o: posix_calls.o
 #
-OBJS=fsiesta_pipes.o sample.o fmixmd.o driver.o pxf.o
+OBJS= fsiesta_pipes.o sample.o fmixmd.o driver.o pxf.o posix_calls.o
 driver : $(OBJS)
 	$(FC) -o driver  $(LDFLAGS) $(OBJS) 
 #
-simple: fsiesta_pipes.o simple.o  pxf.o
-	$(FC) $(LDFLAGS) -o simple simple.o fsiesta_pipes.o pxf.o
+simple: fsiesta_pipes.o simple.o  pxf.o posix_calls.o
+	$(FC) $(LDFLAGS) -o simple simple.o fsiesta_pipes.o pxf.o posix_calls.o
 #
-para: fsiesta_pipes.o para.o pxf.o
-	$(FC) $(LDFLAGS) -o para para.o fsiesta_pipes.o pxf.o
+para: fsiesta_pipes.o para.o pxf.o posix_calls.o
+	$(FC) $(LDFLAGS) -o para para.o fsiesta_pipes.o pxf.o posix_calls.o
 #
 clean: 
 	@echo "==> Cleaning object and executable files"

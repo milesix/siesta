@@ -1,12 +1,9 @@
 ! 
-! This file is part of the SIESTA package.
-!
-! Copyright (c) Fundacion General Universidad Autonoma de Madrid:
-! E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
-! and J.M.Soler, 1996- .
-! 
-! Use of this software constitutes agreement with the full conditions
-! given in the SIESTA license, as signed by all legitimate users.
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt.
+! See Docs/Contributors.txt for a list of contributors.
 !
       subroutine vmatsp( no, np, dvol, nspin, V, nvmax, 
      .                 numVs, listVsptr, listVs, Vs, 
@@ -312,7 +309,8 @@ C  Generate or retrieve phi values for all orbitals up to nc
                 enddo
                 r2sp = sum(dxsp**2)
                 if (r2sp.lt.r2cut(is)) then
-                  call all_phi( is, +1, dxsp, nphiloc, phia(:,isp) )
+                  call all_phi( is, +1, dxsp, maxoa,
+     &                nphiloc, phia(:,isp) )
                 else
                   phia(:,isp) = 0.0_dp
                 endif

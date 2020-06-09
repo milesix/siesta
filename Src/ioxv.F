@@ -1,12 +1,9 @@
 ! 
-! This file is part of the SIESTA package.
-!
-! Copyright (c) Fundacion General Universidad Autonoma de Madrid:
-! E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
-! and J.M.Soler, 1996- .
-! 
-! Use of this software constitutes agreement with the full conditions
-! given in the SIESTA license, as signed by all legitimate users.
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt.
+! See Docs/Contributors.txt for a list of contributors.
 !
 
 !!**    There should be two separate routines for reading and writing
@@ -49,8 +46,7 @@ C
       use parallel,   only : Node
       use precision,  only : dp
 #ifdef MPI
-      use mpi_siesta, only : MPI_Bcast, MPI_Comm_World, 
-     . MPI_Integer, MPI_Double_Precision, MPI_Logical 
+      use mpi_siesta
 #endif
 
       implicit          none
@@ -60,26 +56,21 @@ C
       real(dp)          cell(3,3), va(3,na), vcell(3,3), xa(3,na)
       character(len=*) ::         task
 
-      character(len=label_length+3) :: paste
-      external          io_assign, io_close, paste
+      external          io_assign, io_close
 
 c Internal variables and arrays
-      character(len=label_length+3), save ::   fname
-      logical, save :: frstme = .true.
+      character(len=label_length+3) ::   fname
 
       integer    ia, iu, iv, ix
 #ifdef MPI
       integer    MPIerror
 #endif
 
+C     Find name of file
+      fname = trim(slabel) // '.XV'
+      
 C Only do reading and writing for IOnode
       if (Node.eq.0) then
-
-C Find name of file
-        if (frstme) then
-          fname = paste( slabel, '.XV')
-          frstme = .false.
-        endif
 
 C Choose between read or write
         if (task.eq.'read' .or. task.eq.'READ') then

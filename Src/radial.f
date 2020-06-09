@@ -1,12 +1,9 @@
 ! 
-! This file is part of the SIESTA package.
-!
-! Copyright (c) Fundacion General Universidad Autonoma de Madrid:
-! E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
-! and J.M.Soler, 1996- .
-! 
-! Use of this software constitutes agreement with the full conditions
-! given in the SIESTA license, as signed by all legitimate users.
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt.
+! See Docs/Contributors.txt for a list of contributors.
 !
       module radial
 
@@ -17,19 +14,21 @@
 
       implicit none
 
-      private
-
       public :: rad_alloc, rad_get, rad_setup_d2, rad_zero
       public :: radial_read_ascii, radial_dump_ascii
       public :: radial_dump_xml, reset_rad_func
 
-      type, public :: rad_func
+      public :: rad_func
+
+      type   :: rad_func
          integer          n
-         double precision cutoff         
-         double precision delta
-         double precision, pointer :: f(:)=>null()   ! Actual data
-         double precision, pointer :: d2(:)=>null()  ! 2nd derivative
+         real(dp) cutoff         
+         real(dp) delta
+         real(dp), pointer :: f(:)=>null()   ! Actual data
+         real(dp), pointer :: d2(:)=>null()  ! 2nd derivative
       end type rad_func
+
+      private
 
       CONTAINS
 
@@ -142,11 +141,11 @@
       endif
 !
       if (print_header) then
-         write(lun,'(i4,2g22.12,a)') op%n,
+         write(lun,'(i4,2g26.16,a)') op%n,
      $        op%delta, op%cutoff, " # npts, delta, cutoff"
       endif
       do j=1,op%n
-         write(lun,'(2g22.12)') (j-1)*op%delta, op%f(j)
+         write(lun,'(2g26.16)') (j-1)*op%delta, op%f(j)
       enddo
 
       end subroutine radial_dump_ascii

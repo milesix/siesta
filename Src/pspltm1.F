@@ -1,3 +1,10 @@
+! ---
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt .
+! See Docs/Contributors.txt for a list of contributors.
+! ---
 c----------------------------------------------------------------------
 c State: stable          Date: 6/3/95
 c----------------------------------------------------------------------
@@ -88,9 +95,6 @@ C       integer nii
         real haf, zero, conv
         data haf /0.5/, zero/0.0/, conv/2.54/
 
-        integer LENSTR
-        external LENSTR
-
 
 C---------------------------------------------------------------- BEGIN
         siz = size
@@ -145,7 +149,7 @@ c. . .  matrix frame line witdh
 
 c. . .  font size for title (cm)
         fnstit = 0.5
-        ltit = LENSTR(title)
+        ltit = LEN_trim(title)
 
 c. . .  position of title : centered horizontally
 c                           at 1.0 cm vertically over the drawing

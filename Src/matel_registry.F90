@@ -1,7 +1,14 @@
+! ---
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt .
+! See Docs/Contributors.txt for a list of contributors.
+! ---
 module m_matel_registry
   !
   ! This module provides a general interface to the
-  ! functions needed by matel
+  ! functions needed by (new_)matel
   ! 
   ! Sketch of usage (see examples in the code):
   !
@@ -13,7 +20,7 @@ module m_matel_registry
   !
   ! Once registered, a function can be evaluated, its cutoff and 
   ! angular momentum obtained, etc.  So far only the functions
-  ! needed by matel are implemented: rcut, lcut, evaluate (former phiatm).
+  ! needed by (new_)matel are implemented: rcut, lcut, evaluate (former phiatm).
   !
   ! The registry contains some meta-data for each function (its
   ! kind as a string, and the original indexes handled by the
@@ -64,13 +71,13 @@ module m_matel_registry
      integer         :: lcut = -huge(1)
   end type registered_function_t
   !
-  ! There should be a mechanism to make the size
-  ! of the pool dynamic.
-  !
-  integer, parameter :: nmax_funcs = 300
-  type(registered_function_t), dimension(nmax_funcs), save :: matel_pool
+  ! This is a dynamic array, allocated and extended as needed.
+  type(registered_function_t), dimension(:), allocatable, save :: matel_pool
 
-  integer, private    :: nfuncs = 0
+  integer, parameter :: initial_size = 100  ! initial size of pool
+  integer, parameter :: delta_size = 50     ! chunk size for extensions
+  integer, private   :: nmax_funcs = 0  ! current maximum size of the pool
+  integer, private   :: nfuncs = 0      ! number of functions in pool
 
   public :: register_in_rf_pool, register_in_tf_pool
   public :: evaluate, rcut, lcut
@@ -86,6 +93,36 @@ CONTAINS
     ok = (gindex > 0 .AND. gindex <= nfuncs)
   end function valid
 
+  !> Extends the size of the pool if needed
+  subroutine check_size_of_pool(nfuncs)
+    integer, intent(in) :: nfuncs
+
+    type(registered_function_t), dimension(:), allocatable :: tmp_pool
+    
+    if (nfuncs > nmax_funcs) then
+       if (.not. allocated(matel_pool)) then
+          allocate(matel_pool(initial_size))
+          nmax_funcs = initial_size
+       else
+          ! copy data to tmp array
+          allocate(tmp_pool(nmax_funcs))
+
+          ! Each element (derived type) involves just two scalars
+          ! and two pointers, so the copy overhead is small.
+          ! Note that we do not use the F2003 "move_alloc" idiom.
+          
+          tmp_pool(1:nmax_funcs) = matel_pool(1:nmax_funcs)
+          deallocate(matel_pool)
+          allocate(matel_pool(nmax_funcs + delta_size))
+          matel_pool(1:nmax_funcs) = tmp_pool(1:nmax_funcs)
+          nmax_funcs = nmax_funcs + delta_size
+
+          deallocate(tmp_pool)
+          
+       endif
+    endif
+  end subroutine check_size_of_pool
+               
   !
   !   This is the main entry to the registry for simple radial functions
   !
@@ -102,7 +139,8 @@ CONTAINS
     n_indexes = size(indexes)
 
     nfuncs = nfuncs + 1
-    if (nfuncs > nmax_funcs) call die("Overflow in registry")
+    call check_size_of_pool(nfuncs)
+
     gindex = nfuncs
 
     allocate(matel_pool(gindex)%rf)
@@ -132,7 +170,8 @@ CONTAINS
     integer, intent(out)    :: gindex           ! global index
 
     nfuncs = nfuncs + 1
-    if (nfuncs > nmax_funcs) call die("Overflow in registry")
+    call check_size_of_pool(nfuncs)
+
     gindex = nfuncs
 
     allocate(matel_pool(gindex)%tf)
@@ -145,20 +184,20 @@ CONTAINS
   end subroutine register_in_tf_pool
 
 !--------------------------------------------------------------
-subroutine show_pool()
-  use trialorbitalclass, only: print_trialorb
+  subroutine show_pool()
+    use trialorbitalclass, only: print_trialorb
 
-  integer :: gindex
+    integer :: gindex
 
-  do gindex = 1, nfuncs
-     if (associated(matel_pool(gindex)%rf)) then
-        call print_rf(matel_pool(gindex)%rf)
-     else if (associated(matel_pool(gindex)%tf)) then
-        call print_trialorb(matel_pool(gindex)%tf)
-     endif
-  enddo
-end subroutine show_pool
-        
+    do gindex = 1, nfuncs
+       if (associated(matel_pool(gindex)%rf)) then
+          call print_rf(matel_pool(gindex)%rf)
+       else if (associated(matel_pool(gindex)%tf)) then
+          call print_trialorb(matel_pool(gindex)%tf)
+       endif
+    enddo
+  end subroutine show_pool
+
 !--------------------------------------------------------------
 
   function rcut(gindex) result(cutoff)

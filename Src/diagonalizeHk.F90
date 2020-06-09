@@ -1,3 +1,10 @@
+! ---
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt .
+! See Docs/Contributors.txt for a list of contributors.
+! ---
 subroutine diagonalizeHk( ispin )
 !
 ! Solves H(k)c(k) = e(k)S(k)c(k), with the SCF hamiltonian and
@@ -77,6 +84,7 @@ subroutine diagonalizeHk( ispin )
 ! ------------------------------------------------------------------------------
 ! Used module variables
   use precision,          only: dp           ! Real douple precision type 
+  use densematrix,        only: allocDenseMatrix, resetDenseMatrix
   use densematrix,        only: Haux         ! Hamiltonian matrix in dense form
   use densematrix,        only: Saux         ! Overlap matrix in dense form
   use densematrix,        only: psi          ! Coefficients of the wave function
@@ -180,8 +188,9 @@ subroutine diagonalizeHk( ispin )
 
   real(dp), dimension(:), pointer :: epsilon ! Eigenvalues of the Hamiltonian
 
+#ifdef MPI
   integer, external :: numroc
-
+#endif
   call timer('diagonalizeHk',1)
 
 ! Initialize the number of occupied bands
@@ -193,11 +202,7 @@ subroutine diagonalizeHk( ispin )
 ! These matrices are defined in the module dense matrix
   nhs  = 2 * no_u * no_l
   npsi = 2 * no_u * no_l
-
-  nullify( Saux, Haux, psi )
-  call re_alloc( Haux,     1, nhs,   name='Haux',    routine='diagonalizeHk' )
-  call re_alloc( Saux,     1, nhs,   name='Saux',    routine='diagonalizeHk' )
-  call re_alloc( psi,      1, npsi,  name='psi',     routine='diagonalizeHk' )
+  call allocDenseMatrix(nhs, nhs, npsi)
 
 ! Allocate memory related with the eigenvalues of the Hamiltonian (epsilon)
 ! and with a local variable where the coefficients of the eigenvector at the
@@ -216,7 +221,7 @@ subroutine diagonalizeHk( ispin )
 ! &                                      Node, BlockSizeincbands
 
      nincbands_loc = numroc(nincbands,blocksizeincbands,node,0,nodes)
-# else
+#else
      nincbands_loc = nincbands
 #endif
   nullify( coeffs )
@@ -291,9 +296,7 @@ kpoints:                                                             &
 
   enddo kpoints
 
-  call de_alloc( Haux,    name='Haux',    routine='diagonalizeHk' )
-  call de_alloc( Saux,    name='Saux',    routine='diagonalizeHk' )
-  call de_alloc( psi,     name='psi',     routine='diagonalizeHk' )
+  call resetDenseMatrix()
   call de_alloc( epsilon, name='epsilon', routine='diagonalizeHk' )
 
   call timer('diagonalizeHk',2)

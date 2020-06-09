@@ -1,12 +1,9 @@
 ! 
-! This file is part of the SIESTA package.
-!
-! Copyright (c) Fundacion General Universidad Autonoma de Madrid:
-! E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
-! and J.M.Soler, 1996- .
-! 
-! Use of this software constitutes agreement with the full conditions
-! given in the SIESTA license, as signed by all legitimate users.
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt.
+! See Docs/Contributors.txt for a list of contributors.
 !
       module m_writedelk
       public :: write_delk
@@ -62,7 +59,6 @@ C
 
       implicit          none
 
-      character(len=label_length+3) :: paste
       logical           gamma
       integer           maxnh, no_u, no_s, nspin
       integer           indxuo(no_s), listh(maxnh), numh(*), listhptr(*)
@@ -70,10 +66,10 @@ C
      .                  qtot, temp, xij(3,maxnh)
       complex(dp)       delkmat(maxnh)
 
-      external          io_assign, io_close, paste
+      external          io_assign, io_close
 
 C Internal variables and arrays
-      character(len=label_length+3) :: fname
+      character(len=label_length+4) :: fname
       integer    im, is, iu, ju, k, mnh, ns, ia, io
       integer    ih,hl,nuo,maxnhtot,maxhg
       integer, dimension(:), allocatable :: numhg
@@ -84,15 +80,10 @@ C Internal variables and arrays
       complex(dp), dimension(:),   allocatable :: buffer3
       real(dp), dimension(:,:), allocatable :: buffer2
 #endif
-      logical    baddim, frstme, gammaonfile, write_xijk
-      save       frstme, fname
-      data frstme /.true./
+      logical    baddim, gammaonfile, write_xijk
 
 C Find name of file
-      if (frstme) then
-        fname = paste( slabel, '.dek' )
-        frstme = .false.
-      endif
+      fname = trim(slabel) // '.dek'
 
 C Find total numbers over all Nodes
 #ifdef MPI

@@ -1,3 +1,10 @@
+! ---
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt .
+! See Docs/Contributors.txt for a list of contributors.
+! ---
 module m_fire
 
 use precision, only: dp
@@ -126,9 +133,9 @@ CONTAINS
          endif   ! Power
 
          ! Euler with midpoint correction
-         dx =  b%v*dt/2     ! half of the mid-point rule (v(0))
+         dx(:) =  b%v*dt/2     ! half of the mid-point rule (v(0))
          b%v = b%v + f*dt     ! v at dt
-         dx = dx + b%v*dt/2  ! the other half  (v(t))
+         dx(:) = dx + b%v*dt/2  ! the other half  (v(t))
 
          where (abs(dx) <= maxstep)
             x = x + dx

@@ -1,12 +1,7 @@
-! 
-! This file is part of the SIESTA package.
-!
-! Copyright (c) Fundacion General Universidad Autonoma de Madrid:
-! E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
-! and J.M.Soler, 1996-2008.
-! 
-! Use of this software constitutes agreement with the full conditions
-! given in the SIESTA license, as signed by all legitimate users.
+! ---
+!  This file is distributed under the terms of the
+!  Modified BSD License: see the BSD_LICENSE file
+! ---
 !
 ! *******************************************************************
 ! module mesh1D
@@ -548,7 +543,7 @@ subroutine set_mesh( n, x, xmin, xmax, a, dxndx1 )
 
 ! Set the mesh points and the derivatives of x(i)
   if (mesh_type=='numerical') then
-    xi = x
+    xi(:) = x
 
 !   Centered 5-point derivatives for all but first/last two points
     do i = 3,n-2
@@ -602,10 +597,10 @@ subroutine set_mesh( n, x, xmin, xmax, a, dxndx1 )
   if (present(xmax)) xi(n) = xmax
 
 ! Find auxiliary functions associated to the mesh
-  sqrxp = abs(xp1)**0.5_dp
-  s0 = abs(xp1)**1.5_dp
-  s1 = xp1**2
-  s2 = (3._dp*xp2**2 - 2._dp*xp1*xp3) / 4._dp / xp1**2
+  sqrxp(:) = abs(xp1)**0.5_dp
+  s0(:) = abs(xp1)**1.5_dp
+  s1(:) = xp1**2
+  s2(:) = (3._dp*xp2**2 - 2._dp*xp1*xp3) / 4._dp / xp1**2
 
   defined_mesh = .true.
 

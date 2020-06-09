@@ -1,12 +1,9 @@
 ! 
-! This file is part of the SIESTA package.
-!
-! Copyright (c) Fundacion General Universidad Autonoma de Madrid:
-! E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
-! and J.M.Soler, 1996- .
-! 
-! Use of this software constitutes agreement with the full conditions
-! given in the SIESTA license, as signed by all legitimate users.
+! Copyright (C) 1996-2016       The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt.
+! See Docs/Contributors.txt for a list of contributors.
 !
 
       program fcbuild
@@ -27,36 +24,30 @@ c
 c **********************************************************************
 
       use fdf
-      implicit none
+      use units, only: Pi
+      use precision, only: dp
 
-      include 'vibra.h'
+      implicit none
 
 c Internal variables ...
 
-      logical overflow
-
-      character
-     .  filein*20, fileout*20
-
-      character
-     .  slabel*20, sname*150, slabel_defect*150, sname_defect*20
-
+      character(len=150) :: filein, fileout
+      character(len=150) :: slabel, sname
 
       integer 
-     .  i, i1, i2, iatom, imass(maxa), imasssc(maxasc), iunit, ix, j,
+     .  i, i1, i2, iatom, iunit, ix, j,
      .  lx, ly, lz, lxmax, lymax, lzmax, 
-     .  lx_defect, ly_defect, lz_defect,
-     .  na_defect, natoms, ncells, nnat
+     .  natoms, ncells, nnat, ndof
 
-      real*8 
-     .  dx, alat, alp, blp, clp, alplp, betlp, gamlp, pi, xxx
+      ! imass(maxa), imasssc(maxasc)
+      integer, allocatable :: imass(:), imasssc(:)
 
-      real*8
-     .  b(3,maxa), cell(3,3), r(3), scell(3,3), xa(3,maxasc), 
-     .  xmass(maxa)
+      real(dp) 
+     .  dx, alat, alp, blp, clp, alplp, betlp, gamlp, xxx
 
-      data pi / 3.1415926d0 /
-      data overflow /.false./
+      ! b(3,maxa), xa(3,maxasc), xmass(maxa)
+      real(dp), allocatable :: b(:,:), xa(:,:), xmass(:)
+      real(dp) :: cell(3,3), r(3), scell(3,3)
 
       logical :: has_constr
 
@@ -64,7 +55,6 @@ c Internal variables ...
       type(parsed_line), pointer :: pline
 
 c ...
-     
 
 C ****************** READ DATA FROM FDF FILE *********************
 
@@ -75,22 +65,19 @@ c Set up fdf ...
 c ...
 
 c Defile Name of the system ...
-      sname_defect = ' '
-      sname = fdf_string('SystemName',sname_defect)
+      sname = fdf_get('SystemName', " ")
       write(6,'(a,a)')
      . 'redata: System Name                      = ',sname
 c ...
 
 c Defile System Label (short name to label files) ...
-      slabel_defect  = 'vibra'
-      slabel = fdf_string('SystemLabel',slabel_defect)
+      slabel = fdf_get('SystemLabel', "vibra")
       write(6,'(a,a)')
      . 'redata: System Label                     = ',slabel
 c ...
 
 c Read Number of Atoms in Unit cell ...
-      na_defect = 0
-      natoms = fdf_integer('NumberOfAtoms',na_defect)
+      natoms = fdf_get('NumberOfAtoms', 0)
       if (natoms .le. 0) then
         write(6,'(a)') 
      . 'ERROR: Number of atoms must be larger than zero.'
@@ -100,12 +87,10 @@ c Read Number of Atoms in Unit cell ...
       endif
       write(6,'(a,i5)') 
      . 'Number of Atoms                  = ',natoms
-c     check if dimension of number of atomos is large enough
-      call chkdim('fcbuild', 'maxa', maxa, natoms, 1)
 c ...
 
 c Lattice constant of unit cell...
-      alat = fdf_physical('LatticeConstant',0.d0,'Bohr')
+      alat = fdf_get('LatticeConstant',0.d0,'Bohr')
       if (alat .eq. 0.d0) then
         write(6,'(a)') 
      . 'ERROR: No valid lattice constant specified.'
@@ -196,20 +181,10 @@ c Multiply cell vectors by by lattice constant ...
       enddo
 c ...
 
-c Read atomic coordinates and species of unit cell...
-      call recoor(overflow,cell,alat,b,imass,xmass,natoms)
-c ...
-
-c Define number of unit cells in the supercell ...
-      lx_defect = 0
-      ly_defect = 0
-      lz_defect = 0
-      lxmax = fdf_integer('SuperCell_1',lx_defect)
-      lymax = fdf_integer('SuperCell_2',ly_defect)
-      lzmax = fdf_integer('SuperCell_3',lz_defect)
-      call chkdim('fcbuild', 'maxx', maxx, lxmax, 1)
-      call chkdim('fcbuild', 'maxy', maxy, lymax, 1)
-      call chkdim('fcbuild', 'maxz', maxz, lzmax, 1)
+c     Define number of unit cells in the supercell ...
+      lxmax = fdf_get('SuperCell_1', 0)
+      lymax = fdf_get('SuperCell_2', 0)
+      lzmax = fdf_get('SuperCell_3', 0)
       ncells = (2*lxmax+1)*(2*lymax+1)*(2*lzmax+1)
       write(6,'(a,i5)') 'lxmax    = ',lxmax
       write(6,'(a,i5)') 'lymax    = ',lymax
@@ -217,8 +192,18 @@ c Define number of unit cells in the supercell ...
       write(6,'(a,i5)') 'Number of unit cells in Supercell  = ',ncells
 c ...
 
+!     Now we are ready for allocation of matrices
+      allocate(b(3,natoms), xmass(natoms))
+      allocate(xa(3,ncells*natoms))
+      allocate(imass(natoms),imasssc(ncells*natoms))
+
+c Read atomic coordinates and species of unit cell...
+      call recoor(cell,alat,b,imass,xmass,natoms)
+c ...
+
+
 c Read the atomic displacement for Force Constant calculation ...
-      dx = fdf_physical('AtomicDispl',0.04d0,'Bohr')
+      dx = fdf_get('AtomicDispl',0.04d0,'Bohr')
       write(6,'(a,f10.5,a)') 'Atomic displacements = ',dx,'  Bohr'
 c ...
 

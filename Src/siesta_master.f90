@@ -1,12 +1,9 @@
 ! 
-! This file is part of the SIESTA package.
-!
-! Copyright (c) Fundacion General Universidad Autonoma de Madrid:
-! E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
-! and J.M.Soler, 1996- .
-! 
-! Use of this software constitutes agreement with the full conditions
-! given in the SIESTA license, as signed by all legitimate users.
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt.
+! See Docs/Contributors.txt for a list of contributors.
 !-----------------------------------------------------------------------------
 !
 ! module siesta_master
@@ -96,8 +93,8 @@ MODULE siesta_master
 ! Used module parameters and procedures
   use precision, only: dp              ! Double precision real kind
   use sys,       only: die             ! Termination routine
+  use fdf,       only: fdf_get         ! Reading fdf-options
   use fdf,       only: fdf_convfac     ! Conversion of physical units
-  use m_fdf_global, only: fdf_global_get
 
   use iosockets, only: coordsFromSocket, forcesToSocket
   use iopipes,   only: coordsFromPipe  ! Read coordinates from pipe
@@ -175,7 +172,7 @@ subroutine coordsFromMaster( na, xa, cell )
       call die('coordsFromMaster: ERROR: number-of-atoms mismatch')
     endif
   else  
-    call fdf_global_get(iface, "Master.interface", "pipe")   
+    iface = fdf_get( "Master.interface",  "pipe")   
     if ( iface == "pipe") call coordsFromPipe( na, xa, cell )
     if ( iface == "socket") call coordsFromSocket (na, xa, cell )
   end if ! (siesta_subroutine)
@@ -202,7 +199,7 @@ subroutine forcesToMaster( na, Etot, fa, stress )
       call die('coordsFromMaster: ERROR: number-of-atoms mismatch')
     endif ! (na==nAtoms)
   else  
-    call fdf_global_get(iface, "Master.interface", "pipe")     
+    iface = fdf_get( "Master.interface",  "pipe")     
     if ( iface == "pipe") call forcesToPipe( na, Etot, fa, stress )
     if ( iface == "socket") call forcesToSocket( na, Etot, fa, stress )
   end if ! (siesta_subroutine)

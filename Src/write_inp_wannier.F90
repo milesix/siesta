@@ -1,3 +1,10 @@
+! ---
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt .
+! See Docs/Contributors.txt for a list of contributors.
+! ---
 
 subroutine writemmn( ispin )
 !
@@ -13,7 +20,7 @@ subroutine writemmn( ispin )
 ! Written by J. Junquera in July 2013, 
 ! based on a previous subroutine by R. Korytar
 ! 
-
+  use precision, only: dp
   use m_siesta2wannier90, only: seedname ! Seed for the name of the file 
                                          !   where the Wannier90
                                          !   code, when used as a postprocessing
@@ -98,7 +105,7 @@ subroutine writemmn( ispin )
 !      periodic part of the wavefunction with a neighbour k-point will be 
 !      computed
 !   nncount:     the number of neighbour k-points 
-  write( unit=mmnunit, fmt="(i5,x,i5,x,i2)", err=1984 )             &
+  write( unit=mmnunit, fmt="(i5,1x,i5,1x,i2)", err=1984 )             &
  &  numincbands(ispin),numkpoints,nncount
 
 ! Then, there are numkpoints x nncount blocks of data.
@@ -132,7 +139,7 @@ subroutine writemmn( ispin )
       do nband = 1,numincbands(ispin)
         do mband = 1,numincbands(ispin)
         write( unit=mmnunit, fmt="(f12.5,2x,f12.5)", err=1984 )     &
- &         real(  Mmnkb(mband,nband,ik,inn) ),                      &
+ &         real(  Mmnkb(mband,nband,ik,inn),dp ),                   &
  &         aimag( Mmnkb(mband,nband,ik,inn) )
         enddo  ! End loop on bands      (mband)
       enddo    ! End loop on bands      (nband)
@@ -174,7 +181,7 @@ subroutine writeamn( ispin )
 ! Written by J. Junquera in July 2013, 
 ! based on a previous subroutine by R. Korytar
 ! 
-
+  use precision, only: dp
   use m_siesta2wannier90, only: seedname ! Seed for the name of the file 
                                          !   where the Wannier90
                                          !   code, when used as a postprocessing
@@ -191,6 +198,8 @@ subroutine writeamn( ispin )
   use m_siesta2wannier90, only: Amnmat   ! Projections of a trial function
                                          !   with a Bloch orbital
                                          !   <\psi_{m k}|g_n>
+
+  integer, intent(in) :: ispin
 
 !
 ! Local variables
@@ -231,7 +240,7 @@ subroutine writeamn( ispin )
 !      periodic part of the wavefunction with a neighbour k-point will be 
 !      computed
 !   numproj:     the number of projections
-  write( unit=amnunit, fmt="(i5,x,i5,x,i2)", err=1992 )             &
+  write( unit=amnunit, fmt="(i5,1x,i5,1x,i2)", err=1992 )             &
  &  numincbands(ispin), numkpoints, numproj
 
 ! Subsequent numincbands x numproj x numkpoint lines:  
@@ -245,9 +254,9 @@ subroutine writeamn( ispin )
   do ik = 1, numkpoints
     do iproj = 1, numproj
       do mband = 1, numincbands(ispin)
-        write(unit=amnunit,fmt="(3i5,x,f12.5,2x,f12.5)",err=1992)      &
+        write(unit=amnunit,fmt="(3i5,1x,f12.5,2x,f12.5)",err=1992)      &
  &         mband, iproj, ik,                                           &
- &         real(Amnmat(mband,iproj,ik)),aimag(Amnmat(mband,iproj,ik))
+ &         real(Amnmat(mband,iproj,ik),dp),aimag(Amnmat(mband,iproj,ik))
       enddo
     enddo
   enddo
@@ -543,9 +552,9 @@ subroutine writeunk( ispin )
 !
 ! Variables related with the input/output
 !
-  character(len=11) :: unkfilename  ! Name of the file where the periodic
-                                    !   part of the wave functions at the
-                                    !   points of the grid will be saved
+  character(len=11) :: unkfilename ! Name of the file where the periodic
+                                   !   part of the wave functions at the
+                                   !   points of the grid will be saved
   integer      :: unkfileunit  ! Logical unit of the file
   integer      :: eof          ! Code error
 
@@ -611,7 +620,7 @@ kpoints:                 &
   
 !   Open the output file
     if( IOnode ) then
-      write(unkfilename,"('UNK',i5.5,'.',i1)"), ik, ispin
+      write(unkfilename,"('UNK',i5.5,'.',i1)") ik, ispin
       call io_assign(unkfileunit)
       if( .not. unk_format ) then
         open( unit=unkfileunit, err=1992, file=unkfilename,          &
@@ -654,7 +663,7 @@ BAND_LOOP:  do iband = 1, nincbands
          do iy = 1, unk_ny
             do ix = 1, unk_nx
                write(unkfileunit,'(2f12.5)') &
-                   real(buffer(iband,ix,iy,iz)), aimag(buffer(iband,ix,iy,iz))
+                   real(buffer(iband,ix,iy,iz),dp), aimag(buffer(iband,ix,iy,iz))
             enddo 
          enddo 
       enddo  
@@ -727,7 +736,7 @@ enddo  BAND_LOOP
             do iy = 1, unk_ny
               do ix = 1, unk_nx
                 write(unkfileunit,'(2f12.5)')   &
- &                real(buffer(iband,ix,iy,iz)), aimag(buffer(iband,ix,iy,iz))
+ &               real(buffer(iband,ix,iy,iz),dp), aimag(buffer(iband,ix,iy,iz))
               enddo ! Enddo in ix
             enddo ! Enddo in iy
           enddo ! Enddo in iz

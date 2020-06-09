@@ -1,12 +1,9 @@
 ! 
-! This file is part of the SIESTA package.
-!
-! Copyright (c) Fundacion General Universidad Autonoma de Madrid:
-! E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
-! and J.M.Soler, 1996- .
-! 
-! Use of this software constitutes agreement with the full conditions
-! given in the SIESTA license, as signed by all legitimate users.
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt.
+! See Docs/Contributors.txt for a list of contributors.
 !
 #ifndef CDF
       subroutine dummy_diagk_file()
@@ -18,7 +15,7 @@
      .                  listd, H, S, getD, getPSI, fixspin, qtot, qs, 
      .                  temp, e1, e2, xij, indxuo, nk, kpoint, wk,
      .                  eo, qo, Dnew, Enew, ef, efs, Entropy,
-     .                  Haux, Saux, psi, Dk, Ek, aux, nuotot, occtol,
+     .                  Haux, Saux, psi, Dk, Ek, nuotot, occtol,
      .                  iscf, n_eigenvectors )
 C *********************************************************************
 C Subroutine to calculate the eigenvalues and eigenvectors, density
@@ -82,7 +79,6 @@ C *************************** AUXILIARY *******************************
 C real*8 Haux(2,nuotot,nuo) : Auxiliary space for the hamiltonian matrix
 C real*8 Saux(2,nuotot,nuo) : Auxiliary space for the overlap matrix
 C real*8 psi(2,nuotot,nuo)  : Auxiliary space for the eigenvectors
-C real*8 aux(2,nuotot*5)    : Extra auxiliary space
 C real*8 Dk(2,nuotot,nuo)   : Aux. space that may be the same as Haux 
 C real*8 Ek(2,nuotot,nuo)   : Aux. space that may be the same as Saux 
 C *************************** UNITS ***********************************
@@ -131,7 +127,7 @@ C
      .                  xij(3,maxnh), qs(nspin)
       real(dp)          Dk(2,nuotot,nuo), Ek(2,nuotot,nuo),
      .                  Haux(2,nuotot,nuo), Saux(2,nuotot,nuo),
-     .                  psi(2,nuotot,nuo), aux(2,nuotot*5)
+     .                  psi(2,nuotot,nuo)
       logical           getD, getPSI, fixspin
       external          cdiag
 
@@ -151,6 +147,9 @@ C  Internal variables .............................................
 C  ....................
 
 C Find eigenvalues and eigenvectors
+#ifdef DEBUG
+      call write_debug( '    PRE diagk_file' )
+#endif
 
       ! Setup netCDF file
       !
@@ -164,7 +163,7 @@ C Find eigenvalues and eigenvectors
           call build_dense_HS(ik,ispin)
           ! Compute all eigenvectors for now
           call cdiag(Haux,Saux,nuotot,nuo,nuotot,eo(1,ispin,ik),psi,
-     .      nuotot,iscf,ierror)
+     .      nuotot,iscf,ierror, BlockSize)
 
           if (ierror.gt.0) then
             call die('Terminating due to failed diagonalisation')
@@ -174,7 +173,7 @@ C Find eigenvalues and eigenvectors
              call build_dense_HS(ik,ispin)
 
              call cdiag(Haux,Saux,nuotot,nuo,nuotot,eo(1,ispin,ik),psi,
-     .            nuotot,iscf,ierror)
+     .            nuotot,iscf,ierror, BlockSize)
           endif
           call timer( 'c-eigval', 2 )
 !
@@ -195,7 +194,7 @@ C Find new Fermi energy and occupation weights ........................
         call fermispin( nspin, nspin, nk, wk, maxo, nuotot, eo,
      .               temp, qs, qo, efs, Entropy )
       else
-        call fermid( nspin, maxspn, nk, wk, maxo, nuotot, eo, 
+        call fermid(nspin, maxspn, nk, wk, maxo, nuotot, eo,
      .             temp, qtot, qo, ef, Entropy )
       endif
 
@@ -314,6 +313,10 @@ C Global operation to form new density matrix
 
       deallocate(psi_block)
       call close_wfs_netcdf_file()
+
+#ifdef DEBUG
+      call write_debug( '    POS diagk_file' )
+#endif
 
       CONTAINS
 

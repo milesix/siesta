@@ -1,12 +1,9 @@
 ! 
-! This file is part of the SIESTA package.
-!
-! Copyright (c) Fundacion General Universidad Autonoma de Madrid:
-! E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
-! and J.M.Soler, 1996-2006.
-! 
-! Use of this software constitutes agreement with the full conditions
-! given in the SIESTA license, as signed by all legitimate users.
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt.
+! See Docs/Contributors.txt for a list of contributors.
 !
 
 #ifdef ASYNCHRONOUS_GRID_COMMS   /* Compile-time option */
@@ -30,7 +27,7 @@ C allocASynBuffer   = Allocate buffer for asynchronous
 C                     communications if necessary
 C 
       MODULE moreMeshSubs
-      use precision, only : grid_p, dp
+      use precision, only : grid_p, dp, i8b
       use parallel,  only : node, Nodes, ProcessorY
       use sys,       only : die
       use alloc,     only : re_alloc, de_alloc
@@ -192,7 +189,6 @@ C     Reset data if necessay
 
       distr => meshDistr(oDistr)
 C     Allocate memory for the current distribution
-      nullify( distr%box )
       call re_alloc( distr%box, 1, 2, 1, 3, 1, Nodes,
      &               'distr%box', moduName )
 
@@ -382,7 +378,7 @@ C OUTPUT:
 C integer nml(3)  : Local number of Mesh divisions in each cell vector
 C integer nmpl    : Local number of Mesh divisions
 C integer ntml(3) : Local number of Mesh points in each cell vector
-C integer nmpl    : Local number of Mesh points
+C integer ntpl    : Local number of Mesh points
 C
 C BEHAVIOR:
 C Fixes the new data limits and dimensions of the mesh to those of
@@ -1759,7 +1755,6 @@ C         Count the number of communications needed by the current process
 C         Store the ordered list of communications needed by the current
 C         process to send/receive the extencil.
           if (Lcom.gt.0) then
-            nullify( mcomm%src, mcomm%dst )
             call re_alloc( mcomm%src, 1, Lcom, 'mcomm%src',
      &                     'moreMeshSubs' )
             call re_alloc( mcomm%dst, 1, Lcom, 'mcomm%dst',
@@ -2641,16 +2636,16 @@ C ==================================================================
 C     Passed arguments
       integer,      intent(in)      :: Nodes, Node, nm(3), wload(*)
       type(meshDisType),intent(in)  :: iDistr
-      type(meshDisType),intent(out) :: oDistr
+      type(meshDisType),intent(inout) :: oDistr
 C     Local variables
       character(len=*), parameter :: myName = moduName//'splitwload '
       character(len=*), parameter :: errMsg = myName//'ERROR: '
       integer                     :: PP, Lbox(2,3), Ldim,
      &                               QQ, P1, P2, POS, ini
-      integer*8,          pointer :: lwload(:), gwload(:), recvB(:)
+      integer(i8b),          pointer :: lwload(:), gwload(:), recvB(:)
       logical                     :: found, inters
       integer                     :: mGdim, mLdim, nAxis, nms(3)
-      integer*8                   :: h1, h2
+      integer(i8b)                   :: h1, h2
       integer,            pointer :: PROCS(:)
       integer                     :: MPIerror, Status(MPI_Status_Size)
 !------------------------------------------------------------------------- BEGIN
@@ -2791,11 +2786,11 @@ C INPUT:
 C integer   iaxis         : Axe to be reduced
 C integer   Ibox(2,3)     : Limits of the input array
 C integer   Lbox(2,3)     : Limits of the intersection that we want to reduce
-C integer*8 wload         : 3-D array that we want to reduce to one of its
+C integer(i8b) wload         : 3-D array that we want to reduce to one of its
 C                           dimensions
 C
 C OUTPUT:
-C integer*8 lwload        : 1-D array. Reduction of the intersected part
+C integer(i8b) lwload        : 1-D array. Reduction of the intersected part
 C                           of wload.
 C
 C BEHAVIOR:
@@ -2812,7 +2807,7 @@ C ==================================================================
       implicit none
 C     Passed arguments
       integer,    intent(in) :: iaxis, Ibox(2,3), Lbox(2,3), wload(*)
-      integer*8, intent(out) :: lwload(*)
+      integer(i8b), intent(out) :: lwload(*)
 C     Local variables
       integer              :: Idim(3), Ldim(3), ind, ind1, ind2, ind3,
      &                        I1, I2, I3
@@ -2892,14 +2887,14 @@ C SUBROUTINE vecBisec( nval, values, nparts, pos, h1, h2 )
 C
 C INPUT:
 C integer   nval         : Dimension of the input array
-C integer*8 values       : Input array
+C integer(i8b) values       : Input array
 C integer   nparts       : Numbers of partitions that we want to make from
 C                          the input array (in this call we only make one cut).
 C
 C OUTPUT:
 C integer   pos          : Position of the cut
-C integer*8 h1           : Load of the first part
-C integer*8 h2           : Load of the second part
+C integer(i8b) h1           : Load of the first part
+C integer(i8b) h2           : Load of the second part
 C
 C BEHAVIOR:
 C We want to split array "values" in "nparts", but in this call to
@@ -2916,13 +2911,13 @@ C ==================================================================
       implicit none
 C     Input variables
       integer,    intent(in) :: nval, nparts
-      integer*8,  intent(in) :: values(nval)
+      integer(i8b),  intent(in) :: values(nval)
       integer,   intent(out) :: pos
-      integer*8, intent(out) :: h1, h2
+      integer(i8b), intent(out) :: h1, h2
 
 C     Local variables
       integer               :: p1, p2, ii
-      integer*8             :: total, halfG, halfL
+      integer(i8b)             :: total, halfG, halfL
 !------------------------------------------------------------------------- BEGIN
       if (nparts.gt.1) then
 C       Split the number of parts in 2
@@ -2982,7 +2977,7 @@ C ==================================================================
       implicit none
 C     Passed arguments
       type(meshDisType),   intent(in) :: distr1
-      type(meshDisType),  intent(out) :: distr2
+      type(meshDisType),  intent(inout) :: distr2
 C     Local variables
       integer                         :: P1, P2, P3, Lbox(2,3), II, I1,
      &                                   PermI
@@ -3100,7 +3095,7 @@ C ==================================================================
       implicit none
 C     Passed arguments
       type(meshDisType),   intent(in) :: distr1
-      type(meshDisType),  intent(out) :: distr2
+      type(meshDisType),  intent(inout) :: distr2
 C     Local variables
       integer                         :: P1, P2, I1, I2, J1, J2, J3,
      &                                   K1, K2, K3, NN, NB, NM, SI,
@@ -3238,7 +3233,7 @@ C ==================================================================
       implicit none
 C     Passed arguments
       type(meshDisType),   intent(in) :: distr1, distr2
-      type(meshCommType), intent(out) :: mcomm
+      type(meshCommType), intent(inout) :: mcomm
 
 C     Local variables
       integer                         :: P1, P2, ncom, Gcom, Lcom,
@@ -3291,7 +3286,6 @@ C     Count the number of communications of the current process
 
 C     Allocate memory to store data of the communications of the
 C     current process.
-      nullify( mcomm%src, mcomm%dst )
       call re_alloc( mcomm%src, 1, Lcom, 'mcomm%src', 'moreMeshSubs' )
       call re_alloc( mcomm%dst, 1, Lcom, 'mcomm%dst', 'moreMeshSubs' )
 

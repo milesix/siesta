@@ -1,6 +1,13 @@
+! ---
+! Copyright (C) 1996-2016       The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt .
+! See Docs/Contributors.txt for a list of contributors.
+! ---
 
       SUBROUTINE REINIT( MAXO, MAXA, MAXUO, MAXNH, MAXNA, NSPIN, IDIMEN,
-     .                   CHARGE, WAVES, STS )
+     .                   CHARGE, WAVES )
 
 C **********************************************************************
 C Read some variables from SIESTA in order to define
@@ -17,8 +24,7 @@ C **********************************************************************
 
       INTEGER, INTENT(OUT) ::
      .  MAXO, MAXA, MAXUO, NSPIN, MAXNH, MAXNA, IDIMEN
-      LOGICAL, INTENT(OUT) ::
-     .  CHARGE, WAVES, STS
+      LOGICAL, INTENT(OUT) ::  CHARGE, WAVES
 
 C **********************************************************************
 C INTEGER MAXO           : Maximum number of atomic orbitals in supercell
@@ -33,12 +39,9 @@ C                          Nspin = 1 => Non polarized. Nspin = 2 => Polarized
 C INTEGER IDIMEN         : Type of calculation: 2D or 3D
 C LOGICAL CHARGE         : Should charge density be computed?
 C LOGICAL WAVES          : Should wave functions be computed?
-C LOGICAL STS            : Should STS simulation be done?
 C **********************************************************************
 
 C Internal variables --------------------------------------------------
-
-      CHARACTER*33 PASTE
 
       CHARACTER*30 FNAME1
 
@@ -50,11 +53,11 @@ C Internal variables --------------------------------------------------
      .  UNIT1 
 
       EXTERNAL
-     .  IO_ASSIGN, IO_CLOSE, PASTE
+     .  IO_ASSIGN, IO_CLOSE
 
 C Assign the name of the output file -----------------------------------
       slabel = FDF_STRING('SystemLabel','siesta')
-      FNAME1 = trim(slabel) // '.DIM'
+      FNAME1 = TRIM(slabel)// '.DIM'
 
       TYPRUN_DEFECT = '2D'
       TYPRUN = FDF_STRING('Denchar.TypeOfRun',TYPRUN_DEFECT)
@@ -69,12 +72,10 @@ C Assign the name of the output file -----------------------------------
 
       CHARGE = FDF_BOOLEAN('Denchar.PlotCharge',.FALSE.)
       WAVES  = FDF_BOOLEAN('Denchar.PlotWaveFunctions',.FALSE.)
-      STS    = FDF_BOOLEAN('Denchar.PlotSTS',.FALSE.)
 
-
-      IF (.NOT. CHARGE .AND. .NOT. WAVES .AND. .NOT. STS) THEN
-        WRITE(6,*)'Denchar.PlotCharge, Denchar.PlotWaveFunctions'
-        WRITE(6,*)'and Denchar.PlotSTS are all .FALSE.'
+      IF (.NOT. CHARGE .AND. .NOT. WAVES) THEN
+        WRITE(6,*)'Denchar.PlotCharge and Denchar.PlotWaveFunctions'
+        WRITE(6,*)' are all .FALSE.'
         WRITE(6,*)'At least one of them should be .TRUE.'
         STOP
       ENDIF

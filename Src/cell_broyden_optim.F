@@ -1,12 +1,9 @@
 ! 
-! This file is part of the SIESTA package.
-!
-! Copyright (c) Fundacion General Universidad Autonoma de Madrid:
-! E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
-! and J.M.Soler, 1996- .
-! 
-! Use of this software constitutes agreement with the full conditions
-! given in the SIESTA license, as signed by all legitimate users.
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt.
+! See Docs/Contributors.txt for a list of contributors.
 !
       module m_cell_broyden_optim
 !
@@ -183,6 +180,8 @@ C Look for target stress and read it if found, otherwise generate it --------
             sxy = fdf_bvalues(pline,4)
             sxz = fdf_bvalues(pline,5)
             syz = fdf_bvalues(pline,6)
+            call fdf_bclose(bfdf)
+            
             target_stress(1,1) = - sxx * tp
             target_stress(2,2) = - syy * tp
             target_stress(3,3) = - szz * tp

@@ -1,12 +1,9 @@
 ! 
-! This file is part of the SIESTA package.
-!
-! Copyright (c) Fundacion General Universidad Autonoma de Madrid:
-! E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
-! and J.M.Soler, 1996- .
-! 
-! Use of this software constitutes agreement with the full conditions
-! given in the SIESTA license, as signed by all legitimate users.
+! Copyright (C) 1996-2016       The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt.
+! See Docs/Contributors.txt for a list of contributors.
 !
       SUBROUTINE PLSURF( ORIGIN, CELL, NMESH, NSPAN,
      .                   F, FVALUE, NCOLOR, COLOR,
@@ -85,7 +82,7 @@ C i.e. a total of 6*NN neighbour points is used to find the gradients
       INTEGER NN
       PARAMETER ( NN = 1 )
 
-C 	MAXCOL must be the same in routines solid, cube and pyramid
+C       MAXCOL must be the same in routines solid, cube and pyramid
       INTEGER MAXCOL
       PARAMETER ( MAXCOL = 10 )
 
@@ -257,7 +254,7 @@ C         Find COLOR and F and its gradient at this point
      .                 NT, XT, GT, TCOL )
 
       IMPLICIT NONE
-C 	    MAXCOL must be the same in routines solid, cube and pyramid
+C           MAXCOL must be the same in routines solid, cube and pyramid
       INTEGER     MAXCOL
       PARAMETER ( MAXCOL = 10 )
       INTEGER
@@ -309,7 +306,7 @@ C       Find the tringles covering the cut plane for this pyramid
       SUBROUTINE PYRAMID( F, X, G, VAL, NC, C, NT, XT, GT, CT )
       
       IMPLICIT NONE
-C 	    MAXCOL must be the same in routines solid, cube and pyramid
+C           MAXCOL must be the same in routines solid, cube and pyramid
       INTEGER     MAXCOL
       PARAMETER ( MAXCOL = 10 )
       INTEGER  

@@ -1,12 +1,9 @@
 ! 
-! This file is part of the SIESTA package.
-!
-! Copyright (c) Fundacion General Universidad Autonoma de Madrid:
-! E.Artacho, J.Gale, A.Garcia, J.Junquera, P.Ordejon, D.Sanchez-Portal
-! and J.M.Soler, 1996- .
-! 
-! Use of this software constitutes agreement with the full conditions
-! given in the SIESTA license, as signed by all legitimate users.
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt.
+! See Docs/Contributors.txt for a list of contributors.
 !
       module m_dynamics
 
@@ -19,7 +16,6 @@
       use m_mpi_utils, only : broadcast
       use files,       only : slabel
       use alloc,       only : re_alloc, de_alloc
-
       implicit none
 
 
@@ -2242,6 +2238,7 @@ C Instantaneous temperature (Kelvin)
 !       Save (now old) forces to VERLET_RESTART
 !
       if (Node .eq. 0) then
+
          call io_assign(iacc)
          open(unit=iacc,file=restart_file, form='formatted',
      $        status='unknown', action= 'write', position='rewind')

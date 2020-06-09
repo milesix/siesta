@@ -45,7 +45,7 @@ C
       use precision,   only : dp
       use sys,         only : die
       use parallel,    only : Node, IONode
-      use m_fdf_global, only: fdf_global_get
+      use fdf,         only : fdf_get
 
       use units, only: kBar, Ang, eV
       use m_broyddj_nocomm, only: broyden_t
@@ -101,13 +101,10 @@ c ---------------------------------------------------------
 
       if (.not. initialization_done) then
 
-         call fdf_global_get(maxit,"MD.Broyden.History.Steps",5)
-         call fdf_global_get(cycle_on_maxit,
-     $        "MD.Broyden.Cycle.On.Maxit",.true.)
-         call fdf_global_get(variable_weight,
-     $        "MD.Broyden.Variable.Weight",.false.)
-         call fdf_global_get(broyden_debug,
-     $        "MD.Broyden.Debug",.false.)
+         maxit = fdf_get("MD.Broyden.History.Steps",5)
+         cycle_on_maxit = fdf_get("MD.Broyden.Cycle.On.Maxit",.true.)
+         variable_weight = fdf_get("MD.Broyden.Variable.Weight",.false.)
+         broyden_debug = fdf_get("MD.Broyden.Debug",.false.)
 
          if (ionode) then
             write(6,*) 
@@ -168,8 +165,7 @@ c ---------------------------------------------------------
          max_force = maxval(abs(gfa))
          max_ucell = maxval(abs(cell))
 
-         call fdf_global_get(use_cart_ftol,
-     $        "MD.Genq.UseCartForceTol",.false.)
+         use_cart_ftol =  fdf_get("MD.Genq.UseCartForceTol",.false.)
 
          if (ionode) then
             if (use_cart_ftol) then
@@ -182,13 +178,12 @@ c ---------------------------------------------------------
             endif
          endif
 
-         call fdf_global_get(want_coord_change_criterion,
-     $        "MD.Genq.UseGenqChangeTol",.false.)
+         want_coord_change_criterion =
+     $         fdf_get("MD.Genq.UseGenqChangeTol",.false.)
 
          if (want_coord_change_criterion) then
 
-            call fdf_global_get(genq_tolerance,
-     $                       "MD.Genq.Tolerance",0.0001_dp)
+            genq_tolerance = fdf_get("MD.Genq.Tolerance",0.0001_dp)
 
             if (ionode) then
                print "(/,a,f10.6)",
@@ -228,8 +223,8 @@ c ---------------------------------------------------------
          endif
 
          jinv0_def = jinv0
-         call fdf_global_get(jinv0,
-     $        "MD.Broyden.Genq.Initial.Inverse.Jacobian",jinv0_def)
+         jinv0 = fdf_get("MD.Broyden.Genq.Initial.Inverse.Jacobian",
+     $                   jinv0_def)
          if (jinv0 /= jinv0_def) then
             print "(a,f12.6)",
      $           "Requested Initial Inverse J (Ry^-1): ", jinv0

@@ -1,3 +1,10 @@
+! ---
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt .
+! See Docs/Contributors.txt for a list of contributors.
+! ---
 !
       module m_target_stress
 !
@@ -66,6 +73,8 @@ C Look for target stress and read it if found, otherwise generate it --------
             sxy = fdf_bvalues(pline,4)
             sxz = fdf_bvalues(pline,5)
             syz = fdf_bvalues(pline,6)
+            call fdf_bclose(bfdf)
+            
             target_stress(1,1) = - sxx * tp
             target_stress(2,2) = - syy * tp
             target_stress(3,3) = - szz * tp
@@ -122,6 +131,7 @@ C Write target stress down --------------------------------------------------
       real(dp), intent(in)  :: stress_in(3,3)
       real(dp), intent(out) :: stress(3,3)
 
+      real(dp) :: trace
       integer :: i, j
 
       stress = stress_in

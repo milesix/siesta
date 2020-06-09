@@ -1,3 +1,10 @@
+! ---
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt .
+! See Docs/Contributors.txt for a list of contributors.
+! ---
 module m_svd
 public :: solve_with_svd
 CONTAINS
@@ -28,7 +35,7 @@ subroutine solve_with_svd(ain,rhs,c,info,rcond,rank_out,sigma)
   lda = n
   m = n
   allocate(a(n,n))
-  a = ain
+  a(:,:) = ain
   allocate(b(n),s(n))
 
   lwork = 3*n+nb*(n+m)
