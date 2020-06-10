@@ -1,0 +1,185 @@
+-------------------------------------------------------------------
+November 29, 2015  Alberto Garcia                 trunk-481--genq-2
+Sync with trunk-481
+
+481: Increase the number of allowed iterations in minvec
+480: Fix bug in heapsort routine
+
+modified:
+  Src/minvec.f
+  Src/sorting.f
+  Tests/Reference/si2x1h.out
+  Tests/Reference/var_cell.out
+
+-------------------------------------------------------------------
+November 29, 2015  Alberto Garcia                 trunk-479--genq-2
+Create files with generalized-coordinate information. Docs.
+
+The file GENQ.latest contains the latest values of the
+gen. coords. for which the electronic-structure has been
+computed. File GENQ.next contains the latest predicted values for the
+generalized coordinates. Note that both files will be identical if the
+calculation ends normally. If not, GENQ.next might be used to restart
+the calculation.
+
+Add some documentation on the generalized-coordinates feature to the manual, and
+made Src/obj_setup.sh more portable (avoiding the '-n' option to 'cp').
+
+modified:
+  Docs/siesta.tex
+  Src/genq_broyden_optim.F
+  Src/geom.inc.template
+  Src/obj_setup.sh
+
+-------------------------------------------------------------------
+October 22, 2015  Alberto Garcia                  trunk-479--genq-1
+Sync to trunk-479. Handle geom.inc.template
+
+Sync to trunk-479.
+
+Additionally, use a new mechanism for automatic compilation without
+the need to create a 'geom.inc' file. A 'geom.inc.template' file in
+Src is copied to the compilation directory as 'geom.inc' by the setup
+script. The file is compilable, but it contains a statement that will
+stop the program if generalized coordinates are used.
+
+-------------------------------------------------------------------
+March 3, 2014  Alberto Garcia                     trunk-456--genq-1
+Port generalized-coordinates code from 3.0-genq-ftol
+
+added:
+  Docs/Genq.CHANGES
+  Src/genq_broyden_optim.F
+  Src/m_genq.f90
+  Tests/h2o-genq/
+  Tests/h2o-genq-fixang/
+  Tests/h2o-genq-fixang/GENQ
+  Tests/h2o-genq-fixang/README
+  Tests/h2o-genq-fixang/h2o-fixang.geom
+  Tests/h2o-genq-fixang/h2o-genq-fixang.fdf
+  Tests/h2o-genq/GENQ
+  Tests/h2o-genq/README
+  Tests/h2o-genq/h2o-genq.fdf
+  Tests/h2o-genq/h2o.geom
+modified:
+  Src/Makefile
+  Src/coor.F
+  Src/siesta_move.F
+  version.info
+
+-------------------------------------------------------------------
+September 26, 2013  Alberto Garcia              3.1-pl9-genq-ftol-1
+Summary and documentation of recent changes
+
+* A more flexible setup for compilation.
+
+For each geometry to be studied, the user can prepare a "geom.inc"
+file which contains the fortran code to generate the atomic
+coordinates from the generalized coordinates. This file will be
+included automatically by the compiler at the time of compilation of
+Src/m_genq.f90.  It should be placed in the appropriate building
+directory, instead of Src. In that way, multiple geometries can be
+compiled from the same source. See examples of 'geom' files in
+Tests/h2o-genq and Tests/h2o-genq-fixang.
+
+* The tolerance for the generalized forces is now estimated using a
+more robust (but not completely foolproof) algorithm. For a given
+geometry, the tolerance for Force "i" is computed as the absolute
+value of the generalized force corresponding to cartesian atomic
+forces of size "ftol" and the same sign as the actual forces ("ftol"
+is the standard cartesian force tolerance). That is, it is assumed
+that the (possibly large) forces at this point will eventually be
+small enough to be at or below "ftol", but pointing basically in the
+same direction. This is an approximation, and the generalized
+tolerance computed in this way will vary as the relaxation
+progresses. Typically its magnitude will not change too much, except
+in pathological cases. Possible extensions to this idea include
+choosing an average of the tolerances (maybe avoiding configurations
+close to the minimum).
+
+* The fdf tolerance-setting options and their defaults are now:
+
+MD.Genq.UseCartForceTol   F
+
+If true, we request that the forces on *all* atoms are below
+ftol. This is not desirable in cases in which we are dealing with an
+artificially constrained geometry. See for example the h2o-genq-fixang
+test.
+
+MD.Genq.UseGenqChangeTol  F
+
+If true, monitor the change in the value of the generalized
+coordinates, and stop if it is below
+
+MD.Genq.Tolerance    1.e-4
+
+* A number of heuristics which are really only appropriate (if at all)
+to crystallographic applications are still used in the code. For example,
+the estimation of the maximum allowed change in the generalized coordinates
+in a relaxation step, or the size of the initial inverse Jacobian.
+A possibility is to generalize the format of the GENQ file and allow that
+information to be entered by the user.
+
+(**NOTE** Re-branching of genq)
+
+-------------------------------------------------------------------
+June 5, 2012  Alberto Garcia                    3.1-pl9-genq-4
+Re-coded m_genq for NbSe2 example
+
+modified:
+  Src/m_genq.f90
+
+---------------------------------------------------------------
+June 4, 2012  Alberto Garcia                    3.1-pl9-genq-3
+Some more bug fixes and new hooks for parameters.
+
+Some of the relaxation parameters are estimated by the program, and
+can be fine-tuned in the fdf file:
+
+For example, 
+
+MD.Broyden.Genq.Initial.Inverse.Jacobian 0.005
+
+will set by hand the value of J^(-1).
+
+The generalized-force tolerance is estimated by the program as
+ftol times the largest cell vector component.
+
+A new convergence option is based on a tolerance for change in 
+the generalized coordinates. It is 0.0001 by default, and can be
+set by
+
+MD.Genq.Tolerance  <value>
+
+modified:
+  Src/Makefile
+  Src/coor.F
+  Src/genq_broyden_optim.F
+  Src/m_genq.f90
+
+---------------------------------------------------------------
+June 3, 2012  Alberto Garcia                    3.1-pl9-genq-2
+Some bug fixes and new heuristics in progress.
+
+modified:
+  Src/Makefile
+  Src/coor.F
+  Src/genq_broyden_optim.F
+  Src/m_genq.f90
+
+---------------------------------------------------------------
+June 1, 2012  Alberto Garcia                    3.1-pl9-genq-1
+First prototype for generalized coordinates support
+
+Useful for crystallography.
+It needs recompilation and auxiliary GENQ file for each case.
+
+added:
+  Src/genq_broyden_optim.F
+  Src/m_genq.f90
+modified:
+  Src/Makefile
+  Src/coor.F
+  Src/siesta_move.F
+  Src/zmatrix.F
+

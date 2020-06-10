@@ -1,6 +1,10 @@
 # ChangeLog for Siesta
 
-## MaX release branch
+## MaX-Genq custom branch
+
+### Generalized coordinates
+
+* Merge 'classic' genq functionality from Nov 2015
 
 ### ELSI interface
 

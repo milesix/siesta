@@ -1,0 +1,26 @@
+SystemName          Water molecule
+SystemLabel         h2o
+NumberOfAtoms       3
+NumberOfSpecies     2
+
+WriteForces T
+UseGeneralizedCoordinates T
+LatticeConstant 10.0 Ang
+%block LatticeVectors
+1.0 0.0 0.0
+0.0 1.0 0.0
+0.0 0.0 1.0
+%endblock LatticeVectors
+
+MD.TypeOfRun CG
+MD.NumCGSteps 30
+
+MeshCutoff  200 Ry
+DM.Tolerance 1.0e-5
+DM.NumberPulay 4
+
+%block ChemicalSpeciesLabel
+ 1  8  O      # Species index, atomic number, species label
+ 2  1  H
+%endblock ChemicalSpeciesLabel
+

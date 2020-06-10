@@ -52,7 +52,6 @@ dep:
 
 #
 XC=$(GRIDXC_LIBS)
-
 NCPS_INCFLAGS=-I $(MAIN_OBJDIR)/ncps/src
 PSOP_INCFLAGS=-I $(MAIN_OBJDIR)/psoplib/src
 INCFLAGS:= $(NETCDF_INCFLAGS)  $(PSML_INCFLAGS) $(NCPS_INCFLAGS) \
@@ -181,13 +180,17 @@ OBJS =  automatic_cell.o atom_options.o \
         rusage.o memory_snapshot.o compute_ebs_shift.o memory_all.o \
 	matel_registry.o matel_params.o matel_ylm.o matel_table.o matel_mod.o register_rfs.o\
 	kpoint_convert.o \
-	m_target_stress.o compute_max_diff.o \
+	m_target_stress.o m_genq.o genq_broyden_optim.o compute_max_diff.o \
         m_spin_orbit_potentials.o \
 	m_initwf.o wavefunctions.o \
 	m_evolve.o cranknic_evolk.o cranknic_evolg.o sankey_change_basis.o m_iotddft.o \
 	m_matdiag.o m_matswinvers.o iotdxv.o  m_inversemm.o \
         semicore_info_froyen.o hamann.o
 
+# To find the 'geom.inc' include file here
+m_genq.o: INCFLAGS:= $(INCFLAGS) -I.
+m_genq.o: geom.inc
+#
 OBJS += kpoint_t.o kpoint_scf.o kpoint_dos.o kpoint_pdos.o kpoint_ldos.o
 
 OBJS += init_output.o
@@ -682,7 +685,8 @@ compute_pw_matrix.o: parallel.o precision.o siesta2wannier90.o
 compute_pw_matrix.o: sparse_matrices.o
 conjgr.o: precision.o
 conjgr_old.o: precision.o
-coor.o: alloc.o parallel.o precision.o siesta_geom.o sys.o units.o zmatrix.o
+coor.o: alloc.o m_genq.o parallel.o precision.o siesta_geom.o sys.o units.o
+coor.o: zmatrix.o
 coxmol.o: files.o periodic_table.o precision.o units.o
 cranknic_evolg.o: alloc.o atomlist.o m_energies.o m_eo.o m_inversemm.o
 cranknic_evolg.o: m_matswinvers.o m_spin.o m_steps.o parallel.o parallelsubs.o
@@ -783,6 +787,8 @@ fsiesta_mpi.o: siesta_forces.o siesta_init.o siesta_master.o siesta_move.o
 fsiesta_mpi.o: sys.o
 fsiesta_pipes.o: posix_calls.o
 fsiesta_sockets.o: fsockets.o posix_calls.o
+genq_broyden_optim.o: m_broyddj_nocomm.o m_genq.o parallel.o precision.o sys.o
+genq_broyden_optim.o: units.o
 geom_helper.o: intrinsic_missing.o
 get_kpoints_scale.o: parallel.o siesta_geom.o
 get_target_stress.o: parallel.o precision.o sys.o units.o
@@ -880,6 +886,7 @@ m_fire_para.o: m_mpi_utils.o parallel.o precision.o
 m_fixed.o: fdf_extra.o intrinsic_missing.o m_char.o m_region.o parallel.o
 m_fixed.o: precision.o
 m_forces.o: precision.o
+m_genq.o: m_mpi_utils.o parallel.o precision.o sys.o
 m_geom_box.o: intrinsic_missing.o m_geom_aux.o
 m_geom_coord.o: intrinsic_missing.o m_geom_aux.o parallel.o
 m_geom_objects.o: m_geom_aux.o m_geom_box.o m_geom_coord.o m_geom_plane.o
@@ -1346,12 +1353,13 @@ siesta_init.o: struct_init.o timer.o timestamp.o ts_init.o units.o writewave.o
 siesta_init.o: zmatrix.o
 siesta_master.o: iopipes.o iosockets.o precision.o sys.o
 siesta_move.o: atomlist.o broyden_optim.o cell_broyden_optim.o
-siesta_move.o: cell_fire_optim.o dynamics.o fire_optim.o flook_siesta.o ioxv.o
-siesta_move.o: m_check_walltime.o m_energies.o m_exp_coord.o m_forces.o
-siesta_move.o: m_kinetic.o m_mpi_utils.o m_steps.o m_stress.o m_target_stress.o
-siesta_move.o: parallel.o siesta_cml.o siesta_dicts.o siesta_geom.o
-siesta_move.o: siesta_master.o siesta_options.o sys.o units.o write_subs.o
-siesta_move.o: zm_broyden_optim.o zm_fire_optim.o zmatrix.o
+siesta_move.o: cell_fire_optim.o dynamics.o fire_optim.o flook_siesta.o
+siesta_move.o: genq_broyden_optim.o ioxv.o m_check_walltime.o m_energies.o
+siesta_move.o: m_exp_coord.o m_forces.o m_genq.o m_kinetic.o m_mpi_utils.o
+siesta_move.o: m_steps.o m_stress.o m_target_stress.o parallel.o siesta_cml.o
+siesta_move.o: siesta_dicts.o siesta_geom.o siesta_master.o siesta_options.o
+siesta_move.o: sys.o units.o write_subs.o zm_broyden_optim.o zm_fire_optim.o
+siesta_move.o: zmatrix.o
 siesta_tddft.o: alloc.o atomlist.o compute_energies.o final_H_f_stress.o
 siesta_tddft.o: kpoint_scf.o m_energies.o m_eo.o m_evolve.o m_initwf.o
 siesta_tddft.o: m_iotddft.o m_mpi_utils.o m_spin.o m_steps.o overfsm.o
@@ -1542,6 +1550,7 @@ m_find_kgrid.o: find_kgrid.o
 m_fire_optim.o: fire_optim.o
 m_fold_auxcell.o: fold_auxcell.o
 m_forhar.o: forhar.o
+m_genq_broyden_optim.o: genq_broyden_optim.o
 m_get_kpoints_scale.o: get_kpoints_scale.o
 m_gradient.o: gradient.o
 m_grdsam.o: grdsam.o

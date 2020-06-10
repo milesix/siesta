@@ -24,13 +24,16 @@ C integer na  : Number of atoms in unit cell
 !                     supercell used to deal with k-point sampling.
 
       use precision, only : dp
-      use sys, only: die
+      use sys, only: die, message
       use fdf
       use alloc
       use parallel,  only : Node
       use units, only: Ang
       use zmatrix
       use siesta_geom, only : xa, isa, cisa
+
+      use m_genq,      only : genq, geom_from_genq, read_genq
+
       implicit none
 
       integer,  intent(out) :: na
@@ -49,6 +52,8 @@ C Internal variables and arrays
       external          digcel, redcel, volcel
 
       logical               :: lOrigin
+
+      logical               :: use_generalized_coordinates
 
       type(block_fdf)            :: bfdf
       type(parsed_line), pointer :: pline
@@ -170,6 +175,9 @@ C Find origin with which to translate all coordinates
          origin = 0._dp
       endif
 
+      use_generalized_coordinates = fdf_boolean(
+     $               'UseGeneralizedCoordinates',.false.)
+
 C Set array dimensions
       nullify( isa, cisa, xa )
       call re_alloc( isa, 1, na, 'isa', 'coor' )
@@ -188,11 +196,53 @@ C Attempt to read a Z matrix
 C       Generate Cartesian coordinates from Z-matrix
         call Zmat_to_Cartesian(xa) 
 
+      else if (use_generalized_coordinates) then
+
+        cell = unit_cell
+        if (ncells > 1 ) call die("Cannot use SuperCell with Genq")
+
+         if (lOrigin) then
+            call die("Cannot specify origin shift with gen_coords")
+         endif
+         if (iscale /= 3) then
+            call message(' (info)',
+     $           "Coordinate scaling reset to fractional")
+            iscale = 3
+         endif
+
+         call read_genq(genq)
+
+         if (Node .eq. 0) then
+            !
+            print "(a,i0,a)", "Processed ", genq%nvars,
+     $                        " generalized coords:"
+            do i = 1, genq%nvars
+               print "(a,f10.6)", trim(genq%qname(i)), genq%q(i)
+            enddo
+         endif                  ! ionode
+
+         call geom_from_genq(genq%nvars,genq%q,xa,isa)
+         if (size(xa,dim=2) /= na) call die("na mismatch in genq")
+!
+         if (Node .eq. 0) then
+            print "(/,a)", "Fractional coordinates: "
+            do ia = 1, na
+               print "(i4,3f10.6)", isa(ia), xa(1:3,ia)
+            enddo
+         endif
+
+         ! Convert to cartesian coordinates
+         do ia = 1,na
+            xac(:) = xa(:,ia)
+            xa(:,ia) = matmul(unit_cell,xac(:))
+         enddo
+
       else
 
-C If Z matrix hasn't been found, read regular atomic coordinates
+        ! Read regular atomic coordinates
         if ( fdf_block('AtomicCoordinatesAndAtomicSpecies',bfdf) ) then
-          do ia= 1, nua
+
+           do ia= 1, nua
             if (.not. fdf_bline(bfdf,pline))
      .        call die('coor: ERROR in ' //
      .                 'AtomicCoordinatesAndAtomicSpecies block')

@@ -28,6 +28,10 @@
       use m_fire_optim, only: fire_optimizer
       use m_zm_broyden_optim,      only: zm_broyden_optimizer
       use m_zm_fire_optim,      only: zm_fire_optimizer
+
+      use m_genq,                    only: genq
+      use m_genq_broyden_optim,      only: genq_broyden_optimizer
+
       use m_cell_broyden_optim,      only: cell_broyden_optimizer
       use m_cell_fire_optim,      only: cell_fire_optimizer
 
@@ -169,6 +173,12 @@
      $               dxmax, tp, ftol, strtol, varcel,
      $               relaxd, usesavecg )
              endif
+           else if (genq%nvars /= 0) then
+              ! Generalized coordinates
+              call genq_broyden_optimizer( na_u, xa, cfa, ucell,
+     $               cstress, dxmax, tp, ftol, strtol,
+     $               varcel, relaxd)
+
            else
              if (broyden_optim) then
                 call broyden_optimizer( na_u, xa, cfa, ucell,

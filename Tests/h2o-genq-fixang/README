@@ -1,0 +1,32 @@
+Water molecule with one free generalized coordinate:
+
+doh: O-H distance
+
+and a second fixed coordinate:
+
+alpha: H-O-H angle in radians. Here fixed to 2 radians (which is larger than
+the equilibrium one, approx 1.83).
+
+File h2o-fixang.geom contains the code to generate the fractional coordinates
+from the generalizeed coordinates. Note that since it is a molecule,
+doh is 1/L times smaller than the real D(OH), where L is the lattice constant
+of the box (in this case 10 Ang).
+
+File h2o-fixang.geom should be linked to geom.inc in the build directory, to be
+included from m_genq.f90:
+
+mkdir Obj-h2o-fixang
+cd Obj-h2o-fixang
+
+(create arch.make ...)
+
+ln -sf h2o-fixang.geom geom.inc
+sh ../Src/obj_setup.sh
+make
+cd h2o-genq-fixang
+(get the pseudos)
+../../siesta < h2o-genq-fixang.fdf | tee OUT  
+
+There should be residual forces on the atoms, as the final geometry is the "best"
+given the fixed angle, but not an absolute minimum of the energy.
+
