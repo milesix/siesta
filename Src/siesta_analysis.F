@@ -55,6 +55,7 @@
       character(len=label_length+5) :: filevh
       character(len=label_length+5) :: filevt
       character(len=label_length+5) :: filrho
+      character(len=label_length+5) :: filevext
 
       real(dp)          :: dummy_str(3,3)
       real(dp)          :: dummy_strl(3,3)
@@ -323,10 +324,12 @@
         g2max = g2cut
         dummy_str  = 0.0
         dummy_strl = 0.0
-        call dhscf( nspin, no_s, iaorb, iphorb, no_l,
+        filevext = ' '
+        if (readvext.and.idyn.eq.8) filevext = paste( slabel, '.VEXT')
+        call dhscf( 1, nspin, no_s, iaorb, iphorb, no_l,
      .              no_u, na_u, na_s, isa, xa_last, indxua, 
      &              ntm, 0, 0, 0, filrho, fildrh, filevh, filevt,
-     &              filepsch, filetoch, 
+     &              filepsch, filetoch, filevext, 
      &              maxnh, numh, listhptr, listh, Dscf, Datm,
      &              maxnh, H, Enaatm, Enascf, Uatm, Uscf, DUscf, DUext,
      &              Exc, Dxc, dipol, dummy_str, fa, dummy_strl )

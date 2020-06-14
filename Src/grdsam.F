@@ -11,7 +11,7 @@
       module m_grdsam
       public :: grdsam
       CONTAINS
-      subroutine grdsam(nspin, norb, iaorb, iphorb, 
+      subroutine grdsam(iscf, nspin, norb, iaorb, iphorb, 
      &                  nuo, nuotot, nua, na, isa, xa, indxua,
      &                  cell, ntm, ifa, istr, maxnd,
      &                  maxnh, numh, listhptr, listh, Dscf, Datm, Hmat,
@@ -42,6 +42,7 @@ c   the grid (no new selfconsistency for each shift).
 c      
 c Written by E. Artacho. January 1998. 
 c *********************** INPUT TOWARDS DHSCF *******************************
+c integer iscf          : SCF Iteration cycle
 c integer nspin         : number of spins considered 
 c integer norb          : total number of basis orbitals
 c integer iaorb(norb)   : atom to which each orbital belongs
@@ -59,6 +60,8 @@ c integer maxnd         : first dimension of dscf
 c integer maxnh         : first dimension of listh, hmat
 c real*8  dscf(maxnd,nspin): scf DM elements
 c real*8  datm(norb)    : Harris DM diagonal elements
+c character(len=label_length+5) : Name of the file containing the external potential
+c character(len=label_length+5) : Name of the file containing total charge
 c **** DHSCF INPUT OR OUTPUT (DEPENDING ON WHETHER MESH IS CALCULATED)*******
 c integer ntm(3)        : number of mesh divisions of each cell vector
 c **** DHSCF INPUT OR OUTPUT (DEPENDING ON ARGUMENT ILH) ********************
@@ -92,13 +95,14 @@ C
       use sys,       only : die
       use m_dhscf,   only : dhscf, dhscf_init
       use alloc,     only : re_alloc, de_alloc
-      use siesta_options, only: g2cut
+      use siesta_options, only: g2cut, idyn, readvext, savetoch
       use siesta_geom,    only: mscell
+      use files,        only : slabel, label_length
 
       implicit          none
 
-      integer           maxnh, maxnd, na, norb, nspin, nuo, nuotot, 
-     &                  nua, iaorb(norb), ifa, indxua(na), 
+      integer           iscf, maxnh, maxnd, na, norb, nspin, nuo, 
+     &                  nuotot, nua, iaorb(norb), ifa, indxua(na), 
      &                  iphorb(norb), isa(na), istr, listh(maxnh),
      &                  listhptr(nuo), numh(nuo), ntm(3)
 
@@ -107,6 +111,10 @@ C
      &                  enaatm, enascf, exc, fa(3,nua),
      &                  Hmat(maxnh,nspin), stress(3,3),
      &                  uatm, uscf, xa(3,na), fal(3,nua), stressl(3,3)
+
+      character(len=label_length+5) :: filevext
+      character(len=label_length+5) :: filetoch
+      character(len=label_length+5), external :: paste
 
 C Internal variables and arrays
  
@@ -201,12 +209,15 @@ c if sampling, store the forces and stresses prior to dhscf -----------------
         endif
       endif
 
-
+      filetoch = ' '
+      if (readvext.and.idyn.eq.8) filevext = paste( slabel, '.VEXT'  )
+      filetoch = ' '
+      if (savetoch.and.idyn.eq.8) filetoch = paste( slabel, '.TOCH'  )
 c first (normal) call to DHSCF, ihmat=1 --------------------------------------
-      call dhscf( nspin, norb, iaorb, iphorb, nuo, nuotot, nua,
+      call dhscf( iscf, nspin, norb, iaorb, iphorb, nuo, nuotot, nua,
      &            na, isa, xa, indxua, ntm,
-     &            ifa, istr, 1, ' ', ' ', ' ', ' ', ' ', ' ',
-     &            maxnd, numh, listhptr, listh, Dscf, Datm,
+     &            ifa, istr, 1, ' ', ' ', ' ', ' ', ' ', filetoch,
+     &            filevext, maxnd, numh, listhptr, listh, Dscf, Datm,
      &            maxnh, Hmat, Enaatm, Enascf, Uatm, Uscf, DUscf, DUext,
      &            Exc, Dxc, dipol, stress, fal, stressl)
 
@@ -291,12 +302,17 @@ c loop sampling on displacements making averages ----------------------------
      &                      maxnd, numh, listhptr, listh, datm,
      &                      Fal, stressl)
 
-          call dhscf( nspin, norb, iaorb, iphorb, nuo, nuotot, nua,
-     &                na, isa, xanew, indxua, ntm,
-     &                ifa, istr, 0, ' ', ' ', ' ', ' ', ' ', ' ',
-     &                maxnd, numh, listhptr, listh, Dscf, Datm,
-     &                maxnh, Hmat, Enaatm, Enascf, Uatm, Uscf, DUscf,
-     &                DUext, Exc, Dxc, dipol, stress, fal, stressl)
+      filetoch = ' '
+      if (readvext.and.idyn.eq.8) filevext = paste( slabel, '.VEXT'  )
+      filetoch = ' '
+      if (savetoch.and.idyn.eq.8) filetoch = paste( slabel, '.TOCH'  )
+          call dhscf( iscf, nspin, norb, iaorb, iphorb, nuo, nuotot, 
+     &                nua, na, isa, xanew, indxua, ntm,
+     &                ifa, istr, 0, ' ', ' ', ' ', ' ', ' ', filetoch,
+     &                filevext, maxnd, numh, listhptr, listh, Dscf, 
+     &                Datm, maxnh, Hmat, Enaatm, Enascf, Uatm, Uscf, 
+     &                DUscf, DUext, Exc, Dxc, dipol, stress, fal, 
+     &                stressl)
 
           avfa(1:3,1:nua) = avfa(1:3,1:nua) + fa(1:3,1:nua)
           avfa2(1:3,1:nua) = avfa2(1:3,1:nua) + fal(1:3,1:nua)

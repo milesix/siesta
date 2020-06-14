@@ -1,0 +1,159 @@
+----------------------------------------------------
+July 12 2012  Alberto Garcia  siesta-trunk-411-qmmm-4
+Update QMMM driver in Util. Add Tests
+
+Some changes for over a year, including:
+
+-- Creation of a "standalone" fdf library to make the driver
+   interoperable with both siesta-3.0 and siesta-trunk (this is not
+   completely optimal).
+
+-- Addition of an option to turn on van der Waals interactions between
+   the classical and quantum parts.
+
+-- Remove some redundant code.
+
+Added Tests directory (same as in qmmm-3.0)
+
+removed:
+  Util/QMMM/siesta-qmmm.make
+added:
+  Util/QMMM/Tests/
+  Util/QMMM/Tests/Di-benzene/
+  Util/QMMM/Tests/Di-benzene/C.psf
+  Util/QMMM/Tests/Di-benzene/H.psf
+  Util/QMMM/Tests/Di-benzene/MM.psf
+  Util/QMMM/Tests/Di-benzene/SampleOutputs/
+  Util/QMMM/Tests/Di-benzene/SampleOutputs/di-benzene.ene
+  Util/QMMM/Tests/Di-benzene/SampleOutputs/di-benzene.init.pdb
+  Util/QMMM/Tests/Di-benzene/SampleOutputs/di-benzene.last.pdb
+  Util/QMMM/Tests/Di-benzene/SampleOutputs/di-benzene.mdcrd
+  Util/QMMM/Tests/Di-benzene/SampleOutputs/di-benzene.out
+  Util/QMMM/Tests/Di-benzene/SampleOutputs/di-benzene.siesta.out
+  Util/QMMM/Tests/Di-benzene/amber.parm
+  Util/QMMM/Tests/Di-benzene/di-benzene.fdf
+  Util/QMMM/Tests/Water/
+  Util/QMMM/Tests/Water/216-H20.fdf
+  Util/QMMM/Tests/Water/C.psf
+  Util/QMMM/Tests/Water/H-pbe.psf
+  Util/QMMM/Tests/Water/MM.psf
+  Util/QMMM/Tests/Water/O-pbe-pcec.psf
+  Util/QMMM/Tests/Water/SampleOutputs/
+  Util/QMMM/Tests/Water/SampleOutputs/216-H20.ene
+  Util/QMMM/Tests/Water/SampleOutputs/216-H20.init.pdb
+  Util/QMMM/Tests/Water/SampleOutputs/216-H20.last.pdb
+  Util/QMMM/Tests/Water/SampleOutputs/216-H20.mdcrd
+  Util/QMMM/Tests/Water/SampleOutputs/216-H20.out
+  Util/QMMM/Tests/Water/SampleOutputs/216-H20.siesta.out
+  Util/QMMM/Tests/Water/amber.parm
+renamed:
+  Util/QMMM/linkatoms.f90 => Util/QMMM/linkatoms.F90
+  Util/QMMM/readall.f => Util/QMMM/readall.F
+  Util/QMMM/writeall.f => Util/QMMM/writeall.F
+modified:
+  Util/QMMM/Makefile
+  Util/QMMM/compinfo.F90
+  Util/QMMM/fsiesta.F90
+  Util/QMMM/ljef.f
+  Util/QMMM/m_qmmm_fdf.f90
+  Util/QMMM/pcpot.f
+  Util/QMMM/qmmm_mneighb.f
+  Util/QMMM/qmmm_reinit.F
+  Util/QMMM/siesta_qmmm.F
+  Util/QMMM/siesta_qmmm_options.F90
+  Util/QMMM/solv_ene_fce.f
+  Util/QMMM/linkatoms.F90
+  Util/QMMM/readall.F
+  Util/QMMM/writeall.F
+
+----------------------------------------------------
+July 12 2012  Alberto Garcia  siesta-trunk-411-qmmm-3
+Update some siesta routines -- various issues
+
+A change which might need to be re-considered is
+to add a new argument "iscf" to dhscf. This forces
+changes in a number of other routines which are 
+not directly related to any QMMM functionality.
+
+Other: new diagnostics printing in iopipes.
+
+modified:
+  Src/dhscf.F
+  Src/final_H_f_stress.F
+  Src/grdsam.F
+  Src/iopipes.F90
+  Src/local_DOS.F
+  Src/reinit.F
+  Src/setup_hamiltonian.F
+  Src/siesta_analysis.F
+
+
+----------------------------------------------------
+July 12 2012  Alberto Garcia  siesta-trunk-411-qmmm-2
+Sync to trunk-411
+
+----------------------------------------------------
+June 11 2012  Alberto Garcia  siesta-trunk-409-qmmm-2
+Sync to trunk-409
+
+----------------------------------------------------
+Import of QMMM code from Carlos Sanz (trunk version)
+
+A new directory Util/QMMM holds the driver program. It needs
+some subroutines from Siesta, which are taken from a library
+for convenience.
+
+Some issues remain (compilation from within Util, and the 
+correct form of the calls to fdf_block), and the code has
+not been tested.
+
+(Import by A. Garcia)
+
+added:
+  Util/QMMM/
+  Util/QMMM/Makefile
+  Util/QMMM/assignation.f
+  Util/QMMM/centerall.f
+  Util/QMMM/compinfo.F90
+  Util/QMMM/dgesv.f
+  Util/QMMM/elecfield.f
+  Util/QMMM/ewald_coeff.f
+  Util/QMMM/fsiesta.F90
+  Util/QMMM/functions.f
+  Util/QMMM/graphite.f90
+  Util/QMMM/ioxvconstr.f
+  Util/QMMM/linkatoms.f90
+  Util/QMMM/ljef.f
+  Util/QMMM/m_fill_auxrho.f90
+  Util/QMMM/m_qmmm_fdf.f90
+  Util/QMMM/mmforce.f
+  Util/QMMM/pbc.f90
+  Util/QMMM/pcpot.f
+  Util/QMMM/qmmm_fixed.F
+  Util/QMMM/qmmm_ioxv.f
+  Util/QMMM/qmmm_lst_blk.f
+  Util/QMMM/qmmm_mneighb.f
+  Util/QMMM/qmmm_mulliken.f
+  Util/QMMM/qmmm_reinit.F
+  Util/QMMM/qmmm_timer.f
+  Util/QMMM/readall.f
+  Util/QMMM/siesta-qmmm.make
+  Util/QMMM/siesta_qmmm.F
+  Util/QMMM/siesta_qmmm_options.F90
+  Util/QMMM/solv_assign.f
+  Util/QMMM/solv_ene_fce.f
+  Util/QMMM/subconstr.f
+  Util/QMMM/subfree.f
+  Util/QMMM/version.F90
+  Util/QMMM/writeall.f
+modified:
+  Src/dhscf.F
+  Src/grdsam.F
+  Src/iopipes.F90
+  Src/local_DOS.F
+  Src/meshsubs.F
+  Src/setup_hamiltonian.F
+  Src/siesta_analysis.F
+  Src/siesta_move.F
+  Src/siesta_options.F90
+  Src/struct_init.F

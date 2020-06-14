@@ -1,0 +1,3319 @@
+Siesta Version:                                        siesta-3.1-pl11-qmmm-4
+Architecture  : gfortran-nolibs
+Compiler flags: gfortran -O2
+SERIAL version
+
+* Running in serial mode
+>> Start of run:  11-JUL-2012  18:02:41
+
+                           ***********************       
+                           *  WELCOME TO SIESTA  *       
+                           ***********************       
+
+reinit: Reading from standard input
+************************** Dump of input data file ****************************
+SystemName  di-benzene.siesta
+SystemLabel  di-benzene.siesta
+NumberOfAtoms        12
+NumberOfSpecies  2
+NetCharge 0.0
+WriteForces T
+FreeEnergy F
+Deuterium T
+LaunchSiesta  .true.
+%block ChemicalSpeciesLabel
+ 1   1  H
+ 2   6  C
+%endblock ChemicalSpeciesLabel
+AtomicCoordinatesFormat  Ang
+%block AtomicCoordinatesAndAtomicSpecies
+   13.668   0.203   4.416   2
+    0.022   0.885   4.416   2
+    1.241   0.174   4.416   2
+   13.686  14.361   4.416   2
+    0.031  13.655   4.416   2
+    1.297  14.313   4.416   2
+   12.711   0.759   4.416   1
+   12.736  13.792   4.416   1
+   14.805  12.555   4.416   1
+    0.045   1.992   4.416   1
+    2.146   0.809   4.416   1
+    2.261  13.752   4.416   1
+%endblock AtomicCoordinatesAndAtomicSpecies
+###############
+FUNCTIONAL, ACCURACY OPTIONS, DM
+###############
+Reparametrize.Pseudos T       # Options for more accuracy
+Restricted.Radial.Grid F
+XC.functional    GGA
+XC.authors       PBE
+%block k_grid_Monkhorst_Pack
+ 1    0    0    0.0
+ 0    1    0    0.0
+ 0    0    1    0.0
+%endblock k_grid_Monkhorst_Pack
+MeshCutoff  150 Ry
+MaxSCFIterations    300
+DM.MixingWeight      0.15
+DM.NumberPulay        6
+DM.Tolerance         1.d-4
+#######################################################
+#BASIS
+#Basis.Pressure 0.02 GPa         #As optimized by Sandra gold bulk
+########################################################
+%block PAO.Basis
+C     3    0.148562964088764
+n=2    0    2  E 142.816913340950  5.27262396698
+5.27297075794860   3.13526890316
+1.000   1.000
+n=2    1    2  E 30.4087132087332  6.11126598525
+6.26715429700359   2.89774739392
+1.000   1.000
+n=3    2    1  E  104.877173547120 0.7942267206
+4.14285791028630
+1.000
+%endblock PAO.Basis
+Diag.DivideAndConquer .false.
+SolutionMethod diagon
+# Output variables
+####################################################
+UseSaveData .true.
+DM.UseSaveDM         T
+MD.UseSaveXV         T
+MD.UseSaveCG         T
+LongOutput           T
+WriteCoordinates     10
+MD.TypeOfRun forces
+MD.NumCGsteps  12
+MD.VariableCell       F
+MD.MaxForceTol        0.01 eV/Ang
+#MD.FinalTimeStep     5000
+#MD.LengthTimeStep    0.01 fs
+#MD.TargetTemperature 300.0 K
+#MD.InitialTemperature 300.0 K
+#MD.TauRelax          10.0 fs
+#MD.UseSaveXV .true.
+#UseSaveDM .true.
+# Output variables
+####################################################
+WriteCoorStep .true.
+WriteMDHistory T
+WriteCoorXmol                 .true.
+#Writebands .true.
+WriteDenchar .true.
+WriteXML .false.
+************************** End of input data file *****************************
+
+reinit: -----------------------------------------------------------------------
+reinit: System Name: di-benzene.siesta
+reinit: -----------------------------------------------------------------------
+reinit: System Label: di-benzene.siesta                                           
+reinit: -----------------------------------------------------------------------
+
+initatom: Reading input for the pseudopotentials and atomic orbitals ----------
+ Species number:            1  Label: H Atomic number:           1
+ Species number:            2  Label: C Atomic number:           6
+Ground state valence configuration:   1s01
+Reading pseudopotential information in formatted form from H.psf
+
+Valence configuration for pseudopotential generation:
+1s( 1.00) rc: 1.33
+2p( 0.00) rc: 1.33
+3d( 0.00) rc: 0.37
+4f( 0.00) rc: 1.33
+ Reparametrization. rmax:    121.50793876660001     
+ Reparametrization. New nrval:         9406
+Writing pseudopotential information in formatted form to H.Reparam.psf
+Ground state valence configuration:   2s02  2p02
+Reading pseudopotential information in formatted form from C.psf
+
+Valence configuration for pseudopotential generation:
+2s( 2.00) rc: 1.25
+2p( 2.00) rc: 1.25
+3d( 0.00) rc: 1.25
+4f( 0.00) rc: 1.25
+ Reparametrization. rmax:    119.49052426700000     
+ Reparametrization. New nrval:         9389
+Writing pseudopotential information in formatted form to C.Reparam.psf
+For H, standard SIESTA heuristics set lmxkb to 2
+ (one more than the basis l, including polarization orbitals).
+Use PS.lmax or PS.KBprojectors blocks to override.
+For C, standard SIESTA heuristics set lmxkb to 3
+ (one more than the basis l, including polarization orbitals).
+Use PS.lmax or PS.KBprojectors blocks to override.
+
+<basis_specs>
+===============================================================================
+H                    Z=   1    Mass=  1.0100        Charge= 0.17977+309
+Lmxo=0 Lmxkb= 2    BasisType=split      Semic=F
+L=0  Nsemic=0  Cnfigmx=1
+          n=1  nzeta=2  polorb=1
+            splnorm:   0.15000    
+               vcte:    0.0000    
+               rinn:    0.0000    
+                rcs:    0.0000      0.0000    
+            lambdas:    1.0000      1.0000    
+-------------------------------------------------------------------------------
+L=0  Nkbl=1  erefs: 0.17977+309
+L=1  Nkbl=1  erefs: 0.17977+309
+L=2  Nkbl=1  erefs: 0.17977+309
+===============================================================================
+</basis_specs>
+
+atom: Called for H                     (Z =   1)
+Maximum radius (at nrval) set to   50.00000 8518
+
+read_vps: Pseudopotential generation method:
+read_vps: ATM 3.2.2 Troullier-Martins                       
+Total valence charge:    1.00000
+
+xc_check: Exchange-correlation functional:
+xc_check: GGA Perdew, Burke & Ernzerhof 1996
+V l=0 = -2*Zval/r beyond r=  1.2674
+V l=1 = -2*Zval/r beyond r=  1.2598
+V l=2 = -2*Zval/r beyond r=  0.3683
+All V_l potentials equal beyond r=  1.2661
+This should be close to max(r_c) in ps generation
+All pots = -2*Zval/r beyond r=  1.2674
+
+VLOCAL1: 99.0% of the norm of Vloc inside     27.078 Ry
+VLOCAL1: 99.9% of the norm of Vloc inside     61.711 Ry
+atom: Maximum radius for 4*pi*r*r*local-pseudopot. charge    1.47859
+atom: Maximum radius for r*vlocal+2*Zval:    1.25091
+GHOST: No ghost state for L =  0
+GHOST: No ghost state for L =  1
+GHOST: No ghost state for L =  2
+
+KBgen: Kleinman-Bylander projectors: 
+   l= 0   rc=  1.391902   el= -0.477209   Ekb= -2.002600   kbcos= -0.352268
+   l= 1   rc=  1.463779   el=  0.007205   Ekb= -0.423828   kbcos= -0.025349
+   l= 2   rc=  1.487549   el=  0.012917   Ekb= -0.481989   kbcos= -0.001678
+
+KBgen: Total number of  Kleinman-Bylander projectors:    9
+atom: -------------------------------------------------------------------------
+
+atom: SANKEY-TYPE ORBITALS:
+atom: Selected multiple-zeta basis: split     
+
+SPLIT: Orbitals with angular momentum L= 0
+
+SPLIT: Basis orbitals for state 1s
+
+SPLIT: PAO cut-off radius determined from an
+SPLIT: energy shift=  0.020000 Ry
+
+   izeta = 1
+                 lambda =    1.000000
+                     rc =    4.686558
+                 energy =   -0.457186
+                kinetic =    0.982147
+    potential(screened) =   -1.439333
+       potential(ionic) =   -1.967846
+
+   izeta = 2
+                 rmatch =    3.766621
+              splitnorm =    0.150000
+                 energy =   -0.340022
+                kinetic =    1.579108
+    potential(screened) =   -1.919130
+       potential(ionic) =   -2.469396
+
+POLgen: Perturbative polarization orbital with L=  1
+
+POLgen: Polarization orbital for state 1s
+
+   izeta = 1
+                     rc =    4.686558
+                 energy =    0.766797
+                kinetic =    1.478628
+    potential(screened) =   -0.711831
+       potential(ionic) =   -1.204525
+atom: Total number of Sankey-type orbitals:  5
+
+atm_pop: Valence configuration (for local Pseudopot. screening):
+ 1s( 1.00)                                                            
+Vna: chval, zval:    1.00000   1.00000
+
+Vna:  Cut-off radius for the neutral-atom potential:   4.686558
+
+atom: _________________________________________________________________________
+
+<basis_specs>
+===============================================================================
+C                    Z=   6    Mass=  12.010        Charge= 0.14856    
+Lmxo=2 Lmxkb= 3    BasisType=split      Semic=F
+L=0  Nsemic=0  Cnfigmx=2
+          n=1  nzeta=2  polorb=0
+            splnorm:   0.15000    
+               vcte:    142.82    
+               rinn:    5.2726    
+                rcs:    5.2730      3.1353    
+            lambdas:    1.0000      1.0000    
+L=1  Nsemic=0  Cnfigmx=2
+          n=1  nzeta=2  polorb=0
+            splnorm:   0.15000    
+               vcte:    30.409    
+               rinn:    6.1113    
+                rcs:    6.2672      2.8977    
+            lambdas:    1.0000      1.0000    
+L=2  Nsemic=0  Cnfigmx=3
+          n=1  nzeta=1  polorb=0
+            splnorm:   0.15000    
+               vcte:    104.88    
+               rinn:   0.79423    
+                rcs:    4.1429    
+            lambdas:    1.0000    
+-------------------------------------------------------------------------------
+L=0  Nkbl=1  erefs: 0.17977+309
+L=1  Nkbl=1  erefs: 0.17977+309
+L=2  Nkbl=1  erefs: 0.17977+309
+L=3  Nkbl=1  erefs: 0.17977+309
+===============================================================================
+</basis_specs>
+
+atom: Called for C                     (Z =   6)
+Maximum radius (at nrval) set to   50.00000 8518
+
+read_vps: Pseudopotential generation method:
+read_vps: ATM 3.2.2 Troullier-Martins                       
+Total valence charge:    4.00000
+
+read_vps: Pseudopotential includes a core correction:
+read_vps: Pseudo-core for xc-correction
+
+xc_check: Exchange-correlation functional:
+xc_check: GGA Perdew, Burke & Ernzerhof 1996
+V l=0 = -2*Zval/r beyond r=  1.3024
+V l=1 = -2*Zval/r beyond r=  1.3063
+V l=2 = -2*Zval/r beyond r=  1.3024
+V l=3 = -2*Zval/r beyond r=  1.3024
+All V_l potentials equal beyond r=  1.2384
+This should be close to max(r_c) in ps generation
+All pots = -2*Zval/r beyond r=  1.3063
+
+VLOCAL1: 99.0% of the norm of Vloc inside     28.306 Ry
+VLOCAL1: 99.9% of the norm of Vloc inside     64.509 Ry
+atom: Maximum radius for 4*pi*r*r*local-pseudopot. charge    1.48456
+atom: Maximum radius for r*vlocal+2*Zval:    1.27895
+GHOST: No ghost state for L =  0
+GHOST: No ghost state for L =  1
+GHOST: No ghost state for L =  2
+GHOST: No ghost state for L =  3
+
+KBgen: Kleinman-Bylander projectors: 
+   l= 0   rc=  1.390501   el= -1.009803   Ekb=  7.915562   kbcos=  0.280899
+   l= 1   rc=  1.401750   el= -0.388706   Ekb= -4.693774   kbcos= -0.279871
+   l= 2   rc=  1.620407   el=  0.012891   Ekb= -1.220702   kbcos= -0.005503
+   l= 3   rc=  1.743879   el=  0.019186   Ekb= -0.471689   kbcos= -0.000587
+
+KBgen: Total number of  Kleinman-Bylander projectors:   16
+atom: -------------------------------------------------------------------------
+
+atom: SANKEY-TYPE ORBITALS:
+atom: Selected multiple-zeta basis: split     
+
+atom: basis set generated (by rescaling the valence charge)
+atom: for a cation of charge   0.1486
+
+SPLIT: Orbitals with angular momentum L= 0
+
+SPLIT: Basis orbitals for state 2s
+
+   izeta = 1
+                 lambda =    1.000000
+                     rc =    5.274774
+                 energy =   -1.165072
+                kinetic =    0.895747
+    potential(screened) =   -2.060819
+       potential(ionic) =   -5.472876
+
+   izeta = 2
+                 rmatch =    3.135050
+              splitnorm =    0.218715
+                 energy =   -0.934538
+                kinetic =    1.587275
+    potential(screened) =   -2.521813
+       potential(ionic) =   -6.213509
+
+SPLIT: Orbitals with angular momentum L= 1
+
+SPLIT: Basis orbitals for state 2p
+
+   izeta = 1
+                 lambda =    1.000000
+                     rc =    6.266609
+                 energy =   -0.536687
+                kinetic =    2.557987
+    potential(screened) =   -3.094674
+       potential(ionic) =   -6.407747
+
+   izeta = 2
+                 rmatch =    2.899059
+              splitnorm =    0.283197
+                 energy =   -0.185938
+                kinetic =    4.794168
+    potential(screened) =   -4.980106
+       potential(ionic) =   -8.806707
+
+SPLIT: Orbitals with angular momentum L= 2
+
+SPLIT: Basis orbitals for state 3d
+
+   izeta = 1
+                 lambda =    1.000000
+                     rc =    4.142995
+                 energy =    2.793047
+                kinetic =    5.287329
+    potential(screened) =   -2.494282
+       potential(ionic) =   -5.941504
+atom: Total number of Sankey-type orbitals: 13
+
+atm_pop: Valence configuration (for local Pseudopot. screening):
+ 2s( 2.00)                                                            
+ 2p( 2.00)                                                            
+ 3d( 0.00)                                                            
+Vna: chval, zval:    4.00000   4.00000
+
+Vna:  Cut-off radius for the neutral-atom potential:   6.266609
+comcore: Pseudo-core radius Rcore=  1.772167
+
+atom: _________________________________________________________________________
+
+prinput: Basis input ----------------------------------------------------------
+
+PAO.BasisType split     
+
+%block ChemicalSpeciesLabel
+    1    1 H                       # Species index, atomic number, species label
+    2    6 C                       # Species index, atomic number, species label
+%endblock ChemicalSpeciesLabel
+
+%block PAO.Basis                 # Define Basis set
+H                     1                    # Species label, number of l-shells
+ n=1   0   2 P   1                   # n, l, Nzeta, Polarization, NzetaPol
+   4.687      3.767   
+   1.000      1.000   
+C                     3   0.149            # Label, l-shells, ionic net charge
+ n=2   0   2                         # n, l, Nzeta 
+   5.275      3.135   
+   1.000      1.000   
+ n=2   1   2                         # n, l, Nzeta 
+   6.267      2.899   
+   1.000      1.000   
+ n=3   2   1                         # n, l, Nzeta 
+   4.143   
+   1.000   
+%endblock PAO.Basis
+
+prinput: ----------------------------------------------------------------------
+
+coor:   Atomic-coordinates input format  =     Cartesian coordinates
+coor:                                          (in Angstroms)
+
+siesta: WARNING: XV file not found
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   28.112597    0.000000    0.000000
+    0.000000   29.412730    0.000000
+    0.000000    0.000000   20.000000
+coordsFromPipe: xa (Bohr) =
+   25.828787    0.384484    8.345903
+    0.042443    1.673278    8.345903
+    2.346020    0.329682    8.345903
+   25.862802   27.138368    8.345903
+    0.059451   25.804221    8.345903
+    2.451845   27.047661    8.345903
+   24.020318    1.435172    8.345903
+   24.067562   26.063113    8.345903
+   27.977406   23.725521    8.345903
+    0.085907    3.765205    8.345903
+    4.056223    1.529658    8.345903
+    4.272981   25.987879    8.345903
+
+siesta: Atomic coordinates (Bohr) and species
+siesta:     25.82879   0.38448   8.34590  2        1
+siesta:      0.04244   1.67328   8.34590  2        2
+siesta:      2.34602   0.32968   8.34590  2        3
+siesta:     25.86280  27.13837   8.34590  2        4
+siesta:      0.05945  25.80422   8.34590  2        5
+siesta:      2.45185  27.04766   8.34590  2        6
+siesta:     24.02032   1.43517   8.34590  1        7
+siesta:     24.06756  26.06311   8.34590  1        8
+siesta:     27.97741  23.72552   8.34590  1        9
+siesta:      0.08591   3.76521   8.34590  1       10
+siesta:      4.05622   1.52966   8.34590  1       11
+siesta:      4.27298  25.98788   8.34590  1       12
+
+siesta: System type = slab      
+
+initatomlists: Number of atoms, orbitals, and projectors:     12   108   150
+
+siesta: ******************** Simulation parameters ****************************
+siesta:
+siesta: The following are some of the parameters of the simulation.
+siesta: A complete list of the parameters used, including default values,
+siesta: can be found in file out.fdf
+siesta:
+redata: Non-Collinear-spin run           =     F
+redata: SpinPolarized (Up/Down) run      =     F
+redata: Number of spin components        =     1
+redata: Long output                      =     T
+redata: Number of Atomic Species         =        2
+redata: Charge density info will appear in .RHO file
+redata: Write Mulliken Pop.              =     Atomic and Orbital charges
+redata: Mesh Cutoff                      =   150.0000  Ry
+redata: Net charge of the system         =     0.0000 |e|
+redata: Max. number of SCF Iter          =      300
+redata: Performing Pulay mixing using    =     6 iterations
+redata: Mix DM in first SCF step ?       =     F
+redata: Write Pulay info on disk?        =     F
+redata: Discard 1st Pulay DM after  kick =     F
+redata: New DM Mixing Weight             =     0.1500
+redata: New DM Occupancy tolerance       = 0.000000000001
+redata: No kicks to SCF
+redata: DM Mixing Weight for Kicks       =     0.5000
+redata: DM Tolerance for SCF             =     0.000100
+redata: Require Energy convergence for SCF =     F
+redata: DM Energy tolerance for SCF      =     0.000100 eV
+redata: Require Harris convergence for SCF =     F
+redata: DM Harris energy tolerance for SCF =     0.000100 eV
+redata: Using Saved Data (generic)   =     T
+redata: Use continuation files for DM    =     T
+redata: Neglect nonoverlap interactions  =     F
+redata: Method of Calculation            =     Diagonalization
+redata: Divide and Conquer               =     F
+redata: Electronic Temperature           =     0.0019  Ry
+redata: Fix the spin of the system       =     F
+redata: Dynamics option                  =     Force evaluation
+redata: ***********************************************************************
+Total number of electrons:    30.000000
+Total ionic charge:    30.000000
+ Kpoints in:            1 . Kpoints trimmed:            1
+
+siesta: k-point coordinates (Bohr**-1) and weights:
+siesta:    1    0.000000    0.000000    0.000000       1.000000
+
+siesta: k-grid: Number of k-points =     1
+siesta: k-grid: Cutoff (effective) =     5.292 Ang
+siesta: k-grid: Supercell and displacements
+siesta: k-grid:    1   0   0      0.000
+siesta: k-grid:    0   1   0      0.000
+siesta: k-grid:    0   0   1      0.000
+
+* Maximum dynamic memory allocated =     2 MB
+
+siesta:                 ==============================
+                            Begin Server step =      0
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   13.66800000    0.20346000    4.41646000   2       1  C
+    0.02246000    0.88546000    4.41646000   2       2  C
+    1.24146000    0.17446000    4.41646000   2       3  C
+   13.68600000   14.36100000    4.41646000   2       4  C
+    0.03146000   13.65500000    4.41646000   2       5  C
+    1.29746000   14.31300000    4.41646000   2       6  C
+   12.71100000    0.75946000    4.41646000   1       7  H
+   12.73600000   13.79200000    4.41646000   1       8  H
+   14.80500000   12.55500000    4.41646000   1       9  H
+    0.04546000    1.99246000    4.41646000   1      10  H
+    2.14646000    0.80946000    4.41646000   1      11  H
+    2.26116346   13.75218776    4.41646000   1      12  H
+
+outcell: Unit cell vectors (Ang):
+       14.876540    0.000000    0.000000
+        0.000000   15.564540    0.000000
+        0.000000    0.000000   10.583540
+
+outcell: Cell vector modules (Ang)   :   14.876540   15.564540   10.583540
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   2450.5817
+New_DM. Step:     1
+Initializing Density Matrix...
+
+InitMesh: MESH =   120 x   120 x    80 =     1152000
+InitMesh: Mesh cutoff (required, used) =   150.000   157.914 Ry
+
+* Maximum dynamic memory allocated =    61 MB
+
+stepf: Fermi-Dirac step function
+
+siesta: Program's energy decomposition (eV):
+siesta: Ebs     =      -439.708973
+siesta: Eions   =      2000.952972
+siesta: Ena     =       640.708693
+siesta: Ekin    =       644.062784
+siesta: Enl     =        35.483012
+siesta: DEna    =        -0.000001
+siesta: DUscf   =         0.000000
+siesta: DUext   =         0.000000
+siesta: Exc     =      -335.895957
+siesta: eta*DQ  =         0.000000
+siesta: Emadel  =         0.000000
+siesta: Emeta   =         0.000000
+siesta: Emolmec =         0.000000
+siesta: Ekinion =         0.000000
+siesta: Eharris =     -1034.983484
+siesta: Etot    =     -1016.594441
+siesta: FreeEng =     -1016.594441
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1    -1034.9835    -1016.5944    -1016.5944  1.7515 -7.7140
+timer: Routine,Calls,Time,% = IterSCF        1       1.981  76.04
+elaps: Routine,Calls,Wall,% = IterSCF        1       1.980  76.04
+siesta:    2    -1034.5691    -1030.7595    -1030.7595  0.2239 -2.4062
+siesta:    3    -1033.0281    -1030.0142    -1030.0142  0.1167 -3.7148
+siesta:    4    -1032.5459    -1031.8314    -1031.8314  0.0369 -4.8960
+siesta:    5    -1032.5496    -1032.0026    -1032.0026  0.0234 -5.1243
+siesta:    6    -1032.5305    -1032.3110    -1032.3110  0.0073 -4.9272
+siesta:    7    -1032.5294    -1032.4416    -1032.4416  0.0021 -4.8782
+siesta:    8    -1032.5293    -1032.4505    -1032.4505  0.0016 -4.8837
+siesta:    9    -1032.5293    -1032.5165    -1032.5165  0.0005 -4.8829
+siesta:   10    -1032.5293    -1032.5211    -1032.5211  0.0002 -4.8835
+siesta:   11    -1032.5293    -1032.5234    -1032.5234  0.0002 -4.8838
+siesta:   12    -1032.5293    -1032.5284    -1032.5284  0.0000 -4.8846
+
+dhscf: ***********************************************************************
+dhscf: WARNING: External potential file not found!
+dhscf: WARNING: No external potential is being used
+dhscf: ***********************************************************************
+
+siesta: E_KS(eV) =            -1032.5291
+
+siesta: E_KS - E_eggbox =     -1032.5291
+
+siesta: Atomic forces (eV/Ang):
+     1    0.115899   -0.062092   -0.000028
+     2   -0.037635   -0.093708    0.000239
+     3    0.289353   -0.103451   -0.000038
+     4    0.059557    0.071692    0.000083
+     5    0.231398   -0.177630    0.000227
+     6   -1.102531    0.646691    0.000143
+     7    0.299306   -0.168261    0.000067
+     8    0.307195    0.173685    0.000061
+     9    0.400034    0.191989   -0.000269
+    10    0.004610   -0.350342   -0.000266
+    11    0.012289   -0.456897   -0.000471
+    12   -0.568752    0.335396   -0.000487
+----------------------------------------
+   Tot    0.010722    0.007071   -0.000739
+----------------------------------------
+   Max    1.102531
+   Res    0.291378    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    1.102531    constrained
+
+Stress-tensor-Voigt (kbar):        2.51        2.18       -0.01       -0.28       -0.00       -0.00
+(Free)E + p*V (eV/cell)    -1034.9194
+Target enthalpy (eV/cell)    -1032.5291
+
+siesta: Stress tensor (static) (eV/Ang**3):
+         0.001569   -0.000177   -0.000000
+        -0.000177    0.001361   -0.000000
+        -0.000000   -0.000000   -0.000003
+
+siesta: Pressure (static):         -1.56274274  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+         0.001569   -0.000177   -0.000000
+        -0.000177    0.001361   -0.000000
+        -0.000000   -0.000000   -0.000003
+
+siesta: Pressure (total):         -1.56274274  kBar
+
+mulliken: Mulliken Atomic and Orbital Populations:
+
+Species: H                   
+Atom  Qatom  Qorb
+               1s      1s      1Ppy    1Ppz    1Ppx    
+   7  1.140   0.629   0.447   0.016   0.018   0.029
+   8  1.138   0.626   0.449   0.017   0.018   0.029
+   9  1.140   0.626   0.449   0.036   0.018   0.010
+  10  1.138   0.626   0.449   0.036   0.018   0.010
+  11  1.139   0.627   0.449   0.018   0.018   0.027
+  12  1.135   0.629   0.442   0.016   0.017   0.030
+
+Species: C                   
+Atom  Qatom  Qorb
+               2s      2s      2py     2pz     2px     2py     2pz     2px     
+               3dxy    3dyz    3dz2    3dxz    3dx2-y2 
+   1  3.848   0.737   0.318   0.623   0.937   0.597   0.279   0.029   0.290
+              0.013   0.006   0.003   0.004   0.011
+   2  3.866   0.746   0.314   0.603   0.949   0.634   0.286   0.027   0.271
+              0.010   0.002   0.003   0.007   0.015
+   3  3.874   0.748   0.313   0.620   0.948   0.642   0.276   0.025   0.268
+              0.014   0.006   0.003   0.003   0.010
+   4  3.866   0.745   0.314   0.625   0.949   0.613   0.276   0.027   0.280
+              0.014   0.006   0.003   0.003   0.011
+   5  3.873   0.748   0.313   0.624   0.948   0.636   0.276   0.025   0.268
+              0.010   0.002   0.003   0.007   0.014
+   6  3.843   0.732   0.321   0.631   0.951   0.590   0.269   0.025   0.289
+              0.013   0.005   0.003   0.003   0.011
+
+mulliken: Qtot =       30.000
+
+atompop: Hirshfeld Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.033
+   8  0.031
+   9  0.028
+  10  0.031
+  11  0.028
+  12  0.038
+
+Species: C                   
+Atom  Qatom
+   1 -0.030
+   2 -0.033
+   3 -0.032
+   4 -0.033
+   5 -0.032
+   6 -0.028
+
+atompop: Voronoi Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.015
+   8  0.015
+   9  0.008
+  10  0.019
+  11  0.010
+  12  0.020
+
+Species: C                   
+Atom  Qatom
+   1 -0.007
+   2 -0.027
+   3 -0.021
+   4 -0.021
+   5 -0.008
+   6 -0.003
+
+forcesToPipe: energy (Ry) =  -75.888895
+forcesToPipe: stress (Ry/Bohr**3) =
+    0.000017   -0.000002   -0.000000
+   -0.000002    0.000015   -0.000000
+   -0.000000   -0.000000   -0.000000
+forcesToPipe: forces (Ry/Bohr) =
+    0.004508   -0.002415   -0.000001
+   -0.001464   -0.003645    0.000009
+    0.011254   -0.004024   -0.000001
+    0.002316    0.002788    0.000003
+    0.009000   -0.006909    0.000009
+   -0.042881    0.025152    0.000006
+    0.011641   -0.006544    0.000003
+    0.011948    0.006755    0.000002
+    0.015559    0.007467   -0.000010
+    0.000179   -0.013626   -0.000010
+    0.000478   -0.017770   -0.000018
+   -0.022121    0.013045   -0.000019
+ Writing to pipe
+ iupos on opening:           17
+ iupos on writing:           17
+ istep, xa, va :            0   25.828786965419887       0.38448383055197033        8.3459031666153294       4.24432656748120196E-002   1.6732775611940807        8.3459031666153294        2.3460203296817510       0.32968175109651404        8.3459031666153294        25.862802049219827        27.138367691717516        8.3459031666153294       5.94508075747812170E-002   25.804220516008819        8.3459031666153294        2.4518450348371150        27.047660801584346        8.3459031666153294        24.020318343389832        1.4351719745945120        8.3459031666153294        24.067561515334191        26.063113098263909        8.3459031666153294        27.977406425449328        23.725520950457028        8.3459031666153294       8.59069838636221939E-002   3.7652052148902917        8.3459031666153294        4.0562231540675420        1.5296583184832295        8.3459031666153294        4.2729813643833729        25.987878828834802        8.3459031666153294        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000     
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   28.112597    0.000000    0.000000
+    0.000000   29.412730    0.000000
+    0.000000    0.000000   20.000000
+coordsFromPipe: xa (Bohr) =
+   25.841531    0.377645    8.345900
+    0.038568    1.662911    8.345929
+    2.392678    0.318991    8.345899
+   25.869528   27.146057    8.345912
+    0.091360   25.772014    8.345928
+    2.326283   27.119027    8.345907
+   24.052969    1.416814    8.345911
+   24.101091   26.082046    8.345910
+   27.990870   23.763598    8.345874
+    0.086433    3.726974    8.345874
+    4.027934    1.497472    8.345852
+    4.379292   25.931430    8.345871
+
+* Maximum dynamic memory allocated =    62 MB
+
+siesta:                 ==============================
+                            Begin Server step =      1
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   13.67474382    0.19984083    4.41645841   2       1  C
+    0.02040938    0.87997424    4.41647380   2       2  C
+    1.26614999    0.16880259    4.41645779   2       3  C
+   13.68955930   14.36506924    4.41646479   2       4  C
+    0.04834546   13.63795683    4.41647309   2       5  C
+    1.23101529   14.35076542    4.41646180   2       6  C
+   12.72827815    0.74974526    4.41646389   1       7  H
+   12.75374283   13.80201881    4.41646353   1       8  H
+   14.81212457   12.57514950    4.41644449   1       9  H
+    0.04573832    1.97222873    4.41644464   1      10  H
+    2.13148989    0.79242765    4.41643280   1      11  H
+    2.31742074   13.72231625    4.41644289   1      12  H
+
+outcell: Unit cell vectors (Ang):
+       14.876540    0.000000    0.000000
+        0.000000   15.564540    0.000000
+        0.000000    0.000000   10.583540
+
+outcell: Cell vector modules (Ang)   :   14.876540   15.564540   10.583540
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   2450.5817
+New_DM. Step:     2
+Re-using DM from previous geometry...
+Re-using DM without extrapolation for lack of history
+Density Matrix sparsity pattern changed.
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1    -1032.2285    -1032.4357    -1032.4357  0.0635 -4.6819
+siesta:    2    -1032.2630    -1032.1225    -1032.1225  0.1476 -4.7842
+siesta:    3    -1032.1810    -1032.2619    -1032.2619  0.0470 -4.7314
+siesta:    4    -1032.1795    -1032.1629    -1032.1629  0.0096 -4.7296
+siesta:    5    -1032.1784    -1032.1622    -1032.1622  0.0045 -4.7206
+siesta:    6    -1032.1780    -1032.1711    -1032.1711  0.0015 -4.7153
+siesta:    7    -1032.1779    -1032.1748    -1032.1748  0.0004 -4.7181
+siesta:    8    -1032.1779    -1032.1767    -1032.1767  0.0002 -4.7203
+siesta:    9    -1032.1779    -1032.1770    -1032.1770  0.0001 -4.7203
+siesta:   10    -1032.1779    -1032.1776    -1032.1776  0.0001 -4.7198
+
+dhscf: ***********************************************************************
+dhscf: WARNING: External potential file not found!
+dhscf: WARNING: No external potential is being used
+dhscf: ***********************************************************************
+
+siesta: E_KS(eV) =            -1032.1778
+
+siesta: Atomic forces (eV/Ang):
+     1    0.240398   -0.166887    0.000300
+     2    0.949342   -0.415364   -0.000042
+     3   -2.501400    1.061586    0.000204
+     4    0.820900   -0.546660    0.000168
+     5   -2.208264    1.464269    0.000090
+     6    4.193165   -2.318167   -0.000034
+     7   -0.052036    0.032053   -0.000021
+     8   -0.169213   -0.059879    0.000054
+     9    0.461176   -1.001673    0.000032
+    10   -0.033648    0.158101   -0.000171
+    11    1.168531    0.137606   -0.000677
+    12   -2.888609    1.653466    0.000438
+----------------------------------------
+   Tot   -0.019658   -0.001549    0.000343
+----------------------------------------
+   Max    4.193165
+   Res    1.216023    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    4.193165    constrained
+
+Stress-tensor-Voigt (kbar):        2.03       -0.61       -0.00       -2.39       -0.00       -0.00
+(Free)E + p*V (eV/cell)    -1032.8996
+Target enthalpy (eV/cell)    -1032.1778
+
+siesta: Stress tensor (static) (eV/Ang**3):
+         0.001269   -0.001493   -0.000000
+        -0.001493   -0.000382   -0.000000
+        -0.000000   -0.000000   -0.000003
+
+siesta: Pressure (static):         -0.47192205  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+         0.001269   -0.001493   -0.000000
+        -0.001493   -0.000382   -0.000000
+        -0.000000   -0.000000   -0.000003
+
+siesta: Pressure (total):         -0.47192205  kBar
+
+mulliken: Mulliken Atomic and Orbital Populations:
+
+Species: H                   
+Atom  Qatom  Qorb
+               1s      1s      1Ppy    1Ppz    1Ppx    
+   7  1.143   0.626   0.454   0.017   0.018   0.029
+   8  1.145   0.625   0.456   0.017   0.019   0.028
+   9  1.149   0.616   0.469   0.034   0.020   0.011
+  10  1.145   0.625   0.456   0.035   0.019   0.010
+  11  1.150   0.616   0.470   0.018   0.020   0.027
+  12  1.088   0.663   0.369   0.014   0.012   0.030
+
+Species: C                   
+Atom  Qatom  Qorb
+               2s      2s      2py     2pz     2px     2py     2pz     2px     
+               3dxy    3dyz    3dz2    3dxz    3dx2-y2 
+   1  3.843   0.726   0.322   0.611   0.942   0.585   0.288   0.032   0.300
+              0.014   0.006   0.003   0.004   0.012
+   2  3.871   0.752   0.310   0.609   0.944   0.646   0.286   0.024   0.263
+              0.010   0.002   0.003   0.007   0.015
+   3  3.837   0.713   0.328   0.569   0.946   0.620   0.315   0.030   0.281
+              0.015   0.006   0.003   0.003   0.010
+   4  3.871   0.751   0.310   0.625   0.944   0.632   0.279   0.024   0.270
+              0.014   0.006   0.003   0.003   0.011
+   5  3.838   0.715   0.327   0.567   0.946   0.620   0.317   0.031   0.280
+              0.010   0.002   0.003   0.007   0.014
+   6  3.920   0.810   0.287   0.634   0.941   0.666   0.273   0.035   0.236
+              0.013   0.007   0.003   0.004   0.012
+
+mulliken: Qtot =       30.000
+
+atompop: Hirshfeld Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.033
+   8  0.029
+   9  0.034
+  10  0.029
+  11  0.034
+  12  0.026
+
+Species: C                   
+Atom  Qatom
+   1 -0.034
+   2 -0.029
+   3 -0.035
+   4 -0.029
+   5 -0.035
+   6 -0.025
+
+atompop: Voronoi Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.015
+   8  0.012
+   9  0.018
+  10  0.011
+  11  0.019
+  12  0.002
+
+Species: C                   
+Atom  Qatom
+   1 -0.012
+   2 -0.011
+   3 -0.033
+   4 -0.017
+   5 -0.019
+   6  0.015
+
+forcesToPipe: energy (Ry) =  -75.863071
+forcesToPipe: stress (Ry/Bohr**3) =
+    0.000014   -0.000016   -0.000000
+   -0.000016   -0.000004   -0.000000
+   -0.000000   -0.000000   -0.000000
+forcesToPipe: forces (Ry/Bohr) =
+    0.009350   -0.006491    0.000012
+    0.036923   -0.016155   -0.000002
+   -0.097288    0.041289    0.000008
+    0.031928   -0.021262    0.000007
+   -0.085887    0.056951    0.000004
+    0.163087   -0.090162   -0.000001
+   -0.002024    0.001247   -0.000001
+   -0.006581   -0.002329    0.000002
+    0.017937   -0.038959    0.000001
+   -0.001309    0.006149   -0.000007
+    0.045448    0.005352   -0.000026
+   -0.112348    0.064309    0.000017
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :            1   25.841530939775403       0.37764459312681004        8.3459001563011697       3.85681504316451595E-002   1.6629109735893164        8.3459292395995615        2.3926776728351795       0.31899078293085009        8.3458989908513210        25.869528149301338        27.146057439885382        8.3459122162169308       9.13597186927148502E-002   25.772013587581174        8.3459278947024149        2.3262826717560072        27.119027139295174        8.3459065642635526        24.052969324073491        1.4168137773511373        8.3459105172859651        24.101090618392039        26.082045913861499        8.3459098279139923        27.990869922498604        23.763597995929171        8.3458738646274373       8.64329410468873405E-002   3.7269736358150407        8.3458741403710448        4.0279337283897583        1.4974718195550192        8.3458517579907081        4.3792922607316624        25.931429847355069        8.3458708374017068        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000     
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   28.112597    0.000000    0.000000
+    0.000000   29.412730    0.000000
+    0.000000    0.000000   20.000000
+coordsFromPipe: xa (Bohr) =
+   25.831078    0.383254    8.345903
+    0.041747    1.671414    8.345908
+    2.354409    0.327760    8.345902
+   25.864011   27.139750    8.345905
+    0.065188   25.798430    8.345908
+    2.429271   27.060491    8.345904
+   24.026188    1.431871    8.345904
+   24.073590   26.066517    8.345904
+   27.979827   23.732367    8.345898
+    0.086002    3.758332    8.345898
+    4.051137    1.523872    8.345894
+    4.292074   25.977696    8.345898
+
+* Maximum dynamic memory allocated =    62 MB
+
+siesta:                 ==============================
+                            Begin Server step =      2
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   13.66921243    0.20280933    4.41645971   2       1  C
+    0.02209133    0.88447375    4.41646248   2       2  C
+    1.24589887    0.17344289    4.41645960   2       3  C
+   13.68663991   14.36173158    4.41646086   2       4  C
+    0.03449574   13.65193591    4.41646235   2       5  C
+    1.28551429   14.31978963    4.41646032   2       6  C
+   12.71410634    0.75771344    4.41646070   1       7  H
+   12.73918988   13.79380122    4.41646063   1       8  H
+   14.80628089   12.55862256    4.41645721   1       9  H
+    0.04551004    1.98882274    4.41645724   1      10  H
+    2.14376861    0.80639785    4.41645511   1      11  H
+    2.27126677   13.74679937    4.41645705   1      12  H
+
+outcell: Unit cell vectors (Ang):
+       14.876540    0.000000    0.000000
+        0.000000   15.564540    0.000000
+        0.000000    0.000000   10.583540
+
+outcell: Cell vector modules (Ang)   :   14.876540   15.564540   10.583540
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   2450.5817
+New_DM. Step:     3
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+Density Matrix sparsity pattern changed.
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1    -1032.6860    -1031.8023    -1031.8023  0.1201 -4.9641
+siesta:    2    -1032.7743    -1032.3749    -1032.3749  0.2387 -4.6826
+siesta:    3    -1032.5451    -1032.2719    -1032.2719  0.0837 -4.8013
+siesta:    4    -1032.5369    -1032.5039    -1032.5039  0.0105 -4.8250
+siesta:    5    -1032.5340    -1032.5106    -1032.5106  0.0064 -4.8369
+siesta:    6    -1032.5321    -1032.5195    -1032.5195  0.0021 -4.8476
+siesta:    7    -1032.5320    -1032.5237    -1032.5237  0.0008 -4.8426
+siesta:    8    -1032.5319    -1032.5275    -1032.5275  0.0003 -4.8391
+siesta:    9    -1032.5320    -1032.5295    -1032.5295  0.0002 -4.8386
+siesta:   10    -1032.5320    -1032.5312    -1032.5312  0.0001 -4.8392
+
+dhscf: ***********************************************************************
+dhscf: WARNING: External potential file not found!
+dhscf: WARNING: No external potential is being used
+dhscf: ***********************************************************************
+
+siesta: E_KS(eV) =            -1032.5315
+
+siesta: Atomic forces (eV/Ang):
+     1    0.138267   -0.080507    0.000033
+     2    0.148207   -0.157901    0.000186
+     3   -0.220816    0.105327    0.000000
+     4    0.205685   -0.043706    0.000131
+     5   -0.207242    0.129879    0.000155
+     6    0.031882    0.001373    0.000179
+     7    0.239174   -0.135524    0.000033
+     8    0.224128    0.133457   -0.000022
+     9    0.414508   -0.007499   -0.000192
+    10   -0.003522   -0.263510   -0.000342
+    11    0.205796   -0.362539   -0.000666
+    12   -1.172003    0.681558   -0.000524
+----------------------------------------
+   Tot    0.004064    0.000408   -0.001027
+----------------------------------------
+   Max    1.172003
+   Res    0.270506    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    1.172003    constrained
+
+Stress-tensor-Voigt (kbar):        2.53        1.76       -0.01       -0.68        0.00       -0.00
+(Free)E + p*V (eV/cell)    -1034.7164
+Target enthalpy (eV/cell)    -1032.5315
+
+siesta: Stress tensor (static) (eV/Ang**3):
+         0.001581   -0.000427   -0.000000
+        -0.000427    0.001097    0.000000
+        -0.000000    0.000000   -0.000003
+
+siesta: Pressure (static):         -1.42849039  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+         0.001581   -0.000427   -0.000000
+        -0.000427    0.001097    0.000000
+        -0.000000    0.000000   -0.000003
+
+siesta: Pressure (total):         -1.42849039  kBar
+
+mulliken: Mulliken Atomic and Orbital Populations:
+
+Species: H                   
+Atom  Qatom  Qorb
+               1s      1s      1Ppy    1Ppz    1Ppx    
+   7  1.140   0.629   0.448   0.016   0.018   0.029
+   8  1.139   0.626   0.450   0.017   0.018   0.028
+   9  1.141   0.624   0.453   0.035   0.018   0.010
+  10  1.140   0.626   0.450   0.036   0.018   0.010
+  11  1.141   0.625   0.453   0.018   0.018   0.027
+  12  1.126   0.635   0.429   0.016   0.016   0.030
+
+Species: C                   
+Atom  Qatom  Qorb
+               2s      2s      2py     2pz     2px     2py     2pz     2px     
+               3dxy    3dyz    3dz2    3dxz    3dx2-y2 
+   1  3.847   0.735   0.319   0.621   0.938   0.595   0.281   0.029   0.292
+              0.013   0.006   0.003   0.004   0.011
+   2  3.866   0.746   0.313   0.604   0.948   0.636   0.286   0.026   0.270
+              0.010   0.002   0.003   0.007   0.015
+   3  3.868   0.741   0.315   0.610   0.948   0.639   0.283   0.025   0.270
+              0.014   0.006   0.003   0.003   0.010
+   4  3.867   0.746   0.313   0.625   0.948   0.617   0.277   0.026   0.279
+              0.014   0.006   0.003   0.003   0.011
+   5  3.867   0.742   0.315   0.615   0.947   0.633   0.283   0.026   0.271
+              0.010   0.002   0.003   0.007   0.014
+   6  3.856   0.746   0.315   0.632   0.949   0.604   0.269   0.026   0.279
+              0.013   0.005   0.003   0.004   0.011
+
+mulliken: Qtot =       30.000
+
+atompop: Hirshfeld Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.033
+   8  0.031
+   9  0.029
+  10  0.031
+  11  0.029
+  12  0.037
+
+Species: C                   
+Atom  Qatom
+   1 -0.031
+   2 -0.032
+   3 -0.033
+   4 -0.032
+   5 -0.033
+   6 -0.028
+
+atompop: Voronoi Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.013
+   8  0.014
+   9  0.010
+  10  0.019
+  11  0.011
+  12  0.018
+
+Species: C                   
+Atom  Qatom
+   1 -0.006
+   2 -0.026
+   3 -0.023
+   4 -0.019
+   5 -0.013
+   6  0.001
+
+forcesToPipe: energy (Ry) =  -75.889068
+forcesToPipe: stress (Ry/Bohr**3) =
+    0.000017   -0.000005   -0.000000
+   -0.000005    0.000012    0.000000
+   -0.000000    0.000000   -0.000000
+forcesToPipe: forces (Ry/Bohr) =
+    0.005378   -0.003131    0.000001
+    0.005764   -0.006141    0.000007
+   -0.008588    0.004097    0.000000
+    0.008000   -0.001700    0.000005
+   -0.008060    0.005051    0.000006
+    0.001240    0.000053    0.000007
+    0.009302   -0.005271    0.000001
+    0.008717    0.005191   -0.000001
+    0.016122   -0.000292   -0.000007
+   -0.000137   -0.010249   -0.000013
+    0.008004   -0.014100   -0.000026
+   -0.045583    0.026508   -0.000020
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :            2   25.831078130508946       0.38325424380083789        8.3459026254084403       4.17465812250836441E-002   1.6714138126529963        8.3459078541256435        2.3544085822628715       0.32775968405949035        8.3459024158789852        25.864011295665431        27.139750186852421        8.3459047935906110       6.51875252692624141E-002   25.798430219514120        8.3459076123344023        2.4292709072717460        27.060491340703116        8.3459037774587586        24.026188473459072        1.4318714609989336        8.3459044881496851        24.073589517921967        26.066516919154058        8.3459043642115045        27.979826949342065        23.732366601181564        8.3458978985812120       8.60015426490544216E-002   3.7583317814673101        8.3458979481555531        4.0511371626260715        1.5238716948895124        8.3458939241574654        4.2920738603650364        25.977696259207857        8.3458975845499275        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000     
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   28.112597    0.000000    0.000000
+    0.000000   29.412730    0.000000
+    0.000000    0.000000   20.000000
+coordsFromPipe: xa (Bohr) =
+   25.836483    0.380184    8.345903
+    0.045203    1.665800    8.345916
+    2.357524    0.329180    8.345902
+   25.870420   27.139599    8.345909
+    0.065240   25.795212    8.345915
+    2.417864   27.067370    8.345906
+   24.036927    1.425805    8.345906
+   24.084052   26.072602    8.345905
+   27.985291   23.741483    8.345889
+    0.085985    3.746193    8.345885
+    4.045562    1.514206    8.345869
+    4.280177   25.984468    8.345885
+
+* Maximum dynamic memory allocated =    62 MB
+
+siesta:                 ==============================
+                            Begin Server step =      3
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   13.67207252    0.20118461    4.41645996   2       1  C
+    0.02392048    0.88150283    4.41646695   2       2  C
+    1.24754748    0.17419453    4.41645931   2       3  C
+   13.69003119   14.36165162    4.41646335   2       4  C
+    0.03452361   13.65023281    4.41646629   2       5  C
+    1.27947780   14.32342989    4.41646144   2       6  C
+   12.71978878    0.75450344    4.41646169   1       7  H
+   12.74472651   13.79702112    4.41646081   1       8  H
+   14.80917224   12.56344697    4.41645242   1       9  H
+    0.04550124    1.98239912    4.41645037   1      10  H
+    2.14081840    0.80128281    4.41644210   1      11  H
+    2.26497111   13.75038279    4.41645062   1      12  H
+
+outcell: Unit cell vectors (Ang):
+       14.876540    0.000000    0.000000
+        0.000000   15.564540    0.000000
+        0.000000    0.000000   10.583540
+
+outcell: Cell vector modules (Ang)   :   14.876540   15.564540   10.583540
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   2450.5817
+New_DM. Step:     4
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+Density Matrix sparsity pattern changed.
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1    -1032.5809    -1032.9352    -1032.9352  0.0561 -4.7507
+siesta:    2    -1032.6015    -1032.5113    -1032.5113  0.1106 -4.8393
+siesta:    3    -1032.5502    -1032.6543    -1032.6543  0.0407 -4.7981
+siesta:    4    -1032.5479    -1032.5310    -1032.5310  0.0054 -4.7865
+siesta:    5    -1032.5472    -1032.5331    -1032.5331  0.0022 -4.7827
+siesta:    6    -1032.5469    -1032.5432    -1032.5432  0.0009 -4.7810
+siesta:    7    -1032.5469    -1032.5445    -1032.5445  0.0003 -4.7828
+siesta:    8    -1032.5469    -1032.5463    -1032.5463  0.0001 -4.7843
+
+dhscf: ***********************************************************************
+dhscf: WARNING: External potential file not found!
+dhscf: WARNING: No external potential is being used
+dhscf: ***********************************************************************
+
+siesta: E_KS(eV) =            -1032.5464
+
+siesta: Atomic forces (eV/Ang):
+     1    0.192231   -0.110682    0.000181
+     2    0.134470   -0.125467    0.000156
+     3   -0.439866    0.000062    0.000069
+     4    0.170799   -0.047820    0.000196
+     5   -0.217562    0.362535    0.000147
+     6    0.254288   -0.137903    0.000219
+     7    0.148748   -0.083588   -0.000201
+     8    0.118505    0.071395    0.000002
+     9    0.395889   -0.225503   -0.000123
+    10   -0.001556   -0.144257   -0.000325
+    11    0.397346   -0.231729   -0.000613
+    12   -1.151435    0.670679   -0.000469
+----------------------------------------
+   Tot    0.001858   -0.002277   -0.000760
+----------------------------------------
+   Max    1.151435
+   Res    0.280587    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    1.151435    constrained
+
+Stress-tensor-Voigt (kbar):        1.97        1.17       -0.00       -0.71        0.00       -0.00
+(Free)E + p*V (eV/cell)    -1034.1409
+Target enthalpy (eV/cell)    -1032.5464
+
+siesta: Stress tensor (static) (eV/Ang**3):
+         0.001227   -0.000443   -0.000000
+        -0.000443    0.000728    0.000000
+        -0.000000    0.000000   -0.000003
+
+siesta: Pressure (static):         -1.04252787  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+         0.001227   -0.000443   -0.000000
+        -0.000443    0.000728    0.000000
+        -0.000000    0.000000   -0.000003
+
+siesta: Pressure (total):         -1.04252787  kBar
+
+mulliken: Mulliken Atomic and Orbital Populations:
+
+Species: H                   
+Atom  Qatom  Qorb
+               1s      1s      1Ppy    1Ppz    1Ppx    
+   7  1.141   0.628   0.450   0.016   0.018   0.029
+   8  1.141   0.626   0.452   0.017   0.018   0.028
+   9  1.144   0.623   0.456   0.035   0.019   0.011
+  10  1.141   0.626   0.452   0.035   0.018   0.010
+  11  1.144   0.623   0.456   0.018   0.019   0.027
+  12  1.127   0.635   0.429   0.016   0.016   0.030
+
+Species: C                   
+Atom  Qatom  Qorb
+               2s      2s      2py     2pz     2px     2py     2pz     2px     
+               3dxy    3dyz    3dz2    3dxz    3dx2-y2 
+   1  3.846   0.733   0.319   0.619   0.939   0.593   0.282   0.030   0.294
+              0.014   0.006   0.003   0.004   0.011
+   2  3.866   0.746   0.313   0.604   0.947   0.635   0.287   0.027   0.272
+              0.010   0.002   0.003   0.007   0.015
+   3  3.863   0.736   0.317   0.606   0.947   0.632   0.287   0.026   0.274
+              0.014   0.006   0.003   0.003   0.010
+   4  3.866   0.745   0.313   0.624   0.947   0.616   0.278   0.027   0.280
+              0.014   0.006   0.003   0.003   0.011
+   5  3.863   0.738   0.317   0.607   0.947   0.630   0.289   0.026   0.273
+              0.010   0.002   0.003   0.007   0.014
+   6  3.859   0.747   0.314   0.632   0.948   0.606   0.270   0.027   0.279
+              0.013   0.006   0.003   0.004   0.011
+
+mulliken: Qtot =       30.000
+
+atompop: Hirshfeld Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.033
+   8  0.030
+   9  0.029
+  10  0.030
+  11  0.030
+  12  0.036
+
+Species: C                   
+Atom  Qatom
+   1 -0.031
+   2 -0.032
+   3 -0.033
+   4 -0.032
+   5 -0.033
+   6 -0.028
+
+atompop: Voronoi Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.013
+   8  0.015
+   9  0.011
+  10  0.019
+  11  0.011
+  12  0.017
+
+Species: C                   
+Atom  Qatom
+   1 -0.006
+   2 -0.024
+   3 -0.023
+   4 -0.021
+   5 -0.013
+   6  0.001
+
+forcesToPipe: energy (Ry) =  -75.890162
+forcesToPipe: stress (Ry/Bohr**3) =
+    0.000013   -0.000005   -0.000000
+   -0.000005    0.000008    0.000000
+   -0.000000    0.000000   -0.000000
+forcesToPipe: forces (Ry/Bohr) =
+    0.007477   -0.004305    0.000007
+    0.005230   -0.004880    0.000006
+   -0.017108    0.000002    0.000003
+    0.006643   -0.001860    0.000008
+   -0.008462    0.014100    0.000006
+    0.009890   -0.005364    0.000009
+    0.005785   -0.003251   -0.000008
+    0.004609    0.002777    0.000000
+    0.015398   -0.008771   -0.000005
+   -0.000061   -0.005611   -0.000013
+    0.015454   -0.009013   -0.000024
+   -0.044783    0.026085   -0.000018
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :            3   25.836482921441096       0.38018395864128973        8.3459030838388486       4.52031666595392873E-002   1.6657995814429936        8.3459163005559560        2.3575240063938043       0.32918008697507734        8.3459018551709434        25.870419893042541        27.139599080753477        8.3459094915872196       6.52401998369956382E-002   25.795211822633693        8.3459150581412995        2.4178635950136766        27.067370440720246        8.3459058968836022        24.036926740514300        1.4258054235959889        8.3459063534390090        24.084052242453996        26.072601650933240        8.3459046903258010        27.985290824617071        23.741483416448126        8.3458888402123179       8.59849142060337551E-002   3.7461928962069333        8.3458849683184937        4.0455620687951219        1.5142056585147219        8.3458693445911152        4.2801767902865890        25.984467937398243        8.3458854493609618        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000     
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   28.112597    0.000000    0.000000
+    0.000000   29.412730    0.000000
+    0.000000    0.000000   20.000000
+coordsFromPipe: xa (Bohr) =
+   25.845131    0.375272    8.345904
+    0.050734    1.656817    8.345930
+    2.362509    0.331453    8.345901
+   25.880674   27.139357    8.345917
+    0.065324   25.790062    8.345927
+    2.399612   27.078377    8.345909
+   24.054108    1.416100    8.345909
+   24.100793   26.082337    8.345905
+   27.994033   23.756070    8.345874
+    0.085958    3.726771    8.345864
+    4.036642    1.498740    8.345830
+    4.261142   25.995303    8.345866
+
+* Maximum dynamic memory allocated =    62 MB
+
+siesta:                 ==============================
+                            Begin Server step =      4
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   13.67664867    0.19858505    4.41646034   2       1  C
+    0.02684711    0.87674935    4.41647410   2       2  C
+    1.25018526    0.17539716    4.41645883   2       3  C
+   13.69545724   14.36152368    4.41646732   2       4  C
+    0.03456821   13.64750784    4.41647260   2       5  C
+    1.26981942   14.32925431    4.41646324   2       6  C
+   12.72888069    0.74936742    4.41646327   1       7  H
+   12.75358513   13.80217296    4.41646108   1       8  H
+   14.81379841   12.57116602    4.41644475   1       9  H
+    0.04548716    1.97212133    4.41643938   1      10  H
+    2.13609806    0.79309874    4.41642129   1      11  H
+    2.25489812   13.75611628    4.41644035   1      12  H
+
+outcell: Unit cell vectors (Ang):
+       14.876540    0.000000    0.000000
+        0.000000   15.564540    0.000000
+        0.000000    0.000000   10.583540
+
+outcell: Cell vector modules (Ang)   :   14.876540   15.564540   10.583540
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   2450.5817
+New_DM. Step:     5
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+Density Matrix sparsity pattern changed.
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1    -1032.5552    -1032.6219    -1032.6219  0.0193 -4.7132
+siesta:    2    -1032.5553    -1032.5549    -1032.5549  0.0055 -4.6836
+siesta:    3    -1032.5551    -1032.5626    -1032.5626  0.0025 -4.6918
+siesta:    4    -1032.5551    -1032.5558    -1032.5558  0.0004 -4.6973
+siesta:    5    -1032.5550    -1032.5551    -1032.5551  0.0002 -4.6999
+siesta:    6    -1032.5550    -1032.5550    -1032.5550  0.0000 -4.6999
+
+dhscf: ***********************************************************************
+dhscf: WARNING: External potential file not found!
+dhscf: WARNING: No external potential is being used
+dhscf: ***********************************************************************
+
+siesta: E_KS(eV) =            -1032.5550
+
+siesta: Atomic forces (eV/Ang):
+     1    0.280702   -0.159993    0.000379
+     2    0.110768   -0.074146    0.000005
+     3   -0.804864   -0.174793    0.000027
+     4    0.116081   -0.051889    0.000330
+     5   -0.235025    0.749038    0.000091
+     6    0.618705   -0.366589    0.000079
+     7    0.001390    0.000061    0.000029
+     8   -0.054638   -0.029079    0.000063
+     9    0.368150   -0.591038   -0.000096
+    10    0.000815    0.052417   -0.000151
+    11    0.720397   -0.013818   -0.000590
+    12   -1.120670    0.656959   -0.000251
+----------------------------------------
+   Tot    0.001813   -0.002869   -0.000085
+----------------------------------------
+   Max    1.120670
+   Res    0.359330    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    1.120670    constrained
+
+Stress-tensor-Voigt (kbar):        1.04        0.20       -0.00       -0.75       -0.00       -0.00
+(Free)E + p*V (eV/cell)    -1033.1869
+Target enthalpy (eV/cell)    -1032.5550
+
+siesta: Stress tensor (static) (eV/Ang**3):
+         0.000649   -0.000470   -0.000000
+        -0.000470    0.000128   -0.000000
+        -0.000000   -0.000000   -0.000003
+
+siesta: Pressure (static):         -0.41310757  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+         0.000649   -0.000470   -0.000000
+        -0.000470    0.000128   -0.000000
+        -0.000000   -0.000000   -0.000003
+
+siesta: Pressure (total):         -0.41310757  kBar
+
+mulliken: Mulliken Atomic and Orbital Populations:
+
+Species: H                   
+Atom  Qatom  Qorb
+               1s      1s      1Ppy    1Ppz    1Ppx    
+   7  1.143   0.627   0.453   0.017   0.018   0.029
+   8  1.143   0.625   0.455   0.017   0.018   0.028
+   9  1.147   0.621   0.462   0.034   0.019   0.011
+  10  1.143   0.625   0.455   0.035   0.018   0.010
+  11  1.147   0.621   0.462   0.018   0.019   0.027
+  12  1.128   0.636   0.429   0.016   0.016   0.030
+
+Species: C                   
+Atom  Qatom  Qorb
+               2s      2s      2py     2pz     2px     2py     2pz     2px     
+               3dxy    3dyz    3dz2    3dxz    3dx2-y2 
+   1  3.844   0.731   0.319   0.616   0.939   0.589   0.285   0.030   0.298
+              0.014   0.006   0.003   0.004   0.011
+   2  3.865   0.745   0.312   0.603   0.945   0.632   0.290   0.027   0.274
+              0.010   0.002   0.003   0.007   0.015
+   3  3.855   0.729   0.320   0.599   0.946   0.622   0.293   0.028   0.282
+              0.014   0.006   0.003   0.003   0.010
+   4  3.865   0.744   0.313   0.622   0.944   0.614   0.280   0.027   0.283
+              0.014   0.006   0.003   0.003   0.011
+   5  3.855   0.731   0.319   0.593   0.946   0.626   0.299   0.028   0.276
+              0.010   0.002   0.003   0.007   0.015
+   6  3.863   0.749   0.312   0.631   0.947   0.611   0.272   0.027   0.277
+              0.013   0.006   0.003   0.004   0.011
+
+mulliken: Qtot =       30.000
+
+atompop: Hirshfeld Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.033
+   8  0.030
+   9  0.030
+  10  0.030
+  11  0.030
+  12  0.034
+
+Species: C                   
+Atom  Qatom
+   1 -0.031
+   2 -0.031
+   3 -0.033
+   4 -0.031
+   5 -0.033
+   6 -0.027
+
+atompop: Voronoi Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.015
+   8  0.013
+   9  0.013
+  10  0.009
+  11  0.013
+  12  0.017
+
+Species: C                   
+Atom  Qatom
+   1 -0.008
+   2 -0.014
+   3 -0.025
+   4 -0.019
+   5 -0.013
+   6 -0.002
+
+forcesToPipe: energy (Ry) =  -75.890798
+forcesToPipe: stress (Ry/Bohr**3) =
+    0.000007   -0.000005   -0.000000
+   -0.000005    0.000001   -0.000000
+   -0.000000   -0.000000   -0.000000
+forcesToPipe: forces (Ry/Bohr) =
+    0.010917   -0.006223    0.000015
+    0.004308   -0.002884    0.000000
+   -0.031304   -0.006798    0.000001
+    0.004515   -0.002018    0.000013
+   -0.009141    0.029133    0.000004
+    0.024064   -0.014258    0.000003
+    0.000054    0.000002    0.000001
+   -0.002125   -0.001131    0.000002
+    0.014319   -0.022988   -0.000004
+    0.000032    0.002039   -0.000006
+    0.028019   -0.000537   -0.000023
+   -0.043587    0.025551   -0.000010
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :            4   25.845130586932537       0.37527150238601270        8.3459038173275015       5.07337033546683205E-002   1.6568168115069890        8.3459298148444567        2.3625086850032968       0.33145273164001654        8.3459009580380759        25.880673648845914        27.139357310995166        8.3459170083817948       6.53244791453688051E-002   25.790062387625007        8.3459269714323359        2.3996118954007661        27.078377000747658        8.3459092879633516        24.054107967802661        1.4160997637512776        8.3459093379019276        24.100792601705244        26.082337221779934        8.3459052121086756        27.994033025057082        23.756070320874624        8.3458743468220877       8.59583086972006971E-002   3.7267706797903299        8.3458642005792001        4.0366419186656026        1.4987400003150571        8.3458300172849551        4.2611415876200489        25.995302668387716        8.3458660370398601        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000     
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   28.112597    0.000000    0.000000
+    0.000000   29.412730    0.000000
+    0.000000    0.000000   20.000000
+coordsFromPipe: xa (Bohr) =
+   25.837718    0.379482    8.345903
+    0.045993    1.664517    8.345918
+    2.358236    0.329505    8.345902
+   25.871884   27.139565    8.345911
+    0.065252   25.794476    8.345917
+    2.415257   27.068942    8.345906
+   24.039380    1.424419    8.345907
+   24.086443   26.073992    8.345905
+   27.986539   23.743567    8.345887
+    0.085981    3.743419    8.345882
+    4.044288    1.511997    8.345864
+    4.277458   25.986015    8.345883
+
+* Maximum dynamic memory allocated =    62 MB
+
+siesta:                 ==============================
+                            Begin Server step =      5
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   13.67272607    0.20081335    4.41646001   2       1  C
+    0.02433845    0.88082395    4.41646797   2       2  C
+    1.24792420    0.17436629    4.41645924   2       3  C
+   13.69080611   14.36163335    4.41646392   2       4  C
+    0.03452998   13.64984364    4.41646719   2       5  C
+    1.27809844   14.32426171    4.41646170   2       6  C
+   12.72108725    0.75376993    4.41646191   1       7  H
+   12.74599166   13.79775689    4.41646085   1       8  H
+   14.80983293   12.56454937    4.41645132   1       9  H
+    0.04549923    1.98093129    4.41644880   1      10  H
+    2.14014426    0.80011399    4.41643913   1      11  H
+    2.26353253   13.75120162    4.41644916   1      12  H
+
+outcell: Unit cell vectors (Ang):
+       14.876540    0.000000    0.000000
+        0.000000   15.564540    0.000000
+        0.000000    0.000000   10.583540
+
+outcell: Cell vector modules (Ang)   :   14.876540   15.564540   10.583540
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   2450.5817
+New_DM. Step:     6
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+Density Matrix sparsity pattern changed.
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1    -1032.5522    -1032.2241    -1032.2241  0.0158 -4.7078
+siesta:    2    -1032.5555    -1032.5457    -1032.5457  0.0280 -4.8465
+siesta:    3    -1032.5495    -1032.4312    -1032.4312  0.0069 -4.7808
+siesta:    4    -1032.5493    -1032.5290    -1032.5290  0.0020 -4.7804
+siesta:    5    -1032.5493    -1032.5448    -1032.5448  0.0009 -4.7700
+siesta:    6    -1032.5493    -1032.5481    -1032.5481  0.0004 -4.7696
+siesta:    7    -1032.5493    -1032.5490    -1032.5490  0.0001 -4.7705
+
+dhscf: ***********************************************************************
+dhscf: WARNING: External potential file not found!
+dhscf: WARNING: No external potential is being used
+dhscf: ***********************************************************************
+
+siesta: E_KS(eV) =            -1032.5492
+
+siesta: Atomic forces (eV/Ang):
+     1    0.205123   -0.117884    0.000205
+     2    0.130881   -0.119427    0.000118
+     3   -0.491176   -0.024242    0.000072
+     4    0.164005   -0.047543    0.000190
+     5   -0.220239    0.416788    0.000137
+     6    0.305391   -0.170039    0.000202
+     7    0.128169   -0.071697   -0.000213
+     8    0.093865    0.057479   -0.000064
+     9    0.392080   -0.276975   -0.000101
+    10   -0.001437   -0.115728   -0.000332
+    11    0.442596   -0.201166   -0.000612
+    12   -1.147140    0.668165   -0.000455
+----------------------------------------
+   Tot    0.002118   -0.002269   -0.000853
+----------------------------------------
+   Max    1.147140
+   Res    0.287664    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    1.147140    constrained
+
+Stress-tensor-Voigt (kbar):        1.84        1.03       -0.00       -0.72       -0.00       -0.00
+(Free)E + p*V (eV/cell)    -1034.0078
+Target enthalpy (eV/cell)    -1032.5492
+
+siesta: Stress tensor (static) (eV/Ang**3):
+         0.001146   -0.000446   -0.000000
+        -0.000446    0.000642   -0.000000
+        -0.000000   -0.000000   -0.000003
+
+siesta: Pressure (static):         -0.95364745  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+         0.001146   -0.000446   -0.000000
+        -0.000446    0.000642   -0.000000
+        -0.000000   -0.000000   -0.000003
+
+siesta: Pressure (total):         -0.95364745  kBar
+
+mulliken: Mulliken Atomic and Orbital Populations:
+
+Species: H                   
+Atom  Qatom  Qorb
+               1s      1s      1Ppy    1Ppz    1Ppx    
+   7  1.142   0.628   0.450   0.016   0.018   0.029
+   8  1.141   0.626   0.452   0.017   0.018   0.028
+   9  1.144   0.623   0.457   0.035   0.019   0.011
+  10  1.141   0.626   0.452   0.035   0.018   0.010
+  11  1.144   0.623   0.457   0.018   0.019   0.027
+  12  1.127   0.635   0.429   0.016   0.016   0.030
+
+Species: C                   
+Atom  Qatom  Qorb
+               2s      2s      2py     2pz     2px     2py     2pz     2px     
+               3dxy    3dyz    3dz2    3dxz    3dx2-y2 
+   1  3.846   0.733   0.319   0.619   0.939   0.592   0.283   0.030   0.295
+              0.014   0.006   0.003   0.004   0.011
+   2  3.866   0.746   0.313   0.603   0.946   0.634   0.288   0.027   0.272
+              0.010   0.002   0.003   0.007   0.015
+   3  3.862   0.735   0.318   0.605   0.947   0.631   0.288   0.026   0.276
+              0.014   0.006   0.003   0.003   0.010
+   4  3.866   0.745   0.313   0.624   0.946   0.615   0.278   0.027   0.281
+              0.014   0.006   0.003   0.003   0.011
+   5  3.862   0.737   0.317   0.605   0.947   0.630   0.291   0.027   0.273
+              0.010   0.002   0.003   0.007   0.014
+   6  3.859   0.747   0.313   0.632   0.948   0.607   0.271   0.027   0.278
+              0.013   0.006   0.003   0.004   0.011
+
+mulliken: Qtot =       30.000
+
+atompop: Hirshfeld Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.033
+   8  0.030
+   9  0.030
+  10  0.030
+  11  0.030
+  12  0.035
+
+Species: C                   
+Atom  Qatom
+   1 -0.031
+   2 -0.032
+   3 -0.033
+   4 -0.032
+   5 -0.033
+   6 -0.027
+
+atompop: Voronoi Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.013
+   8  0.015
+   9  0.011
+  10  0.017
+  11  0.011
+  12  0.017
+
+Species: C                   
+Atom  Qatom
+   1 -0.006
+   2 -0.022
+   3 -0.023
+   4 -0.023
+   5 -0.011
+   6  0.001
+
+forcesToPipe: energy (Ry) =  -75.890369
+forcesToPipe: stress (Ry/Bohr**3) =
+    0.000012   -0.000005   -0.000000
+   -0.000005    0.000007   -0.000000
+   -0.000000   -0.000000   -0.000000
+forcesToPipe: forces (Ry/Bohr) =
+    0.007978   -0.004585    0.000008
+    0.005090   -0.004645    0.000005
+   -0.019104   -0.000943    0.000003
+    0.006379   -0.001849    0.000007
+   -0.008566    0.016210    0.000005
+    0.011878   -0.006613    0.000008
+    0.004985   -0.002789   -0.000008
+    0.003651    0.002236   -0.000002
+    0.015249   -0.010773   -0.000004
+   -0.000056   -0.004501   -0.000013
+    0.017214   -0.007824   -0.000024
+   -0.044616    0.025987   -0.000018
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :            5   25.837717943942948       0.37948238270491252        8.3459031885925530       4.59930141938324905E-002   1.6645167007613908        8.3459182306086870        2.3582358968171011       0.32950465634038106        8.3459017270462734        25.871884290475375        27.139564552233370        8.3459105651035870       6.52522362464039857E-002   25.794476402407987        8.3459167595464372        2.4152569655434095        27.068942350424120        8.3459063811830703        24.039380489717662        1.4244193028775811        8.3459067796672048        24.086443028774866        26.073992043412684        8.3459047648445939        27.986539348194889        23.743566655585546        8.3458867703284767       8.59811145213541655E-002   3.7434190985462696        8.3458820023590263        4.0442881312057501        1.5119969195317611        8.3458637280338959        4.2774582560228627        25.986015303759839        8.3458826766765846        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000     
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   28.112597    0.000000    0.000000
+    0.000000   29.412730    0.000000
+    0.000000    0.000000   20.000000
+coordsFromPipe: xa (Bohr) =
+   25.848124    0.373523    8.345910
+    0.052688    1.656821    8.345928
+    2.346550    0.329680    8.345904
+   25.881613   27.137839    8.345920
+    0.059163   25.804023    8.345926
+    2.424639   27.063649    8.345911
+   24.050670    1.418064    8.345901
+   24.096414   26.079880    8.345903
+   27.993755   23.745699    8.345877
+    0.085929    3.731626    8.345862
+    4.046113    1.504450    8.345827
+    4.255243   25.998829    8.345867
+
+* Maximum dynamic memory allocated =    62 MB
+
+siesta:                 ==============================
+                            Begin Server step =      6
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   13.67823255    0.19765991    4.41646380   2       1  C
+    0.02788148    0.87675146    4.41647297   2       2  C
+    1.24174018    0.17445912    4.41646029   2       3  C
+   13.69595410   14.36072037    4.41646889   2       4  C
+    0.03130769   13.65489553    4.41647218   2       5  C
+    1.28306333   14.32146064    4.41646422   2       6  C
+   12.72706162    0.75040702    4.41645879   1       7  H
+   12.75126796   13.80087240    4.41645984   1       8  H
+   14.81365131   12.56567753    4.41644638   1       9  H
+    0.04547190    1.97469039    4.41643845   1      10  H
+    2.14110969    0.79612019    4.41641977   1      11  H
+    2.25177681   13.75798233    4.41644089   1      12  H
+
+outcell: Unit cell vectors (Ang):
+       14.876540    0.000000    0.000000
+        0.000000   15.564540    0.000000
+        0.000000    0.000000   10.583540
+
+outcell: Cell vector modules (Ang)   :   14.876540   15.564540   10.583540
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   2450.5817
+New_DM. Step:     7
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+Density Matrix sparsity pattern changed.
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1    -1032.5723    -1032.8317    -1032.8317  0.0088 -4.7710
+siesta:    2    -1032.5727    -1032.5701    -1032.5701  0.0105 -4.6754
+siesta:    3    -1032.5713    -1032.6465    -1032.6465  0.0034 -4.7147
+siesta:    4    -1032.5712    -1032.5873    -1032.5873  0.0012 -4.7221
+siesta:    5    -1032.5712    -1032.5748    -1032.5748  0.0005 -4.7288
+siesta:    6    -1032.5712    -1032.5718    -1032.5718  0.0001 -4.7269
+siesta:    7    -1032.5712    -1032.5713    -1032.5713  0.0001 -4.7265
+
+dhscf: ***********************************************************************
+dhscf: WARNING: External potential file not found!
+dhscf: WARNING: No external potential is being used
+dhscf: ***********************************************************************
+
+siesta: E_KS(eV) =            -1032.5712
+
+siesta: Atomic forces (eV/Ang):
+     1    0.094746   -0.050241    0.000372
+     2   -0.153961    0.050615   -0.000005
+     3    0.135073   -0.261165   -0.000102
+     4   -0.117973    0.102641    0.000344
+     5    0.299239    0.014571    0.000164
+     6   -0.406629    0.229164    0.000100
+     7    0.111095   -0.062364    0.000021
+     8    0.036205    0.009168    0.000031
+     9    0.357727   -0.173847   -0.000088
+    10    0.013900   -0.040906   -0.000173
+    11    0.328377   -0.229257   -0.000542
+    12   -0.694442    0.409498   -0.000350
+----------------------------------------
+   Tot    0.003356   -0.002123   -0.000227
+----------------------------------------
+   Max    0.694442
+   Res    0.200299    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.694442    constrained
+
+Stress-tensor-Voigt (kbar):        0.98        0.64       -0.00       -0.31       -0.00        0.00
+(Free)E + p*V (eV/cell)    -1033.3950
+Target enthalpy (eV/cell)    -1032.5712
+
+siesta: Stress tensor (static) (eV/Ang**3):
+         0.000615   -0.000192    0.000000
+        -0.000192    0.000397   -0.000000
+         0.000000   -0.000000   -0.000003
+
+siesta: Pressure (static):         -0.53858402  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+         0.000615   -0.000192    0.000000
+        -0.000192    0.000397   -0.000000
+         0.000000   -0.000000   -0.000003
+
+siesta: Pressure (total):         -0.53858402  kBar
+
+mulliken: Mulliken Atomic and Orbital Populations:
+
+Species: H                   
+Atom  Qatom  Qorb
+               1s      1s      1Ppy    1Ppz    1Ppx    
+   7  1.142   0.628   0.451   0.017   0.018   0.029
+   8  1.142   0.625   0.453   0.017   0.018   0.028
+   9  1.144   0.624   0.455   0.035   0.019   0.011
+  10  1.142   0.625   0.453   0.035   0.018   0.010
+  11  1.143   0.624   0.455   0.018   0.019   0.027
+  12  1.134   0.632   0.439   0.016   0.017   0.030
+
+Species: C                   
+Atom  Qatom  Qorb
+               2s      2s      2py     2pz     2px     2py     2pz     2px     
+               3dxy    3dyz    3dz2    3dxz    3dx2-y2 
+   1  3.847   0.735   0.318   0.618   0.938   0.592   0.283   0.030   0.295
+              0.014   0.006   0.003   0.004   0.012
+   2  3.863   0.743   0.314   0.599   0.945   0.627   0.291   0.029   0.277
+              0.010   0.002   0.003   0.007   0.015
+   3  3.865   0.739   0.315   0.610   0.946   0.628   0.284   0.027   0.278
+              0.014   0.006   0.003   0.004   0.011
+   4  3.863   0.742   0.314   0.620   0.945   0.607   0.281   0.029   0.287
+              0.014   0.006   0.003   0.003   0.011
+   5  3.865   0.740   0.315   0.609   0.946   0.628   0.288   0.027   0.275
+              0.010   0.002   0.003   0.007   0.015
+   6  3.850   0.738   0.317   0.630   0.949   0.597   0.272   0.026   0.286
+              0.013   0.005   0.003   0.004   0.011
+
+mulliken: Qtot =       30.000
+
+atompop: Hirshfeld Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.033
+   8  0.030
+   9  0.029
+  10  0.030
+  11  0.029
+  12  0.036
+
+Species: C                   
+Atom  Qatom
+   1 -0.030
+   2 -0.032
+   3 -0.033
+   4 -0.032
+   5 -0.033
+   6 -0.028
+
+atompop: Voronoi Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.014
+   8  0.015
+   9  0.009
+  10  0.013
+  11  0.010
+  12  0.019
+
+Species: C                   
+Atom  Qatom
+   1 -0.006
+   2 -0.018
+   3 -0.024
+   4 -0.024
+   5 -0.009
+   6 -0.000
+
+forcesToPipe: energy (Ry) =  -75.891989
+forcesToPipe: stress (Ry/Bohr**3) =
+    0.000007   -0.000002    0.000000
+   -0.000002    0.000004   -0.000000
+    0.000000   -0.000000   -0.000000
+forcesToPipe: forces (Ry/Bohr) =
+    0.003685   -0.001954    0.000014
+   -0.005988    0.001969   -0.000000
+    0.005253   -0.010158   -0.000004
+   -0.004588    0.003992    0.000013
+    0.011638    0.000567    0.000006
+   -0.015815    0.008913    0.000004
+    0.004321   -0.002426    0.000001
+    0.001408    0.000357    0.000001
+    0.013913   -0.006762   -0.000003
+    0.000541   -0.001591   -0.000007
+    0.012772   -0.008917   -0.000021
+   -0.027009    0.015927   -0.000014
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :            6   25.848123699347752       0.37352323921031921        8.3459103450245600       5.26883853930371696E-002   1.6568208056204297        8.3459276851266644        2.3465497845118741       0.32968009335623910        8.3459037099708127        25.881612582035117        27.137839274913325        8.3459199688579151       5.91629769672657804E-002   25.804023095732514        8.3459261780495577        2.4246392584979213        27.063649097807620        8.3459111399974955        24.050670414173691        1.4180643164972817        8.3459008753801101        24.096413792961684        26.079879509051548        8.3459028559735380        27.993755031329254        23.745698574262111        8.3458774240683073       8.59294714710321789E-002   3.7316255035042936        8.3458624420226357        4.0461125254969010        1.5044497289163015        8.3458271335177638        4.2552431545070553        25.998828995909754        8.3458670475893495        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000     
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   28.112597    0.000000    0.000000
+    0.000000   29.412730    0.000000
+    0.000000    0.000000   20.000000
+coordsFromPipe: xa (Bohr) =
+   25.845004    0.375310    8.345908
+    0.050681    1.659128    8.345925
+    2.350054    0.329627    8.345903
+   25.878696   27.138357    8.345917
+    0.060989   25.801161    8.345923
+    2.421826   27.065236    8.345910
+   24.047285    1.419970    8.345903
+   24.093424   26.078114    8.345903
+   27.991591   23.745059    8.345880
+    0.085945    3.735162    8.345868
+    4.045565    1.506713    8.345838
+    4.261904   25.994987    8.345872
+
+* Maximum dynamic memory allocated =    62 MB
+
+siesta:                 ==============================
+                            Begin Server step =      7
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   13.67658148    0.19860544    4.41646266   2       1  C
+    0.02681913    0.87797257    4.41647147   2       2  C
+    1.24359441    0.17443129    4.41645997   2       3  C
+   13.69441052   14.36099412    4.41646740   2       4  C
+    0.03227387   13.65338076    4.41647068   2       5  C
+    1.28157464   14.32230052    4.41646346   2       6  C
+   12.72527025    0.75141537    4.41645972   1       7  H
+   12.74968590   13.79993824    4.41646014   1       8  H
+   14.81250640   12.56533926    4.41644786   1       9  H
+    0.04548009    1.97656168    4.41644155   1      10  H
+    2.14082021    0.79731771    4.41642557   1      11  H
+    2.25530158   13.75594904    4.41644335   1      12  H
+
+outcell: Unit cell vectors (Ang):
+       14.876540    0.000000    0.000000
+        0.000000   15.564540    0.000000
+        0.000000    0.000000   10.583540
+
+outcell: Cell vector modules (Ang)   :   14.876540   15.564540   10.583540
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   2450.5817
+New_DM. Step:     8
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+Density Matrix sparsity pattern changed.
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1    -1032.5685    -1032.4201    -1032.4201  0.0118 -4.7195
+siesta:    2    -1032.5690    -1032.5659    -1032.5659  0.0143 -4.7614
+siesta:    3    -1032.5674    -1032.5354    -1032.5354  0.0065 -4.7468
+siesta:    4    -1032.5672    -1032.5673    -1032.5673  0.0010 -4.7419
+siesta:    5    -1032.5672    -1032.5672    -1032.5672  0.0003 -4.7383
+siesta:    6    -1032.5672    -1032.5672    -1032.5672  0.0001 -4.7390
+siesta:    7    -1032.5672    -1032.5671    -1032.5671  0.0000 -4.7395
+
+dhscf: ***********************************************************************
+dhscf: WARNING: External potential file not found!
+dhscf: WARNING: No external potential is being used
+dhscf: ***********************************************************************
+
+siesta: E_KS(eV) =            -1032.5671
+
+siesta: Atomic forces (eV/Ang):
+     1    0.128322   -0.070787    0.000306
+     2   -0.065711   -0.001093    0.000060
+     3   -0.055511   -0.188778   -0.000111
+     4   -0.030889    0.055741    0.000334
+     5    0.140873    0.137080    0.000148
+     6   -0.188819    0.107211    0.000138
+     7    0.116293   -0.065108   -0.000040
+     8    0.053693    0.023647   -0.000009
+     9    0.368120   -0.204659   -0.000091
+    10    0.008716   -0.064082   -0.000203
+    11    0.362972   -0.220806   -0.000588
+    12   -0.835238    0.490415   -0.000240
+----------------------------------------
+   Tot    0.002820   -0.001216   -0.000297
+----------------------------------------
+   Max    0.835238
+   Res    0.202469    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.835238    constrained
+
+Stress-tensor-Voigt (kbar):        1.25        0.76       -0.00       -0.43       -0.00       -0.00
+(Free)E + p*V (eV/cell)    -1033.5873
+Target enthalpy (eV/cell)    -1032.5671
+
+siesta: Stress tensor (static) (eV/Ang**3):
+         0.000779   -0.000271   -0.000000
+        -0.000271    0.000473   -0.000000
+        -0.000000   -0.000000   -0.000003
+
+siesta: Pressure (static):         -0.66696683  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+         0.000779   -0.000271   -0.000000
+        -0.000271    0.000473   -0.000000
+        -0.000000   -0.000000   -0.000003
+
+siesta: Pressure (total):         -0.66696683  kBar
+
+mulliken: Mulliken Atomic and Orbital Populations:
+
+Species: H                   
+Atom  Qatom  Qorb
+               1s      1s      1Ppy    1Ppz    1Ppx    
+   7  1.142   0.628   0.450   0.016   0.018   0.029
+   8  1.142   0.625   0.453   0.017   0.018   0.028
+   9  1.144   0.624   0.456   0.035   0.019   0.011
+  10  1.142   0.625   0.453   0.035   0.018   0.010
+  11  1.144   0.624   0.456   0.018   0.019   0.027
+  12  1.132   0.633   0.436   0.016   0.017   0.030
+
+Species: C                   
+Atom  Qatom  Qorb
+               2s      2s      2py     2pz     2px     2py     2pz     2px     
+               3dxy    3dyz    3dz2    3dxz    3dx2-y2 
+   1  3.846   0.734   0.318   0.618   0.938   0.592   0.283   0.030   0.295
+              0.014   0.006   0.003   0.004   0.011
+   2  3.864   0.744   0.313   0.600   0.946   0.629   0.290   0.028   0.276
+              0.010   0.002   0.003   0.007   0.015
+   3  3.864   0.738   0.316   0.609   0.946   0.629   0.285   0.027   0.277
+              0.014   0.006   0.003   0.003   0.010
+   4  3.864   0.743   0.314   0.621   0.946   0.610   0.280   0.028   0.285
+              0.014   0.006   0.003   0.003   0.011
+   5  3.864   0.739   0.316   0.608   0.946   0.629   0.289   0.027   0.274
+              0.010   0.002   0.003   0.007   0.014
+   6  3.853   0.741   0.316   0.630   0.949   0.600   0.271   0.026   0.284
+              0.013   0.006   0.003   0.004   0.011
+
+mulliken: Qtot =       30.000
+
+atompop: Hirshfeld Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.033
+   8  0.030
+   9  0.029
+  10  0.030
+  11  0.029
+  12  0.036
+
+Species: C                   
+Atom  Qatom
+   1 -0.030
+   2 -0.032
+   3 -0.033
+   4 -0.032
+   5 -0.033
+   6 -0.028
+
+atompop: Voronoi Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.014
+   8  0.015
+   9  0.011
+  10  0.014
+  11  0.011
+  12  0.018
+
+Species: C                   
+Atom  Qatom
+   1 -0.006
+   2 -0.020
+   3 -0.023
+   4 -0.023
+   5 -0.011
+   6  0.000
+
+forcesToPipe: energy (Ry) =  -75.891689
+forcesToPipe: stress (Ry/Bohr**3) =
+    0.000008   -0.000003   -0.000000
+   -0.000003    0.000005   -0.000000
+   -0.000000   -0.000000   -0.000000
+forcesToPipe: forces (Ry/Bohr) =
+    0.004991   -0.002753    0.000012
+   -0.002556   -0.000043    0.000002
+   -0.002159   -0.007342   -0.000004
+   -0.001201    0.002168    0.000013
+    0.005479    0.005332    0.000006
+   -0.007344    0.004170    0.000005
+    0.004523   -0.002532   -0.000002
+    0.002088    0.000920   -0.000000
+    0.014317   -0.007960   -0.000004
+    0.000339   -0.002492   -0.000008
+    0.014117   -0.008588   -0.000023
+   -0.032485    0.019074   -0.000009
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :            7   25.845003610668808       0.37531004424564535        8.3459081992214337       5.06808279339878015E-002   1.6591283627721725        8.3459248502594825        2.3500537787233426       0.32962748986655938        8.3459031154055783        25.878695625871895        27.138356586537988        8.3459171492118376       6.09887962567730660E-002   25.801160590454959        8.3459233539811635        2.4218260474535427        27.065236240395645        8.3459097131022411        24.047285213954098        1.4199698120897357        8.3459026457368601        24.093424133177319        26.078114196090318        8.3459034283343847        27.991591462190584        23.745059334238835        8.3458802264751881       8.59449562571324988E-002   3.7351617256182128        8.3458683070446114        4.0455654943826467        1.5067126981175809        8.3458381061123568        4.2619040208272612        25.994986621062285        8.3458717042546979        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000     
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   28.112597    0.000000    0.000000
+    0.000000   29.412730    0.000000
+    0.000000    0.000000   20.000000
+coordsFromPipe: xa (Bohr) =
+   25.854270    0.370103    8.345923
+    0.051087    1.655802    8.345931
+    2.346754    0.322653    8.345900
+   25.881694   27.139696    8.345934
+    0.065446   25.807220    8.345933
+    2.421887   27.064784    8.345915
+   24.056434    1.414833    8.345899
+   24.099654   26.081479    8.345902
+   27.997538   23.744556    8.345873
+    0.086261    3.727774    8.345852
+    4.049193    1.501572    8.345800
+    4.267507   25.992069    8.345861
+
+* Maximum dynamic memory allocated =    62 MB
+
+siesta:                 ==============================
+                            Begin Server step =      8
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   13.68148523    0.19584981    4.41647038   2       1  C
+    0.02703400    0.87621253    4.41647477   2       2  C
+    1.24184800    0.17074072    4.41645815   2       3  C
+   13.69599743   14.36170315    4.41647617   2       4  C
+    0.03463254   13.65658739    4.41647572   2       5  C
+    1.28160686   14.32206125    4.41646631   2       6  C
+   12.73011134    0.74869691    4.41645761   1       7  H
+   12.75298278   13.80171889    4.41645953   1       8  H
+   14.81565327   12.56507281    4.41644392   1       9  H
+    0.04564757    1.97265208    4.41643313   1      10  H
+    2.14273955    0.79459718    4.41640554   1      11  H
+    2.25826639   13.75440490    4.41643766   1      12  H
+
+outcell: Unit cell vectors (Ang):
+       14.876540    0.000000    0.000000
+        0.000000   15.564540    0.000000
+        0.000000    0.000000   10.583540
+
+outcell: Cell vector modules (Ang)   :   14.876540   15.564540   10.583540
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   2450.5817
+New_DM. Step:     9
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+Density Matrix sparsity pattern changed.
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1    -1032.5682    -1032.6514    -1032.6514  0.0047 -4.7072
+siesta:    2    -1032.5690    -1032.5673    -1032.5673  0.0122 -4.7191
+siesta:    3    -1032.5679    -1032.6081    -1032.6081  0.0027 -4.7118
+siesta:    4    -1032.5678    -1032.5718    -1032.5718  0.0010 -4.7119
+siesta:    5    -1032.5679    -1032.5686    -1032.5686  0.0003 -4.7105
+siesta:    6    -1032.5678    -1032.5683    -1032.5683  0.0001 -4.7106
+siesta:    7    -1032.5678    -1032.5679    -1032.5679  0.0000 -4.7108
+
+dhscf: ***********************************************************************
+dhscf: WARNING: External potential file not found!
+dhscf: WARNING: No external potential is being used
+dhscf: ***********************************************************************
+
+siesta: E_KS(eV) =            -1032.5678
+
+siesta: Atomic forces (eV/Ang):
+     1   -0.076808    0.042568    0.000459
+     2    0.045828   -0.021834    0.000030
+     3    0.136662    0.031442    0.000045
+     4    0.041701   -0.029440    0.000303
+     5    0.033859   -0.135469    0.000123
+     6   -0.022150    0.022031    0.000112
+     7    0.109992   -0.063061    0.000044
+     8    0.000397   -0.009994    0.000073
+     9    0.368807   -0.095356   -0.000071
+    10    0.012284    0.003104   -0.000157
+    11    0.263091   -0.280514   -0.000475
+    12   -0.917425    0.536575   -0.000381
+----------------------------------------
+   Tot   -0.003765    0.000052    0.000106
+----------------------------------------
+   Max    0.917425
+   Res    0.203577    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.917425    constrained
+
+Stress-tensor-Voigt (kbar):        1.02        0.43       -0.00       -0.54       -0.00        0.00
+(Free)E + p*V (eV/cell)    -1033.3052
+Target enthalpy (eV/cell)    -1032.5678
+
+siesta: Stress tensor (static) (eV/Ang**3):
+         0.000639   -0.000336    0.000000
+        -0.000336    0.000266   -0.000000
+         0.000000   -0.000000   -0.000003
+
+siesta: Pressure (static):         -0.48210015  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+         0.000639   -0.000336    0.000000
+        -0.000336    0.000266   -0.000000
+         0.000000   -0.000000   -0.000003
+
+siesta: Pressure (total):         -0.48210015  kBar
+
+mulliken: Mulliken Atomic and Orbital Populations:
+
+Species: H                   
+Atom  Qatom  Qorb
+               1s      1s      1Ppy    1Ppz    1Ppx    
+   7  1.142   0.629   0.450   0.017   0.018   0.029
+   8  1.142   0.625   0.454   0.017   0.018   0.028
+   9  1.143   0.625   0.454   0.035   0.018   0.011
+  10  1.143   0.625   0.454   0.035   0.018   0.010
+  11  1.143   0.625   0.454   0.018   0.018   0.027
+  12  1.130   0.633   0.434   0.016   0.017   0.030
+
+Species: C                   
+Atom  Qatom  Qorb
+               2s      2s      2py     2pz     2px     2py     2pz     2px     
+               3dxy    3dyz    3dz2    3dxz    3dx2-y2 
+   1  3.847   0.735   0.318   0.616   0.937   0.592   0.285   0.031   0.296
+              0.014   0.006   0.003   0.004   0.012
+   2  3.862   0.743   0.314   0.596   0.945   0.627   0.293   0.029   0.277
+              0.010   0.002   0.003   0.007   0.015
+   3  3.867   0.741   0.315   0.609   0.945   0.632   0.286   0.027   0.276
+              0.014   0.006   0.003   0.003   0.011
+   4  3.862   0.741   0.314   0.619   0.945   0.607   0.282   0.029   0.287
+              0.014   0.006   0.003   0.003   0.011
+   5  3.866   0.742   0.315   0.611   0.945   0.627   0.286   0.027   0.275
+              0.010   0.002   0.003   0.007   0.015
+   6  3.853   0.741   0.316   0.628   0.948   0.599   0.273   0.027   0.285
+              0.013   0.006   0.003   0.004   0.011
+
+mulliken: Qtot =       30.000
+
+atompop: Hirshfeld Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.032
+   8  0.031
+   9  0.029
+  10  0.031
+  11  0.029
+  12  0.036
+
+Species: C                   
+Atom  Qatom
+   1 -0.030
+   2 -0.032
+   3 -0.032
+   4 -0.032
+   5 -0.032
+   6 -0.028
+
+atompop: Voronoi Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.015
+   8  0.014
+   9  0.009
+  10  0.010
+  11  0.010
+  12  0.019
+
+Species: C                   
+Atom  Qatom
+   1 -0.007
+   2 -0.016
+   3 -0.023
+   4 -0.022
+   5 -0.009
+   6 -0.000
+
+forcesToPipe: energy (Ry) =  -75.891740
+forcesToPipe: stress (Ry/Bohr**3) =
+    0.000007   -0.000004    0.000000
+   -0.000004    0.000003   -0.000000
+    0.000000   -0.000000   -0.000000
+forcesToPipe: forces (Ry/Bohr) =
+   -0.002987    0.001656    0.000018
+    0.001782   -0.000849    0.000001
+    0.005315    0.001223    0.000002
+    0.001622   -0.001145    0.000012
+    0.001317   -0.005269    0.000005
+   -0.000861    0.000857    0.000004
+    0.004278   -0.002453    0.000002
+    0.000015   -0.000389    0.000003
+    0.014344   -0.003709   -0.000003
+    0.000478    0.000121   -0.000006
+    0.010233   -0.010910   -0.000018
+   -0.035682    0.020869   -0.000015
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :            8   25.854270372614994       0.37010265055263741        8.3459227743975983       5.10868741600121329E-002   1.6558023602650354        8.3459310835864269        2.3467535459142006       0.32265333250705414        8.3458996698528498        25.881694466355373        27.139696447022192        8.3459337278773713       6.54460325405296917E-002   25.807220246821558        8.3459328645826254        2.4218869381867716        27.064784088023440        8.3459150945041038        24.056433552630619        1.4148326698262164        8.3458986457694788        24.099654339620908        26.081479143384591        8.3459022833065877        27.997538199118114        23.744555814187208        8.3458727846616387       8.62614422421482674E-002   3.7277736506079568        8.3458523854476621        4.0491925216477798        1.5015716547345248        8.3458002490177687        4.2675066977631122        25.992068620390633        8.3458609566261384        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000     
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   28.112597    0.000000    0.000000
+    0.000000   29.412730    0.000000
+    0.000000    0.000000   20.000000
+coordsFromPipe: xa (Bohr) =
+   25.852533    0.371079    8.345920
+    0.051011    1.656426    8.345930
+    2.347372    0.323961    8.345900
+   25.881132   27.139445    8.345931
+    0.064611   25.806084    8.345931
+    2.421876   27.064869    8.345914
+   24.054719    1.415796    8.345899
+   24.098486   26.080848    8.345902
+   27.996423   23.744650    8.345874
+    0.086202    3.729159    8.345855
+    4.048513    1.502535    8.345807
+    4.266456   25.992616    8.345863
+
+* Maximum dynamic memory allocated =    62 MB
+
+siesta:                 ==============================
+                            Begin Server step =      9
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   13.68056602    0.19636636    4.41646893   2       1  C
+    0.02699372    0.87654245    4.41647415   2       2  C
+    1.24217537    0.17143252    4.41645849   2       3  C
+   13.69569996   14.36157024    4.41647453   2       4  C
+    0.03419040   13.65598630    4.41647477   2       5  C
+    1.28160082   14.32210610    4.41646578   2       6  C
+   12.72920387    0.74920649    4.41645800   1       7  H
+   12.75236478   13.80138510    4.41645965   1       8  H
+   14.81506339   12.56512276    4.41644466   1       9  H
+    0.04561618    1.97338494    4.41643471   1      10  H
+    2.14237977    0.79510715    4.41640929   1      11  H
+    2.25771060   13.75469430    4.41643873   1      12  H
+
+outcell: Unit cell vectors (Ang):
+       14.876540    0.000000    0.000000
+        0.000000   15.564540    0.000000
+        0.000000    0.000000   10.583540
+
+outcell: Cell vector modules (Ang)   :   14.876540   15.564540   10.583540
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   2450.5817
+New_DM. Step:    10
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+Density Matrix sparsity pattern changed.
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1    -1032.5684    -1032.5090    -1032.5090  0.0055 -4.7268
+siesta:    2    -1032.5693    -1032.5675    -1032.5675  0.0135 -4.7011
+siesta:    3    -1032.5681    -1032.5367    -1032.5367  0.0027 -4.7167
+siesta:    4    -1032.5681    -1032.5663    -1032.5663  0.0008 -4.7139
+siesta:    5    -1032.5681    -1032.5673    -1032.5673  0.0003 -4.7169
+siesta:    6    -1032.5680    -1032.5677    -1032.5677  0.0001 -4.7170
+siesta:    7    -1032.5680    -1032.5680    -1032.5680  0.0000 -4.7165
+
+dhscf: ***********************************************************************
+dhscf: WARNING: External potential file not found!
+dhscf: WARNING: No external potential is being used
+dhscf: ***********************************************************************
+
+siesta: E_KS(eV) =            -1032.5680
+
+siesta: Atomic forces (eV/Ang):
+     1   -0.037753    0.021003    0.000411
+     2    0.024543   -0.017664    0.000026
+     3    0.101052   -0.009679   -0.000008
+     4    0.027548   -0.013375    0.000293
+     5    0.054111   -0.084949    0.000133
+     6   -0.052759    0.037540    0.000117
+     7    0.111108   -0.063608    0.000040
+     8    0.010475   -0.003717    0.000054
+     9    0.369044   -0.115489   -0.000062
+    10    0.011914   -0.009262   -0.000177
+    11    0.281526   -0.269716   -0.000504
+    12   -0.902299    0.528241   -0.000354
+----------------------------------------
+   Tot   -0.001491   -0.000675   -0.000031
+----------------------------------------
+   Max    0.902299
+   Res    0.199988    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.902299    constrained
+
+Stress-tensor-Voigt (kbar):        1.07        0.49       -0.00       -0.52       -0.00        0.00
+(Free)E + p*V (eV/cell)    -1033.3587
+Target enthalpy (eV/cell)    -1032.5680
+
+siesta: Stress tensor (static) (eV/Ang**3):
+         0.000666   -0.000324    0.000000
+        -0.000324    0.000305   -0.000000
+         0.000000   -0.000000   -0.000003
+
+siesta: Pressure (static):         -0.51692321  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+         0.000666   -0.000324    0.000000
+        -0.000324    0.000305   -0.000000
+         0.000000   -0.000000   -0.000003
+
+siesta: Pressure (total):         -0.51692321  kBar
+
+mulliken: Mulliken Atomic and Orbital Populations:
+
+Species: H                   
+Atom  Qatom  Qorb
+               1s      1s      1Ppy    1Ppz    1Ppx    
+   7  1.142   0.628   0.450   0.017   0.018   0.029
+   8  1.142   0.625   0.454   0.017   0.018   0.028
+   9  1.143   0.625   0.454   0.035   0.018   0.011
+  10  1.142   0.625   0.454   0.035   0.018   0.010
+  11  1.143   0.625   0.454   0.018   0.018   0.027
+  12  1.131   0.633   0.435   0.016   0.017   0.030
+
+Species: C                   
+Atom  Qatom  Qorb
+               2s      2s      2py     2pz     2px     2py     2pz     2px     
+               3dxy    3dyz    3dz2    3dxz    3dx2-y2 
+   1  3.847   0.735   0.318   0.617   0.937   0.592   0.285   0.031   0.295
+              0.014   0.006   0.003   0.004   0.012
+   2  3.862   0.743   0.314   0.597   0.945   0.628   0.292   0.028   0.277
+              0.010   0.002   0.003   0.007   0.015
+   3  3.866   0.740   0.315   0.609   0.946   0.631   0.285   0.027   0.276
+              0.014   0.006   0.003   0.003   0.010
+   4  3.862   0.742   0.314   0.619   0.946   0.608   0.282   0.028   0.286
+              0.014   0.006   0.003   0.003   0.011
+   5  3.866   0.741   0.315   0.611   0.946   0.628   0.287   0.027   0.275
+              0.010   0.002   0.003   0.007   0.015
+   6  3.853   0.741   0.316   0.629   0.948   0.599   0.273   0.027   0.284
+              0.013   0.006   0.003   0.004   0.011
+
+mulliken: Qtot =       30.000
+
+atompop: Hirshfeld Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.033
+   8  0.031
+   9  0.029
+  10  0.031
+  11  0.029
+  12  0.036
+
+Species: C                   
+Atom  Qatom
+   1 -0.030
+   2 -0.032
+   3 -0.032
+   4 -0.032
+   5 -0.032
+   6 -0.028
+
+atompop: Voronoi Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.015
+   8  0.015
+   9  0.009
+  10  0.011
+  11  0.010
+  12  0.019
+
+Species: C                   
+Atom  Qatom
+   1 -0.007
+   2 -0.016
+   3 -0.023
+   4 -0.023
+   5 -0.009
+   6 -0.000
+
+forcesToPipe: energy (Ry) =  -75.891755
+forcesToPipe: stress (Ry/Bohr**3) =
+    0.000007   -0.000004    0.000000
+   -0.000004    0.000003   -0.000000
+    0.000000   -0.000000   -0.000000
+forcesToPipe: forces (Ry/Bohr) =
+   -0.001468    0.000817    0.000016
+    0.000955   -0.000687    0.000001
+    0.003930   -0.000376   -0.000000
+    0.001071   -0.000520    0.000011
+    0.002105   -0.003304    0.000005
+   -0.002052    0.001460    0.000005
+    0.004321   -0.002474    0.000002
+    0.000407   -0.000145    0.000002
+    0.014353   -0.004492   -0.000002
+    0.000463   -0.000360   -0.000007
+    0.010950   -0.010490   -0.000020
+   -0.035094    0.020545   -0.000014
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :            9   25.852533306748075       0.37107878287288720        8.3459200422629909       5.10107602980489003E-002   1.6564258235051601        8.3459299151416637        2.3473721785929009       0.32396064683864806        8.3459003157259257        25.881132330036944        27.139445288534787        8.3459306201862287       6.46105181446416099E-002   25.806084356820197        8.3459310818087431        2.4218755241443133        27.064868844538928        8.3459140857537388        24.054718685350519        1.4157956334300390        8.3458993955682601        24.098486479798904        26.080848379896459        8.3459024979434489        27.996423476003791        23.744650199637064        8.3458741796386953       8.62021165569605285E-002   3.7291585543097114        8.3458553699704936        4.0485126309483928        1.5025353496079785        8.3458073453764765        4.2664564047597473        25.992615512253675        8.3458629739976296        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000     
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   28.112597    0.000000    0.000000
+    0.000000   29.412730    0.000000
+    0.000000    0.000000   20.000000
+coordsFromPipe: xa (Bohr) =
+   25.856938    0.368595    8.345942
+    0.052083    1.653844    8.345934
+    2.351672    0.319572    8.345898
+   25.883850   27.139794    8.345950
+    0.070406   25.804365    8.345941
+    2.423467   27.063840    8.345919
+   24.063649    1.410742    8.345898
+   24.102548   26.082744    8.345903
+   28.002100   23.746154    8.345868
+    0.086769    3.724443    8.345840
+    4.050187    1.496497    8.345769
+    4.263295   25.994080    8.345851
+
+* Maximum dynamic memory allocated =    62 MB
+
+siesta:                 ==============================
+                            Begin Server step =     10
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   13.68289676    0.19505175    4.41648030   2       1  C
+    0.02756107    0.87517614    4.41647655   2       2  C
+    1.24445068    0.16911028    4.41645722   2       3  C
+   13.69713812   14.36175490    4.41648459   2       4  C
+    0.03725720   13.65507649    4.41647994   2       5  C
+    1.28244282   14.32156163    4.41646818   2       6  C
+   12.73392952    0.74653244    4.41645740   1       7  H
+   12.75451415   13.80238819    4.41646017   1       8  H
+   14.81806739   12.56591832    4.41644124   1       9  H
+    0.04591590    1.97088932    4.41642675   1      10  H
+    2.14326604    0.79191197    4.41638888   1      11  H
+    2.25603750   13.75546939    4.41643229   1      12  H
+
+outcell: Unit cell vectors (Ang):
+       14.876540    0.000000    0.000000
+        0.000000   15.564540    0.000000
+        0.000000    0.000000   10.583540
+
+outcell: Cell vector modules (Ang)   :   14.876540   15.564540   10.583540
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   2450.5817
+New_DM. Step:    11
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+Density Matrix sparsity pattern changed.
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1    -1032.5726    -1032.6179    -1032.6179  0.0038 -4.7085
+siesta:    2    -1032.5728    -1032.5722    -1032.5722  0.0055 -4.6884
+siesta:    3    -1032.5724    -1032.5915    -1032.5915  0.0014 -4.6988
+siesta:    4    -1032.5724    -1032.5740    -1032.5740  0.0002 -4.6984
+siesta:    5    -1032.5724    -1032.5726    -1032.5726  0.0001 -4.6996
+
+dhscf: ***********************************************************************
+dhscf: WARNING: External potential file not found!
+dhscf: WARNING: No external potential is being used
+dhscf: ***********************************************************************
+
+siesta: E_KS(eV) =            -1032.5726
+
+siesta: Atomic forces (eV/Ang):
+     1   -0.026944    0.012888    0.000400
+     2    0.153570   -0.060757    0.000052
+     3   -0.022798    0.072915    0.000120
+     4    0.125756   -0.103887    0.000289
+     5   -0.080413   -0.014644    0.000086
+     6   -0.042656    0.030253    0.000047
+     7    0.029794   -0.018372   -0.000158
+     8   -0.017671   -0.024191    0.000087
+     9    0.364631   -0.169927   -0.000098
+    10    0.015631    0.028295   -0.000207
+    11    0.325745   -0.237567   -0.000495
+    12   -0.828482    0.485651   -0.000268
+----------------------------------------
+   Tot   -0.003838    0.000656   -0.000145
+----------------------------------------
+   Max    0.828482
+   Res    0.191472    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.828482    constrained
+
+Stress-tensor-Voigt (kbar):        0.92        0.24       -0.00       -0.60       -0.00       -0.00
+(Free)E + p*V (eV/cell)    -1033.1625
+Target enthalpy (eV/cell)    -1032.5726
+
+siesta: Stress tensor (static) (eV/Ang**3):
+         0.000573   -0.000377   -0.000000
+        -0.000377    0.000152   -0.000000
+        -0.000000   -0.000000   -0.000003
+
+siesta: Pressure (static):         -0.38570553  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+         0.000573   -0.000377   -0.000000
+        -0.000377    0.000152   -0.000000
+        -0.000000   -0.000000   -0.000003
+
+siesta: Pressure (total):         -0.38570553  kBar
+
+mulliken: Mulliken Atomic and Orbital Populations:
+
+Species: H                   
+Atom  Qatom  Qorb
+               1s      1s      1Ppy    1Ppz    1Ppx    
+   7  1.143   0.628   0.452   0.017   0.018   0.029
+   8  1.143   0.625   0.454   0.017   0.018   0.028
+   9  1.144   0.624   0.455   0.035   0.019   0.011
+  10  1.143   0.625   0.455   0.035   0.018   0.010
+  11  1.143   0.625   0.455   0.018   0.019   0.027
+  12  1.132   0.633   0.436   0.016   0.017   0.030
+
+Species: C                   
+Atom  Qatom  Qorb
+               2s      2s      2py     2pz     2px     2py     2pz     2px     
+               3dxy    3dyz    3dz2    3dxz    3dx2-y2 
+   1  3.846   0.733   0.318   0.615   0.936   0.590   0.286   0.031   0.297
+              0.014   0.006   0.003   0.004   0.012
+   2  3.862   0.743   0.314   0.597   0.945   0.628   0.293   0.028   0.277
+              0.010   0.002   0.003   0.007   0.015
+   3  3.866   0.740   0.315   0.608   0.946   0.631   0.286   0.027   0.276
+              0.014   0.006   0.003   0.003   0.010
+   4  3.862   0.742   0.314   0.619   0.946   0.608   0.283   0.028   0.286
+              0.014   0.006   0.003   0.003   0.011
+   5  3.865   0.741   0.315   0.609   0.946   0.628   0.288   0.027   0.275
+              0.010   0.002   0.003   0.007   0.015
+   6  3.852   0.739   0.317   0.627   0.947   0.597   0.274   0.028   0.286
+              0.013   0.006   0.003   0.004   0.011
+
+mulliken: Qtot =       30.000
+
+atompop: Hirshfeld Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.032
+   8  0.031
+   9  0.029
+  10  0.031
+  11  0.029
+  12  0.036
+
+Species: C                   
+Atom  Qatom
+   1 -0.031
+   2 -0.032
+   3 -0.032
+   4 -0.032
+   5 -0.032
+   6 -0.028
+
+atompop: Voronoi Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.014
+   8  0.013
+   9  0.009
+  10  0.009
+  11  0.009
+  12  0.019
+
+Species: C                   
+Atom  Qatom
+   1 -0.007
+   2 -0.013
+   3 -0.023
+   4 -0.021
+   5 -0.009
+   6 -0.001
+
+forcesToPipe: energy (Ry) =  -75.892090
+forcesToPipe: stress (Ry/Bohr**3) =
+    0.000006   -0.000004   -0.000000
+   -0.000004    0.000002   -0.000000
+   -0.000000   -0.000000   -0.000000
+forcesToPipe: forces (Ry/Bohr) =
+   -0.001048    0.000501    0.000016
+    0.005973   -0.002363    0.000002
+   -0.000887    0.002836    0.000005
+    0.004891   -0.004041    0.000011
+   -0.003128   -0.000570    0.000003
+   -0.001659    0.001177    0.000002
+    0.001159   -0.000715   -0.000006
+   -0.000687   -0.000941    0.000003
+    0.014182   -0.006609   -0.000004
+    0.000608    0.001100   -0.000008
+    0.012669   -0.009240   -0.000019
+   -0.032223    0.018889   -0.000010
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :           10   25.856937782367449       0.36859453378711915        8.3459415243218764       5.20828931860139593E-002   1.6538438792123364        8.3459344415736485        2.3516718929441112       0.31957224044629579        8.3458979125891197        25.883850049568085        27.139794237195890        8.3459496432737019       7.04059325428542382E-002   25.804365057241363        8.3459408474136385        2.4234666633201947        27.063839937317912        8.3459186305778754        24.063648874802524        1.4107424080661410        8.3458982481699575        24.102548203476406        26.082743942254687        8.3459034915254460        28.002100223571254        23.746153587518229        8.3458677084182664       8.67685196276538340E-002   3.7244425191682757        8.3458403385337618        4.0501874488567324        1.4964973321358574        8.3457687605765241        4.2632946996746686        25.994080221734542        8.3458508096566373        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000     
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   28.112597    0.000000    0.000000
+    0.000000   29.412730    0.000000
+    0.000000    0.000000   20.000000
+coordsFromPipe: xa (Bohr) =
+   25.863985    0.364620    8.345976
+    0.053798    1.649713    8.345942
+    2.358551    0.312551    8.345894
+   25.888198   27.140353    8.345980
+    0.079679   25.801614    8.345956
+    2.426012   27.062194    8.345926
+   24.077937    1.402657    8.345896
+   24.109047   26.085777    8.345905
+   28.011183   23.748559    8.345857
+    0.087675    3.716897    8.345816
+    4.052867    1.486837    8.345707
+    4.258236   25.996425    8.345831
+
+* Maximum dynamic memory allocated =    62 MB
+
+siesta:                 ==============================
+                            Begin Server step =     11
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   13.68662596    0.19294838    4.41649849   2       1  C
+    0.02846883    0.87299005    4.41648038   2       2  C
+    1.24809117    0.16539469    4.41645518   2       3  C
+   13.69943917   14.36205034    4.41650070   2       4  C
+    0.04216408   13.65362079    4.41648821   2       5  C
+    1.28379001   14.32069047    4.41647203   2       6  C
+   12.74149056    0.74225395    4.41645643   1       7  H
+   12.75795314   13.80399313    4.41646101   1       8  H
+   14.82287380   12.56719121    4.41643576   1       9  H
+    0.04639547    1.96689633    4.41641403   1      10  H
+    2.14468408    0.78679968    4.41635621   1      11  H
+    2.25336081   13.75670997    4.41642203   1      12  H
+
+outcell: Unit cell vectors (Ang):
+       14.876540    0.000000    0.000000
+        0.000000   15.564540    0.000000
+        0.000000    0.000000   10.583540
+
+outcell: Cell vector modules (Ang)   :   14.876540   15.564540   10.583540
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   2450.5817
+New_DM. Step:    12
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1    -1032.5761    -1032.5989    -1032.5989  0.0034 -4.6785
+siesta:    2    -1032.5762    -1032.5760    -1032.5760  0.0036 -4.6629
+siesta:    3    -1032.5761    -1032.5850    -1032.5850  0.0013 -4.6707
+siesta:    4    -1032.5761    -1032.5767    -1032.5767  0.0002 -4.6706
+siesta:    5    -1032.5761    -1032.5763    -1032.5763  0.0001 -4.6714
+
+dhscf: ***********************************************************************
+dhscf: WARNING: External potential file not found!
+dhscf: WARNING: No external potential is being used
+dhscf: ***********************************************************************
+
+siesta: E_KS(eV) =            -1032.5761
+
+siesta: Atomic forces (eV/Ang):
+     1   -0.005328   -0.002640    0.000325
+     2    0.359526   -0.127698    0.000037
+     3   -0.219798    0.205416    0.000192
+     4    0.281644   -0.249349    0.000234
+     5   -0.294646    0.096493    0.000050
+     6   -0.028343    0.019670   -0.000009
+     7   -0.103373    0.056350    0.000070
+     8   -0.062739   -0.057000    0.000088
+     9    0.356617   -0.260452   -0.000096
+    10    0.023890    0.085499   -0.000296
+    11    0.397380   -0.186020   -0.000443
+    12   -0.708032    0.417213   -0.000246
+----------------------------------------
+   Tot   -0.003201   -0.002518   -0.000095
+----------------------------------------
+   Max    0.708032
+   Res    0.208617    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.708032    constrained
+
+Stress-tensor-Voigt (kbar):        0.68       -0.15       -0.00       -0.75       -0.00       -0.00
+(Free)E + p*V (eV/cell)    -1032.8460
+Target enthalpy (eV/cell)    -1032.5761
+
+siesta: Stress tensor (static) (eV/Ang**3):
+         0.000426   -0.000465   -0.000000
+        -0.000465   -0.000092   -0.000000
+        -0.000000   -0.000000   -0.000003
+
+siesta: Pressure (static):         -0.17647880  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+         0.000426   -0.000465   -0.000000
+        -0.000465   -0.000092   -0.000000
+        -0.000000   -0.000000   -0.000003
+
+siesta: Pressure (total):         -0.17647880  kBar
+
+mulliken: Mulliken Atomic and Orbital Populations:
+
+Species: H                   
+Atom  Qatom  Qorb
+               1s      1s      1Ppy    1Ppz    1Ppx    
+   7  1.145   0.627   0.454   0.017   0.018   0.029
+   8  1.144   0.625   0.455   0.017   0.019   0.028
+   9  1.145   0.624   0.457   0.035   0.019   0.011
+  10  1.144   0.624   0.455   0.035   0.019   0.010
+  11  1.144   0.624   0.456   0.018   0.019   0.027
+  12  1.134   0.632   0.439   0.016   0.017   0.030
+
+Species: C                   
+Atom  Qatom  Qorb
+               2s      2s      2py     2pz     2px     2py     2pz     2px     
+               3dxy    3dyz    3dz2    3dxz    3dx2-y2 
+   1  3.844   0.731   0.319   0.612   0.936   0.587   0.289   0.032   0.300
+              0.014   0.006   0.003   0.004   0.012
+   2  3.862   0.743   0.313   0.596   0.945   0.628   0.294   0.028   0.276
+              0.010   0.002   0.003   0.007   0.015
+   3  3.865   0.739   0.315   0.606   0.946   0.632   0.288   0.027   0.276
+              0.014   0.006   0.003   0.003   0.010
+   4  3.862   0.742   0.314   0.618   0.945   0.609   0.284   0.028   0.285
+              0.014   0.006   0.003   0.003   0.011
+   5  3.864   0.740   0.315   0.608   0.946   0.628   0.289   0.027   0.275
+              0.010   0.002   0.003   0.007   0.015
+   6  3.849   0.736   0.318   0.624   0.946   0.595   0.277   0.029   0.289
+              0.013   0.006   0.003   0.004   0.011
+
+mulliken: Qtot =       30.000
+
+atompop: Hirshfeld Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.032
+   8  0.030
+   9  0.029
+  10  0.030
+  11  0.029
+  12  0.036
+
+Species: C                   
+Atom  Qatom
+   1 -0.031
+   2 -0.032
+   3 -0.032
+   4 -0.032
+   5 -0.032
+   6 -0.028
+
+atompop: Voronoi Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.015
+   8  0.014
+   9  0.009
+  10  0.008
+  11  0.010
+  12  0.020
+
+Species: C                   
+Atom  Qatom
+   1 -0.008
+   2 -0.011
+   3 -0.022
+   4 -0.022
+   5 -0.007
+   6 -0.004
+
+forcesToPipe: energy (Ry) =  -75.892349
+forcesToPipe: stress (Ry/Bohr**3) =
+    0.000005   -0.000005   -0.000000
+   -0.000005   -0.000001   -0.000000
+   -0.000000   -0.000000   -0.000000
+forcesToPipe: forces (Ry/Bohr) =
+   -0.000207   -0.000103    0.000013
+    0.013983   -0.004967    0.000001
+   -0.008549    0.007989    0.000007
+    0.010954   -0.009698    0.000009
+   -0.011460    0.003753    0.000002
+   -0.001102    0.000765   -0.000000
+   -0.004021    0.002192    0.000003
+   -0.002440   -0.002217    0.000003
+    0.013870   -0.010130   -0.000004
+    0.000929    0.003325   -0.000011
+    0.015455   -0.007235   -0.000017
+   -0.027538    0.016227   -0.000010
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :           11   25.863984943358449       0.36461973524989033        8.3459758956160925       5.37983058067580538E-002   1.6497127683438184        8.3459416838648224        2.3585514359060480       0.31255079021853216        8.3458940675702316        25.888198400817913        27.140352555053656        8.3459800802136606       7.96785955799944462E-002   25.801614177915226        8.3459564723814719        2.4260124860016044        27.062193685764289        8.3459259022964947        24.077937177925733        1.4026572474839045        8.3458964123326727        24.109046961360406        26.085776842027851        8.3459050812566407        28.011183019679194        23.748559008128094        8.3458573544655792       8.76747645407631171E-002   3.7168968629419785        8.3458162882349907        4.0528671575100761        1.4868365041804639        8.3457070248965994        4.2582364865440754        25.996424573321498        8.3458314164973917        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000     
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   28.112597    0.000000    0.000000
+    0.000000   29.412730    0.000000
+    0.000000    0.000000   20.000000
+coordsFromPipe: xa (Bohr) =
+   25.857626    0.368206    8.345945
+    0.052250    1.653440    8.345935
+    2.352344    0.318886    8.345898
+   25.884275   27.139849    8.345953
+    0.071312   25.804096    8.345942
+    2.423715   27.063679    8.345919
+   24.065045    1.409953    8.345898
+   24.103183   26.083040    8.345904
+   28.002988   23.746389    8.345867
+    0.086857    3.723705    8.345838
+    4.050449    1.495553    8.345763
+    4.262800   25.994309    8.345849
+
+* Maximum dynamic memory allocated =    62 MB
+
+siesta:                 ==============================
+                            Begin Server step =     12
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   13.68326110    0.19484626    4.41648207   2       1  C
+    0.02764975    0.87496257    4.41647692   2       2  C
+    1.24480634    0.16874728    4.41645702   2       3  C
+   13.69736292   14.36178376    4.41648617   2       4  C
+    0.03773659   13.65493427    4.41648075   2       5  C
+    1.28257444   14.32147652    4.41646856   2       6  C
+   12.73466821    0.74611444    4.41645730   1       7  H
+   12.75485013   13.80254499    4.41646025   1       8  H
+   14.81853696   12.56604268    4.41644070   1       9  H
+    0.04596276    1.97049922    4.41642551   1      10  H
+    2.14340458    0.79141251    4.41638568   1      11  H
+    2.25577598   13.75559057    4.41643129   1      12  H
+
+outcell: Unit cell vectors (Ang):
+       14.876540    0.000000    0.000000
+        0.000000   15.564540    0.000000
+        0.000000    0.000000   10.583540
+
+outcell: Cell vector modules (Ang)   :   14.876540   15.564540   10.583540
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   2450.5817
+New_DM. Step:    13
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1    -1032.5742    -1032.4606    -1032.4606  0.0109 -4.6633
+siesta:    2    -1032.5763    -1032.5711    -1032.5711  0.0187 -4.7379
+siesta:    3    -1032.5730    -1032.5178    -1032.5178  0.0040 -4.6949
+siesta:    4    -1032.5730    -1032.5674    -1032.5674  0.0009 -4.7004
+siesta:    5    -1032.5730    -1032.5707    -1032.5707  0.0002 -4.6970
+siesta:    6    -1032.5730    -1032.5724    -1032.5724  0.0001 -4.6963
+siesta:    7    -1032.5730    -1032.5728    -1032.5728  0.0000 -4.6961
+
+dhscf: ***********************************************************************
+dhscf: WARNING: External potential file not found!
+dhscf: WARNING: No external potential is being used
+dhscf: ***********************************************************************
+
+siesta: E_KS(eV) =            -1032.5729
+
+siesta: Atomic forces (eV/Ang):
+     1   -0.024283    0.010944    0.000386
+     2    0.173653   -0.067311    0.000057
+     3   -0.042102    0.085545    0.000140
+     4    0.140808   -0.118027    0.000287
+     5   -0.101029   -0.003678    0.000071
+     6   -0.041816    0.029608    0.000054
+     7    0.016562   -0.011243   -0.000186
+     8   -0.022264   -0.027390    0.000093
+     9    0.363605   -0.178981   -0.000053
+    10    0.017381    0.032546   -0.000287
+    11    0.332839   -0.232110   -0.000497
+    12   -0.816603    0.478868   -0.000243
+----------------------------------------
+   Tot   -0.003250   -0.001229   -0.000177
+----------------------------------------
+   Max    0.816603
+   Res    0.191424    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.816603    constrained
+
+Stress-tensor-Voigt (kbar):        0.89        0.21       -0.00       -0.62       -0.00       -0.00
+(Free)E + p*V (eV/cell)    -1033.1327
+Target enthalpy (eV/cell)    -1032.5729
+
+siesta: Stress tensor (static) (eV/Ang**3):
+         0.000559   -0.000387   -0.000000
+        -0.000387    0.000130   -0.000000
+        -0.000000   -0.000000   -0.000003
+
+siesta: Pressure (static):         -0.36598401  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+         0.000559   -0.000387   -0.000000
+        -0.000387    0.000130   -0.000000
+        -0.000000   -0.000000   -0.000003
+
+siesta: Pressure (total):         -0.36598401  kBar
+
+mulliken: Mulliken Atomic and Orbital Populations:
+
+Species: H                   
+Atom  Qatom  Qorb
+               1s      1s      1Ppy    1Ppz    1Ppx    
+   7  1.143   0.628   0.452   0.017   0.018   0.029
+   8  1.143   0.625   0.454   0.017   0.018   0.028
+   9  1.144   0.624   0.455   0.035   0.019   0.011
+  10  1.143   0.625   0.455   0.035   0.018   0.010
+  11  1.144   0.625   0.455   0.018   0.019   0.027
+  12  1.132   0.633   0.436   0.016   0.017   0.030
+
+Species: C                   
+Atom  Qatom  Qorb
+               2s      2s      2py     2pz     2px     2py     2pz     2px     
+               3dxy    3dyz    3dz2    3dxz    3dx2-y2 
+   1  3.845   0.733   0.318   0.615   0.936   0.590   0.287   0.031   0.297
+              0.014   0.006   0.003   0.004   0.012
+   2  3.862   0.743   0.314   0.597   0.945   0.628   0.293   0.028   0.277
+              0.010   0.002   0.003   0.007   0.015
+   3  3.866   0.740   0.315   0.607   0.946   0.631   0.287   0.027   0.276
+              0.014   0.006   0.003   0.003   0.010
+   4  3.862   0.742   0.314   0.618   0.946   0.608   0.283   0.028   0.286
+              0.014   0.006   0.003   0.003   0.011
+   5  3.865   0.741   0.315   0.609   0.946   0.628   0.288   0.027   0.275
+              0.010   0.002   0.003   0.007   0.015
+   6  3.851   0.739   0.317   0.627   0.947   0.597   0.275   0.028   0.286
+              0.013   0.006   0.003   0.004   0.011
+
+mulliken: Qtot =       30.000
+
+atompop: Hirshfeld Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.032
+   8  0.031
+   9  0.029
+  10  0.031
+  11  0.029
+  12  0.036
+
+Species: C                   
+Atom  Qatom
+   1 -0.031
+   2 -0.032
+   3 -0.032
+   4 -0.032
+   5 -0.032
+   6 -0.028
+
+atompop: Voronoi Net Atomic Populations:
+
+Species: H                   
+Atom  Qatom
+   7  0.015
+   8  0.013
+   9  0.009
+  10  0.009
+  11  0.010
+  12  0.019
+
+Species: C                   
+Atom  Qatom
+   1 -0.007
+   2 -0.013
+   3 -0.023
+   4 -0.020
+   5 -0.009
+   6 -0.002
+
+forcesToPipe: energy (Ry) =  -75.892113
+forcesToPipe: stress (Ry/Bohr**3) =
+    0.000006   -0.000004   -0.000000
+   -0.000004    0.000001   -0.000000
+   -0.000000   -0.000000   -0.000000
+forcesToPipe: forces (Ry/Bohr) =
+   -0.000944    0.000426    0.000015
+    0.006754   -0.002618    0.000002
+   -0.001637    0.003327    0.000005
+    0.005477   -0.004590    0.000011
+   -0.003929   -0.000143    0.000003
+   -0.001626    0.001152    0.000002
+    0.000644   -0.000437   -0.000007
+   -0.000866   -0.001065    0.000004
+    0.014142   -0.006961   -0.000002
+    0.000676    0.001266   -0.000011
+    0.012945   -0.009028   -0.000019
+   -0.031761    0.018625   -0.000009
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :           12   25.857626270150458       0.36820620716363212        8.3459448823005271       5.22504841682137969E-002   1.6534402813142803        8.3459351491251006        2.3523440049177173       0.31888626453244961        8.3458975369416031        25.884274871239615        27.139848783278293        8.3459526168770211       7.13118456084397834E-002   25.804096304078069        8.3459423739289935        2.4237153830267681        27.063679103177204        8.3459193410043060        24.065044801779759        1.4099525106462232        8.3458980688138240        24.103183113820243        26.083040248021447        8.3459036468377068        28.002987587172552        23.746388590337805        8.3458666968662474       8.68570572035495397E-002   3.7237053298046114        8.3458379888873004        4.0504492488457213        1.4955534964508865        8.3457627291744512        4.2628004985065573        25.994309213917550        8.3458489112071845        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000     
+ Reading from pipe
+ coordsFromPipe: STOP requested by driver
+
+* Maximum dynamic memory allocated =    62 MB
+
+outcoor: Relaxed atomic coordinates (Ang):                  
+   13.68326110    0.19484626    4.41648207   2       1  C
+    0.02764975    0.87496257    4.41647692   2       2  C
+    1.24480634    0.16874728    4.41645702   2       3  C
+   13.69736292   14.36178376    4.41648617   2       4  C
+    0.03773659   13.65493427    4.41648075   2       5  C
+    1.28257444   14.32147652    4.41646856   2       6  C
+   12.73466821    0.74611444    4.41645730   1       7  H
+   12.75485013   13.80254499    4.41646025   1       8  H
+   14.81853696   12.56604268    4.41644070   1       9  H
+    0.04596276    1.97049922    4.41642551   1      10  H
+    2.14340458    0.79141251    4.41638568   1      11  H
+    2.25577598   13.75559057    4.41643129   1      12  H
+
+outcell: Unit cell vectors (Ang):
+       14.876540    0.000000    0.000000
+        0.000000   15.564540    0.000000
+        0.000000    0.000000   10.583540
+
+outcell: Cell vector modules (Ang)   :   14.876540   15.564540   10.583540
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   2450.5817
+
+coxmol: Writing XMOL coordinates into file di-benzene.siesta.xyz                                           
+
+siesta: Eigenvalues (eV):
+  ik is    eps
+   1  1 -21.04 -18.31 -18.25 -14.75 -14.61 -12.70 -11.09 -10.77 -10.23 -10.03
+         -8.95  -8.19  -8.14  -6.30  -6.22  -1.13  -1.06   2.48   2.76   3.83
+          3.95   4.43   4.73   5.37   7.36   7.41   7.56   7.64   8.78  10.54
+         11.22  12.68  12.74  13.03  13.03  13.36  13.40  13.59  14.07  14.74
+         14.94  15.07  15.32  16.71  18.75  18.81  19.37  19.78  19.87  20.08
+         20.97  22.47  22.69  23.86  24.00  24.04  24.23  24.33  24.56  27.69
+         29.11  29.22  30.35  31.10  34.65  35.43  36.54  37.94  39.93  40.41
+         40.58  41.43  41.59  41.84  42.09  43.68  45.29  45.66  46.51  49.74
+         50.85  51.42  51.82  53.44  53.98  54.86  56.48  56.97  58.63  58.74
+         58.80  60.93  61.77  66.22  66.72  68.02  69.25  72.95  73.44  77.33
+         78.73  80.57  81.32  83.83  85.77  94.44  95.40 110.54
+siesta: Fermi energy =      -4.696148 eV
+
+siesta: Program's energy decomposition (eV):
+siesta: Ebs     =      -359.164060
+siesta: Eions   =      2000.952972
+siesta: Ena     =       640.135461
+siesta: Ekin    =       759.643598
+siesta: Enl     =       -47.837355
+siesta: DEna    =       -35.734711
+siesta: DUscf   =         3.614027
+siesta: DUext   =         0.000000
+siesta: Exc     =      -351.440959
+siesta: eta*DQ  =         0.000000
+siesta: Emadel  =         0.000000
+siesta: Emeta   =         0.000000
+siesta: Emolmec =         0.000000
+siesta: Ekinion =         0.000000
+siesta: Eharris =     -1032.572960
+siesta: Etot    =     -1032.572911
+siesta: FreeEng =     -1032.572911
+
+siesta: Final energy (eV):
+siesta:  Band Struct. =    -359.164060
+siesta:       Kinetic =     759.643598
+siesta:       Hartree =    2269.833604
+siesta:    Ext. field =       0.000000
+siesta:   Exch.-corr. =    -351.440959
+siesta:  Ion-electron =   -5213.737302
+siesta:       Ion-ion =    1503.128147
+siesta:       Ekinion =       0.000000
+siesta:         Total =   -1032.572911
+
+siesta: Atomic forces (eV/Ang):
+siesta:      1   -0.024283    0.010944    0.000386
+siesta:      2    0.173653   -0.067311    0.000057
+siesta:      3   -0.042102    0.085545    0.000140
+siesta:      4    0.140808   -0.118027    0.000287
+siesta:      5   -0.101029   -0.003678    0.000071
+siesta:      6   -0.041816    0.029608    0.000054
+siesta:      7    0.016562   -0.011243   -0.000186
+siesta:      8   -0.022264   -0.027390    0.000093
+siesta:      9    0.363605   -0.178981   -0.000053
+siesta:     10    0.017381    0.032546   -0.000287
+siesta:     11    0.332839   -0.232110   -0.000497
+siesta:     12   -0.816603    0.478868   -0.000243
+siesta: ----------------------------------------
+siesta:    Tot   -0.003250   -0.001229   -0.000177
+
+siesta: Stress tensor (static) (eV/Ang**3):
+siesta:     0.000559   -0.000387   -0.000000
+siesta:    -0.000387    0.000130   -0.000000
+siesta:    -0.000000   -0.000000   -0.000003
+
+siesta: Cell volume =       2450.581657 Ang**3
+
+siesta: Pressure (static):
+siesta:                Solid            Molecule  Units
+siesta:          -0.00000249         -0.00001460  Ry/Bohr**3
+siesta:          -0.00022843         -0.00134056  eV/Ang**3
+siesta:          -0.36598401         -2.14784003  kBar
+(Free)E+ p_basis*V_orbitals  =       -1028.953904
+(Free)Eharris+ p_basis*V_orbitals  =       -1028.954069
+
+siesta: Electric dipole (a.u.)  =    0.000000    0.000000    0.000061
+siesta: Electric dipole (Debye) =    0.000000    0.000000    0.000155
+ optical!!
+
+* Maximum dynamic memory allocated : Node    0 =    62 MB
+
+* Maximum memory occured during poison                        
+
+timer: CPU execution times:
+timer:  Routine       Calls   Time/call    Tot.time        %
+timer:  siesta            1     104.741     104.741   100.00
+timer:  Setup             1       0.466       0.466     0.45
+timer:  bands             1       0.000       0.000     0.00
+timer:  writewave         1       0.001       0.001     0.00
+timer:  KSV_init          1       0.000       0.000     0.00
+timer:  IterMD           13       7.971     103.622    98.93
+timer:  hsparse          13       0.001       0.008     0.01
+timer:  overlap          13       0.017       0.221     0.21
+timer:  IterSCF          98       0.808      79.180    75.60
+timer:  kinefsm          26       0.011       0.289     0.28
+timer:  nlefsm           26       0.061       1.576     1.50
+timer:  DHSCF           112       0.840      94.050    89.79
+timer:  DHSCF1            1       0.058       0.058     0.06
+timer:  DHSCF2           13       0.517       6.725     6.42
+timer:  REORD           924       0.002       1.516     1.45
+timer:  POISON          125       0.103      12.834    12.25
+timer:  DHSCF3          112       0.713      79.843    76.23
+timer:  rhoofd          125       0.183      22.897    21.86
+timer:  cellXC          112       0.291      32.594    31.12
+timer:  vmat            111       0.091      10.070     9.61
+timer:  MolMec           26       0.000       0.000     0.00
+timer:  diagon           98       0.007       0.659     0.63
+timer:  r-eigvec         98       0.006       0.631     0.60
+timer:  r-buildHS        98       0.000       0.004     0.00
+timer:  rdiag            98       0.006       0.626     0.60
+timer:  rdiag1           98       0.000       0.007     0.01
+timer:  rdiag2           98       0.000       0.043     0.04
+timer:  rdiag3           98       0.006       0.547     0.52
+timer:  rdiag4           98       0.000       0.026     0.03
+timer:  r-buildD         98       0.000       0.024     0.02
+timer:  DHSCF4           13       0.554       7.200     6.87
+timer:  dfscf            13       0.482       6.272     5.99
+timer:  overfsm          13       0.005       0.069     0.07
+timer:  optical           1       0.000       0.000     0.00
+  
+
+elaps: ELAPSED times:
+elaps:  Routine       Calls   Time/call    Tot.time        %
+elaps:  siesta            1     104.745     104.745   100.00
+elaps:  Setup             1       0.466       0.466     0.44
+elaps:  bands             1       0.000       0.000     0.00
+elaps:  writewave         1       0.001       0.001     0.00
+elaps:  KSV_init          1       0.000       0.000     0.00
+elaps:  IterMD           13       7.971     103.624    98.93
+elaps:  hsparse          13       0.001       0.009     0.01
+elaps:  overlap          13       0.017       0.221     0.21
+elaps:  IterSCF          98       0.807      79.120    75.54
+elaps:  kinefsm          26       0.011       0.292     0.28
+elaps:  nlefsm           26       0.061       1.576     1.50
+elaps:  DHSCF           112       0.840      94.052    89.79
+elaps:  DHSCF1            1       0.058       0.058     0.06
+elaps:  DHSCF2           13       0.517       6.722     6.42
+elaps:  REORD           924       0.002       1.519     1.45
+elaps:  POISON          125       0.103      12.831    12.25
+elaps:  DHSCF3          112       0.713      79.846    76.23
+elaps:  rhoofd          125       0.183      22.902    21.86
+elaps:  cellXC          112       0.291      32.594    31.12
+elaps:  vmat            111       0.091      10.073     9.62
+elaps:  MolMec           26       0.000       0.000     0.00
+elaps:  diagon           98       0.006       0.598     0.57
+elaps:  r-eigvec         98       0.006       0.573     0.55
+elaps:  r-buildHS        98       0.000       0.005     0.00
+elaps:  rdiag            98       0.006       0.568     0.54
+elaps:  rdiag1           98       0.000       0.011     0.01
+elaps:  rdiag2           98       0.000       0.047     0.04
+elaps:  rdiag3           98       0.005       0.502     0.48
+elaps:  rdiag4           98       0.000       0.008     0.01
+elaps:  r-buildD         98       0.000       0.025     0.02
+elaps:  DHSCF4           13       0.554       7.201     6.87
+elaps:  dfscf            13       0.482       6.272     5.99
+elaps:  overfsm          13       0.005       0.069     0.07
+elaps:  optical           1       0.001       0.001     0.00
+  
+>> End of run:  11-JUL-2012  18:04:25

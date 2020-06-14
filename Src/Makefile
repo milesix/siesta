@@ -442,8 +442,8 @@ get_target_stress.o: parallel.o precision.o sys.o units.o
 globalise.o: alloc.o onmod.o onmod.o precision.o spatial.o
 gradient.o: alloc.o globalise.o m_mpi_utils.o onmod.o precision.o
 gradientlomem.o: alloc.o globalise.o onmod.o precision.o
-grdsam.o: alloc.o dhscf.o parallel.o precision.o siesta_geom.o siesta_options.o
-grdsam.o: sys.o
+grdsam.o: alloc.o dhscf.o files.o parallel.o precision.o siesta_geom.o
+grdsam.o: siesta_options.o sys.o
 hsparse.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o mneighb.o
 hsparse.o: parallel.o parallelsubs.o precision.o siesta_options.o sorting.o
 hsparse.o: sparse_matrices.o sys.o
@@ -638,7 +638,7 @@ setspatial.o: alloc.o parallel.o precision.o spatial.o
 setup_H0.o: alloc.o atmfuncs.o atomlist.o dhscf.o dnaefs.o kinefsm.o
 setup_H0.o: m_energies.o m_ntm.o m_spin.o metaforce.o molecularmechanics.o
 setup_H0.o: naefs.o nlefsm.o siesta_geom.o siesta_options.o sparse_matrices.o
-setup_hamiltonian.o: alloc.o atmfuncs.o atomlist.o dhscf.o m_dipol.o
+setup_hamiltonian.o: alloc.o atmfuncs.o atomlist.o dhscf.o files.o m_dipol.o
 setup_hamiltonian.o: m_energies.o m_gamma.o m_hsx.o m_mpi_utils.o m_ntm.o
 setup_hamiltonian.o: m_spin.o m_steps.o m_stress.o m_ts_global_vars.o
 setup_hamiltonian.o: metaforce.o molecularmechanics.o normalize_dm.o parallel.o

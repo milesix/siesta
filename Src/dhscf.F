@@ -407,10 +407,11 @@ C ----------------------------------------------------------------------
 !------------------------------------------------------------------------- END
       end subroutine dhscf_init
 
-      subroutine dhscf( nspin, norb, iaorb, iphorb, nuo,
+      subroutine dhscf( iscf, nspin, norb, iaorb, iphorb, nuo,
      &                  nuotot, nua, na, isa, xa, indxua,
      &                  ntm, ifa, istr, iHmat, filrho, fildrh, 
-     &                  filevh, filevt, filepsch, filetoch, maxnd, numd,
+     &                  filevh, filevt, filepsch, filetoch, 
+     &                  filevext, maxnd, numd,
      &                  listdptr, listd, Dscf, datm, maxnh, Hmat,
      &                  Enaatm, Enascf, Uatm, Uscf, DUscf, DUext, 
      &                  Exc, Dxc, dipol, stress, Fal, stressl )
@@ -424,6 +425,7 @@ C
 C ----------------------------------------------------------------------
 C Input :
 C ----------------------------------------------------------------------
+C integer iscf          : SCF Iteration cycle
 C integer nspin         : Number of different spin polarisations
 C                         nspin=1 => Unpolarized, nspin=2 => polarized
 C                         nspin=4 => Noncollinear spin
@@ -455,6 +457,9 @@ C character*(*) filepsch: Name of file to save the soft diffuse ionic charge
 C                         (If blank => not saved)
 C character*(*) filetoch: Name of file to save the total ionic+electronic charge
 C                         (If blank => not saved)
+C character*(*) filevext: Name of file to read the external electostatic pot.
+C                         (If blank => not read; use stored value if it was read
+C                         previously; otherwise, do not use external potential)
 C integer maxnd             : First dimension of listd and Dscf
 C integer numd(nuo)         : Number of nonzero density-matrix
 C                             elements for each matrix row
@@ -528,14 +533,16 @@ C     Modules
       use sys,           only  : die, bye
       use mesh,          only  : xdsp, nsm, nsp
       use parsing
-      use m_iorho,       only  : write_rho
+      use m_iorho,       only  : check_rho, write_rho, read_rho
       use m_forhar,      only  : forhar
       use alloc,         only  : re_alloc, de_alloc
       use files,         only  : slabel
-      use siesta_options, only : harrisfun, save_initial_charge_density
+      use siesta_options, only : harrisfun,
+     .   save_initial_charge_density, readvext
       use meshsubs,       only : LocalChargeOnMesh
       use meshsubs,       only : PartialCoreOnMesh
       use meshsubs,       only : NeutralAtomOnMesh
+      use meshsubs,       only : ExtPotOnMesh
 
       use moreMeshSubs,   only : setMeshDistr, distMeshData
       use moreMeshSubs,   only : UNIFORM, QUADRATIC, LINEAR
@@ -569,10 +576,15 @@ C     Modules
       use m_ts_global_vars, only: TSrun
 #endif /* TRANSIESTA */
       implicit none
+
+      logical, save :: foundVext= .false.
+      logical :: overflow
+
       integer
      &  maxnd, maxnh, nua, na, norb, nspin, nuo, nuotot,
      &  iaorb(norb), ifa, iHmat, indxua(na), iphorb(norb), isa(na), 
-     &  istr, listd(*), listdptr(nuo), ntm(3), numd(nuo)
+     &  istr, listd(*), listdptr(nuo), ntm(3), numd(nuo), ntplext, 
+     &  nspinext
 
       real(dp)
      &  datm(norb), dipol(3), Dscf(maxnd,nspin),
@@ -582,7 +594,7 @@ C     Modules
 
       character
      &  filevh*(*), filevt*(*), fildrh*(*), filrho*(*), 
-     &  filepsch*(*), filetoch*(*)
+     &  filepsch*(*), filetoch*(*), filevext*(*)
 
 C ----------------------------------------------------------------------
 C Routines called internally:
@@ -634,6 +646,11 @@ C integer npcc          : Partial core corrections? (0=no, 1=yes)
 C integer nsd           : Number of diagonal spin values (1 or 2)
 C integer ntpl          : Number of mesh Total Points in unit cell
 C                         (including subpoints) locally
+C integer ntplext       : Auxiliary variable, read from external pot file
+C                         Number of mesh Total Points in unit cell
+C                         (including subpoints) locally
+C integer nspinext      : Auxiliary variable, to check dimension of
+C                         the external potential
 C real*4  rhoatm(ntpl)  : Harris electron density
 C real*4  rhopcc(ntpl)  : Partial-core-correction density for xc
 C real*4  DRho(ntpl)    : Selfconsistent electron density difference
@@ -650,7 +667,7 @@ C logical harrisfun     : Harris functional or Kohn-Sham?
 C ----------------------------------------------------------------------
 
 C     Local variables
-      integer  :: i, ia, ip, ispin, nsd, np_vac
+      integer  :: i, ia, ip, iscf, ispin, nsd, np_vac
 #ifndef BSC_CELLXC
 !     Interface to JMS's SiestaXC
       integer       :: iNode, myBox(2,3)
@@ -683,6 +700,7 @@ C     Work arrays
      &                         DRho(:,:), DRho_par(:,:),
      &                         Vaux(:), Vaux_par(:), Chlocal(:),
      &                         Totchar(:), fsrc(:), fdst(:)
+      real(grid_p), dimension(:), pointer, save :: Vext, Vext_par
 #ifdef BSC_CELLXC
       real(grid_p), pointer :: Vscf_gga(:,:), DRho_gga(:,:)
 #endif /* BSC_CELLXC */
@@ -818,7 +836,19 @@ C       Find diffuse ionic charge on mesh
         ! work with any distribution, thanks to the fact that
         ! the ipa, idop, and indexp arrays are distro-specific
         call re_alloc( Chlocal, 1, ntpl, 'Chlocal', 'dhscf' )
-        call LocalChargeOnMesh( na, isa, ntpl, Chlocal, indxua )
+        if (iscf==1) then
+           if (associated(Vext)) call de_alloc(Vext, 'Vext', 'dhscf' )
+           nullify(Vext)
+           call re_alloc( Vext, 1, ntpl, 'Vext', 'dhscf' ) 
+           Vext=0.0_grid_p
+           if (associated(Vext_par)) 
+     .             call de_alloc(Vext_par, 'Vext_par', 'dhscf' )
+           nullify(Vext_par)
+           call re_alloc( Vext_par, 1, ntpl, 'Vext_par', 'dhscf' ) 
+           Vext_par=0.0_grid_p
+        endif
+        call LocalChargeOnMesh( na, isa, ntpl, Chlocal, indxua,
+     .               .false.,dvol, Vext_par, Fal )
         ! Chlocal comes out in clustered form, so we convert it
         call reord( Chlocal, Chlocal, nml, nsm, TO_SEQUENTIAL )
       
@@ -966,6 +996,7 @@ C ----------------------------------------------------------------------
 C Add potential from external electric field (if present)
 C ----------------------------------------------------------------------
 
+      DUext = 0.0D0
       if (acting_efield) then
          if (dipole_correction) then
             field = get_field_from_dipole(dipol,cell)
@@ -1002,6 +1033,52 @@ C ----------------------------------------------------------------------
       endif
 !    TSS End
 #endif /* TRANSIESTA */
+
+C ----------------------------------------------------------------------
+C Read and add an external potential from file (if present)
+C ----------------------------------------------------------------------
+
+      if (filevext .ne. ' ' .and. iscf==1) then
+        
+        ntplext = ntpl
+        nspinext = 1 
+        foundVext=.false.
+
+        call check_rho( filevext, ntplext, nspinext, nsm, foundVext, 
+     .                  overflow )
+
+        if (.not. foundVext) then
+          if (Node .eq. 0) then
+             write(6,100)
+             write(6,'(a)')
+     .        'dhscf: WARNING: External potential file not found!'
+             write(6,'(a)')
+     .        'dhscf: WARNING: No external potential is being used'
+             write(6,102)
+          endif
+        else
+          if (overflow) then
+           if (Node .eq. 0) then
+             write(6,100)
+             write(6,101)
+             write(6,'(a)')
+     .        'dhscf:   Format or size of the external potential file'
+             write(6,'(a)')
+     .        'dhscf:   does not match with this system'
+             write(6,102)
+           endif
+           call die
+          endif
+          nspinext = 1
+          ! read_rho in sequential form
+          call read_rho( filevext, cell, ntm, nsm, ntpl, nspinext, 
+     .          Vext )
+        endif
+
+      endif
+
+C add to SCF potential (Vext is in sequential form)
+      if(foundVext) Vscf(1:ntpl,1) = Vscf(1:ntpl,1) + Vext(1:ntpl)
 
 C ----------------------------------------------------------------------
 C     Save electrostatic potential
@@ -1279,6 +1356,21 @@ C       Find contribution of neutral-atom potential
         call NeutralAtomOnMesh( na, isa, ntpl, Vna, indxua, dvol, 
      &                          volume, DRho, Fal, stressl, 
      &                          ifa.ne.0, istr.ne.0 )
+C Find contribution of interaction of external field with
+C diffuse ionic density
+        if (foundVext) then
+          call reord( rhoatm, rhoatm, nml, nsm, TO_CLUSTER )
+          call reord( Vext, Vext, nml, nsm, TO_CLUSTER)
+          call ExtPotOnMesh( na, isa, ntpl, indxua, dvol, volume,
+     .                     DRho, rhoatm,
+     .                     Vext, DUext, fal, stressl,
+     .                     .true., .false. )
+          call reord( Vaux, Vaux, nml, nsm, TO_CLUSTER )
+          Vaux(1:ntpl) = Vaux(1:ntpl) - Vext(1:ntpl)
+          call reord( Vaux, Vaux, nml, nsm, TO_SEQUENTIAL )
+          call reord( rhoatm, rhoatm, nml, nsm, TO_SEQUENTIAL )
+          call reord( Vext, Vext, nml, nsm, TO_SEQUENTIAL)
+        endif
         call reord( DRho, DRho, nml, nsm, TO_SEQUENTIAL )
         call reord( Vna, Vna, nml, nsm, TO_SEQUENTIAL )
 
@@ -1339,6 +1431,10 @@ C ----------------------------------------------------------------------
       call de_alloc( Vaux, 'Vaux', 'dhscf' )
       call de_alloc( Vscf, 'Vscf', 'dhscf' )
       call de_alloc( DRho, 'DRho', 'dhscf' )
+
+100   format(/,'dhscf: ',71(1h*))
+101   format('dhscf:                  INPUT ERROR')
+102   format('dhscf: ',71(1h*))
 
 #ifdef DEBUG
       call write_debug( '    POS DHSCF' )

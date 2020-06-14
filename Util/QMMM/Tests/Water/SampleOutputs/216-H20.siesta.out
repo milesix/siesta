@@ -1,0 +1,2380 @@
+Siesta Version:                                        siesta-3.1-pl11-qmmm-4
+Architecture  : gfortran-nolibs
+Compiler flags: gfortran -O2
+SERIAL version
+
+* Running in serial mode
+>> Start of run:  11-JUL-2012  18:07:50
+
+                           ***********************       
+                           *  WELCOME TO SIESTA  *       
+                           ***********************       
+
+reinit: Reading from standard input
+************************** Dump of input data file ****************************
+SystemName  216-H20.siesta
+SystemLabel  216-H20.siesta
+NumberOfAtoms         3
+NumberOfSpecies  2
+NetCharge 0.0
+WriteForces T
+FreeEnergy F
+Deuterium T
+QMMM.IncludeQmQmVDW .true.
+#NumberMPInodes  1
+LaunchSiesta .true.
+%block ChemicalSpeciesLabel
+ 1   1  H-pbe
+ 2   8  O-pbe-pcec
+%endblock ChemicalSpeciesLabel
+AtomicCoordinatesFormat  Ang
+LatticeConstant   1.0 Ang
+%block LatticeVectors
+18.621   0.0      0.0
+ 0.0    18.621    0.0
+ 0.0     0.0     18.621
+%endblock LatticeVectors
+%block AtomicCoordinatesAndAtomicSpecies
+   10.610   8.630   9.201   2
+   10.201   7.891   9.731   1
+   11.251   9.141   9.781   1
+%endblock AtomicCoordinatesAndAtomicSpecies
+#DZP Marivi (optimised 0.2 GPa):
+%block PAO.Basis
+O-pbe-pcec    3     -0.24233
+n=2   0   2   E    23.36061     3.39721
+   4.50769     2.64066
+n=2   1   2   E     2.78334     5.14253
+   6.14996     2.59356
+n=3   2   1   E    63.98188     0.16104
+   3.54403
+H-pbe    2      0.46527
+n=1   0   2   E    99.93138     2.59932
+   4.20357     1.84463
+n=2   1   1   E    24.56504     2.20231
+   3.52816
+%endblock PAO.Basis
+XC.functional        GGA
+XC.Authors           PBE
+MaxSCFIterations     100
+WriteMDXmol .false.
+WriteMullikenPop     0
+MeshCutoff           150 Ry
+DM.MixingWeight      0.08
+DM.NumberPulay       3
+DM.UseSaveDM         T
+MD.UseSaveXV         T
+LongOutput           F
+WriteCoordinates     10
+SpinPolarized        F
+MD.TypeOfRun forces
+MD.FinalTimeStep     20
+MD.LengthTimeStep    0.5 fs
+MD.TargetTemperature 300.0 K
+MD.InitialTemperature 300.0 K
+MD.TauRelax          10.0 fs
+ # Output variables
+####################################################
+WriteCoorStep .true.
+WriteMDHistory T
+WriteCoorXmol                 .true.
+#Writebands .true.
+WriteDenchar .true.
+ReadVext .true.
+SaveTotalCharge .true.
+WriteXML .false.
+************************** End of input data file *****************************
+
+reinit: -----------------------------------------------------------------------
+reinit: System Name: 216-H20.siesta
+reinit: -----------------------------------------------------------------------
+reinit: System Label: 216-H20.siesta                                              
+reinit: -----------------------------------------------------------------------
+
+initatom: Reading input for the pseudopotentials and atomic orbitals ----------
+ Species number:            1  Label: H-pbe Atomic number:           1
+ Species number:            2  Label: O-pbe-pcec Atomic number:           8
+Ground state valence configuration:   1s01
+Reading pseudopotential information in formatted form from H-pbe.psf
+
+Valence configuration for pseudopotential generation:
+1s( 1.00) rc: 1.25
+2p( 0.00) rc: 1.25
+3d( 0.00) rc: 1.25
+4f( 0.00) rc: 1.25
+Ground state valence configuration:   2s02  2p04
+Reading pseudopotential information in formatted form from O-pbe-pcec.psf
+
+Valence configuration for pseudopotential generation:
+2s( 2.00) rc: 1.14
+2p( 4.00) rc: 1.14
+3d( 0.00) rc: 1.14
+4f( 0.00) rc: 1.14
+For H-pbe, standard SIESTA heuristics set lmxkb to 2
+ (one more than the basis l, including polarization orbitals).
+Use PS.lmax or PS.KBprojectors blocks to override.
+For O-pbe-pcec, standard SIESTA heuristics set lmxkb to 3
+ (one more than the basis l, including polarization orbitals).
+Use PS.lmax or PS.KBprojectors blocks to override.
+
+<basis_specs>
+===============================================================================
+H-pbe                Z=   1    Mass=  1.0100        Charge= 0.46527    
+Lmxo=1 Lmxkb= 2    BasisType=split      Semic=F
+L=0  Nsemic=0  Cnfigmx=1
+          n=1  nzeta=2  polorb=0
+            splnorm:   0.15000    
+               vcte:    99.931    
+               rinn:    2.5993    
+                rcs:    4.2036      1.8446    
+            lambdas:    1.0000      1.0000    
+L=1  Nsemic=0  Cnfigmx=2
+          n=1  nzeta=1  polorb=0
+            splnorm:   0.15000    
+               vcte:    24.565    
+               rinn:    2.2023    
+                rcs:    3.5282    
+            lambdas:    1.0000    
+-------------------------------------------------------------------------------
+L=0  Nkbl=1  erefs: 0.17977+309
+L=1  Nkbl=1  erefs: 0.17977+309
+L=2  Nkbl=1  erefs: 0.17977+309
+===============================================================================
+</basis_specs>
+
+atom: Called for H-pbe                 (Z =   1)
+
+read_vps: Pseudopotential generation method:
+read_vps: ATM3      Troullier-Martins                       
+Total valence charge:    1.00000
+
+xc_check: Exchange-correlation functional:
+xc_check: GGA Perdew, Burke & Ernzerhof 1996
+V l=0 = -2*Zval/r beyond r=  1.2343
+V l=1 = -2*Zval/r beyond r=  1.2189
+V l=2 = -2*Zval/r beyond r=  1.2189
+All V_l potentials equal beyond r=  1.2343
+This should be close to max(r_c) in ps generation
+All pots = -2*Zval/r beyond r=  1.2343
+
+VLOCAL1: 99.0% of the norm of Vloc inside     28.493 Ry
+VLOCAL1: 99.9% of the norm of Vloc inside     64.935 Ry
+atom: Maximum radius for 4*pi*r*r*local-pseudopot. charge    1.45251
+atom: Maximum radius for r*vlocal+2*Zval:    1.21892
+GHOST: No ghost state for L =  0
+GHOST: No ghost state for L =  1
+GHOST: No ghost state for L =  2
+
+KBgen: Kleinman-Bylander projectors: 
+   l= 0   rc=  1.364359   el= -0.477200   Ekb= -2.021939   kbcos= -0.344793
+   l= 1   rc=  1.434438   el=  0.001076   Ekb= -0.443447   kbcos= -0.022843
+   l= 2   rc=  1.470814   el=  0.002010   Ekb= -0.140543   kbcos= -0.002863
+
+KBgen: Total number of  Kleinman-Bylander projectors:    9
+atom: -------------------------------------------------------------------------
+
+atom: SANKEY-TYPE ORBITALS:
+atom: Selected multiple-zeta basis: split     
+
+atom: basis set generated (by rescaling the valence charge)
+atom: for a cation of charge   0.4653
+
+SPLIT: Orbitals with angular momentum L= 0
+
+SPLIT: Basis orbitals for state 1s
+
+   izeta = 1
+                 lambda =    1.000000
+                     rc =    4.260636
+                 energy =   -0.870244
+                kinetic =    1.359204
+    potential(screened) =   -2.229448
+       potential(ionic) =   -2.289196
+
+   izeta = 2
+                 rmatch =    1.865767
+              splitnorm =    0.575659
+                 energy =    0.485405
+                kinetic =    4.355632
+    potential(screened) =   -3.870227
+       potential(ionic) =   -3.839117
+
+SPLIT: Orbitals with angular momentum L= 1
+
+SPLIT: Basis orbitals for state 2p
+
+   izeta = 1
+                 lambda =    1.000000
+                     rc =    3.576223
+                 energy =    0.828629
+                kinetic =    2.006518
+    potential(screened) =   -1.177889
+       potential(ionic) =   -1.299048
+atom: Total number of Sankey-type orbitals:  5
+
+atm_pop: Valence configuration (for local Pseudopot. screening):
+ 1s( 1.00)                                                            
+ 2p( 0.00)                                                            
+Vna: chval, zval:    1.00000   1.00000
+
+Vna:  Cut-off radius for the neutral-atom potential:   4.260636
+
+atom: _________________________________________________________________________
+
+<basis_specs>
+===============================================================================
+O-pbe-pcec           Z=   8    Mass=  16.000        Charge=-0.24233    
+Lmxo=2 Lmxkb= 3    BasisType=split      Semic=F
+L=0  Nsemic=0  Cnfigmx=2
+          n=1  nzeta=2  polorb=0
+            splnorm:   0.15000    
+               vcte:    23.361    
+               rinn:    3.3972    
+                rcs:    4.5077      2.6407    
+            lambdas:    1.0000      1.0000    
+L=1  Nsemic=0  Cnfigmx=2
+          n=1  nzeta=2  polorb=0
+            splnorm:   0.15000    
+               vcte:    2.7833    
+               rinn:    5.1425    
+                rcs:    6.1500      2.5936    
+            lambdas:    1.0000      1.0000    
+L=2  Nsemic=0  Cnfigmx=3
+          n=1  nzeta=1  polorb=0
+            splnorm:   0.15000    
+               vcte:    63.982    
+               rinn:   0.16104    
+                rcs:    3.5440    
+            lambdas:    1.0000    
+-------------------------------------------------------------------------------
+L=0  Nkbl=1  erefs: 0.17977+309
+L=1  Nkbl=1  erefs: 0.17977+309
+L=2  Nkbl=1  erefs: 0.17977+309
+L=3  Nkbl=1  erefs: 0.17977+309
+===============================================================================
+</basis_specs>
+
+atom: Called for O-pbe-pcec            (Z =   8)
+
+read_vps: Pseudopotential generation method:
+read_vps: ATM3      Troullier-Martins                       
+Total valence charge:    6.00000
+
+read_vps: Pseudopotential includes a core correction:
+read_vps: Pseudo-core for xc-correction
+
+xc_check: Exchange-correlation functional:
+xc_check: GGA Perdew, Burke & Ernzerhof 1996
+V l=0 = -2*Zval/r beyond r=  1.1278
+V l=1 = -2*Zval/r beyond r=  1.1278
+V l=2 = -2*Zval/r beyond r=  1.1278
+V l=3 = -2*Zval/r beyond r=  1.1278
+All V_l potentials equal beyond r=  1.1278
+This should be close to max(r_c) in ps generation
+All pots = -2*Zval/r beyond r=  1.1278
+
+VLOCAL1: 99.0% of the norm of Vloc inside     34.126 Ry
+VLOCAL1: 99.9% of the norm of Vloc inside     77.774 Ry
+atom: Maximum radius for 4*pi*r*r*local-pseudopot. charge    1.37759
+atom: Maximum radius for r*vlocal+2*Zval:    1.18566
+GHOST: No ghost state for L =  0
+GHOST: No ghost state for L =  1
+GHOST: No ghost state for L =  2
+GHOST: No ghost state for L =  3
+
+KBgen: Kleinman-Bylander projectors: 
+   l= 0   rc=  1.262145   el= -1.757696   Ekb=  9.253654   kbcos=  0.328369
+   l= 1   rc=  1.262145   el= -0.664256   Ekb= -7.897175   kbcos= -0.393093
+   l= 2   rc=  1.343567   el=  0.002031   Ekb= -1.922379   kbcos= -0.003517
+   l= 3   rc=  1.394919   el=  0.003153   Ekb= -0.738277   kbcos= -0.000358
+
+KBgen: Total number of  Kleinman-Bylander projectors:   16
+atom: -------------------------------------------------------------------------
+
+atom: SANKEY-TYPE ORBITALS:
+atom: Selected multiple-zeta basis: split     
+
+atom: basis set generated (by rescaling the valence charge)
+atom: for an anion of charge  -0.2423
+
+SPLIT: Orbitals with angular momentum L= 0
+
+SPLIT: Basis orbitals for state 2s
+
+   izeta = 1
+                 lambda =    1.000000
+                     rc =    4.574469
+                 energy =   -1.754694
+                kinetic =    1.490893
+    potential(screened) =   -3.245588
+       potential(ionic) =  -11.054474
+
+   izeta = 2
+                 rmatch =    2.639108
+              splitnorm =    0.147036
+                 energy =   -1.549986
+                kinetic =    2.329570
+    potential(screened) =   -3.879556
+       potential(ionic) =  -12.328390
+
+SPLIT: Orbitals with angular momentum L= 1
+
+SPLIT: Basis orbitals for state 2p
+
+   izeta = 1
+                 lambda =    1.000000
+                     rc =    6.174996
+                 energy =   -0.657397
+                kinetic =    4.283704
+    potential(screened) =   -4.941101
+       potential(ionic) =  -12.288569
+
+   izeta = 2
+                 rmatch =    2.639108
+              splitnorm =    0.214885
+                 energy =   -0.410839
+                kinetic =    7.128014
+    potential(screened) =   -7.538853
+       potential(ionic) =  -16.113011
+
+SPLIT: Orbitals with angular momentum L= 2
+
+SPLIT: Basis orbitals for state 3d
+
+   izeta = 1
+                 lambda =    1.000000
+                     rc =    3.562532
+                 energy =    3.658838
+                kinetic =    6.488135
+    potential(screened) =   -2.829297
+       potential(ionic) =  -10.001422
+atom: Total number of Sankey-type orbitals: 13
+
+atm_pop: Valence configuration (for local Pseudopot. screening):
+ 2s( 2.00)                                                            
+ 2p( 4.00)                                                            
+ 3d( 0.00)                                                            
+Vna: chval, zval:    6.00000   6.00000
+
+Vna:  Cut-off radius for the neutral-atom potential:   6.174996
+comcore: Pseudo-core radius Rcore=  1.377587
+
+atom: _________________________________________________________________________
+
+prinput: Basis input ----------------------------------------------------------
+
+PAO.BasisType split     
+
+%block ChemicalSpeciesLabel
+    1    1 H-pbe                   # Species index, atomic number, species label
+    2    8 O-pbe-pcec              # Species index, atomic number, species label
+%endblock ChemicalSpeciesLabel
+
+%block PAO.Basis                 # Define Basis set
+H-pbe                 2   0.465            # Label, l-shells, ionic net charge
+ n=1   0   2                         # n, l, Nzeta 
+   4.261      1.866   
+   1.000      1.000   
+ n=2   1   1                         # n, l, Nzeta 
+   3.576   
+   1.000   
+O-pbe-pcec            3  -0.242            # Label, l-shells, ionic net charge
+ n=2   0   2                         # n, l, Nzeta 
+   4.574      2.639   
+   1.000      1.000   
+ n=2   1   2                         # n, l, Nzeta 
+   6.175      2.639   
+   1.000      1.000   
+ n=3   2   1                         # n, l, Nzeta 
+   3.563   
+   1.000   
+%endblock PAO.Basis
+
+prinput: ----------------------------------------------------------------------
+
+coor:   Atomic-coordinates input format  =     Cartesian coordinates
+coor:                                          (in Angstroms)
+
+siesta: WARNING: XV file not found
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   35.188604    0.000000    0.000000
+    0.000000   35.188604    0.000000
+    0.000000    0.000000   35.188604
+coordsFromPipe: xa (Bohr) =
+   20.050002   16.308343   17.387377
+   19.277104   14.911835   18.388932
+   21.261317   17.273993   18.483419
+
+siesta: Atomic coordinates (Bohr) and species
+siesta:     20.05000  16.30834  17.38738  2        1
+siesta:     19.27710  14.91183  18.38893  1        2
+siesta:     21.26132  17.27399  18.48342  1        3
+
+siesta: System type = molecule  
+
+initatomlists: Number of atoms, orbitals, and projectors:      3    23    34
+
+siesta: ******************** Simulation parameters ****************************
+siesta:
+siesta: The following are some of the parameters of the simulation.
+siesta: A complete list of the parameters used, including default values,
+siesta: can be found in file out.fdf
+siesta:
+redata: Non-Collinear-spin run           =     F
+redata: SpinPolarized (Up/Down) run      =     F
+redata: Number of spin components        =     1
+redata: Long output                      =     F
+redata: Number of Atomic Species         =        2
+redata: Charge density info will appear in .RHO file
+redata: Write Mulliken Pop.              =     NO
+redata: Mesh Cutoff                      =   150.0000  Ry
+redata: Net charge of the system         =     0.0000 |e|
+redata: Max. number of SCF Iter          =      100
+redata: Performing Pulay mixing using    =     3 iterations
+redata: Mix DM in first SCF step ?       =     F
+redata: Write Pulay info on disk?        =     F
+redata: Discard 1st Pulay DM after  kick =     F
+redata: New DM Mixing Weight             =     0.0800
+redata: New DM Occupancy tolerance       = 0.000000000001
+redata: No kicks to SCF
+redata: DM Mixing Weight for Kicks       =     0.5000
+redata: DM Tolerance for SCF             =     0.000100
+redata: Require Energy convergence for SCF =     F
+redata: DM Energy tolerance for SCF      =     0.000100 eV
+redata: Require Harris convergence for SCF =     F
+redata: DM Harris energy tolerance for SCF =     0.000100 eV
+redata: Using Saved Data (generic)   =     F
+redata: Use continuation files for DM    =     T
+redata: Neglect nonoverlap interactions  =     F
+redata: Method of Calculation            =     Diagonalization
+redata: Divide and Conquer               =     T
+redata: Electronic Temperature           =     0.0019  Ry
+redata: Fix the spin of the system       =     F
+redata: Dynamics option                  =     Force evaluation
+redata: ***********************************************************************
+Total number of electrons:     8.000000
+Total ionic charge:     8.000000
+ Kpoints in:            1 . Kpoints trimmed:            1
+
+siesta: k-grid: Number of k-points =     1
+siesta: k-grid: Cutoff (effective) =     9.310 Ang
+siesta: k-grid: Supercell and displacements
+siesta: k-grid:    1   0   0      0.000
+siesta: k-grid:    0   1   0      0.000
+siesta: k-grid:    0   0   1      0.000
+
+* Maximum dynamic memory allocated =     2 MB
+
+siesta:                 ==============================
+                            Begin Server step =      0
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   10.61000000    8.63000000    9.20100000   2       1  O-pbe-pcec
+   10.20100000    7.89100000    9.73100000   1       2  H-pbe
+   11.25100000    9.14100000    9.78100000   1       3  H-pbe
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+New_DM. Step:     1
+Initializing Density Matrix...
+
+InitMesh: MESH =   144 x   144 x   144 =     2985984
+InitMesh: Mesh cutoff (required, used) =   150.000   165.280 Ry
+
+* Maximum dynamic memory allocated =   118 MB
+
+stepf: Fermi-Dirac step function
+
+siesta: Program's energy decomposition (eV):
+siesta: Ebs     =      -145.312147
+siesta: Eions   =       815.854479
+siesta: Ena     =       196.460084
+siesta: Ekin    =       310.693894
+siesta: Enl     =       -44.019452
+siesta: DEna    =         0.000000
+siesta: DUscf   =         0.000000
+siesta: DUext   =         0.000000
+siesta: Exc     =      -110.164178
+siesta: eta*DQ  =         0.000000
+siesta: Emadel  =         0.000000
+siesta: Emeta   =         0.000000
+siesta: Emolmec =         0.000000
+siesta: Ekinion =         0.000000
+siesta: Eharris =      -477.466480
+siesta: Etot    =      -462.884131
+siesta: FreeEng =      -462.884131
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1     -477.4665     -462.8841     -462.8841  0.9394 -4.9966
+timer: Routine,Calls,Time,% = IterSCF        1       1.797  84.61
+elaps: Routine,Calls,Wall,% = IterSCF        1       1.797  78.47
+siesta:    2     -483.1337     -460.5839     -460.5839  2.1313  7.5984
+siesta:    3     -471.4384     -465.0387     -465.0387  0.5972 -1.4137
+siesta:    4     -470.4080     -465.7969     -465.7969  0.5156  0.0462
+siesta:    5     -469.9341     -467.7613     -467.7613  0.2876  0.7150
+siesta:    6     -469.5898     -469.8584     -469.8584  0.0878  0.1248
+siesta:    7     -469.5861     -469.8538     -469.8538  0.0751  0.1696
+siesta:    8     -469.5800     -469.8626     -469.8626  0.0379  0.2531
+siesta:    9     -469.5872     -469.8720     -469.8720  0.0281  0.2163
+siesta:   10     -469.5942     -469.8569     -469.8569  0.0280  0.1966
+siesta:   11     -469.6369     -469.7172     -469.7172  0.0222  0.1185
+siesta:   12     -469.6418     -469.6979     -469.6979  0.0202  0.1200
+siesta:   13     -469.6453     -469.6667     -469.6667  0.0087  0.1607
+siesta:   14     -469.6448     -469.6669     -469.6669  0.0075  0.1627
+siesta:   15     -469.6423     -469.6703     -469.6703  0.0026  0.1667
+siesta:   16     -469.6427     -469.6690     -469.6690  0.0027  0.1638
+siesta:   17     -469.6441     -469.6650     -469.6650  0.0024  0.1583
+siesta:   18     -469.6457     -469.6594     -469.6594  0.0027  0.1563
+siesta:   19     -469.6462     -469.6568     -469.6568  0.0026  0.1564
+siesta:   20     -469.6462     -469.6528     -469.6528  0.0009  0.1605
+siesta:   21     -469.6463     -469.6520     -469.6520  0.0008  0.1606
+siesta:   22     -469.6465     -469.6499     -469.6499  0.0004  0.1590
+siesta:   23     -469.6466     -469.6497     -469.6497  0.0004  0.1588
+siesta:   24     -469.6468     -469.6483     -469.6483  0.0002  0.1578
+siesta:   25     -469.6469     -469.6481     -469.6481  0.0002  0.1579
+siesta:   26     -469.6469     -469.6479     -469.6479  0.0002  0.1582
+siesta:   27     -469.6469     -469.6478     -469.6478  0.0001  0.1584
+
+siesta: E_KS(eV) =             -471.3401
+
+siesta: E_KS - E_eggbox =      -471.3401
+
+siesta: Atomic forces (eV/Ang):
+     1    0.451309   -0.389541    0.472293
+     2    0.144950    0.237257    0.094598
+     3   -0.614138   -0.673116    0.028683
+----------------------------------------
+   Tot   -0.017879   -0.825400    0.595574
+----------------------------------------
+   Max    0.673116
+   Res    0.407677    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.673116    constrained
+
+Stress-tensor-Voigt (kbar):       -1.13       -1.02       -0.70       -0.12        0.02        0.04
+(Free)E + p*V (eV/cell)     -467.5075
+Target enthalpy (eV/cell)     -471.3401
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.000702   -0.000079    0.000023
+        -0.000079   -0.000624    0.000014
+         0.000023    0.000014   -0.000430
+
+siesta: Pressure (static):          0.93830730  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.000707   -0.000072    0.000024
+        -0.000072   -0.000636    0.000014
+         0.000024    0.000014   -0.000438
+
+siesta: Pressure (total):          0.95104438  kBar
+
+forcesToPipe: energy (Ry) =  -34.642587
+forcesToPipe: stress (Ry/Bohr**3) =
+   -0.000008   -0.000001    0.000000
+   -0.000001   -0.000007    0.000000
+    0.000000    0.000000   -0.000005
+forcesToPipe: forces (Ry/Bohr) =
+    0.017553   -0.015151    0.018369
+    0.005638    0.009228    0.003679
+   -0.023886   -0.026180    0.001116
+ Writing to pipe
+ iupos on opening:           17
+ iupos on writing:           17
+ istep, xa, va :            0   20.050002173185909        16.308342955192686        17.387377002401845        19.277103880176199        14.911834792517437        18.388932247622250        21.261317101839271        17.273993389735381        18.483418591510969       1.27493372527038521E-003 -2.77927643018984882E-003  2.59944339814075030E-003 -3.03524611244208216E-002  4.81500596478931370E-002 -7.10160305702702130E-004  1.01554912191474354E-002 -4.12191817953919040E-003 -4.04691410509824337E-002
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   35.188604    0.000000    0.000000
+    0.000000   35.188604    0.000000
+    0.000000    0.000000   35.188604
+coordsFromPipe: xa (Bohr) =
+   20.054063   16.301030   17.389562
+   19.271262   14.921367   18.390284
+   21.266807   17.264669   18.471832
+
+* Maximum dynamic memory allocated =   118 MB
+
+siesta:                 ==============================
+                            Begin Server step =      1
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   10.61214905    8.62613037    9.20215643   2       1  O-pbe-pcec
+   10.19790871    7.89604407    9.73171530   1       2  H-pbe
+   11.25390508    9.13606575    9.77486838   1       3  H-pbe
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+New_DM. Step:     2
+Re-using DM from previous geometry...
+Re-using DM without extrapolation for lack of history
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1     -469.6662     -469.7032     -469.7032  0.0143  0.1081
+siesta:    2     -469.6530     -469.6519     -469.6519  0.0126  0.1913
+siesta:    3     -469.6601     -469.6803     -469.6803  0.0060  0.1412
+siesta:    4     -469.6572     -469.6576     -469.6576  0.0005  0.1367
+siesta:    5     -469.6573     -469.6576     -469.6576  0.0005  0.1364
+siesta:    6     -469.6576     -469.6581     -469.6581  0.0005  0.1357
+siesta:    7     -469.6577     -469.6585     -469.6585  0.0005  0.1360
+siesta:    8     -469.6578     -469.6586     -469.6586  0.0004  0.1363
+siesta:    9     -469.6577     -469.6582     -469.6582  0.0002  0.1368
+siesta:   10     -469.6576     -469.6580     -469.6580  0.0002  0.1369
+siesta:   11     -469.6576     -469.6576     -469.6576  0.0001  0.1367
+
+siesta: E_KS(eV) =             -471.3535
+
+siesta: Atomic forces (eV/Ang):
+     1    0.427204   -0.294814    0.235346
+     2    0.091233    0.078786    0.210029
+     3   -0.533990   -0.604573    0.134607
+----------------------------------------
+   Tot   -0.015553   -0.820601    0.579982
+----------------------------------------
+   Max    0.604573
+   Res    0.341926    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.604573    constrained
+
+Stress-tensor-Voigt (kbar):       -1.09       -1.00       -0.67       -0.14        0.02        0.04
+(Free)E + p*V (eV/cell)     -467.6391
+Target enthalpy (eV/cell)     -471.3535
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.000678   -0.000095    0.000021
+        -0.000095   -0.000612    0.000014
+         0.000021    0.000014   -0.000411
+
+siesta: Pressure (static):          0.90898807  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.000683   -0.000088    0.000023
+        -0.000088   -0.000624    0.000014
+         0.000023    0.000014   -0.000419
+
+siesta: Pressure (total):          0.92172516  kBar
+
+forcesToPipe: energy (Ry) =  -34.643574
+forcesToPipe: stress (Ry/Bohr**3) =
+   -0.000007   -0.000001    0.000000
+   -0.000001   -0.000007    0.000000
+    0.000000    0.000000   -0.000004
+forcesToPipe: forces (Ry/Bohr) =
+    0.016615   -0.011466    0.009153
+    0.003548    0.003064    0.008169
+   -0.020769   -0.023514    0.005235
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :            1   20.054063290196556        16.301030402607250        17.389562335287184        19.271262189549311        14.921366702045438        18.390283972537556        21.266806903763051        17.264669002589432        18.471831513413189       1.27493372527038521E-003 -2.77927643018984882E-003  2.59944339814075030E-003 -3.03524611244208216E-002  4.81500596478931370E-002 -7.10160305702702130E-004  1.01554912191474354E-002 -4.12191817953919040E-003 -4.04691410509824337E-002
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   35.188604    0.000000    0.000000
+    0.000000   35.188604    0.000000
+    0.000000    0.000000   35.188604
+coordsFromPipe: xa (Bohr) =
+   20.058224   16.293890   17.391638
+   19.265829   14.931252   18.392577
+   21.269904   17.252636   18.460848
+
+* Maximum dynamic memory allocated =   118 MB
+
+siesta:                 ==============================
+                            Begin Server step =      2
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   10.61435099    8.62235202    9.20325505   2       1  O-pbe-pcec
+   10.19503374    7.90127494    9.73292859   1       2  H-pbe
+   11.25554404    9.12969803    9.76905593   1       3  H-pbe
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+New_DM. Step:     3
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1     -469.6695     -469.6728     -469.6728  0.0025  0.1206
+siesta:    2     -469.6702     -469.6702     -469.6702  0.0012  0.1291
+siesta:    3     -469.6700     -469.6712     -469.6712  0.0004  0.1255
+siesta:    4     -469.6705     -469.6705     -469.6705  0.0001  0.1242
+siesta:    5     -469.6705     -469.6704     -469.6704  0.0001  0.1242
+
+siesta: E_KS(eV) =             -471.3640
+
+siesta: Atomic forces (eV/Ang):
+     1    0.360239   -0.243060   -0.020452
+     2    0.035342   -0.073002    0.313188
+     3   -0.406939   -0.493569    0.269399
+----------------------------------------
+   Tot   -0.011358   -0.809631    0.562136
+----------------------------------------
+   Max    0.493569
+   Res    0.293583    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.493569    constrained
+
+Stress-tensor-Voigt (kbar):       -1.08       -1.00       -0.66       -0.17        0.01        0.03
+(Free)E + p*V (eV/cell)     -467.6811
+Target enthalpy (eV/cell)     -471.3640
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.000669   -0.000114    0.000016
+        -0.000114   -0.000613    0.000009
+         0.000016    0.000009   -0.000405
+
+siesta: Pressure (static):          0.90116892  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.000674   -0.000107    0.000018
+        -0.000107   -0.000624    0.000009
+         0.000018    0.000009   -0.000413
+
+siesta: Pressure (total):          0.91390601  kBar
+
+forcesToPipe: energy (Ry) =  -34.644347
+forcesToPipe: stress (Ry/Bohr**3) =
+   -0.000007   -0.000001    0.000000
+   -0.000001   -0.000007    0.000000
+    0.000000    0.000000   -0.000004
+forcesToPipe: forces (Ry/Bohr) =
+    0.014011   -0.009453   -0.000795
+    0.001375   -0.002839    0.012181
+   -0.015827   -0.019197    0.010478
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :            2   20.058224356671211        16.293890354229291        17.391638435336422        19.265829278866285        14.931251621904719        18.392576758657640        21.269904091737541        17.252635745164014        18.460847561007284       1.27493372527038521E-003 -2.77927643018984882E-003  2.59944339814075030E-003 -3.03524611244208216E-002  4.81500596478931370E-002 -7.10160305702702130E-004  1.01554912191474354E-002 -4.12191817953919040E-003 -4.04691410509824337E-002
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   35.188604    0.000000    0.000000
+    0.000000   35.188604    0.000000
+    0.000000    0.000000   35.188604
+coordsFromPipe: xa (Bohr) =
+   20.062468   16.286939   17.393529
+   19.260555   14.940809   18.396273
+   21.271178   17.238391   18.451071
+
+* Maximum dynamic memory allocated =   118 MB
+
+siesta:                 ==============================
+                            Begin Server step =      3
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   10.61659665    8.61867352    9.20425562   2       1  O-pbe-pcec
+   10.19224257    7.90633272    9.73488447   1       2  H-pbe
+   11.25621813    9.12216003    9.76388223   1       3  H-pbe
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+New_DM. Step:     4
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1     -469.6817     -469.6820     -469.6820  0.0022  0.1239
+siesta:    2     -469.6830     -469.6830     -469.6830  0.0003  0.1238
+siesta:    3     -469.6829     -469.6829     -469.6829  0.0003  0.1240
+siesta:    4     -469.6827     -469.6828     -469.6828  0.0001  0.1247
+siesta:    5     -469.6827     -469.6828     -469.6828  0.0001  0.1246
+
+siesta: E_KS(eV) =             -471.3700
+
+siesta: Atomic forces (eV/Ang):
+     1    0.255088   -0.239058   -0.275338
+     2   -0.016650   -0.204755    0.395531
+     3   -0.243232   -0.349974    0.424947
+----------------------------------------
+   Tot   -0.004794   -0.793787    0.545140
+----------------------------------------
+   Max    0.424947
+   Res    0.290383    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.424947    constrained
+
+Stress-tensor-Voigt (kbar):       -1.09       -1.02       -0.68       -0.21        0.00        0.02
+(Free)E + p*V (eV/cell)     -467.6137
+Target enthalpy (eV/cell)     -471.3700
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.000677   -0.000135    0.000008
+        -0.000135   -0.000628    0.000001
+         0.000008    0.000001   -0.000416
+
+siesta: Pressure (static):          0.91937076  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.000682   -0.000128    0.000009
+        -0.000128   -0.000639    0.000001
+         0.000009    0.000001   -0.000424
+
+siesta: Pressure (total):          0.93210784  kBar
+
+forcesToPipe: energy (Ry) =  -34.644783
+forcesToPipe: stress (Ry/Bohr**3) =
+   -0.000007   -0.000001    0.000000
+   -0.000001   -0.000007    0.000000
+    0.000000    0.000000   -0.000005
+forcesToPipe: forces (Ry/Bohr) =
+    0.009921   -0.009298   -0.010709
+   -0.000648   -0.007964    0.015384
+   -0.009460   -0.013612    0.016528
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :            3   20.062468040244095        16.286939002352543        17.393529242195065        19.260554721065994        14.940809446990464        18.396272827329728        21.271177936358907        17.238390986784676        18.451070688501833       1.27493372527038521E-003 -2.77927643018984882E-003  2.59944339814075030E-003 -3.03524611244208216E-002  4.81500596478931370E-002 -7.10160305702702130E-004  1.01554912191474354E-002 -4.12191817953919040E-003 -4.04691410509824337E-002
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   35.188604    0.000000    0.000000
+    0.000000   35.188604    0.000000
+    0.000000    0.000000   35.188604
+coordsFromPipe: xa (Bohr) =
+   20.066766   16.280178   17.395159
+   19.255206   14.949450   18.401741
+   21.271362   17.222578   18.443198
+
+* Maximum dynamic memory allocated =   118 MB
+
+siesta:                 ==============================
+                            Begin Server step =      4
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   10.61887096    8.61509602    9.20511809   2       1  O-pbe-pcec
+   10.18941191    7.91090502    9.73777816   1       2  H-pbe
+   11.25631550    9.11379222    9.75971611   1       3  H-pbe
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+New_DM. Step:     5
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1     -469.6917     -469.6875     -469.6875  0.0016  0.1410
+siesta:    2     -469.6938     -469.6938     -469.6938  0.0014  0.1323
+siesta:    3     -469.6927     -469.6904     -469.6904  0.0013  0.1374
+siesta:    4     -469.6932     -469.6932     -469.6932  0.0001  0.1383
+siesta:    5     -469.6932     -469.6932     -469.6932  0.0001  0.1383
+siesta:    6     -469.6932     -469.6932     -469.6932  0.0000  0.1382
+
+siesta: E_KS(eV) =             -471.3722
+
+siesta: Atomic forces (eV/Ang):
+     1    0.114301   -0.289287   -0.503224
+     2   -0.053463   -0.299962    0.444233
+     3   -0.058921   -0.187483    0.588637
+----------------------------------------
+   Tot    0.001917   -0.776733    0.529646
+----------------------------------------
+   Max    0.588637
+   Res    0.337521    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.588637    constrained
+
+Stress-tensor-Voigt (kbar):       -1.14       -1.07       -0.72       -0.24       -0.02       -0.00
+(Free)E + p*V (eV/cell)     -467.4355
+Target enthalpy (eV/cell)     -471.3722
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.000704   -0.000155   -0.000004
+        -0.000155   -0.000657   -0.000012
+        -0.000004   -0.000012   -0.000444
+
+siesta: Pressure (static):          0.96413222  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.000709   -0.000148   -0.000002
+        -0.000148   -0.000668   -0.000012
+        -0.000002   -0.000012   -0.000452
+
+siesta: Pressure (total):          0.97686931  kBar
+
+forcesToPipe: energy (Ry) =  -34.644947
+forcesToPipe: stress (Ry/Bohr**3) =
+   -0.000008   -0.000002   -0.000000
+   -0.000002   -0.000007   -0.000000
+   -0.000000   -0.000000   -0.000005
+forcesToPipe: forces (Ry/Bohr) =
+    0.004446   -0.011251   -0.019572
+   -0.002079   -0.011667    0.017278
+   -0.002292   -0.007292    0.022894
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :            4   20.066765870843369        16.280178495914420        17.395159067206226        19.255205559720245        14.949449838579921        18.401741126897623        21.271361948221891        17.222578122489267        18.443197848851334       1.27493372527038521E-003 -2.77927643018984882E-003  2.59944339814075030E-003 -3.03524611244208216E-002  4.81500596478931370E-002 -7.10160305702702130E-004  1.01554912191474354E-002 -4.12191817953919040E-003 -4.04691410509824337E-002
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   35.188604    0.000000    0.000000
+    0.000000   35.188604    0.000000
+    0.000000    0.000000   35.188604
+coordsFromPipe: xa (Bohr) =
+   20.071079   16.273595   17.396460
+   19.249617   14.956746   18.409200
+   21.271282   17.205925   18.437962
+
+* Maximum dynamic memory allocated =   118 MB
+
+siesta:                 ==============================
+                            Begin Server step =      5
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   10.62115330    8.61161217    9.20580652   2       1  O-pbe-pcec
+   10.18645450    7.91476609    9.74172516   1       2  H-pbe
+   11.25627317    9.10497989    9.75694567   1       3  H-pbe
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+New_DM. Step:     6
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1     -469.6989     -469.6903     -469.6903  0.0017  0.1721
+siesta:    2     -469.7015     -469.7014     -469.7014  0.0026  0.1552
+siesta:    3     -469.6998     -469.6947     -469.6947  0.0012  0.1661
+siesta:    4     -469.7005     -469.7005     -469.7005  0.0001  0.1663
+siesta:    5     -469.7005     -469.7005     -469.7005  0.0001  0.1662
+siesta:    6     -469.7005     -469.7006     -469.7006  0.0000  0.1660
+
+siesta: E_KS(eV) =             -471.3727
+
+siesta: Atomic forces (eV/Ang):
+     1   -0.046665   -0.385241   -0.679910
+     2   -0.068319   -0.349543    0.451791
+     3    0.125230   -0.024886    0.744016
+----------------------------------------
+   Tot    0.010247   -0.759670    0.515898
+----------------------------------------
+   Max    0.744016
+   Res    0.410107    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.744016    constrained
+
+Stress-tensor-Voigt (kbar):       -1.21       -1.14       -0.79       -0.26       -0.04       -0.03
+(Free)E + p*V (eV/cell)     -467.1591
+Target enthalpy (eV/cell)     -471.3727
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.000747   -0.000172   -0.000018
+        -0.000172   -0.000699   -0.000028
+        -0.000018   -0.000028   -0.000488
+
+siesta: Pressure (static):          1.03284894  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.000752   -0.000165   -0.000016
+        -0.000165   -0.000710   -0.000028
+        -0.000016   -0.000028   -0.000496
+
+siesta: Pressure (total):          1.04558602  kBar
+
+forcesToPipe: energy (Ry) =  -34.644985
+forcesToPipe: stress (Ry/Bohr**3) =
+   -0.000008   -0.000002   -0.000000
+   -0.000002   -0.000008   -0.000000
+   -0.000000   -0.000000   -0.000005
+forcesToPipe: forces (Ry/Bohr) =
+   -0.001815   -0.014983   -0.026444
+   -0.002657   -0.013595    0.017572
+    0.004871   -0.000968    0.028937
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :            5   20.071078861729411        16.273594986329485        17.396460005457339        19.249616849721743        14.956746207938748        18.409199873522311        21.271281955827430        17.205925213517478        18.437962478056246       1.27493372527038521E-003 -2.77927643018984882E-003  2.59944339814075030E-003 -3.03524611244208216E-002  4.81500596478931370E-002 -7.10160305702702130E-004  1.01554912191474354E-002 -4.12191817953919040E-003 -4.04691410509824337E-002
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   35.188604    0.000000    0.000000
+    0.000000   35.188604    0.000000
+    0.000000    0.000000   35.188604
+coordsFromPipe: xa (Bohr) =
+   20.075362   16.267161   17.397379
+   19.243722   14.962476   18.418683
+   21.271763   17.189161   18.436061
+
+* Maximum dynamic memory allocated =   118 MB
+
+siesta:                 ==============================
+                            Begin Server step =      6
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   10.62341974    8.60820744    9.20629272   2       1  O-pbe-pcec
+   10.18333509    7.91779837    9.74674338   1       2  H-pbe
+   11.25652777    9.09610854    9.75593933   1       3  H-pbe
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+New_DM. Step:     7
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1     -469.7028     -469.6903     -469.6903  0.0025  0.2152
+siesta:    2     -469.7058     -469.7058     -469.7058  0.0037  0.1914
+siesta:    3     -469.7040     -469.6967     -469.6967  0.0010  0.2064
+siesta:    4     -469.7046     -469.7047     -469.7047  0.0001  0.2066
+
+siesta: E_KS(eV) =             -471.3744
+
+siesta: Atomic forces (eV/Ang):
+     1   -0.205979   -0.510670   -0.782554
+     2   -0.057443   -0.350291    0.415323
+     3    0.284762    0.118432    0.871996
+----------------------------------------
+   Tot    0.021341   -0.742530    0.504765
+----------------------------------------
+   Max    0.871996
+   Res    0.479536    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.871996    constrained
+
+Stress-tensor-Voigt (kbar):       -1.30       -1.22       -0.88       -0.28       -0.07       -0.05
+(Free)E + p*V (eV/cell)     -466.8086
+Target enthalpy (eV/cell)     -471.3744
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.000804   -0.000184   -0.000033
+        -0.000184   -0.000751   -0.000046
+        -0.000033   -0.000046   -0.000543
+
+siesta: Pressure (static):          1.12024787  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.000809   -0.000177   -0.000031
+        -0.000177   -0.000762   -0.000046
+        -0.000031   -0.000046   -0.000551
+
+siesta: Pressure (total):          1.13298496  kBar
+
+forcesToPipe: energy (Ry) =  -34.645106
+forcesToPipe: stress (Ry/Bohr**3) =
+   -0.000009   -0.000002   -0.000000
+   -0.000002   -0.000008   -0.000000
+   -0.000000   -0.000000   -0.000006
+forcesToPipe: forces (Ry/Bohr) =
+   -0.008011   -0.019862   -0.030436
+   -0.002234   -0.013624    0.016153
+    0.011075    0.004606    0.033915
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :            6   20.075361822094308        16.267160967186765        17.397378802509213        19.243722028483766        14.962476401397572        18.418682931427977        21.271763072602500        17.189160800191004        18.436060773383865       1.27493372527038521E-003 -2.77927643018984882E-003  2.59944339814075030E-003 -3.03524611244208216E-002  4.81500596478931370E-002 -7.10160305702702130E-004  1.01554912191474354E-002 -4.12191817953919040E-003 -4.04691410509824337E-002
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   35.188604    0.000000    0.000000
+    0.000000   35.188604    0.000000
+    0.000000    0.000000   35.188604
+coordsFromPipe: xa (Bohr) =
+   20.079570   16.260840   17.397883
+   19.237570   14.966637   18.430027
+   21.273520   17.172927   18.438066
+
+* Maximum dynamic memory allocated =   118 MB
+
+siesta:                 ==============================
+                            Begin Server step =      7
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   10.62564636    8.60486246    9.20655971   2       1  O-pbe-pcec
+   10.18007949    7.92000010    9.75274634   1       2  H-pbe
+   11.25745755    9.08751801    9.75700054   1       3  H-pbe
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+New_DM. Step:     8
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1     -469.7041     -469.6892     -469.6892  0.0031  0.2673
+siesta:    2     -469.7072     -469.7070     -469.7070  0.0044  0.2383
+siesta:    3     -469.7053     -469.6968     -469.6968  0.0011  0.2563
+siesta:    4     -469.7057     -469.7059     -469.7059  0.0000  0.2566
+
+siesta: E_KS(eV) =             -471.3791
+
+siesta: Atomic forces (eV/Ang):
+     1   -0.335334   -0.639485   -0.792916
+     2   -0.023785   -0.309392    0.339411
+     3    0.395654    0.224124    0.953096
+----------------------------------------
+   Tot    0.036535   -0.724753    0.499591
+----------------------------------------
+   Max    0.953096
+   Res    0.524591    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.953096    constrained
+
+Stress-tensor-Voigt (kbar):       -1.40       -1.31       -0.98       -0.29       -0.10       -0.07
+(Free)E + p*V (eV/cell)     -466.4142
+Target enthalpy (eV/cell)     -471.3791
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.000869   -0.000189   -0.000046
+        -0.000189   -0.000809   -0.000064
+        -0.000046   -0.000064   -0.000605
+
+siesta: Pressure (static):          1.21928051  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.000873   -0.000182   -0.000044
+        -0.000182   -0.000820   -0.000064
+        -0.000044   -0.000064   -0.000613
+
+siesta: Pressure (total):          1.23201760  kBar
+
+forcesToPipe: energy (Ry) =  -34.645455
+forcesToPipe: stress (Ry/Bohr**3) =
+   -0.000009   -0.000002   -0.000001
+   -0.000002   -0.000009   -0.000001
+   -0.000001   -0.000001   -0.000007
+forcesToPipe: forces (Ry/Bohr) =
+   -0.013042   -0.024872   -0.030839
+   -0.000925   -0.012033    0.013201
+    0.015388    0.008717    0.037069
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :            7   20.079569521121702        16.260839863934113        17.397883327501148        19.237569827308061        14.966637066490682        18.430026899356747        21.273520103673381        17.172927036290602        18.438066166510090       1.27493372527038521E-003 -2.77927643018984882E-003  2.59944339814075030E-003 -3.03524611244208216E-002  4.81500596478931370E-002 -7.10160305702702130E-004  1.01554912191474354E-002 -4.12191817953919040E-003 -4.04691410509824337E-002
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   35.188604    0.000000    0.000000
+    0.000000   35.188604    0.000000
+    0.000000    0.000000   35.188604
+coordsFromPipe: xa (Bohr) =
+   20.083665   16.254593   17.397968
+   19.231311   14.969411   18.442892
+   21.277050   17.157697   18.444342
+
+* Maximum dynamic memory allocated =   118 MB
+
+siesta:                 ==============================
+                            Begin Server step =      8
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   10.62781345    8.60155700    9.20660438   2       1  O-pbe-pcec
+   10.17676749    7.92146825    9.75955407   1       2  H-pbe
+   11.25932544    9.07945889    9.76032159   1       3  H-pbe
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+New_DM. Step:     9
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1     -469.7027     -469.6867     -469.6867  0.0033  0.3232
+siesta:    2     -469.7060     -469.7059     -469.7059  0.0046  0.2928
+siesta:    3     -469.7040     -469.6949     -469.6949  0.0011  0.3116
+siesta:    4     -469.7044     -469.7046     -469.7046  0.0001  0.3121
+
+siesta: E_KS(eV) =             -471.3886
+
+siesta: Atomic forces (eV/Ang):
+     1   -0.412123   -0.750305   -0.700263
+     2    0.028622   -0.235135    0.230583
+     3    0.439136    0.278804    0.971334
+----------------------------------------
+   Tot    0.055635   -0.706636    0.501654
+----------------------------------------
+   Max    0.971334
+   Res    0.531926    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.971334    constrained
+
+Stress-tensor-Voigt (kbar):       -1.51       -1.41       -1.08       -0.29       -0.13       -0.09
+(Free)E + p*V (eV/cell)     -466.0137
+Target enthalpy (eV/cell)     -471.3886
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.000935   -0.000187   -0.000056
+        -0.000187   -0.000869   -0.000080
+        -0.000056   -0.000080   -0.000669
+
+siesta: Pressure (static):          1.32102044  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.000940   -0.000180   -0.000054
+        -0.000180   -0.000881   -0.000080
+        -0.000054   -0.000080   -0.000677
+
+siesta: Pressure (total):          1.33375753  kBar
+
+forcesToPipe: energy (Ry) =  -34.646149
+forcesToPipe: stress (Ry/Bohr**3) =
+   -0.000010   -0.000002   -0.000001
+   -0.000002   -0.000009   -0.000001
+   -0.000001   -0.000001   -0.000007
+forcesToPipe: forces (Ry/Bohr) =
+   -0.016029   -0.029182   -0.027236
+    0.001113   -0.009145    0.008968
+    0.017080    0.010844    0.037779
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :            8   20.083664732790059        16.254593462128327        17.397967742573154        19.231311054081203        14.969411458256827        18.442891645506830        21.277049917255614        17.157697490695597        18.444342036726749       1.27493372527038521E-003 -2.77927643018984882E-003  2.59944339814075030E-003 -3.03524611244208216E-002  4.81500596478931370E-002 -7.10160305702702130E-004  1.01554912191474354E-002 -4.12191817953919040E-003 -4.04691410509824337E-002
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   35.188604    0.000000    0.000000
+    0.000000   35.188604    0.000000
+    0.000000    0.000000   35.188604
+coordsFromPipe: xa (Bohr) =
+   20.087625   16.248388   17.397656
+   19.225181   14.971132   18.456790
+   21.282547   17.143717   18.454970
+
+* Maximum dynamic memory allocated =   118 MB
+
+siesta:                 ==============================
+                            Begin Server step =      9
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   10.62990898    8.59827324    9.20643916   2       1  O-pbe-pcec
+   10.17352336    7.92237888    9.76690852   1       2  H-pbe
+   11.26223455    9.07206082    9.76594571   1       3  H-pbe
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+New_DM. Step:    10
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+Density Matrix sparsity pattern changed.
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1     -469.6991     -469.6840     -469.6840  0.0029  0.4021
+siesta:    2     -469.7031     -469.7030     -469.7030  0.0044  0.3724
+siesta:    3     -469.7007     -469.6921     -469.6921  0.0015  0.3909
+siesta:    4     -469.7015     -469.7015     -469.7015  0.0001  0.3915
+
+siesta: E_KS(eV) =             -471.3989
+
+siesta: Atomic forces (eV/Ang):
+     1   -0.417820   -0.827667   -0.503593
+     2    0.091859   -0.139218    0.097768
+     3    0.405342    0.278074    0.916385
+----------------------------------------
+   Tot    0.079381   -0.688810    0.510560
+----------------------------------------
+   Max    0.916385
+   Res    0.497994    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.916385    constrained
+
+Stress-tensor-Voigt (kbar):       -1.65       -1.55       -1.23       -0.28       -0.15       -0.10
+(Free)E + p*V (eV/cell)     -465.4474
+Target enthalpy (eV/cell)     -471.3989
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.001027   -0.000179   -0.000061
+        -0.000179   -0.000957   -0.000093
+        -0.000061   -0.000093   -0.000757
+
+siesta: Pressure (static):          1.46409491  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.001032   -0.000172   -0.000060
+        -0.000172   -0.000968   -0.000093
+        -0.000060   -0.000093   -0.000765
+
+siesta: Pressure (total):          1.47683199  kBar
+
+forcesToPipe: energy (Ry) =  -34.646906
+forcesToPipe: stress (Ry/Bohr**3) =
+   -0.000011   -0.000002   -0.000001
+   -0.000002   -0.000010   -0.000001
+   -0.000001   -0.000001   -0.000008
+forcesToPipe: forces (Ry/Bohr) =
+   -0.016250   -0.032191   -0.019586
+    0.003573   -0.005415    0.003803
+    0.015765    0.010815    0.035641
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :            9   20.087624714765379        16.248388038319764        17.397655535954939        19.225180527410533        14.971132296103514        18.456789550500051        21.282547338401397        17.143717163199565        18.454970099491241       1.27493372527038521E-003 -2.77927643018984882E-003  2.59944339814075030E-003 -3.03524611244208216E-002  4.81500596478931370E-002 -7.10160305702702130E-004  1.01554912191474354E-002 -4.12191817953919040E-003 -4.04691410509824337E-002
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   35.188604    0.000000    0.000000
+    0.000000   35.188604    0.000000
+    0.000000    0.000000   35.188604
+coordsFromPipe: xa (Bohr) =
+   20.091447   16.242199   17.397000
+   19.219462   14.972229   18.471126
+   21.289861   17.130983   18.469704
+
+* Maximum dynamic memory allocated =   118 MB
+
+siesta:                 ==============================
+                            Begin Server step =     10
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   10.63193142    8.59499808    9.20609220   2       1  O-pbe-pcec
+   10.17049702    7.92295941    9.77449479   1       2  H-pbe
+   11.26610475    9.06532208    9.77374263   1       3  H-pbe
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+New_DM. Step:    11
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1     -469.6941     -469.6814     -469.6814  0.0031  0.4511
+siesta:    2     -469.6951     -469.6951     -469.6951  0.0034  0.4292
+siesta:    3     -469.6945     -469.6882     -469.6882  0.0008  0.4414
+siesta:    4     -469.6942     -469.6941     -469.6941  0.0001  0.4428
+siesta:    5     -469.6942     -469.6941     -469.6941  0.0001  0.4427
+
+siesta: E_KS(eV) =             -471.4176
+
+siesta: Atomic forces (eV/Ang):
+     1   -0.352707   -0.852942   -0.229324
+     2    0.154318   -0.043693   -0.041851
+     3    0.303692    0.225373    0.794598
+----------------------------------------
+   Tot    0.105303   -0.671262    0.523422
+----------------------------------------
+   Max    0.852942
+   Res    0.435429    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.852942    constrained
+
+Stress-tensor-Voigt (kbar):       -1.74       -1.63       -1.30       -0.25       -0.16       -0.10
+(Free)E + p*V (eV/cell)     -465.1485
+Target enthalpy (eV/cell)     -471.4176
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.001080   -0.000166   -0.000061
+        -0.000166   -0.001006   -0.000102
+        -0.000061   -0.000102   -0.000803
+
+siesta: Pressure (static):          1.54291561  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.001084   -0.000159   -0.000060
+        -0.000159   -0.001017   -0.000102
+        -0.000060   -0.000102   -0.000811
+
+siesta: Pressure (total):          1.55565270  kBar
+
+forcesToPipe: energy (Ry) =  -34.648282
+forcesToPipe: stress (Ry/Bohr**3) =
+   -0.000012   -0.000002   -0.000001
+   -0.000002   -0.000011   -0.000001
+   -0.000001   -0.000001   -0.000009
+forcesToPipe: forces (Ry/Bohr) =
+   -0.013718   -0.033174   -0.008919
+    0.006002   -0.001699   -0.001628
+    0.011812    0.008766    0.030905
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :           10   20.091446557744177        16.242198879890424        17.396999862977463        19.219461586208702        14.972229349963825        18.471125520140678        21.289860950503751        17.130982785689948        18.469704148651836       1.27493372527038521E-003 -2.77927643018984882E-003  2.59944339814075030E-003 -3.03524611244208216E-002  4.81500596478931370E-002 -7.10160305702702130E-004  1.01554912191474354E-002 -4.12191817953919040E-003 -4.04691410509824337E-002
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   35.188604    0.000000    0.000000
+    0.000000   35.188604    0.000000
+    0.000000    0.000000   35.188604
+coordsFromPipe: xa (Bohr) =
+   20.095147   16.236016   17.396076
+   19.214434   14.973131   18.485274
+   21.298535   17.119258   18.487999
+
+* Maximum dynamic memory allocated =   118 MB
+
+siesta:                 ==============================
+                            Begin Server step =     11
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   10.63388973    8.59172607    9.20560336   2       1  O-pbe-pcec
+   10.16783659    7.92343635    9.78198182   1       2  H-pbe
+   11.27069501    9.05911771    9.78342358   1       3  H-pbe
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+New_DM. Step:    12
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+Density Matrix sparsity pattern changed.
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1     -469.6823     -469.6740     -469.6740  0.0019  0.4897
+siesta:    2     -469.6842     -469.6842     -469.6842  0.0023  0.4742
+siesta:    3     -469.6832     -469.6788     -469.6788  0.0009  0.4832
+siesta:    4     -469.6833     -469.6833     -469.6833  0.0001  0.4844
+siesta:    5     -469.6833     -469.6834     -469.6834  0.0001  0.4843
+siesta:    6     -469.6833     -469.6833     -469.6833  0.0000  0.4841
+
+siesta: E_KS(eV) =             -471.4386
+
+siesta: Atomic forces (eV/Ang):
+     1   -0.225319   -0.834474    0.103745
+     2    0.209334    0.043270   -0.180905
+     3    0.149255    0.136402    0.615747
+----------------------------------------
+   Tot    0.133269   -0.654803    0.538587
+----------------------------------------
+   Max    0.834474
+   Res    0.373620    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.834474    constrained
+
+Stress-tensor-Voigt (kbar):       -1.80       -1.69       -1.35       -0.23       -0.17       -0.09
+(Free)E + p*V (eV/cell)     -464.9454
+Target enthalpy (eV/cell)     -471.4386
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.001118   -0.000150   -0.000056
+        -0.000150   -0.001043   -0.000106
+        -0.000056   -0.000106   -0.000832
+
+siesta: Pressure (static):          1.59851517  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.001122   -0.000143   -0.000054
+        -0.000143   -0.001055   -0.000106
+        -0.000054   -0.000106   -0.000840
+
+siesta: Pressure (total):          1.61125225  kBar
+
+forcesToPipe: energy (Ry) =  -34.649825
+forcesToPipe: stress (Ry/Bohr**3) =
+   -0.000012   -0.000002   -0.000001
+   -0.000002   -0.000011   -0.000001
+   -0.000001   -0.000001   -0.000009
+forcesToPipe: forces (Ry/Bohr) =
+   -0.008763   -0.032456    0.004035
+    0.008142    0.001683   -0.007036
+    0.005805    0.005305    0.023949
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :           11   20.095147243474123        16.236015678208545        17.396076094947162        19.214434087215899        14.973130631974177        18.485273968735985        21.298535296359109        17.119258223190442        18.487998501127223       1.27493372527038521E-003 -2.77927643018984882E-003  2.59944339814075030E-003 -3.03524611244208216E-002  4.81500596478931370E-002 -7.10160305702702130E-004  1.01554912191474354E-002 -4.12191817953919040E-003 -4.04691410509824337E-002
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   35.188604    0.000000    0.000000
+    0.000000   35.188604    0.000000
+    0.000000    0.000000   35.188604
+coordsFromPipe: xa (Bohr) =
+   20.098761   16.229840   17.394977
+   19.210345   14.974226   18.498612
+   21.307878   17.108145   18.509052
+
+* Maximum dynamic memory allocated =   118 MB
+
+siesta:                 ==============================
+                            Begin Server step =     12
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   10.63580225    8.58845820    9.20502151   2       1  O-pbe-pcec
+   10.16567249    7.92401588    9.78903992   1       2  H-pbe
+   11.27563917    9.05323676    9.79456450   1       3  H-pbe
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+New_DM. Step:    13
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1     -469.6676     -469.6641     -469.6641  0.0013  0.5148
+siesta:    2     -469.6684     -469.6684     -469.6684  0.0010  0.5081
+siesta:    3     -469.6680     -469.6666     -469.6666  0.0006  0.5114
+siesta:    4     -469.6680     -469.6680     -469.6680  0.0001  0.5126
+siesta:    5     -469.6680     -469.6680     -469.6680  0.0001  0.5126
+
+siesta: E_KS(eV) =             -471.4596
+
+siesta: Atomic forces (eV/Ang):
+     1   -0.051660   -0.777046    0.463236
+     2    0.249266    0.109271   -0.308637
+     3   -0.034501    0.028080    0.397538
+----------------------------------------
+   Tot    0.163105   -0.639695    0.552137
+----------------------------------------
+   Max    0.777046
+   Res    0.357523    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.777046    constrained
+
+Stress-tensor-Voigt (kbar):       -1.83       -1.73       -1.36       -0.20       -0.17       -0.07
+(Free)E + p*V (eV/cell)     -464.8584
+Target enthalpy (eV/cell)     -471.4596
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.001138   -0.000135   -0.000046
+        -0.000135   -0.001066   -0.000105
+        -0.000046   -0.000105   -0.000840
+
+siesta: Pressure (static):          1.62530393  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.001143   -0.000128   -0.000045
+        -0.000128   -0.001077   -0.000105
+        -0.000045   -0.000105   -0.000847
+
+siesta: Pressure (total):          1.63804102  kBar
+
+forcesToPipe: energy (Ry) =  -34.651368
+forcesToPipe: stress (Ry/Bohr**3) =
+   -0.000012   -0.000001   -0.000001
+   -0.000001   -0.000012   -0.000001
+   -0.000001   -0.000001   -0.000009
+forcesToPipe: forces (Ry/Bohr) =
+   -0.002009   -0.030222    0.018017
+    0.009695    0.004250   -0.012004
+   -0.001342    0.001092    0.015462
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :           12   20.098761369493999        16.229840298721655        17.394976556911992        19.210344536939274        14.974225789607992        18.498611846043541        21.307878397983995        17.108144827520949        18.509051790289643       1.27493372527038521E-003 -2.77927643018984882E-003  2.59944339814075030E-003 -3.03524611244208216E-002  4.81500596478931370E-002 -7.10160305702702130E-004  1.01554912191474354E-002 -4.12191817953919040E-003 -4.04691410509824337E-002
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   35.188604    0.000000    0.000000
+    0.000000   35.188604    0.000000
+    0.000000    0.000000   35.188604
+coordsFromPipe: xa (Bohr) =
+   20.102337   16.223686   17.393801
+   19.207372   14.975811   18.510567
+   21.317067   17.097157   18.531886
+
+* Maximum dynamic memory allocated =   118 MB
+
+siesta:                 ==============================
+                            Begin Server step =     13
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   10.63769425    8.58520124    9.20439966   2       1  O-pbe-pcec
+   10.16409942    7.92485450    9.79536622   1       2  H-pbe
+   11.28050152    9.04742238    9.80664800   1       3  H-pbe
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+New_DM. Step:    14
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1     -469.6492     -469.6507     -469.6507  0.0009  0.5233
+siesta:    2     -469.6491     -469.6491     -469.6491  0.0004  0.5257
+siesta:    3     -469.6492     -469.6496     -469.6496  0.0003  0.5248
+siesta:    4     -469.6492     -469.6493     -469.6493  0.0001  0.5240
+
+siesta: E_KS(eV) =             -471.4786
+
+siesta: Atomic forces (eV/Ang):
+     1    0.144636   -0.694981    0.818453
+     2    0.269481    0.148504   -0.417958
+     3   -0.218286   -0.078703    0.166126
+----------------------------------------
+   Tot    0.195831   -0.625181    0.566621
+----------------------------------------
+   Max    0.818453
+   Res    0.411581    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.818453    constrained
+
+Stress-tensor-Voigt (kbar):       -1.83       -1.73       -1.33       -0.18       -0.16       -0.05
+(Free)E + p*V (eV/cell)     -464.8962
+Target enthalpy (eV/cell)     -471.4786
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.001139   -0.000121   -0.000035
+        -0.000121   -0.001070   -0.000101
+        -0.000035   -0.000101   -0.000825
+
+siesta: Pressure (static):          1.62064767  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.001144   -0.000114   -0.000033
+        -0.000114   -0.001082   -0.000101
+        -0.000033   -0.000101   -0.000833
+
+siesta: Pressure (total):          1.63338476  kBar
+
+forcesToPipe: energy (Ry) =  -34.652763
+forcesToPipe: stress (Ry/Bohr**3) =
+   -0.000012   -0.000001   -0.000000
+   -0.000001   -0.000012   -0.000001
+   -0.000000   -0.000001   -0.000009
+forcesToPipe: forces (Ry/Bohr) =
+    0.005625   -0.027030    0.031832
+    0.010481    0.005776   -0.016256
+   -0.008490   -0.003061    0.006461
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :           13   20.102336750222655        16.223685539101538        17.393801436365344        19.207371858516627        14.975810549473668        18.510566832370721        21.317066914012539        17.097157248124315        18.531886300725013       1.27493372527038521E-003 -2.77927643018984882E-003  2.59944339814075030E-003 -3.03524611244208216E-002  4.81500596478931370E-002 -7.10160305702702130E-004  1.01554912191474354E-002 -4.12191817953919040E-003 -4.04691410509824337E-002
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   35.188604    0.000000    0.000000
+    0.000000   35.188604    0.000000
+    0.000000    0.000000   35.188604
+coordsFromPipe: xa (Bohr) =
+   20.105928   16.217571   17.392650
+   19.205607   14.978061   18.520649
+   21.325277   17.085817   18.555465
+
+* Maximum dynamic memory allocated =   118 MB
+
+siesta:                 ==============================
+                            Begin Server step =     14
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   10.63959457    8.58196565    9.20379044   2       1  O-pbe-pcec
+   10.16316530    7.92604523    9.80070153   1       2  H-pbe
+   11.28484630    9.04142140    9.81912539   1       3  H-pbe
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+New_DM. Step:    15
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1     -469.6291     -469.6353     -469.6353  0.0016  0.5135
+siesta:    2     -469.6282     -469.6282     -469.6282  0.0017  0.5260
+siesta:    3     -469.6287     -469.6320     -469.6320  0.0004  0.5187
+siesta:    4     -469.6289     -469.6289     -469.6289  0.0001  0.5181
+
+siesta: E_KS(eV) =             -471.4940
+
+siesta: Atomic forces (eV/Ang):
+     1    0.345186   -0.598244    1.143450
+     2    0.266940    0.156893   -0.503098
+     3   -0.382960   -0.170627   -0.061386
+----------------------------------------
+   Tot    0.229166   -0.611979    0.578966
+----------------------------------------
+   Max    1.143450
+   Res    0.506957    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    1.143450    constrained
+
+Stress-tensor-Voigt (kbar):       -1.80       -1.71       -1.27       -0.17       -0.15       -0.03
+(Free)E + p*V (eV/cell)     -465.0600
+Target enthalpy (eV/cell)     -471.4940
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.001122   -0.000112   -0.000023
+        -0.000112   -0.001056   -0.000093
+        -0.000023   -0.000093   -0.000788
+
+siesta: Pressure (static):          1.58383544  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.001126   -0.000105   -0.000021
+        -0.000105   -0.001068   -0.000093
+        -0.000021   -0.000093   -0.000796
+
+siesta: Pressure (total):          1.59657253  kBar
+
+forcesToPipe: energy (Ry) =  -34.653898
+forcesToPipe: stress (Ry/Bohr**3) =
+   -0.000012   -0.000001   -0.000000
+   -0.000001   -0.000012   -0.000001
+   -0.000000   -0.000001   -0.000009
+forcesToPipe: forces (Ry/Bohr) =
+    0.013425   -0.023268    0.044473
+    0.010382    0.006102   -0.019567
+   -0.014895   -0.006636   -0.002388
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :           14   20.105927834832887        16.217571159525907        17.392650171492573        19.205606625868917        14.978060702425697        18.520649100871751        21.325277368805153        17.085817027908309        18.555465160966786       1.27493372527038521E-003 -2.77927643018984882E-003  2.59944339814075030E-003 -3.03524611244208216E-002  4.81500596478931370E-002 -7.10160305702702130E-004  1.01554912191474354E-002 -4.12191817953919040E-003 -4.04691410509824337E-002
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   35.188604    0.000000    0.000000
+    0.000000   35.188604    0.000000
+    0.000000    0.000000   35.188604
+coordsFromPipe: xa (Bohr) =
+   20.109591   16.211521   17.391614
+   19.205037   14.981014   18.528477
+   21.331772   17.073712   18.578769
+
+* Maximum dynamic memory allocated =   118 MB
+
+siesta:                 ==============================
+                            Begin Server step =     15
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   10.64153281    8.57876411    9.20324221   2       1  O-pbe-pcec
+   10.16286411    7.92760796    9.80484396   1       2  H-pbe
+   11.28828307    9.03501585    9.83145723   1       3  H-pbe
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+New_DM. Step:    16
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1     -469.6100     -469.6195     -469.6195  0.0023  0.4875
+siesta:    2     -469.6087     -469.6086     -469.6086  0.0024  0.5053
+siesta:    3     -469.6095     -469.6145     -469.6145  0.0008  0.4949
+siesta:    4     -469.6097     -469.6096     -469.6096  0.0001  0.4941
+
+siesta: E_KS(eV) =             -471.5051
+
+siesta: Atomic forces (eV/Ang):
+     1    0.533929   -0.496656    1.418521
+     2    0.240566    0.133199   -0.560076
+     3   -0.515098   -0.238663   -0.270917
+----------------------------------------
+   Tot    0.259397   -0.602120    0.587528
+----------------------------------------
+   Max    1.418521
+   Res    0.608178    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    1.418521    constrained
+
+Stress-tensor-Voigt (kbar):       -1.75       -1.66       -1.18       -0.16       -0.13       -0.02
+(Free)E + p*V (eV/cell)     -465.3389
+Target enthalpy (eV/cell)     -471.5051
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.001086   -0.000107   -0.000011
+        -0.000107   -0.001025   -0.000084
+        -0.000012   -0.000084   -0.000731
+
+siesta: Pressure (static):          1.51738638  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.001091   -0.000100   -0.000010
+        -0.000100   -0.001036   -0.000084
+        -0.000010   -0.000084   -0.000739
+
+siesta: Pressure (total):          1.53012347  kBar
+
+forcesToPipe: energy (Ry) =  -34.654713
+forcesToPipe: stress (Ry/Bohr**3) =
+   -0.000012   -0.000001   -0.000000
+   -0.000001   -0.000011   -0.000001
+   -0.000000   -0.000001   -0.000008
+forcesToPipe: forces (Ry/Bohr) =
+    0.020766   -0.019317    0.055171
+    0.009356    0.005181   -0.021783
+   -0.020034   -0.009282   -0.010537
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :           15   20.109590572869443        16.211521112158209        17.391614174599717        19.205037454415731        14.981013836031391        18.528477171392787        21.331771919027769        17.073712288974018        18.578768973425710       1.27493372527038521E-003 -2.77927643018984882E-003  2.59944339814075030E-003 -3.03524611244208216E-002  4.81500596478931370E-002 -7.10160305702702130E-004  1.01554912191474354E-002 -4.12191817953919040E-003 -4.04691410509824337E-002
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   35.188604    0.000000    0.000000
+    0.000000   35.188604    0.000000
+    0.000000    0.000000   35.188604
+coordsFromPipe: xa (Bohr) =
+   20.113378   16.205561   17.390771
+   19.205546   14.984564   18.533796
+   21.335959   17.060538   18.600859
+
+* Maximum dynamic memory allocated =   118 MB
+
+siesta:                 ==============================
+                            Begin Server step =     16
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   10.64353697    8.57561003    9.20279618   2       1  O-pbe-pcec
+   10.16313331    7.92948651    9.80765843   1       2  H-pbe
+   11.29049851    9.02804442    9.84314671   1       3  H-pbe
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+New_DM. Step:    17
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1     -469.5948     -469.6068     -469.6068  0.0030  0.4452
+siesta:    2     -469.5931     -469.5931     -469.5931  0.0031  0.4683
+siesta:    3     -469.5941     -469.6005     -469.6005  0.0009  0.4547
+siesta:    4     -469.5944     -469.5943     -469.5943  0.0001  0.4538
+
+siesta: E_KS(eV) =             -471.5116
+
+siesta: Atomic forces (eV/Ang):
+     1    0.699954   -0.396747    1.630055
+     2    0.191317    0.079090   -0.587827
+     3   -0.605901   -0.278073   -0.452075
+----------------------------------------
+   Tot    0.285370   -0.595730    0.590153
+----------------------------------------
+   Max    1.630055
+   Res    0.694553    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    1.630055    constrained
+
+Stress-tensor-Voigt (kbar):       -1.67       -1.58       -1.07       -0.16       -0.12       -0.00
+(Free)E + p*V (eV/cell)     -465.7115
+Target enthalpy (eV/cell)     -471.5116
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.001035   -0.000108   -0.000002
+        -0.000108   -0.000977   -0.000072
+        -0.000003   -0.000072   -0.000659
+
+siesta: Pressure (static):          1.42652064  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.001040   -0.000101   -0.000001
+        -0.000101   -0.000989   -0.000072
+        -0.000001   -0.000072   -0.000667
+
+siesta: Pressure (total):          1.43925773  kBar
+
+forcesToPipe: energy (Ry) =  -34.655189
+forcesToPipe: stress (Ry/Bohr**3) =
+   -0.000011   -0.000001   -0.000000
+   -0.000001   -0.000011   -0.000001
+   -0.000000   -0.000001   -0.000007
+forcesToPipe: forces (Ry/Bohr) =
+    0.027224   -0.015431    0.063399
+    0.007441    0.003076   -0.022863
+   -0.023566   -0.010815   -0.017583
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :           16   20.113377893976221        16.205560774631429        17.390771297839475        19.205546170168457        14.984563786359120        18.533795747824705        21.335958502879961        17.060538188064346        18.600858907178836       1.27493372527038521E-003 -2.77927643018984882E-003  2.59944339814075030E-003 -3.03524611244208216E-002  4.81500596478931370E-002 -7.10160305702702130E-004  1.01554912191474354E-002 -4.12191817953919040E-003 -4.04691410509824337E-002
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   35.188604    0.000000    0.000000
+    0.000000   35.188604    0.000000
+    0.000000    0.000000   35.188604
+coordsFromPipe: xa (Bohr) =
+   20.117337   16.199715   17.390182
+   19.206912   14.988468   18.536480
+   21.337430   17.046118   18.620923
+
+* Maximum dynamic memory allocated =   118 MB
+
+siesta:                 ==============================
+                            Begin Server step =     17
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   10.64563183    8.57251663    9.20248433   2       1  O-pbe-pcec
+   10.16385613    7.93155259    9.80907913   1       2  H-pbe
+   11.29127734    9.02041366    9.85376431   1       3  H-pbe
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+New_DM. Step:    18
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1     -469.5859     -469.5991     -469.5991  0.0035  0.3905
+siesta:    2     -469.5840     -469.5840     -469.5840  0.0034  0.4160
+siesta:    3     -469.5852     -469.5922     -469.5922  0.0010  0.4009
+siesta:    4     -469.5855     -469.5853     -469.5853  0.0001  0.3999
+
+siesta: E_KS(eV) =             -471.5136
+
+siesta: Atomic forces (eV/Ang):
+     1    0.835340   -0.304004    1.769601
+     2    0.121936   -0.001427   -0.587348
+     3   -0.649426   -0.285409   -0.594508
+----------------------------------------
+   Tot    0.307850   -0.590840    0.587744
+----------------------------------------
+   Max    1.769601
+   Res    0.755586    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    1.769601    constrained
+
+Stress-tensor-Voigt (kbar):       -1.57       -1.49       -0.94       -0.17       -0.10        0.01
+(Free)E + p*V (eV/cell)     -466.1457
+Target enthalpy (eV/cell)     -471.5136
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.000974   -0.000114    0.000003
+        -0.000114   -0.000919   -0.000060
+         0.000003   -0.000060   -0.000577
+
+siesta: Pressure (static):          1.31928326  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.000979   -0.000107    0.000005
+        -0.000107   -0.000930   -0.000060
+         0.000005   -0.000060   -0.000585
+
+siesta: Pressure (total):          1.33202035  kBar
+
+forcesToPipe: energy (Ry) =  -34.655337
+forcesToPipe: stress (Ry/Bohr**3) =
+   -0.000011   -0.000001    0.000000
+   -0.000001   -0.000010   -0.000001
+    0.000000   -0.000001   -0.000006
+forcesToPipe: forces (Ry/Bohr) =
+    0.032489   -0.011824    0.068826
+    0.004743   -0.000055   -0.022844
+   -0.025258   -0.011101   -0.023122
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :           17   20.117336598030761        16.199715081216034        17.390181988838201        19.206912105982973        14.988468110752120        18.536480484831706        21.337430265141538        17.046118143049281        18.620923258546703       1.27493372527038521E-003 -2.77927643018984882E-003  2.59944339814075030E-003 -3.03524611244208216E-002  4.81500596478931370E-002 -7.10160305702702130E-004  1.01554912191474354E-002 -4.12191817953919040E-003 -4.04691410509824337E-002
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   35.188604    0.000000    0.000000
+    0.000000   35.188604    0.000000
+    0.000000    0.000000   35.188604
+coordsFromPipe: xa (Bohr) =
+   20.121505   16.194007   17.389887
+   19.208824   14.992366   18.536534
+   21.335992   17.030419   18.638324
+
+* Maximum dynamic memory allocated =   118 MB
+
+siesta:                 ==============================
+                            Begin Server step =     18
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   10.64783768    8.56949600    9.20232816   2       1  O-pbe-pcec
+   10.16486806    7.93361528    9.80910720   1       2  H-pbe
+   11.29051634    9.01210619    9.86297229   1       3  H-pbe
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+New_DM. Step:    19
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1     -469.5847     -469.5981     -469.5981  0.0037  0.3273
+siesta:    2     -469.5828     -469.5827     -469.5827  0.0034  0.3531
+siesta:    3     -469.5839     -469.5910     -469.5910  0.0010  0.3379
+siesta:    4     -469.5842     -469.5841     -469.5841  0.0001  0.3368
+
+siesta: E_KS(eV) =             -471.5112
+
+siesta: Atomic forces (eV/Ang):
+     1    0.934073   -0.223705    1.834114
+     2    0.036874   -0.102081   -0.561631
+     3   -0.646036   -0.261795   -0.693990
+----------------------------------------
+   Tot    0.324911   -0.587581    0.578494
+----------------------------------------
+   Max    1.834114
+   Res    0.787488    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    1.834114    constrained
+
+Stress-tensor-Voigt (kbar):       -1.46       -1.39       -0.80       -0.19       -0.08        0.01
+(Free)E + p*V (eV/cell)     -466.6037
+Target enthalpy (eV/cell)     -471.5112
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.000908   -0.000125    0.000005
+        -0.000125   -0.000855   -0.000047
+         0.000005   -0.000047   -0.000494
+
+siesta: Pressure (static):          1.20503273  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.000913   -0.000118    0.000007
+        -0.000118   -0.000866   -0.000047
+         0.000007   -0.000047   -0.000502
+
+siesta: Pressure (total):          1.21776982  kBar
+
+forcesToPipe: energy (Ry) =  -34.655162
+forcesToPipe: stress (Ry/Bohr**3) =
+   -0.000010   -0.000001    0.000000
+   -0.000001   -0.000009   -0.000001
+    0.000000   -0.000001   -0.000005
+forcesToPipe: forces (Ry/Bohr) =
+    0.036329   -0.008701    0.071335
+    0.001434   -0.003970   -0.021844
+   -0.025127   -0.010182   -0.026992
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :           18   20.121505050196276        16.194006925102819        17.389886862762221        19.208824391441318        14.992366041742077        18.536533527622908        21.335992188148630        17.030419285291490        18.638323836735992       1.27493372527038521E-003 -2.77927643018984882E-003  2.59944339814075030E-003 -3.03524611244208216E-002  4.81500596478931370E-002 -7.10160305702702130E-004  1.01554912191474354E-002 -4.12191817953919040E-003 -4.04691410509824337E-002
+ Reading from pipe
+
+coordsFromPipe: cell (Bohr) =
+   35.188604    0.000000    0.000000
+    0.000000   35.188604    0.000000
+    0.000000    0.000000   35.188604
+coordsFromPipe: xa (Bohr) =
+   20.125911   16.188456   17.389906
+   19.210902   14.995807   18.534070
+   21.331659   17.013547   18.652615
+
+* Maximum dynamic memory allocated =   118 MB
+
+siesta:                 ==============================
+                            Begin Server step =     19
+                        ==============================
+
+outcoor: Atomic coordinates (Ang):                          
+   10.65016941    8.56655837    9.20233816   2       1  O-pbe-pcec
+   10.16596743    7.93543594    9.80780362   1       2  H-pbe
+   11.28822356    9.00317798    9.87053479   1       3  H-pbe
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+New_DM. Step:    20
+Re-using DM from previous geometry...
+Extrapolating Density Matrix...
+
+siesta: iscf   Eharris(eV)      E_KS(eV)   FreeEng(eV)   dDmax  Ef(eV)
+siesta:    1     -469.5914     -469.6042     -469.6042  0.0037  0.2056
+siesta:    2     -469.5899     -469.5899     -469.5899  0.0032  0.2298
+siesta:    3     -469.5908     -469.5975     -469.5975  0.0009  0.2158
+siesta:    4     -469.5912     -469.5913     -469.5913  0.0001  0.2146
+siesta:    5     -469.5912     -469.5912     -469.5912  0.0001  0.2146
+
+siesta: E_KS(eV) =             -471.5039
+
+siesta: Atomic forces (eV/Ang):
+     1    0.992457   -0.165047    1.825273
+     2   -0.059629   -0.214459   -0.515815
+     3   -0.596436   -0.206401   -0.745474
+----------------------------------------
+   Tot    0.336391   -0.585908    0.563984
+----------------------------------------
+   Max    1.825273
+   Res    0.789762    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    1.825273    constrained
+
+Stress-tensor-Voigt (kbar):       -1.25       -1.18       -0.57       -0.21       -0.06        0.01
+(Free)E + p*V (eV/cell)     -467.4815
+Target enthalpy (eV/cell)     -471.5039
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.000775   -0.000140    0.000003
+        -0.000140   -0.000723   -0.000035
+         0.000003   -0.000035   -0.000348
+
+siesta: Pressure (static):          0.98539995  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.000780   -0.000133    0.000005
+        -0.000133   -0.000734   -0.000035
+         0.000005   -0.000035   -0.000356
+
+siesta: Pressure (total):          0.99813704  kBar
+
+forcesToPipe: energy (Ry) =  -34.654626
+forcesToPipe: stress (Ry/Bohr**3) =
+   -0.000008   -0.000002    0.000000
+   -0.000002   -0.000008   -0.000000
+    0.000000   -0.000000   -0.000004
+forcesToPipe: forces (Ry/Bohr) =
+    0.038600   -0.006419    0.070991
+   -0.002319   -0.008341   -0.020062
+   -0.023197   -0.008028   -0.028994
+ Writing to pipe
+ iupos on opening:           18
+ iupos on writing:           18
+ istep, xa, va :           19   20.125911384457119        16.188455605492038        17.389905759795028        19.210901897494139        14.995806584222871        18.534070108862188        21.331659459263932        17.013547418618696        18.652614898623106       1.27493372527038521E-003 -2.77927643018984882E-003  2.59944339814075030E-003 -3.03524611244208216E-002  4.81500596478931370E-002 -7.10160305702702130E-004  1.01554912191474354E-002 -4.12191817953919040E-003 -4.04691410509824337E-002
+ Reading from pipe
+ coordsFromPipe: STOP requested by driver
+
+* Maximum dynamic memory allocated =   118 MB
+
+outcell: Unit cell vectors (Ang):
+       18.621000    0.000000    0.000000
+        0.000000   18.621000    0.000000
+        0.000000    0.000000   18.621000
+
+outcell: Cell vector modules (Ang)   :   18.621000   18.621000   18.621000
+outcell: Cell angles (23,13,12) (deg):     90.0000     90.0000     90.0000
+outcell: Cell volume (Ang**3)        :   6456.6760
+
+coxmol: Writing XMOL coordinates into file 216-H20.siesta.xyz                                              
+
+siesta: Program's energy decomposition (eV):
+siesta: Ebs     =       -98.826845
+siesta: Eions   =       815.854479
+siesta: Ena     =       196.439621
+siesta: Ekin    =       344.788390
+siesta: Enl     =       -57.962411
+siesta: DEna    =       -23.736405
+siesta: DUscf   =         3.446740
+siesta: DUext   =        -1.912730
+siesta: Exc     =      -116.712643
+siesta: eta*DQ  =         0.000000
+siesta: Emadel  =         0.000000
+siesta: Emeta   =         0.000000
+siesta: Emolmec =         0.000000
+siesta: Ekinion =         0.000000
+siesta: Eharris =      -469.591216
+siesta: Etot    =      -471.503917
+siesta: FreeEng =      -471.503917
+
+siesta: Final energy (eV):
+siesta:  Band Struct. =     -98.826845
+siesta:       Kinetic =     344.788390
+siesta:       Hartree =     507.644733
+siesta:    Ext. field =      -1.912730
+siesta:   Exch.-corr. =    -116.712643
+siesta:  Ion-electron =   -1315.606061
+siesta:       Ion-ion =     110.294394
+siesta:       Ekinion =       0.000000
+siesta:         Total =    -471.503917
+
+siesta: Atomic forces (eV/Ang):
+siesta:      1    0.992457   -0.165047    1.825273
+siesta:      2   -0.059629   -0.214459   -0.515815
+siesta:      3   -0.596436   -0.206401   -0.745474
+siesta: ----------------------------------------
+siesta:    Tot    0.336391   -0.585908    0.563984
+
+siesta: Stress tensor (static) (eV/Ang**3):
+siesta:    -0.000775   -0.000140    0.000003
+siesta:    -0.000140   -0.000723   -0.000035
+siesta:     0.000003   -0.000035   -0.000348
+
+siesta: Cell volume =       6456.675992 Ang**3
+
+siesta: Pressure (static):
+siesta:                Solid            Molecule  Units
+siesta:           0.00000670          0.00000749  Ry/Bohr**3
+siesta:           0.00061503          0.00068791  eV/Ang**3
+siesta:           0.98539995          1.10215777  kBar
+(Free)E+ p_basis*V_orbitals  =        -470.982992
+(Free)Eharris+ p_basis*V_orbitals  =        -470.982981
+
+siesta: Electric dipole (a.u.)  =    0.108589   -0.142366    1.126851
+siesta: Electric dipole (Debye) =    0.276005   -0.361859    2.864171
+ optical!!
+
+* Maximum dynamic memory allocated : Node    0 =   118 MB
+
+* Maximum memory occured during reord                         
+
+timer: CPU execution times:
+timer:  Routine       Calls   Time/call    Tot.time        %
+timer:  siesta            1     109.188     109.188   100.00
+timer:  Setup             1       0.175       0.175     0.16
+timer:  bands             1       0.000       0.000     0.00
+timer:  writewave         1       0.001       0.001     0.00
+timer:  KSV_init          1       0.000       0.000     0.00
+timer:  IterMD           20       5.415     108.293    99.18
+timer:  hsparse          20       0.000       0.001     0.00
+timer:  overlap          20       0.008       0.155     0.14
+timer:  IterSCF         121       0.763      92.287    84.52
+timer:  kinefsm          40       0.004       0.151     0.14
+timer:  nlefsm           40       0.012       0.485     0.44
+timer:  DHSCF           142       0.756     107.314    98.28
+timer:  DHSCF1            1       0.101       0.101     0.09
+timer:  DHSCF2           20       0.396       7.917     7.25
+timer:  REORD          1603       0.004       6.812     6.24
+timer:  POISON          162       0.312      50.622    46.36
+timer:  DHSCF3          142       0.680      96.600    88.47
+timer:  rhoofd          142       0.013       1.780     1.63
+timer:  cellXC          142       0.141      20.086    18.40
+timer:  vmat            141       0.007       1.023     0.94
+timer:  MolMec           40       0.000       0.000     0.00
+timer:  diagon          121       0.000       0.028     0.03
+timer:  r-eigvec        121       0.000       0.026     0.02
+timer:  r-buildHS       121       0.000       0.000     0.00
+timer:  rdiag           121       0.000       0.025     0.02
+timer:  rdiag1          121       0.000       0.001     0.00
+timer:  rdiag2          121       0.000       0.004     0.00
+timer:  rdiag3          121       0.000       0.017     0.02
+timer:  rdiag4          121       0.000       0.001     0.00
+timer:  r-buildD        121       0.000       0.001     0.00
+timer:  DHSCF4           20       0.098       1.963     1.80
+timer:  dfscf            20       0.064       1.290     1.18
+timer:  overfsm          20       0.000       0.005     0.00
+timer:  optical           1       0.000       0.000     0.00
+  
+
+elaps: ELAPSED times:
+elaps:  Routine       Calls   Time/call    Tot.time        %
+elaps:  siesta            1     182.161     182.161   100.00
+elaps:  Setup             1       0.341       0.341     0.19
+elaps:  bands             1       0.001       0.001     0.00
+elaps:  writewave         1       0.000       0.000     0.00
+elaps:  KSV_init          1       0.001       0.001     0.00
+elaps:  IterMD           20       9.055     181.099    99.42
+elaps:  hsparse          20       0.000       0.000     0.00
+elaps:  overlap          20       0.008       0.154     0.08
+elaps:  IterSCF         121       0.763      92.288    50.66
+elaps:  kinefsm          40       0.004       0.152     0.08
+elaps:  nlefsm           40       0.012       0.486     0.27
+elaps:  DHSCF           142       0.756     107.318    58.91
+elaps:  DHSCF1            1       0.100       0.100     0.05
+elaps:  DHSCF2           20       0.396       7.917     4.35
+elaps:  REORD          1603       0.004       6.815     3.74
+elaps:  POISON          162       0.313      50.626    27.79
+elaps:  DHSCF3          142       0.680      96.603    53.03
+elaps:  rhoofd          142       0.013       1.784     0.98
+elaps:  cellXC          142       0.141      20.081    11.02
+elaps:  vmat            141       0.007       1.019     0.56
+elaps:  MolMec           40       0.000       0.000     0.00
+elaps:  diagon          121       0.000       0.027     0.01
+elaps:  r-eigvec        121       0.000       0.022     0.01
+elaps:  r-buildHS       121       0.000       0.002     0.00
+elaps:  rdiag           121       0.000       0.020     0.01
+elaps:  rdiag1          121       0.000       0.000     0.00
+elaps:  rdiag2          121       0.000       0.002     0.00
+elaps:  rdiag3          121       0.000       0.018     0.01
+elaps:  rdiag4          121       0.000       0.000     0.00
+elaps:  r-buildD        121       0.000       0.001     0.00
+elaps:  DHSCF4           20       0.098       1.964     1.08
+elaps:  dfscf            20       0.064       1.290     0.71
+elaps:  overfsm          20       0.000       0.006     0.00
+elaps:  optical           1       0.000       0.000     0.00
+  
+>> End of run:  11-JUL-2012  18:10:52

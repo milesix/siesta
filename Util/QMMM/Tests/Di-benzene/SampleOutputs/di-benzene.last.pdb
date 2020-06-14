@@ -1,0 +1,25 @@
+CRYST1   14.877   15.565   10.584  90.00  90.00  90.00 P 1           1
+ATOM      1  C   STO A   1      13.683   0.195   4.416
+ATOM      2  C   STO A   2       0.028   0.875   4.416
+ATOM      3  C   STO A   3       1.245   0.169   4.416
+ATOM      4  C   STO A   4      13.697  14.362   4.416
+ATOM      5  C   STO A   5       0.038  13.655   4.416
+ATOM      6  C   STO A   6       1.283  14.321   4.416
+ATOM      7  H   STO A   7      12.735   0.746   4.416
+ATOM      8  H   STO A   8      12.755  13.803   4.416
+ATOM      9  H   STO A   9      14.819  12.566   4.416
+ATOM     10  H   STO A  10       0.046   1.970   4.416
+ATOM     11  H   STO A  11       2.143   0.791   4.416
+ATOM     12  C#  GRAPC   1       5.024  13.559   4.416
+ATOM     13  C#  GRAPC   2       5.033  12.141   4.416
+ATOM     14  C#  GRAPC   3       3.796  11.447   4.416
+ATOM     15  C#  GRAPC   4       2.567  12.160   4.416
+ATOM     16  C#  GRAPC   5       2.541  13.590   4.416
+ATOM     17  C#  GRAPC   6       3.796  14.275   4.416
+ATOM     18  H#  GRAHC   7       5.966  14.095   4.416
+ATOM     19  H#  GRAHC   8       5.968  11.598   4.416
+ATOM     20  H#  GRAHC   9       3.797  10.364   4.416
+ATOM     21  H#  GRAHC  10       1.667  11.573   4.416
+ATOM     22  H#  GRAHC  11       3.860  15.348   4.416
+ATOM     23  H   LA  A   1       2.256  13.756   4.416
+END   13
