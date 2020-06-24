@@ -66,7 +66,7 @@ while [ $# -gt 0 ]; do
 	    echo "  --libxc-version|-xc-v <>: specify the libxc version (default: $xc_v)"
 	    echo "  --libgridxc-version|-gridxc-v <>: specify the libGridXC version (default: $gridxc_v)"
 	    echo "  --single-directory : all libraries are installed in --prefix/{bin,lib,include} (default: YES)"
-	    echo "  --separe-directory : all libraries are installed in --prefix/<package>/<version>/{bin,lib,include} (default: NO)"
+	    echo "  --separate-directory : all libraries are installed in --prefix/<package>/<version>/{bin,lib,include} (default: NO)"
 	    echo "  --make-j <>: run make in parallel using <> number of cores (default: $_make_j)"
 	    echo ""
 	    exit 0

@@ -66,7 +66,7 @@ while [ $# -gt 0 ]; do
 	    echo "  --xmlf90-version|-xml-v <>: specify the xmlf90 version (default: $xml_v)"
 	    echo "  --psml-version|-psml-v <>: specify the PSML version (default: $psml_v)"
 	    echo "  --single-directory : all libraries are installed in --prefix/{bin,lib,include} (default: YES)"
-	    echo "  --separe-directory : all libraries are installed in --prefix/<package>/<version>/{bin,lib,include} (default: NO)"
+	    echo "  --separate-directory : all libraries are installed in --prefix/<package>/<version>/{bin,lib,include} (default: NO)"
 	    echo "  --make-j <>: run make in parallel using <> number of cores (default: $_make_j)"
 	    echo ""
 	    exit 0
