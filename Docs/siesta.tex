@@ -700,7 +700,13 @@ Currently \siesta\ is shipped with these installation scripts:
 
   \item \shell{install\_flook.bash}; installs \program{flook} which
   enables interaction with Lua and \siesta.
-  
+
+  \item \shell{install\_gridxc.bash}; installs \program{libxc} and
+  \program{libGridXC}
+
+  \item \shell{install\_psml.bash}; installs \program{xmlf90} and
+  \program{libpsml}
+
 \end{itemize}
 Note that these scripts are guidance scripts and users are encouraged
 to check the mailing list for or seek help there in non-standard. The
@@ -711,23 +717,38 @@ installation scripts finishes by telling \emph{what} to add to the
 
   \item[XMLF90] %
   \index{External library!xmlf90}%
-  is required as a prerequisite for libPSML.
-  (\href{https://launchpad.net/xmlf90}). See the \texttt{000\_INSTALL} file.
+  is required as a prerequisite for \program{libPSML}.
+  (\href{https://gitlab.com/siesta-project/libraries/xmlf90}). See the
+  \texttt{000\_INSTALL} file.
+
+  To easily install \program{xmlf90} please see the installation file:
+  \shell{Docs/install\_psml.bash}.
 
   \item[libPSML] %
   \index{External library!libPSML}%
   is required to use pseudopotentials in PSML format
-  (\href{https://launchpad.net/libPSML}) See the \texttt{000\_INSTALL} file.
+  (\href{https://gitlab.com/siesta-project/libraries/libpsml}) See the
+  \texttt{000\_INSTALL} file.
+
+  To easily install \program{libPSML} please see the installation file:
+  \shell{Docs/install\_psml.bash}.
 
   \item[libGridXC] %
   \index{External library!libGridXC}%
   is required.
-  (\href{https://launchpad.net/libgridxc}) See the \texttt{000\_INSTALL} file.
+  (\href{https://gitlab.com/siesta-project/libraries/libgridxc}) See
+  the \texttt{000\_INSTALL} file.
+
+  To easily install \program{libGridXC} please see the installation file:
+  \shell{Docs/install\_gridxc.bash}.
 
   \item[libXC] %
   \index{External library!libXC}%
   is optional, depending on the options used in the compilation of libGridXC.
   (\href{https://gitlab.com/libxc/libxc})
+
+  To easily install \program{libxc} please see the installation file:
+  \shell{Docs/install\_gridxc.bash}.
 
     
   \item[BLAS] %
@@ -13615,9 +13636,9 @@ any problem, or would like to offer a suggestion for improvement,
 please follow the instructions in the file
 \texttt{Docs/REPORTING\_BUGS}. 
 
-Since \siesta\ has moved to Launchpad you are encouraged to follow the
+Since \siesta\ has moved to GitLab you are encouraged to follow the
 instructions presented at:
-\url{https://answers.launchpad.net/siesta/+faq/2779}.
+\url{https://gitlab.com/siesta-project/siesta/-/issues}.
 
 
 
