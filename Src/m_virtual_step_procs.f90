@@ -6,6 +6,8 @@ module m_virtual_step_procs
   use siesta_options, only: virtual_md_Jks
   use siesta_options, only: virtual_md_Jxc
   use siesta_options, only: virtual_md_Jion
+  use siesta_options, only: virtual_md_Jzero
+  use siesta_options, only: want_virtual_step_md
   use siesta_options, only: want_vmd_in_dhscf
 
   use gvecs, only: gvecs_init, gvecs_teardown, gvecs_gen
@@ -52,19 +54,24 @@ contains
     use hartree_flux_data, only: h_flux_Jhart
 
     use ks_flux_data, only: Dscf_deriv
-    use ks_flux_data, only: reset_ks_flux_data
     use ks_flux_procs, only: compute_Jks
 
     use xc_flux_data, only: thtr_Rho, thtr_Rho_deriv, thtr_dexcdGD
     use xc_flux_data, only: xc_flux_Jxc, xc_flux_dvol
-    use xc_flux_data, only: reset_xc_flux_data
 
     use ion_flux_data, only: ion_flux_a, ion_flux_b
     use ion_flux_data, only: ion_flux_c, ion_flux_d, ion_flux_e
     use ion_flux_data, only: ion_flux_Jion
-    use ion_flux_data, only: reset_ion_flux_data
     use ion_flux_procs, only: compute_Jion_a, compute_Jion_b
     use ion_flux_procs, only: compute_Jion_cde
+
+    use zero_flux_data,  only: zero_flux_Jzero
+    use zero_flux_procs, only: compute_Jzero
+
+    use ks_flux_data,      only: reset_ks_flux_data
+    use xc_flux_data,      only: reset_xc_flux_data
+    use ion_flux_data,     only: reset_ion_flux_data
+    use hartree_flux_data, only: reset_hartree_flux_data
 
     ! use ion_flux_data, only: ion_flux_mesh, ion_flux_cell
 
@@ -79,7 +86,7 @@ contains
 
        call compute_Jks()
 
-       call reset_ks_flux_data()
+       ! call reset_ks_flux_data()
     end if
 
     if ( virtual_md_Jxc ) then
@@ -114,12 +121,21 @@ contains
        print*, "[Jion] flux D: ", ion_flux_d(:)
        print*, "[Jion] flux E: ", ion_flux_e(:)
 
-       call reset_ion_flux_data()
+       ! call reset_ion_flux_data()
        call gvecs_teardown()
     end if
 
+    if ( virtual_md_Jzero ) then
+       call compute_Jzero()
+    end if
 
+
+    !FIXME: regroup resetters in corresponding subroutine
+    if ( virtual_md_Jion) call reset_ion_flux_data()
     if ( want_vmd_in_dhscf ) call reset_xc_flux_data()
+    if ( virtual_md_Jks ) call reset_ks_flux_data()
+
+    ! if ( want_vmd_in_dhscf ) call reset_xc_flux_data()
 
   end subroutine virtual_md_step_logic
 
@@ -130,14 +146,20 @@ contains
 
     use class_Sparsity
     use alloc, only : de_alloc
-    use siesta_options, only : want_virtual_step_md, virtual_md_Jks
     use m_virtual_step_data
     use ks_flux_data, only: base_step_sparse_pattern
+
+    use ks_flux_data,      only: reset_ks_flux_data
+    use xc_flux_data,      only: reset_xc_flux_data
+    use ion_flux_data,     only: reset_ion_flux_data
     use hartree_flux_data, only: reset_hartree_flux_data
 
-    if ( want_virtual_step_md ) then !!TODO: make this check in `siesta_end`
-       !TODO: make checks for presence of Hartree component calculation:
-       call reset_hartree_flux_data()
+    if ( want_virtual_step_md ) then !TODO: make this check in `siesta_end`
+
+       if (virtual_md_Jhart) call reset_hartree_flux_data()
+       ! if ( virtual_md_Jion) call reset_ion_flux_data()
+       ! if ( want_vmd_in_dhscf ) call reset_xc_flux_data()
+       ! if ( virtual_md_Jks ) call reset_ks_flux_data()
 
        ! clean the aux `Base`-step sparse pattern
        call delete( base_step_sparse_pattern )

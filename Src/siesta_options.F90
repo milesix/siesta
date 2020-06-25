@@ -245,6 +245,7 @@ MODULE siesta_options
   logical :: virtual_md_Jxc        !! Compute XC-contribution to the heat flux
   logical :: virtual_md_Jhart      !! Compute Hartree contribution to the heat flux
   logical :: virtual_md_Jion       !! Compute ionic contribution to the heat flux
+  logical :: virtual_md_Jzero      !! Compute zero-current contribution to the heat flux
 
   character(len=164) :: sname   ! System name, used to initialise read
 

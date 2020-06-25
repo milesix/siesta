@@ -1794,6 +1794,7 @@ subroutine read_options( na, ns, nspin )
   virtual_md_verbose = fdf_get("MD.Virtual.Verbose", .false.)
   virtual_md_Jhart = fdf_get("MD.Virtual.Jhart", .false.)
   virtual_md_Jion = fdf_get("MD.Virtual.Jion", .false.)
+  virtual_md_Jzero = fdf_get("MD.Virtual.Jzero", .false.)
   virtual_md_Jks =   fdf_get("MD.Virtual.Jks", .false.)
   virtual_md_Jxc =   fdf_get("MD.Virtual.Jxc", .false.)
 
@@ -1802,6 +1803,7 @@ subroutine read_options( na, ns, nspin )
   want_virtual_step_md = (virtual_md_verbose .or. &
        virtual_md_Jhart .or. &
        virtual_md_Jion .or. &
+       virtual_md_Jzero .or. &
        virtual_md_Jks .or. &
        virtual_md_Jxc .or. &
        fdf_get("MD.Virtual", .false.)) !NOTE: to initialize two-step MD in no-logic regime

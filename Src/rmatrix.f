@@ -102,13 +102,21 @@ C           Valid orbital
                 !
                 jg = orb_gindex(js,joa)
                 if (rcut(is,ioa)+rcut(js,joa) .gt. rij) then
-                  call new_MATEL( 'X', ig, jg, xij(1:3,jn),
+c$$$                  call new_MATEL( 'X', ig, jg, xij(1:3,jn),
+c$$$     &                        Sij, grSij )
+c$$$                  Ri(jo,1) = Ri(jo,1) + Sij
+c$$$                  call new_MATEL( 'Y', ig, jg, xij(1:3,jn),
+c$$$     &                        Sij, grSij )
+c$$$                  Ri(jo,2) = Ri(jo,2) + Sij
+c$$$                  call new_MATEL( 'Z', ig, jg, xij(1:3,jn),
+c$$$     &                        Sij, grSij )
+                  call new_MATEL( 'X', jg, ig, -xij(1:3,jn),
      &                        Sij, grSij )
                   Ri(jo,1) = Ri(jo,1) + Sij
-                  call new_MATEL( 'Y', ig, jg, xij(1:3,jn),
+                  call new_MATEL( 'Y', jg, ig, -xij(1:3,jn),
      &                        Sij, grSij )
                   Ri(jo,2) = Ri(jo,2) + Sij
-                  call new_MATEL( 'Z', ig, jg, xij(1:3,jn),
+                  call new_MATEL( 'Z', jg, ig, -xij(1:3,jn),
      &                        Sij, grSij )
                   Ri(jo,3) = Ri(jo,3) + Sij
                 endif

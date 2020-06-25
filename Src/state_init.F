@@ -131,6 +131,7 @@
       use m_handle_sparse, only: correct_supercell_SpD
       use m_restruct_SpData2D, only: restruct_dSpData2D
       use matel_mod, only : init_matel_main_tables
+      use matel_mod, only : init_matel_orb_XYZ_orb
 
       use m_virtual_step_data, only: substep, BASE_STEP, VIRTUAL_STEP
       use ks_flux_data, only: base_step_sparse_pattern
@@ -708,6 +709,7 @@
 
       ! Prepare MATEL
       call init_matel_main_tables( )
+      if ( virtual_md_Jks ) call init_matel_orb_XYZ_orb( )
 
 !     Find overlap matrix
       call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
