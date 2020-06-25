@@ -390,10 +390,8 @@ contains
     real(dp), allocatable :: r2(:,:)
     type(tRgn) :: r_tmp
 #ifdef TBT_PHONON
-    character(len=*), parameter :: T_unit = 'g0'
     character(len=*), parameter :: COHP_unit = 'Ry'
 #else
-    character(len=*), parameter :: T_unit = 'G0'
     character(len=*), parameter :: COHP_unit = 'Ry/Ry'
 #endif
 #ifdef MPI
@@ -583,7 +581,7 @@ contains
 
       if ( ('DOS-Elecs' .in. save_DATA) .and. .not. Elecs(iEl)%out_of_core ) then
 
-        dic = ('info'.kv.'Bulk transmission')//('unit'.kv.T_unit)
+        dic = ('info'.kv.'Bulk transmission')
         call ncdf_def_var(grp,'T',prec_T,(/'ne  ','nkpt'/), &
             atts = dic)
         call mem%add_cdf(prec_T, NE, nkpt)
@@ -639,8 +637,6 @@ contains
       end if
 
       call delete(dic)
-      ! All quantities here are transmissions.
-      dic = ('unit'.kv.T_unit)
 
       if ( 'orb-current' .in. save_DATA ) then
         dic = dic//('info'.kv.'Orbital transmission')
@@ -1779,10 +1775,8 @@ contains
     real(dp) :: Current, eRy
 
 #ifdef TBT_PHONON
-    character(len=*), parameter :: T_unit = ' [g0]'
     real(dp) :: dT, kappa
 #else
-    character(len=*), parameter :: T_unit = ' [G0]'
     real(dp) :: Power, V, dd
 #endif
     integer, allocatable :: pvt(:)
@@ -1864,11 +1858,11 @@ contains
         call ncdf_get_var(grp,'T',r2)
         if ( nkpt > 1 ) then
           call name_save(ispin,nspin,ascii_file,end='BTRANS',El1=Elecs(iEl))
-          call save_DAT(ascii_file,nkpt,rkpt,rwkpt,0,NE,rE,pvt,r2,'T'//T_unit,&
+          call save_DAT(ascii_file,nkpt,rkpt,rwkpt,0,NE,rE,pvt,r2,'T',&
               '# Bulk transmission, k-resolved')
         end if
         call name_save(ispin,nspin,ascii_file,end='AVBTRANS',El1=Elecs(iEl))
-        call save_DAT(ascii_file,1,rkpt,rwkpt,0,NE,rE,pvt,r2,'T'//T_unit, &
+        call save_DAT(ascii_file,1,rkpt,rwkpt,0,NE,rE,pvt,r2,'T', &
             '# Bulk transmission, k-averaged')
 
         ! Bulk DOS
@@ -1926,22 +1920,22 @@ contains
           ! Save the variable to ensure the correct sum in the transmission
           if ( nkpt > 1 ) then
             call name_save(ispin,nspin,ascii_file,end='CORR', El1=Elecs(iEl))
-            call save_DAT(ascii_file,nkpt,rkpt,rwkpt,0,NE,rE,pvt,r2,'TC'//T_unit,&
+            call save_DAT(ascii_file,nkpt,rkpt,rwkpt,0,NE,rE,pvt,r2,'TC',&
                 '# Out transmission correction, k-resolved')
           end if
           call name_save(ispin,nspin,ascii_file,end='AVCORR', El1=Elecs(iEl))
-          call save_DAT(ascii_file,1,rkpt,rwkpt,0,NE,rE,pvt,r2,'TC'//T_unit,&
+          call save_DAT(ascii_file,1,rkpt,rwkpt,0,NE,rE,pvt,r2,'TC',&
               '# Out transmission correction, k-averaged')
 
           if ( N_eigen > 0 ) then
             call ncdf_get_var(grp,trim(Elecs(jEl)%name)//'.C.Eig',r3)
             if ( nkpt > 1 ) then
               call name_save(ispin,nspin,ascii_file,end='CEIG', El1=Elecs(iEl) )
-              call save_EIG(ascii_file,nkpt,rkpt,rwkpt,NE,rE,pvt,N_eigen,r3,'TCeig'//T_unit,&
+              call save_EIG(ascii_file,nkpt,rkpt,rwkpt,NE,rE,pvt,N_eigen,r3,'TCeig',&
                   '# Out transmission correction eigenvalues, k-resolved')
             end if
             call name_save(ispin,nspin,ascii_file,end='AVCEIG', El1=Elecs(iEl) )
-            call save_EIG(ascii_file,1,rkpt,rwkpt,NE,rE,pvt,N_eigen,r3,'TCeig'//T_unit,&
+            call save_EIG(ascii_file,1,rkpt,rwkpt,NE,rE,pvt,N_eigen,r3,'TCeig',&
                 '# Out transmission correction eigenvalues, k-averaged')
           end if
 
@@ -1955,12 +1949,12 @@ contains
             if ( nkpt > 1 ) then
               call name_save(ispin,nspin,ascii_file,end='TEIG', &
                   El1=Elecs(iEl), El2=Elecs(jEl))
-              call save_EIG(ascii_file,nkpt,rkpt,rwkpt,NE,rE,pvt,N_eigen,r3,'Teig'//T_unit,&
+              call save_EIG(ascii_file,nkpt,rkpt,rwkpt,NE,rE,pvt,N_eigen,r3,'Teig',&
                   '# Transmission eigenvalues, k-resolved')
             end if
             call name_save(ispin,nspin,ascii_file,end='AVTEIG', &
                 El1=Elecs(iEl), El2=Elecs(jEl))
-            call save_EIG(ascii_file,1,rkpt,rwkpt,NE,rE,pvt,N_eigen,r3,'Teig'//T_unit,&
+            call save_EIG(ascii_file,1,rkpt,rwkpt,NE,rE,pvt,N_eigen,r3,'Teig',&
                 '# Transmission eigenvalues, k-averaged')
           end if
         end if
@@ -1969,12 +1963,12 @@ contains
         if ( nkpt > 1 ) then
           call name_save(ispin,nspin,ascii_file,end='TRANS', &
               El1=Elecs(iEl), El2=Elecs(jEl))
-          call save_DAT(ascii_file,nkpt,rkpt,rwkpt,0,NE,rE,pvt,r2,'T'//T_unit,&
+          call save_DAT(ascii_file,nkpt,rkpt,rwkpt,0,NE,rE,pvt,r2,'T',&
               '# Transmission, k-resolved')
         end if
         call name_save(ispin,nspin,ascii_file,end='AVTRANS', &
             El1=Elecs(iEl), El2=Elecs(jEl))
-        call save_DAT(ascii_file,1,rkpt,rwkpt,0,NE,rE,pvt,r2,'T'//T_unit,&
+        call save_DAT(ascii_file,1,rkpt,rwkpt,0,NE,rE,pvt,r2,'T',&
             '# Transmission, k-averaged')
 
         ! The array r2 now contains the k-averaged transmission.

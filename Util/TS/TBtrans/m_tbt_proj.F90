@@ -1313,10 +1313,8 @@ contains
     integer :: prec_DOS, prec_T, prec_Teig, prec_J, prec_COOP, prec_COHP, prec_DM
     integer :: nnzs_dev, N_eigen
 #ifdef TBT_PHONON
-    character(len=*), parameter :: T_unit = 'g0'
     character(len=*), parameter :: COHP_unit = 'Ry'
 #else
-    character(len=*), parameter :: T_unit = 'G0'
     character(len=*), parameter :: COHP_unit = 'Ry/Ry'
 #endif
 #ifdef MPI
@@ -1780,7 +1778,6 @@ contains
 
               ! Prepare for orb-current
               call delete(dic)
-              dic = ('unit'.kv.T_unit)
               
               if ( 'proj-orb-current' .in. save_DATA ) then
                 dic = dic//('info'.kv.'Orbital current')
@@ -2134,7 +2131,6 @@ contains
 
     ! At this point we still need to add the "non-projected"
     ! LHS projections.
-    dic = 'unit'.kv.T_unit
     do it = 1 , N_proj_T
 
       i = proj_T(it)%L%idx
