@@ -19,7 +19,7 @@
 # different flags you should export those variables; CFLAGS, FFLAGS.
 
 # If you have downloaded other versions edit these version strings
-f_v=0.7.0
+f_v=0.8.1
 
 # Install path, change accordingly
 # You can change this variable to control the installation path
@@ -95,7 +95,7 @@ echo ""
 echo "Please add the following to the BOTTOM of your arch.make file"
 echo ""
 echo "INCFLAGS += -I$ID/flook/${f_v}/include"
-echo "LDFLAGS += -L$ID/flook/${f_v}/$flook_lib -Wl,-rpath=$ID/flook/${f_v}/$flook_lib"
+echo "LDFLAGS += -L$ID/flook/${f_v}/$flook_lib -Wl,-rpath,$ID/flook/${f_v}/$flook_lib"
 echo "LIBS += -lflookall -ldl"
 echo "COMP_LIBS += libfdict.a"
 echo "FPPFLAGS += -DSIESTA__FLOOK"
