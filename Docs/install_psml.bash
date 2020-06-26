@@ -186,7 +186,7 @@ if [ ! -e $psml_dir/$psml_lib/libpsml.a ]; then
     mkdir build ; cd build
     ../configure --prefix=$psml_dir \
 		 --with-xmlf90=$xml_dir \
-		 LDFLAGS="-L$xml_dir/$xml_lib -Wl,-rpath=$xml_dir/$xml_lib"
+		 LDFLAGS="-L$xml_dir/$xml_lib -Wl,-rpath,$xml_dir/$xml_lib"
     retval $? "PSML configure"
     make -j 2
     retval $? "PSML make"
