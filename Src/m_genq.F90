@@ -49,7 +49,7 @@ CONTAINS
   
 end subroutine genq_lua_initialize
 
-  function script_set_qs(state) result(nret)
+  function script_set_qs(state) result(nret) bind(c)
     use, intrinsic :: iso_c_binding, only: c_ptr, c_int
     
     type(c_ptr), value :: state
@@ -74,7 +74,7 @@ end subroutine genq_lua_initialize
     
   end function script_set_qs
 
-  function script_get_xa(state) result(nret)
+  function script_get_xa(state) result(nret) bind(c)
     use, intrinsic :: iso_c_binding, only: c_ptr, c_int
     
     ! Define the state
@@ -100,7 +100,7 @@ end subroutine genq_lua_initialize
     
   end function script_get_xa
 
-function script_get_isa(state) result(nret)
+function script_get_isa(state) result(nret) bind(c)
   use, intrinsic :: iso_c_binding, only: c_ptr, c_int
 
   ! Define the state
@@ -126,7 +126,7 @@ function script_get_isa(state) result(nret)
 
 end function script_get_isa
 
-  function script_get_dimensions(state) result(nret)
+  function script_get_dimensions(state) result(nret) bind(c)
     use, intrinsic :: iso_c_binding, only: c_ptr, c_int
     
     ! Define the state
@@ -204,7 +204,7 @@ module m_genq
 
     logical :: want_species_numbers
 
-#ifdef SIESTA_FLOOK
+#ifdef SIESTA__FLOOK
     if (.not. genq_lua_initialized) then
        call genq_lua_initialize()
        if (genq_lua_nqs /= M) then
