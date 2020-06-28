@@ -151,7 +151,7 @@ c ---------------------------------------------------------
      $           action="write", position="rewind")
             write(lun,"(i4)") ndeg
             do i = 1, ndeg
-               write(lun,"(f10.6,2x,a)"), genq%q(i), trim(genq%qname(i))
+               write(lun,"(f10.6,2x,a)") genq%q(i), trim(genq%qname(i))
             enddo
             close(lun)
       endif
@@ -310,7 +310,7 @@ c ---------------------------------------------------------
      $           action="write", position="rewind")
             write(lun,"(i4)") ndeg
             do i = 1, ndeg
-               write(lun,"(f10.6,2x,a)"), genq%q(i), trim(genq%qname(i))
+               write(lun,"(f10.6,2x,a)") genq%q(i), trim(genq%qname(i))
             enddo
             close(lun)
             

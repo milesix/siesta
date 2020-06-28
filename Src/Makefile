@@ -187,9 +187,6 @@ OBJS =  automatic_cell.o atom_options.o \
 	m_matdiag.o m_matswinvers.o iotdxv.o  m_inversemm.o \
         semicore_info_froyen.o hamann.o
 
-# To find the 'geom.inc' include file here
-m_genq.o: INCFLAGS:= $(INCFLAGS) -I.
-m_genq.o: geom.inc
 #
 OBJS += kpoint_t.o kpoint_scf.o kpoint_dos.o kpoint_pdos.o kpoint_ldos.o
 
