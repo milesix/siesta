@@ -1,0 +1,9 @@
+Generalized-coordinates specification.
+
+Originally, the mechanism used was based on a fortran source snippet that was compiled in. These are
+the .geom examples here.
+
+More recently, Lua files that can be processed at run time, without the need of recompilation, are used.
+As an example, the TiSe geom file has been converted to 'genq-tise.lua'.  Conversion of the other files
+is left as an exercise to the reader.
+

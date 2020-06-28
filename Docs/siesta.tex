@@ -10745,23 +10745,19 @@ involving molecules.
   \begin{itemize}
     \item A \sysfile{GENQ} file containing the symbolic names and initial
       values for the generalized coordinates.
-    \item A \texttt{geom.inc} file containing fortran code for a
-      subroutine that generates the cartesian coordinates from the
-      generalized coordinates. An example can be found in
-      \texttt{Src/geom.inc.template}.  Note that this file must
-      produce \textit{fractional} coordinates. This might be
+    \item A \texttt{genq\_flook.lua} file containing Lua code 
+      to generate the cartesian coordinates from the
+      generalized coordinates (this means that Lua support must be
+      compiled in through \program{flook}; see installation instructions).
+      Note that this file must  produce \textit{fractional} coordinates. This might be
       considered inconvenient for molecules (the file is
       cell-dependent), but it is more appropriate for the direct use
-      of space-group Wyckoff variables.  The \texttt{geom.inc} file must
-      be placed in the compilation directory, and the resulting
-      executable file can only deal with the specific set of
-      generalized-coordinates it was compiled for (but it can still
-      deal with all the other standard geometry options).
+      of space-group Wyckoff variables. 
       
   \end{itemize}
   An example run for a molecule can be found in \texttt{Tests/h2o-genq}.
 
-  Examples of for crystallographic use can be found in  the \texttt{Docs/Genq-examples} directory.
+  Examples for crystallographic use can be found in  the \texttt{Docs/Genq-examples} directory.
 
   The generalized-coordinate feature is useful to reduce the number of
   degrees of freedom used in relaxation in a natural and clean way.

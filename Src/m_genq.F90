@@ -1,4 +1,5 @@
 !
+#ifdef SIESTA__FLOOK
 module m_genq_lua
   use flook
 
@@ -153,10 +154,10 @@ end function script_get_isa
   end function script_get_dimensions
 
 end module m_genq_lua
+#endif
 
 module m_genq
 
-  
   use precision, only: dp
   use sys,       only: die
 
@@ -181,8 +182,9 @@ module m_genq
   subroutine geom_from_genq(M,q,xa,spec_no)
     ! Given the values of M generalized coordinates
     ! q(1), q(2), ... q(M)
-    ! this routine specifies the values of the crystal coordinates xa
+    ! this routine computes the values of the crystal coordinates xa
 
+#ifdef SIESTA__FLOOK
     use m_genq_lua, only: lua
     use m_genq_lua, only: genq_q => q, genq_xa => xa
     use m_genq_lua, only: genq_isa => isa
@@ -191,7 +193,7 @@ module m_genq
     use m_genq_lua, only: genq_lua_initialized
 
     use flook, only: lua_run
-    
+#endif
     integer, parameter    :: p = selected_real_kind(10,100)
 
     integer, intent(in)                         :: M
@@ -202,6 +204,7 @@ module m_genq
 
     logical :: want_species_numbers
 
+#ifdef SIESTA_FLOOK
     if (.not. genq_lua_initialized) then
        call genq_lua_initialize()
        if (genq_lua_nqs /= M) then
@@ -233,7 +236,10 @@ module m_genq
        call lua_run(lua, code = 'fortran_set_isa()')
        spec_no(:) = genq_isa(:)
     endif
-    
+#else
+    call die("To use generalized coordinates " // &
+         "you need Lua support through SIESTA__FLOOK")
+#endif
   end subroutine geom_from_genq
 
   subroutine cartF_to_genqF(M,q,ucell,na,fa,gF,ftol,epsgF)
