@@ -103,7 +103,7 @@ contains
 
     use m_initwf, only: initwf
 
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
     use w90_in_siesta_types, only: compute_chempotwann
     use w90_in_siesta_types, only: compute_chempotwann_after_scf
 #endif
@@ -419,7 +419,7 @@ contains
 
           if ( monitor_forces_in_scf ) call compute_forces()
 
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
           if( SCFconverged .and. compute_chempotwann .and. &
  &             (.not. compute_chempotwann_after_scf) ) then
             if ( IONode ) then

@@ -56,7 +56,7 @@
       use m_iodm_old,        only: read_spmatrix
       use m_siesta2wannier90, only: siesta2wannier90
       use m_switch_local_projection, only: switch_local_projection
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
       use m_w90_in_siesta,   only: compute_matrices
       use m_w90_in_siesta,   only: compute_wannier
       use m_w90_in_siesta,   only: deallocate_wannier
@@ -534,7 +534,7 @@
 C    
 C     Call Wannier90_in_Siesta here, 
 C
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
       if( w90_in_siesta_processing ) then
 !       Loop on the number of manifolds
 !       n_wannier_manifolds is defined in siesta_options

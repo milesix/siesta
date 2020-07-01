@@ -26,7 +26,7 @@
 !! top of the valence band manifold of SrTiO3 (O-2p in character)
 !! \image html SrTiO3.manifold.1_00001.png
 module m_w90_in_siesta
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
 
 
   use precision,      only: dp            ! Real double precision type
@@ -2498,5 +2498,8 @@ module m_w90_in_siesta
 
   end subroutine deallocate_wannier
 
+#else
+  subroutine dummy_routine()
+  end subroutine dummy_routine
 #endif
 endmodule m_w90_in_siesta

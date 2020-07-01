@@ -57,7 +57,7 @@
       use mpi_siesta
 #endif
 
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
       use m_switch_local_projection, only: switch_local_projection
       use w90_in_siesta_types,   only: compute_chempotwann_after_scf
       use w90_in_siesta_types,   only: first_chempotwann
@@ -97,7 +97,7 @@
       complex(dp):: Dc
       integer :: ind, i, j, jneig
 
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
       integer             :: index_manifold
       real(dp), pointer   :: H_chempotwann(:,:)
 #endif
@@ -320,7 +320,7 @@
       endif
 
 ! Energy term coming from the chemical potential added to the Wannier functions
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
       if( w90_in_siesta_processing ) then
         if( compute_chempotwann_after_scf ) then
           H_chempotwann => val(H_chempotwann_2D)

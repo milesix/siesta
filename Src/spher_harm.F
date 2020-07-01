@@ -141,7 +141,7 @@ C Initalize to zero
 !
 
 C Explicit formulas up to L=2
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
       IF (LMAX.LE.3) THEN
 #else
       IF (LMAX.LE.2) THEN
@@ -152,7 +152,7 @@ C Explicit formulas up to L=2
 C        Label 999 is the exit point
          IF (LMAX.EQ.0) GOTO 999
 
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
          RLY(1)    = (C(1)*R(2))     ! The first value in the "loop" corresponds
                                      !    to m = -l. 
                                      !    Here l = 1, so m = -1
@@ -169,7 +169,7 @@ C        Label 999 is the exit point
                                      !    i.e. this is the p_z
          GRLY(3,2) =  C(2)
 
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
          RLY(3)    = (C(3)*R(1))     ! The third value in the loop corresponds
                                      !    to m = -l + 2.
                                      !    Here l = 1, so m = +1
@@ -185,7 +185,7 @@ C        Label 999 is the exit point
          GRLY(1,4) =  C(4)*SIX*R(2)
          GRLY(2,4) =  C(4)*SIX*R(1)
 
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
          RLY(5)    = (C(5))*THREE*R(2)*R(3) ! d_yz orbital
          GRLY(2,5) = (C(5))*THREE*R(3)
          GRLY(3,5) = (C(5))*THREE*R(2)
@@ -200,7 +200,7 @@ C        Label 999 is the exit point
          GRLY(2,6) = (-C(6))*R(2)
          GRLY(3,6) =  C(6)*TWO*R(3)
 
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
          RLY(7)    = (C(7))*THREE*R(1)*R(3)   ! d_xz orbital
          GRLY(1,7) = (C(7))*THREE*R(3)
          GRLY(3,7) = (C(7))*THREE*R(1)
@@ -214,13 +214,13 @@ C        Label 999 is the exit point
          GRLY(1,8) =  C(8)*SIX*R(1)
          GRLY(2,8) = (-C(8))*SIX*R(2)
 
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
          IF (LMAX.EQ.2) GOTO 999
 #else
          GOTO 999
 #endif
 
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
 !        If the WANNIER90 interface is required, then we define
 !        the real spherical harmonics for l = 3,
 !        taken from
@@ -354,7 +354,7 @@ C     Find spherical harmonics and their gradient
           GRLY(1,ILM)= RX*L*RL(L-1)*YY + RL(L)*GY(1)*C(ILM)/RSIZE
           GRLY(2,ILM)= RY*L*RL(L-1)*YY + RL(L)*GY(2)*C(ILM)/RSIZE
           GRLY(3,ILM)= RZ*L*RL(L-1)*YY + RL(L)*GY(3)*C(ILM)/RSIZE
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
           IF (MOD(ILM,2) .NE. 0) THEN
             RLY(ILM) = -1.0_dp * RLY(ILM)
             GRLY(:,ILM) = -1.0_dp * GRLY(:,ILM)
@@ -371,7 +371,7 @@ C     Find spherical harmonics and their gradient
           GRLY(2,ILM)= RY*L*RL(L-1)*YY + RL(L)*GY(2)*C(ILM)/RSIZE
           GRLY(3,ILM)= RZ*L*RL(L-1)*YY + RL(L)*GY(3)*C(ILM)/RSIZE
    75     CONTINUE
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
           IF (MOD(ILM,2) .NE. 0) THEN
             RLY(ILM) = -1.0_dp * RLY(ILM)
             GRLY(:,ILM) = -1.0_dp * GRLY(:,ILM)

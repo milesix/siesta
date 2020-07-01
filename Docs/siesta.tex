@@ -997,6 +997,43 @@ libraries
   To easily install \program{flook} please see the installation file:
   \shell{Docs/install\_flook.bash}.
 
+
+  \item[\href{http://www.wannier.org/download}{Wannier90}]%
+  \index{Wannier90}%
+  \index{External library!Wannier90}%
+  To compile \siesta\ with \program{wannier90} support in library mode
+  one should follow these instructions:
+
+  \begin{enumerate}
+    \item Download version 3.0.0 or 3.1.0 of \program{wannier90} and extract
+
+    \item Apply patches to \program{wannier90} source code
+\begin{shellexample}
+ $ patch -p1 < /path/to/siesta/Util/Wannier90/wannier90-3.0.0-siesta.patch
+ $ patch -p1 < /path/to/siesta/Util/Wannier90/wannier90-3.0.0-bug.patch
+\end{shellexample}
+
+    \item Compile \program{wannier90} library with \shell{make lib},
+    if \siesta\ is compiled in parallel, it is vital that
+    \program{wannier90} is also compiled with parallel support, please
+    see instructions in \program{wannier90}.
+
+  \end{enumerate}
+
+  Now add these flags to your \file{arch.make} file
+\begin{shellexample}
+  # This will work if you compiled Wannier90 in the /opt/wannier90 directory
+  # If you have moved libwannier.a and *.mod files
+  # to different locations, please adjust accordingly.
+  LIBS += -L/opt/wannier90 -lwannier
+  INCFLAGS += -I/opt/wannier90/src/obj
+  FPPFLAGS += -DSIESTA__WANNIER90
+\end{shellexample}
+  \index{compile!pre-processor!-DSIESTA\_\_WANNIER90}
+
+  See \program{Tests/wannier90_in_siesta}\index{Tests} for an example
+  on the \program{wannier90} in library mode.
+
 \end{description}
 
 
@@ -8576,9 +8613,14 @@ Here we shall focus only on those internal \siesta\ variables
 required to produce the files that will be processed
 by \program{wannier90}.
 
-The interface between \program{siesta} and  \program{wannier90} (version 3.0.0) has been 
+The interface between \program{siesta} and  \program{wannier90}
+(version 3.0.0 or 3.1.0) has been
 implemented, so the later code can be called directly from \program{siesta} as a library,
 or used as a post-processing tool.
+
+Please note that both \program{wannier90} and \siesta\ should be
+compiled with the same parallel configuration (serial or MPI).
+
 
 \subsubsection{\program{wannier90} as a postprocessing tool}
 
@@ -8586,13 +8628,13 @@ A complete list of examples and tests (including molecules, metals,
 semiconductors, insulators, magnetic systems, plotting of Fermi surfaces
 or interpolation of bands), can be downloaded from
 
- http://personales.unican.es/junqueraj/Wannier-examples.tar.gz
+ \url{http://personales.unican.es/junqueraj/Wannier-examples.tar.gz}
 
 \textbf{NOTE}: The Bloch functions produced by a first-principles code
       have arbitrary phases that depend on the number of processors
       used and other possibly non-reproducible details of the
       calculation. In what follows it is essential to maintain
-      consistency in the handling of the overlap and Bloch-funcion
+      consistency in the handling of the overlap and Bloch-function
       files produced and fed to \program{wannier90}.
 
 
@@ -8739,7 +8781,9 @@ or interpolation of bands), can be downloaded from
 \end{fdfentry}
 
 
-\subsubsection{\program{wannier90} called as a library within \program{siesta}}
+\subsubsection{\program{wannier90} called as a library within
+    \program{siesta}}
+\label{sec:w90:library}
 
  The \program{wannier90} can be compiled in library mode and called directly 
  from \program{siesta}. This presents several advantages:
@@ -8760,22 +8804,22 @@ or interpolation of bands), can be downloaded from
  \end{itemize}
 
  To run \program{wannier90} in this mode, you have to 
- download the version 3.0.0 from
+ download version 3.0.0 or 3.1.0 from
 
- http://www.wannier.org/download
+   \url{http://www.wannier.org/download}
 
  and then apply a patch available in the \program{siesta} distribution
 
 \begin{shellexample}
  $ patch -p1 < /path/to/siesta/Util/Wannier90/wannier90-3.0.0-siesta.patch
-\end{shellexample}
+\end{shellexample}%$
 
  In the near future, a version of the \program{wannier90} code will be
  distributed directly within the siesta-bundle.
 
- Farther details of the compilation of \program{siesta} with this  
- functionality can be found in the file \file{README} in the
- Util/Wannier90 directory and in the presentation below
+ Further details of the compilation of \siesta\ with this
+ functionality can be found in Sec.~\ref{sec:libs} or the file \file{README} in the
+ \shell{Util/Wannier90} directory and in the presentation below
 
 https://personales.unican.es/junqueraj/JavierJunquera\_files/Metodos/Wannier/Exercise-Wannier90-within-siesta.pdf
 
@@ -8787,7 +8831,6 @@ https://personales.unican.es/junqueraj/JavierJunquera\_files/Metodos/Wannier/Exe
   \program{siesta} run. 
 
   \note The default value will be 0.
-
 
 \end{fdfentry}
 
@@ -9983,7 +10026,7 @@ implemented, selected by
     option is specified without a driver program sending data, siesta
     may hang without any notice.
     
-    See directory Util/Scripting \index{Scripting} for other driving
+    See directory \shell{Util/Scripting} \index{Scripting} for other driving
     options.
 
     \option[Lua]%

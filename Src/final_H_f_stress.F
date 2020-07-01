@@ -73,7 +73,7 @@
       use ts_kpoint_scf_m, only: ts_kpoint_scf, ts_gamma_scf
       use m_ts_io,      only : ts_write_TSHS,fname_TSHS, FC_index
 
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
       use siesta_options,      only: w90_in_siesta_processing
       use w90_in_siesta_types, only: compute_chempotwann_after_scf
       use m_chempotwann,       only: add_Hamiltonian_chempotwann
@@ -103,7 +103,7 @@
 #ifdef FINAL_CHECK_HS
       real(dp) :: diff_H
 #endif
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
       real(dp), pointer   :: H_chempotwann(:,:)
 #endif
 #ifdef MPI
@@ -249,7 +249,7 @@
      &              spin, Escf, fal, stressl ) 
 
 ! Energy term coming from the chemical potential added to the Wannier functions
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
       if( w90_in_siesta_processing ) then
         if( compute_chempotwann_after_scf ) then
           H_chempotwann => val(H_chempotwann_2D)

@@ -82,7 +82,7 @@
       use flook_siesta, only : slua_init, slua_call, LUA_INITIALIZE
 #endif
 
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
       use m_w90_in_siesta,   only: setup_w90_in_siesta
 #endif
 
@@ -705,7 +705,7 @@ C     Initialise MPI and set processor number
 #endif
 
 !     Initialize WANNIER90 to be run directly in SIESTA
-#ifdef HAVE_WANNIER90
+#ifdef SIESTA__WANNIER90
       if( w90_in_siesta_processing ) then
 !
 !       Set up all the variables required to run WANNIER90 within SIESTA
