@@ -390,13 +390,31 @@ subroutine amn( ispin, index_manifold )
     if (allocated(projector_gindex)) deallocate(projector_gindex)
     allocate ( projector_gindex(numproj) )
     do iproj = 1, numproj
-      tf = projections( iproj )
+       tf = projections( iproj )
+       ! Check whether it is a "Siesta orbital", In that case, generate a
+       ! new trial orbital with the right orientation, and register it properly:
+       ! 
+       ! if tf%from_basis_orbital then
+       !   if tf%mr is odd (or whatever in the appropriate convention)
+       !      Get the radfunc for tf%iorb_gindex, and generate a new one
+       !      in which the radial part is minus the old radial part
+       !      Call this new_orb_f, and point 'rf' to it
+       !   else
+       !      point 'rf' to the old radfunc
+       !   endif
+       !   call register_in_rf_pool (rf, gindex)
+       ! else
+       !   call register_in_tf_pool (tf, gindex)   ! as now
+       ! endif
       call register_in_tf_pool( tf, gindex )
       projector_gindex( iproj ) = gindex
     enddo
+    !!! IMPORTANT: Before the matel call below, *do not* reassign the indexes
+    !!! for the "Siesta orbital" trial functions. See marker below
+    !!!! (For modern branches: remember to initialize the matel tables)
     firsttime = .false.
   endif
-
+  
 ! Find reciprocal unit cell vectors (without 2*pi factor)
   call reclat( ucell, rcell, 0 )
 
@@ -621,6 +639,7 @@ OrbitalQueue:                                                        &
       do while (associated(item))
         r12 = trialcenter - item%center
         globalindexorbital = orb_gindex( item%specie, item%specieindex )
+        !! AG: Deactivate this for new scheme
         if( projections(indexproj)%from_basis_orbital )             &
  &        globalindexproj = projections(indexproj)%iorb_gindex
         call new_matel('S',                & ! Compute the overlap
