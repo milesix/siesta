@@ -45,7 +45,7 @@ dep:
 	@sed -i -e "/^siesta_cmlsubs.o:/s/version.o//" Makefile
 	@sed -i -e 's/\.T90\.o:/.o:/g' Makefile
 
-INCFLAGS:= $(NETCDF_INCFLAGS) $(PEXSI_INCFLAGS) $(INCFLAGS)
+INCFLAGS:= $(NETCDF_INCFLAGS) $(PEXSI_INCFLAGS) $(WANNIER90_INCFLAGS) $(INCFLAGS) 
 
 
 # For removing any -ipo compilation in sub directories...

@@ -2282,6 +2282,7 @@ module m_w90_in_siesta
     allocate(manifold_bands_w90_in(i_manifold)%proj_w90_in(number_projections))
 
     index_proj_from_block = 0
+    ! iproj_orb = 0   ! part of FIX for possible bug below
     do iproj = 1, number_projections
 !     Identify the atomic orbitals on which we are going to project
       iorb = manifold_bands_w90_in(i_manifold)%orbital_indices(iproj)
@@ -2293,6 +2294,19 @@ module m_w90_in_siesta
         l  = lofio( is, iao )          ! Orbital's angular mumentum number
         m  = mofio( is, iao )          ! (Real) orbital's magnetic quantum number
         rc = rcut(  is, iao )          ! Orbital's cutoff radius
+
+        ! POSSIBLE BUG: the index 'iproj' starts at one, and does not take into
+        ! account the case in which "orbitals" and "generalized trial funcs" are
+        ! mixed. In the next loop, the latter will be stored starting at the position
+        ! after the block of "orbitals", but these are currently not stored contiguously
+        ! if they appear mixed.
+        ! FIX: generate new index:
+        ! iproj_orb = iproj_orb + 1
+        ! associate ( manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj_orb) => proj )
+        !    proj%center = xa(:,ia)
+        !    .... etc
+        !
+        ! end associate
         manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%center = xa(:,ia)
         manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%zaxis  = zaxis
         manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%xaxis  = xaxis
@@ -2307,7 +2321,15 @@ module m_w90_in_siesta
  &                                                         .true.
         manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%iorb   = iorb
         manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%iorb_gindex = &
- &                                     orb_gindex(is,iao) 
+             &                                     orb_gindex(is,iao)
+!!!! AG
+        ! Here, we could generate a new "orbital" with the proper radial function so that
+        ! the Wannier convention is satisfied (i.e., for px, change the sign).
+        ! Then, in AMN, register it properly.
+        ! (in the "Wannier projectors table") and get a new iorb_gindex for it.
+        ! Note that, confusingly, all these "trialorbitals" are going to be registered anyway,
+        ! even if at the last minute before calling matel the "orb_gindex" for those of
+        ! the orbital kind is going to be used.
       else
         index_proj_from_block = index_proj_from_block + 1
       endif
