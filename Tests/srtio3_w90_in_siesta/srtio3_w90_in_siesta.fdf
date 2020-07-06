@@ -216,7 +216,7 @@ WFS.band.max           72           # Same as before, but for the
 NumberOfBandManifoldsForWannier   3
 #RBetweenManifolds     .true.
 
-%block WannierProjections
+%block WannierManifolds
   1                  # Sequential index of the manifold, from 1 to NumberOfBandManifoldsForWannier
   12  20             # Indices of the initial and final band of the manifold
   9                  # Number of bands for Wannier transformation
@@ -244,7 +244,7 @@ NumberOfBandManifoldsForWannier   3
   fermi_surface_plot # Plot the Fermi surface
   write_hr           # Write the Hamiltonian in the WF basis
   write_tb           # Write lattice vectors, Hamiltonian, and position operator in WF basis
-%endblock WannierProjections
+%endblock WannierManifolds
 
 %block kMeshforWannier
    6  6  6

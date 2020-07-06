@@ -490,19 +490,19 @@ subroutine print_trialorb( what )
 !
   type(trialorbital),intent(in)    :: what
 
-  write(*,fmt='(a,3f8.3,a)') "print_trialorb: center = ",what%center," Bohr"
-  write(*,fmt='(a,3f8.3)')   "print_trialorb: zaxis  = ",what%zaxis
-  write(*,fmt='(a,3f8.3)')   "print_trialorb: xaxis  = ",what%xaxis
-  write(*,fmt='(a,3f8.3)')   "print_trialorb: yaxis  = ",what%yaxis
-  write(*,fmt='(a,1f8.3,a)') "print_trialorb: zovera = ",what%zovera," Bohr**-1"
-  write(*,fmt='(a,i5)')      "print_trialorb: r      = ",what%r
-  write(*,fmt='(a,i5)')      "print_trialorb: mr     = ",what%mr
-  write(*,fmt='(a,i5)')      "print_trialorb: l      = ",what%l
-  write(*,'(a,1f8.3,a)')     "print_trialorb: rcut   = ",what%rcut," Bohr"
-  write(*,fmt='(a,i5)')      "print_trialorb: lmax   = ",what%lmax
-  write(*,fmt='(a,l5)')      "print_trialorb: basis? = ",what%from_basis_orbital
-  write(*,fmt='(a,i5)')      "print_trialorb: orbital= ",what%iorb
-  write(*,fmt='(a,i5)')      "print_trialorb: gindex = ",what%iorb_gindex
+  write(*,fmt='(a,3f8.3,a)') " center = ",what%center," Bohr"
+  write(*,fmt='(a,3f8.3)')   " zaxis  = ",what%zaxis
+  write(*,fmt='(a,3f8.3)')   " xaxis  = ",what%xaxis
+  write(*,fmt='(a,3f8.3)')   " yaxis  = ",what%yaxis
+  write(*,fmt='(a,1f8.3,a)') " zovera = ",what%zovera," Bohr**-1"
+  write(*,fmt='(a,i5)')      " r      = ",what%r
+  write(*,fmt='(a,i5)')      " mr     = ",what%mr
+  write(*,fmt='(a,i5)')      " l      = ",what%l
+  write(*,'(a,1f8.3,a)')     " rcut   = ",what%rcut," Bohr"
+  write(*,fmt='(a,i5)')      " lmax   = ",what%lmax
+  write(*,fmt='(a,l5)')      " basis? = ",what%from_basis_orbital
+  write(*,fmt='(a,i5)')      " orbital= ",what%iorb
+  write(*,fmt='(a,i5)')      " gindex = ",what%iorb_gindex
 end subroutine print_trialorb
 
 endmodule trialorbitalclass
