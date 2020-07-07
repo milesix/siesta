@@ -345,6 +345,9 @@ C     Allocate memory for the current distribution
       call re_alloc( distr%box, 1, 2, 1, 3, 1, Nodes,
      &    'distr%box', moduName )
 
+      ! Store distribution mesh-sub-divisions
+      distr%nsm = nsm
+
 #ifdef MPI
 
 !     Collect all values and gather them directly
@@ -366,9 +369,6 @@ C     data distribution and the previous ones.
       distr%box(1,:,1) = start_nml(:)
       distr%box(2,:,1) = end_nml(:)
 #endif
-
-      ! Store distribution mesh-sub-divisions
-      distr%nsm = nsm
 
       if ( Node == 0 ) then
         write(6,"(a,'[',i0,']: sub = ',i0)")
