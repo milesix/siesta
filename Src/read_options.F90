@@ -39,6 +39,11 @@ subroutine read_options( na, ns, nspin )
 #ifdef SIESTA__CHESS
   use m_chess, only: set_CheSS_parameter
 #endif
+
+#ifdef SIESTA__PSOLVER
+  use psolver_m, only: poisson_psolver_options
+  use psolver_m, only: poisson_psolver_options_print
+#endif
   
   implicit none
   !----------------------------------------------------------- Input Variables
@@ -1734,7 +1739,13 @@ subroutine read_options( na, ns, nspin )
   change_kgrid_in_md           = fdf_get('ChangeKgridInMD', .false.)
   RelaxCellOnly                = fdf_get('MD.RelaxCellOnly', .false.)
   RemoveIntraMolecularPressure = fdf_get( &
-       'MD.RemoveIntraMolecularPressure', .false.)
+      'MD.RemoveIntraMolecularPressure', .false.)
+
+#ifdef SIESTA__PSOLVER
+  call poisson_psolver_options()
+  call poisson_psolver_options_print()
+#endif
+
   !
   !   COOP-related flags
   !

@@ -979,7 +979,7 @@ libraries
   use of the Order-N method \program{CheSS}\footnote{See
       \url{https://launchpad.net/chess}.}. To enable this solver (see
   \fdf{SolutionMethod}) one needs to first compile the
-  \program{CheSS}-suite and subsequently to add the following to the
+  \program{CheSS}-suite and subsequently add the following to the
   \file{arch.make}. Here \program{<build-dir>} is the build-directory
   of the \program{CheSS} suite:  
 
@@ -1010,6 +1010,28 @@ libraries
 
   To easily install \program{flook} please see the installation file:
   \shell{Docs/install\_flook.bash}.
+
+
+  \item[PSolver]%
+  \index{Poisson!PSolver}
+  \index{External library!PSolver}%
+  \siesta\ allows solving the Poisson equation using PSolver\footnote{\url{https://gitlab.com/l_sim/psolver}}, see
+  Sec.~\ref{sec:poisson:psolver}.
+
+  To enable this solver (see \fdf{Poisson.Method}) one needs to first
+  compile the \program{PSolver}-suite and subsequently add the
+  following to the \file{arch.make}. Here \program{<build-dir>} is the
+  build-directory of the \program{PSolver} suite (note the additional sub-tree):
+
+\begin{shellexample}
+  LIBS += -L<build-dir>/install/lib -lPSolver-1 -latlab-1 -lfutile-1 -ldicts -lfmalloc-1 -lyaml
+  INCFLAGS += -I<build-dir>/install/include
+  FPPFLAGS += -DSIESTA__PSOLVER
+\end{shellexample}
+\index{compile!pre-processor!-DSIESTA\_\_PSOLVER}
+
+  The current support PSolver version corresponds to the version
+  shipped with BigDFT 1.9.0.
 
 \end{description}
 
@@ -2978,59 +3000,61 @@ modified xyz format) which must be described within a
 
   \begin{itemize}
     \item By an explicit vector,
-  given in the same format and units as the coordinates. Notice that the atomic
-  positions (shifted or not) need not be within the cell formed by
-  \fdf{LatticeVectors}, since periodic boundary conditions are
-  always assumed.
+    given in the same format and units as the coordinates. Notice that the atomic
+    positions (shifted or not) need not be within the cell formed by
+    \fdf{LatticeVectors}, since periodic boundary conditions are
+    always assumed.
 
-  This defaults to the origin:
-  \begin{fdfexample}
-    0.0   0.0   0.0
-  \end{fdfexample}
+    This defaults to the origin:
+    \begin{fdfexample}
+      0.0   0.0   0.0
+    \end{fdfexample}
 
-    \item By a string that indicates an automatic shift that places
-      the ``center'' of the system at the center of the unit cell, or
-      that places the system near the borders of the
-      cell. In this case, the contents of the block, or the values
-      associated directly to the label (see below) can be:
+    \item Alternatively, a string that indicates an automatic shift that places
+    the ``center'' of the system at the center of the unit cell, or
+    that places the system near the borders of the
+    cell. In this case, the contents of the block, or the values
+    associated directly to the label (see below) can be:
 
-  \begin{fdfoptions}
-    \option[COP]%
-    \fdfindex*{AtomicCoordinatesOrigin:COP}
+    \begin{fdfoptions}
+      \option[COP]%
+      \fdfindex*{AtomicCoordinatesOrigin:COP}
 
-    Place the center of coordinates in the middle of the unit-cell.
+      Place the center of coordinates in the middle of the unit-cell.
 
-    \option[COM]%
-    \fdfindex*{AtomicCoordinatesOrigin:COM}
+      \option[COM]%
+      \fdfindex*{AtomicCoordinatesOrigin:COM}
 
-    Place the center of mass in the middle of the unit-cell.
+      Place the center of mass in the middle of the unit-cell. This will
+      not take into account ghost-atoms since their masses are
+      \emph{infinite}.
 
-    \option[MIN]%
-    \fdfindex*{AtomicCoordinatesOrigin:MIN}
+      \option[MIN]%
+      \fdfindex*{AtomicCoordinatesOrigin:MIN}
 
-    Shift the coordinates so that the minimum value along each
-    cartesian axis is $0$.
+      Shift the coordinates so that the minimum value along each
+      cartesian axis is $0$.
 
-  \end{fdfoptions}
+    \end{fdfoptions}
 
-   \note  Ghost atoms are not taken into account for the above ``centering''
+    \note Ghost atoms are not taken into account for the above ``centering''
     calculations (but their coordinates are indeed shifted).
 
-  All string options may be given an optional value. For instance,
-  \fdf*{COP-XZ} which limits the \fdf*{COP} option to only affect $x$
-  and $z$ Cartesian coordinates.
+    All string options may be given an optional value. For instance,
+    \fdf*{COP-XZ} which limits the \fdf*{COP} option to only affect $x$
+    and $z$ Cartesian coordinates.
 
-  The accepted suffixes are: \fdf*{-X}, \fdf*{-Y}, \fdf*{-Z},
-  \fdf*{-XY}/\fdf*{-YX}, \fdf*{-YZ}/\fdf*{-YZ}, \fdf*{-XZ}/\fdf*{-ZX}
-  and anything else will be regarded as all directions.
+    The accepted suffixes are: \fdf*{-X}, \fdf*{-Y}, \fdf*{-Z},
+    \fdf*{-XY}/\fdf*{-YX}, \fdf*{-YZ}/\fdf*{-YZ}, \fdf*{-XZ}/\fdf*{-ZX}
+    and anything else will be regarded as all directions.
 
-  \begin{fdfexample}
-    AtomicCoordinatesOrigin COP-X ! COP only for x-direction
-    AtomicCoordinatesOrigin COM-ZY ! COM only for y- and z-directions
-    AtomicCoordinatesOrigin MIN-Z ! MIN only for z-direction
-    AtomicCoordinatesOrigin MIN-XYZ ! MIN for all directions
-    AtomicCoordinatesOrigin MIN ! MIN for all directions
-  \end{fdfexample}
+    \begin{fdfexample}
+      AtomicCoordinatesOrigin COP-X ! COP only for x-direction
+      AtomicCoordinatesOrigin COM-ZY ! COM only for y- and z-directions
+      AtomicCoordinatesOrigin MIN-Z ! MIN only for z-direction
+      AtomicCoordinatesOrigin MIN-XYZ ! MIN for all directions
+      AtomicCoordinatesOrigin MIN ! MIN for all directions
+    \end{fdfexample}
 
   \end{itemize}
   
@@ -5879,9 +5903,174 @@ simultaneously for complete control.
   
 \end{fdfentry}
 
+\subsection{Poisson solver}
+\label{sec:poisson}
+
+\begin{fdfentry}{Poisson.Method}[string]<fft|psolver>
+  \siesta\ allows these methods for solving the Poisson equation.
+
+  \begin{fdfoptions}
+
+    \option[fft]%
+    \fdfindex*{Poisson.Method:fft}
+
+    Solve the Poisson equation using FFT's. This assumes periodic
+    boundary conditions along all three directions.
+
+    \option[psolver]%
+    \fdfindex*{Poisson.Method:psolver}
+    \index{Poisson!PSolver}
+    \index{External library!PSolver}%
+
+    The PSolver\cite{Fisicaro2017} library\footnote{The PSolver
+        library originated from the BigDFT code.} is an alternate
+    Poisson solver which calculates the Poisson equation for bulk,
+    slab, wire and molecule systems using accurate boundary
+    conditions.
+
+    The PSolver library has some restrictions on where the geometry is
+    placed in the cell due to the handlings of the boundary
+    conditions. See the below description for how to handle this.
+    For systems with open boundaries (molecule, slab, wire) please
+    ensure the vacuum region is large enough to remove edge effects.
+
+    \begin{description}
+      \item[bulk] is equal to the FFT solver. They should essentially
+      yield the same solution.
+
+      There is no restriction on the lattice vectors or atomic
+      coordinates.
+
+      \item[slab] can be comparable to the FFT
+      solver \emph{with} the \fdf{SlabDipoleCorrection} enabled (to
+      ensure no dipole is setup.
+
+      In this case the vacuum direction should be along the
+      $y$-direction (2nd lattice vector) and atoms should be aligned
+      in the $y$ position of the center of positions.
+
+      The vacuum direction has to be orthogonal to the other
+      directions.
+
+      To ensure your system is aligned correctly, use
+      \fdf{AtomicCoordinatesOrigin:COP}.
+
+      \item[wire] can be comparable to the FFT
+      solver \emph{with} the \fdf{SlabDipoleCorrection} enabled (to
+      ensure no dipole is setup.
+
+      In this case the vacuum direction should be along the
+      $x$- and $y$-direction (1st and 2nd lattice vector) and atoms
+      should be aligned with $x$ and $y$ positions of the center of
+      positions.
+
+      To ensure your system is aligned correctly, use
+      \fdf{AtomicCoordinatesOrigin:COP}.
+
+      \item[molecule] can be comparable to the FFT
+      solver \emph{with} the \fdf{SlabDipoleCorrection} enabled (to
+      ensure no dipole is setup.
+
+      In this case the molecule \emph{must} be placed in the middle of
+      the unit-cell.
+
+      The cell box \emph{has} to be orthorhombic.
+
+      To ensure your system is aligned correctly, use
+      \fdf{AtomicCoordinatesOrigin:COP}.
+
+    \end{description}
+
+  \end{fdfoptions}
+
+\end{fdfentry}
+
+\subsubsection{PSolver options}
+\label{sec:poisson:psolver}
+\index{Poisson!PSolver}
+\index{External library!PSolver}%
+
+The PSolver options are provided in a PSolver block
+
+\begin{fdfentry}{PSolver}[block]
+
+  An option block for PSolver to contain options for PSolver.
+
+  In this block several options are available.
+
+  \begin{fdfentry}{verbose}[logical]<false>
+
+    Make PSolver print additional information when it is running.
+
+  \end{fdfentry}
+  \begin{fdfentry}{ISF.order}[integer]<16|2|4|6|8|14||20|24|30|40|50|60|100>
+
+    Order of the interpolating scaling function used for the
+    discretization of the kernel.
+
+  \end{fdfentry}
+  \begin{fdfentry}{FD.order}[integer]<16|2|4|6|8>
+
+    Order of the finite-difference derivatives for the GPS solver.
+
+  \end{fdfentry}
+
+  Additionally, PSolver allows calculations of implicit solvent
+  effects using the soft-sphere model\cite{Fisicaro2017}.
+
+  The below options are used, only if \fdf*{PSolver:cavity} is
+  different from \fdf*{none}.
+
+  \begin{fdfentry}{cavity}[string]<none|soft-sphere|SCCS>
+
+    Specify the cavity type.
+
+  \end{fdfentry}
+  \begin{fdfentry}{radii.type}[string]<UFF|Bondi|Pauling>
+
+    Specify the van der Waals radii used for atomic species (ghost
+    atoms will have $0$ radius.
+
+  \end{fdfentry}
+  \begin{fdfentry}{delta}[real]<2.0>
+
+    Amplitude of the transition region in the rigid cavity (a.u.)
+
+  \end{fdfentry}
+  \begin{fdfentry}{fact.rigid}[real]<1.12>
+
+    Multiplying factor for the whole rigid cavity, see \citet{Fisicaro2017}.
+
+  \end{fdfentry}
+  \begin{fdfentry}{GPS.algorithm}[string]<PCG|PI>
+
+    Algorithm for the generalised Poisson equation.
+
+    PCG (Preconditioned Conjugate Gradient) or PI (Polarization Iteration).
+
+  \end{fdfentry}
+  \begin{fdfentry}{epsilon}[real]<78.36>
+
+    Dielectric constant of the exterior region. Default value is water, 78.36.
+
+  \end{fdfentry}
+  \begin{fdfentry}{atomic.radii}[integer]<0>
+
+    Mapping of the radii that have to be used for each atomic species.
+
+  \end{fdfentry}
+
+  An example input could be:
+  \begin{fdfexample}
+    %block PSolver
+      FD.order 16
+      ISF.order 20
+    %endblock
+  \end{fdfexample}
+
+\end{fdfentry}
 
 
-\vspace{5pt}
 \subsection{The real-space grid and the eggbox-effect}
 
 \siesta\ uses a finite 3D grid for the calculation of some
@@ -12501,10 +12690,10 @@ ts-q:   436.147   392.146     3.871   392.146     3.871  7.996E-3
       option has precedence, so remove any entry from the
       \fdf{TS!Elec.<>} block)
 
-      \item%
-      Perform a \tsiesta\ calculation with the option
-      \fdf{TS!Elec.<>!DM-init:bulk} (please note that the electrode
-      option has precedence, so remove any entry from the
+      \item Perform a \tsiesta\ calculation with the option
+      \fdf{TS!Elecs!DM.Init:bulk}
+       (please note that the electrode
+      option has precedence, so remove the entry from the
       \fdf{TS!Elec.<>} block)
 
     \end{enumerate}
