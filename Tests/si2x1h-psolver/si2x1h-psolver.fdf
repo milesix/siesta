@@ -6,7 +6,6 @@ SystemName              Si(100)-2x1 3 layers (H-saturated)
 SystemLabel             si2x1h-psolver
 
 Poisson.Method psolver
-MeshSubDivisions 1
 
 NumberOfSpecies 2
 %block ChemicalSpeciesLabel

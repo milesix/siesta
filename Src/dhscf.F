@@ -413,14 +413,14 @@ C     DStres is computed but not used later
 
         ! Initialize poisson solver
         call poisson_psolver_init(cell, nua, xa,
-     &      nbcell, bcell, nm, ntm, nsm)
+     &      nbcell, bcell, nm, ntm)
 
         ! Solve initial poisson problem with atomic charge
         ! Note, we call:
         !   setMeshDistr(UNIFORM_PSOLVER, ...)
         !   ... calc potential
         !   setMeshDistr(UNIFORM, ...)
-        call poisson_psolver(cell, nua, xa, ntm, nsm, nsp, rhoatm,
+        call poisson_psolver(cell, nua, xa, ntm, rhoatm,
      $      Vscf(:,1), Uharrs, DStres, calc_stress=.false.)
       else
 #endif
@@ -1284,7 +1284,7 @@ C ----------------------------------------------------------------------
         !   setMeshDistr(UNIFORM_PSOLVER, ...)
         !   ... calc potential
         !   setMeshDistr(UNIFORM, ...)
-        call poisson_psolver(cell, nua, xa, ntm, nsm, nsp, DRho(:,1),
+        call poisson_psolver(cell, nua, xa, ntm, DRho(:,1),
      &      Vaux, DUscf, DStres, calc_stress = istr == 1)
       else
 #endif

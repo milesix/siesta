@@ -138,7 +138,7 @@ contains
         psolver_alphaS = fdf_bvalues(pline, 1)
 
       else if ( leqi('betaV', ctmp) ) then
-        psolver_betaV = fdf_bphysical(pline, -0.35_dp, 'GPa'))
+        psolver_betaV = fdf_bphysical(pline, -0.35_dp, 'GPa')
 
       else if ( leqi('atomic.radii', ctmp) ) then
         psolver_atomic_radii = fdf_bvalues(pline, 1)
@@ -189,7 +189,7 @@ contains
   !!
   !! PSolver requires a different potential distribution than
   !! Siesta and we need to create routines for re-arranging them.
-  subroutine poisson_psolver_init(cell, na_u, xa, nbcell, bcell, nm, ntm, nsm)
+  subroutine poisson_psolver_init(cell, na_u, xa, nbcell, bcell, nm, ntm)
 
     use parallel, only: Node, Nodes
 #ifdef MPI
@@ -203,11 +203,14 @@ contains
     integer, intent(in) :: nbcell, na_u
     real(dp), intent(in) :: xa(3,na_u)
     real(dp), intent(in) :: cell(3,3), bcell(3,nbcell)
-    integer, intent(in) :: nm(3), ntm(3), nsm
+    !< Total *big* points
+    integer, intent(in) :: nm(3)
+    !< Total mesh points (including sub-divisions) nm == ntm / nsm
+    integer, intent(in) :: ntm(3)
 
     ! Local variables
     integer :: nz_d, nz_d_cum, nz_d_vion, nz_d_xc_offset, nz_d_start
-    integer :: start_nm(3), end_nm(3)
+    integer :: start_ntm(3), end_ntm(3)
     real(dp) :: sca_proj(3), cop(3), l_cell(3)
     real(dp), parameter :: ortho_tol = 0.0000001_dp
     character(len=1) :: boundary_type
@@ -335,11 +338,6 @@ contains
       ! there will be problems related to a distribution where
       ! PSolver expects ONE thing, but Siesta cannot provide routines
       ! for it.
-      ! We really wan't to use the distMeshData methods in moremeshsubs
-      ! for efficiency.
-      ! Typically one can *always* run a given system
-      ! by using:
-      !   MeshSubdivisions 1
 
       ! Figure out how the distribution in PSolver is required
       ! In our case we don't use PSolver for calculating XC, hence:
@@ -353,32 +351,13 @@ contains
           nz_d_cum, nz_d, nz_d_vion, nz_d_xc_offset, nz_d_start)
 
       ! Initialize sub-divisioned data
-      start_nm(:) = 1
-      end_nm(:) = nm(:)
-
-      ! Figure out the end positions of the grids (cumultative sum)
-      nz_d_start = nz_d / nsm
-      call MPI_Scan(nz_d_start, nz_d_cum, 1, MPI_Integer, MPI_SUM, MPI_Comm_World, ierr)
-
-      ! Correct start_nm
-      start_nm(3) = nz_d_cum - nz_d_start + 1
-      end_nm(3) = nz_d_cum
-
-      ! Since we have mesh-subdivisions the start/end have to match
-      ! with nsm (sub divisions in mesh)
-      check_subl = (end_nm(3) - start_nm(3) + 1) * nsm == nz_d
-      call MPI_AllReduce(check_subl, check_sub, 1, MPI_Logical, MPI_LAND, &
-          MPI_Comm_World, ierr)
-
-      if ( .not. check_sub ) then
-        write(*,*) 'poisson_psolver: Please try with MeshSubdivisions 1'
-        write(0,*) 'poisson_psolver: Please try with MeshSubdivisions 1'
-        call die('poisson_psolver: Siesta mesh is not commensurate with PSolver grid. &
-            &Please try with MeshSubdivisions 1')
-      end if
+      start_ntm(1:2) = 1
+      start_ntm(3) = nz_d_start
+      end_ntm(1:2) = ntm(1:2)
+      end_ntm(3) = nz_d_start + nz_d - 1
 
       ! Create a new explicit mesh distribution for the PSolver library
-      call initMeshDistr(UNIFORM_PSOLVER, start_nm, end_nm)
+      call initMeshDistr(UNIFORM_PSOLVER, start_ntm, end_ntm, nsm=1)
 
     end if
 #endif
@@ -400,6 +379,7 @@ contains
   !! Then we can compute the electrostatic potential using PSolver
   !! and finally we back-distribute the data from UNIFORM_PSOLVER
   !! to UNIFORM.
+  !! It is important that the input density (rho) is given in SERIAL form.
   !!
   !> \brief Further improvements
   !! We are currently working on:
@@ -407,7 +387,7 @@ contains
   !! Currently the stress-tensor is not calculated correctly.
   !! I do not know how to fix this but it is *not* a matter of units since
   !! I get a sign change.
-  subroutine poisson_psolver(cell, na_u, xa, ntm, nsm, nsp, rho, V,  eh, stress, calc_stress)
+  subroutine poisson_psolver(cell, na_u, xa, ntm, rho, V,  eh, stress, calc_stress)
 
     use parallel, only: Node, Nodes
     use units,          only: eV, Ang
@@ -437,7 +417,6 @@ contains
     real(dp), intent(in) :: xa(3,na_u) ! atomic coordinates
     integer, intent(in) :: ntm(3) ! Total mesh divisions
     real(grid_p), intent(in) :: rho(:) ! Input density
-    integer, intent(in) :: nsm, nsp
     real(grid_p), intent(inout), target :: V(:) ! Output potential.
     real(dp), intent(out) :: eh ! Electrostatic energy.
     real(dp), intent(inout) :: stress(3,3) ! stress-tensor contribution
@@ -476,7 +455,7 @@ contains
 
     if ( Nodes > 1 ) then
 
-      call setMeshDistr(UNIFORM_PSOLVER, nsm, nsp, p_nml, p_nnml, p_ntml, p_ntpl)
+      call setMeshDistr(UNIFORM_PSOLVER, p_nml, p_nnml, p_ntml, p_ntpl)
 
       ! Allocate auxiliary array for correct size of grid
       call re_alloc(Vaux, 1, p_ntpl, 'Vaux', 'poisson_psolver')
@@ -570,7 +549,7 @@ contains
     if ( Nodes > 1 ) then
 
       ! Redistribute data back
-      call setMeshDistr(UNIFORM, nsm, nsp, p_nml, p_nnml, p_ntml, p_ntpl)
+      call setMeshDistr(UNIFORM, p_nml, p_nnml, p_ntml, p_ntpl)
       call distMeshData(UNIFORM_PSOLVER, Vaux, UNIFORM, V, KEEP)
 
       call de_alloc(Vaux, 'Vaux', 'poisson_psolver')
