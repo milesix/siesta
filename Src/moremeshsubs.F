@@ -46,7 +46,7 @@ C
       integer, parameter, public :: QUADRATIC = 2
       integer, parameter, public :: LINEAR = 3
 #ifdef SIESTA__PSOLVER
-      !< Distribution required for PSolver, only z-plane is distributed seemingly uniformly
+      !< Distribution required for PSolver, only z-plane is distributed uniformly
       integer, parameter, public :: UNIFORM_PSOLVER = 4
 #endif
 
