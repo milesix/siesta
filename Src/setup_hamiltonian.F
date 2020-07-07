@@ -157,6 +157,7 @@
       Ekin = 0.0_dp
       Enl = 0.0_dp
       Eso = 0.0_dp
+      E_ldau_so = 0.0_dp
 !$OMP end single ! keep wait
       
 !$OMP do reduction(+:Ekin,Enl)
@@ -204,7 +205,7 @@
          end do
 !$OMP end do nowait
 
-       end if
+      end if
 
 !$OMP end parallel
 
@@ -231,6 +232,48 @@
         else if ( spin%SO ) then
           H_ldau_so => val(H_ldau_so_2D)
           call ldau_so_hamil( H_ldau_so )
+
+!         Compute the energy associated with LDA+U
+          do io = 1, maxnh
+
+!--------   E_ldau_so(u,u)
+            Dc = cmplx(Dscf(io,1),Dscf(io,5), dp)
+            E_ldau_so = E_ldau_so + real( H_ldau_so(io,1)*Dc, dp)
+!--------   E_ldau_so(d,d)
+            Dc = cmplx(Dscf(io,2),Dscf(io,6), dp)
+            E_ldau_so = E_ldau_so + real( H_ldau_so(io,2)*Dc, dp)
+!--------   E_ldau_so(u,d)
+            Dc = cmplx(Dscf(io,3),-Dscf(io,4), dp)
+            E_ldau_so = E_ldau_so + real( H_ldau_so(io,4)*Dc, dp)
+!--------   E_ldau_so(d,u)
+            Dc = cmplx(Dscf(io,7),Dscf(io,8), dp)
+            E_ldau_so = E_ldau_so + real( H_ldau_so(io,3)*Dc, dp)
+
+          end do
+!         jjunquer: For debugging
+          write(6,'(a,f12.5)')     
+     .      ' setup_hamiltonian: E_ldau_so = ', E_ldau_so*13.6058_dp 
+!         end jjunquer: End debugging
+! H(:, [5, 6]) are not updated in dhscf, see vmat for details.
+        
+!------- H(u,u)
+         H(:,1) = H(:,1) + real(H_ldau_so(:,1), dp)
+         H(:,5) =         aimag(H_ldau_so(:,1))
+!------- H(d,d)
+         H(:,2) = H(:,2) + real(H_ldau_so(:,2), dp)
+         H(:,6) =         aimag(H_ldau_so(:,2))
+!------- H(u,d)
+         H(:,3) = H(:,3) + real(H_ldau_so(:,3), dp)
+         H(:,4) = H(:,4) +aimag(H_ldau_so(:,3))
+!------- H(d,u)
+         H(:,7) = H(:,7) + real(H_ldau_so(:,4), dp)
+         H(:,8) = H(:,8) -aimag(H_ldau_so(:,4))
+
+#ifdef MPI
+          ! Global reduction of E_ldau_so 
+          call globalize_sum(E_ldau_so,buffer1)
+          E_ldau_so = buffer1
+#endif
         else
           call re_alloc(fal, 1, 3, 1, na_u, 'fal', 'setup_hamiltonian')      
 
@@ -281,7 +324,8 @@
 
       if ( spin%SO_offsite ) then
 
-        if( switch_ldau ) H_so_off = H_so_off + H_ldau_so
+!        if( switch_ldau ) H_so_off = H_so_off + H_ldau_so
+        if( switch_ldau ) H_so_off = 0.0_dp
 
 ! H(:, [5, 6]) are not updated in dhscf, see vmat for details.
         
@@ -302,7 +346,7 @@
 !         do ind = 1, maxnh
 !           write(6,'(a,i5,8f12.5)')' H-SO = ', ind, H_so_off(ind,:)
 !         enddo
-!         stop
+!!         stop
 !!        End debugging
 
       endif

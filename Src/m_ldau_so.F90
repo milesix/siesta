@@ -326,7 +326,7 @@ module m_ldau_so
 
 !!              For debugging
 !               write(6,'(a,6i5,l5)')                                          &
-! &              'ldau_so_hamil: atom, species, ishell, index, n, l, m = ',    &
+! &              '  ldau_so_hamil: atom, species, ishell, n, l, zeta, pol = ', &
 ! &              ka, is, ishell,                                               &
 ! &              spp%orbnl_n(ishell), spp%orbnl_l(ishell), spp%orbnl_z(ishell),&
 ! &              spp%orbnl_ispol(ishell)
@@ -344,7 +344,7 @@ module m_ldau_so
 !       do ka = 1, na_u   
 !         is  = isa(ka)
 !         spp  => species(is)
-!         write(6,'(a,4i5)') &
+!         write(6,'(/a,4i5)') &
 ! &         'ldau_so_hamil: atom, maxldau, maxnzeta, maxlcorr = ',  &
 ! &           ka, maxldau, maxnzeta, maxlcorr
 !         do iproj = 1, spp%n_pjldaunl   
@@ -602,69 +602,104 @@ module m_ldau_so
 !                        Define the real part for the (up,up) term
 !                        First entry in the spin-component of the matrix element
                          H_ldau_so(ind,1) = H_ldau_so(ind,1)  + one      *     &
- &                          ( ( direct_int - U*delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *    &
+! &                          ( ( direct_int - U*delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *    &
+ &                          ( ( direct_int - U*delta_K(m,zeta_qn,mprime,zeta_qn_neig) *           &
+ &                                              delta_K(m2prime,iz2prime,m3prime,iz3prime)  ) *    &
  &                              Dscf(indm2m3,2)                           +    &
  &                            ( direct_int - fock_int                     -    &
- &                              (U - J) * delta_K(m2prime,iz2prime,m3prime,iz3prime) )      *    &
+! &                              (U - J) * delta_K(m2prime,iz2prime,m3prime,iz3prime) )      *    &
+ &                              (U - J) * delta_K(m,zeta_qn,mprime,zeta_qn_neig) *                &
+ &                                        delta_K(m2prime,iz2prime,m3prime,iz3prime)  )      *    &
  &                              Dscf(indm2m3,1) )                         
 
 !                        Define the imaginary part for the (up,up) term
 !                        Fifth entry in the spin-component of the matrix element
                          H_ldau_so(ind,1) = H_ldau_so(ind,1)  + imag *         &
- &                          ( ( direct_int - U*delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *    &
+! &                          ( ( direct_int - U*delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *    &
+ &                          ( ( direct_int - U*delta_K(m,zeta_qn,mprime,zeta_qn_neig) *          &
+ &                                             delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *    &
  &                              Dscf(indm2m3,6)                           +    &
  &                            ( direct_int - fock_int                     -    &
- &                              (U - J) * delta_K(m2prime,iz2prime,m3prime,iz3prime) )      *    &
+! &                              (U - J) * delta_K(m2prime,iz2prime,m3prime,iz3prime) )      *    &
+ &                              (U - J) * delta_K(m,zeta_qn,mprime,zeta_qn_neig) *               &
+ &                                        delta_K(m2prime,iz2prime,m3prime,iz3prime) )      *    &
  &                              Dscf(indm2m3,5) )                         
 
 !                        Define the real part for the (down,down) term
 !                        Second entry in the spin-component of the matrix elemen
                          H_ldau_so(ind,2) = H_ldau_so(ind,2)  + one *          &
- &                          ( ( direct_int - U*delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *    &
+! &                          ( ( direct_int - U*delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *    &
+ &                          ( ( direct_int - U*delta_K(m,zeta_qn,mprime,zeta_qn_neig) *           &
+ &                                             delta_K(m2prime,iz2prime,m3prime,iz3prime)   ) *   &
  &                              Dscf(indm2m3,1)                           +    &
  &                            ( direct_int - fock_int                     -    &
- &                              (U - J) * delta_K(m2prime,iz2prime,m3prime,iz3prime) )      *    &
+! &                              (U - J) * delta_K(m2prime,iz2prime,m3prime,iz3prime) )      *    &
+ &                              (U - J) * delta_K(m,zeta_qn,mprime,zeta_qn_neig) * &
+ &                                        delta_K(m2prime,iz2prime,m3prime,iz3prime) )      *    &
  &                              Dscf(indm2m3,2) )                        
+!                        For debugging
+                         if(ind .eq. 8)     &
+ &                         write(6,*)m, mprime, m2prime, m3prime, direct_int, fock_int, & 
+ &                         Dscf(indm2m3,1), Dscf(indm2m3,2), H_ldau_so(ind,2)*13.6058_dp
+!                        End debugging
 
 !                        Define the imaginary part for the (down,down) term
 !                        Sixth entry in the spin-component of the matrix element
                          H_ldau_so(ind,2) = H_ldau_so(ind,2)  + imag *         &
- &                          ( ( direct_int - U*delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *    &
+! &                          ( ( direct_int - U*delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *    &
+ &                          ( ( direct_int - U*delta_K(m,zeta_qn,mprime,zeta_qn_neig) * &
+ &                                             delta_K(m2prime,iz2prime,m3prime,iz3prime)  ) *    &
  &                              Dscf(indm2m3,5)                           +    &
  &                            ( direct_int - fock_int                     -    &
- &                              (U - J) * delta_K(m2prime,iz2prime,m3prime,iz3prime) )      *    &
+! &                              (U - J) * delta_K(m2prime,iz2prime,m3prime,iz3prime) )      *    &
+ &                              (U - J) * delta_K(m,zeta_qn,mprime,zeta_qn_neig) * &
+ &                                        delta_K(m2prime,iz2prime,m3prime,iz3prime)  )      *    &
  &                              Dscf(indm2m3,6) )                         
 
 !                        Define the real part for the (up,down) term
 !                        Third entry in the spin-component of the matrix element
                          H_ldau_so(ind,3) = H_ldau_so(ind,3)  + one        *   &
- &                          ( ( -fock_int + J * delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *   &
+! &                          ( ( -fock_int + J * delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *   &
+ &                          ( ( -fock_int + J * delta_K(m,zeta_qn,mprime,zeta_qn_neig) * &
+ &                                              delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *   &
  &                          Dscf(indm2m3,3) ) 
 
 !                        Define the imaginary part for the (up,down) term
 !                        Fourth entry in the spin-component of the matrix elemen
                          H_ldau_so(ind,3) = H_ldau_so(ind,3)  + imag *         &
- &                          ( ( -fock_int + J * delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *   &
- &                            Dscf(indm2m3,4) ) 
-! &                          (-1.0_dp)*Dscf(indm2m3,4) ) 
+! &                          ( ( -fock_int + J * delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *   &
+ &                          ( ( -fock_int + J * delta_K(m,zeta_qn,mprime,zeta_qn_neig) * &
+ &                                              delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *   &
+ &                          (-1.0_dp)*Dscf(indm2m3,4) ) 
+! &                            Dscf(indm2m3,4) ) 
 
 !                        Define the real part for the (down,up) term
 !                        Seventh entry in the spin-component of the matrix eleme
                          H_ldau_so(ind,4) = H_ldau_so(ind,4)  + one *          &
- &                          ( ( -fock_int + J * delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *   &
+! &                          ( ( -fock_int + J * delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *   &
+ &                          ( ( -fock_int + J * delta_K(m,zeta_qn,mprime,zeta_qn_neig) * &
+ &                                              delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *   &
  &                          Dscf(indm2m3,7) ) 
 
 !                        Define the imaginary part for the (down,up) term
 !                        Eigth entry in the spin-component of the matrix element
                          H_ldau_so(ind,4) = H_ldau_so(ind,4)  + imag *         &
- &                          ( ( -fock_int + J * delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *   &
+! &                          ( ( -fock_int + J * delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *   &
+ &                          ( ( -fock_int + J * delta_K(m,zeta_qn,mprime,zeta_qn_neig) * &
+ &                                              delta_K(m2prime,iz2prime,m3prime,iz3prime) ) *   &
  &                          Dscf(indm2m3,8) ) 
 
-!!                       For debugging
+!!                        For debugging
 !                         write(6,'(a,7i6,2x,i7,16f12.5)')                      &
 ! &                         'io, ind, neig, m, m, m1prime, m1prime, ind = ',    &
 ! &                         io_local, ind, neig_orb, m_qn, m, m_qn_neig, mprime,&
 ! &             ldauintegrals%index_neig_orb_corr(m_qn,1,m_qn_neig,1),      &
+! &                         H_ldau_so(ind,1:4), Dscf(indm2m3,:)
+!
+!                         write(6,'(a,8(i6,2x),19f12.5)')                      &
+! &                         'io, ind, neig, m1prime, m2prime, m3prime, m4prime,= ',    &
+! &                         io_local, ind, neig_orb,indm2m3, m, mprime, m2prime, m3prime, & 
+! &                         direct_int, fock_int, delta_K(m2prime,iz2prime,m3prime,iz3prime), &
 ! &                         H_ldau_so(ind,1:4), Dscf(indm2m3,:)
 !
 !                write(6,'(a,8i5)')                                            &
@@ -674,14 +709,14 @@ module m_ldau_so
 !!               End debugging
                        enddo ! Close loop on the fourth orbital m_qn_3neig 
                      enddo   ! Close loop on the third  orbital m_qn_2neig 
-                   enddo     ! Close the loop on the zeta of the foirth orbital 
+                   enddo     ! Close the loop on the zeta of the fourth orbital 
                              ! (iz3prime)
                  enddo       ! Close the loop on the zeta of the third orbital 
                              ! (iz2prime)
                  H_ldau_so(ind,1) = H_ldau_so(ind,1)  + one      *     &
- &                              0.5_dp * (U - J)                    
+ &                              0.5_dp * (U - J) * delta_K(m,zeta_qn,mprime,zeta_qn_neig)
                  H_ldau_so(ind,2) = H_ldau_so(ind,2)  + one      *     &
- &                              0.5_dp * (U - J)                    
+ &                              0.5_dp * (U - J) * delta_K(m,zeta_qn,mprime,zeta_qn_neig)
                endif         ! Close condition on the same atom
              endif ! Close condition on the angular momentum of the neighbour
            enddo   ! Close loop on neighbours (j_neig)
@@ -689,22 +724,22 @@ module m_ldau_so
        enddo       ! Close loop on LDA+U projectors on the atom within the uc
      enddo         ! Close loop on the orbitals in the uc
 
-!!    For debugging
-!     do io_local = 1, no_l
-!       call LocalToGlobalOrb(io_local,Node,Nodes,io_global)
-!       do j_neig = 1, numh(io_local) 
-!         ind = listhptr(io_local) + j_neig
-!         neig_orb = listh(ind)
-!         do m = 1, 4
-!           if( abs(H_ldau_so(ind,m)) .gt. 1.d-6 ) then
-!             write(6,'(a,4(i5,2x),2f12.5)')                          &
-! &             'ldau_so_hamil: io, neig, ind, m, H_ldau_so(ind,m) ', & 
-! &             io_global, neig_orb, ind, m, H_ldau_so(ind,m) 
-!           endif
-!         enddo
-!       enddo 
-!     enddo  
-!!    End debugging
+!    For debugging
+     do io_local = 1, no_l
+       call LocalToGlobalOrb(io_local,Node,Nodes,io_global)
+       do j_neig = 1, numh(io_local) 
+         ind = listhptr(io_local) + j_neig
+         neig_orb = listh(ind)
+         do m = 1, 4
+           if( abs(H_ldau_so(ind,m)) .gt. 1.d-6 ) then
+             write(6,'(a,4(i5,2x),10f12.5)')                         &
+ &             'ldau_so_hamil: io, neig, ind, m, H_ldau_so(ind,m) ', & 
+ &             io_global, neig_orb, ind, m, H_ldau_so(ind,m), Dscf(ind,:)
+           endif
+         enddo
+       enddo 
+     enddo  
+!    End debugging
 
 
   end subroutine ldau_so_hamil

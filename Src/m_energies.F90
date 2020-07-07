@@ -44,6 +44,7 @@ module m_energies
   real(dp):: Uscf       ! SCF hartree electron energy,  calculated in dhscf
   real(dp):: Ebs        ! Band-structure energy, Tr(DM*H), calculated in compute_dm
   real(dp):: Eso        ! Spin-orbit energy
+  real(dp):: E_ldau_so  ! Spin-orbit energy when LDA+U is considered
   real(dp):: Eldau      
   real(dp):: DEldau
 
@@ -93,6 +94,7 @@ contains
     Uscf = 0._dp
     Ebs = 0._dp
     Eso = 0._dp
+    E_ldau_so = 0._dp
     Eldau = 0._dp      
     DEldau = 0._dp
 
@@ -128,7 +130,7 @@ contains
     use m_ts_global_vars, only: TSrun
     
     ! DUext (external electric field) -- should it be in or out?
-    Etot = Ena + Ekin + Enl + Eso - Eions + &
+    Etot = Ena + Ekin + Enl + Eso + E_ldau_so - Eions + &
         DEna + DUscf + DUext + Exc + &
         Ecorrec + Emad + Emm + Emeta + Eldau
 

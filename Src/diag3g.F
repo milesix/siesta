@@ -275,6 +275,10 @@ C of referencing has been changed in several places to reflect this.
             do j = 1,nuotot
               caux(1,j) = psi(1,j,iie) ! c_{i,up}
               caux(2,j) = psi(2,j,iie) ! c_{i,dn}
+!!             For debugging
+!              write(6,*) 
+!     .   'In diag3g: ie, iie, j, c =', ie, iie, j, caux(:,j), qe
+!!             End debugging
             enddo
           endif
 #ifdef MPI
