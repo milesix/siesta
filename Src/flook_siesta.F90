@@ -81,16 +81,29 @@ IOprint = function(...) &
 end &
 siesta_comm = function(...) end'
 
+#ifdef SIESTA__UNITS_ORIGINAL
     character(*), parameter :: unit_static_lua = '&
-&siesta.Units = { &
-&    Ang    = 1. / 0.529177, &
-&    eV     = 1. / 13.60580, &
-&    kBar   = 1. / 1.47108e5, &
-&    Debye  = 0.393430, &
-&    amu    = 2.133107, &
-&} &
-&siesta.Units.GPa = siesta.Units.kBar * 10 &
-&siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
+siesta.Units = { &
+    Ang    = 1. / 0.529177, &
+    eV     = 1. / 13.60580, &
+    kBar   = 1. / 1.47108e5, &
+    Debye  = 0.393430, &
+    amu    = 2.133107, &
+} &
+siesta.Units.GPa = siesta.Units.kBar * 10 &
+siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
+#else
+    character(*), parameter :: unit_static_lua = '&
+siesta.Units = { &
+    Ang    = 1.88972612462577017, &
+    eV     = 7.34986443513115789e-2, &
+    kBar   = 6.79786184348648780e-6, &
+    Debye  = 3.93430269519899511e-1, &
+    amu    = 2.133107, &
+    Kelvin = 6.33362312691136091e-6, &
+} &
+siesta.Units.GPa = siesta.Units.kBar * 10'
+#endif
 
     ! For error-handling with lua
     integer :: err

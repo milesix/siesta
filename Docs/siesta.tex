@@ -14898,91 +14898,115 @@ Ram\'on Areces.
 \section{APPENDIX: Physical unit names recognized by FDF}
 \label{sec:fdf-units}
 
-\begin{center}
-\begin{tabular}{llr}
-Magnitude & Unit name & MKS value \\
-\hline
-mass     & kg         & 1.E0 \\
-mass     & g          & 1.E-3 \\
-mass     & amu        & 1.66054E-27 \\
-length   & m          & 1.E0 \\
-length   & cm         & 1.E-2 \\
-length   & nm         & 1.E-9 \\
-length   & Ang        & 1.E-10 \\
-length   & Bohr       & 0.529177E-10 \\
-time     & s          & 1.E0 \\
-time     & fs         & 1.E-15 \\
-time     & ps         & 1.E-12 \\
-time     & ns         & 1.E-9 \\
-time     & mins       & 60.E0 \\
-time     & hours      & 3.6E3 \\
-time     & days       & 8.64E4 \\
-energy   & J          & 1.E0 \\
-energy   & erg        & 1.E-7 \\
-energy   & eV         & 1.60219E-19 \\
-energy   & meV        & 1.60219E-22 \\
-energy   & Ry         & 2.17991E-18 \\
-energy   & mRy        & 2.17991E-21 \\
-energy   & Hartree    & 4.35982E-18 \\
-energy   & Ha         & 4.35982E-18 \\
-energy   & K          & 1.38066E-23 \\
-energy   & kcal/mol   & 6.94780E-21 \\
-energy   & mHartree   & 4.35982E-21 \\
-energy   & mHa        & 4.35982E-21 \\
-energy   & kJ/mol     & 1.6606E-21 \\
-energy   & Hz         & 6.6262E-34 \\
-energy   & THz        & 6.6262E-22 \\
-energy   & cm-1       & 1.986E-23 \\
-energy   & cm**-1     & 1.986E-23 \\
-energy   & cm\^~-1      & 1.986E-23 \\
-force    & N          & 1.E0 \\
-force    & eV/Ang     & 1.60219E-9 \\
-force    & Ry/Bohr    & 4.11943E-8 \\
-\hline
-\end{tabular}
+Since \siesta\ 4.2 the units follow the CODATA 2018 values. This
+affects comparisons with prior versions of \siesta\ due to small
+numeric differences.
 
-\begin{tabular}{llr}
-Magnitude & Unit name & MKS value \\
+\iffalse
+% I get some weird errors I don't want to spend time on for now
+\begin{center}
+\begin{longtable}{lc}
 \hline
-pressure & Pa         & 1.E0 \\
-pressure & MPa        & 1.E6 \\
-pressure & GPa        & 1.E9 \\
-pressure & atm        & 1.01325E5 \\
-pressure & bar        & 1.E5 \\
-pressure & Kbar       & 1.E8 \\
-pressure & Mbar       & 1.E11 \\
-pressure & Ry/Bohr**3 & 1.47108E13 \\
-pressure & eV/Ang**3  & 1.60219E11 \\
-charge   & C          & 1.E0 \\
-charge   & e          & 1.602177E-19 \\
-dipole   & C*m        & 1.E0 \\
-dipole   & D          & 3.33564E-30 \\
-dipole   & debye      & 3.33564E-30 \\
-dipole   & e*Bohr     & 8.47835E-30 \\
-dipole   & e*Ang      & 1.602177E-29 \\
-MomInert & Kg*m**2    & 1.E0 \\
-MomInert & Ry*fs**2   & 2.17991E-48 \\
-Efield   & V/m        & 1.E0 \\
-Efield   & V/nm       & 1.E9  \\
-Efield   & V/Ang      & 1.E10 \\
-Efield   & V/Bohr     & 1.8897268E10 \\
-Efield   & Ry/Bohr/e  & 2.5711273E11 \\
-Efield   & Har/Bohr/e & 5.1422546E11 \\
-Efield   & Ha/Bohr/e  & 5.1422546E11 \\
-angle    & deg        & 1.d0 \\
-angle    & rad        & 5.72957795E1 \\
-torque   & eV/deg     & 1.E0 \\
-torque   & eV/rad     & 1.745533E-2 \\
-torque   & Ry/deg     & 13.6058E0 \\
-torque   & Ry/rad     & 0.237466E0 \\
-torque   & meV/deg    & 1.E-3 \\
-torque   & meV/rad    & 1.745533E-5 \\
-torque   & mRy/deg    & 13.6058E-3 \\
-torque   & mRy/rad    & 0.237466E-3 \\
+Magnitude & Unit name
+\endhead
+\endfoot
 \hline
-\end{tabular}
+mass     & g          \\
+mass     & kg         \\
+mass     & amu        \\
+length   & m          \\
+length   & cm         \\
+length   & nm         \\
+length   & pm         \\
+length   & Ang        \\
+length   & Bohr       \\
+energy   & J          \\
+energy   & kJ         \\
+energy   & erg        \\
+energy   & meV        \\
+energy   & eV         \\
+energy   & mRy        \\
+energy   & Ry         \\
+energy   & mHa        \\
+energy   & Ha         \\
+energy   & Hartree    \\
+energy   & K          \\
+energy   & Kelvin     \\
+energy   & kJ/mol     \\
+energy   & kcal/mol   \\
+energy   & Hz         \\
+energy   & THz        \\
+energy   & cm-1       \\
+energy   & cm\^-1      \\
+energy   & cm**-1     \\
+time     & s          \\
+time     & au         \\
+time     & ns         \\
+time     & ps         \\
+time     & fs         \\
+time     & min        \\
+time     & mins       \\
+time     & hour       \\
+time     & hours      \\
+time     & day        \\
+time     & days       \\
+force    & N          \\
+force    & eV/Ang     \\
+force    & Ry/Bohr    \\
+force    & Ha/Bohr    \\
+pressure & Pa         \\
+pressure & GPa        \\
+pressure & atm        \\
+pressure & bar        \\
+pressure & kbar       \\
+pressure & Mbar       \\
+pressure & eV/Ang**3  \\
+pressure & eV/Ang\^3   \\
+pressure & Ry/Bohr**3 \\
+pressure & Ry/Bohr\^3  \\
+pressure & Ha/Bohr**3 \\
+pressure & Ha/Bohr\^3  \\
+surftens & N/m        \\
+surftens & mN/m       \\
+surftens & dyn/cm     \\
+surftens & erg/cm**2  \\
+charge   & c          \\
+charge   & e          \\
+dipole   & c*m        \\
+dipole   & e*Bohr     \\
+dipole   & e*Ang      \\
+dipole   & D          \\
+dipole   & Debye      \\
+mominert & kg*m**2    \\
+mominert & Ry*fs**2   \\
+efield   & V/m        \\
+efield   & V/cm       \\
+efield   & V/um       \\
+efield   & V/nm       \\
+efield   & V/Ang      \\
+efield   & eV/Ang/e   \\
+efield   & V/Bohr     \\
+efield   & Ry/Bohr/e  \\
+efield   & Ha/Bohr/e  \\
+efield   & Har/Bohr/e \\
+angle    & deg        \\
+angle    & rad        \\
+torque   & N*m        \\
+torque   & meV/deg    \\
+torque   & meV/rad    \\
+torque   & eV/deg     \\
+torque   & eV/rad     \\
+torque   & mRy/deg    \\
+torque   & mRy/rad    \\
+torque   & Ry/deg     \\
+torque   & Ry/rad     \\
+torque   & Ha/deg     \\
+torque   & Ha/rad     \\
+\hline
+\end{longtable}
 \end{center}
 
+\fi
 
 \newpage
 \section{APPENDIX: XML Output}

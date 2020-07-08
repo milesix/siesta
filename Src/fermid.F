@@ -406,6 +406,7 @@ C calculated here if ne < maxe
 
       real(dp) function stepf(X)
       use m_errorf, only: derf
+      use units, only: Pi
       
       real(dp), intent(in) :: x
 
@@ -418,8 +419,6 @@ C Local variables
       integer,           save :: ocupfnct
       logical,           save :: ocfread = .true.
       
-      real(dp), parameter :: PI = 3.14159265358979D0
-
 C Reading which electronic occupation function to use -------
 
       if (ocfread) then
@@ -508,14 +507,13 @@ C Cold smearing function. Ref: Marzari-Vanderbilt PRL82, 16, 1999
 
 
       real(dp) function enpy(E,W)
+      use units, only: Pi
       real(dp), intent(in)  :: e, w
 
 C Computes the contribution of a given state with energy E
 C (refered to the Fermi energy, in units of the smearing 
 C temperature) and occupation W to the electronic entropy
 C P. Ordejon, June 2003
-
-      real(dp), parameter :: PI = 3.14159265358979D0
 
 C Local variables
       character(len=22) :: ocf

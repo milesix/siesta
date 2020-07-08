@@ -72,6 +72,7 @@ C
 C  Modules
 C
       use precision,     only : dp
+      use units,         only : Debye
       use parallel,      only : IOnode
       use sys,           only : die
       use atmfuncs,      only : zvalfis
@@ -107,12 +108,10 @@ C Internal variables
      .  displ(3), dsp(3), cutoff, dk(3), detr, deti, 
      .  prodtr, prodti, kint(3), volcel, dkmod,
      .  dkxij, ckxij, skxij, dmod, polion(3),
-     .  tiny, phase, ph(3,2), Debye,
+     .  tiny, phase, ph(3,2),
      .  vaux(3,2), area, J, qspin(2), dq, phaseold(2)
 
       real(dp), dimension(:), pointer ::  ek => null()
-
-      parameter (Debye  = 0.393430d0)  
 
       character         shape*10
 

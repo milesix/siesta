@@ -355,6 +355,7 @@ C
 C  Modules
 C
       use precision,    only : dp
+      use units,        only : eV
       use parallel,     only : Node, Nodes
       use parallelsubs, only : GetNodeOrbs
       use densematrix,  only : allocDenseMatrix, resetDenseMatrix
@@ -397,13 +398,11 @@ C
       logical :: SaveParallelOverK
       
       real(dp)
-     .  Dnew, qs(2), e1, e2, efs(2), emax, emin, Enew, eV, qk, qtot,
+     .  Dnew, qs(2), e1, e2, efs(2), emax, emin, Enew, qk, qtot,
      .  path, temp, wk, Entropy
 
 C Dynamic arrays
       real(dp), dimension(:), pointer :: aux => null()
-
-      parameter ( eV = 1.d0 / 13.60580d0 )
 
       save Dnew, Enew, e1, e2, qk, qtot, temp, wk
       data Dnew, Enew, e1, e2, qk, qtot, temp, wk /8*0.d0/
