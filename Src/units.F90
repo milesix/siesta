@@ -64,6 +64,7 @@ module units
   !!    ...
   !! end subroutine units_initialization
   
+#ifdef SIESTA__UNITS_ORIGINAL
   real(dp), parameter, public :: Ang    = 1._dp / 0.529177_dp
   real(dp), parameter, public :: eV     = 1._dp / 13.60580_dp
   real(dp), parameter, public :: kBar   = 1._dp / 1.47108e5_dp
@@ -72,6 +73,16 @@ module units
   real(dp), parameter, public :: Debye  = 0.393430_dp
   real(dp), parameter, public :: amu    = 2.133107_dp
   real(dp), parameter, public :: Ryd_time = 1._dp/0.04837769_dp
+#else
+  real(dp), parameter :: Ang    = 1.88972612462577017_dp
+  real(dp), parameter :: eV     = 7.34986443513115789e-2_dp
+  real(dp), parameter :: kBar   = 6.79786184348648780e-6_dp
+  real(dp), parameter :: GPa    = kBar * 10._dp
+  real(dp), parameter :: Kelvin = 6.33362312691136091e-6_dp
+  real(dp), parameter :: Debye  = 3.93430269519899511e-1_dp
+  real(dp), parameter :: amu    = 2.133107_dp
+  real(dp), parameter :: Ryd_time = 1._dp/0.04837769_dp
+#endif
 
 ! pi to 50 digits
   real(dp), parameter, public :: pi = 3.14159265358979323846264338327950288419716939937510_dp

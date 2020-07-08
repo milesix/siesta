@@ -13,7 +13,11 @@ program v_info
 
   integer, parameter :: dp = selected_real_kind(10,100)
   
-  real(dp), parameter :: Ang    = 1.0_dp / 0.529177_dp
+#ifdef SIESTA__UNITS_ORIGINAL
+  real(dp), parameter, private :: Ang = 1._dp / 0.529177_dp
+#else
+  real(dp), parameter, private :: Ang    = 1.88972612462577017_dp
+#endif
   real(dp) :: z_coord
   integer :: i
 

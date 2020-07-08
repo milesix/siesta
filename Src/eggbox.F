@@ -32,6 +32,7 @@ c **********************************************************************
 C  Modules
 
       use precision
+      use units, only: Pi, eV
       use parallel,    only : Node
       use fdf
 
@@ -61,9 +62,9 @@ C Internal variables
       logical, save :: frstme = .true.
 
       integer  ia, ix, i, a, b, c
-      real(dp) pi, xac(3), k(3), xa_frac(3,na), 
+      real(dp) xac(3), k(3), xa_frac(3,na),
      .     celli(3,3), f(3,na), E, x, y, z, 
-     .     fxyz(3,na), eV, escale,
+     .     fxyz(3,na), escale,
      .     vreal(0:maxshell,0:maxshell,0:maxshell,maxispe)
 
       type(block_fdf)            :: bfdf
@@ -78,8 +79,6 @@ c --------------------------------------------------------------
 
       if (frstme) then
          frstme = .false.
-         eV = 13.60580_dp
-         pi = 4.d0 * atan(1.d0)
 
 C Initalise vreal
          do a=0,maxshell
@@ -109,8 +108,7 @@ C vreal is set out as vreal(kx,ky,kz,species)
  30        continue
 
 C Get the scale (default 1 eV)
-           escale = fdf_physical('EggBoxScale', 1.d0, 'eV')
-           escale = escale/eV
+           escale = fdf_physical('EggBoxScale', 1.d0*eV, 'Ry')
 
          else
 c          write(6,'a') "eggbox: The eggbox effect will not be removed"

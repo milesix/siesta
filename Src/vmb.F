@@ -239,6 +239,7 @@ C real*8 tempe          : Instantaneous system temperature
 C *****************************************************************************
 
       use precision, only : dp
+      use units, only: eV, Ang
       use sys,       only : die
 
       implicit none
@@ -255,7 +256,7 @@ C Internal variables ..........................................................
      .  i,ia
 
       real(dp)
-     .  Ang,eV,fovermp,kin
+     .  fovermp,kin
 
 C ........................
 
@@ -263,9 +264,6 @@ C ........................
      $     call die('temp: Wrong iunit option;  must be 1 or 2')
 
 C Define constants and conversion factors .....................................
-
-      Ang = 1.0d0 / 0.529177d0
-      eV  = 1.0d0 / 13.60580d0
 
       if (iunit .eq. 1) then
 C  convert F/m in (eV/Amstrong)/amu  to  Amstrong/fs**2

@@ -9,6 +9,7 @@
      .                   nlines, lastk, label, kpoint, ek, ef)
 
       use fdf
+      use units, only: eV
 C *********************************************************************
 C Writes output with energies at k-point lines.
 C Extracted from bands.f (written by J.Soler, August 1997),
@@ -50,7 +51,7 @@ C  Internal variables ...
      .  ik, il, io, ispin, iu
 
       double precision
-     .  emax, emin, eV, path
+     .  emax, emin, path, conv
 
       character(len=150):: 
      .  fname, sname, string
@@ -59,9 +60,9 @@ C  Internal variables ...
 C ...
 
       if (iunits .eq. 0) then
-        eV = 1.0d0
+        conv = 1.0d0
       else if (iunits .eq. 1) then
-        eV = 1.d0 / 13.60580d0 
+        conv = eV
       else
         stop 'outdispl:  ERROR, wrong iunits'
       endif
@@ -75,7 +76,7 @@ C       Find name of output file and open it
 C       Write Reference Energy (for compatibility with band.f 
 C       of Siesta)
 
-        write(iu,*) ef/eV
+        write(iu,*) ef/conv
 
 C       Find and write the ranges of k and ek
         path = 0.d0
@@ -94,7 +95,7 @@ C       Find and write the ranges of k and ek
           enddo
         enddo
         write(iu,*) 0.d0, path
-        write(iu,*) emin/eV, emax/eV
+        write(iu,*) emin/conv, emax/conv
 
 C       Write eigenvalues
 C       (the 1 is to provide compatibility with bands.f of Siesta)
@@ -107,7 +108,7 @@ C       (the 1 is to provide compatibility with bands.f of Siesta)
      .                          (kpoint(2,ik)-kpoint(2,ik-1))**2 +
      .                          (kpoint(3,ik)-kpoint(3,ik-1))**2 )
           write(iu,'(f10.6,10f12.4,/,(10x,10f12.4))')
-     .      path, ((ek(io,ik,ispin)/eV,io=1,nuo),ispin=1,nspin)
+     .      path, ((ek(io,ik,ispin)/conv,io=1,nuo),ispin=1,nspin)
         enddo
 
 C       Write abscisas of line ends and their labels
