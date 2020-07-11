@@ -153,7 +153,7 @@ c ---------------------------------------------------------
             do i = 1, ndeg
                write(lun,"(f10.6,2x,a)") genq%q(i), trim(genq%qname(i))
             enddo
-            close(lun)
+            call io_close(lun)
       endif
 
       if (frstme) then
@@ -312,7 +312,7 @@ c ---------------------------------------------------------
             do i = 1, ndeg
                write(lun,"(f10.6,2x,a)") genq%q(i), trim(genq%qname(i))
             enddo
-            close(lun)
+            call io_close(lun)
             
             print "(/,a)", " New Fractional coordinates: "
             do ia = 1, na
