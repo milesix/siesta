@@ -10,9 +10,9 @@ $(label)-completed:
 	@echo ">>>> Running $(name) test..."
 	@if [ -d $(label) ] ; then rm -rf $(label) ; fi; mkdir $(label)
 	@if [ -n "$(EXTRAFILES)" ] ; then cp -f $(EXTRAFILES) $(label) ; fi
-	@for i in `cat $(name).pseudos` ; do \
-		echo "    ==> Copying pseudopotential file for $$i..." ;\
-		ln ../Pseudos/$$i.psf $(label)/$$i.psf ;\
+	@for ps in `cat $(name).pseudos` ; do \
+	  echo "    ==> Copying pseudopotential file $$ps..." ;\
+	  ln ../Pseudos/$$ps $(label)/$$ps ;\
 	done 
 
 	@(cd $(label) ; ../../Scripts/e-vs-mesh.sh ${SIESTA} $(name) $(GridMin) $(GridMax) $(GridIncrement) ) \

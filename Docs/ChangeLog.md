@@ -2,6 +2,15 @@
 
 ## PSML branch updates
 
+(latest)
+
+* Put extension (i.e. .psf or .psml) explicitly in .pseudos files in Tests
+* Force setting of makefile variables to "1" for activation (i.e.  WITH_MPI=1)
+* Add installation scripts for psml and gridxc libraries (with -rpath, instead
+  of -rpath=)
+* Updated the installation script for flook (by just bumping the
+  version number required for the tarball, plus the rpath change)
+
 Added PSML support, including:
 
 * An external LibGridXC replaces the built-in SiestaXC
