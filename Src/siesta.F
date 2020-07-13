@@ -13,6 +13,7 @@
       use m_siesta_end
       use m_siesta_forces
       use m_siesta_tddft
+      use m_ts_global_vars, only: onlyS
 
       USE m_steps, only: inicoor, fincoor
       use alloc
@@ -35,6 +36,8 @@
       integer :: istep
       logical :: relaxd
 
+      external :: bye
+      
 ! Notes for PEXSI operation
 !
 ! A subset of nodes carries out non-PEXSI Siesta operations 
@@ -79,6 +82,10 @@ C     Begin of coordinate relaxation iteration
             call siesta_tddft( istep )
          else
             call siesta_forces( istep )
+         end if
+
+         if ( onlyS ) then
+             call bye("Saved S only, exiting.")
          end if
 
         if (SIESTA_worker) call siesta_move( istep, relaxd )

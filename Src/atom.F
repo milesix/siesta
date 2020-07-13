@@ -2317,7 +2317,7 @@ C
      .          ' pseudopotential has channels up to l= ', lmax_ps
           write(6,'(a)')
      .      'NOTE: PAOs with higher l will be generated with V_local'
-	endif
+        endif
 
         nrval=nr+1 
         if (rmax_radial_grid /= 0.0_dp) then

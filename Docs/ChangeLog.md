@@ -4,6 +4,9 @@
 
 (latest)
 
+* Handle 'bye' calls from external function(s).
+* Update ncps copy of interpolation.f90
+* F2003 compliance changes
 * Put extension (i.e. .psf or .psml) explicitly in .pseudos files in Tests
 * Force setting of makefile variables to "1" for activation (i.e.  WITH_MPI=1)
 * Add installation scripts for psml and gridxc libraries (with -rpath, instead
@@ -29,6 +32,10 @@ Added PSML support, including:
 * The labels in the Mulliken analysis CML blocks have been changed to use "population" instead of "charge".
 
 ### Changes
+
+* Minor changes for f2003 conformance
+
+* Some fixes for library operation (avoid stopping when 'onlyS' is set; re-opening of unit 6)
 
 * Cleanup of vibra/fcbuild code: use dynamic arrays, and LAPACK solver by default
 

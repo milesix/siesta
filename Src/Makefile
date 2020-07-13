@@ -595,6 +595,7 @@ broyden_optim.o: m_broyddj_nocomm.o memory_log.o parallel.o precision.o
 broyden_optim.o: siesta_options.o sys.o units.o
 bsc_cellxc.o: alloc.o mesh.o moremeshsubs.o parallel.o parallelsubs.o
 bsc_cellxc.o: precision.o sys.o
+bye.o: siesta_cml.o
 cart2frac.o: precision.o sys.o
 cell_broyden_optim.o: m_broyddj_nocomm.o parallel.o precision.o sys.o units.o
 cell_broyden_optim.o: zmatrix.o
@@ -942,7 +943,8 @@ m_orderbands.o: alloc.o parallel.o parallelsubs.o siesta2wannier90.o sys.o
 m_overkkneig.o: alloc.o atomlist.o m_orderbands.o parallel.o parallelsubs.o
 m_overkkneig.o: precision.o siesta_geom.o sparse_matrices.o
 m_partial_charges.o: atmfuncs.o atomlist.o mesh.o meshphi.o parallel.o
-m_partial_charges.o: precision.o siesta_geom.o siesta_options.o sys.o
+m_partial_charges.o: precision.o siesta_cml.o siesta_geom.o siesta_options.o
+m_partial_charges.o: sys.o
 m_pexsi.o: precision.o
 m_pexsi_dos.o: alloc.o class_Distribution.o m_mpi_utils.o m_redist_spmatrix.o
 m_pexsi_dos.o: parallel.o precision.o units.o
@@ -1142,6 +1144,7 @@ m_writedelk.o: parallelsubs.o precision.o siesta_geom.o sys.o
 m_zminim.o: files.o parallel.o parallelsubs.o precision.o siesta_options.o
 m_zminim.o: sys.o
 madelung.o: parallel.o precision.o sys.o
+master.spher_harm.o: alloc.o precision.o sys.o
 matel_registry.o: m_trialorbitalclass.o precision.o radial.o spher_harm.o sys.o
 md_out.o: files.o m_energies.o precision.o sys.o units.o
 memory.o: memory_log.o parallel.o
@@ -1282,8 +1285,9 @@ setup_ordern_indexes.o: alloc.o domain_decom.o parallel.o spatial.o
 shaper.o: atmfuncs.o mneighb.o precision.o
 show_distribution.o: atomlist.o parallel.o parallelsubs.o siesta_geom.o sys.o
 siesta.o: alloc.o extrae_module.o m_io_yaml.o m_mpi_utils.o m_steps.o
-siesta.o: parallel.o siesta_analysis.o siesta_end.o siesta_forces.o
-siesta.o: siesta_init.o siesta_move.o siesta_options.o siesta_tddft.o
+siesta.o: m_ts_global_vars.o parallel.o siesta_analysis.o siesta_end.o
+siesta.o: siesta_forces.o siesta_init.o siesta_move.o siesta_options.o
+siesta.o: siesta_tddft.o
 siesta2wannier90.o: files.o m_digest_nnkp.o m_spin.o m_trialorbitalclass.o
 siesta2wannier90.o: parallel.o precision.o siesta_options.o sys.o
 siesta_analysis.o: alloc.o atomlist.o bands.o basis_enthalpy.o dhscf.o files.o
