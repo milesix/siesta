@@ -60,7 +60,7 @@ INCFLAGS += $(GRIDXC_INCFLAGS)
 
 SYSOBJ=$(SYS).o
 
-SIESTA_OBJS= bye.o precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
+SIESTA_OBJS= precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
              moreParallelSubs.o m_mpi_utils.o atmfuncs.o atm_types.o \
              radial.o reclat.o idiag.o minvec.o \
              parallel.o io.o files.o cellsubs.o sorting.o \
