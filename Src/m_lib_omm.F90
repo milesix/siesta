@@ -9,16 +9,18 @@ module m_lib_omm
 
 use MatrixSwitch
 use omm_rand
-use libomm
+!use dbcsr_api
+!use dbcsr_csr_conversions, only : csr_create_new 
+
 
 use atomlist,       only : qa, lasto
-use fdf,            only : fdf_integer
-use parallel,       only : BlockSize, Node, Nodes, ionode
+use fdf,            only : fdf_integer, fdf_boolean, fdf_get
+use files,          only : slabel
+use parallel,       only : BlockSize, Node, Nodes, ionode, ProcessorY
 use precision,      only : dp
 use sys,            only : die
 #ifdef MPI
 use mpi_siesta
-use parallelsubs,   only : set_BlockSizeDefault
 #endif
 
 implicit none
@@ -60,9 +62,9 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
 
   real(dp), intent(in) :: qs(1:2)                             ! num. of electrons per spin
   real(dp), intent(in) :: eta(1:2)                            ! chemical potential for Kim functional
-  real(dp), intent(in), optional :: h_sparse(1:nhmax,1:nspin) ! hamiltonian matrix (sparse)
+  real(dp), intent(in) :: h_sparse(1:nhmax,1:nspin) ! hamiltonian matrix (sparse)
   real(dp), intent(in), optional :: t_sparse(1:nhmax)         ! kinetic energy matrix (sparse)
-  real(dp), intent(in), optional :: s_sparse(1:nhmax)         ! overlap matrix (sparse)
+  real(dp), intent(in) :: s_sparse(1:nhmax)         ! overlap matrix (sparse)
 
   !**** OUTPUT **********************************!
 
@@ -77,15 +79,29 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
 
 #ifdef MPI
   integer :: MPIerror
+  integer, save :: ictxt_1D, ictxt_2D, ictxt_c, desc_1D(9), desc_2D(9), desc_c(9), info
   integer, allocatable :: ind_o(:)
-  integer :: jo1, kk, ib_r, ib_c, i_node, ind1 
+  integer :: jo1, kk, ib_r, ib_c, i_node, ind1, k, l 
+  logical, save :: Use2D
+  integer, external :: numroc
 #endif
   
-  integer :: i, j, io, jo, ind, N_occ
-  real(dp) :: he, se, e_min, de
-  type(matrix), save :: H, S, D_min, T, C_min  
+  integer :: i, j, io, jo, ind, N_occ, bl, h_dim_loc(2), flavour
+  integer, dimension(2) :: dims
+  real(dp) :: he, se, e_min, de, tau
+  type(matrix), save :: H, S, D_min, T, C_min, C_old  
   logical, save :: first_call = .true.
-  logical :: found
+  logical :: found, ReadCoeffs, file_exist
+  logical :: new_S, dealloc, precon
+  logical, save :: long_out, WriteCoeffs, io_coeff, C_extrapol
+  integer, save :: istp_prev, precon_st, precon_st1, N_occ_loc
+  integer, save :: blk_c, blk_h, BlockSize_c
+  real(dp), save :: cg_tol
+  character(len=100) :: WF_COEFFS_filename
+
+  real(dp), allocatable, save :: h_dense_1D(:,:), s_dense_1D(:,:), d_dense_1D(:,:)
+  real(dp), allocatable, save :: h_dense_2D(:,:), s_dense_2D(:,:), d_dense_2D(:,:)
+  real(dp), allocatable, save :: t_dense_2D(:,:), t_dense_1D(:,:), c_dense(:,:)
   !**********************************************!
 
   if (nspin == 1) then
@@ -95,144 +111,183 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
   end if
   
 #ifdef MPI
-  if (first_call) call ms_scalapack_setup(mpi_comm_world,1,'c',BlockSize)
   m_storage ='pddbc'
   m_operation ='lap'
+  if(first_call) Use2D = fdf_boolean('OMM.Use2D',.true.)
 #else
   m_storage = 'sdden'
   m_operation = 'ref'
+  if(ionode) then
+    write(6,*) 'omm_min: Serial version is not available at the moment. Please compile with MPI'
+  endif
+  call die()
 #endif
-  
+
   if(first_call) then
-    if(ionode) print'(a)','OMM with libOMM'
-    if (.not. H%is_initialized) call m_allocate(H,h_dim,h_dim,m_storage)
-    if (.not. S%is_initialized) call m_allocate(S,h_dim,h_dim,m_storage)
-    if (.not. D_min%is_initialized) call m_allocate(D_min,h_dim,h_dim,m_storage)
-    if (.not. C_min%is_initialized) call m_allocate(C_min,N_occ,h_dim,m_storage)
+    print'(a, i5, a, i8, a, i8, a, i8)','Node =', Node,' hdim =', h_dim, ' nbasis =', nbasis, ' N_occ =', N_occ
+    io_coeff = .false.
+    long_out = fdf_boolean('OMM.LongOutput',.true.)
+    cg_tol = fdf_get('OMM.RelTol',1.0d-9)
+    precon_st1 = fdf_integer('OMM.PreconFirstStep',-1)
+    precon_st = fdf_integer('OMM.Precon',-1)
+    tau = fdf_get('OMM.TPreconScale',10.0_dp,'Ry')
+    WriteCoeffs=fdf_boolean('OMM.WriteCoeffs',.false.)
+    ReadCoeffs=fdf_boolean('OMM.ReadCoeffs',.false.)
+    if(WriteCoeffs .or. ReadCoeffs) io_coeff = .true.
+    C_extrapol = fdf_boolean('OMM.Extrapolate',.false.)
+  end if     
+
+  new_S = .false.
+  if(first_call) istp_prev = 0
+  if(first_call .or. (istp .ne. istp_prev)) then
+    new_S = .true.
+    istp_prev = istp
+  end if
+  init_C = .true.
+  if(first_call) init_C = .false.
+
+  if(istp==2 .and. new_S .and. WriteCoeffs) then
+    WF_COEFFS_filename=trim(slabel)//'.WF_LIBOMM_ST1'
+    call m_write(C_min,WF_COEFFS_filename)
+    if(ionode) print'(a)', 'File for C is written'
   end if
 
-  call m_set(H,'a',0.0_dp,0.0_dp,m_operation)
-  call m_set(S,'a',0.0_dp,0.0_dp,m_operation)
+  if(new_S .and. (istp>1) .and. C_extrapol) then
 
-#ifdef MPI
-  allocate(ind_o(1:nhmax))
-  do io = 1, nbasis
-    ind_o(listhptr(io) + 1) = listhptr(io) + 1
-    do j = 2, numh(io)
-      ind = listhptr(io) + j
-      ind_o(ind) = ind
-      jo = listh(ind)
-      if(jo .lt. listh(ind_o(ind - 1))) then
-        do kk = 1, j - 1
-          ind1 = listhptr(io) + j - kk
-          jo1 = listh(ind_o(ind1))
-          if(jo1 .gt. jo) then
-            ind_o(ind1 + 1) = ind_o(ind1)
-            ind_o(ind1) = ind
-          end if
-        end do
-      end if
-    end do
-  end do
+    if(.not. C_old%is_initialized) call m_allocate(C_old,N_occ,h_dim,&
+       label=m_storage)
 
-  ind = 1
-  do ib_c = 1, h_dim
-    do ib_r = 1, h_dim
-      he = 0.0_dp 
-      se = 0.0_dp
-      found = .false.
-      i_node = int((ib_c - 1) / BlockSize)
-      if(Node == i_node) then
-        io = mod((ib_c - 1), BlockSize) + 1
-        if((io .le. nbasis) .and. (ind .le. (listhptr(io) + numh(io))) .and. (ind .ge. (listhptr(io) + 1))) then
-          jo = listh(ind_o(ind))
-          if(jo == ib_r) then
-            found = .true.
-            he = h_sparse(ind_o(ind), 1)
-            se = s_sparse(ind_o(ind))
-            ind = ind + 1           
-          end if
-        end if
-      end if
-      call MPI_Bcast(found,1,MPI_Logical,i_node,MPI_Comm_World,MPIerror)
-      if(found) then
-        call MPI_Bcast(he,1,MPI_Double_Precision,i_node,MPI_Comm_World,MPIerror)
-        call MPI_Bcast(se,1,MPI_Double_Precision,i_node,MPI_Comm_World,MPIerror)
-        call m_set_element(H,ib_r,ib_c,he,0.0_dp)
-        call m_set_element(S,ib_r,ib_c,se,0.0_dp)
-      end if
-    end do
-  end do 
-#else
-  do io = 1, nbasis
-    do j = 1, numh(io)
-      ind = listhptr(io) + j
-      jo = listh(ind)
-      he = h_sparse(ind, 1)
-      se = s_sparse(ind)
-      call m_set_element(H,jo,io,he,0.0_dp, m_operation)
-      call m_set_element(S,jo,io,se,0.0_dp, m_operation)
-    end do
-  end do
-#endif
+    if(C_extrapol .and. (istp>2)) then  
+      call m_add(C_old,'n',C_min,-1.0_dp,2.0_dp,m_operation)
+    end if
+
+    call m_copy(C_old,C_min)
+  end if
+
+  precon = .false.
+  if(present(t_sparse)) then
+    if((istp .le. 1) .and. (precon_st1 .ge. iscf)) precon = .true.
+    if(precon_st .ge. iscf) precon = .true.
+  end if
   
-  call m_set(D_min,m_operation,0.0_dp,0.0_dp)  
-
+  if(new_S) then
+    if(ionode) print'(a)','OMM with libOMM'
+    if(ionode) print'(a, i8, a, i8)',' h_dim = ', h_dim, ' N_occ = ', N_occ 
+    print'(a, i8, a, i8)',' Node = ',  Node, ' nbasis = ', nbasis 
+  end if
   if(first_call) then
+    call blacs_get(-1,0,ictxt_1D)
+    call blacs_gridinit(ictxt_1D,'C',1,Nodes) 
+    if(Use2D) then
+      call blacs_get(ictxt_1D,0,ictxt_2D)
+      call blacs_gridinit(ictxt_2D,'C',ProcessorY,Nodes/ProcessorY)      
+      call ms_scalapack_setup(MPI_Comm_world,ProcessorY,'c',BlockSize,icontxt=ictxt_2D)
+      call blacs_gridinfo(ictxt_2D,i,j,k,l)
+      h_dim_loc(1) = numroc(h_dim,BlockSize,k,0,processorY)
+      h_dim_loc(2) = numroc(h_dim,BlockSize,l,0,Nodes/processorY)
+      print'(a, i5, a, i5, a,i5)','Node =', Node,' h_dim1 = ', h_dim_loc(1),' h_dim2 = ', h_dim_loc(2)
+      call descinit(desc_2D,h_dim,h_dim,BlockSize,BlockSize,0,0,ictxt_2D,h_dim_loc(1),info)
+      allocate(h_dense_2D(1:h_dim_loc(1),1:h_dim_loc(2)))
+      allocate(d_dense_2D(1:h_dim_loc(1),1:h_dim_loc(2)))
+      allocate(s_dense_2D(1:h_dim_loc(1),1:h_dim_loc(2)))
+      if(precon) allocate(t_dense_2D(1:h_dim_loc(1),1:h_dim_loc(2)))
+      d_dense_2D(:,:) = 0.0_dp
+    else 
+      call ms_scalapack_setup(MPI_Comm_world,1,'c',BlockSize,icontxt=ictxt_1D)
+    endif
+    call descinit(desc_1D,h_dim,h_dim,BlockSize,BlockSize,0,0,ictxt_1D,h_dim,info)
+  
+    if(info .ne. 0) print'(a)','qerror in descinit'
+     
+    allocate(h_dense_1D(1:h_dim,1:nbasis))
+    allocate(s_dense_1D(1:h_dim,1:nbasis))
+    allocate(d_dense_1D(1:h_dim,1:nbasis))  
+    if(precon) allocate(t_dense_1D(1:h_dim,1:nbasis)) 
+    d_dense_1D(:,:) = 0.0_dp
+    if (.not. C_min%is_initialized) call m_allocate(C_min,N_occ,h_dim,m_storage)
     call m_set(C_min,m_operation,0.0_dp,0.0_dp)
   end if
 
 
+   h_dense_1D(:,:) = 0.0_dp
+   if(new_S) s_dense_1D(:,:) = 0.0_dp
+   if(precon) t_dense_1D(:,:) = 0.0_dp
+   do io = 1, nbasis
+     do j = 1, numh(io)
+       ind = listhptr(io) + j
+       jo = listh(ind)
+       h_dense_1D(jo,io) = h_dense_1D(jo,io) + h_sparse(ind,1)
+       if(new_S) s_dense_1D(jo,io) = s_dense_1D(jo,io) + s_sparse(ind)
+       if(precon) t_dense_1D(jo,io) = t_dense_1D(jo,io) + t_sparse(ind)
+     end do
+   end do
+   if(Use2D) then
+      if(new_S) call pdgemr2d(h_dim,h_dim,s_dense_1D,1,1,desc_1D,s_dense_2D,1,1,desc_2D,ictxt_2D)
+      if(precon) call pdgemr2d(h_dim,h_dim,t_dense_1D,1,1,desc_1D,t_dense_2D,1,1,desc_2D,ictxt_2D)
+      call pdgemr2d(h_dim,h_dim,h_dense_1D,1,1,desc_1D,h_dense_2D,1,1,desc_2D,ictxt_2D)
+      d_dense_2D(:,:) = 0.0_dp
+   end if
+ 
+   if(first_call) then
+     if(ReadCoeffs) then
+       WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_LIBOMM'
+       call m_read(C_min,WF_COEFFS_filename,file_exist)
+       if(file_exist .and. ionode) print'(a)','File for C is read'
+       if(file_exist) init_C = .true.
+     end if
+
+     if(Use2D) then
+       call m_register_pdbc(H,h_dense_2D,desc_2D)
+       call m_register_pdbc(S,s_dense_2D,desc_2D)
+       call m_register_pdbc(D_min,d_dense_2D,desc_2D)
+       if(precon) call m_register_pdbc(T,t_dense_2D,desc_2D)
+     else
+       call m_register_pdbc(H,h_dense_1D,desc_1D)
+       call m_register_pdbc(S,s_dense_1D,desc_1D)
+       call m_register_pdbc(D_min,d_dense_1D,desc_1D)
+       if(precon) call m_register_pdbc(T,t_dense_1D,desc_1D)
+     end if
+   end if
+   
+  flavour = 0
+  if(precon) flavour = 3
+  dealloc = .false.
   if(.not. calcE) then
-    init_C = .true.
-    if(first_call) init_C = .false. 
-    call omm(h_dim,N_occ,H,S,.true.,e_min,D_min,.false.,0.0_dp,&
-      C_min,init_C,T,0.0_dp,0,nspin,1,-1.0_dp,.true.,.false.,&
+    call omm(h_dim,N_occ,H,S,new_S,e_min,D_min,.false.,0.0_dp,&
+      C_min,init_C,T,tau,flavour,nspin,1,cg_tol,long_out,dealloc,&
       m_storage,m_operation)
     if(ionode) print'(a, f13.7)','e_min = ', e_min
   else
-    call omm(h_dim,N_occ,H,S,.false.,e_min,D_min,.true.,0.0_dp,&
-      C_min,init_C,T,0.0_dp,0,nspin,1,-1.0_dp,.true.,.true.,&
+    call omm(h_dim,N_occ,H,S,new_S,e_min,D_min,.true.,0.0_dp,&
+      C_min,init_C,T,tau,flavour,nspin,1,cg_tol,long_out,dealloc,&
       m_storage,m_operation)
   end if
 
-#ifdef MPI
-  ind = 1
-  do ib_c = 1, h_dim
-    do ib_r = 1, h_dim
-      found = .false.
-      i_node = int((ib_c - 1) / BlockSize)
-      if(Node == i_node) then
-        io = mod((ib_c - 1), BlockSize) + 1
-        if((io .le. nbasis) .and. (ind .le. (listhptr(io) + numh(io))) .and. (ind .ge. (listhptr(io) + 1))) then
-          jo = listh(ind_o(ind))
-          if(jo == ib_r) found = .true.
-        end if
-      end if 
-      call MPI_Bcast(found,1,MPI_Logical,i_node,MPI_Comm_World,MPIerror)
-      if(found) then
-        call m_get_element(D_min,ib_r,ib_c,de)
-        if(Node == i_node) then
-          d_sparse(ind_o(ind), 1) = 2.0 * de 
-          if(nspin == 2) d_sparse(ind_o(ind), 2) = d_sparse(ind_o(ind), 1)
-          ind = ind + 1          
-        end if
+  if(Use2D) then
+    call pdgemr2d(h_dim,h_dim,d_dense_2D,1,1,desc_2D,d_dense_1D,1,1,desc_1D,ictxt_2D)
+  end if
+
+  do io = 1, nbasis 
+    do j = 1, numh(io)
+      ind = listhptr(io) + j
+      jo = listh(ind) 
+      d_sparse(ind,1) = d_dense_1D(jo,io)
+      if(nspin == 2) then 
+        d_sparse(ind,2) = d_sparse(ind,1)
+      else
+        d_sparse(ind,1) = 2.0_dp*d_sparse(ind,1)
       end if
     end do
   end do
-  deallocate(ind_o)
-#else
-  do io = 1, nbasis
-    do j = 1, numh(io)
-      ind = listhptr(io) + j
-      jo = listh(ind)
-      call m_get_element(D_min,jo,io,de)
-      d_sparse(ind, 1) = 2.0 * de
-      if(nspin == 2) d_sparse(ind, 2) = d_sparse(ind, 1)
-    end do
-  end do
-#endif
 
+  if(.not. CalcE) then
+    if(WriteCoeffs) then
+      WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_LIBOMM'
+      call m_write(C_min,WF_COEFFS_filename)
+      if(ionode) print'(a)','File for C is written '
+    end if
+  end if
+ 
   if(first_call) first_call = .false.
 
 end subroutine omm_min
@@ -240,10 +295,6 @@ end subroutine omm_min
 subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,numh,listhptr,listh,d_sparse,&
     eta,qs,h_sparse,s_sparse,t_sparse)
   
-  use neighbour,      only : jan, mneighb
-  use siesta_geom,    only : na_u, xa, ucell
-  use siesta_options, only : rcoor
- 
   implicit none
 
   !**** INPUT ***********************************!
@@ -263,9 +314,9 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
 
   real(dp), intent(in) :: qs(1:2)                             ! num. of electrons per spin
   real(dp), intent(in) :: eta(1:2)                            ! chemical potential for Kim functional
-  real(dp), intent(in), optional :: h_sparse(1:nhmax,1:nspin) ! hamiltonian matrix (sparse)
+  real(dp), intent(in) :: h_sparse(1:nhmax,1:nspin) ! hamiltonian matrix (sparse)
   real(dp), intent(in), optional :: t_sparse(1:nhmax)         ! kinetic energy matrix (sparse)
-  real(dp), intent(in), optional :: s_sparse(1:nhmax)         ! overlap matrix (sparse)
+  real(dp), intent(in) :: s_sparse(1:nhmax)         ! overlap matrix (sparse)
 
   !**** OUTPUT **********************************!
 
@@ -277,243 +328,208 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
   character(3) :: m_operation
 
   logical :: init_C
+  integer :: i,j,ind,io,jo, N_occ, MPIerror, flavour, is
+  logical, save :: first_call=.true.
+  type(matrix), save :: H, C_min, S, D_min, T, C_old, C_old2
+  type(matrix):: C_restart
+  real(dp) ::  e_min, tau, qout(2), qtmp(2)
+  real(dp) :: block_data(1,1)
+  integer, save :: istp_prev
+  logical :: new_S, dealloc, ReadCoeffs, file_exist
+  logical, save :: long_out, Use2D, WriteCoeffs, C_extrapol
+  real(dp), save :: cg_tol
+  character(len=100) :: WF_COEFFS_filename
+
 
 #ifdef MPI
-  integer :: MPIerror, MPI_Size
+  m_storage ='pdcsr'
+  m_operation ='lap'
+#else
+  if(ionode) then
+    write(6,*) 'omm_min: The use of DBCSR matrices requires compilation with MPI'
+  endif
+  call die()  
 #endif
-  integer, dimension(2) :: dims
-  integer, dimension(:), pointer, save :: row_blk_sizes, col_blk_sizes, row_blk_sizes1, col_blk_sizes1
-  integer, save :: nblocks_r, nblocks_c, nblocks_r1, nblocks_c1
-  integer :: ind_c, ind_r, ib_r, ib_c, ind_c2, ind1, jo1, ib, blk_c, blk_r, num_c, ia_off, ib_co, ind_co
-  integer :: i, j, io, jo, ind, k, l, N_occ, kk, i_node, BlockSize_c
-  integer :: blk_co, blk_ro, blk_f
-  integer :: index, neib0, nna, ind_r1, ind_r2, ind_a1, ind_a2, ia, ib_r1, ib_r2, indexi, iorb, norb, ja
-  integer, allocatable :: ind_o(:), ind_u(:), neib(:)
-  real(dp) :: he, se, e_min
-  real(dp), allocatable :: block_data(:,:), block_data_s(:,:)
-  real(dp),pointer :: myblock(:,:)
-  type(matrix), save :: H, S, D_min, T, C_min  
-  logical, save :: first_call = .true.
-  logical :: found
-  logical, allocatable :: found_c(:)
-  integer :: seed
-  real(dp) :: rn(2), el
-  real(dp) :: rmax,rr(3),rrmod, cgval
 
-  !**********************************************!
   if (nspin == 1) then
     N_occ = nint(0.5_dp*qs(1))
   else
     N_occ = nint(qs(1))
   end if
-   
-#ifdef MPI
-  dims(:) = 2
-  if (first_call) then 
-    call MPI_Comm_Size(MPI_Comm_World,MPI_Size,MPIerror)
-!    call MPI_Dims_Create(MPI_Size, 2, dims, MPIerror)
-    call ms_dbcsr_setup(MPI_Comm_World)
-  end if
-  m_storage ='pdcsr' 
-  m_operation ='lap'
-  BlockSize_c = BlockSize
-  if (ionode) print'(a,i5)','BlockSize_c = ', BlockSize_c
-#else
-  dims(1) = 1
-  dims(2) = 1
-  m_storage = 'sdcsr'
-  m_operation = 'ref'
-  BlockSize_c = h_dim
-  if(ionode) then
-    write(6,*) 'omm_min: Block matrices are not supported in serial'
-  endif
-  call die()
-#endif
-    
+
+ 
   if(first_call) then
-    if (ionode) print'(a)','OMM with libOMM and block matrices'
-    
-    ! Set the block sizes
-    nblocks_r = ceiling(real(h_dim,dp)/dims(1))
-    nblocks_c = ceiling(real(h_dim,dp)/dims(2))
-    nblocks_r1 = ceiling(real(N_occ,dp)/dims(1))
-    nblocks_c1 = ceiling(real(N_occ,dp)/dims(2))
-    allocate(row_blk_sizes(1:nblocks_r))
-    allocate(col_blk_sizes(1:nblocks_c))
-    row_blk_sizes(:) = dims(1)
-    col_blk_sizes(:) = dims(2)
-    allocate(row_blk_sizes1(1:nblocks_r1))
-    allocate(col_blk_sizes1(1:nblocks_c1))
-    row_blk_sizes1(:) = dims(1)
-    col_blk_sizes1(:) = dims(2)
+    print'(a, i5, a, i8, a, i8, a, i8)','Node =', Node,' hdim =', h_dim, ' nbasis =', nbasis, ' N_occ =', N_occ
+    Use2D = fdf_boolean('OMM.Use2D',.true.)
+    C_extrapol = fdf_boolean('OMM.Extrapolate',.false.)
+    long_out = fdf_boolean('OMM.LongOutput',.true.)
+    cg_tol = fdf_get('OMM.RelTol',1.0d-9)
+    WriteCoeffs=fdf_boolean('OMM.WriteCoeffs',.false.)
+    ReadCoeffs=fdf_boolean('OMM.ReadCoeffs',.false.)
   end if
-      
-  allocate(ind_o(1:nhmax))
-  allocate(ind_u(1:nbasis))   
-  do io = 1, nbasis 
-    ind_u(io) = listhptr(io) + 1
-    ind_o(listhptr(io) + 1) = listhptr(io) + 1
-    do j = 2, numh(io)
-      ind = listhptr(io) + j
-      ind_o(ind) = ind
-      jo = listh(ind)
-      if(jo .lt. listh(ind_o(ind - 1))) then
-        do kk = 1, j - 1
-          ind1 = listhptr(io) + j - kk
-          jo1 = listh(ind_o(ind1))
-          if(jo1 .gt. jo) then
-            ind_o(ind1 + 1) = ind_o(ind1)
-            ind_o(ind1) = ind
-          end if
-        end do
+
+  new_S = .false.
+  if(first_call) istp_prev = 0
+  if(first_call .or. (istp .ne. istp_prev)) then
+    new_S = .true. 
+    istp_prev=istp
+  end if
+
+  if(istp==2 .and. new_S .and. WriteCoeffs) then
+    WF_COEFFS_filename=trim(slabel)//'.WF_BLOMM_ST1'
+    call m_write(C_min,WF_COEFFS_filename)
+    if(ionode) print'(a)', 'File for C is written'
+  end if
+
+  if(new_S .and. istp>1) then
+
+    if(.not. C_old%is_initialized) call m_allocate(C_old,N_occ,h_dim,&
+       BlockSize,BlockSize,label=m_storage,use2D=Use2D)
+
+    if(C_extrapol .and. istp>2) then
+      if(.not. C_old2%is_initialized) call m_allocate(C_old2,N_occ,&
+        h_dim,BlockSize,BlockSize,label=m_storage,use2D=Use2D)
+      call m_copy(C_old2,C_old)
+    end if
+    call m_copy(C_old,C_min)
+    if(C_min%is_initialized) call m_deallocate(C_min)
+    call init_c_matrix(C_min, N_occ, h_dim, BlockSize, Use2D)
+
+    if(C_extrapol .and. (istp>2)) then 
+      call m_add(C_old,'n',C_old2,2.0_dp,-1.0_dp)
+      call m_copy(C_min,C_old2,keep_sparsity=.true.)
+    else
+      call m_copy(C_min,C_old,keep_sparsity=.true.)
+    end if  
+  end if
+
+  if(first_call) then
+    
+    if(ionode) print'(a)','sparse OMM with libOMM'
+ 
+    call ms_dbcsr_setup(MPI_Comm_World) 
+    
+    if (.not. H%is_initialized) call m_allocate(H,h_dim,h_dim,BlockSize,BlockSize,&
+       label=m_storage,use2D=Use2D)
+    if (.not. S%is_initialized) call m_allocate(S,h_dim,h_dim,BlockSize,BlockSize,&
+        label=m_storage,use2D=Use2D)
+    if (.not. D_min%is_initialized) &
+      call m_allocate(D_min,h_dim,h_dim,BlockSize,BlockSize,label=m_storage,use2D=Use2D)
+      call init_c_matrix(C_min, N_occ, h_dim, BlockSize, Use2D)
+    if(ReadCoeffs) then
+      WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_BLOMM'
+      call m_read(C_min,WF_COEFFS_filename,file_exist=file_exist, keep_sparsity=.true.)
+      if(file_exist) then
+        if(ionode) print'(a)','File for C is read'
       end if
+    end if
+  end if
+
+  if(new_S) then    
+    call m_register_pdcsr(H, nbasis,BlockSize,listhptr,listh,numh,h_sparse(:,1))
+    call m_register_pdcsr(S, nbasis,BlockSize,listhptr,listh,numh,s_sparse)
+    d_sparse(:,1) = 0.0_dp
+    call m_register_pdcsr(D_min, nbasis,BlockSize,listhptr,listh,numh,d_sparse(:,1))    
+   if(ionode) print'(a)','CSR matrix created'
+    call m_convert_csrdbcsr(S,threshold=1.0e-14_dp, bl_size=BlockSize)
+  end if
+  call m_convert_csrdbcsr(H,threshold=1.0e-14_dp, bl_size=BlockSize)
+
+
+  first_call  = .false.
+  init_C = .true.
+  dealloc = .false.
+  
+  flavour = 0
+  tau = 0.0_dp
+  if(.not. calcE) then  
+    call omm(h_dim,N_occ,H,S,new_S,e_min,D_min,.false.,0.0_dp,&
+      C_min,init_C,T,tau,flavour,nspin,1,cg_tol,long_out,dealloc,&
+      m_storage,m_operation)
+    if(ionode) print'(a, f13.7)','e_min = ', e_min
+  else
+    call m_register_pdcsr(D_min,d_sparse(:,1))
+    call omm(h_dim,N_occ,H,S,new_S,e_min,D_min,.true.,0.0_dp,&
+      C_min,init_C,T,tau,flavour,nspin,1,cg_tol,long_out,dealloc,&
+      m_storage,m_operation)
+  end if
+  
+  call m_convert_dbcsrcsr(D_min, bl_size=BlockSize)
+  
+  qout(1:2) = 0.0_dp
+  do io = 1, nbasis
+    do j = 1, numh(io)
+      ind = listhptr(io) + j
+      jo = listh(ind)
+      if(nspin==2) then
+        d_sparse(ind,2) = d_sparse(ind,1)
+      else
+        d_sparse(ind,1) = 2.0_dp * d_sparse(ind,1)
+      end if
+      do is = 1, nspin
+        qout(is) = qout(is) + d_sparse(ind,is) * s_sparse(ind)
+      end do
     end do
   end do
-   
-  if(first_call) then
-    if (.not. H%is_initialized) call m_allocate(H,row_blk_sizes,col_blk_sizes,m_storage)
-    if (.not. S%is_initialized) call m_allocate(S,row_blk_sizes,col_blk_sizes,m_storage)
-    if (.not. D_min%is_initialized) call m_allocate(D_min,row_blk_sizes,col_blk_sizes,m_storage)
-    if (.not. C_min%is_initialized) call m_allocate(C_min,row_blk_sizes1,col_blk_sizes,m_storage)
+
+  if(.not. calcE) then
+    qtmp(1:2) = qout(1:2)
+    call MPI_AllReduce(qtmp, qout, nspin, MPI_double_precision, MPI_sum, MPI_Comm_World, MPIerror)
+    do is = 1, nspin
+      qout(is) = qs(is)/qout(is)
+    end do
+
+    do io = 1, nbasis
+      do j = 1, numh(io)
+        ind = listhptr(io) + j
+        jo = listh(ind)
+        do is = 1, nspin
+          d_sparse(ind,is) = qout(is)*d_sparse(ind,is)
+        end do
+      end do
+    end do
+
+    if(WriteCoeffs) then
+      WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_BLOMM'
+      call m_write(C_min,WF_COEFFS_filename)
+      if(ionode) print'(a)', 'File for C is written'
+    end if
+
   end if
 
-  if(ionode) print'(a)',    'Allocation'
-  
-  ib_c = 1
-  ib_r = 1 
-  blk_co = col_blk_sizes(ib_c)
-  blk_ro = row_blk_sizes(ib_r)
-  blk_f = col_blk_sizes(ib_c)
-  allocate(block_data(1:blk_ro,1:blk_co))
-  allocate(block_data_s(1:blk_ro,1:blk_co))
-  allocate(found_c(1:blk_f))
-  num_c = 0
-  do ib_c = 1, nblocks_c
-    ind_c2 = col_blk_sizes(ib_c)
-    if(ib_c == nblocks_c) ind_c2 = h_dim - num_c
-    do ib_r = 1, nblocks_r  
-      blk_c = col_blk_sizes(ib_c)
-      blk_r = row_blk_sizes(ib_r)
-      if(blk_f .ne. blk_c) then
-        deallocate(found_c) 
-        allocate(found_c(1:blk_c))
-        blk_f = blk_c
-      end if
-      found_c(:) = .false.
-      found = .false.
-      do ind_c = 1, ind_c2
-        i_node = int((num_c + ind_c - 1) / BlockSize_c)
-        if(Node == i_node) then
-          io = mod((num_c + ind_c - 1), BlockSize_c) + 1
-          ind = ind_u(io)
-          if(ind .le. (listhptr(io) + numh(io))) then
-            jo = listh(ind_o(ind))
-            call get_index(jo, row_blk_sizes, nblocks_r, ib, ind_r)
-          else
-            ib = 0
-          end if
-          if(ib == ib_r) then
-            found_c(ind_c) = .true.
-            found = .true.
-          end if
-        end if
-      end do
-#ifdef MPI
-      do ind_c = 1, ind_c2
-        i_node = int((num_c + ind_c - 1) / BlockSize_c)
-        call MPI_Bcast(found_c(ind_c),1,MPI_Logical,i_node,MPI_Comm_World,MPIerror)
-        if(found_c(ind_c)) then
-          found = .true.
-        end if
-      end do
-#endif
-      if(found) then
-        if((blk_ro .ne. blk_r) .or. (blk_co .ne. blk_c)) then
-          deallocate(block_data)
-          deallocate(block_data_s)
-          allocate(block_data(1:blk_r,1:blk_c))
-          allocate(block_data_s(1:blk_r,1:blk_c))
-          blk_co = blk_c
-          blk_ro = blk_r
-        end if
-        block_data(:,:) = 0.0_dp
-        block_data_s(:,:) = 0.0_dp
-        do ind_c = 1, ind_c2
-          i_node = int((num_c + ind_c - 1) / BlockSize_c)
-          if(Node == i_node) then
-            io = mod((num_c + ind_c - 1), BlockSize_c) + 1
-            ind = ind_u(io)
-            jo = listh(ind_o(ind))
-            call get_index(jo, row_blk_sizes, nblocks_r, ib, ind_r) 
-            do while(ib == ib_r) 
-              he = h_sparse(ind_o(ind), 1)
-              se = s_sparse(ind_o(ind))
-         !   print'(a,i5,a,i5,a,i5,a,i5,a,i5,a,f15.10)','H i_node = ',i_node,' ib_c=',ib_c,&
-         !      ' ib_r=',ib_r,' ind_c=',ind_c,' ind_r=',ind_r,' h=',he
-              block_data(ind_r,ind_c) = he
-              block_data_s(ind_r,ind_c) = se
-              ind_u(io) = ind + 1
-              ind = ind_u(io)
-              if(ind .le. (listhptr(io) + numh(io))) then
-                jo = listh(ind_o(ind))
-                call get_index(jo, row_blk_sizes, nblocks_r, ib, ind_r)
-              else
-                ib = 0
-              end if 
-            end do
-          end if
-        end do
-#ifdef MPI      
-        do ind_c = 1, ind_c2
-          i_node = int((num_c + ind_c - 1) / BlockSize_c) 
-          call MPI_Bcast(block_data(:,ind_c),blk_r,MPI_Double_Precision,i_node,MPI_Comm_World,MPIerror)
-          call MPI_Bcast(block_data_s(:,ind_c),blk_r,MPI_Double_Precision,i_node,MPI_Comm_World,MPIerror)      
-        end do
-#endif      
-        call m_set_element(H,ib_r,ib_c,block_data,0.0_dp)     
-        call m_set_element(S,ib_r,ib_c,block_data_s,0.0_dp)
-      end if
-    end do
-    num_c = num_c + ind_c2
-  end do     
-  deallocate(block_data_s) 
-  if(ionode) print'(a)',    'H and S set'
-  
-  if(first_call) then
-!    seed = omm_rand_seed()
-!    do i = 1, nblocks_c
-!      do j = 1, nblocks_r1
-!        blk_c = col_blk_sizes(i)
-!        blk_r = row_blk_sizes1(j)
-!        if((blk_ro .ne. blk_r) .or. (blk_co .ne. blk_c)) then
-!          deallocate(block_data)
-!          allocate(block_data(1:blk_r,1:blk_c))
-!          blk_co = blk_c
-!          blk_ro = blk_r
-!        end if        
-!        block_data(:,:) = 0.0_dp
-!        do io = 1, dims(2) 
-!          do jo = 1, dims(1)
-!            el = 0.0_dp
-!            ind = (i-1) * dims(2) + io
-!            ind1 = (j-1) * dims(1) + jo
-!            if((ind .le. h_dim) .and. (ind1 .le. N_occ)) then
-!              do k = 1, 2
-!                call omm_bsd_lcg(seed, rn(k))
-!              end do
-!              el = sign(0.5_dp * rn(1), rn(2) - 0.5_dp)
-!            end if
-!            block_data(jo, io) = el 
-!          end do
-!        end do
-!        call m_set_element(C_min,j,i,block_data(:,:),0.0_dp)
-!      end do
-!    end do
-!    call m_scale(C_min,1.0d-2/sqrt(real(h_dim,dp)),m_operation)
+  contains
+   
+  subroutine init_c_matrix(C_min, N_occ, h_dim, BlockSize_c, Use2D)
 
+    use neighbour,      only : jan, mneighb
+    use siesta_geom,    only : na_u, xa, ucell
+    use siesta_options, only : rcoor
+    use alloc,          only : re_alloc
+  
+    type(matrix), intent(inout) :: C_min    
+    integer, intent(in) :: N_occ, h_dim
+    integer, intent(in) :: BlockSize_c
+    logical, intent(in) :: Use2D
+
+    integer :: i, j, k, io, jo, nna, MPIerror    
+    integer :: seed, iorb, norb, ja, neib0, index, indexi
+    integer :: iwf, iwf1, iwf2, ia
+    integer :: nblks, iblks
+    integer :: nrows, nze_c
+    real(dp), allocatable :: c_loc(:)
+    integer, dimension(:), pointer:: id_col_p
+    integer, allocatable :: id_col(:), id_row(:), nze_row(:)
+    integer, allocatable :: neib(:), iatom(:)
+    real(dp) :: rn(2), coef, rmax, rr(3), rrmod, cgval
+    logical :: found
+    character(5) :: m_storage
+
+    m_storage ='pdcsr'
+
+    rcoor = fdf_get('OMM.RcLWF',9.5_dp,'Bohr')
     rmax = 0.0_dp
     do i = -1,1
-      do j = -1,1
+      do j = -1,1        
         do k = -1,1
           rr(1) = i*ucell(1,1) + j*ucell(1,2) + k*ucell(1,3)
           rr(2) = i*ucell(2,1) + j*ucell(2,2) + k*ucell(2,3)
@@ -524,348 +540,130 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
       enddo
     enddo
     if(ionode) print'(a,f13.7)',    'rmax = ', rmax
-    
+
     call mneighb(ucell,rcoor,na_u,xa,0,0,nna)
     if(ionode) print'(a,f13.7)',    'rcoor = ', rcoor
+
+   
+    coef = 1.0d-2/sqrt(real(h_dim,dp))
     
+    allocate(iatom(1:N_occ))
+    iwf = 0
+    do ia = 1, na_u
+      call get_number_of_lwfs_on_atom(ia, indexi)
+      do i=1, indexi
+         iwf = iwf + 1
+         iatom(iwf) = ia
+      end do
+    end do
+
     seed = omm_rand_seed()
 
-    ia_off = 0
-    do ia =  1, na_u !! loop_ia
-      if(2.0 * rcoor .lt. rmax) then
-        call mneighb(ucell,rcoor,na_u,xa,ia,0,nna) ! 
-      else
-        nna = na_u
-        do j = 1, na_u
-          jan(j) = j
-        end do
-      end if
-      allocate(neib(1:nna))
-      neib(:) = 0
-      index = 0
-      do i = 1, nna
-        found = .false.
-        do j = 1, index
-          if(neib(j) == jan(i)) found = .true.
-        end do
-        if(.not. found) then
-          index = index + 1
-          neib(index) = jan(j)
-        end if
-      end do
-      nna = index
-      do i = 2, nna
-        neib0 = neib(i)
-        j = i - 1
-        do while (neib0 .lt. neib(j)) 
-            neib(j + 1) = neib(j)
-            neib(j) = neib0
-            j = j - 1        
-        end do
-      end do
-           
-!      if(ionode) print'(a,i5,a,i5)',  'ia = ', ia,  '    nna = ', nna 
-!      if(ionode) then 
-!        do i = 1, nna
-!          print'(a,i5,a,i5,a,i5)',  'ia = ', ia,  '    i_neib = ', i, ' neib = ', neib(i)
-!        end do
-!      end if 
+    io = 0
+    jo = 0
+    nze_c = 0
 
-      call get_number_of_lwfs_on_atom(ia, indexi)  ! gets indexi, nelectr       
-!      if(ionode) print'(a,i5,a,i5)',  'ia = ', ia,  '    indexi = ', indexi
-       
-      ind_c = 0
-      ib_r1 = 0
-      ib_r2 = -1
-      if(indexi .gt. 0) then
-        call get_index(ia_off+1, row_blk_sizes1, nblocks_r1, ib_r1, ind_a1)
-        call get_index(ia_off+indexi, row_blk_sizes1, nblocks_r1, ib_r2, ind_a2)
-        ia_off = ia_off + indexi
-      end if
-
- !    if(ionode) print'(a,i5,a,i5,a,i5,a,i5,a,i5)','ia =', ia,' ib_r1= ',ib_r1,' ib_r2= ',ib_r2 ,&
- !          ' ind_a1= ',ind_a1,' ind_a2= ',ind_a2 
-      
-      do ib_r = ib_r1, ib_r2
-        ind_r1 = 1
-        blk_r = row_blk_sizes1(ib_r)
-        ind_r2 = blk_r
-        if(ib_r == ib_r1) ind_r1 = ind_a1
-        if(ib_r == ib_r2) ind_r2 = ind_a2
-        ib_co = 0
-        ind_co = blk_co
-        do  j = 1, nna   !!loop_neighbor_atoms
-          ja = neib(j)
-          norb = lasto(ja) - lasto(ja-1)
-          call get_index(lasto(ja-1)+1, col_blk_sizes, nblocks_c, ib_c, ind_c)
-          blk_c = col_blk_sizes(ib_c)
-
- !         if(ionode) print'(a,i5,a,i5,a,i5,a,i5)','ia =', ia,' ib_r= ',ib_r,' ib_c= ',ib_c ,&
- !          ' ind_c= ',ind_c
-          if(ib_c .gt. ib_co) then
-            if(ind_co .lt. blk_co) then
-              call m_set_element(C_min,ib_r,ib_co,block_data(:,:),0.0_dp)
-!             do io = 1, blk_r
-!                do jo = 1, blk_co
-!                  if(ionode) print'(a,i5,a,i5,a,i5,a,i5,a,f15.10)','Block_set0 ib_r= ',ib_r,' ib_c= ',ib_c ,&
-!                     ' ind_r= ',io, ' ind_c=', jo, ' bl = ', block_data(io,jo)
-!                 end do
-!              end do
-            end if
-            if((blk_ro .ne. blk_r) .or. (blk_co .ne. blk_c)) then
-              deallocate(block_data)
-              allocate(block_data(1:blk_r,1:blk_c))
-              blk_co = blk_c
-              blk_ro = blk_r
-            end if            
-            block_data(:,:) = 0.0_dp
-            if(ind_r1 .gt. 1) then
-              call get_block(C_min,ib_r,ib_c,blk_r,blk_c,block_data)
-!              do io = 1, blk_r
-!                 do jo = 1, blk_c
-!                   if(ionode) print'(a,i5,a,i5,a,i5,a,i5,a,f15.10)','Block_read ib_r= ',ib_r,' ib_c= ',ib_c ,&
-!                  ' ind_r= ',io, ' ind_c=', jo, ' bl = ', block_data(io,jo)
-!                 end do
-!              end do 
-            end if
-          end if 
-          do iorb = 1, norb  !!loop_orbs_on_neighbor            
-            do ind_r = ind_r1, ind_r2
-              do k = 1, 2
-                call omm_bsd_lcg(seed, rn(k))
-              end do
-              cgval = sign(0.5_dp * rn(1), rn(2) - 0.5_dp)
-              block_data(ind_r,ind_c) = cgval
-            end do
-            if(ind_c == blk_c) then
-              call m_set_element(C_min,ib_r,ib_c,block_data(:,:),0.0_dp)
- !             do io = 1, blk_r
- !                do jo = 1, blk_c
- !                  if(ionode) print'(a,i5,a,i5,a,i5,a,i5,a,f15.10)','Block_set ib_r= ',ib_r,' ib_c= ',ib_c ,&
- !                 ' ind_r= ',io, ' ind_c=', jo, ' bl = ', block_data(io,jo)
- !                end do
- !             end do
-              ind_c = ind_c - blk_c
-              ib_c = ib_c + 1
-              blk_c = col_blk_sizes(ib_c)
-              if((ib_c .le. nblocks_c) .and. (iorb .lt. norb)) then
-                if((blk_ro .ne. blk_r) .or. (blk_co .ne. blk_c)) then
-                  deallocate(block_data)
-                  allocate(block_data(1:blk_r,1:blk_c))
-                  blk_co = blk_c
-                  blk_ro = blk_r
-                end if
-                block_data(:,:) = 0.0_dp
-                if(ind_r1 .gt. 1) then
-                  call get_block(C_min,ib_r,ib_c,blk_r,blk_c,block_data)
- !             do io = 1, blk_r
- !                do jo = 1, blk_c
- !                  if(ionode) print'(a,i5,a,i5,a,i5,a,i5,a,f15.10)','Block_read2 ib_r= ',ib_r,' ib_c= ',ib_c ,&
- !                 ' ind_r= ',io, ' ind_c=', jo, ' bl = ', block_data(io,jo)
- !                end do
- !             end do
-                end if
-              end if
-            end if
-            ind_co  = ind_c
-            ind_c = ind_c + 1
-            ib_co = ib_c
-          end do
-        end do
-        if((ib_co .gt. 0) .and. (ind_co .lt. blk_co)) then
-          call m_set_element(C_min,ib_r,ib_co,block_data(:,:),0.0_dp)
-!              do io = 1, blk_r
-!                 do jo = 1, blk_co
-!                   if(ionode) print'(a,i5,a,i5,a,i5,a,i5,a,f15.10)','Block_set2 ib_r= ',ib_r,' ib_c= ',ib_c ,&
-!                  ' ind_r= ',io, ' ind_c=', jo, ' bl = ', block_data(io,jo)
-!                 end do
-!              end do
-        end if
-      end do
-      deallocate(neib)
-    end do
-    call m_scale(C_min,1.0d-2/sqrt(real(h_dim,dp)),m_operation)
-  end if
-  
-  init_C = .true.
-  if(.not. calcE) then
-    call omm(h_dim,N_occ,H,S,.true.,e_min,D_min,.false.,0.0_dp,&
-      C_min,init_C,T,0.0_dp,0,nspin,1,-1.0_dp,.true.,.false.,&
-      m_storage,m_operation,row_blk_sizes,col_blk_sizes,&
-      row_blk_sizes1,col_blk_sizes1)
-    if(ionode) print'(a, f13.7)','e_min = ', e_min
-  else
-    call omm(h_dim,N_occ,H,S,.false.,e_min,D_min,.true.,0.0_dp,&
-      C_min,init_C,T,0.0_dp,0,nspin,1,-1.0_dp,.true.,.true.,&
-      m_storage,m_operation,row_blk_sizes,col_blk_sizes,& 
-      row_blk_sizes1,col_blk_sizes1)
-  end if
-          
-  do io = 1, nbasis
-    ind_u(io) = listhptr(io) + 1
-  end do
-  num_c = 0
-  do ib_c = 1, nblocks_c
-    ind_c2 = col_blk_sizes(ib_c)
-    if(ib_c == nblocks_c) ind_c2 = h_dim - num_c
-    do ib_r = 1, nblocks_r
-      blk_c = col_blk_sizes(ib_c)
-      blk_r = row_blk_sizes(ib_r)
-      if(blk_f .ne. blk_c) then
-        deallocate(found_c)
-        allocate(found_c(1:blk_c))
-        blk_f = blk_c
-      end if
-      if((blk_ro .ne. blk_r) .or. (blk_co .ne. blk_c)) then
-        deallocate(block_data)
-        allocate(block_data(1:blk_r,1:blk_c))
-        blk_co = blk_c
-        blk_ro = blk_r
-      end if
-      block_data(:,:) = 0.0_dp
-      found_c(:) = .false.
-      found = .false.
-      do ind_c = 1, ind_c2
-        i_node = int((num_c + ind_c - 1) / BlockSize_c)
-        if(Node == i_node) then
-          io = mod((num_c + ind_c - 1), BlockSize_c) + 1
-          ind = ind_u(io)
-          if(ind .le. (listhptr(io) + numh(io))) then
-            jo = listh(ind_o(ind))
-            call get_index(jo, row_blk_sizes, nblocks_r, ib, ind_r)
+    nblks = N_occ/(Nodes * BlockSize_c)
+    iwf1 = nblks * BlockSize_c * Nodes + BlockSize_c * Node + 1
+    if(iwf1 .gt. N_occ) then
+      nrows = nblks * BlockSize_c
+    else    
+      iwf2 = nblks * BlockSize_c * Nodes + BlockSize_c * (Node + 1)
+      if(iwf2 .gt. N_occ) iwf2 = N_occ  
+      nrows = nblks * BlockSize_c + iwf2 - iwf1 + 1
+      nblks = nblks  + 1
+    end if
+   ! nrows = iwf2 - iwf1 + 1
+    allocate(id_row(1:nrows))
+    allocate(nze_row(1:nrows))
+    nze_row(:) = 0
+    id_row(:) = 0    
+    allocate(id_col_p(1:1))
+    do iblks = 0, nblks
+      iwf1 = iblks * BlockSize_c * Nodes + BlockSize_c * Node + 1
+      iwf2 = iblks * BlockSize_c * Nodes + BlockSize_c * (Node + 1)
+      if(iwf2 .gt. N_occ) iwf2 = N_occ
+      do iwf = iwf1, iwf2
+        if((iwf==iwf1) .or. (iatom(iwf) .ne. iatom(iwf-1))) then
+          if(allocated(neib)) deallocate(neib)
+          if(2.0 * rcoor .lt. rmax) then
+            call mneighb(ucell,rcoor,na_u,xa,iatom(iwf),0,nna) !
           else
-            ib = 0
-          end if
-          if(ib == ib_r) then
-            found_c(ind_c) = .true.
-            found = .true.
-          end if
-        end if
-      end do
-#ifdef MPI
-      do ind_c = 1, ind_c2
-        i_node = int((num_c + ind_c - 1) / BlockSize_c)
-        call MPI_Bcast(found_c(ind_c),1,MPI_Logical,i_node,MPI_Comm_World,MPIerror)
-        if(found_c(ind_c)) then
-          found = .true.
-        end if
-      end do
-#endif
-      
-      if(found) then
-        if((blk_ro .ne. blk_r) .or. (blk_co .ne. blk_c)) then
-          deallocate(block_data)
-          allocate(block_data(1:blk_r,1:blk_c))
-          blk_co = blk_c
-          blk_ro = blk_r
-        end if
-        block_data(:,:) = 0.0_dp
-        call get_block(D_min,ib_r,ib_c,blk_r,blk_c,block_data)
-      
-        do ind_c = 1, ind_c2
-          i_node = int((num_c + ind_c - 1) / BlockSize_c)
-          if(Node == i_node) then
-            io = mod((num_c + ind_c - 1), BlockSize_c) + 1
-            ind = ind_u(io)
-            jo = listh(ind_o(ind))
-            call get_index(jo, row_blk_sizes, nblocks_r, ib, ind_r)
-            do while(ib == ib_r)
-              d_sparse(ind_o(ind), 1) = 2.0_dp * block_data(ind_r, ind_c)
-!            print'(a,i5,a,i5,a,i5,a,i5,a,f15.10)','Output  ib_c=',ib_c,&
-!               ' ib_r=',ib_r,' ind_c=',ind_c,' ind_r=',ind_r,' h=',block_data(ind_r,ind_c)
-              if(nspin == 2) d_sparse(ind_o(ind), 2) = d_sparse(ind_o(ind), 1)
-              ind_u(io) = ind + 1
-              ind = ind_u(io)
-              if(ind .le. (listhptr(io) + numh(io))) then
-                jo = listh(ind_o(ind))
-                call get_index(jo, row_blk_sizes, nblocks_r, ib, ind_r)
-              else
-                ib = 0
-              end if
+            nna = na_u
+            do j = 1, na_u
+              jan(j) = j
             end do
           end if
-        end do
-      end if
+          allocate(neib(1:nna))
+          neib(:) = 0
+          index = 0
+          do i = 1, nna
+            found = .false.
+            do j = 1, index
+              if(neib(j) == jan(i)) found = .true.
+            end do
+            if(.not. found) then
+              index = index + 1
+              neib(index) = jan(j)
+            end if
+          end do
+          nna = index
+          do i = 2, nna
+            neib0 = neib(i)
+            j = i - 1
+            do while (neib0 .lt. neib(j))
+              neib(j + 1) = neib(j)
+              neib(j) = neib0
+              j = j - 1
+            end do
+          end do
+        end if
+
+        io = io + 1
+        id_row(io) = jo
+        do j = 1, nna
+          ja = neib(j)
+          norb = lasto(ja) - lasto(ja-1) 
+          nze_c = nze_c + norb
+          nze_row(io) = nze_row(io) + norb
+          if(nze_c .gt. size(id_col_p)) call re_alloc(id_col_p, 1, nze_c, 'id_col_p', 'omm_min_block')
+          do iorb = 1, norb
+            jo = jo + 1
+            id_col_p(jo) = lasto(ja-1)+iorb
+          end do
+        end do      
+      end do
+    end do 
+    if(allocated(neib)) deallocate(neib) 
+    allocate(c_loc(1:nze_c))
+    allocate(id_col(1:nze_c))
+    do i=1, nze_c
+      do k = 1, 2
+        call omm_bsd_lcg(seed, rn(k))
+      end do
+      cgval = sign(0.5_dp * rn(1), rn(2) - 0.5_dp)
+      c_loc(i) = cgval * coef
+      id_col(i) = id_col_p(i)
     end do
-    num_c = num_c + ind_c2
-  end do
+    if(allocated(iatom)) deallocate(iatom)
+    nullify(id_col_p)
 
-  if(first_call) first_call = .false.
-   
-!  call m_deallocate(D_min)
-!  call m_deallocate(S)
-!  call m_deallocate(H)
-!  call m_deallocate(C_min)
-!  call ms_dbcsr_finalize()
+    if (.not. C_min%is_initialized) call m_allocate(C_min,N_occ,h_dim,&
+       BlockSize_c,BlockSize_c,label=m_storage,use2D=Use2D)
 
-  deallocate(ind_o)
-  deallocate(ind_u)
-  deallocate(found_c)
-  deallocate(block_data)
+    call m_register_pdcsr(C_min, nrows, BlockSize_c,&
+       id_row,id_col,nze_row,c_loc)
+
+    if(ionode) print'(a)','C_min CSR matrix created'
+
+    call m_convert_csrdbcsr(C_min, threshold=1.0d-14, bl_size=BlockSize_c) 
+     
+    if(ionode) print'(a)','C_min CSR matrix converted to DBCSR'
+
+  end subroutine init_c_matrix
 
 end subroutine omm_min_block
 
-subroutine get_index(num, blk_sizes, num_blks, ib, ind)
-  implicit none
-
-  integer, intent(in)     :: num
-  integer, intent(inout)  :: blk_sizes(:) 
-  integer, intent(in)     :: num_blks
-  integer, intent(out)    :: ib, ind
-
-  ib = 0
-  ind = num
-
-  do while((ib .lt. num_blks) .and. (ind .gt. 0))
-    ib = ib + 1
-    ind = ind - blk_sizes(ib)
-  end do
-  if(ind .le. 0) then
-    ind = ind + blk_sizes(ib)
-  else    
-    if(ionode) then
-      write(6,*) 'omm_min: Wrong matrix index'
-    endif
-    call die()
-  end if
-end subroutine get_index
-
-
-subroutine get_block(mat, ib_r, ib_c, blk_r, blk_c, block_data)
-  implicit none
-
-  type(matrix), intent(inout)   :: mat
-  integer, intent(in)        :: ib_r, ib_c
-  integer, intent(in)        :: blk_r, blk_c
-  real(dp), intent(inout)    :: block_data(:,:)
-
-  logical :: found
-  integer :: i_node, ind_r, ind_c
-  real(dp),pointer :: myblock(:,:)
-
-#ifdef MPI
-  integer :: MPIerror, i_mpi
-#endif
-
-  call m_get_element(mat,ib_r,ib_c,myblock,found)
-  i_node = 0
-  if(found) then
-    i_node = Node
-    do ind_c = 1, blk_c
-      do ind_r = 1, blk_r
-        block_data(ind_r,ind_c) = myblock(ind_r,ind_c)
-      end do
-    end do
-  end if
-
-#ifdef MPI
-  call MPI_Allreduce(i_node,i_mpi,1,MPI_Integer,MPI_Sum,MPI_Comm_World,MPIerror)
-  i_node = i_mpi
-  do ind_c = 1, blk_c
-    call MPI_Bcast(block_data(:,ind_c),blk_r,MPI_Double_Precision,i_node,MPI_Comm_World,MPIerror)
-  end do
-#endif
-end subroutine get_block
 
 subroutine get_number_of_lwfs_on_atom(ia, indexi)
   implicit none
@@ -879,6 +677,7 @@ subroutine get_number_of_lwfs_on_atom(ia, indexi)
  
   tiny = 1.d-10
   nelectr = qa(ia) + tiny 
+ 
   if (abs(nelectr - qa(ia) + tiny) .gt. 1e-3) then
     if(ionode) then
       write(6,*) 'omm_min: Wrong atomic charge for atom ',ia
