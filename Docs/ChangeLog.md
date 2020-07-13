@@ -4,6 +4,9 @@
 
 (latest)
 
+* Handle 'bye' calls from external function(s).
+* Update ncps copy of interpolation.f90
+* F2003 compliance changes
 * Put extension (i.e. .psf or .psml) explicitly in .pseudos files in Tests
 * Force setting of makefile variables to "1" for activation (i.e.  WITH_MPI=1)
 * Add installation scripts for psml and gridxc libraries (with -rpath, instead
