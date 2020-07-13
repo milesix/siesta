@@ -30,6 +30,10 @@ Added PSML support, including:
 
 ### Changes
 
+* Minor changes for f2003 conformance
+
+* Some fixes for library operation (avoid stopping when 'onlyS' is set; re-opening of unit 6)
+
 * Cleanup of vibra/fcbuild code: use dynamic arrays, and LAPACK solver by default
 
 * Extended Hirshfeld and Voronoi partition analysis to spin. Update of output, including new CML blocks.
