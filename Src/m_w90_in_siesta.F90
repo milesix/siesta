@@ -2226,7 +2226,7 @@ module m_w90_in_siesta
                              !   function). 
                              !   Units always in reciprocal Angstrom. 
                              !   Default is zovera = 1.0.
-    integer  :: index_proj_from_block 
+    integer  :: number_of_trial_orbs
                              ! Number of projectors whose information will not 
                              !   be read from the WannierManifolds block
                              !   but from the WannierProjectors block
@@ -2247,6 +2247,8 @@ module m_w90_in_siesta
 
     real(dp), parameter :: eps4  = 1.0e-4_dp
     real(dp), parameter :: eps6  = 1.0e-6_dp
+
+    integer, allocatable :: trial_orbs_index(:)
 
 
 !   Sets the default for the x-axis
@@ -2276,17 +2278,20 @@ module m_w90_in_siesta
     number_projections = manifold_bands_w90_in(i_manifold)%numbands_w90_in
 
 !   Allocate the derived variable where all the data for the 
-!   localized trial orbitals will be stored
+    !   localized trial orbitals will be stored
+    
     if (allocated(manifold_bands_w90_in(i_manifold)%proj_w90_in)) &
  &     deallocate( manifold_bands_w90_in(i_manifold)%proj_w90_in )
     allocate(manifold_bands_w90_in(i_manifold)%proj_w90_in(number_projections))
 
-    index_proj_from_block = 0
-    ! iproj_orb = 0   ! part of FIX for possible bug below
+    ! trial_orbs are "classic Wannier trial functions" (as opposed to Siesta PAOs)
+    allocate(trial_orbs_index(number_projections))  ! for bookeeping below
+    number_of_trial_orbs = 0
+    
     do iproj = 1, number_projections
 !     Identify the atomic orbitals on which we are going to project
       iorb = manifold_bands_w90_in(i_manifold)%orbital_indices(iproj)
-      if( iorb .gt. 0 ) then
+      if( iorb .gt. 0 ) then  ! Siesta orbital
         ia = iaorb(iorb)               ! Atom to which orbital belongs
         is = isa(ia)                   ! Atomic species of the atom where the
                                        !   orbital is centered
@@ -2295,18 +2300,14 @@ module m_w90_in_siesta
         m  = mofio( is, iao )          ! (Real) orbital's magnetic quantum number
         rc = rcut(  is, iao )          ! Orbital's cutoff radius
 
-        ! POSSIBLE BUG: the index 'iproj' starts at one, and does not take into
-        ! account the case in which "orbitals" and "generalized trial funcs" are
-        ! mixed. In the next loop, the latter will be stored starting at the position
-        ! after the block of "orbitals", but these are currently not stored contiguously
-        ! if they appear mixed.
-        ! FIX: generate new index:
-        ! iproj_orb = iproj_orb + 1
+
+        ! Cosmetic change:
         ! associate ( manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj_orb) => proj )
         !    proj%center = xa(:,ia)
         !    .... etc
         !
         ! end associate
+        
         manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%center = xa(:,ia)
         manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%zaxis  = zaxis
         manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%xaxis  = xaxis
@@ -2328,16 +2329,20 @@ module m_w90_in_siesta
         ! Then, in AMN, register it properly.
         ! (in the "Wannier projectors table") and get a new iorb_gindex for it.
         ! Note that, confusingly, all these "trialorbitals" are going to be registered anyway,
-        ! even if at the last minute before calling matel the "orb_gindex" for those of
-        ! the orbital kind is going to be used.
+        ! even if, at the last minute before calling matel, the "orb_gindex" for those of
+        ! the Siesta PAO kind is going to be used.
       else
-        index_proj_from_block = index_proj_from_block + 1
+
+         ! Make a note of the correct placement of this trial orbital 
+         number_of_trial_orbs = number_of_trial_orbs + 1
+         trial_orbs_index(number_of_trial_orbs) = iproj
+         
       endif
     enddo
 
 !   Read the information for the projectors from the Block, 
 !   in case some hybrid trial functions are required
-    if(index_proj_from_block .gt. 0) then
+    if(number_of_trial_orbs .gt. 0) then
       if (.not. fdf_block('WannierProjectors',bfdf)) then
         call die('Block WannierProjectors to define the trial guess functions required')
       endif
@@ -2356,13 +2361,24 @@ module m_w90_in_siesta
 !         And the number of projectors defined in this block for that 
 !         manifold as the second index
           index_manifold_projectors_block = fdf_bintegers(pline,1)
+
+          ! Process only the data for the current manifold. If not, keep reading
           if( index_manifold_projectors_block .eq. i_manifold ) then
             number_projectors_block = fdf_bintegers(pline,2)
-            if( number_projectors_block .ne. index_proj_from_block ) &
- &            call die('Wrong number of projectors in the WannierProjectors block')
+
+            if( number_projectors_block .ne. number_of_trial_orbs ) then
+               write(6,'(a,i5)')                                                           &
+                    &        'Wrong number of projectors in the WannierProjectors block for manifold', &
+                    &        i_manifold
+               write(6,'(a,i5)')' number_projectors_block = ', number_projectors_block 
+               write(6,'(a,i5)')' number_of_trial_orbs   = ', number_of_trial_orbs
+               call die('Wrong number of projectors in the WannierProjectors block')
+            endif
+            
             projectors: do iproj = 1, number_projectors_block
+              index = trial_orbs_index(iproj)
+
               if (.not. fdf_bline(bfdf,pline)) call die("No center, l, m, xaxis, etc")
-              index = ( number_projections - index_proj_from_block ) + iproj
               center_tmp(1) = fdf_breals(pline,1)
               center_tmp(2) = fdf_breals(pline,2)
               center_tmp(3) = fdf_breals(pline,3)
@@ -2456,21 +2472,13 @@ module m_w90_in_siesta
           endif   !  if( index_manifold_projectors_block .eq. i_manifold )
         endif     !  if (.not. fdf_bmatch(pline,'ii')) 
       enddo       !  do while lines in the fdf block
-!     Sanity check in case the number of projectors in the block are not properly included
-      if( number_projectors_block .ne. index_proj_from_block ) then
-        write(6,'(a,i5)')                                                           &
- &        'Wrong number of projectors in the WannierProjectors block for manifold', &
- &        i_manifold
-        write(6,'(a,i5)')' number_projectors_block = ', number_projectors_block 
-        write(6,'(a,i5)')' index_proj_from_block   = ', index_proj_from_block
-        call die('Wrong number of projectors in the WannierProjectors block')
-      endif
-    endif         !  if(index_proj_from_block .gt. 0) 
+
+    endif         !  if(number_of_trial_orbs .gt. 0) 
 
 !!   For debugging
 !    write(6,'(a)')    'define_trial_orbitals: Begin projections'
 !    write(6,'(a,i6)') 'define_trial_orbitals: Number of projectors = ', number_projections
-!    write(6,'(a,i6)') 'define_trial_orbitals: Projections read from block = ', index_proj_from_block 
+!    write(6,'(a,i6)') 'define_trial_orbitals: Projections read from block = ', number_of_trial_orbs
 !    do iproj = 1, number_projections
 !      write(6,'(3(f10.5,1x),2x,3i3)') &
 ! &      manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%center(1), &
