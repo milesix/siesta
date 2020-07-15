@@ -35,6 +35,8 @@
       implicit none
 
       type, public ::  w90_in_manifold_t
+          logical                    :: projectors_initialized
+      
           character(label_length+3)  :: seedname_w90_in
                                        ! Seed of the name of the file 
                                        !   that will be used to dump the 

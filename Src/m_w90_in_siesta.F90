@@ -527,6 +527,8 @@ module m_w90_in_siesta
                                            !   That is the meaning of 'ii'
  &      call die('Wrong format in the initial/final band in WannierManifolds')
 
+      manifold_bands_w90_in(index_manifold)%projectors_initialized = .false.
+      
 !     Assign the indices of the initial and final band of the manifold 
 !     as the first and second integer in the digested line, respectively
       manifold_bands_w90_in(index_manifold)%initial_band =fdf_bintegers(pline,1)
