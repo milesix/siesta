@@ -2300,37 +2300,35 @@ module m_w90_in_siesta
         m  = mofio( is, iao )          ! (Real) orbital's magnetic quantum number
         rc = rcut(  is, iao )          ! Orbital's cutoff radius
 
+        ! cosmetic device to simplify code
+        associate ( manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj) => proj )
 
-        ! Cosmetic change:
-        ! associate ( manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj_orb) => proj )
-        !    proj%center = xa(:,ia)
-        !    .... etc
-        !
-        ! end associate
+          proj%center = xa(:,ia)
+          proj%zaxis  = zaxis
+          proj%xaxis  = xaxis
+          proj%yaxis  = yaxis
+          proj%zovera = zovera
+          proj%r      = r
+          proj%l      = l
+          proj%mr     = m
+          proj%rcut   = rc
+          proj%lmax   = l
+          proj%from_basis_orbital = .true.
+          proj%iorb   = iorb
+          proj%iorb_gindex =  orb_gindex(is,iao)
         
-        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%center = xa(:,ia)
-        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%zaxis  = zaxis
-        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%xaxis  = xaxis
-        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%yaxis  = yaxis
-        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%zovera = zovera
-        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%r      = r
-        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%l      = l
-        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%mr     = m
-        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%rcut   = rc
-        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%lmax   = l
-        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%from_basis_orbital =&
- &                                                         .true.
-        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%iorb   = iorb
-        manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj)%iorb_gindex = &
-             &                                     orb_gindex(is,iao)
+        end associate
 !!!! AG
         ! Here, we could generate a new "orbital" with the proper radial function so that
         ! the Wannier convention is satisfied (i.e., for px, change the sign).
-        ! Then, in AMN, register it properly.
+        ! Then, in AMN, register it properly.  
         ! (in the "Wannier projectors table") and get a new iorb_gindex for it.
         ! Note that, confusingly, all these "trialorbitals" are going to be registered anyway,
         ! even if, at the last minute before calling matel, the "orb_gindex" for those of
         ! the Siesta PAO kind is going to be used.
+
+        ! The replacement and registering is actually done at the same time in routine amn.
+        
       else
 
          ! Make a note of the correct placement of this trial orbital 
@@ -2379,24 +2377,27 @@ module m_w90_in_siesta
               index = trial_orbs_index(iproj)
 
               if (.not. fdf_bline(bfdf,pline)) call die("No center, l, m, xaxis, etc")
+              
               center_tmp(1) = fdf_breals(pline,1)
               center_tmp(2) = fdf_breals(pline,2)
               center_tmp(3) = fdf_breals(pline,3)
-              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zaxis(1)  = fdf_breals(pline,4)
-              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zaxis(2)  = fdf_breals(pline,5)
-              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zaxis(3)  = fdf_breals(pline,6)
-              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%xaxis(1)  = fdf_breals(pline,7)
-              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%xaxis(2)  = fdf_breals(pline,8)
-              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%xaxis(3)  = fdf_breals(pline,9)
-              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zovera    = fdf_breals(pline,10)
-              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l         = fdf_bintegers(pline,1)
-              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%mr        = fdf_bintegers(pline,2)
-              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%r         = fdf_bintegers(pline,3)
-              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%from_basis_orbital =&
- &                                                         .false.
 
-              xaxis_tmp = manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%xaxis
-              zaxis_tmp = manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zaxis
+            associate ( manifold_bands_w90_in(i_manifold)%proj_w90_in(index) => proj )
+
+              proj%zaxis(1)  = fdf_breals(pline,4)
+              proj%zaxis(2)  = fdf_breals(pline,5)
+              proj%zaxis(3)  = fdf_breals(pline,6)
+              proj%xaxis(1)  = fdf_breals(pline,7)
+              proj%xaxis(2)  = fdf_breals(pline,8)
+              proj%xaxis(3)  = fdf_breals(pline,9)
+              proj%zovera    = fdf_breals(pline,10)
+              proj%l         = fdf_bintegers(pline,1)
+              proj%mr        = fdf_bintegers(pline,2)
+              proj%r         = fdf_bintegers(pline,3)
+              proj%from_basis_orbital =  .false.
+
+              xaxis_tmp = proj%xaxis
+              zaxis_tmp = proj%zaxis
 !             Check that the xaxis and the zaxis are orthogonal to each other
               xnorm_tmp = sqrt( xaxis_tmp(1)*xaxis_tmp(1) +   &
  &                              xaxis_tmp(2)*xaxis_tmp(2) +   &
@@ -2413,61 +2414,55 @@ module m_w90_in_siesta
  &                     xnorm_tmp/znorm_tmp
               if (abs(coseno) > eps6) &
                 call die('define_trial_orbitals: xaxis_tmp and zaxis_tmp are not orthogonal')
-              if (manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zovera < eps6) &
+              if (proj%zovera < eps6) &
                 call die('define_trial_orbitals: zovera value must be positive')
 
 !             Compute the y-axis
               yaxis_tmp = vectorproduct(zaxis,xaxis)
-              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%yaxis = &
- &              yaxis_tmp / sqrt(dot_product(yaxis_tmp,yaxis_tmp))
+              proj%yaxis = yaxis_tmp / sqrt(dot_product(yaxis_tmp,yaxis_tmp))
 
 !             Now convert "center" from ScaledByLatticeVectors to Bohrs
               do i=1,3
-                manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%center(i) = 0.0_dp
+                proj%center(i) = 0.0_dp
                 do j=1,3
-                  manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%center(i) = &
- &                   center_tmp(j)*ucell(i,j) + &
- &                   manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%center(i)
+                  proj%center(i) =  center_tmp(j)*ucell(i,j) + proj%center(i)
                 enddo
               enddo
 
-              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zovera = &
- &               manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zovera*Ang  !To Bohr^-1
+              proj%zovera =  proj%zovera*Ang  !To Bohr^-1
 
 !             Select the maximum angular momentum
-              select case(manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l)
+              select case(proj%l)
                 case(0:3)
-                  manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%lmax = &
- &                manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l
+                  proj%lmax = &
+ &                proj%l
                 case(-3:-1)
-                  manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%lmax = 1 ! spN hybrids
+                  proj%lmax = 1 ! spN hybrids
                 case(-5:-4)
-                  manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%lmax = 2 ! spdN hybrids
+                  proj%lmax = 2 ! spdN hybrids
                 case default
                   call die("Invalid l in define_trial_orbitals")
               end select
 
 !             Further checks
-              if ( manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%mr .lt. 1 )      &
- &              call die("Invalid mr in define_trial_orbitals ")
-              if ( manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%r .gt. 3 .or.    &
- &                 manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%r .lt. 1 ) then
+              if ( proj%mr .lt. 1 )  call die("Invalid mr in define_trial_orbitals ")
+              if ( proj%r .gt. 3 .or. proj%r .lt. 1 ) then
                 call die("Invalid r in define_trial_orbitals")
-              elseif ( manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l  .ge. 0 .and. &
- &                     manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%mr .gt.         &
- &                       2*manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l+1 ) then
+              elseif ( proj%l  .ge. 0 .and. &
+ &                     proj%mr .gt.         &
+ &                       2*proj%l+1 ) then
                 call die("Invalid mr_w in define_trial_orbitals")
-              elseif ( manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l  .lt. 0 .and.  &
- &                     manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%mr .gt.          &
- &                     1-manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%l ) then
+              elseif ( proj%l  .lt. 0 .and.  &
+ &                     proj%mr .gt.          &
+ &                     1-proj%l ) then
                 call die("Invalid mr_w in define_trial_orbitals")
               endif
 
 !             Cut-off initialization (in Bohr)
-              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%rcut   =          &
- &              cutoffs(manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%r) /    &
- &              manifold_bands_w90_in(i_manifold)%proj_w90_in(index)%zovera
-
+              proj%rcut   =  cutoffs(proj%r) /  proj%zovera
+              
+             end associate   ! --- cosmetic device to simplify code
+            
             enddo projectors
           endif   !  if( index_manifold_projectors_block .eq. i_manifold )
         endif     !  if (.not. fdf_bmatch(pline,'ii')) 

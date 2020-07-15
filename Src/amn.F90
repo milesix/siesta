@@ -424,8 +424,6 @@ subroutine amn( ispin, index_manifold )
             last = projector_gindex(numproj))
     endif
     
-    !!! IMPORTANT: Before the matel call below, *do not* reassign the indexes
-    !!! for the "Siesta orbital" trial functions. See marker below
     !!!! (For modern branches: remember to initialize the matel tables)
     firsttime = .false.
   endif
@@ -654,9 +652,7 @@ OrbitalQueue:                                                        &
       do while (associated(item))
         r12 = trialcenter - item%center
         globalindexorbital = orb_gindex( item%specie, item%specieindex )
-        !! AG: Deactivate this for new scheme
-!!        if( projections(indexproj)%from_basis_orbital )             &
-!! &        globalindexproj = projections(indexproj)%iorb_gindex
+
         call new_matel('S',                & ! Compute the overlap
  &                     globalindexorbital, & ! Between orbital with globalinde
  &                     globalindexproj,    & ! And projector with globalindex
