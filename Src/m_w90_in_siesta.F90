@@ -1,4 +1,4 @@
- 
+! --- 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -2303,7 +2303,7 @@ module m_w90_in_siesta
         rc = rcut(  is, iao )          ! Orbital's cutoff radius
 
         ! cosmetic device to simplify code
-        associate ( manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj) => proj )
+        associate ( proj => manifold_bands_w90_in(i_manifold)%proj_w90_in(iproj) )
 
           proj%center = xa(:,ia)
           proj%zaxis  = zaxis
@@ -2384,7 +2384,7 @@ module m_w90_in_siesta
               center_tmp(2) = fdf_breals(pline,2)
               center_tmp(3) = fdf_breals(pline,3)
 
-            associate ( manifold_bands_w90_in(i_manifold)%proj_w90_in(index) => proj )
+            associate ( proj => manifold_bands_w90_in(i_manifold)%proj_w90_in(index) )
 
               proj%zaxis(1)  = fdf_breals(pline,4)
               proj%zaxis(2)  = fdf_breals(pline,5)
