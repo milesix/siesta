@@ -96,9 +96,6 @@ OBJS =  automatic_cell.o atom_options.o \
 	chempot.o coceri.o coxmol.o cross.o compute_norm.o\
 	denmat.o denmatlomem.o detover.o dfscf.o diagon.o digcel.o \
         m_erf.o m_gvecs.o \
-        m_ks_flux_data.o m_ks_flux_procs.o m_xc_flux_data.o \
-        m_hartree_flux_data.o m_hartree_flux_procs.o \
-        m_ion_flux_data.o m_ion_flux_procs.o m_zero_flux_data.o m_zero_flux_procs.o \
         fft.o dhscf.o constr.o diagk_file.o diagmemory.o \
 	diagg.o diagk.o diagkp.o diag2g.o diag2k.o diag2kp.o diag3g.o diag3k.o diag3kp.o diagpol.o \
 	diagsprl.o dipole.o dismin.o dnaefs.o doping_uniform.o dot.o  \
@@ -186,6 +183,9 @@ OBJS =  automatic_cell.o atom_options.o \
         m_svd.o m_matio.o\
         rusage.o memory_snapshot.o compute_ebs_shift.o memory_all.o \
 	matel_registry.o matel_params.o matel_ylm.o matel_table.o matel_mod.o register_rfs.o\
+        m_ks_flux_data.o m_ks_flux_procs.o m_xc_flux_data.o \
+        m_hartree_flux_data.o m_hartree_flux_procs.o \
+        m_ion_flux_data.o m_ion_flux_procs.o m_zero_flux_data.o m_zero_flux_procs.o \
 	kpoint_convert.o \
 	m_target_stress.o compute_max_diff.o \
         m_spin_orbit_potentials.o \
@@ -1159,7 +1159,8 @@ m_writedelk.o: atm_types.o atmfuncs.o atomlist.o files.o parallel.o
 m_writedelk.o: parallelsubs.o precision.o siesta_geom.o sys.o
 m_xc_flux_data.o: precision.o
 m_zero_flux_data.o: precision.o
-m_zero_flux_procs.o: precision.o
+m_zero_flux_procs.o: atomlist.o m_ks_flux_data.o m_zero_flux_data.o matel_mod.o
+m_zero_flux_procs.o: precision.o siesta_geom.o sparse_matrices.o
 m_zminim.o: files.o parallel.o parallelsubs.o precision.o siesta_options.o
 m_zminim.o: sys.o
 madelung.o: parallel.o precision.o sys.o

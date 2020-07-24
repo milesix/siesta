@@ -29,12 +29,13 @@ contains
 subroutine compute_Jzero ()
   use ks_flux_data, only: ks_flux_D
 
+  real(dp), dimension(:),   pointer :: dscf => null()
+
   call init_matel_main_tables()
   call init_matel_thermal_transport()
   call init_matel_orb_XYZ_orb()
   call init_matel_optical_P()
 
-  real(dp), dimension(:),   pointer :: dscf => null()
   dscf => ks_flux_D(:,1)        !NOTE: only 1st spin component
 
   ! This should add NL-part of the zero current
