@@ -12,7 +12,8 @@
         print *, "netCDF not enabled"
 #else
     
-    use netcdf
+        use netcdf
+        use units, only: eV
 
 !
 !       Converts  a WFS.nc file (new_diagk intermediate file) to a WFSX file 
@@ -30,12 +31,6 @@
 
         integer, parameter :: dp = selected_real_kind(14,100)
         integer, parameter :: sp = selected_real_kind(6,30)
-
-#ifdef SIESTA__UNITS_ORIGINAL
-        real(dp), parameter :: eV = 13.60580_dp
-#else
-        real(dp), parameter :: eV = 13.605693122993705_dp
-#endif
 
         integer  :: ncid 
         integer  :: norbs_id, nspin_id, nk_id, nvectors_id

@@ -29,7 +29,7 @@ C   Modified by DSP, January  2006
        LOGICAL DRUD
 
        integer :: i
-       
+C    TODO UNITS       
 C   FROM eV to cm**-1
        real(dp), PARAMETER :: LAMBDA = 8067.422_dp
 C   from eV to (meter*ohm)**-1 (conductivity)

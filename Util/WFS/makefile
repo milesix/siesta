@@ -57,7 +57,9 @@ wfs2wfsx: wfs2wfsx.o
 	$(FC) $(LDFLAGS) -o $@ $<  
 wfsx2wfs: wfsx2wfs.o
 	$(FC) $(LDFLAGS) -o $@ $<  
-wfsnc2wfsx: wfsnc2wfsx.o
+
+wfsnc2wfsx.o: precision.o units.o
+wfsnc2wfsx: wfsnc2wfsx.o precision.o units.o
 	$(FC) $(LDFLAGS) -o $@ $< $(NETCDF_LIBS)
 
 clean: 

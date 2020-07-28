@@ -13,14 +13,10 @@
 
 !     Alberto Garcia, Sep. 2005. Based on ioxv by J.M.Soler. July 1997.
 
+      use units, only: Ang
       implicit none
 
       integer, parameter, private   :: dp = selected_real_kind(14,100)
-#ifdef SIESTA__UNITS_ORIGINAL
-      real(dp), parameter, private  :: Ang = 1._dp / 0.529177_dp
-#else
-      real(dp), parameter :: Ang    = 1.88972612462577017_dp
-#endif
       type, public :: struct_t
         integer ::          na = 0
         real(dp)::          cell(3,3)

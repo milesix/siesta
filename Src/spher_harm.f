@@ -9,6 +9,7 @@
       use precision
       use sys
       use alloc, only: re_alloc, de_alloc
+      use units, only: Pi
 
       implicit none
 
@@ -68,7 +69,6 @@ C Other internal parameters
       PARAMETER (TINY=1.e-14_dp, ZERO=0._dp, HALF=0.5_dp, ONE=1._dp,
      .           TWO=2._dp, THREE=3._dp, SIX=6._dp)
 
-      real(dp), parameter :: pi = 3.14159265358979323846264338327950_dp
       real(dp), parameter :: pi4 = 4 * pi
 
 C Internal variables
@@ -372,7 +372,7 @@ C Declare internal variables ----------------------------------------
      .  IM, IR, ISP, IZ, JLM, JR, JY, NLM, NSP
       REAL(DP)
      .  DFDX(3), DYDX(3,MAXLM), 
-     .  F(MAXSP), FY, PHI, PI, R, RX(3), THETA, 
+     .  F(MAXSP), FY, PHI, R, RX(3), THETA, 
      .  W(MAXL+1), WSP,
      .  X(3,MAXSP), YY(MAXLM), YSP(MAXSP,MAXLM),
      .  Z(MAXL+1)
@@ -393,7 +393,6 @@ C Find special points and weights for gaussian quadrature -----------
 C -------------------------------------------------------------------
 
 C Find weighted spherical harmonics at special points ---------------
-      PI = 4._dp * ATAN(1._dp)
       NLM = (LMAX+1)**2
       NSP = 0
       DO 30 IZ = 1,LMAX+1
@@ -545,7 +544,7 @@ C Declare internal variables ----------------------------------------
      .  IM, IR, ISP, IZ, JLM, JR, JY, NLM, NSP
       REAL(DP)
      .  DFDX(3), DYDX(3,MAXLM), 
-     .  F(MAXSP), FY, PHI, PI, R, RX(3), THETA, 
+     .  F(MAXSP), FY, PHI, R, RX(3), THETA, 
      .  W(MAXL+1), WSP,
      .  X(3,MAXSP), YY(MAXLM), YSP(MAXSP,MAXLM),
      .  Z(MAXL+1)
@@ -566,7 +565,6 @@ C Find special points and weights for gaussian quadrature -----------
 C -------------------------------------------------------------------
 
 C Find weighted spherical harmonics at special points ---------------
-      PI = 4._dp * ATAN(1._dp)
       NLM = (LMAX+1)**2
       NSP = 0
       DO 30 IZ = 1,LMAX+1

@@ -9,6 +9,7 @@
 C     Written by Daniel Sanchez-Portal
 
       program optical_input
+      use units, only: eV
       implicit none
       integer, parameter :: dp = selected_real_kind(10,100)
       
@@ -19,7 +20,6 @@ C     Written by Daniel Sanchez-Portal
        REAL(DP) EMAX, EMIN, FSUM(2), THRESHOLD, THRES
        REAL(DP) C,P,SUM,A,B, EPSMIN, SUM2 , EMAXP, DRUDE(2)
        PARAMETER (THRESHOLD=0.80_dp)
-       real(dp), parameter :: eV = 13.605693122993705_dp
        PARAMETER (EPSMIN=0.01_dp)
        PARAMETER (EMAXP=200.0d0)
        CHARACTER(len=3) STR

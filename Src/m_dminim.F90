@@ -11,6 +11,7 @@ use fdf,            only : fdf_boolean, fdf_integer, fdf_get, fdf_physical
 use files,          only : slabel
 use parallel,       only : ProcessorY, BlockSize, Node, Nodes
 use precision,      only : dp
+use units,          only : Pi
 use siesta_options, only : fixspin
 use sys,            only : die
 #ifdef MPI
@@ -30,8 +31,6 @@ private
 type multispin
   real(dp), allocatable :: mtrx(:,:)
 end type multispin
-
-real(dp), parameter :: Pi=3.141592653589793238462643383279502884197_dp
 
 logical, save :: LongOut               ! print detailed output?
 logical, save :: UseCholesky           ! use Cholesky factorization?

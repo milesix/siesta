@@ -70,7 +70,7 @@ C Internal variables
       type(block_fdf)            :: bfdf
       type(parsed_line), pointer :: pline
 
-      save vreal, escale, pi
+      save vreal, escale
 
 c --------------------------------------------------------------
 #ifdef DEBUG

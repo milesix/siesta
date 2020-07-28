@@ -11,6 +11,7 @@ use fdf,            only : fdf_boolean, fdf_integer, fdf_get, fdf_physical
 use files,          only : slabel
 use parallel,       only : ProcessorY, BlockSize, Node, Nodes
 use precision,      only : dp
+use units,          only : Pi
 use siesta_options, only : fixspin
 use sys,            only : die
 #ifdef MPI
@@ -30,8 +31,6 @@ private
 type multispin
   complex(dp), allocatable :: mtrx(:,:)
 end type multispin
-
-real(dp), parameter :: Pi=3.141592653589793238462643383279502884197_dp
 
 complex(dp), parameter :: cmplx_1=(1.0_dp,0.0_dp)
 complex(dp), parameter :: cmplx_2=(2.0_dp,0.0_dp)

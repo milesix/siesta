@@ -14908,111 +14908,14 @@ Since \siesta\ 4.2 the units follow the CODATA 2018 values. This
 affects comparisons with prior versions of \siesta\ due to small
 numeric differences.
 
-\iffalse
-% I get some weird errors I don't want to spend time on for now
-\begin{center}
-\begin{longtable}{lc}
-\hline
-Magnitude & Unit name
-\endhead
-\endfoot
-\hline
-mass     & g          \\
-mass     & kg         \\
-mass     & amu        \\
-length   & m          \\
-length   & cm         \\
-length   & nm         \\
-length   & pm         \\
-length   & Ang        \\
-length   & Bohr       \\
-energy   & J          \\
-energy   & kJ         \\
-energy   & erg        \\
-energy   & meV        \\
-energy   & eV         \\
-energy   & mRy        \\
-energy   & Ry         \\
-energy   & mHa        \\
-energy   & Ha         \\
-energy   & Hartree    \\
-energy   & K          \\
-energy   & Kelvin     \\
-energy   & kJ/mol     \\
-energy   & kcal/mol   \\
-energy   & Hz         \\
-energy   & THz        \\
-energy   & cm-1       \\
-energy   & cm\^-1      \\
-energy   & cm**-1     \\
-time     & s          \\
-time     & au         \\
-time     & ns         \\
-time     & ps         \\
-time     & fs         \\
-time     & min        \\
-time     & mins       \\
-time     & hour       \\
-time     & hours      \\
-time     & day        \\
-time     & days       \\
-force    & N          \\
-force    & eV/Ang     \\
-force    & Ry/Bohr    \\
-force    & Ha/Bohr    \\
-pressure & Pa         \\
-pressure & GPa        \\
-pressure & atm        \\
-pressure & bar        \\
-pressure & kbar       \\
-pressure & Mbar       \\
-pressure & eV/Ang**3  \\
-pressure & eV/Ang\^3   \\
-pressure & Ry/Bohr**3 \\
-pressure & Ry/Bohr\^3  \\
-pressure & Ha/Bohr**3 \\
-pressure & Ha/Bohr\^3  \\
-surftens & N/m        \\
-surftens & mN/m       \\
-surftens & dyn/cm     \\
-surftens & erg/cm**2  \\
-charge   & c          \\
-charge   & e          \\
-dipole   & c*m        \\
-dipole   & e*Bohr     \\
-dipole   & e*Ang      \\
-dipole   & D          \\
-dipole   & Debye      \\
-mominert & kg*m**2    \\
-mominert & Ry*fs**2   \\
-efield   & V/m        \\
-efield   & V/cm       \\
-efield   & V/um       \\
-efield   & V/nm       \\
-efield   & V/Ang      \\
-efield   & eV/Ang/e   \\
-efield   & V/Bohr     \\
-efield   & Ry/Bohr/e  \\
-efield   & Ha/Bohr/e  \\
-efield   & Har/Bohr/e \\
-angle    & deg        \\
-angle    & rad        \\
-torque   & N*m        \\
-torque   & meV/deg    \\
-torque   & meV/rad    \\
-torque   & eV/deg     \\
-torque   & eV/rad     \\
-torque   & mRy/deg    \\
-torque   & mRy/rad    \\
-torque   & Ry/deg     \\
-torque   & Ry/rad     \\
-torque   & Ha/deg     \\
-torque   & Ha/rad     \\
-\hline
-\end{longtable}
-\end{center}
+To compare numerical values between \siesta\ 4.2 and prior versions one
+have to recompile 4.2 with
+\code{-DSIESTA\_\_UNITS\_ORIGINAL}\index{compile!pre-processor!-DSIESTA\_\_UNITS\_ORIGINAL}. Please
+\emph{only} use this for comparisons and not for production runs.
 
-\fi
+\program{fdf} accepts nearly all conventional units used in physics
+and chemistry. If a unit is not accepted a list of accepted units for
+the requested dimension will be printed to standard out.
 
 \newpage
 \section{APPENDIX: XML Output}
