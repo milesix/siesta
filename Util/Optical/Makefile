@@ -24,11 +24,14 @@ include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
-optical_input: optical_input.o
-	$(FC) $(LDFLAGS) -o $@ optical_input.o
+optical_input.o: units.o
+units.o: precision.o
 
-optical: optical.o
-	$(FC) $(LDFLAGS) -o $@ optical.o
+optical_input: optical_input.o precision.o units.o
+	$(FC) $(LDFLAGS) -o $@ $<
+
+optical: optical_cond.o
+	$(FC) $(LDFLAGS) -o $@ $<
 
 clean: 
 	rm -f *.o $(PROGS)

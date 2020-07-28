@@ -46,7 +46,10 @@ FC:=$(FC_SERIAL)         # Make it non-recursive
 # NETCDF_INCFLAGS=-I$(NETCDF_ROOT)/include
 # NETCDF_LIBS=-L$(NETCDF_ROOT)/lib -lnetcdf
 #
-INCFLAGS+= $(NETCDF_INCFLAGS) 
+INCFLAGS:= $(NETCDF_INCFLAGS) $(INCFLAGS)
+
+units.o: precision.o
+
 #------------------
 grid2cdf: grid2cdf.o
 	$(FC) $(LDFLAGS) -o $@  grid2cdf.o  $(NETCDF_LIBS)
@@ -71,14 +74,14 @@ cdf_laplacian: cdf_laplacian.o fft3d.o m_fft_gpfa.o m_getopts.o reclat.o local_d
 	$(FC) $(LDFLAGS) -o $@  cdf_laplacian.o \
                local_die.o fft3d.o m_fft_gpfa.o m_getopts.o reclat.o $(NETCDF_LIBS)
 #
-V_INFO_OBJS=m_gridfunc.o v_info.o
+V_INFO_OBJS=m_gridfunc.o v_info.o units.o precision.o
 #
 v_info: $(V_INFO_OBJS)
 	$(FC) $(LDFLAGS) -o $@  $(V_INFO_OBJS) $(NETCDF_LIBS)
-v_info.o: m_gridfunc.o
+v_info.o: m_gridfunc.o units.o precision.o
 #
 #
-G2C_NG_OBJS=m_getopts.o reclat.o m_struct.o m_gridfunc.o local_die.o g2c_ng.o
+G2C_NG_OBJS=m_getopts.o reclat.o units.o precision.o m_struct.o m_gridfunc.o local_die.o g2c_ng.o
 #
 g2c_ng: $(G2C_NG_OBJS)
 	$(FC) $(LDFLAGS) -o $@  $(G2C_NG_OBJS) $(NETCDF_LIBS)
@@ -108,13 +111,3 @@ clean:
 #
 install: $(PROGS)
 	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
-#
-
-
-
-
-
-
-
-
-

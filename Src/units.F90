@@ -74,14 +74,14 @@ module units
   real(dp), parameter, public :: amu    = 2.133107_dp
   real(dp), parameter, public :: Ryd_time = 1._dp/0.04837769_dp
 #else
-  real(dp), parameter :: Ang    = 1.88972612462577017_dp
-  real(dp), parameter :: eV     = 7.34986443513115789e-2_dp
-  real(dp), parameter :: kBar   = 6.79786184348648780e-6_dp
-  real(dp), parameter :: GPa    = kBar * 10._dp
-  real(dp), parameter :: Kelvin = 6.33362312691136091e-6_dp
-  real(dp), parameter :: Debye  = 3.93430269519899511e-1_dp
-  real(dp), parameter :: amu    = 2.133107_dp
-  real(dp), parameter :: Ryd_time = 1._dp/0.04837769_dp
+  real(dp), parameter, public :: Ang    = 1.88972612462577017_dp
+  real(dp), parameter, public :: eV     = 7.34986443513115789e-2_dp
+  real(dp), parameter, public :: kBar   = 6.79786184348648780e-6_dp
+  real(dp), parameter, public :: GPa    = kBar * 10._dp
+  real(dp), parameter, public :: Kelvin = 6.33362312691136091e-6_dp
+  real(dp), parameter, public :: Debye  = 3.93430269519899511e-1_dp
+  real(dp), parameter, public :: amu    = 2.133107_dp
+  real(dp), parameter, public :: Ryd_time = 1._dp/0.04837769_dp
 #endif
 
 ! pi to 50 digits

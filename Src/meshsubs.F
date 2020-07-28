@@ -918,6 +918,7 @@ C ----------------------------------------------------------------------
       use mesh,     only: dxa, idop, indexp, ipa, mop, nsp, xdop, xdsp
       use fdf
       use parallel, only: ionode
+      use units, only : Pi
 
       implicit none
 
@@ -936,7 +937,7 @@ C
 
       real(dp) dx(3), ra, charge_ratio, r
       real(dp) core_charge
-      real(dp), parameter :: pi = 3.141592653589793_dp
+
         ! We want a total core charge of (Z-Zval), localized in a
         ! region of around 1.0 bohr.
         ! Note that we put 1 electron (extra!) for Hydrogen atoms,
