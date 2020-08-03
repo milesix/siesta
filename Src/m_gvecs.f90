@@ -22,6 +22,9 @@ module gvecs
   real(dp), pointer :: gl(:)
   !! gl(i) = i-th shell of G^2 (in units of tpiba2)
 
+  integer, allocatable, target :: igtongl(:)
+  !! shell index for n-th G-vector
+
   real(dp), allocatable, target :: g(:,:)
   !! G-vectors cartesian components
   !! (for QE it's in units tpiba =(2pi/a)  )
@@ -47,7 +50,7 @@ contains
     allocate( nl (ngm) )
     allocate( nlm(ngm) )
     allocate( ig_l2g(ngm) )
-    ! ALLOCATE( igtongl(ngm) )
+    allocate( igtongl(ngm) )
 
   end subroutine gvecs_init
 
@@ -59,6 +62,7 @@ contains
     if ( allocated(g) ) deallocate(g)
     if ( allocated(gg) ) deallocate(gg)
     if ( allocated(ig_l2g) ) deallocate(ig_l2g)
+    if ( allocated(igtongl) ) deallocate(igtongl)
   end subroutine gvecs_teardown
 
 
@@ -364,5 +368,53 @@ contains
     call timer('COMP_GVECS_GEN', 2)
 
   end subroutine gvecs_gen
+
+
+  subroutine gshells(vc)
+    !! Replicates `gshells` from `recvec_subs` module of Quantum Espresso.
+    !! Calculate number of G shells: `ngl`, and the index ng = `igtongl`(ig)
+    !! that gives the shell index `ng` for (local) G-vector of index `ig`.
+
+    ! USE gvect,              ONLY : gg, ngm, gl, ngl, igtongl
+
+    logical, intent(in) :: vc
+    real(dp), parameter :: eps8 = 1.0E-8_DP  !! small constant
+
+    integer :: ng, igl
+
+    if ( vc ) then
+       ! in case of a variable cell run each G vector has its shell
+       ngl = ngm
+       gl => gg
+       do ng = 1, ngm
+          igtongl(ng) = ng
+       enddo
+    else
+       ! G vectors are grouped in shells with the same norm
+       ngl = 1
+       igtongl(1) = 1
+       do ng = 2, ngm
+          if (gg(ng) > gg(ng - 1) + eps8) then
+             ngl = ngl + 1
+          endif
+          igtongl(ng) = ngl
+       enddo
+
+       allocate (gl(ngl))
+
+       gl(1) = gg(1)
+       igl = 1
+       do ng = 2, ngm
+          if (gg(ng) > gg(ng - 1) + eps8) then
+             igl = igl + 1
+             gl(igl) = gg(ng)
+          endif
+       enddo
+
+       if (igl /= ngl) call die("gshells: igl <> ngl")
+
+    endif
+
+  end subroutine gshells
 
 end module gvecs

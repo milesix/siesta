@@ -10,7 +10,7 @@ module m_virtual_step_procs
   use siesta_options, only: want_virtual_step_md
   use siesta_options, only: want_vmd_in_dhscf
 
-  use gvecs, only: gvecs_init, gvecs_teardown, gvecs_gen
+  use gvecs, only: gvecs_init, gvecs_teardown, gvecs_gen, gshells
 
   implicit none
 
@@ -35,12 +35,15 @@ contains
     end if
 
     if ( virtual_md_Jxc ) call init_xc_flux_data()
-    if ( virtual_md_Jion ) then
+
+    if ( virtual_md_Jion .or. virtual_md_Jzero ) then
+       ! Initialize and generate G-vectors data
        call gvecs_init(ion_flux_mesh)
        call gvecs_gen(ion_flux_cell, ion_flux_mesh)
-
-       call init_ion_flux_data()
+       call gshells(.false.)    ! init G-vector shells assuming non-variable cell
     end if
+
+    if ( virtual_md_Jion ) call init_ion_flux_data()
 
   end subroutine base_md_step_logic
 
@@ -122,13 +125,16 @@ contains
        print*, "[Jion] flux E: ", ion_flux_e(:)
 
        ! call reset_ion_flux_data()
-       call gvecs_teardown()
     end if
 
     if ( virtual_md_Jzero ) then
        call compute_Jzero()
     end if
 
+    if ( virtual_md_Jion .or. virtual_md_Jzero ) then
+       ! tearing down G-vectors data
+       call gvecs_teardown()
+    end if
 
     !FIXME: regroup resetters in corresponding subroutine
     if ( virtual_md_Jion) call reset_ion_flux_data()
