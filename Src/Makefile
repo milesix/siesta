@@ -1517,7 +1517,7 @@ m_writedelk.o: parallelsubs.o precision.o siesta_geom.o sys.o
 
 m_xc_flux_data.o: precision.o
 
-m_zero_flux_data.o: precision.o
+m_zero_flux_data.o: cellsubs.o m_ion_flux_data.o precision.o
 
 m_zero_flux_procs.o: atm_types.o atomlist.o basis_types.o bessph.o
 m_zero_flux_procs.o: m_ks_flux_data.o m_zero_flux_data.o matel_mod.o

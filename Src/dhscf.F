@@ -1562,6 +1562,7 @@ C ----------------------------------------------------------------------
 !     It is not needed further for thermal transport, and is discarded by default.
 ! ----------------------------------------------------------------------
          ion_flux_cell = cell  ! saved here for `gvecs` and ionic flux
+                               !NOTE: also needed for zero flux
          ion_flux_mesh = ntm   ! saved here for `gvecs` and ionic flux
 
          if (present(want_vmd_in_dhscf)) then

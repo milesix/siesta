@@ -27,7 +27,10 @@ module zero_flux_procs
 contains
 
 subroutine compute_Jzero ()
-  use ks_flux_data, only: ks_flux_D
+  !! NOTE: Check `tablocal_hg` in QE.
+  !! Seems that it should be initialized only once.
+  use zero_flux_data, only: nqxq, pref, zero_flux_Jzero
+  use ks_flux_data,   only: ks_flux_D
 
   use atm_types,   only: species, species_info
   use basis_types, only: nsp
@@ -44,7 +47,7 @@ subroutine compute_Jzero ()
   ! find rm and npts for vlocal
   do is = 1, nsp                !
      spp => species(is)
-     if (spp%reduced_vlocal%cutoff > rm) then
+     if (spp%reduced_vlocal%cutoff > rm) then !FIXME: check for maximum number of points?
         rm = spp%reduced_vlocal%cutoff
         npts = spp%reduced_vlocal%n
         delta_rm = spp%reduced_vlocal%delta
@@ -71,7 +74,6 @@ subroutine compute_Jzero ()
   end do
 
   call simpson(npts, delta_rm, aux, vl_int)
-  print*, "[Jzero] integral of aux", vl_int
 
   ! cleanup
   deallocate(rvals)

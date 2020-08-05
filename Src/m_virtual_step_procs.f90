@@ -22,11 +22,12 @@ contains
 
     use sparse_matrices, only: Dscf
 
-    use ks_flux_data, only: Dscf_deriv
-    use ks_flux_data, only: init_ks_flux_data
-    use xc_flux_data, only: init_xc_flux_data
-    use ion_flux_data,only: init_ion_flux_data
+    use ks_flux_data,  only: Dscf_deriv
+    use ks_flux_data,  only: init_ks_flux_data
+    use xc_flux_data,  only: init_xc_flux_data
+    use ion_flux_data, only: init_ion_flux_data
     use ion_flux_data, only: ion_flux_mesh, ion_flux_cell
+    use zero_flux_data,only: init_zero_flux_data
 
     if ( virtual_md_Jks ) then
        call init_ks_flux_data()
@@ -34,7 +35,7 @@ contains
        Dscf_deriv(:,:) = Dscf(:,:)
     end if
 
-    if ( virtual_md_Jxc ) call init_xc_flux_data()
+    if ( virtual_md_Jxc )   call init_xc_flux_data()
 
     if ( virtual_md_Jion .or. virtual_md_Jzero ) then
        ! Initialize and generate G-vectors data
@@ -43,7 +44,9 @@ contains
        call gshells(.false.)    ! init G-vector shells assuming non-variable cell
     end if
 
-    if ( virtual_md_Jion ) call init_ion_flux_data()
+    if ( virtual_md_Jion )  call init_ion_flux_data()
+
+    if ( virtual_md_Jzero ) call init_zero_flux_data()
 
   end subroutine base_md_step_logic
 
