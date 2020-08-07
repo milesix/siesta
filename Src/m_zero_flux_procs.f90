@@ -29,7 +29,9 @@ contains
 subroutine compute_Jzero ()
   !! NOTE: Check `tablocal_hg` in QE.
   !! Seems that it should be initialized only once.
-  use zero_flux_data, only: nqxq, pref, zero_flux_Jzero
+  !! Thus, this subroutine -> `compute_tab_local`.
+  use zero_flux_data, only: nqxq, pref, dq
+  use zero_flux_data, only: zero_flux_Jzero, tab_local
   use ks_flux_data,   only: ks_flux_D
 
   use atm_types,   only: species, species_info
@@ -38,8 +40,8 @@ subroutine compute_Jzero ()
   use m_bessph,    only: BESSPH
 
   type(species_info), pointer :: spp
-  real(dp) :: rm, delta_rm, aux_fr, aux_dfdr, vl_int
-  integer  :: in, is, npts
+  real(dp) :: rm, delta_rm, aux_fr, aux_dfdr, vl_int, qi
+  integer  :: in, is, iq, npts
   real(dp), allocatable :: rvals(:), aux(:)
 
   rm = 0.0_dp
@@ -56,6 +58,7 @@ subroutine compute_Jzero ()
 
   allocate(rvals(npts))
   allocate(aux(npts))
+  allocate(tab_local(nqxq, nsp, 0:1))
 
   rvals(:) = 0.0_dp
   aux(:) = 0.0_dp
@@ -67,17 +70,32 @@ subroutine compute_Jzero ()
   ! aux (ir) = (rgrid(nt)%r(ir)*upf(nt)%vloc(ir)+2.d0*zv(nt))* besr (ir) * rgrid(nt)%r(ir)
   do is = 1,nsp
      spp => species(is)
-     do in=1,npts
-        call rad_get(spp%reduced_vlocal, rvals(in), aux_fr, aux_dfdr)
-        aux(in) = aux_fr * bessph(0, rvals(in)) * rvals(in) ! bessel_spherical for l=0
+     do iq=1,nqxq
+        qi = (iq - 1) * dq
+        do in=1,npts
+           call rad_get(spp%reduced_vlocal, rvals(in), aux_fr, aux_dfdr)
+           aux(in) = aux_fr * bessph(0, rvals(in)*qi) * rvals(in) ! bessel_spherical for l=0
+        end do
+        call simpson(npts, delta_rm, aux, vl_int)
+        tab_local(iq, is, 0) = vl_int * pref
+        do in=1,npts
+           aux(in) = aux_fr * bessph(1, rvals(in)*qi) * rvals(in) * rvals(in) ! bessel_spherical for l=1
+           ! write(998, *) "[JzeroQE] rvals", rvals(in)
+        end do
+        call simpson(npts, delta_rm, aux, vl_int)
+        tab_local(iq, is, 1) = vl_int * pref
+        !NOTE: Those are different from QE's, unlike the case with L=0.
+        ! Maybe this is due to differences in rvals(:) arrays.
+        ! Does this matter in the end? The values are small comparing
+        ! to L=0. Need to compare later.
      end do
   end do
 
-  call simpson(npts, delta_rm, aux, vl_int)
 
   ! cleanup
   deallocate(rvals)
   deallocate(aux)
+  deallocate(tab_local)
 
   ! real(dp), dimension(:),   pointer :: dscf => null()
 

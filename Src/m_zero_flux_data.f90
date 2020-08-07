@@ -4,6 +4,9 @@ module zero_flux_data
 
   real(dp), save  :: zero_flux_Jzero(3)
   !! Zero-flux component of the heat flux.
+  real(DP), allocatable, save :: tab_local(:,:,:)
+  !! Table for the values of `h_ab` used in computation
+  !! of the local, long-range part of the Zero heat current.
 
   real(dp), parameter :: dq = 0.01_dp   !! space between points in the pseudopotential tab.
   real(dp), parameter :: cell_factor = 1.0_dp
