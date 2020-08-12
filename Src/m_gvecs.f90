@@ -14,6 +14,9 @@ module gvecs
   !! nl  = fft index for G-vectors (with gamma tricks, only for G>)
   !! nlm = as above, for G< (used only with gamma tricks)
   integer :: gstart = 2 !! index of the first G vector whose module is > 0
+  !! In QE it's used for parallel execution:
+  !! gstart=2 for the proc that holds G=0, gstart=1 for all others.
+  !!TODO: Implement functionality for parallel.
 
   real(dp), allocatable, target :: gg(:)
   !! G^2 in increasing order

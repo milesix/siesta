@@ -5,6 +5,8 @@ module zero_flux_data
   real(dp), save  :: zero_flux_Jzero(3)
   !! Zero-flux component of the heat flux.
   real(DP), allocatable, save :: tab_local(:,:,:)
+  !! One-dimensional table for radial part.
+  real(dp), allocatable, save :: H_g(:,:,:,:)
   !! Table for the values of `h_ab` used in computation
   !! of the local, long-range part of the Zero heat current.
 
