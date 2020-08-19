@@ -309,9 +309,8 @@ contains
     end select
     
     ! Write out the current along the bulk-bias direction and each of the other ones
-    write(*,'(a,e14.6,tr1,a)') 'Bulk current     [v]: ', I(1), trim(suffix)
-    write(*,'(a,3(e14.6,tr1),a)') 'Bulk current [x,y,z]: ', I(2:4), trim(suffix)
-    write(*,'(a,2(f12.6,tr1),e14.6)') 'Bulk charge  [+,-,0]: ', qPN(:)
+    write(*,'(tr5,3a,e14.6,tr3,3(tr1,e14.6))') 'bulk-bias: |v| / {v} [',trim(suffix),'] ', I(1:4)
+    write(*,'(tr5,a,3(tr1,e14.6))') 'bulk-bias: {q+,q-,q0}', qPN(:)
     
   end subroutine velocity_results_print
 
