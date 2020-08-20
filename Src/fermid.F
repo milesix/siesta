@@ -578,6 +578,7 @@ C Cold smearing function. Ref: Marzari-Vanderbilt PRL82, 16, 1999
 
 
       real(dp) function whg(x,n)
+      use units, only: Pi
 C
 C  Computes the factors to get the entropy term 
 C  for the Methfessel-Paxton smearing with Hermite
@@ -594,7 +595,6 @@ C Local variables
       integer        :: i
       real(dp)       :: a
       real(dp)       :: gauss
-      real(dp), save :: pi = 3.14159265358979d0
       real(dp)       :: x2
 
       x2 = x**2.0d0
