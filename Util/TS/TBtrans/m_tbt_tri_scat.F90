@@ -176,7 +176,7 @@ contains
       
     end subroutine calc
 
-    subroutine calc_GfGfd(br, bc, G)
+    pure subroutine calc_GfGfd(br, bc, G)
       integer, intent(in) :: br, bc
       complex(dp), intent(inout) :: G
       integer :: p_r, i_r, p_c, i_c, i
@@ -367,7 +367,7 @@ contains
 
   contains
 
-    subroutine calc_GfGfd(br, bc, G)
+    pure subroutine calc_GfGfd(br, bc, G)
       integer, intent(in) :: br, bc
       complex(dp), intent(inout) :: G
       integer :: p_r, i_r, p_c, i_c, i
@@ -483,7 +483,7 @@ contains
 
   contains
 
-    subroutine calc_GfGfd(br, bc, G)
+    pure subroutine calc_GfGfd(br, bc, G)
       integer, intent(in) :: br, bc
       complex(dp), intent(inout) :: G
       integer :: p_r, i_r, p_c, i_c, i
@@ -1831,7 +1831,7 @@ contains
     
   contains
     
-    subroutine calc_GfGfd(br, bc, G)
+    pure subroutine calc_GfGfd(br, bc, G)
       integer, intent(in) :: br, bc
       complex(dp), intent(inout) :: G
       integer :: p_r, i_r, p_c, i_c, i
@@ -1984,7 +1984,7 @@ contains
   end subroutine insert_Self_energy
 
 
-  subroutine insert_Self_energy_Dev(Gfinv_tri,Gfinv,r,El)
+  pure subroutine insert_Self_energy_Dev(Gfinv_tri,Gfinv,r,El)
 
     type(zTriMat), intent(inout) :: GFinv_tri
     complex(dp), intent(inout) :: Gfinv(:)
