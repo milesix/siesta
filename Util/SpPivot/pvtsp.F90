@@ -43,7 +43,7 @@ program pvtsp
   
   ! The sparsity
   type(OrbitalDistribution) :: fdit
-  type(Sparsity) :: sp_full, sp_uc
+  type(Sparsity) :: sp, sp_tmp
 
   integer :: no_u, na_u
   integer, pointer :: ncol(:), l_ptr(:), l_col(:)
@@ -205,37 +205,38 @@ program pvtsp
 
   ! First convert transfer elements
   if ( any(tm /= TM_ALL) ) then
-    call crtSparsity_SC(sp_full,sp_uc, TM = tm, &
+    call crtSparsity_SC(sp, sp_tmp, TM = tm, &
         ucell = uc, isc_off = isc_off)
-    sp_full = sp_uc
+    sp = sp_tmp
+    call delete(sp_tmp)
     deallocate(isc_off)
   end if
 
   if ( is_unit_cell ) then
-    call delete(sp_uc)
     ! Convert to UC
-    call crtSparsity_SC(sp_full,sp_uc, UC = .true. )
+    call crtSparsity_SC(sp, sp_tmp, UC = .true. )
+    sp = sp_tmp
+    call delete(sp_tmp)
   end if
-  call delete(sp_full)
 
   if ( is_atom ) then
      call newDistribution(no_u,-1,fdit, name='fake dist')
-     call SpOrb_to_SpAtom(fdit,sp_uc,na_u,lasto,sp_full)
+     call SpOrb_to_SpAtom(fdit,sp,na_u,lasto,sp_tmp)
      deallocate(lasto)
      call delete(fdit)
-     sp_uc = sp_full
-     call delete(sp_full)
+     sp = sp_tmp
+     call delete(sp_tmp)
   end if
 
   ! Convert sparsity pattern to graph
-  call attach(sp_uc, nrows_g = no_u, &
+  call attach(sp, nrows_g = no_u, &
        n_col = ncol, list_ptr = l_ptr, &
        list_col = l_col, nnzs = n_nzs )
 
   ! If the method is existing, do the pivoting
   if ( method >= 0 ) then
      if ( method > 0 ) then
-        call sp_pvt(no_u,sp_uc,pvt,method)
+        call sp_pvt(no_u,sp,pvt,method)
      else
 
         ! Method is SCRAMBLE
@@ -265,7 +266,7 @@ program pvtsp
 
   if ( is_metis ) call sp2metis()
 
-  call delete(sp_uc)
+  call delete(sp)
 
 contains
 
@@ -349,7 +350,7 @@ contains
     if ( is_simple ) then
        read(iu) no_u, i
        
-       call io_read_Sp(iu, no_u, sp_full, 'sp')
+       call io_read_Sp(iu, no_u, sp, 'sp')
 
     else
        ! Read in the full information
@@ -366,7 +367,7 @@ contains
        read(iu) ! istep
        allocate(lasto(0:na_u))
        read(iu) lasto
-       call io_read_Sp(iu,no_u,sp_full, 'sp')
+       call io_read_Sp(iu,no_u,sp, 'sp')
        do i = 1 , no_u * (five(4) + 1)
           read(iu) ! S and H
        end do
