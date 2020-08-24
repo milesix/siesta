@@ -260,7 +260,11 @@ program pvtsp
      ! Save the graphviz file
      fmethod = trim(fmethod) // '.gv'
      call sp2graphviz(fmethod,no_u,n_nzs,ncol,l_ptr,l_col, &
-          method = graph_method, pvt = pvt )
+         method = graph_method, pvt = pvt )
+
+  else
+
+    call rgn_range(pvt, 1, no_u)
 
   end if
 
@@ -271,10 +275,11 @@ program pvtsp
 contains
 
   subroutine sp2metis()
-    integer :: io, o, o2, jo, j
+    integer :: gio, io, o, o2, jo, j
     integer, pointer :: cur_col(:), col(:)
     integer, allocatable :: cw(:)
     character(len=20) :: fmt
+    type(tRgn) :: rpvt
 
     ! Start writing it out
     if ( has_weight ) then
@@ -283,47 +288,61 @@ contains
        write(*,'(2(tr1,i0))') no_u , (n_nzs - no_u)/2
     end if
 
+    call rgn_init(rpvt,pvt%n)
+    do io = 1 , pvt%n
+      rpvt%r(pvt%r(io)) = io
+    end do
+    
     ! Write out each graph point
     write(fmt,'(i0,a)') 2*no_u,'(tr1,i0)'
-    do io = 1 , no_u
+
+    do gio = 1 , no_u
+      io = rpvt%r(gio)
        
-       cur_col => l_col(l_ptr(io)+1:l_ptr(io)+ncol(io))
+      cur_col => l_col(l_ptr(io)+1:l_ptr(io)+ncol(io))
 
-       ! allocate graph and weight
-       allocate(cw((ncol(io)-1) * 2))
+      ! allocate graph and weight
+      allocate(cw((ncol(io)-1) * 2))
      
-       ! Create the weights graph
-       o2 = 0
-       do o = 1 , ncol(io)
+      ! Create the weights graph
+      o2 = 0
+      do o = 1 , ncol(io)
           
-          jo = cur_col(o)
-          if ( jo == io ) cycle
+        jo = cur_col(o)
+        if ( jo == io ) cycle
 
-          ! step position
-          o2 = o2 + 2
+        ! step position
+        o2 = o2 + 1
 
-          ! copy over position
-          cw(o2-1) = jo
+        ! copy over position
+        cw(o2) = rpvt%r(jo)
+
+        if ( has_weight ) then
+          ! step to weight position
+          o2 = o2 + 1
 
           ! create weights
           col => l_col(l_ptr(jo)+1:l_ptr(jo)+ncol(jo))
           cw(o2) = 0
           
           do j = 1 , ncol(jo)
-             if ( any(col(j) == cur_col) ) cw(o2) = cw(o2) + 1
+            if ( any(col(j) == cur_col) ) cw(o2) = cw(o2) + 1
           end do
-          
-       end do
-       
-       if ( has_weight ) then
-          write(*,'('//trim(fmt)//')') cw
-       else
-          write(*,'('//trim(fmt)//')') pack(cur_col, cur_col /= io)
-       end if
-       
-       deallocate(cw)
+        end if
+
+      end do
+
+      if ( o2 > 0 ) then
+        write(*,'('//trim(fmt)//')') cw(1:o2)
+      else
+        write(*,*) ! no entries
+      end if
+
+      deallocate(cw)
     end do
 
+    call rgn_delete(rpvt)
+    
   end subroutine sp2metis
 
   subroutine populate_Sp()
