@@ -10,13 +10,12 @@ module gvecs
 
   integer :: ngm  = 0 !! local  number of G vectors (on this processor)
   integer :: ngl = 0  !! number of G-vector shells
-  integer, allocatable :: nl(:), nlm(:)
-  !! nl  = fft index for G-vectors (with gamma tricks, only for G>)
-  !! nlm = as above, for G< (used only with gamma tricks)
+  integer, allocatable :: nl(:)
+  !! fft indexes for g-vectors
+  !! (should correspond to QE's G>)
   integer :: gstart = 2 !! index of the first G vector whose module is > 0
   !! In QE it's used for parallel execution:
   !! gstart=2 for the proc that holds G=0, gstart=1 for all others.
-  !!TODO: Implement functionality for parallel.
 
   real(dp), allocatable, target :: gg(:)
   !! G^2 in increasing order
@@ -50,8 +49,7 @@ contains
     allocate( gg(ngm) )
     allocate( g(3, ngm) )
     allocate( mill(3, ngm) )
-    allocate( nl (ngm) )
-    allocate( nlm(ngm) )
+    allocate( nl(ngm) )
     allocate( ig_l2g(ngm) )
     allocate( igtongl(ngm) )
 
@@ -59,7 +57,6 @@ contains
 
 
   subroutine gvecs_teardown()
-    if ( allocated(nlm) ) deallocate(nlm)
     if ( allocated(nl) ) deallocate(nl)
     if ( allocated(mill) ) deallocate(mill)
     if ( allocated(g) ) deallocate(g)
@@ -199,6 +196,7 @@ contains
 
 
   subroutine gvecs_gen(CELL, Mesh)
+    use fdf, only: fdf_physical
     use precision,   only : dp, grid_p
     use parallel,    only : Node, Nodes, ProcessorY
     use sys,         only : die
@@ -215,7 +213,7 @@ contains
     ! use siesta_options, only: virtual_dt, virtual_md_Jhart
     ! use hartree_flux_data, only: Vhart_deriv, h_flux_Jhart
 
-!     Input/output variables
+    !     Input/output variables
     ! integer, intent(in)    :: N1, N2, N3
     !! Number of mesh divisions in each cell vector
     integer, intent(in)    :: Mesh(3)
@@ -226,16 +224,20 @@ contains
     real(dp), intent(in)     :: CELL(3,3)
     !! Unit cell vectors
 
+    real(dp) :: alat, at(3,3)
+
     ! integer, intent(in)  :: NSM
     !! Number of sub-mesh points per mesh point along each axis
 
-!     Local variables
+    !     Local variables
     integer               :: NP, NG, NG1, NG2, NG3
     real(dp)              :: B(3,3), G2, G2MAX
     real(dp)              :: PI, VG, VOLUME, PI8
-    real(dp),   parameter :: K0(3)= (/ 0.0, 0.0, 0.0 /), TINY= 1.0e-15
+    real(dp),   parameter :: K0(3)= (/ 0.0, 0.0, 0.0 /)
+    real(dp),   parameter :: SMALL=1.0e-8_dp, TINY=1.0e-15_dp
 
     integer :: i, j, k, ngm_max, ngm_save, ig
+    integer :: n1, n2, n3
     logical :: gamma_only = .true. ! since so far I'm interested in this case
     real(dp):: t(3), tt
     real(dp), allocatable :: g2sort_g(:)
@@ -247,6 +249,10 @@ contains
     ! complex(grid_p), dimension (:), pointer :: tc_dot => null()
     ! real(dp), allocatable                   :: fac(:)
 
+    alat = fdf_physical('LatticeConstant',0.0_dp,'Bohr')
+    if (alat==0.0_dp) call die("gvecs:gvecs_gen Gvecs_gen requires alat set")
+
+    at(:,:) = cell(:,:)/alat
 
     ! Start time counter
     call timer('COMP_GVECS_GEN', 1)
@@ -364,6 +370,36 @@ contains
 
     end do ngloop
     ! write (668,*) ' ngm, ngm_save', ngm,ngm_save
+
+    ! determine first nonzero g vector
+    if (gg(1).le.SMALL) then
+       gstart=2
+    else
+       gstart=1
+    endif
+
+    ! Set nl with the correct fft correspondence
+    nlloop: do ig = 1, ngm
+       n1 = nint(sum(g(:,ig) * at(:,1))) + 1
+       mill(1,ig) = n1 - 1
+       if (n1<1) n1 = n1 + Mesh(1) ! dfftp%nr1
+
+       n2 = nint(sum(g(:,ig) * at(:,2))) + 1
+       mill(2,ig) = n2 - 1
+       if (n2<1) n2 = n2 + Mesh(2) ! dfftp%nr2
+
+       n3 = nint(sum(g(:,ig) * at(:,3))) + 1
+       mill(3,ig) = n3 - 1
+       if (n3<1) n3 = n3 + Mesh(3) ! dfftp%nr3
+
+       if ((n1.gt.Mesh(1)).or.(n2.gt.Mesh(2)).or.(n3.gt.Mesh(3))) &
+            call die("gvecs_gen: Mesh too small?")
+
+       nl(ig) = n1 + (n2 - 1) * Mesh(1) + (n3 - 1) * Mesh(1) * Mesh(2)
+       ! nl (ig) = n1 + (n2 - 1) * dfftp%nr1x + (n3 - 1) * dfftp%nr1x * dfftp%nr2x
+
+       ! write(997, *) "[gvecsgen] ig:", ig, "nl:", nl(ig), "mill:", mill(:,ig)
+    end do nlloop
 
     deallocate( mill_g )
 
