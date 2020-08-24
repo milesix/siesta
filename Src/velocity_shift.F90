@@ -259,6 +259,7 @@ contains
     use intrinsic_missing, only: VNORM
     use units, only: eV, Ang
     use t_spin, only: tSpin
+    use m_energies, only: E_bulk_bias
 
     type(tSpin), intent(in) :: spin
     real(dp), intent(in) :: ucell(3,3)
@@ -271,6 +272,11 @@ contains
     character(len=8) :: suffix
     real(dp), parameter :: Coulomb = 1.6021766208e-19_dp
     real(dp), parameter :: hbar_Rys = 4.8377647940592375e-17_dp
+
+    ! Calculate the correction to the total energy due to the
+    ! different populations.
+    ! This will only work in case the bias is always +- V/2
+    E_bulk_bias = - velocity_h_bias * (results(5) - results(6))
 
     ! Quick escape
     if ( .not. IONode ) return

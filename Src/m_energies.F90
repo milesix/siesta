@@ -66,6 +66,9 @@ module m_energies
   real(dp) :: NEGF_Etot
   real(dp) :: NEGF_FreeE
 
+  ! Energies from bulk-bias
+  real(dp) :: E_bulk_bias
+  
 contains
 
   !> Initialize ALL energies to 0.
@@ -119,6 +122,9 @@ contains
     NEGF_Etot = 0._dp
     NEGF_FreeE = 0._dp
 
+    ! Bulk_bias
+    E_bulk_bias = 0._dp
+
   end subroutine init_Energies
 
   !> To ease the computation of specific deferred
@@ -143,7 +149,7 @@ contains
     ! DUext (external electric field) -- should it be in or out?
     Etot = Ena + Ekin + Enl + Eso + E_dftu_so + E_correc_dc - Eions + &
         DEna + DUscf + DUext + Exc + &
-        Ecorrec + Emad + Emm + Emeta + Edftu + Evdw_d3
+        Ecorrec + Emad + Emm + Emeta + Edftu + Evdw_d3 + E_bulk_bias
 
     if ( TSrun ) then
       NEGF_Etot = Ena + NEGF_Ekin + NEGF_Enl - Eions + &

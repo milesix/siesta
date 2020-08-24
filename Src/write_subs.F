@@ -344,6 +344,7 @@
      .     'siesta: Ex      =', Ex/eV,
      .     'siesta: Ec      =', Ec/eV,
      .     'siesta: Exc     =', Exc/eV,
+     .     'siesta: EbV     =', E_bulk_bias/eV,
      .     'siesta: eta*DQ  =', Ecorrec/eV,
      .     'siesta: Emadel  =', Emad/eV,
      .     'siesta: Emeta   =', Emeta/eV,
@@ -381,6 +382,9 @@
           call cmlAddProperty(xf=mainXML, value=Enl/eV, 
      .         units='siestaUnits:eV', 
      .         dictref='siesta:Enl', fmt='r6')
+          call cmlAddProperty(xf=mainXML, value=E_bulk_bias/eV,
+     .         units='siestaUnits:eV',
+     .         dictref='siesta:EbV', fmt='r6')
           call cmlAddProperty(xf=mainXML, value=Edftu_write/eV,
      .         units='siestaUnits:eV',
      .         dictref='siesta:Edftu', fmt='r6')
@@ -607,6 +611,7 @@
      .    'siesta: ',   'Ext. field =', DUext/eV,
      .    'siesta: ',        'Exch. =', Ex/eV,
      .    'siesta: ',        'Corr. =', Ec/eV,
+     .    'siesta: ',    'Bulk bias =', E_bulk_bias/eV,
      .    'siesta: ',  'Exch.-corr. =', Exc/eV,
      .    'siesta: ', 'Ion-electron =', (Enascf+Enl+DUscf-Uscf-Uatm)/eV,
      .    'siesta: ',      'Ion-ion =', (Ena+Uatm-Enaatm-Eions)/eV,
@@ -663,6 +668,10 @@
      .         value=(Enascf+Enl+DUscf-Uscf-Uatm)/eV, 
      .         units='siestaUnits:eV', 
      .         dictref='siesta:I-e', fmt='r7')
+          call cmlAddProperty(xf=mainXML,
+     .         value=E_bulk_bias/eV,
+     .         units='siestaUnits:eV',
+     .         dictref='siesta:EbV', fmt='r7')
           call cmlAddProperty(xf=mainXML, 
      .         value=(Ena+Uatm-Enaatm-Eions)/eV,
      .         units='siestaUnits:eV', 

@@ -9854,9 +9854,10 @@ whether they are left/right movers.
 
 \end{fdfentry}
 
-\begin{fdflogicalF}{BulkBias!Current}
+\begin{fdflogicalT}{BulkBias!Current}
 
-  Calculate and print out the bulk-bias current during each SCF.
+  Calculate and print out the bulk-bias current during each SCF and
+  also correct the total energy with respect to the applied bias.
   The calculated current is given by the expression:
   \begin{align}
     p_{\mathbf k,i} &=\mathbf{v}_{\mathbf k,i}\cdot \hat{\mathbf V}
@@ -9884,11 +9885,23 @@ whether they are left/right movers.
   \end{description}
   The factor $2$ comes from spin degeneracy.
 
+  When this is \fdftrue\ the total energy will be corrected with the
+  following:
+  \begin{equation}
+    \label{eq:EbV}
+    E_{\mathrm{bV}} = - V/2 ( q^+ - q^-),
+  \end{equation}
+  where $q^{+/-}$ refer to the charges positively/negatively along the
+  applied bias. If this option is false \siesta\ cannot calculate the
+  energy correction and $E_{\mathrm{bV}} = 0$. Users are encouraged to
+  have this to \fdftrue\ but may for parameter searches turn this off
+  to speed up calculations.
+
   \note there is a slight performance penalty of calculating the
   current in the SCF. It requires the calculation of the velocities
   one more time, however, it should be a relatively small overhead.
 
-\end{fdflogicalF}
+\end{fdflogicalT}
 
 
 \subsection{Output of charge densities and potentials on the grid}
