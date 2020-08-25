@@ -149,9 +149,9 @@ subroutine diag2kp_velocity( spin, no_l, no_u, no_s, nnz, &
   complex(dp) :: kph, D11, D22, D12, D21, cp
 
   !< Current calculation
-  real(dp) :: BB_res(6) ! I[along direction, [x, y, z]] + qd[dq, 0]
+  real(dp) :: BB_res(5) ! I[[x, y, z]] + qd[dq, 0]
 #ifdef MPI
-  real(dp) :: mpiBB_res(6) ! for reduction of I + qd
+  real(dp) :: mpiBB_res(5) ! for reduction of I + qd
 #endif
 
   ! Arrays for figuring out the degenerate states
@@ -510,7 +510,7 @@ subroutine diag2kp_velocity( spin, no_l, no_u, no_s, nnz, &
   call de_alloc( g_EDM, name='g_EDM', routine= 'diag2kp_velocity' )
 
   if ( calc_velocity_current ) then
-    call MPI_Reduce(BB_res, mpiBB_res, 6, MPI_Double_Precision, &
+    call MPI_Reduce(BB_res, mpiBB_res, 5, MPI_Double_Precision, &
         MPI_sum,0,MPI_Comm_World,MPIerror)
     call velocity_results_print(spin, ucell, cell_periodic, mpiBB_res)
   end if

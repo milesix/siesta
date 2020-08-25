@@ -9805,7 +9805,10 @@ $V$).
 
 When using this method the resulting eigenvalue spectrum in
 \sysfile{EIG} contains the shifted eigenvalues corresponding to
-whether they are left/right movers. 
+whether they are left/right movers.
+
+The occupation function for left/right movers uses that provided in
+\fdf{OccupationFunction}.
 
 \begin{fdfentry}{BulkBias!Voltage}[energy]<$0.\,\mathrm{eV}$>
   \fdfdepend{BulkBias!Direction,Diag!ParallelOverK,TimeReversalSymmetryForKpoints}
