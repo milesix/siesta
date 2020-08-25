@@ -186,7 +186,7 @@ contains
     integer, intent(in) :: ne
     ! The eigenvalues `e` *must* be un-shifted
     real(dp), intent(in) :: e(ne), o(ne), v(3,ne), Ef, w, Temp
-    real(dp), intent(inout) :: results(7)
+    real(dp), intent(inout) :: results(6)
 
     integer :: ie
     real(dp) :: p, lresults(4), oc
@@ -208,13 +208,11 @@ contains
       lresults(4) = lresults(4) + v(3, ie) * oc
 
       ! Calculate number of electrons for positive/negative direction
-      if ( p > velocity_tolerance ) then
-        results(5) = results(5) + o(ie)
-      else if ( p < - velocity_tolerance ) then
-        results(6) = results(6) + o(ie)
+      if ( abs(p) > velocity_tolerance ) then
+        results(5) = results(5) + sign(o(ie), p)
       else
         ! Orthogonal to the bulk-bias direction
-        results(7) = results(7) + o(ie)
+        results(6) = results(6) + o(ie)
       end if
 
     end do
@@ -264,11 +262,11 @@ contains
     type(tSpin), intent(in) :: spin
     real(dp), intent(in) :: ucell(3,3)
     logical, intent(in) :: cell_periodic(3)
-    real(dp), intent(in) :: results(7)
+    real(dp), intent(in) :: results(6)
 
     real(dp), external :: volcel
     real(dp) :: vcross(3)
-    real(dp) :: I(4), qPN(3)
+    real(dp) :: I(4), qd(2)
     character(len=8) :: suffix
     real(dp), parameter :: Coulomb = 1.6021766208e-19_dp
     real(dp), parameter :: hbar_Rys = 4.8377647940592375e-17_dp
@@ -276,7 +274,8 @@ contains
     ! Calculate the correction to the total energy due to the
     ! different populations.
     ! This will only work in case the bias is always +- V/2
-    E_bulk_bias = - velocity_h_bias * (results(5) - results(6))
+    ! results(5) == dq
+    E_bulk_bias = - velocity_h_bias * results(5)
 
     ! Quick escape
     if ( .not. IONode ) return
@@ -286,7 +285,7 @@ contains
     ! be 2.
     I(:) = results(1:4) / hbar_Rys * Coulomb * 1.e6_dp * 2._dp / spin%spinor
     ! Copy charges
-    qPN(:) = results(5:7)
+    qd(:) = results(5:6)
 
     select case ( count( cell_periodic(:) ) )
     case ( 3 )
@@ -315,8 +314,8 @@ contains
     end select
     
     ! Write out the current along the bulk-bias direction and each of the other ones
-    write(*,'(tr5,3a,e14.6,tr3,3(tr1,e14.6))') 'bulk-bias: |v| / {v} [',trim(suffix),'] ', I(1:4)
-    write(*,'(tr5,a,3(tr1,e14.6))') 'bulk-bias: {q+,q-,q0}', qPN(:)
+    write(*,'(tr5,3a,e15.7,tr3,3(tr1,e15.7))') 'bulk-bias: |v| / {v} [',trim(suffix),'] ', I(1:4)
+    write(*,'(tr5,a,2(tr1,e15.7))') 'bulk-bias: {dq,q0}', qd(:)
     
   end subroutine velocity_results_print
 
