@@ -238,8 +238,9 @@ MODULE siesta_options
   real(dp) :: wmixkick      ! Mixing weight for DM in special 'kick' SCF steps
 
   ! Thermal transport <2020-05-30>
-  logical :: want_virtual_step_md  !! Tells main program that it should perform two-step MD
-  logical :: want_vmd_in_dhscf     !! Tells dhscf that thermal transport Jhart/Jxc components are requested
+  logical :: want_virtual_step_md
+  !! Tells main `SIESTA` program that it should perform two-step MD.
+  !! Also signals `dhscf` that call to `setup_step_vmd` is required.
   logical :: virtual_md_verbose    !! Turns on verbose reporting of two-step MD's subroutines
   logical :: virtual_md_Jks        !! Compute Kohn-Sham contribution to the heat flux
   logical :: virtual_md_Jxc        !! Compute XC-contribution to the heat flux

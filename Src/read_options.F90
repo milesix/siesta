@@ -1798,8 +1798,6 @@ subroutine read_options( na, ns, nspin )
   virtual_md_Jks =   fdf_get("MD.Virtual.Jks", .false.)
   virtual_md_Jxc =   fdf_get("MD.Virtual.Jxc", .false.)
 
-  want_vmd_in_dhscf = (virtual_md_Jhart .or. virtual_md_Jxc)
-
   want_virtual_step_md = (virtual_md_verbose .or. &
        virtual_md_Jhart .or. &
        virtual_md_Jion .or. &

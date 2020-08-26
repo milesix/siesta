@@ -95,7 +95,7 @@ OBJS =  automatic_cell.o atom_options.o \
         born_charge.o cgwf.o chkdim.o chkgmx.o \
 	chempot.o coceri.o coxmol.o cross.o compute_norm.o\
 	denmat.o denmatlomem.o detover.o dfscf.o diagon.o digcel.o \
-        m_erf.o m_gvecs.o \
+        m_erf.o \
         fft.o dhscf.o constr.o diagk_file.o diagmemory.o \
 	diagg.o diagk.o diagkp.o diag2g.o diag2k.o diag2kp.o diag3g.o diag3k.o diag3kp.o diagpol.o \
 	diagsprl.o dipole.o dismin.o dnaefs.o doping_uniform.o dot.o  \
@@ -779,13 +779,12 @@ dfscf.o: meshphi.o parallel.o parallelsubs.o precision.o sys.o
 
 dhscf.o: alloc.o atmfuncs.o delk.o dfscf.o doping_uniform.o files.o forhar.o
 dhscf.o: iogrid_netcdf.o m_charge_add.o m_efield.o m_elsi_interface.o
-dhscf.o: m_hartree_add.o m_hartree_flux_procs.o m_ion_flux_data.o m_iorho.o
-dhscf.o: m_iotddft.o m_mesh_node.o m_ncdf_io.o m_ncdf_siesta.o
-dhscf.o: m_partial_charges.o m_rhog.o m_spin.o m_ts_electype.o
+dhscf.o: m_hartree_add.o m_iorho.o m_iotddft.o m_mesh_node.o m_ncdf_io.o
+dhscf.o: m_ncdf_siesta.o m_partial_charges.o m_rhog.o m_spin.o m_ts_electype.o
 dhscf.o: m_ts_global_vars.o m_ts_hartree.o m_ts_options.o m_ts_voltage.o
-dhscf.o: m_virtual_step_data.o m_xc_flux_data.o mesh.o meshdscf.o meshsubs.o
-dhscf.o: moremeshsubs.o parallel.o parsing.o precision.o rhofft.o rhoofd.o
-dhscf.o: siesta_options.o units.o vmat.o
+dhscf.o: m_virtual_step_data.o m_virtual_step_procs.o m_xc_flux_data.o mesh.o
+dhscf.o: meshdscf.o meshsubs.o moremeshsubs.o parallel.o parsing.o precision.o
+dhscf.o: rhofft.o rhoofd.o siesta_options.o units.o vmat.o
 
 diag.o: alloc.o diag_option.o parallel.o precision.o sys.o
 
@@ -1118,8 +1117,6 @@ m_geom_square.o: intrinsic_missing.o m_geom_aux.o m_geom_plane.o
 
 m_getopts.o: f2kcli.o
 
-m_gvecs.o: alloc.o cellsubs.o chkgmx.o fft.o parallel.o precision.o sys.o
-
 m_handle_sparse.o: class_Data2D.o class_OrbitalDistribution.o class_SpData1D.o
 m_handle_sparse.o: class_SpData2D.o class_Sparsity.o geom_helper.o m_iodm.o
 m_handle_sparse.o: m_os.o m_region.o m_ts_io.o parallel.o precision.o units.o
@@ -1129,9 +1126,8 @@ m_hartree_add.o: parallel.o precision.o units.o
 
 m_hartree_flux_data.o: alloc.o precision.o
 
-m_hartree_flux_procs.o: alloc.o cellsubs.o chkgmx.o fft.o m_hartree_flux_data.o
-m_hartree_flux_procs.o: m_virtual_step_data.o parallel.o precision.o
-m_hartree_flux_procs.o: siesta_options.o sys.o
+m_hartree_flux_procs.o: alloc.o cellsubs.o m_hartree_flux_data.o
+m_hartree_flux_procs.o: m_virtual_step_data.o precision.o siesta_options.o
 
 m_hs_matrix.o: alloc.o cellsubs.o geom_helper.o precision.o sys.o
 
@@ -1161,7 +1157,7 @@ m_iodm.o: m_io_s.o m_os.o parallel.o
 m_iodm_old.o: alloc.o files.o m_matio.o m_mpi_utils.o parallel.o parallelsubs.o
 m_iodm_old.o: precision.o sparse_matrices.o sys.o
 
-m_ion_flux_data.o: cellsubs.o m_erf.o m_gvecs.o precision.o
+m_ion_flux_data.o: cellsubs.o m_erf.o m_virtual_step_data.o precision.o
 
 m_ion_flux_procs.o: atomlist.o m_ion_flux_data.o m_virtual_step_data.o
 m_ion_flux_procs.o: precision.o siesta_geom.o
@@ -1502,12 +1498,13 @@ m_ts_weight.o: units.o
 
 m_virtual_step_data.o: precision.o
 
-m_virtual_step_procs.o: alloc.o class_Sparsity.o m_gvecs.o
-m_virtual_step_procs.o: m_hartree_flux_data.o m_ion_flux_data.o
-m_virtual_step_procs.o: m_ion_flux_procs.o m_ks_flux_data.o m_ks_flux_procs.o
-m_virtual_step_procs.o: m_virtual_step_data.o m_xc_flux_data.o
-m_virtual_step_procs.o: m_zero_flux_data.o m_zero_flux_procs.o precision.o
-m_virtual_step_procs.o: siesta_options.o sparse_matrices.o
+m_virtual_step_procs.o: alloc.o cellsubs.o chkgmx.o class_Sparsity.o fft.o
+m_virtual_step_procs.o: m_hartree_flux_data.o m_hartree_flux_procs.o
+m_virtual_step_procs.o: m_ion_flux_data.o m_ion_flux_procs.o m_ks_flux_data.o
+m_virtual_step_procs.o: m_ks_flux_procs.o m_virtual_step_data.o
+m_virtual_step_procs.o: m_xc_flux_data.o m_zero_flux_data.o m_zero_flux_procs.o
+m_virtual_step_procs.o: parallel.o precision.o siesta_options.o
+m_virtual_step_procs.o: sparse_matrices.o sys.o
 
 m_wallclock.o: m_walltime.o
 
@@ -1517,11 +1514,12 @@ m_writedelk.o: parallelsubs.o precision.o siesta_geom.o sys.o
 
 m_xc_flux_data.o: precision.o
 
-m_zero_flux_data.o: cellsubs.o m_ion_flux_data.o precision.o
+m_zero_flux_data.o: cellsubs.o m_virtual_step_data.o precision.o
 
 m_zero_flux_procs.o: atm_types.o atomlist.o basis_types.o bessph.o
-m_zero_flux_procs.o: m_ks_flux_data.o m_zero_flux_data.o matel_mod.o
-m_zero_flux_procs.o: precision.o radial.o siesta_geom.o sparse_matrices.o
+m_zero_flux_procs.o: m_ks_flux_data.o m_virtual_step_data.o m_zero_flux_data.o
+m_zero_flux_procs.o: matel_mod.o precision.o radial.o siesta_geom.o
+m_zero_flux_procs.o: sparse_matrices.o
 
 m_zminim.o: files.o parallel.o parallelsubs.o precision.o siesta_options.o
 m_zminim.o: sys.o
@@ -2046,7 +2044,6 @@ fsiesta.mod: fsiesta_sockets.o
 gpfa_core_dp.mod: m_fft_gpfa.o
 gpfa_core_sp.mod: m_fft_gpfa.o
 gpfa_fft.mod: m_fft_gpfa.o
-gvecs.mod: m_gvecs.o
 hartree_flux_data.mod: m_hartree_flux_data.o
 hartree_flux_procs.mod: m_hartree_flux_procs.o
 iofa_m.mod: iofa.o

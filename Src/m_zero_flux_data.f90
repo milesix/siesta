@@ -9,6 +9,7 @@ module zero_flux_data
   real(dp), allocatable, save :: H_g(:,:,:,:)
   !! Table for the values of `h_ab` used in computation
   !! of the local, long-range part of the Zero heat current.
+  complex(DP), allocatable, save :: u_g(:,:)
 
   real(dp), parameter :: dq = 0.01_dp   !! space between points in the pseudopotential tab.
   real(dp), parameter :: cell_factor = 1.0_dp
@@ -27,7 +28,7 @@ contains
     use fdf, only: fdf_physical
     use utils, only: die
     use cellsubs, only : volcel
-    use ion_flux_data, only: ion_flux_cell
+    use m_virtual_step_data, only: cell_vmd
     !NOTE: This should be present even with `ion_flux` calculation switched off,
     ! though ofc it should be moved into a proper scope.
 
@@ -36,7 +37,7 @@ contains
     alat = fdf_physical('LatticeConstant',0.0_dp,'Bohr')
     if (alat==0.0_dp) call die('zero_flux:init', 'VMD Jzero requires alat set')
 
-    omega = volcel(ion_flux_cell)
+    omega = volcel(cell_vmd)
 
     tpiba = 2.0_dp * pi / alat
     pref  = 4.0_dp * pi / omega

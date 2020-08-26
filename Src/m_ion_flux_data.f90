@@ -2,6 +2,7 @@ module ion_flux_data
   use precision, only: dp, grid_p
   use m_erf, only: erf_func, erfc_func
   use cellsubs, only : volcel
+  use m_virtual_step_data
 
   implicit none
   SAVE
@@ -17,16 +18,12 @@ module ion_flux_data
   real(dp)  :: ion_flux_d(3)
   real(dp)  :: ion_flux_e(3)
 
-  ! Data for gvecs:
-  real(dp), dimension(3,3) :: ion_flux_cell
-  integer, dimension(3)    :: ion_flux_ntml
-  integer, dimension(3)    :: ion_flux_mesh
-
-  ! FIXME: those parameters must be read from input
-  real(dp) :: eta = 0.1_dp
-  !! Ewald factor for convergence
-  integer  :: n_max = 5
-  !! ?? cutoff per somme in griglia reale - doesn't look like
+  real(dp) :: eta_ewald = 0.1_dp
+  !! Ewald factor for convergence.
+  !! Read from .fdf input under `MD.Virtual.Jion.Eta`
+  integer  :: n_max_ewald = 5
+  !! Number of periodix cell images for Ewald scheme
+  !! Read from .fdf input under `MD.Virtual.Jion.Nmax`
 
   real(dp) :: I_prime, I_prime_rec
   real(dp), allocatable :: I_uno_g(:,:,:)
@@ -102,17 +99,17 @@ contains
 
     val1 = 0.d0
 
-    do n_x=-n_max,n_max
-       do n_y=-n_max,n_max
-          do n_z=-n_max,n_max
-             n(1:3) = n_x * ion_flux_cell(1:3,1) +&
-                  & n_y * ion_flux_cell(1:3,2) +&
-                  & n_z * ion_flux_cell(1:3,3)
+    do n_x = -n_max_ewald, n_max_ewald
+       do n_y = -n_max_ewald, n_max_ewald
+          do n_z = -n_max_ewald, n_max_ewald
+             n(1:3) = n_x * cell_vmd(1:3,1) +&
+                  & n_y * cell_vmd(1:3,2) +&
+                  & n_z * cell_vmd(1:3,3)
              u(1:3) = pos(1:3)-n(1:3)
              u_mod=modulus(u)
-             val1=val1+eta*hp_(sqrt(eta)*u_mod)*u(a)*u(b)/u_mod
+             val1=val1+eta_ewald*hp_(sqrt(eta_ewald)*u_mod)*u(a)*u(b)/u_mod
              if (a==b) then
-                val1=val1+sqrt(eta)*h_(sqrt(eta)*u_mod)
+                val1=val1+sqrt(eta_ewald)*h_(sqrt(eta_ewald)*u_mod)
              end if
           end do
        end do
@@ -132,14 +129,14 @@ contains
 
     val1 = 0.d0
 
-    do n_x=-n_max,n_max
-       do n_y=-n_max,n_max
-          do n_z=-n_max,n_max
-             n(1:3) = n_x * ion_flux_cell(1:3,1) +&
-                  & n_y * ion_flux_cell(1:3,2) +&
-                  & n_z * ion_flux_cell(1:3,3)
+    do n_x = -n_max_ewald, n_max_ewald
+       do n_y = -n_max_ewald, n_max_ewald
+          do n_z = -n_max_ewald, n_max_ewald
+             n(1:3) = n_x * cell_vmd(1:3,1) +&
+                  & n_y * cell_vmd(1:3,2) +&
+                  & n_z * cell_vmd(1:3,3)
              modul = modulus(pos(1:3)-n(1:3))
-             erf_val = erfc_func(sqrt(eta)*modul)
+             erf_val = erfc_func(sqrt(eta_ewald)*modul)
              val1 = val1 + erf_val/modul
           end do
        end do
@@ -151,62 +148,60 @@ contains
 
 
   subroutine init_I_prime ()
-    use gvecs, only: ngm, gstart, gg
-
-    integer  :: igm, n_x, n_y, n_z
+    integer  :: ig, igp, n_x, n_y, n_z
     real(dp) :: n(3), modul, erf_value, omega
 
-    omega = volcel(ion_flux_cell)
+    omega = volcel(cell_vmd)
     I_prime = 0.d0
 
-    do n_x=-n_max,n_max
-       do n_y=-n_max,n_max
-          do n_z=-n_max,n_max
+    do n_x= -n_max_ewald, n_max_ewald
+       do n_y= -n_max_ewald, n_max_ewald
+          do n_z= -n_max_ewald, n_max_ewald
              if ((n_x/=0).or.(n_y/=0).or.(n_z/=0)) then
-                n(1:3) = n_x * ion_flux_cell(1:3,1) +&
-                     & n_y * ion_flux_cell(1:3,2) +&
-                     & n_z * ion_flux_cell(1:3,3)
+                n(1:3) = n_x * cell_vmd(1:3,1) +&
+                     & n_y * cell_vmd(1:3,2) +&
+                     & n_z * cell_vmd(1:3,3)
                 modul=modulus(n(:))
-                erf_value=erfc_func(sqrt(eta)*modul)
+                erf_value=erfc_func(sqrt(eta_ewald)*modul)
                 I_prime = I_prime + erf_value / modul
              end if
           end do
        end do
     end do
 
-    I_prime=I_prime-2.d0*sqrt(eta/pi)
+    I_prime=I_prime-2.d0*sqrt(eta_ewald/pi)
 
     I_prime_rec=0.d0
-    do igm=gstart,ngm
+    do ig=1, ngm_plus_vmd
+       igp = igplus_vmd(ig)     ! get the global index
        I_prime_rec=I_prime_rec+2.d0*(4.d0 * pi)/omega *&
-            & alpha_0_lr(eta,gg(igm),1) ! QE: scaled, gg(igm)*tpiba2
+            & alpha_0_lr(eta_ewald,gg_vmd(igp),1) ! QE: scaled, gg(igm)*tpiba2
     end do
 
-    I_prime_rec=I_prime_rec-pi/(eta*omega)
+    I_prime_rec=I_prime_rec-pi/(eta_ewald*omega)
     I_prime=I_prime+I_prime_rec
 
   end subroutine init_I_prime
 
 
   subroutine init_I_uno_g ()
-    use gvecs, only: ngm, gstart, g, gg
-
-    integer  :: igm, a, b
+    integer  :: ig, igp, a, b
     real(dp) :: omega
 
-    omega = volcel(ion_flux_cell)
-    allocate(I_uno_g(ngm,3,3))
+    omega = volcel(cell_vmd)
+    allocate(I_uno_g(ngm_plus_vmd,3,3))
 
     do a=1,3
        do b=1,3
           if ( a >= b ) then
-             do igm=gstart,ngm
-                I_uno_g(igm,a,b)=(4.d0*pi)/omega *&
-                     & exp(-gg(igm)/(4.d0*eta))/(gg(igm)) *&
-                     & (2 + gg(igm)/(2.d0*eta)) * &
-                     & g(a,igm) * g(b,igm) / gg(igm)
+             do ig=gstart_vmd, ngm_plus_vmd
+                igp = igplus_vmd(ig)     ! get the global index for g-vectors
+                I_uno_g(ig,a,b)=(4.d0*pi)/omega *&
+                     & exp(-gg_vmd(igp)/(4.d0*eta_ewald))/(gg_vmd(igp)) *&
+                     & (2 + gg_vmd(igp)/(2.d0*eta_ewald)) * &
+                     & g_vmd(a,igp) * g_vmd(b,igp) / gg_vmd(igp)
              end do
-             if (gstart==2) I_uno_g(1,a,b) = 0.d0
+             if (gstart_vmd==2) I_uno_g(1,a,b) = 0.d0
           end if
        end do
     end do
@@ -215,63 +210,56 @@ contains
 
 
   subroutine init_I_dos_g ()
-    use gvecs, only: ngm, gstart, gg
-
-    integer  :: igm
+    integer  :: ig, igp
     real(dp) :: omega
 
-    omega = volcel(ion_flux_cell)
-    allocate(I_dos_g(ngm))
+    omega = volcel(cell_vmd)
+    allocate(I_dos_g(ngm_plus_vmd))
 
-    do igm=gstart,ngm
-       I_dos_g(igm)=(4.d0 * pi)/omega * alpha_0_lr(eta,gg(igm),1)
+    do ig=gstart_vmd, ngm_plus_vmd
+       igp = igplus_vmd(ig)     ! get the global index for g-vectors
+       I_dos_g(ig)=(4.d0 * pi)/omega * alpha_0_lr(eta_ewald,gg_vmd(igp),1)
     end do
 
-    if (gstart==2) I_dos_g(1) = -pi/(eta*omega)
+    if (gstart_vmd==2) I_dos_g(1) = -pi/(eta_ewald*omega)
 
   end subroutine init_I_dos_g
 
 
   subroutine I_dos_value(y,x)
-    use gvecs, only: ngm, gstart, g, gg
-    ! use wvfct,      only :npw
-
     real(DP), intent(in)  :: x(3)
     real(DP), intent(out) :: y
-    integer  :: igm
+    integer  :: ig, igp
     real(DP) :: scalar
 
     y = 0.d0
-    ! do igm=gstart,npw
-    do igm=gstart,ngm                          ! <- FIXME, or don't
-       if (gg(igm)/(4.d0*eta) > 20.d0) exit    ! NOTE: npw? exit?
-       y = y+2.d0*( I_dos_g(igm)*cos(dot_product(g(1:3,igm), x(1:3))) )
+    do ig=gstart_vmd, ngm_plus_vmd
+       igp = igplus_vmd(ig)     ! get the global index for g-vectors
+       if (gg_vmd(igp)/(4.d0*eta_ewald) > 20.d0) exit
+       y = y+2.d0*( I_dos_g(ig)*cos(dot_product(g_vmd(1:3,igp), x(1:3))) )
     end do
 
-    if (gstart==2) y = y + I_dos_g(1)
+    if (gstart_vmd==2) y = y + I_dos_g(1)
     call add_local_dos(y,x)
 
   end subroutine I_dos_value
 
 
   subroutine I_uno_value(y,x,a,b)
-    use gvecs, only: ngm, gstart, g, gg
-    ! use wvfct, only :npw
     real(dp), intent(out) :: y
     real(dp),intent(in)   :: x(3)
     integer,intent(in)    :: a,b
-    integer  :: igm
+    integer  :: ig, igp
     real(dp) :: comp_iso
 
     y = 0.d0
-    ! do igm=gstart,npw
-    do igm=gstart,ngm                         ! <- FIXME, or don't
-       if  (gg(igm)/(4.d0*eta) > 20.d0)	exit  ! NOTE: npw? gl? exit?
-       y = y + 2.d0*(I_uno_g(igm,a,b)*cos(dot_product(g(1:3,igm), x(1:3))))
-       ! if (gl(igm)>ng_max) exit
+    do ig=gstart_vmd, ngm_plus_vmd
+       igp = igplus_vmd(ig)     ! get the global index for g-vectors
+       if (gg_vmd(igp)/(4.d0*eta_ewald) > 20.d0) exit
+       y = y + 2.d0*(I_uno_g(ig,a,b)*cos(dot_product(g_vmd(1:3,igp), x(1:3))))
     end do
 
-    if (gstart==2) y = y + I_uno_g(1,a,b)
+    if (gstart_vmd==2) y = y + I_uno_g(1,a,b)
     call add_local_uno(y,x,a,b)
 
     if (a==b) then
@@ -283,12 +271,18 @@ contains
 
 
   subroutine init_ion_flux_data ()
+    use fdf, only: fdf_integer, fdf_double
+
     ion_flux_Jion(:) = 0.0_dp
     ion_flux_a(:) = 0.0_dp
     ion_flux_b(:) = 0.0_dp
     ion_flux_c(:) = 0.0_dp
     ion_flux_d(:) = 0.0_dp
     ion_flux_e(:) = 0.0_dp
+
+    ! Read additional parameters for the Ewald scheme:
+    eta_ewald = fdf_double("MD.Virtual.Jion.Eta", 0.1_dp)
+    n_max_ewald = fdf_integer("MD.Virtual.Jion.Nmax", 5)
 
     call init_I_prime()
     call init_I_uno_g()

@@ -638,11 +638,10 @@ C     Modules
 
 C     ThTr imports
       use siesta_options, only: virtual_md_verbose
-      use m_virtual_step_data, only: istep_vmd, substep
-      use hartree_flux_procs, only: compute_Jhart
+      use m_virtual_step_data
+      use m_virtual_step_procs, only: setup_step_vmd
       use xc_flux_data,   only: thtr_Rho, thtr_dexcdGD
       use xc_flux_data,   only: xc_flux_dvol
-      use ion_flux_data,  only: ion_flux_cell, ion_flux_mesh
 
       use m_partial_charges, only: compute_partial_charges
       use m_partial_charges, only: want_partial_charges
@@ -1558,16 +1557,13 @@ C ----------------------------------------------------------------------
 !     Result is copied into `Vhart_deriv` variable on the `BASE`-step,
 !     in order to obtain time derivative of Hartree potential on a subsequent
 !     `VIRTUAL`-step. If needed, the Hartree potential should be gained from
-!     `Vhart_deriv` or `charge_g` in `compute_Jhart`.
+!     `Vhart_deriv` or `charge_g` in `setup_step_vmd`.
 !     It is not needed further for thermal transport, and is discarded by default.
 ! ----------------------------------------------------------------------
-         ion_flux_cell = cell  ! saved here for `gvecs` and ionic flux
-                               !NOTE: also needed for zero flux
-         ion_flux_mesh = ntm   ! saved here for `gvecs` and ionic flux
 
          if (present(want_vmd_in_dhscf)) then
             if (want_vmd_in_dhscf) then
-               xc_flux_dvol = dvol
+               call store_data_for_vmd()
 
 !     Allocate memory for DRho_thtr using the UNIFORM data distribution
                call re_alloc( DRho_thtr, 1, ntpl, 1, nspin, 'DRho_thtr',
@@ -1598,8 +1594,7 @@ c$$$  call write_grid_netcdf( cell, ntm, 1, ntpl, thtr_Rho,
 c$$$  &       "Rho_from_DRho_gga" // trim(ncfname) )
 c$$$  end if
 
-               call compute_Jhart(cell, ntml(1), ntml(2), ntml(3), ntm,
-     $              thtr_Rho, nsm)
+               call setup_step_vmd()
 
                call de_alloc( DRho_thtr, 'DRho_thtr', 'dhscf' )
             end if
@@ -1898,6 +1893,16 @@ C ----------------------------------------------------------------------
 #endif
 !------------------------------------------------------------------------ END
       CONTAINS
+
+      subroutine store_data_for_vmd()
+      !! Store state data for various VMD routines.
+         cell_vmd = cell
+         mesh_vmd = ntm
+         ntml_vmd = ntml
+         nsm_vmd  = nsm
+         xc_flux_dvol = dvol
+      end subroutine store_data_for_vmd
+
 
       subroutine save_bader_charge()
       use meshsubs, only: ModelCoreChargeOnMesh

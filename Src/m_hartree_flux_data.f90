@@ -2,6 +2,8 @@ module hartree_flux_data
   use precision, only: dp, grid_p
 
   real(grid_p), pointer, save :: Vhart_deriv(:,:) => null()
+  !! Obtained from charge density in the reciprocal space
+  !! for computation of its derivative.
   real(grid_p), public, save  :: h_flux_Jhart(3) = 0.0
 
 contains

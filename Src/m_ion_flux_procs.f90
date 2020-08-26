@@ -22,12 +22,6 @@ module ion_flux_procs
 
 contains
 
-  ! real(kind=DP) function modulus(vector)
-  !   real(kind=DP) ::vector(3)
-  !   modulus=sqrt(vector(1)**2+vector(2)**2+vector(3)**2)
-  ! end function modulus
-
-
   subroutine compute_Jion_a()
     use ion_flux_data, only: ion_flux_a, ion_flux_Jion
 

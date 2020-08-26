@@ -94,7 +94,7 @@ C
       use siesta_geom,    only: mscell
       use siesta_options, only: hirshpop, voropop
       use siesta_options, only: partial_charges_at_every_geometry
-      use siesta_options, only: want_vmd_in_dhscf
+      use siesta_options, only: want_virtual_step_md
 !     for Jhart computations in dhscf, where V_Hartree is needed
       use m_partial_charges, only: want_partial_charges
 
@@ -310,7 +310,7 @@ c first (normal) call to DHSCF, ihmat=1 --------------------------------------
      &            maxnd, numh, listhptr, listh, Dscf, Datm,
      &            maxnh, Hmat, Enaatm, Enascf, Uatm, Uscf, DUscf, DUext,
      &            Exc, Dxc, dipol, stress, fal, stressl,
-     &            want_vmd_in_dhscf=want_vmd_in_dhscf )
+     &            want_vmd_in_dhscf=want_virtual_step_md )
       want_partial_charges = .false.
 
 c Sampling ------------------------------------------------------------------
