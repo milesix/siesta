@@ -238,22 +238,19 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
 
   ! Perform diagonalization loop
   do ik = 1 + Node, nk, Nodes
-    
     do is = 1, spin%spinor
       
       call setup_k(kpoint(:,ik))
 
       ! Since we want to calculate the velocities as well we do need the eigenstates
-      call cdiag(Hk,Sk,no_u,no_u,no_u,eo(1,is,ik),psi, &
-          neigwanted,iscf,ierror, -1)
+      call cdiag(Hk,Sk,no_u,no_u,no_u,eo(1,is,ik),psi,neigwanted,iscf,ierror, -1)
 
       ! Check error flag and take appropriate action
       if ( ierror > 0 ) then
         call die('Terminating due to failed diagonalisation')
       else if ( ierror < 0 ) then
         call setup_k(kpoint(:,ik))
-        call cdiag(Hk,Sk,no_u,no_u,no_u,eo(1,is,ik),psi, &
-            neigwanted,iscf,ierror, -1)
+        call cdiag(Hk,Sk,no_u,no_u,no_u,eo(1,is,ik),psi,neigwanted,iscf,ierror, -1)
       end if
 
       ! Figure out the degenerate states
@@ -357,34 +354,25 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   do ik = 1 + Node, nk, Nodes
     do is = 1, spin%spinor
 
-      ! Find maximum eigenvector that is required for this k point and spin
-      ! Note that since eo has averaged out the degeneracy eigenvalues this below
-      ! block will also group *all* degenerate eigenvalues!
-      neigneeded = 1
-      do ie = neigwanted, 1, -1
-        if ( abs(qo(ie,is,ik)) > occtol ) then
-          neigneeded = ie
-          exit
-        end if
-      end do
-
-      ! Find eigenvectors
+      ! In this case we shouldn't determine number of states
+      ! depending on occupations. To correctly calculate the current
+      ! we really need the unoccupied states.
       call setup_k(kpoint(:,ik))
-      call cdiag(Hk,Sk,no_u,no_u,no_u,eig_aux,psi,neigneeded,iscf,ierror, -1)
+      call cdiag(Hk,Sk,no_u,no_u,no_u,eig_aux,psi,neigwanted,iscf,ierror, -1)
 
       ! Check error flag and take appropriate action
       if ( ierror > 0 ) then
         call die('Terminating due to failed diagonalisation')
       else if ( ierror < 0 ) then
         call setup_k(kpoint(:,ik))
-        call cdiag(Hk,Sk,no_u,no_u,no_u,eig_aux,psi,neigneeded,iscf,ierror, -1)
+        call cdiag(Hk,Sk,no_u,no_u,no_u,eig_aux,psi,neigwanted,iscf,ierror, -1)
       end if
 
       ! Before expanding eigenvectors we need to decouple the degenerate
       ! states so that we don't populate the degeneracies wrongly
       ! This assumes that the decoupling is stable.
       ndeg = 1
-      do ie = 2, neigneeded
+      do ie = 2, neigwanted
         
         ! Eigenvalues are sorted, so this will work fine
         if ( eig_aux(ie) - eig_aux(ie-1) < deg_EPS ) then
@@ -394,7 +382,7 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
         else if ( ndeg > 1 ) then
 
           ! Decouple ndeg from ie - 1 and ndeg back
-          call degenerate_decouple(neigneeded, eig_aux, ndeg, ie - 1)
+          call degenerate_decouple(neigwanted, eig_aux, ndeg, ie - 1)
 
           ! To debug, one may calculate the velocities
           ! before and after the degenerate decoupling
@@ -406,14 +394,25 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
 
       ! Decouple the last elements
       if ( ndeg > 1 ) &
-          call degenerate_decouple(neigneeded, eig_aux, ndeg, neigneeded)
+          call degenerate_decouple(neigwanted, eig_aux, ndeg, neigwanted)
 
       ! If we want to calculate the current and print it, we can do so here
       if ( calc_velocity_current ) then
-        call calculate_velocity(neigneeded, eig_aux)
-        call velocity_results(neigneeded, eig_aux, qo(:,is,ik), &
+        call calculate_velocity(neigwanted, eig_aux)
+        call velocity_results(neigwanted, eig_aux, qo(:,is,ik), &
             v, Efs(is), wk(ik), Temp, BB_res)
       end if
+
+      ! Find maximum eigenvector that is required for this k point and spin
+      ! Note that since eo has averaged out the degeneracy eigenvalues this below
+      ! block will also group *all* degenerate eigenvalues!
+      neigneeded = 1
+      do ie = neigwanted, 1, -1
+        if ( abs(qo(ie,is,ik)) > occtol ) then
+          neigneeded = ie
+          exit
+        end if
+      end do
 
       ! Expand the eigenvectors to the density matrix
 

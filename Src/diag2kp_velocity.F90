@@ -336,35 +336,26 @@ subroutine diag2kp_velocity( spin, no_l, no_u, no_s, nnz, &
 
   do ik = 1 + Node, nk, Nodes
 
-    ! Find maximum eigenvector that is required for this k point and spin
-    ! Note that since eo has averaged out the degeneracy eigenvalues this below
-    ! block will also group *all* degenerate eigenvalues!
-    neigneeded = 1
-    do ie = neigwanted2, 1, -1
-      if ( abs(qo(ie,ik)) > occtol ) then
-        neigneeded = ie
-        exit
-      end if
-    end do
-
-    ! Find eigenvectors
+    ! In this case we shouldn't determine number of states
+    ! depending on occupations. To correctly calculate the current
+    ! we really need the unoccupied states.
     call setup_k(kpoint(:,ik))
-    call cdiag(Hk,Sk,no_u2,no_u2,no_u2,eig_aux,psi,neigneeded,iscf,ierror, -1)
+    call cdiag(Hk,Sk,no_u2,no_u2,no_u2,eig_aux,psi,neigwanted2,iscf,ierror, -1)
 
     ! Check error flag and take appropriate action
     if ( ierror > 0 ) then
       call die('Terminating due to failed diagonalisation')
     else if ( ierror < 0 ) then
       call setup_k(kpoint(:,ik))
-      call cdiag(Hk,Sk,no_u2,no_u2,no_u2,eig_aux,psi,neigneeded,iscf,ierror, -1)
+      call cdiag(Hk,Sk,no_u2,no_u2,no_u2,eig_aux,psi,neigwanted2,iscf,ierror, -1)
     end if
 
     ! Before expanding eigenvectors we need to decouple the degenerate
     ! states so that we don't populate the degeneracies wrongly
     ! This assumes that the decoupling is stable.
     ndeg = 1
-    do ie = 2, neigneeded
-        
+    do ie = 2, neigwanted2
+
       ! Eigenvalues are sorted, so this will work fine
       if ( eig_aux(ie) - eig_aux(ie-1) < deg_EPS ) then
 
@@ -373,7 +364,7 @@ subroutine diag2kp_velocity( spin, no_l, no_u, no_s, nnz, &
       else if ( ndeg > 1 ) then
 
         ! Decouple ndeg from ie - 1 and ndeg back
-        call degenerate_decouple(neigneeded, eig_aux, ndeg, ie - 1)
+        call degenerate_decouple(neigwanted2, eig_aux, ndeg, ie - 1)
 
         ! To debug, one may calculate the velocities
         ! before and after the degenerate decoupling
@@ -385,14 +376,25 @@ subroutine diag2kp_velocity( spin, no_l, no_u, no_s, nnz, &
 
     ! Decouple the last elements
     if ( ndeg > 1 ) &
-        call degenerate_decouple(neigneeded, eig_aux, ndeg, neigneeded)
+        call degenerate_decouple(neigwanted2, eig_aux, ndeg, neigwanted2)
 
     ! If we want to calculate the current and print it, we can do so here
     if ( calc_velocity_current ) then
-      call calculate_velocity(neigneeded, eig_aux)
-      call velocity_results(neigneeded, eig_aux, qo(:,ik), &
+      call calculate_velocity(neigwanted2, eig_aux)
+      call velocity_results(neigwanted2, eig_aux, qo(:,ik), &
           v, Ef, wk(ik), Temp, BB_res)
     end if
+
+    ! Find maximum eigenvector that is required for this k point and spin
+    ! Note that since eo has averaged out the degeneracy eigenvalues this below
+    ! block will also group *all* degenerate eigenvalues!
+    neigneeded = 1
+    do ie = neigwanted2, 1, -1
+      if ( abs(qo(ie,ik)) > occtol ) then
+        neigneeded = ie
+        exit
+      end if
+    end do
 
     ! Expand the eigenvectors to the density matrix
     Dk = cmplx(0._dp, 0._dp, dp)
@@ -718,7 +720,7 @@ contains
       
     end do
 
-!!$    do ie = 1, neigwanted
+!!$    do ie = 1, neigwanted2
 !!$      print '(i5,3(tr1,f10.4))', ik, v(:,ie) / Ang / hbar_Rys * 1.e-12_dp
 !!$    end do
 
