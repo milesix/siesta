@@ -18,6 +18,10 @@
                                           ! Number of bands manifolds
                                           !   that will be considered
                                           !   for Wannier transformation
+  use siesta_options, only: index_perturbed_manifold
+                                          ! Index of the manifold that will
+                                          !   be perturbed with a given
+                                          !   chemical potential
   use w90_in_siesta_types,   only: manifold_bands_w90_in
                                           ! Variable where the initial
                                           !   and final band of each
@@ -166,11 +170,11 @@
  &                 0,MPI_Comm_World,MPIerror)
 
   if (Node.ne.0) then
-    allocate(chempotwann_val(manifold_bands_w90_in(1)%numbands_w90_in,spin%H))
+    allocate(chempotwann_val(manifold_bands_w90_in(index_perturbed_manifold)%numbands_w90_in,spin%H))
   end if
   do ispin = 1, spin%H
     call MPI_Bcast(chempotwann_val(:,ispin),                                 &
- &                 manifold_bands_w90_in(1)%numbands_w90_in,                 &
+ &                 manifold_bands_w90_in(index_perturbed_manifold)%numbands_w90_in,                 &
  &                 mpi_double_precision,0,                                   &
  &                 MPI_Comm_World,MPIerror)
   enddo
@@ -263,11 +267,11 @@
 ! &    'broadcast_w90_in_siesta: Node, i_manifold, write_hr        = ',       &
 ! &    Node, i_man, manifold_bands_w90_in(i_man)%write_hr
 !  enddo 
-!  do i_man = 1, manifold_bands_w90_in(1)%numbands_w90_in
-!    write(6,'(a,2i5,2f12.5)')                                                &
-! &    'broadcast_w90_in_siesta: Node, iwannier, chempot = ',                 &
-! &    Node, i_man, chempotwann_val(i_man,:)
-!  enddo 
+  do i_man = 1, manifold_bands_w90_in(index_perturbed_manifold)%numbands_w90_in
+    write(6,'(a,2i5,2f12.5)')                                                &
+ &    'broadcast_w90_in_siesta: Node, iwannier, chempot = ',                 &
+ &    Node, i_man, chempotwann_val(i_man,:)
+  enddo 
 !! End debugging
 
   end subroutine broadcast_w90_in_siesta

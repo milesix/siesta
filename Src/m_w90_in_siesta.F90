@@ -34,6 +34,10 @@ module m_w90_in_siesta
                                           ! Number of bands manifolds 
                                           !  that will be considered
                                           !  for Wannier transformation
+  use siesta_options, only: index_perturbed_manifold
+                                          ! Index of the manifold that will
+                                          !   be perturbed with an external  
+                                          !   chemical potential
   use siesta_options, only: r_between_manifolds     
                                           ! Will the position operator matrix
                                           !  elements be computed between bands
@@ -781,7 +785,7 @@ module m_w90_in_siesta
 !   to allocate the variable.
     nullify( chempotwann_val )
     call re_alloc( chempotwann_val,                              &
- &                 1, manifold_bands_w90_in(1)%numbands_w90_in,  &
+ &                 1, manifold_bands_w90_in(index_perturbed_manifold)%numbands_w90_in,  &
  &                 1, spin%H,                                    & 
  &                 name='chempotwann_val',                       &
  &                 routine='read_w90_in_siesta_specs')
