@@ -2503,6 +2503,7 @@ module m_w90_in_siesta
   end subroutine deallocate_wannier
 
 #else
+  CONTAINS
   subroutine dummy_routine()
   end subroutine dummy_routine
 #endif
