@@ -98,14 +98,11 @@ contains
           call simpson(npts, delta_rm, aux, vl_int)
           tab_local(iq, is, 0) = vl_int * pref
           do in=1,npts
+             call rad_get(spp%reduced_vlocal, rvals(in), aux_fr, aux_dfdr)
              aux(in) = aux_fr * bessph(1, rvals(in)*qi) * rvals(in) * rvals(in) ! bessel_spherical for l=1
           end do
           call simpson(npts, delta_rm, aux, vl_int)
           tab_local(iq, is, 1) = vl_int * pref
-          !NOTE: Those are different from QE's, unlike the case with L=0.
-          ! Maybe this is due to differences in rvals(:) arrays.
-          ! Does this matter in the end? The values are small comparing
-          ! to L=0. Need to compare later.
        end do
     end do
 
@@ -136,7 +133,13 @@ contains
                &tab_local (i1, it, 1) * px * vx * wx / 2.d0 - &
                &tab_local (i2, it, 1) * px * ux * wx / 2.d0 + &
                &tab_local (i3, it, 1) * px * ux * vx / 6.d0
+
+       !debug
+       ! write(880,*) H_g_rad(igl, 0)
+       ! write(881,*) H_g_rad(igl, 1)
+       !debug
        end do
+
 
        do a=1,3
           do b=1,3
@@ -160,21 +163,36 @@ contains
              end if
           end do
        end do
-
-       !NOTE: A.M.: "questo è necessario?"
-       !      V.D.: Looks like yes, since h_a_b should be symmetric
-       do a=1,3
-          do b=1,3
-             if (a>b) then
-                H_g(:,b,a,it)=H_g(:,a,b,it)
-                !NOTE: this seems to be not necessary indeed
-                !      (Siesta's ionic flux coinsides with QE already)
-                ! I_uno_g(:,b,a)=I_uno_g(:,a,b)
-             end if
-          end do
-       end do
-
     end do init_h_g
+
+    !NOTE: A.M.: "questo è necessario?"
+    !      V.D.: Looks like yes, since h_a_b should be symmetric
+    do a=1,3
+       do b=1,3
+          if (a>b) then
+             do it=1,nsp
+                H_g(:,b,a,it)=H_g(:,a,b,it)
+             end do
+             !NOTE: this seems to be not necessary indeed
+             !      (Siesta's ionic flux coinsides with QE already)
+             ! I_uno_g(:,b,a)=I_uno_g(:,a,b)
+          end if
+       end do
+    end do
+
+    !debug
+    ! write(999,*) "H_g ", "a ", "b ", "ig ", "igtongl "
+    ! do a=1,3
+    !    do b=1,3
+    !       do ig = 1, ngm_plus_vmd
+    !          do it=1,nsp
+    !             igp = igplus_vmd(ig)     ! get the global index for g-vectors
+    !             write(999,*) H_g(ig,a,b,it), a, b, ig, igtongl_vmd(ig)
+    !          end do
+    !       end do
+    !    end do
+    ! end do
+    !debug
 
     if (.not.(allocated(u_g))) allocate(u_g(ngm_plus_vmd,3))
     u_g(:,:) = 0.0_dp
