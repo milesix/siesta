@@ -84,8 +84,8 @@ contains
     end do factors_assignment
 
     ! Obtain V_Hartree derivative:
-    Vhart_deriv(1,:) = (charge_g(1,:)*fac(:) - Vhart_deriv(1,:))/virtual_dt
-    Vhart_deriv(2,:) = (charge_g(2,:)*fac(:) - Vhart_deriv(2,:))/virtual_dt
+    Vhart_deriv(1,:) = (Vhart_deriv(1,:) - charge_g(1,:)*fac(:))/virtual_dt
+    Vhart_deriv(2,:) = (Vhart_deriv(2,:) - charge_g(2,:)*fac(:))/virtual_dt
 
     h_flux_Jhart(:) = 0.d0      ! init flux accumulator
 
@@ -94,11 +94,16 @@ contains
     call c_f_pointer(c_loc(charge_g), tc_v, [np])
     call c_f_pointer(c_loc(Vhart_deriv), tc_dot, [np])
 
+    !NOTE: The forward FFT in SIESTA is opposite to the one in QE.
+    !      That leads to `Rho` in G-space being in opposite phase w/r to QE.
+    !      Here I account for it by inverting the sign of each product contribution
+    !      ( as `dimag(conjg(tc_dot(igp))*tc_v(igp))` changes sign
+    !        with the change of phase of multipliers ).
     reduce_hartree_flux: do ig = gstart_vmd, ngm_plus_vmd
        igp = igplus_vmd(ig)     ! get the global index
-       h_flux_Jhart(1:3) = h_flux_Jhart(1:3) + &
-            & dimag(conjg(-tc_dot(igp))*tc_v(igp)*fac(igp)) * &
-            & g_vmd(1:3,igp) * volume / 4.d0 / PI
+       h_flux_Jhart(1:3) = h_flux_Jhart(1:3) + &                 ! <- The plus sign due to the
+            & dimag(conjg(tc_dot(igp))*tc_v(igp)*fac(igp)) * &   !    difference in phase of `charge_g`
+            & g_vmd(1:3,igp) * volume / 4.d0 / PI                !    w/r to QE.
     end do reduce_hartree_flux
 
     nullify(tc_v)               ! cleanup

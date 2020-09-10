@@ -205,8 +205,11 @@ contains
              do ia = 1,na_u
                 vel(:) = va_before_move(:,ia) * 2.0_dp ! velocity buffer
 
+                !NOTE: The forward FFT in SIESTA is opposite to the one in QE.
+                !      That leads to `Rho` in G-space being in opposite phase w/r to QE.
+                !      Here I account for it by inverting the direction of FT for `u_g`.
                 u_g(ig,a) = u_g(ig,a) - vel(b) * H_g(ig,a,b,isa(ia)) * &
-                    & exp(-(0.d0,1.d0) * &
+                    & exp(+(0.d0,1.d0) * &  ! <- The plus sign in the exp to correspond with forward FFT in SIESTA
                     &     dot_product(g_vmd(1:3,igp), xa_before_move(1:3,ia)))
              end do
           end do
