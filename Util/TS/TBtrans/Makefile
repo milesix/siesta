@@ -557,24 +557,24 @@ m_tbt_trik.o: m_tbt_tri_init.o m_tbt_tri_scat.o m_timer.o m_trimat_invert.o
 m_tbt_trik.o: m_ts_cctype.o m_ts_elec_se.o m_ts_method.o m_ts_sparse_helper.o
 m_tbt_trik.o: m_ts_tri_common.o m_ts_trimat_invert.o m_verbosity.o parallel.o
 m_tbt_trik.o: precision.o sorted_search.o ts_electrode.o units.o
-m_tbtrans.o: alloc.o byte_count.o class_OrbitalDistribution.o class_SpData1D.o
-m_tbtrans.o: class_SpData2D.o class_Sparsity.o m_region.o m_sparsity_handling.o
-m_tbtrans.o: m_tbt_contour.o m_tbt_dH.o m_tbt_dSE.o m_tbt_delta.o m_tbt_hs.o
-m_tbtrans.o: m_tbt_kpoint.o m_tbt_kregions.o m_tbt_options.o m_tbt_proj.o
-m_tbtrans.o: m_tbt_regions.o m_tbt_save.o m_tbt_sigma_save.o m_tbt_tri_init.o
-m_tbtrans.o: m_tbt_trik.o m_ts_gf.o m_verbosity.o parallel.o precision.o
-m_tbtrans.o: ts_electrode.o units.o
+m_tbtrans.o: alloc.o byte_count.o class_OrbitalDistribution.o class_SpData2D.o
+m_tbtrans.o: class_Sparsity.o m_region.o m_sparsity_handling.o m_tbt_contour.o
+m_tbtrans.o: m_tbt_dH.o m_tbt_dSE.o m_tbt_delta.o m_tbt_hs.o m_tbt_kpoint.o
+m_tbtrans.o: m_tbt_kregions.o m_tbt_options.o m_tbt_proj.o m_tbt_regions.o
+m_tbtrans.o: m_tbt_save.o m_tbt_sigma_save.o m_tbt_tri_init.o m_tbt_trik.o
+m_tbtrans.o: m_ts_gf.o m_verbosity.o parallel.o precision.o ts_electrode.o
+m_tbtrans.o: units.o
 sorted_search.o: intrinsic_missing.o
 tbt_end.o: m_tbt_contour.o m_tbt_dH.o m_tbt_dSE.o m_tbt_delta.o m_tbt_hs.o
 tbt_end.o: m_tbt_kpoint.o m_tbt_options.o m_tbt_regions.o m_tbt_tri_init.o
-tbt_end.o: m_ts_contour_eq.o m_ts_contour_neq.o m_ts_method.o m_wallclock.o
-tbt_end.o: memory_log.o parallel.o timestamp.o
+tbt_end.o: m_ts_contour_eq.o m_ts_contour_neq.o m_ts_method.o m_ts_sparse.o
+tbt_end.o: m_wallclock.o memory_log.o parallel.o timestamp.o
 tbt_init.o: class_SpData1D.o class_SpData2D.o class_Sparsity.o files.o
 tbt_init.o: m_sparsity_handling.o m_tbt_contour.o m_tbt_gf.o m_tbt_hs.o
 tbt_init.o: m_tbt_kpoint.o m_tbt_kregions.o m_tbt_options.o m_tbt_proj.o
-tbt_init.o: m_tbt_regions.o m_tbt_save.o m_timer.o m_ts_electrode.o
-tbt_init.o: m_wallclock.o memory_log.o parallel.o precision.o runinfo_m.o sys.o
-tbt_init.o: tbt_reinit_m.o timestamp.o ts_electrode.o version.o
+tbt_init.o: m_tbt_regions.o m_tbt_save.o m_timer.o m_wallclock.o memory_log.o
+tbt_init.o: parallel.o precision.o runinfo_m.o sys.o tbt_reinit_m.o timestamp.o
+tbt_init.o: ts_electrode.o version.o
 tbt_init_output.o: files.o tbt_reinit_m.o
 tbt_reinit_m.o: cli_m.o files.o m_verbosity.o parallel.o version.o
 tbtrans.o: m_tbt_hs.o m_tbt_options.o m_tbtrans.o

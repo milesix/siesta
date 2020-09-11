@@ -283,7 +283,7 @@ contains
        ! GF at the same time. Hence it will be safe
        ! to have them point to the same array.
        ! When the UC_expansion_Sigma_GammaT is called
-       ! first the Sigma is assigned and then 
+       ! first the Sigma is assigned and then
        ! it is required that prepare_GF_inv is called
        ! immediately (which it is)
        ! Hence the GF must NOT be used in between these two calls!
@@ -405,10 +405,10 @@ contains
     else
 !$OMP do private(ind,jso,iso,ii)
        do ind = 1 , mum%NZ
-          iso = ts2s_orb(mum%IRN(ind))
-          if ( El%has_orbital(iso) ) then 
           jso = ts2s_orb(mum%JCN(ind))
-          if ( El%has_orbital(jso) ) then 
+          if ( El%has_orbital(jso) ) then
+          iso = ts2s_orb(mum%IRN(ind))
+          if ( El%has_orbital(iso) ) then
              ii = (jso - El%idx_o) * no + iso - off
              mum%A(ind) = mum%A(ind) - El%Sigma(ii)
           end if

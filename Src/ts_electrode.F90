@@ -89,9 +89,9 @@ module ts_electrode_m
     ! whether to re-calculate the GF-file
     logical :: ReUseGF = .true.
     ! Create a GF-file or re-calculate the self-energies everytime
-    logical :: out_of_core = .true. 
+    logical :: out_of_core = .true.
     ! In case of 'out_of_core == .false.' we can reduce the number of operations
-    ! by skipping the copying of H00, S00. Hence we need to compare when the 
+    ! by skipping the copying of H00, S00. Hence we need to compare when the
     ! k-point changes...
     real(dp) :: bkpt_cur(3)
     ! Used xa and lasto
@@ -177,22 +177,25 @@ module ts_electrode_m
     procedure, pass :: device_orbitals, used_orbitals
     procedure, pass :: device_atoms, used_atoms
     procedure, pass :: has_atom, has_orbital
-    procedure, pass :: init_electrode_in_cell
-    procedure, pass :: check_electrode_in_cell
+
+    procedure, pass :: init_in_cell
+    procedure, pass :: check_in_cell
     procedure, pass :: fractional_cell
     procedure, pass :: box_in_grid
 
     procedure, pass :: kpoint_convert => kpoint_convert_
     procedure, pass :: unfold_k
 
+    procedure, pass :: prepare_SE
     procedure, pass :: read_HS
     procedure, pass :: create_sp2sp01
     procedure, pass :: check_connectivity
     procedure, pass :: copy_DM
+
     procedure, pass :: index => index_
     procedure, pass :: is_semi_inf_orthogonal
     procedure, pass :: print_settings
- 
+
   end type electrode_t
 
   ! Fraction of alignment for considering two vectors having a similar
@@ -926,8 +929,8 @@ contains
 
   ! Initialize variables for the electrode according
   ! to the simulation variables
-  subroutine init_electrode_in_cell(this, cell, na_u, xa)
-    
+  subroutine init_in_cell(this, cell, na_u, xa)
+
     use units, only : Pi
     use intrinsic_missing, only : VNORM, SPC_PROJ, IDX_SPC_PROJ
     use intrinsic_missing, only : VEC_PROJ_SCA
@@ -1016,11 +1019,11 @@ contains
       call die('Electrode inversion of cell vectors failed')
     end if
 
-  end subroutine init_electrode_in_cell
+  end subroutine init_in_cell
 
   ! Initialize variables for the electrode according
   ! to the simulation variables
-  subroutine check_electrode_in_cell(this,nspin,s_cell,na_u,xa,xa_EPS,&
+  subroutine check_in_cell(this,nspin,s_cell,na_u,xa,xa_EPS,&
        lasto, Gamma3, &
        kcell, kdispl )
 
@@ -1413,7 +1416,7 @@ contains
 
     end subroutine check_tile
     
-  end subroutine check_electrode_in_cell
+  end subroutine check_in_cell
 
   function equal_el_el(this1,this2) result(equal)
     type(electrode_t), intent(in) :: this1, this2
@@ -1686,7 +1689,84 @@ contains
     if ( present(fmax) ) fmax = lfmax
 
   end subroutine fractional_cell
-       
+
+
+  !< Setup the internal arrays for this electrode so that SE calculations may be performed
+  subroutine prepare_SE(this, IO, spin)
+    use fdf, only: fdf_get
+#ifdef MPI
+    use mpi_siesta
+#endif
+    use class_Sparsity
+    use class_dSpData1D
+    use class_dSpData2D
+
+    class(electrode_t), intent(inout) :: this
+    !< Whether to print-out stuff to stdout
+    logical, intent(in), optional :: IO
+    !< Which spin-index to read in
+    integer, intent(in), optional :: spin
+#ifdef MPI
+    integer :: error
+#endif
+    logical :: lIO
+    logical :: neglect_conn
+
+    if ( present(IO) ) then
+      lIO = IO
+    else
+      lIO = .true.
+    end if
+
+    ! Read-in and create the corresponding transfer-matrices
+    call this%delete() ! ensure clean electrode
+    call this%read_HS(Bcast=.true., IO=lIO, ispin=spin)
+
+    if ( .not. associated(this%isc_off) ) then
+       call die('An electrode file needs to be a non-Gamma calculation. &
+            &Ensure good periodicity in the T-direction.')
+    end if
+
+    ! Create the default sparsity patterns in the sub-spaces needed
+    ! for the self-energy calculations
+    ! This is also important to create before running
+    ! check_connectivity because of used-atoms possibly being set.
+    call this%create_sp2sp01(IO=lIO)
+
+    ! print out the precision of the electrode (whether it extends
+    ! beyond first principal layer)
+    if ( lIO ) then
+      if ( this%check_connectivity() ) then
+        neglect_conn = .true.
+      else
+        neglect_conn = fdf_get('TS.Elecs.Neglect.Principal', .false.)
+#ifdef TBTRANS
+        neglect_conn = fdf_get('TBT.Elecs.Neglect.Principal', neglect_conn)
+#endif
+      end if
+
+#ifdef MPI
+      call MPI_Barrier(MPI_Comm_World,error)
+#endif
+      if ( .not. neglect_conn ) then
+        call die('Electrode connectivity is not perfect, &
+            &refer to the manual for achieving a perfect electrode.')
+      end if
+    end if
+
+    ! Clean-up, we will not need these!
+    ! we should not be very memory hungry now, but just in case...
+    call delete(this%H)
+    call delete(this%S)
+
+    ! We do not accept onlyS files
+    if ( .not. initialized(this%H00) ) then
+       call die('An electrode file must contain the Hamiltonian')
+    end if
+
+    call delete(this%sp)
+
+  end subroutine prepare_SE
 
   subroutine read_HS(this,Bcast,io,ispin)
     use fdf
@@ -1713,6 +1793,10 @@ contains
 
     lio = .true.
     if ( present(io) ) lio = io
+
+    if ( associated(this%xa) ) deallocate(this%xa)
+    if ( associated(this%lasto) ) deallocate(this%lasto)
+    if ( associated(this%isc_off) ) deallocate(this%isc_off)
 
     fN = trim(this%HSfile)
     ! We read in the information
@@ -1948,6 +2032,7 @@ contains
       if ( associated(this%lasto) ) deallocate(this%lasto)
       nullify(this%xa,this%lasto)
 
+      ! This isn't allocated, only pointed too
       nullify(this%mu)
 
       if ( associated(this%xa_used) ) deallocate(this%xa_used)
@@ -2273,6 +2358,7 @@ contains
   subroutine print_settings(this,prefix,plane,box)
     use units, only : eV, Ang, Kelvin
     use parallel, only : Node
+
     class(electrode_t), intent(in) :: this
     character(len=*), intent(in) :: prefix
     logical, intent(in), optional :: plane, box
@@ -2280,7 +2366,7 @@ contains
     integer :: nq
     real(dp) :: contrib, cell(3,3)
     character(len=128) :: chars
-    character(len=64) :: f1, f5, f20, f6, f7, f8, f9, f10, f11, f15, f3, f16
+    character(len=64) :: f1, f20, f6, f7, f8, f9, f10, f11, f15, f3, f16, f21
 
     if ( Node /= 0 ) return
     
@@ -2288,8 +2374,8 @@ contains
     ! First create the different out-put options
     f1  = '('''//trim(prefix)//': '',a,t53,''='',4x,l1)'
     f3  = '('''//trim(prefix)//': '',a,t53,''= { '',2(e12.5,'','',tr1),e12.5,''}'',tr1,a)'
-    f5  = '('''//trim(prefix)//': '',a,t53,''='',i5,tr1,a)'
     f20 = '('''//trim(prefix)//': '',a,t53,''= '',i0,'' -- '',i0)'
+    f21 = '('''//trim(prefix)//': '',a,t53,''= '',i0,'' / '',i0)'
     f6  = '('''//trim(prefix)//': '',a,t53,''='',f10.4,tr1,a)'
     f7  = '('''//trim(prefix)//': '',a,t53,''='',f12.6,tr1,a)'
     f8  = '('''//trim(prefix)//': '',a,t53,''='',f10.4)'
@@ -2299,17 +2385,19 @@ contains
     f15 = '('''//trim(prefix)//': '',a,t53,''= '',2(i0,'' x ''),i0)'
     f16 = '('''//trim(prefix)//': '',a,t53,''= A'',2(i0,'', A''),i0)'
 
+    ! Get number of q-points
+    nq = this%bloch%size()
 
     write(*,f11) '>> '//trim(this%name)
     write(*,f16) '  Electrode cell pivoting: E1, E2, E3', this%pvt
     if ( this%out_of_core ) then
        write(*,f10) '  GF file', trim(this%GFfile)
-       write(*,f1)  '  Reuse existing GF-file', this%ReUseGF
+       write(*,f1)  '  GF file reuse if found', this%ReUseGF
     else
        write(*,f11)  '  In-core self-energy calculation'
     end if
     write(*,f10) '  Electrode TSHS file', trim(this%HSfile)
-    write(*,f5)  '  # atoms used in electrode', this%na_used
+    write(*,f21) '  # atoms in electrode used / total', this%na_used, this%na_u
     nq = this%Bloch%size()
     if ( nq > 1 ) then
       if ( this%repeat ) then

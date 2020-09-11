@@ -294,7 +294,7 @@ contains
        ! Print out memory estimate
        els = nnzs_tri(DevTri%n, DevTri%r)
        ! check if there are overflows
-       if ( els > huge(1) ) then
+       if ( els > int(huge(1), i8b) ) then
          write(*,'(a,i0)') 'Elements: ', els
          write(*,'(a,i0)') 'Max: ', huge(1)
          call die('tbt: Memory consumption is too large, try &
@@ -775,7 +775,7 @@ contains
          write(*,'(a,/)') ' You should analyze the pivoting schemes!'
          write(*,'(a)') ' Minimum memory required pivoting scheme:'
          write(*,'(a,a)') '  TBT.BTD.Pivot.Device ', trim(min_mem_method)
-         write(*,'(a,en11.3,a)') '  Memory: ', min_mem / 1024._dp ** 2, ' GB'
+         write(*,'(a,en11.3,a)') '  Memory: ', min_mem / 1024._dp, ' GB'
        end if
        write(*,*) ! new-line
     end if
@@ -836,7 +836,7 @@ contains
       ! Calculate size of the tri-diagonal matrix
       els = nnzs_tri(ctri%n,ctri%r)
       ! check if there are overflows
-      is_suitable = els <= huge(1)
+      is_suitable = els <= int(huge(1), i8b)
       if ( .not. is_suitable ) then
         write(*,'(tr3,a,i0,'' / '',i0)')'*** Number of elements exceeds integer limits [elements / max] ', &
             els, huge(1)
@@ -874,8 +874,8 @@ contains
         call mem%get_string(fname)
         write(*,'(tr3,a,t39,a17)') 'BTD memory for inversion: ', trim(fname)
       end if
-      if ( mem%kB < min_mem .and. is_suitable ) then
-        min_mem = mem%kB
+      if ( is_suitable .and. mem%MB < min_mem ) then
+        min_mem = mem%MB
         min_mem_method = fmethod
       end if
 

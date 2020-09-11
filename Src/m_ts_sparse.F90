@@ -789,4 +789,17 @@ contains
 
   end subroutine ts_Sparsity_Subset_pointer
 
+
+  subroutine ts_sparse_reset()
+
+    use alloc, only: de_alloc
+
+    call delete(ts_sp_uc)
+    call delete(tsup_sp_uc)
+    call delete(ltsup_sp_sc)
+    call delete(ltsup_sc_pnt)
+    call de_alloc(sc_off)
+
+  end subroutine ts_sparse_reset
+
 end module m_ts_sparse

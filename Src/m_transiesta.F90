@@ -487,6 +487,7 @@ contains
         call de_alloc(Elecs(iEl)%SA,routine='transiesta')
       end if
       call de_alloc(Elecs(iEl)%Gamma,routine='transiesta')
+      nullify(Elecs(iEl)%GA)
     end do
 
     deallocate(uGF,nq)
@@ -506,42 +507,6 @@ contains
     call timer('TS',2)
 
   contains
-
-    subroutine init_Electrode_HS(El)
-      use class_Sparsity
-      use class_dSpData1D
-      use class_dSpData2D
-      use alloc, only : re_alloc
-      use ts_electrode_m
-      type(electrode_t), intent(inout) :: El
-      
-      ! If already initialized, return immediately
-      if ( initialized(El%sp) ) return
-
-      ! Read-in and create the corresponding transfer-matrices
-      call El%delete() ! ensure clean electrode
-      call El%read_HS(Bcast=.true., IO = .false.)
-      
-      if ( .not. associated(El%isc_off) ) then
-        call die('An electrode file needs to be a non-Gamma calculation. &
-            &Ensure at least two k-points in the T-direction.')
-      end if
-      
-      call El%create_sp2sp01(IO = .false.)
-
-      ! Clean-up, we will not need these!
-      ! we should not be very memory hungry now, but just in case...
-      call delete(El%H)
-      call delete(El%S)
-      
-      ! We do not accept onlyS files
-      if ( .not. initialized(El%H00) ) then
-        call die('An electrode file must contain the Hamiltonian')
-      end if
-
-      call delete(El%sp)
-
-    end subroutine init_Electrode_HS
 
     subroutine open_GF(N_Elec,Elecs,uGF,NEn)
       integer, intent(in) :: N_Elec
@@ -567,7 +532,7 @@ contains
         else
 
           ! prepare the electrode to create the surface self-energy
-          call init_Electrode_HS(Elecs(iEl))
+          call Elecs(iEl)%prepare_SE(IO=.false.)
 
         end if
 

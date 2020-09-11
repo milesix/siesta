@@ -341,7 +341,7 @@ contains
       call ncdf_open_grp(ncdf,trim(Elecs(iEl)%name),grp)
 
       no_e = Elecs(iEl)%o_inD%n
-      
+
       ! Chunking greatly reduces IO cost
       call ncdf_def_var(grp,'SelfEnergy', prec_Sigma, &
           (/'no_e','no_e','ne  ','nkpt'/), compress_lvl = cmp_lvl, &

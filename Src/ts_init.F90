@@ -34,7 +34,6 @@ contains
     use fdf, only: fdf_get
 
     use m_ts_gf,        only : do_Green
-    use m_ts_electrode, only : init_Electrode_HS
     
     use kpoint_scf_m, only : kpoint_scf
     use ts_kpoint_scf_m, only : setup_ts_kpoint_scf
@@ -164,7 +163,7 @@ contains
        do i = 1 , N_Elec
 
           ! initialize the electrode for Green function calculation
-          call init_Electrode_HS(Elecs(i))
+          call Elecs(i)%prepare_SE()
 
           ! Whether we can do with a single k-point (say a chain)
           if ( Elecs(i)%is_gamma ) then

@@ -336,13 +336,15 @@ contains
        end if
        
        ! If the k-point does not match what we expected...
-       if ( IONode .and. ikpt /= ikGS ) then
-          write(*,*) 'GF-file: '//trim(El%GFfile)
-          write(*,'(2(a,i0))') 'k-point, TS / Gf: ', &
+       if ( IONode ) then
+         if ( ikpt /= ikGS ) then
+           write(*,*) 'GF-file: '//trim(El%GFfile)
+           write(*,'(2(a,i0))') 'k-point, TS / Gf: ', &
                ikpt, ' / ', ikGS
-          call die('Read k-point in GF file does not match &
+           call die('Read k-point in GF file does not match &
                &the requested k-point. Please correct your &
                &GF files.')
+         end if
        end if
 
        if ( iEni == 1 ) then
@@ -578,9 +580,9 @@ contains
 ! ***********************
 ! * INPUT variables     *
 ! ***********************
-    integer, intent(in)  :: funit ! unit of gf-file
+    integer, intent(in) :: funit ! unit of gf-file
     type(electrode_t), intent(in) :: El
-    integer, intent(in)  :: c_nkpar, c_NEn
+    integer, intent(in) :: c_nkpar, c_NEn
 
 ! ***********************
 ! * LOCAL variables     *
@@ -803,21 +805,21 @@ contains
 ! * INPUT variables     *
 ! ***********************
 ! file for reading, Green function file
-    integer, intent(in)        :: funit
-    type(electrode_t), intent(in)     :: El
-    real(dp), intent(in)       :: c_ucell(3,3) ! Unit cell of the CONTACT
+    integer, intent(in) :: funit
+    type(electrode_t), intent(in) :: El
+    real(dp), intent(in) :: c_ucell(3,3) ! Unit cell of the CONTACT
     ! k-point information
-    integer, intent(in)        :: c_nkpar
-    real(dp), intent(in)       :: c_kpar(3,c_nkpar) , c_wkpar(c_nkpar)
+    integer, intent(in) :: c_nkpar
+    real(dp), intent(in) :: c_kpar(3,c_nkpar) , c_wkpar(c_nkpar)
 ! Energy point on the contour used 
-    integer, intent(in)        :: c_NEn
-    complex(dp), intent(in)    :: c_ce(c_NEn)
-    real(dp), intent(in)       :: xa_Eps
+    integer, intent(in) :: c_NEn
+    complex(dp), intent(in) :: c_ce(c_NEn)
+    real(dp), intent(in) :: xa_Eps
 ! ***********************
 ! * OUTPUT variables    *
 ! ***********************
 ! Return whether it is a correct Green function file
-    logical, intent(out)       :: errorGF
+    logical, intent(out) :: errorGF
 
 ! ***********************
 ! * LOCAL variables     *

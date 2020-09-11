@@ -518,7 +518,7 @@ contains
 
        ! Initialize the electrode quantities for the
        ! stored values
-       call Elecs(i)%init_electrode_in_cell(cell, na_u, xa)
+       call Elecs(i)%init_in_cell(cell, na_u, xa)
 
     end do
 
@@ -801,7 +801,7 @@ contains
     do i = 1 , N_Elec
       ! Initialize the electrode quantities for the
       ! stored values
-      call Elecs(i)%check_electrode_in_cell(nspin, cell, na_u, xa, &
+      call Elecs(i)%check_in_cell(nspin, cell, na_u, xa, &
           Elecs_xa_EPS, lasto, Gamma3, ts_kscell, ts_kdispl)
     end do
 
@@ -1273,20 +1273,6 @@ contains
        end if
     end if
     
-    ! Calculate the number of optimal contour points
-    i = mod(N_Eq_E(), Nodes) ! get remaining part of equilibrium contour
-    if ( i /= 0 ) then
-       i = Nodes - i
-       write(*,'(a)')'Without loosing performance you can increase &
-            &the equilibrium integration precision.'
-       write(*,'(a,i0,a)')'You can add ',i,' more energy points in the &
-            &equilibrium contours, for FREE!'
-       if ( i/N_mu > 0 ) then
-          write(*,'(a,i0,a)')'This is ',i/N_mu, &
-               ' more energy points per chemical potential.'
-       end if
-    end if
-    
     call contour_nEq_warnings()
     
     if ( .not. Calc_Forces ) then
@@ -1516,12 +1502,6 @@ contains
        idx1 = Elecs(i)%idx_a
        idx2 = idx1 + Elecs(i)%device_atoms() - 1
 
-       if ( .not. Elecs(i)%Bulk ) then
-          write(*,'(a)') 'Electrode '//trim(Elecs(i)%name)//' will &
-               &not use bulk Hamiltonian.'
-          warn = .true.
-       end if
-
        if ( Elecs(i)%DM_update == 0 ) then
           write(*,'(a)') 'Electrode '//trim(Elecs(i)%name)//' will &
                &not update cross-terms or local region.'
@@ -1598,7 +1578,6 @@ contains
       write(*,'(a,/,a)') 'Consider updating more elements. &
           &The charge conservation and force accuracy improves.',&
           '  TS.Elecs.DM.Update [cross-terms|all]'
-       warn = .true.
     end if
 
     ! Check that the pivoting table is unique
@@ -1676,5 +1655,20 @@ contains
     v1  = v2
     v2  = tmp
   end subroutine val_swap
-  
+
+  subroutine ts_options_reset()
+    use m_ts_chem_pot, only: delete
+    integer :: i
+
+    do i = 1, N_Elec
+      call Elecs(i)%delete(all=.true.)
+    end do
+    deallocate(Elecs)
+    do i = 1, N_mu
+      call delete(mus(i))
+    end do
+    deallocate(mus)
+
+  end subroutine ts_options_reset
+
 end module m_ts_options

@@ -243,9 +243,9 @@ contains
         write(*,'(1x,a9)',advance='no') 'B'
       end if
       if ( nspin > 1 ) then
-        write(*,'(2(1x,a9))') 'dQ','Qup-Qdn'
+        write(*,'(2(1x,a10))') 'dQ','Qup-Qdn'
       else
-        write(*,'(1x,a9)') 'dQ'
+        write(*,'(1x,a10)') 'dQ'
       end if
       write(*,'(a,1x,f9.3)',advance='no') 'ts-q:', sum(Q(2,:))
       do i = 1 , N_Elec
@@ -255,9 +255,9 @@ contains
         write(*,'(1x,f9.3)',advance='no') sum(Q(1,:))
       end if
       if ( nspin == 2 ) then
-        write(*,'(2(1x,e9.3))') sum(Q) - Qtot, sum(Q(:,1)) - sum(Q(:,2))
+        write(*,'(2(1x,e10.3))') sum(Q) - Qtot, sum(Q(:,1)) - sum(Q(:,2))
       else
-        write(*,'(1x,e9.3)') sum(Q) - Qtot
+        write(*,'(1x,e10.3)') sum(Q) - Qtot
       end if
 
     end if

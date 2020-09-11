@@ -34,6 +34,7 @@ subroutine tbt_end()
 #endif
 
   use m_tbt_contour, only: tbt_contour_reset
+  use m_ts_sparse, only: ts_sparse_reset
   use m_ts_method, only: ts_method_reset
   use m_ts_contour_eq, only: ts_contour_eq_reset
   use m_ts_contour_neq, only: ts_contour_neq_reset
@@ -46,7 +47,6 @@ subroutine tbt_end()
   call tbt_tri_reset()
   call tbt_regions_reset()
   call tbt_hs_reset()
-  call tbt_options_reset()
 
 #ifdef NCDF_4
   call delete_delta(dH)
@@ -57,6 +57,9 @@ subroutine tbt_end()
   call ts_contour_eq_reset()
   call ts_contour_neq_reset()
 
+  call tbt_options_reset()
+
+  call ts_sparse_reset()
   call ts_method_reset()
 
   ! Clean the fdf-files

@@ -571,6 +571,7 @@ contains
     if ( allocated(this%Eq_seg) ) then
       deallocate(this%Eq_seg)
     end if
+    deallocate(this%el)
     nullify(this%el)
     this%N_El = 0
 

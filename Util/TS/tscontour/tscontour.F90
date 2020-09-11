@@ -11,7 +11,7 @@ program tscontour
   use m_ts_chem_pot, only: delete
   use ts_electrode_m, only: electrode_t
   use m_ts_global_vars, only: TSmode, onlyS
-  
+
   implicit none
 
   character(len=64) :: arg = ''
@@ -29,7 +29,7 @@ program tscontour
      case default
        if ( arg(1:1) == '-' ) then
          write(0,'(a)') 'Either of the two errors has been encountered for the option "'//trim(arg)//'":'
-         
+
          write(0,'(a)') ' 1) The option is not recognised'
          write(0,'(a)') ' 2) Input fdf cannot start with a hyphen "-"'
          call nl(0)

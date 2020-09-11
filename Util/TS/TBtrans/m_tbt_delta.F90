@@ -739,7 +739,7 @@ contains
 
           return
 
-        else 
+        else
           if ( Node == 0 ) then
             do iN = 1 , Node - 1
               ! Retrieve the energy point (the k-point IS the same)

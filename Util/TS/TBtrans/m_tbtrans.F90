@@ -261,16 +261,16 @@ contains
 
        ! The initial spin has already been 
        ! setup for the first spin, hence we
-       ! only need to re-read them for 
+       ! only need to re-read them for
        ! following spin calculations
        if ( ils > 1 ) then
           call prep_next_HS(ispin, Volt)
           do iEl = 1 , N_Elec
-             ! Re-read in the electrode 
-             ! Hamiltonian and build the H/S
-             ! for this spin.
-             if ( Elecs(iEl)%out_of_core ) cycle
-             call init_Electrode_HS(Elecs(iEl), ispin)
+            ! Re-read in the electrode
+            ! Hamiltonian and build the H/S
+            ! for this spin.
+            if ( Elecs(iEl)%out_of_core ) cycle
+            call Elecs(iEl)%prepare_SE(IO=.false., spin=ispin)
           end do
        end if
 
@@ -442,42 +442,6 @@ contains
 
     end subroutine print_memory
 
-    subroutine init_Electrode_HS(El, spin_idx)
-      use class_Sparsity
-      use class_dSpData1D
-      use class_dSpData2D
-      use alloc, only : re_alloc
-      type(electrode_t), intent(inout) :: El
-      integer, intent(in) :: spin_idx
-
-      ! If already initialized, return immediately
-      if ( initialized(El%sp) ) return
-
-      ! Read-in and create the corresponding transfer-matrices
-      call El%delete() ! ensure clean electrode
-      call El%read_HS(Bcast=.true., IO = .false., ispin = spin_idx )
-      
-      if ( .not. associated(El%isc_off) ) then
-         call die('An electrode file needs to be a non-Gamma calculation. &
-              &Ensure at least two k-points in the T-direction.')
-      end if
-      
-      call El%create_sp2sp01(IO = .false.)
-
-      ! Clean-up, we will not need these!
-      ! we should not be very memory hungry now, but just in case...
-      call delete(El%H)
-      call delete(El%S)
-      
-      ! We do not accept onlyS files
-      if ( .not. initialized(El%H00) ) then
-         call die('An electrode file must contain the Hamiltonian')
-      end if
-
-      call delete(El%sp)
-
-    end subroutine init_Electrode_HS
-
     subroutine open_GF(N_Elec,Elecs,uGF,nkpnt,NEn,spin_idx)
       integer, intent(in) :: N_Elec
       type(electrode_t), intent(inout) :: Elecs(N_Elec)
@@ -519,8 +483,8 @@ contains
 
          else
             
-            ! prepare the electrode to create the surface self-energy
-            call init_Electrode_HS(Elecs(iEl),max(1,spin_idx))
+           ! prepare the electrode to create the surface self-energy
+           call Elecs(iEl)%prepare_SE(IO=.false., spin=max(1, spin_idx))
             
          end if
 

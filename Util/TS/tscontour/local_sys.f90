@@ -32,7 +32,7 @@
 
       end module sys
 
-! Stand-alone copy      
+! Stand-alone copy
       subroutine die(str)
 
       character(len=*), intent(in)  :: str
@@ -42,4 +42,3 @@
 
       stop
       end subroutine die
-      

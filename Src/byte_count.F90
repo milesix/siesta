@@ -6,7 +6,7 @@
 ! See Docs/Contributors.txt for a list of contributors.
 !
 ! This code segment has been fully created by:
-! Nick Papior Andersen, 2020, nickpapior@gmail.com
+! Nick Papior, 2020, nickpapior@gmail.com
 ! Please conctact the author, prior to re-using this code.
 
 ! Module for accummulating byte counts from array dimensions.
@@ -34,9 +34,9 @@ module byte_count_m
   private
 
   type :: byte_count_t
-    
-    !< Bytes accummulated in kB
-    real(dp) :: kB = 0._dp
+
+    !< Bytes accummulated in MB
+    real(dp) :: MB = 0._dp
 
   contains
 
@@ -56,29 +56,29 @@ module byte_count_m
     procedure, pass, private :: assign_, add_
     generic :: assignment(=) => assign_
     generic :: operator(+) => add_
-    
+
   end type byte_count_t
 
   public :: byte_count_t
-  
+
 contains
 
   subroutine assign_(this, other)
     class(byte_count_t), intent(inout) :: this
     class(byte_count_t), intent(in) :: other
-    this%kB = other%kB
+    this%MB = other%MB
   end subroutine assign_
 
   function add_(this, other) result(res)
     class(byte_count_t), intent(in) :: this
     class(byte_count_t), intent(in) :: other
     type(byte_count_t) :: res
-    res%kB = this%kB + other%kB
+    res%MB = this%MB + other%MB
   end function add_
 
   subroutine reset_(this)
     class(byte_count_t), intent(inout) :: this
-    this%kB = 0._dp
+    this%MB = 0._dp
   end subroutine reset_
 
   subroutine add_bc_(this, o1, o2, o3, o4, o5, o6)
@@ -87,12 +87,12 @@ contains
     class(byte_count_t), intent(in), optional :: o2, o3, o4, o5, o6
 
     ! Number of elements
-    this%kB = this%kB + o1%kB
-    if ( present(o2) ) this%kB = this%kB + o2%kB
-    if ( present(o3) ) this%kB = this%kB + o3%kB
-    if ( present(o4) ) this%kB = this%kB + o4%kB
-    if ( present(o5) ) this%kB = this%kB + o5%kB
-    if ( present(o6) ) this%kB = this%kB + o6%kB
+    this%MB = this%MB + o1%MB
+    if ( present(o2) ) this%MB = this%MB + o2%MB
+    if ( present(o3) ) this%MB = this%MB + o3%MB
+    if ( present(o4) ) this%MB = this%MB + o4%MB
+    if ( present(o5) ) this%MB = this%MB + o5%MB
+    if ( present(o6) ) this%MB = this%MB + o6%MB
 
   end subroutine add_bc_
 
@@ -102,17 +102,17 @@ contains
     integer(i4b), intent(in) :: n1
     integer(i4b), intent(in), optional :: n2, n3, n4, n5, n6
 
-    real(dp) :: kB
+    real(dp) :: MB
 
     ! Number of elements
-    kB = bytes * real(n1, dp) / 1024._dp
-    if ( present(n2) ) kB = kB * real(n2, dp)
-    if ( present(n3) ) kB = kB * real(n3, dp)
-    if ( present(n4) ) kB = kB * real(n4, dp)
-    if ( present(n5) ) kB = kB * real(n5, dp)
-    if ( present(n6) ) kB = kB * real(n6, dp)
+    MB = bytes * real(n1, dp) / 1024._dp ** 2
+    if ( present(n2) ) MB = MB * real(n2, dp)
+    if ( present(n3) ) MB = MB * real(n3, dp)
+    if ( present(n4) ) MB = MB * real(n4, dp)
+    if ( present(n5) ) MB = MB * real(n5, dp)
+    if ( present(n6) ) MB = MB * real(n6, dp)
 
-    this%kB = this%kB + kB
+    this%MB = this%MB + MB
 
   end subroutine add_i4_
 
@@ -122,14 +122,14 @@ contains
     integer(i4b), intent(in) :: n(:)
 
     integer :: i
-    real(dp) :: kB
+    real(dp) :: MB
 
     ! Number of elements
-    kB = bytes * real(n(1), dp) / 1024._dp
+    MB = bytes * real(n(1), dp) / 1024._dp ** 2
     do i = 2, size(n)
-      kB = kB * real(n(i), dp)
+      MB = MB * real(n(i), dp)
     end do
-    this%kB = this%kB + kB
+    this%MB = this%MB + MB
 
   end subroutine add_ai4_
 
@@ -139,14 +139,14 @@ contains
     integer(i8b), intent(in) :: n(:)
 
     integer :: i
-    real(dp) :: kB
+    real(dp) :: MB
 
     ! Number of elements
-    kB = bytes * real(n(1), dp) / 1024._dp
+    MB = bytes * real(n(1), dp) / 1024._dp ** 2
     do i = 2, size(n)
-      kB = kB * real(n(i), dp)
+      MB = MB * real(n(i), dp)
     end do
-    this%kB = this%kB + kB
+    this%MB = this%MB + MB
 
   end subroutine add_ai8_
 
@@ -156,14 +156,14 @@ contains
     integer(i8b), intent(in) :: n(:)
 
     integer :: i
-    real(dp) :: kB
+    real(dp) :: MB
 
     ! Number of elements
-    kB = bytes * real(n(1), dp) / 1024._dp
+    MB = bytes * real(n(1), dp) / 1024._dp ** 2
     do i = 2, size(n)
-      kB = kB * real(n(i), dp)
+      MB = MB * real(n(i), dp)
     end do
-    this%kB = this%kB + kB
+    this%MB = this%MB + MB
 
   end subroutine add_ai8i8_
 
@@ -173,37 +173,37 @@ contains
     integer(i8b), intent(in) :: n1
     integer(i8b), intent(in), optional :: n2, n3, n4, n5, n6
 
-    real(dp) :: kB
+    real(dp) :: MB
 
     ! Number of elements
-    kB = bytes * real(n1, dp) / 1024._dp
-    if ( present(n2) ) kB = kB * real(n2, dp)
-    if ( present(n3) ) kB = kB * real(n3, dp)
-    if ( present(n4) ) kB = kB * real(n4, dp)
-    if ( present(n5) ) kB = kB * real(n5, dp)
-    if ( present(n6) ) kB = kB * real(n6, dp)
+    MB = bytes * real(n1, dp) / 1024._dp ** 2
+    if ( present(n2) ) MB = MB * real(n2, dp)
+    if ( present(n3) ) MB = MB * real(n3, dp)
+    if ( present(n4) ) MB = MB * real(n4, dp)
+    if ( present(n5) ) MB = MB * real(n5, dp)
+    if ( present(n6) ) MB = MB * real(n6, dp)
 
-    this%kB = this%kB + kB
+    this%MB = this%MB + MB
 
   end subroutine add_i8_
-  
+
   subroutine add_i8i8_(this, bytes, n1, n2, n3, n4, n5, n6)
     class(byte_count_t), intent(inout) :: this
     integer(i8b), intent(in) :: bytes
     integer(i8b), intent(in) :: n1
     integer(i8b), intent(in), optional :: n2, n3, n4, n5, n6
 
-    real(dp) :: kB
+    real(dp) :: MB
 
     ! Number of elements
-    kB = bytes * real(n1, dp) / 1024._dp
-    if ( present(n2) ) kB = kB * real(n2, dp)
-    if ( present(n3) ) kB = kB * real(n3, dp)
-    if ( present(n4) ) kB = kB * real(n4, dp)
-    if ( present(n5) ) kB = kB * real(n5, dp)
-    if ( present(n6) ) kB = kB * real(n6, dp)
+    MB = bytes * real(n1, dp) / 1024._dp ** 2
+    if ( present(n2) ) MB = MB * real(n2, dp)
+    if ( present(n3) ) MB = MB * real(n3, dp)
+    if ( present(n4) ) MB = MB * real(n4, dp)
+    if ( present(n5) ) MB = MB * real(n5, dp)
+    if ( present(n6) ) MB = MB * real(n6, dp)
 
-    this%kB = this%kB + kB
+    this%MB = this%MB + MB
 
   end subroutine add_i8i8_
 
@@ -217,24 +217,24 @@ contains
     integer, intent(in) :: n1
     integer, intent(in), optional :: n2, n3, n4, n5, n6
 
-    real(dp) :: kB
+    real(dp) :: MB
 
     ! Number of elements
-    kB = real(n1, dp) / 1024._dp
-    if ( present(n2) ) kB = kB * real(n2, dp)
-    if ( present(n3) ) kB = kB * real(n3, dp)
-    if ( present(n4) ) kB = kB * real(n4, dp)
-    if ( present(n5) ) kB = kB * real(n5, dp)
-    if ( present(n6) ) kB = kB * real(n6, dp)
+    MB = real(n1, dp) / 1024._dp ** 2
+    if ( present(n2) ) MB = MB * real(n2, dp)
+    if ( present(n3) ) MB = MB * real(n3, dp)
+    if ( present(n4) ) MB = MB * real(n4, dp)
+    if ( present(n5) ) MB = MB * real(n5, dp)
+    if ( present(n6) ) MB = MB * real(n6, dp)
 
     select case ( nf_var )
     case ( NF90_INT, NF90_FLOAT )
-      kB = kB * 4
+      MB = MB * 4
     case ( NF90_DOUBLE )
-      kB = kB * 8
+      MB = MB * 8
     end select
 
-    this%kB = this%kB + kB
+    this%MB = this%MB + MB
 
   end subroutine add_cdf_basic_
 
@@ -246,23 +246,23 @@ contains
     integer, intent(in) :: n1
     integer, intent(in), optional :: n2, n3, n4, n5, n6
 
-    real(dp) :: kB
+    real(dp) :: MB
 
     ! Number of elements
-    kB = real(n1, dp) / 1024._dp
-    if ( present(n2) ) kB = kB * real(n2, dp)
-    if ( present(n3) ) kB = kB * real(n3, dp)
-    if ( present(n4) ) kB = kB * real(n4, dp)
-    if ( present(n5) ) kB = kB * real(n5, dp)
-    if ( present(n6) ) kB = kB * real(n6, dp)
+    MB = real(n1, dp) / 1024._dp ** 2
+    if ( present(n2) ) MB = MB * real(n2, dp)
+    if ( present(n3) ) MB = MB * real(n3, dp)
+    if ( present(n4) ) MB = MB * real(n4, dp)
+    if ( present(n5) ) MB = MB * real(n5, dp)
+    if ( present(n6) ) MB = MB * real(n6, dp)
 
     if ( nf_var .eqv. NF90_FLOAT_COMPLEX ) then
-      kB = kB * 8
+      MB = MB * 8
     else if ( nf_var .eqv. NF90_DOUBLE_COMPLEX ) then
-      kB = kB * 16
+      MB = MB * 16
     end if
 
-    this%kB = this%kB + kB
+    this%MB = this%MB + MB
 
   end subroutine add_cdf_complex_
 #endif
@@ -274,7 +274,7 @@ contains
     !< Output string for the memory with an appropriate unit.
     !!
     !! If `unit` is passed the unit will be in the requested unit.
-    !! Otherwise the unit will be automatically determined [kB, MB, GB, TB]
+    !! Otherwise the unit will be automatically determined [kB, MB, GB, TB, PB, EB]
     !! The format will be [es*.2] depending on the length of `mem_str`
     character(len=*), intent(inout) :: mem_str
     character(len=2), intent(in), optional :: unit
@@ -291,7 +291,7 @@ contains
 
     ! Determine default unit
     lunit = 'kB'
-    mem = this%kB
+    mem = this%MB * 1024._dp
     if ( mem >= 1000._dp ) then
       lunit = 'MB'
       mem = mem / 1024._dp
@@ -304,35 +304,42 @@ contains
           if ( mem >= 1000._dp ) then
             lunit = 'PB'
             mem = mem / 1024._dp
+            if ( mem >= 1000._dp ) then
+              lunit = 'EB'
+              mem = mem / 1024._dp
+            end if
           end if
         end if
       end if
     end if
-    
+
     if ( present(unit) ) then
       lunit = lcase(unit)
       select case ( lunit )
       case ( 'b' )
         lunit = 'B'
-        mem = this%kB * 1024._dp
+        mem = this%MB * 1024._dp ** 2
       case ( 'kb' )
         lunit = 'kB'
-        mem = this%kB
+        mem = this%MB * 1024._dp
       case ( 'mb' )
         lunit = 'MB'
-        mem = this%kB / 1024._dp
+        mem = this%MB
       case ( 'gb' )
         lunit = 'GB'
-        mem = this%kB / 1024._dp ** 2
+        mem = this%MB / 1024._dp
       case ( 'tb' )
         lunit = 'TB'
-        mem = this%kB / 1024._dp ** 3
+        mem = this%MB / 1024._dp ** 2
       case ( 'pb' )
         lunit = 'PB'
-        mem = this%kB / 1024._dp ** 4
+        mem = this%MB / 1024._dp ** 3
+      case ( 'eb' )
+        lunit = 'EB'
+        mem = this%MB / 1024._dp ** 4
       case default
         lunit = 'GB'
-        mem = this%kB / 1024._dp ** 2
+        mem = this%MB / 1024._dp
       end select
     end if
 
@@ -352,7 +359,7 @@ contains
 
     ! Subtract ' *B'
     fw = fw - 3
-    
+
     fe = 1
     if ( abs(exponent(mem)) > 12 ) fe = 2
 

@@ -367,7 +367,7 @@ contains
        Elecs(i)%idx_o = lasto(Elecs(i)%idx_a-1)+1
 
        ! Initialize electrode parameters
-       call Elecs(i)%init_electrode_in_cell(cell, na_u, xa)
+       call Elecs(i)%init_in_cell(cell, na_u, xa)
 
     end do
 
@@ -691,7 +691,7 @@ contains
     
     do i = 1 , N_Elec
       ! Initialize the electrode quantities for the stored values
-      call Elecs(i)%check_electrode_in_cell(nspin, cell, na_u, xa, &
+      call Elecs(i)%check_in_cell(nspin, cell, na_u, xa, &
           Elecs_xa_EPS, lasto, Gamma3)
     end do
 

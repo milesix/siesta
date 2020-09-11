@@ -729,7 +729,7 @@ contains
          write(*,'(a,/)') ' You should analyze the pivoting schemes!'
          write(*,'(a)') ' Minimum memory required pivoting scheme:'
          write(*,'(a,a)') '  TS.BTD.Pivot ', trim(min_mem_method)
-         write(*,'(a,en11.3,a)') '  Memory: ', min_mem / 1024._dp ** 2, ' GB'
+         write(*,'(a,en11.3,a)') '  Memory: ', min_mem / 1024._dp, ' GB'
        end if
        write(*,*) ! new-line
     end if
@@ -833,8 +833,8 @@ contains
         call mem%get_string(fname)
         write(*,'(tr3,a,t39,a17)') 'BTD memory for inversion: ', trim(fname)
       end if
-      if ( mem%kB < min_mem .and. is_suitable ) then
-         min_mem = mem%kB
+      if ( mem%MB < min_mem .and. is_suitable ) then
+         min_mem = mem%MB
          min_mem_method = fmethod
       end if
       do i = 1 , N_Elec

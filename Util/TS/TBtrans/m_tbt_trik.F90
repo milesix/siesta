@@ -742,12 +742,8 @@ contains
     N_E = N_TBT_E()
 
     ! For tracking time
-    if ( mod(N_E, Nodes) == 0 ) then
-      n_loops = itt_steps(Kp) * N_E / Nodes
-    else
-      n_loops = itt_steps(Kp) * (N_E / Nodes + 1)
-    end if
-    n_loops = n_loops * Nodes
+    n_loops =  (N_E + mod(N_E, Nodes)) / Nodes
+    n_loops = n_loops * Nodes * itt_steps(Kp)
 
 #ifdef NCDF_4
     ! Open the NetCDF handles

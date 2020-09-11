@@ -16,7 +16,6 @@ module m_ts_electrode
   implicit none
 
   public :: create_Green
-  public :: init_Electrode_HS
   public :: calc_next_GS_Elec
 
   private
@@ -657,51 +656,37 @@ contains
     ! Local variables
     type(byte_count_t) :: mem
     character(len=32) :: c_tmp
-    integer :: i
+    integer :: no
     ! Whether the electrode is pre-expanded...
     integer :: nq
-    logical :: pre_expand
 
     if ( .not. IONode ) return
 
-    nq = El%Bloch%size()
-    pre_expand = El%pre_expand > 0 .and. nq > 1
 
-    write(*,'(/,2a)') 'Calculating all surface Green functions for: ',trim(El%name)
-    write(*,'(a,f14.5,1x,a)') &
-         ' Fermi level shift in electrode (chemical potential) : ',El%mu%mu/eV,' eV'
-
-    ! Show the number of used atoms and orbitals
-    write(*,'(a,i6,'' / '',i6)') ' Atoms available    / used atoms   : ', &
-         El%na_u,El%na_used
-    write(*,'(a,i6,'' / '',i6)') ' Orbitals available / used orbitals: ', &
-         El%no_u,El%no_used
-
-    write(*,'(1x,a,i0)') 'Total self-energy calculations: ',nq*NE*nkpt
-
-    ! We show them in units of reciprocal lattice vectors
-    do i = 1 , 3
-      if ( El%Bloch%B(i) > 1 ) then
-        write(*,'(3(a,i0))') ' Bloch expansion k-points in A_',i, &
-            ' direction [b_',i,']: ',El%Bloch%B(i)
-      end if
-    end do
-
+    write(*,'(/,2a)') 'Calculating surface Green functions for: ',trim(El%name)
     write(*,'(2a)') ' Saving surface Green functions in: ',trim(El%GFfile)
 
     call mem%reset()
-    if ( pre_expand ) then
-      i = nq
-    else
-      i = 1
-    end if
-    if ( pre_expand .and. El%pre_expand == 1 ) then
-      ! only the SSG is expanded
-      call mem%add(16, El%no_used ** 2, El%nspin, nkpt, 2 + NE * nq, i)
-    else
-      call mem%add(16, El%no_used ** 2, El%nspin, nkpt, 2 + NE, nq, i)
-    end if
 
+    ! All this is basically nothing, but why not have it...
+    call mem%add(4, 12) ! basic integers
+    call mem%add(4, El%no_used + 1) ! lasto
+    call mem%add(8, 3 + El%na_used, 3) ! cell and coordinates
+    call mem%add(8, nkpt, 4) ! k + weight
+    call mem%add(16, NE) ! energy-points
+
+    nq = El%Bloch%size()
+    if ( El%pre_expand > 0 ) then
+      no = nq
+    else
+      no = 1
+    end if
+    if ( El%pre_expand == 1 ) then
+      ! only the SSG is expanded
+      call mem%add(16, El%no_used ** 2, El%nspin, nkpt, 2 + NE * nq, no)
+    else
+      call mem%add(16, El%no_used ** 2, El%nspin, nkpt, 2 + NE, nq, no)
+    end if
 
     call mem%get_string(c_tmp)
     write(*,'(2a)') ' Estimated file size: ', trim(c_tmp)
@@ -748,7 +733,7 @@ contains
 ! ***********************
 ! * INPUT variables     *
 ! ***********************
-    type(electrode_t), intent(inout) :: El  ! The electrode 
+    type(electrode_t), intent(inout) :: El  ! The electrode
     integer,  intent(in)      :: nkpnt ! Number of k-points
     real(dp), intent(in)      :: kpoint(3,nkpnt) ! k-points
     real(dp), intent(in)      :: kweight(nkpnt) ! weights of kpoints
@@ -1395,71 +1380,6 @@ contains
   end subroutine create_Green
 
 
-  subroutine init_Electrode_HS(El)
-    use fdf, only: fdf_get
-#ifdef MPI
-    use mpi_siesta
-#endif
-    use class_Sparsity
-    use class_dSpData1D
-    use class_dSpData2D
-    use ts_electrode_m
-
-    type(electrode_t), intent(inout) :: El
-#ifdef MPI
-    integer :: error
-#endif
-    logical :: neglect_conn
-    
-    ! Read-in and create the corresponding transfer-matrices
-    call El%delete() ! ensure clean electrode
-    call El%read_HS(Bcast=.true.)
-
-    if ( .not. associated(El%isc_off) ) then
-       call die('An electrode file needs to be a non-Gamma calculation. &
-            &Ensure good periodicity in the T-direction.')
-    end if
-
-    ! Create the default sparsity patterns in the sub-spaces needed
-    ! for the self-energy calculations
-    ! This is also important to create before running
-    ! check_connectivity because of used-atoms possibly being set.
-    call El%create_sp2sp01()
-
-    ! print out the precision of the electrode (whether it extends
-    ! beyond first principal layer)
-    if ( El%check_connectivity() ) then
-       neglect_conn = .true.
-    else
-       neglect_conn = fdf_get('TS.Elecs.Neglect.Principal', .false.)
-#ifdef TBTRANS
-       neglect_conn = fdf_get('TBT.Elecs.Neglect.Principal', neglect_conn)
-#endif
-    end if
-    
-#ifdef MPI
-    call MPI_Barrier(MPI_Comm_World,error)
-#endif
-    if ( .not. neglect_conn ) then
-       call die('Electrode connectivity is not perfect, &
-            &refer to the manual for achieving a perfect electrode.')
-    end if
-    
-    ! Clean-up, we will not need these!
-    ! we should not be very memory hungry now, but just in case...
-    call delete(El%H)
-    call delete(El%S)
-   
-    ! We do not accept onlyS files
-    if ( .not. initialized(El%H00) ) then
-       call die('An electrode file must contain the Hamiltonian')
-    end if
-
-    call delete(El%sp)
-
-  end subroutine init_Electrode_HS
-
-
 !**********
 ! Create the Hamiltonian for the electrode as well
 ! as creating the transfer matrix.
@@ -1468,7 +1388,7 @@ contains
       no,Hk,Sk,Hk_T,Sk_T)
 
     use iso_c_binding
-    
+
     use sys, only : die
     use precision, only : dp
     use ts_electrode_m
@@ -1489,7 +1409,7 @@ contains
 ! * OUTPUT variables    *
 ! ***********************
     complex(dp), dimension(:), target, intent(inout) :: Hk,Sk,Hk_T,Sk_T
-    
+
     complex(dp), dimension(:,:), pointer :: Hk2D,Sk2D,Hk_T2D,Sk_T2D
     type(c_ptr) :: mat_loc
 

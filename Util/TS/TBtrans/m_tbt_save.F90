@@ -478,7 +478,7 @@ contains
       deallocate(r2)
 
       call ncdf_close(ncdf)
-       
+
       ! The file has exactly the same content..
       if ( sme ) then
 
@@ -497,9 +497,9 @@ contains
 
         call die('Currently the '//trim(fname)//' file exists, &
             &we do not currently implement a continuation scheme.')
-          
+
       end if
-      
+
       ! We complain to the user about it and DIE
       call die('The file content in '//trim(fname)//' &
           &is not consistent with this setup. Please delete the &

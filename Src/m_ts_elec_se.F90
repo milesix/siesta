@@ -441,10 +441,6 @@ contains
 
 !$OMP end parallel 
 
-
-  contains
-
-    
   end subroutine UC_expansion_Sigma_GammaT
 
   subroutine update_UC_expansion(ZEnergy,no_u,no_s,El,nq,&
@@ -592,7 +588,7 @@ contains
       na_u,lasto,A,AE)
 
     use iso_c_binding
-    
+
 ! ********************
 ! * INPUT variables  *
 ! ********************
@@ -624,7 +620,7 @@ contains
       na_u,lasto,A,AE)
 
     use iso_c_binding
-    
+
     integer,  intent(in) :: no_u, no_s
     type(electrode_t), intent(in) :: El
     integer,  intent(in) :: nq, na_u, lasto(0:)
@@ -646,14 +642,14 @@ contains
     call update_UC_expansion_A(no_u, no_s, El, nq, na_u, lasto, A5D, AE2D)
 
     nullify(A5D, AE2D)
-    
+
   end subroutine update_UC_expansion_A2D
 
   subroutine update_UC_expansion_A3D(no_u,no_s,El,nq, &
       na_u,lasto,A,AE)
 
     use iso_c_binding
-    
+
     integer,  intent(in) :: no_u, no_s
     type(electrode_t), intent(in) :: El
     integer,  intent(in) :: nq, na_u, lasto(0:)
@@ -675,7 +671,7 @@ contains
     call update_UC_expansion_A(no_u, no_s, El, nq, na_u, lasto, A5D, AE2D)
 
     nullify(A5D, AE2D)
-    
+
   end subroutine update_UC_expansion_A3D
 
   subroutine update_UC_expansion_A(no_u,no_s,El,nq, &

@@ -39,7 +39,6 @@ subroutine tbt_init()
 
   use dictionary
 
-  use m_ts_electrode, only : init_Electrode_HS
   use ts_electrode_m
 
   use m_tbt_kpoint
@@ -203,7 +202,7 @@ subroutine tbt_init()
      if ( IONode ) write(*,*) ! newline
 
      ! initialize the electrode for Green's function calculation
-     call init_Electrode_HS(Elecs(iEl))
+     call Elecs(iEl)%prepare_SE()
 
      if ( Elecs(iEl)%is_gamma ) then
        call do_Green(Elecs(iEl), &

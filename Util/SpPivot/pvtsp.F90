@@ -292,7 +292,7 @@ contains
     do io = 1 , pvt%n
       rpvt%r(pvt%r(io)) = io
     end do
-    
+
     ! Write out each graph point
     write(fmt,'(i0,a)') 2*no_u,'(tr1,i0)'
 
@@ -342,7 +342,7 @@ contains
     end do
 
     call rgn_delete(rpvt)
-    
+
   end subroutine sp2metis
 
   subroutine populate_Sp()
