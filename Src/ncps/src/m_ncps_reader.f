@@ -98,7 +98,8 @@
         endif
         ! Dump locally
         call pseudo_dump(trim(label) // ".psdump",p)
-        call pseudo_write_formatted(trim(label) // ".out.psf",p)
+        call pseudo_write_formatted(trim(label) // ".out.psf",p,
+     $                              print_gen_zval=.true.)
         end subroutine pseudo_read
 
         subroutine pseudo_read_from_file(filename,p,
@@ -153,7 +154,8 @@
         endif
         ! Dump locally
         call pseudo_dump(trim(label) // ".psdump",p)
-        call pseudo_write_formatted(trim(label) // ".out.psf",p)
+        call pseudo_write_formatted(trim(label) // ".out.psf",p,
+     $                              print_gen_zval=.true.)
         end subroutine pseudo_read_from_file
 !
         subroutine pseudo_read_psml(fname,p,

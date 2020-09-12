@@ -74,7 +74,8 @@ CONTAINS
         character(len=10) :: psml_version
         character(len=10) :: relativity
         logical           :: spin_polarized, core_corrections
-        integer           :: l_shell
+        integer           :: l_shell, n_shell
+        logical           :: shell_found
         real(dp)          :: zup_shell, zdown_shell, occ_shell
         
         integer :: iu, id, li, npotd, npotu, nscalar, nlj, lmax
@@ -477,7 +478,17 @@ CONTAINS
         endif
 
         ! Encode generation configuration and cutoffs
-
+        ! Since the Froyen record cannot hold multiple shells per l,
+        ! the information here is limited:
+        !
+        ! n values are taken from the 'slps' elements in the PSML
+        !     files, and the matching occupations are filled in.
+        ! But note that the total valence charge for pseudopotential
+        ! generation is not correctly represented here when semicore
+        ! states are present. It is (correctly) stored in the
+        ! p%gen_zval field, which should be taken into account (and
+        ! output to .psf files).
+        
         p%text = ' '
         position = 1
         ! We deal with "down" potentials only, as they are enough
@@ -489,28 +500,43 @@ CONTAINS
 
            if ( .not. polarized) then
               occupation = 0.0_dp
+              shell_found = .false.
               do i = 1, nval_shells
-                 call ps_ValenceShell_Get(ps,i,l=l_shell,occupation=occ_shell)
-                 if (l_shell == l) then
+                 call ps_ValenceShell_Get(ps,i,l=l_shell,n=n_shell, &
+                                          occupation=occ_shell)
+                 if ((l_shell == l) .and. (n_shell == n)) then
                     occupation = occ_shell
+                    shell_found = .true.
                     exit
                  endif
               enddo
-              write(p%text(position:),9070)     &
-                   n, sym(l), occupation, ispp, rc
+              if (.not. shell_found) then
+                 ! Note that the psml file might not list empty
+                 ! valence shells, so we do not raise an error
+                 !! call die("Cannot find valence shell for legacy conf info")
+              endif
+              write(p%text(position:),9070) n, sym(l), occupation, ispp, rc
  9070         format(i1,a1,f5.2,a1,' r=',f5.2,'/')
               position = position + 17
            else
               zeld = 0.0_dp
               zelu = 0.0_dp
+              shell_found = .false.
               do i = 1, nval_shells
-                 call ps_ValenceShell_Get(ps,i,l=l_shell,occ_up=zup_shell,occ_down=zdown_shell)
-                 if (l_shell == l) then
+                 call ps_ValenceShell_Get(ps,i,l=l_shell,n=n_shell, &
+                               occ_up=zup_shell,occ_down=zdown_shell)
+                 if ((l_shell == l) .and. (n_shell == n)) then
                     zeld = zdown_shell
                     zelu = zup_shell
+                    shell_found = .true.
                     exit
                  endif
               enddo
+              if (.not. shell_found) then
+                 ! Note that the psml file might not list empty
+                 ! valence shells, so we do not raise an error
+                 !! call die("Cannot find valence shell for legacy conf info")
+              endif
               write(p%text(position:),9090)    &
                    n, sym(l), zeld,zelu,ispp, rc
  9090         format(i1,a1,f4.2,',',f4.2,a1,f4.2,'/')

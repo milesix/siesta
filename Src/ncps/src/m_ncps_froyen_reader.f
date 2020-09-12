@@ -106,7 +106,9 @@
      $       gen_zval_inline
         ! TEST_ME: if ios<0, are we guaranteed that the other info has been read?
         if (ios < 0) gen_zval_inline = 0.0_dp
-        call read_ps_conf(p%irel,p%npotd-1,p%text,p%gen_zval)
+           call read_ps_conf(p%irel,p%npotd-1,p%text,p%gen_zval)
+        if (gen_zval_inline /= 0.0_dp) p%gen_zval = gen_zval_inline
+           
 !
 !       (Some .psf files contain an extra field corresponding
 !       to the ps valence charge at generation time. If that

@@ -2344,13 +2344,10 @@ C
         write(6,'(7a)')   
      .    'read_vps: ',method(1),(method(i),i=3,6)
           
-C We are going to find the charge configuration
-C used for the pseudopotential generation using the information given in
-C the 'text' variable.
-
+        !  Total valence charge used for the pseudopotential generation
         chgvps = vp%gen_zval
-
-        write(6,'(a,f10.5)') 'Total valence charge: ', chgvps
+        write(6,'(a,f10.5)')
+     $       'Valence charge in pseudo generation: ', chgvps
 
         if (nicore.ne.'nc  ') then
           write(6,'(/,a)')

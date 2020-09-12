@@ -7,6 +7,7 @@ module m_semicore_info_froyen
   public :: get_n_semicore_shells
 
 CONTAINS
+
 subroutine get_n_semicore_shells(p,nsemic)
   use m_ncps, only: pseudopotential_t => froyen_ps_t
   
@@ -20,11 +21,11 @@ subroutine get_n_semicore_shells(p,nsemic)
   ! If no pseudo is available for a given l, a 0 is returned.
   ! If for some reason the generation step did not pseudize
   ! a proper valence state (e.g. Cu 3d), the number of semicore
-  ! shells is returned as -1. This should be checked by the caller.
-!
-!
+  ! shells is returned as 0, and the fact is recorded in the output.
 
-  integer   :: lmax, inp_lun, l, n, z
+  character(len=1)     :: sym(0:4) = (/ 's','p','d','f','g' /)
+
+  integer   :: lmax, inp_lun, l, n, z, i
   integer    :: nval_gs(0:3)
 
   character(len=2), allocatable :: orb_arr(:)
@@ -35,6 +36,9 @@ subroutine get_n_semicore_shells(p,nsemic)
 
   real(dp) :: chgvps
 
+  ! The information returned depends on the assumed ground-state
+  ! configuration, as given by cnfig here (maximum occupied 'n' for
+  ! each l)
   z = atomic_number(p%name)
   call cnfig(z,nval_gs)
 
@@ -51,19 +55,36 @@ subroutine get_n_semicore_shells(p,nsemic)
   nsemic(:) = 0
   do l = 0, lmax
      read(orb_arr(l),"(i1)") gen_n(l)
-     if (gen_n(l) < nval_gs(l)) then
-        nsemic(l) =  nval_gs(l) - gen_n(l)
-     endif
+     nsemic(l) =  nval_gs(l) - gen_n(l)
   enddo
-  if (sum(nsemic) > 0) then
-     print *, " -- Semicore analysis"
+
+  if (any(nsemic > 0))  then
+     write(6,fmt="(a,i1,2x,i1,1x,a)",advance="no") "Semicore shell(s):"
      do l = 0, lmax
         if (gen_n(l) < nval_gs(l)) then
-           print "(a,i1,a,2i2)", "For l=",l, ", gen_n, nval_gs:", gen_n(l), nval_gs(l)
            nsemic(l) =  nval_gs(l) - gen_n(l)
-           print "(a,i2,1x,a)", "* There are ", nsemic(l), " semicore shells"
+           do i = gen_n(l), nval_gs(l)-1
+              write(6,fmt="(1x,i1,a1)",advance="no") i, sym(l)
+           enddo
         endif
      enddo
+     write(6,fmt=*)
+  endif
+
+  ! It could be (for example Cu 3d) that a 'valence' state is not pseudized
+  ! In this case we reset nsemic to 0.
+
+  if (any(nsemic < 0)) then
+     write(6,fmt="(a,i1,1x,a)",advance="no") "Non-pseudized 'valence' shell(s):"
+     do l = 0, lmax
+        if (gen_n(l) > nval_gs(l)) then
+           nsemic(l) = 0
+           do i = nval_gs(l), gen_n(l)-1
+              write(6,fmt="(1x,i1,a1)",advance="no") i, sym(l)
+           enddo
+        endif
+     enddo
+     write(6,fmt=*)
   endif
 
 end subroutine get_n_semicore_shells

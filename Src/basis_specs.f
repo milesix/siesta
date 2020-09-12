@@ -1310,11 +1310,18 @@ c (according to atmass subroutine).
         call die()
       endif
 
-      basp%semic = .true.
       charge_loc = Zval_vps-Zval
-      write(6,'(a,i2,a)')
-     .  'Semicore shell(s) with ', nint(charge_loc),
-     .  ' electrons included in the valence for', trim(basp%label)
+      if (charge_loc > 0.0_dp) then
+         basp%semic = .true.
+         write(6,'(a,i2,a)')
+     .        'Semicore shell(s) with ', nint(charge_loc),
+     .        ' electrons included in the valence for ' //
+     $        trim(basp%label)
+      else
+         write(6,'(a,i2,a)') 'Nominally valence shell(s) with ',
+     $          nint(abs(charge_loc)),
+     .        ' electrons are kept in the core for ' // trim(basp%label)
+      endif
 
       end subroutine semicore_check
 !----------------------------------------------------------------------
