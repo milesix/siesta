@@ -30,7 +30,8 @@
 !       Old style vps files should have the right info in text.
 !
         call read_ps_conf(p%irel,p%npotd-1,p%text,p%gen_zval)
-
+        p%gen_config_string = ""
+        
         p%nrval = p%nr + 1
         allocate(p%r(1:p%nrval))
         read(io_ps) (p%r(j),j=2,p%nrval)
@@ -72,6 +73,7 @@
 
         integer io_ps, i, j, ios
         character(len=70) dummy
+        character(len=256) line
         real(dp) :: r2, gen_zval_inline
 
         call get_free_lun(io_ps)
@@ -82,7 +84,8 @@
  8000   format(1x,i2)
  8005   format(1x,a2,1x,a2,1x,a3,1x,a4)
  8008   format(1x,a2,1x,a2,1x,a3,1x,a4,1x,i8)
- 8010   format(1x,6a10,/,1x,a70)
+ 8010   format(1x,6a10)
+ 8012   format(1x,a70)
  8015   format(1x,2i3,i5,4g20.12)
  8030   format(4(g20.12))
  8040   format(1x,a)
@@ -100,7 +103,19 @@
         if ((p%icorr == "xc") .and. (p%libxc_packed_code == 0)) then
            call die("No libxc codes with 'xc' pseudo-code")
         endif
-        read(io_ps,8010) (p%method(i),i=1,6), p%text
+        read(io_ps,8010) (p%method(i),i=1,6)
+
+        p%gen_config_string = ""
+        read(io_ps,fmt=*) line
+        if (len_trim(line) <= 71) then
+           ! We have just the pseudized shells info
+           read(line,8012) p%text
+        else
+           ! We have also the packed config info
+           read(line(1:71),fmt=8012) p%text
+           read(line(73:),fmt=*) p%gen_config_string
+        endif
+        
         read(io_ps,8015,iostat=ios)
      $       p%npotd, p%npotu, p%nr, p%b, p%a, p%zval,
      $       gen_zval_inline

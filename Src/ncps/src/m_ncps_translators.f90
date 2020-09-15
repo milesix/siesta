@@ -90,9 +90,9 @@ CONTAINS
              atomic_number=znuc, pseudo_flavor=method_string,&
              relativity=relativity,spin_dft=spin_polarized,&
              core_corrections=core_corrections)
-        
-        call ps_ValenceConfiguration_Get(ps,nshells=nval_shells, &
-                                         charge=p%gen_zval)
+
+        call setup_gen_valence_data(ps, nval_shells, p%gen_zval, &
+                                        p%gen_config_string )
 
         !
         call ps_ExchangeCorrelation_Get(ps,annotation=annot,&
@@ -572,4 +572,49 @@ subroutine xcid_pack(nfuncs,id,code)
 
 end subroutine xcid_pack
 
+!> For PSML files, gets information about the valence charge configuration
+!  used at the time of pseudopotential generation.
+
+subroutine setup_gen_valence_data(ps,gen_nshells,gen_zval,gen_config_string)
+  use m_psml, only: ps_t, ps_ValenceConfiguration_get
+  use m_psml, only: ps_ValenceShell_get
+
+  integer, parameter :: dp = selected_real_kind(10,100)
+  character(len=1), dimension(0:4) :: &
+                         sym = (/ "s", "p", "d", "f", "g" /)
+  
+  type(ps_t), intent(in) :: ps
+
+  !> Total number of valence shells
+  integer, intent(out)   :: gen_nshells
+
+  !> The total valence charge density (this is important to avoid
+  !  assuming that an ionic configuration was used when semicore
+  !  states are present
+  real(dp), intent(out)  :: gen_zval
+
+  !> A string holding the configuration in compact form, for use
+  !  only in reporting. No occupations are recorded.
+  !  Note that complementary information is available about the
+  !  ("minimum n" pseudized shells in the p%text record.
+  character(len=*), intent(out) :: gen_config_string
+
+  integer  :: i, l_shell, n_shell, str_pos
+  real(dp) :: occupation  ! not used for now
+    
+  call ps_ValenceConfiguration_Get(ps,nshells=gen_nshells, &
+                                   charge=gen_zval)
+  gen_config_string = ""
+  str_pos = 0
+  do i = 1, gen_nshells
+     call ps_ValenceShell_Get(ps,i,l=l_shell,n=n_shell, &
+          occupation=occupation)
+     write(gen_config_string(str_pos+1:str_pos+3),fmt="(i1,a1,a1)") &
+          n_shell, sym(l_shell) , ":"
+     str_pos = str_pos + 3
+  enddo
+
+end subroutine setup_gen_valence_data
+  
+  
 end module m_ncps_translators
