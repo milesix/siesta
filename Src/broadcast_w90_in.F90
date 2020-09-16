@@ -267,11 +267,11 @@
 ! &    'broadcast_w90_in_siesta: Node, i_manifold, write_hr        = ',       &
 ! &    Node, i_man, manifold_bands_w90_in(i_man)%write_hr
 !  enddo 
-  do i_man = 1, manifold_bands_w90_in(index_perturbed_manifold)%numbands_w90_in
-    write(6,'(a,2i5,2f12.5)')                                                &
- &    'broadcast_w90_in_siesta: Node, iwannier, chempot = ',                 &
- &    Node, i_man, chempotwann_val(i_man,:)
-  enddo 
+!  do i_man = 1, manifold_bands_w90_in(index_perturbed_manifold)%numbands_w90_in
+!    write(6,'(a,2i5,2f12.5)')                                                &
+! &    'broadcast_w90_in_siesta: Node, iwannier, chempot = ',                 &
+! &    Node, i_man, chempotwann_val(i_man,:)
+!  enddo 
 !! End debugging
 
   end subroutine broadcast_w90_in_siesta
