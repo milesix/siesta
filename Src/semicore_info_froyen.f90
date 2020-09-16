@@ -49,6 +49,7 @@ subroutine get_n_semicore_shells(p,nsemic)
   allocate(rc_arr(0:lmax))
   allocate(gen_n(0:lmax))
 
+  write(6,"(/,a)") "---- Pseudopotential check for " // p%name
   call get_ps_conf(p%irel,lmax,p%text,chgvps, &
                    orb_arr,zdown_arr,zup_arr,rc_arr)
   if (len_trim(p%gen_config_string) /= 0) then

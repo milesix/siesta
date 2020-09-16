@@ -747,6 +747,12 @@ c    .          'atom: The above configuration will be used ',
      .    'atom: for an anion of charge ',charge 
             endif
 
+            ! Note that in this case we pass 've' (the V_hartree + V_xc
+            ! computed for the charge density of the valence configuration
+            ! for which the pseudopotential was generated (which typically is either
+            ! a neutral or a cationic one). This 've' will be used only in
+            ! the determination of the rc from the energy_shift value. Presumably
+            ! this is done to avoid problems of convergence for anions.
             call Basis_gen(Zval,is, iz, a,b,rofi,drdi,s,
      .                     vps, ve, vePAO, nrval, lmxo,nsemic,
      .                     nzeta, rco, lambda, npolorb, basistype,
