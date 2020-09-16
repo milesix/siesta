@@ -706,10 +706,13 @@ C Sanity checks on values
 !---------------------------------------------------------------
 
       subroutine repaobasis()
+      
+      use m_semicore_info_froyen, only: get_n_semicore_shells
 
       integer isp, ish, nn, i, ind, l, indexp, index_splnorm
       integer nrcs_zetas
-
+      integer :: nsemic_shells(0:3)
+      
       type(block_fdf)            :: bfdf
       type(parsed_line), pointer :: pline
 
@@ -731,6 +734,11 @@ C Sanity checks on values
         basp%label = fdf_bnames(pline,1)
         basp%nshells_tmp = fdf_bintegers(pline,1)
         basp%lmxo = 0
+
+        ! To report on pseudized shells and, in the future,
+        ! check on the specified structure of the block
+        call get_n_semicore_shells(basp%pseudopotential,nsemic_shells)
+        
         !! Check whether there are optional type and ionic charge
         if (fdf_bnnames(pline) .eq. 2)
      .    basp%basis_type = fdf_bnames(pline,2)

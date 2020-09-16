@@ -51,7 +51,14 @@ subroutine get_n_semicore_shells(p,nsemic)
 
   call get_ps_conf(p%irel,lmax,p%text,chgvps, &
                    orb_arr,zdown_arr,zup_arr,rc_arr)
-
+  if (len_trim(p%gen_config_string) /= 0) then
+     write(6,fmt="(a,a,a,f10.6)") "Valence configuration for ps generation: ", &
+          trim(p%gen_config_string), " Total charge: ", p%gen_zval
+  else
+     write(6,fmt="(a,a)") "Valence configuration for ps generation: ", &
+          "(assumed as above)"
+  endif
+  
   nsemic(:) = 0
   do l = 0, lmax
      read(orb_arr(l),"(i1)") gen_n(l)
@@ -112,12 +119,11 @@ subroutine get_ps_conf(irel,lmax,text,chgvps, &
       chgvps=0.0_dp
 
             if(irel.eq.'isp') then
-               write(6,'(/,2a)') &
-               'Pseudopotential generated from an ', &
-               'atomic spin-polarized calculation'
 
-               write(6,'(/,a)') 'Valence configuration '// &
-                      'for pseudopotential generation:'
+               write(6,'(/,2a)')  &
+               'Pseudopotential generated from a ', &
+                      'spin-dft atomic calculation'
+               write(6,'(/,a)') 'Pseudized shells:'
 
                do l=0,min(lmax,3)
                   itext=l*17
@@ -139,13 +145,12 @@ subroutine get_ps_conf(irel,lmax,text,chgvps, &
                if(irel.eq.'rel') then
                   write(6,'(/,2a)')  &
                'Pseudopotential generated from a ', &
-                      'relativistic atomic calculation'
+                      'fully relativistic atomic calculation'
                   write(6,'(2a)')   &
                'There are spin-orbit semi-local pseudopotentials available'
                endif
- 
-               write(6,'(/,a)') 'Valence configuration '// &
-                      'for pseudopotential generation:'
+               write(6,'(/,a)') 'Pseudized shells:'
+
 
                do l=0,min(lmax,3)
                   itext=l*17
