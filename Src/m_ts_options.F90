@@ -437,7 +437,11 @@ contains
 
     ! Whether we should always set the DM to bulk
     ! values (by reading in from electrode DM)
+<<<<<<< HEAD
     if ( TS_scf_mode == 1 .and. .not. IsVolt ) then
+=======
+    if ( TS_scf_mode == 1 ) then
+>>>>>>> d05c42ed1... maint: reran all TS tests
       chars = 'bulk'
     else
       chars = 'diagon'
@@ -1663,11 +1667,11 @@ contains
     do i = 1, N_Elec
       call Elecs(i)%delete(all=.true.)
     end do
-    deallocate(Elecs)
+    if ( allocated(Elecs) ) deallocate(Elecs)
     do i = 1, N_mu
       call delete(mus(i))
     end do
-    deallocate(mus)
+    if ( allocated(mus) ) deallocate(mus)
 
   end subroutine ts_options_reset
 

@@ -1452,7 +1452,7 @@ contains
     integer :: i(3)
     call this%Bloch%unravel_index(idx, i)
     q(:) = this%bloch%get_k(i(1), i(2), i(3))
-  end function q_exp
+  end function unfold_k
 
   subroutine kpoint_convert_(this,cell,k1,k2,opt)
     class(electrode_t), intent(in) :: this
