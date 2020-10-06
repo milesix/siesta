@@ -202,7 +202,7 @@ C Repeat diagonalisation with increased memory to handle clustering
           do ix = 1,3
             k(ix) = 0.0d0
           enddo
-          call c_f_pointer(c_loc(psi(:,:,ispin)),psi_real_1d,
+          call c_f_pointer(c_loc(psi(1,1,ispin)),psi_real_1d,
      $                     [size(psi,1)*size(psi,2)])
           call writew(nuotot,nuo,1,k,ispin,
      &                eo(1,ispin),psi_real_1d,gamma=.true.,
@@ -220,10 +220,10 @@ C Check if we are done ................................................
 
 C Find new Fermi energy and occupation weights ........................
       if (fixspin) then
-        call fermispin( spinor_dim, spinor_dim, nk, wk, maxo, 
+        call fermispin( spinor_dim, spinor_dim, nk, wk, maxo,
      &                  neigwanted, eo, temp, qs, qo, efs, Entropy )
       else
-        call fermid( spinor_dim, spinor_dim, nk, wk, maxo, neigwanted, 
+        call fermid(spinor_dim, spinor_dim, nk, wk, maxo, neigwanted,
      &               eo, temp, qtot, qo, ef, Entropy )
       endif
 
