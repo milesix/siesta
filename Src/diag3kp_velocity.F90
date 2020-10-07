@@ -64,7 +64,7 @@ subroutine diag3kp_velocity( spin, no_l, no_u, no_s, nnz, &
   ! complex*16 Hk(2,no_u,2,no_u) : Auxiliary space for the hamiltonian matrix
   ! complex*16 Sk(2,no_u,2,no_u) : Auxiliary space for the overlap matrix
   ! complex*16 psi(2,no_u,no_u*2) : Auxiliary space for the eigenvectors
-  ! real*8 aux(2,no_u*3)          : Extra auxiliary space
+  ! real*8 aux(2,no_u*6)          : Extra auxiliary space
   ! *************************** UNITS ***********************************
   ! xij and kpoint must be in reciprocal coordinates of each other.
   ! temp and H must be in the same energy units.
@@ -139,7 +139,7 @@ subroutine diag3kp_velocity( spin, no_l, no_u, no_s, nnz, &
   ! Auxiliary arrays
   complex(dp), intent(inout), target :: Hk(2,no_u,2,no_u), Sk(2,no_u,2,no_u)
   complex(dp), intent(inout), target :: psi(2,no_u,no_u*2)
-  real(dp), intent(inout), target :: aux(2,no_u,3)
+  real(dp), intent(inout), target :: aux(2,no_u,6)
 
   ! Internal variables
   integer :: BNode, ie, ierror, ik, is
@@ -149,9 +149,9 @@ subroutine diag3kp_velocity( spin, no_l, no_u, no_s, nnz, &
   complex(dp) :: kph, D11, D22, D12, D21, cp
 
   !< Current calculation
-  real(dp) :: BB_res(5) ! I[[x, y, z]] + qd[dq, 0]
+  real(dp) :: BB_res(3,5) ! I[[x, y, z]] + qd[dq, 0]
 #ifdef MPI
-  real(dp) :: mpiBB_res(5) ! for reduction of I + qd
+  real(dp) :: mpiBB_res(3,5) ! for reduction of I + qd
 #endif
 
   ! Arrays for figuring out the degenerate states
@@ -169,7 +169,7 @@ subroutine diag3kp_velocity( spin, no_l, no_u, no_s, nnz, &
   ! Not allocated, only pointers
   complex(dp), pointer :: Dk(:,:,:,:), Ek(:,:,:,:)
   complex(dp), pointer :: dH(:,:,:,:), dS(:,:,:,:)
-  real(dp), pointer :: eig_aux(:)
+  real(dp), pointer :: eig_aux(:), SJ(:,:)
 
 #ifdef DEBUG
   call write_debug( '    PRE diag3kp_velocity' )
@@ -178,7 +178,8 @@ subroutine diag3kp_velocity( spin, no_l, no_u, no_s, nnz, &
   no_u2 = no_u * 2
   neigwanted2 = neigwanted * 2
 
-  call diag3kp_velocity_2d1d(no_u2, aux(1,1,3), eig_aux)
+  call diag3kp_velocity_1d(no_u2, aux(1,1,3), eig_aux)
+  call diag3kp_velocity_2d(3,no_u2, aux(1,1,4), SJ)
 
   ! Globalise sparsity pattern
   call MPI_AllReduce(nnz, g_nnz, 1, MPI_Integer, MPI_Sum, &
@@ -308,7 +309,7 @@ subroutine diag3kp_velocity( spin, no_l, no_u, no_s, nnz, &
       neigwanted2, eo, Temp, qtot, qo, ef, Entropy )
 
   ! Initialize current
-  BB_res(:) = 0._dp
+  BB_res(:,:) = 0._dp
 
   ! Allocate globalized DM and EDM
   call re_alloc( g_DM, 1, g_nnz, 1, spin%DM, name='g_DM', routine= 'diag3kp_velocity' )
@@ -380,8 +381,9 @@ subroutine diag3kp_velocity( spin, no_l, no_u, no_s, nnz, &
     ! If we want to calculate the current and print it, we can do so here
     if ( calc_velocity_current ) then
       call calculate_velocity(neigwanted2, eig_aux)
+      call calculate_spin_moment(neigwanted2, SJ)
       call velocity_results(neigwanted2, eig_aux, qo(:,ik), &
-          v, Ef, wk(ik), Temp, BB_res)
+          v, SJ, Ef, wk(ik), Temp, BB_res)
     end if
 
     ! Find maximum eigenvector that is required for this k point and spin
@@ -515,9 +517,9 @@ subroutine diag3kp_velocity( spin, no_l, no_u, no_s, nnz, &
   call de_alloc( g_EDM, name='g_EDM', routine= 'diag3kp_velocity' )
 
   if ( calc_velocity_current ) then
-    call MPI_Reduce(BB_res, mpiBB_res, 5, MPI_Double_Precision, &
+    call MPI_Reduce(BB_res(1,1), mpiBB_res(1,1), 14, MPI_Double_Precision, &
         MPI_sum,0,MPI_Comm_World,MPIerror)
-    call velocity_results_print(spin, ucell, cell_periodic, mpiBB_res)
+    call velocity_results_print(ucell, cell_periodic, mpiBB_res)
   end if
 
   ! Exit point 
@@ -546,7 +548,7 @@ contains
   
   subroutine setup_k(k)
     real(dp), intent(in) :: k(3)
-    
+
     integer :: io, ind, jo
 
     Hk = cmplx(0._dp, 0._dp, dp)
@@ -560,7 +562,7 @@ contains
 
         ! Calculate the complex phase
         kph = exp(cmplx(0._dp, - kxij, dp))
-        
+
         Sk(1,jo,1,io) = Sk(1,jo,1,io) + g_S(ind) * kph
         Sk(2,jo,2,io) = Sk(2,jo,2,io) + g_S(ind) * kph
         Hk(1,jo,1,io) = Hk(1,jo,1,io) + cmplx(g_H(ind,1), g_H(ind,5), dp) * kph
@@ -573,6 +575,63 @@ contains
 !$OMP end parallel do
 
   end subroutine setup_k
+
+  subroutine setup_Sk(k)
+    real(dp), intent(in) :: k(3)
+
+    integer :: io, ind, jo
+
+    Sk = cmplx(0._dp, 0._dp, dp)
+
+!$OMP parallel do default(shared), private(io,jo,ind,kxij,kph)
+    do io = 1,no_u
+      do ind = g_ptr(io) + 1, g_ptr(io) + g_ncol(io)
+        jo = modp(g_col(ind), no_u)
+        kxij = k(1) * g_xij(1,ind) + k(2) * g_xij(2,ind) + k(3) * g_xij(3,ind)
+
+        ! Calculate the complex phase
+        kph = exp(cmplx(0._dp, - kxij, dp))
+
+        Sk(1,jo,1,io) = Sk(1,jo,1,io) + g_S(ind) * kph
+        Sk(2,jo,2,io) = Sk(2,jo,2,io) + g_S(ind) * kph
+
+      end do
+    end do
+!$OMP end parallel do
+
+  end subroutine setup_Sk
+
+  subroutine calculate_spin_moment(neig, SJ)
+    integer, intent(in) :: neig
+    ! Spin texture S[x, y, z]
+    real(dp), intent(inout) :: SJ(3,neig)
+    complex(dp) :: Sbox(2,2)
+
+    integer :: ie
+
+    call setup_Sk(kpoint(:,ik))
+
+    do ie = 1, neig
+
+      ! S(k) | psi_i >
+      call zgemv('N', no_u2, no_u2, cmplx(1._dp, 0._dp, dp), &
+          Sk(1,1,1,1), no_u2, psi(1,1,ie), 1, &
+          cmplx(0._dp, 0._dp, dp), aux(1,1,1), 1)
+
+      ! Now calculate spin-box
+      ! Since the arrays are transposed (they should be < psi | aux
+      ! we need to back-transpose in the following calculation
+      call zgemm('N', 'C', 2, 2, no_u, cmplx(1._dp, 0._dp, dp), &
+          aux(1,1,1), 2, psi(1,1,ie), 2, &
+          cmplx(0._dp, 0._dp, dp), Sbox, 2)
+
+      SJ(1,ie) = real(Sbox(1,2) + Sbox(2,1), dp)
+      SJ(2,ie) = aimag(Sbox(1,2) - Sbox(2,1))
+      SJ(3,ie) = real(Sbox(1,1) - Sbox(2,2), dp)
+
+    end do
+
+  end subroutine calculate_spin_moment
   
   subroutine setup_dk(ix, k)
     integer, intent(in) :: ix
@@ -729,12 +788,19 @@ contains
 
   end subroutine calculate_velocity
 
-  subroutine diag3kp_velocity_2d1d(n,from,to)
+  subroutine diag3kp_velocity_1d(n,from,to)
     integer, intent(in) :: n
     real(dp), intent(in), target :: from(n)
     real(dp), pointer :: to(:)
     to => from(:)
-  end subroutine diag3kp_velocity_2d1d
+  end subroutine diag3kp_velocity_1d
+
+  subroutine diag3kp_velocity_2d(n1,n2,from,to)
+    integer, intent(in) :: n1,n2
+    real(dp), intent(in), target :: from(n1,n2)
+    real(dp), pointer :: to(:,:)
+    to => from(:,:)
+  end subroutine diag3kp_velocity_2d
 
 end subroutine diag3kp_velocity
 

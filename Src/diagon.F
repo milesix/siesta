@@ -197,7 +197,8 @@ C     Check internal dimensions ..........................................
           nhs  = 2 * 2 * nuotot * 2 * nuotot
           npsi = 2 * 2 * nuotot * 2 * nuotot
           if ( use_velocity_shift ) then
-            naux = 2 * nuotot * 3 ! 2*nuotot REAL + 2*nuotot COMPLEX
+            ! 2*nuotot * ( REAL[eig] + COMPLEX[OP|psi>] + 3 REAL[Spin] )
+            naux = 2 * nuotot * (1 + 2 + 3)
           else
             naux = 2 * nuotot   ! REAL
           end if

@@ -47,7 +47,19 @@ module velocity_shift_m
   public :: read_velocity_shift
   public :: velocity_shift
   public :: velocity_results
+  interface velocity_results
+    module procedure velocity_results_pol
+    module procedure velocity_results_nc
+  end interface velocity_results
   public :: velocity_results_print
+  interface velocity_results_print
+    module procedure velocity_results_print_pol
+    module procedure velocity_results_print_nc
+  end interface velocity_results_print
+
+  ! Parameters for conversion
+  real(dp), parameter :: Coulomb = 1.6021766208e-19_dp
+  real(dp), parameter :: hbar_Rys = 4.8377647940592375e-17_dp
 
 contains
 
@@ -63,7 +75,6 @@ contains
 
     real(dp) :: velocity_bias
 
-    real(dp), parameter :: hbar_Rys = 4.8377647940592375e-17_dp
     character(len=*), parameter :: form_afa = '("redata: ",a,t53,"= ",f10.4,a)'
     character(len=*), parameter :: form_ava = '("redata: ",a,t53,"= ",e10.4,a)'
     character(len=*), parameter :: form_avvv = '("redata: ",a,t53,"=",3(tr1,e10.4))'
@@ -182,7 +193,7 @@ contains
   end subroutine velocity_shift
 
   !< Calculate current from an eigenspectrum according to the velocities and calculate current
-  subroutine velocity_results(ne, e, o, v, Ef, w, Temp, results)
+  subroutine velocity_results_pol(ne, e, o, v, Ef, w, Temp, results)
     use m_fermid, only: stepf
     integer, intent(in) :: ne
     ! The eigenvalues `e` *must* be un-shifted
@@ -227,9 +238,61 @@ contains
     results(2) = results(2) + lresults(2) * w
     results(3) = results(3) + lresults(3) * w
 
-  end subroutine velocity_results
+  end subroutine velocity_results_pol
 
-  subroutine velocity_results_print(spin, ucell, cell_periodic, results)
+  !< Calculate current from an eigenspectrum according to the velocities and calculate current
+  subroutine velocity_results_nc(ne, e, o, v, S, Ef, w, Temp, results)
+    use m_fermid, only: stepf
+    integer, intent(in) :: ne
+    ! The eigenvalues `e` *must* be un-shifted
+    real(dp), intent(in) :: e(ne), o(ne), v(3,ne), S(3,ne), Ef, w, Temp
+    real(dp), intent(inout) :: results(3,0:4) ! never reference last entry
+
+    integer :: ie
+    real(dp) :: p, oc, lresults(3,0:3), lv(3), eEf
+
+    lresults(:,:) = 0._dp
+    do ie = 1, ne
+      eEf = e(ie) - Ef
+
+      ! velocity_dir is normalized, so this gives the correct
+      ! scalar value.
+      p = dot_product(velocity_dir, v(:,ie))
+      if ( p > velocity_tolerance ) then
+        oc = stepf((eEf - velocity_h_bias)/Temp) - stepf(eEf/Temp)
+
+        ! Calculate number of electrons for positive/negative direction
+        results(1,4) = results(1,4) + o(ie)
+
+      else if ( p < - velocity_tolerance ) then
+        oc = stepf((eEf + velocity_h_bias)/Temp) - stepf(eEf/Temp)
+
+        ! Calculate number of electrons for positive/negative direction
+        results(1,4) = results(1,4) - o(ie)
+
+      else
+        oc = 0._dp
+        results(2,4) = results(2,4) + o(ie)
+      end if
+
+      ! this is velocity projected onto bias direction
+      lv(:) = v(:, ie) * oc
+      ! lresults =
+      !  (direction, spin)
+      lresults(:,0) = lresults(:,0) + lv(:)
+      lresults(:,1) = lresults(:,1) + S(1,ie) * lv(:)
+      lresults(:,2) = lresults(:,2) + S(2,ie) * lv(:)
+      lresults(:,3) = lresults(:,3) + S(3,ie) * lv(:)
+
+    end do
+
+    do ie = 0, 3
+      results(:,ie) = results(:,ie) + lresults(:,ie) * w
+    end do
+
+  end subroutine velocity_results_nc
+
+  subroutine velocity_results_print_pol(spin, ucell, cell_periodic, results)
     use parallel, only: IONode
     use intrinsic_missing, only: VNORM
     use units, only: eV, Ang
@@ -245,8 +308,6 @@ contains
     real(dp) :: vcross(3)
     real(dp) :: I(4)
     character(len=8) :: suffix
-    real(dp), parameter :: Coulomb = 1.6021766208e-19_dp
-    real(dp), parameter :: hbar_Rys = 4.8377647940592375e-17_dp
 
     ! Calculate the correction to the total energy due to the
     ! different populations.
@@ -292,7 +353,75 @@ contains
     ! Write out the current along the bulk-bias direction and each of the other ones
     write(*,'(tr5,3a,e15.7,tr3,3(tr1,e15.7))') 'bulk-bias: |v| / {v} [',trim(suffix),'] ', I(1:4)
     write(*,'(tr5,a,2(tr1,e15.7))') 'bulk-bias: {dq,q0}', results(4:5)
-    
-  end subroutine velocity_results_print
+
+  end subroutine velocity_results_print_pol
+
+  subroutine velocity_results_print_nc(ucell, cell_periodic, results)
+    use parallel, only: IONode
+    use intrinsic_missing, only: VNORM
+    use units, only: eV, Ang
+    use m_energies, only: E_bulk_bias
+
+    real(dp), intent(in) :: ucell(3,3)
+    logical, intent(in) :: cell_periodic(3)
+    real(dp), intent(in) :: results(3,0:4)
+
+    real(dp), external :: volcel
+    real(dp) :: vcross(3), fac
+    real(dp) :: I, IS(3,0:3)
+    character(len=8) :: suffix
+
+    ! Calculate the correction to the total energy due to the
+    ! different populations.
+    ! This will only work in case the bias is always +- V/2
+    ! results(5) == dq
+    E_bulk_bias = - velocity_h_bias * results(1,4)
+
+    ! Quick escape
+    if ( .not. IONode ) return
+
+    select case ( count( cell_periodic(:) ) )
+    case ( 3 )
+      ! We are dealing with the volume
+      fac = 1._dp / volcel(ucell) * Ang ** 2
+      suffix = 'uA/Ang^2'
+    case ( 2 )
+      if ( .not. cell_periodic(1) ) then
+        call cross(ucell(:, 2), ucell(:, 3), vcross)
+      else if ( .not. cell_periodic(2) ) then
+        call cross(ucell(:, 1), ucell(:, 3), vcross)
+      else if ( .not. cell_periodic(3) ) then
+        call cross(ucell(:, 1), ucell(:, 2), vcross)
+      end if
+      fac = 1._dp / VNORM(vcross) * Ang
+      suffix = 'uA/Ang'
+    case ( 1 )
+      if ( cell_periodic(1) ) then
+        fac = 1._dp / VNORM(ucell(:,1))
+      else if ( cell_periodic(2) ) then
+        fac = 1._dp / VNORM(ucell(:,2))
+      else if ( cell_periodic(3) ) then
+        fac = 1._dp / VNORM(ucell(:,3))
+      end if
+      suffix = 'uA'
+    end select
+
+    ! Current I is in [e Bohr Ry], then convert to [e Bohr/s]
+    fac = fac * Coulomb / hbar_Rys * 1.e6_dp
+    IS(:,:) = results(:,0:3) * fac
+
+    ! Write out the current along the bulk-bias direction and each of the other ones
+    I = dot_product(velocity_dir, IS(:,0))
+    write(*,'(tr5,3a,e15.7,tr3,3(tr1,e15.7))') 'bulk-bias: |v|    / {v}    [',trim(suffix),'] ', I, IS(:,0)
+    I = dot_product(velocity_dir, IS(:,1))
+    write(*,'(tr5,3a,e15.7,tr3,3(tr1,e15.7))') 'bulk-bias: |v|_Sx / {v}_Sx [',trim(suffix),'] ', I, IS(:,1)
+    I = dot_product(velocity_dir, IS(:,2))
+    write(*,'(tr5,3a,e15.7,tr3,3(tr1,e15.7))') 'bulk-bias: |v|_Sy / {v}_Sy [',trim(suffix),'] ', I, IS(:,2)
+    I = dot_product(velocity_dir, IS(:,3))
+    write(*,'(tr5,3a,e15.7,tr3,3(tr1,e15.7))') 'bulk-bias: |v|_Sz / {v}_Sz [',trim(suffix),'] ', I, IS(:,3)
+
+    write(*,'(tr5,a,2(tr1,e15.7))') 'bulk-bias: {dq,q0}', results(1:2,4)
+
+  end subroutine velocity_results_print_nc
 
 end module velocity_shift_m
