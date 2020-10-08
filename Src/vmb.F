@@ -239,7 +239,7 @@ C real*8 tempe          : Instantaneous system temperature
 C *****************************************************************************
 
       use precision, only : dp
-      use units, only: eV, Ang
+      use units, only: eV, Ang, amu
       use sys,       only : die
 
       implicit none
@@ -266,11 +266,22 @@ C ........................
 C Define constants and conversion factors .....................................
 
       if (iunit .eq. 1) then
-C  convert F/m in (eV/Amstrong)/amu  to  Amstrong/fs**2
+#ifdef SIESTA__UNITS_ORIGINAL
+C convert F/m in (eV/Angstrom)/amu  to  Angstrom/fs**2
         fovermp = 0.009579038d0
+#else
+        ! The default units of Siesta are Bohr and fs
+        ! Hence any conversion is simpler from that respect
+        fovermp = 1._dp / amu / Ang ** 2 * eV
+#endif
       else
+#ifdef SIESTA__UNITS_ORIGINAL
 C  convert F/m in (Ry/Bohr)/amu  to  Bohr/fs**2
         fovermp = 0.009579038d0 *Ang**2 / eV
+#else
+        ! The default units of Siesta are Bohr and fs, so no conversion needed
+        fovermp = 1._dp / amu
+#endif
       endif
 
 C ........................

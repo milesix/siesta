@@ -16,6 +16,7 @@
       use m_mpi_utils, only : broadcast
       use files,       only : slabel
       use alloc,       only : re_alloc, de_alloc
+      use units,       only : Kelvin, eV, Ang, amu
       implicit none
 
 
@@ -161,17 +162,34 @@ C Define constants and conversion factors ......................................
       twodt = dt*2.0d0
 
       if (iunit .eq. 1) then
+#ifdef SIESTA__UNITS_ORIGINAL
 C  convert target temperature into target kinetic energy
 C  Ekin=1/2*(3N-3)*kB*Temp  (yields Ekin in eV if Temp is in Kelvin)
         tekin = 0.5d0 * (3.d0 * natoms - ct) * 8.617d-5 * tt
 C  convert F/m in (eV/Angstrom)/amu  to  Angstrom/fs**2
-        fovermp = 0.009579038
+        fovermp = 0.009579038d0
+#else
+        ! convert target temperature into target kinetic energy
+        ! Ekin=1/2*(3N-3)*kB*Temp  (yields Ekin in eV if Temp is in Kelvin)
+        tekin = 0.5d0 * (3.d0 * natoms - ct) * Kelvin * tt / eV
+        ! The default units of Siesta are Bohr and fs
+        ! Hence any conversion is simpler from that respect
+        fovermp = 1._dp / amu / Ang ** 2 * eV
+#endif
       else
+#ifdef SIESTA__UNITS_ORIGINAL
 C  convert target temperature into target kinetic energy
 C  Ekin=1/2*(3N-3)*kB*Temp  (yields Ekin in Ry if Temp is in Kelvin)
         tekin = eV * 0.5d0 * (3.d0 * natoms - ct) * 8.617d-5 * tt
 C  convert F/m in (Ry/Bohr)/amu  to  Bohr/fs**2
-        fovermp = 0.009579038 * Ang**2 / eV
+        fovermp = 0.009579038d0 *Ang**2 / eV
+#else
+        ! convert target temperature into target kinetic energy
+        ! Ekin=1/2*(3N-3)*kB*Temp  (yields Ekin in Ry if Temp is in Kelvin)
+        tekin = 0.5d0 * (3.d0 * natoms - ct) * Kelvin * tt
+        ! The default units of Siesta are Bohr and fs, so no conversion needed
+        fovermp = 1._dp / amu
+#endif
       endif
 
 C  calculate cell volume at current time
@@ -541,9 +559,17 @@ C Potential energy of Parrinello-Rahman variables
 
 C Instantaneous temperature (Kelvin)
       if (iunit .eq. 1) then
+#ifdef SIESTA__UNITS_ORIGINAL
         temp = 3.0d0*vol*pgas/(3.0d0*natoms-ct)/8.617d-5
+#else
+        temp = 3.0d0*vol*pgas/(3.0d0*natoms-ct)/Kelvin * eV
+#endif
       else
+#ifdef SIESTA__UNITS_ORIGINAL
         temp = 3.0d0*vol*pgas/(3.0d0*natoms-ct)/8.617d-5/eV
+#else
+        temp = 3.0d0*vol*pgas/(3.0d0*natoms-ct)/Kelvin
+#endif
       endif
 
 C .....................
@@ -676,12 +702,24 @@ C Define constants and conversion factors ......................................
       twodt = dt*2.0d0
 
       if (iunit .eq. 1) then
-C  convert F/m in (eV/Angstrom)/amu  to  Angstrom/fs**2
-        fovermp = 0.009579038
+#ifdef SIESTA__UNITS_ORIGINAL
+C convert F/m in (eV/Angstrom)/amu  to  Angstrom/fs**2
+        fovermp = 0.009579038d0
+#else
+        ! The default units of Siesta are Bohr and fs
+        ! Hence any conversion is simpler from that respect
+        fovermp = 1._dp / amu / Ang ** 2 * eV
+#endif
       else
+#ifdef SIESTA__UNITS_ORIGINAL
 C  convert F/m in (Ry/Bohr)/amu  to  Bohr/fs**2
-        fovermp = 0.009579038 * Ang**2 / eV
+        fovermp = 0.009579038d0 *Ang**2 / eV
+#else
+        ! The default units of Siesta are Bohr and fs, so no conversion needed
+        fovermp = 1._dp / amu
+#endif
       endif
+
 C  calculate cell volume at current time
       vol = volcel( h )
 C ........................
@@ -1063,9 +1101,17 @@ C Potential energy of Parrinello-Rahman variables
 
 C Instantaneous temperature (Kelvin)
       if (iunit .eq. 1) then
+#ifdef SIESTA__UNITS_ORIGINAL
         temp = 3.0d0*vol*pgas/(3.0d0*natoms-ct)/8.617d-5
+#else
+        temp = 3.0d0*vol*pgas/(3.0d0*natoms-ct)/Kelvin * eV
+#endif
       else
+#ifdef SIESTA__UNITS_ORIGINAL
         temp = 3.0d0*vol*pgas/(3.0d0*natoms-ct)/8.617d-5/eV
+#else
+        temp = 3.0d0*vol*pgas/(3.0d0*natoms-ct)/Kelvin
+#endif
       endif
 C .....................
 
@@ -1344,9 +1390,17 @@ C Potential energy of Nose variable (in eV)
 
 C Instantaneous temperature (Kelvin)
       if (iunit .eq. 1) then
+#ifdef SIESTA__UNITS_ORIGINAL
         temp = kin / (0.5d0 * (3.d0 * natoms - ct) * 8.617d-5)
+#else
+        temp = kin / (0.5d0 * (3.d0 * natoms - ct) * Kelvin / eV)
+#endif
       else
+#ifdef SIESTA__UNITS_ORIGINAL
         temp = kin / (0.5d0 * (3.d0 * natoms - ct) * 8.617d-5 * eV)
+#else
+        temp = kin / (0.5d0 * (3.d0 * natoms - ct) * Kelvin)
+#endif
       endif
 
       if (Node .eq. 0) then
@@ -1482,17 +1536,34 @@ C Define constants and conversion factors ......................................
       have_p_target = (ianneal .eq. 2 .or. ianneal .eq. 3)
 
       if (iunit .eq. 1) then
-C  convert target ionic temperature into target kinetic energy
+#ifdef SIESTA__UNITS_ORIGINAL
+C  convert target temperature into target kinetic energy
 C  Ekin=1/2*(3N-3)*kB*Temp  (yields Ekin in eV if Temp is in Kelvin)
         tekin = 0.5d0 * (3.d0 * natoms - ct) * 8.617d-5 * tt
 C  convert F/m in (eV/Angstrom)/amu  to  Angstrom/fs**2
-        fovermp = 0.009579038
+        fovermp = 0.009579038d0
+#else
+        ! convert target temperature into target kinetic energy
+        ! Ekin=1/2*(3N-3)*kB*Temp  (yields Ekin in eV if Temp is in Kelvin)
+        tekin = 0.5d0 * (3.d0 * natoms - ct) * Kelvin * tt / eV
+        ! The default units of Siesta are Bohr and fs
+        ! Hence any conversion is simpler from that respect
+        fovermp = 1._dp / amu / Ang ** 2 * eV
+#endif
       else
+#ifdef SIESTA__UNITS_ORIGINAL
 C  convert target temperature into target kinetic energy
 C  Ekin=1/2*(3N-3)*kB*Temp  (yields Ekin in Ry if Temp is in Kelvin)
         tekin = eV * 0.5d0 * (3.d0 * natoms - ct) * 8.617d-5 * tt
 C  convert F/m in (Ry/Bohr)/amu  to  Bohr/fs**2
-        fovermp = 0.009579038 * Ang**2 / eV
+        fovermp = 0.009579038d0 *Ang**2 / eV
+#else
+        ! convert target temperature into target kinetic energy
+        ! Ekin=1/2*(3N-3)*kB*Temp  (yields Ekin in Ry if Temp is in Kelvin)
+        tekin = 0.5d0 * (3.d0 * natoms - ct) * Kelvin * tt
+        ! The default units of Siesta are Bohr and fs, so no conversion needed
+        fovermp = 1._dp / amu
+#endif
       endif
 
 C  calculate cell volume at current time
@@ -1716,9 +1787,17 @@ C Kinetic energy of atoms
 
 C Instantaneous temperature (Kelvin)
       if (iunit .eq. 1) then
+#ifdef SIESTA__UNITS_ORIGINAL
         temp = 3.0d0*vol*pgas/(3.0d0*natoms-ct)/8.617d-5
+#else
+        temp = 3.0d0*vol*pgas/(3.0d0*natoms-ct)/Kelvin * eV
+#endif
       else
+#ifdef SIESTA__UNITS_ORIGINAL
         temp = 3.0d0*vol*pgas/(3.0d0*natoms-ct)/8.617d-5/eV
+#else
+        temp = 3.0d0*vol*pgas/(3.0d0*natoms-ct)/Kelvin
+#endif
       endif
 
 C .....................
@@ -1823,11 +1902,22 @@ C Define constants and conversion factors .....................................
       twodt = dt*2.0d0
 
       if (iunit .eq. 1) then
-C  convert F/m in (eV/Amstrong)/amu  to  Amstrong/fs**2
-        fovermp = 0.009579038
+#ifdef SIESTA__UNITS_ORIGINAL
+C convert F/m in (eV/Angstrom)/amu  to  Angstrom/fs**2
+        fovermp = 0.009579038d0
+#else
+        ! The default units of Siesta are Bohr and fs
+        ! Hence any conversion is simpler from that respect
+        fovermp = 1._dp / amu / Ang ** 2 * eV
+#endif
       else
+#ifdef SIESTA__UNITS_ORIGINAL
 C  convert F/m in (Ry/Bohr)/amu  to  Bohr/fs**2
-        fovermp = 0.009579038  * Ang**2 / eV
+        fovermp = 0.009579038d0 *Ang**2 / eV
+#else
+        ! The default units of Siesta are Bohr and fs, so no conversion needed
+        fovermp = 1._dp / amu
+#endif
       endif
 
 C ........................
@@ -1898,9 +1988,17 @@ C Kinetic energy of atoms
 
 C Instantaneous temperature (Kelvin)
       if (iunit .eq. 1) then
+#ifdef SIESTA__UNITS_ORIGINAL
         temp = 2.0d0*kin/(3.0d0*natoms-ct)/8.617d-5
+#else
+        temp = 2.0d0*kin/(3.0d0*natoms-ct)/Kelvin * eV
+#endif
       else
+#ifdef SIESTA__UNITS_ORIGINAL
         temp = 2.0d0*kin/(3.0d0*natoms-ct)/8.617d-5/eV
+#else
+        temp = 2.0d0*kin/(3.0d0*natoms-ct)/Kelvin
+#endif
       endif
 
 C .....................
@@ -2009,11 +2107,22 @@ C Define constants and conversion factors .....................................
       dtby2 = dt/2.0d0
 
       if (iunit .eq. 1) then
-C  convert F/m in (eV/Amstrong)/amu  to  Amstrong/fs**2
-        fovermp = 0.009579038
+#ifdef SIESTA__UNITS_ORIGINAL
+C convert F/m in (eV/Angstrom)/amu  to  Angstrom/fs**2
+        fovermp = 0.009579038d0
+#else
+        ! The default units of Siesta are Bohr and fs
+        ! Hence any conversion is simpler from that respect
+        fovermp = 1._dp / amu / Ang ** 2 * eV
+#endif
       else
+#ifdef SIESTA__UNITS_ORIGINAL
 C  convert F/m in (Ry/Bohr)/amu  to  Bohr/fs**2
-        fovermp = 0.009579038 * Ang**2 / eV
+        fovermp = 0.009579038d0 *Ang**2 / eV
+#else
+        ! The default units of Siesta are Bohr and fs, so no conversion needed
+        fovermp = 1._dp / amu
+#endif
       endif
 C ........................
 
@@ -2223,9 +2332,17 @@ C Kinetic energy of atoms
 
 C Instantaneous temperature (Kelvin)
       if (iunit .eq. 1) then
+#ifdef SIESTA__UNITS_ORIGINAL
         temp = 2.0d0*kin/(3.0d0*natoms-ct)/8.617d-5
+#else
+        temp = 2.0d0*kin/(3.0d0*natoms-ct)/Kelvin * eV
+#endif
       else
+#ifdef SIESTA__UNITS_ORIGINAL
         temp = 2.0d0*kin/(3.0d0*natoms-ct)/8.617d-5/eV
+#else
+        temp = 2.0d0*kin/(3.0d0*natoms-ct)/Kelvin
+#endif
       endif
 
 !
