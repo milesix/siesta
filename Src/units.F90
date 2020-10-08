@@ -86,6 +86,7 @@ module units
 
 ! pi to 50 digits
   real(dp), parameter, public :: pi = 3.14159265358979323846264338327950288419716939937510_dp
+  real(dp), parameter, public :: pi2 = pi * 2._dp
   real(dp), parameter, public :: deg = pi / 180.0_dp
 
   

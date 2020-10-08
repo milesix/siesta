@@ -12,7 +12,7 @@
       use precision, only : dp
       use fdf,          only: fdf_block
       use m_mpi_utils, only:  broadcast
-      use units, only: kBar, eV, Ang
+      use units, only: kBar, eV, Ang, amu
       use alloc, only: re_alloc, de_alloc
       use fdf, only: fdf_get
       
@@ -95,7 +95,11 @@ c Internal variables and arrays
      $                  fire_alpha_factor, fire_dtmax
       integer        :: fire_nmin
 
+#ifdef SIESTA__UNITS_ORIGINAL
       real(dp), parameter ::  fovermp = 0.009579038 * Ang**2 / eV
+#else
+      real(dp), parameter ::  fovermp = 1._dp / amu
+#endif
       real(dp), parameter ::  dstrain_max = 0.1_dp
 
       real(dp) :: volcel
