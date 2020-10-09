@@ -4,6 +4,7 @@
 
 (latest)
 
+* Expand pseudopotential information reporting
 * Handle 'bye' calls from external function(s).
 * Update ncps copy of interpolation.f90
 * F2003 compliance changes
