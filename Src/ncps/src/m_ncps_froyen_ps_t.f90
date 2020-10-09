@@ -16,6 +16,7 @@ module m_ncps_froyen_ps_t
         integer                 :: nrval
         real(dp)                :: zval
         real(dp)                :: gen_zval  ! Generation valence charge
+        character(len=40)       :: gen_config_string ! Packed config
         logical                 :: relativistic
         character(len=10)       :: correlation
         character(len=2)        :: icorr
@@ -46,6 +47,7 @@ module m_ncps_froyen_ps_t
       p%nrval = 0
       p%zval = 0._dp
       p%gen_zval = 0._dp
+      p%gen_config_string = ' '
       p%relativistic = .false.
       p%correlation = ' '
       p%icorr = ' '

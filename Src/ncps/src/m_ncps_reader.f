@@ -60,8 +60,6 @@
         fname  = trim(prefix) // trim(label) // '.vps'
         inquire(file=fname, exist=found)
         if (found) then
-           write(6,'(/,a,a,/)') 
-     .          'Reading pseudopotential from: ', trim(fname)
            call pseudo_read_unformatted(fname,p)
            if (reparametrize) then
               call pseudo_reparametrize(p,a,b,label,rmax)
@@ -70,8 +68,6 @@
            fname = trim(prefix) // trim(label) // '.psf'
            inquire(file=fname, exist=found)
            if (found) then
-              write(6,'(/,a,a,/)') 
-     .                'Reading pseudopotential from: ', trim(fname)
               call pseudo_read_formatted(fname,p)
               if (reparametrize) then
                  call pseudo_reparametrize(p,a,b,label,rmax)
@@ -80,8 +76,6 @@
               fname = trim(prefix) // trim(label) // '.psml'
               inquire(file=fname, exist=found)
               if (found) then
-                 write(6,'(/,a,a,/)') 
-     .                'Reading pseudopotential from: ', trim(fname)
                  call pseudo_read_psml(fname,p,psml_handle,
      $                                 reparametrize,a,b,rmax)
                  call ps_RootAttributes_Get(psml_handle,uuid=uuid)
@@ -98,7 +92,8 @@
         endif
         ! Dump locally
         call pseudo_dump(trim(label) // ".psdump",p)
-        call pseudo_write_formatted(trim(label) // ".out.psf",p)
+        call pseudo_write_formatted(trim(label) // ".out.psf",p,
+     $                              print_gen_zval=.true.)
         end subroutine pseudo_read
 
         subroutine pseudo_read_from_file(filename,p,
@@ -153,7 +148,8 @@
         endif
         ! Dump locally
         call pseudo_dump(trim(label) // ".psdump",p)
-        call pseudo_write_formatted(trim(label) // ".out.psf",p)
+        call pseudo_write_formatted(trim(label) // ".out.psf",p,
+     $                              print_gen_zval=.true.)
         end subroutine pseudo_read_from_file
 !
         subroutine pseudo_read_psml(fname,p,
@@ -201,8 +197,6 @@
         call get_free_lun(io_ps)
         open(io_ps,file=fname,form='formatted',status='unknown',
      $       action="write",position="rewind")
-        write(6,'(3a)') 'Dumping pseudopotential information ',
-     $       'in formatted form in ', trim(fname)
 
  9040    format(i4,7es20.9)
          do j = 1, p%nrval

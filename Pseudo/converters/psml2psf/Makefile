@@ -54,7 +54,7 @@ $(NCPS):
 	@echo "Making sure that the ncps library is compiled..."
 	(cd $(MAIN_OBJDIR)/ncps/src ; make \
                                      "ARCH_MAKE=$(ARCH_MAKE)"\
-                                     "PSML_INCFLAGS=-$(PSML_INCFLAGS)"\
+                                     "PSML_INCFLAGS=$(PSML_INCFLAGS)"\
                                      "VPATH=$(VPATH)/ncps/src")
 #
 

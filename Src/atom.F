@@ -747,6 +747,12 @@ c    .          'atom: The above configuration will be used ',
      .    'atom: for an anion of charge ',charge 
             endif
 
+            ! Note that in this case we pass 've' (the V_hartree + V_xc
+            ! computed for the charge density of the valence configuration
+            ! for which the pseudopotential was generated (which typically is either
+            ! a neutral or a cationic one). This 've' will be used only in
+            ! the determination of the rc from the energy_shift value. Presumably
+            ! this is done to avoid problems of convergence for anions.
             call Basis_gen(Zval,is, iz, a,b,rofi,drdi,s,
      .                     vps, ve, vePAO, nrval, lmxo,nsemic,
      .                     nzeta, rco, lambda, npolorb, basistype,
@@ -2344,13 +2350,10 @@ C
         write(6,'(7a)')   
      .    'read_vps: ',method(1),(method(i),i=3,6)
           
-C We are going to find the charge configuration
-C used for the pseudopotential generation using the information given in
-C the 'text' variable.
-
+        !  Total valence charge used for the pseudopotential generation
         chgvps = vp%gen_zval
-
-        write(6,'(a,f10.5)') 'Total valence charge: ', chgvps
+        write(6,'(a,f10.5)')
+     $       'Valence charge in pseudo generation: ', chgvps
 
         if (nicore.ne.'nc  ') then
           write(6,'(/,a)')
