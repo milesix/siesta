@@ -359,7 +359,8 @@ contains
     end if
 
     if ( virtual_md_Jks ) then
-       Dscf_deriv(:,:) = (Dscf_deriv(:,:)-Dscf(:,:))/virtual_dt
+       ! Dscf_deriv(:,:) = (Dscf_deriv(:,:)-Dscf(:,:))/virtual_dt
+       Dscf_deriv(:,:) = (Dscf(:,:)-Dscf_deriv(:,:))/virtual_dt
 
        call compute_Jks()
 
@@ -449,6 +450,14 @@ contains
 
        call gvecs_teardown()    ! deallocate g-vectors data
 
+       ! deallocate full density matrices
+       call de_alloc(Dfull,  "Dfull",  "virtual_step_md")
+       call de_alloc(Dderiv, "Dderiv", "virtual_step_md")
+
+       nullify(Dfull)
+       nullify(Dderiv)
+
+       ! deallocate generalized coordinates and forces arrays
        call de_alloc(fa_before_move, "fa_before_move", "virtual_step_md")
        call de_alloc(xa_before_move, "xa_before_move", "virtual_step_md")
        call de_alloc(va_before_move, "va_before_move", "virtual_step_md")

@@ -5,6 +5,8 @@ module ks_flux_procs
   use atomlist, only: no_u, no_l, indxuo, iaorb, qtot
   use densematrix, only: psi ! To get at the c^i_\mu coefficients of the wavefunctions
   use sparse_matrices, only: listh, listhptr, numh
+  use m_virtual_step_data, only: Dfull, Dderiv
+  !!TODO: are the dimensions of Dfull & Dderiv correct?
 
   implicit none
 
@@ -97,20 +99,28 @@ subroutine compute_psi_hat_c (psi_hat_c, n_wfs)
 
      do alpha = 1,no_u
         do nu = 1,no_l
-          do ij = 1, numh(nu)
-             k = listhptr(nu) + ij
-             col = listh(k)
-             if (col == alpha) then
-               if (alpha == nu) then
-                 psi_hat_c(alpha,iw,idx) = psi_hat_c(alpha,iw,idx) + &
-                      tmp_g(nu) * (1.0 - dscf_hat(k))
-               else
-                 psi_hat_c(alpha,iw,idx) = psi_hat_c(alpha,iw,idx) + &
-                      tmp_g(nu) * (- dscf_hat(k))
-               end if
-               exit
-             endif
-          end do
+           if (alpha == nu) then
+              psi_hat_c(alpha,iw,idx) = psi_hat_c(alpha,iw,idx) + &
+                   tmp_g(nu) * (1.0 - Dfull(nu,alpha,1)) ! <- only 1st spin component
+           else
+              psi_hat_c(alpha,iw,idx) = psi_hat_c(alpha,iw,idx) + &
+                   tmp_g(nu) * (- Dfull(nu,alpha,1)) ! <- only 1st spin component
+           end if
+
+          ! do ij = 1, numh(nu)
+          !    k = listhptr(nu) + ij
+          !    col = listh(k)
+          !    if (col == alpha) then
+          !      if (alpha == nu) then
+          !        psi_hat_c(alpha,iw,idx) = psi_hat_c(alpha,iw,idx) + &
+          !             tmp_g(nu) * (1.0 - dscf_hat(k))
+          !      else
+          !        psi_hat_c(alpha,iw,idx) = psi_hat_c(alpha,iw,idx) + &
+          !             tmp_g(nu) * (- dscf_hat(k))
+          !      end if
+          !      exit
+          !    endif
+          ! end do
         end do
      end do
   end do
@@ -122,6 +132,7 @@ end subroutine compute_psi_hat_c
 
 
 subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
+  use siesta_options, only : virtual_dt
   ! Take proper velocities from `BASE` step:
   use m_virtual_step_data, only: va_before_move
 
@@ -164,6 +175,9 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
   allocate (tmp_left(no_u))
   allocate (tmp_right(no_u))
 
+  ! Finite-difference time derivative of Dfull:
+  Dderiv(:,:,1) = (Dfull(:,:,1) - Dderiv(:,:,1))/virtual_dt !NOTE: Just first spin component
+
   dscf_hat => ks_flux_D(:,1)         !NOTE: Just first spin component
   S => ks_flux_S(:)
   gradS => ks_flux_gS(:,:)
@@ -191,10 +205,14 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
      ! then store the resulting column in the "right" buffer array:
      tmp_left(:) = 0.0
      do mu=1,no_u
-        do ind = (listhptr(mu)+1), listhptr(mu) + numh(mu)
-           nu = listh(ind)
-           tmp_left(mu) = tmp_left(mu)+Dscf_deriv(ind,1)*tmp_right(nu)
-           !NOTE: Only first spin component here now--^
+        ! do ind = (listhptr(mu)+1), listhptr(mu) + numh(mu)
+        !    nu = listh(ind)
+        !    tmp_left(mu) = tmp_left(mu)+Dscf_deriv(ind,1)*tmp_right(nu)
+        !    !NOTE: Only first spin component here now--^
+        ! end do
+        do nu=1,no_l
+           tmp_left(mu) = tmp_left(mu)+Dderiv(mu,nu,1)*tmp_right(nu)
+         !NOTE: Only first spin component here now--^
         end do
      end do
      tmp_right(:) = tmp_left(:)
@@ -204,19 +222,22 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
      do lambda=1,no_u
         do mu=1,no_u
            acc_left = 0.0
-           do ind = (listhptr(lambda)+1),&
-                & listhptr(lambda) + numh(lambda)
-              beta = listh(ind)
+           ! do ind = (listhptr(lambda)+1),&
+           !      & listhptr(lambda) + numh(lambda)
+           !    beta = listh(ind)
+           do beta=1,no_l       ! Dfull is dense now
               do sec_ind = (listhptr(beta)+1),&
                    & listhptr(beta) + numh(beta)
                  sec_col = listh(sec_ind)
                  if ( sec_col .eq. mu ) then
                     if (beta.eq.lambda) then
                        acc_left = acc_left + &
-                            &(1.0 - dscf_hat(ind)) * S(sec_ind)
+                            &(1.0 - Dfull(lambda,beta,1)) * S(sec_ind)
+                            ! &(1.0 - dscf_hat(ind)) * S(sec_ind)
                     else
                        acc_left = acc_left + &
-                            &(0.0 - dscf_hat(ind)) * S(sec_ind)
+                            &(0.0 - Dfull(lambda,beta,1)) * S(sec_ind)
+                            ! &(0.0 - dscf_hat(ind)) * S(sec_ind)
                     end if
                     exit
                  end if
@@ -247,9 +268,12 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
      ! then store the resulting column in the "right" buffer array:
      tmp_left(:) = 0.0
      do mu=1,no_u
-        do ind = (listhptr(mu)+1), listhptr(mu) + numh(mu)
-           nu = listh(ind)
-           tmp_left(mu) = tmp_left(mu) + dscf_hat(ind) * tmp_right(nu)
+        ! do ind = (listhptr(mu)+1), listhptr(mu) + numh(mu)
+        !    nu = listh(ind)
+        !    tmp_left(mu) = tmp_left(mu) + dscf_hat(ind) * tmp_right(nu)
+        ! end do
+        do nu=1,no_l
+           tmp_left(mu) = tmp_left(mu) + Dfull(mu,nu,1) * tmp_right(nu)
         end do
      end do
      tmp_right(:) = tmp_left(:)
@@ -259,21 +283,24 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
      do lambda=1,no_u
         do mu=1,no_u
            acc_left = 0.0
-           do ind = (listhptr(lambda)+1),&
-                & listhptr(lambda) + numh(lambda)
-              beta = listh(ind)
+           do beta=1,no_l     ! Dfull is dense now
+           ! do ind = (listhptr(lambda)+1),&
+           !      & listhptr(lambda) + numh(lambda)
+           !    beta = listh(ind)
               do sec_ind = (listhptr(beta)+1),&
                    & listhptr(beta) + numh(beta)
                  sec_col = listh(sec_ind)
                  if ( sec_col .eq. mu ) then
                     if (beta.eq.lambda) then
                        acc_left = acc_left + &
-                            &(1.0 - dscf_hat(ind)) * &
+                            ! &(1.0 - dscf_hat(ind)) * &
+                            &(1.0 - Dfull(lambda,beta,1)) * &
                             &(sum(gradS(sec_ind,:) * &
                             & va_before_move(:,iaorb(mu))))
                     else
                        acc_left = acc_left + &
-                            &(0.0 - dscf_hat(ind)) * &
+                            ! &(0.0 - dscf_hat(ind)) * &
+                            &(0.0 - Dfull(lambda,beta,1)) * &
                             &(sum(gradS(sec_ind,:) * &
                             & va_before_move(:,iaorb(mu))))
                     end if
@@ -308,9 +335,12 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
      ! then store the resulting column in the "right" buffer array:
      tmp_left(:) = 0.0
      do mu=1,no_u
-        do ind = (listhptr(mu)+1), listhptr(mu) + numh(mu)
-           nu = listh(ind)
-           tmp_left(mu) = tmp_left(mu) + dscf_hat(ind) * tmp_right(nu)
+        ! do ind = (listhptr(mu)+1), listhptr(mu) + numh(mu)
+        !    nu = listh(ind)
+        !    tmp_left(mu) = tmp_left(mu) + dscf_hat(ind) * tmp_right(nu)
+        ! end do
+        do nu=1,no_l
+           tmp_left(mu) = tmp_left(mu) + Dfull(mu,nu,1) * tmp_right(nu)
         end do
      end do
      tmp_right(:) = tmp_left(:)
@@ -320,19 +350,22 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
      do lambda=1,no_u
         do mu=1,no_u
            acc_left = 0.0
-           do ind = (listhptr(lambda)+1),&
-                & listhptr(lambda) + numh(lambda)
-              beta = listh(ind)
+           do beta=1,no_l     ! Dfull is dense now
+           ! do ind = (listhptr(lambda)+1),&
+           !      & listhptr(lambda) + numh(lambda)
+           !    beta = listh(ind)
               do sec_ind = (listhptr(beta)+1),&
                    & listhptr(beta) + numh(beta)
                  sec_col = listh(sec_ind)
                  if ( sec_col .eq. mu ) then
                     if (beta.eq.lambda) then
                        acc_left = acc_left + &
-                            &(1.0 - dscf_hat(ind)) * S(sec_ind)
+                            ! &(1.0 - dscf_hat(ind)) * S(sec_ind)
+                            &(1.0 - Dfull(lambda,beta,1)) * S(sec_ind)
                     else
                        acc_left = acc_left + &
-                            &(0.0 - dscf_hat(ind)) * S(sec_ind)
+                            ! &(0.0 - dscf_hat(ind)) * S(sec_ind)
+                            &(0.0 - Dfull(lambda,beta,1)) * S(sec_ind)
                     end if
                     exit
                  end if

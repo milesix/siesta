@@ -17,6 +17,14 @@ module m_virtual_step_data
   integer :: substep = 0 !! Current substep within SCF cycle
   integer, save :: istep_vmd   !! Global step-index copy
 
+  real(dp), pointer, save :: Dfull(:,:,:) => null()
+  !! Full density matrix where we need it full (those cases
+  !! where we cannot account for sparsity in strides over orbitals).
+  !! Processed along `Dnew` in `diagg`.
+  !!FIXME: optimize `Dfull` and `Enew` in `diagg`.
+  real(dp), pointer, save :: Dderiv(:,:,:) => null()
+  !! Time derivative of the latter.
+
   ! Common auxilliary state data regarding mesh, gvectors etc:
   real(dp), dimension(3,3), save :: cell_vmd !! Unit cell vectors
   integer, dimension(3), save    :: mesh_vmd
