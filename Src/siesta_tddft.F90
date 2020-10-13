@@ -50,7 +50,7 @@ contains
     use fdf
 
     integer, intent(inout)  :: istep
-    
+
     integer :: ik, ispin
     real(dp) :: G2max
 #ifdef DEBUG
@@ -108,8 +108,8 @@ contains
     ! Read the initial wavefunctions.
     ! In future reading wavefunctions can be moved before
     ! changebasis and then the first DM can be computed within
-    ! changesbasis. Moving up iowavef would require a call to 
-    ! ms_scalapack_setup. Which is now implicit in changebasis. 
+    ! changesbasis. Moving up iowavef would require a call to
+    ! ms_scalapack_setup. Which is now implicit in changebasis.
 
     if ( istep == 1 ) then
        allocate(wavef_ms(kpoint_scf%N,nspin))
@@ -120,7 +120,7 @@ contains
          call compute_tddm(Dscf)
     end if
 
-    ! Save the final wavefunctions for restart or analysis. 
+    ! Save the final wavefunctions for restart or analysis.
     if(tdsavewf .and. istep .ge. fincoor) then
       ! The wavefunctions are saved after transforming into the current basis
       ! but before evolving them to future.This keeps the wavefunctions
@@ -129,13 +129,11 @@ contains
     end if
 
     do itded = 1 , ntded ! TDED loop
-       
-       if(IONode) then
-          write(*,'(/a)') &
-               '                     ************************       '
-          write(*,*)'                 TDED Step    =', itded
-          write(*,'(a)') &
-               '                     ************************       '
+
+       if ( IONode ) then
+          write(*,'(/,t20,a)') '************************'
+          write(*,'(t22,a,i0)')  'TDED Step = ', itded
+          write(*,'(t20,a)')   '************************'
        end if
 
        if (tdsavewf) then
@@ -145,16 +143,16 @@ contains
        end if
 
        call setup_hamiltonian( itded )
-       
+
        call evolve(  td_dt )
-       
+
        ! The total simulation time mainly for plotting
        totime = (istep*dt - dt) + (itded*td_dt)
-       
+
        call compute_energies (itded)
        call write_tddft(totime, istep, itded, ntded, rstart_time, &
             etot, eo, no_u,nspin,kpoint_scf%N)
-       
+
     end do ! TDED loop
     call compute_tdEdm (Escf)
     call final_H_f_stress(istep, 1, .false.)
@@ -164,5 +162,5 @@ contains
 #endif
 
   end subroutine siesta_tddft
-  
+
 end module m_siesta_tddft
