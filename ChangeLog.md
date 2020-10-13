@@ -4,6 +4,7 @@ An overview changelog for Siesta.
 
 (latest)
 
+* Update top-level doc files and Obj directory. WIP merge request.
 * Expand pseudopotential information reporting
 * Handle 'bye' calls from external function(s).
 * Update ncps copy of interpolation.f90
