@@ -15,6 +15,7 @@
 !---------------------------------------------------------
       subroutine bye(str)
 
+      use siesta_cml
 #ifdef MPI
       use mpi_siesta
 #endif
@@ -39,6 +40,9 @@
          endif
          write(6,'(a)') 'Requested End of Run. Bye!!'
          call pxfflush(6)
+         If (cml_p) Then
+            Call cmlFinishFile(mainXML)
+         Endif                  !cml_p
       endif
 
 #ifdef MPI

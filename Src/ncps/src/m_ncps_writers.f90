@@ -28,7 +28,9 @@ CONTAINS
  8000   format(1x,i2)
  8005   format(1x,a2,1x,a2,1x,a3,1x,a4)
  8008   format(1x,a2,1x,a2,1x,a3,1x,a4,1x,i8.8)
- 8010   format(1x,6a10,/,1x,a70)
+ 8010   format(1x,6a10)
+ 8012   format(1x,a70)
+ 8013   format(1x,a70,1x,a)
  8015   format(1x,2i3,i5,4g20.12)
  8030   format(4(g20.12))
  8040   format(1x,a)
@@ -39,7 +41,14 @@ CONTAINS
     else
        write(io_ps,8005) p%name, p%icorr, p%irel, p%nicore
     endif
-    write(io_ps,8010) (p%method(i),i=1,6), p%text
+
+    write(io_ps,8010) (p%method(i),i=1,6)
+    if (len_trim(p%gen_config_string) == 0) then
+       write(io_ps,8012) p%text
+    else
+       write(io_ps,8013) p%text, trim(p%gen_config_string)
+    endif
+    
     if (present(print_gen_zval)) then
        if (print_gen_zval) then
           write(io_ps,8015) p%npotd, p%npotu, p%nr, &
@@ -122,11 +131,18 @@ CONTAINS
         integer :: i
 
  8005   format(1x,a2,1x,a2,1x,a3,1x,a4)
- 8010   format(1x,6a10,/,1x,a70)
+ 8010   format(1x,6a10)
+ 8012   format(1x,a70)
+ 8013   format(1x,a70,1x,a)
         
         write(lun,'(a)') '<pseudopotential_header>'
         write(lun,8005) p%name, p%icorr, p%irel, p%nicore
-        write(lun,8010) (p%method(i),i=1,6), p%text
+        write(lun,8010) (p%method(i),i=1,6)
+        if (len_trim(p%gen_config_string) == 0) then
+           write(lun,8012) p%text
+        else
+           write(lun,8013) p%text, trim(p%gen_config_string)
+        endif
         write(lun,'(a)') '</pseudopotential_header>'
 
         end subroutine pseudo_header_print

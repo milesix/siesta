@@ -88,7 +88,7 @@
 % will create additional information in the PDF with 
 % proper dependencies and hyperlinks to the fdf-flags.
 % To document a flag has replaced another flag, use
-%  \fdfreplace{...} in the same manner as \fdfdepend{...}.
+%  \fdfdeprecates{...} in the same manner as \fdfdepend{...}.
 %
 %
 % !!!IMPORTANT!!!
@@ -700,7 +700,13 @@ Currently \siesta\ is shipped with these installation scripts:
 
   \item \shell{install\_flook.bash}; installs \program{flook} which
   enables interaction with Lua and \siesta.
-  
+
+  \item \shell{install\_gridxc.bash}; installs \program{libxc} and
+  \program{libGridXC}
+
+  \item \shell{install\_psml.bash}; installs \program{xmlf90} and
+  \program{libpsml}
+
 \end{itemize}
 Note that these scripts are guidance scripts and users are encouraged
 to check the mailing list for or seek help there in non-standard. The
@@ -711,23 +717,38 @@ installation scripts finishes by telling \emph{what} to add to the
 
   \item[XMLF90] %
   \index{External library!xmlf90}%
-  is required as a prerequisite for libPSML.
-  (\href{https://launchpad.net/xmlf90}). See the \texttt{000\_INSTALL} file.
+  is required as a prerequisite for \program{libPSML}.
+  (\href{https://gitlab.com/siesta-project/libraries/xmlf90}). See the
+  \texttt{000\_INSTALL} file.
+
+  To easily install \program{xmlf90} please see the installation file:
+  \shell{Docs/install\_psml.bash}.
 
   \item[libPSML] %
   \index{External library!libPSML}%
   is required to use pseudopotentials in PSML format
-  (\href{https://launchpad.net/libPSML}) See the \texttt{000\_INSTALL} file.
+  (\href{https://gitlab.com/siesta-project/libraries/libpsml}) See the
+  \texttt{000\_INSTALL} file.
+
+  To easily install \program{libPSML} please see the installation file:
+  \shell{Docs/install\_psml.bash}.
 
   \item[libGridXC] %
   \index{External library!libGridXC}%
   is required.
-  (\href{https://launchpad.net/libgridxc}) See the \texttt{000\_INSTALL} file.
+  (\href{https://gitlab.com/siesta-project/libraries/libgridxc}) See
+  the \texttt{000\_INSTALL} file.
+
+  To easily install \program{libGridXC} please see the installation file:
+  \shell{Docs/install\_gridxc.bash}.
 
   \item[libXC] %
   \index{External library!libXC}%
   is optional, depending on the options used in the compilation of libGridXC.
   (\href{https://gitlab.com/libxc/libxc})
+
+  To easily install \program{libxc} please see the installation file:
+  \shell{Docs/install\_gridxc.bash}.
 
     
   \item[BLAS] %
@@ -1256,7 +1277,7 @@ substitute spaces by \fdf*{:}.
   \option[-electrode|-elec]%
   \fdfindex*{Command line options:-electrode}%
   \fdfindex*{Command line options:-elec}%
-  \fdfreplace{TS!HS.Save,TS!DE.Save}
+  \fdfoverwrite{TS!HS.Save,TS!DE.Save}
   denote this as an electrode calculation which forces the
   \sysfile{TSHS} and \sysfile{TSDE} files to be saved.
 
@@ -1265,7 +1286,7 @@ substitute spaces by \fdf*{:}.
 
   \option[-V]%
   \fdfindex*{Command line options:-V}%
-  \fdfreplace{TS!Voltage}
+  \fdfoverwrite{TS!Voltage}
   specify the bias for the current \tsiesta\ run.
 
   \shell{siesta -V 0.25:eV} or \shell{siesta -V "0.25 eV"}
@@ -3106,8 +3127,9 @@ modified xyz format) which must be described within a
     atomic positions are given directly in \AA ngstr\"om, in Cartesian
     coordinates
 
-    \option[ScaledCartesian]%
+    \option[LatticeConstant|ScaledCartesian]%
     \fdfindex*{AtomicCoordinatesFormat:ScaledCartesian}%
+    \fdfindex*{AtomicCoordinatesFormat:LatticeConstant}%
 
     atomic positions are given in Cartesian coordinates, in units of
     the lattice constant
@@ -3132,18 +3154,69 @@ modified xyz format) which must be described within a
   
 \end{fdfentry}
 
-\begin{fdfentry}{AtomicCoordinatesOrigin}[block]
+\begin{fdfentry}{AtomicCoordinatesOrigin}[block/string]
 
-  Vector specifying a rigid shift to apply to the atomic coordinates,
-  given in the same format and units as these. Notice that the atomic
+  The user can request a rigid shift of the coordinates, for example
+  to place a molecule near the center of the cell. This shift can be
+  specified in two ways:
+
+  \begin{itemize}
+    \item By an explicit vector,
+  given in the same format and units as the coordinates. Notice that the atomic
   positions (shifted or not) need not be within the cell formed by
   \fdf{LatticeVectors}, since periodic boundary conditions are
   always assumed.
 
-  This defaults to the origo:
+  This defaults to the origin:
   \begin{fdfexample}
     0.0   0.0   0.0
   \end{fdfexample}
+
+    \item By a string that indicates an automatic shift that places
+      the ``center'' of the system at the center of the unit cell, or
+      that places the system near the borders of the
+      cell. In this case, the contents of the block, or the values
+      associated directly to the label (see below) can be:
+
+  \begin{fdfoptions}
+    \option[COP]%
+    \fdfindex*{AtomicCoordinatesOrigin:COP}
+
+    Place the center of coordinates in the middle of the unit-cell.
+
+    \option[COM]%
+    \fdfindex*{AtomicCoordinatesOrigin:COM}
+
+    Place the center of mass in the middle of the unit-cell.
+
+    \option[MIN]%
+    \fdfindex*{AtomicCoordinatesOrigin:MIN}
+
+    Shift the coordinates so that the minimum value along each
+    cartesian axis is $0$.
+
+  \end{fdfoptions}
+
+   \note  Ghost atoms are not taken into account for the above ``centering''
+    calculations (but their coordinates are indeed shifted).
+
+  All string options may be given an optional value. For instance,
+  \fdf*{COP-XZ} which limits the \fdf*{COP} option to only affect $x$
+  and $z$ Cartesian coordinates.
+
+  The accepted suffixes are: \fdf*{-X}, \fdf*{-Y}, \fdf*{-Z},
+  \fdf*{-XY}/\fdf*{-YX}, \fdf*{-YZ}/\fdf*{-YZ}, \fdf*{-XZ}/\fdf*{-ZX}
+  and anything else will be regarded as all directions.
+
+  \begin{fdfexample}
+    AtomicCoordinatesOrigin COP-X ! COP only for x-direction
+    AtomicCoordinatesOrigin COM-ZY ! COM only for y- and z-directions
+    AtomicCoordinatesOrigin MIN-Z ! MIN only for z-direction
+    AtomicCoordinatesOrigin MIN-XYZ ! MIN for all directions
+    AtomicCoordinatesOrigin MIN ! MIN for all directions
+  \end{fdfexample}
+
+  \end{itemize}
   
 \end{fdfentry}
 
@@ -4040,6 +4113,7 @@ information is read from the fdf variables above.
 
 
 \begin{fdfentry}{Spin}[string]<non-polarized>
+  \fdfdeprecates{SpinPolarized,NonCollinearSpin,SpinOrbit}
 
   Choose the spin-components in the simulation.
 
@@ -4052,10 +4126,12 @@ information is read from the fdf variables above.
     Perform a calculation with spin-degeneracy (only one component).
 
     \option[polarized]%
+    \fdfindex*{SpinPolarized}%
     \fdfindex*{Spin:polarized}%
     Perform a calculation with colinear spin (two spin components).
 
     \option[non-colinear]%
+    \fdfindex*{NonCollinearSpin}%
     \fdfindex*{Spin:non-colinear}%
     Perform a calculation with non-colinear spin (4 spin components),
     up-down and angles.
@@ -4066,6 +4142,7 @@ information is read from the fdf variables above.
     Phys: Cond. Matt \textbf{16}, 5453 (2004).
 
     \option[spin-orbit]%
+    \fdfindex*{SpinOrbit}%
     \fdfindex*{Spin:spin-orbit}%
     Performs calculations including the spin-orbit coupling. By default the 
     off-site SO option is set to \fdftrue. To perform an on-site SO calculations 
@@ -4276,6 +4353,7 @@ could still be difficult.
 \end{fdflogicalT}
 
 \subsection{The self-consistent-field loop}
+\label{sec:scf}
 
 \textbf{IMPORTANT NOTE: Convergence of the Kohn-Sham energy and forces}
 
@@ -4333,10 +4411,10 @@ The current version introduces several changes:
   next. Other statistics could be implemented.
 
   \item While the (mixed) DM is saved at every SCF step, as was
-  standard practice, the final DM(out) overwrites the .DM file at the
-  end of the SCF cycle. Thus it is still possible to use a ``mixed''
-  DM for restarting an interrupted loop, but a ``good'' DM will be
-  used for any other post-processing.
+  standard practice, the final DM(out) overwrites the \sysfile{DM}
+  file at the end of the SCF cycle. Thus it is still possible to use a
+  ``mixed'' DM for restarting an interrupted loop, but a ``good'' DM
+  will be used for any other post-processing.
 
 
 \end{itemize}
@@ -4389,6 +4467,7 @@ The current version introduces several changes:
 
 
 \subsubsection{Mixing options}
+\label{sec:scf:mix}
 \index{SCF!mixing}
 
 Whether a calculation reaches self-consistency in a moderate number of
@@ -4460,7 +4539,7 @@ by potentially saving many self-consistency steps in production runs.
 
 \begin{fdflogicalT}{SCF.Mix!First}
   \fdfindex*{DM.MixSCF1}[|see SCF.Mix.First]
-  \fdfreplace{DM.MixSCF1}%
+  \fdfdeprecates{DM.MixSCF1}%
   \fdfdepend{SCF.Mix!First.Force}%
 
   This flag is used to decide whether mixing (of the DM or H) should
@@ -4618,7 +4697,7 @@ $\RRes[i] = \Res[i] - \Res[i-1]$.
 \end{fdfentry}
 
 \begin{fdfentry}{SCF.Mixer!Weight}[real]<0.25>%
-  \fdfreplace{DM!MixingWeight}%
+  \fdfdeprecates{DM!MixingWeight}%
   \fdfindex*{DM!MixingWeight}[|see SCF.Mixer.Weight]
 
   The mixing weight used to mix the quantity.
@@ -4636,7 +4715,7 @@ $\RRes[i] = \Res[i] - \Res[i-1]$.
 
 
 \begin{fdfentry}{SCF.Mixer!History}[integer]<2>%
-  \fdfreplace{DM.NumberPulay,DM.NumberBroyden}%
+  \fdfdeprecates{DM.NumberPulay,DM.NumberBroyden}%
   \fdfindex*{DM.NumberPulay}[|see SCF.Mixer.History]%
   \fdfindex*{DM.NumberBroyden}[|see SCF.Mixer.History]
 
@@ -5995,7 +6074,7 @@ simultaneously for complete control.
 \siesta\ uses a finite 3D grid for the calculation of some
 integrals and the representation of charge densities and potentials.
 Its fineness is determined by its plane-wave cutoff, as
-given by the \fdf{Mesh!Cutoff} option. It means that all periodic
+given by the \fdf{Mesh!Cutoff}option. It means that all periodic
 plane waves with kinetic energy lower than this cutoff 
 can be represented in the grid without aliasing. In turn,
 this implies that if a function (e.g. the density or the 
@@ -6461,7 +6540,7 @@ system sizes) would not benefit from the O(N) or PEXSI solvers.
 
 
 \begin{fdfentry}{Diag!WFS.Cache}[string]<none|cdf>
-  \fdfreplace{UseNewDiagk}
+  \fdfdeprecates{UseNewDiagk}
 
   Specify whether \siesta\ should cache wavefunctions in the
   diagonalization routine. Without a cache, a standard two-pass
@@ -6549,6 +6628,7 @@ system sizes) would not benefit from the O(N) or PEXSI solvers.
 
 
 \begin{fdfentry}{Diag!Algorithm}[string]<Divide-and-Conquer|...>
+  \fdfdeprecates{Diag!DivideAndConquer,Diag!MRRR,Diag!ELPA,Diag!NoExpert}
 
   Select the algorithm when calculating the eigenvalues and/or
   eigenvectors.
@@ -9157,6 +9237,9 @@ or interpolation of bands), can be downloaded from
   \textit{Use:} For example, the F$^-$ ion would have \fdf{NetCharge}
   \fdf*{-1} , and the Na$^+$ ion would have \fdf{NetCharge} \fdf*{1}.
   Fractional charges can also be used.
+
+  \note Doing non-neutral charge calculations with
+  \fdf{Slab.DipoleCorrection} is discouraged.
   
 \end{fdfentry}
 
@@ -9169,7 +9252,7 @@ or interpolation of bands), can be downloaded from
   charge of the system, and adds a compensating background charge that
   makes the system neutral. This background charge is constant at
   points of the mesh near the atoms, and zero at points far from the
-  atoms.  This simulates situations like doped slabs, where the extra
+  atoms. This simulates situations like doped slabs, where the extra
   electrons (holes) are compensated by oposite charges at the material
   (the ionized dopant impurities), but not at the vacuum.  This serves
   to simulate properly doped systems in which there are large portions
@@ -9196,24 +9279,65 @@ or interpolation of bands), can be downloaded from
 
   Starting with version 4.0, applying an electric field perpendicular
   to a slab will by default enable the slab dipole correction, see
-  \fdf{SlabDipoleCorrection}. To reproduce older calculations, set
+  \fdf{Slab.DipoleCorrection}. To reproduce older calculations, set
   this correction option explicitly to \fdffalse\ in the input file.
 
 \end{fdfentry}
 
-\begin{fdflogicalF}{SlabDipoleCorrection}
+\begin{fdfentry}{Slab.DipoleCorrection}[string]<?|\fdftrue|\fdffalse|charge|vacuum|none>
+  \fdfdepend{ExternalElectricField}%
   
-  If \fdftrue, \siesta\ calculates the electric field required to
+  If not \fdffalse, \siesta\ calculates the electric field required to
   compensate the dipole of the system at every iteration of the
-  self-consistent cycle. The potential added to the grid corresponds
-  to that of a dipole layer at the middle of the vacuum layer. For
-  slabs, this exactly compensates the electric field at the vacuum
-  created by the dipole moment of the system, thus allowing to treat
-  asymmetric slabs (including systems with an adsorbate on one
-  surface) and compute properties such as the work funcion of each of
-  the surfaces.
+  self-consistent cycle.
 
-  NOTE: If the program is fed a starting density matrix from an
+  The dipole correction only works for Fourier transformed Poisson
+  solutions of the Hartree potential since that will introduce a
+  compensating field in the vacuum region to counter any inherent
+  dipole in the system. Do not use this option together with
+  \fdf{NetCharge} (charged systems).
+
+  There are two ways of calculating the dipole of the system:
+  \begin{fdfoptions}
+
+    \option[charge|\fdftrue]%
+    \fdfindex*{Slab.DipoleCorrection:charge}%
+
+    The dipole of the system is calculated via
+    \begin{equation}
+      \mathbf D = - e \int(\mathbf r - \mathbf r_0) \delta\boldsymbol\rho(\mathbf r)
+    \end{equation}
+    where $\mathbf r_0$ is the dipole origin, see \fdf{Slab.DipoleCorrection!Origin},
+    and $\delta\boldsymbol\rho$ is valence pseudocharge density minus
+    the atomic valence pseudocharge densities.
+
+    \option[vacuum]%
+    \fdfindex*{Slab.DipoleCorrection:vacuum}%
+
+    The electric field of the system is calculated via
+    \begin{equation}
+      \mathbf E \propto \left.\iint \mathrm d \mathbf r_{\perp \mathbf D} V(\mathbf
+        r)\right|_{\mathbf r_{\mathrm{vacuum}}}
+    \end{equation}
+    where $\mathbf r_{\mathrm{vacuum}}$ is a point located in the
+    vacuum region, see \fdf{Slab.DipoleCorrection!Vacuum}. Once the field is
+    determined it is converted to an intrinsic system dipole.
+
+    This feature is mainly intended for \fdf{Geometry!Charge}
+    calculations where \fdf{Slab.DipoleCorrection:charge} may fail if the dipole
+    center is determined incorrectly.
+
+    For regular systems both this and \fdf*{charge} should yield
+    approximately (down to numeric precision) the same dipole moments.
+
+  \end{fdfoptions}
+
+  The dipole correction should exactly compensate the electric field
+  at the vacuum level thus allowing one to treat asymmetric slabs
+  (including systems with an adsorbate on one surface) and compute
+  properties such as the work funcion of each of the surfaces.
+
+  \note If the program is fed a starting density matrix from an
   uncorrected calculation (i.e., with an exagerated dipole), the first
   iteration might use a compensating field that is too big, with the
   risk of taking the system out of the convergence basin. In that
@@ -9221,12 +9345,96 @@ or interpolation of bands), can be downloaded from
   \fdf{SCF.Mix!First}\index{Slab dipole correction} option to request a mix of the input and
   output density matrices after that first iteration.
 
-  See \shell{Tests/sic-slab}.
+  \note \fdf*{charge} and \fdf*{vacuum} will for many systems yield
+  the same result. If in doubt try both and see which one gives the
+  best result.
+
+  See \shell{Tests/sic-slab}, \shell{Tests/h2o\_2\_dipol\_gate}.
 
   This will default to \fdftrue\ if an external field is applied to a
   slab calculation, otherwise it will default to \fdffalse.
 
-\end{fdflogicalF}
+\end{fdfentry}
+
+\begin{fdfentry}{Slab.DipoleCorrection!Origin}[block]
+  \fdfdepend{Slab.DipoleCorrection:charge}
+
+  Specify the origin of the dipole in the calculation of the dipole
+  from the charge distribution.
+
+  Its format is
+  \begin{fdfexample}
+     %block Slab.DipoleCorrection.Origin
+        0.000  10.000  0.500  Ang
+     %endblock
+  \end{fdfexample}
+
+  If this block is not specified the origin of the dipole will be the
+  average position of the atoms.
+
+  \note this will only be read if \fdf{Slab.DipoleCorrection:charge}
+  is used.
+  %
+  \note this should only affect calculations with
+  \fdf{Geometry!Charge} due to the non-trivial dipole origin, see
+  e.g. \shell{Tests/h2o\_2\_dipol\_gate} and try and see if you can
+  manually place the dipole origin to achieve similar results as the
+  vacuum method.
+
+\end{fdfentry}
+
+\begin{fdfentry}{Slab.DipoleCorrection!Vacuum}[block]
+  \fdfdepend{Slab.DipoleCorrection:vacuum}
+
+  Options for the vacuum field determination.
+
+  \begin{fdfoptions}
+
+    \option[direction]%
+
+    Mandatory input for chain and molecule calculations.
+
+    Specify along which direction we should determine the electric
+    field/dipole.
+
+    For slabs this defaults to the non-bulk direction.
+
+    \option[position]%
+
+    Specify a point in the vacuum region.
+
+    Defaults to the vacuum region based on the atomic coordinates.
+
+    \option[tolerance]%
+
+    Tolerance for determining whether we are in a vacuum region.
+    The premise of the electric field calculation in the vacuum region
+    is that the derivative of the potential ($\mathbf E$) is
+    flat. When the electric field changes by more than this tolerance
+    the region is not vacuum anymore and the point is disregarded.
+
+    Defaults to $10^{-4}\,\mathrm{eV/Ang/e}$.
+
+  \end{fdfoptions}
+
+  Its format is
+  \begin{fdfexample}
+     %block Slab.DipoleCorrection.Vacuum
+        # this is optional
+        # default position is the center of system + 0.5 lattice vector
+        # along 'direction'
+        position 0.000  10.000  0.500  Ang
+        # this is optional
+        # default is 1e-4 eV/Ang/e
+        tolerance 0.001 eV/Ang/e
+        # this is mandatory
+        direction 0.000  1.000  0.
+     %endblock
+  \end{fdfexample}
+
+  \note this will only be read if \fdf{Slab.DipoleCorrection:vacuum} is used.
+
+\end{fdfentry}
 
 
 \begin{fdfentry}{Geometry!Hartree}[block]%
@@ -9247,7 +9455,7 @@ or interpolation of bands), can be downloaded from
   \begin{fdfoptions}
     
 
-    \option[Infinite plane]%
+     \option[Infinite plane]%
     \index{Gate!infinite plane}%
 
     Define a geometry by an infinite plane which cuts the unit-cell.
@@ -9388,7 +9596,8 @@ or interpolation of bands), can be downloaded from
 
   To see how the input should be formatted, see
   \fdf{Geometry!Hartree} and remove the unit-specification. Note that
-  the input value is number of electrons (similar to \fdf{NetCharge}).
+  the input value is number of electrons (similar to \fdf{NetCharge},
+  however this method ensures charge-neutrality).
 
   Details regarding this implementation may be found in
   \citet{Papior2016a}.
@@ -9613,6 +9822,7 @@ an alternative way to plot the charge density (and wavefunctions).
 \end{fdflogicalF}
 
 \begin{fdflogicalF}{SaveInitialChargeDensity}
+  \fdfdeprecatedby{AnalyzeChargeDensityOnly}
   \index{output!charge density}
 
   If \fdftrue, the program generates a \sysfile{RHOINIT}
@@ -10257,8 +10467,8 @@ misleading but kept for historical reasons.
   If \fdftrue, the lattice is relaxed together with the atomic
   coordinates. It allows to target hydrostatic pressures or arbitrary
   stress tensors. See \fdf{MD.MaxStressTol},
-  \fdf{MD.TargetPressure}, \fdf{MD.TargetStress},
-  \fdf{MD.ConstantVolume}, and
+  \fdf{Target!Pressure}, \fdf{Target!Stress.Voigt},
+  \fdf{Constant!Volume}, and
   \fdf{MD.PreconditionVariableCell}.
 
   \note only compatible with \fdf{MD.TypeOfRun:CG},
@@ -10267,7 +10477,9 @@ misleading but kept for historical reasons.
 \end{fdflogicalF}
 
 
-\begin{fdflogicalF}{MD.ConstantVolume}
+\begin{fdflogicalF}{Constant!Volume}
+  \fdfindex*{MD.ConstantVolume}
+  \fdfdeprecates{MD.ConstantVolume}%
   \index{constant-volume cell relaxation} 
 
   If \fdftrue, the cell volume is kept constant in a variable-cell
@@ -10275,7 +10487,7 @@ misleading but kept for historical reasons.
   allowed to change.  Note that it does not make much sense to specify
   a target stress or pressure in this case, except for anisotropic
   (traceless) stresses.  See \fdf{MD.VariableCell},
-  \fdf{MD.TargetStress}.
+  \fdf{Target.Stress.Voigt}.
 
   \note only compatible with \fdf{MD.TypeOfRun:CG},
   \fdf*{Broyden} or \fdf*{fire}.
@@ -10323,7 +10535,7 @@ misleading but kept for historical reasons.
 
 \begin{fdfentry}{MD.Steps}[integer]<0>
   \fdfindex*{MD.NumCGsteps}
-  \fdfreplace{MD.NumCGsteps}
+  \fdfdeprecates{MD.NumCGsteps}
   
   Maximum number of steps in a minimization routine
   (the minimization will stop if tolerance is reached before; see
@@ -10336,7 +10548,7 @@ misleading but kept for historical reasons.
 
 \begin{fdfentry}{MD.MaxDispl}[length]<$0.2\,\mathrm{Bohr}$>
   \fdfindex*{MD.MaxCGDispl}
-  \fdfreplace{MD.MaxCGDispl}
+  \fdfdeprecates{MD.MaxCGDispl}
   
   Maximum atomic displacements in an optimization move.
 
@@ -10550,7 +10762,9 @@ of MD steps requested (this is arguably a bug).
 Useful for structural optimizations and constant-pressure molecular
 dynamics.
 
-\begin{fdfentry}{MD.TargetPressure}[pressure]<$0\,\mathrm{GPa}$>
+\begin{fdfentry}{Target!Pressure}[pressure]<$0\,\mathrm{GPa}$>
+  \fdfindex*{MD.TargetPressure}
+  \fdfdeprecates{MD.TargetPressure}
   
   Target pressure for Parrinello-Rahman method, variable cell
   optimizations, and annealing options.
@@ -10563,22 +10777,32 @@ dynamics.
 \end{fdfentry}
 
 
-\begin{fdfentry}{MD.TargetStress}[block]<$-1 -1 -1 0 0 0$>
+\begin{fdfentry}{Target!Stress.Voigt}[block]<$-1$ $-1$ $-1$ $0$ $0$ $0$>
+  \fdfdeprecates{MD.TargetStress}
   
   External or target stress tensor for variable cell optimizations.
-  Stress components are given in a line, in the order \texttt{xx, yy,
-      zz, xy, xz, yz}. In units of \fdf{MD.TargetPressure}, but
+  Stress components are given in a line, in the Voigt order \texttt{xx, yy,
+      zz, yz, xz, xy}. In units of \fdf{Target!Pressure}, but
   with the opposite sign. For example, a uniaxial compressive stress
   of 2 GPa along the 100 direction would be given by
   \begin{fdfexample}
-     MD.TargetPressure  2. GPa
-     %block MD.TargetStress
+     Target.Pressure  2. GPa
+     %block Target.Stress.Voigt
          -1.0  0.0  0.0  0.0  0.0  0.0
-     %endblock MD.TargetStress
+     %endblock
   \end{fdfexample}
 
   Only used if \fdf{MD.TypeOfRun} is \fdf*{CG}, \fdf*{Broyden} or
   \fdf*{FIRE} and \fdf{MD.VariableCell} is \fdftrue.
+
+\end{fdfentry}
+
+\begin{fdfentry}{MD.TargetStress}[block]<$-1$ $-1$ $-1$ $0$ $0$ $0$>
+  \fdfdeprecatedby{Target!Stress.Voigt}
+
+  Same as \fdf{Target!Stress.Voigt} but the order is same as older
+  \siesta\ version (prior to 4.1). Order is \texttt{xx, yy, zz, xy,
+      xz, yz}.
 
 \end{fdfentry}
 
@@ -10600,6 +10824,11 @@ dynamics.
   If the intra-molecular stress is removed, the corrected static and
   total stresses are printed in addition to the uncorrected items.
   The corrected Voigt form is also printed.
+
+  \note versions prior to 4.1 (also 4.1-beta releases) printed the
+  Voigt stress-tensor in this format: \shell{[x, y, z, xy, yz,
+      xz]}. In 4.1 and later \siesta\ \emph{only} show the correct
+  Voigt representation: \shell{[x, y, z, yz, xz, xy]}.
 
 \end{fdflogicalF}
 
@@ -11760,6 +11989,8 @@ instructions above).
 \section{TRANSIESTA}
 \label{sec:transiesta}
 
+\newcommand\Nelec{N_{\mathfrak{E}}}
+
 
 \siesta\ includes the possibility of performing calculations of
 electronic transport properties using the \tsiesta\ method. This
@@ -11831,22 +12062,25 @@ $N\ge1$ setups\cite{Papior2017}.
   Transport calculations involve \emph{electrode} (EL) calculations,
   and subsequently the Scattering Region (SR) calculation. The
   \emph{electrode} calculations are usual \siesta\ calculations, but
-  where files \sysfile{TSHS}/\sysfile{TSDE} are generated. These files
-  contain the information necessary for calculation of the
-  self-energies. If any electrodes have identical structures (see
-  below) the same files can be used to describe those. In general,
-  however, electrodes can be different and therefore two different
-  \sysfile{TSHS} files must be generated. The location of these
-  electrode files must be specified in the \fdflib\ input file of the
-  SR calculation.
+  where files \sysfile{TSHS}, and optionally \sysfile{TSDE}, are
+  generated. These files contain the information necessary for
+  calculation of the self-energies. If any electrodes have identical
+  structures (see below) the same files can and should be used to
+  describe those. In general, however, electrodes can be different and
+  therefore two different \sysfile{TSHS} files must be generated. The
+  location of these electrode files must be specified in the \fdflib\
+  input file of the SR calculation, see \fdf{TS!Elec.<>!HS}.
 
   \item %
   For the SR, \tsiesta\ starts with the usual \siesta\ procedure,
   converging a Density Matrix (DM) with the usual Kohn-Sham scheme for
   periodic systems. It uses this solution as an initial input for the
-  Greens function self consistent cycle. As it is known, \siesta\
-  stores the DM in a file with extension \sysfile{DM}. In the case of
-  \tsiesta, this is done in a file named \sysfile{TSDE}. In a rerun of
+  Greens function self consistent cycle. Effectively you will start a
+  \tsiesta\ calculation from a fully periodic calculation. This is why
+  the $0\, V$ calculation should be the only calculation where you start
+  from \siesta.
+
+  \tsiesta\ stores the SCF DM in a file named \sysfile{TSDE}. In a rerun of
   the same system (meaning the same \fdf{SystemLabel}), if the
   code finds a \sysfile{TSDE} file in the directory, it will take this
   DM as the initial input and this is then considered a continuation
@@ -11856,7 +12090,7 @@ $N\ge1$ setups\cite{Papior2017}.
   %
   The first one stores the \siesta\ density matrix (periodic boundary
   conditions in all directions and no voltage), and the latter the
-  \tsiesta\ solution. 
+  \tsiesta\ solution.
 
   \item %
   When performing several bias calculations, it is heavily advised to
@@ -11886,10 +12120,11 @@ $N\ge1$ setups\cite{Papior2017}.
 
   \item %
   When the non-equilibrium calculation uses different electrodes one
-  may use so-called \emph{buffer} atoms behind the electrodes to act
+  should use so-called \emph{buffer} atoms behind the electrodes to act
   as additional screening regions when calculating the initial guess
   (using \siesta) for \tsiesta. Essentially they may be used to
-  achieve a better ``bulk-like'' environment at the electrodes.
+  achieve a better ``bulk-like'' environment at the electrodes in the
+  SR calculation.
 
   
   \item%
@@ -11899,10 +12134,16 @@ $N\ge1$ setups\cite{Papior2017}.
   contours must be \emph{well} below the lowest eigenvalue.
 
   \item%
-  \tsiesta\ assumes periodic boundary conditions in directions
-  orthogonal to the electrodes semi-infinite directions. If $N\neq2$
-  \tsiesta\ does not assume anything and one is required to specify
-  the periodicity (via $k$-points) separately.
+  Periodic boundary conditions are assumed in 2 cases.
+
+  \begin{enumerate}
+    \item For $\Nelec\neq 2$ all lattice vectors are periodic, users
+    \emph{must} manually define \fdf{TS!kgrid!MonkhorstPack}
+
+    \item For $\Nelec=2$ \tsiesta\ will auto-detect if both electrodes
+    are semi-infinite along the same lattice vector. If so, only 1 $k$
+    point will be used along that lattice vector.
+  \end{enumerate}
 
   \item%
   The default algorithm for matrix inversion is the BTD method, before
@@ -11927,30 +12168,40 @@ $N\ge1$ setups\cite{Papior2017}.
   \begin{output}[fontsize=\footnotesize]
 ts-q:         D        E1        C1        E2        C2        dQ
 ts-q:   436.147   392.146     3.871   392.146     3.871  7.996E-3
-\end{output}
-Always ensure the last column (\code{dQ}) is a very small fraction of
-the total number of electrons. Ideally this should be $0$.
-%
-For $0$ bias calculations this should be very small, typically less
-than $0.1\,\%$ of the total charge in the system. If this is not the
-case, it probably means that there is not enough screening towards the
-electrodes which can be solved by adding more electrode layers between
-the electrode and the scattering region. This layer thickness is
-\emph{very} important to obtain a correct open boundary calculation.
+  \end{output}
+  Always ensure the last column (\code{dQ}) is a very small fraction of
+  the total number of electrons. Ideally this should be $0$.
+  % 
+  For $0$ bias calculations this should be very small, typically less
+  than $0.1\,\%$ of the total charge in the system. If this is not the
+  case, it probably means that there is not enough screening towards the
+  electrodes which can be solved by adding more electrode layers between
+  the electrode and the scattering region. This layer thickness is
+  \emph{very} important to obtain a correct open boundary calculation.
 
   \item%
   Do \emph{not} perform \tsiesta\ calculations using semi-conducting
-  electrodes.
+  electrodes. The basic premise of \tsiesta\ calculations is that the
+  electrodes \emph{behave like bulk} in the electrode regions of the
+  SR. This means that the distance between the electrode and the
+  perturbed must equal the screening length of the electrode.
+
+  This is problematic for semi-conducting systems since they
+  intrinsically have a very long screening length.
+
+  In addition, the Fermi-level of semi-conductors are not well-defined
+  since it may be placed anywhere in the band gap.
 
 \end{itemize}
+
 
 \subsection{Electrodes}
 
 To calculate the electronic structure of a system under external bias,
 \tsiesta\ attaches the system to semi-infinite electrodes which extend
 to their respective semi-infinite directions. Examples of electrodes
-would include surfaces, nanowires, nanotubes or even atomic
-chains. The electrode must be large enough (in the semi-infinite
+would include surfaces, nanowires, nanotubes or fully infinite
+regions. The electrode must be large enough (in the semi-infinite
 direction) so that orbitals within the unit cell only interact with a
 single nearest neighbor cell in the semi-infinite direction (the size
 of the unit cell can thus be derived from the range of support for the
@@ -12100,13 +12351,112 @@ By default \tsiesta\ will die if there are connections beyond the
 principal cell. One may control whether this is allowed or not by
 using \fdf{TS!Elecs!Neglect.Principal}.
 
+
+
+
+\subsection{Convergence of electrodes and scattering regions}
+
+For successful \tsiesta\ calculations it is imperative that the
+electrodes and scattering regions are well-converged.
+%
+The basic principle is equivalent to the \siesta\ convergence, see
+Sec.~\ref{sec:scf}.
+
+The steps should be something along the line of (only done at
+$0\, V$).
+\begin{enumerate}
+
+  \item%
+  Converge electrodes and find optimal \fdf{Mesh!Cutoff},
+  \fdf{kgrid!MonkhorstPack} etc.
+
+  Electrode $k$ points should be very high along the semi-infinite
+  direction. The default is $100$, but at least $>50$ should easily be
+  reachable.
+
+
+  \item%
+  Use the parameters from the electrodes and also converge the
+  same parameters for the scattering region SCF.
+
+  This is an iterative process since the scattering region forces the
+  electrodes to use equivalent $k$ points (see
+  \fdf{TS!Elec.<>!check-kgrid}).
+
+  Note that $k$ points should be limited in the \tsiesta\ run, see
+  \fdf{TS!kgrid!MonkhorstPack}.
+
+  One should always use the same parameters in both the electrode and
+  scattering region calculations, except the number of $k$ points for
+  the electrode calculations along their respective semi-infinite
+  directions.
+
+
+  \item%
+  Once \tsiesta\ is completed one should also converge the
+  number of $k$ points for \tbtrans. Note that $k$ point sampling in
+  \tbtrans\ should generally be much denser but \emph{always} fulfill
+  $N_k^{\tsiesta}\geq N_k^\tbtrans$
+  
+\end{enumerate}
+
+The converged parameters obtained at $0\,\mathrm V$ should be used for
+all subsequent bias calculations. Remember to copy the \sysfile{TSDE}
+from the closest, previously, calculated bias for restart and much
+faster convergence.
+
+
+\tsiesta\ is also more difficult to converge during the SCF
+steps. This may be due to several interrelated problems:
+%
+\begin{itemize}
+  
+  \item%
+  A too short screening distance between the scattering atoms
+  and the electrode layers.
+
+  
+  \item%
+  In case buffer atoms (\fdf{TS!Atoms.Buffer}) are used with
+  vacuum on the backside it may be that there are too few buffer atoms
+  to accurately screen off the vacuum region for a sufficiently good
+  initial guess. This effect is only true for $0\,\mathrm V$
+  calculations.
+
+  
+  \item%
+  The mixing parameters may need to be smaller than for \siesta,
+  see Sec.~\ref{sec:scf:mix} and it is never guaranteed that it will
+  converge. It is \emph{always} a trial and error method, there are
+  \emph{no} omnipotent mixing parameters.
+
+  
+  \item%
+  Very high bias' may be extremely difficult to
+  converge. Generally one can force bias convergence by doing smaller
+  steps of bias. E.g. if problems arise at $0.5\,\mathrm V$ with an
+  initial DM from a $0.25\,\mathrm V$ calculation, one could try and
+  $0.3\,\mathrm V$ first.
+
+  
+  \item%
+  If a particular bias point is hard to converge, even by doing
+  the previous step, it may be related to an eigenstate close to the
+  chemical potentials of either electrode (e.g. a molecular eigenstate
+  in the junction). In such cases one could try an even higher bias
+  and see if this converges more smoothly.
+
+\end{itemize}
+
+
+
 \subsection{\texorpdfstring{\tsiesta\ }{TranSIESTA} Options}
 
 The fdf options shown here are only to be used at the input file for
 the scattering region. When using \tsiesta\ for electrode
 calculations, only the usual \siesta\ options are relevant.
 %
-Note that since \tsiesta\ is a generic $N$ electrode NEGF code the
+Note that since \tsiesta\ is a generic $\Nelec$ electrode NEGF code the
 input options are heavily changed compared to versions prior to 4.1.
 
 \subsubsection{Quick and dirty}
@@ -12131,7 +12481,7 @@ release.
 
 If one does not know the old flags and wish to get a basic example of
 an input file, a script \program{Util/TS/tselecs.sh} exists that can
-create the basic input for $N$ electrodes. One may call it like:
+create the basic input for $\Nelec$ electrodes. One may call it like:
 \begin{shellexample}
   tselecs.sh -2 > TWO_ELECTRODE.fdf
   tselecs.sh -3 > THREE_ELECTRODE.fdf
@@ -12148,7 +12498,7 @@ an analyzation of the system at hand, you may run your system as
   siesta -fdf TS.Analyze RUN.fdf > analyze.out
 \end{shellexample}
 which will analyze the sparsity pattern and print out several
-different pivoting schemes. Please see \fdf{TS!Analyze} for additional
+different pivoting schemes. Please see \fdf{TS!Analyze} for more
 information.
 
 
@@ -12174,6 +12524,8 @@ One have to set \fdf{SolutionMethod} to \fdf*{transiesta} to enable
     \fdfindex*{TS!SolutionMethod:MUMPS}%
     Use sparse matrix inversion algorithm (MUMPS). This requires
     \tsiesta\ to be compiled with MUMPS.
+    \index{MUMPS}%
+    \index{External library!MUMPS}%
 
     \option[full]%
     \fdfindex*{TS!SolutionMethod:full}%
@@ -12186,14 +12538,27 @@ One have to set \fdf{SolutionMethod} to \fdf*{transiesta} to enable
 
 \begin{fdfentry}{TS!Voltage}[energy]<$0\,\mathrm{eV}$>
 
-  Define the reference applied bias. For $N=2$ electrode calculations
+  Define the reference applied bias. For $\Nelec=2$ electrode calculations
   this refers to the actual potential drop between the electrodes,
-  while for $N\neq2$ this is a reference bias. In the latter case it
+  while for $\Nelec\neq2$ this is a reference bias. In the latter case it
   \emph{must} be equivalent to the maximum difference between the
   chemical potential of any two electrodes.
 
   \note Specifying \shell{-V}\fdfindex{Command line options:-V} on the
   command-line overwrites the value in the fdf file.
+  
+\end{fdfentry}
+
+\begin{fdfentry}{TS!kgrid!MonkhorstPack}[block]<\fdfvalue{kgrid!MonkhorstPack}>
+
+  $k$ points used for the \tsiesta\ calculation.
+
+  For $\Nelec\neq2$ this should always be defined. Always take care to
+  use only 1 $k$ point along non-periodic lattice vectors. An
+  electrode semi-infinite region is considered non-periodic since it
+  is integrated out through the self-energies.
+
+  This defaults to \fdf{kgrid!MonkhorstPack}.
   
 \end{fdfentry}
 
@@ -12222,7 +12587,7 @@ One have to set \fdf{SolutionMethod} to \fdf*{transiesta} to enable
   the \tsiesta\ calculation but they are necessary to ensure the
   electrode bulk properties.
 
-  The above discussion is even more important when doing $N$-electrode
+  The above discussion is even more important when doing $\Nelec$-electrode
   calculations.
   
   \note all lines are additive for the buffer atoms and the input
@@ -12246,6 +12611,34 @@ One have to set \fdf{SolutionMethod} to \fdf*{transiesta} to enable
   chemical potentials. 
   %
   See \fdf{TS!ChemPot.<>!ElectronicTemperature}.
+
+\end{fdfentry}
+
+\begin{fdfentry}{TS!SCF!DM.Tolerance}[real]<\fdfvalue{SCF.DM!Tolerance}>%
+  \fdfdepend{SCF.DM!Tolerance}
+
+  The density matrix tolerance for the \tsiesta\ SCF cycle.
+
+\end{fdfentry}
+
+\begin{fdfentry}{TS!SCF!H.Tolerance}[energy]<\fdfvalue{SCF.H!Tolerance}>%
+  \fdfdepend{SCF.H!Tolerance}
+
+  The Hamiltonian tolerance for the \tsiesta\ SCF cycle.
+
+\end{fdfentry}
+
+\begin{fdfentry}{TS!Q.Tolerance}[real]<$\mathrm{Q(device)}\cdot 10^{-3}$>%
+
+  Once the SCF is completed this is a final check that the charge is
+  within the specified tolerance.
+
+  The charge is not stable in \tsiesta\ calculations and this flag
+  ensures that one does not, by accident, do post-processing of files
+  where there charge distribution is completely wrong.
+
+  A too high tolerance may heavily influence the electrostatics of the
+  simulation.
 
 \end{fdfentry}
 
@@ -12457,20 +12850,46 @@ ts-q:   436.147   392.146     3.871   392.146     3.871  7.996E-3
 
     The best way to check this is to follow these steps:
     \begin{enumerate}
-      \item Perform a \siesta-only calculation (the resulting DM
-      should be used as the starting point for both following calculations)
-      \item Perform a \tsiesta\ calculation with the option
+      \item%
+      Perform a \siesta-only calculation (the resulting DM
+      should be used as the starting point for both following
+      calculations)
+
+      \item%
+      Perform a \tsiesta\ calculation with the option
       \fdf{TS!Elecs!DM.Init:diagon} (please note that the electrode
-      option has precedence, so remove the entry from the
+      option has precedence, so remove any entry from the
       \fdf{TS!Elec.<>} block)
-      
-      \item Perform a \tsiesta\ calculation with the option
-      \fdf{TS!Elecs!DM.init:bulk}
-       (please note that the electrode
-      option has precedence, so remove the entry from the
+
+      \item%
+      Perform a \tsiesta\ calculation with the option
+      \fdf{TS!Elec.<>!DM-init:bulk} (please note that the electrode
+      option has precedence, so remove any entry from the
       \fdf{TS!Elec.<>} block)
 
     \end{enumerate}
+
+    Now compare the final output and the initial charge distribution,
+    e.g.:
+    \begin{output}
+>>> TS.Elecs.DM.Init diagon
+transiesta: Charge distribution, target =    396.00000
+Total charge                  [Q]  :   396.00000
+
+>>> TS.Elecs.DM.Init bulk
+transiesta: Charge distribution, target =    396.00000
+Total charge                  [Q]  :   395.9995
+\end{output}
+
+    The above shows that there is very little charge difference
+    between the bulk electrode DM and the scattering region. This
+    ensures that the charge distribution are similar and that your
+    electrode is sufficiently screened.
+
+    Additionally one may compare the final output such as total
+    energies, calculated DOS and ADOS (see \tbtrans). If the two
+    calculations show different properties, one should carefully
+    examine the system setup.
 
     \item An incorrect reference energy level. In \tsiesta\ the Fermi
     level is calculated from the \siesta\ SCF. However, the \siesta\
@@ -12727,7 +13146,7 @@ using \fdf{TS!SolutionMethod:BTD}, similarly for options with
 
     This pivoting scheme depends on the initial starting
     electrodes, append \fdf*{+<elec-name>} to start the Cuthill-McKee
-    algorithm from the specified electrode.
+    algorithm from the specified electrode(s).
 
     \option[GPS] %
     Use the Gibbs-Poole-Stockmeyer algorithm for reducing the
@@ -12745,7 +13164,7 @@ using \fdf{TS!SolutionMethod:BTD}, similarly for options with
 
     This pivoting scheme \emph{may} depend on the initial starting
     electrode(s), append \fdf*{+<elec-name>} to initialize the PCG
-    algorithm from the specified electrode.
+    algorithm from the specified electrode(s).
 
   \end{fdfoptions}
 
@@ -12806,10 +13225,10 @@ using \fdf{TS!SolutionMethod:BTD}, similarly for options with
 
   How to compute the spectral function ($G\Gamma G^\dagger$).
 
-  For $N<4$ this defaults to \fdf*{propagation} which should be the
+  For $\Nelec<4$ this defaults to \fdf*{propagation} which should be the
   fastest.
 
-  For $N\ge4$ this defaults to \fdf*{column}.
+  For $\Nelec\ge4$ this defaults to \fdf*{column}.
 
   Check which has the best performance for your system if you endeavor
   on huge amounts of calculations for the same system.
@@ -12855,7 +13274,7 @@ intricate and important detail.
 It is important that these options are exactly the same if one reuses
 the \sysfile{TSDE} files.
 
-\begin{fdfentry}{TS!Poisson}[string]<ramp-cell|elec-box|\nonvalue{file}>
+\begin{fdfentry}{TS!Poisson}[string]<ramp|elec-box|\nonvalue{file}>
 
   Define how the correction of the Poisson equation is
   superimposed. The default is to apply the linear correction across
@@ -12873,20 +13292,9 @@ the \sysfile{TSDE} files.
   \note the file option is only applicable if compiled with CDF4
   compliance.
 
-  \begin{developer}
-    
-    NP has tested calculations with \fdf*{ramp-cell}
-    vs. \fdf*{ramp-central} and found incorrect bias for pristine
-    systems when using \fdf*{ramp-cell}. This can easily be found by
-    creating a linear chain and calculate the potential drop using
-    either options. Only when using \fdf*{ramp-central} will the correct
-    potential drop occur.
-    
-  \end{developer}
-
   \begin{fdfoptions}
-    \option[ramp-cell]%
-    \fdfindex*{TS!Poisson:ramp-cell}%
+    \option[ramp]%
+    \fdfindex*{TS!Poisson:ramp}%
 
     Apply the ramp for the full cell. This is the default for 2
     electrodes.
@@ -12895,7 +13303,7 @@ the \sysfile{TSDE} files.
     \fdfindex*{TS!Poisson:<file>}%
 
     Specify an external file used as the boundary conditions for the
-    applied bias. This is encouraged to use for $N>2$ electrode
+    applied bias. This is encouraged to use for $\Nelec>2$ electrode
     calculations but may also be used when an \emph{a priori}
     potential profile is know.
 
@@ -12922,15 +13330,15 @@ variables:
     the Poisson solution. This is used internally by \tsiesta\ to
     scale the potential to arbitrary $V$. This enables the Poisson
     solution to only be solved \emph{once} independent on subsequent
-    calculations For some chemical potential configurations the
-    Poisson solution cannot be linearly extrapolated, in which case a
-    separate file is required for each applied bias.
+    calculations. For chemical potential configurations where the
+    Poisson solution is not linearly dependent one have to create
+    separate files for each applied bias.
 
-    
+
     \option[elec-box]%
     \fdfindex*{TS!Poisson:elec-box}%
 
-    The default potential profile for $N>2$, or when the electrodes
+    The default potential profile for $\Nelec>2$, or when the electrodes
     does are not aligned (in terms of their transport direction).
     
     \note usage of this Poisson solution is \emph{highly}
@@ -12946,10 +13354,10 @@ variables:
   electrode calculations with a single transport direction) this
   should not be set.
   %
-  For $N$ electrode systems one \emph{have} to specify a plane to fix.
-  One can specify one ore several planes to fix. Users are encouraged
-  to fix the plane where the entire plane has the highest/lowest
-  potential.
+  For $\Nelec\neq2$ electrode systems one \emph{have} to specify a
+  plane to fix. One can specify one or several planes to fix. Users
+  are encouraged to fix the plane where the entire plane has the
+  highest/lowest potential.
 
 \end{fdfentry}
 
@@ -12969,11 +13377,14 @@ variables:
   potentials are very different between the electrode and device
   region calculations.
 
+  This should not be changed between different bias calculations. It
+  directly relates to the reference energy level ($E_F$).
+
 \end{fdfentry}
 
 \subsubsection{Electrode description options}
 
-As \tsiesta\ supports $N$ electrodes one needs to specify all
+As \tsiesta\ supports $\Nelec$ electrodes one needs to specify all
 electrodes in a generic input format.
 
 \begin{fdfentry}{TS!Elecs}[block]
@@ -13014,7 +13425,7 @@ electrodes in a generic input format.
 
     It may be one of \fdf*{[-+][abc]}, \fdf*{[-+]A[123]}, \fdf*{ab},
     \fdf*{ac}, \fdf*{bc} or \fdf*{abc}. The latter four all refer to a
-    real-space self-energy as described in \cite{1905.11113}.
+    real-space self-energy as described in \cite{Papior2019}.
 
     \note this direction is \emph{not} with respect to the scattering
     region unit cell. It is with respect to the electrode unit
@@ -13047,11 +13458,15 @@ electrodes in a generic input format.
 
     \option[Bulk]%
     \fdfindex*{TS!Elec.<>!Bulk}%
-    Control whether the Hamiltonian of the electrode
-    region in the scattering region is enforced \emph{bulk} or whether
-    the Hamiltonian is taken from the scattering region elements.
-    
-    Generally one should use the default (\fdftrue) option.
+    \fdfindex*{TS!Elec.<>!Bulk:true}%
+    \fdfindex*{TS!Elec.<>!Bulk:false}%
+    Control whether the Hamiltonian of the electrode region in the
+    scattering region is enforced \emph{bulk} or whether the
+    Hamiltonian is taken from the scattering region elements.
+
+    This defaults to \fdftrue. If there are buffer atoms \emph{behind}
+    the electrode it may be advantageous to set this to false to
+    extend the electrode region.
 
     \option[DM-update]%
     \fdfindex*{TS!Elec.<>!DM-update}%
@@ -13062,36 +13477,38 @@ electrodes in a generic input format.
     which controls which part of the electrode density matrix elements
     that are updated. If \fdf*{all}, both the density matrix elements
     in the electrode and the coupling elements between the electrode
-    and scattering region are updated. If \fdf*{cross-terms} (default)
-    only the coupling elements between the electrode and the
-    scattering region are updated.
+    and scattering region are updated. If \fdf*{cross-terms}; only the
+    coupling elements between the electrode and the scattering region
+    are updated.
 
-    If \fdf{TS!Elec.<>!Bulk}[ false] this is forced to \fdf*{all} and
-    cannot be altered.
+    If \fdf{TS!Elec.<>!Bulk:false} this is forced to \fdf*{all} and
+    cannot be changed.
 
-    Generally one should use the default (\fdf*{cross-terms}) option.
+    If \fdf{TS!Elec.<>!Bulk:true} this defaults to \fdf*{cross-terms},
+    but may be changed.
 
     \option[DM-init]%
     \fdfindex*{TS!Elec.<>!DM-init}%
     \fdfindex*{TS!Elec.<>!DM-init:diagon}%
     \fdfindex*{TS!Elec.<>!DM-init:bulk}%
-    \fdfdepend{TS!Elecs!DM.Init}%
-    String of values \fdf*{bulk}, \fdf*{diagon} or \fdf*{force-bulk}
-    which controls whether the DM is initially overwritten by the DM
-    from the bulk electrode calculation.
-    This requires the DM file to be present.
+    \fdfdepend{TS!Elecs!DM.Init,TS!Elec.<>!Bulk,TS!Voltage}%
+    String of values \fdf*{bulk}, \fdf*{diagon} (default) or
+    \fdf*{force-bulk} which controls whether the DM is initially
+    overwritten by the DM from the bulk electrode calculation. This
+    requires the DM file for the electrode to be present. Only
+    \fdf*{force-bulk} will have effect if $V\neq0$. Otherwise this
+    option only affects $V=0$ calculations.
 
-    This is defaulted to \fdf*{bulk} for $0$ bias calculations.
-    For bias calculations this is defaulted to \fdf*{diagon}.
-
-    Using the truly bulk DM will force a bulk-like charge density in
-    the electrode region by copying the fully periodic electrode DM
-    into the scattering region DM. If one uses
-    \fdf{TS!Elec.<>!Bulk:false} it may be advantageous to set this to
-    \fdf*{diagon}, always.
+    The density matrix elements in the electrodes of the scattering
+    region may be forcefully set to the bulk values by reading in the
+    DM of the corresponding electrode. If one uses
+    \fdf{TS!Elec.<>!Bulk:false} it may be dis-advantageous to set this
+    to \fdf*{bulk}.
+    If the system is well setup (good screening towards electrodes),
+    setting this to \fdf*{bulk} may be advantageous.
 
     This option may be used to check how good the electrodes are
-    screened (see \fdf{TS!dQ:fermi}).
+    screened, see \fdf{TS!dQ:fermi}.
 
     \option[Gf]%
     \fdfindex*{TS!Elec.<>!Gf}%
@@ -13219,7 +13636,7 @@ electrodes in a generic input format.
 
     \option[check-kgrid]%
     \fdfindex*{TS!Elec.<>!check-kgrid}%
-    For $N$ electrode calculations the $\mathbf k$ mesh will sometimes
+    For $\Nelec$ electrode calculations the $\mathbf k$ mesh will sometimes
     not be equivalent for the electrodes and the device region
     calculations. However, \tsiesta\ requires that the device and
     electrode $\mathbf k$ samplings are commensurate. This flag
@@ -13275,7 +13692,7 @@ for the electrodes (with \fdf{TS!Elec.<>} taking precedence).
   
   Globally control whether the surface Green function files should
   be re-used (\fdftrue) or re-created (\fdffalse).
-  %
+
   See \fdf{TS!Elec.<>!Gf-Reuse}.
   
 \end{fdflogicalT}
@@ -13285,41 +13702,26 @@ for the electrodes (with \fdf{TS!Elec.<>} taking precedence).
   Whether the electrodes will calculate the self energy at each SCF
   step. Using this will not require the surface Green function files
   but at the cost of heavily degraded performance.
-  You are not encouraged to set this to \fdffalse.
-  %
+
   See \fdf{TS!Elec.<>!Out-of-core}.
   
 \end{fdflogicalT}
 
 \begin{fdfentry}{TS!Elecs!DM.Update}[string]<cross-terms|all|none>
 
-  This globally controls which parts of the electrode density matrix
+  Globally controls which parts of the electrode density matrix
   gets updated. 
-  %
+
   See \fdf{TS!Elec.<>!DM-update}.
   
 \end{fdfentry}
 
-\begin{fdfentry}{TS!Elecs!DM.Init}[string]<bulk|diagon|force-bulk>
+\begin{fdfentry}{TS!Elecs!DM.Init}[string]<diagon|bulk|force-bulk>
   \fdfindex*{TS!Elecs!DM.Init:bulk}%
   \fdfindex*{TS!Elecs!DM.Init:diagon}%
 
-  The density matrix elements in the electrodes may be forcefully set
-  to the bulk values by reading in the DM of the corresponding
-  electrode. This is by default \fdf*{bulk} for non-bias calculation,
-  and otherwise defaults to \fdf*{diagon}.
-
-  This step is only required once since the DM will be constant in the
-  electrode regions and thus it will be propagated through the
-  \sysfile{TSDE} files without having to re-do this step.
-  If this is done (by default) in the 0 bias calculation it will also
-  be effective in the bias calculation.
-
-  \note this will automatically be set to \fdf*{diagon} for
-  non-equilibrium calculations (unless \fdf*{force-bulk} is set). If
-  bulk density matrix elements are wanted in the electrodes it is
-  vital to have this option set to \fdf*{bulk} when performing the
-  equilibrium calculation.
+  Specify how the density matrix elements in the electrode regions of
+  the scattering region will be initialized when starting \tsiesta.
 
   See \fdf{TS!Elec.<>!DM-init}.
 
@@ -13344,7 +13746,7 @@ for the electrodes (with \fdf{TS!Elec.<>} taking precedence).
 \subsubsection{Chemical potentials}
 \label{sec:ts:chem-pot}
 
-For $N$ electrodes there will also be $N_\mu$ chemical
+For $\Nelec$ electrodes there will also be $N_\mu$ chemical
 potentials. They are defined via blocks similar to \fdf{TS!Elecs}.
 
 \begin{fdfentry}{TS!ChemPots}[block]
@@ -13471,10 +13873,10 @@ equilibrium contour named according to their name.
 
 \subsubsection{Complex contour integration options}
 
-Specifying the contour for $N$ electrode systems is a bit extensive
-due to the possibility of more than 2 chemical potentials. Please use
-the \program{Util/TS/tselecs.sh} as a means to create default input
-blocks.
+Specifying the contour for $\Nelec$ electrode systems is a bit
+extensive due to the possibility of more than 2 chemical
+potentials. Please use the \program{Util/TS/tselecs.sh} as a means to
+create default input blocks.
 
 The contours are split in two segments. One, being the equilibrium
 contour of each of the different chemical potentials. The second for
@@ -13776,7 +14178,7 @@ this manual. Their documentation is the appropriate sub-directory of
 
 In addition to the shipped utilities \siesta\ is also officially
 supported by \sisl\cite{sisl} which is a Python library enabling many
-of most commonly encountered things.
+of the most commonly encountered things.
 
 \section{SCRIPTING}
 
@@ -13839,9 +14241,9 @@ any problem, or would like to offer a suggestion for improvement,
 please follow the instructions in the file
 \texttt{Docs/REPORTING\_BUGS}. 
 
-Since \siesta\ has moved to Launchpad you are encouraged to follow the
+Since \siesta\ has moved to GitLab you are encouraged to follow the
 instructions presented at:
-\url{https://answers.launchpad.net/siesta/+faq/2779}.
+\url{https://gitlab.com/siesta-project/siesta/-/issues}.
 
 
 

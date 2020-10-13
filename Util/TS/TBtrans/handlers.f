@@ -81,3 +81,11 @@
       STOP
 
       end subroutine psml_die
+
+      subroutine bye(str)
+      character(len=*), intent(in) :: str
+
+      write(0,"(a)") str
+      STOP
+
+      end subroutine bye

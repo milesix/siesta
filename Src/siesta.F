@@ -13,6 +13,7 @@
       use m_siesta_end
       use m_siesta_forces
       use m_siesta_tddft
+      use m_ts_global_vars, only: onlyS
 
       USE m_steps, only: inicoor, fincoor
       use alloc
@@ -35,7 +36,10 @@
       integer :: istep
       logical :: relaxd
 
+      external :: bye
+      
 ! Notes for PEXSI and ELSI operation (extra procs for Solver)
+      
 !
 ! A subset of nodes carries out non-Solver Siesta operations 
 ! (i.e., setting up H, moving atoms, diagonalizing...). 
@@ -79,6 +83,10 @@ C     Begin of coordinate relaxation iteration
             call siesta_tddft( istep )
          else
             call siesta_forces( istep )
+         end if
+
+         if ( onlyS ) then
+             call bye("Saved S only, exiting.")
          end if
 
         if (SIESTA_worker) call siesta_move( istep, relaxd )
