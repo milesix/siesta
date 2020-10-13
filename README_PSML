@@ -5,10 +5,9 @@ format. For more information on the format itself and the PSML
 ecosystem of generators and client ab-initio codes, please see
 http://esl.cecam.org/PSML.
 
-Note that curated databases of high-quality PSML files are starting to
-appear. In particular, the Pseudo-Dojo project
-(http://www.pseudo-dojo.org) offers PSML files for almost the whole
-periodic table.
+Note that curated databases of high-quality PSML files are available.
+In particular, the Pseudo-Dojo project (http://www.pseudo-dojo.org)
+offers PSML files for almost the whole periodic table.
 
 Please take into account the following when using PSML files:
 
@@ -47,16 +46,18 @@ Please take into account the following when using PSML files:
 
 * Fully-relativistic PSML files with only "lj" non-local projectors
   cannot be used directly in calculations not involving 'offsite'
-  SOC. For this, SIESTA needs the "scalar-relativistic"
-  projectors. While in principle it is possible to read only the
-  semilocal potentials from the file and proceed to generate the
-  appropriate projectors, it is better to use PSML files which contain
-  both (actually three) sets of non-local projectors: "sr", "so", and
-  "lj". These can be obtained with ONCVPSP with the "both" option. For
-  the ATOM+psop chain, it is currently necessary to run psop twice
-  (once with the -r option) and generate two different PSML files, and
-  then "graft" the "sr" set into the file containing the "lj" set. This
-  restriction will be lifted in a forthcoming version of psop.
+  SOC. For this, SIESTA needs the "scalar-relativistic" projectors. An
+  algorithm for direct generation of SR projectors from an LJ set
+  already exists as part of the oncvpsp code, and it will be
+  integrated in a forthcoming version. In the meantime, while in
+  principle it is possible to read only the semilocal potentials from
+  the file and proceed to generate the appropriate projectors, it is
+  better to use PSML files which contain both (actually three) sets of
+  non-local projectors: "sr", "so", and "lj". These can be obtained
+  with ONCVPSP with the "both" option. (For the ATOM+psop chain, it is
+  currently necessary to run psop twice (once with the -r option) and
+  generate two different PSML files, and then "graft" the "sr" set
+  into the file containing the "lj" set.)
 
 * A large number of PSML files obtained from the Pseudo-Dojo database
   are generated with (several) semicore shells. Dealing with them has

@@ -6,13 +6,13 @@
 # See Docs/Contributors.txt for a list of contributors.
 #
 #-------------------------------------------------------------------
+
 # DOCUMENTED arch.make
-# WARNING: Some details are in flux. In particular, the new structure
-# with WITH_MPI, WITH_NETCDF, etc, as described in gfortran-parallel.make.
-#
-# The most useful makefile symbols are explained. Use this file as
-# a guide when you are looking at the .make files in this directory,
-# or after 'configure' has produced a draft arch.make for you.
+
+# **WARNING**: This file is mostly obsolete regarding the structure of the
+# arch.make file (which has been superseded by the ideas in
+# ARCH-EXPERIMENTAL), but it can be useful as a guide to some features
+# of Makefile operation.
 #
 # This block tells make to consider only these suffixes in its operation
 # It is included in most makefiles in the source tree, but it does not
