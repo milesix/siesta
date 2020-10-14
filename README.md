@@ -16,7 +16,7 @@ other branches with the latest features. A guide to the different
 versions can be found
 [in the project wiki](https://gitlab.com/siesta-project/siesta/-/wikis/Guide-to-Siesta-versions).
 
-* TranSiesta is now part of the executable, see the documentation for details.
+* TranSiesta is now part of the executable; see the documentation for details.
 
 * The LaTeX source for the manual is in Docs/siesta.tex. Assuming you have
 a working Tex/LaTeX installation, you can type `make final` to generate a pdf file.
@@ -27,15 +27,23 @@ Alternatively, manuals in pdf can be found in the Documentation section of the m
 For bug reports, and other code suggestions, please follow the guidelines
 in the file Docs/REPORTING_BUGS
 
-### psml-support branch
+### MaX branch
 
-This version of SIESTA is able to use pseudopotentials in PSML form, in particular those from
-the [Pseudo-Dojo](https://www.pseudo-dojo.org) project.
+This is a special branch that contains all the features currently
+implemented within the [MaX Center of
+Excellence](http://www.max-centre.eu) EU H2020 project. It is
+addressed to HPC users that want to try the new optimizations and
+enhancements, and give feedback on them. It currently contains, in
+addition to the features in `master`:
 
+    * An interface to the [ELSI](http://www.elsi-interchange.org) solver interface library 
+    * Support for PSML pseudopotentials
+    * Extra optimizations to the parallel operation
+    * A more modular architecture, using libraries and other modules developed within MaX.
 
-Note that the libPSML and libGridXC libraries are mandatory. Please
-see 000_INSTALL for installation instructions, and README_PSML for
-important information.
+Note that the libPSML and libGridXC libraries are mandatory, and ELSI
+(and ELPA) recommended. Please see 000_INSTALL for installation
+instructions, and README_ELSI and README_PSML for important information.
 
 
 
