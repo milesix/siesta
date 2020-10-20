@@ -157,6 +157,9 @@ contains
     integer :: iu
 
     external :: io_assign, io_close
+    external :: timer
+
+    call timer('write_dm',1)
     
     ! Gather sparse pattern
     dit => dist(DM)
@@ -193,6 +196,8 @@ contains
        call io_close(iu)
        
     end if
+    
+    call timer('write_dm',2)
     
   end subroutine write_dm
 
