@@ -726,6 +726,8 @@ C     Write density matrix
          if (.not. when) return
       endif
 
+      call timer('write_spmatrix2',1)
+      
       no_l = size(numh)
       maxnh = size(M,dim=1)
       nspin = size(M,dim=2)
@@ -738,6 +740,7 @@ C     Write density matrix
          call write_dm (maxnh, no_l, nspin,
      $     numh, listhptr, listh, M, userfile=file)
       endif
+      call timer('write_spmatrix2',2)
       end subroutine write_spmatrix2
 
 !-----------------------------------------------------
@@ -759,6 +762,8 @@ C     Write density matrix
          if (.not. when) return
       endif
 
+      call timer('write_spmatrix1',1)
+      
       no_l = size(numh)
       maxnh = size(M,dim=1)
       nspin = 1
@@ -771,6 +776,7 @@ C     Write density matrix
          call write_dm (maxnh, no_l, nspin,
      $     numh, listhptr, listh, M, userfile=file)
       endif
+      call timer('write_spmatrix1',2)
       end subroutine write_spmatrix1
 
 !-------------------
