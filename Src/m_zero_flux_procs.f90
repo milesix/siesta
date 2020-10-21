@@ -62,12 +62,14 @@ contains
     real(dp) :: H_g_rad(ngl_vmd,0:1)  !NOTE: tab_local maybe should also moved here
     ! as to an init routine
 
-    rm = 0.0_dp
+    !FIXME:
+    ! rm = 0.0_dp
+    rm = species(1)%reduced_vlocal%cutoff
 
     ! find rm and npts for vlocal
     do is = 1, nsp                !
        spp => species(is)
-       if (spp%reduced_vlocal%cutoff > rm) then !FIXME: check for maximum number of points?
+       if (spp%reduced_vlocal%cutoff < rm) then !FIXME: check for maximum number of points? UPD: or minimum?
           rm = spp%reduced_vlocal%cutoff
           npts = spp%reduced_vlocal%n
           delta_rm = spp%reduced_vlocal%delta

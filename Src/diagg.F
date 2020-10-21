@@ -333,7 +333,9 @@ c$$$     $               (substep .eq. BASE_STEP)) then
 
       ![VMD] Init Dderiv if on BASE step. On a virtual step it will be set in ks_procs.
       !TODO: Move this initialization out of here?
-      if (substep .eq. BASE_STEP) Dderiv(:,:,:) = Dfull(:,:,:)
+      if (want_virtual_step_md) then
+         if (substep .eq. BASE_STEP) Dderiv(:,:,:) = Dfull(:,:,:)
+      end if
 
       ! can build sparse Dnew by copying from Dfull
 
