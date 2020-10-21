@@ -6,11 +6,13 @@
 # See Docs/Contributors.txt for a list of contributors.
 #
 #-------------------------------------------------------------------
+
 # DOCUMENTED arch.make
-#
-# The most useful makefile symbols are explained. Use this file as
-# a guide when you are looking at the .make files in this directory,
-# or after 'configure' has produced a draft arch.make for you.
+
+# **WARNING**: This file is mostly obsolete regarding the structure of the
+# arch.make file (which has been superseded by the ideas in
+# ARCH-EXPERIMENTAL), but it can be useful as a guide to some features
+# of Makefile operation.
 #
 # This block tells make to consider only these suffixes in its operation
 # It is included in most makefiles in the source tree, but it does not
@@ -93,8 +95,8 @@ LDFLAGS =
 # These symbols help to keep the building rules concise
 # This enables specific compilation options for certain
 # source files.
-FCFLAGS_fixed_f =
-FCFLAGS_free_f90 =
+FFLAGS_fixed_f =
+FFLAGS_free_f90 =
 FPPFLAGS_fixed_F =
 FPPFLAGS_free_F90 =
 
@@ -102,6 +104,16 @@ FPPFLAGS_free_F90 =
 # We can make things a bit easier by grouping symbols, and maybe
 # using the -L flag to define search directories (see examples
 # in this directory).
+
+# Support for the (now needed) xmlf90, libpsml and libgridxc libraries
+# These need to be pre-compiled and installed somewhere. In
+# this file it is only necessary to provide the path to the
+# top of the installation directory.
+# 
+XMLF90_ROOT=$(HOME)/lib/gfortran/xmlf90
+PSML_ROOT=$(HOME)/lib/gfortran/libpsml
+GRIDXC_ROOT=$(HOME)/lib/gfortran/libgridxc
+
 # For the most simplistic compilation one requires the following
 # libraries:
 #   BLAS
@@ -121,6 +133,10 @@ LAPACK_LIBS = -llapack
 # COMP_LIBS = libsiestaLAPACK.a
 # If you have neither the BLAS, nor LAPACK library you may do:
 # COMP_LIBS = libsiestaLAPACK.a libsiestaBLAS.a
+           /apps/scalapack/64/lib/blacs_MPI-ppc64-0.a
+SCALAPACK_LIBS=/apps/scalapack/64/lib/blacsCinit_MPI-ppc64-0.a \
+               /apps/scalapack/64/lib/blacs_MPI-ppc64-0.a \
+                 -L/apps/scalapack/64/lib -lscalapack
 #
 # You are HIGHLY encouraged to use an optimized BLAS/LAPACK
 # library as SIESTA performance is mainly governed by these
@@ -137,9 +153,19 @@ COMP_LIBS =
 #NETCDF_INCFLAGS = -I$(NETCDF_ROOT)/include
 #NETCDF_LIBS = -L$(NETCDF_ROOT)/lib -lnetcdff -lnetcdf
 
-# This (as well as the -DMPI definition) is essential for MPI support
+#--------------------------------------------------------------------
+#
+# This (as well as the -DMPI definition) is essential for MPI support,
+# since Siesta uses a custom MPI interface, including optional timing
+# as well as argument checking.
 #MPI_INTERFACE = libmpi_f90.a
 #MPI_INCLUDE = .
+# The MPI include directory is set to "." simply as a no-op, since in this
+# case the fortran compiler (mpfort) is actually a wrapper that already
+# takes care of setting up the MPI environment correctly.
+# If you need to change this, do not use any -I prefix, just the
+# appropriate path
+#
 
 # Preprocessor definitions or flags.
 # Here we use FPPFLAGS (as 'configure' calls them), but historically
@@ -204,7 +230,7 @@ atom.o: atom.F
 .F90.o:
 	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_free_F90) $< 
 .f.o:
-	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FCFLAGS_fixed_f)  $<
+	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FFLAGS_fixed_f)  $<
 .f90.o:
-	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FCFLAGS_free_f90)  $<
+	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FFLAGS_free_f90)  $<
 
