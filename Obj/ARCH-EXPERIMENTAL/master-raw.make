@@ -23,7 +23,7 @@ WITH_ELSI=0
 WITH_FLOOK=0
 WITH_MPI=1
 WITH_NETCDF=0
-WITH_SEPARATE_NETCDF_FORTRAN=0
+WITH_EXPLICIT_NETCDF_SYMBOLS=0
 WITH_NCDF=0
 WITH_NCDF_PARALLEL=0
 WITH_LEGACY_GRIDXC_INSTALL=0
@@ -44,8 +44,8 @@ WITH_GRID_SP=0
 #FLOOK_ROOT=
 #--------------------------------------------------------
 #NETCDF_ROOT=$(NETCDF_HOME)
-#NETCDF_FORTRAN_ROOT=$(NETCDF_HOME)
-#HDF5_LIBS=-L/apps/HDF5/1.8.20/GCC/OPENMPI/lib -lhdf5_hl -lhdf5 -lcurl -lz
+#NETCDF_LIBS=-lnetcdff -lnetcdf -L/opt/hdf5/lib -lhdf5_hl -lhdf5 -lcurl -lz
+#NETCDF_INCFLAGS=-I/usr/include
 #SCALAPACK_LIBS=-lscalapack
 #LAPACK_LIBS=-llapack -lblas
 #FFTW_ROOT=/apps/FFTW/3.3.8/GCC/OPENMPI/
@@ -152,13 +152,20 @@ ifeq ($(WITH_ELSI),1)
  else
    ELSI_ELPA_ROOT=$(ELSI_ROOT)
  endif
- # This assumes that ELSI has been compiled with PEXSI
+
+ # We assume that PEXSI is compiled by default
+ ifeq ($(WITH_ELSI_PEXSI),0)
+    PEXSI_LIBS =
+ else
+    PEXSI_LIBS =  -lpexsi -lsuperlu_dist \
+               -lptscotchparmetis -lptscotch -lptscotcherr \
+               -lscotchmetis -lscotch -lscotcherr
+ endif	
+  
  ELSI_LIB = -L$(ELSI_ROOT)/lib -lelsi \
                -lfortjson -lOMM -lMatrixSwitch \
                -lNTPoly \
-                -lpexsi -lsuperlu_dist \
-               -lptscotchparmetis -lptscotch -lptscotcherr \
-               -lscotchmetis -lscotch -lscotcherr \
+               $(PEXSI_LIBS) \
                -L$(ELSI_ELPA_ROOT)/lib -lelpa
 
  INCFLAGS += $(ELSI_INCFLAGS)
@@ -168,29 +175,30 @@ endif
 
 
 ifeq ($(WITH_NETCDF),1)
- ifndef NETCDF_ROOT
-   $(error you need to define NETCDF_ROOT in your arch.make)
- endif
 
-# If NetCDF is enabled, for completeness in some installations,
-# we might need to deal separately with the install prefixes of NetCDF and
-# NetCDF-Fortran. By default both are the same
+   ifeq ($(WITH_EXPLICIT_NETCDF_SYMBOLS),1)
 
- ifeq ($(WITH_SEPARATE_NETCDF_FORTRAN),1)
-   ifndef NETCDF_FORTRAN_ROOT
-     $(error you need to define NETCDF_FORTRAN_ROOT in your arch.make)
+     ifndef NETCDF_INCFLAGS
+      $(error you need to define NETCDF_INCFLAGS in your arch.make)
+     endif
+     ifndef NETCDF_LIBS
+      $(error you need to define NETCDF_LIBS in your arch.make)
+     endif
+
+   else
+
+     ifndef NETCDF_ROOT
+       $(error you need to define NETCDF_ROOT in your arch.make)
+     endif
+
+     NETCDF_INCFLAGS = -I$(NETCDF_ROOT)/include
+     NETCDF_LIBS = -L$(NETCDF_ROOT)/lib -lnetcdff
    endif
-   NETCDF_INCFLAGS = -I$(NETCDF_ROOT)/include -I$(NETCDF_FORTRAN_ROOT)/include
-   NETCDF_LIBS = -L$(NETCDF_FORTRAN_ROOT)/lib -lnetcdff -L$(NETCDF_ROOT)/lib -lnetcdf
- else
-   NETCDF_INCFLAGS = -I$(NETCDF_ROOT)/include
-   NETCDF_LIBS = -L$(NETCDF_ROOT)/lib -lnetcdff
- endif
- NETCDF_LIBS += $(HDF5_LIBS)
- FPPFLAGS_CDF = $(DEFS_PREFIX)-DCDF
- FPPFLAGS += $(FPPFLAGS_CDF) 
- INCFLAGS += $(NETCDF_INCFLAGS)
- LIBS += $(NETCDF_LIBS)
+
+   FPPFLAGS_CDF = $(DEFS_PREFIX)-DCDF
+   FPPFLAGS += $(FPPFLAGS_CDF) 
+   INCFLAGS += $(NETCDF_INCFLAGS)
+   LIBS += $(NETCDF_LIBS)
 endif
 
 ifeq ($(WITH_NCDF),1)

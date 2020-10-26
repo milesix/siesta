@@ -1,4 +1,10 @@
-To compile this version of Siesta you need the following libraries:
+NOTE: More information on building might be available in the Gitlab wiki:
+
+   https://gitlab.com/siesta-project/siesta/-/wikis/home
+
+----------------------------------------------------------------------
+   
+To compile this version of Siesta you need at least the following libraries:
 
 xmlf90
 libPSML

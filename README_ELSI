@@ -16,6 +16,9 @@ option, the auto-tune feature, and GPU offloading support, as well as
 dynamic changes of ELPA2 kernels.  Note that GPU support is also
 available with the built-in ELPA code in the ELSI library.
 
+(NOTE: bug fixes are applied to the ELPA library continuously, but they
+are only released twice a year. It might pay to check the ELPA development
+site for up-to-date code in the 'master' or other development branches).
 
 * Compilation of the external ELPA library
 
@@ -73,7 +76,7 @@ make install
 
 * Building Siesta with ELSI and an external ELPA library.
 
-The appropriate incantations needed can be seen in the example arch.make file Obj/mn4.elsi-ext-elpa.make, appropriate
+The appropriate incantations needed can be seen in the example file Obj/ARCH-EXPERIMENTAL/mn4.elsi-ext-elpa.make, appropriate
 for MareNostrum IV at BSC, but easily adaptable to any system by changing the paths to the libraries and the compiler
 names.
 
@@ -127,7 +130,7 @@ with very high numbers of processors.
    elsi-solver pexsi
    elsi-pexsi-tasks-per-pole  Npp     
    elsi-number-of-mu-points Nmu       (default 2)
-   elsi-number-of-poles     Npoles    (default 20) 
+   elsi-number-of-poles     Npoles    (default 30 for the AAA method) 
 
 The total number of processors used must be a multiple of Npp*Nmu*Nkpoints*Nspins
 For complete parallelization, number of processors =  Npp*Nmu*Nkpoints*Nspins*Npoles

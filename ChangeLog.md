@@ -2,6 +2,8 @@ An overview changelog for Siesta.
 
 ## MaX release branch
 
+* Some updates to building system
+
 ### ELSI interface
 
 (Please see the file README_ELSI in the top directory for important information)
