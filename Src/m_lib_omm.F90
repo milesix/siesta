@@ -39,7 +39,7 @@ contains
 ! routine, for Gamma point-only calculations)    !
 ! not parallel yet
 !================================================!
-subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,numh,listhptr,listh,d_sparse,eta,qs,h_sparse,&
+subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,numh,listhptr,listh,d_sparse,eta0,qs,h_sparse,&
     s_sparse,t_sparse)
   
 
@@ -61,7 +61,7 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
   integer, intent(in) :: listh(1:nhmax)     ! list of nonzero elements of each row of sparse matrices
 
   real(dp), intent(in) :: qs(1:2)                             ! num. of electrons per spin
-  real(dp), intent(in) :: eta(1:2)                            ! chemical potential for Kim functional
+  real(dp), intent(in) :: eta0(1:2)                            ! chemical potential for Kim functional
   real(dp), intent(in) :: h_sparse(1:nhmax,1:nspin) ! hamiltonian matrix (sparse)
   real(dp), intent(in), optional :: t_sparse(1:nhmax)         ! kinetic energy matrix (sparse)
   real(dp), intent(in) :: s_sparse(1:nhmax)         ! overlap matrix (sparse)
@@ -75,28 +75,27 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
   character(5) :: m_storage
   character(3) :: m_operation
 
-  logical :: init_C
+  logical :: init_C, dealloc
 
 #ifdef MPI
   integer :: MPIerror
   integer, save :: ictxt_1D, ictxt_2D, ictxt_c, desc_1D(9), desc_2D(9), desc_c(9), info
-  integer, allocatable :: ind_o(:)
-  integer :: jo1, kk, ib_r, ib_c, i_node, ind1, k, l 
+  integer :: k, l 
   logical, save :: Use2D
   integer, external :: numroc
 #endif
   
   integer :: i, j, io, jo, ind, N_occ, bl, h_dim_loc(2), flavour
   integer, dimension(2) :: dims
-  real(dp) :: he, se, e_min, de, tau
-  type(matrix), save :: H, S, D_min, T, C_min, C_old  
+  real(dp) :: e_min
+  type(matrix), save :: H, S, D_min, T, C_min, C_old
   logical, save :: first_call = .true.
   logical :: found, ReadCoeffs, file_exist
-  logical :: new_S, dealloc, precon
+  logical :: new_S, precon
   logical, save :: long_out, WriteCoeffs, io_coeff, C_extrapol
   integer, save :: istp_prev, precon_st, precon_st1, N_occ_loc
-  integer, save :: blk_c, blk_h, BlockSize_c
-  real(dp), save :: cg_tol
+  integer, save :: blk_c, blk_h, BlockSize_c, nmax
+  real(dp), save :: cg_tol, g_tol, eta, tau
   character(len=100) :: WF_COEFFS_filename
 
   real(dp), allocatable, save :: h_dense_1D(:,:), s_dense_1D(:,:), d_dense_1D(:,:)
@@ -122,19 +121,23 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
   endif
   call die()
 #endif
-
+ 
+  call timer('libomm',1)
   if(first_call) then
     print'(a, i5, a, i8, a, i8, a, i8)','Node =', Node,' hdim =', h_dim, ' nbasis =', nbasis, ' N_occ =', N_occ
     io_coeff = .false.
     long_out = fdf_boolean('OMM.LongOutput',.true.)
     cg_tol = fdf_get('OMM.RelTol',1.0d-9)
+    g_tol = fdf_get('OMM.GTol',1.0d-5)
     precon_st1 = fdf_integer('OMM.PreconFirstStep',-1)
     precon_st = fdf_integer('OMM.Precon',-1)
     tau = fdf_get('OMM.TPreconScale',10.0_dp,'Ry')
+    eta = fdf_get('OMM.Eta',0.0_dp,'eV')
     WriteCoeffs=fdf_boolean('OMM.WriteCoeffs',.false.)
     ReadCoeffs=fdf_boolean('OMM.ReadCoeffs',.false.)
     if(WriteCoeffs .or. ReadCoeffs) io_coeff = .true.
     C_extrapol = fdf_boolean('OMM.Extrapolate',.false.)
+    nmax = fdf_integer('OMM.MaxIter',100000000)
   end if     
 
   new_S = .false.
@@ -147,13 +150,15 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
   if(first_call) init_C = .false.
 
   if(istp==2 .and. new_S .and. WriteCoeffs) then
+    call timer('WriteCoeffs',1)
     WF_COEFFS_filename=trim(slabel)//'.WF_LIBOMM_ST1'
     call m_write(C_min,WF_COEFFS_filename)
     if(ionode) print'(a)', 'File for C is written'
+    call timer('WriteCoeffs',2)
   end if
 
   if(new_S .and. (istp>1) .and. C_extrapol) then
-
+    call timer('c_extrapol',1)
     if(.not. C_old%is_initialized) call m_allocate(C_old,N_occ,h_dim,&
        label=m_storage)
 
@@ -162,6 +167,7 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
     end if
 
     call m_copy(C_old,C_min)
+    call timer('c_extrapol',2)
   end if
 
   precon = .false.
@@ -172,10 +178,11 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
   
   if(new_S) then
     if(ionode) print'(a)','OMM with libOMM'
-    if(ionode) print'(a, i8, a, i8)',' h_dim = ', h_dim, ' N_occ = ', N_occ 
-    print'(a, i8, a, i8)',' Node = ',  Node, ' nbasis = ', nbasis 
+    if(ionode) print'(a, i8, a, i8)',' h_dim = ', h_dim, '     N_occ = ', N_occ
   end if
+
   if(first_call) then
+    call timer('m_allocate',1)
     call blacs_get(-1,0,ictxt_1D)
     call blacs_gridinit(ictxt_1D,'C',1,Nodes) 
     if(Use2D) then
@@ -206,9 +213,10 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
     d_dense_1D(:,:) = 0.0_dp
     if (.not. C_min%is_initialized) call m_allocate(C_min,N_occ,h_dim,m_storage)
     call m_set(C_min,m_operation,0.0_dp,0.0_dp)
+    call timer('m_allocate',2)
   end if
 
-
+   call timer('m_copy',1)
    h_dense_1D(:,:) = 0.0_dp
    if(new_S) s_dense_1D(:,:) = 0.0_dp
    if(precon) t_dense_1D(:,:) = 0.0_dp
@@ -227,15 +235,18 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
       call pdgemr2d(h_dim,h_dim,h_dense_1D,1,1,desc_1D,h_dense_2D,1,1,desc_2D,ictxt_2D)
       d_dense_2D(:,:) = 0.0_dp
    end if
- 
+   call timer('m_copy',2)
+
    if(first_call) then
      if(ReadCoeffs) then
+       call timer('ReadCoeffs',1)
        WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_LIBOMM'
        call m_read(C_min,WF_COEFFS_filename,file_exist)
        if(file_exist .and. ionode) print'(a)','File for C is read'
        if(file_exist) init_C = .true.
+       call timer('ReadCoeffs',2)
      end if
-
+     call timer('m_register',1)
      if(Use2D) then
        call m_register_pdbc(H,h_dense_2D,desc_2D)
        call m_register_pdbc(S,s_dense_2D,desc_2D)
@@ -247,22 +258,28 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
        call m_register_pdbc(D_min,d_dense_1D,desc_1D)
        if(precon) call m_register_pdbc(T,t_dense_1D,desc_1D)
      end if
-   end if
-   
+     call timer('m_register',2)
+  end if
   flavour = 0
   if(precon) flavour = 3
   dealloc = .false.
+
   if(.not. calcE) then
-    call omm(h_dim,N_occ,H,S,new_S,e_min,D_min,.false.,0.0_dp,&
-      C_min,init_C,T,tau,flavour,nspin,1,cg_tol,long_out,dealloc,&
-      m_storage,m_operation)
+    call timer('omm_density',1)
+    call omm(h_dim,N_occ,H,S,new_S,e_min,D_min,.false.,eta,&
+      C_min,init_C,T,tau,flavour,nspin,1,cg_tol,g_tol,long_out,dealloc,&
+      m_storage,m_operation,nmax)
+    call timer('omm_density',2)
     if(ionode) print'(a, f13.7)','e_min = ', e_min
   else
-    call omm(h_dim,N_occ,H,S,new_S,e_min,D_min,.true.,0.0_dp,&
-      C_min,init_C,T,tau,flavour,nspin,1,cg_tol,long_out,dealloc,&
-      m_storage,m_operation)
+    call timer('omm_energy',1)
+    call omm(h_dim,N_occ,H,S,new_S,e_min,D_min,.true.,eta,&
+      C_min,init_C,T,tau,flavour,nspin,1,cg_tol,g_tol,long_out,dealloc,&
+      m_storage,m_operation,nmax)
+    call timer('omm_energy',2)
   end if
 
+  call timer('d_copy',1)
   if(Use2D) then
     call pdgemr2d(h_dim,h_dim,d_dense_2D,1,1,desc_2D,d_dense_1D,1,1,desc_1D,ictxt_2D)
   end if
@@ -279,21 +296,24 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
       end if
     end do
   end do
+  call timer('d_copy',2)
 
   if(.not. CalcE) then
     if(WriteCoeffs) then
+      call timer('WriteCoeffs',1)
       WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_LIBOMM'
       call m_write(C_min,WF_COEFFS_filename)
       if(ionode) print'(a)','File for C is written '
+      call timer('WriteCoeffs',2)
     end if
   end if
  
   if(first_call) first_call = .false.
-
+  call timer('libomm',2)
 end subroutine omm_min
 
 subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,numh,listhptr,listh,d_sparse,&
-    eta,qs,h_sparse,s_sparse,t_sparse)
+    eta0,qs,h_sparse,s_sparse,t_sparse)
   
   implicit none
 
@@ -313,7 +333,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
   integer, intent(in) :: listh(1:nhmax)     ! list of nonzero elements of each row of sparse matrices
 
   real(dp), intent(in) :: qs(1:2)                             ! num. of electrons per spin
-  real(dp), intent(in) :: eta(1:2)                            ! chemical potential for Kim functional
+  real(dp), intent(in) :: eta0(1:2)                            ! chemical potential for Kim functional
   real(dp), intent(in) :: h_sparse(1:nhmax,1:nspin) ! hamiltonian matrix (sparse)
   real(dp), intent(in), optional :: t_sparse(1:nhmax)         ! kinetic energy matrix (sparse)
   real(dp), intent(in) :: s_sparse(1:nhmax)         ! overlap matrix (sparse)
@@ -327,19 +347,17 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
   character(5) :: m_storage
   character(3) :: m_operation
 
-  logical :: init_C
-  integer :: i,j,ind,io,jo, N_occ, MPIerror, flavour, is
+  logical :: init_C, dealloc
+  integer :: i, j, ind, io, jo, N_occ, MPIerror, flavour, is
   logical, save :: first_call=.true.
   type(matrix), save :: H, C_min, S, D_min, T, C_old, C_old2
-  type(matrix):: C_restart
-  real(dp) ::  e_min, tau, qout(2), qtmp(2)
-  real(dp) :: block_data(1,1)
-  integer, save :: istp_prev
-  logical :: new_S, dealloc, ReadCoeffs, file_exist
+  real(dp) :: e_min, tau, qout(2), qtmp(2)
+  real(dp) :: block_data(1,1), c_occ
+  integer, save :: istp_prev, BlockSize_c, nmax
+  logical :: new_S, ReadCoeffs, file_exist
   logical, save :: long_out, Use2D, WriteCoeffs, C_extrapol
-  real(dp), save :: cg_tol
+  real(dp), save :: cg_tol, g_tol, eta
   character(len=100) :: WF_COEFFS_filename
-
 
 #ifdef MPI
   m_storage ='pdcsr'
@@ -351,6 +369,8 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
   call die()  
 #endif
 
+  call timer('blomm',1)
+
   if (nspin == 1) then
     N_occ = nint(0.5_dp*qs(1))
   else
@@ -359,13 +379,18 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
 
  
   if(first_call) then
-    print'(a, i5, a, i8, a, i8, a, i8)','Node =', Node,' hdim =', h_dim, ' nbasis =', nbasis, ' N_occ =', N_occ
+    BlockSize_c = fdf_integer('OMM.BlockSizeC',BlockSize)
+    if(ionode) print'(a, i8, a, i8, a, i5, a, i5)','hdim =', h_dim, '    N_occ =', N_occ, &
+      '    BlockSize =', BlockSize, '    BlockSize_c =', BlockSize_c
     Use2D = fdf_boolean('OMM.Use2D',.true.)
     C_extrapol = fdf_boolean('OMM.Extrapolate',.false.)
     long_out = fdf_boolean('OMM.LongOutput',.true.)
     cg_tol = fdf_get('OMM.RelTol',1.0d-9)
+    g_tol = fdf_get('OMM.GTol',1.0d-3)
     WriteCoeffs=fdf_boolean('OMM.WriteCoeffs',.false.)
     ReadCoeffs=fdf_boolean('OMM.ReadCoeffs',.false.)
+    eta = fdf_get('OMM.Eta',0.0_dp,'eV')
+    nmax = fdf_integer('OMM.MaxIter',100000000)
   end if
 
   new_S = .false.
@@ -375,25 +400,19 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     istp_prev=istp
   end if
 
-  if(istp==2 .and. new_S .and. WriteCoeffs) then
-    WF_COEFFS_filename=trim(slabel)//'.WF_BLOMM_ST1'
-    call m_write(C_min,WF_COEFFS_filename)
-    if(ionode) print'(a)', 'File for C is written'
-  end if
-
   if(new_S .and. istp>1) then
-
+    call timer('c_extrapol',1)
     if(.not. C_old%is_initialized) call m_allocate(C_old,N_occ,h_dim,&
-       BlockSize,BlockSize,label=m_storage,use2D=Use2D)
+       BlockSize_c,BlockSize,label=m_storage,use2D=Use2D)
 
     if(C_extrapol .and. istp>2) then
       if(.not. C_old2%is_initialized) call m_allocate(C_old2,N_occ,&
-        h_dim,BlockSize,BlockSize,label=m_storage,use2D=Use2D)
+        h_dim,BlockSize_c,BlockSize,label=m_storage,use2D=Use2D)
       call m_copy(C_old2,C_old)
     end if
     call m_copy(C_old,C_min)
     if(C_min%is_initialized) call m_deallocate(C_min)
-    call init_c_matrix(C_min, N_occ, h_dim, BlockSize, Use2D)
+    call init_c_matrix(C_min, N_occ, h_dim, BlockSize_c, BlockSize, Use2D, .false.)
 
     if(C_extrapol .and. (istp>2)) then 
       call m_add(C_old,'n',C_old2,2.0_dp,-1.0_dp)
@@ -401,10 +420,11 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     else
       call m_copy(C_min,C_old,keep_sparsity=.true.)
     end if  
+    call timer('c_extrapol',2)
   end if
 
   if(first_call) then
-    
+    call timer('m_allocate',1)
     if(ionode) print'(a)','sparse OMM with libOMM'
  
     call ms_dbcsr_setup(MPI_Comm_World) 
@@ -415,16 +435,29 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
         label=m_storage,use2D=Use2D)
     if (.not. D_min%is_initialized) &
       call m_allocate(D_min,h_dim,h_dim,BlockSize,BlockSize,label=m_storage,use2D=Use2D)
-      call init_c_matrix(C_min, N_occ, h_dim, BlockSize, Use2D)
+    call timer('m_allocate',2)
+    call init_c_matrix(C_min, N_occ, h_dim, BlockSize_c, BlockSize, Use2D, .true.)
     if(ReadCoeffs) then
+      call timer('ReadCoeffs',1)
       WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_BLOMM'
       call m_read(C_min,WF_COEFFS_filename,file_exist=file_exist, keep_sparsity=.true.)
       if(file_exist) then
         if(ionode) print'(a)','File for C is read'
       end if
+      call timer('ReadCoeffs',2)
+    end if
+    call m_dbcsr_occupation(C_min, c_occ)
+    if(ionode) print'(a,f10.8)','C occupation = ', c_occ
+    if(WriteCoeffs) then
+      call timer('WriteCoeffs',1)
+      WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_BLOMM'
+      call m_write(C_min,WF_COEFFS_filename)
+      if(ionode) print'(a)', 'File for C is written'
+      call timer('WriteCoeffs',2)
     end if
   end if
 
+  call timer('m_register',1)
   if(new_S) then    
     call m_register_pdcsr(H, nbasis,BlockSize,listhptr,listh,numh,h_sparse(:,1))
     call m_register_pdcsr(S, nbasis,BlockSize,listhptr,listh,numh,s_sparse)
@@ -434,7 +467,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     call m_convert_csrdbcsr(S,threshold=1.0e-14_dp, bl_size=BlockSize)
   end if
   call m_convert_csrdbcsr(H,threshold=1.0e-14_dp, bl_size=BlockSize)
-
+  call timer('m_register',2)
 
   first_call  = .false.
   init_C = .true.
@@ -442,20 +475,31 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
   
   flavour = 0
   tau = 0.0_dp
-  if(.not. calcE) then  
-    call omm(h_dim,N_occ,H,S,new_S,e_min,D_min,.false.,0.0_dp,&
-      C_min,init_C,T,tau,flavour,nspin,1,cg_tol,long_out,dealloc,&
-      m_storage,m_operation)
+
+  if(.not. calcE) then
+    call timer('omm_density',1)
+    call omm(h_dim,N_occ,H,S,new_S,e_min,D_min,.false.,eta,&
+      C_min,init_C,T,tau,flavour,nspin,1,cg_tol,g_tol,long_out,dealloc,&
+      m_storage,m_operation,nmax)
+    call timer('omm_density',2)
     if(ionode) print'(a, f13.7)','e_min = ', e_min
   else
+    call timer('m_register',1)
     call m_register_pdcsr(D_min,d_sparse(:,1))
-    call omm(h_dim,N_occ,H,S,new_S,e_min,D_min,.true.,0.0_dp,&
-      C_min,init_C,T,tau,flavour,nspin,1,cg_tol,long_out,dealloc,&
-      m_storage,m_operation)
+    call timer('m_register',2)
+    call timer('omm_energy',1)
+    call omm(h_dim,N_occ,H,S,new_S,e_min,D_min,.true.,eta,&
+      C_min,init_C,T,tau,flavour,nspin,1,cg_tol,g_tol,long_out,dealloc,&
+      m_storage,m_operation,nmax)
+    call timer('omm_energy',2)
   end if
-  
+
+  call m_dbcsr_occupation(C_min, c_occ)
+  if(ionode) print'(a,f10.8)','C occupation = ', c_occ
+
+  call timer('d_copy',1)
   call m_convert_dbcsrcsr(D_min, bl_size=BlockSize)
-  
+
   qout(1:2) = 0.0_dp
   do io = 1, nbasis
     do j = 1, numh(io)
@@ -471,12 +515,14 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
       end do
     end do
   end do
+  call timer('d_copy',2)
 
   if(.not. calcE) then
+    call timer('d_charge',1)
     qtmp(1:2) = qout(1:2)
     call MPI_AllReduce(qtmp, qout, nspin, MPI_double_precision, MPI_sum, MPI_Comm_World, MPIerror)
     do is = 1, nspin
-      qout(is) = qs(is)/qout(is)
+      if(abs(qout(is)) .gt. 1.d-10) qout(is) = qs(is)/qout(is)
     end do
 
     do io = 1, nbasis
@@ -488,18 +534,22 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
         end do
       end do
     end do
+    call timer('d_charge',2)
 
     if(WriteCoeffs) then
+      call timer('WriteCoeffs',1)
       WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_BLOMM'
       call m_write(C_min,WF_COEFFS_filename)
+      call timer('WriteCoeffs',2)
       if(ionode) print'(a)', 'File for C is written'
     end if
 
   end if
+  call timer('blomm',2)
 
   contains
    
-  subroutine init_c_matrix(C_min, N_occ, h_dim, BlockSize_c, Use2D)
+  subroutine init_c_matrix(C_min, N_occ, h_dim, BlockSize_c, BlockSize_h, Use2D, set_rand)
 
     use neighbour,      only : jan, mneighb
     use siesta_geom,    only : na_u, xa, ucell
@@ -508,8 +558,8 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
   
     type(matrix), intent(inout) :: C_min    
     integer, intent(in) :: N_occ, h_dim
-    integer, intent(in) :: BlockSize_c
-    logical, intent(in) :: Use2D
+    integer, intent(in) :: BlockSize_c, BlockSize_h
+    logical, intent(in) :: Use2D, set_rand
 
     integer :: i, j, k, io, jo, nna, MPIerror    
     integer :: seed, iorb, norb, ja, neib0, index, indexi
@@ -525,7 +575,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     character(5) :: m_storage
 
     m_storage ='pdcsr'
-
+    call timer('init_c_matrix', 1)
     rcoor = fdf_get('OMM.RcLWF',9.5_dp,'Bohr')
     rmax = 0.0_dp
     do i = -1,1
@@ -552,12 +602,12 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     do ia = 1, na_u
       call get_number_of_lwfs_on_atom(ia, indexi)
       do i=1, indexi
-         iwf = iwf + 1
-         iatom(iwf) = ia
+        iwf = iwf + 1
+        iatom(iwf) = ia
       end do
     end do
 
-    seed = omm_rand_seed()
+    if(set_rand) seed = omm_rand_seed()
 
     io = 0
     jo = 0
@@ -573,7 +623,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
       nrows = nblks * BlockSize_c + iwf2 - iwf1 + 1
       nblks = nblks  + 1
     end if
-   ! nrows = iwf2 - iwf1 + 1
+
     allocate(id_row(1:nrows))
     allocate(nze_row(1:nrows))
     nze_row(:) = 0
@@ -637,11 +687,16 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     if(allocated(neib)) deallocate(neib) 
     allocate(c_loc(1:nze_c))
     allocate(id_col(1:nze_c))
+    iwf=1
     do i=1, nze_c
-      do k = 1, 2
-        call omm_bsd_lcg(seed, rn(k))
-      end do
-      cgval = sign(0.5_dp * rn(1), rn(2) - 0.5_dp)
+      if(set_rand) then
+        do k = 1, 2
+          call omm_bsd_lcg(seed, rn(k))
+        end do
+        cgval = sign(0.5_dp * rn(1), rn(2) - 0.5_dp)
+      else
+        cgval=1.0_dp
+      end if
       c_loc(i) = cgval * coef
       id_col(i) = id_col_p(i)
     end do
@@ -649,16 +704,18 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     nullify(id_col_p)
 
     if (.not. C_min%is_initialized) call m_allocate(C_min,N_occ,h_dim,&
-       BlockSize_c,BlockSize_c,label=m_storage,use2D=Use2D)
+       BlockSize_c,BlockSize_h,label=m_storage,use2D=Use2D)
 
     call m_register_pdcsr(C_min, nrows, BlockSize_c,&
        id_row,id_col,nze_row,c_loc)
 
     if(ionode) print'(a)','C_min CSR matrix created'
 
-    call m_convert_csrdbcsr(C_min, threshold=1.0d-14, bl_size=BlockSize_c) 
+    call m_convert_csrdbcsr(C_min, threshold=1.0d-14, bl_size=BlockSize_h)
      
     if(ionode) print'(a)','C_min CSR matrix converted to DBCSR'
+
+    call timer('init_c_matrix',2)
 
   end subroutine init_c_matrix
 
