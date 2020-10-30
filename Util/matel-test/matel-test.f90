@@ -19,6 +19,7 @@ program matel_test
       use m_matel_registry, only: show_pool
       use matel_mod, only: init_matel_main_tables
       use matel_mod, only: init_matel_thermal_transport
+      use matel_mod, only: init_matel_orb_xyz_orb
       use matel_mod, only: new_matel
       use m_old_matel, only: old_matel
       
@@ -32,7 +33,7 @@ program matel_test
       real(dp) :: val, grad(3)
       real(dp) :: x, y, z
 
-      logical :: xtables = .false.
+      logical :: xtables = .true.
       
       character(len=1), dimension(3), parameter :: coord_table = [ 'X', 'Y', 'Z' ]
 
@@ -51,7 +52,9 @@ program matel_test
       call show_pool()
       call init_matel_main_tables()
       call init_matel_thermal_transport()
-
+      call init_matel_thermal_transport()
+      call init_matel_orb_XYZ_orb()
+      
       io = species(1)%orb_gindex(1)
       jpy = species(1)%orb_gindex(2)  
       jpz = species(1)%orb_gindex(3)  
@@ -121,8 +124,8 @@ program matel_test
 
       do i = 1, 100
          x = (i-1) * 0.1
-!         call new_MATEL('X', io, io, [ x, 0.0_dp, 0.0_dp ], val, grad)
-!         print "(a,2f10.4,2x,3f10.4)", "<s|X|s(x)>: ", x, val, grad
+         call new_MATEL('X', io, io, [ x, 0.0_dp, 0.0_dp ], val, grad)
+         print "(a,2f10.4,2x,3f10.4)", "<s|X|s(x)>: ", x, val, grad
       enddo
    endif
 
