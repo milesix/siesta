@@ -18,6 +18,7 @@
       use sparse_matrices, only: Dscf, Escf, maxnh
       use sparse_matrices, only: H, S
       use sparse_matrices, only: xijo, listh, listhptr, numh
+      use sparse_matrices, only: nnz_g
       use siesta_geom
 
       use sparse_matrices, only: DM_2D, DM_history
@@ -83,7 +84,7 @@
          ! (including communicators, etc) when 'Get_EDM_Only' is set.
          
          call elsi_getdm(iscf+20000, no_s, spin%spinor, 
-     &              no_l, maxnh, no_u,
+     &              no_l, no_u, maxnh, nnz_g,
      &              numh, listhptr, listh,
      &              H, S, qtot, temp, 
      &              xijo,

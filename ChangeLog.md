@@ -4,6 +4,7 @@ An overview changelog for Siesta.
 
 (Please see the file README_ELSI in the top directory for important information)
 
+* Avoid an AllReduce operation for nnz_g in the Gamma-point ELSI solver setup
 * Print 'neigwanted' if used
 * Wrap new routines in m_elsi_interface in SIESTA__ELSI block
 * The ELSI interface now honors the "number-of-eigenstates" setting, and an EIG file
