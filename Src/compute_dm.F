@@ -145,7 +145,7 @@
      $               "non-coll spins or Spin-orbit yet")
          endif
          call elsi_getdm(iscf, no_s, spin%spinor, 
-     &              no_l, maxnh, no_u,
+     &              no_l, no_u, maxnh, nnz_g,
      &              numh, listhptr, listh,
      &              H, S, qtot, temp, 
      &              xijo,
