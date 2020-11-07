@@ -25,7 +25,9 @@ subroutine compute_psi_hat_c (psi_hat_c, n_wfs)
   !!
   !! rmatrix is distributed in parallel, with no_l rows and no_u columns.
   !! dscf_hat is distributed in parallel, with no_l rows and no_u columns.
-  !! these two are also sparse.
+  !! rmatrix is formally sparse, but dscf_hat IS NOT, since we need the
+  !! "full density matrix" and not the "sparse section" that is enough for
+  !! the computation of the charge density.
   !!
   !! We will do first a serial version. This means that no_l = no_u.
   !! BUT, we might want to deal with only a subset of the wavefunctions,
@@ -80,7 +82,9 @@ subroutine compute_psi_hat_c (psi_hat_c, n_wfs)
   psi_hat_c(:,:,:) = 0.0        ! Init result to zeros outside main loop
 
   DO idx=1,3
-  rmatrix => ks_flux_Rmat(:,idx)
+     rmatrix => ks_flux_Rmat(:,idx)
+
+     !! THESE LOOPS SHOULD PROBABLY BE RE-DESIGNED TO FOLLOW THE NEW NOTES
 
   do iw = 1,n_wfs
      tmp_g(:) = 0.0

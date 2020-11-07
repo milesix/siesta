@@ -30,11 +30,25 @@
       subroutine rmatrix(nua, na, no, scell, xa, indxua, rmaxo,
      &                   maxnh, lasto, iphorb, isa,
      &                   numh, listhptr, listh, Rmat)
-C *********************************************************************
-C Computes the "R" matrix < phi_1 | R | phi_2>
-C Energies in Ry. Lengths in Bohr.
-C Based on 'overlap'
-C **************************** INPUT **********************************
+!
+!     This routine computes B_nu,mu = tau_mu*S_nu,mu + X_nu,mu,
+!     where S_nu,mu is the overlap matrix, and X_nu,mu is the matrix 
+!     element of r (with the matel convention).
+!     The 'rmatrix' name and Rmat argument refer to the r matrix element.
+
+!     Note that nu in this routine is distributed.
+!     Note also that B_nu,mu is not equal to B_mu,nu
+!
+!     This is a "real space" version of B_nu,mu. What is needed in the
+!     thermal transport module, for the Gamma point case,  is the k=0
+!     fourier transform. If an auxiliary supercell is not used (the common case
+!     for Gamma-point calculations, the (folded over R by default) real-space object
+!     is just the k=0 FT needed. If for some reason an auxiliary supercell is
+!     used, an extra folding (as done for example in the diag* routines) is needed.
+      
+!     Energies in Ry. Lengths in Bohr.
+!     Based on 'overlap'
+
 C integer nua              : Number of atoms in unit cell
 C integer na               : Number of atoms in supercell
 C integer no               : Number of orbitals in supercell
@@ -64,7 +78,7 @@ C real*8  Rmat(maxnh,3)    : Matrix elements of "R"
 C Internal variables ......................................................
       integer               :: ia, ind, io, ioa, is,  iio, j, ja, jn,
      &                         jo, joa, js, jua, nnia, ig, jg
-      real(dp)              :: grSij(3) , rij, Sij
+      real(dp)              :: grSij(3) , rij, Sij, Overlap_ij
       real(dp),     pointer :: Ri(:,:)
       external  timer
 
@@ -78,6 +92,8 @@ C     Allocate local memory
       nullify(Ri)
       call re_alloc( Ri, 1, no, 1, 3, 'Ri', 'rmatrix' )
 
+      Ri(:,:) = 0.0_dp
+      
       do ia = 1,nua
         is = isa(ia)
         call mneighb( scell, 2.d0*rmaxo, na, xa, ia, 0, nnia )
@@ -101,24 +117,17 @@ C           Valid orbital
                 ! Use global indexes for new version of matel
                 !
                 jg = orb_gindex(js,joa)
+                
+                ! Compute tau_mu*S_nu,mu + X_nu,mu
                 if (rcut(is,ioa)+rcut(js,joa) .gt. rij) then
-c$$$                  call new_MATEL( 'X', ig, jg, xij(1:3,jn),
-c$$$     &                        Sij, grSij )
-c$$$                  Ri(jo,1) = Ri(jo,1) + Sij
-c$$$                  call new_MATEL( 'Y', ig, jg, xij(1:3,jn),
-c$$$     &                        Sij, grSij )
-c$$$                  Ri(jo,2) = Ri(jo,2) + Sij
-c$$$                  call new_MATEL( 'Z', ig, jg, xij(1:3,jn),
-c$$$     &                        Sij, grSij )
-                  call new_MATEL( 'X', jg, ig, -xij(1:3,jn),
-     &                        Sij, grSij )
-                  Ri(jo,1) = Ri(jo,1) + Sij
-                  call new_MATEL( 'Y', jg, ig, -xij(1:3,jn),
-     &                        Sij, grSij )
-                  Ri(jo,2) = Ri(jo,2) + Sij
-                  call new_MATEL( 'Z', jg, ig, -xij(1:3,jn),
-     &                        Sij, grSij )
-                  Ri(jo,3) = Ri(jo,3) + Sij
+                  call new_MATEL( 'S', ig, jg, xij(1:3,jn),
+     $                        Overlap_ij, grSij )
+                  call new_MATEL( 'X', ig, jg, xij(1:3,jn), Sij, grSij )
+                  Ri(jo,1) = Ri(jo,1) + Sij + Overlap_ij*xa(1,ja)
+                  call new_MATEL( 'Y', ig, jg, xij(1:3,jn), Sij, grSij )
+                  Ri(jo,2) = Ri(jo,2) + Sij + Overlap_ij*xa(2,ja)
+                  call new_MATEL( 'Z', ig, jg, xij(1:3,jn), Sij, grSij )
+                  Ri(jo,3) = Ri(jo,3) + Sij + Overlap_ij*xa(3,ja)
                 endif
               enddo
             enddo
