@@ -90,10 +90,10 @@ subroutine compute_psi_hat_c (psi_hat_c, n_wfs)
      tmp_g(:) = 0.0
      do nu = 1,no_u
         do mu = 1,no_l
-          do ij = 1, numh(mu)
-             k = listhptr(mu) + ij
+          do ij = 1, numh(nu)
+             k = listhptr(nu) + ij
              col = listh(k)
-             if (col == nu) then
+             if (col == mu) then
                tmp_g(nu) = tmp_g(nu) + coeffs(mu,iw) * rmatrix(k)
                exit
              endif
