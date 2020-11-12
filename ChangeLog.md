@@ -1,8 +1,12 @@
 An overview changelog for Siesta.
 
-## MaX release branch
+## MaX 2 release branch
 
 * Some updates to building system
+
+### PSolver
+
+* Initial merge of Psolver working branch
 
 ### ELSI interface
 

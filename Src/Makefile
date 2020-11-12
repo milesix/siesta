@@ -136,7 +136,7 @@ OBJS =  automatic_cell.o atom_options.o \
         alloc.o spher_harm.o periodic_table.o version.o timestamp.o \
         basis_types.o xml.o basis_specs.o basis_io.o\
 	ldau.o ldau_specs.o \
-        onmod.o densematrix.o writewave.o on_subs.o fermid.o m_broyddj.o \
+        onmod.o densematrix.o writewave.o psolver_m.o on_subs.o fermid.o m_broyddj.o \
         electrostatic.o mneighb.o globalise.o siesta_cmlsubs.o siesta_cml.o \
         units.o zmatrix.o m_broyden_mixing.o forhar.o m_walltime.o m_wallclock.o m_iostruct.o \
         nlefsm.o overfsm.o overlap.o overlap_gradient.o conjgr.o conjgr_old.o m_energies.o m_steps.o\
@@ -712,7 +712,8 @@ dhscf.o: m_hartree_add.o m_iorho.o m_iotddft.o m_mesh_node.o m_ncdf_io.o
 dhscf.o: m_ncdf_siesta.o m_partial_charges.o m_rhog.o m_spin.o m_ts_electype.o
 dhscf.o: m_ts_global_vars.o m_ts_hartree.o m_ts_options.o m_ts_voltage.o mesh.o
 dhscf.o: meshdscf.o meshsubs.o moremeshsubs.o parallel.o parsing.o precision.o
-dhscf.o: rhofft.o rhoofd.o rhoofdsp.o siesta_options.o units.o vmat.o vmatsp.o
+dhscf.o: psolver_m.o rhofft.o rhoofd.o rhoofdsp.o siesta_options.o units.o
+dhscf.o: vmat.o vmatsp.o
 diag.o: alloc.o diag_option.o parallel.o precision.o sys.o
 diag2g.o: fermid.o intrinsic_missing.o parallel.o parallelsubs.o precision.o
 diag2g.o: sys.o writewave.o
@@ -1243,11 +1244,14 @@ projected_DOS.o: sparse_matrices.o sys.o units.o
 propor.o: precision.o sys.o
 proximity_check.o: chemical.o m_ts_global_vars.o mneighb.o parallel.o
 proximity_check.o: precision.o siesta_geom.o siesta_options.o units.o
+psolver_m.o: alloc.o atmfuncs.o chemical.o intrinsic_missing.o moremeshsubs.o
+psolver_m.o: parallel.o periodic_table.o precision.o siesta_geom.o units.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radial.o: alloc.o interpolation.o precision.o xml.o
 read_options.o: files.o m_charge_add.o m_chess.o m_cite.o m_hartree_add.o
 read_options.o: m_mixing_scf.o m_spin.o m_target_stress.o parallel.o
-read_options.o: precision.o siesta_cml.o siesta_options.o sys.o units.o
+read_options.o: precision.o psolver_m.o siesta_cml.o siesta_options.o sys.o
+read_options.o: units.o
 read_xc_info.o: parallel.o precision.o sys.o
 redcel.o: parallel.o precision.o sys.o
 register_rfs.o: atm_types.o atmfuncs.o matel_registry.o parallel.o precision.o

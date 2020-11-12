@@ -71,7 +71,6 @@
 
       use gridXC, only : getXC=>gridxc_getXC   ! Returns the XC functional used
       use alloc,          only : re_alloc, de_alloc
-      use siesta_options, only : harrisfun
       use meshsubs,       only : PartialCoreOnMesh
       use meshsubs,       only : NeutralAtomOnMesh
       use meshsubs,       only : PhiOnMesh
@@ -101,12 +100,18 @@
      $                                  doping_active
       use m_rhog,                 only: rhog, rhog_in
       use m_rhog,                 only: order_rhog
+      use siesta_options,         only: harrisfun
       use siesta_options,         only: mix_charge
 #ifdef NCDF_4
       use siesta_options,         only: write_cdf
 #endif
 #ifdef MPI
       use mpi_siesta
+#endif
+#ifdef SIESTA__PSOLVER
+      use psolver_m, only: use_psolver
+      use psolver_m, only: poisson_psolver_init
+      use psolver_m, only: poisson_psolver
 #endif
 
       use m_mesh_node,   only: init_mesh_node
@@ -250,8 +255,7 @@ C     Start time counter for atomic initializations
       call timer( 'DHSCF2', 1 )
 
       if (nodes.gt.1) then
-        call setMeshDistr( UNIFORM, nsm, nsp,
-     &                     nml, nmpl, ntml, ntpl )
+        call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
       endif
 
 C     Initialise quantities relating to the atom-mesh positioning
@@ -322,8 +326,7 @@ C     Drho is not used here
         if (node .eq. 0) then
            write(6,"(a)") "Setting up quadratic distribution..."
         endif
-        call setMeshDistr( QUADRATIC, nsm, nsp,
-     &                     nml, nmpl, ntml, ntpl )
+        call setMeshDistr( QUADRATIC, nml, nmpl, ntml, ntpl )
 
 C       Create extended mesh arrays for the second data distribution
         call setupExtMesh( QUADRATIC, rmax )
@@ -373,8 +376,7 @@ C     Find Harris (sum of atomic) electron density
 
 C     Routine Poison should use the uniform data distribution
       if (nodes.gt.1) then
-         call setMeshDistr( UNIFORM, nsm, nsp,
-     &                      nml, nmpl, ntml, ntpl )
+         call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
       endif
 
 C     Create Rhoatm using UNIFORM distr, in sequential form
@@ -404,8 +406,27 @@ C     Allocate Temporal array
 C     Vscf is filled here but not used later
 C     Uharrs is computed (and saved)
 C     DStres is computed but not used later
-      call poison( cell, ntml(1), ntml(2), ntml(3), ntm, rhoatm,
+#ifdef SIESTA__PSOLVER
+      if ( use_psolver ) then
+
+        ! Initialize poisson solver
+        call poisson_psolver_init(cell, nua, xa,
+     &      nbcell, bcell, nm, ntm)
+
+        ! Solve initial poisson problem with atomic charge
+        ! Note, we call:
+        !   setMeshDistr(UNIFORM_PSOLVER, ...)
+        !   ... calc potential
+        !   setMeshDistr(UNIFORM, ...)
+        call poisson_psolver(cell, nua, xa, ntm, rhoatm,
+     $      Vscf(:,1), Uharrs, DStres, calc_stress=.false.)
+      else
+#endif
+        call poison( cell, ntml(1), ntml(2), ntml(3), ntm, rhoatm,
      &             Uharrs, Vscf, DStres, nsm )
+#ifdef SIESTA__PSOLVER
+      endif
+#endif
       call de_alloc( Vscf, 'Vscf', 'dhscf_init' )
 
 !     Always deallocate rhoatm_par, as it was used even if nodes=1
@@ -642,6 +663,10 @@ C     Modules
       use m_rhoofdsp, only: rhoofdsp
 #ifdef MPI
       use mpi_siesta
+#endif
+#ifdef SIESTA__PSOLVER
+      use psolver_m,      only: use_psolver
+      use psolver_m,      only: poisson_psolver
 #endif
       use iogrid_netcdf, only: write_grid_netcdf
       use iogrid_netcdf, only: read_grid_netcdf
@@ -917,8 +942,7 @@ C             rhoatm and Drho are in sequential mode
         ! since the construction of the density from the DM and orbital
         ! data needs that distribution
         if (nodes.gt.1) then
-           call setMeshDistr( QUADRATIC, nsm, nsp,
-     &                        nml, nmpl, ntml, ntpl )
+           call setMeshDistr( QUADRATIC, nml, nmpl, ntml, ntpl )
         endif
         call re_alloc( DRho_par, 1, ntpl, 1, nspin,
      &                 'DRho_par','dhscf' )       
@@ -935,7 +959,7 @@ C             rhoatm and Drho are in sequential mode
 
 C       Set the UNIFORM distribution again and copy DRho to it
         if (nodes.gt.1) then
-           call setMeshDistr( UNIFORM, nsm, nsp, nml, nmpl, ntml, ntpl )
+           call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
         endif
 
         do ispin = 1, nspin
@@ -994,8 +1018,7 @@ C       Set the UNIFORM distribution again and copy DRho to it
         ! The endpht array is in the quadratic distribution, so
         ! we need to use it for this...
         if (nodes.gt.1) then
-           call setMeshDistr( QUADRATIC, nsm, nsp,
-     &                        nml, nmpl, ntml, ntpl )
+           call setMeshDistr( QUADRATIC, nml, nmpl, ntml, ntpl )
         endif
         call re_alloc( DRho_quad, 1, ntpl, 1, nspin,
      &                 'DRho_quad','dhscf' )       
@@ -1019,8 +1042,7 @@ C       Set the UNIFORM distribution again and copy DRho to it
         call de_alloc(rhoatm_quad,'rhoatm_quad','dhscf')
         call de_alloc(Drho_quad,'DRho_quad','dhscf')
         if (nodes.gt.1) then
-           call setMeshDistr( UNIFORM, nsm, nsp,
-     &                        nml, nmpl, ntml, ntpl )
+           call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
         endif
         call timer( 'partial-charges' , 2 )
       endif
@@ -1270,9 +1292,21 @@ C ----------------------------------------------------------------------
 !     Solve Poisson's equation
       call re_alloc( Vaux, 1, ntpl, 'Vaux', 'dhscf' )
 
-      call poison( cell, ntml(1), ntml(2), ntml(3), ntm, DRho,
-     &             DUscf, Vaux, DStres, nsm )
-
+#ifdef SIESTA__PSOLVER
+      if ( use_psolver ) then
+        ! Note, we call:
+        !   setMeshDistr(UNIFORM_PSOLVER, ...)
+        !   ... calc potential
+        !   setMeshDistr(UNIFORM, ...)
+        call poisson_psolver(cell, nua, xa, ntm, DRho(:,1),
+     &      Vaux, DUscf, DStres, calc_stress = istr == 1)
+      else
+#endif
+        call poison( cell, ntml(1), ntml(2), ntml(3), ntm, DRho,
+     &      DUscf, Vaux, DStres, nsm )
+#ifdef SIESTA__PSOLVER
+      endif
+#endif
       if ( debug_dhscf ) then
          write(*,debug_fmt) Node,'Poisson',sqrt(sum(Vaux(:)**2))
       end if
@@ -1506,7 +1540,7 @@ C ----------------------------------------------------------------------
 
          ! Switch to "zero/not-zero rho" distribution (miscalled 'LINEAR')
          if (nodes.gt.1) then
-            call setMeshDistr( LINEAR, nsm, nsp, nml, nmpl, ntml, ntpl )
+            call setMeshDistr( LINEAR, nml, nmpl, ntml, ntpl )
          endif
 
          call re_alloc( Vscf_gga, 1, ntpl, 1, nspin, 'Vscf_gga','dhscf')
@@ -1557,7 +1591,7 @@ C ----------------------------------------------------------------------
       
          ! Go back to uniform distribution
          if (nodes.gt.1) then
-            call setMeshDistr( UNIFORM, nsm, nsp, nml, nmpl, ntml, ntpl)
+            call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl)
          endif
 
          ! Redistribute to the Vxc array
@@ -1653,8 +1687,7 @@ C     Find SCF contribution to hamiltonian matrix elements
 C ----------------------------------------------------------------------
       if (iHmat .eq. 1) then
          if (nodes.gt.1) then
-            call setMeshDistr( QUADRATIC, nsm, nsp,
-     &                         nml, nmpl, ntml, ntpl )
+            call setMeshDistr( QUADRATIC, nml, nmpl, ntml, ntpl )
          endif
 
 !        This is a work array, to which we copy Vscf
@@ -1681,8 +1714,7 @@ C ----------------------------------------------------------------------
          call de_alloc( Vscf_par,  'Vscf_par', 'dhscf' )
          if (nodes.gt.1) then
 !          Everything back to UNIFORM, sequential
-           call setMeshDistr( UNIFORM, nsm, nsp,
-     &                         nml, nmpl, ntml, ntpl )
+           call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
          endif
       endif
 
@@ -1796,8 +1828,7 @@ C       Find contribution of neutral-atom potential
         call reord( Vna, Vna, nml, nsm, TO_SEQUENTIAL )
 
         if (nodes.gt.1) then
-           call setMeshDistr( QUADRATIC, nsm, nsp,
-     &                       nml, nmpl, ntml, ntpl )
+           call setMeshDistr( QUADRATIC, nml, nmpl, ntml, ntpl )
         endif
 
         call re_alloc( Vscf_par, 1, ntpl, 1, nspin,
@@ -1823,7 +1854,7 @@ C       Find contribution of neutral-atom potential
         call de_alloc( Vscf_par, 'Vscf_par', 'dhscf' )
 
         if (nodes.gt.1) then
-          call setMeshDistr( UNIFORM, nsm, nsp, nml, nmpl, ntml, ntpl )
+          call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
         endif
 
 
@@ -1958,8 +1989,7 @@ C ----------------------------------------------------------------------
         if (isigneikr .eq. 1 .or. isigneikr .eq. -1) then
 
           if (nodes.gt.1) then
-            call setMeshDistr( QUADRATIC, nsm, nsp,
-     &                         nml, nmpl, ntml, ntpl )
+            call setMeshDistr( QUADRATIC, nml, nmpl, ntml, ntpl )
           endif
 
           call delk( isigneikr, norb, nmpl, dvol, maxnd,
@@ -1968,8 +1998,7 @@ C ----------------------------------------------------------------------
 
           if (nodes.gt.1) then
 !           Everything back to UNIFORM, sequential
-            call setMeshDistr( UNIFORM, nsm, nsp,
-     &                         nml, nmpl, ntml, ntpl )
+            call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
           endif
 
         endif

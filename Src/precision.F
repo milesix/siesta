@@ -32,6 +32,9 @@
 #endif
 
 #ifdef GRID_SP
+# ifdef SIESTA__PSOLVER
+#  error "Incompatible options! Do not use single-precision grids! GRID_SP and SIESTA__PSOLVER are not compatible"
+# endif
       integer, parameter :: grid_p = sp
       integer, parameter :: phi_grid_p = sp
 #elif defined(GRID_DP)
