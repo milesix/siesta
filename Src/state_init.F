@@ -37,6 +37,7 @@
       use sparse_matrices, only: sparse_pattern
       use sparse_matrices, only: block_dist, single_dist
       use sparse_matrices, only: DM_history
+      use sparse_matrices, only: nnz_g
 
 
       use create_Sparsity_SC, only: crtSparsity_SC
@@ -131,7 +132,7 @@
 
       implicit none
 
-      integer            :: istep, nnz
+      integer            :: istep
       real(dp)           :: veclen      ! Length of a unit-cell vector
       real(dp)           :: rmax
       logical            :: cell_can_change
@@ -455,13 +456,13 @@
          endif
       endif
 !
-      call globalize_sum(maxnh,nnz)
+      call globalize_sum(maxnh,nnz_g)
       if (cml_p) then
          call cmlStartPropertyList(mainXML,title='Orbital info')
          call cmlAddProperty(xf=mainXML, value=no_u,
      $        title='Number of orbitals in unit cell',
      $        dictref='siesta:no_u', units="cmlUnits:countable")
-         call cmlAddProperty(xf=mainXML, value=nnz,
+         call cmlAddProperty(xf=mainXML, value=nnz_g,
      $        title='Number of non-zeros',
      $        dictref='siesta:nnz', units="cmlUnits:countable")
          call cmlEndPropertyList(mainXML)

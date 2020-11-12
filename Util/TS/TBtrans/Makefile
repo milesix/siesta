@@ -54,6 +54,9 @@ SIESTA_OBJS= precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
 # Siesta timings
 SIESTA_OBJS += m_walltime.o timer_tree.o m_timer.o timer.o
 
+# Siesta kpoint-scale
+SIESTA_OBJS += get_kpoints_scale.o siesta_geom.o
+
 # Add specific class objects
 # class Objects
 SIESTA_OBJS += class_OrbitalDistribution.o \
@@ -378,6 +381,8 @@ find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
 find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
 geom_helper.o: intrinsic_missing.o
 geom_helper.o: intrinsic_missing.o
+get_kpoints_scale.o: parallel.o siesta_geom.o units.o
+get_kpoints_scale.o: parallel.o siesta_geom.o units.o
 idiag.o: local_sys.o parallel.o
 idiag.o: local_sys.o parallel.o
 init_output.o: files.o
@@ -446,8 +451,10 @@ m_sparsity_handling.o: class_OrbitalDistribution.o class_SpData1D.o
 m_sparsity_handling.o: class_SpData2D.o class_Sparsity.o geom_helper.o
 m_sparsity_handling.o: intrinsic_missing.o m_interpolate.o m_region.o
 m_sparsity_handling.o: precision.o
-m_spin.o: alloc.o files.o local_sys.o m_cite.o parallel.o precision.o units.o
-m_spin.o: alloc.o files.o local_sys.o m_cite.o parallel.o precision.o units.o
+m_spin.o: alloc.o files.o get_kpoints_scale.o local_sys.o m_cite.o parallel.o
+m_spin.o: precision.o
+m_spin.o: alloc.o files.o get_kpoints_scale.o local_sys.o m_cite.o parallel.o
+m_spin.o: precision.o
 m_timer.o: local_sys.o m_io.o m_walltime.o moreParallelSubs.o parallel.o
 m_timer.o: precision.o
 m_timer.o: local_sys.o m_io.o m_walltime.o moreParallelSubs.o parallel.o
@@ -586,6 +593,8 @@ minvec.o: cellsubs.o local_sys.o precision.o sorting.o
 minvec.o: cellsubs.o local_sys.o precision.o sorting.o
 moreParallelSubs.o: alloc.o local_sys.o m_io.o parallel.o precision.o
 moreParallelSubs.o: alloc.o local_sys.o m_io.o parallel.o precision.o
+siesta_geom.o: precision.o
+siesta_geom.o: precision.o
 timer.o: local_sys.o m_timer.o parallel.o timer_tree.o
 timer.o: local_sys.o m_timer.o parallel.o timer_tree.o
 timer_tree.o: m_walltime.o
@@ -804,6 +813,7 @@ class_ztrimat.o: class_TriMat.o
 m_diag.o: diag.o
 m_diag_option.o: diag_option.o
 m_find_kgrid.o: find_kgrid.o
+m_get_kpoints_scale.o: get_kpoints_scale.o
 m_minvec.o: minvec.o
 m_object_debug.o: object_debug.o
 m_timer_tree.o: timer_tree.o

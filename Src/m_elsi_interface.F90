@@ -130,7 +130,8 @@ module m_elsi_interface
 
 CONTAINS
 
-subroutine elsi_getdm(iscf, no_s, nspin, no_l, maxnh, no_u,  &
+subroutine elsi_getdm(iscf, no_s, nspin, no_l, no_u, &
+     maxnh, nnz_g,    &
      numh, listhptr, listh, H, S, qtot, temp, &
      xijo, nkpnt, kpoint, kweight,    &
      Dscf, ef, Entropy, occtol, neigwanted, Get_EDM_Only)
@@ -143,7 +144,8 @@ subroutine elsi_getdm(iscf, no_s, nspin, no_l, maxnh, no_u,  &
 
 
      real(dp), intent(inout) :: H(:,:), S(:)    ! Note: we might overwrite these
-     integer, intent(in) ::  iscf, maxnh, no_u, no_l, no_s, nkpnt
+     integer, intent(in) ::  iscf, no_u, no_l, no_s, nkpnt
+     integer, intent(in) ::  maxnh, nnz_g
      integer, intent(in) ::  neigwanted, nspin
      integer, intent(in) ::  listh(maxnh), numh(no_l), listhptr(no_l)
      real(dp), intent(in)  ::  kpoint(3,nkpnt), qtot, temp, kweight(nkpnt), occtol,xijo(3,maxnh)
@@ -183,7 +185,7 @@ subroutine elsi_getdm(iscf, no_s, nspin, no_l, maxnh, no_u,  &
          if  (.not. using_aux_cell) then
 
             call elsi_real_solver(iscf, no_u, no_l, nspin, &
-                     maxnh, listhptr, listh, qtot, temp, &
+                     maxnh, nnz_g, listhptr, listh, qtot, temp, &
                      H, S, Dscf, ef, Entropy, neigwanted, Get_EDM_Only)
 
          else
@@ -218,7 +220,7 @@ subroutine elsi_getdm(iscf, no_s, nspin, no_l, maxnh, no_u,  &
             allocate(Dscf_u(nnz_u,nspin))
 
             call elsi_real_solver(iscf, no_u, no_l, nspin, &
-                     nnz_u, listhptr_u, listh_u, qtot, temp, &
+                     nnz_u, 0, listhptr_u, listh_u, qtot, temp, &
                      H_u, S_u, Dscf_u, ef, Entropy, neigwanted, Get_EDM_Only)
 
             deallocate(H_u, S_u)
@@ -345,7 +347,8 @@ end subroutine elsi_get_opts
 ! But note taht this version assumes *the same* distributions for Siesta (setup_H et al) and ELSI
 ! operations.
 !
-subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
+subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, nnz_g_in, &
+  row_ptr, &
   col_idx, qtot, temp, ham, ovlp, DM, ef, ets, neigwanted, Get_EDM_Only)
 
   use fdf,         only: fdf_get
@@ -365,6 +368,7 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
   integer,  intent(in)    :: n_basis_l ! Local basis
   integer,  intent(in)    :: n_spin
   integer,  intent(in)    :: nnz_l     ! Local nonzero
+  integer,  intent(in)    :: nnz_g_in  ! Global nonzero (or 0 if not available)
   integer,  intent(in)    :: row_ptr(n_basis_l)
   integer,  intent(in), target    :: col_idx(nnz_l)
   real(dp), intent(in)    :: qtot
@@ -527,8 +531,17 @@ subroutine elsi_real_solver(iscf, n_basis, n_basis_l, n_spin, nnz_l, row_ptr, &
 
     if (n_spin == 1) then
 
-       ! Sparsity pattern
-       call globalize_sum(nnz_l, nnz_g, comm=elsi_global_comm)
+       ! Sparsity pattern configuration
+
+       ! nnz_g might be available, thus saving on communications
+       ! (and avoiding a possible bug in some MPI implementations)
+       call timer('find nnz_g', 1)
+       if (nnz_g_in == 0 ) then
+          call globalize_sum(nnz_l, nnz_g, comm=elsi_global_comm)
+       else
+          nnz_g = nnz_g_in
+       endif
+       call timer('find nnz_g', 2)
 
        allocate(row_ptr2(n_basis_l+1))
        row_ptr2(1:n_basis_l) = row_ptr(1:n_basis_l)+1
