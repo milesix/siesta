@@ -60,6 +60,10 @@ DEPS_GEN-BASIS=m_io.o io.o alloc.o basis_types.o precision.o  parallel.o \
           xml.o m_walltime.o read_xc_info.o  $(SYSOBJ) \
           m_fft_gpfa.o m_cite.o reclat.o units.o \
           semicore_info_froyen.o hamann.o files.o
+
+# Siesta kpoint-scale
+DEPS_GEN-BASIS += get_kpoints_scale.o siesta_geom.o
+
 GEN-BASIS_LOCAL_OBJS=gen-basis.o handlers.o local_sys.o
 OBJS_GEN-BASIS=$(DEPS_GEN-BASIS) $(GEN-BASIS_LOCAL_OBJS)
 
@@ -71,9 +75,12 @@ DEPS_IONCAT=f2kcli.o m_getopts.o basis_types.o precision.o  parallel.o \
           atom.o atmfuncs.o spher_harm.o interpolation.o arw.o \
           xml.o m_walltime.o ldau_specs.o\
           hamann.o m_cite.o  units.o files.o $(SYSOBJ)
+
+# Siesta kpoint-scale
+DEPS_IONCAT += get_kpoints_scale.o siesta_geom.o
+
 IONCAT_LOCAL_OBJS=ioncat.o handlers.o local_sys.o
 OBJS_IONCAT=$(DEPS_IONCAT) $(IONCAT_LOCAL_OBJS)
-
 
 #
 XC = $(GRIDXC_LIBS)
@@ -166,6 +173,8 @@ chemical.o: local_sys.o parallel.o precision.o
 chemical.o: local_sys.o parallel.o precision.o
 chkdim.o: local_sys.o
 chkdim.o: local_sys.o
+get_kpoints_scale.o: parallel.o siesta_geom.o units.o
+get_kpoints_scale.o: parallel.o siesta_geom.o units.o
 io.o: m_io.o
 io.o: m_io.o
 ldau_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
@@ -178,8 +187,10 @@ m_filter.o: bessph.o local_sys.o precision.o radfft.o
 m_filter.o: bessph.o local_sys.o precision.o radfft.o
 m_getopts.o: f2kcli.o
 m_getopts.o: f2kcli.o
-m_spin.o: alloc.o files.o local_sys.o m_cite.o parallel.o precision.o units.o
-m_spin.o: alloc.o files.o local_sys.o m_cite.o parallel.o precision.o units.o
+m_spin.o: alloc.o files.o get_kpoints_scale.o local_sys.o m_cite.o parallel.o
+m_spin.o: precision.o
+m_spin.o: alloc.o files.o get_kpoints_scale.o local_sys.o m_cite.o parallel.o
+m_spin.o: precision.o
 periodic_table.o: local_sys.o precision.o
 periodic_table.o: local_sys.o precision.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
@@ -188,6 +199,8 @@ radial.o: alloc.o interpolation.o precision.o xml.o
 radial.o: alloc.o interpolation.o precision.o xml.o
 read_xc_info.o: local_sys.o parallel.o precision.o
 read_xc_info.o: local_sys.o parallel.o precision.o
+siesta_geom.o: precision.o
+siesta_geom.o: precision.o
 spher_harm.o: precision.o
 spher_harm.o: precision.o
 units.o: precision.o
@@ -205,6 +218,7 @@ gpfa_core_dp.o: m_fft_gpfa.o
 gpfa_core_sp.o: m_fft_gpfa.o
 gpfa_fft.o: m_fft_gpfa.o
 m_bessph.o: bessph.o
+m_get_kpoints_scale.o: get_kpoints_scale.o
 m_hamann.o: hamann.o
 m_radfft.o: radfft.o
 m_semicore_info_froyen.o: semicore_info_froyen.o
