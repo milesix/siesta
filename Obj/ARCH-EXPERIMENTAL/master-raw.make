@@ -18,6 +18,7 @@ WITH_PSML=1
 WITH_GRIDXC=1
 #-------------
 
+WITH_PSOLVER=0
 WITH_EXTERNAL_ELPA=0
 WITH_ELSI=0
 WITH_FLOOK=0
@@ -109,6 +110,26 @@ FC_ASIS=$(FC_SERIAL)
 FPPFLAGS= $(DEFS_PREFIX)-DF2003 
 LIBS=
 COMP_LIBS=
+
+# ---- PSOLVER configuration -----------
+
+#
+# Notes: Some systems might not need the fmalloc-1 library
+# The LD_LIBRARY_PATH setting might need to be extended to find
+# libyaml and libfmalloc-1
+#
+ifeq ($(WITH_PSOLVER),1)
+ ifndef PSOLVER_ROOT
+   $(error you need to define PSOLVER_ROOT in your arch.make)
+ endif
+ FPPFLAGS_PSOLVER=-DSIESTA__PSOLVER
+ PSOLVER_INCFLAGS = -I$(PSOLVER_ROOT)/include
+ PSOLVER_LIBS = -L$(PSOLVER_ROOT)/lib -lPSolver-1 -latlab-1 -lfutile-1 -ldicts  -lyaml -lfmalloc-1
+ #
+ FPPFLAGS += $(FPPFLAGS_PSOLVER) 
+ INCFLAGS += $(PSOLVER_INCFLAGS) 
+ LIBS += $(PSOLVER_LIBS) 
+endif
 
 # ---- ELPA configuration -----------
 #

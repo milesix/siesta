@@ -6,6 +6,7 @@ An overview changelog for Siesta.
 
 ### PSolver
 
+* Added 'WITH_PSOLVER' compilation support  (see Obj/README)
 * Initial merge of Psolver working branch
 
 ### ELSI interface
