@@ -14,6 +14,7 @@
       subroutine siesta_end( )
       use fdf,             only : fdf_shutdown
       use memory_log,      only : memory_report
+      use precision,       only : dp
       use siesta_cml,      only : cml_p, mainXML, cmlEndModule
       use siesta_cmlsubs,  only : siesta_cml_exit
       use siesta_master,   only : siesta_subroutine  ! Is siesta a subroutine?
@@ -50,6 +51,7 @@
 #endif
 
 #ifdef SIESTA__FLOOK
+      use flook_siesta,    only : slua_call, LUA_FINALIZE
       use flook_siesta,    only : slua_close
       use siesta_options,  only : LUA
 #endif
@@ -61,9 +63,13 @@
 #endif
       use m_io,            only : io_assign, io_close
       use m_cite, only: announce_citations
+      use atomlist,        only : reset_atomlists
+      use m_new_matel,     only : new_MATEL
+      use listsc_module,   only : LISTSC_RESET
 
       implicit none
 
+      real(dp) :: R12(3), S12, DSDR(3)
       integer :: iu
 #ifdef MPI
       integer MPIerror
@@ -74,11 +80,18 @@
       if ( ionode ) call announce_citations()
 
 #ifdef SIESTA__FLOOK
+      ! Final call for the end-user
+      call slua_call(LUA,LUA_FINALIZE)
       ! Clean up the lua environment
       call slua_close(LUA)
 #endif
 
 !     Free allocated memory
+      ! Reset matrix element tables
+      R12 = 0._dp
+      call new_MATEL('S', 0, 0, R12, S12, DSDR)
+      call LISTSC_reset()
+      call reset_atomlists()
       call resetSparseMatrices( )
       call resetMeshDistr( )
       call resetdscfComm( )
