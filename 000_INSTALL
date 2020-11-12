@@ -19,6 +19,9 @@ NOTE: You need version 1.5.4 of the xmlf90 library,
 ** For extra performance options, you should install the ELSI library,
 with optional (recommended) external ELPA library. See README_ELSI.
 
+** Support for the PSolver library from the BigDFT project is available. See the manual
+   for intructions, and set WITH_PSOLVER=1 in the arch.make/fortran.mk files.
+
 ** Steps in detail
 
 - Dowload and unpack the library tarballs

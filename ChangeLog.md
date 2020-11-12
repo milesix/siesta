@@ -1,5 +1,9 @@
 An overview changelog for Siesta.
 
+## MaX2 release branch
+
+* Added 'WITH_PSOLVER' compilation support  (see Obj/README)
+
 ## MaX release branch
 
 * Some updates to building system
