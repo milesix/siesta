@@ -1422,34 +1422,36 @@ module m_w90_in_siesta
 !   between manifolds has to be carried out
     if( r_between_manifolds ) then
       if( index_manifold .eq. 3) then
+        if( first_chempotwann ) then
 #ifdef MPI
-        call MPI_barrier(MPI_Comm_world,MPIError)
+          call MPI_barrier(MPI_Comm_world,MPIError)
 #endif
-        if( IONode ) then
-          do nkp = 1, numkpoints
-            do iproj = 1, manifold_bands_w90_in(1)%numbands_w90_in
-              do mband = manifold_bands_w90_in(1)%number_of_bands+1,  &
-                         manifold_bands_w90_in(1)%number_of_bands +   & 
-                         manifold_bands_w90_in(2)%number_of_bands 
-                Amnmat(mband, iproj, nkp) = cmplx(0.0_dp,0.0_dp,kind=dp)
+          if( IONode ) then
+            do nkp = 1, numkpoints
+              do iproj = 1, manifold_bands_w90_in(1)%numbands_w90_in
+                do mband = manifold_bands_w90_in(1)%number_of_bands+1,  &
+                           manifold_bands_w90_in(1)%number_of_bands +   & 
+                           manifold_bands_w90_in(2)%number_of_bands 
+                  Amnmat(mband, iproj, nkp) = cmplx(0.0_dp,0.0_dp,kind=dp)
+                enddo
+              enddo
+              do iproj = manifold_bands_w90_in(1)%numbands_w90_in+1,    &
+                         manifold_bands_w90_in(3)%numbands_w90_in
+                do mband = 1, manifold_bands_w90_in(1)%number_of_bands 
+                  Amnmat(mband, iproj, nkp) = cmplx(0.0_dp,0.0_dp,kind=dp)
+                enddo
               enddo
             enddo
-            do iproj = manifold_bands_w90_in(1)%numbands_w90_in+1,    &
-                       manifold_bands_w90_in(3)%numbands_w90_in
-              do mband = 1, manifold_bands_w90_in(1)%number_of_bands 
-                Amnmat(mband, iproj, nkp) = cmplx(0.0_dp,0.0_dp,kind=dp)
-              enddo
-            enddo
-          enddo
 
-!         Write the Amn overlap matrices in a file, in the format required
-!         by Wannier90
-          call writeamn( ispin )
+!           Write the Amn overlap matrices in a file, in the format required
+!           by Wannier90
+            call writeamn( ispin )
 
+          endif
+#ifdef MPI
+          call MPI_barrier(MPI_Comm_world,MPIError)
+#endif
         endif
-#ifdef MPI
-        call MPI_barrier(MPI_Comm_world,MPIError)
-#endif
       endif
     endif
 
