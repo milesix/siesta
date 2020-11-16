@@ -118,16 +118,18 @@ C           Valid orbital
                 !
                 jg = orb_gindex(js,joa)
                 
-                ! Compute tau_mu*S_nu,mu + X_nu,mu
+                ! Compute tau_mu*S_nu,mu + X_nu,mu, where
+                ! tau_mu is the unit-cell coordinate of mu ( hene jua)
+                !
                 if (rcut(is,ioa)+rcut(js,joa) .gt. rij) then
                   call new_MATEL( 'S', ig, jg, xij(1:3,jn),
      $                        Overlap_ij, grSij )
                   call new_MATEL( 'X', ig, jg, xij(1:3,jn), Sij, grSij )
-                  Ri(jo,1) = Ri(jo,1) + Sij + Overlap_ij*xa(1,ja)
+                  Ri(jo,1) = Ri(jo,1) + Sij + Overlap_ij*xa(1,jua)
                   call new_MATEL( 'Y', ig, jg, xij(1:3,jn), Sij, grSij )
-                  Ri(jo,2) = Ri(jo,2) + Sij + Overlap_ij*xa(2,ja)
+                  Ri(jo,2) = Ri(jo,2) + Sij + Overlap_ij*xa(2,jua)
                   call new_MATEL( 'Z', ig, jg, xij(1:3,jn), Sij, grSij )
-                  Ri(jo,3) = Ri(jo,3) + Sij + Overlap_ij*xa(3,ja)
+                  Ri(jo,3) = Ri(jo,3) + Sij + Overlap_ij*xa(3,jua)
                 endif
               enddo
             enddo
