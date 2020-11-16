@@ -448,6 +448,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     else
       call m_copy(C_min,C_old,keep_sparsity=.true.)
     end if  
+    if(ionode) print'(a,f10.8)','C occupation = ', c_occ
     call timer('c_extrapol',2)
   end if
 
