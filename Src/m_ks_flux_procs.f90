@@ -71,9 +71,7 @@ subroutine compute_psi_hat_c (psi_hat_c, n_wfs)
   call c_f_pointer(c_loc(psi(1)), coeffs, [no_u, no_l]) ! for new compilers
   ! explicit pointing to psi(1) -> psi; avoid gcc<=4.8
 
-  ! allocate(psi_hat_c(no_u,no_l,3))
-
-  allocate (tmp_g(no_u))
+  allocate (tmp_g(no_l))
 
   dscf_hat => ks_flux_D(:,1)    !NOTE: Just first spin component
   ! computing and storage of every of the 3 components
@@ -84,12 +82,11 @@ subroutine compute_psi_hat_c (psi_hat_c, n_wfs)
   DO idx=1,3
      rmatrix => ks_flux_Rmat(:,idx)
 
-     !! THESE LOOPS SHOULD PROBABLY BE RE-DESIGNED TO FOLLOW THE NEW NOTES
 
   do iw = 1,n_wfs
      tmp_g(:) = 0.0
-     do nu = 1,no_u
-        do mu = 1,no_l
+     do nu = 1,no_l
+        do mu = 1,no_u
           do ij = 1, numh(nu)
              k = listhptr(nu) + ij
              col = listh(k)
@@ -101,40 +98,33 @@ subroutine compute_psi_hat_c (psi_hat_c, n_wfs)
         end do
      end do
 
+     ! Use dense, complete, DM, but note that, for the spinless case, DM = 2 \sum_occ { |psi><psi| }
+     ! We need then to use a factor of 1/2
+     
      do alpha = 1,no_u
         do nu = 1,no_l
+
            if (alpha == nu) then
               psi_hat_c(alpha,iw,idx) = psi_hat_c(alpha,iw,idx) + &
-                   tmp_g(nu) * (1.0 - Dfull(nu,alpha,1)) ! <- only 1st spin component
+                   tmp_g(nu) * (1.0 - 0.5_dp * Dfull(nu,alpha,1)) ! <- only 1st spin component
            else
               psi_hat_c(alpha,iw,idx) = psi_hat_c(alpha,iw,idx) + &
-                   tmp_g(nu) * (- Dfull(nu,alpha,1)) ! <- only 1st spin component
+                   tmp_g(nu) * (- 0.5_dp * Dfull(nu,alpha,1)) ! <- only 1st spin component
            end if
 
-          ! do ij = 1, numh(nu)
-          !    k = listhptr(nu) + ij
-          !    col = listh(k)
-          !    if (col == alpha) then
-          !      if (alpha == nu) then
-          !        psi_hat_c(alpha,iw,idx) = psi_hat_c(alpha,iw,idx) + &
-          !             tmp_g(nu) * (1.0 - dscf_hat(k))
-          !      else
-          !        psi_hat_c(alpha,iw,idx) = psi_hat_c(alpha,iw,idx) + &
-          !             tmp_g(nu) * (- dscf_hat(k))
-          !      end if
-          !      exit
-          !    endif
-          ! end do
         end do
      end do
-  end do
-  END DO
+     
+  end do ! iw
+  END DO ! idx
 
   deallocate(tmp_g)
 
 end subroutine compute_psi_hat_c
 
-
+!
+!  This routine is very complex. It has to be re-checked
+!
 subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
   use siesta_options, only : virtual_dt
   ! Take proper velocities from `BASE` step:
@@ -215,7 +205,7 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
         !    !NOTE: Only first spin component here now--^
         ! end do
         do nu=1,no_l
-           tmp_left(mu) = tmp_left(mu)+Dderiv(mu,nu,1)*tmp_right(nu)
+           tmp_left(mu) = tmp_left(mu)+ 0.5_dp * Dderiv(mu,nu,1)*tmp_right(nu)
          !NOTE: Only first spin component here now--^
         end do
      end do
@@ -236,11 +226,11 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
                  if ( sec_col .eq. mu ) then
                     if (beta.eq.lambda) then
                        acc_left = acc_left + &
-                            &(1.0 - Dfull(lambda,beta,1)) * S(sec_ind)
+                            &(1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * S(sec_ind)
                             ! &(1.0 - dscf_hat(ind)) * S(sec_ind)
                     else
                        acc_left = acc_left + &
-                            &(0.0 - Dfull(lambda,beta,1)) * S(sec_ind)
+                            &(0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * S(sec_ind)
                             ! &(0.0 - dscf_hat(ind)) * S(sec_ind)
                     end if
                     exit
@@ -277,7 +267,7 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
         !    tmp_left(mu) = tmp_left(mu) + dscf_hat(ind) * tmp_right(nu)
         ! end do
         do nu=1,no_l
-           tmp_left(mu) = tmp_left(mu) + Dfull(mu,nu,1) * tmp_right(nu)
+           tmp_left(mu) = tmp_left(mu) + 0.5_dp * Dfull(mu,nu,1) * tmp_right(nu)
         end do
      end do
      tmp_right(:) = tmp_left(:)
@@ -298,13 +288,13 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
                     if (beta.eq.lambda) then
                        acc_left = acc_left + &
                             ! &(1.0 - dscf_hat(ind)) * &
-                            &(1.0 - Dfull(lambda,beta,1)) * &
+                            &(1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * &
                             &(sum(gradS(sec_ind,:) * &
                             & va_before_move(:,iaorb(mu))))
                     else
                        acc_left = acc_left + &
                             ! &(0.0 - dscf_hat(ind)) * &
-                            &(0.0 - Dfull(lambda,beta,1)) * &
+                            &(0.0 - 0.5_dp * Dfull(lambda,beta,1)) * &
                             &(sum(gradS(sec_ind,:) * &
                             & va_before_move(:,iaorb(mu))))
                     end if
@@ -344,7 +334,7 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
         !    tmp_left(mu) = tmp_left(mu) + dscf_hat(ind) * tmp_right(nu)
         ! end do
         do nu=1,no_l
-           tmp_left(mu) = tmp_left(mu) + Dfull(mu,nu,1) * tmp_right(nu)
+           tmp_left(mu) = tmp_left(mu) + 0.5_dp * Dfull(mu,nu,1) * tmp_right(nu)
         end do
      end do
      tmp_right(:) = tmp_left(:)
@@ -365,11 +355,11 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
                     if (beta.eq.lambda) then
                        acc_left = acc_left + &
                             ! &(1.0 - dscf_hat(ind)) * S(sec_ind)
-                            &(1.0 - Dfull(lambda,beta,1)) * S(sec_ind)
+                            &(1.0_dp  - 0.5_dp * Dfull(lambda,beta,1)) * S(sec_ind)
                     else
                        acc_left = acc_left + &
                             ! &(0.0 - dscf_hat(ind)) * S(sec_ind)
-                            &(0.0 - Dfull(lambda,beta,1)) * S(sec_ind)
+                            &(0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * S(sec_ind)
                     end if
                     exit
                  end if
@@ -392,7 +382,7 @@ end subroutine compute_psi_dot_c
 
 subroutine compute_Jks ()
 
-  use sparse_matrices, only: H
+  use sparse_matrices, only: H, S
   use ks_flux_data, only: psi_hat_c, psi_dot_c, ks_flux_Jks
 
   use m_eo, only: eo
@@ -405,14 +395,8 @@ subroutine compute_Jks ()
 
   !> Selected element of matrix H
   !> (only a factor, not the whole sandwitch!)
-  real(dp):: H_el
 
-  !> First dimension: coeff index,
-  !> Second dimension: wavefunction index (only no_l of them)
-  real(dp), pointer :: coeffs(:,:)
-  real(dp), allocatable :: res_array(:)
-
-  call c_f_pointer(c_loc(psi(1)), coeffs, [no_u, no_l])
+  real(dp):: H_el_S
 
   allocate(psi_hat_c(no_u,no_l,3))
   allocate(psi_dot_c(no_u,no_l))
@@ -424,30 +408,34 @@ subroutine compute_Jks ()
 
   ks_flux_Jks(:) = 0.0          ! Init result to zeros outside main loop
 
+  ! Parallel operation note: we need psi_hat_c and psi_dot_c coefficients for all
+  ! occupied wavefunctions in all processors.
+  ! 
   do iw = 1,no_occ_wfs
-     do alpha = 1,no_u
-        do j = 1,numh(alpha)
-           ind = j + listhptr(alpha)
+     
+     do mu = 1,no_l
+        do j = 1,numh(mu)
+           ind = j + listhptr(mu)
            col = listh(ind)
-           beta = indxuo(col)
+           nu = indxuo(col)
 
-           if (alpha.eq.beta) then
-              H_el = H(ind,1) + eo(iw,1,1) ! <- correct?
-           else
-              H_el = H(ind,1) ! <- NOTE: one spin component
-           endif
-
+           H_e_S = H(ind,1) + eo(iw,1,1) * S(ind)   ! We assume Gamma point with no
+                                                    ! aux supercell
+                                                    ! Otherwise, fold to H(k=0), S(k=0)
            do idx = 1,3
 
               ks_flux_Jks(idx) = ks_flux_Jks(idx) + &
-                   & psi_hat_c(alpha,iw,idx) * &
-                   & H_el * &
-                   & psi_dot_c(beta,iw)
+                    psi_hat_c(mu,iw,idx) * h_e_s * psi_dot_c(nu,iw)
+                  
            end do
         end do
      end do
   end do
 
+  ks_flux_Jks(:) = 2.0_dp * ks_flux_Jks(:)   ! For spin
+  !
+  ! For parallel operation, now reduce ks_flux_Jks over all processors
+  !
   Print *, "[Jks] ", ks_flux_Jks
 
   deallocate(psi_hat_c)
