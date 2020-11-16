@@ -273,6 +273,10 @@ C Global operation to form new density matrix
       call re_alloc( PSI_TMP, 1, nuotot*maxnuo*spinor_dim, 'PSI_TMP',
      &               'diagg' )
 
+      ! These arrays are not distributed... For parallel operation, and
+      ! to match the "sparse" convention, we should probably make the first
+      ! dimension "nuo"
+      
       if (want_virtual_step_md ) then
          if (substep .eq. BASE_STEP) then
             call re_alloc(Dfull, 1, nuotot, 1, nuotot, 1, h_spin_dim,
