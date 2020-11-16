@@ -38,7 +38,9 @@ module m_wannier_in_nao
 
   implicit none
 
-  CONTAINS
+CONTAINS
+
+#ifdef SIESTA__WANNIER90
 
   subroutine wannier_in_nao( ispin, index_manifold )
     use parallel,       only: Nodes          ! Total number of Nodes
@@ -627,5 +629,12 @@ module m_wannier_in_nao
 !!   End debugging
 
   end subroutine wannier_in_nao
+
+#else
+
+  subroutine wannier_in_nao
+
+  end subroutine wannier_in_nao
+#endif
 
 end module m_wannier_in_nao

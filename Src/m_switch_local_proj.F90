@@ -293,8 +293,8 @@ module m_switch_local_projection
  &        'switch_local_projection: Populating the relevant matrices for '  
         write(6,'(a)')                                                      & 
  &        'switch_local_projection: calling WANNIER90 directly from SIESTA'
-        write(6,'(a,i5)')                                                   & 
- &        'switch_local_projection: band manifold = ', index_manifold
+        write(6,'(2a)') 'switch_local_projection: band manifold = ', &
+            trim(manifold_bands_w90_in(index_manifold)%name)
         numkpoints = numkpoints_w90_in
 !       Initialize the list of k-points
         nullify( kpointsfrac )

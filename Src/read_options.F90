@@ -1839,7 +1839,7 @@ subroutine read_options( na, ns, nspin )
   !   Wannier90 within SIESTA -related flags
   !
 
-  n_wannier_manifolds = fdf_get( 'NumberOfBandManifoldsForWannier', 0 )
+  n_wannier_manifolds = fdf_block_linecount( 'WannierManifolds' )
   if( n_wannier_manifolds .ne. 0 ) w90_in_siesta_processing = .true.
 
   r_between_manifolds = fdf_get( 'R_between_manifolds', .false. )

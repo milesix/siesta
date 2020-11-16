@@ -58,11 +58,12 @@
 
   CONTAINS
 
+#ifdef SIESTA__WANNIER90
+
 !> \brief General purpose of the subroutine chempotwann
 !!
 !!
   subroutine chempotwann ( index_manifold, ispin, H_chempotwann )
-
   use parallel,         only: Node             ! Local processor number
   use parallel,         only: Nodes            ! Total number of processors in a
                                                !  parallel run
@@ -409,6 +410,12 @@
 
    end subroutine chempotwann
 
+#else
+
+   subroutine chempotwann()
+   end subroutine chempotwann
+
+#endif
 
    subroutine add_Hamiltonian_chempotwann( H_chempotwann )
    implicit none 

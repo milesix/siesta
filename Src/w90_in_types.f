@@ -35,7 +35,8 @@
       implicit none
 
       type, public ::  w90_in_manifold_t
-          character(label_length+3)  :: seedname_w90_in
+          character(64) :: name
+          character(label_length+32) :: seedname_w90_in
                                        ! Seed of the name of the file 
                                        !   that will be used to dump the 
                                        !   information of the matrix elements
@@ -56,24 +57,24 @@
                                        !     number of bands in the manifold.
                                        !     In this case, a disentanglement
                                        !     procedure is required
-          integer                :: num_iter       
+          integer                :: num_iter = 500
                                        ! Number of iterations for th
                                        !     minimization of \Omega
-          integer, pointer       :: orbital_indices(:)
+          integer, pointer       :: orbital_indices(:) => null()
                                        ! Indices of the orbitals that will be
                                        !     used as localized functions in the
                                        !     initial guess of the minimization
                                        !     of the spreading
-          logical, pointer       :: isexcluded(:)  
+          logical, pointer       :: isexcluded(:) => null()
                                        ! List of bands excluded for
                                        !     Wannier transformation
-          integer, pointer       :: isincluded(:)  
+          integer, pointer       :: isincluded(:) => null()
                                        ! List of bands included for
                                        !     Wannier transformation
-          logical, pointer       :: orbexcluded(:) 
+          logical, pointer       :: orbexcluded(:) => null()
                                        ! List of orbitals excluded 
                                        !     for Wannier transformation
-          integer, pointer       :: orb_in_manifold(:) 
+          integer, pointer       :: orb_in_manifold(:) => null()
                                        ! Sequential index of the orbitals that
                                        !     will be used in the Wannier 
                                        !     transformation
@@ -86,29 +87,15 @@
                                        !     of the overlap and 
                                        !     projection matrices
                                        !     in the local node
-          real(dp)               :: dis_win_min   
-                                       ! Bottom of the outer energy
+          real(dp)               :: dis_win(2) = (/-1._dp, 0._dp/)
+                                       ! Bottom/Top of the outer energy
                                        !     window for band disentanglement
                                        !     Units: energy
                                        !     Read from the fdf input
                                        !     in the 
                                        !     %block WannierProjections
-          real(dp)               :: dis_win_max 
-                                       ! Top of the outer energy
-                                       !     window for band disentanglement
-                                       !     Units: energy
-                                       !     Read from the fdf input
-                                       !     in the 
-                                       !     %block WannierProjections
-          real(dp)               :: dis_froz_min  
-                                       ! Bottom of the inner (frozen) energy
-                                       !     window for band disentanglement
-                                       !     Units: energy
-                                       !     Read from the fdf input
-                                       !     in the 
-                                       !     %block WannierProjections
-          real(dp)               :: dis_froz_max  
-                                       ! Top of the inner (frozen) energy
+          real(dp)               :: dis_froz(2) = (/-1._dp, 0._dp/)
+                                       ! Bottom/Top of the inner (frozen) energy
                                        !     window for band disentanglement
                                        !     Units: energy
                                        !     Read from the fdf input
@@ -117,21 +104,21 @@
           logical                :: disentanglement  
                                        ! Is the disentanglement 
                                        !   procedure required for this manifold?
-          logical                :: wannier_plot  
+          logical                :: wannier_plot = .false.
                                        ! Plot the Wannier functions?
-          integer                :: wannier_plot_supercell(3)
+          integer               :: wannier_plot_supercell(3) = (/1,1,1/)
                                        ! Size of the supercell for 
                                        !   plotting the WF
-          logical                :: fermi_surface_plot  
+          logical                :: fermi_surface_plot = .false.
                                        ! Plot the Fermi surface?
-          logical                :: write_hr      
+          logical                :: write_hr = .false.
                                        ! Write the Hamiltonian in 
                                        !   the WF basis?
-          logical                :: write_tb      
+          logical                :: write_tb = .false.
                                        ! Write lattice vectors, 
                                        !   Hamiltonian, and position
                                        !   operator in WF basis
-          type(trialorbital), allocatable  :: proj_w90_in(:)
+          type(trialorbital), allocatable :: proj_w90_in(:)
                                        ! Initial guess for the localized 
                                        !   functions
       end type w90_in_manifold_t
