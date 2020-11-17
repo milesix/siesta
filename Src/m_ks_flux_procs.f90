@@ -100,7 +100,7 @@ subroutine compute_psi_hat_c (psi_hat_c, n_wfs)
 
      ! Use dense, complete, DM, but note that, for the spinless case, DM = 2 \sum_occ { |psi><psi| }
      ! We need then to use a factor of 1/2
-     
+
      do alpha = 1,no_u
         do nu = 1,no_l
 
@@ -114,7 +114,7 @@ subroutine compute_psi_hat_c (psi_hat_c, n_wfs)
 
         end do
      end do
-     
+
   end do ! iw
   END DO ! idx
 
@@ -391,7 +391,7 @@ subroutine compute_Jks ()
 
   integer :: idx
   integer :: no_occ_wfs
-  integer :: iw, alpha, beta, j, ind, col
+  integer :: iw, mu, nu, j, ind, col
 
   !> Selected element of matrix H
   !> (only a factor, not the whole sandwitch!)
@@ -410,23 +410,23 @@ subroutine compute_Jks ()
 
   ! Parallel operation note: we need psi_hat_c and psi_dot_c coefficients for all
   ! occupied wavefunctions in all processors.
-  ! 
+  !
   do iw = 1,no_occ_wfs
-     
+
      do mu = 1,no_l
         do j = 1,numh(mu)
            ind = j + listhptr(mu)
            col = listh(ind)
            nu = indxuo(col)
 
-           H_e_S = H(ind,1) + eo(iw,1,1) * S(ind)   ! We assume Gamma point with no
+           H_el_S = H(ind,1) + eo(iw,1,1) * S(ind)   ! We assume Gamma point with no
                                                     ! aux supercell
                                                     ! Otherwise, fold to H(k=0), S(k=0)
            do idx = 1,3
 
               ks_flux_Jks(idx) = ks_flux_Jks(idx) + &
-                    psi_hat_c(mu,iw,idx) * h_e_s * psi_dot_c(nu,iw)
-                  
+                    psi_hat_c(mu,iw,idx) * H_el_s * psi_dot_c(nu,iw)
+
            end do
         end do
      end do
