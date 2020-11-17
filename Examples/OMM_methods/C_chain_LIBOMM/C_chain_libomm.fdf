@@ -9,12 +9,16 @@ PAO.EnergyShift 500 meV
 PAO.BasisSize DZ
 
 SolutionMethod LIBOMM # Cubic-scaling OMM using libOMM library
+OMM.PreconFirstStep 3 # Number of SCF steps in the first MD step for which to apply preconditioning
+#OMM.Precon -1        # Number of SCF steps of all MD steps for which to apply preconditioning
+OMM.TPreconScale 10 Ry # Scale for kinetic energy preconditioning
 OMM.LongOutput true   # Write detailed information for each SCF step to libOMM.log
 OMM.Use2D true        # Use 2D data decomposition for parallelization
 OMM.Eta -3.8506 eV    # Eta similar to the one for Kim's method
 OMM.RelTol 1.d-7      # Relative tolerance for CG energy minimization
 OMM.GTol 1.d-3        # Tolerance for gradient in CG energy minimization
 OMM.WriteCoeffs true  # Write the coefficients for LWFs 
+#OMM.ReadCoeffs true  # Read restart for LWFs
 OMM.NumLWFs 120       # Number of LWFs considered
 BlockSize 32
 

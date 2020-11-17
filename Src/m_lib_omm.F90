@@ -125,7 +125,7 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
     end if
     long_out = fdf_boolean('OMM.LongOutput',.true.)
     cg_tol = fdf_get('OMM.RelTol',1.0d-9)
-    g_tol = fdf_get('OMM.GTol',1.0d-5)
+    g_tol = fdf_get('OMM.GTol',1.0d-3)
     precon_st1 = fdf_integer('OMM.PreconFirstStep',-1)
     precon_st = fdf_integer('OMM.Precon',-1)
     tau = fdf_get('OMM.TPreconScale',10.0_dp,'Ry')
@@ -404,7 +404,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     Use2D = fdf_boolean('OMM.Use2D',.true.)
     C_extrapol = fdf_boolean('OMM.Extrapolate',.false.)
     long_out = fdf_boolean('OMM.LongOutput',.true.)
-    cg_tol = fdf_get('OMM.RelTol',1.0d-9)
+    cg_tol = fdf_get('OMM.RelTol',1.0d-7)
     g_tol = fdf_get('OMM.GTol',1.0d-3)
     WriteCoeffs=fdf_boolean('OMM.WriteCoeffs',.false.)
     ReadCoeffs=fdf_boolean('OMM.ReadCoeffs',.false.)
@@ -602,7 +602,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     integer, allocatable :: id_col(:), id_row(:), nze_row(:)
     integer, allocatable :: neib(:), iatom(:)
     real(dp) :: rn(2), coef, rmax, rr(3), rrmod, cgval
-    logical :: found
+    logical :: found, include_all
     character(5) :: m_storage
 
     m_storage ='pdcsr'
@@ -621,10 +621,11 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
       enddo
     enddo
     if(ionode) print'(a,f13.7)',    'rmax = ', rmax
-
-    call mneighb(ucell,rcoor,na_u,xa,0,0,nna)
     if(ionode) print'(a,f13.7)',    'rcoor = ', rcoor
 
+    include_all = .true.
+    if(2.0 * rcoor .lt. rmax) include_all = .false.
+    if(.not. include_all) call mneighb(ucell,rcoor,na_u,xa,0,0,nna)
    
     coef = 1.0d-2/sqrt(real(h_dim,dp))
 
@@ -672,65 +673,67 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
 
     allocate(id_row(1:nrows))
     allocate(nze_row(1:nrows))
-    nze_row(:) = 0
-    id_row(:) = 0    
-    allocate(id_col_p(1:1))
-    do iblks = 0, nblks
-      iwf1 = iblks * BlockSize_c * Nodes + BlockSize_c * Node + 1
-      iwf2 = iblks * BlockSize_c * Nodes + BlockSize_c * (Node + 1)
-      if(iwf2 .gt. wf_dim) iwf2 = wf_dim
-      do iwf = iwf1, iwf2
-        if((iwf==iwf1) .or. (iatom(iwf) .ne. iatom(iwf-1))) then
-          if(allocated(neib)) deallocate(neib)
-          if(2.0 * rcoor .lt. rmax) then
-            call mneighb(ucell,rcoor,na_u,xa,iatom(iwf),0,nna) !
-          else
-            nna = na_u
-            do j = 1, na_u
-              jan(j) = j
+    if(.not. include_all) then
+      nze_row(:) = 0
+      id_row(:) = 0    
+      allocate(id_col_p(1:1))
+      do iblks = 0, nblks
+        iwf1 = iblks * BlockSize_c * Nodes + BlockSize_c * Node + 1
+        iwf2 = iblks * BlockSize_c * Nodes + BlockSize_c * (Node + 1)
+        if(iwf2 .gt. wf_dim) iwf2 = wf_dim
+        do iwf = iwf1, iwf2
+          if((iwf==iwf1) .or. (iatom(iwf) .ne. iatom(iwf-1))) then
+            if(allocated(neib)) deallocate(neib)
+            call mneighb(ucell,rcoor,na_u,xa,iatom(iwf),0,nna)
+            allocate(neib(1:nna))
+            neib(:) = 0
+            index = 0
+            do i = 1, nna
+              found = .false.
+              do j = 1, index
+                if(neib(j) == jan(i)) found = .true.
+              end do
+              if(.not. found) then
+                index = index + 1
+                neib(index) = jan(j)
+              end if
+            end do
+            nna = index
+            do i = 2, nna
+              neib0 = neib(i)
+              j = i - 1
+              do while (neib0 .lt. neib(j))
+                neib(j + 1) = neib(j)
+                neib(j) = neib0
+                j = j - 1
+              end do
             end do
           end if
-          allocate(neib(1:nna))
-          neib(:) = 0
-          index = 0
-          do i = 1, nna
-            found = .false.
-            do j = 1, index
-              if(neib(j) == jan(i)) found = .true.
-            end do
-            if(.not. found) then
-              index = index + 1
-              neib(index) = jan(j)
-            end if
-          end do
-          nna = index
-          do i = 2, nna
-            neib0 = neib(i)
-            j = i - 1
-            do while (neib0 .lt. neib(j))
-              neib(j + 1) = neib(j)
-              neib(j) = neib0
-              j = j - 1
-            end do
-          end do
-        end if
 
-        io = io + 1
-        id_row(io) = jo
-        do j = 1, nna
-          ja = neib(j)
-          norb = lasto(ja) - lasto(ja-1) 
-          nze_c = nze_c + norb
-          nze_row(io) = nze_row(io) + norb
-          if(nze_c .gt. size(id_col_p)) call re_alloc(id_col_p, 1, nze_c, 'id_col_p', 'omm_min_block')
-          do iorb = 1, norb
-            jo = jo + 1
-            id_col_p(jo) = lasto(ja-1)+iorb
-          end do
-        end do      
+          io = io + 1
+          id_row(io) = jo
+          do j = 1, nna
+            ja = neib(j)
+            norb = lasto(ja) - lasto(ja-1) 
+            nze_c = nze_c + norb
+            nze_row(io) = nze_row(io) + norb
+            if(nze_c .gt. size(id_col_p)) call re_alloc(id_col_p, 1, nze_c, 'id_col_p', 'omm_min_block')
+            do iorb = 1, norb
+              jo = jo + 1
+              id_col_p(jo) = lasto(ja-1)+iorb
+            end do
+          end do      
+        end do
+      end do 
+      if(allocated(neib)) deallocate(neib) 
+    else
+      do io = 1, nrows
+        id_row(io) = (io-1) * h_dim
+        nze_row(io) = h_dim
       end do
-    end do 
-    if(allocated(neib)) deallocate(neib) 
+      nze_c = h_dim * nrows
+    end if      
+
     allocate(c_loc(1:nze_c))
     allocate(id_col(1:nze_c))
     jo = 0
@@ -752,13 +755,17 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
             cgval = 1.0_dp
           end if
           c_loc(jo) = cgval * coef * fact(iwf)
-          id_col(jo) = id_col_p(jo)
+          if(.not. include_all) then
+             id_col(jo) = id_col_p(jo)
+          else
+             id_col(jo) = i
+          end if
         end do
       end do 
     end do
     if(allocated(iatom)) deallocate(iatom)
     if(allocated(fact)) deallocate(fact)
-    nullify(id_col_p)
+    if(associated(id_col_p)) nullify(id_col_p)
 
     if (.not. C_min%is_initialized) call m_allocate(C_min,wf_dim,h_dim,&
        BlockSize_c,BlockSize_h,label=m_storage,use2D=Use2D)
