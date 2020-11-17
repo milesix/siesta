@@ -3930,18 +3930,16 @@ C
      $                        is,l,nsm,basp,rco)
                  
               if (rco(1,l,nsm).lt.1.0d-5) then    
-C
-C Automatic determination of the cut off radius for the PAOs
-C Atomic eigenvalues
-C
+
+                ! Automatic determination of the cut off radius for the PAOs
+
+                ! Compute free-atom eigenvalues
                 nnodes=nsm
                 nprin=l+nsm
                 call schro_eq(Zval,rofi,Vpot,ve,s,drdi,
      .                        nrval,l,a,b,nnodes,nprin,
      .                        eigen(l),rphi(1,l,nsm))
-C
-C Rc given by eshift
-C
+
                 if (eigen(l).gt.0.0d0) then 
                   write(6,'(/A,I2,A)')
      .       'SPLIT: ERROR Orbital with angular momentum L=',l,
@@ -3950,29 +3948,35 @@ C
      .       'SPLIT: ERROR a cut off radius must be explicitly given' 
                   call die
                 endif 
+
+                ! Determine the rc from the energy shift
                 if (abs(eshift).gt.1.0d-5) then
                   el=eigen(l)+eshift
+                  ! The rco coming out of this is not pinned to a grid point
                   call rc_vs_e(a,b,rofi,Vpot,ve,nrval,l,el,
      .                         nnodes,rco(1,l,nsm))
                 else
-                  rco(1,l,nsm)=rofi(nrval-2)
+                   ! out near "infinity" (should be catched?)
+                   rco(1,l,nsm)=rofi(nrval-2)  
                 endif
                 write(6,'(/,A,/,A,f10.6,A)')
      .            'SPLIT: PAO cut-off radius determined from an',
      .            'SPLIT: energy shift=',eshift,' Ry'
 
               endif  
-C
-C If the compression factor is negative or zero the orbitals are
-C left untouched
-C
+
+              ! Check lambda
               if (lambda(1,l,nsm).le.0.0d0) lambda(1,l,nsm)=1.0d0
-!
-! SOFT-CONFINEMENT 
-!
-C Calculate the soft confinement potential for a given atomic species
-C and angular momentum 
-!!AG** rco might not be the PAO cutoff radius! See below
+
+              ! Soft confinement----(plus 'charge confinement', if enabled)-----
+              !
+              ! Calculate the soft confinement potential for the current
+              ! rco. Inside the routine, the effective 'singularity' rc
+              ! is a bit larger than the next-highest point to the
+              ! pinned rco.  If we later pin rco to an odd-numbered grid
+              ! point (see below), Vsoft(rco) can be large. This is Still, for
+              ! backwards compatibility we leave this block here, instead
+              ! of recomputing vsoft for the actual rco(1,l,:)
 
               call build_vsoft(is,l,nsm,rinn(l,nsm),vcte(l,nsm),
      .               qcoe(l,nsm),qyuk(l,nsm),qwid(l,nsm),a,b,
@@ -3982,18 +3986,19 @@ C and angular momentum
               do ir = 1, nrval
                 vePAOsoft(ir) = vePAO(ir) + vsoft(ir)
               enddo
+              ! Note that this file does not discriminate over l or nsm
               if (write_ion_plot_files) then
                  call file_out(nrval,rofi,vePAOsoft,
      .                trim(global_label)//".Vsoft")
               endif
-!
-! END SOFT-CONFINEMENT 
-!
-              do izeta=1, nzeta(l,nsm)
-C
-C Compression factor is only active for the initial pao when using
-C split option for the generation of the basis set
-C
+              !------------------------------------------------------------------
+
+              loop_over_zetas: do izeta=1, nzeta(l,nsm)
+
+                !-----------------
+                ! Determine the rc values
+
+                ! Compression factors for all zetas are equal to the 1st one
                 lambda(izeta,l,nsm)=lambda(1,l,nsm)
 
 !
@@ -4027,12 +4032,10 @@ C
                   
                 if (izeta.eq.1) then 
 
-!
-!AG**    Soft-confinement setup might need to go here
-!
-C
-C Generate PAO orbitals for the first shell of the basis set
-C 
+                  ! Generate PAO orbitals for the first shell of the basis set
+
+                  ! (Soft-confinement setup might need to go here in future)
+
                   nnodes=nsm
                   nprin=l+nsm
                   call schro_eq(Zval,rofi,Vpot,vePAOsoft,s,drdi,
@@ -4066,20 +4069,15 @@ C
                   endif
 
                 else              ! izeta > 1...
-C
-C Cut-off radius for double-Z, triple-Z,..., if it is set to
-C zero in the input then it is calculated from the splitnorm
-C parameter
-C
+
                   if (rco(izeta,l,nsm).gt.rco(1,l,nsm)) then
                     call die("higher-z rc larger than for 1st one")
                   endif
                                   
-                  ! If the rc(z>1) is explicitly given, we round it again
-                  ! but this operation should be idempotent 
 
                   if (rco(izeta,l,nsm).gt.1.0d-5) then
 
+                    ! We round again, but this operation should be idempotent ...
                     rc=rco(izeta,l,nsm)/lambda(1,l,nsm)
                     nrc=nint(log(rc/b+1.0d0)/a)+1
 
@@ -4227,10 +4225,13 @@ c                        write(68,*) r,rh,rphi(ir,l,ism)
                       enddo
            enddo ! ism
 
-           if (nrc.ne.nrc1) then 
+           if (nrc.ne.nrc1) then
+              ! This re-defines rco...
               nrc=nrc1
               rco(izeta,l,nsm)=
      .             b*(exp(a*(nrc1-1))-1.0d0)*lambda(izeta,l,nsm)
+              write(6,*) 'rco redefined: l, nsm, izeta, rco:',
+     $                   l, nsm, izeta, rco(izeta,l,nsm)
            endif
            
         endif  ! nsm > 1  (there are semicore states)
@@ -4407,7 +4408,7 @@ C
      .                rco(izeta,l,nsm),lambda(izeta,l,nsm),
      .                filtercut(l,nsm),izeta,nsm,nrc,indx, spp)
                
-             enddo              ! loop over izeta
+             end do loop_over_zetas
              
               ! Shouldn't this be placed before the call to combasis?
               call compress_PAO(a,b,rofi,rphi(1,l,nsm),
