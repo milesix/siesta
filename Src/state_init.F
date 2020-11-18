@@ -100,7 +100,6 @@
       use iodm_netcdf, only: setup_dm_netcdf_file
       use iodmhs_netcdf, only: setup_dmhs_netcdf_file
 #endif
-      use overlap_gradient_m, only: overlap_gradient
 #ifdef NCDF_4
       use dictionary
       use m_ncdf_siesta, only : cdf_init_file, cdf_save_settings
@@ -164,7 +163,7 @@
       integer :: MPIerror
 #endif
 #endif
-      
+      real(dp), pointer :: gradS(:,:)
       character(len=256)            :: oname
 
       type(dData2D) :: tmp_2D
@@ -672,12 +671,17 @@
       call init_matel_main_tables( )
 
 !     Find overlap matrix 
-      call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
-     &    lasto, iphorb, isa, numh, listhptr, listh, S )
-
       if ( fdf_get('Save.Overlap.Gradient', .false.) ) then
-        call newdSpData2D(sparse_pattern,3,block_dist,gradS_2D)
-        call overlap_gradient(na_U, lasto, isa, maxnh, xijo, gradS_2D)
+        write(oname,"(a,i0)") "gradS at geom step ", istep
+        call newdSpData2D(sparse_pattern,3,block_dist,gradS_2D,
+     &      name=oname, sparsity_dim=2)
+        gradS => val(gradS_2D)
+        
+        call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
+     &      lasto, iphorb, isa, numh, listhptr, listh, S, gradS )
+      else
+        call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
+     &      lasto, iphorb, isa, numh, listhptr, listh, S )
       end if
 
 #ifdef NCDF_4
