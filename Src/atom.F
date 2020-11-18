@@ -4019,7 +4019,9 @@ C
                 nrc=nint(log(rc/b+1.0d0)/a)+1
 
                 ! ... and possibly moved to the next-highest odd-numbered grid point.
-
+                ! This introduces a problem if rc's are entered explicitly, and they 
+                ! come from a procedure (i.e., a split-norm calculation) that does
+                ! not care about the "odd point" setting.
                 if (restricted_grid) then
                   nodd=mod(nrc,2)
                   if (nodd.eq.0) then
@@ -4236,20 +4238,20 @@ c                        write(68,*) r,rh,rphi(ir,l,ism)
            
         endif  ! nsm > 1  (there are semicore states)
               
-                  dnrm=0.0d0
-                  do ir=2,nrc-1
-                    r=rofi(ir)
+        dnrm=0.0d0
+        do ir=2,nrc-1
+           r=rofi(ir)
 C
 C Parabolic split
 C
-                    phi=g(ir)/(r**(l+1))
-                    dnrm=dnrm+drdi(ir)*(phi*r**(l+1))**2
-                    g(ir)=phi
-                  enddo
-                  g(1)=g(2)
-                  g(nrc)=0.0d0
-
-               endif            ! zeta == 1 or > 1
+           phi=g(ir)/(r**(l+1))
+           dnrm=dnrm+drdi(ir)*(phi*r**(l+1))**2
+           g(ir)=phi
+        enddo
+        g(1)=g(2)
+        g(nrc)=0.0d0
+        
+      endif                     ! zeta == 1 or > 1
 C
 C Normalization of basis functions
 C
