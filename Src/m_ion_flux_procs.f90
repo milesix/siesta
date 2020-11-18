@@ -72,7 +72,7 @@ contains
              call I_dos_value(buff, u_pbc)
 
              ion_flux_c(:) = ion_flux_c(:) + &
-                  & 1./2. * e2 * qa(ia) * qa(ja) * &
+                  & 1.0_dp * e2 * qa(ia) * qa(ja) * &
                   & (vel_i(:) + vel_j(:)) * buff
 
              do a=1,3

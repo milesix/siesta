@@ -157,7 +157,7 @@ contains
     do n_x= -n_max_ewald, n_max_ewald
        do n_y= -n_max_ewald, n_max_ewald
           do n_z= -n_max_ewald, n_max_ewald
-             if ((n_x/=0).or.(n_y/=0).or.(n_z/=0)) then
+             if ((n_x.ne.0).or.(n_y.ne.0).or.(n_z.ne.0)) then
                 n(1:3) = n_x * cell_vmd(1:3,1) +&
                      & n_y * cell_vmd(1:3,2) +&
                      & n_z * cell_vmd(1:3,3)
@@ -172,7 +172,7 @@ contains
     I_prime=I_prime-2.d0*sqrt(eta_ewald/pi)
 
     I_prime_rec=0.d0
-    do ig=1, ngm_plus_vmd
+    do ig=gstart_vmd, ngm_plus_vmd ! start from vector whose module is >0
        igp = igplus_vmd(ig)     ! get the global index
        I_prime_rec=I_prime_rec+2.d0*(4.d0 * pi)/omega *&
             & alpha_0_lr(eta_ewald,gg_vmd(igp),1) ! QE: scaled, gg(igm)*tpiba2
@@ -262,10 +262,10 @@ contains
     if (gstart_vmd==2) y = y + I_uno_g(1,a,b)
     call add_local_uno(y,x,a,b)
 
-    if (a==b) then
-       call I_dos_value(comp_iso,x)
-       y = y - comp_iso
-    end if
+    ! if (a==b) then
+    !    call I_dos_value(comp_iso,x)
+    !    y = y - comp_iso
+    ! end if
 
   end subroutine I_uno_value
 

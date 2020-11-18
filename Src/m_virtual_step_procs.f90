@@ -392,10 +392,14 @@ contains
        !NOTE:
        ! The following contribution behaves like a non-diffusive mass flux.
        ! According to Davide Tisi, It does not contribute to the resulting
-       ! thermal conductivity and is therefore excluded from computation.
-       !
-       ! call compute_Jion_b()
-       ! print*, "[Jion] flux B: ", ion_flux_b(:)
+       ! thermal conductivity and is therefore excluded from final flux
+       ! calculation by default.
+       !TODO:
+       ! Add optional contribution of B-flux to the final J.
+
+       call compute_Jion_b()
+
+       print*, "[Jion] flux B: ", ion_flux_b(:)
 
        call compute_Jion_cde()
 
