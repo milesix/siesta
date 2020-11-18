@@ -95,7 +95,7 @@ OBJS =  automatic_cell.o atom_options.o \
         born_charge.o cgwf.o chkdim.o chkgmx.o \
 	chempot.o coceri.o coxmol.o cross.o compute_norm.o\
 	denmat.o denmatlomem.o detover.o dfscf.o diagon.o digcel.o \
-        m_erf.o \
+        m_erf.o rmatrix.o\
         fft.o dhscf.o constr.o diagk_file.o diagmemory.o \
 	diagg.o diagk.o diagkp.o diag2g.o diag2k.o diag2kp.o diag3g.o diag3k.o diag3kp.o diagpol.o \
 	diag2kspiral.o dipole.o dismin.o dnaefs.o doping_uniform.o dot.o  \

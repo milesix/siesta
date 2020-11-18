@@ -716,12 +716,12 @@ c$$$!     Find overlap matrix
 c$$$      call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
 c$$$     &    lasto, iphorb, isa, numh, listhptr, listh, S )
 c$$$
-c$$$      if ((virtual_md_Jks) .and. (substep .eq. BASE_STEP)) then
-c$$$      !     Find rmatrix, that we need for Kohn-Sham J-flux component (ThTr)
-c$$$         call rmatrix(na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
-c$$$     &        lasto, iphorb, isa, numh, listhptr, listh, Rmat )
-c$$$      endif
-c$$$
+      if ((virtual_md_Jks) .and. (substep .eq. BASE_STEP)) then
+      !     Find rmatrix, that we need for Kohn-Sham J-flux component (ThTr)
+         call rmatrix(na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
+     &        lasto, iphorb, isa, numh, listhptr, listh, Rmat )
+      endif
+
 c$$$      if ( fdf_get('Save.Overlap.Gradient', .false.) .or.
 c$$$!     We need gradient of overlap for the Virtual step
 c$$$!     during Kohn-Sham J flux component calculation:
@@ -732,9 +732,15 @@ c$$$        call newdSpData2D(sparse_pattern,3,block_dist,gradS_2D)
 c$$$        if (ionode) call print_type(gradS_2D)
 c$$$        call overlap_gradient(na_U, lasto, isa, maxnh, xijo, gradS_2D)
 c$$$        gradS => val(gradS_2D)
+
 !     Find overlap matrix
-      if ( fdf_get('Save.Overlap.Gradient', .false.) ) then
+      if ( fdf_get('Save.Overlap.Gradient', .false.) .or.
+     $     ((virtual_md_Jks) .and. (substep .eq. BASE_STEP)) ) then
         write(oname,"(a,i0)") "gradS at geom step ", istep
+!     NOTE: Need this?
+!     Clean-up, regardless of specified:
+        call delete(gradS_2D)
+!     END NOTE
         call newdSpData2D(sparse_pattern,3,block_dist,gradS_2D,
      &       name=oname, sparsity_dim=2)
         gradS => val(gradS_2D)
