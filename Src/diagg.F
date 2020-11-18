@@ -205,7 +205,7 @@ C Repeat diagonalisation with increased memory to handle clustering
           do ix = 1,3
             k(ix) = 0.0d0
           enddo
-          call c_f_pointer(c_loc(psi(:,:,ispin)),psi_real_1d,
+          call c_f_pointer(c_loc(psi(1,1,ispin)),psi_real_1d,
      $                     [size(psi,1)*size(psi,2)])
           call writew(nuotot,nuo,1,k,ispin,
      &                eo(1,ispin),psi_real_1d,gamma=.true.,
@@ -226,7 +226,7 @@ C Find new Fermi energy and occupation weights ........................
         call fermispin( spinor_dim, spinor_dim, nk, wk, maxo,
      &                  neigwanted, eo, temp, qs, qo, efs, Entropy )
       else
-        call fermid( spinor_dim, spinor_dim, nk, wk, maxo, neigwanted,
+        call fermid(spinor_dim, spinor_dim, nk, wk, maxo, neigwanted,
      &               eo, temp, qtot, qo, ef, Entropy )
       endif
 
@@ -276,7 +276,7 @@ C Global operation to form new density matrix
       ! These arrays are not distributed... For parallel operation, and
       ! to match the "sparse" convention, we should probably make the first
       ! dimension "nuo"
-      
+
       if (want_virtual_step_md ) then
          if (substep .eq. BASE_STEP) then
             call re_alloc(Dfull, 1, nuotot, 1, nuotot, 1, h_spin_dim,

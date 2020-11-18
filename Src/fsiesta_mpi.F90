@@ -451,8 +451,7 @@ subroutine siesta_forces( label, na, xa, cell, energy, fa, stress )
 #ifdef MPI
 ! Change directory and set output file
   call chdir(trim(label))
-  close(unit=6)
-  open(unit=6, file=trim(label)//'.out', position='append')
+  call reopen_unit_append(6, trim(label)//'.out')
 #endif
 
 ! Copy master's coordinates to master repository
@@ -501,8 +500,7 @@ subroutine siesta_forces( label, na, xa, cell, energy, fa, stress )
 #ifdef MPI
 ! Go back to parent directory and reset output file
   call chdir('..')
-  close(unit=6)
-  open(unit=6, file=trim(mainOutFile), position='append')
+  call reopen_unit_append(6, trim(mainOutFile))
 #endif
 
 end subroutine siesta_forces
@@ -560,8 +558,7 @@ recursive subroutine siesta_get_value( label, property, vsize, value, units )
 #ifdef MPI
 ! Change directory and set output file
   call chdir(trim(label))
-  close(unit=6)
-  open(unit=6, file=trim(label)//'.out', position='append')
+  call reopen_unit_append(6, trim(label)//'.out')
 #endif
 
 ! Check that siesta has been launched
@@ -593,8 +590,7 @@ recursive subroutine siesta_get_value( label, property, vsize, value, units )
 #ifdef MPI
 ! Go back to parent directory and reset output file
   call chdir('..')
-  close(unit=6)
-  open(unit=6, file=trim(mainOutFile), position='append')
+  call reopen_unit_append(6, trim(mainOutFile))
 #endif
 
 end subroutine siesta_get_value
@@ -611,8 +607,7 @@ subroutine siesta_quit( label )
 #ifdef MPI
 ! Change directory and set output file
   call chdir(trim(label))
-  close(unit=6)
-  open(unit=6, file=trim(label)//'.out', position='append')
+  call reopen_unit_append(6, trim(label)//'.out')
 #endif
 
   if (.not.siesta_launched) then
@@ -630,11 +625,29 @@ subroutine siesta_quit( label )
 #ifdef MPI
 ! Go back to parent directory and reset output file
   call chdir('..')
-  close(unit=6)
-  open(unit=6, file=trim(mainOutFile), position='append')
+  call reopen_unit_append(6, trim(mainOutFile))
 #endif
 
 end subroutine siesta_quit
 
-END MODULE fsiesta
+subroutine reopen_unit_append(unit, filename)
+  ! As we are closing and reopening the main output, we need to handle a special case:
+  ! gfortran (but not ifort) on Linux will give a runtime error when using position='append' when the file to
+  ! be opened is a device like stdout/ttyX. As a workaround we look for iostat=29 (which gfort sets on error)
+  ! and just open without the append specification.
+  integer, intent(in) :: unit
+  character(len=*), intent(in) :: filename
+  integer :: iostat
 
+  close(unit=unit)
+  open(unit=unit, file=filename, position='append', iostat=iostat)
+  if ( iostat == 29 ) then
+    ! Reopen without 'append' - it had no effect anyway when error occurs on stdout/tty
+    open(unit=unit, file=filename)
+  else if ( iostat /= 0 ) then
+    ! Another error - do it again but without iostat to die with correct error message
+    open(unit=unit, file=filename, position='append')
+  endif
+end subroutine reopen_unit_append
+
+END MODULE fsiesta

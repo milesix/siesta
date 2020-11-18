@@ -308,6 +308,9 @@ C Sanity checks on values
         else
           basp%mass = atmass(abs(int(basp%z)))
         endif
+
+        write(6,"(/,a)") " ---- Processing specs for species: " //
+     $                    trim(basp%label)
         if (basp%bessel) then
           ! Initialize a constant pseudo
           call pseudo_init_constant(basp%pseudopotential)
@@ -706,10 +709,13 @@ C Sanity checks on values
 !---------------------------------------------------------------
 
       subroutine repaobasis()
+      
+      use m_semicore_info_froyen, only: get_n_semicore_shells
 
       integer isp, ish, nn, i, ind, l, indexp, index_splnorm
       integer nrcs_zetas
-
+      integer :: nsemic_shells(0:3)
+      
       type(block_fdf)            :: bfdf
       type(parsed_line), pointer :: pline
 
@@ -731,6 +737,11 @@ C Sanity checks on values
         basp%label = fdf_bnames(pline,1)
         basp%nshells_tmp = fdf_bintegers(pline,1)
         basp%lmxo = 0
+
+        ! To report on pseudized shells and, in the future,
+        ! check on the specified structure of the block
+        call get_n_semicore_shells(basp%pseudopotential,nsemic_shells)
+        
         !! Check whether there are optional type and ionic charge
         if (fdf_bnnames(pline) .eq. 2)
      .    basp%basis_type = fdf_bnames(pline,2)
@@ -1310,11 +1321,18 @@ c (according to atmass subroutine).
         call die()
       endif
 
-      basp%semic = .true.
       charge_loc = Zval_vps-Zval
-      write(6,'(a,i2,a)')
-     .  'Semicore shell(s) with ', nint(charge_loc),
-     .  ' electrons included in the valence for', trim(basp%label)
+      if (charge_loc > 0.0_dp) then
+         basp%semic = .true.
+         write(6,'(a,i2,a)')
+     .        'Semicore shell(s) with ', nint(charge_loc),
+     .        ' electrons included in the valence for ' //
+     $        trim(basp%label)
+      else
+         write(6,'(a,i2,a)') 'Nominally valence shell(s) with ',
+     $          nint(abs(charge_loc)),
+     .        ' electrons are kept in the core for ' // trim(basp%label)
+      endif
 
       end subroutine semicore_check
 !----------------------------------------------------------------------

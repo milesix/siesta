@@ -5,9 +5,9 @@
 # -----------------------------------------------------------------------------
 
 #-------
-## compute-forces F
+number-of-eigenstates -10
 SolutionMethod ELSI
-#MPI.Nprocs.SIESTA 1
+elsi-solver elpa
 
 WriteDMHS.NetCDF F
 WriteDM.NetCDF F

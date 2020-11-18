@@ -16,8 +16,8 @@ LIBS_CPLUS=-lstdc++
 #
 # Define compiler names and flags
 #
-FCFLAGS_fixed_f=-qfixed -qsuffix=cpp=f
-FCFLAGS_free_f90=
+FFLAGS_fixed_f=-qfixed -qsuffix=cpp=f
+FFLAGS_free_f90=
 FPPFLAGS_fixed_F=-qfixed -qsuffix=cpp=F
 FPPFLAGS_free_F90=
 #

@@ -128,6 +128,6 @@ character(len=200) :: filename, outfile
 
   ! Uses the functionality of the ncps library
   call ncps_psml2froyen(ps,p,reparametrize,a,b,rmax)
-  call pseudo_write_formatted(outfile,p)
+  call pseudo_write_formatted(outfile,p,print_gen_zval=.true.)
   
 end program psml2psf

@@ -60,7 +60,7 @@ INCFLAGS += $(GRIDXC_INCFLAGS)
 
 SYSOBJ=$(SYS).o
 
-SIESTA_OBJS= bye.o precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
+SIESTA_OBJS= precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
              moreParallelSubs.o m_mpi_utils.o atmfuncs.o atm_types.o \
              radial.o reclat.o idiag.o minvec.o \
              parallel.o io.o files.o cellsubs.o sorting.o \
@@ -79,6 +79,7 @@ SIESTA_OBJS= bye.o precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
              arw.o redcel.o
 # Siesta timings
 SIESTA_OBJS += m_walltime.o timer_tree.o m_timer.o timer.o
+
 
 # Add specific class objects
 # class Objects
@@ -246,10 +247,10 @@ class_SpData3D.o: class_OrbitalDistribution.o class_Sparsity.o
 class_Sparsity.o: alloc.o
 class_Sparsity.o: alloc.o
 class_TriMat.o: alloc.o
-coor.o: alloc.o local_sys.o parallel.o precision.o siesta_geom.o units.o
-coor.o: zmatrix.o
-coor.o: alloc.o local_sys.o parallel.o precision.o siesta_geom.o units.o
-coor.o: zmatrix.o
+coor.o: alloc.o atmfuncs.o local_sys.o parallel.o precision.o siesta_geom.o
+coor.o: units.o zmatrix.o
+coor.o: alloc.o atmfuncs.o local_sys.o parallel.o precision.o siesta_geom.o
+coor.o: units.o zmatrix.o
 debugmpi.o: parallel.o
 debugmpi.o: parallel.o
 diag.o: alloc.o diag_option.o local_sys.o parallel.o precision.o
@@ -258,8 +259,8 @@ diag_option.o: parallel.o precision.o
 diag_option.o: parallel.o precision.o
 find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
 find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
-get_kpoints_scale.o: parallel.o siesta_geom.o
-get_kpoints_scale.o: parallel.o siesta_geom.o
+get_kpoints_scale.o: parallel.o siesta_geom.o units.o
+get_kpoints_scale.o: parallel.o siesta_geom.o units.o
 idiag.o: local_sys.o parallel.o
 idiag.o: local_sys.o parallel.o
 init_output.o: files.o
@@ -280,8 +281,10 @@ m_filter.o: bessph.o local_sys.o precision.o radfft.o
 m_filter.o: bessph.o local_sys.o precision.o radfft.o
 m_mpi_utils.o: precision.o
 m_mpi_utils.o: precision.o
-m_spin.o: alloc.o files.o local_sys.o m_cite.o parallel.o precision.o units.o
-m_spin.o: alloc.o files.o local_sys.o m_cite.o parallel.o precision.o units.o
+m_spin.o: alloc.o files.o get_kpoints_scale.o local_sys.o m_cite.o parallel.o
+m_spin.o: precision.o
+m_spin.o: alloc.o files.o get_kpoints_scale.o local_sys.o m_cite.o parallel.o
+m_spin.o: precision.o
 m_timer.o: local_sys.o m_io.o m_walltime.o moreParallelSubs.o parallel.o
 m_timer.o: precision.o
 m_timer.o: local_sys.o m_io.o m_walltime.o moreParallelSubs.o parallel.o

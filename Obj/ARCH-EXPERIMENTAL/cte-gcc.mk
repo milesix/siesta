@@ -5,9 +5,9 @@
 #
 #              ml load scalapack lapack netcdf fftw
 #
-NETCDF_ROOT=$(NETCDF_HOME)            
-NETCDF_FORTRAN_ROOT=$(NETCDF_HOME)
-HDF5_LIBS=-L/apps/HDF5/1.8.20/GCC/OPENMPI/lib -lhdf5_hl -lhdf5 -lcurl -lz
+NETCDF_LIBS=-L$(NETCDF_HOME)/lib -lnetcdff -lnetcdf -L/apps/HDF5/1.8.20/GCC/OPENMPI/lib -lhdf5_hl -lhdf5 -lcurl -lz
+NETCDF_INCFLAGS=-I$(NETCDF_HOME)/include
+#
 SCALAPACK_LIBS=-lscalapack
 LAPACK_LIBS=-llapack -lblas
 FFTW_ROOT=/apps/FFTW/3.3.8/GCC/OPENMPI/

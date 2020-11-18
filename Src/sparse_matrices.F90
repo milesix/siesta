@@ -111,7 +111,9 @@ module sparse_matrices
   type(Sparsity), public :: sparse_pattern
 
   !> Number of non-zero elements in the sparse matrix (local to MPI Node)
-  integer, public :: maxnh = 0
+  integer, public :: maxnh = 0       ! a.k.a.  nnz_l
+  !> Number of non-zero elements in the sparse matrix (global)
+  integer, public :: nnz_g = 0
   !> Column indices in the CSR matrix (local to MPI Node)
   integer, public, pointer :: listh(:) => null()
   !> Index pointer to `listh` for each row in the CSR matrix, 0-based (local to MPI Node)

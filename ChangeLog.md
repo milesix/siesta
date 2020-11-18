@@ -1,11 +1,15 @@
-# ChangeLog for Siesta
+An overview changelog for Siesta.
 
 ## MaX release branch
+
+* Some updates to building system
 
 ### ELSI interface
 
 (Please see the file README_ELSI in the top directory for important information)
 
+* Avoid an AllReduce operation for nnz_g in the Gamma-point ELSI solver setup
+* Print 'neigwanted' if used
 * Wrap new routines in m_elsi_interface in SIESTA__ELSI block
 * The ELSI interface now honors the "number-of-eigenstates" setting, and an EIG file
   is generated (for the ELPA solver).
@@ -14,6 +18,22 @@
 ### PSML support
 
 (Please see the file README_PSML in the top directory for important information)
+
+(latest)
+
+* Update top-level doc files and Obj directory. WIP merge request.
+* Expand pseudopotential information reporting
+* Handle 'bye' calls from external function(s).
+* Update ncps copy of interpolation.f90
+* F2003 compliance changes
+* Put extension (i.e. .psf or .psml) explicitly in .pseudos files in Tests
+* Force setting of makefile variables to "1" for activation (i.e.  WITH_MPI=1)
+* Add installation scripts for psml and gridxc libraries (with -rpath, instead
+  of -rpath=)
+* Updated the installation script for flook (by just bumping the
+  version number required for the tarball, plus the rpath change)
+
+Added PSML support, including:
 
 * An external LibGridXC replaces the built-in SiestaXC
 * Libxc support
@@ -32,82 +52,97 @@
 
 ## Master version updates
 
-### Backward-compatibility issues:
+# Development version
+
+### Backward compatibility issues
 
 * The labels in the Mulliken analysis CML blocks have been changed to use "population" instead of "charge".
 
 ### Changes
 
+* Minor changes for f2003 conformance
+
+* Provide more options for the shift of the origin of coordinates.
+
+* Some fixes for library operation (avoid stopping when 'onlyS' is set; re-opening of unit 6)
+
 * Cleanup of vibra/fcbuild code: use dynamic arrays, and LAPACK solver by default
 
 * Extended Hirshfeld and Voronoi partition analysis to spin. Update of output, including new CML blocks.
 
-*(Initial list of updates taken on April 8, 2020 from the output of `git see --first-parent rel-4.1..`,
-filtering the direct merges from 4.1 series, but kept mostly in raw form,
-with commit hash and date, for further editing, if needed.  Even
-though the 4.1 and `master` progress was in parallel, one needs to
-look at the 4.1 ChangeLog to get a complete picture of the changes in
-`master` -- for example: GPU support)*
+* Performance increase for tall+skinny matrices in TS
 
-* 147db2b3 2020-03-05 Nick Papior   enh: performance increase for tall+skinny matrices in TS
+* Added band-unfolding utility (J.M. Soler)
 
-* 586b553e 2019-10-21 Nick Papior   New 'random' experimental option to initialize the DM
+* Overlap gradient now saved in *.nc file
 
-* e4c44a01 2019-09-16 Jose M Soler   Implementation of a band unfolding utility
+* Allowing finer grained k-point input from users
 
-* 55b5f907 2019-03-06 Alberto Garcia   Benchmark support: dummy solver and scf-step granularity
+* Off-site spin-orbit (full) coupling (Ramon Cuadrado)
 
-* 2de79ac6 2018-12-07 Alberto Garcia   Compliance of code to F2003 standard plus further cleaning
+* Cleaned data-structures for atom code
 
-* 8ed60c2e 2018-11-23 Nick Papior   Added class_*3D to allow for NC/SOC transiesta implementation
+* Interface to the CheSS linear-scaling library (Stephan Mohr)
 
-* 7f5ade48 2018-07-09 Nick Papior   Output gradient of S to nc file
+* Update internal siesta_forces logic wrt TDDFT
 
-* 17bee605 2018-07-09 Nick Papior   Enabled pjnl_j in ion.nc files
+* Implementation of Real-Time TDDFT (Rafi Ullah)
 
-* 707d71f6 2018-06-18 Nick Papior   Enabled kgrid.MonkhorstPack as list input (only if block is not present)
+* Added OpenMP nesting information (only print-out)
 
-* 2abadff2 2018-05-27 Nick Papior   Restructured k-point sampling, allowing user-supplied k-points
 
-* f17ad461 2018-04-30 Ramon Cuadrado   Merge the 'offsite spin-orbit' (full) implementation by Ramon Cuadrado.
-
-* 4b52c778 2018-01-03 Nick Papior   Initialize some components in the species_info derived type
-
-* 6150be62 2017-11-20 Alberto Garcia   Remove old data structures and routines related to 'atom'
-
-* c142809d 2017-10-10 Nick Papior   Update TD-DFT: k-points, H extrapolation, more parallelization, code readability
-
-* 01356192 2017-08-22 Nick Papior   Interface to the CheSS linear-scaling library
-
-* 8d69f1cf 2017-02-02 Nick Papior   Update of the siesta_forces logic wrt TDDFT
-
-* e2f7686c 2016-09-28 Rafi Ullah   Implementation of Real-Time TDDFT
-
-* cad6b290 2016-08-29 Nick Papior   Added OpenMP nesting information
+# 4.1.X versions
 
 ## 4.1 (2020-   )   FUTURE Feature release
 
-### Changes to defaults
+### Backward compatibility issues
 
-* TranSiesta/TBtrans eta values are now default to 1meV
+* Siesta is now developed on the GitLab platform: www.gitlab.com/siesta-project/siesta
+  A number of Siesta-related packages are developed here: www.gitlab.com/siesta-project
+
+* TranSiesta/TBtrans eta values now default to 1 meV
 
 * TranSiesta equilibrium contours now default to using the "right" scheme
 
 * Maximum l for KB projectors is now automatically set to the highest
   l in the PS file. This may result in slight changes.
 
+* Bug in Voigt representation output, !25
+  Users with scripts that parses stress-tensor-Voigt will
+  need to adapt.
+
 ### Changes
 
-* Siesta is now developed on the GitLab platform: www.gitlab.com/siesta-project/siesta
-  A number of Siesta-related packages are developed here: www.gitlab.com/siesta-project
+* Enabled the spin-spiral code, !20
+  Feedback is requested from expert users of spin-spiral systems.
+  _Not_ production stable.
+
+* Added final break-point for LUA, LUA_FINALIZE just before Siesta stops.
+
+* Added dipole calculation from vacuum region, !22
+  For gated calculations this is the preferred method.
+
+* Bug, fixed nnzs == nspin parallelization calculations which
+  could revert order of DM reads.
+
+* Removed some minor memory leaks in mesh-subs
+
+* Bug, fixed Ha/Bohr unit in fdf
+
+* Updated flook installation script to 0.8.1
+
+* Update Docs/REPORTING_BUGS
+
+* Document the setting of 'neigwanted' and print them if the diag solver allows it.
+
+* Fix computation of NC/SOC occupations when the (optional) number of
+  eigenstates handled ('neigwanted') is less than the number of orbitals.
 
 * Fix reading of wave-functions in Util/COOP/fat.f90
 
 * Added Obj/ARCH-EXPERIMENTAL for suggested more modular building scheme
 
 * Added interface code to use GPUs with the ELPA library.
-
-* Added Docs/ChangeLog.md file
 
 * Removed a small memory leak (from siesta_init)
 
@@ -119,7 +154,7 @@ look at the 4.1 ChangeLog to get a complete picture of the changes in
 
 * Fixed cell transpose when using socket calculations (only important for skewed cells)
 
-* Added citation information to output (end of run)
+  * Added citation information to output (end of run)
 
 * Allowed Mesh.Sizes as list input so users can specify their own Mesh size
 
@@ -139,7 +174,15 @@ look at the 4.1 ChangeLog to get a complete picture of the changes in
 
 * Removed *ALL* OMP collapse statements, Intel 2019 is buggy.
 
-### TranSiesta/TBtrans changes:
+#### TranSiesta / TBtrans
+
+* Added charge tolerance after SCF to ensure TS didn't go out of the basin
+  This is basically to catch heavy losses of electrons/protons which results
+  in incorrect results.
+
+* TS.Elecs.DM.Init now defaults to diagon, while this yields worse results
+  it has little influence for correctly setup systems and it will generally
+  make SCF a little easier.
 
 * Much more efficient dq implementation for fixing charge fluctuations
 
@@ -182,7 +225,7 @@ look at the 4.1 ChangeLog to get a complete picture of the changes in
    on the updated sub-set.
 
 
-## 4.1-b4 (    )  Bugfix beta release
+## 4.1-b4 (2018-11-07)  Bugfix beta release
 
 ### Changes to default operational parameters
 
@@ -250,7 +293,7 @@ look at the 4.1 ChangeLog to get a complete picture of the changes in
 * Performing SOC calculations does not not require all species
     to have SOC contributions.
 
-### TranSiesta / TBtrans changes:
+#### TranSiesta / TBtrans
 
 * Disk-space reduction when mixing non-periodic and periodic electrodes
 
@@ -321,8 +364,7 @@ look at the 4.1 ChangeLog to get a complete picture of the changes in
    can be small differences when comparing Green function DOS between this version
    and prior versions. The bug is only present when time-reversal-symmetry is applied.
 
-## 4.1-b3  () Bugfix beta release
-
+## 4.1-b3  (2017-07-03) Bugfix beta release
 
 * Manual greatly overhauled and updated in various parts
 
@@ -347,7 +389,7 @@ look at the 4.1 ChangeLog to get a complete picture of the changes in
 
 * Fixes to the <>.nc file for high spin configuration >= non-colinear
 
-## 4.1-b2  () Bugfix beta release
+## 4.1-b2  (2016-11-28) Bugfix beta release
 
 * The configure script has been removed.  Its use was discouraged and
   would often yield erroneous arch.make files.  To circumvent any
@@ -359,11 +401,11 @@ look at the 4.1 ChangeLog to get a complete picture of the changes in
 
 * Several fixes for bugs reported for the b1 release. See Docs/CHANGES
 
-## 4.1-b1  () Beta release  
+## 4.1-b1  (2016-08-31) Beta release  
 
 Please see the Manual for full details
 
-### Backward-compatibility issues:
+### Backward-compatibility issues
 
 * The mixing routines have completely changed, hence the same
     convergence path cannot be expected. This, unfortunately, makes
@@ -453,7 +495,6 @@ Please see the Manual for full details
     * DOS and bulk transmission for electrodes
     * Gf-DOS/spectral-DOS for device region
       
-
 * Mixing routines rewritten (Nick R. Papior)
     
     * New mixing schemes Pulay (Guarenteed Reduction)
@@ -490,6 +531,146 @@ Please see the Manual for full details
     * SpPivot, pivot sparsity pattern using several different routines
     * TS/** different utilities related to transiesta
 
+
+# 4.0.X versions
+
+## 4.0.3 (2020- ) FUTURE Bug fix release
+
+### Changes
+
+* Fix for honoring the 'gen_zval' field in psf files
+
+* Removed some minor memory leaks in mesh-subs
+
+* Update and add .md extension to main README
+
+* Update Docs/REPORTING_BUGS
+
+* Add ChangeLog.md since 4.0
+
+* Fixed cell transpose for socket communication, fixes lp:1835196
+
+* Make matel registry pool re-sizeable
+
+* Fixed grid output when using cell-sampling, lp:1799991
+
+* Fixed vibra utility precision issue, fixed lp:1816719
+
+* Increase flexibility in the handling of pseudopotentials
+
+* Fix some issues with polarization orbitals. Bessel orbs improvements.
+
+* Fix C10 computation in molecularmechanics
+
+
+## 4.0.2 (2018-07-19) Bug fix release
+
+### Backward compatibility issues
+
+* This release increases the size of the internal tables for
+  two-center integrals used in some matrix element calculations. This
+  means that calculations are slightly more heavy, but the accuracy is
+  also superior. One can regain the *old* less accurate behaviour by
+  setting Compat.Matel.NRTAB to true in the fdf input file (this is
+  ONLY recommended for testing purposes).
+
+### Changes
+
+* Enabled ion.nc files for ghost atoms (#1738425)
+
+* Enabled ghost atoms to read ion.nc files (#1736455)
+
+* Forced libfdf to "die" when too long input strings are passed (#1728281)
+
+* Monkhorst-Pack grids not properly shifted to [0;1[ when user specified large displacements (#1721479)
+
+* Updated README content in Util directory (#1712319)
+
+* Fixed building all utilities (#1712317)
+
+* Fixed EIG file format for non-collinear spin (#1708634)
+
+* Fixed possible segfault when using too large unit-cells (#1704370)
+
+* Fixed ghost orbital energies (#1695130)
+
+* Removed vpsa2bin and vpsb2asc codes (part of ATOM)
+
+* Added new units in fdf (Hartree [Ha] and milli-Hartree [mHa])
+
+* Added more tests
+
+* Fixed a missing close when using Siesta in "master" mode
+
+* Fixed several memory accounting errors and a couple of missing close
+  statements. Also removed all deprecated PASTE calls.
+
+* Added compiler version information to the version.F90 file
+
+* Fixed writing the Bessel ghost atom to ion.xml/nc files
+
+* Extended information in PDOS xml files. Now the atomic number
+  as well as whether the orbital is a polarization shell is present
+
+* Increased the default size of two-center integrals tabulation arrays from 128 to 1024.
+  This is a change that results in more accurate values (of basically everything). Set
+  'Compat.Matel.NRTAB true' to use previous value
+
+* Added spin-monitoring in the SCF: for spin-polarized and non-collinear calculations
+  the total spin-moment is written
+
+* Fixed non-collinear Mulliken populations in parallel
+
+* Updated gnubands to the new code that has been present since the 4.0 release.
+  The new updated gnubands provides more functionalities
+
+* Extended precision output in EIG, KP and PDOS files
+
+* Fixed possible non-optimal DM initialization when unit-cell folding of orbital
+  connections is performed.
+
+* Bugfix for writing out too many wavefunction coefficients,
+  see https://www.mail-archive.com/siesta-l@uam.es/msg10291.html
+
+
+## 4.0.1 (2017-07-04) Bug fix release
+
+### Changes
+
+* Better standard compliance in code structure
+
+* Fix bug related to SlabDipoleCorrection which couldn't be turned off (lp:1630827)
+
+* Fix non-collinear bandstructure calculations (lp:1636100)
+
+* Fix for 'nodes' basis generation option (lp:1625725)
+
+* Fixes VCA mixing of pseudos (lp:1633039)
+
+* Fixes integer energy specifications in ProjectedDensityOfStates block (lp:1657584)
+
+* Added print-outs when GridCellSampling is used
+
+* TBtrans_rep changed the written DOS units to 1/eV (they were in 1/Ry)
+
+* Fix for Bader charge analysis (lp:1656273)
+
+* Fix memory problem when memory usage close to limit (lp:1665294)
+
+* Forced Diag.ParallelOverK to false if non-collinear spin configuration (lp:1666428)
+
+* Updated Eig2DOS to be more like gnubands (options are the same)
+
+* Added Geometry.Must.Converge flag to ensure the relaxation has converged
+
+* Enabled internal walltime check to forcefully stop SIESTA after a
+  certain limit.
+
+* Updates and fixes for Util/STM/ol-STM
+   - Fix wrong fftw call
+   - Enabled direct reading of WFSX files
+
+* Added new interpolation option to Util/Macroave
 
 ## 4.0.0 (2016-06-23) Feature release
 

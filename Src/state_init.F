@@ -40,6 +40,7 @@
       use sparse_matrices, only: sparse_pattern
       use sparse_matrices, only: block_dist, single_dist
       use sparse_matrices, only: DM_history
+      use sparse_matrices, only: nnz_g
 
 
       use create_Sparsity_SC, only: crtSparsity_SC
@@ -102,7 +103,6 @@
       use iodm_netcdf, only: setup_dm_netcdf_file
       use iodmhs_netcdf, only: setup_dmhs_netcdf_file
 #endif
-      use overlap_gradient_m, only: overlap_gradient
 #ifdef NCDF_4
       use dictionary
       use m_ncdf_siesta, only : cdf_init_file, cdf_save_settings
@@ -138,7 +138,7 @@
 
       implicit none
 
-      integer            :: istep, nnz
+      integer            :: istep
       real(dp)           :: veclen      ! Length of a unit-cell vector
       real(dp)           :: rmax
       logical            :: cell_can_change
@@ -170,7 +170,8 @@
       integer :: MPIerror
 #endif
 #endif
-
+!     FIXME: Should not be here (imported from `sparse_matrices`):
+!     real(dp), pointer :: gradS(:,:)
       character(len=256)            :: oname
 
       type(dData2D) :: tmp_2D
@@ -466,13 +467,13 @@
       endif
       END IF                    ! <- `Base` step in V.MD
 !
-      call globalize_sum(maxnh,nnz)
+      call globalize_sum(maxnh,nnz_g)
       if (cml_p) then
          call cmlStartPropertyList(mainXML,title='Orbital info')
          call cmlAddProperty(xf=mainXML, value=no_u,
      $        title='Number of orbitals in unit cell',
      $        dictref='siesta:no_u', units="cmlUnits:countable")
-         call cmlAddProperty(xf=mainXML, value=nnz,
+         call cmlAddProperty(xf=mainXML, value=nnz_g,
      $        title='Number of non-zeros',
      $        dictref='siesta:nnz', units="cmlUnits:countable")
          call cmlEndPropertyList(mainXML)
@@ -711,26 +712,38 @@
       call init_matel_main_tables( )
       if ( virtual_md_Jks ) call init_matel_orb_XYZ_orb( )
 
+c$$$!     Find overlap matrix
+c$$$      call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
+c$$$     &    lasto, iphorb, isa, numh, listhptr, listh, S )
+c$$$
+c$$$      if ((virtual_md_Jks) .and. (substep .eq. BASE_STEP)) then
+c$$$      !     Find rmatrix, that we need for Kohn-Sham J-flux component (ThTr)
+c$$$         call rmatrix(na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
+c$$$     &        lasto, iphorb, isa, numh, listhptr, listh, Rmat )
+c$$$      endif
+c$$$
+c$$$      if ( fdf_get('Save.Overlap.Gradient', .false.) .or.
+c$$$!     We need gradient of overlap for the Virtual step
+c$$$!     during Kohn-Sham J flux component calculation:
+c$$$     $     ((virtual_md_Jks) .and. (substep .eq. BASE_STEP)) ) then
+c$$$        ! Clean-up, regardless of specified
+c$$$        call delete(gradS_2D)
+c$$$        call newdSpData2D(sparse_pattern,3,block_dist,gradS_2D)
+c$$$        if (ionode) call print_type(gradS_2D)
+c$$$        call overlap_gradient(na_U, lasto, isa, maxnh, xijo, gradS_2D)
+c$$$        gradS => val(gradS_2D)
 !     Find overlap matrix
-      call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
-     &    lasto, iphorb, isa, numh, listhptr, listh, S )
-
-      if ((virtual_md_Jks) .and. (substep .eq. BASE_STEP)) then
-      !     Find rmatrix, that we need for Kohn-Sham J-flux component (ThTr)
-         call rmatrix(na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
-     &        lasto, iphorb, isa, numh, listhptr, listh, Rmat )
-      endif
-
-      if ( fdf_get('Save.Overlap.Gradient', .false.) .or.
-!     We need gradient of overlap for the Virtual step
-!     during Kohn-Sham J flux component calculation:
-     $     ((virtual_md_Jks) .and. (substep .eq. BASE_STEP)) ) then
-        ! Clean-up, regardless of specified
-        call delete(gradS_2D)
-        call newdSpData2D(sparse_pattern,3,block_dist,gradS_2D)
-        if (ionode) call print_type(gradS_2D)
-        call overlap_gradient(na_U, lasto, isa, maxnh, xijo, gradS_2D)
+      if ( fdf_get('Save.Overlap.Gradient', .false.) ) then
+        write(oname,"(a,i0)") "gradS at geom step ", istep
+        call newdSpData2D(sparse_pattern,3,block_dist,gradS_2D,
+     &       name=oname, sparsity_dim=2)
         gradS => val(gradS_2D)
+
+        call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
+     &       lasto, iphorb, isa, numh, listhptr, listh, S, gradS )
+      else
+        call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
+     &       lasto, iphorb, isa, numh, listhptr, listh, S )
       end if
 
 #ifdef NCDF_4
@@ -807,7 +820,6 @@
         end if
       end if
 
-!     If onlyS, Save overlap matrix and exit
       if ( onlyS ) then
          fname = fname_TSHS(slabel, onlyS = .true. )
          ! We include H as S, well-knowing that we only write one of
@@ -819,8 +831,8 @@
      &        xa, lasto,
      &        H_2D, S_1D, indxuo,
      &        dummyEf, dummyQtot, Temp,0,0)
-         call bye( 'Save overlap matrix and exit' ) ! Exit siesta
-
+         call timer( 'state_init', 2 )
+         return
       endif
 
 #ifdef CDF

@@ -29,8 +29,9 @@
 !
 !       Old style vps files should have the right info in text.
 !
-        call read_ps_conf(p%irel,p%npotd-1,p%text,p%gen_zval)
-
+        call charge_from_ps_conf(p%irel,p%npotd-1,p%text,p%gen_zval)
+        p%gen_config_string = ""
+        
         p%nrval = p%nr + 1
         allocate(p%r(1:p%nrval))
         read(io_ps) (p%r(j),j=2,p%nrval)
@@ -72,6 +73,7 @@
 
         integer io_ps, i, j, ios
         character(len=70) dummy
+        character(len=256) line
         real(dp) :: r2, gen_zval_inline
 
         call get_free_lun(io_ps)
@@ -82,46 +84,48 @@
  8000   format(1x,i2)
  8005   format(1x,a2,1x,a2,1x,a3,1x,a4)
  8008   format(1x,a2,1x,a2,1x,a3,1x,a4,1x,i8)
- 8010   format(1x,6a10,/,1x,a70)
- 8015   format(1x,2i3,i5,4g20.12)
+ 8010   format(1x,6a10)
+ 8012   format(1x,a70)
+ 8015   format(1x,2i3,i5,3g20.12)
  8030   format(4(g20.12))
  8040   format(1x,a)
 
         ! Attempt to read extra xc information
         ! This can be present even with the usual atom xc codes
-        read(io_ps,8008,iostat=ios) p%name, p%icorr,
-     $          p%irel, p%nicore, p%libxc_packed_code
-        if (ios /= 0) then
-           ! Fall back to normal line
-           backspace(io_ps)
-           read(io_ps,8005) p%name, p%icorr, p%irel, p%nicore
+
+        read(io_ps,fmt="(a)") line
+        read(line(1:15),8005) p%name, p%icorr, p%irel, p%nicore
+        if (len_trim(line) > 17) then
+           read(line(17:),fmt="(i8)") p%libxc_packed_code
+        else
            p%libxc_packed_code = 0
         endif
+
         if ((p%icorr == "xc") .and. (p%libxc_packed_code == 0)) then
            call die("No libxc codes with 'xc' pseudo-code")
         endif
-        read(io_ps,8010) (p%method(i),i=1,6), p%text
-        read(io_ps,8015,iostat=ios)
-     $       p%npotd, p%npotu, p%nr, p%b, p%a, p%zval,
-     $       gen_zval_inline
-        ! TEST_ME: if ios<0, are we guaranteed that the other info has been read?
-        if (ios < 0) gen_zval_inline = 0.0_dp
-        call read_ps_conf(p%irel,p%npotd-1,p%text,p%gen_zval)
-!
-!       (Some .psf files contain an extra field corresponding
-!       to the ps valence charge at generation time. If that
-!       field is not present, the information has to be decoded
-!       from the "text" variable.
-!
-!       "Zero" pseudos have gen_zval = 0, so they need a special case.
+        read(io_ps,8010) (p%method(i),i=1,6)
 
-        if (p%gen_zval == 0.0_dp) then
-           if (gen_zval_inline == 0.0_dp) then
-              if (p%method(1) /= "ZEROPSEUDO")
-     $             call die("Cannot get gen_zval")
-           else
-              p%gen_zval = gen_zval_inline
-           endif
+        p%gen_config_string = ""
+        read(io_ps,fmt="(a)") line
+        read(line,8012) p%text
+        if (len_trim(line) >= 73) then
+           ! We have also the packed config info
+           read(line(73:),fmt=*) p%gen_config_string
+        endif
+        
+        read(io_ps,fmt="(a)") line
+        read(line,8015)  p%npotd, p%npotu, p%nr, p%b, p%a, p%zval
+
+        ! Above statement reads up to 72 chars
+        if (len_trim(line) >= 74) then
+           ! There is an explicit field for the total
+           ! generation valence charge
+           read(line(74:),fmt=*) p%gen_zval
+        else
+           ! Set total generation valence charge from the packed
+           ! information on pseudized shells
+           call charge_from_ps_conf(p%irel,p%npotd-1,p%text,p%gen_zval)
         endif
 
         p%nrval = p%nr + 1
@@ -188,11 +192,15 @@
 
         end subroutine get_free_lun
 
-      subroutine read_ps_conf(irel,lmax,text,chgvps)
+      subroutine charge_from_ps_conf(irel,lmax,text,chgvps)
 !
 !     Attempt to decode the valence configuration used for
 !     the generation of the pseudopotential
 !     (At least, the valence charge)
+
+      ! Now we only estimate the total valence charge
+      ! In the future we might extend the data structure
+      ! to hold pseudized shell information
 
       character(len=3), intent(in)  :: irel
       integer, intent(in)           :: lmax
@@ -205,13 +213,7 @@
 
       chgvps=0.0_dp
 
-            if(irel.eq.'isp') then
-               write(6,'(/,2a)')
-     .          'Pseudopotential generated from an ',
-     .          'atomic spin-polarized calculation'
-
-               write(6,'(/,a)') 'Valence configuration '//
-     .                 'for pseudopotential generation:'
+            if (irel.eq.'isp') then
 
                do l=0,min(lmax,3)
                   itext=l*17
@@ -219,19 +221,11 @@
      $                 orb, zdown, zup, rc_read
  8080             format(a2,f4.2,1x,f4.2,1x,f4.2)
                   chgvps = chgvps + zdown + zup
-                  write(6,8085) orb, zdown, zup, rc_read
+!!                  write(6,8085) orb, zdown, zup, rc_read
  8085             format(a2,'(',f4.2,',',f4.2,') rc: ',f4.2)
                enddo
 
             else
-               if(irel.eq.'rel') then
-                  write(6,'(/,2a)')
-     .          'Pseudopotential generated from a ',
-     .                 'relativistic atomic calculation'
-               endif
-
-               write(6,'(/,a)') 'Valence configuration '//
-     .                 'for pseudopotential generation:'
 
                do l=0,min(lmax,3)
                   itext=l*17
@@ -239,16 +233,18 @@
      $                 orb, ztot, rc_read
  8090             format(a2,f5.2,4x,f5.2)
                   chgvps = chgvps + ztot
-                  write(6,8095) orb, ztot, rc_read
+!!                  write(6,8095) orb, ztot, rc_read
  8095             format(a2,'(',f5.2,') rc: ',f4.2)
                enddo
 
-           endif
-           return
+            endif
+            return
 
- 5000    continue       ! Error return: set chgvps to zero
+ 5000    continue             ! Error return: set chgvps to zero
+         call die("froyen_reader: " //
+     $        "Error while trying to decode ps config")
 
-         end subroutine read_ps_conf
+         end subroutine charge_from_ps_conf
 
          subroutine pseudo_reparametrize(p,a,b,label,new_rmax)
          use interpolation, only: generate_spline

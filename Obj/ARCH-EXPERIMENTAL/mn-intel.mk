@@ -1,15 +1,9 @@
-#
+# Example fortran.mk include file
 # MareNostrum IV at BSC, Intel suite
 #
 SIESTA_ARCH=prace-intel
 #
-# Machine specific settings might be:
-#
-# 1. Inherited from environmental variables
-#    (paths, libraries, etc)
-# 2. Set from a 'fortran.mk' file that is
-#    included below (compiler names, flags, etc) (Uncomment first)
-#
+# You need to have the appropriate modules
 # (intel/2017.4 environment)
 # ml netcdf
 # ml flook
@@ -22,19 +16,19 @@ SIESTA_ARCH=prace-intel
 #--------------
 # These are mandatory for PSML and MaX Versions,
 # but they should be turned off for 4.1
-WITH_PSML=
-WITH_GRIDXC=
+WITH_PSML=1
+WITH_GRIDXC=1
 #-------------
 #
 WITH_EXTERNAL_ELPA=1
-WITH_ELSI=
+WITH_ELSI=0
 WITH_FLOOK=1
 WITH_MPI=1
 WITH_NETCDF=1
-WITH_SEPARATE_NETCDF_FORTRAN=
+WITH_SEPARATE_NETCDF_FORTRAN=0
 WITH_NCDF=1
-WITH_LEGACY_GRIDXC_INSTALL=
-WITH_GRID_SP=
+WITH_LEGACY_GRIDXC_INSTALL=0
+WITH_GRID_SP=0
 #
 #===========================================================
 # Make sure you have the appropriate library symbols
@@ -70,6 +64,9 @@ FC_SERIAL=ifort
 FPP = $(FC_SERIAL) -E -P -x c
 #
 # (add -qopenmp to all three for OpenMP support)
+#
+# Warning: Some of these 'safety' options might impact performance
+# 
 FFLAGS = -g -traceback -O2 -prec-div -prec-sqrt -fp-model source
 FFLAGS_DEBUG= -g -traceback -O1 -prec-div -prec-sqrt -fp-model source
 LDFLAGS= 

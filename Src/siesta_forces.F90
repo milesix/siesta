@@ -90,7 +90,7 @@ contains
 
     use m_ts_options, only : N_Elec, N_mu, mus
     use m_ts_method
-    use m_ts_global_vars,      only: TSmode, TSinit, TSrun
+    use m_ts_global_vars,      only: TSmode, TSinit, TSrun, onlyS
     use siesta_geom,           only: nsc, na_u, xa, ucell, isc_off
     use sparse_matrices,       only: sparse_pattern, block_dist
     use sparse_matrices,       only: Escf, S, maxnh
@@ -113,6 +113,7 @@ contains
     real(dp) :: dHmax ! Max. change in H elements
     real(dp) :: dEmax ! Max. change in EDM elements
     real(dp) :: drhog ! Max. change in rho(G) (experimental)
+    real(dp) :: dQ ! Change in charge
     real(dp), target :: G2max ! actually used meshcutoff
     type(converger_t) ::  conv_harris, conv_freeE
     character(len=20) timer_str_scf
@@ -164,6 +165,9 @@ contains
        end if
        call bye("S only")
     end if
+    if ( onlyS ) then
+      return
+    end if
 
     if ( TS_DQ_METHOD == TS_DQ_METHOD_FERMI ) then
       ! Initialize the charge correction
@@ -183,6 +187,7 @@ contains
     call dict_variable_add('SCF.dH',dHmax)
     call dict_variable_add('SCF.dE',dEmax)
     call dict_variable_add('SCF.drhoG',drhog)
+    call dict_variable_add('SCF.dQ',dQ)
     ! We have to set the meshcutoff here
     ! because the asked and required ones are not
     ! necessarily the same
@@ -242,6 +247,7 @@ contains
       dHmax = -1._dp
       dEmax = -1._dp
       drhog = -1._dp
+      dQ = 0._dp
 
       if ( SIESTA_worker ) then
         if ( converge_Eharr ) then
@@ -346,7 +352,9 @@ contains
              
           end if
 
-          ! This iteration has completed calculating the new DM
+          ! Calculate current charge based on the density matrix
+          call dm_charge(spin, DM_2D, S_1D, Qcur)
+          dQ = Qcur - Qtot
 
           call compute_energies( iscf )
           if ( mix_charge ) then
@@ -363,7 +371,7 @@ contains
           !        dDmax=maxdiff(DM_out,DM_in)
           !        dHmax=maxdiff(H(DM_out),H_in)
           call scfconvergence_test( first_scf, iscf, &
-               dDmax, dHmax, dEmax, &
+               dDmax, dHmax, dEmax, dQ, &
                conv_harris, conv_freeE, &
                SCFconverged )
           
@@ -373,9 +381,6 @@ contains
           else
              prevDmax = dDmax
           end if
-
-          ! Calculate current charge based on the density matrix
-          call dm_charge(spin, DM_2D, S_1D, Qcur)
           
           ! In case the user has requested a Fermi-level correction
           ! Then we start by correcting the fermi-level
@@ -391,7 +396,7 @@ contains
             if ( converge_EDM ) &
                 ts_dq%run = ts_dq%run .and. &
                 tolerance_EDM * TS_DQ_FERMI_SCALE > dEmax
-            if ( abs(Qcur - Qtot) > TS_DQ_FERMI_TOLERANCE ) then
+            if ( abs(dQ) > TS_DQ_FERMI_TOLERANCE ) then
               if ( IONode .and. SCFconverged ) then
                 write(6,"(2a)") "SCF cycle continued due ", &
                     "to TranSiesta charge deviation"
@@ -516,7 +521,7 @@ contains
 #endif
 
     ! Clean up the charge correction object
-      call ts_dq%delete()
+    call ts_dq%delete()
 
     if ( SIESTA_worker ) then
 !===
@@ -528,6 +533,11 @@ contains
                ' in maximum number of steps (required).')
           write(tmp_str,"(2(i5,tr1),f12.6)") istep, iscf, prevDmax
           call message(' (info)',"Geom step, scf iteration, dmax:"//trim(tmp_str))
+          if ( TSrun ) then
+            write(tmp_str,"(i5,1x,i5,f12.6)") istep, iscf, dQ
+            call message(' (info)',"Geom step, scf iteration, dq:"// &
+                trim(tmp_str))
+          end if
           call timer( 'all', 2 ) ! New call to close the tree
           call timer( 'all', 3 )
           call barrier()
@@ -537,6 +547,10 @@ contains
                'SCF_NOT_CONV: SCF did not converge  in maximum number of steps.')
           write(tmp_str,"(2(i5,tr1),f12.6)") istep, iscf, prevDmax
           call message(' (info)',"Geom step, scf iteration, dmax:"//trim(tmp_str))
+          if ( TSrun ) then
+            write(tmp_str,"(i5,1x,i5,f12.6)") istep, iscf, dQ
+            call message(' (info)',"Geom step, scf iteration, dq:"//trim(tmp_str))
+          end if
        end if
     end if
 
