@@ -676,7 +676,8 @@ compute_pw_matrix.o: m_switch_local_proj.o parallel.o precision.o
 compute_pw_matrix.o: sparse_matrices.o
 conjgr.o: precision.o
 conjgr_old.o: precision.o
-coor.o: alloc.o parallel.o precision.o siesta_geom.o sys.o units.o zmatrix.o
+coor.o: alloc.o atmfuncs.o parallel.o precision.o siesta_geom.o sys.o units.o
+coor.o: zmatrix.o
 coxmol.o: files.o periodic_table.o precision.o units.o
 cranknic_evolg.o: alloc.o atomlist.o m_energies.o m_eo.o m_inversemm.o
 cranknic_evolg.o: m_matswinvers.o m_spin.o m_steps.o parallel.o parallelsubs.o
@@ -1299,8 +1300,9 @@ setup_ordern_indexes.o: alloc.o domain_decom.o parallel.o spatial.o
 shaper.o: atmfuncs.o mneighb.o precision.o
 show_distribution.o: atomlist.o parallel.o parallelsubs.o siesta_geom.o sys.o
 siesta.o: alloc.o extrae_module.o m_io_yaml.o m_mpi_utils.o m_steps.o
-siesta.o: parallel.o siesta_analysis.o siesta_end.o siesta_forces.o
-siesta.o: siesta_init.o siesta_move.o siesta_options.o siesta_tddft.o
+siesta.o: m_ts_global_vars.o parallel.o siesta_analysis.o siesta_end.o
+siesta.o: siesta_forces.o siesta_init.o siesta_move.o siesta_options.o
+siesta.o: siesta_tddft.o sys.o
 siesta2wannier90.o: atomlist.o files.o m_digest_nnkp.o m_spin.o
 siesta2wannier90.o: m_switch_local_proj.o parallel.o parallelsubs.o precision.o
 siesta2wannier90.o: siesta_options.o sys.o wannier90_types.o

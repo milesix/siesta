@@ -104,6 +104,9 @@ MODULE siesta_options
                                  !   (not as an external post-processing tool)
   integer :: n_wannier_manifolds ! Number of bands manifolds that will be 
                                  !   considered for Wannier transformation
+  integer :: index_perturbed_manifold 
+                                 ! Index of the manifold that will be perturbed
+                                 !   with a chemical potential
   logical :: r_between_manifolds ! Will we compute the position operator
                                  !   matrix elements between bands in
                                  !   different manifolds?

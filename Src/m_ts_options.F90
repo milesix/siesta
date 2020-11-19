@@ -438,7 +438,7 @@ contains
 
     ! Whether we should always set the DM to bulk
     ! values (by reading in from electrode DM)
-    if ( TS_scf_mode == 1 .or. .not. IsVolt ) then
+    if ( TS_scf_mode == 1 .and. .not. IsVolt ) then
       chars = 'bulk'
     else
       chars = 'diagon'
@@ -613,7 +613,7 @@ contains
     ! to use a Poisson solution they add.
     if ( ts_tidx > 0 ) then
        ! We have a single unified semi-inifinite direction
-       chars = fdf_get('TS.Poisson','ramp-cell')
+       chars = fdf_get('TS.Poisson','ramp')
     else
        chars = fdf_get('TS.Poisson','elec-box')
     end if
@@ -627,9 +627,9 @@ contains
     else
 #endif
        Hartree_fname = ' '
-       if ( leqi(chars,'ramp-cell') ) then
+       if ( leqi(chars,'ramp') .or. leqi(chars, 'ramp-cell') ) then
           if ( ts_tidx <= 0 ) then
-             call die('TS.Poisson cannot be ramp-cell for &
+             call die('TS.Poisson cannot be ramp for &
                   &anything but 2-electrodes with aligned transport direction.')
           end if
        else if ( leqi(chars,'elec-box') ) then
@@ -637,10 +637,10 @@ contains
        else
 #ifdef NCDF_4
           call die('Error in specifying how the Hartree potential &
-               &should be placed. [ramp-cell|elec-box|NetCDF-file]')
+               &should be placed. [ramp|elec-box|NetCDF-file]')
 #else
           call die('Error in specifying how the Hartree potential &
-               &should be placed. [ramp-cell|elec-box]')
+               &should be placed. [ramp|elec-box]')
 #endif
        end if
 #ifdef NCDF_4

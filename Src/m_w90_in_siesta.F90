@@ -34,6 +34,10 @@ module m_w90_in_siesta
                                           ! Number of bands manifolds 
                                           !  that will be considered
                                           !  for Wannier transformation
+  use siesta_options, only: index_perturbed_manifold
+                                          ! Index of the manifold that will
+                                          !   be perturbed with an external  
+                                          !   chemical potential
   use siesta_options, only: r_between_manifolds     
                                           ! Will the position operator matrix
                                           !  elements be computed between bands
@@ -783,7 +787,7 @@ module m_w90_in_siesta
 !   to allocate the variable.
     nullify( chempotwann_val )
     call re_alloc( chempotwann_val,                              &
- &                 1, manifold_bands_w90_in(1)%numbands_w90_in,  &
+ &                 1, manifold_bands_w90_in(index_perturbed_manifold)%numbands_w90_in,  &
  &                 1, spin%H,                                    & 
  &                 name='chempotwann_val',                       &
  &                 routine='read_w90_in_siesta_specs')
@@ -1420,34 +1424,36 @@ module m_w90_in_siesta
 !   between manifolds has to be carried out
     if( r_between_manifolds ) then
       if( index_manifold .eq. 3) then
+        if( first_chempotwann ) then
 #ifdef MPI
-        call MPI_barrier(MPI_Comm_world,MPIError)
+          call MPI_barrier(MPI_Comm_world,MPIError)
 #endif
-        if( IONode ) then
-          do nkp = 1, numkpoints
-            do iproj = 1, manifold_bands_w90_in(1)%numbands_w90_in
-              do mband = manifold_bands_w90_in(1)%number_of_bands+1,  &
-                         manifold_bands_w90_in(1)%number_of_bands +   & 
-                         manifold_bands_w90_in(2)%number_of_bands 
-                Amnmat(mband, iproj, nkp) = cmplx(0.0_dp,0.0_dp,kind=dp)
+          if( IONode ) then
+            do nkp = 1, numkpoints
+              do iproj = 1, manifold_bands_w90_in(1)%numbands_w90_in
+                do mband = manifold_bands_w90_in(1)%number_of_bands+1,  &
+                           manifold_bands_w90_in(1)%number_of_bands +   & 
+                           manifold_bands_w90_in(2)%number_of_bands 
+                  Amnmat(mband, iproj, nkp) = cmplx(0.0_dp,0.0_dp,kind=dp)
+                enddo
+              enddo
+              do iproj = manifold_bands_w90_in(1)%numbands_w90_in+1,    &
+                         manifold_bands_w90_in(3)%numbands_w90_in
+                do mband = 1, manifold_bands_w90_in(1)%number_of_bands 
+                  Amnmat(mband, iproj, nkp) = cmplx(0.0_dp,0.0_dp,kind=dp)
+                enddo
               enddo
             enddo
-            do iproj = manifold_bands_w90_in(1)%numbands_w90_in+1,    &
-                       manifold_bands_w90_in(3)%numbands_w90_in
-              do mband = 1, manifold_bands_w90_in(1)%number_of_bands 
-                Amnmat(mband, iproj, nkp) = cmplx(0.0_dp,0.0_dp,kind=dp)
-              enddo
-            enddo
-          enddo
 
-!         Write the Amn overlap matrices in a file, in the format required
-!         by Wannier90
-          call writeamn( ispin )
+!           Write the Amn overlap matrices in a file, in the format required
+!           by Wannier90
+            call writeamn( ispin )
 
+          endif
+#ifdef MPI
+          call MPI_barrier(MPI_Comm_world,MPIError)
+#endif
         endif
-#ifdef MPI
-        call MPI_barrier(MPI_Comm_world,MPIError)
-#endif
       endif
     endif
 
@@ -2526,6 +2532,7 @@ module m_w90_in_siesta
   end subroutine deallocate_wannier
 
 #else
+  CONTAINS
   subroutine dummy_routine()
   end subroutine dummy_routine
 #endif

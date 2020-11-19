@@ -1849,6 +1849,8 @@ subroutine read_options( na, ns, nspin )
   w90_in_siesta_threshold_coeff =fdf_get('Wannier90_in_SIESTA_threshold_coeff',&
  &                            1.d-6)
 
+  index_perturbed_manifold = fdf_get( 'Wannier90_Index_Perturbed_Manifold', 1 )
+
   if (ionode) then
      write(6,'(2a)') 'redata: ', repeat('*', 71)
   endif
