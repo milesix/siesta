@@ -1422,7 +1422,7 @@ module m_w90_in_siesta
 !   between manifolds has to be carried out
     if( r_between_manifolds ) then
       if( index_manifold .eq. 3) then
-        if( first_chempotwann ) then
+        if( (.not. compute_chempotwann) .or. first_chempotwann ) then
 #ifdef MPI
           call MPI_barrier(MPI_Comm_world,MPIError)
 #endif
