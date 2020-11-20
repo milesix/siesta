@@ -203,7 +203,7 @@ contains
        end if
 
        ! A negative value specifies that one cannot mix in the initial step
-       init_method = -3
+       init_method = -2
 
     end if
 
@@ -308,7 +308,7 @@ contains
 
           old_Ef = Ef
           Ef = fdf_get('TS.Fermi.Initial',Ef,'Ry')
-          if ( abs(init_method) == 3 ) then
+          if ( abs(init_method) == 2 ) then
              ! As the fermi-level has been read in from a previous
              ! calculation (TSDE), the EDM should only be shifted by the difference
              diff_Ef = Ef - old_Ef
@@ -319,10 +319,10 @@ contains
 
           if ( IONode ) then
              write(*,*) ! new-line
-             if ( abs(init_method) < 3 ) then
+             if ( abs(init_method) < 2 ) then
                 write(*,'(a,f9.5,a)')'transiesta: Setting the Fermi-level to: ', &
                      Ef / eV,' eV'
-             else if ( abs(init_method) == 3 ) then
+             else if ( abs(init_method) == 2 ) then
                 write(*,'(a,2(f10.6,a))')'transiesta: Changing Fermi-level from -> to: ', &
                      old_Ef / eV,' -> ',Ef / eV, ' eV'
              end if
@@ -389,10 +389,11 @@ contains
     use class_Sparsity
     use class_dSpData2D
     use class_Fstack_dData1D, only: reset
-    use m_ts_global_vars,only: ts_method_init, TSinit, TSrun
+    use m_ts_global_vars,only: ts_method_init, TSinit, TSrun, TSmode
     use m_ts_options,   only : TS_scf_mode, ts_hist_keep
     use m_ts_options,   only : val_swap, ts_scf_mixs
     use m_ts_options,   only : ts_Dtol, ts_Htol
+    use m_ts_options,   only : IsVolt, TS_start_bias
     use siesta_options, only : dDtol, dHtol
 
     use m_mixing, only: mixers_history_init
@@ -414,7 +415,7 @@ contains
     ! integer init_method           : returns method it has read the data with
     !                                   0 == atomic filling (possibly user-defined
     !                                   1 == .DM read
-    !                                   3 == .TSDE read
+    !                                   2 == .TSDE read
     ! *******************************************************************
 
     ! The spin-configuration that is used to determine the spin-order.
@@ -480,33 +481,43 @@ contains
     
     if ( TS_scf_mode == 1 .and. TSinit ) then
 
-       ! if the user requests to start the transiesta SCF immediately.
-       call ts_method_init( .true. )
+      ! if the user requests to start the transiesta SCF immediately.
+      call ts_method_init( .true. )
 
     else 
 
-       ! Print-out whether transiesta is starting, or siesta is starting
-       call ts_method_init( abs(init_method) == 3 )
+      ! Print-out whether transiesta is starting, or siesta is starting
+      call ts_method_init( abs(init_method) == 2 )
 
+    end if
+
+    if ( TSmode .and. IsVolt .and. abs(init_method) /= 2 ) then
+      if ( IONode ) then
+        write(*,'(a,/)') 'ts: We highly recommend you to perform 0-bias calculations before *any* bias calculations'
+      end if
+      if ( .not. TS_start_bias ) then
+        call die('ts: You have to calculate the 0 V and re-use the TSDE from &
+            &that calculation.')
+      end if
     end if
 
     if ( TSrun ) then
 
-       ! Correct the convergence parameters in transiesta
-       call val_swap(dDtol,ts_Dtol)
-       call val_swap(dHtol,ts_Htol)
+      ! Correct the convergence parameters in transiesta
+      call val_swap(dDtol,ts_Dtol)
+      call val_swap(dHtol,ts_Htol)
 
-       ! From now on, a new mixing cycle starts,
-       ! Check in mixer.F for new mixing schemes.
-       if ( associated(ts_scf_mixs, target=scf_mixs) ) then
-          do i = 1 , size(scf_mix%stack)
-             call reset(scf_mix%stack(i), -ts_hist_keep)
-          end do
-       else
-          call mixers_history_init(scf_mixs)
-       end if
-       ! Transfer scf_mixing to the transiesta mixing routine
-       scf_mix => ts_scf_mixs(1)
+      ! From now on, a new mixing cycle starts,
+      ! Check in mixer.F for new mixing schemes.
+      if ( associated(ts_scf_mixs, target=scf_mixs) ) then
+        do i = 1 , size(scf_mix%stack)
+          call reset(scf_mix%stack(i), -ts_hist_keep)
+        end do
+      else
+        call mixers_history_init(scf_mixs)
+      end if
+      ! Transfer scf_mixing to the transiesta mixing routine
+      scf_mix => ts_scf_mixs(1)
 
     end if
 
@@ -588,7 +599,7 @@ contains
     !                                 method used to read the DM/EDM
     !                                   0 == not read
     !                                   1 == .DM read
-    !                                   3 == .TSDE read
+    !                                   2 == .TSDE read
     ! *******************************************************************
 
     !> The spin-configuration that is used to determine the spin-order.
@@ -644,7 +655,7 @@ contains
 
        if ( TSDE_found ) then
           ! Signal we have read TSDE
-          init_method = 3
+          init_method = 2
 
           DM_found = .true.
 
@@ -1556,9 +1567,7 @@ contains
     ! Scratch array to accumulate the elements
     call newdData2D(a_out,nnzs_out, nspin,name="(temp array for extrapolation)")
     a => val(a_out)
-!$OMP parallel workshare default(shared)
     a(:,:) = 0.0_dp
-!$OMP end parallel workshare
 
     do i = 1, n
        pair => get_pointer(DM_history,i)
@@ -1568,9 +1577,7 @@ contains
        !           endif
        call restruct_dSpData2D(dm,sparse_pattern,DMtmp)
        ai => val(DMtmp)
-!$OMP parallel workshare default(shared)
-       a = a + c(i) * ai
-!$OMP end parallel workshare
+       a(:,:) = a(:,:) + c(i) * ai(:,:)
     enddo
 
     call newdSpData2D(sparse_pattern,a_out,orb_dist, &

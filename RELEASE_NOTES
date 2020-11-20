@@ -1,3 +1,10 @@
+*******
+** NOTE
+**
+** The contents of this file are being progressively put in
+** Docs/ChangeLog.md
+**
+*******
 #BETA#BETA#BETA#BETA#BETA#BETA#
 B                             B
 E            SIESTA           E
@@ -45,6 +52,25 @@ Release notes for siesta 4.1 version
     TranSiesta equilibrium contours now default to using the "right" scheme
     Maximum l for KB projectors is now automatically set to the highest l
        in the PS file. This may result in slight changes.
+    Stress-tensor-voigt is now printing in the correct Voigt representation.
+       prior versions of Siesta did not follow Voigt representation.
+       Please see manual entry MD.RemoveIntramolecularPressure for a description.
+
+--- Siesta is now developed on the GitLab platform: www.gitlab.com/siesta-project/siesta
+    Siesta's orphan packages are developed here: www.gitlab.com/siesta-project
+
+--- Enabled dipole correction calculation from the Hartree potential in the vacuum region
+    See entry Slab.DipoleCorrection for additional information.
+
+--- Removed a small memory leak (from siesta_init)
+
+--- Enabled parallel-over-k for NC/SOC calculations
+
+--- Fixed bug for writing eigenvalues when NumberOfOrbitals was used (together with NC/SOC)
+
+--- Fixed printing Voronoi and Hirshfeld charges if user requsted LDOS calculations
+
+--- Fixed cell transpose when using socket calculations (only important for skewed cells)
 
 --- Added citation information to output (end of run)
 
@@ -67,6 +93,23 @@ Release notes for siesta 4.1 version
 --- Removed *ALL* OMP collapse statements, Intel 2019 is buggy.
 
 --- TranSiesta/TBtrans changes:
+
+-- Much more efficient dq implementation for fixing charge fluctuations
+
+-- Fixed TBtrans calculations with spin-flags (i.e. TB-only)
+
+-- Allow E-field for 1-electrode calculations, this allows 1-electrode
+   capacitor setups
+
+-- Fixed bug in voltage potential which was severe for capacitor like setups.
+   It also changes regular TS runs.
+
+-- Added TSFA[C] files which show forces on atoms in the device region
+
+-- Added TS-only energies, that is energies calculated from DM/H are
+   now only using the updated elements of the respective regions.
+
+-- Fixed a bug in TBtrans when piping input
 
 -- Much faster Bloch expansions in transiesta/tbtrans calculations
    Using tiling will now result in extremely fast self-energy calculations

@@ -37,10 +37,9 @@
 
       real(grid_p),   pointer :: rhopcc(:), rhoatm(:), Vna(:)
       real(dp)                :: Uharrs     ! Harris energy
-      logical                 :: IsDiag, spiral
-      character(len=10)       :: shape
-      integer                 :: nml(3), ntml(3), npcc,
-     &                           nmpl, ntpl
+      logical                 :: IsDiag
+      integer                 :: nml(3), ntml(3), npcc, nmpl, ntpl
+      integer                 :: nbcell
       real(dp)                :: bcell(3,3), cell(3,3),
      &                           dvol, field(3), rmax, scell(3,3)
       real(dp)                :: G2mesh =  0.0_dp
@@ -92,9 +91,8 @@
       use m_ncdf_io, only : cdf_init_mesh
 #endif
       use m_efield,       only : initialize_efield, acting_efield
-      use m_efield,       only : get_field_from_dipole
-      use m_efield,       only : dipole_correction
       use m_efield,       only : user_specified_field
+      use dipole_m,       only : init_dipole_correction
 
       use m_doping_uniform,       only: initialize_doping_uniform
       use m_doping_uniform,       only: compute_doping_structs_uniform,
@@ -115,8 +113,8 @@
 
       use m_ts_global_vars,only: TSmode
       use m_ts_options,   only : IsVolt, N_Elec, Elecs
+      use m_ts_electype,  only : Elec_ortho2semi_inf
       use m_ts_voltage,   only : ts_init_voltage
-      use m_ts_hartree,   only : ts_init_hartree_fix
 
       implicit none
       integer, intent(in)     :: nspin, norb, iaorb(norb), iphorb(norb),
@@ -130,7 +128,7 @@
 
       real(dp), parameter     :: tiny  = 1.e-12_dp 
       integer                 :: io, ia, iphi, is, n, i, j
-      integer                 :: nsc(3), nbcell, nsd
+      integer                 :: nsc(3), nsd
       real(dp)                :: DStres(3,3), volume
       real(dp), external      :: volcel, ddot
       real(grid_p)            :: dummy_Drho(1,1), dummy_Vaux(1),
@@ -138,13 +136,14 @@
       logical, save           :: frstme = .true.   ! Keeps state
       real(grid_p),   pointer :: Vscf(:,:), rhoatm_par(:)
       integer,        pointer :: numphi(:), numphi_par(:)
+      character(len=10)       :: shape
 
       integer                 :: nm(3)   ! For call to initMesh
       logical                 :: need_gradients_in_xc, is_vdw
       
       ! Transport direction (unit-cell aligned)
       integer                 :: iE
-      real(dp)                :: ortho, field(3), field2(3)
+      logical :: is_ortho
 !--------------------------------------------------------------------- BEGIN
 #ifdef DEBUG
       call write_debug( '    PRE dhscf_init' )
@@ -170,9 +169,6 @@ C       Set mesh sub-division variables & perform one off allocation
         nsp = nsm*nsm*nsm
         call re_alloc( xdsp, 1, 3, 1, nsp, 'xdsp', 'dhscf_init' )
 
-C       Check spin-spiral wavevector (if defined)
-        if (spiral .and. nspin.lt.4)
-     &    call die('dhscf: ERROR: spiral defined but nspin < 4')
       endif   ! First time
 
 
@@ -401,7 +397,7 @@ C     Create Rhoatm using UNIFORM distr, in sequential form
         endif
 
 C     Allocate Temporal array
-      call re_alloc( Vscf, 1, ntpl, 1, nspin, 'Vscf', 'dhscf_init' )
+      call re_alloc( Vscf, 1, ntpl, 1, 1, 'Vscf', 'dhscf_init' )
 
 C     Vscf is filled here but not used later
 C     Uharrs is computed (and saved)
@@ -431,14 +427,14 @@ C     At the end of initializations:
 !     The index array endpht is in the QUADRATIC distribution
 C ----------------------------------------------------------------------
       if (frstme) then
-         call initialize_efield()
+        call initialize_efield()
+        call init_dipole_correction(nbcell, bcell, acting_efield)
       end if
 
       ! Check if we need to add the potential 
       ! corresponding to the voltage-drop.
       if ( TSmode ) then
         ! These routines are important if there are cell-changes
-        call ts_init_hartree_fix( cell, nua, xa, ntm, ntml)
         if ( IsVolt ) then
            call ts_init_voltage( cell, nua, xa, ntm)
         end if
@@ -466,37 +462,33 @@ C ----------------------------------------------------------------------
          end if
 
          ! This is either dipole or user, or both
-         field(:) = user_specified_field(:)
-         ortho = 0._dp
-         do iE = 1 , N_Elec
-           select case ( Elecs(iE)%t_dir )
-           case ( 4 )           ! B-C
-             field2 = Elecs(iE)%cell(:,2)
-             ortho = abs(ddot(3,field2,1,field,1))
-             field2 = Elecs(iE)%cell(:,3)
-             ortho = max(ortho, abs(ddot(3,field2,1,field,1)))
-           case ( 5 )           ! A-C
-             field2 = Elecs(iE)%cell(:,1)
-             ortho = abs(ddot(3,field2,1,field,1))
-             field2 = Elecs(iE)%cell(:,3)
-             ortho = max(ortho, abs(ddot(3,field2,1,field,1)))
-           case ( 6 )           ! A-B
-             field2 = Elecs(iE)%cell(:,1)
-             ortho = abs(ddot(3,field2,1,field,1))
-             field2 = Elecs(iE)%cell(:,2)
-             ortho = max(ortho, abs(ddot(3,field2,1,field,1)))
-           case ( 7 )           ! A-B-C
-             call die('dhscf: cannot use dipole correction when
-     &having all directions semi-infinite.')
-           case default
-             field2 = Elecs(iE)%cell(:,Elecs(iE)%t_dir)
-             ortho = ddot(3,field2,1,field,1)
+         is_ortho = .true.
+         if ( N_Elec == 1 ) then
+           ! When using a single electrode
+           ! one may always have an electric field.
+           ! For fields along the semi-infinite direction
+           ! it corresponds to a capacitor setup
+           ! For other fields it is simply a gate-like field.
+           ! However, when the electrode uses real space self-energies
+           ! then we do not allow *any* fields along the semi-inf
+           ! directions since that would mean an infinite field.
+           select case ( Elecs(1)%t_dir )
+           case ( 4 , 5 , 6, 7 )
+             is_ortho = Elec_ortho2semi_inf(Elecs(1),
+     &           user_specified_field)
            end select
-           if ( abs(ortho) > 1.e-9_dp ) then
-             call die('User defined E-field must be
+         else
+           ! For more than 1 electrode we do not allow any electric
+           ! fields along the semi-infinite directions.
+           do iE = 1 , N_Elec
+             is_ortho = is_ortho .and.
+     &           Elec_ortho2semi_inf(Elecs(iE), user_specified_field)
+           end do
+         end if
+         if ( .not. is_ortho ) then
+           call die('User defined E-field must be
      &perpendicular to semi-infinite directions.')
-           end if
-         end do
+         end if
         end if ! acting_efield
          
         ! We know that we currently allow people to do more than
@@ -592,7 +584,7 @@ C real*8  Dxc    : SCF double-counting correction to Exc
 C                    Dxc = integral of ( (epsxc - Vxc) * Rho )
 C                    All energies in Rydbergs
 C real*8  dipol(3): Electric dipole (in a.u.)
-C                   only when the system is a molecule
+C                   only when the system is a molecule/slab
 C ----------------------------------------------------------------------
 C Input/output :
 C ----------------------------------------------------------------------
@@ -646,8 +638,10 @@ C     Modules
       use siestaXC, only : jms_setMeshDistr => setMeshDistr
                                         ! Sets a distribution of mesh
                                         ! points over parallel processors
-      use m_vmat,  only  : vmat
+      use m_vmat, only: vmat
+      use m_vmatsp, only: vmatsp
       use m_rhoofd, only: rhoofd
+      use m_rhoofdsp, only: rhoofdsp
 #ifdef MPI
       use mpi_siesta
 #endif
@@ -658,11 +652,18 @@ C     Modules
       use siesta_options, only: read_deformation_charge_cdf
       use siesta_options, only: mix_charge
 
-      use m_efield,       only: get_field_from_dipole, dipole_correction
       use m_efield,       only: add_potential_from_field
       use m_efield,       only: user_specified_field, acting_efield
-      use m_doping_uniform,       only: doping_active, doping_uniform
-      
+      use dipole_m, only: get_dipole_origin
+      use dipole_m, only: get_field_from_dipole
+      use dipole_m, only: dipole_charge, dipole_potential
+      use dipole_m, only: dip_vacuum
+      use dipole_m, only: SLABDIPOLECORR
+      use dipole_m, only: SLABDIPOLECORR_NONE
+      use dipole_m, only: SLABDIPOLECORR_CHARGE, SLABDIPOLECORR_VACUUM
+
+      use m_doping_uniform, only: doping_active, doping_uniform
+
       use m_charge_add,   only: charge_add
       use m_hartree_add,  only: hartree_add
 
@@ -705,7 +706,7 @@ C ----------------------------------------------------------------------
 C        cellxc(...)    : Finds total exch-corr energy and potential
 C        cross(a,b,c)   : Finds the cross product of two vectors
 C        dfscf(...)     : Finds SCF contribution to atomic forces
-C        dipole(...)    : Finds electric dipole moment
+C        dipole_charge  : Finds electric dipole moment using the charges
 C        doping(...)    : Adds a background charge for doped systems
 C        write_rho(...)     : Saves electron density on a file
 C        poison(...)    : Solves Poisson equation
@@ -723,6 +724,7 @@ C real*8 volcel( cell ) : Returns volume of unit cell
 C ----------------------------------------------------------------------
 C Internal variables and arrays:
 C ----------------------------------------------------------------------
+C integer nbcell        : Number of bulk lattice vectors
 C real*8  bcell(3,3)    : Bulk lattice vectors
 C real*8  cell(3,3)     : Auxiliary lattice vectors (same as ucell)
 C real*8  const         : Auxiliary variable (constant within a loop)
@@ -754,7 +756,6 @@ C real*4  DRho(ntpl)    : Selfconsistent electron density difference
 C real*8  rhotot        : Total density at one point
 C real*8  rmax          : Maximum orbital radius
 C real*8  scell(3,3)    : Supercell vectors
-C character shape*10    : Name of system shape
 C real*4  Vaux(ntpl)    : Auxiliary potential array
 C real*4  Vna(ntpl)     : Sum of neutral-atom potentials
 C real*8  volume        : Unit cell volume
@@ -774,11 +775,9 @@ C     Local variables
 
       external
      &  cross,
-     &  dipole, 
      &  poison, 
-     &  reord, rhooda, rhoofdsp, 
-     &  timer, vmatsp, 
-     &  readsp
+     &  reord, rhooda,
+     &  timer
 
 !     Dummy arrays for bsc_cellxc call
       real(grid_p) :: aux3(3,1)
@@ -922,7 +921,7 @@ C             rhoatm and Drho are in sequential mode
         call re_alloc( DRho_par, 1, ntpl, 1, nspin,
      &                 'DRho_par','dhscf' )       
         if (Spiral) then
-          call rhoofdsp( norb, nmpl, maxnd, numd, listdptr, listd,
+          call rhoofdsp( norb, nml, nmpl, maxnd, numd, listdptr, listd,
      &                   nspin, Dscf, DRho_par, nuo, nuotot, iaorb,
      &                   iphorb, isa, qspiral )
         else
@@ -989,6 +988,7 @@ C       Set the UNIFORM distribution again and copy DRho to it
 !     since we have just computed rhoatm and Rho.
 
       if (want_partial_charges) then
+        call timer( 'partial-charges' , 1 )
         ! The endpht array is in the quadratic distribution, so
         ! we need to use it for this...
         if (nodes.gt.1) then
@@ -1020,6 +1020,7 @@ C       Set the UNIFORM distribution again and copy DRho to it
            call setMeshDistr( UNIFORM, nsm, nsp,
      &                        nml, nmpl, ntml, ntpl )
         endif
+        call timer( 'partial-charges' , 2 )
       endif
 
 C ----------------------------------------------------------------------
@@ -1227,29 +1228,37 @@ C ----------------------------------------------------------------------
 C Calculate the dipole moment
 C ----------------------------------------------------------------------
       dipol(1:3) = 0.0_dp
-      if (shape .ne. 'bulk') then
+      if ( nbcell /= 3 ) then
+        ! Find dipole in system
 
-C Find center of system
-        x0(1:3) = 0.0_dp
-        do ia = 1,nua
-          x0(1:3) = x0(1:3) + xa(1:3,ia) / nua
-        enddo
+        select case ( SLABDIPOLECORR )
+        case ( SLABDIPOLECORR_VACUUM )
+          ! we should not calculate the dipole here
+          ! User requests the vacuum dipole calculation
+        case default
+          ! Regardless of whether the user requests a
+          ! dipole correction or not, then we will calculate the dipole
+          ! using the charge method.
 
-C Find dipole
-        ! This routine is distribution-blind
-        ! and will reduce over all processors.
-        call dipole( cell, ntm, ntml(1), ntml(2), ntml(3), nsm,
-     &               DRho, x0, dipol )
+          ! Get dipole origin
+          call get_dipole_origin(cell, nua, xa, x0)
 
-        ! Orthogonalize dipole to bulk directions
-        if (shape .eq. 'chain') then
-          const = ddot(3,dipol,1,bcell,1) / ddot(3,bcell,1,bcell,1)
-          dipol(1:3) = dipol(1:3) - const * bcell(1:3,1)
-        else if (shape .eq. 'slab') then
-          call cross( bcell(1,1), bcell(1,2), b1Xb2 )
-          const = ddot(3,dipol,1,b1Xb2,1) / ddot(3,b1Xb2,1,b1Xb2,1)
-          dipol(1:3) = const * b1Xb2(1:3)
-       end if
+          ! This routine is distribution-blind
+          ! and will reduce over all processors.
+          call dipole_charge(cell, dvol, ntm, ntml, nsm, DRho,
+     &        x0, dipol)
+
+          ! Orthogonalize dipole to bulk directions
+          if ( nbcell == 1 ) then ! chain
+            const = ddot(3,dipol,1,bcell,1) / ddot(3,bcell,1,bcell,1)
+            dipol(1:3) = dipol(1:3) - const * bcell(1:3,1)
+          else if ( nbcell == 2 ) then ! slab
+            call cross( bcell(1,1), bcell(1,2), b1Xb2 )
+            const = ddot(3,dipol,1,b1Xb2,1) / ddot(3,b1Xb2,1,b1Xb2,1)
+            dipol(1:3) = const * b1Xb2(1:3)
+          end if
+
+        end select
 
       endif
 
@@ -1319,37 +1328,72 @@ C ----------------------------------------------------------------------
       Enaatm = Enaatm * dVol
       Enascf = Enaatm + Enascf * dVol
 
+      if ( SLABDIPOLECORR == SLABDIPOLECORR_VACUUM ) then
+        ! In case the user requested a vacuum dipole, calculate it here
+        ! REMARK
+        ! This method will only ever work for 3D-FFT poisson solved
+        ! potential
+        ! Note we do this on the potential which will be written
+        ! to ElectrostaticPotential
+        call dipole_potential(cell, nua, isa, xa, ntm, ntml, nsm,
+     &      dip_vacuum, Vaux, dipol)
+
+        ! Orthogonalize dipole to bulk directions
+        if ( nbcell == 1 ) then ! chain
+          const = ddot(3,dipol,1,bcell,1) / ddot(3,bcell,1,bcell,1)
+          dipol(1:3) = dipol(1:3) - const * bcell(1:3,1)
+        else if ( nbcell == 2 ) then ! slab
+          call cross( bcell(1,1), bcell(1,2), b1Xb2 )
+          const = ddot(3,dipol,1,b1Xb2,1) / ddot(3,b1Xb2,1,b1Xb2,1)
+          dipol(1:3) = const * b1Xb2(1:3)
+        end if
+
+      end if
+
 C ----------------------------------------------------------------------
 C Add potential from external electric field (if present)
 C ----------------------------------------------------------------------
       if ( acting_efield ) then
-         if ( dipole_correction ) then
-            field = get_field_from_dipole(dipol,cell)
-            if (Node == 0) then
-               write(6,'(a,3f12.4,a)')
-     $              'Dipole moment in unit cell   =', dipol/Debye, ' D'
-               write(6,'(a,3f12.6,a)')
-     $              'Electric field for dipole correction =',
-     $              field/eV*Ang, ' eV/Ang/e'
-            end if
-            ! The dipole correction energy has an extra factor
-            ! of one half because the field involved is internal.
-            ! See the paper by Bengtsson DOI:10.1103/PhysRevB.59.12301
-            ! Hence we compute this part separately
-            DUext = -0.5_dp * ddot(3,field,1,dipol,1)
-         else
-            field = 0._dp
-            DUext = 0._dp
-         end if
-         ! Add the external electric field
-         field = field + user_specified_field
-         ! This routine expects a sequential array,
-         ! but it is distribution-blind
-         call add_potential_from_field( field, cell, nua, isa, xa,
-     &                                  ntm, nsm, Vaux )
-         ! Add energy of external electric field
-         DUext = DUext - ddot(3,user_specified_field,1,dipol,1)
-      endif
+        select case ( SLABDIPOLECORR )
+        case ( SLABDIPOLECORR_NONE )
+          ! No dipole correction
+          field(:) = 0._dp
+          DUext = 0._dp
+
+        case default
+          ! some kind of dipole correction
+          field(:) = get_field_from_dipole(dipol, cell)
+
+          if ( Node == 0 ) then
+            write(6,'(a,3(tr1,f12.4),a)')
+     $          'Dipole moment in unit cell =', dipol/Debye, ' D'
+            write(6,'(a,3(tr1,f12.6),a)')
+     $          'Electric field for dipole correction =',
+     $          field/eV*Ang, ' eV/Ang/e'
+          end if
+
+          ! The dipole correction energy has an extra factor
+          ! of one half because the field involved is internal.
+          ! See the paper by Bengtsson DOI:10.1103/PhysRevB.59.12301
+          ! Hence we compute this part separately
+          DUext = -0.5_dp * ddot(3,field,1,dipol,1)
+        end select
+
+        ! Add the external electric field
+        field(:) = field(:) + user_specified_field(:)
+
+        ! This routine expects a sequential array,
+        ! but it is distribution-blind
+        ! Note that we do not need to specify a center
+        ! Since we *just* need the saw-tooth to be located
+        ! in the vacuum region (beyond orbitals)
+        call add_potential_from_field( field, cell, nua, isa, xa,
+     &      ntm, ntml, nsm, Vaux )
+
+        ! Add energy of external electric field
+        DUext = DUext - ddot(3,user_specified_field,1,dipol,1)
+
+      end if
 
 ! ---------------------------------------------------------------------
 !     Transiesta:
@@ -1360,18 +1404,7 @@ C ----------------------------------------------------------------------
       if (TSmode.and.IsVolt.and.TSrun) then
          ! This routine expects a sequential array,
          ! in whatever distribution
-#ifdef TRANSIESTA_VOLTAGE_DEBUG
-!$OMP parallel workshare default(shared)
-         Vaux(:) = 0._dp
-!$OMP end parallel workshare
-#endif
          call ts_voltage(cell, ntm, ntml, Vaux)
-#ifdef TRANSIESTA_VOLTAGE_DEBUG
-         call write_grid_netcdf( cell, ntm, 1, ntpl, Vaux, 
-     &        "TransiestaHartreePotential")
-         call timer('ts_volt', 3)
-         call bye('transiesta debug for Hartree potential')
-#endif
       endif
 
 ! ----------------------------------------------------------------------
@@ -1628,7 +1661,7 @@ C ----------------------------------------------------------------------
          enddo
 
          if (Spiral) then
-            call vmatsp( norb, nmpl, dvol, nspin, Vscf_par, maxnd,
+            call vmatsp( norb, nml, nmpl, dvol, nspin, Vscf_par, maxnd,
      &           numd, listdptr, listd, Hmat, nuo,
      &           nuotot, iaorb, iphorb, isa, qspiral )
          else
