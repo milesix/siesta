@@ -1,0 +1,45 @@
+This is version of SIESTA with order-N methods implemented using omm-bundle and DBCSR libraries
+
+Installation notes
+------------------
+
+1. Install dbcsr-1.0.0 version: 
+   - Remove -fopenmp flags from Makefile.inc. 
+   - Add GNU=0 if Intel compiler is used. 
+   - Provide paths to external linear algebra libraries using LIBS += (for libraries) 
+     and FCFLAGS += (for headers)
+ 
+2. Install omm-bundle from /  following the installation instructions given in INSTALL.
+
+3. Install this siesta version adding the following lines to arch.make:
+
+OMMPATH = <path to omm-bundle installation directory>
+MSPATH = $(OMMPATH)/build_MatrixSwitch
+MSLIB = -L$(MSPATH)/lib -lMatrixSwitch
+MSINC = -I$(MSPATH)/include
+
+PSPPATH = $(OMMPATH)/build_pspBLAS
+PSPLIB = -L$(PSPPATH)/lib -lpspBLAS
+PSPINC = -I$(PSPPATH)/include
+
+OMMLIBPATH = $(OMMPATH)/build_libOMM
+OMMLIB = -L$(OMMLIBPATH)/lib -lOMM
+OMMINC = -I$(OMMLIBPATH)/include
+
+DBCSR     = <path to dbcsr-1.0.0 installation directory>
+DBCSRINC  = -I$(DBCSR)/install/include
+DBCSRLIB  = -L$(DBCSR)/install/lib -ldbcsr
+
+LIBS += $(OMMLIB) $(MSLIB) $(DBCSRLIB) $(PSPLIB)
+INCFLAGS += $(OMMINC) $(MSINC) $(DBCSRINC) $(PSPINC)
+
+
+Execution
+---------
+
+Use "SolutionMethod BLOMM" for order-N calculations with libOMM and DBCSR
+and "SolutionMethod LIBOMM" for standard cubic-scaling OMM calculations with libOMM.
+
+Examples of the input files can be found in Tests/h2o_blomm, Tests/h2o_libomm and Examples/OMM_methods.
+
+

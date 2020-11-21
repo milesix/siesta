@@ -175,7 +175,7 @@ OBJS =  automatic_cell.o atom_options.o \
         fold_auxcell.o \
         m_redist_spmatrix.o \
         class_Distribution.o\
-        m_dminim.o m_zminim.o \
+        m_dminim.o m_zminim.o m_lib_omm.o \
         m_getopts.o f2kcli.o \
         m_svd.o m_matio.o\
         rusage.o memory_snapshot.o compute_ebs_shift.o memory_all.o \
@@ -318,17 +318,6 @@ $(FDF): $(MPI_INTERFACE)
 		    "FPPFLAGS=$(FPPFLAGS)" \
 		    "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module )
 
-#--------------------------------------------------------------
-MS?=MatrixSwitch.a
-$(MS): $(MPI_INTERFACE)
-	(cd MatrixSwitch/src ; \
-	 $(MAKE) -j 1 \
-	            "VPATH=$(VPATH)/MatrixSwitch/src" \
-		    "FPPFLAGS=$(FPPFLAGS)" \
-		    "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module)
-#
-m_initwf.o sankey_change_basis.o m_evolve.o cranknic_evolg.o cranknic_evolk.o: $(MS)
-wavefunctions.o m_matdiag.o m_matswinvers.o m_inversemm.o: $(MS)
 #--------------------------------------------------------------
 
 #######################
@@ -514,10 +503,10 @@ libSiestaForces.a: $(OBJS) $(SYSOBJ)
 	-$(RANLIB) libSiestaForces.a
 #
 siesta: what version \
-                $(MPI_INTERFACE) $(FDF) $(MS) $(NCPS) $(PSOP) \
+                $(MPI_INTERFACE) $(FDF) $(NCPS) $(PSOP) \
                 $(COMP_LIBS) $(ALL_OBJS) 
 	$(FC) -o siesta \
-	       $(LDFLAGS) $(ALL_OBJS) $(FDF) $(MS)  \
+	       $(LDFLAGS) $(ALL_OBJS) $(FDF)  \
                $(XC) $(MPI_INTERFACE) \
                $(COMP_LIBS) $(LIBS) \
 	       $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) \
@@ -550,8 +539,6 @@ clean:
 	@if [ -d fdict/obj ] ; then $(MAKE) -C fdict/obj clean ; fi
 	@if [ -d ncdf/obj ] ; then $(MAKE) -C ncdf/obj clean ; fi
 	(cd Libs ; $(MAKE) clean )
-	(cd MatrixSwitch/src ; $(MAKE) clean )
-
 
 # DO NOT DELETE THIS LINE - used by make depend
 Fstack.o: basic_type.inc
@@ -666,10 +653,10 @@ class_TriMat.o: alloc.o intrinsic_missing.o
 coceri.o: files.o periodic_table.o precision.o units.o
 compute_dm.o: atomlist.o class_SpData1D.o compute_ebs_shift.o diagon.o
 compute_dm.o: iodmhs_netcdf.o kpoint_scf.o m_chess.o m_dminim.o
-compute_dm.o: m_elsi_interface.o m_energies.o m_eo.o m_hsx.o m_pexsi_driver.o
-compute_dm.o: m_rmaxh.o m_spin.o m_steps.o m_transiesta.o m_ts_global_vars.o
-compute_dm.o: m_zminim.o normalize_dm.o ordern.o parallel.o precision.o
-compute_dm.o: siesta_geom.o siesta_options.o sparse_matrices.o units.o
+compute_dm.o: m_eo.o m_hsx.o m_lib_omm.o m_pexsi_driver.o m_rmaxh.o m_spin.o
+compute_dm.o: m_steps.o m_transiesta.o m_ts_global_vars.o m_zminim.o
+compute_dm.o: normalize_dm.o ordern.o parallel.o precision.o siesta_geom.o
+compute_dm.o: siesta_options.o sparse_matrices.o sys.o units.o
 compute_ebs_shift.o: m_mpi_utils.o parallel.o precision.o
 compute_energies.o: atomlist.o class_SpData1D.o class_SpData2D.o
 compute_energies.o: class_SpData2D.o dhscf.o files.o m_dipol.o m_energies.o
@@ -916,6 +903,8 @@ m_iostruct.o: siesta_geom.o sys.o units.o
 m_iotddft.o: files.o m_dipol.o m_io.o m_steps.o parallel.o siesta_options.o
 m_iotddft.o: units.o wavefunctions.o
 m_kinetic.o: precision.o
+m_lib_omm.o: alloc.o atomlist.o files.o mneighb.o parallel.o precision.o
+m_lib_omm.o: siesta_geom.o siesta_options.o sys.o
 m_mat_invert.o: intrinsic_missing.o m_pivot_array.o precision.o
 m_matdiag.o: precision.o
 m_matio.o: alloc.o parallel.o
@@ -1229,9 +1218,9 @@ poison.o: alloc.o cellsubs.o chkgmx.o fft.o parallel.o precision.o sys.o
 post_scf_work.o: atomlist.o class_Fstack_Pair_Geometry_SpData2D.o
 post_scf_work.o: class_Geometry.o class_Pair_Geometry_SpData2D.o compute_dm.o
 post_scf_work.o: diagon.o final_H_f_stress.o kpoint_scf.o m_dminim.o
-post_scf_work.o: m_elsi_interface.o m_energies.o m_eo.o m_spin.o m_steps.o
-post_scf_work.o: m_zminim.o mneighb.o normalize_dm.o parallel.o siesta_geom.o
-post_scf_work.o: siesta_options.o sparse_matrices.o units.o
+post_scf_work.o: m_energies.o m_eo.o m_lib_omm.o m_spin.o m_steps.o m_zminim.o
+post_scf_work.o: mneighb.o parallel.o siesta_geom.o siesta_options.o
+post_scf_work.o: sparse_matrices.o
 print_spin.o: atomlist.o m_mpi_utils.o m_spin.o parallel.o precision.o
 print_spin.o: siesta_cml.o sparse_matrices.o
 printmatrix.o: alloc.o
