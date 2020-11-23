@@ -82,7 +82,7 @@
       use m_sparse, only : xij_offset
 
       use ts_kpoint_scf_m, only: setup_ts_kpoint_scf, ts_kpoint_scf
-      use m_ts_charge, only : TS_RHOCORR_METHOD, TS_RHOCORR_FERMI
+      use ts_dq_m, only : TS_DQ_METHOD, TS_DQ_METHOD_FERMI
       use m_ts_options, only : BTD_method
       use m_ts_options, only : TS_Analyze
       use m_ts_options, only : N_Elec, Elecs, IsVolt
@@ -99,7 +99,6 @@
       use iodm_netcdf, only: setup_dm_netcdf_file
       use iodmhs_netcdf, only: setup_dmhs_netcdf_file
 #endif
-      use overlap_gradient_m, only: overlap_gradient
 #ifdef NCDF_4
       use dictionary
       use m_ncdf_siesta, only : cdf_init_file, cdf_save_settings
@@ -161,7 +160,7 @@
       integer :: MPIerror
 #endif
 #endif
-      
+      real(dp), pointer :: gradS(:,:)
       character(len=256)            :: oname
 
       type(dData2D) :: tmp_2D
@@ -667,12 +666,17 @@
 
       
 !     Find overlap matrix 
-      call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
-     &    lasto, iphorb, isa, numh, listhptr, listh, S )
-
       if ( fdf_get('Save.Overlap.Gradient', .false.) ) then
-        call newdSpData2D(sparse_pattern,3,block_dist,gradS_2D)
-        call overlap_gradient(na_U, lasto, isa, maxnh, xijo, gradS_2D)
+        write(oname,"(a,i0)") "gradS at geom step ", istep
+        call newdSpData2D(sparse_pattern,3,block_dist,gradS_2D,
+     &      name=oname, sparsity_dim=2)
+        gradS => val(gradS_2D)
+        
+        call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
+     &      lasto, iphorb, isa, numh, listhptr, listh, S, gradS )
+      else
+        call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
+     &      lasto, iphorb, isa, numh, listhptr, listh, S )
       end if
 
 #ifdef NCDF_4
@@ -731,9 +735,7 @@
       ! a continuation run gives bad forces.
       if ( .not. TSrun ) then
          call normalize_DM( first= .true. )
-!$OMP parallel workshare default(shared)
          Escf(:,:) = 0.0_dp
-!$OMP end parallel workshare
       end if
 
 #ifdef TEST_IO
@@ -753,7 +755,6 @@
         end if
       end if
       
-!     If onlyS, Save overlap matrix and exit
       if ( onlyS ) then
          fname = fname_TSHS(slabel, onlyS = .true. )
          ! We include H as S, well-knowing that we only write one of
@@ -765,24 +766,10 @@
      &        xa, lasto, 
      &        H_2D, S_1D, indxuo, 
      &        dummyEf, dummyQtot, Temp,0,0)
-         call bye( 'Save overlap matrix and exit' ) ! Exit siesta
-         
+         call timer( 'state_init', 2 )
+         return
       endif 
 
-      ! In case the user is requesting a Fermi-correction
-      ! we need to delete the TS_FERMI file after each iteration
-      if ( TSmode .and. TS_RHOCORR_METHOD == TS_RHOCORR_FERMI
-     &     .and. IONode ) then
-          ! Delete the TS_FERMI file (enables
-          ! reading it in and improve on the convergence)
-          if ( file_exist('TS_FERMI') ) then
-             i = 23455 ! this should just not be used any were...
-             ! Delete the file...
-             open(unit=i,file='TS_FERMI')
-             close(i,status='delete')
-          end if
-       end if
-      
 #ifdef CDF
       if (writedm_cdf) then
          call setup_dm_netcdf_file( maxnh, no_l, spin%H,

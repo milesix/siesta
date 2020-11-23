@@ -102,11 +102,11 @@
 !
             ps = stress + kin_stress
             write(6,'(/,a,6f12.2)')
-     .           'Stress-tensor-Voigt (kbar):',
+     .           'Stress tensor Voigt[x,y,z,yz,xz,xy] (kbar):',
      .           (ps(jx,jx)/kbar,jx=1,3),
-     $            ps(1,2)/kbar,
      $            ps(2,3)/kbar,
-     $            ps(1,3)/kbar
+     $            ps(1,3)/kbar,
+     $            ps(1,2)/kbar
             Press = - ((ps(1,1) + ps(2,2) + ps(3,3))/3.0_dp)
             write(6,"(a,f14.4)") "(Free)E + p*V (eV/cell)",
      $           (FreeE + Press*volume_of_some_cell)/eV
@@ -114,11 +114,12 @@
             if (RemoveIntraMolecularPressure) then
                ps = mstress + kin_stress
                write(6,'(/,a,6f12.2)')
-     .           'Inter-Molecular-Stress-Voigt (kbar):',
+     .   'Inter molecular stress Voigt[x,y,z,yz,xz,xy] (kbar):',
+     .           ' (kbar):',
      .           (ps(jx,jx)/kbar,jx=1,3),
-     $            ps(1,2)/kbar,
      $            ps(2,3)/kbar,
-     $            ps(1,3)/kbar
+     $            ps(1,3)/kbar,
+     $            ps(1,2)/kbar
                Press = - ((ps(1,1) + ps(2,2) + ps(3,3))/3.0_dp)
                write(6,"(a,f14.4)")
      $              "(Free)E + p_inter_molec * V  (eV/cell)",
@@ -304,7 +305,7 @@
       real(dp), intent(in) :: dHmax ! Max. change in H elements
 
       character(len=64) :: fmt
-      character(len=16) :: enl_str, eso_str
+      character(len=17) :: enl_str, eso_str
 
       logical              :: first_scf_step
       integer              :: i
@@ -843,7 +844,7 @@
       call analyze_force(na_u, ts_fa(:,:,2), cfmax, cftot, fres)
       call analyze_force(na_u, ts_fa(:,:,1), fmax, ftot, fres)
       ! Correct residual for uncounted atoms
-      fres = fres * na_u / ts_na 
+      fres = fres * sqrt(real(na_u, dp) / real(ts_na, dp))
       
       ! Almost the same forces output whether during simulation
       ! or at the end. Unfortunately not quite, therefore slightly
@@ -992,7 +993,7 @@
           fres = fres + fa(ix,ia) ** 2
         end do
       end do
-      fres = sqrt(fres) / (na_u * 3)
+      fres = sqrt(fres / (na_u * 3))
       end subroutine analyze_force
 
       End Module write_subs

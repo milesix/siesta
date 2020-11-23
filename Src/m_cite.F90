@@ -209,7 +209,7 @@ contains
       case ( "10.1088/0953-8984/26/30/305503" )
         ! PEXSI-siesta
         lID = 7
-      case ( "arXiv:1905.11113" )
+      case ( "10.1103/PhysRevB.100.195417" )
         ! Real-space self-energy
         lID = 8
       case ( "10.1088/0953-8984/19/19/489001" )
@@ -302,9 +302,12 @@ contains
     case ( 8 )
       ! real-space self-energy
       cit%comment = "Real-space self-energies for TranSiesta"
+      cit%doi = "10.1103/PhysRevB.100.195417"
       cit%author = "Papior, N. and Calogero, G. and Leitherer, S and Brandbyge, M"
       cit%journal = "Physical Review B"
       cit%year = 2019
+      cit%volume = "100"
+      cit%issue = "19"
       cit%cite_key = "Papior2019A"
 
     case ( 9 )
@@ -415,7 +418,7 @@ contains
     do ID = 1, N_citations
       if ( used(ID) == 1 ) then ! has been used
         call get_citation(cit, ID=ID)
-        write(*,'(tr8,a,/,tr10,2a)') trim(cit%comment), 'DOI: www.doi.org/', cit%DOI
+        write(*,'(tr8,a,/,tr10,2a)') trim(cit%comment), 'DOI: www.doi.org/', trim(cit%DOI)
       end if
     end do
     write(*,*) ! new-line

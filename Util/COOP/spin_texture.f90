@@ -102,7 +102,7 @@ program spin_texture
   allocate (wk(nkp), pk(3,nkp))
 
   read(wfs_u) nsp
-  non_coll = (nsp == 4)
+  non_coll = (nsp >= 4)
   if (.not. (non_coll)) then
      STOP "Spin texture not available for collinear-spin"
   endif
@@ -395,7 +395,7 @@ program spin_texture
                        ! st(0) is the "charge";  x:1, y:2, z:3: spin components
                        ! (this is shifted with respect to the original code by R. Robles)
                        ! Units: Bohr magnetons
-                       D12 = 0.5_dp * (D12 + dconjg(D21))
+                       D12 = 0.5_dp * (D12 + conjg(D21))
                        st(0) = st(0) + Sover(ind) * (real(D11,dp) + real(D22,dp))
                        st(1) = st(1) + Sover(ind) * 2.0_dp * real(D12,dp)
                        st(2) = st(2) - Sover(ind) * 2.0_dp * aimag(D12)

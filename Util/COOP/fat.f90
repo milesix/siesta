@@ -120,7 +120,7 @@ program fatband
   allocate (wk(nkp), pk(3,nkp))
 
   read(wfs_u) nsp
-  non_coll = (nsp == 4)
+  non_coll = (nsp >= 4)
   read(wfs_u) nao
   read(wfs_u)        !! Symbols, etc
   if (debug) print *, "WFSX read: nkp, nsp, nnao: ", nkp, nsp, nao
@@ -273,10 +273,12 @@ program fatband
      enddo
   enddo
 
-  if (non_coll) then
-     write(stt_u,"(/'SPIN (non-coll): ',i2)") nspin_blocks
+  if ( nsp == 8 ) then
+    write(stt_u,"(/'SPIN (spin-orbit): ',i2)") nspin_blocks
+  else if ( nsp == 4 ) then
+    write(stt_u,"(/'SPIN (non-coll): ',i2)") nspin_blocks
   else
-     write(stt_u,"(/'SPIN: ',i2)") nspin_blocks
+    write(stt_u,"(/'SPIN: ',i2)") nspin_blocks
   endif
   
   write(stt_u,"(/'AO LIST:')")
@@ -352,12 +354,18 @@ program fatband
      nbands = max_band - min_band + 1
      allocate(eig(nbands,nspin_blocks), fat(nbands,nspin_blocks))
 
+     ! The first dimension is the number of real numbers per orbital
+     ! 1 for real wfs, 2 for complex, and four for the two spinor components
+
      if (non_coll) then
+        allocate(wf_single(4,1:no_u))
         allocate(wf(4,1:no_u))
      else
         if (gamma_wfsx) then
+           allocate(wf_single(1,1:no_u))
            allocate(wf(1,1:no_u))
         else
+           allocate(wf_single(2,1:no_u))
            allocate(wf(2,1:no_u))
         endif
      endif
@@ -469,7 +477,10 @@ program fatband
 
                  ib = ib + 1
                  eig(ib,is) = eigval    ! This will be done for every curve... harmless
-                 read(wfs_u) (wf(:,io), io=1,nao)
+
+                 read(wfs_u) (wf_single(:,io), io=1,no_u)
+                 ! Use a double precision form in what follows
+                 wf(:,:) = real(wf_single(:,:), kind=dp)
 
 
                  do i1 = 1, no1
