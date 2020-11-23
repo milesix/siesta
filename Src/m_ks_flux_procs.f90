@@ -126,6 +126,7 @@ end subroutine compute_psi_hat_c
 !  This routine is very complex. It has to be re-checked
 !
 subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
+  use sparse_matrices, only: gradS
   use siesta_options, only : virtual_dt
   ! Take proper velocities from `BASE` step:
   use m_virtual_step_data, only: va_before_move
@@ -147,7 +148,7 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
   !! Number of wavefunctions to process
 
   real(dp), dimension(:),   pointer :: dscf_hat => null()
-  real(dp), dimension(:,:), pointer :: gradS => null()
+  ! real(dp), dimension(:,:), pointer :: gradS => null()
   real(dp), dimension(:),   pointer :: S => null()
 
   integer  :: iw
@@ -174,7 +175,8 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
 
   dscf_hat => ks_flux_D(:,1)         !NOTE: Just first spin component
   S => ks_flux_S(:)
-  gradS => ks_flux_gS(:,:)
+
+  ! gradS => ks_flux_gS(:,:)
   ! computing and storage of every of the 3 components
   ! should be available to order in the .fdf
 
@@ -289,20 +291,19 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
                        acc_left = acc_left + &
                             ! &(1.0 - dscf_hat(ind)) * &
                             &(1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * &
-                            &(sum(gradS(sec_ind,:) * &
+                            &(sum(gradS(:,sec_ind) * &
                             & va_before_move(:,iaorb(mu))))
                     else
                        acc_left = acc_left + &
                             ! &(0.0 - dscf_hat(ind)) * &
                             &(0.0 - 0.5_dp * Dfull(lambda,beta,1)) * &
-                            &(sum(gradS(sec_ind,:) * &
+                            &(sum(gradS(:,sec_ind) * &
                             & va_before_move(:,iaorb(mu))))
                     end if
                     exit
                  end if
               end do
            end do
-
            ! add dot-product element to the resulting array:
            psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw) +&
                 & acc_left * tmp_right(mu)
@@ -319,7 +320,7 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
         do ind = (listhptr(nu)+1), listhptr(nu) + numh(nu)
            alpha = listh(ind)
            tmp_right(nu) = tmp_right(nu) +  &
-                & (0.0 - sum(gradS(ind,:) * &
+                & (0.0 - sum(gradS(:,ind) * &
                 & va_before_move(:,iaorb(nu)))) * &
                 & coeffs(alpha,iw)
         end do
