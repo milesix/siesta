@@ -32,9 +32,14 @@ Added PSML support, including:
 
 ### Backward compatibility issues
 
+* The default FFT ProcessorY value is determined with a different scheme. Executions that are
+  sensitive to this value can set the FFT.Processory.traditional fdf variable.
+  
 * The labels in the Mulliken analysis CML blocks have been changed to use "population" instead of "charge".
 
 ### Changes
+
+* Allow mesh parallel distributions with different numbers of subpoint multiplicity.
 
 * Minor changes for f2003 conformance
 

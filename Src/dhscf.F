@@ -250,8 +250,7 @@ C     Start time counter for atomic initializations
       call timer( 'DHSCF2', 1 )
 
       if (nodes.gt.1) then
-        call setMeshDistr( UNIFORM, nsm, nsp,
-     &                     nml, nmpl, ntml, ntpl )
+        call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
       endif
 
 C     Initialise quantities relating to the atom-mesh positioning
@@ -322,8 +321,7 @@ C     Drho is not used here
         if (node .eq. 0) then
            write(6,"(a)") "Setting up quadratic distribution..."
         endif
-        call setMeshDistr( QUADRATIC, nsm, nsp,
-     &                     nml, nmpl, ntml, ntpl )
+        call setMeshDistr( QUADRATIC, nml, nmpl, ntml, ntpl )
 
 C       Create extended mesh arrays for the second data distribution
         call setupExtMesh( QUADRATIC, rmax )
@@ -373,8 +371,7 @@ C     Find Harris (sum of atomic) electron density
 
 C     Routine Poison should use the uniform data distribution
       if (nodes.gt.1) then
-         call setMeshDistr( UNIFORM, nsm, nsp,
-     &                      nml, nmpl, ntml, ntpl )
+         call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
       endif
 
 C     Create Rhoatm using UNIFORM distr, in sequential form
@@ -913,8 +910,7 @@ C             rhoatm and Drho are in sequential mode
         ! since the construction of the density from the DM and orbital
         ! data needs that distribution
         if (nodes.gt.1) then
-           call setMeshDistr( QUADRATIC, nsm, nsp,
-     &                        nml, nmpl, ntml, ntpl )
+           call setMeshDistr( QUADRATIC, nml, nmpl, ntml, ntpl )
         endif
         call re_alloc( DRho_par, 1, ntpl, 1, nspin,
      &                 'DRho_par','dhscf' )       
@@ -931,7 +927,7 @@ C             rhoatm and Drho are in sequential mode
 
 C       Set the UNIFORM distribution again and copy DRho to it
         if (nodes.gt.1) then
-           call setMeshDistr( UNIFORM, nsm, nsp, nml, nmpl, ntml, ntpl )
+           call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
         endif
 
         do ispin = 1, nspin
@@ -990,8 +986,7 @@ C       Set the UNIFORM distribution again and copy DRho to it
         ! The endpht array is in the quadratic distribution, so
         ! we need to use it for this...
         if (nodes.gt.1) then
-           call setMeshDistr( QUADRATIC, nsm, nsp,
-     &                        nml, nmpl, ntml, ntpl )
+           call setMeshDistr( QUADRATIC, nml, nmpl, ntml, ntpl )
         endif
         call re_alloc( DRho_quad, 1, ntpl, 1, nspin,
      &                 'DRho_quad','dhscf' )       
@@ -1015,8 +1010,7 @@ C       Set the UNIFORM distribution again and copy DRho to it
         call de_alloc(rhoatm_quad,'rhoatm_quad','dhscf')
         call de_alloc(Drho_quad,'DRho_quad','dhscf')
         if (nodes.gt.1) then
-           call setMeshDistr( UNIFORM, nsm, nsp,
-     &                        nml, nmpl, ntml, ntpl )
+           call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
         endif
         call timer( 'partial-charges' , 2 )
       endif
@@ -1502,7 +1496,7 @@ C ----------------------------------------------------------------------
 
          ! Switch to "zero/not-zero rho" distribution (miscalled 'LINEAR')
          if (nodes.gt.1) then
-            call setMeshDistr( LINEAR, nsm, nsp, nml, nmpl, ntml, ntpl )
+            call setMeshDistr( LINEAR, nml, nmpl, ntml, ntpl )
          endif
 
          call re_alloc( Vscf_gga, 1, ntpl, 1, nspin, 'Vscf_gga','dhscf')
@@ -1553,7 +1547,7 @@ C ----------------------------------------------------------------------
       
          ! Go back to uniform distribution
          if (nodes.gt.1) then
-            call setMeshDistr( UNIFORM, nsm, nsp, nml, nmpl, ntml, ntpl)
+            call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl)
          endif
 
          ! Redistribute to the Vxc array
@@ -1643,8 +1637,7 @@ C     Find SCF contribution to hamiltonian matrix elements
 C ----------------------------------------------------------------------
       if (iHmat .eq. 1) then
          if (nodes.gt.1) then
-            call setMeshDistr( QUADRATIC, nsm, nsp,
-     &                         nml, nmpl, ntml, ntpl )
+            call setMeshDistr( QUADRATIC, nml, nmpl, ntml, ntpl )
          endif
 
 !        This is a work array, to which we copy Vscf
@@ -1671,8 +1664,7 @@ C ----------------------------------------------------------------------
          call de_alloc( Vscf_par,  'Vscf_par', 'dhscf' )
          if (nodes.gt.1) then
 !          Everything back to UNIFORM, sequential
-           call setMeshDistr( UNIFORM, nsm, nsp,
-     &                         nml, nmpl, ntml, ntpl )
+           call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
          endif
       endif
 
@@ -1786,8 +1778,7 @@ C       Find contribution of neutral-atom potential
         call reord( Vna, Vna, nml, nsm, TO_SEQUENTIAL )
 
         if (nodes.gt.1) then
-           call setMeshDistr( QUADRATIC, nsm, nsp,
-     &                       nml, nmpl, ntml, ntpl )
+           call setMeshDistr( QUADRATIC, nml, nmpl, ntml, ntpl )
         endif
 
         call re_alloc( Vscf_par, 1, ntpl, 1, nspin,
@@ -1813,7 +1804,7 @@ C       Find contribution of neutral-atom potential
         call de_alloc( Vscf_par, 'Vscf_par', 'dhscf' )
 
         if (nodes.gt.1) then
-          call setMeshDistr( UNIFORM, nsm, nsp, nml, nmpl, ntml, ntpl )
+          call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
         endif
 
 
@@ -1948,8 +1939,7 @@ C ----------------------------------------------------------------------
         if (isigneikr .eq. 1 .or. isigneikr .eq. -1) then
 
           if (nodes.gt.1) then
-            call setMeshDistr( QUADRATIC, nsm, nsp,
-     &                         nml, nmpl, ntml, ntpl )
+            call setMeshDistr( QUADRATIC, nml, nmpl, ntml, ntpl )
           endif
 
           call delk( isigneikr, norb, nmpl, dvol, maxnd,
@@ -1958,8 +1948,7 @@ C ----------------------------------------------------------------------
 
           if (nodes.gt.1) then
 !           Everything back to UNIFORM, sequential
-            call setMeshDistr( UNIFORM, nsm, nsp,
-     &                         nml, nmpl, ntml, ntpl )
+            call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
           endif
 
         endif
