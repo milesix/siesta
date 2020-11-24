@@ -1625,31 +1625,28 @@ where \textit{Chemical\_label} corresponds to the label defined in the
 \fdf{ChemicalSpeciesLabel} block.
 
 \index{PSML format}\index{pseudopotential!PSML format}
-Siesta can handle pseudopotential files in the PSML format
-(García, A., Verstraete, M. J., Pouillon, Y., and Junquera, J. ``The
-PSML format and library for norm-conserving pseudopotential data
-curation and interoperability'', Computer Physics Communications 227
-51-71 (2018), \url{https://doi.org/10.1016/j.cpc.2018.02.011}).
-In particular, Siesta can:
+\siesta\ can handle pseudopotential files in the PSML format (see~\citet{Garcia2018}).
+
+In particular, \siesta\ can:
 \begin{itemize}
 \item Read the semilocal potentials from the PSML file and proceed as
-  usual, generating the PAOs, the Siesta-style local potential, and
-  the KB projectors.
+  usual, generating the PAOs, the \siesta-style local potential, and
+  the KB projectors.   
 \item Read the semilocal potentials \emph{and} the local potential from
   the PSML file, and generate the PAOs and the KB projectors. For
-  this, the option \fdf{use-psml-vlocal} must be set to \fdftrue (the default).
+  this, the option \fdf{PSML!Vlocal} must be set to \fdftrue (the default).
 \item Read the semilocal potentials \emph{and} the local potential,
   \emph{and} the non-local projectors from
   the PSML file. In this case, the PAOs are still generated from the
   semi-local potentials. In the future there will be an option to
   generate the PAOs directly from the complete pseudopotential operator. For
-  this, the options \fdf{use-psml-vlocal} and
-  \fdf{use-psml-kb-projectors} must be set to \fdftrue (the default).
+  this, the options \fdf{PSML!Vlocal} and
+  \fdf{PSML!KB.projectors} must be set to \fdftrue (the default).
 \end{itemize}
 Currently, PSML files can be produced in a form fully compatible with
-the Siesta procedures to generate the non-local pseudopotential
+the \siesta\ procedures to generate the non-local pseudopotential
 operator (see directory \shell{Pseudo/vnl-operator})\index{PSML!from
-  Siesta's vnl-operator} and by suitably patched versions of
+  \siesta's vnl-operator} and by suitably patched versions of
 D.R. Hamann's \texttt{oncvpsp} program (see directory
 \shell{Pseudo/Third-Party-Tools/ONCVPSP}).\index{pseudopotential!oncvpsp
   code}\index{PSML!from oncvpsp code}.
@@ -1683,7 +1680,7 @@ cutoff radius chosen by the user.
 Most users, however, do not have their own basis sets. For these users
 we have devised some schemes to generate basis sets within the program
 with a minimum input from the user.  If nothing is specified in the
-input file, Siesta generates a default basis set of a reasonable
+input file, \siesta\ generates a default basis set of a reasonable
 quality that might constitute a good starting point.  Of course,
 depending on the accuracy required in the particular problem, the user
 has the degree of freedom to tune several parameters that can be
@@ -2327,7 +2324,7 @@ used when the default fails for some reason, for full basis-set optimization,
 or for experimentation purposes.
 
 A proper basis-set optimization should be carried out using
-a PAO.Basis block, which allows a full set of options.
+a \fdf{PAO!Basis} block, which allows a full set of options.
 
 
 \subsubsection{Soft-confinement options}
@@ -2368,10 +2365,10 @@ a PAO.Basis block, which allows a full set of options.
 \subsubsection{Kleinman-Bylander projectors}
 
 \index{PSML}{\index{Kleinman-Bylander projectors!from PSML file} NOTE:
-  {\sc Siesta} is now able to read directly the non-local projectors
-  from a PSML file. For this, the options \fdf{use-psml-vlocal} and
-  \fdf{use-psml-kb-projectors} must be set to \fdftrue, and a
-  \shell{SystemLabel.psml} file must be present. The rest of the
+  \siesta\ is now able to read directly the non-local projectors
+  from a PSML file. For this, the options \fdf{PSML!Vlocal} and
+  \fdf{PSML!KB.projectors} must be set to \fdftrue (they are by default), and a
+  \shell{Chemical\_Label.psml} file must be present. The rest of the
   options discussed in this section will have no effect in that case.
 
 
@@ -3483,7 +3480,7 @@ structural information (maybe too many).
 \begin{itemize}
 
   \item\sysfile{STRUCT\_OUT}:%
-  Siesta always produces a \sysfile*{STRUCT\_OUT} file with cell
+  \siesta\ always produces a \sysfile*{STRUCT\_OUT} file with cell
   vectors in {\AA} and atomic positions in fractional
   coordinates. This file, renamed to \sysfile*{STRUCT\_IN} can be used
   for crystal-structure input.  Note that the geometry reported is the
@@ -4375,7 +4372,7 @@ using the ``in'' DM. The typical DM used as input for the calculation
 of H was not directly computed from a set of wave-functions (it was
 either the product of mixing or of the initialization from atomic
 values). In this case, the ``kinetic energy'' term in the total energy
-computed in the way stated in the Siesta paper had an error which
+computed in the way stated in the \siesta\ paper had an error which
 decreased with the approach to self-consistency, but was non-zero. The
 net result was that the Kohn-Sham energy converged more slowly than
 the ``Harris'' energy (which is correctly computed).
@@ -5384,7 +5381,7 @@ other criterion should be made the default (max $|\Delta rho(G)|$,
 convergence of the free-energy...)
 
 Note that with charge mixing the Harris energy as it is currently
-computed in Siesta loses its meaning, since there is no
+computed in \siesta\ loses its meaning, since there is no
 \texttt{DM\_in}. The program prints zeroes in the Harris energy field.
 
 Note that the KS energy is correctly computed throughout the scf
@@ -5759,7 +5756,7 @@ probably be worse.
 \begin{fdflogicalF}{SCF.Read.Deformation.Charge.NetCDF}
   \index{reading saved data!deformation charge density} 
   
-  Instructs Siesta to read the deformation charge density stored in
+  Instructs \siesta\ to read the deformation charge density stored in
   the netCDF file \file{DeltaRho.IN.grid.nc}. This feature allows the
   easier re-use of electronic-structure information from a previous
   run. It is not necessary that the basis sets are ``similar'' (a
@@ -5769,7 +5766,7 @@ probably be worse.
 
   \note This is an experimental feature. Until robust checks are
   implemented, care must be taken to make sure that the FFT grids in
-  the \sysfile*{grid.nc} file and in Siesta are the same.
+  the \sysfile*{grid.nc} file and in \siesta\ are the same.
 
 \end{fdflogicalF}
 
@@ -5798,7 +5795,7 @@ analysis of data and to increase the efficiency.
   The new format is not backwards compatible. A converter program
   (\shell{Util/DensityMatrix/dmUnblock.F90}) has been written to
   post-process those files intended for further analysis or re-use in
-  Siesta. This is the best option for now, since it allows liberal
+  \siesta. This is the best option for now, since it allows liberal
   checkpointing with a much smaller time consumption, and only incurs
   costs when re-using or analyzing files.
   
@@ -10500,7 +10497,7 @@ build up the Jacobian matrix. (See D.D. Johnson, PRB 38, 12807
 \begin{fdfentry}{MD.Broyden!Initial.Inverse.Jacobian}[real]<$1$>
 
   Initial inverse Jacobian for the optimization procedure. (The units
-  are those implied by the internal Siesta usage. The default value
+  are those implied by the internal \siesta\ usage. The default value
   seems to work well for most systems.
 
 \end{fdfentry}
@@ -10924,7 +10921,7 @@ Anneal) is followed by another (e.g., Nose)), and permits
 to re-use dynamical information from old runs.
 
 This restart fix is not satisfactory from a fundamental point of view,
-so the MD subsystem in Siesta will have to be redesigned
+so the MD subsystem in \siesta\ will have to be redesigned
 eventually. In the meantime, users are reminded that the scripting
 hooks being steadily introduced (see Util/Scripting) might be used to
 create custom-made MD scripts.
@@ -11852,7 +11849,7 @@ electronic transport properties using the \tsiesta\ method. This
 Section describes how to use these
 capabilities, and a reference guide to the relevant \fdflib\
 options. We describe here only the additional options available for
-\tsiesta\ calculations, while the rest of the Siesta functionalities
+\tsiesta\ calculations, while the rest of the \siesta\ functionalities
 and variables are described in the previous sections of this User's
 Guide.
 
@@ -14320,7 +14317,7 @@ the ccViz script.
 \section{APPENDIX: Selection of precision for storage}
 \index{Precision selection}
 
-Some of the real arrays used in Siesta are by default
+Some of the real arrays used in \siesta\ are by default
 single-precision, to save memory. This applies to the array that holds
 the values of the basis orbitals on the real-space grid, to the
 historical data sets in Broyden mixing, and to the arrays used in the

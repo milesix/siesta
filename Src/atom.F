@@ -539,10 +539,17 @@ c    .          'atom: The above configuration will be used ',
              endif
              
              use_psml_kb_projectors =
-     $           fdf_boolean("Use.PSML.KB.Projectors",kb_projs_on_file)
+     $           fdf_boolean("PSML.KB.Projectors",kb_projs_on_file)
 
-             use_psml_vlocal = fdf_boolean('Use.PSML.Vlocal',
+             use_psml_vlocal = fdf_boolean('PSML.Vlocal',
      $                                     vlocal_on_file)
+
+             ! Older labels
+             use_psml_kb_projectors =
+     $            fdf_boolean("Use.PSML.KB.Projectors",
+     $                        use_psml_kb_projectors)
+             use_psml_vlocal = fdf_boolean('Use.PSML.Vlocal',
+     $                        use_psml_vlocal)
 
              ! Sanity checks
              if (use_psml_kb_projectors) then
@@ -1410,29 +1417,14 @@ C
         real(dp), intent(out) ::  cons1, cons2
         real(dp), intent(in)  ::  rphi(nrc)
 
-        logical  :: first_time = .true.   ! will be saved
-        logical, save  :: keep_findp_bug  
-
         real(dp) rm, rm1, rm2, drdi_local, frsp
         real(dp) dfrsp
 
-        if (first_time) then
-          keep_findp_bug = fdf_boolean("PAO.Keep.Findp.Bug", .false.)
-          first_time = .false.
-        endif
 
-        if (keep_findp_bug) then
-          ! old, wrong code
-          rm=b*(exp(a*(nm-1)) + 1.0d0) 
-          rm1=b*(exp(a*(nm-2)) + 1.0d0)
-          rm2=b*(exp(a*nm) + 1.0d0)
-        else
-          ! correct code
-          rm=b*(exp(a*(nm-1)) - 1.0d0)     
-          rm1=b*(exp(a*(nm-2)) -  1.0d0)   
-          rm2=b*(exp(a*nm) - 1.0d0)        
-        endif
-
+        rm=b*(exp(a*(nm-1)) - 1.0d0)
+        rm1=b*(exp(a*(nm-2)) -  1.0d0)
+        rm2=b*(exp(a*nm) - 1.0d0)
+        
         drdi_local =a*b*exp(a*(nm-1))
 
         frsp=rphi(nm)/rm
