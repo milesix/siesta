@@ -69,6 +69,7 @@ contains
     use units, only: eV, Ang
     use siesta_cml
     use intrinsic_missing, only: VNORM
+    use m_spin, only: TrSym
 
     type(block_fdf) :: bfdf
     type(parsed_line), pointer :: pline
@@ -117,6 +118,9 @@ contains
     ! Immediately return if not used
     if ( .not. use_velocity_shift ) return
 
+    ! Ensure that all k-points are not using TRS
+    call fdf_overwrite("TimeReversalSymmetryForKpoints false")
+    TrSym = .false.
     
     if ( VNORM(velocity_dir) == 0._dp ) then
       call die('velocity_shift: BulkBias.Direction direction has not been specified!')
