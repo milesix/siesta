@@ -56,6 +56,8 @@ module psolver_m
   character(len=16), public :: psolver_gps_algorithm = 'PCG'
   !< Which kind of accelerator to use: [CUDA]
   character(len=16), public :: psolver_accel = 'none'
+  !< Force PBC regardless of unit-cell
+  logical, public :: psolver_force_pbc = .false.
 
   !< Offsets in grids for lattices
   !!
@@ -151,6 +153,9 @@ contains
       else if ( leqi('accelerator', ctmp) .or. leqi('accel', ctmp) ) then
         psolver_accel = fdf_bnames(pline, 2)
 
+      else if ( leqi('force.PBC', ctmp) ) then
+        psolver_force_pbc = fdf_bboolean(pline, 1)
+
       end if
 
     end do
@@ -187,6 +192,7 @@ contains
       write(6,'(a,t53,"= ",i0)') 'PSolver atomic radii', psolver_atomic_radii
     end if
     write(6,'(a,t53,"=   ",L1)') 'PSolver verbose (for debugging)', psolver_verbose
+    write(6,'(a,t53,"=   ",L1)') 'PSolver force PBC', psolver_force_pbc
 
   end subroutine poisson_psolver_options_print
 
@@ -238,6 +244,7 @@ contains
     case ( 3 ) ! bulk
       boundary_type = 'P'
     end select
+    if ( psolver_force_pbc ) boundary_type = 'P'
 
     ! Calculate center of positions
     cop(:) = sum(xa, dim=2) / na_u
@@ -814,19 +821,23 @@ contains
     type(dictionary), pointer :: dict ! Input parameters
 
     ! Initialize domain
-    select case ( shape )
-    case ( 'molecule' )
-      dom = domain_new(ATOMIC_UNITS, [FREE_BC, FREE_BC, FREE_BC], abc=cell)
-    case ( 'slab' )
-      dom = domain_new(ATOMIC_UNITS, [PERIODIC_BC, FREE_BC, PERIODIC_BC], abc=cell)
-    case ( 'bulk' )
+    if ( psolver_force_pbc ) then
       dom = domain_new(ATOMIC_UNITS, [PERIODIC_BC, PERIODIC_BC, PERIODIC_BC], abc=cell)
-    case ( 'wire' )
-      dom = domain_new(ATOMIC_UNITS, [FREE_BC, FREE_BC, PERIODIC_BC], abc=cell)
-    case default
-      ! This should be enough to break PSolver ;)
-      dom = domain_null()
-    end select
+    else
+      select case ( shape )
+      case ( 'molecule' )
+        dom = domain_new(ATOMIC_UNITS, [FREE_BC, FREE_BC, FREE_BC], abc=cell)
+      case ( 'slab' )
+        dom = domain_new(ATOMIC_UNITS, [PERIODIC_BC, FREE_BC, PERIODIC_BC], abc=cell)
+      case ( 'bulk' )
+        dom = domain_new(ATOMIC_UNITS, [PERIODIC_BC, PERIODIC_BC, PERIODIC_BC], abc=cell)
+      case ( 'wire' )
+        dom = domain_new(ATOMIC_UNITS, [FREE_BC, FREE_BC, PERIODIC_BC], abc=cell)
+      case default
+        ! This should be enough to break PSolver ;)
+        dom = domain_null()
+      end select
+    end if
 
     ! Data distribution will be always global:
     call set( dict//'setup'//'global_data', Nodes == 1) ! Hardwired, it cannot be otherwise.
