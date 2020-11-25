@@ -90,7 +90,7 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
   logical, save :: first_call = .true.
   logical :: found, ReadCoeffs, file_exist
   logical :: new_S, precon
-  logical, save :: long_out, WriteCoeffs, C_extrapol
+  logical, save :: long_out, WriteCoeffs, C_extrapol, use_cholesky
   integer, save :: istp_prev, precon_st, precon_st1, N_occ
   integer, save :: blk_c, blk_h, BlockSize_c, wf_dim
   real(dp), save :: cg_tol, g_tol, eta, tau
@@ -125,12 +125,14 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
     long_out = fdf_boolean('OMM.LongOutput',.true.)
     cg_tol = fdf_get('OMM.RelTol',1.0d-9)
     g_tol = fdf_get('OMM.GTol',1.0d-3)
-    precon_st1 = fdf_integer('OMM.PreconFirstStep',-1)
     precon_st = fdf_integer('OMM.Precon',-1)
+    precon_st1 = fdf_integer('OMM.PreconFirstStep',precon_st)
     tau = fdf_get('OMM.TPreconScale',10.0_dp,'Ry')
     eta = fdf_get('OMM.Eta',0.0_dp,'Ry')
     WriteCoeffs=fdf_boolean('OMM.WriteCoeffs',.false.)
     ReadCoeffs=fdf_boolean('OMM.ReadCoeffs',.false.)
+    use_cholesky=.false.
+    if(abs(eta) < 1.d-10) use_cholesky=fdf_boolean('OMM.UseCholesky',.false.)
     C_extrapol = fdf_boolean('OMM.Extrapolate',.false.)
     wf_dim = fdf_integer('OMM.NumLWFs',1)
     if((wf_dim < N_occ) .or. (abs(eta) < 1.d-10)) wf_dim = N_occ
@@ -168,9 +170,12 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
   end if
 
   precon = .false.
-  if(present(t_sparse)) then
-    if((istp .le. 1) .and. (precon_st1 .ge. iscf)) precon = .true.
-    if(precon_st .ge. iscf) precon = .true.
+  if((.not. use_cholesky) .and. present(t_sparse)) then
+    if(istp .eq. 1) then
+      if((precon_st1 .lt. 0) .or. (precon_st1 .ge. iscf)) precon = .true.
+    else
+      if((precon_st .lt. 0) .or. (precon_st .ge. iscf)) precon = .true.
+    end if
   end if
   
   if(new_S) then
@@ -257,6 +262,7 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
    end if 
   flavour = 0
   if(precon) flavour = 3
+  if(use_cholesky) flavour = 1
   dealloc = .false.
 
   if(.not. calcE) then
@@ -319,7 +325,7 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
     call timer('d_charge',2)
   end if
 
-  if(.not. CalcE) then
+  if(CalcE) then
     if(WriteCoeffs) then
       call timer('WriteCoeffs',1)
       WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_LIBOMM'
@@ -398,7 +404,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     else
       N_occ = nint(qs(1))
     end if
-    BlockSize_c = fdf_integer('OMM.BlockSizeC',BlockSize)
+    BlockSize_c = fdf_integer('OMM.BlockSizeC',0)
     Use2D = fdf_boolean('OMM.Use2D',.true.)
     C_extrapol = fdf_boolean('OMM.Extrapolate',.false.)
     long_out = fdf_boolean('OMM.LongOutput',.true.)
@@ -407,8 +413,8 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     WriteCoeffs=fdf_boolean('OMM.WriteCoeffs',.false.)
     ReadCoeffs=fdf_boolean('OMM.ReadCoeffs',.false.)
     eta = fdf_get('OMM.Eta',0.0_dp,'Ry')
-    if(ionode) print'(a, i8, a, i8, a, i5, a, i5)','hdim =', h_dim, '    N_occ =', N_occ, &
-      '    BlockSize =', BlockSize, '    BlockSize_c =', BlockSize_c
+    if(ionode) print'(a, i8, a, i8, a, i5)','hdim =', h_dim, '    N_occ =', N_occ, &
+      '    BlockSize =', BlockSize
     present_eta=.false.
     if(abs(eta)>1.d-10) present_eta=.true.
     wf_dim = N_occ
@@ -474,7 +480,8 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
       call timer('ReadCoeffs',2)
     end if
     call m_dbcsr_occupation(C_min, c_occ)
-    if(ionode) print'(a,f10.8, a,i8)','C occupation = ', c_occ,'  WF_dim = ', wf_dim 
+    if(ionode) print'(a,f10.8, a,i8, a, i5)','C occupation = ', c_occ,'    WF_dim = ', wf_dim, &
+      '   BlockSizeC = ', BlockSize_c
     if(WriteCoeffs) then
       call timer('WriteCoeffs',1)
       WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_BLOMM'
@@ -561,7 +568,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
       end do
     end do
     call timer('d_charge',2)
-
+  else
     if(WriteCoeffs) then
       call timer('WriteCoeffs',1)
       WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_BLOMM'
@@ -585,7 +592,8 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
   
     type(matrix), intent(inout) :: C_min    
     integer, intent(in) :: h_dim
-    integer, intent(in) :: BlockSize_c, BlockSize_h
+    integer, intent(inout) :: BlockSize_c
+    integer, intent(in) :: BlockSize_h
     logical, intent(in) :: Use2D, present_eta, set_rand
     integer, intent(out) :: wf_dim
 
@@ -631,6 +639,10 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
       call get_number_of_lwfs_on_atom(ia, present_eta, nelectr, indexi)
       wf_dim = wf_dim+indexi
     end do
+
+    if(BlockSize_c .le. 0) then
+      BlockSize_c = (wf_dim * BlockSize)/h_dim
+    end if
         
     allocate(iatom(1:wf_dim))
     allocate(fact(1:wf_dim))

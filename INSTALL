@@ -9,7 +9,8 @@ Installation notes
    - Provide paths to external linear algebra libraries using LIBS += (for libraries) 
      and FCFLAGS += (for headers)
  
-2. Install omm-bundle from /  following the installation instructions given in INSTALL.
+2. Install omm-bundle from https://gitlab.com/irina_lebedeva/omm-bundle following the
+   installation instructions given in INSTALL.
 
 3. Install this siesta version adding the following lines to arch.make:
 
@@ -37,8 +38,7 @@ INCFLAGS += $(OMMINC) $(MSINC) $(DBCSRINC) $(PSPINC)
 Execution
 ---------
 
-Use "SolutionMethod BLOMM" for order-N calculations with libOMM and DBCSR
-and "SolutionMethod LIBOMM" for standard cubic-scaling OMM calculations with libOMM.
+The input parameters for OMM methods with libOMM are described in README_OMM.
 
 Examples of the input files can be found in Tests/h2o_blomm, Tests/h2o_libomm and Examples/OMM_methods.
 
