@@ -416,7 +416,7 @@ C     DStres is computed but not used later
         !   setMeshDistr(UNIFORM_PSOLVER, ...)
         !   ... calc potential
         !   setMeshDistr(UNIFORM, ...)
-        call poisson_psolver(cell, nua, xa, ntm, rhoatm,
+        call poisson_psolver(cell, nua, xa, fal, ntm, rhoatm,
      $      Vscf(:,1), Uharrs, DStres, calc_stress=.false.)
       else
 #endif
@@ -1296,8 +1296,9 @@ C ----------------------------------------------------------------------
         !   setMeshDistr(UNIFORM_PSOLVER, ...)
         !   ... calc potential
         !   setMeshDistr(UNIFORM, ...)
-        call poisson_psolver(cell, nua, xa, ntm, DRho(:,1),
-     &      Vaux, DUscf, DStres, calc_stress = istr == 1)
+        call poisson_psolver(cell, nua, xa, fal, ntm, DRho(:,1),
+     &      Vaux, DUscf, DStres,
+     &      calc_stress = (istr == 1) .or. (ifa == 1))
       else
 #endif
         call poison( cell, ntml(1), ntml(2), ntml(3), ntm, DRho,

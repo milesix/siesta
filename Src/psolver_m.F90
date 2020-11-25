@@ -13,7 +13,7 @@
 !  http://bigdft.org/Wiki/index.php?title=BigDFT_website 
 ! 
 !  Created by Pablo Lopez-Tarifa and Daniel Sanchez Portal @CFM(2018)
-!  Optimizations (mainly memory) done by Nick Papior (2020)
+!  Optimizations and made parallel by Nick Papior (2020)
 module psolver_m
 
 #ifdef SIESTA__PSOLVER
@@ -48,12 +48,14 @@ module psolver_m
   real(dp), public :: psolver_betaV = -0.35_dp
   !< Mapping of the radii that have to be used for each atomic species.
   integer, public :: psolver_atomic_radii = 0
-  !< Define type of cavity: [none, soft-sphere, sccs]
+  !< Define type of cavity: [none, soft-sphere, SCCS]
   character(len=16), public :: psolver_cavity_type = 'none'
   !< Type of radii type: [UFF, Bondi, Pauling]
   character(len=16), public :: psolver_radii_type = 'UFF'
   !< Algorithm used in the generalized Poisson equation: [PCG, PI]
   character(len=16), public :: psolver_gps_algorithm = 'PCG'
+  !< Which kind of accelerator to use: [CUDA]
+  character(len=16), public :: psolver_accel = 'none'
 
   !< Offsets in grids for lattices
   !!
@@ -141,10 +143,13 @@ contains
         psolver_betaV = fdf_bphysical(pline, -0.35_dp, 'GPa')
 
       else if ( leqi('atomic.radii', ctmp) ) then
-        psolver_atomic_radii = fdf_bvalues(pline, 1)
+        psolver_atomic_radii = fdf_bintegers(pline, 1)
 
       else if ( leqi('verbose', ctmp) ) then
         psolver_verbose = fdf_bboolean(pline, 1)
+
+      else if ( leqi('accelerator', ctmp) .or. leqi('accel', ctmp) ) then
+        psolver_accel = fdf_bnames(pline, 2)
 
       end if
 
@@ -179,7 +184,7 @@ contains
       write(6,'(a,t53,"= ",f10.5)') 'PSolver free energy repulsion of surface', psolver_alphaS
       write(6,'(a,t53,"= ",f10.5)') 'PSolver free energy dispersion of volume', psolver_betaV
       write(6,'(a,t53,"= ",a)') 'PSolver atomic radii type', trim(psolver_radii_type)
-      write(6,'(a,t53,"= ",i3)') 'PSolver atomic radii', psolver_atomic_radii
+      write(6,'(a,t53,"= ",i0)') 'PSolver atomic radii', psolver_atomic_radii
     end if
     write(6,'(a,t53,"=   ",L1)') 'PSolver verbose (for debugging)', psolver_verbose
 
@@ -387,7 +392,7 @@ contains
   !! Currently the stress-tensor is not calculated correctly.
   !! I do not know how to fix this but it is *not* a matter of units since
   !! I get a sign change.
-  subroutine poisson_psolver(cell, na_u, xa, ntm, rho, V,  eh, stress, calc_stress)
+  subroutine poisson_psolver(cell, na_u, xa, fal, ntm, rho, V, eh, stress, calc_stress)
 
     use parallel, only: Node, Nodes
     use units,          only: eV, Ang
@@ -403,10 +408,12 @@ contains
     ! PSolver modules:
     use Poisson_Solver, only: coulomb_operator,  Electrostatic_Solver, &
         pkernel_set, pkernel_set_epsilon
-    use PStypes,        only: PSolver_energies
-    use PStypes,        only: pkernel_init, pkernel_free, pkernel_get_radius
+    use PStypes, only: PSolver_energies, ps_soft_pcm_forces
+    use PStypes, only: ps_set_options
+    use PStypes, only: pkernel_init, pkernel_free, pkernel_get_radius
     use yaml_output
     use f_utils
+    use f_enums, only: operator(.hasattr.)
     use dictionaries, dict_set => set
 
     ! PSolver uses atlab to handle geometry etc.
@@ -415,6 +422,7 @@ contains
     real(dp), intent(in) :: cell(3,3) ! Unit-cell vectors
     integer, intent(in) :: na_u ! number of atoms in unit cell
     real(dp), intent(in) :: xa(3,na_u) ! atomic coordinates
+    real(dp), intent(inout) :: fal(3,na_u) !< Local atomic forces
     integer, intent(in) :: ntm(3) ! Total mesh divisions
     real(grid_p), intent(in) :: rho(:) ! Input density
     real(grid_p), intent(inout), target :: V(:) ! Output potential.
@@ -431,11 +439,12 @@ contains
     real(grid_p), pointer :: Vaux(:) => null() ! 1D auxiliary array.
 
     real(dp), pointer :: xa_cavity(:,:) => null()
+    real(dp), pointer :: radii_cavity(:) => null()
     real(dp) :: hgrid(3) ! Uniform mesh spacings in the three directions.
     real(dp) :: lat_doffset(3)
     integer :: ia
-    real(dp) :: radii(na_u)
-    real(dp) :: factor
+    real(dp) :: factor, stress_correction
+    real(dp), external :: volcel
 
     integer :: p_nml(3), p_nnml, p_ntml(3), p_ntpl
 
@@ -478,11 +487,18 @@ contains
     ! Initialize poisson-kernel
     pkernel = pkernel_init(Node, Nodes, dict, dom, ntm, hgrid)
 
+    ! Free calling dictionary
+    call dict_free(dict)
+
     ! Specify the verbosity
     call pkernel_set(pkernel, verbose=psolver_verbose)
 
     ! Implicit solvent?
     if ( psolver_cavity ) then
+      call re_alloc(xa_cavity, 1, 3, 1, na_u, 'xa_cavity', 'poisson_psolver')
+    end if
+
+    if ( pkernel%method .hasattr. "rigid" ) then
 
       ! Calculate offset due to mesh shift
       lat_doffset(:) = 0._dp
@@ -490,7 +506,7 @@ contains
         lat_doffset(:) = lat_doffset(:) - (cell(:,ia) / ntm(ia)) * lat_offset(:)
       end do
 
-      call re_alloc(xa_cavity, 1, 3, 1, na_u, 'xa_cavity', 'poisson_psolver')
+      call re_alloc(radii_cavity, 1, na_u, 'radii_cavity', 'poisson_psolver')
 
       ! Set a radius for each atom in Angstroem (UFF, Bondi, Pauling, etc ...)
       ! Multiply for a constant prefactor (see the Soft-sphere paper JCTC 2017)
@@ -498,25 +514,56 @@ contains
       factor = pkernel%cavity%fact_rigid * Ang
       do ia = 1 , na_u
         if ( floating(isa(ia)) ) then
-          radii(ia) = 0._dp
+          radii_cavity(ia) = 0._dp
         else
-          radii(ia) = factor * &
+          radii_cavity(ia) = factor * &
               pkernel_get_radius(pkernel, atname=symbol(atomic_number(isa(ia))))
         end if
         xa_cavity(:,ia) = xa(:,ia) + lat_doffset(:)
       end do
 
-      call pkernel_set_epsilon(pkernel, nat=na_u, rxyz=xa_cavity, radii=radii)
+      call pkernel_set_epsilon(pkernel, nat=na_u, &
+          rxyz=xa_cavity, radii=radii_cavity)
 
-      call de_alloc(xa_cavity, 'xa_cavity', 'poisson_psolver')
+      call de_alloc(radii_cavity, 'radii_cavity', 'poisson_psolver')
 
     end if
 
-    ! Free calling dictionary
-    call dict_free(dict)
-
     ! Solve the Poisson equation and retrieve also energies and stress-tensor
     call Electrostatic_Solver(pkernel, Vaux, energies)
+
+    if ( psolver_cavity ) then
+      if ( calc_stress ) then
+        xa_cavity(:,:) = 0._dp
+        if ( pkernel%method .hasattr. "rigid" ) then
+          ! First calculate the electrostatic forces (only)
+          call PS_set_options(pkernel, cavitation_terms = .false.)
+          ! ps_soft_PCM_forces adds the electrostatic forces
+          ! We are calculating these outside
+          call ps_soft_PCM_forces(pkernel, xa_cavity)
+          ! Reverse forces to subtract the electrostatic forces
+          ! in subsequent call (see psolver/src/environment[rigid_cavity_forces]
+          do ia = 1 , na_u
+            xa_cavity(:,ia) = - xa_cavity(:,ia)
+          end do
+          ! Now ask to also calculate the cavity forces
+          ! The internal routine also calculates the electrostatic
+          ! force, but we are now removing the electrostatic force
+          ! and retain only cavity forces.
+          call PS_set_options(pkernel, cavitation_terms = .true.)
+          ! Calculate forces due to cavities
+          call ps_soft_PCM_forces(pkernel, xa_cavity)
+        end if
+
+        ! Hartree => Rydberg
+        do ia = 1, na_u
+          fal(:,ia) = fal(:,ia) + 2._dp * xa_cavity(:,ia)
+        end do
+      end if
+
+      ! Clean up memory
+      call de_alloc(xa_cavity, 'xa_cavity', 'poisson_psolver')
+    end if
 
     ! Shift data back
     call mesh_cshift(p_ntml, Vaux, lat_offset)
@@ -530,12 +577,23 @@ contains
     Vaux(:) = 2._dp * Vaux(:)
     eh = 2._dp * energies%hartree / Nodes
 
+    if ( eh < 0._dp ) then
+      if ( Node == 0 ) then
+        write(6,*) "WARNING: Psolver: U(rho-rhoatm) < 0 (changing to absolute value)"
+      end if
+      eh = abs(eh)
+    end if
+
     ! The stress-tensor is definitely wrong. However, it seems that the Siesta
     ! convention is different than PSolver
     if ( calc_stress ) then
-      stress(1,1) = 2._dp * energies%strten(1) / Nodes
-      stress(2,2) = 2._dp * energies%strten(2) / Nodes
-      stress(3,3) = 2._dp * energies%strten(3) / Nodes
+      ! Correct stress taking into account an extra 2*U/V term in the diagonal
+      ! (See comment in routine poison in Siesta)
+      ! factor of 2 here is intrinsic, not units!
+      stress_correction = 2.0_dp * eh / volcel(cell)
+      stress(1,1) = 2._dp * energies%strten(1) / Nodes + stress_correction
+      stress(2,2) = 2._dp * energies%strten(2) / Nodes + stress_correction
+      stress(3,3) = 2._dp * energies%strten(3) / Nodes + stress_correction
       stress(3,2) = 2._dp * energies%strten(4) / Nodes
       stress(2,3) = 2._dp * energies%strten(4) / Nodes
       stress(3,1) = 2._dp * energies%strten(5) / Nodes
@@ -748,6 +806,15 @@ contains
 
     ! Data distribution will be always global:
     call set( dict//'setup'//'global_data', Nodes == 1) ! Hardwired, it cannot be otherwise.
+
+    select case ( trim(psolver_accel) )
+    case ( 'CUDA', 'cuda' )
+      call set( dict//'setup'//'accel', "CUDA")
+    case ( 'NONE', 'none' )
+      ! Ok, just no accelerator
+    case default
+      call die("psolver_m: Unknown accelerator!")
+    end select
 
     ! Set kernel and cavity variables:
     call set( dict//'kernel'//'isf_order', psolver_isf_order)
