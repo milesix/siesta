@@ -217,22 +217,22 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
      do lambda=1,no_u
         do mu=1,no_u
            acc_left = 0.0
-           ! do ind = (listhptr(lambda)+1),&
-           !      & listhptr(lambda) + numh(lambda)
-           !    beta = listh(ind)
-           do beta=1,no_l       ! Dfull is dense now
+           do ind = (listhptr(lambda)+1),&
+                & listhptr(lambda) + numh(lambda)
+              beta = listh(ind)
+           ! do beta=1,no_l       ! Dfull is dense now
               do sec_ind = (listhptr(beta)+1),&
                    & listhptr(beta) + numh(beta)
                  sec_col = listh(sec_ind)
                  if ( sec_col .eq. mu ) then
                     if (beta.eq.lambda) then
                        acc_left = acc_left + &
-                            &(1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * S(sec_ind)
-                            ! &(1.0 - dscf_hat(ind)) * S(sec_ind)
+                            ! &(1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * S(sec_ind)
+                            &(1.0 - dscf_hat(ind)) * S(sec_ind)
                     else
                        acc_left = acc_left + &
-                            &(0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * S(sec_ind)
-                            ! &(0.0 - dscf_hat(ind)) * S(sec_ind)
+                            ! &(0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * S(sec_ind)
+                            &(0.0 - dscf_hat(ind)) * S(sec_ind)
                     end if
                     exit
                  end if
@@ -263,13 +263,13 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
      ! then store the resulting column in the "right" buffer array:
      tmp_left(:) = 0.0
      do mu=1,no_u
-        ! do ind = (listhptr(mu)+1), listhptr(mu) + numh(mu)
-        !    nu = listh(ind)
-        !    tmp_left(mu) = tmp_left(mu) + dscf_hat(ind) * tmp_right(nu)
-        ! end do
-        do nu=1,no_u
-           tmp_left(mu) = tmp_left(mu) + 0.5_dp * Dfull(mu,nu,1) * tmp_right(nu)
+        do ind = (listhptr(mu)+1), listhptr(mu) + numh(mu)
+           nu = listh(ind)
+           tmp_left(mu) = tmp_left(mu) + dscf_hat(ind) * tmp_right(nu)
         end do
+        ! do nu=1,no_u
+        !    tmp_left(mu) = tmp_left(mu) + 0.5_dp * Dfull(mu,nu,1) * tmp_right(nu)
+        ! end do
      end do
      tmp_right(:) = tmp_left(:)
 
@@ -288,14 +288,14 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
                  if ( sec_col .eq. mu ) then
                     if (beta.eq.lambda) then
                        acc_left = acc_left + &
-                            ! &(1.0 - dscf_hat(ind)) * &
-                            &(1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * &
+                            &(1.0 - 0.5 * dscf_hat(ind)) * &
+                            ! &(1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * &
                             &(sum(gradS(:,sec_ind) * &
                             & va_before_move(:,iaorb(mu))))
                     else
                        acc_left = acc_left + &
-                            ! &(0.0 - dscf_hat(ind)) * &
-                            &(0.0 - 0.5_dp * Dfull(lambda,beta,1)) * &
+                            &(0.0 - 0.5 * dscf_hat(ind)) * &
+                            ! &(0.0 - 0.5_dp * Dfull(lambda,beta,1)) * &
                             &(sum(gradS(:,sec_ind) * &
                             & va_before_move(:,iaorb(mu))))
                     end if
@@ -329,13 +329,13 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
      ! then store the resulting column in the "right" buffer array:
      tmp_left(:) = 0.0
      do mu=1,no_u
-        ! do ind = (listhptr(mu)+1), listhptr(mu) + numh(mu)
-        !    nu = listh(ind)
-        !    tmp_left(mu) = tmp_left(mu) + dscf_hat(ind) * tmp_right(nu)
-        ! end do
-        do nu=1,no_l
-           tmp_left(mu) = tmp_left(mu) + 0.5_dp * Dfull(mu,nu,1) * tmp_right(nu)
+        do ind = (listhptr(mu)+1), listhptr(mu) + numh(mu)
+           nu = listh(ind)
+           tmp_left(mu) = tmp_left(mu) + dscf_hat(ind) * tmp_right(nu)
         end do
+        ! do nu=1,no_l
+        !    tmp_left(mu) = tmp_left(mu) + 0.5_dp * Dfull(mu,nu,1) * tmp_right(nu)
+        ! end do
      end do
      tmp_right(:) = tmp_left(:)
 
@@ -354,12 +354,12 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
                  if ( sec_col .eq. mu ) then
                     if (beta.eq.lambda) then
                        acc_left = acc_left + &
-                            ! &(1.0 - dscf_hat(ind)) * S(sec_ind)
-                            &(1.0_dp  - 0.5_dp * Dfull(lambda,beta,1)) * S(sec_ind)
+                            &(1.0 - 0.5 * dscf_hat(ind)) * S(sec_ind)
+                            ! &(1.0_dp  - 0.5_dp * Dfull(lambda,beta,1)) * S(sec_ind)
                     else
                        acc_left = acc_left + &
-                            ! &(0.0 - dscf_hat(ind)) * S(sec_ind)
-                            &(0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * S(sec_ind)
+                            &(0.0 - 0.5 * dscf_hat(ind)) * S(sec_ind)
+                            ! &(0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * S(sec_ind)
                     end if
                     exit
                  end if
