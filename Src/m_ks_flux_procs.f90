@@ -170,7 +170,7 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
   allocate (tmp_right(no_u))
 
   ! Finite-difference time derivative of Dfull:
-  Dderiv(:,:,1) = (Dfull(:,:,1) - Dderiv(:,:,1))/virtual_dt !NOTE: Just first spin component
+  Dderiv(:,:,1) = (Dderiv(:,:,1) - Dfull(:,:,1))/virtual_dt !NOTE: Just first spin component
 
   dscf_hat => ks_flux_D(:,1)         !NOTE: Just first spin component
   S => ks_flux_S(:)

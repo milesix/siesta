@@ -284,7 +284,7 @@ C Global operation to form new density matrix
             call re_alloc(Dderiv,1, nuotot,1, nuotot,  1, h_spin_dim,
      $           'Dderiv', 'diagg')
          endif
-         Dfull(:,:,:) = 0.0_dp ! Init Dfull with zeros on every step in VMD.
+         Dderiv(:,:,:) = 0.0_dp ! Init D with zeros on every step in VMD.
       endif
 
       do Bnode=0, Nodes-1
@@ -317,7 +317,7 @@ c$$$                if (want_virtual_step_md .and.
 c$$$     $               (substep .eq. BASE_STEP)) then
                 if (want_virtual_step_md) then
                    do jo = 1,nuotot
-                      Dfull(io,jo,ispin) = Dfull(io,jo,ispin) +
+                      Dderiv(io,jo,ispin) = Dderiv(io,jo,ispin) +
      $                     qei*paux(jo)
                    enddo
                 endif
@@ -338,7 +338,7 @@ c$$$     $               (substep .eq. BASE_STEP)) then
       ![VMD] Init Dderiv if on BASE step. On a virtual step it will be set in ks_procs.
       !TODO: Move this initialization out of here?
       if (want_virtual_step_md) then
-         if (substep .eq. BASE_STEP) Dderiv(:,:,:) = Dfull(:,:,:)
+         if (substep .eq. BASE_STEP) Dfull(:,:,:) = Dderiv(:,:,:)
       end if
 
       ! can build sparse Dnew by copying from Dfull
