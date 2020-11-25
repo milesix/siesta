@@ -148,13 +148,21 @@ contains
         psolver_atomic_radii = fdf_bintegers(pline, 1)
 
       else if ( leqi('verbose', ctmp) ) then
-        psolver_verbose = fdf_bboolean(pline, 1)
+        if ( fdf_bnnames(pline) > 1 ) then
+          psolver_verbose = fdf_bboolean(pline, 2)
+        else
+          psolver_verbose = .true.
+        end if
 
       else if ( leqi('accelerator', ctmp) .or. leqi('accel', ctmp) ) then
         psolver_accel = fdf_bnames(pline, 2)
 
       else if ( leqi('force.PBC', ctmp) ) then
-        psolver_force_pbc = fdf_bboolean(pline, 1)
+        if ( fdf_bnnames(pline) > 1 ) then
+          psolver_force_pbc = fdf_bboolean(pline, 2)
+        else
+          psolver_force_pbc = .true.
+        end if
 
       end if
 
