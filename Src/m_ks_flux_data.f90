@@ -17,6 +17,8 @@ module ks_flux_data
   !! Storage for overlap from the `BASE` step.
   real(dp), dimension(:,:), target, allocatable :: ks_flux_gS
   !! Storage for overlap gradient from the `BASE` step.
+  real(dp), dimension(:,:), target, allocatable :: ks_flux_H
+  !! Storage for the Hamiltonian from the `BASE` step.
   real(dp), dimension(:,:), target, allocatable :: ks_flux_D
   !! Storage for density matrix from the `BASE` step.
   real(dp), dimension(:,:), target, allocatable :: ks_flux_Rmat
@@ -28,7 +30,7 @@ module ks_flux_data
 contains
 
   subroutine init_ks_flux_data ()
-    use sparse_matrices, only: S, gradS, Dscf, Rmat
+    use sparse_matrices, only: H, S, gradS, Dscf, Rmat
     use alloc, only : re_alloc
 
     call re_alloc( Dscf_deriv,&
@@ -39,6 +41,7 @@ contains
 
     allocate(ks_flux_S, source=S)
     allocate(ks_flux_gS, source=gradS)
+    allocate(ks_flux_H, source=H)
     allocate(ks_flux_D, source=Dscf)
     allocate(ks_flux_Rmat, source=Rmat)
   end subroutine init_ks_flux_data
@@ -51,6 +54,7 @@ contains
 
     deallocate(ks_flux_S)
     deallocate(ks_flux_gS)
+    deallocate(ks_flux_H)
     deallocate(ks_flux_D)
     deallocate(ks_flux_Rmat)
   end subroutine reset_ks_flux_data

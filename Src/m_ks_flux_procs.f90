@@ -126,7 +126,6 @@ end subroutine compute_psi_hat_c
 !  This routine is very complex. It has to be re-checked
 !
 subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
-  use sparse_matrices, only: gradS
   use siesta_options, only : virtual_dt
   ! Take proper velocities from `BASE` step:
   use m_virtual_step_data, only: va_before_move
@@ -148,7 +147,7 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
   !! Number of wavefunctions to process
 
   real(dp), dimension(:),   pointer :: dscf_hat => null()
-  ! real(dp), dimension(:,:), pointer :: gradS => null()
+  real(dp), dimension(:,:), pointer :: gradS => null()
   real(dp), dimension(:),   pointer :: S => null()
 
   integer  :: iw
@@ -176,7 +175,7 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
   dscf_hat => ks_flux_D(:,1)         !NOTE: Just first spin component
   S => ks_flux_S(:)
 
-  ! gradS => ks_flux_gS(:,:)
+  gradS => ks_flux_gS(:,:)
   ! computing and storage of every of the 3 components
   ! should be available to order in the .fdf
 
@@ -206,7 +205,7 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
         !    tmp_left(mu) = tmp_left(mu)+Dscf_deriv(ind,1)*tmp_right(nu)
         !    !NOTE: Only first spin component here now--^
         ! end do
-        do nu=1,no_l
+        do nu=1,no_u
            tmp_left(mu) = tmp_left(mu)+ 0.5_dp * Dderiv(mu,nu,1)*tmp_right(nu)
          !NOTE: Only first spin component here now--^
         end do
@@ -268,7 +267,7 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
         !    nu = listh(ind)
         !    tmp_left(mu) = tmp_left(mu) + dscf_hat(ind) * tmp_right(nu)
         ! end do
-        do nu=1,no_l
+        do nu=1,no_u
            tmp_left(mu) = tmp_left(mu) + 0.5_dp * Dfull(mu,nu,1) * tmp_right(nu)
         end do
      end do
@@ -383,7 +382,10 @@ end subroutine compute_psi_dot_c
 
 subroutine compute_Jks ()
 
-  use sparse_matrices, only: H, S
+  ! use sparse_matrices, only: H
+  ! use sparse_matrices, only: S
+
+  use ks_flux_data, only: ks_flux_S, ks_flux_H
   use ks_flux_data, only: psi_hat_c, psi_dot_c, ks_flux_Jks
 
   use m_eo, only: eo
@@ -393,6 +395,9 @@ subroutine compute_Jks ()
   integer :: idx
   integer :: no_occ_wfs
   integer :: iw, mu, nu, j, ind, col
+
+  real(dp), dimension(:),   pointer :: S => null()
+  real(dp), dimension(:,:), pointer :: H => null()
 
   !> Selected element of matrix H
   !> (only a factor, not the whole sandwitch!)
@@ -406,6 +411,9 @@ subroutine compute_Jks ()
 
   call compute_psi_hat_c (psi_hat_c, no_occ_wfs)
   call compute_psi_dot_c (psi_dot_c, no_occ_wfs)
+
+  S => ks_flux_S(:)
+  H => ks_flux_H(:,:)
 
   ks_flux_Jks(:) = 0.0          ! Init result to zeros outside main loop
 
