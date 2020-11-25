@@ -449,7 +449,10 @@ C     At the end of initializations:
 C ----------------------------------------------------------------------
       if (frstme) then
         call initialize_efield()
-        call init_dipole_correction(nbcell, bcell, acting_efield)
+!       Only initialize a dipole correction if using FFT
+!       Important since the dipole correction is not needed for PSolver
+        if ( .not. use_psolver )
+     &      call init_dipole_correction(nbcell, bcell, acting_efield)
       end if
 
       ! Check if we need to add the potential 

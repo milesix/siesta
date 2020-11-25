@@ -392,12 +392,12 @@ contains
   !! Currently the stress-tensor is not calculated correctly.
   !! I do not know how to fix this but it is *not* a matter of units since
   !! I get a sign change.
-  subroutine poisson_psolver(cell, na_u, xa, fal, ntm, rho, V, eh, stress, calc_stress)
+  subroutine poisson_psolver(cell, na_u, xa, fal, ntm, rho, V, eh, stressl, calc_stress)
 
     use parallel, only: Node, Nodes
     use units,          only: eV, Ang
     use atmfuncs, only: floating
-    use siesta_geom,    only: isa
+    use siesta_geom,    only: isa, shape
     use periodic_table, only: symbol
     use chemical, only: atomic_number
     use alloc,          only: re_alloc, de_alloc
@@ -427,7 +427,7 @@ contains
     real(grid_p), intent(in) :: rho(:) ! Input density
     real(grid_p), intent(inout), target :: V(:) ! Output potential.
     real(dp), intent(out) :: eh ! Electrostatic energy.
-    real(dp), intent(inout) :: stress(3,3) ! stress-tensor contribution
+    real(dp), intent(inout) :: stressl(3,3) ! stress-tensor contribution (local)
     logical, intent(in) :: calc_stress
 
     ! PSolver types
@@ -577,11 +577,13 @@ contains
     Vaux(:) = 2._dp * Vaux(:)
     eh = 2._dp * energies%hartree / Nodes
 
-    if ( eh < 0._dp ) then
-      if ( Node == 0 ) then
-        write(6,*) "WARNING: Psolver: U(rho-rhoatm) < 0 (changing to absolute value)"
+    if ( shape == "bulk" ) then
+      if ( eh < 0._dp ) then
+        if ( Node == 0 ) then
+          write(6,*) "WARNING: Psolver: U(rho-rhoatm) < 0 (changing to absolute value)"
+        end if
+        eh = abs(eh)
       end if
-      eh = abs(eh)
     end if
 
     ! The stress-tensor is definitely wrong. However, it seems that the Siesta
@@ -590,18 +592,29 @@ contains
       ! Correct stress taking into account an extra 2*U/V term in the diagonal
       ! (See comment in routine poison in Siesta)
       ! factor of 2 here is intrinsic, not units!
+
+!!$      ! This does NOT work.
+!!$      if ( shape == "bulk" ) then
+!!$        stress_correction = 2.0_dp * eh / volcel(cell)
+!!$      else if ( shape == "slab" ) then
+!!$        stress_correction = 2.0_dp * eh / area(cell(:, 1), cell(:,3))
+!!$      else if ( shape == "wire" ) then
+!!$        stress_correction = 2.0_dp * eh / VNORM(cell(:,3))
+!!$      else
+!!$        stress_correction = 0._dp
+!!$      end if
       stress_correction = 2.0_dp * eh / volcel(cell)
-      stress(1,1) = 2._dp * energies%strten(1) / Nodes + stress_correction
-      stress(2,2) = 2._dp * energies%strten(2) / Nodes + stress_correction
-      stress(3,3) = 2._dp * energies%strten(3) / Nodes + stress_correction
-      stress(3,2) = 2._dp * energies%strten(4) / Nodes
-      stress(2,3) = 2._dp * energies%strten(4) / Nodes
-      stress(3,1) = 2._dp * energies%strten(5) / Nodes
-      stress(1,3) = 2._dp * energies%strten(5) / Nodes
-      stress(1,2) = 2._dp * energies%strten(6) / Nodes
-      stress(2,1) = 2._dp * energies%strten(6) / Nodes
-    else
-      stress(:,:) = 0._dp
+
+      ! Here factor 2 is units
+      stressl(1,1) = 2._dp * energies%strten(1) / Nodes + stress_correction
+      stressl(2,2) = 2._dp * energies%strten(2) / Nodes + stress_correction
+      stressl(3,3) = 2._dp * energies%strten(3) / Nodes + stress_correction
+      stressl(3,2) = 2._dp * energies%strten(4) / Nodes
+      stressl(2,3) = 2._dp * energies%strten(4) / Nodes
+      stressl(3,1) = 2._dp * energies%strten(5) / Nodes
+      stressl(1,3) = 2._dp * energies%strten(5) / Nodes
+      stressl(1,2) = 2._dp * energies%strten(6) / Nodes
+      stressl(2,1) = 2._dp * energies%strten(6) / Nodes
     end if
 
     if ( Nodes > 1 ) then
@@ -619,6 +632,17 @@ contains
     call f_lib_finalize_noreport()
     
     call timer('poisson_psolver', 2)
+
+  contains
+
+    function area(v, u) result(A)
+      real(dp), intent(in) :: v(3), u(3)
+      real(dp) :: A
+      real(dp) :: vu_x(3)
+
+      call cross(v, u, vu_x)
+      A = VNORM(vu_x)
+    end function area
 
   end subroutine poisson_psolver
 
