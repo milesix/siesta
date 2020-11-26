@@ -148,14 +148,6 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
   init_C = .true.
   if(first_call) init_C = .false.
 
-  if(istp==2 .and. new_S .and. WriteCoeffs) then
-    call timer('WriteCoeffs',1)
-    WF_COEFFS_filename=trim(slabel)//'.WF_LIBOMM_ST1'
-    call m_write(C_min,WF_COEFFS_filename)
-    if(ionode) print'(a)', 'File for C is written'
-    call timer('WriteCoeffs',2)
-  end if
-
   if(new_S .and. (istp>1) .and. C_extrapol) then
     call timer('c_extrapol',1)
     if(.not. C_old%is_initialized) call m_allocate(C_old,wf_dim,h_dim,&
@@ -451,6 +443,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     else
       call m_copy(C_min,C_old,keep_sparsity=.true.)
     end if  
+    call m_dbcsr_occupation(C_min, c_occ)
     if(ionode) print'(a,f10.8)','C occupation = ', c_occ
     call timer('c_extrapol',2)
   end if
