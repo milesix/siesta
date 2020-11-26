@@ -61,6 +61,9 @@ module byte_count_m
 
   public :: byte_count_t
 
+  !< Conversion from bytes to mega-bytes
+  real(dp), private, parameter :: B2MB = 1._dp / 1024._dp ** 2
+
 contains
 
   subroutine assign_(this, other)
@@ -105,7 +108,7 @@ contains
     real(dp) :: MB
 
     ! Number of elements
-    MB = bytes * real(n1, dp) / 1024._dp ** 2
+    MB = bytes * real(n1, dp) * B2MB
     if ( present(n2) ) MB = MB * real(n2, dp)
     if ( present(n3) ) MB = MB * real(n3, dp)
     if ( present(n4) ) MB = MB * real(n4, dp)
@@ -125,7 +128,7 @@ contains
     real(dp) :: MB
 
     ! Number of elements
-    MB = bytes * real(n(1), dp) / 1024._dp ** 2
+    MB = bytes * real(n(1), dp) * B2MB
     do i = 2, size(n)
       MB = MB * real(n(i), dp)
     end do
@@ -142,7 +145,7 @@ contains
     real(dp) :: MB
 
     ! Number of elements
-    MB = bytes * real(n(1), dp) / 1024._dp ** 2
+    MB = bytes * real(n(1), dp) * B2MB
     do i = 2, size(n)
       MB = MB * real(n(i), dp)
     end do
@@ -159,7 +162,7 @@ contains
     real(dp) :: MB
 
     ! Number of elements
-    MB = bytes * real(n(1), dp) / 1024._dp ** 2
+    MB = bytes * real(n(1), dp) * B2MB
     do i = 2, size(n)
       MB = MB * real(n(i), dp)
     end do
@@ -176,7 +179,7 @@ contains
     real(dp) :: MB
 
     ! Number of elements
-    MB = bytes * real(n1, dp) / 1024._dp ** 2
+    MB = bytes * real(n1, dp) * B2MB
     if ( present(n2) ) MB = MB * real(n2, dp)
     if ( present(n3) ) MB = MB * real(n3, dp)
     if ( present(n4) ) MB = MB * real(n4, dp)
@@ -196,7 +199,7 @@ contains
     real(dp) :: MB
 
     ! Number of elements
-    MB = bytes * real(n1, dp) / 1024._dp ** 2
+    MB = bytes * real(n1, dp) * B2MB
     if ( present(n2) ) MB = MB * real(n2, dp)
     if ( present(n3) ) MB = MB * real(n3, dp)
     if ( present(n4) ) MB = MB * real(n4, dp)
@@ -220,7 +223,7 @@ contains
     real(dp) :: MB
 
     ! Number of elements
-    MB = real(n1, dp) / 1024._dp ** 2
+    MB = real(n1, dp) * B2MB
     if ( present(n2) ) MB = MB * real(n2, dp)
     if ( present(n3) ) MB = MB * real(n3, dp)
     if ( present(n4) ) MB = MB * real(n4, dp)
@@ -249,7 +252,7 @@ contains
     real(dp) :: MB
 
     ! Number of elements
-    MB = real(n1, dp) / 1024._dp ** 2
+    MB = real(n1, dp) * B2MB
     if ( present(n2) ) MB = MB * real(n2, dp)
     if ( present(n3) ) MB = MB * real(n3, dp)
     if ( present(n4) ) MB = MB * real(n4, dp)
@@ -283,7 +286,6 @@ contains
     character(len=24) :: fmt
 
     real(dp) :: mem
-    integer :: len_mem_str
     integer :: fw, fd, fe
 
     ! Determine length available
