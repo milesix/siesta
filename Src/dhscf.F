@@ -107,7 +107,7 @@
       use mpi_siesta
 #endif
 #ifdef SIESTA__PSOLVER
-      use psolver_m, only: use_psolver
+      use psolver_m, only: use_psolver, psolver_force_pbc
       use psolver_m, only: poisson_psolver_init
       use psolver_m, only: poisson_psolver
 #endif
@@ -450,9 +450,13 @@ C ----------------------------------------------------------------------
       if (frstme) then
         call initialize_efield()
 !       Only initialize a dipole correction if using FFT
+#ifdef SIESTA__PSOLVER
 !       Important since the dipole correction is not needed for PSolver
-        if ( .not. use_psolver )
+        if ( psolver_force_pbc .or. .not. use_psolver )
      &      call init_dipole_correction(nbcell, bcell, acting_efield)
+#else
+        call init_dipole_correction(nbcell, bcell, acting_efield)
+#endif
       end if
 
       ! Check if we need to add the potential 
