@@ -592,7 +592,7 @@ contains
     Vaux(:) = 2._dp * Vaux(:)
     eh = 2._dp * energies%hartree / Nodes
 
-    if ( shape == "bulk" ) then
+    if ( shape == "bulk" .or. psolver_force_pbc ) then
       if ( eh < 0._dp ) then
         if ( Node == 0 ) then
           write(6,*) "WARNING: Psolver: U(rho-rhoatm) < 0 (changing to absolute value)"
