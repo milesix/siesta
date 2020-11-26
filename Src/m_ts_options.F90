@@ -437,11 +437,7 @@ contains
 
     ! Whether we should always set the DM to bulk
     ! values (by reading in from electrode DM)
-<<<<<<< HEAD
-    if ( TS_scf_mode == 1 .and. .not. IsVolt ) then
-=======
     if ( TS_scf_mode == 1 ) then
->>>>>>> d05c42ed1... maint: reran all TS tests
       chars = 'bulk'
     else
       chars = 'diagon'
