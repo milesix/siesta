@@ -38,9 +38,9 @@ C
 
       use m_spin,             only: init_spin, spin
       
-      use ldau_specs, only: read_ldau_specs
-      use ldau_specs, only: populate_species_info_ldau
-      use ldau_specs, only: ldau_proj_gen
+      use dftu_specs, only: read_dftu_specs
+      use dftu_specs, only: dftu_proj_gen
+      use dftu_specs, only: populate_species_info_dftu
 
       implicit none
 
@@ -95,8 +95,8 @@ c Reading input for the pseudopotentials and atomic orbitals
       call read_basis_specs()
       call basis_specs_transfer()
 
-!     Get the parameters for the generation of the LDA+U projectors
-      call read_ldau_specs()
+!     Get the parameters for the generation of the DFT+U projectors
+      call read_dftu_specs()
 
       call setup_atom_tables(nsp)
 
@@ -120,13 +120,13 @@ c Reading input for the pseudopotentials and atomic orbitals
      &           lj_projs=spin%SO_offsite)
         
 !       Generate the projectors for the LDA+U simulations (if requested)
-        call ldau_proj_gen(is)
+        call dftu_proj_gen(is)
       enddo 
 
       call prinput(nsp)
       
 !     Create the new data structures for atmfuncs.
-      call populate_species_info_ldau()
+      call populate_species_info_dftu()
 
       call remove_atom_tables()
       nspecies = nsp

@@ -55,7 +55,7 @@ DEPS_GEN-BASIS=m_io.o io.o alloc.o basis_types.o precision.o  parallel.o \
           parsing.o basis_io.o chemical.o atm_types.o \
           atmparams.o radial.o interpolation.o \
 	  bessph.o radfft.o  sorting.o m_filter.o m_spin.o \
-          basis_specs.o ldau_specs.o atom.o periodic_table.o\
+          basis_specs.o dftu_specs.o atom.o periodic_table.o\
           pxf.o dot.o  atom_options.o arw.o m_spin_orbit_potentials.o \
           xml.o m_walltime.o read_xc_info.o  $(SYSOBJ) \
           m_fft_gpfa.o m_cite.o reclat.o units.o \
@@ -73,7 +73,7 @@ DEPS_IONCAT=f2kcli.o m_getopts.o basis_types.o precision.o  parallel.o \
 	  chemical.o m_spin.o m_spin_orbit_potentials.o reclat.o \
           basis_specs.o periodic_table.o pxf.o semicore_info_froyen.o \
           atom.o atmfuncs.o spher_harm.o interpolation.o arw.o \
-          xml.o m_walltime.o ldau_specs.o\
+          xml.o m_walltime.o dftu_specs.o\
           hamann.o m_cite.o  units.o files.o $(SYSOBJ)
 
 # Siesta kpoint-scale
@@ -173,16 +173,16 @@ chemical.o: local_sys.o parallel.o precision.o
 chemical.o: local_sys.o parallel.o precision.o
 chkdim.o: local_sys.o
 chkdim.o: local_sys.o
+dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
+dftu_specs.o: basis_specs.o basis_types.o interpolation.o local_sys.o m_cite.o
+dftu_specs.o: parallel.o precision.o radial.o units.o
+dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
+dftu_specs.o: basis_specs.o basis_types.o interpolation.o local_sys.o m_cite.o
+dftu_specs.o: parallel.o precision.o radial.o units.o
 get_kpoints_scale.o: parallel.o siesta_geom.o units.o
 get_kpoints_scale.o: parallel.o siesta_geom.o units.o
 io.o: m_io.o
 io.o: m_io.o
-ldau_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
-ldau_specs.o: basis_specs.o basis_types.o interpolation.o local_sys.o m_cite.o
-ldau_specs.o: parallel.o precision.o radial.o units.o
-ldau_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
-ldau_specs.o: basis_specs.o basis_types.o interpolation.o local_sys.o m_cite.o
-ldau_specs.o: parallel.o precision.o radial.o units.o
 m_filter.o: bessph.o local_sys.o precision.o radfft.o
 m_filter.o: bessph.o local_sys.o precision.o radfft.o
 m_getopts.o: f2kcli.o
@@ -208,9 +208,9 @@ units.o: precision.o
 xml.o: precision.o
 xml.o: precision.o
 gen-basis.o: atm_types.o atom.o atom_options.o basis_io.o basis_specs.o
-gen-basis.o: basis_types.o chemical.o ldau_specs.o local_sys.o m_spin.o
+gen-basis.o: basis_types.o chemical.o dftu_specs.o local_sys.o m_spin.o
 gen-basis.o: atm_types.o atom.o atom_options.o basis_io.o basis_specs.o
-gen-basis.o: basis_types.o chemical.o ldau_specs.o local_sys.o m_spin.o
+gen-basis.o: basis_types.o chemical.o dftu_specs.o local_sys.o m_spin.o
 ioncat.o: atm_types.o atmfuncs.o basis_io.o m_getopts.o precision.o
 ioncat.o: atm_types.o atmfuncs.o basis_io.o m_getopts.o precision.o
 aux_proj.o: atom.o

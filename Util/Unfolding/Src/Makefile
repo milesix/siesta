@@ -71,7 +71,7 @@ SIESTA_OBJS= precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
              atom_options.o chemical.o \
              get_kpoints_scale.o siesta_geom.o \
              radfft.o bessph.o m_fft_gpfa.o \
-             broadcast_basis.o ldau_specs.o basis_specs.o \
+             broadcast_basis.o dftu_specs.o basis_specs.o \
              atom.o hamann.o m_filter.o \
              m_cite.o m_spin_orbit_potentials.o \
              coor.o chkdim.o semicore_info_froyen.o \
@@ -222,9 +222,9 @@ bessph.o: local_sys.o precision.o
 bessph.o: local_sys.o precision.o
 bloch_unfold.o: units.o
 bloch_unfold.o: units.o
-broadcast_basis.o: atm_types.o chemical.o ldau_specs.o m_mpi_utils.o parallel.o
+broadcast_basis.o: atm_types.o chemical.o dftu_specs.o m_mpi_utils.o parallel.o
 broadcast_basis.o: radial.o
-broadcast_basis.o: atm_types.o chemical.o ldau_specs.o m_mpi_utils.o parallel.o
+broadcast_basis.o: atm_types.o chemical.o dftu_specs.o m_mpi_utils.o parallel.o
 broadcast_basis.o: radial.o
 cellsubs.o: precision.o
 cellsubs.o: precision.o
@@ -253,6 +253,12 @@ coor.o: alloc.o atmfuncs.o local_sys.o parallel.o precision.o siesta_geom.o
 coor.o: units.o zmatrix.o
 debugmpi.o: parallel.o
 debugmpi.o: parallel.o
+dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
+dftu_specs.o: basis_specs.o basis_types.o interpolation.o local_sys.o m_cite.o
+dftu_specs.o: parallel.o precision.o radial.o units.o
+dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
+dftu_specs.o: basis_specs.o basis_types.o interpolation.o local_sys.o m_cite.o
+dftu_specs.o: parallel.o precision.o radial.o units.o
 diag.o: alloc.o diag_option.o local_sys.o parallel.o precision.o
 diag.o: alloc.o diag_option.o local_sys.o parallel.o precision.o
 diag_option.o: parallel.o precision.o
@@ -269,12 +275,6 @@ io.o: m_io.o
 io.o: m_io.o
 kpoint_convert.o: local_sys.o precision.o units.o
 kpoint_convert.o: local_sys.o precision.o units.o
-ldau_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
-ldau_specs.o: basis_specs.o basis_types.o interpolation.o local_sys.o m_cite.o
-ldau_specs.o: parallel.o precision.o radial.o units.o
-ldau_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
-ldau_specs.o: basis_specs.o basis_types.o interpolation.o local_sys.o m_cite.o
-ldau_specs.o: parallel.o precision.o radial.o units.o
 m_cell.o: precision.o siesta_geom.o units.o
 m_cell.o: precision.o siesta_geom.o units.o
 m_filter.o: bessph.o local_sys.o precision.o radfft.o
