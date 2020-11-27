@@ -5,30 +5,6 @@
 # This installation script has been written by:
 #  Nick R. Papior, 2016-2017.
 #
-# (Some comments by Alberto Garcia follow)  ----begin----
-#
-# The version string has been changed to 0.8.1
-#
-# To use with the Intel Fortran compiler, a manual step of creation
-# of a setup.make file in the top level of the created flook-0.8.1 directory
-# might be needed. A minimal example:
-#
-# CC = icc
-# FC = ifort
-# CFLAGS = -g
-# FFLAGS = -g
-# .f90.o:
-# 	$(FC) -c $(FFLAGS) $(INC) $<
-# .F90.o:
-# 	$(FC) -c $(FFLAGS) $(INC) $<
-# .c.o:
-# 	$(CC) -c $(CFLAGS) $(INC) $<
-#
-# Make sure to type 'make clean' before typing 'make' again.
-# You then need to install the libraries manually.
-#
-# ---- end ----
-#
 # The author takes no responsibility of damage done to your hardware or
 # software. It is up to YOU that the script executes the correct commands.
 #

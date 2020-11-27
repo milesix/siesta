@@ -1,33 +1,5 @@
 An overview changelog for Siesta.
 
-## PSML branch updates
-
-(latest)
-
-* Update top-level doc files and Obj directory. WIP merge request.
-* Expand pseudopotential information reporting
-* Handle 'bye' calls from external function(s).
-* Update ncps copy of interpolation.f90
-* F2003 compliance changes
-* Put extension (i.e. .psf or .psml) explicitly in .pseudos files in Tests
-* Force setting of makefile variables to "1" for activation (i.e.  WITH_MPI=1)
-* Add installation scripts for psml and gridxc libraries (with -rpath, instead
-  of -rpath=)
-* Updated the installation script for flook (by just bumping the
-  version number required for the tarball, plus the rpath change)
-
-Added PSML support, including:
-
-* An external LibGridXC replaces the built-in SiestaXC
-* Libxc support
-* External dependencies: xmlf90, libpsml
-* New psoplib and ncps libraries in Libs handle KB generation and 'Froyen' interface
-* Alloc module revamped to make logging work with external libraries
-* Memory logging revamped
-* Changes in atom.F
-* Streamlined Util Makefiles with much smaller dependency lists
-
-
 # Development version
 
 ### Backward compatibility issues
@@ -38,6 +10,20 @@ Added PSML support, including:
 * The labels in the Mulliken analysis CML blocks have been changed to use "population" instead of "charge".
 
 ### Changes
+
+* Added support for PSML pseudopotential files:
+
+   * An external LibGridXC replaces the built-in SiestaXC
+   * Libxc support through libGridXC
+   * External dependencies: xmlf90, libpsml
+   * New psoplib and ncps libraries in Libs handle KB generation and 'Froyen' interface
+   * New stand-alonne program Pseudo/vnl-operator/psop to generate PSML files with Siesta-style KB  projectors
+   * New program Pseudo/converters/psml2psf
+   * Alloc module revamped to make logging work with external libraries
+   * Memory logging revamped
+   * Changes in atom.F to offer more information about PAO generation, and to implement
+     new features such as automatic handling of semicore states.
+   * Streamlined Util Makefiles with much smaller dependency lists
 
 * Allow mesh parallel distributions with different numbers of subpoint multiplicity.
 
