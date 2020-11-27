@@ -2171,8 +2171,8 @@ set to their problem under consideration.
     valence shell of the ground-state atomic configuration. They
     polarize the corresponding $l-1$ shell.
 
-    See \fdf{PAO!NonPerturbativePolarizationOrbitals} and
-    \fdf{PAO!PolarizationScheme} in Sec.~\ref{sec:non-pert-pols} for
+    See \fdf{PAO!Polarization!NonPerturbative} and
+    \fdf{PAO!Polarization!Scheme} in Sec.~\ref{sec:non-pert-pols} for
     options to generate polarization orbitals non-perturbatively.
     
   \end{fdfoptions}
@@ -2368,7 +2368,7 @@ If the perturbative method is not wanted, even when using the standard
 basis specifications, the following global option
 can be used:
 
-\begin{fdflogicalF}{PAO!non-perturbative-polarization-orbitals}
+\begin{fdflogicalF}{PAO!Polarization!NonPerturbative}
   \index{basis!polarization orbitals}
 
   If enabled, it will promote any polarization shells to the status
@@ -2379,7 +2379,7 @@ can be used:
 Also, this setting can be controlled species by species, by using
 a block
 
-\begin{fdfentry}{PAO!PolarizationScheme}[block]
+\begin{fdfentry}{PAO!Polarization!Scheme}[block]
   \index{basis!polarization orbitals}
 
   Block which allows to specify a different polarization scheme
@@ -2392,7 +2392,7 @@ a block
   \end{fdfexample}
 
   If a species does not appear in the block, the setting of 
-  \fdf{PAO!non-perturbative-polarization-orbitals} applies.
+  \fdf{PAO!Polarization!NonPerturbative} applies.
   The default scheme is perturbative.
   
 \end{fdfentry}
@@ -2406,7 +2406,7 @@ actually used for the polarized shell (for the 1st zeta). The only
 extra control offered at this point is a possible expansion of this
 value through the (global) option:
 
-\begin{fdfentry}{PAO!polarization-rc-expansion-factor}[real]<$1.0$>
+\begin{fdfentry}{PAO!Polarization!Rc-Expansion-Factor}[real]<$1.0$>
   \index{basis!confinement radius expansion} 
 
   When turning off the perturbative method for the generation of

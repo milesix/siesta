@@ -1102,8 +1102,12 @@ c given by the general input PAO.BasisSize, or its default value.
       integer isp
 
       non_perturbative_pols = 
-     $     fdf_boolean('PAO.NonPerturbative.Polarization.Orbitals',
+     $     fdf_boolean('PAO.Polarization.NonPerturbative',
      $                 .false.)
+      ! Allow fallback to legacy option
+      non_perturbative_pols = 
+     $     fdf_boolean('PAO.NonPerturbative.Polarization.Orbitals',
+     $                 non_perturbative_pols)
       
       loop: do isp=1, nsp
          basp=>basis_parameters(isp)
