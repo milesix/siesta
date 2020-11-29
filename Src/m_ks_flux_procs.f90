@@ -132,8 +132,6 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
 
   ! Entities stored during the BASE MD-step:
   use ks_flux_data, only: ks_flux_D, ks_flux_S, ks_flux_gS
-  ! Derivative of the density (computed earlier during VIRTUAL step)
-  use ks_flux_data, only: Dscf_deriv
 
   ! Output: coefficients of psi_dot_c, stored in module ks_flux_data
   ! use ks_flux_data, only: psi_dot_c
@@ -161,8 +159,8 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
 
   integer :: ind, ind2
   real(dp), allocatable :: tmp(:), tmp2(:), tmp3(:), tmp4(:,:)
-  real(dp), allocatable :: tmp_left(:)
-  real(dp), allocatable :: tmp_right(:)
+  ! real(dp), allocatable :: tmp_left(:)
+  ! real(dp), allocatable :: tmp_right(:)
 
   call c_f_pointer(c_loc(psi(1)), coeffs, [no_u, no_l]) ! for new compilers
   ! explicit pointing to psi(1) -> psi
@@ -175,19 +173,16 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
   ! allocate (tmp_left(no_u))
   ! allocate (tmp_right(no_u))
 
-  ! Finite-difference time derivative of Dfull:
-  Dderiv(:,:,1) = (Dderiv(:,:,1) - Dfull(:,:,1))/virtual_dt !NOTE: Just first spin component
-
-  dscf_hat => ks_flux_D(:,1)         !NOTE: Just first spin component
+  ! dscf_hat => ks_flux_D(:,1)         !NOTE: Just first spin component
   S => ks_flux_S(:)
-
   gradS => ks_flux_gS(:,:)
   ! computing and storage of every of the 3 components
   ! should be available to order in the .fdf
 
-  psi_dot_c(:,:) = 0.0          ! Init result to zeros outside main loop
+  psi_dot_c(:,:) = 0.0_dp          ! Init result to zeros outside main loop
 
   ! call timer("explicit_matmul_Jks", 1)
+
 
   ! multiplication scheme A
   do iw = 1,n_wfs
@@ -202,9 +197,11 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
      end do
 
      tmp2(:) = 0.0_dp
-
+! Dscf_deriv(ind,1)
      do mu = 1,no_u
         do nu = 1,no_u
+        ! do ind = (listhptr(mu)+1), listhptr(mu) + numh(mu)
+        !    nu = listh(ind)
            tmp2(mu) = tmp2(mu) + 0.5_dp * Dderiv(mu,nu,1) * tmp(nu)
         end do
      end do
@@ -229,291 +226,95 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
            end if
         end do
      end do
-  end do
+  end do                        ! end of part A
 
 
-  ! ! multiplication scheme B
-  ! do iw = 1,n_wfs
+  ! multiplication scheme B
+  do iw = 1,n_wfs
 
-  !    tmp(:) = 0.0_dp
+     tmp(:) = 0.0_dp
 
-  !    do nu = 1,no_u
-  !       do ind = (listhptr(nu)+1), listhptr(nu) + numh(nu)
-  !          alpha = listh(ind)
-  !          tmp(nu) = tmp(nu) + S(ind) * coeffs(alpha,iw)
-  !       end do
-  !    end do
+     do nu = 1,no_u
+        do ind = (listhptr(nu)+1), listhptr(nu) + numh(nu)
+           alpha = listh(ind)
+           tmp(nu) = tmp(nu) + S(ind) * coeffs(alpha,iw)
+        end do
+     end do
 
-  !    tmp2(:) = 0.0_dp
+     tmp2(:) = 0.0_dp
 
-  !    do mu = 1,no_u
-  !       do nu = 1,no_u
-  !          tmp2(mu) = tmp2(mu) + 0.5_dp * Dfull(mu,nu,1) * tmp(nu)
-  !       end do
-  !    end do
+     do mu = 1,no_u
+        do nu = 1,no_u
+           tmp2(mu) = tmp2(mu) + 0.5_dp * Dfull(mu,nu,1) * tmp(nu)
+        end do
+     end do
 
-  !    tmp3(:) = 0.0_dp
+     tmp3(:) = 0.0_dp
 
-  !    do beta = 1,no_u
-  !       do ind = (listhptr(beta)+1), listhptr(beta) + numh(beta)
-  !          mu = listh(ind)
-  !          tmp3(beta) = tmp3(beta) + sum(gradS(:,ind)*va_before_move(:,iaorb(mu))) * tmp2(mu)
-  !       end do
-  !    end do
+     do beta = 1,no_u
+        do ind = (listhptr(beta)+1), listhptr(beta) + numh(beta)
+           mu = listh(ind)
+           tmp3(beta) = tmp3(beta) + sum(gradS(:,ind)*va_before_move(:,iaorb(mu))) * tmp2(mu)
+        end do
+     end do
 
-  !    do lambda=1,no_u
-  !       do beta = 1,no_u
-  !          if (beta.eq.lambda) then
-  !             psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-  !                  & + (1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(lambda)
-  !          else
-  !             psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-  !                  & + (0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(lambda)
-  !          end if
-  !       end do
-  !    end do
-  ! end do
-
-
-!   ! multiplication scheme C
-!   do iw = 1,n_wfs
-
-!      tmp4(:,:) = 0.0_dp
-
-!      do nu = 1,no_u
-!         do ind = (listhptr(nu)+1), listhptr(nu) + numh(nu)
-!            alpha = listh(ind)
-!            tmp4(:,nu) = tmp4(:,nu) + gradS(:,ind) * coeffs(alpha,iw)
-!         end do
-!      end do
-! ! va_before_move(:,iaorb(alpha))
-!      tmp2(:) = 0.0_dp
-
-!      do mu = 1,no_u
-!         do nu = 1,no_u
-!            tmp2(mu) = tmp2(mu) - 0.5_dp * Dfull(mu,nu,1) &
-!                 &* sum(va_before_move(:,iaorb(nu))*tmp4(:,nu))
-!         end do
-!      end do
-
-!      tmp3(:) = 0.0_dp
-
-!      do beta = 1,no_u
-!         do ind = (listhptr(beta)+1), listhptr(beta) + numh(beta)
-!            mu = listh(ind)
-!            tmp3(beta) = tmp3(beta) + S(ind) * tmp2(mu)
-!         end do
-!      end do
-
-!      do lambda=1,no_u
-!         do beta = 1,no_u
-!            if (beta.eq.lambda) then
-!               psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-!                    & + (1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(lambda)
-!            else
-!               psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-!                    & + (0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(lambda)
-!            end if
-!         end do
-!      end do
-!   end do
+     do lambda=1,no_u
+        do beta = 1,no_u
+           if (beta.eq.lambda) then
+              psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
+                   & + (1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(lambda)
+           else
+              psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
+                   & + (0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(lambda)
+           end if
+        end do
+     end do
+  end do                        ! end of part B
 
 
-  ! ! 1st row of multiplication schematic:
-  ! do iw = 1,n_wfs
-  !    ! Store matrix multiplication with coeffs in the
-  !    ! "right" temporary buffer array:
-  !    tmp_right(:) = 0.0
-  !    do nu=1,no_u
-  !       do ind = (listhptr(nu)+1), listhptr(nu) + numh(nu)
-  !          alpha = listh(ind)
-  !          tmp_right(nu) = tmp_right(nu) + &
-  !               & S(ind) * coeffs(alpha,iw)
-  !       end do
-  !    end do
+  ! multiplication scheme C
+  do iw = 1,n_wfs
 
-  !    ! Use "left" buffer array to compute center-right multiplication,
-  !    ! then store the resulting column in the "right" buffer array:
-  !    tmp_left(:) = 0.0
-  !    do mu=1,no_u
-  !       ! do ind = (listhptr(mu)+1), listhptr(mu) + numh(mu)
-  !       !    nu = listh(ind)
-  !       !    tmp_left(mu) = tmp_left(mu)+Dscf_deriv(ind,1)*tmp_right(nu)
-  !       !    !NOTE: Only first spin component here now--^
-  !       ! end do
-  !       do nu=1,no_u
-  !          tmp_left(mu) = tmp_left(mu)+ 0.5_dp * Dderiv(mu,nu,1)*tmp_right(nu)
-  !        !NOTE: Only first spin component here now--^
-  !       end do
-  !    end do
-  !    tmp_right(:) = tmp_left(:)
+     tmp4(:,:) = 0.0_dp
 
-  !    ! Compute the "left" matrix multiplication,
-  !    ! then add to the resulting array:
-  !    do lambda=1,no_u
-  !       do mu=1,no_u
-  !          acc_left = 0.0
-  !          do ind = (listhptr(lambda)+1),&
-  !               & listhptr(lambda) + numh(lambda)
-  !             beta = listh(ind)
-  !          ! do beta=1,no_l       ! Dfull is dense now
-  !             do sec_ind = (listhptr(beta)+1),&
-  !                  & listhptr(beta) + numh(beta)
-  !                sec_col = listh(sec_ind)
-  !                if ( sec_col .eq. mu ) then
-  !                   if (beta.eq.lambda) then
-  !                      acc_left = acc_left + &
-  !                           ! &(1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * S(sec_ind)
-  !                           &(1.0 - dscf_hat(ind)) * S(sec_ind)
-  !                   else
-  !                      acc_left = acc_left + &
-  !                           ! &(0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * S(sec_ind)
-  !                           &(0.0 - dscf_hat(ind)) * S(sec_ind)
-  !                   end if
-  !                   exit
-  !                end if
-  !             end do
-  !          end do
+     do nu = 1,no_u
+        do ind = (listhptr(nu)+1), listhptr(nu) + numh(nu)
+           alpha = listh(ind)
+           tmp4(:,nu) = tmp4(:,nu) + gradS(:,ind) * coeffs(alpha,iw)
+        end do
+     end do
+! va_before_move(:,iaorb(alpha))
+     tmp2(:) = 0.0_dp
 
-  !          ! add dot-product element to the resulting array:
-  !          psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw) +&
-  !               & acc_left * tmp_right(mu)
-  !       end do
-  !    end do
-  ! end do                        ! <-- end of 1st matmul row
+     do mu = 1,no_u
+        do nu = 1,no_u
+           tmp2(mu) = tmp2(mu) - 0.5_dp * Dfull(mu,nu,1) &
+                &* sum(va_before_move(:,iaorb(nu))*tmp4(:,nu))
+        end do
+     end do
 
-  ! 2nd row of multiplication schematic:
-  ! do iw = 1,n_wfs
-  !    ! Store matrix multiplication with coeffs in the
-  !    ! "right" temporary buffer array:
-  !    tmp_right(:) = 0.0
-  !    do nu=1,no_u
-  !       do ind = (listhptr(nu)+1), listhptr(nu) + numh(nu)
-  !          alpha = listh(ind)
-  !          tmp_right(nu) = tmp_right(nu) + &
-  !               & S(ind) * coeffs(alpha,iw)
-  !       end do
-  !    end do
+     tmp3(:) = 0.0_dp
 
-  !    ! Use "left" buffer array to compute center-right multiplication,
-  !    ! then store the resulting column in the "right" buffer array:
-  !    tmp_left(:) = 0.0
-  !    do mu=1,no_u
-  !       do ind = (listhptr(mu)+1), listhptr(mu) + numh(mu)
-  !          nu = listh(ind)
-  !          tmp_left(mu) = tmp_left(mu) + dscf_hat(ind) * tmp_right(nu)
-  !       end do
-  !       ! do nu=1,no_u
-  !       !    tmp_left(mu) = tmp_left(mu) + 0.5_dp * Dfull(mu,nu,1) * tmp_right(nu)
-  !       ! end do
-  !    end do
-  !    tmp_right(:) = tmp_left(:)
+     do beta = 1,no_u
+        do ind = (listhptr(beta)+1), listhptr(beta) + numh(beta)
+           mu = listh(ind)
+           tmp3(beta) = tmp3(beta) + S(ind) * tmp2(mu)
+        end do
+     end do
 
-  !    ! Compute the "left" matrix multiplication,
-  !    ! then add to the resulting array:
-  !    do lambda=1,no_u
-  !       do mu=1,no_u
-  !          acc_left = 0.0
-  !          do beta=1,no_l     ! Dfull is dense now
-  !          ! do ind = (listhptr(lambda)+1),&
-  !          !      & listhptr(lambda) + numh(lambda)
-  !          !    beta = listh(ind)
-  !             do sec_ind = (listhptr(beta)+1),&
-  !                  & listhptr(beta) + numh(beta)
-  !                sec_col = listh(sec_ind)
-  !                if ( sec_col .eq. mu ) then
-  !                   if (beta.eq.lambda) then
-  !                      acc_left = acc_left + &
-  !                           &(1.0 - 0.5 * dscf_hat(ind)) * &
-  !                           ! &(1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * &
-  !                           ! debug
-  !                           ! &(sum(gradS(:,sec_ind) * &
-  !                           &(sum([1.0, 1.0, 1.0] * &
-  !                           & va_before_move(:,iaorb(mu))))
-  !                   else
-  !                      acc_left = acc_left + &
-  !                           &(0.0 - 0.5 * dscf_hat(ind)) * &
-  !                           ! &(0.0 - 0.5_dp * Dfull(lambda,beta,1)) * &
-  !                           ! debug
-  !                           ! &(sum(gradS(:,sec_ind) * &
-  !                           &(sum([1.0, 1.0, 1.0] * &
-  !                           & va_before_move(:,iaorb(mu))))
-  !                   end if
-  !                   exit
-  !                end if
-  !             end do
-  !          end do
-  !          ! add dot-product element to the resulting array:
-  !          psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw) +&
-  !               & acc_left * tmp_right(mu)
-  !       end do
-  !    end do
-  ! end do                        ! <-- end of 2nd matmul row
+     do lambda=1,no_u
+        do beta = 1,no_u
+           if (beta.eq.lambda) then
+              psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
+                   & + (1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(lambda)
+           else
+              psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
+                   & + (0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(lambda)
+           end if
+        end do
+     end do
+  end do                        ! end of part C
 
-  ! 3rd row of multiplication schematic:
-  ! do iw = 1,n_wfs
-  !    ! Store matrix multiplication with coeffs in the
-  !    ! "right" temporary buffer array:
-  !    tmp_right(:) = 0.0
-  !    do nu=1,no_u
-  !       do ind = (listhptr(nu)+1), listhptr(nu) + numh(nu)
-  !          alpha = listh(ind)
-  !          tmp_right(nu) = tmp_right(nu) +  &
-  !               !debug
-  !               ! & (0.0 - sum(gradS(:,ind) * &
-  !               & (0.0 - sum([1.0, 1.0, 1.0] * &
-  !               & va_before_move(:,iaorb(nu)))) * &
-  !               & coeffs(alpha,iw)
-  !       end do
-  !    end do
-
-  !    ! Use "left" buffer array to compute center-right multiplication,
-  !    ! then store the resulting column in the "right" buffer array:
-  !    tmp_left(:) = 0.0
-  !    do mu=1,no_u
-  !       do ind = (listhptr(mu)+1), listhptr(mu) + numh(mu)
-  !          nu = listh(ind)
-  !          tmp_left(mu) = tmp_left(mu) + dscf_hat(ind) * tmp_right(nu)
-  !       end do
-  !       ! do nu=1,no_l
-  !       !    tmp_left(mu) = tmp_left(mu) + 0.5_dp * Dfull(mu,nu,1) * tmp_right(nu)
-  !       ! end do
-  !    end do
-  !    tmp_right(:) = tmp_left(:)
-
-  !    ! Compute the "left" matrix multiplication,
-  !    ! then add to the resulting array:
-  !    do lambda=1,no_u
-  !       do mu=1,no_u
-  !          acc_left = 0.0
-  !          do beta=1,no_l     ! Dfull is dense now
-  !          ! do ind = (listhptr(lambda)+1),&
-  !          !      & listhptr(lambda) + numh(lambda)
-  !          !    beta = listh(ind)
-  !             do sec_ind = (listhptr(beta)+1),&
-  !                  & listhptr(beta) + numh(beta)
-  !                sec_col = listh(sec_ind)
-  !                if ( sec_col .eq. mu ) then
-  !                   if (beta.eq.lambda) then
-  !                      acc_left = acc_left + &
-  !                           &(1.0 - 0.5 * dscf_hat(ind)) * S(sec_ind)
-  !                           ! &(1.0_dp  - 0.5_dp * Dfull(lambda,beta,1)) * S(sec_ind)
-  !                   else
-  !                      acc_left = acc_left + &
-  !                           &(0.0 - 0.5 * dscf_hat(ind)) * S(sec_ind)
-  !                           ! &(0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * S(sec_ind)
-  !                   end if
-  !                   exit
-  !                end if
-  !             end do
-  !          end do
-
-  !          ! add dot-product element to the resulting array:
-  !          psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw) +&
-  !               & acc_left * tmp_right(mu)
-  !       end do
-  !    end do
-  ! end do                        ! <-- end of 3rd matmul row
   ! call timer("explicit_matmul_Jks", 2)
   ! call timer("explicit_matmul_Jks", 3)
 

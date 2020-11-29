@@ -95,7 +95,7 @@ C
 #ifdef MPI
       use mpi_siesta
 #endif
-      use siesta_options, only : want_virtual_step_md
+      use siesta_options, only : want_virtual_step_md, virtual_dt
       use m_virtual_step_data, only : substep, BASE_STEP, VIRTUAL_STEP
       use m_virtual_step_data, only : Dfull, Dderiv
 
@@ -285,6 +285,8 @@ C Global operation to form new density matrix
      $           'Dderiv', 'diagg')
          endif
          Dderiv(:,:,:) = 0.0_dp ! Init D with zeros on every step in VMD.
+         ! Dderiv accumulates full DM from in both substeps.
+         ! On BASE is copied to Dfull. On VIRTUAL is turned to its derivative.
       endif
 
       do Bnode=0, Nodes-1
@@ -335,10 +337,16 @@ c$$$     $               (substep .eq. BASE_STEP)) then
         enddo
       enddo
 
-      ![VMD] Init Dderiv if on BASE step. On a virtual step it will be set in ks_procs.
+      ![VMD] Init Dfull if on BASE step. On a virtual step Dderiv will be set in ks_procs.
       !TODO: Move this initialization out of here?
       if (want_virtual_step_md) then
-         if (substep .eq. BASE_STEP) Dfull(:,:,:) = Dderiv(:,:,:)
+         if (substep .eq. BASE_STEP) then
+            Dfull(:,:,:) = Dderiv(:,:,:)
+         else
+            ! Take finite-difference time derivative of Dfull:
+            Dderiv(:,:,:) = (Dderiv(:,:,:) - Dfull(:,:,:))/virtual_dt
+            !NOTE: We'll need just first spin component (last dim = 1)
+         end if
       end if
 
       ! can build sparse Dnew by copying from Dfull
