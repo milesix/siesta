@@ -218,8 +218,8 @@ memory.o: memory_log.o parallel.o
 memory.o: memory_log.o parallel.o
 memory_log.o: m_io.o parallel.o precision.o
 memory_log.o: m_io.o parallel.o precision.o
-parallelsubs.o: domain_decom.o local_sys.o parallel.o spatial.o
-parallelsubs.o: domain_decom.o local_sys.o parallel.o spatial.o
+parallelsubs.o: domain_decom.o local_sys.o parallel.o precision.o spatial.o
+parallelsubs.o: domain_decom.o local_sys.o parallel.o precision.o spatial.o
 printmatrix.o: alloc.o
 printmatrix.o: alloc.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o

@@ -150,7 +150,7 @@
       do is= 1, nspecies
         NUM_ORB  = NUM_ORB  + species(is)%norbs
         NUM_KB   = NUM_KB   + species(is)%nprojs
-        NUM_LDAU = NUM_LDAU + species(is)%nprojsldau
+        NUM_LDAU = NUM_LDAU + species(is)%nprojsdftu
         if (species(is)%z > 0) then ! Not a floating orbital
            NUM_VA = NUM_VA + 1
         endif

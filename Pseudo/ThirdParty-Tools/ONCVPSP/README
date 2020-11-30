@@ -3,10 +3,13 @@ can be patched to generate PSML files.
 
 The PSML files will contain the semilocal versions of the
 pseudopotentials, in addition to the local potential and
-fully-nonlocal projectors.
+fully-nonlocal projectors, and optionally the pseudo wavefunctions.
 
-Instead of re-distributing a patched version, we make available
-patch packages in:
+Versions of ONCVPSP with the PSML-generation patch can be obtained
+from:
 
-        https://launchpad.net/pspgenpatch
+    https://gitlab.com/garalb/oncvpsp-psml
+
+
+
 
