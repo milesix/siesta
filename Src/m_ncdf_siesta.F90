@@ -50,7 +50,7 @@ contains
     use siesta_options, only: sname, isolve
     use siesta_options, only: SOLVE_DIAGON, SOLVE_ORDERN
     use siesta_options, only: SOLVE_MINIM, SOLVE_TRANSI
-    use siesta_options, only: SOLVE_PEXSI
+    use siesta_options, only: SOLVE_PEXSI, SOLVE_OMM
     use siesta_options, only: SOLVE_ELSI
     use siesta_options, only: savehs
     use siesta_options, only: fixspin, total_spin
@@ -358,6 +358,8 @@ contains
        dic = dic//('method'.kv.'order-n')
     else if ( isolve == SOLVE_MINIM ) then
        dic = dic//('method'.kv.'omm')
+    else if ( isolve == SOLVE_OMM ) then 
+       dic = dic//('method'.kv.'libomm')
     else if ( isolve == SOLVE_TRANSI ) then
        dic = dic//('method'.kv.'transiesta')
     else if ( isolve == SOLVE_PEXSI ) then

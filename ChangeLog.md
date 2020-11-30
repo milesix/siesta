@@ -4,6 +4,14 @@ An overview changelog for Siesta.
 
 * Added 'WITH_PSOLVER' compilation support  (see Obj/README)
 
+### OMM
+
+* Merged omm branch
+
+### Psolver
+
+* Merged Psolver branch
+
 ## MaX release branch
 
 * Some updates to building system

@@ -246,6 +246,8 @@ MODULE siesta_options
   integer,  parameter :: MATRIX_WRITE = 5
   integer,  parameter :: SOLVE_CHESS  = 6
   integer,  parameter :: SOLVE_ELSI   = 7
+  integer,  parameter :: SOLVE_OMM    = 8
+  integer,  parameter :: SOLVE_OMM_BLOCK = 9
   integer,  parameter :: SOLVE_DUMMY  = 10
   
 #ifdef SIESTA__FLOOK

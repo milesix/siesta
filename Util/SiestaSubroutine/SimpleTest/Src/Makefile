@@ -68,10 +68,8 @@ INCFLAGS:=$(NETCDF_INCFLAGS) \
           $(NCPS_INCFLAGS) $(PSOP_INCFLAGS) $(PSML_INCFLAGS) \
           $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS) $(INCFLAGS)
 #
-MS=MatrixSwitch.a
-#
 ALL_LIBS= $(SIESTA_LIB) $(FDF) $(XC) \
-	$(NCPS) $(PSML) $(XMLF90_LIBS) $(PSOP) $(MS) \
+	$(NCPS) $(PSML) $(XMLF90_LIBS) $(PSOP) \
 	$(MPI_INTERFACE) $(COMP_LIBS) $(LIBS)
 #
 libs_collected:

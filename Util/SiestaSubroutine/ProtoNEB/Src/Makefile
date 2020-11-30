@@ -35,7 +35,6 @@ VPATH:=$(TOP_LEVEL)
 SIESTA_LIB=libSiestaForces.a
 FDF=libfdf.a
 #
-MS=MatrixSwitch.a
 XMLPARSER=$(XMLF90_LIBS)
 XC=$(GRIDXC_LIBS)
 PSML=$(PSML_LIBS)
@@ -51,7 +50,7 @@ INCFLAGS:=$(NETCDF_INCFLAGS) \
           $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS) $(INCFLAGS)
 #
 ALL_LIBS= $(SIESTA_LIB) $(FDF)  $(XC) \
-	$(NCPS) $(PSML) $(XMLF90_LIBS) $(PSOP) $(MS)\
+	$(NCPS) $(PSML) $(XMLF90_LIBS) $(PSOP) \
 	$(MPI_INTERFACE) $(COMP_LIBS) $(LIBS)
 #
 libs_collected:
