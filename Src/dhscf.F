@@ -71,7 +71,6 @@
 
       use gridXC, only : getXC=>gridxc_getXC   ! Returns the XC functional used
       use alloc,          only : re_alloc, de_alloc
-      use siesta_options, only : harrisfun
       use meshsubs,       only : PartialCoreOnMesh
       use meshsubs,       only : NeutralAtomOnMesh
       use meshsubs,       only : PhiOnMesh
@@ -101,12 +100,18 @@
      $                                  doping_active
       use m_rhog,                 only: rhog, rhog_in
       use m_rhog,                 only: order_rhog
+      use siesta_options,         only: harrisfun
       use siesta_options,         only: mix_charge
 #ifdef NCDF_4
       use siesta_options,         only: write_cdf
 #endif
 #ifdef MPI
       use mpi_siesta
+#endif
+#ifdef SIESTA__PSOLVER
+      use psolver_m, only: use_psolver, psolver_force_pbc
+      use psolver_m, only: poisson_psolver_init
+      use psolver_m, only: poisson_psolver
 #endif
 
       use m_mesh_node,   only: init_mesh_node
@@ -401,8 +406,27 @@ C     Allocate Temporal array
 C     Vscf is filled here but not used later
 C     Uharrs is computed (and saved)
 C     DStres is computed but not used later
-      call poison( cell, ntml(1), ntml(2), ntml(3), ntm, rhoatm,
+#ifdef SIESTA__PSOLVER
+      if ( use_psolver ) then
+
+        ! Initialize poisson solver
+        call poisson_psolver_init(cell, nua, xa,
+     &      nbcell, bcell, nm, ntm)
+
+        ! Solve initial poisson problem with atomic charge
+        ! Note, we call:
+        !   setMeshDistr(UNIFORM_PSOLVER, ...)
+        !   ... calc potential
+        !   setMeshDistr(UNIFORM, ...)
+        call poisson_psolver(cell, nua, xa, fal, ntm, rhoatm,
+     $      Vscf(:,1), Uharrs, DStres, calc_stress=.false.)
+      else
+#endif
+        call poison( cell, ntml(1), ntml(2), ntml(3), ntm, rhoatm,
      &             Uharrs, Vscf, DStres, nsm )
+#ifdef SIESTA__PSOLVER
+      endif
+#endif
       call de_alloc( Vscf, 'Vscf', 'dhscf_init' )
 
 !     Always deallocate rhoatm_par, as it was used even if nodes=1
@@ -427,7 +451,14 @@ C     At the end of initializations:
 C ----------------------------------------------------------------------
       if (frstme) then
         call initialize_efield()
+!       Only initialize a dipole correction if using FFT
+#ifdef SIESTA__PSOLVER
+!       Important since the dipole correction is not needed for PSolver
+        if ( psolver_force_pbc .or. .not. use_psolver )
+     &      call init_dipole_correction(nbcell, bcell, acting_efield)
+#else
         call init_dipole_correction(nbcell, bcell, acting_efield)
+#endif
       end if
 
       ! Check if we need to add the potential 
@@ -639,6 +670,10 @@ C     Modules
       use m_rhoofdsp, only: rhoofdsp
 #ifdef MPI
       use mpi_siesta
+#endif
+#ifdef SIESTA__PSOLVER
+      use psolver_m,      only: use_psolver
+      use psolver_m,      only: poisson_psolver
 #endif
       use iogrid_netcdf, only: write_grid_netcdf
       use iogrid_netcdf, only: read_grid_netcdf
@@ -1264,9 +1299,22 @@ C ----------------------------------------------------------------------
 !     Solve Poisson's equation
       call re_alloc( Vaux, 1, ntpl, 'Vaux', 'dhscf' )
 
-      call poison( cell, ntml(1), ntml(2), ntml(3), ntm, DRho,
-     &             DUscf, Vaux, DStres, nsm )
-
+#ifdef SIESTA__PSOLVER
+      if ( use_psolver ) then
+        ! Note, we call:
+        !   setMeshDistr(UNIFORM_PSOLVER, ...)
+        !   ... calc potential
+        !   setMeshDistr(UNIFORM, ...)
+        call poisson_psolver(cell, nua, xa, fal, ntm, DRho(:,1),
+     &      Vaux, DUscf, DStres,
+     &      calc_stress = (istr == 1) .or. (ifa == 1))
+      else
+#endif
+        call poison( cell, ntml(1), ntml(2), ntml(3), ntm, DRho,
+     &      DUscf, Vaux, DStres, nsm )
+#ifdef SIESTA__PSOLVER
+      endif
+#endif
       if ( debug_dhscf ) then
          write(*,debug_fmt) Node,'Poisson',sqrt(sum(Vaux(:)**2))
       end if
