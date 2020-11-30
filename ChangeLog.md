@@ -2,6 +2,7 @@ An overview changelog for Siesta.
 
 ## MaX2 release branch
 
+* Changed the default assignment of blocksize-c in BLOMM method
 * Added 'WITH_PSOLVER' compilation support  (see Obj/README)
 
 ### OMM

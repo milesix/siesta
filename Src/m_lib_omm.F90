@@ -396,7 +396,12 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     else
       N_occ = nint(qs(1))
     end if
-    BlockSize_c = fdf_integer('OMM.BlockSizeC',0)
+    !
+    ! Set it to Blocksize by default, to avoid corner
+    ! cases.
+    !
+    BlockSize_c = fdf_integer('OMM.BlockSizeC', Blocksize)
+    
     Use2D = fdf_boolean('OMM.Use2D',.true.)
     C_extrapol = fdf_boolean('OMM.Extrapolate',.false.)
     long_out = fdf_boolean('OMM.LongOutput',.true.)

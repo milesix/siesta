@@ -1,3 +1,51 @@
+This version of SIESTA contains a new implementation of the legacy
+order-N methods based on the Orbital Minimization Method, leveraging the
+omm-bundle (containing the libOMM and MatrixSwitch libraries), and the DBCSR library
+for sparse matrix multiplication.
+
+Installation notes
+------------------
+
+1. Install dbcsr-1.0.0 version:
+   - Clone https://github.com/cp2k/dbcsr
+   - Checkout the 1.0.0 version:  git checkout v1.0.0
+   - Remove -fopenmp flags from Makefile.inc. 
+   - Add GNU=0 if Intel compiler is used. 
+   - Provide paths to external linear algebra libraries using LIBS += (for libraries) 
+     and FCFLAGS += (for headers)
+ 
+2. Install omm-bundle from https://gitlab.com/irina_lebedeva/omm-bundle following the
+   installation instructions given in INSTALL.
+
+3. Install this Siesta version adding the following lines to arch.make:
+
+OMMPATH = <path to omm-bundle installation directory>
+MSPATH = $(OMMPATH)/build_MatrixSwitch
+MSLIB = -L$(MSPATH)/lib -lMatrixSwitch
+MSINC = -I$(MSPATH)/include
+
+PSPPATH = $(OMMPATH)/build_pspBLAS
+PSPLIB = -L$(PSPPATH)/lib -lpspBLAS
+PSPINC = -I$(PSPPATH)/include
+
+OMMLIBPATH = $(OMMPATH)/build_libOMM
+OMMLIB = -L$(OMMLIBPATH)/lib -lOMM
+OMMINC = -I$(OMMLIBPATH)/include
+
+DBCSR     = <path to dbcsr-1.0.0 installation directory>
+DBCSRINC  = -I$(DBCSR)/install/include
+DBCSRLIB  = -L$(DBCSR)/install/lib -ldbcsr
+
+LIBS += $(OMMLIB) $(MSLIB) $(DBCSRLIB) $(PSPLIB)
+INCFLAGS += $(OMMINC) $(MSINC) $(DBCSRINC) $(PSPINC)
+
+
+Execution
+---------
+
+Examples of the input files can be found in Tests/h2o_blomm, Tests/h2o_libomm and Examples/OMM_methods.
+
+
 Input parameters for OMM routines with libOMM library
 -----------------------------------------------------
 

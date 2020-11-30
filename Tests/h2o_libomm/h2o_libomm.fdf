@@ -1,5 +1,5 @@
-SystemName          Water molecule
-SystemLabel         h2o
+SystemName          Water molecule with libOMM method
+SystemLabel         h2o_libomm
 NumberOfAtoms       3
 NumberOfSpecies     2
 

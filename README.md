@@ -27,23 +27,27 @@ Alternatively, manuals in pdf can be found in the Documentation section of the m
 For bug reports, and other code suggestions, please follow the guidelines
 in the file Docs/REPORTING_BUGS
 
-### MaX branch
+### MaX2 branch
 
 This is a special branch that contains all the features currently
 implemented within the [MaX Center of
 Excellence](http://www.max-centre.eu) EU H2020 project. It is
 addressed to HPC users that want to try the new optimizations and
-enhancements, and give feedback on them. It currently contains, in
-addition to the features in `master`:
+enhancements, and give feedback on them.
 
-    * An interface to the [ELSI](http://www.elsi-interchange.org) solver interface library 
-    * Support for PSML pseudopotentials
-    * Extra optimizations to the parallel operation
-    * A more modular architecture, using libraries and other modules developed within MaX.
+In particular, this version has a more modular architecture, using
+libraries and other modules developed within MaX.
 
-Note that the libPSML and libGridXC libraries are mandatory, and ELSI
-(and ELPA) recommended. Please see 000_INSTALL for installation
-instructions, and README_ELSI and README_PSML for important information.
+It currently offers, in addition to the features in `master`:
+
+    * An interface to the [ELSI](http://www.elsi-interchange.org) solver library.
+    * Support for PSML pseudopotentials.
+    * Extra optimizations to the parallel operation.
+    * Support for mixed boundary conditions through the PSolver library.
+    * A re-designed OMM linear-scaling method, leveraging the DBCSR library.
+
+Please see 000_INSTALL for installation instructions, and README_ELSI
+and README_OMM for important information.
 
 
 

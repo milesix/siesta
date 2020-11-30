@@ -1,5 +1,5 @@
-SystemName          Water molecule
-SystemLabel         h2o
+SystemName          Water molecule with BLOMM method
+SystemLabel         h2o_blomm
 NumberOfAtoms       3
 NumberOfSpecies     2
 
