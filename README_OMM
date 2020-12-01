@@ -7,15 +7,23 @@ Installation notes
 ------------------
 
 1. Install dbcsr-1.0.0 version:
+
    - Clone https://github.com/cp2k/dbcsr
    - Checkout the 1.0.0 version:  git checkout v1.0.0
+        [The ExtLibs/dbcsr submodule is already set up for this]
+
    - Remove -fopenmp flags from Makefile.inc. 
    - Add GNU=0 if Intel compiler is used. 
    - Provide paths to external linear algebra libraries using LIBS += (for libraries) 
      and FCFLAGS += (for headers)
  
-2. Install omm-bundle from https://gitlab.com/irina_lebedeva/omm-bundle following the
-   installation instructions given in INSTALL.
+2. Install omm-bundle from the omm_sparse branch of
+
+           https://gitlab.com/irina_lebedeva/omm-bundle
+
+   [The ExtLibs/omm-bundle submodule is already set up for this]
+	   
+   following the installation instructions given in INSTALL.
 
 3. Install this Siesta version adding the following lines to arch.make:
 

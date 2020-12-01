@@ -22,6 +22,17 @@ with optional (recommended) external ELPA library. See README_ELSI.
 
 ** Steps in detail
 
+- (The OMM bundle, DBCSR, and the BigDFT suite are available as
+  submodules in the ExtLibs subdirectory, set to the appropriate
+  branches and/or tags for use in the current version of Siesta. If
+  you want to use them to compile the libraries, and you are using
+  git, you need to do (just once, after you have fetched/cloned this
+  Siesta branch):
+
+      git submodule update --init --recursive <path>
+
+  where <path> is the path to the submodule.)
+  
 - Dowload, unpack, and compile the libraries (follow the instructions
   in the appropriate packages).
 
