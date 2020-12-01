@@ -5,3 +5,7 @@
 	path = ExtLibs/omm-bundle
 	url = git@gitlab.com:irina_lebedeva/omm-bundle.git
 	branch = omm_sparse
+[submodule "ExtLibs/bigdft-suite"]
+	path = ExtLibs/bigdft-suite
+	url = https://gitlab.com/l_sim/bigdft-suite.git
+	branch = devel
