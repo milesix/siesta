@@ -1,0 +1,3 @@
+[submodule "ExtLibs/dbcsr"]
+	path = ExtLibs/dbcsr
+	url = https://github.com/cp2k/dbcsr.git
