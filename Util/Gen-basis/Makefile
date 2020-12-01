@@ -43,6 +43,7 @@ FC:=$(FC_SERIAL)         # Make it non-recursive
 #
 NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
 PSOP_INCFLAGS=-I$(MAIN_OBJDIR)/psoplib/src
+FDF_INCFLAGS=-I$(MAIN_OBJDIR)/fdf/include
 INCFLAGS:=$(NETCDF_INCFLAGS) \
           $(NCPS_INCFLAGS) $(PSOP_INCFLAGS) $(PSML_INCFLAGS) \
           $(INCFLAGS)
@@ -83,6 +84,7 @@ INCFLAGS:= $(INCFLAGS) $(FDF_INCFLAGS)
 #
 NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
 PSOP=$(MAIN_OBJDIR)/psoplib/src/libpsop.a
+FDF_LIBS=$(MAIN_OBJDIR)/fdf/lib/libfdf.a
 
 #
 # Simple hack to link to any compiled lapack/blas code
