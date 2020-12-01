@@ -1,0 +1,22 @@
+# Source code
+/src/ @garalb @nickpapior
+
+# Test suite
+/tests/ @garalb @nickpapior
+
+# Documentation
+/AUTHORS @garalb @nickpapior @pouillon
+/COPYING @garalb @nickpapior @pouillon
+/ChangeLog @garalb
+/README @garalb
+/README.md @garalb @nickpapior
+/doc/ @garalb @nickpapior
+
+# Build system
+INSTALL @pouillon
+Makefile.am @pouillon
+/autogen.sh @pouillon
+/config/ @pouillon
+/configure.ac @pouillon
+/quickcheck.sh @pouillon
+/wipeout.sh @pouillon

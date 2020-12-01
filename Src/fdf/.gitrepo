@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = git@gitlab.com:siesta-project/libraries/libfdf.git
+	branch = master
+	commit = 4e4ab1ba9925baa5048a16460d3c8965832a4906
+	parent = 0ffe139de280447e68c88bb2a773a3b0f30137bf
+	method = merge
+	cmdver = 0.4.3
