@@ -55,6 +55,7 @@ XC=$(GRIDXC_LIBS)
 
 NCPS_INCFLAGS=-I $(MAIN_OBJDIR)/ncps/src
 PSOP_INCFLAGS=-I $(MAIN_OBJDIR)/psoplib/src
+FDF_INCFLAGS=-I $(MAIN_OBJDIR)/fdf/include
 INCFLAGS:= $(NETCDF_INCFLAGS)  $(PSML_INCFLAGS) $(NCPS_INCFLAGS) \
            $(PSOP_INCFLAGS) $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS) \
            $(PEXSI_INCFLAGS) $(FDF_INCFLAGS) $(INCFLAGS)
@@ -303,6 +304,38 @@ $(PSOP):
 	FFFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 
 #--------------------------------------------------------------
+# FDF experimental section.
+# To build with autotools we need some extra logic.
+# This version lifted from the FoX section in rel-4.0
+#
+FDF_LIBS=fdf/lib/libfdf.a
+#
+# fdf build targets:
+fdf_configured=fdf/.config
+fdf_built=
+#
+# First, it needs to be configured. This may have been done
+# by the main SIESTA configure, but in case not:
+#
+FC_DEFAULT:=$(FC)
+FC_SERIAL?=$(FC_DEFAULT)
+#
+$(fdf_configured):
+	(mkdir -p fdf ; cd fdf;  \
+         CONFIGURE="$(VPATH)/fdf/configure"; \
+         $$CONFIGURE  \
+         FC="$(FC_SERIAL)" FCFLAGS="$(FFLAGS:$(IPO_FLAG)=)" \
+         --prefix="$(MAIN_OBJDIR)/fdf" || false )
+#
+# Note we have to make sure to use the same compiler as SIESTA,
+# and pick up all the same FFLAGS, and also remember to maybe ask for a dummy library.
+# Note also that the "false" clause will stop the 'make' process if the configuration fails.
+#
+# Then we want to make fdf itself. Like so:
+$(FDF_LIBS): $(fdf_configured)
+	(cd fdf; $(MAKE) install )
+#
+#--------------------------------------------------------------
 libmpi_f90.a: 
 	@(cd MPI ; $(MAKE) -j 1 \
                     "VPATH=$(VPATH)/MPI" \
@@ -494,7 +527,7 @@ libSiestaForces.a: $(OBJS) $(SYSOBJ)
             $(AR) $(ARFLAGS_EXTRA) cru libSiestaForces.a MPI/*.o ; fi
 	-$(RANLIB) libSiestaForces.a
 #
-siesta: what version \
+siesta: what $(FDF_LIBS) version \
                 $(MPI_INTERFACE) $(MS) $(NCPS) $(PSOP) \
                 $(COMP_LIBS) $(ALL_OBJS) 
 	$(FC) -o siesta \
@@ -532,6 +565,7 @@ clean:
 	@if [ -d ncdf/obj ] ; then $(MAKE) -C ncdf/obj clean ; fi
 	(cd Libs ; $(MAKE) clean )
 	(cd MatrixSwitch/src ; $(MAKE) clean )
+	rm -rf fdf
 
 
 # DO NOT DELETE THIS LINE - used by make depend
