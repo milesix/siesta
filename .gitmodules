@@ -1,3 +1,7 @@
 [submodule "ExtLibs/dbcsr"]
 	path = ExtLibs/dbcsr
 	url = https://github.com/cp2k/dbcsr.git
+[submodule "ExtLibs/omm-bundle"]
+	path = ExtLibs/omm-bundle
+	url = git@gitlab.com:irina_lebedeva/omm-bundle.git
+	branch = omm_sparse
