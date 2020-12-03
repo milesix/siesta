@@ -9,3 +9,6 @@
 	path = ExtLibs/bigdft-suite
 	url = https://gitlab.com/l_sim/bigdft-suite.git
 	branch = devel
+[submodule "ExtLibs/BigDFT/psolver"]
+	path = ExtLibs/BigDFT/psolver
+	url = https://gitlab.com/l_sim/psolver.git
