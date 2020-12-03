@@ -5,10 +5,6 @@
 	path = ExtLibs/omm-bundle
 	url = git@gitlab.com:irina_lebedeva/omm-bundle.git
 	branch = omm_sparse
-[submodule "ExtLibs/bigdft-suite"]
-	path = ExtLibs/bigdft-suite
-	url = https://gitlab.com/l_sim/bigdft-suite.git
-	branch = devel
 [submodule "ExtLibs/BigDFT/psolver"]
 	path = ExtLibs/BigDFT/psolver
 	url = https://gitlab.com/l_sim/psolver.git
@@ -18,3 +14,6 @@
 [submodule "ExtLibs/BigDFT/atlab"]
 	path = ExtLibs/BigDFT/atlab
 	url = https://gitlab.com/l_sim/atlab.git
+[submodule "ExtLibs/BigDFT/yaml"]
+	path = ExtLibs/BigDFT/yaml
+	url = https://github.com/yaml/libyaml.git

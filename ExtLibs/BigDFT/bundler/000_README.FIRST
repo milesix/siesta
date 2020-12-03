@@ -1,0 +1,4 @@
+Slimmed-down jhbuild distribution, copied from the BigDFT project (v1.9.0)
+The really essential stuff is in jhbuild/ (and jhbuild.py).
+
+AG, December 3, 2020

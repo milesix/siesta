@@ -1,0 +1,22 @@
+modules = ['psolver']
+
+openblas_path = "/opt/gnu/9.1.0/openblas/0.3.6/lib"
+
+def env_configuration():
+    return  """ "FC=mpifort" "CC=gcc" "FCFLAGS=-O2" "--with-ext-linalg=-L{blas_path} -Wl,-rpath={blas_path} -lopenblas" """.format(blas_path=openblas_path)
+
+import os
+os.environ['BIGDFT_CONFIGURE_FLAGS']=env_configuration()
+module_autogenargs.update({
+'libyaml': env_configuration(),
+'futile': env_configuration(),
+'psolver': env_configuration(),
+'chess': env_configuration(),
+'libxc': env_configuration(),
+'libABINIT': env_configuration(),
+'GaIn': env_configuration(),
+'bigdft': env_configuration(),
+'spred': env_configuration(),
+})
+
+del openblas_path

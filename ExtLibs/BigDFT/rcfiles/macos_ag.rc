@@ -1,0 +1,47 @@
+'''This is the configuration file for the BigDFT installer
+for use on Mac OS X. We prefer to use GCC instead of clang, so
+please check that the CC and CXX variables are set correctly below.
+Use veclibfort to wrap the Accelerate framework.
+'''
+
+# List the module that this rcfile will build
+modules = ['psolver', ]
+
+
+def env_configuration():
+    '''
+    Species the configure line for various autotools packages.
+    '''
+    env = {}
+    env["FC"] = "mpifort"
+    env["CC"] = "gcc-9"
+    env["CXX"] = "g++-9"
+    env["FCFLAGS"] = "-O2 -mtune=native"
+    env["--with-ext-linalg"] = "-lveclibfort"
+
+    return " ".join(['"' + x + '=' + y + '"' for x, y in env.items()])
+
+
+module_autogenargs.update({
+
+    'libyaml': env_configuration(),
+
+    'futile': env_configuration(),
+
+    'psolver': env_configuration(),
+
+    'chess': env_configuration(),
+
+    'libxc': env_configuration(),
+
+    'libABINIT': env_configuration(),
+
+    'GaIn': env_configuration(),
+
+    'bigdft': env_configuration(),
+
+    'spred': env_configuration(),
+
+    'atlab': env_configuration(),
+
+})
