@@ -12,3 +12,6 @@
 [submodule "ExtLibs/BigDFT/psolver"]
 	path = ExtLibs/BigDFT/psolver
 	url = https://gitlab.com/l_sim/psolver.git
+[submodule "ExtLibs/BigDFT/futile"]
+	path = ExtLibs/BigDFT/futile
+	url = https://gitlab.com/l_sim/futile.git
