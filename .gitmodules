@@ -15,3 +15,6 @@
 [submodule "ExtLibs/BigDFT/futile"]
 	path = ExtLibs/BigDFT/futile
 	url = https://gitlab.com/l_sim/futile.git
+[submodule "ExtLibs/BigDFT/atlab"]
+	path = ExtLibs/BigDFT/atlab
+	url = https://gitlab.com/l_sim/atlab.git
