@@ -9,8 +9,8 @@ Installation notes
    - Provide paths to external linear algebra libraries using LIBS += (for libraries) 
      and FCFLAGS += (for headers)
  
-2. Install omm-bundle from https://gitlab.com/irina_lebedeva/omm-bundle following the
-   installation instructions given in INSTALL.
+2. Install omm-bundle from https://gitlab.com/irina_lebedeva/omm-bundle/-/tree/omm_sparse 
+   following the installation instructions given in INSTALL.
 
 3. Install this siesta version adding the following lines to arch.make:
 
