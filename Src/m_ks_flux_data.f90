@@ -27,6 +27,9 @@ module ks_flux_data
   real(dp), save  :: ks_flux_Jks(3)
   !! Kohn-Sham component of the heat flux.
 
+  real(dp), save  :: ks_flux_Jele(3)
+  !! Electronic flux.
+
 contains
 
   subroutine init_ks_flux_data ()

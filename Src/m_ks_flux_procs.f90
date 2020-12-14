@@ -333,7 +333,7 @@ subroutine compute_Jks ()
   ! use sparse_matrices, only: S
 
   use ks_flux_data, only: ks_flux_S, ks_flux_H
-  use ks_flux_data, only: psi_hat_c, psi_dot_c, ks_flux_Jks
+  use ks_flux_data, only: psi_hat_c, psi_dot_c, ks_flux_Jks, ks_flux_Jele
 
   use m_eo, only: eo
 
@@ -393,6 +393,31 @@ subroutine compute_Jks ()
   ! For parallel operation, now reduce ks_flux_Jks over all processors
   !
   Print *, "[Jks] ", ks_flux_Jks
+
+
+  ks_flux_Jele(:) = 0.0          ! Init result to zeros outside main loop
+
+  do iw = 1,no_occ_wfs
+
+     do mu = 1,no_l
+        do j = 1,numh(mu)
+           ind = j + listhptr(mu)
+           col = listh(ind)
+           nu = indxuo(col)
+
+           do idx = 1,3
+
+              ks_flux_Jele(idx) = ks_flux_Jele(idx) + &
+                    psi_hat_c(mu,iw,idx) * psi_dot_c(nu,iw)
+
+           end do
+        end do
+     end do
+  end do
+
+  ks_flux_Jele(:) = 2.0_dp * 2.0_dp * ks_flux_Jele(:)
+
+  Print *, "[Jele] ", ks_flux_Jele
 
   deallocate(psi_hat_c)
   deallocate(psi_dot_c)
