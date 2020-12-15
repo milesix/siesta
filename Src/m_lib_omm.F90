@@ -406,7 +406,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     C_extrapol = fdf_boolean('OMM.Extrapolate',.false.)
     long_out = fdf_boolean('OMM.LongOutput',.true.)
     cg_tol = fdf_get('OMM.RelTol',1.0d-7)
-    g_tol = fdf_get('OMM.GTol',1.0d-3)
+    g_tol = fdf_get('OMM.GTol',1.0d-3) 
     WriteCoeffs=fdf_boolean('OMM.WriteCoeffs',.false.)
     ReadCoeffs=fdf_boolean('OMM.ReadCoeffs',.false.)
     eta = fdf_get('OMM.Eta',0.0_dp,'Ry')
@@ -496,9 +496,9 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     d_sparse(:,1) = 0.0_dp
     call m_register_pdcsr(D_min, nbasis,BlockSize,listhptr,listh,numh,d_sparse(:,1))    
    if(ionode) print'(a)','CSR matrix created'
-    call m_convert_csrdbcsr(S,threshold=1.0e-14_dp, bl_size=BlockSize)
+    call m_convert_csrdbcsr(S, bl_size=BlockSize)
   end if
-  call m_convert_csrdbcsr(H,threshold=1.0e-14_dp, bl_size=BlockSize)
+  call m_convert_csrdbcsr(H, bl_size=BlockSize)
   call timer('m_register',2)
 
   first_call  = .false.
@@ -606,6 +606,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     integer, allocatable :: neib(:), iatom(:)
     real(dp) :: rn(2), coef, rmax, rr(3), rrmod, cgval
     logical :: found, include_all
+    logical :: set_neib
     character(5) :: m_storage
 
     m_storage ='pdcsr'
@@ -639,7 +640,9 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     end do
 
     if(BlockSize_c .le. 0) then
-      BlockSize_c = (wf_dim * BlockSize)/h_dim
+      BlockSize_c = wf_dim * BlockSize
+      BlockSize_c = BlockSize_c/h_dim
+      if(BlockSize_c==0) BlockSize_c=1
     end if
         
     allocate(iatom(1:wf_dim))
@@ -689,7 +692,13 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
         iwf2 = iblks * BlockSize_c * Nodes + BlockSize_c * (Node + 1)
         if(iwf2 .gt. wf_dim) iwf2 = wf_dim
         do iwf = iwf1, iwf2
-          if((iwf==iwf1) .or. (iatom(iwf) .ne. iatom(iwf-1))) then
+          set_neib = .false.
+          if(iwf==iwf1) then
+            set_neib = .true.
+          else
+            if(iatom(iwf) .ne. iatom(iwf-1)) set_neib = .true.
+          end if
+          if(set_neib) then
             if(allocated(neib)) deallocate(neib)
             call mneighb(ucell,rcoor,na_u,xa,iatom(iwf),0,nna)
             allocate(neib(1:nna))
@@ -702,7 +711,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
               end do
               if(.not. found) then
                 index = index + 1
-                neib(index) = jan(j)
+                neib(index) = jan(i)
               end if
             end do
             nna = index
@@ -712,7 +721,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
               do while (neib0 .lt. neib(j))
                 neib(j + 1) = neib(j)
                 neib(j) = neib0
-                j = j - 1
+                if(j .gt. 1) j = j - 1
               end do
             end do
           end if
@@ -782,7 +791,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
 
     if(ionode) print'(a)','C_min CSR matrix created'
 
-    call m_convert_csrdbcsr(C_min, threshold=1.0d-14, bl_size=BlockSize_h) 
+    call m_convert_csrdbcsr(C_min, bl_size=BlockSize_h) 
      
     if(ionode) print'(a)','C_min CSR matrix converted to DBCSR'
 
