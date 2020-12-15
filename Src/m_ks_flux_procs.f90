@@ -219,10 +219,10 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
         do beta = 1,no_u
            if (beta.eq.lambda) then
               psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-                   & + (1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(lambda)
+                   & + (1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)
            else
               psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-                   & + (0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(lambda)
+                   & + (0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)
            end if
         end do
      end do
@@ -262,10 +262,10 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
         do beta = 1,no_u
            if (beta.eq.lambda) then
               psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-                   & + (1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(lambda)
+                   & + (1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)
            else
               psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-                   & + (0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(lambda)
+                   & + (0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)
            end if
         end do
      end do
@@ -306,10 +306,10 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
         do beta = 1,no_u
            if (beta.eq.lambda) then
               psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-                   & + (1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(lambda)
+                   & + (1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)
            else
               psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-                   & + (0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(lambda)
+                   & + (0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)
            end if
         end do
      end do
@@ -408,7 +408,7 @@ subroutine compute_Jks ()
            do idx = 1,3
 
               ks_flux_Jele(idx) = ks_flux_Jele(idx) + &
-                    psi_hat_c(mu,iw,idx) * psi_dot_c(nu,iw)
+                    psi_hat_c(mu,iw,idx) * S(ind) * psi_dot_c(nu,iw)
 
            end do
         end do
