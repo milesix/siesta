@@ -1411,16 +1411,11 @@ contains
     complex(dp), dimension(:), target, intent(inout) :: Hk,Sk,Hk_T,Sk_T
 
     complex(dp), dimension(:,:), pointer :: Hk2D,Sk2D,Hk_T2D,Sk_T2D
-    type(c_ptr) :: mat_loc
 
-    mat_loc = c_loc(Hk)
-    call c_f_pointer(mat_loc, Hk2D, [no, no])
-    mat_loc = c_loc(Sk)
-    call c_f_pointer(mat_loc, Sk2D, [no, no])
-    mat_loc = c_loc(Hk_T)
-    call c_f_pointer(mat_loc, Hk_T2D, [no, no])
-    mat_loc = c_loc(Sk_T)
-    call c_f_pointer(mat_loc, Sk_T2D, [no, no])
+    call c_f_pointer(c_loc(Hk), Hk2D, [no, no])
+    call c_f_pointer(c_loc(Sk), Sk2D, [no, no])
+    call c_f_pointer(c_loc(Hk_T), Hk_T2D, [no, no])
+    call c_f_pointer(c_loc(Sk_T), Sk_T2D, [no, no])
 
     call set_HS_Transfer_2d(ispin,El,n_s,sc_off,kq, &
         no,Hk2D,Sk2D,Hk_T2D,Sk_T2D)

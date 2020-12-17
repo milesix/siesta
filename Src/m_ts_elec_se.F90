@@ -603,12 +603,9 @@ contains
 
     complex(dp), pointer :: A5D(:,:,:,:,:) => null()
     complex(dp), pointer :: AE2D(:,:) => null()
-    type(c_ptr) :: m_loc
 
-    m_loc = c_loc(A)
-    call c_f_pointer(m_loc, A5D, [no_u, no_u, El%bloch%B(1), El%bloch%B(2), El%bloch%B(3)])
-    m_loc = c_loc(AE)
-    call c_f_pointer(m_loc, AE2D, [no_s, no_s])
+    call c_f_pointer(c_loc(A), A5D, [no_u, no_u, El%bloch%B(1), El%bloch%B(2), El%bloch%B(3)])
+    call c_f_pointer(c_loc(AE), AE2D, [no_s, no_s])
 
     call update_UC_expansion_A(no_u, no_s, El, nq, na_u, lasto, A5D, AE2D)
 
@@ -632,12 +629,9 @@ contains
 
     complex(dp), pointer :: A5D(:,:,:,:,:) => null()
     complex(dp), pointer :: AE2D(:,:) => null()
-    type(c_ptr) :: m_loc
 
-    m_loc = c_loc(A)
-    call c_f_pointer(m_loc, A5D, [no_u, no_u, El%bloch%B(1), El%bloch%B(2), El%bloch%B(3)])
-    m_loc = c_loc(AE)
-    call c_f_pointer(m_loc, AE2D, [no_s, no_s])
+    call c_f_pointer(c_loc(A), A5D, [no_u, no_u, El%bloch%B(1), El%bloch%B(2), El%bloch%B(3)])
+    call c_f_pointer(c_loc(AE), AE2D, [no_s, no_s])
 
     call update_UC_expansion_A(no_u, no_s, El, nq, na_u, lasto, A5D, AE2D)
 
@@ -661,12 +655,9 @@ contains
 
     complex(dp), pointer :: A5D(:,:,:,:,:) => null()
     complex(dp), pointer :: AE2D(:,:) => null()
-    type(c_ptr) :: m_loc
 
-    m_loc = c_loc(A)
-    call c_f_pointer(m_loc, A5D, [no_u, no_u, El%bloch%B(1), El%bloch%B(2), El%bloch%B(3)])
-    m_loc = c_loc(AE)
-    call c_f_pointer(m_loc, AE2D, [no_s, no_s])
+    call c_f_pointer(c_loc(A), A5D, [no_u, no_u, El%bloch%B(1), El%bloch%B(2), El%bloch%B(3)])
+    call c_f_pointer(c_loc(AE), AE2D, [no_s, no_s])
 
     call update_UC_expansion_A(no_u, no_s, El, nq, na_u, lasto, A5D, AE2D)
 
