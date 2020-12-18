@@ -381,12 +381,12 @@
 !   do io_local = 1, no_l
 !     do j = 1, numh(io_local)
 !       ind = listhptr(io_local) + j
-!       write(6,'(a,5i5,f12.5)')                                               &
+!       write(6,'(a,5i10,f20.12)')                                               &
 ! &       'Node, Nodes, io_local, j, ind, H_chempotwann = ',                   &
 ! &        Node, Nodes, io_local, j, ind, H_chempotwann(ind,ispin)
 !     enddo 
 !   enddo 
-!
+
 !#ifdef MPI
 !   call MPI_barrier(MPI_Comm_world,MPIerror)
 !#endif

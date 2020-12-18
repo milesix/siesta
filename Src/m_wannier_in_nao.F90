@@ -157,6 +157,7 @@ module m_wannier_in_nao
     use writewave,      only: wfs_filename   ! Name of the file where the 
                                              !   coefficients of the Wanniers
                                              !   will be dumped
+    use iso_c_binding, only : c_f_pointer, c_loc
 
 !
 ! Allocation/Deallocation routines
@@ -268,6 +269,12 @@ module m_wannier_in_nao
                                              !    coefficients as explained 
                                              !    by Souza et al. 
                                              !    as explained below
+    real(dp), pointer :: psi_real_1d(:)      ! Temporal array to store the 
+                                             !    coefficients of the Wanniers
+                                             !    in a basis of NAO in a 
+                                             !    1D array in order to print
+                                             !    them
+
 
 #ifdef MPI
     integer     :: iband_global              ! Global index for a band
@@ -597,8 +604,11 @@ module m_wannier_in_nao
 
     call setup_wfs_list(nk,no_s,1,num_proj,.false.,.false.)
 
+    call c_f_pointer(c_loc(psi(1,1,1)),psi_real_1d,                        &
+ &                   [size(psi,1)*size(psi,2)*size(psi,3)])
+
     call writew( no_s, num_proj, 1, kdummy, 1,                                &
- &               aux,reshape(psi,(/ 2*no_s*numh_man_proj(index_manifold) /)), &
+ &               aux,psi_real_1d, &
  &               gamma, non_coll=.false., BlockSize=BlockSize  )
 
 !   Deallocate some pointers
