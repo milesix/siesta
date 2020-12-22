@@ -1,11 +1,11 @@
 module ks_flux_procs
   !! Contains procedures for computation of J_ks.
   !! See notes on components of the Kohn-Sham flux for thermal transport.
-  use precision, only: dp
+  use precision, only: sp, dp
   use atomlist, only: no_u, no_l, indxuo, iaorb, qtot
   use densematrix, only: psi ! To get at the c^i_\mu coefficients of the wavefunctions
   use sparse_matrices, only: listh, listhptr, numh
-  use m_virtual_step_data, only: Dfull, Dderiv
+  use m_virtual_step_data, only: Dfull, Dderiv, istep_vmd
   !!TODO: are the dimensions of Dfull & Dderiv correct?
 
   implicit none
@@ -343,6 +343,9 @@ subroutine compute_Jks ()
   integer :: no_occ_wfs
   integer :: iw, mu, nu, j, ind, col
 
+  integer :: iu
+  external io_assign, io_close
+
   real(dp), dimension(:),   pointer :: S => null()
   real(dp), dimension(:,:), pointer :: H => null()
 
@@ -351,10 +354,12 @@ subroutine compute_Jks ()
 
   real(dp):: H_el_S
 
+  character(len=1024) :: fname
+
   allocate(psi_hat_c(no_u,no_l,3))
   allocate(psi_dot_c(no_u,no_l))
 
-  no_occ_wfs = ceiling(qtot/2)
+  no_occ_wfs = nint(qtot/2)
 
   call compute_psi_hat_c (psi_hat_c, no_occ_wfs)
   call compute_psi_dot_c (psi_dot_c, no_occ_wfs)
@@ -419,10 +424,78 @@ subroutine compute_Jks ()
 
   Print *, "[Jele] ", ks_flux_Jele
 
+  ! Output of `pseudo-wfs-objects`:
+
+  write(fname, "(A8,I3.3,A5)") "Psi_dot_", istep_vmd, ".WFSX"
+  call write_ks_psi(psi_dot_c, fname)
+
+  do idx=1,3
+     write(fname, "(A8,I1,A1,I3.3,A5)")&
+          & "Psi_hat-", idx, "_", istep_vmd, ".WFSX"
+     call write_ks_psi(psi_hat_c(:,:,idx), fname)
+  end do
+
   deallocate(psi_hat_c)
   deallocate(psi_dot_c)
 
 end subroutine compute_Jks
+
+
+subroutine write_ks_psi(ks_psi, fname)
+  !! `WFSX`-file format follows `writewave.F`
+
+  use kpoint_scf_m, only : kpoint_scf
+  use atmfuncs,     only : symfio, cnfigfio, labelfis, nofis
+  use atomlist,     only : iaorb, iphorb
+  use siesta_geom,  only : isa
+  use m_eo,         only : eo
+  use units,        only : eV
+
+  real(SP), dimension(:), allocatable :: aux   !! NOTE SP
+
+  real(dp), intent(in) :: ks_psi(:,:)
+  character(len=1024), intent(in)   :: fname
+
+  integer :: nuotot
+  integer :: iu, j
+  integer :: iw, idx, no_occ_wfs
+  external io_assign, io_close
+
+  nuotot = no_u
+  no_occ_wfs = nint(qtot/2)
+
+  allocate(aux(nuotot))         ! 1-d since 1 spin component now
+
+  call io_assign(iu)
+  open(iu,file=trim(fname),form="unformatted",&
+       & action='write',status='unknown')
+  ! Writing header
+  write (iu) 1, 1               ! nk, gamma
+  write (iu) 1                  ! spin%H
+  write (iu) nuotot
+  write(iu) (iaorb(j),labelfis(isa(iaorb(j))),&
+       & iphorb(j), cnfigfio(isa(iaorb(j)),iphorb(j)),&
+       & symfio(isa(iaorb(j)),iphorb(j)), j=1,nuotot)
+
+  write(iu) 1, 0.0_dp, 0.0_dp, 0.0_dp, 1.0_dp ! ik, k(1:3), kpoint_weight - at Gamma
+  write(iu) 1              ! ispin
+  write(iu) no_occ_wfs     ! nwflist(ik)
+
+  do iw = 1,no_occ_wfs
+     ! coerce input array to sp:
+     do j = 1,nuotot
+        aux(j) = real(ks_psi(j, iw), kind=sp)
+     enddo
+
+     write(iu) iw               ! indwf
+     write(iu) eo(iw,1,1)/eV    ! eo here left for compatibility
+     write(iu) aux(:)           ! (aux(1:,j), j=1,nuotot)
+  end do
+
+  call io_close(iu)
+  deallocate(aux)
+
+end subroutine write_ks_psi
 
 
 end module ks_flux_procs
