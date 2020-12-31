@@ -81,7 +81,7 @@ subroutine compute_pw_matrix( nncount, bvectorsfrac )
 !
 ! Internal variables
 !
-  integer  :: inn
+  integer  :: inn, ind
   real(dp) :: bvector(3)
 
 !! For debugging
@@ -130,7 +130,9 @@ subroutine compute_pw_matrix( nncount, bvectorsfrac )
 !   in a permanent array,
 !   (array delkmatgen)
 !   So delkmat can be rewritten for the next wave vector.
-    delkmatgen(inn,:) = delkmat(:)
+    do ind = 1, maxnh
+      delkmatgen(inn,ind) = delkmat(ind)
+    enddo
 
 !! For debugging
 !      onlygamma = .false.

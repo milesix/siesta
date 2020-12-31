@@ -318,7 +318,8 @@ module m_w90_in_siesta
 ! &       blocksizeincbands_tmp
 !!      End debugging
 #else
-       nincbands_loc_tmp = numincbands_tmp
+       nincbands_loc_tmp     = numincbands_tmp
+       blocksizeincbands_tmp = 1
 #endif
 
        manifold_bands_w90_in(index_manifold)%nincbands_loc_w90_in =        &
@@ -1988,6 +1989,7 @@ module m_w90_in_siesta
 
   if (lsitesymmetry) call sitesym_read()   ! update this to read on root and bcast - JRY
 
+  time2 = io_time()
   call overlap_allocate()
 
   call overlap_read()
