@@ -45,9 +45,9 @@
       logical :: relaxd
 
       external :: bye
-      
+
 ! Notes for PEXSI and ELSI operation (extra procs for Solver)
-      
+
 !
 ! A subset of nodes carries out non-Solver Siesta operations
 ! (i.e., setting up H, moving atoms, diagonalizing...).
@@ -66,6 +66,9 @@
 !      if (ionode) call memory_snapshot("at start of program")
 
       call siesta_init()
+C     debug
+      call equalize_velocities()
+c$$$      call check_pcm()
 
 #ifdef TRACING_SOLVEONLY
       call extrae_shutdown
@@ -101,6 +104,10 @@ C     Begin of coordinate relaxation iteration
 
               call siesta_forces( istep )
 
+C     debug
+c$$$              call subtract_vcom()
+              call equalize_velocities()
+
               call base_md_step_logic() ! Perform whatever needs to be done now
               call store_state_before_move() ! Save xa, fa, va
 
@@ -127,7 +134,12 @@ C     Begin of coordinate relaxation iteration
 
 
               substep = VIRTUAL_STEP
+
               call siesta_forces( istep )
+
+C     debug
+c$$$              call equalize_velocities()
+              call check_pcm()
 
               print*, "[VMD.Logic.Start] ", istep_vmd
               call virtual_md_step_logic()
@@ -160,11 +172,17 @@ C     Begin of coordinate relaxation iteration
                call siesta_forces( istep )
             end if
 
+C     debug
+c$$$            call subtract_vcom()
+c$$$            call check_pcm()
+
          if ( onlyS ) then
              call bye("Saved S only, exiting.")
          end if
 
         if (SIESTA_worker) call siesta_move( istep, relaxd )
+C     debug
+c$$$            call check_pcm()
 #if defined (SIESTA__PEXSI) || defined (SIESTA__ELSI)
             call broadcast(relaxd,comm=mpi_comm_dft)
 #endif
@@ -292,5 +310,67 @@ C     End of coordinate-relaxation loop
         fa = fa_after_move
         va = va_after_move
       end subroutine re_store_state_after_move
+
+      subroutine check_pcm ()
+        !! Debugging routine - checks the value of the system-s
+        !! center of mass momentum.
+        use atomlist, only : amass, qtot
+        real(dp) :: pcm(3), massi, mtot
+        integer  :: i
+
+        pcm(:) = 0.0_dp
+        mtot   = 0.0_dp
+
+        do i=1,na_u
+           massi = amass(i)
+           mtot = mtot + massi
+
+           pcm(:) = pcm(:) + massi * va(:,i)
+        enddo
+        print*, "[pcom] ", pcm(:)
+        print*, "[vcom] ", pcm(:)/mtot
+        print*, "[chdrift]", pcm(1:3)*qtot/mtot
+      end subroutine check_pcm
+
+
+      subroutine subtract_vcom ()
+        use atomlist, only : amass
+        real(dp) :: pcm(3), massi, mtot
+        integer  :: i, ix
+
+        pcm(:) = 0.0_dp
+        mtot   = 0.0_dp
+
+        do i=1,na_u
+           massi = amass(i)
+           mtot = mtot + massi
+
+           pcm(:) = pcm(:) + massi * va(:,i)
+        enddo
+        do i = 1,na_u
+           do ix = 1,3
+              va(ix,i) = va(ix,i) - pcm(ix)/mtot
+           enddo
+        enddo
+      end subroutine subtract_vcom
+
+      subroutine equalize_velocities ()
+        !! set all velocities in the system equal to the velocity of the first atom
+        integer  :: i, ix
+
+c$$$        call random_number(va(1,:))
+c$$$        va(1,1) = va(1,1) * 0.01_dp
+c$$$        va(2,1) = 0.0_dp
+c$$$        va(3,1) = 0.0_dp
+        va(:,:) = 0.0_dp
+        va(3,:) = 0.02_dp
+        print*, "[vcom_init]", va(:,1)
+
+c$$$        do i = 1,na_u
+c$$$           do ix = 1,3
+c$$$              va(ix,i) = va(ix,1)
+c$$$           enddo
+c$$$        enddo
+      end subroutine equalize_velocities
 
       END program siesta

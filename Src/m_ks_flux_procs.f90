@@ -2,7 +2,7 @@ module ks_flux_procs
   !! Contains procedures for computation of J_ks.
   !! See notes on components of the Kohn-Sham flux for thermal transport.
   use precision, only: sp, dp
-  use atomlist, only: no_u, no_l, indxuo, iaorb, qtot
+  use atomlist, only: no_u, no_l, indxuo, iaorb, qtot, amass
   use densematrix, only: psi ! To get at the c^i_\mu coefficients of the wavefunctions
   use sparse_matrices, only: listh, listhptr, numh
   use m_virtual_step_data, only: Dfull, Dderiv, istep_vmd
@@ -126,6 +126,7 @@ end subroutine compute_psi_hat_c
 !  This routine is very complex. It has to be re-checked
 !
 subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
+  use siesta_geom,  only : na_u
   use siesta_options, only : virtual_dt
   ! Take proper velocities from `BASE` step:
   use m_virtual_step_data, only: va_before_move
@@ -148,7 +149,7 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
   real(dp), dimension(:,:), pointer :: gradS => null()
   real(dp), dimension(:),   pointer :: S => null()
 
-  integer  :: iw
+  integer  :: iw, i, ix
   integer  :: alpha, beta, lambda, nu, mu
   ! integer  :: ind, col, sec_ind, sec_col
   real(dp) :: acc_left
@@ -159,8 +160,28 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
 
   integer :: ind, ind2
   real(dp), allocatable :: tmp(:), tmp2(:), tmp3(:), tmp4(:,:)
+  real(dp) :: pcm(3), massi, mtot
   ! real(dp), allocatable :: tmp_left(:)
   ! real(dp), allocatable :: tmp_right(:)
+
+  ! Renormalize velocities w/r to the Center of Mass of the system
+  !FIXME: IF it is right approach - uderstand why, and should it be implied to other components?
+  ! pcm(:) = 0.0_dp
+  ! mtot   = 0.0_dp
+
+  ! do i=1,na_u
+  !    massi = amass(i)
+  !    mtot = mtot + massi
+
+  !    pcm(:) = pcm(:) + massi * va_before_move(:,i)
+  ! enddo
+  ! do i = 1,na_u
+  !    do ix = 1,3
+  !       va_before_move(ix,i) = va_before_move(ix,i) &
+  !            & - pcm(ix)/mtot
+  !    enddo
+  ! enddo
+  !FIXME: end
 
   call c_f_pointer(c_loc(psi(1)), coeffs, [no_u, no_l]) ! for new compilers
   ! explicit pointing to psi(1) -> psi
@@ -426,14 +447,14 @@ subroutine compute_Jks ()
 
   ! Output of `pseudo-wfs-objects`:
 
-  write(fname, "(A8,I3.3,A5)") "Psi_dot_", istep_vmd, ".WFSX"
-  call write_ks_psi(psi_dot_c, fname)
+  ! write(fname, "(A8,I3.3,A5)") "Psi_dot_", istep_vmd, ".WFSX"
+  ! call write_ks_psi(psi_dot_c, fname)
 
-  do idx=1,3
-     write(fname, "(A8,I1,A1,I3.3,A5)")&
-          & "Psi_hat-", idx, "_", istep_vmd, ".WFSX"
-     call write_ks_psi(psi_hat_c(:,:,idx), fname)
-  end do
+  ! do idx=1,3
+  !    write(fname, "(A8,I1,A1,I3.3,A5)")&
+  !         & "Psi_hat-", idx, "_", istep_vmd, ".WFSX"
+  !    call write_ks_psi(psi_hat_c(:,:,idx), fname)
+  ! end do
 
   deallocate(psi_hat_c)
   deallocate(psi_dot_c)
