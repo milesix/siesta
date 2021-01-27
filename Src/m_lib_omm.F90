@@ -136,7 +136,7 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
     C_extrapol = fdf_boolean('OMM.Extrapolate',.false.)
     wf_dim = fdf_integer('OMM.NumLWFs',1)
     if((wf_dim < N_occ) .or. (abs(eta) < 1.d-10)) wf_dim = N_occ
-    if(ionode) print'(a, i8, a, i8, a, i8)','hdim = ', h_dim, ' N_occ =', N_occ, ' wf_dim = ', wf_dim
+    if(ionode) print'(a, i15, a, i15, a, i15)','hdim = ', h_dim, ' N_occ =', N_occ, ' wf_dim = ', wf_dim
   end if     
 
   new_S = .false.
@@ -263,7 +263,7 @@ subroutine omm_min(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,n
       C_min,init_C,T,tau,flavour,nspin,1,cg_tol,g_tol,long_out,dealloc,&  
       m_storage,m_operation)
     call timer('omm_density',2)
-    if(ionode) print'(a, f13.7)','e_min = ', e_min
+    if(ionode) print'(a, f20.7)','e_min = ', e_min
   else
     call timer('omm_energy',1)
     call omm(h_dim,wf_dim,n_occ,H,S,new_S,e_min,D_min,.true.,eta,&
@@ -373,8 +373,8 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
   real(dp) :: e_min, tau, qout(2), qtmp(2)
   real(dp) :: block_data(1,1), c_occ
   integer, save :: istp_prev, BlockSize_c, N_occ, wf_dim
-  logical :: new_S, ReadCoeffs, file_exist, present_eta
-  logical, save :: long_out, Use2D, WriteCoeffs, C_extrapol
+  logical :: new_S, ReadCoeffs, ReadUseLib, file_exist, present_eta
+  logical, save :: long_out, Use2D, WriteCoeffs, WriteUseLib, C_extrapol
   real(dp), save :: cg_tol, g_tol, eta
   character(len=100) :: WF_COEFFS_filename
 
@@ -404,8 +404,10 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     g_tol = fdf_get('OMM.GTol',1.0d-3) 
     WriteCoeffs=fdf_boolean('OMM.WriteCoeffs',.false.)
     ReadCoeffs=fdf_boolean('OMM.ReadCoeffs',.false.)
+    WriteUseLib=fdf_boolean('OMM.WriteUseLib',.true.)
+    ReadUseLib=fdf_boolean('OMM.ReadUseLib',.true.)
     eta = fdf_get('OMM.Eta',0.0_dp,'Ry')
-    if(ionode) print'(a, i8, a, i8, a, i5)','hdim =', h_dim, '    N_occ =', N_occ, &
+    if(ionode) print'(a, i15, a, i15, a, i8)','hdim =', h_dim, '    N_occ =', N_occ, &
       '    BlockSize =', BlockSize
     present_eta=.false.
     if(abs(eta)>1.d-10) present_eta=.true.
@@ -466,19 +468,20 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     if(ReadCoeffs) then
       call timer('ReadCoeffs',1)
       WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_BLOMM'
-      call m_read(C_min,WF_COEFFS_filename,file_exist=file_exist, keep_sparsity=.true.)
+      call m_read(C_min,WF_COEFFS_filename,file_exist=file_exist,&
+        keep_sparsity=.true.,use_dbcsrlib=ReadUseLib)
       if(file_exist) then
         if(ionode) print'(a)','File for C is read'
       end if
       call timer('ReadCoeffs',2)
     end if
     call m_dbcsr_occupation(C_min, c_occ)
-    if(ionode) print'(a,f10.8, a,i8, a, i5)','C occupation = ', c_occ,'    WF_dim = ', wf_dim, &
+    if(ionode) print'(a,f18.15, a,i15, a, i8)','C occupation = ', c_occ,'    WF_dim = ', wf_dim, &
       '   BlockSizeC = ', BlockSize_c
     if(WriteCoeffs) then
       call timer('WriteCoeffs',1)
       WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_BLOMM'
-      call m_write(C_min,WF_COEFFS_filename)
+      call m_write(C_min,WF_COEFFS_filename,use_dbcsrlib=WriteUseLib)
       if(ionode) print'(a)', 'File for C is written'
       call timer('WriteCoeffs',2)
     end if
@@ -509,7 +512,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
       C_min,init_C,T,tau,flavour,nspin,1,cg_tol,g_tol,long_out,dealloc,&
       m_storage,m_operation)
     call timer('omm_density',2)
-    if(ionode) print'(a, f13.7)','e_min = ', e_min
+    if(ionode) print'(a, f20.7)','e_min = ', e_min
   else
     call timer('m_register',1)
     call m_register_pdcsr(D_min,d_sparse(:,1))
@@ -565,7 +568,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     if(WriteCoeffs) then
       call timer('WriteCoeffs',1)
       WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_BLOMM'
-      call m_write(C_min,WF_COEFFS_filename)
+      call m_write(C_min,WF_COEFFS_filename,use_dbcsrlib=WriteUseLib)
       call timer('WriteCoeffs',2)
       if(ionode) print'(a)', 'File for C is written'
     end if

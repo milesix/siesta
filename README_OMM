@@ -49,9 +49,20 @@ OMM.Eta 0.0 Ry (energy)
 OMM.RcLWF 9.5 Bohr (length)
   Localization radius for LWFs. Only applicable for SolutionMethod BLOMM.
 
+OMM.WriteUseLib true (logical)
+  If true, the DBCSR library is used for writing the restart files for LWFs in parallel. Otherwise
+  the output is performed by the head node only. Note that the restart files should be read in
+  the same way as written before. Only applicable for SolutionMethod BLOMM.
+
+OMM.ReadUseLib true (logical)
+  If true, the DBCSR library is used for reading the restart files for LWFs in parallel. Otherwise
+  the files are accessed by the head node only. Note that the restart files should be read in
+  the same way as written before. Only applicable for SolutionMethod BLOMM.
+
 OMM.BlockSizeC (BlockSize * wf_dim)/h_dim (integer)
   The blocksize for LWFs. It is recommended to use the value that corresponds to BlockSize multiplied
   by the total number of LWFs wf_dim and divided by the total number of basis functions h_dim.
+  Only applicable for SolutionMethod BLOMM.
 
 OMM.UseCholesky false (logical)
   Specifies whether to perform Cholesky factorization of the generalized eigenvalue problem. 
