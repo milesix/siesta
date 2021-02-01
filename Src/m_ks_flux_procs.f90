@@ -137,6 +137,10 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
   ! Output: coefficients of psi_dot_c, stored in module ks_flux_data
   ! use ks_flux_data, only: psi_dot_c
 
+  use siesta_options, only: virtual_md_Jks_A
+  use siesta_options, only: virtual_md_Jks_B
+  use siesta_options, only: virtual_md_Jks_C
+
   use,intrinsic :: iso_c_binding, only: c_loc, c_f_pointer
 
   implicit none
@@ -163,25 +167,6 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
   real(dp) :: pcm(3), massi, mtot
   ! real(dp), allocatable :: tmp_left(:)
   ! real(dp), allocatable :: tmp_right(:)
-
-  ! Renormalize velocities w/r to the Center of Mass of the system
-  !FIXME: IF it is right approach - uderstand why, and should it be implied to other components?
-  ! pcm(:) = 0.0_dp
-  ! mtot   = 0.0_dp
-
-  ! do i=1,na_u
-  !    massi = amass(i)
-  !    mtot = mtot + massi
-
-  !    pcm(:) = pcm(:) + massi * va_before_move(:,i)
-  ! enddo
-  ! do i = 1,na_u
-  !    do ix = 1,3
-  !       va_before_move(ix,i) = va_before_move(ix,i) &
-  !            & - pcm(ix)/mtot
-  !    enddo
-  ! enddo
-  !FIXME: end
 
   call c_f_pointer(c_loc(psi(1)), coeffs, [no_u, no_l]) ! for new compilers
   ! explicit pointing to psi(1) -> psi
@@ -240,10 +225,12 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
         do beta = 1,no_u
            if (beta.eq.lambda) then
               psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-                   & + (1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)
+                   & + (1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)&
+                   & * virtual_md_Jks_A
            else
               psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-                   & + (0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)
+                   & + (0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)&
+                   & * virtual_md_Jks_A
            end if
         end do
      end do
@@ -283,10 +270,12 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
         do beta = 1,no_u
            if (beta.eq.lambda) then
               psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-                   & + (1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)
+                   & + (1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)&
+                   & * virtual_md_Jks_B
            else
               psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-                   & + (0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)
+                   & + (0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)&
+                   & * virtual_md_Jks_B
            end if
         end do
      end do
@@ -327,10 +316,12 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
         do beta = 1,no_u
            if (beta.eq.lambda) then
               psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-                   & + (1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)
+                   & + (1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)&
+                   & * virtual_md_Jks_C
            else
               psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-                   & + (0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)
+                   & + (0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)&
+                   & * virtual_md_Jks_C
            end if
         end do
      end do
@@ -356,6 +347,7 @@ subroutine compute_Jks ()
   use ks_flux_data, only: ks_flux_S, ks_flux_H
   use ks_flux_data, only: psi_hat_c, psi_dot_c, ks_flux_Jks, ks_flux_Jele
 
+  use siesta_options, only: virtual_md_verbose
   use m_eo, only: eo
 
   use,intrinsic :: iso_c_binding, only: c_loc, c_f_pointer
@@ -445,16 +437,18 @@ subroutine compute_Jks ()
 
   Print *, "[Jele] ", ks_flux_Jele
 
+  if (virtual_md_verbose) then
   ! Output of `pseudo-wfs-objects`:
 
-  ! write(fname, "(A8,I3.3,A5)") "Psi_dot_", istep_vmd, ".WFSX"
-  ! call write_ks_psi(psi_dot_c, fname)
+     write(fname, "(A8,I3.3,A5)") "Psi_dot_", istep_vmd, ".WFSX"
+     call write_ks_psi(psi_dot_c, fname)
 
-  ! do idx=1,3
-  !    write(fname, "(A8,I1,A1,I3.3,A5)")&
-  !         & "Psi_hat-", idx, "_", istep_vmd, ".WFSX"
-  !    call write_ks_psi(psi_hat_c(:,:,idx), fname)
-  ! end do
+     do idx=1,3
+        write(fname, "(A8,I1,A1,I3.3,A5)")&
+             & "Psi_hat-", idx, "_", istep_vmd, ".WFSX"
+        call write_ks_psi(psi_hat_c(:,:,idx), fname)
+     end do
+  end if
 
   deallocate(psi_hat_c)
   deallocate(psi_dot_c)

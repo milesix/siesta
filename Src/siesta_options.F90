@@ -241,8 +241,18 @@ MODULE siesta_options
   logical :: want_virtual_step_md
   !! Tells main `SIESTA` program that it should perform two-step MD.
   !! Also signals `dhscf` that call to `setup_step_vmd` is required.
-  logical :: virtual_md_verbose    !! Turns on verbose reporting of two-step MD's subroutines
+  logical :: virtual_md_verbose    !! Turns on verbose reporting of two-step MD's subroutines e.g. pseudo-wf WFSX output
+
+  logical :: virtual_md_translate  !! Debug option: equalize ionic velocities in the `BASE` step (uniform system translation)
+  real(dp):: virtual_md_translate_vx !! X-coponent of the uniform translation velocity
+  real(dp):: virtual_md_translate_vy !! Y-coponent of the uniform translation velocity
+  real(dp):: virtual_md_translate_vz !! Z-coponent of the uniform translation velocity
+
   logical :: virtual_md_Jks        !! Compute Kohn-Sham contribution to the heat flux
+  real(dp):: virtual_md_Jks_A      !! A-coponent scale factor for Jks calculation scheme
+  real(dp):: virtual_md_Jks_B      !! A-coponent scale factor for Jks calculation scheme
+  real(dp):: virtual_md_Jks_C      !! A-coponent scale factor for Jks calculation scheme
+
   logical :: virtual_md_Jxc        !! Compute XC-contribution to the heat flux
   logical :: virtual_md_Jhart      !! Compute Hartree contribution to the heat flux
   logical :: virtual_md_Jion       !! Compute ionic contribution to the heat flux

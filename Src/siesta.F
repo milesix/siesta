@@ -22,6 +22,7 @@
       use siesta_options, only: virtual_dt
 
       use siesta_options, only: td_elec_dyn, want_virtual_step_md
+      use siesta_options, only: virtual_md_translate
       !use m_virtual_step_data, only: substep, BASE_STEP, VIRTUAL_STEP
       use m_virtual_step_data
       use m_virtual_step_procs, only: base_md_step_logic,
@@ -66,9 +67,8 @@
 !      if (ionode) call memory_snapshot("at start of program")
 
       call siesta_init()
-C     debug
-      call equalize_velocities()
-c$$$      call check_pcm()
+C     V.D.: thtr debug
+      if (virtual_md_translate) call equalize_velocities()
 
 #ifdef TRACING_SOLVEONLY
       call extrae_shutdown
@@ -104,9 +104,8 @@ C     Begin of coordinate relaxation iteration
 
               call siesta_forces( istep )
 
-C     debug
-c$$$              call subtract_vcom()
-              call equalize_velocities()
+C     V.D.: thtr debug
+              if (virtual_md_translate) call equalize_velocities()
 
               call base_md_step_logic() ! Perform whatever needs to be done now
               call store_state_before_move() ! Save xa, fa, va
@@ -137,9 +136,8 @@ c$$$              call subtract_vcom()
 
               call siesta_forces( istep )
 
-C     debug
-c$$$              call equalize_velocities()
-              call check_pcm()
+C     V.D. thtr debug
+              if (virtual_md_translate) call check_pcm()
 
               print*, "[VMD.Logic.Start] ", istep_vmd
               call virtual_md_step_logic()
@@ -172,17 +170,13 @@ c$$$              call equalize_velocities()
                call siesta_forces( istep )
             end if
 
-C     debug
-c$$$            call subtract_vcom()
-c$$$            call check_pcm()
 
          if ( onlyS ) then
              call bye("Saved S only, exiting.")
          end if
 
         if (SIESTA_worker) call siesta_move( istep, relaxd )
-C     debug
-c$$$            call check_pcm()
+
 #if defined (SIESTA__PEXSI) || defined (SIESTA__ELSI)
             call broadcast(relaxd,comm=mpi_comm_dft)
 #endif
@@ -356,21 +350,18 @@ C     End of coordinate-relaxation loop
 
       subroutine equalize_velocities ()
         !! set all velocities in the system equal to the velocity of the first atom
+        use siesta_options, only: virtual_md_translate_vx
+        use siesta_options, only: virtual_md_translate_vy
+        use siesta_options, only: virtual_md_translate_vz
+
         integer  :: i, ix
 
-c$$$        call random_number(va(1,:))
-c$$$        va(1,1) = va(1,1) * 0.01_dp
-c$$$        va(2,1) = 0.0_dp
-c$$$        va(3,1) = 0.0_dp
-        va(:,:) = 0.0_dp
-        va(3,:) = 0.02_dp
-        print*, "[vcom_init]", va(:,1)
+c$$$        va(1,:) = 0.02_dp
+        va(1,:) = virtual_md_translate_vx
+        va(2,:) = virtual_md_translate_vy
+        va(3,:) = virtual_md_translate_vz
+c$$$        print*, "[uniform_translation_vel]", va(:,1)
 
-c$$$        do i = 1,na_u
-c$$$           do ix = 1,3
-c$$$              va(ix,i) = va(ix,1)
-c$$$           enddo
-c$$$        enddo
       end subroutine equalize_velocities
 
       END program siesta

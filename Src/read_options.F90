@@ -1792,11 +1792,21 @@ subroutine read_options( na, ns, nspin )
   !   Virtual MD ( Thermal Transport ) -related flags
   !
   virtual_md_verbose = fdf_get("MD.Virtual.Verbose", .false.)
+
+  virtual_md_translate = fdf_get("MD.Virtual.Translate", .false.)
+  virtual_md_translate_vx = fdf_get("MD.Virtual.Translate.VX", 0.0_dp)
+  virtual_md_translate_vy = fdf_get("MD.Virtual.Translate.VY", 0.0_dp)
+  virtual_md_translate_vz = fdf_get("MD.Virtual.Translate.VZ", 0.0_dp)
+
   virtual_md_Jhart = fdf_get("MD.Virtual.Jhart", .false.)
-  virtual_md_Jion = fdf_get("MD.Virtual.Jion", .false.)
+  virtual_md_Jion =  fdf_get("MD.Virtual.Jion", .false.)
   virtual_md_Jzero = fdf_get("MD.Virtual.Jzero", .false.)
-  virtual_md_Jks =   fdf_get("MD.Virtual.Jks", .false.)
   virtual_md_Jxc =   fdf_get("MD.Virtual.Jxc", .false.)
+
+  virtual_md_Jks =   fdf_get("MD.Virtual.Jks", .false.)
+  virtual_md_Jks_A = fdf_get("MD.Virtual.Jks.A", 1.0_dp)
+  virtual_md_Jks_B = fdf_get("MD.Virtual.Jks.B", 1.0_dp)
+  virtual_md_Jks_C = fdf_get("MD.Virtual.Jks.C", 1.0_dp)
 
   want_virtual_step_md = (virtual_md_verbose .or. &
        virtual_md_Jhart .or. &
