@@ -136,7 +136,8 @@ C     V.D.: thtr debug
 
               call siesta_forces( istep )
 
-C     V.D. thtr debug
+C     V.D.: thtr debug
+c$$$              if (virtual_md_translate) call equalize_velocities()
               if (virtual_md_translate) call check_pcm()
 
               print*, "[VMD.Logic.Start] ", istep_vmd
