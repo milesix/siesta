@@ -21,14 +21,16 @@ subroutine read_hs_file(fname)
   real(sp), allocatable  :: hbuff(:)
   real(sp), allocatable  :: buff3(:,:)
 
+  integer :: nsc(3)
   integer numx, ind
   logical lacking_indxuo
 
   write(6,"(1x,a)",advance='no') trim(fname)
   open(hs_u,file=trim(fname),status='old',form='unformatted')
 
-  read(hs_u,iostat=iostat) nnao, no_s, nspin, nh
-  print *, "nnao, no_s, nspin, nh:",  nnao, no_s, nspin, nh
+  read(hs_u,iostat=iostat) nnao, nspin, nsc
+  no_s = nnao * product(nsc)
+  print *, "nnao, no_s, nspin:",  nnao, no_s, nspin
   if (iostat /= 0) STOP "nnao, no_s..."
   if (nnao /= nao) STOP "norbs inconsistency"
   no_u = nao
@@ -52,23 +54,25 @@ subroutine read_hs_file(fname)
      enddo
   endif
 
-  if (debug) print *, "HS read: nh, nsp, nnao: ", nh, nspin, nnao
+  if (debug) print *, "HS read: nsp, nnao: ", nspin, nnao
   if (nnao.ne.nao) STOP " nnao .ne. nao in HS"
 
   if (wfs_x.and.(nspin.ne.nsp)) STOP " nspin .ne. nsp in HS"
   nsp=nspin
   h_spin_dim = nspin
-  allocate (numh(nao), listhptr(nao), listh(nh))
-
-       allocate (hamilt(nh,nspin))
-       allocate (Sover(nh))
-       allocate (xij(3,nh),dij(nh))
+  allocate (numh(nao), listhptr(nao))
 
   read(hs_u,iostat=iostat) (numh(io), io=1,no_u)         ! numhg
   if (iostat /= 0) STOP "numh(io)"
   do io=1,no_u
      if (debug) print *, "numhg ", io, numh(io)
   enddo
+
+  nh = sum(numh)
+  allocate(listh(nh))
+  allocate (hamilt(nh,nspin))
+  allocate (Sover(nh))
+  allocate (xij(3,nh),dij(nh))
 
   numx = maxval(numh(:))
   allocate(ibuff(numx), hbuff(numx), buff3(3,numx))

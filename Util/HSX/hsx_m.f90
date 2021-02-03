@@ -64,6 +64,7 @@ type, public :: hsx_t
   integer :: nspecies
   integer :: na_u
   integer :: no_u
+  integer :: nsc(3)
   integer :: no_s
   integer :: nspin
   integer :: nh
@@ -106,14 +107,15 @@ character(len=*), intent(in) :: fname
 
   integer numx, ind, no_u, nnz, na_u, nspecies, nspin, nh, i
   integer :: im, is, hsx_u, ia, io, iostat, k, naoatx, no_s
-  logical  :: debug = .false.
+  logical, parameter :: debug = .false.
 
   call get_unit_number(hsx_u)
   print *, "Using unit: ", hsx_u
 
   open(hsx_u,file=trim(fname),status='old',form='unformatted')
 
-  read(hsx_u,iostat=iostat) hsx%no_u, hsx%no_s, hsx%nspin, hsx%nh
+  read(hsx_u,iostat=iostat) hsx%no_u, hsx%nspin, hsx%nsc
+  hsx%no_s = product(hsx%nsc) * hsx%no_u
   if (iostat /= 0) STOP "nnao, no_s..."
 
   no_u = hsx%no_u
@@ -132,17 +134,19 @@ character(len=*), intent(in) :: fname
      enddo
   endif
 
-  nh  = hsx%nh
   nspin = hsx%nspin
   print *, "nh: ", nh
-  allocate (hsx%numh(no_u), hsx%listhptr(no_u), hsx%listh(nh))
-
-       allocate (hsx%xij(3,nh),stat=iostat)
-       allocate (hsx%hamilt(nh,nspin),stat=iostat)
-       allocate (hsx%Sover(nh),stat=iostat)
+  allocate(hsx%numh(no_u), hsx%listhptr(no_u))
 
   read(hsx_u,iostat=iostat) (hsx%numh(io), io=1,no_u)      
   if (iostat /= 0) STOP "numh"
+
+  hsx%nh = sum(hsx%numh)
+  nh = hsx%nh
+  allocate(hsx%listh(nh))
+  allocate(hsx%xij(3,nh),stat=iostat)
+  allocate(hsx%hamilt(nh,nspin),stat=iostat)
+  allocate(hsx%Sover(nh),stat=iostat)
 
   numx = maxval(hsx%numh(1:no_u))
   allocate(ibuff(numx), hbuff(numx), buff3(3,numx))
@@ -251,7 +255,7 @@ character(len=*), intent(in) :: fname
 
   open(hsx_u,file=trim(fname),status='unknown',form='unformatted')
 
-  write(hsx_u,iostat=iostat) hsx%no_u, hsx%no_s, hsx%nspin, hsx%nh
+  write(hsx_u,iostat=iostat) hsx%no_u, hsx%nspin, hsx%nsc
   if (iostat /= 0) STOP "nnao, no_s..."
 
   no_u = hsx%no_u

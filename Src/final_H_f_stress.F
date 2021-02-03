@@ -54,7 +54,7 @@
       use m_dipol
       use m_forces,          only: fa
       use alloc, only: re_alloc, de_alloc
-      use m_hsx, only: write_hsx
+      use io_hsx_m, only: write_hsx
       use sys, only: die
       use fdf
 #ifdef MPI
@@ -68,7 +68,7 @@
 #endif
 #endif
       use siesta_options, only : idyn, ia1, write_tshs_history
-      use sparse_matrices, only: H_2D, S_1D
+      use sparse_matrices, only: H_2D, S_1D, xij_2D
       use files,        only : label_length
       use m_ts_options, only : TS_HS_save
       use ts_kpoint_scf_m, only: ts_kpoint_scf, ts_gamma_scf
@@ -301,10 +301,9 @@
 ! This call could be moved to a more appropriate place
 !
       if (savehs .or. write_coop ) then
-         call write_hsx( no_u, no_s, spin%H, indxuo,
-     &        maxnh, numh, listhptr, listh, H, S, Qtot,
-     &        Temp, xijo)
-      endif
+        call write_hsx( nsc, no_u, indxuo,
+     &      H_2D, S_1D, Qtot, Temp, xij_2D)
+      end if
 #ifdef CDF
 #ifdef NCDF_4
       if ( write_cdf ) then

@@ -13,6 +13,7 @@
       subroutine setup_hamiltonian( iscf )
 
       USE siesta_options
+      use sparse_matrices, only: H_2D, S_1D, xij_2D
       use sparse_matrices, only: H_kin_1D, H_vkb_1D
       use sparse_matrices, only: H_dftu_2D
       use sparse_matrices, only: H_so_on_2D, H_so_off_2D
@@ -47,7 +48,7 @@
 
       use m_dipol
       use alloc, only: re_alloc, de_alloc
-      use m_hsx, only: write_hsx
+      use io_hsx_m, only: write_hsx
       use sys, only: die, bye
       use m_partial_charges, only: want_partial_charges
       use files, only : filesOut_t    ! derived type for output file names
@@ -314,9 +315,8 @@
         ! Save Hamiltonian and overlap matrices ............................
         ! Only in HSX format now.  Use Util/HSX/hsx2hs to generate an HS file
         if (savehs .or. write_coop) then
-          call write_hsx( no_u, no_s, spin%H, indxuo,
-     &        maxnh, numh, listhptr, listh, H, S, qtot,
-     &        temp, xijo)
+          call write_hsx( nsc, no_u, indxuo,
+     &        H_2D, S_1D, qtot, temp, xij_2D)
         end if
 
         call timer( 'all', 2 )  ! New call to close the tree
