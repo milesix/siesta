@@ -375,7 +375,7 @@ contains
 
        do i=1,size(thtr_Rho)
           xc_flux_Jxc(1:3) = xc_flux_Jxc(1:3) &
-               & - thtr_Rho_deriv(i) * thtr_dexcdGD(i,1:3,1) &
+               & + thtr_Rho_deriv(i) * thtr_dexcdGD(i,1:3,1) & ! <- NOTE: inverted sign here
                & * xc_flux_dvol
        end do
 

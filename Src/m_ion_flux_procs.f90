@@ -13,6 +13,9 @@ module ion_flux_procs
   real(dp), parameter :: amu_Ry = 911.444243104_dp
   !! Coeff. of conversion to atomic Rydberg units
   !! of atomic mass (1822.888486209 * 0.5_dp).
+  real(dp), parameter :: coeff_vel_pow2 = 0.00234040089115_dp
+  !! Correction coefficient for speed in kinetic energy part (A)
+  !! being in Siesta units.
 
   real(dp), parameter :: e2 = 2.0_dp
 
@@ -30,10 +33,12 @@ contains
     !! in Rydberg units (2x Hartree).
 
     do ia=1,na_u
-       vel(:) = va_before_move(:,ia) * 2.0_dp
+       ! vel(:) = va_before_move(:,ia) * 2.0_dp
+       vel(:) = va_before_move(:,ia)
 
        ion_flux_a(:) = ion_flux_a(:) +&
-            & vel(:) * 0.5_dp * amu_Ry * amass(ia) * (vel(1)**2 + vel(2)**2 + vel(3)**2)
+            &  vel(:) * (0.5_dp * amu_Ry * amass(ia)) * (vel(1)**2 + vel(2)**2 + vel(3)**2) &
+            &  * coeff_vel_pow2
     end do
   end subroutine compute_Jion_a
 
@@ -44,7 +49,8 @@ contains
     real(dp) :: vel(3)
 
     do ia=1,na_u
-       vel(:) = va_before_move(:,ia) * 2.0_dp
+       ! vel(:) = va_before_move(:,ia) * 2.0_dp
+       vel(:) = va_before_move(:,ia)
 
        ion_flux_b(:) = ion_flux_b(:) + &
             & 2./3. * e2 * qa(ia)**2 * vel(:) * I_prime
@@ -64,8 +70,10 @@ contains
     do ia=1,na_u
        do ja=1,na_u
           if ( ia > ja ) then
-             vel_i(:) = va_before_move(:,ia) * 2.0_dp
-             vel_j(:) = va_before_move(:,ja) * 2.0_dp
+             ! vel_i(:) = va_before_move(:,ia) * 2.0_dp
+             ! vel_j(:) = va_before_move(:,ja) * 2.0_dp
+             vel_i(:) = va_before_move(:,ia)
+             vel_j(:) = va_before_move(:,ja)
              u(:) = xa_before_move(:,ia) - xa_before_move(:,ja)
 
              call pbc(u(1:3), u_pbc(1:3))

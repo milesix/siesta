@@ -99,9 +99,11 @@ contains
     !      Here I account for it by inverting the sign of each product contribution
     !      ( as `dimag(conjg(tc_dot(igp))*tc_v(igp))` changes sign
     !        with the change of phase of multipliers ).
+    !NOTE: In 2021 the above might not take place,
+    !      or the error cancelling may occur.
     reduce_hartree_flux: do ig = gstart_vmd, ngm_plus_vmd
        igp = igplus_vmd(ig)     ! get the global index
-       h_flux_Jhart(1:3) = h_flux_Jhart(1:3) + &                 ! <- The plus sign due to the
+       h_flux_Jhart(1:3) = h_flux_Jhart(1:3) - &                 ! <- The plus sign would_be due to the
             & dimag(conjg(tc_dot(igp))*tc_v(igp)*fac(igp)) * &   !    difference in phase of `charge_g`
             & g_vmd(1:3,igp) * volume / 4.d0 / PI                !    w/r to QE.
     end do reduce_hartree_flux

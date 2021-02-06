@@ -291,7 +291,8 @@ C     End of coordinate-relaxation loop
            do ia = 1,na_u
               write(iu,'(3x,3f18.12)')  (va_before_move(iv,ia),iv=1,3)
               write(*,'(a,i3.1,a,3f18.12)') '[XVS] step: ', istep_vmd,
-     $             '  VS ', (va_before_move(iv,ia),iv=1,3)
+     $             '  VS ', (va_before_move(iv,ia) * 0.04837769_dp,
+     $             iv=1,3)  ! converged from SIESTA's to Ryd a.u. speed units
            enddo
            call io_close( iu )
         end if

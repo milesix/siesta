@@ -205,7 +205,8 @@ contains
              igp = igplus_vmd(ig)     ! get the global index for g-vectors
 
              do ia = 1,na_u
-                vel(:) = va_before_move(:,ia) * 2.0_dp ! velocity buffer
+                ! vel(:) = va_before_move(:,ia) * 2.0_dp ! velocity buffer
+                vel(:) = va_before_move(:,ia) ! velocity buffer
 
                 !NOTE: The forward FFT in SIESTA is opposite to the one in QE.
                 !      That leads to `Rho` in G-space being in opposite phase w/r to QE.
