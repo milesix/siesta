@@ -330,7 +330,7 @@ contains
     use hartree_flux_data
     use hartree_flux_procs
 
-    use ks_flux_data, only: Dscf_deriv
+    use ks_flux_data, only: Dscf_deriv, ks_flux_Jks
     use ks_flux_procs, only: compute_Jks
 
     use xc_flux_data, only: thtr_Rho, thtr_Rho_deriv, thtr_dexcdGD
@@ -353,9 +353,13 @@ contains
 
     integer :: i
 
+    Jtotal(:) = 0.0_dp            ! Reset the total current value
+
     if ( virtual_md_Jhart ) then
        call compute_Jhart_VIRTUAL()
        print*, "[Jhart] ", h_flux_Jhart(:)
+
+       Jtotal(:) = Jtotal(:) + h_flux_Jhart(:)
     end if
 
     if ( virtual_md_Jks ) then
@@ -364,6 +368,7 @@ contains
 
        call compute_Jks()
 
+       Jtotal(:) = Jtotal(:) + ks_flux_Jks(:)
        ! call reset_ks_flux_data()
     end if
 
@@ -380,6 +385,8 @@ contains
        end do
 
        print*, "[Jxc] ", xc_flux_Jxc(:)
+
+       Jtotal(:) = Jtotal(:) + xc_flux_Jxc(:)
 
     end if
 
@@ -407,6 +414,14 @@ contains
        print*, "[Jion] flux D: ", ion_flux_d(:)
        print*, "[Jion] flux E: ", ion_flux_e(:)
 
+       Jtotal(:) = Jtotal(:) + ion_flux_a(:)
+       Jtotal(:) = Jtotal(:) + ion_flux_b(:)
+       Jtotal(:) = Jtotal(:) + ion_flux_c(:)
+       Jtotal(:) = Jtotal(:) + ion_flux_d(:)
+       Jtotal(:) = Jtotal(:) + ion_flux_e(:)
+
+       print*, "[Jxc] ", xc_flux_Jxc(:)
+
        ! call reset_ion_flux_data()
     end if
 
@@ -414,7 +429,12 @@ contains
        call compute_Jzero()
 
        print*, "[Jzero] ", zero_flux_Jzero(:)
+
+       Jtotal(:) = Jtotal(:) + zero_flux_Jzero(:)
     end if
+
+    ! Output the resulting flux:
+    print*, "[Jtotal] ", Jtotal(:)
 
     !FIXME: regroup resetters in corresponding subroutine
     if ( virtual_md_Jion) call reset_ion_flux_data()

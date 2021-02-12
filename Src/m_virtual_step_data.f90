@@ -17,6 +17,9 @@ module m_virtual_step_data
   integer :: substep = 0 !! Current substep within SCF cycle
   integer, save :: istep_vmd   !! Global step-index copy
 
+  real(dp), save  :: Jtotal(3)
+  !! Total value of the heat flux calculated in terms of the G-K formalism.
+
   real(dp), pointer, save :: Dfull(:,:,:) => null()
   !! Full density matrix where we need it full (those cases
   !! where we cannot account for sparsity in strides over orbitals).
