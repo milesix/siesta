@@ -58,34 +58,28 @@ contains
     real(dp) :: rm, delta_rm, aux_fr, aux_dfdr, vl_int, qi
     real(dp) :: vel(3)          !! temp buffer for (`va_before_move` x 2)
     integer  :: in, is, iq, npts
-    real(dp), allocatable :: rvals(:), aux(:)
+    real(dp), allocatable :: aux(:)
     real(dp) :: H_g_rad(ngl_vmd,0:1)  !NOTE: tab_local maybe should also moved here
+    real(dp) :: rbuf            !! temp buffer for R distance values
     ! as to an init routine
 
-    !FIXME:
-    ! rm = 0.0_dp
-    rm = species(1)%reduced_vlocal%cutoff
+    rm = 0.0_dp                ! auto-init in the first branch of the following loop
+                               ! rm = species(1)%reduced_vlocal%cutoff
 
     ! find rm and npts for vlocal
     do is = 1, nsp                !
        spp => species(is)
-       if (spp%reduced_vlocal%cutoff < rm) then !FIXME: check for maximum number of points? UPD: or minimum?
-          rm = spp%reduced_vlocal%cutoff
+       if (spp%reduced_vlocal%cutoff > rm) then !FIXME: check for maximum number of points? UPD: or minimum?
+          rm = spp%reduced_vlocal%cutoff        !NOTE:  just reversing comparison direction is buggy
           npts = spp%reduced_vlocal%n
           delta_rm = spp%reduced_vlocal%delta
        end if
     end do
 
-    allocate(rvals(npts))
     allocate(aux(npts))
     allocate(tab_local(nqxq, nsp, 0:1))
 
-    rvals(:) = 0.0_dp
     aux(:) = 0.0_dp
-
-    do in=1,npts                   ! init R values for selected* radial function
-       rvals(in) = delta_rm * (in-1)
-    enddo
 
     !NOTE: in QE:
     ! aux (ir) = (rgrid(nt)%r(ir)*upf(nt)%vloc(ir)+2.d0*zv(nt))* besr (ir) * rgrid(nt)%r(ir)
@@ -93,18 +87,23 @@ contains
        spp => species(is)
        do iq=1,nqxq
           qi = (iq - 1) * dq
+
           do in=1,npts
-             call rad_get(spp%reduced_vlocal, rvals(in), aux_fr, aux_dfdr)
-             aux(in) = aux_fr * bessph(0, rvals(in)*qi) * rvals(in) ! bessel_spherical for l=0
+             rbuf = (delta_rm * (in-1))
+             call rad_get(spp%reduced_vlocal, rbuf, aux_fr, aux_dfdr)
+             aux(in) = aux_fr * bessph(0, rbuf*qi) * rbuf ! bessel_spherical for l=0
           end do
           call simpson(npts, delta_rm, aux, vl_int)
           tab_local(iq, is, 0) = vl_int * pref
+
           do in=1,npts
-             call rad_get(spp%reduced_vlocal, rvals(in), aux_fr, aux_dfdr)
-             aux(in) = aux_fr * bessph(1, rvals(in)*qi) * rvals(in) * rvals(in) ! bessel_spherical for l=1
+             rbuf = (delta_rm * (in-1))
+             call rad_get(spp%reduced_vlocal, rbuf, aux_fr, aux_dfdr)
+             aux(in) = aux_fr * bessph(1, rbuf*qi) * rbuf * rbuf ! bessel_spherical for l=1
           end do
           call simpson(npts, delta_rm, aux, vl_int)
           tab_local(iq, is, 1) = vl_int * pref
+
        end do
     end do
 
@@ -236,7 +235,6 @@ contains
 
     ! cleanup
     nullify(tc_v)
-    deallocate(rvals)
     deallocate(aux)
     deallocate(u_g)
     deallocate(H_g)
