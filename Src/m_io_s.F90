@@ -180,12 +180,12 @@ contains
           if ( Node == lNode ) then
              gcol(gio:gio-1+n) = ncol(io:io-1+n)
           else
-             call MPI_ISSend( ncol(io) , n, MPI_Integer, &
+             call MPI_ISSend( ncol(io), n, MPI_Integer, &
                   lNode, gio, MPI_Comm_World, ibuf(ib), MPIerror)
           end if
        else if ( Node == lNode ) then
-          call MPI_IRecv( gcol(gio) , n, MPI_Integer, &
-               BNode, gio, MPI_Comm_World, ibuf(ib), MPIerror )
+          call MPI_IRecv( gcol(gio), n, MPI_Integer, &
+               BNode, gio, MPI_Comm_World, ibuf(ib), MPIerror)
        end if
        gio = gio + n
     end do
@@ -306,13 +306,13 @@ contains
              if ( Node == 0 ) then
                 ncol(io:io-1+n) = lncol(gio:gio-1+n)
              else
-                call MPI_IRecv( ncol(io) , n, MPI_Integer, &
-                     0, ib, MPI_Comm_World, ibuf(ib), MPIerror )
+                call MPI_IRecv( ncol(io), n, MPI_Integer, &
+                     0, ib, MPI_Comm_World, ibuf(ib), MPIerror)
              end if
 
           else if ( Node == 0 ) then
 
-             call MPI_ISSend( lncol(gio) , n, MPI_Integer, &
+             call MPI_ISSend( lncol(gio), n, MPI_Integer, &
                   BNode, ib, MPI_Comm_World, ibuf(ib), MPIerror)
 
           end if
@@ -337,8 +337,8 @@ contains
        end if
        
        ! Bcast everything
-       call MPI_Bcast(ncol(1),nl,MPI_Integer, &
-            0,MPI_Comm_World,MPIError)
+       call MPI_Bcast(ncol(1), nl, MPI_Integer, &
+            0, MPI_Comm_World, MPIError)
        
     else if ( lIO ) then
        ncol => lncol
@@ -405,8 +405,8 @@ contains
 
                 ! count the number of received entities
                 i = sum(ncol(io:io-1+n))
-                call MPI_IRecv( l_col(ind+1) , i, MPI_Integer, &
-                     0, ib, MPI_Comm_World, ibuf(ib), MPIerror )
+                call MPI_IRecv( l_col(ind+1), i, MPI_Integer, &
+                     0, ib, MPI_Comm_World, ibuf(ib), MPIerror)
                 ind = ind + i
                 
              end if
@@ -419,7 +419,7 @@ contains
                 i = i + lncol(io)
              end do
 
-             call MPI_Send( ibuf(1) , i, MPI_Integer, &
+             call MPI_Send( ibuf(1), i, MPI_Integer, &
                   BNode, ib, MPI_Comm_World, MPIerror)
              
           end if
@@ -433,7 +433,7 @@ contains
        else
           do ib = 1 , nb
              if ( ibuf(ib) /= MPI_REQUEST_NULL ) &
-                  call MPI_Wait(ibuf(ib),MPIstatus,MPIerror)
+                  call MPI_Wait(ibuf(ib), MPIstatus, MPIerror)
           end do
        end if
        deallocate(ibuf)
@@ -451,8 +451,8 @@ contains
        end if
 
        ! Bcast
-       call MPI_Bcast(l_col(1),n_nzs,MPI_Integer, &
-            0,MPI_Comm_World,MPIError)
+       call MPI_Bcast(l_col(1), n_nzs, MPI_Integer, &
+           0, MPI_Comm_World, MPIError)
 
     else if ( lIO ) then
 #endif
@@ -468,8 +468,7 @@ contains
 #endif
 
     ! Create the sparsity pattern
-    call newSparsity(sp,nl,no, &
-         n_nzs, ncol, l_ptr, l_col, trim(tag))
+    call newSparsity(sp,nl,no, n_nzs, ncol, l_ptr, l_col, trim(tag))
 
     ! de-allocate
     deallocate(l_ptr,l_col)
@@ -520,7 +519,7 @@ contains
           lncol(1) = -1
        end if
        if ( lncol(1) < 0 ) then
-          call Node_Sp_gncol(0,sp,dit,no,lncol)
+          call Node_Sp_gncol(0, sp, dit, no, lncol)
        end if
 
 #else
@@ -580,13 +579,13 @@ contains
 #endif
              else
                 i = sum(ncol(io:io-1+n))
-                call MPI_ISSend( l_col(ind+1) , i, MPI_Integer, &
+                call MPI_ISSend( l_col(ind+1), i, MPI_Integer, &
                      0, ib, MPI_Comm_World, ibuf(ib), MPIerror)
                 ind = ind + i
              end if
           else if ( Node == 0 ) then
-             call MPI_Recv( ibuf(1) , max_n, MPI_Integer, &
-                  BNode, ib, MPI_Comm_World, MPIstatus, MPIerror )
+             call MPI_Recv( ibuf(1), max_n, MPI_Integer, &
+                  BNode, ib, MPI_Comm_World, MPIstatus, MPIerror)
              if ( MPIerror /= MPI_Success ) &
                   call die('Error in code: io_write_Sp')
 #ifdef TEST_IO
@@ -608,7 +607,7 @@ contains
        if ( Node /= 0 ) then
           do ib = 1 , nb
              if ( ibuf(ib) /= MPI_REQUEST_NULL ) &
-                  call MPI_Wait(ibuf(ib),MPIstatus,MPIerror)
+                  call MPI_Wait(ibuf(ib), MPIstatus, MPIerror)
           end do
        end if
        deallocate(ibuf)
@@ -688,7 +687,7 @@ contains
           lncol(1) = -1
        end if
        if ( lncol(1) < 0 ) then
-          call Node_Sp_gncol(0,sp,dit,no,lncol)
+          call Node_Sp_gncol(0, sp, dit, no, lncol)
        end if
 #else
        call die('Error in distribution, io_read_d1D')
@@ -697,11 +696,11 @@ contains
     else
        ! Create the Fake distribution
 #ifdef MPI
-       call newDistribution(no,MPI_Comm_Self,fdit,name='Fake dist')
+       call newDistribution(no, MPI_Comm_Self, fdit, name='Fake dist')
 #else
-       call newDistribution(no,-1           ,fdit,name='Fake dist')
+       call newDistribution(no, -1, fdit, name='Fake dist')
 #endif
-       call newdSpData1D(sp,fdit,dSp1D,name=trim(tag))
+       call newdSpData1D(sp, fdit, dSp1D, name=trim(tag))
        ! Clean up the distribution again
        call delete(fdit)
     end if
@@ -750,8 +749,8 @@ contains
 
                 ! count the number of received entities
                 i = sum(ncol(io:io-1+n))
-                call MPI_IRecv( a(ind+1) , i, MPI_Double_Precision, &
-                     0, ib, MPI_Comm_World, ibuf(ib), MPIerror )
+                call MPI_IRecv( a(ind+1), i, MPI_Double_Precision, &
+                     0, ib, MPI_Comm_World, ibuf(ib), MPIerror)
                 ind = ind + i
                 
              end if
@@ -764,7 +763,7 @@ contains
                 i = i + lncol(io)
              end do
 
-             call MPI_Send( buf(1) , i, MPI_Double_Precision, &
+             call MPI_Send( buf(1), i, MPI_Double_Precision, &
                   BNode, ib, MPI_Comm_World, MPIerror)
              
           end if
@@ -779,7 +778,7 @@ contains
        else
           do ib = 1 , nb
              if ( ibuf(ib) /= MPI_REQUEST_NULL ) &
-                  call MPI_Wait(ibuf(ib),MPIstatus,MPIerror)
+                  call MPI_Wait(ibuf(ib), MPIstatus, MPIerror)
           end do
           deallocate(ibuf)
        end if
@@ -799,7 +798,7 @@ contains
 #ifdef MPI
     if ( lBcast ) then
 
-       call MPI_Bcast(a(1),n_nzs,MPI_Double_Precision, &
+       call MPI_Bcast(a(1), n_nzs, MPI_Double_Precision, &
             0, MPI_Comm_World, MPIError)
 
     end if
@@ -853,7 +852,7 @@ contains
           lncol(1) = -1
        end if
        if ( lncol(1) < 0 ) then
-          call Node_Sp_gncol(0,sp,dit,no,lncol)
+          call Node_Sp_gncol(0, sp, dit, no, lncol)
        end if
 #else
        call die('Error in distribution, io_write_d1D')
@@ -898,13 +897,13 @@ contains
 #endif
              else
                 i = sum(ncol(io:io-1+n))
-                call MPI_ISSend( a(ind+1) , i, MPI_Double_Precision, &
+                call MPI_ISSend( a(ind+1), i, MPI_Double_Precision, &
                      0, ib, MPI_Comm_World, ibuf(ib), MPIerror)
                 ind = ind + i
              end if
           else if ( Node == 0 ) then
-             call MPI_Recv( buf(1) , max_n, MPI_Double_Precision, &
-                  BNode, ib, MPI_Comm_World, MPIstatus, MPIerror )
+             call MPI_Recv( buf(1), max_n, MPI_Double_Precision, &
+                  BNode, ib, MPI_Comm_World, MPIstatus, MPIerror)
              if ( MPIerror /= MPI_Success ) &
                   call die('Error in code: io_write_d1D')
 #ifdef TEST_IO
@@ -930,7 +929,7 @@ contains
           ! two messages with the same tag...
           do ib = 1 , nb
              if ( ibuf(ib) /= MPI_REQUEST_NULL ) &
-                  call MPI_Wait(ibuf(ib),MPIstatus,MPIerror)
+                  call MPI_Wait(ibuf(ib), MPIstatus, MPIerror)
           end do
           deallocate(ibuf)
        end if
@@ -994,7 +993,7 @@ contains
           lncol(1) = -1
        end if
        if ( lncol(1) < 0 ) then
-          call Node_Sp_gncol(0,sp,dit,no,lncol)
+          call Node_Sp_gncol(0, sp, dit, no, lncol)
        end if
 #else
        call die('Error in distribution, io_write_r1D')
@@ -1039,13 +1038,13 @@ contains
 #endif
              else
                 i = sum(ncol(io:io-1+n))
-                call MPI_ISSend( a(ind+1) , i, MPI_Double_Precision, &
+                call MPI_ISSend( a(ind+1), i, MPI_Double_Precision, &
                      0, ib, MPI_Comm_World, ibuf(ib), MPIerror)
                 ind = ind + i
              end if
           else if ( Node == 0 ) then
-             call MPI_Recv( buf(1) , max_n, MPI_Double_Precision, &
-                  BNode, ib, MPI_Comm_World, MPIstatus, MPIerror )
+             call MPI_Recv( buf(1), max_n, MPI_Double_Precision, &
+                  BNode, ib, MPI_Comm_World, MPIstatus, MPIerror)
              if ( MPIerror /= MPI_Success ) &
                   call die('Error in code: io_write_r1D')
 #ifdef TEST_IO
@@ -1071,7 +1070,7 @@ contains
           ! two messages with the same tag...
           do ib = 1 , nb
              if ( ibuf(ib) /= MPI_REQUEST_NULL ) &
-                  call MPI_Wait(ibuf(ib),MPIstatus,MPIerror)
+                  call MPI_Wait(ibuf(ib), MPIstatus, MPIerror)
           end do
           deallocate(ibuf)
        end if
@@ -1152,7 +1151,7 @@ contains
           lncol(1) = -1
        end if
        if ( lncol(1) < 0 ) then
-          call Node_Sp_gncol(0,sp,dit,no,lncol)
+          call Node_Sp_gncol(0, sp, dit, no, lncol)
        end if
 #else
        call die('Error in distribution, io_read_d2D')
@@ -1161,9 +1160,9 @@ contains
     else
        ! Create the Fake distribution
 #ifdef MPI
-       call newDistribution(no,MPI_Comm_Self,fdit,name='Fake dist')
+       call newDistribution(no, MPI_Comm_Self, fdit, name='Fake dist')
 #else
-       call newDistribution(no,-1           ,fdit,name='Fake dist')
+       call newDistribution(no, -1, fdit, name='Fake dist')
 #endif
        call newdSpData2D(sp,dim2,fdit,dSp2D,name=trim(tag), &
             sparsity_dim=sp_dim)
@@ -1189,7 +1188,8 @@ contains
     if ( sp_dim == 2 ) then ! collapsed IO
 
        if ( Node == 0 ) then
-          allocate(buf(max_n*dim2))
+          max_n = max_n * dim2
+          allocate(buf(max_n))
        end if
 
        ! Read sparse blocks and distribute
@@ -1213,8 +1213,8 @@ contains
              else
                 ! count the number of received entities
                 i = sum(ncol(io:io-1+n))
-                call MPI_IRecv( a(1,ind+1) ,dim2*i, MPI_Double_Precision, &
-                     0, ib, MPI_Comm_World, ibuf(ib), MPIerror )
+                call MPI_IRecv( a(1,ind+1), dim2*i, MPI_Double_Precision, &
+                     0, ib, MPI_Comm_World, ibuf(ib), MPIerror)
                 ind = ind + i
              end if
           else if ( Node == 0 ) then
@@ -1223,7 +1223,7 @@ contains
                 read(iu) buf(i+1:i+dim2*lncol(io))
                 i = i + dim2*lncol(io)
              end do
-             call MPI_Send( buf(1) , i, MPI_Double_Precision, &
+             call MPI_Send( buf(1), i, MPI_Double_Precision, &
                   BNode, ib, MPI_Comm_World, MPIerror)
           end if
           gio = gio + n
@@ -1256,8 +1256,8 @@ contains
                 else
                    ! count the number of received entities
                    i = sum(ncol(io:io-1+n))
-                   call MPI_IRecv( a(ind+1,s) ,i, MPI_Double_Precision, &
-                        0, ib, MPI_Comm_World, ibuf(ib), MPIerror )
+                   call MPI_IRecv( a(ind+1,s), i, MPI_Double_Precision, &
+                        0, ib, MPI_Comm_World, ibuf(ib), MPIerror)
                    ind = ind + i
                 end if
              else if ( Node == 0 ) then
@@ -1266,7 +1266,7 @@ contains
                    read(iu) buf(i+1:i+lncol(io))
                    i = i + lncol(io)
                 end do
-                call MPI_Send( buf(1) , i, MPI_Double_Precision, &
+                call MPI_Send( buf(1), i, MPI_Double_Precision, &
                      BNode, ib, MPI_Comm_World, MPIerror)
              end if
              gio = gio + n
@@ -1275,7 +1275,7 @@ contains
           if ( Node /= 0 .and. s < dim2 ) then
              do ib = 1 , nb
                 if ( ibuf(ib) /= MPI_REQUEST_NULL ) &
-                     call MPI_Wait(ibuf(ib),MPIstatus,MPIerror)
+                     call MPI_Wait(ibuf(ib), MPIstatus, MPIerror)
                 ibuf(ib) = MPI_REQUEST_NULL
              end do
           end if
@@ -1289,7 +1289,7 @@ contains
        else
           do ib = 1 , nb
              if ( ibuf(ib) /= MPI_REQUEST_NULL ) &
-                  call MPI_Wait(ibuf(ib),MPIstatus,MPIerror)
+                  call MPI_Wait(ibuf(ib), MPIstatus, MPIerror)
           end do
           deallocate(ibuf)
        end if
@@ -1323,7 +1323,7 @@ contains
 #ifdef MPI
     if ( lBcast ) then
 
-       call MPI_Bcast(a(1,1),dim2*n_nzs,MPI_Double_Precision, &
+       call MPI_Bcast(a(1,1), dim2*n_nzs, MPI_Double_Precision, &
             0, MPI_Comm_World, MPIError)
 
     end if
@@ -1382,7 +1382,7 @@ contains
           lncol(1) = -1
        end if
        if ( lncol(1) < 0 ) then
-          call Node_Sp_gncol(0,sp,dit,no,lncol)
+          call Node_Sp_gncol(0, sp, dit, no, lncol)
        end if
 
 #else
@@ -1436,13 +1436,13 @@ contains
 #endif
                 else
                    i = sum(ncol(io:io-1+n))
-                   call MPI_ISSend( a(ind+1,s) , i, MPI_Double_Precision, &
+                   call MPI_ISSend( a(ind+1,s), i, MPI_Double_Precision, &
                         0, ib, MPI_Comm_World, ibuf(ib), MPIerror)
                    ind = ind + i
                 end if
              else if ( Node == 0 ) then
-                call MPI_Recv( buf(1) , max_n, MPI_Double_Precision, &
-                     BNode, ib, MPI_Comm_World, MPIstatus, MPIerror )
+                call MPI_Recv( buf(1), max_n, MPI_Double_Precision, &
+                     BNode, ib, MPI_Comm_World, MPIstatus, MPIerror)
                 if ( MPIerror /= MPI_Success ) &
                      call die('Error in code (1): io_write_d2D')
 #ifdef TEST_IO
@@ -1462,7 +1462,7 @@ contains
           if ( Node /= 0 .and. s < dim2 ) then
              do ib = 1 , nb
                 if ( ibuf(ib) /= MPI_REQUEST_NULL ) &
-                     call MPI_Wait(ibuf(ib),MPIstatus,MPIerror)
+                     call MPI_Wait(ibuf(ib), MPIstatus, MPIerror)
                 ibuf(ib) = MPI_REQUEST_NULL
              end do
           end if
@@ -1471,7 +1471,8 @@ contains
     else
 
        if ( Node == 0 ) then
-          allocate(buf(max_n*dim2))
+          max_n = max_n * dim2
+          allocate(buf(max_n))
        end if
        
        ind = 0
@@ -1499,23 +1500,23 @@ contains
 #endif
              else
                 i = sum(ncol(io:io-1+n))
-                call MPI_ISSend( a(1,ind+1) , dim2*i, MPI_Double_Precision, &
+                call MPI_ISSend( a(1,ind+1), dim2*i, MPI_Double_Precision, &
                      0, ib, MPI_Comm_World, ibuf(ib), MPIerror)
                 ind = ind + i
              end if
           else if ( Node == 0 ) then
-             call MPI_Recv( buf(1) , max_n, MPI_Double_Precision, &
-                  BNode, ib, MPI_Comm_World, MPIstatus, MPIerror )
+             call MPI_Recv( buf(1), max_n, MPI_Double_Precision, &
+                  BNode, ib, MPI_Comm_World, MPIstatus, MPIerror)
              if ( MPIerror /= MPI_Success ) &
                   call die('Error in code (2): io_write_d2D')
 #ifdef TEST_IO
-             i = sum(lncol(gio:gio-1+n))
+             i = dim2*sum(lncol(gio:gio-1+n))
              write(iu) buf(1:i)
 #else
              i = 0
              do io = gio , gio - 1 + n
                 write(iu) buf(i+1:i+dim2*lncol(io))
-                i = i + lncol(io)
+                i = i + dim2*lncol(io)
              end do
 #endif
              
@@ -1531,7 +1532,7 @@ contains
        else
           do ib = 1 , nb
              if( ibuf(ib) /= MPI_REQUEST_NULL ) &
-                  call MPI_Wait(ibuf(ib),MPIstatus,MPIerror)
+                  call MPI_Wait(ibuf(ib), MPIstatus, MPIerror)
           end do
           deallocate(ibuf)
        end if
@@ -1612,7 +1613,7 @@ contains
           lncol(1) = -1
        end if
        if ( lncol(1) < 0 ) then
-          call Node_Sp_gncol(0,sp,dit,no,lncol)
+          call Node_Sp_gncol(0, sp, dit, no, lncol)
        end if
 
 #else
@@ -1666,13 +1667,13 @@ contains
 #endif
                 else
                    i = sum(ncol(io:io-1+n))
-                   call MPI_ISSend( a(ind+1,s) , i, MPI_Double_Precision, &
+                   call MPI_ISSend( a(ind+1,s), i, MPI_Double_Precision, &
                         0, ib, MPI_Comm_World, ibuf(ib), MPIerror)
                    ind = ind + i
                 end if
              else if ( Node == 0 ) then
-                call MPI_Recv( buf(1) , max_n, MPI_Double_Precision, &
-                     BNode, ib, MPI_Comm_World, MPIstatus, MPIerror )
+                call MPI_Recv( buf(1), max_n, MPI_Double_Precision, &
+                     BNode, ib, MPI_Comm_World, MPIstatus, MPIerror)
                 if ( MPIerror /= MPI_Success ) &
                      call die('Error in code (1): io_write_r2D')
 #ifdef TEST_IO
@@ -1692,7 +1693,7 @@ contains
           if ( Node /= 0 .and. s < dim2 ) then
              do ib = 1 , nb
                 if ( ibuf(ib) /= MPI_REQUEST_NULL ) &
-                     call MPI_Wait(ibuf(ib),MPIstatus,MPIerror)
+                     call MPI_Wait(ibuf(ib), MPIstatus, MPIerror)
                 ibuf(ib) = MPI_REQUEST_NULL
              end do
           end if
@@ -1701,7 +1702,8 @@ contains
     else
 
        if ( Node == 0 ) then
-          allocate(buf(max_n*dim2))
+          max_n = max_n * dim2
+          allocate(buf(max_n))
        end if
        
        ind = 0
@@ -1729,23 +1731,23 @@ contains
 #endif
              else
                 i = sum(ncol(io:io-1+n))
-                call MPI_ISSend( a(1,ind+1) , dim2*i, MPI_Double_Precision, &
+                call MPI_ISSend( a(1,ind+1), dim2*i, MPI_Double_Precision, &
                      0, ib, MPI_Comm_World, ibuf(ib), MPIerror)
                 ind = ind + i
              end if
           else if ( Node == 0 ) then
-             call MPI_Recv( buf(1) , max_n, MPI_Double_Precision, &
-                  BNode, ib, MPI_Comm_World, MPIstatus, MPIerror )
+             call MPI_Recv( buf(1), max_n, MPI_Double_Precision, &
+                  BNode, ib, MPI_Comm_World, MPIstatus, MPIerror)
              if ( MPIerror /= MPI_Success ) &
                   call die('Error in code (2): io_write_r2D')
 #ifdef TEST_IO
-             i = sum(lncol(gio:gio-1+n))
+             i = dim2*sum(lncol(gio:gio-1+n))
              write(iu) real(buf(1:i), psp)
 #else
              i = 0
              do io = gio , gio - 1 + n
                 write(iu) real(buf(i+1:i+dim2*lncol(io)), psp)
-                i = i + lncol(io)
+                i = i + dim2*lncol(io)
              end do
 #endif
              
@@ -1761,7 +1763,7 @@ contains
        else
           do ib = 1 , nb
              if( ibuf(ib) /= MPI_REQUEST_NULL ) &
-                  call MPI_Wait(ibuf(ib),MPIstatus,MPIerror)
+                  call MPI_Wait(ibuf(ib), MPIstatus, MPIerror)
           end do
           deallocate(ibuf)
        end if

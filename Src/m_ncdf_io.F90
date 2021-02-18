@@ -1033,13 +1033,13 @@ contains
                      count=(/dim2,ncol(io)/),start=(/1,gind/))
                 gind = gind + ncol(io)
              else
-                call MPI_Send( a(1,ind+1) , dim2*ncol(io), MPI_Double_Precision, &
+                call MPI_Send( a(1,ind+1), dim2*ncol(io), MPI_Double_Precision, &
                      0, gio, MPI_Comm_World, MPIerror)
              end if
              ind = ind + ncol(io)
           else if ( Node == 0 ) then
-             call MPI_Recv( buf(1) , max_n, MPI_Double_Precision, &
-                  BNode, gio, MPI_Comm_World, MPIstatus, MPIerror )
+             call MPI_Recv( buf(1), max_n, MPI_Double_Precision, &
+                  BNode, gio, MPI_Comm_World, MPIstatus, MPIerror)
              if ( MPIerror /= MPI_Success ) &
                   call die('Error in code (2): cdf_w_d2D')
              call MPI_Get_Count(MPIstatus, MPI_Double_Precision, io, MPIerror)
@@ -1191,14 +1191,14 @@ contains
                 ! count the number of received entities
                 i = sum(ncol(io:io-1+n))
                 call MPI_IRecv( a(1,ind+1) ,dim2*i, MPI_Double_Precision, &
-                     0, ib, MPI_Comm_World, ibuf(ib), MPIerror )
+                     0, ib, MPI_Comm_World, ibuf(ib), MPIerror)
                 ind = ind + i
              end if
           else if ( Node == 0 ) then
              i = sum(lncol(gio:gio-1+n))
              call ncdf_get_var(ncdf,vname,buf(1:i), &
                   start = (/1,gind/) , count = (/dim2,i/) )
-             call MPI_Send( buf(1) , i, MPI_Double_Precision, &
+             call MPI_Send( buf(1), i, MPI_Double_Precision, &
                   BNode, ib, MPI_Comm_World, MPIerror)
              gind = gind + i
           end if
@@ -1234,15 +1234,15 @@ contains
                 else
                    ! count the number of received entities
                    i = sum(ncol(io:io-1+n))
-                   call MPI_IRecv( a(ind+1,s) ,i, MPI_Double_Precision, &
-                        0, ib, MPI_Comm_World, ibuf(ib), MPIerror )
+                   call MPI_IRecv( a(ind+1,s), i, MPI_Double_Precision, &
+                        0, ib, MPI_Comm_World, ibuf(ib), MPIerror)
                    ind = ind + i
                 end if
              else if ( Node == 0 ) then
                 i = sum(lncol(gio:gio-1+n))
                 call ncdf_get_var(ncdf,vname,buf(1:i), &
                      start = (/gind,s/) , count = (/i/) )
-                call MPI_Send( buf(1) , i, MPI_Double_Precision, &
+                call MPI_Send( buf(1), i, MPI_Double_Precision, &
                      BNode, ib, MPI_Comm_World, MPIerror)
                 gind = gind + i
              end if
@@ -1252,7 +1252,7 @@ contains
           if ( Node /= 0 .and. s < dim2 ) then
              do ib = 1 , nb
                 if ( ibuf(ib) /= MPI_REQUEST_NULL ) &
-                     call MPI_Wait(ibuf(ib),MPIstatus,MPIerror)
+                     call MPI_Wait(ibuf(ib), MPIstatus, MPIerror)
                 ibuf(ib) = MPI_REQUEST_NULL
              end do
           end if
@@ -1266,7 +1266,7 @@ contains
        else
           do ib = 1 , nb
              if ( ibuf(ib) /= MPI_REQUEST_NULL ) &
-                  call MPI_Wait(ibuf(ib),MPIstatus,MPIerror)
+                  call MPI_Wait(ibuf(ib), MPIstatus, MPIerror)
           end do
           deallocate(ibuf)
        end if
