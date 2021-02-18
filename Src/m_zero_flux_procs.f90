@@ -63,18 +63,23 @@ contains
     real(dp) :: rbuf            !! temp buffer for R distance values
     ! as to an init routine
 
-    rm = 0.0_dp                ! auto-init in the first branch of the following loop
-                               ! rm = species(1)%reduced_vlocal%cutoff
+    ! rm = 0.0_dp                ! auto-init in the first branch of the following loop
+    rm = species(1)%reduced_vlocal%cutoff
+    npts = species(1)%reduced_vlocal%n
+    ! delta_rm = species(1)%reduced_vlocal%delta
 
     ! find rm and npts for vlocal
     do is = 1, nsp                !
        spp => species(is)
-       if (spp%reduced_vlocal%cutoff > rm) then !FIXME: check for maximum number of points? UPD: or minimum?
+       if (spp%reduced_vlocal%cutoff < rm) then !FIXME: check for maximum number of points? UPD: or minimum?
           rm = spp%reduced_vlocal%cutoff        !NOTE:  just reversing comparison direction is buggy
           npts = spp%reduced_vlocal%n
-          delta_rm = spp%reduced_vlocal%delta
+          ! delta_rm = spp%reduced_vlocal%delta
        end if
     end do
+
+    npts =  npts + mod(npts,2)  ! for Simpson needs 2n points
+    delta_rm = rm / npts
 
     allocate(aux(npts))
     allocate(tab_local(nqxq, nsp, 0:1))
