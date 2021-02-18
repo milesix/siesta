@@ -63,33 +63,22 @@ contains
     real(dp) :: rbuf            !! temp buffer for R distance values
     ! as to an init routine
 
-    ! rm = 0.0_dp                ! auto-init in the first branch of the following loop
-    rm = species(1)%reduced_vlocal%cutoff
-    npts = species(1)%reduced_vlocal%n
-    ! delta_rm = species(1)%reduced_vlocal%delta
-
-    ! find rm and npts for vlocal
-    do is = 1, nsp                !
-       spp => species(is)
-       if (spp%reduced_vlocal%cutoff < rm) then !FIXME: check for maximum number of points? UPD: or minimum?
-          rm = spp%reduced_vlocal%cutoff        !NOTE:  just reversing comparison direction is buggy
-          npts = spp%reduced_vlocal%n
-          ! delta_rm = spp%reduced_vlocal%delta
-       end if
-    end do
-
-    npts =  npts + mod(npts,2)  ! for Simpson needs 2n points
-    delta_rm = rm / npts
-
-    allocate(aux(npts))
     allocate(tab_local(nqxq, nsp, 0:1))
-
-    aux(:) = 0.0_dp
+    tab_local(:,:,:) = 0.0_dp
 
     !NOTE: in QE:
     ! aux (ir) = (rgrid(nt)%r(ir)*upf(nt)%vloc(ir)+2.d0*zv(nt))* besr (ir) * rgrid(nt)%r(ir)
     do is = 1,nsp
        spp => species(is)
+
+       rm = spp%reduced_vlocal%cutoff
+       npts = spp%reduced_vlocal%n
+       npts =  npts + mod(npts,2)  ! for Simpson needs 2n points
+       delta_rm = rm / npts
+
+       allocate(aux(npts))
+       aux(:) = 0.0_dp
+
        do iq=1,nqxq
           qi = (iq - 1) * dq
 
@@ -110,6 +99,9 @@ contains
           tab_local(iq, is, 1) = vl_int * pref
 
        end do
+
+       deallocate(aux)
+
     end do
 
     allocate(H_g(ngm_plus_vmd, 3, 3, nsp))
@@ -240,7 +232,6 @@ contains
 
     ! cleanup
     nullify(tc_v)
-    deallocate(aux)
     deallocate(u_g)
     deallocate(H_g)
     deallocate(tab_local)
