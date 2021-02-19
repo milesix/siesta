@@ -21,13 +21,13 @@ List of software and documentation tasks required to release Siesta (version):
 
 6. [ ] Tag the release commit (with leading `v` for versions `4.*` and lower, without `v` if not).
 
-7. [ ] Create a page on the GitLab wiki with the Release notes for this version..
+7. [ ] Create a page on the GitLab wiki with the Release notes for this version.
 
 8. [ ] Update the [Guide to Siesta versions](https://gitlab.com/siesta-project/siesta/-/wikis/Guide-to-Siesta-versions) on GitLab.
        Check that the new Release Notes wiki page is linked from it.
 
 9. [ ] Run `release.py` script to create GitLab release.
-       GitLab will send a notification of the release to users that track the repository.
+       GitLab will automatically send an email notification of the release to users that track the repository.
 
 10. [ ] Update the [Guide to Siesta versions](https://gitlab.com/siesta-project/siesta/-/wikis/Guide-to-Siesta-versions) on GitLab
         by adding a link to the GitLab release that was just created.
