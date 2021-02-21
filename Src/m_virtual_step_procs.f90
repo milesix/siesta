@@ -420,8 +420,6 @@ contains
        Jtotal(:) = Jtotal(:) + ion_flux_d(:)
        Jtotal(:) = Jtotal(:) + ion_flux_e(:)
 
-       print*, "[Jxc] ", xc_flux_Jxc(:)
-
        ! call reset_ion_flux_data()
     end if
 
