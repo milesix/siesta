@@ -49,7 +49,6 @@
 
       real(dp), external :: volcel
 
-
 !------------------------------------------------------------------------- BEGIN
       ! Save the last geometry for which the density matrix 
       ! (electronic structure) has been calculated
@@ -234,10 +233,12 @@
           call write_md_record( istep )
 
           ! Get coordinates from driver program trough pipe
-          call coordsFromPipe( na_u, xa, ucell )
+          call coordsFromPipe( na_u, xa, ucell, relaxd )
+
           if (volcel(ucell) < 1.0e-8_dp) then
             call automatic_cell(ucell,scell,na_u,xa,isa,charnet)
           endif
+
       end select
 
       if (IOnode) then
@@ -251,24 +252,25 @@
       ! NOTE that this means "the positions predicted for next step"
       ! and "the current velocities"
       if (idyn.ne.6 .and. idyn.ne.7 .and. idyn.ne.8) then
+
         call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va, 
      &             foundxv)
+
         if (lUseZmatrix .and. (idyn.eq.0))
      .    call iozm('write',ucell,vcell,xa,foundzm)
         call siesta_write_positions()
-
 
         ! Save atomic positions and velocities accumulatively and
         ! accumulate coor in Xmol file for animation 
         call write_md_record( istep )
       endif
 
-
    60 continue
 ! Output memory use at the end of this geometry step
       if (cml_p) then
          call cmlEndStep(mainXML)
       endif
+
       call printmemory( 6, 0 )
       call timer( 'IterMD', 2 )
 

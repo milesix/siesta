@@ -17,6 +17,7 @@ C                     and the mesh
 C PartialCoreOnMesh = calculates the partial core density on mesh
 C NeutralAtomOnMesh = calculates the neutral atom potential on mesh
 C PhiOnMesh         = calculates the orbital values on the mesh
+C ExtPotOnMesh      = calculates energy and forces due to external potential
 C
 
       module mesh
@@ -670,7 +671,6 @@ C Find if mesh has to be changed due to unit cell
 C Find if mesh has to be changed due to rmax
       if (rmax .ne. lastra) samesh = .false.
       lastra = rmax
-
 C Find if atoms have moved having checked the number of atoms first
       samexa = (na.eq.lastna)
       if (samexa) then
@@ -1005,7 +1005,8 @@ C Loop over sub-points
 
       end subroutine NeutralAtomOnMesh
 
-      subroutine LocalChargeOnMesh( na, isa, ntpl, Chlocal, indxua )
+      subroutine LocalChargeOnMesh( na, isa, ntpl, Chlocal, indxua,
+     .                                Forces, dvol, Vext, fal )
 C
 C Finds the diffuse ionic charge, whose electrostatic potential is equal
 C to Vlocal on the mesh
@@ -1018,10 +1019,18 @@ C integer isa(na)       : Species index of all atoms in supercell
 C integer ntpl          : Number of mesh Total Points in unit cell
 C                       : (including subpoints) locally
 C integer indxua        : Index of equivalent atom in unit cell
+C logical Forces        : Are the forces to be calculated?
+C real*8 dvol           : Mesh-cell volume
+C real Vext(ntpl)       : External potential
 C ----------------------------------------------------------------------
-C Output : 
+C Output :  (non-gradient case)
 C ----------------------------------------------------------------------
-C real    Chlocal(ntpl)     : Sum of diffuse ionic charge densities
+C real Chlocal(ntpl)    : Sum of diffuse ionic charge densities
+C ----------------------------------------------------------------------
+C Output :  (gradient case)
+C ----------------------------------------------------------------------
+C real Chlocal(ntpl)    : Sum of diffuse ionic charge densities
+C real*8 fal(3,:)       : local copy of atomic forces
 C ----------------------------------------------------------------------
  
       use precision,     only : dp, grid_p
@@ -1038,20 +1047,25 @@ C
       integer, intent(in)  :: na, isa(na), ntpl
       integer, intent(in)  :: indxua(*)
       real(grid_p),    intent(out) :: Chlocal(ntpl)
+      real(dp),      intent(in) :: dvol
+      real(grid_p),  intent(in) :: Vext(*)
+      logical,       intent(in) :: Forces
+      real(dp),   intent(inout) :: fal(3,*)
  
 C
 C Internal variables
 C
       integer
-     .  ia, iop, ip, ip0, is, isp, iua
+     .  i, ia, iop, ip, ip0, is, isp, iua
  
       real(dp)
-     .  dx(3), grpsch(3), r, ra, pschloc
+     .  dfa(3), dx(3), grpsch(3), r, ra, pschloc
 
       type(rad_func), pointer            :: func   
  
 C Initialise array to zero 
       Chlocal(1:ntpl) = 0.0_grid_p
+      dfa = 0.0_dp 
  
       do ia = 1,na
         iua = indxua(ia)
@@ -1072,6 +1086,12 @@ C Loop over sub-points
                 ip = isp + nsp * (ip0 - 1)
                 call psch( is, dx, pschloc, grpsch )
                 Chlocal(ip) = Chlocal(ip) + pschloc
+                if (Forces) then
+                  do i=1,3
+                    dfa(i) = dvol * Vext(ip) * grpsch(i)
+                    fal(i,iua) = fal(i,iua) + dfa(i)
+                  enddo
+                endif
               endif
             enddo
  
@@ -1405,3 +1425,105 @@ C Free local memory
       deallocate( numphi )
 
       end subroutine PhiOnMesh
+
+      subroutine ExtPotOnMesh( na, isa, ntpl, indxua, dvol, volume,
+     .                         drho, rhoatm, 
+     .                         vext, duext, fal, stressl, 
+     .                         Forces, Stress )
+C
+C Finds the energy and forces due to an external potential
+C
+C ----------------------------------------------------------------------
+C Input :
+C ----------------------------------------------------------------------
+C integer na            : Number of atoms in supercell
+C integer isa(na)       : Species index of all atoms in supercell
+C integer ntpl          : Number of mesh Total Points in unit cell
+C                       : (including subpoints) locally
+C integer indxua        : Index of equivalent atom in unit cell
+C real*8  dvol          : Mesh-cell volume
+C real*8  volume        : Unit cell volume
+C real    drho(ntpl)    : SCF density difference
+C real    rhoatm(ntpl)  : Harris electron density
+C real    vext(ntpl)    : External potential on grid
+C logical Forces        : Should the forces be calculated?
+C logical Stress        : Should the stress be calculated?
+C ----------------------------------------------------------------------
+C Output : (non-gradient call)
+C ----------------------------------------------------------------------
+C real*8  duext         : Energy
+C ----------------------------------------------------------------------
+C Output : (gradient call)
+C ----------------------------------------------------------------------
+C real*8  duext         : Energy
+C real*8  fal(3,:)      : Local copy of atomic forces
+C real*8  stressl(3,3)  : Local copy of stress tensor
+C ----------------------------------------------------------------------
+
+      use precision, only: dp, grid_p
+      use atmfuncs,  only: rcut, phiatm
+      use mesh,      only: dxa, idop, indexp, ipa, mop, nsp, xdop, xdsp
+      use parallel,  only: Node
+#ifdef MPI                                                                              
+      use mpi_siesta
+#endif              
+
+      implicit none     
+C
+C Passed arguments
+C
+      integer,      intent(in)  :: na, isa(na), ntpl
+      integer,      intent(in)  :: indxua(*)
+      real(dp),     intent(in)  :: dvol, volume
+      real(grid_p), intent(in)  :: drho(*), rhoatm(*), vext(*)
+      logical,      intent(in)  :: Forces, Stress
+      real(dp),  intent(inout)  :: fal(3,*)
+      real(dp),  intent(inout)  :: stressl(3,3)
+      real(dp),  intent(inout)  :: duext
+
+C Internal variables
+
+      real(grid_p), dimension(:), allocatable::  totchar
+      integer ip, ia, iz, iua, is
+
+#ifdef MPI                                                                              
+      integer MPIerror 
+      real(dp) eloc
+#endif                
+
+      allocate(totchar(ntpl))
+      call memory('A','X',ntpl,' ExtPotOnMesh')
+
+
+C Find diffuse ionic charge on mesh
+      call LocalChargeOnMesh( na, isa, ntpl, totchar, indxua, Forces, 
+     .                        dvol, Vext, fal )
+
+C Add electronic charge 
+      totchar(1:ntpl) = totchar(1:ntpl) +
+     .                  drho(1:ntpl) + rhoatm(1:ntpl)
+
+C Energy
+      do ip = 1,ntpl
+        duext = duext + dvol * Vext(ip) * totchar(ip)
+      enddo
+
+#ifdef MPI
+C Global reduction of DUext
+      eloc = duext
+#ifdef NODAT
+      call MPI_AllReduce(eloc,duext,1,MPI_double_precision,MPI_Sum,
+     .  MPI_Comm_World,MPIerror)
+#else
+      call MPI_AllReduce(eloc,duext,1,DAT_double,MPI_Sum,
+     .  MPI_Comm_World,MPIerror)
+#endif
+#endif
+
+      call memory('D','X',ntpl,' ExtPotOnMesh')
+      deallocate(totchar)
+
+      return
+      end
+
+

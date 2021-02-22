@@ -5992,7 +5992,6 @@ c    .                     ,'        # scaleFactor(izeta=1,Nzeta)'
              write(6,'(a)')
      .                       '%endblock PAO.Basis' 
 
-
              write(6,'(/a,70("-")/)') 'prinput: '
 
              end subroutine prinput

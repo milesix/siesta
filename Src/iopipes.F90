@@ -24,6 +24,7 @@ use precision, only: dp
 use parallel, only: IOnode
 use fdf
 use sys, only: die, bye
+use siesta_geom, only : xa_last, ucell_last, scell, scell_last, na_s
 #ifdef MPI
       use mpi_siesta
 #endif
@@ -50,12 +51,15 @@ PRIVATE  ! Nothing is declared public beyond this point
 
 CONTAINS
 
-subroutine coordsFromPipe( na, xa, cell )
+subroutine coordsFromPipe( na, xa, cell, relaxd )
+
 ! Reads coordinates from pipe
   implicit none
   integer,  intent(in)  :: na         ! Number of atoms
   real(dp), intent(out) :: xa(3,na)   ! Atomic coordinates (bohr)
   real(dp), intent(out) :: cell(3,3)  ! Lattice vectors (bohr)
+
+  logical, intent(out)  :: relaxd
 
   logical, save     :: firstTime = .true.
   integer           :: n
@@ -76,7 +80,13 @@ subroutine coordsFromPipe( na, xa, cell )
           position='asis' )
 
     firstTime = .false.
+
   end if ! (firstTime .and. IOnode)
+
+  if (IOnode) then
+    write(*,*)'Reading from pipe'
+    call flush(6)
+  endif
 
 ! Read coordinates from pipe
   if (IOnode) then
@@ -92,11 +102,17 @@ subroutine coordsFromPipe( na, xa, cell )
 #endif
 
    if (trim(task)=='quit') then
+
       if (IOnode) then
          write(iuf,*) 'quitting'
          call pxfflush(iuf)
+         print*, 'coordsFromPipe: STOP requested by driver'
+         call pxfflush(6)
       endif
-      call bye('coordsFromPipe: STOP requested by driver')
+      xa_last(1:3,1:na_s)  = xa(1:3,1:na_s)
+      ucell_last(1:3,1:3) = cell(1:3,1:3)
+      scell_last(1:3,1:3) = scell(1:3,1:3)
+      relaxd=.true.
 
    else if (trim(task)=='begin_coords') then
       if (IONode) then
@@ -166,7 +182,6 @@ subroutine forcesToPipe( na, energy, forces, stress )
     open( unit=iuf, file=fname, form='formatted', status='old', &
           position='asis' )
 
-    firstTime = .false.
   end if ! (firstTime .and. IOnode)
 
   if (IOnode) then
@@ -184,6 +199,11 @@ subroutine forcesToPipe( na, energy, forces, stress )
    print '(3a,/,(3f12.6))', 'forcesToPipe: forces (',trim(funit),') =', f
   endif
 
+  if (IOnode) then
+    write(*,*)'Writing to pipe'
+    call flush(6)
+  endif
+
 ! Write forces to pipe
   if (IOnode) then
     write(iuf,*) 'begin_forces'
@@ -198,6 +218,8 @@ subroutine forcesToPipe( na, energy, forces, stress )
     write(iuf,*) 'end_forces'
     call pxfflush(iuf)
   end if ! IOnode
+
+  if (firstTime)firstTime=.false.
 
 end subroutine forcesToPipe
 
