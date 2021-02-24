@@ -234,7 +234,7 @@
           call write_md_record( istep )
 
           ! Get coordinates from driver program trough pipe
-          call coordsFromPipe( na_u, xa, ucell )
+          call coordsFromPipe( na_u, xa, ucell, relaxd )
           if (volcel(ucell) < 1.0e-8_dp) then
             call automatic_cell(ucell,scell,na_u,xa,isa,charnet)
           endif

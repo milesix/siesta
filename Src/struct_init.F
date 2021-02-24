@@ -36,6 +36,7 @@
       real(dp):: bcell(3,3), tmp_cell(3,3)
       integer :: i, ia, ix
       integer:: nbcell  ! Auxiliary to call shaper routine
+      logical :: relaxd
 
 !------------------------------------------------------------------------- BEGIN
 
@@ -82,6 +83,7 @@
 ! Read cell shape and atomic positions from a former run ..............
       foundxv = .false.
       if (usesavexv) then
+        call flush(6)
         call ioxv('read', ucell, vcell, na_u, isa, iza, xa, va, foundxv)
         if (IOnode) then
            if (.not.foundxv) then
@@ -98,9 +100,12 @@
       call fdf_global_get(dummy_str,'MD.TypeOfRun',"none")
       Server_calculation = (leqi(dummy_str,'forces'))
 
+      call flush(6)
       if (Server_calculation) then
-        call coordsFromPipe( na_u, xa, ucell )
+        relaxd=.false.
+        call coordsFromPipe( na_u, xa, ucell , relaxd)
       end if
+
 ! .....................
 
 ! Dump initial coordinates to output ..................................
