@@ -573,8 +573,9 @@ C Find largest value of npl
 #endif
             maxp = npmax
             nspin = ns
-            if (Node.eq.0) call io_close( iu )
           endif
+
+          if (Node.eq.0) call io_close( iu )
 
           end subroutine check_rho
 
