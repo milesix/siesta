@@ -311,7 +311,7 @@ atomlist.o: alloc.o atm_types.o atmfuncs.o parallel.o precision.o siesta_geom.o
 atomlwf.o: alloc.o atmfuncs.o mneighb.o onmod.o precision.o spatial.o sys.o
 atompop.o: atmfuncs.o atomlist.o meshsubs.o meshsubs.o parallel.o
 atompop.o: parallelsubs.o precision.o sys.o
-automatic_cell.o: atmfuncs.o parallel.o precision.o units.o
+automatic_cell.o: atm_types.o atmfuncs.o parallel.o precision.o units.o
 bands.o: alloc.o atmfuncs.o atomlist.o densematrix.o files.o m_fdf_global.o
 bands.o: m_gamma.o parallel.o parallelsubs.o parsing.o precision.o
 bands.o: siesta_geom.o sys.o writewave.o
@@ -409,7 +409,7 @@ get_target_stress.o: m_mpi_utils.o parallel.o precision.o units.o
 globalise.o: alloc.o onmod.o onmod.o precision.o spatial.o
 gradient.o: globalise.o m_mpi_utils.o onmod.o precision.o
 gradientlomem.o: globalise.o onmod.o precision.o
-grdsam.o: parallel.o parsing.o precision.o sys.o
+grdsam.o: files.o parallel.o parsing.o precision.o siesta_options.o sys.o
 hsparse.o: alloc.o atm_types.o atmfuncs.o listsc.o mneighb.o parallel.o
 hsparse.o: parallelsubs.o precision.o siesta_options.o sorting.o sys.o
 idiag.o: parallel.o sys.o
@@ -428,7 +428,7 @@ iogrid_netcdf.o: alloc.o parallel.o precision.o sys.o
 iokp.o: files.o precision.o
 iolwf.o: alloc.o files.o onmod.o parallel.o parallelsubs.o precision.o sys.o
 iomd.o: files.o precision.o
-iopipes.o: parallel.o precision.o sys.o
+iopipes.o: parallel.o precision.o siesta_geom.o sys.o
 iowfs_netcdf.o: alloc.o parallel.o parallelsubs.o precision.o sys.o
 ioxv.o: files.o parallel.o precision.o
 iozm.o: files.o parallel.o precision.o siesta_geom.o zmatrix.o

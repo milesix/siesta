@@ -11,7 +11,7 @@
       subroutine dhscf( nspin, norb, iaorb, iphorb, nuo,
      .                  nuotot, nua, na, isa, xa, indxua, ucell, mscell,
      .                  G2max, ntm, ifa, istr, iHmat, filrho, fildrh, 
-     .                  filevh, filevt, filepsch, filetoch, filevext,
+     .                  filevh, filevt, filepsch, filetoch, filevext, 
      .                  maxnd, numd, listdptr, listd, 
      .                  Dscf, datm, maxnh, numh, listhptr, listh, Hmat,
      .                  Enaatm, Enascf, Uatm, Uscf, DUscf, DUext, 
@@ -572,7 +572,6 @@ C Find number of diagonal spin values
 C ----------------------------------------------------------------------
 C Find SCF electron density at mesh points. Store it in array DRho
 C ----------------------------------------------------------------------
-
       if (read_charge_cdf) then
          call read_grid_netcdf(ntm(1:3),nspin,ntpl,DRho,"Rho")
          do ispin = 1,nspin

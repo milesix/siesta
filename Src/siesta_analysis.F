@@ -319,6 +319,8 @@
      .               nkpol,kpol,wgthpol, polR, polxyz ) 
       endif
 
+      print*,'optical!!'
+      call flush(6)
 ! Calculation of the optical conductivity
 ! Attention H0, Eold, Dold are used as auxiliary arrays
       call optical(na_u, na_s, xa_last, scell_last, ucell_last,
@@ -355,7 +357,7 @@
      .              no_u, na_u, na_s, isa, xa_last, indxua, 
      .              ucell_last, mscell, g2max, ntm,
      .              0, 0, 0, filrho, fildrh, filevh, filevt,
-     .              filepsch, filetoch, ' ',
+     .              filepsch, filetoch, ' ', 
      .              maxnh, numh, listhptr, listh, Dscf, Datm,
      .              maxnh, numh, listhptr, listh, H,
      .              Enaatm, Enascf, Uatm, Uscf, DUscf, DUext, Exc, Dxc,

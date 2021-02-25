@@ -87,7 +87,7 @@
           call dhscf( nspin, no_s, iaorb, iphorb, no_l,
      .              no_u, na_u, na_s, isa, xa_last, indxua, 
      .              ucell_last, mscell, g2max, ntm,
-     .              0, 0, 0, fildos, ' ', ' ', ' ', ' ', ' ', ' ',
+     .              0, 0, 0, fildos, ' ', ' ', ' ', ' ', ' ', ' ', 
      .              maxnh, numh, listhptr, listh, Dscf, Datm,
      .              maxnh, numh, listhptr, listh, H,
      .              Enaatm, Enascf, Uatm, Uscf, DUscf, DUext, Exc, Dxc,

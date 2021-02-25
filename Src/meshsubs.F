@@ -671,7 +671,6 @@ C Find if mesh has to be changed due to unit cell
 C Find if mesh has to be changed due to rmax
       if (rmax .ne. lastra) samesh = .false.
       lastra = rmax
-
 C Find if atoms have moved having checked the number of atoms first
       samexa = (na.eq.lastna)
       if (samexa) then
