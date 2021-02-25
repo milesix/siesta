@@ -57,6 +57,8 @@ c integer maxnd         : first dimension of dscf
 c integer maxnh         : first dimension of listh, hmat
 c real*8  dscf(maxnd,nspin): scf DM elements
 c real*8  datm(norb)    : Harris DM diagonal elements
+c character(len=label_length+5) : Name of the file containing the external potential
+c character(len=label_length+5) : Name of the file containing total charge
 c **** DHSCF INPUT OR OUTPUT (DEPENDING ON WHETHER MESH IS CALCULATED)*******
 c integer ntm(3)        : number of mesh divisions of each cell vector
 c **** DHSCF INPUT OR OUTPUT (DEPENDING ON ARGUMENT ILH) ********************
@@ -90,6 +92,8 @@ C
       use parsing
       use parallel,  only : Node
       use sys,       only : die
+      USE siesta_options, only : idyn, readvext, savetoch
+      use files,        only : slabel, label_length
 #ifdef MPI
       use mpi_siesta
 #endif
@@ -109,6 +113,10 @@ C
      .                  uatm, uscf, xa(3,na), fal(3,nua), stressl(3,3)
 
       external          memory
+
+      character(len=label_length+5) :: filevext
+      character(len=label_length+5) :: filetoch
+      character(len=label_length+5), external :: paste
 
 C Internal variables and arrays
  
@@ -217,13 +225,16 @@ c if sampling, store the forces and stresses prior to dhscf -----------------
         endif
       endif
 
-
+      filetoch = ' '
+      if (readvext.and.idyn.eq.8) filevext = paste( slabel, '.VEXT'  )
+      filetoch = ' '
+      if (savetoch.and.idyn.eq.8) filetoch = paste( slabel, '.TOCH'  )
 c first (normal) call to DHSCF, ihmat=1 --------------------------------------
 
       call dhscf( nspin, norb, iaorb, iphorb, nuo, nuotot, nua,
      .            na, isa, xa, indxua, cell, mscell, g2max, ntm,
-     .            ifa, istr, 1, ' ', ' ', ' ', ' ', ' ', ' ',
-     .            maxnd, numh, listhptr, listh, Dscf, Datm,
+     .            ifa, istr, 1, ' ', ' ', ' ', ' ', ' ',filetoch,
+     .            filevext,maxnd, numh, listhptr, listh, Dscf, Datm,
      .            maxnh, numh, listhptr, listh, Hmat,  
      .            Enaatm, Enascf, Uatm, Uscf, DUscf, DUext,
      .            Exc, Dxc, dipol, fa, stress, fal, stressl)
@@ -298,7 +309,7 @@ c loop sampling on displacements making averages ----------------------------
 
           call dhscf( nspin, norb, iaorb, iphorb, nuo, nuotot, nua,
      .                na, isa, xanew, indxua, cell, mscell, g2max, ntm,
-     .                ifa, istr, 0, ' ', ' ', ' ', ' ', ' ', ' ',
+     .                ifa, istr, 0, ' ', ' ', ' ', ' ', ' ', ' ',' ',
      .                maxnd, numh, listhptr, listh, Dscf, Datm,
      .                maxnh, numh, listhptr, listh, Hmat, 
      .                Enaatm, Enascf, Uatm, Uscf, DUscf, DUext,

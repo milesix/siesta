@@ -23,6 +23,7 @@ MODULE siesta_options
   logical :: new_diagk     ! Use new diagk routine with file storage of eigenvectors?
   logical :: outlng        ! Long output in the output file?
   logical :: pulfile       ! Use file to store Pulay info in pulayx?
+  logical :: readvext      ! Read external potential?
   logical :: RelaxCellOnly ! Relax only lattice vectors, not atomic coordinates
   logical :: RemoveIntraMolecularPressure   ! Remove molecular virial contribution to p
   logical :: savehs        ! Write file with Hamiltonian electrostatic potential?
@@ -1463,6 +1464,7 @@ MODULE siesta_options
     call fdf_global_get(savevna,'SaveNeutralAtomPotential', .false.)
     call fdf_global_get(savevt,'SaveTotalPotential', .false.)
     call fdf_global_get(savepsch,'SaveIonicCharge',  .false.)
+    call fdf_global_get(readvext, 'ReadVext'       , .false.)
     call fdf_global_get(savetoch,'SaveTotalCharge',  .false.)
     RETURN
     !----------------------------------------------------------------------- END

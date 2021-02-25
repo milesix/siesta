@@ -1,0 +1,78 @@
+July 8, 2011 ----------------           siesta-3.0-b-qmmm-1
+Import of QMMM code from Carlos Sanz (3.0-b version)
+
+This is what Carlos Sanz said about the changes: (not translated)
+
+-------- 1) Se ha definido la variable pública "readvext" en el
+archivo siesta_options.F90
+
+-------- 2) En el archivo "iopipes.F90", se ha añadido la variable
+"relaxd" a la lista de argumentos de la subrutina
+"coordsFromPipe". Esta variable se utilizará para decidir cuando se ha
+alcanzado el fin de la QM/MM simulación y así poder realizar el
+análisis final en la subrutina siesta_analysis. También se ha añadido
+un par de líneas en el archivo iopipes.F90 para pasar (sólo la primera
+llamada) a Híbrido el radio máximo entre los orbitales atómicos
+utilizados
+
+
+-------- 3) Se ha añadido un nuevo argumento en la llamada a la subrutina
+coordsFromPipe en el archivo struct_init.F.
+
+
+-------- 4) Se ha añadido la variable "relaxd" a la lista de
+argumentos de la llamada a la subrutina coordsFromPipe en el archivo
+siesta_move.F
+
+
+-------- 5) varias modificaciones en el archivo setup_hamiltonian.F
+para hacer que se pasen los argumentos filevext y filetoch a la
+subrutina dhscf. IMPORTANTE: Aqui hay un posible conflicto con la
+declaración de variables generales para TRANSIESTA que hay que mirar
+en detalle.
+
+
+-------- 6) modificación en el archivo grdsam.F para assignar el
+nombre del archivo de donde se lee el potencial externo (*.VEXT) y el
+nombre del archivo donde se escribe la carga total (*.TOCH) Además se
+añaden las variables correspondientes a la lista de argumentos de la
+subrutina dhscf
+
+
+-------- 7) varias modificaciones en el archivo dhscf.F para leer el
+potencial externo y añadir la energía procedente de la interacción de
+la densidad de carga total con el potencial externo a la energía total
+(e.g., se ha introducido una llamada a la subrutina ExtPotOnMesh que
+añade la interacción con el campo externo, DUext, a la energía total)
+
+
+-------- 8) Se ha añadido un espacio en blanco en la lista de
+argumentos de la llamada a dhscf en el archivo siesta_analysis.F
+
+
+-------- 9) Se ha añadido dos espacios blancos más en la lista de
+argumentos de la llamada a dhscf en el archivo local_DOS.F
+
+
+-------- 10) Se ha añadido la subrutina ExtPotOnMesh en el archivo
+meshsubs.F para añadir a la energía total la interacción del potencial
+externo con la densidad de carga total. Además se ha aumentado el
+número de argumentos en la subrutina LocalChargeOnMesh para poder
+calcular las fuerzas procedentes de la interacción de la densidad de
+carga total con el campo externo.
+
+
+modified:
+  Src/atom.f
+  Src/dhscf.F
+  Src/fsiesta.F90
+  Src/grdsam.F
+  Src/iopipes.F90
+  Src/local_DOS.F
+  Src/m_iorho.F
+  Src/meshsubs.F
+  Src/setup_hamiltonian.F
+  Src/siesta_analysis.F
+  Src/siesta_move.F
+  Src/siesta_options.F90
+  Src/struct_init.F

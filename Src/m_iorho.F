@@ -323,7 +323,7 @@ C Check if input file exists
 C Open file
           if (Node.eq.0) then
             call io_assign( iu )
-            open( iu, file=fname, form=fform, status='old' )      
+            open( iu, file=fname, form=fform, status='old' )     
 
 C Read cell vectors and number of points
             if (fform .eq. 'formatted') then
@@ -367,8 +367,8 @@ C Globalise dimension check
           baddim = ltmp
 #endif
 
-          if (baddim) then 
-            call die("Dimensions of array rho too small in read_rho")
+          if (baddim)
+     .      call die("Dimensions of array rho too small in read_rho")
 
 C Outer loop over spins
           do is = 1,ns
@@ -472,8 +472,6 @@ C Close file
           call io_close( iu )
         endif
 
-      endif
-
 #ifdef MPI
 C Deallocate density buffer memory
       call memory('D','X',size(bdens),'iorho')
@@ -574,8 +572,11 @@ C Find largest value of npl
 #endif
             maxp = npmax
             nspin = ns
-            if (Node.eq.0) call io_close( iu )
+
           endif
+
+C Close file
+            if (Node.eq.0) call io_close( iu )
 
           end subroutine check_rho
 

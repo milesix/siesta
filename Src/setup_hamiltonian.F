@@ -40,7 +40,8 @@
       use m_ts_kpoints, only: ts_gamma_scf, ts_kscell, ts_kdispl
       use m_ts_io, only: ts_iohs
 ! TSS End
-
+#else
+      use files, only: slabel, label_length
 #endif /* TRANSIESTA */
 
 
@@ -65,6 +66,11 @@
       integer:: ihmat   ! Calculate hamiltonian? 0=>no, 1=>yes
 
       real(dp) :: g2max
+
+      character(len=label_length+5) :: filevext
+      character(len=label_length+5) :: filetoch
+      character(len=label_length+5), external :: paste
+
 #ifdef TRANSIESTA
 ! TSS Begin
       character(len=label_length+13) :: fname
@@ -72,12 +78,12 @@
       character(8) :: iotask
 ! TSS End
 #endif /* TRANSIESTA */
-#ifdef TRANSIESTA
+!#ifdef TRANSIESTA
 ! TSS Begin
 ! SIESTA External
-      character(len=label_length+5) PASTE
+!      character(len=label_length+5) PASTE
 ! TSS End
-#endif /* TRANSIESTA */
+!#endif /* TRANSIESTA */
 
 
 
@@ -212,12 +218,16 @@
           ifa  = 0
           istr = 0
           ihmat = 1
+          filevext = ' '
+          if (readvext.and.idyn.eq.8) filevext = paste( slabel, '.VEXT')
+          filetoch = ' '
+          if (savetoch.and.idyn.eq.8) filetoch = paste( slabel, '.TOCH')
           call dhscf( nspin, no_s, iaorb, iphorb, no_l,
      .                no_u, na_u, na_s, isa, xa, indxua, 
      .                ucell, mscell, g2max, ntm,
-     .                ifa, istr, ihmat, ' ', ' ', ' ', ' ', ' ', ' ',
-     .                maxnh, numh, listhptr, listh, Dscf, Datm,
-     .                maxnh, numh, listhptr, listh, H,
+     .                ifa, istr, ihmat, ' ', ' ', ' ', ' ', ' ',
+     .                filetoch,filevext,maxnh, numh, listhptr, listh, 
+     .                Dscf, Datm, maxnh, numh, listhptr, listh, H,
      .                Enaatm, Enascf, Uatm, Uscf, DUscf, DUext,
      .                Exc, Dxc, dipol, fa, stress, fal, stressl)
         endif

@@ -275,6 +275,8 @@
      .               nkpol,kpol,wgthpol, polR, polxyz ) 
       endif
 
+      print*,'optical!!'
+      call flush(6)
 ! Calculation of the optical conductivity
 ! Attention H0, Eold, Dold are used as auxiliary arrays
       call optical(na_u, na_s, xalast, scell_last, ucell_last,
@@ -286,6 +288,10 @@
      .             shape )
 
 !...................................
+
+      print*,'saving things',savrho,savdrh,savevh,savevt,
+     .    savepsch,savetoch
+      call flush(6)
 
 ! Save electron density and potential
       if (savrho .or. savdrh .or. savevh .or. savevt .or.
@@ -307,7 +313,7 @@
      .              no_u, na_u, na_s, isa, xalast, indxua, 
      .              ucell_last, mscell, g2max, ntm,
      .              0, 0, 0, filrho, fildrh, filevh, filevt,
-     .              filepsch, filetoch, 
+     .              filepsch, filetoch, ' ', 
      .              maxnh, numh, listhptr, listh, Dscf, Datm,
      .              maxnh, numh, listhptr, listh, H,
      .              Enaatm, Enascf, Uatm, Uscf, DUscf, DUext, Exc, Dxc,

@@ -166,6 +166,7 @@ end subroutine siesta_units
 !---------------------------------------------------
 
 subroutine siesta_forces( label, na, xa, cell, energy, fa, stress )
+  use atomlist, only : rmaxo
   implicit none
   character(len=*),   intent(in) :: label
   integer,            intent(in) :: na
@@ -178,6 +179,7 @@ subroutine siesta_forces( label, na, xa, cell, energy, fa, stress )
   integer           :: i, ia, ip, iu, n
   character(len=80) :: message
   real(dp)          :: e, f(3,na), s(3,3), c(3,3)
+  logical, save     :: firstTime=.true. 
 
 ! Find system index
   ip = idx( label )
@@ -223,6 +225,10 @@ subroutine siesta_forces( label, na, xa, cell, energy, fa, stress )
   else if (message/='begin_forces') then
     call die('siesta_forces: ERROR: unexpected header:' // trim(message))
   end if
+  if (firstTime) then
+     read(iu,*) rmaxo
+     firstTime=.false.
+  endif
   read(iu,*) e
   read(iu,*) s
   read(iu,*) n

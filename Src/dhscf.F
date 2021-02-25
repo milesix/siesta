@@ -11,8 +11,8 @@
       subroutine dhscf( nspin, norb, iaorb, iphorb, nuo,
      .                  nuotot, nua, na, isa, xa, indxua, ucell, mscell,
      .                  G2max, ntm, ifa, istr, iHmat, filrho, fildrh, 
-     .                  filevh, filevt, filepsch, filetoch, maxnd, numd,
-     .                  listdptr, listd, 
+     .                  filevh, filevt, filepsch, filetoch, filevext, 
+     .                  maxnd, numd, listdptr, listd, 
      .                  Dscf, datm, maxnh, numh, listhptr, listh, Hmat,
      .                  Enaatm, Enascf, Uatm, Uscf, DUscf, DUext, 
      .                  Exc, Dxc, dipol, Fa, stress, Fal, stressl )
@@ -61,6 +61,9 @@ C character*(*) filepsch: Name of file to save the soft diffuse ionic charge
 C                         (If blank => not saved)
 C character*(*) filetoch: Name of file to save the total ionic+electronic charge
 C                         (If blank => not saved)
+C character*(*) filevext: Name of file to read the external electostatic pot.
+C                         (If blank => not read; use stored value if it was read
+C                         previously; otherwise, do not use external potential)
 C integer maxnd             : First dimension of listd and Dscf
 C integer numd(nuo)         : Number of nonzero density-matrix
 C                             elements for each matrix row
@@ -138,7 +141,7 @@ C
       use sys,           only : die
       use mesh,          only : xdsp, nsm, nsp
       use parsing
-      use m_iorho,       only : write_rho
+      use m_iorho,       only : check_rho, write_rho, read_rho
       use m_forhar,      only : forhar
       use xcmod,         only : nXCfunc, XCauth
       use alloc,         only : re_alloc, de_alloc
@@ -151,6 +154,7 @@ C
       use iogrid_netcdf, only: set_box_limits
       use siesta_options, only: read_charge_cdf
       use siesta_options, only: savevna
+      use siesta_options, only: readvext
       use siesta_options, only: read_deformation_charge_cdf
 #ifdef TRANSIESTA
 ! TSS Begin
@@ -178,7 +182,7 @@ C
 
       character
      .  filevh*(*), filevt*(*), fildrh*(*), filrho*(*), 
-     .  filepsch*(*), filetoch*(*)
+     .  filepsch*(*), filetoch*(*), filevext*(*)
 
 C ----------------------------------------------------------------------
 C Routines called internally:
@@ -229,6 +233,11 @@ C integer npcc          : Partial core corrections? (0=no, 1=yes)
 C integer nsd           : Number of diagonal spin values (1 or 2)
 C integer ntpl          : Number of mesh Total Points in unit cell
 C                         (including subpoints) locally
+C integer ntplext       : Auxiliary variable, read from external pot file
+C                         Number of mesh Total Points in unit cell
+C                         (including subpoints) locally
+C integer nspinext      : Auxiliary variable, to check dimension of
+C                         the external potential
 C integer ntopl         : Total number of nonzero orbital points locally
 C integer nzero(3)      : Auxiliary array with zeros, to call efield
 C real*4  rhoatm(ntpl)  : Harris electron density
@@ -256,7 +265,8 @@ C
       integer
      .  i, ia, io, ip, iphi, is, ispin, j, ifor,
      .  n, nbcell, nm(3), npcc, nsd, nv, nzero(3), 
-     .  ntopl, nmpl, nsc(3), ntpl, nml(3), ntml(3)
+     .  ntopl, nmpl, nsc(3), ntpl, nml(3), ntml(3),
+     .  ntplext,nspinext
 
 #ifdef MPI
       integer
@@ -264,7 +274,7 @@ C
 #endif
 
       real(grid_p), dimension(:), pointer, save :: rhopcc, rhoatm, Vna
-      real(grid_p), dimension(:),     pointer, save   :: Vaux
+      real(grid_p), dimension(:),     pointer, save   :: Vaux, Vext
       real(grid_p), dimension(:,:),   pointer, save   :: DRho, Vscf
       real(grid_p), dimension(:), pointer, save   :: Chlocal, Totchar
 !
@@ -288,7 +298,8 @@ C
       logical :: leqi
 
       logical, save :: 
-     .  frstme, harrisfun, IsDiag, IsEfld, samesh, samexa, spiral
+     .  frstme, harrisfun, IsDiag, IsEfld, samesh, samexa, spiral,
+     .  foundVext, overflow
 
       character(len=10), save ::
      .  shape
@@ -311,6 +322,7 @@ C
      .  nzero / 3*0 /,
      .  tiny  / 1.e-12_dp /,
      .  frstme /.true./
+     .  foundVext /.false./
 #ifdef TRANSIESTA
 ! TSS Begin
       character(6) :: method
@@ -333,7 +345,7 @@ C Start time counter
 ! TSS End
 #endif /* TRANSIESTA */
         nullify(Vna,rhoatm,rhopcc)
-        nullify(vaux,vscf,DRho)
+        nullify(vaux,Vext,vscf,DRho)
         nullify(chlocal,totchar)
         if (Node.eq.0) then
           harrisfun = fdf_boolean('Harris_functional',.false.)
@@ -454,6 +466,11 @@ C Allocate memory related to ntpl
         call re_alloc( rhoatm, 1, ntpl, name='rhoatm', routine='dhscf' )
         call re_alloc( Vna, 1, ntpl, name='Vna', routine='dhscf' )
 
+C Allocate memory for external potential (which is saved between calls)
+C Allways allocate if filevext is not null
+        if (readvext)
+     &      call re_alloc( Vext, 1, ntpl, name='Vext', routine='dhscf')
+
 C Find if there are partial-core-corrections for any atom
         npcc = 0
         do ia = 1,na
@@ -552,7 +569,6 @@ C Find number of diagonal spin values
 C ----------------------------------------------------------------------
 C Find SCF electron density at mesh points. Store it in array DRho
 C ----------------------------------------------------------------------
-
       if (read_charge_cdf) then
          call read_grid_netcdf(ntm(1:3),nspin,ntpl,DRho,"Rho")
          do ispin = 1,nspin
@@ -601,7 +617,8 @@ C ----------------------------------------------------------------------
      &                 routine='dhscf' )
 
 C Find diffuse ionic charge on mesh
-        call LocalChargeOnMesh( na, isa, ntpl, Chlocal, indxua )
+        call LocalChargeOnMesh( na, isa, ntpl, Chlocal, indxua,.false., 
+     .                          dvol, 0.0, fal )
       
 C Save diffuse ionic charge 
         if (filepsch .ne. ' ') then
@@ -776,6 +793,7 @@ C ----------------------------------------------------------------------
 C Add potential from external electric field (if present)
 C ----------------------------------------------------------------------
 
+      DUext = 0.0D0
       if (frstme) then
         call efield( cell, nua, isa, xa, nzero, nsm, dipol,
      .               Vscf, field )
@@ -825,6 +843,46 @@ c TSS End
 
 
 #endif /* TRANSIESTA */
+
+C ----------------------------------------------------------------------
+C Read and add an external potential from file (if present)
+C ----------------------------------------------------------------------
+
+      if (filevext .ne. ' ') then
+        ntplext = ntpl
+        nspinext = 1 
+        call check_rho( filevext, ntplext, nspinext, nsm, foundVext, 
+     .                  overflow )
+        if (.not. foundVext) then
+          if (Node .eq. 0) then
+             write(6,100)
+             write(6,'(a)')
+     .        'dhscf: WARNING: External potential file not found!'
+             write(6,'(a)')
+     .        'dhscf: WARNING: No external potential is being used'
+             write(6,102)
+          endif
+        else
+          if (overflow) then
+           if (Node .eq. 0) then
+             write(6,100)
+             write(6,101)
+             write(6,'(a)')
+     .        'dhscf:   Format or size of the external potential file'
+             write(6,'(a)')
+     .        'dhscf:   does not match with this system'
+             write(6,102)
+           endif
+           call die
+          endif
+          call read_rho( filevext, cell, ntm, nsm, ntpl, 1, Vext )
+          call reord( Vext, Vext, nml, nsm, -1)
+        endif
+
+      endif
+
+C add to SCF potential
+      if(foundVext) Vscf(1:ntpl,1) = Vscf(1:ntpl,1) + Vext(1:ntpl)
 
 C ----------------------------------------------------------------------
 C Save electrostatic potential
@@ -960,6 +1018,16 @@ C Find contribution of neutral-atom potential
         call NeutralAtomOnMesh( na, isa, ntpl, Vna, indxua, dvol, 
      .                          volume, DRho, Fal, stressl, 
      .                          ifa.ne.0, istr.ne.0 )
+
+C Find contribution of interaction of external field with
+C diffuse ionic density
+        if (foundVext) then
+          call ExtPotOnMesh( na, isa, ntpl, indxua, dvol, volume,
+     .                     DRho, rhoatm,
+     .                     Vext, DUext, fal, stressl,
+     .                     .true., .false. )
+          Vaux(1:ntpl) = Vaux(1:ntpl) - Vext(1:ntpl)
+        endif
 
 C Vaux is (minus) the potential which multiplies rhoatm
 *       if (nsd .eq. 2) then
