@@ -78,8 +78,10 @@ c
         if (debug_input) then
            write(6,'(a)') 'WARNING: ' //
      $          'Siesta is reading its input from file INPUT_DEBUG'
+           call io_assign(lun)
            filein = 'INPUT_DEBUG'
-
+           open(lun,file='INPUT_DEBUG',form='formatted',status='old')
+           rewind(lun)
         else
 c
 c          Read from standard input (dumped to a temp file)
@@ -94,10 +96,13 @@ c
               inquire( file=filein, exist=file_exists )
               if (.not.file_exists) exit
            end do
+
 !
            open(lun_tmp,file=filein,
      $          form='formatted',status='replace')
            rewind(lun_tmp)
+        endif
+
            write(6,"(a,23('*'),a,28('*'))")
      .          '***', ' Dump of input data file '
 c
@@ -114,13 +119,19 @@ c
            enddo
            write(6,"(a,23('*'),a,29('*'))")
      .          '***', ' End of input data file '
+
+        if (debug_input) then
+           call io_close(lun)
+        else
            call io_close(lun_tmp)
+        endif
+
 c
 !          "filein" for fdf is now the temporary file. 
 !          This was necessary historically to allow
 !          the rewinds involved in fdf operation.
 !
-        endif
+
       endif
 c ...
 

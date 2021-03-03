@@ -130,7 +130,7 @@
 !     Last call to dhscf and grid-cell sampling if requested
       ifa  = 1
       istr = 1
-      call grdsam( nspin, no_s, iaorb, iphorb, 
+      call grdsam( iscf, nspin, no_s, iaorb, iphorb, 
      &             no_l, no_u, na_u, na_s, isa, xa, indxua,
      &             ucell, ntm, ifa, istr, maxnh,
      &             maxnh, numh, listhptr, listh, Dscf, Datm, H,
