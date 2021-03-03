@@ -8,7 +8,7 @@
       module m_grdsam
       public :: grdsam
       CONTAINS
-      subroutine grdsam(nspin, norb, iaorb, iphorb, 
+      subroutine grdsam(iscf, nspin, norb, iaorb, iphorb, 
      &                  nuo, nuotot, nua, na, isa, xa, indxua,
      &                  cell, ntm, ifa, istr, maxnd,
      &                  maxnh, numh, listhptr, listh, Dscf, Datm, Hmat,
@@ -39,6 +39,7 @@ c   the grid (no new selfconsistency for each shift).
 c      
 c Written by E. Artacho. January 1998. 
 c *********************** INPUT TOWARDS DHSCF *******************************
+c integer iscf          : SCF Iteration cycle
 c integer nspin         : number of spins considered 
 c integer norb          : total number of basis orbitals
 c integer iaorb(norb)   : atom to which each orbital belongs
@@ -56,6 +57,8 @@ c integer maxnd         : first dimension of Dscf
 c integer maxnh         : first dimension of listh, hmat
 c real*8  Dscf(maxnd,h_spin_dim): scf DM elements
 c real*8  datm(norb)    : Harris DM diagonal elements
+c character(len=label_length+5) : Name of the file containing the external potential
+c character(len=label_length+5) : Name of the file containing total charge
 c **** DHSCF INPUT OR OUTPUT (DEPENDING ON WHETHER MESH IS CALCULATED)*******
 c integer ntm(3)        : number of mesh divisions of each cell vector
 c **** DHSCF INPUT OR OUTPUT (DEPENDING ON ARGUMENT ILH) ********************
@@ -84,13 +87,14 @@ C  Modules
 C
       use precision
       use fdf
+      use files, only : slabel, label_length
       use files,     only : filesOut_t    ! derived type for output file names
       use parallel,  only : IONode
       use sys,       only : die
       use units, only : eV, Ang, kbar
       use m_dhscf,   only : dhscf, dhscf_init
       use alloc,     only : re_alloc, de_alloc
-      use siesta_options, only: g2cut
+      use siesta_options, only: g2cut, idyn, readvext, savetoch
       use siesta_geom,    only: mscell
       use siesta_options, only: hirshpop, voropop
       use siesta_options, only: partial_charges_at_every_geometry
@@ -104,7 +108,7 @@ C
       
       implicit          none
 
-      integer           maxnh, maxnd, na, norb, nspin,
+      integer           iscf, maxnh, maxnd, na, norb, nspin,
      &                  nuo, nuotot, nua, iaorb(norb), ifa, indxua(na), 
      &                  iphorb(norb), isa(na), istr, listh(maxnh),
      &                  listhptr(nuo), numh(nuo), ntm(3)
@@ -116,6 +120,8 @@ C
 
       ! In/out energies
       real(dp) :: DUscf, DUext, Dxc, Enaatm, Enascf, Exc, Uatm, Uscf
+
+      character(len=label_length+5) :: filevext
 
 C Internal variables and arrays
  
@@ -290,8 +296,6 @@ c if sampling, store the forces and stresses prior to dhscf -----------------
        
       end if
 
-
-c first (normal) call to DHSCF, ihmat=1 --------------------------------------
 !
 !     At this point we have finished the scf loop for this geometry,
 !     and can compute the partial charges if desired in this call to
@@ -302,16 +306,29 @@ c first (normal) call to DHSCF, ihmat=1 --------------------------------------
          want_partial_charges = .true.
       endif
 
-      call dhscf( nspin, norb, iaorb, iphorb, nuo, nuotot, nua,
+      filevext = ' '  
+      if (readvext.and.idyn==8) filevext = slabel // '.VEXT'
+      if (savetoch .and. idyn==8) then
+         filesOut%toch = trim(slabel) // '.TOCH'
+      endif
+
+!     first (normal) call to DHSCF, ihmat=1 -------
+      call dhscf( iscf, nspin, norb, iaorb, iphorb, nuo, nuotot, nua,
      &            na, isa, xa, indxua, ntm,
      &            ifa, istr, 1, filesOut,
-     &            maxnd, numh, listhptr, listh, Dscf, Datm,
+     &            filevext, maxnd, numh, listhptr, listh, Dscf, Datm,
      &            maxnh, Hmat, Enaatm, Enascf, Uatm, Uscf, DUscf, DUext,
      &            Exc, Dxc, dipol, stress, fal, stressl)
       want_partial_charges = .false.
 
 c Sampling ------------------------------------------------------------------
 
+      ! Deactivate the writing of TOCH file here (Fix QM/MM logic)
+      ! (as in 3.X version) ..
+      !if (savetoch .and. idyn==8) then
+      !   filesOut%toch = " "
+      !endif
+      
       if ( npt > 0 ) then
 
 c initialize averages with output of regular DHSCF run -----------------------
@@ -383,12 +400,13 @@ c loop sampling on displacements making averages ----------------------------
      &                      maxnd, numh, listhptr, listh, datm,
      &                      Fal, stressl)
 
-          call dhscf( nspin, norb, iaorb, iphorb, nuo, nuotot, nua,
-     &                na, isa, xanew, indxua, ntm,
+          call dhscf( iscf, nspin, norb, iaorb, iphorb, nuo, nuotot, 
+     &                nua, na, isa, xanew, indxua, ntm,
      &                ifa, istr, 0, filesOut,
-     &                maxnd, numh, listhptr, listh, Dscf, Datm,
-     &                maxnh, Hmat, Enaatm, Enascf, Uatm, Uscf, DUscf,
-     &                DUext, Exc, Dxc, dipol, stress, fal, stressl)
+     &                filevext, maxnd, numh, listhptr, listh, Dscf, 
+     &                Datm, maxnh, Hmat, Enaatm, Enascf, Uatm, Uscf, 
+     &                DUscf, DUext, Exc, Dxc, dipol, stress, fal, 
+     &                stressl)
 
           ! Collect the differences
           allfa(:,:,ipt) = fal(:,:) - faold(:,:)

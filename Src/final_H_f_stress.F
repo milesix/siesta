@@ -205,7 +205,7 @@
       ! This will call dhscf with the final DM coming out of
       ! the scf cycle
 
-      call grdsam( spin%Grid, no_s, iaorb, iphorb, 
+      call grdsam( iscf, spin%Grid, no_s, iaorb, iphorb, 
      &             no_l, no_u, na_u, na_s, isa, xa, indxua,
      &             ucell, ntm, ifa, istr, maxnh,
      &             maxnh, numh, listhptr, listh, Dscf, Datm, H_tmp,

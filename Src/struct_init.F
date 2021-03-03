@@ -56,6 +56,8 @@
       character(len=60) :: restart_file
       logical :: found_restart, step_back
 
+      logical :: relaxd
+
 !------------------------------------------------------------------------- BEGIN
 #ifdef DEBUG
       call write_debug( '  PRE struct_init' )
@@ -176,7 +178,7 @@
       if (siesta_server) then
         call setPropertyForMaster('atomic_numbers', 
      .                             na_u, real(iza(:),dp), ' ')
-        call coordsFromMaster( na_u, xa, ucell )
+        call coordsFromMaster( na_u, xa, ucell )   !!!***FIXME*** relaxd 
       end if
 ! .....................
 

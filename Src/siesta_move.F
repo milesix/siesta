@@ -370,7 +370,7 @@
           call write_md_record( istep )
 
           ! Get coordinates from driver program 
-          call coordsFromMaster( na_u, xa, ucell )
+          call coordsFromMaster( na_u, xa, ucell ) !!***FIXME relaxd
           if (volcel(ucell) < 1.0e-8_dp) then
             call automatic_cell(ucell,scell,na_u,xa,isa,charnet)
           endif

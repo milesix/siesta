@@ -36,7 +36,7 @@
       use atomlist, only: qtot
       use fdf
       use siesta_cml
-      use files,        only : slabel
+      use files,        only : slabel, label_length
       use files,        only : filesOut_t   ! derived type for output file names
       use zmatrix,      only: lUseZmatrix, write_zmatrix
       use Kpoint_grid
@@ -66,6 +66,7 @@
       implicit none
 
       logical :: relaxd, getPSI, quenched_MD, found
+      character(len=label_length+5) :: filevext
 
       real(dp)          :: dummy_str(3,3)
       real(dp)          :: dummy_strl(3,3)
@@ -512,9 +513,12 @@
         g2max = g2cut
         dummy_str  = 0.0
         dummy_strl = 0.0
-        call dhscf( spin%Grid, no_s, iaorb, iphorb, no_l,
+        filevext = ' '
+        if (readvext.and.idyn==8) filevext = trim(slabel) // '.VEXT'
+        call dhscf( 1, spin%Grid, no_s, iaorb, iphorb, no_l,
      .              no_u, na_u, na_s, isa, xa_last, indxua, 
      &              ntm, 0, 0, 0, filesOut, 
+     &              filevext, 
      &              maxnh, numh, listhptr, listh, Dscf, Datm,
      &              maxnh, H, Enaatm, Enascf, Uatm, Uscf, DUscf, DUext,
      &              Exc, Dxc, dipol, dummy_str, fa, dummy_strl )

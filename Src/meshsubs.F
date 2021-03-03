@@ -18,6 +18,7 @@
       public :: NeutralAtomOnMesh ! neutral atom potential on mesh
       public :: LocalChargeOnMesh ! local (positive ion) charge
       public :: ModelCoreChargeOnMesh ! model core charge for Bader
+      public :: ExtPotOnMesh ! external potential on mesh
       public :: PhiOnMesh     ! Orbital values on the mesh
       public :: setupExtMesh  ! Sets up extended mesh
       public :: distriPhiOnMesh  ! Sets up data distribution
@@ -821,7 +822,8 @@ C           Loop over sub-points
 !--------------------------------------------------------------------------- END
       end subroutine NeutralAtomOnMesh
 
-      subroutine LocalChargeOnMesh( na, isa, ntpl, Chlocal, indxua )
+      subroutine LocalChargeOnMesh( na, isa, ntpl, Chlocal, indxua ,
+     .                                Forces, dvol, Vext, fal )
 C
 C Finds the diffuse ionic charge, whose electrostatic potential is equal
 C to Vlocal on the mesh
@@ -849,9 +851,14 @@ C     Passed arguments
       integer, intent(in)       :: na, isa(na), ntpl
       integer, intent(in)       :: indxua(*)
       real(grid_p), intent(out) :: Chlocal(ntpl)
+      real(dp),      intent(in) :: dvol
+      real(grid_p),  intent(in) :: Vext(*)
+      logical,       intent(in) :: Forces
+      real(dp),   intent(inout) :: fal(3,*)
 C     Internal variables
-      integer                   :: ia, iop, ip, ip0, is, isp, iua
-      real(dp)                  :: dx(3), grpsch(3), r, ra, pschloc
+      integer                   :: i, ia, iop, ip, ip0, is, isp, iua
+      real(dp)                  :: dfa(3), dx(3), grpsch(3), r, ra, 
+     .                                  pschloc
       type(rad_func), pointer  :: func   
  
 !------------------------------------------------------------------------- BEGIN
@@ -860,6 +867,7 @@ C     Internal variables
 #endif
 C     Initialise array to zero 
       Chlocal(1:ntpl) = 0.0_grid_p
+      dfa = 0.0_dp 
  
       do ia = 1,na
         if (ipa(ia)==0) cycle ! Atomic sphere does not intersec my Box
@@ -879,6 +887,12 @@ C           Loop over sub-points
                 ip = isp + nsp * (ip0 - 1)
                 call psch( is, dx, pschloc, grpsch )
                 Chlocal(ip) = Chlocal(ip) + pschloc
+                if (Forces) then
+                  do i=1,3
+                    dfa(i) = dvol * Vext(ip) * grpsch(i)
+                    fal(i,iua) = fal(i,iua) + dfa(i)
+                  enddo
+                endif
               endif
             enddo
           endif
@@ -1461,5 +1475,105 @@ C       It does nothing if we use synchronous communications.
 #endif
 !--------------------------------------------------------------------------- END
       end subroutine distriPhiOnMesh
+
+      subroutine ExtPotOnMesh( na, isa, ntpl, indxua, dvol, volume,
+     .                         drho, rhoatm, 
+     .                         vext, duext, fal, stressl, 
+     .                         Forces, Stress )
+C
+C Finds the energy and forces due to an external potential
+C
+C ----------------------------------------------------------------------
+C Input :
+C ----------------------------------------------------------------------
+C integer na            : Number of atoms in supercell
+C integer isa(na)       : Species index of all atoms in supercell
+C integer ntpl          : Number of mesh Total Points in unit cell
+C                       : (including subpoints) locally
+C integer indxua        : Index of equivalent atom in unit cell
+C real*8  dvol          : Mesh-cell volume
+C real*8  volume        : Unit cell volume
+C real    drho(ntpl)    : SCF density difference
+C real    rhoatm(ntpl)  : Harris electron density
+C real    vext(ntpl)    : External potential on grid
+C logical Forces        : Should the forces be calculated?
+C logical Stress        : Should the stress be calculated?
+C ----------------------------------------------------------------------
+C Output : (non-gradient call)
+C ----------------------------------------------------------------------
+C real*8  duext         : Energy
+C ----------------------------------------------------------------------
+C Output : (gradient call)
+C ----------------------------------------------------------------------
+C real*8  duext         : Energy
+C real*8  fal(3,:)      : Local copy of atomic forces
+C real*8  stressl(3,3)  : Local copy of stress tensor
+C ----------------------------------------------------------------------
+
+      use precision, only: dp, grid_p
+      use atmfuncs,  only: rcut, phiatm
+      use mesh,      only: dxa, idop, indexp, ipa, mop, nsp, xdop, xdsp
+      use parallel,  only: Node
+#ifdef MPI                                                                              
+      use mpi_siesta
+#endif              
+
+      implicit none     
+C
+C Passed arguments
+C
+      integer,      intent(in)  :: na, isa(na), ntpl
+      integer,      intent(in)  :: indxua(*)
+      real(dp),     intent(in)  :: dvol, volume
+      real(grid_p), intent(in)  :: drho(*), rhoatm(*), vext(*)
+      logical,      intent(in)  :: Forces, Stress
+      real(dp),  intent(inout)  :: fal(3,*)
+      real(dp),  intent(inout)  :: stressl(3,3)
+      real(dp),  intent(inout)  :: duext
+
+C Internal variables
+
+      real(grid_p), dimension(:), allocatable::  totchar
+      integer ip, ia, iz, iua, is
+
+#ifdef MPI                                                                              
+      integer MPIerror 
+      real(dp) eloc
+#endif                
+
+      allocate(totchar(ntpl))
+      call memory('A','X',ntpl,' ExtPotOnMesh')
+
+
+C Find diffuse ionic charge on mesh
+      call LocalChargeOnMesh( na, isa, ntpl, totchar, indxua, Forces, 
+     .                        dvol, Vext, fal )
+
+C Add electronic charge 
+      totchar(1:ntpl) = totchar(1:ntpl) +
+     .                  drho(1:ntpl) + rhoatm(1:ntpl)
+
+C Energy
+      do ip = 1,ntpl
+        duext = duext + dvol * Vext(ip) * totchar(ip)
+      enddo
+
+#ifdef MPI
+C Global reduction of DUext
+      eloc = duext
+#ifdef NODAT
+      call MPI_AllReduce(eloc,duext,1,MPI_double_precision,MPI_Sum,
+     .  MPI_Comm_World,MPIerror)
+#else
+      call MPI_AllReduce(eloc,duext,1,DAT_double,MPI_Sum,
+     .  MPI_Comm_World,MPIerror)
+#endif
+#endif
+
+      call memory('D','X',ntpl,' ExtPotOnMesh')
+      deallocate(totchar)
+
+      return
+      end subroutine ExtPotOnMesh
 
       end module meshsubs

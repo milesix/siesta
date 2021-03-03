@@ -48,6 +48,7 @@ MODULE siesta_options
   integer :: diag_wfs_cache! WFS cache used in diagonalization routine (0=none, 1=cdf)
   logical :: outlng        ! Long output in the output file?
   logical :: pulfile       ! Use file to store Pulay info in pulayx? (Obsolete)
+  logical :: readvext      ! Read external potential?
   logical :: RelaxCellOnly ! Relax only lattice vectors, not atomic coordinates
   logical :: RemoveIntraMolecularPressure   ! Remove molecular virial contribution to p
   logical :: savehs        ! Write file with Hamiltonian electrostatic potential?
@@ -231,4 +232,5 @@ MODULE siesta_options
   type(luaState) :: LUA
 #endif
   
+    readvext = fdf_get( 'ReadVext'       , .false.)
 END MODULE siesta_options

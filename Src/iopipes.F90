@@ -47,12 +47,13 @@ PRIVATE  ! Nothing is declared public beyond this point
 
 CONTAINS
 
-subroutine coordsFromPipe( na, xa, cell )
+subroutine coordsFromPipe( na, xa, cell, relaxd )
 ! Reads coordinates from pipe
   implicit none
   integer,  intent(in)  :: na         ! Number of atoms
   real(dp), intent(out) :: xa(3,na)   ! Atomic coordinates (bohr)
   real(dp), intent(out) :: cell(3,3)  ! Lattice vectors (bohr)
+  logical, intent(out)  :: relaxd
 
   logical, save     :: firstTime = .true.
   integer           :: n
@@ -77,6 +78,8 @@ subroutine coordsFromPipe( na, xa, cell )
 
 ! Read coordinates from pipe
   if (IOnode) then
+    write(*,*)'Reading from pipe'
+    call pxfflush(6)
     do 
       read(iuc,*) task
       if (trim(task)/='wait') exit
@@ -92,8 +95,10 @@ subroutine coordsFromPipe( na, xa, cell )
       if (IOnode) then
          write(iuf,*) 'quitting'
          call pxfflush(iuf)
+         write(6,*)'coordsFromPipe: STOP requested by driver'
+         call pxfflush(6)
       endif
-      call bye('coordsFromPipe: STOP requested by driver')
+      relaxd=.true.
 
    else if (trim(task)=='begin_coords') then
       if (IONode) then
@@ -163,7 +168,6 @@ subroutine forcesToPipe( na, energy, forces, stress )
     open( unit=iuf, file=fname, form='formatted', status='old', &
           position='asis' )
 
-    firstTime = .false.
   end if ! (firstTime .and. IOnode)
 
   if (IOnode) then
@@ -183,6 +187,8 @@ subroutine forcesToPipe( na, energy, forces, stress )
 
 ! Write forces to pipe
   if (IOnode) then
+    write(*,*)'Writing to pipe'
+    call pxfflush(6)
     write(iuf,*) 'begin_forces'
     write(iuf,*) e
     do i = 1,3
@@ -195,6 +201,8 @@ subroutine forcesToPipe( na, energy, forces, stress )
     write(iuf,*) 'end_forces'
     call pxfflush(iuf)
   end if ! IOnode
+
+  if (firstTime)firstTime=.false.
 
 end subroutine forcesToPipe
 

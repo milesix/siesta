@@ -46,6 +46,7 @@
       use m_hsx, only: write_hsx
       use sys, only: die, bye
       use m_partial_charges, only: want_partial_charges
+      use files, only : slabel, label_length
       use files, only : filesOut_t    ! derived type for output file names
       use m_rhog, only: rhog_in, rhog
 #ifdef MPI
@@ -68,6 +69,8 @@
       logical             :: use_rhog_in
 
       real(dp), pointer   :: H_vkb(:), H_kin(:), H_dftu(:,:), H_so(:,:)
+
+      character(len=label_length+5) :: filevext
 
 !------------------------------------------------------------------------- BEGIN
 
@@ -234,11 +237,16 @@
       endif
       use_rhog_in =  (mix_charge .and. iscf > 1)
   
-      call dhscf( spin%Grid, no_s, iaorb, iphorb, no_l,
+      filevext = ' '
+      if (readvext.and.idyn==8) filevext = trim(slabel) // '.VEXT'
+      if (savetoch .and. idyn==8) then
+         filesOut%toch = trim(slabel) // '.TOCH'
+      endif
+      call dhscf( iscf, spin%Grid, no_s, iaorb, iphorb, no_l,
      .            no_u, na_u, na_s, isa, xa, indxua, 
      .            ntm, ifa, istr, ihmat, filesOut,
-     .            maxnh, numh, listhptr, listh, Dscf, Datm,
-     .            maxnh, H, Enaatm, Enascf, Uatm, Uscf, DUscf, DUext,
+     .            filevext, maxnh, numh, listhptr, listh, 
+     .            Dscf, Datm, maxnh, H, Enaatm, Enascf, Uatm, Uscf, 
      .            Exc, Dxc, dipol, stress, fal, stressl,
      .            use_rhog_in)
 

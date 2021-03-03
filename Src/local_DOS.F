@@ -55,7 +55,7 @@
       type(block_fdf)            :: bfdf
       type(parsed_line), pointer :: pline
       type(filesOut_t)           :: filesOut  ! blank output file names
-
+      character(len=1)           :: filevext 
 #ifdef DEBUG
       call write_debug( '  PRE local_DOS' )
 #endif
@@ -91,9 +91,10 @@
           !Find the LDOS in the real space mesh
           filesOut%rho = trim(slabel) // '.LDOS'
           g2max = g2cut
-          call dhscf( nspin, no_s, iaorb, iphorb, no_l,
+          filevext = " "
+          call dhscf( dummy_iscf, nspin, no_s, iaorb, iphorb, no_l,
      .              no_u, na_u, na_s, isa, xa_last, indxua, 
-     .              ntm, 0, 0, 0, filesOut,
+     .              ntm, 0, 0, 0, filesOut, filevext,
      .              maxnh, numh, listhptr, listh, Dscf, Datm, maxnh, H,
      .              Enaatm, Enascf, Uatm, Uscf, DUscf, DUext, Exc, Dxc,
      .              dummy_dipol, dummy_str, fa, dummy_strl )
