@@ -35,6 +35,8 @@
       integer:: nbcell  ! Auxiliary to call shaper routine
       real(dp), pointer :: xang(:,:)
 
+      logical :: relaxd
+
 !------------------------------------------------------------------------- BEGIN
 #ifdef DEBUG
       call write_debug( '  PRE struct_init' )
@@ -98,7 +100,8 @@
       Server_calculation = (leqi(dummy_str,'forces'))
 
       if (Server_calculation) then
-        call coordsFromPipe( na_u, xa, ucell )
+        relaxd=.false.
+        call coordsFromPipe( na_u, xa, ucell , relaxd )
       end if
 ! .....................
 

@@ -26,6 +26,7 @@
       use m_gamma
       use m_hsx, only: write_hsx
       use sys, only: die
+      use files, only: slabel, label_length
 #ifdef MPI
       use m_mpi_utils, only: globalize_sum
 #endif
@@ -44,6 +45,10 @@
       integer             :: istr    ! Calc. stress?      0=>no, 1=>yes
       integer             :: ihmat   ! Calc. hamiltonian? 0=>no, 1=>yes
       real(dp)            :: g2max
+
+      character(len=label_length+5) :: filevext
+      character(len=label_length+5) :: filetoch
+      character(len=label_length+5), external :: paste
 
 !------------------------------------------------------------------------- BEGIN
 #ifdef DEBUG
@@ -109,12 +114,16 @@
       istr = 0
       ihmat = 1
 
+      filevext = ' '
+      if (readvext.and.idyn.eq.8) filevext = paste( slabel, '.VEXT')
+      filetoch = ' '
+      if (savetoch.and.idyn.eq.8) filetoch = paste( slabel, '.TOCH')
       call dhscf( nspin, no_s, iaorb, iphorb, no_l,
      .            no_u, na_u, na_s, isa, xa, indxua, 
-     .            ntm, ifa, istr, ihmat, ' ', ' ', ' ', ' ', ' ', ' ',
-     .            maxnh, numh, listhptr, listh, Dscf, Datm,
-     .            maxnh, H, Enaatm, Enascf, Uatm, Uscf, DUscf, DUext,
-     .            Exc, Dxc, dipol, stress, fal, stressl)
+     .            ntm, ifa, istr, ihmat, ' ', ' ', ' ', ' ', ' ',
+     .            filetoch,filevext,maxnh, numh, listhptr, listh, Dscf, 
+     .            Datm,maxnh, H, Enaatm, Enascf, Uatm, Uscf, DUscf, 
+     .            DUext,Exc, Dxc, dipol, stress, fal, stressl)
 
       call de_alloc( fal, 'fal', 'setup_hamiltonian' ) 
 

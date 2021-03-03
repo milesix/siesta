@@ -25,6 +25,7 @@ MODULE siesta_options
   logical :: outlng        ! Long output in the output file?
   logical :: pulfile       ! Use file to store Pulay info in pulayx? (Obsolete)
   logical :: avoid_first_after_kick  ! Keep first residual after a kick?
+  logical :: readvext      ! Read external potential?
   logical :: RelaxCellOnly ! Relax only lattice vectors, not atomic coordinates
   logical :: RemoveIntraMolecularPressure   ! Remove molecular virial contribution to p
   logical :: savehs        ! Write file with Hamiltonian electrostatic potential?
@@ -1490,6 +1491,7 @@ MODULE siesta_options
     savevna  = fdf_get( 'SaveNeutralAtomPotential', .false. )
     savevt   = fdf_get( 'SaveTotalPotential', .false. )
     savepsch = fdf_get( 'SaveIonicCharge', .false. )
+    readvext = fdf_get( 'ReadVext'       , .false.)
     savetoch = fdf_get( 'SaveTotalCharge', .false. )
     RETURN
     !----------------------------------------------------------------------- END
