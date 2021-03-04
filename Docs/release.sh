@@ -298,7 +298,7 @@ make final
 # this is not available through the make clean)
 make clean
 # Also do not ship the release script
-rm release.sh
+rm -fv release.sh
 # Remove all .git related files
 rm -rf .git*
 
