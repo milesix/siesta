@@ -1270,10 +1270,10 @@ subroutine read_options( na, ns, nspin )
 
   if (idyn==2 .or. idyn==4) then
      if (ionode) then
-        write(6,6) 'redata: Nose mass',mn/eV,' eV/fs**2'
+        write(6,6) 'redata: Nose mass',mn/eV,' eV*fs**2'
      endif
      if (cml_p) then
-        call cmlAddParameter( xf    = mainXML,              &
+        call cmlAddParameter( xf    = mainXML,&
              name  = 'MD.NoseMass',        &
              value = mn,                   &
              units = 'siestaUnits:Ry_fs__2')
@@ -1282,12 +1282,12 @@ subroutine read_options( na, ns, nspin )
 
   if (idyn==3 .or. idyn==4) then
      if (ionode) then
-        write(6,6) 'redata: Parrinello-Rahman mass',mpr/eV,' eV/fs**2'
+        write(6,6) 'redata: Parrinello-Rahman mass',mpr/eV,' eV*fs**2'
      endif
      if (cml_p) then
         call cmlAddParameter( xf    = mainXML,                   &
              name  = 'MD.ParrinelloRahmanMass', &
-             value = mn,                        &
+             value = mpr, &
              units = 'siestaUnits:Ry_fs__2' )
      endif
   endif
