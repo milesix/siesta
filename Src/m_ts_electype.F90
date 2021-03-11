@@ -1203,10 +1203,21 @@ contains
             if ( j == this%t_dir ) cycle
             do i = 1 , 3
               if ( i == this%t_dir ) cycle
-              if ( j == i ) then
-                er = er .or. ( this_kcell(i,j) /= kcell(pvt(i),pvt(j))*k )
-              else 
-                er = er .or. ( this_kcell(i,j) /= kcell(pvt(i),pvt(j)) )
+              ! Check whether there are connections or not (i.e. if k-points
+              ! matter)
+              if ( this_nsc(i) == 1 ) then
+                ! check whether it is 1 or not
+                if ( j == i ) then
+                  er = er .or. ( this_kcell(i,j) /= 1 )
+                else
+                  er = er .or. ( this_kcell(i,j) /= 0 )
+                end if
+              else
+                if ( j == i ) then
+                  er = er .or. ( this_kcell(i,j) /= kcell(pvt(i),pvt(j))*k )
+                else 
+                  er = er .or. ( this_kcell(i,j) /= kcell(pvt(i),pvt(j)) )
+                end if
               end if
             end do
           end do
@@ -1214,16 +1225,21 @@ contains
 
         if ( er .and. IONode ) then
 
-          write(*,'(a)') 'Incompatible k-grids...'
+          write(*,'(3a)') "Electrode ", trim(this%name), " found incompatible k-grids"
+          write(*,'(a,i0)') "Electrode semi-infinite direction [A, B, C] index: ", this%t_dir
+          write(*,'(a,3(tr1,i0))') "Electrode Bloch expansion [A, B, C]:", this%Bloch%B
+
           write(*,'(a)') 'Electrode file k-grid:'
           do j = 1 , 3
-            write(*,'(3(i4,tr1),f8.4)') this_kcell(:,j), this_kdispl(j)
+            write(*,'(3(i5,tr1),f8.4)') this_kcell(:,j), this_kdispl(j)
           end do
           write(*,'(a)') 'System k-grid:'
           do j = 1 , 3
-            write(*,'(3(i4,tr1),f8.4)') kcell(:,j), kdispl(j)
+            write(*,'(3(i5,tr1),f8.4)') kcell(:,j), kdispl(j)
           end do
-          write(*,'(a)') 'Electrode file k-grid should probably be:'
+          write(*,'(a)') 'To match electrode Bloch expansion and system k-points'
+          write(*,'(a)') 'then the electrode k-grid should probably be:'
+
           ! Loop the electrode directions
           do j = 1 , 3
             if ( j == this%t_dir ) then
@@ -1233,10 +1249,16 @@ contains
               if ( this_kcell(j,j) < 20 ) then
                 this_kcell(j,j) = 50
               end if
+              this_kdispl(j) = kdispl(pvt(j))
+            else if ( this_nsc(j) == 1 ) then
+              this_kcell(:,j) = 0
+              this_kcell(j,j) = 1
+              this_kdispl(j) = 0._dp
             else
               this_kcell(:,j) = kcell(:,pvt(j)) * this%Bloch%B(j)
+              this_kdispl(j) = kdispl(pvt(j))
             end if
-            write(*,'(3(i4,tr1),f8.4)') this_kcell(:,j), kdispl(pvt(j))
+            write(*,'(3(i5,tr1),f8.4)') this_kcell(:,j), this_kdispl(j)
           end do
 
         end if
