@@ -312,6 +312,7 @@ contains
           call timer( timer_str_scf, 1 )
           if (cml_p) &
                call cmlStartStep( xf=mainXML, type='SCF', index=iscf )
+
           if ( mixH ) then
              
              if ( first_scf ) then
