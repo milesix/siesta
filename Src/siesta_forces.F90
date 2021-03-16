@@ -58,7 +58,7 @@ contains
     use m_convergence, only: converger_t
     use m_convergence, only: reset, set_tolerance
     use siesta_geom,   only: na_u           ! Number of atoms in unit cell
-    use m_energies,    only: Etot, Ebs      ! Total energy
+    use m_energies,    only: Etot           ! Total energy
     use m_forces,      only: fa, cfa        ! Forces and constrained forces
     use m_stress,      only: cstress        ! Constrained stress tensor
     use siesta_master, only: forcesToMaster ! Send forces to master prog
@@ -312,7 +312,6 @@ contains
           call timer( timer_str_scf, 1 )
           if (cml_p) &
                call cmlStartStep( xf=mainXML, type='SCF', index=iscf )
-
           if ( mixH ) then
              
              if ( first_scf ) then
@@ -320,8 +319,6 @@ contains
                    call get_H_from_file()
                 else
                    call setup_hamiltonian( iscf )
-                   write(*,*) 'sum(H)', sum(H), __FILE__, __LINE__
-
                 end if
              end if
              
@@ -348,8 +345,8 @@ contains
           end if
 
           ! This iteration has completed calculating the new DM
-          call compute_energies( iscf )
 
+          call compute_energies( iscf )
           if ( mix_charge ) then
              call compute_charge_diff( drhog )
           end if
