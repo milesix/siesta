@@ -142,7 +142,7 @@
         end do
 
       end if
-         
+
 ! ..................
 
 ! Non-SCF part of total energy .......................................
@@ -322,10 +322,12 @@
      .            Exc, Dxc, dipol, stress, fal, stressl,
      .            use_rhog_in)
 
+      write(*,*) 'sums', sum(H), sum(Dscf), 'setup_hamil.F', __LINE__
+
       if ( spin%SO_offsite ) then
 
 !        if( switch_ldau ) H_so_off = H_so_off + H_ldau_so
-        if( switch_ldau ) H_so_off = 0.0_dp
+!        if( switch_ldau ) H_so_off = 0.0_dp
 
 ! H(:, [5, 6]) are not updated in dhscf, see vmat for details.
         
@@ -350,6 +352,8 @@
 !!        End debugging
 
       endif
+
+      write(*,*) 'sums', sum(H), sum(Dscf), 'setup_hamil.F', __LINE__
 
       ! This statement will apply to iscf = 1, for example, when
       ! we do not use rhog_in. Rhog here is always the charge used to
