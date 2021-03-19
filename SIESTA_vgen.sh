@@ -74,9 +74,13 @@ fi
 
 ### Update version_file, only if needed. ###
 test "${Vnew}" = "${Vold}" || {
-      echo >&2 "SIESTA_VERSION = ${Vnew}"
       echo "${Vnew}" >"${version_file}"
 }
+
+
+### Always print the version label. ###
+echo >&2 "SIESTA_VERSION = ${Vnew}"
+
 
 #--------------------------------------------------------------------
 #
