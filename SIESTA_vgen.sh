@@ -17,7 +17,8 @@
 # ------------------------------------------------------------------
 
 # Default SIESTA version (in case everything else fails).
-default_version=v4.1.5
+no_version='NO_VERSION_LABEL_AVAILABLE'
+default_version="${no_version}"
 
 # Name of release version file (only included in release tarballs).
 release_version_file=SIESTA-release
@@ -42,7 +43,7 @@ elif test -d ${GIT_DIR:-.git} -o -f .git &&
       # Only consider regular (v[0-9]*) and MaX tags, irrespective of whether they are annotated or not.
       Vnew=$(git describe --tags --first-parent --abbrev=9 \
              --match "v[0-9]*" --match "MaX-*" HEAD 2>/dev/null) &&
-      case "$Vnew" in
+      case "${Vnew}" in
           *${LF}*) (exit 1)
               ;;
           v[0-9]*|MaX-*)
@@ -82,6 +83,20 @@ test "${Vnew}" = "${Vold}" || {
 ### Always print the version label. ###
 echo >&2 "SIESTA_VERSION = ${Vnew}"
 
+
+### Fail if no version was identified. ###
+if [ "${Vnew}" = "${no_version}" ]
+then
+   echo >&2 ""
+   echo >&2 "ERROR: This version of SIESTA cannot be identified."
+   echo >&2 "ERROR: Please download an official release of SIESTA from"
+   echo >&2 "ERROR: https://gitlab.com/siesta-project/siesta/-/releases"
+   echo >&2 "ERROR: or clone the official git repository at"
+   echo >&2 "ERROR: https://gitlab.com/siesta-project/siesta ."
+   echo >&2 "ERROR: Support for unidentified versions of SIESTA is unfeasible."
+   echo >&2 ""
+   exit 2
+fi
 
 #--------------------------------------------------------------------
 #
