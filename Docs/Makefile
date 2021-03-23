@@ -21,16 +21,21 @@ all: final-dev final-screen final
 
 doc: $(doc).tex
 
+# Always try to update the SIESTA version file:
+SIESTA_VERSION_FILE:=../SIESTA-version
+$(SIESTA_VERSION_FILE): FORCE
+	@(cd ../ && ./SIESTA_vgen.sh)
+
 # Currently there are two manuals
-%.pdf: %.tex FORCE
+%.pdf: %.tex $(SIESTA_VERSION_FILE) FORCE
 	$(latex) "$(input) \\input{$<}"
 
 # Create the screen version
-%-screen.pdf: %.tex FORCE
+%-screen.pdf: %.tex $(SIESTA_VERSION_FILE) FORCE
 	$(latex) "$(input) \\def\\siestascreen{1} \\input{$<}"
 
 # Create the developer version
-%-dev.pdf: %.tex FORCE
+%-dev.pdf: %.tex $(SIESTA_VERSION_FILE) FORCE
 	$(latex) "$(input) \\def\\siestadeveloper{1} \\input{$<}"
 
 # Basic targets
