@@ -13,6 +13,7 @@ program unfold
 ! Ref: "Band unfolding made simple", S.G.Mayo and J.M.Soler, Dic.2018
 !       arXiv:1812.03925          ( https://arxiv.org/abs/1812.03925 )
 ! S.G.Mayo and J.M.Soler, Oct.2018
+! P. Ordejón, Jan 2021 - Parallelization over orbitals implemented
 
   use alloc,        only: alloc_report, de_alloc, re_alloc
   use atmfuncs,     only: lofio, mofio, nofis, rcut, rphiatm, zetafio
@@ -35,10 +36,11 @@ program unfold
   use mpi_siesta,   only: MPI_Comm_Rank, MPI_Comm_Size, MPI_Comm_World, &
                           MPI_double_precision, MPI_Init, MPI_Finalize, &
                           MPI_Reduce, MPI_Sum
+ use parallelsubs,  only: GetNodeOrbs,LocalToGlobalOrb
 #endif
   use m_radfft,     only: radfft
   use m_timer,      only: timer_init, timer_report, timer_start, timer_stop
-  use parallel,     only: Nodes, Node
+  use parallel,     only: Nodes, Node, BlockSize
   use precision,    only: dp, sp
   use spher_harm,   only: lofilm, rlylm
   use siesta_geom,  only: ucell, xa, isa   ! unit cell, atomic coords and species
@@ -60,12 +62,14 @@ program unfold
   integer, parameter :: allocReportLevelDefault = 2 ! default allocation report level
 
   ! Internal variables
-  integer          :: i, i1, i2, i3, ia, iao, ib, ic, ie, ierr, ig, ij, &
-                      io, ios, iostat, iou, ipath, iq, iq1, iq2, iqNode, iqx(3), &
+  integer          :: BNode, BTest, i, i1, i2, i3, ia, iao, ib, ic, ie, ierr, ig, iib, ij, &
+                      io, iol, ios, iostat, iou, ioul, ipath, iq, iq1, iq2, iqNode, iqx(3), &
                       ir, irq, iscf, isp, ispin, itag, iu, j, je, jk, jlm, jo, jos, jou, &
                       kdsc(3,3), kscell(3,3), l, lastq(0:maxpaths), level, ll, lmax, &
-                      m, maxig(3), maxorb, myNode, na, nbands, ne, ng, nh, nlm, nn, &
-                      nNodes, nos, nou, npaths, nq, nqline, nrq, nspin, ntmp, nw, t, z
+                      m, maxig(3), maxorb, MPIerror, myNode, &
+                      na, naux, nbands, ne, ng, nh, nlm, nn, &
+                      nNodes, nos, nou, noul, npaths, nq, nqline, nrq, nspin, ntmp, nw, &
+                      resto, t, z
   real(dp)         :: alat, c0, cdos, cellRatio(3,3), ddos, de, dek, dq, dqpath(3), &
                       dqx(3), dr, drq, dscell(3,3), emax, emin, efermi, &
                       gcut, gnew(3), gnorm, gq(3), grad, gylm(3,maxl*maxl), &
@@ -74,6 +78,7 @@ program unfold
                       r, rc, rcell(3,3), refoldCell(3,3), refoldBcell(3,3), rmax, rq, &
                       scell(3,3), threshold, vol, we, wq, xmax, ylm(maxl*maxl)
   complex(dp)      :: ck, ii, phase, phi, psik, ukg
+
   logical          :: found, gamma, notSuperCell, refolding
   character(len=50):: eunit, fname, formatstr,  iostr, isstr, numstr, slabel
   character(len=20):: labelfis, symfio
@@ -88,14 +93,16 @@ program unfold
 
   ! Allocatable arrays and pointers
   integer,          pointer:: iline(:)=>null()
-  real(dp),         pointer:: eb(:,:)=>null(), &
+  real(dp),         pointer:: eb(:)=>null(), &
                               phir(:,:,:)=>null(), phiq(:,:,:)=>null(), &
                               rdos(:,:,:)=>null(), udos(:,:,:)=>null(), &
                               tmp1(:)=>null(), tmp2(:)=>null()
   real(dp),         pointer:: g(:,:)=>null(), q(:,:)=>null()
-  complex(dp),      pointer:: h(:,:)=>null(), psi(:,:,:)=>null(), s(:,:)=>null()
+  complex(dp),      pointer:: h(:,:)=>null(), psi(:,:)=>null(), s(:,:)=>null()
   logical,          pointer:: cc(:,:,:)=>null()
   type(parsed_line),pointer:: pline=>null()
+
+  real(dp),         pointer:: aux(:,:,:)=>null()
 
 !--------------------
 
@@ -459,10 +466,26 @@ program unfold
   diag_serial = .true.
   nbands = nou
   iscf = 1
-  call re_alloc( h,   1,nou, 1,nou,          myName//'h'   )
-  call re_alloc( s,   1,nou, 1,nou,          myName//'s'   )
-  call re_alloc( psi, 1,nou, 1,nou, 1,nspin, myName//'psi' ) 
-  call re_alloc( eb,  1,nou,        1,nspin, myName//'eb'  )
+  noul = nou
+
+
+#ifdef MPI
+! Check if parallelization must be over k-points or orbitals
+  ParallelOverK = fdf_get('Diag.ParallelOverK', .false.)
+  if (.not. ParallelOverK) then
+    diag_serial = .false.
+! number of orbitals in myNode
+    call GetNodeOrbs(nou,myNode,nNodes,noul)
+  else
+    BlockSize = -1
+  endif
+  if (myNode== 0) print*,'unfold: ParallelOverK = ',ParallelOverK
+#endif
+
+  call re_alloc( h,   1,nou, 1,noul,          myName//'h'   )
+  call re_alloc( s,   1,nou, 1,noul,          myName//'s'   )
+  call re_alloc( psi, 1,nou, 1,noul,          myName//'psi' ) 
+  call re_alloc( eb,  1,nou,                  myName//'eb'  )
 
   ! Main loops on unfolded band paths and q vectors along them
   call timer_stop(myName//'init')
@@ -474,12 +497,17 @@ program unfold
     iq2 = lastq(ipath)
     call re_alloc( udos, iq1,iq2, 0,ne, 1,nspin, myName//'udos', &
                    copy=.false., shrink=.true. )
+    call re_alloc( aux, iq1,iq2, 0,ne, 1,nspin, myName//'aux', &
+                   copy=.false., shrink=.true. )
+    naux = nspin * (ne+1) * (iq2-iq1+1)
     if (refolding) &
       call re_alloc( rdos, iq1,iq2, 0,ne, 1,nspin, myName//'rdos', &
                      copy=.false., shrink=.true. )
     udos = 0
+    aux = 0
     do iq = iq1,iq2
-      iqNode = mod((iq-1),nNodes)
+      iqNode = myNode
+      if (ParallelOverK) iqNode = mod((iq-1),nNodes)
       if (myNode==iqNode) then
         do ig = 1,ng
           gnorm = sqrt(sum(g(:,ig)**2))
@@ -495,62 +523,79 @@ program unfold
               call timer_start(myName//'diag')
               h = 0
               s = 0
-              do iou = 1,nou
+              do ioul = 1,noul
+#ifdef MPI
+                if (ParallelOverK) then
+                  iou=ioul
+                else
+                  call LocalToGlobalOrb(ioul,myNode,nNodes, iou)
+                endif
+#endif
                 do j = 1,hsx%numh(iou)
                   ij = hsx%listhptr(iou) + j
                   jos = hsx%listh(ij)
                   jou = hsx%indxuo(jos)
                   kxij = sum(kq*hsx%xij(:,ij))
-                  phase = exp(ii*kxij)
-                  s(iou,jou) = s(iou,jou) + hsx%Sover(ij)*phase
-                  h(iou,jou) = h(iou,jou) + hsx%hamilt(ij,ispin)*phase
+! PO Note: phase sign changed to adapt to format of H and S in parallel...
+                  phase = exp(-ii*kxij)
+                  s(jou,ioul) = s(jou,ioul) + hsx%Sover(ij)*phase
+                  h(jou,ioul) = h(jou,ioul) + hsx%hamilt(ij,ispin)*phase
                 enddo
               enddo
-              call cdiag(h,s,nou,nou,nou,eb(:,ispin),psi(:,:,ispin), &
-                         nbands,iscf,ierr,-1)
+              call cdiag(h,s,nou,noul,nou,eb,psi, &
+                         nbands,iscf,ierr,BlockSize)
               if (ierr/=0) print*,'unfold: ERROR in cdiag'
-              eb(:,ispin) = eb(:,ispin)*fdf_convfac('ry',eunit) ! from Ry to eunit
+              eb(:) = eb(:)*fdf_convfac('ry',eunit) ! from Ry to eunit
               call timer_stop(myName//'diag')
             endif
 
             call timer_start(myName//'g sum')
             qmod = sqrt(sum(qg**2))+1.e-15_dp
             call rlylm( lmax, qg/qmod, ylm, gylm )
-            do ib = 1,nbands
-              je = floor((eb(ib,ispin)-emin)/de)
-              dek = emin + (je+1)*de - eb(ib,ispin)
-              we = dek/de
-              ukg = 0
-              if (je>=-1 .and. je<=ne) then   ! select energies
-                do io = 1,nou
-                  ia = hsx%iaorb(io)
-                  isp = isa(ia)
-                  iao = hsx%iphorb(io)
-                  l = lofio(isp,iao)
-                  m = mofio(isp,iao)
-                  jlm = l*(l+1) + m+1                 ! ilm(l,m)
-                  irq = floor(qmod/dq)
-                  drq = (irq+1)*dq-qmod
-                  wq = drq/dq
-                  phi = phiq(irq,isp,iao)*wq + phiq(irq+1,isp,iao)*(1-wq)
-                  phi = (-ii)**l * ylm(jlm) * phi
-                  psik = c0*psi(io,ib,ispin)*phi*exp(-ii*sum(gq*xa(:,ia)))
-                  ukg = ukg + psik
-                enddo ! io
-                ddos = cdos*vol*abs(ukg)**2
-                if (gnorm<1.e-12_dp) then
-                  if (je>=0 .and. je<=ne) &
-                    udos(iq,je,ispin) = udos(iq,je,ispin) + ddos*we
-                  if (je>=-1 .and. je<ne) &
-                    udos(iq,je+1,ispin) = udos(iq,je+1,ispin) + ddos*(1-we)
-                endif
-                if (refolding) then
-                  if (je>=0 .and. je<=ne) &
-                    rdos(iq,je,ispin) = rdos(iq,je,ispin) + ddos*we
-                  if (je>=-1 .and. je<ne) &
-                    rdos(iq,je+1,ispin) = rdos(iq,je+1,ispin) + ddos*(1-we)
-                endif
-              endif
+
+! Loop over bands in myNode
+             do iib=1,noul
+#ifdef MPI
+               if (ParallelOverK) then
+                 ib = iib
+               else
+                 call LocalToGlobalOrb(iib,myNode,nNodes,ib)
+               endif
+#endif
+               je = floor((eb(ib)-emin)/de)
+               dek = emin + (je+1)*de - eb(ib)
+               we = dek/de
+               ukg = 0
+               if (je>=-1 .and. je<=ne) then   ! select energies
+                 do io = 1,nou
+                   ia = hsx%iaorb(io)
+                   isp = isa(ia)
+                   iao = hsx%iphorb(io)
+                   l = lofio(isp,iao)
+                   m = mofio(isp,iao)
+                   jlm = l*(l+1) + m+1                 ! ilm(l,m)
+                   irq = floor(qmod/dq)
+                   drq = (irq+1)*dq-qmod
+                   wq = drq/dq
+                   phi = phiq(irq,isp,iao)*wq + phiq(irq+1,isp,iao)*(1-wq)
+                   phi = (-ii)**l * ylm(jlm) * phi
+                   psik = c0*psi(io,iib)*phi*exp(-ii*sum(gq*xa(:,ia)))
+                   ukg = ukg + psik
+                 enddo ! io
+                 ddos = cdos*vol*abs(ukg)**2
+                 if (gnorm<1.e-12_dp) then
+                   if (je>=0 .and. je<=ne) &
+                     udos(iq,je,ispin) = udos(iq,je,ispin) + ddos*we
+                   if (je>=-1 .and. je<ne) &
+                     udos(iq,je+1,ispin) = udos(iq,je+1,ispin) + ddos*(1-we)
+                 endif
+                 if (refolding) then
+                   if (je>=0 .and. je<=ne) &
+                     rdos(iq,je,ispin) = rdos(iq,je,ispin) + ddos*we
+                   if (je>=-1 .and. je<ne) &
+                     rdos(iq,je+1,ispin) = rdos(iq,je+1,ispin) + ddos*(1-we)
+                 endif
+               endif
             enddo ! ib
             call timer_stop(myName//'g sum')
           enddo ! ispin
@@ -559,26 +604,35 @@ program unfold
     enddo ! iq
 
 if (myNode==0) print*,'unfold: end of main loop'
-
+    
 #ifdef MPI
-    ntmp = (iq2-iq1+1)*(ne+1)*nspin
-    call re_alloc( tmp1, 1,ntmp, myName//'tmp1', copy=.false., shrink=.true. )
-    call re_alloc( tmp2, 1,ntmp, myName//'tmp2', copy=.false., shrink=.true. )
-!    tmp1 = reshape(udos,(/ntmp/))
-    call array_copy([1,1,1],[iq2-iq1+1,ne+1,nspin],udos, 1,ntmp,tmp1)
-    tmp2 = 0
-    call MPI_reduce(tmp1,tmp2,ntmp,MPI_double_precision,MPI_sum,0, &
-                    MPI_COMM_WORLD,ierr)
-!    udos(iq1:iq2,0:ne,:) = reshape(tmp2,(/iq2-iq1+1,ne+1,nspin/))
-    call array_copy(1,ntmp,tmp2, [1,1,1],[iq2-iq1+1,ne+1,nspin],udos)
-    if (refolding) then
-!      tmp1 = reshape(rdos,(/ntmp/))
-      call array_copy([1,1,1],[iq2-iq1+1,ne+1,nspin],rdos, 1,ntmp,tmp1)
+    if (ParallelOverK) then
+      ntmp = (iq2-iq1+1)*(ne+1)*nspin
+      call re_alloc( tmp1, 1,ntmp, myName//'tmp1', copy=.false., shrink=.true. )
+      call re_alloc( tmp2, 1,ntmp, myName//'tmp2', copy=.false., shrink=.true. )
+!      tmp1 = reshape(udos,(/ntmp/))
+      call array_copy([1,1,1],[iq2-iq1+1,ne+1,nspin],udos, 1,ntmp,tmp1)
       tmp2 = 0
       call MPI_reduce(tmp1,tmp2,ntmp,MPI_double_precision,MPI_sum,0, &
                       MPI_COMM_WORLD,ierr)
-!      rdos(iq1:iq2,0:ne,:) = reshape(tmp2,(/iq2-iq1+1,ne+1,nspin/))
-       call array_copy(1,ntmp,tmp2, [1,1,1],[iq2-iq1+1,ne+1,nspin],rdos)
+!      udos(iq1:iq2,0:ne,:) = reshape(tmp2,(/iq2-iq1+1,ne+1,nspin/))
+      call array_copy(1,ntmp,tmp2, [1,1,1],[iq2-iq1+1,ne+1,nspin],udos)
+      if (refolding) then
+!        tmp1 = reshape(rdos,(/ntmp/))
+        call array_copy([1,1,1],[iq2-iq1+1,ne+1,nspin],rdos, 1,ntmp,tmp1)
+        tmp2 = 0
+        call MPI_reduce(tmp1,tmp2,ntmp,MPI_double_precision,MPI_sum,0, &
+                        MPI_COMM_WORLD,ierr)
+!        rdos(iq1:iq2,0:ne,:) = reshape(tmp2,(/iq2-iq1+1,ne+1,nspin/))
+         call array_copy(1,ntmp,tmp2, [1,1,1],[iq2-iq1+1,ne+1,nspin],rdos)
+      endif
+    else
+      aux = 0
+      call MPI_AllReduce(udos,aux,naux,MPI_double_precision,MPI_sum,MPI_Comm_World,MPIerror)
+      udos = aux
+      aux = 0
+      call MPI_AllReduce(rdos,aux,naux,MPI_double_precision,MPI_sum,MPI_Comm_World,MPIerror)
+      rdos = aux
     endif
 #endif
 
