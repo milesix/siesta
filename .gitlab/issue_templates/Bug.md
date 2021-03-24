@@ -7,14 +7,20 @@ descriptive title for the issue.
 
 **Code version:**
 <!--
-Please provide which siesta version you used.
-E.g. 4.0 or 4.1 or if you use a git-commit, please provide
-the git hash.
-
+Please indicate which Siesta version you used
+(e.g., 4.1.5, or MaX-1.2.0-2-g598d19617).
 This is vital since some bugs are already fixed in the development
-version.
+branch.
 
-Siesta prints the version number at the top of any output, or in the version.info file.
+If you only have access to the Siesta binary,
+you can find the version string printed at the top of any Siesta output.
+
+If you have access to the directories where Siesta was compiled,
+this information can also be found in file `SIESTA-version`
+(for recent versions of Siesta) or file `version.info`
+(for older versions of Siesta; in this case,
+if you obtained the source code using git,
+please specify the precise Commit Id hash).
 -->
 
 
@@ -59,7 +65,7 @@ Also describe what you would expect to happen.
 <!--
 Attach any relevant logs (outputs).
 Remeber to use (```) to create code-blocks for input etc.
-For very large files, consider creating an issue Gitlab project.
+For very large files, consider creating an issue GitLab project.
 -->
 
 
