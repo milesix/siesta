@@ -192,9 +192,10 @@ while [ $# -gt 0 ]; do
 done
 
 if [ $_head -eq 1 ]; then
-    _tag=$(git describe --abbrev)
+    ./SIESTA_vgen.sh
+    _tag=$(cat SIESTA-version)
+    rm -fv SIESTA-version
     _sign=0
-    _out=siesta-$_tag
 fi
 
 _tag_no_v=${_tag//v/}
@@ -268,8 +269,8 @@ pushd $_reldir
 # Go into the source directory
 pushd $_out
 
-# Update the version.info file
-printf "%s" "${_tag_no_v}" > version.info
+# Create a SIESTA-release file
+printf "%s" "${_tag}" > SIESTA-release
 
 # Create documentation
 pushd Docs
