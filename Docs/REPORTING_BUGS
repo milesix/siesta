@@ -48,7 +48,7 @@ Please keep in mind the following guidelines:
     in one version may not exist in another. Use the version number
     printed at the top of any output file. If you have access to the
     directories where Siesta was compiled, this information can also be
-    found in file SIESTA-version (for recent versions of Siesta)
+    found in file SIESTA.version (for recent versions of Siesta)
     or file version.info (for older versions of Siesta; in this case,
     if you obtained the source code using git, please specify the precise
     Commit Id hash).

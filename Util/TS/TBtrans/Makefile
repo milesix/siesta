@@ -146,7 +146,7 @@ endif
 
 # The version program
 .PHONY: version.o FORCE
-SIESTA_VERSION_FILE:=../../../SIESTA-version
+SIESTA_VERSION_FILE:=../../../SIESTA.version
 version.o: version
 version: version.F90 posix_calls.o $(SIESTA_VERSION_FILE)
 	@echo

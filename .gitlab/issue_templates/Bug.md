@@ -16,7 +16,7 @@ If you only have access to the Siesta binary,
 you can find the version string printed at the top of any Siesta output.
 
 If you have access to the directories where Siesta was compiled,
-this information can also be found in file `SIESTA-version`
+this information can also be found in file `SIESTA.version`
 (for recent versions of Siesta) or file `version.info`
 (for older versions of Siesta; in this case,
 if you obtained the source code using git,

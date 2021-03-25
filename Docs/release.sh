@@ -193,8 +193,8 @@ done
 
 if [ $_head -eq 1 ]; then
     ./SIESTA_vgen.sh
-    _tag=$(cat SIESTA-version)
-    rm -fv SIESTA-version
+    _tag=$(cat SIESTA.version)
+    rm -fv SIESTA.version
     _sign=0
 fi
 
@@ -269,8 +269,8 @@ pushd $_reldir
 # Go into the source directory
 pushd $_out
 
-# Create a SIESTA-release file
-printf "%s" "${_tag}" > SIESTA-release
+# Create a SIESTA.release file
+printf "%s" "${_tag}" > SIESTA.release
 
 # Create documentation
 pushd Docs

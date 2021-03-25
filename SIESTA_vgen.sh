@@ -21,10 +21,10 @@ no_version='NO_VERSION_LABEL_AVAILABLE'
 default_version="${no_version}"
 
 # Name of release version file (only included in release tarballs).
-release_version_file=SIESTA-release
+release_version_file=SIESTA.release
 
 # Name of file with version string.
-version_file=SIESTA-version
+version_file=SIESTA.version
 
 LF='
 '

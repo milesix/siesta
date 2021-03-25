@@ -12,7 +12,7 @@ Please indicate which Siesta version you used
 This is vital since some bugs are already fixed in the development
 branch.
 
-This information can be found in file `SIESTA-version`
+This information can be found in file `SIESTA.version`
 (for recent versions of Siesta) or file `version.info`
 (for older versions of Siesta; in this case,
 if you obtained the source code using git,

@@ -22,7 +22,7 @@ all: final-dev final-screen final
 doc: $(doc).tex
 
 # Always try to update the SIESTA version file:
-SIESTA_VERSION_FILE:=../SIESTA-version
+SIESTA_VERSION_FILE:=../SIESTA.version
 $(SIESTA_VERSION_FILE): FORCE
 	@(cd ../ && ./SIESTA_vgen.sh)
 
