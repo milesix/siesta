@@ -276,9 +276,9 @@ printf "%s" "${_tag}" > SIESTA.release
 pushd Docs
 
 # Update manual information that is version/date dependent
-sed -s -i -e "s/\\date{.*}/\\date{$_date}/" siesta.tex tbtrans.tex
+sed -s -i -e "s/\\\\date{.*}/\\\\date{$_date}/" siesta.tex tbtrans.tex
 # Version tags in the pdf-title
-sed -s -i -e "s/\\providecommand\\softwareversion{.*}/\\providecommand\\softwareversion{$_tag_no_v}/" siesta.tex tbtrans.tex
+sed -s -i -e "s/\\\\providecommand\\\\softwareversion{.*}/\\\\providecommand\\\\softwareversion{$_tag_no_v}/" siesta.tex tbtrans.tex
 
 # First create the screen variants...
 make final-screen
