@@ -69,8 +69,11 @@ _tag=
 # Get default output file (siesta-<>.tar.gz)
 _out=
 
+# List all git tags that match any of the relevant candidate patterns.
+# Tags are ordered by commit date (most recent first).
 function _git_tag_cmd {
-    git tag --list 'v*' --sort=-v:refname
+    git log --tags="v[0-9]*" --tags="[0-9].[0-9]*" --tags="MaX-*" \
+        --no-walk=sorted --pretty="%S"
 }
 
 # Default to latest tag
