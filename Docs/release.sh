@@ -192,14 +192,15 @@ while [ $# -gt 0 ]; do
 done
 
 if [ $_head -eq 1 ]; then
+    _tag=$(git rev-parse HEAD)
     ./SIESTA_vgen.sh
-    _tag=$(cat SIESTA.version)
+    _tag_no_v=$(cat SIESTA.version)
     rm -fv SIESTA.version
     _sign=0
+else
+    # Remove (only) leading 'v's.
+    _tag_no_v=$(expr "${_tag}" : v*'\(.*\)')
 fi
-
-_tag_no_v=${_tag//v/}
-
 
 # Get default output file (siesta-<>.tar.gz)
 if [ -z "$_out" ]; then
@@ -214,7 +215,12 @@ fi
 # Have to do this while in a git repository
 _date=$(date -d "$(git log -n1 --format='%ci' $_tag)" +"%B %d, %Y")
 
-echo "Chosen release tag is: $_tag"
+if [ $_head -eq 1 ]; then
+   echo "Chosen release commit is: $_tag"
+else
+   echo "Chosen release tag is: $_tag"
+fi
+echo "Release label is: $_tag_no_v"
 echo "Creating out file: $_out.tar.gz"
 echo "Release date: $_date"
 echo ""
@@ -245,7 +251,7 @@ function check_dir {
 mkdir -p $_reldir
 
 # Check directories
-check_dir $_reldir/$_tag-files
+check_dir $_reldir/$_tag_no_v-files
 check_dir $_reldir/$_out
 if [ $_check_dir_fail -ne 0 ]; then
     exit 1
@@ -254,7 +260,7 @@ fi
 rm -f $_reldir/$_checksum
 
 # The final directory with ALL release files, possibly signed.
-mkdir -p $_reldir/$_tag-files
+mkdir -p $_reldir/$_tag_no_v-files
 
 
 # Create a temporary work-directory
@@ -270,7 +276,7 @@ pushd $_reldir
 pushd $_out
 
 # Create a SIESTA.release file
-printf "%s" "${_tag}" > SIESTA.release
+printf "%s" "${_tag_no_v}" > SIESTA.release
 
 # Create documentation
 pushd Docs
