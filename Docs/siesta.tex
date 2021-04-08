@@ -9411,6 +9411,19 @@ an alternative way to plot the charge density (and wavefunctions).
 
 \end{fdflogicalF}
 
+\begin{fdflogicalF}{FormattedRho}
+  \index{output!charge density}
+
+  Instructs to write the (requested) files \sysfile{RHO}, 
+\sysfile{DRHO}, \sysfile{RHOXC}, 
+\sysfile{VH}, \sysfile{VNA}, \sysfile{VT}, \sysfile{IOCH}, and
+\sysfile{TOCH} in ASCII text format, rather than as binary files (default).
+
+  \note ASCII files require much more space than binary and NetCDF files. 
+Consider using the tools in Util/Grid to translate between formats.
+  
+\end{fdflogicalF}
+
 \begin{fdflogicalF}{SaveBaderCharge}
   \index{output!Bader charge}
 

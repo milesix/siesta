@@ -663,6 +663,7 @@ C     Modules
 
       use m_charge_add,   only: charge_add
       use m_hartree_add,  only: hartree_add
+      use m_energies,     only: Ex, Ec
 
 #ifdef NCDF_4
       use siesta_options, only: write_cdf
@@ -728,8 +729,6 @@ C real*8  const         : Auxiliary variable (constant within a loop)
 C real*8  DEc           : Auxiliary variable to call cellxc
 C real*8  DEx           : Auxiliary variable to call cellxc
 C real*8  dvol          : Mesh-cell volume
-C real*8  Ec            : Correlation energy
-C real*8  Ex            : Exchange energy
 C real*8  field(3)      : External electric field
 C integer i             : General-purpose index
 C integer ia            : Atom index
@@ -764,7 +763,7 @@ C ----------------------------------------------------------------------
 C     Local variables
       integer  :: i, ia, ip, ispin, nsd, np_vac
       real(dp) :: b1Xb2(3), const, DEc, DEx, DStres(3,3),
-     &            Ec, Ex, rhotot, x0(3), volume, Vmax_vac, Vmean_vac
+     &            rhotot, x0(3), volume, Vmax_vac, Vmean_vac
 
       logical :: use_rhog
       
