@@ -7436,8 +7436,7 @@ Apart from the LDOS-specific options below, the ``ordering'',
 
 The current version of the code generates a real-space grid file with
 extension \sysfile{LDSI}, and (if netCDF is compiled-in) a file
-\file{Rho.grid.nc} (which unfortunately will overwrite any other
-charge-density files produced in the same run).
+\file{LDSI.grid.nc}.
 
 NOTE: The LDOS computed with this procedure is not exactly the same as
 the vanilla \siesta\ LDOS, which uses an explicit energy
@@ -7835,6 +7834,9 @@ obtain simple STM images in the Tersoff-Hamann approximation (See
         -3.50  0.00   eV
      %endblock LocalDensityOfStates
   \end{fdfexample}
+
+  If netCDF support is compiled in, the file \file{LDOS.grid.nc} is
+  produced.
 
   \note the two energies of the range must be ordered, with lowest
   first.
