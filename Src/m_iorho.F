@@ -24,7 +24,7 @@
       use parallel,     only : Node, ProcessorY
       use sys,          only : die
       use alloc,        only : re_alloc, de_alloc
-      use fdf,          only : fdf_boolean
+      use fdf,          only : fdf_get, leqi
 #ifdef MPI
       use mpi_siesta
       use parallel,     only : Nodes
@@ -68,7 +68,7 @@ C records.
       external          io_assign, io_close, memory
 
 C Internal variables and arrays
-      character(len=12):: fform
+      character(len=12):: fform, fileFormat
       integer    i, ip, iu, is, j, np,
      .           BlockSizeY, BlockSizeZ, ProcessorZ,
      .           meshnsm(3), NRemY, NRemZ,
@@ -99,10 +99,13 @@ C Work out density block dimensions
 #endif
 
 C Find file format
-      if (fdf_boolean('FormattedRho',.false.)) then
+      fileFormat = fdf_get('SaveGridFunc.Format','binary')
+      if (leqi(fileFormat,'ASCII')) then
         fform = 'formatted'
-      else
+      elseif (leqi(fileFormat,'binary')) then
         fform = 'unformatted'
+      else
+        return
       endif
 
       call re_alloc( temp, 1, mesh(1), 'temp', 'write_rho' )
@@ -288,7 +291,7 @@ C Arguments
       external          io_assign, io_close, memory
 
 C Internal variables and arrays
-      character(len=12) :: fform
+      character(len=12) :: fform, fileFormat
       integer    ip, iu, is, np, ns, 
      .           BlockSizeY, BlockSizeZ, ProcessorZ,
      .           meshnsm(3), npl, NRemY, NRemZ,
@@ -324,11 +327,14 @@ C Check if input file exists
         endif
 
 C Find file format
-          if (fdf_boolean('FormattedRho',.false.)) then
-            fform = 'formatted'
-          else
-            fform = 'unformatted'
-          endif
+      fileFormat = fdf_get('SaveGridFunc.Format','binary')
+      if (leqi(fileFormat,'ASCII')) then
+        fform = 'formatted'
+      elseif (leqi(fileFormat,'binary')) then
+        fform = 'unformatted'
+      else
+        return
+      endif
 
 C Open file
           if (Node.eq.0) then
@@ -504,7 +510,7 @@ C logical overflow        : True if maxp or nspin were changed
       integer, intent(inout)       ::     maxp, nspin
       logical, intent(out)         ::     found, overflow
 
-      character(len=12) :: fform
+      character(len=12) :: fform, fileFormat
       real(dp) :: cell(3,3)
       integer  :: mesh(3)
       integer  :: meshnsm(3), npl, ns, iu, np, npmax
@@ -524,11 +530,14 @@ C Check if input file exists
         if (.not. found) return
 
 C Find file format
-          if (fdf_boolean('FormattedRho',.false.)) then
-            fform = 'formatted'
-          else
-            fform = 'unformatted'
-          endif
+      fileFormat = fdf_get('SaveGridFunc.Format','binary')
+      if (leqi(fileFormat,'ASCII')) then
+        fform = 'formatted'
+      elseif (leqi(fileFormat,'binary')) then
+        fform = 'unformatted'
+      else
+        return
+      endif
 
 C Open file
           if (Node.eq.0) then
