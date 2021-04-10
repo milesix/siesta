@@ -142,6 +142,8 @@ contains
     call write_debug( '    PRE siesta_forces' )
 #endif
 
+    call timer('geom_init', 1)
+
 #ifdef SIESTA__PEXSI
     ! Broadcast relevant things for program logic
     ! These were set in read_options, called only by "SIESTA_workers".
@@ -165,6 +167,7 @@ contains
        call bye("S only")
     end if
     if ( onlyS ) then
+      call timer('geom_init', 2)
       return
     end if
 
@@ -273,6 +276,8 @@ contains
         end if
 
       end if
+
+      call timer('geom_init', 2)
 
       ! The current structure of the loop tries to reproduce the
       ! historical Siesta usage. It should be made more clear.
