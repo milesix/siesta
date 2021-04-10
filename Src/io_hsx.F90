@@ -21,7 +21,7 @@ module io_hsx_m
   
 contains
 
-  subroutine write_hsx( nsc, no_u, indxuo, H, S, qtot, temp, xij)
+  subroutine write_hsx(H, S, Ef, qtot, temp, prec)
 ! *********************************************************************
 ! Saves the hamiltonian and overlap matrices, and other data required
 ! to obtain the bands and density of states
@@ -29,21 +29,20 @@ contains
 ! Note because of the new more compact method of storing H and S
 ! this routine is NOT backwards compatible
 ! ******************** INPUT or OUTPUT (depending on task) ***********
-! integer nsc(3)              : Number of supercells along each direction
 ! integer no_u                : Number of basis orbitals per unit cell
-! integer indxuo(no_s)        : Index of orbitals in supercell
 ! real*8  H(maxnh,nspin)      : Hamiltonian in sparse form
 ! real*8  S(maxnh)            : Overlap in sparse form
+! real*8  Ef                  : Fermi level
 ! real*8  qtot                : Total number of electrons
 ! real*8  temp                : Electronic temperature for Fermi smearing
-! real*8  xij(3,maxnh)        : Vectors between orbital centers (sparse)
+! integer prec                : The precision that stores the data (sp|dp)
 
     use precision, only: dp
-    use io_sparse_m, only: io_write_Sp, io_write_r2D, io_write_r1D
+    use io_sparse_m, only: io_write_Sp, io_write_dData, io_write_rData
     use parallel, only : Node, Nodes
     use atm_types, only : nspecies
-    use atomlist, only : iphorb, iaorb
-    use siesta_geom, only : na_u, isa
+    use atomlist, only : iphorb, iaorb, lasto
+    use siesta_geom, only: na_u, ucell, xa, isa, nsc, isc_off
     use atmfuncs, only : nofis, labelfis, zvalfis
     use atmfuncs, only : cnfigfio, lofio, zetafio
     use fdf
@@ -53,47 +52,56 @@ contains
     use mpi_siesta
 #endif
 
-    ! This really means that supercell info is supported by default
-    logical, parameter ::  gamma = .false. 
-    logical, parameter ::  write_xijk = .true.
-
-    integer :: nsc(3), no_u
-    integer :: indxuo(no_u*product(nsc))
-    type(dSpData2D), intent(inout) :: H, xij
+    type(dSpData2D), intent(inout) :: H
     type(dSpData1D), intent(inout) :: S
-    real(dp) :: qtot, temp
+    real(dp) :: Ef, qtot, temp
+    integer, intent(in), optional :: prec
 
     external :: io_assign, io_close
 
     ! Internal variables and arrays
+    integer :: no_u
     type(Sparsity), pointer :: sp
     type(OrbitalDistribution), pointer :: dit
     integer :: iu, is, io, nspin
+    logical :: is_dp
     integer, allocatable, target :: gncol(:)
 
     call timer("writeHSX",1)
 
     dit => dist(H)
     sp => spar(H)
+    ! total number of rows
+    no_u = nrows_g(sp)
     nspin = size(H, 2)
+
+    ! Check which precision
+    is_dp = .true.
+    if ( present(prec) ) is_dp = prec == dp
 
     if ( Node == 0 ) then
 
       ! Open file
       call io_assign( iu )
       open( iu, file=trim(slabel)//'.HSX', form='unformatted', status='unknown' )
-        
-      ! Write overall data
-      write(iu) no_u, nspin, nsc
-      
-      ! Write logical (always .false.)
-      write(iu) gamma
 
-      ! Write out indxuo always
-      if ( .not. gamma ) then
-        write(iu) indxuo(:)
-      end if
-      
+      ! Write version specification (to easily distinguish between different versions)
+      write(iu) 1
+      ! And what precision
+      write(iu) is_dp
+
+      ! Write overall data
+      write(iu) na_u, no_u, nspin, nspecies, nsc
+      write(iu) ucell, Ef, qtot, temp
+
+      write(iu) isc_off, xa(:,1:na_u), isa(1:na_u), lasto(1:na_u)
+
+      ! Write other useful info
+      write(iu) (labelfis(is),zvalfis(is),nofis(is),is=1,nspecies)
+      do is = 1, nspecies
+        write(iu) (cnfigfio(is,io), lofio(is,io), zetafio(is,io),io=1,nofis(is))
+      end do
+
     end if
 
     allocate(gncol(no_u))
@@ -102,35 +110,18 @@ contains
     ! Write sparsity pattern...
     call io_write_Sp(iu, sp, dit=dit, gncol=gncol)
     
-    ! Write H
-    call io_write_r2D(iu, H, gncol=gncol)
-
-    ! Write overlap
-    call io_write_r1D(iu, S, gncol=gncol)
-
-    if ( Node == 0 ) then
-      write(iu) qtot,temp
+    ! Write H and overlap
+    if ( is_dp ) then
+      call io_write_dData(iu, H, gncol=gncol)
+      call io_write_dData(iu, S, gncol=gncol)
+    else
+      call io_write_rData(iu, H, gncol=gncol)
+      call io_write_rData(iu, S, gncol=gncol)
     end if
-
-    if ( write_xijk ) then
-      call io_write_r2D(iu, xij, gncol=gncol)
-    end if ! write_xijk
 
     deallocate(gncol)
 
     if ( Node == 0 ) then
-      ! Write other useful info
-      write(iu) nspecies
-      write(iu) (labelfis(is), zvalfis(is),nofis(is),is=1,nspecies)
-      do is = 1, nspecies
-        do io=1,nofis(is)
-          write(iu) cnfigfio(is,io), lofio(is,io), zetafio(is,io)
-        end do
-      end do
-      write(iu) na_u
-      write(iu) isa(1:na_u)
-      write(iu) (iaorb(io), iphorb(io), io=1,no_u)
-        
       call io_close( iu )
     end if
 

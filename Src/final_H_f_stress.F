@@ -300,10 +300,22 @@
 ! not the one computed (from DM_out) in this routine.
 ! This call could be moved to a more appropriate place
 !
-      if (savehs .or. write_coop ) then
-        call write_hsx( nsc, no_u, indxuo,
-     &      H_2D, S_1D, Qtot, Temp, xij_2D)
-      end if
+      if ( savehs .or. write_coop ) then
+        if ( fixspin ) then
+! For fixed spin calculations we shift the Hamiltonian according
+! to the first spin such that we have a "common" E_F, after writing
+! we shift back again.
+          H_tmp => val(H_2D)
+          S_tmp => val(S_1D)
+          call daxpy(size(S_tmp),Efs(1)-Efs(2),S_tmp(1),1,H_tmp(1,2),1)
+          Ef = Efs(1)
+        end if
+        call write_hsx(H_2D, S_1D, Ef, Qtot, Temp)
+        if ( fixspin ) then
+          ! revert
+          call daxpy(size(S_tmp),Efs(2)-Efs(1),S_tmp(1),1,H_tmp(1,2),1)
+         end if
+      endif
 #ifdef CDF
 #ifdef NCDF_4
       if ( write_cdf ) then

@@ -315,8 +315,9 @@
         ! Save Hamiltonian and overlap matrices ............................
         ! Only in HSX format now.  Use Util/HSX/hsx2hs to generate an HS file
         if (savehs .or. write_coop) then
-          call write_hsx( nsc, no_u, indxuo,
-     &        H_2D, S_1D, qtot, temp, xij_2D)
+!         We don't know the fermi-level of this one. So we will pass
+!         a huge number to signal this.
+          call write_hsx(H_2D, S_1D, huge(0._dp), qtot, temp)
         end if
 
         call timer( 'all', 2 )  ! New call to close the tree

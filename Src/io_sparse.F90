@@ -28,11 +28,26 @@ module io_sparse_m
 
   public :: Node_Sp_gncol
   public :: io_read_Sp
-  public :: io_read_d1D, io_read_d2D
   public :: io_write_Sp
+
+  public :: io_read_d1D, io_read_d2D
+  public :: io_read_dData
+  interface io_read_dData
+    module procedure io_read_d1D
+    module procedure io_read_d2D
+  end interface io_read_dData
+
   public :: io_write_d1D, io_write_d2D
   public :: io_write_r1D, io_write_r2D
-
+  public :: io_write_dData, io_write_rData
+  interface io_write_dData
+    module procedure io_write_d1D
+    module procedure io_write_d2D
+  end interface io_write_dData
+  interface io_write_rData
+    module procedure io_write_r1D
+    module procedure io_write_r2D
+  end interface io_write_rData
 
   ! The counting functions
   public :: count_blocks
