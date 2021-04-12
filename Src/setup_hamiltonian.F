@@ -264,17 +264,17 @@
          H(:,6) =         aimag(H_ldau_so(:,2))
 !------- H(u,d)
          H(:,3) = H(:,3) + real(H_ldau_so(:,3), dp)
-         H(:,4) = H(:,4) +aimag(H_ldau_so(:,3))
+         H(:,4) = H(:,4) -aimag(H_ldau_so(:,3))
 !------- H(d,u)
          H(:,7) = H(:,7) + real(H_ldau_so(:,4), dp)
-         H(:,8) = H(:,8) -aimag(H_ldau_so(:,4))
+         H(:,8) = H(:,8) +aimag(H_ldau_so(:,4))
 
 #ifdef MPI
           ! Global reduction of E_ldau_so 
           call globalize_sum(E_ldau_so,buffer1)
           E_ldau_so = buffer1
 #endif
-        else
+        else  ! collinear spin
           call re_alloc(fal, 1, 3, 1, na_u, 'fal', 'setup_hamiltonian')      
 
           H_ldau => val(H_ldau_2D)
