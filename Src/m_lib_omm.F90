@@ -333,6 +333,8 @@ end subroutine omm_min
 
 subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,numh,listhptr,listh,d_sparse,&
     eta0,qs,h_sparse,s_sparse,t_sparse)
+
+  use siesta_options, only : rcoor
   
   implicit none
 
@@ -363,27 +365,28 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
 
   !**** LOCAL ***********************************!
 
+  type(matrix) :: csr_mat
+  type(matrix), save :: H, C_min, S, D_min, T, C_old, C_old2, brd_mat
+
+  integer :: i, j, ind, io, jo, MPIerror, flavour, is, nze
+  integer, save :: istp_prev, BlockSize_c, N_occ, wf_dim, precon_st, precon_st1
+  integer, allocatable, save :: ind_ordered(:)
+
+  real(dp) :: e_min, qout(2), qtmp(2), c_occ, rcoor0, rcoor_init
+  real(dp), save :: cg_tol, g_tol, eta, tau
+
+  logical :: new_S, ReadCoeffs, ReadUseLib, file_exist, present_eta, precon, init_C, my_order
+  logical, save :: long_out, Use2D, WriteCoeffs, WriteUseLib, C_extrapol, &
+    use_cholesky, sparse, dealloc_scf, dealloc_each
+  logical, save :: first_call=.true.
+
+  character(len=100) :: WF_COEFFS_filename
   character(5) :: m_storage
   character(3) :: m_operation
 
-  logical :: init_C, dealloc
-  integer :: i, j, ind, io, jo, MPIerror, flavour, is
-  logical, save :: first_call=.true.
-  type(matrix), save :: H, C_min, S, D_min, T, C_old, C_old2
-  real(dp) :: e_min, tau, qout(2), qtmp(2)
-  real(dp) :: block_data(1,1), c_occ
-  integer, save :: istp_prev, BlockSize_c, N_occ, wf_dim
-  logical :: new_S, ReadCoeffs, ReadUseLib, file_exist, present_eta
-  logical, save :: long_out, Use2D, WriteCoeffs, WriteUseLib, C_extrapol
-  real(dp), save :: cg_tol, g_tol, eta
-  character(len=100) :: WF_COEFFS_filename
-
-#ifdef MPI
-  m_storage ='pdcsr'
-  m_operation ='lap'
-#else
+#ifndef MPI
   if(ionode) then
-    write(6,*) 'omm_min: The use of DBCSR matrices requires compilation with MPI'
+    write(6,*) 'omm_min: OMM requires compilation with MPI'
   endif
   call die()  
 #endif
@@ -397,21 +400,40 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
       N_occ = nint(qs(1))
     end if
     BlockSize_c = fdf_integer('OMM.BlockSizeC',0)
+    sparse = fdf_boolean('OMM.UseSparse',.true.)
     Use2D = fdf_boolean('OMM.Use2D',.true.)
     C_extrapol = fdf_boolean('OMM.Extrapolate',.false.)
     long_out = fdf_boolean('OMM.LongOutput',.true.)
-    cg_tol = fdf_get('OMM.RelTol',1.0d-7)
+    cg_tol = fdf_get('OMM.RelTol',1.0d-9)
     g_tol = fdf_get('OMM.GTol',1.0d-3) 
     WriteCoeffs=fdf_boolean('OMM.WriteCoeffs',.false.)
     ReadCoeffs=fdf_boolean('OMM.ReadCoeffs',.false.)
-    WriteUseLib=fdf_boolean('OMM.WriteUseLib',.true.)
-    ReadUseLib=fdf_boolean('OMM.ReadUseLib',.true.)
+    WriteUseLib=fdf_boolean('OMM.WriteUseLib',.false.)
+    ReadUseLib=fdf_boolean('OMM.ReadUseLib',.false.)
     eta = fdf_get('OMM.Eta',0.0_dp,'Ry')
     if(ionode) print'(a, i15, a, i15, a, i8)','hdim =', h_dim, '    N_occ =', N_occ, &
       '    BlockSize =', BlockSize
     present_eta=.false.
     if(abs(eta)>1.d-10) present_eta=.true.
     wf_dim = N_occ
+    precon_st = fdf_integer('OMM.Precon',-1)
+    precon_st1 = fdf_integer('OMM.PreconFirstStep',precon_st)
+    tau = fdf_get('OMM.TPreconScale',10.0_dp,'Ry')
+    use_cholesky=.false.
+    if(abs(eta) < 1.d-10 .and. (.not. sparse)) use_cholesky=fdf_boolean('OMM.UseCholesky',.false.)
+    rcoor = fdf_get('OMM.RcLWF',9.5_dp)
+    rcoor_init = fdf_get('OMM.RcLWFInit',0.0_dp)
+    dealloc_scf = fdf_boolean('OMM.DeallocateSCF',.true.)
+    dealloc_each = fdf_boolean('OMM.Deallocate',.true.)
+    if(dealloc_each) dealloc_scf=.true.
+  end if
+
+  if(sparse) then
+    m_storage ='pdcsr'
+    m_operation ='lap'
+  else
+    m_storage ='pddbc'
+    m_operation ='lap'
   end if
 
   new_S = .false.
@@ -422,112 +444,196 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
   end if
 
   if(new_S .and. istp>1) then
+    present_eta=.false.
+    if(abs(eta)>1.d-10) present_eta=.true.
+
     call timer('c_extrapol',1) 
-    if(.not. C_old%is_initialized) call m_allocate(C_old,wf_dim,h_dim,&
-       BlockSize_c,BlockSize,label=m_storage,use2D=Use2D)
+    if(.not. C_old%is_initialized) call m_allocate(C_old,wf_dim,&
+        h_dim,label=m_storage,blocksize1=BlockSize_c,blocksize2=BlockSize)
 
     if(C_extrapol .and. istp>2) then
       if(.not. C_old2%is_initialized) call m_allocate(C_old2,wf_dim,&
-        h_dim,BlockSize_c,BlockSize,label=m_storage,use2D=Use2D)
+        h_dim,label=m_storage,blocksize1=BlockSize_c,blocksize2=BlockSize)
       call m_copy(C_old2,C_old)
     end if
     call m_copy(C_old,C_min)
-    if(C_min%is_initialized) call m_deallocate(C_min)
+    call timer('c_extrapol',2)
 
-    present_eta=.false.
-    if(abs(eta)>1.d-10) present_eta=.true.
     call init_c_matrix(C_min, wf_dim, h_dim, BlockSize_c, BlockSize, &
-      Use2D, present_eta, .false.)
+      present_eta, .false., m_storage)
 
+    call timer('c_extrapol',1)
     if(C_extrapol .and. (istp>2)) then 
       call m_add(C_old,'n',C_old2,2.0_dp,-1.0_dp)
-      call m_copy(C_min,C_old2,keep_sparsity=.true.)
+      call m_copy(C_min,C_old2,copy_into_existing=.true.)
+      if(dealloc_scf) call m_deallocate(C_old2)
     else
-      call m_copy(C_min,C_old,keep_sparsity=.true.)
+      call m_copy(C_min,C_old,copy_into_existing=.true.)
+      if(dealloc_scf) call m_deallocate(C_old)
     end if  
-    call m_dbcsr_occupation(C_min, c_occ)
-    if(ionode) print'(a,f10.8)','C occupation = ', c_occ
+    if(sparse) then
+      call m_dbcsr_occupation(C_min, c_occ)
+      if(ionode) print'(a,f10.8)','C occupation = ', c_occ
+    end if
     call timer('c_extrapol',2)
   end if
 
+  precon = .false.
+  if((.not. use_cholesky) .and. present(t_sparse) .and. (.not. sparse)) then
+    if(istp .eq. 1) then
+      if((precon_st1 .lt. 0) .or. (precon_st1 .ge. iscf)) precon = .true.
+    else
+      if((precon_st .lt. 0) .or. (precon_st .ge. iscf)) precon = .true.
+    end if
+  end if
+
   if(first_call) then
-    call timer('m_allocate',1)
-    if(ionode) print'(a)','sparse OMM with libOMM'
- 
-    call ms_dbcsr_setup(MPI_Comm_World) 
-    
-    if (.not. H%is_initialized) call m_allocate(H,h_dim,h_dim,BlockSize,BlockSize,&
-       label=m_storage,use2D=Use2D)
-    if (.not. S%is_initialized) call m_allocate(S,h_dim,h_dim,BlockSize,BlockSize,&
-        label=m_storage,use2D=Use2D)
-    if (.not. D_min%is_initialized) &
-      call m_allocate(D_min,h_dim,h_dim,BlockSize,BlockSize,label=m_storage,use2D=Use2D)
-    call timer('m_allocate',2)
-    call init_c_matrix(C_min, wf_dim, h_dim, BlockSize_c, BlockSize, Use2D, &
-      present_eta, .true.)
+    if(sparse) then
+      if(ionode) print'(a)','sparse OMM with libOMM'
+    else
+      if(ionode) print'(a)','dense OMM with libOMM'
+    end if
+
+    if(sparse) then
+      call ms_dbcsr_setup(MPI_Comm_World, BlockSize,Use2D)
+    else
+      if(Use2D) then
+        call ms_scalapack_setup(MPI_Comm_world,ProcessorY,'c',BlockSize)
+      else
+        call ms_scalapack_setup(MPI_Comm_world,1,'c',BlockSize)
+      end if
+    end if
+
+    if(sparse .and. (rcoor_init .gt. 0.0_dp)) then
+      rcoor0 = rcoor
+      rcoor = rcoor_init
+      call init_c_matrix(C_old, wf_dim, h_dim, BlockSize_c, BlockSize, present_eta,&
+        .true., m_storage)
+      rcoor = rcoor0
+      call init_c_matrix(C_min, wf_dim, h_dim, BlockSize_c, BlockSize, present_eta,&
+        .true., m_storage)
+      call m_copy(C_min, C_old, copy_into_existing=.true.)
+      call m_deallocate(C_old)
+    else
+      if((.not. sparse) .and. (rcoor_init .gt. 0.0_dp)) rcoor=rcoor_init
+      call init_c_matrix(C_min, wf_dim, h_dim, BlockSize_c, BlockSize, present_eta,&
+        .true., m_storage)
+    end if
+
+    nze = (nhmax * wf_dim)/h_dim
     if(ReadCoeffs) then
       call timer('ReadCoeffs',1)
       WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_BLOMM'
       call m_read(C_min,WF_COEFFS_filename,file_exist=file_exist,&
-        keep_sparsity=.true.,use_dbcsrlib=ReadUseLib)
+        keep_sparsity=.true.,use_dbcsrlib=ReadUseLib,nze=nze)
       if(file_exist) then
         if(ionode) print'(a)','File for C is read'
       end if
       call timer('ReadCoeffs',2)
     end if
-    call m_dbcsr_occupation(C_min, c_occ)
-    if(ionode) print'(a,f18.15, a,i15, a, i8)','C occupation = ', c_occ,'    WF_dim = ', wf_dim, &
-      '   BlockSizeC = ', BlockSize_c
+
+    if(sparse) then
+      call m_dbcsr_occupation(C_min, c_occ)
+      if(ionode) print'(a,f10.8)','C occupation = ', c_occ
+    end if
+    if(ionode) print'(a,i15, a, i8)','WF_dim = ', wf_dim, '   BlockSizeC = ', BlockSize_c
+
     if(WriteCoeffs) then
       call timer('WriteCoeffs',1)
       WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_BLOMM'
-      call m_write(C_min,WF_COEFFS_filename,use_dbcsrlib=WriteUseLib)
+      call m_write(C_min,WF_COEFFS_filename,use_dbcsrlib=WriteUseLib,nze=nze)
       if(ionode) print'(a)', 'File for C is written'
       call timer('WriteCoeffs',2)
     end if
   end if
 
   call timer('m_register',1)
-  if(new_S) then    
-    call m_register_pdcsr(H, nbasis,BlockSize,listhptr,listh,numh,h_sparse(:,1))
-    call m_register_pdcsr(S, nbasis,BlockSize,listhptr,listh,numh,s_sparse)
-    d_sparse(:,1) = 0.0_dp
-    call m_register_pdcsr(D_min, nbasis,BlockSize,listhptr,listh,numh,d_sparse(:,1))    
-   if(ionode) print'(a)','CSR matrix created'
-    call m_convert_csrdbcsr(S, bl_size=BlockSize)
+  if(.not. calcE) then
+    if(new_S) then
+      my_order = .false.
+      if(sparse) then
+        if(allocated(ind_ordered)) then
+          if(size(ind_ordered) .lt. nhmax) then
+            deallocate(ind_ordered)
+            allocate(ind_ordered(nhmax))
+          end if
+        else
+          allocate(ind_ordered(nhmax))
+        end if
+        ind_ordered(:) = 0
+        my_order = .true.
+      end if
+      call m_register_csr(csr_mat, h_dim, h_dim, nbasis, listhptr, listh, numh, s_sparse, &
+        ind_ordered=ind_ordered, order=my_order)
+      if (.not. S%is_initialized) call m_allocate(S,h_dim,h_dim,label=m_storage)
+      call m_copy(S, csr_mat, copy_into_existing=.true., m_sp=brd_mat, use_sparsity=.false.)
+      call m_deallocate(csr_mat)
+      if(.not. Use2D) call m_copy(H,S)
+      if(precon) then
+        if (.not. T%is_initialized) call m_allocate(T,h_dim,h_dim,label=m_storage)
+        call m_register_csr(csr_mat, h_dim, h_dim, nbasis, listhptr, listh, numh, t_sparse)
+        call m_copy(T, csr_mat, copy_into_existing=.true.)
+        call m_deallocate(csr_mat)
+      end if
+    end if
+    if (.not. H%is_initialized) then
+      if(Use2D) then
+        call m_allocate(H,h_dim,h_dim,label=m_storage)
+      else
+        call m_copy(H, S)
+      end if
+    end if
+    call m_register_csr(csr_mat, h_dim, h_dim, nbasis, listhptr, listh, numh, h_sparse(:,1), &
+      ind_ordered=ind_ordered, order=.false.)
+    call m_copy(H, csr_mat, copy_into_existing=.true., m_sp=brd_mat, use_sparsity=.true.)
+    call m_deallocate(csr_mat)
   end if
-  call m_convert_csrdbcsr(H, bl_size=BlockSize)
+  if (.not. D_min%is_initialized) call m_allocate(D_min,h_dim,h_dim,label=m_storage)
   call timer('m_register',2)
 
   first_call  = .false.
   init_C = .true.
-  dealloc = .false.
   
   flavour = 0
-  tau = 0.0_dp
+  if(precon) flavour = 3
+  if(use_cholesky) flavour = 1
   
   if(.not. calcE) then
     call timer('omm_density',1)
     call omm(h_dim,wf_dim,n_occ,H,S,new_S,e_min,D_min,.false.,eta,&
-      C_min,init_C,T,tau,flavour,nspin,1,cg_tol,g_tol,long_out,dealloc,&
+      C_min,init_C,T,tau,flavour,nspin,1,cg_tol,g_tol,long_out,dealloc_each,&
       m_storage,m_operation)
     call timer('omm_density',2)
     if(ionode) print'(a, f20.7)','e_min = ', e_min
+    call timer('d_copy',1)
+    call m_register_csr(csr_mat, h_dim, h_dim, nbasis, listhptr, listh, numh, d_sparse(:,1), &
+      ind_ordered=ind_ordered, order=.false.)
+    call m_copy(csr_mat, D_min, copy_into_existing=.true.)
+    call m_deallocate(csr_mat)
+    if(dealloc_each) then
+      if(D_min%is_initialized) call m_deallocate(D_min)
+      if(H%is_initialized) call m_deallocate(H)
+      if(T%is_initialized) call m_deallocate(T)
+    end if
   else
-    call timer('m_register',1)
-    call m_register_pdcsr(D_min,d_sparse(:,1))
-    call timer('m_register',2)
     call timer('omm_energy',1)
+    if(brd_mat%is_initialized) call m_deallocate(brd_mat)
     call omm(h_dim,wf_dim,n_occ,H,S,new_S,e_min,D_min,.true.,eta,&
-      C_min,init_C,T,tau,flavour,nspin,1,cg_tol,g_tol,long_out,dealloc,&
+      C_min,init_C,T,tau,flavour,nspin,1,cg_tol,g_tol,long_out,dealloc_scf,&
       m_storage,m_operation)
     call timer('omm_energy',2)
+    call timer('e_copy',1)
+    call m_register_csr(csr_mat, h_dim, h_dim, nbasis, listhptr, listh, numh, d_sparse(:,1), &
+      ind_ordered=ind_ordered, order=.false.)
+    call m_copy(csr_mat, D_min, copy_into_existing=.true.)
+    call m_deallocate(csr_mat)
+    if(dealloc_scf) then
+      if(S%is_initialized) call m_deallocate(S)
+      if(H%is_initialized) call m_deallocate(H)
+      if(T%is_initialized) call m_deallocate(T)
+      if(D_min%is_initialized) call m_deallocate(D_min)
+    end if
   end if
-
-  call m_dbcsr_occupation(C_min, c_occ)
-
-  call timer('d_copy',1)
-  call m_convert_dbcsrcsr(D_min, bl_size=BlockSize)
 
   qout(1:2) = 0.0_dp
   do io = 1, nbasis
@@ -544,7 +650,11 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
       end do
     end do
   end do
-  call timer('d_copy',2)
+  if(.not. calcE) then
+    call timer('d_copy',2)
+  else
+    call timer('e_copy',2)
+  end if
 
   if(.not. calcE) then
     call timer('d_charge',1)
@@ -567,8 +677,9 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
   else
     if(WriteCoeffs) then
       call timer('WriteCoeffs',1)
+      nze = (nhmax * wf_dim)/h_dim
       WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_BLOMM'
-      call m_write(C_min,WF_COEFFS_filename,use_dbcsrlib=WriteUseLib)
+      call m_write(C_min,WF_COEFFS_filename,use_dbcsrlib=WriteUseLib,nze=nze)
       call timer('WriteCoeffs',2)
       if(ionode) print'(a)', 'File for C is written'
     end if
@@ -578,38 +689,31 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
 
   contains
    
-  subroutine init_c_matrix(C_min, wf_dim, h_dim, BlockSize_c, BlockSize_h, Use2D, &
-    present_eta, set_rand)
+  subroutine init_c_matrix(C_min, wf_dim, h_dim, BlockSize_c, BlockSize_h, &
+    present_eta, set_rand, m_storage)
 
     use neighbour,      only : jan, mneighb
     use siesta_geom,    only : na_u, xa, ucell
-    use siesta_options, only : rcoor
     use alloc,          only : re_alloc
   
-    type(matrix), intent(inout) :: C_min    
+    type(matrix), intent(inout) :: C_min
     integer, intent(in) :: h_dim
     integer, intent(inout) :: BlockSize_c
     integer, intent(in) :: BlockSize_h
-    logical, intent(in) :: Use2D, present_eta, set_rand
+    logical, intent(in) :: present_eta, set_rand
     integer, intent(out) :: wf_dim
+    character(5), intent(in) :: m_storage
 
-    integer :: i, j, k, io, jo, nna, MPIerror    
-    integer :: seed, iorb, norb, ja, neib0, index, indexi, nelectr
-    integer :: iwf, iwf1, iwf2, ia
-    integer :: nblks, iblks
-    integer :: nrows, nze_c
-    real(dp), allocatable :: c_loc(:), fact(:)
+    type(matrix) :: C_csr
+    integer :: i, j, k, io, jo, nna, MPIerror, seed, iorb, norb, ja, index, &
+      indexi, nelectr, iwf, iwf1, iwf2, ia, nblks, iblks, nrows, nze_c
     integer, dimension(:), pointer:: id_col_p
-    integer, allocatable :: id_col(:), id_row(:), nze_row(:)
-    integer, allocatable :: neib(:), iatom(:)
+    integer, allocatable :: id_col(:), id_row(:), nze_row(:), neib(:), iatom(:)
     real(dp) :: rn(2), coef, rmax, rr(3), rrmod, cgval
-    logical :: found, include_all
-    logical :: set_neib
-    character(5) :: m_storage
+    real(dp), allocatable :: c_loc(:), fact(:)
+    logical :: found, include_all, set_neib
 
-    m_storage ='pdcsr'
-    call timer('init_c_matrix', 1)
-    rcoor = fdf_get('OMM.RcLWF',9.5_dp,'Bohr')
+    call timer('init_c_matrix',1)
     rmax = 0.0_dp
     do i = -1,1
       do j = -1,1        
@@ -638,7 +742,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     end do
 
     if(BlockSize_c .le. 0) then
-      BlockSize_c = wf_dim * BlockSize
+      BlockSize_c = wf_dim * BlockSize_h
       BlockSize_c = BlockSize_c/h_dim
       if(BlockSize_c==0) BlockSize_c=1
     end if
@@ -713,15 +817,6 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
               end if
             end do
             nna = index
-            do i = 2, nna
-              neib0 = neib(i)
-              j = i - 1
-              do while (neib0 .lt. neib(j))
-                neib(j + 1) = neib(j)
-                neib(j) = neib0
-                if(j .gt. 1) j = j - 1
-              end do
-            end do
           end if
 
           io = io + 1
@@ -766,7 +861,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
             end do
             cgval = sign(0.5_dp * rn(1), rn(2) - 0.5_dp)
           else
-            cgval = 1.0_dp
+            cgval = 0.0_dp
           end if
           c_loc(jo) = cgval * coef * fact(iwf)
           if(.not. include_all) then
@@ -781,20 +876,22 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     if(allocated(fact)) deallocate(fact)
     if(associated(id_col_p)) nullify(id_col_p)
 
-    if (.not. C_min%is_initialized) call m_allocate(C_min,wf_dim,h_dim,&
-       BlockSize_c,BlockSize_h,label=m_storage,use2D=Use2D)
+    call m_register_csr(C_csr, wf_dim, h_dim, nrows, &
+      id_row, id_col, nze_row, c_loc)
 
-    call m_register_pdcsr(C_min, nrows, BlockSize_c,&
-       id_row,id_col,nze_row,c_loc)
+    if (.not. C_min%is_initialized) call m_allocate(C_min,wf_dim,h_dim,&
+      label=m_storage,blocksize1=BlockSize_c,blocksize2=BlockSize)
 
     if(ionode) print'(a)','C_min CSR matrix created'
-
-    call m_convert_csrdbcsr(C_min, bl_size=BlockSize_h) 
-     
+    call m_copy(C_min, C_csr, copy_into_existing=.true.)
     if(ionode) print'(a)','C_min CSR matrix converted to DBCSR'
+    call m_deallocate(C_csr)
 
+    deallocate(id_col)
+    deallocate(id_row)
+    deallocate(nze_row)
+    deallocate(c_loc)
     call timer('init_c_matrix',2)
-
   end subroutine init_c_matrix
 
 end subroutine omm_min_block
