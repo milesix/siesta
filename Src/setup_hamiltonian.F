@@ -142,7 +142,7 @@
         end do
 
       end if
-         
+
 ! ..................
 
 ! Non-SCF part of total energy .......................................
@@ -325,7 +325,7 @@
       if ( spin%SO_offsite ) then
 
 !        if( switch_ldau ) H_so_off = H_so_off + H_ldau_so
-        if( switch_ldau ) H_so_off = 0.0_dp
+!        if( switch_ldau ) H_so_off = 0.0_dp
 
 ! H(:, [5, 6]) are not updated in dhscf, see vmat for details.
         
