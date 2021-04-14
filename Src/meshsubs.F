@@ -1561,13 +1561,8 @@ C Energy
 #ifdef MPI
 C Global reduction of DUext
       eloc = duext
-#ifdef NODAT
       call MPI_AllReduce(eloc,duext,1,MPI_double_precision,MPI_Sum,
      .  MPI_Comm_World,MPIerror)
-#else
-      call MPI_AllReduce(eloc,duext,1,DAT_double,MPI_Sum,
-     .  MPI_Comm_World,MPIerror)
-#endif
 #endif
 
       call memory('D','X',ntpl,' ExtPotOnMesh')
