@@ -59,6 +59,12 @@ subroutine coordsFromPipe( na, xa, cell, relaxd )
   integer           :: n
   character(len=80) :: fname, task
 
+
+  ! Proper default value
+  if (present(relaxd)) then
+     relaxd=.false.
+  endif
+
 ! Open this side of pipe
   if (firstTime .and. IOnode) then
 
