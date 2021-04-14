@@ -246,7 +246,8 @@
      .            no_u, na_u, na_s, isa, xa, indxua, 
      .            ntm, ifa, istr, ihmat, filesOut,
      .            filevext, maxnh, numh, listhptr, listh, 
-     .            Dscf, Datm, maxnh, H, Enaatm, Enascf, Uatm, Uscf, 
+     .            Dscf, Datm, maxnh, H, Enaatm, Enascf, Uatm, Uscf,
+     .            Duscf, Duext,
      .            Exc, Dxc, dipol, stress, fal, stressl,
      .            use_rhog_in)
 
