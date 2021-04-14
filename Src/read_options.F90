@@ -1639,6 +1639,9 @@ subroutine read_options( na, ns, nspin )
   nobdown    = fdf_get( 'Siesta2Wannier90.NumberOfBandsDown', 0)
   nob        = fdf_get( 'Siesta2Wannier90.NumberOfBands',     0)
 
+  ! For QM/MM interface
+  readvext = fdf_get( 'ReadVext'       , .false.)
+
 #ifdef NCDF_4
   write_cdf = fdf_get('CDF.Save', .false.)
   ! No compression is by far the fastest

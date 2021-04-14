@@ -232,5 +232,4 @@ MODULE siesta_options
   type(luaState) :: LUA
 #endif
   
-    readvext = fdf_get( 'ReadVext'       , .false.)
 END MODULE siesta_options
