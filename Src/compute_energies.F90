@@ -225,6 +225,8 @@ CONTAINS
     subroutine compute_correct_EKS()
 
       use files, only : filesOut_t    ! derived type for output file names
+      use files, only : slabel, label_length
+      use siesta_options, only: idyn, readvext
       use class_dSpData1D, only : val
       use class_dSpData2D, only : val
       use sparse_matrices, only: H_kin_1D, H_vkb_1D, H_so_2D
@@ -233,6 +235,9 @@ CONTAINS
 
       type(filesOut_t)  :: filesOut  ! blank output file names
       real(dp), pointer :: H_vkb(:), H_kin(:), H_so(:,:)
+
+      integer :: iscf_dummy
+      character(len=label_length+5) :: filevext
 
       ! Compute E_KS(DM_out)
 
@@ -244,10 +249,13 @@ CONTAINS
       ! Pass DM_out to compute E_HXC(out)
 
       ! Remove unwanted arguments...
-
-      call dhscf( nspin, no_s, iaorb, iphorb, no_l,      &
+      iscf_dummy = 20 ! Just not 1, to avoid resetting the external potential
+                      ! in this interim implementation
+      filevext = ' '
+      if (readvext.and.idyn==8) filevext = trim(slabel) // '.VEXT'
+      call dhscf( iscf_dummy, nspin, no_s, iaorb, iphorb, no_l,      &
                   no_u, na_u, na_s, isa, xa, indxua,                        &
-                  ntm, ifa, istr, ihmat, filesOut,                          &
+                  ntm, ifa, istr, ihmat, filesOut, filevext,             &
                   maxnh, numh, listhptr, listh, Dscf, Datm,                 &
                   maxnh, dummy_H, Enaatm, Enascf, Uatm, Uscf, DUscf, DUext, &
                   Exc, Dxc, dipol, dummy_stress, dummy_fa, dummy_stress)
