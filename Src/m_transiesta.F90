@@ -145,7 +145,7 @@ contains
       
       call ts_sparse_init(slabel, IsVolt, N_Elec, Elecs, &
           ucell, nsc, na_u, xa, lasto, sp_dist, sparse_pattern, no_aux_cell, &
-            isc_off)
+          isc_off)
       
       if ( ts_method == TS_BTD ) then
         ! initialize the tri-diagonal partition
@@ -238,10 +238,6 @@ contains
     dq_run = ts_dq%run
     if ( dq_run ) then
 
-      ! we will utilize the old Fermi-level to correct the 
-      ! EDM matrix (just in case the 
-      ! electrode region elements are not taken care of)
-      
       ! Allocate for interpolation, this is typically
       ! converging in 3-5 steps
       N_F = 10
@@ -311,7 +307,7 @@ contains
           call io_close(uGF(iEl))
         end if
       end do
-      
+
       if ( dq_run ) then
 
         ! This is the 1. part of the Fermi correction
@@ -364,7 +360,7 @@ contains
           converged = converged .and. (.not. truncated)
 
           if ( IONode ) then
-            write(*,'(a,es11.4)') 'ts-dq-iscf: cubic spline dq = ', &
+            write(*,'(a,es13.6)') 'ts-dq-iscf: cubic spline dq = ', &
                 Q_Ef(i_F,1) - qtot
           end if
 
@@ -408,7 +404,7 @@ contains
           end if
           write(iEl,'(a,i0)')'# ', N_F ! Number of iterations
           do i_F = 1 , N_F
-            write(iEl,'(2(tr1,e20.10))') Q_Ef(i_F,2)/eV, Q_Ef(i_F,1) - Qtot
+            write(iEl,'(2(tr1,e24.17))') Q_Ef(i_F,2)/eV, Q_Ef(i_F,1) - Qtot
           end do
 
           call io_close(iEl)
@@ -452,25 +448,8 @@ contains
 
       ! We have now calculated the new Ef
       if ( IONode ) then
-        write(*,'(a,es11.4,a)') 'ts-dq: dEf = ', (Ef - Q_Ef(1,2))/eV, ' eV'
+        write(*,'(a,es13.6,a)') 'ts-dq: dEf = ', (Ef - Q_Ef(1,2))/eV, ' eV'
       end if
-
-      ! We shift it EDM to the correct level
-      ! Only correct energy density matrix in the respective
-      ! places. For instance the above
-      ! Only correct for the latest one, which have not
-      ! been applied during the charge-convergence ISCF
-      ! Although the DM/EDM for the device region
-      ! have been calculated with the
-      ! fermi level stored in Q_Ef(N_F,2) it seems the forces
-      ! in the electrode regions are better if one uses
-      ! the converged Ef as the baseline
-      ! I.e. if one wants EDM in the electrode regions
-      ! to be commensurate with the EDM in the device region
-      ! one should use Q_Ef(N_F,2) - Q_Ef(1,2)
-      call ts_dq_scale_EDM_elec(N_elec, Elecs, &
-          sp_dist, sparse_pattern, nspin, n_nzs, DM, EDM, &
-          Ef - Q_Ef(1,2), Ef - Q_Ef(N_F,2))
 
       call de_alloc(Q_Ef)
 

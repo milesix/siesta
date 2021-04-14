@@ -86,19 +86,16 @@ contains
     do while ( i <= N )
       if ( c(i:i) == '-' ) then
         pn = 1
+        i = i + 1
       else if ( c(i:i) == '+' ) then
         pn = 2
-      else
-        pn = 0
-      end if
-
-      ! Skip to read plane
-      if ( pn > 0 ) then
         i = i + 1
-        if ( i > N ) call die('TS.Hartree.Fix, error in option, could not parse it!')
       else
         pn = 1
       end if
+
+      ! Skip to read plane
+      if ( i > N ) call die('TS.Hartree.Fix, error in option, could not parse it!')
       
       select case ( c(i:i) )
       case ( 'A' )
@@ -131,6 +128,7 @@ contains
 #endif
     use m_mesh_node, only: mesh_correct_idx
     use m_mesh_node, only : offset_i, offset_r, dMesh, dL
+    use m_energies, only: NEGF_Vha
 
     integer, intent(in) :: nmesh(3), nmeshl(3)
     real(grid_p), intent(inout) :: Vscf(nmeshl(1),nmeshl(2),nmeshl(3))
@@ -141,7 +139,7 @@ contains
 #ifdef MPI
     integer :: MPIerror
 #endif
-    real(dp) :: Vav, Vtot
+    real(dp) :: Vtot
 
 #ifdef TRANSIESTA_DEBUG
     call write_debug( 'PRE TS_VH_fix' )
@@ -200,9 +198,9 @@ contains
     Vtot = Vtot * TS_HA_frac
 
 #ifdef MPI
-    call MPI_AllReduce(Vtot,Vav,1,MPI_double_precision,MPI_Sum, &
+    call MPI_AllReduce(Vtot,NEGF_Vha,1,MPI_double_precision,MPI_Sum, &
          MPI_Comm_World,MPIerror)
-    Vtot = Vav
+    Vtot = NEGF_Vha
     call MPI_AllReduce(nlp,i,1,MPI_integer,MPI_Sum, &
          MPI_Comm_World,MPIerror)
     nlp = i
@@ -213,14 +211,14 @@ contains
             &No points are encapsulated.')
     end if
 
-    Vav = Vtot / nlp - TS_HA_offset
+    NEGF_Vha = Vtot / nlp - TS_HA_offset
 
     if ( IONode ) then
-       write(*,'(a,e12.5,a)')'ts-Vha: ',Vav / eV,' eV'
+       write(*,'(a,e15.8,a)')'ts-Vha: ',NEGF_Vha / eV,' eV'
     end if
     
     ! Align potential
-    Vscf(:,:,:) = Vscf(:,:,:) - Vav
+    Vscf(:,:,:) = Vscf(:,:,:) - NEGF_Vha
 
 #ifdef TRANSIESTA_DEBUG
     call write_debug( 'POS TS_VH_fix' )

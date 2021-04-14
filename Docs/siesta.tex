@@ -12559,6 +12559,10 @@ electrodes in a generic input format.
     If \fdf{TS!Elec.<>!Bulk:true} this defaults to \fdf*{cross-terms},
     but may be changed.
 
+    \note if this is \fdf*{none} the forces on the atoms coupled to
+    the electrode regions are \emph{not} to be trusted. The value
+    \fdf*{none} should be avoided, if possible.
+
     \option[DM-init]%
     \fdfindex*{TS!Elec.<>!DM-init}%
     \fdfindex*{TS!Elec.<>!DM-init:diagon}%

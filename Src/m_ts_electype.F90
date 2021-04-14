@@ -2153,8 +2153,7 @@ contains
     type(OrbitalDistribution) :: fake_dit
     type(Sparsity), pointer :: sp
     type(dSpData2D) :: f_DM_2D, f_EDM_2D
-    real(dp), pointer :: DM(:,:), EDM(:,:)
-    real(dp) :: tmp, Ef
+    real(dp) :: Ef
     integer :: Tile(3), Reps(3), fnsc(3)
     integer :: i
     logical :: found, alloc(3), is_TSDE
@@ -2174,7 +2173,7 @@ contains
             fnsc, f_DM_2D, f_EDM_2D, Ef, found, &
             Bcast = .true. )
     else
-       call read_dm( this%DEfile, fake_dit, fnsc, f_DM_2D, found, &
+       call read_dm(this%DEfile, fake_dit, fnsc, f_DM_2D, found, &
             Bcast = .true. )
     end if
     if ( .not. found ) call die('Could not read file: '//trim(this%DEfile))
@@ -2194,14 +2193,13 @@ contains
     ! TODO, there is some memory that could be leaking with the
     ! electrode arrays.
 
-    if ( is_TSDE ) then
-       ! Shift the energy matrix to the chemical potential :)
-       DM  => val(f_DM_2D)
-       EDM => val(f_EDM_2D)
-       i = size(DM)
-       tmp = -( Ef + this%mu%mu )
-       call daxpy(i,tmp,DM(1,1),1,EDM(1,1),1)
-    end if
+    ! TODO the global potential is not well-defined when mixing an external
+    ! electrode EDM with an internal EDM.
+    ! The problem arises because the electrode calculation has a Siesta
+    ! defined potential 0. While the transiesta device calculation
+    ! has a potential 0 determined from an integrated boundary.
+    ! This will even be a problem when using the fermi-level as
+    ! the reference level since that depends on all atoms in the cell.
 
     if ( this%inf_dir == INF_POSITIVE ) then
        i = 1

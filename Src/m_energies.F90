@@ -48,6 +48,7 @@ module m_energies
   real(dp):: DEdftu
 
   real(dp) :: NEGF_DE  ! NEGF total energy contribution = - e * \sum_i N_i \mu_i
+  real(dp) :: NEGF_Vha ! Potential offset for fixing the boundary conditions for NEGF
   ! Generally we should only calculate energies in the regions where we are updating elements
   ! As such we need a specific energy for the NEGF part
   ! Their meaning is directly transferable to the above listed energies (in the updating regions)
@@ -98,6 +99,7 @@ contains
 
     ! NEGF part
     NEGF_DE = 0._dp
+    NEGF_Vha = 0._dp
     NEGF_Ebs = 0._dp
     NEGF_Ekin = 0._dp
     NEGF_Enl = 0._dp
