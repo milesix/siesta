@@ -145,14 +145,15 @@ ifeq ($(COMPILER_VERSION),)
 endif
 
 # The version program
-.PHONY: version.o
+.PHONY: version.o FORCE
+SIESTA_VERSION_FILE:=../../../SIESTA.version
 version.o: version
-version: version.F90 posix_calls.o
+version: version.F90 posix_calls.o $(SIESTA_VERSION_FILE)
 	@echo
 	@echo "==> Incorporating information about present compilation (compiler and flags)"
 	@sed "s'SIESTA_ARCH'${SIESTA_ARCH}'g;s'FFLAGS'${FC} ${FFLAGS}'g;\
 		s^COMPILER_VERSION^$(COMPILER_VERSION)^;\
-		s'TBTRANS_VERSION'$$(cat ${<D}/../../../version.info)'g;\
+		s'TBTRANS_VERSION'$$(cat ${<D}/$(SIESTA_VERSION_FILE))'g;\
 		s'LIBS'$(COMP_LIBS) $(LIBS)'g;\
 		s'FPPFLAGS'$(FPPFLAGS)'g" $<  > tmp.F90
 	@awk '{if (length>80) { cur=78; \
@@ -163,6 +164,8 @@ version: version.F90 posix_calls.o
 	@($(MAKE) "FPPFLAGS=$(FPPFLAGS)" compinfo.o)
 	@mv compinfo.o version.o
 	@echo
+$(SIESTA_VERSION_FILE): FORCE
+	@(cd ../../../ && ./SIESTA_vgen.sh)
 
 
 # Interfaces to libraries

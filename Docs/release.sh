@@ -69,8 +69,11 @@ _tag=
 # Get default output file (siesta-<>.tar.gz)
 _out=
 
+# List all git tags that match any of the relevant candidate patterns.
+# Tags are ordered by commit date (most recent first).
 function _git_tag_cmd {
-    git tag --list 'v*' --sort=-v:refname
+    git log --tags="v[0-9]*" --tags="[0-9].[0-9]*" --tags="MaX-*" \
+        --no-walk=sorted --pretty="%S"
 }
 
 # Default to latest tag
@@ -192,13 +195,15 @@ while [ $# -gt 0 ]; do
 done
 
 if [ $_head -eq 1 ]; then
-    _tag=$(git describe --abbrev)
+    _tag=$(git rev-parse HEAD)
+    ./SIESTA_vgen.sh
+    _tag_no_v=$(cat SIESTA.version)
+    rm -fv SIESTA.version
     _sign=0
-    _out=siesta-$_tag
+else
+    # Remove (only) leading 'v's.
+    _tag_no_v=$(expr "${_tag}" : v*'\(.*\)')
 fi
-
-_tag_no_v=${_tag//v/}
-
 
 # Get default output file (siesta-<>.tar.gz)
 if [ -z "$_out" ]; then
@@ -213,7 +218,12 @@ fi
 # Have to do this while in a git repository
 _date=$(date -d "$(git log -n1 --format='%ci' $_tag)" +"%B %d, %Y")
 
-echo "Chosen release tag is: $_tag"
+if [ $_head -eq 1 ]; then
+   echo "Chosen release commit is: $_tag"
+else
+   echo "Chosen release tag is: $_tag"
+fi
+echo "Release label is: $_tag_no_v"
 echo "Creating out file: $_out.tar.gz"
 echo "Release date: $_date"
 echo ""
@@ -244,7 +254,7 @@ function check_dir {
 mkdir -p $_reldir
 
 # Check directories
-check_dir $_reldir/$_tag-files
+check_dir $_reldir/$_tag_no_v-files
 check_dir $_reldir/$_out
 if [ $_check_dir_fail -ne 0 ]; then
     exit 1
@@ -253,7 +263,7 @@ fi
 rm -f $_reldir/$_checksum
 
 # The final directory with ALL release files, possibly signed.
-mkdir -p $_reldir/$_tag-files
+mkdir -p $_reldir/$_tag_no_v-files
 
 
 # Create a temporary work-directory
@@ -268,16 +278,16 @@ pushd $_reldir
 # Go into the source directory
 pushd $_out
 
-# Update the version.info file
-printf "%s" "${_tag_no_v}" > version.info
+# Create a SIESTA.release file
+printf "%s" "${_tag_no_v}" > SIESTA.release
 
 # Create documentation
 pushd Docs
 
 # Update manual information that is version/date dependent
-sed -s -i -e "s/\\date{.*}/\\date{$_date}/" siesta.tex tbtrans.tex
+sed -s -i -e "s/\\\\date{.*}/\\\\date{$_date}/" siesta.tex tbtrans.tex
 # Version tags in the pdf-title
-sed -s -i -e "s/\\providecommand\\softwareversion{.*}/\\providecommand\\softwareversion{$_tag_no_v}/" siesta.tex tbtrans.tex
+sed -s -i -e "s/\\\\providecommand\\\\softwareversion{.*}/\\\\providecommand\\\\softwareversion{$_tag_no_v}/" siesta.tex tbtrans.tex
 
 # First create the screen variants...
 make final-screen
