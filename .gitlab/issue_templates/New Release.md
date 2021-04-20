@@ -40,4 +40,6 @@ List of software and documentation tasks required to release Siesta (version):
 
 13. [ ] Bump version in `ReleaseNotes.md`.
 
-14. [ ] Create new milestone for next release to enable tracking issues and merge requests.
+14. [ ] Tag the first post-release commit in order to enable correct version descriptors.
+
+15. [ ] Create new milestone for next release to enable tracking issues and merge requests.
