@@ -9411,6 +9411,26 @@ an alternative way to plot the charge density (and wavefunctions).
 
 \end{fdflogicalF}
 
+\begin{fdfentry}{SaveGridFunc.Format}[string]<binary>
+  \index{output!charge density}
+
+  Format of the (requested) output files \sysfile{RHO}, 
+\sysfile{DRHO}, \sysfile{RHOXC}, 
+\sysfile{VH}, \sysfile{VNA}, \sysfile{VT}, \sysfile{IOCH}, and
+\sysfile{TOCH}. 
+  The options are
+\begin{itemize}
+\item
+ascii : ASCII text format
+\item
+binary : unformatted (machine dependent)
+\end{itemize}
+
+  \note ASCII files require much more space than binary and NetCDF files. 
+Consider using the tools in Util/Grid to translate between formats.
+  
+\end{fdfentry}
+
 \begin{fdflogicalF}{SaveBaderCharge}
   \index{output!Bader charge}
 

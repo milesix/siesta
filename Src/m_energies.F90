@@ -35,6 +35,8 @@ module m_energies
   real(dp):: Emeta      ! Metadynamics energy contribution  calculated in meta
   real(dp):: Entropy    ! Entropy due to electron state occupations
   real(dp):: Etot       ! Total electronic energy
+  real(dp):: Ex         ! Exchange energy,  calculated in dhscf
+  real(dp):: Ec         ! Correlation energy,  calculated in dhscf
   real(dp):: Exc        ! Exchange-correlation energy,  calculated in dhscf
   real(dp):: E0         ! Non-SCF part of total energy
   real(dp):: Emm        ! Classical two-body term, calculated in  twobody
@@ -84,6 +86,8 @@ contains
     Emeta = 0._dp
     Entropy = 0._dp
     Etot = 0._dp
+    Ex = 0._dp
+    Ec = 0._dp
     Exc = 0._dp
     E0 = 0._dp
     Emm = 0._dp
