@@ -142,6 +142,8 @@ contains
     call write_debug( '    PRE siesta_forces' )
 #endif
 
+    call timer('geom_init', 1)
+
 #ifdef SIESTA__PEXSI
     ! Broadcast relevant things for program logic
     ! These were set in read_options, called only by "SIESTA_workers".
@@ -165,6 +167,7 @@ contains
        call bye("S only")
     end if
     if ( onlyS ) then
+      call timer('geom_init', 2)
       return
     end if
 
@@ -257,7 +260,24 @@ contains
           call reset(conv_FreeE)
           call set_tolerance(conv_FreeE,tolerance_FreeE)
         end if
+
+        if ( mixH ) then
+          ! Setting up the initial H is done outside the main SCF loop
+          ! This is to not consfuse the "timer" printout for the first SCF.
+          ! If this was done in the main loop the initial IterSCF timing
+          ! would include 2 setup_hamiltonian calls, contrary to all
+          ! subsequent SCF calls which only does 1.
+          if (fdf_get("Read-H-from-file",.false.)) then
+            call get_H_from_file()
+          else
+            ! first iscf call
+            call setup_hamiltonian( 1 )
+          end if
+        end if
+
       end if
+
+      call timer('geom_init', 2)
 
       ! The current structure of the loop tries to reproduce the
       ! historical Siesta usage. It should be made more clear.
@@ -320,14 +340,6 @@ contains
                call cmlStartStep( xf=mainXML, type='SCF', index=iscf )
           
           if ( mixH ) then
-             
-             if ( first_scf ) then
-                if (fdf_get("Read-H-from-file",.false.)) then
-                   call get_H_from_file()
-                else
-                   call setup_hamiltonian( iscf )
-                end if
-             end if
              
              call compute_DM( iscf )
 

@@ -18,7 +18,8 @@
       use siesta_options, only: write_cdf
 #endif
       use siesta_options, only: fixspin
-      use siesta_options, only: g2cut, savehs, temp, nmove
+      use siesta_options, only: savehs, write_coop
+      use siesta_options, only: g2cut, temp, nmove
       use siesta_options, only: recompute_H_after_scf
       use sparse_matrices, only: numh, listh, listhptr
       use sparse_matrices, only: H, S, Dscf, Escf, maxnh, xijo
@@ -299,7 +300,7 @@
 ! not the one computed (from DM_out) in this routine.
 ! This call could be moved to a more appropriate place
 !
-      if (savehs) then
+      if (savehs .or. write_coop ) then
          call write_hsx( no_u, no_s, spin%H, indxuo,
      &        maxnh, numh, listhptr, listh, H, S, Qtot,
      &        Temp, xijo)
