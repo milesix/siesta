@@ -1,7 +1,8 @@
 This directory contains programs or scripts that can be helpful to
 process SIESTA output, or to supplement the functionality of the
 program.  Some of them are experimental. See the individual
-directories for documentation.
+directories for documentation, and the file Obj/README for
+relevant instructions on how to compile them.
 
 Bands:     Tools for plotting band structures (including "fatbands")
 
