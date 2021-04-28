@@ -487,8 +487,8 @@ For more information you can visit the web page
 
 \subsection{The build directory}
 
-\siesta\ should not be compiled from the top-level \shell{Src}
-directory, but from an ad-hoc build directory.
+\siesta\ cannot be compiled from the top-level \shell{Src}
+directory, it must be compiled from an ad-hoc build directory.
 At the end of the compilation, the build
 directory will contain the \program{siesta} binary as well as
 the object files,
@@ -570,7 +570,7 @@ compile as many different version of the \program{siesta} executable as needed (
 with different compilers, levels of optimization, serial/parallel, debug, etc.\@)
 by appropriately defining different \file{arch.make} files in each build directory.
 
-If \siesta\ is not compiled from the default \shell{obj} directory, when you compile your
+If \siesta\ is not compiled from the default \shell{Obj} directory, when you compile your
 utility programs you will need to specify the correct \shell{OBJDIR} option:
 
 \begin{shellexample}
