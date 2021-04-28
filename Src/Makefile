@@ -432,14 +432,14 @@ ifeq ($(COMPILER_VERSION),)
 endif
 
 .PHONY: version version.o FORCE
-SIESTA_VERSION_FILE:=../SIESTA.version
+SIESTA_VERSION_FILE:=$(VPATH)/../SIESTA.version
 version.o: version
 version: version.F90 posix_calls.o $(SIESTA_VERSION_FILE)
 	@echo
 	@echo "==> Incorporating information about present compilation (compiler and flags)"
 	@sed "s'SIESTA_ARCH'${SIESTA_ARCH}'g;s'FFLAGS'${FC} ${FFLAGS}'g;\
 		s^COMPILER_VERSION^$(COMPILER_VERSION)^;\
-		s'SIESTA_VERSION'$$(cat ${<D}/$(SIESTA_VERSION_FILE))'g;\
+		s'SIESTA_VERSION'$$(cat $(SIESTA_VERSION_FILE))'g;\
 		s'LIBS'$(COMP_LIBS) $(LIBS)'g;\
 		s'FPPFLAGS'$(FPPFLAGS)'g" $<  > tmp.F90
 	@awk '{if (length>80) { cur=78; \
@@ -451,7 +451,7 @@ version: version.F90 posix_calls.o $(SIESTA_VERSION_FILE)
 	@mv compinfo.o version.o
 	@echo
 $(SIESTA_VERSION_FILE): FORCE
-	@(cd ../ && ./SIESTA_vgen.sh)
+	@(cd $(VPATH)/../ && ./SIESTA_vgen.sh)
 
 #----------------------------------------------------------------------------
 # TranSIESTA objects needed for siesta

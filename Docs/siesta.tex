@@ -487,58 +487,118 @@ For more information you can visit the web page
 
 \subsection{The build directory}
 
-Rather than using the top-level Src directory as building directory,
-the user has to use an ad-hoc building directory (by default the
-top-level \shell{Obj} directory, but it can be any (new) directory in
-the top level).  The building directory will hold the object files,
+\siesta\ cannot be compiled from the top-level \shell{Src}
+directory, it must be compiled from an ad-hoc build directory.
+At the end of the compilation, the build
+directory will contain the \program{siesta} binary as well as
+the object files,
 module files, and libraries resulting from the compilation of the
-sources in \shell{Src}.  The \shell{VPATH} mechanism of modern \shell{make}
-programs is used. This scheme has many advantages. Among them:
+sources in \shell{Src}.
 
-\begin{itemize}
-\item The Src directory is kept pristine.
-\item Many different object directories can be used concurrently to
-  compile the program with different compilers or optimization levels.
-\end{itemize}
+The default build directory is the top-level \shell{Obj} directory.
+Instructions on how to compile \siesta\ from \shell{Obj} are given in
+Sec.~\ref{sec:basic-compilation}.
+If you are interested in compiling \siesta\ from other directories,
+or in multiple concurrent compilations of Siesta (e.g., with
+different compilers or optimization levels), see also
+Sec.~\ref{sec:advanced-compilation} below.
 
-If you just want to compile the program, go to \shell{Obj} and issue the
-command:
+\subsubsection{Basic compilation}
+\label{sec:basic-compilation}
+
+If you just want to compile the program from the default
+build directory (\shell{Obj}), follow the following steps:
+
+\begin{enumerate}
+\item
+From within the build directory, issue the command:
 \begin{shellexample}
-  sh ../Src/obj_setup.sh
+       $ sh ../Src/obj_setup.sh
 \end{shellexample}
-to populate this directory with the minimal scaffolding of makefiles,
-and then make sure that you create or generate an appropriate \file{arch.make}
-file (see below, in Sec.~\ref{sec:arch-make}). Then, type
+in order to populate it with with the minimal scaffolding of makefiles.
+
+\item
+Ensure that an appropriate \file{arch.make} file is present in the build directory
+(see Sec.~\ref{sec:arch-make} below for instructions on how to create it).
+
+\item
+Then, again from the build directory, execute
+
 \begin{shellexample}
-  make
+       $ make
 \end{shellexample}
+\end{enumerate}
+
+
 The executable should work for any job. (This is not exactly true,
 since some of the parameters in the atomic routines are still
-hardwired (see \shell{Src/atmparams.f}), but those would seldom need to
+hardwired, see \shell{Src/atmparams.f}, but those would seldom need to
 be changed.)
 
-To compile utility programs (those living in \shell{Util}), you can just
-simply use the provided makefiles, typing ``make'' as appropriate.
+Please note that, unless you really know what you are doing, the
+\shell{Src} directory (including its sub-directories) must be preserved
+without any changes, especially without any object or module files.
+Otherwise, the \shell{VPATH} mechanism used by \shell{make} to compile \siesta\ from the build
+directory will get confused, and the compilation may fail or produce an invalid
+\program{siesta} binary.
 
-\subsubsection{Multiple-target compilation}
+To compile utility programs (those living in the top-level \shell{Util}
+directory), you can simply use the provided makefiles: go to the \shell{Util}
+sub-directory containing the relevant utility source code, and execute \shell{make}
+as appropriate.  The resulting utility executable (and utility object files)
+will be created in that very same utility sub-directory from where \shell{make} was
+invoked.
 
-The mechanism described here can be repeated in other directories at
-the same level as Obj, with different names. In this way one can
-compile as many different versions of the \siesta\ executable as
-needed (for example, with different levels of optimization, serial,
-parallel, debug, etc), by working in separate building directories.
+\subsubsection{Advanced compilation and multiple targets}
+\label{sec:advanced-compilation}
 
-Simply provide the appropriate arch.make, and issue the setup command
-above. To compile utility programs, you need to use the form:
+It is possible to build \siesta\ from any build directory of your choice (instead
+of \shell{Obj}). You will need to follow the same three steps as described above, the
+main difference being that the first command will need to use a correct path
+(absolute or relative) to the \file{obj\_setup.sh} script, i.e., from your chosen build
+directory you will need to execute
+
 \begin{shellexample}
-   make OBJDIR=ObjName
+       $ sh <path/to/Src>/obj_setup.sh
 \end{shellexample}
-where \shell{ObjName} is the name of the object directory of your
-choice. Be sure to type \shell{make clean} before attempting to
-re-compile a utility program.
 
-(The pristine Src directory should be kept ``clean'', without objects, or else
-the compilation in the build directories will get confused)
+Note also that your \file{arch.make} file needs to be in that chosen build directory
+before you can execute \shell{make}.
+
+Since compilations done in separate build directories are independent, one can
+compile as many different version of the \program{siesta} executable as needed (e.g.,
+with different compilers, levels of optimization, serial/parallel, debug, etc.\@)
+by appropriately defining different \file{arch.make} files in each build directory.
+
+If \siesta\ is not compiled from the default \shell{Obj} directory, when you compile your
+utility programs you will need to specify the correct \shell{OBJDIR} option:
+
+\begin{shellexample}
+       $ make OBJDIR=ObjName
+\end{shellexample}
+
+where \shell{ObjName} is the path to the \siesta\ build directory of your choice
+\emph{relative} to the \siesta\ top directory.
+E.g., if you already compiled \siesta\ from the build directory
+\shell{Obj/intel/parallel/2021.2}, and you want to compile \program{denchar}, you need to
+
+\begin{shellexample}
+       $ cd Util/Denchar/Src
+       $ make OBJDIR=Obj/intel/parallel/2021.2
+\end{shellexample}
+
+Note that, irrespective of the value of the \shell{OBJDIR} parameter, the resulting
+utility executable and object files will be created in the utility
+sub-directory from where \shell{make} is invoked (\shell{Util/Denchar/Src} in the example
+above), and that they will be overwritten if a different \shell{OBJDIR} is later used.
+There is currently no support for having different coexisting compiled versions
+of a given utility program. Before attempting to recompile a utility program,
+please remember to execute
+\begin{shellexample}
+       $ make clean
+\end{shellexample}
+from the corresponding utility sub-directory
+(and with the appropriate \shell{OBJDIR} option, if needed).
 
 
 \subsection{The arch.make file}
@@ -558,7 +618,7 @@ files for compilation of \siesta\ with \shell{gfortran} and
 \shell{Obj/intel.make}, respectively. Please use those as guidelines
 for creating the final \file{arch.make}.
 
-\note Intel compilers default to high optimizations which tends to
+\note Intel compilers default to high optimizations which tend to
 break \siesta. We advice to use \shell{-fp-model source} flag and not
 compile with higher optimizations than \shell{-O2}.
 
@@ -3463,7 +3523,7 @@ structural information (maybe too many).
     There is an alternative for animation by generating a \sysfile*{arc} file for
     \method{CERIUS}. It is through the
     \method{Sies2arc}\index{Sies2arc@\program{Sies2arc}} postprocessing
-    utility in the Util/ directory, and it 
+    utility in the \shell{Util/} directory, and it
     requires the coordinates to be accumulated in the output file, i.e.,
     \fdf{WriteCoorStep} \fdftrue.
 
@@ -6172,7 +6232,7 @@ the issue (see Sec.~\ref{sec:filtering}).
   components to be introduced. They can be obtained by moving one
   isolated atom through the cell to be used in the calculation (for a
   give cell size, shape and mesh), once for each species.  The
-  Util/Scripting/eggbox\_checker.py script can be used as a starting
+  \program{Util/Scripting/eggbox\_checker.py} script can be used as a starting
   point for this.
 
 \end{fdfentry}
@@ -6732,7 +6792,7 @@ if the \fdf{COOP.Write} option is in effect.
   $\vec k$ points, in the main output file.  If \fdffalse, it
   writes them in the file \sysfile{EIG}, which can be used
   by the \program{Eig2DOS}\index{Eig2DOS@\textsc{Eig2DOS}}
-  postprocessing utility (in the Util/Eig2DOS directory) for obtaining
+  postprocessing utility (in the \shell{Util/Eig2DOS} directory) for obtaining
   the density of states.\index{density of states}
 
   \note this option only works for \fdf{SolutionMethod} which
@@ -7883,7 +7943,7 @@ kAtEndOfLastLine, kPointLabel \\
 
 \noindent
 The \program{gnubands}\index{gnubands@\texttt{gnubands}} postprocessing
-utility program (found in the Util/Bands directory) reads the
+utility program (found in the \shell{Util/Bands} directory) reads the
 \sysfile{bands} for plotting.  See the \fdf{BandLines} data
 descriptor above for more information.
 
@@ -8012,7 +8072,7 @@ convert to the old format.
 \noindent
 The \program{readwf}\index{readwf} and
 \program{readwfsx}\index{readwfsx} postprocessing utilities programs
-(found in the Util/WFS directory) read the \sysfile{WFS} or
+(found in the \shell{Util/WFS} directory) read the \sysfile{WFS} or
 \sysfile{WFSX} files, respectively, and generate a readable file.
 
 
@@ -9427,7 +9487,7 @@ binary : unformatted (machine dependent)
 \end{itemize}
 
   \note ASCII files require much more space than binary and NetCDF files. 
-Consider using the tools in Util/Grid to translate between formats.
+Consider using the tools in \shell{Util/Grid} to translate between formats.
   
 \end{fdfentry}
 
@@ -10022,7 +10082,7 @@ implemented, selected by
     option is specified without a driver program sending data, siesta
     may hang without any notice.
     
-    See directory Util/Scripting \index{Scripting} for other driving
+    See directory \shell{Util/Scripting} \index{Scripting} for other driving
     options.
 
     \option[Lua]%
@@ -10774,7 +10834,7 @@ to re-use dynamical information from old runs.
 This restart fix is not satisfactory from a fundamental point of view,
 so the MD subsystem in Siesta will have to be redesigned
 eventually. In the meantime, users are reminded that the scripting
-hooks being steadily introduced (see Util/Scripting) might be used to
+hooks being steadily introduced (see \shell{Util/Scripting}) might be used to
 create custom-made MD scripts.
 
 
