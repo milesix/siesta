@@ -232,7 +232,8 @@ CONTAINS
     !
     ! Perform linear mixing if iscf = N x nkick
     !
-    if (nkick > 0 .AND. mod(iscf,nkick).eq.0) then
+    if (nkick > 0) then
+    if ( mod(iscf,nkick).eq.0) then    ! to avoid calling 'mod' if nkick==0
        ! Reset the history information
        if (Node == 0) then
           write(6,"(a,i4)") "Applying kick at iscf: ", iscf
@@ -251,6 +252,7 @@ CONTAINS
           enddo
        enddo
        RETURN
+    endif
     endif
     !
     ! .......................
