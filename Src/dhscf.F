@@ -1486,7 +1486,7 @@ C ----------------------------------------------------------------------
       endif
 
 C add to SCF potential (Vext is in sequential form)
-      if(foundVext) Vscf(1:ntpl,1) = Vscf(1:ntpl,1) + Vext(1:ntpl)
+      if(foundVext) Vaux(1:ntpl) = Vaux(1:ntpl) + Vext(1:ntpl)
 
 C ----------------------------------------------------------------------
 C     Save electrostatic potential
