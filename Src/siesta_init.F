@@ -265,8 +265,11 @@ C     Initialise MPI and set processor number
       call reinit( sname )
 
 #ifdef MPI
+      
+#ifdef SIESTA__PEXSI
       ! Optionally, restrict the number of processors that SIESTA uses, out
-      ! of the total pool
+      ! of the total pool (but only for PEXSI, not yet for other solvers)
+      
       npSIESTA  = fdf_get("MPI.Nprocs.SIESTA",Nodes)
       call MPI_Comm_Group(MPI_Comm_World, World_Group, MPIerror)
       call MPI_Group_incl(World_Group, npSIESTA,
@@ -276,8 +279,16 @@ C     Initialise MPI and set processor number
      $                     SIESTA_Comm, MPIerror)
 
       SIESTA_worker = (Node < npSIESTA)
-
-      ! Swap communicator
+#else
+      SIESTA_Comm = MPI_Comm_World
+      SIESTA_worker = .true.
+#endif
+      ! Swap communicators
+      ! This is needed in case that the whole program is run with
+      ! a subset of the global processes. In that case, the DFT instance
+      ! communicator (a better name than 'true world' communicator)
+      ! is at this point MPI_COMM_WORLD
+      MPI_COMM_DFT = MPI_COMM_WORLD
       ! This is needed since MPI_COMM_WORLD is used implicitly by
       ! Siesta for all operations. 
       MPI_COMM_WORLD = SIESTA_Comm
@@ -285,7 +296,7 @@ C     Initialise MPI and set processor number
          call MPI_Comm_Rank( MPI_Comm_World, Node, MPIerror )
          call MPI_Comm_Size( MPI_Comm_World, Nodes, MPIerror )
       endif
-#else
+#else /* not MPI */
       SIESTA_worker = .true.
       Node = 0
       Nodes = 1
@@ -576,7 +587,14 @@ C     Initialise MPI and set processor number
 !     auxiliary supercell for the calculation of matrix elements.
       call setup_kpoint_scf( ucell )
       not_using_auxcell = gamma_scf
-
+#ifdef SIESTA__ELSI
+      if (isolve == SOLVE_ELSI) then
+         if (mod(Nodes,kpoint_scf%N*spin%spinor) /=0) then
+            call die("The number of MPI processes " //
+     $           "must be a multiple of nk*nspin")
+         endif
+      endif
+#endif
 !     Call initialisation of PDOS here since we need to check if 
 !     the auxiliary supercell is needed for a non-gamma calculation
       call init_projected_DOS( ucell )
@@ -591,12 +609,15 @@ C     Initialise MPI and set processor number
         not_using_auxcell = not_using_auxcell .and. gamma_ldos
       endif
 
-      ! Read in diagonalization routines
-      ! Note that only the sampled BZ is responsible for
-      ! ParallelOverK option, the remaning options are
-      ! taking care of this option
+      ! Read in diagonalization options
+      ! Note that only the sampled BZ determines the value of
+      ! ParallelOverK. Oother routines performing diagonalization
+      ! (i.e., pdos, bands...) might reset this option.
       call read_diag(Gamma_scf, spin%H)
-      call print_diag()
+
+      ! Do not print option values now unless we are using diagonalization
+      ! as the ground-state solver
+      if (isolve == SOLVE_DIAGON) call print_diag()
 
       if ( diag_recognizes_neigwanted() ) then
         if ( IONode .and. neigwanted /= no_u )

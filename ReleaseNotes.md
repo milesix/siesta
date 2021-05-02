@@ -4,6 +4,18 @@ This file contains, in an expanded ChangeLog style, notes
 regarding the evolution of the Siesta code. The changes are
 grouped under headings representing past (and upcoming) releases.
 
+## ELSI interface branch
+
+(Please see the file README_ELSI in the top directory for important information)
+
+* Avoid an AllReduce operation for nnz_g in the Gamma-point ELSI solver setup
+* Print 'neigwanted' if used
+* Wrap new routines in m_elsi_interface in SIESTA__ELSI block
+* The ELSI interface now honors the "number-of-eigenstates" setting, and an EIG file
+  is generated (for the ELPA solver).
+* ELSI-DM interface as a new "solution-method", with various solvers available.
+
+
 
 # Development version
 

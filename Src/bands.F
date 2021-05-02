@@ -369,6 +369,7 @@ C
       use t_spin, only: tSpin
 
       use m_diag_option, only: ParallelOverK, Serial
+      use m_diag_option, only: print_diag
       use m_diag, only: diag_init
 
 
@@ -461,7 +462,8 @@ C Handle parallel over K points option which is not allowed for here
         Serial = Nodes == 1
         call diag_init()
       end if
-
+        call print_diag()
+        
 C Find the band energies
       if ( spin%none .or. spin%Col ) then
 C fixspin and qs are not used in diagk, since getD=.false. ...
@@ -478,6 +480,7 @@ C fixspin and qs are not used in diagk, since getD=.false. ...
      .              no_u, occtol, 1, no_u )
 
       elseif ( spin%NCol ) then
+        call print_diag()
         call diag2k(no_l, no_s, maxnh, maxnh, no_u,
      .              numh, listhptr, listh, numh, listhptr,
      .              listh, H, S, getD, getPSI, qtot, temp, e1, e2,
@@ -487,6 +490,7 @@ C fixspin and qs are not used in diagk, since getD=.false. ...
      .              no_u, occtol, 1, no_u )
 
       elseif ( spin%SO ) then
+        call print_diag()
         call diag3k(no_l, no_s, maxnh, maxnh, no_u, numh,
      .              listhptr, listh, numh, listhptr, listh,
      .              H, S, getD, getPSI, qtot, temp, e1, e2, xij,
