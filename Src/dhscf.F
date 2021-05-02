@@ -37,7 +37,7 @@
 
       real(grid_p),   pointer :: rhopcc(:), rhoatm(:), Vna(:)
       real(dp)                :: Uharrs     ! Harris energy
-      logical                 :: IsDiag, spiral
+      logical                 :: IsDiag
       integer                 :: nml(3), ntml(3), npcc, nmpl, ntpl
       integer                 :: nbcell
       real(dp)                :: bcell(3,3), cell(3,3),
@@ -169,9 +169,6 @@ C       Set mesh sub-division variables & perform one off allocation
         nsp = nsm*nsm*nsm
         call re_alloc( xdsp, 1, 3, 1, nsp, 'xdsp', 'dhscf_init' )
 
-C       Check spin-spiral wavevector (if defined)
-        if (spiral .and. nspin.lt.4)
-     &    call die('dhscf: ERROR: spiral defined but nspin < 4')
       endif   ! First time
 
 
@@ -251,8 +248,7 @@ C     Start time counter for atomic initializations
       call timer( 'DHSCF2', 1 )
 
       if (nodes.gt.1) then
-        call setMeshDistr( UNIFORM, nsm, nsp,
-     &                     nml, nmpl, ntml, ntpl )
+        call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
       endif
 
 C     Initialise quantities relating to the atom-mesh positioning
@@ -304,7 +300,7 @@ C     Vscf and Vaux are not used here
      &    .false., .false. )
         call reord( rhopcc, rhopcc, nml, nsm, TO_SEQUENTIAL )
         if ( debug_dhscf ) then
-           write(*,debug_fmt) Node,'rhopcc',sqrt(sum(rhopcc**2))
+           write(*,debug_fmt) Node,'rhopcc',sum(rhopcc)*dvol
         end if
       endif
 
@@ -323,8 +319,7 @@ C     Drho is not used here
         if (node .eq. 0) then
            write(6,"(a)") "Setting up quadratic distribution..."
         endif
-        call setMeshDistr( QUADRATIC, nsm, nsp,
-     &                     nml, nmpl, ntml, ntpl )
+        call setMeshDistr( QUADRATIC, nml, nmpl, ntml, ntpl )
 
 C       Create extended mesh arrays for the second data distribution
         call setupExtMesh( QUADRATIC, rmax )
@@ -374,8 +369,7 @@ C     Find Harris (sum of atomic) electron density
 
 C     Routine Poison should use the uniform data distribution
       if (nodes.gt.1) then
-         call setMeshDistr( UNIFORM, nsm, nsp,
-     &                      nml, nmpl, ntml, ntpl )
+         call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
       endif
 
 C     Create Rhoatm using UNIFORM distr, in sequential form
@@ -384,7 +378,7 @@ C     Create Rhoatm using UNIFORM distr, in sequential form
      &     UNIFORM, rhoatm, TO_SEQUENTIAL )
 
       if ( debug_dhscf ) then
-         write(*,debug_fmt) Node,'rhoatm', sqrt(sum(rhoatm**2))
+         write(*,debug_fmt) Node,'rhoatm', sum(rhoatm)*dvol
       end if
 
 !
@@ -641,8 +635,10 @@ C     Modules
       use siestaXC, only : jms_setMeshDistr => setMeshDistr
                                         ! Sets a distribution of mesh
                                         ! points over parallel processors
-      use m_vmat,  only  : vmat
+      use m_vmat, only: vmat
+      use m_vmatsp, only: vmatsp
       use m_rhoofd, only: rhoofd
+      use m_rhoofdsp, only: rhoofdsp
 #ifdef MPI
       use mpi_siesta
 #endif
@@ -667,6 +663,7 @@ C     Modules
 
       use m_charge_add,   only: charge_add
       use m_hartree_add,  only: hartree_add
+      use m_energies,     only: Ex, Ec
 
 #ifdef NCDF_4
       use siesta_options, only: write_cdf
@@ -736,8 +733,6 @@ C real*8  const         : Auxiliary variable (constant within a loop)
 C real*8  DEc           : Auxiliary variable to call cellxc
 C real*8  DEx           : Auxiliary variable to call cellxc
 C real*8  dvol          : Mesh-cell volume
-C real*8  Ec            : Correlation energy
-C real*8  Ex            : Exchange energy
 C real*8  field(3)      : External electric field
 C integer i             : General-purpose index
 C integer ia            : Atom index
@@ -772,7 +767,7 @@ C ----------------------------------------------------------------------
 C     Local variables
       integer  :: i, ia, ip, ispin, nsd, np_vac
       real(dp) :: b1Xb2(3), const, DEc, DEx, DStres(3,3),
-     &            Ec, Ex, rhotot, x0(3), volume, Vmax_vac, Vmean_vac
+     &            rhotot, x0(3), volume, Vmax_vac, Vmean_vac
 
       logical :: use_rhog
       
@@ -781,9 +776,8 @@ C     Local variables
       external
      &  cross,
      &  poison, 
-     &  reord, rhooda, rhoofdsp, 
-     &  timer, vmatsp, 
-     &  readsp
+     &  reord, rhooda,
+     &  timer
 
 !     Dummy arrays for bsc_cellxc call
       real(grid_p) :: aux3(3,1)
@@ -921,13 +915,12 @@ C             rhoatm and Drho are in sequential mode
         ! since the construction of the density from the DM and orbital
         ! data needs that distribution
         if (nodes.gt.1) then
-           call setMeshDistr( QUADRATIC, nsm, nsp,
-     &                        nml, nmpl, ntml, ntpl )
+           call setMeshDistr( QUADRATIC, nml, nmpl, ntml, ntpl )
         endif
         call re_alloc( DRho_par, 1, ntpl, 1, nspin,
      &                 'DRho_par','dhscf' )       
         if (Spiral) then
-          call rhoofdsp( norb, nmpl, maxnd, numd, listdptr, listd,
+          call rhoofdsp( norb, nml, nmpl, maxnd, numd, listdptr, listd,
      &                   nspin, Dscf, DRho_par, nuo, nuotot, iaorb,
      &                   iphorb, isa, qspiral )
         else
@@ -939,7 +932,7 @@ C             rhoatm and Drho are in sequential mode
 
 C       Set the UNIFORM distribution again and copy DRho to it
         if (nodes.gt.1) then
-           call setMeshDistr( UNIFORM, nsm, nsp, nml, nmpl, ntml, ntpl )
+           call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
         endif
 
         do ispin = 1, nspin
@@ -954,7 +947,7 @@ C       Set the UNIFORM distribution again and copy DRho to it
 
         if ( debug_dhscf ) then
            write(*,debug_fmt) Node,'Rho',
-     &          (sqrt(sum(DRho(:,ispin)**2)),ispin=1,nspin)
+     &          (sum(DRho(:,ispin))*dvol,ispin=1,nspin)
         end if
 
         if (save_initial_charge_density) then
@@ -998,8 +991,7 @@ C       Set the UNIFORM distribution again and copy DRho to it
         ! The endpht array is in the quadratic distribution, so
         ! we need to use it for this...
         if (nodes.gt.1) then
-           call setMeshDistr( QUADRATIC, nsm, nsp,
-     &                        nml, nmpl, ntml, ntpl )
+           call setMeshDistr( QUADRATIC, nml, nmpl, ntml, ntpl )
         endif
         call re_alloc( DRho_quad, 1, ntpl, 1, nspin,
      &                 'DRho_quad','dhscf' )       
@@ -1023,8 +1015,7 @@ C       Set the UNIFORM distribution again and copy DRho to it
         call de_alloc(rhoatm_quad,'rhoatm_quad','dhscf')
         call de_alloc(Drho_quad,'DRho_quad','dhscf')
         if (nodes.gt.1) then
-           call setMeshDistr( UNIFORM, nsm, nsp,
-     &                        nml, nmpl, ntml, ntpl )
+           call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
         endif
         call timer( 'partial-charges' , 2 )
       endif
@@ -1073,7 +1064,7 @@ C       Find diffuse ionic charge on mesh
         call reord( Chlocal, Chlocal, nml, nsm, TO_SEQUENTIAL )
 
         if ( debug_dhscf ) then
-           write(*,debug_fmt) Node,'Chlocal',sqrt(sum(Chlocal**2))
+           write(*,debug_fmt) Node,'Chlocal',sum(Chlocal)*dvol
         end if
 
 C       Save diffuse ionic charge 
@@ -1159,11 +1150,6 @@ C Find difference between selfconsistent and atomic densities
       enddo
 !$OMP end parallel
 
-      if ( debug_dhscf ) then
-        write(*,debug_fmt) Node,'DRho',
-     &      (sqrt(sum(DRho(:,ispin)**2)),ispin=1,nspin)
-      end if
-
 C ----------------------------------------------------------------------
 C Save electron density difference
 C ----------------------------------------------------------------------
@@ -1219,6 +1205,11 @@ C     Transform spin density into sum and difference
 !$OMP end parallel do
       endif
 
+      if ( debug_dhscf ) then
+        write(*,debug_fmt) Node,'DRho-clean',
+     &      (sum(DRho(:,ispin))*dvol,ispin=1,nspin)
+      end if
+
 C Add a background charge to neutralize the net charge, to
 C model doped systems. It only adds the charge at points
 C where there are atoms (i.e., not in vacuum).          
@@ -1229,6 +1220,11 @@ C First, call with 'task=0' to add background charge
       ! Add doping in cell (from ChargeGeometries/Geometry.Charge)
       ! Note that this routine will return immediately if no dopant is present
       call charge_add('+',cell, ntpl, DRho(:,1) )
+
+      if ( debug_dhscf ) then
+        write(*,debug_fmt) Node,'DRho-doped',
+     &      (sum(DRho(:,ispin))*dvol,ispin=1,nspin)
+      end if
 
 C ----------------------------------------------------------------------
 C Calculate the dipole moment
@@ -1333,6 +1329,7 @@ C ----------------------------------------------------------------------
 !$OMP end parallel do
       Enaatm = Enaatm * dVol
       Enascf = Enaatm + Enascf * dVol
+
 
       if ( SLABDIPOLECORR == SLABDIPOLECORR_VACUUM ) then
         ! In case the user requested a vacuum dipole, calculate it here
@@ -1510,7 +1507,7 @@ C ----------------------------------------------------------------------
 
          ! Switch to "zero/not-zero rho" distribution (miscalled 'LINEAR')
          if (nodes.gt.1) then
-            call setMeshDistr( LINEAR, nsm, nsp, nml, nmpl, ntml, ntpl )
+            call setMeshDistr( LINEAR, nml, nmpl, ntml, ntpl )
          endif
 
          call re_alloc( Vscf_gga, 1, ntpl, 1, nspin, 'Vscf_gga','dhscf')
@@ -1561,7 +1558,7 @@ C ----------------------------------------------------------------------
       
          ! Go back to uniform distribution
          if (nodes.gt.1) then
-            call setMeshDistr( UNIFORM, nsm, nsp, nml, nmpl, ntml, ntpl)
+            call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl)
          endif
 
          ! Redistribute to the Vxc array
@@ -1657,8 +1654,7 @@ C     Find SCF contribution to hamiltonian matrix elements
 C ----------------------------------------------------------------------
       if (iHmat .eq. 1) then
          if (nodes.gt.1) then
-            call setMeshDistr( QUADRATIC, nsm, nsp,
-     &                         nml, nmpl, ntml, ntpl )
+            call setMeshDistr( QUADRATIC, nml, nmpl, ntml, ntpl )
          endif
 
 !        This is a work array, to which we copy Vscf
@@ -1673,7 +1669,7 @@ C ----------------------------------------------------------------------
          enddo
 
          if (Spiral) then
-            call vmatsp( norb, nmpl, dvol, nspin, Vscf_par, maxnd,
+            call vmatsp( norb, nml, nmpl, dvol, nspin, Vscf_par, maxnd,
      &           numd, listdptr, listd, Hmat, nuo,
      &           nuotot, iaorb, iphorb, isa, qspiral )
          else
@@ -1685,8 +1681,7 @@ C ----------------------------------------------------------------------
          call de_alloc( Vscf_par,  'Vscf_par', 'dhscf' )
          if (nodes.gt.1) then
 !          Everything back to UNIFORM, sequential
-           call setMeshDistr( UNIFORM, nsm, nsp,
-     &                         nml, nmpl, ntml, ntpl )
+           call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
          endif
       endif
 
@@ -1800,8 +1795,7 @@ C       Find contribution of neutral-atom potential
         call reord( Vna, Vna, nml, nsm, TO_SEQUENTIAL )
 
         if (nodes.gt.1) then
-           call setMeshDistr( QUADRATIC, nsm, nsp,
-     &                       nml, nmpl, ntml, ntpl )
+           call setMeshDistr( QUADRATIC, nml, nmpl, ntml, ntpl )
         endif
 
         call re_alloc( Vscf_par, 1, ntpl, 1, nspin,
@@ -1827,7 +1821,7 @@ C       Find contribution of neutral-atom potential
         call de_alloc( Vscf_par, 'Vscf_par', 'dhscf' )
 
         if (nodes.gt.1) then
-          call setMeshDistr( UNIFORM, nsm, nsp, nml, nmpl, ntml, ntpl )
+          call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
         endif
 
 
@@ -1962,8 +1956,7 @@ C ----------------------------------------------------------------------
         if (isigneikr .eq. 1 .or. isigneikr .eq. -1) then
 
           if (nodes.gt.1) then
-            call setMeshDistr( QUADRATIC, nsm, nsp,
-     &                         nml, nmpl, ntml, ntpl )
+            call setMeshDistr( QUADRATIC, nml, nmpl, ntml, ntpl )
           endif
 
           call delk( isigneikr, norb, nmpl, dvol, maxnd,
@@ -1972,8 +1965,7 @@ C ----------------------------------------------------------------------
 
           if (nodes.gt.1) then
 !           Everything back to UNIFORM, sequential
-            call setMeshDistr( UNIFORM, nsm, nsp,
-     &                         nml, nmpl, ntml, ntpl )
+            call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
           endif
 
         endif

@@ -229,6 +229,8 @@ contains
       ! If there is only one spin, then
       ! we do not read in the option.
       spin_idx = 0
+    else if ( nspin > 2 ) then
+      call die("TBtrans is currently not implemented for non-collinear or spin-orbit")
     else
       spin_idx = fdf_get('TBT.Spin',0)
       if ( spin_idx > nspin ) then
@@ -335,7 +337,7 @@ contains
 !    call print_type(files(N_HS)%H_2D)
 
     ! Now we interpolate the 
-    call dSpData2D_interp(N_HS,files(:)%H_2D,tHS(:)%Volt,Volt)
+    call SpData_interp(N_HS,files(:)%H_2D,tHS(:)%Volt,Volt)
 
     ! Now files(1) contains the interpolated values
     ! copy files(1) to the original one...
