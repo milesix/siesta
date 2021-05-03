@@ -16,9 +16,19 @@
 
 # ------------------------------------------------------------------
 
-# Default SIESTA version (in case everything else fails).
+# No version label.
 no_version='NO_VERSION_LABEL_AVAILABLE'
-default_version="${no_version}"
+
+# Default SIESTA version (in case everything else fails).
+archived_commit='$Format:%h $($Format:%cs$)'
+case "${archived_commit}" in
+    *Format*)
+        default_version="${no_version}"
+        ;;
+    *)
+        default_version="${archived_commit}"
+        ;;
+esac
 
 # Name of release version file (only included in release tarballs).
 release_version_file=SIESTA.release
