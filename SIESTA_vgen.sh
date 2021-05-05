@@ -20,7 +20,7 @@
 no_version='NO_VERSION_LABEL_AVAILABLE'
 
 # Default SIESTA version (in case everything else fails).
-archived_commit='$Format:%h $($Format:%cs$)'
+archived_commit='unreleased $Format:%h $($Format:%cs$)'
 case "${archived_commit}" in
     *Format*)
         default_version="${no_version}"
@@ -66,7 +66,7 @@ elif test -d ${GIT_DIR:-.git} -o -f .git &&
               ;;
       esac
 then
-    true
+    git_found=true
 else
     Vnew="${default_version}"
 fi
@@ -94,18 +94,31 @@ test "${Vnew}" = "${Vold}" || {
 echo >&2 "SIESTA_VERSION = ${Vnew}"
 
 
-### Fail if no version was identified. ###
-if [ "${Vnew}" = "${no_version}" ]
+### Fail / warn ###
+print_info() {
+    echo >&2 "${1}:"
+    echo >&2 "${1}: We strongly recommend the use of official releases"
+    echo >&2 "${1}: of SIESTA, which can be downloaded from"
+    echo >&2 "${1}: https://gitlab.com/siesta-project/siesta/-/releases ."
+    echo >&2 "${1}: Alternatively, you may clone the official SIESTA git"
+    echo >&2 "${1}: repository at https://gitlab.com/siesta-project/siesta ."
+    echo >&2 ""
+}
+
+if test "${Vnew}" = "${no_version}"
 then
-   echo >&2 ""
-   echo >&2 "ERROR: This version of SIESTA cannot be identified."
-   echo >&2 "ERROR: Please download an official release of SIESTA from"
-   echo >&2 "ERROR: https://gitlab.com/siesta-project/siesta/-/releases"
-   echo >&2 "ERROR: or clone the official git repository at"
-   echo >&2 "ERROR: https://gitlab.com/siesta-project/siesta ."
-   echo >&2 "ERROR: Support for unidentified versions of SIESTA is unfeasible."
-   echo >&2 ""
-   exit 2
+    # Fail if no version was identified.
+    echo >&2 ""
+    echo >&2 "ERROR: This version of SIESTA cannot be identified."
+    echo >&2 "ERROR: Support for unidentified versions of SIESTA is unfeasible."
+    print_info "ERROR"
+    exit 2
+elif test "${Vnew}" = "${archived_commit}" -o  "${git_found}" = true
+then
+    # Warn: this archive is not an official release.
+    echo >&2 ""
+    echo >&2 "WARNING: This is *not* an official SIESTA release."
+    print_info "WARNING"
 fi
 
 #--------------------------------------------------------------------
