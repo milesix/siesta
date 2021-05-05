@@ -50,13 +50,14 @@ then
 # If this is not a release, try using git.
 elif test -d ${GIT_DIR:-.git} -o -f .git &&
       # Only follow first parents (required given our recurring merges).
-      # Only consider regular (v[0-9]*) and MaX tags, irrespective of whether they are annotated or not.
+      # Only consider regular (v[0-9]*, [0-9].[0-9]*) and MaX tags,
+      # irrespective of whether they are annotated or not.
       Vnew=$(git describe --tags --first-parent --abbrev=9 \
              --match "v[0-9]*" --match "[0-9].[0-9]*" --match "MaX-*" HEAD 2>/dev/null) &&
       case "${Vnew}" in
           *${LF}*) (exit 1)
               ;;
-          v[0-9]*|MaX-*)
+          v[0-9]*|[0-9].[0-9]*|MaX-*)
               # Nowadays there are simpler ways of accomplishing this, but
               # one has to be careful with old versions of git, see, e.g.,
               # https://stackoverflow.com/questions/16035240 .
