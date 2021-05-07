@@ -16,9 +16,19 @@
 
 # ------------------------------------------------------------------
 
-# Default SIESTA version (in case everything else fails).
+# No version label.
 no_version='NO_VERSION_LABEL_AVAILABLE'
-default_version="${no_version}"
+
+# Default SIESTA version (in case everything else fails).
+archived_commit='unreleased $Format:%h $($Format:%cs$)'
+case "${archived_commit}" in
+    *Format*)
+        default_version="${no_version}"
+        ;;
+    *)
+        default_version="${archived_commit}"
+        ;;
+esac
 
 # Name of release version file (only included in release tarballs).
 release_version_file=SIESTA.release
@@ -40,13 +50,14 @@ then
 # If this is not a release, try using git.
 elif test -d ${GIT_DIR:-.git} -o -f .git &&
       # Only follow first parents (required given our recurring merges).
-      # Only consider regular (v[0-9]*) and MaX tags, irrespective of whether they are annotated or not.
+      # Only consider regular (v[0-9]*, [0-9].[0-9]*) and MaX tags,
+      # irrespective of whether they are annotated or not.
       Vnew=$(git describe --tags --first-parent --abbrev=9 \
              --match "v[0-9]*" --match "[0-9].[0-9]*" --match "MaX-*" HEAD 2>/dev/null) &&
       case "${Vnew}" in
           *${LF}*) (exit 1)
               ;;
-          v[0-9]*|MaX-*)
+          v[0-9]*|[0-9].[0-9]*|MaX-*)
               # Nowadays there are simpler ways of accomplishing this, but
               # one has to be careful with old versions of git, see, e.g.,
               # https://stackoverflow.com/questions/16035240 .
@@ -56,7 +67,7 @@ elif test -d ${GIT_DIR:-.git} -o -f .git &&
               ;;
       esac
 then
-    true
+    git_found=true
 else
     Vnew="${default_version}"
 fi
@@ -84,18 +95,33 @@ test "${Vnew}" = "${Vold}" || {
 echo >&2 "SIESTA_VERSION = ${Vnew}"
 
 
-### Fail if no version was identified. ###
-if [ "${Vnew}" = "${no_version}" ]
+### Fail / warn ###
+if test "${Vnew}" = "${no_version}"
 then
-   echo >&2 ""
-   echo >&2 "ERROR: This version of SIESTA cannot be identified."
-   echo >&2 "ERROR: Please download an official release of SIESTA from"
-   echo >&2 "ERROR: https://gitlab.com/siesta-project/siesta/-/releases"
-   echo >&2 "ERROR: or clone the official git repository at"
-   echo >&2 "ERROR: https://gitlab.com/siesta-project/siesta ."
-   echo >&2 "ERROR: Support for unidentified versions of SIESTA is unfeasible."
-   echo >&2 ""
-   exit 2
+    # Fail if no version was identified.
+    echo >&2 ""
+    echo >&2 "ERROR: This version of SIESTA cannot be identified."
+    echo >&2 "ERROR: Support for unidentified versions of SIESTA is unfeasible."
+    echo >&2 "ERROR:"
+    echo >&2 "ERROR: We strongly recommend the use of official releases"
+    echo >&2 "ERROR: of SIESTA, which can be downloaded from"
+    echo >&2 "ERROR: https://gitlab.com/siesta-project/siesta/-/releases ."
+    echo >&2 "ERROR: Alternatively, you may clone the official SIESTA git"
+    echo >&2 "ERROR: repository at https://gitlab.com/siesta-project/siesta ."
+    echo >&2 ""
+    exit 2
+elif test "${Vnew}" = "${archived_commit}" -o  "${git_found}" = true
+then
+    # Warn: this is not an official release.
+    echo >&2 ""
+    echo >&2 "WARNING: This is *not* an official SIESTA release."
+    echo >&2 "WARNING:"
+    echo >&2 "WARNING: Unless you are trying a feature or fix that has not"
+    echo >&2 "WARNING: been released yet, we strongly recommend the use of"
+    echo >&2 "WARNING: official releases of SIESTA, which can be downloaded from"
+    echo >&2 "WARNING: https://gitlab.com/siesta-project/siesta/-/releases ."
+    echo >&2 ""
+
 fi
 
 #--------------------------------------------------------------------
