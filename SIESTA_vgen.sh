@@ -96,30 +96,32 @@ echo >&2 "SIESTA_VERSION = ${Vnew}"
 
 
 ### Fail / warn ###
-print_info() {
-    echo >&2 "${1}:"
-    echo >&2 "${1}: We strongly recommend the use of official releases"
-    echo >&2 "${1}: of SIESTA, which can be downloaded from"
-    echo >&2 "${1}: https://gitlab.com/siesta-project/siesta/-/releases ."
-    echo >&2 "${1}: Alternatively, you may clone the official SIESTA git"
-    echo >&2 "${1}: repository at https://gitlab.com/siesta-project/siesta ."
-    echo >&2 ""
-}
-
 if test "${Vnew}" = "${no_version}"
 then
     # Fail if no version was identified.
     echo >&2 ""
     echo >&2 "ERROR: This version of SIESTA cannot be identified."
     echo >&2 "ERROR: Support for unidentified versions of SIESTA is unfeasible."
-    print_info "ERROR"
+    echo >&2 "ERROR:"
+    echo >&2 "ERROR: We strongly recommend the use of official releases"
+    echo >&2 "ERROR: of SIESTA, which can be downloaded from"
+    echo >&2 "ERROR: https://gitlab.com/siesta-project/siesta/-/releases ."
+    echo >&2 "ERROR: Alternatively, you may clone the official SIESTA git"
+    echo >&2 "ERROR: repository at https://gitlab.com/siesta-project/siesta ."
+    echo >&2 ""
     exit 2
 elif test "${Vnew}" = "${archived_commit}" -o  "${git_found}" = true
 then
-    # Warn: this archive is not an official release.
+    # Warn: this is not an official release.
     echo >&2 ""
     echo >&2 "WARNING: This is *not* an official SIESTA release."
-    print_info "WARNING"
+    echo >&2 "WARNING:"
+    echo >&2 "WARNING: Unless you are trying a feature or fix that has not"
+    echo >&2 "WARNING: been released yet, we strongly recommend the use of"
+    echo >&2 "WARNING: official releases of SIESTA, which can be downloaded from"
+    echo >&2 "WARNING: https://gitlab.com/siesta-project/siesta/-/releases ."
+    echo >&2 ""
+
 fi
 
 #--------------------------------------------------------------------
