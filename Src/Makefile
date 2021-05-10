@@ -1242,9 +1242,9 @@ setup_hamiltonian.o: siesta_options.o sparse_matrices.o sys.o
 setup_ordern_indexes.o: alloc.o domain_decom.o parallel.o spatial.o
 shaper.o: atmfuncs.o mneighb.o precision.o
 show_distribution.o: atomlist.o parallel.o parallelsubs.o siesta_geom.o sys.o
-siesta.o: alloc.o extrae_module.o m_io_yaml.o m_mpi_utils.o m_steps.o
-siesta.o: parallel.o siesta_analysis.o siesta_end.o siesta_forces.o
-siesta.o: siesta_init.o siesta_move.o
+siesta.o: alloc.o extrae_module.o m_mpi_utils.o m_steps.o parallel.o
+siesta.o: siesta_analysis.o siesta_end.o siesta_forces.o siesta_init.o
+siesta.o: siesta_move.o
 siesta2wannier90.o: files.o m_digest_nnkp.o m_spin.o m_trialorbitalclass.o
 siesta2wannier90.o: parallel.o precision.o siesta_options.o sys.o
 siesta_analysis.o: alloc.o atomlist.o bands.o basis_enthalpy.o dhscf.o files.o
@@ -1262,10 +1262,11 @@ siesta_dicts.o: m_forces.o m_mixing_scf.o m_steps.o m_stress.o precision.o
 siesta_dicts.o: siesta_geom.o siesta_options.o sparse_matrices.o
 siesta_end.o: alloc.o atomlist.o bands.o densematrix.o diag.o
 siesta_end.o: extrae_eventllist.o flook_siesta.o listsc.o m_cite.o m_dscfcomm.o
-siesta_end.o: m_fixed.o m_io.o m_mixing_scf.o m_rhog.o m_wallclock.o meshdscf.o
-siesta_end.o: meshphi.o moremeshsubs.o new_matel.o parallel.o precision.o
-siesta_end.o: siesta_cml.o siesta_cmlsubs.o siesta_master.o siesta_options.o
-siesta_end.o: sparse_matrices.o timestamp.o version.o
+siesta_end.o: m_fixed.o m_io.o m_io_yaml.o m_mixing_scf.o m_rhog.o
+siesta_end.o: m_wallclock.o meshdscf.o meshphi.o moremeshsubs.o new_matel.o
+siesta_end.o: parallel.o precision.o siesta_cml.o siesta_cmlsubs.o
+siesta_end.o: siesta_master.o siesta_options.o sparse_matrices.o timestamp.o
+siesta_end.o: version.o
 siesta_forces.o: atomlist.o class_Fstack_Data1D.o class_SpData2D.o compute_dm.o
 siesta_forces.o: compute_energies.o compute_max_diff.o densematrix.o
 siesta_forces.o: dm_charge.o files.o final_H_f_stress.o flook_siesta.o
