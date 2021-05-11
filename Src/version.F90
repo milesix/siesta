@@ -73,9 +73,9 @@ write(6,'(a)') 'SERIAL version'
 
 !$OMP parallel
 !$OMP master
-!$write(*,'(a)') 'THREADED version'
+!$ write(*,'(a)') 'THREADED version'
 #ifdef _OPENMP
-!$write(*,'(a,i0)') '* OpenMP version ', _OPENMP
+!$ write(*,'(a,i0)') '* OpenMP version ', _OPENMP
 #endif
 !$OMP end master
 !$OMP end parallel
