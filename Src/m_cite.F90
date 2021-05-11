@@ -405,8 +405,8 @@ contains
 
   end subroutine write_citation
 
-  subroutine announce_citations()
-    use version_info, only: version_str
+  subroutine announce_citations(version_str)
+    character(len=*), intent(in) :: version_str
     type(citation) :: cit
     integer :: ID
 

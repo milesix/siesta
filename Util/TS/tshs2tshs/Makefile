@@ -62,6 +62,9 @@ OBJS += m_os.o
 OBJS += m_ts_io_version.o
 OBJS += tshs2tshs.o
 
+COMP_LIBS := $(filter-out libsiestaLAPACK.a,$(COMP_LIBS))
+COMP_LIBS := $(filter-out libsiestaBLAS.a,$(COMP_LIBS))
+
 #######################
 #  TS-TBT libs:
 #
@@ -590,7 +593,8 @@ m_ts_gf.o: local_sys.o m_os.o m_ts_cctype.o m_ts_contour_eq.o
 m_ts_gf.o: m_ts_contour_neq.o m_ts_electrode.o m_ts_electype.o parallel.o
 m_ts_gf.o: precision.o units.o
 m_ts_global_vars.o: densematrix.o parallel.o
-m_ts_hartree.o: m_mesh_node.o m_ts_tdir.o parallel.o precision.o units.o
+m_ts_hartree.o: m_energies.o m_mesh_node.o m_ts_tdir.o parallel.o precision.o
+m_ts_hartree.o: units.o
 m_ts_io.o: alloc.o class_OrbitalDistribution.o class_SpData1D.o
 m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o local_sys.o m_io_s.o
 m_ts_io.o: m_ncdf_io.o m_os.o m_sparse.o parallel.o precision.o
@@ -826,9 +830,9 @@ setup_ordern_indexes.o: alloc.o domain_decom.o parallel.o spatial.o
 shaper.o: atmfuncs.o mneighb.o precision.o
 show_distribution.o: atomlist.o local_sys.o parallel.o parallelsubs.o
 show_distribution.o: siesta_geom.o
-siesta.o: alloc.o extrae_module.o m_io_yaml.o m_mpi_utils.o m_steps.o
-siesta.o: parallel.o siesta_analysis.o siesta_end.o siesta_forces.o
-siesta.o: siesta_init.o siesta_move.o
+siesta.o: alloc.o extrae_module.o m_mpi_utils.o m_steps.o parallel.o
+siesta.o: siesta_analysis.o siesta_end.o siesta_forces.o siesta_init.o
+siesta.o: siesta_move.o
 siesta2wannier90.o: files.o local_sys.o m_digest_nnkp.o m_spin.o
 siesta2wannier90.o: m_trialorbitalclass.o parallel.o precision.o
 siesta2wannier90.o: siesta_options.o
@@ -847,10 +851,11 @@ siesta_dicts.o: m_forces.o m_mixing_scf.o m_steps.o m_stress.o precision.o
 siesta_dicts.o: siesta_geom.o siesta_options.o sparse_matrices.o
 siesta_end.o: alloc.o atomlist.o bands.o densematrix.o diag.o
 siesta_end.o: extrae_eventllist.o flook_siesta.o listsc.o m_cite.o m_dscfcomm.o
-siesta_end.o: m_fixed.o m_io.o m_mixing_scf.o m_rhog.o m_wallclock.o meshdscf.o
-siesta_end.o: meshphi.o moremeshsubs.o new_matel.o parallel.o precision.o
-siesta_end.o: siesta_cml.o siesta_cmlsubs.o siesta_master.o siesta_options.o
-siesta_end.o: sparse_matrices.o timestamp.o
+siesta_end.o: m_fixed.o m_io.o m_io_yaml.o m_mixing_scf.o m_rhog.o
+siesta_end.o: m_wallclock.o meshdscf.o meshphi.o moremeshsubs.o new_matel.o
+siesta_end.o: parallel.o precision.o siesta_cml.o siesta_cmlsubs.o
+siesta_end.o: siesta_master.o siesta_options.o sparse_matrices.o timestamp.o
+siesta_end.o: version.o
 siesta_forces.o: atomlist.o class_Fstack_Data1D.o class_SpData2D.o compute_dm.o
 siesta_forces.o: compute_energies.o compute_max_diff.o densematrix.o
 siesta_forces.o: dm_charge.o files.o final_H_f_stress.o flook_siesta.o
@@ -927,8 +932,7 @@ ts_charge.o: class_OrbitalDistribution.o class_Sparsity.o geom_helper.o
 ts_charge.o: m_ts_electype.o m_ts_method.o parallel.o precision.o
 ts_dq.o: alloc.o class_OrbitalDistribution.o class_Sparsity.o geom_helper.o
 ts_dq.o: m_interpolate.o m_ts_cctype.o m_ts_chem_pot.o m_ts_contour_eq.o
-ts_dq.o: m_ts_electype.o m_ts_method.o parallel.o precision.o sorting.o
-ts_dq.o: ts_charge.o units.o
+ts_dq.o: m_ts_method.o parallel.o precision.o sorting.o ts_charge.o units.o
 ts_energies.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
 ts_energies.o: class_Sparsity.o geom_helper.o m_energies.o m_spin.o
 ts_energies.o: m_ts_electype.o m_ts_method.o m_ts_options.o parallel.o
