@@ -155,11 +155,11 @@ version: version.F90
 		s'TBTRANS_VERSION'$$(cat ${<D}/../../../version.info)'g;\
 		s'LIBS'$(COMP_LIBS) $(LIBS)'g;\
 		s'FPPFLAGS'$(FPPFLAGS)'g" $<  > tmp.F90
-	@awk '{if (length>80) { cur=78; \
-		printf "%s&\n",substr($$0,0,78); \
-		while(length-cur>78){ cur=cur+76 ; \
-		printf "&%s&\n",substr($$0,cur-76,76) \
-		} printf "&%s\n",substr($$0,cur)} else { print $$0 }}' tmp.F90 > compinfo.F90
+	@awk '{if (length>80) { printf "%s&\n",substr($$0,1,77); cur=78; \
+		while(length-cur>76){  \
+		printf "&%s&\n",substr($$0,cur,76) ; cur=cur+76;\
+		} printf "&%s\n",substr($$0,cur)} \
+		else { print $$0 }}' tmp.F90 > compinfo.F90
 	@($(MAKE) "FPPFLAGS=$(FPPFLAGS)" compinfo.o)
 	@mv compinfo.o version.o
 	@echo
