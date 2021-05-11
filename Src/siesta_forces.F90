@@ -773,7 +773,7 @@ contains
       ! whether we are in siesta initialization step
       TSinit = .false.
       ! whether transiesta is running
-      TSrun  = .true.
+      TSrun = .true.
 
       ! If transiesta should stop immediately
       if ( ts_siesta_stop ) then
@@ -834,18 +834,9 @@ contains
       ! initialize the bulk to those values
       if ( any(Elecs(:)%DM_init > 0) ) then
 
-        if ( IONode ) then
+        if ( IONode ) &
             write(*,'(/,2a)') 'transiesta: ', &
-                 'Initializing bulk DM in electrodes.'
-        end if
-
-        ! The electrode EDM is aligned at Ef == 0
-        ! We need to align the energy matrix to Ef == 0, then we switch
-        ! it back later.
-        DM => val(DM_2D)
-        EDM => val(EDM_2D)
-        iEl = size(DM)
-        call daxpy(iEl,-Ef,DM(1,1),1,EDM(1,1),1)
+            'Initializing bulk DM in electrodes.'
         
         na_a = 0
         do iEl = 1 , na_u
@@ -890,14 +881,7 @@ contains
         ! Clean-up
         deallocate(allowed_a)
         
-        if ( IONode ) then
-          write(*,*) ! new-line
-        end if
-        
-        ! The electrode EDM is aligned at Ef == 0
-        ! We need to align the energy matrix
-        iEl = size(DM)
-        call daxpy(iEl,Ef,DM(1,1),1,EDM(1,1),1)
+        if ( IONode ) write(*,*) ! new-line
         
       end if
 

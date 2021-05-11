@@ -51,6 +51,11 @@ grouped under headings representing past (and upcoming) releases.
 
 # 4.1.X versions
 
+### Changes
+
+* Fixed reading Target.Pressure, reported on mailing list 24 March 2021.
+
+
 ## 4.1.5 (2021-01-27)  Feature release
 
 ### Backward compatibility issues

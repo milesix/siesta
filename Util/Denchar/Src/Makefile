@@ -261,11 +261,12 @@ dftu_specs.o: basis_specs.o basis_types.o interpolation.o local_sys.o m_cite.o
 dftu_specs.o: parallel.o precision.o pseudopotential.o radial.o units.o
 dhscf.o: alloc.o atmfuncs.o delk.o dfscf.o dipole.o doping_uniform.o files.o
 dhscf.o: forhar.o iogrid_netcdf.o local_sys.o m_charge_add.o m_efield.o
-dhscf.o: m_hartree_add.o m_iorho.o m_iotddft.o m_mesh_node.o m_ncdf_io.o
-dhscf.o: m_ncdf_siesta.o m_partial_charges.o m_rhog.o m_spin.o m_ts_electype.o
-dhscf.o: m_ts_global_vars.o m_ts_hartree.o m_ts_options.o m_ts_voltage.o mesh.o
-dhscf.o: meshdscf.o meshsubs.o moremeshsubs.o parallel.o parsing.o precision.o
-dhscf.o: rhofft.o rhoofd.o rhoofdsp.o siesta_options.o units.o vmat.o vmatsp.o
+dhscf.o: m_energies.o m_hartree_add.o m_iorho.o m_iotddft.o m_mesh_node.o
+dhscf.o: m_ncdf_io.o m_ncdf_siesta.o m_partial_charges.o m_rhog.o m_spin.o
+dhscf.o: m_ts_electype.o m_ts_global_vars.o m_ts_hartree.o m_ts_options.o
+dhscf.o: m_ts_voltage.o mesh.o meshdscf.o meshsubs.o moremeshsubs.o parallel.o
+dhscf.o: parsing.o precision.o rhofft.o rhoofd.o rhoofdsp.o siesta_options.o
+dhscf.o: units.o vmat.o vmatsp.o
 diag.o: alloc.o diag_option.o local_sys.o parallel.o precision.o
 diag2g.o: fermid.o intrinsic_missing.o local_sys.o parallel.o parallelsubs.o
 diag2g.o: precision.o writewave.o
@@ -613,7 +614,8 @@ m_ts_gf.o: local_sys.o m_os.o m_ts_cctype.o m_ts_contour_eq.o
 m_ts_gf.o: m_ts_contour_neq.o m_ts_electrode.o m_ts_electype.o parallel.o
 m_ts_gf.o: precision.o units.o
 m_ts_global_vars.o: densematrix.o parallel.o
-m_ts_hartree.o: m_mesh_node.o m_ts_tdir.o parallel.o precision.o units.o
+m_ts_hartree.o: m_energies.o m_mesh_node.o m_ts_tdir.o parallel.o precision.o
+m_ts_hartree.o: units.o
 m_ts_io.o: alloc.o class_OrbitalDistribution.o class_SpData1D.o
 m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o local_sys.o m_io_s.o
 m_ts_io.o: m_ncdf_io.o m_os.o m_sparse.o parallel.o precision.o
@@ -850,10 +852,10 @@ setup_ordern_indexes.o: alloc.o domain_decom.o parallel.o spatial.o
 shaper.o: atmfuncs.o mneighb.o precision.o
 show_distribution.o: atomlist.o local_sys.o parallel.o parallelsubs.o
 show_distribution.o: siesta_geom.o
-siesta.o: alloc.o extrae_module.o local_sys.o m_io_yaml.o m_mpi_utils.o
-siesta.o: m_steps.o m_ts_global_vars.o parallel.o siesta_analysis.o
-siesta.o: siesta_end.o siesta_forces.o siesta_init.o siesta_move.o
-siesta.o: siesta_options.o siesta_tddft.o
+siesta.o: alloc.o extrae_module.o local_sys.o m_mpi_utils.o m_steps.o
+siesta.o: m_ts_global_vars.o parallel.o siesta_analysis.o siesta_end.o
+siesta.o: siesta_forces.o siesta_init.o siesta_move.o siesta_options.o
+siesta.o: siesta_tddft.o
 siesta2wannier90.o: files.o local_sys.o m_digest_nnkp.o m_spin.o
 siesta2wannier90.o: m_trialorbitalclass.o parallel.o precision.o
 siesta2wannier90.o: siesta_options.o
@@ -873,11 +875,11 @@ siesta_dicts.o: siesta_geom.o siesta_options.o sparse_matrices.o
 siesta_end.o: alloc.o atomlist.o bands.o densematrix.o diag.o
 siesta_end.o: extrae_eventllist.o flook_siesta.o kpoint_dos.o kpoint_ldos.o
 siesta_end.o: kpoint_pdos.o kpoint_scf.o listsc.o m_chess.o m_cite.o
-siesta_end.o: m_dscfcomm.o m_fixed.o m_io.o m_mixing_scf.o m_rhog.o
+siesta_end.o: m_dscfcomm.o m_fixed.o m_io.o m_io_yaml.o m_mixing_scf.o m_rhog.o
 siesta_end.o: m_wallclock.o meshdscf.o meshphi.o moremeshsubs.o new_matel.o
 siesta_end.o: parallel.o precision.o siesta_cml.o siesta_cmlsubs.o
 siesta_end.o: siesta_master.o siesta_options.o sparse_matrices.o timestamp.o
-siesta_end.o: ts_kpoint_scf.o
+siesta_end.o: ts_kpoint_scf.o version.o
 siesta_forces.o: atomlist.o class_Fstack_Data1D.o class_SpData2D.o compute_dm.o
 siesta_forces.o: compute_energies.o compute_max_diff.o densematrix.o
 siesta_forces.o: dm_charge.o files.o final_H_f_stress.o flook_siesta.o
@@ -961,8 +963,7 @@ ts_charge.o: class_OrbitalDistribution.o class_Sparsity.o geom_helper.o
 ts_charge.o: m_ts_electype.o m_ts_method.o parallel.o precision.o
 ts_dq.o: alloc.o class_OrbitalDistribution.o class_Sparsity.o geom_helper.o
 ts_dq.o: m_interpolate.o m_ts_cctype.o m_ts_chem_pot.o m_ts_contour_eq.o
-ts_dq.o: m_ts_electype.o m_ts_method.o parallel.o precision.o sorting.o
-ts_dq.o: ts_charge.o units.o
+ts_dq.o: m_ts_method.o parallel.o precision.o sorting.o ts_charge.o units.o
 ts_energies.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
 ts_energies.o: class_Sparsity.o geom_helper.o m_energies.o m_spin.o
 ts_energies.o: m_ts_electype.o m_ts_method.o m_ts_options.o parallel.o
