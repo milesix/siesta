@@ -62,6 +62,9 @@ OBJS += m_os.o
 OBJS += m_ts_io_version.o
 OBJS += tshs2tshs.o
 
+COMP_LIBS := $(filter-out libsiestaLAPACK.a,$(COMP_LIBS))
+COMP_LIBS := $(filter-out libsiestaBLAS.a,$(COMP_LIBS))
+
 #######################
 #  TS-TBT libs:
 #

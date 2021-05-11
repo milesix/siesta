@@ -20,9 +20,10 @@ include $(ARCH_MAKE)
 
 what:
 	@echo
-	@echo "Compilation architecture to be used: $(SIESTA_SYS)"
-	@echo "If that is not what you want, give the correct"
-	@echo "value to the variable SIESTA_SYS in your shell environment."
+	@echo "Compilation architecture to be used: $(SIESTA_ARCH)"
+	@echo "Your 'arch.make' file is: $(ARCH_MAKE)"
+	@echo "You may select a different 'arch.make' file by assigning"
+	@echo "an appropriate value to OBJDIR in your make invocation."
 	@echo $(COMMENTS)
 	@echo
 
@@ -55,11 +56,13 @@ OBJS = $(SIESTA_OBJS) pvtsp.o
 pvtsp: FPPFLAGS+=$(DEFS_PREFIX) -UMPI -UNCDF -UNCDF_4 -UNCDF_PARALLEL
 pvtsp: COMP_LIBS := $(filter-out libncdf.a,$(COMP_LIBS))
 pvtsp: COMP_LIBS := $(filter-out libfdict.a,$(COMP_LIBS))
+pvtsp: COMP_LIBS := $(filter-out libsiestaLAPACK.a,$(COMP_LIBS))
+pvtsp: COMP_LIBS := $(filter-out libsiestaBLAS.a,$(COMP_LIBS))
 pvtsp: LIBS := $(filter-out libncdf.a,$(LIBS))
 pvtsp: LIBS := $(filter-out libfdict.a,$(LIBS))
 pvtsp: $(OBJS)
 	$(FC) $(FFLAGS) $(LDFLAGS) -o pvtsp \
-              $(OBJS) $(COMP_LIBS) $(LIBS) || echo "***Please see top of Makefile"
+              $(OBJS) $(COMP_LIBS) $(LIBS)
 
 clean: 
 	@echo "==> Cleaning object, library, and executable files"
