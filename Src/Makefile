@@ -435,24 +435,27 @@ ifeq ($(COMPILER_VERSION),)
   COMPILER_VERSION := Unknown version
 endif
 
-.PHONY: version version.o
+.PHONY: version version.o FORCE
+SIESTA_VERSION_FILE:=$(VPATH)/../SIESTA.version
 version.o: version
-version: version.F90 posix_calls.o
+version: version.F90 posix_calls.o $(SIESTA_VERSION_FILE)
 	@echo
 	@echo "==> Incorporating information about present compilation (compiler and flags)"
 	@sed "s'SIESTA_ARCH'${SIESTA_ARCH}'g;s'FFLAGS'${FC} ${FFLAGS}'g;\
 		s^COMPILER_VERSION^$(COMPILER_VERSION)^;\
-		s'SIESTA_VERSION'$$(cat ${<D}/../version.info)'g;\
+		s'SIESTA_VERSION'$$(cat $(SIESTA_VERSION_FILE))'g;\
 		s'LIBS'$(COMP_LIBS) $(LIBS)'g;\
 		s'FPPFLAGS'$(FPPFLAGS)'g" $<  > tmp.F90
-	@awk '{if (length>80) { cur=78; \
-		printf "%s&\n",substr($$0,0,78); \
-		while(length-cur>78){ cur=cur+76 ; \
-		printf "&%s&\n",substr($$0,cur-76,76) \
-		} printf "&%s\n",substr($$0,cur)} else { print $$0 }}' tmp.F90 > compinfo.F90
+	@awk '{if (length>80) { printf "%s&\n",substr($$0,1,77); cur=78; \
+		while(length-cur>76){  \
+		printf "&%s&\n",substr($$0,cur,76) ; cur=cur+76;\
+		} printf "&%s\n",substr($$0,cur)} \
+		else { print $$0 }}' tmp.F90 > compinfo.F90
 	$(MAKE) "FPPFLAGS=$(FPPFLAGS)" compinfo.o
 	@mv compinfo.o version.o
 	@echo
+$(SIESTA_VERSION_FILE): FORCE
+	@(cd $(VPATH)/../ && ./SIESTA_vgen.sh)
 
 
 #----------------------------------------------------------------------------
@@ -711,9 +714,9 @@ dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
 dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o parallel.o
 dftu_specs.o: precision.o radial.o sys.o units.o
 dhscf.o: alloc.o atmfuncs.o delk.o dfscf.o dipole.o doping_uniform.o files.o
-dhscf.o: forhar.o iogrid_netcdf.o m_charge_add.o m_efield.o m_hartree_add.o
-dhscf.o: m_iorho.o m_iotddft.o m_mesh_node.o m_ncdf_io.o m_ncdf_siesta.o
-dhscf.o: m_partial_charges.o m_rhog.o m_spin.o m_ts_electype.o
+dhscf.o: forhar.o iogrid_netcdf.o m_charge_add.o m_efield.o m_energies.o
+dhscf.o: m_hartree_add.o m_iorho.o m_iotddft.o m_mesh_node.o m_ncdf_io.o
+dhscf.o: m_ncdf_siesta.o m_partial_charges.o m_rhog.o m_spin.o m_ts_electype.o
 dhscf.o: m_ts_global_vars.o m_ts_hartree.o m_ts_options.o m_ts_voltage.o mesh.o
 dhscf.o: meshdscf.o meshsubs.o moremeshsubs.o parallel.o parsing.o precision.o
 dhscf.o: rhofft.o rhoofd.o rhoofdsp.o siesta_options.o units.o vmat.o vmatsp.o
@@ -1052,7 +1055,8 @@ m_ts_gf.o: m_os.o m_ts_cctype.o m_ts_contour_eq.o m_ts_contour_neq.o
 m_ts_gf.o: m_ts_electrode.o m_ts_electype.o parallel.o precision.o sys.o
 m_ts_gf.o: units.o
 m_ts_global_vars.o: densematrix.o parallel.o
-m_ts_hartree.o: m_mesh_node.o m_ts_tdir.o parallel.o precision.o units.o
+m_ts_hartree.o: m_energies.o m_mesh_node.o m_ts_tdir.o parallel.o precision.o
+m_ts_hartree.o: units.o
 m_ts_io.o: alloc.o class_OrbitalDistribution.o class_SpData1D.o
 m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o m_io_s.o m_ncdf_io.o
 m_ts_io.o: m_os.o m_sparse.o memory_log.o parallel.o precision.o sys.o
@@ -1283,10 +1287,9 @@ setup_hamiltonian.o: siesta_options.o sparse_matrices.o
 setup_ordern_indexes.o: alloc.o domain_decom.o parallel.o spatial.o
 shaper.o: atmfuncs.o mneighb.o precision.o
 show_distribution.o: atomlist.o parallel.o parallelsubs.o siesta_geom.o sys.o
-siesta.o: alloc.o extrae_module.o m_io_yaml.o m_mpi_utils.o m_steps.o
-siesta.o: m_ts_global_vars.o parallel.o siesta_analysis.o siesta_end.o
-siesta.o: siesta_forces.o siesta_init.o siesta_move.o siesta_options.o
-siesta.o: siesta_tddft.o
+siesta.o: alloc.o extrae_module.o m_mpi_utils.o m_steps.o m_ts_global_vars.o
+siesta.o: parallel.o siesta_analysis.o siesta_end.o siesta_forces.o
+siesta.o: siesta_init.o siesta_move.o siesta_options.o siesta_tddft.o
 siesta2wannier90.o: files.o m_digest_nnkp.o m_spin.o m_trialorbitalclass.o
 siesta2wannier90.o: parallel.o precision.o siesta_options.o sys.o
 siesta_analysis.o: alloc.o atomlist.o bands.o basis_enthalpy.o dhscf.o files.o
@@ -1305,10 +1308,11 @@ siesta_dicts.o: siesta_geom.o siesta_options.o sparse_matrices.o
 siesta_end.o: atomlist.o bands.o densematrix.o diag.o extrae_eventllist.o
 siesta_end.o: flook_siesta.o kpoint_dos.o kpoint_ldos.o kpoint_pdos.o
 siesta_end.o: kpoint_scf.o listsc.o m_chess.o m_cite.o m_dscfcomm.o m_fixed.o
-siesta_end.o: m_io.o m_mixing_scf.o m_rhog.o m_wallclock.o memory_log.o
-siesta_end.o: meshdscf.o meshphi.o moremeshsubs.o new_matel.o parallel.o
-siesta_end.o: precision.o siesta_cml.o siesta_cmlsubs.o siesta_master.o
-siesta_end.o: siesta_options.o sparse_matrices.o timestamp.o ts_kpoint_scf.o
+siesta_end.o: m_io.o m_io_yaml.o m_mixing_scf.o m_rhog.o m_wallclock.o
+siesta_end.o: memory_log.o meshdscf.o meshphi.o moremeshsubs.o new_matel.o
+siesta_end.o: parallel.o precision.o siesta_cml.o siesta_cmlsubs.o
+siesta_end.o: siesta_master.o siesta_options.o sparse_matrices.o timestamp.o
+siesta_end.o: ts_kpoint_scf.o version.o
 siesta_forces.o: atomlist.o class_Fstack_Data1D.o class_SpData2D.o compute_dm.o
 siesta_forces.o: compute_energies.o compute_max_diff.o densematrix.o
 siesta_forces.o: dm_charge.o files.o final_H_f_stress.o flook_siesta.o
@@ -1391,8 +1395,7 @@ ts_charge.o: class_OrbitalDistribution.o class_Sparsity.o geom_helper.o
 ts_charge.o: m_ts_electype.o m_ts_method.o parallel.o precision.o
 ts_dq.o: alloc.o class_OrbitalDistribution.o class_Sparsity.o geom_helper.o
 ts_dq.o: m_interpolate.o m_ts_cctype.o m_ts_chem_pot.o m_ts_contour_eq.o
-ts_dq.o: m_ts_electype.o m_ts_method.o parallel.o precision.o sorting.o
-ts_dq.o: ts_charge.o units.o
+ts_dq.o: m_ts_method.o parallel.o precision.o sorting.o ts_charge.o units.o
 ts_energies.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
 ts_energies.o: class_Sparsity.o geom_helper.o m_energies.o m_spin.o
 ts_energies.o: m_ts_electype.o m_ts_method.o m_ts_options.o parallel.o

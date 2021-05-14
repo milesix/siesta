@@ -15,8 +15,8 @@
 
 % Local command for the software version for printing
 % \unskip helps when space/newline chars are present in the
-% version.info file.
-\providecommand\softwareversion{\input{../version.info}\unskip}
+% SIESTA.version file.
+\providecommand\softwareversion{\input{../SIESTA.version}\unskip}
 
 % Title (note that \input above will fail in the title, we however
 % don't care since it is only meaningful for final publications where
@@ -53,7 +53,7 @@
 \hrulefill
 \vspace{1cm}
 
-{\Huge \textbf{T B t r a n s \, \, \softwareversion}}
+{\Huge \textbf{T B t r a n s \, \, \softwareversion}\par}
 
 \vspace{1cm}
 \hrulefill
@@ -62,7 +62,7 @@
 {\Large \printdate}
 
 \vspace{1.5cm}
-{\Large \url{https://launchpad.net/siesta}}
+{\Large \url{https://gitlab.com/siesta-project/siesta}}
 
 \end{center}
 
@@ -75,7 +75,7 @@
 \section*{Contributors to \tbtrans}
 \addcontentsline{toc}{section}{Contributors to \tbtrans}
 
-\tbtrans\ is Copyright \copyright\ 2016-2019 by Nick R. Papior. The
+\tbtrans\ is Copyright \copyright\ 2016-2021 by Nick R. Papior. The
 original \tbtrans\ code was implemented by Mads Brandbyge, Jose
 L. Mozos, Jeremy Taylor, Pablo Ordejon and Kurt Stokbro. The current
 \tbtrans\ is implemented by the following contributors:

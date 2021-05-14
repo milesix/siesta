@@ -291,7 +291,7 @@ C     Create extended mesh arrays for the first data distribution
       
       real(dp)  :: rcell(3,3), vecmod
       integer   :: i, itmp
-      real(dp), parameter     :: k0(3) = (/ 0.0, 0.0, 0.0 /)
+      real(dp), parameter     :: k0(3) = (/ 0.d0, 0.d0, 0.d0 /)
 
       type(block_fdf)            :: bfdf
       type(parsed_line), pointer :: pline

@@ -140,6 +140,8 @@ contains
     call write_debug( '    PRE siesta_forces' )
 #endif
 
+    call timer('geom_init', 1)
+
 #ifdef SIESTA__PEXSI
     ! Broadcast relevant things for program logic
     ! These were set in read_options, called only by "SIESTA_workers".
@@ -163,6 +165,7 @@ contains
        call bye("S only")
     end if
     if ( onlyS ) then
+      call timer('geom_init', 2)
       return
     end if
 
@@ -255,7 +258,24 @@ contains
           call reset(conv_FreeE)
           call set_tolerance(conv_FreeE,tolerance_FreeE)
         end if
+
+        if ( mixH ) then
+          ! Setting up the initial H is done outside the main SCF loop
+          ! This is to not consfuse the "timer" printout for the first SCF.
+          ! If this was done in the main loop the initial IterSCF timing
+          ! would include 2 setup_hamiltonian calls, contrary to all
+          ! subsequent SCF calls which only does 1.
+          if (fdf_get("Read-H-from-file",.false.)) then
+            call get_H_from_file()
+          else
+            ! first iscf call
+            call setup_hamiltonian( 1 )
+          end if
+        end if
+
       end if
+
+      call timer('geom_init', 2)
 
       ! The current structure of the loop tries to reproduce the
       ! historical Siesta usage. It should be made more clear.
@@ -318,14 +338,6 @@ contains
                call cmlStartStep( xf=mainXML, type='SCF', index=iscf )
           
           if ( mixH ) then
-             
-             if ( first_scf ) then
-                if (fdf_get("Read-H-from-file",.false.)) then
-                   call get_H_from_file()
-                else
-                   call setup_hamiltonian( iscf )
-                end if
-             end if
              
              call compute_DM( iscf )
 
@@ -759,7 +771,7 @@ contains
       ! whether we are in siesta initialization step
       TSinit = .false.
       ! whether transiesta is running
-      TSrun  = .true.
+      TSrun = .true.
 
       ! If transiesta should stop immediately
       if ( ts_siesta_stop ) then
@@ -820,18 +832,9 @@ contains
       ! initialize the bulk to those values
       if ( any(Elecs(:)%DM_init > 0) ) then
 
-        if ( IONode ) then
+        if ( IONode ) &
             write(*,'(/,2a)') 'transiesta: ', &
-                 'Initializing bulk DM in electrodes.'
-        end if
-
-        ! The electrode EDM is aligned at Ef == 0
-        ! We need to align the energy matrix to Ef == 0, then we switch
-        ! it back later.
-        DM => val(DM_2D)
-        EDM => val(EDM_2D)
-        iEl = size(DM)
-        call daxpy(iEl,-Ef,DM(1,1),1,EDM(1,1),1)
+            'Initializing bulk DM in electrodes.'
         
         na_a = 0
         do iEl = 1 , na_u
@@ -876,14 +879,7 @@ contains
         ! Clean-up
         deallocate(allowed_a)
         
-        if ( IONode ) then
-          write(*,*) ! new-line
-        end if
-        
-        ! The electrode EDM is aligned at Ef == 0
-        ! We need to align the energy matrix
-        iEl = size(DM)
-        call daxpy(iEl,Ef,DM(1,1),1,EDM(1,1),1)
+        if ( IONode ) write(*,*) ! new-line
         
       end if
 
