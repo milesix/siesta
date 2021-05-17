@@ -812,21 +812,21 @@ module m_vee_integrals
       enddo
     enddo
 
-! For debugging
-    do m = 1, nfuns
-      do mprime = 1, nfuns
-        do m2prime = 1, nfuns
-          do m3prime = 1, nfuns
-            write(6,'(a,4i5,3f12.5)')                                 &
- &            'ee_4index_int_real: m, mp, m2p, m3p, real_ints = ',    &
- &            m, mprime, m2prime, m3prime,                            &
- &            real_ints(m, mprime, m2prime, m3prime),                 &
- &            vee_integral_real(m, mprime, m2prime, m3prime) 
-          enddo
-        enddo
-      enddo
-    enddo
-! End debugging
+!! For debugging
+!    do m = 1, nfuns
+!      do mprime = 1, nfuns
+!        do m2prime = 1, nfuns
+!          do m3prime = 1, nfuns
+!            write(6,'(a,4i5,3f12.5)')                                 &
+! &            'ee_4index_int_real: m, mp, m2p, m3p, real_ints = ',    &
+! &            m, mprime, m2prime, m3prime,                            &
+! &            real_ints(m, mprime, m2prime, m3prime),                 &
+! &            vee_integral_real(m, mprime, m2prime, m3prime) 
+!          enddo
+!        enddo
+!      enddo
+!    enddo
+!! End debugging
 
 ! Check the results are correct
 !do a = 1,nfuns

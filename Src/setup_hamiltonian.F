@@ -239,15 +239,19 @@
 !--------   E_ldau_so(u,u)
             Dc = cmplx(Dscf(io,1),Dscf(io,5), dp)
             E_ldau_so = E_ldau_so + real( H_ldau_so(io,1)*Dc, dp)
+!            write(6,*) io, H_ldau_so(io,1), Dc, E_ldau_so 
 !--------   E_ldau_so(d,d)
             Dc = cmplx(Dscf(io,2),Dscf(io,6), dp)
             E_ldau_so = E_ldau_so + real( H_ldau_so(io,2)*Dc, dp)
+!            write(6,*) io, H_ldau_so(io,2), Dc, E_ldau_so 
 !--------   E_ldau_so(u,d)
             Dc = cmplx(Dscf(io,3),-Dscf(io,4), dp)
             E_ldau_so = E_ldau_so + real( H_ldau_so(io,4)*Dc, dp)
+!            write(6,*) io, H_ldau_so(io,4), Dc, E_ldau_so 
 !--------   E_ldau_so(d,u)
             Dc = cmplx(Dscf(io,7),Dscf(io,8), dp)
             E_ldau_so = E_ldau_so + real( H_ldau_so(io,3)*Dc, dp)
+!            write(6,*) io, H_ldau_so(io,3), Dc, E_ldau_so 
 
           end do
 !         jjunquer: For debugging
