@@ -13484,6 +13484,10 @@ electrodes in a generic input format.
     If \fdf{TS!Elec.<>!Bulk:true} this defaults to \fdf*{cross-terms},
     but may be changed.
 
+    \note if this is \fdf*{none} the forces on the atoms coupled to
+    the electrode regions are \emph{not} to be trusted. The value
+    \fdf*{none} should be avoided, if possible.
+
     \option[DM-init]%
     \fdfindex*{TS!Elec.<>!DM-init}%
     \fdfindex*{TS!Elec.<>!DM-init:diagon}%
@@ -14416,11 +14420,11 @@ graphically rich, fashion. This section will explain how to do this.
 
 \subsection{Controlling XML output}
 
-\begin{fdflogicalT}{XML!Write}
+\begin{fdflogicalF}{XML!Write}
 
   Determine if the main XML file should be created for this run.
   
-\end{fdflogicalT}
+\end{fdflogicalF}
 
 \subsection{Converting XML to XHTML}
 

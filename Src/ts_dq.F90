@@ -411,7 +411,7 @@ contains
       ! Average contribution from each chemical potential
       dQ_Ef = dQ_Ef / size(this%mus)
 
-      write(*,'(2(a,es11.4))') 'ts-dq: dq = ', dQ, " and Q(Ef) = ", dQ_Ef
+      write(*,'(2(a,es13.6))') 'ts-dq: dq = ', dQ, " and Q(Ef) = ", dQ_Ef
 
       ! Now we have the difference in Q
       ! Correct the Fermi level so that a change dE DM would 
@@ -468,7 +468,7 @@ contains
     !< Ef is the -dq / dq@Ef corrected Fermi-level
     real(dp), intent(in) :: Ef
     !< The shift in the Fermi-level for this routine
-    real(dp), intent(inout) :: dEf
+    real(dp), intent(out) :: dEf
     !< Current change in charge, if this is negative, we only allow positive dEf
     real(dp), intent(in) :: dq
     
@@ -537,7 +537,7 @@ contains
           read(iu,*) ! # TSiscf line
           read(iu,'(a2,i15)') char2, tmp
 
-          read(iu,'(2(tr1,e20.10))') cur(:)
+          read(iu,'(2(tr1,e24.17))') cur(:)
           first_Q(N) = cur(2)
           ! Convert to Ry
           cur(1) = cur(1) * eV
@@ -609,91 +609,5 @@ contains
     end if
 
   end subroutine ts_dq_truncate
-
-  subroutine ts_dq_scale_EDM_elec(N_Elec, Elecs, dit, sp, nspin, n_nzs, DM, EDM, &
-      dEf_elec, dEf_device)
-
-    use m_ts_method
-    use parallel, only : Node
-#ifdef MPI
-    use mpi_siesta
-#endif
-    use class_OrbitalDistribution
-    use class_Sparsity
-    use m_ts_electype
-
-! **********************
-! * INPUT variables    *
-! **********************
-    integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
-    type(OrbitalDistribution), intent(inout) :: dit
-    ! SIESTA local sparse pattern (not changed)
-    type(Sparsity), intent(inout) :: sp
-    ! Number of non-zero elements
-    integer, intent(in) :: nspin, n_nzs
-    ! The density matrix
-    real(dp), intent(in) :: DM(n_nzs,nspin)
-    ! The energy density matrix
-    real(dp), intent(inout) :: EDM(n_nzs,nspin)
-    !< Fermi-level changes in the electrode region
-    real(dp), intent(in) :: dEf_elec, dEf_device
-
-! **********************
-! * LOCAL variables    *
-! **********************
-    integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
-    integer :: no_l, no_u, lio, io, ind
-    integer :: ir_dm, jr_dm
-    integer :: ir, jr
-
-    ! Retrieve information about the sparsity pattern
-    call attach(sp, &
-        n_col=l_ncol,list_ptr=l_ptr,list_col=l_col, &
-        nrows=no_l,nrows_g=no_u)
-
-!$OMP parallel do default(shared), &
-!$OMP&private(lio,io,ind,ir,ir_dm,jr,jr_dm)
-    do lio = 1 , no_l
-
-      ! obtain the global index of the orbital.
-      io = index_local_to_global(dit,lio,Node)
-      ir = orb_type(io)
-      if ( ir == TYP_BUFFER ) then
-        ir_dm = 0
-      else if ( ir == TYP_DEVICE ) then
-        ir_dm = 2
-      else
-        ir_dm = Elecs(ir)%DM_update
-      end if
-
-      ! Loop number of entries in the row... (index frame)
-      do ind = l_ptr(lio) + 1 , l_ptr(lio) + l_ncol(lio)
-
-        ! as the local sparsity pattern is a super-cell pattern,
-        ! we need to check the unit-cell orbital
-        ! The unit-cell column index
-        jr = orb_type(l_col(ind))
-        if ( jr == TYP_BUFFER ) then
-          jr_dm = 0
-        else if ( jr == TYP_DEVICE ) then
-          jr_dm = 2
-        else
-          jr_dm = Elecs(jr)%DM_update
-        end if
-
-        if ( ir_dm + jr_dm <= 2 ) then
-          ! In a non-updated region
-          EDM(ind,:) = EDM(ind,:) + DM(ind,:) * dEf_elec
-        else
-          ! In an updated region
-          EDM(ind,:) = EDM(ind,:) + DM(ind,:) * dEf_device
-        end if
-
-      end do
-    end do
-!$OMP end parallel do
-
-  end subroutine ts_dq_scale_EDM_elec
 
 end module ts_dq_m
