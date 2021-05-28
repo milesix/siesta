@@ -1203,37 +1203,69 @@ is
 which uses a \emph{pipe} statement. 
 %
 \siesta\ 4.1 and later does not require one to pipe in the input file
-and the input file may instead be specified on the command line.
+and the input file may instead be specified on the command line:
 \begin{shellexample}
   siesta RUN.fdf > RUN.out
 \end{shellexample}
-This allows for \siesta\ to accept special flags described in what
-follows. Each flag may be quoted if it contains spaces, or one may
-substitute spaces by \fdf*{:}.
+\siesta\ 4.1 and later also accepts special flags and options
+described in what follows:
+\begin{itemize}
+\item
+All flags must start by one or more dashes (\shell{-}).
+The number of leading dashes is irrelevant,
+as long as there is at least one of them.
+\item
+Some flags (e.g., \shell[-L])
+must be followed by a properly formed option string.
+Other flags (e.g., \shell[-elec])
+are logical toggles and they are not followed by option strings.
+\item
+Flags and option strings must all be separated by spaces
+(and only spaces are valid separators for this).
+\item
+Option strings may be quoted.
+Option strings that contain spaces need to either be quoted
+or have the spaces replaced by a colon (\shell{:}) or by
+an equal sign (\shell{=}).
+\item
+If any of the flags is specified and the input file is not piped,
+the input file must be given after all the flags:
+\begin{shellexample}
+  siesta -L Hello -V 0.25:eV RUN.fdf > RUN.out
+\end{shellexample}
+\end{itemize}
+
+The list of available flags and options is:
 \begin{fdfoptions}
 
-  \option[-h]%
+  \option[-help|-h]%
   \fdfindex*{Command line options:-h}%
-  print a help instruction and quit
-
-  \option[-L]%
-  \fdfindex*{Command line options:-L}%
-  Override, temporarily, the \fdf{SystemLabel} flag. 
-
-  \shell{siesta -L Hello}.
+  Print a help instruction and quit.
 
   \option[-out|-o]%
   \fdfindex*{Command line options:-out}%
   \fdfindex*{Command line options:-o}%
   Specify the output file (instead of printing to the terminal).
+  Example:
 
-  \shell{siesta -out RUN.out}.
+  \begin{shellexample}
+  siesta --out RUN.out
+  \end{shellexample}
+
+  \option[-L]%
+  \fdfindex*{Command line options:-L}%
+  Override, temporarily, the \fdf{SystemLabel} flag.
+  Example:
+
+  \begin{shellexample}
+  siesta -L Hello
+  \end{shellexample}
 
   \option[-electrode|-elec]%
   \fdfindex*{Command line options:-electrode}%
   \fdfindex*{Command line options:-elec}%
   \fdfoverwrite{TS!HS.Save,TS!DE.Save}
-  denote this as an electrode calculation which forces the
+  Denote this as an electrode calculation which forces the
   \sysfile{TSHS} and \sysfile{TSDE} files to be saved.
 
   \note This is equivalent to specifying \fdf{TS!HS.Save:true} and
@@ -1242,13 +1274,26 @@ substitute spaces by \fdf*{:}.
   \option[-V]%
   \fdfindex*{Command line options:-V}%
   \fdfoverwrite{TS!Voltage}
-  specify the bias for the current \tsiesta\ run.
+  Specify the bias for the current \tsiesta\ run.
+  Example: any of the following two commands set the applied bias to
+  $0.25\,\mathrm{eV}$:
 
-  \shell{siesta -V 0.25:eV} or \shell{siesta -V "0.25 eV"}
-  which sets the applied bias to $0.25\,\mathrm{eV}$.
+  \begin{shellexample}
+  siesta -V 0.25:eV
+  siesta -V "0.25 eV"
+  \end{shellexample}
 
   \note This is equivalent to specifying \fdf{TS!Voltage} in the input
   file.
+
+  \option[-fdf]%
+  \fdfindex*{Command line options:-fdf}%
+  Specify any FDF option string.  For example, another way to specify the bias
+  of the example of the previous option would be:
+
+  \begin{shellexample}
+  siesta --fdf TS.Voltage=0.25:eV
+  \end{shellexample}
 
 \end{fdfoptions}
 
@@ -1303,7 +1348,7 @@ is used.
 
 \item[$\bullet$] If a label is misspelled it will not be recognized (there is no
   internal list of ``accepted'' tags in the program). You can check 
-  the actual value used by siesta by looking for the label in the
+  the actual value used by \siesta by looking for the label in the
   output \textit{fdf.log}\index{fdf.log} file.
 
 \end{itemize}
@@ -1336,8 +1381,12 @@ The file \textit{fdf.log} contains all the parameters used by \siesta\
 in a given run, both those specified in the input fdf file and
 those taken by default. They are written in fdf format, so that
 you may reuse them as input directly. Input data blocks are
-copied to the fdf.log file only if you specify the \textit{dump} option
+copied to the \textit{fdf.log} file only if you specify the \textit{dump} option
 for them.
+In practice, the name of a FDF log file contains a sequence of five
+digits (e.g., \shell{fdf-12345.log}) chosen on-the-fly
+in order to have a reduced chance of overwriting other FDF log files
+that may be present in the same directory.
 
 \section{PROGRAM OUTPUT}
 
