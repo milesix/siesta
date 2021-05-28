@@ -1,33 +1,42 @@
 #
 SIESTA_ARCH=Master-template
+
 #
+# 
+#
+
 # Machine specific settings might be:
 #
 # 1. Inherited from environmental variables
 #    (paths, libraries, etc)
 # 2. Set from a 'fortran.mk' file that is
 #    included below (compiler names, flags, etc) (Uncomment first)
-#
+
 #--------------------------------------------------------
 # Use these symbols to request particular features
 # To turn on, set '=1'.
 #--------------
 # These are mandatory for PSML and MaX Versions,
 # but they should be turned off for 4.1
-WITH_PSML=
-WITH_GRIDXC=
+# WITH_PSML=1
+# WITH_GRIDXC=1
 #-------------
-#
-WITH_EXTERNAL_ELPA=
-WITH_ELSI=
-WITH_FLOOK=
-WITH_MPI=1
-WITH_NETCDF=
-WITH_SEPARATE_NETCDF_FORTRAN=
-WITH_NCDF=
-WITH_LEGACY_GRIDXC_INSTALL=
-WITH_GRID_SP=
-#
+
+# WITH_EXTERNAL_ELPA=1
+# WITH_POST_2020_EXTERNAL_ELPA=1
+# WITH_ELSI=1
+# WITH_FLOOK=1
+# WITH_MPI=1
+# WITH_NETCDF=1
+# WITH_EXPLICIT_NETCDF_SYMBOLS=0
+# WITH_NCDF=1
+# WITH_NCDF_PARALLEL=1
+# WITH_LEGACY_GRIDXC_INSTALL=1
+# WITH_GRID_SP=0
+
+# This option only valid starting at MaX-2 2nd release
+# WITH_PSOLVER=1
+
 #===========================================================
 # Make sure you have the appropriate library symbols
 # (Either explicitly here, or through shell variables, perhaps
@@ -43,29 +52,31 @@ WITH_GRID_SP=
 #FLOOK_ROOT=
 #--------------------------------------------------------
 #NETCDF_ROOT=$(NETCDF_HOME)
-#NETCDF_FORTRAN_ROOT=$(NETCDF_HOME)
-#HDF5_LIBS=-L/apps/HDF5/1.8.20/GCC/OPENMPI/lib -lhdf5_hl -lhdf5 -lcurl -lz
+#NETCDF_LIBS=-lnetcdff -lnetcdf -L/opt/hdf5/lib -lhdf5_hl -lhdf5 -lcurl -lz
+#NETCDF_INCFLAGS=-I/usr/include
 #SCALAPACK_LIBS=-lscalapack
 #LAPACK_LIBS=-llapack -lblas
 #FFTW_ROOT=/apps/FFTW/3.3.8/GCC/OPENMPI/
 # Needed for PEXSI (ELSI) support
 #LIBS_CPLUS=-lstdc++ -lmpi_cxx
 #--------------------------------------------------------
-#
+
 #FC_PARALLEL=mpif90
 #FC_SERIAL=gfortran
 #FPP = $(FC_SERIAL) -E -P -x c
 #FFLAGS = -O2 
 #FFLAGS_DEBUG= -g -O0
 #RANLIB=echo
-#
+
+# GPU_TYPE=NVIDIA_GPU  # or AMD_GPU, or INTEL_GPU (for >=2021 external ELPA)
+
 # Alternatively, prepare a fortran.mk file with compiler definitions,
 # put it in this same directory, and uncomment the two lines below
 #
 #SELF_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 #include $(SELF_DIR)fortran.mk
 #===========================================================
-#
+
 # Possible section on specific recipes for troublesome files, using
 # a lower optimization level.
 #
@@ -73,11 +84,11 @@ WITH_GRID_SP=
 #	$(FC) -c $(FFLAGS_DEBUG) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_fixed_F) $< 
 #state_analysis.o: 
 #create_Sparsity_SC.o:
-#
+
 # Note that simply using target-specific variables, such as:
 #atom.o: FFLAGS=$(FFLAGS_DEBUG)
 # would compile *all* dependencies of atom.o with that setting...
-#
+
 #----------------------------------------------------------------
 # In case your compiler does not understand the special meaning of 
 # the .F and .F90 extensions ("files in need of preprocessing"), you
@@ -97,19 +108,30 @@ WITH_GRID_SP=
 # (i.e. -WF,-DSOME_SYMBOL). This is used in some utility makefiles. Typically
 # this need not be defined.
 #DEFS_PREFIX = -WF,
-#
+
 #--------------------------------------------------------
 # Nothing should need to be changed below
 #--------------------------------------------------------
-#
+
 FC_ASIS=$(FC_SERIAL)
-#
+
 # These are for initialization of variables added to below
-#
 FPPFLAGS= $(DEFS_PREFIX)-DF2003 
 LIBS=
 COMP_LIBS=
-#
+
+ifeq ($(WITH_PSOLVER),1)
+ ifndef PSOLVER_ROOT
+   $(error you need to define PSOLVER_ROOT in your arch.make)
+ endif
+ FPPFLAGS_PSOLVER=-DSIESTA__PSOLVER
+ PSOLVER_INCFLAGS = -I$(PSOLVER_ROOT)/include
+ PSOLVER_LIBS = -L$(PSOLVER_ROOT)/lib -lPSolver-1 -latlab-1 -lfutile-1 -ldicts  -lyaml -lfmalloc-1
+ #
+ FPPFLAGS += $(FPPFLAGS_PSOLVER) 
+ INCFLAGS += $(PSOLVER_INCFLAGS) 
+ LIBS += $(PSOLVER_LIBS) 
+endif
 
 # ---- ELPA configuration -----------
 #
@@ -117,8 +139,7 @@ COMP_LIBS=
 # through the ELSI interface. Due to namespace collisions, the *same* external library
 # must be used.
 
-#
-ifdef WITH_EXTERNAL_ELPA
+ifeq ($(WITH_EXTERNAL_ELPA),1)
    ifndef ELPA_ROOT	
      $(error you need to define ELPA_ROOT in your arch.make)
    endif
@@ -128,17 +149,28 @@ ifdef WITH_EXTERNAL_ELPA
    endif
 
    FPPFLAGS_ELPA=$(DEFS_PREFIX)-DSIESTA__ELPA
+   ifeq ($(WITH_POST_2020_EXTERNAL_ELPA),1)
+     ifndef GPU_TYPE
+       $(info NVIDIA_GPU used for post-2020 ELPA kernel interface compilation)
+       $(info Set GPU_TYPE if you need another kind)
+       $(info or disregard if you do not have gpus)
+       GPU_TYPE=NVIDIA_GPU
+     endif
+     FPPFLAGS_ELPA+=$(DEFS_PREFIX)-DELPA_2STAGE_REAL_GPU=ELPA_2STAGE_REAL_$(GPU_TYPE)
+     FPPFLAGS_ELPA+=$(DEFS_PREFIX)-DELPA_2STAGE_COMPLEX_GPU=ELPA_2STAGE_COMPLEX_$(GPU_TYPE)
+   endif
+
    ELPA_INCFLAGS= -I$(ELPA_INCLUDE_DIRECTORY)
    INCFLAGS += $(ELPA_INCFLAGS)
    FPPFLAGS += $(FPPFLAGS_ELPA)
-   ELPA_LIB=-L$(ELPA_ROOT)/lib -lelpa
+   ELPA_LIB = -L$(ELPA_ROOT)/lib -lelpa
    LIBS +=$(ELPA_LIB) 
 endif
 # ---- ELPA configuration -----------
 
 # ---- ELSI configuration -----------
 
-ifdef WITH_ELSI
+ifeq ($(WITH_ELSI),1)
  ifndef ELSI_ROOT
    $(error you need to define ELSI_ROOT in your arch.make)
  endif
@@ -147,115 +179,124 @@ ifdef WITH_ELSI
 
  ELSI_INCFLAGS = -I$(ELSI_ROOT)/include
 
- ifdef WITH_EXTERNAL_ELPA
+ ifeq ($(WITH_EXTERNAL_ELPA),1)
    ELSI_ELPA_ROOT=$(ELPA_ROOT)
    $(echo Make sure that ELSI is compiled with external ELPA...)
    # Explicit checks?
  else
    ELSI_ELPA_ROOT=$(ELSI_ROOT)
  endif
- # This assumes that ELSI has been compiled with PEXSI
+
+ # We assume that PEXSI is compiled by default
+ ifeq ($(WITH_ELSI_PEXSI),0)
+    PEXSI_LIBS =
+ else
+    PEXSI_LIBS =  -lpexsi -lsuperlu_dist \
+               -lptscotchparmetis -lptscotch -lptscotcherr \
+               -lscotchmetis -lscotch -lscotcherr
+ endif	
+  
  ELSI_LIB = -L$(ELSI_ROOT)/lib -lelsi \
                -lfortjson -lOMM -lMatrixSwitch \
                -lNTPoly \
-                -lpexsi -lsuperlu_dist \
-               -lptscotchparmetis -lptscotch -lptscotcherr \
-               -lscotchmetis -lscotch -lscotcherr \
+               $(PEXSI_LIBS) \
                -L$(ELSI_ELPA_ROOT)/lib -lelpa
 
  INCFLAGS += $(ELSI_INCFLAGS)
  FPPFLAGS += $(FPPFLAGS_ELSI)
- LIBS +=$(ELSI_LIB) $(LIBS_CPLUS)
+ LIBS += $(ELSI_LIB) $(LIBS_CPLUS)
 endif
 
 
-ifdef WITH_NETCDF
- ifndef NETCDF_ROOT
-   $(error you need to define NETCDF_ROOT in your arch.make)
- endif
+ifeq ($(WITH_NETCDF),1)
 
-# If NetCDF is enabled, for completeness in some installations,
-# we might need to deal separately with the install prefixes of NetCDF and
-# NetCDF-Fortran. By default both are the same
+   ifeq ($(WITH_EXPLICIT_NETCDF_SYMBOLS),1)
 
- ifdef WITH_SEPARATE_NETCDF_FORTRAN
-   ifndef NETCDF_FORTRAN_ROOT
-     $(error you need to define NETCDF_FORTRAN_ROOT in your arch.make)
+     ifndef NETCDF_INCFLAGS
+      $(error you need to define NETCDF_INCFLAGS in your arch.make)
+     endif
+     ifndef NETCDF_LIBS
+      $(error you need to define NETCDF_LIBS in your arch.make)
+     endif
+
+   else
+
+     ifndef NETCDF_ROOT
+       $(error you need to define NETCDF_ROOT in your arch.make)
+     endif
+
+     NETCDF_INCFLAGS = -I$(NETCDF_ROOT)/include
+     NETCDF_LIBS = -L$(NETCDF_ROOT)/lib -lnetcdff
    endif
-   NETCDF_INCFLAGS = -I$(NETCDF_ROOT)/include -I$(NETCDF_FORTRAN_ROOT)/include
-   NETCDF_LIBS = -L$(NETCDF_FORTRAN_ROOT)/lib -lnetcdff -L$(NETCDF_ROOT)/lib -lnetcdf
- else
-   NETCDF_INCFLAGS = -I$(NETCDF_ROOT)/include
-   NETCDF_LIBS = -L$(NETCDF_ROOT)/lib -lnetcdff
- endif
- NETCDF_LIBS += $(HDF5_LIBS)
- FPPFLAGS_CDF = $(DEFS_PREFIX)-DCDF
- FPPFLAGS += $(FPPFLAGS_CDF) 
- INCFLAGS += $(NETCDF_INCFLAGS)
- LIBS += $(NETCDF_LIBS)
+
+   FPPFLAGS_CDF = $(DEFS_PREFIX)-DCDF
+   FPPFLAGS += $(FPPFLAGS_CDF) 
+   INCFLAGS += $(NETCDF_INCFLAGS)
+   LIBS += $(NETCDF_LIBS)
 endif
-#
-ifdef WITH_NCDF
- ifndef WITH_NETCDF
-   $(error For NCDF you need to define also WITH_NETCDF in your arch.make)
+
+ifeq ($(WITH_NCDF),1)
+ ifneq ($(WITH_NETCDF),1)
+   $(error For NCDF you need to define also WITH_NETCDF=1 in your arch.make)
  endif
  FPPFLAGS += $(DEFS_PREFIX)-DNCDF $(DEFS_PREFIX)-DNCDF_4
+ ifeq ($(WITH_NCDF_PARALLEL),1)
+   FPPFLAGS += $(DEFS_PREFIX)-DNCDF_PARALLEL
+ endif
  COMP_LIBS += libncdf.a libfdict.a
 endif
-#
-ifdef WITH_FLOOK
+
+ifeq ($(WITH_FLOOK),1)
  ifndef FLOOK_ROOT
    $(error you need to define FLOOK_ROOT in your arch.make)
  endif
  FLOOK_INCFLAGS=-I$(FLOOK_ROOT)/include
  INCFLAGS += $(FLOOK_INCFLAGS)
  FLOOK_LIBS= -L$(FLOOK_ROOT)/lib -lflookall -ldl
- FPPFLAGS_FLOOK= $(DEFS_PREFIX)-DSIESTA__FLOOK
+ FPPFLAGS_FLOOK = $(DEFS_PREFIX)-DSIESTA__FLOOK
  FPPFLAGS += $(FPPFLAGS_FLOOK) 
- LIBS +=$(FLOOK_LIBS)
- COMP_LIBS+= libfdict.a
+ LIBS += $(FLOOK_LIBS)
+ COMP_LIBS += libfdict.a
 endif
-#
 
-ifdef WITH_MPI
+ifeq ($(WITH_MPI),1)
  FC=$(FC_PARALLEL)
  MPI_INTERFACE=libmpi_f90.a
  MPI_INCLUDE=.      # Note . for no-op
- FPPFLAGS_MPI=$(DEFS_PREFIX)-DMPI $(DEFS_PREFIX)-DMPI_TIMING
- LIBS +=$(SCALAPACK_LIBS)
- LIBS +=$(LAPACK_LIBS)
+ FPPFLAGS_MPI = $(DEFS_PREFIX)-DMPI $(DEFS_PREFIX)-DMPI_TIMING
+ LIBS += $(SCALAPACK_LIBS)
+ LIBS += $(LAPACK_LIBS)
  FPPFLAGS += $(FPPFLAGS_MPI) 
 else
- FC=$(FC_SERIAL)
- LIBS += $(LAPACK_LIBS) $(COMP_LIBS)
+ FC = $(FC_SERIAL)
+ LIBS += $(LAPACK_LIBS)
 endif
 
 # ------------- libGridXC configuration -----------
-#
-ifdef WITH_GRID_SP
+
+ifeq ($(WITH_GRID_SP),1)
   GRIDXC_CONFIG_PREFIX=sp
   FPPFLAGS_GRID= $(DEFS_PREFIX)-DGRID_SP
 else
   GRIDXC_CONFIG_PREFIX=dp
 endif
-ifdef WITH_MPI
+ifeq ($(WITH_MPI),1)
   GRIDXC_CONFIG_PREFIX:=$(GRIDXC_CONFIG_PREFIX)_mpi
 endif
 FPPFLAGS += $(FPPFLAGS_GRID) 
 # -------------------------------------------------
-#
-#
+
+
 SYS=nag
-#
+
 # These lines make use of a custom mechanism to generate library lists and
 # include-file management. The mechanism is not implemented in all libraries.
 #---------------------------------------------
-ifdef WITH_PSML
+ifeq ($(WITH_PSML),1)
  include $(XMLF90_ROOT)/share/org.siesta-project/xmlf90.mk
  include $(PSML_ROOT)/share/org.siesta-project/psml.mk
 endif
 
-#
 # A legacy libGridXC installation will have dual 'serial' and 'mpi' subdirectories,
 # whereas a modern one, generated with the 'multiconfig' option,  will have split
 # include directories but a flat lib directory. The details are still handled by
@@ -265,15 +306,15 @@ endif
 # still allowed. For single-precision support with the 'legacy' option, you need to
 # make sure that your installation is 'single'...
 #
-ifdef WITH_GRIDXC
-  ifdef WITH_LEGACY_GRIDXC_INSTALL
+ifeq ($(WITH_GRIDXC),1)
+  ifeq ($(WITH_LEGACY_GRIDXC_INSTALL),1)
     include $(GRIDXC_ROOT)/gridxc.mk
   else
     include $(GRIDXC_ROOT)/share/org.siesta-project/gridxc_$(GRIDXC_CONFIG_PREFIX).mk
   endif
 endif
 
-#---------------------------------------------
+# Define default compilation methods
 .c.o:
 	$(CC) -c $(CFLAGS) $(INCFLAGS) $(CPPFLAGS) $< 
 .F.o:
@@ -281,6 +322,6 @@ endif
 .F90.o:
 	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_free_F90) $< 
 .f.o:
-	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FCFLAGS_fixed_f)  $<
+	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FFLAGS_fixed_f)  $<
 .f90.o:
-	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FCFLAGS_free_f90)  $<
+	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FFLAGS_free_f90)  $<

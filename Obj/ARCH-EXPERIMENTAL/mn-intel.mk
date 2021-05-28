@@ -26,14 +26,16 @@ WITH_PSML=
 WITH_GRIDXC=
 #-------------
 #
+WITH_PSOLVER=
 WITH_EXTERNAL_ELPA=1
+WITH_POST_2020_EXTERNAL_ELPA=1
 WITH_ELSI=
 WITH_FLOOK=1
 WITH_MPI=1
 WITH_NETCDF=1
 WITH_SEPARATE_NETCDF_FORTRAN=
 WITH_NCDF=1
-WITH_LEGACY_GRIDXC_INSTALL=
+WITH_LEGACY_GRIDXC_INSTALL=1
 WITH_GRID_SP=
 #
 #===========================================================
@@ -70,6 +72,7 @@ FC_SERIAL=ifort
 FPP = $(FC_SERIAL) -E -P -x c
 #
 # (add -qopenmp to all three for OpenMP support)
+#FFLAGS = -g -traceback -O2 -prec-div -prec-sqrt -fp-model source
 FFLAGS = -g -traceback -O2 -prec-div -prec-sqrt -fp-model source
 FFLAGS_DEBUG= -g -traceback -O1 -prec-div -prec-sqrt -fp-model source
 LDFLAGS= 
