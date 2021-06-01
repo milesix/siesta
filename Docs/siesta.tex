@@ -1186,7 +1186,7 @@ The standard output of the program, that you
 have already seen passing on the screen, was copied to
 file h2o.out by the tee command. Have a look at it
 and refer to the output-explanation section if necessary.
-You may also want to look at the fdf.log\index{fdf.log} file to see all
+You may also want to look at the \file{fdf.log} file to see all
 the default values that siesta has chosen for you, before
 studying the input-explanation section and start changing them.
 
@@ -1228,8 +1228,7 @@ Option strings that contain spaces need to either be quoted
 or have the spaces replaced by a colon (\shell{:}) or by
 an equal sign (\shell{=}).
 \item
-If any of the flags is specified and the input file is not piped,
-the input file must be given after all the flags:
+If the input file is not piped in, it must be given as the last argument:
 \begin{shellexample}
   siesta -L Hello -V 0.25:eV RUN.fdf > RUN.out
 \end{shellexample}
@@ -1348,8 +1347,8 @@ is used.
 
 \item[$\bullet$] If a label is misspelled it will not be recognized (there is no
   internal list of ``accepted'' tags in the program). You can check 
-  the actual value used by \siesta by looking for the label in the
-  output \textit{fdf.log}\index{fdf.log} file.
+  the actual value used by \siesta\ by looking for the label in the
+  output \file{fdf.log} file.
 
 \end{itemize}
 
@@ -1377,11 +1376,11 @@ These are some examples:
            %include mydefaults.fdf
 \end{verbatim}
 
-The file \textit{fdf.log} contains all the parameters used by \siesta\
+The file \file{fdf.log} contains all the parameters used by \siesta\
 in a given run, both those specified in the input fdf file and
 those taken by default. They are written in fdf format, so that
 you may reuse them as input directly. Input data blocks are
-copied to the \textit{fdf.log} file only if you specify the \textit{dump} option
+copied to the \file{fdf.log} file only if you specify the \textit{dump} option
 for them.
 In practice, the name of a FDF log file contains a sequence of five
 digits (e.g., \shell{fdf-12345.log}) chosen on-the-fly
@@ -1406,7 +1405,7 @@ subroutine. It prints some of the information it digests. It is
 important to note that it is only part of it, some other information
 being accessed by the different subroutines when they need it during
 the run (in the spirit of \fdflib\ input).  A complete list of the input
-used by the code can be found at the end in the file \shell{fdf.log},
+used by the code can be found at the end in the file \file{fdf.log},
 including defaults used by the code in the run.
 
 After that, the program reads the pseudopotentials, factorizes them
@@ -1494,7 +1493,7 @@ values. For historical reasons the names of the tags do not have an
 uniform structure, and can be confusing at times.
 
 Almost all of the tags are optional: \siesta\ will assign a
-default if a given tag is not found when needed (see \shell{fdf.log}).
+default if a given tag is not found when needed (see \file{fdf.log}).
 
 
 \subsection{General system descriptors}
