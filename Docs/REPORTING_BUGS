@@ -55,8 +55,10 @@ Please keep in mind the following guidelines:
 
   - The platform on which the problem was found, and the operating
     system and compiler version. State whether the problem appears in
-    a serial and/or parallel run. Including your arch.make is also a
-    good idea.
+    a serial and/or parallel run. Including your arch.make and the
+    output of the
+        $ siesta --version
+    command is also a good idea.
 
 -- Please limit your communication to one bug report per issue.
 
