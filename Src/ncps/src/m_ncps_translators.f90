@@ -189,6 +189,10 @@ CONTAINS
            if (.not. present(b)) call die("new grid: b not present")
            if (.not. present(rmax)) call die("new grid: rmax not present")
            rmax_grid = rmax
+           if (rmax_grid < 1.0_dp) then
+              ! If not specified, set it to the default
+              rmax_grid = rmax_def
+           endif
            p%a = a
            p%b = b
            p%nr = nint(log(rmax_grid/b+1.0d0)/a)

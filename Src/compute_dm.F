@@ -92,29 +92,24 @@
         end if
       end if
 
-      ! Compute shift in Tr(H*DM) for fermi-level bracketting
-      ! Use the current H, the previous iteration H, and the
-      ! previous iteration DM
-
-      if (SIESTA_worker) then
-         if (iscf > 1) then
-            call compute_Ebs_shift(Dscf,H,Hold,delta_Ebs)
-            delta_Ef = delta_Ebs / qtot
-            if (ionode.and.isolve.eq.SOLVE_PEXSI) then
-               write(6,"(a,f16.5)")
-     $              "Estimated change in band-structure energy:",
-     $              delta_Ebs/eV, "Estimated shift in E_fermi: ",
-     $              delta_Ef/eV
-            endif
-               
-         else
-            delta_Ebs = 0.0_dp
-            delta_Ef  = 0.0_dp
-         endif
-      endif
 
 #ifdef SIESTA__PEXSI
       if (isolve .eq. SOLVE_PEXSI) then
+
+        ! Compute shift in Tr(H*DM) for fermi-level bracketting
+        ! Use the current H, the previous iteration H, and the
+        ! previous iteration DM
+        if (SIESTA_worker .and. iscf > 1) then
+          call compute_Ebs_shift(Dscf,H,Hold,delta_Ebs)
+          delta_Ef = delta_Ebs / qtot
+          if (ionode) then
+            write(6,"(a,f16.5)")
+     $          "Estimated change in band-structure energy:",
+     $          delta_Ebs/eV, "Estimated shift in E_fermi: ",
+     $          delta_Ef/eV
+          end if
+        end if
+        
         ! This test done in node 0 since NonCol and SpOrb
         ! are not set for PEXSI-solver-only processes
          if (ionode) then

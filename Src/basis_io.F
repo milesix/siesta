@@ -296,6 +296,7 @@
                nk = nk+1
                spp%pj_n(nk) = spp%pjnl_n(i)
                spp%pj_l(nk) = spp%pjnl_l(i)
+               spp%pj_j(nk) = spp%pjnl_j(i)
                spp%pj_m(nk) = m
                spp%pj_index(nk) = i
             enddo
@@ -671,8 +672,10 @@
          !! Projectors
          iret = nf90_def_var(ncid,'pjnl_l',nf90_int,nkbs_id,pjnl_l_id)
          call check(iret)
-         iret = nf90_def_var(ncid,'pjnl_j',
-     &       nf90_double,nkbs_id,pjnl_j_id)
+         if (spp%lj_projs) then
+            iret = nf90_def_var(ncid,'pjnl_j',
+     &           nf90_double,nkbs_id,pjnl_j_id)
+         endif
          iret = nf90_def_var(ncid,'pjnl_n',nf90_int,nkbs_id,pjnl_n_id)
          iret = nf90_def_var(ncid,'pjnl_ekb',nf90_double,
      $        nkbs_id,pjnl_ekb_id)
@@ -741,8 +744,10 @@
       if ( nkbs > 0 ) then
          iret = nf90_put_var(ncid,pjnl_l_id,spp%pjnl_l,count=(/nkbs/))
          call check(iret)
-         iret = nf90_put_var(ncid,pjnl_j_id,spp%pjnl_j,count=(/nkbs/))
-         call check(iret)
+         if (spp%lj_projs) then
+           iret = nf90_put_var(ncid,pjnl_j_id,spp%pjnl_j,count=(/nkbs/))
+           call check(iret)
+         endif
          iret = nf90_put_var(ncid,pjnl_n_id,spp%pjnl_n,count=(/nkbs/))
          call check(iret)
          iret = nf90_put_var(ncid,pjnl_ekb_id,spp%pjnl_ekb,
@@ -1054,6 +1059,11 @@
       call xml_dump_element(lun,'norbs_nl',str(spp%n_orbnl))
       call xml_dump_element(lun,'lmax_projs',str(spp%lmax_projs))
       call xml_dump_element(lun,'nprojs_nl',str(spp%n_pjnl))
+      if (spp%lj_projs) then
+         call xml_dump_element(lun,'lj_projs','true')
+      else
+         call xml_dump_element(lun,'lj_projs','false')
+      endif
 
       write(lun,'(a)') '<preamble>'
       call write_basis_specs(lun,is)
@@ -1088,6 +1098,9 @@
       do i=1,spp%n_pjnl
          write(lun,'(a)') "<projector "
          call xml_dump_attribute(lun,'l',str(spp%pjnl_l(i)))
+         if (spp%lj_projs) then
+            call xml_dump_attribute(lun,'j',str(spp%pjnl_j(i)))
+         endif
          call xml_dump_attribute(lun,'n',str(spp%pjnl_n(i)))
          call xml_dump_attribute(lun,'ref_energy',
      $                                   str(spp%pjnl_ekb(i)))
