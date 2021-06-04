@@ -1,5 +1,8 @@
 module m_getopts
-public :: getopts
+  implicit none
+
+  private
+  public :: getopts
 
 CONTAINS
 
@@ -183,21 +186,21 @@ subroutine getopts(optionstring,name,optarg,optind,exitcode)
   name(lname:lname)=copt
   optarg=''
   if(lopt.lt.len(optionstring)) then
-   if (optionstring(lopt+1:lopt+1).eq.':') then
-    if(lcur.gt.larg) then
-      optind=optind+1
-      if(optind.gt.narg) then
-        name=':'
-        optarg=copt
-        RETURN
-      endif
-      call get_command_argument(number=optind,value=carg)
-      larg=len_trim(carg)
-      lcur=1
-    endif
-    optarg=carg(lcur:larg)
-    lcur=larg+1
-   endif
+     if (optionstring(lopt+1:lopt+1).eq.':') then
+        if(lcur.gt.larg) then
+           optind=optind+1
+           if(optind.gt.narg) then
+              name=':'
+              optarg=copt
+              RETURN
+           endif
+           call get_command_argument(number=optind,value=carg)
+           larg=len_trim(carg)
+           lcur=1
+        endif
+        optarg=carg(lcur:larg)
+        lcur=larg+1
+     endif
   endif
 end subroutine
 end module m_getopts

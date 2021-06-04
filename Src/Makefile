@@ -159,7 +159,7 @@ OBJS =  automatic_cell.o atom_options.o \
         m_redist_spmatrix.o \
         class_Distribution.o\
         m_dminim.o m_zminim.o \
-        m_getopts.o f2kcli.o \
+        m_getopts.o \
         m_svd.o m_matio.o\
         rusage.o memory_snapshot.o compute_ebs_shift.o memory_all.o \
 	matel_registry.o register_rfs.o new_matel.o \

@@ -1,5 +1,5 @@
 ! 
-! Copyright (C) 1996-2016       The SIESTA group
+! Copyright (C) 1996-2021       The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt.
@@ -7,7 +7,6 @@
 !
 
       program grid2val
-      use f2kcli
 
 c****************************************************************************
 c GRID2VAL
@@ -17,15 +16,7 @@ c and evaluates the corresponding function on given points
 c
 c Compilation:
 c    
-c        You need to use the f2kcli.F90 file located in the main Src
-c        directory:
-c
-c        $(FC) $(FFLAGS) -o grid2val ../Src/f2kcli.F90 grid2val.F
-c
-c      If you use GFORTRAN, use instead:
-c
-c
-c        $(FC) $(FFLAGS) -DGFORTRAN -o grid2val ../Src/f2kcli.F90 grid2val.F
+c        $(FC) $(FFLAGS) -o grid2val grid2val.F
 c
 c      FC and FFLAGS should be compatible with those you used to
 c      compile Siesta, as grid2val reads a binary file whose data
