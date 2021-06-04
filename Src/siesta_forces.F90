@@ -20,7 +20,7 @@ contains
 #endif
     use units, only: eV, Ang
     use precision, only: dp
-    
+
     use files, only: slabel
     use siesta_cml
 #ifdef SIESTA__FLOOK
@@ -31,7 +31,7 @@ contains
     use variable, only : cunpack
 #ifndef NCDF_4
     use dictionary, only: assign
-#endif      
+#endif
     use m_mixing, only : mixers_history_init
 #endif
     use m_state_init
@@ -105,6 +105,12 @@ contains
 
     use m_initwf, only: initwf
 
+    ! [VMD] Imports for \dot{rho} derivation in the two-step
+    !       molecular dynamics step for thermal transport.
+    use siesta_options, only : want_virtual_step_md, virtual_dt
+    use m_virtual_step_data, only : substep, BASE_STEP, VIRTUAL_STEP
+    use m_virtual_step_data, only : Dfull, Dderiv
+
     integer, intent(inout)  :: istep
 
     integer :: iscf
@@ -157,7 +163,7 @@ contains
 #ifdef SIESTA__PEXSI
     if (ionode) call memory_snapshot("after state_init")
 #endif
-    
+
     if ( fdf_get("Sonly",.false.) ) then
        if ( SIESTA_worker ) then
           call timer( 'all', 2 )
@@ -175,7 +181,7 @@ contains
     end if
 
     Qcur = Qtot
-    
+
 #ifdef SIESTA__FLOOK
     ! Add the iscf constant to the list of variables
     ! that are available only in this part of the
@@ -200,7 +206,7 @@ contains
       call dict_variable_add('SCF.Mixer.Weight',scf_mix%w)
       call dict_variable_add('SCF.Mixer.Restart',scf_mix%restart)
       call dict_variable_add('SCF.Mixer.Iterations',scf_mix%n_itt)
-      
+
       ! Just to populate the table in the dictionary
       call dict_variable_add('SCF.Mixer.Switch',next_mixer)
     end if
@@ -208,14 +214,14 @@ contains
     ! Initialize to no switch
     next_mixer = ' '
 #endif
-        
+
     ! This call computes the non-scf part of H and initializes the
     ! real-space grid structures.  It might be better to split the two,
     ! putting the grid initialization into state_init and moving the
     ! calculation of H_0 to the body of the loop, done if first_scf=.true.  This
     ! would suit "analysis" runs in which nscf = 0
     if ( SIESTA_worker ) call setup_H0(G2max)
-    
+
 #ifdef SIESTA__PEXSI
     if (ionode) call memory_snapshot("after setup_H0")
 #endif
@@ -262,7 +268,7 @@ contains
 
       ! The current structure of the loop tries to reproduce the
       ! historical Siesta usage. It should be made more clear.
-      ! Two changes: 
+      ! Two changes:
       !
       ! -- The number of scf iterations performed is exactly
       !    equal to the number specified (i.e., the "forces"
@@ -270,7 +276,7 @@ contains
       !
       ! -- At the change to a TranSiesta GF run the variable "first_scf"
       !    is implicitly reset to "true".
-      
+
       ! Start of SCF loop
       iscf = 0
       do while ( iscf < nscf )
@@ -283,11 +289,11 @@ contains
 
         ! Note implications for TranSiesta when mixing H
         ! Now H will be recomputed instead of simply being
-        ! inherited, however, this is required as the 
+        ! inherited, however, this is required as the
         ! if we have bias calculations as the electric
         ! field across the junction needs to be present.
         first_scf = (iscf == 1)
-        
+
         if ( SIESTA_worker ) then
 
           ! Check whether we are short of time to continue
@@ -319,9 +325,9 @@ contains
           call timer( timer_str_scf, 1 )
           if (cml_p) &
                call cmlStartStep( xf=mainXML, type='SCF', index=iscf )
-          
+
           if ( mixH ) then
-             
+
              if ( first_scf ) then
                 if (fdf_get("Read-H-from-file",.false.)) then
                    call get_H_from_file()
@@ -329,7 +335,7 @@ contains
                    call setup_hamiltonian( iscf )
                 end if
              end if
-             
+
              call compute_DM( iscf )
 
              ! Maybe set Dold to zero if reading charge or H...
@@ -338,18 +344,18 @@ contains
                   call compute_max_diff(Eold, Escf, dEmax)
              call setup_hamiltonian( iscf )
              call compute_max_diff(Hold, H, dHmax)
-             
+
           else
-             
+
              call setup_hamiltonian( iscf )
              call compute_max_diff(Hold, H, dHmax)
-             
+
              call compute_DM( iscf )
-             
+
              call compute_max_diff(Dold, Dscf, dDmax)
              if ( converge_EDM ) &
                   call compute_max_diff(Eold, Escf, dEmax)
-             
+
           end if
 
           ! Calculate current charge based on the density matrix
@@ -374,14 +380,25 @@ contains
                dDmax, dHmax, dEmax, dQ, &
                conv_harris, conv_freeE, &
                SCFconverged )
-          
+
+          ![VMD] Init Dfull if on BASE step. On a virtual step Dderiv will be set in ks_procs.
+          if (want_virtual_step_md .and. SCFconverged) then
+             if (substep .eq. BASE_STEP) then
+                Dfull(:,:,:) = Dderiv(:,:,:)
+             else
+                ! Take finite-difference time derivative of Dfull:
+                Dderiv(:,:,:) = (Dderiv(:,:,:) - Dfull(:,:,:))/virtual_dt
+                !NOTE: We'll need just first spin component (last dim = 1)
+             end if
+          end if
+
           ! ** Check this heuristic
           if ( mixH ) then
              prevDmax = dHmax
           else
              prevDmax = dDmax
           end if
-          
+
           ! In case the user has requested a Fermi-level correction
           ! Then we start by correcting the fermi-level
           if ( TSrun .and. TS_DQ_METHOD == TS_DQ_METHOD_FERMI ) then
@@ -448,7 +465,7 @@ contains
 #ifdef SIESTA__FLOOK
           ! Communicate with lua
           call slua_call(LUA, LUA_SCF_LOOP)
-          
+
           ! Retrieve an easy character string
           nnext_mixer = cunpack(next_mixer)
           if ( len_trim(nnext_mixer) > 0 .and. .not. mix_charge ) then
@@ -460,7 +477,7 @@ contains
                       exit
                    end if
                 end do
-             else 
+             else
                 do imix = 1 , size(scf_mixs)
                    if ( scf_mixs(imix)%name == nnext_mixer ) then
                       call mixers_history_init(scf_mixs)
@@ -469,25 +486,25 @@ contains
                    end if
                 end do
              end if
-             
+
              ! Check that we indeed have changed the mixer
              if ( IONode .and. scf_mix%name /= nnext_mixer ) then
                 write(*,'(2a)') 'siesta-lua: WARNING: trying to change ', &
                      'to a non-existing mixer! Not changing anything!'
-                
+
              else if ( IONode ) then
                 write(*,'(2a)') 'siesta-lua: Switching mixer method to: ', &
                      trim(nnext_mixer)
-                
+
              end if
              ! Reset for next loop
              next_mixer = ' '
-             
+
              ! Update the references
              call dict_variable_add('SCF.Mixer.Weight',scf_mix%w)
              call dict_variable_add('SCF.Mixer.Restart',scf_mix%restart)
              call dict_variable_add('SCF.Mixer.Iterations',scf_mix%n_itt)
-             
+
           end if
 #endif
 
@@ -496,12 +513,12 @@ contains
              call transiesta_switch()
              ! might reset SCFconverged and iscf
           end if
-          
+
        else
-          
+
           ! non-siesta worker
           call compute_DM( iscf )
-          
+
        end if
 
 #if defined (SIESTA__PEXSI) || defined (SIESTA__ELSI)
@@ -513,7 +530,7 @@ contains
        if ( SCFconverged ) exit
 
     end do ! end of SCF cycle
-    
+
 #ifdef SIESTA__PEXSI
     if ( isolve == SOLVE_PEXSI ) then
        call pexsi_finalize_scfloop()
@@ -560,29 +577,29 @@ contains
        istpp = 0
        call initwf(istpp,totime)
     end if
-    
+
     if ( TSmode.and.TSinit.and.(.not. SCFConverged) ) then
        ! Signal that the DM hasn't converged, so we cannot
        ! continue to the transiesta routines
        call die('ABNORMAL_TERMINATION')
     end if
-    
+
     ! Clean-up here to limit memory usage
     call mixers_scf_history_init( )
-    
+
 !===
     endif  ! Siesta_Worker
 
     ! End of standard SCF loop.
     ! Do one more pass to compute forces and stresses
-    
+
     ! Note that this call will no longer overwrite H while computing the
     ! final energies, forces and stresses...
 
     ! If we want to preserve the "Siesta_Worker" subset implementation for ELSI,
     ! this block needs to be executed by everybody
     ! as it contains a call to the ELSI interface to get the EDM
-    
+
     if ( fdf_get("compute-forces",.true.) ) then
        call post_scf_work( istep, iscf , SCFconverged )
 #ifdef SIESTA__PEXSI
@@ -598,11 +615,11 @@ contains
 #endif
 
     if (.not. Siesta_Worker) RETURN
-    
+
     ! ... so H at this point is the latest generator of the DM, except
     ! if mixing H beyond self-consistency or terminating the scf loop
     ! without convergence while mixing H
-    
+
     call state_analysis( istep )
 #ifdef SIESTA__PEXSI
     if (ionode) call memory_snapshot("after state_analysis")
@@ -616,7 +633,7 @@ contains
 #ifdef DEBUG
     call write_debug( '    POS siesta_forces' )
 #endif
-    
+
   contains
 
     ! Read the Hamiltonian from a file
@@ -631,7 +648,7 @@ contains
       call read_spmatrix(maxnh, no_l, spin%H, numh, &
            listhptr, listh, H, found, userfile="H_IN")
       if (.not. found) call die("Could not find H_IN")
-      
+
     end subroutine get_H_from_file
 
     ! Computes forces and stresses with the current DM_out
@@ -783,13 +800,13 @@ contains
 
       ! If transiesta should stop immediately
       if ( ts_siesta_stop ) then
-         
+
         if ( IONode ) then
           write(*,'(a)') 'ts: Stopping transiesta (user option)!'
         end if
-        
+
         return
-         
+
       end if
 
       ! Reduce memory requirements
@@ -821,7 +838,7 @@ contains
           call mixers_history_init(scf_mixs)
         end if
       end if
-      
+
       ! Transfer scf_mixing to the transiesta mixing routine
       scf_mix => ts_scf_mixs(1)
 #ifdef SIESTA__FLOOK
@@ -852,7 +869,7 @@ contains
         EDM => val(EDM_2D)
         iEl = size(DM)
         call daxpy(iEl,-Ef,DM(1,1),1,EDM(1,1),1)
-        
+
         na_a = 0
         do iEl = 1 , na_u
           if ( a_isBuffer(iEl) ) then
@@ -864,7 +881,7 @@ contains
           end if
         end do
         allocate(allowed_a(na_a))
-        na_a = 0 
+        na_a = 0
         do iEl = 1 , na_u
           if ( a_isBuffer(iEl) ) then
             na_a = na_a + 1
@@ -876,35 +893,35 @@ contains
             allowed_a(na_a) = iEl
           end if
         end do
-        
+
         do iEl = 1 , N_Elec
           if ( Elecs(iEl)%DM_init == 0 ) cycle
-          
+
           if ( IONode ) then
             write(*,'(/,3a)') 'transiesta: ', &
                 'Reading in electrode DM for ',trim(Elecs(iEl)%Name)
           end if
-          
+
           ! Copy over the DM in the lead
           ! Notice that the EDM matrix that is copied over
           ! will be equivalent at Ef == 0
           call copy_DM(Elecs(iEl),na_u,xa,lasto,nsc,isc_off, &
               ucell, DM_2D, EDM_2D, na_a, allowed_a)
-           
+
         end do
-        
+
         ! Clean-up
         deallocate(allowed_a)
-        
+
         if ( IONode ) then
           write(*,*) ! new-line
         end if
-        
+
         ! The electrode EDM is aligned at Ef == 0
         ! We need to align the energy matrix
         iEl = size(DM)
         call daxpy(iEl,Ef,DM(1,1),1,EDM(1,1),1)
-        
+
       end if
 
     end subroutine transiesta_switch

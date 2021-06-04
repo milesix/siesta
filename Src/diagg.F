@@ -95,6 +95,7 @@ C
 #ifdef MPI
       use mpi_siesta
 #endif
+C     ! [VMD] Imports
       use siesta_options, only : want_virtual_step_md, virtual_dt
       use m_virtual_step_data, only : substep, BASE_STEP, VIRTUAL_STEP
       use m_virtual_step_data, only : Dfull, Dderiv
@@ -277,17 +278,20 @@ C Global operation to form new density matrix
       ! to match the "sparse" convention, we should probably make the first
       ! dimension "nuo"
 
-      if (want_virtual_step_md ) then
-         if (substep .eq. BASE_STEP) then
-            call re_alloc(Dfull, 1, nuotot, 1, nuotot, 1, h_spin_dim,
-     $           'Dfull', 'diagg')
-            call re_alloc(Dderiv,1, nuotot,1, nuotot,  1, h_spin_dim,
-     $           'Dderiv', 'diagg')
-         endif
-         Dderiv(:,:,:) = 0.0_dp ! Init D with zeros on every step in VMD.
+C     ! [VMD] Allocate full DM and its derivatie,
+C     !       on the first scf cycle of Base step:
+      if (want_virtual_step_md
+     $     .and. (substep .eq. BASE_STEP)
+     $     .and. (iscf.eq.1)) then
+         call re_alloc(Dfull, 1, nuotot, 1, nuotot, 1, h_spin_dim,
+     $        'Dfull', 'diagg')
+         call re_alloc(Dderiv,1, nuotot,1, nuotot,  1, h_spin_dim,
+     $        'Dderiv', 'diagg')
          ! Dderiv accumulates full DM from in both substeps.
          ! On BASE is copied to Dfull. On VIRTUAL is turned to its derivative.
       endif
+      Dderiv(:,:,:) = 0.0_dp    ! Init D with zeros on every step in VMD.
+C     ! [VMD]
 
       do Bnode=0, Nodes-1
         if (BNode.eq.Node) then
@@ -315,14 +319,12 @@ C Global operation to form new density matrix
                 paux => PSI_TMP(mm+1:mm+nuotot)
                 qei = qe*paux(iio)
                 eei = qei*eo(ie,ispin)
-c$$$                if (want_virtual_step_md .and.
-c$$$     $               (substep .eq. BASE_STEP)) then
-                if (want_virtual_step_md) then
-                   do jo = 1,nuotot
-                      Dderiv(io,jo,ispin) = Dderiv(io,jo,ispin) +
-     $                     qei*paux(jo)
-                   enddo
-                endif
+C     !FIXME: [VMD] Extract this loop, attach conditionals:
+                do jo = 1,nuotot
+                   Dderiv(io,jo,ispin) = Dderiv(io,jo,ispin) +
+     $                  qei*paux(jo)
+                enddo
+C     !FIXME: [VMD]
                 do j = 1,numd(io)
                    ind = listdptr(io) + j
                    jo  = listd(ind)
@@ -336,18 +338,6 @@ c$$$     $               (substep .eq. BASE_STEP)) then
           enddo
         enddo
       enddo
-
-      ![VMD] Init Dfull if on BASE step. On a virtual step Dderiv will be set in ks_procs.
-      !TODO: Move this initialization out of here?
-      if (want_virtual_step_md) then
-         if (substep .eq. BASE_STEP) then
-            Dfull(:,:,:) = Dderiv(:,:,:)
-         else
-            ! Take finite-difference time derivative of Dfull:
-            Dderiv(:,:,:) = (Dderiv(:,:,:) - Dfull(:,:,:))/virtual_dt
-            !NOTE: We'll need just first spin component (last dim = 1)
-         end if
-      end if
 
       ! can build sparse Dnew by copying from Dfull
 
