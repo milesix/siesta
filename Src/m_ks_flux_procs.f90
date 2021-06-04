@@ -45,6 +45,7 @@ subroutine compute_psi_hat_c (psi_hat_c, n_wfs)
 
   ! To get the density and <phi_1|r|phi_2> matrix
   use ks_flux_data, only: ks_flux_D, ks_flux_Rmat
+  use ks_flux_data, only: ks_flux_S
 
   ! Output: coefficients of psi_hat_c, stored in module ks_flux_data
   ! use ks_flux_data, only: psi_hat_c
@@ -61,11 +62,13 @@ subroutine compute_psi_hat_c (psi_hat_c, n_wfs)
   !> Coordinate index regarding the selected dimension of Rmat.
   !> It will define X/Y/Z component of resulting Jks.
   integer :: idx
-  integer :: nu, mu, alpha, iw, ij, k, col
-
+  integer :: nu, mu, alpha, iw, ij, k, col, ind
+  real(dp) :: norm, tr_hat, tr_shat
+  
   !> First dimension: coeff index,
   !> Second dimension: wavefunction index (only no_l of them)
   real(dp), pointer :: coeffs(:,:)
+  real(dp), pointer :: overlap(:)
   real(dp), allocatable :: tmp_g(:)
 
   call c_f_pointer(c_loc(psi(1)), coeffs, [no_u, no_l]) ! for new compilers
@@ -79,17 +82,23 @@ subroutine compute_psi_hat_c (psi_hat_c, n_wfs)
 
   psi_hat_c(:,:,:) = 0.0        ! Init result to zeros outside main loop
 
+  overlap => ks_flux_S
   DO idx=1,3
      rmatrix => ks_flux_Rmat(:,idx)
 
 
   do iw = 1,n_wfs
      tmp_g(:) = 0.0
-     do nu = 1,no_l
+     do nu = 1,no_l      ! g(nu) distributed...
+        ! This can be simplified
+        ! Remove this loop...
         do mu = 1,no_u
+          !
           do ij = 1, numh(nu)
              k = listhptr(nu) + ij
              col = listh(k)
+             ! ... and simply do
+             ! tmp_g(nu) = tmp_g(nu) + coeffs(col,iw) * rmatrix(k)
              if (col == mu) then
                tmp_g(nu) = tmp_g(nu) + coeffs(mu,iw) * rmatrix(k)
                exit
@@ -102,9 +111,10 @@ subroutine compute_psi_hat_c (psi_hat_c, n_wfs)
      ! We need then to use a factor of 1/2
 
      do alpha = 1,no_u
-        do nu = 1,no_l
-
-           if (alpha == nu) then
+        do nu = 1,no_l   ! *** WARNING: local vs global?
+           !! nu_g = LocalToGlobalOrb(nu...)
+           if (alpha == nu) then    ! alpha == nu_g   ; rest depending on
+                                    ! whether Dfull is distributed or not
               psi_hat_c(alpha,iw,idx) = psi_hat_c(alpha,iw,idx) + &
                    tmp_g(nu) * (1.0 - 0.5_dp * Dfull(nu,alpha,1)) ! <- only 1st spin component
            else
@@ -114,7 +124,38 @@ subroutine compute_psi_hat_c (psi_hat_c, n_wfs)
 
         end do
      end do
+     ! MPI: reduce (sum) psi_hat_c() over processes
+     
+!!$     ! Normalize here
+!!$     ! norm = c*S*c
+!!$     tmp_g(:) = 0.0
+!!$     do nu = 1,no_l
+!!$        do ij = 1, numh(nu)
+!!$             k = listhptr(nu) + ij
+!!$             col = listh(k)
+!!$             tmp_g(nu) = tmp_g(nu) + overlap(k) * psi_hat_c(col,iw,idx)
+!!$        end do
+!!$     end do
+!!$     norm = 0.0_dp
+!!$     do mu = 1, no_l
+!!$        norm = norm + psi_hat_c(mu,iw,idx) * tmp_g(mu)
+!!$     enddo
+!!$!!!     psi_hat_c(:,iw,idx) = psi_hat_c(:,iw,idx) / (sqrt(norm) + 1.0e-8_dp)
 
+     !TEST
+     tr_shat = 0.0_dp
+     tr_hat = 0.0_dp
+     do mu = 1,no_u
+        do ind = (listhptr(mu)+1), listhptr(mu) + numh(mu)
+           nu = listh(ind)
+           tr_shat = tr_shat + overlap(ind) * coeffs(mu,iw) * psi_hat_c(nu,iw,idx)
+           tr_hat = tr_hat + overlap(ind) * psi_hat_c(mu,iw,idx) * psi_hat_c(nu,iw,idx)
+        end do
+     end do
+
+     print *, "[TEST-hat]", iw, idx, tr_hat, tr_shat
+
+!TEST END
   end do ! iw
   END DO ! idx
 
@@ -153,20 +194,25 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
   real(dp), dimension(:,:), pointer :: gradS => null()
   real(dp), dimension(:),   pointer :: S => null()
 
-  integer  :: iw, i, ix
+  integer  :: iw, i, ix, ij
   integer  :: alpha, beta, lambda, nu, mu
   ! integer  :: ind, col, sec_ind, sec_col
-  real(dp) :: acc_left
+  real(dp) :: acc_left, norm, tr0, tr_dot, tr_sdot
 
   !> First dimension: coeff index,
   !> Second dimension: wavefunction index (only no_l of them)
   real(dp), pointer :: coeffs(:,:)
 
   integer :: ind, ind2
+  integer :: k, col
   real(dp), allocatable :: tmp(:), tmp2(:), tmp3(:), tmp4(:,:)
   real(dp) :: pcm(3), massi, mtot
   ! real(dp), allocatable :: tmp_left(:)
   ! real(dp), allocatable :: tmp_right(:)
+
+  real(dp), allocatable :: tmp_g(:)
+
+  allocate (tmp_g(no_l))
 
   call c_f_pointer(c_loc(psi(1)), coeffs, [no_u, no_l]) ! for new compilers
   ! explicit pointing to psi(1) -> psi
@@ -212,6 +258,9 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
         end do
      end do
 
+     !! WARNING: Temporary change!!!
+     tmp2(:) = 0.0_dp
+     
      tmp3(:) = 0.0_dp
 
      do beta = 1,no_u
@@ -325,6 +374,40 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
            end if
         end do
      end do
+
+!!$     ! Normalize here
+!!$     ! norm = c*S*c
+!!$     tmp_g(:) = 0.0
+!!$     do nu = 1,no_l
+!!$        do ij = 1, numh(nu)
+!!$             k = listhptr(nu) + ij
+!!$             col = listh(k)
+!!$             tmp_g(nu) = tmp_g(nu) + S(k) * psi_dot_c(col,iw)
+!!$        end do
+!!$     end do
+!!$     norm = 0.0_dp
+!!$     do mu = 1, no_l
+!!$        norm = norm + psi_dot_c(mu,iw) * tmp_g(mu)
+!!$     enddo
+!!$!!     psi_dot_c(:,iw) = psi_dot_c(:,iw) / (sqrt(norm) + 1.0e-8_dp)
+
+     !TEST
+     tr_sdot = 0.0_dp
+     tr_dot = 0.0_dp
+     tr0 = 0.0_dp
+     do mu = 1,no_u
+        do ind = (listhptr(mu)+1), listhptr(mu) + numh(mu)
+           nu = listh(ind)
+           tr_sdot = tr_sdot + S(ind) * coeffs(mu,iw) * psi_dot_c(nu,iw)
+           tr0 = tr0 + S(ind) * coeffs(mu,iw) * coeffs(nu,iw)
+           tr_dot = tr_dot + S(ind) * psi_dot_c(mu,iw) * psi_dot_c(nu,iw)
+        end do
+     end do
+
+     print *, "[TEST-dot]", iw, tr0, tr_dot, tr_sdot
+
+!TEST END
+
   end do                        ! end of part C
 
   ! call timer("explicit_matmul_Jks", 2)
@@ -334,6 +417,8 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
   deallocate(tmp2)
   deallocate(tmp3)
   deallocate(tmp4)
+  deallocate(tmp_g)
+
   ! deallocate(tmp_left)
   ! deallocate(tmp_right)
 end subroutine compute_psi_dot_c
