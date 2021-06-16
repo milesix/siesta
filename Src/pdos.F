@@ -275,6 +275,9 @@ C New writing
         call xml_NewElement(xf,"nspin")
         call xml_AddPCData(xf,spin%EDM)
         call xml_EndElement(xf,"nspin")
+        call xml_NewElement(xf,"norbitals")
+        call xml_AddPCData(xf,no_u)
+        call xml_EndElement(xf,"norbitals")
 
         write(iunit2,'(a)') '<pdos>'
         write(iunit2,'(a,i1,a)') '<nspin>', spin%EDM, '</nspin>'
