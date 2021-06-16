@@ -1403,13 +1403,11 @@ subroutine read_options( na, ns, nspin )
 
   ! Target Temperature and Pressure
   tt = fdf_get('MD.TargetTemperature',0.0_dp,'K')
-
-  call fdf_deprecated("MD.TargetPressure", "Target.Pressure")
   tp = fdf_get('MD.TargetPressure',0.0_dp,'Ry/Bohr**3')
-  tp = fdf_get('Target.Pressure',tp,'Ry/Bohr**3')
-
+  !
   ! Used for now for the call of the PR md routine if quenching
-  if (idyn == 3 .AND. iquench > 0) call set_target_stress(tp)
+  if (idyn == 3 .AND. iquench > 0) call set_target_stress()
+
 
   ! Mass of Nose variable
   mn = fdf_get('MD.NoseMass',100._dp,'Ry*fs**2')
@@ -1419,10 +1417,10 @@ subroutine read_options( na, ns, nspin )
 
   if (idyn==2 .or. idyn==4) then
      if (ionode) then
-        write(6,6) 'redata: Nose mass',mn/eV,' eV*fs**2'
+        write(6,6) 'redata: Nose mass',mn/eV,' eV/fs**2'
      endif
      if (cml_p) then
-        call cmlAddParameter( xf    = mainXML,&
+        call cmlAddParameter( xf    = mainXML,              &
              name  = 'MD.NoseMass',        &
              value = mn,                   &
              units = 'siestaUnits:Ry_fs__2')
@@ -1431,12 +1429,12 @@ subroutine read_options( na, ns, nspin )
 
   if (idyn==3 .or. idyn==4) then
      if (ionode) then
-        write(6,6) 'redata: Parrinello-Rahman mass',mpr/eV,' eV*fs**2'
+        write(6,6) 'redata: Parrinello-Rahman mass',mpr/eV,' eV/fs**2'
      endif
      if (cml_p) then
         call cmlAddParameter( xf    = mainXML,                   &
              name  = 'MD.ParrinelloRahmanMass', &
-             value = mpr, &
+             value = mn,                        &
              units = 'siestaUnits:Ry_fs__2' )
      endif
   endif

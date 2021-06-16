@@ -280,7 +280,8 @@ contains
             tsup_sp_uc, Calc_Forces)
 
        ! Include spin factor and 1/\pi
-       kw = 2._dp / (Pi * nspin)
+       kw = 1._dp / Pi
+       if ( nspin == 1 ) kw = kw * 2._dp
 
 #ifdef TRANSIESTA_TIMING
        call timer('TS_HS',1)
@@ -628,10 +629,10 @@ contains
     ! Arrays needed for looping the sparsity
     type(Sparsity), pointer :: s
     integer,  pointer :: l_ncol(:), l_ptr(:), l_col(:)
-    integer, pointer :: s_ncol(:), s_ptr(:), s_col(:), sp_col(:)
+    integer, pointer :: s_ncol(:), s_ptr(:), s_col(:)
     real(dp), pointer :: D(:,:), E(:,:), Sg(:)
     integer :: io, ind, nr
-    integer :: sp, sind
+    integer :: s_ptr_begin, s_ptr_end, sin
     integer :: iu, ju, i1, i2
     logical :: lis_eq, hasEDM, calc_q
 
@@ -664,29 +665,28 @@ contains
       if ( calc_q .and. hasEDM ) then
 
 !$OMP parallel do default(shared), &
-!$OMP&  private(io,iu,ind,ju,sp,sp_col,sind), &
-!$OMP&  reduction(-:q)
+!$OMP&private(io,iu,ind,ju,s_ptr_begin,s_ptr_end,sin)
         do io = 1 , nr
           ! Quickly go past the buffer atoms...
           if ( l_ncol(io) /= 0 ) then
 
-            sp = s_ptr(io)
-            sp_col => s_col(sp+1:sp+s_ncol(io))
+            s_ptr_begin = s_ptr(io) + 1
+            s_ptr_end = s_ptr(io) + s_ncol(io)
 
             ! The update region equivalent GF part
             iu = io - orb_offset(io)
 
             do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
 
-              ju = l_col(ind) - orb_offset(l_col(ind)) - offset(N_Elec,Elecs,l_col(ind))
+              ju = l_col(ind) - orb_offset(l_col(ind)) - &
+                  offset(N_Elec,Elecs,l_col(ind))
 
               ! Search for overlap index
-              sind = sp + SFIND(sp_col, l_col(ind))
-              if ( sp < sind ) then
-                ! Gf = -Gf^\dagger @ \Gamma, no need to worry about Gf.S
-                q = q - aimag(Gf(iu,ju) * Sg(sind))
-              end if
+              ! spS is transposed, so we have to conjugate the
+              ! S value, then we may take the imaginary part.
+              sin = s_ptr_begin - 1 + SFIND(s_col(s_ptr_begin:s_ptr_end), l_col(ind))
 
+              if ( sin >= s_ptr_begin ) q = q - aimag(GF(iu,ju) * Sg(sin))
               D(ind,i1) = D(ind,i1) - aimag( GF(iu,ju) * DMfact  )
               E(ind,i2) = E(ind,i2) - aimag( GF(iu,ju) * EDMfact )
               
@@ -703,7 +703,8 @@ contains
           if ( l_ncol(io) /= 0 ) then
             iu = io - orb_offset(io)
             do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
-              ju = l_col(ind) - orb_offset(l_col(ind)) - offset(N_Elec,Elecs,l_col(ind))
+              ju = l_col(ind) - orb_offset(l_col(ind)) - &
+                  offset(N_Elec,Elecs,l_col(ind))
               D(ind,i1) = D(ind,i1) - aimag( GF(iu,ju) * DMfact  )
               E(ind,i2) = E(ind,i2) - aimag( GF(iu,ju) * EDMfact )
             end do
@@ -714,17 +715,17 @@ contains
       else if ( calc_q ) then
 
 !$OMP parallel do default(shared), &
-!$OMP&  private(io,iu,sp,sp_col,ind,ju,sind), &
-!$OMP&  reduction(-:q)
+!$OMP&private(io,iu,ind,ju,s_ptr_begin,s_ptr_end,sin)
         do io = 1 , nr
           if ( l_ncol(io) /= 0 ) then
-            sp = s_ptr(io)
-            sp_col => s_col(sp+1:sp+s_ncol(io))
+            s_ptr_begin = s_ptr(io) + 1
+            s_ptr_end = s_ptr(io) + s_ncol(io)
             iu = io - orb_offset(io)
             do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
-              ju = l_col(ind) - orb_offset(l_col(ind)) - offset(N_Elec,Elecs,l_col(ind))
-              sind = sp + SFIND(sp_col, l_col(ind))
-              if ( sp < sind ) q = q - aimag(GF(iu,ju) * Sg(sind))
+              ju = l_col(ind) - orb_offset(l_col(ind)) - &
+                  offset(N_Elec,Elecs,l_col(ind))
+              sin = s_ptr_begin - 1 + SFIND(s_col(s_ptr_begin:s_ptr_end), l_col(ind))
+              if ( sin >= s_ptr_begin ) q = q - aimag(GF(iu,ju) * Sg(sin))
               D(ind,i1) = D(ind,i1) - aimag( GF(iu,ju) * DMfact  )
             end do
           end if
@@ -739,7 +740,8 @@ contains
           if ( l_ncol(io) /= 0 ) then
             iu = io - orb_offset(io)
             do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
-              ju = l_col(ind) - orb_offset(l_col(ind)) - offset(N_Elec,Elecs,l_col(ind))
+              ju = l_col(ind) - orb_offset(l_col(ind)) - &
+                  offset(N_Elec,Elecs,l_col(ind))
               D(ind,i1) = D(ind,i1) - aimag( GF(iu,ju) * DMfact )
             end do
           end if
@@ -783,6 +785,9 @@ contains
       end if
     end if
 
+    ! For ts_dq we should not multiply by 2 since we don't do G + G^\dagger for Gamma-only
+    ! this is because G is ensured symmetric for Gamma-point and thus it is not needed.
+
   contains
     
     pure function offset(N_Elec,Elecs,io)
@@ -813,7 +818,7 @@ contains
     ! Remark that we need the left buffer orbitals
     ! to calculate the actual orbital of the sparse matrices...
     integer, intent(in) :: no_u
-    complex(dp), intent(out) :: GFinv(no_u,no_u)
+    complex(dp), intent(out) :: GFinv(no_u**2)
     integer, intent(in) :: N_Elec
     type(Elec), intent(in) :: Elecs(N_Elec)
     ! The Hamiltonian and overlap sparse matrices
@@ -824,7 +829,7 @@ contains
     type(Sparsity), pointer :: sp
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
     real(dp), pointer :: H(:), S(:)
-    integer :: io, iu, ind, nr
+    integer :: io, iu, ind, ioff, nr
 
     if ( cE%fake ) return
 
@@ -842,9 +847,9 @@ contains
          nrows_g=nr)
 
     ! Initialize
-    GFinv(:,:) = cmplx(0._dp,0._dp, dp)
+    GFinv(:) = cmplx(0._dp,0._dp, dp)
 
-!$OMP parallel default(shared), private(io,iu,ind)
+!$OMP parallel default(shared), private(io,ioff,iu,ind)
 
     ! We will only loop in the central region
     ! We have constructed the sparse array to only contain
@@ -854,11 +859,16 @@ contains
 
        if ( l_ncol(io) /= 0 ) then
        
-       iu = io - orb_offset(io)
+       ioff = orb_offset(io)
+       iu = (io - ioff - 1) * no_u
        
        do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io) 
              
-          GFinv(l_col(ind)-orb_offset(l_col(ind)),iu) = Z * S(ind) - H(ind)
+          ioff = orb_offset(l_col(ind))
+          
+          ! Notice that we transpose S and H back here
+          ! See symmetrize_HS_Gamma (H is hermitian)
+          GFinv(iu+l_col(ind)-ioff) = Z * S(ind) - H(ind)
 
        end do
 

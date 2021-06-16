@@ -149,27 +149,24 @@ ifeq ($(COMPILER_VERSION),)
 endif
 
 # The version program
-.PHONY: version.o FORCE
-SIESTA_VERSION_FILE:=../../../SIESTA.version
+.PHONY: version.o
 version.o: version
-version: version.F90 posix_calls.o $(SIESTA_VERSION_FILE)
+version: version.F90 posix_calls.o
 	@echo
 	@echo "==> Incorporating information about present compilation (compiler and flags)"
 	@sed "s'SIESTA_ARCH'${SIESTA_ARCH}'g;s'FFLAGS'${FC} ${FFLAGS}'g;\
 		s^COMPILER_VERSION^$(COMPILER_VERSION)^;\
-		s'TBTRANS_VERSION'$$(cat ${<D}/$(SIESTA_VERSION_FILE))'g;\
+		s'TBTRANS_VERSION'$$(cat ${<D}/../../../version.info)'g;\
 		s'LIBS'$(COMP_LIBS) $(LIBS)'g;\
 		s'FPPFLAGS'$(FPPFLAGS)'g" $<  > tmp.F90
-	@awk '{if (length>80) { printf "%s&\n",substr($$0,1,77); cur=78; \
-		while(length-cur>76){  \
-		printf "&%s&\n",substr($$0,cur,76) ; cur=cur+76;\
-		} printf "&%s\n",substr($$0,cur)} \
-		else { print $$0 }}' tmp.F90 > compinfo.F90
+	@awk '{if (length>80) { cur=78; \
+		printf "%s&\n",substr($$0,0,78); \
+		while(length-cur>78){ cur=cur+76 ; \
+		printf "&%s&\n",substr($$0,cur-76,76) \
+		} printf "&%s\n",substr($$0,cur)} else { print $$0 }}' tmp.F90 > compinfo.F90
 	@($(MAKE) "FPPFLAGS=$(FPPFLAGS)" compinfo.o)
 	@mv compinfo.o version.o
 	@echo
-$(SIESTA_VERSION_FILE): FORCE
-	@(cd ../../../ && ./SIESTA_vgen.sh)
 
 
 # Interfaces to libraries

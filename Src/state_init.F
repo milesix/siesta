@@ -174,6 +174,7 @@
 
       real(dp) :: dummy_qspin(8)
 !------------------------------------------------------------------- BEGIN
+      call timer( 'IterGeom', 1 )
 
       call timer( 'state_init', 1 )
 

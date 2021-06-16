@@ -1503,10 +1503,6 @@ contains
          write(*,'(a)') '    I give this warning because it is not clear how your V = 0 calcualtion was done.'
        end if
        warn = .true.
-     else if ( any(Elecs(:)%DM_init == 0) ) then
-       write(*,'(a)') 'You are initializing the electrode EDM. &
-           &This may result in erroneous forces on electrode atoms. &
-           &Do not use forces from electrodes.'
     end if
 
     ! warn the user about suspicous work regarding the electrodes
@@ -1593,10 +1589,10 @@ contains
 
     end do
 
-    if ( any(Elecs(:)%DM_update == 0) ) then
-      write(*,'(a,/,a)') 'Consider updating more elements. &
-          &The charge conservation and force accuracy improves.',&
-          '  TS.Elecs.DM.Update [cross-terms|all]'
+    if ( N_Elec /= 2 .and. any(Elecs(:)%DM_update == 0) ) then
+       write(*,'(a,/,a)') 'Consider updating more elements when doing &
+            &N-electrode calculations. The charge conservation typically &
+            &increases.','  TS.Elecs.DM.Update [cross-terms|all]'
        warn = .true.
     end if
 

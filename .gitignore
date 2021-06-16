@@ -28,8 +28,3 @@ Docs/*.toc
 #
 Util/**/*.[oa]
 Util/**/*.mod
-#
-# New release and version files.
-#
-SIESTA.release
-SIESTA.version

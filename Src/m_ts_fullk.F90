@@ -698,11 +698,11 @@ contains
     ! Arrays needed for looping the sparsity
     type(Sparsity), pointer :: s
     integer,  pointer :: l_ncol(:), l_ptr(:), l_col(:)
-    integer, pointer :: s_ncol(:), s_ptr(:), s_col(:), sp_col(:)
+    integer, pointer :: s_ncol(:), s_ptr(:), s_col(:)
     complex(dp), pointer :: D(:,:), E(:,:), Sk(:)
     integer :: io, ind, nr
-    integer :: sp, sind
-    integer :: iu, iuT, ju, juT, i1, i2
+    integer :: s_ptr_begin, s_ptr_end, sin
+    integer :: iu, ju, i1, i2
     logical :: lis_eq, hasEDM, calc_q
 
     lis_eq = .true.
@@ -733,35 +733,30 @@ contains
 
       if ( calc_q .and. hasEDM ) then
 
-!$OMP parallel do default(shared), &
-!$OMP&  private(io,sp,sp_col,iu,iuT,ind,ju,juT,sind), &
-!$OMP&  reduction(-:q)
+!$OMP parallel do default(shared), private(io,iu,ind,ju,s_ptr_begin,s_ptr_end,sin)
         do io = 1 , nr
           ! Quickly go past the buffer atoms...
           if ( l_ncol(io) /= 0 ) then
 
-            sp = s_ptr(io)
-            sp_col => s_col(sp+1:sp+s_ncol(io))
+            s_ptr_begin = s_ptr(io) + 1
+            s_ptr_end = s_ptr(io) + s_ncol(io)
 
             ! The update region equivalent GF part
             iu = io - orb_offset(io)
-            iuT = iu - offset(N_Elec,Elecs,io)
-
+            
             do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
               
-              juT = l_col(ind) - orb_offset(l_col(ind))
-              ju = juT - offset(N_Elec,Elecs,l_col(ind))
+              ju = l_col(ind) - orb_offset(l_col(ind)) - &
+                  offset(N_Elec,Elecs,l_col(ind))
 
-              ! Search for overlap index, note it is transposed (- phase)
-              ! So this is S(ju,iu)
-              sind = sp + SFIND(sp_col, l_col(ind))
-              if ( sp < sind ) then
-                ! For charge calculation it is Tr[(G-G^\dagger).S] i.e. the matrix
-                ! multiplication
-                q = q - aimag((Gf(iu,ju) - conjg(Gf(juT,iuT))) * Sk(sind))
-              end if
-              D(ind,i1) = D(ind,i1) + Gf(iu,ju) * DMfact - conjg(Gf(juT,iuT) * DMfact)
-              E(ind,i2) = E(ind,i2) + Gf(iu,ju) * EDMfact - conjg(Gf(juT,iuT) * EDMfact)
+              ! Search for overlap index
+              ! spS is transposed, so we have to conjugate the
+              ! S value, then we may take the imaginary part.
+              sin = s_ptr_begin - 1 + SFIND(s_col(s_ptr_begin:s_ptr_end), l_col(ind))
+
+              if ( sin >= s_ptr_begin ) q = q - aimag(GF(iu,ju) * Sk(sin))
+              D(ind,i1) = D(ind,i1) - Gf(iu,ju) * DMfact
+              E(ind,i2) = E(ind,i2) - Gf(iu,ju) * EDMfact
               
             end do
             
@@ -771,16 +766,15 @@ contains
 
       else if ( hasEDM ) then
 
-!$OMP parallel do default(shared), private(io,iu,iuT,ind,ju,juT)
+!$OMP parallel do default(shared), private(io,iu,ind,ju)
         do io = 1 , nr
           if ( l_ncol(io) /= 0 ) then
             iu = io - orb_offset(io)
-            iuT = iu - offset(N_Elec,Elecs,io)
             do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
-              juT = l_col(ind) - orb_offset(l_col(ind))
-              ju = juT - offset(N_Elec,Elecs,l_col(ind))
-              D(ind,i1) = D(ind,i1) + Gf(iu,ju) * DMfact - conjg(Gf(juT,iuT) * DMfact)
-              E(ind,i2) = E(ind,i2) + Gf(iu,ju) * EDMfact - conjg(Gf(juT,iuT) * EDMfact)
+              ju = l_col(ind) - orb_offset(l_col(ind)) - &
+                  offset(N_Elec,Elecs,l_col(ind))
+              D(ind,i1) = D(ind,i1) - Gf(iu,ju) * DMfact
+              E(ind,i2) = E(ind,i2) - Gf(iu,ju) * EDMfact
             end do
           end if
         end do
@@ -788,39 +782,33 @@ contains
 
       else if ( calc_q ) then
 
-!$OMP parallel do default(shared), &
-!$OMP&   private(io,sp,sp_col,iu,iuT,ind,ju,juT,sind), &
-!$OMP&   reduction(-:q)
+!$OMP parallel do default(shared), private(io,iu,ind,ju,s_ptr_begin,s_ptr_end,sin)
         do io = 1 , nr
           if ( l_ncol(io) /= 0 ) then
-            sp = s_ptr(io)
-            sp_col => s_col(sp+1:sp+s_ncol(io))
+            s_ptr_begin = s_ptr(io) + 1
+            s_ptr_end = s_ptr(io) + s_ncol(io)
             iu = io - orb_offset(io)
-            iuT = iu - offset(N_Elec,Elecs,io)
             do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
-              juT = l_col(ind) - orb_offset(l_col(ind))
-              ju = juT - offset(N_Elec,Elecs,l_col(ind))
-              sind = sp + SFIND(sp_col, l_col(ind))
-              if ( sp < sind ) then
-                q = q - aimag((Gf(iu,ju) - conjg(Gf(juT,iuT))) * Sk(sind))
-              end if
-              D(ind,i1) = D(ind,i1) + Gf(iu,ju) * DMfact - conjg(Gf(juT,iuT) * DMfact)
+              ju = l_col(ind) - orb_offset(l_col(ind)) - &
+                  offset(N_Elec,Elecs,l_col(ind))
+              sin = s_ptr_begin - 1 + SFIND(s_col(s_ptr_begin:s_ptr_end), l_col(ind))
+              if ( sin >= s_ptr_begin ) q = q - aimag(GF(iu,ju) * Sk(sin))
+              D(ind,i1) = D(ind,i1) - Gf(iu,ju) * DMfact
             end do
           end if
         end do
 !$OMP end parallel do
 
       else
-
-!$OMP parallel do default(shared), private(io,iu,iuT,ind,ju,juT)
+        
+!$OMP parallel do default(shared), private(io,iu,ind,ju)
         do io = 1 , nr
           if ( l_ncol(io) /= 0 ) then
             iu = io - orb_offset(io)
-            iuT = iu - offset(N_Elec,Elecs,io)
             do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
-              juT = l_col(ind) - orb_offset(l_col(ind))
-              ju = juT - offset(N_Elec,Elecs,l_col(ind))
-              D(ind,i1) = D(ind,i1) + Gf(iu,ju) * DMfact - conjg(Gf(juT,iuT) * DMfact)
+              ju = l_col(ind) - orb_offset(l_col(ind)) - &
+                  offset(N_Elec,Elecs,l_col(ind))
+              D(ind,i1) = D(ind,i1) - Gf(iu,ju) * DMfact
             end do
           end if
         end do
@@ -829,10 +817,6 @@ contains
       end if
 
     else ! lis_eq
-
-#ifndef TS_NOCHECKS
-      if ( no1 /= no2 ) call die("Error in matrix dimensions")
-#endif
 
       if ( hasEDM ) then
 
@@ -866,6 +850,8 @@ contains
       end if
     end if
 
+    if ( calc_q ) q = q * 2._dp
+    
   contains
     
      function offset(N_Elec,Elecs,io)
@@ -905,7 +891,7 @@ contains
     type(Sparsity), pointer :: sp
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
     complex(dp), pointer :: H(:), S(:)
-    integer :: io, iu, ind, nr
+    integer :: io, iu, ind, ioff, nr
 
     if ( cE%fake ) return
 
@@ -925,7 +911,7 @@ contains
     ! Initialize
     GFinv(:,:) = cmplx(0._dp,0._dp,dp)
 
-!$OMP parallel default(shared), private(io,iu,ind)
+!$OMP parallel default(shared), private(io,ioff,iu,ind)
 
     ! We will only loop in the central region
     ! We have constructed the sparse array to only contain
@@ -939,8 +925,11 @@ contains
        
        do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io) 
 
-          ! Transpose to match phase convention in ts_sparse_helper (- phase)
-          GFinv(l_col(ind)-orb_offset(l_col(ind)),iu) = Z * S(ind) - H(ind)
+          ioff = orb_offset(l_col(ind))
+             
+          ! Notice that we transpose S and H back here
+          ! See symmetrize_HS_Gamma (H is hermitian)
+          GFinv(l_col(ind)-ioff,iu) = Z * S(ind) - H(ind)
 
        end do
        end if
@@ -948,7 +937,7 @@ contains
 !$OMP end do
 
     do io = 1 , N_Elec
-      call insert_Self_Energies(no_u, Gfinv, Elecs(io))
+       call insert_Self_Energies(no_u, Gfinv, Elecs(io))
     end do
 
 !$OMP end parallel

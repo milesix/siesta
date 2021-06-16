@@ -11,8 +11,8 @@
 
 # VERY BASIC installation script of required libraries
 # for installing these packages:
-#   xmlf90
-#   libpsml
+#   xmlf90-*
+#   libpsml-*
 # If you want to change your compiler version you should define the
 # global variables that are used for the configure scripts to grab the
 # compiler, they should be CC and FC. Also if you want to compile with
@@ -68,12 +68,6 @@ while [ $# -gt 0 ]; do
 	    echo "  --single-directory : all libraries are installed in --prefix/{bin,lib,include} (default: YES)"
 	    echo "  --separate-directory : all libraries are installed in --prefix/<package>/<version>/{bin,lib,include} (default: NO)"
 	    echo "  --make-j <>: run make in parallel using <> number of cores (default: $_make_j)"
-	    echo ""
-	    echo "To customize compilers and flags please export these environment variables:"
-	    echo "  CC"
-	    echo "  FC"
-	    echo "  CFLAGS"
-	    echo "  FFLAGS"
 	    echo ""
 	    exit 0
 	    ;;
@@ -157,14 +151,8 @@ else
 fi
 [ -d $xml_dir/lib64 ] && xml_lib=lib64 || xml_lib=lib
 if [ ! -e $xml_dir/$xml_lib/libxmlf90.a ]; then
-    rm -rf xmlf90-xmlf90-${xml_v} xmlf90-${xml_v}
     tar xfz xmlf90-${xml_v}.tar.gz
-    if [ -d xmlf90-xmlf90-${xml_v} ]; then
-	d=xmlf90-xmlf90-${xml_v}
-    else
-	d=xmlf90-${xml_v}
-    fi
-    cd $d
+    cd xmlf90-${xml_v}
     ./configure --prefix $xml_dir/
     retval $? "xmlf90 config"
     make -j 2
@@ -175,7 +163,7 @@ if [ ! -e $xml_dir/$xml_lib/libxmlf90.a ]; then
     retval $? "xmlf90  make install"
     mv xmlf90.check $xml_dir/
     cd ../
-    rm -rf $d
+    rm -rf xmlf90-${xml_v}
     echo "Completed installing xmlf90"
     [ -d $xml_dir/lib64 ] && xml_lib=lib64 || xml_lib=lib
 else
@@ -228,16 +216,10 @@ echo "##########################"
 echo ""
 echo ""
 
-echo "Please add the following to the BOTTOM of your arch.make file:"
+echo "Please add the following to the BOTTOM of your arch.make file"
 echo ""
 echo "XMLF90_ROOT = $xml_dir"
 echo "include \$(XMLF90_ROOT)/share/org.siesta-project/xmlf90.mk"
 echo "PSML_ROOT = $psml_dir"
 echo "include \$(PSML_ROOT)/share/org.siesta-project/psml.mk"
-if [ "$xml_dir/$xml_lib" == "$psml_dir/$psml_lib" ]; then
-    echo "LDFLAGS += -Wl,-rpath,$xml_dir/$xml_lib"
-else
-    echo "LDFLAGS += -Wl,-rpath,$xml_dir/$xml_lib"
-    echo "LDFLAGS += -Wl,-rpath,$psml_dir/$psml_lib"
-fi
 echo ""

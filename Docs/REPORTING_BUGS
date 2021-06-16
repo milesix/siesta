@@ -1,7 +1,7 @@
 REPORTING BUGS
 
 Your assistance is essential to help improve the program. If you find
-a problem with the code, please use the GitLab issue tracker at:
+a problem with the code, please use the Gitlab issue tracker at:
 
   https://gitlab.com/siesta-project/siesta/-/issues
 
@@ -46,12 +46,8 @@ Please keep in mind the following guidelines:
   - The Siesta version in which the problem was found. We can't assume
     that you have the very latest version, and a problem that exists
     in one version may not exist in another. Use the version number
-    printed at the top of any output file. If you have access to the
-    directories where Siesta was compiled, this information can also be
-    found in file SIESTA.version (for recent versions of Siesta)
-    or file version.info (for older versions of Siesta; in this case,
-    if you obtained the source code using git, please specify the precise
-    Commit Id hash).
+    printed at the top of any output file (also found in file
+    version.info in the top directory).
 
   - The platform on which the problem was found, and the operating
     system and compiler version. State whether the problem appears in
@@ -64,7 +60,7 @@ Please keep in mind the following guidelines:
 Bug issues will be initially tagged as "bug_report". Later on we
 will try to reproduce the bug and maybe request more information in the process.
 
-You will need a GitLab account. If for whatever reason you cannot use
+You will need a Gitlab account. If for whatever reason you cannot use
 this channel, you can try to send an email to siesta.tracker@gmail.com, but
 note that visibility and agility of response might be lower.
 

@@ -156,7 +156,7 @@ contains
     type(ts_c_idx) :: cE
     integer :: NE
     integer :: index_dq !< Index for the current charge calculation @ E == mu
-    real(dp) :: kw, kpt(3), bkpt(3), dq_mu
+    real(dp)    :: kw, kpt(3), bkpt(3), dq_mu
     complex(dp) :: W, ZW
     type(tRgn)  :: pvt
 ! ************************************************************
@@ -720,12 +720,12 @@ contains
     ! Arrays needed for looping the sparsity
     type(Sparsity), pointer :: s
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
-    integer, pointer :: s_ncol(:), s_ptr(:), s_col(:), sp_col(:)
+    integer, pointer :: s_ncol(:), s_ptr(:), s_col(:)
     complex(dp), pointer :: D(:,:), E(:,:)
     complex(dp), pointer :: Gf(:)
     complex(dp), pointer :: Sk(:)
-    integer :: sp, sind
-    integer :: io, ind, iu, idx, idxT, i1, i2
+    integer :: s_ptr_begin, s_ptr_end, sin
+    integer :: io, ind, iu, idx, i1, i2
     logical :: calc_q
     logical :: hasEDM, lis_eq
 
@@ -758,29 +758,28 @@ contains
       if ( calc_q .and. hasEDM ) then
 
 !$OMP parallel do default(shared), &
-!$OMP&  private(io,iu,sp,sp_col,ind,idx,idxT,sind), &
-!$OMP&  reduction(-:q)
+!$OMP&private(io,iu,ind,idx,s_ptr_begin,s_ptr_end,sin)
        do iu = 1 , r%n
           io = r%r(iu)
           if ( l_ncol(io) /= 0 ) then
 
-          sp = s_ptr(io)
-          sp_col => s_col(sp+1:sp+s_ncol(io))
+          s_ptr_begin = s_ptr(io) + 1
+          s_ptr_end = s_ptr(io) + s_ncol(io)
 
           do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
              
             idx = index(Gf_tri,iu,pvt%r(l_col(ind)))
-            idxT = index(Gf_tri,pvt%r(l_col(ind)),iu)
 
             ! Search for overlap index
-            sind = sp + SFIND(sp_col, l_col(ind))
-            if ( sp < sind ) then
-              ! For charge calculation it is Tr[(G-G^\dagger).S] i.e. the matrix
-              ! multiplication
-              q = q - aimag((Gf(idx) - conjg(Gf(idxT))) * Sk(sind))
-            end if
-            D(ind,i1) = D(ind,i1) + GF(idx) * DMfact - conjg(GF(idxT) * DMfact)
-            E(ind,i2) = E(ind,i2) + GF(idx) * EDMfact - conjg(GF(idxT) * EDMfact)
+            ! spS is transposed, so we have to conjugate the
+            ! S value, then we may take the imaginary part.
+            sin = s_ptr_begin - 1 + SFIND(s_col(s_ptr_begin:s_ptr_end), l_col(ind))
+
+            ! Since we are calculating Gf - Gf^\dagger we need a factor two
+            ! The weights are taking care of this.
+            if ( sin >= s_ptr_begin ) q = q - aimag(GF(idx) * conjg(Sk(sin)))
+            D(ind,i1) = D(ind,i1) - GF(idx) * DMfact
+            E(ind,i2) = E(ind,i2) - GF(idx) * EDMfact
              
           end do
           end if
@@ -789,15 +788,19 @@ contains
 
      else if ( hasEDM ) then
 
-!$OMP parallel do default(shared), private(io,iu,ind,idx,idxT)
+!$OMP parallel do default(shared), &
+!$OMP&private(io,iu,ind,idx)
        do iu = 1 , r%n
           io = r%r(iu)
           if ( l_ncol(io) /= 0 ) then
+
           do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
+             
              idx = index(Gf_tri,iu,pvt%r(l_col(ind)))
-             idxT = index(Gf_tri,pvt%r(l_col(ind)),iu)
-             D(ind,i1) = D(ind,i1) + GF(idx) * DMfact - conjg(GF(idxT) * DMfact)
-             E(ind,i2) = E(ind,i2) + GF(idx) * EDMfact - conjg(GF(idxT) * EDMfact)
+             
+             D(ind,i1) = D(ind,i1) - GF(idx) * DMfact
+             E(ind,i2) = E(ind,i2) - GF(idx) * EDMfact
+             
           end do
           end if
        end do
@@ -806,24 +809,21 @@ contains
      else if ( calc_q ) then
 
 !$OMP parallel do default(shared), &
-!$OMP&  private(io,iu,sp,sp_col,ind,idx,idxT,sind), &
-!$OMP&  reduction(-:q)
+!$OMP&private(io,iu,ind,idx,s_ptr_begin,s_ptr_end,sin)
        do iu = 1 , r%n
           io = r%r(iu)
           if ( l_ncol(io) /= 0 ) then
 
-          sp = s_ptr(io)
-          sp_col => s_col(sp+1:sp+s_ncol(io))
+          s_ptr_begin = s_ptr(io) + 1
+          s_ptr_end = s_ptr(io) + s_ncol(io)
 
           do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
 
-            idx = index(Gf_tri,iu,pvt%r(l_col(ind)))
-            idxT = index(Gf_tri,pvt%r(l_col(ind)),iu)
-            sind = sp + SFIND(sp_col, l_col(ind))
-            if ( sp < sind ) then
-              q = q - aimag((Gf(idx) - conjg(Gf(idxT))) * Sk(sind))
-            end if
-            D(ind,i1) = D(ind,i1) + GF(idx) * DMfact - conjg(GF(idxT) * DMfact)
+             idx = index(Gf_tri,iu,pvt%r(l_col(ind)))
+             sin = s_ptr_begin - 1 + SFIND(s_col(s_ptr_begin:s_ptr_end), l_col(ind))
+
+             if ( sin >= s_ptr_begin ) q = q - aimag(GF(idx) * conjg(Sk(sin)))
+             D(ind,i1) = D(ind,i1) - GF(idx) * DMfact
              
           end do
           end if
@@ -832,14 +832,18 @@ contains
 
      else
 
-!$OMP parallel do default(shared), private(io,iu,ind,idx,idxT)
+!$OMP parallel do default(shared), &
+!$OMP&private(io,iu,ind,idx)
        do iu = 1 , r%n
           io = r%r(iu)
           if ( l_ncol(io) /= 0 ) then
+
           do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
-            idx = index(Gf_tri,iu,pvt%r(l_col(ind)))
-            idxT = index(Gf_tri,pvt%r(l_col(ind)),iu)
-            D(ind,i1) = D(ind,i1) + GF(idx) * DMfact - conjg(GF(idxT) * DMfact)
+
+             idx = index(Gf_tri,iu,pvt%r(l_col(ind)))
+             
+             D(ind,i1) = D(ind,i1) - GF(idx) * DMfact
+             
           end do
           end if
        end do
@@ -851,14 +855,19 @@ contains
      
      if ( hasEDM ) then
 
-!$OMP parallel do default(shared), private(io,iu,ind,idx)
+!$OMP parallel do default(shared), &
+!$OMP&private(io,iu,ind,idx)
        do iu = 1 , r%n
           io = r%r(iu)
           if ( l_ncol(io) /= 0 ) then
+
           do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
-            idx = index(Gf_tri,iu,pvt%r(l_col(ind)))
-            D(ind,i1) = D(ind,i1) + GF(idx) * DMfact
-            E(ind,i2) = E(ind,i2) + GF(idx) * EDMfact
+             
+             idx = index(Gf_tri,iu,pvt%r(l_col(ind)))
+             
+             D(ind,i1) = D(ind,i1) + GF(idx) * DMfact
+             E(ind,i2) = E(ind,i2) + GF(idx) * EDMfact
+             
           end do
           end if
        end do
@@ -866,13 +875,18 @@ contains
 
      else
 
-!$OMP parallel do default(shared), private(io,iu,ind,idx)
+!$OMP parallel do default(shared), &
+!$OMP&private(io,iu,ind,idx)
        do iu = 1 , r%n
           io = r%r(iu)
           if ( l_ncol(io) /= 0 ) then
+
           do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
-            idx = index(Gf_tri,iu,pvt%r(l_col(ind)))
-            D(ind,i1) = D(ind,i1) + GF(idx) * DMfact
+
+             idx = index(Gf_tri,iu,pvt%r(l_col(ind)))
+             
+             D(ind,i1) = D(ind,i1) + GF(idx) * DMfact
+             
           end do
           end if
        end do
@@ -881,6 +895,8 @@ contains
      end if
 
    end if
+
+   if ( calc_q ) q = q * 2._dp
 
   end subroutine add_DM
 
@@ -922,8 +938,8 @@ contains
     Z = cE%e
 
     sp => spar(spH)
-    H => val (spH)
-    S => val (spS)
+    H  => val (spH)
+    S  => val (spS)
 
     call attach(sp, n_col=l_ncol, list_ptr=l_ptr, list_col=l_col)
 
@@ -943,7 +959,8 @@ contains
 
        do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io) 
 
-          ! Transpose to match phase convention in ts_sparse_helper (- phase)
+          ! Notice that we transpose back here...
+          ! See symmetrize_HS_kpt
           idx = index(Gfinv_tri,pvt%r(l_col(ind)),iu)
 
           GFinv(idx) = Z * S(ind) - H(ind)

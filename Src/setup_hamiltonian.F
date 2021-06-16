@@ -303,6 +303,16 @@
 
       want_partial_charges = .false.
       call de_alloc( fal, 'fal', 'setup_hamiltonian' ) 
+!  It is wasteful to write over and over H and S, as there are
+!  no different files.
+! Save Hamiltonian and overlap matrices ............................
+! Only in HSX format now.  Use Util/HSX/hsx2hs to generate an HS file
+
+      if (savehs .or. write_coop) then
+         call write_hsx( no_u, no_s, spin%H, indxuo,
+     &        maxnh, numh, listhptr, listh, H, S, qtot,
+     &        temp, xijo)
+      endif
 
       call timer('setup_H',2)
 #ifdef SIESTA__PEXSI
@@ -310,19 +320,10 @@
 #endif
 
       if ( h_setup_only ) then
-
-        ! Save Hamiltonian and overlap matrices ............................
-        ! Only in HSX format now.  Use Util/HSX/hsx2hs to generate an HS file
-        if (savehs .or. write_coop) then
-          call write_hsx( no_u, no_s, spin%H, indxuo,
-     &        maxnh, numh, listhptr, listh, H, S, qtot,
-     &        temp, xijo)
-        end if
-
-        call timer( 'all', 2 )  ! New call to close the tree
-        call timer( 'all', 3 )
-        call bye("H-Setup-Only requested")
-        STOP
+         call timer( 'all', 2 )  ! New call to close the tree
+         call timer( 'all', 3 )
+         call bye("H-Setup-Only requested")
+         STOP
       endif
 
 !------------------------------------------------------------------------- END

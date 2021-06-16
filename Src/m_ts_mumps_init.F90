@@ -220,9 +220,9 @@ contains
        ioff = io - orb_offset(io)
        
        do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io) 
-
-         mum%IRN(ind) = ioff
-         mum%JCN(ind) = l_col(ind) - orb_offset(l_col(ind))
+             
+          mum%IRN(ind) = l_col(ind) - orb_offset(l_col(ind))
+          mum%JCN(ind) = ioff
 
        end do
 
@@ -316,14 +316,16 @@ contains
 
     ! TODO, this requires that the sparsity pattern is symmetric
     ! Which it always is!
+    mum%IRHS_PTR(:) = 1 
 
-!$OMP parallel do default(shared), private(io,ind)
+!$OMP parallel do default(shared), private(io,j,ind)
     do io = 1 , nr
        if ( orb_type(io) /= TYP_BUFFER ) then
        mum%IRHS_PTR(io-orb_offset(io)) = l_ptr(io) + 1
        if ( l_ncol(io) /= 0 ) then ! no entries
        ! Create the row-index
-       do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
+       do j = 1 , l_ncol(io)
+          ind = l_ptr(io) + j
           mum%IRHS_SPARSE(ind) = l_col(ind) - orb_offset(l_col(ind))
        end do
 
@@ -347,7 +349,7 @@ contains
     integer, intent(in) :: no_u_TS, N_Elec
     type(Elec), intent(inout) :: Elecs(N_Elec)
     complex(dp), pointer :: Gf(:)
-    integer :: iEl, no, io, j, jo, ind
+    integer :: iEl, no, i, j, io, ind
 
     ! We only need a partial size of the Green function
     no = sum(TotUsedOrbs(Elecs))
@@ -355,16 +357,16 @@ contains
     call allocate_mum(mum,no*no_u_TS,N_Elec,Elecs,GF)
 
     ind = 0
-    do j = 1 , no_u_TS
-       mum%IRHS_PTR(j) = ind + 1
+    do i = 1 , no_u_TS
+       mum%IRHS_PTR(i) = ind + 1
        ! get correct siesta-orbital
-       jo = ts2s_orb(j)
+       io = ts2s_orb(i)
        iElec: do iEl = 1 , N_Elec
-          if ( .not. OrbInElec(Elecs(iEl),jo) ) cycle
+          if ( .not. OrbInElec(Elecs(iEl),io) ) cycle
           ! Create the row-index
-          do io = 1 , no_u_TS
+          do j = 1 , no_u_TS
              ind = ind + 1
-             mum%IRHS_SPARSE(ind) = io
+             mum%IRHS_SPARSE(ind) = j
           end do
           exit iElec
        end do iElec
@@ -392,10 +394,10 @@ contains
     if ( El%Bulk ) then
 !$OMP do private(ind,jso,iso,ii)
        do ind = 1 , mum%NZ
+          jso = ts2s_orb(mum%JCN(ind))
+          if ( OrbInElec(El,jso) ) then 
           iso = ts2s_orb(mum%IRN(ind))
           if ( OrbInElec(El,iso) ) then
-          jso = ts2s_orb(mum%JCN(ind))
-          if ( OrbInElec(El,jso) ) then
              ii = (jso - El%idx_o) * no + iso - off
              mum%A(ind) = El%Sigma(ii)
           end if
@@ -405,10 +407,10 @@ contains
     else
 !$OMP do private(ind,jso,iso,ii)
        do ind = 1 , mum%NZ
-          iso = ts2s_orb(mum%IRN(ind))
-          if ( OrbInElec(El,iso) ) then
           jso = ts2s_orb(mum%JCN(ind))
           if ( OrbInElec(El,jso) ) then
+          iso = ts2s_orb(mum%IRN(ind))
+          if ( OrbInElec(El,iso) ) then
              ii = (jso - El%idx_o) * no + iso - off
              mum%A(ind) = mum%A(ind) - El%Sigma(ii)
           end if

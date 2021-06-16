@@ -60,7 +60,7 @@ C     Local variables
       real(dp)              :: C, B(3,3), DU, G(3), G2, G2MAX, 
      &                         PI, VG, VOLUME, PI8
       real(grid_p), pointer :: CG(:,:)
-      real(dp),   parameter :: K0(3)= (/0.d0,0.d0,0.d0/), TINY= 1.d-15
+      real(dp),   parameter :: K0(3)= (/ 0.0, 0.0, 0.0 /), TINY= 1.0e-15
 #ifdef MPI
       integer               :: MPIerror
 #endif

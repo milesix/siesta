@@ -11,8 +11,8 @@
 
 # VERY BASIC installation script of required libraries
 # for installing these packages:
-#   libxc
-#   libgridxc
+#   libxc-*
+#   libgridxc-*
 # If you want to change your compiler version you should define the
 # global variables that are used for the configure scripts to grab the
 # compiler, they should be CC and FC. Also if you want to compile with
@@ -68,14 +68,6 @@ while [ $# -gt 0 ]; do
 	    echo "  --single-directory : all libraries are installed in --prefix/{bin,lib,include} (default: YES)"
 	    echo "  --separate-directory : all libraries are installed in --prefix/<package>/<version>/{bin,lib,include} (default: NO)"
 	    echo "  --make-j <>: run make in parallel using <> number of cores (default: $_make_j)"
-	    echo ""
-	    echo "To customize compilers and flags please export these environment variables:"
-	    echo "  CC"
-	    echo "  FC"
-	    echo "  MPICC"
-	    echo "  MPIFC"
-	    echo "  CFLAGS"
-	    echo "  FFLAGS"
 	    echo ""
 	    exit 0
 	    ;;
@@ -159,7 +151,6 @@ else
 fi
 [ -d $xc_dir/lib64 ] && xc_lib=lib64 || xc_lib=lib
 if [ ! -e $xc_dir/$xc_lib/libxcf90.a ]; then
-    rm -rf libxc-${xc_v}
     tar xfz libxc-${xc_v}.tar.gz
     cd libxc-${xc_v}
     ./configure --enable-shared --prefix $xc_dir/
@@ -188,7 +179,7 @@ else
     gridxc_dir=$ID
 fi
 [ -d $gridxc_dir/lib64 ] && gridxc_lib=lib64 || gridxc_lib=lib
-if [ ! -e $gridxc_dir/$gridxc_lib/libgridxc_dp_mpi.a ]; then
+if [ ! -e $gridxc_dir/$gridxc_lib/libgridxc.a ]; then
     rm -rf libgridxc-$gridxc_v
     tar xfz libgridxc-$gridxc_v.tar.gz
     cd libgridxc-$gridxc_v
@@ -246,14 +237,8 @@ echo "##########################"
 echo ""
 echo ""
 
-echo "Please add the following to the BOTTOM of your arch.make file (for double-precision and MPI):"
+echo "Please add the following to the BOTTOM of your arch.make file (for double-precision and MPI)"
 echo ""
 echo "GRIDXC_ROOT = $gridxc_dir"
 echo "include \$(GRIDXC_ROOT)/share/org.siesta-project/gridxc_dp_mpi.mk"
-if [ "$xc_dir/$xc_lib" == "$gridxc_dir/$gridxc_lib" ]; then
-    echo "LDFLAGS += -Wl,-rpath,$xc_dir/$xc_lib"
-else
-    echo "LDFLAGS += -Wl,-rpath,$xc_dir/$xc_lib"
-    echo "LDFLAGS += -Wl,-rpath,$gridxc_dir/$gridxc_lib"
-fi
 echo ""

@@ -58,7 +58,7 @@ DEPS_GEN-BASIS=m_io.o io.o alloc.o basis_types.o precision.o  parallel.o \
           basis_specs.o dftu_specs.o atom.o periodic_table.o\
           pxf.o dot.o  atom_options.o arw.o m_spin_orbit_potentials.o \
           xml.o m_walltime.o read_xc_info.o  $(SYSOBJ) \
-          m_fft_gpfa.o m_cite.o version.o posix_calls.o reclat.o units.o \
+          m_fft_gpfa.o m_cite.o reclat.o units.o \
           semicore_info_froyen.o hamann.o files.o
 
 # Siesta kpoint-scale
@@ -74,7 +74,7 @@ DEPS_IONCAT=f2kcli.o m_getopts.o basis_types.o precision.o  parallel.o \
           basis_specs.o periodic_table.o pxf.o semicore_info_froyen.o \
           atom.o atmfuncs.o spher_harm.o interpolation.o arw.o \
           xml.o m_walltime.o dftu_specs.o\
-          hamann.o m_cite.o version.o posix_calls.o units.o files.o $(SYSOBJ)
+          hamann.o m_cite.o  units.o files.o $(SYSOBJ)
 
 # Siesta kpoint-scale
 DEPS_IONCAT += get_kpoints_scale.o siesta_geom.o
@@ -205,8 +205,6 @@ spher_harm.o: precision.o
 spher_harm.o: precision.o
 units.o: precision.o
 units.o: precision.o
-version.o: posix_calls.o
-version.o: posix_calls.o
 xml.o: precision.o
 xml.o: precision.o
 gen-basis.o: atm_types.o atom.o atom_options.o basis_io.o basis_specs.o
@@ -226,4 +224,3 @@ m_radfft.o: radfft.o
 m_semicore_info_froyen.o: semicore_info_froyen.o
 sys.o: local_sys.o
 t_spin.o: m_spin.o
-version_info.o: version.o

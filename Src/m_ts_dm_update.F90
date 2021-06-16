@@ -54,24 +54,30 @@
 !
 !          ! The integration is:
 !          ! \rho = e^{-i.k.R} [ \int (Gf^R-Gf^A)/2 dE + \int Gf^R\Gamma Gf^A dE ]
-!          ! the passed array for the equilibrium part is Gf^R - Gf^A
 !
 !          if ( non_Eq ) then
 !
 !             ! The integration is:
 !             ! \rho = e^{-i.k.R} \int Gf^R\Gamma Gf^A dE
-!             kx = real( ph*zDu(ind) , dp)
+!             kx = aimag( ph*zDu(ind) )
 !             dD(lind) = dD(lind) + kx
-!             dE(lind) = dE(lind) + real( ph*zEu(ind) ,dp)
+!             dE(lind) = dE(lind) + aimag( ph*zEu(ind) )
 !
 !          else
 !
+!             ! The fact that we have a SYMMETRIC
+!             ! update region makes this *tricky* part easy...
+!             rin  = up_ptr(jo)
+!             rind = rin + SFIND(up_col(rin+1:rin+up_ncol(jo)),io)
+!             ! We do a check, just to be sure...
+!             if ( rind <= rin ) &
+!                  call die('ERROR: Conjugated symmetrization point does not exist')
+!
 !             ! The integration is:
 !             ! \rho = e^{-i.k.R} \int (Gf^R-Gf^A)/2 dE
-!             ! Gf^R - Gf^A should be passed from outside
 !             
-!             dD(lind) = dD(lind) + aimag( ph*zDu(ind) )
-!             dE(lind) = dE(lind) + aimag( ph*zEu(ind) )
+!             dD(lind) = dD(lind) + aimag( ph*(zDu(ind) - conjg(zDu(rind))) )
+!             dE(lind) = dE(lind) + aimag( ph*(zEu(ind) - conjg(zEu(rind))) )
 !
 !          end if
 !             
@@ -100,9 +106,9 @@ contains
   !     2. the global update sparsity pattern (suffix 'u')
   ! The k-point routine is constructed to handle three different methods of doing
   ! the weighting which is performed here.
-  ! The routines require the integral part of the input
-  !  For eq. this is G^R-G^A
-  !  For neq. this is G.Gamma.G^A
+  ! Commonly the routines should accept input matrices
+  ! with the _correct_ sign.
+  ! I.e. on entry non_eq should have + and eq should have -
 
   subroutine add_k_DM(spDM,spuDM,D_dim2, spEDM, spuEDM, E_dim2, &
        n_s,sc_off,k, non_Eq)
@@ -132,10 +138,11 @@ contains
     type(OrbitalDistribution), pointer :: dit
     type(Sparsity), pointer :: l_s, up_s
     integer, pointer :: l_ncol(:) , l_ptr(:) , l_col(:)
-    integer, pointer :: up_ncol(:), up_ptr(:), up_col(:), upp_col(:)
+    integer, pointer :: up_ncol(:), up_ptr(:), up_col(:)
     real(dp), pointer :: dD(:,:) , dE(:,:)
     complex(dp), pointer :: zDu(:,:), zEu(:,:)
-    integer :: lnr, lio, lind, io, ind, nr, jo, rind
+    integer :: lnr, lio, lind, io, ind, nr, jo
+    integer :: rin, rind
     logical :: hasEDM
     complex(dp) :: ph(0:n_s-1)
 
@@ -146,15 +153,15 @@ contains
     ! get the distribution
     dit => dist(spDM)
 
-    l_s => spar(spDM)
+    l_s  => spar(spDM)
     call attach(l_s ,n_col=l_ncol,list_ptr=l_ptr,list_col=l_col, &
          nrows=lnr,nrows_g=nr)
-    dD => val(spDM)
+    dD   => val(spDM)
     if ( hasEDM ) dE => val(spEDM)
 
     up_s => spar(spuDM)
     call attach(up_s,n_col=up_ncol,list_ptr=up_ptr,list_col=up_col)
-    zDu => val(spuDM)
+    zDu  => val(spuDM)
     if ( hasEDM ) zEu => val(spuEDM)
 
     if ( size(zDu,2) < D_dim2 .or. size(dD,2) < D_dim2 ) then
@@ -174,7 +181,10 @@ contains
          &expected k-DM.')
 
     do jo = 0 , n_s - 1
-       ph(jo) = exp(cmplx(0._dp, -dot_product(k, sc_off(:,jo)),dp))
+       ph(jo) = exp(cmplx(0._dp, -&
+            k(1) * sc_off(1,jo) - &
+            k(2) * sc_off(2,jo) - &
+            k(3) * sc_off(3,jo),kind=dp))
     end do
 
     if ( non_Eq ) then
@@ -183,29 +193,29 @@ contains
           
 ! No data race will occur, sparsity pattern only tranversed once
 !$OMP parallel do default(shared), &
-!$OMP&private(lio,io,rind,upp_col,lind,jo,ind)
+!$OMP&private(lio,io,lind,jo,rind,ind)
        do lio = 1 , lnr
 
           if ( l_ncol(lio) /= 0 ) then
           io = index_local_to_global(dit,lio)
           if ( up_ncol(io) /= 0 ) then
-          rind = up_ptr(io)
-          upp_col => up_col(rind+1:rind+up_ncol(io))
 
           do lind = l_ptr(lio) + 1 , l_ptr(lio) + l_ncol(lio)
              
              jo = UCORB(l_col(lind),nr)
              
-             ind = rind + SFIND(upp_col,jo)
-             if ( rind < ind ) then
+             rind = up_ptr(io)
+             ind = rind + SFIND(up_col(rind+1:rind+up_ncol(io)),jo)
+             if ( ind <= rind ) cycle ! The element does not exist
              
-               jo = (l_col(lind)-1) / nr
+             jo = (l_col(lind)-1) / nr
              
-               ! The integration is:
-               ! \rho = e^{-i.k.R} \int Gf^R\Gamma Gf^A dE
-               dD(lind,1:D_dim2) = dD(lind,1:D_dim2) + real( ph(jo)*zDu(ind,1:D_dim2) ,dp)
-               dE(lind,1:E_dim2) = dE(lind,1:E_dim2) + real( ph(jo)*zEu(ind,1:E_dim2) ,dp)
-             end if
+             ! The integration is:
+             ! \rho = e^{-i.k.R} \int Gf^R\Gamma Gf^A dE
+             dD(lind,1:D_dim2) = dD(lind,1:D_dim2) + &
+                  real( ph(jo)*zDu(ind,1:D_dim2) ,dp)
+             dE(lind,1:E_dim2) = dE(lind,1:E_dim2) + &
+                  real( ph(jo)*zEu(ind,1:E_dim2) ,dp)
              
           end do
 
@@ -218,26 +228,25 @@ contains
      else
 
 !$OMP parallel do default(shared), &
-!$OMP&private(lio,io,rind,upp_col,lind,jo,ind)
+!$OMP&private(lio,io,lind,jo,rind,ind)
        do lio = 1 , lnr
 
           if ( l_ncol(lio) /= 0 ) then
           io = index_local_to_global(dit,lio)
           if ( up_ncol(io) /= 0 ) then
-          rind = up_ptr(io)
-          upp_col => up_col(rind+1:rind+up_ncol(io))
 
           do lind = l_ptr(lio) + 1 , l_ptr(lio) + l_ncol(lio)
              
              jo = UCORB(l_col(lind),nr)
              
-             ind = rind + SFIND(upp_col,jo)
-             if ( rind < ind ) then
+             rind = up_ptr(io)
+             ind = rind + SFIND(up_col(rind+1:rind+up_ncol(io)),jo)
+             if ( ind <= rind ) cycle ! The element does not exist
              
-               jo = (l_col(lind)-1) / nr
+             jo = (l_col(lind)-1) / nr
              
-               dD(lind,1:D_dim2) = dD(lind,1:D_dim2) + real( ph(jo)*zDu(ind,1:D_dim2) ,dp)
-             end if
+             dD(lind,1:D_dim2) = dD(lind,1:D_dim2) + &
+                  real( ph(jo)*zDu(ind,1:D_dim2) ,dp)
 
           end do
 
@@ -254,30 +263,36 @@ contains
      if ( hasEDM ) then
           
 !$OMP parallel do default(shared), &
-!$OMP&private(lio,io,rind,upp_col,lind,jo,ind)
+!$OMP&private(lio,io,lind,jo,rin,rind,ind)
        do lio = 1 , lnr
 
           if ( l_ncol(lio) /= 0 ) then
           io = index_local_to_global(dit,lio)
           if ( up_ncol(io) /= 0 ) then
-          rind = up_ptr(io)
-          upp_col => up_col(rind+1:rind+up_ncol(io))
 
           do lind = l_ptr(lio) + 1 , l_ptr(lio) + l_ncol(lio)
              
              jo = UCORB(l_col(lind),nr)
 
-             ind = rind + SFIND(upp_col,jo)
-             if ( rind < ind ) then
+             rind = up_ptr(io)
+             ind = rind + SFIND(up_col(rind+1:rind+up_ncol(io)),jo)
+             if ( ind <= rind ) cycle ! The element does not exist
              
-               jo = (l_col(lind)-1) / nr
+             rin  = up_ptr(jo)
+             rind = rin + SFIND(up_col(rin+1:rin+up_ncol(jo)),io)
+#ifndef TS_NOCHECKS
+             if ( rind <= rin ) &
+                  call die('ERROR: Conjugated symmetrization point does not exist')
+#endif
 
-               ! The integration is
-               ! \rho = -\Im e^{-i.k.R} \int (Gf^R-Gf^A) dE
-               ! Gf^R-Gf^A from outside
-               dD(lind,1:D_dim2) = dD(lind,1:D_dim2) - aimag( ph(jo)*zDu(ind,1:D_dim2) )
-               dE(lind,1:E_dim2) = dE(lind,1:E_dim2) - aimag( ph(jo)*zEu(ind,1:E_dim2) )
-             end if
+             jo = (l_col(lind)-1) / nr
+
+             ! The integration is (- from outside)
+             ! \rho = -\Im e^{-i.k.R} \int (Gf^R-Gf^A) dE
+             dD(lind,1:D_dim2) = dD(lind,1:D_dim2) + &
+                  aimag( ph(jo)*(zDu(ind,1:D_dim2) - conjg(zDu(rind,1:D_dim2))) )
+             dE(lind,1:E_dim2) = dE(lind,1:E_dim2) + &
+                  aimag( ph(jo)*(zEu(ind,1:E_dim2) - conjg(zEu(rind,1:E_dim2))) )
 
           end do
 
@@ -290,26 +305,33 @@ contains
     else
           
 !$OMP parallel do default(shared), &
-!$OMP&private(lio,io,rind,upp_col,lind,jo,ind)
+!$OMP&private(lio,io,lind,jo,rin,rind,ind)
        do lio = 1 , lnr
 
           if ( l_ncol(lio) /= 0 ) then
           io = index_local_to_global(dit,lio)
           if ( up_ncol(io) /= 0 ) then
-          rind = up_ptr(io)
-          upp_col => up_col(rind+1:rind+up_ncol(io))
 
           do lind = l_ptr(lio) + 1 , l_ptr(lio) + l_ncol(lio)
              
              jo = UCORB(l_col(lind),nr)
 
-             ind = rind + SFIND(upp_col,jo)
-             if ( rind < ind ) then
+             rind = up_ptr(io)
+             ind = rind + SFIND(up_col(rind+1:rind+up_ncol(io)),jo)
+             if ( ind <= rind ) cycle ! The element does not exist
              
-               jo = (l_col(lind)-1) / nr
+             rin  = up_ptr(jo)
+             rind = rin + SFIND(up_col(rin+1:rin+up_ncol(jo)),io)
+#ifndef TS_NOCHECKS
+             if ( rind <= rin ) &
+                  call die('ERROR: Conjugated symmetrization point does not exist')
+#endif
 
-               dD(lind,1:D_dim2) = dD(lind,1:D_dim2) - aimag( ph(jo)*zDu(ind,1:D_dim2) )
-             end if
+             jo = (l_col(lind)-1) / nr
+
+             ! - from outside
+             dD(lind,1:D_dim2) = dD(lind,1:D_dim2) + &
+                  aimag( ph(jo)*(zDu(ind,1:D_dim2) - conjg(zDu(rind,1:D_dim2))) )
 
           end do
 
@@ -349,7 +371,7 @@ contains
     type(OrbitalDistribution), pointer :: dit
     type(Sparsity), pointer :: l_s, up_s
     integer, pointer :: l_ncol(:) , l_ptr(:) , l_col(:)
-    integer, pointer :: up_ncol(:), up_ptr(:), up_col(:), upp_col(:)
+    integer, pointer :: up_ncol(:), up_ptr(:), up_col(:)
     real(dp), pointer :: dD(:,:), dE(:,:)
     real(dp), pointer :: dDu(:,:), dEu(:,:)
     integer :: lnr, lio, lind, io, ind, nr, jo, rind
@@ -360,17 +382,17 @@ contains
     hasEDM = initialized(spEDM)
 
     ! get distribution
-    dit => dist(spDM)
+    dit  => dist(spDM)
 
-    l_s => spar(spDM)
+    l_s  => spar(spDM)
     call attach(l_s ,n_col=l_ncol,list_ptr=l_ptr,list_col=l_col, &
          nrows=lnr,nrows_g=nr)
-    dD => val(spDM)
+    dD   => val(spDM)
     if ( hasEDM ) dE  => val(spEDM)
 
     up_s => spar(spuDM)
     call attach(up_s,n_col=up_ncol,list_ptr=up_ptr,list_col=up_col)
-    dDu => val(spuDM)
+    dDu  => val(spuDM)
     if ( hasEDM ) dEu => val(spuEDM)
 
     if ( size(dDu,2) < D_dim2 .or. size(dD,2) < D_dim2 ) then
@@ -392,14 +414,12 @@ contains
     if ( hasEDM ) then
 
 !$OMP parallel do default(shared), &
-!$OMP&private(lio,io,rind,upp_col,lind,jo,ind)
+!$OMP&private(lio,io,lind,jo,rind,ind)
        do lio = 1 , lnr
           
           if ( l_ncol(lio) /= 0 ) then
           io = index_local_to_global(dit,lio)
           if ( up_ncol(io) /= 0 ) then
-          rind = up_ptr(io)
-          upp_col => up_col(rind+1:rind+up_ncol(io))
 
           do lind = l_ptr(lio) + 1 , l_ptr(lio) + l_ncol(lio)
 
@@ -407,11 +427,12 @@ contains
              jo = ucorb(l_col(lind),nr)
 
              ! This sparsity pattern is in UC
-             ind = rind + SFIND(upp_col,jo)
-             if ( rind < ind ) then
-               dD(lind,1:D_dim2) = dD(lind,1:D_dim2) + dDu(ind,1:D_dim2)
-               dE(lind,1:E_dim2) = dE(lind,1:E_dim2) + dEu(ind,1:E_dim2)
-             end if
+             rind = up_ptr(io)
+             ind = rind + SFIND(up_col(rind+1:rind+up_ncol(io)),jo)
+             if ( ind <= rind ) cycle ! The element does not exist
+
+             dD(lind,1:D_dim2) = dD(lind,1:D_dim2) + dDu(ind,1:D_dim2)
+             dE(lind,1:E_dim2) = dE(lind,1:E_dim2) + dEu(ind,1:E_dim2)
              
           end do
 
@@ -424,23 +445,22 @@ contains
     else
 
 !$OMP parallel do default(shared), &
-!$OMP&private(lio,io,rind,upp_col,lind,jo,ind)
+!$OMP&private(lio,io,lind,jo,rind,ind)
        do lio = 1 , lnr
 
           if ( l_ncol(lio) /= 0 ) then
           io = index_local_to_global(dit,lio)
           if ( up_ncol(io) /= 0 ) then
-          rind = up_ptr(io)
-          upp_col => up_col(rind+1:rind+up_ncol(io))
 
           do lind = l_ptr(lio) + 1 , l_ptr(lio) + l_ncol(lio)
 
              jo = ucorb(l_col(lind),nr)
 
-             ind = rind + SFIND(upp_col,jo)
-             if ( rind < ind ) then
-               dD(lind,1:D_dim2) = dD(lind,1:D_dim2) + dDu(ind,1:D_dim2)
-             end if
+             rind = up_ptr(io)
+             ind = rind + SFIND(up_col(rind+1:rind+up_ncol(io)),jo)
+             if ( ind <= rind ) cycle ! The element does not exist
+
+             dD(lind,1:D_dim2) = dD(lind,1:D_dim2) + dDu(ind,1:D_dim2)
              
           end do
 
@@ -487,15 +507,15 @@ contains
     ! Arrays needed for looping the sparsity
     type(Sparsity), pointer :: s
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
-    integer, pointer :: lup_ncol(:), lup_ptr(:), lup_col(:), lupp_col(:)
+    integer, pointer :: lup_ncol(:), lup_ptr(:), lup_col(:)
     integer, pointer :: pnt(:)
     real(dp), pointer :: dD(:,:), dE(:,:)
-    integer :: lnr, nr, uind, lio, io, lind, ind, ljo, jo, rind
+    integer :: lnr, nr, uind, lio, io, lind, ind, ljo, jo
     logical :: hasipnt, hasEDM, lUpSpGlobal
 
     call attach(sp, n_col=l_ncol,list_ptr=l_ptr,list_col=l_col, &
          nrows=lnr,nrows_g=nr)
-    s => spar(spDM)
+    s  => spar(spDM)
     call attach(s, n_col=lup_ncol,list_ptr=lup_ptr,list_col=lup_col)
     dD => val(spDM)
 
@@ -585,7 +605,8 @@ contains
                   minloc(abs(l_col(l_ptr(io)+1:l_ptr(io)+l_ncol(io))-jo),1)
              if ( l_col(ind) /= jo ) then
                 do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
-                   if ( l_col(ind) == jo ) exit
+                   if ( l_col(ind) /= jo ) cycle
+                   exit ! we have the correct ind-value
                 end do
                 if ( l_col(ind) /= jo ) cycle
              end if
@@ -610,7 +631,7 @@ contains
        ! This loop is across the local rows...
 ! We will never have a data race here (it is on local sparsity pattern)
 !$OMP parallel do default(shared), &
-!$OMP&private(lio,io,rind,lupp_col,lind,jo,ind)
+!$OMP&private(lio,io,lind,jo,ljo,ind)
        do lio = 1 , lnr
 
           ! obtain the global index of the local orbital.
@@ -620,8 +641,7 @@ contains
           if ( lup_ncol(io) /= 0 ) then
 
           ! Retrieve pointer index
-          rind = lup_ptr(io)
-          lupp_col => lup_col(rind+1:rind+lup_ncol(io))
+          jo = lup_ptr(io)
 
           ! Do a loop in the local sparsity pattern...
           ! The local sparsity pattern is more "spread", hence
@@ -629,15 +649,15 @@ contains
           do lind = l_ptr(lio) + 1 , l_ptr(lio) + l_ncol(lio)
 
              ! we need to compare with the global update sparsity
-             jo = UCORB(l_col(lind),nr)
+             ljo = UCORB(l_col(lind),nr)
 
              ! Now we loop across the update region
              ! This one must *per definition* have less elements.
              ! Hence, we can exploit this, and find equivalent
              ! super-cell orbitals.
              ! Ok, this is Gamma (but to be consistent)
-             ind = rind + SFIND(lupp_col,jo)
-             if ( ind > rind ) then
+             ind = jo + SFIND(lup_col(jo+1:jo+lup_ncol(io)),ljo)
+             if ( ind > jo ) then
                DM(lind) = DM(lind) + dD(ind,1)
                if ( hasEDM ) EDM(lind) = EDM(lind) + dE(ind,1)
              end if
@@ -680,18 +700,18 @@ contains
     ! Arrays needed for looping the sparsity
     type(Sparsity), pointer :: s
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
-    integer, pointer :: lup_ncol(:), lup_ptr(:), lup_col(:), lupp_col(:)
+    integer, pointer :: lup_ncol(:), lup_ptr(:), lup_col(:)
     complex(dp), pointer :: zD(:,:), zE(:,:)
     complex(dp) :: ph(0:n_s-1)
     integer :: lio, io, jo, ind, nr
-    integer :: lnr, lind, rind
+    integer :: lnr, lind, rin, rind
     logical :: hasEDM
 
     call attach(sp, n_col=l_ncol,list_ptr=l_ptr,list_col=l_col, &
          nrows=lnr,nrows_g=nr)
     s => spar(spDM)
     call attach(s, n_col=lup_ncol,list_ptr=lup_ptr,list_col=lup_col)
-    zD => val(spDM)
+    zD     => val(spDM)
 
     hasEDM = initialized(spEDM)
 
@@ -716,13 +736,16 @@ contains
          &expected uz-DM.')
 
     do jo = 0 , n_s - 1
-       ph(jo) = exp(cmplx(0._dp, -dot_product(k, sc_off(:,jo)),dp))
+       ph(jo) = exp(cmplx(0._dp, -&
+            k(1) * sc_off(1,jo) - &
+            k(2) * sc_off(2,jo) - &
+            k(3) * sc_off(3,jo), kind=dp) )
     end do
 
     ! This loop is across the local rows...
 ! No data race will occur
 !$OMP parallel do default(shared), &
-!$OMP&private(lio,io,rind,lupp_col,lind,jo,ind)
+!$OMP&private(lio,io,lind,jo,rind,ind,rin)
     do lio = 1 , lnr
 
        ! obtain the global index of the local orbital.
@@ -730,8 +753,6 @@ contains
 
        ! Quickly go past the empty regions... (we have nothing to update)
        if ( lup_ncol(io) /= 0 ) then
-       rind = lup_ptr(io)
-       lupp_col => lup_col(rind+1:rind+lup_ncol(io))
 
        ! Do a loop in the local sparsity pattern...
        ! The local sparsity pattern is more "spread", hence
@@ -744,18 +765,28 @@ contains
           ! This one must *per definition* have less elements.
           ! Hence, we can exploit this, and find equivalent
           ! super-cell orbitals.
-          ind = rind + SFIND(lupp_col,jo)
-
-          if ( rind < ind ) then
-
-            ! \rho = - \Im e^{-i.k.R} [ \int (Gf^R-Gf^A) dE + \int Gf^R\Gamma Gf^A dE ]
-            ! Gf^R-Gf^A from outside
-            jo = (l_col(lind)-1) / nr
-
-            DM(lind) = DM(lind) - aimag( ph(jo)*zD(ind,1) )
-            if ( hasEDM ) &
-                EDM(lind) = EDM(lind) - aimag( ph(jo)*zE(ind,1) )
-          end if
+          rind = lup_ptr(io)
+          ind = rind + SFIND(lup_col(rind+1:rind+lup_ncol(io)),jo)
+          if ( ind <= rind ) cycle ! The element does not exist
+          
+          ! The fact that we have a SYMMETRIC
+          ! update region makes this *tricky* part easy...
+          rin  = lup_ptr(jo)
+          ! TODO, this REQUIRES that lup_col(:) is sorted
+          rind = rin + SFIND(lup_col(rin+1:rin+lup_ncol(jo)),io)
+#ifndef TS_NOCHECKS
+          ! We do a check, just to be sure...
+          if ( rind <= rin ) &
+               call die('ERROR: Conjugated symmetrization point does not exist')
+#endif
+          
+          ! The integration is: (- is from outside)
+          ! \rho = - \Im e^{-i.k.R} [ \int (Gf^R-Gf^A) dE + \int Gf^R\Gamma Gf^A dE ]
+          jo = (l_col(lind)-1) / nr
+      
+          DM(lind) = DM(lind) + aimag( ph(jo)*(zD(ind,1) - conjg(zD(rind,1))) )
+          if ( hasEDM ) &
+               EDM(lind) = EDM(lind) + aimag( ph(jo)*(zE(ind,1) - conjg(zE(rind,1))) )
 
        end do
 
@@ -782,8 +813,8 @@ contains
     logical, intent(in) :: Calc_Forces
 
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
-    integer, pointer :: lup_ncol(:), lup_ptr(:), lup_col(:), lupp_col(:)
-    integer :: lnr, lio, lind, io, jo, ind, nr
+    integer, pointer :: lup_ncol(:), lup_ptr(:), lup_col(:)
+    integer :: lnr, lio, lind, io, jo, ind, nr, col
 
     call attach(sp, n_col=l_ncol,list_ptr=l_ptr,list_col=l_col, &
          nrows=lnr,nrows_g=nr)
@@ -798,7 +829,7 @@ contains
      
        ! This loop is across the local rows...
 !$OMP parallel do default(shared), &
-!$OMP&private(lio,io,lupp_col,lind,jo,ind)
+!$OMP&private(lio,io,jo,col,ind,lind)
        do lio = 1 , lnr
 
           ! obtain the global index of the local orbital.
@@ -807,18 +838,17 @@ contains
           ! Quickly go past the empty regions... (we have nothing to update)
           if ( lup_ncol(io) /= 0 ) then
 
-          ind = lup_ptr(io)
-          lupp_col => lup_col(ind+1:ind+lup_ncol(io))
+          jo = lup_ptr(io)
 
           ! Do a loop in the local sparsity pattern...
           do lind = l_ptr(lio) + 1 , l_ptr(lio) + l_ncol(lio)
              
              ! Search for unit-cell entry in update sparsity
              ! pattern (UC)
-             jo = UCORB(l_col(lind),nr)
-             ind = SFIND(lupp_col,jo)
+             col = UCORB(l_col(lind),nr)
+             ind = SFIND(lup_col(jo+1:jo+lup_ncol(io)),col)
              if ( ind > 0 ) then
-                DM(lind) = 0._dp
+                DM (lind) = 0._dp
                 EDM(lind) = 0._dp
              end if
 
@@ -829,16 +859,15 @@ contains
 
     else
 !$OMP parallel do default(shared), &
-!$OMP&private(lio,io,lupp_col,lind,jo,ind)
+!$OMP&private(lio,io,jo,col,ind,lind)
        do lio = 1 , lnr
           io = index_local_to_global(dit,lio)
           if ( lup_ncol(io) /= 0 ) then
-          ind = lup_ptr(io)
-          lupp_col => lup_col(ind+1:ind+lup_ncol(io))
+          jo = lup_ptr(io)
           do lind = l_ptr(lio) + 1 , l_ptr(lio) + l_ncol(lio)
-             jo = UCORB(l_col(lind),nr)
-             ind = SFIND(lupp_col,jo)
-             if ( ind > 0 ) DM(lind) = 0._dp
+             col = UCORB(l_col(lind),nr)
+             ind = SFIND(lup_col(jo+1:jo+lup_ncol(io)),col)
+             if ( ind > 0 ) DM (lind) = 0._dp
           end do
           end if
        end do

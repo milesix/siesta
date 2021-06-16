@@ -29,6 +29,7 @@
 #ifdef TRACING_SOLVEONLY
       use extrae_module
 #endif
+      use m_io_yaml, only: siesta_write_yaml
 
       implicit none
 
@@ -78,8 +79,6 @@ C     Begin of coordinate relaxation iteration
       istep  = inicoor
       DO WHILE ((istep.le.fincoor) .AND. (.not. relaxd))
 
-        call timer('IterGeom', 1)
-
          if ( td_elec_dyn ) then
             call siesta_tddft( istep )
          else
@@ -94,9 +93,6 @@ C     Begin of coordinate relaxation iteration
 #if defined (SIESTA__PEXSI) || defined (SIESTA__ELSI)
         call broadcast(relaxd,comm=mpi_comm_dft)
 #endif
-
-        call timer('IterGeom', 2)
-
         if (.not. relaxd) then
           istep = istep + 1
         endif
@@ -111,6 +107,8 @@ C     End of coordinate-relaxation loop
 #ifdef SIESTA__PEXSI
       if (ionode) call memory_snapshot("after siesta_analysis")
 #endif
+
+      if (ionode) call siesta_write_yaml()
 
       call siesta_end()
 #ifdef SIESTA__PEXSI

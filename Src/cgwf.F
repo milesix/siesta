@@ -167,11 +167,11 @@ C large to avoid problems. Otherwise, set a fixed lambda
 C to CG iteration cycle with iout = .false.  ................................
         if (abs(partial) .le. nbands*1.0d-10) then
           lambda = lm*0.4d0
-          if (lm .eq. 0.0d0) lambda=0.4d0
+          if (lm .eq. 0.0) lambda=0.4d0
 C         iout = .false.
           goto 1000
         endif
-        if (partial .gt. 0.0d0) then
+        if (partial .gt. 0.0e0) then
           lambda = -0.0001d0
           iout = .false.
           goto 1000
@@ -193,9 +193,9 @@ C Check if the solution of the line minimization is reasonable
 C (ie, lambda is small)
 C Otherwise, set a fixed lambda and return to CG iteration 
 C cycle with iout = .false.  ................................
-        if (abs(lambda) .ge. 10.0d0) then
+        if (abs(lambda) .ge. 10.0e0) then
           lambda = lm * 0.3d0
-          if (lm .eq. 0.0d0) lambda = 0.01d0
+          if (lm .eq. 0.0) lambda = 0.01d0
           iout = .false.
           goto 1000
         endif
@@ -215,7 +215,7 @@ C Update point to line mimimum and multiply gradient by lambda .............
         enddo
 
 C Calculate average lambda (lm) during CG minimization .....................
-        lm = real(its-1,dp) / real(its,dp) * lm + lambda / real(its,dp)
+        lm = float(its-1) / float(its) * lm + lambda / float(its)
 
 C Calculate energy and gradient at current point ...........................
         partial = 0.0d0
@@ -402,7 +402,7 @@ C Set up linear equations system to calculate polinomial coeffs.............
       b(2,5) = 0.0d0
 
       do in = 1,3
-        l = real(in,dp)*lam
+        l = float(in)*lam
         B(in+2,1) = 1.0d0
         do j = 2,5
           B(in+2,j) = l**(j-1)

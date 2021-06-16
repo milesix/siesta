@@ -35,8 +35,6 @@ module m_energies
   real(dp):: Emeta      ! Metadynamics energy contribution  calculated in meta
   real(dp):: Entropy    ! Entropy due to electron state occupations
   real(dp):: Etot       ! Total electronic energy
-  real(dp):: Ex         ! Exchange energy,  calculated in dhscf
-  real(dp):: Ec         ! Correlation energy,  calculated in dhscf
   real(dp):: Exc        ! Exchange-correlation energy,  calculated in dhscf
   real(dp):: E0         ! Non-SCF part of total energy
   real(dp):: Emm        ! Classical two-body term, calculated in  twobody
@@ -50,7 +48,6 @@ module m_energies
   real(dp):: DEdftu
 
   real(dp) :: NEGF_DE  ! NEGF total energy contribution = - e * \sum_i N_i \mu_i
-  real(dp) :: NEGF_Vha ! Potential offset for fixing the boundary conditions for NEGF
   ! Generally we should only calculate energies in the regions where we are updating elements
   ! As such we need a specific energy for the NEGF part
   ! Their meaning is directly transferable to the above listed energies (in the updating regions)
@@ -87,8 +84,6 @@ contains
     Emeta = 0._dp
     Entropy = 0._dp
     Etot = 0._dp
-    Ex = 0._dp
-    Ec = 0._dp
     Exc = 0._dp
     E0 = 0._dp
     Emm = 0._dp
@@ -103,7 +98,6 @@ contains
 
     ! NEGF part
     NEGF_DE = 0._dp
-    NEGF_Vha = 0._dp
     NEGF_Ebs = 0._dp
     NEGF_Ekin = 0._dp
     NEGF_Enl = 0._dp

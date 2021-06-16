@@ -13,3 +13,4 @@
 # Package maintenance
 /.gitignore @garalb @pouillon
 /.gitlab/ @garalb @pouillon
+/version.info @garalb

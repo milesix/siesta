@@ -14,7 +14,7 @@
 !     - WFSX file
 !     - .DIM and .PLD files      
 !     - .ion files
-!     - .VH file (Only if STM.MaxZ >= STM.RefZ)
+!     - .VH file
 !
 !     Output for STM:
 !     - A 'gridfunc' file, which for STM simulations will have information
@@ -175,18 +175,8 @@ C Calculate unit cell vectors
      .     ARMUNI )
 
 ! Call routine to calculate the value of the potential at vacuum
-! We only need the vacuum potential for the projection technique, which
-! is used in case a z-plane above the reference Z is to be calculated.
-! Therefore, if we know all z-values are below the reference, we can skip
-! this step, removing the need for the presence of the .VH file.
 
-      if (ZMAX >= ZREF) then
-            CALL VACPOT(V0)
-      else
-            ! To avoid further checks of ZMAX (e.g. in stm.f)
-            V0 = huge(1.d0)
-      end if
-
+      CALL VACPOT(V0)
 
 ! STS calculations can be done on several planes perpendicular to z
 ! at the same time. But note that the resulting data file might be large.

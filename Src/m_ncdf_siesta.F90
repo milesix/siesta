@@ -195,7 +195,7 @@ contains
       call ncdf_def_var(grp,'H',NF90_DOUBLE,(/'nnzs','spin'/), &
           compress_lvl=cdf_comp_lvl,atts=dic,chunks=chks)
     end if
-
+    
     ! Even though I think we could do without, I add the
     ! xij array to the file
     ! Note that xij can be re-created using
@@ -319,9 +319,6 @@ contains
        call ncdf_def_var(grp,'Volt',NF90_DOUBLE,(/'one'/), &
             compress_lvl=0,atts=dic)
 
-       dic = dic//('info'.kv.'Hartree correction for FFT Poisson solver')
-       call ncdf_def_var(grp,'dHartree',NF90_DOUBLE,(/'one'/), &
-           compress_lvl=0,atts=dic)
        call delete(dic)
 
        ! Add all the electrodes
@@ -574,9 +571,9 @@ contains
 
   subroutine cdf_save_state(fname,dic_save)
     !    use m_gamma, only : Gamma
-    use m_energies, only: Ef, Efs, NEGF_Vha
+    use m_energies, only: Ef, Efs
     use atomlist, only : Qtot
-    use siesta_options, only: fixspin, total_spin, isolve, SOLVE_TRANSI
+    use siesta_options, only: fixspin, total_spin
     use siesta_geom, only: na_u, ucell, xa, va
     use siesta_geom, only: nsc, isc_off
     use sparse_matrices, only: sparse_pattern, block_dist
@@ -652,14 +649,6 @@ contains
          call cdf_w_d2D(grp,'DM',DM_2D)
     if ( 'EDM' .in. dic_save ) &
          call cdf_w_d2D(grp,'EDM',EDM_2D)
-    
-    if ( isolve == SOLVE_TRANSI ) then
-       call ncdf_open_grp(ncdf,'TRANSIESTA',grp)
-
-       if ( 'NEGF_Vha' .in. dic_save ) &
-         call ncdf_put_var(grp,'dHartree',NEGF_Vha)
-
-    end if
 
     call ncdf_close(ncdf)
     
