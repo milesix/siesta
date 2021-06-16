@@ -62,6 +62,9 @@ LOCAL_OBJS = tshs2tshs.o handlers.o local_sys.o
 
 OBJS=$(DEP_OBJS) $(LOCAL_OBJS)
 
+COMP_LIBS := $(filter-out libsiestaLAPACK.a,$(COMP_LIBS))
+COMP_LIBS := $(filter-out libsiestaBLAS.a,$(COMP_LIBS))
+
 #######################
 #  TS-TBT libs:
 #

@@ -1,0 +1,16 @@
+### Files that git archive will skip: ###
+
+#    a) irrespective of where they are located
+.gitignore        export-ignore
+.gitattributes    export-ignore
+#.gitmodules       export-ignore  # Commented out until we decide how to
+                                  # manage submodules.
+
+#    b) specific paths
+/.gitlab          export-ignore
+Docs/release.sh   export-ignore
+
+###
+
+### Keyword replacements: ###
+/SIESTA_vgen.sh  export-subst

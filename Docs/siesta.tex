@@ -112,8 +112,8 @@
 
 % Local command for the software version for printing
 % \unskip helps when space/newline chars are present in the
-% version.info file.
-\providecommand\softwareversion{\input{../version.info}\unskip}
+% SIESTA.version file.
+\providecommand\softwareversion{\input{../SIESTA.version}\unskip}
 
 % Title (note that \input above will fail in the title, we however
 % don't care since it is only meaningful for final publications where
@@ -159,7 +159,7 @@
 \hrulefill
 \vspace{1cm}
 
-{\Huge \textbf{S I E S T A \, \, \softwareversion}}
+{\Huge \textbf{S I E S T A \, \, \softwareversion}\par}
 
 \vspace{1cm}
 \hrulefill
@@ -168,7 +168,7 @@
 {\Large Oct 26, 2020 }
 
 \vspace{1.5cm}
-{\Large \url{http://www.icmab.es/siesta}}
+{\Large \url{https://siesta-project.org}}
 
 \vspace{2.5cm}
 \siesta\ Steering Committee:
@@ -214,7 +214,7 @@
  
 \vspace{0.5cm}
 
-\siesta\ is Copyright \copyright\ 1996-2020 by The Siesta Group
+\siesta\ is Copyright \copyright\ 1996-2021 by The Siesta Group
 
 \end{center}
 
@@ -304,7 +304,7 @@ which still uses many of the algorithms developed by them.
   output and execution features of \siesta, but is not really a
   tutorial introduction to the program. Interested users can find
   tutorial material prepared for \siesta\ schools and workshops at
-  the project's web page} \url{http://www.uam.es/siesta}.
+  the project's web page} \url{https://siesta-project.org}
 
 
 \siesta\index{Siesta@\siesta} (Spanish Initiative for
@@ -342,7 +342,7 @@ time and memory scale linearly with the number of atoms.
 Simulations with several hundred atoms are feasible with
 modest workstations.
 \item
-It is written in Fortran 95 and memory is allocated dynamically.
+It is written in Fortran 2003 and memory is allocated dynamically.
 \item
 It may be compiled for serial or parallel execution (under MPI).
 
@@ -456,7 +456,7 @@ Extensive review of applications as of summer 2003.
 
 \item
  ``Improvements on non-equilibrium and transport Green function techniques: The next-generation TranSIESTA'',
- Nick Papior, Nicolas Lorente, Thomas Frederiksen, Alberto García and
+ Nick Papior, Nicolas Lorente, Thomas Frederiksen, Alberto Garc\'{\i}a and
  Mads Brandbyge, Computer Physics Communications, \textbf{212}, 8--24 (2017).
 
  Description of the \tsiesta\ method.
@@ -468,10 +468,17 @@ Extensive review of applications as of summer 2003.
 
  Description of the original \tsiesta\ method (prior to 4.1).
 
+ \item
+ ``Siesta: Recent developments and applications'',
+ Alberto Garc\'{\i}a, \emph{et al.}, J. Chem. Phys. \textbf{152}, 204108
+ (2020).
+
+ Extensive review of applications and developments as of 2020.
+
 \end{itemize}
 
 For more information you can visit the web page
-\url{http://www.uam.es/siesta}.
+\url{https://siesta-project.org}.
 
 \section{COMPILATION}
 \label{sec:compilation}
@@ -482,58 +489,118 @@ available in the project Wiki:
 
 \subsection{The build directory}
 
-Rather than using the top-level Src directory as building directory,
-the user has to use an ad-hoc building directory (by default the
-top-level \shell{Obj} directory, but it can be any (new) directory in
-the top level).  The building directory will hold the object files,
+\siesta\ cannot be compiled from the top-level \shell{Src}
+directory, it must be compiled from an ad-hoc build directory.
+At the end of the compilation, the build
+directory will contain the \program{siesta} binary as well as
+the object files,
 module files, and libraries resulting from the compilation of the
-sources in \shell{Src}.  The \shell{VPATH} mechanism of modern \shell{make}
-programs is used. This scheme has many advantages. Among them:
+sources in \shell{Src}.
 
-\begin{itemize}
-\item The Src directory is kept pristine.
-\item Many different object directories can be used concurrently to
-  compile the program with different compilers or optimization levels.
-\end{itemize}
+The default build directory is the top-level \shell{Obj} directory.
+Instructions on how to compile \siesta\ from \shell{Obj} are given in
+Sec.~\ref{sec:basic-compilation}.
+If you are interested in compiling \siesta\ from other directories,
+or in multiple concurrent compilations of Siesta (e.g., with
+different compilers or optimization levels), see also
+Sec.~\ref{sec:advanced-compilation} below.
 
-If you just want to compile the program, go to \shell{Obj} and issue the
-command:
+\subsubsection{Basic compilation}
+\label{sec:basic-compilation}
+
+If you just want to compile the program from the default
+build directory (\shell{Obj}), follow the following steps:
+
+\begin{enumerate}
+\item
+From within the build directory, issue the command:
 \begin{shellexample}
-  sh ../Src/obj_setup.sh
+       $ sh ../Src/obj_setup.sh
 \end{shellexample}
-to populate this directory with the minimal scaffolding of makefiles,
-and then make sure that you create or generate an appropriate \file{arch.make}
-file (see below, in Sec.~\ref{sec:arch-make}). Then, type
+in order to populate it with with the minimal scaffolding of makefiles.
+
+\item
+Ensure that an appropriate \file{arch.make} file is present in the build directory
+(see Sec.~\ref{sec:arch-make} below for instructions on how to create it).
+
+\item
+Then, again from the build directory, execute
+
 \begin{shellexample}
-  make
+       $ make
 \end{shellexample}
+\end{enumerate}
+
+
 The executable should work for any job. (This is not exactly true,
 since some of the parameters in the atomic routines are still
-hardwired (see \shell{Src/atmparams.f}), but those would seldom need to
+hardwired, see \shell{Src/atmparams.f}, but those would seldom need to
 be changed.)
 
-To compile utility programs (those living in \shell{Util}), you can just
-simply use the provided makefiles, typing ``make'' as appropriate.
+Please note that, unless you really know what you are doing, the
+\shell{Src} directory (including its sub-directories) must be preserved
+without any changes, especially without any object or module files.
+Otherwise, the \shell{VPATH} mechanism used by \shell{make} to compile \siesta\ from the build
+directory will get confused, and the compilation may fail or produce an invalid
+\program{siesta} binary.
 
-\subsubsection{Multiple-target compilation}
+To compile utility programs (those living in the top-level \shell{Util}
+directory), you can simply use the provided makefiles: go to the \shell{Util}
+sub-directory containing the relevant utility source code, and execute \shell{make}
+as appropriate.  The resulting utility executable (and utility object files)
+will be created in that very same utility sub-directory from where \shell{make} was
+invoked.
 
-The mechanism described here can be repeated in other directories at
-the same level as Obj, with different names. In this way one can
-compile as many different versions of the \siesta\ executable as
-needed (for example, with different levels of optimization, serial,
-parallel, debug, etc), by working in separate building directories.
+\subsubsection{Advanced compilation and multiple targets}
+\label{sec:advanced-compilation}
 
-Simply provide the appropriate arch.make, and issue the setup command
-above. To compile utility programs, you need to use the form:
+It is possible to build \siesta\ from any build directory of your choice (instead
+of \shell{Obj}). You will need to follow the same three steps as described above, the
+main difference being that the first command will need to use a correct path
+(absolute or relative) to the \file{obj\_setup.sh} script, i.e., from your chosen build
+directory you will need to execute
+
 \begin{shellexample}
-   make OBJDIR=ObjName
+       $ sh <path/to/Src>/obj_setup.sh
 \end{shellexample}
-where \shell{ObjName} is the name of the object directory of your
-choice. Be sure to type \shell{make clean} before attempting to
-re-compile a utility program.
 
-(The pristine Src directory should be kept ``clean'', without objects, or else
-the compilation in the build directories will get confused)
+Note also that your \file{arch.make} file needs to be in that chosen build directory
+before you can execute \shell{make}.
+
+Since compilations done in separate build directories are independent, one can
+compile as many different version of the \program{siesta} executable as needed (e.g.,
+with different compilers, levels of optimization, serial/parallel, debug, etc.\@)
+by appropriately defining different \file{arch.make} files in each build directory.
+
+If \siesta\ is not compiled from the default \shell{Obj} directory, when you compile your
+utility programs you will need to specify the correct \shell{OBJDIR} option:
+
+\begin{shellexample}
+       $ make OBJDIR=ObjName
+\end{shellexample}
+
+where \shell{ObjName} is the path to the \siesta\ build directory of your choice
+\emph{relative} to the \siesta\ top directory.
+E.g., if you already compiled \siesta\ from the build directory
+\shell{Obj/intel/parallel/2021.2}, and you want to compile \program{denchar}, you need to
+
+\begin{shellexample}
+       $ cd Util/Denchar/Src
+       $ make OBJDIR=Obj/intel/parallel/2021.2
+\end{shellexample}
+
+Note that, irrespective of the value of the \shell{OBJDIR} parameter, the resulting
+utility executable and object files will be created in the utility
+sub-directory from where \shell{make} is invoked (\shell{Util/Denchar/Src} in the example
+above), and that they will be overwritten if a different \shell{OBJDIR} is later used.
+There is currently no support for having different coexisting compiled versions
+of a given utility program. Before attempting to recompile a utility program,
+please remember to execute
+\begin{shellexample}
+       $ make clean
+\end{shellexample}
+from the corresponding utility sub-directory
+(and with the appropriate \shell{OBJDIR} option, if needed).
 
 
 \subsection{The arch.make file}
@@ -553,7 +620,7 @@ files for compilation of \siesta\ with \shell{gfortran} and
 \shell{Obj/intel.make}, respectively. Please use those as guidelines
 for creating the final \file{arch.make}.
 
-\note Intel compilers default to high optimizations which tends to
+\note Intel compilers default to high optimizations which tend to
 break \siesta. We advice to use \shell{-fp-model source} flag and not
 compile with higher optimizations than \shell{-O2}.
 
@@ -587,6 +654,32 @@ Warning: Type mismatch between actual argument at (1) and actual argument at (2)
 % see the flags understood by the script, and take a look at the
 % \shell{Src/Confs} subdirectory for some examples of their explicit
 % use. 
+
+
+\subsection{Debug options}
+\label{sec:build:debug}
+
+Being able to build \siesta\ in debug mode is crucial for finding bugs
+and debugging builds.
+
+When changing build flags in the \file{arch.make} file it is
+imperative to clean the build directory. Please do a \shell{make
+    clean} then do \shell{make}.
+
+For GFortran, use the following flags:
+\begin{shellexample}
+  FFLAGS = -Og -g -pedantic -Wall -fcheck=all -fbacktrace -Warray-bounds -Wunused -Wuninitialized
+\end{shellexample}
+
+For Intel, use the following flags:
+\begin{shellexample}
+  FFLAGS = -Og -g -check bounds -traceback -fp-model strict
+\end{shellexample}
+
+This will make \siesta\ run significantly slower. Please report any
+crashes to the developer team at
+\url{https://gitlab.com/siesta-project/siesta/-/issues}.
+
 
 
 
@@ -818,7 +911,7 @@ installation scripts finishes by telling \emph{what} to add to the
 
   Example variables
 \begin{shellexample}
-  # OpenBLAS (OpenBLAS will default to build in LAPACK 3.6)
+  # OpenBLAS (OpenBLAS will default to build in LAPACK)
   LIBS += -L/opt/openblas/lib -lopenblas
   # or for MKL
   LIBS += -L/opt/intel/.../mkl/lib/intel64 -lmkl_lapack95_lp64 ...
@@ -970,20 +1063,25 @@ libraries
   where \shell{<>} are any libraries that MUMPS depend on.
 
 
-  \item[\href{https://math.berkeley.edu/~linlin/pexsi}{PEXSI}]%
+  \item[\href{http://pexsi.org}{PEXSI}]%
   \index{PEXSI}%
   \index{External library!PEXSI}%
-  The PEXSI library may be used with \siesta\ for exa-scale
-  calculations, see Sec.~\ref{SolverPEXSI}. Currently the interface is
-  implemented (tested) as in PEXSI version 0.8.0, 0.9.0 and 0.9.2. If
-  newer versions retain the same interface they may also be used.
+  The PEXSI library may be used with this version of \siesta\ for massively-parallel
+  calculations, see Sec.~\ref{SolverPEXSI}. Note however that the
+  PEXSI interface in this version is the original one, corresponding
+  to PEXSI versions 0.8.X and 0.9.X. In particular, it has been tested
+  for 0.8.0, 0.9.0 and 0.9.2. It is possible that it might work for 
+  newer versions of the form 0.9.X, but, beginning with version 1.0,
+  the PEXSI library is no longer compatible with this interface. Newer
+  versions of \siesta\ (in the Gitlab development site) can use
+  the current PEXSI library through the ELSI library interface.
 
   To successfully compile \siesta\ with PEXSI support one require the
   PEXSI fortran interface. When installing PEXSI copy the
   \shell{f\_interface.f90} file to the include directory of
   PEXSI such that the module may be found\footnote{Optionally the file
       may be copied to the \shell{Obj} directory where the compilation
-      takes place.} when compiling \siesta.
+      takes place} when compiling \siesta.
 
   Add these flags to your \file{arch.make} file to enable PEXSI
 \begin{shellexample}
@@ -1245,7 +1343,7 @@ The standard output of the program, that you
 have already seen passing on the screen, was copied to
 file h2o.out by the tee command. Have a look at it
 and refer to the output-explanation section if necessary.
-You may also want to look at the fdf.log\index{fdf.log} file to see all
+You may also want to look at the \file{fdf.log} file to see all
 the default values that siesta has chosen for you, before
 studying the input-explanation section and start changing them.
 
@@ -1262,37 +1360,68 @@ is
 which uses a \emph{pipe} statement. 
 %
 \siesta\ 4.1 and later does not require one to pipe in the input file
-and the input file may instead be specified on the command line.
+and the input file may instead be specified on the command line:
 \begin{shellexample}
   siesta RUN.fdf > RUN.out
 \end{shellexample}
-This allows for \siesta\ to accept special flags described in what
-follows. Each flag may be quoted if it contains spaces, or one may
-substitute spaces by \fdf*{:}.
+\siesta\ 4.1 and later also accepts special flags and options
+described in what follows:
+\begin{itemize}
+\item
+All flags must start by one or more dashes (\shell{-}).
+The number of leading dashes is irrelevant,
+as long as there is at least one of them.
+\item
+Some flags (e.g., \shell[-L])
+must be followed by a properly formed option string.
+Other flags (e.g., \shell[-elec])
+are logical toggles and they are not followed by option strings.
+\item
+Flags and option strings must all be separated by spaces
+(and only spaces are valid separators for this).
+\item
+Option strings may be quoted.
+Option strings that contain spaces need to either be quoted
+or have the spaces replaced by a colon (\shell{:}) or by
+an equal sign (\shell{=}).
+\item
+If the input file is not piped in, it must be given as the last argument:
+\begin{shellexample}
+  siesta -L Hello -V 0.25:eV RUN.fdf > RUN.out
+\end{shellexample}
+\end{itemize}
+
+The list of available flags and options is:
 \begin{fdfoptions}
 
-  \option[-h]%
+  \option[-help|-h]%
   \fdfindex*{Command line options:-h}%
-  print a help instruction and quit
-
-  \option[-L]%
-  \fdfindex*{Command line options:-L}%
-  Override, temporarily, the \fdf{SystemLabel} flag. 
-
-  \shell{siesta -L Hello}.
+  Print a help instruction and quit.
 
   \option[-out|-o]%
   \fdfindex*{Command line options:-out}%
   \fdfindex*{Command line options:-o}%
   Specify the output file (instead of printing to the terminal).
+  Example:
 
-  \shell{siesta -out RUN.out}.
+  \begin{shellexample}
+  siesta --out RUN.out
+  \end{shellexample}
+
+  \option[-L]%
+  \fdfindex*{Command line options:-L}%
+  Override, temporarily, the \fdf{SystemLabel} flag.
+  Example:
+
+  \begin{shellexample}
+  siesta -L Hello
+  \end{shellexample}
 
   \option[-electrode|-elec]%
   \fdfindex*{Command line options:-electrode}%
   \fdfindex*{Command line options:-elec}%
   \fdfoverwrite{TS!HS.Save,TS!DE.Save}
-  denote this as an electrode calculation which forces the
+  Denote this as an electrode calculation which forces the
   \sysfile{TSHS} and \sysfile{TSDE} files to be saved.
 
   \note This is equivalent to specifying \fdf{TS!HS.Save:true} and
@@ -1301,13 +1430,26 @@ substitute spaces by \fdf*{:}.
   \option[-V]%
   \fdfindex*{Command line options:-V}%
   \fdfoverwrite{TS!Voltage}
-  specify the bias for the current \tsiesta\ run.
+  Specify the bias for the current \tsiesta\ run.
+  Example: any of the following two commands set the applied bias to
+  $0.25\,\mathrm{eV}$:
 
-  \shell{siesta -V 0.25:eV} or \shell{siesta -V "0.25 eV"}
-  which sets the applied bias to $0.25\,\mathrm{eV}$.
+  \begin{shellexample}
+  siesta -V 0.25:eV
+  siesta -V "0.25 eV"
+  \end{shellexample}
 
   \note This is equivalent to specifying \fdf{TS!Voltage} in the input
   file.
+
+  \option[-fdf]%
+  \fdfindex*{Command line options:-fdf}%
+  Specify any FDF option string.  For example, another way to specify the bias
+  of the example of the previous option would be:
+
+  \begin{shellexample}
+  siesta --fdf TS.Voltage=0.25:eV
+  \end{shellexample}
 
 \end{fdfoptions}
 
@@ -1362,8 +1504,8 @@ is used.
 
 \item[$\bullet$] If a label is misspelled it will not be recognized (there is no
   internal list of ``accepted'' tags in the program). You can check 
-  the actual value used by siesta by looking for the label in the
-  output \textit{fdf.log}\index{fdf.log} file.
+  the actual value used by \siesta\ by looking for the label in the
+  output \file{fdf.log} file.
 
 \end{itemize}
 
@@ -1391,12 +1533,16 @@ These are some examples:
            %include mydefaults.fdf
 \end{verbatim}
 
-The file \textit{fdf.log} contains all the parameters used by \siesta\
+The file \file{fdf.log} contains all the parameters used by \siesta\
 in a given run, both those specified in the input fdf file and
 those taken by default. They are written in fdf format, so that
 you may reuse them as input directly. Input data blocks are
-copied to the fdf.log file only if you specify the \textit{dump} option
+copied to the \file{fdf.log} file only if you specify the \textit{dump} option
 for them.
+In practice, the name of a FDF log file contains a sequence of five
+digits (e.g., \shell{fdf-12345.log}) chosen on-the-fly
+in order to have a reduced chance of overwriting other FDF log files
+that may be present in the same directory.
 
 \section{PROGRAM OUTPUT}
 
@@ -1416,7 +1562,7 @@ subroutine. It prints some of the information it digests. It is
 important to note that it is only part of it, some other information
 being accessed by the different subroutines when they need it during
 the run (in the spirit of \fdflib\ input).  A complete list of the input
-used by the code can be found at the end in the file \shell{fdf.log},
+used by the code can be found at the end in the file \file{fdf.log},
 including defaults used by the code in the run.
 
 After that, the program reads the pseudopotentials, factorizes them
@@ -1504,7 +1650,7 @@ values. For historical reasons the names of the tags do not have an
 uniform structure, and can be confusing at times.
 
 Almost all of the tags are optional: \siesta\ will assign a
-default if a given tag is not found when needed (see \shell{fdf.log}).
+default if a given tag is not found when needed (see \file{fdf.log}).
 
 
 \subsection{General system descriptors}
@@ -3718,7 +3864,7 @@ structural information (maybe too many).
     There is an alternative for animation by generating a \sysfile*{arc} file for
     \method{CERIUS}. It is through the
     \method{Sies2arc}\index{Sies2arc@\program{Sies2arc}} postprocessing
-    utility in the Util/ directory, and it 
+    utility in the \shell{Util/} directory, and it
     requires the coordinates to be accumulated in the output file, i.e.,
     \fdf{WriteCoorStep} \fdftrue.
 
@@ -4342,27 +4488,31 @@ information is read from the fdf variables above.
 \subsection{Spin-Orbit coupling}
 \label{sec:spin-orbit}
 
-\siesta\ includes the posibility to perform fully relativistic
-calculations by means of the inclusion in the total Hamiltonian not
+\siesta\ includes the possibility to perform fully relativistic
+calculations by including in the total Hamiltonian not
 only the Darwin and velocity correction terms~(Scalar--Relativistic
 calculations), but also the spin-orbit~(SO) contribution. There are
-two approaches regarding the SO formalism: on-site and off-site.
+two approaches regarding the SO formalism: the ``on-site''
+approximation and the full treatment (sometimes called ``off-site'').
 Within the on-site approximation only the intra-atomic SO
-contribution is taken into account. In the off-site scheme additional
+contribution is taken into account. In the full scheme, additional
 neighboring interactions are also included in the SO term. By default,
-the off-site SO formalism is switched on, being necessary to change
+the full (``off-site'')  SO formalism is switched on, being necessary to change
 the \fdf{Spin} flag in the input file if the on-site approximation
 wants to be used. See \fdf{Spin} on how to handle the spin-orbit
 coupling.
 
 The on-site spin-orbit scheme in this version of \siesta\ has been implemented by
-Dr. Ram\'on Cuadrado based on the original on-site SO formalism and
-implementation developed by Prof. Jaime Ferrer and his collaborators \textit{et al}~(L
+Dr. Ram\'on Cuadrado based on the original formalism and implementation
+developed by Prof. Jaime Ferrer and his collaborators (L
 Fern\'andez--Seivane, M Oliveira, S Sanvito, and J Ferrer, Journal of
 Physics: Condensed Matter, \textbf{18}, 7999 (2006); L Fern\'andez--Seivane 
 and Jaime Ferrer, Phys. Rev. Lett. \textbf{99}, 183401 (2007)).
+183401). It should be noted that this approximation, while based on
+the physically reasonable idea of the short-range of the SO
+interaction, might not be completely appropriate in all cases.
 
-The off-site scheme has been implemented by
+The ``off-site'' scheme has been implemented by
 Dr. Ram\'on Cuadrado and Dr. Jorge I. Cerd\'a based on their initial 
 work~(R. Cuadrado and J. I. Cerd\'a ``Fully relativistic pseudopotential 
 formalism under an atomic orbital basis: spin-orbit splittings and 
@@ -4388,54 +4538,39 @@ dimensions are twice as large as for the collinear (unmixed) spin
 problem. Due to this, we advise to take special
 attention to the memory needed to perform a spin-orbit calculation.
 
+Apart from the study of effects of the spin--orbit interaction in the
+band structure, a feature enabled by a SO formalism is the computation
+of the Magnetic Anisotropy Energy~(MAE): it can be obtained as the
+difference in the total selfconsistent energy in two different spin
+orientations, usually along the easy axis and the hard axis. In
+\siesta\ it is possible to perform calculations for different
+magnetization orientations using the block \fdf{DM.InitSpin} in the
+fdf file. In doing so one will be able to include the initial
+orientation angles of the magnetization for each atom, as well as an
+initial value of their net magnetic moments. See
+also the recent review~\cite{doi:10.1063/5.0005077}.
 
-Unless explicitly advised the following type of calculation can be carried out 
-regardless of whether on-site or off-site approximation is employed: 
-\begin{itemize}
-  % 
-  \item Selfconsistent calculations for gamma point as well as for
-  bulks.
-  %
-  \item Structure optimizations 
-  %
-  %%% *** Incompatible... \item LDA+U calculations~(See Sect.\ref{sec:lda+u} for further info).
-  % 
-  \item Magnetic Anisotropy Energy~(MAE) can be easily
-    calculated. From first principles it is obtained after subtracting
-    the total selfconsistent energy calculated for two different
-    magnetic orientations. In \siesta\ it is possible to perform
-    calculations with different initial magnetic orderings
-    by means of the use of the block \fdf{DM.InitSpin} in the fdf
-    file. In doing so one will be able to include the initial
-    orientation angles of the magnetization for each atom, as well as
-    an initial value of its net magnetic moments.
-  % 
-  \item By means of Mulliken analysis, after the selfconsistent
-  procedure, local spin and orbital moments can be calculated by means
-  of the flags \fdf{WriteMullikenPop} and \fdf{WriteOrbMom}.
-  % 
-\end{itemize}
+%%% *** Incompatible... \item LDA+U calculations~(See Sect.\ref{sec:lda+u} for further info).
 
-Note: Due to the small SO contribution to the total energy, the level
-of precision required to perform a proper fully relativistic
-calculation during the selfconsistent process is quite demanding. The
-following values must be carefully converged and checked for each
-specific system to assure that the results are accurate enough:
-\fdf{SCF.H!Tolerance} during the selfconsistency (typically between
-$10^{-3}\,\mathrm{eV}$ -- $10^{-4}\,\mathrm{eV}$),
-\fdf{ElectronicTemperature}, \textbf{k}--point sampling and high
-values of \fdf{MeshCutoff}~(specifically for extended solids). In
-general, one can say that a good calculation will have high number of
-\textbf{k}--points, low \fdf{ElectronicTemperature}, extremely small
-\fdf{SCF.H!Tolerance} and high values of \fdf{MeshCutoff}.  We
-encourage the user to test carefully these options for each system. An
-additional point to take into account is the mixing scheme
-employed. You are encouraged to use \fdf{SCF.Mix:Hamiltonian}
-(currently this is the default) instead of density matrix mixing,
-since it speeds up the convergence.  The pseudopotentials have to be
-properly generated and tested for each specific system and they have
-to be in their fully relativistic form, together with the non-linear
-core corrections. Finally it is worth to mention that the
+Note: Due to the small contribution of the spin--orbit interaction to
+the total energy, the level of precision required is quite high. The
+following parameters should be carefully checked for each
+specific system to assure that the results are converged and accurate enough:
+\fdf{SCF.H!Tolerance} during the selfconsistency~(typically
+<10$^{-4}$eV), \fdf{ElectronicTemperature}, \textbf{k}-point sampling,
+and \fdf{Mesh!Cutoff}~(specifically for extended
+solids). In general, one can say that a good calculation will have
+a high number of k--points, low \fdf{ElectronicTemperature}, very
+small \fdf{SCF.H!Tolerance} and high values of \fdf{Mesh!Cutoff}.  We
+encourage the user to test carefully these options for each system.
+
+An additional point to take into account when the spin--orbit
+contribution is included is the mixing scheme to use. You are
+encouraged to use the option to mix the Hamiltonian (\fdf{SCF.Mix} \fdf*{hamiltonian}) instead of the
+density matrix to speed up convergence. In addition, the pseudopotentials
+have to be well tested for each specific system. They 
+have to be generated in their fully relativistic form, and should use
+non-linear core corrections. Finally it is worth to mention that the
 selfconsistent convergence for some non-highly symmetric
 magnetizations directions with respect to the physical symmetry axis
 could still be difficult.
@@ -4536,7 +4671,7 @@ The current version introduces several changes:
   value of the changes in the entries of H, but its actual meaning
   depends on whether DM or H mixing is in effect: if mixing the DM,
   dHmax refers to the change in H(in) with respect to the previous
-  step; if mixing H, dHmax refers to H(out)-H(in) in the previous(?)
+  step; if mixing H, dHmax refers to H(out)-H(in) in the current
   step.
 
   \item When achieving convergence, the loop might be exited without a
@@ -6478,7 +6613,7 @@ the issue (see Sec.~\ref{sec:filtering}).
   components to be introduced. They can be obtained by moving one
   isolated atom through the cell to be used in the calculation (for a
   give cell size, shape and mesh), once for each species.  The
-  Util/Scripting/eggbox\_checker.py script can be used as a starting
+  \program{Util/Scripting/eggbox\_checker.py} script can be used as a starting
   point for this.
 
 \end{fdfentry}
@@ -6897,10 +7032,6 @@ system sizes) would not benefit from the O(N) or PEXSI solvers.
   support in the code is not fool-proof, so this flag should only be
   enabled if GPU support is indeed available.
 
-  At present, ELPA offers GPU support in the 'elpa-1' solver in
-  released versions, whereas GPU support for the 'elpa-2' solver has
-  not been released officially.
-
 \end{fdflogicalF}
 
 \begin{fdflogicalF}{Diag!ParallelOverK}
@@ -7047,7 +7178,7 @@ if the \fdf{COOP.Write} option is in effect.
   $\vec k$ points, in the main output file.  If \fdffalse, it
   writes them in the file \sysfile{EIG}, which can be used
   by the \program{Eig2DOS}\index{Eig2DOS@\textsc{Eig2DOS}}
-  postprocessing utility (in the Util/Eig2DOS directory) for obtaining
+  postprocessing utility (in the \shell{Util/Eig2DOS} directory) for obtaining
   the density of states.\index{density of states}
 
   \note this option only works for \fdf{SolutionMethod} which
@@ -7749,17 +7880,22 @@ large systems has a much lower computational complexity than that
 associated with the matrix diagonalization procedure. It is also
 highly scalable.
 
-The PEXSI technique can be used to evaluate the electron density, free
+The PEXSI technique can be used in this version of \siesta\ to evaluate the electron density, free
 energy, atomic forces, density of states and local density of states
 without computing any eigenvalue or eigenvector of the Kohn-Sham
 Hamiltonian. It can achieve accuracy fully comparable to that obtained
 from a matrix diagonalization procedure for general systems, including
 metallic systems at low temperature.  
 
-The current implementation of the PEXSI solver in \siesta\ makes
-use of the full fine-grained-level interface in the PEXSI library
-(\url{http://pexsi.org}), and can deal with spin-polarization, but it
-is still restricted to $\Gamma$-point calculations. 
+The current implementation of the PEXSI solver in \siesta\ makes use
+of a full fine-grained-level interface to earlier versions (0.8.X and
+0.9.X) of the PEXSI library (\url{http://pexsi.org}), and can deal
+with spin-polarization, but it is still restricted to $\Gamma$-point
+calculations.  Newer versions of \siesta\ (in the Gitlab development
+site) can use the current PEXSI library through the ELSI library
+interface, which offers some more options, although not currently the
+density-of-states calculation.
+
 
 The following is a brief description of the input-file parameters
 relevant to the workings of the PEXSI solver. For more background,
@@ -8374,7 +8510,7 @@ kAtEndOfLastLine, kPointLabel \\
 
 \noindent
 The \program{gnubands}\index{gnubands@\texttt{gnubands}} postprocessing
-utility program (found in the Util/Bands directory) reads the
+utility program (found in the \shell{Util/Bands} directory) reads the
 \sysfile{bands} for plotting.  See the \fdf{BandLines} data
 descriptor above for more information.
 
@@ -8503,7 +8639,7 @@ convert to the old format.
 \noindent
 The \program{readwf}\index{readwf} and
 \program{readwfsx}\index{readwfsx} postprocessing utilities programs
-(found in the Util/WFS directory) read the \sysfile{WFS} or
+(found in the \shell{Util/WFS} directory) read the \sysfile{WFS} or
 \sysfile{WFSX} files, respectively, and generate a readable file.
 
 
@@ -9195,7 +9331,7 @@ References:
 {Maximally Localized Wannier Functions. \\
     Interface with the \textsc{wannier90} code}
 
-\program{wannier90} (http://www.wannier.org) is a code to generate
+\program{wannier90} (\url{http://www.wannier.org}) is a code to generate
 maximally localized wannier functions according to the original
 Marzari and Vanderbilt recipe.
 
@@ -9209,7 +9345,7 @@ A complete list of examples and tests (including molecules, metals,
 semiconductors, insulators, magnetic systems, plotting of Fermi surfaces
 or interpolation of bands), can be downloaded from
 
- http://personales.unican.es/junqueraj/Wannier-examples.tar.gz
+ \url{http://personales.unican.es/junqueraj/Wannier-examples.tar.gz}
 
 \textbf{NOTE}: The Bloch functions produced by a first-principles code
       have arbitrary phases that depend on the number of processors
@@ -9399,8 +9535,8 @@ or interpolation of bands), can be downloaded from
   makes the system neutral. This background charge is constant at
   points of the mesh near the atoms, and zero at points far from the
   atoms. This simulates situations like doped slabs, where the extra
-  electrons (holes) are compensated by oposite charges at the material
-  (the ionized dopant impurities), but not at the vacuum.  This serves
+  electrons (holes) are compensated by opposite charges at the material
+  (the ionized dopant impurities), but not at the vacuum. This serves
   to simulate properly doped systems in which there are large portions
   of vacuum, such as doped slabs.
 
@@ -9487,8 +9623,8 @@ or interpolation of bands), can be downloaded from
   uncorrected calculation (i.e., with an exagerated dipole), the first
   iteration might use a compensating field that is too big, with the
   risk of taking the system out of the convergence basin. In that
-  case, it is advisable to use the
-  \fdf{SCF.Mix!First}\index{Slab dipole correction} option to request a mix of the input and
+  case, it is advisable to use the \fdf{SCF.Mix!First}\index{Slab
+      dipole correction} option to request a mix of the input and
   output density matrices after that first iteration.
 
   \note \fdf*{charge} and \fdf*{vacuum} will for many systems yield
@@ -9901,6 +10037,26 @@ an alternative way to plot the charge density (and wavefunctions).
   \file{TotalCharge.grid.nc} is produced. 
 
 \end{fdflogicalF}
+
+\begin{fdfentry}{SaveGridFunc.Format}[string]<binary>
+  \index{output!charge density}
+
+  Format of the (requested) output files \sysfile{RHO}, 
+\sysfile{DRHO}, \sysfile{RHOXC}, 
+\sysfile{VH}, \sysfile{VNA}, \sysfile{VT}, \sysfile{IOCH}, and
+\sysfile{TOCH}. 
+  The options are
+\begin{itemize}
+\item
+ascii : ASCII text format
+\item
+binary : unformatted (machine dependent)
+\end{itemize}
+
+  \note ASCII files require much more space than binary and NetCDF files. 
+Consider using the tools in \shell{Util/Grid} to translate between formats.
+  
+\end{fdfentry}
 
 \begin{fdflogicalF}{SaveBaderCharge}
   \index{output!Bader charge}
@@ -10493,7 +10649,7 @@ implemented, selected by
     option is specified without a driver program sending data, siesta
     may hang without any notice.
     
-    See directory Util/Scripting \index{Scripting} for other driving
+    See directory \shell{Util/Scripting} \index{Scripting} for other driving
     options.
 
     \option[Lua]%
@@ -10560,7 +10716,7 @@ implemented, selected by
   Appart from being able to act as a force subroutine for a driver
   program that uses module fsiesta, \siesta\ is also prepared to
   communicate with the i-PI code (see
-  \texttt{http://epfl-cosmo.github.io/gle4md/index.html?page=ipi}).
+  \url{https://github.com/i-pi/i-pi}).
   To do this, \siesta\ must be started after i-PI (it acts as a client
   of i-PI, communicating with it through Inet or Unix sockets), and
   the following lines must be present in the .fdf data file:
@@ -11245,7 +11401,7 @@ to re-use dynamical information from old runs.
 This restart fix is not satisfactory from a fundamental point of view,
 so the MD subsystem in \siesta\ will have to be redesigned
 eventually. In the meantime, users are reminded that the scripting
-hooks being steadily introduced (see Util/Scripting) might be used to
+hooks being steadily introduced (see \shell{Util/Scripting}) might be used to
 create custom-made MD scripts.
 
 
@@ -13671,6 +13827,10 @@ electrodes in a generic input format.
     If \fdf{TS!Elec.<>!Bulk:true} this defaults to \fdf*{cross-terms},
     but may be changed.
 
+    \note if this is \fdf*{none} the forces on the atoms coupled to
+    the electrode regions are \emph{not} to be trusted. The value
+    \fdf*{none} should be avoided, if possible.
+
     \option[DM-init]%
     \fdfindex*{TS!Elec.<>!DM-init}%
     \fdfindex*{TS!Elec.<>!DM-init:diagon}%
@@ -14368,7 +14528,7 @@ of the most commonly encountered things.
 
 In the \texttt{Util/Scripting} directory we provide an experimental
 python scripting framework built on top of the ``Atomic Simulation
-Environment'' (see \texttt{https://wiki.fysik.dtu.dk/ase2}) by the Campos
+Environment'' (see \url{https://wiki.fysik.dtu.dk/ase}) by the CAMD
 group at DTU, Denmark.
 
 (NOTE: ``ASE version 2'', not the new version 3, is needed)
@@ -14425,10 +14585,11 @@ any problem, or would like to offer a suggestion for improvement,
 please follow the instructions in the file
 \texttt{Docs/REPORTING\_BUGS}. 
 
-Since \siesta\ has moved to GitLab you are encouraged to follow the
-instructions presented at:
-\url{https://gitlab.com/siesta-project/siesta/-/issues}.
-
+Since \siesta\ has moved to
+\url{https://gitlab.com/siesta-project/siesta} you are encouraged to
+follow the instructions by pressing ``New Issue'' and selecting
+``Bug'' in the Description drop-down. Also please follow the debug
+build options, see Sec.~\ref{sec:build:debug}
 
 
 \section{ACKNOWLEDGMENTS}
@@ -14602,11 +14763,11 @@ graphically rich, fashion. This section will explain how to do this.
 
 \subsection{Controlling XML output}
 
-\begin{fdflogicalT}{XML!Write}
+\begin{fdflogicalF}{XML!Write}
 
   Determine if the main XML file should be created for this run.
   
-\end{fdflogicalT}
+\end{fdflogicalF}
 
 \subsection{Converting XML to XHTML}
 
