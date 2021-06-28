@@ -111,7 +111,7 @@ C
                there_are_so_potentials = .true.
                do iup = 1, p%npotu
                   li = p%lup(iup)
-                  vso(1:nr(is),li,is) = p%vup(li,:)
+                  vso(1:nr(is),li,is) = p%vup(:,li)
                enddo
             else
                ! No spin-orbit components for this species

@@ -200,7 +200,7 @@
 
  9040    format(i4,7es20.9)
          do j = 1, p%nrval
-            write(io_ps,9040) j, p%r(j), (p%vdown(i,j),i=1,p%npotd),
+            write(io_ps,9040) j, p%r(j), (p%vdown(j,i),i=1,p%npotd),
      $                        p%chval(j), p%chcore(j)
          enddo
          close(io_ps)
