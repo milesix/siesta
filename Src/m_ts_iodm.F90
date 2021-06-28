@@ -18,7 +18,7 @@ module m_ts_iodm
   use class_dSpData2D
 
   use m_os, only : file_exist
-  use m_io_s
+  use io_sparse_m
 
   implicit none
   
@@ -104,8 +104,9 @@ contains
     nsc(3) = five(5)
 
     allocate(gncol(no_u))
+    ! signal that we should not read it in
     gncol(1) = 1
-    
+
     ! Read in the sparsity pattern (distributed)
     if ( lBcast ) then
        call io_read_Sp(iu, no_u, sp, trim(fn), gncol=gncol, Bcast=Bcast)
@@ -115,16 +116,16 @@ contains
 
     ! Read DM
     if ( lBcast ) then
-       call io_read_d2D(iu,sp,DM ,nspin, trim(fn), gncol=gncol, Bcast=Bcast)
+       call io_read_d2D(iu, sp, DM, nspin, trim(fn), gncol=gncol, Bcast=Bcast)
     else
-       call io_read_d2D(iu,sp,DM ,nspin, trim(fn), dit=dit, gncol=gncol)
+       call io_read_d2D(iu, sp, DM, nspin, trim(fn), dit=dit, gncol=gncol)
     end if
 
     ! Read EDM
     if ( lBcast ) then
-       call io_read_d2D(iu,sp,EDM,nspin, trim(fn), gncol=gncol, Bcast=Bcast)
+       call io_read_d2D(iu, sp, EDM, nspin, trim(fn), gncol=gncol, Bcast=Bcast)
     else
-       call io_read_d2D(iu,sp,EDM,nspin, trim(fn), dit=dit, gncol=gncol)
+       call io_read_d2D(iu, sp, EDM, nspin, trim(fn), dit=dit, gncol=gncol)
     end if
 
     ! Clean-up

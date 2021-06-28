@@ -17,7 +17,7 @@ module m_iodm
   use class_dSpData2D
 
   use m_os, only: file_exist
-  use m_io_s
+  use io_sparse_m
 
   implicit none
   
@@ -106,7 +106,6 @@ contains
     nsc(3) = five(5)
 
     allocate(gncol(no_u))
-    gncol(1) = 1
     
     ! Read in the sparsity pattern (distributed)
     if ( lBcast ) then
@@ -125,8 +124,7 @@ contains
     ! Clean-up (sp is not fully deleted, it just only resides in DM)
     call delete(sp)
 
-    ! All have this allocated (Node == 0 have just a larger
-    ! one...)
+    ! All have this allocated (Node == 0 have just a larger one...)
     deallocate(gncol)
 
     ! Close
@@ -177,6 +175,7 @@ contains
     end if
 
     allocate(gncol(no_u))
+    ! signal we need to globalize and distribute it
     gncol(1) = -1
 
     ! Write sparsity pattern...
@@ -189,9 +188,7 @@ contains
 
     ! Close
     if ( Node == 0 ) then
-       
        call io_close(iu)
-       
     end if
     
   end subroutine write_dm

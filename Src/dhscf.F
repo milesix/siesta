@@ -88,7 +88,7 @@
 #ifdef NCDF_4
       use files,         only  : slabel
       use m_ncdf_siesta, only : cdf_init_grid
-      use m_ncdf_io, only : cdf_init_mesh
+      use ncdf_io_m, only : cdf_init_mesh
 #endif
       use m_efield,       only : initialize_efield, acting_efield
       use m_efield,       only : user_specified_field

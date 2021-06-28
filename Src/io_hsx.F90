@@ -39,7 +39,7 @@ contains
 ! real*8  xij(3,maxnh)        : Vectors between orbital centers (sparse)
 
     use precision, only: dp
-    use m_io_s, only: io_write_Sp, io_write_r2D, io_write_r1D
+    use io_sparse_m, only: io_write_Sp, io_write_r2D, io_write_r1D
     use parallel, only : Node, Nodes
     use atm_types, only : nspecies
     use atomlist, only : iphorb, iaorb
