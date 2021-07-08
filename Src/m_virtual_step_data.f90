@@ -23,10 +23,20 @@ module m_virtual_step_data
   real(dp), pointer, save :: Dfull(:,:,:) => null()
   !! Full density matrix where we need it full (those cases
   !! where we cannot account for sparsity in strides over orbitals).
-  !! Processed along `Dnew` in `diagg`.
-  !!FIXME: optimize `Dfull` and `Enew` in `diagg`.
+  !! Processed in the following modules/subroutines:
+  !! - `diagg()`
+  !! - `siesta_forces()`
   real(dp), pointer, save :: Dderiv(:,:,:) => null()
-  !! Time derivative of the latter.
+  !! Time derivative of the `Dfull`.
+  !! Serves as accumulator, storing full DM value in each VMD substep
+  !! (NOTE: now, in every scf cycle. That should be optimized) in `diagg()`.
+  !! Then in the upper `siesta_forces`, when `SCFconverged`:
+  !! - on "Base" step it is copied to Dfull;
+  !! - on "Virtual" it is turned into its derivative.
+  !!
+  !! Processed in the following modules/subroutines:
+  !! - `diagg()`
+  !! - `siesta_forces()`
 
   ! Common auxilliary state data regarding mesh, gvectors etc:
   real(dp), dimension(3,3), save :: cell_vmd !! Unit cell vectors
