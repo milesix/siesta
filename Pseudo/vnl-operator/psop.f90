@@ -451,7 +451,7 @@ program psop
            write(6,'(a)') &
              'atom: Pseudopotential should be ordered by increasing l'
          endif
-         vps(1:nrval,l) = psr%vdown(ndown,1:nrval)
+         vps(1:nrval,l) = psr%vdown(1:nrval,ndown)
 !       vps contains r*V...
 !       Here we compute the pseudopotential part dividing by r.
          do ir = 2, nrval
@@ -465,8 +465,8 @@ program psop
       vps_u = 0.0_dp
       do nup=1,psr%npotu
          l = psr%lup(nup)
-         psr%vup(nup,1:nrval) = psr%vup(nup,1:nrval)
-         vps_u(1:nrval,l) = psr%vup(nup,1:nrval)
+         psr%vup(1:nrval,nup) = psr%vup(1:nrval,nup)
+         vps_u(1:nrval,l) = psr%vup(1:nrval,nup)
          do ir=2,nrval
             vps_u(ir,l)=vps_u(ir,l)/rofi(ir)
          enddo
