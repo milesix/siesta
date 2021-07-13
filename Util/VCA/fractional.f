@@ -100,17 +100,17 @@
       allocate(p%chval(size(p1%r)))
       p%chcore = xfraction * p1%chcore
       p%chval = xfraction * p1%chval
-      allocate(p%vdown(p%npotd,size(p1%r)))
+      allocate(p%vdown(size(p1%r),p%npotd))
       allocate(p%ldown(p%npotd))
       do i = 1, p%npotd
-         p%vdown(i,:) = xfraction*p1%vdown(i,:)
+         p%vdown(:,i) = xfraction*p1%vdown(:,i)
          p%ldown(i) = p1%ldown(i)
       enddo
       if (p%npotu /= 0) then
-         allocate(p%vup(p%npotu,size(p1%r)))
+         allocate(p%vup(size(p1%r),p%npotu))
          allocate(p%lup(p%npotu))
          do i = 1, p%npotu
-            p%vup(i,:) = xfraction*p1%vup(i,:)
+            p%vup(:,i) = xfraction*p1%vup(:,i)
             p%lup(i) = p1%lup(i)
          enddo
       endif

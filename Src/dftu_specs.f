@@ -944,7 +944,7 @@
      . 'dftu_proj_gen: Pseudopot. should be ordered by increasing l'      
         endif
 
-        vpseudo(1:nrval,lpseudo) = vps%vdown(ndown,1:nrval)
+        vpseudo(1:nrval,lpseudo) = vps%vdown(1:nrval,ndown)
 
         do ir = 2, nrval
           vpseudo(ir,lpseudo) = vpseudo(ir,lpseudo)/rofi(ir)

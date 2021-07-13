@@ -38,21 +38,21 @@
         p%r(1) = 0.d0
 
         if (p%npotd.gt.0) then
-           allocate(p%vdown(1:p%npotd,1:p%nrval))
+           allocate(p%vdown(1:p%nrval,1:p%npotd))
            allocate(p%ldown(1:p%npotd))
         endif
         do i=1,p%npotd
-           read(io_ps) p%ldown(i), (p%vdown(i,j), j=2,p%nrval)
-           p%vdown(i,1) = p%vdown(i,2)
+           read(io_ps) p%ldown(i), (p%vdown(j,i), j=2,p%nrval)
+           p%vdown(1,i) = p%vdown(2,i)
         enddo
 
         if (p%npotu.gt.0) then
-           allocate(p%vup(1:p%npotu,1:p%nrval))
+           allocate(p%vup(1:p%nrval,1:p%npotu))
            allocate(p%lup(1:p%npotu))
         endif
         do i=1,p%npotu
-           read(io_ps) p%lup(i), (p%vup(i,j), j=2,p%nrval)
-           p%vup(i,1) = p%vup(i,2)
+           read(io_ps) p%lup(i), (p%vup(j,i), j=2,p%nrval)
+           p%vup(1,i) = p%vup(2,i)
         enddo
 
         allocate(p%chcore(1:p%nrval))
@@ -135,25 +135,25 @@
         p%r(1) = 0.d0
 
         if (p%npotd.gt.0) then
-           allocate(p%vdown(1:p%npotd,1:p%nrval))
+           allocate(p%vdown(1:p%nrval,1:p%npotd))
            allocate(p%ldown(1:p%npotd))
         endif
         do i=1,p%npotd
            read(io_ps,8040) dummy 
            read(io_ps,8000) p%ldown(i)
-           read(io_ps,8030) (p%vdown(i,j), j=2,p%nrval)
-           p%vdown(i,1) = p%vdown(i,2)
+           read(io_ps,8030) (p%vdown(j,i), j=2,p%nrval)
+           p%vdown(1,i) = p%vdown(2,i)
         enddo
 
         if (p%npotu.gt.0) then
-           allocate(p%vup(1:p%npotu,1:p%nrval))
+           allocate(p%vup(1:p%nrval,1:p%npotu))
            allocate(p%lup(1:p%npotu))
         endif
         do i=1,p%npotu
            read(io_ps,8040) dummy 
            read(io_ps,8000) p%lup(i)
-           read(io_ps,8030) (p%vup(i,j), j=2,p%nrval)
-           p%vup(i,1) = p%vup(i,2)
+           read(io_ps,8030) (p%vup(j,i), j=2,p%nrval)
+           p%vup(1,i) = p%vup(2,i)
         enddo
 
         allocate(p%chcore(1:p%nrval))
@@ -327,12 +327,12 @@
 !
 !       Careful with 2D arrays...
 !
-        allocate(tmp2(p%npotd,new_nrval))
+        allocate(tmp2(new_nrval,p%npotd))
         do i=1,p%npotd
-           func => p%vdown(i,:)
+           func => p%vdown(:,i)
            call generate_spline(p%r,func,p%nrval,0.0_dp,0.0_dp,y2)
            do j = 1, new_nrval
-            call evaluate_spline(p%r,func,y2,p%nrval,new_r(j),tmp2(i,j))
+            call evaluate_spline(p%r,func,y2,p%nrval,new_r(j),tmp2(j,i))
            enddo
            nullify(func)
         enddo
@@ -340,17 +340,17 @@
         p%vdown => tmp2          ! Point to new memory area
         nullify(tmp2)            ! To re-use tmp
 
-        if (p%npotu > 0) allocate(tmp2(p%npotu,new_nrval))
+        if (p%npotu > 0) allocate(tmp2(new_nrval,p%npotu))
         do i=1,p%npotu         ! Only executed if npotu > 0 ...
-           func => p%vup(i,:)
+           func => p%vup(:,i)
            call generate_spline(p%r,func,p%nrval,0.0_dp,0.0_dp,y2)
            do j = 1, new_nrval
-            call evaluate_spline(p%r,func,y2,p%nrval,new_r(j),tmp2(i,j))
+            call evaluate_spline(p%r,func,y2,p%nrval,new_r(j),tmp2(j,i))
            enddo
            nullify(func)
         enddo
         if (p%npotu > 0) then
-           deallocate(p%vup  )  ! Old data
+           deallocate(p%vup)    ! Old data
            p%vup => tmp2        ! Point to new memory area
            nullify(tmp2)        ! To re-use tmp
         endif
