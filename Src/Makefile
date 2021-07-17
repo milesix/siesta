@@ -524,7 +524,7 @@ siesta: what version \
 	$(FC) -o siesta \
 	       $(LDFLAGS) $(ALL_OBJS) $(FDF) $(MS)  \
                $(XC) $(MPI_INTERFACE) \
-               $(COMP_LIBS) $(LIBS) \
+               $(COMP_LIBS) \
 	       $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) \
 	       $(LIBS)
 	@echo "--- reference section "

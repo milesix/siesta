@@ -38,6 +38,11 @@ module m_virtual_step_data
   !! - `diagg()`
   !! - `siesta_forces()`
 
+  real(dp), pointer, save :: Sinv(:,:) => null()
+  !! Inverse of the overlap matrix.
+  !! Computed in diagg at the beginning of the scf cycle of
+  !! the base step
+
   ! Common auxilliary state data regarding mesh, gvectors etc:
   real(dp), dimension(3,3), save :: cell_vmd !! Unit cell vectors
   integer, dimension(3), save    :: mesh_vmd

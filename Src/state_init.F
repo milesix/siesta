@@ -50,9 +50,9 @@
 
       use siesta_geom
       use atomlist,          only: iphorb, iphkb, indxua, iaorb,
-     &                             rmaxo, rmaxkb, rmaxv, rmaxldau,
-     &                             lastkb, lasto, superc, indxuo,
-     &                             no_u, no_s, no_l, iza, qtots
+     &     rmaxo, rmaxkb, rmaxv, rmaxldau,
+     &     lastkb, lasto, superc, indxuo,
+     &     no_u, no_s, no_l, iza, qtots
       use alloc,             only: re_alloc, de_alloc
       use m_hsparse,         only: hsparse
       use m_overlap,         only: overlap
@@ -139,14 +139,14 @@
       implicit none
 
       integer            :: istep
-      real(dp)           :: veclen      ! Length of a unit-cell vector
+      real(dp)           :: veclen ! Length of a unit-cell vector
       real(dp)           :: rmax
       logical            :: cell_can_change
       integer            :: i, ix, iadispl, ixdispl
-      logical            :: auxchanged   ! Auxiliary supercell changed?
+      logical            :: auxchanged ! Auxiliary supercell changed?
       logical            :: folding, folding1
       logical            :: diag_folding, diag_folding1
-      logical            :: foundxv  ! dummy for call to ioxv
+      logical            :: foundxv ! dummy for call to ioxv
 
       external           :: madelung, timer
       external           :: bye
@@ -181,7 +181,7 @@
       type(Pair_Geometry_dSpData2D), pointer :: pair
 
       real(dp) :: dummy_qspin(8)
-!------------------------------------------------------------------- BEGIN
+!-------------------------------------------------------------------BEGIN
       call timer( 'IterGeom', 1 )
 
       call timer( 'state_init', 1 )
@@ -189,155 +189,155 @@
       istp = istp + 1
 
       if (IOnode) then
-      write(6,'(/,t22,a)') repeat('=',36)
-      select case (idyn)
-      case (0)
-         if (nmove == 0) then
-            write(6,'(t25,a)') 'Single-point calculation'
-            if (cml_p) call cmlStartStep(mainXML, type='Single-Point',
-     $           index=istp)
-         else
-            if (broyden_optim) then
-               write(6,'(t25,a,i6)') 'Begin Broyden opt. move = ',
-     $              istep
-            else if (fire_optim) then
-               write(6,'(t25,a,i6)') 'Begin FIRE opt. move = ',
-     $              istep
+         write(6,'(/,t22,a)') repeat('=',36)
+         select case (idyn)
+         case (0)
+            if (nmove == 0) then
+               write(6,'(t25,a)') 'Single-point calculation'
+               if (cml_p) call cmlStartStep(mainXML, type='Single-Point',
+     $              index=istp)
             else
-               write(6,'(t25,a,i6)') 'Begin CG opt. move = ',
+               if (broyden_optim) then
+                  write(6,'(t25,a,i6)') 'Begin Broyden opt. move = ',
+     $                 istep
+               else if (fire_optim) then
+                  write(6,'(t25,a,i6)') 'Begin FIRE opt. move = ',
+     $                 istep
+               else
+                  write(6,'(t25,a,i6)') 'Begin CG opt. move = ',
+     $                 istep
+               end if
+               if (cml_p) call cmlStartStep(mainXML, type='Geom. Optim',
+     $              index=istp)
+            endif
+
+!     Print Z-matrix coordinates
+            if (lUseZmatrix) then
+               call write_Zmatrix()
+            endif
+         case (1, 3)
+            if (iquench > 0 ) then
+               write(6,'(t25,a,i6)') 'Begin MD quenched step = ',
      $              istep
+               if (cml_p) call cmlStartStep(mainXML, type='MD-quenched',
+     $              index=istep)
+            else
+               write(6,'(t25,a,i6)') 'Begin MD step = ',
+     $              istep
+               if (cml_p) call cmlStartStep(mainXML, type='MD',
+     $              index=istep)
+            endif
+         case (2,4,5)
+            write(6,'(t25,a,i6)') 'Begin MD step = ', istep
+            if (cml_p) call cmlStartStep(mainXML, type='MD', index=istep)
+         case (6)
+            write(6,'(t25,a,i6)') 'Begin FC step = ',istep
+            if (cml_p) call cmlStartStep(mainXML, type='FC', index=istep)
+
+            if (istep .eq. 0) then
+               write(6,'(t25,a)') 'Undisplaced coordinates'
+            else
+               iadispl = (istep-mod(istep-1,6))/6+ia1
+               ix = mod(istep-1,6)+1
+               ixdispl = (ix - mod(ix-1,2) +1)/2
+               write(6,'(t26,a,i0,/,t26,a,i1,a,f10.6,a)') 'displace atom ',
+     &iadispl,'in direction ',ixdispl,' by', dx/Ang,' Ang'
+            endif
+
+         case (8)
+            write(6,'(t25,a,i6)') 'Begin Server step = ',istep
+            if (cml_p) call cmlStartStep(mainXML, type='FS', index=istep)
+
+         case (9)
+            if ( istep == 0 ) then
+               write(6,'(t25,a,i7)')'Explicit coord. initialization'
+            else
+               write(6,'(t25,a,i7)')'Explicit coord. step =',istep
             end if
-            if (cml_p) call cmlStartStep(mainXML, type='Geom. Optim',
-     $           index=istp)
-         endif
+            if (cml_p) call cmlStartStep(mainXML, type='ECS', index=istep)
 
-!        Print Z-matrix coordinates
-         if (lUseZmatrix) then
-            call write_Zmatrix()
-         endif
-      case (1, 3)
-         if (iquench > 0 ) then
-            write(6,'(t25,a,i6)') 'Begin MD quenched step = ',
-     $           istep
-            if (cml_p) call cmlStartStep(mainXML, type='MD-quenched',
-     $           index=istep)
-         else
-            write(6,'(t25,a,i6)') 'Begin MD step = ',
-     $           istep
-            if (cml_p) call cmlStartStep(mainXML, type='MD',
-     $             index=istep)
-         endif
-      case (2,4,5)
-         write(6,'(t25,a,i6)') 'Begin MD step = ', istep
-         if (cml_p) call cmlStartStep(mainXML, type='MD', index=istep)
-      case (6)
-          write(6,'(t25,a,i6)') 'Begin FC step = ',istep
-          if (cml_p) call cmlStartStep(mainXML, type='FC', index=istep)
+         case (10)
+            write(6,'(t25,a,i7)')'LUA coord. step =',istep
+            if (cml_p) call cmlStartStep(mainXML, type='LUA', index=istep)
 
-          if (istep .eq. 0) then
-            write(6,'(t25,a)') 'Undisplaced coordinates'
-         else
-            iadispl = (istep-mod(istep-1,6))/6+ia1
-            ix = mod(istep-1,6)+1
-            ixdispl = (ix - mod(ix-1,2) +1)/2
-            write(6,'(t26,a,i0,/,t26,a,i1,a,f10.6,a)') 'displace atom ',
-     &           iadispl,'in direction ',ixdispl,' by', dx/Ang,' Ang'
-         endif
+         end select
 
-      case (8)
-         write(6,'(t25,a,i6)') 'Begin Server step = ',istep
-         if (cml_p) call cmlStartStep(mainXML, type='FS', index=istep)
-
-      case (9)
-         if ( istep == 0 ) then
-            write(6,'(t25,a,i7)')'Explicit coord. initialization'
-         else
-            write(6,'(t25,a,i7)')'Explicit coord. step =',istep
-         end if
-         if (cml_p) call cmlStartStep(mainXML, type='ECS', index=istep)
-
-      case (10)
-         write(6,'(t25,a,i7)')'LUA coord. step =',istep
-         if (cml_p) call cmlStartStep(mainXML, type='LUA', index=istep)
-
-      end select
-
-      write(6,'(t22,a)') repeat('=',36)
+         write(6,'(t22,a)') repeat('=',36)
 
 !     Print atomic coordinates
-      call outcoor( ucell, xa, na_u, ' ', writec )
+         call outcoor( ucell, xa, na_u, ' ', writec )
 
 !     Save structural information in crystallographic format
 !     (in file SystemLabel.STRUCT_OUT),
 !     canonical Zmatrix (if applicable), and CML record
 
-      call siesta_write_positions(moved=.false.)
+         call siesta_write_positions(moved=.false.)
 
-      endif ! IONode
+      endif                     ! IONode
 
-      ! Write the XV file for single-point calculations, so that
-      ! it is there at the end for those users who rely on it
+! Write the XV file for single-point calculations, so that
+! it is there at the end for those users who rely on it
       call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va,
-     &           foundxv)
-      ! Write TDXV file for TDDFT restart.
+     &     foundxv)
+! Write TDXV file for TDDFT restart.
       if(writetdwf .or. td_elec_dyn) then
-      call iotdxv('write',ucell,vcell,na_u,isa,iza,xa,va,foundxv)
+         call iotdxv('write',ucell,vcell,na_u,isa,iza,xa,va,foundxv)
       end if
 
 !     Actualize things if variable cell
 !     These checks are made to ensure that the k-points
 !     and Madelung terms are corrected in case the cell is changed.
       cell_can_change = ( varcel .or.
-     &                    (idyn .eq. 8)  ! Force/stress evaluation
-     &                  )
+     &     (idyn .eq. 8)        ! Force/stress evaluation
+     &     )
       if (change_kgrid_in_md) then
          cell_can_change = cell_can_change .or.
-     &                     (idyn .eq. 3)   .or. ! Parrinello-Rahman
-     &                     (idyn .eq. 4)   .or. ! Nose-Parrinello-Rahman
-     &                     (idyn .eq. 5)        ! Anneal
+     &        (idyn .eq. 3)   .or. ! Parrinello-Rahman
+     &        (idyn .eq. 4)   .or. ! Nose-Parrinello-Rahman
+     &        (idyn .eq. 5)     ! Anneal
       endif
 
       if ( cell_can_change .and. istep /= inicoor ) then
 
-!       Madelung correction for charged systems
-        if (charnet .ne. 0.0_dp) then
-          call madelung(ucell, shape, charnet, Emad)
-        end if
+!     Madelung correction for charged systems
+         if (charnet .ne. 0.0_dp) then
+            call madelung(ucell, shape, charnet, Emad)
+         end if
 
-        if ( .not. gamma_scf ) then
+         if ( .not. gamma_scf ) then
 
-!       Will print k-points also (on every MD step... :( )
-          call kpoint_delete(kpoint_scf)
-          call setup_kpoint_scf( ucell )
+!     Will print k-points also (on every MD step... :( )
+            call kpoint_delete(kpoint_scf)
+            call setup_kpoint_scf( ucell )
 
-          if ( TSmode ) then
-            call kpoint_delete( ts_kpoint_scf )
-          else
-            call kpoint_nullify( ts_kpoint_scf )
-          end if
-          call setup_ts_kpoint_scf( ucell, kpoint_scf )
+            if ( TSmode ) then
+               call kpoint_delete( ts_kpoint_scf )
+            else
+               call kpoint_nullify( ts_kpoint_scf )
+            end if
+            call setup_ts_kpoint_scf( ucell, kpoint_scf )
 
-          call re_alloc( eo, 1, no_u, 1, spin%spinor, 1, kpoint_scf%N,
-     &        'eo', 'state_init')
-          call re_alloc( qo, 1, no_u, 1, spin%spinor, 1, kpoint_scf%N,
-     &        'qo', 'state_init' )
+            call re_alloc( eo, 1, no_u, 1, spin%spinor, 1, kpoint_scf%N,
+     &           'eo', 'state_init')
+            call re_alloc( qo, 1, no_u, 1, spin%spinor, 1, kpoint_scf%N,
+     &           'qo', 'state_init' )
 
-        end if
+         end if
       end if
 !     End variable cell actualization
 
 !     Always (in case of auxiliary cell) check the new sparse pattern
       auxchanged = .false.
       if ( use_aux_cell ) then
-!       Determine the tightest auxiliary supercell using
-!       also the atomic positions
-        call exact_sc_ag(negl,ucell,na_u,isa,xa,nsc)
+!     Determine the tightest auxiliary supercell using
+!     also the atomic positions
+         call exact_sc_ag(negl,ucell,na_u,isa,xa,nsc)
 
-        mscell = 0.0_dp
-        do i = 1, 3
-          mscell(i,i) = nsc(i)
-          if (nsc(i) /= nsc_old(i)) auxchanged = .true.
-        end do
+         mscell = 0.0_dp
+         do i = 1, 3
+            mscell(i,i) = nsc(i)
+            if (nsc(i) /= nsc_old(i)) auxchanged = .true.
+         end do
 
       end if
 
@@ -364,59 +364,59 @@
       rmax = max( 2._dp*rmaxv, 2._dp*(rmaxo+rmaxldau), rmaxo+rmaxkb)
 
       if ( .not. negl ) then
-        rmax = max(rmax, 2.0_dp * (rmaxo+rmaxkb) )
+         rmax = max(rmax, 2.0_dp * (rmaxo+rmaxkb) )
       endif
 
 !     Check if any two atoms are unreasonably close
       call proximity_check(rmax)
 
-      ! Clear history of mixing parameters
+! Clear history of mixing parameters
       call mixers_history_init( scf_mixs )
       scf_mix => scf_mixs(1)
 
-      ! Ensure sparsity pattern is empty
+! Ensure sparsity pattern is empty
       call delete(sparse_pattern)
-      ! sadly deleting the sparse pattern does not necessarily
-      ! mean that the arrays are de-associated.
-      ! Remember that the reference counter could (in MD)
-      ! be higher than 1, hence we need to create "fake"
-      ! containers and let the new<class> delete the old
-      ! sparsity pattern
+! sadly deleting the sparse pattern does not necessarily
+! mean that the arrays are de-associated.
+! Remember that the reference counter could (in MD)
+! be higher than 1, hence we need to create "fake"
+! containers and let the new<class> delete the old
+! sparsity pattern
 
       nullify(numh,listhptr,listh)
       allocate(numh(no_l),listhptr(no_l))
-      ! We do not need to allocate listh
-      ! that will be allocated in hsparse
+! We do not need to allocate listh
+! that will be allocated in hsparse
 
 #ifdef SIESTA__CHESS
       if (isolve == SOLVE_CHESS) then
-!         Calculate a sparsity pattern with some buffers... Only required
-!         for CheSS
-          chess_value = get_chess_parameter('chess_buffer_kernel')
-          call hsparse( negl, scell, nsc, na_s, isa, xa, lasto,
-     &              lastkb, iphorb, iphKB, maxnh, gamma,
-     &              set_xijo=.true., folding=folding1,
-     $              diagonal_folding=diag_folding1,
-     $              buffer=chess_value)
-          maxnh_kernel = maxnh
-          no_l_kernel = no_l
-          allocate(listh_kernel(maxnh_kernel))
-          allocate(numh_kernel(no_l_kernel))
-          listh_kernel = listh
-          numh_kernel = numh
+!     Calculate a sparsity pattern with some buffers... Only required
+!     for CheSS
+         chess_value = get_chess_parameter('chess_buffer_kernel')
+         call hsparse( negl, scell, nsc, na_s, isa, xa, lasto,
+     &        lastkb, iphorb, iphKB, maxnh, gamma,
+     &        set_xijo=.true., folding=folding1,
+     $        diagonal_folding=diag_folding1,
+     $        buffer=chess_value)
+         maxnh_kernel = maxnh
+         no_l_kernel = no_l
+         allocate(listh_kernel(maxnh_kernel))
+         allocate(numh_kernel(no_l_kernel))
+         listh_kernel = listh
+         numh_kernel = numh
 
-          chess_value = get_chess_parameter('chess_buffer_mult')
-          call hsparse( negl, scell, nsc, na_s, isa, xa, lasto,
-     &                  lastkb, iphorb, iphKB, maxnh, gamma,
-     &                  set_xijo=.true., folding=folding1,
-     $                  diagonal_folding=diag_folding1,
-     $                  buffer=chess_value)
-          maxnh_mult = maxnh
-          no_l_mult = no_l
-          allocate(listh_mult(maxnh_mult))
-          allocate(numh_mult(no_l_mult))
-          listh_mult = listh
-          numh_mult = numh
+         chess_value = get_chess_parameter('chess_buffer_mult')
+         call hsparse( negl, scell, nsc, na_s, isa, xa, lasto,
+     &        lastkb, iphorb, iphKB, maxnh, gamma,
+     &        set_xijo=.true., folding=folding1,
+     $        diagonal_folding=diag_folding1,
+     $        buffer=chess_value)
+         maxnh_mult = maxnh
+         no_l_mult = no_l
+         allocate(listh_mult(maxnh_mult))
+         allocate(numh_mult(no_l_mult))
+         listh_mult = listh
+         numh_mult = numh
       end if
 #endif /* CHESS */
 
@@ -425,48 +425,48 @@
 
 !     Listh and xijo are allocated inside hsparse
 !     Note: We always generate xijo now, for COOP and other
-!           analyses.
+!     analyses.
       IF (.not. ( want_virtual_step_md .AND.
      $     (substep .eq. VIRTUAL_STEP) )) THEN
-      call delete(xij_2D) ! as xijo will be reallocated
-      nullify(xijo)
-      call hsparse( negl, scell, nsc, na_s, isa, xa, lasto,
-     &              lastkb, iphorb, iphKB, maxnh, .not. use_aux_cell,
-     $              set_xijo=.true., folding=folding1,
-     $              diagonal_folding=diag_folding1,
-     $              debug_folding=fdf_get('debug-folding',.false.),
-     $              buffer=fdf_get('MD.Virtual.BufferLength', 0.0_dp))
-!
-      call globalize_or(diag_folding1,diag_folding)
-      call globalize_or(folding1,folding)
-      if (diag_folding .and. .not. use_aux_cell ) then
-         call message("WARNING","Gamma-point calculation " //
-     $         "with interaction between periodic images")
-         call message("WARNING",
+         call delete(xij_2D)    ! as xijo will be reallocated
+         nullify(xijo)
+         call hsparse( negl, scell, nsc, na_s, isa, xa, lasto,
+     &        lastkb, iphorb, iphKB, maxnh, .not. use_aux_cell,
+     $        set_xijo=.true., folding=folding1,
+     $        diagonal_folding=diag_folding1,
+     $        debug_folding=fdf_get('debug-folding',.false.),
+     $        buffer=fdf_get('MD.Virtual.BufferLength', 0.0_dp))
+!     
+         call globalize_or(diag_folding1,diag_folding)
+         call globalize_or(folding1,folding)
+         if (diag_folding .and. .not. use_aux_cell ) then
+            call message("WARNING","Gamma-point calculation " //
+     $           "with interaction between periodic images")
+            call message("WARNING",
      $           "Some features might not work optimally:")
-         call message("WARNING",
+            call message("WARNING",
      $           "e.g. DM initialization from atomic data")
-         if (harrisfun) call die("Harris functional run needs " //
-     $                              "'force-aux-cell T'")
+            if (harrisfun) call die("Harris functional run needs " //
+     $           "'force-aux-cell T'")
 
-      else if (folding) then
-         if ( .not. use_aux_cell ) then
+         else if (folding) then
+            if ( .not. use_aux_cell ) then
                call message("INFO","Gamma-point calculation " //
-     $                      "with multiply-connected orbital pairs")
+     $              "with multiply-connected orbital pairs")
                call message("INFO",
      $              "Folding of H and S implicitly performed")
                call check_cohp()
-         else
-            write(6,"(a,/,a)") "Non Gamma-point calculation " //
-     $           "with multiply-connected orbital pairs " //
-     $           "in auxiliary supercell.",
-     $           "Possible internal error. " //
-     $           "Use 'debug-folding T' to debug."
-            call die("Inadequate auxiliary supercell")
+            else
+               write(6,"(a,/,a)") "Non Gamma-point calculation " //
+     $              "with multiply-connected orbital pairs " //
+     $              "in auxiliary supercell.",
+     $              "Possible internal error. " //
+     $              "Use 'debug-folding T' to debug."
+               call die("Inadequate auxiliary supercell")
+            endif
          endif
-      endif
       END IF                    ! <- `Base` step in V.MD
-!
+!     
       call globalize_sum(maxnh,nnz_g)
       if (cml_p) then
          call cmlStartPropertyList(mainXML,title='Orbital info')
@@ -478,80 +478,80 @@
      $        dictref='siesta:nnz', units="cmlUnits:countable")
          call cmlEndPropertyList(mainXML)
       endif
-      !
+!
 #ifdef SIESTA__CHESS
       if (isolve == SOLVE_CHESS) then
-          call CheSS_init(node, nodes, maxnh, maxnh_kernel, maxnh_mult,
-     &         no_u, no_l, no_l_kernel, no_l_mult, BlockSize,
-     &         spin%spinor, qtots, listh, listh_kernel, listh_mult,
-     &         numh, numh_kernel, numh_mult)
-          deallocate(listh_kernel)
-          deallocate(numh_kernel)
-          deallocate(listh_mult)
-          deallocate(numh_mult)
+         call CheSS_init(node, nodes, maxnh, maxnh_kernel, maxnh_mult,
+     &        no_u, no_l, no_l_kernel, no_l_mult, BlockSize,
+     &        spin%spinor, qtots, listh, listh_kernel, listh_mult,
+     &        numh, numh_kernel, numh_mult)
+         deallocate(listh_kernel)
+         deallocate(numh_kernel)
+         deallocate(listh_mult)
+         deallocate(numh_mult)
       end if
 #endif /* CHESS */
-      !
-      ! If using domain decomposition, redistribute orbitals
-      ! for this geometry, based on the hsparse info.
-      ! The first time round, the initial distribution is a
-      ! simple block one (given by preSetOrbitLimits).
-      !
-      ! Any DM, etc, read from file will be redistributed according
-      ! to the new pattern.
-      ! Inherited DMs from a previous geometry cannot be used if the
-      ! orbital distribution changes. For now, we avoid changing the
-      ! distribution (the variable use_dd_perm is .true. if domain
-      ! decomposition is in effect). Names should be changed...
+!
+! If using domain decomposition, redistribute orbitals
+! for this geometry, based on the hsparse info.
+! The first time round, the initial distribution is a
+! simple block one (given by preSetOrbitLimits).
+!
+! Any DM, etc, read from file will be redistributed according
+! to the new pattern.
+! Inherited DMs from a previous geometry cannot be used if the
+! orbital distribution changes. For now, we avoid changing the
+! distribution (the variable use_dd_perm is .true. if domain
+! decomposition is in effect). Names should be changed...
 
       if (use_dd .and. (.not. use_dd_perm)) then
-         call domainDecom( no_u, no_l, maxnh )  ! maxnh intent(in) here
+         call domainDecom( no_u, no_l, maxnh ) ! maxnh intent(in) here
          maxnh = sum(numh(1:no_l))
-         ! We still need to re-create Julian Gale's
-         ! indexing for O(N) in parallel.
+! We still need to re-create Julian Gale's
+! indexing for O(N) in parallel.
          print "(a5,i3,a20,3i8)",
-     $         "Node: ", Node, "no_u, no_l, maxnh: ", no_u, no_l, maxnh
+     $        "Node: ", Node, "no_u, no_l, maxnh: ", no_u, no_l, maxnh
          call setup_ordern_indexes(no_l, no_u, Nodes)
       endif
 
-      ! I would like to skip this alloc/move/dealloc/attach
-      ! by allowing sparsity to have pointer targets.
-      ! However, this poses a problem with intel compilers,
-      ! as it apparently errors out when de-allocating a target pointer
+! I would like to skip this alloc/move/dealloc/attach
+! by allowing sparsity to have pointer targets.
+! However, this poses a problem with intel compilers,
+! as it apparently errors out when de-allocating a target pointer
       write(oname,"(a,i0)") "sparsity for geom step ", istep
       if (want_virtual_step_md) then
          if ( substep .eq. BASE_STEP ) then
-            ! `Base` step: generate sparse pattern
-            ! and store it in ks_flux_data
+! `Base` step: generate sparse pattern
+! and store it in ks_flux_data
             call delete(base_step_sparse_pattern)
             call newSparsity(sparse_pattern,no_l,no_u,maxnh,
-     &     numh,listhptr,listh, name = oname)
+     &           numh,listhptr,listh, name = oname)
             call print_type(sparse_pattern)
             base_step_sparse_pattern = sparse_pattern
             call print_type(sparse_pattern)
             deallocate(numh,listhptr,listh)
          else
-            ! `Virtual` step: restore the pattern from the previous `Base` step
+! `Virtual` step: restore the pattern from the previous `Base` step
             sparse_pattern = base_step_sparse_pattern
          end if
-      else  ! no `Virtual` step, generate sparsity as usual
+      else                      ! no `Virtual` step, generate sparsity as usual
          call newSparsity(sparse_pattern,no_l,no_u,maxnh,
-     &     numh,listhptr,listh, name = oname)
+     &        numh,listhptr,listh, name = oname)
          deallocate(numh,listhptr,listh)
       end if
       call attach(sparse_pattern,
      &     n_col = numh, list_ptr = listhptr, list_col = listh )
 
-      ! In case the user requests to create the connectivity graph
+! In case the user requests to create the connectivity graph
       if ( write_GRAPHVIZ > 0 ) then
-         ! first create the unit-cell sparsity pattern
+! first create the unit-cell sparsity pattern
          call crtSparsity_SC(sparse_pattern, g_Sp, UC=.true.)
-         ! next move to global sparsity pattern
+! next move to global sparsity pattern
          call Sp_to_Spglobal(block_dist, g_Sp, g_Sp)
          if ( IONode ) then
             if ( write_GRAPHVIZ /= 2 )
      &           call sp2graphviz(trim(slabel)//'.ORB.gv', g_Sp)
-            ! Convert to atomic
+! Convert to atomic
             if ( write_GRAPHVIZ /= 1 ) then
                call SpOrb_to_SpAtom(single_dist,g_Sp,na_u,lasto,g_Sp)
                call sp2graphviz(trim(slabel)//'.ATOM.gv', g_Sp)
@@ -561,14 +561,14 @@
       end if
 
 
-      ! Copy over xijo array (we can first do it here... :( )
+! Copy over xijo array (we can first do it here... :( )
       if (.not. ( want_virtual_step_md .and.
      $     (substep .eq. VIRTUAL_STEP) )) then
          call newdData2D(tmp_2D,xijo,'xijo')
          deallocate(xijo)
          write(oname,"(a,i0)") "xijo at geom step ", istep
          call newdSpData2D(sparse_pattern,tmp_2D,block_dist,xij_2D,
-     &     name=oname)
+     &        name=oname)
          call delete(tmp_2D)    ! decrement container...
          xijo => val(xij_2D)
       end if
@@ -579,7 +579,7 @@
 !     be used elsewhere to figure out orbital/atomic placements
 !     in the sparsity pattern.
       if ( .not. use_aux_cell ) then
-         ! Here we create the super-cell offsets
+! Here we create the super-cell offsets
          call re_alloc(isc_off,1,3,1,1)
          isc_off(:,:) = 0
       else
@@ -588,24 +588,24 @@
       end if
 
 
-      ! When the user requests to only do an analyzation, we can call
-      ! appropriate routines and quit
+! When the user requests to only do an analyzation, we can call
+! appropriate routines and quit
       if ( TS_Analyze ) then
 
-         ! Force the creation of the full sparsity pattern
+! Force the creation of the full sparsity pattern
          call ts_sparse_init(slabel,IsVolt, N_Elec, Elecs,
      &        ucell, nsc, na_u, xa, lasto, block_dist, sparse_pattern,
      &        .not. use_aux_cell, isc_off)
 
-         ! create the tri-diagonal matrix
+! create the tri-diagonal matrix
          call ts_tri_analyze( block_dist, sparse_pattern , N_Elec,
      &        Elecs, ucell, na_u, lasto, nsc, isc_off,
      &        BTD_method )
 
-         ! Print-out timers
+! Print-out timers
          call timer('TS-analyze',3)
 
-         ! Bye also waits for all processors
+! Bye also waits for all processors
          call bye('transiesta analyzation performed')
 
       end if
@@ -614,7 +614,7 @@
       write(oname,"(a,i0)") "EDM at geom step ", istep
       call newdSpData2D(sparse_pattern,spin%EDM,block_dist,EDM_2D,
      &     name=oname)
-      !if (ionode) call print_type(EDM_2D)
+!if (ionode) call print_type(EDM_2D)
       Escf => val(EDM_2D)
 
       call re_alloc(Dold,1,maxnh,1,spin%DM,name='Dold',
@@ -623,51 +623,51 @@
      .     routine='sparseMat',copy=.false.,shrink=.true.)
       if ( converge_EDM ) then
          call re_alloc(Eold,1,maxnh,1,spin%EDM,name='Eold',
-     .     routine='sparseMat',copy=.false.,shrink=.true.)
+     .        routine='sparseMat',copy=.false.,shrink=.true.)
       end if
 
 !     Allocate/reallocate storage associated with Hamiltonian/Overlap matrix
       write(oname,"(a,i0)") "H at geom step ", istep
       call newdSpData2D(sparse_pattern,spin%H,block_dist,H_2D,
-     &                  name=oname)
-      !if (ionode) call print_type(H_2D)
+     &     name=oname)
+!if (ionode) call print_type(H_2D)
       H => val(H_2D)
 
       write(oname,"(a,i0)") "H_vkb at geom step ", istep
       call newdSpData1D(sparse_pattern,block_dist,H_vkb_1D,name=oname)
-      !if (ionode) call print_type(H_vkb_1D)
+!if (ionode) call print_type(H_vkb_1D)
 
       write(oname,"(a,i0)") "H_kin at geom step ", istep
       call newdSpData1D(sparse_pattern,block_dist,H_kin_1D,name=oname)
-      !if (ionode) call print_type(H_kin_1D)
+!if (ionode) call print_type(H_kin_1D)
 
       if ( switch_ldau ) then
          write(oname,"(a,i0)") "H_ldau at geom step ", istep
          call newdSpData2D(sparse_pattern,spin%spinor,
      &        block_dist,H_ldau_2D,name=oname)
 
-         ! Initialize to 0, LDA+U may re-calculate
-         !   this matrix sporadically doing the SCF.
-         ! Hence initialization MUST be performed upon
-         ! re-allocation.
+! Initialize to 0, LDA+U may re-calculate
+!   this matrix sporadically doing the SCF.
+! Hence initialization MUST be performed upon
+! re-allocation.
          call init_val(H_ldau_2D)
          if ( inicoor /= istep ) then
-            ! Force initialization of the LDA+U
-            ! when changing geometry
-            ! For the first geometry this is controlled
-            ! by the user via an fdf-key
+! Force initialization of the LDA+U
+! when changing geometry
+! For the first geometry this is controlled
+! by the user via an fdf-key
             ldau_init = .true.
          end if
       end if
 
       if ( spin%SO_onsite ) then
-        write(oname,"(a,i0)") "H_so (onsite) at geom step ", istep
-        call newdSpData2D(sparse_pattern,spin%H - 2,
-     &      block_dist,H_so_on_2D,name=oname)
+         write(oname,"(a,i0)") "H_so (onsite) at geom step ", istep
+         call newdSpData2D(sparse_pattern,spin%H - 2,
+     &        block_dist,H_so_on_2D,name=oname)
       else if ( spin%SO_offsite ) then
-        write(oname,"(a,i0)") "H_so (offsite) at geom step ", istep
-        call newzSpData2D(sparse_pattern,4,
-     &      block_dist,H_so_off_2D,name=oname)
+         write(oname,"(a,i0)") "H_so (offsite) at geom step ", istep
+         call newzSpData2D(sparse_pattern,4,
+     &        block_dist,H_so_off_2D,name=oname)
       endif
 
       write(oname,"(a,i0)") "S at geom step ", istep
@@ -677,118 +677,124 @@
 
       if ( virtual_md_Jks ) then
          write(oname,"(a,i0)") "Rmat at geom step ", istep
-         ! Extra dimension is (x,y,z), i.e., of size 3
+! Extra dimension is (x,y,z), i.e., of size 3
          call newdSpData2D(sparse_pattern,3,
-     $                     block_dist,Rmat_2D,name=oname)
+     $        block_dist,Rmat_2D,name=oname)
          if (ionode) call print_type(Rmat_2D)
          Rmat => val(Rmat_2D)
       endif
 
-!>    Before proceeding we need to "fix" a few things before we can
-!>    successfully read the new DM.
-!>    1. Cases where the atomic displacements yields a new sparse
-!>    pattern it is vital to remove the elements that does not exist.
-!>    Such cases are often encountered because atoms move in/out of
-!>    neighbouring atoms orbital ranges. Everytime two orbitals meet,
-!>    new sparse elements are added, and everytime two orbitals flee
-!>    sparse elements are removed.
-!>    2. If the supercell has changed size it is necessary to
-!>    remove/translate the old/new supercells such that they are
-!>    conforming with the new sparse pattern.
-!>    For details regarding the sparsity pattern, see sparse_matrices.F90
+!     >    Before proceeding we need to "fix" a few things before we can
+!     >    successfully read the new DM.
+!     >    1. Cases where the atomic displacements yields a new sparse
+!     >    pattern it is vital to remove the elements that does not exist.
+!     >    Such cases are often encountered because atoms move in/out of
+!     >    neighbouring atoms orbital ranges. Everytime two orbitals meet,
+!     >    new sparse elements are added, and everytime two orbitals flee
+!     >    sparse elements are removed.
+!     >    2. If the supercell has changed size it is necessary to
+!     >    remove/translate the old/new supercells such that they are
+!     >    conforming with the new sparse pattern.
+!     >    For details regarding the sparsity pattern, see sparse_matrices.F90
       do i = 1, n_items(DM_history)
-        pair => get_pointer(DM_history,i)
-        call secondp(pair,tmp_Sp2D)
-        if ( auxchanged ) then
-!         Transfer the old mixing matrix to the new supercell pattern
-          call correct_supercell_SpD(nsc_old, tmp_Sp2D, nsc)
-        end if
-!       Only retain the new orbital interactions
-        call restruct_dSpData2D(tmp_Sp2D, sparse_pattern, tmp_Sp2D,
-     &      show_warning = .false.)
+         pair => get_pointer(DM_history,i)
+         call secondp(pair,tmp_Sp2D)
+         if ( auxchanged ) then
+!     Transfer the old mixing matrix to the new supercell pattern
+            call correct_supercell_SpD(nsc_old, tmp_Sp2D, nsc)
+         end if
+!     Only retain the new orbital interactions
+         call restruct_dSpData2D(tmp_Sp2D, sparse_pattern, tmp_Sp2D,
+     &        show_warning = .false.)
       end do
 
-      ! Prepare MATEL
+! Prepare MATEL
       call init_matel_main_tables( )
       if ( virtual_md_Jks ) call init_matel_orb_XYZ_orb( )
 
-c$$$!     Find overlap matrix
-c$$$      call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
-c$$$     &    lasto, iphorb, isa, numh, listhptr, listh, S )
-c$$$
+c$$$  !     Find overlap matrix
+c$$$  call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
+c$$$  &    lasto, iphorb, isa, numh, listhptr, listh, S )
+c$$$  
       if ((virtual_md_Jks) .and. (substep .eq. BASE_STEP)) then
-      !     Find rmatrix, that we need for Kohn-Sham J-flux component (ThTr)
+!     Find rmatrix, that we need for Kohn-Sham J-flux component (ThTr)
          call rmatrix(na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
      &        lasto, iphorb, isa, numh, listhptr, listh, Rmat )
       endif
 
-c$$$      if ( fdf_get('Save.Overlap.Gradient', .false.) .or.
-c$$$!     We need gradient of overlap for the Virtual step
-c$$$!     during Kohn-Sham J flux component calculation:
-c$$$     $     ((virtual_md_Jks) .and. (substep .eq. BASE_STEP)) ) then
-c$$$        ! Clean-up, regardless of specified
-c$$$        call delete(gradS_2D)
-c$$$        call newdSpData2D(sparse_pattern,3,block_dist,gradS_2D)
-c$$$        if (ionode) call print_type(gradS_2D)
-c$$$        call overlap_gradient(na_U, lasto, isa, maxnh, xijo, gradS_2D)
-c$$$        gradS => val(gradS_2D)
+c$$$  if ( fdf_get('Save.Overlap.Gradient', .false.) .or.
+c$$$  !     We need gradient of overlap for the Virtual step
+c$$$  !     during Kohn-Sham J flux component calculation:
+c$$$  $     ((virtual_md_Jks) .and. (substep .eq. BASE_STEP)) ) then
+c$$$  ! Clean-up, regardless of specified
+c$$$  call delete(gradS_2D)
+c$$$  call newdSpData2D(sparse_pattern,3,block_dist,gradS_2D)
+c$$$  if (ionode) call print_type(gradS_2D)
+c$$$  call overlap_gradient(na_U, lasto, isa, maxnh, xijo, gradS_2D)
+c$$$  gradS => val(gradS_2D)
 
 !     Find overlap matrix
       if ( fdf_get('Save.Overlap.Gradient', .false.) .or.
      $     ((virtual_md_Jks) .and. (substep .eq. BASE_STEP)) ) then
-        write(oname,"(a,i0)") "gradS at geom step ", istep
+         write(oname,"(a,i0)") "gradS at geom step ", istep
 !     NOTE: Need this?
 !     Clean-up, regardless of specified:
-        call delete(gradS_2D)
+         call delete(gradS_2D)
 !     END NOTE
-        call newdSpData2D(sparse_pattern,3,block_dist,gradS_2D,
-     &       name=oname, sparsity_dim=2)
-        gradS => val(gradS_2D)
+         call newdSpData2D(sparse_pattern,3,block_dist,gradS_2D,
+     &        name=oname, sparsity_dim=2)
+         gradS => val(gradS_2D)
 
-        call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
-     &       lasto, iphorb, isa, numh, listhptr, listh, S, gradS )
+         call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
+     &        lasto, iphorb, isa, numh, listhptr, listh, S, gradS )
       else
-        call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
-     &       lasto, iphorb, isa, numh, listhptr, listh, S )
+         call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
+     &        lasto, iphorb, isa, numh, listhptr, listh, S )
       end if
+
+      if (want_virtual_step_md .and. (substep .eq. BASE_STEP)) then
+! Compute and save inverse of overlap matrix
+         call get_sinv()
+      endif
+
 
 #ifdef NCDF_4
 !     At this point the sparsity pattern, overlap matrix and some
 !     other details.
 !     Before continuing we will create the CDF file output
-!
+!     
 !     Initialize the NC file
       if ( write_cdf ) then
-        if ( inicoor == istep ) then
-          call cdf_init_file(trim(slabel)//'.nc', is_FC=(idyn==6))
+         if ( inicoor == istep ) then
+            call cdf_init_file(trim(slabel)//'.nc', is_FC=(idyn==6))
 #ifdef MPI
-          call MPI_Barrier(MPI_Comm_World,MPIerror)
+            call MPI_Barrier(MPI_Comm_World,MPIerror)
 #endif
 
-!         Save the basis set (only once)
-          call cdf_save_basis(trim(slabel)//'.nc')
+!     Save the basis set (only once)
+            call cdf_save_basis(trim(slabel)//'.nc')
 #ifdef MPI
-          call MPI_Barrier(MPI_Comm_World,MPIerror)
+            call MPI_Barrier(MPI_Comm_World,MPIerror)
 #endif
 
-          d_sav = d_sav//('xa'.kv.1)//('cell'.kv.1)
-          d_sav = d_sav//('sp'.kv.1)//('S'.kv.1)//('xij'.kv.1)
-          d_sav = d_sav//('isc_off'.kv.1)//('nsc'.kv.1)
-          if ( initialized(gradS_2D) ) then
-            d_sav = d_sav//('gradS'.kv.1)
-          end if
-          call cdf_save_state(trim(slabel)//'.nc',d_sav)
-          call delete(d_sav)
+            d_sav = d_sav//('xa'.kv.1)//('cell'.kv.1)
+            d_sav = d_sav//('sp'.kv.1)//('S'.kv.1)//('xij'.kv.1)
+            d_sav = d_sav//('isc_off'.kv.1)//('nsc'.kv.1)
+            if ( initialized(gradS_2D) ) then
+               d_sav = d_sav//('gradS'.kv.1)
+            end if
+            call cdf_save_state(trim(slabel)//'.nc',d_sav)
+            call delete(d_sav)
 
-        end if
+         end if
       end if
 #endif
 
 
-!
+!     
 !     Here we could also read a Hamiltonian, either to proceed to
 !     the analysis section (with nscf=0) or to start a mix-H scf cycle.
-!
+!     
 !     Initialize density matrix
 !     The resizing of Dscf is done inside new_dm
       call new_DM(auxchanged, DM_history, DM_2D, EDM_2D)
@@ -801,16 +807,16 @@ c$$$        gradS => val(gradS_2D)
 !     update the oldnsc here.
       if ( auxchanged ) nsc_old(:) = nsc(:)
 
-      ! Initialize energy-density matrix to zero for first call to overfsm
-      ! Only part of Escf is updated in TS, so if it is put as zero here
-      ! a continuation run gives bad forces.
+! Initialize energy-density matrix to zero for first call to overfsm
+! Only part of Escf is updated in TS, so if it is put as zero here
+! a continuation run gives bad forces.
       if ( .not. TSrun ) then
          call normalize_DM( first= .true. )
          Escf(:,:) = 0.0_dp
       end if
 
 #ifdef TEST_IO
-      ! We test the io-performance here
+! We test the io-performance here
       call time_io(spin%H,nsc,H_2D)
 #endif
 
@@ -820,16 +826,16 @@ c$$$        gradS => val(gradS_2D)
 
 !     Write out the ORB_INDX file (if requested)
       if ( save_ORB_INDX ) then
-        if ( IOnode .and. istep == inicoor ) then
-          call write_orb_indx( na_u, na_s, no_u, no_s, isa, xa,
-     .        iaorb, iphorb, indxuo, nsc, ucell )
-        end if
+         if ( IOnode .and. istep == inicoor ) then
+            call write_orb_indx( na_u, na_s, no_u, no_s, isa, xa,
+     .           iaorb, iphorb, indxuo, nsc, ucell )
+         end if
       end if
 
       if ( onlyS ) then
          fname = fname_TSHS(slabel, onlyS = .true. )
-         ! We include H as S, well-knowing that we only write one of
-         ! them, there is no need to allocate space for no reason!
+! We include H as S, well-knowing that we only write one of
+! them, there is no need to allocate space for no reason!
          call ts_write_tshs(fname,
      &        .true., .not. use_aux_cell, ts_Gamma_file,
      &        ucell, nsc, isc_off, na_u, no_s, spin%H,
@@ -844,27 +850,27 @@ c$$$        gradS => val(gradS_2D)
 #ifdef CDF
       if (writedm_cdf) then
          call setup_dm_netcdf_file( maxnh, no_l, spin%H,
-     &                              no_s, indxuo,
-     &                              numh, listhptr, listh)
+     &        no_s, indxuo,
+     &        numh, listhptr, listh)
       endif
       if (writedm_cdf_history) then
          call setup_dm_netcdf_file( maxnh, no_l, spin%H,
-     &                              no_s, indxuo,
-     &                              numh, listhptr, listh,
-     &                              istep)
+     &        no_s, indxuo,
+     &        numh, listhptr, listh,
+     &        istep)
       endif
       if (writedmhs_cdf) then
          call setup_dmhs_netcdf_file( maxnh, no_l, spin%H,
-     &                              no_s, indxuo,
-     &                              numh, listhptr, listh,
-     &                              s)
+     &        no_s, indxuo,
+     &        numh, listhptr, listh,
+     &        s)
       endif
       if(writedmhs_cdf_history) then
          call setup_dmhs_netcdf_file( maxnh, no_l, spin%H,
-     &                              no_s, indxuo,
-     &                              numh, listhptr, listh,
-     &                              s,
-     &                              istep)
+     &        no_s, indxuo,
+     &        numh, listhptr, listh,
+     &        s,
+     &        istep)
       endif
 #endif
       call timer( 'state_init', 2 )
@@ -873,6 +879,72 @@ c$$$        gradS => val(gradS_2D)
 !     Setup S in 2d Scalapack distribution if needed (ELSI ELPA solver)
 !     Initialize ELSI
 
+      CONTAINS
+
+      subroutine get_sinv()
+      use m_virtual_step_data, only : Sinv
+      use fdf
+      use intrinsic_missing, only: modp
+
+      integer :: i, j, info, io, ind, jo
+      
+      real(dp), allocatable :: Saux(:,:)
+
+      if (no_u /= no_l) call die("get_sinv does not work in parallel")
+      
+! Inverse of the S matrix for further analysis
+      call re_alloc(Sinv,1, no_u,1, no_u, 'Sinv', 'state_init')
+      do io = 1,no_u
+         Sinv(:,io) = 0._dp
+         do j = 1,numh(io)
+            ind = listhptr(io) + j
+            jo = listh(ind)
+            jo = MODP(jo,no_u)  ! To allow auxiliary supercells
+            Sinv(jo,io) = Sinv(jo,io) + S(ind)
+         enddo
+      enddo
+! Copy for check below
+      allocate (Saux(no_u,no_u))
+      Saux(:,:) = Sinv(:,:)
+      
+      call dpotrf('L',no_u,Sinv,no_u,info)
+      write(6,*) "Info choleski:", info
+      call dpotri('L',no_u,Sinv,no_u,info)
+      write(6,*) "Info inverse:", info
+! Generate the upper triangle
+      do i = 1, no_u
+         do j = i+1, no_u
+            Sinv(i,j) = Sinv(j,i)
+         enddo
+      enddo
+      if (fdf_get('Sinv.printmatrix',.false.)) then
+         write(6,*) "S(k=0):"
+         do i = 1, min(8,no_u)
+            do j = 1, min(8,no_u)
+               write(6,fmt="(1x,f10.4)",advance="no") Saux(i,j) 
+            enddo
+            write(6,*)
+         enddo
+         write(6,*) "S^-1(k=0):"
+         do i = 1, min(8,no_u)
+            do j = 1, min(8,no_u)
+               write(6,fmt="(1x,f10.4)",advance="no") Sinv(i,j) 
+            enddo
+            write(6,*)
+         enddo
+         write(6,*) "Product:"
+         do i = 1, min(8,no_u)
+            do j = 1, min(8,no_u)
+               write(6,fmt="(1x,f10.4)",advance="no")
+     $              dot_product(Saux(i,:),Sinv(:,j))
+            enddo
+            write(6,*)
+         enddo
+      endif
+      deallocate(Saux)
+      
+      end subroutine get_sinv
+      
       END subroutine state_init
 
       subroutine check_cohp()
@@ -889,4 +961,5 @@ c$$$        gradS => val(gradS_2D)
       endif
       end subroutine check_cohp
 
+      
       END module m_state_init

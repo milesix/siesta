@@ -46,7 +46,8 @@ subroutine compute_psi_hat_c (psi_hat_c, n_wfs)
   ! To get the density and <phi_1|r|phi_2> matrix
   use ks_flux_data, only: ks_flux_D, ks_flux_Rmat
   use ks_flux_data, only: ks_flux_S
-
+  use m_virtual_step_data, only: Sinv
+  
   ! Output: coefficients of psi_hat_c, stored in module ks_flux_data
   ! use ks_flux_data, only: psi_hat_c
 
@@ -113,14 +114,14 @@ subroutine compute_psi_hat_c (psi_hat_c, n_wfs)
      do alpha = 1,no_u
         do nu = 1,no_l   ! *** WARNING: local vs global?
            !! nu_g = LocalToGlobalOrb(nu...)
-           if (alpha == nu) then    ! alpha == nu_g   ; rest depending on
+    !!           if (alpha == nu) then    ! alpha == nu_g   ; rest depending on
                                     ! whether Dfull is distributed or not
               psi_hat_c(alpha,iw,idx) = psi_hat_c(alpha,iw,idx) + &
-                   tmp_g(nu) * (1.0 - 0.5_dp * Dfull(nu,alpha,1)) ! <- only 1st spin component
-           else
-              psi_hat_c(alpha,iw,idx) = psi_hat_c(alpha,iw,idx) + &
-                   tmp_g(nu) * (- 0.5_dp * Dfull(nu,alpha,1)) ! <- only 1st spin component
-           end if
+                   tmp_g(nu) * (sinv(nu,alpha) - 0.5_dp * Dfull(nu,alpha,1)) ! <- only 1st spin component
+    !!           else
+    !!              psi_hat_c(alpha,iw,idx) = psi_hat_c(alpha,iw,idx) + &
+    !!                   tmp_g(nu) * (- 0.5_dp * Dfull(nu,alpha,1)) ! <- only 1st spin component
+    !!           end if
 
         end do
      end do
