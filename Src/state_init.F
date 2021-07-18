@@ -882,18 +882,19 @@ c$$$        gradS => val(gradS_2D)
 
       subroutine get_sinv()
       ! Compute inverse of the S matrix for further analysis
-
-      use m_virtual_step_data, only : Sinv
+      ! Also, save S matrix for base step
+      
+      use m_virtual_step_data, only : Sinv, S_base
       use fdf
       use intrinsic_missing, only: modp
 
       integer :: i, j, info, io, ind, jo
       
-      real(dp), allocatable :: Saux(:,:)
-
       if (no_u /= no_l) call die("get_sinv does not work in parallel")
       
       call re_alloc(Sinv,1, no_u,1, no_u, 'Sinv', 'state_init')
+      call re_alloc(S_base,1, no_u,1, no_u, 'S_base', 'state_init')
+
       do io = 1,no_u
          Sinv(:,io) = 0._dp
          do j = 1,numh(io)
@@ -903,25 +904,28 @@ c$$$        gradS => val(gradS_2D)
             Sinv(jo,io) = Sinv(jo,io) + S(ind)
          enddo
       enddo
-! Copy for check below
-      allocate (Saux(no_u,no_u))
-      Saux(:,:) = Sinv(:,:)
+
+      ! Copy S at this point
+
+      S_base(:,:) = Sinv(:,:)
       
       call dpotrf('L',no_u,Sinv,no_u,info)
       write(6,*) "Info choleski:", info
       call dpotri('L',no_u,Sinv,no_u,info)
       write(6,*) "Info inverse:", info
-! Generate the upper triangle
+
+      ! Generate the upper triangle
       do i = 1, no_u
          do j = i+1, no_u
             Sinv(i,j) = Sinv(j,i)
          enddo
       enddo
+
       if (fdf_get('Sinv.printmatrix',.false.)) then
          write(6,*) "S(k=0):"
          do i = 1, min(8,no_u)
             do j = 1, min(8,no_u)
-               write(6,fmt="(1x,f10.4)",advance="no") Saux(i,j) 
+               write(6,fmt="(1x,f10.4)",advance="no") S_base(i,j) 
             enddo
             write(6,*)
          enddo
@@ -936,12 +940,11 @@ c$$$        gradS => val(gradS_2D)
          do i = 1, min(8,no_u)
             do j = 1, min(8,no_u)
                write(6,fmt="(1x,f10.4)",advance="no")
-     $              dot_product(Saux(i,:),Sinv(:,j))
+     $              dot_product(S_base(i,:),Sinv(:,j))
             enddo
             write(6,*)
          enddo
       endif
-      deallocate(Saux)
       
       end subroutine get_sinv
       

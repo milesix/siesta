@@ -42,6 +42,9 @@ module m_virtual_step_data
   !! Inverse of the overlap matrix.
   !! Computed in diagg at the beginning of the scf cycle of
   !! the base step
+  real(dp), pointer, save :: S_base(:,:) => null()
+  real(dp), pointer, save :: H_base(:,:) => null()
+  real(dp), pointer, save :: eo_base(:) => null()
 
   ! Common auxilliary state data regarding mesh, gvectors etc:
   real(dp), dimension(3,3), save :: cell_vmd !! Unit cell vectors

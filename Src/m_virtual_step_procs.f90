@@ -305,6 +305,19 @@ contains
     use hartree_flux_procs, only: init_Jhart_BASE
 
     if ( virtual_md_Jks ) then
+       ! This stores copies of S, H, Rmat, etc
+       ! in XX_flux_X variables.
+       ! However, there are missing things:
+       !
+       !  eo  (for the eigenvalues)
+       !
+       ! and the state of some variables is not
+       ! really known (e.g. what happens to H after
+       ! the scf cycle ends? Is it mixed again? destroyed?)
+       !
+       ! Plus: Rmat is in "real-space form", not in
+       ! "k=0" form. Is that what we need?
+       
        call init_ks_flux_data()
 
        Dscf_deriv(:,:) = Dscf(:,:)

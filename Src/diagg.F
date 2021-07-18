@@ -99,6 +99,7 @@ C     ! [VMD] Imports
       use siesta_options, only : want_virtual_step_md, virtual_dt
       use m_virtual_step_data, only : substep, BASE_STEP, VIRTUAL_STEP
       use m_virtual_step_data, only : Dfull, Dderiv
+      use m_virtual_step_data, only : H_base, eo_base
 
       implicit none
 
@@ -150,6 +151,10 @@ C  Internal variables .............................................
 
 C Solve eigenvalue problem
 
+      if (want_virtual_step_md  .and. spinor_dim > 1) then
+         call die("Cannot do thermal transport with spin")
+      endif
+      
       do ispin = 1,spinor_dim
 
         call timer( 'r-eigvec', 1 )
@@ -168,11 +173,33 @@ C Solve eigenvalue problem
         enddo
 !$OMP end parallel do
         call timer( 'r-buildHS', 2 )
+
+          if (want_virtual_step_md  .and.
+     $       (substep .eq. BASE_STEP)) then
+
+             if (iscf.eq.1) then
+                ! Spin 1 for now
+                call re_alloc(H_base,1, nuo, 1, nuo,
+     $               'H_base', 'diagg')
+                call re_alloc(eo_base, 1, nuo,
+     $               'eo_base', 'diagg')
+             endif
+             
+             H_base(:,:) = Haux(:,:)
+          endif
+
         call rdiag( Haux, Saux, nuotot, nuo, nuotot,
      $       eo(1,ispin),
      .       psi(1,1,ispin), neigwanted, iscf, ierror,
      .       BlockSize)
         call timer( 'r-eigvec', 2 )
+
+          if (want_virtual_step_md  .and.
+     $       (substep .eq. BASE_STEP)) then
+             
+             eo_base(:) = eo(:,1)
+             
+          endif
 
 
 C Check error flag and take appropriate action
@@ -193,9 +220,20 @@ C Repeat diagonalisation with increased memory to handle clustering
             enddo
           enddo
 !$OMP end parallel do
+
+          
           call rdiag( Haux, Saux, nuotot, nuo, nuotot, eo(1,ispin),
      &         psi(1,1,ispin), neigwanted, iscf, ierror,
      .         BlockSize )
+
+          ! Just in case
+          if (want_virtual_step_md  .and.
+     $       (substep .eq. BASE_STEP)) then
+             
+             eo_base(:) = eo(:,1)
+             
+          endif
+          
         endif
 
         if (getPSI) then

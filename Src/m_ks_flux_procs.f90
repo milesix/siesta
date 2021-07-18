@@ -6,7 +6,8 @@ module ks_flux_procs
   use densematrix, only: psi ! To get at the c^i_\mu coefficients of the wavefunctions
   use sparse_matrices, only: listh, listhptr, numh
   use m_virtual_step_data, only: Dfull, Dderiv, istep_vmd
-  !!TODO: are the dimensions of Dfull & Dderiv correct?
+
+    !!TODO: are the dimensions of Dfull & Dderiv correct?
 
   implicit none
 
@@ -44,9 +45,10 @@ subroutine compute_psi_hat_c (psi_hat_c, n_wfs)
   !! psi_hat_c will have no_u rows and n_wfs columnns
 
   ! To get the density and <phi_1|r|phi_2> matrix
-  use ks_flux_data, only: ks_flux_D, ks_flux_Rmat
+  use ks_flux_data, only: ks_flux_Rmat
   use ks_flux_data, only: ks_flux_S
   use m_virtual_step_data, only: Sinv
+
   
   ! Output: coefficients of psi_hat_c, stored in module ks_flux_data
   ! use ks_flux_data, only: psi_hat_c
@@ -58,7 +60,6 @@ subroutine compute_psi_hat_c (psi_hat_c, n_wfs)
   !! Number of wavefunctions to process
 
   real(dp), dimension(:), pointer :: rmatrix => null()
-  real(dp), dimension(:), pointer :: dscf_hat => null()
 
   !> Coordinate index regarding the selected dimension of Rmat.
   !> It will define X/Y/Z component of resulting Jks.
@@ -77,7 +78,6 @@ subroutine compute_psi_hat_c (psi_hat_c, n_wfs)
 
   allocate (tmp_g(no_l))
 
-  dscf_hat => ks_flux_D(:,1)    !NOTE: Just first spin component
   ! computing and storage of every of the 3 components
   ! should be available to order in the .fdf
 
@@ -114,34 +114,14 @@ subroutine compute_psi_hat_c (psi_hat_c, n_wfs)
      do alpha = 1,no_u
         do nu = 1,no_l   ! *** WARNING: local vs global?
            !! nu_g = LocalToGlobalOrb(nu...)
-    !!           if (alpha == nu) then    ! alpha == nu_g   ; rest depending on
-                                    ! whether Dfull is distributed or not
+
               psi_hat_c(alpha,iw,idx) = psi_hat_c(alpha,iw,idx) + &
                    tmp_g(nu) * (sinv(nu,alpha) - 0.5_dp * Dfull(nu,alpha,1)) ! <- only 1st spin component
-    !!           else
-    !!              psi_hat_c(alpha,iw,idx) = psi_hat_c(alpha,iw,idx) + &
-    !!                   tmp_g(nu) * (- 0.5_dp * Dfull(nu,alpha,1)) ! <- only 1st spin component
-    !!           end if
 
         end do
      end do
      ! MPI: reduce (sum) psi_hat_c() over processes
      
-!!$     ! Normalize here
-!!$     ! norm = c*S*c
-!!$     tmp_g(:) = 0.0
-!!$     do nu = 1,no_l
-!!$        do ij = 1, numh(nu)
-!!$             k = listhptr(nu) + ij
-!!$             col = listh(k)
-!!$             tmp_g(nu) = tmp_g(nu) + overlap(k) * psi_hat_c(col,iw,idx)
-!!$        end do
-!!$     end do
-!!$     norm = 0.0_dp
-!!$     do mu = 1, no_l
-!!$        norm = norm + psi_hat_c(mu,iw,idx) * tmp_g(mu)
-!!$     enddo
-!!$!!!     psi_hat_c(:,iw,idx) = psi_hat_c(:,iw,idx) / (sqrt(norm) + 1.0e-8_dp)
 
      !TEST
      tr_shat = 0.0_dp
@@ -175,7 +155,7 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
   use m_virtual_step_data, only: Sinv
 
   ! Entities stored during the BASE MD-step:
-  use ks_flux_data, only: ks_flux_D, ks_flux_S, ks_flux_gS
+  use ks_flux_data, only: ks_flux_S, ks_flux_gS
 
   ! Output: coefficients of psi_dot_c, stored in module ks_flux_data
   ! use ks_flux_data, only: psi_dot_c
@@ -192,7 +172,6 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
   integer, intent(in) :: n_wfs
   !! Number of wavefunctions to process
 
-  real(dp), dimension(:),   pointer :: dscf_hat => null()
   real(dp), dimension(:,:), pointer :: gradS => null()
   real(dp), dimension(:),   pointer :: S => null()
 
@@ -227,7 +206,6 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
   ! allocate (tmp_left(no_u))
   ! allocate (tmp_right(no_u))
 
-  ! dscf_hat => ks_flux_D(:,1)         !NOTE: Just first spin component
   S => ks_flux_S(:)
   gradS => ks_flux_gS(:,:)
   ! computing and storage of every of the 3 components
@@ -395,10 +373,12 @@ subroutine compute_Jks ()
   ! use sparse_matrices, only: S
 
   use ks_flux_data, only: ks_flux_S, ks_flux_H
+  use m_virtual_step_data, only: H_base
+  use m_virtual_step_data, only: S_base
+  use m_virtual_step_data, only: eo_base
   use ks_flux_data, only: psi_hat_c, psi_dot_c, ks_flux_Jks, ks_flux_Jele
 
   use siesta_options, only: virtual_md_verbose
-  use m_eo, only: eo
 
   use,intrinsic :: iso_c_binding, only: c_loc, c_f_pointer
 
@@ -427,10 +407,8 @@ subroutine compute_Jks ()
   call compute_psi_hat_c (psi_hat_c, no_occ_wfs)
   call compute_psi_dot_c (psi_dot_c, no_occ_wfs)
 
-  S => ks_flux_S(:)
-  H => ks_flux_H(:,:)
-
   ks_flux_Jks(:) = 0.0          ! Init result to zeros outside main loop
+  ks_flux_Jele(:) = 0.0          ! Init result to zeros outside main loop
 
   ! Parallel operation note: we need psi_hat_c and psi_dot_c coefficients for all
   ! occupied wavefunctions in all processors.
@@ -438,54 +416,29 @@ subroutine compute_Jks ()
   do iw = 1,no_occ_wfs
 
      do mu = 1,no_l
-        do j = 1,numh(mu)
-           ind = j + listhptr(mu)
-           col = listh(ind)
-           nu = indxuo(col)
+        do nu = 1, no_l
 
-           H_el_S = H(ind,1) + eo(iw,1,1) * S(ind)   ! We assume Gamma point with no
-                                                    ! aux supercell
-                                                    ! Otherwise, fold to H(k=0), S(k=0)
+           H_el_S = H_base(mu,nu) + eo_base(iw) * S_base(mu,nu)   ! These are (k=0) matrices
+
            do idx = 1,3
-
               ks_flux_Jks(idx) = ks_flux_Jks(idx) + &
                     psi_hat_c(mu,iw,idx) * H_el_s * psi_dot_c(nu,iw)
 
+              ks_flux_Jele(idx) = ks_flux_Jele(idx) + &
+                    psi_hat_c(mu,iw,idx) * S_base(mu,nu) * psi_dot_c(nu,iw)
            end do
+
         end do
      end do
+
   end do
 
+  ! For parallel operation, reduce ks_flux_J* over all processors...
+  
   ks_flux_Jks(:) = 2.0_dp * ks_flux_Jks(:)   ! For spin
-  !
-  ! For parallel operation, now reduce ks_flux_Jks over all processors
+  ks_flux_Jele(:) = 2.0_dp * 2.0_dp * ks_flux_Jele(:)   ! Why the multiplication by 2*2??
   !
   Print *, "[Jks] ", ks_flux_Jks
-
-
-  ks_flux_Jele(:) = 0.0          ! Init result to zeros outside main loop
-
-  do iw = 1,no_occ_wfs
-
-     do mu = 1,no_l
-        do j = 1,numh(mu)
-           ind = j + listhptr(mu)
-           col = listh(ind)
-           nu = indxuo(col)
-
-           do idx = 1,3
-
-              ks_flux_Jele(idx) = ks_flux_Jele(idx) + &
-                    psi_hat_c(mu,iw,idx) * S(ind) * psi_dot_c(nu,iw)
-
-           end do
-        end do
-     end do
-  end do
-
-  ! Why the multiplication by 2*2??
-  ks_flux_Jele(:) = 2.0_dp * 2.0_dp * ks_flux_Jele(:)
-
   Print *, "[Jele] ", ks_flux_Jele
 
   if (virtual_md_verbose) then
