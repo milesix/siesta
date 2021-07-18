@@ -172,6 +172,7 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
   use siesta_options, only : virtual_dt
   ! Take proper velocities from `BASE` step:
   use m_virtual_step_data, only: va_before_move
+  use m_virtual_step_data, only: Sinv
 
   ! Entities stored during the BASE MD-step:
   use ks_flux_data, only: ks_flux_D, ks_flux_S, ks_flux_gS
@@ -259,9 +260,6 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
         end do
      end do
 
-     !! WARNING: Temporary change!!!
-     tmp2(:) = 0.0_dp
-     
      tmp3(:) = 0.0_dp
 
      do beta = 1,no_u
@@ -273,15 +271,9 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
 
      do lambda=1,no_u
         do beta = 1,no_u
-           if (beta.eq.lambda) then
               psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-                   & + (1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)&
+                   & + (Sinv(lambda,beta) - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)&
                    & * virtual_md_Jks_A
-           else
-              psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-                   & + (0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)&
-                   & * virtual_md_Jks_A
-           end if
         end do
      end do
   end do                        ! end of part A
@@ -318,15 +310,9 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
 
      do lambda=1,no_u
         do beta = 1,no_u
-           if (beta.eq.lambda) then
               psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-                   & + (1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)&
+                   & + (Sinv(lambda,beta) - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)&
                    & * virtual_md_Jks_B
-           else
-              psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-                   & + (0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)&
-                   & * virtual_md_Jks_B
-           end if
         end do
      end do
   end do                        ! end of part B
@@ -364,33 +350,11 @@ subroutine compute_psi_dot_c (psi_dot_c, n_wfs)
 
      do lambda=1,no_u
         do beta = 1,no_u
-           if (beta.eq.lambda) then
               psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-                   & + (1.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)&
+                   & + (Sinv(lambda,beta) - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)&
                    & * virtual_md_Jks_C
-           else
-              psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
-                   & + (0.0_dp - 0.5_dp * Dfull(lambda,beta,1)) * tmp3(beta)&
-                   & * virtual_md_Jks_C
-           end if
         end do
      end do
-
-!!$     ! Normalize here
-!!$     ! norm = c*S*c
-!!$     tmp_g(:) = 0.0
-!!$     do nu = 1,no_l
-!!$        do ij = 1, numh(nu)
-!!$             k = listhptr(nu) + ij
-!!$             col = listh(k)
-!!$             tmp_g(nu) = tmp_g(nu) + S(k) * psi_dot_c(col,iw)
-!!$        end do
-!!$     end do
-!!$     norm = 0.0_dp
-!!$     do mu = 1, no_l
-!!$        norm = norm + psi_dot_c(mu,iw) * tmp_g(mu)
-!!$     enddo
-!!$!!     psi_dot_c(:,iw) = psi_dot_c(:,iw) / (sqrt(norm) + 1.0e-8_dp)
 
      !TEST
      tr_sdot = 0.0_dp
@@ -519,6 +483,7 @@ subroutine compute_Jks ()
      end do
   end do
 
+  ! Why the multiplication by 2*2??
   ks_flux_Jele(:) = 2.0_dp * 2.0_dp * ks_flux_Jele(:)
 
   Print *, "[Jele] ", ks_flux_Jele
