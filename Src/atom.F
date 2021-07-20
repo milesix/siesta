@@ -3888,7 +3888,7 @@ C
 !
 ! LOOP over angular momenta
 !
-        do l=0,lmxo
+        loop_over_l: do l=0,lmxo
 
            if (l .gt. lmax_ps) then
               write(6,"(a,i2)") "*Note: V_local used for l=", l
@@ -3903,15 +3903,14 @@ C
             if (nzeta(l,nsm).gt.0) then
               write(6,'(/A,I2)')
      .          'SPLIT: Orbitals with angular momentum L=',l 
-              goto 50
+              EXIT   ! Just one message for all nsm shells
             endif
           enddo 
 
-50        continue
               
-          do nsm=1,nsemic(l)+1
+          loop_over_nsm_shells: do nsm=1,nsemic(l)+1
 
-            if (nzeta(l,nsm).gt.0) then
+            if (nzeta(l,nsm) == 0 ) CYCLE loop_over_nsm_shells
  
               write(6,'(/A,I1,A)')
      .          'SPLIT: Basis orbitals for state ',
@@ -3921,18 +3920,16 @@ C
      $                        is,l,nsm,basp,rco)
                  
               if (rco(1,l,nsm).lt.1.0d-5) then    
-C
-C Automatic determination of the cut off radius for the PAOs
-C Atomic eigenvalues
-C
+
+                ! Automatic determination of the cut off radius for the PAOs
+
+                ! Compute free-atom eigenvalues
                 nnodes=nsm
                 nprin=l+nsm
                 call schro_eq(Zval,rofi,Vpot,ve,s,drdi,
      .                        nrval,l,a,b,nnodes,nprin,
      .                        eigen(l),rphi(1,l,nsm))
-C
-C Rc given by eshift
-C
+
                 if (eigen(l).gt.0.0d0) then 
                   write(6,'(/A,I2,A)')
      .       'SPLIT: ERROR Orbital with angular momentum L=',l,
@@ -3941,29 +3938,35 @@ C
      .       'SPLIT: ERROR a cut off radius must be explicitly given' 
                   call die
                 endif 
+
+                ! Determine the rc from the energy shift
                 if (abs(eshift).gt.1.0d-5) then
                   el=eigen(l)+eshift
+                  ! The rco coming out of this is not pinned to a grid point
                   call rc_vs_e(a,b,rofi,Vpot,ve,nrval,l,el,
      .                         nnodes,rco(1,l,nsm))
                 else
-                  rco(1,l,nsm)=rofi(nrval-2)
+                   ! out near "infinity" (should be catched?)
+                   rco(1,l,nsm)=rofi(nrval-2)  
                 endif
                 write(6,'(/,A,/,A,f10.6,A)')
      .            'SPLIT: PAO cut-off radius determined from an',
      .            'SPLIT: energy shift=',eshift,' Ry'
 
               endif  
-C
-C If the compression factor is negative or zero the orbitals are
-C left untouched
-C
+
+              ! Check lambda
               if (lambda(1,l,nsm).le.0.0d0) lambda(1,l,nsm)=1.0d0
-!
-! SOFT-CONFINEMENT 
-!
-C Calculate the soft confinement potential for a given atomic species
-C and angular momentum 
-!!AG** rco might not be the PAO cutoff radius! See below
+
+              ! Soft confinement----(plus 'charge confinement', if enabled)-----
+              !
+              ! Calculate the soft confinement potential for the current
+              ! rco. Inside the routine, the effective 'singularity' rc
+              ! is a bit larger than the next-highest point to the
+              ! pinned rco.  If we later pin rco to an odd-numbered grid
+              ! point (see below), Vsoft(rco) can be large. This is Still, for
+              ! backwards compatibility we leave this block here, instead
+              ! of recomputing vsoft for the actual rco(1,l,:)
 
               call build_vsoft(is,l,nsm,rinn(l,nsm),vcte(l,nsm),
      .               qcoe(l,nsm),qyuk(l,nsm),qwid(l,nsm),a,b,
@@ -3973,18 +3976,19 @@ C and angular momentum
               do ir = 1, nrval
                 vePAOsoft(ir) = vePAO(ir) + vsoft(ir)
               enddo
+              ! Note that this file does not discriminate over l or nsm
               if (write_ion_plot_files) then
                  call file_out(nrval,rofi,vePAOsoft,
      .                trim(global_label)//".Vsoft")
               endif
-!
-! END SOFT-CONFINEMENT 
-!
-              do izeta=1, nzeta(l,nsm)
-C
-C Compression factor is only active for the initial pao when using
-C split option for the generation of the basis set
-C
+              !------------------------------------------------------------------
+
+              loop_over_zetas: do izeta=1, nzeta(l,nsm)
+
+                !-----------------
+                ! Determine the rc values
+
+                ! Compression factors for all zetas are equal to the 1st one
                 lambda(izeta,l,nsm)=lambda(1,l,nsm)
 
 !
@@ -3999,12 +4003,15 @@ C
                   endif
                 endif
 
+                !-------------------------------
+                ! Here input rc values are 'rounded' to the closest grid point...
                 rc=rco(izeta,l,nsm)/lambda(1,l,nsm)
                 nrc=nint(log(rc/b+1.0d0)/a)+1
 
-! Note that rco is redefined here, to make it fall on an odd-numbered
-! grid point.
-!
+                ! ... and possibly moved to the next-highest odd-numbered grid point.
+                ! This introduces a problem if rc's are entered explicitly, and they 
+                ! come from a procedure (i.e., a split-norm calculation) that does
+                ! not care about the "odd point" setting.
                 if (restricted_grid) then
                   nodd=mod(nrc,2)
                   if (nodd.eq.0) then
@@ -4013,15 +4020,14 @@ C
                 endif
                 rc=b*(exp(a*(nrc-1))-1.0d0)
                 rco(izeta,l,nsm)=rc*lambda(1,l,nsm)
+                !-------------------------------
                   
                 if (izeta.eq.1) then 
 
-!
-!AG**    Soft-confinement setup might need to go here
-!
-C
-C Generate PAO orbitals for the first shell of the basis set
-C 
+                  ! Generate PAO orbitals for the first shell of the basis set
+
+                  ! (Soft-confinement setup might need to go here in future)
+
                   nnodes=nsm
                   nprin=l+nsm
                   call schro_eq(Zval,rofi,Vpot,vePAOsoft,s,drdi,
@@ -4036,6 +4042,7 @@ C
                   enddo 
                   g(1)=g(2)         
 
+                  ! Generate information for the split-norm operation
                   if (split_tail_norm) then
                     write(*,"(a)") "Split based on tail norm"
                     ! Follows the criterion of the JPC paper, but
@@ -4054,23 +4061,15 @@ C
                   endif
 
                 else              ! izeta > 1...
-C
-C Cut-off radius for double-Z, triple-Z,..., if it is set to
-C zero in the input then it is calculated from the splitnorm
-C parameter
-C
+
                   if (rco(izeta,l,nsm).gt.rco(1,l,nsm)) then
-                    write(6,'(/,A)') 
-     . 'SPLIT: ERROR: SPLIT OPTION FOR BASIS SET '
-                    write(6,'(A)')  
-     . 'SPLIT: ERROR: Rc FOR DOUBLE-Z, TRIPLE-Z,... SHOULD BE SMALLER '
-                    write(6,'(A)') 
-     . 'SPLIT: ERROR:  THAN THAT OF THE INITIAL PAO !!!!!'
-                    call die
+                    call die("higher-z rc larger than for 1st one")
                   endif
                                   
-                
+
                   if (rco(izeta,l,nsm).gt.1.0d-5) then
+
+                    ! We round again, but this operation should be idempotent ...
                     rc=rco(izeta,l,nsm)/lambda(1,l,nsm)
                     nrc=nint(log(rc/b+1.0d0)/a)+1
 
@@ -4094,6 +4093,8 @@ C
                     nrc=nint(log(rc/b+1.0d0)/a)+1
 
                     spln = split_norm(l,nsm)
+                    ! For higher zs, the split-norm parameter 
+                    ! is 1/2, 1/4, 1/6... of the first one
                     if (izeta.gt.2) then
                       spln=split_norm(l,nsm)/(2.0d0*(izeta-2) )
                     endif
@@ -4122,40 +4123,38 @@ C
 C
 C Cut-off radius for the split orbital with a desired norm
 C
-         nrc=nsp
-         rco(izeta,l,nsm)= rofi(nsp) *lambda(izeta,l,nsm)
+            nrc=nsp
+            rco(izeta,l,nsm)= rofi(nsp) *lambda(izeta,l,nsm)
 C
 
-             do i=1,izeta-1
-                if(abs(rco(izeta,l,nsm)-rco(i,l,nsm))
-     .                                   .lt.1.0d-5) then
-                   write(6,'(/,A,I2,A,I2,A,I2)')
-     .            'SPLIT: WARNING: Split-orbital with zeta=',izeta,
-     .            ' and zeta=',i,' are identical for l=',l
-                      endif
-                    enddo
+            do i=1,izeta-1
+               if(abs(rco(izeta,l,nsm)-rco(i,l,nsm))
+     .              .lt.1.0d-5) then
+                  write(6,'(/,A,I2,A,I2,A,I2)')
+     .                 'SPLIT: WARNING: Split-orbital with zeta=',izeta,
+     .                 ' and zeta=',i,' are identical for l=',l
+               endif
+            enddo
 
-                  endif
+         endif                  ! is rc(z) explicitly given?
 
-                  do ir=1,nrval
-C
-C Parabolic split
-C
-                    r=rofi(ir)
-                    if (ir.ge.nrc) then
-                      g(ir)=0.0d0
-                    else
-                 ! Store first-zeta minus second-zeta in g
-                      g(ir)=-(cons1*r**2+cons2)*r**(l+1)+rphi(ir,l,nsm) 
-                    endif
-                  enddo 
+         ! Parabolic split
+         do ir=1,nrval
+            r=rofi(ir)
+            if (ir.ge.nrc) then
+               g(ir)=0.0d0
+            else
+               ! Store first-zeta minus second-zeta in g
+               g(ir)=-(cons1*r**2+cons2)*r**(l+1)+rphi(ir,l,nsm) 
+            endif
+         enddo 
 C
 C Orthogonalize to the inner shells if present
 C In some cases we have to use a "smooth" version of the orginal
 C PAO orbitals in this orthogonalization process
 C
-                  if (nsm.gt.1) then
-                    do ism=1,nsm-1
+         if (nsm.gt.1) then
+            do ism=1,nsm-1
                       rc=rco(1,l,ism)/lambda(1,l,ism)
 !
                       nrc4=nint(dlog(rc/b+1.0d0)/a)+1
@@ -4186,10 +4185,10 @@ c                        write(68,*) r,rh,rphi(ir,l,ism)
                       enddo
                       over(ism)=dnrm
                       norm(ism)=dn
-                    enddo
+           enddo  ! ism
 !
-                    nrc1=nrc
-                    do ism=1,nsm-1
+           nrc1=nrc
+           do ism=1,nsm-1
                       rc=rco(1,l,ism)/lambda(1,l,ism)
 !
                       nrc4=nint(dlog(rc/b+1.0d0)/a)+1
@@ -4216,29 +4215,33 @@ c                        write(68,*) r,rh,rphi(ir,l,ism)
                         endif
                         g(ir)=g(ir)-over(ism)*rh/(norm(ism)+1.0d-20)
                       enddo
-                    enddo
+           enddo ! ism
 
-                    if (nrc.ne.nrc1) then 
-                      nrc=nrc1
-                      rco(izeta,l,nsm)=
-     .           b*(exp(a*(nrc1-1))-1.0d0)*lambda(izeta,l,nsm)
-                    endif 
-                  endif
+           if (nrc.ne.nrc1) then
+              ! This re-defines rco...
+              nrc=nrc1
+              rco(izeta,l,nsm)=
+     .             b*(exp(a*(nrc1-1))-1.0d0)*lambda(izeta,l,nsm)
+              write(6,*) 'rco redefined: l, nsm, izeta, rco:',
+     $                   l, nsm, izeta, rco(izeta,l,nsm)
+           endif
+           
+        endif  ! nsm > 1  (there are semicore states)
               
-                  dnrm=0.0d0
-                  do ir=2,nrc-1
-                    r=rofi(ir)
+        dnrm=0.0d0
+        do ir=2,nrc-1
+           r=rofi(ir)
 C
 C Parabolic split
 C
-                    phi=g(ir)/(r**(l+1))
-                    dnrm=dnrm+drdi(ir)*(phi*r**(l+1))**2
-                    g(ir)=phi
-                  enddo
-                  g(1)=g(2)
-                  g(nrc)=0.0d0
-
-                endif
+           phi=g(ir)/(r**(l+1))
+           dnrm=dnrm+drdi(ir)*(phi*r**(l+1))**2
+           g(ir)=phi
+        enddo
+        g(1)=g(2)
+        g(nrc)=0.0d0
+        
+      endif                     ! zeta == 1 or > 1
 C
 C Normalization of basis functions
 C
@@ -4397,14 +4400,14 @@ C
      .                rco(izeta,l,nsm),lambda(izeta,l,nsm),
      .                filtercut(l,nsm),izeta,nsm,nrc,indx, spp)
                
-              enddo 
+             end do loop_over_zetas
+             
               ! Shouldn't this be placed before the call to combasis?
               call compress_PAO(a,b,rofi,rphi(1,l,nsm),
      .                          rco(1,l,nsm),lambda(1,l,nsm))
                        
-            endif    
-          enddo 
-        enddo 
+          end do loop_over_nsm_shells
+        end do loop_over_l
           
         end subroutine SPLIT
 !
