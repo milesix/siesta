@@ -151,6 +151,8 @@
           logical                   ::  in_pao_basis_block = .false.
           integer                   ::  lmxkb_requested
           integer                   ::  lmxdftupj_requested
+          logical                   ::  non_pert_polorbs_req=.false.
+          logical                ::  force_perturbative_polorbs=.false.
           logical                   ::  non_perturbative_polorbs=.false.
 
           type(shell_t), pointer    ::  tmp_shell(:) => null()
@@ -755,6 +757,17 @@
       write(lun,'(a5,i1,1x,a6,i2,4x,a10,a10,1x,a6,l1)')
      $     'Lmxo=', lmxo(is), 'Lmxkb=', lmxkb(is),
      $     'BasisType=', basistype(is), 'Semic=', semic(is)
+
+      ! For future expansion, maybe, although now the polarization
+      ! orbital is clearly part of a l-shell with a lower-lying orb.
+
+!!      if ( basp%non_perturbative_polorbs .and.
+!!     $     (.not.basp%non_pert_polorbs_req) ) then
+!!         write(lun,'(a)') 'Polarization orbital treated ' //
+!!     $                    'non-perturbatively due to the presence ' //
+!!     $                    'of lower-lying shell with same l'
+!!      endif
+      
       do l=0,lmxo(is)
          write(lun,'(a2,i1,2x,a7,i1,2x,a8,i1)')
      $        'L=', l, 'Nsemic=', nsemic(l,is),

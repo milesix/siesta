@@ -1179,7 +1179,8 @@ c       endif
         write(6,*)'orbital has failed !!!!!!!!!'
         write(6,*)'Please try with a Rc no bigger than ',rnd1,
      .      ' Bohr'
-        call die()
+        write(6,*)'... or try the non-perturbative options (see manual)'
+        call die("Generation of polarization orbital failed")
                           
 100     continue
         dnrm = 0.0d0
