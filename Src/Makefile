@@ -1177,9 +1177,9 @@ m_kinetic.o: precision.o
 
 m_ks_flux_data.o: alloc.o class_Sparsity.o precision.o sparse_matrices.o
 
-m_ks_flux_procs.o: atomlist.o densematrix.o m_eo.o m_ks_flux_data.o
-m_ks_flux_procs.o: m_virtual_step_data.o precision.o siesta_options.o
-m_ks_flux_procs.o: sparse_matrices.o
+m_ks_flux_procs.o: atmfuncs.o atomlist.o densematrix.o kpoint_scf.o m_eo.o
+m_ks_flux_procs.o: m_ks_flux_data.o m_virtual_step_data.o precision.o
+m_ks_flux_procs.o: siesta_geom.o siesta_options.o sparse_matrices.o units.o
 
 m_mat_invert.o: intrinsic_missing.o m_pivot_array.o precision.o
 
@@ -1779,8 +1779,8 @@ shaper.o: atmfuncs.o mneighb.o precision.o
 
 show_distribution.o: atomlist.o parallel.o parallelsubs.o siesta_geom.o sys.o
 
-siesta.o: extrae_module.o files.o m_forces.o m_io_yaml.o m_mpi_utils.o
-siesta.o: m_steps.o m_ts_global_vars.o m_virtual_step_data.o
+siesta.o: atomlist.o extrae_module.o files.o m_forces.o m_io_yaml.o
+siesta.o: m_mpi_utils.o m_steps.o m_ts_global_vars.o m_virtual_step_data.o
 siesta.o: m_virtual_step_procs.o parallel.o precision.o siesta_analysis.o
 siesta.o: siesta_end.o siesta_forces.o siesta_geom.o siesta_init.o
 siesta.o: siesta_move.o siesta_options.o siesta_tddft.o
@@ -1822,12 +1822,13 @@ siesta_forces.o: m_elsi_interface.o m_energies.o m_forces.o m_initwf.o
 siesta_forces.o: m_iodm_old.o m_mixing.o m_mixing_scf.o m_mpi_utils.o
 siesta_forces.o: m_ncdf_siesta.o m_pexsi.o m_pexsi_driver.o m_rhog.o m_spin.o
 siesta_forces.o: m_steps.o m_stress.o m_transiesta.o m_ts_electype.o
-siesta_forces.o: m_ts_global_vars.o m_ts_method.o m_ts_options.o mixer.o
-siesta_forces.o: parallel.o post_scf_work.o precision.o save_density_matrix.o
-siesta_forces.o: scfconvergence_test.o setup_H0.o setup_hamiltonian.o
-siesta_forces.o: siesta_cml.o siesta_dicts.o siesta_geom.o siesta_master.o
-siesta_forces.o: siesta_options.o sparse_matrices.o state_analysis.o
-siesta_forces.o: state_init.o timer.o ts_dq.o units.o write_subs.o
+siesta_forces.o: m_ts_global_vars.o m_ts_method.o m_ts_options.o
+siesta_forces.o: m_virtual_step_data.o mixer.o parallel.o post_scf_work.o
+siesta_forces.o: precision.o save_density_matrix.o scfconvergence_test.o
+siesta_forces.o: setup_H0.o setup_hamiltonian.o siesta_cml.o siesta_dicts.o
+siesta_forces.o: siesta_geom.o siesta_master.o siesta_options.o
+siesta_forces.o: sparse_matrices.o state_analysis.o state_init.o timer.o
+siesta_forces.o: ts_dq.o units.o write_subs.o
 
 siesta_geom.o: precision.o
 
@@ -1885,18 +1886,19 @@ state_init.o: alloc.o atomlist.o class_Data2D.o
 state_init.o: class_Fstack_Pair_Geometry_SpData2D.o
 state_init.o: class_Pair_Geometry_SpData2D.o class_SpData1D.o class_SpData2D.o
 state_init.o: class_SpData2D.o class_Sparsity.o create_Sparsity_SC.o
-state_init.o: domain_decom.o files.o hsparse.o iodm_netcdf.o iodmhs_netcdf.o
-state_init.o: iotdxv.o ioxv.o kpoint_scf.o kpoint_t.o ldau_specs.o m_chess.o
-state_init.o: m_energies.o m_eo.o m_handle_sparse.o m_ks_flux_data.o m_mixing.o
-state_init.o: m_mixing_scf.o m_mpi_utils.o m_ncdf_siesta.o m_new_dm.o m_os.o
-state_init.o: m_pivot_methods.o m_rmaxh.o m_sparse.o m_sparsity_handling.o
-state_init.o: m_spin.o m_steps.o m_supercell.o m_test_io.o m_ts_electype.o
-state_init.o: m_ts_global_vars.o m_ts_io.o m_ts_options.o m_ts_sparse.o
-state_init.o: m_ts_tri_init.o m_virtual_step_data.o matel_mod.o normalize_dm.o
-state_init.o: overlap.o parallel.o proximity_check.o restructSpData2D.o
-state_init.o: rmatrix.o siesta_cml.o siesta_dicts.o siesta_geom.o
-state_init.o: siesta_options.o sparse_matrices.o sys.o ts_dq.o ts_kpoint_scf.o
-state_init.o: units.o write_subs.o zmatrix.o
+state_init.o: domain_decom.o files.o hsparse.o intrinsic_missing.o
+state_init.o: iodm_netcdf.o iodmhs_netcdf.o iotdxv.o ioxv.o kpoint_scf.o
+state_init.o: kpoint_t.o ldau_specs.o m_chess.o m_energies.o m_eo.o
+state_init.o: m_handle_sparse.o m_ks_flux_data.o m_mixing.o m_mixing_scf.o
+state_init.o: m_mpi_utils.o m_ncdf_siesta.o m_new_dm.o m_os.o m_pivot_methods.o
+state_init.o: m_rmaxh.o m_sparse.o m_sparsity_handling.o m_spin.o m_steps.o
+state_init.o: m_supercell.o m_test_io.o m_ts_electype.o m_ts_global_vars.o
+state_init.o: m_ts_io.o m_ts_options.o m_ts_sparse.o m_ts_tri_init.o
+state_init.o: m_virtual_step_data.o matel_mod.o normalize_dm.o overlap.o
+state_init.o: parallel.o proximity_check.o restructSpData2D.o rmatrix.o
+state_init.o: siesta_cml.o siesta_dicts.o siesta_geom.o siesta_options.o
+state_init.o: sparse_matrices.o sys.o ts_dq.o ts_kpoint_scf.o units.o
+state_init.o: write_subs.o zmatrix.o
 
 struct_init.o: alloc.o atmfuncs.o atomlist.o files.o iotdxv.o ioxv.o
 struct_init.o: m_exp_coord.o m_iostruct.o m_mpi_utils.o m_steps.o parallel.o

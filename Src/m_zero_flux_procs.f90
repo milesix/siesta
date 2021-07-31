@@ -4,7 +4,7 @@ module zero_flux_procs
   use precision, only: dp, grid_p
   ! use atomlist, only: no_u, no_l, indxuo, iaorb, qtot
   use siesta_geom, only: na_u, isa
-  use atomlist, only: no_u, no_l, iaorb
+  use atomlist, only: no_u, no_l, iaorb, iphorb
   use sparse_matrices, only: listh, listhptr, numh
 
   use m_virtual_step_data, only: Dfull
@@ -54,7 +54,8 @@ contains
     integer  :: i0, i1, i2, i3
     integer  :: isp, ig, igp, igl, err
     integer  :: a, b, ii, it, ia, n_x, n_y, n_z
-    integer  :: I_ind, alpha_ind, r_ind, grad_ind, mu, nu, iamu, ianu
+    integer  :: I_ind, alpha, r_ind, grad_ind
+    integer  :: mu, nu, iamu, ianu, inda, iph_nu, iph_mu
     real(dp) :: val, grad(3), J_nl(3), tmp_nl
     real(dp) :: R_I(3), R_mu(3), R_nu(3)
     type(species_info), pointer :: spp
@@ -248,7 +249,7 @@ contains
     call init_matel_optical_P()
 
     ! dscf => ks_flux_D(:,1)        !NOTE: only 1st spin component
-    J_nl = 0.0_dp
+    J_nl(:) = 0.0_dp
 
     ! This should add NL-part of the zero current
     do I_ind=1,na_u
@@ -256,22 +257,36 @@ contains
 
        do mu=1,no_l
           iamu = iaorb(mu)
+          iph_mu = iphorb(mu)
           R_mu(1:3) = xa_before_move(1:3,iamu)
 
           do nu=1,no_l
              ianu = iaorb(nu)
+             iph_nu = iphorb(nu)
              R_nu(1:3) = xa_before_move(1:3,ianu)
 
              is = isa(I_ind)
              spp => species(is)
 
-             do alpha_ind=1,spp%nprojs
+             do inda=1,spp%nprojs
+                alpha=spp%pj_gindex(inda)
+                ! call new_MATEL('S', iph_nu, alpha, (R_I(:)-R_nu(:)), val, grad)
 
+                do r_ind = 1, 3
+                   call new_MATEL(coord_table(r_ind), iph_mu, alpha, (R_I(:)-R_mu(:)), val, grad)
+                   tmp_nl = val
 
+                   call new_MATEL(SG(r_ind), iph_nu, alpha, (R_I(:)-R_nu(:)), val, grad)
+
+                   J_nl(r_ind) = J_nl(r_ind) - val*tmp_nl
+                end do
+                ! J_nl(:) = J_nl(:) + val
              end do
           enddo
        enddo
     enddo
+
+    print*, "[testnl]", J_nl(:)
 
   end subroutine compute_Jzero
 
