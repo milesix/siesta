@@ -4,9 +4,10 @@ module zero_flux_procs
   use precision, only: dp, grid_p
   ! use atomlist, only: no_u, no_l, indxuo, iaorb, qtot
   use siesta_geom, only: na_u, isa
-  use atomlist, only: no_u
+  use atomlist, only: no_u, no_l, iaorb
   use sparse_matrices, only: listh, listhptr, numh
 
+  use m_virtual_step_data, only: Dfull
   use zero_flux_data, only: zero_flux_Jzero
 
   !FIXME: not all of them are needed:
@@ -19,7 +20,6 @@ module zero_flux_procs
   implicit none
 
   character(len=1), dimension(3), parameter :: coord_table = [ 'X', 'Y', 'Z' ]
-  ! integer :: mu, nu, I, alp
 
   private
   public :: compute_Jzero
@@ -53,7 +53,10 @@ contains
     real(dp) :: px, ux, vx, wx, xg
     integer  :: i0, i1, i2, i3
     integer  :: isp, ig, igp, igl, err
-    integer  :: a, b, i, ii, it, ia, n_x, n_y, n_z
+    integer  :: a, b, ii, it, ia, n_x, n_y, n_z
+    integer  :: I_ind, alpha_ind, r_ind, grad_ind, mu, nu, iamu, ianu
+    real(dp) :: val, grad(3), J_nl(3), tmp_nl
+    real(dp) :: R_I(3), R_mu(3), R_nu(3)
     type(species_info), pointer :: spp
     real(dp) :: rm, delta_rm, aux_fr, aux_dfdr, vl_int, qi
     real(dp) :: vel(3)          !! temp buffer for (`va_before_move` x 2)
@@ -239,23 +242,36 @@ contains
     !TODO: next - NL-part of the zero current
     ! real(dp), dimension(:),   pointer :: dscf => null()
 
-    ! call init_matel_main_tables()
-    ! call init_matel_thermal_transport()
-    ! call init_matel_orb_XYZ_orb()
-    ! call init_matel_optical_P()
+    call init_matel_main_tables()
+    call init_matel_thermal_transport()
+    call init_matel_orb_XYZ_orb()
+    call init_matel_optical_P()
 
     ! dscf => ks_flux_D(:,1)        !NOTE: only 1st spin component
+    J_nl = 0.0_dp
 
     ! This should add NL-part of the zero current
-    ! do mu=1,no_u                  ! ?
-    !    do nu=1,no_u               ! ?
-    !       do I=1,na_u             ! ?
-    !          do alp=1,3
+    do I_ind=1,na_u
+       R_I(1:3) = xa_before_move(1:3,I_ind)
 
-    !          enddo
-    !       enddo
-    !    enddo
-    ! enddo
+       do mu=1,no_l
+          iamu = iaorb(mu)
+          R_mu(1:3) = xa_before_move(1:3,iamu)
+
+          do nu=1,no_l
+             ianu = iaorb(nu)
+             R_nu(1:3) = xa_before_move(1:3,ianu)
+
+             is = isa(I_ind)
+             spp => species(is)
+
+             do alpha_ind=1,spp%nprojs
+
+
+             end do
+          enddo
+       enddo
+    enddo
 
   end subroutine compute_Jzero
 
