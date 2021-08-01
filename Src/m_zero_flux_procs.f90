@@ -56,7 +56,7 @@ contains
     integer  :: a, b, ii, it, ia, n_x, n_y, n_z
     integer  :: I_ind, alpha, r_ind, grad_ind
     integer  :: mu, nu, iamu, ianu, inda, iph_nu, iph_mu
-    real(dp) :: val, grad(3), J_nl(3), tmp_nl
+    real(dp) :: val, grad(3), J_nl(3), J_tmp(3), tmp_nl
     real(dp) :: R_I(3), R_mu(3), R_nu(3)
     type(species_info), pointer :: spp
     real(dp) :: rm, delta_rm, aux_fr, aux_dfdr, vl_int, qi
@@ -248,12 +248,12 @@ contains
     call init_matel_orb_XYZ_orb()
     call init_matel_optical_P()
 
-    ! dscf => ks_flux_D(:,1)        !NOTE: only 1st spin component
     J_nl(:) = 0.0_dp
 
     ! This should add NL-part of the zero current
     do I_ind=1,na_u
        R_I(1:3) = xa_before_move(1:3,I_ind)
+       vel(1:3) = va_before_move(1:3,I_ind)
 
        do mu=1,no_l
           iamu = iaorb(mu)
@@ -265,28 +265,42 @@ contains
              iph_nu = iphorb(nu)
              R_nu(1:3) = xa_before_move(1:3,ianu)
 
+             J_tmp(1:3) = 0.0_dp
              is = isa(I_ind)
              spp => species(is)
 
              do inda=1,spp%nprojs
                 alpha=spp%pj_gindex(inda)
-                ! call new_MATEL('S', iph_nu, alpha, (R_I(:)-R_nu(:)), val, grad)
 
-                do r_ind = 1, 3
-                   call new_MATEL(coord_table(r_ind), iph_mu, alpha, (R_I(:)-R_mu(:)), val, grad)
+                do grad_ind = 1,3
+                   call new_MATEL(coord_table(grad_ind), iph_mu, alpha, (R_I(:)-R_mu(:)), val, grad)
                    tmp_nl = val
 
-                   call new_MATEL(SG(r_ind), iph_nu, alpha, (R_I(:)-R_nu(:)), val, grad)
+                   call new_MATEL(SG(grad_ind), iph_nu, alpha, (R_I(:)-R_nu(:)), val, grad)
 
-                   J_nl(r_ind) = J_nl(r_ind) - val*tmp_nl
+                   J_tmp(grad_ind) = J_tmp(grad_ind) - val*tmp_nl*vel(grad_ind)
                 end do
-                ! J_nl(:) = J_nl(:) + val
+
+                call new_MATEL('S', iph_nu, alpha, (R_I(:)-R_nu(:)), val, grad)
+                tmp_nl = val
+
+                do r_ind = 1,3
+                   do grad_ind = 1,3
+                      call new_MATEL(RG(r_ind,grad_ind), iph_mu, alpha, (R_I(:)-R_mu(:)), val, grad)
+
+                      J_tmp(r_ind) = J_tmp(r_ind) - val*tmp_nl*vel(grad_ind)
+                   end do
+                end do
+
              end do
+
+             J_nl(1:3) = J_nl(1:3) + J_tmp(1:3) * 0.5_dp*Dfull(mu,nu,1) ! only 1st spin component
           enddo
        enddo
     enddo
 
-    print*, "[testnl]", J_nl(:)
+    ! print*, "[testnl]", J_nl(:)
+    zero_flux_Jzero(:) = zero_flux_Jzero(:) + J_nl(:)
 
   end subroutine compute_Jzero
 
