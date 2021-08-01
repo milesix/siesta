@@ -240,9 +240,7 @@ contains
     deallocate(H_g)
     deallocate(tab_local)
 
-    !TODO: next - NL-part of the zero current
-    ! real(dp), dimension(:),   pointer :: dscf => null()
-
+    ! NL-part of the zero current
     call init_matel_main_tables()
     call init_matel_thermal_transport()
     call init_matel_orb_XYZ_orb()
@@ -299,8 +297,8 @@ contains
        enddo
     enddo
 
-    ! print*, "[testnl]", J_nl(:)
     zero_flux_Jzero(:) = zero_flux_Jzero(:) + J_nl(:)
+    print*, "[Jnl] ", J_nl(:)
 
   end subroutine compute_Jzero
 
