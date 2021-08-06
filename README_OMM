@@ -1,45 +1,35 @@
 Input parameters for OMM routines with libOMM library
 -----------------------------------------------------
 
-SolutionMethod
-  BLOMM for linear-scaling calculations (functionals of Ordejon-Mauri or Kim)
-  LIBOMM for cubic-scaling calculations (OMM)
+SolutionMethod BLOMM
+
+OMM.UseSparse true (logical)
+  Specifies whether to use sparse matrices.
+
+OMM.Use2D true (logical)
+  Specifies whether to use 2D decomposition of matrices for parallel calculations.
 
 OMM.LongOutput true (logical)
-  Specifies whether to provide in the detailed information on conjugate gradient 
+  Specifies whether to provide in the detailed information on conjugate gradient
   minimization at each SCF step in libOMM.log.
 
 OMM.ReadCoeffs false (logical)
-  Specifies whether to read the coefficients of Localized Wave Functions (LWFs) from the restart 
-  files (*.WF_COEFFS_LIBOMM for SolutionMethod LIBOMM or *.WF_COEFFS_BLOMM and 
-   *.WF_COEFFS_BLOMM_DATA for SolutionMethod BLOMM) at the beginning of the calculation.
-  It is not required that the parameters of the new calculation (e.g. BlockSize, OMM.BlockSizeC,
-  parallelization scheme) are the same as of the one used to generate the restart files.
-  It is, however, required that the number of LWFs included in the calculation is the same.
-  For this reason, for example, it is not possible to switch between Ordejon-Mauri and Kim methods.   
-  If the files are not found, a random initial guess is used. It is also recommended to use
-  the restart file for the density matrix by setting DM.UseSaveDM true.
+  Specifies whether to read the coefficients of Localized Wave Functions (LWFs) from the restart
+  files (*.WF_COEFFS_BLOMM) at the beginning of the calculation. It is not required that the
+  parameters of the new calculation (e.g. BlockSize, OMM.BlockSizeC, parallelization scheme)
+  are the same as of the one used to generate the restart files. It is, however, required that
+  the number of LWFs included in the calculation is the same. For this reason, for example, it
+  is not possible to switch between Ordejon-Mauri and Kim methods. If the files are not found,
+  a random initial guess is used. It is also recommended to use the restart file for the density
+  matrix by setting DM.UseSaveDM true.
 
 OMM.WriteCoeffs false (logical)
   Specifies whether to write the coefficients of LWFs at the beginning of the calculation and
   at each MD step.
 
-OMM.RelTol 10^{-9} for SolutionMethod LIBOMM (real)
-           10^{-7} for SolutionMethod BLOMM  (real)
+OMM.RelTol 10^{-9} (real)
   Relative tolerance for Kohn-Sham band energy in conjugate gradient minimization. 
   Equivalent to ON.Etol. 
-
-OMM.GTol 10^{-3} (real)
-  Maximal norm of the gradient in conjugate gradient minimization required for convergence.
-
-OMM.Use2D true (logical)
-  Specifies whether to use 2D decomposition of matrices for parallel calculations.
-
-OMM.Extrapolate false (logical)
-  Specifies whether to estimate LWFs for the next MD step by linear extrapolation based on the
-  results of two previous MD steps. If false, the same LWFs as obtained at the previous step are
-  used for the initial guess. In the case of SolutionMethod BLOMM, the change in the sparsity
-  pattern is taken into account and corresponding LWF coefficients are set to zero.
 
 OMM.Eta 0.0 Ry (energy)
   Fermi level parameter for the funcitonal of Kim et al. It should be within the energy gap 
@@ -47,42 +37,56 @@ OMM.Eta 0.0 Ry (energy)
   for example, from the previous diagonalization run.
 
 OMM.RcLWF 9.5 Bohr (length)
-  Localization radius for LWFs. Only applicable for SolutionMethod BLOMM.
+  Localization radius for LWFs (only initial one in the case OMM.UseSparse false).
 
-OMM.WriteUseLib true (logical)
+OMM.RcLWFInit 0.0 Bohr (length)
+  Initial localization radius for LWFs. Is the same as OMM.RcLWF if set to 0 or negative.
+
+OMM.WriteUseLib false (logical)
   If true, the DBCSR library is used for writing the restart files for LWFs in parallel. Otherwise
   the output is performed by the head node only. Note that the restart files should be read in
-  the same way as written before. Only applicable for SolutionMethod BLOMM.
+  the same way as written before.
 
-OMM.ReadUseLib true (logical)
+OMM.ReadUseLib false (logical)
   If true, the DBCSR library is used for reading the restart files for LWFs in parallel. Otherwise
   the files are accessed by the head node only. Note that the restart files should be read in
-  the same way as written before. Only applicable for SolutionMethod BLOMM.
+  the same way as written before.
 
-OMM.BlockSizeC (BlockSize * wf_dim)/h_dim (integer)
-  The blocksize for LWFs. It is recommended to use the value that corresponds to BlockSize multiplied
-  by the total number of LWFs wf_dim and divided by the total number of basis functions h_dim.
-  Only applicable for SolutionMethod BLOMM.
+OMM.BlockSizeC (BlockSize * N_wf)/N_bf (integer)
+  The blocksize for LWFs. The default value corresponds to BlockSize multiplied
+  by the total number of LWFs N_wf and divided by the total number of basis functions N_bf.
+
+OMM.Extrapolate false (logical)
+  Specifies whether to estimate LWFs for the next MD step by linear extrapolation based on the
+  results of two previous MD steps. If false, the same LWFs as obtained at the previous step are
+  used for the initial guess. In the case of SolutionMethod BLOMM, the change in the sparsity
+  pattern is taken into account and corresponding LWF coefficients are set to zero.
+
+OMM.Deallocate true (logical)
+  Specifies whether to deallocate matrices every SCF step.
+
+OMM.DeallocateMD true (logical)
+  Specifies whether to deallocate matrices every MD step. Is true, if OMM.Deallocate is true.
 
 OMM.UseCholesky false (logical)
   Specifies whether to perform Cholesky factorization of the generalized eigenvalue problem. 
   This removes the overlap matrix from the problem but also destroys the sparsity of the Hamiltonian.
-  Only applicable for SolutionMethod LIBOMM in the case when OMM.Eta is set to 0.
+  Only applicable for OMM.UseSparse false in the case when OMM.Eta is set to 0.
 
 OMM.Precon -1 (integer)
   The number of SCF steps for all MD steps for which to apply a preconditioning scheme based on
   the overlap and kinetic energy matrices. For negative values, preconditioning is applied always.
-  Cannot be used with OMM.UseCholesky true. Only applicable for SolutionMethod LIBOMM.
+  Cannot be used with OMM.UseCholesky true. Only applicable for OMM.UseSparse false.
 
-OMM.PreconFirstStep -1 (integer)
+OMM.PreconFirstStep OMM.Precon (integer)
   The number of SCF steps of the first MD step for which to apply the preconditioning scheme.
   If present, this will overwrite the value of OMM.Precon for the first MD step.
-  Only applicable for SolutionMethod LIBOMM.
+  Only applicable for OMM.UseSparse false.
 
 OMM.TPreconScale 10 Ry (energy)
-  The scale for kinetic energy preconditioning. Only applicable for SolutionMethod LIBOMM.
+  The scale for kinetic energy preconditioning. Only applicable for OMM.UseSparse false.
 
 OMM.NumLWFs N_occ (integer)
-  The number of LWFs in calculations with SolutionMethod LIBOMM. By default, equals the number
-  of occupied states. Hovewer, can be increased to use in conjunction with OMM.Eta set at Fermi level 
-  similar to the functional of Kim et al.
+  The number of LWFs in calculations with OMM.UseSparse false. By default, equals the number
+  of occupied states, N_occ. Hovewer, can be increased to use in conjunction with OMM.Eta setting the Fermi
+  level, similar to the functional of Kim et al.
