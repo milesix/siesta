@@ -83,7 +83,7 @@ OMM.PreconFirstStep OMM.Precon (integer)
   If present, this will overwrite the value of OMM.Precon for the first MD step.
   Only applicable for OMM.UseSparse false.
 
-OMM.TPreconScale 10 Ry (energy)
+OMM.TPreconScale 1 Ry (energy)
   The scale for kinetic energy preconditioning. Only applicable for OMM.UseSparse false.
 
 OMM.NumLWFs N_occ (integer)
