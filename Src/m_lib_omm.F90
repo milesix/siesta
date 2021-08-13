@@ -183,7 +183,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
                                                         ! (all for negative values) for dense matrices
     precon_st1 = fdf_integer('OMM.PreconFirstStep',precon_st)  ! Number of SCF steps at which preconditioning
                                                         ! at the first MD step for dense matrices
-    tau = fdf_get('OMM.TPreconScale',1.0_dp,'Ry')       ! Kinetic energy scale for preconditioning
+    tau = fdf_get('OMM.TPreconScale',10.0_dp,'Ry')       ! Kinetic energy scale for preconditioning
     use_cholesky=.false.                                ! Apply Cholesky factorization (for dense matrices only)?
     if(abs(eta) < 1.d-10 .and. (.not. sparse)) use_cholesky=fdf_boolean('OMM.UseCholesky',.false.)
     rcoor = fdf_get('OMM.RcLWF',9.5_dp)                 ! Cutoff radius for wavefunctions
