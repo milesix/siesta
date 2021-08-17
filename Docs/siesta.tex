@@ -4425,6 +4425,40 @@ $\RRes[i] = \Res[i] - \Res[i-1]$.
   For details regarding the other methods please see
   \fdf{SCF.Mixer!Method}.
 
+  Convergence of a system heavily depends on:
+  \begin{description}
+    \item[\fdf{SCF.Mixer!Weight}]
+
+    A high value retains much of the output solution, which may result
+    in leaving the convergence basin. However, when close to the
+    solution a high value might decrease needed SCF steps.
+
+    A low value only uses very little of the output solution. This may
+    result in high number of SCF steps but is more likely to
+    converge since it becomes harder for the solution to leave the
+    convergence basin.
+
+    This value is heavily system dependent.
+
+    \item[\fdf{SCF.Mixer!Method}]
+
+    The linear mixing is the only method that does not make use of 
+    prior steps, for hard to converge systems it should only be tried
+    with very low mixing weights.
+
+    The choice of method may result in some reduction of SCF steps,
+    but experimentation with the mixing weight is preferred as a first
+    resort.
+
+    \item[\fdf{SCF.Mixer!History}]
+
+    Number of previous steps to use for the mixing. A too low value
+    (say $2$ -- $6$) might change the convergence properties a
+    lot. While two different high values might not change the
+    convergence properties significantly, if at all.
+
+  \end{description}
+
   \note the older keyword \fdf{DM!MixingWeight} is used if this key is
   not found in the input.
 
