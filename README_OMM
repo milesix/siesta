@@ -62,12 +62,6 @@ OMM.Extrapolate false (logical)
   used for the initial guess. In the case of SolutionMethod BLOMM, the change in the sparsity
   pattern is taken into account and corresponding LWF coefficients are set to zero.
 
-OMM.Deallocate true (logical)
-  Specifies whether to deallocate matrices every SCF step.
-
-OMM.DeallocateMD true (logical)
-  Specifies whether to deallocate matrices every MD step. Is true, if OMM.Deallocate is true.
-
 OMM.UseCholesky false (logical)
   Specifies whether to perform Cholesky factorization of the generalized eigenvalue problem. 
   This removes the overlap matrix from the problem but also destroys the sparsity of the Hamiltonian.
