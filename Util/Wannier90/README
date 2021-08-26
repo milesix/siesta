@@ -35,7 +35,7 @@ website:
 
 The version to download must correspond exactly to the version of the patch
 you want to apply. For instance, if the patch is called
-"wannier90-3.0.0-siesta.patch", you have to download the 3.0.0 version of
+"wannier90-3.0.0.patch", you have to download the 3.0.0 version of
 Wannier90. Applying the patch to other versions will likely fail. We will use
 this version as an example for the rest of these instructions.
 
@@ -46,8 +46,7 @@ Uncompress the source code of Wannier90 and go to its top directory, e.g.:
 
 From there, you can apply the patch from SIESTA:
 
-  patch -p1 < /path/to/siesta/Util/Wannier90/wannier90-3.0.0-siesta.patch
-  patch -p1 < /path/to/siesta/Util/Wannier90/wannier90-3.0.0-bug.patch
+  patch -p1 < /path/to/siesta/Util/Wannier90/wannier90-3.0.0.patch
 
 where you replace /path/to/siesta/Util/Wannier90 by the directory path
 containing the patch file.
