@@ -271,9 +271,9 @@ CONTAINS
                                              !    coefficients as explained 
                                              !    by Souza et al. 
                                              !    as explained below
-    real(dp), pointer :: psi_real_1d(:)      ! Temporal array to store the 
+    real(dp), pointer :: psi_real_1d(:)      ! Temporal array to store the
                                              !    coefficients of the Wanniers
-                                             !    in a basis of NAO in a 
+                                             !    in a basis of NAO in a
                                              !    1D array in order to print
                                              !    them
 
