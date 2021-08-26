@@ -5,7 +5,7 @@ SystemName      Strontium titanate (SrTiO3) cubic structure
 #               Mesh Cutoff: 400 Ry
 #               Monkhorst-Pack grid: 6 x 6 x 6 ; displaced 0.5 0.5 0.5 
 
-SystemLabel	SrTiO3
+SystemLabel	w90_in_siesta
 NumberOfSpecies	3
 NumberOfAtoms	5
 %block ChemicalSpeciesLabel
