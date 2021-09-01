@@ -52,6 +52,9 @@ module atom_graph
   end interface delete
   public :: delete
 
+  ! Coordinates translated to unit-cell
+  real(dp), allocatable, public, protected :: xa_in_uc(:,:)
+
 contains
 
   subroutine delete_(this)
@@ -116,6 +119,8 @@ contains
     real(dp) :: rci, rcj, rck, rij, rik, rjk
     real(dp) :: rmax, rmaxo, rmaxkb, rmaxdftu
 
+    real(dp) :: xf(3), xf_in_uc(3)
+    
     ! Local distribution used to
     type(OrbitalDistribution), pointer :: ldit
     type(Sparsity) :: sp
@@ -139,6 +144,7 @@ contains
     
     real(dp) :: rcell(3,3)
 
+       
     call delete(ag)
     lxijo = .false.
     if ( present(set_xijo) ) lxijo = set_xijo
@@ -160,6 +166,24 @@ contains
     na_l = num_local_elements(ldit,na_u)
     
     call reclat(ucell,rcell,0)
+    
+    ! Generate atomic coordinates translated to unit cell, used
+    ! later to provide canonical image lattice vectors
+    if (.not. allocated(xa_in_uc)) then
+       allocate(xa_in_uc(3,na_u))
+    else
+       if (size(xa_in_uc,dim=2) /= na_u) then
+          call die("xa_in_uc array has the wrong size")
+       endif
+    endif
+    do ia = 1, na_u
+       ! To fractional coordinates
+       xf =  matmul(transpose(rcell),xa(:,ia))
+       ! To in-cell fractional coordinates
+       xf_in_uc = modulo(xf,1.0_dp)
+       ! To in-cell cartesian coordinates
+       xa_in_uc(:,ia) = matmul(ucell,xf_in_uc)
+    enddo
     
     ! Find maximum radius of orbs and KB projectors of each specie
     allocate(rkbmax(nspecies), rorbmax(nspecies))
@@ -383,8 +407,7 @@ contains
              ind           = l_ptr(lia) + n_col(lia)
              l_col(ind)    = ja
              if ( lxijo ) xijo(1:3,ind) = xij(1:3,jnat)
-             sc(1:3,ind)   = reduce(xa(1:3,ia),xij(1:3,jnat), &
-                  xa(1:3,ja),rcell)
+             sc(1:3,ind)   = reduce(ia, xij(1:3,jnat), ja, rcell)
              s_int(ind)    = connected_s
           end if
        end do
@@ -429,21 +452,21 @@ contains
     end subroutine extend_projector
 
 
-    function reduce(xi,xij,xj,rcell) result(sc)
-      real(dp), intent(in) :: xi(3), xj(3), xij(3)
+    function reduce(ia,xij,ja,rcell) result(sc)
+      integer, intent(in)  :: ia, ja
+      real(dp), intent(in) :: xij(3)
       real(dp), intent(in) :: rcell(3,3)
       integer :: sc(3)
       
       real(dp) :: y(3)
-      
-!      print "(a,2(2x,3f10.4))", "xi, xij: ", xi, xij
-!      print "(a,2(2x,3f10.4))", "xi+xij, xj: ", xi+xij, xj
-      y = xi + xij - xj
-!      print "(a,(2x,3f10.4))", "y: ", y
+
+      ! Correct offset for the case that the atoms are placed outside the unit cell,
+      ! by using their in-cell coordinates.
+      y = xa_in_uc(:,ia) +  xij - xa_in_uc(:,ja)
       y = matmul(y,rcell)
-!      print "(a,(2x,3f10.4))", "lattice y: ", y
-      sc = nint(y)
-!      print "(a,3i4)", "sc: ", sc
+
+      sc = nint(y) 
+
     end function reduce
     
   end subroutine atom_graph_generate

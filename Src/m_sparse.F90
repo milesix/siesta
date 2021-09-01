@@ -16,6 +16,8 @@ module m_sparse
   use geom_helper, only : ucorb, iaorb
   use parallel, only : Node, Nodes
 
+  use atom_graph, only: xa_in_uc  ! Coordinates reduced to unit cell
+  
   implicit none
 
   private
@@ -174,7 +176,8 @@ contains
        do ind = l_ptr(lio) + 1 , l_ptr(lio) + ncol(lio)
           jo = ucorb(l_col(ind),no_u)
           ja = iaorb(jo,lasto)
-          xijo(:) = xij(:,ind) - ( xa(:,ja)-xa(:,ia) )
+          xijo(:) = xij(:,ind) - ( xa_in_uc(:,ja) - &
+                                   xa_in_uc(:,ia) )
 
           ! Loop over directions
           ! recell is already without 2*Pi
@@ -267,7 +270,8 @@ contains
           jo = ucorb(l_col(ind),no_u)
           ja = iaorb(jo,lasto)
 
-          xijo(:) = xij(:,ind) - ( xa(:,ja) - xa(:,ia) )
+          xijo(:) = xij(:,ind) - ( xa_in_uc(:,ja) - &
+                                   xa_in_uc(:,ia) )
           tm(:) = nint( matmul(xijo,rcell) )
 
           ! get supercell index
@@ -403,7 +407,7 @@ contains
           ! the supercell index (counting from one)
           is = (l_col(ind) - 1)/no_u + 1
 
-          xijo(:) = xij(:,ind) - ( xa(:,ja) - xa(:,ia) )
+          xijo(:) = xij(:,ind) - ( xa_in_uc(:,ja) - xa_in_uc(:,ia) )
 
           tm(:) = nint( matmul(xijo,rcell) )
 
@@ -574,7 +578,7 @@ contains
 
           tm(:) = isc_off(:,is)
           xij(:,ind) = tm(1)*cell(:,1)+tm(2)*cell(:,2)+tm(3)*cell(:,3)
-          xij(:,ind) = xij(:,ind) + xa(:,ja) - xa(:,ia)
+          xij(:,ind) = xij(:,ind) + xa_in_uc(:,ja) - xa_in_uc(:,ia)
 
        end do
     end do

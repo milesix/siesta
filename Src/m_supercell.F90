@@ -88,7 +88,7 @@ contains
     end do
 
     ! DEBUG
-    !call atom_graph_print(ag,na_u,isa,xa)
+    call atom_graph_print(ag,na_u,isa,xa)
 
     ! Clean-up
     call delete(ag)
