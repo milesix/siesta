@@ -478,8 +478,10 @@
          call re_alloc(isc_off,1,3,1,1)
          isc_off(:,:) = 0
       else
-         call xij_offset(ucell,nsc, na_u,xa,lasto, 
-     &        xij_2D, isc_off, Bcast=.true.)
+!!         call xij_offset(ucell,nsc, na_u,xa,lasto, 
+!     !     &        xij_2D, isc_off, Bcast=.true.) 
+        call re_alloc(isc_off,1,3,1,1)
+        isc_off(:,:) = 0
       end if
 
       
