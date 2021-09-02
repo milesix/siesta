@@ -1,10 +1,10 @@
-Siesta Version  : master-post-4.1-262
+Siesta Version  : 5.0.0-alpha-40-ga3d58f0c9-dirty
 Architecture    : x86_64-linux-gcc
 Compiler version: GNU Fortran (GCC) 9.3.0
-Compiler flags  : mpifort -m64 -fPIC -O3 -ftree-vectorize -fexpensive-optimizations -funroll-loops -fprefetch-loop-arrays -fgraphite -fipa-icf -fipa-pure-const -march=native -fschedule-fusion -fselective-scheduling -fstack-arrays -fmax-stack-var-size=10000 -fipa-sra -fipa-cp -Warray-temporaries -fcheck=recursion,array-temps -fno-second-underscore -Wrealloc-lhs -Wrealloc-lhs-all
-PP flags        : -DSIESTA__FLOOK -DSIESTA__METIS -DSIESTA__FFTW -DTS_PVT_METIS -DSIESTA__MRRR -DMPI -DFC_HAVE_FLUSH -DFC_HAVE_ABORT -DCDF -DGRID_DP -DMPI_TIMING -DTRANSIESTA_TIMING -DTBTRANS_TIMING -DSIESTA__MUMPS -DNCDF_PARALLEL -DNCDF -DNCDF_4 -DSCALAPACK_DEBUG -D_DIAG_WORK -DSIESTA__DIAG_2STAGE -DSIESTA__ELPA
-Libraries       : libncdf.a libfdict.a  -lzmumps -lmumps_common -lpord -lparmetis -lmetis -lesmumps -lscotch -lscotcherr -L/opt/gnu/9.3.0/elpa/2020.05.001/lib -Wl,-rpath=/opt/gnu/9.3.0/elpa/2020.05.001/lib -lelpa -L/opt/gnu/9.3.0/scalapack/2.1.0/lib -Wl,-rpath=/opt/gnu/9.3.0/scalapack/2.1.0/lib -lscalapack  -L/opt/gnu/9.3.0/openblas/0.3.10/lib -Wl,-rpath=/opt/gnu/9.3.0/openblas/0.3.10/lib -lopenblas -L/home/nicpa/codes/flook/obj -lflookall -ldl -l:libnetcdff.so  -m64 -fPIC -O3 -ftree-vectorize -fexpensive-optimizations -funroll-loops -fprefetch-loop-arrays -fgraphite -fipa-icf -fipa-pure-const -march=native -fschedule-fusion -fselective-scheduling -fstack-arrays -fmax-stack-var-size=10000 -fipa-sra -fipa-cp -Warray-temporaries -fcheck=recursion,array-temps -fno-second-underscore -Wrealloc-lhs -Wrealloc-lhs-all -L/opt/gnu/9.3.0/fftw/3.3.8/lib -Wl,-rpath=/opt/gnu/9.3.0/fftw/3.3.8/lib -lfftw3
-Directory       : /home/nicpa/siesta/siesta/Obj/Tests/h_bulk_bias/work
+Compiler flags  : mpifort -fPIC -Og -g -pedantic -Wall -fcheck=all -fbacktrace -Warray-bounds -Wunused -Wuninitialized -Waliasing -fno-second-underscore -Wrealloc-lhs -Wrealloc-lhs-all
+PP flags        : -DSIESTA__FLOOK -DSIESTA__METIS -DSIESTA__FFTW -DTS_PVT_METIS -DSIESTA__MRRR -DSIESTA__SCALAPACK_RESET -DMPI -DFC_HAVE_FLUSH -DFC_HAVE_ABORT -DCDF -DGRID_DP -DMPI_TIMING -DTRANSIESTA_TIMING -DTBTRANS_TIMING -DSIESTA__MUMPS -DNCDF_PARALLEL -DNCDF -DNCDF_4 -DSCALAPACK_DEBUG -D_DIAG_WORK -DSIESTA__DIAG_2STAGE -DSIESTA__ELPA
+Libraries       : libncdf.a libfdict.a  -lzmumps -lmumps_common -lpord -lparmetis -lmetis -lesmumps -lscotch -lscotcherr -L/opt/gnu/9.3.0/elpa-debug/2020.05.001/lib -Wl,-rpath=/opt/gnu/9.3.0/elpa-debug/2020.05.001/lib -lelpa -L/opt/gnu/9.3.0/scalapack-debug/2.1.0/lib -Wl,-rpath=/opt/gnu/9.3.0/scalapack-debug/2.1.0/lib -lscalapack  -L/opt/gnu/9.3.0/openblas/0.3.10/lib -Wl,-rpath=/opt/gnu/9.3.0/openblas/0.3.10/lib -lopenblas -L/home/nicpa/codes/flook/obj -lflookall -ldl -l:libnetcdff.so  -fPIC -Og -g -pedantic -Wall -fcheck=all -fbacktrace -Warray-bounds -Wunused -Wuninitialized -Waliasing -fno-second-underscore -Wrealloc-lhs -Wrealloc-lhs-all -L/opt/gnu/9.3.0/fftw/3.3.8/lib -Wl,-rpath=/opt/gnu/9.3.0/fftw/3.3.8/lib -lfftw3
+Directory       : /home/nicpa/siesta/siesta/ObjBB/Tests/h_bulk_bias/work
 PARALLEL version
 NetCDF support
 NetCDF-4 support
@@ -13,7 +13,7 @@ METIS ordering support
 Lua support
 
 * Running on 2 nodes in parallel
->> Start of run:  25-AUG-2020  20:17:00
+>> Start of run:   2-SEP-2021  12:29:54
 
                            ***********************       
                            *  WELCOME TO SIESTA  *       
@@ -70,7 +70,7 @@ Maximum radius (at nrval) set to   50.00000 8518
 
 read_vps: Pseudopotential generation method:
 read_vps: ATM3      Troullier-Martins                       
-Total valence charge:    1.00000
+Valence charge for ps generation:    1.00000
 
 xc_check: Exchange-correlation functional:
 xc_check: Ceperley-Alder
@@ -156,7 +156,7 @@ siesta:
 redata: Spin configuration                          = none
 redata: Number of spin components                   = 1
 redata: Time-Reversal Symmetry                      = F
-redata: Spin-spiral                                 = F
+redata: Spin spiral                                 = F
 redata: Long output                                 =   F
 redata: Number of Atomic Species                    =        1
 redata: Charge density info will appear in .RHO file
@@ -227,7 +227,7 @@ Size of DM history Fstack: 1
 Total number of electrons:     3.000000
 Total ionic charge:     3.000000
 
-* ProcessorY, Blocksize:    1   2
+* ProcessorY, Blocksize:    2   2
 
 
 * Orbital distribution balance (max,min):     2     1
@@ -301,29 +301,18 @@ DM filled with atomic data:
   <dData2D:DM n=18 m=1, refcount: 1>
 refcount: 1>
 No. of atoms with KB's overlaping orbs in proc 0. Max # of overlaps:       6       5
-New grid distribution:   1
-           1       1:   48    1:   48    1:    9
-           2       1:   48    1:   48   10:   18
 
-InitMesh: MESH =    96 x    96 x    36 =      331776
-InitMesh: (bp) =    48 x    48 x    18 =       41472
+InitMesh: MESH = 96 x 96 x 36 = 331776
 InitMesh: Mesh cutoff (required, used) =   250.000   254.709 Ry
-ExtMesh (bp) on 0 =   100 x   100 x    61 =      610000
-New grid distribution:   2
-           1       1:   48   23:   48    1:   18
-           2       1:   48    1:   22    1:   18
-New grid distribution:   3
-           1       1:   48   13:   48    1:   18
-           2       1:   48    1:   12    1:   18
+New grid distribution [1]: sub = 2
+New grid distribution [2]: sub = 2
+New grid distribution [3]: sub = 2
 Setting up quadratic distribution...
-ExtMesh (bp) on 0 =   100 x    78 x    70 =      546000
-PhiOnMesh: Number of (b)points on node 0 =                22464
-PhiOnMesh: nlist on node 0 =                13620
 cdiag-debug: jobz=V, algo= 1, Node=    1, work=          35, rwork=          34, iwork=          18
 cdiag-debug: jobz=V, algo= 1, Node=    0, work=          35, rwork=          34, iwork=          18
 
 stepf: Fermi-Dirac step function
-     bulk-bias: |v| / {v} [uA]   0.7728955E+02      0.0000000E+00   0.0000000E+00   0.7728955E+02
+     bulk-bias: |v| / {v} [uA]   0.7748029E+02      0.0000000E+00   0.0000000E+00   0.7748029E+02
      bulk-bias: {dq,q0}   0.1261428E+00   0.2000000E-02
 
 siesta: Program's energy decomposition (eV):
@@ -333,10 +322,12 @@ siesta: Ena     =        14.424757
 siesta: Ekin    =        31.776609
 siesta: Enl     =        -9.539431
 siesta: Eso     =         0.000000
-siesta: Eldau   =         0.000000
+siesta: Edftu   =         0.000000
 siesta: DEna    =         1.180318
 siesta: DUscf   =         0.025355
 siesta: DUext   =         0.000000
+siesta: Ex      =       -19.237365
+siesta: Ec      =        -3.641563
 siesta: Exc     =       -22.878928
 siesta: EbV     =        -0.063071
 siesta: eta*DQ  =         0.000000
@@ -350,11 +341,11 @@ siesta: FreeEng =       -44.061961
 
         iscf     Eharris(eV)        E_KS(eV)     FreeEng(eV)     dDmax    Ef(eV) dHmax(eV)
    scf:    1      -48.540752      -44.061405      -44.061961  0.365570 -5.705410  0.246383
-timer: Routine,Calls,Time,% = IterSCF        1       0.208  41.97
-     bulk-bias: |v| / {v} [uA]   0.7728946E+02      0.0000000E+00   0.0000000E+00   0.7728946E+02
+timer: Routine,Calls,Time,% = IterSCF        1       0.201  28.33
+     bulk-bias: |v| / {v} [uA]   0.7748029E+02      0.0000000E+00   0.0000000E+00   0.7748029E+02
      bulk-bias: {dq,q0}   0.1261671E+00   0.2000000E-02
    scf:    2      -44.061393      -44.061405      -44.061961  0.000002 -5.767186  0.184786
-     bulk-bias: |v| / {v} [uA]   0.7728917E+02      0.0000000E+00   0.0000000E+00   0.7728917E+02
+     bulk-bias: |v| / {v} [uA]   0.7748029E+02      0.0000000E+00   0.0000000E+00   0.7748029E+02
      bulk-bias: {dq,q0}   0.1262402E+00   0.2000000E-02
    scf:    3      -44.061368      -44.061405      -44.061961  0.000006 -5.952513  0.000000
 
@@ -372,14 +363,14 @@ siesta: E_KS - E_eggbox =       -44.0614
 
 siesta: Atomic forces (eV/Ang):
 ----------------------------------------
-   Tot   -0.000000    0.000000   -0.000000
+   Tot    0.000000   -0.000000    0.000000
 ----------------------------------------
    Max    0.000000
    Res    0.000000    sqrt( Sum f_i^2 / 3N )
 ----------------------------------------
    Max    0.000000    constrained
 
-Stress-tensor-Voigt (kbar):        0.00        0.00       19.92        0.00       -0.00        0.00
+Stress tensor Voigt[x,y,z,yz,xz,xy] (kbar):        0.00        0.00       19.92       -0.00        0.00        0.00
 (Free)E + p*V (eV/cell)      -45.6162
 Target enthalpy (eV/cell)      -44.0620
 Computing bands...
@@ -394,10 +385,12 @@ siesta: Ena     =        14.424757
 siesta: Ekin    =        31.776686
 siesta: Enl     =        -9.539443
 siesta: Eso     =         0.000000
-siesta: Eldau   =         0.000000
+siesta: Edftu   =         0.000000
 siesta: DEna    =         1.180307
 siesta: DUscf   =         0.025355
 siesta: DUext   =         0.000000
+siesta: Ex      =       -19.237369
+siesta: Ec      =        -3.641563
 siesta: Exc     =       -22.878932
 siesta: EbV     =        -0.063120
 siesta: eta*DQ  =         0.000000
@@ -413,9 +406,11 @@ siesta: Final energy (eV):
 siesta:  Band Struct. =     -29.411044
 siesta:       Kinetic =      31.776686
 siesta:       Hartree =      44.671390
-siesta:       Eldau   =       0.000000
+siesta:       Edftu   =       0.000000
 siesta:       Eso     =       0.000000
 siesta:    Ext. field =       0.000000
+siesta:         Exch. =     -19.237369
+siesta:         Corr. =      -3.641563
 siesta:     Bulk bias =      -0.063120
 siesta:   Exch.-corr. =     -22.878932
 siesta:  Ion-electron =    -120.700140
@@ -443,11 +438,12 @@ siesta: Electric dipole (a.u.)  =   -0.000000   -0.000000   -0.000000
 siesta: Electric dipole (Debye) =   -0.000000   -0.000000   -0.000000
 
 cite: Please see "h_bulk_bias.bib" for an exhaustive BiBTeX file.
-cite: This calculation has made use of the following articles.
-cite: Articles are encouraged to be cited in a published work.
+cite: Please clearly indicate Siesta version in published work: 5.0.0-alpha-40-ga3d58f0c9-dirty
+cite: This calculation has made use of the following articles
+cite: which are encouraged to be cited in a published work.
         Primary SIESTA paper
           DOI: www.doi.org/10.1088/0953-8984/14/11/302
 
 
->> End of run:  25-AUG-2020  20:17:01
+>> End of run:   2-SEP-2021  12:29:56
 Job completed

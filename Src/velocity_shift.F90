@@ -45,6 +45,7 @@ module velocity_shift_m
   public :: use_velocity_shift
   public :: calc_velocity_current
   public :: read_velocity_shift
+  public :: velocity_dir
   public :: velocity_shift
   public :: velocity_results
   interface velocity_results

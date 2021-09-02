@@ -88,7 +88,8 @@ subroutine diag3kp_velocity( spin, no_l, no_u, no_s, nnz, &
   use m_fermid,     only : fermid, stepf
   use alloc,        only : re_alloc, de_alloc
   use t_spin, only: tSpin
-  use velocity_shift_m, only: velocity_shift, calc_velocity_current, velocity_results, velocity_results_print
+  use velocity_shift_m, only: velocity_shift, calc_velocity_current
+  use velocity_shift_m, only: velocity_results, velocity_results_print
   use siesta_geom, only: ucell, cell_periodic
   use intrinsic_missing, only: MODP
 
@@ -157,6 +158,7 @@ subroutine diag3kp_velocity( spin, no_l, no_u, no_s, nnz, &
   ! Arrays for figuring out the degenerate states
   real(dp), parameter :: deg_EPS = 7.3498067e-06_dp ! 1e-4 eV
   integer :: ndeg
+  logical :: deg_setup
   real(dp), pointer :: vdeg(:,:) => null(), Identity(:,:) => null()
 
   ! Globalized matrices
@@ -259,6 +261,9 @@ subroutine diag3kp_velocity( spin, no_l, no_u, no_s, nnz, &
           neigwanted2,iscf,ierror, -1)
     end if
 
+    ! Flag we need to setup the sum(dH * dir)
+    deg_setup = .true.
+
     ! Figure out the degenerate states
     ndeg = 1
     do ie = 2, neigwanted2
@@ -349,6 +354,9 @@ subroutine diag3kp_velocity( spin, no_l, no_u, no_s, nnz, &
       call setup_k(kpoint(:,ik))
       call cdiag(Hk,Sk,no_u2,no_u2,no_u2,eig_aux,psi,neigwanted2,iscf,ierror, -1)
     end if
+
+    ! Flag we need to setup the sum(dH * dir)
+    deg_setup = .true.
 
     ! Before expanding eigenvectors we need to decouple the degenerate
     ! states so that we don't populate the degeneracies wrongly
@@ -664,6 +672,39 @@ contains
 
   end subroutine setup_dk
 
+  subroutine setup_dk_direction(k)
+    use velocity_shift_m, only: dir => velocity_dir
+    real(dp), intent(in) :: k(3)
+
+    real(dp) :: fac
+    integer :: io, ind, jo
+
+    dS = cmplx(0._dp, 0._dp, dp)
+    dH = cmplx(0._dp, 0._dp, dp)
+
+!$OMP parallel do default(shared), private(io,jo,ind,kxij,kph,fac)
+    do io = 1, no_u
+      do ind = g_ptr(io) + 1, g_ptr(io) + g_ncol(io)
+        jo = modp(g_col(ind), no_u)
+        kxij = k(1) * g_xij(1,ind) + k(2) * g_xij(2,ind) + k(3) * g_xij(3,ind)
+
+        fac = g_xij(1,ind)*dir(1) + g_xij(2,ind)*dir(2) + g_xij(3,ind)*dir(3)
+        ! Calculate the complex phase
+        kph = cmplx(0._dp, -fac, dp) * exp(cmplx(0._dp, -kxij, dp))
+
+        dS(1,jo,1,io) = dS(1,jo,1,io) + g_S(ind) * kph
+        dS(2,jo,2,io) = dS(2,jo,2,io) + g_S(ind) * kph
+        dH(1,jo,1,io) = dH(1,jo,1,io) + cmplx(g_H(ind,1), g_H(ind,5), dp) * kph
+        dH(2,jo,2,io) = dH(2,jo,2,io) + cmplx(g_H(ind,2), g_H(ind,6), dp) * kph
+        dH(1,jo,2,io) = dH(1,jo,2,io) + cmplx(g_H(ind,3), -g_H(ind,4), dp) * kph
+        dH(2,jo,1,io) = dH(2,jo,1,io) + cmplx(g_H(ind,7), g_H(ind,8), dp) * kph
+
+      end do
+    end do
+!$OMP end parallel do
+
+  end subroutine setup_dk_direction
+
   ! This subroutine decouples consecutive degenerate states
   !
   ! NOTE this routine may not use the global variable ie, is or ik
@@ -673,7 +714,13 @@ contains
     integer, intent(in) :: ndeg, io_end
     integer :: io_start, ix, io, jo
     real(dp) :: e_avg
-    
+
+    ! Setup the sum(dH(1:3) * dir(:))
+    if ( deg_setup ) then
+      call setup_dk_direction(kpoint(:,ik))
+      deg_setup = .false.
+    end if
+
     call re_alloc(vdeg, 1, 2, 1, ndeg**2, name='vdeg', routine= 'diag3kp_velocity', &
         copy=.false., shrink=.false.)
     call re_alloc(Identity, 1, 2, 1, ndeg**2, name='identity', routine= 'diag3kp_velocity', &
@@ -697,55 +744,47 @@ contains
       eig(io) = e_avg
     end do
 
-    do ix = 1, 3
-      ! Only decouple for periodic directions
-      if ( .not. cell_periodic(ix) ) cycle
+    ! Calculate < psi_i | dH - e dS | psi_j >
+    Identity(:,1:ndeg**2) = 0._dp
+    do io = 1, ndeg
+      jo = io_start + io - 1
 
-      call setup_dk(ix, kpoint(:,ik))
+      ! dH | psi_i >
+      call zgemv('N', no_u2, no_u2, cmplx(1._dp, 0._dp, dp), &
+          dH(1,1,1,1), no_u2, psi(1,1,jo), 1, &
+          cmplx(0._dp, 0._dp, dp), aux(1,1,1), 1)
+      ! dH - e dS | psi_i >
+      call zgemv('N', no_u2, no_u2, cmplx(-e_avg, 0._dp, dp), &
+          dS(1,1,1,1), no_u2, psi(1,1,jo), 1, &
+          cmplx(1._dp, 0._dp, dp), aux(1,1,1), 1)
 
-      ! Calculate < psi_i | dH - e dS | psi_j >
-      Identity(:,1:ndeg**2) = 0._dp
-      do io = 1, ndeg
-        jo = io_start + io - 1
+      ! Calculte < psi_: | dH - e dS | psi_i >
+      call zgemv('C', no_u2, ndeg, cmplx(1._dp, 0._dp, dp), &
+          psi(1,1,io_start), no_u2, aux(1,1,1), 1, &
+          cmplx(0._dp, 0._dp, dp), vdeg(1,(io-1)*ndeg+1), 1)
 
-        ! dH | psi_i >
-        call zgemv('N', no_u2, no_u2, cmplx(1._dp, 0._dp, dp), &
-            dH(1,1,1,1), no_u2, psi(1,1,jo), 1, &
-            cmplx(0._dp, 0._dp, dp), aux(1,1,1), 1)
-        ! dH - e dS | psi_i >
-        call zgemv('N', no_u2, no_u2, cmplx(-e_avg, 0._dp, dp), &
-            dS(1,1,1,1), no_u2, psi(1,1,jo), 1, &
-            cmplx(1._dp, 0._dp, dp), aux(1,1,1), 1)
+      ! Initialize identity matrix
+      Identity(1,(io-1)*ndeg+io) = 1._dp
 
-        ! Calculte < psi_: | dH - e dS | psi_i >
-        call zgemv('C', no_u2, ndeg, cmplx(1._dp, 0._dp, dp), &
-            psi(1,1,io_start), no_u2, aux(1,1,1), 1, &
-            cmplx(0._dp, 0._dp, dp), vdeg(1,(io-1)*ndeg+1), 1)
-
-        ! Initialize identity matrix
-        Identity(1,(io-1)*ndeg+io) = 1._dp
-
-      end do
-
-      ! Now we have the < psi_j | dH - e dS | psi_i > matrix, we need to diagonalize to find
-      ! the linear combinations of the new states
-      call cdiag(vdeg, Identity, ndeg, ndeg, ndeg, aux, Hk, ndeg, 1, ierror, -1)
-      if ( ierror > 0 ) then
-        call die('Terminating due to failed diagonalisation in degenerate sub-space')
-      end if
-      
-      ! Re-create the new states
-      ! Now Hk contains the linear combination of the states that
-      ! should decouple the degenerate subspace
-      call zgemm('N', 'N', no_u2, ndeg, ndeg, cmplx(1._dp, 0._dp, dp), &
-          psi(1,1,io_start), no_u2, Hk(1,1,1,1), ndeg, &
-          cmplx(0._dp, 0._dp, dp), Sk(1,1,1,1), no_u2)
-
-      ! Copy back the new states
-      call zcopy(ndeg*no_u2, Sk(1,1,1,1), 1, psi(1,1,io_start), 1)
-      
     end do
 
+    ! Now we have the < psi_j | dH - e dS | psi_i > matrix, we need to diagonalize to find
+    ! the linear combinations of the new states
+    call cdiag(vdeg, Identity, ndeg, ndeg, ndeg, aux, Hk, ndeg, 1, ierror, -1)
+    if ( ierror > 0 ) then
+      call die('Terminating due to failed diagonalisation in degenerate sub-space')
+    end if
+      
+    ! Re-create the new states
+    ! Now Hk contains the linear combination of the states that
+    ! should decouple the degenerate subspace
+    call zgemm('N', 'N', no_u2, ndeg, ndeg, cmplx(1._dp, 0._dp, dp), &
+        psi(1,1,io_start), no_u2, Hk(1,1,1,1), ndeg, &
+        cmplx(0._dp, 0._dp, dp), Sk(1,1,1,1), no_u2)
+
+    ! Copy back the new states
+    call zcopy(ndeg*no_u2, Sk(1,1,1,1), 1, psi(1,1,io_start), 1)
+      
   end subroutine degenerate_decouple
 
   ! This routine calculates the velocities of all the states
