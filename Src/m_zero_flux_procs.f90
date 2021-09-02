@@ -31,7 +31,7 @@ contains
     !! Seems that it should be initialized only once.
     !! Thus, this subroutine -> `compute_tab_local`.
     use m_virtual_step_data
-    use zero_flux_data, only: nqxq, pref, dq !, tpiba
+    use zero_flux_data, only: nqxq, pref, dq, tpiba
     use zero_flux_data, only: tab_local, H_g, u_g
     use zero_flux_data, only: zero_flux_Jzero
     use ks_flux_data,   only: ks_flux_D
@@ -114,7 +114,7 @@ contains
     !init of radial part
     init_h_g: do it = 1, nsp
        do igl = 1, ngl_vmd
-          xg=sqrt(gl_vmd(igl))
+          xg = sqrt(gl_vmd(igl)) !* tpiba
           px = xg / dq - int(xg / dq)
           ux = 1.d0 - px
           vx = 2.d0 - px
@@ -123,25 +123,27 @@ contains
           i1 = i0 + 1
           i2 = i0 + 2
           i3 = i0 + 3
-          ! H_g_rad - radial integral that interpolates tab_local,
-          ! tab_local is 1D, independent from the cell.
-          H_g_rad(igl,0) = &
-               &tab_local(i0, it, 0) * ux * vx * wx / 6.d0 + &
-               &tab_local(i1, it, 0) * px * vx * wx / 2.d0 - &
-               &tab_local(i2, it, 0) * px * ux * wx / 2.d0 + &
-               &tab_local(i3, it, 0) * px * ux * vx / 6.d0
-          H_g_rad(igl,1) = &
-               &tab_local (i0, it, 1) * ux * vx * wx / 6.d0 + &
-               &tab_local (i1, it, 1) * px * vx * wx / 2.d0 - &
-               &tab_local (i2, it, 1) * px * ux * wx / 2.d0 + &
-               &tab_local (i3, it, 1) * px * ux * vx / 6.d0
 
-       !debug
-       ! write(880,*) H_g_rad(igl, 0)
-       ! write(881,*) H_g_rad(igl, 1)
-       !debug
+          if ( i3 <= nqxq ) then
+             H_g_rad(igl,0) = &
+                  &tab_local(i0, it, 0) * ux * vx * wx / 6.d0 + &
+                  &tab_local(i1, it, 0) * px * vx * wx / 2.d0 - &
+                  &tab_local(i2, it, 0) * px * ux * wx / 2.d0 + &
+                  &tab_local(i3, it, 0) * px * ux * vx / 6.d0
+             H_g_rad(igl,1) = &
+                  &tab_local (i0, it, 1) * ux * vx * wx / 6.d0 + &
+                  &tab_local (i1, it, 1) * px * vx * wx / 2.d0 - &
+                  &tab_local (i2, it, 1) * px * ux * wx / 2.d0 + &
+                  &tab_local (i3, it, 1) * px * ux * vx / 6.d0
+          else
+             H_g_rad(igl,0:1) = 0.0_dp
+          end if
+
+          !debug
+          ! write(880,*) H_g_rad(igl, 0)
+          ! write(881,*) H_g_rad(igl, 1)
+          !debug
        end do
-
 
        do a=1,3
           do b=1,3

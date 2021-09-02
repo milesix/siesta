@@ -45,8 +45,8 @@ contains
     meshcutoff = fdf_physical('MeshCutoff',0.0_dp,'Ry')
     if (meshcutoff==0.0_dp) call die('zero_flux:init', 'VMD Jzero requires meshcutoff set')
 
-    gcutm = meshcutoff / tpiba**2
-    nqxq  = int((sqrt(gcutm)/dq + 4) * cell_factor)
+    ! gcutm = meshcutoff / tpiba**2
+    nqxq  = int((sqrt(meshcutoff)/dq + 4) * cell_factor)
 
     zero_flux_Jzero(:) = 0.0_dp ! reset Jzero for this step
 
