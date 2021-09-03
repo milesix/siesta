@@ -53,6 +53,9 @@ module m_energies
   real(dp):: DEdftu
                         !    LDA+U+SO calculations
 
+  !< Free energy correction when a bulk current is running (applied bias far from bulk part)
+  real(dp) :: E_bulk_bias
+
   real(dp) :: NEGF_DE  ! NEGF total energy contribution = - e * \sum_i N_i \mu_i
   real(dp) :: NEGF_Vha ! Potential offset for fixing the boundary conditions for NEGF
   ! Generally we should only calculate energies in the regions where we are updating elements
@@ -65,9 +68,6 @@ module m_energies
   real(dp) :: NEGF_Eharrs
   real(dp) :: NEGF_Etot
   real(dp) :: NEGF_FreeE
-
-  ! Energies from bulk-bias
-  real(dp) :: E_bulk_bias
   
 contains
 
@@ -149,7 +149,7 @@ contains
     ! DUext (external electric field) -- should it be in or out?
     Etot = Ena + Ekin + Enl + Eso + E_dftu_so + E_correc_dc - Eions + &
         DEna + DUscf + DUext + Exc + &
-        Ecorrec + Emad + Emm + Emeta + Edftu + Evdw_d3 + E_bulk_bias
+        Ecorrec + Emad + Emm + Emeta + Edftu + Evdw_d3
 
     if ( TSrun ) then
       NEGF_Etot = Ena + NEGF_Ekin + NEGF_Enl - Eions + &
@@ -164,7 +164,7 @@ contains
     use m_ts_global_vars, only: TSrun
     real(dp), intent(in) :: kBT
 
-    FreeE = Etot - kBT * Entropy
+    FreeE = Etot - kBT * Entropy + E_bulk_bias
 
     if ( TSrun ) then
       NEGF_FreeE = NEGF_Etot - kBT * Entropy

@@ -149,9 +149,9 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   real(dp) :: pipj1, pipj2
 
   !< Current calculation
-  real(dp) :: BB_res(5) ! I[[x, y, z]] + qd[dq, 0]
+  real(dp) :: BB_res(5,spin%spinor) ! I[[x, y, z]] + qd[dq, 0]
 #ifdef MPI
-  real(dp) :: mpiBB_res(5) ! for reduction of I + qd
+  real(dp) :: mpiBB_res(5,spin%spinor) ! for reduction of I + qd
 #endif
 
   ! Arrays for figuring out the degenerate states
@@ -328,7 +328,7 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   end if
 
   ! Initialize current
-  BB_res(:) = 0._dp
+  BB_res(:,:) = 0._dp
 
   ! Allocate globalized DM and EDM
   call re_alloc( g_DM, 1, g_nnz, 1, spin%DM, name='g_DM', routine= 'diagkp_velocity' )
@@ -408,7 +408,7 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
       if ( calc_velocity_current ) then
         call calculate_velocity(neigwanted, eig_aux)
         call velocity_results(neigwanted, eig_aux, qo(:,is,ik), &
-            v, Efs(is), wk(ik), Temp, BB_res)
+            v, Efs(is), wk(ik), Temp, BB_res(:,is))
       end if
 
       ! Find maximum eigenvector that is required for this k point and spin
@@ -513,7 +513,7 @@ subroutine diagkp_velocity( spin, no_l, no_u, no_s, nnz, &
   call de_alloc( g_EDM, name='g_EDM', routine= 'diagkp_velocity' )
 
   if ( calc_velocity_current ) then
-    call MPI_Reduce(BB_res, mpiBB_res, 5, MPI_Double_Precision, &
+    call MPI_Reduce(BB_res(1,1), mpiBB_res(1,1), 5*spin%spinor, MPI_Double_Precision, &
         MPI_sum,0,MPI_Comm_World,MPIerror)
     call velocity_results_print(spin, ucell, cell_periodic, mpiBB_res)
   end if

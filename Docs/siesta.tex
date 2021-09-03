@@ -9841,6 +9841,14 @@ The occupation function for left/right movers uses that provided in
   where $\mathbf v$ is the band velocity and $\hat{\mathbf V}$ is the
   bias unit vector.
 
+  An example of a direction pointing along the diagonal $xy$
+  direction. Internally the direction will be normalized.
+  \begin{fdfexample}
+    %block BulkBias.Direction
+      1. 1. 0.
+    %endblock
+  \end{fdfexample}
+
 \end{fdfentry}
 
 \begin{fdfentry}{BulkBias!Tolerance}[real]<$10^{-15}$>
@@ -9886,19 +9894,23 @@ The occupation function for left/right movers uses that provided in
     $\mathrm A/\AA^2$.
 
   \end{description}
-  The factor $2$ comes from spin degeneracy.
+  The factor $2$ comes from spin degeneracy and is neglected in
+  polarized and non-colinear calculations.
 
-  When this is \fdftrue\ the total energy will be corrected with the
+  When this is \fdftrue\ the free energy will be corrected with the
   following:
   \begin{equation}
     \label{eq:EbV}
     E_{\mathrm{bV}} = - V/2 ( q^+ - q^-),
   \end{equation}
   where $q^{+/-}$ refer to the charges positively/negatively along the
-  applied bias. If this option is false \siesta\ cannot calculate the
+  applied bias. If this option is \fdffalse\ \siesta\ cannot calculate the
   energy correction and $E_{\mathrm{bV}} = 0$. Users are encouraged to
   have this to \fdftrue\ but may for parameter searches turn this off
   to speed up calculations.
+
+  For non-colinear calculations the spin-alignment of the current is
+  also calculated.
 
   \note there is a slight performance penalty of calculating the
   current in the SCF. It requires the calculation of the velocities

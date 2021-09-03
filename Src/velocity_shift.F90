@@ -307,18 +307,18 @@ contains
     type(tSpin), intent(in) :: spin
     real(dp), intent(in) :: ucell(3,3)
     logical, intent(in) :: cell_periodic(3)
-    real(dp), intent(in) :: results(5)
+    real(dp), intent(in) :: results(5,spin%spinor)
 
     real(dp), external :: volcel
-    real(dp) :: vcross(3)
-    real(dp) :: I(4)
+    real(dp) :: vcross(3), fac
+    real(dp) :: I(4,spin%spinor)
     character(len=8) :: suffix
 
     ! Calculate the correction to the total energy due to the
     ! different populations.
     ! This will only work in case the bias is always +- V/2
-    ! results(5) == dq
-    E_bulk_bias = - velocity_h_bias * results(4)
+    ! results(4) == dq
+    E_bulk_bias = - velocity_h_bias * sum(results(4,:))
 
     ! Quick escape
     if ( .not. IONode ) return
@@ -326,13 +326,13 @@ contains
     ! Current I is in [e Bohr Ry], then convert to [e Bohr/s]
     ! Note this equation also holds for NC/SOC since there spinor will
     ! be 2.
-    I(2:4) = results(1:3) / hbar_Rys * Coulomb * 1.e6_dp * 2._dp / spin%spinor
-    I(1) = dot_product(velocity_dir, I(2:4))
+    I(2:4,:) = results(1:3,:) * 2._dp / spin%spinor
+    I(1,:) = matmul(velocity_dir, I(2:4,:))
 
     select case ( count( cell_periodic(:) ) )
     case ( 3 )
       ! We are dealing with the volume
-      I(:) = I(:) / volcel(ucell) * Ang ** 2
+      fac = 1._dp / volcel(ucell) * Ang ** 2
       suffix = 'uA/Ang^2'
     case ( 2 )
       if ( .not. cell_periodic(1) ) then
@@ -342,22 +342,32 @@ contains
       else if ( .not. cell_periodic(3) ) then
         call cross(ucell(:, 1), ucell(:, 2), vcross)
       end if
-      I(:) = I(:) / VNORM(vcross) * Ang
+      fac = 1._dp / VNORM(vcross) * Ang
       suffix = 'uA/Ang'
     case ( 1 )
       if ( cell_periodic(1) ) then
-        I(:) = I(:) / VNORM(ucell(:,1))
+        fac = 1._dp / VNORM(ucell(:,1))
       else if ( cell_periodic(2) ) then
-        I(:) = I(:) / VNORM(ucell(:,2))
+        fac = 1._dp / VNORM(ucell(:,2))
       else if ( cell_periodic(3) ) then
-        I(:) = I(:) / VNORM(ucell(:,3))
+        fac = 1._dp / VNORM(ucell(:,3))
       end if
       suffix = 'uA'
     end select
+    ! Current I is in [e Bohr Ry], then convert to [e Bohr/s]
+    fac = fac * Coulomb / hbar_Rys * 1.e6_dp
+    I(:,:) = I(:,:) * fac
     
     ! Write out the current along the bulk-bias direction and each of the other ones
-    write(*,'(tr5,3a,e15.7,tr3,3(tr1,e15.7))') 'bulk-bias: |v| / {v} [',trim(suffix),'] ', I(1:4)
-    write(*,'(tr5,a,2(tr1,e15.7))') 'bulk-bias: {dq,q0}', results(4:5)
+    select case ( spin%spinor )
+    case ( 1 )
+      write(*,'(tr5,3a,e15.7,tr3,3(tr1,e15.7))') 'bulk-bias: |v| / {v} [',trim(suffix),'] ', I(1:4,1)
+      write(*,'(tr5,a,2(tr1,e15.7))') 'bulk-bias: {dq,q0}', results(4:5,1)
+    case ( 2 )
+      write(*,'(tr5,3a,e15.7,tr3,3(tr1,e15.7))') 'bulk-bias: |v|    / {v}    [',trim(suffix),'] ', I(1:4,1)+I(1:4,2)
+      write(*,'(tr5,3a,e15.7,tr3,3(tr1,e15.7))') 'bulk-bias: |v|_Sz / {v}_Sz [',trim(suffix),'] ', I(1:4,1)-I(1:4,2)
+      write(*,'(tr5,a,2(tr1,e15.7))') 'bulk-bias: {dq,q0}', results(4:5,1)+results(4:5,2)
+    end select
 
   end subroutine velocity_results_print_pol
 
@@ -379,7 +389,7 @@ contains
     ! Calculate the correction to the total energy due to the
     ! different populations.
     ! This will only work in case the bias is always +- V/2
-    ! results(5) == dq
+    ! results(4) == dq
     E_bulk_bias = - velocity_h_bias * results(1,4)
 
     ! Quick escape
