@@ -22,7 +22,7 @@
       use matel_ylm, only: spher_harm_t
       use matel_table, only: matel
       use matel_table, only: MODE_S, MODE_T, MODE_XYZ
-      
+
       use precision, only : dp
       use alloc,     only : alloc_default, allocDefaults
 
@@ -36,11 +36,11 @@
       public :: init_matel_main_tables
       !> Initialize tables X, Y, Z, for use in "molecule" optical calculations and
       !> Berry-phase-based polarization calculations
-      public :: init_matel_orb_XYZ_orb   
+      public :: init_matel_orb_XYZ_orb
       !> Initialize tables S_opt, X_opt, Y_opt, Z_opt for use in solid-state optical calculations
       public :: init_matel_optical_P
       !> Initialize table S_wann for overlaps of Wannier90 trial functions
-      public :: init_matel_wannier       
+      public :: init_matel_wannier
       !> Initialize tables for thermal transport
       public :: init_matel_thermal_transport
 
@@ -65,7 +65,7 @@
       !> atomic-information tables (in the 'species' data structure) has
       !> been correctly filled up In future, this module might be more
       !> integrated with that data structure.
-      
+
       integer           :: num_orb  ! Number of different orbitals
       integer           :: num_kb  ! Number of different KB projectors
       integer           :: num_ldau ! Number of different LDA+U functions
@@ -74,7 +74,7 @@
 
       !> k-space spherical-harmonic decomposition of registered
       !> functions and composite functions (such as x*Orb, y*KB, etc)
-      
+
       type(spher_harm_t), target :: ylmk_val_all   ! orbs, kb, ldauprojs, vna
       type(spher_harm_t), target :: ylmk_x_orbs
       type(spher_harm_t), target :: ylmk_y_orbs
@@ -98,19 +98,19 @@
       !> The tables are created once and for all for the duration of the program. There is currently
       !> no support for "coexisting qualities" or "on-the-fly" changes (such as could conceivably be
       !> done one day via the Lua interface)
-      
+
       !> Overlaps of PAOs, KBs, or LDAUprojs with PAOs
-      TYPE(MATEL) :: tab_S           ! Unity (overlap). 
+      TYPE(MATEL) :: tab_S           ! Unity (overlap).
       !> Laplacian among PAOs
-      TYPE(MATEL) :: tab_T           ! -Laplacian.      
+      TYPE(MATEL) :: tab_T           ! -Laplacian.
       !> Laplacian among Vna functions
       TYPE(MATEL) :: tab_TA         ! -Laplacian.
-      
+
       !> X, Y, Z among orbitals (for dielectric polarization calculations
       !> and "r" optical calculations
-      TYPE(MATEL) :: tab_X           ! X projection.   
-      TYPE(MATEL) :: tab_Y           ! Y projection.   
-      TYPE(MATEL) :: tab_Z           ! Z projection.   
+      TYPE(MATEL) :: tab_X           ! X projection.
+      TYPE(MATEL) :: tab_Y           ! Y projection.
+      TYPE(MATEL) :: tab_Z           ! Z projection.
 
       !> Overlaps of PAOs with KBs for "momentum" optical calculations (different from table "S" because
       !> the KBs are "function 2")
@@ -170,7 +170,7 @@
       ! Fourier transform of all the registry objects
       ! except the wannier trial functions
 
-      top = num_orb + num_kb + num_ldau 
+      top = num_orb + num_kb + num_ldau
       top_vna = top + num_va
       print *, "val_all"
       call ylmk_val_all%compute_spha(1, top_vna, EVALUATE, 0)
@@ -182,7 +182,7 @@
       ! Laplacian table from PAOs to PAOs.
       call tab_T%init(MODE_T, ylmk_val_all, 1, num_orb,
      $                    ylmk_val_all, 1, num_orb)
-      
+
       ! Laplacian table from Vnas to Vnas
       call tab_TA%init(MODE_T, ylmk_val_all, top+1, top_vna,
      $                     ylmk_val_all, top+1, top_vna)
@@ -191,7 +191,7 @@
 
       ! Restore allocation defaults
       CALL alloc_default( restore=oldefs )
-      
+
       end subroutine init_matel_main_tables
 !-------------------------------------------------------------
       subroutine init_matel_orb_XYZ_orb()
@@ -199,7 +199,7 @@
       if (orb_XYZ_orb_initialized) RETURN
 
       call check_for_main_tables()
-      
+
       ! Set allocation defaults
       call alloc_default( old=oldefs, copy=.true., shrink=.false. )
 
@@ -225,7 +225,7 @@
          call tab_Z%init( MODE_XYZ, ylmk_val_all, 1, num_orb,
      $                         ylmk_z_orbs, 1, num_orb, name="tabZ")
 
-      
+
       orb_XYZ_orb_initialized = .true.
 
       ! Restore allocation defaults
@@ -275,14 +275,14 @@
          call tab_Z_opt%init( MODE_XYZ, ylmk_val_all, 1, num_orb,
      $                         ylmk_z_kbs, 1, num_kb)
 
-         
-      if (optical_P_initialized) RETURN
+
+      optical_P_initialized = .true.
 
       ! Restore allocation defaults
       CALL alloc_default( restore=oldefs )
 
       end subroutine init_matel_optical_P
-      
+
 !--------------------------------------------------------------------
       subroutine init_matel_wannier( numproj )
 !
@@ -294,9 +294,9 @@
 
       ! Local Variables
       integer :: top_vna
-      
+
       if (wannier_initialized) RETURN
-      
+
       call check_for_main_tables()
 
       ! Set allocation defaults
@@ -329,27 +329,27 @@
          call init_matel_main_tables()
       endif
       end subroutine check_for_main_tables
-      
+
 !------------------------------------------------------
       subroutine init_matel_thermal_transport()
 
       use m_matel_registry, only: idx_r, idx_grad
       use m_matel_registry, only: EVALUATE_GRAD
       use m_matel_registry, only: EVALUATE_R_GRAD
-      
+
       integer :: i_r, i_grad
       character(len=40) :: name
 
       if (thermal_transport_initialized) RETURN
       call check_for_main_tables()
-      
+
       ! Set allocation defaults
       call alloc_default( old=oldefs, copy=.true., shrink=.false. )
 
       CALL RESET_RADFFT( )
 
       do i_grad = 1, 3
-         ! Set module variable for evaluation 
+         ! Set module variable for evaluation
          idx_grad = i_grad
          print *, "val_grad_kbs", i_grad
          call ylmk_val_grad_kbs(i_grad)%compute_spha(num_orb+1,
@@ -379,18 +379,18 @@
      $           ylmk_xyz_grad_kbs(i_r,i_grad), 1, num_kb, name)
          end do
       end do
-      
+
       thermal_transport_initialized = .true.
 
       ! Restore allocation defaults
       CALL alloc_default( restore=oldefs )
-      
+
       end subroutine init_matel_thermal_transport
 
 !===================================================================
       SUBROUTINE new_MATEL( OPERAT, IG1, IG2, R12, S12, DSDR )
 
-! Finds two-center matrix elements between 'atomic orbitals' 
+! Finds two-center matrix elements between 'atomic orbitals'
 ! with finite radial and angular momentum cutoffs.
 
 ! The interface is the same as "new_matel" in the m_new_matel
@@ -398,9 +398,9 @@
 ! to the new table objects (Alberto Garcia, July 2019, after Rogeli Grima)      
 
 ! The tables must be initialized previously by calls to the init_matel_XXXX
-! routines. 
-      
-! INPUT 
+! routines.
+
+! INPUT
 
 C CHARACTER OPERAT : Operator to be used. The valid options are:
 C   'S' => Unity (overlap). Uppercase required for all values.
@@ -413,11 +413,11 @@ C   'Z' => z, returning <phi1(r-R12)|z|phi2(r)>
 !   For thermal transport
 !   'G{X,Y,Z}': <phi1 | (Grad phi2) >
 !   'H{X,Y,Z}{X,Y,Z}': <phi1 | {XYZ}(Grad phi2) > (origin on second atom)
-      
+
 C INTEGER IG1    : Global index of 1st function (must be positive)
 C INTEGER IG2    : Global index of 2nd function
-C                    Indexes IG1, IG2 are used only to call 
-C                    routines LCUT, RCUT and EVALUATE (in matel_registry), and 
+C                    Indexes IG1, IG2 are used only to call
+C                    routines LCUT, RCUT and EVALUATE (in matel_registry), and
 C                    may have other meanings within those routines
 C REAL*8  R12(3) : Vector from first to second atom
 C ************************* OUTPUT **********************************
@@ -445,8 +445,8 @@ C If |R12| > RCUT(IS1,IO1) + RCUT(IS2,IO2), returns exactly zero.
       real(dp), intent(out)    :: DSDR(3)
 
       integer :: top
-      
-      top = num_orb + num_kb + num_ldau 
+
+      top = num_orb + num_kb + num_ldau
 
       select case (operat(1:1))
       case ( 'S' )
@@ -494,7 +494,7 @@ C If |R12| > RCUT(IS1,IO1) + RCUT(IS2,IO2), returns exactly zero.
          else
             call die("Cannot process 'T' in matel")
          endif
-         
+
       case ( 'X' )
 
          if  (is_orb(ig1) .and. (is_orb(ig2))) then
@@ -504,7 +504,7 @@ C If |R12| > RCUT(IS1,IO1) + RCUT(IS2,IO2), returns exactly zero.
          else
             call die("Cannot process 'X' in matel")
          endif
-         
+
       case ( 'Y' )
 
          if ( is_orb(ig1) .and. (is_orb(ig2))) then
@@ -514,7 +514,7 @@ C If |R12| > RCUT(IS1,IO1) + RCUT(IS2,IO2), returns exactly zero.
          else
             call die("Cannot process 'Y' in matel")
          endif
-         
+
       case ( 'Z' )
 
          if  (is_orb(ig1) .and. (is_orb(ig2))) then
@@ -524,7 +524,7 @@ C If |R12| > RCUT(IS1,IO1) + RCUT(IS2,IO2), returns exactly zero.
          else
             call die("Cannot process 'Z' in matel")
          endif
-         
+
          case ( 'U' )
             call die("Cannot process 'U' in matel")
 
@@ -554,7 +554,7 @@ C If |R12| > RCUT(IS1,IO1) + RCUT(IS2,IO2), returns exactly zero.
          call die("wrong coord spec in matel string")
       end select
       end function coord_spec_to_index
-      
+
       function is_orb(ig) result(res)
       integer, intent(in) :: ig
       logical             :: res
@@ -575,7 +575,7 @@ C If |R12| > RCUT(IS1,IO1) + RCUT(IS2,IO2), returns exactly zero.
 
       integer :: top
 
-      top = num_orb + num_kb + num_ldau 
+      top = num_orb + num_kb + num_ldau
       res = ( ig > top .and. ig <= (top + num_va))
       end function is_vna
 
@@ -586,8 +586,8 @@ C If |R12| > RCUT(IS1,IO1) + RCUT(IS2,IO2), returns exactly zero.
       integer :: top_vna
 
       top_vna = num_orb + num_kb + num_ldau + num_va
-      
+
       res = ( ig > top_vna .and. ig <= (top_vna + num_wannier_projs))
       end function is_wannier_proj
-      
+
       end module matel_mod
