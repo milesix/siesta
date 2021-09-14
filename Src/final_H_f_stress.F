@@ -200,7 +200,7 @@
       if( switch_ldau ) then
         if ( spin%SO ) then
           H_ldau_so => val(H_ldau_so_2D)
-          call ldau_so_hamil( H_ldau_so )
+          call ldau_so_hamil( S, H_ldau_so )
         else
           H_ldau => val(H_ldau_2D)
           call hubbard_term(scell, na_u, na_s, isa, xa, indxua,

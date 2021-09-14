@@ -157,7 +157,6 @@
       Ekin = 0.0_dp
       Enl = 0.0_dp
       Eso = 0.0_dp
-      E_ldau_so = 0.0_dp
 !$OMP end single ! keep wait
       
 !$OMP do reduction(+:Ekin,Enl)
@@ -231,47 +230,22 @@
           call die('LDA+U cannot be used with non-collinear spin.')
         else if ( spin%SO ) then
           H_ldau_so => val(H_ldau_so_2D)
-          call ldau_so_hamil( H_ldau_so )
+          call ldau_so_hamil( S, H_ldau_so )
 
-!         Compute the energy associated with LDA+U
-          do io = 1, maxnh
-
-!--------   E_ldau_so(u,u)
-            Dc = cmplx(Dscf(io,1),Dscf(io,5), dp)
-            E_ldau_so = E_ldau_so + real( H_ldau_so(io,1)*Dc, dp)
-!            write(6,*) io, H_ldau_so(io,1), Dc, E_ldau_so 
-!--------   E_ldau_so(d,d)
-            Dc = cmplx(Dscf(io,2),Dscf(io,6), dp)
-            E_ldau_so = E_ldau_so + real( H_ldau_so(io,2)*Dc, dp)
-!            write(6,*) io, H_ldau_so(io,2), Dc, E_ldau_so 
-!--------   E_ldau_so(u,d)
-            Dc = cmplx(Dscf(io,3),-Dscf(io,4), dp)
-            E_ldau_so = E_ldau_so + real( H_ldau_so(io,4)*Dc, dp)
-!            write(6,*) io, H_ldau_so(io,4), Dc, E_ldau_so 
-!--------   E_ldau_so(d,u)
-            Dc = cmplx(Dscf(io,7),Dscf(io,8), dp)
-            E_ldau_so = E_ldau_so + real( H_ldau_so(io,3)*Dc, dp)
-!            write(6,*) io, H_ldau_so(io,3), Dc, E_ldau_so 
-
-          end do
-!         jjunquer: For debugging
-          write(6,'(a,f12.5)')     
-     .      ' setup_hamiltonian: E_ldau_so = ', E_ldau_so*13.6058_dp 
-!         end jjunquer: End debugging
-! H(:, [5, 6]) are not updated in dhscf, see vmat for details.
-        
 !------- H(u,u)
          H(:,1) = H(:,1) + real(H_ldau_so(:,1), dp)
-         H(:,5) =         aimag(H_ldau_so(:,1))
+         H(:,5) = H(:,5) + dimag(H_ldau_so(:,1))
 !------- H(d,d)
          H(:,2) = H(:,2) + real(H_ldau_so(:,2), dp)
-         H(:,6) =         aimag(H_ldau_so(:,2))
+         H(:,6) = H(:,6) + dimag(H_ldau_so(:,2))
 !------- H(u,d)
          H(:,3) = H(:,3) + real(H_ldau_so(:,3), dp)
-         H(:,4) = H(:,4) -aimag(H_ldau_so(:,3))
+!         H(:,4) = H(:,4) + aimag(H_ldau_so(:,3),dp)
+         H(:,4) = H(:,4) - dimag(H_ldau_so(:,3))
 !------- H(d,u)
          H(:,7) = H(:,7) + real(H_ldau_so(:,4), dp)
-         H(:,8) = H(:,8) +aimag(H_ldau_so(:,4))
+         H(:,8) = H(:,8) + dimag(H_ldau_so(:,4))
+!         H(:,8) = H(:,8) - dimag(H_ldau_so(:,4))
 
 #ifdef MPI
           ! Global reduction of E_ldau_so 
@@ -335,23 +309,24 @@
         
 !------- H(u,u)
          H(:,1) = H(:,1) + real(H_so_off(:,1), dp)
-         H(:,5) =         aimag(H_so_off(:,1))
+         H(:,5) = H(:,5) + aimag(H_so_off(:,1))
 !------- H(d,d)
          H(:,2) = H(:,2) + real(H_so_off(:,2), dp)
-         H(:,6) =         aimag(H_so_off(:,2))
+         H(:,6) = H(:,6) + aimag(H_so_off(:,2))
 !------- H(u,d)
          H(:,3) = H(:,3) + real(H_so_off(:,3), dp)
-         H(:,4) = H(:,4) +aimag(H_so_off(:,3))
+         H(:,4) = H(:,4) + aimag(H_so_off(:,3))
 !------- H(d,u)
          H(:,7) = H(:,7) + real(H_so_off(:,4), dp)
-         H(:,8) = H(:,8) -aimag(H_so_off(:,4))
+         H(:,8) = H(:,8) - aimag(H_so_off(:,4))
 
-!!        For debugging
-!         do ind = 1, maxnh
+!        For debugging
+         do ind = 1, maxnh
 !           write(6,'(a,i5,8f12.5)')' H-SO = ', ind, H_so_off(ind,:)
-!         enddo
-!!         stop
-!!        End debugging
+           write(6,'(a,i5,8f12.5)')' H-SO = ', ind, H(ind,:)
+         enddo
+!         stop
+!        End debugging
 
       endif
 

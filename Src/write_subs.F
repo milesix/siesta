@@ -303,6 +303,7 @@
       real(dp), intent(in) :: dDmax ! Max. change in dens. matrix elem.
       real(dp), intent(in) :: dHmax ! Max. change in H elements
 
+      real(dp) :: Eldau_write ! LDA+U energy
       character(len=64) :: fmt
       character(len=17) :: enl_str, eso_str
 
@@ -318,6 +319,12 @@
          enl_str = 'siesta: Enl     ='
          eso_str = 'siesta: Eso     ='
       endif
+
+      if (spin%SO) then
+         Eldau_write = E_ldau_so
+      else
+         Eldau_write = Eldau
+      endif
       
       first_scf_step = (iscf == 1)
       ! Only print out full decomposition at very beginning and end.
@@ -330,7 +337,7 @@
      .     'siesta: Ekin    =', Ekin/eV,
      .      enl_str, Enl/eV,
      .      eso_str, Eso/eV,
-     .     'siesta: Eldau   =', Eldau/eV,
+     .     'siesta: Eldau   =', Eldau_write/eV,
      .     'siesta: DEna    =', DEna/eV,
      .     'siesta: DUscf   =', DUscf/eV,
      .     'siesta: DUext   =', DUext/eV,
@@ -576,12 +583,18 @@
            eso_str = '      Eso     ='
         endif
 
+        if (spin%SO) then
+           Eldau_write = E_ldau_so
+        else
+           Eldau_write = Eldau
+        endif
+
         write(6,'(/,a)') 'siesta: Final energy (eV):'
         write(6,'(a,a15,f15.6)')
      .    'siesta: ', 'Band Struct. =', Ebs/eV,
      .    'siesta: ',      'Kinetic =', Ekin/eV,
      .    'siesta: ',      'Hartree =', Uscf/eV,
-     .    'siesta: ',      'Eldau   =', Eldau/eV,
+     .    'siesta: ',        'Eldau =', Eldau_write/eV,
      .    'siesta: ',      eso_str    , Eso/eV,
      .    'siesta: ',   'Ext. field =', DUext/eV,
      .    'siesta: ',  'Exch.-corr. =', Exc/eV,

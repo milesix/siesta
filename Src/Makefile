@@ -902,7 +902,7 @@ m_iotddft.o: files.o m_dipol.o m_io.o m_steps.o parallel.o siesta_options.o
 m_iotddft.o: units.o wavefunctions.o
 m_kinetic.o: precision.o
 m_ldau_so.o: precision.o sys.o atm_types.o siesta_geom.o sparse_matrices.o
-m_ldau_so.o: parallel.o parallelsubs.o atomlist.o
+m_ldau_so.o: parallel.o parallelsubs.o atomlist.o m_energies.o
 m_mat_invert.o: intrinsic_missing.o m_pivot_array.o precision.o
 m_matdiag.o: precision.o
 m_matio.o: alloc.o parallel.o
