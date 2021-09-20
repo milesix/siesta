@@ -457,38 +457,39 @@ contains
 
   subroutine tbt_print_help
 
-!   use sys, only: bye
+    use, intrinsic :: iso_fortran_env, only: stderr => ERROR_UNIT
+!   use sys, only : bye
     implicit none
 
-    write(*,'(a)') 'Help for calling the tight-binding transport code'
-    write(0,'(a)')''
-    write(0,'(a)')'Usage:'
-    write(0,'(a)')'  tbtrans [OPTIONAL FLAGS...] [OPTIONAL FINAL ARGUMENT]'
-    write(0,'(a)')''
-    write(0,'(a)')'OPTIONAL FLAGS:'
-    write(0,'(a)')'  -help|-h'
-    write(0,'(a)')'      Only print this help.'
-    write(0,'(a)')'  -version|-v'
-    write(0,'(a)')'      Only print version and compilation information.'
-    write(*,'(a)') '  -out|-o <file>'
-    write(*,'(a)') '      Write all output to <file> instead of STDOUT'
-    write(*,'(a)') '  -L <name>'
-    write(*,'(a)') '      Short-hand for setting SystemLabel'
-    write(*,'(a)') '  -fdf <label>=<value>[:<unit>]'
-    write(*,'(a)') '      Set the label to the corresponding value.'
-    write(*,'(a)') '  -V <value>:<unit>'
-    write(*,'(a)') '      Short-hand for setting TBT.Voltage'
-    write(*,'(a)') '  -D <directory>'
-    write(*,'(a)') '      Short-hand for setting TBT.Directory'
-    write(*,'(a)') '  -HS <Hamiltonian>'
-    write(*,'(a)') '      Short-hand for setting TBT.HS'
-    write(0,'(a)')''
-    write(0,'(a)')'OPTIONAL FINAL ARGUMENT:'
-    write(0,'(a)')'  <fdf-file>'
-    write(0,'(a)')'      Use file as fdf-input, you do not need to pipe it in.'
-    write(0,'(a)')''
-    write(0,'(a)')'For further help, please see the TBtrans manual (pdf).'
-!   call bye('Help-menu requested, stopping')
+    write(stderr,'(a)')'Help for calling the tight-binding transport code'
+    write(stderr,'(a)')''
+    write(stderr,'(a)')'Usage:'
+    write(stderr,'(a)')'  tbtrans [OPTIONAL FLAGS...] [OPTIONAL FINAL ARGUMENT]'
+    write(stderr,'(a)')''
+    write(stderr,'(a)')'OPTIONAL FLAGS:'
+    write(stderr,'(a)')'  -help|-h'
+    write(stderr,'(a)')'      Only print this help.'
+    write(stderr,'(a)')'  -version|-v'
+    write(stderr,'(a)')'      Only print version and compilation information.'
+    write(stderr,'(a)')'  -out|-o <file>'
+    write(stderr,'(a)')'      Write all output to <file> instead of STDOUT'
+    write(stderr,'(a)')'  -L <name>'
+    write(stderr,'(a)')'      Short-hand for setting SystemLabel'
+    write(stderr,'(a)')'  -fdf <label>=<value>[:<unit>]'
+    write(stderr,'(a)')'      Set the label to the corresponding value.'
+    write(stderr,'(a)')'  -V <value>:<unit>'
+    write(stderr,'(a)')'      Short-hand for setting TBT.Voltage'
+    write(stderr,'(a)')'  -D <directory>'
+    write(stderr,'(a)')'      Short-hand for setting TBT.Directory'
+    write(stderr,'(a)')'  -HS <Hamiltonian>'
+    write(stderr,'(a)')'      Short-hand for setting TBT.HS'
+    write(stderr,'(a)')''
+    write(stderr,'(a)')'OPTIONAL FINAL ARGUMENT:'
+    write(stderr,'(a)')'  <fdf-file>'
+    write(stderr,'(a)')'      Use file as fdf-input, you do not need to pipe it in.'
+    write(stderr,'(a)')''
+    write(stderr,'(a)')'For further help, please see the TBtrans manual (pdf).'
+!   call bye('Help-menu requested, stopping.')
 
   end subroutine tbt_print_help
 
