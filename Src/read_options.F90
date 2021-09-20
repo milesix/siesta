@@ -1776,6 +1776,7 @@ subroutine read_options( na, ns, nspin )
   ! Thermal Transport
   !
   compute_thermal_flux = fdf_get("MD.ThermalFlux.Compute", .false.)
+  virtual_dt = fdf_get('MD.LengthVirtualTimeStep',0.1_dp,'fs')
 
 #ifdef NCDF_4
   write_cdf = fdf_get('CDF.Save', .false.)

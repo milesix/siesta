@@ -726,7 +726,8 @@ diag3kp.o: alloc.o fermid.o intrinsic_missing.o m_spin.o parallel.o
 diag3kp.o: parallelsubs.o precision.o sys.o
 diag_option.o: parallel.o precision.o
 diagg.o: alloc.o fermid.o intrinsic_missing.o m_spin.o parallel.o
-diagg.o: parallelsubs.o precision.o sys.o writewave.o
+diagg.o: parallelsubs.o precision.o siesta_options.o sys.o thermal_flux_data.o
+diagg.o: writewave.o
 diagk.o: compute_norm.o fermid.o m_spin.o parallel.o parallelsubs.o precision.o
 diagk.o: sys.o writewave.o
 diagk_file.o: fermid.o iowfs_netcdf.o parallel.o parallelsubs.o precision.o
