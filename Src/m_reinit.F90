@@ -169,11 +169,12 @@ contains
     !!! Set up fdf. !!!
 
     ! Choose a 'unique' prefix for the log (and possible debug) fdf files.
-    ! The 5-digit sequence might be slightly different in different
-    ! processors, depending on the system time.
-
-    call system_clock( count )
-    write(fileout,"(a,i5.5,a)") 'fdf-', mod(count,100000), ".log"
+    ! The time string may be slightly different in different processors,
+    ! depending on the system time.
+    call date_and_time(mydate,mytime)
+    ! mydate has form ccyymmdd and mytime has form hhmmss.sss, so
+    ! the string used below conforms to ISO 8601 with millisecond precision.
+    write(fileout,"(a)") 'fdf.' // mydate // 'T' // mytime // ".log"
 
     call fdf_init(stdin_file, trim(fileout))
 
