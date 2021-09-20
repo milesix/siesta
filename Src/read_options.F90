@@ -9,7 +9,7 @@ subroutine read_options( na, ns, nspin )
 
   ! Subroutine to read the options for the SIESTA program
   !
-  !     It uses the FDF (Flexible Data Format) package 
+  !     It uses the FDF (Flexible Data Format) package
   !     of J.M.Soler and A.Garcia
   !
   ! Writen by P.Ordejon, December'96
@@ -31,7 +31,7 @@ subroutine read_options( na, ns, nspin )
 
   use m_charge_add, only : read_charge_add
   use m_hartree_add, only : read_hartree_add
-  
+
   use m_mixing_scf, only: mixers_scf_init
   use m_mixing_scf, only: mixers_scf_print, mixers_scf_print_block
 
@@ -39,7 +39,7 @@ subroutine read_options( na, ns, nspin )
 #ifdef SIESTA__CHESS
   use m_chess, only: set_CheSS_parameter
 #endif
-  
+
   implicit none
   !----------------------------------------------------------- Input Variables
   ! integer na               : Number of atoms
@@ -80,7 +80,7 @@ subroutine read_options( na, ns, nspin )
   ! real*8 temp              : Temperature for Fermi smearing (Ry)
   ! logical fixspin          : Fix the spin of the system?
   ! real*8  total_spin       : Total spin of the system
-  ! integer ncgmax           : Maximum number of CG steps for 
+  ! integer ncgmax           : Maximum number of CG steps for
   !                            band structure energy minimization
   ! real*8 etol              : Relative tolerance in CG minimization
   !                            of band structure energy
@@ -90,7 +90,7 @@ subroutine read_options( na, ns, nspin )
   !                             0 = Read blindly from disk
   !                             1 = Functional of Kim et al.
   !                             2 = Functional of Ordejon-Mauri
-  ! logical chebef          : Compute the chemical potential 
+  ! logical chebef          : Compute the chemical potential
   ! logical noeta            : Use computed Chem.pot. instead of eta
   ! real*8 rcoorcp           : Cutoff (Bohr) to compute the chem.pot.
   ! real*8 beta              : Inverse temperature to compute chem.pot.
@@ -113,7 +113,7 @@ subroutine read_options( na, ns, nspin )
   ! real*8 ftol              : Maximum force for structural optimization
   ! real*8 strtol            : Maximum stress for structural optimization
   ! integer ianneal          : Annealing option for idyn = 5
-  !                             1 = Temperature 
+  !                             1 = Temperature
   !                             2 = Pressure
   !                             3 = Temperature and Pressure
   ! integer iquench          : Quench option: 0 = No; 1 = Yes; 2 = Fire
@@ -129,9 +129,9 @@ subroutine read_options( na, ns, nspin )
   ! real*8 mpr               : Mass of Parrinello-R. variable (Ry/fs**2)
   ! real*8 bulkm             : Estimate of bulk modulus (Ry/Bohr**3)
   ! real*8 taurelax          : Annealing time to reach targer T and P (fs)
-  ! logical usesavelwf       : True = try to use continuation LWF files 
+  ! logical usesavelwf       : True = try to use continuation LWF files
   !                              from disk
-  ! logical usesavedm        : True = try to use continuation DM files 
+  ! logical usesavedm        : True = try to use continuation DM files
   !                              from disk
   ! logical usesavecg        : True = try to use continuation CG files
   !                              from disk
@@ -353,7 +353,7 @@ subroutine read_options( na, ns, nspin )
   else
      ctmp = 'density'
   end if
-  
+
   ctmp = fdf_get('SCF.Mix', trim(ctmp))
   if ( leqi(ctmp, 'charge') .or. &
        leqi(ctmp, 'rho') ) then
@@ -371,7 +371,7 @@ subroutine read_options( na, ns, nspin )
   else
      call die('Unrecognized option for: SCF.Mix. Please see the manual.')
   end if
-  
+
   if ( IONode ) then
   if ( mix_charge ) then
      write(6,3) 'redata: SCF mix quantity', 'charge'
@@ -398,7 +398,7 @@ subroutine read_options( na, ns, nspin )
   ! Pulay mixing, number of iterations for one Pulay mixing (maxsav)
   maxsav = fdf_get('DM.NumberPulay', 0)
 
-  ! Broyden SCF mixing, number of iterations 
+  ! Broyden SCF mixing, number of iterations
   broyden_maxit = fdf_get('DM.NumberBroyden',0)
   ! FIRE SCF mixing, no parameters
   fire_mix = fdf_get('DM.FIRE.Mixing',.false.)
@@ -526,7 +526,7 @@ subroutine read_options( na, ns, nspin )
      call cmlAddParameter( xf=mainXML, name='SCF.Harris.Tolerance', units='siestaUnits:eV', &
           value=tolerance_Eharr/eV, dictRef='siesta:Harris_tolerance')
   end if
-  
+
 
   ! Density matrix convergence
   converge_DM = fdf_get('SCF.DM.Converge', .not. converge_Eharr)
@@ -575,7 +575,7 @@ subroutine read_options( na, ns, nspin )
      write(6,1) 'redata: Require H convergence for SCF', converge_H
      write(6,7) 'redata: Hamiltonian tolerance for SCF', dHtol/eV, ' eV'
   end if
-  
+
   if (cml_p) then
      call cmlAddParameter( xf=mainXML, name='SCF.H.Converge', &
           value=converge_H, &
@@ -604,7 +604,7 @@ subroutine read_options( na, ns, nspin )
           value=tolerance_FreeE/eV, dictRef='siesta:dEtol', &
           units="siestaUnits:eV" )
   end if
-  
+
   ! Check that there indeed is at least one convergence criteria
   tBool = .false.
   tBool = tBool .or. converge_Eharr
@@ -615,7 +615,7 @@ subroutine read_options( na, ns, nspin )
   if ( .not. tBool ) then
      call die('There is no convergence criteria. Please at least have one.')
   end if
-  
+
   !------------------------------------
   ! Done reading convergence criteria
   !------------------------------------
@@ -683,13 +683,13 @@ subroutine read_options( na, ns, nspin )
      if (ionode)  then
         write(*,3) 'redata: Method of Calculation', 'Matrix write only'
      endif
-     
+
   else if (leqi(method,'diagon')) then
      isolve = SOLVE_DIAGON
      if (ionode)  then
         write(*,3) 'redata: Method of Calculation', 'Diagonalization'
      endif
-     
+
   else if (leqi(method,'ordern')) then
      isolve = SOLVE_ORDERN
      if (ionode) then
@@ -700,7 +700,7 @@ subroutine read_options( na, ns, nspin )
              'together with nspin>2.  This is not allowed in '//&
              'this version of siesta' )
      endif
-     
+
   else if (leqi(method,'omm')) then
      isolve = SOLVE_MINIM
      call_diagon_default=fdf_integer('OMM.Diagon',0)
@@ -710,7 +710,7 @@ subroutine read_options( na, ns, nspin )
         write(*,3) 'redata: Method of Calculation', 'Orbital Minimization Method'
      endif
   else if (leqi(method,"pexsi")) then
-#ifdef SIESTA__PEXSI     
+#ifdef SIESTA__PEXSI
      isolve = SOLVE_PEXSI
      if (ionode) then
         call add_citation("10.1088/0953-8984/26/30/305503")
@@ -729,7 +729,7 @@ subroutine read_options( na, ns, nspin )
              '    CheSS'
      endif
 #endif /* CHESS */
-     
+
   else if (leqi(method,'transi') .or. leqi(method,'transiesta') &
        .or. leqi(method,'negf') ) then
      isolve = SOLVE_TRANSI
@@ -836,7 +836,7 @@ subroutine read_options( na, ns, nspin )
   fixspin = fdf_get('FixSpin',.false.)
   fixspin = fdf_get('Spin.Fix',fixspin)
   if (ionode) then
-     write(6,1) 'redata: Fix the spin of the system',fixspin 
+     write(6,1) 'redata: Fix the spin of the system',fixspin
   endif
 
   if (fixspin) then
@@ -853,7 +853,7 @@ subroutine read_options( na, ns, nspin )
     total_spin = 0.0_dp
   endif
 
-  if (cml_p) then 
+  if (cml_p) then
      call cmlAddParameter( xf=mainXML, name='FixSpin', &
           value=fixspin, dictref='siesta:fixspin' )
      call cmlAddParameter( xf=mainXML, name='TotalSpin', &
@@ -869,12 +869,12 @@ subroutine read_options( na, ns, nspin )
      if (ionode) then
         write(6,1) 'redata: Split SR and SO contributions', split_sr_so
      endif
-     if (cml_p) then 
+     if (cml_p) then
         call cmlAddParameter( xf=mainXML, name='Split-SR-SO', &
              value=split_sr_so, dictref='siesta:split_sr_so' )
      endif
   endif
-  
+
   ! Order-N solution parameters ...
   !     Maximum number of CG minimization iterations
   ncgmax = fdf_get('ON.MaxNumIter',1000)
@@ -882,7 +882,7 @@ subroutine read_options( na, ns, nspin )
      if (ionode) then
         write(6,2) 'ON.MaxNumIter cannot be less than 1.  Resetting to 1'
      endif
-     ncgmax = 1 
+     ncgmax = 1
   endif
 
   ! Relative tolerance in total band structure energy
@@ -1054,7 +1054,7 @@ subroutine read_options( na, ns, nspin )
   tdsaverho  =  fdf_get('TDED.Saverho', .false.)
   ntdsaverho =  fdf_get('TDED.Nsaverho', 100)
   etot_time  =  fdf_get('TDED.Write.Etot',.true.)
-  eigen_time =  fdf_get('TDED.Write.Eig',.false.)        
+  eigen_time =  fdf_get('TDED.Write.Eig',.false.)
   dip_time   =  fdf_get('TDED.Write.Dipole',.false.)
   extrapol_H_tdks = fdf_get('TDED.Extrapolate',.false.)
   td_dt      = fdf_get ('TDED.TimeStep',1.0d-03,'fs')
@@ -1065,14 +1065,14 @@ subroutine read_options( na, ns, nspin )
      write(6,4) 'redata: Max. number of TDED Iter', ntded
      write(6,4) 'redata: Number of TDED substeps', ntded_sub
   end if
-    
+
   tdsavewf   = fdf_get('TDED.WF.Save',.false.)
-  
+
   ! Dynamics parameters ...
   varcel = fdf_get('MD.VariableCell', .false. )
 
   ! NB reset below ...
-  ! Type of dynamics 
+  ! Type of dynamics
 
   compat_pre_v4_dynamics = fdf_get('compat-pre-v4-dynamics', .false. )
   if (compat_pre_v4_dynamics) then
@@ -1097,7 +1097,7 @@ subroutine read_options( na, ns, nspin )
   else if (leqi(dyntyp,'verlet')) then
      idyn = 1
   else if (leqi(dyntyp,'TDED')) then
-     idyn = 1    ! For the time being verlet is used 
+     idyn = 1    ! For the time being verlet is used
                  ! for TDDFT calculations.
      td_elec_dyn = .true.
      rstart_time = 0.00_dp
@@ -1142,7 +1142,7 @@ subroutine read_options( na, ns, nspin )
   ! Tolerance in the maximum residual stress (var cell) [1 GPa]
   strtol = fdf_get('MD.MaxStressTol', 6.79773e-5_dp, 'Ry/Bohr**3')
   strtol = abs(strtol)
-  
+
   GeometryMustConverge = fdf_get('GeometryMustConverge', .false.)
 
   if (ionode) then
@@ -1310,14 +1310,14 @@ subroutine read_options( na, ns, nspin )
 
   ! Length of time step for MD
   dt = fdf_get('MD.LengthTimeStep',1._dp,'fs')
-  
-  ! In case of TDDFT, dt is determined from electronic time step. 
+
+  ! In case of TDDFT, dt is determined from electronic time step.
   if(td_elec_dyn) dt = td_dt*ntded
 
   ! Quench Option
   qnch  = fdf_get('MD.Quench',.false.)
   qnch2 = fdf_get('MD.FireQuench',.false.)
-  if ((qnch .or. qnch2) .and. (idyn==2 .or. idyn==4)) then 
+  if ((qnch .or. qnch2) .and. (idyn==2 .or. idyn==4)) then
      call die( 'redata: ERROR: You cannot quench and '//&
           'use a Nose thermostat simultaneously')
   endif
@@ -1342,7 +1342,7 @@ subroutine read_options( na, ns, nspin )
         write(6,6) 'redata: Length of MD time step',dt,' fs'
         if(td_elec_dyn) write(6,6) 'redata: Length of TDED time step',td_dt,' fs'
         write(6,6) 'redata: Initial Temperature of MD run',tempinit,' K'
-        if (idyn .ne. 5) then 
+        if (idyn .ne. 5) then
            if (qnch2) then
               write(6,1) 'redata: Perform a MD Fire quench',qnch2
            else
@@ -1371,7 +1371,7 @@ subroutine read_options( na, ns, nspin )
              name='MD.InitialTemperature',&
              value=tempinit,              &
              units='siestaUnits:K' )
-        if (idyn/=5) then 
+        if (idyn/=5) then
            if(qnch2) then
               call cmlAddParameter( xf    = mainXML,         &
                    name  = 'MD.FireQuench', &
@@ -1590,14 +1590,14 @@ subroutine read_options( na, ns, nspin )
 
   ! We read in relevant data for ChargeGeometries block
   call read_charge_add( min(2, nspin) , charnet )
-  
+
   ! We read in the relevant data for HartreeGeometries block
   call read_hartree_add( )
 
   ! Harris Forces?. Then DM.UseSaveDM should be false (use always
   ! Harris density in the first SCF step of each MD step), and
-  ! MaxSCFIter should be  2, in the second one the Harris 
-  ! forces are computed. Also, should not exit if SCF did 
+  ! MaxSCFIter should be  2, in the second one the Harris
+  ! forces are computed. Also, should not exit if SCF did
   ! not converge.
 
   harrisfun = fdf_get('Harris_functional',.false.)
@@ -1610,9 +1610,9 @@ subroutine read_options( na, ns, nspin )
      mixH = .false.
      mix_charge = .false.
      usesavedm = .false.
-     nscf      = 1  ! Note change from tradition, since siesta_forces        
-     ! now explicitly separates the "compute_forces"        
-     ! phase from the rest of the scf cycle.          
+     nscf      = 1  ! Note change from tradition, since siesta_forces
+     ! now explicitly separates the "compute_forces"
+     ! phase from the rest of the scf cycle.
      mix_scf_first = .false.
      SCFMustConverge = .false.
      if ( nspin > 2 ) then
@@ -1629,7 +1629,7 @@ subroutine read_options( na, ns, nspin )
   call deprecated('Optim.Broyden.Initial.Inverse.Jacobian')
 
 
-  ! Find some switches 
+  ! Find some switches
   writek                = fdf_get( 'Write.Kpoints', outlng )
   writeF                = fdf_get( 'Write.Forces', outlng )
 
@@ -1705,7 +1705,7 @@ subroutine read_options( na, ns, nspin )
   end if
   if ( IONode ) then
      select case ( write_GRAPHVIZ )
-     case ( 1 ) 
+     case ( 1 )
         write(*,2) 'redata: Save orbital connectivity graph in GRAPHVIZ format'
      case ( 2 )
         write(*,2) 'redata: Save atomic connectivity graph in GRAPHVIZ format'
@@ -1771,6 +1771,11 @@ subroutine read_options( na, ns, nspin )
   nobup      = fdf_get( 'Siesta2Wannier90.NumberOfBandsUp',   0)
   nobdown    = fdf_get( 'Siesta2Wannier90.NumberOfBandsDown', 0)
   nob        = fdf_get( 'Siesta2Wannier90.NumberOfBands',     0)
+
+  !
+  ! Thermal Transport
+  !
+  compute_thermal_flux = fdf_get("MD.ThermalFlux.Compute", .false.)
 
 #ifdef NCDF_4
   write_cdf = fdf_get('CDF.Save', .false.)
@@ -1841,7 +1846,7 @@ subroutine read_options( na, ns, nspin )
   if (ionode) then
      write(6,'(2a)') 'redata: ', repeat('*', 71)
   endif
-  
+
   if (cml_p) then
      call cmlEndParameterList(mainXML)
   endif
@@ -1880,5 +1885,3 @@ CONTAINS
   end subroutine deprecated
 
 end subroutine read_options
-
-

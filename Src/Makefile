@@ -1,6 +1,6 @@
-# 
+#
 # Siesta/Src/Makefile
-# 
+#
 # Copyright (C) 1996-2021       The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
@@ -278,6 +278,9 @@ OBJS += m_cite.o
 # Special dependency that sfmakedepend cannot grasp for now
 m_pexsi.o m_pexsi_driver.o m_pexsi_dos.o m_pexsi_local_dos.o: f_ppexsi_interface.o
 
+# Thermal Transport
+OBJS += thermal_flux_data.o thermal_flux.o
+
 #--------------------------------------------------------------
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
@@ -296,13 +299,13 @@ $(NCPS): $(PSML)
 	FFFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 #--------------------------------------------------------------
 PSOP=psoplib/src/libpsop.a
-$(PSOP): 
+$(PSOP):
 	(cd psoplib/src ; $(MAKE) -j 1 VPATH="$(VPATH)/psoplib/src" \
 	ARCH_MAKE=$(ARCH_MAKE) \
 	FFFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 
 #--------------------------------------------------------------
-libmpi_f90.a: 
+libmpi_f90.a:
 	@(cd MPI ; $(MAKE) -j 1 \
                     "VPATH=$(VPATH)/MPI" \
 	             MAIN_OBJDIR=$(MAIN_OBJDIR) \
@@ -341,7 +344,7 @@ wavefunctions.o m_matdiag.o m_matswinvers.o m_inversemm.o: $(MS)
 # This library can be found at:
 #  https://github.com/zerothi/fdict
 FDICT=libfdict.a
-$(FDICT): 
+$(FDICT):
 	(cd fdict ; rm -rf obj ; mkdir obj ; cd obj ; \
 	echo "TOP_DIR=$(VPATH)/fdict" > Makefile ; echo "include $(VPATH)/fdict/Makefile" >> Makefile ; \
 	echo "FC=$(FC_SERIAL)" > setup.make ; \
@@ -517,7 +520,7 @@ libSiestaForces.a: $(OBJS) $(SYSOBJ)
 #
 siesta: what version \
                 $(MPI_INTERFACE) $(FDF) $(MS) $(NCPS) $(PSOP) \
-                $(COMP_LIBS) $(ALL_OBJS) 
+                $(COMP_LIBS) $(ALL_OBJS)
 	$(FC) -o siesta \
 	       $(LDFLAGS) $(ALL_OBJS) $(FDF) $(MS)  \
                $(XC) $(MPI_INTERFACE) \
@@ -538,7 +541,7 @@ transiesta:
 	@echo " TranSiesta method is enabled in the siesta executable"
 	@echo ""
 
-clean: 
+clean:
 	@echo "==> Cleaning object, library, and executable files"
 	rm -f siesta *.o  *.a *.pcl *.pc
 	rm -f *.mod
@@ -556,8 +559,6 @@ clean:
 
 
 # DO NOT DELETE THIS LINE - used by make depend
-Fstack.o: basic_type.inc
-Pair.o: basic_type.inc
 alloc_error_report.o: parallel.o
 alloc_memory_event.o: memory_log.o
 amn.o: alloc.o atmfuncs.o atomlist.o m_orderbands.o m_trialorbitalclass.o
@@ -616,15 +617,9 @@ chkdim.o: sys.o
 chkgmx.o: cellsubs.o minvec.o precision.o sys.o
 class_Data1D.o: class_Data1D.T90 basic_type.inc
 class_Data1D.o: alloc.o
-class_Data1D.o: basic_type.inc
-class_Data1D.o: alloc.o
 class_Data2D.o: class_Data2D.T90 basic_type.inc
 class_Data2D.o: alloc.o
-class_Data2D.o: basic_type.inc
-class_Data2D.o: alloc.o
 class_Data3D.o: class_Data3D.T90 basic_type.inc
-class_Data3D.o: alloc.o
-class_Data3D.o: basic_type.inc
 class_Data3D.o: alloc.o
 class_Distribution.o: basic_type.inc
 class_Fstack_Data1D.o: Fstack.T90 basic_type.inc
@@ -647,17 +642,11 @@ class_Pair_SpData1D.o: class_SpData1D.o class_SpData1D.o
 class_SpData1D.o: class_SpData1D.T90 basic_type.inc
 class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
 class_SpData1D.o: class_Data1D.o class_OrbitalDistribution.o class_Sparsity.o
-class_SpData1D.o: basic_type.inc
-class_SpData1D.o: class_OrbitalDistribution.o class_Sparsity.o
 class_SpData2D.o: class_SpData2D.T90 basic_type.inc
 class_SpData2D.o: class_Data2D.o class_Data2D.o class_Data2D.o
 class_SpData2D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData2D.o: basic_type.inc
-class_SpData2D.o: class_OrbitalDistribution.o class_Sparsity.o
 class_SpData3D.o: class_SpData3D.T90 basic_type.inc
 class_SpData3D.o: class_Data3D.o class_Data3D.o class_Data3D.o
-class_SpData3D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData3D.o: basic_type.inc
 class_SpData3D.o: class_OrbitalDistribution.o class_Sparsity.o
 class_Sparsity.o: basic_type.inc
 class_Sparsity.o: alloc.o
