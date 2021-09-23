@@ -50,6 +50,8 @@ contains
     character(len=label_length) :: filein, aux_str
 
     logical :: debug_input, file_exists, filein_found
+    character(len=8) :: mydate
+    character(len=10) :: mytime
 
     ! Non-master mpi-processes receive a copy of all the
     ! pre-processed fdf input information (recursively

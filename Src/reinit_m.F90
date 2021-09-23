@@ -49,6 +49,8 @@ contains
     logical :: stdin_file_found
 
     logical :: debug_input, file_exists
+    character(len=8) :: mydate
+    character(len=10) :: mytime
 
     ! Default input-file
     stdin_file = "fdf_input"
