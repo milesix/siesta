@@ -1,5 +1,5 @@
 # ---
-# Copyright (C) 1996-2016	The SIESTA group
+# Copyright (C) 1996-2021       The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
 #  or http://www.gnu.org/copyleft/gpl.txt .
@@ -47,9 +47,10 @@ SIESTA_OBJS= precision.o local_sys.o m_io.o alloc.o memoryinfo.o memory.o pxf.o 
              moreParallelSubs.o m_mpi_utils.o \
              reclat.o idiag.o minvec.o \
              parallel.o io.o files.o cellsubs.o sorting.o \
-	     kpoint_convert.o timestamp.o m_wallclock.o m_spin.o \
+             kpoint_convert.o timestamp.o m_wallclock.o m_spin.o \
              diag.o diag_option.o bloch_unfold.o \
-	     debugmpi.o find_kgrid.o m_cite.o posix_calls.o
+             debugmpi.o find_kgrid.o m_cite.o posix_calls.o \
+             runinfo_m.o cli_m.o
 
 # Siesta timings
 SIESTA_OBJS += m_walltime.o timer_tree.o m_timer.o timer.o
@@ -65,9 +66,6 @@ SIESTA_OBJS += class_OrbitalDistribution.o \
 	class_SpData1D.o class_SpData2D.o \
 	class_TriMat.o \
         m_uuid.o object_debug.o
-
-# Output stuff
-SIESTA_OBJS += init_output.o
 
 # As the classes are based on inputs we force the dependency to
 # alloc
@@ -114,8 +112,11 @@ DEP_OBJS = $(SIESTA_OBJS) $(TS_OBJS) $(SYSOBJ) $(EXTRA)
 # To separate tbtrans objects from siesta/transiesta
 TBTOBJS  = version.o m_verbosity.o
 
+# Output stuff
+TBTOBJS += tbt_init_output.o
+
 # Add generic tbtrans routines
-TBTOBJS += tbt_init.o tbt_end.o tbt_reinit.o m_tbt_hs.o m_tbt_regions.o
+TBTOBJS += tbt_init.o tbt_end.o tbt_reinit_m.o m_tbt_hs.o m_tbt_regions.o
 TBTOBJS += m_tbt_options.o m_tbt_tri_init.o
 TBTOBJS += m_tbt_contour.o m_tbt_kpoint.o m_tbt_gf.o
 TBTOBJS += sorted_search.o
@@ -417,6 +418,7 @@ class_SpData3D.o: class_Data3D.o class_Data3D.o class_Data3D.o
 class_SpData3D.o: class_OrbitalDistribution.o class_Sparsity.o
 class_Sparsity.o: alloc.o
 class_TriMat.o: alloc.o intrinsic_missing.o
+cli_m.o: local_sys.o
 coceri.o: files.o periodic_table.o precision.o units.o
 compute_dm.o: atomlist.o class_SpData1D.o compute_ebs_shift.o diagon.o
 compute_dm.o: iodmhs_netcdf.o kpoint_scf.o local_sys.o m_chess.o m_dminim.o
@@ -562,7 +564,7 @@ hsparse.o: alloc.o atm_types.o atmfuncs.o atomlist.o dftu_specs.o listsc.o
 hsparse.o: mneighb.o parallel.o parallelsubs.o precision.o radial.o sorting.o
 hsparse.o: sparse_matrices.o
 idiag.o: local_sys.o parallel.o
-init_output.o: files.o
+init_output.o: files.o reinit_m.o
 initatom.o: atm_types.o atmparams.o atom.o atom_options.o basis_io.o
 initatom.o: basis_specs.o basis_types.o chemical.o dftu_specs.o electrostatic.o
 initatom.o: m_spin.o precision.o pseudopotential.o
@@ -648,7 +650,6 @@ m_geom_objects.o: m_geom_aux.o m_geom_box.o m_geom_coord.o m_geom_plane.o
 m_geom_objects.o: m_geom_square.o
 m_geom_plane.o: intrinsic_missing.o m_geom_aux.o
 m_geom_square.o: intrinsic_missing.o m_geom_aux.o m_geom_plane.o
-m_getopts.o: f2kcli.o
 m_handle_sparse.o: class_Data2D.o class_OrbitalDistribution.o class_SpData1D.o
 m_handle_sparse.o: class_SpData2D.o class_Sparsity.o geom_helper.o m_iodm.o
 m_handle_sparse.o: m_os.o m_region.o m_ts_io.o parallel.o precision.o units.o
@@ -1010,7 +1011,7 @@ read_xc_info.o: local_sys.o parallel.o precision.o
 redcel.o: local_sys.o parallel.o precision.o
 register_rfs.o: atm_types.o atmfuncs.o matel_registry.o parallel.o precision.o
 register_rfs.o: radial.o
-reinit.o: files.o local_sys.o parallel.o siesta_master.o
+reinit_m.o: cli_m.o files.o parallel.o siesta_master.o version.o
 remove_intramol_pressure.o: precision.o zmatrix.o
 reoptical.o: local_sys.o m_spin.o parallel.o precision.o
 reord.o: alloc.o precision.o
@@ -1025,6 +1026,7 @@ rhoofd.o: m_spin.o mesh.o meshdscf.o meshphi.o parallel.o parallelsubs.o
 rhoofd.o: precision.o
 rhoofdsp.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o local_sys.o
 rhoofdsp.o: mesh.o meshdscf.o meshphi.o parallel.o precision.o
+runinfo_m.o: parallel.o posix_calls.o
 sankey_change_basis.o: alloc.o atomlist.o diag_option.o kpoint_scf.o
 sankey_change_basis.o: local_sys.o m_matdiag.o m_spin.o parallel.o
 sankey_change_basis.o: parallelsubs.o precision.o sparse_matrices.o
@@ -1109,9 +1111,10 @@ siesta_init.o: m_check_walltime.o m_cite.o m_energies.o m_eo.o m_fixed.o
 siesta_init.o: m_forces.o m_iostruct.o m_mpi_utils.o m_new_dm.o m_rmaxh.o
 siesta_init.o: m_spin.o m_steps.o m_supercell.o m_timer.o m_wallclock.o
 siesta_init.o: metaforce.o molecularmechanics.o object_debug.o parallel.o
-siesta_init.o: parallelsubs.o projected_DOS.o siesta_cmlsubs.o siesta_dicts.o
-siesta_init.o: siesta_geom.o siesta_options.o sparse_matrices.o struct_init.o
-siesta_init.o: timer.o timestamp.o ts_init.o units.o writewave.o zmatrix.o
+siesta_init.o: parallelsubs.o projected_DOS.o reinit_m.o runinfo_m.o
+siesta_init.o: siesta_cmlsubs.o siesta_dicts.o siesta_geom.o siesta_options.o
+siesta_init.o: sparse_matrices.o struct_init.o timer.o timestamp.o ts_init.o
+siesta_init.o: units.o version.o writewave.o zmatrix.o
 siesta_master.o: iopipes.o iosockets.o local_sys.o precision.o
 siesta_move.o: atomlist.o broyden_optim.o cell_broyden_optim.o
 siesta_move.o: cell_fire_optim.o dynamics.o fire_optim.o flook_siesta.o ioxv.o
@@ -1186,7 +1189,6 @@ typecell.o: precision.o
 uncell.o: precision.o
 units.o: precision.o
 vacuum_level.o: moreParallelSubs.o precision.o
-version.o: posix_calls.o
 vmat.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o m_spin.o mesh.o
 vmat.o: meshdscf.o meshphi.o parallel.o parallelsubs.o precision.o
 vmatsp.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o mesh.o meshdscf.o
@@ -1305,8 +1307,9 @@ tbt_init.o: local_sys.o m_sparsity_handling.o m_tbt_contour.o m_tbt_gf.o
 tbt_init.o: m_tbt_hs.o m_tbt_kpoint.o m_tbt_kregions.o m_tbt_options.o
 tbt_init.o: m_tbt_proj.o m_tbt_regions.o m_tbt_save.o m_timer.o
 tbt_init.o: m_ts_electrode.o m_ts_electype.o m_wallclock.o parallel.o
-tbt_init.o: precision.o timestamp.o
-tbt_reinit.o: local_sys.o m_verbosity.o parallel.o
+tbt_init.o: precision.o runinfo_m.o tbt_reinit_m.o timestamp.o version.o
+tbt_init_output.o: files.o tbt_reinit_m.o
+tbt_reinit_m.o: cli_m.o files.o m_verbosity.o parallel.o version.o
 tbtrans.o: m_tbt_hs.o m_tbt_options.o m_tbtrans.o
 band.o: bands.o
 bloch_unfold_m.o: bloch_unfold.o
