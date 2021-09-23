@@ -51,11 +51,11 @@ subroutine tbt_init()
   use m_tbt_gf
   use m_tbt_save
   use m_tbt_proj
-  use m_tbt_reinit, only: tbt_reinit
+  use tbt_reinit_m, only: tbt_reinit
 
   use m_sparsity_handling
 
-  use m_runinfo, only: runinfo
+  use runinfo_m, only: runinfo
   use version_info, only: prversion
 
   implicit none

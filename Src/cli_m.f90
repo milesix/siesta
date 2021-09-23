@@ -6,7 +6,7 @@
 ! See Docs/Contributors.txt for a list of contributors.
 ! ---
 
-module m_cli
+module cli_m
 
   implicit none
 
@@ -62,5 +62,5 @@ contains
 
   end subroutine get_command_arg
 
-end module m_cli
+end module cli_m
 

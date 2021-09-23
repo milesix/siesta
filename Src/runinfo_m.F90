@@ -6,7 +6,7 @@
 ! See Docs/Contributors.txt for a list of contributors.
 ! ---
 
-module m_runinfo
+module runinfo_m
   implicit none
 
   private
@@ -128,5 +128,5 @@ contains
 
   end subroutine runinfo
 
-end module m_runinfo
+end module runinfo_m
 

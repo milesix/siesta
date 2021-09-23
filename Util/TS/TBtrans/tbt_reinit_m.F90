@@ -9,7 +9,7 @@
 !
 ! Transferred to be used in the TBTrans utility.
 !
-module m_tbt_reinit
+module tbt_reinit_m
 
   implicit none
 
@@ -240,7 +240,7 @@ contains
 
     use fdf
     use files,        only: label_length
-    use m_cli,        only: get_command_arg
+    use cli_m,        only: get_command_arg
 #ifdef MPI
     use mpi_siesta
 #endif
@@ -493,4 +493,4 @@ contains
 
   end subroutine tbt_print_help
 
-end module m_tbt_reinit
+end module tbt_reinit_m

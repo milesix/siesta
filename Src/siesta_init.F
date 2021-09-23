@@ -87,8 +87,8 @@
       use netcdf_ncdf
 #endif
 
-      use m_reinit, only: reinit, parse_command_line
-      use m_runinfo, only: runinfo
+      use reinit_m, only: reinit, parse_command_line
+      use runinfo_m, only: runinfo
       use version_info, only: prversion
 
       implicit none

@@ -5,7 +5,7 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-module m_reinit
+module reinit_m
 
   implicit none
 
@@ -235,7 +235,7 @@ contains
 
     use fdf
     use files,        only: label_length
-    use m_cli,        only: get_command_arg
+    use cli_m,        only: get_command_arg
 #ifdef MPI
     use mpi_siesta
 #endif
@@ -490,4 +490,4 @@ contains
 
   end subroutine print_help
 
-end module m_reinit
+end module reinit_m

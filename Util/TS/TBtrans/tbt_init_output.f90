@@ -14,7 +14,7 @@ subroutine tbt_init_output(IO)
   ! Taken from reinit, and adapted by Nick R. Papior, 2017
 
   use files, only: stdout_file
-  use m_tbt_reinit, only: tbt_parse_command_line
+  use tbt_reinit_m, only: tbt_parse_command_line
 
   implicit none
 

@@ -14,7 +14,7 @@ subroutine init_output(IO)
   ! Taken from reinit, and adapted by Nick R. Papior, 2017
 
   use files, only: stdout_file
-  use m_reinit, only: parse_command_line
+  use reinit_m, only: parse_command_line
 
   implicit none
 
