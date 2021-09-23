@@ -240,12 +240,10 @@
          H(:,6) = H(:,6) + dimag(H_ldau_so(:,2))
 !------- H(u,d)
          H(:,3) = H(:,3) + real(H_ldau_so(:,3), dp)
-!         H(:,4) = H(:,4) + aimag(H_ldau_so(:,3),dp)
          H(:,4) = H(:,4) - dimag(H_ldau_so(:,3))
 !------- H(d,u)
          H(:,7) = H(:,7) + real(H_ldau_so(:,4), dp)
          H(:,8) = H(:,8) + dimag(H_ldau_so(:,4))
-!         H(:,8) = H(:,8) - dimag(H_ldau_so(:,4))
 
 #ifdef MPI
           ! Global reduction of E_ldau_so 
@@ -320,13 +318,13 @@
          H(:,7) = H(:,7) + real(H_so_off(:,4), dp)
          H(:,8) = H(:,8) - aimag(H_so_off(:,4))
 
-!        For debugging
-         do ind = 1, maxnh
-!           write(6,'(a,i5,8f12.5)')' H-SO = ', ind, H_so_off(ind,:)
-           write(6,'(a,i5,8f12.5)')' H-SO = ', ind, H(ind,:)
-         enddo
-!         stop
-!        End debugging
+!!        For debugging
+!         do ind = 1, maxnh
+!!           write(6,'(a,i5,8f12.5)')' H-SO = ', ind, H_so_off(ind,:)
+!           write(6,'(a,i5,8f12.5)')' H-SO = ', ind, H(ind,:)
+!         enddo
+!!         stop
+!!        End debugging
 
       endif
 
