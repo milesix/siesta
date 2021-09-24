@@ -143,7 +143,7 @@ subroutine diag3kp_velocity( spin, no_l, no_u, no_s, nnz, &
   real(dp), intent(inout), target :: aux(2,no_u,6)
 
   ! Internal variables
-  integer :: BNode, ie, ierror, ik, is
+  integer :: BNode, ie, ierror, ik, is, lo
   integer :: io, iio, jo, ind, neigneeded
   integer :: no_u2, neigwanted2
   real(dp) :: kxij, t
@@ -195,7 +195,7 @@ subroutine diag3kp_velocity( spin, no_l, no_u, no_s, nnz, &
   call re_alloc( g_ncol, 1, no_u, name='g_ncol', routine= 'diag3kp_velocity' )
   call re_alloc( g_ptr, 1, no_u, name='g_ptr', routine= 'diag3kp_velocity' )
   call re_alloc( g_col, 1, g_nnz, name='g_col', routine= 'diag3kp_velocity' )
-  call re_alloc( g_H, 1, g_nnz, 1, spin%H, name='g_H', routine= 'diag3kp_velocity' )
+  call re_alloc( g_H, 1, spin%H, 1, g_nnz, name='g_H', routine= 'diag3kp_velocity' )
   call re_alloc( g_S, 1, g_nnz, name='g_S', routine= 'diag3kp_velocity' )
   call re_alloc( g_xij, 1, 3, 1, g_nnz, name='g_xij', routine= 'diag3kp_velocity' )
   call re_alloc( v, 1, 3, 1, no_u2, name='v', routine= 'diag3kp_velocity' )
@@ -209,37 +209,56 @@ subroutine diag3kp_velocity( spin, no_l, no_u, no_s, nnz, &
 
   ! Globalize arrays
   g_ptr(1) = 0
-  do io = 1, no_u
+  io = 1
+  do while ( io <= no_u )
     
     call WhichNodeOrb(io,Nodes,BNode)
+
+        ! Number of consecutive elements
+    ! Generally this should be the block size...
+    ik = count_consecutive(io, no_u)
     
     if ( Node == BNode ) then
-      call GlobalToLocalOrb(io,Node,Nodes,iio)
 
-      g_ncol(io) = ncol(iio)
-      do jo = 1, ncol(iio)
-        g_col(g_ptr(io)+jo) = col(ptr(iio)+jo)
-        g_H(g_ptr(io)+jo,:) = H(ptr(iio)+jo,:)
-        g_S(g_ptr(io)+jo) = S(ptr(iio)+jo)
-        g_xij(:,g_ptr(io)+jo) = xij(:,ptr(iio)+jo)
+      ! Do copy on hosting node
+      call GlobalToLocalOrb(io,Node,Nodes,iio)
+      ind = 0
+      do lo = 1, ik
+        ! Global node
+        jo = io-1+lo
+        g_ncol(jo) = ncol(iio-1+lo)
+        ind = ind + g_ncol(jo)
+        if ( jo < no_u ) g_ptr(jo+1) = g_ptr(jo) + g_ncol(jo)
       end do
+      ! Copy data
+      g_col(g_ptr(io)+1:g_ptr(io)+ind) = col(ptr(iio)+1:ptr(iio)+ind)
+      g_H(:,g_ptr(io)+1:g_ptr(io)+ind) = transpose(H(ptr(iio)+1:ptr(iio)+ind,:))
+      g_S(g_ptr(io)+1:g_ptr(io)+ind) = S(ptr(iio)+1:ptr(iio)+ind)
+      g_xij(:,g_ptr(io)+1:g_ptr(io)+ind) = xij(:,ptr(iio)+1:ptr(iio)+ind)
+
     end if
     
-    call MPI_Bcast(g_ncol(io),1,MPI_Integer, BNode, &
+    call MPI_Bcast(g_ncol(io),ik,MPI_Integer, BNode, &
         MPI_Comm_World,MPIerror)
-    call MPI_Bcast(g_col(g_ptr(io)+1),g_ncol(io),MPI_Integer, &
+
+    if ( Node /= BNode ) then
+      ind = 0
+      do jo = io, io + ik - 1
+        ind = ind + g_ncol(jo)
+        if ( jo < no_u ) g_ptr(jo+1) = g_ptr(jo) + g_ncol(jo)
+      end do
+    end if
+
+    call MPI_Bcast(g_col(g_ptr(io)+1),ind,MPI_Integer, &
         BNode,MPI_Comm_World,MPIerror)
-    do is = 1, spin%H
-      call MPI_Bcast(g_H(g_ptr(io)+1,is),g_ncol(io),MPI_Double_Precision, &
-          BNode,MPI_Comm_World,MPIerror)
-    end do
-    call MPI_Bcast(g_S(g_ptr(io)+1),g_ncol(io),MPI_Double_Precision, &
+    call MPI_Bcast(g_H(1,g_ptr(io)+1),ind*spin%H,MPI_Double_Precision, &
         BNode,MPI_Comm_World,MPIerror)
-    call MPI_Bcast(g_xij(1,g_ptr(io)+1),3*g_ncol(io),MPI_Double_Precision, &
+    call MPI_Bcast(g_S(g_ptr(io)+1),ind,MPI_Double_Precision, &
+        BNode,MPI_Comm_World,MPIerror)
+    call MPI_Bcast(g_xij(1,g_ptr(io)+1),3*ind,MPI_Double_Precision, &
         BNode,MPI_Comm_World,MPIerror)
 
-    ! Update list-pointer
-    if ( io < no_u ) g_ptr(io+1) = g_ptr(io) + g_ncol(io)
+    io = io + ik
     
   end do
 
@@ -573,10 +592,10 @@ contains
 
         Sk(1,jo,1,io) = Sk(1,jo,1,io) + g_S(ind) * kph
         Sk(2,jo,2,io) = Sk(2,jo,2,io) + g_S(ind) * kph
-        Hk(1,jo,1,io) = Hk(1,jo,1,io) + cmplx(g_H(ind,1), g_H(ind,5), dp) * kph
-        Hk(2,jo,2,io) = Hk(2,jo,2,io) + cmplx(g_H(ind,2), g_H(ind,6), dp) * kph
-        Hk(1,jo,2,io) = Hk(1,jo,2,io) + cmplx(g_H(ind,3), -g_H(ind,4), dp) * kph
-        Hk(2,jo,1,io) = Hk(2,jo,1,io) + cmplx(g_H(ind,7), g_H(ind,8), dp) * kph
+        Hk(1,jo,1,io) = Hk(1,jo,1,io) + cmplx(g_H(1,ind), g_H(5,ind), dp) * kph
+        Hk(2,jo,2,io) = Hk(2,jo,2,io) + cmplx(g_H(2,ind), g_H(6,ind), dp) * kph
+        Hk(1,jo,2,io) = Hk(1,jo,2,io) + cmplx(g_H(3,ind), -g_H(4,ind), dp) * kph
+        Hk(2,jo,1,io) = Hk(2,jo,1,io) + cmplx(g_H(7,ind), g_H(8,ind), dp) * kph
 
       end do
     end do
@@ -661,10 +680,10 @@ contains
 
         dS(1,jo,1,io) = dS(1,jo,1,io) + g_S(ind) * kph
         dS(2,jo,2,io) = dS(2,jo,2,io) + g_S(ind) * kph
-        dH(1,jo,1,io) = dH(1,jo,1,io) + cmplx(g_H(ind,1), g_H(ind,5), dp) * kph
-        dH(2,jo,2,io) = dH(2,jo,2,io) + cmplx(g_H(ind,2), g_H(ind,6), dp) * kph
-        dH(1,jo,2,io) = dH(1,jo,2,io) + cmplx(g_H(ind,3), -g_H(ind,4), dp) * kph
-        dH(2,jo,1,io) = dH(2,jo,1,io) + cmplx(g_H(ind,7), g_H(ind,8), dp) * kph
+        dH(1,jo,1,io) = dH(1,jo,1,io) + cmplx(g_H(1,ind), g_H(5,ind), dp) * kph
+        dH(2,jo,2,io) = dH(2,jo,2,io) + cmplx(g_H(2,ind), g_H(6,ind), dp) * kph
+        dH(1,jo,2,io) = dH(1,jo,2,io) + cmplx(g_H(3,ind), -g_H(4,ind), dp) * kph
+        dH(2,jo,1,io) = dH(2,jo,1,io) + cmplx(g_H(7,ind), g_H(8,ind), dp) * kph
         
       end do
     end do
@@ -694,10 +713,10 @@ contains
 
         dS(1,jo,1,io) = dS(1,jo,1,io) + g_S(ind) * kph
         dS(2,jo,2,io) = dS(2,jo,2,io) + g_S(ind) * kph
-        dH(1,jo,1,io) = dH(1,jo,1,io) + cmplx(g_H(ind,1), g_H(ind,5), dp) * kph
-        dH(2,jo,2,io) = dH(2,jo,2,io) + cmplx(g_H(ind,2), g_H(ind,6), dp) * kph
-        dH(1,jo,2,io) = dH(1,jo,2,io) + cmplx(g_H(ind,3), -g_H(ind,4), dp) * kph
-        dH(2,jo,1,io) = dH(2,jo,1,io) + cmplx(g_H(ind,7), g_H(ind,8), dp) * kph
+        dH(1,jo,1,io) = dH(1,jo,1,io) + cmplx(g_H(1,ind), g_H(5,ind), dp) * kph
+        dH(2,jo,2,io) = dH(2,jo,2,io) + cmplx(g_H(2,ind), g_H(6,ind), dp) * kph
+        dH(1,jo,2,io) = dH(1,jo,2,io) + cmplx(g_H(3,ind), -g_H(4,ind), dp) * kph
+        dH(2,jo,1,io) = dH(2,jo,1,io) + cmplx(g_H(7,ind), g_H(8,ind), dp) * kph
 
       end do
     end do
@@ -840,6 +859,25 @@ contains
     real(dp), pointer :: to(:,:)
     to => from(:,:)
   end subroutine diag3kp_velocity_2d
+
+  ! Returns a consecutive number of contributions
+  ! starting from the specified index
+  function count_consecutive(no_u,io) result(n)
+    integer, intent(in) :: no_u, io
+    integer :: n
+    ! Local variables
+    integer :: io_node, i, i_node
+
+    n = 1
+    call WhichNodeOrb(io,Nodes,io_node)
+    do i = io + 1 , no_u
+      ! if the idx is not present, just return
+      call WhichNodeOrb(i,Nodes,i_node)
+      if ( io_node /= i_node ) return
+      n = n + 1
+    end do
+
+  end function count_consecutive
 
 end subroutine diag3kp_velocity
 
