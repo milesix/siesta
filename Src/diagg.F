@@ -95,7 +95,7 @@ C
 #ifdef MPI
       use mpi_siesta
 #endif
-      use siesta_options, only : compute_thermal_flux, virtual_dt
+      use siesta_options, only : compute_thermal_flux
       use thermal_flux_data
 
       implicit none
@@ -277,17 +277,15 @@ C Global operation to form new density matrix
       ! dimension "nuo"
 
 C     ! [ThermalFlux] Allocate full DMs at both points for drivative:
-      if (compute_thermal_flux .and..not.(allocated(Dfull_1st))) then
-         allocate( Dfull_1st(nuotot, nuotot, h_spin_dim) )
-         allocate( Dfull_2nd(nuotot, nuotot, h_spin_dim) )
+      if (compute_thermal_flux .and..not.(allocated(DM_save))) then
+         allocate(DM_save(nuotot, nuotot, h_spin_dim, gk_setup%dpoints))
       end if
+
+      !NOTE: Some overhead here since DM_save processed on every SCF cycle.
+      ! Must be harmless because in the end it stores full DM at convergence. 
+
       ! Init corresponding array:
-      select case(vs_direction)
-      case(-1)
-         Dfull_1st(:,:,:) = 0.0_dp
-      case(1)
-         Dfull_2nd(:,:,:) = 0.0_dp
-      end select
+      DM_save(:,:,:,substep) = 0.0_dp
 C     ! [ThermalFlux]
 
       do Bnode=0, Nodes-1
@@ -318,17 +316,10 @@ C     ! [ThermalFlux]
                 eei = qei*eo(ie,ispin)
 C     !FIXME: [ThermalFlux] Extract this loop?
                 if (compute_thermal_flux) then
-                   if (vs_direction.eq.-1) then
-                      do jo = 1,nuotot
-                         Dfull_1st(io,jo,ispin) =
-     $                        Dfull_1st(io,jo,ispin) + qei*paux(jo)
-                      enddo
-                   else if (vs_direction.eq.1) then
-                      do jo = 1,nuotot
-                         Dfull_2nd(io,jo,ispin) =
-     $                        Dfull_2nd(io,jo,ispin) + qei*paux(jo)
-                      enddo
-                   end if
+                   do jo = 1,nuotot
+                      DM_save(io,jo,ispin,substep) =
+     $                     DM_save(io,jo,ispin,substep) + qei*paux(jo)
+                   enddo
                 end if
 C     !FIXME: [ThermalFlux]
                 do j = 1,numd(io)

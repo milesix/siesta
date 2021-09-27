@@ -238,7 +238,6 @@ MODULE siesta_options
 
   ! Thermal transport
   logical  :: compute_thermal_flux !! Process thermal currents for a single MD trajectory snapshot
-  real(dp) :: virtual_dt    !! Virtual time step for projection of positions for time derivatives
 
   character(len=164) :: sname   ! System name, used to initialise read
 

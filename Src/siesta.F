@@ -85,21 +85,13 @@ C     Begin of coordinate relaxation iteration
          if (compute_thermal_flux) then
             call init_thermal_flux()
 
-            vs_direction = 0
-            call make_small_move()  ! middle point: xa = xa_in
-            call siesta_forces( istep )
-
-            vs_direction = -1
-            call make_small_move()  ! 1st extra point: xa = xa_in - va_in*virtual_dt*0.5
-            call siesta_forces( istep )
-
-            vs_direction = 1
-            call make_small_move()  ! 1st extra point: xa = xa_in + va_in*virtual_dt*0.5
-            call siesta_forces( istep )
+            do substep=1, gk_setup%dpoints
+               call make_small_move()
+               call siesta_forces( istep )
+            end do
 
             ! derivatives, fluxes etc, e.g.
-            Dfull_2nd(:,:,:) = (Dfull_2nd(:,:,:) - Dfull_1st(:,:,:))
-     $           /virtual_dt
+            call compute_derivatives()
 
             call reset_thermal_flux()
             call bye("Done Thermal Transport calculation, exiting.")
