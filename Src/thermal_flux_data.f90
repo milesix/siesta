@@ -85,4 +85,13 @@ module thermal_flux_data
   !! Last dimension goes over substep points
   !! (the derivation scheme parameter)
 
+  real(dp), pointer, save :: Sinv(:,:) => null()
+  !! Inverse of the overlap matrix.
+  !! Computed in diagg at the beginning of the scf cycle of
+  !! the base step
+  real(dp), pointer, save :: S_base(:,:) => null()
+  real(dp), pointer, save :: H_base(:,:) => null()
+  real(dp), pointer, save :: eo_base(:) => null()
+  real(dp), pointer, save :: psi_base(:,:) => null()
+
 end module thermal_flux_data

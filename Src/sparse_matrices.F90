@@ -19,7 +19,7 @@ module sparse_matrices
   use class_Fstack_Pair_Geometry_dSpData2D
 
   implicit none
-  
+
   private
   save
 
@@ -72,7 +72,7 @@ module sparse_matrices
   !   2. type(Sparsity) hosted in sparse_pattern.
   !
   ! The old arrays are *actually* pointing to the arrays in the variable
-  ! sparse_pattern.  
+  ! sparse_pattern.
   !
   ! A specific handling of the sparse matrices in Siesta is that the column
   ! index is *also* an index for the supercell picture of the auxiliary supercell.
@@ -109,7 +109,7 @@ module sparse_matrices
 
   !> Global sparse pattern used for H/DM/EDM/S matrices, see [sparse pattern](|page|/datastructures/2-sparse.html) for details
   type(Sparsity), public :: sparse_pattern
-  
+
   !> Number of non-zero elements in the sparse matrix (local to MPI Node)
   integer, public :: maxnh = 0
   !> Column indices in the CSR matrix (local to MPI Node)
@@ -138,12 +138,19 @@ module sparse_matrices
   type(dSpData1D), public :: S_1D
   !> Gradient of the overlap matrix
   type(dSpData2D), public :: gradS_2D
+  real(dp), public, pointer :: gradS(:,:) => null()
 
   ! Orbital distance matrix (constant for complete SCF loop, changes per MD)
   real(dp), public, pointer :: xijo(:,:) => null()
   !> Inter-orbital [vector](|page|/implementation/1-auxiliary-supercell.html)
   type(dSpData2D), public :: xij_2D
-      
+
+  !> [ThermalFlux]
+  !> Rmatrix (constant for complete SCF loop, changes per MD)
+  !> Only used for Thermal transport
+  type(dSpData2D), public   :: Rmat_2D
+  real(dp), public, pointer :: Rmat(:,:) => null()
+
   ! Pieces of H that do not depend on the SCF density matrix
   ! Formerly there was a single array H0 for this
   type(dSpData1D), public :: H_vkb_1D, H_kin_1D
@@ -188,6 +195,8 @@ contains
     nullify(Escf)
     call delete( S_1D )
     nullify(S)
+    call delete( Rmat_2D )
+    nullify(Rmat)
     call delete( gradS_2D )
     call delete( H_2D )
     nullify(H)

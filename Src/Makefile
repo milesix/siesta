@@ -279,7 +279,8 @@ OBJS += m_cite.o
 m_pexsi.o m_pexsi_driver.o m_pexsi_dos.o m_pexsi_local_dos.o: f_ppexsi_interface.o
 
 # Thermal Transport
-OBJS += thermal_flux_data.o thermal_flux.o
+OBJS += rmatrix.o thermal_flux_data.o
+OBJS += thermal_flux_jks.o thermal_flux.o
 
 #--------------------------------------------------------------
 FC_DEFAULT:=$(FC)

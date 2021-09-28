@@ -95,8 +95,10 @@ C
 #ifdef MPI
       use mpi_siesta
 #endif
+      ! [#ThermalFlux]
       use siesta_options, only : compute_thermal_flux
       use thermal_flux_data
+      ! [/ThermalFlux]
 
       implicit none
 
@@ -166,11 +168,35 @@ C Solve eigenvalue problem
         enddo
 !$OMP end parallel do
         call timer( 'r-buildHS', 2 )
+
+        ! [#ThermalFlux]
+        if (compute_thermal_flux.and.(substep.eq.1)) then
+           if (iscf.eq.1) then
+              ! Spin 1 for now
+              call re_alloc(H_base,1, nuo, 1, nuo,
+     $             'H_base', 'diagg')
+              call re_alloc(eo_base, 1, nuo,
+     $             'eo_base', 'diagg')
+              call re_alloc(psi_base,1,nuo,1,nuo,
+     $             'psi_base', 'diagg')
+           endif
+
+           H_base(:,:) = Haux(:,:)
+        endif
+        ! [/ThermalFlux]
+
         call rdiag( Haux, Saux, nuotot, nuo, nuotot,
      $       eo(1,ispin),
      .       psi(1,1,ispin), neigwanted, iscf, ierror,
      .       BlockSize)
         call timer( 'r-eigvec', 2 )
+
+        ! [#ThermalFlux]
+        if (compute_thermal_flux.and.(substep.eq.1)) then
+           eo_base(:) = eo(:,1)
+           psi_base(:,:) = psi(:,:,1)
+        end if
+        ! [/ThermalFlux]
 
 
 C Check error flag and take appropriate action
@@ -194,7 +220,14 @@ C Repeat diagonalisation with increased memory to handle clustering
           call rdiag( Haux, Saux, nuotot, nuo, nuotot, eo(1,ispin),
      &         psi(1,1,ispin), neigwanted, iscf, ierror,
      .         BlockSize )
-        endif
+
+          ! [#ThermalFlux] Just in case...
+          if (compute_thermal_flux.and.(substep.eq.1)) then
+             eo_base(:) = eo(:,1)
+             psi_base(:,:) = psi(:,:,1)
+          end if
+          ! [/ThermalFlux]
+       endif
 
         if (getPSI) then
           ! We do not have info about occupation
@@ -276,7 +309,7 @@ C Global operation to form new density matrix
       ! to match the "sparse" convention, we should probably make the first
       ! dimension "nuo"
 
-C     ! [ThermalFlux] Allocate full DMs at both points for drivative:
+C     ! [#ThermalFlux] Allocate full DMs at both points for drivative:
       if (compute_thermal_flux .and..not.(allocated(DM_save))) then
          allocate(DM_save(nuotot, nuotot, h_spin_dim, gk_setup%dpoints))
       end if
@@ -286,7 +319,7 @@ C     ! [ThermalFlux] Allocate full DMs at both points for drivative:
 
       ! Init corresponding array:
       DM_save(:,:,:,substep) = 0.0_dp
-C     ! [ThermalFlux]
+C     ! [/ThermalFlux]
 
       do Bnode=0, Nodes-1
         if (BNode.eq.Node) then
@@ -314,14 +347,14 @@ C     ! [ThermalFlux]
                 paux => PSI_TMP(mm+1:mm+nuotot)
                 qei = qe*paux(iio)
                 eei = qei*eo(ie,ispin)
-C     !FIXME: [ThermalFlux] Extract this loop?
+C     !FIXME: [#ThermalFlux] Extract this loop?
                 if (compute_thermal_flux) then
                    do jo = 1,nuotot
                       DM_save(io,jo,ispin,substep) =
      $                     DM_save(io,jo,ispin,substep) + qei*paux(jo)
                    enddo
                 end if
-C     !FIXME: [ThermalFlux]
+C     !FIXME: [/ThermalFlux]
                 do j = 1,numd(io)
                   ind = listdptr(io) + j
                   jo  = listd(ind)
