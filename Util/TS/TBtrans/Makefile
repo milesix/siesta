@@ -1,5 +1,5 @@
 # ---
-# Copyright (C) 1996-2016	The SIESTA group
+# Copyright (C) 1996-2021       The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
 #  or http://www.gnu.org/copyleft/gpl.txt .
@@ -47,9 +47,10 @@ SIESTA_OBJS= precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
              moreParallelSubs.o m_mpi_utils.o \
              reclat.o idiag.o minvec.o \
              parallel.o io.o files.o cellsubs.o sorting.o \
-	     kpoint_convert.o timestamp.o m_wallclock.o m_spin.o \
+             kpoint_convert.o timestamp.o m_wallclock.o m_spin.o \
              diag.o diag_option.o bloch_unfold.o \
-	     debugmpi.o find_kgrid.o units.o m_cite.o posix_calls.o
+             debugmpi.o find_kgrid.o units.o m_cite.o posix_calls.o \
+             runinfo_m.o cli_m.o
 
 # Siesta timings
 SIESTA_OBJS += m_walltime.o timer_tree.o m_timer.o timer.o
@@ -65,9 +66,6 @@ SIESTA_OBJS += class_OrbitalDistribution.o \
 	class_SpData1D.o class_SpData2D.o \
 	class_TriMat.o \
         m_uuid.o object_debug.o
-
-# Output stuff
-SIESTA_OBJS += init_output.o
 
 # As the classes are based on inputs we force the dependency to
 # alloc
@@ -114,8 +112,11 @@ DEP_OBJS = $(SIESTA_OBJS) $(TS_OBJS) $(SYSOBJ) $(EXTRA)
 # To separate tbtrans objects from siesta/transiesta
 TBTOBJS  = version.o m_verbosity.o
 
+# Output stuff
+TBTOBJS += tbt_init_output.o
+
 # Add generic tbtrans routines
-TBTOBJS += tbt_init.o tbt_end.o tbt_reinit.o m_tbt_hs.o m_tbt_regions.o
+TBTOBJS += tbt_init.o tbt_end.o tbt_reinit_m.o m_tbt_hs.o m_tbt_regions.o
 TBTOBJS += m_tbt_options.o m_tbt_tri_init.o
 TBTOBJS += m_tbt_contour.o m_tbt_kpoint.o m_tbt_gf.o
 TBTOBJS += sorted_search.o
@@ -366,6 +367,8 @@ class_SpData3D.o: class_OrbitalDistribution.o class_Sparsity.o
 class_Sparsity.o: alloc.o
 class_Sparsity.o: alloc.o
 class_TriMat.o: alloc.o intrinsic_missing.o
+cli_m.o: local_sys.o
+cli_m.o: local_sys.o
 create_Sparsity_SC.o: class_Sparsity.o geom_helper.o intrinsic_missing.o
 create_Sparsity_SC.o: class_Sparsity.o geom_helper.o intrinsic_missing.o
 create_Sparsity_Union.o: class_OrbitalDistribution.o class_Sparsity.o
@@ -388,8 +391,6 @@ get_kpoints_scale.o: parallel.o siesta_geom.o units.o
 get_kpoints_scale.o: parallel.o siesta_geom.o units.o
 idiag.o: local_sys.o parallel.o
 idiag.o: local_sys.o parallel.o
-init_output.o: files.o
-init_output.o: files.o
 io.o: m_io.o
 io.o: m_io.o
 kpoint_convert.o: local_sys.o precision.o units.o
@@ -596,6 +597,8 @@ minvec.o: cellsubs.o local_sys.o precision.o sorting.o
 minvec.o: cellsubs.o local_sys.o precision.o sorting.o
 moreParallelSubs.o: alloc.o local_sys.o m_io.o parallel.o precision.o
 moreParallelSubs.o: alloc.o local_sys.o m_io.o parallel.o precision.o
+runinfo_m.o: parallel.o posix_calls.o
+runinfo_m.o: parallel.o posix_calls.o
 siesta_geom.o: precision.o
 siesta_geom.o: precision.o
 timer.o: local_sys.o m_timer.o parallel.o timer_tree.o
@@ -777,15 +780,19 @@ tbt_init.o: local_sys.o m_sparsity_handling.o m_tbt_contour.o m_tbt_gf.o
 tbt_init.o: m_tbt_hs.o m_tbt_kpoint.o m_tbt_kregions.o m_tbt_options.o
 tbt_init.o: m_tbt_proj.o m_tbt_regions.o m_tbt_save.o m_timer.o
 tbt_init.o: m_ts_electrode.o m_ts_electype.o m_wallclock.o memory_log.o
-tbt_init.o: parallel.o precision.o timestamp.o
+tbt_init.o: parallel.o precision.o runinfo_m.o tbt_reinit_m.o timestamp.o
+tbt_init.o: version.o
 tbt_init.o: class_SpData1D.o class_SpData2D.o class_Sparsity.o files.o
 tbt_init.o: local_sys.o m_sparsity_handling.o m_tbt_contour.o m_tbt_gf.o
 tbt_init.o: m_tbt_hs.o m_tbt_kpoint.o m_tbt_kregions.o m_tbt_options.o
 tbt_init.o: m_tbt_proj.o m_tbt_regions.o m_tbt_save.o m_timer.o
 tbt_init.o: m_ts_electrode.o m_ts_electype.o m_wallclock.o memory_log.o
-tbt_init.o: parallel.o precision.o timestamp.o
-tbt_reinit.o: m_verbosity.o parallel.o
-tbt_reinit.o: m_verbosity.o parallel.o
+tbt_init.o: parallel.o precision.o runinfo_m.o tbt_reinit_m.o timestamp.o
+tbt_init.o: version.o
+tbt_init_output.o: files.o tbt_reinit_m.o
+tbt_init_output.o: files.o tbt_reinit_m.o
+tbt_reinit_m.o: cli_m.o files.o m_verbosity.o parallel.o version.o
+tbt_reinit_m.o: cli_m.o files.o m_verbosity.o parallel.o version.o
 tbtrans.o: m_tbt_hs.o m_tbt_options.o m_tbtrans.o
 tbtrans.o: m_tbt_hs.o m_tbt_options.o m_tbtrans.o
 bloch_unfold_m.o: bloch_unfold.o

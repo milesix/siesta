@@ -12,9 +12,6 @@ Src/elpa* files and http://elpa.mpcdf.mpg.de/software)
 This package includes a copy of the fdf library, which has its own
 license, copyright, and attribution terms. (See Src/fdf)
 
-This package includes the f2kcli module developed by Interactive
-Software Services Ltd (see Src/f2kcli_manual.txt).
-
 This package includes a MPI interface module by Michael Hennecke. (See
 Src/MPI/mpi__include.f90)
 

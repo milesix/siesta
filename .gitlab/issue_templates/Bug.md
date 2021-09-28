@@ -13,7 +13,12 @@ This is vital since some bugs are already fixed in the development
 branch.
 
 If you only have access to the Siesta binary,
-you can find the version string printed at the top of any Siesta output.
+you can find the version string printed at the top of any Siesta output;
+if you are running Siesta 5 or newer, please include the complete output of
+
+```
+$ siesta --version
+```
 
 If you have access to the directories where Siesta was compiled,
 this information can also be found in file `SIESTA.version`
@@ -27,11 +32,11 @@ please specify the precise Commit Id hash).
 **System information:**
 <!--
 Please provide:
-- which operating system and version
-- which compiler and version used
-- which libraries and versions used
-- the arch.make file.
-- clarify whether the bug happens in serial or parallel runs
+- which operating system and version,
+- which compiler and version used,
+- which libraries and versions used,
+- the arch.make file, and
+- clear information about whether the bug happens in serial or parallel runs.
 
 Ideally you should check this using two different compilers to ensure this
 is not compiler/platform bugs.

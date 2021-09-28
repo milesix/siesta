@@ -1,5 +1,5 @@
 # ---
-# Copyright (C) 1996-2016	The SIESTA group
+# Copyright (C) 1996-2021	The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
 #  or http://www.gnu.org/copyleft/gpl.txt .
@@ -78,7 +78,7 @@ $(FDF):
                           "MPI_INTERFACE= " \
                           "INCFLAGS=$(FDF_INCFLAGS)" "FFLAGS=$(FFLAGS)" module)
 
-MIXPS_DEPS= f2kcli.o interpolation.o atom_options.o \
+MIXPS_DEPS= interpolation.o atom_options.o \
             m_io.o io.o alloc.o periodic_table.o  precision.o
 MIXPS_LOCAL_OBJS= mixps.o handlers.o local_sys.o
 MIXPS_OBJS= $(MIXPS_DEPS) $(MIXPS_LOCAL_OBJS)
@@ -90,7 +90,7 @@ mixps:  $(FDF) $(MIXPS_OBJS) $(NCPS)
 	       $(LDFLAGS) $(MIXPS_OBJS) $(NCPS) $(FDF) $(PSML_LIBS) $(XMLF90_LIBS)
 
 #----------------------------------------------------------------------------
-FRACTIONAL_DEPS= f2kcli.o m_io.o alloc.o interpolation.o \
+FRACTIONAL_DEPS= m_io.o alloc.o interpolation.o \
                  atom_options.o io.o periodic_table.o precision.o
 FRACTIONAL_LOCAL_OBJS= fractional.o handlers.o local_sys.o
 FRACTIONAL_OBJS= $(FRACTIONAL_DEPS) $(FRACTIONAL_LOCAL_OBJS)
@@ -117,13 +117,8 @@ dep:
 
 # DO NOT DELETE THIS LINE - used by make depend
 atom_options.o: local_sys.o
-atom_options.o: local_sys.o
-io.o: m_io.o
 io.o: m_io.o
 periodic_table.o: local_sys.o precision.o
-periodic_table.o: local_sys.o precision.o
-fractional.o: f2kcli.o periodic_table.o precision.o
-fractional.o: f2kcli.o periodic_table.o precision.o
-mixps.o: f2kcli.o interpolation.o periodic_table.o precision.o
-mixps.o: f2kcli.o interpolation.o periodic_table.o precision.o
+fractional.o: periodic_table.o precision.o
+mixps.o: interpolation.o periodic_table.o precision.o
 sys.o: local_sys.o

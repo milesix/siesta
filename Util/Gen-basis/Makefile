@@ -1,5 +1,5 @@
 # ---
-# Copyright (C) 1996-2016	The SIESTA group
+# Copyright (C) 1996-2021	The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
 #  or http://www.gnu.org/copyleft/gpl.txt .
@@ -67,7 +67,7 @@ DEPS_GEN-BASIS += get_kpoints_scale.o siesta_geom.o
 GEN-BASIS_LOCAL_OBJS=gen-basis.o handlers.o local_sys.o
 OBJS_GEN-BASIS=$(DEPS_GEN-BASIS) $(GEN-BASIS_LOCAL_OBJS)
 
-DEPS_IONCAT=f2kcli.o m_getopts.o basis_types.o precision.o  parallel.o \
+DEPS_IONCAT=m_getopts.o basis_types.o precision.o  parallel.o \
           parsing.o m_io.o io.o alloc.o atom_options.o basis_io.o atm_types.o \
           atmparams.o radial.o  chkdim.o m_filter.o \
 	  chemical.o m_spin.o m_spin_orbit_potentials.o reclat.o \
@@ -185,8 +185,6 @@ io.o: m_io.o
 io.o: m_io.o
 m_filter.o: bessph.o local_sys.o precision.o radfft.o
 m_filter.o: bessph.o local_sys.o precision.o radfft.o
-m_getopts.o: f2kcli.o
-m_getopts.o: f2kcli.o
 m_spin.o: alloc.o files.o get_kpoints_scale.o local_sys.o m_cite.o parallel.o
 m_spin.o: precision.o
 m_spin.o: alloc.o files.o get_kpoints_scale.o local_sys.o m_cite.o parallel.o
@@ -205,8 +203,6 @@ spher_harm.o: alloc.o local_sys.o precision.o
 spher_harm.o: alloc.o local_sys.o precision.o
 units.o: precision.o
 units.o: precision.o
-version.o: posix_calls.o
-version.o: posix_calls.o
 xml.o: precision.o
 xml.o: precision.o
 gen-basis.o: atm_types.o atom.o atom_options.o basis_io.o basis_specs.o

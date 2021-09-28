@@ -1,5 +1,5 @@
 # ---
-# Copyright (C) 1996-2016	The SIESTA group
+# Copyright (C) 1996-2021	The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
 #  or http://www.gnu.org/copyleft/gpl.txt .
@@ -38,7 +38,7 @@ SYSOBJ=$(SYS).o
 #
 # Note that machine-specific files are now in top Src directory.
 #
-SIESTA_OBJS=precision.o f2kcli.o parallel.o \
+SIESTA_OBJS=precision.o parallel.o \
           chemical.o io.o m_io.o alloc.o \
           memory_log.o memory.o periodic_table.o\
           pxf.o atom_options.o  \
@@ -82,17 +82,10 @@ dep:
 
 # DO NOT DELETE THIS LINE - used by make depend
 atom_options.o: local_sys.o
-atom_options.o: local_sys.o
-chemical.o: local_sys.o parallel.o precision.o
 chemical.o: local_sys.o parallel.o precision.o
 io.o: m_io.o
-io.o: m_io.o
-memory.o: memory_log.o parallel.o
 memory.o: memory_log.o parallel.o
 memory_log.o: m_io.o parallel.o precision.o
-memory_log.o: m_io.o parallel.o precision.o
 periodic_table.o: local_sys.o precision.o
-periodic_table.o: local_sys.o precision.o
-get_chem_labels.o: chemical.o f2kcli.o
-get_chem_labels.o: chemical.o f2kcli.o
+get_chem_labels.o: chemical.o
 sys.o: local_sys.o

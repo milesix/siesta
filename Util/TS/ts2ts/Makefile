@@ -1,5 +1,5 @@
 # ---
-# Copyright (C) 1996-2016	The SIESTA group
+# Copyright (C) 1996-2021	The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
 #  or http://www.gnu.org/copyleft/gpl.txt .
@@ -41,7 +41,7 @@ INCFLAGS:=$(NETCDF_INCFLAGS) $(INCFLAGS)
 SYSOBJ=$(SYS).o
 
 # Note that machine-specific files are now in top Src directory.
-DEP_OBJS = precision.o f2kcli.o parallel.o \
+DEP_OBJS = precision.o parallel.o \
           alloc.o m_io.o pxf.o units.o $(SYSOBJ)
 
 LOCAL_OBJS += ts2ts.o handlers.o
@@ -80,6 +80,4 @@ dep:
 
 # DO NOT DELETE THIS LINE - used by make depend
 units.o: precision.o
-units.o: precision.o
-ts2ts.o: f2kcli.o precision.o units.o
-ts2ts.o: f2kcli.o precision.o units.o
+ts2ts.o: precision.o units.o

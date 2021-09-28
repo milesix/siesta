@@ -1,5 +1,5 @@
 ! ---
-! Copyright (C) 1996-2016       The SIESTA group
+! Copyright (C) 1996-2021       The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt .
@@ -16,7 +16,6 @@
       use m_psml, only: psml_t => ps_t
       use periodic_table,  only: cnfig, qvlofz
       use interpolation,   only: generate_spline, evaluate_spline
-      use f2kcli
 
       implicit none
 

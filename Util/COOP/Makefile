@@ -1,12 +1,12 @@
 # ---
-# Copyright (C) 1996-2016	The SIESTA group
+# Copyright (C) 1996-2021       The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
 #  or http://www.gnu.org/copyleft/gpl.txt .
 # See Docs/Contributors.txt for a list of contributors.
 # ---
 #
-# The VPATH directive below helps to re-use f2kcli.F90 from the top Src.
+# The VPATH directive below allows to re-use m_getopts.f90 from the top Src.
 # Other points to note, until we switch to a better building system:
 #
 #  The arch.make file is supposed to be in $(OBJDIR). This is normally
@@ -43,7 +43,7 @@ INCFLAGS:=$(INCFLAGS) $(NETCDF_INCFLAGS)
 # Two ways of splitting the list of object files:
 # 1. By the needs of the three different programs
 SIESTA_OBJS = precision.o alloc.o parallel.o m_io.o pxf.o moreParallelSubs.o
-DEF_OBJS = m_getopts.o io.o subs.o local_sys.o units.o f2kcli.o
+DEF_OBJS = m_getopts.o io.o subs.o local_sys.o units.o
 DEF_OBJS += io_hs.o
 DEF_OBJS += main_vars.o
 
@@ -55,7 +55,7 @@ TEXTURE_OBJS  = $(SIESTA_OBJS) $(DEF_OBJS) handlers.o
 
 # 2. By whether they are in VPATH or in the local directory (for deps processing)
 DEP_OBJS = $(SIESTA_OBJS)
-DEP_OBJS += m_getopts.o io.o  units.o f2kcli.o iodm_netcdf.o write_dm.o
+DEP_OBJS += m_getopts.o io.o  units.o iodm_netcdf.o write_dm.o
 LOCAL_OBJS= subs.o io_hs.o local_sys.o main_vars.o read_curves.o orbital_set.o handlers.o
 
 # Dependencies
@@ -85,8 +85,6 @@ io.o: m_io.o
 io.o: m_io.o
 iodm_netcdf.o: alloc.o local_sys.o parallel.o precision.o
 iodm_netcdf.o: alloc.o local_sys.o parallel.o precision.o
-m_getopts.o: f2kcli.o
-m_getopts.o: f2kcli.o
 moreParallelSubs.o: alloc.o local_sys.o m_io.o parallel.o precision.o
 moreParallelSubs.o: alloc.o local_sys.o m_io.o parallel.o precision.o
 units.o: precision.o

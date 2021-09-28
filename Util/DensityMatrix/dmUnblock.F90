@@ -29,7 +29,6 @@ program dmUnblock
 ! If the input file is actually unblocked, a simple copy is carried out.
 
   use m_getopts
-  use f2kcli
 
 implicit none
 

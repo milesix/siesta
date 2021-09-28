@@ -1,5 +1,5 @@
 # ---
-# Copyright (C) 1996-2016	The SIESTA group
+# Copyright (C) 1996-2021	The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
 #  or http://www.gnu.org/copyleft/gpl.txt .
@@ -88,9 +88,6 @@ SIESTA_OBJS += class_OrbitalDistribution.o \
 	class_Data1D.o class_Data2D.o \
 	class_SpData1D.o class_SpData2D.o \
         m_uuid.o object_debug.o
-
-# Output stuff
-SIESTA_OBJS += init_output.o
 
 # As the classes are based on inputs we force the dependency to
 # alloc
@@ -269,8 +266,6 @@ get_kpoints_scale.o: parallel.o siesta_geom.o units.o
 get_kpoints_scale.o: parallel.o siesta_geom.o units.o
 idiag.o: local_sys.o parallel.o
 idiag.o: local_sys.o parallel.o
-init_output.o: files.o
-init_output.o: files.o
 io.o: m_io.o
 io.o: m_io.o
 kpoint_convert.o: local_sys.o precision.o units.o
