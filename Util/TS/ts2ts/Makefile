@@ -42,7 +42,7 @@ SYSOBJ=$(SYS).o
 
 # Note that machine-specific files are now in top Src directory.
 DEP_OBJS = precision.o parallel.o \
-          alloc.o m_io.o pxf.o units.o $(SYSOBJ)
+          alloc.o m_io.o pxf.o units.o sys.o $(SYSOBJ)
 
 LOCAL_OBJS += ts2ts.o handlers.o
 
@@ -79,5 +79,9 @@ dep:
 		$(LOCAL_OBJS:.o=.f) $(LOCAL_OBJS:.o=.F) || true
 
 # DO NOT DELETE THIS LINE - used by make depend
+m_io.o: sys.o
+m_io.o: sys.o
 units.o: precision.o
+units.o: precision.o
+ts2ts.o: precision.o units.o
 ts2ts.o: precision.o units.o

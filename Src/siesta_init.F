@@ -33,7 +33,7 @@
      &                              iza, rmaxo, zvaltot, superc,
      &                              initatomlists, no_l, rmaxdftu
       use fdf
-
+      use sys,                only: die, bye
       use gridxc,             only: gridxc_init
       use molecularmechanics, only: inittwobody
       use metaforce,          only: initmeta
@@ -111,7 +111,6 @@
       integer :: World_Group
       integer :: npSIESTA
       external :: read_options
-      external :: die, bye
       external :: reset_messages_file
 
 !---------------------------------------------------------------------- BEGIN

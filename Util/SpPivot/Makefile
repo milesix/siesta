@@ -35,7 +35,7 @@ FC := $(FC_SERIAL)
 # We force the compilation of the graphviz library
 FPPFLAGS += -DGRAPHVIZ
 
-SIESTA_OBJS  = precision.o parallel.o alloc.o m_io.o
+SIESTA_OBJS  = precision.o parallel.o alloc.o m_io.o sys.o
 SIESTA_OBJS += pxf.o reclat.o io.o memory.o memory_log.o
 
 # Add specific class objects
@@ -51,7 +51,7 @@ SIESTA_OBJS += m_pivot.o m_pivot_methods.o
 SIESTA_OBJS += m_sparse.o m_sparsity_handling.o
 SIESTA_OBJS += m_region.o m_interpolate.o
 
-LOCAL_OBJS= pvtsp.o handlers.o local_sys.o
+LOCAL_OBJS= pvtsp.o handlers.o 
 
 OBJS = $(SIESTA_OBJS) $(LOCAL_OBJS)
 
@@ -105,6 +105,8 @@ geom_helper.o: intrinsic_missing.o
 geom_helper.o: intrinsic_missing.o
 io.o: m_io.o
 io.o: m_io.o
+m_io.o: sys.o
+m_io.o: sys.o
 m_io_s.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
 m_io_s.o: class_Sparsity.o parallel.o precision.o
 m_io_s.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
@@ -134,11 +136,11 @@ m_sparsity_handling.o: class_SpData2D.o class_Sparsity.o geom_helper.o
 m_sparsity_handling.o: intrinsic_missing.o m_interpolate.o m_region.o
 m_sparsity_handling.o: precision.o
 m_ts_io.o: alloc.o class_OrbitalDistribution.o class_SpData1D.o
-m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o local_sys.o m_io_s.o
-m_ts_io.o: m_os.o m_sparse.o memory_log.o parallel.o precision.o
+m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o m_io_s.o m_os.o
+m_ts_io.o: m_sparse.o memory_log.o parallel.o precision.o sys.o
 m_ts_io.o: alloc.o class_OrbitalDistribution.o class_SpData1D.o
-m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o local_sys.o m_io_s.o
-m_ts_io.o: m_os.o m_sparse.o memory_log.o parallel.o precision.o
+m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o m_io_s.o m_os.o
+m_ts_io.o: m_sparse.o memory_log.o parallel.o precision.o sys.o
 memory.o: memory_log.o parallel.o
 memory.o: memory_log.o parallel.o
 memory_log.o: m_io.o parallel.o precision.o
@@ -169,4 +171,3 @@ class_zspdata1d.o: class_SpData1D.o
 class_zspdata2d.o: class_SpData2D.o
 m_object_debug.o: object_debug.o
 mtprng.o: m_uuid.o
-sys.o: local_sys.o

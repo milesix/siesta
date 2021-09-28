@@ -20,6 +20,7 @@ contains
 #endif
     use units, only: eV, Ang
     use precision, only: dp
+    use sys, only: bye
     
     use files, only: slabel
     use siesta_cml
@@ -134,7 +135,8 @@ contains
 #ifdef MPI
     integer :: MPIerror
 #endif
-    external :: die, bye, message
+
+    external :: die, message
 
 #ifdef DEBUG
     call write_debug( '    PRE siesta_forces' )

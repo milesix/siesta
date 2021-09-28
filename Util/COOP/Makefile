@@ -42,8 +42,8 @@ INCFLAGS:=$(INCFLAGS) $(NETCDF_INCFLAGS)
 
 # Two ways of splitting the list of object files:
 # 1. By the needs of the three different programs
-SIESTA_OBJS = precision.o alloc.o parallel.o m_io.o pxf.o moreParallelSubs.o
-DEF_OBJS = m_getopts.o io.o subs.o local_sys.o units.o
+SIESTA_OBJS = precision.o alloc.o parallel.o m_io.o pxf.o moreParallelSubs.o sys.o
+DEF_OBJS = m_getopts.o io.o subs.o units.o
 DEF_OBJS += io_hs.o
 DEF_OBJS += main_vars.o
 
@@ -56,7 +56,7 @@ TEXTURE_OBJS  = $(SIESTA_OBJS) $(DEF_OBJS) handlers.o
 # 2. By whether they are in VPATH or in the local directory (for deps processing)
 DEP_OBJS = $(SIESTA_OBJS)
 DEP_OBJS += m_getopts.o io.o  units.o iodm_netcdf.o write_dm.o
-LOCAL_OBJS= subs.o io_hs.o local_sys.o main_vars.o read_curves.o orbital_set.o handlers.o
+LOCAL_OBJS= subs.o io_hs.o main_vars.o read_curves.o orbital_set.o handlers.o
 
 # Dependencies
 .PHONY: dep
@@ -83,10 +83,12 @@ clean:
 # DO NOT DELETE THIS LINE - used by make depend
 io.o: m_io.o
 io.o: m_io.o
-iodm_netcdf.o: alloc.o local_sys.o parallel.o precision.o
-iodm_netcdf.o: alloc.o local_sys.o parallel.o precision.o
-moreParallelSubs.o: alloc.o local_sys.o m_io.o parallel.o precision.o
-moreParallelSubs.o: alloc.o local_sys.o m_io.o parallel.o precision.o
+iodm_netcdf.o: alloc.o parallel.o precision.o sys.o
+iodm_netcdf.o: alloc.o parallel.o precision.o sys.o
+m_io.o: sys.o
+m_io.o: sys.o
+moreParallelSubs.o: alloc.o m_io.o parallel.o precision.o sys.o
+moreParallelSubs.o: alloc.o m_io.o parallel.o precision.o sys.o
 units.o: precision.o
 units.o: precision.o
 io_hs.o: main_vars.o precision.o
@@ -99,4 +101,3 @@ read_curves.o: orbital_set.o precision.o
 read_curves.o: orbital_set.o precision.o
 subs.o: precision.o
 subs.o: precision.o
-sys.o: local_sys.o

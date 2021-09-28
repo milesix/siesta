@@ -20,6 +20,7 @@ module iopipes
 use precision, only: dp
 use parallel, only: IOnode
 use fdf
+use sys, only: die, bye
 #ifdef MPI
       use mpi_siesta
 #endif
@@ -27,7 +28,6 @@ use fdf
   implicit none
 
   external :: io_assign, io_close
-  external :: die, bye
 
 PUBLIC :: coordsFromPipe, forcesToPipe
 

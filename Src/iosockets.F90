@@ -21,6 +21,7 @@
 ! use parallel,     only: IOnode
 ! use fdf
 ! use f90sockets,   only: open_socket, writebuffer, readbuffer
+! use sys,          only: die, bye
 ! use m_mpi_utils,  only: broadcast
 ! use cellSubs,     only: volcel
 ! use mpi_siesta
@@ -55,6 +56,7 @@ module iosockets
   use parallel,     only: IOnode
   use fdf
   use f90sockets,   only: open_socket, writebuffer, readbuffer, close_socket
+  use sys,          only: die, bye
   use m_mpi_utils,  only: broadcast
   use cellSubs,     only: volcel
 #ifdef MPI
@@ -63,8 +65,6 @@ module iosockets
 
   implicit none
 
-  external :: die, bye
-  
 ! Public procedures
 PUBLIC :: &
   coordsFromSocket, &! receive coords and cell vectors from master program

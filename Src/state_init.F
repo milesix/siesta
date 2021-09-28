@@ -78,7 +78,7 @@
       use domain_decom,      only: domainDecom, use_dd, use_dd_perm
       use dftu_specs,        only: switch_dftu, dftu_init
       use fdf,               only: fdf_get
-      use sys,               only: message, die
+      use sys,               only: message, die, bye
       use m_sparse, only : xij_offset
 
       use ts_kpoint_scf_m, only: setup_ts_kpoint_scf, ts_kpoint_scf
@@ -139,8 +139,7 @@
       logical            :: diag_folding, diag_folding1
       logical            :: foundxv  ! dummy for call to ioxv
 
-      external           :: madelung, timer
-      external           :: bye
+      external           ::  madelung, timer
       real(dp), external :: volcel
 
       integer                       :: ts_kscell_file(3,3) = 0
