@@ -1,5 +1,5 @@
 ! ---
-! Copyright (C) 1996-2016       The SIESTA group
+! Copyright (C) 1996-2021       The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt .
@@ -9,9 +9,10 @@ module version_info
 
 implicit none
 
-integer, dimension(3), save  :: num_version = (/0,0,0/)
 character(len=*), parameter :: version_str =  &
 "TBTRANS_VERSION"
+character(len=*), parameter :: compiler_version = &
+"COMPILER_VERSION"
 character(len=*), parameter :: siesta_arch= &
 "SIESTA_ARCH"
 character(len=*), parameter :: fflags= &
@@ -22,41 +23,79 @@ character(len=*), parameter :: libs= &
 "LIBS"
 
 private
-public :: num_version, version_str
+public :: version_str
 public :: siesta_arch, fflags, fppflags, libs
+public :: compiler_version
 
-end module version_info
+public :: prversion
+
 !================================================================
+
+CONTAINS
 
 subroutine prversion
 
-use version_info
 implicit none
 
+logical :: has_parallel
+!$ integer :: omp_version
+!$ character(len=:), allocatable :: omp_name
+
 #ifdef TBT_PHONON
-write(6,'(2a)') "PHtrans Version: ", trim(version_str)
+write(6,'(2a)') "PHtrans Version : ", trim(adjustl(version_str))
 #else
-write(6,'(2a)') "TBtrans Version: ", trim(version_str)
+write(6,'(2a)') "TBtrans Version : ", trim(adjustl(version_str))
 #endif
-write(6,'(2a)') 'Architecture  : ', trim(siesta_arch)
-write(6,'(2a)') 'Compiler flags: ', trim(fflags)
-write(6,'(2a)') 'PP flags      : ', trim(fppflags)
-write(6,'(2a)') 'Libraries     : ', trim(libs)
+write(6,'(2a)') 'Architecture    : ', trim(adjustl(siesta_arch))
+write(6,'(2a)') 'Compiler version: ', trim(adjustl(compiler_version))
+write(6,'(2a)') 'Compiler flags  : ', trim(adjustl(fflags))
+write(6,'(2a)') 'PP flags        : ', trim(adjustl(fppflags))
+write(6,'(2a)') 'Libraries       : ', trim(adjustl(libs))
 
+write(6,'(a)',ADVANCE='NO') 'Parallelisations: '
 #ifdef MPI
-write(6,'(a)') 'PARALLEL version'
+has_parallel = .true.
+write(6,'(a)',ADVANCE='NO') 'MPI'
 #else
-write(6,'(a)') 'SERIAL version'
+has_parallel = .false.
 #endif
 
-!$OMP parallel
-!$OMP master
-!$write(*,'(a)') 'THREADED version'
+!$ if (has_parallel) write(6,'(a)', ADVANCE='NO') '; and '
+!$ write(6,'(a)',ADVANCE='NO') 'OpenMP threads'
+!$ has_parallel = .true.
+if (.not. has_parallel) write(6,'(a)',ADVANCE='NO') 'none'
+write(6,'(a)') '.'
 #ifdef _OPENMP
-!$write(*,'(a,i0)') '* OpenMP version ', _OPENMP
+!$ omp_version = _OPENMP
+!$ select case (omp_version)
+!$    case (202011)
+!$       omp_name = 'OpenMP 5.1'
+!$    case (201811)
+!$       omp_name = 'OpenMP 5.0'
+!$    case (201611)
+!$       ! jme52: Many versions of ifort report this value
+!$       ! (I don't think this should be a valid value),
+!$       ! despite not even (always?) providing full OpenMP 4.0.
+!$       omp_name = 'OpenMP 5.0 Preview 1 non-normative Technical Report'
+!$    case (201511)
+!$       omp_name = 'OpenMP 4.5'
+!$    case (201307)
+!$       omp_name = 'OpenMP 4.0'
+!$    case (201107)
+!$       omp_name = 'OpenMP 3.1'
+!$    case (200805)
+!$       omp_name = 'OpenMP 3.0'
+!$    case (200505)
+!$       omp_name = 'OpenMP 2.5'
+!$    case (200011)
+!$       omp_name = 'OpenMP 2.0'
+!$    ! Earlier versions of OpenMP (1.x) did not specify
+!$    ! the value of _OPENMP
+!$    case default
+!$       omp_name = 'unknown OpenMP version'
+!$ end select
+!$ write(6,'(a,i0,a)') '* OpenMP version: ', omp_version, ' ('//omp_name//').'
 #endif
-!$OMP end master
-!$OMP end parallel
 
 #ifdef USE_GEMM3M
 write(6,'(a)') 'GEMM3M support'
@@ -75,12 +114,5 @@ write(6,'(a)') 'METIS ordering support'
 #endif
 
 end subroutine prversion
-!----------------------------------------------------------
 
-subroutine get_version(v)
-  use version_info
-  implicit none
-  integer, intent(out)  :: v(3)
-  v = num_version
-end subroutine get_version
-
+end module version_info

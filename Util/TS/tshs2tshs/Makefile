@@ -1,5 +1,5 @@
 # ---
-# Copyright (C) 1996-2016	The SIESTA group
+# Copyright (C) 1996-2021	The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
 #  or http://www.gnu.org/copyleft/gpl.txt .
@@ -44,7 +44,7 @@ DEP_OBJS = precision.o parallel.o \
         alloc.o pxf.o units.o  \
 	memory_log.o m_io.o io.o \
 	m_sparse.o intrinsic_missing.o geom_helper.o reclat.o \
-	m_io_s.o m_ncdf_io.o m_ts_io.o 
+	m_io_s.o m_ncdf_io.o m_ts_io.o sys.o
 
 # Add class objects
 DEP_OBJS += m_uuid.o object_debug.o \
@@ -58,7 +58,7 @@ DEP_OBJS += $(SYSOBJ)
 DEP_OBJS += m_os.o
 DEP_OBJS += m_ts_io_version.o
 
-LOCAL_OBJS = tshs2tshs.o handlers.o local_sys.o
+LOCAL_OBJS = tshs2tshs.o handlers.o 
 
 OBJS=$(DEP_OBJS) $(LOCAL_OBJS)
 
@@ -171,6 +171,8 @@ geom_helper.o: intrinsic_missing.o
 geom_helper.o: intrinsic_missing.o
 io.o: m_io.o
 io.o: m_io.o
+m_io.o: sys.o
+m_io.o: sys.o
 m_io_s.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
 m_io_s.o: class_Sparsity.o parallel.o precision.o
 m_io_s.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
@@ -186,11 +188,11 @@ m_sparse.o: alloc.o class_OrbitalDistribution.o class_SpData2D.o
 m_sparse.o: class_Sparsity.o geom_helper.o intrinsic_missing.o parallel.o
 m_sparse.o: precision.o
 m_ts_io.o: alloc.o class_OrbitalDistribution.o class_SpData1D.o
-m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o local_sys.o m_io_s.o
-m_ts_io.o: m_ncdf_io.o m_os.o m_sparse.o memory_log.o parallel.o precision.o
+m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o m_io_s.o m_ncdf_io.o
+m_ts_io.o: m_os.o m_sparse.o memory_log.o parallel.o precision.o sys.o
 m_ts_io.o: alloc.o class_OrbitalDistribution.o class_SpData1D.o
-m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o local_sys.o m_io_s.o
-m_ts_io.o: m_ncdf_io.o m_os.o m_sparse.o memory_log.o parallel.o precision.o
+m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o m_io_s.o m_ncdf_io.o
+m_ts_io.o: m_os.o m_sparse.o memory_log.o parallel.o precision.o sys.o
 memory_log.o: m_io.o parallel.o precision.o
 memory_log.o: m_io.o parallel.o precision.o
 units.o: precision.o
@@ -221,4 +223,3 @@ class_zspdata1d.o: class_SpData1D.o
 class_zspdata2d.o: class_SpData2D.o
 m_object_debug.o: object_debug.o
 mtprng.o: m_uuid.o
-sys.o: local_sys.o

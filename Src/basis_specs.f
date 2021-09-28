@@ -715,6 +715,7 @@ C Sanity checks on values
       integer isp, ish, nn, i, ind, l, indexp, index_splnorm
       integer nrcs_zetas
       integer :: nsemic_shells(0:3)
+      logical :: will_have_polarization_orb 
       
       type(block_fdf)            :: bfdf
       type(parsed_line), pointer :: pline
@@ -945,17 +946,34 @@ C Sanity checks on values
           ls => basp%lshell(l)
           call initialize(ls)
           ls%l = l
+          will_have_polarization_orb = .false.
+          
           ! Search for tmp_shells with given l
           nn = 0
           do ish= 1, basp%nshells_tmp
             s => basp%tmp_shell(ish)
             if (s%l .eq. l) nn=nn+1
 
-            if (basp%non_perturbative_polorbs) then
-               ! Make room for a new one (explicit polarization orbital)
-               if (s%polarized .and. (s%l == (l-1))) nn=nn+1
+            if (s%polarized .and. (s%l == (l-1))) then
+               will_have_polarization_orb = .true.
             endif
+            
           enddo
+
+          if (will_have_polarization_orb) then
+             ! Check whether there are already other (semicore) shells
+             ! In that case, the pol orb will have a node. The algorithm
+             ! to generate it is not robust enough, so we switch to generating
+             ! the orbital explicitly (unless forced by the user in the block)
+             if (nn >= 1) then
+                if (.not. basp%force_perturbative_polorbs) then
+                   basp%non_perturbative_polorbs = .true.
+                   ! Make room for a new one (explicit polarization orbital)
+                   nn=nn+1
+                endif
+            endif
+          endif
+                
           ls%nn = nn
           if (nn.eq.0) then
             !! What else do we do here?
@@ -1112,6 +1130,9 @@ c given by the general input PAO.BasisSize, or its default value.
       loop: do isp=1, nsp
          basp=>basis_parameters(isp)
          basp%non_perturbative_polorbs = non_perturbative_pols
+         if (non_perturbative_pols) then
+            basp%non_pert_polorbs_req = .true.
+         endif
       end do loop
 
 
@@ -1133,8 +1154,10 @@ c given by the general input PAO.BasisSize, or its default value.
              select case (trim(string))
              case ("non-perturbative")
                 basp%non_perturbative_polorbs = .true.
+                basp%non_pert_polorbs_req = .true.
              case ("perturbative")
                 basp%non_perturbative_polorbs = .false.
+                basp%force_perturbative_polorbs = .true.
              case default
                 call die("Bad keyword in PAO.PolarizationScheme")
              end select
@@ -1387,6 +1410,20 @@ c (according to atmass subroutine).
             endif
             enddo loop_pol
          endif
+
+         if (basp%basis_size(3:3) .eq. 'p') then
+            loop_pol2: do l=1,4  ! Note that l starts at 1
+            if ( (.not. basp%ground_state%occupied(l)) ) then
+               if (nsemic_shells(l) >= 1) then
+                  if (.not. basp%force_perturbative_polorbs) then
+                     basp%non_perturbative_polorbs = .true.
+!!                   write(6,"(a)") "Non-perturbative polarization scheme activated"
+                  endif
+               endif
+               EXIT loop_pol2
+            endif
+            enddo loop_pol2
+         endif
         
          allocate (basp%lshell(0:basp%lmxo))
 
@@ -1514,7 +1551,7 @@ c (according to atmass subroutine).
 
                ! Note that l goes from 1 to 4
                if ( (.not. basp%ground_state%occupied(l)) ) then
-     $                     
+    
                   if (basp%non_perturbative_polorbs) then
                      ls=>basp%lshell(l)
                      nsh = size(ls%shell)

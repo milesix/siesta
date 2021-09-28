@@ -1,5 +1,5 @@
 # 
-# Copyright (C) 1996-2016	The SIESTA group
+# Copyright (C) 1996-2021       The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
 #  or http://www.gnu.org/copyleft/gpl.txt.
@@ -7,7 +7,7 @@
 #
 # Makefile for WFS utilities
 #
-# The VPATH directive below helps to re-use f2kcli.F90 from the top Src.
+# The VPATH directive below allows to re-use m_getopts.f90 from the top Src.
 # Other points to note, until we switch to a better building system:
 #
 #  The arch.make file is supposed to be in $(OBJDIR). This is normally
@@ -48,8 +48,8 @@ FPPFLAGS += -UMPI
 # NETCDF_LIBS=-L$(NETCDF_ROOT)/lib -lnetcdf
 readwf: readwf.o
 	$(FC) $(LDFLAGS) -o $@ $<  
-readwfx: readwfx.o m_getopts.o f2kcli.o
-	$(FC) $(LDFLAGS) -o $@ $<  m_getopts.o f2kcli.o
+readwfx: readwfx.o m_getopts.o
+	$(FC) $(LDFLAGS) -o $@ $<  m_getopts.o
 wfs2wfsx: wfs2wfsx.o
 	$(FC) $(LDFLAGS) -o $@ $<  
 wfsx2wfs: wfsx2wfs.o
@@ -61,7 +61,6 @@ clean:
 	rm -f *.o  *.*d readwf readwfx wfs2wfsx wfsx2wfs wfsnc2wfsx
 #
 readwfx.o: m_getopts.o
-m_getopts.o: f2kcli.o
 
 
 

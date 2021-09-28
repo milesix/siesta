@@ -17,7 +17,8 @@
 
       public :: die      ! Prints an error message and terminates the program
       public :: message  ! Prints a message string if node==0
-
+      public :: bye      ! Cleans up and exits the program
+      
       private
 
       CONTAINS
@@ -41,7 +42,6 @@
 !
 !--------------------------------------------------
       subroutine die(str)
-      use siesta_cml
       character(len=*), intent(in), optional   :: str
       interface
          subroutine die_external(str)
@@ -55,6 +55,20 @@
          call die_external("sys::die: Program terminated")
       endif
       end subroutine die
+
+!--------------------------------------------------
+      subroutine bye(str)
+      character(len=*), intent(in) :: str
+
+      interface
+         subroutine bye_external(str)
+         character(len=*), intent(in) :: str
+         end subroutine bye_external
+      end interface
+
+      call bye_external(str)
+
+      end subroutine bye
 
       end module sys
 
@@ -73,4 +87,10 @@
       external :: message
       call message(level,str)
       end subroutine message_external
+
+      subroutine bye_external(str)
+      character(len=*), intent(in)  :: str
+      external :: bye
+      call bye(str)
+      end subroutine bye_external
 

@@ -308,13 +308,13 @@ CONTAINS
         allocate(p%chval(1:p%nrval))
 
         if (p%npotd.gt.0) then
-           allocate(p%vdown(1:p%npotd,1:p%nrval))
+           allocate(p%vdown(1:p%nrval,1:p%npotd))
            allocate(p%ldown(1:p%npotd))
            allocate(nn(1:npotd),ll(1:npotd),rrc(1:npotd))
         endif
 
         if (p%npotu.gt.0) then
-           allocate(p%vup(1:p%npotu,1:p%nrval))
+           allocate(p%vup(1:p%nrval,1:p%npotu))
            allocate(p%lup(1:p%npotu))
         endif
 ! ---
@@ -372,22 +372,22 @@ CONTAINS
            ll(il) = p%ldown(il)
                      
            do ir = 2, p%nrval
-             p%vdown(il,ir) = p%r(ir) * &
+             p%vdown(ir,il) = p%r(ir) * &
                            ps_Potential_Value(ps,idxd(il),p%r(ir))
-             p%vdown(il,ir) = p%vdown(il,ir) * 2.0_dp   ! rydberg
+             p%vdown(ir,il) = p%vdown(ir,il) * 2.0_dp   ! rydberg
 
            enddo
-           p%vdown(il,1) = p%vdown(il,2) - r2*(p%vdown(il,3)-p%vdown(il,2))
+           p%vdown(1,il) = p%vdown(2,il) - r2*(p%vdown(3,il)-p%vdown(2,il))
          enddo
 
          do il = 1, p%npotu
            call ps_Potential_Get(ps,idxu(il),l=p%lup(il))
            do ir = 2, p%nrval
-              p%vup(il,ir) = p%r(ir) * &
+              p%vup(ir,il) = p%r(ir) * &
                            ps_Potential_Value(ps,idxu(il),p%r(ir))
-              p%vup(il,ir) = p%vup(il,ir) * 2.0_dp   ! rydberg
+              p%vup(ir,il) = p%vup(ir,il) * 2.0_dp   ! rydberg
            enddo
-           p%vup(il,1) = p%vup(il,2) - r2*(p%vup(il,3)-p%vup(il,2))
+           p%vup(1,il) = p%vup(2,il) - r2*(p%vup(3,il)-p%vup(2,il))
          enddo
 
         ! if not, we need to get the right averages
@@ -449,27 +449,27 @@ CONTAINS
                     !print *, "l,j+, i, id, iu ", l, jval, i, id, iu
                     do ir = 2, p%nrval
                        v = ps_Potential_Value(ps,idxlj(i),p%r(ir))
-                       p%vdown(id,ir) =  p%vdown(id,ir) + (l+1)*v / dble(2*l+1)
-                       if (iu>0) p%vup(iu,ir) = p%vup(iu,ir) + 2*v / dble(2*l+1)
+                       p%vdown(ir,id) =  p%vdown(ir,id) + (l+1)*v / dble(2*l+1)
+                       if (iu>0) p%vup(ir,iu) = p%vup(ir,iu) + 2*v / dble(2*l+1)
                     enddo
                  else   ! j=l-1/2
                     !print *, "l,j=-, i, id, iu ", l, jval, i, id, iu
                     do ir = 2, p%nrval
                        v = ps_Potential_Value(ps,idxlj(i),p%r(ir))
-                       p%vdown(id,ir) =  p%vdown(id,ir) + l*v/dble(2*l+1)
-                       if (iu>0) p%vup(iu,ir) = p%vup(iu,ir) - 2*v/dble(2*l+1)
+                       p%vdown(ir,id) =  p%vdown(ir,id) + l*v/dble(2*l+1)
+                       if (iu>0) p%vup(ir,iu) = p%vup(ir,iu) - 2*v/dble(2*l+1)
                     enddo
                  endif  ! j+ or j-
               enddo   ! over lj set
 
               ! rydberg and rV
               do ir = 2, p%nrval
-                 p%vdown(id,ir) = 2.0_dp * p%r(ir)*p%vdown(id,ir) 
-                 if (iu>0) p%vup(iu,ir) = 2.0_dp * p%r(ir)* p%vup(iu,ir)
+                 p%vdown(ir,id) = 2.0_dp * p%r(ir)*p%vdown(ir,id) 
+                 if (iu>0) p%vup(ir,iu) = 2.0_dp * p%r(ir)* p%vup(ir,iu)
               enddo
               ! extrapolate to r=0
-              p%vdown(id,1) = p%vdown(id,2) - r2*(p%vdown(id,3)-p%vdown(id,2))
-              if (iu>0) p%vup(iu,1) = p%vup(iu,2) - r2*(p%vup(iu,3)-p%vup(iu,2))
+              p%vdown(1,id) = p%vdown(2,id) - r2*(p%vdown(3,id)-p%vdown(2,id))
+              if (iu>0) p%vup(1,iu) = p%vup(2,iu) - r2*(p%vup(3,iu)-p%vup(2,iu))
 
            enddo        ! over l values
 

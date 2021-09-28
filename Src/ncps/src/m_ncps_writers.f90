@@ -68,13 +68,13 @@ CONTAINS
     do i=1,p%npotd
        write(io_ps,8040) "Down Pseudopotential follows (l on next line)"
        write(io_ps,8000) p%ldown(i)
-       write(io_ps,8030) (force_underflow(p%vdown(i,j)), j=2,p%nrval)
+       write(io_ps,8030) (force_underflow(p%vdown(j,i)), j=2,p%nrval)
     enddo
 
     do i=1,p%npotu
        write(io_ps,8040) "Up Pseudopotential follows (l on next line)"
        write(io_ps,8000) p%lup(i)
-       write(io_ps,8030) (force_underflow(p%vup(i,j)), j=2,p%nrval)
+       write(io_ps,8030) (force_underflow(p%vup(j,i)), j=2,p%nrval)
     enddo
 
     write(io_ps,8040) "Core charge follows"

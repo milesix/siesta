@@ -1,5 +1,5 @@
 # ---
-# Copyright (C) 1996-2016	The SIESTA group
+# Copyright (C) 1996-2021       The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
 #  or http://www.gnu.org/copyleft/gpl.txt .
@@ -96,7 +96,7 @@ SIESTA_OBJS += precision.o parallel.o debugmpi.o m_io.o alloc.o listsc.o  \
          schecomm.o sparse_matrices.o\
          files.o interpolation.o chemical.o xml.o \
          domain_decom.o printmatrix.o qsort.o mmio.o pspltm1.o \
-         spatial.o m_getopts.o f2kcli.o
+         spatial.o m_getopts.o 
 
 # Additional class objects
 SIESTA_OBJS += m_uuid.o object_debug.o class_Sparsity.o \
@@ -199,8 +199,8 @@ iodm.o: alloc.o files.o local_sys.o parallel.o parallelsubs.o precision.o
 iodm.o: alloc.o files.o local_sys.o parallel.o parallelsubs.o precision.o
 listsc.o: alloc.o
 listsc.o: alloc.o
-m_getopts.o: f2kcli.o
-m_getopts.o: f2kcli.o
+m_io.o: local_sys.o
+m_io.o: local_sys.o
 memory.o: memory_log.o parallel.o
 memory.o: memory_log.o parallel.o
 memory_log.o: m_io.o parallel.o precision.o

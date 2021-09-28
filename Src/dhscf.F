@@ -33,6 +33,8 @@
 
       use precision,      only : dp, grid_p
       use m_dfscf,        only : dfscf
+      use sys,            only : die, bye
+      
       implicit none
 
       real(grid_p),   pointer :: rhopcc(:), rhoatm(:), Vna(:)
@@ -49,8 +51,6 @@
       character(len=*), parameter :: debug_fmt =
      &     '('' -- dhscf : Node '',i3,tr1,a,4(tr1,e20.7))'
 
-      external :: die, bye
-      
       public :: dhscf_init, dhscf
 
       CONTAINS

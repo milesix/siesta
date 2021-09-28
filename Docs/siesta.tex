@@ -1398,6 +1398,10 @@ The list of available flags and options is:
   \fdfindex*{Command line options:-h}%
   Print a help instruction and quit.
 
+  \option[-version|-v]%
+  \fdfindex*{Command line options:-v}%
+  Print version information and quit.
+
   \option[-out|-o]%
   \fdfindex*{Command line options:-out}%
   \fdfindex*{Command line options:-o}%
@@ -1914,13 +1918,15 @@ Please take into account the following when using PSML files:
      \item Sometimes it is not possible to execute successfully the
        default split-norm algorithm. In this case, set the option
        \fdf{PAO.TailSplitNorm} to \fdftrue, which guarantees
-       convergence (please see the manual).
+       convergence.
 
      \item The default perturbative scheme for polarization orbitals
-       can fail in very specific cases (elements with only $s$ and $p$
-       pseudopotential channels and at least an $s$ semicore
-       shell). In those cases, include the \textit{Chemical\_label} in the
-       following block to request a non-perturbative scheme:
+       can fail in very specific cases. When the polarization orbital
+       has to have a node due to the presence of a lower-lying orbital
+       with the same $l$, the program will automatically switch to
+       using a non-perturbative scheme. In other cases, include the
+       \textit{Chemical\_label} in the following block to request a
+       non-perturbative scheme:
 
          \begin{fdfexample}
     %block PAO.PolarizationScheme
@@ -1928,7 +1934,7 @@ Please take into account the following when using PSML files:
     %endblock PAO.PolarizationScheme
          \end{fdfexample}
          
-    Please see the manual for a fuller explanation.
+    Please see the relevant section for a fuller explanation.
 
     \item A number of improvements to the PAO generation code have
       been made while implementing support for PSML
@@ -2579,6 +2585,9 @@ a block
      %endblock PAO.PolarizationScheme
   \end{fdfexample}
 
+  The presence of 'perturbative' for a species in the block has
+  the effect of \emph{forcing} the use of the perturbative option.
+  
   If a species does not appear in the block, the setting of 
   \fdf{PAO!Polarization!NonPerturbative} applies.
   The default scheme is perturbative.
@@ -2608,6 +2617,14 @@ Note that, empirically, the perturbative method seems to give better
 results (in the variational sense), so the alternative should only be
 used when the default fails for some reason, for full basis-set optimization,
 or for experimentation purposes.
+
+There is one case, however, which tends to exhibit problems in the
+perturbative algorithm: when a polarization orbital has to have a node
+due to the presence of a lower-lying orbital of the same $l$, then the
+program will automatically (unless the 'perturbative' option is
+explicitly set in the block above) switch to using the non-perturbative
+scheme. (This will happen, for example, for Ge if the $3d$ orbital is
+considered part of the valence.)
 
 A proper basis-set optimization should be carried out using
 a \fdf{PAO!Basis} block, which allows a full set of options.

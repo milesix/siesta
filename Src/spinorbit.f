@@ -107,11 +107,11 @@ C
             p=> basis_parameters(is)%pseudopotential
             if ((p%irel == "rel") .and. (p%npotu > 0)) then
                write(6,"(a)") "  Adding spin-orbit effects for "
-     $                         // p%name
+     $                         // trim(p%name)
                there_are_so_potentials = .true.
                do iup = 1, p%npotu
                   li = p%lup(iup)
-                  vso(1:nr(is),li,is) = p%vup(li,:)
+                  vso(1:nr(is),li,is) = p%vup(:,li)
                enddo
             else
                ! No spin-orbit components for this species

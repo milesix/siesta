@@ -14,6 +14,7 @@
       use m_siesta_forces
       use m_siesta_tddft
       use m_ts_global_vars, only: onlyS
+      use sys, only: bye
 
       USE m_steps, only: inicoor, fincoor
       use alloc
@@ -35,8 +36,6 @@
       integer :: istep
       logical :: relaxd
 
-      external :: bye
-      
 ! Notes for PEXSI and ELSI operation (extra procs for Solver)
       
 !

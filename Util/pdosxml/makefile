@@ -1,5 +1,5 @@
 # 
-# Copyright (C) 1996-2016	The SIESTA group
+# Copyright (C) 1996-2021       The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
 #  or http://www.gnu.org/copyleft/gpl.txt.
@@ -7,7 +7,7 @@
 #
 # Makefile for PDOS XML processing
 #
-# The VPATH directive below helps to re-use f2kcli.F90 from the top Src.
+# The VPATH below is used by the xmlparser rule.
 # Other points to note, until we switch to a better building system:
 #
 #  The arch.make file is supposed to be in $(OBJDIR). This is normally
@@ -43,7 +43,7 @@ INCFLAGS:=$(INCFLAGS) $(XMLF90_INCFLAGS)
 #
 LIBS= $(XMLF90_LIBS)
 #
-OBJS=  m_orbital_chooser.o m_pdos.o f2kcli.o pdosxml.o
+OBJS=  m_orbital_chooser.o m_pdos.o pdosxml.o
 #     
 pdosxml:$(OBJS)
 	$(FC) $(LDFLAGS) -o $@ $(OBJS)  $(LIBS)

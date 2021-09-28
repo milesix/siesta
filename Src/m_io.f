@@ -27,6 +27,8 @@ c-----------------------------------------------------------------
 c
 c     Used module procedures
 c
+      USE sys, only: die   ! Termination routine
+
       implicit none
 c
 c-----------------------------------------------------------------
@@ -43,9 +45,7 @@ c
      $  io_close,   ! Close and free a given IO unit
      $  io_status   ! Print all used IO units
 
-      PRIVATE       ! Nothing is declared public below this point
-
-      external :: die
+      PRIVATE ! Nothing is declared public below this point
 c
 c----------------------------------------------------------------
 c

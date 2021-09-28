@@ -1,5 +1,5 @@
 # ---
-# Copyright (C) 1996-2016	The SIESTA group
+# Copyright (C) 1996-2021	The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
 #  or http://www.gnu.org/copyleft/gpl.txt .
@@ -76,7 +76,7 @@ SIESTA_OBJS= precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
              m_cite.o m_spin_orbit_potentials.o \
              coor.o chkdim.o semicore_info_froyen.o \
              zmatrix.o m_cell.o  periodic_table.o volcel.o digcel.o \
-             arw.o redcel.o
+             arw.o redcel.o sys.o
 # Siesta timings
 SIESTA_OBJS += m_walltime.o timer_tree.o m_timer.o timer.o
 
@@ -89,9 +89,6 @@ SIESTA_OBJS += class_OrbitalDistribution.o \
 	class_SpData1D.o class_SpData2D.o \
         m_uuid.o object_debug.o
 
-# Output stuff
-SIESTA_OBJS += init_output.o
-
 # As the classes are based on inputs we force the dependency to
 # alloc
 class_Sparsity.o class_Data1D.o class_Data2D.o: alloc.o
@@ -103,7 +100,7 @@ UNFOLD_OBJS  = array.o hsx_m.o
 UNFOLD_OBJS += unfold.o 
 
 # Handlers and resolvers of last resort
-UNFOLD_OBJS += handlers.o local_sys.o
+UNFOLD_OBJS += handlers.o
 #
 # Extract information of the compiler version used.
 # This is very basic but for intel, gcc, pgi and open64
@@ -192,34 +189,32 @@ dep:
 $(DEP_OBJS): $(FDF)
 
 # DO NOT DELETE THIS LINE - used by make depend
-arw.o: alloc.o local_sys.o parallel.o precision.o
-arw.o: alloc.o local_sys.o parallel.o precision.o
+arw.o: alloc.o parallel.o precision.o sys.o
+arw.o: alloc.o parallel.o precision.o sys.o
 atm_types.o: precision.o radial.o
 atm_types.o: precision.o radial.o
-atmfuncs.o: atm_types.o local_sys.o precision.o radial.o spher_harm.o
-atmfuncs.o: atm_types.o local_sys.o precision.o radial.o spher_harm.o
+atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o sys.o
+atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o sys.o
 atom.o: atm_types.o atmparams.o atom_options.o basis_specs.o basis_types.o
-atom.o: hamann.o interpolation.o local_sys.o m_filter.o periodic_table.o
-atom.o: precision.o radial.o
+atom.o: hamann.o interpolation.o m_filter.o periodic_table.o precision.o
+atom.o: radial.o sys.o
 atom.o: atm_types.o atmparams.o atom_options.o basis_specs.o basis_types.o
-atom.o: hamann.o interpolation.o local_sys.o m_filter.o periodic_table.o
-atom.o: precision.o radial.o
-atom_options.o: local_sys.o
-atom_options.o: local_sys.o
+atom.o: hamann.o interpolation.o m_filter.o periodic_table.o precision.o
+atom.o: radial.o sys.o
+atom_options.o: sys.o
+atom_options.o: sys.o
 basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
-basis_io.o: local_sys.o precision.o radial.o xml.o
+basis_io.o: precision.o radial.o sys.o xml.o
 basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
-basis_io.o: local_sys.o precision.o radial.o xml.o
-basis_specs.o: basis_types.o chemical.o local_sys.o m_spin.o
-basis_specs.o: m_spin_orbit_potentials.o periodic_table.o precision.o
-basis_specs.o: semicore_info_froyen.o
-basis_specs.o: basis_types.o chemical.o local_sys.o m_spin.o
-basis_specs.o: m_spin_orbit_potentials.o periodic_table.o precision.o
-basis_specs.o: semicore_info_froyen.o
-basis_types.o: alloc.o atmparams.o local_sys.o precision.o
-basis_types.o: alloc.o atmparams.o local_sys.o precision.o
-bessph.o: local_sys.o precision.o
-bessph.o: local_sys.o precision.o
+basis_io.o: precision.o radial.o sys.o xml.o
+basis_specs.o: basis_types.o chemical.o m_spin.o m_spin_orbit_potentials.o
+basis_specs.o: periodic_table.o precision.o semicore_info_froyen.o sys.o
+basis_specs.o: basis_types.o chemical.o m_spin.o m_spin_orbit_potentials.o
+basis_specs.o: periodic_table.o precision.o semicore_info_froyen.o sys.o
+basis_types.o: alloc.o atmparams.o precision.o sys.o
+basis_types.o: alloc.o atmparams.o precision.o sys.o
+bessph.o: precision.o sys.o
+bessph.o: precision.o sys.o
 bloch_unfold.o: units.o
 bloch_unfold.o: units.o
 broadcast_basis.o: atm_types.o chemical.o dftu_specs.o m_mpi_utils.o parallel.o
@@ -228,10 +223,10 @@ broadcast_basis.o: atm_types.o chemical.o dftu_specs.o m_mpi_utils.o parallel.o
 broadcast_basis.o: radial.o
 cellsubs.o: precision.o
 cellsubs.o: precision.o
-chemical.o: local_sys.o parallel.o precision.o
-chemical.o: local_sys.o parallel.o precision.o
-chkdim.o: local_sys.o
-chkdim.o: local_sys.o
+chemical.o: parallel.o precision.o sys.o
+chemical.o: parallel.o precision.o sys.o
+chkdim.o: sys.o
+chkdim.o: sys.o
 class_Data1D.o: alloc.o
 class_Data2D.o: alloc.o
 class_Data3D.o: alloc.o
@@ -247,92 +242,88 @@ class_SpData3D.o: class_OrbitalDistribution.o class_Sparsity.o
 class_Sparsity.o: alloc.o
 class_Sparsity.o: alloc.o
 class_TriMat.o: alloc.o
-coor.o: alloc.o atmfuncs.o local_sys.o parallel.o precision.o siesta_geom.o
-coor.o: units.o zmatrix.o
-coor.o: alloc.o atmfuncs.o local_sys.o parallel.o precision.o siesta_geom.o
-coor.o: units.o zmatrix.o
+coor.o: alloc.o atmfuncs.o parallel.o precision.o siesta_geom.o sys.o units.o
+coor.o: zmatrix.o
+coor.o: alloc.o atmfuncs.o parallel.o precision.o siesta_geom.o sys.o units.o
+coor.o: zmatrix.o
 debugmpi.o: parallel.o
 debugmpi.o: parallel.o
 dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
-dftu_specs.o: basis_specs.o basis_types.o interpolation.o local_sys.o m_cite.o
-dftu_specs.o: parallel.o precision.o radial.o units.o
+dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o parallel.o
+dftu_specs.o: precision.o radial.o sys.o units.o
 dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
-dftu_specs.o: basis_specs.o basis_types.o interpolation.o local_sys.o m_cite.o
-dftu_specs.o: parallel.o precision.o radial.o units.o
-diag.o: alloc.o diag_option.o local_sys.o parallel.o precision.o
-diag.o: alloc.o diag_option.o local_sys.o parallel.o precision.o
+dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o parallel.o
+dftu_specs.o: precision.o radial.o sys.o units.o
+diag.o: alloc.o diag_option.o parallel.o precision.o sys.o
+diag.o: alloc.o diag_option.o parallel.o precision.o sys.o
 diag_option.o: parallel.o precision.o
 diag_option.o: parallel.o precision.o
 find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
 find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
 get_kpoints_scale.o: parallel.o siesta_geom.o units.o
 get_kpoints_scale.o: parallel.o siesta_geom.o units.o
-idiag.o: local_sys.o parallel.o
-idiag.o: local_sys.o parallel.o
-init_output.o: files.o
-init_output.o: files.o
+idiag.o: parallel.o sys.o
+idiag.o: parallel.o sys.o
 io.o: m_io.o
 io.o: m_io.o
-kpoint_convert.o: local_sys.o precision.o units.o
-kpoint_convert.o: local_sys.o precision.o units.o
+kpoint_convert.o: precision.o sys.o units.o
+kpoint_convert.o: precision.o sys.o units.o
 m_cell.o: precision.o siesta_geom.o units.o
 m_cell.o: precision.o siesta_geom.o units.o
-m_filter.o: bessph.o local_sys.o precision.o radfft.o
-m_filter.o: bessph.o local_sys.o precision.o radfft.o
-m_mpi_utils.o: precision.o
-m_mpi_utils.o: precision.o
-m_spin.o: alloc.o files.o get_kpoints_scale.o local_sys.o m_cite.o parallel.o
-m_spin.o: precision.o
-m_spin.o: alloc.o files.o get_kpoints_scale.o local_sys.o m_cite.o parallel.o
-m_spin.o: precision.o
-m_timer.o: local_sys.o m_io.o m_walltime.o moreParallelSubs.o parallel.o
-m_timer.o: precision.o
-m_timer.o: local_sys.o m_io.o m_walltime.o moreParallelSubs.o parallel.o
-m_timer.o: precision.o
+m_filter.o: bessph.o precision.o radfft.o sys.o
+m_filter.o: bessph.o precision.o radfft.o sys.o
+m_io.o: sys.o
+m_io.o: sys.o
+m_mpi_utils.o: precision.o sys.o
+m_mpi_utils.o: precision.o sys.o
+m_spin.o: alloc.o files.o get_kpoints_scale.o m_cite.o parallel.o precision.o
+m_spin.o: sys.o
+m_spin.o: alloc.o files.o get_kpoints_scale.o m_cite.o parallel.o precision.o
+m_spin.o: sys.o
+m_timer.o: m_io.o m_walltime.o moreParallelSubs.o parallel.o precision.o sys.o
+m_timer.o: m_io.o m_walltime.o moreParallelSubs.o parallel.o precision.o sys.o
 m_wallclock.o: m_walltime.o
 m_wallclock.o: m_walltime.o
 memory.o: memory_log.o parallel.o
 memory.o: memory_log.o parallel.o
 memory_log.o: m_io.o parallel.o precision.o
 memory_log.o: m_io.o parallel.o precision.o
-minvec.o: cellsubs.o local_sys.o precision.o sorting.o
-minvec.o: cellsubs.o local_sys.o precision.o sorting.o
-moreParallelSubs.o: alloc.o local_sys.o m_io.o parallel.o precision.o
-moreParallelSubs.o: alloc.o local_sys.o m_io.o parallel.o precision.o
-periodic_table.o: local_sys.o precision.o
-periodic_table.o: local_sys.o precision.o
+minvec.o: cellsubs.o precision.o sorting.o sys.o
+minvec.o: cellsubs.o precision.o sorting.o sys.o
+moreParallelSubs.o: alloc.o m_io.o parallel.o precision.o sys.o
+moreParallelSubs.o: alloc.o m_io.o parallel.o precision.o sys.o
+periodic_table.o: precision.o sys.o
+periodic_table.o: precision.o sys.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radial.o: alloc.o interpolation.o precision.o xml.o
 radial.o: alloc.o interpolation.o precision.o xml.o
-redcel.o: local_sys.o parallel.o precision.o
-redcel.o: local_sys.o parallel.o precision.o
+redcel.o: parallel.o precision.o sys.o
+redcel.o: parallel.o precision.o sys.o
 siesta_geom.o: precision.o
 siesta_geom.o: precision.o
-spher_harm.o: alloc.o local_sys.o precision.o
-spher_harm.o: alloc.o local_sys.o precision.o
-timer.o: local_sys.o m_timer.o parallel.o timer_tree.o
-timer.o: local_sys.o m_timer.o parallel.o timer_tree.o
+spher_harm.o: alloc.o precision.o sys.o
+spher_harm.o: alloc.o precision.o sys.o
+timer.o: m_timer.o parallel.o sys.o timer_tree.o
+timer.o: m_timer.o parallel.o sys.o timer_tree.o
 timer_tree.o: m_walltime.o
 timer_tree.o: m_walltime.o
 units.o: precision.o
 units.o: precision.o
 xml.o: precision.o
 xml.o: precision.o
-zmatrix.o: alloc.o local_sys.o m_cell.o parallel.o precision.o siesta_geom.o
-zmatrix.o: units.o
-zmatrix.o: alloc.o local_sys.o m_cell.o parallel.o precision.o siesta_geom.o
-zmatrix.o: units.o
-array.o: local_sys.o precision.o
-array.o: local_sys.o precision.o
+zmatrix.o: alloc.o m_cell.o parallel.o precision.o siesta_geom.o sys.o units.o
+zmatrix.o: alloc.o m_cell.o parallel.o precision.o siesta_geom.o sys.o units.o
+array.o: precision.o sys.o
+array.o: precision.o sys.o
 unfold.o: alloc.o array.o atmfuncs.o basis_io.o basis_types.o cellsubs.o
-unfold.o: diag_option.o get_kpoints_scale.o hsx_m.o local_sys.o m_io.o
-unfold.o: m_mpi_utils.o m_timer.o memory_log.o parallel.o precision.o radfft.o
-unfold.o: siesta_geom.o spher_harm.o
+unfold.o: diag_option.o get_kpoints_scale.o hsx_m.o m_io.o m_mpi_utils.o
+unfold.o: m_timer.o memory_log.o parallel.o precision.o radfft.o siesta_geom.o
+unfold.o: spher_harm.o sys.o
 unfold.o: alloc.o array.o atmfuncs.o basis_io.o basis_types.o cellsubs.o
-unfold.o: diag_option.o get_kpoints_scale.o hsx_m.o local_sys.o m_io.o
-unfold.o: m_mpi_utils.o m_timer.o memory_log.o parallel.o precision.o radfft.o
-unfold.o: siesta_geom.o spher_harm.o
+unfold.o: diag_option.o get_kpoints_scale.o hsx_m.o m_io.o m_mpi_utils.o
+unfold.o: m_timer.o memory_log.o parallel.o precision.o radfft.o siesta_geom.o
+unfold.o: spher_harm.o sys.o
 aux_proj.o: atom.o
 bloch_unfold_m.o: bloch_unfold.o
 class_ddata1d.o: class_Data1D.o
@@ -370,6 +361,5 @@ m_semicore_info_froyen.o: semicore_info_froyen.o
 m_timer_tree.o: timer_tree.o
 m_timestamp.o: timestamp.o
 mtprng.o: m_uuid.o
-sys.o: local_sys.o
 t_spin.o: m_spin.o
 timer_options.o: timer.o
