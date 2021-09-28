@@ -92,6 +92,7 @@ C     Begin of coordinate relaxation iteration
 
             ! derivatives, fluxes etc, e.g.
             call compute_derivatives()
+            call compute_flux()
 
             call reset_thermal_flux()
             call bye("Done Thermal Transport calculation, exiting.")

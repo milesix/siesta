@@ -72,6 +72,13 @@ contains
   end subroutine compute_derivatives
 
 
+  subroutine compute_flux()
+    use thermal_flux_jks
+
+    call compute_jks()
+  end subroutine compute_flux
+
+
   subroutine reset_thermal_flux()
     deallocate(xa_in)
     deallocate(va_in)
