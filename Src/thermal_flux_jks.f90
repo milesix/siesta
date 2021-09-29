@@ -59,6 +59,7 @@ contains
     !> It will define X/Y/Z component of resulting Jks.
     integer :: idx
     integer :: nu, mu, alpha, iw, ij, k, col, ind
+    real(dp) :: tr_hat, tr_shat
 
     real(dp), allocatable :: tmp_g(:)
 
@@ -102,6 +103,23 @@ contains
           end do
           ! MPI: reduce (sum) psi_hat_c() over processes
 
+          if (gk_setup%verbose_output) then
+             !TEST-hat
+             tr_shat = 0.0_dp
+             tr_hat = 0.0_dp
+             do mu = 1,no_u
+                ! do ind = (listhptr(mu)+1), listhptr(mu) + numh(mu)
+                !    nu = listh(ind)
+                do nu = 1,no_u
+                   tr_shat = tr_shat + S_base(mu,nu) * psi_base(mu,iw) * psi_hat_c(nu,iw,idx)
+                   tr_hat = tr_hat + S_base(mu,nu) * psi_hat_c(mu,iw,idx) * psi_hat_c(nu,iw,idx)
+                end do
+             end do
+
+             print *, "[TEST-hat]", iw, idx, tr_hat, tr_shat
+             !TEST END
+          end if
+
        end do ! iw
     end do ! idx
 
@@ -116,7 +134,7 @@ contains
     !! Number of wavefunctions to process
     integer  :: iw, i, ix, ij
     integer  :: alpha, beta, lambda, nu, mu, ind
-    real(dp) :: acc_left, norm, tr0, tr_dot, tr_sdot
+    real(dp) :: tr0, tr_dot, tr_sdot
 
     real(dp), allocatable :: tmp(:), tmp2(:), tmp3(:), tmp4(:,:)
 
@@ -242,6 +260,23 @@ contains
           end do
        end do
 
+       if (gk_setup%verbose_output) then
+          !TEST-dot
+          tr_sdot = 0.0_dp
+          tr_dot = 0.0_dp
+          tr0 = 0.0_dp
+          do mu = 1,no_u
+             ! do ind = (listhptr(mu)+1), listhptr(mu) + numh(mu)
+             !    nu = listh(ind)
+             do nu = 1,no_u
+                tr_sdot = tr_sdot + S_base(mu,nu) * psi_base(mu,iw) * psi_dot_c(nu,iw)
+                tr0 = tr0 + S_base(mu,nu) * psi_base(mu,iw) * psi_base(nu,iw)
+                tr_dot = tr_dot + S_base(mu,nu) * psi_dot_c(mu,iw) * psi_dot_c(nu,iw)
+             end do
+          end do
+
+          print *, "[TEST-dot]", iw, tr0, tr_dot, tr_sdot
+       end if
 
     end do
     ! end of part C

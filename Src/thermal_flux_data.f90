@@ -12,6 +12,7 @@ module m_thermal_flux_settings
      integer, allocatable :: func_step_intervals(:) !! Array of 0-centered indexes of dimension `dpoints`
      !! Used to get system coordinates for corresponding 'virtual' steps
      real(dp) :: virtual_dt   !! Virtual time step for projection of positions for time derivatives
+     logical :: verbose_output = .false.  !! Eval and print extra debug test info
    contains
      procedure :: init_self_deriv_scheme
      procedure :: init_thermal_flux_settings
@@ -25,19 +26,19 @@ contains
 
     select case (dpts)
     case (2)
-       write(*,*) "derivation scheme: 2-step derivative init"
+       write(*,*) "[gk] derivation scheme: 2-step derivative init"
        allocate(this%func_step_intervals(2))
        this%func_step_intervals(1:2) = [0, 1]
     case (3)
-       write(*,*) "derivation scheme: 3-step midpoint derivative init"
+       write(*,*) "[gk] derivation scheme: 3-step midpoint derivative init"
        allocate(this%func_step_intervals(3))
        this%func_step_intervals(1:3) = [0, -1, 1]
     case (5)
-       write(*,*) "derivation scheme: 5-step midpoint derivative init"
+       write(*,*) "[gk] derivation scheme: 5-step midpoint derivative init"
        allocate(this%func_step_intervals(5))
        this%func_step_intervals(1:5) = [0, -2, -1, 1, 2]
     case default
-       call die('derivation scheme: ERROR points number must be 2, 3 or 5')
+       call die('[gk] derivation scheme: ERROR points number must be 2, 3 or 5')
     end select
 
     this%dpoints = dpts
@@ -50,16 +51,21 @@ contains
     integer :: dpts_in
 
     if (.not.(this%init)) then
-       write(*,*) "======= Green-Kubo ThermalFlux Calculation ======="
+       write(*,*) "========== Green-Kubo ThermalFlux Calculation =========="
        dpts_in = fdf_get('ThermalFlux.NumDerivPoints', 3)
        call this%init_self_deriv_scheme(dpts_in)
 
        this%virtual_dt = fdf_get('ThermalFlux.Virtual.dt',0.1_dp,'fs')
-       write(*,*) "substep delta_t: ", this%virtual_dt, " fs"
+       write(*,*) "[gk] substep delta_t: ", this%virtual_dt, " fs"
+
+       if(fdf_get('ThermalFlux.VerboseOutput', .false.)) then
+          this%verbose_output = .true.
+          write(*,*) "[gk] Verbose output requested."
+       end if
 
        this%init = .true.
-       write(*,*) "done with thermal flux init"
-       write(*,*) "=================================================="
+       write(*,*) "[gk] Done with thermal flux init."
+       write(*,*) "========================================================"
     end if
   end subroutine init_thermal_flux_settings
 
