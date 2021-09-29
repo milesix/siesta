@@ -31,11 +31,13 @@ module thermal_flux_jks
   !! psi_hat_c will have no_u rows and n_wfs columnns
   !!
 
-  use precision, only: dp, grid_p
-  use atomlist, only: no_u, no_l, indxuo, iaorb, qtot, amass
-  use densematrix, only: psi ! To get at the c^i_\mu coefficients of the wavefunctions
+  use precision,       only: dp, grid_p
+  use atomlist,        only: no_u, no_l, indxuo, iaorb, qtot, amass
+  use siesta_geom,     only: na_u
+  use densematrix,     only: psi ! To get at the c^i_\mu coefficients of the wavefunctions
   use sparse_matrices, only: listh, listhptr, numh
-  use sparse_matrices, only: H, S, gradS, Dscf, Rmat
+  ! use sparse_matrices, only: H, S, Dscf
+  use sparse_matrices, only: gradS, Rmat
 
   use thermal_flux_data
 
@@ -50,9 +52,6 @@ module thermal_flux_jks
 contains
 
   subroutine compute_psi_hat_c (n_wfs)
-
-    use,intrinsic :: iso_c_binding, only: c_loc, c_f_pointer
-
     integer, intent(in) :: n_wfs
     !! Number of wavefunctions to process
 
@@ -109,25 +108,165 @@ contains
     deallocate(tmp_g)
   end subroutine compute_psi_hat_c
 
+
+
   subroutine compute_psi_dot_c (n_wfs)
 
     integer, intent(in) :: n_wfs
     !! Number of wavefunctions to process
+    integer  :: iw, i, ix, ij
+    integer  :: alpha, beta, lambda, nu, mu, ind
+    real(dp) :: acc_left, norm, tr0, tr_dot, tr_sdot
+
+    real(dp), allocatable :: tmp(:), tmp2(:), tmp3(:), tmp4(:,:)
+
+    allocate (tmp(no_u))
+    allocate (tmp2(no_u))
+    allocate (tmp3(no_u))
+    allocate (tmp4(3,no_u))
+
+    psi_dot_c(:,:) = 0.0_dp          ! Init result to zeros outside main loop
+
+    ! multiplication scheme A
+    do iw = 1,n_wfs
+
+       tmp(:) = 0.0_dp
+
+       do nu = 1,no_u
+          do ind = (listhptr(nu)+1), listhptr(nu) + numh(nu)
+             alpha = listh(ind)
+             tmp(nu) = tmp(nu) + S_base(nu,alpha) * psi_base(alpha,iw)
+          end do
+       end do
+
+       tmp2(:) = 0.0_dp
+
+       do mu = 1,no_u
+          do nu = 1,no_u
+             tmp2(mu) = tmp2(mu) + 0.5_dp * DM_save(mu,nu,1,2) * tmp(nu) ! using derivative of DM
+          end do
+       end do
+
+       tmp3(:) = 0.0_dp
+
+       do beta = 1,no_u
+          do ind = (listhptr(beta)+1), listhptr(beta) + numh(beta)
+             mu = listh(ind)
+             tmp3(beta) = tmp3(beta) + S_base(beta,mu) * tmp2(mu)
+          end do
+       end do
+
+       do lambda=1,no_u
+          do beta = 1,no_u
+             psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
+                  & + (Sinv(lambda,beta) - 0.5_dp * DM_save(lambda,beta,1,1)) * tmp3(beta) ! using full DM
+          end do
+       end do
+    end do
+    ! end of part A
+
+
+    ! multiplication scheme B
+    do iw = 1,n_wfs
+
+       tmp(:) = 0.0_dp
+
+       do nu = 1,no_u
+          do ind = (listhptr(nu)+1), listhptr(nu) + numh(nu)
+             alpha = listh(ind)
+             tmp(nu) = tmp(nu) + S_base(nu,alpha) * psi_base(alpha,iw)
+          end do
+       end do
+
+       tmp2(:) = 0.0_dp
+
+       do mu = 1,no_u
+          do nu = 1,no_u
+             tmp2(mu) = tmp2(mu) + 0.5_dp * DM_save(mu,nu,1,1) * tmp(nu) ! using full DM
+          end do
+       end do
+
+       tmp3(:) = 0.0_dp
+
+       do beta = 1,no_u
+          do ind = (listhptr(beta)+1), listhptr(beta) + numh(beta)
+             mu = listh(ind)
+             tmp3(beta) = tmp3(beta) + sum(gradS(:,ind)*va_in(:,iaorb(mu))) * tmp2(mu)
+          end do
+       end do
+
+       do lambda=1,no_u
+          do beta = 1,no_u
+             psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
+                  & + (Sinv(lambda,beta) - 0.5_dp * DM_save(lambda,beta,1,1)) * tmp3(beta) ! using full DM
+          end do
+       end do
+    end do
+    ! end of part B
+
+
+    ! multiplication scheme C
+    do iw = 1,n_wfs
+
+       tmp4(:,:) = 0.0_dp
+
+       do nu = 1,no_u
+          do ind = (listhptr(nu)+1), listhptr(nu) + numh(nu)
+             alpha = listh(ind)
+             tmp4(:,nu) = tmp4(:,nu) + gradS(:,ind) * psi_base(alpha,iw)
+          end do
+       end do
+
+       tmp2(:) = 0.0_dp
+
+       do mu = 1,no_u
+          do nu = 1,no_u
+             tmp2(mu) = tmp2(mu) - 0.5_dp * DM_save(mu,nu,1,1) & ! using full DM
+                  &* sum(va_in(:,iaorb(nu))*tmp4(:,nu))
+          end do
+       end do
+
+       tmp3(:) = 0.0_dp
+
+       do beta = 1,no_u
+          do ind = (listhptr(beta)+1), listhptr(beta) + numh(beta)
+             mu = listh(ind)
+             tmp3(beta) = tmp3(beta) + S_base(beta,mu) * tmp2(mu)
+          end do
+       end do
+
+       do lambda=1,no_u
+          do beta = 1,no_u
+             psi_dot_c(lambda,iw) = psi_dot_c(lambda,iw)&
+                  & + (Sinv(lambda,beta) - 0.5_dp * DM_save(lambda,beta,1,1)) * tmp3(beta) ! using full DM
+          end do
+       end do
+
+
+    end do
+    ! end of part C
+
+    deallocate(tmp)
+    deallocate(tmp2)
+    deallocate(tmp3)
+    deallocate(tmp4)
+
   end subroutine compute_psi_dot_c
+
 
   subroutine compute_jks ()
     integer :: no_occ_wfs
 
     allocate(psi_hat_c(no_u,no_l,3))
-    ! allocate(psi_dot_c(no_u,no_l))
+    allocate(psi_dot_c(no_u,no_l))
 
     no_occ_wfs = nint(qtot/2)
 
     call compute_psi_hat_c (no_occ_wfs)
-    ! call compute_psi_dot_c (no_occ_wfs)
+    call compute_psi_dot_c (no_occ_wfs)
 
     deallocate(psi_hat_c)
-    ! deallocate(psi_dot_c)
+    deallocate(psi_dot_c)
 
   end subroutine compute_jks
 

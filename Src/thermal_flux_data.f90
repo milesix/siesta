@@ -84,6 +84,11 @@ module thermal_flux_data
   real(dp), allocatable :: DM_save(:,:,:,:) !! Full density matrix storage +1 dim:
   !! Last dimension goes over substep points
   !! (the derivation scheme parameter)
+  !!
+  !! As for all functions meant to be differentiated,
+  !! after call to `compute_derivatives()'
+  !! the last rank index `1' stores the "base" step value
+  !! and the last rank index `2' will hold the derivative.
 
   real(dp), pointer, save :: Sinv(:,:) => null()
   !! Inverse of the overlap matrix.
