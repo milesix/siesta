@@ -151,8 +151,9 @@ contains
        tmp(:) = 0.0_dp
 
        do nu = 1,no_u
-          do ind = (listhptr(nu)+1), listhptr(nu) + numh(nu)
-             alpha = listh(ind)
+          ! do ind = (listhptr(nu)+1), listhptr(nu) + numh(nu)
+          !    alpha = listh(ind)
+          do alpha = 1,no_u
              tmp(nu) = tmp(nu) + S_base(nu,alpha) * psi_base(alpha,iw)
           end do
        end do
@@ -168,8 +169,9 @@ contains
        tmp3(:) = 0.0_dp
 
        do beta = 1,no_u
-          do ind = (listhptr(beta)+1), listhptr(beta) + numh(beta)
-             mu = listh(ind)
+          ! do ind = (listhptr(beta)+1), listhptr(beta) + numh(beta)
+          !    mu = listh(ind)
+          do mu = 1,no_u
              tmp3(beta) = tmp3(beta) + S_base(beta,mu) * tmp2(mu)
           end do
        end do
@@ -190,8 +192,9 @@ contains
        tmp(:) = 0.0_dp
 
        do nu = 1,no_u
-          do ind = (listhptr(nu)+1), listhptr(nu) + numh(nu)
-             alpha = listh(ind)
+          ! do ind = (listhptr(nu)+1), listhptr(nu) + numh(nu)
+          !    alpha = listh(ind)
+          do alpha = 1,no_u
              tmp(nu) = tmp(nu) + S_base(nu,alpha) * psi_base(alpha,iw)
           end do
        end do
@@ -209,6 +212,7 @@ contains
        do beta = 1,no_u
           do ind = (listhptr(beta)+1), listhptr(beta) + numh(beta)
              mu = listh(ind)
+          ! do mu = 1,no_u
              tmp3(beta) = tmp3(beta) + sum(gradS(:,ind)*va_in(:,iaorb(mu))) * tmp2(mu)
           end do
        end do
@@ -231,6 +235,7 @@ contains
        do nu = 1,no_u
           do ind = (listhptr(nu)+1), listhptr(nu) + numh(nu)
              alpha = listh(ind)
+          ! do alpha = 1,no_u
              tmp4(:,nu) = tmp4(:,nu) + gradS(:,ind) * psi_base(alpha,iw)
           end do
        end do
@@ -247,8 +252,9 @@ contains
        tmp3(:) = 0.0_dp
 
        do beta = 1,no_u
-          do ind = (listhptr(beta)+1), listhptr(beta) + numh(beta)
-             mu = listh(ind)
+          ! do ind = (listhptr(beta)+1), listhptr(beta) + numh(beta)
+          !    mu = listh(ind)
+          do mu = 1,no_u
              tmp3(beta) = tmp3(beta) + S_base(beta,mu) * tmp2(mu)
           end do
        end do
