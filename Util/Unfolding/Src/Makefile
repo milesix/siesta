@@ -76,7 +76,11 @@ SIESTA_OBJS= precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
              m_cite.o m_spin_orbit_potentials.o \
              coor.o chkdim.o semicore_info_froyen.o \
              zmatrix.o m_cell.o  periodic_table.o volcel.o digcel.o \
-             arw.o redcel.o sys.o
+             arw.o redcel.o sys.o parallelsubs.o spatial.o \
+             domain_decom.o printmatrix.o schecomm.o \
+             pspltm1.o mmio.o qsort.o \
+             sparse_matrices.o
+
 # Siesta timings
 SIESTA_OBJS += m_walltime.o timer_tree.o m_timer.o timer.o
 
@@ -87,6 +91,9 @@ SIESTA_OBJS += class_OrbitalDistribution.o \
 	class_Sparsity.o \
 	class_Data1D.o class_Data2D.o \
 	class_SpData1D.o class_SpData2D.o \
+        class_Fstack_Pair_Geometry_SpData2D.o \
+        class_Pair_Geometry_SpData2D.o \
+        class_Geometry.o \
         m_uuid.o object_debug.o
 
 # As the classes are based on inputs we force the dependency to
@@ -230,6 +237,12 @@ chkdim.o: sys.o
 class_Data1D.o: alloc.o
 class_Data2D.o: alloc.o
 class_Data3D.o: alloc.o
+class_Fstack_Pair_Geometry_SpData2D.o: class_Pair_Geometry_SpData2D.o
+class_Fstack_Pair_Geometry_SpData2D.o: class_Pair_Geometry_SpData2D.o
+class_Geometry.o: alloc.o
+class_Geometry.o: alloc.o
+class_Pair_Geometry_SpData2D.o: class_Geometry.o class_SpData2D.o
+class_Pair_Geometry_SpData2D.o: class_Geometry.o class_SpData2D.o
 class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
 class_SpData1D.o: class_Data1D.o
 class_SpData1D.o: class_OrbitalDistribution.o class_Sparsity.o
@@ -258,6 +271,10 @@ diag.o: alloc.o diag_option.o parallel.o precision.o sys.o
 diag.o: alloc.o diag_option.o parallel.o precision.o sys.o
 diag_option.o: parallel.o precision.o
 diag_option.o: parallel.o precision.o
+domain_decom.o: alloc.o parallel.o precision.o printmatrix.o schecomm.o
+domain_decom.o: sparse_matrices.o sys.o
+domain_decom.o: alloc.o parallel.o precision.o printmatrix.o schecomm.o
+domain_decom.o: sparse_matrices.o sys.o
 find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
 find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
 get_kpoints_scale.o: parallel.o siesta_geom.o units.o
@@ -292,16 +309,32 @@ minvec.o: cellsubs.o precision.o sorting.o sys.o
 minvec.o: cellsubs.o precision.o sorting.o sys.o
 moreParallelSubs.o: alloc.o m_io.o parallel.o precision.o sys.o
 moreParallelSubs.o: alloc.o m_io.o parallel.o precision.o sys.o
+parallelsubs.o: domain_decom.o parallel.o precision.o spatial.o sys.o
+parallelsubs.o: domain_decom.o parallel.o precision.o spatial.o sys.o
 periodic_table.o: precision.o sys.o
 periodic_table.o: precision.o sys.o
+printmatrix.o: alloc.o
+printmatrix.o: alloc.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radial.o: alloc.o interpolation.o precision.o xml.o
 radial.o: alloc.o interpolation.o precision.o xml.o
 redcel.o: parallel.o precision.o sys.o
 redcel.o: parallel.o precision.o sys.o
+schecomm.o: alloc.o
+schecomm.o: alloc.o
 siesta_geom.o: precision.o
 siesta_geom.o: precision.o
+sparse_matrices.o: alloc.o class_Fstack_Pair_Geometry_SpData2D.o
+sparse_matrices.o: class_OrbitalDistribution.o class_SpData1D.o
+sparse_matrices.o: class_SpData2D.o class_SpData2D.o class_Sparsity.o
+sparse_matrices.o: precision.o
+sparse_matrices.o: alloc.o class_Fstack_Pair_Geometry_SpData2D.o
+sparse_matrices.o: class_OrbitalDistribution.o class_SpData1D.o
+sparse_matrices.o: class_SpData2D.o class_SpData2D.o class_Sparsity.o
+sparse_matrices.o: precision.o
+spatial.o: precision.o
+spatial.o: precision.o
 spher_harm.o: alloc.o precision.o sys.o
 spher_harm.o: alloc.o precision.o sys.o
 timer.o: m_timer.o parallel.o sys.o timer_tree.o
@@ -318,18 +351,19 @@ array.o: precision.o sys.o
 array.o: precision.o sys.o
 unfold.o: alloc.o array.o atmfuncs.o basis_io.o basis_types.o cellsubs.o
 unfold.o: diag_option.o get_kpoints_scale.o hsx_m.o m_io.o m_mpi_utils.o
-unfold.o: m_timer.o memory_log.o parallel.o precision.o radfft.o siesta_geom.o
-unfold.o: spher_harm.o sys.o
+unfold.o: m_timer.o memory_log.o parallel.o parallelsubs.o precision.o radfft.o
+unfold.o: siesta_geom.o spher_harm.o sys.o
 unfold.o: alloc.o array.o atmfuncs.o basis_io.o basis_types.o cellsubs.o
 unfold.o: diag_option.o get_kpoints_scale.o hsx_m.o m_io.o m_mpi_utils.o
-unfold.o: m_timer.o memory_log.o parallel.o precision.o radfft.o siesta_geom.o
-unfold.o: spher_harm.o sys.o
+unfold.o: m_timer.o memory_log.o parallel.o parallelsubs.o precision.o radfft.o
+unfold.o: siesta_geom.o spher_harm.o sys.o
 aux_proj.o: atom.o
 bloch_unfold_m.o: bloch_unfold.o
 class_ddata1d.o: class_Data1D.o
 class_ddata2d.o: class_Data2D.o
 class_dspdata1d.o: class_SpData1D.o
 class_dspdata2d.o: class_SpData2D.o
+class_fstack_pair_geometry_dspdata2d.o: class_Fstack_Pair_Geometry_SpData2D.o
 class_gdata1d.o: class_Data1D.o
 class_gspdata1d.o: class_SpData1D.o
 class_idata1d.o: class_Data1D.o
@@ -338,6 +372,7 @@ class_ispdata1d.o: class_SpData1D.o
 class_ispdata2d.o: class_SpData2D.o
 class_ldata1d.o: class_Data1D.o
 class_lspdata1d.o: class_SpData1D.o
+class_pair_geometry_dspdata2d.o: class_Pair_Geometry_SpData2D.o
 class_sdata1d.o: class_Data1D.o
 class_sspdata1d.o: class_SpData1D.o
 class_zdata1d.o: class_Data1D.o
@@ -361,5 +396,6 @@ m_semicore_info_froyen.o: semicore_info_froyen.o
 m_timer_tree.o: timer_tree.o
 m_timestamp.o: timestamp.o
 mtprng.o: m_uuid.o
+printmat.o: printmatrix.o
 t_spin.o: m_spin.o
 timer_options.o: timer.o
