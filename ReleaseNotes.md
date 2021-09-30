@@ -29,6 +29,8 @@ grouped under headings representing past (and upcoming) releases.
      new features such as automatic handling of semicore states.
    * Streamlined Util Makefiles with much smaller dependency lists
 
+* Allow parallelization over orbitals instead of over k-points in the unfold utility
+
 * Allow mesh parallel distributions with different numbers of subpoint multiplicity.
 
 * Minor changes for f2003 conformance
