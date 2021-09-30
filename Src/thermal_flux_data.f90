@@ -84,10 +84,10 @@ module thermal_flux_data
   integer :: substep !! Current substep number
   !! (will go from 1 to `gk_setup%dpoints` in runtime)
 
-  real(dp), allocatable :: xa_in(:,:) !! system coordinates input for the snapshot
-  real(dp), allocatable :: va_in(:,:) !! system velocities input for the snapshot
+  real(dp), allocatable, save :: xa_in(:,:) !! system coordinates input for the snapshot
+  real(dp), allocatable, save :: va_in(:,:) !! system velocities input for the snapshot
 
-  real(dp), allocatable :: DM_save(:,:,:,:) !! Full density matrix storage +1 dim:
+  real(dp), allocatable, save :: DM_save(:,:,:,:) !! Full density matrix storage +1 dim:
   !! Last dimension goes over substep points
   !! (the derivation scheme parameter)
   !!
@@ -95,6 +95,11 @@ module thermal_flux_data
   !! after call to `compute_derivatives()'
   !! the last rank index `1' stores the "base" step value
   !! and the last rank index `2' will hold the derivative.
+
+  real(dp), allocatable, save :: gradS_base(:,:)
+  !! Gradient of overlap copy from "base" step.
+  real(dp), allocatable, save :: Rmat_base(:,:)
+  !! Rmatrix copy from "base" step.
 
   real(dp), pointer, save :: Sinv(:,:) => null()
   !! Inverse of the overlap matrix.

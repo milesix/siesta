@@ -134,7 +134,7 @@
 !!      use matel_mod, only : init_matel_orb_XYZ_orb
 !!#endif
 
-      use thermal_flux_data, only: substep ! ThermalFlux
+      use thermal_flux_data, only: substep, gradS_base, Rmat_base ! ThermalFlux
 
       implicit none
 
@@ -696,6 +696,7 @@
       !     Find rmatrix, that we need for Kohn-Sham J-flux component (ThTr)
          call rmatrix(na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
      &        lasto, iphorb, isa, numh, listhptr, listh, Rmat )
+         allocate(Rmat_base, source=Rmat)
       endif
       ! [/ThermalFlux]
 
@@ -709,6 +710,11 @@
 
         call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
      &      lasto, iphorb, isa, numh, listhptr, listh, S, gradS )
+
+        ! [#ThermalFlux]
+        allocate(gradS_base, source=gradS)
+        ! [/ThermalFlux]
+
       else
         call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
      &      lasto, iphorb, isa, numh, listhptr, listh, S )

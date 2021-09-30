@@ -59,15 +59,15 @@ contains
 
     call apply_derivation(DM_save, gk_setup%virtual_dt, gk_setup%dpoints)
 
-    ! debug
-    ! do k = 1,size(Dfull, 3)
-    !    do j = 1,size(Dfull,2)
-    !       do i = 1,size(Dfull,1)
-    !          write((100+gk_setup%dpoints),*) Dfull(i,j,k,2)
+    ! ! debug
+    ! do k = 1,size(DM_save, 3)
+    !    do j = 1,size(DM_save,2)
+    !       do i = 1,size(DM_save,1)
+    !          write((100+gk_setup%dpoints),*) DM_save(i,j,k,2)
     !       end do
     !    end do
     ! end do
-    ! debug
+    ! ! debug
 
   end subroutine compute_derivatives
 

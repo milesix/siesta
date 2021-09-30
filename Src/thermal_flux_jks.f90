@@ -37,7 +37,7 @@ module thermal_flux_jks
   use densematrix,     only: psi ! To get at the c^i_\mu coefficients of the wavefunctions
   use sparse_matrices, only: listh, listhptr, numh
   ! use sparse_matrices, only: H, S, Dscf
-  use sparse_matrices, only: gradS, Rmat
+  ! use sparse_matrices, only: gradS, Rmat
 
   use thermal_flux_data
 
@@ -80,7 +80,7 @@ contains
                 k = listhptr(nu) + ij
                 col = listh(k)
 
-                tmp_g(nu) = tmp_g(nu) + psi_base(col,iw) * Rmat(k,idx)
+                tmp_g(nu) = tmp_g(nu) + psi_base(col,iw) * Rmat_base(k,idx)
              end do
           end do
 
@@ -213,7 +213,7 @@ contains
           do ind = (listhptr(beta)+1), listhptr(beta) + numh(beta)
              mu = listh(ind)
           ! do mu = 1,no_u
-             tmp3(beta) = tmp3(beta) + sum(gradS(:,ind)*va_in(:,iaorb(mu))) * tmp2(mu)
+             tmp3(beta) = tmp3(beta) + sum(gradS_base(:,ind)*va_in(:,iaorb(mu))) * tmp2(mu)
           end do
        end do
 
@@ -236,7 +236,7 @@ contains
           do ind = (listhptr(nu)+1), listhptr(nu) + numh(nu)
              alpha = listh(ind)
           ! do alpha = 1,no_u
-             tmp4(:,nu) = tmp4(:,nu) + gradS(:,ind) * psi_base(alpha,iw)
+             tmp4(:,nu) = tmp4(:,nu) + gradS_base(:,ind) * psi_base(alpha,iw)
           end do
        end do
 
@@ -297,6 +297,13 @@ contains
 
   subroutine compute_jks ()
     integer :: no_occ_wfs
+    integer :: idx, iw, mu, nu, j, ind, col
+
+    !> Selected element of matrix H
+    !> (only a factor, not the whole sandwitch!)
+    real(dp):: H_el_S
+
+    real(dp):: ks_flux_Jks(3), ks_flux_Jele(3)
 
     allocate(psi_hat_c(no_u,no_l,3))
     allocate(psi_dot_c(no_u,no_l))
@@ -305,6 +312,40 @@ contains
 
     call compute_psi_hat_c (no_occ_wfs)
     call compute_psi_dot_c (no_occ_wfs)
+
+    ks_flux_Jks(:) = 0.0          ! Init result to zeros outside main loop
+    ks_flux_Jele(:) = 0.0          ! Init result to zeros outside main loop
+
+    ! Parallel operation note: we need psi_hat_c and psi_dot_c coefficients for all
+    ! occupied wavefunctions in all processors.
+    !
+    do iw = 1,no_occ_wfs
+
+       do mu = 1,no_l
+          do nu = 1,no_l
+
+             H_el_S = H_base(mu,nu) + eo_base(iw) * S_base(mu,nu)   ! These are (k=0) matrices
+
+             do idx = 1,3
+                ks_flux_Jks(idx) = ks_flux_Jks(idx) + &
+                     psi_hat_c(mu,iw,idx) * H_el_s * psi_dot_c(nu,iw)
+
+                ks_flux_Jele(idx) = ks_flux_Jele(idx) + &
+                     psi_hat_c(mu,iw,idx) * S_base(mu,nu) * psi_dot_c(nu,iw)
+             end do
+
+          end do
+       end do
+
+    end do
+
+    ! For parallel operation, reduce ks_flux_J* over all processors...
+
+    ks_flux_Jks(:) = 2.0_dp * ks_flux_Jks(:)   ! For spin
+    ks_flux_Jele(:) = 2.0_dp * 2.0_dp * ks_flux_Jele(:)   ! Why the multiplication by 2*2??
+    !
+    Print *, "[Jks] ", ks_flux_Jks
+    Print *, "[Jele] ", ks_flux_Jele
 
     deallocate(psi_hat_c)
     deallocate(psi_dot_c)
