@@ -31,8 +31,8 @@ program unfold
                     only: get_kpoints_scale
   use m_io,         only: io_assign, io_close
   use m_mpi_utils,  only: broadcast
-#ifdef MPI
   use m_diag_option,only: ParallelOverK, diag_serial=>Serial
+#ifdef MPI
   use mpi_siesta,   only: MPI_Comm_Rank, MPI_Comm_Size, MPI_Comm_World, &
                           MPI_double_precision, MPI_Init, MPI_Finalize, &
                           MPI_Reduce, MPI_Sum
@@ -530,6 +530,8 @@ program unfold
                 else
                   call LocalToGlobalOrb(ioul,myNode,nNodes, iou)
                 endif
+#else
+                iou = ioul
 #endif
                 do j = 1,hsx%numh(iou)
                   ij = hsx%listhptr(iou) + j
@@ -561,6 +563,8 @@ program unfold
                else
                  call LocalToGlobalOrb(iib,myNode,nNodes,ib)
                endif
+#else
+               ib = iib
 #endif
                je = floor((eb(ib)-emin)/de)
                dek = emin + (je+1)*de - eb(ib)

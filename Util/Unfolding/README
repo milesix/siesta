@@ -21,6 +21,14 @@ $ cd ../Examples/Si/Bulk/Si8
 $ mpirun -np 16 ../../../../../../Obj/siesta < si8.fdf > si8.out
 $ mpirun -np 4 ../../../../Src/unfold < si8.fdf > si8.unfold.out
 
+-----------------------
+NOTE: After modifications by P. Ordejon (2021), parallelization can
+be over k-points, or over orbitals, depending on the setting of the
+fdf variable
+
+  Diag.ParallelOverK    (.false. by default)
+-----------------------
+
 The unfolding/refolding specifications are given by two extra fdf blocks
 in the same datafile used by siesta. For example:
 ------------
