@@ -16,6 +16,8 @@ grouped under headings representing past (and upcoming) releases.
 
 ### Changes
 
+* Allow parallelization over orbitals instead of over k-points in the unfold utility
+
 * Allow mesh parallel distributions with different numbers of subpoint multiplicity.
 
 * Minor changes for f2003 conformance
