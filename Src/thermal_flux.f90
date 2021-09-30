@@ -1,3 +1,51 @@
+module derivation_routines
+  use precision, only: dp, grid_p
+  implicit none
+
+contains
+
+  subroutine apply_derivation(F, h, scheme)
+    real(dp), intent(inout) :: F(:,:,:,:)
+    real(dp), intent(in) :: h
+    integer, intent(in)  :: scheme
+
+    select case(scheme)
+    case(2)
+       call derivation_2pts(F, h)
+    case(3)
+       call derivation_3pts_mid(F, h)
+    case(5)
+       call derivation_5pts_mid(F, h)
+    case default
+       call die('Non-existent derivation scheme requested, aborrting.')
+    end select
+  end subroutine apply_derivation
+
+  subroutine derivation_2pts(F, h)
+    real(dp), intent(inout) :: F(:,:,:,:)
+    real(dp), intent(in) :: h
+
+    F(:,:,:,2) = (F(:,:,:,2) - F(:,:,:,1)) / h
+  end subroutine derivation_2pts
+
+  subroutine derivation_3pts_mid(F, h)
+    real(dp), intent(inout) :: F(:,:,:,:)
+    real(dp), intent(in) :: h
+
+    F(:,:,:,2) = (F(:,:,:,3) - F(:,:,:,2)) / (2.0_dp * h)
+  end subroutine derivation_3pts_mid
+
+  subroutine derivation_5pts_mid(F, h)
+    real(dp), intent(inout) :: F(:,:,:,:)
+    real(dp), intent(in) :: h
+
+    F(:,:,:,2) = (F(:,:,:,2) - 8.0_dp * F(:,:,:,3) &
+         & + 8.0_dp * F(:,:,:,4) - F(:,:,:,5)) / (12.0_dp * h)
+  end subroutine derivation_5pts_mid
+
+end module derivation_routines
+
+
 module thermal_flux
 
   use precision, only: dp, grid_p
@@ -86,51 +134,3 @@ contains
   end subroutine reset_thermal_flux
 
 end module thermal_flux
-
-
-module derivation_routines
-  use precision, only: dp, grid_p
-  implicit none
-
-contains
-
-  subroutine apply_derivation(F, h, scheme)
-    real(dp), intent(inout) :: F(:,:,:,:)
-    real(dp), intent(in) :: h
-    integer, intent(in)  :: scheme
-
-    select case(scheme)
-    case(2)
-       call derivation_2pts(F, h)
-    case(3)
-       call derivation_3pts_mid(F, h)
-    case(5)
-       call derivation_5pts_mid(F, h)
-    case default
-       call die('Non-existent derivation scheme requested, aborrting.')
-    end select
-  end subroutine apply_derivation
-
-  subroutine derivation_2pts(F, h)
-    real(dp), intent(inout) :: F(:,:,:,:)
-    real(dp), intent(in) :: h
-
-    F(:,:,:,2) = (F(:,:,:,2) - F(:,:,:,1)) / h
-  end subroutine derivation_2pts
-
-  subroutine derivation_3pts_mid(F, h)
-    real(dp), intent(inout) :: F(:,:,:,:)
-    real(dp), intent(in) :: h
-
-    F(:,:,:,2) = (F(:,:,:,3) - F(:,:,:,2)) / (2.0_dp * h)
-  end subroutine derivation_3pts_mid
-
-  subroutine derivation_5pts_mid(F, h)
-    real(dp), intent(inout) :: F(:,:,:,:)
-    real(dp), intent(in) :: h
-
-    F(:,:,:,2) = (F(:,:,:,2) - 8.0_dp * F(:,:,:,3) &
-         & + 8.0_dp * F(:,:,:,4) - F(:,:,:,5)) / (12.0_dp * h)
-  end subroutine derivation_5pts_mid
-
-end module derivation_routines
