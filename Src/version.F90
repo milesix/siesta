@@ -46,7 +46,6 @@ implicit none
 
 logical :: has_parallel
 !$ integer :: omp_version
-!$ character(len=64) :: omp_name
 
 write(6,'(2a)') 'Siesta Version  : ', trim(adjustl(version_str))
 write(6,'(2a)') 'Architecture    : ', trim(adjustl(siesta_arch))

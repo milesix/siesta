@@ -41,7 +41,6 @@ implicit none
 
 logical :: has_parallel
 !$ integer :: omp_version
-!$ character(len=:), allocatable :: omp_name
 
 #ifdef TBT_PHONON
 write(6,'(2a)') "PHtrans Version : ", trim(adjustl(version_str))
