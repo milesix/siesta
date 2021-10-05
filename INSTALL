@@ -1,0 +1,52 @@
+This is version of SIESTA with order-N methods implemented using omm-bundle and DBCSR libraries
+
+Installation notes
+------------------
+
+1. Install dbcsr-2.1.0 version following instructions from
+   https://cp2k.github.io/dbcsr/develop/page/2-user-guide/1-installation/index.html
+
+2. Install omm-bundle from https://gitlab.com/irina_lebedeva/omm-bundle/-/tree/omm_sparse 
+   following the installation instructions given in INSTALL.
+
+3. Install this siesta version adding the following lines to arch.make:
+
+OMMPATH = <path to omm-bundle installation directory>
+MSPATH = $(OMMPATH)/build_MatrixSwitch
+MSLIB = -L$(MSPATH)/lib -lMatrixSwitch
+MSINC = -I$(MSPATH)/include
+
+PSPPATH = $(OMMPATH)/build_pspBLAS
+PSPLIB = -L$(PSPPATH)/lib -lpspBLAS
+PSPINC = -I$(PSPPATH)/include
+
+OMMLIBPATH = $(OMMPATH)/build_libOMM
+OMMLIB = -L$(OMMLIBPATH)/lib -lOMM
+OMMINC = -I$(OMMLIBPATH)/include
+
+DBCSR     = <path to dbcsr-2.1.0 installation directory>
+DBCSRINC  = -I$(DBCSR)/install/include
+DBCSRLIB  = -L$(DBCSR)/install/lib -ldbcsr
+
+LIBS += $(OMMLIB) $(MSLIB) $(DBCSRLIB) $(PSPLIB)
+INCFLAGS += $(OMMINC) $(MSINC) $(DBCSRINC) $(PSPINC)
+
+# If DBCSR and omm-bundle are installed with the OpenMP support, also add
+LIBS += -qopenmp
+FFLAGS += -qopenmp
+
+
+Execution
+---------
+
+The input parameters for OMM methods with libOMM are described in README_OMM.
+
+If the installation is with the OpenMP support, use only one thread. This can be done adding the following
+lines to the submission script:
+
+export OMP_PROC_BIND=true
+export OMP_NUM_THREADS=1
+
+Examples of the input files can be found in Tests/h2o_blomm, Tests/h2o_libomm and Examples/OMM_methods.
+
+
