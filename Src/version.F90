@@ -35,6 +35,8 @@ CONTAINS
 
 subroutine prversion
 
+!$ use omp_lib, only: openmp_version
+
 ! Simple routine to print the version string. Could be extended to
 ! provide more information, if needed.
 
@@ -65,44 +67,8 @@ has_parallel = .false.
 !$ write(6,'(a)') 'OpenMP'
 !$ has_parallel = .true.
 if (.not. has_parallel) write(6,'(a)') 'none'
-#ifdef _OPENMP
-! To accommodate later versions we use the :<> specification
-! The select case is parsed by order of entries, so this
-! should be stable enough!
-!$ omp_version = _OPENMP
-!$ select case (omp_version)
-!$    case (:202012)
-!$       omp_name = '>=5.1'
-!$    case (202011)
-!$       omp_name = '5.1'
-!$    case (202010:201811)
-!$       omp_name = '5.0'
-!!$    case (:201611)
-!!$       ! jme52: Many versions of ifort report this value
-!!$       ! (I don't think this should be a valid value),
-!!$       ! despite not even (always?) providing full OpenMP 4.0.
-!!$       ! npapior: I have removed this since it must then be somewhat 4.5
-!!$       ! compliant. Agreed it is not pretty, but for making it easier for us?
-!!$       omp_name = '5.0 Preview 1 non-normative Technical Report'
-!$    case (201810:201511)
-!$       omp_name = '4.5'
-!$    case (201510:201307)
-!$       omp_name = '4.0'
-!$    case (201306:201107)
-!$       omp_name = '3.1'
-!$    case (201106:200805)
-!$       omp_name = '3.0'
-!$    case (200804:200505)
-!$       omp_name = '2.5'
-!$    case (200504:200011)
-!$       omp_name = '2.0'
-!$    ! Earlier versions of OpenMP (1.x) did not specify
-!$    ! the value of _OPENMP
-!$    case default
-!$       omp_name = 'unknown version'
-!$ end select
-!$ write(6,'(a,i0,a)') '* OpenMP version: ', omp_version, ' ('//trim(omp_name)//')'
-#endif
+! Simply write out the version as given by the library
+!$ write(6,'(a,i0)') '* OpenMP version: ', openmp_version
 
 #ifdef USE_GEMM3M
 write(6,'(a)') 'GEMM3M support'
