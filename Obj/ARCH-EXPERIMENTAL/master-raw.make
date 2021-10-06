@@ -18,7 +18,12 @@ WITH_PSML=1
 WITH_GRIDXC=1
 #-------------
 
+# These are  for MaX-2 Versions
+# This one mandatory
+WITH_OMM_SPARSE_BUNDLE=1
 WITH_PSOLVER=0
+#------------------------------
+
 WITH_EXTERNAL_ELPA=0
 WITH_ELSI=0
 WITH_FLOOK=0
@@ -43,6 +48,11 @@ WITH_GRID_SP=0
 #ELPA_ROOT=
 #ELPA_INCLUDE_DIRECTORY=
 #FLOOK_ROOT=
+#
+# OMM bundle section example
+#DBCSR_ROOT=$(HOME)/lib/gfortran-9.2.0/dbcsr/2.1.0
+#OMM_SPARSE_BUNDLE_ROOT=$(HOME)/G/Siesta/...../ExtLibs/omm-bundle
+#
 #--------------------------------------------------------
 #NETCDF_ROOT=$(NETCDF_HOME)
 #NETCDF_LIBS=-lnetcdff -lnetcdf -L/opt/hdf5/lib -lhdf5_hl -lhdf5 -lcurl -lz
@@ -110,6 +120,39 @@ FC_ASIS=$(FC_SERIAL)
 FPPFLAGS= $(DEFS_PREFIX)-DF2003 
 LIBS=
 COMP_LIBS=
+
+# ---- OMM_BUNDLE configuration -----------
+
+ifeq ($(WITH_OMM_SPARSE_BUNDLE),1)
+
+   ifndef OMM_SPARSE_BUNDLE_ROOT	
+     $(error you need to define OMM_SPARSE_BUNDLE_ROOT in your arch.make)
+   endif
+   ifndef DBCSR_ROOT	
+     $(error you need to define DBCSR_ROOT in your arch.make)
+   endif
+
+   OMMPATH = $(OMM_SPARSE_BUNDLE_ROOT)
+   MSPATH = $(OMMPATH)/build_MatrixSwitch
+   MSLIB = -L$(MSPATH)/lib -lMatrixSwitch
+   MSINC = -I$(MSPATH)/include
+
+   PSPPATH = $(OMMPATH)/build_pspBLAS
+   PSPLIB = -L$(PSPPATH)/lib -lpspBLAS
+   PSPINC = -I$(PSPPATH)/include
+
+   OMMLIBPATH = $(OMMPATH)/build_libOMM
+   OMMLIB = -L$(OMMLIBPATH)/lib -lOMM
+   OMMINC = -I$(OMMLIBPATH)/include
+
+   DBCSR     = $(DBCSR_ROOT)
+   DBCSRINC  = -I$(DBCSR)/include
+   DBCSRLIB  = -L$(DBCSR)/lib -ldbcsr
+
+   LIBS += $(OMMLIB) $(MSLIB) $(DBCSRLIB) $(PSPLIB)
+   INCFLAGS += $(OMMINC) $(MSINC) $(DBCSRINC) $(PSPINC)
+
+endif
 
 # ---- PSOLVER configuration -----------
 
