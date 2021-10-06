@@ -323,6 +323,8 @@ To compile using OpenMP add this to your \file{arch.make} file
 \end{shellexample}
 change the corresponding flag according to your compiler.
 
+The required version of OpenMP is 3.0 (or 200805).
+
 \paragraph{Running Hybrid parallel \tbtrans}
 %
 Running \tbtrans\ using hybrid parallelism is difficult due to the
@@ -442,7 +444,7 @@ for $4$ MPI-processors.
 \begin{description}
   \item[\fdf*{-help} \textnormal{or} \fdf*{-h}] print a help instruction and quit
 
-  \item[\fdf*{-version} \textnormal{or} \fdf*{-v}] print \tbtrans\  version and quit
+  \item[\fdf*{-version} \textnormal{or} \fdf*{-v}] print \tbtrans\ version and quit
 
   \item[\fdf*{-out} \textnormal{or} \fdf*{-o}] specify where all output should be written to
   (instead of STDOUT)
@@ -451,7 +453,8 @@ for $4$ MPI-processors.
 
   \item[\fdf*{-V}] override \fdf{TBT.Voltage} flag. To denote the
   unit do as this example: \fdf*{-V 0.2:eV} which sets the voltage to
-  $0.2\,\mathrm{eV}$.
+  $0.2\,\mathrm{eV}$. A value without unit is interpreted as
+  $\mathrm{eV}$.
 
   \item[\fdf*{-D}] override \fdf{TBT.Directory} flag, all output
   of \tbtrans\ will be put in the corresponding folder (it will be

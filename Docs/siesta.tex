@@ -745,6 +745,8 @@ the BLAS/LAPACK libraries which is the most time-consuming part of
 \siesta\ also requires to be threaded, please see Sec.~\ref{sec:libs}
 for correct linking.
 
+The required version of OpenMP is 3.0 (or 200805).
+
 Subsequently one may run \siesta\ using OpenMP through the environment
 variable \shell{OMP\_NUM\_THREADS} which determine the number of
 threads/cores used in the execution.
@@ -1309,9 +1311,10 @@ Option strings that contain spaces need to either be quoted
 or have the spaces replaced by a colon (\shell{:}) or by
 an equal sign (\shell{=}).
 \item
-If the input file is not piped in, it must be given as the last argument:
+If the input file is not piped in, it can be given as an argument:
 \begin{shellexample}
   siesta -L Hello -V 0.25:eV RUN.fdf > RUN.out
+  siesta -L Hello RUN.fdf -V 0.25:eV > RUN.out
 \end{shellexample}
 \end{itemize}
 
@@ -1359,12 +1362,13 @@ The list of available flags and options is:
   \fdfindex*{Command line options:-V}%
   \fdfoverwrite{TS!Voltage}
   Specify the bias for the current \tsiesta\ run.
-  Example: any of the following two commands set the applied bias to
+  Example: any of the following three commands set the applied bias to
   $0.25\,\mathrm{eV}$:
 
   \begin{shellexample}
   siesta -V 0.25:eV
   siesta -V "0.25 eV"
+  siesta -V 0.25
   \end{shellexample}
 
   \note This is equivalent to specifying \fdf{TS!Voltage} in the input

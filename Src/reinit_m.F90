@@ -215,7 +215,7 @@ contains
     ! This subroutine requires one and only one optional argument.
     !
     ! This subroutine may be called with up to 4 purposes:
-    ! To retrieve the input file (last argument), this
+    ! To retrieve the input file, this
     !    requires present(infile).
     ! To retrieve the output file (-o/-out), this
     !    requires present(outfile).
@@ -301,14 +301,18 @@ contains
       call get_command_arg(ia, line_orig)
 
       if ( line_orig(1:1) /= '-' ) then
-        ! It is not an option, fail unless it's the last argument
-        ! Last argument: it's the input file.
-        if (len_trim(line_orig) .GT. len(infile)) then
+        ! It is not an option it must be the input file
+        ! With this the input file may be in between options
+        if (len_trim(line_orig) > len(infile)) then
           ! Prevent truncation.
           write(str,'(I0)') len(infile)
-          call die ('The last argument ('//trim(line_orig)//') is too &
+          call die ('The argument ('//trim(line_orig)//') is too &
               &long to be used as the input file name, please use &
               &a file name of at most '//str//' characters.')
+        else if ( len_trim(infile) > 0 ) then
+          call die('There are two arguments thought to be input files: &
+              &"'//trim(infile)//'" and "'//trim(line_orig)//'". &
+              &Please only supply one input file.')
         else
           infile = trim(line_orig)
           cycle
@@ -357,7 +361,13 @@ contains
           case ('L')
             line2 = 'SystemLabel '//trim(line2)
           case ('V')
-            line2 = 'TS.Voltage '//trim(line2)
+            if ( index(trim(line2), ' ') == 0 ) then
+              ! Default to eV argument; users expect this unit for
+              ! applied bias.
+              line2 = 'TS.Voltage '//trim(line2)//' eV'
+            else
+              line2 = 'TS.Voltage '//trim(line2)
+            end if
           end select
 
           call fdf_overwrite(line2)
