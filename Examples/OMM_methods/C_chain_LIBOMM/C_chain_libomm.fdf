@@ -8,7 +8,9 @@ NumberOfSpecies 1
 PAO.EnergyShift 500 meV
 PAO.BasisSize DZ
 
-SolutionMethod LIBOMM # Cubic-scaling OMM using libOMM library
+SolutionMethod BLOOM # Cubic-scaling OMM using libOMM library
+OMM.Use-Sparse F
+
 OMM.PreconFirstStep 1 # Number of SCF steps in the first MD step for which to apply preconditioning
 #OMM.Precon -1        # Number of SCF steps of all MD steps for which to apply preconditioning
 OMM.TPreconScale 10 Ry # Scale for kinetic energy preconditioning
