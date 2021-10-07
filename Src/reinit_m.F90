@@ -317,6 +317,7 @@ contains
           infile = trim(line_orig)
           cycle
         end if
+      else
         line = line_orig
       end if
 
