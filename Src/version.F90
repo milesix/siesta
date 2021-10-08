@@ -35,6 +35,8 @@ CONTAINS
 
 subroutine prversion
 
+!$ use omp_lib, only: openmp_version
+
 ! Simple routine to print the version string. Could be extended to
 ! provide more information, if needed.
 
@@ -42,9 +44,7 @@ subroutine prversion
 
 implicit none
 
-logical :: has_parallel
-!$ integer :: omp_version
-!$ character(len=:), allocatable :: omp_name
+logical :: has_parallel(2)
 
 write(6,'(2a)') 'Siesta Version  : ', trim(adjustl(version_str))
 write(6,'(2a)') 'Architecture    : ', trim(adjustl(siesta_arch))
@@ -53,50 +53,29 @@ write(6,'(2a)') 'Compiler flags  : ', trim(adjustl(fflags))
 write(6,'(2a)') 'PP flags        : ', trim(adjustl(fppflags))
 write(6,'(2a)') 'Libraries       : ', trim(adjustl(libs))
 
+has_parallel(:) = .false.
 write(6,'(a)',ADVANCE='NO') 'Parallelisations: '
+
+! Check for MPI
 #ifdef MPI
-has_parallel = .true.
+has_parallel(1) = .true.
 write(6,'(a)',ADVANCE='NO') 'MPI'
-#else
-has_parallel = .false.
 #endif
 
-!$ if (has_parallel) write(6,'(a)', ADVANCE='NO') '; and '
-!$ write(6,'(a)',ADVANCE='NO') 'OpenMP threads'
-!$ has_parallel = .true.
-if (.not. has_parallel) write(6,'(a)',ADVANCE='NO') 'none'
-write(6,'(a)') '.'
-#ifdef _OPENMP
-!$ omp_version = _OPENMP
-!$ select case (omp_version)
-!$    case (202011)
-!$       omp_name = 'OpenMP 5.1'
-!$    case (201811)
-!$       omp_name = 'OpenMP 5.0'
-!$    case (201611)
-!$       ! jme52: Many versions of ifort report this value
-!$       ! (I don't think this should be a valid value),
-!$       ! despite not even (always?) providing full OpenMP 4.0.
-!$       omp_name = 'OpenMP 5.0 Preview 1 non-normative Technical Report'
-!$    case (201511)
-!$       omp_name = 'OpenMP 4.5'
-!$    case (201307)
-!$       omp_name = 'OpenMP 4.0'
-!$    case (201107)
-!$       omp_name = 'OpenMP 3.1'
-!$    case (200805)
-!$       omp_name = 'OpenMP 3.0'
-!$    case (200505)
-!$       omp_name = 'OpenMP 2.5'
-!$    case (200011)
-!$       omp_name = 'OpenMP 2.0'
-!$    ! Earlier versions of OpenMP (1.x) did not specify
-!$    ! the value of _OPENMP
-!$    case default
-!$       omp_name = 'unknown OpenMP version'
-!$ end select
-!$ write(6,'(a,i0,a)') '* OpenMP version: ', omp_version, ' ('//omp_name//').'
-#endif
+! Check for OpenMP
+!$ if (has_parallel(1)) write(6,'(a)', ADVANCE='NO') ', '
+!$ write(6,'(a)',ADVANCE='NO') 'OpenMP'
+!$ has_parallel(2) = .true.
+
+! Complete parallel line
+if ( any(has_parallel) ) then
+  write(6,'(a)') ''
+else
+  write(6,'(a)') 'none'
+end if
+
+! Simply write out the version as given by the library
+!$ write(6,'(a,i0)') '* OpenMP version: ', openmp_version
 
 #ifdef USE_GEMM3M
 write(6,'(a)') 'GEMM3M support'

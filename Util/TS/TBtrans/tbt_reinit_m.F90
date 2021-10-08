@@ -220,7 +220,7 @@ contains
     ! This subroutine requires one and only one optional argument.
     !
     ! This subroutine may be called with up to 4 purposes:
-    ! To retrieve the input file (last argument), this
+    ! To retrieve the input file, this
     !    requires present(infile).
     ! To retrieve the output file (-o/-out), this
     !    requires present(outfile).
@@ -275,14 +275,14 @@ contains
 
     ! Ensure that the number of optional arguments is valid.
     nopts = count([present(input_file), present(output_file), present(info)])
-    if (nopts .NE. 1) call die('ERROR: badly formed call to '//myself//'.')
+    if (nopts /= 1) call die('ERROR: badly formed call to '//myself//'.')
 
     ! Ensure that, if present, file names are long enough.
     if (present(input_file)) then
-       if (len(input_file) .GT. len(infile)) &
+       if (len(input_file) > len(infile)) &
           call die('ERROR: input_file variable too short.')
     else if (present(output_file)) then
-       if (len(output_file) .GT. len(outfile)) &
+       if (len(output_file) > len(outfile)) &
           call die('ERROR: output_file variable too short.')
     end if
 
@@ -299,125 +299,129 @@ contains
     narg = command_argument_count()
 
     ! Read special variables from the command line
-    if ( narg > 0 ) then
-       ia = 0
-       do while ( ia <= narg )
+    ia = 0
+    do while ( ia < narg )
 
-          ia = ia + 1
-          call get_command_arg(ia, line_orig)
+      ia = ia + 1
+      call get_command_arg(ia, line_orig)
 
-          if ( line_orig(1:1) /= '-' ) then
-             ! It is not an option, fail unless it's the last argument
-             if ( ia .EQ. narg ) then
-                ! Last argument: it's the input file.
-                if (len_trim(line_orig) .GT. len(infile)) then
-                   ! Prevent truncation.
-                   write(str,'(I0)') len(infile)
-                   call die ('The last argument ('//trim(line_orig)//') is too &
-                        &long to be used as the input file name, please use &
-                        &a file name of at most '//str//' characters.')
-                else
-                   infile = trim(line_orig)
-                   cycle
-                end if
-             else
-                call die ('Unused argument "'//trim(line_orig)//'".')
-             end if
+      if ( line_orig(1:1) /= '-' ) then
+        ! It is not an option it must be the input file
+        ! With this the input file may be in between options
+        if (len_trim(line_orig) > len(infile)) then
+          ! Prevent truncation.
+          write(str,'(I0)') len(infile)
+          call die ('The argument ('//trim(line_orig)//') is too &
+              &long to be used as the input file name, please use &
+              &a file name of at most '//str//' characters.')
+        else if ( len_trim(infile) > 0 ) then
+          call die('There are two arguments thought to be input files: &
+              &"'//trim(infile)//'" and "'//trim(line_orig)//'". &
+              &Please only supply one input file.')
+        else
+          infile = trim(line_orig)
+          cycle
+        end if
+      else
+        line = line_orig
+      end if
+
+      ! Truncate '-' to no '-'
+      do while ( line(1:1) == '-' )
+        line = line(2:)
+      end do
+
+      ! We allow these line
+      select case (line)
+
+        !! Options that require a second argument.
+
+      case ('out', 'o', 'fdf', 'L', 'V', 'D', 'HS')
+        if ( ia >= narg ) call die('Missing argument on command line, ' &
+            // trim(line))
+        ia = ia + 1
+        call get_command_arg(ia,line2)
+
+        if ( (line == 'out' .or. line == 'o') ) then
+          if (len_trim(line2) > len(outfile)) then
+            ! Prevent truncation
+            write(str,'(I0)') len(outfile)
+            call die ('The "'// trim(line_orig) //'" argument (' // &
+                trim(line2) // ') is too long to be used as the output &
+                &file name, please use a file name of at most ' // &
+                str // ' characters.')
           else
-             line = line_orig
+            outfile = trim(line2)
           end if
+        end if
 
-          ! Truncate '-' to no '-'
-          do while ( line(1:1) == '-' )
-             line = line(2:)
-          end do
+        if (process_fdf) then
+          ! We allow these variations:
+          !  FDFLabel=0.1:eV
+          !  FDFLabel:0.1:eV
+          !  FDFLabel=0.1=eV
+          !  "FDFLabel 0.1 eV"
+          line2 = cmd_tokenize(line2)
 
-          ! We allow these line
           select case (line)
-
-            !! Options that require a second argument.
-
-            case ('out', 'o', 'fdf', 'L', 'V', 'D', 'HS')
-              if ( ia >= narg ) call die('Missing argument on command line, ' &
-                   // trim(line))
-              ia = ia + 1
-              call get_command_arg(ia,line2)
-
-              if ( (line == 'out' .or. line == 'o') ) then
-                if (len_trim(line2) .GT. len(outfile)) then
-                   ! Prevent truncation
-                   write(str,'(I0)') len(outfile)
-                   call die ('The "'// trim(line_orig) //'" argument (' // &
-                        trim(line2) // ') is too long to be used as the output &
-                        &file name, please use a file name of at most ' // &
-                        str // ' characters.')
-                else
-                   outfile = trim(line2)
-                end if
-              end if
-
-              if (process_fdf) then
-                 ! We allow these variations:
-                 !  FDFLabel=0.1:eV
-                 !  FDFLabel:0.1:eV
-                 !  FDFLabel=0.1=eV
-                 !  "FDFLabel 0.1 eV"
-                 line2 = cmd_tokenize(line2)
-
-                 select case (line)
-                   case ('L')
-                     line2 = 'SystemLabel '//trim(line2)
-                   case ('V')
-                     line2 = 'TBT.Voltage '//trim(line2)
-                   case ('D')
-                     line2 = 'TBT.Directory '//trim(line2)
-                   case ('HS')
-                     line2 = 'TBT.HS '//trim(line2)
-                 end select
-
-                 call fdf_overwrite(line2)
-              end if
-
-            !! Single-argument options.
-
-            case ('version', 'v')
-              ! If a version option is found,
-              ! print version information...
-              if (process_info) then
-                 if (Node == 0) call prversion
-
-                 ! ... and quietly end execution
-                 ! (do not call die to avoid the bye message)
-                 call pxfflush(6)
-#ifdef MPI
-                 call MPI_Finalize(MPIerror)
-#endif
-                 stop
-              end if
-
-            case ('help', 'h')
-              ! If a help option is found,
-              ! print help information...
-              if (process_info) then
-                 if (Node == 0) call tbt_print_help
-
-                 ! ... and quietly end execution
-                 ! (do not call die to avoid the bye message)
-                 call pxfflush(6)
-#ifdef MPI
-                 call MPI_Finalize(MPIerror)
-#endif
-                 stop
-              end if
-
-            case default
-              call die('Error: Unknown command line option: "' // &
-                   trim(line_orig)//'".')
-
+          case ('L')
+            line2 = 'SystemLabel '//trim(line2)
+          case ('V')
+            if ( index(trim(line2), ' ') == 0 ) then
+              ! Default to eV argument; users expect this unit for
+              ! applied bias.
+              line2 = 'TBT.Voltage '//trim(line2)//' eV'
+            else
+              line2 = 'TBT.Voltage '//trim(line2)
+            end if
+          case ('D')
+            line2 = 'TBT.Directory '//trim(line2)
+          case ('HS')
+            line2 = 'TBT.HS '//trim(line2)
           end select
 
-       end do
-    end if
+          call fdf_overwrite(line2)
+        end if
+
+        !! Single-argument options.
+
+      case ('version', 'v')
+        ! If a version option is found,
+        ! print version information...
+        if (process_info) then
+          if (Node == 0) call prversion
+
+          ! ... and quietly end execution
+          ! (do not call die to avoid the bye message)
+          call pxfflush(6)
+#ifdef MPI
+          call MPI_Finalize(MPIerror)
+#endif
+          stop
+        end if
+
+      case ('help', 'h')
+        ! If a help option is found,
+        ! print help information...
+        if (process_info) then
+          if (Node == 0) call tbt_print_help
+
+          ! ... and quietly end execution
+          ! (do not call die to avoid the bye message)
+          call pxfflush(6)
+#ifdef MPI
+          call MPI_Finalize(MPIerror)
+#endif
+          stop
+        end if
+
+      case default
+        call die('Error: Unknown command line option: "' // &
+            trim(line_orig)//'".')
+
+      end select
+
+    end do
 
     ! If any files were requested, check the parsing of files
     ! and do the assignment if everything is OK.
@@ -466,9 +470,9 @@ contains
     write(stderr,'(a)')'Help for calling the tight-binding transport code'
     write(stderr,'(a)')''
     write(stderr,'(a)')'Usage:'
-    write(stderr,'(a)')'  tbtrans [OPTIONAL FLAGS...] [OPTIONAL FINAL ARGUMENT]'
+    write(stderr,'(a)')'  tbtrans [OPTIONAL ARGUMENTS]'
     write(stderr,'(a)')''
-    write(stderr,'(a)')'OPTIONAL FLAGS:'
+    write(stderr,'(a)')'OPTIONAL ARGUMENTS:'
     write(stderr,'(a)')'  -help|-h'
     write(stderr,'(a)')'      Only print this help.'
     write(stderr,'(a)')'  -version|-v'
@@ -485,13 +489,11 @@ contains
     write(stderr,'(a)')'      Short-hand for setting TBT.Directory'
     write(stderr,'(a)')'  -HS <Hamiltonian>'
     write(stderr,'(a)')'      Short-hand for setting TBT.HS'
-    write(stderr,'(a)')''
-    write(stderr,'(a)')'OPTIONAL FINAL ARGUMENT:'
     write(stderr,'(a)')'  <fdf-file>'
     write(stderr,'(a)')'      Use file as fdf-input, you do not need to pipe it in.'
+    write(stderr,'(a)')'      If not provided must be piped in: tbtrans < RUN.fdf'
     write(stderr,'(a)')''
     write(stderr,'(a)')'For further help, please see the TBtrans manual (pdf).'
-!   call bye('Help-menu requested, stopping.')
 
   end subroutine tbt_print_help
 
