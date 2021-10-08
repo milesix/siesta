@@ -63,9 +63,10 @@ has_parallel = .false.
 #endif
 
 !$ if (has_parallel) write(6,'(a)', ADVANCE='NO') ', '
-!$ write(6,'(a)') 'OpenMP'
+!$ write(6,'(a)',ADVANCE='NO') 'OpenMP'
 !$ has_parallel = .true.
-if (.not. has_parallel) write(6,'(a)') 'none'
+if (.not. has_parallel) write(6,'(a)',ADVANCE='NO') 'none'
+write(6,'(a)') '.'
 ! Simply write out the version as given by the library
 !$ write(6,'(a,i0)') '* OpenMP version: ', openmp_version
 

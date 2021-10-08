@@ -317,6 +317,7 @@ contains
           infile = trim(line_orig)
           cycle
         end if
+      else
         line = line_orig
       end if
 
@@ -468,7 +469,7 @@ contains
     write(stderr,'(a)')'Help for calling SIESTA'
     write(stderr,'(a)')''
     write(stderr,'(a)')'Usage:'
-    write(stderr,'(a)')'  siesta [OPTIONAL FLAGS...]'
+    write(stderr,'(a)')'  siesta [OPTIONAL ARGUMENTS...]'
     write(stderr,'(a)')''
     write(stderr,'(a)')'OPTIONAL ARGUMENTS:'
     write(stderr,'(a)')'  -help|-h'

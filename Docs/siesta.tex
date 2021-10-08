@@ -745,7 +745,8 @@ the BLAS/LAPACK libraries which is the most time-consuming part of
 \siesta\ also requires to be threaded, please see Sec.~\ref{sec:libs}
 for correct linking.
 
-The required version of OpenMP is 3.0 (or 200805).
+The minimum required version of OpenMP is 3.0
+(internally identified by the YYYYMM date string \shell{200805}).
 
 Subsequently one may run \siesta\ using OpenMP through the environment
 variable \shell{OMP\_NUM\_THREADS} which determine the number of
@@ -1362,6 +1363,7 @@ The list of available flags and options is:
   \fdfindex*{Command line options:-V}%
   \fdfoverwrite{TS!Voltage}
   Specify the bias for the current \tsiesta\ run.
+  If no units are specified, $\mathrm{eV}$ are assumed.
   Example: any of the following three commands set the applied bias to
   $0.25\,\mathrm{eV}$:
 
