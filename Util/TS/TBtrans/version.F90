@@ -39,8 +39,7 @@ subroutine prversion
 
 implicit none
 
-logical :: has_parallel
-!$ integer :: omp_version
+logical :: has_parallel(2)
 
 #ifdef TBT_PHONON
 write(6,'(2a)') "PHtrans Version : ", trim(adjustl(version_str))
@@ -53,19 +52,27 @@ write(6,'(2a)') 'Compiler flags  : ', trim(adjustl(fflags))
 write(6,'(2a)') 'PP flags        : ', trim(adjustl(fppflags))
 write(6,'(2a)') 'Libraries       : ', trim(adjustl(libs))
 
+has_parallel(:) = .false.
 write(6,'(a)',ADVANCE='NO') 'Parallelisations: '
+
+! Check for MPI
 #ifdef MPI
-has_parallel = .true.
+has_parallel(1) = .true.
 write(6,'(a)',ADVANCE='NO') 'MPI'
-#else
-has_parallel = .false.
 #endif
 
-!$ if (has_parallel) write(6,'(a)', ADVANCE='NO') ', '
+! Check for OpenMP
+!$ if (has_parallel(1)) write(6,'(a)', ADVANCE='NO') ', '
 !$ write(6,'(a)',ADVANCE='NO') 'OpenMP'
-!$ has_parallel = .true.
-if (.not. has_parallel) write(6,'(a)',ADVANCE='NO') 'none'
-write(6,'(a)') '.'
+!$ has_parallel(2) = .true.
+
+! Complete parallel line
+if ( any(has_parallel) ) then
+  write(6,'(a)') ''
+else
+  write(6,'(a)') 'none'
+end if
+
 ! Simply write out the version as given by the library
 !$ write(6,'(a,i0)') '* OpenMP version: ', openmp_version
 
