@@ -97,7 +97,7 @@
         endif
       endif
 
-      if (isolve .eq. SOLVE_OMM_BLOCK) then
+      if (isolve .eq. SOLVE_BLOMM) then
         if ( no_u == no_s ) then ! Not using an auxiliary supercell
           call omm_min_block(.true., .false., iscf, istp, 
      &                  no_l, nspin, no_u,
