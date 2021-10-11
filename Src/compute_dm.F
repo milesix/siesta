@@ -234,7 +234,7 @@ c$$$     &           S, 'S.matrix')
         Entropy = 0.0_dp
         PreviousCallDiagon=.false.
 
-      elseif (isolve .eq. SOLVE_OMM_BLOCK) then
+      elseif (isolve .eq. SOLVE_BLOMM) then
         if ( spin%NCol .or. spin%SO )
      &      call die('ERROR: Non-collinear spin calculations
      &                       not yet implemented with OMM!')

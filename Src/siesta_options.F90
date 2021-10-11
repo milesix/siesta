@@ -247,8 +247,7 @@ MODULE siesta_options
   integer,  parameter :: SOLVE_PEXSI  = 4
   integer,  parameter :: MATRIX_WRITE = 5
   integer,  parameter :: SOLVE_CHESS  = 6
-  integer,  parameter :: SOLVE_OMM    = 7
-  integer,  parameter :: SOLVE_OMM_BLOCK = 8
+  integer,  parameter :: SOLVE_BLOMM  = 7
   integer,  parameter :: SOLVE_DUMMY  = 10
   
 #ifdef SIESTA__FLOOK

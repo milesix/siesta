@@ -550,8 +550,7 @@
           end if
           
        elseif ((isolve==SOLVE_ORDERN) .or. (isolve==SOLVE_MINIM)
-     &    .or. (isolve==SOLVE_OMM) 
-     &    .or. (isolve==SOLVE_OMM_BLOCK)) then
+     &    .or. (isolve==SOLVE_BLOMM)) then
           
           write(6,'(/,a15,i4)') 'siesta: iscf = ',iscf
           write(6,'(a14,f15.4,a13,f15.4,a10,f10.6/)') 

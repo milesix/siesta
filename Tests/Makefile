@@ -52,7 +52,8 @@ tests = 32_h2o ag anneal-cont ar2_vdw batio3 benzene bessel bessel-rich \
 	h2_bessel h2o h2o_2 h2o_am05 h2o_bands h2o_bands_nc \
 	h2o_bands_polarized h2o_basis h2o_coop h2o_dipole h2o_dipole2 \
 	h2o_dos h2o_filteret_basis h2o_findp_bug h2o_netcdf h2o_op_broyden \
-	h2o_orderN h2o_blomm h2o_libomm h2o-pop h2o_radialgrid h2o_reparam h2o-rhog-mixing h2oZ \
+	h2o_orderN h2o_blomm_dense h2o_blomm_sparse h2o-pop h2o_radialgrid \
+	h2o_reparam h2o-rhog-mixing h2oZ \
 	h3po4_1 h3po4_2 h3po4_3 h_chain h_chain2 md_anneal md-anneal-cont \
 	md-cont md-cont-no-restart-file md_nose md_npr md_pr md-single-run \
 	md_verlet mgc-force mgco3 mix_broyden mix_linear mix_pulay mno_ldau \
