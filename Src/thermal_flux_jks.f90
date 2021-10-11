@@ -301,9 +301,9 @@ contains
 
     !> Selected element of matrix H
     !> (only a factor, not the whole sandwitch!)
-    real(dp):: H_el_S
+    real(dp):: H_el_S, S_el_S
 
-    real(dp):: ks_flux_Jks(3), ks_flux_Jele(3)
+    real(dp):: ks_flux_Jks(3), ks_flux_Jks_A(3), ks_flux_Jks_B(3), ks_flux_Jele(3)
 
     allocate(psi_hat_c(no_u,no_l,3))
     allocate(psi_dot_c(no_u,no_l))
@@ -314,6 +314,8 @@ contains
     call compute_psi_dot_c (no_occ_wfs)
 
     ks_flux_Jks(:) = 0.0          ! Init result to zeros outside main loop
+    ks_flux_Jks_A(:) = 0.0          ! Init result to zeros outside main loop
+    ks_flux_Jks_B(:) = 0.0          ! Init result to zeros outside main loop
     ks_flux_Jele(:) = 0.0          ! Init result to zeros outside main loop
 
     ! Parallel operation note: we need psi_hat_c and psi_dot_c coefficients for all
@@ -324,11 +326,19 @@ contains
        do mu = 1,no_l
           do nu = 1,no_l
 
-             H_el_S = H_base(mu,nu) + eo_base(iw) * S_base(mu,nu)   ! These are (k=0) matrices
+             ! H_el_S = H_base(mu,nu) + eo_base(iw) * S_base(mu,nu)   ! These are (k=0) matrices
+             H_el_S = H_base(mu,nu)
+             S_el_S = eo_base(iw) * S_base(mu,nu)   ! These are (k=0) matrices
 
              do idx = 1,3
-                ks_flux_Jks(idx) = ks_flux_Jks(idx) + &
-                     psi_hat_c(mu,iw,idx) * H_el_s * psi_dot_c(nu,iw)
+                ! ks_flux_Jks(idx) = ks_flux_Jks(idx) + &
+                !      psi_hat_c(mu,iw,idx) * H_el_s * psi_dot_c(nu,iw)
+
+                ks_flux_Jks_A(idx) = ks_flux_Jks_A(idx) + &
+                     psi_hat_c(mu,iw,idx) * H_el_S * psi_dot_c(nu,iw)
+
+                ks_flux_Jks_B(idx) = ks_flux_Jks_B(idx) + &
+                     psi_hat_c(mu,iw,idx) * S_el_S * psi_dot_c(nu,iw)
 
                 ks_flux_Jele(idx) = ks_flux_Jele(idx) + &
                      psi_hat_c(mu,iw,idx) * S_base(mu,nu) * psi_dot_c(nu,iw)
@@ -341,10 +351,15 @@ contains
 
     ! For parallel operation, reduce ks_flux_J* over all processors...
 
-    ks_flux_Jks(:) = 2.0_dp * ks_flux_Jks(:)   ! For spin
+    ! ks_flux_Jks(:) = 2.0_dp * ks_flux_Jks(:)   ! For spin
+    ks_flux_Jks_A(:) = 2.0_dp * ks_flux_Jks_A(:)   ! For spin
+    ks_flux_Jks_B(:) = 2.0_dp * ks_flux_Jks_B(:)   ! For spin
+    ks_flux_Jks(:) = ks_flux_Jks_A(:) + ks_flux_Jks_B(:)
     ks_flux_Jele(:) = 2.0_dp * 2.0_dp * ks_flux_Jele(:)   ! Why the multiplication by 2*2??
     !
     Print *, "[Jks] ", ks_flux_Jks
+    Print *, "[Jks-A] ", ks_flux_Jks_A
+    Print *, "[Jks-B] ", ks_flux_Jks_B
     Print *, "[Jele] ", ks_flux_Jele
 
     deallocate(psi_hat_c)
