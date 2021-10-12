@@ -246,12 +246,15 @@ contains
        write(*,'(a)') 'transiesta: Established a near-optimal partition &
             &for the tri-diagonal matrix.'
 
-       call rgn_print(c_Tri, name = 'BTD partitions' , &
-            seq_max = 10 , repeat = .true. )
+       call rgn_copy(c_Tri, r_tmp)
+       call rgn_sort(r_tmp)
+       call rgn_print(r_tmp, name = 'BTD partitions' , &
+           seq_max = 10 , repeat = .true. )
+       call rgn_delete(r_tmp)
 
        write(*,'(a,f9.5,'' %'')') &
             'transiesta: Matrix elements in % of full matrix: ', &
-            real(els,dp)/real(no_u_TS**2,dp) * 100._dp
+            real(els,dp)/real(no_u_TS,dp)**2 * 100._dp
     end if
 
   end subroutine ts_tri_init

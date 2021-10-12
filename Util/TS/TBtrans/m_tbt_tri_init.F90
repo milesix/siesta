@@ -289,22 +289,28 @@ contains
 
     if ( IONode ) then
        
-       ! Print out stuff
-       call rgn_print(DevTri, seq_max = 10 , repeat = .true.)
-       ! Print out memory estimate
-       els = nnzs_tri(DevTri%n, DevTri%r)
-       ! check if there are overflows
-       if ( els > int(huge(1), i8b) ) then
-         write(*,'(a,i0)') 'Elements: ', els
-         write(*,'(a,i0)') 'Max: ', huge(1)
-         call die('tbt: Memory consumption is too large, try &
-             &another pivoting scheme.')
-       end if
+      ! Print out stuff
+      call rgn_copy(DevTri, r_tmp)
+      call rgn_sort(r_tmp)
+      call rgn_print(r_tmp, seq_max = 10 , repeat = .true.)
+      ! Print out memory estimate
+      els = nnzs_tri(DevTri%n, DevTri%r)
+      ! check if there are overflows
+      if ( els > int(huge(1), i8b) ) then
+        write(*,'(a,i0)') 'Elements: ', els
+        write(*,'(a,i0)') 'Max: ', huge(1)
+        call die('tbt: Memory consumption is too large, try &
+            &another pivoting scheme.')
+      end if
 
-       write(*,'(/,a)') 'tbt: Electrodes tri-diagonal matrices'
-       do i = 1 , N_Elec
-          call rgn_print(ElTri(i), seq_max = 10 , repeat = .true.)
-       end do
+      write(*,'(/,a)') 'tbt: Electrodes tri-diagonal matrices'
+      do i = 1 , N_Elec
+        call rgn_copy(ElTri(i), r_tmp)
+        call rgn_sort(r_tmp)
+        call rgn_print(r_tmp, seq_max = 10 , repeat = .true.)
+      end do
+
+      call rgn_delete(r_tmp)
        
     end if
 

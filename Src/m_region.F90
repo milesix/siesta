@@ -1865,7 +1865,7 @@ contains
           if ( k == 1 ) then
              write(*,'(tr1,i0,a)',advance='no') c,','
           else
-             write(*,'(tr1,2(a,i0),a)',advance='no') '[',c,'] * ',k,','
+             write(*,'(tr1,2(a,i0),a)',advance='no') '[',c,']*',k,','
           end if
           
           ! Reset
@@ -1881,7 +1881,7 @@ contains
        if ( k == 1 ) then
           write(*,'(tr1,i0,a)') c,' ]'
        else
-          write(*,'(tr1,2(a,i0),a)') '[',c,'] * ',k,' ]'
+          write(*,'(tr1,2(a,i0),a)') '[',c,']*',k,' ]'
        end if
 
        return
