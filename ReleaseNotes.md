@@ -6,6 +6,11 @@ grouped under headings representing past (and upcoming) releases.
 
 # 4.1.X versions
 
+### Backward compatibility issues
+
+* TranSiesta/TBtrans eta values for the device region are now defaulted
+  to the minimal electrode eta value / 100
+
 ### Changes
 
 * Fixed reading Target.Pressure, reported on mailing list 24 March 2021.

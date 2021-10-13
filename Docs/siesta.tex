@@ -13223,11 +13223,15 @@ The bias contour is similarly defined as the equilibrium
 contours. Please use the \program{Util/TS/tselecs.sh} as a means to
 create default input blocks.
 
-\begin{fdfentry}{TS!Contours.nEq!Eta}[energy]<$0\,\mathrm{eV}$>
+\begin{fdfentry}{TS!Contours.nEq!Eta}[energy]<$\operatorname{min}[\eta_{\mathfrak e}]/100$>
+  \fdfdepend{TS!Elecs!Eta}%
 
-  The imaginary part ($\eta$) of the device states. Generally this is
-  not necessary to define as the imaginary part naturally arises from
-  the self-energies (where $\eta>0$).
+  The imaginary part ($\eta$) of the device states. While this may be
+  set to $0$ for most systems it defaults to the minimum $\eta$ value
+  for the electrodes ($\operatorname{min}[\eta_{\mathfrak
+      e}]/100$). This ensures that the device broadening is always
+  smaller than the electrodes while allowing broadening of localized
+  states.
 
 \end{fdfentry}
 

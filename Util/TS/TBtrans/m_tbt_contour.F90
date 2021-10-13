@@ -71,7 +71,8 @@ contains
     Ry2eV = fdf_convfac('Ry', 'eV')
 
     ! broadening
-    tbt_Eta = fdf_get('TBT.Contours.Eta',0._dp,'Ry')
+    tbt_Eta = minval(Elecs(:)%eta) / 100._dp
+    tbt_Eta = fdf_get('TBT.Contours.Eta',tbt_Eta,'Ry')
     if ( tbt_Eta < 0._dp .and. Node == 0 ) then
       call die('tbtrans: error cannot use the advanced Green function')
        write(*,'(a)')'*** NOTICE ***'
