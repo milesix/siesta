@@ -15,10 +15,10 @@ $$ \left | \tilde\chi_{j} \right > = \sum_{ \mathbf R}
    e^{i \mathbf k· \mathbf R}
    \left | \phi_{j}(\mathbf R) \right >  $$
 
-The only difference is the inclusion of the phase term \( e^{ i \mathbf k
-· \tau_{j} } \). In SIESTA we follow the second convention, as most electronic
-structure codes do. Of course, under both conventions matrices such as the
-Hamiltonian matrix are expressed differently:
+The only difference is the addition of the phase term \( e^{ i \mathbf k
+· \tau_{j} } \). In SIESTA we follow the first convention.
+Of course, under both conventions matrices such as the Hamiltonian matrix are
+expressed differently:
 
 $$        H_{ij} = \sum_{ \mathbf R} e^{i \mathbf k·(\mathbf R
                                          + \tau_{j} - \tau_{i})} h_{ij}$$
