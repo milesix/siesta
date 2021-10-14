@@ -1,52 +1,15 @@
-module derivation_routines
-  use precision, only: dp, grid_p
-  implicit none
-
-contains
-
-  subroutine apply_derivation(F, h, scheme)
-    real(dp), intent(inout) :: F(:,:,:,:)
-    real(dp), intent(in) :: h
-    integer, intent(in)  :: scheme
-
-    select case(scheme)
-    case(2)
-       call derivation_2pts(F, h)
-    case(3)
-       call derivation_3pts_mid(F, h)
-    case(5)
-       call derivation_5pts_mid(F, h)
-    case default
-       call die('Non-existent derivation scheme requested, aborrting.')
-    end select
-  end subroutine apply_derivation
-
-  subroutine derivation_2pts(F, h)
-    real(dp), intent(inout) :: F(:,:,:,:)
-    real(dp), intent(in) :: h
-
-    F(:,:,:,2) = (F(:,:,:,2) - F(:,:,:,1)) / h
-  end subroutine derivation_2pts
-
-  subroutine derivation_3pts_mid(F, h)
-    real(dp), intent(inout) :: F(:,:,:,:)
-    real(dp), intent(in) :: h
-
-    F(:,:,:,2) = (F(:,:,:,3) - F(:,:,:,2)) / (2.0_dp * h)
-  end subroutine derivation_3pts_mid
-
-  subroutine derivation_5pts_mid(F, h)
-    real(dp), intent(inout) :: F(:,:,:,:)
-    real(dp), intent(in) :: h
-
-    F(:,:,:,2) = (F(:,:,:,2) - 8.0_dp * F(:,:,:,3) &
-         & + 8.0_dp * F(:,:,:,4) - F(:,:,:,5)) / (12.0_dp * h)
-  end subroutine derivation_5pts_mid
-
-end module derivation_routines
-
-
 module thermal_flux
+  !! Core virtual_step_procs are responsible for saving/restoring
+  !! the state of the system between `BASE` and `VIRTUAL` steps
+  !! in VMD scheme, and for calling subroutines that implement
+  !! VMD logic for corresponding substep.
+  !! For the setup phase, they also aim to replicate some functionality
+  !! of reciprocal lattice-related routines similar to what is realized
+  !! for QE in `gvect`, `recvec` etc.
+  !! Since some of these entities are common for separate components
+  !! calculated in VMD-scheme, but not used in general in Siesta,
+  !! and since they are bound to calculation of `charge_g`,
+  !! I place them here.
 
   use precision, only: dp, grid_p
   use siesta_geom, only: xa, va, na_u
@@ -68,7 +31,15 @@ contains
     call read_xvs()             ! will fail if coordinates not specified
 
     call gk_setup%init_thermal_flux_settings()
+    call gk_results%init_thermal_flux_results()
   end subroutine init_thermal_flux
+
+
+  subroutine init_data_base_step()
+    !! Logic to be executed at the end of the 0-`base' substep.
+
+    ! allocate(thtr_Rho_deriv, source=thtr_Rho)
+  end subroutine init_data_base_step
 
 
   subroutine read_xvs()
@@ -103,19 +74,9 @@ contains
 
 
   subroutine compute_derivatives()
-    ! integer :: k, j, i          !debug
 
     call apply_derivation(DM_save, gk_setup%virtual_dt, gk_setup%dpoints)
-
-    ! ! debug
-    ! do k = 1,size(DM_save, 3)
-    !    do j = 1,size(DM_save,2)
-    !       do i = 1,size(DM_save,1)
-    !          write((100+gk_setup%dpoints),*) DM_save(i,j,k,2)
-    !       end do
-    !    end do
-    ! end do
-    ! ! debug
+    call apply_derivation(Rho_save, gk_setup%virtual_dt, gk_setup%dpoints)
 
   end subroutine compute_derivatives
 
@@ -124,13 +85,28 @@ contains
     use thermal_flux_jks
 
     call compute_jks()
+
+    compute_jxc: do i=1,size(Rho_save, 1)
+       gk_results%Jxc(1:3) = gk_results%Jxc(1:3) &
+            & - Rho_save(i,2) * thtr_dexcdGD(i,1:3,1) * xc_flux_dvol
+    end do compute_jxc
   end subroutine compute_flux
+
+
+  subroutine thermal_flux_tesults()
+
+    call gk_results%write_thermal_flux_results()
+
+  end subroutine thermal_flux_tesults
 
 
   subroutine reset_thermal_flux()
     deallocate(xa_in)
     deallocate(va_in)
     deallocate(DM_save)
+
+    if (allocated(thtr_dexcdGD)) deallocate(thtr_dexcdGD)
+    deallocate(Rho_save)
   end subroutine reset_thermal_flux
 
 end module thermal_flux

@@ -82,21 +82,24 @@ C     Begin of coordinate relaxation iteration
 
         call timer('IterGeom', 1)
 
+        ! [#ThermalFlux]
          if (compute_thermal_flux) then
             call init_thermal_flux()
 
             do substep=1, gk_setup%dpoints
                call make_small_move()
                call siesta_forces( istep )
+               if (substep.eq.1) call init_data_base_step()
             end do
 
-            ! derivatives, fluxes etc, e.g.
-            call compute_derivatives()
-            call compute_flux()
+            call compute_derivatives() ! calculate derivatives via selected scheme
+            call compute_flux() ! calculate thermal flux components
+            call thermal_flux_tesults() ! output the thermal transport results
 
             call reset_thermal_flux()
             call bye("Done Thermal Transport calculation, exiting.")
          end if
+        ! [/ThermalFlux]
 
          if ( td_elec_dyn ) then
             call siesta_tddft( istep )

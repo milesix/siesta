@@ -303,7 +303,8 @@ contains
     !> (only a factor, not the whole sandwitch!)
     real(dp):: H_el_S, S_el_S
 
-    real(dp):: ks_flux_Jks(3), ks_flux_Jks_A(3), ks_flux_Jks_B(3), ks_flux_Jele(3)
+    ! real(dp):: ks_flux_Jks(3)
+    real(dp):: ks_flux_Jks_A(3), ks_flux_Jks_B(3), ks_flux_Jele(3)
 
     allocate(psi_hat_c(no_u,no_l,3))
     allocate(psi_dot_c(no_u,no_l))
@@ -313,7 +314,7 @@ contains
     call compute_psi_hat_c (no_occ_wfs)
     call compute_psi_dot_c (no_occ_wfs)
 
-    ks_flux_Jks(:) = 0.0          ! Init result to zeros outside main loop
+    ! ks_flux_Jks(:) = 0.0          ! Init result to zeros outside main loop
     ks_flux_Jks_A(:) = 0.0          ! Init result to zeros outside main loop
     ks_flux_Jks_B(:) = 0.0          ! Init result to zeros outside main loop
     ks_flux_Jele(:) = 0.0          ! Init result to zeros outside main loop
@@ -351,17 +352,13 @@ contains
 
     ! For parallel operation, reduce ks_flux_J* over all processors...
 
-    ! ks_flux_Jks(:) = 2.0_dp * ks_flux_Jks(:)   ! For spin
-    ks_flux_Jks_A(:) = 2.0_dp * ks_flux_Jks_A(:)   ! For spin
-    ks_flux_Jks_B(:) = 2.0_dp * ks_flux_Jks_B(:)   ! For spin
-    ks_flux_Jks(:) = ks_flux_Jks_A(:) + ks_flux_Jks_B(:)
-    ks_flux_Jele(:) = 2.0_dp * 2.0_dp * ks_flux_Jele(:)   ! Why the multiplication by 2*2??
+    ! Save results for the Kohn-Sham flux component:
+    ! ks_flux_Jks(:) = 2.0_dp * ks_flux_Jks(:)   ! x2 For spin
+    gk_results%Jks_A(:) = 2.0_dp * ks_flux_Jks_A(:)   ! x2 For spin
+    gk_results%Jks_B(:) = 2.0_dp * ks_flux_Jks_B(:)   ! x2 For spin
+    gk_results%Jks(:)   = 2.0_dp * (ks_flux_Jks_A(:) + ks_flux_Jks_B(:))
+    gk_results%Jele(:)  = 2.0_dp * 2.0_dp * ks_flux_Jele(:)   ! Why the multiplication by 2*2??
     !
-    Print *, "[Jks] ", ks_flux_Jks
-    Print *, "[Jks-A] ", ks_flux_Jks_A
-    Print *, "[Jks-B] ", ks_flux_Jks_B
-    Print *, "[Jele] ", ks_flux_Jele
-
     deallocate(psi_hat_c)
     deallocate(psi_dot_c)
 
