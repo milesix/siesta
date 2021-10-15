@@ -10,6 +10,10 @@ module thermal_flux
   !! calculated in VMD-scheme, but not used in general in Siesta,
   !! and since they are bound to calculation of `charge_g`,
   !! I place them here.
+  !!
+  !!NOTE: wherever the comments address `VMD' (Virtual-step MD)
+  !! it is the former codename of the substeps scheme for taking
+  !! derivatives of functions within SIESTA DFT method.
 
   use precision, only: dp, grid_p
   use siesta_geom, only: xa, va, na_u
@@ -38,8 +42,16 @@ contains
   subroutine init_data_base_step()
     !! Logic to be executed at the end of the 0-`base' substep.
 
-    ! allocate(thtr_Rho_deriv, source=thtr_Rho)
+    ! allocate(thtr_Rho_deriv, source=thtr_Rho) <- no need; done in `dhscf'
   end subroutine init_data_base_step
+
+
+  subroutine init_data_each_step()
+    !! Logic to be executed at the end of each substep.
+    use thermal_flux_jhart, only: store_vhart_substep
+
+    call store_vhart_substep()
+  end subroutine init_data_each_step
 
 
   subroutine read_xvs()
@@ -77,14 +89,17 @@ contains
 
     call apply_derivation(DM_save, gk_setup%virtual_dt, gk_setup%dpoints)
     call apply_derivation(Rho_save, gk_setup%virtual_dt, gk_setup%dpoints)
+    call apply_derivation(Vhart_save, gk_setup%virtual_dt, gk_setup%dpoints)
 
   end subroutine compute_derivatives
 
 
   subroutine compute_flux()
     use thermal_flux_jks
+    use thermal_flux_jhart
 
     call compute_jks()
+    call compute_jhart()
 
     compute_jxc: do i=1,size(Rho_save, 1)
        gk_results%Jxc(1:3) = gk_results%Jxc(1:3) &
@@ -101,12 +116,18 @@ contains
 
 
   subroutine reset_thermal_flux()
+    use alloc,       only : de_alloc
+
     deallocate(xa_in)
     deallocate(va_in)
     deallocate(DM_save)
 
     if (allocated(thtr_dexcdGD)) deallocate(thtr_dexcdGD)
     deallocate(Rho_save)
+
+    deallocate(Vhart_save)
+    call de_alloc(charge_g, routine="reset_thermal_flux")
+    deallocate(charge_g_base)
   end subroutine reset_thermal_flux
 
 end module thermal_flux

@@ -25,7 +25,7 @@ module m_thermal_flux_settings
   end type thermal_flux_settings_type
 
   type :: thermal_flux_results_type
-     real(dp) :: Jks(3), Jks_A(3), Jks_B(3), Jele(3), Jxc(3)
+     real(dp) :: Jks(3), Jks_A(3), Jks_B(3), Jele(3), Jxc(3), Jhart(3)
    contains
      procedure :: init_thermal_flux_results
      procedure :: write_thermal_flux_results
@@ -92,25 +92,29 @@ contains
     this%Jks_B(:)  = 0.0_dp
     this%Jele(:)   = 0.0_dp
     this%Jxc(:)    = 0.0_dp
+    this%Jhart(:)  = 0.0_dp
   end subroutine init_thermal_flux_results
 
 
   subroutine write_thermal_flux_results(this)
     class(thermal_flux_results_type), intent(inout) :: this
 
-    write(*,*) "============= Green-Kubo ThermalFlux Results ================="
+    write(*,*) "            ================ Green-Kubo ThermalFlux Results ================"
     write(*,*) "[gk: Jks]   ", this%Jks
     write(*,*) "[gk: Jks_A] ", this%Jks_A
     write(*,*) "[gk: Jks_B] ", this%Jks_B
     write(*,*) "[gk: Jele]  ", this%Jele
     write(*,*) "[gk: Jxc]   ", this%Jxc
-    write(*,*) "=============================================================="
+    write(*,*) "[gk: Jhart] ", this%Jhart
+    write(*,*) "            ================================================================"
   end subroutine write_thermal_flux_results
 
 end module m_thermal_flux_settings
 
 
 module thermal_flux_data
+  !! NOTE: Not memory-wise optimal;
+  !! look out for `^mem' - probably reduce-able entities.
 
   use precision, only: dp, grid_p
   use m_thermal_flux_settings
@@ -146,9 +150,9 @@ module thermal_flux_data
   real(dp), pointer, save :: Sinv(:,:) => null()
   !! Inverse of the overlap matrix.
   !! Computed in diagg at the beginning of the scf cycle of
-  !! the base step
-  real(dp), pointer, save :: S_base(:,:) => null()
-  real(dp), pointer, save :: H_base(:,:) => null()
+  !! the base step. Possibility of memory optimization (^mem).
+  real(dp), pointer, save :: S_base(:,:) => null() ! ^mem
+  real(dp), pointer, save :: H_base(:,:) => null() ! ^mem
   real(dp), pointer, save :: eo_base(:) => null()
   real(dp), pointer, save :: psi_base(:,:) => null()
 
@@ -168,6 +172,8 @@ module thermal_flux_data
   !! charge density in the reciprocal space.
   !! Used to get Hartree potential and for computation of
   !! local part of the zero flux during execution of VMD logic.
+  real(grid_p), allocatable, target, save :: charge_g_base(:,:) ! ^mem
+  !! Charge density in the reciprocal space at `base' substep.
 
   integer, save :: gstart_vmd = 2
   !! index of the first G vector whose module is > 0
@@ -200,7 +206,7 @@ module thermal_flux_data
   !! mill = miller index of G vectors
 
 
-  real(grid_p), allocatable, save :: Rho_save(:,:)
+  real(grid_p), allocatable, save :: Rho_save(:,:) ! ^mem
   !! Array to store derivative of local charge Rho.
   !!
   !! NOTE: It is so far one-dimensional:
@@ -209,5 +215,9 @@ module thermal_flux_data
   !! `dexcdGD` from the call to cellXC (LibGridXC)
   real(dp), save :: xc_flux_dvol
   !! Element of volume size saved from `dhscf`
+
+  real(grid_p), allocatable, target, save :: Vhart_save(:,:,:)
+  !! Obtained from charge density in the reciprocal space for
+  !! computation of its derivative for the Hartree flux component.
 
 end module thermal_flux_data

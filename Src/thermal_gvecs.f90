@@ -240,7 +240,7 @@ contains
 
     ! Allocate memory for the Fourier image of charge:
     if (substep .eq. 1) then
-       call re_alloc(charge_g,1,2,1,NP,'charge_g','setup_vmd')
+       call re_alloc(charge_g,1,2,1,NP,'charge_g','setup_thermal_gvecs')
     end if
 
     allocate(g2sort_g(NG))
@@ -254,14 +254,13 @@ contains
     ! Find reciprocal lattice vectors
     call reclat(cell_vmd, B, 1 )
 
-    ! Find maximun planewave cutoff
+    ! Find maximum planewave cutoff
     G2MAX = 1.0e30_dp
     call CHKGMX( K0, B, mesh_vmd, G2MAX )
 
     ! Copy density to complex array
 !$OMP parallel do default(shared), private(I)
     do i = 1, NP
-       ! charge_g(1,i) = thtr_Rho(i)
        charge_g(1,i) = Rho_save(i,substep)
        charge_g(2,i) = 0.0_grid_p
     enddo
@@ -270,6 +269,12 @@ contains
     ! Forward Fourier transform of density
     call fft(charge_g, mesh_vmd, -1)  ! -1 means Forward
     charge_g(:,:) = charge_g(:,:) * volume / dble(NG)
+
+    ! Explicitly store `base' substep charge density:
+    if (substep .eq. 1) then
+       allocate(charge_g_base(2,np))
+       charge_g_base(:,:) = charge_g(:,:)
+    end if
 
     ! Work out processor grid dimensions
     ProcessorZ = Nodes/ProcessorY

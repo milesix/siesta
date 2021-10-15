@@ -90,6 +90,7 @@ C     Begin of coordinate relaxation iteration
                call make_small_move()
                call siesta_forces( istep )
                if (substep.eq.1) call init_data_base_step()
+               call init_data_each_step()
             end do
 
             call compute_derivatives() ! calculate derivatives via selected scheme
