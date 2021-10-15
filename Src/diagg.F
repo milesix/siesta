@@ -148,22 +148,6 @@ C  Internal variables .............................................
          call die("Spin size mismatch in diagg")
       endif
 
-
-      ! [#ThermalFlux]
-      if (compute_thermal_flux.and.(substep.eq.1)) then
-         if (iscf.eq.1) then
-      ! Spin 1 for now
-            call re_alloc(H_base,1, nuo, 1, nuotot,
-     $           'H_base', 'diagg')
-            call re_alloc(eo_base, 1, nuo,
-     $           'eo_base', 'diagg')
-            call re_alloc(psi_base,1,nuo,1,nuo,
-     $           'psi_base', 'diagg')
-         endif
-      endif
-      ! [/ThermalFlux]
-
-
 C Solve eigenvalue problem
 
       do ispin = 1,spinor_dim
@@ -174,43 +158,33 @@ C Solve eigenvalue problem
         do io = 1,nuo
           Saux(:,io) = 0._dp
           Haux(:,io) = 0._dp
-          if (compute_thermal_flux.and.(substep.eq.1)) then
-             H_base(io,:) = 0.0_dp
-          end if
           do j = 1,numh(io)
             ind = listhptr(io) + j
             jo = listh(ind)
             jo = MODP(jo,nuotot)   ! To allow auxiliary supercells
             Saux(jo,io) = Saux(jo,io) + S(ind)
             Haux(jo,io) = Haux(jo,io) + H(ind,ispin)
-            if (compute_thermal_flux.and.(substep.eq.1)) then
-               H_base(io,jo) = H_base(io,jo) + H(ind,ispin)
-            end if
           enddo
         enddo
 !$OMP end parallel do
         call timer( 'r-buildHS', 2 )
 
-c$$$        ! [#ThermalFlux]
-c$$$        if (compute_thermal_flux.and.(substep.eq.1)) then
-c$$$           if (iscf.eq.1) then
-c$$$              ! Spin 1 for now
-c$$$              call re_alloc(H_base,1, nuo, 1, nuotot,
-c$$$     $             'H_base', 'diagg')
-c$$$              call re_alloc(eo_base, 1, nuo,
-c$$$     $             'eo_base', 'diagg')
-c$$$              call re_alloc(psi_base,1,nuo,1,nuo,
-c$$$     $             'psi_base', 'diagg')
-c$$$           endif
-c$$$
-c$$$c$$$           H_base(:,:) = Haux(:,:)
-c$$$           do io = 1,nuo
-c$$$              do jo = 1,nuotot
-c$$$                 H_base(io,jo) = Haux(jo,io)
-c$$$              end do
-c$$$           end do
-c$$$        endif
-c$$$        ! [/ThermalFlux]
+        ! [#ThermalFlux]
+        if (compute_thermal_flux.and.(substep.eq.1)) then
+           if (iscf.eq.1) then
+              ! Spin 1 for now
+              call re_alloc(H_base,1, nuo, 1, nuotot,
+     $             'H_base', 'diagg')
+              call re_alloc(eo_base, 1, nuo,
+     $             'eo_base', 'diagg')
+              call re_alloc(psi_base,1,nuo,1,nuo,
+     $             'psi_base', 'diagg')
+           endif
+
+           ! Store Hamiltonian at `base' (first) substep:
+           H_base(:,:) = Haux(:,:) !NOTE: maybe chek if it is the last scf?
+        endif
+        ! [/ThermalFlux]
 
         call rdiag( Haux, Saux, nuotot, nuo, nuotot,
      $       eo(1,ispin),
@@ -222,15 +196,8 @@ c$$$        ! [/ThermalFlux]
         if (compute_thermal_flux.and.(substep.eq.1)) then
            eo_base(:) = eo(:,1)
            psi_base(:,:) = psi(:,:,1)
-
-c$$$           do io = 1,nuo
-c$$$              do jo = 1,nuotot
-c$$$                 H_base(io,jo) = Haux(jo,io)
-c$$$              end do
-c$$$           end do
         end if
         ! [/ThermalFlux]
-
 
 C Check error flag and take appropriate action
         if (ierror.gt.0) then
@@ -241,18 +208,12 @@ C Repeat diagonalisation with increased memory to handle clustering
           do io = 1,nuo
             Saux(:,io) = 0._dp
             Haux(:,io) = 0._dp
-            if (compute_thermal_flux.and.(substep.eq.1)) then
-               H_base(io,:) = 0.0_dp
-            end if
             do j = 1,numh(io)
               ind = listhptr(io) + j
               jo = listh(ind)
               jo = MODP(jo,nuotot) ! To allow auxiliary supercells
               Saux(jo,io) = Saux(jo,io) + S(ind)
               Haux(jo,io) = Haux(jo,io) + H(ind,ispin)
-              if (compute_thermal_flux.and.(substep.eq.1)) then
-                 H_base(io,jo) = H_base(io,jo) + H(ind,ispin)
-              end if
             enddo
           enddo
 !$OMP end parallel do
@@ -264,12 +225,6 @@ C Repeat diagonalisation with increased memory to handle clustering
           if (compute_thermal_flux.and.(substep.eq.1)) then
              eo_base(:) = eo(:,1)
              psi_base(:,:) = psi(:,:,1)
-
-c$$$             do io = 1,nuo
-c$$$                do jo = 1,nuotot
-c$$$                   H_base(io,jo) = Haux(jo,io)
-c$$$                end do
-c$$$             end do
           end if
           ! [/ThermalFlux]
        endif
