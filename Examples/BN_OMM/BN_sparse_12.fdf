@@ -1,0 +1,56 @@
+NumberOfAtoms 2
+NumberOfSpecies 2
+%block ChemicalSpeciesLabel
+1	5      B
+2	7      N
+%endblock ChemicalSpeciesLabel
+
+PAO.EnergyShift 10 meV
+PAO.BasisSize DZP
+
+BlockSize 13
+
+SolutionMethod BLOMM
+OMM.LongOutput true
+OMM.UseSparse true
+OMM.Use2D true
+OMM.RcLWFInit 4.0 Bohr
+OMM.RcLWF 8.0 Bohr
+OMM.RelTol 1.d-9
+OMM.Eta -5.5 eV
+OMM.ReadCoeffs true
+OMM.WriteCoeffs true
+OMM.BlockSizeC 6
+
+DM.UseSaveDM true
+SCF.Mixer.Method Linear
+SCF.Mixer.Weight 0.1
+DM.Tolerance 1.d-4
+SCF.H.Tolerance 1.d-3 eV
+MeshCutoff 100.0 Ry
+
+MD.TypeOfRun Verlet
+MD.InitialTimeStep 1
+MD.FinalTimeStep 4
+MD.LengthTimeStep 1 fs
+MD.InitialTemperature 300 K
+
+%block LatticeVectors
+  1.000  0.000  0.000
+  0.5  0.866025403784439  0.000
+  0.000  0.000  8.065724164
+%endblock LatticeVectors
+
+AtomicCoordinatesFormat Fractional
+LatticeConstant  2.48014 Ang
+
+%block AtomicCoordinatesAndAtomicSpecies
+ 0.333333333333333  0.333333333333333  0.000000  1
+ 0.666666666666667  0.666666666666667  0.000000  2
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+%block SuperCell
+ 12   0   0
+  0  12   0
+  0   0   1
+%endblock SuperCell
