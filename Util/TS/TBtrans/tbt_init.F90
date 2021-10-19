@@ -51,7 +51,7 @@ subroutine tbt_init()
   use m_tbt_gf
   use m_tbt_save
   use m_tbt_proj
-  use tbt_reinit_m, only: tbt_reinit
+  use tbt_reinit_m, only: tbt_reinit, tbt_parse_command_line
 
   use m_sparsity_handling
 
@@ -76,17 +76,28 @@ subroutine tbt_init()
 #ifdef MPI
 #ifdef _OPENMP
   call MPI_Init_Thread(MPI_Thread_Funneled, it, MPIerror)
-  if ( MPI_Thread_Funneled /= it ) then
-     ! the requested threading level cannot be asserted
-     ! Notify the user
-     write(0,'(a)') '!!! Could not assert funneled threads'
-  end if
 #else
   call MPI_Init( MPIerror )
 #endif
 #endif
-  
+
+  ! Initialize node values
   call parallel_init()
+
+  ! Check for version/help command and quit quickly
+  call tbt_parse_command_line(info=.true.)
+
+#ifdef MPI
+#ifdef _OPENMP
+  if ( MPI_Thread_Funneled /= it ) then
+    ! the requested threading level cannot be asserted
+    ! Notify the user
+    ! We only write this out in case the user did not request
+    ! info or help
+    write(0,'(a)') '!!! Could not assert funneled threads'
+  end if
+#endif
+#endif
 
   ! Initialize the output
   call tbt_init_output(Node == 0)

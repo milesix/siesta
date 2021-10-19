@@ -745,6 +745,9 @@ the BLAS/LAPACK libraries which is the most time-consuming part of
 \siesta\ also requires to be threaded, please see Sec.~\ref{sec:libs}
 for correct linking.
 
+The minimum required version of OpenMP is 3.0
+(internally identified by the YYYYMM date string \shell{200805}).
+
 Subsequently one may run \siesta\ using OpenMP through the environment
 variable \shell{OMP\_NUM\_THREADS} which determine the number of
 threads/cores used in the execution.
@@ -1385,9 +1388,10 @@ Option strings that contain spaces need to either be quoted
 or have the spaces replaced by a colon (\shell{:}) or by
 an equal sign (\shell{=}).
 \item
-If the input file is not piped in, it must be given as the last argument:
+If the input file is not piped in, it can be given as an argument:
 \begin{shellexample}
   siesta -L Hello -V 0.25:eV RUN.fdf > RUN.out
+  siesta -L Hello RUN.fdf -V 0.25:eV > RUN.out
 \end{shellexample}
 \end{itemize}
 
@@ -1435,12 +1439,14 @@ The list of available flags and options is:
   \fdfindex*{Command line options:-V}%
   \fdfoverwrite{TS!Voltage}
   Specify the bias for the current \tsiesta\ run.
-  Example: any of the following two commands set the applied bias to
+  If no units are specified, $\mathrm{eV}$ are assumed.
+  Example: any of the following three commands set the applied bias to
   $0.25\,\mathrm{eV}$:
 
   \begin{shellexample}
   siesta -V 0.25:eV
   siesta -V "0.25 eV"
+  siesta -V 0.25
   \end{shellexample}
 
   \note This is equivalent to specifying \fdf{TS!Voltage} in the input
@@ -5005,6 +5011,40 @@ $\RRes[i] = \Res[i] - \Res[i-1]$.
   \end{equation}
   For details regarding the other methods please see
   \fdf{SCF.Mixer!Method}.
+
+  Convergence of a system heavily depends on:
+  \begin{description}
+    \item[\fdf{SCF.Mixer!Weight}]
+
+    A high value retains much of the output solution, which may result
+    in leaving the convergence basin. However, when close to the
+    solution a high value might decrease needed SCF steps.
+
+    A low value only uses very little of the output solution. This may
+    result in high number of SCF steps but is more likely to
+    converge since it becomes harder for the solution to leave the
+    convergence basin.
+
+    This value is heavily system dependent.
+
+    \item[\fdf{SCF.Mixer!Method}]
+
+    The linear mixing is the only method that does not make use of 
+    prior steps, for hard to converge systems it should only be tried
+    with very low mixing weights.
+
+    The choice of method may result in some reduction of SCF steps,
+    but experimentation with the mixing weight is preferred as a first
+    resort.
+
+    \item[\fdf{SCF.Mixer!History}]
+
+    Number of previous steps to use for the mixing. A too low value
+    (say $2$ -- $6$) might change the convergence properties a
+    lot. While two different high values might not change the
+    convergence properties significantly, if at all.
+
+  \end{description}
 
   \note the older keyword \fdf{DM!MixingWeight} is used if this key is
   not found in the input.
@@ -14426,11 +14466,15 @@ The bias contour is similarly defined as the equilibrium
 contours. Please use the \program{Util/TS/tselecs.sh} as a means to
 create default input blocks.
 
-\begin{fdfentry}{TS!Contours.nEq!Eta}[energy]<$0\,\mathrm{eV}$>
+\begin{fdfentry}{TS!Contours.nEq!Eta}[energy]<$\operatorname{min}[\eta_{\mathfrak e}]/100$>
+  \fdfdepend{TS!Elecs!Eta}%
 
-  The imaginary part ($\eta$) of the device states. Generally this is
-  not necessary to define as the imaginary part naturally arises from
-  the self-energies (where $\eta>0$).
+  The imaginary part ($\eta$) of the device states. While this may be
+  set to $0$ for most systems it defaults to the minimum $\eta$ value
+  for the electrodes ($\operatorname{min}[\eta_{\mathfrak
+      e}]/100$). This ensures that the device broadening is always
+  smaller than the electrodes while allowing broadening of localized
+  states.
 
 \end{fdfentry}
 

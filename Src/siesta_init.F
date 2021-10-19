@@ -137,7 +137,7 @@ C     Initialise MPI and set processor number
         call MPItrace_shutdown( )
 #endif
       endif ! (.not.initialized)
-      
+
       call MPI_Comm_Rank( MPI_Comm_World, Node, MPIerror )
 #endif
 
