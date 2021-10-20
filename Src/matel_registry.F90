@@ -82,8 +82,15 @@ module m_matel_registry
   public :: register_in_rf_pool, register_in_tf_pool
   public :: evaluate, rcut, lcut
   public :: evaluate_x, evaluate_y, evaluate_z
-  public :: show_pool
 
+  ! Multiple versions using module indexes
+  integer, public, save :: idx_r, idx_grad
+  public :: evaluate_grad, evaluate_r_grad
+
+  public :: show_pool
+  public :: get_nfuncs
+
+  
 CONTAINS
 
   function valid(gindex) result (ok)
@@ -92,6 +99,11 @@ CONTAINS
 
     ok = (gindex > 0 .AND. gindex <= nfuncs)
   end function valid
+
+  function get_nfuncs( ) result (nf)
+    integer  :: nf
+    nf = nfuncs
+  end function get_nfuncs
 
   !> Extends the size of the pool if needed
   subroutine check_size_of_pool(nfuncs)
@@ -253,6 +265,54 @@ CONTAINS
        call die("Invalid gindex")
     endif
   end subroutine evaluate
+!--------------------------------------------------------------
+  subroutine evaluate_grad(gindex,r,f,grad)
+  use trialorbitalclass, only: gettrialwavefunction
+  
+    integer, intent(in)    :: gindex
+    real(dp), intent(in)   :: r(3)
+    real(dp), intent(out)  :: f
+    real(dp), intent(out)  :: grad(3)
+
+    real(dp) :: f_tmp
+    
+    if (valid(gindex)) then
+       if (associated(matel_pool(gindex)%rf)) then
+          call evaluate_ext_radfunc(matel_pool(gindex)%rf,r,f_tmp,grad)
+          f = grad(idx_grad)
+          grad = 0.0_dp
+       else if (associated(matel_pool(gindex)%tf)) then
+          call die("evaluate_grad works only for radfuncs")
+       endif
+    else
+       call die("Invalid gindex")
+    endif
+  end subroutine evaluate_grad
+
+!--------------------------------------------------------------
+  subroutine evaluate_r_grad(gindex,r,f,grad)
+  use trialorbitalclass, only: gettrialwavefunction
+
+    integer, intent(in)    :: gindex
+    real(dp), intent(in)   :: r(3)
+    real(dp), intent(out)  :: f
+    real(dp), intent(out)  :: grad(3)
+
+    real(dp) :: f_tmp
+    
+    if (valid(gindex)) then
+       if (associated(matel_pool(gindex)%rf)) then
+          call evaluate_ext_radfunc(matel_pool(gindex)%rf,r,f_tmp,grad)
+          f = grad(idx_grad) * r(idx_r)
+       else if (associated(matel_pool(gindex)%tf)) then
+          call die("evaluate_r_grad works only for radfuncs")
+       endif
+    else
+       call die("Invalid gindex")
+    endif
+  end subroutine evaluate_r_grad
+
+  !--------------------------------------------------------------
 
   SUBROUTINE evaluate_x(gindex,r,xphi,grxphi)
     !      Calculates x*phiatm and its gradient

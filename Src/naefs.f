@@ -43,7 +43,7 @@ C *********************************************************************
       use atmfuncs,  only: izofis, vna_gindex
       use neighbour, only: jna=>jan, xij, mneighb,
      &                     reset_neighbour_arrays
-      use m_new_matel,   only : new_matel
+      use matel_mod, only: new_matel
 
       implicit none
 

@@ -88,10 +88,11 @@ subroutine amn( ispin )
                                                     !    global index to the 
                                                     !    trial projection
                                                     !    functions
-  use m_new_matel,        only: new_matel           ! New MATEL implementation 
+  use matel_mod,          only: new_matel           ! New MATEL implementation 
                                                     !   with the global indices 
                                                     !   of the radial functions 
                                                     !   as inputs
+  use matel_mod,          only: init_matel_wannier  ! Table initializer
   use atmfuncs,           only: orb_gindex          ! Subroutine that gives
                                                     !   the global index of an
                                                     !   atomic orbital
@@ -300,6 +301,7 @@ kpoints:                 &
 !   all the bands...  In this way we will save the globalization of
 !   band data.
 !
+    call init_matel_wannier( numproj )
 #ifdef MPI
     do iproj = 1+Node, numproj, Nodes
 #else
