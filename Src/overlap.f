@@ -14,7 +14,7 @@
       use neighbour,     only : jna=>jan, r2ij, xij, mneighb,
      &                          reset_neighbour_arrays
       use alloc,         only : re_alloc, de_alloc
-      use m_new_matel,   only : new_matel
+      use matel_mod,     only : new_matel
       use m_iodm_old,    only : write_dm
       use m_matio,       only : write_mat
       use atomlist, only: no_l

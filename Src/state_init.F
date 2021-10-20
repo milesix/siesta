@@ -126,6 +126,10 @@
 
       use m_handle_sparse, only: correct_supercell_SpD
       use m_restruct_SpData2D, only: restruct_dSpData2D
+      use matel_mod, only : init_matel_main_tables
+!!#ifdef SIESTA__THERMAL_FLUX
+!!      use matel_mod, only : init_matel_orb_XYZ_orb
+!!#endif
 
       implicit none
 
@@ -663,7 +667,11 @@
      &      show_warning = .false.)
       end do
 
-      
+      ! Prepare MATEL
+      call init_matel_main_tables( )
+!!#ifdef SIESTA__THERMAL_FLUX
+!!!      if ( virtual_md_Jks ) call init_matel_orb_XYZ_orb( )
+!!#endif
 !     Find overlap matrix 
       if ( fdf_get('Save.Overlap.Gradient', .false.) ) then
         write(oname,"(a,i0)") "gradS at geom step ", istep

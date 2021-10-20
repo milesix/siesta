@@ -80,7 +80,7 @@ C *********************************************************************
       use sys,          only : die
       use neighbour,    only : jna=>jan, xij, r2ij
       use neighbour,    only : mneighb, reset_neighbour_arrays
-      use m_new_matel,  only : new_matel
+      use matel_mod,    only : new_matel
 
       implicit none
 

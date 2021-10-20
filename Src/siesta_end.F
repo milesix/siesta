@@ -66,7 +66,6 @@
       use m_cite,          only : announce_citations
       use version_info,    only : version_str
       use atomlist,        only : reset_atomlists
-      use m_new_matel,     only : new_MATEL
       use listsc_module,   only : LISTSC_RESET
 
       implicit none
@@ -92,9 +91,9 @@
 #endif
 
 !     Free allocated memory
-      ! Reset matrix element tables
-      R12 = 0._dp
-      call new_MATEL('S', 0, 0, R12, S12, DSDR)
+! Reset matrix element tables  (Not implemented yet)
+!!     call reset_matel_tables()
+
       call LISTSC_reset()
       call reset_atomlists()
       call resetSparseMatrices( )
