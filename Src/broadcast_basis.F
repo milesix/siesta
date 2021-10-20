@@ -38,7 +38,7 @@
 #else
       integer MPIerror
 
-      integer is, i
+      integer is, i, l
       type(species_info), pointer  :: spp
       type(rad_func), pointer      :: func
 
@@ -97,8 +97,6 @@
      $                 0,MPI_Comm_World,MPIerror)
         call MPI_Bcast(spp%orbnl_pop,maxn_orbnl,MPI_double_precision,
      $                 0,MPI_Comm_World,MPIerror)
-
-
 
         call MPI_Bcast(spp%n_pjnl,1,MPI_integer,
      $                 0,MPI_Comm_World,MPIerror)
@@ -175,7 +173,26 @@
            allocate(spp%orbnl(spp%n_orbnl))
            allocate(spp%pjnl(spp%n_pjnl))
            allocate(spp%pjldau(spp%n_pjldaunl))
+           allocate(spp%ldau_so_integrals(spp%n_pjldaunl))
         endif
+
+        do i=1,spp%n_pjldaunl
+          l = spp%pjldaunl_l(i)
+          if (Node.ne.0) then
+            allocate(spp%ldau_so_integrals(i)%Slater_F(0:2*l))
+            allocate(spp%ldau_so_integrals(i)%vee_4center_integrals(
+     $               2 * l + 1,
+     $               2 * l + 1,
+     $               2 * l + 1,
+     $               2 * l + 1  ) )
+          endif 
+          call MPI_Bcast(spp%ldau_so_integrals(i)%Slater_F,2*l+1,
+     $                 MPI_double_precision,0,MPI_Comm_World,MPIerror)
+          call MPI_Bcast(
+     $       spp%ldau_so_integrals(i)%vee_4center_integrals(1,1,1,1),
+     $       (2*l+1)**4,
+     $       MPI_double_precision,0,MPI_Comm_World,MPIerror)
+        enddo 
         
         do i=1,spp%n_orbnl
            func=>spp%orbnl(i)
