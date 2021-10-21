@@ -118,7 +118,7 @@ CONTAINS
 #ifdef MPI 
               call MPI_Bcast(varaux,1,MPI_double_complex,0,MPI_Comm_World,MPIerror)
 #endif
-              call m_set_element(wavef_rw(ik,ispin),i,j,varaux,complx_0,'lap')
+              call m_set_element(wavef_rw(ik,ispin),i,j,varaux,complx_0,label='lap')
             end do
           end do
         enddo
