@@ -1,25 +1,25 @@
-Siesta Version  : master-post-4.1-250
+Siesta Version  : trunk-787
 Architecture    : x86_64-unknown-linux-gnu--Gfortran
-Compiler version: GNU Fortran (Ubuntu 5.4.0-6ubuntu1~16.04.12) 5.4.0 20160609
-Compiler flags  : /usr/local/bin/mpif90 -O2
+Compiler version: GNU Fortran (GCC) 7.3.0
+Compiler flags  : mpif90 -O2 -fcheck=all
 PP flags        : -DMPI -DFC_HAVE_FLUSH -DFC_HAVE_ABORT -DMPI_TIMING -DHAVE_MS -DHAVE_DBCSR -DC1 -DHAVE_PSPBLAS -DHAVE_MPI -DHAVE_LAPACK -DHAVE_SCALAPACK
-Libraries       :  -L/home/ilebedeva/Source/omm-bundle/libOMM/src -lOMM -L/home/ilebedeva/Sourcce/omm-bundle/MatrixSwitch/src -lMatrixSwitch -L/home/ilebedeva/Source/dbcsr-1.0.0/install/lib -ldbcsr -L/home/ilebedeva/Source/omm-bundle/pspBLAS/src -lpspBLAS /software/scalapack-2.0.2_gfortran/lib/libscalapack.a /software/lapack-3.6.1_gfortran/lib/liblapack.a /software/scalapack-2.0.2_gfortran/lib/libscalapack.a /software/BLAS-3.6.0_gfortran/lib/blas_LINUX.a
-Directory       : /home/ilebedeva/Source/siesta/Obj/Tests/h2o_blomm/work
+Libraries       :  -L/home/ilebedeva/Source/omm-bundle-2/libOMM/src -lOMM -L/home/ilebedeva/Souurce/omm-bundle-2/MatrixSwitch/src -lMatrixSwitch -L/home/ilebedeva/Source/dbcsr-2.1.0/build/src -ldbcsr -L/home/ilebedeva/Source/omm-bundle-2/pspBLAS/src -lpspBLAS /software/scalapack-2.0.2/lib/libscalapack.a /software/lapack-3.8.0/lib/liblapack.a /software/scalapack-2.0.2/lib/libscalapack.a /software/BLAS-3.8.0/lib/blas_LINUX.a
+Directory       : /home/ilebedeva/Source/siesta-2/Obj/Tests/h2o_blomm_sparse/work
 PARALLEL version
 
 * Running on 4 nodes in parallel
->> Start of run:  16-NOV-2020  14:34:09
+>> Start of run:  22-OCT-2021  14:01:00
 
                            ***********************       
                            *  WELCOME TO SIESTA  *       
                            ***********************       
 
-reinit: Reading from ../h2o_blomm.fdf
+reinit: Reading from ../h2o_blomm_sparse.fdf
 
 reinit: -----------------------------------------------------------------------
 reinit: System Name: Water molecule
 reinit: -----------------------------------------------------------------------
-reinit: System Label: h2o
+reinit: System Label: h2o_blomm_sparse
 reinit: -----------------------------------------------------------------------
 
 initatom: Reading input for the pseudopotentials and atomic orbitals ----------
@@ -356,11 +356,11 @@ redata: DM Mixing Weight for Kicks                  =     0.5000
 redata: Require Harris convergence for SCF          =   F
 redata: Harris energy tolerance for SCF             =     0.000100 eV
 redata: Require DM convergence for SCF              =   T
-redata: DM tolerance for SCF                        =     0.000100
+redata: DM tolerance for SCF                        =     0.000010
 redata: Require EDM convergence for SCF             =   F
 redata: EDM tolerance for SCF                       =     0.001000 eV
 redata: Require H convergence for SCF               =   T
-redata: Hamiltonian tolerance for SCF               =     0.001000 eV
+redata: Hamiltonian tolerance for SCF               =     0.000100 eV
 redata: Require (free) Energy convergence for SCF   =   F
 redata: (free) Energy tolerance for SCF             =     0.000100 eV
 redata: Using Saved Data (generic)                  =   F
@@ -480,188 +480,209 @@ Setting up quadratic distribution...
 ExtMesh (bp) on 0 =    36 x    32 x    36 =       41472
 PhiOnMesh: Number of (b)points on node 0 =                  576
 PhiOnMesh: nlist on node 0 =                 3687
-hdim =      23    N_occ =       4    BlockSize =    6    BlockSize_c =    6
+hdim =             23    N_occ =              4    BlockSize =       6
 sparse OMM with libOMM
 rmax =    20.5028877
 rcoor =     8.0000000
+dn  =      100
 C_min CSR matrix created
 C_min CSR matrix converted to DBCSR
-C occupation = 1.00000000  WF_dim =        6
-CSR matrix created
-e_min =    -4.5071492
+C occupation (1)= 1.00000000
+WF_dim =               6   BlockSizeC =        1
+e_min =           -4.8246606
 
 siesta: Program's energy decomposition (eV):
-siesta: Ebs     =       -86.524213
+siesta: Ebs     =       -86.528113
 siesta: Eions   =       815.854478
 siesta: Ena     =       175.155695
-siesta: Ekin    =       370.754421
-siesta: Enl            -67.181970
-siesta: Eso              0.000000
+siesta: Ekin    =       370.749974
+siesta: Enl     =       -67.180962
+siesta: Eso     =         0.000000
 siesta: Eldau   =         0.000000
-siesta: DEna    =       -13.608467
-siesta: DUscf   =         1.705789
+siesta: DEna    =       -13.605730
+siesta: DUscf   =         1.705522
 siesta: DUext   =         0.000000
-siesta: Exc     =      -116.213704
+siesta: Exc     =      -116.212962
 siesta: eta*DQ  =         0.000000
 siesta: Emadel  =         0.000000
 siesta: Emeta   =         0.000000
 siesta: Emolmec =         0.000000
 siesta: Ekinion =         0.000000
-siesta: Eharris =      -467.642783
-siesta: Etot    =      -465.242715
-siesta: FreeEng =      -465.242715
+siesta: Eharris =      -467.643462
+siesta: Etot    =      -465.242942
+siesta: FreeEng =      -465.242942
 
 siesta: iscf =    1
-Eharris(eV) =       -467.6428  E_KS(eV) =       -465.2427  dDmax =   1.439348
+Eharris(eV) =       -467.6435  E_KS(eV) =       -465.2429  dDmax =   1.439182
 
-timer: Routine,Calls,Time,% = IterSCF        1       0.308  14.47
-e_min =    -4.1788136
+timer: Routine,Calls,Time,% = IterSCF        1       0.639  37.46
+e_min =           -4.4963579
 
 siesta: iscf =    2
-Eharris(eV) =       -466.1235  E_KS(eV) =       -465.7624  dDmax =   0.046220
+Eharris(eV) =       -466.1234  E_KS(eV) =       -465.7624  dDmax =   0.046241
 
-e_min =    -3.9415220
+e_min =           -4.2589892
 
 siesta: iscf =    3
-Eharris(eV) =       -465.8482  E_KS(eV) =       -465.8349  dDmax =   0.024743
+Eharris(eV) =       -465.8482  E_KS(eV) =       -465.8349  dDmax =   0.024823
 
-e_min =    -3.9151906
+e_min =           -4.2326938
 
 siesta: iscf =    4
-Eharris(eV) =       -465.8400  E_KS(eV) =       -465.8376  dDmax =   0.011378
+Eharris(eV) =       -465.8400  E_KS(eV) =       -465.8376  dDmax =   0.010802
 
-e_min =    -3.8447061
+e_min =           -4.1621774
 
 siesta: iscf =    5
-Eharris(eV) =       -465.8396  E_KS(eV) =       -465.8390  dDmax =   0.025183
+Eharris(eV) =       -465.8396  E_KS(eV) =       -465.8390  dDmax =   0.023240
 
-e_min =    -3.8448495
+e_min =           -4.1623639
 
 siesta: iscf =    6
-Eharris(eV) =       -465.8392  E_KS(eV) =       -465.8391  dDmax =   0.002547
+Eharris(eV) =       -465.8392  E_KS(eV) =       -465.8391  dDmax =   0.001517
 
-e_min =    -3.8456749
+e_min =           -4.1632045
 
 siesta: iscf =    7
-Eharris(eV) =       -465.8392  E_KS(eV) =       -465.8391  dDmax =   0.000227
+Eharris(eV) =       -465.8392  E_KS(eV) =       -465.8391  dDmax =   0.001033
 
-e_min =    -3.8467291
+e_min =           -4.1642787
 
 siesta: iscf =    8
-Eharris(eV) =       -465.8392  E_KS(eV) =       -465.8391  dDmax =   0.000130
+Eharris(eV) =       -465.8392  E_KS(eV) =       -465.8391  dDmax =   0.000124
 
-e_min =    -3.8482381
+e_min =           -4.1659946
 
 siesta: iscf =    9
-Eharris(eV) =       -465.8391  E_KS(eV) =       -465.8391  dDmax =   0.000200
+Eharris(eV) =       -465.8392  E_KS(eV) =       -465.8391  dDmax =   0.000284
 
-e_min =    -3.8487519
+e_min =           -4.1663516
 
 siesta: iscf =   10
-Eharris(eV) =       -465.8391  E_KS(eV) =       -465.8391  dDmax =   0.000125
+Eharris(eV) =       -465.8391  E_KS(eV) =       -465.8391  dDmax =   0.000002
 
-e_min =    -3.8489415
+e_min =           -4.1667540
 
 siesta: iscf =   11
-Eharris(eV) =       -465.8391  E_KS(eV) =       -465.8391  dDmax =   0.000006
+Eharris(eV) =       -465.8392  E_KS(eV) =       -465.8392  dDmax =   0.000076
 
-e_min =    -3.8491795
+e_min =           -4.1666608
 
 siesta: iscf =   12
-Eharris(eV) =       -465.8391  E_KS(eV) =       -465.8391  dDmax =   0.000008
+Eharris(eV) =       -465.8392  E_KS(eV) =       -465.8392  dDmax =   0.000003
+
+e_min =           -4.1665563
+
+siesta: iscf =   13
+Eharris(eV) =       -465.8392  E_KS(eV) =       -465.8392  dDmax =   0.000016
+
+e_min =           -4.1665885
+
+siesta: iscf =   14
+Eharris(eV) =       -465.8392  E_KS(eV) =       -465.8392  dDmax =   0.000011
+
+e_min =           -4.1666092
+
+siesta: iscf =   15
+Eharris(eV) =       -465.8392  E_KS(eV) =       -465.8392  dDmax =   0.000001
+
+e_min =           -4.1666344
+
+siesta: iscf =   16
+Eharris(eV) =       -465.8392  E_KS(eV) =       -465.8392  dDmax =   0.000004
 
 
 SCF Convergence by DM+H criterion
-max |DM_out - DM_in|         :     0.0000083388
-max |H_out - H_in|      (eV) :     0.0003443498
-SCF cycle converged after 12 iterations
+max |DM_out - DM_in|         :     0.0000037673
+max |H_out - H_in|      (eV) :     0.0000832459
+SCF cycle converged after 16 iterations
 
 Using DM_out to compute the final energy and forces
 No. of atoms with KB's overlaping orbs in proc 0. Max # of overlaps:       3      23
 
-siesta: E_KS(eV) =             -465.8391
+siesta: E_KS(eV) =             -465.8392
 
-siesta: E_KS - E_eggbox =      -465.8391
+siesta: E_KS - E_eggbox =      -465.8392
 
 siesta: Atomic forces (eV/Ang):
 ----------------------------------------
-   Tot    0.000001    0.055627   -0.000000
+   Tot   -0.000000    0.055924    0.000000
 ----------------------------------------
-   Max    0.689831
-   Res    0.126395    sqrt( Sum f_i^2 / 3N )
+   Max    0.690421
+   Res    0.126516    sqrt( Sum f_i^2 / 3N )
 ----------------------------------------
-   Max    0.689831    constrained
+   Max    0.690421    constrained
 
-Stress-tensor-Voigt (kbar):      -19.91       -3.50       22.44       -0.00       -0.00       -0.00
-(Free)E + p*V (eV/cell)     -465.7912
-Target enthalpy (eV/cell)     -465.8391
+Stress-tensor-Voigt (kbar):      -19.92       -3.51       22.43        0.00       -0.00       -0.00
+(Free)E + p*V (eV/cell)     -465.7905
+Target enthalpy (eV/cell)     -465.8392
 
 siesta: Program's energy decomposition (eV):
-siesta: Ebs     =      -104.740419
+siesta: Ebs     =      -104.740255
 siesta: Eions   =       815.854478
 siesta: Ena     =       175.155695
-siesta: Ekin    =       350.796715
-siesta: Enl            -61.964321
-siesta: Eso              0.000000
+siesta: Ekin    =       350.792749
+siesta: Enl     =       -61.962554
+siesta: Eso     =         0.000000
 siesta: Eldau   =         0.000000
-siesta: DEna    =        -1.785034
-siesta: DUscf   =         0.727328
+siesta: DEna    =        -1.783127
+siesta: DUscf   =         0.727409
 siesta: DUext   =         0.000000
-siesta: Exc     =      -112.915052
+siesta: Exc     =      -112.914844
 siesta: eta*DQ  =         0.000000
 siesta: Emadel  =         0.000000
 siesta: Emeta   =         0.000000
 siesta: Emolmec =         0.000000
 siesta: Ekinion =         0.000000
-siesta: Eharris =      -465.839149
-siesta: Etot    =      -465.839149
-siesta: FreeEng =      -465.839149
+siesta: Eharris =      -465.839150
+siesta: Etot    =      -465.839150
+siesta: FreeEng =      -465.839150
 
 siesta: Final energy (eV):
-siesta:  Band Struct. =    -104.740419
-siesta:       Kinetic =     350.796715
-siesta:       Hartree =     382.623880
+siesta:  Band Struct. =    -104.740255
+siesta:       Kinetic =     350.792749
+siesta:       Hartree =     382.623975
 siesta:       Eldau   =       0.000000
 siesta:       Eso     =       0.000000
 siesta:    Ext. field =       0.000000
-siesta:   Exch.-corr. =    -112.915052
-siesta:  Ion-electron =   -1072.840191
+siesta:   Exch.-corr. =    -112.914844
+siesta:  Ion-electron =   -1072.836529
 siesta:       Ion-ion =     -13.504501
 siesta:       Ekinion =       0.000000
-siesta:         Total =    -465.839149
+siesta:         Total =    -465.839150
 siesta:         Fermi =       0.000000
 
 siesta: Atomic forces (eV/Ang):
-siesta:      1   -0.000006   -0.458443   -0.000000
-siesta:      2    0.689831    0.257038    0.000001
-siesta:      3   -0.689825    0.257032   -0.000000
+siesta:      1    0.000030   -0.458961   -0.000000
+siesta:      2    0.690391    0.257429    0.000000
+siesta:      3   -0.690421    0.257456    0.000000
 siesta: ----------------------------------------
-siesta:    Tot    0.000001    0.055627   -0.000000
+siesta:    Tot   -0.000000    0.055924    0.000000
 
 siesta: Stress tensor (static) (eV/Ang**3):
-siesta:    -0.012428   -0.000000   -0.000000
-siesta:    -0.000000   -0.002186   -0.000000
-siesta:    -0.000000   -0.000000    0.014003
+siesta:    -0.012432    0.000000   -0.000000
+siesta:     0.000000   -0.002188   -0.000000
+siesta:    -0.000000   -0.000000    0.014000
 
 siesta: Cell volume =        235.378012 Ang**3
 
 siesta: Pressure (static):
 siesta:                Solid            Molecule  Units
-siesta:           0.00000222         -0.00001820  Ry/Bohr**3
-siesta:           0.00020381         -0.00167106  eV/Ang**3
-siesta:           0.32655069         -2.67736140  kBar
-(Free)E+ p_basis*V_orbitals  =        -465.253982
-(Free)Eharris+ p_basis*V_orbitals  =        -465.253982
+siesta:           0.00000225         -0.00001819  Ry/Bohr**3
+siesta:           0.00020682         -0.00166980  eV/Ang**3
+siesta:           0.33137191         -2.67534674  kBar
+(Free)E+ p_basis*V_orbitals  =        -465.253983
+(Free)Eharris+ p_basis*V_orbitals  =        -465.253983
 
-siesta: Electric dipole (a.u.)  =    0.000000    0.558077    0.000000
-siesta: Electric dipole (Debye) =    0.000000    1.418491    0.000000
+siesta: Electric dipole (a.u.)  =    0.000000    0.558210    0.000000
+siesta: Electric dipole (Debye) =    0.000000    1.418830    0.000000
 
-cite: Please see "h2o.bib" for an exhaustive BiBTeX file.
+cite: Please see "h2o_blomm_sparse.bib" for an exhaustive BiBTeX file.
 cite: This calculation has made use of the following articles.
 cite: Articles are encouraged to be cited in a published work.
         Primary SIESTA paper
           DOI: www.doi.org/10.1088/0953-8984/14/11/302                                     
 
 
->> End of run:  16-NOV-2020  14:34:11
+>> End of run:  22-OCT-2021  14:01:03
 Job completed
