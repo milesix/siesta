@@ -201,6 +201,11 @@
         if ( spin%SO ) then
           H_ldau_so => val(H_ldau_so_2D)
           call ldau_so_hamil( S, H_ldau_so )
+#ifdef MPI
+          ! Global reduction of energy terms
+          call globalize_sum(E_ldau_so,buffer1)
+          E_ldau_so = buffer1
+#endif
         else
           H_ldau => val(H_ldau_2D)
           call hubbard_term(scell, na_u, na_s, isa, xa, indxua,

@@ -379,7 +379,7 @@
           call cmlAddProperty(xf=mainXML, value=Enl/eV, 
      .         units='siestaUnits:eV', 
      .         dictref='siesta:Enl', fmt='r6')
-          call cmlAddProperty(xf=mainXML, value=Eldau/eV,
+          call cmlAddProperty(xf=mainXML, value=Eldau_write/eV,
      .         units='siestaUnits:eV',
      .         dictref='siesta:Eldau', fmt='r6')
           call cmlAddProperty(xf=mainXML, value=DEna/eV, 

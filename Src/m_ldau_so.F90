@@ -221,6 +221,7 @@ module m_ldau_so
                                       !   LDA+U projectors on a 
                                       !   given atom
                                       !   without including "m" copies
+     integer, save :: maxnzeta        ! Maximum number of zetas
      integer :: ka                    ! Counter for loop on atoms
      integer :: ish                   ! Counter for loop on species
      integer :: iproj                 ! Counter for loop on projector
@@ -262,7 +263,6 @@ module m_ldau_so
      integer :: m_qn_neig             ! (Real) orbital's magnetic quantum number
      integer :: m_qn_2neig            ! (Real) orbital's magnetic quantum number
      integer :: m_qn_3neig            ! (Real) orbital's magnetic quantum number
-     integer :: maxnzeta              ! Maximum number of zetas
      integer :: icounter              ! 
      logical :: polarized             ! Is this a polarization orbital?
      character(len=32) :: orb_sym     ! Name of orbital's angular symmetry
@@ -275,7 +275,10 @@ module m_ldau_so
      real(dp) :: J                    ! Value of J
      real(dp) :: direct_int           ! Direct four center integrals
      real(dp) :: fock_int             ! Fock (exchange) four center integrals
+     real(dp) :: number_corr_elec_loc ! Number of correlated electrons
+                                      !   in the local node
      real(dp) :: number_corr_elec     ! Number of correlated electrons
+                                      !   sum over all nodes
 
      real(dp) :: E_correc_dc 
      complex(dp), parameter :: imag = cmplx( 0.0_dp, 1.0_dp, kind=dp )
@@ -294,6 +297,7 @@ module m_ldau_so
      complex(dp) ::  H_ldau_so_Hubbard(maxnh,4)
      complex(dp) ::  H_ldau_so_dc(maxnh,4)
      complex(dp) ::  H_Zeeman(maxnh,4)
+     complex(dp) ::  magnetic_loc(3)
      complex(dp) ::  magnetic(3)
 
 #ifdef MPI
@@ -305,7 +309,7 @@ module m_ldau_so
 
 
 !    Initialization and allocation of matrices
-     firstime = .true. 
+!     firstime = .true. 
      if( firstime ) then
 
 !      Find maximum number of LDA+U projectors on a given atom
@@ -319,8 +323,8 @@ module m_ldau_so
 !      Allocate the number of zeta functions in the correlated shell
        if( allocated(nzeta) ) deallocate(nzeta)
        allocate( nzeta(na_u,maxldau) )
-       nzeta    = 0
-       maxnzeta = 0
+       nzeta(:,:) = 0
+       maxnzeta   = 0
 
 !      Find maximum number of zetas on the correlated shell
        do ka = 1, na_u
@@ -350,7 +354,6 @@ module m_ldau_so
 !          of the correlated shell
 !          We are going to detect how many zetas of the atomic orbitals
 !          do we have for this shell
-
            do ishell = 1, spp%n_orbnl    ! Loop on atomic orbitals
              if( (spp%orbnl_n(ishell) .eq. spp%pjldau_n(iproj) ) .and.      &
  &               (spp%orbnl_l(ishell) .eq. spp%pjldau_l(iproj) ) ) then
@@ -384,23 +387,6 @@ module m_ldau_so
 ! &            Node, Nodes, ka, iproj, nzeta(ka,iproj)  
 !         enddo 
 !       enddo   
-!!      End debugging
-
-       do ka = 1, na_u
-         is  = isa(ka)
-         spp  => species(is)
-         do iproj = 1, spp%n_pjldaunl   ! Number of LDA+U projectors
-                                        !   not counting the "m copies"
-           ldauintegrals => spp%ldau_so_integrals(iproj)
-           l = spp%pjldaunl_l(iproj)
-
-           nullify( ldauintegrals%Dscf_correlated )
-           allocate(ldauintegrals%Dscf_correlated( (2*l+1)**2 * maxnzeta**2, 8))
-           ldauintegrals%Dscf_correlated = 0.0_dp
-         enddo 
-       enddo 
-
-!! For debugging
 !       do ka = 1, na_u
 !         is  = isa(ka)
 !         spp  => species(is)
@@ -429,127 +415,141 @@ module m_ldau_so
 !         enddo 
 !       enddo 
 !       call die()
-!! End debugging
-
-!      Find the neighbour indices between orbitals within the correlated shell
-!      on the same atom
-!      Remember that there might be more than one atomic shell with 
-!      the same correlated l
-       
-!      Loop on all the atomic orbitals stored in the local node
-       do io_local = 1, no_l
-
-!        Converts the orbital index from local frame to global frame
-         call LocalToGlobalOrb(io_local,Node,Nodes,io_global)
-
-!        Find the attributes of that particular orbital
-         ia = iaorb(io_global)        ! Atom to which orbital belongs
-         is = isa(ia)                 ! Atomic species index
-         iuo = indxuo(io_global)      ! Equivalent orbital in first unit cell
-         iua = iaorb(iuo)             ! Equivalent atom in first unit cell
-         iao = iphorb(io_global)      ! Orbital index within atom
-         n_qn = cnfigfio( is, iao)    ! Orbital's principal quantum number
-         l_qn = lofio( is, iao )      ! Orbital's angular mumentum number
-         m_qn = mofio( is, iao )      ! (Real) orbital's magnetic quantum number
-         zeta_qn = zetafio( is, iao ) ! 'Zeta' index of orbital
-         polarized = pol( is, iao )   ! Is this a polarization orbital?
-         orb_sym = symfio( is, iao )  ! Name of orbital's angular symmetry
-  
-         spp  => species(is)
-
-         do iproj = 1, spp%n_pjldaunl  ! Number of LDA+U projectors for this
-                                       !   atomic species
-                                       !   not including the "m copies"
-           ldauintegrals => spp%ldau_so_integrals(iproj)
-           l_correlated = spp%pjldaunl_l(iproj)
-
-           if( l_qn .eq. l_correlated ) then ! We need to compute the new
-                                             !    Hamiltonian matrix elements
-                                             !    between atomic orbitals
-                                             !    that belongs to the correlated
-                                             !    shell
-
-!!            For debugging
-!             write(6,'(a,12i5,l5,1x,a10)')                                    &
-! &             'ldau_so_hamil: Nodes, Node, io_l, io_g, ia, is, iuo, iua = ', &
-! &                   Nodes, Node, io_local, io_global, ia, is, iuo, iua,      &
-! &                   n_qn, l_qn, m_qn, zeta_qn, polarized, orb_sym 
-!!            End debugging
-
-!            Loop on all the neighbours of the atomic orbital
-             do j_neig = 1, numh(io_local) 
-               ind = listhptr(io_local) + j_neig
-
-!              Identify index of the neighbour orbital, global frame
-               neig_orb = listh(ind)
-
-!              Identify relevant information for the neighbour orbital
-!              Meaning of the different variables as before
-               ia_neig      = iaorb(neig_orb)  
-               is_neig      = isa(ia_neig) 
-               iao_neig     = iphorb(neig_orb)
-               n_qn_neig    = cnfigfio( is_neig, iao_neig)  
-               l_qn_neig    = lofio( is_neig, iao_neig )
-               m_qn_neig    = mofio( is_neig, iao_neig )  
-               zeta_qn_neig = zetafio( is_neig, iao_neig ) 
-               orb_sym_neig = symfio( is_neig, iao_neig ) 
-
-               if( l_qn_neig .eq. l_correlated) then
-                 if( ia .eq. ia_neig ) then 
-                   icounter = (zeta_qn-1) * (2*l_correlated+1)**2 * maxnzeta                 + &
- &                            (m_qn + 1 + l_correlated - 1)  * (2*l_correlated+1) * maxnzeta + &
- &                            (zeta_qn_neig-1) * (2*l_correlated+1)                          + &
- &                            (m_qn_neig + 1 + l_correlated)
-                   ldauintegrals%Dscf_correlated(icounter,:) = Dscf(ind,:)
-
-!!                  For debugging
-!                   write(6,'(a,11(i5,2x))')                                                         &
-! &                 '  ldau_so_hamil: Nodes, Node, iol, iog, j_neig, ind, listh, n, l, m =',         &
-! &                 Nodes, Node, io_local, io_global, j_neig, ind, neig_orb, n_qn_neig,              &
-! &                 l_qn_neig, m_qn_neig, zeta_qn_neig
-!                   write(6,'(a,11(i7,2x))')                                                             &
-! &                 '  ldau_so_hamil: Nodes, Node, m_qn, zeta_qn, m_qn_neig, zeta_qn_neig, icounter =',  &
-! &                                   Nodes, Node, m_qn, zeta_qn, m_qn_neig, zeta_qn_neig, icounter
-!!                  End debugging
-
-                 endif
-               endif ! Close condition on the angular momentum of the neighbour
-             enddo   ! Close loop on neighbours (j_neig)
-           endif     ! Close condition on the angular momentum of the uc orbital
-
-!!          For debugging
-!           do zeta_qn = 1, nzeta(ia,iproj)
-!             do zeta_qn_neig = 1, nzeta(ia,iproj)
-!               do m_qn = -l, l
-!                 do m_qn_neig = -l, l
-!                   write(6,'(a,7i5,4(i7,2x))')                                         &
-! &                   'ldau_so_hamil: Node, Nodes, io_l, io_g, ia, iproj, l, index = ', &
-! &                   Node, Nodes, io_local, io_global, ia, iproj, l_correlated,        &
-! &                   m_qn, zeta_qn, m_qn_neig, zeta_qn_neig                           
-!                 enddo
-!               enddo
-!             enddo 
-!           enddo
-!!          End debugging
-
-         enddo       ! Close loop on LDA+U projectors on the atom within the uc
-       enddo         ! Close loop on the orbitals in the uc
+!!      End debugging
 
      endif   ! End if first-time
-
      firstime = .false.
 
+     do ka = 1, na_u
+       is  = isa(ka)
+       spp  => species(is)
+       do iproj = 1, spp%n_pjldaunl   ! Number of LDA+U projectors
+                                      !   not counting the "m copies"
+         ldauintegrals => spp%ldau_so_integrals(iproj)
+         l = spp%pjldaunl_l(iproj)
+
+         nullify( ldauintegrals%Dscf_correlated )
+         allocate(ldauintegrals%Dscf_correlated( (2*l+1)**2 * maxnzeta**2, 8))
+         ldauintegrals%Dscf_correlated = 0.0_dp
+       enddo 
+     enddo 
+
+!    Find the elements of the density matrix between orbitals
+!    belonging to the correlated shell of an atom.
+!    Remember that there might be more than one atomic shell with 
+!    the same correlated l
+       
+!    Loop on all the atomic orbitals stored in the local node
+     do io_local = 1, no_l
+
+!      Converts the orbital index from local frame to global frame
+       call LocalToGlobalOrb(io_local,Node,Nodes,io_global)
+
+!      Find the attributes of that particular orbital
+       ia = iaorb(io_global)        ! Atom to which orbital belongs
+       is = isa(ia)                 ! Atomic species index
+       iuo = indxuo(io_global)      ! Equivalent orbital in first unit cell
+       iua = iaorb(iuo)             ! Equivalent atom in first unit cell
+       iao = iphorb(io_global)      ! Orbital index within atom
+       n_qn = cnfigfio( is, iao)    ! Orbital's principal quantum number
+       l_qn = lofio( is, iao )      ! Orbital's angular mumentum number
+       m_qn = mofio( is, iao )      ! (Real) orbital's magnetic quantum number
+       zeta_qn = zetafio( is, iao ) ! 'Zeta' index of orbital
+       polarized = pol( is, iao )   ! Is this a polarization orbital?
+       orb_sym = symfio( is, iao )  ! Name of orbital's angular symmetry
+  
+       spp  => species(is)
+
+       do iproj = 1, spp%n_pjldaunl  ! Number of LDA+U projectors for this
+                                     !   atomic species
+                                     !   not including the "m copies"
+         ldauintegrals => spp%ldau_so_integrals(iproj)
+         l_correlated = spp%pjldaunl_l(iproj)
+
+         if( l_qn .eq. l_correlated ) then ! We need to compute the new
+                                           !    Hamiltonian matrix elements
+                                           !    between atomic orbitals
+                                           !    that belongs to the correlated
+                                           !    shell
+
+!!          For debugging
+!           write(6,'(a,12i5,l5,1x,a10)')                                    &
+! &           'ldau_so_hamil: Nodes, Node, io_l, io_g, ia, is, iuo, iua = ', &
+! &                 Nodes, Node, io_local, io_global, ia, is, iuo, iua,      &
+! &                 n_qn, l_qn, m_qn, zeta_qn, polarized, orb_sym 
+!!          End debugging
+
+!          Loop on all the neighbours of the atomic orbital
+           do j_neig = 1, numh(io_local) 
+             ind = listhptr(io_local) + j_neig
+
+!            Identify index of the neighbour orbital, global frame
+             neig_orb = listh(ind)
+
+!            Identify relevant information for the neighbour orbital
+!            Meaning of the different variables as before
+             ia_neig      = iaorb(neig_orb)  
+             is_neig      = isa(ia_neig) 
+             iao_neig     = iphorb(neig_orb)
+             n_qn_neig    = cnfigfio( is_neig, iao_neig)  
+             l_qn_neig    = lofio( is_neig, iao_neig )
+             m_qn_neig    = mofio( is_neig, iao_neig )  
+             zeta_qn_neig = zetafio( is_neig, iao_neig ) 
+             orb_sym_neig = symfio( is_neig, iao_neig ) 
+
+             if( l_qn_neig .eq. l_correlated) then
+               if( ia .eq. ia_neig ) then 
+                 icounter = (zeta_qn-1) * (2*l_correlated+1)**2 * maxnzeta                 + &
+ &                          (m_qn + 1 + l_correlated - 1)  * (2*l_correlated+1) * maxnzeta + &
+ &                          (zeta_qn_neig-1) * (2*l_correlated+1)                          + &
+ &                          (m_qn_neig + 1 + l_correlated)
+                 ldauintegrals%Dscf_correlated(icounter,:) = Dscf(ind,:)
+
+!!                For debugging
+!                 write(6,'(a,11(i5,2x))')                                                         &
+! &               '  ldau_so_hamil: Nodes, Node, iol, iog, j_neig, ind, listh, n, l, m =',         &
+! &               Nodes, Node, io_local, io_global, j_neig, ind, neig_orb, n_qn_neig,              &
+! &               l_qn_neig, m_qn_neig, zeta_qn_neig
+!                 write(6,'(a,11(i7,2x))')                                                             &
+! &               '  ldau_so_hamil: Nodes, Node, m_qn, zeta_qn, m_qn_neig, zeta_qn_neig, icounter =',  &
+! &                                 Nodes, Node, m_qn, zeta_qn, m_qn_neig, zeta_qn_neig, icounter
+!!                End debugging
+
+               endif
+             endif ! Close condition on the angular momentum of the neighbour
+           enddo   ! Close loop on neighbours (j_neig)
+         endif     ! Close condition on the angular momentum of the uc orbital
+
+!!        For debugging
+!         do zeta_qn = 1, nzeta(ia,iproj)
+!           do zeta_qn_neig = 1, nzeta(ia,iproj)
+!             do m_qn = -l, l
+!               do m_qn_neig = -l, l
+!                 write(6,'(a,7i5,4(i7,2x))')                                         &
+! &                 'ldau_so_hamil: Node, Nodes, io_l, io_g, ia, iproj, l, index = ', &
+! &                 Node, Nodes, io_local, io_global, ia, iproj, l_correlated,        &
+! &                 m_qn, zeta_qn, m_qn_neig, zeta_qn_neig                           
+!               enddo
+!             enddo
+!           enddo 
+!         enddo
+!!        End debugging
+
+       enddo       ! Close loop on LDA+U projectors on the atom within the uc
+     enddo         ! Close loop on the orbitals in the uc
+
+
 #ifdef MPI
-!   Allocate workspace array for global reduction
-    call re_alloc( auxloc, 1, (2*l_correlated+1)**2 * maxnzeta**2, 1, 8,   &
- &                 name='auxloc', routine='ldau_so_hamil' )
-!   Global reduction of auxloc matrix
-    auxloc(:,:) = 0.0_dp
-    call MPI_AllReduce( ldauintegrals%Dscf_correlated(1,1),                  &
- &                      auxloc(1,1),                                         &
- &                      (2*l_correlated+1)**2 * maxnzeta**2 * 8,             &
- &                      MPI_double_precision,MPI_sum,MPI_Comm_World,MPIerror )
-    ldauintegrals%Dscf_correlated(:,:) = auxloc(:,:)
+!    Allocate workspace array for global reduction
+     call re_alloc( auxloc, 1, (2*l_correlated+1)**2 * maxnzeta**2, 1, 8,   &
+ &                  name='auxloc', routine='ldau_so_hamil' )
+!    Global reduction of auxloc matrix
+     auxloc(:,:) = 0.0_dp
+     call MPI_AllReduce( ldauintegrals%Dscf_correlated(1,1),                  &
+ &                       auxloc(1,1),                                         &
+ &                       (2*l_correlated+1)**2 * maxnzeta**2 * 8,             &
+ &                       MPI_double_precision,MPI_sum,MPI_Comm_World,MPIerror )
+     ldauintegrals%Dscf_correlated(:,:) = auxloc(:,:)
 #endif
 
 
@@ -571,11 +571,13 @@ module m_ldau_so
      H_Zeeman          = cmplx( 0.0_dp, 0.0_dp, kind=dp )
 
 !    Initialize the number of correlated electrons within this shell
-     number_corr_elec = 0.0_dp
+     number_corr_elec_loc = 0.0_dp
+     number_corr_elec     = 0.0_dp
      Dscf_diagon_up_tot   = 0.0_dp
      Dscf_diagon_down_tot = 0.0_dp
-     E_correc_dc = 0.0_dp
-     magnetic(:) = cmplx(0.0_dp, 0.0_dp, kind=dp)
+     E_correc_dc          = 0.0_dp
+     magnetic_loc(:) = cmplx(0.0_dp, 0.0_dp, kind=dp)
+     magnetic(:)     = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
 !    Loop on all the atomic orbitals stored in the local node
      do io_local = 1, no_l
@@ -657,7 +659,7 @@ module m_ldau_so
                    Dscf_cmplx_4 = cmplx(Dscf(ind,7),Dscf(ind,8), dp)
 !                   number_corr_elec = number_corr_elec +    &
 ! &                    real( Dscf_cmplx_1 + Dscf_cmplx_2 ) * S(ind)
-                   number_corr_elec = number_corr_elec +    &
+                   number_corr_elec_loc = number_corr_elec_loc +    &
  &                    real( Dscf_cmplx_1 + Dscf_cmplx_2, dp ) 
 !                  WARNING
 !                   Dscf_diagon_up = S(ind) * ( real( Dscf_cmplx_1 + Dscf_cmplx_2 ) +          &
@@ -685,10 +687,12 @@ module m_ldau_so
 !!                   write(6,'(a,i5,f12.5)')' ind, sign(Dscf_diagon_down) = ', ind, dsign(real(Dscf_cmplx_1 - Dscf_cmplx_2),1.0_dp)
                    Dscf_diagon_up_tot   = Dscf_diagon_up_tot   + Dscf_diagon_up
                    Dscf_diagon_down_tot = Dscf_diagon_down_tot + Dscf_diagon_down
-                   magnetic(1) = magnetic(1) + (Dscf_cmplx_3 + Dscf_cmplx_4) * S(ind)
-                   magnetic(2) = magnetic(2) + ((Dscf_cmplx_3 - Dscf_cmplx_4) * cmplx(0.0_dp,1.0_dp,kind=dp)) * S(ind)
-                   magnetic(3) = magnetic(3) + (Dscf_cmplx_1 - Dscf_cmplx_2) * S(ind)
+                   magnetic_loc(1) = magnetic_loc(1) + (Dscf_cmplx_3 + Dscf_cmplx_4) * S(ind)
+                   magnetic_loc(2) = magnetic_loc(2) + ((Dscf_cmplx_3 - Dscf_cmplx_4) * cmplx(0.0_dp,1.0_dp,kind=dp)) * S(ind)
+                   magnetic_loc(3) = magnetic_loc(3) + (Dscf_cmplx_1 - Dscf_cmplx_2) * S(ind)
                  endif  ! End if m = mprime
+                 
+
 
 !                Compute the LSDA+U potential
 !                For a given m and mprime, 
@@ -884,8 +888,22 @@ module m_ldau_so
  &                   real( H_ldau_so_dc(ind,3)*Dscf_cmplx_4 , dp) ) 
       enddo
 
-      E_correc_dc = 0.5_dp * (U-J) * number_corr_elec**2 +  &
- &       J / 4.0_dp * ( number_corr_elec**2 - real(magnetic(1)**2 + magnetic(2)**2 + magnetic(3)**2 ) )   
+#ifdef MPI
+      call MPI_AllReduce(number_corr_elec_loc, number_corr_elec, 1, &
+ &                       MPI_double_precision,MPI_sum,MPI_Comm_World,MPIerror )
+      call MPI_AllReduce(magnetic_loc, magnetic, 3, &
+ &                       MPI_double_complex,MPI_sum,MPI_Comm_World,MPIerror )
+#else
+      number_corr_elec = number_corr_elec_loc
+      magnetic(:)      = magnetic_loc(:)
+#endif
+
+      if (Node .eq. 0 ) then
+        E_correc_dc = 0.5_dp * (U-J) * number_corr_elec**2 +  &
+ &         J / 4.0_dp * ( number_corr_elec**2 - real(magnetic(1)**2 + magnetic(2)**2 + magnetic(3)**2 ) )   
+      else
+        E_correc_dc = 0.0_dp
+      endif
 
 !!     For debugging
 !      write(6,'(a,2i5,f12.5)') ' Energy for the LDA+U+SO = ', Node, Nodes, E_ldau_so * 13.6058_dp
