@@ -130,9 +130,9 @@
       use m_handle_sparse, only: correct_supercell_SpD
       use m_restruct_SpData2D, only: restruct_dSpData2D
       use matel_mod, only : init_matel_main_tables
-!!#ifdef SIESTA__THERMAL_FLUX
-!!      use matel_mod, only : init_matel_orb_XYZ_orb
-!!#endif
+#ifdef SIESTA__THERMAL_FLUX
+      use matel_mod, only : init_matel_thermal_transport
+#endif
 
       use thermal_flux_data, only: substep, gradS_base, Rmat_base ! ThermalFlux
 
@@ -688,9 +688,9 @@
 
       ! Prepare MATEL
       call init_matel_main_tables( )
-!!#ifdef SIESTA__THERMAL_FLUX
-!!!      if ( compute_thermal_flux ) call init_matel_orb_XYZ_orb( )
-!!#endif
+#ifdef SIESTA__THERMAL_FLUX
+      if ( compute_thermal_flux ) call init_matel_thermal_transport( )
+#endif
       ! [#ThermalFlux]
       if (compute_thermal_flux.and.(substep.eq.1)) then
       !     Find rmatrix, that we need for Kohn-Sham J-flux component (ThTr)
