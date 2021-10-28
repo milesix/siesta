@@ -41,7 +41,9 @@ contains
 
   subroutine init_data_base_step()
     !! Logic to be executed at the end of the 0-`base' substep.
+    use thermal_flux_jion, only: init_ion_flux_data
 
+    call init_ion_flux_data()
     ! allocate(thtr_Rho_deriv, source=thtr_Rho) <- no need; done in `dhscf'
   end subroutine init_data_base_step
 
@@ -97,6 +99,7 @@ contains
   subroutine compute_flux()
     use thermal_flux_jks
     use thermal_flux_jhart
+    use thermal_flux_jion
 
     call compute_jks()
     call compute_jhart()
@@ -105,6 +108,9 @@ contains
        gk_results%Jxc(1:3) = gk_results%Jxc(1:3) &
             & - Rho_save(i,2) * thtr_dexcdGD(i,1:3,1) * xc_flux_dvol
     end do compute_jxc
+
+    call compute_jion()
+
   end subroutine compute_flux
 
 
@@ -128,6 +134,9 @@ contains
     deallocate(Vhart_save)
     call de_alloc(charge_g, routine="reset_thermal_flux")
     deallocate(charge_g_base)
+
+    deallocate(I_first_g, I_second_g)
+
   end subroutine reset_thermal_flux
 
 end module thermal_flux

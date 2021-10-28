@@ -279,8 +279,8 @@ OBJS += m_cite.o
 m_pexsi.o m_pexsi_driver.o m_pexsi_dos.o m_pexsi_local_dos.o: f_ppexsi_interface.o
 
 # Thermal Transport
-OBJS += rmatrix.o thermal_deriv.o thermal_flux_data.o thermal_gvecs.o
-OBJS += thermal_flux_jks.o thermal_flux_jhart.o thermal_flux.o
+OBJS += m_erf.o rmatrix.o thermal_deriv.o thermal_flux_data.o thermal_gvecs.o
+OBJS += thermal_flux_jks.o thermal_flux_jhart.o thermal_flux_jion.o thermal_flux.o
 
 #--------------------------------------------------------------
 FC_DEFAULT:=$(FC)
@@ -862,6 +862,7 @@ m_efield.o: atmfuncs.o intrinsic_missing.o mesh.o parallel.o precision.o
 m_efield.o: siesta_cml.o siesta_geom.o sys.o units.o
 m_energies.o: m_ts_global_vars.o precision.o
 m_eo.o: precision.o
+m_erf.o: precision.o
 m_evolve.o: atomlist.o cranknic_evolg.o cranknic_evolk.o m_spin.o precision.o
 m_evolve.o: sys.o
 m_exp_coord.o: files.o m_os.o parallel.o precision.o units.o
@@ -1252,8 +1253,8 @@ rhoofd.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o m_spin.o mesh.o
 rhoofd.o: meshdscf.o meshphi.o parallel.o parallelsubs.o precision.o sys.o
 rhoofdsp.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o mesh.o
 rhoofdsp.o: meshdscf.o meshphi.o parallel.o precision.o sys.o
-rmatrix.o: alloc.o atmfuncs.o atomlist.o m_iodm_old.o m_matio.o mneighb.o
-rmatrix.o: parallel.o parallelsubs.o precision.o
+rmatrix.o: alloc.o atmfuncs.o atomlist.o m_iodm_old.o m_matio.o matel_mod.o
+rmatrix.o: mneighb.o parallel.o parallelsubs.o precision.o
 runinfo_m.o: parallel.o posix_calls.o
 sankey_change_basis.o: alloc.o atomlist.o diag_option.o kpoint_scf.o
 sankey_change_basis.o: m_matdiag.o m_spin.o parallel.o parallelsubs.o
@@ -1392,9 +1393,12 @@ struct_init.o: periodic_table.o siesta_cml.o siesta_geom.o siesta_master.o
 struct_init.o: siesta_options.o units.o zmatrix.o
 thermal_deriv.o: precision.o
 thermal_flux.o: alloc.o precision.o siesta_geom.o thermal_deriv.o
-thermal_flux.o: thermal_flux_data.o thermal_flux_jhart.o thermal_flux_jks.o
+thermal_flux.o: thermal_flux_data.o thermal_flux_jhart.o thermal_flux_jion.o
+thermal_flux.o: thermal_flux_jks.o
 thermal_flux_data.o: precision.o
 thermal_flux_jhart.o: cellsubs.o precision.o thermal_flux_data.o
+thermal_flux_jion.o: atomlist.o cellsubs.o m_erf.o precision.o siesta_geom.o
+thermal_flux_jion.o: thermal_flux_data.o
 thermal_flux_jks.o: atomlist.o densematrix.o precision.o siesta_geom.o
 thermal_flux_jks.o: sparse_matrices.o thermal_flux_data.o
 thermal_gvecs.o: alloc.o cellsubs.o chkgmx.o fft.o parallel.o precision.o sys.o

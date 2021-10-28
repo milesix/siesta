@@ -18,6 +18,16 @@ module m_thermal_flux_settings
      integer, allocatable :: func_step_intervals(:) !! Array of 0-centered indexes of dimension `dpoints`
      !! Used to get system coordinates for corresponding 'virtual' steps
      real(dp) :: virtual_dt   !! Virtual time step for projection of positions for time derivatives
+     real(dp) :: alat !! LatticeConstant value copy.
+     !!NOTE: at the moment it must be set in the .fdf-file for
+     !! the cubic cell parameter used in Ewald scheme for Jion,
+     !! even though positions and velocities are then read from `XVS.dat'-file.
+     real(dp) :: eta_ewald = 0.1_dp
+     !! Ewald factor for convergence.
+     !! Read from .fdf input under `ThermalFlux.Jion.Eta`
+     integer  :: n_max_ewald = 5
+     !! Number of periodic cell images for Ewald scheme
+     !! Read from .fdf input under `ThermalFlux.Jion.Nmax`
      logical :: verbose_output = .false.  !! Eval and print extra debug test info
    contains
      procedure :: init_self_deriv_scheme
@@ -26,6 +36,7 @@ module m_thermal_flux_settings
 
   type :: thermal_flux_results_type
      real(dp) :: Jks(3), Jks_A(3), Jks_B(3), Jele(3), Jxc(3), Jhart(3)
+     real(dp) :: Jion(3), Jion_A(3), Jion_B(3), Jion_C(3), Jion_D(3), Jion_E(3)
    contains
      procedure :: init_thermal_flux_results
      procedure :: write_thermal_flux_results
@@ -68,8 +79,20 @@ contains
        dpts_in = fdf_get('ThermalFlux.NumDerivPoints', 3)
        call this%init_self_deriv_scheme(dpts_in)
 
+
+       this%alat = fdf_physical('LatticeConstant',0.0_dp,'Bohr')
+       if (this%alat==0.0_dp) call die('init_thermal_flux', &
+            &'ThermalFlux requires LatticeConstant set!')
+       write(*,*) "[gk: init] Lattice Constant parameter: ", this%alat, " Bohr"
+
        this%virtual_dt = fdf_get('ThermalFlux.Virtual.dt',0.1_dp,'fs')
        write(*,*) "[gk: init] substep delta_t: ", this%virtual_dt, " fs"
+
+       this%eta_ewald = fdf_double("ThermalFlux.Jion.Eta", 0.1_dp)
+       write(*,*) "[gk: init] Ewald factor for convergence (eta): ", this%eta_ewald
+
+       this%n_max_ewald = fdf_integer("ThermalFlux.Jion.Nmax", 5)
+       write(*,*) "[gk: init] Number of periodic cell images for Ewald scheme: ", this%n_max_ewald
 
        if(fdf_get('ThermalFlux.VerboseOutput', .false.)) then
           this%verbose_output = .true.
@@ -93,6 +116,12 @@ contains
     this%Jele(:)   = 0.0_dp
     this%Jxc(:)    = 0.0_dp
     this%Jhart(:)  = 0.0_dp
+    this%Jion(:)   = 0.0_dp
+    this%Jion_A(:) = 0.0_dp
+    this%Jion_B(:) = 0.0_dp
+    this%Jion_C(:) = 0.0_dp
+    this%Jion_D(:) = 0.0_dp
+    this%Jion_E(:) = 0.0_dp
   end subroutine init_thermal_flux_results
 
 
@@ -106,6 +135,12 @@ contains
     write(*,*) "[gk: Jele]  ", this%Jele
     write(*,*) "[gk: Jxc]   ", this%Jxc
     write(*,*) "[gk: Jhart] ", this%Jhart
+    write(*,*) "[gk: Jion]  ", this%Jion
+    write(*,*) "[gk: Jion_A]", this%Jion_A
+    write(*,*) "[gk: Jion_B]", this%Jion_B
+    write(*,*) "[gk: Jion_C]", this%Jion_C
+    write(*,*) "[gk: Jion_D]", this%Jion_D
+    write(*,*) "[gk: Jion_E]", this%Jion_E
     write(*,*) "            ================================================================"
   end subroutine write_thermal_flux_results
 
@@ -219,5 +254,20 @@ module thermal_flux_data
   real(grid_p), allocatable, target, save :: Vhart_save(:,:,:)
   !! Obtained from charge density in the reciprocal space for
   !! computation of its derivative for the Hartree flux component.
+
+
+  ! real(dp)  :: gk_results%jion(3)
+  ! !! Ionic component of the heat flux.
+
+  ! real(dp)  :: gk_results%jion_a(3)
+  ! real(dp)  :: gk_results%jion_b(3)
+  ! real(dp)  :: gk_results%jion_c(3)
+  ! real(dp)  :: gk_results%jion_d(3)
+  ! real(dp)  :: gk_results%jion_e(3)
+
+  real(dp) :: I_prime, I_prime_rec
+  real(dp), allocatable :: I_first_g(:,:,:)
+  real(dp), allocatable :: I_second_g(:)
+
 
 end module thermal_flux_data
