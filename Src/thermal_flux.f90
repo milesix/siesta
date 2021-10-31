@@ -41,9 +41,11 @@ contains
 
   subroutine init_data_base_step()
     !! Logic to be executed at the end of the 0-`base' substep.
-    use thermal_flux_jion, only: init_ion_flux_data
+    use thermal_flux_jion,  only: init_ion_flux_data
+    use thermal_flux_jzero, only: init_zero_flux_data
 
     call init_ion_flux_data()
+    call init_zero_flux_data()
     ! allocate(thtr_Rho_deriv, source=thtr_Rho) <- no need; done in `dhscf'
   end subroutine init_data_base_step
 
@@ -100,6 +102,7 @@ contains
     use thermal_flux_jks
     use thermal_flux_jhart
     use thermal_flux_jion
+    use thermal_flux_jzero
 
     call compute_jks()
     call compute_jhart()
@@ -110,6 +113,7 @@ contains
     end do compute_jxc
 
     call compute_jion()
+    call compute_jzero()
 
   end subroutine compute_flux
 

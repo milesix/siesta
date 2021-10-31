@@ -355,6 +355,7 @@
       if (thermal_transport_initialized) RETURN
       call check_for_main_tables()
       call check_for_orb_XYZ_orb()
+      call init_matel_optical_P()
 
       ! Set allocation defaults
       call alloc_default( old=oldefs, copy=.true., shrink=.false. )

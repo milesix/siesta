@@ -18,6 +18,7 @@ module m_thermal_flux_settings
      integer, allocatable :: func_step_intervals(:) !! Array of 0-centered indexes of dimension `dpoints`
      !! Used to get system coordinates for corresponding 'virtual' steps
      real(dp) :: virtual_dt   !! Virtual time step for projection of positions for time derivatives
+     real(dp) :: meshcutoff !! MeshCutoff value copy.
      real(dp) :: alat !! LatticeConstant value copy.
      !!NOTE: at the moment it must be set in the .fdf-file for
      !! the cubic cell parameter used in Ewald scheme for Jion,
@@ -37,6 +38,7 @@ module m_thermal_flux_settings
   type :: thermal_flux_results_type
      real(dp) :: Jks(3), Jks_A(3), Jks_B(3), Jele(3), Jxc(3), Jhart(3)
      real(dp) :: Jion(3), Jion_A(3), Jion_B(3), Jion_C(3), Jion_D(3), Jion_E(3)
+     real(dp) :: Jzero(3), Jzloc(3), Jznl(3)
    contains
      procedure :: init_thermal_flux_results
      procedure :: write_thermal_flux_results
@@ -85,6 +87,11 @@ contains
             &'ThermalFlux requires LatticeConstant set!')
        write(*,*) "[gk: init] Lattice Constant parameter: ", this%alat, " Bohr"
 
+       this%meshcutoff = fdf_physical('MeshCutoff',0.0_dp,'Ry')
+       if (this%meshcutoff==0.0_dp) call die('zero_flux:init', &
+            &'ThermalFlux requires meshcutoff set')
+       write(*,*) "[gk: init] Mesh Cutoff parameter: ", this%meshcutoff, " Ry"
+
        this%virtual_dt = fdf_get('ThermalFlux.Virtual.dt',0.1_dp,'fs')
        write(*,*) "[gk: init] substep delta_t: ", this%virtual_dt, " fs"
 
@@ -122,26 +129,32 @@ contains
     this%Jion_C(:) = 0.0_dp
     this%Jion_D(:) = 0.0_dp
     this%Jion_E(:) = 0.0_dp
+    this%Jzero(:)  = 0.0_dp
+    this%Jzloc(:)  = 0.0_dp
+    this%Jznl(:)   = 0.0_dp
   end subroutine init_thermal_flux_results
 
 
   subroutine write_thermal_flux_results(this)
     class(thermal_flux_results_type), intent(inout) :: this
 
-    write(*,*) "            ================ Green-Kubo ThermalFlux Results ================"
-    write(*,*) "[gk: Jks]   ", this%Jks
-    write(*,*) "[gk: Jks_A] ", this%Jks_A
-    write(*,*) "[gk: Jks_B] ", this%Jks_B
-    write(*,*) "[gk: Jele]  ", this%Jele
-    write(*,*) "[gk: Jxc]   ", this%Jxc
-    write(*,*) "[gk: Jhart] ", this%Jhart
-    write(*,*) "[gk: Jion]  ", this%Jion
+    write(*,*) "#           ================ Green-Kubo ThermalFlux Results ================"
+    write(*,*) "[gk: Jks   ]", this%Jks
+    write(*,*) "[gk: Jks_A ]", this%Jks_A
+    write(*,*) "[gk: Jks_B ]", this%Jks_B
+    write(*,*) "[gk: Jele  ]", this%Jele
+    write(*,*) "[gk: Jxc   ]", this%Jxc
+    write(*,*) "[gk: Jhart ]", this%Jhart
+    write(*,*) "[gk: Jion  ]", this%Jion
     write(*,*) "[gk: Jion_A]", this%Jion_A
     write(*,*) "[gk: Jion_B]", this%Jion_B
     write(*,*) "[gk: Jion_C]", this%Jion_C
     write(*,*) "[gk: Jion_D]", this%Jion_D
     write(*,*) "[gk: Jion_E]", this%Jion_E
-    write(*,*) "            ================================================================"
+    write(*,*) "[gk: Jzero ]", this%Jzero
+    write(*,*) "[gk: Jzloc ]", this%Jzloc
+    write(*,*) "[gk: Jznl  ]", this%Jznl
+    write(*,*) "#           ================================================================"
   end subroutine write_thermal_flux_results
 
 end module m_thermal_flux_settings

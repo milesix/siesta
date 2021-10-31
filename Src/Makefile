@@ -280,7 +280,8 @@ m_pexsi.o m_pexsi_driver.o m_pexsi_dos.o m_pexsi_local_dos.o: f_ppexsi_interface
 
 # Thermal Transport
 OBJS += m_erf.o rmatrix.o thermal_deriv.o thermal_flux_data.o thermal_gvecs.o
-OBJS += thermal_flux_jks.o thermal_flux_jhart.o thermal_flux_jion.o thermal_flux.o
+OBJS += thermal_flux_jks.o thermal_flux_jhart.o thermal_flux_jion.o thermal_flux_jzero.o
+OBJS += thermal_flux.o
 
 #--------------------------------------------------------------
 FC_DEFAULT:=$(FC)
@@ -1401,6 +1402,9 @@ thermal_flux_jion.o: atomlist.o cellsubs.o m_erf.o precision.o siesta_geom.o
 thermal_flux_jion.o: thermal_flux_data.o
 thermal_flux_jks.o: atomlist.o densematrix.o precision.o siesta_geom.o
 thermal_flux_jks.o: sparse_matrices.o thermal_flux_data.o
+thermal_flux_jzero.o: atm_types.o atomlist.o basis_types.o bessph.o cellsubs.o
+thermal_flux_jzero.o: matel_mod.o precision.o radial.o siesta_geom.o
+thermal_flux_jzero.o: sparse_matrices.o thermal_flux_data.o
 thermal_gvecs.o: alloc.o cellsubs.o chkgmx.o fft.o parallel.o precision.o sys.o
 thermal_gvecs.o: thermal_flux_data.o
 timer.o: extrae_eventllist.o extrae_module.o m_timer.o parallel.o sys.o
