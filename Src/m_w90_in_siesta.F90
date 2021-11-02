@@ -1340,6 +1340,7 @@ module m_w90_in_siesta
     use m_switch_local_projection, only: numkpoints
     use m_switch_local_projection, only: bvectorsfrac
     use m_switch_local_projection, only: Amnmat
+    use m_switch_local_projection, only: Mmnkb 
     use files,                     only: slabel        ! Short system label,
                                                        !   used to generate file
                                                        !   names
@@ -1376,9 +1377,10 @@ module m_w90_in_siesta
                                         !    (read from the loop in the file)  
     integer            :: num_amn       ! Total number of entries in the Amn
                                         !   matrix
-    integer            :: ncount        ! Counter for the Amn matrix elements
     integer            :: iproj         ! Counter for the loop on projectors
+    integer            :: icount        ! Counter for the loop on k-neighbouts
     integer            :: mband         ! Counter for the loop on bands
+    integer            :: nband         ! Counter for the loop on bands
     real(dp)           :: a_real        ! Real part of the Amn matrix element
     real(dp)           :: a_imag        ! Imaginary part of the 
                                         !    Amn matrix element
@@ -1443,6 +1445,28 @@ module m_w90_in_siesta
                 enddo
               enddo
             enddo
+
+            do nkp = 1, numkpoints
+              do icount = 1, nncount
+                do mband = 1, manifold_bands_w90_in(1)%number_of_bands
+                  do nband = manifold_bands_w90_in(1)%number_of_bands+1, &
+                             manifold_bands_w90_in(1)%number_of_bands +   &
+                             manifold_bands_w90_in(2)%number_of_bands
+                    Mmnkb(mband,nband,nkp,icount) = cmplx(0.0_dp,0.0_dp,kind=dp)
+                  enddo 
+                enddo 
+                do mband = manifold_bands_w90_in(1)%numbands_w90_in+1,    &
+                           manifold_bands_w90_in(3)%numbands_w90_in
+                  do nband = 1, manifold_bands_w90_in(1)%number_of_bands
+                    Mmnkb(mband,nband,nkp,icount) = cmplx(0.0_dp,0.0_dp,kind=dp)
+                  enddo 
+                enddo 
+              enddo 
+            enddo
+
+!           Write the Mmn overlap matrices in a file, in the format required
+!           by Wannier90
+            call writemmn( ispin )
 
 !           Write the Amn overlap matrices in a file, in the format required
 !           by Wannier90
