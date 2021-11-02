@@ -1,4 +1,4 @@
-! 
+!
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -27,7 +27,7 @@ C **********************************************************************
           bmax = abs(b(i))
         endif
       enddo
-      if (imax .eq. 0) call die("propor: ERROR:  IMAX = 0")
+c$$$      if (imax .eq. 0) call die("propor: ERROR:  IMAX = 0")
 
       propor = .true.
       if (bmax .eq. 0.0d0) then
@@ -48,6 +48,3 @@ C **********************************************************************
         enddo
       endif
       end
-
-
-

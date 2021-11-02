@@ -36,10 +36,10 @@ module thermal_flux_jks
   use siesta_geom,     only: na_u
   use densematrix,     only: psi ! To get at the c^i_\mu coefficients of the wavefunctions
   use sparse_matrices, only: listh, listhptr, numh
-  ! use sparse_matrices, only: H, S, Dscf
-  ! use sparse_matrices, only: gradS, Rmat
+  !! use sparse_matrices, only: H, S, Dscf
+  !! use sparse_matrices, only: gradS, Rmat
 
-  use thermal_flux_data
+  use thermal_flux_data     ! H_base, eo_base, gradS_base, Sinv, etc
 
   implicit none
 
@@ -62,14 +62,20 @@ contains
     real(dp) :: tr_hat, tr_shat
 
     real(dp), allocatable :: tmp_g(:)
+    real(dp), allocatable :: work(:), amat(:,:)
+    integer, allocatable :: ipiv(:)
+    real(dp), parameter :: alpha_reg = 0.001_dp ! To regularize (H-e)^-1
+    integer :: i, j, lwork, info
 
     allocate (tmp_g(no_l))
+    allocate(work(no_u), ipiv(no_u), amat(no_u,no_u))
 
     ! computing and storage of every of the 3 components
     ! should be available to order in the .fdf
 
-    psi_hat_c(:,:,:) = 0.0        ! Init result to zeros outside main loop
+    psi_hat_c(:,:,:) = 0.0_dp        ! Init result to zeros outside main loop
 
+    ! Compute first P_c [H,r] |Psi_iw>
     do idx=1,3
        do iw = 1,n_wfs
 
@@ -80,7 +86,11 @@ contains
                 k = listhptr(nu) + ij
                 col = listh(k)
 
-                tmp_g(nu) = tmp_g(nu) + psi_base(col,iw) * Rmat_base(k,idx)
+                !! tmp_g(nu) = tmp_g(nu) + psi_base(col,iw) * Rmat_base(k,idx)
+                ! New equations: Use [H,r] trick and linear equations.
+                ! So far without non-local potential term, so Gamma_mu_nu in notes
+                ! is just gradS_mu_nu
+                tmp_g(nu) = tmp_g(nu) + psi_base(col,iw) * gradS_base(idx,k)
              end do
           end do
 
@@ -103,6 +113,9 @@ contains
           end do
           ! MPI: reduce (sum) psi_hat_c() over processes
 
+          !
+          ! *** NOTE: This should be moved after the real computation of psi_hat_c
+          !
           if (gk_setup%verbose_output) then
              !TEST-hat
              tr_shat = 0.0_dp
@@ -124,6 +137,51 @@ contains
     end do ! idx
 
     deallocate(tmp_g)
+
+    do iw = 1,n_wfs
+
+    ! Build linear equations
+    ! (H - eps_i + alpha*P_v) (Psi_hat) = psi_hat_c above
+    ! Use dsysv for AX=B, with the solution X overwriting B (just what we need)
+    !
+    ! A = H_base - eo_base(i) 1 + alpha*(0.5_dp Dfull)
+
+       do i = 1, no_u
+          do j = 1, no_u
+             amat(i,j) = H_base(i,j) + alpha_reg*DM_save(i,j,1,1)
+          enddo
+          amat(i,i) = amat(i,i) - eo_base(iw)
+       enddo
+
+!!$subroutine dsysv(	character 	UPLO,
+!!$integer 	N,
+!!$integer 	NRHS,
+!!$double precision, dimension( lda, * ) 	A,
+!!$integer 	LDA,
+!!$integer, dimension( * ) 	IPIV,
+!!$double precision, dimension( ldb, * ) 	B,
+!!$integer 	LDB,
+!!$double precision, dimension( * ) 	WORK,
+!!$integer 	LWORK,
+!!$integer 	INFO
+!!$)
+       ! This will do idx=1..3 in one go.
+       ! Note the computation for the leading dimension of B. The size of
+       ! the second dimension of psi_hat_c is n_wfs.
+       lwork = 4*no_u
+       call dsysv('U', no_u, 3, amat, no_u, ipiv, psi_hat_c(1,iw,1), no_u*n_wfs, &
+            work, lwork, info)
+       if (info < 0) then
+          write(0,*) "Argument had an illegal value: ", -info
+          call die("Error in dsysv call")
+       else if (info > 0) then
+          call die("A is singular in dsysv call")
+       endif
+
+    enddo ! iw
+
+    deallocate(ipiv, work, amat)
+
   end subroutine compute_psi_hat_c
 
 
