@@ -30,8 +30,10 @@
       use sparse_matrices, only: S, S_1D
       use sparse_matrices, only: gradS, gradS_2D
 
+#ifdef SIESTA__THERMAL_FLUX
       use m_rmatrix, only: rmatrix
       use sparse_matrices, only: Rmat, Rmat_2D
+#endif
 
       use sparse_matrices, only: H_kin_1D, H_vkb_1D
       use sparse_matrices, only: H_dftu_2D
@@ -132,9 +134,8 @@
       use matel_mod, only : init_matel_main_tables
 #ifdef SIESTA__THERMAL_FLUX
       use matel_mod, only : init_matel_thermal_transport
+      use thermal_flux_data, only: substep, gradS_base, Rmat_base
 #endif
-
-      use thermal_flux_data, only: substep, gradS_base, Rmat_base ! ThermalFlux
 
       implicit none
 
@@ -169,10 +170,7 @@
       integer :: MPIerror
 #endif
 #endif
-!     [#ThermalFlux]
-!     NOTE: Should not be here (imported from `sparse_matrices`):
-!     real(dp), pointer :: gradS(:,:)
-!     [/ThermalFlux]
+
       character(len=256)            :: oname
 
       type(dData2D) :: tmp_2D
@@ -651,7 +649,7 @@
       if (ionode) call print_type(S_1D)
       S => val(S_1D)
 
-      ! [#ThermalFlux]
+#ifdef SIESTA__THERMAL_FLUX
       if (compute_thermal_flux.and.(substep.eq.1)) then
          write(oname,"(a,i0)") "Rmat at geom step ", istep
          ! Extra dimension is (x,y,z), i.e., of size 3
@@ -660,7 +658,7 @@
          if (ionode) call print_type(Rmat_2D)
          Rmat => val(Rmat_2D)
       endif
-      ! [/ThermalFlux]
+#endif
 
 !>    Before proceeding we need to "fix" a few things before we can
 !>    successfully read the new DM.
@@ -688,21 +686,25 @@
 
       ! Prepare MATEL
       call init_matel_main_tables( )
+
 #ifdef SIESTA__THERMAL_FLUX
       if ( compute_thermal_flux ) call init_matel_thermal_transport( )
-#endif
-      ! [#ThermalFlux]
+
       if (compute_thermal_flux.and.(substep.eq.1)) then
       !     Find rmatrix, that we need for Kohn-Sham J-flux component (ThTr)
          call rmatrix(na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
      &        lasto, iphorb, isa, numh, listhptr, listh, Rmat )
          allocate(Rmat_base, source=Rmat)
       endif
-      ! [/ThermalFlux]
+#endif
 
 !     Find overlap matrix
+#ifdef SIESTA__THERMAL_FLUX
       if ( fdf_get('Save.Overlap.Gradient', .false.) .or.
-     $     (compute_thermal_flux.and.(substep.eq.1))) then  ! [ThermalFlux]
+     $     (compute_thermal_flux.and.(substep.eq.1))) then
+#else
+      if ( fdf_get('Save.Overlap.Gradient', .false.)) then
+#endif
         write(oname,"(a,i0)") "gradS at geom step ", istep
         call newdSpData2D(sparse_pattern,3,block_dist,gradS_2D,
      &      name=oname, sparsity_dim=2)
@@ -711,17 +713,19 @@
         call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
      &      lasto, iphorb, isa, numh, listhptr, listh, S, gradS )
 
-        ! [#ThermalFlux]
+#ifdef SIESTA__THERMAL_FLUX
         allocate(gradS_base, source=gradS)
-        ! [/ThermalFlux]
+#endif
 
       else
         call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
      &      lasto, iphorb, isa, numh, listhptr, listh, S )
       end if
 
-! [ThermalFlux] Compute and save inverse of overlap matrix
+#ifdef SIESTA__THERMAL_FLUX
+!     Compute and save inverse of overlap matrix
       if (compute_thermal_flux.and.(substep.eq.1)) call get_sinv()
+#endif
 
 #ifdef NCDF_4
 !     At this point the sparsity pattern, overlap matrix and some

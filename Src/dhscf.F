@@ -517,8 +517,13 @@ C ----------------------------------------------------------------------
      &                  listdptr, listd, Dscf, datm, maxnh, Hmat,
      &                  Enaatm, Enascf, Uatm, Uscf, DUscf, DUext,
      &                  Exc, Dxc, dipol, stress, Fal, stressl,
+#ifdef SIESTA__THERMAL_FLUX
      &                  use_rhog_in, charge_density_only,
-     &                  want_vmd_in_dhscf)  ![ThermalFlux]
+     &                  want_vmd_in_dhscf
+#else
+     &                  use_rhog_in, charge_density_only
+#endif
+     &                   )
 
 C
 C Calculates the self-consistent field contributions to Hamiltonian
@@ -630,11 +635,11 @@ C     Modules
       use moreMeshSubs,   only : UNIFORM, QUADRATIC, LINEAR
       use moreMeshSubs,   only : TO_SEQUENTIAL, TO_CLUSTER, KEEP
 
-C     ! [#ThermalFlux]
+#ifdef SIESTA__THERMAL_FLUX
       use siesta_options, only: compute_thermal_flux
       use thermal_flux_data
       use thermal_gvecs, only: setup_thermal_gvecs
-C     ! [/ThermalFlux]
+#endif
 
       use m_partial_charges, only: compute_partial_charges
       use m_partial_charges, only: want_partial_charges
@@ -703,7 +708,10 @@ C     ! [/ThermalFlux]
 
       logical, intent(in), optional :: use_rhog_in
       logical, intent(in), optional :: charge_density_only
+
+#ifdef SIESTA__THERMAL_FLUX
       logical, intent(in), optional :: want_vmd_in_dhscf
+#endif
 
 C ----------------------------------------------------------------------
 C Routines called internally:
@@ -787,8 +795,10 @@ C     Local variables
       real(grid_p) :: dummy_DVxcdn(1,1,1)
       real(grid_p), pointer :: Vscf_gga(:,:), DRho_gga(:,:)
       external bsc_cellxc
+
+#ifdef SIESTA__THERMAL_FLUX
       real(grid_p), pointer :: epsxc(:)
-c$$$      character(len=1024) :: ncfname
+#endif
 
 !     Interface to JMS's SiestaXC
       integer       :: myBox(2,3)
@@ -844,10 +854,13 @@ C ----------------------------------------------------------------------
       call timer( 'DHSCF', 1 )
       call timer( 'DHSCF3', 1 )
 
-      nullify( Vscf, Vscf_par, DRho, DRho_par,
-     &         Vxc,  epsxc,
+      nullify( Vscf, Vscf_par, DRho, DRho_par, Vxc,
      &         Vaux, Vaux_par, Chlocal, Totchar )
       nullify( Vscf_gga, DRho_gga)
+
+#ifdef SIESTA__THERMAL_FLUX
+      nullify( epsxc )
+#endif
 
       volume = volcel(cell)
 
@@ -1519,10 +1532,13 @@ C ----------------------------------------------------------------------
 
          call re_alloc( Vscf_gga, 1, ntpl, 1, nspin, 'Vscf_gga','dhscf')
          call re_alloc( DRho_gga, 1, ntpl, 1, nspin, 'DRho_gga','dhscf')
+
+#ifdef SIESTA__THERMAL_FLUX
          call re_alloc( epsxc, 1, ntpl, 'epsxc','dhscf')
          if (.not. allocated(thtr_dexcdGD)) then
             allocate(thtr_dexcdGD(ntpl, 3, nspin))
          end if
+#endif
 
          ! Redistribute all spin densities
          do ispin = 1, nspin
@@ -1560,8 +1576,13 @@ C ----------------------------------------------------------------------
      &                myBox(1,2), myBox(2,2),
      &                myBox(1,3), myBox(2,3), nspin,
      &                DRho_gga, Ex, Ec, DEx, DEc, stressXC, Vscf_gga,
+#ifdef SIESTA__THERMAL_FLUX
      &                keep_input_distribution = .true.,
-     &                epsxc=epsxc, dexcdGD=thtr_dexcdGD )
+     &                epsxc=epsxc, dexcdGD=thtr_dexcdGD
+#else
+     &                keep_input_distribution = .true.
+#endif
+     &                 )
    !     Vscf is still sequential after the call to JMS's cellxc
          stress = stress + stressXC
          call timer("GXC-CellXC",2)
@@ -1580,7 +1601,7 @@ C ----------------------------------------------------------------------
             call distMeshData( LINEAR, fsrc, UNIFORM, fdst, KEEP )
          enddo
 
-! [#ThermalFlux]--------------------------------------------------------
+#ifdef SIESTA__THERMAL_FLUX
 ! V.D.                  ~~~ Thermal Transport ~~~
 !     Here goes the logic aiding the calculation of Hartree and XC
 !     components of the heat flux for the thermal transport.
@@ -1600,7 +1621,7 @@ C ----------------------------------------------------------------------
 !     `VIRTUAL`-step. If needed, the Hartree potential should be gained from
 !     `Vhart_deriv` or `charge_g` in `setup_thermal_gvecs`.
 !     It is not needed further for thermal transport, and is discarded by default.
-! [/ThermalFlux---------------------------------------------------------
+! ----------------------------------------------------------------------
 
          if (present(want_vmd_in_dhscf)) then
             if (want_vmd_in_dhscf) then
@@ -1617,7 +1638,6 @@ C ----------------------------------------------------------------------
      &                 UNIFORM, fdst, KEEP )
                enddo
 
-               ! [#ThermalFlux]
                if (.not. allocated(Rho_save)) then
                   allocate(Rho_save(ntpl, gk_setup%dpoints))
                end if
@@ -1634,14 +1654,18 @@ C ----------------------------------------------------------------------
                end do
 
                call setup_thermal_gvecs()
-               ! [/ThermalFlux]
 
                call de_alloc( DRho_thtr, 'DRho_thtr', 'dhscf' )
             end if
          end if
+#endif
+
          call de_alloc( DRho_gga, 'DRho_gga', 'dhscf' )
          call de_alloc( Vscf_gga, 'Vscf_gga', 'dhscf' )
-         call de_alloc( epsxc, 'epsxc', 'dhscf') ! [ThermalFlux]
+
+#ifdef SIESTA__THERMAL_FLUX
+         call de_alloc( epsxc, 'epsxc', 'dhscf')
+#endif
 
          call timer("XC",2)
 
@@ -1925,6 +1949,7 @@ C ----------------------------------------------------------------------
 !------------------------------------------------------------------------ END
       CONTAINS
 
+#ifdef SIESTA__THERMAL_FLUX
       subroutine store_data_for_vmd()
       !! Store state data for various VMD routines.
          cell_vmd = cell
@@ -1933,7 +1958,7 @@ C ----------------------------------------------------------------------
          nsm_vmd  = nsm
          xc_flux_dvol = dvol
       end subroutine store_data_for_vmd
-
+#endif
 
       subroutine save_bader_charge()
       use meshsubs, only: ModelCoreChargeOnMesh

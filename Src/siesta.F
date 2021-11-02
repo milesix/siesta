@@ -31,9 +31,10 @@
       use extrae_module
 #endif
 
-      ! Thermal Transport
+#ifdef SIESTA__THERMAL_FLUX
       use siesta_options, only: compute_thermal_flux
       use thermal_flux
+#endif
 
       implicit none
 
@@ -82,7 +83,7 @@ C     Begin of coordinate relaxation iteration
 
         call timer('IterGeom', 1)
 
-        ! [#ThermalFlux]
+#ifdef SIESTA__THERMAL_FLUX
          if (compute_thermal_flux) then
             call init_thermal_flux()
 
@@ -100,7 +101,7 @@ C     Begin of coordinate relaxation iteration
             call reset_thermal_flux()
             call bye("Done Thermal Transport calculation, exiting.")
          end if
-        ! [/ThermalFlux]
+#endif
 
          if ( td_elec_dyn ) then
             call siesta_tddft( istep )

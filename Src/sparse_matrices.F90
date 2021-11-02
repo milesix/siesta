@@ -145,11 +145,12 @@ module sparse_matrices
   !> Inter-orbital [vector](|page|/implementation/1-auxiliary-supercell.html)
   type(dSpData2D), public :: xij_2D
 
-  !> [ThermalFlux]
+#ifdef SIESTA__THERMAL_FLUX
   !> Rmatrix (constant for complete SCF loop, changes per MD)
   !> Only used for Thermal transport
   type(dSpData2D), public   :: Rmat_2D
   real(dp), public, pointer :: Rmat(:,:) => null()
+#endif
 
   ! Pieces of H that do not depend on the SCF density matrix
   ! Formerly there was a single array H0 for this
@@ -195,8 +196,10 @@ contains
     nullify(Escf)
     call delete( S_1D )
     nullify(S)
+#ifdef SIESTA__THERMAL_FLUX
     call delete( Rmat_2D )
     nullify(Rmat)
+#endif
     call delete( gradS_2D )
     call delete( H_2D )
     nullify(H)

@@ -94,10 +94,13 @@ C
       use siesta_geom,    only: mscell
       use siesta_options, only: hirshpop, voropop
       use siesta_options, only: partial_charges_at_every_geometry
-      use siesta_options, only: compute_thermal_flux
       use m_partial_charges, only: want_partial_charges
 
       use m_spin, only: h_spin_dim
+
+#ifdef SIESTA__THERMAL_FLUX
+      use siesta_options, only: compute_thermal_flux
+#endif
 
 #ifdef MPI
       use m_mpi_utils, only: globalize_sum
@@ -308,8 +311,13 @@ c first (normal) call to DHSCF, ihmat=1 --------------------------------------
      &            ifa, istr, 1, filesOut,
      &            maxnd, numh, listhptr, listh, Dscf, Datm,
      &            maxnh, Hmat, Enaatm, Enascf, Uatm, Uscf, DUscf, DUext,
+#ifdef SIESTA__THERMAL_FLUX
      &            Exc, Dxc, dipol, stress, fal, stressl,
-     &            want_vmd_in_dhscf=compute_thermal_flux )
+     &            want_vmd_in_dhscf=compute_thermal_flux
+#else
+     &            Exc, Dxc, dipol, stress, fal, stressl
+#endif
+     &             )
       want_partial_charges = .false.
 
 c Sampling ------------------------------------------------------------------

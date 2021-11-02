@@ -236,8 +236,10 @@ MODULE siesta_options
   real(dp) :: wmix          ! Mixing weight for DM in SCF iteration
   real(dp) :: wmixkick      ! Mixing weight for DM in special 'kick' SCF steps
 
+#ifdef SIESTA__THERMAL_FLUX
   ! Thermal transport
   logical  :: compute_thermal_flux !! Process thermal currents for a single MD trajectory snapshot
+#endif
 
   character(len=164) :: sname   ! System name, used to initialise read
 

@@ -95,10 +95,11 @@ C
 #ifdef MPI
       use mpi_siesta
 #endif
-      ! [#ThermalFlux]
+
+#ifdef SIESTA__THERMAL_FLUX
       use siesta_options, only : compute_thermal_flux
       use thermal_flux_data
-      ! [/ThermalFlux]
+#endif
 
       implicit none
 
@@ -169,7 +170,7 @@ C Solve eigenvalue problem
 !$OMP end parallel do
         call timer( 'r-buildHS', 2 )
 
-        ! [#ThermalFlux]
+#ifdef SIESTA__THERMAL_FLUX
         if (compute_thermal_flux.and.(substep.eq.1)) then
            if (iscf.eq.1) then
               ! Spin 1 for now
@@ -184,7 +185,7 @@ C Solve eigenvalue problem
            ! Store Hamiltonian at `base' (first) substep:
            H_base(:,:) = Haux(:,:) !NOTE: maybe chek if it is the last scf?
         endif
-        ! [/ThermalFlux]
+#endif
 
         call rdiag( Haux, Saux, nuotot, nuo, nuotot,
      $       eo(1,ispin),
@@ -192,12 +193,12 @@ C Solve eigenvalue problem
      .       BlockSize)
         call timer( 'r-eigvec', 2 )
 
-        ! [#ThermalFlux]
+#ifdef SIESTA__THERMAL_FLUX
         if (compute_thermal_flux.and.(substep.eq.1)) then
            eo_base(:) = eo(:,1)
            psi_base(:,:) = psi(:,:,1)
         end if
-        ! [/ThermalFlux]
+#endif
 
 C Check error flag and take appropriate action
         if (ierror.gt.0) then
@@ -221,12 +222,13 @@ C Repeat diagonalisation with increased memory to handle clustering
      &         psi(1,1,ispin), neigwanted, iscf, ierror,
      .         BlockSize )
 
-          ! [#ThermalFlux] Just in case...
+#ifdef SIESTA__THERMAL_FLUX
+!     Just in case...
           if (compute_thermal_flux.and.(substep.eq.1)) then
              eo_base(:) = eo(:,1)
              psi_base(:,:) = psi(:,:,1)
           end if
-          ! [/ThermalFlux]
+#endif
        endif
 
         if (getPSI) then
@@ -305,11 +307,12 @@ C Global operation to form new density matrix
       call re_alloc( PSI_TMP, 1, nuotot*maxnuo*spinor_dim, 'PSI_TMP',
      &               'diagg' )
 
+#ifdef SIESTA__THERMAL_FLUX
       ! These arrays are not distributed... For parallel operation, and
       ! to match the "sparse" convention, we should probably make the first
       ! dimension "nuo"
 
-C     ! [#ThermalFlux] Allocate full DMs at both points for drivative:
+C     ! Allocate full DMs at both points for derivative:
       if (compute_thermal_flux .and..not.(allocated(DM_save))) then
          allocate(DM_save(nuotot, nuotot, h_spin_dim, gk_setup%dpoints))
       end if
@@ -318,8 +321,8 @@ C     ! [#ThermalFlux] Allocate full DMs at both points for drivative:
       ! Must be harmless because in the end it stores full DM at convergence. 
 
       ! Init corresponding array:
-      DM_save(:,:,:,substep) = 0.0_dp
-C     ! [/ThermalFlux]
+      if (compute_thermal_flux) DM_save(:,:,:,substep) = 0.0_dp
+#endif
 
       do Bnode=0, Nodes-1
         if (BNode.eq.Node) then
@@ -347,14 +350,15 @@ C     ! [/ThermalFlux]
                 paux => PSI_TMP(mm+1:mm+nuotot)
                 qei = qe*paux(iio)
                 eei = qei*eo(ie,ispin)
-C     !FIXME: [#ThermalFlux] Extract this loop?
+#ifdef SIESTA__THERMAL_FLUX
+C     !FIXME: Extract this loop?
                 if (compute_thermal_flux) then
                    do jo = 1,nuotot
                       DM_save(io,jo,ispin,substep) =
      $                     DM_save(io,jo,ispin,substep) + qei*paux(jo)
                    enddo
                 end if
-C     !FIXME: [/ThermalFlux]
+#endif
                 do j = 1,numd(io)
                   ind = listdptr(io) + j
                   jo  = listd(ind)
