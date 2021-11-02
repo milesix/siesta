@@ -115,12 +115,18 @@ contains
     call compute_jion()
     call compute_jzero()
 
+    gk_results%Jtotal(1:3) = gk_results%Jks(1:3) + &
+         & gk_results%Jhart(1:3) + &
+         & gk_results%Jxc(1:3)   + &
+         & gk_results%Jion(1:3)  + &
+         & gk_results%Jzero(1:3)
+
   end subroutine compute_flux
 
 
   subroutine thermal_flux_tesults()
 
-    call gk_results%write_thermal_flux_results()
+    call gk_results%write_thermal_flux_results(gk_setup)
 
   end subroutine thermal_flux_tesults
 
