@@ -446,7 +446,7 @@ contains
   end subroutine compute_jks
 
   subroutine momentum_operat(gradS)
-    use atomlist,        only: no_u, no_s, no_l, indxuo, iaorb, iphorb, lasto, qtot, amass
+    use atomlist,        only: no_u, no_s, no_l, indxuo, iaorb, iphorb, lasto, qtot, amass, lastkb, iphKB
     use siesta_geom
     use densematrix,     only: psi ! To get at the c^i_\mu coefficients of the wavefunctions
     use sparse_matrices, only: listh, listhptr, numh
@@ -473,7 +473,7 @@ contains
     integer ::  nkb, nna, nno, ilm1, ilm2, npoints, ir
 
     real(dp) ::  epsk, grSki(3), rki, rmax, rmaxkb, rmaxo
-    real(dp) ::  Sik, Sjk, Sikr, Sjkr
+    real(dp) ::  Sik, Sjk, Sikr2, Sikr3, Sikr4, Sjkr2, Sjkr3, Sjkr4
     real(dp) ::  dintg2(3), dint1, dint2, dintgmod2
     real(dp) ::  dintg1(3), dintgmod1
     real(dp) ::  phi1, phi2, dphi1dr, dphi2dr, Sir0(3), r
@@ -491,7 +491,7 @@ contains
     real(dp), pointer, save :: Si(:,:)
     real(dp), pointer, save :: Ski(:,:,:)
     real(dp),          save :: tiny = 1.0d-9
-    real(dp), pointer, save :: Vi(:)
+    real(dp), pointer, save :: Vi(:,:)
 
     integer   ::  na, no, nua, nuo
 
@@ -509,10 +509,164 @@ contains
       call re_alloc( listed, 1, no, 'listed', 'temp_jks' )
       call re_alloc( needed, 1, no, 'needed', 'temp_jks' )
       call re_alloc( Si,     1, no, 1, 3, 'Si',     'temp_jks' )
-      call re_alloc( Vi,     1, no, 'Vi',     'temp_jks' )
+      call re_alloc( Vi,     1, no, 1, 3, 'Vi',     'temp_jks' )
       call re_alloc( iano, 1, maxno, 'iano',  'temp_jks' )
       call re_alloc( iono, 1, maxno, 'iono',  'temp_jks' )
-      call re_alloc( Ski, 1, 2, 1, maxkba, 1, maxno, 'Ski', 'temp_jks' )
+      call re_alloc( Ski, 1, 4, 1, maxkba, 1, maxno, 'Ski', 'temp_jks' )
+
+      !------
+
+! Initialize arrayd Vi only once
+        no = lasto(na)
+        do jo = 1,no
+          Vi(jo,:) = 0.0d0
+          listed(jo) = .false.
+          needed(jo) = .false.
+        enddo
+
+! Find out which orbitals are needed on this node
+        do iio = 1,nuo
+          call LocalToGlobalOrb(iio,Node,Nodes,io)
+          needed(io) = .true.
+          do j = 1,numh(iio)
+            ind = listhptr(iio) + j
+            jo = listh(ind)
+            needed(jo) = .true.
+          enddo
+        enddo
+
+! Loop on atoms with KB projectors
+        do ka = 1,na
+          ks = isa(ka)
+          nkb = lastkb(ka) - lastkb(ka-1)
+          if (nkb.gt.maxkba) then
+            maxkba = nkb + 10
+            call re_alloc( Ski, 1, 4, 1, maxkba, 1, maxno, copy=.true., &
+     &                     name='Ski', routine='temp_jks' )
+          endif
+
+! Find neighbour atoms
+          call mneighb( scell, rmax, na, xa, ka, 0, nna )
+
+! Find neighbour orbitals
+          nno = 0
+          do ina = 1,nna
+            ia = jna(ina)
+
+            is = isa(ia)
+            rki = sqrt(r2ij(ina))
+            do io = lasto(ia-1)+1,lasto(ia)
+              if (needed(io)) then
+                call GlobalToLocalOrb(io,Node,Nodes,iio)
+                ioa = iphorb(io)
+                ig = orb_gindex(is,ioa)
+
+! Find if orbital is within range
+                within = .false.
+                do ko = lastkb(ka-1)+1,lastkb(ka)
+                  koa = iphKB(ko)
+                  if ( rki .lt. rcut(is,ioa)+rcut(ks,koa) ) &
+     &              within = .true.
+                enddo
+
+! Find overlap between neighbour orbitals and KB projectors
+                if (within) then
+                  nno = nno + 1
+                  if (nno.gt.maxno) then
+                    maxno = nno + 500
+                    call re_alloc( iano, 1, maxno, copy=.true., &
+     &                             name='iano', routine='temp_jks' )
+                    call re_alloc( iono, 1, maxno, copy=.true., &
+     &                             name='iono', routine='temp_jks' )
+                    call re_alloc( Ski, 1, 2, 1, maxkba, 1, maxno, &
+     &                             copy=.true., name='Ski', &
+     &                             routine='temp_jks' )
+                  endif
+                  iono(nno) = io
+                  iano(nno) = ia
+                  ikb = 0
+                  do ko = lastkb(ka-1)+1,lastkb(ka)
+                    ikb = ikb + 1
+                    koa = iphKB(ko)
+                    kg = kbproj_gindex(ks,koa)
+                    do ix = 1,3
+                     xinv(ix) = - xij(ix,ina)
+                    enddo
+                    call new_MATEL('S', ig, kg, xinv, Ski(1,ikb,nno), grSki)
+
+                    call new_MATEL('X', ig, kg, xinv, Ski(2,ikb,nno), grSki)
+                    call new_MATEL('Y', ig, kg, xinv, Ski(3,ikb,nno) , grSki)
+                    call new_MATEL('Z', ig, kg, xinv, Ski(4,ikb,nno), grSki)
+                  enddo
+                endif
+              endif
+            enddo
+
+          enddo
+
+! Loop on neighbour orbitals
+          do ino = 1,nno
+            io = iono(ino)
+            call GlobalToLocalOrb(io,Node,Nodes,iio)
+            if (iio .gt. 0) then
+              ia = iano(ino)
+              if (ia .le. nua) then
+
+! Scatter filter of desired matrix elements
+                do j = 1,numh(iio)
+                  ind = listhptr(iio) + j
+                  jo = listh(ind)
+                  listed(jo) = .true.
+                enddo
+
+! Find matrix elements with other neighbour orbitals
+                do jno = 1,nno
+                  jo = iono(jno)
+                  if (listed(jo)) then
+
+! Loop on KB projectors
+                    ikb = 0
+                    do ko = lastkb(ka-1)+1,lastkb(ka)
+                      ikb = ikb + 1
+                      koa = iphKB(ko)
+                      epsk = epskb(ks,koa)
+                      Sik = Ski(1,ikb,ino)
+                      ! Sikr= Ski(2,ikb,ino)
+                      Sikr2= Ski(2,ikb,ino)
+                      Sikr3= Ski(3,ikb,ino)
+                      Sikr4= Ski(4,ikb,ino)
+                      Sjk = Ski(1,ikb,jno)
+                      ! Sjkr= Ski(2,ikb,jno)
+                      Sjkr2= Ski(2,ikb,jno)
+                      Sjkr3= Ski(3,ikb,jno)
+                      Sjkr4= Ski(4,ikb,jno)
+                      ! Vi(jo) = Vi(jo) + epsk * (Sik * Sjkr - Sikr * Sjk)
+                      Vi(jo,1) = Vi(jo,1) + epsk * (Sik * Sjkr2 - Sikr2 * Sjk)
+                      Vi(jo,2) = Vi(jo,2) + epsk * (Sik * Sjkr3 - Sikr3 * Sjk)
+                      Vi(jo,3) = Vi(jo,3) + epsk * (Sik * Sjkr4 - Sikr4 * Sjk)
+                    enddo
+
+                  endif
+                enddo
+
+! Pick up contributions to H and restore Di and Vi
+                do j = 1,numh(iio)
+                  ind = listhptr(iio) + j
+                  jo = listh(ind)
+                  ! Sp(ind) = Sp(ind) + Vi(jo)
+                  gradS(ind,1) = gradS(ind,1) + Vi(jo,1)
+                  gradS(ind,2) = gradS(ind,2) + Vi(jo,2)
+                  gradS(ind,3) = gradS(ind,3) + Vi(jo,3)
+                  Vi(jo,:) = 0.0d0
+                  listed(jo) = .false.
+                enddo
+
+              endif
+            endif
+          enddo
+        enddo
+
+      !------
 
     ! Initialize neighb subroutine
     call mneighb( scell, 2.0d0*rmaxo, na, xa, 0, 0, nnia )
