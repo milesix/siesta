@@ -52,6 +52,8 @@ module thermal_flux_jks
 contains
 
   subroutine compute_psi_hat_c (n_wfs)
+    use sparse_matrices, only: maxnh
+
     integer, intent(in) :: n_wfs
     !! Number of wavefunctions to process
 
@@ -67,13 +69,18 @@ contains
     real(dp), parameter :: alpha_reg = 0.001_dp ! To regularize (H-e)^-1
     integer :: i, j, lwork, info
 
+    real(dp), allocatable :: gradS(:,:)
+
     allocate (tmp_g(no_l))
     allocate(work(no_u), ipiv(no_u), amat(no_u,no_u))
+    allocate(gradS(maxnh, 3))
 
     ! computing and storage of every of the 3 components
     ! should be available to order in the .fdf
 
     psi_hat_c(:,:,:) = 0.0_dp        ! Init result to zeros outside main loop
+
+    call momentum_operat(gradS)
 
     ! Compute first P_c [H,r] |Psi_iw>
     do idx=1,3
@@ -90,9 +97,23 @@ contains
                 ! New equations: Use [H,r] trick and linear equations.
                 ! So far without non-local potential term, so Gamma_mu_nu in notes
                 ! is just gradS_mu_nu
-                tmp_g(nu) = tmp_g(nu) + psi_base(col,iw) * gradS_base(idx,k)
+                ! tmp_g(nu) = tmp_g(nu) + psi_base(col,iw) * gradS_base(idx,k)
+
+                write(2001,*) k, gradS_base(:,k)
+                write(2002,*) k, gradS(k,:)
+
+                tmp_g(nu) = tmp_g(nu) - psi_base(col,iw) * gradS(k,idx)
+
+                ! if ((col.le.n_wfs).and.(col.ne.nu)) then
+                !    tmp_g(nu) = tmp_g(nu) + psi_base(col,iw) * gradS_base(idx,k)
+                        ! & / (eo_base(col) - eo_base(nu))
+                ! end if
              end do
           end do
+
+          ! do alpha = 1,no_u
+          !    psi_hat_c(alpha,iw,idx) = tmp_g(alpha)
+          ! end do
 
           ! Use dense, complete, DM, but note that, for the spinless case, DM = 2 \sum_occ { |psi><psi| }
           ! We need then to use a factor of 1/2
@@ -102,8 +123,10 @@ contains
                 !! nu_g = LocalToGlobalOrb(nu...)
                 !!           if (alpha == nu) then    ! alpha == nu_g   ; rest depending on
                 ! whether Dfull is distributed or not
+
                 psi_hat_c(alpha,iw,idx) = psi_hat_c(alpha,iw,idx) + &
                      tmp_g(nu) * (Sinv(nu,alpha) - 0.5_dp * DM_save(nu,alpha,1,1)) ! <- only 1st spin component
+
                 !!           else
                 !!              psi_hat_c(alpha,iw,idx) = psi_hat_c(alpha,iw,idx) + &
                 !!                   tmp_g(nu) * (- 0.5_dp * Dfull(nu,alpha,1)) ! <- only 1st spin component
@@ -421,5 +444,178 @@ contains
     deallocate(psi_dot_c)
 
   end subroutine compute_jks
+
+  subroutine momentum_operat(gradS)
+    use atomlist,        only: no_u, no_s, no_l, indxuo, iaorb, iphorb, lasto, qtot, amass
+    use siesta_geom
+    use densematrix,     only: psi ! To get at the c^i_\mu coefficients of the wavefunctions
+    use sparse_matrices, only: listh, listhptr, numh
+
+    use precision,    only : dp
+    use parallel,     only : Node, Nodes
+    use atmparams,    only : lmx2, nzetmx, nsemx
+    use atmfuncs,     only : epskb, lofio, mofio, rcut, rphiatm
+    use atmfuncs,     only : orb_gindex, kbproj_gindex
+    use atm_types,    only : nspecies
+    use parallelsubs, only : GlobalToLocalOrb, LocalToGlobalOrb
+    use alloc,        only : re_alloc, de_alloc
+    use sys,          only : die
+    use neighbour,    only : jna=>jan, xij, r2ij
+    use neighbour,    only : mneighb, reset_neighbour_arrays
+    use matel_mod,    only : new_matel
+
+    integer :: ia, iio, ind, io, ioa, is, ix
+    integer :: j, ja, jn, jo, joa, js, nnia, norb, ka
+
+    real(dp) :: grSij(3), rij, Sij, xinv(3), sum
+
+    integer :: ikb, ina, ino, jno, ko, koa, ks, ig, jg, kg
+    integer ::  nkb, nna, nno, ilm1, ilm2, npoints, ir
+
+    real(dp) ::  epsk, grSki(3), rki, rmax, rmaxkb, rmaxo
+    real(dp) ::  Sik, Sjk, Sikr, Sjkr
+    real(dp) ::  dintg2(3), dint1, dint2, dintgmod2
+    real(dp) ::  dintg1(3), dintgmod1
+    real(dp) ::  phi1, phi2, dphi1dr, dphi2dr, Sir0(3), r
+
+    integer,  pointer, save :: iano(:)
+    integer,  pointer, save :: iono(:)
+    integer,           save :: maxkba = 25
+    integer,           save :: maxno = 1000
+!N      logical,  pointer, save :: calculated(:,:,:)
+    logical,  pointer, save :: listed(:)
+    logical,  pointer, save :: needed(:)
+    logical                 :: within
+    real(dp),          save :: dx = 0.01d0
+!N      real(dp), pointer, save :: Pij(:,:,:)
+    real(dp), pointer, save :: Si(:,:)
+    real(dp), pointer, save :: Ski(:,:,:)
+    real(dp),          save :: tiny = 1.0d-9
+    real(dp), pointer, save :: Vi(:)
+
+    integer   ::  na, no, nua, nuo
+
+    real(dp), allocatable, intent(inout) :: gradS(:,:)
+
+    gradS(:,:) = 0.0_dp
+
+    na =  na_s
+    nua = na_u
+    no =  no_s
+    nuo = no_u
+
+! Allocate arrays
+      norb = lmx2*nzetmx*nsemx
+      call re_alloc( listed, 1, no, 'listed', 'temp_jks' )
+      call re_alloc( needed, 1, no, 'needed', 'temp_jks' )
+      call re_alloc( Si,     1, no, 1, 3, 'Si',     'temp_jks' )
+      call re_alloc( Vi,     1, no, 'Vi',     'temp_jks' )
+      call re_alloc( iano, 1, maxno, 'iano',  'temp_jks' )
+      call re_alloc( iono, 1, maxno, 'iono',  'temp_jks' )
+      call re_alloc( Ski, 1, 2, 1, maxkba, 1, maxno, 'Ski', 'temp_jks' )
+
+    ! Initialize neighb subroutine
+    call mneighb( scell, 2.0d0*rmaxo, na, xa, 0, 0, nnia )
+
+      do jo = 1,no
+         Si(jo,:) = 0.0d0
+      enddo
+
+      do ia = 1,nua
+
+        is = isa(ia)
+        call mneighb( scell, 2.0d0*rmaxo, na, xa, ia, 0, nnia )
+
+        do io = lasto(ia-1)+1,lasto(ia)
+          call GlobalToLocalOrb(io,Node,Nodes,iio)
+          if (iio .gt. 0) then
+            ioa = iphorb(io)
+            ig = orb_gindex(is,ioa)
+            do jn = 1,nnia
+              do ix = 1,3
+                xinv(ix) = - xij(ix,jn)
+              enddo
+              ja = jna(jn)
+              rij = sqrt( r2ij(jn) )
+              do jo = lasto(ja-1)+1,lasto(ja)
+                joa = iphorb(jo)
+                js = isa(ja)
+                jg = orb_gindex(js,joa)
+
+                if (rcut(is,ioa)+rcut(js,joa) .gt. rij) then
+
+                    if (rij.lt.tiny) then
+! Perform the direct computation of the matrix element of the momentum
+! within the same atom
+!N                     if ( .not.calculated(joa,ioa,is) ) then
+                       ilm1 = lofio(is,ioa)**2 + lofio(is,ioa) + &
+     &                      mofio(is,ioa) + 1
+                       ilm2 = lofio(is,joa)**2 + lofio(is,joa) + &
+     &                      mofio(is,joa) + 1
+                       call intgry(ilm1,ilm2,dintg2)
+                       call intyyr(ilm1,ilm2,dintg1)
+                       dintgmod1 = dintg1(1)**2 + dintg1(2)**2 + &
+     &                      dintg1(3)**2
+                       dintgmod2 = dintg2(1)**2 + dintg2(2)**2 + &
+     &                      dintg2(3)**2
+                       Sir0(:) = 0.0d0
+                       if ((dintgmod2.gt.tiny).or.(dintgmod1.gt.tiny)) &
+     &                      then
+                          dint1 = 0.0d0
+                          dint2 = 0.0d0
+                          npoints = int(max(rcut(is,ioa),rcut(is,joa)) &
+     &                         /dx) + 2
+                          do ir = 1,npoints
+                             r = dx*(ir-1)
+                             call rphiatm(is,ioa,r,phi1,dphi1dr)
+                             call rphiatm(is,joa,r,phi2,dphi2dr)
+                             dint1 = dint1 + dx*phi1*dphi2dr*r**2
+                             dint2 = dint2 + dx*phi1*phi2*r
+                          enddo
+!     The factor of two because we use Ry for the Hamiltonian
+                          Sir0(1) = dint1*dintg1(1)+dint2*dintg2(1)
+     ! &                  -2.0d0*(dk(1)*(dint1*dintg1(1)+dint2*dintg2(1))+ &
+     ! &                      dk(2)*(dint1*dintg1(2)+dint2*dintg2(2))+ &
+     ! &                      dk(3)*(dint1*dintg1(3)+dint2*dintg2(3))) &
+                          Sir0(2) = dint1*dintg1(2)+dint2*dintg2(2)
+                          Sir0(3) = dint1*dintg1(3)+dint2*dintg2(3)
+                       endif
+!N     Pij(ioa,joa,is) = - Sir0
+!N     Pij(joa,ioa,is) =   Sir0
+                       Si(jo,:) = Sir0(:)
+!N                       calculated(ioa,joa,is) = .true.
+!N                       calculated(joa,ioa,is) = .true.
+!N                    endif
+
+                    else
+! Matrix elements between different atoms are taken from the
+! gradient of the overlap
+                      call new_MATEL('S', ig, jg, xij(1:3,jn), &
+     &                           Sij, grSij )
+! The factor of two because we use Ry for the Hamiltonian
+                      Si(jo,1) = grSij(1)
+                      Si(jo,2) = grSij(2)
+                      Si(jo,3) = grSij(3)
+     ! &                  2.0d0*(grSij(1)*dk(1) &
+     ! &             +           grSij(2)*dk(2) &
+     ! &             +           grSij(3)*dk(3))
+                  endif
+                endif
+              enddo
+            enddo
+            do j = 1,numh(iio)
+              ind = listhptr(iio) + j
+              jo = listh(ind)
+              gradS(ind,1) = gradS(ind,1) + Si(jo,1)
+              gradS(ind,2) = gradS(ind,2) + Si(jo,2)
+              gradS(ind,3) = gradS(ind,3) + Si(jo,3)
+              Si(jo,:) = 0.0d0
+            enddo
+          endif
+        enddo
+      enddo
+
+      call reset_neighbour_arrays( )
+  end subroutine momentum_operat
 
 end module thermal_flux_jks
