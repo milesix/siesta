@@ -97,12 +97,14 @@ contains
                 ! New equations: Use [H,r] trick and linear equations.
                 ! So far without non-local potential term, so Gamma_mu_nu in notes
                 ! is just gradS_mu_nu
+
                 ! tmp_g(nu) = tmp_g(nu) + psi_base(col,iw) * gradS_base(idx,k)
 
                 write(2001,*) k, gradS_base(:,k)
                 write(2002,*) k, gradS(k,:)
 
-                tmp_g(nu) = tmp_g(nu) - psi_base(col,iw) * gradS(k,idx)
+                ! tmp_g(nu) = tmp_g(nu) + psi_base(col,iw) * gradS(k,idx)
+                tmp_g(nu) = tmp_g(nu) + psi_base(col,iw) * gradS_base(idx,k)
 
                 ! if ((col.le.n_wfs).and.(col.ne.nu)) then
                 !    tmp_g(nu) = tmp_g(nu) + psi_base(col,iw) * gradS_base(idx,k)
@@ -654,9 +656,16 @@ contains
                   ind = listhptr(iio) + j
                   jo = listh(ind)
                   ! Sp(ind) = Sp(ind) + Vi(jo)
+
                   gradS(ind,1) = gradS(ind,1) + Vi(jo,1)
                   gradS(ind,2) = gradS(ind,2) + Vi(jo,2)
                   gradS(ind,3) = gradS(ind,3) + Vi(jo,3)
+
+                  ! add no-local part to gradS_base
+                  gradS_base(1,ind) = gradS_base(1,ind) + Vi(jo,1)
+                  gradS_base(2,ind) = gradS_base(2,ind) + Vi(jo,2)
+                  gradS_base(3,ind) = gradS_base(3,ind) + Vi(jo,3)
+
                   Vi(jo,:) = 0.0d0
                   listed(jo) = .false.
                 enddo
@@ -760,9 +769,15 @@ contains
             do j = 1,numh(iio)
               ind = listhptr(iio) + j
               jo = listh(ind)
+
               gradS(ind,1) = gradS(ind,1) + Si(jo,1)
               gradS(ind,2) = gradS(ind,2) + Si(jo,2)
               gradS(ind,3) = gradS(ind,3) + Si(jo,3)
+
+              ! gradS_base(1,ind) = gradS_base(1,ind) + Si(jo,1)
+              ! gradS_base(2,ind) = gradS_base(2,ind) + Si(jo,2)
+              ! gradS_base(3,ind) = gradS_base(3,ind) + Si(jo,3)
+
               Si(jo,:) = 0.0d0
             enddo
           endif
