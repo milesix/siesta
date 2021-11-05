@@ -168,7 +168,6 @@
                                              !   together with Spin-Orbit
                                              !   or non-collinear
                                              !   magnetism
-         real(dp), dimension(:,:), pointer :: Dscf_correlated
       end type ldau_so_integrals_type
 
 

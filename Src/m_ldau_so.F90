@@ -199,6 +199,7 @@ module m_ldau_so
                                             !   the first index,
                                             !   for the correlated shell 
                                             !   indicated in the second index
+  integer, allocatable, save, dimension(:)   :: index_at_correlated
 
   public ldau_so_hamil
 
@@ -221,8 +222,12 @@ module m_ldau_so
                                       !   LDA+U projectors on a 
                                       !   given atom
                                       !   without including "m" copies
+     integer, save :: maxl    = 0     ! 
+     integer, save :: nat_correlated  ! Number of atoms in the unit cell with
+                                      !   at least one correlated shell 
      integer, save :: maxnzeta        ! Maximum number of zetas
      integer :: ka                    ! Counter for loop on atoms
+     integer :: iat_correlated        ! 
      integer :: ish                   ! Counter for loop on species
      integer :: iproj                 ! Counter for loop on projector
      integer :: ishell                ! Counter for loop on shells
@@ -281,43 +286,45 @@ module m_ldau_so
                                       !   sum over all nodes
 
      real(dp) :: E_correc_dc 
+     real(dp) :: magnetic_field(3)
      complex(dp), parameter :: imag = cmplx( 0.0_dp, 1.0_dp, kind=dp )
      complex(dp), parameter :: one  = cmplx( 1.0_dp, 0.0_dp, kind=dp )
      complex(dp) ::  Dscf_cmplx_1
      complex(dp) ::  Dscf_cmplx_2
      complex(dp) ::  Dscf_cmplx_3
      complex(dp) ::  Dscf_cmplx_4
-     real(dp) ::  Dscf_diagon_up
-     real(dp) ::  Dscf_diagon_down
-     real(dp) ::  Dscf_diagon_up_tot
-     real(dp) ::  Dscf_diagon_down_tot
-     real(dp) ::  Dscf_diagon_diff
-     real(dp) ::  Dscf_tmp
-     real(dp) ::     magnetic_field(3)
      complex(dp) ::  H_ldau_so_Hubbard(maxnh,4)
      complex(dp) ::  H_ldau_so_dc(maxnh,4)
      complex(dp) ::  H_Zeeman(maxnh,4)
      complex(dp) ::  magnetic_loc(3)
      complex(dp) ::  magnetic(3)
+     real(dp), dimension(:,:,:,:), pointer :: Dscf_correlated => null()
 
 #ifdef MPI
      integer     :: MPIerror
-     real(dp), dimension(:,:), pointer :: auxloc => null()
+     real(dp), dimension(:,:,:,:), pointer :: auxloc => null()
                      ! Temporal array for the
                      !   the global reduction of Dscf_correlated
 #endif
 
 
 !    Initialization and allocation of matrices
-!     firstime = .true. 
      if( firstime ) then
 
 !      Find maximum number of LDA+U projectors on a given atom
 !      not including the "m copies"
+       if( allocated(index_at_correlated) ) deallocate(index_at_correlated)
+       allocate( index_at_correlated(na_u) )
+       nat_correlated = 0
+       index_at_correlated(:) = 0
        do ka = 1, na_u
          is  = isa(ka)
          spp  => species(is)
-         maxldau = max(maxldau,spp%n_pjldaunl)
+         if( spp%n_pjldaunl .gt. 0 ) then
+           nat_correlated = nat_correlated + 1
+           maxldau = max(maxldau,spp%n_pjldaunl)
+           index_at_correlated(ka) = nat_correlated
+         endif
        enddo 
 
 !      Allocate the number of zeta functions in the correlated shell
@@ -325,11 +332,12 @@ module m_ldau_so
        allocate( nzeta(na_u,maxldau) )
        nzeta(:,:) = 0
        maxnzeta   = 0
+       maxl = 0
 
 !      Find maximum number of zetas on the correlated shell
        do ka = 1, na_u
          is  = isa(ka)
-         spp  => species(is)
+         spp => species(is)
          do iproj = 1, spp%nprojsldau   ! Number of LDA+U projectors
                                         !   counting the "m copies"
                                         !   This loop must include the 
@@ -365,7 +373,7 @@ module m_ldau_so
 ! &              spp%orbnl_n(ishell), spp%orbnl_l(ishell), spp%orbnl_z(ishell),             &
 ! &              spp%orbnl_ispol(ishell)
 !!              End debugging
-
+               maxl = max( maxl, spp%pjldau_l(iproj) )
                nzeta(ka,spp%pjldau_index(iproj)) =                             &
  &               max( nzeta(ka,spp%pjldau_index(iproj)),spp%orbnl_z(ishell) )
              endif
@@ -414,25 +422,32 @@ module m_ldau_so
 !           enddo 
 !         enddo 
 !       enddo 
+!
+!       write(6,'(a,3i5)')                                                     &
+!  &      'ldau_so_hamil: Node, Nodes, number correlated atoms             = ',&
+!  &      Node, Nodes, nat_correlated
+!       write(6,'(a,3i5)')                                                     &
+!  &      'ldau_so_hamil: Node, Nodes, maximum number of LDA+U projectors  = ',&
+!  &      Node, Nodes, maxldau
+!       write(6,'(a,3i5)')                                                     &
+!  &      'ldau_so_hamil: Node, Nodes, maximum value of l for the proj.    = ',&
+!  &      Node, Nodes, maxl   
+!       write(6,'(a,3i5)')                                                     &
+!  &      'ldau_so_hamil: Node, Nodes, maximum number of zetas             = ',&
+!  &      Node, Nodes, maxnzeta      
+!       do ka = 1, na_u
+!         write(6,'(a,4i5)')                                                     &
+!  &        'ldau_so_hamil: Node, Nodes, iat, index_at_correlated            = ',&
+!  &        Node, Nodes, ka, index_at_correlated(ka)
+!       enddo
 !       call die()
 !!      End debugging
 
+       nullify(  Dscf_correlated )
+       allocate( Dscf_correlated(nat_correlated, maxldau, (2*maxl+1)**2 * maxnzeta**2, 8) )
+       Dscf_correlated(:,:,:,:) = 0.0_dp
      endif   ! End if first-time
      firstime = .false.
-
-     do ka = 1, na_u
-       is  = isa(ka)
-       spp  => species(is)
-       do iproj = 1, spp%n_pjldaunl   ! Number of LDA+U projectors
-                                      !   not counting the "m copies"
-         ldauintegrals => spp%ldau_so_integrals(iproj)
-         l = spp%pjldaunl_l(iproj)
-
-         nullify( ldauintegrals%Dscf_correlated )
-         allocate(ldauintegrals%Dscf_correlated( (2*l+1)**2 * maxnzeta**2, 8))
-         ldauintegrals%Dscf_correlated = 0.0_dp
-       enddo 
-     enddo 
 
 !    Find the elements of the density matrix between orbitals
 !    belonging to the correlated shell of an atom.
@@ -440,6 +455,7 @@ module m_ldau_so
 !    the same correlated l
        
 !    Loop on all the atomic orbitals stored in the local node
+     Dscf_correlated(:,:,:,:) = 0.0_dp
      do io_local = 1, no_l
 
 !      Converts the orbital index from local frame to global frame
@@ -499,20 +515,21 @@ module m_ldau_so
 
              if( l_qn_neig .eq. l_correlated) then
                if( ia .eq. ia_neig ) then 
+                 iat_correlated = index_at_correlated(ia)
                  icounter = (zeta_qn-1) * (2*l_correlated+1)**2 * maxnzeta                 + &
  &                          (m_qn + 1 + l_correlated - 1)  * (2*l_correlated+1) * maxnzeta + &
  &                          (zeta_qn_neig-1) * (2*l_correlated+1)                          + &
  &                          (m_qn_neig + 1 + l_correlated)
-                 ldauintegrals%Dscf_correlated(icounter,:) = Dscf(ind,:)
+                 Dscf_correlated(iat_correlated,iproj,icounter,:) = Dscf(ind,:)
 
 !!                For debugging
 !                 write(6,'(a,11(i5,2x))')                                                         &
 ! &               '  ldau_so_hamil: Nodes, Node, iol, iog, j_neig, ind, listh, n, l, m =',         &
 ! &               Nodes, Node, io_local, io_global, j_neig, ind, neig_orb, n_qn_neig,              &
 ! &               l_qn_neig, m_qn_neig, zeta_qn_neig
-!                 write(6,'(a,11(i7,2x))')                                                             &
-! &               '  ldau_so_hamil: Nodes, Node, m_qn, zeta_qn, m_qn_neig, zeta_qn_neig, icounter =',  &
-! &                                 Nodes, Node, m_qn, zeta_qn, m_qn_neig, zeta_qn_neig, icounter
+!                 write(6,'(a,13(i7,2x))')                                                             &
+! &               '  ldau_so_hamil: Nodes, Node, ia, ind, m_qn, zeta_qn, m_qn_neig, zeta_qn_neig, icounter =',  &
+! &                                 Nodes, Node, ia, ind, m_qn, zeta_qn, m_qn_neig, zeta_qn_neig, icounter
 !!                End debugging
 
                endif
@@ -538,20 +555,43 @@ module m_ldau_so
        enddo       ! Close loop on LDA+U projectors on the atom within the uc
      enddo         ! Close loop on the orbitals in the uc
 
-
 #ifdef MPI
 !    Allocate workspace array for global reduction
-     call re_alloc( auxloc, 1, (2*l_correlated+1)**2 * maxnzeta**2, 1, 8,   &
- &                  name='auxloc', routine='ldau_so_hamil' )
+     call re_alloc( auxloc,                         & 
+ &       1, nat_correlated,                         &
+ &       1, maxldau,                                &
+ &       1, (2*maxl+1)**2 * maxnzeta**2,            &
+ &       1, 8,                                      &
+ &       name='auxloc', routine='ldau_so_hamil' )
 !    Global reduction of auxloc matrix
-     auxloc(:,:) = 0.0_dp
-     call MPI_AllReduce( ldauintegrals%Dscf_correlated(1,1),                  &
- &                       auxloc(1,1),                                         &
- &                       (2*l_correlated+1)**2 * maxnzeta**2 * 8,             &
+     auxloc(:,:,:,:) = 0.0_dp
+     call MPI_AllReduce( Dscf_correlated(1,1,1,1),                            &
+ &                       auxloc(1,1,1,1),                                     &
+ &                       nat_correlated * maxldau *                           & 
+ &                       (2*maxl+1)**2 * maxnzeta**2 * 8,             &
  &                       MPI_double_precision,MPI_sum,MPI_Comm_World,MPIerror )
-     ldauintegrals%Dscf_correlated(:,:) = auxloc(:,:)
+     Dscf_correlated(:,:,:,:) = auxloc(:,:,:,:)
 #endif
 
+!!    For debugging
+!     do ka = 1, na_u
+!       if( index_at_correlated(ka) .ne. 0 ) then
+!         is = isa(ka) 
+!         spp  => species(is)
+!         do iproj = 1, spp%n_pjldaunl  
+!          write(6,*)ka, iproj
+!           do j_neig = 1, (2*maxl+1)**2 * maxnzeta**2
+!             do m = 1, 8
+!               write(6,'(a,6i5,f12.5)')                                            &
+! &               'Node, Nodes, ka, iproj, j_neig, m, Dscf_correlated = ',          &
+! &                Node, Nodes, ka, iproj, j_neig, m, Dscf_correlated(ka,iproj,j_neig,m) 
+!             enddo 
+!           enddo 
+!         enddo 
+!       endif
+!     enddo 
+!     call die()
+!!    End debugging
 
 !     magnetic_field(1) = 0.025_dp
 !     magnetic_field(2) = 0.025_dp
@@ -573,8 +613,6 @@ module m_ldau_so
 !    Initialize the number of correlated electrons within this shell
      number_corr_elec_loc = 0.0_dp
      number_corr_elec     = 0.0_dp
-     Dscf_diagon_up_tot   = 0.0_dp
-     Dscf_diagon_down_tot = 0.0_dp
      E_correc_dc          = 0.0_dp
      magnetic_loc(:) = cmplx(0.0_dp, 0.0_dp, kind=dp)
      magnetic(:)     = cmplx(0.0_dp, 0.0_dp, kind=dp)
@@ -646,6 +684,7 @@ module m_ldau_so
 
              if( l_qn_neig .eq. l_correlated) then
                if( ia .eq. ia_neig ) then
+                 iat_correlated = index_at_correlated(ia)
                  mprime = m_qn_neig + 1 + l_correlated
 
 
@@ -661,32 +700,6 @@ module m_ldau_so
 ! &                    real( Dscf_cmplx_1 + Dscf_cmplx_2 ) * S(ind)
                    number_corr_elec_loc = number_corr_elec_loc +    &
  &                    real( Dscf_cmplx_1 + Dscf_cmplx_2, dp ) 
-!                  WARNING
-!                   Dscf_diagon_up = S(ind) * ( real( Dscf_cmplx_1 + Dscf_cmplx_2 ) +          &
-! &                    dsqrt( real(Dscf_cmplx_1 - Dscf_cmplx_2)**2 +                           &
-! &                           4.0_dp * real(Dscf_cmplx_3 * Dscf_cmplx_4) ) ) / 2.0_dp
-!                   Dscf_diagon_down = S(ind) * ( real( Dscf_cmplx_1 + Dscf_cmplx_2 ) -        &
-! &                    dsqrt( real(Dscf_cmplx_1 - Dscf_cmplx_2)**2 +                           &
-! &                    4.0_dp * real(Dscf_cmplx_3 * Dscf_cmplx_4) ) ) / 2.0_dp  
-                   Dscf_diagon_up = ( real( Dscf_cmplx_1 + Dscf_cmplx_2, dp ) +          &
- &                    dsqrt( real(Dscf_cmplx_1 - Dscf_cmplx_2, dp)**2 +                           &
- &                           4.0_dp * real(Dscf_cmplx_3 * Dscf_cmplx_4, dp) ) ) / 2.0_dp
-                   Dscf_diagon_down = ( real( Dscf_cmplx_1 + Dscf_cmplx_2, dp ) -        &
- &                    dsqrt( real(Dscf_cmplx_1 - Dscf_cmplx_2, dp)**2 +                           &
- &                    4.0_dp * real(Dscf_cmplx_3 * Dscf_cmplx_4, dp) ) ) / 2.0_dp  
-                   Dscf_diagon_diff = Dscf_diagon_up - Dscf_diagon_down
-                   if( Dscf_diagon_diff/real(Dscf_cmplx_1 - Dscf_cmplx_2) .lt. 0.0_dp ) then 
-                     Dscf_tmp = Dscf_diagon_up
-                     Dscf_diagon_up = Dscf_diagon_down
-                     Dscf_diagon_down = Dscf_tmp
-                   endif
-!                   write(6,'(a,i5,2f12.5)')' ind, Dscf_diagon_up   = ', ind, Dscf_diagon_up, S(ind)
-!                   write(6,'(a,i5,2f12.5)')' ind, Dscf_diagon_down = ', ind, Dscf_diagon_down, S(ind)
-!                   write(6,'(a,i5,2f12.5)')' ind, Dscf_diagon_diff = ', ind, Dscf_diagon_diff, S(ind)
-!!                   write(6,'(a,i5,f12.5)')' ind, sign(Dscf_diagon_down) = ', ind, dsign(Dscf_diagon_down,1.0_dp)
-!!                   write(6,'(a,i5,f12.5)')' ind, sign(Dscf_diagon_down) = ', ind, dsign(real(Dscf_cmplx_1 - Dscf_cmplx_2),1.0_dp)
-                   Dscf_diagon_up_tot   = Dscf_diagon_up_tot   + Dscf_diagon_up
-                   Dscf_diagon_down_tot = Dscf_diagon_down_tot + Dscf_diagon_down
                    magnetic_loc(1) = magnetic_loc(1) + (Dscf_cmplx_3 + Dscf_cmplx_4) * S(ind)
                    magnetic_loc(2) = magnetic_loc(2) + ((Dscf_cmplx_3 - Dscf_cmplx_4) * cmplx(0.0_dp,1.0_dp,kind=dp)) * S(ind)
                    magnetic_loc(3) = magnetic_loc(3) + (Dscf_cmplx_1 - Dscf_cmplx_2) * S(ind)
@@ -726,81 +739,81 @@ module m_ldau_so
 !                        Define the real part for the (up,up) term
 !                        First entry in the spin-component of the matrix element
                          H_ldau_so_Hubbard(ind,1) = H_ldau_so_Hubbard(ind,1) + one          *    &
- &                          ( ( direct_int *  ldauintegrals%Dscf_correlated(icounter,2) )   +    &
- &                          ( direct_int - fock_int ) *  ldauintegrals%Dscf_correlated(icounter,1) )  
+ &                          ( ( direct_int *  Dscf_correlated(iat_correlated,iproj,icounter,2) )   +    &
+ &                          ( direct_int - fock_int ) *  Dscf_correlated(iat_correlated,iproj,icounter,1) )  
                          if( (m .eq. mprime) .and. (m2prime .eq. m3prime) ) then
                            H_ldau_so_dc(ind,1) = H_ldau_so_dc(ind,1)  + one * 1.0_dp          *    &
- &                            (  - U * ldauintegrals%Dscf_correlated(icounter,2) +    &
- &                               - (U - J) * ldauintegrals%Dscf_correlated(icounter,1) )                         
+ &                            (  - U * Dscf_correlated(iat_correlated,iproj,icounter,2) +    &
+ &                               - (U - J) * Dscf_correlated(iat_correlated,iproj,icounter,1) )                         
                          endif
 
 !                        Define the imaginary part for the (up,up) term
 !                        Fifth entry in the spin-component of the matrix element
                          H_ldau_so_Hubbard(ind,1) = H_ldau_so_Hubbard(ind,1) + imag *             &
- &                          ( ( direct_int * ldauintegrals%Dscf_correlated(icounter,6) ) +    &
- &                            ( direct_int - fock_int ) * ldauintegrals%Dscf_correlated(icounter,5))   
+ &                          ( ( direct_int * Dscf_correlated(iat_correlated,iproj,icounter,6) ) +    &
+ &                            ( direct_int - fock_int ) * Dscf_correlated(iat_correlated,iproj,icounter,5))   
                          if( (m .eq. mprime) .and. (m2prime .eq. m3prime) ) then
                            H_ldau_so_dc(ind,1) = H_ldau_so_dc(ind,1)  + imag * 1.0_dp          *    &
- &                            ( - U * ldauintegrals%Dscf_correlated(icounter,6) +    &
- &                              - (U - J) * ldauintegrals%Dscf_correlated(icounter,5) )                         
+ &                            ( - U * Dscf_correlated(iat_correlated,iproj,icounter,6) +    &
+ &                              - (U - J) * Dscf_correlated(iat_correlated,iproj,icounter,5) )                         
                          endif
 
 !                        Define the real part for the (down,down) term
 !                        Second entry in the spin-component of the matrix element
                          H_ldau_so_Hubbard(ind,2) = H_ldau_so_Hubbard(ind,2) + one           *    &
- &                          ( ( direct_int * ldauintegrals%Dscf_correlated(icounter,1))+    &
- &                            ( direct_int - fock_int ) * ldauintegrals%Dscf_correlated(icounter,2))                        
+ &                          ( ( direct_int * Dscf_correlated(iat_correlated,iproj,icounter,1))+    &
+ &                            ( direct_int - fock_int ) * Dscf_correlated(iat_correlated,iproj,icounter,2))                        
                          if( (m .eq. mprime) .and. (m2prime .eq. m3prime) ) then
                            H_ldau_so_dc(ind,2) = H_ldau_so_dc(ind,2)  + one *   1.0_dp         *    &
- &                          (  - U * ldauintegrals%Dscf_correlated(icounter,1)+ &
- &                             -(U - J) * ldauintegrals%Dscf_correlated(icounter,2))                        
+ &                          (  - U * Dscf_correlated(iat_correlated,iproj,icounter,1)+ &
+ &                             -(U - J) * Dscf_correlated(iat_correlated,iproj,icounter,2))                        
                          endif
 
 !                        Define the imaginary part for the (down,down) term
 !                        Sixth entry in the spin-component of the matrix element
                          H_ldau_so_Hubbard(ind,2) = H_ldau_so_Hubbard(ind,2) + imag          *    &
- &                          ( ( direct_int * ldauintegrals%Dscf_correlated(icounter,5))+    &
- &                            ( direct_int - fock_int ) * ldauintegrals%Dscf_correlated(icounter,6))                         
+ &                          ( ( direct_int * Dscf_correlated(iat_correlated,iproj,icounter,5))+    &
+ &                            ( direct_int - fock_int ) * Dscf_correlated(iat_correlated,iproj,icounter,6))                         
                          if( (m .eq. mprime) .and. (m2prime .eq. m3prime) ) then
                            H_ldau_so_dc(ind,2) = H_ldau_so_dc(ind,2) + imag * 1.0_dp           *    &
- &                            ( - U * ldauintegrals%Dscf_correlated(icounter,5)+    &
- &                              -(U - J) * ldauintegrals%Dscf_correlated(icounter,6))                         
+ &                            ( - U * Dscf_correlated(iat_correlated,iproj,icounter,5)+    &
+ &                              -(U - J) * Dscf_correlated(iat_correlated,iproj,icounter,6))                         
                          endif
 
 !                        Define the real part for the (up,down) term
 !                        Third entry in the spin-component of the matrix element
                          H_ldau_so_Hubbard(ind,3) = H_ldau_so_Hubbard(ind,3) + one           *    &
- &                          ( -fock_int * ldauintegrals%Dscf_correlated(icounter,3) ) 
+ &                          ( -fock_int * Dscf_correlated(iat_correlated,iproj,icounter,3) ) 
                          if( (m .eq. mprime) .and. (m2prime .eq. m3prime) ) then
                            H_ldau_so_dc(ind,3) = H_ldau_so_dc(ind,3) + one * 1.0_dp            *    &
- &                           (  J * ldauintegrals%Dscf_correlated(icounter,3) ) 
+ &                           (  J * Dscf_correlated(iat_correlated,iproj,icounter,3) ) 
                          endif
 
 !                        Define the imaginary part for the (up,down) term
 !                        Fourth entry in the spin-component of the matrix elemen
                          H_ldau_so_Hubbard(ind,3) = H_ldau_so_Hubbard(ind,3) + imag          *    &
- &                          ( -fock_int * (-1.0_dp)*ldauintegrals%Dscf_correlated(icounter,4) ) 
+ &                          ( -fock_int * (-1.0_dp)*Dscf_correlated(iat_correlated,iproj,icounter,4) ) 
                          if( (m .eq. mprime) .and. (m2prime .eq. m3prime) ) then
                            H_ldau_so_dc(ind,3) = H_ldau_so_dc(ind,3) + imag * 1.0_dp           *    &
- &                          (  J * (-1.0_dp)*ldauintegrals%Dscf_correlated(icounter,4)) 
+ &                          (  J * (-1.0_dp)*Dscf_correlated(iat_correlated,iproj,icounter,4)) 
                          endif
 
 !                        Define the real part for the (down,up) term
 !                        Seventh entry in the spin-component of the matrix element
                          H_ldau_so_Hubbard(ind,4) = H_ldau_so_Hubbard(ind,4) + one           *    &
- &                          ( -fock_int * ldauintegrals%Dscf_correlated(icounter,7)  ) 
+ &                          ( -fock_int * Dscf_correlated(iat_correlated,iproj,icounter,7)  ) 
                          if( (m .eq. mprime) .and. (m2prime .eq. m3prime) ) then
                             H_ldau_so_dc(ind,4) = H_ldau_so_dc(ind,4) + one * 1.0_dp            *    &
- &                          ( J * ldauintegrals%Dscf_correlated(icounter,7) ) 
+ &                          ( J * Dscf_correlated(iat_correlated,iproj,icounter,7) ) 
                          endif
 
 !                        Define the imaginary part for the (down,up) term
 !                        Eigth entry in the spin-component of the matrix element
                          H_ldau_so_Hubbard(ind,4) = H_ldau_so_Hubbard(ind,4) + imag          *    &
- &                          ( -fock_int * ldauintegrals%Dscf_correlated(icounter,8) ) 
+ &                          ( -fock_int * Dscf_correlated(iat_correlated,iproj,icounter,8) ) 
                          if( (m .eq. mprime) .and. (m2prime .eq. m3prime) ) then
                            H_ldau_so_dc(ind,4) = H_ldau_so_dc(ind,4)  + imag * 1.0_dp          *    &
- &                          ( J * ldauintegrals%Dscf_correlated(icounter,8)  ) 
+ &                          ( J * Dscf_correlated(iat_correlated,iproj,icounter,8)  ) 
                          endif
 
 !!                        For debugging
@@ -913,9 +926,8 @@ module m_ldau_so
 !      write(6,'(a,2i5,2f12.5)')' Total spin along y = ' , Node, Nodes, magnetic(2)
 !      write(6,'(a,2i5,2f12.5)')' Total spin along z = ' , Node, Nodes, magnetic(3)
 !      write(6,'(a,2i5,f12.5)') ' Total number of correlated electrons      = ', Node, Nodes, number_corr_elec
-!      write(6,'(a,2i5,f12.5)') ' Total number of correlated up electrons   = ', Node, Nodes, Dscf_diagon_up_tot
-!      write(6,'(a,2i5,f12.5)') ' Total number of correlated down electrons = ', Node, Nodes, Dscf_diagon_down_tot
-!!     End debugging
+!!      call die()
+!     End debugging
 
       E_ldau_so            = E_ldau_so + E_correc_dc
 
