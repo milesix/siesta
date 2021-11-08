@@ -34,13 +34,15 @@ if [ -z "$TBT" ] ; then
     fi
 fi
 
-for ELEC in ts_au_100_elec_1x1 ts_au_100_elec_3x3 ; do
+
+for ELEC in ts_n_terminal_elec_x ts_n_terminal_elec_z
+do
 
     # Start with the electrode calculation
     echo "==> Electrode Calculation for $ELEC"
     mkdir Elec_$ELEC
     cd Elec_$ELEC
-    ln ../../Au.psf .
+    ln ../../C.psf .
     ln ../../$ELEC.fdf .
     $TS --electrode $ELEC.fdf > $ELEC.out
     RETVAL=$?
@@ -52,66 +54,63 @@ for ELEC in ts_au_100_elec_1x1 ts_au_100_elec_3x3 ; do
     # Go back to base directory
     cd ..
 
-    # Scattering region calculation
-    if [ $ELEC == "ts_au_100_elec_1x1" ]; then
-	scats="ts_au_100_3x3 ts_au_100_3x3_0.25V"
-    else
-	scats="ts_au_100_1x1 ts_au_100_1x1_0.25V"
-    fi
-    previous=
-    for SCAT in $scats
+done
+
+for SCAT in ts_n_terminal_3 ts_n_terminal_4
+do
+    echo "==> Scattering Region Calculation for $SCAT"
+    mkdir Scat_$SCAT
+    cd Scat_$SCAT
+    ln ../../C.psf .
+    ln ../../$SCAT.fdf .
+    # Copy the electrode's .TSHS
+    for ELEC in ts_n_terminal_elec_x ts_n_terminal_elec_z
     do
-	echo "==> Scattering Region Calculation for $SCAT"
-	mkdir Scat_$SCAT
-	cd Scat_$SCAT
-	ln ../../Au.psf .
-	ln ../../$SCAT.fdf .
-	# Copy the electrode's .TSHS
 	ln ../Elec_$ELEC/$ELEC.TSHS .
-	if [ -e ../Scat_$previous/$previous.TSDE ]; then
-	    cp ../Scat_$previous/$previous.TSDE $SCAT.TSDE
-	fi
-	$TS $SCAT.fdf > $SCAT.out
-	RETVAL=$?
-	if [ $RETVAL -ne 0 ]; then
-	    echo "** The scattering region calculation for $SCAT did not go well ..."
-	    exit
-	fi
-	cp $SCAT.out ../..
-	rm *.TSGF*
-	previous=$SCAT
+    done	
+    $TS $SCAT.fdf > $SCAT.out
+    RETVAL=$?
+    if [ $RETVAL -ne 0 ]; then
+	echo "** The scattering region calculation for $SCAT did not go well ..."
+	exit
+    fi
+    cp $SCAT.out ../..
+    rm *.TSGF*
+    previous=$SCAT
 
-	# Go back to base directory
-	cd ..
+    # Go back to base directory
+    cd ..
 
 
-	# TBTrans calculation
-	echo "==> TBTrans Calculation for $SCAT"
-	echo "==> Running $SCAT with tbtrans=$TBT"
-	mkdir TBT_$SCAT
-	cd TBT_$SCAT
-	# Copy input files
+    # TBTrans calculation
+    echo "==> TBTrans Calculation for $SCAT"
+    echo "==> Running $SCAT with tbtrans=$TBT"
+    mkdir TBT_$SCAT
+    cd TBT_$SCAT
+    # Copy input files
+    for ELEC in ts_n_terminal_elec_x ts_n_terminal_elec_z
+    do
 	ln ../Elec_$ELEC/$ELEC.TSHS .
-	ln ../Scat_$SCAT/$SCAT.TSHS .
-	ln ../../$SCAT.fdf .
-	$TBT $SCAT.fdf > ${SCAT}_tbt.out
-	RETVAL=$?
-	if [ $RETVAL -ne 0 ]; then
-	    echo "The scattering region calculation did not go well ..."
-	    exit
+    done	
+    ln ../Scat_$SCAT/$SCAT.TSHS .
+    ln ../../$SCAT.fdf .
+    $TBT $SCAT.fdf > ${SCAT}_tbt.out
+    RETVAL=$?
+    if [ $RETVAL -ne 0 ]; then
+	echo "The scattering region calculation did not go well ..."
+	exit
+    fi
+
+    cp ${SCAT}_tbt.out ../../
+    for f in $SCAT.TBT.AVTRANS_* $SCAT.TBT.AVTEIG_* $SCAT.TBT.AVADOS_*
+    do
+	if [ -e $f ]; then
+	    cp $f ../../
 	fi
-
-	cp ${SCAT}_tbt.out ../../
-	for f in $SCAT.TBT.TRANS_* $SCAT.TBT.TEIG_* $SCAT.TBT.ADOS_*
-	do
-	    if [ -e $f ]; then
-		cp $f ../../
-	    fi
-	done
-	rm -f *.TBTGF*
-
-	cd ..
     done
+    rm -f *.TBTGF*
+
+    cd ..
 done
 
 # If it gets here it's because it finished without error

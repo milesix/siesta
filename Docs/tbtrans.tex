@@ -1372,7 +1372,7 @@ semi-infinite electrodes.
 It is thus important to define an energy grid for analysis of the DOS
 and transmission.
 
-\begin{fdfentry}{TBT.Contours!Eta}[energy]<$\operatorname{min}[\eta_{\mathfrak e}]/100$>
+\begin{fdfentry}{TBT.Contours!Eta}[energy]<$\operatorname{min}[\eta_{\mathfrak e}]/10$>
   \fdfdepend{TBT!Elecs!Eta}%
 
   The imaginary ($\eta$) part of the Green function in the device
@@ -1383,7 +1383,7 @@ and transmission.
   axis. Generally one need not take into account $\eta$ values
   different from 0. However, in cases where localized states are found
   a smearing in the device region can help numerics. Therefore it
-  defaults to $\operatorname{min}[\eta_{\mathfrak e}]/100$. This ensures
+  defaults to $\operatorname{min}[\eta_{\mathfrak e}]/10$. This ensures
   that the device broadening is always smaller than the electrodes
   while allowing broadening of localized states.
 

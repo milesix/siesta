@@ -119,10 +119,10 @@ contains
 
     ! broadening defaults to the electrodes Eta values and their
     ! propagation. Since there may be localized states
-    ! we default to an eta with a number equal to min(Elecs(:)%eta) / 100
+    ! we default to an eta with a number equal to min(Elecs(:)%eta) / 10
     ! This ensures a minimal broadening that will by default be smaller
     ! than the electrodes.
-    nEq_Eta = minval(Elecs(:)%eta) / 100._dp
+    nEq_Eta = minval(Elecs(:)%eta) / 10._dp
     nEq_Eta = fdf_get('TS.Contours.nEq.Eta',nEq_Eta,'Ry')
     if ( nEq_Eta < 0._dp ) call die('ERROR: nEq_Eta < 0, we do not allow &
         &for using the advanced Green function, please correct.')
