@@ -1,0 +1,261 @@
+TBtrans Version: v4.1.5-1-g384057250
+Architecture  : x86_64-linux-gcc
+Compiler flags: mpifort -m64 -fPIC -O3 -ftree-vectorize -fexpensive-optimizations -funroll-loops -fprefetch-loop-arrays -fgraphite -fipa-icf -fipa-pure-const -march=native -fschedule-fusion -fselective-scheduling -fstack-arrays -fmax-stack-var-size=10000 -fipa-sra -fipa-cp -fcheck=recursion,array-temps -fno-second-underscore -Wrealloc-lhs -Wrealloc-lhs-all -fallow-argument-mismatch
+PP flags      : -DSIESTA__FLOOK -DSIESTA__METIS -DSIESTA__FFTW -DTS_PVT_METIS -DSIESTA__MRRR -DSIESTA__SCALAPACK_RESET -DMPI -DFC_HAVE_FLUSH -DFC_HAVE_ABORT -DCDF -DGRID_DP -DMPI_TIMING -DTRANSIESTA_TIMING -DTBTRANS_TIMING -DSIESTA__MUMPS -DNCDF_PARALLEL -DNCDF -DNCDF_4 -DSCALAPACK_DEBUG -D_DIAG_WORK -DSIESTA__DIAG_2STAGE -DSIESTA__ELPA -DTBTRANS
+Libraries     : libncdf.a libfdict.a  -lzmumps -lmumps_common -lpord -lparmetis -lmetis -lesmumps -lscotch -lscotcherr -L/opt/gnu/11.2.0/elpa/2020.05.001/lib -Wl,-rpath=/opt/gnu/11.2.0/elpa/2020.05.001/lib -lelpa -L/opt/gnu/11.2.0/scalapack-debug/2.1.0/lib -Wl,-rpath=/opt/gnu/11.2.0/scalapack-debug/2.1.0/lib -lscalapack  -L/opt/gnu/11.2.0/openblas/0.3.18/lib -Wl,-rpath=/opt/gnu/11.2.0/openblas/0.3.18/lib -lopenblas -L/home/nicpa/codes/flook/obj -lflookall -ldl -l:libnetcdff.so  -m64 -fPIC -O3 -ftree-vectorize -fexpensive-optimizations -funroll-loops -fprefetch-loop-arrays -fgraphite -fipa-icf -fipa-pure-const -march=native -fschedule-fusion -fselective-scheduling -fstack-arrays -fmax-stack-var-size=10000 -fipa-sra -fipa-cp -fcheck=recursion,array-temps -fno-second-underscore -Wrealloc-lhs -Wrealloc-lhs-all -fallow-argument-mismatch -L/opt/gnu/11.2.0/fftw/3.3.10/lib -Wl,-rpath=/opt/gnu/11.2.0/fftw/3.3.10/lib -lfftw3
+PARALLEL version
+NetCDF support
+NetCDF-4 support
+NetCDF-4 MPI-IO support
+METIS ordering support
+
+* Running on 6 nodes in parallel
+>> Start of run:   3-NOV-2021  23:23:30
+
+                           ************************ 
+                           *  WELCOME TO TBtrans  * 
+                           ************************ 
+
+reinit: Reading from ts_graphene_buffer.fdf
+
+reinit: -----------------------------------------------------------------------
+reinit: System Name: 
+reinit: -----------------------------------------------------------------------
+reinit: System Label: ts_graphene_buffer
+reinit: -----------------------------------------------------------------------
+
+ Kpoints in:           51 . Kpoints trimmed:           51
+tbt: Number of transport k-points = 51
+tbt: Method = Monkhorst-Pack grid.
+tbt: k-grid: Supercell and displacements
+tbt:            1   0   0      0.000
+tbt:            0 101   0      0.000
+tbt:            0   0   1      0.000
+
+
+tbt: **************************************************************
+tbt: Electronic temperature (reference)             =  299.9978 K
+tbt: No applied bias
+tbt: Calculate transmission only using diag(Gf)     =    F
+tbt: Saving bulk transmission for electrodes        =    F
+tbt: Saving DOS from bulk electrodes                =    F
+tbt: Saving DOS from Green function                 =    F
+tbt: Saving DOS from spectral functions             =    T
+tbt: Saving bond currents (orb-orb)                 =    F
+tbt: Saving DM from Green function                  =    F
+tbt: Saving DM from spectral functions              =    F
+tbt: Saving COOP from Green function                =    F
+tbt: Saving COOP from spectral functions            =    F
+tbt: Saving COHP from Green function                =    F
+tbt: Saving COHP from spectral functions            =    F
+tbt: Calc. # transmission eigenvalues               =  0
+tbt: Calc. T between all electrodes                 =    F
+tbt: Calc. total T out of electrodes                =    F
+tbt: Non-polarized Hamiltonian
+tbt: BTD creation algorithm                         =    speed
+tbt: BTD spectral function algorithm                =    propagation
+tbt: Divide and conquer diagonalization             =    F
+tbt: Assume LAPACK <i|S|j> = delta_ij               =    F
+tbt: Saving downfolded self-energies                =    F
+tbt: No delta Hamiltonian
+tbt: No delta self-energy
+tbt: Data files stored in current folder
+tbt: No compression of TBT.nc files
+tbt: Default NetCDF precision                       =    single
+tbt: Use parallel MPI-IO for NetCDF file            =    F
+tbt:           >> Electrodes << 
+tbt: >> Left
+tbt:   Electrode cell pivoting: E1, E2, E3          = A1, A2, A3
+tbt:   In-core self-energy calculation
+tbt:   Electrode TSHS file                          = ./ts_graphene_elec.TSHS
+tbt:   # atoms used in electrode                    =    4
+tbt:   Electrode Bloch unity [E1 x E2 x E3]         = 1 x 1 x 1
+tbt:   Position in geometry                         = 3 -- 6
+tbt:   Semi-infinite direction for electrode        = negative wrt. E1
+tbt:   Chemical shift                               =    0.000000 eV
+tbt:   Electronic temperature                       =  299.997806 K
+tbt:   Gamma-only electrode                         =    F
+tbt:   Bulk H, S in electrode region                =    T
+tbt:   Manual delta-Ef shift                        =    0.000000 eV
+tbt:   Electrode self-energy imaginary Eta          =  0.1000E-02 eV
+tbt:   Electrode self-energy accuracy               =  0.1000E-12 eV
+tbt:   Electrode inter-layer distance (semi-inf)    =    1.6685 Ang
+tbt: >> Right
+tbt:   Electrode cell pivoting: E1, E2, E3          = A1, A2, A3
+tbt:   In-core self-energy calculation
+tbt:   Electrode TSHS file                          = ./ts_graphene_elec.TSHS
+tbt:   # atoms used in electrode                    =    4
+tbt:   Electrode Bloch unity [E1 x E2 x E3]         = 1 x 1 x 1
+tbt:   Position in geometry                         = 13 -- 16
+tbt:   Semi-infinite direction for electrode        = positive wrt. E1
+tbt:   Chemical shift                               =    0.000000 eV
+tbt:   Electronic temperature                       =  299.997806 K
+tbt:   Gamma-only electrode                         =    F
+tbt:   Bulk H, S in electrode region                =    T
+tbt:   Manual delta-Ef shift                        =    0.000000 eV
+tbt:   Electrode self-energy imaginary Eta          =  0.1000E-02 eV
+tbt:   Electrode self-energy accuracy               =  0.1000E-12 eV
+tbt:   Electrode inter-layer distance (semi-inf)    =    1.6685 Ang
+ts:              >> TBtrans contour << 
+ts: Device Green function imaginary Eta             = 0.1000E-03 eV
+ts: Contour name                                    =    TBT.Contour.line
+ts:   line contour E_min                            =   -1.0000 eV
+ts:   line contour E_max                            =    1.0000 eV
+ts:   line contour points                           =  200
+ts:   line contour method                           =    Mid-rule
+tbt: **************************************************************
+
+tbt: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+%block TBT.Contours
+    line
+%endblock TBT.Contours
+
+%block TBT.Contour.line
+     from -1. eV to 1. eV
+      delta 0.01 eV
+        method mid-rule
+%endblock TBT.Contour.line
+tbt: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+************************ Begin: TBT CHECKS AND WARNINGS ************************
+ ** Speed up the execution by utilizing parallel I/O
+  > TBT.CDF.MPI true
+************************ End: TBT CHECKS AND WARNINGS **************************
+
+Device information (full):
+  <sparsity:ts_graphene_buffer.TSHS
+    nrows_g=162 nrows=162 sparsity=2.0556 nnzs=53946, refcount: 3>
+
+Electrode information:
+
+  <sparsity:./ts_graphene_elec.TSHS
+    nrows_g=54 nrows=54 sparsity=6.1667 nnzs=17982, refcount: 3>
+  <sparsity:(TM [ 0,--,--] of: ./ts_graphene_elec.TSHS)
+    nrows_g=54 nrows=54 sparsity=3.9444 nnzs=11502, refcount: 3>
+  <sparsity:(TM [-1,--,--] of: ./ts_graphene_elec.TSHS)
+    nrows_g=54 nrows=54 sparsity=1.1111 nnzs=3240, refcount: 3>
+ Left principal cell is perfect!
+
+  <sparsity:./ts_graphene_elec.TSHS
+    nrows_g=54 nrows=54 sparsity=6.1667 nnzs=17982, refcount: 3>
+  <sparsity:(TM [ 0,--,--] of: ./ts_graphene_elec.TSHS)
+    nrows_g=54 nrows=54 sparsity=3.9444 nnzs=11502, refcount: 3>
+  <sparsity:(TM [ 1,--,--] of: ./ts_graphene_elec.TSHS)
+    nrows_g=54 nrows=54 sparsity=1.1111 nnzs=3240, refcount: 3>
+ Right principal cell is perfect!
+
+
+tbt: Analyzing electrode sparsity pattern and electrode pivot-tables
+tbt: BTD pivoting scheme for electrode (Left): atom+Left
+
+tbt: Analyzing device sparsity pattern and pivot-table
+tbt: BTD pivoting scheme in device: atom+Left
+tbt: Done analyzing electrode and device sparsity pattern and pivot-tables
+
+tbt: Reducing matrix (H, S) sparsity patterns by: 18468
+
+Region (4): [A]-buffer
+  [ 1 -- 2, 17 -- 18 ]
+tbt: # of device region orbitals: 54
+Region (6): [A]-device
+  [ 7 -- 12 ]
+
+tbt: # of Left downfolding orbitals: 72
+tbt: # of Left device orbitals: 36
+Region (4): [A]-Left folding region
+  [ 3 -- 6 ]
+Region (4): [A]-Left folding in D
+  [ 7 -- 10 ]
+
+tbt: # of Right downfolding orbitals: 72
+tbt: # of Right device orbitals: 36
+Region (4): [A]-Right folding region
+  [ 13 -- 16 ]
+Region (4): [A]-Right folding in D
+  [ 9 -- 12 ]
+
+tbt: Creating electrode tri-diagonal matrix blocks
+tbt: Creating device tri-diagonal matrix blocks
+Region (2): [TRI] device region
+  [ [27] * 2 ]
+tbt: Matrix elements in BTD: 2916
+
+tbt: Electrodes tri-diagonal matrices
+Region (2): [TRI] Left
+  [ [36] * 2 ]
+Region (2): [TRI] Right
+  [ [36] * 2 ]
+
+tbt: Electrode memory:  616.344 KB
+tbt: Sparse H, S and auxiliary matrices memory:  932.133 KB
+tbt: Sum of electrode and sparse memory:    1.512 MB
+
+tbt: Initializing data file: ts_graphene_buffer.TBT.nc
+tbt: Estimated file size of ts_graphene_buffer.TBT.nc:   2.145 MB
+
+tbt: LHS Green function padding / memory: 34992 /  592.312 KB
+tbt: RHS Green function padding / memory: 0 /   45.562 KB
+tbt: Initial ETA in               18.521 s
+tbt: Calculated   5.039 %, ETA in                8.624 s
+tbt: Calculated  10.039 %, ETA in                8.051 s
+tbt: Calculated  15.078 %, ETA in                7.636 s
+tbt: Calculated  20.078 %, ETA in                7.207 s
+tbt: Calculated  25.118 %, ETA in                6.753 s
+tbt: Calculated  30.118 %, ETA in                6.313 s
+tbt: Calculated  35.157 %, ETA in                5.872 s
+tbt: Calculated  40.157 %, ETA in                5.446 s
+tbt: Calculated  45.157 %, ETA in                5.031 s
+tbt: Calculated  50.196 %, ETA in                4.636 s
+tbt: Calculated  55.196 %, ETA in                4.339 s
+tbt: Calculated  60.235 %, ETA in                4.031 s
+tbt: Calculated  65.294 %, ETA in                3.783 s
+tbt: Calculated  70.333 %, ETA in                3.445 s
+tbt: Calculated  75.333 %, ETA in                2.966 s
+tbt: Calculated  80.373 %, ETA in                2.365 s
+tbt: Calculated  85.373 %, ETA in                1.734 s
+tbt: Calculated  90.373 %, ETA in                1.120 s
+tbt: Calculated  95.412 %, ETA in                0.525 s
+tbt: Completed in               11.274 s
+
+Currents (ensure entire Fermi function window):
+Left -> Right, V [V] / I [A]:  0.00000     V /  0.00000     A
+Left -> Right, V [V] / P [W]:  0.00000     V /  0.00000     W
+
+
+             Section          Calls    Walltime       %
+ global_section                   1      11.447  100.00
+  tbtrans                         1      11.447  100.00
+   MPI_COMM_RANK                  1       0.000    0.00
+   MPI_COMM_SIZE                  1       0.000    0.00
+   MPI_BCAST                     83       0.001    0.01
+   MPI_BARRIER                    3       0.002    0.02
+   init-region+sp                 1       0.002    0.01
+   pivot-elec                     1       0.002    0.01
+    pivot                         1       0.000    0.00
+    MPI_BCAST                    24       0.001    0.01
+   pivot-device                   1       0.000    0.00
+    pivot                         1       0.000    0.00
+   tri-init                       1       0.005    0.05
+    tri-init-elec                 1       0.004    0.04
+     TS-rgn2tri                   1       0.000    0.00
+     MPI_BCAST                    6       0.004    0.04
+    TS-rgn2tri                    1       0.000    0.00
+     MPI_BCAST                   12       0.000    0.00
+   TBT                            1      11.419   99.76
+    MPI_BCAST                    39       0.001    0.01
+    MPI_BARRIER                   3       0.000    0.00
+    setup-HS                     51       0.041    0.35
+    MPI_ALLGATHER              3468       0.018    0.16
+    read-GS                    1734       9.345   81.63
+    SE-dwn                     1734       0.390    3.40
+     ts_expand                 3366       0.012    0.11
+    Gf-prep                    1734       0.397    3.47
+     V_TM_Pinv                 1683       0.178    1.56
+    analysis                   1734       1.085    9.48
+     dGFGGF                    1683       0.111    0.97
+     A-DOS                     1683       0.120    1.05
+     A-Gamma                   1683       0.006    0.05
+     cdf-w-DOS-T               1734       0.843    7.36
+      MPI_RECV                17187       0.358    3.13
+    cdf2ascii                     1       0.100    0.87
+>> End of run:   3-NOV-2021  23:23:41
