@@ -69,6 +69,22 @@ contains
 
     use iso_c_binding, only: c_loc, c_f_pointer
 
+    use siesta_geom
+    use atomlist,    only: no_u, no_s, no_l, indxuo, iaorb, iphorb, lasto, qtot, amass, lastkb, iphKB
+    use neighbour,   only: jna=>jan, xij, r2ij
+    use neighbour,   only: mneighb, reset_neighbour_arrays
+    use atmfuncs,    only: rcut, orb_gindex, kbproj_gindex
+    use matel_mod,   only: is_orb, is_kb
+
+    ! integer &  ia, iio, ind, io, ioa, is, ix, &  j, ja, jn, jo, joa, js, nnia, norb, ka
+    ! real(dp) &  grSij(3), rij, Sij, xinv(3), sum
+    ! integer &  ikb, ina, ino, jno, ko, koa, ks, ig, jg, kg, &  nkb, nna, nno, ilm1, ilm2, npoints, &  ir
+    ! real(dp) ::  epsk, grSki(3), rki, rmax, rmaxkb, rmaxo
+    real(dp) :: rmax, rmaxkb, rmaxo
+    integer  :: iio, ind, io, ioa, j, ja, jn, jo, joa, js, jg, nnia, nna, norb, ks, koa, ikb
+    integer  :: na, no, nua, nuo, nai, naj
+    real(dp) :: Jznl_alt(3)
+
     complex(grid_p), dimension (:), pointer :: tc_v => null()
     integer  :: np
 
@@ -79,7 +95,7 @@ contains
     integer  :: I_ind, alpha, r_ind, grad_ind
     integer  :: mu, nu, iamu, ianu, inda, iph_nu, iph_mu
     real(dp) :: val, grad(3), J_tmp(3), tmp_nl
-    real(dp) :: R_I(3), R_mu(3), R_nu(3)
+    real(dp) :: R_I(3), R_mu(3), R_nu(3), R_Imu(3), R_Inu(3)
     type(species_info), pointer :: spp
     real(dp) :: rm, delta_rm, aux_fr, aux_dfdr, vl_int, qi
     real(dp) :: vel(3)          !! temp buffer for (`va_in` x 2)
@@ -313,6 +329,127 @@ contains
     end do jzero_nl
 
     gk_results%Jzero(:) = gk_results%Jzloc(:) + gk_results%Jznl(:)
+
+!!!!!
+    ! This should really add NL-part of the zero current
+    ! accounting for periodically reflected \mu and \nu.
+
+    ! scell   <- siesta_geom
+    ! rmax    <- calculated
+    ! rmaxo   <- calculated
+    ! na      <- siesta_geom
+    ! xa      <- siesta_geom | xa_in??
+    ! nnia    <- output
+    ! nna     <- output
+
+    ! Inits
+    na =  na_s
+    nua = na_u
+    no =  no_s
+    nuo = no_u
+
+! Find maximum ranges
+    rmaxo = 0.0d0
+    rmaxkb = 0.0d0
+    do ia = 1,na
+       is = isa(ia)
+       do ikb = lastkb(ia-1)+1,lastkb(ia)
+          ioa = iphKB(ikb)
+          rmaxkb = max( rmaxkb, rcut(is,ioa) )
+       enddo
+       do io = lasto(ia-1)+1,lasto(ia)
+          ioa = iphorb(io)
+          rmaxo = max( rmaxo, rcut(is,ioa) )
+       enddo
+    enddo
+    rmax = rmaxo + rmaxkb
+
+    ! Initialize neighb subroutine
+    call mneighb( scell, 2.0d0*rmaxo, na, xa_in, 0, 0, nnia )
+
+    Jznl_alt(:) = 0.0_dp
+
+    jzero_nl_alt: do I_ind=1,na_u
+
+       ks = isa(I_ind)
+
+       R_I(1:3) = xa_in(1:3,I_ind)
+       vel(1:3) = va_in(1:3,I_ind)
+
+       ! Find neighbour atoms
+       call mneighb( scell, rmax, na, xa_in, I_ind, 0, nna ) ! < mind the zero self-account
+
+       do nai = 1, nna
+          ia = jna(nai)
+          is = isa(ia)
+
+          do naj = 1, nna
+             ja = jna(naj)
+             js = isa(ja)
+
+             if ( ia.ne.ja ) then ! mind the zero self-account
+                R_Imu(1:3) = xij(1:3, ia)
+                R_Inu(1:3) = xij(1:3, ja)
+
+                do mu = lasto(ia-1)+1,lasto(ia)
+                   ioa = iphorb(mu)
+                   iph_mu = orb_gindex(is,ioa)
+
+                   do nu = lasto(ja-1)+1,lasto(ja)
+                      joa = iphorb(nu)
+                      iph_nu = orb_gindex(js,joa)
+
+                      J_tmp(1:3) = 0.0_dp
+
+                      do ikb = lastkb(I_ind-1)+1,lastkb(I_ind)
+                         koa    = iphKB(ikb)
+                         alpha  = kbproj_gindex(ks,koa)
+
+                         ! iph_mu = mu
+                         ! iph_nu = nu
+                         ! alpha  = ikb
+
+                         ! write(5000, *) iph_mu, iph_nu, alpha
+                         ! write(5000, *) is_orb(iph_mu), is_orb(iph_nu), is_kb(alpha)
+                         ! write(5000, *)
+
+                         do grad_ind = 1,3
+                            call new_MATEL(coord_table(grad_ind), iph_mu, alpha, R_Imu(1:3), val, grad)
+                            tmp_nl = val
+
+                            call new_MATEL(SG(grad_ind), iph_nu, alpha, R_Inu(1:3), val, grad)
+
+                            J_tmp(grad_ind) = J_tmp(grad_ind) - val*tmp_nl*vel(grad_ind)
+                         end do
+
+                         call new_MATEL('S', iph_nu, alpha, R_Inu(1:3), val, grad)
+                         tmp_nl = val
+
+                         do r_ind = 1,3
+                            do grad_ind = 1,3
+                               call new_MATEL(RG(r_ind,grad_ind), iph_mu, alpha, R_Imu(1:3), val, grad)
+
+                               J_tmp(r_ind) = J_tmp(r_ind) - val*tmp_nl*vel(grad_ind)
+                            end do
+                         end do
+                      end do
+
+                      Jznl_alt(1:3) = Jznl_alt(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(mu,nu,1,1) ! only 1st spin component
+                   end do
+                end do
+
+             end if               ! mind the zero self-account
+          end do
+       end do
+
+
+       write(5000, *) "------------------------------"
+
+    end do jzero_nl_alt
+
+    print*, "[test_Jznl_alt]", Jznl_alt
+    call reset_neighbour_arrays( )
+!!!!!
 
   end subroutine compute_jzero
 

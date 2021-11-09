@@ -506,6 +506,22 @@ contains
     no =  no_s
     nuo = no_u
 
+! Find maximum ranges
+    rmaxo = 0.0d0
+    rmaxkb = 0.0d0
+    do ia = 1,na
+       is = isa(ia)
+       do ikb = lastkb(ia-1)+1,lastkb(ia)
+          ioa = iphKB(ikb)
+          rmaxkb = max( rmaxkb, rcut(is,ioa) )
+       enddo
+       do io = lasto(ia-1)+1,lasto(ia)
+          ioa = iphorb(io)
+          rmaxo = max( rmaxo, rcut(is,ioa) )
+       enddo
+    enddo
+    rmax = rmaxo + rmaxkb
+
 ! Allocate arrays
       norb = lmx2*nzetmx*nsemx
       call re_alloc( listed, 1, no, 'listed', 'temp_jks' )
@@ -548,7 +564,7 @@ contains
           endif
 
 ! Find neighbour atoms
-          call mneighb( scell, rmax, na, xa, ka, 0, nna )
+          call mneighb( scell, rmax, na, xa_in, ka, 0, nna )
 
 ! Find neighbour orbitals
           nno = 0
@@ -678,7 +694,7 @@ contains
       !------
 
     ! Initialize neighb subroutine
-    call mneighb( scell, 2.0d0*rmaxo, na, xa, 0, 0, nnia )
+    call mneighb( scell, 2.0d0*rmaxo, na, xa_in, 0, 0, nnia )
 
       do jo = 1,no
          Si(jo,:) = 0.0d0
@@ -687,7 +703,7 @@ contains
       do ia = 1,nua
 
         is = isa(ia)
-        call mneighb( scell, 2.0d0*rmaxo, na, xa, ia, 0, nnia )
+        call mneighb( scell, 2.0d0*rmaxo, na, xa_in, ia, 0, nnia )
 
         do io = lasto(ia-1)+1,lasto(ia)
           call GlobalToLocalOrb(io,Node,Nodes,iio)
