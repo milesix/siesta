@@ -401,7 +401,7 @@ contains
   end subroutine cdf_init_file
 
   subroutine cdf_init_grid(fname, ntm)
-    use fdf, only : fdf_get, leqi
+    use fdf, only : fdf_get, leqi, fdf_defined
     use siesta_options, only: saverho, savedrho, savevh, savevna
     use siesta_options, only: savevt, savepsch, savetoch, saverhoxc
     use siesta_options, only: savebader
@@ -470,6 +470,12 @@ contains
     if ( savetoch ) then
       dic = dic//('info'.kv.'Total charge')
       call ncdf_def_var(grp,'RhoTot',prec,(/'nx','ny','nz'/), &
+          compress_lvl=cdf_comp_lvl,atts=dic,chunks=chks)
+    end if
+
+    if ( fdf_defined("LocalDensityOfStates") ) then
+      dic = dic//('info'.kv.'Local Density of States')
+      call ncdf_def_var(grp,'LDOS',prec,(/'nx  ','ny  ','nz  ','spin'/), &
           compress_lvl=cdf_comp_lvl,atts=dic,chunks=chks)
     end if
 
