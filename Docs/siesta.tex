@@ -6395,6 +6395,12 @@ the issue (see Sec.~\ref{sec:filtering}).
   is active.  \index{output!HSX file}
 
 
+  \note Since 5.0 the \sysfile{HSX} file format has changed to reduce
+  disk-space and store data in double precision. This means that the
+  file is not backward compatible and any external utilities should
+  adapt their \sysfile{HSX} file reading. See e.g. \program{Util/HSX}
+  for details on the new implementation.
+
   See also the \fdf{Write!DMHS.NetCDF} and \fdf{Write!DMHS.History.NetCDF}
   options.
 
