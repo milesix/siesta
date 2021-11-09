@@ -7435,8 +7435,8 @@ Apart from the LDOS-specific options below, the ``ordering'',
 ``verbosity'', and ``symbolic factorization'' options are honored.
 
 The current version of the code generates a real-space grid file with
-extension \sysfile{LDSI}, and (if netCDF is compiled-in) a file
-\file{LDSI.grid.nc}.
+extension \sysfile{LDOS}, and (if netCDF is compiled-in) a file
+\file{LDOS.grid.nc}.
 
 NOTE: The LDOS computed with this procedure is not exactly the same as
 the vanilla \siesta\ LDOS, which uses an explicit energy
@@ -7447,6 +7447,8 @@ energy.
 \begin{fdflogicalF}{PEXSI!LDOS}
 
   Whether to compute the LDOS using the PEXSI technology.
+
+  \note this flag is not compatible with \fdf{LocalDensityOfStates}.
   
 \end{fdflogicalF}
 
@@ -7840,6 +7842,8 @@ obtain simple STM images in the Tersoff-Hamann approximation (See
 
   \note the two energies of the range must be ordered, with lowest
   first.
+
+  \note this flag is not compatible with \fdf{PEXSI!LDOS}.
 
 \end{fdfentry}
 
