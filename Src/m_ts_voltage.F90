@@ -421,7 +421,7 @@ contains
 #ifdef MPI
     use mpi_siesta, only : MPI_Comm_World, MPI_Bcast, MPI_Grid_Real
 #endif
-    use m_ncdf_io, only : cdf_r_grid
+    use ncdf_io_m, only : cdf_r_grid
     use netcdf_ncdf
 
 #ifdef TRANSIESTA_VOLTAGE_DEBUG

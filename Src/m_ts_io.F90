@@ -673,7 +673,7 @@ contains
 #endif
     use alloc, only : re_alloc
     use geom_helper,  only : iaorb, ucorb
-    use m_io_s
+    use io_sparse_m
     use m_os, only : file_exist
     use class_Sparsity
     use class_OrbitalDistribution
@@ -1026,7 +1026,7 @@ contains
        Ef, Qtot, Temp, &
        tag, Bcast)
 
-    use m_ncdf_io, only : cdf_r_Sp, cdf_r_d1D, cdf_r_d2D
+    use ncdf_io_m, only : cdf_r_Sp, cdf_r_d1D, cdf_r_d2D
 
     use netcdf_ncdf, ncdf_parallel => parallel
     use sys,          only : die
@@ -1232,7 +1232,7 @@ contains
     use geom_helper, only : ucorb
     use m_sparse, only : xij_offset
 
-    use m_io_s, only: io_write_Sp, io_write_d1D, io_write_d2D
+    use io_sparse_m, only: io_write_Sp, io_write_d1D, io_write_d2D
 #ifdef MPI
     use mpi_siesta
 #endif

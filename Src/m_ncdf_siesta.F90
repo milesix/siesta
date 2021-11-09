@@ -13,7 +13,7 @@ module m_ncdf_siesta
   use variable
   use dictionary
   use netcdf_ncdf, ncdf_parallel => parallel
-  use m_ncdf_io
+  use ncdf_io_m
 #endif
 #ifdef MPI
   use mpi_siesta
@@ -77,12 +77,12 @@ contains
 
     ! We always re-write the file...
     call ncdf_create(ncdf,fname, &
-         mode=ior(NF90_WRITE,NF90_NETCDF4), overwrite=.true.)
+        mode=ior(NF90_WRITE,NF90_NETCDF4), overwrite=.true.)
 
 #ifdef MPI
     tmp = nnzs(sparse_pattern)
     call MPI_Reduce(tmp,n_nzs,1,MPI_Integer, &
-         MPI_Sum, 0, MPI_Comm_World, MPIerror)
+        MPI_Sum, 0, MPI_Comm_World, MPIerror)
 #else
     n_nzs = nnzs(sparse_pattern)
 #endif
@@ -100,10 +100,10 @@ contains
     call ncdf_def_var(ncdf,'lasto',NF90_INT,(/'na_u'/), &
         compress_lvl=0, atts=dic)
     call ncdf_put_var(ncdf,'lasto',lasto(1:na_u))
-    
+
     dic = dic//('info'.kv.'Total charge')
     call ncdf_def_var(ncdf,'Qtot',NF90_DOUBLE,(/'one'/), &
-         compress_lvl=0, atts=dic)
+        compress_lvl=0, atts=dic)
     call ncdf_put_var(ncdf,'Qtot',Qtot)
 
     if ( fixspin ) then
@@ -112,7 +112,7 @@ contains
           compress_lvl=0, atts=dic)
       call ncdf_put_var(ncdf,'Qspin',total_spin)
     end if
-    
+
     ! Create all necessary containers...
     dic = dic//('info'.kv.'Number of supercells in each unit-cell direction') 
     call ncdf_def_var(ncdf,'nsc',NF90_INT,(/'xyz'/), &
@@ -227,43 +227,43 @@ contains
 
     dic = ('info'.kv.'Tolerance for converging the density matrix')
     call ncdf_def_var(grp,'DMTolerance',NF90_DOUBLE,(/'one'/), &
-         compress_lvl=0, atts=dic)
+        compress_lvl=0, atts=dic)
 
     dic = dic//('info'.kv.'Tolerance for converging the Hamiltonian')
     call ncdf_def_var(grp,'HTolerance',NF90_DOUBLE,(/'one'/), &
-         compress_lvl=0, atts=dic)
+        compress_lvl=0, atts=dic)
 
     dic = dic//('info'.kv.'Net charge of the system')
     call ncdf_def_var(grp,'NetCharge',NF90_DOUBLE,(/'one'/), &
-         compress_lvl=0, atts=dic)
+        compress_lvl=0, atts=dic)
 
     dic = dic//('info'.kv.'Mixing weight')
     call ncdf_def_var(grp,'MixingWeight',NF90_DOUBLE,(/'one'/), &
-         compress_lvl=0, atts=dic)
+        compress_lvl=0, atts=dic)
 
     dic = dic//('info'.kv.'Grid used for the Brillouin zone integration')
     call ncdf_def_var(grp,'BZ',NF90_INT,(/'xyz','xyz'/), &
-         compress_lvl=0, atts=dic)
+        compress_lvl=0, atts=dic)
 
     dic = dic//('info'.kv.'Grid displacement used in Brillouin zone') &
-         //('unit'.kv.'b**-1')
+        //('unit'.kv.'b**-1')
     call ncdf_def_var(grp,'BZ_displ',NF90_DOUBLE,(/'xyz'/), &
-         compress_lvl=0, atts=dic)
+        compress_lvl=0, atts=dic)
 
     dic = dic//('info'.kv.'Temperature for electrons')// &
-         ('unit'.kv.'Ry')
+        ('unit'.kv.'Ry')
     call ncdf_def_var(grp,'ElectronicTemperature',NF90_DOUBLE,(/'one'/), &
-         compress_lvl=0, atts=dic)
+        compress_lvl=0, atts=dic)
 
     dic = dic//('info'.kv.'Mesh cutoff for real space grid')
     call ncdf_def_var(grp,'MeshCutoff',NF90_DOUBLE,(/'one'/), &
-         compress_lvl=0, atts=dic)
+        compress_lvl=0, atts=dic)
 
     call delete(dic)
 
     ! Create FC group
     if ( lis_FC ) then
-      
+
       call ncdf_def_grp(ncdf,'FC',grp)
 
       ! Create dimension arrays
@@ -295,57 +295,57 @@ contains
       dic = dic//('info'.kv.'Displaced atomic forces')//('unit'.kv.'Ry/Bohr')
       call ncdf_def_var(grp,'fa',NF90_DOUBLE,(/'xyz  ','na_u ','m_p  ','xyz  ', 'na_fc'/), &
           compress_lvl=cdf_comp_lvl, atts=dic)
-      
+
     end if
 
     call delete(dic)
 
     if ( isolve == SOLVE_TRANSI ) then
 
-       ! Save all information about the transiesta method
-       call ncdf_def_grp(ncdf,'TRANSIESTA',grp)
+      ! Save all information about the transiesta method
+      call ncdf_def_grp(ncdf,'TRANSIESTA',grp)
 
-       dic = ('info'.kv.'Grid used for the Brillouin zone integration')
-       call ncdf_def_var(grp,'BZ',NF90_INT,(/'xyz','xyz'/), &
-            compress_lvl=0, atts=dic)
+      dic = ('info'.kv.'Grid used for the Brillouin zone integration')
+      call ncdf_def_var(grp,'BZ',NF90_INT,(/'xyz','xyz'/), &
+          compress_lvl=0, atts=dic)
 
-       dic = dic//('info'.kv.'Grid displacement used in Brillouin zone') &
-            //('unit'.kv.'b**-1')
-       call ncdf_def_var(grp,'BZ_displ',NF90_DOUBLE,(/'xyz'/), &
-            compress_lvl=0, atts=dic)
+      dic = dic//('info'.kv.'Grid displacement used in Brillouin zone') &
+          //('unit'.kv.'b**-1')
+      call ncdf_def_var(grp,'BZ_displ',NF90_DOUBLE,(/'xyz'/), &
+          compress_lvl=0, atts=dic)
 
-       dic = dic//('info'.kv.'Applied voltage')//('unit'.kv.'Ry')
-       call ncdf_def_var(grp,'Volt',NF90_DOUBLE,(/'one'/), &
-            compress_lvl=0,atts=dic)
+      dic = dic//('info'.kv.'Applied voltage')//('unit'.kv.'Ry')
+      call ncdf_def_var(grp,'Volt',NF90_DOUBLE,(/'one'/), &
+          compress_lvl=0,atts=dic)
 
-       dic = dic//('info'.kv.'Hartree correction for FFT Poisson solver')
-       call ncdf_def_var(grp,'dHartree',NF90_DOUBLE,(/'one'/), &
-           compress_lvl=0,atts=dic)
-       call delete(dic)
+      dic = dic//('info'.kv.'Hartree correction for FFT Poisson solver')
+      call ncdf_def_var(grp,'dHartree',NF90_DOUBLE,(/'one'/), &
+          compress_lvl=0,atts=dic)
+      call delete(dic)
 
        ! Add all the electrodes
-       do iEl = 1 , N_Elec
-          
-          call ncdf_def_grp(grp,trim(Elecs(iEl)%name),grp2)
+      do iEl = 1 , N_Elec
 
-          tmp = TotUsedAtoms(Elecs(iEl))
-          call ncdf_def_dim(grp2,'na',tmp)
+        call ncdf_def_grp(grp,trim(Elecs(iEl)%name),grp2)
 
-          dic = ('info'.kv.'Atoms belonging to electrode')
-          call ncdf_def_var(grp2,'a_idx',NF90_INT,(/'na'/), &
-               compress_lvl=0,atts=dic)
-          
-          dic = dic//('info'.kv.'Chemical potential')//('unit'.kv.'Ry')
-          call ncdf_def_var(grp2,'mu',NF90_DOUBLE,(/'one'/), &
-               compress_lvl=0,atts=dic)
+        tmp = TotUsedAtoms(Elecs(iEl))
+        call ncdf_def_dim(grp2,'na',tmp)
 
-          dic = dic//('info'.kv.'Electronic temperature')//('unit'.kv.'Ry')
-          call ncdf_def_var(grp2,'kT',NF90_DOUBLE,(/'one'/), &
-               compress_lvl=0,atts=dic)
+        dic = ('info'.kv.'Atoms belonging to electrode')
+        call ncdf_def_var(grp2,'a_idx',NF90_INT,(/'na'/), &
+            compress_lvl=0,atts=dic)
 
-          call delete(dic)
+        dic = dic//('info'.kv.'Chemical potential')//('unit'.kv.'Ry')
+        call ncdf_def_var(grp2,'mu',NF90_DOUBLE,(/'one'/), &
+            compress_lvl=0,atts=dic)
 
-       end do
+        dic = dic//('info'.kv.'Electronic temperature')//('unit'.kv.'Ry')
+        call ncdf_def_var(grp2,'kT',NF90_DOUBLE,(/'one'/), &
+            compress_lvl=0,atts=dic)
+
+        call delete(dic)
+
+      end do
 
     end if
 
@@ -355,15 +355,15 @@ contains
     dic = dic//('label'.kv.trim(slabel))
 
     if ( isolve == SOLVE_DIAGON ) then
-       dic = dic//('method'.kv.'diagon')
+      dic = dic//('method'.kv.'diagon')
     else if ( isolve == SOLVE_ORDERN ) then
-       dic = dic//('method'.kv.'order-n')
+      dic = dic//('method'.kv.'order-n')
     else if ( isolve == SOLVE_MINIM ) then
-       dic = dic//('method'.kv.'omm')
+      dic = dic//('method'.kv.'omm')
     else if ( isolve == SOLVE_TRANSI ) then
-       dic = dic//('method'.kv.'transiesta')
+      dic = dic//('method'.kv.'transiesta')
     else if ( isolve == SOLVE_PEXSI ) then
-       dic = dic//('method'.kv.'pexsi')
+      dic = dic//('method'.kv.'pexsi')
     end if
 
     ! Attributes are collective
@@ -375,29 +375,29 @@ contains
 
     if ( isolve == SOLVE_TRANSI ) then
 
-       ! Save all information about the transiesta method
-       call ncdf_open_grp(ncdf,'TRANSIESTA',grp)
+      ! Save all information about the transiesta method
+      call ncdf_open_grp(ncdf,'TRANSIESTA',grp)
 
-       call ncdf_put_var(grp,'Volt',Volt)
-       
-       ! Add all the electrodes
-       do iEl = 1 , N_Elec
-          
-          call ncdf_open_grp(grp,trim(Elecs(iEl)%name),grp2)
+      call ncdf_put_var(grp,'Volt',Volt)
 
-          tmp = TotUsedAtoms(Elecs(iEl))
+      ! Add all the electrodes
+      do iEl = 1 , N_Elec
 
-          allocate(ibuf(tmp))
-          do i = 1 , tmp
-             ibuf(i) = Elecs(iEl)%idx_a + i - 1
-          end do
-          call ncdf_put_var(grp2,'a_idx',ibuf)
-          deallocate(ibuf)
-          
-          call ncdf_put_var(grp2,'mu',Elecs(iEl)%mu%mu)
-          call ncdf_put_var(grp2,'kT',Elecs(iEl)%mu%kT)
+        call ncdf_open_grp(grp,trim(Elecs(iEl)%name),grp2)
 
-       end do
+        tmp = TotUsedAtoms(Elecs(iEl))
+
+        allocate(ibuf(tmp))
+        do i = 1 , tmp
+          ibuf(i) = Elecs(iEl)%idx_a + i - 1
+        end do
+        call ncdf_put_var(grp2,'a_idx',ibuf)
+        deallocate(ibuf)
+
+        call ncdf_put_var(grp2,'mu',Elecs(iEl)%mu%mu)
+        call ncdf_put_var(grp2,'kT',Elecs(iEl)%mu%kT)
+
+      end do
 
     end if
 
@@ -451,7 +451,7 @@ contains
     end if
     
     chks = (/ntm(1),ntm(2),1/)
-
+    
     ! Define the units for all charge variables
     dic = ('unit'.kv.'e/Bohr**3')
 
@@ -576,8 +576,9 @@ contains
     use siesta_options, only: fixspin, total_spin, isolve, SOLVE_TRANSI
     use siesta_geom, only: na_u, ucell, xa, va
     use siesta_geom, only: nsc, isc_off
+    use class_Sparsity, only: nrows_g
     use sparse_matrices, only: sparse_pattern, block_dist
-    use sparse_matrices, only: S_1D
+    use sparse_matrices, only: S_1D, xij_2D
     use sparse_matrices, only: DM_2D, EDM_2D, H_2D
     use sparse_matrices, only: gradS_2D
     use m_stress, only : stress
@@ -587,17 +588,19 @@ contains
     ! Dictionary containing keys that we will save
     type(dictionary_t), intent(in) :: dic_save
     type(hNCDF) :: ncdf, grp
+    integer :: no
+    integer, allocatable :: gncol(:)
 
     call timer('CDF',1)
 
     ! We just open it (prepending)
 #ifdef MPI
     if ( cdf_w_parallel ) then
-       call ncdf_open(ncdf,fname, &
-            mode=ior(NF90_WRITE,NF90_MPIIO), comm=MPI_Comm_World)
+      call ncdf_open(ncdf,fname, &
+          mode=ior(NF90_WRITE,NF90_MPIIO), comm=MPI_Comm_World)
     else
 #endif
-       call ncdf_open(ncdf,fname,mode=ior(NF90_WRITE,NF90_NETCDF4))
+      call ncdf_open(ncdf,fname,mode=ior(NF90_WRITE,NF90_NETCDF4))
 #ifdef MPI
     end if
 #endif
@@ -613,53 +616,59 @@ contains
           call ncdf_put_var(ncdf,'Ef',Ef)
     end if
     if ( ('Qtot' .in. dic_save) .and. Node == 0 ) &
-         call ncdf_put_var(ncdf,'Qtot',Qtot)
+        call ncdf_put_var(ncdf,'Qtot',Qtot)
     ! Save nsc, xa, fa, lasto, ucell
     if ( ('nsc' .in. dic_save) .and. Node == 0 ) &
-         call ncdf_put_var(ncdf,'nsc',nsc)
+        call ncdf_put_var(ncdf,'nsc',nsc)
     if ( ('cell' .in. dic_save) .and. Node == 0 ) &
-         call ncdf_put_var(ncdf,'cell',ucell)
+        call ncdf_put_var(ncdf,'cell',ucell)
     if ( ('xa' .in. dic_save) .and. Node == 0 ) &
-         call ncdf_put_var(ncdf,'xa',xa(:,1:na_u))
+        call ncdf_put_var(ncdf,'xa',xa(:,1:na_u))
     if ( ('va' .in. dic_save) .and. Node == 0 ) &
-         call ncdf_put_var(ncdf,'va',va(:,1:na_u))
+        call ncdf_put_var(ncdf,'va',va(:,1:na_u))
     if ( ('fa' .in. dic_save) .and. Node == 0 ) &
-         call ncdf_put_var(ncdf,'fa',fa(:,1:na_u))
+        call ncdf_put_var(ncdf,'fa',fa(:,1:na_u))
     if ( ('stress' .in. dic_save) .and. Node == 0 ) &
-         call ncdf_put_var(ncdf,'stress',stress)
+        call ncdf_put_var(ncdf,'stress',stress)
 
     ! Sparsity format
     call ncdf_open_grp(ncdf,'SPARSE',grp)
 
+    no = nrows_g(sparse_pattern)
+    allocate(gncol(no))
+    ! Signal that it needs to be filled (first element is negative)
+    gncol(1) = -1
+
     if ( 'isc_off'.in. dic_save) &
-         call ncdf_put_var(grp,'isc_off',isc_off)
+        call ncdf_put_var(grp,'isc_off',isc_off)
     if ( 'sp' .in. dic_save ) &
-         call cdf_w_Sp(grp,block_dist,sparse_pattern)
+        call cdf_w_Sp(grp, sparse_pattern, block_dist, gncol=gncol)
     if ( 'S' .in. dic_save ) &
-         call cdf_w_d1D(grp,'S',S_1D)
+        call cdf_w_d1D(grp,'S',S_1D, gncol=gncol)
     if ( 'gradS' .in. dic_save ) &
-         call cdf_w_d2D(grp,'S_gradient',gradS_2D)
-!    if ( .not. Gamma .and. ('xij' .in. dic_save) ) then
-       ! Write the xij array, it will not change during SCF
-!       call cdf_w_d2D(grp,'xij',xij_2D)
-    !    end if
+        call cdf_w_d2D(grp,'S_gradient', gradS_2D, gncol=gncol)
+    ! we don't have a flag for saving xij
+    !if ( 'xij' .in. dic_save ) then
+    !  call cdf_w_d2D(grp,'xij', xij_2D, gncol=gncol)
+    !end if
     if ( 'H' .in. dic_save ) &
-         call cdf_w_d2D(grp,'H',H_2D)
+        call cdf_w_d2D(grp,'H',H_2D, gncol=gncol)
     if ( 'DM' .in. dic_save ) &
-         call cdf_w_d2D(grp,'DM',DM_2D)
+        call cdf_w_d2D(grp,'DM',DM_2D, gncol=gncol)
     if ( 'EDM' .in. dic_save ) &
-         call cdf_w_d2D(grp,'EDM',EDM_2D)
+        call cdf_w_d2D(grp,'EDM',EDM_2D, gncol=gncol)
     
     if ( isolve == SOLVE_TRANSI ) then
-       call ncdf_open_grp(ncdf,'TRANSIESTA',grp)
+      call ncdf_open_grp(ncdf,'TRANSIESTA',grp)
 
-       if ( 'NEGF_Vha' .in. dic_save ) &
-         call ncdf_put_var(grp,'dHartree',NEGF_Vha)
-
+      if ( 'NEGF_Vha' .in. dic_save ) &
+          call ncdf_put_var(grp,'dHartree',NEGF_Vha)
     end if
 
+    deallocate(gncol)
+
     call ncdf_close(ncdf)
-    
+
     call timer('CDF',2)
 
   end subroutine cdf_save_state
@@ -678,24 +687,24 @@ contains
     ! We just open it (prepending)
 #ifdef MPI
     if ( cdf_w_parallel ) then
-       call ncdf_open(ncdf,fname, group='GRID', &
-            mode=ior(NF90_WRITE,NF90_MPIIO), &
-            comm=MPI_Comm_World)
+      call ncdf_open(ncdf,fname, group='GRID', &
+          mode=ior(NF90_WRITE,NF90_MPIIO), &
+          comm=MPI_Comm_World)
     else
 #endif
-       call ncdf_open(ncdf,fname, group='GRID', &
-            mode=ior(NF90_WRITE,NF90_NETCDF4))
+      call ncdf_open(ncdf,fname, group='GRID', &
+          mode=ior(NF90_WRITE,NF90_NETCDF4))
 #ifdef MPI
     end if
 #endif
 
     ! Save the grid
     if ( nspin > 1 ) then
-       do is = 1 , nspin 
-          call cdf_w_grid(ncdf,vname,nmeshl,grid(:,is),idx=is)
-       end do
+      do is = 1 , nspin 
+        call cdf_w_grid(ncdf,vname,nmeshl,grid(:,is),idx=is)
+      end do
     else
-       call cdf_w_grid(ncdf,vname,nmeshl,grid(:,1))
+      call cdf_w_grid(ncdf,vname,nmeshl,grid(:,1))
     end if
 
     call ncdf_close(ncdf)
@@ -748,143 +757,145 @@ contains
 
     do is = 1 , nspecies
 
-       ! Get current specie
-       spp => species(is)
+      ! Get current specie
+      spp => species(is)
 
-       ! Get array sizes
-       no = spp%n_orbnl
-       nk = spp%n_pjnl
-       if ( no == 0 ) cycle
+      ! Get array sizes
+      no = spp%n_orbnl
+      nk = spp%n_pjnl
+      if ( no == 0 ) cycle
 
-       ! Create the group
-       call ncdf_def_grp(ncdf,trim(spp%label),grp)
+      ! Create the group
+      call ncdf_def_grp(ncdf,trim(spp%label),grp)
 
-       call ncdf_def_dim(grp,'norbs',no)
-       if ( nk > 0 ) then
-          call ncdf_def_dim(grp,'nkbs',nk)
-       end if
-       call ncdf_def_dim(grp,'ntb',nt)
+      call ncdf_def_dim(grp,'norbs',no)
+      if ( nk > 0 ) then
+        call ncdf_def_dim(grp,'nkbs',nk)
+      end if
+      call ncdf_def_dim(grp,'ntb',nt)
 
-       ! Save the orbital global attributes
-       dic = ('Element'.kv.trim(spp%symbol))
-       dic = dic//('Label'.kv.trim(spp%label))
-       dic = dic//('Atomic_number'.kv.spp%z)
-       dic = dic//('Valence_charge'.kv.spp%zval)
-       dic = dic//('Mass'.kv.spp%mass)
-       dic = dic//('Self_energy'.kv.spp%self_energy)
-       dic = dic//('Number_of_orbitals'.kv.spp%norbs)
-       dic = dic//('L_max_basis'.kv.spp%lmax_basis)
-       dic = dic//('Number_of_projectors'.kv.spp%nprojs)
-       dic = dic//('L_max_projs'.kv.spp%lmax_projs)
-       dic = dic//('ID'.kv.is)
-       call ncdf_put_gatt(grp,atts=dic)
-       call delete(dic)
+      ! Save the orbital global attributes
+      dic = ('Element'.kv.trim(spp%symbol))
+      dic = dic//('Label'.kv.trim(spp%label))
+      dic = dic//('Atomic_number'.kv.spp%z)
+      dic = dic//('Valence_charge'.kv.spp%zval)
+      dic = dic//('Mass'.kv.spp%mass)
+      dic = dic//('Self_energy'.kv.spp%self_energy)
+      dic = dic//('Number_of_orbitals'.kv.spp%norbs)
+      dic = dic//('L_max_basis'.kv.spp%lmax_basis)
+      dic = dic//('Number_of_projectors'.kv.spp%nprojs)
+      dic = dic//('L_max_projs'.kv.spp%lmax_projs)
+      dic = dic//('ID'.kv.is)
+      call ncdf_put_gatt(grp,atts=dic)
+      call delete(dic)
 
-       ! Create all orbital variables...
-       dic = ('orbnl_l'.kv.NF90_INT)//('orbnl_n'.kv.NF90_INT)
-       dic = dic//('orbnl_z'.kv.NF90_INT)//('orbnl_ispol'.kv.NF90_INT)
-       dic = dic//('orbnl_pop'.kv.NF90_DOUBLE)//('cutoff'.kv.NF90_DOUBLE)
-       dic = dic//('delta'.kv.NF90_DOUBLE)
-       d = .first. dic
-       do while ( .not. (.empty. d) )
-          key = .key. d
-          v = .val. d
-          call assign(i,v)
-          call ncdf_def_var(grp,trim(key),i,(/'norbs'/), &
-               compress_lvl=0,chunks=(/no/))
-          d = .next. d
-       end do
-       call delete(dic)
+      ! Create all orbital variables...
+      call ncdf_def_var(grp,'orbnl_l',NF90_INT,(/'norbs'/), &
+          compress_lvl=0,chunks=(/no/))
+      call ncdf_def_var(grp,'orbnl_n',NF90_INT,(/'norbs'/), &
+          compress_lvl=0,chunks=(/no/))
+      call ncdf_def_var(grp,'orbnl_z',NF90_INT,(/'norbs'/), &
+          compress_lvl=0,chunks=(/no/))
+      call ncdf_def_var(grp,'orbnl_ispol',NF90_INT,(/'norbs'/), &
+          compress_lvl=0,chunks=(/no/))
+      call ncdf_def_var(grp,'orbnl_pop',NF90_DOUBLE,(/'norbs'/), &
+          compress_lvl=0,chunks=(/no/))
+      call ncdf_def_var(grp,'cutoff',NF90_DOUBLE,(/'norbs'/), &
+          compress_lvl=0,chunks=(/no/))
+      call ncdf_def_var(grp,'delta',NF90_DOUBLE,(/'norbs'/), &
+          compress_lvl=0,chunks=(/no/))
 
-       ! Create all projector variables...
-       if ( nk > 0 ) then
-          call ncdf_def_var(grp,'proj',NF90_DOUBLE, (/'ntb ','nkbs'/), &
-             compress_lvl=cdf_comp_lvl,chunks=(/nt,1/))
+      ! Create all projector variables...
+      if ( nk > 0 ) then
+        call ncdf_def_var(grp,'proj',NF90_DOUBLE, (/'ntb ','nkbs'/), &
+            compress_lvl=cdf_comp_lvl,chunks=(/nt,1/))
+        call ncdf_def_var(grp,'pjnl_l',NF90_INT,(/'nkbs'/), &
+            compress_lvl=0,chunks=(/nk/))
+        call ncdf_def_var(grp,'pjnl_n',NF90_INT,(/'nkbs'/), &
+            compress_lvl=0,chunks=(/nk/))
+        call ncdf_def_var(grp,'pjnl_ekb',NF90_DOUBLE,(/'nkbs'/), &
+            compress_lvl=0,chunks=(/nk/))
+        call ncdf_def_var(grp,'kbcutoff',NF90_DOUBLE,(/'nkbs'/), &
+            compress_lvl=0,chunks=(/nk/))
+        call ncdf_def_var(grp,'kbdelta',NF90_DOUBLE,(/'nkbs'/), &
+            compress_lvl=0,chunks=(/nk/))
+        if ( spp%lj_projs ) then
+          call ncdf_def_var(grp,'pjnl_j',NF90_INT,(/'nkbs'/), &
+              compress_lvl=0,chunks=(/nk/))
+        end if
+      end if
+      call delete(v)
 
-          dic = ('pjnl_l'.kv.NF90_INT)//('pjnl_j'.kv.NF90_DOUBLE)
-          dic = dic//('pjnl_n'.kv.NF90_INT)//('pjnl_ekb'.kv.NF90_DOUBLE)
-          dic = dic//('kbcutoff'.kv.NF90_DOUBLE)//('kbdelta'.kv.NF90_DOUBLE)
-          d = .first. dic
-          do while ( .not. (.empty. d) )
-             key = .key. d
-             v = .val. d
-             call assign(i,v)
-             call ncdf_def_var(grp,trim(key),i,(/'nkbs'/), &
-                  compress_lvl=0,chunks=(/nk/))
-             d = .next. d
-          end do
-          call delete(dic)
-       end if
-       call delete(v)
+      ! Create orbital projector
+      call ncdf_def_var(grp,'orb',NF90_DOUBLE,(/'ntb  ','norbs'/), &
+          compress_lvl=cdf_comp_lvl,chunks=(/nt,1/))
 
-       ! Create orbital projector
-       call ncdf_def_var(grp,'orb',NF90_DOUBLE,(/'ntb  ','norbs'/), &
-           compress_lvl=cdf_comp_lvl,chunks=(/nt,1/))
+      if ( spp%z > 0 ) then ! negative are floating orbitals
 
-       if ( spp%z > 0 ) then ! negative are floating orbitals
-       
-         ! Local potential
-         call save_rad_func('vna', spp%vna)
-         
-         ! Local potential charge density
-         call save_rad_func('chlocal', spp%chlocal)
-         
-         ! Reduced local potential (rV+2*Zval)
-         call save_rad_func('reduced_vlocal', spp%reduced_vlocal)
+        ! Local potential
+        call save_rad_func('vna', spp%vna)
 
-         if ( spp%there_is_core ) then
-           ! Core charge, if it exists, the variable will be created
-           ! Hence, the old way of designating whether core is present
-           ! or not is removed.
-           ! I.e. no Core_flag [1|0] will be saved, Core_flag == .true. is 
-           ! apt if 'core' variable exists.
-           call save_rad_func('core', spp%core)
-         end if
+        ! Local potential charge density
+        call save_rad_func('chlocal', spp%chlocal)
 
-       end if
+        ! Reduced local potential (rV+2*Zval)
+        call save_rad_func('reduced_vlocal', spp%reduced_vlocal)
 
-       call delete(dic)
+        if ( spp%there_is_core ) then
+          ! Core charge, if it exists, the variable will be created
+          ! Hence, the old way of designating whether core is present
+          ! or not is removed.
+          ! I.e. no Core_flag [1|0] will be saved, Core_flag == .true. is 
+          ! apt if 'core' variable exists.
+          call save_rad_func('core', spp%core)
+        end if
 
-       ! Save all variables to the group
+      end if
 
-       ! Save orbital
-       call ncdf_put_var(grp,'orbnl_l',spp%orbnl_l(1:no))
-       call ncdf_put_var(grp,'orbnl_n',spp%orbnl_n(1:no))
-       call ncdf_put_var(grp,'orbnl_z',spp%orbnl_z(1:no))
+      call delete(dic)
 
-       allocate(iaux(no))
-       do i = 1, no
-          if ( spp%orbnl_ispol(i) ) then
-             iaux(i) = 1
-          else
-             iaux(i) = 0 
-          end if
-       end do
-       call ncdf_put_var(grp,'orbnl_ispol',iaux(1:no))
-       deallocate(iaux)
-       call ncdf_put_var(grp,'orbnl_pop',spp%orbnl_pop(1:no))
+      ! Save all variables to the group
 
-       ! Save projector
-       if ( nk > 0 ) then
-          call ncdf_put_var(grp,'pjnl_l',spp%pjnl_l(1:nk))
+      ! Save orbital
+      call ncdf_put_var(grp,'orbnl_l',spp%orbnl_l(1:no))
+      call ncdf_put_var(grp,'orbnl_n',spp%orbnl_n(1:no))
+      call ncdf_put_var(grp,'orbnl_z',spp%orbnl_z(1:no))
+
+      allocate(iaux(no))
+      do i = 1, no
+        if ( spp%orbnl_ispol(i) ) then
+          iaux(i) = 1
+        else
+          iaux(i) = 0 
+        end if
+      end do
+      call ncdf_put_var(grp,'orbnl_ispol',iaux(1:no))
+      deallocate(iaux)
+      call ncdf_put_var(grp,'orbnl_pop',spp%orbnl_pop(1:no))
+
+      ! Save projector
+      if ( nk > 0 ) then
+        call ncdf_put_var(grp,'pjnl_l',spp%pjnl_l(1:nk))
+        if ( spp%lj_projs ) then
           call ncdf_put_var(grp,'pjnl_j',spp%pjnl_j(1:nk))
-          call ncdf_put_var(grp,'pjnl_n',spp%pjnl_n(1:nk))
-          call ncdf_put_var(grp,'pjnl_ekb',spp%pjnl_ekb(1:nk))
-       end if
+        end if
+        call ncdf_put_var(grp,'pjnl_n',spp%pjnl_n(1:nk))
+        call ncdf_put_var(grp,'pjnl_ekb',spp%pjnl_ekb(1:nk))
+      end if
 
-       do i = 1, nk
-          p => spp%pjnl(i)
-          call ncdf_put_var(grp,'proj',p%f(1:nt),start=(/1,i/))
-          call ncdf_put_var(grp,'kbcutoff',p%cutoff,start=(/i/))
-          call ncdf_put_var(grp,'kbdelta',p%delta,start=(/i/))
-       end do
+      do i = 1, nk
+        p => spp%pjnl(i)
+        call ncdf_put_var(grp,'proj',p%f(1:nt),start=(/1,i/))
+        call ncdf_put_var(grp,'kbcutoff',p%cutoff,start=(/i/))
+        call ncdf_put_var(grp,'kbdelta',p%delta,start=(/i/))
+      end do
 
-       do i = 1, no
-          p => spp%orbnl(i)
-          call ncdf_put_var(grp,'orb',p%f(1:nt),start=(/1,i/))
-          call ncdf_put_var(grp,'cutoff',p%cutoff,start=(/i/))
-          call ncdf_put_var(grp,'delta',p%delta,start=(/i/))
-       end do
+      do i = 1, no
+        p => spp%orbnl(i)
+        call ncdf_put_var(grp,'orb',p%f(1:nt),start=(/1,i/))
+        call ncdf_put_var(grp,'cutoff',p%cutoff,start=(/i/))
+        call ncdf_put_var(grp,'delta',p%delta,start=(/i/))
+      end do
 
     end do
 
@@ -929,20 +940,20 @@ contains
 
     ! open the file...
     call ncdf_open(ncdf,fname,mode=ior(NF90_WRITE,NF90_NETCDF4),group='FC')
-    
+
     if ( istep == 0 ) then
       call ncdf_put_var(ncdf,'fa0',fa)
-      
+
     else
       ! Atomic index (with respect to ia1)
       ia = mod(istep - 1, 6) + 1
       dir = (ia - 1) / 2 + 1
       pm = mod(ia-1, 2) + 1
       ia = (istep - 1) / 6 + 1
-      
+
       call ncdf_put_var(ncdf,'fa',fa,count=(/3,na_u/),start=(/1,1,pm,dir,ia/))
     end if
-    
+
     call ncdf_close(ncdf)
 
   end subroutine cdf_save_fc
