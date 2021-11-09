@@ -29,7 +29,7 @@ INCFLAGS:=$(INCFLAGS) $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS)
 OBJS = 	psml2psf.o handlers.o
 #
 #
-MOD_OBJS= m_getopts.o f2kcli.o
+MOD_OBJS= m_getopts.o
 #
 COM_OBJS=$(OBJS) 
 ALL_OBJS=$(MOD_OBJS) $(COM_OBJS)
@@ -43,7 +43,6 @@ psml2psf:   $(NCPS)  $(ALL_OBJS)
         $(NCPS) $(PSML_LIBS) $(XMLF90_LIBS)
 #
 psml2psf.o: m_getopts.o 
-m_getopts.o: f2kcli.o
 #
 clean: 
 	@echo "==> Cleaning object, library, and executable files"
