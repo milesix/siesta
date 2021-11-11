@@ -29,6 +29,7 @@ module m_thermal_flux_settings
      integer  :: n_max_ewald = 5
      !! Number of periodic cell images for Ewald scheme
      !! Read from .fdf input under `ThermalFlux.Jion.Nmax`
+     logical :: qeheat_units   = .false.  !! Use QuantumEspresso Heat suite thermal flux units for comparison
      logical :: verbose_output = .false.  !! Eval and print extra debug test info
    contains
      procedure :: init_self_deriv_scheme
@@ -102,6 +103,11 @@ contains
        this%n_max_ewald = fdf_integer("ThermalFlux.Jion.Nmax", 5)
        write(*,"(2X,A,I2)") "[gk:.init] Number of periodic cell images for Ewald scheme: ", this%n_max_ewald
 
+       if(fdf_get('ThermalFlux.QEHeat.Units', .false.)) then
+          this%qeheat_units = .true.
+          write(*,"(2X,A)") "[gk:.init] Using QEHeat units for thermal flux results output."
+       end if
+
        if(fdf_get('ThermalFlux.VerboseOutput', .false.)) then
           this%verbose_output = .true.
           write(*,"(2X,A)") "[gk:.init] Verbose output requested."
@@ -146,40 +152,49 @@ contains
     class(thermal_flux_results_type),  intent(inout) :: this
     class(thermal_flux_settings_type), intent(inout) :: setup
 
+    real(dp), parameter :: qeheat_factor = 0.0483776900146_dp
+    real(dp)            :: scale_factor  = 1.0_dp
+
+    if (setup%qeheat_units) scale_factor = qeheat_factor
+
     write(*,*)
     write(*,*) "#           ================ Green-Kubo ThermalFlux Results ================"
 
-    write(*,*) "[gk:.Jks...]", this%Jks
+    write(*,*) "[gk:.Jks...]", this%Jks * scale_factor
     if (setup%verbose_output) then
-       write(*,*) "[gk:.Jks-A.]", this%Jks_A
-       write(*,*) "[gk:.Jks-B.]", this%Jks_B
-       write(*,*) "[gk:.Jele..]", this%Jele
+       write(*,*) "[gk:.Jks-A.]", this%Jks_A * scale_factor
+       write(*,*) "[gk:.Jks-B.]", this%Jks_B * scale_factor
+       write(*,*) "[gk:.Jele..]", this%Jele * scale_factor
     end if
 
-    write(*,*) "[gk:.Jxc...]", this%Jxc
+    write(*,*) "[gk:.Jxc...]", this%Jxc * scale_factor
 
-    write(*,*) "[gk:.Jhart.]", this%Jhart
+    write(*,*) "[gk:.Jhart.]", this%Jhart * scale_factor
 
-    write(*,*) "[gk:.Jion..]", this%Jion
+    write(*,*) "[gk:.Jion..]", this%Jion * scale_factor
     if (setup%verbose_output) then
-       write(*,*) "[gk:.Jion-A]", this%Jion_A
-       write(*,*) "[gk:.Jion-B]", this%Jion_B
-       write(*,*) "[gk:.Jion-C]", this%Jion_C
-       write(*,*) "[gk:.Jion-D]", this%Jion_D
-       write(*,*) "[gk:.Jion-E]", this%Jion_E
+       write(*,*) "[gk:.Jion-A]", this%Jion_A * scale_factor
+       write(*,*) "[gk:.Jion-B]", this%Jion_B * scale_factor
+       write(*,*) "[gk:.Jion-C]", this%Jion_C * scale_factor
+       write(*,*) "[gk:.Jion-D]", this%Jion_D * scale_factor
+       write(*,*) "[gk:.Jion-E]", this%Jion_E * scale_factor
     end if
 
-    write(*,*) "[gk:.Jzero.]", this%Jzero
+    write(*,*) "[gk:.Jzero.]", this%Jzero * scale_factor
     if (setup%verbose_output) then
-       write(*,*) "[gk:.Jzloc.]", this%Jzloc
-       write(*,*) "[gk:.Jznl..]", this%Jznl
+       write(*,*) "[gk:.Jzloc.]", this%Jzloc * scale_factor
+       write(*,*) "[gk:.Jznl..]", this%Jznl * scale_factor
     end if
 
     write(*,*) "#-----------"
 
-    write(*,*) "[gk:.Jtotal]", this%Jtotal
+    write(*,*) "[gk:.Jtotal]", this%Jtotal * scale_factor
 
-    write(*,*) "#           ================================================================"
+    if (setup%qeheat_units) then
+       write(*,*) "#           ======================    QEHeat Units    ======================"
+    else
+       write(*,*) "#           ======================    Siesta Units    ======================"
+    end if
     write(*,*)
   end subroutine write_thermal_flux_results
 
