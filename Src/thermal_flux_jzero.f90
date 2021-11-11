@@ -286,12 +286,20 @@ contains
 
        do mu=1,no_l
           iamu = iaorb(mu)
-          iph_mu = iphorb(mu)
+          is   = isa(iamu)
+          ioa  = iphorb(mu)
+          iph_mu = orb_gindex(is, ioa)
+
           R_mu(1:3) = xa_in(1:3,iamu)
 
           do nu=1,no_l
              ianu = iaorb(nu)
-             iph_nu = iphorb(nu)
+             js   = isa(ianu)
+             joa  = iphorb(nu)
+             iph_nu = orb_gindex(js, joa)
+             ! ianu = iaorb(nu)
+             ! iph_nu = iphorb(nu)
+
              R_nu(1:3) = xa_in(1:3,ianu)
 
              J_tmp(1:3) = 0.0_dp
@@ -323,7 +331,8 @@ contains
 
              end do
 
-             gk_results%Jznl(1:3) = gk_results%Jznl(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(mu,nu,1,1) ! only 1st spin component
+             ! gk_results%Jznl(1:3) = gk_results%Jznl(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(mu,nu,1,1) ! only 1st spin component
+             gk_results%Jznl(1:3) = gk_results%Jznl(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(iph_mu,iph_nu,1,1) ! only 1st spin component
           enddo
        enddo
     end do jzero_nl
@@ -338,7 +347,7 @@ contains
     ! rmax    <- calculated
     ! rmaxo   <- calculated
     ! na      <- siesta_geom
-    ! xa      <- siesta_geom | xa_in??
+    ! xa      <- siesta_geom | xa_in
     ! nnia    <- output
     ! nna     <- output
 
@@ -377,7 +386,7 @@ contains
        vel(1:3) = va_in(1:3,I_ind)
 
        ! Find neighbour atoms
-       call mneighb( scell, rmax, na, xa_in, I_ind, 0, nna ) ! < mind the zero self-account
+       call mneighb( scell, rmax, na, xa_in, I_ind, 1, nna ) ! < isc = 1 to include self
 
        do nai = 1, nna
           ia = jna(nai)
@@ -387,7 +396,6 @@ contains
              ja = jna(naj)
              js = isa(ja)
 
-             if ( ia.ne.ja ) then ! mind the zero self-account
                 R_Imu(1:3) = xij(1:3, ia)
                 R_Inu(1:3) = xij(1:3, ja)
 
@@ -404,10 +412,6 @@ contains
                       do ikb = lastkb(I_ind-1)+1,lastkb(I_ind)
                          koa    = iphKB(ikb)
                          alpha  = kbproj_gindex(ks,koa)
-
-                         ! iph_mu = mu
-                         ! iph_nu = nu
-                         ! alpha  = ikb
 
                          ! write(5000, *) iph_mu, iph_nu, alpha
                          ! write(5000, *) is_orb(iph_mu), is_orb(iph_nu), is_kb(alpha)
@@ -434,20 +438,19 @@ contains
                          end do
                       end do
 
-                      Jznl_alt(1:3) = Jznl_alt(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(mu,nu,1,1) ! only 1st spin component
+                      ! Jznl_alt(1:3) = Jznl_alt(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(mu,nu,1,1) ! only 1st spin component
+                      Jznl_alt(1:3) = Jznl_alt(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(iph_mu,iph_nu,1,1) ! only 1st spin component
                    end do
                 end do
 
-             end if               ! mind the zero self-account
           end do
        end do
 
-
-       write(5000, *) "------------------------------"
+       ! write(5000, *) "------------------------------"
 
     end do jzero_nl_alt
 
-    print*, "[test_Jznl_alt]", Jznl_alt
+    print*, "[test_Jznl_alt]", Jznl_alt * 0.0483776900146_dp  !to compare with QE at once
     call reset_neighbour_arrays( )
 !!!!!
 
