@@ -1,6 +1,6 @@
 module m_reader
 
-use m_io
+use m_io_xmlparser
 
 private
 
