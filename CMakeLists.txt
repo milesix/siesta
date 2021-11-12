@@ -28,6 +28,9 @@ add_subdirectory("Src/fdf")
 add_subdirectory("Src/xmlparser")
 add_subdirectory("Src/wxml")
 add_subdirectory("Src")
+if(WITH_MPI)
+  add_subdirectory("Src/MPI")
+endif()
 
 add_executable(${PROJECT_NAME}-siesta "${srcs}")
 
@@ -37,6 +40,15 @@ set_target_properties(
   VERSION "${PROJECT_VERSION}"
   OUTPUT_NAME "siesta"
 )
+
+if(WITH_MPI)
+  target_compile_definitions(
+  "${PROJECT_NAME}-siesta"
+  PUBLIC
+  MPI
+  NO_MPI_INTERFACES
+  )
+endif()
 
 # find_package("lapack" REQUIRED)
 # find_package("blas" REQUIRED)
@@ -52,11 +64,17 @@ set_target_properties(
 #   "${lib-deps}"
 # )
 
-set(LIBS "-lveclibfort")
 TARGET_LINK_LIBRARIES(
   ${PROJECT_NAME}-siesta
   PRIVATE
-  ${LIBS})
+  "$ENV{LAPACK_LIBS}")
+
+if(WITH_MPI)
+  target_link_libraries(
+  ${PROJECT_NAME}-siesta
+  PRIVATE
+  "$ENV{SCALAPACK_LIBS}")
+endif()
   
 install(
   TARGETS ${PROJECT_NAME}-siesta
