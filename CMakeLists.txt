@@ -71,6 +71,10 @@ install(
   DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/${PROJECT_NAME}"
 )
 
+# Utilities
+
+add_subdirectory("Util")
+
 # add the testsuite
 #enable_testing()
 #add_subdirectory("Testers")
