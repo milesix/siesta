@@ -17,17 +17,21 @@ endif()
 # Follow GNU conventions for installing directories
 include(GNUInstallDirs)
 
+
 # General configuration information
 add_subdirectory("config")
+
+# To generate fdf library
+add_subdirectory("Src/fdf")
 
 # Collect sources
 
 set(srcs)
 add_subdirectory("Src/SiestaXC")
-add_subdirectory("Src/fdf")
 add_subdirectory("Src/xmlparser")
 add_subdirectory("Src/wxml")
 add_subdirectory("Src")
+
 if(WITH_MPI)
   add_subdirectory("Src/MPI")
 endif()
@@ -64,10 +68,31 @@ endif()
 #   "${lib-deps}"
 # )
 
-TARGET_LINK_LIBRARIES(
-  ${PROJECT_NAME}-siesta
-  PRIVATE
-  "$ENV{LAPACK_LIBS}")
+
+if (WITH_MPI)
+
+  target_include_directories(${PROJECT_NAME}-siesta PUBLIC
+  "${CMAKE_BINARY_DIR}/mod-fdf-mpi")
+
+  TARGET_LINK_LIBRARIES(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+    ${PROJECT_NAME}-libfdf-mpi
+)
+
+else()
+
+  target_include_directories(${PROJECT_NAME}-siesta PUBLIC
+    "${CMAKE_BINARY_DIR}/mod-fdf")
+
+  TARGET_LINK_LIBRARIES(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+    ${PROJECT_NAME}-libfdf
+)
+endif()
+
+
 
 if(WITH_MPI)
   target_link_libraries(
@@ -76,6 +101,11 @@ if(WITH_MPI)
   "$ENV{SCALAPACK_LIBS}")
 endif()
   
+TARGET_LINK_LIBRARIES(
+  ${PROJECT_NAME}-siesta
+  PRIVATE
+  "$ENV{LAPACK_LIBS}")
+
 install(
   TARGETS ${PROJECT_NAME}-siesta
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
