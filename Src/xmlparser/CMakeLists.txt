@@ -1,22 +1,25 @@
-set(dir "${CMAKE_CURRENT_SOURCE_DIR}")
+add_library(
+  ${PROJECT_NAME}-libxmlparser
 
-list(
-  APPEND srcs
+  flib_sax.f90
+  m_buffer.f90
+  m_charset.f90
+  m_converters.f90
+  m_debug.f90
+  m_dictionary.f90
+  m_elstack.f90
+  m_entities.f90
+  m_fsm.f90
+  m_io_xmlparser.f90
+  m_reader.f90
+  m_xml_error.f90
+  m_xml_parser.f90
 
-  "${dir}/flib_sax.f90"
-  "${dir}/m_buffer.f90"
-  "${dir}/m_charset.f90"
-  "${dir}/m_converters.f90"
-  "${dir}/m_debug.f90"
-  "${dir}/m_dictionary.f90"
-  "${dir}/m_elstack.f90"
-  "${dir}/m_entities.f90"
-  "${dir}/m_fsm.f90"
-  "${dir}/m_io_xmlparser.f90"
-  "${dir}/m_reader.f90"
-  "${dir}/m_xml_error.f90"
-  "${dir}/m_xml_parser.f90"
+  )
 
+target_include_directories(
+  ${PROJECT_NAME}-libxmlparser
+  INTERFACE
+  ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-set(srcs "${srcs}" PARENT_SCOPE)

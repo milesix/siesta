@@ -25,11 +25,11 @@ add_subdirectory("config")
 add_subdirectory("Src/fdf")
 add_subdirectory("Src/wxml")
 add_subdirectory("Src/SiestaXC")
+add_subdirectory("Src/xmlparser")
 
 # Collect sources
 
 set(srcs)
-add_subdirectory("Src/xmlparser")
 add_subdirectory("Src")
 
 if(WITH_MPI)
