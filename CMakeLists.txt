@@ -24,11 +24,11 @@ add_subdirectory("config")
 # To generate fdf library
 add_subdirectory("Src/fdf")
 add_subdirectory("Src/wxml")
+add_subdirectory("Src/SiestaXC")
 
 # Collect sources
 
 set(srcs)
-add_subdirectory("Src/SiestaXC")
 add_subdirectory("Src/xmlparser")
 add_subdirectory("Src")
 
@@ -72,6 +72,7 @@ TARGET_LINK_LIBRARIES(
   ${PROJECT_NAME}-siesta
   PRIVATE
   ${PROJECT_NAME}-libwxml
+  ${PROJECT_NAME}-libSiestaXC
 )
 
 if (WITH_MPI)
