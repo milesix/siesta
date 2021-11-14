@@ -571,10 +571,4 @@ install(
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   )
 
-# Package license files
-install(
-  FILES
-  "COPYING"
-  DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/${PROJECT_NAME}"
-)
 

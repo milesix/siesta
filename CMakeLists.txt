@@ -38,6 +38,13 @@ add_subdirectory("Src")
 
 add_subdirectory("Util")
 
+# Package license files
+install(
+  FILES
+  "COPYING"
+  DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/${PROJECT_NAME}"
+)
+
 # add the testsuite
 #enable_testing()
 #add_subdirectory("Testers")
