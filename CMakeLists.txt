@@ -21,7 +21,7 @@ include(GNUInstallDirs)
 # General configuration information
 add_subdirectory("config")
 
-# To generate the internal library dependencies
+# -- Internal library dependencies
 if (WITH_MPI)
  add_subdirectory("Src/MPI")
 endif()
@@ -31,110 +31,10 @@ add_subdirectory("Src/wxml")
 add_subdirectory("Src/SiestaXC")
 add_subdirectory("Src/xmlparser")
 
-# Collect sources
-
-set(srcs)
+# -- Siesta executable
 add_subdirectory("Src")
 
-add_executable(${PROJECT_NAME}-siesta "${srcs}")
-
-set_target_properties(
-  ${PROJECT_NAME}-siesta
-  PROPERTIES
-  VERSION "${PROJECT_VERSION}"
-  OUTPUT_NAME "siesta"
-)
-
-if(WITH_MPI)
-  target_compile_definitions(
-  "${PROJECT_NAME}-siesta"
-  PUBLIC
-  MPI
-  )
-# MPI interfaces
-  target_link_libraries(
-    ${PROJECT_NAME}-siesta
-    PRIVATE
-    ${PROJECT_NAME}-mpi-int
-  )
-endif()
-
-
-TARGET_LINK_LIBRARIES(
-  ${PROJECT_NAME}-siesta
-  PRIVATE
-  ${PROJECT_NAME}-libwxml
-  ${PROJECT_NAME}-libSiestaXC
-)
-
-if (WITH_MPI)
-
-  target_include_directories(${PROJECT_NAME}-siesta PUBLIC
-  "${CMAKE_BINARY_DIR}/mod-fdf-mpi")
-
-  TARGET_LINK_LIBRARIES(
-    ${PROJECT_NAME}-siesta
-    PRIVATE
-    ${PROJECT_NAME}-libfdf-mpi
-)
-
-else()
-
-  target_include_directories(${PROJECT_NAME}-siesta PUBLIC
-    "${CMAKE_BINARY_DIR}/mod-fdf")
-
-  TARGET_LINK_LIBRARIES(
-    ${PROJECT_NAME}-siesta
-    PRIVATE
-    ${PROJECT_NAME}-libfdf
-)
-endif()
-
-
-
-# External libraries.
-
-# 
-# find_package("lapack" REQUIRED)
-# find_package("blas" REQUIRED)
-# set(
-#   lib-deps
-#   "blas::blas"
-#   "lapack::lapack"
-# )
-
-# target_link_libraries(
-#   ${PROJECT_NAME}-siesta
-#   PUBLIC
-#   "${lib-deps}"
-# )
-
-if(WITH_MPI)
-  target_link_libraries(
-    ${PROJECT_NAME}-siesta
-    PRIVATE
-    "$ENV{SCALAPACK_LIBS}"
-  )
-endif()
-  
-TARGET_LINK_LIBRARIES(
-  ${PROJECT_NAME}-siesta
-  PRIVATE
-  "$ENV{LAPACK_LIBS}")
-
-install(
-  TARGETS ${PROJECT_NAME}-siesta
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  )
-
-# Package license files
-install(
-  FILES
-  "COPYING"
-  DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/${PROJECT_NAME}"
-)
-
-# Utilities
+# -- Utilities
 
 add_subdirectory("Util")
 
