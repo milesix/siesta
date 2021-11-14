@@ -9,6 +9,7 @@ project(
 )
 
 option(WITH_MPI "Whether Siesta should support MPI-parallelism" FALSE)
+option(WITH_NETCDF "Use netCDF interface" FALSE)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug")
@@ -30,6 +31,11 @@ add_subdirectory("Src/fdf")
 add_subdirectory("Src/wxml")
 add_subdirectory("Src/SiestaXC")
 add_subdirectory("Src/xmlparser")
+add_subdirectory("Src/simple-fdict")
+
+if (WITH_NETCDF)
+  add_subdirectory("Src/simple-ncdf")
+endif()
 
 # -- Siesta executable
 add_subdirectory("Src")
