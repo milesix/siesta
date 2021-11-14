@@ -1,9 +1,20 @@
-set(dir "${CMAKE_CURRENT_SOURCE_DIR}")
-
-list(
-  APPEND srcs
-  "${dir}/mpi_siesta.F90"
+add_library(
+  ${PROJECT_NAME}-mpi-int
+   
+  mpi_siesta.F90
 )
 
-set(srcs "${srcs}" PARENT_SCOPE)
+# For now, without explicit interfaces
 
+
+target_include_directories(
+  ${PROJECT_NAME}-mpi-int
+  INTERFACE
+  ${CMAKE_CURRENT_BINARY_DIR}
+)  
+
+target_compile_definitions(
+    ${PROJECT_NAME}-mpi-int
+    PRIVATE
+    NO_MPI_INTERFACES
+)

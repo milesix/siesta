@@ -47,14 +47,6 @@ list(
 
 )
 
-if (WITH_MPI)
-  list(
-    APPEND
-    sources
-
-    "${dir}/../MPI/mpi_siesta.F90"
-  )
-endif()
 
 add_library(
   ${PROJECT_NAME}-libSiestaXC
@@ -68,11 +60,18 @@ target_include_directories(
 )  
 
 if (WITH_MPI)
+
   target_compile_definitions(
     ${PROJECT_NAME}-libSiestaXC
     PRIVATE
     MPI
-    NO_MPI_INTERFACES
   )
+
+ target_link_libraries(
+  ${PROJECT_NAME}-libSiestaXC
+  PRIVATE
+  ${PROJECT_NAME}-mpi-int
+  )
+  
 endif()
 

@@ -21,7 +21,11 @@ include(GNUInstallDirs)
 # General configuration information
 add_subdirectory("config")
 
-# To generate fdf library
+# To generate the internal library dependencies
+if (WITH_MPI)
+ add_subdirectory("Src/MPI")
+endif()
+
 add_subdirectory("Src/fdf")
 add_subdirectory("Src/wxml")
 add_subdirectory("Src/SiestaXC")
@@ -31,10 +35,6 @@ add_subdirectory("Src/xmlparser")
 
 set(srcs)
 add_subdirectory("Src")
-
-if(WITH_MPI)
-  add_subdirectory("Src/MPI")
-endif()
 
 add_executable(${PROJECT_NAME}-siesta "${srcs}")
 
@@ -50,23 +50,15 @@ if(WITH_MPI)
   "${PROJECT_NAME}-siesta"
   PUBLIC
   MPI
-  NO_MPI_INTERFACES
+  )
+# MPI interfaces
+  target_link_libraries(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+    ${PROJECT_NAME}-mpi-int
   )
 endif()
 
-# find_package("lapack" REQUIRED)
-# find_package("blas" REQUIRED)
-# set(
-#   lib-deps
-#   "blas::blas"
-#   "lapack::lapack"
-# )
-
-# target_link_libraries(
-#   ${PROJECT_NAME}-siesta
-#   PUBLIC
-#   "${lib-deps}"
-# )
 
 TARGET_LINK_LIBRARIES(
   ${PROJECT_NAME}-siesta
@@ -100,11 +92,29 @@ endif()
 
 
 
+# External libraries.
+
+# 
+# find_package("lapack" REQUIRED)
+# find_package("blas" REQUIRED)
+# set(
+#   lib-deps
+#   "blas::blas"
+#   "lapack::lapack"
+# )
+
+# target_link_libraries(
+#   ${PROJECT_NAME}-siesta
+#   PUBLIC
+#   "${lib-deps}"
+# )
+
 if(WITH_MPI)
   target_link_libraries(
-  ${PROJECT_NAME}-siesta
-  PRIVATE
-  "$ENV{SCALAPACK_LIBS}")
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+    "$ENV{SCALAPACK_LIBS}"
+  )
 endif()
   
 TARGET_LINK_LIBRARIES(
@@ -116,7 +126,6 @@ install(
   TARGETS ${PROJECT_NAME}-siesta
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   )
-
 
 # Package license files
 install(
