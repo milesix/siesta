@@ -22,7 +22,7 @@ SIESTA_SRCS= alloc.F90 bessph.f cellsubs.f  debugmpi.F \
              minvec.f m_io.f moreParallelSubs.F90 \
              class_OrbitalDistribution.F90 \
              m_timer.F90 timer_tree.F90 m_walltime.f90 parallel.F \
-	     precision.F pxf.F90 radfft.f m_fft_gpfa.F sorting.f  timer.f90
+	     precision.F pxf.F90 radfft.f m_fft_gpfa.F sorting.f  timer.F90
 
 SIESTA_OBJS:= $(SIESTA_SRCS:.f=.o)
 SIESTA_OBJS:= $(SIESTA_OBJS:.F=.o)

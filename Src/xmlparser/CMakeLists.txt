@@ -10,7 +10,7 @@ add_library(
   m_elstack.f90
   m_entities.f90
   m_fsm.f90
-  m_io_xmlparser.f90
+  m_io.f90
   m_reader.f90
   m_xml_error.f90
   m_xml_parser.f90

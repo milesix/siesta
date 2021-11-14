@@ -43,7 +43,7 @@ list(
     "${dir}/../radfft.f"
     "${dir}/../m_fft_gpfa.F"
     "${dir}/../sorting.f"
-    "${dir}/../timer.f90"
+    "${dir}/../timer.F90"
 
 )
 

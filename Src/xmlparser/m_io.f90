@@ -1,4 +1,4 @@
-module m_io_xmlparser
+module m_io
 
 !
 ! Basic  I/O tools
@@ -82,7 +82,7 @@ close(unit=lun,status="delete")
 end subroutine find_eor_eof
 
 ! ----------------------------------------------------------------------
-end module m_io_xmlparser
+end module m_io
 
 
 
