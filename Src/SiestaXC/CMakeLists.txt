@@ -35,7 +35,7 @@ list(
     "${dir}/../moreParallelSubs.F90"
     "${dir}/../class_OrbitalDistribution.F90"
     "${dir}/../m_timer.F90"
-    "${dir}/../timer_tree.F90"
+    "${dir}/../timer_tree.f90"
     "${dir}/../m_walltime.f90"
     "${dir}/../parallel.F"
     "${dir}/../precision.F"

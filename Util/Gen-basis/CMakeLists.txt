@@ -49,7 +49,7 @@ list(
     "${top_srcdir}/read_xc_info.F"
     "${top_srcdir}/sorting.f"
     "${top_srcdir}/timer.F90"
-    "${top_srcdir}/timer_tree.F90"
+    "${top_srcdir}/timer_tree.f90"
     "${top_srcdir}/units.f90"
     "${top_srcdir}/xml.f"
 
