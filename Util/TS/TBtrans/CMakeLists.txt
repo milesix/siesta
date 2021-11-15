@@ -237,6 +237,32 @@ TARGET_LINK_LIBRARIES(
   PRIVATE
   "$ENV{LAPACK_LIBS}")
 
+if(WITH_NETCDF)
+  TARGET_LINK_LIBRARIES(
+    tbtrans
+    PRIVATE
+    ${PROJECT_NAME}-libncdf
+)
+  target_compile_definitions(
+  tbtrans
+  PUBLIC
+  CDF
+  NCDF
+  NCDF_4
+  )
+  target_include_directories(
+    tbtrans
+    PRIVATE
+    ${NETCDF_INCLUDEDIR}
+    ${NETCDF_INCLUDE_DIRS}
+)
+ target_link_libraries(
+    tbtrans
+    PRIVATE
+   ${NETCDF_LINK_LIBRARIES}
+)
+endif()
+
 install(
   TARGETS tbtrans
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

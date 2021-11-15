@@ -27,6 +27,21 @@ if (WITH_MPI)
  add_subdirectory("Src/MPI")
 endif()
 
+#
+# -- Search for netCDF using pkg-config data
+# -- There should be a fallback
+#
+if (WITH_NETCDF)
+ find_package(PkgConfig REQUIRED)
+ pkg_check_modules(NETCDF REQUIRED netcdf-fortran)
+
+ message("Netcdf Libdir: ${NETCDF_LIBDIR}")
+ message("Netcdf Libraries: ${NETCDF_LIBRARIES}")
+ message("Netcdf Link libraries: ${NETCDF_LINK_LIBRARIES}")
+ message("NETCDF_INCLUDEDIR: ${NETCDF_INCLUDEDIR}")
+ message("NETCDF_INCLUDE_DIRS: ${NETCDF_INCLUDE_DIRS}")
+endif()
+
 add_subdirectory("Src/fdf")
 add_subdirectory("Src/wxml")
 add_subdirectory("Src/SiestaXC")

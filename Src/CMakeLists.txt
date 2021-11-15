@@ -505,7 +505,6 @@ if(WITH_MPI)
   )
 endif()
 
-
 TARGET_LINK_LIBRARIES(
   ${PROJECT_NAME}-siesta
   PRIVATE
@@ -560,7 +559,26 @@ if(WITH_MPI)
     "$ENV{SCALAPACK_LIBS}"
   )
 endif()
-  
+
+if(WITH_NETCDF)
+  target_compile_definitions(
+  "${PROJECT_NAME}-siesta"
+  PUBLIC
+  CDF
+  )
+  target_include_directories(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+    ${NETCDF_INCLUDEDIR}
+    ${NETCDF_INCLUDE_DIRS}
+)
+ target_link_libraries(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+   ${NETCDF_LINK_LIBRARIES}
+)
+endif()
+
 TARGET_LINK_LIBRARIES(
   ${PROJECT_NAME}-siesta
   PRIVATE
