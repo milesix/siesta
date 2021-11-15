@@ -303,11 +303,15 @@ contains
              R_nu(1:3) = xa_in(1:3,ianu)
 
              J_tmp(1:3) = 0.0_dp
-             is = isa(I_ind)
-             spp => species(is)
+             ! is = isa(I_ind)
+             ! spp => species(is)
 
-             do inda=1,spp%nprojs
-                alpha=spp%pj_gindex(inda)
+             do ikb = lastkb(I_ind-1)+1,lastkb(I_ind)
+                ks = isa(I_ind)
+                koa    = iphKB(ikb)
+                alpha  = kbproj_gindex(ks,koa)
+             ! do inda=1,spp%nprojs
+             !    alpha=spp%pj_gindex(inda)
 
                 do grad_ind = 1,3
                    call new_MATEL(coord_table(grad_ind), iph_mu, alpha, (R_I(:)-R_mu(:)), val, grad)

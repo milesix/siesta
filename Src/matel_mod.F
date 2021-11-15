@@ -32,6 +32,8 @@
 
       PRIVATE
 
+      public :: is_orb, is_kb
+
       !> Initialize main tables: S, T, TA
       public :: init_matel_main_tables
       !> Initialize tables X, Y, Z, for use in "molecule" optical calculations and
