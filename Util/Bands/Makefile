@@ -39,6 +39,10 @@ INCFLAGS:=$(INCFLAGS) $(NETCDF_INCFLAGS)
 
 FAT_OBJS=m_getopts.o
 
+# Ensure dependency
+eigfat2plot.o: m_getopts.o
+gnubands.o: m_getopts.o
+
 gnubands: $(OBJS) gnubands.o
 	$(FC) -o $@ $(LDFLAGS) $(FAT_OBJS) gnubands.o
 
@@ -53,5 +57,3 @@ dep:
 		*.f90 *.F90 *.f *.F
 
 # DO NOT DELETE THIS LINE - used by make depend
-eigfat2plot.o: m_getopts.o
-gnubands.o: m_getopts.o

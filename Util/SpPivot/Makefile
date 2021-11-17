@@ -45,7 +45,7 @@ SIESTA_OBJS += m_uuid.o object_debug.o class_Sparsity.o \
 	class_SpData1D.o class_SpData2D.o
 
 # Some of NPA modules
-SIESTA_OBJS += intrinsic_missing.o geom_helper.o m_io_s.o m_os.o
+SIESTA_OBJS += intrinsic_missing.o geom_helper.o io_sparse.o m_os.o
 SIESTA_OBJS += create_Sparsity_SC.o m_ts_io.o
 SIESTA_OBJS += m_pivot.o m_pivot_methods.o
 SIESTA_OBJS += m_sparse.o m_sparsity_handling.o

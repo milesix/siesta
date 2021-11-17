@@ -47,7 +47,7 @@ OBJS = precision.o parallel.o \
         alloc.o pxf.o units.o local_sys.o \
 	memory.o memoryinfo.o m_io.o io.o \
 	m_sparse.o intrinsic_missing.o geom_helper.o reclat.o \
-	m_io_s.o m_ncdf_io.o m_ts_io.o 
+	io_sparse.o ncdf_io.o m_ts_io.o
 
 # Add class objects
 OBJS += m_uuid.o object_debug.o \

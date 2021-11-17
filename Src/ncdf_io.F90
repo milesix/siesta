@@ -442,6 +442,7 @@ contains
       call die('Number of non-zero elements is not equivalent.')
     end if
 
+#ifdef MPI
     if ( ldit ) then
       if ( parallel_io(ncdf) ) then
         ! Write out in parallel
@@ -454,6 +455,9 @@ contains
     else
       call write_sequential()
     end if
+#else
+    call write_sequential()
+#endif
 
   contains
 
@@ -822,6 +826,7 @@ contains
     
     a => val(dSp1D)
 
+#ifdef MPI
     if ( ldit ) then
       if ( parallel_io(ncdf) ) then
         ! Write out in parallel
@@ -834,6 +839,9 @@ contains
     else
       call write_sequential()
     end if
+#else
+    call write_sequential()
+#endif
 
   contains
 
@@ -1050,6 +1058,7 @@ contains
 
     a => val(dSp2D)
 
+#ifdef MPI
     if ( ldit ) then
       if ( sp_dim == 1 ) then
         call read_sp_dim1()
@@ -1062,6 +1071,9 @@ contains
       ! this is both lio and serial read
       call ncdf_get_var(ncdf, vname, a)
     end if
+#else
+    call ncdf_get_var(ncdf, vname, a)
+#endif
 
     ! If a distribution is present, then do something
 #ifdef MPI
@@ -1282,6 +1294,7 @@ contains
       dim2 = size(a, dim=1)
     end if
 
+#ifdef MPI
     if ( ldit ) then
       if ( parallel_io(ncdf) ) then
         ! Write out in parallel
@@ -1294,6 +1307,9 @@ contains
     else
       call write_sequential()
     end if
+#else
+    call write_sequential()
+#endif
 
   contains
 
