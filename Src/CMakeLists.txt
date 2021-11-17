@@ -579,6 +579,24 @@ if(WITH_NETCDF)
 )
 endif()
 
+if(WITH_ELPA)
+  target_compile_definitions(
+  "${PROJECT_NAME}-siesta"
+  PUBLIC
+  SIESTA__ELPA
+  )
+  target_include_directories(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+    ${ELPA_INCFLAGS}
+)
+ target_link_libraries(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+   ${ELPA_LINK_LIBRARIES}
+)
+endif()
+
 TARGET_LINK_LIBRARIES(
   ${PROJECT_NAME}-siesta
   PRIVATE
