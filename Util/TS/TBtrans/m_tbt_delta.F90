@@ -122,7 +122,7 @@ contains
 #endif
     
 #ifdef MPI
-    use mpi_siesta, only : MPI_Bcast, MPI_Comm_World
+    use mpi_siesta !, only : MPI_Bcast, MPI_Comm_World
     use mpi_siesta, only : MPI_Integer, MPI_Double_Precision
 #endif
 
@@ -467,7 +467,7 @@ contains
     use parallel, only : IONode, Node, Nodes
 
 #ifdef MPI
-    use mpi_siesta, only : MPI_Gather
+    use mpi_siesta !, only : MPI_Gather
     use mpi_siesta, only : MPI_Comm_World, MPI_Integer
 #endif
 
@@ -623,7 +623,7 @@ contains
       use m_ncdf_io, only : cdf_r_Sp
 
 #ifdef MPI
-      use mpi_siesta, only : MPI_Send, MPI_Recv
+      use mpi_siesta ! , only : MPI_Send, MPI_Recv
       use mpi_siesta, only : MPI_Comm_World, MPI_Comm_Self, MPI_Status_Size
       use mpi_siesta, only : MPI_Integer
       use mpi_siesta, only : MPI_Double_Precision, MPI_Double_Complex
