@@ -865,7 +865,7 @@ contains
 
 #ifdef MPI
     use mpi_siesta, only : MPI_Integer
-    use mpi_siesta, only : MPI_MAX, MPI_MIN, MPI_AllReduce, MPI_IN_PLACE
+    use mpi_siesta !, only : MPI_MAX, MPI_MIN, MPI_AllReduce, MPI_IN_PLACE
 #endif
     use intrinsic_missing, only: index_sort_heap
 
@@ -2158,10 +2158,10 @@ contains
 
 #ifdef MPI
   subroutine rgn_MPI_union(dit,r)
-    use mpi_siesta, only : MPI_AllReduce, MPI_Integer, MPI_Sum
-    use mpi_siesta, only : MPI_Bcast
-    use mpi_siesta, only : MPI_Recv, MPI_Send, MPI_STATUS_SIZE
-    use mpi_siesta, only : MPI_Get_Count
+    use mpi_siesta !, only : MPI_AllReduce, MPI_Integer, MPI_Sum
+    use mpi_siesta !, only : MPI_Bcast
+    use mpi_siesta !, only : MPI_Recv, MPI_Send, MPI_STATUS_SIZE
+    use mpi_siesta !, only : MPI_Get_Count
     use intrinsic_missing, only: sort_quick
 
     type(OrbitalDistribution), intent(in) :: dit
@@ -2248,7 +2248,7 @@ contains
   end subroutine rgn_MPI_union
 
   subroutine rgn_MPI_Bcast(r,Bnode,Comm)
-    use mpi_siesta, only : MPI_Bcast, MPI_Comm_World
+    use mpi_siesta !, only : MPI_Bcast, MPI_Comm_World
     use mpi_siesta, only : MPI_Logical, MPI_Integer
 
     type(tRgn), intent(inout) :: r

@@ -4,8 +4,8 @@
 module m_os
 
 #ifdef MPI
-  use mpi_siesta, only : MPI_Bcast, MPI_Comm_World, MPI_Logical
-  use mpi_siesta, only : MPI_AllReduce, MPI_LAnd
+  use mpi_siesta !, only : MPI_Bcast, MPI_Comm_World, MPI_Logical
+  use mpi_siesta !, only : MPI_AllReduce, MPI_LAnd
 #endif
   
   implicit none

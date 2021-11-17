@@ -13,9 +13,9 @@ module m_io_s
   use precision, only : sp, dp
   use parallel, only : Node
 #ifdef MPI
-  use mpi_siesta, only : MPI_Bcast, MPI_AllReduce, MPI_Sum, MPI_Max
+  use mpi_siesta !, only : MPI_Bcast, MPI_AllReduce, MPI_Sum, MPI_Max
   use mpi_siesta, only : MPI_Comm_World, MPI_Comm_Self
-  use mpi_siesta, only : MPI_Send, MPI_Recv
+  use mpi_siesta !, only : MPI_Send, MPI_Recv
   use mpi_siesta, only : MPI_Integer, MPI_Double_Precision
   use mpi_siesta, only : MPI_Success, MPI_Status_Size
   use mpi_siesta, only : MPI_REQUEST_NULL
