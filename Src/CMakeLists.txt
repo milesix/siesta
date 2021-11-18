@@ -560,6 +560,26 @@ if(WITH_MPI)
   )
 endif()
 
+if(WITH_LUA)
+  target_compile_definitions(
+  ${PROJECT_NAME}-siesta
+  PUBLIC
+  SIESTA__FLOOK
+  )
+  target_include_directories(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+    ${FLOOK_INCLUDE_DIRS}
+)
+  target_link_libraries(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+    ${PROJECT_NAME}-libfdict
+    ${FLOOK_LIBS}
+)
+
+endif()
+
 if(WITH_NETCDF)
   target_compile_definitions(
   "${PROJECT_NAME}-siesta"

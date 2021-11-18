@@ -11,6 +11,7 @@ project(
 option(WITH_MPI "Whether Siesta should support MPI-parallelism" FALSE)
 option(WITH_NETCDF "Use netCDF interface" FALSE)
 option(WITH_ELPA "Use the ELPA library (direct interface)" FALSE)
+option(WITH_LUA "Use the flook library for Lua scripting" FALSE)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug")
@@ -30,6 +31,20 @@ if (WITH_MPI)
  add_subdirectory("Src/MPI")
 endif()
 
+# Search for flook
+if (WITH_LUA)
+ if("$ENV{FLOOK_ROOT}" STREQUAL "")
+   message(SEND_ERROR "Cannot find FLOOK_ROOT")
+ else()
+  set(FLOOK_ROOT $ENV{FLOOK_ROOT})
+  message("Found FLOOK_ROOT: ${FLOOK_ROOT}")
+  set(FLOOK_LIBS "-L${FLOOK_ROOT}/lib -lflookall -ldl")
+  set(FLOOK_INCLUDE_DIRS "${FLOOK_ROOT}/include")
+  message("FLOOK_LIBS: ${FLOOK_LIBS}")
+  message("FLOOK_INCLUDE_DIRS: ${FLOOK_INCLUDE_DIRS}")
+ endif()
+endif()
+
 #
 # -- Search for netCDF using pkg-config data
 # -- There should be a fallback
@@ -44,6 +59,8 @@ if (WITH_NETCDF)
  message("NETCDF_INCLUDEDIR: ${NETCDF_INCLUDEDIR}")
  message("NETCDF_INCLUDE_DIRS: ${NETCDF_INCLUDE_DIRS}")
 endif()
+
+
 #
 #
 # -- Search for ELPA using pkg-config data
