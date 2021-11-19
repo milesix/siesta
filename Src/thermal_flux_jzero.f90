@@ -260,7 +260,7 @@ contains
     end do
 
     np = product(ntml_vmd)
-    call c_f_pointer(c_loc(charge_g), tc_v, [np])
+    call c_f_pointer(c_loc(charge_g_base), tc_v, [np])
 
     jzero_local: do a = 1,3
        do ig = gstart_vmd, ngm_plus_vmd
