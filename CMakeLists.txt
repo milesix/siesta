@@ -6,6 +6,9 @@ list(APPEND
    ${CMAKE_CURRENT_SOURCE_DIR}/config/cmake
   )
 
+include(utils)
+ensure_out_of_source_build()
+
 project(
   "siesta"
   LANGUAGES Fortran C
