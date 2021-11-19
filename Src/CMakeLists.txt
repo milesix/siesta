@@ -441,6 +441,7 @@ set(siesta_sources
   siesta_master.f90
   siesta_move.F
   siesta_options.F90
+  simple-version.F90
   sockets.c
   sorting.f
   sparse_matrices.F90
@@ -464,7 +465,6 @@ set(siesta_sources
   uncell.f
   units.f90
   vacuum_level.f90
-  version.F90
   vmat.F90
   vmatsp.F90
   vmb.F
@@ -534,6 +534,22 @@ else()
     ${PROJECT_NAME}-libfdf
 )
 endif()
+
+
+# -- Version information
+
+# 
+configure_file(
+  version-info-template.inc
+  ${CMAKE_CURRENT_BINARY_DIR}/generated/version-info.inc
+  @ONLY
+  )
+
+target_include_directories(
+  ${PROJECT_NAME}-siesta
+  PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}/generated
+  )
 
 # External libraries.
 

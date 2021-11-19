@@ -23,12 +23,12 @@ set(sources
  m_tbt_trik.F90
  m_tbtrans.F90
  m_verbosity.f90
+ simple-version.F90
  sorted_search.F90
  tbt_end.F90
  tbt_init.F90
  tbt_reinit.F90
  tbtrans.F90
- version.F90
 
 )
  
@@ -155,6 +155,22 @@ list(
 )
 
 add_executable(tbtrans "${sources}")
+
+# -- Version information
+
+# 
+configure_file(
+  version-info-template.inc
+  ${CMAKE_CURRENT_BINARY_DIR}/generated/version-info.inc
+  @ONLY
+  )
+
+target_include_directories(
+  tbtrans
+  PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}/generated
+  )
+
 
 # Add -DTBTRANS
 target_compile_definitions(
