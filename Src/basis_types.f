@@ -112,7 +112,15 @@
                                                    !   derived type "species"
                                                    !   in module atm_types
       end type dftushell_t
-!
+
+      ! For options set in pao-polarization-scheme
+      type, public :: qconf_options_t
+         real(dp)    ::  qcoe 
+         real(dp)    ::  qyuk 
+         real(dp)    ::  qwid 
+      end type qconf_options_t
+
+!     
 !     Main data structure
 !
       type, public :: basis_def_t
@@ -152,9 +160,12 @@
           integer                   ::  lmxkb_requested
           integer                   ::  lmxdftupj_requested
           logical                   ::  non_pert_polorbs_req=.false.
-          logical                ::  force_perturbative_polorbs=.false.
+          logical                 ::  force_perturbative_polorbs=.false.
+          logical                  ::  non_pert_polorbs_fallback=.false.
           logical                   ::  non_perturbative_polorbs=.false.
-
+          logical                   ::  polorb_with_semicore =.false.
+          logical                   ::  qconf_options_polorbs_set
+          type(qconf_options_t)     ::  qconf_options_polorbs
           type(shell_t), pointer    ::  tmp_shell(:) => null()
           type(dftushell_t), pointer::  dftushell(:) => null()
           type(ref_container), allocatable :: shell_of(:,:)

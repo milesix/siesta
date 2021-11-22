@@ -1881,13 +1881,14 @@ Please take into account the following when using PSML files:
     
      \item Sometimes it is not possible to execute successfully the
        default split-norm algorithm. In this case, set the option
-       \fdf{PAO.TailSplitNorm} to \fdftrue, which guarantees
+       \fdf{PAO!SplitTailNorm} to \fdftrue, which guarantees
        convergence.
 
      \item The default perturbative scheme for polarization orbitals
        can fail in very specific cases. When the polarization orbital
        has to have a node due to the presence of a lower-lying orbital
-       with the same $l$, the program will automatically switch to
+       with the same $l$, the program can (if enabled by the
+       \fdf{PAO!Polarization!NonPerturbative.Fallback} option)  automatically switch to
        using a non-perturbative scheme. In other cases, include the
        \textit{Chemical\_label} in the following block to request a
        non-perturbative scheme:
@@ -1904,7 +1905,7 @@ Please take into account the following when using PSML files:
       been made while implementing support for PSML
       pseudopotentials. In particular, \siesta\ can now automatically
       detect and generate basis sets for atoms with semicore shells
-      without the explicit use of a \fdf{PAO.Basis} block.
+      without the explicit use of a \fdf{PAO!Basis} block.
 
     \end{itemize}
 
@@ -2544,7 +2545,7 @@ a block
   for each species. For example,
   \begin{fdfexample}
      %block PAO.PolarizationScheme
-         Si      non-perturbative
+         Si      non-perturbative  [ optional Q options]
          H       perturbative
      %endblock PAO.PolarizationScheme
   \end{fdfexample}
@@ -2555,6 +2556,9 @@ a block
   If a species does not appear in the block, the setting of 
   \fdf{PAO!Polarization!NonPerturbative} applies.
   The default scheme is perturbative.
+
+  An optional charge-confinement specification can follow, starting
+  with a 'Q', in exactly the same way as in the \fdf{PAO!Basis} block.
   
 \end{fdfentry}
 
@@ -2580,15 +2584,20 @@ value through the (global) option:
 Note that, empirically, the perturbative method seems to give better
 results (in the variational sense), so the alternative should only be
 used when the default fails for some reason, for full basis-set optimization,
-or for experimentation purposes.
+or for experimentation purposes. In particular, non-perturbatively
+generated polarization orbitals tend to bulge outwards. To correct
+this, the charge-confinement options in the \fdf{PAO!Basis} block (or
+in the \fdf{PAO!Polarization!Scheme} block) might be helpful.
 
 There is one case, however, which tends to exhibit problems in the
 perturbative algorithm: when a polarization orbital has to have a node
-due to the presence of a lower-lying orbital of the same $l$, then the
-program will automatically (unless the 'perturbative' option is
-explicitly set in the block above) switch to using the non-perturbative
-scheme. (This will happen, for example, for Ge if the $3d$ orbital is
-considered part of the valence.)
+due to the presence of a lower-lying orbital of the same $l$ (this
+will happen, for example, for Ge if the $3d$ orbital is considered
+part of the valence). In this case, the program can automatically
+switch to using the non-perturbative scheme.  To enable this automatic
+switch, the option \fdf{PAO!Polarization!NonPerturbative.Fallback}
+must be enabled. Note that if the 'perturbative' option is explicitly
+set in the block above, the fallback is overriden.
 
 A proper basis-set optimization should be carried out using
 a \fdf{PAO!Basis} block, which allows a full set of options.
@@ -11597,7 +11606,7 @@ spin-orbit coupling.
     to those used as an automatic basis set by \siesta.  The radii of
     these orbitals are controlled using the parameter
     \fdf{DFTU!EnergyShift} and/or the data included in the block
-    \fdf{DFTU!Proj} (quite similar to the data block \fdf{PAO.Basis}
+    \fdf{DFTU!Proj} (quite similar to the data block \fdf{PAO!Basis}
     used to specify the basis set, see below).
 
     \option[2]%
@@ -11615,7 +11624,7 @@ spin-orbit coupling.
   \fdfindex{LDAU!EnergyShift}%
 
   Energy increase used to define the localization radius of the DFT+U
-  projectors (similar to the parameter \fdf{PAO.EnergyShift}).
+  projectors (similar to the parameter \fdf{PAO!EnergyShift}).
 
   \note only used when \fdf{DFTU!ProjectorGenerationMethod} is \fdf*{1}.
 

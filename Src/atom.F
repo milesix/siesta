@@ -7613,9 +7613,10 @@ c    .              ,'        # scaleFactor(izeta=1,Nzeta)'
      .         trim(scheme) //': Non-perturbative ' //
      $         'polarization orbs for state ',
      .         cnfigtb(l-1,nsm_parent,is), sym(l-1)
-          write(6,'(A,f0.4)')
-     .         trim(scheme) //': rc(1st zeta) reset to: ',
-     $         rco(1,l,nsm)
+          write(6,'(A,f0.4,a,f0.4,a)')
+     .         trim(scheme) //': rc(1st zeta) (re)set to: ',
+     $         rco(1,l,nsm), ' (expansion factor: ',
+     $         pol_exp_factor, ')'
        endif
       end subroutine check_rc_for_nonpert_pol_shell
 !------------------------------------------------------------                 
