@@ -20,6 +20,8 @@ option(WITH_MPI "Whether Siesta should support MPI-parallelism" FALSE)
 option(WITH_NETCDF "Use netCDF interface" FALSE)
 option(WITH_ELPA "Use the ELPA library (direct interface)" FALSE)
 option(WITH_LUA "Use the flook library for Lua scripting" FALSE)
+#
+option(WITH_UTILS "Compile all utilities (besides tbtrans)" FALSE)
 
 
 if(NOT CMAKE_BUILD_TYPE)

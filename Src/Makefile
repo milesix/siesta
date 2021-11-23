@@ -686,8 +686,8 @@ dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
 dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o parallel.o
 dftu_specs.o: precision.o pseudopotential.o radial.o sys.o units.o
 dhscf.o: alloc.o atmfuncs.o delk.o dfscf.o dipole.o doping_uniform.o files.o
-dhscf.o: forhar.o iogrid_netcdf.o m_charge_add.o m_efield.o m_hartree_add.o
-dhscf.o: m_iorho.o m_mesh_node.o m_ncdf_io.o m_ncdf_siesta.o
+dhscf.o: forhar.o iogrid_netcdf.o m_char.o m_charge_add.o m_efield.o
+dhscf.o: m_hartree_add.o m_iorho.o m_mesh_node.o m_ncdf_io.o m_ncdf_siesta.o
 dhscf.o: m_partial_charges.o m_rhog.o m_spin.o m_ts_electype.o
 dhscf.o: m_ts_global_vars.o m_ts_hartree.o m_ts_options.o m_ts_voltage.o mesh.o
 dhscf.o: meshdscf.o meshsubs.o moremeshsubs.o parallel.o parsing.o precision.o
@@ -720,7 +720,6 @@ diagonalizeHk.o: parallel.o parallelsubs.o precision.o siesta2wannier90.o
 diagonalizeHk.o: sparse_matrices.o units.o
 diagpol.o: parallel.o precision.o sys.o
 die.o: parallel.o siesta_cml.o
-die.o: parallel.o
 dipole.o: atmfuncs.o intrinsic_missing.o m_char.o m_cite.o mesh.o parallel.o
 dipole.o: precision.o siesta_cml.o sys.o units.o
 dm_charge.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
