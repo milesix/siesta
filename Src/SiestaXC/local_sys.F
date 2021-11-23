@@ -1,5 +1,5 @@
       module sys
-      public :: die
+      public :: die, bye, message
       contains
        subroutine die(str)
        character(len=*), intent(in), optional :: str
@@ -9,6 +9,61 @@
           call local_die('')
        endif
        end subroutine die
+
+      subroutine bye(str)
+
+      use parallel, only : Node
+#ifdef MPI
+      use mpi_siesta
+#endif
+
+      character(len=*), intent(in), optional   :: str
+
+#ifdef MPI
+      integer rc
+#endif
+
+      if (Node.eq.0) then
+         if (present(str)) then
+            write(6,'(a)') trim(str)
+         endif
+         write(6,'(a)') 'Requested End of Run. Bye!!'
+         call pxfflush(6)
+      endif
+
+#ifdef MPI
+      call MPI_Finalize(rc)
+      stop
+#else
+      stop
+#endif
+      end subroutine bye
+
+      subroutine message(level,str)
+
+      use parallel, only : Node
+
+      character(len=*), intent(in)  :: level
+      ! One of INFO, WARNING, FATAL
+      character(len=*), intent(in)  :: str
+
+      external ::  io_assign, io_close
+      integer  ::  lun
+
+      if (Node .eq. 0) then
+         write(6,'(a)') trim(str)
+         write(0,'(a)') trim(str)
+         call io_assign(lun)
+         open(lun,file="MESSAGES",status="unknown",
+     $        position="append",action="write")
+         write(lun,"(a)") trim(level) // ": " // trim(str)
+         call io_close(lun)
+         call pxfflush(6)
+         call pxfflush(0)
+      endif
+
+      end subroutine message
+
       end module sys
      
          
@@ -86,6 +141,7 @@
 #endif
       end subroutine local_die
       
+
       subroutine message(level,str)
 
       use parallel, only : Node
@@ -111,8 +167,3 @@
       endif
 
       end subroutine message
-
-      subroutine die(str)
-      character(len=*), intent(in)  :: str
-      call local_die(str)
-      end subroutine die
