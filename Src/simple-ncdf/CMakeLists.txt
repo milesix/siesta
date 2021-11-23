@@ -1,3 +1,7 @@
+#
+# I got this "pre-processed" file from the ncdf distribution, but I do
+# not remember under which conditions.
+#
 add_library(
   ${PROJECT_NAME}-libncdf
    

@@ -1,3 +1,6 @@
+# This internal library uses a "pre-processed" file from the fdict
+# distribution, containing the needed variable types.
+  
 add_library(
   ${PROJECT_NAME}-libfdict
    

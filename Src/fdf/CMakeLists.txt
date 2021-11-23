@@ -1,3 +1,4 @@
+#
 set(fdf_sources
   fdf.F90
   io_fdf.F90
@@ -6,13 +7,17 @@ set(fdf_sources
   utils.F90
 )
 
+#
+# Plain, serial version
+#
 add_library(
   ${PROJECT_NAME}-libfdf
   ${fdf_sources}  
 )
 
 # Use a known top-level place to store the modules, since
-# we have to have two separate versions (see below)
+# we have to have two separate versions to link to different
+# targets in the suite (see below)
 
 set_target_properties(
   ${PROJECT_NAME}-libfdf
@@ -22,7 +27,10 @@ set_target_properties(
 
 #–----------------------------
 # We now prepare a MPI version. This is needed since fdf contains
-# some MPI code (it is removed in the library version)
+# some MPI code for broadcasting the fdf data object.
+# This MPI code is removed in the stand-alone library, and relegated
+# to an extra routine that clients can use on their side.
+#
 
 if (WITH_MPI)
  add_library(
@@ -42,6 +50,9 @@ if (WITH_MPI)
   ${PROJECT_NAME}-mpi-int
  )
 
+#
+# Put the module in a different place
+#
 set_target_properties(
   ${PROJECT_NAME}-libfdf-mpi
   PROPERTIES

@@ -10,14 +10,13 @@ set(sources
   fftr.F90
   ggaxc.f
   ldaxc.f
+  local_sys.F
   mesh1d.f90
   mesh3d.F90
   siestaxc.F90
   vdwxc.F90
   vv_vdwxc.F90
   xcmod.f90
-  sys.F
-  io.f
 )
 list(
     APPEND
@@ -30,6 +29,7 @@ list(
     "${dir}/../chkgmx.f"
     "${dir}/../fft1d.F"
     "${dir}/../interpolation.f90"
+    "${dir}/../io.f"
     "${dir}/../minvec.f"
     "${dir}/../m_io.f"
     "${dir}/../moreParallelSubs.F90"
