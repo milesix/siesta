@@ -1,0 +1,646 @@
+set(siesta_sources
+
+  Fstack.T90
+  Pair.T90
+  alloc.F90
+  amn.F90
+  arw.f
+  atm_transfer.f
+  atm_types.f
+  atmfuncs.f
+  atmparams.f
+  atom.F
+  atom_graph.F90
+  atom_options.F90
+  atomlist.f
+  atomlwf.F
+  automatic_cell.f
+  bands.F
+  basic_func.inc
+  basic_type.inc
+  basis_enthalpy.f90
+  basis_io.F
+  basis_specs.f
+  basis_types.f
+  bessph.f
+  bloch_unfold.F90
+  bonds.f
+  born_charge.F
+  broadcast_basis.F
+  broadcast_projections.F
+  broyden_optim.F
+  bsc_cellxc.F
+  cart2frac.f
+  cell_broyden_optim.F
+  cell_fire_optim.F
+  cellsubs.f
+  cgvc.F
+  cgvc_zmatrix.F
+  cgwf.F
+  chemical.f
+  chempot.F
+  chkdim.f
+  chkgmx.f
+  class_Data1D.F90
+  class_Data1D.T90
+  class_Data2D.F90
+  class_Data2D.T90
+  class_Distribution.F90
+  class_Fstack_Data1D.F90
+  class_Fstack_Pair_Data1D.F90
+  class_Fstack_Pair_Geometry_SpData2D.F90
+  class_Fstack_Pair_SpData1D.F90
+  class_Geometry.F90
+  class_OrbitalDistribution.F90
+  class_Pair_Data1D.F90
+  class_Pair_Geometry_SpData2D.F90
+  class_Pair_SpData1D.F90
+  class_SpData1D.F90
+  class_SpData1D.T90
+  class_SpData2D.F90
+  class_SpData2D.T90
+  class_Sparsity.F90
+  class_TriMat.F90
+  class_TriMat.T90
+  coceri.f
+  compute_dm.F
+  compute_ebs_shift.F90
+  compute_energies.F90
+  compute_max_diff.F90
+  compute_norm.F
+  compute_pw_matrix.F90
+  compute_rhog.F
+  conjgr.f
+  conjgr_old.f
+  constr.f
+  coor.F
+  coxmol.f
+  create_Sparsity_SC.F90
+  create_Sparsity_Union.F90
+  cross.f
+  debugmpi.F
+  delk.F90
+  denmat.F
+  denmatlomem.F
+  densematrix.f90
+  detover.F
+  dfscf.f
+  dftu.F
+  dftu_specs.f
+  dhscf.F
+  diag.F90
+  diag2g.F
+  diag2k.F
+  diag2kp.F90
+  diag2kspiral.F90
+  diag3g.F
+  diag3k.F
+  diag3kp.F90
+  diag_option.F90
+  diagg.F
+  diagk.F
+  diagk_file.F
+  diagkp.F
+  diagon.F
+  diagonalizeHk.F90
+  diagpol.f
+  die.F
+  digcel.f
+  dipole.F90
+  dismin.f
+  dm_charge.F90
+  dnaefs.f
+  domain_decom.F
+  doping_uniform.F
+  dot.f
+  dynamics.f
+  egandd.F
+  eggbox.F
+  electrostatic.f
+  ener3.F
+  ener3lomem.F
+  errorf.f
+  extrae_eventllist.F90
+  extrae_module.f90
+  extrapolateSpData2D.F90
+  extrapolon.f
+  f2kcli.F90
+  f_ppexsi_interface.F90
+  fdf_extra.F90
+  fermid.F
+  fft.F
+  fft1d.F
+  files.f
+  final_H_f_stress.F
+  find_kgrid.F
+  fire_optim.F
+  flook_siesta.F90
+  forhar.F
+  fsiesta_mpi.F90
+  fsockets.f90
+  geom_helper.f90
+  get_kpoints_scale.f90
+  get_target_stress.f
+  globalise.F
+  gradient.F
+  gradientlomem.F
+  grdsam.F
+  hsparse.F
+  idiag.f
+  init_output.F90
+  initatom.f
+  initparallel.F
+  interpolation.f90
+  intrinsic_missing.F90
+  inver.f
+  io.f
+  iocg.f
+  iodm.F
+  iodm_netcdf.F90
+  iodmhs_netcdf.F90
+  ioeig.f
+  iofa.f90
+  iogrid_netcdf.F90
+  iokp.f
+  iolwf.F
+  iomd.f
+  iopipes.F90
+  iosockets.F90
+  iowfs_netcdf.F90
+  ioxv.F
+  iozm.F
+  ipack.f
+  kgrid.F
+  kgridinit.F
+  kinefsm.f
+  kpoint_convert.f90
+  kpoint_grid.F90
+  kpoint_pdos.F90
+  ksv.f
+  ksvinit.F
+  lenstr.F
+  linpack.F
+  listsc.f
+  local_DOS.F
+  m_broyddj.f90
+  m_broyddj_nocomm.f90
+  m_broyden_mixing.f
+  m_cell.f
+  m_char.f90
+  m_charge_add.F90
+  m_check_walltime.f90
+  m_cite.F90
+  m_convergence.f90
+  m_digest_nnkp.F90
+  m_diis.F90
+  m_dipol.F90
+  m_dminim.F90
+  m_dscfcomm.F
+  m_efield.F90
+  m_energies.F90
+  m_eo.F90
+  m_exp_coord.F90
+  m_fft_gpfa.F
+  m_filter.f90
+  m_fire.f90
+  m_fire_mixing.f
+  m_fire_para.F90
+  m_fixed.F90
+  m_forces.F90
+  m_gauss_fermi_17.f90
+  m_gauss_fermi_18.f90
+  m_gauss_fermi_19.f90
+  m_gauss_fermi_20.f90
+  m_gauss_fermi_22.f90
+  m_gauss_fermi_24.f90
+  m_gauss_fermi_26.f90
+  m_gauss_fermi_28.f90
+  m_gauss_fermi_30.f90
+  m_gauss_fermi_inf.f90
+  m_gauss_quad.f90
+  m_geom_aux.f90
+  m_geom_box.f90
+  m_geom_coord.f90
+  m_geom_objects.f90
+  m_geom_plane.f90
+  m_geom_square.f90
+  m_getopts.f90
+  m_handle_sparse.F90
+  m_hartree_add.F90
+  m_hs_matrix.f90
+  m_hsx.F
+  m_integrate.f90
+  m_interpolate.F90
+  m_io.f
+  m_io_s.F90
+  m_io_yaml.F90
+  m_iodm.F90
+  m_iodm_old.F
+  m_iorho.F
+  m_iostruct.f
+  m_iterator.f90
+  m_kinetic.F90
+  m_mat_invert.F90
+  m_matio.F90
+  m_memory.F
+  m_mesh_node.F90
+  m_mixing.F90
+  m_mixing_scf.F90
+  m_monitor.F90
+  m_mpi_utils.F
+  m_ncdf_io.F90
+  m_ncdf_siesta.F90
+  m_new_dm.F90
+  m_noccbands.f
+  m_ntm.F90
+  m_options.f90
+  m_orderbands.F
+  m_os.F90
+  m_overkkneig.F90
+  m_partial_charges.F
+  m_pexsi.F90
+  m_pexsi_dos.F90
+  m_pexsi_driver.F90
+  m_pexsi_local_dos.F90
+  m_pivot.F90
+  m_pivot_array.f90
+  m_pivot_methods.F90
+  m_planewavematrix.F90
+  m_planewavematrixvar.F90
+  m_redist_spmatrix.F90
+  m_region.F90
+  m_rhog.F90
+  m_rmaxh.F90
+  m_sparse.F90
+  m_sparsity_handling.F90
+  m_spin.F90
+  m_steps.F90
+  m_stress.F90
+  m_supercell.F90
+  m_svd.F90
+  m_target_stress.F90
+  m_test_io.F90
+  m_timer.F90
+  m_transiesta.F90
+  m_trialorbitalclass.f90
+  m_trimat_invert.F90
+  m_ts_aux.F90
+  m_ts_cctype.f90
+  m_ts_chem_pot.F90
+  m_ts_contour.f90
+  m_ts_contour_eq.f90
+  m_ts_contour_neq.f90
+  m_ts_debug.F90
+  m_ts_dm_update.F90
+  m_ts_elec_se.F90
+  m_ts_electrode.F90
+  m_ts_electype.F90
+  m_ts_method.f90
+  m_ts_full_scat.F90
+  m_ts_fullg.F90
+  m_ts_fullk.F90
+  m_ts_gf.F90
+  m_ts_global_vars.f90
+  m_ts_hartree.F90
+  m_ts_io.F90
+  m_ts_io_contour.f90
+  m_ts_io_ctype.f90
+  m_ts_iodm.F90
+  m_ts_kpoints.F90
+  m_ts_mumps_init.F90
+  m_ts_mumps_scat.F90
+  m_ts_mumpsg.F90
+  m_ts_mumpsk.F90
+  m_ts_options.F90
+  m_ts_pivot.F90
+  m_ts_rgn2trimat.F90
+  m_ts_sparse.F90
+  m_ts_sparse_helper.F90
+  m_ts_tdir.f90
+  m_ts_tri_common.F90
+  m_ts_tri_init.F90
+  m_ts_tri_scat.F90
+  m_ts_trig.F90
+  m_ts_trik.F90
+  m_ts_trimat_invert.F90
+  m_ts_voltage.F90
+  m_ts_weight.F90
+  m_uuid.f90
+  m_wallclock.f90
+  m_walltime.f90
+  m_writedelk.F
+  m_zminim.F90
+  madelung.f
+  matel_registry.F90
+  md_out.F90
+  memory.F
+  memory_all.F90
+  memory_snapshot.f90
+  memoryinfo.F
+  mesh.F
+  meshcomm.F
+  meshdscf.F
+  meshphi.F
+  meshsubs.F
+  metaforce.F
+  minvec.f
+  mixer.F
+  mmio.F
+  mmn.F90
+  mneighb.f
+  molecularmechanics.F90
+  moments.F
+  moreParallelSubs.F90
+  moremeshsubs.F
+  mulliken.F
+  naefs.f
+  nag.f
+  new_matel.F
+  nlefsm.f
+  normalize_dm.F90
+  obc.f
+  object_debug.F90
+  ofc.f90
+  old_atmfuncs.f
+  on_subs.F
+  onmod.F
+  optical.F
+  ordern.F
+  outcell.f
+  outcoor.f
+  overfsm.f90
+  overlap.f
+  parallel.F
+  parallelsubs.F
+  parsing.f
+  pdos.F
+  pdos2g.F
+  pdos2k.F
+  pdos3g.F
+  pdos3k.F
+  pdosg.F
+  pdosk.F
+  pdoskp.F
+  periodic_table.f
+  phirphi.f
+  phirphi_opt.f
+  pixmol.f
+  plcharge.F
+  poison.F
+  post_scf_work.F
+  precision.F
+  print_spin.F90
+  printmatrix.F
+  projected_DOS.F
+  propor.f
+  proximity_check.F
+  pseudopotential.f
+  pspltm1.F
+  pxf.F90
+  qsort.F
+  radfft.f
+  radial.f
+  randomg.f90
+  read_options.F90
+  read_xc_info.F
+  reclat.f
+  redcel.F
+  register_rfs.F90
+  reinit.F
+  remove_intramol_pressure.f90
+  reoptical.F
+  reord.f
+  reordpsi.F
+  restructSpData2D.F90
+  rhofft.F
+  rhooda.F
+  rhoofd.F90
+  rhoofdsp.F90
+  rusage.f90
+  save_density_matrix.F90
+  savepsi.F
+  scfconvergence_test.F
+  schecomm.F
+  setatomnodes.F
+  setspatial.f
+  setup_H0.F
+  setup_hamiltonian.F
+  setup_ordern_indexes.F90
+  shaper.f
+  show_distribution.f
+  siesta.F
+  siesta2wannier90.F90
+  siesta_analysis.F
+  siesta_cml.f90
+  siesta_cmlsubs.F90
+  siesta_dicts.F90
+  siesta_end.F
+  siesta_forces.F
+  siesta_geom.F90
+  siesta_init.F
+  siesta_master.f90
+  siesta_move.F
+  siesta_options.F90
+  simple-version.F90
+  sockets.c
+  sorting.f
+  sparse_matrices.F90
+  spatial.F
+  spher_harm.f
+  spinorbit.f
+  state_analysis.F
+  state_init.F
+  struct_init.F
+  sys.F
+  timer.F90
+  timer_tree.f90
+  timestamp.f90
+  transition_rate.F
+  ts_charge.F90
+  ts_dq.F90
+  ts_energies.F90
+  ts_init.F90
+  ts_show_regions.f90
+  typecell.f
+  uncell.f
+  units.f90
+  vacuum_level.f90
+  vmat.F90
+  vmatsp.F90
+  vmb.F
+  volcel.f
+  write_inp_wannier.F90
+  write_md_record.F
+  write_orb_indx.f90
+  write_raw_efs.f90
+  write_subs.F
+  writewave.F
+  xml.f
+  zm_broyden_optim.F
+  zm_fire_optim.F
+  zmatrix.F
+
+)
+
+add_executable(${PROJECT_NAME}-siesta "${siesta_sources}")
+
+set_target_properties(
+  ${PROJECT_NAME}-siesta
+  PROPERTIES
+  VERSION "${PROJECT_VERSION}"
+  OUTPUT_NAME "siesta"
+)
+
+if(WITH_MPI)
+  target_compile_definitions(
+  "${PROJECT_NAME}-siesta"
+  PUBLIC
+  MPI
+  )
+# MPI interfaces
+  target_link_libraries(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+    ${PROJECT_NAME}-mpi-int
+  )
+endif()
+
+TARGET_LINK_LIBRARIES(
+  ${PROJECT_NAME}-siesta
+  PRIVATE
+  ${PROJECT_NAME}-libwxml
+  ${PROJECT_NAME}-libSiestaXC
+)
+
+if (WITH_MPI)
+
+  target_include_directories(${PROJECT_NAME}-siesta PUBLIC
+  "${CMAKE_BINARY_DIR}/mod-fdf-mpi")
+
+  TARGET_LINK_LIBRARIES(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+    ${PROJECT_NAME}-libfdf-mpi
+)
+
+else()
+
+  target_include_directories(${PROJECT_NAME}-siesta PUBLIC
+    "${CMAKE_BINARY_DIR}/mod-fdf")
+
+  TARGET_LINK_LIBRARIES(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+    ${PROJECT_NAME}-libfdf
+)
+endif()
+
+
+# -- Version information
+
+# 
+configure_file(
+  version-info-template.inc
+  ${CMAKE_CURRENT_BINARY_DIR}/generated/version-info.inc
+  @ONLY
+  )
+
+target_include_directories(
+  ${PROJECT_NAME}-siesta
+  PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}/generated
+  )
+
+# External libraries.
+
+# 
+# find_package("lapack" REQUIRED)
+# find_package("blas" REQUIRED)
+# set(
+#   lib-deps
+#   "blas::blas"
+#   "lapack::lapack"
+# )
+
+# target_link_libraries(
+#   ${PROJECT_NAME}-siesta
+#   PUBLIC
+#   "${lib-deps}"
+# )
+
+if(WITH_MPI)
+  target_link_libraries(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+    "$ENV{SCALAPACK_LIBS}"
+  )
+endif()
+
+if(WITH_LUA)
+  target_compile_definitions(
+  ${PROJECT_NAME}-siesta
+  PUBLIC
+  SIESTA__FLOOK
+  )
+  target_include_directories(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+    ${FLOOK_INCLUDE_DIRS}
+)
+  target_link_libraries(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+    ${PROJECT_NAME}-libfdict
+    ${FLOOK_LIBS}
+)
+
+endif()
+
+if(WITH_NETCDF)
+  target_compile_definitions(
+  "${PROJECT_NAME}-siesta"
+  PUBLIC
+  CDF
+  )
+  target_include_directories(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+    ${NETCDF_INCLUDEDIR}
+    ${NETCDF_INCLUDE_DIRS}
+)
+ target_link_libraries(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+   ${NETCDF_LINK_LIBRARIES}
+)
+endif()
+
+if(WITH_ELPA)
+  target_compile_definitions(
+  "${PROJECT_NAME}-siesta"
+  PUBLIC
+  SIESTA__ELPA
+  )
+  target_include_directories(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+    ${ELPA_INCFLAGS}
+)
+ target_link_libraries(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+   ${ELPA_LINK_LIBRARIES}
+)
+endif()
+
+TARGET_LINK_LIBRARIES(
+  ${PROJECT_NAME}-siesta
+  PRIVATE
+  "$ENV{LAPACK_LIBS}")
+
+install(
+  TARGETS ${PROJECT_NAME}-siesta
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  )
+
+

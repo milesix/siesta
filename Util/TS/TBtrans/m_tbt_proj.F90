@@ -1267,8 +1267,8 @@ contains
     use m_ncdf_io, only : cdf_w_Sp
     use m_timestamp, only : datestring
 #ifdef MPI
-    use mpi_siesta, only: MPI_Bcast, MPI_Logical, MPI_Comm_World
-    use mpi_siesta, only: MPI_Send, MPI_Recv, MPI_Status_Size
+    use mpi_siesta !, only: MPI_Bcast, MPI_Logical, MPI_Comm_World
+    use mpi_siesta !, only: MPI_Send, MPI_Recv, MPI_Status_Size
     use mpi_siesta, only: MPI_Double_Precision, MPI_Double_Complex
     use mpi_siesta, only: MPI_Comm_Self, MPI_Integer
     use mpi_siesta, only: MPI_Barrier
@@ -2500,8 +2500,8 @@ contains
     use dictionary
     use netcdf_ncdf, ncdf_parallel => parallel
 #ifdef MPI
-    use mpi_siesta, only : MPI_COMM_WORLD, MPI_Gather
-    use mpi_siesta, only : MPI_Send, MPI_Recv, MPI_DOUBLE_COMPLEX
+    use mpi_siesta !, only : MPI_COMM_WORLD, MPI_Gather
+    use mpi_siesta !, only : MPI_Send, MPI_Recv, MPI_DOUBLE_COMPLEX
     use mpi_siesta, only : MPI_Integer, MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
 #endif
@@ -2677,7 +2677,7 @@ contains
     use netcdf_ncdf, ncdf_parallel => parallel
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD
-    use mpi_siesta, only : MPI_Send, MPI_Recv
+    use mpi_siesta !, only : MPI_Send, MPI_Recv
     use mpi_siesta, only : MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
 #endif
@@ -2756,7 +2756,7 @@ contains
 
     use netcdf_ncdf
 #ifdef MPI
-    use mpi_siesta, only: MPI_Bcast
+    use mpi_siesta !, only: MPI_Bcast
     use mpi_siesta, only: MPI_Double_Complex, MPI_Comm_World
 #endif
 
@@ -2821,7 +2821,7 @@ contains
 
     use netcdf_ncdf, ncdf_parallel => parallel
 #ifdef MPI
-    use mpi_siesta, only: MPI_Send, MPI_Recv, MPI_Get_Count
+    use mpi_siesta !, only: MPI_Send, MPI_Recv, MPI_Get_Count
     use mpi_siesta, only: MPI_STATUS_SIZE
     use mpi_siesta, only: MPI_Double_Complex, MPI_Comm_World
 #endif
@@ -3048,12 +3048,13 @@ contains
 
     use netcdf_ncdf, ncdf_parallel => parallel
 #ifdef MPI
-    use mpi_siesta, only: MPI_Send, MPI_Recv, MPI_Get_Count
-    use mpi_siesta, only: MPI_STATUS_SIZE, MPI_STATUSES_IGNORE
-    use mpi_siesta, only: MPI_REQUEST_NULL
-    use mpi_siesta, only: MPI_Double_Complex, MPI_Comm_World
+    use mpi_siesta !, only: MPI_Send, MPI_Recv, MPI_Get_Count
+!    use mpi_siesta !, only: MPI_STATUS_SIZE, MPI_STATUSES_IGNORE
+!    use mpi_siesta !, only: MPI_REQUEST_NULL
+!    use mpi_siesta !, only: MPI_Double_Complex, MPI_Comm_World
 #endif
-
+    implicit none
+    
     type(hNCDF), intent(inout) :: ncdf
     integer, intent(in) :: N_proj_ME
     type(tProjMolEl), intent(inout) :: proj_ME(N_proj_ME)
@@ -3182,7 +3183,7 @@ contains
 
 #ifdef MPI
       if ( Node /= 0 ) then
-        call MPI_WaitAll(N_proj_ME,reqs(1),MPI_STATUSES_IGNORE,MPIerror)
+        call MPI_WaitAll(N_proj_ME,reqs,MPI_STATUSES_IGNORE,MPIerror)
       end if
       deallocate(tmp)
 #endif

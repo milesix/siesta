@@ -197,7 +197,7 @@ contains
     use m_ts_cctype
 
 #ifdef MPI
-    use mpi_siesta, only : MPI_Bcast, MPI_Send, MPI_Recv
+    use mpi_siesta !, only : MPI_Bcast, MPI_Send, MPI_Recv
     use mpi_siesta, only : MPI_Sum, MPI_Integer, MPI_Double_Complex
     use mpi_siesta, only : MPI_Status_Size, MPI_Comm_World
 #endif
@@ -405,7 +405,7 @@ contains
     use parallel, only : IONode
 
 #ifdef MPI
-    use mpi_siesta, only : MPI_AllReduce, MPI_Sum, MPI_Integer
+    use mpi_siesta !, only : MPI_AllReduce, MPI_Sum, MPI_Integer
     use mpi_siesta, only : MPI_Comm_World
 #endif
 
@@ -570,7 +570,7 @@ contains
     use sys ,      only : die
 #ifdef MPI
     use mpi_siesta, only: MPI_Double_Precision
-    use mpi_siesta, only: MPI_logical, MPI_Bcast
+    use mpi_siesta !, only: MPI_logical, MPI_Bcast
 #endif
     use m_ts_electype
     real(dp) , parameter :: EPS = 1.e-6_dp

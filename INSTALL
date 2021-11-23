@@ -1,0 +1,73 @@
+Installation of Siesta with CMake
+
+It needs cmake >= 3.14, and the ninja (>=1.10) backend. Both can be installed
+easily in most systems, in particular with conda.
+
+From the top level, for a serial version with no extra options:
+
+   cmake -S. -B_build -GNinja
+   cmake --build _build
+
+   (Note that the environment variable LAPACK_LIBS must be set
+    to the right linker string)
+
+For the parallel version, setting also an installation directory
+(with appropriate LAPACK_LIBS and SCALAPACK_LIBS environment
+ variables)):
+
+   FC=mpif90 cmake -S. -B_build -GNinja -DWITH_UTILS -DWITH_MPI=ON \
+                              -DCMAKE_INSTALL_PREFIX=/chosen/path
+   cd _build
+   ninja gen-basis
+   ninja tbtrans
+   ninja           (Will build the rest of the targets, including siesta)
+   ninja install
+
+The above example shows how individual targets can be requested, in any order.
+Utilities will be installed together with the Siesta executable, in
+/chosen/path/bin
+
+    * Accepted options:
+
+      - WITH_UTILS: Compiles programs in Util besides TBrans (currently only
+                    gen-basis and Eig2DOS as representative examples)
+
+      - WITH_MPI:   Must be used with FC=mpif90 or similar
+                    The "MPI interfaces" are now in an internal library
+                    (whih is slimmed-down for now)
+
+      - WITH_NETCDF: See config/cmake/search_for_netcdf.make
+
+                     The original intention was to use also
+                     -DNCDF and -DNCDF_4, but support for
+                     this depends on a too-simple simple-ncdf library
+
+      - WITH_ELPA:  See config/cmake/search_for_elpa.cmake
+      - WITH_LUA:   The environmental variable FLOOK_ROOT must be set and
+                    point to an installation of the flook library.
+
+
+ Quirks, workarounds, and missing bits:
+ 
+    * Version, compiler, and library information is now designed to
+      be incorporated through a 'configure'd" version-info template,
+      but the variables needed are not fully implemented. The version
+      is taken from the project declaration, not from version.info.
+
+    * The handling of external libraries should be improved:
+
+      - Lapack and Scalapack need the linker flags in environment
+        variables.
+      - Netcdf and ELPA are handled through their pkgconfig files,
+        which might not be well constructed (see the modules
+        in config/cmake)
+      - The flook library needs its path to be set in FLOOK_ROOT.
+
+    * There are two targets for the fdf library
+
+      One version is for serial-mode programs, and the other, for MPI
+      programs.  This is needed in 4.1.X because fdf contains the
+      logic for MPI broadcast, something that has been removed in the
+      stand-alone library.
+
+ 
