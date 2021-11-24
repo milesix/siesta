@@ -8,7 +8,8 @@
       private
 
       integer, parameter :: dp = selected_real_kind(10,100)
-
+      integer :: lun
+      
       CONTAINS
 
       subroutine compute_vlocal_chlocal(rofi,nrval,drdi,s,Zval,
@@ -299,12 +300,9 @@ C     Scaling factor for local-pseudopot. charge
 
         call vhrtre(chlocal,vlocal,rofi,drdi,s,nrval,a)
 
-        open(44,file="r_ch_v.charge",form="formatted")
-        write(44,"(a,f12.6)") "# r  chlocal r*vlocal rchloc: ", rchloc
         do ir=2,nrval 
           r=rofi(ir)  
           chlocal(ir)=chlocal(ir)/(4.0_dp*pi*r*r)
-          write(44,"(3f16.10)") r, chlocal(ir), r*vlocal(ir)
 !
 !     Poor man's cutoff!! Largely irrelevant?
 !     This might introduce discontinuities. It is better
@@ -315,17 +313,16 @@ C     Scaling factor for local-pseudopot. charge
           endif
 
         enddo 
-        close(44)
         chlocal(1)= -rhor1* zval/qtot
 
-        !
-        open(44,file="chlocal.charge",form="formatted")
-        write(44,"(a)") "# r  chlocal_Siesta (raw)"
-        do ir=2,nrval 
-           r=rofi(ir)  
-           write(44,"(2f16.10)") r, chlocal(ir)
+        call get_free_lun(lun)
+        open(lun,file="r_ch_v.charge",form="formatted")
+        write(lun,"(a,f12.6)") "# r  chlocal r*vlocal rchloc: ", rchloc
+        do ir = 1, nrval
+           write(lun,"(3f16.10)") rofi(r), chlocal(ir),
+     $          rofi(r)*vlocal(ir)
         enddo
-        close(44)
+        close(lun)
 
         end subroutine vlocal_from_chlocal
 
@@ -552,13 +549,14 @@ C If third derivative fit
           endif
         enddo              
 
-        open(44,file="chlocal.fit",form="formatted")
-        write(44,"(a)") "# r  chlocal_Siesta (raw)"
+        call get_free_lun(lun)
+        open(lun,file="chlocal.fit",form="formatted")
+        write(lun,"(a)") "# r  chlocal_Siesta (raw)"
         do ir=2,nrval 
            r=rofi(ir)  
-           write(44,"(2f16.10)") r, chlocal(ir)
+           write(lun,"(2f16.10)") r, chlocal(ir)
         enddo
-        close(44)
+        close(lun)
         
 
 !     Decouple the different operations performed in the
@@ -650,5 +648,19 @@ C If third derivative fit
 
        end function vander
 
+        subroutine get_free_lun(lun)
+        integer, intent(out) :: lun
+
+        logical :: used
+        integer :: iostat
+
+        do lun= 10,90
+           inquire(unit=lun, opened=used, iostat=iostat)
+           if (iostat .ne. 0) used = .true.
+           if (.not. used) return ! normal return with 'lun' value                                        
+        enddo
+        call die("No luns available")
+
+        end subroutine get_free_lun
 
       end module m_localgen

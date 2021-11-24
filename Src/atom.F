@@ -622,7 +622,7 @@ c    .          'atom: The above configuration will be used ',
 !  
              Rchloc = rofi(nchloc)
              write(6,'(2a,f10.5)') 'atom: Maximum radius for' ,
-     .            'chloc: ',Rchloc
+     .            ' chlocal: ',Rchloc
 
             call comlocal(is,a,b,rofi,chlocal,nchloc,flting,spp)
 !

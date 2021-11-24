@@ -20,19 +20,25 @@
       use sys, only: die
       use m_bessph, only: bessph   ! Spherical Bessel functions
 !-----------------------------------------------
+      logical :: debug_elec_corr
       
       public :: elec_corr_setup
+      
+      private
 !-----------------------------------------------
 
       CONTAINS  !=================================
 
       subroutine elec_corr_setup()
-
+      use fdf
+      
       integer is, is2, i
       real(dp) rchloc, rchloc2
 
       type(rad_func), pointer :: func
 
+      debug_elec_corr = fdf_get("Debug.Elec.Corr",.false.)
+      
       npairs = ((nspecies+1)*nspecies)/2
       allocate(elec_corr(npairs))
       do is=1,npairs
@@ -127,13 +133,17 @@ C
             ! We need more points to cover the range at pi/Qmax spacing
             ! The fft needs multiples of 2, 3, or 5...
             ! 
-            write(6,'(a,2f15.6)') 'ch_overlap: rmx,rmax =', rmx, rmax
+            if (debug_elec_corr) then
+               write(6,'(a,2f15.6)') 'ch_overlap: rmx,rmax =', rmx, rmax
+            endif
 
             new_nq = ceiling(qmax*rmx/pi)
             call nfft(new_nq)
-            WRITE(6,*) 'CH_OVERLAP: THE NUMBER OF INTEGRATION',
+            if (debug_elec_corr) then
+               WRITE(6,*) 'CH_OVERLAP: THE NUMBER OF INTEGRATION',
      .           ' POINTS IS INCREASED from ', NQ, ' to ',
      $           new_nq
+            endif
             NQ = new_nq
             RMAX = PI * NQ / QMAX
       ENDIF
@@ -181,10 +191,12 @@ C
       
       IF((ABS(Z1-ZVAL1).GT.CHERR).OR.
      .     (ABS(Z2-ZVAL2).GT.CHERR)) THEN 
-         WRITE(6,*) 'CH_OVERLAP: THE CUTOFF',
-     .        ' MUST BE INCREASED'
-         WRITE(6,*) 'CH_OVERLAP: Z1=',Z1,' ZVAL1=',ZVAL1
-         WRITE(6,*) 'CH_OVERLAP: Z2=',Z2,' ZVAL2=',ZVAL2
+         if (debug_elec_corr) then
+            WRITE(6,*) 'CH_OVERLAP: THE CUTOFF',
+     .           ' MUST BE INCREASED'
+            WRITE(6,*) 'CH_OVERLAP: Z1=',Z1,' ZVAL1=',ZVAL1
+            WRITE(6,*) 'CH_OVERLAP: Z2=',Z2,' ZVAL2=',ZVAL2
+         endif
          
          deallocate(CH,V)
          q2cut= q2cut * q_factor
@@ -193,8 +205,10 @@ C
          cycle q_loop  ! Another pass
          
       ELSE
-         WRITE(6,*) 'CH_OVERLAP: Z1=',Z1,' ZVAL1=',ZVAL1
-         WRITE(6,*) 'CH_OVERLAP: Z2=',Z2,' ZVAL2=',ZVAL2
+         if (debug_elec_corr) then
+            WRITE(6,*) 'CH_OVERLAP: Z1=',Z1,' ZVAL1=',ZVAL1
+            WRITE(6,*) 'CH_OVERLAP: Z2=',Z2,' ZVAL2=',ZVAL2
+         endif
          exit q_loop  ! We are done
       ENDIF
 
