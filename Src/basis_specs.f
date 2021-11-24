@@ -407,8 +407,8 @@ C Sanity checks on values
           gs => basp%ground_state
           if (gs%z_valence .lt. 0.001)
      .      call die("Synthetic species not detailed")
-         endif
-         call semicore_check(isp)
+        endif
+        call semicore_check(isp)
       enddo
 
       call remass()
@@ -739,9 +739,12 @@ C Sanity checks on values
         basp%nshells_tmp = fdf_bintegers(pline,1)
         basp%lmxo = 0
 
-        ! To report on pseudized shells and, in the future,
-        ! check on the specified structure of the block
-        call get_n_semicore_shells(basp%pseudopotential,nsemic_shells)
+        if (.not. (basp%synthetic .or.
+     $             basp%bessel)) then
+          ! To report on pseudized shells and, in the future,
+          ! check on the specified structure of the block
+          call get_n_semicore_shells(basp%pseudopotential,nsemic_shells)
+        endif
         
         !! Check whether there are optional type and ionic charge
         if (fdf_bnnames(pline) .eq. 2)
@@ -1506,11 +1509,30 @@ c (according to atmass subroutine).
          ! Set the default max l 
          !
          basp%lmxo = basp%ground_state%lmax_valence
-         !
-         call get_n_semicore_shells(basp%pseudopotential,nsemic_shells)
-         !
+
          ! Check whether we need to consider larger l's due to
-         ! semicore states
+         ! semicore states.
+         
+         if (basp%bessel) then
+            ! There are no semicore states 
+            nsemic_shells(:) = 0
+
+         else if (basp%synthetic) then
+
+            write(6,'(a,1x,a)')
+     .           "WARNING: Assuming absence of semicore " //
+     .           "states for", trim(basp%label)
+            write(6,'(a,1x,a)')
+     .           "WARNING: If there are any, " //
+     .           "use the PAO.Basis block"
+            nsemic_shells(:) = 0
+
+         else
+
+            call get_n_semicore_shells(basp%pseudopotential,
+     $                                 nsemic_shells)
+         endif
+         
          do l=0,ubound(nsemic_shells,dim=1)
             if (nsemic_shells(l) > 0) basp%lmxo = max(l,basp%lmxo)
          enddo

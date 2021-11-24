@@ -1719,6 +1719,12 @@ default if a given tag is not found when needed (see \file{fdf.log}).
   directory.
 
   Atomic numbers below $-200$ represent \emph{ghost synthetic atoms}.
+
+  Note that the procedure used in the automatic handling of semicore
+  states does not work for synthetic atoms.  If semicore states are
+  present, the species must be put in the \fdf{PAO!Basis} block.
+  Otherwise the program will assume that there are \emph{no} semicore
+  states.
   
 \end{fdfentry}
 
