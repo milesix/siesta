@@ -3,9 +3,10 @@ set(siesta_sources
   Fstack.T90
   Pair.T90
   alloc.F90
+  alloc_error_report.F
+  alloc_memory_event.F
   amn.F90
   arw.f
-  atm_transfer.f
   atm_types.f
   atmfuncs.f
   atmparams.f
@@ -45,6 +46,8 @@ set(siesta_sources
   class_Data1D.T90
   class_Data2D.F90
   class_Data2D.T90
+  class_Data3D.F90
+  class_Data3D.T90
   class_Distribution.F90
   class_Fstack_Data1D.F90
   class_Fstack_Pair_Data1D.F90
@@ -59,9 +62,12 @@ set(siesta_sources
   class_SpData1D.T90
   class_SpData2D.F90
   class_SpData2D.T90
+  class_SpData3D.F90
+  class_SpData3D.T90
   class_Sparsity.F90
   class_TriMat.F90
   class_TriMat.T90
+  cli_m.f90
   coceri.f
   compute_dm.F
   compute_ebs_shift.F90
@@ -69,12 +75,13 @@ set(siesta_sources
   compute_max_diff.F90
   compute_norm.F
   compute_pw_matrix.F90
-  compute_rhog.F
   conjgr.f
   conjgr_old.f
   constr.f
   coor.F
   coxmol.f
+  cranknic_evolg.F90
+  cranknic_evolk.F90
   create_Sparsity_SC.F90
   create_Sparsity_Union.F90
   cross.f
@@ -101,6 +108,7 @@ set(siesta_sources
   diagk.F
   diagk_file.F
   diagkp.F
+  diagmemory.F
   diagon.F
   diagonalizeHk.F90
   diagpol.f
@@ -124,7 +132,6 @@ set(siesta_sources
   extrae_module.f90
   extrapolateSpData2D.F90
   extrapolon.f
-  f2kcli.F90
   f_ppexsi_interface.F90
   fdf_extra.F90
   fermid.F
@@ -145,6 +152,7 @@ set(siesta_sources
   gradient.F
   gradientlomem.F
   grdsam.F
+  hamann.f90
   hsparse.F
   idiag.f
   init_output.F90
@@ -166,6 +174,7 @@ set(siesta_sources
   iomd.f
   iopipes.F90
   iosockets.F90
+  iotdxv.F
   iowfs_netcdf.F90
   ioxv.F
   iozm.F
@@ -174,14 +183,16 @@ set(siesta_sources
   kgridinit.F
   kinefsm.f
   kpoint_convert.f90
-  kpoint_grid.F90
+  kpoint_dos.F90
+  kpoint_ldos.F90
   kpoint_pdos.F90
+  kpoint_scf.F90
+  kpoint_t.F90
   ksv.f
   ksvinit.F
-  lenstr.F
   linpack.F
   listsc.f
-  local_DOS.F
+  local_DOS.F90
   m_broyddj.f90
   m_broyddj_nocomm.f90
   m_broyden_mixing.f
@@ -189,6 +200,7 @@ set(siesta_sources
   m_char.f90
   m_charge_add.F90
   m_check_walltime.f90
+  m_chess.F90
   m_cite.F90
   m_convergence.f90
   m_digest_nnkp.F90
@@ -199,6 +211,7 @@ set(siesta_sources
   m_efield.F90
   m_energies.F90
   m_eo.F90
+  m_evolve.F90
   m_exp_coord.F90
   m_fft_gpfa.F
   m_filter.f90
@@ -229,20 +242,25 @@ set(siesta_sources
   m_hartree_add.F90
   m_hs_matrix.f90
   m_hsx.F
+  m_initwf.F90
   m_integrate.f90
   m_interpolate.F90
+  m_inversemm.F90
   m_io.f
   m_io_s.F90
   m_io_yaml.F90
+  m_iodipol.F90
   m_iodm.F90
   m_iodm_old.F
   m_iorho.F
   m_iostruct.f
+  m_iotddft.F90
   m_iterator.f90
   m_kinetic.F90
   m_mat_invert.F90
+  m_matdiag.F90
   m_matio.F90
-  m_memory.F
+  m_matswinvers.F90
   m_mesh_node.F90
   m_mixing.F90
   m_mixing_scf.F90
@@ -257,7 +275,7 @@ set(siesta_sources
   m_orderbands.F
   m_os.F90
   m_overkkneig.F90
-  m_partial_charges.F
+  m_partial_charges.F90
   m_pexsi.F90
   m_pexsi_dos.F90
   m_pexsi_driver.F90
@@ -267,6 +285,7 @@ set(siesta_sources
   m_pivot_methods.F90
   m_planewavematrix.F90
   m_planewavematrixvar.F90
+  m_pulay.F90
   m_redist_spmatrix.F90
   m_region.F90
   m_rhog.F90
@@ -274,6 +293,7 @@ set(siesta_sources
   m_sparse.F90
   m_sparsity_handling.F90
   m_spin.F90
+  m_spin_orbit_potentials.f90
   m_steps.F90
   m_stress.F90
   m_supercell.F90
@@ -295,7 +315,6 @@ set(siesta_sources
   m_ts_elec_se.F90
   m_ts_electrode.F90
   m_ts_electype.F90
-  m_ts_method.f90
   m_ts_full_scat.F90
   m_ts_fullg.F90
   m_ts_fullk.F90
@@ -306,7 +325,7 @@ set(siesta_sources
   m_ts_io_contour.f90
   m_ts_io_ctype.f90
   m_ts_iodm.F90
-  m_ts_kpoints.F90
+  m_ts_method.f90
   m_ts_mumps_init.F90
   m_ts_mumps_scat.F90
   m_ts_mumpsg.F90
@@ -335,8 +354,8 @@ set(siesta_sources
   md_out.F90
   memory.F
   memory_all.F90
+  memory_log.F90
   memory_snapshot.f90
-  memoryinfo.F
   mesh.F
   meshcomm.F
   meshdscf.F
@@ -361,7 +380,6 @@ set(siesta_sources
   obc.f
   object_debug.F90
   ofc.f90
-  old_atmfuncs.f
   on_subs.F
   onmod.F
   optical.F
@@ -387,14 +405,15 @@ set(siesta_sources
   pixmol.f
   plcharge.F
   poison.F
+  posix_calls.f90
   post_scf_work.F
   precision.F
   print_spin.F90
   printmatrix.F
-  projected_DOS.F
+  projected_DOS.F90
   propor.f
   proximity_check.F
-  pseudopotential.f
+  psml_die.F90
   pspltm1.F
   pxf.F90
   qsort.F
@@ -406,7 +425,7 @@ set(siesta_sources
   reclat.f
   redcel.F
   register_rfs.F90
-  reinit.F
+  reinit_m.F90
   remove_intramol_pressure.f90
   reoptical.F
   reord.f
@@ -416,11 +435,14 @@ set(siesta_sources
   rhooda.F
   rhoofd.F90
   rhoofdsp.F90
+  runinfo_m.F90
   rusage.f90
+  sankey_change_basis.F90
   save_density_matrix.F90
   savepsi.F
   scfconvergence_test.F
   schecomm.F
+  semicore_info_froyen.f90
   setatomnodes.F
   setspatial.f
   setup_H0.F
@@ -435,12 +457,13 @@ set(siesta_sources
   siesta_cmlsubs.F90
   siesta_dicts.F90
   siesta_end.F
-  siesta_forces.F
+  siesta_forces.F90
   siesta_geom.F90
   siesta_init.F
   siesta_master.f90
   siesta_move.F
   siesta_options.F90
+  siesta_tddft.F90
   simple-version.F90
   sockets.c
   sorting.f
@@ -460,6 +483,7 @@ set(siesta_sources
   ts_dq.F90
   ts_energies.F90
   ts_init.F90
+  ts_kpoint_scf.F90
   ts_show_regions.f90
   typecell.f
   uncell.f
@@ -469,6 +493,7 @@ set(siesta_sources
   vmatsp.F90
   vmb.F
   volcel.f
+  wavefunctions.F90
   write_inp_wannier.F90
   write_md_record.F
   write_orb_indx.f90
@@ -508,8 +533,12 @@ endif()
 TARGET_LINK_LIBRARIES(
   ${PROJECT_NAME}-siesta
   PRIVATE
-  ${PROJECT_NAME}-libwxml
-  ${PROJECT_NAME}-libSiestaXC
+  ${PROJECT_NAME}-libms
+  ${PROJECT_NAME}-libncps
+  ${PROJECT_NAME}-libpsop
+  xmlf90
+  gridxc
+  libpsml
 )
 
 if (WITH_MPI)

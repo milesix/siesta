@@ -1,0 +1,35 @@
+#
+set(ms_sources
+
+  MatrixSwitch.F90
+  MatrixSwitch_m_add.F90
+  MatrixSwitch_m_copy.F90
+  MatrixSwitch_m_register.F90
+  MatrixSwitch_m_set.F90
+  MatrixSwitch_mm_multiply.F90
+  MatrixSwitch_ops.F90
+  MatrixSwitch_wrapper.F90
+  MatrixSwitch_wrapper_params.F90
+)
+
+ add_library(
+  ${PROJECT_NAME}-libms
+  ${ms_sources}  
+ )
+
+if (WITH_MPI)
+
+ target_compile_definitions(
+  ${PROJECT_NAME}-libms
+  PUBLIC
+  MPI
+ )
+
+ target_link_libraries(
+  ${PROJECT_NAME}-libms
+  PRIVATE
+  ${PROJECT_NAME}-mpi-int
+ )
+endif()
+
+

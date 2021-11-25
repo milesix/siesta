@@ -70,13 +70,14 @@ add_subdirectory("Src/fdf")
 add_subdirectory("Src/simple-fdict")
 add_subdirectory("Src/ncps/src")
 add_subdirectory("Src/psoplib/src")
+add_subdirectory("Src/MatrixSwitch/src")
 
 if (WITH_NETCDF)
   add_subdirectory("Src/simple-ncdf")
 endif()
 
 # -- Siesta executable
-#add_subdirectory("Src")
+add_subdirectory("Src")
 
 # -- Utilities
 
