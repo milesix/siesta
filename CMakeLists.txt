@@ -53,25 +53,34 @@ if (WITH_ELPA)
  include(search_for_elpa)
 endif()
 
+# Handle external dependencies
+
+option(DOWNLOAD_FALLBACK "Download dependencies if not found" ON)
+
+include(search_for_xmlf90)
+include(search_for_libpsml)
+include(search_for_gridxc)
+
+
+
 # Code organization
 # -- Internal library dependencies
 
 add_subdirectory("Src/fdf")
-add_subdirectory("Src/wxml")
-add_subdirectory("Src/SiestaXC")
-add_subdirectory("Src/xmlparser")
 add_subdirectory("Src/simple-fdict")
+add_subdirectory("Src/ncps/src")
+add_subdirectory("Src/psoplib/src")
 
 if (WITH_NETCDF)
   add_subdirectory("Src/simple-ncdf")
 endif()
 
 # -- Siesta executable
-add_subdirectory("Src")
+#add_subdirectory("Src")
 
 # -- Utilities
 
-add_subdirectory("Util")
+#add_subdirectory("Util")
 
 # Package license files
 install(
