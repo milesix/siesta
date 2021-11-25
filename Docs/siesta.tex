@@ -1316,13 +1316,14 @@ Here we offer a glimpse of it through the following rules:
 
 \begin{itemize}
 
-\item[$\bullet$] The \fdflib\ syntax is a 'data label' followed by its value.
-Values that are not specified in the datafile are assigned
-a default value.
+  \item[$\bullet$] The \fdflib\ syntax is a ``data label'' followed by
+  its value.  Values that are not specified in the datafile are
+  assigned a default value.
 
-\item[$\bullet$] \fdflib\ labels are case insensitive, and characters - \_ .
-in a data label are ignored. Thus, LatticeConstant and
-lattice\_constant represent the same label.
+  \item[$\bullet$] \fdflib\ labels are case insensitive, and
+  characters - \_ .  in a data label are ignored. Thus,
+  \fdf*{LatticeConstant} and \fdf*{lattice\_constant} represent the
+  same label.
 
 \item[$\bullet$] All text following the \# character is taken as comment.
 
@@ -1339,20 +1340,20 @@ it from an integer, in order to prevent ambiguities when mixing the types
 on the same input line.
 
 \item[$\bullet$] Complex data structures are called blocks and are
-placed between `\%block label'\index{block@\%block} and a `\%endblock label'
-(without the quotes).
+placed between ``\%block label''\index{block@\%block} and a
+``\%endblock label'' (without the quotes).
 
-\item[$\bullet$] You may `include' other \fdflib\ files and redirect the search
-for a particular data label to another file.
-If a data label appears more than once, its first appearance
-is used.
+\item[$\bullet$] You may ``include'' other \fdflib\ files and redirect
+the search for a particular data label to another file.  If a data
+label appears more than once, its first appearance is used.
 
-\item[$\bullet$] If the same label is specified twice, the first one takes precedence.
+\item[$\bullet$] If the same label is specified twice, the first one
+takes precedence.
 
-\item[$\bullet$] If a label is misspelled it will not be recognized (there is no
-  internal list of ``accepted'' tags in the program). You can check 
-  the actual value used by \siesta\ by looking for the label in the
-  output \file{fdf.log} file.
+\item[$\bullet$] If a label is misspelled it will not be recognized
+(there is no internal list of ``accepted'' tags in the program). You
+can check the actual value used by \siesta\ by looking for the label
+in the output \file{fdf.log} file.
 
 \end{itemize}
 
@@ -8622,8 +8623,8 @@ or interpolation of bands), can be downloaded from
 \begin{fdfentry}{ExternalElectricField}[block]
   
   It specifies an external electric field for molecules, chains and
-  slabs.  The electric field should be orthogonal to `bulk
-  directions', like those parallel to a slab (bulk electric fields,
+  slabs. The electric field should be orthogonal to ``bulk
+  directions'', like those parallel to a slab (bulk electric fields,
   like in dielectrics or ferroelectrics, are not allowed). If it is
   not, an error message is issued and the components of the field in
   bulk directions are suppressed automatically. The input is a vector
@@ -8638,6 +8639,10 @@ or interpolation of bands), can be downloaded from
   to a slab will by default enable the slab dipole correction, see
   \fdf{Slab.DipoleCorrection}. To reproduce older calculations, set
   this correction option explicitly to \fdffalse\ in the input file.
+
+  When examining a variety of electric fields it may be highly
+  advantageous to re-use the \sysfile{DM} from a previous calculation
+  with an electric field close to the current one.
 
 \end{fdfentry}
 
