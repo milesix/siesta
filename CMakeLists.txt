@@ -12,7 +12,7 @@ ensure_out_of_source_build()
 project(
   "siesta"
   LANGUAGES Fortran C
-  VERSION "4.1.6"
+  VERSION "5.1.0"
   DESCRIPTION "A great DFT code"
 )
 
@@ -22,7 +22,7 @@ option(WITH_ELPA "Use the ELPA library (direct interface)" FALSE)
 option(WITH_LUA "Use the flook library for Lua scripting" FALSE)
 option(WITH_LIBXC "Include libxc support" FALSE)
 #
-option(WITH_UTILS "Compile all utilities (besides tbtrans)" FALSE)
+option(WITH_UTILS "Compile all utilities (besides tbtrans)" TRUE)
 
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -89,7 +89,7 @@ add_subdirectory("Src")
 
 # -- Utilities
 
-#add_subdirectory("Util")
+add_subdirectory("Util")
 
 # Package license files
 install(

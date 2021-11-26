@@ -3,7 +3,7 @@ set(top_srcdir "${CMAKE_SOURCE_DIR}/Src")
 set(sources
 
   gen-basis.F
-  local_die.f
+  handlers.f
   
 )
 list(
@@ -13,7 +13,6 @@ list(
 
     "${top_srcdir}/alloc.F90"
     "${top_srcdir}/arw.f"
-    "${top_srcdir}/atm_transfer.f"
     "${top_srcdir}/atm_types.f"
     "${top_srcdir}/atmparams.f"
     "${top_srcdir}/atom.F"
@@ -26,30 +25,35 @@ list(
     "${top_srcdir}/chemical.f"
     "${top_srcdir}/dftu_specs.f"
     "${top_srcdir}/dot.f"
+    "${top_srcdir}/files.f"
+    "${top_srcdir}/get_kpoints_scale.f90"
+    "${top_srcdir}/hamann.f90"
     "${top_srcdir}/interpolation.f90"
     "${top_srcdir}/io.f"
     "${top_srcdir}/minvec.f"
     "${top_srcdir}/m_cite.F90"
+    "${top_srcdir}/m_fft_gpfa.F"
     "${top_srcdir}/m_filter.f90"
     "${top_srcdir}/m_io.f"
-    "${top_srcdir}/m_timer.F90"
+    "${top_srcdir}/m_spin.F90"
+    "${top_srcdir}/m_spin_orbit_potentials.f90"
     "${top_srcdir}/m_walltime.f90"
     "${top_srcdir}/memory.F"
-    "${top_srcdir}/memoryinfo.F"
+    "${top_srcdir}/memory_log.F90"
     "${top_srcdir}/nag.f"
-    "${top_srcdir}/old_atmfuncs.f"
     "${top_srcdir}/parallel.F"
     "${top_srcdir}/parsing.f"
     "${top_srcdir}/periodic_table.f"
     "${top_srcdir}/precision.F"
-    "${top_srcdir}/pseudopotential.f"
     "${top_srcdir}/pxf.F90"
     "${top_srcdir}/radfft.f"
     "${top_srcdir}/radial.f"
+    "${top_srcdir}/reclat.f"
     "${top_srcdir}/read_xc_info.F"
+    "${top_srcdir}/semicore_info_froyen.f90"
+    "${top_srcdir}/siesta_geom.F90"
     "${top_srcdir}/sorting.f"
-    "${top_srcdir}/timer.F90"
-    "${top_srcdir}/timer_tree.f90"
+    "${top_srcdir}/sys.F"
     "${top_srcdir}/units.f90"
     "${top_srcdir}/xml.f"
 
@@ -77,7 +81,10 @@ install(
   gen-basis
   PRIVATE
   ${PROJECT_NAME}-libfdf
-  ${PROJECT_NAME}-libSiestaXC
+  gridxc
+  libpsml
+  ${PROJECT_NAME}-libncps
+  ${PROJECT_NAME}-libpsop
   "$ENV{LAPACK_LIBS}"
  )
 

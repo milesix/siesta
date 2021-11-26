@@ -1,6 +1,6 @@
-add_subdirectory("TS/TBtrans")
+#add_subdirectory("TS/TBtrans")
+add_subdirectory("Gen-basis")
 
 if(WITH_UTILS)
   add_subdirectory("Eig2DOS")
-  add_subdirectory("Gen-basis")
 endif()
