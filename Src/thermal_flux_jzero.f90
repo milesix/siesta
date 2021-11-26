@@ -26,11 +26,14 @@ module thermal_flux_jzero
   !! maximum expected (linear) cell contraction
   !! during relaxation/MD
   real(dp), parameter :: pi = 4.0_dp * atan(1.0_dp)
+  real(dp), parameter :: e2 = 2.0_dp !! electron charge squared
 
   character(len=1), dimension(3), parameter :: coord_table = [ 'X', 'Y', 'Z' ]
 
-  real(dp)  :: omega,  pref
+  real(dp)  :: omega
+  real(dp)  :: pref   !! `4pi/omega` prefactor
   integer   :: nqxq   !! size of interpolation table
+  ! real(dp)  :: tpiba
 
   private
   public :: init_zero_flux_data, compute_jzero
@@ -44,11 +47,10 @@ contains
     !NOTE: This should be present even with `ion_flux` calculation switched off,
     ! though ofc it should be moved into a proper scope.
 
-    ! real(dp)  :: tpiba
     ! real(dp)  :: gcutm  !! potential cut-off
 
     omega = volcel(cell_vmd)
-    pref  = 4.0_dp * pi / omega
+    pref  = 4.0_dp * pi / omega !! `4pi/omega` prefactor
     ! tpiba = 2.0_dp * pi / gk_setup%alat
 
     ! gcutm = meshcutoff / tpiba**2
@@ -61,7 +63,7 @@ contains
     !! NOTE: Check `tab_local` in QE.
     !! Seems that it should be initialized only once.
     !! Thus, this subroutine -> `compute_tab_local`.
-    use atomlist,    only: qa
+    ! use atomlist,    only: qa
     use atm_types,   only: species, species_info
     use basis_types, only: nsp
     use radial,      only: rad_get
@@ -80,7 +82,7 @@ contains
     ! real(dp) &  grSij(3), rij, Sij, xinv(3), sum
     ! integer &  ikb, ina, ino, jno, ko, koa, ks, ig, jg, kg, &  nkb, nna, nno, ilm1, ilm2, npoints, &  ir
     ! real(dp) ::  epsk, grSki(3), rki, rmax, rmaxkb, rmaxo
-    real(dp) :: rmax, rmaxkb, rmaxo
+    real(dp) :: rmax, rmaxkb, rmaxo, qa_sp
     integer  :: iio, ind, io, ioa, j, ja, jn, jo, joa, js, jg, nnia, nna, norb, ks, koa, ikb
     integer  :: na, no, nua, nuo, nai, naj
     real(dp) :: Jznl_alt(3)
@@ -98,7 +100,7 @@ contains
     real(dp) :: R_I(3), R_mu(3), R_nu(3), R_Imu(3), R_Inu(3)
     type(species_info), pointer :: spp
     real(dp) :: rm, delta_rm, aux_fr, aux_dfdr, vl_int, qi
-    real(dp) :: vel(3)          !! temp buffer for (`va_in` x 2)
+    real(dp) :: vel(3)          !! temp buffer for (`va_in`)
     integer  :: in, is, iq, npts
     real(dp), allocatable :: aux(:)
     real(dp) :: H_g_rad(ngl_vmd,0:1)  !NOTE: tab_local maybe should also moved here
@@ -152,7 +154,8 @@ contains
     !init of radial part
     init_h_g: do it = 1, nsp
        do igl = 1, ngl_vmd
-          xg = sqrt(gl_vmd(igl)) !* tpiba
+          xg = sqrt(gl_vmd(igl))!* tpiba  !(not to) cut below this radial interpolation table
+          !NOTE: maybe there is a more accurate way to build it.
           px = xg / dq - int(xg / dq)
           ux = 1.d0 - px
           vx = 2.d0 - px
@@ -183,6 +186,9 @@ contains
           !debug
        end do
 
+       spp => species(it)
+       qa_sp = spp%zval
+
        do a=1,3
           do b=1,3
              if (a>=b) then
@@ -190,14 +196,14 @@ contains
                    igp = igplus_vmd(ig)     ! get the global index for g-vectors
                    H_g(ig,a,b,it) =  g_vmd(a,igp) * g_vmd(b,igp) / gg_vmd(igp) * &
                         & (sqrt(gg_vmd(igp)) * H_g_rad(igtongl_vmd(ig),1) - &
-                        &  2.d0 * qa(it) * pref * 2.d0 / gg_vmd(igp))
+                        &  2.0_dp * e2 * qa_sp * pref / gg_vmd(igp))
                 end do
              end if
              if (a==b) then
                 do ig = gstart_vmd, ngm_plus_vmd
                    igp = igplus_vmd(ig)     ! get the global index for g-vectors
                    H_g(ig,a,b,it) =  H_g(ig,a,b,it) - &
-                        & (H_g_rad(igtongl_vmd(ig),0) - pref*2.d0*qa(it)/gg_vmd(igp))
+                        & (H_g_rad(igtongl_vmd(ig),0) - e2*pref*qa_sp/gg_vmd(igp))
                 end do
                 if (gstart_vmd==2) then
                    H_g(1,a,b,it)= - H_g_rad(1,0)
@@ -262,11 +268,23 @@ contains
     np = product(ntml_vmd)
     call c_f_pointer(c_loc(charge_g_base), tc_v, [np])
 
+    ! do ig = gstart_vmd, ngm_plus_vmd
+    !    igp = igplus_vmd(ig)     ! get the global index
+
+    !    print*, "[DBG]", ig, igp
+    !    print*, "[DBG]", tc_v(igp)
+    !    print*, "[DBG]", u_g(ig,:)
+    !    print*, "[DBG]", "----------------------------"
+
+    ! end do
+
     jzero_local: do a = 1,3
        do ig = gstart_vmd, ngm_plus_vmd
           igp = igplus_vmd(ig)     ! get the global index
           gk_results%Jzloc(a)= gk_results%Jzloc(a) + &
                & 2.d0 * dble(tc_v(igp) * conjg(u_g(ig,a))) ! Mind the factor of 2
+
+          write(700+a, *) gk_results%Jzloc(a) !debug
        end do                                              ! Summation over G>, Aris M. notes (3.8)
        if (gstart_vmd == 2) then
           gk_results%Jzloc(a) = gk_results%Jzloc(a) + dble(tc_v(1) * conjg(u_g(1,a)))
@@ -280,6 +298,8 @@ contains
     deallocate(tab_local)
 
     ! This should add NL-part of the zero current
+    !FIXME: For an auxiliary supercell this will be erroneous.
+    !`na_s != na_u` means aux sc is used.
     jzero_nl: do I_ind=1,na_u
        R_I(1:3) = xa_in(1:3,I_ind)
        vel(1:3) = va_in(1:3,I_ind)
