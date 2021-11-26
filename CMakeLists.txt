@@ -20,6 +20,7 @@ option(WITH_MPI "Whether Siesta should support MPI-parallelism" FALSE)
 option(WITH_NETCDF "Use netCDF interface" FALSE)
 option(WITH_ELPA "Use the ELPA library (direct interface)" FALSE)
 option(WITH_LUA "Use the flook library for Lua scripting" FALSE)
+option(WITH_LIBXC "Include libxc support" FALSE)
 #
 option(WITH_UTILS "Compile all utilities (besides tbtrans)" FALSE)
 
@@ -52,6 +53,13 @@ endif()
 if (WITH_ELPA)
  include(search_for_elpa)
 endif()
+
+# This might be necessary if we are not compiling libgridxc
+# (pending pkg-config support for the libs.required)
+#
+if(WITH_LIBXC)
+  include(search_for_libxc)
+endif()  
 
 # Handle external dependencies
 

@@ -13,8 +13,10 @@ else()
 
   if(gridxc_FOUND)
     message(STATUS "Found gridxc through pkgconfig")
+    if (WITH_LIBXC)
+      target_link_libraries(PkgConfig::gridxc INTERFACE ${LIBXC_LINK_LIBRARIES})
+    endif()
     add_library(gridxc ALIAS PkgConfig::gridxc)
-    #target_link_libraries(${atom_target} PRIVATE gridxc)
   elseif(DOWNLOAD_FALLBACK)
     include(FetchContent)
     #

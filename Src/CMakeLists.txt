@@ -31,6 +31,7 @@ set(siesta_sources
   broadcast_projections.F
   broyden_optim.F
   bsc_cellxc.F
+  bye.F
   cart2frac.f
   cell_broyden_optim.F
   cell_fire_optim.F
@@ -285,7 +286,6 @@ set(siesta_sources
   m_pivot_methods.F90
   m_planewavematrix.F90
   m_planewavematrixvar.F90
-  m_pulay.F90
   m_redist_spmatrix.F90
   m_region.F90
   m_rhog.F90

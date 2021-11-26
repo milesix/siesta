@@ -18,18 +18,26 @@ set(ms_sources
  )
 
 if (WITH_MPI)
-
+ # specific preprocessor variable
  target_compile_definitions(
   ${PROJECT_NAME}-libms
   PUBLIC
-  MPI
+  HAVE_MPI
+  HAVE_SCALAPACK
  )
 
- target_link_libraries(
-  ${PROJECT_NAME}-libms
-  PRIVATE
-  ${PROJECT_NAME}-mpi-int
- )
+# Note that this library does not use
+# mpi_siesta...
+# target_link_libraries(
+#  ${PROJECT_NAME}-libms
+#  PRIVATE
+#  ${PROJECT_NAME}-mpi-int
+# )
 endif()
 
+target_include_directories(
+  ${PROJECT_NAME}-libms
+  INTERFACE
+  ${CMAKE_CURRENT_BINARY_DIR}
+)
 
