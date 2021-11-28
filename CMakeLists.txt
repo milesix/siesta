@@ -76,6 +76,7 @@ include(search_for_gridxc)
 
 add_subdirectory("Src/fdf")
 add_subdirectory("Src/simple-fdict")
+add_subdirectory("Src/ncps/src/libxc-compat")
 add_subdirectory("Src/ncps/src")
 add_subdirectory("Src/psoplib/src")
 add_subdirectory("Src/MatrixSwitch/src")
