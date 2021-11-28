@@ -1,54 +1,60 @@
+#
+# There are two targets in this directory. The 'OBJECT library' idiom
+# was needed to avoid ninja complaining about "two paths for the same
+# .mod file"
+#
+# Since the top objects are compiled separately, their 'sys' module
+# must be the top one. Here only external 'die' et al are bundled in
+# the 'sys_externals.f90' file.
+#
 set(top_src_dir "${CMAKE_SOURCE_DIR}/Src")
 
-add_executable(
-   fcbuild
-   fcbuild.f
-   local_sys.F
-   recoor.f
+add_library(vibra_top_objs OBJECT
    ${top_src_dir}/io.f
    ${top_src_dir}/m_io.f
    ${top_src_dir}/precision.F
    ${top_src_dir}/pxf.F90
    ${top_src_dir}/reclat.f
+   ${top_src_dir}/sys.F
    ${top_src_dir}/units.f90
-
 )
+
+add_executable(
+    fcbuild
+    fcbuild.f
+    recoor.f
+    sys_externals.f90
+)
+
 add_executable(
    vibra
    hermdp.F
    klines.f
-   local_sys.F
    outbands.f
    recoor.f
+   sys_externals.f90
    vibra.F
-   ${top_src_dir}/io.f
-   ${top_src_dir}/m_io.f
-   ${top_src_dir}/precision.F
-   ${top_src_dir}/pxf.F90
-   ${top_src_dir}/reclat.f
-   ${top_src_dir}/units.f90
-
 )
 
- target_link_libraries(fcbuild
+target_link_libraries(fcbuild
+    vibra_top_objs
     ${PROJECT_NAME}-libfdf
     )
- target_link_libraries(vibra
+target_link_libraries(vibra
+    vibra_top_objs
     ${PROJECT_NAME}-libfdf
-    )
- target_link_libraries(vibra
     $ENV{LAPACK_LIBS}
     )
     
- target_include_directories(
-     fcbuild
-     PUBLIC
-    "${CMAKE_BINARY_DIR}/mod-fdf")
+target_include_directories(
+   fcbuild
+   PRIVATE
+   "${CMAKE_BINARY_DIR}/mod-fdf")
    
- target_include_directories(
-     vibra
-     PUBLIC
-    "${CMAKE_BINARY_DIR}/mod-fdf")
+target_include_directories(
+   vibra
+   PRIVATE
+   "${CMAKE_BINARY_DIR}/mod-fdf")
    
 install(
   TARGETS fcbuild vibra
