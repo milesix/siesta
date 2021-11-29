@@ -102,4 +102,5 @@ install(
 
 # add the testsuite
 #enable_testing()
-#add_subdirectory(" ... ")
+add_subdirectory("Src/ncps/examples")
+

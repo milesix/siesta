@@ -1,4 +1,4 @@
-find_package(psml QUIET)
+#find_package(psml QUIET)
 if (libpsml_FOUND)
   message(STATUS "Found libpsml cmake package")
   add_library(libpsml ALIAS psml::libpsml-lib)
@@ -6,7 +6,7 @@ if (libpsml_FOUND)
 else()
 
   find_package(PkgConfig QUIET)
-  pkg_check_modules(libpsml IMPORTED_TARGET GLOBAL libpsml>=1.1.9)
+  pkg_check_modules(libpsml IMPORTED_TARGET GLOBAL psml>=1.1.11)
 
   if(libpsml_FOUND)
     message(STATUS "Found libpsml through pkgconfig")
