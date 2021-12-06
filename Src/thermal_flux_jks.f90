@@ -674,14 +674,15 @@ contains
 
       !------
       ! Add contribution from momentum term (stored previously in gradS_base)
-      ! (Note: folded -- not ready for auxiliary supercell yet) 
+      ! (Note: folded -- not ready for auxiliary supercell yet)
+      ! Note factor of TWO due to Rydberg units in the Hamiltonian: [H,r] = -2*grad + [V_nl,r]
         do iio = 1,nuo
            do j = 1,numh(iio)
               ind = listhptr(iio) + j
 
-              hr_commutator(ind,1) = hr_commutator(ind,1) + gradS_base(1,ind)
-              hr_commutator(ind,2) = hr_commutator(ind,2) + gradS_base(2,ind)
-              hr_commutator(ind,3) = hr_commutator(ind,3) + gradS_base(3,ind)
+              hr_commutator(ind,1) = hr_commutator(ind,1) + 2.0_dp * gradS_base(1,ind)
+              hr_commutator(ind,2) = hr_commutator(ind,2) + 2.0_dp * gradS_base(2,ind)
+              hr_commutator(ind,3) = hr_commutator(ind,3) + 2.0_dp * gradS_base(3,ind)
            enddo
         enddo
 
