@@ -64,7 +64,7 @@ contains
     real(dp) :: tr_hat, tr_shat
 
     real(dp), allocatable :: tmp_g(:)
-    real(dp), allocatable :: work(:), amat(:,:)
+    real(dp), allocatable :: work(:), amat(:,:), amat_save(:,:)
     integer, allocatable :: ipiv(:)
     real(dp), parameter :: alpha_reg = 0.001_dp ! To regularize (H-e)^-1
     integer :: i, j, lwork, info
@@ -73,6 +73,7 @@ contains
 
     allocate (tmp_g(no_l))
     allocate(work(no_u), ipiv(no_u), amat(no_u,no_u))
+    allocate(amat_save(no_u,no_u))
     allocate(hr_commutator(maxnh, 3))
 
     ! computing and storage of every of the 3 components
@@ -136,17 +137,21 @@ contains
 
     do iw = 1,n_wfs
 
-    ! Build linear equations
+    ! Build linear equations. For QE:
     ! (H - eps_i + alpha*P_v) (Psi_hat) = psi_hat_c above
     ! Use dsysv for AX=B, with the solution X overwriting B (just what we need)
-    !
-    ! A = H_base - eo_base(i) 1 + alpha*(0.5_dp Dfull)
+    ! Take into account the non-orthogonality of the basis set. Use H-eps*S here:
+    ! A = H_base - eo_base(i)*S_base + alpha*(0.5_dp Dfull)
+    ! (This comes from the typical form of Green's functions in non-orthogonal
+    ! basis sets; Sinv might also be possible by analogy with the '1 = Sinv' idiom
+    ! for projectors, but this is not a 'projector' case.)
 
        do i = 1, no_u
           do j = 1, no_u
-             amat(i,j) = H_base(i,j) + alpha_reg*DM_save(i,j,1,1)
+             amat(i,j) = H_base(i,j) + alpha_reg*DM_save(i,j,1,1)  &
+                                   - eo_base(iw) * S_base(i,j)
           enddo
-          amat(i,i) = amat(i,i) - eo_base(iw)
+!!!!          amat(i,i) = amat(i,i) - eo_base(iw)
        enddo
 
 !!$subroutine dsysv(	character 	UPLO,
@@ -161,11 +166,31 @@ contains
 !!$integer 	LWORK,
 !!$integer 	INFO
 !!$)
-       ! This will do idx=1..3 in one go.
-       ! Note the computation for the leading dimension of B. The size of
-       ! the second dimension of psi_hat_c is n_wfs.
+       ! Do each cartesian direction separately.
        lwork = 4*no_u
-       call dsysv('U', no_u, 3, amat, no_u, ipiv, psi_hat_c(1,iw,1), no_u*n_wfs, &
+       amat_save = amat
+
+       call dsysv('U', no_u, 1, amat, no_u, ipiv, psi_hat_c(1,iw,1), no_u, &
+            work, lwork, info)
+       if (info < 0) then
+          write(0,*) "Argument had an illegal value: ", -info
+          call die("Error in dsysv call")
+       else if (info > 0) then
+          call die("A is singular in dsysv call")
+       endif
+       
+       amat = amat_save ! amat was destroyed above...
+       call dsysv('U', no_u, 1, amat, no_u, ipiv, psi_hat_c(1,iw,2), no_u, &
+            work, lwork, info)
+       if (info < 0) then
+          write(0,*) "Argument had an illegal value: ", -info
+          call die("Error in dsysv call")
+       else if (info > 0) then
+          call die("A is singular in dsysv call")
+       endif
+
+       amat = amat_save
+       call dsysv('U', no_u, 1, amat, no_u, ipiv, psi_hat_c(1,iw,3), no_u, &
             work, lwork, info)
        if (info < 0) then
           write(0,*) "Argument had an illegal value: ", -info
@@ -196,7 +221,7 @@ contains
        enddo
     end if
 
-    deallocate(ipiv, work, amat)
+    deallocate(ipiv, work, amat, amat_save)
 
   end subroutine compute_psi_hat_c
 
