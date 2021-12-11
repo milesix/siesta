@@ -1,16 +1,24 @@
-#find_package(psml QUIET)
-if (libpsml_FOUND)
+#
+# Note that the project name is 'psml', not 'libpsml',
+# in versions of the library with cmake support.
+#
+# The library target name coming out of this module
+# is nevertheless libpsml
+#
+find_package(psml QUIET)
+if (psml_FOUND)
   message(STATUS "Found libpsml cmake package")
-  add_library(libpsml ALIAS psml::libpsml-lib)
+  set_target_properties(psml::psml-lib PROPERTIES IMPORTED_GLOBAL TRUE)
+  add_library(libpsml ALIAS psml::psml-lib)
 
 else()
 
   find_package(PkgConfig QUIET)
-  pkg_check_modules(libpsml IMPORTED_TARGET GLOBAL psml>=1.1.11)
+  pkg_check_modules(psml IMPORTED_TARGET GLOBAL psml>=1.1.11)
 
-  if(libpsml_FOUND)
+  if(psml_FOUND)
     message(STATUS "Found libpsml through pkgconfig")
-    add_library(libpsml ALIAS PkgConfig::libpsml)
+    add_library(libpsml ALIAS PkgConfig::psml)
   elseif(DOWNLOAD_FALLBACK)
     include(FetchContent)
     FetchContent_Declare(libpsml

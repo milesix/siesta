@@ -1,11 +1,13 @@
-#find_package(gridxc QUIET)
+find_package(gridxc QUIET)
 if (gridxc_FOUND)
   message(STATUS "Found gridxc cmake package")
+  # This promotes the target to GLOBAL, so that an alias can be
+  # defined (see https://stackoverflow.com/questions/45401212/how-to-make-imported-target-global-afterwards)
+  set_target_properties(gridxc::gridxc-lib PROPERTIES IMPORTED_GLOBAL TRUE)
   add_library(gridxc ALIAS gridxc::gridxc-lib)
-  #  target_link_libraries(${atom_target} PRIVATE
-   #                     gridxc::gridxc-lib)
+
   # If the package contains libxc support, linking is automatic
-  # 
+
 else()
 
   find_package(PkgConfig QUIET)
@@ -17,6 +19,7 @@ else()
       target_link_libraries(PkgConfig::gridxc INTERFACE ${LIBXC_LINK_LIBRARIES})
     endif()
     add_library(gridxc ALIAS PkgConfig::gridxc)
+
   elseif(DOWNLOAD_FALLBACK)
     include(FetchContent)
     #
@@ -34,11 +37,7 @@ else()
     message(STATUS "... Downloading gridxc with git into build hierarchy")
     FetchContent_MakeAvailable(gridxc)
     message(STATUS "... Adding gridxc target as a dependency")
-    # I cannot see why this does not work...
-    # target_link_libraries(${atom_target} PRIVATE gridxc::gridxc-lib)
-    # ... whereas this does
-    #target_link_libraries(${atom_target} PRIVATE gridxc)
-    ##set(GRIDXC_COMPILED "True")
+
   else()
     message(FATAL_ERROR "Cannot find gridxc... enable download or use a submodule")
   endif()

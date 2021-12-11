@@ -29,11 +29,11 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug")
 endif()
 
+include(flags)
+
 # Follow GNU conventions for installing directories
 include(GNUInstallDirs)
 
-# General configuration information
-add_subdirectory("config")
 
 # The MPI interfaces (or lack thereof) are handled
 # in a 'private library' for convenience.
