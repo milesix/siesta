@@ -17,7 +17,7 @@ module m_iodm
   use class_dSpData2D
 
   use m_os, only: file_exist
-  use io_sparse_m
+  use io_sparse_m, only: io_read, io_write 
 
   implicit none
   
@@ -106,20 +106,16 @@ contains
     nsc(3) = five(5)
 
     allocate(gncol(no_u))
+    ! When reading the sparsity pattern we will forcefull read the gncol from Node == 0.
+    ! And a negative value will force it to be distributed upon the read_d2D call.
+    ! So ensure it is not negative.
+    gncol(1) = 0
     
     ! Read in the sparsity pattern (distributed)
-    if ( lBcast ) then
-       call io_read_Sp(iu, no_u, sp, trim(fn), gncol=gncol, Bcast=Bcast)
-    else
-       call io_read_Sp(iu, no_u, sp, trim(fn), dit=dit, gncol=gncol)
-    end if
+    call io_read(iu, no_u, sp, trim(fn), gncol=gncol, dit=dit, Bcast=Bcast)
 
     ! Read DM
-    if ( lBcast ) then
-       call io_read_d2D(iu,sp,DM ,nspin, trim(fn), gncol=gncol, Bcast=Bcast)
-    else
-       call io_read_d2D(iu,sp,DM ,nspin, trim(fn), dit=dit, gncol=gncol)
-    end if
+    call io_read(iu,sp,DM ,nspin, trim(fn), gncol=gncol, dit=dit, Bcast=Bcast)
 
     ! Clean-up (sp is not fully deleted, it just only resides in DM)
     call delete(sp)
@@ -179,10 +175,10 @@ contains
     gncol(1) = -1
 
     ! Write sparsity pattern...
-    call io_write_Sp(iu, sp, dit=dit, gncol=gncol)
+    call io_write(iu, sp, dit=dit, gncol=gncol)
 
     ! Write density matrix
-    call io_write_d2D(iu, DM, gncol=gncol)
+    call io_write(iu, DM, gncol=gncol)
 
     deallocate(gncol)
 

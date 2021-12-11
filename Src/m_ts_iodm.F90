@@ -18,7 +18,7 @@ module m_ts_iodm
   use class_dSpData2D
 
   use m_os, only : file_exist
-  use io_sparse_m
+  use io_sparse_m, only: io_read, io_write
 
   implicit none
   
@@ -104,29 +104,17 @@ contains
     nsc(3) = five(5)
 
     allocate(gncol(no_u))
-    ! signal that we should not read it in
-    gncol(1) = 1
+    ! When reading the sparsity pattern we will forcefull read the gncol from Node == 0.
+    ! And a negative value will force it to be distributed upon the read_d2D call.
+    ! So ensure it is not negative.
+    gncol(1) = 0
 
     ! Read in the sparsity pattern (distributed)
-    if ( lBcast ) then
-       call io_read_Sp(iu, no_u, sp, trim(fn), gncol=gncol, Bcast=Bcast)
-    else
-       call io_read_Sp(iu, no_u, sp, trim(fn), dit=dit, gncol=gncol)
-    end if
-
-    ! Read DM
-    if ( lBcast ) then
-       call io_read_d2D(iu, sp, DM, nspin, trim(fn), gncol=gncol, Bcast=Bcast)
-    else
-       call io_read_d2D(iu, sp, DM, nspin, trim(fn), dit=dit, gncol=gncol)
-    end if
+    call io_read(iu, no_u, sp, trim(fn), gncol=gncol, dit=dit, Bcast=Bcast)
+    call io_read(iu, sp, DM, nspin, trim(fn), gncol=gncol, dit=dit, Bcast=Bcast)
 
     ! Read EDM
-    if ( lBcast ) then
-       call io_read_d2D(iu, sp, EDM, nspin, trim(fn), gncol=gncol, Bcast=Bcast)
-    else
-       call io_read_d2D(iu, sp, EDM, nspin, trim(fn), dit=dit, gncol=gncol)
-    end if
+    call io_read(iu, sp, EDM, nspin, trim(fn), gncol=gncol, dit=dit, Bcast=Bcast)
 
     ! Clean-up
     call delete(sp)
@@ -195,16 +183,18 @@ contains
     end if
 
     allocate(gncol(no_u))
+    ! Signal that the first call will b-cast the gncol (speeds up
+    ! subsequent writes)
     gncol(1) = -1
 
     ! Write sparsity pattern...
-    call io_write_Sp(iu,sp, dit=dit, gncol=gncol)
+    call io_write(iu,sp, dit=dit, gncol=gncol)
 
     ! Write density matrix
-    call io_write_d2D(iu, DM , gncol=gncol)
+    call io_write(iu, DM , gncol=gncol)
 
     ! Write energy density matrix
-    call io_write_d2D(iu, EDM, gncol=gncol)
+    call io_write(iu, EDM, gncol=gncol)
 
     deallocate(gncol)
 

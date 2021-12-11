@@ -38,7 +38,7 @@ contains
 ! integer prec                : The precision that stores the data (sp|dp)
 
     use precision, only: dp
-    use io_sparse_m, only: io_write_Sp, io_write_dData, io_write_rData
+    use io_sparse_m, only: io_write, io_write_r
     use parallel, only : Node, Nodes
     use atm_types, only : nspecies
     use atomlist, only : iphorb, iaorb, lasto
@@ -105,18 +105,20 @@ contains
     end if
 
     allocate(gncol(no_u))
+    ! Here we signal that the gncol should be globalized
+    ! to the 1st node
     gncol(1) = -1
     
     ! Write sparsity pattern...
-    call io_write_Sp(iu, sp, dit=dit, gncol=gncol)
+    call io_write(iu, sp, dit=dit, gncol=gncol)
     
     ! Write H and overlap
     if ( is_dp ) then
-      call io_write_dData(iu, H, gncol=gncol)
-      call io_write_dData(iu, S, gncol=gncol)
+      call io_write(iu, H, gncol=gncol)
+      call io_write(iu, S, gncol=gncol)
     else
-      call io_write_rData(iu, H, gncol=gncol)
-      call io_write_rData(iu, S, gncol=gncol)
+      call io_write_r(iu, H, gncol=gncol)
+      call io_write_r(iu, S, gncol=gncol)
     end if
 
     deallocate(gncol)
