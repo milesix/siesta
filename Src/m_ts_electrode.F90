@@ -1,5 +1,5 @@
 ! ---
-! Copyright (C) 1996-2016	The SIESTA group
+! Copyright (C) 1996-2021	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt .
@@ -1543,7 +1543,7 @@ contains
     ! and therefore we *must* setup the Hamiltonian in the
     ! correct order (not relying on symmetries)
     do is = 0 , n_s - 1
-       ph(is) = exp(cmplx(0._dp, -dot_product(kq,sc_off(:,is))))
+       ph(is) = exp(cmplx(0._dp, -dot_product(kq,sc_off(:,is)),kind=dp))
     end do
 
     ! Initialize arrays
