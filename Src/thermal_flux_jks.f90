@@ -72,7 +72,7 @@ contains
     real(dp), allocatable :: hr_commutator(:,:)
 
     allocate (tmp_g(no_l))
-    allocate(work(no_u), ipiv(no_u), amat(no_u,no_u))
+    allocate(work(4*no_u), ipiv(no_u), amat(no_u,no_u))
     allocate(amat_save(no_u,no_u))
     allocate(hr_commutator(maxnh, 3))
 
@@ -404,10 +404,11 @@ contains
     ! real(dp):: ks_flux_Jks(3)
     real(dp):: ks_flux_Jks_A(3), ks_flux_Jks_B(3), ks_flux_Jele(3)
 
-    allocate(psi_hat_c(no_u,no_l,3))
-    allocate(psi_dot_c(no_u,no_l))
-
     no_occ_wfs = nint(qtot/2)
+
+    allocate(psi_hat_c(no_u,no_occ_wfs,3))
+    allocate(psi_dot_c(no_u,no_occ_wfs))
+
 
     call compute_psi_hat_c (no_occ_wfs)
     call compute_psi_dot_c (no_occ_wfs)
@@ -517,7 +518,7 @@ contains
     na =  na_s
     nua = na_u
     no =  no_s
-    nuo = no_u
+    nuo = no_l
 
 ! Find maximum ranges
     rmaxo = 0.0d0
@@ -565,7 +566,11 @@ contains
           enddo
         enddo
 
-! Loop on atoms with KB projectors
+        ! Compute the [V_nl,r] part of the commutator
+        ! NOTE: The geometry information here corresponds probably to
+        !       a "virtual step"...
+        
+        ! Loop on atoms with KB projectors
         do ka = 1,na
           ks = isa(ka)
           nkb = lastkb(ka) - lastkb(ka-1)
@@ -575,10 +580,10 @@ contains
      &                     name='Ski', routine='temp_jks' )
           endif
 
-! Find neighbour atoms
+          ! Find neighbour atoms
           call mneighb( scell, rmax, na, xa_in, ka, 0, nna )
 
-! Find neighbour orbitals
+          ! Find neighbour orbitals
           nno = 0
           do ina = 1,nna
             ia = jna(ina)
@@ -586,12 +591,11 @@ contains
             is = isa(ia)
             rki = sqrt(r2ij(ina))
             do io = lasto(ia-1)+1,lasto(ia)
-              if (needed(io)) then
-                call GlobalToLocalOrb(io,Node,Nodes,iio)
-                ioa = iphorb(io)
-                ig = orb_gindex(is,ioa)
+              if (.not. needed(io)) CYCLE
 
-! Find if orbital is within range
+                ioa = iphorb(io)
+
+                ! Find whether orbital overlaps with any KB projs in the ka atom
                 within = .false.
                 do ko = lastkb(ka-1)+1,lastkb(ka)
                   koa = iphKB(ko)
@@ -599,8 +603,11 @@ contains
      &              within = .true.
                 enddo
 
-! Find overlap between neighbour orbitals and KB projectors
-                if (within) then
+                if (.not. within) CYCLE
+                
+                ! Find matrix elements between this orbital and the KB projectors on 'ka'
+                ! and store information for later
+
                   nno = nno + 1
                   if (nno.gt.maxno) then
                     maxno = nno + 500
@@ -608,17 +615,20 @@ contains
      &                             name='iano', routine='temp_jks' )
                     call re_alloc( iono, 1, maxno, copy=.true., &
      &                             name='iono', routine='temp_jks' )
-                    call re_alloc( Ski, 1, 2, 1, maxkba, 1, maxno, &
+                    call re_alloc( Ski, 1, 4, 1, maxkba, 1, maxno, &
      &                             copy=.true., name='Ski', &
      &                             routine='temp_jks' )
                   endif
                   iono(nno) = io
                   iano(nno) = ia
+                  ig = orb_gindex(is,ioa)
                   ikb = 0
                   do ko = lastkb(ka-1)+1,lastkb(ka)
                     ikb = ikb + 1
                     koa = iphKB(ko)
                     kg = kbproj_gindex(ks,koa)
+                    ! Note that the KB proj is 'atom 2' in the matrix element,
+                    ! hence the change in relative vector (xinv goes from orb to KB)
                     do ix = 1,3
                      xinv(ix) = - xij(ix,ina)
                     enddo
@@ -628,31 +638,38 @@ contains
                     call new_MATEL('Y', ig, kg, xinv, Ski(3,ikb,nno) , grSki)
                     call new_MATEL('Z', ig, kg, xinv, Ski(4,ikb,nno), grSki)
                   enddo
-                endif
-              endif
+
             enddo
 
           enddo
 
-! Loop on neighbour orbitals
+          ! We are still considering the 'ka' atom.
+          ! Now, use the above information to compute the relevant (i,j) data,
+          ! where i is an orbital in this processor and j is linked to it by
+          ! the Hamiltonian sparsity
+          ! Question: What is the domain of GlobalToLocalOrb? Can it do io>no_u?
+          
           do ino = 1,nno
             io = iono(ino)
             call GlobalToLocalOrb(io,Node,Nodes,iio)
-            if (iio .gt. 0) then
+            if (iio <= 0) CYCLE   ! ... in this processor
               ia = iano(ino)
-              if (ia .le. nua) then
+              if (ia > nua) CYCLE   ! ... in the 'unit cell'
+                                    ! Note that when no aux supercell is
+                                    ! used 'all orbs' are in the unit cell
 
-! Scatter filter of desired matrix elements
+                ! Find orbitals to link to from this 'ino' orb
                 do j = 1,numh(iio)
                   ind = listhptr(iio) + j
                   jo = listh(ind)
                   listed(jo) = .true.
                 enddo
 
-! Find matrix elements with other neighbour orbitals
+                ! Find appropriate info for (i,j) with the proper js,
+                ! saving it in Vi for now.
                 do jno = 1,nno
                   jo = iono(jno)
-                  if (listed(jo)) then
+                  if (.not. listed(jo)) CYCLE
 
 ! Loop on KB projectors
                     ikb = 0
@@ -674,12 +691,11 @@ contains
                       Vi(jo,1) = Vi(jo,1) + epsk * (Sik * Sjkr2 - Sikr2 * Sjk)
                       Vi(jo,2) = Vi(jo,2) + epsk * (Sik * Sjkr3 - Sikr3 * Sjk)
                       Vi(jo,3) = Vi(jo,3) + epsk * (Sik * Sjkr4 - Sikr4 * Sjk)
-                    enddo
+                    enddo  ! saved kb info
 
-                  endif
-                enddo
+                enddo  ! jno
 
-! Pick up contributions to non-local part of [H,r]  and restore Di and Vi
+                ! Pick up contributions to non-local part of [H,r]  and restore Vi
                 do j = 1,numh(iio)
                   ind = listhptr(iio) + j
                   jo = listh(ind)
@@ -692,9 +708,10 @@ contains
                   listed(jo) = .false.
                 enddo
 
-              endif
-            endif
-          enddo
+          enddo  ! ino
+          !
+          ! Note that there might be several contributions to the same (i,j)
+          ! entry from different ka's. 
         enddo  ! ka
 
       !------
@@ -714,359 +731,5 @@ contains
       call reset_neighbour_arrays( )
   end subroutine compute_hr_commutator_terms
 
-  subroutine momentum_operat(gradS)
-    use atomlist,        only: no_u, no_s, no_l, indxuo, iaorb, iphorb, lasto, qtot, amass, lastkb, iphKB
-    use siesta_geom
-    use sparse_matrices, only: listh, listhptr, numh
-
-    use precision,    only : dp
-    use parallel,     only : Node, Nodes
-    use atmparams,    only : lmx2, nzetmx, nsemx
-    use atmfuncs,     only : epskb, lofio, mofio, rcut, rphiatm
-    use atmfuncs,     only : orb_gindex, kbproj_gindex
-    use atm_types,    only : nspecies
-    use parallelsubs, only : GlobalToLocalOrb, LocalToGlobalOrb
-    use alloc,        only : re_alloc, de_alloc
-    use sys,          only : die
-    use neighbour,    only : jna=>jan, xij, r2ij
-    use neighbour,    only : mneighb, reset_neighbour_arrays
-    use matel_mod,    only : new_matel
-
-    integer :: ia, iio, ind, io, ioa, is, ix
-    integer :: j, ja, jn, jo, joa, js, nnia, ka
-
-    real(dp) :: grSij(3), rij, Sij, xinv(3), sum
-
-    integer :: ikb, ina, ino, jno, ko, koa, ks, ig, jg, kg
-    integer ::  nkb, nna, nno, ilm1, ilm2, npoints, ir
-
-    real(dp) ::  epsk, grSki(3), rki, rmax, rmaxkb, rmaxo
-    real(dp) ::  Sik, Sjk, Sikr2, Sikr3, Sikr4, Sjkr2, Sjkr3, Sjkr4
-    real(dp) ::  dintg2(3), dint1, dint2, dintgmod2
-    real(dp) ::  dintg1(3), dintgmod1
-    real(dp) ::  phi1, phi2, dphi1dr, dphi2dr, Sir0(3), r
-
-    integer,  pointer, save :: iano(:)
-    integer,  pointer, save :: iono(:)
-    integer,           save :: maxkba = 25
-    integer,           save :: maxno = 1000
-!N      logical,  pointer, save :: calculated(:,:,:)
-    logical,  pointer, save :: listed(:)
-    logical,  pointer, save :: needed(:)
-    logical                 :: within
-    real(dp),          save :: dx = 0.01d0
-!N      real(dp), pointer, save :: Pij(:,:,:)
-    real(dp), pointer, save :: Si(:,:)
-    real(dp), pointer, save :: Ski(:,:,:)
-    real(dp),          save :: tiny = 1.0d-9
-    real(dp), pointer, save :: Vi(:,:)
-
-    integer   ::  na, no, nua, nuo
-
-    real(dp), allocatable, intent(inout) :: gradS(:,:)
-
-    gradS(:,:) = 0.0_dp
-
-    na =  na_s
-    nua = na_u
-    no =  no_s
-    nuo = no_u
-
-! Find maximum ranges
-    rmaxo = 0.0d0
-    rmaxkb = 0.0d0
-    do ia = 1,na
-       is = isa(ia)
-       do ikb = lastkb(ia-1)+1,lastkb(ia)
-          ioa = iphKB(ikb)
-          rmaxkb = max( rmaxkb, rcut(is,ioa) )
-       enddo
-       do io = lasto(ia-1)+1,lasto(ia)
-          ioa = iphorb(io)
-          rmaxo = max( rmaxo, rcut(is,ioa) )
-       enddo
-    enddo
-    rmax = rmaxo + rmaxkb
-
-! Allocate arrays
-
-      call re_alloc( listed, 1, no, 'listed', 'temp_jks' )
-      call re_alloc( needed, 1, no, 'needed', 'temp_jks' )
-      call re_alloc( Si,     1, no, 1, 3, 'Si',     'temp_jks' )
-      call re_alloc( Vi,     1, no, 1, 3, 'Vi',     'temp_jks' )
-      call re_alloc( iano, 1, maxno, 'iano',  'temp_jks' )
-      call re_alloc( iono, 1, maxno, 'iono',  'temp_jks' )
-      call re_alloc( Ski, 1, 4, 1, maxkba, 1, maxno, 'Ski', 'temp_jks' )
-
-      !------
-
-! Initialize arrayd Vi only once
-        no = lasto(na)
-        do jo = 1,no
-          Vi(jo,:) = 0.0d0
-          listed(jo) = .false.
-          needed(jo) = .false.
-        enddo
-
-! Find out which orbitals are needed on this node
-        do iio = 1,nuo
-          call LocalToGlobalOrb(iio,Node,Nodes,io)
-          needed(io) = .true.
-          do j = 1,numh(iio)
-            ind = listhptr(iio) + j
-            jo = listh(ind)
-            needed(jo) = .true.
-          enddo
-        enddo
-
-! Loop on atoms with KB projectors
-        do ka = 1,na
-          ks = isa(ka)
-          nkb = lastkb(ka) - lastkb(ka-1)
-          if (nkb.gt.maxkba) then
-            maxkba = nkb + 10
-            call re_alloc( Ski, 1, 4, 1, maxkba, 1, maxno, copy=.true., &
-     &                     name='Ski', routine='temp_jks' )
-          endif
-
-! Find neighbour atoms
-          call mneighb( scell, rmax, na, xa_in, ka, 0, nna )
-
-! Find neighbour orbitals
-          nno = 0
-          do ina = 1,nna
-            ia = jna(ina)
-
-            is = isa(ia)
-            rki = sqrt(r2ij(ina))
-            do io = lasto(ia-1)+1,lasto(ia)
-              if (needed(io)) then
-                call GlobalToLocalOrb(io,Node,Nodes,iio)
-                ioa = iphorb(io)
-                ig = orb_gindex(is,ioa)
-
-! Find if orbital is within range
-                within = .false.
-                do ko = lastkb(ka-1)+1,lastkb(ka)
-                  koa = iphKB(ko)
-                  if ( rki .lt. rcut(is,ioa)+rcut(ks,koa) ) &
-     &              within = .true.
-                enddo
-
-! Find overlap between neighbour orbitals and KB projectors
-                if (within) then
-                  nno = nno + 1
-                  if (nno.gt.maxno) then
-                    maxno = nno + 500
-                    call re_alloc( iano, 1, maxno, copy=.true., &
-     &                             name='iano', routine='temp_jks' )
-                    call re_alloc( iono, 1, maxno, copy=.true., &
-     &                             name='iono', routine='temp_jks' )
-                    call re_alloc( Ski, 1, 2, 1, maxkba, 1, maxno, &
-     &                             copy=.true., name='Ski', &
-     &                             routine='temp_jks' )
-                  endif
-                  iono(nno) = io
-                  iano(nno) = ia
-                  ikb = 0
-                  do ko = lastkb(ka-1)+1,lastkb(ka)
-                    ikb = ikb + 1
-                    koa = iphKB(ko)
-                    kg = kbproj_gindex(ks,koa)
-                    do ix = 1,3
-                     xinv(ix) = - xij(ix,ina)
-                    enddo
-                    call new_MATEL('S', ig, kg, xinv, Ski(1,ikb,nno), grSki)
-
-                    call new_MATEL('X', ig, kg, xinv, Ski(2,ikb,nno), grSki)
-                    call new_MATEL('Y', ig, kg, xinv, Ski(3,ikb,nno) , grSki)
-                    call new_MATEL('Z', ig, kg, xinv, Ski(4,ikb,nno), grSki)
-                  enddo
-                endif
-              endif
-            enddo
-
-          enddo
-
-! Loop on neighbour orbitals
-          do ino = 1,nno
-            io = iono(ino)
-            call GlobalToLocalOrb(io,Node,Nodes,iio)
-            if (iio .gt. 0) then
-              ia = iano(ino)
-              if (ia .le. nua) then
-
-! Scatter filter of desired matrix elements
-                do j = 1,numh(iio)
-                  ind = listhptr(iio) + j
-                  jo = listh(ind)
-                  listed(jo) = .true.
-                enddo
-
-! Find matrix elements with other neighbour orbitals
-                do jno = 1,nno
-                  jo = iono(jno)
-                  if (listed(jo)) then
-
-! Loop on KB projectors
-                    ikb = 0
-                    do ko = lastkb(ka-1)+1,lastkb(ka)
-                      ikb = ikb + 1
-                      koa = iphKB(ko)
-                      epsk = epskb(ks,koa)
-                      Sik = Ski(1,ikb,ino)
-                      ! Sikr= Ski(2,ikb,ino)
-                      Sikr2= Ski(2,ikb,ino)
-                      Sikr3= Ski(3,ikb,ino)
-                      Sikr4= Ski(4,ikb,ino)
-                      Sjk = Ski(1,ikb,jno)
-                      ! Sjkr= Ski(2,ikb,jno)
-                      Sjkr2= Ski(2,ikb,jno)
-                      Sjkr3= Ski(3,ikb,jno)
-                      Sjkr4= Ski(4,ikb,jno)
-                      ! Vi(jo) = Vi(jo) + epsk * (Sik * Sjkr - Sikr * Sjk)
-                      Vi(jo,1) = Vi(jo,1) + epsk * (Sik * Sjkr2 - Sikr2 * Sjk)
-                      Vi(jo,2) = Vi(jo,2) + epsk * (Sik * Sjkr3 - Sikr3 * Sjk)
-                      Vi(jo,3) = Vi(jo,3) + epsk * (Sik * Sjkr4 - Sikr4 * Sjk)
-                    enddo
-
-                  endif
-                enddo
-
-! Pick up contributions to H and restore Di and Vi
-                do j = 1,numh(iio)
-                  ind = listhptr(iio) + j
-                  jo = listh(ind)
-                  ! Sp(ind) = Sp(ind) + Vi(jo)
-
-                  gradS(ind,1) = gradS(ind,1) + Vi(jo,1)
-                  gradS(ind,2) = gradS(ind,2) + Vi(jo,2)
-                  gradS(ind,3) = gradS(ind,3) + Vi(jo,3)
-
-                  ! add no-local part to gradS_base
-                  gradS_base(1,ind) = gradS_base(1,ind) + Vi(jo,1)
-                  gradS_base(2,ind) = gradS_base(2,ind) + Vi(jo,2)
-                  gradS_base(3,ind) = gradS_base(3,ind) + Vi(jo,3)
-
-                  Vi(jo,:) = 0.0d0
-                  listed(jo) = .false.
-                enddo
-
-              endif
-            endif
-          enddo
-        enddo
-
-      !------
-
-    ! Initialize neighb subroutine
-    call mneighb( scell, 2.0d0*rmaxo, na, xa_in, 0, 0, nnia )
-
-      do jo = 1,no
-         Si(jo,:) = 0.0d0
-      enddo
-
-      do ia = 1,nua
-
-        is = isa(ia)
-        call mneighb( scell, 2.0d0*rmaxo, na, xa_in, ia, 0, nnia )
-
-        do io = lasto(ia-1)+1,lasto(ia)
-          call GlobalToLocalOrb(io,Node,Nodes,iio)
-          if (iio .gt. 0) then
-            ioa = iphorb(io)
-            ig = orb_gindex(is,ioa)
-            do jn = 1,nnia
-              do ix = 1,3
-                xinv(ix) = - xij(ix,jn)
-              enddo
-              ja = jna(jn)
-              rij = sqrt( r2ij(jn) )
-              do jo = lasto(ja-1)+1,lasto(ja)
-                joa = iphorb(jo)
-                js = isa(ja)
-                jg = orb_gindex(js,joa)
-
-                if (rcut(is,ioa)+rcut(js,joa) .gt. rij) then
-
-                    if (rij.lt.tiny) then
-! Perform the direct computation of the matrix element of the momentum
-! within the same atom
-!N                     if ( .not.calculated(joa,ioa,is) ) then
-                       ilm1 = lofio(is,ioa)**2 + lofio(is,ioa) + &
-     &                      mofio(is,ioa) + 1
-                       ilm2 = lofio(is,joa)**2 + lofio(is,joa) + &
-     &                      mofio(is,joa) + 1
-                       call intgry(ilm1,ilm2,dintg2)
-                       call intyyr(ilm1,ilm2,dintg1)
-                       dintgmod1 = dintg1(1)**2 + dintg1(2)**2 + &
-     &                      dintg1(3)**2
-                       dintgmod2 = dintg2(1)**2 + dintg2(2)**2 + &
-     &                      dintg2(3)**2
-                       Sir0(:) = 0.0d0
-                       if ((dintgmod2.gt.tiny).or.(dintgmod1.gt.tiny)) &
-     &                      then
-                          dint1 = 0.0d0
-                          dint2 = 0.0d0
-                          npoints = int(max(rcut(is,ioa),rcut(is,joa)) &
-     &                         /dx) + 2
-                          do ir = 1,npoints
-                             r = dx*(ir-1)
-                             call rphiatm(is,ioa,r,phi1,dphi1dr)
-                             call rphiatm(is,joa,r,phi2,dphi2dr)
-                             dint1 = dint1 + dx*phi1*dphi2dr*r**2
-                             dint2 = dint2 + dx*phi1*phi2*r
-                          enddo
-!     The factor of two because we use Ry for the Hamiltonian
-                          Sir0(1) = dint1*dintg1(1)+dint2*dintg2(1)
-     ! &                  -2.0d0*(dk(1)*(dint1*dintg1(1)+dint2*dintg2(1))+ &
-     ! &                      dk(2)*(dint1*dintg1(2)+dint2*dintg2(2))+ &
-     ! &                      dk(3)*(dint1*dintg1(3)+dint2*dintg2(3))) &
-                          Sir0(2) = dint1*dintg1(2)+dint2*dintg2(2)
-                          Sir0(3) = dint1*dintg1(3)+dint2*dintg2(3)
-                       endif
-!N     Pij(ioa,joa,is) = - Sir0
-!N     Pij(joa,ioa,is) =   Sir0
-                       Si(jo,:) = Sir0(:)
-!N                       calculated(ioa,joa,is) = .true.
-!N                       calculated(joa,ioa,is) = .true.
-!N                    endif
-
-                    else
-! Matrix elements between different atoms are taken from the
-! gradient of the overlap
-                      call new_MATEL('S', ig, jg, xij(1:3,jn), &
-     &                           Sij, grSij )
-! The factor of two because we use Ry for the Hamiltonian
-                      Si(jo,1) = grSij(1)
-                      Si(jo,2) = grSij(2)
-                      Si(jo,3) = grSij(3)
-     ! &                  2.0d0*(grSij(1)*dk(1) &
-     ! &             +           grSij(2)*dk(2) &
-     ! &             +           grSij(3)*dk(3))
-                  endif
-                endif
-              enddo
-            enddo
-            do j = 1,numh(iio)
-              ind = listhptr(iio) + j
-              jo = listh(ind)
-
-              gradS(ind,1) = gradS(ind,1) + Si(jo,1)
-              gradS(ind,2) = gradS(ind,2) + Si(jo,2)
-              gradS(ind,3) = gradS(ind,3) + Si(jo,3)
-
-              ! gradS_base(1,ind) = gradS_base(1,ind) + Si(jo,1)
-              ! gradS_base(2,ind) = gradS_base(2,ind) + Si(jo,2)
-              ! gradS_base(3,ind) = gradS_base(3,ind) + Si(jo,3)
-
-              Si(jo,:) = 0.0d0
-            enddo
-          endif
-        enddo
-      enddo
-
-      call reset_neighbour_arrays( )
-  end subroutine momentum_operat
 
 end module thermal_flux_jks
