@@ -19,7 +19,7 @@ MODULE siesta_geom
   real(dp)                        :: scell(3,3), scell_last(3,3)
 
   ! Shape of the system
-  character(len=150)              :: shape*10
+  character(len=10)               :: shape
 
   ! Unit cell volume  (dangerous: the old code might have a BUG,
   ! as the volume is printed at the end 
