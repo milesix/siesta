@@ -1,5 +1,5 @@
 ! 
-! Copyright (C) 1996-2016	The SIESTA group
+! Copyright (C) 1996-2021	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt.
@@ -20,7 +20,7 @@ integer, parameter   ::  default_p = kind(1.0)
 if (sp > 0) then
    if (dp > 0) then
       if (sp /= dp) then
-         write(unit=*,fmt=*) sp, dp
+         write(unit=*,'(I0,1X,I0)') sp, dp
          write(unit=0,fmt=*) "Single: ", sp, " Double: ", dp
       else
          write(unit=*,fmt=*) dp
