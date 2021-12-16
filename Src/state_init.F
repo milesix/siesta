@@ -135,6 +135,7 @@
 #ifdef SIESTA__THERMAL_FLUX
       use matel_mod, only : init_matel_thermal_transport
       use thermal_flux_data, only: substep, gradS_base, Rmat_base
+      use thermal_flux_jks, only: compute_hr_commutator
 #endif
 
       implicit none
@@ -724,7 +725,10 @@
 
 #ifdef SIESTA__THERMAL_FLUX
 !     Compute and save inverse of overlap matrix
-      if (compute_thermal_flux.and.(substep.eq.1)) call get_sinv()
+      if (compute_thermal_flux.and.(substep.eq.1)) then
+         call get_sinv()
+         call compute_hr_commutator()
+      endif
 #endif
 
 #ifdef NCDF_4

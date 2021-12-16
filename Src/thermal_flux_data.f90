@@ -235,7 +235,9 @@ module thermal_flux_data
   !! Gradient of overlap copy from "base" step.
   real(dp), allocatable, save :: Rmat_base(:,:)
   !! Rmatrix copy from "base" step.
-
+  real(dp), allocatable, save   :: hr_commutator(:,:)
+  !! [H,r] computed at base step
+  
   real(dp), pointer, save :: Sinv(:,:) => null()
   !! Inverse of the overlap matrix.
   !! Computed in diagg at the beginning of the scf cycle of
@@ -244,7 +246,7 @@ module thermal_flux_data
   real(dp), pointer, save :: H_base(:,:) => null() ! ^mem
   real(dp), pointer, save :: eo_base(:) => null()
   real(dp), pointer, save :: psi_base(:,:) => null()
-
+  
   ! Common auxilliary state data regarding mesh, gvectors etc:
   real(dp), dimension(3,3), save :: cell_vmd !! Unit cell vectors
   integer, dimension(3), save    :: mesh_vmd

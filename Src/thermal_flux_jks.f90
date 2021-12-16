@@ -44,7 +44,7 @@ module thermal_flux_jks
   implicit none
 
   private
-  public :: compute_jks
+  public :: compute_jks, compute_hr_commutator
 
   real(dp), allocatable       :: psi_hat_c(:,:,:)
   real(dp), allocatable       :: psi_dot_c(:,:)
@@ -52,7 +52,6 @@ module thermal_flux_jks
 contains
 
   subroutine compute_psi_hat_c (n_wfs)
-    use sparse_matrices, only: maxnh
     use fdf
     integer, intent(in) :: n_wfs
     !! Number of wavefunctions to process
@@ -64,19 +63,16 @@ contains
     real(dp) :: tr_hat, tr_shat
 
     real(dp), allocatable :: tmp_g(:)
-    real(dp), allocatable :: work(:), amat(:,:), amat_save(:,:)
+    real(dp), allocatable :: amat(:,:), amat_save(:,:)
     real(dp), allocatable :: sinv_h_mat(:,:), dm_s_mat(:,:)
     integer, allocatable :: ipiv(:)
     real(dp)    :: alpha_reg = 0.001_dp ! To regularize (H-e)^-1
-    integer :: i, j, lwork, info
-
-    real(dp), allocatable :: hr_commutator(:,:)
+    integer :: i, j,  info
 
     allocate (tmp_g(no_l))
-    allocate(work(4*no_u), ipiv(no_u), amat(no_u,no_u))
+    allocate(ipiv(no_u), amat(no_u,no_u))
     allocate(amat_save(no_u,no_u))
     allocate(sinv_h_mat(no_u,no_u), dm_s_mat(no_u,no_u))
-    allocate(hr_commutator(maxnh, 3))
 
     ! computing and storage of every of the 3 components
     ! should be available to order in the .fdf
@@ -87,8 +83,6 @@ contains
 
     alpha_reg = fdf_get('alpha.reg',alpha_reg)
     
-    call compute_hr_commutator_terms(hr_commutator)
-
     do idx=1,3
        do iw = 1,n_wfs
 
@@ -192,7 +186,6 @@ contains
 ! )	
 
        ! Do each cartesian direction separately.
-       lwork = 4*no_u
        amat_save = amat
 
        do idx = 1, 3
@@ -223,7 +216,7 @@ contains
        
     enddo ! iw
 
-    deallocate(ipiv, work, amat, amat_save)
+    deallocate(ipiv, amat, amat_save, sinv_h_mat, dm_s_mat)
 
   CONTAINS
 
@@ -489,7 +482,7 @@ contains
 
   end subroutine compute_jks
 
-  subroutine compute_hr_commutator_terms(hr_commutator)
+  subroutine compute_hr_commutator()
 
     ! Compute matrix elements of [H,r] in the PAO basis
     use atomlist,        only: no_u, no_s, no_l, indxuo, iaorb, iphorb, lasto, qtot, amass, lastkb, iphKB
@@ -536,7 +529,7 @@ contains
 
     integer   ::  na, no, nua, nuo
 
-    real(dp), intent(out) :: hr_commutator(:,:)
+    allocate(hr_commutator(size(listh),3))
 
     hr_commutator(:,:) = 0.0_dp
 
@@ -755,7 +748,7 @@ contains
         enddo
 
       call reset_neighbour_arrays( )
-  end subroutine compute_hr_commutator_terms
+  end subroutine compute_hr_commutator
 
 
 end module thermal_flux_jks
