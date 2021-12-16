@@ -71,7 +71,6 @@ contains
     integer :: i, j, lwork, info
 
     real(dp), allocatable :: hr_commutator(:,:)
-    real(dp), allocatable :: phc_saved(:,:,:)
 
     allocate (tmp_g(no_l))
     allocate(work(4*no_u), ipiv(no_u), amat(no_u,no_u))
@@ -83,7 +82,6 @@ contains
     ! should be available to order in the .fdf
 
     psi_hat_c(:,:,:) = 0.0_dp        ! Init result to zeros outside main loop
-    allocate(phc_saved,source=psi_hat_c)
 
     ! Compute first P_c [H,r] |Psi_iw>
 
@@ -141,8 +139,6 @@ contains
 
     deallocate(tmp_g)
 
-    phc_saved = psi_hat_c
-    
     if (gk_setup%verbose_output) then
        do iw = 1,n_wfs
           do idx=1,3
@@ -166,76 +162,23 @@ contains
        enddo
     end if
 
-    write(6,*) "H:"
-         do i = 1, min(8,no_u)
-            do j = 1, min(8,no_u)
-               write(6,fmt="(1x,f10.4)",advance="no") H_base(i,j)
-            enddo
-            write(6,*)
-         enddo
-
-    write(6,*) "DM:"
-         do i = 1, min(8,no_u)
-            do j = 1, min(8,no_u)
-               write(6,fmt="(1x,f10.4)",advance="no") DM_save(i,j,1,1)
-            enddo
-            write(6,*)
-         enddo
-
-    print *, "check symm sinv"
-    call check_symmetry(sinv)
-    print *, "check symm h_base"
-    call check_symmetry(h_base)
-    print *, "check symm DM"
-    call check_symmetry(DM_save(:,:,1,1))
-    print *, "check symm s_base"
-    call check_symmetry(s_base)
-
-    print *, "Performing multiplications..."
-    
     sinv_h_mat = matmul(Sinv,H_base)
     dm_s_mat = matmul(DM_save(:,:,1,1),S_base)
 
-    print *, "End multiplications..."
-
-    print *, "check symm sinv_h_mat"
-    call check_symmetry(sinv_h_mat)
-    print *, "check symm dm_s_mat"
-    call check_symmetry(dm_s_mat)
-    
     do iw = 1,n_wfs
 
-       do idx=1,3
-          call check_orthog(matmul(sinv_h_mat,psi_hat_c(:,iw,idx)),iw,"sinv_h X")
-          call check_orthog(matmul(h_base,psi_hat_c(:,iw,idx)),iw,"h_base X")
-          call check_orthog(matmul(s_base,psi_hat_c(:,iw,idx)),iw,"S_base X")
-          call check_orthog(matmul(dm_s_mat,psi_hat_c(:,iw,idx)),iw,"dm_s X")
-          call check_orthog(matmul(DM_save(:,:,1,1),psi_hat_c(:,iw,idx)),iw,"DM X")
-       enddo
-
     ! Build linear equations. For QE:
-    ! (H - eps_i + alpha*P_v) (Psi_hat) = psi_hat_c above
+       ! (H - eps_i + alpha*P_v) (Psi_hat) = psi_hat_c above
+       ! But note tensorial issues
     ! Use dgesv for AX=B, with the solution X overwriting B (just what we need)
 
        amat = 0.0_dp
        do i = 1, no_u
           do j = 1, no_u
-!!             amat(i,j) = alpha_reg*dm_s_mat(i,j) 
              amat(i,j) = sinv_h_mat(i,j) + alpha_reg*dm_s_mat(i,j) 
-!!             amat(i,j) = H_base(i,j) + alpha_reg*dm_s_mat(i,j) 
           enddo
           amat(i,i) = amat(i,i) - eo_base(iw)
        enddo
-
-       print *, "check symm a_mat"
-       call check_symmetry(amat)
-    write(6,*) "A:"
-         do i = 1, min(8,no_u)
-            do j = 1, min(8,no_u)
-               write(6,fmt="(1x,f10.4)",advance="no") amat(i,j)
-            enddo
-            write(6,*)
-         enddo
 
          
 ! subroutine dgesv	(	integer 	N,
@@ -262,8 +205,6 @@ contains
              call die("A is singular in dgesv call")
           endif
 
-          call check_diff(matmul(amat_save,psi_hat_c(:,iw,idx)),phc_saved(:,iw,idx),"diff AX,B: ")
-             
           if (gk_setup%verbose_output) then
              ! Norm and scalar product with original wavefunction. The latter
              ! should be zero, since psi_hat_c lives in the unoccupied subspace
@@ -285,30 +226,6 @@ contains
     deallocate(ipiv, work, amat, amat_save)
 
   CONTAINS
-    ! Computes scalar product with original wavefunction
-    ! psi_base and S_base handled by host association
-    subroutine check_symmetry(a)
-      real(dp), intent(in) :: a(:,:)
-
-      logical :: symm
-      integer :: mu, nu, n
-
-      n = size(a,1)
-
-      symm = .true.
-      do mu = 1,n
-         do nu = 1,mu
-            if (abs(a(mu,nu)-a(nu,mu)) > 1.0e-8_dp) then
-               symm = .false.
-               print *, mu,nu, a(mu,nu), a(nu,mu)
-            endif
-         end do
-      end do
-
-      if (.not. symm) then
-         print *, "matrix is not symmetric"
-      endif
-    end subroutine check_symmetry
 
     subroutine check_orthog(a,iw,str)
       real(dp), intent(in) :: a(:)
@@ -331,19 +248,6 @@ contains
       print *, trim(str), sprod
      end subroutine check_orthog
 
-     subroutine check_diff(a,orig,str)
-      real(dp), intent(in) :: a(:), orig(:)
-      character(len=*), intent(in) :: str
-      integer :: mu, nu, n
-
-      n = size(a)
-
-      do mu = 1,n
-         print *, trim(str), a(mu),orig(mu), abs(a(mu)-orig(mu))
-      end do
-      print*, "------"
-          
-    end subroutine check_diff
      
   end subroutine compute_psi_hat_c
 
