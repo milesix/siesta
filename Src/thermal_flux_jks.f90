@@ -53,7 +53,7 @@ contains
 
   subroutine compute_psi_hat_c (n_wfs)
     use sparse_matrices, only: maxnh
-
+    use fdf
     integer, intent(in) :: n_wfs
     !! Number of wavefunctions to process
 
@@ -65,24 +65,30 @@ contains
 
     real(dp), allocatable :: tmp_g(:)
     real(dp), allocatable :: work(:), amat(:,:), amat_save(:,:)
+    real(dp), allocatable :: sinv_h_mat(:,:), dm_s_mat(:,:)
     integer, allocatable :: ipiv(:)
-    real(dp), parameter :: alpha_reg = 0.001_dp ! To regularize (H-e)^-1
+    real(dp)    :: alpha_reg = 0.001_dp ! To regularize (H-e)^-1
     integer :: i, j, lwork, info
 
     real(dp), allocatable :: hr_commutator(:,:)
+    real(dp), allocatable :: phc_saved(:,:,:)
 
     allocate (tmp_g(no_l))
     allocate(work(4*no_u), ipiv(no_u), amat(no_u,no_u))
     allocate(amat_save(no_u,no_u))
+    allocate(sinv_h_mat(no_u,no_u), dm_s_mat(no_u,no_u))
     allocate(hr_commutator(maxnh, 3))
 
     ! computing and storage of every of the 3 components
     ! should be available to order in the .fdf
 
     psi_hat_c(:,:,:) = 0.0_dp        ! Init result to zeros outside main loop
+    allocate(phc_saved,source=psi_hat_c)
 
     ! Compute first P_c [H,r] |Psi_iw>
 
+    alpha_reg = fdf_get('alpha.reg',alpha_reg)
+    
     call compute_hr_commutator_terms(hr_commutator)
 
     do idx=1,3
@@ -135,77 +141,16 @@ contains
 
     deallocate(tmp_g)
 
-    do iw = 1,n_wfs
-
-    ! Build linear equations. For QE:
-    ! (H - eps_i + alpha*P_v) (Psi_hat) = psi_hat_c above
-    ! Use dsysv for AX=B, with the solution X overwriting B (just what we need)
-    ! Take into account the non-orthogonality of the basis set. Use H-eps*S here:
-    ! A = H_base - eo_base(i)*S_base + alpha*(0.5_dp Dfull)
-    ! (This comes from the typical form of Green's functions in non-orthogonal
-    ! basis sets; Sinv might also be possible by analogy with the '1 = Sinv' idiom
-    ! for projectors, but this is not a 'projector' case.)
-
-       do i = 1, no_u
-          do j = 1, no_u
-             amat(i,j) = H_base(i,j) + alpha_reg*DM_save(i,j,1,1)  &
-                                   - eo_base(iw) * S_base(i,j)
-          enddo
-!!!!          amat(i,i) = amat(i,i) - eo_base(iw)
-       enddo
-
-!!$subroutine dsysv(	character 	UPLO,
-!!$integer 	N,
-!!$integer 	NRHS,
-!!$double precision, dimension( lda, * ) 	A,
-!!$integer 	LDA,
-!!$integer, dimension( * ) 	IPIV,
-!!$double precision, dimension( ldb, * ) 	B,
-!!$integer 	LDB,
-!!$double precision, dimension( * ) 	WORK,
-!!$integer 	LWORK,
-!!$integer 	INFO
-!!$)
-       ! Do each cartesian direction separately.
-       lwork = 4*no_u
-       amat_save = amat
-
-       call dsysv('U', no_u, 1, amat, no_u, ipiv, psi_hat_c(1,iw,1), no_u, &
-            work, lwork, info)
-       if (info < 0) then
-          write(0,*) "Argument had an illegal value: ", -info
-          call die("Error in dsysv call")
-       else if (info > 0) then
-          call die("A is singular in dsysv call")
-       endif
-       
-       amat = amat_save ! amat was destroyed above...
-       call dsysv('U', no_u, 1, amat, no_u, ipiv, psi_hat_c(1,iw,2), no_u, &
-            work, lwork, info)
-       if (info < 0) then
-          write(0,*) "Argument had an illegal value: ", -info
-          call die("Error in dsysv call")
-       else if (info > 0) then
-          call die("A is singular in dsysv call")
-       endif
-
-       amat = amat_save
-       call dsysv('U', no_u, 1, amat, no_u, ipiv, psi_hat_c(1,iw,3), no_u, &
-            work, lwork, info)
-       if (info < 0) then
-          write(0,*) "Argument had an illegal value: ", -info
-          call die("Error in dsysv call")
-       else if (info > 0) then
-          call die("A is singular in dsysv call")
-       endif
-
-    enddo ! iw
-
+    phc_saved = psi_hat_c
+    
     if (gk_setup%verbose_output) then
        do iw = 1,n_wfs
           do idx=1,3
 
-             !TEST-hat
+ 
+             !TEST-hat intermediate for RHS of linear equation
+             ! Norm and scalar product with original wavefunction. The latter
+             ! should be zero, since the RHS lives in the unoccupied subspace
              tr_shat = 0.0_dp
              tr_hat = 0.0_dp
              do mu = 1,no_u
@@ -215,14 +160,191 @@ contains
                 end do
              end do
           
-             print *, "[TEST-hat]", iw, idx, tr_hat, tr_shat
+             print *, "[TEST-hat-1]", iw, idx, tr_hat, tr_shat
              !TEST END
           enddo
        enddo
     end if
 
+    write(6,*) "H:"
+         do i = 1, min(8,no_u)
+            do j = 1, min(8,no_u)
+               write(6,fmt="(1x,f10.4)",advance="no") H_base(i,j)
+            enddo
+            write(6,*)
+         enddo
+
+    write(6,*) "DM:"
+         do i = 1, min(8,no_u)
+            do j = 1, min(8,no_u)
+               write(6,fmt="(1x,f10.4)",advance="no") DM_save(i,j,1,1)
+            enddo
+            write(6,*)
+         enddo
+
+    print *, "check symm sinv"
+    call check_symmetry(sinv)
+    print *, "check symm h_base"
+    call check_symmetry(h_base)
+    print *, "check symm DM"
+    call check_symmetry(DM_save(:,:,1,1))
+    print *, "check symm s_base"
+    call check_symmetry(s_base)
+
+    print *, "Performing multiplications..."
+    
+    sinv_h_mat = matmul(Sinv,H_base)
+    dm_s_mat = matmul(DM_save(:,:,1,1),S_base)
+
+    print *, "End multiplications..."
+
+    print *, "check symm sinv_h_mat"
+    call check_symmetry(sinv_h_mat)
+    print *, "check symm dm_s_mat"
+    call check_symmetry(dm_s_mat)
+    
+    do iw = 1,n_wfs
+
+       do idx=1,3
+          call check_orthog(matmul(sinv_h_mat,psi_hat_c(:,iw,idx)),iw,"sinv_h X")
+          call check_orthog(matmul(h_base,psi_hat_c(:,iw,idx)),iw,"h_base X")
+          call check_orthog(matmul(s_base,psi_hat_c(:,iw,idx)),iw,"S_base X")
+          call check_orthog(matmul(dm_s_mat,psi_hat_c(:,iw,idx)),iw,"dm_s X")
+          call check_orthog(matmul(DM_save(:,:,1,1),psi_hat_c(:,iw,idx)),iw,"DM X")
+       enddo
+
+    ! Build linear equations. For QE:
+    ! (H - eps_i + alpha*P_v) (Psi_hat) = psi_hat_c above
+    ! Use dgesv for AX=B, with the solution X overwriting B (just what we need)
+
+       amat = 0.0_dp
+       do i = 1, no_u
+          do j = 1, no_u
+!!             amat(i,j) = alpha_reg*dm_s_mat(i,j) 
+             amat(i,j) = sinv_h_mat(i,j) + alpha_reg*dm_s_mat(i,j) 
+!!             amat(i,j) = H_base(i,j) + alpha_reg*dm_s_mat(i,j) 
+          enddo
+          amat(i,i) = amat(i,i) - eo_base(iw)
+       enddo
+
+       print *, "check symm a_mat"
+       call check_symmetry(amat)
+    write(6,*) "A:"
+         do i = 1, min(8,no_u)
+            do j = 1, min(8,no_u)
+               write(6,fmt="(1x,f10.4)",advance="no") amat(i,j)
+            enddo
+            write(6,*)
+         enddo
+
+         
+! subroutine dgesv	(	integer 	N,
+! integer 	NRHS,
+! double precision, dimension( lda, * ) 	A,
+! integer 	LDA,
+! integer, dimension( * ) 	IPIV,
+! double precision, dimension( ldb, * ) 	B,
+! integer 	LDB,
+! integer 	INFO 
+! )	
+
+       ! Do each cartesian direction separately.
+       lwork = 4*no_u
+       amat_save = amat
+
+       do idx = 1, 3
+          amat = amat_save ! amat is destroyed at each iteration...
+          call dgesv(no_u, 1, amat, no_u, ipiv, psi_hat_c(1,iw,idx), no_u, info)
+          if (info < 0) then
+             write(0,*) "Argument had an illegal value: ", -info
+             call die("Error in dgesv call")
+          else if (info > 0) then
+             call die("A is singular in dgesv call")
+          endif
+
+          call check_diff(matmul(amat_save,psi_hat_c(:,iw,idx)),phc_saved(:,iw,idx),"diff AX,B: ")
+             
+          if (gk_setup%verbose_output) then
+             ! Norm and scalar product with original wavefunction. The latter
+             ! should be zero, since psi_hat_c lives in the unoccupied subspace
+             tr_shat = 0.0_dp
+             tr_hat = 0.0_dp
+             do mu = 1,no_u
+                do nu = 1,no_u
+                   tr_shat = tr_shat + S_base(mu,nu) * psi_base(mu,iw) * psi_hat_c(nu,iw,idx)
+                   tr_hat = tr_hat + S_base(mu,nu) * psi_hat_c(mu,iw,idx) * psi_hat_c(nu,iw,idx)
+                end do
+             end do
+             print *, "[TEST-hat]", iw, idx, tr_hat, tr_shat
+          endif
+
+       enddo ! idx
+       
+    enddo ! iw
+
     deallocate(ipiv, work, amat, amat_save)
 
+  CONTAINS
+    ! Computes scalar product with original wavefunction
+    ! psi_base and S_base handled by host association
+    subroutine check_symmetry(a)
+      real(dp), intent(in) :: a(:,:)
+
+      logical :: symm
+      integer :: mu, nu, n
+
+      n = size(a,1)
+
+      symm = .true.
+      do mu = 1,n
+         do nu = 1,mu
+            if (abs(a(mu,nu)-a(nu,mu)) > 1.0e-8_dp) then
+               symm = .false.
+               print *, mu,nu, a(mu,nu), a(nu,mu)
+            endif
+         end do
+      end do
+
+      if (.not. symm) then
+         print *, "matrix is not symmetric"
+      endif
+    end subroutine check_symmetry
+
+    subroutine check_orthog(a,iw,str)
+      real(dp), intent(in) :: a(:)
+      integer, intent(in)  :: iw   ! wavefunction index
+      character(len=*), intent(in) :: str   ! label
+      
+      real(dp) :: sprod
+      
+      integer :: mu, nu, n
+
+      n = size(a)
+
+      sprod = 0.0_dp
+      do mu = 1,n
+         do nu = 1,n
+            sprod = sprod + S_base(mu,nu) * psi_base(mu,iw) * a(nu)
+         end do
+      end do
+          
+      print *, trim(str), sprod
+     end subroutine check_orthog
+
+     subroutine check_diff(a,orig,str)
+      real(dp), intent(in) :: a(:), orig(:)
+      character(len=*), intent(in) :: str
+      integer :: mu, nu, n
+
+      n = size(a)
+
+      do mu = 1,n
+         print *, trim(str), a(mu),orig(mu), abs(a(mu)-orig(mu))
+      end do
+      print*, "------"
+          
+    end subroutine check_diff
+     
   end subroutine compute_psi_hat_c
 
 
