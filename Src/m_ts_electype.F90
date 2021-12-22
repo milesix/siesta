@@ -5,6 +5,7 @@ module m_ts_electype
   use class_Sparsity
   use class_dSpData1D
   use class_dSpData2D
+  use class_OrbitalDistribution
   use m_region
 
   use m_geom_box, only: geo_box_delta
@@ -1681,7 +1682,6 @@ contains
   subroutine read_Elec(this,Bcast,io,ispin)
     use fdf
     use parallel
-    use class_OrbitalDistribution
 
     use m_handle_sparse, only : reduce_spin_size
     use m_ts_io
@@ -1739,8 +1739,6 @@ contains
 #endif
     use m_os, only: file_exist
     
-    use class_OrbitalDistribution
-
     use create_Sparsity_SC
     use geom_helper, only : iaorb
 
@@ -1944,9 +1942,6 @@ contains
     use parallel, only : IONode
     use units, only : eV
 
-    use class_OrbitalDistribution
-    use class_Sparsity
-
     use create_Sparsity_SC
     use geom_helper, only : iaorb, ucorb
 #ifdef MPI
@@ -2141,7 +2136,6 @@ contains
   subroutine copy_DM(this,na_u,xa,lasto,nsc,isc_off,cell,DM_2D, EDM_2D, na_a, allowed)
     
     use m_handle_sparse
-    use class_OrbitalDistribution
     use m_iodm
     use m_ts_iodm
     
