@@ -227,16 +227,25 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     end do
     call timer('c_extrapol', 2)
 
-    ! Updating the sparsity of the coefficient matrix according to the current system geometry.
-    ! Nonempty elements are set to zero
-    call init_c_matrix(C_min(1), wf_dim, h_dim, BlockSize_c, BlockSize, &
-      use_kim, .false., m_storage)
-    if(nspin>1) then
-       do is = 2, nspin
-         if(C_min(is)%is_initialized) call m_deallocate(C_min(is))
-         call m_copy(C_min(is), C_min(1)) ! Setting the sparsity of the coefficient matrix for the second spin component
-                                          ! the same as of the first spin component
-       end do
+    if(sparse) then
+      ! Updating the sparsity of the coefficient matrix according to the current system geometry
+      ! when sparse matrices are used. Nonempty elements are set to zero
+      call init_c_matrix(C_min(1), wf_dim, h_dim, BlockSize_c, BlockSize, &
+        use_kim, .false., m_storage)
+      if(nspin > 1) then
+         do is = 2, nspin
+           if(C_min(is)%is_initialized) call m_deallocate(C_min(is))
+           call m_copy(C_min(is), C_min(1)) ! Setting the sparsity of the coefficient matrix for
+                                            ! the second spin component the same as of the first one
+         end do
+      end if
+    else
+      ! Just deallocate the existing coefficient matrix if dense matrices are used
+      if(nspin > 1) then
+         do is = 2, nspin
+           if(C_min(is)%is_initialized) call m_deallocate(C_min(is))
+         end do
+      end if
     end if
 
     call timer('c_extrapol', 1)
