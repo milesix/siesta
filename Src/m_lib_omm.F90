@@ -221,10 +221,12 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
         call m_copy(C_old2(is), C_old(is)) ! Creating C_old copy
       end do
     end if
-    do is = 1, nspin
-      if(C_old(is)%is_initialized) call m_deallocate(C_old(is)) ! Deallocating old C_old
-      call m_copy(C_old(is), C_min(is)) ! Creating C_min copy
-    end do
+    if(sparse .or. (C_extrapol .and. istp > 2)) then
+      do is = 1, nspin
+        if(C_old(is)%is_initialized) call m_deallocate(C_old(is)) ! Deallocating old C_old
+        call m_copy(C_old(is), C_min(is)) ! Creating C_min copy
+      end do
+    end if
     call timer('c_extrapol', 2)
 
     if(sparse) then
@@ -237,13 +239,6 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
            if(C_min(is)%is_initialized) call m_deallocate(C_min(is))
            call m_copy(C_min(is), C_min(1)) ! Setting the sparsity of the coefficient matrix for
                                             ! the second spin component the same as of the first one
-         end do
-      end if
-    else
-      ! Just deallocate the existing coefficient matrix if dense matrices are used
-      if(nspin > 1) then
-         do is = 2, nspin
-           if(C_min(is)%is_initialized) call m_deallocate(C_min(is))
          end do
       end if
     end if
@@ -260,7 +255,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
         call m_deallocate(C_old2(is)) ! Deallocating C_old2
       end do
     else
-      if(.not. first_call) then
+      if(sparse .and. .not. first_call) then
         do is = 1, nspin
           ! Copying C_old to C_min maintaining the sparsity of the latter.
           call m_copy(C_min(is), C_old(is))
