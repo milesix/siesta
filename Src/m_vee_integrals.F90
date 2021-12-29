@@ -758,6 +758,8 @@ module m_vee_integrals
 !   Get the transformation matrix from imaginary to real harmonics  
     if( complex_to_real_harmonics( l_value, transmat ) ) return 
                                                              ! something failed
+!   It is a unitary matrix, the inverse is the adjoint (conjugate transpose)
+    trans_inv = transpose( conjg(transmat) )
 
 !!   For debugging
 !    do m = 1, 2*l_value +1 
@@ -767,10 +769,17 @@ module m_vee_integrals
 ! &        m, m_a, transmat(m,m_a)
 !      enddo 
 !    enddo 
+!
+!    do m = 1, 2*l_value +1 
+!      do m_a = 1, 2*l_value +1 
+!        write(6,'(a,2i5,2f12.5)')                          &
+! &        'ee_4index_int_real: a, b, trans_inv(a,b) = ',   &
+! &        m, m_a, trans_inv(m,m_a)
+!      enddo 
+!    enddo 
+!    call die
 !!   End debugging
 
-!   It is a unitary matrix, the inverse is the adjoint (conjugate transpose)
-    trans_inv = transpose( conjg(transmat) )
 
 !   Prepare the integrals
     nfuns = 2*l_value + 1
@@ -792,6 +801,13 @@ module m_vee_integrals
  &                    trans_inv( m_a, m )        * transmat( mprime, m_b )   * &
  &                    trans_inv( m_ap, m2prime ) * transmat( m3prime, m_bp ) * &
  &                     imag_ints( m_a, m_b, m_ap, m_bp )
+
+!                    real_ints(m,mprime,m2prime,m3prime) =                      &
+! &                    real_ints(m,mprime,m2prime,m3prime)    +                 &
+! &                    trans_inv( m_a, m ) * trans_inv( m_b, mprime )        *  &
+! &                    transmat( m_ap, m2prime ) * transmat( m3prime, m_bp ) *  &
+! &                     imag_ints( m_a, m_b, m_ap, m_bp )
+
                   enddo
                 enddo
               enddo
@@ -826,6 +842,7 @@ module m_vee_integrals
 !        enddo
 !      enddo
 !    enddo
+!    call die
 !! End debugging
 
 ! Check the results are correct

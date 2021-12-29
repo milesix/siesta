@@ -321,7 +321,7 @@
       endif
 
       if (spin%SO) then
-         Eldau_write = E_ldau_so
+         Eldau_write = E_ldau_so + E_correc_dc
       else
          Eldau_write = Eldau
       endif
@@ -584,7 +584,7 @@
         endif
 
         if (spin%SO) then
-           Eldau_write = E_ldau_so
+           Eldau_write = E_ldau_so + E_correc_dc
         else
            Eldau_write = Eldau
         endif

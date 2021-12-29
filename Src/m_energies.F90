@@ -97,6 +97,7 @@ contains
     Ebs = 0._dp
     Eso = 0._dp
     E_ldau_so = 0._dp
+    E_correc_dc = 0._dp
     Eldau = 0._dp      
     DEldau = 0._dp
 
@@ -132,7 +133,7 @@ contains
     use m_ts_global_vars, only: TSrun
     
     ! DUext (external electric field) -- should it be in or out?
-    Etot = Ena + Ekin + Enl + Eso + E_ldau_so - Eions + &
+    Etot = Ena + Ekin + Enl + Eso + E_ldau_so + E_correc_dc - Eions + &
         DEna + DUscf + DUext + Exc + &
         Ecorrec + Emad + Emm + Emeta + Eldau
 

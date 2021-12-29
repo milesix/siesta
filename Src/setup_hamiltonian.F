@@ -226,11 +226,12 @@
 
 ! Hubbard term for LDA+U: energy, forces, stress and matrix elements ....
       if( switch_ldau ) then
+        call re_alloc(fal, 1, 3, 1, na_u, 'fal', 'setup_hamiltonian')      
         if ( spin%NCol ) then
           call die('LDA+U cannot be used with non-collinear spin.')
         else if ( spin%SO ) then
           H_ldau_so => val(H_ldau_so_2D)
-          call ldau_so_hamil( S, H_ldau_so )
+          call ldau_so_hamil( H_ldau_so, fal, stressl )
 
 !------- H(u,u)
          H(:,1) = H(:,1) + real(H_ldau_so(:,1), dp)
@@ -249,10 +250,11 @@
           ! Global reduction of E_ldau_so 
           call globalize_sum(E_ldau_so,buffer1)
           E_ldau_so = buffer1
+          ! Global reduction of E_correc_dc
+          call globalize_sum(E_correc_dc,buffer1)
+          E_correc_dc = buffer1
 #endif
         else  ! collinear spin
-          call re_alloc(fal, 1, 3, 1, na_u, 'fal', 'setup_hamiltonian')      
-
           H_ldau => val(H_ldau_2D)
           call hubbard_term(scell, na_u, na_s, isa, xa, indxua,
      .                      maxnh, maxnh, lasto, iphorb, no_u, no_l, 
@@ -270,8 +272,8 @@
 #endif
           Eldau = Eldau + DEldau
 
-          call de_alloc( fal, 'fal', 'setup_hamiltonian' ) 
         endif
+        call de_alloc( fal, 'fal', 'setup_hamiltonian' ) 
       endif
 ! ..................
 

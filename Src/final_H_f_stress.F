@@ -200,11 +200,14 @@
       if( switch_ldau ) then
         if ( spin%SO ) then
           H_ldau_so => val(H_ldau_so_2D)
-          call ldau_so_hamil( S, H_ldau_so )
+          call ldau_so_hamil( H_ldau_so, fal, stressl )
 #ifdef MPI
           ! Global reduction of energy terms
           call globalize_sum(E_ldau_so,buffer1)
           E_ldau_so = buffer1
+          ! Global reduction of E_correc_dc
+          call globalize_sum(E_correc_dc,buffer1)
+          E_correc_dc = buffer1
 #endif
         else
           H_ldau => val(H_ldau_2D)

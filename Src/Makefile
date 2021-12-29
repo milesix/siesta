@@ -168,7 +168,7 @@ OBJS =  automatic_cell.o atom_options.o \
 	m_initwf.o wavefunctions.o \
 	m_evolve.o cranknic_evolk.o cranknic_evolg.o sankey_change_basis.o m_iotddft.o \
 	m_matdiag.o m_matswinvers.o iotdxv.o  m_inversemm.o m_vee_integrals.o \
-	m_ldau_so.o
+	m_occ_proj_ldau.o m_ldau_so.o m_pot_ldau.o
 
 OBJS += kpoint_t.o kpoint_scf.o kpoint_dos.o kpoint_pdos.o kpoint_ldos.o
 
@@ -901,8 +901,7 @@ m_iostruct.o: siesta_geom.o sys.o units.o
 m_iotddft.o: files.o m_dipol.o m_io.o m_steps.o parallel.o siesta_options.o
 m_iotddft.o: units.o wavefunctions.o
 m_kinetic.o: precision.o
-m_ldau_so.o: precision.o sys.o atm_types.o siesta_geom.o sparse_matrices.o
-m_ldau_so.o: parallel.o parallelsubs.o atomlist.o m_energies.o
+m_ldau_so.o: precision.o sparse_matrices.o m_occ_proj_ldau.o m_pot_ldau.o
 m_mat_invert.o: intrinsic_missing.o m_pivot_array.o precision.o
 m_matdiag.o: precision.o
 m_matio.o: alloc.o parallel.o
@@ -1175,6 +1174,13 @@ nlefsm.o: sparse_matrices.o
 normalize_dm.o: atomlist.o m_mpi_utils.o m_spin.o parallel.o precision.o
 normalize_dm.o: siesta_options.o sparse_matrices.o sys.o
 obc.o: alloc.o precision.o
+m_occ_proj_ldau.o: alloc.o precision.o parallel.o atm_types.o atmfuncs.o
+m_occ_proj_ldau.o: radial.o siesta_geom.o m_spin.o atomlist.o sys.o mneighb.o
+m_occ_proj_ldau.o: parallelsubs.o sparse_matrices.o new_matel.o m_mpi_utils.o 
+m_pot_ldau.o: alloc.o precision.o parallel.o atm_types.o atmfuncs.o
+m_pot_ldau.o: radial.o siesta_geom.o m_spin.o atomlist.o sys.o mneighb.o
+m_pot_ldau.o: parallelsubs.o sparse_matrices.o new_matel.o m_mpi_utils.o 
+m_pot_ldau.o: m_occ_proj_ldau.o m_energies.o 
 ofc.o: alloc.o files.o precision.o units.o
 on_subs.o: alloc.o onmod.o onmod.o
 onmod.o: precision.o
