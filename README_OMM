@@ -6,6 +6,9 @@ SolutionMethod BLOMM
 OMM.UseSparse true (logical)
   Specifies whether to use sparse matrices.
 
+OMM.UseKimFunctional true (logical)
+  Specifies whether to use the Kim functional. If false, the Ordejon-Mauri functional is used.
+
 OMM.Use2D true (logical)
   Specifies whether to use 2D decomposition of matrices for parallel calculations.
 
@@ -32,9 +35,9 @@ OMM.RelTol 10^{-9} (real)
   Equivalent to ON.Etol. 
 
 OMM.Eta 0.0 Ry (energy)
-  Fermi level parameter for the funcitonal of Kim et al. It should be within the energy gap 
-  and tuned to obtain the correct number of electrons. The parameter can be estimated, 
-  for example, from the previous diagonalization run.
+  Fermi level parameter. It should be within the energy gap and tuned to obtain the correct 
+  number of electrons. The parameter can be estimated, for example, from the previous 
+  diagonalization run.
 
 OMM.RcLWF 9.5 Bohr (length)
   Localization radius for LWFs (only initial one in the case OMM.UseSparse false).
@@ -79,8 +82,3 @@ OMM.PreconFirstStep OMM.Precon (integer)
 
 OMM.TPreconScale 10 Ry (energy)
   The scale for kinetic energy preconditioning. Only applicable for OMM.UseSparse false.
-
-OMM.NumLWFs N_occ (integer)
-  The number of LWFs in calculations with OMM.UseSparse false. By default, equals the number
-  of occupied states, N_occ. Hovewer, can be increased to use in conjunction with OMM.Eta setting the Fermi
-  level, similar to the functional of Kim et al.
