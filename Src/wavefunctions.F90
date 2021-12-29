@@ -39,7 +39,7 @@ CONTAINS
     type(matrix), intent(inout)     :: wavef_rw(nk,nspin)
     ! Internal variables and arrays
     character         :: fname*33, sname*30, m_storage*5
-    logical           ::  exist1, frstme
+    logical           ::  exist1, frstme, found
     integer           :: unit1, ie,nuototread,nkread,nspinread,dim2read
     integer           :: nwf, ik, ispin, mxnwf, io, ix,i,j
     external          :: chkdim, io_assign, io_close, timer,memory
@@ -144,7 +144,7 @@ CONTAINS
         do ik=1,nk
           do i=1,nuotot
             do j=1,wavef_rw(ik,ispin)%dim2
-              call m_get_element(wavef_rw(ik,ispin),i,j,varaux,'lap')
+              call m_get_element(wavef_rw(ik,ispin),i,j,varaux,found,'lap')
               if (Node==0) write(unit1) varaux
             enddo
           enddo
