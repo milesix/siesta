@@ -5387,7 +5387,6 @@ C
 C Returns the ground states atomic population for each species.
 C This information is required for the screening of the local 
 C pseudopotential.
-!! Even though qtb is passed, atom itself only uses qPAO...
 C Written by D. Sanchez-Portal, Aug. 1998
 C
 
@@ -5409,46 +5408,70 @@ C
         real(dp)  qatm(0:4)
           
         integer noPAO, l, izeta, m, norb, noPol, lpop,
-     .     nsm, nvalence, config(0:lmaxd), i
+     .     nsm, nsm_valence, config(0:lmaxd), i
         character*70  line
 
+        qPAO(0:lmaxd,1:nsemx) = 0.d0  ! AG
+        q(1:) = 0.0_dp
+        
+        ! These data refer to the 'valence' shell
+        ! for a given l. Semicore states will be handled below
         qatm(0:4) = basp%ground_state%occupation(0:4)
         config(:) = 0
         config(0:4) = basp%ground_state%n(0:4)
 
-        qPAO(0:lmaxd,1:nsemx) = 0.d0  ! AG
-!
-        do l=0,lmxo 
-          nvalence=nsemic(l)+1
-     .        -(cnfigtb(l,nsemic(l)+1,is)-config(l))
-!!          print *, "l, config(l), nvalence:", l, config(l), nvalence
-          nsm=nvalence
-C Add a check on whether nsemx is large enough
-          if (nsm.gt.nsemx) then
+        do l=0,lmxo
+           nsm_valence = -1
+           do nsm = 1, nsemic(l)+1
+              if (cnfigtb(l,nsm,is) == config(l)) then
+                 nsm_valence = nsm
+                 EXIT
+              endif
+           enddo
+!!          nsm_valence = nsemic(l)+1 -(cnfigtb(l,nsemic(l)+1,is)-config(l))
+          
+          if (nsm_valence < 0) then
+            ! Possible error in input of 'n' quantum number
+             write(6,'(/,a)') 'WARNING: ------'
+             write(6,'(a,i1,a)') 'atm_pop: For l=',l,
+     $            " I cannot find a PAO with the valence 'n':"
+             write(6,'(a,i2)') 'atm_pop: ' //
+     $            'GS n quantum number: ', config(l)
+             write(6,'(a,8i2)') 'atm_pop: ' //
+     $            'PAOs quantum numbers: ',  cnfigtb(l,1:nsemic(l)+1,is)
+             write(6,'(a,/)') '---------------'
+             if (qatm(l) > 0.0_dp) then
+                ! Shell is occupied in the ground state
+                call die('atm_pop: No PAO for shell occupied in GS')
+             endif
+          endif
+          
+          if (nsm_valence.gt.nsemx) then
             call die('need to increase nsemx')
           endif
-          qPAO(l,nsm)=0.0d0
-          if(l.le.3) qPAO(l,nsm)=qatm(l) 
-        enddo 
 
-        if (semic) then 
-          do l=0,lmxo
-            do nsm=1,nsemic(l)+1
-              nvalence=nsemic(l)+1
-     .              -(cnfigtb(l,nsemic(l)+1,is)-config(l))
+          if(l.le.3) qPAO(l,nsm_valence)=qatm(l) 
+
+          ! Fill 'semicore' shells (those with nsm<nsm_valence)
+          do nsm=1,nsemic(l)+1
+
               ! This is incomplete. It might be that the shell
               ! was not among those used in the generation of the pseudopotential
               ! Then, it will be artificially occupied.
-              if(nsm.lt.nvalence) qPAO(l,nsm)=2*(2*l+1) 
-              if(nsm.gt.nvalence) qPAO(l,nsm)=0.0d0
-            enddo 
+             if(nsm.lt.nsm_valence) then
+                if (.not. semic) then
+                   write(6,'(/,a)') 'WARNING: PAO with n<n_valence,' //
+     $                  ' without semicore in PS'
+                endif
+                qPAO(l,nsm)=2*(2*l+1) 
+             endif
           enddo 
-        endif 
+
+        enddo  ! l=0,lmxo
 
         noPAO=0
         do l=0,lmxo 
           do nsm=1,nsemic(l)+1
-            if (nzeta(l,nsm).gt.0) then 
               do izeta=1,nzeta(l,nsm) 
                 do m=1,2*l+1 
                   q(noPAO+m)=0.0d0
@@ -5457,21 +5480,18 @@ C Add a check on whether nsemx is large enough
                 enddo  
                 noPAO=noPAO+2*l+1
               enddo
-            endif 
           enddo 
         enddo 
 
         noPol=0
         do l=0,lmxo
           do nsm=1,nsemic(l)+1
-            if (polorb(l,nsm).gt.0) then 
               do izeta=1,polorb(l,nsm)
                 do m=1,2*(l+1)+1 
                   q(noPAO+noPol+m)=0.0d0
                 enddo  
                 noPol=noPol+2*(l+1)+1
               enddo    
-            endif 
           enddo
         enddo      
         norb=noPAO+noPol 
@@ -5493,6 +5513,7 @@ C Add a check on whether nsemx is large enough
 C Internal variables
 
         integer l, lpop, nsm, config(0:lmaxd), i
+        integer nval
         character*70  line
 
         config(:) = 0
@@ -5502,9 +5523,10 @@ C Internal variables
         write(6,'(/,2a)') 'atm_pop: Valence configuration',
      .                    ' (for local Pseudopot. screening):'
         do l=0,lpop
+!!          nval = nsemic(l)+1-(cnfigtb(l,nsemic(l)+1,is)-config(l))
           write(line,'(7(1x,i1,a1,a1,f5.2,a1))')
      .          (cnfigtb(l,nsm,is),sym(l),"(",qPAO(l,nsm),")",
-     .       nsm=1,nsemic(l)+1-(cnfigtb(l,nsemic(l)+1,is)-config(l)))
+     .            nsm=1,nsemic(l)+1)
           write(6,'(a)') line
         enddo
         end subroutine atm_pop_print
