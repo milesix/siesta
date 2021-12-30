@@ -51,20 +51,23 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
 
   !**** INPUT ***********************************!
 
-  logical, intent(in) :: CalcE              ! Calculate the energy-density matrix from the existing coeffs.?
+  logical, intent(in) :: CalcE              ! Calculate the energy-density matrix from 
+                                            ! the existing coeffs.?
   logical, intent(in) :: PreviousCallDiagon ! Previous SCF iteration solved by diagonalization?
 
   integer, intent(in) :: iscf               ! SCF iteration number
   integer, intent(in) :: istp               ! MD iteration number
   integer, intent(in) :: nbasis             ! Dimension of numh and listhptr arrays
-                                            ! (the number of local rows in sparse Hamiltonian and overlap matrices)
+                                            ! (the number of local rows in sparse Hamiltonian 
+                                            ! and overlap matrices)
   integer, intent(in) :: nspin              ! Number of spin components
   integer, intent(in) :: h_dim              ! Global number of atomic orbitals
   integer, intent(in) :: nhmax              ! First dimension of listh and sparse matrices
-  integer, intent(in) :: numh(1:nbasis)     ! Number of nonzero elements of each local row of sparse matrices
+  integer, intent(in) :: numh(1:nbasis)     ! Number of nonzero elements of each local row 
+                                            ! of sparse matrices
   integer, intent(in) :: listhptr(1:nbasis) ! Pointers to start of local rows in listh
-  integer, intent(in) :: listh(1:nhmax)     ! List of nonzero elements of each local row for sparse matrices
-
+  integer, intent(in) :: listh(1:nhmax)     ! List of nonzero elements of each local row 
+                                            ! for sparse matrices
   real(dp), intent(in) :: qs(1:2)                   ! Number of electrons per spin
   real(dp), intent(in) :: eta0(1:2)                 ! Chemical potential for Kim functional
   real(dp), intent(in) :: h_sparse(1:nhmax,1:nspin) ! Hamiltonian matrix (sparse)
@@ -80,65 +83,81 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
   type(matrix) :: csr_mat              ! csr matrix h_dim x h_dim in MatrixSwitch (MS) format
                                        ! with nbasis local rows and block size BlockSize
   type(matrix), allocatable, save :: H(:)     ! Hamiltonian matrix in MS format
-  type(matrix), allocatable, save :: C_min(:) ! Coefficient matrix (localized wavefunctions expanded
-                                       ! in basis functions) in MS format
+  type(matrix), allocatable, save :: C_min(:) ! Coefficient matrix (localized wavefunctions 
+                                       ! expanded in basis functions) in MS format
   type(matrix), save :: S              ! Overlap matrix in MS format
   type(matrix), allocatable, save :: D_min(:) ! (Energy-)density matrix in MS format
   type(matrix), save :: T              ! Kinetic energy matrix in MS format
-  type(matrix), allocatable, save :: C_old(:) ! Coefficient matrix from the previous MD step in MS format
+  type(matrix), allocatable, save :: C_old(:) ! Coefficient matrix from the previous MD step 
+                                              ! in MS format
   type(matrix), allocatable, save :: C_old2(:)! Coefficient matrix from the last but one MD step
-  type(matrix), save :: brd_mat        ! Matrix h_dim x h_dim in MS format distributed on a 1D MPI grid
-                                       ! with nbasis local rows and block size BlockSize
+  type(matrix), save :: brd_mat        ! Matrix h_dim x h_dim in MS format distributed on 
+                                       ! a 1D MPI grid with nbasis local rows and block size 
+                                       ! BlockSize
 
   integer :: i, j, io, jo, MPIerror
   integer :: ind                       ! Index of sparse matrices
-  integer :: flavour                   ! Flavour of OMM calculation with dense matrices: 0 for basic,
-                                       ! 1 for Cholesky factorization, 3 for preconditioning (see libOMM)
+  integer :: flavour                   ! Flavour of OMM calculation with dense matrices: 
+                                       ! 0 for basic,
+                                       ! 1 for Cholesky factorization, 
+                                       ! 3 for preconditioning (see libOMM)
   integer :: is                        ! Spin component
-  integer :: nze                       ! Estimated number of nonzero elements in the coefficient matrix
-                                       ! C_min when distributed on the 1D MPI grid
+  integer :: nze                       ! Estimated number of nonzero elements in the coefficient
+                                       ! matrix C_min when distributed on the 1D MPI grid
   integer, save :: istp_prev           ! MD step at the previous call
-  integer, save :: BlockSize_c         ! Block size for wavefunctions (rows of coefficient matrix C_min)
+  integer, save :: BlockSize_c         ! Block size for wavefunctions (rows of coefficient 
+                                       ! matrix C_min)
   integer, save :: N_occ               ! Number of occupied states
   integer, save :: wf_dim              ! Number of wavefunctions considered
   integer, save :: precon_st           ! Number of SCF steps at which preconditioning is applied
                                        ! (all for negative values) for dense matrices
   integer, save :: precon_st1          ! Number of SCF steps at which preconditioning is applied
                                        ! at the first MD step for dense matrices
-  integer, allocatable, save :: ind_ordered(:) ! indices of sparse matrices ordered in such a way that
-                                               ! column indices are in the growing order for each row
+  integer, allocatable, save :: ind_ordered(:) ! indices of sparse matrices ordered in such a 
+                                               ! way that column indices are in the growing
+                                               ! order for each row
+
   real(dp) :: e_min                    ! Band structure energy at each SCF step
   real(dp) :: qout(2), qtmp(2)         ! Charges for each spin component
   real(dp) :: c_occ                    ! Matrix occupation (fraction of nonempty elements)
   real(dp) :: rcoor0                   ! Cutoff radius for wavefunctions (intermediate variable)
-  real(dp) :: rcoor_init               ! Initial cutoff radius for wavefunctions used for initialization
-  real(dp), save :: cg_tol             ! Tolerance for CG minimization. The CG minimization is stopped
-                                       ! when 2(E_n - E_(n-1))/(E_n + E_(n-1)) becomes less than cg_tol,
-                                       ! where E_n is the energy at CG iteration n
+  real(dp) :: rcoor_init               ! Initial cutoff radius for wavefunctions used for 
+                                       ! initialization
+  real(dp), save :: cg_tol             ! Tolerance for CG minimization. The CG minimization is 
+                                       ! stopped when 2(E_n - E_(n-1))/(E_n + E_(n-1)) becomes 
+                                       ! less than cg_tol, where E_n is the energy at 
+                                       ! CG iteration n
   real(dp), save :: eta                ! Chemical potential for Kim method
   real(dp), save :: tau                ! Kinetic energy scale for preconditioning
 
   logical, save :: sparse              ! Use sparse matrices?
-  logical, save :: use_kim             ! Use Kim functional? If false, Ordejon-Mauri functional is used
+  logical, save :: use_kim             ! Use Kim functional? If false, Ordejon-Mauri 
+                                       ! functional is used
   logical :: new_S                     ! Is the overlap matrix new?
   logical :: ReadCoeffs                ! Read wavefunctions (C_min matrix) from the file?
   logical :: ReadUseLib                ! Use DBCSR library for reading wavefunctions?
-  logical, save :: WriteCoeffs         ! Write wavefunctions (C_min matrix) to the file at each SCF step?
-  logical, save :: WriteUseLib         ! Use DBCSR library for writing the restart for wavefunctions?
+  logical, save :: WriteCoeffs         ! Write wavefunctions (C_min matrix) to the file 
+                                       ! at each SCF step?
+  logical, save :: WriteUseLib         ! Use DBCSR library for writing the restart for 
+                                       ! wavefunctions?
   logical :: file_exist(1:nspin)       ! Has the file with wavefunctions been found?
-  logical :: precon                    ! Apply preconditioning at this SCF step (for dense matrices only)?
+  logical :: precon                    ! Apply preconditioning at this SCF step 
+                                       ! (for dense matrices only)?
   logical, save :: use_cholesky        ! Apply Cholesky factorization (for dense matrices only)?
   logical :: init_C                    ! Are wavefunctions (C_min matrix) initialized?
-  logical :: my_order                  ! Are the indices of the csr matrix ordered in such a way that
-                                       ! column indices for each row are in the growing order?
-  logical, save :: long_out            ! Print detailed information on CG iterations to libOMM.log?
+  logical :: my_order                  ! Are the indices of the csr matrix ordered in such a way 
+                                       ! that column indices for each row are 
+                                       ! in the growing order?
+  logical, save :: long_out            ! Print detailed information on CG iterations 
+                                       ! to libOMM.log?
   logical, save :: Use2D               ! Use a 2D MPI grid for distribution of matrix blocks?
-  logical, save :: C_extrapol          ! Extrapolate coefficient matrix C_min linearly based on the results
-                                       ! of the two previous MD steps?
+  logical, save :: C_extrapol          ! Extrapolate coefficient matrix C_min linearly 
+                                       ! based on the results of the two previous MD steps?
   logical :: dealloc                   ! Deallocate matrices at each SCF step?
   logical, save :: first_call=.true.   ! Is this the first call to this subroutine?
 
-  character(len=100) :: WF_COEFFS_filename ! Path to the restart file for wavefunctions (C_min matrix)
+  character(len=100) :: WF_COEFFS_filename ! Path to the restart file for wavefunctions 
+                                       ! (C_min matrix)
   character(len=2) :: sfile            ! Spin-related suffix
   character(5) :: m_storage            ! MS format used for matrices
   character(3) :: m_operation          ! MS implementation of the operations performed
@@ -167,35 +186,48 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     BlockSize_c = fdf_integer('OMM.BlockSizeC', 0)        ! Block size for wavefunctions
                                                           ! (rows of coefficient matrix C_min)
     sparse = fdf_boolean('OMM.UseSparse', .true.)         ! Use sparse matrices?
-    use_kim = fdf_boolean('OMM.UseKimFunctional', .true.) ! Use Kim (or Ordejon-Mauri) functional?
+    use_kim = fdf_boolean('OMM.UseKimFunctional', .true.) ! Use Kim (or Ordejon-Mauri)
+                                                          ! functional?
     if(use_kim) then
       if(ionode) print'(a)','Using the Kim functional'
     else
       if(ionode) print'(a)','Using the Ordejon-Mauri functional'
     end if
     Use2D = fdf_boolean('OMM.Use2D', .true.)              ! Distribute matrices on a 2D MPI grid?
-    C_extrapol = fdf_boolean('OMM.Extrapolate', .false.)  ! Extrapolate the coefficient C_min based on the
-                                                          ! results of two previous MD steps?
-    long_out = fdf_boolean('OMM.LongOutput', .true.)      ! Print detailed information on CG iterations to libOMM.log?
+    C_extrapol = fdf_boolean('OMM.Extrapolate', .false.)  ! Extrapolate the coefficient C_min 
+                                                          ! based on the results of two previous 
+                                                          ! MD steps?
+    long_out = fdf_boolean('OMM.LongOutput', .true.)      ! Print detailed information on CG 
+                                                          ! iterations to libOMM.log?
     cg_tol = fdf_get('OMM.RelTol', 1.0d-9)                ! Tolerance for CG iterations
-    WriteCoeffs=fdf_boolean('OMM.WriteCoeffs', .false.)   ! Write wavefunctions (C_min) to the file?
-    ReadCoeffs=fdf_boolean('OMM.ReadCoeffs', .false.)     ! Read wavefunctions (C_min) from the file?
-    WriteUseLib=fdf_boolean('OMM.WriteUseLib', .false.)   ! Use DBCSR library for writing wavefunctions?
-    ReadUseLib=fdf_boolean('OMM.ReadUseLib', .false.)     ! Use DBCSR library for reading wavefunctions?
+    WriteCoeffs=fdf_boolean('OMM.WriteCoeffs', .false.)   ! Write wavefunctions (C_min) to the 
+                                                          ! file?
+    ReadCoeffs=fdf_boolean('OMM.ReadCoeffs', .false.)     ! Read wavefunctions (C_min) from the 
+                                                          ! file?
+    WriteUseLib=fdf_boolean('OMM.WriteUseLib', .false.)   ! Use DBCSR library for writing 
+                                                          ! wavefunctions?
+    ReadUseLib=fdf_boolean('OMM.ReadUseLib', .false.)     ! Use DBCSR library for reading
+                                                          ! wavefunctions?
     eta = fdf_get('OMM.Eta', 0.0_dp, 'Ry')                ! Chemical potential for Kim method
     if(ionode) print'(a, i15, a, i15, a, i8)','hdim =', h_dim, '    N_occ =', N_occ, &
       '    BlockSize =', BlockSize
-    wf_dim = N_occ                                        ! The number of wavefunctions considered is set
-                                                          ! to the number of occupied states by default
-    precon_st = fdf_integer('OMM.Precon', -1)             ! Number of SCF steps at which preconditioning is applied
-                                                          ! (all for negative values) for dense matrices
-    precon_st1 = fdf_integer('OMM.PreconFirstStep', precon_st)  ! Number of SCF steps at which preconditioning
-                                                          ! at the first MD step for dense matrices
-    tau = fdf_get('OMM.TPreconScale', 10.0_dp, 'Ry')      ! Kinetic energy scale for preconditioning
-    use_cholesky = .false.                                ! Apply Cholesky factorization (for dense matrices only)?
+    wf_dim = N_occ                                        ! The number of wavefunctions
+                                                          ! considered is set to the number of
+                                                          ! occupied states by default
+    precon_st = fdf_integer('OMM.Precon', -1)             ! Number of SCF steps at which 
+                                                          ! preconditioning is applied (all for 
+                                                          ! negative values) for dense matrices
+    precon_st1 = fdf_integer('OMM.PreconFirstStep', precon_st)  ! Number of SCF steps with 
+                                                          ! preconditioning at the first MD step 
+                                                          ! for dense matrices
+    tau = fdf_get('OMM.TPreconScale', 10.0_dp, 'Ry')      ! Kinetic energy scale for 
+                                                          ! preconditioning
+    use_cholesky = .false.                                ! Apply Cholesky factorization (for 
+                                                          ! dense matrices only)?
     if((.not. use_kim) .and. (.not. sparse)) use_cholesky=fdf_boolean('OMM.UseCholesky', .false.)
     rcoor = fdf_get('OMM.RcLWF', 9.5_dp)                  ! Cutoff radius for wavefunctions
-    rcoor_init = fdf_get('OMM.RcLWFInit', 0.0_dp)         ! Initial cutoff radius for wavefunctions
+    rcoor_init = fdf_get('OMM.RcLWFInit', 0.0_dp)         ! Initial cutoff radius for
+                                                          ! wavefunctions
   end if
 
   if(sparse) then
@@ -212,16 +244,16 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     istp_prev=istp
   end if
 
-  if(new_S .and. istp>1) then ! If this is a new (but not the first) MD step
+  if(new_S .and. (istp > 1)) then ! If this is a new (but not the first) MD step
     call timer('c_extrapol', 1)
     ! Creating C_old matrix for wavefunctions at the previous MD step
     ! Creating C_old2 matrix for wavefunctions two MD steps before if extrapolation is used
-    if(C_extrapol .and. istp > 2) then
+    if(C_extrapol .and. (istp > 2)) then
       do is = 1, nspin
         call m_copy(C_old2(is), C_old(is)) ! Creating C_old copy
       end do
     end if
-    if(sparse .or. (C_extrapol .and. istp > 2)) then
+    if(sparse .or. C_extrapol) then
       do is = 1, nspin
         if(C_old(is)%is_initialized) call m_deallocate(C_old(is)) ! Deallocating old C_old
         call m_copy(C_old(is), C_min(is)) ! Creating C_min copy
@@ -238,7 +270,8 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
          do is = 2, nspin
            if(C_min(is)%is_initialized) call m_deallocate(C_min(is))
            call m_copy(C_min(is), C_min(1)) ! Setting the sparsity of the coefficient matrix for
-                                            ! the second spin component the same as of the first one
+                                            ! the second spin component the same as of 
+                                            ! the first one
          end do
       end if
     end if
@@ -249,17 +282,18 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
         ! Extrapolation: C_min = C_old + (C_old - C_old2)
         ! Here C_old2 = 2C_old - C_old2
         call m_add(C_old(is), 'n', C_old2(is), 2.0_dp, -1.0_dp)
-        ! Now copying C_old2 to C_min maintaining the sparsity of the latter. That is the elements that
-        ! should be now empty are empty. The new nonempty elements are initialized to zero.
+        ! Now copying C_old2 to C_min maintaining the sparsity of the latter. 
+        ! That is the elements that should be now empty are empty. 
+        ! The new nonempty elements are initialized to zero.
         call m_copy(C_min(is), C_old2(is))
         call m_deallocate(C_old2(is)) ! Deallocating C_old2
       end do
     else
-      if(sparse .and. .not. first_call) then
+      if(sparse) then
         do is = 1, nspin
           ! Copying C_old to C_min maintaining the sparsity of the latter.
           call m_copy(C_min(is), C_old(is))
-          call m_deallocate(C_old(is)) ! Deallocating C_old
+          if(.not. C_extrapol) call m_deallocate(C_old(is)) ! Deallocating C_old
         end do
       end if
     end if  
@@ -293,14 +327,15 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     end if
 
     if(sparse) then
-      call ms_dbcsr_setup(MPI_Comm_World, BlockSize, Use2D) ! Setting up the DBCSR library for sparse matrices
+      ! Setting up the DBCSR library for sparse matrices
+      call ms_dbcsr_setup(MPI_Comm_World, BlockSize, Use2D) 
     else
       if(Use2D) then
-        call ms_scalapack_setup(MPI_Comm_world, ProcessorY, 'c', BlockSize) ! Setting up the ScaLAPACK library
-                                                                            ! for dense matrices and 2D MPI grid
+        ! Setting up the ScaLAPACK library for dense matrices and 2D MPI grid
+        call ms_scalapack_setup(MPI_Comm_world, ProcessorY, 'c', BlockSize) 
       else
-        call ms_scalapack_setup(MPI_Comm_world, 1, 'c', BlockSize) ! Setting up the ScaLAPACK library
-                                                                   ! for dense matrices in the case of 1D MPI grid
+        ! Setting up the ScaLAPACK library for dense matrices in the case of 1D MPI grid
+        call ms_scalapack_setup(MPI_Comm_world, 1, 'c', BlockSize) 
       end if
     end if
 
@@ -330,15 +365,15 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
       call m_deallocate(C_old(1))
     else
       ! If the initial cutoff radius is not defined, the usual value is used for initialization.
-      ! For dense matrices, the cutoff radius (initial or usual one) is also used for initialization
-      ! but the sparsity is not maintained in CG iterations.
+      ! For dense matrices, the cutoff radius (initial or usual one) is also used 
+      ! for initialization but the sparsity is not maintained in CG iterations.
       if((.not. sparse) .and. (rcoor_init .gt. 0.0_dp)) rcoor=rcoor_init
       call init_c_matrix(C_min(1), wf_dim, h_dim, BlockSize_c, BlockSize, use_kim, &
         .true., m_storage)
     end if
 
-    nze = (nhmax * wf_dim)/h_dim ! Estimated number of nonzero elements in local rows of a coefficient matrix
-                                 ! distributed on a 1D MPI grid
+    nze = (nhmax * wf_dim)/h_dim ! Estimated number of nonzero elements in local rows 
+                                 ! of the coefficient matrix distributed on a 1D MPI grid
 
     do is = 1, nspin
       file_exist(is) = .false.
@@ -351,12 +386,14 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
         write(sfile,'(a, i1)') '.', is
         WF_COEFFS_filename = trim(slabel)//'.WF_COEFFS_BLOMM'//trim(sfile)
         if(nspin==1) then
-          WF_COEFFS_filename = trim(slabel)//'.WF_COEFFS_BLOMM' ! The wavefunctions are read from the file *.WF_COEFFS_BLOMM
+          ! The wavefunctions are read from the file *.WF_COEFFS_BLOMM
+          WF_COEFFS_filename = trim(slabel)//'.WF_COEFFS_BLOMM' 
         else
           if(is > 1) then
             if(C_min(is)%is_initialized) call m_deallocate(C_min(is))
-            call m_copy(C_min(is), C_min(1)) ! Setting the sparsity pattern of the second component of the coefficient
-                                             ! matrix the same as of the first one
+            ! Setting the sparsity pattern of the second component of the coefficient
+            ! matrix the same as of the first one
+            call m_copy(C_min(is), C_min(1)) 
           end if
         end if
         call m_read(C_min(is), WF_COEFFS_filename, file_exist=file_exist(is),&
@@ -382,9 +419,10 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
         if(nspin == 2) then
           WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_BLOMM.1'
         else
-          WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_BLOMM' ! The wavefunctions are read from the file *.WF_COEFFS_BLOMM
+          ! The wavefunctions are read from the file *.WF_COEFFS_BLOMM
+          WF_COEFFS_filename=trim(slabel)//'.WF_COEFFS_BLOMM' 
         end if
-        call m_write(C_min(1),WF_COEFFS_filename,use_dbcsrlib=WriteUseLib,nze=nze)
+        call m_write(C_min(1), WF_COEFFS_filename, use_dbcsrlib=WriteUseLib,nze=nze)
         if(ionode) print'(a)', 'File for C(1) is written'
         call timer('WriteCoeffs', 2)
       end if
@@ -438,16 +476,17 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
         if(Use2D .or. (.not. sparse)) then
           call m_allocate(H(is), h_dim, h_dim, label=m_storage)
         else
-          call m_copy(H(is), S) ! This is needed to reuse the sparsity pattern if
-                                ! the overlap and Hamiltonian matrices are distributed on
-                                ! a 1D MPI grid
+          ! This is needed to reuse the sparsity pattern if the overlap and Hamiltonian matrices 
+          ! are distributed on a 1D MPI grid
+          call m_copy(H(is), S) 
         end if
       end if
       ! Passing pointers to the Hamiltonian matrix in the csr format to MS and using the
       ! previously prepared array of ordered indices ind_ordered
       call m_register_csr(csr_mat, h_dim, h_dim, nbasis, listhptr, listh, numh, h_sparse(:,is), &
         ind_ordered=ind_ordered, order=.false.)
-      ! Converting the Hamiltonian matrix from csr to MS format reusing m_sp as an intermediate matrix
+      ! Converting the Hamiltonian matrix from csr to MS format reusing m_sp 
+      ! as an intermediate matrix
       call m_copy(H(is), csr_mat, m_sp=brd_mat)
       ! Removing the pointers to the Hamiltonian matrix in the csr format from MS
       call m_deallocate(csr_mat)
@@ -562,7 +601,8 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
       end do
     end do
     qtmp(1:2) = qout(1:2)
-    call MPI_AllReduce(qtmp, qout, nspin, MPI_double_precision, MPI_sum, MPI_Comm_World, MPIerror)
+    call MPI_AllReduce(qtmp, qout, nspin, MPI_double_precision, MPI_sum, &
+      MPI_Comm_World, MPIerror)
 
     ! Correcting the charge
     do is = 1, nspin
@@ -574,7 +614,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
         ind = listhptr(io) + j
         jo = listh(ind)
         do is = 1, nspin
-          d_sparse(ind,is) = qout(is) * d_sparse(ind, is)
+          d_sparse(ind, is) = qout(is) * d_sparse(ind, is)
         end do
       end do
     end do
@@ -590,7 +630,8 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
       write(sfile,'(a, i1)') '.', is
       WF_COEFFS_filename = trim(slabel)//'.WF_COEFFS_BLOMM'//trim(sfile)
       if(nspin == 1) then
-        WF_COEFFS_filename = trim(slabel)//'.WF_COEFFS_BLOMM' ! Writing to the file *.WF_COEFFS_BLOMM
+        ! Writing to the file *.WF_COEFFS_BLOMM
+        WF_COEFFS_filename = trim(slabel)//'.WF_COEFFS_BLOMM' 
       end if
       call m_write(C_min(is),WF_COEFFS_filename,use_dbcsrlib=WriteUseLib,nze=nze)
     end do
@@ -618,45 +659,51 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     integer, intent(inout) :: BlockSize_c  ! Block size for wavefunctions (rows of C_min)
     integer, intent(in) :: BlockSize_h     ! Blocks size for atomic orbitals (columns of C_min)
     logical, intent(in) :: use_kim         ! Is the Kim method used?
-    logical, intent(in) :: set_rand        ! Are nonempty matrix elements filled in with random numbers?
-    integer, intent(out) :: wf_dim         ! Number of wavefunctions considered (global number of rows in C_min)
+    logical, intent(in) :: set_rand        ! Are nonempty matrix elements filled in 
+                                           ! with random numbers?
+    integer, intent(out) :: wf_dim         ! Number of wavefunctions considered 
+                                           ! (global number of rows in C_min)
     character(5), intent(in) :: m_storage  ! MS format used for the coefficient matrix
-
     type(matrix) :: C_csr                  ! Coefficient matrix in the csr format
 
     integer :: i, j, k, io, jo
-    integer :: nna                         ! Number of neighbours found through neighbour search with mneighb
+    integer :: nna                         ! Number of neighbours found through 
+                                           ! neighbour search with mneighb
     integer :: seed                        ! Seed for generator of random numbers
     integer :: iorb                        ! Atomic orbital index for the atom considered
     integer :: norb                        ! Number of orbitals for the atom considered
     integer :: ja                          ! Neighbour index
-    integer ::  index                      ! Neighbour index in the revised list of neighbours excluding
-                                           ! repeating atoms
-    integer :: indexi                      ! Number of wavefunctions centered on the atom considered
+    integer ::  index                      ! Neighbour index in the revised list of neighbours 
+                                           ! excluding repeating atoms
+    integer :: indexi                      ! Number of wavefunctions centered 
+                                           ! on the atom considered
     integer :: nelectr                     ! Atomic charge
     integer :: iwf, iwf1, iwf2             ! Wavefunction indices
     integer :: ia                          ! Atom considered
-    integer :: nblks                       ! Number of blocks of rows in the coefficient matrix in the csr format
+    integer :: nblks                       ! Number of blocks of rows in the coefficient matrix 
+                                           ! in the csr format
     integer :: iblks                       ! Row index of the block in the coefficient matrix
     integer :: nrows                       ! Number of local rows in the coefficient matrix
-    integer :: nze_c                       ! Number of nonempty elements in the local rows of the coefficient matrix
-    integer :: dn                          ! Step at which the size of the array of column indices of nonempty
-                                           ! elements of the coefficient matrix in the csr format, id_col_tmp,
+    integer :: nze_c                       ! Number of nonempty elements in the local rows of 
+                                           ! the coefficient matrix
+    integer :: dn                          ! Step at which the size of the array of column 
+                                           ! indices of nonempty elements of the coefficient 
+                                           ! matrix in the csr format, id_col_tmp,
                                            ! is increased if needed
     integer :: ncol                        ! Number of defined elements in the array id_col_tmp
     integer :: nmax                        ! Size of the array of column indices of nonempty
-                                           ! elements of the coefficient matrix in the csr format, id_col_tmp
-
-    integer, allocatable :: id_col_tmp(:)  ! Array of column indices of nonempty elements of the coefficient
-                                           ! matrix in the csr format
-    integer, allocatable :: id_col(:)      ! Final array of column indices of nonempty elements of the coefficient
-                                           ! matrix in the csr format
-    integer, allocatable :: id_row(:)      ! Array with indices of start of rows for the coefficient matrix in the
-                                           ! csr format
-    integer, allocatable :: nze_row(:)     ! Number of nonempty elements in each row of the coefficient matrix in
-                                           ! the csr format
-    integer, allocatable :: neib(:)        ! Corrected list of neighbour of the atom considered excluding repeating
-                                           ! neighbours
+                                           ! elements of the coefficient matrix 
+                                           ! in the csr format, id_col_tmp
+    integer, allocatable :: id_col_tmp(:)  ! Array of column indices of nonempty elements of  
+                                           ! the coefficient matrix in the csr format
+    integer, allocatable :: id_col(:)      ! Final array of column indices of nonempty elements 
+                                           ! of the coefficient matrix in the csr format
+    integer, allocatable :: id_row(:)      ! Array with indices of start of rows for the 
+                                           ! coefficient matrix in the csr format
+    integer, allocatable :: nze_row(:)     ! Number of nonempty elements in each row of 
+                                           ! the coefficient matrix in the csr format
+    integer, allocatable :: neib(:)        ! Corrected list of neighbour of the atom considered 
+                                           ! excluding repeating neighbours
     integer, allocatable :: iatom(:)       ! Array of atoms to which wavefunctions belong to
 
     real(dp) :: rn(2)                      ! Random numbers
@@ -664,11 +711,10 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
     real(dp) :: rmax                       ! Maximal dimension of the simulation cell
     real(dp) :: rr(3), rrmod               ! Variables used to compute simulation cell dimensions
     real(dp) :: cgval                      ! Random value used for coefficient matrix element
-
     real(dp), allocatable :: c_loc(:)      ! Local nonempty coefficient matrix elements
     real(dp), allocatable :: fact(:)       ! Occupation of states
-
-    logical :: found                       ! Has the neighbour been already included in the neighbour list
+    logical :: found                       ! Has the neighbour been already included 
+                                           ! in the neighbour list
     logical :: include_all                 ! Are all atoms included in the neighbour list?
     logical :: set_neib                    ! Is it needed to make a new neighbour list?
 
@@ -711,9 +757,12 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
 
     ! Setting the block size for wavefunctions (rows of the coefficient matrix) if not defined
     if(BlockSize_c .le. 0) then
-      BlockSize_c = wf_dim * BlockSize_h  ! By default, it equals to the block size for basis functions
-      BlockSize_c = BlockSize_c/h_dim     ! (columns of the coefficient matrix) multiplied by the ratio
-      if(BlockSize_c==0) BlockSize_c=1    ! of the total numbers of wavefunctions and basis functions
+      ! By default, it equals to the block size for basis functions (columns of the 
+      ! coefficient matrix) multiplied by the ratio of the total numbers of wavefunctions 
+      ! and basis functions
+      BlockSize_c = wf_dim * BlockSize_h
+      BlockSize_c = BlockSize_c/h_dim
+      if(BlockSize_c == 0) BlockSize_c=1
     end if
 
     ! Setting the occupations and assigning atom to each wavefunction
@@ -730,9 +779,9 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
       end do
       if(use_kim) then  !! Revise for nspin=2
         if(2*(nelectr/2) .eq. nelectr) then
-           fact(iwf) = sqrt(1.d-6)  ! If the Kim method is used, there is an additional wavefunction
-         else                       ! on each atom and this state is not occupied or partially occupied
-           fact(iwf) = sqrt(0.5)
+           fact(iwf) = sqrt(1.d-6)  ! If the Kim method is used, there is an additional 
+         else                       ! wavefunction on each atom and this state is not occupied 
+           fact(iwf) = sqrt(0.5)    ! or partially occupied
          end if 
       end if
     end do
@@ -785,7 +834,7 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
           ! needed to find its neighbours
           if(set_neib) then
             if(allocated(neib)) deallocate(neib) ! Deallocating the old list of neighbours
-            call mneighb(ucell,rcoor,na_u,xa,iatom(iwf),0,nna) ! Looking for neighbours
+            call mneighb(ucell, rcoor, na_u, xa, iatom(iwf), 0, nna) ! Looking for neighbours
             allocate(neib(1:nna)) ! Allocating the new list of neighbours
             neib(:) = 0
             index = 0
@@ -805,13 +854,16 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
 
           io = io + 1
           id_row(io) = jo
-          ! Matrix elements that correspond to atomic orbitals centered on neighbours are set nonempty
+          ! Matrix elements that correspond to atomic orbitals centered on neighbours 
+          ! are set nonempty
           do j = 1, nna
             ja = neib(j) ! One of the neighbours
-            norb = lasto(ja) - lasto(ja-1) ! The number of atomic orbitals corresponding to this atom
+            norb = lasto(ja) - lasto(ja-1) ! The number of atomic orbitals corresponding 
+                                           ! to atom j
             nze_c = nze_c + norb  ! The total number of nonempty matrix elements
-            nze_row(io) = nze_row(io) + norb ! The number of nonempty matrix elements in the row considered
-            ! Adjusting the size of the array with column indices of nonempty matrix elements if necessary
+            ! The number of nonempty matrix elements in the row considered
+            nze_row(io) = nze_row(io) + norb 
+            ! Adjusting the size of the array with column indices of nonempty matrix elements
             if(nze_c .gt. nmax) then
               if(ncol .gt. 0) then
                 allocate(id_col(1:ncol))
@@ -865,7 +917,8 @@ subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,n
             end do
             cgval = sign(0.5_dp * rn(1), rn(2) - 0.5_dp) ! The value from -0.5 to 0.5
           else
-            cgval = 0.0_dp ! If only sparsity is checked, the matrix elements are initialized by zeros
+            ! If only sparsity is checked, the matrix elements are initialized by zeros
+            cgval = 0.0_dp 
           end if
           ! The matrix element value with account of occupation and normalization coefficients
           c_loc(jo) = cgval * coef * fact(iwf)
