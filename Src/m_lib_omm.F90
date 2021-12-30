@@ -42,8 +42,8 @@ contains
 ! the DBCSR library for sparse matrices and ScaLAPACK for dense ones.
 !===============================================================================!
 
-subroutine omm_min_block(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,numh,listhptr,listh,d_sparse,&
-    eta0,qs,h_sparse,s_sparse,t_sparse)
+subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h_dim, &
+  nhmax, numh, listhptr, listh, d_sparse, eta0, qs, h_sparse, s_sparse, t_sparse)
 
   use siesta_options, only : rcoor
   
