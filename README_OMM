@@ -45,15 +45,15 @@ OMM.RcLWF 9.5 Bohr (length)
 OMM.RcLWFInit 0.0 Bohr (length)
   Initial localization radius for LWFs. Is the same as OMM.RcLWF if set to 0 or negative.
 
-OMM.WriteUseLib false (logical)
-  If true, the DBCSR library is used for writing the restart files for LWFs in parallel. Otherwise
-  the output is performed by the head node only. Note that the restart files should be read in
-  the same way as written before.
+OMM.WriteUseLib false (logical, experimental)
+  If true, the DBCSR library is used for writing the restart files for LWFs in parallel. 
+  Otherwise the output is performed by the head node only. Note that 
+  the restart files should be read in the same way as written before.
 
-OMM.ReadUseLib false (logical)
-  If true, the DBCSR library is used for reading the restart files for LWFs in parallel. Otherwise
-  the files are accessed by the head node only. Note that the restart files should be read in
-  the same way as written before.
+OMM.ReadUseLib false (logical, experimental)
+  If true, the DBCSR library is used for reading the restart files for LWFs in parallel. 
+  Otherwise the files are accessed by the head node only. Note that the 
+  restart files should be read in the same way as written before.
 
 OMM.BlockSizeC (BlockSize * N_wf)/N_bf (integer)
   The blocksize for LWFs. The default value corresponds to BlockSize multiplied
@@ -62,13 +62,13 @@ OMM.BlockSizeC (BlockSize * N_wf)/N_bf (integer)
 OMM.Extrapolate false (logical)
   Specifies whether to estimate LWFs for the next MD step by linear extrapolation based on the
   results of two previous MD steps. If false, the same LWFs as obtained at the previous step are
-  used for the initial guess. In the case of SolutionMethod BLOMM, the change in the sparsity
+  used for the initial guess. When using sparse matrices, the change in the sparsity
   pattern is taken into account and corresponding LWF coefficients are set to zero.
 
 OMM.UseCholesky false (logical)
   Specifies whether to perform Cholesky factorization of the generalized eigenvalue problem. 
   This removes the overlap matrix from the problem but also destroys the sparsity of the Hamiltonian.
-  Only applicable for OMM.UseSparse false in the case when OMM.Eta is set to 0.
+  Only applicable for OMM.UseSparse false in the case when OMM.UseKimFunctional false.
 
 OMM.Precon -1 (integer)
   The number of SCF steps for all MD steps for which to apply a preconditioning scheme based on
