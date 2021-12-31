@@ -83,14 +83,16 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
   type(matrix) :: csr_mat              ! csr matrix h_dim x h_dim in MatrixSwitch (MS) format
                                        ! with nbasis local rows and block size BlockSize
   type(matrix), allocatable, save :: H(:)     ! Hamiltonian matrix in MS format
-  type(matrix), allocatable, save :: C_min(:) ! Coefficient matrix (localized wavefunctions 
-                                       ! expanded in basis functions) in MS format
+  type(matrix), allocatable, save :: C_min(:) ! Hermitian conjugate of the coefficient matrix 
+                                       ! (localized wavefunctions expanded in basis functions) 
+                                       ! in MS format
   type(matrix), save :: S              ! Overlap matrix in MS format
   type(matrix), allocatable, save :: D_min(:) ! (Energy-)density matrix in MS format
   type(matrix), save :: T              ! Kinetic energy matrix in MS format
-  type(matrix), allocatable, save :: C_old(:) ! Coefficient matrix from the previous MD step 
-                                              ! in MS format
-  type(matrix), allocatable, save :: C_old2(:)! Coefficient matrix from the last but one MD step
+  type(matrix), allocatable, save :: C_old(:) ! Hermitian conjugate of the coefficient matrix 
+                                              ! from the previous MD step in MS format
+  type(matrix), allocatable, save :: C_old2(:)! Hermitian conjugate of the coefficient matrix 
+                                              ! from the last but one MD step
   type(matrix), save :: brd_mat        ! Matrix h_dim x h_dim in MS format distributed on 
                                        ! a 1D MPI grid with nbasis local rows and block size 
                                        ! BlockSize
@@ -102,11 +104,11 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
                                        ! 1 for Cholesky factorization, 
                                        ! 3 for preconditioning (see libOMM)
   integer :: is                        ! Spin component
-  integer :: nze                       ! Estimated number of nonzero elements in the coefficient
-                                       ! matrix C_min when distributed on the 1D MPI grid
+  integer :: nze                       ! Estimated number of nonzero elements in the Hermitian 
+                                       ! conjugate of the coefficient matrix, C_min, when 
+                                       ! distributed on the 1D MPI grid
   integer, save :: istp_prev           ! MD step at the previous call
-  integer, save :: BlockSize_c         ! Block size for wavefunctions (rows of coefficient 
-                                       ! matrix C_min)
+  integer, save :: BlockSize_c         ! Block size for wavefunctions (rows of C_min)
   integer, save :: N_occ               ! Number of occupied states
   integer, save :: wf_dim              ! Number of wavefunctions considered
   integer, save :: precon_st           ! Number of SCF steps at which preconditioning is applied
@@ -151,7 +153,7 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
   logical, save :: long_out            ! Print detailed information on CG iterations 
                                        ! to libOMM.log?
   logical, save :: Use2D               ! Use a 2D MPI grid for distribution of matrix blocks?
-  logical, save :: C_extrapol          ! Extrapolate coefficient matrix C_min linearly 
+  logical, save :: C_extrapol          ! Extrapolate coefficient matrix linearly 
                                        ! based on the results of the two previous MD steps?
   logical :: dealloc                   ! Deallocate matrices at each SCF step?
   logical, save :: first_call=.true.   ! Is this the first call to this subroutine?
@@ -184,7 +186,8 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
     endif
     ! Setting input parameters
     BlockSize_c = fdf_integer('OMM.BlockSizeC', 0)        ! Block size for wavefunctions
-                                                          ! (rows of coefficient matrix C_min)
+                                                          ! (rows of the Hermitian conjugate
+                                                          ! of the coefficient matrix, C_min)
     sparse = fdf_boolean('OMM.UseSparse', .true.)         ! Use sparse matrices?
     use_kim = fdf_boolean('OMM.UseKimFunctional', .true.) ! Use Kim (or Ordejon-Mauri)
                                                           ! functional?
@@ -194,7 +197,7 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
       if(ionode) print'(a)','Using the Ordejon-Mauri functional'
     end if
     Use2D = fdf_boolean('OMM.Use2D', .true.)              ! Distribute matrices on a 2D MPI grid?
-    C_extrapol = fdf_boolean('OMM.Extrapolate', .false.)  ! Extrapolate the coefficient C_min 
+    C_extrapol = fdf_boolean('OMM.Extrapolate', .false.)  ! Extrapolate the C_min 
                                                           ! based on the results of two previous 
                                                           ! MD steps?
     long_out = fdf_boolean('OMM.LongOutput', .true.)      ! Print detailed information on CG 
@@ -371,9 +374,9 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
       call init_c_matrix(C_min(1), wf_dim, h_dim, BlockSize_c, BlockSize, use_kim, &
         .true., m_storage)
     end if
-
-    nze = (nhmax * wf_dim)/h_dim ! Estimated number of nonzero elements in local rows 
-                                 ! of the coefficient matrix distributed on a 1D MPI grid
+    ! Estimated number of nonzero elements in local rows of the Hermitian conjugate of 
+    ! the coefficient matrix distributed on a 1D MPI grid
+    nze = (nhmax * wf_dim)/h_dim 
 
     do is = 1, nspin
       file_exist(is) = .false.
@@ -405,7 +408,7 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
       call timer('ReadCoeffs', 2)
     end if
 
-    ! Printing the occupation of the coefficient matrix C_min
+    ! Printing the occupation of the Hermitian conjugate of the coefficient matrix
     if(sparse) then
       call m_occupation(C_min(1), c_occ)
       if(ionode) print'(a,f10.8)','C occupation (1)= ', c_occ
@@ -621,7 +624,8 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
     call timer('d_charge', 2)
   end if
 
-  ! Writing wavefunctions (coefficient matrix C_min) to the restart file
+  ! Writing wavefunctions (Hermitian conjugate of the coefficient matrix, C_min) 
+  ! to the restart file
   if(WriteCoeffs) then
     call timer('WriteCoeffs', 1)
     nze = (nhmax * wf_dim)/h_dim ! Estimated number of nonzero elements in the local rows
@@ -644,8 +648,8 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
   contains
 
 !===============================================================================!
-! Analysis of sparsity of the coefficient matrix and initialization by random
-! numbers.
+! Analysis of sparsity of the Hermitian conjugate of the coefficient matrix and 
+! initialization by random numbers.
 !===============================================================================!
   subroutine init_c_matrix(C_min, wf_dim, h_dim, BlockSize_c, BlockSize_h, &
     use_kim, set_rand, m_storage)
@@ -654,7 +658,8 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
     use siesta_geom,    only : na_u, xa, ucell
     use alloc,          only : re_alloc
   
-    type(matrix), intent(inout) :: C_min   ! Coefficient matrix initialized
+    type(matrix), intent(inout) :: C_min   ! Hermitian conjugate of the initialized 
+                                           ! coefficient matrix
     integer, intent(in) :: h_dim           ! Size of the basis of localized atomic orbitals
     integer, intent(inout) :: BlockSize_c  ! Block size for wavefunctions (rows of C_min)
     integer, intent(in) :: BlockSize_h     ! Blocks size for atomic orbitals (columns of C_min)
@@ -664,7 +669,8 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
     integer, intent(out) :: wf_dim         ! Number of wavefunctions considered 
                                            ! (global number of rows in C_min)
     character(5), intent(in) :: m_storage  ! MS format used for the coefficient matrix
-    type(matrix) :: C_csr                  ! Coefficient matrix in the csr format
+    type(matrix) :: C_csr                  ! Hermitian conjugate of the coefficient matrix 
+                                           ! in the csr format
 
     integer :: i, j, k, io, jo
     integer :: nna                         ! Number of neighbours found through 
@@ -680,28 +686,34 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
     integer :: nelectr                     ! Atomic charge
     integer :: iwf, iwf1, iwf2             ! Wavefunction indices
     integer :: ia                          ! Atom considered
-    integer :: nblks                       ! Number of blocks of rows in the coefficient matrix 
-                                           ! in the csr format
-    integer :: iblks                       ! Row index of the block in the coefficient matrix
-    integer :: nrows                       ! Number of local rows in the coefficient matrix
-    integer :: nze_c                       ! Number of nonempty elements in the local rows of 
+    integer :: nblks                       ! Number of blocks of rows in the Hermitian conjugate 
+                                           ! of the coefficient matrix in the csr format
+    integer :: iblks                       ! Row index of the block in the Hermitian conjugate of 
                                            ! the coefficient matrix
+    integer :: nrows                       ! Number of local rows in the Hermitian conjugate of 
+                                           ! the coefficient matrix
+    integer :: nze_c                       ! Number of nonempty elements in the local rows of 
+                                           ! the Hermitian conjugate of the coefficient matrix
     integer :: dn                          ! Step at which the size of the array of column 
-                                           ! indices of nonempty elements of the coefficient 
-                                           ! matrix in the csr format, id_col_tmp,
-                                           ! is increased if needed
+                                           ! indices of nonempty elements of the Hermitian
+                                           ! conjugate of the coefficient matrix in the csr format, 
+                                           ! id_col_tmp, is increased if needed
     integer :: ncol                        ! Number of defined elements in the array id_col_tmp
     integer :: nmax                        ! Size of the array of column indices of nonempty
-                                           ! elements of the coefficient matrix 
-                                           ! in the csr format, id_col_tmp
+                                           ! elements of the Hermitian conjugate of the coefficient 
+                                           ! matrix in the csr format, id_col_tmp
     integer, allocatable :: id_col_tmp(:)  ! Array of column indices of nonempty elements of  
-                                           ! the coefficient matrix in the csr format
+                                           ! the Hermitian conjugate of the coefficient matrix 
+                                           ! in the csr format
     integer, allocatable :: id_col(:)      ! Final array of column indices of nonempty elements 
-                                           ! of the coefficient matrix in the csr format
+                                           ! of the Hermitian conjugate of the coefficient matrix
+                                           ! in the csr format
     integer, allocatable :: id_row(:)      ! Array with indices of start of rows for the 
-                                           ! coefficient matrix in the csr format
+                                           ! Hermitian conjugate of the coefficient matrix 
+                                           ! in the csr format
     integer, allocatable :: nze_row(:)     ! Number of nonempty elements in each row of 
-                                           ! the coefficient matrix in the csr format
+                                           ! the Hermitian conjugate of the coefficient matrix 
+                                           ! in the csr format
     integer, allocatable :: neib(:)        ! Corrected list of neighbour of the atom considered 
                                            ! excluding repeating neighbours
     integer, allocatable :: iatom(:)       ! Array of atoms to which wavefunctions belong to
@@ -710,8 +722,10 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
     real(dp) :: coef                       ! Coefficient for initialization of matrix values
     real(dp) :: rmax                       ! Maximal dimension of the simulation cell
     real(dp) :: rr(3), rrmod               ! Variables used to compute simulation cell dimensions
-    real(dp) :: cgval                      ! Random value used for coefficient matrix element
-    real(dp), allocatable :: c_loc(:)      ! Local nonempty coefficient matrix elements
+    real(dp) :: cgval                      ! Random value used for elements of the Hermitian 
+                                           ! conjugate of the coefficient matrix 
+    real(dp), allocatable :: c_loc(:)      ! Local nonempty elements of the Hermitian 
+                                           ! conjugate of the coefficient matrix
     real(dp), allocatable :: fact(:)       ! Occupation of states
     logical :: found                       ! Has the neighbour been already included 
                                            ! in the neighbour list
@@ -736,18 +750,21 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
     if(ionode) print'(a, f13.7)',    'rcoor = ', rcoor
 
     ! If the simulation cell is larger than the cutoff radius, all atoms are neighbours
-    ! and all matrix elements of the coefficient matrix are treated as nonempty
+    ! and all matrix elements of the Hermitian conjugate of the coefficient matrix are 
+    ! treated as nonempty
     include_all = .true.
     if(2.0 * rcoor .lt. rmax) include_all = .false.
     ! If the simulation cell is smaller than the cutoff radius, the subroutine for
     ! neighbour search is initialized
     if(.not. include_all) call mneighb(ucell, rcoor, na_u, xa, 0, 0, nna)
    
-    ! Coefficient for normalization of the coefficient matrix in order to avoid instabilities
+    ! Coefficient for normalization of the Hermitian conjugate of the coefficient matrix 
+    ! in order to avoid instabilities
     coef = 1.0d-2/sqrt(real(h_dim, dp))
 
     ! Assigning wavefunctions to atoms depending on their atomic charge.
-    ! Computing the total number of wavefunctions (the number of rows of the coefficient matrix)
+    ! Computing the total number of wavefunctions (the number of rows of the Hermitian 
+    ! conjugate of the coefficient matrix)
     wf_dim = 0
     do ia = 1, na_u
       ! Getting the number of wavefunctions, indexi, on atom ia
@@ -755,11 +772,12 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
       wf_dim = wf_dim + indexi ! Total number of wavefunctions
     end do
 
-    ! Setting the block size for wavefunctions (rows of the coefficient matrix) if not defined
+    ! Setting the block size for wavefunctions (rows of the Hermitian 
+    ! conjugate of the coefficient matrix) if not defined
     if(BlockSize_c .le. 0) then
       ! By default, it equals to the block size for basis functions (columns of the 
-      ! coefficient matrix) multiplied by the ratio of the total numbers of wavefunctions 
-      ! and basis functions
+      ! Hermitian conjugate of the coefficient matrix) multiplied by the ratio of 
+      ! the total numbers of wavefunctions and basis functions
       BlockSize_c = wf_dim * BlockSize_h
       BlockSize_c = BlockSize_c/h_dim
       if(BlockSize_c == 0) BlockSize_c=1
@@ -792,8 +810,8 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
     jo = 0
     nze_c = 0
 
-    ! Computing the number of local rows for the coefficient matrix in the csr format
-    ! and the number of blocks for rows
+    ! Computing the number of local rows for the Hermitian conjugate of the coefficient matrix 
+    ! in the csr format and the number of blocks for rows
     nblks = wf_dim/(Nodes * BlockSize_c) ! Number of blocks for rows
     iwf1 = nblks * BlockSize_c * Nodes + BlockSize_c * Node + 1
     if(iwf1 .gt. wf_dim) then
@@ -806,7 +824,8 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
     end if
 
     ! Step at which the size of the array of column indices of nonempty elements of
-    ! the coefficient matrix in the csr format, id_col_tmp, is increased if needed
+    ! the Hermitian conjugate of the coefficient matrix in the csr format, id_col_tmp, 
+    ! is increased if needed
     dn = 10 * (h_dim/wf_dim) * nrows
     if(dn .lt. 100) dn = 100
     ncol = 0
@@ -897,10 +916,10 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
       end do
       nze_c = h_dim * nrows ! Total number of nonempty matrix elements
     end if      
-
-    allocate(c_loc(1:nze_c))  ! Local nonempty elements of the coefficient matrix
-    allocate(id_col(1:nze_c)) ! Final array of column indices of local nonempty
-                              ! elements of correct size
+    ! Local nonempty elements of the Hermitian conjugate of the coefficient matrix
+    allocate(c_loc(1:nze_c))
+    ! Final array of column indices of local nonempty elements of correct size
+    allocate(id_col(1:nze_c)) 
     jo = 0
     io = 0
     do iblks = 0, nblks ! For each block of rows
@@ -936,18 +955,18 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
       if(allocated(id_col_tmp)) deallocate(id_col_tmp)
     end if
 
-    ! Passing pointers to the arrays of the coefficient matrix in the csr format to MS
-    ! Ordering the indices in such a way that the column indices are in the growing order
-    ! for each row
+    ! Passing pointers to the arrays of the Hermitian conjugate of the coefficient matrix 
+    ! in the csr format to MS ordering the indices in such a way that the column indices 
+    ! are in the growing order for each row
     call m_register_csr(C_csr, wf_dim, h_dim, nrows, id_row, id_col, &
       nze_row, c_loc, order=.true., blk_size=BlockSize_c)
 
-    ! Allocating the coefficient matrix in the MS format
+    ! Allocating the Hermitian conjugate of the coefficient matrix in the MS format
     if (.not. C_min%is_initialized) call m_allocate(C_min, wf_dim, h_dim,&
       label=m_storage, blocksize1=BlockSize_c, blocksize2=BlockSize)
 
     if(ionode) print'(a)','C_min CSR matrix created'
-    ! Converting the coefficient matrix from the csr format to MS
+    ! Converting the Hermitian conjugate of the coefficient matrix from the csr to MS format
     call m_copy(C_min, C_csr)
     if(ionode) print'(a)','C_min CSR matrix converted to DBCSR'
     ! Removing the pointers to the arrays of the csr matrix
