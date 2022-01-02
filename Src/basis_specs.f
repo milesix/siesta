@@ -342,12 +342,14 @@ C Sanity checks on values
 
       enddo
 
-      
-      if (synthetic_atoms) then
+      ! Allow manual specification of valence configuration,
+      ! even for non-synthetic atoms, with the same block
 
-        found = fdf_block('SyntheticAtoms',bfdf)
-        if (.not. found )
-     .    call die("Block SyntheticAtoms does not exist.")
+      found = fdf_block('SyntheticAtoms',bfdf)
+      if (.not. found) then
+         if (synthetic_atoms)
+     .          call die("Block SyntheticAtoms does not exist.")
+      else
         ns_read = 0
         do while(fdf_bline(bfdf, pline))
 
@@ -363,13 +365,14 @@ C Sanity checks on values
           nns = fdf_bnintegers(pline)
           if (nns .lt. 4)
      .      call die("Please give all valence n's " //
+     .               "(up to l=3) " //
      .               "in SyntheticAtoms block")
           gs%n = 0
           do i = 1, nns
             gs%n(i-1) = fdf_bintegers(pline,i)
           enddo
           if (.not. fdf_bline(bfdf, pline))
-     .      call die("No occupation info")
+     .      call die("No occupation info in Synthetic block")
           noccs = fdf_bnvalues(pline)
           if (noccs .lt. nns) call die("Need more occupations")
           gs%occupation(:) = 0.0_dp
@@ -397,7 +400,6 @@ C Sanity checks on values
 
         enddo
         write(6,"(a,i2)") "Number of synthetic species: ", ns_read
-
       endif
 !
 !  Defer this here in case there are synthetic atoms
