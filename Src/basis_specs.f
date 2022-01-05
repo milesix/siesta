@@ -712,7 +712,7 @@ C Sanity checks on values
 
       subroutine repaobasis()
       
-      use m_semicore_info_froyen, only: get_n_semicore_shells
+      use m_ncps, only: get_n_semicore_shells
 
       integer isp, ish, nn, i, ind, l, indexp, index_splnorm
       integer nrcs_zetas
@@ -745,7 +745,9 @@ C Sanity checks on values
      $             basp%bessel)) then
           ! To report on pseudized shells and, in the future,
           ! check on the specified structure of the block
-          call get_n_semicore_shells(basp%pseudopotential,nsemic_shells)
+          call get_n_semicore_shells(basp%pseudopotential,
+     $                               basp%ground_state%n(0:3),
+     $                               nsemic_shells)
         endif
         
         !! Check whether there are optional type and ionic charge
@@ -1488,7 +1490,7 @@ c (according to atmass subroutine).
 !----------------------------------------------------------------------
       subroutine autobasis()
 
-      use m_semicore_info_froyen, only: get_n_semicore_shells
+      use m_ncps, only: get_n_semicore_shells
 !
 !     It sets the defaults if a species has not been included
 !     in the PAO.Basis block
@@ -1532,6 +1534,7 @@ c (according to atmass subroutine).
          else
 
             call get_n_semicore_shells(basp%pseudopotential,
+     $                                 basp%ground_state%n(0:3),
      $                                 nsemic_shells)
          endif
          

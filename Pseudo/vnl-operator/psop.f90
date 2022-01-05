@@ -30,13 +30,14 @@ program psop
 
       use m_ncps, only: pseudopotential_t => froyen_ps_t, pseudo_read
       use m_ncps, only: ncps_psml2froyen
+      use m_ncps, only: get_n_semicore_shells
       use m_psml, psml_t => ps_t
       use m_uuid
 
       use m_psop, only: kbgen, compute_vlocal_chlocal
       use m_psop, only: nrmax, nkbmx
 
-      use m_semicore_info_froyen, only: get_n_semicore_shells
+      use periodic_table, only: cnfig
       use m_libxc_sxc_translation, only: xc_id_t, get_xc_id_from_atom_id
       use GridXC, only: atomxc => gridxc_atomxc
       use GridXC, only: setXC => gridxc_setXC
@@ -98,7 +99,10 @@ program psop
       type(ps_annotation_t)   :: ann, vlocal_ann
 
       integer  :: max_l_ps
-      integer  :: nsemic(0:3)
+      integer  :: nvals_gs(0:4), nsemic(0:3)
+      real(dp) :: znuc
+      logical  :: valence_conf_from_user
+      character(len=4)  :: valence_conf_str
 !
 !     VARIABLES RELATED WITH THE RADIAL LOGARITHMIC GRID 
 !
@@ -240,7 +244,7 @@ program psop
       character(len=36)  :: uuid
       character(len=200) :: opt_arg, mflnm, ref_line
       character(len=10)  :: opt_name 
-      integer :: nargs, iostat, n_opts, nlabels, iorb, ikb, i
+      integer :: nargs, iostat, n_opts, nlabels, iorb, ikb, i, j
 
       real(dp) :: rlmax
       character(len=10)     :: datestr
@@ -279,12 +283,13 @@ program psop
       rmax_ps_check = 0.0_dp
 
       proj_file_exists = .false.
+      valence_conf_from_user = .false.
       output_filename = "PSOP_PSML"
 
       lj_projs = .false.
 
       do
-         call getopts('hdrgpKF:R:C:3fcvo:',opt_name,opt_arg,n_opts,iostat)
+         call getopts('hdrgpKF:R:C:3fcn:vo:',opt_name,opt_arg,n_opts,iostat)
          if (iostat /= 0) exit
          select case(opt_name)
            case ('d')
@@ -300,6 +305,9 @@ program psop
            case ('F')
               proj_file_exists = .true.
               read(opt_arg,*) proj_filename
+           case ('n')
+              valence_conf_from_user = .true.
+              read(opt_arg,*) valence_conf_str
            case ('R')
               read(opt_arg,*) kb_rmax
            case ('C')
@@ -353,6 +361,7 @@ program psop
 
       call ps_RootAttributes_Get(psml_handle,version=file_version,uuid=uuid)
       call ps_Provenance_Get(psml_handle,level=1,creator=creator)
+      call ps_PseudoAtomSpec_Get(psml_handle,atomic_number=znuc)
       write(6,"(a)") "Processing a PSML-" // trim(file_version) // " file"
       write(6,"(a)") "Last processed by: " // trim(creator)
 
@@ -402,7 +411,21 @@ program psop
 !     Define the reference energies (in Ry) for the calculation of the KB proj.
       allocate( erefkb(nkbmx,0:lmxkb) )
       allocate( shifted_erefkb(nkbmx,0:lmxkb) )
-      call get_n_semicore_shells(psr,nsemic)
+
+      ! Which states are considered as 'canonical valence' in
+      ! the atom affect the tagging of certain shells as semicore
+      if (valence_conf_from_user) then
+         do i=0,3
+            j = i + 1
+            read(valence_conf_str(j:j),"(i1)") nvals_gs(i)
+         enddo
+      else
+         call cnfig(nint(znuc),nvals_gs)
+      endif
+      print "(a,2x,4i1)", "Valence n quantum numbers (l=0:3): ", nvals_gs
+
+      call get_n_semicore_shells(psr,nvals_gs(0:3),nsemic)
+
       nkbl(:) = 1
       erefkb(:,:) = huge(1.0_dp)   ! defaults 'a la Siesta'
       shifted_erefkb(:,:) = .false.
@@ -1028,6 +1051,8 @@ subroutine manual()
   write(0,*) " -3  fit Vlocal with continuous 3rd derivative"
   write(0,*) " -f  force 'gaussian charge' method for Vlocal"
   write(0,*) " -c  force the use of 'charge cutoff' for chlocal"
+  write(0,*) " -n 4434 (example)"
+  write(0,*) "    specify n quantum numbers (l 0:3) for valence states"
   write(0,*) " -o OUTPUT_FILENAME (default PSOP_PSML)"
 
 end subroutine manual

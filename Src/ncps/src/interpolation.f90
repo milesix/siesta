@@ -135,7 +135,7 @@
 !      end subroutine die
 !     end interface
 
-MODULE interpolation
+MODULE ncps_interpolation
 
   implicit none
 
@@ -657,5 +657,5 @@ endif
 dat%n = 0
 end subroutine clean_spline
 
-END MODULE interpolation
+END MODULE ncps_interpolation
 
