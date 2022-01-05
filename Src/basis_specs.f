@@ -342,12 +342,14 @@ C Sanity checks on values
 
       enddo
 
-      
-      if (synthetic_atoms) then
+      ! Allow manual specification of valence configuration,
+      ! even for non-synthetic atoms, with the same block
 
-        found = fdf_block('SyntheticAtoms',bfdf)
-        if (.not. found )
-     .    call die("Block SyntheticAtoms does not exist.")
+      found = fdf_block('SyntheticAtoms',bfdf)
+      if (.not. found) then
+         if (synthetic_atoms)
+     .          call die("Block SyntheticAtoms does not exist.")
+      else
         ns_read = 0
         do while(fdf_bline(bfdf, pline))
 
@@ -363,13 +365,14 @@ C Sanity checks on values
           nns = fdf_bnintegers(pline)
           if (nns .lt. 4)
      .      call die("Please give all valence n's " //
+     .               "(up to l=3) " //
      .               "in SyntheticAtoms block")
           gs%n = 0
           do i = 1, nns
             gs%n(i-1) = fdf_bintegers(pline,i)
           enddo
           if (.not. fdf_bline(bfdf, pline))
-     .      call die("No occupation info")
+     .      call die("No occupation info in Synthetic block")
           noccs = fdf_bnvalues(pline)
           if (noccs .lt. nns) call die("Need more occupations")
           gs%occupation(:) = 0.0_dp
@@ -397,7 +400,6 @@ C Sanity checks on values
 
         enddo
         write(6,"(a,i2)") "Number of synthetic species: ", ns_read
-
       endif
 !
 !  Defer this here in case there are synthetic atoms
@@ -710,7 +712,7 @@ C Sanity checks on values
 
       subroutine repaobasis()
       
-      use m_semicore_info_froyen, only: get_n_semicore_shells
+      use m_ncps, only: get_n_semicore_shells
 
       integer isp, ish, nn, i, ind, l, indexp, index_splnorm
       integer nrcs_zetas
@@ -743,7 +745,9 @@ C Sanity checks on values
      $             basp%bessel)) then
           ! To report on pseudized shells and, in the future,
           ! check on the specified structure of the block
-          call get_n_semicore_shells(basp%pseudopotential,nsemic_shells)
+          call get_n_semicore_shells(basp%pseudopotential,
+     $                               basp%ground_state%n(0:3),
+     $                               nsemic_shells)
         endif
         
         !! Check whether there are optional type and ionic charge
@@ -1486,7 +1490,7 @@ c (according to atmass subroutine).
 !----------------------------------------------------------------------
       subroutine autobasis()
 
-      use m_semicore_info_froyen, only: get_n_semicore_shells
+      use m_ncps, only: get_n_semicore_shells
 !
 !     It sets the defaults if a species has not been included
 !     in the PAO.Basis block
@@ -1530,6 +1534,7 @@ c (according to atmass subroutine).
          else
 
             call get_n_semicore_shells(basp%pseudopotential,
+     $                                 basp%ground_state%n(0:3),
      $                                 nsemic_shells)
          endif
          

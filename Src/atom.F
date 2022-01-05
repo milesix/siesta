@@ -3864,7 +3864,7 @@ C
         logical :: new_split_code, fix_split_table, split_tail_norm
 
         parameter (dlt=0.60d0)
-
+        real(dp) :: user_set_rc
 C
 C Number of points used by polint for the interpolation
 C 
@@ -3931,29 +3931,41 @@ C
      .                        nrval,l,a,b,nnodes,nprin,
      .                        eigen(l),rphi(1,l,nsm))
 
-                if (eigen(l).gt.0.0d0) then 
-                  write(6,'(/A,I2,A)')
+                if (eigen(l).gt.0.0d0) then
+                   ! Orbital is unbound. Try to get an rc from
+                   ! the input file (even if there is no PAO.Basis block)
+                   user_set_rc =
+     $                  fdf_get("PAO.rc.unbound.state",0.0_dp,"Bohr")
+                   print *, "user_set_rc:", user_set_rc
+                   if (user_set_rc == 0.0_dp) then
+                      
+                      write(6,'(/A,I2,A)')
      .       'SPLIT: ERROR Orbital with angular momentum L=',l,
      .       ' not bound in the atom'
-                  write(6,'(A)')
+                      write(6,'(A)')
      .       'SPLIT: ERROR a cut off radius must be explicitly given' 
-                  call die
-                endif 
+                      call die()
+                   else
+                      ! Use this rc
+                      rco(1,l,nsm) = user_set_rc
+                   endif 
 
-                ! Determine the rc from the energy shift
-                if (abs(eshift).gt.1.0d-5) then
-                  el=eigen(l)+eshift
+                else   !(bound state)
+
+                  ! Determine the rc from the energy shift
+                  if (abs(eshift).gt.1.0d-5) then
+                     el=eigen(l)+eshift
                   ! The rco coming out of this is not pinned to a grid point
-                  call rc_vs_e(a,b,rofi,Vpot,ve,nrval,l,el,
+                     call rc_vs_e(a,b,rofi,Vpot,ve,nrval,l,el,
      .                         nnodes,rco(1,l,nsm))
-                else
+                  else
                    ! out near "infinity" (should be catched?)
-                   rco(1,l,nsm)=rofi(nrval-2)  
-                endif
-                write(6,'(/,A,/,A,f10.6,A)')
+                     rco(1,l,nsm)=rofi(nrval-2)  
+                  endif
+                  write(6,'(/,A,/,A,f10.6,A)')
      .            'SPLIT: PAO cut-off radius determined from an',
      .            'SPLIT: energy shift=',eshift,' Ry'
-
+                endif
               endif  
 
               ! Check lambda

@@ -1,4 +1,4 @@
-module m_semicore_info_froyen
+module m_ncps_utils
 
   implicit none
 
@@ -8,11 +8,13 @@ module m_semicore_info_froyen
 
 CONTAINS
 
-subroutine get_n_semicore_shells(p,nsemic)
-  use m_ncps, only: pseudopotential_t => froyen_ps_t
+subroutine get_n_semicore_shells(p,nval_gs,nsemic)
+  use m_ncps_froyen_ps_t,  only: froyen_ps_t
   
-    type(pseudopotential_t), intent(in) :: p
-    integer, intent(out)       :: nsemic(0:3)
+    type(froyen_ps_t), intent(in) :: p
+    !> valence configuration, ('n' for each l)
+    integer, intent(in)                 :: nval_gs(0:3)
+    integer, intent(out)                :: nsemic(0:3)
 
   ! Returns an array with the number of semicore shells
   ! on channel l (0..3)
@@ -25,8 +27,7 @@ subroutine get_n_semicore_shells(p,nsemic)
 
   character(len=1)     :: sym(0:4) = (/ 's','p','d','f','g' /)
 
-  integer   :: lmax, inp_lun, l, n, z, i
-  integer    :: nval_gs(0:3)
+  integer   :: lmax, inp_lun, l, n, i
 
   character(len=2), allocatable :: orb_arr(:)
   real(dp), allocatable         :: zdown_arr(:)
@@ -35,12 +36,6 @@ subroutine get_n_semicore_shells(p,nsemic)
   integer,  allocatable         :: gen_n(:)
 
   real(dp) :: chgvps
-
-  ! The information returned depends on the assumed ground-state
-  ! configuration, as given by cnfig here (maximum occupied 'n' for
-  ! each l)
-  z = atomic_number(p%name)
-  call cnfig(z,nval_gs)
 
   lmax = p%npotd-1
   allocate(orb_arr(0:lmax))
@@ -177,75 +172,5 @@ subroutine get_ps_conf(irel,lmax,text,chgvps, &
 
          end subroutine get_ps_conf
 
-!
-! This routine encodes some choices regarding the core-valence split,
-! which might not be universal.
-! 
-      SUBROUTINE CNFIG( Z, NVAL ) 
-! Returns the valence configuration for atomic ground state, i.e.
-! the principal quantum number NVAL of the valence orbilas for each L
-! Originally written by A.R.Williams. Modified by J.M.Soler
-
-      integer,intent(in) :: Z        ! Atomic number
-      integer,intent(out):: NVAL(0:3) ! Valence electrons for each L
-
-      integer, parameter :: LMAX=3, NCHNG=15
-      integer :: ICHNG, L, LCHNG(NCHNG), ZCHNG(NCHNG)
-
-      ! Originally: s valence orbital switched for p occupation = 4
-      !           Li, F,Na,Cl, K,Ga,Br,Rb,In, I,Cs,Hf,Tl,At,Fr
-!!     DATA ZCHNG / 3, 9,11,17,19,31,35,37,49,53,55,72,81,85,87/
-
-      ! Changed to: s valence orbital switched for full p occupation
-      !           Li,Na,Na, K, K,Ga,Rb,Rb,In,Cs,Cs,Hf,Tl,Fr,Fr
-      DATA ZCHNG / 3,11,11,19,19,31,37,37,49,55,55,72,81,87,87/
-      DATA LCHNG / 0, 0, 1, 0, 1, 2, 0, 1, 2, 0, 1, 3, 2, 0, 1/
-      DO L=0,LMAX
-         NVAL(L)=L+1
-      END DO
-      DO ICHNG=1,NCHNG
-         IF (ZCHNG(ICHNG).GT.Z) EXIT
-         L=LCHNG(ICHNG)
-         NVAL(L)=NVAL(L)+1
-      END DO
-
-      END subroutine cnfig
-
-!
-      FUNCTION atomic_number(SYMBOL) result(z)
-
-! Given the atomic symbol, it returns the atomic number
-! Based on code by J. Soler
-
-      character(len=2), intent(in)    :: SYMBOL  ! Atomic symbol
-      integer                         :: Z       ! Atomic number
-
-      character(len=2) :: norm_symbol
-      
-      integer, parameter  :: NZ=103
-      character(len=2), parameter :: NAME(NZ) =  &
-               (/'H ','He','Li','Be','B ','C ','N ','O ','F ','Ne', &
-                 'Na','Mg','Al','Si','P ','S ','Cl','Ar','K ','Ca', &
-                 'Sc','Ti','V ','Cr','Mn','Fe','Co','Ni','Cu','Zn', &
-                 'Ga','Ge','As','Se','Br','Kr','Rb','Sr','Y ','Zr', &
-                 'Nb','Mo','Tc','Ru','Rh','Pd','Ag','Cd','In','Sn', &
-                 'Sb','Te','I ','Xe','Cs','Ba','La','Ce','Pr','Nd', &
-                 'Pm','Sm','Eu','Gd','Tb','Dy','Ho','Er','Tm','Yb', &
-                 'Lu','Hf','Ta','W ','Re','Os','Ir','Pt','Au','Hg', &
-                 'Tl','Pb','Bi','Po','At','Rn','Fr','Ra','Ac','Th', &
-                 'Pa','U ','Np','Pu','Am','Cm','Bk','Cf','Es','Fm', &
-                 'Md','No','Lr'/)
-
-     ! Just in case somebody uses a right-justified symbol (e.g. " C")
-     norm_symbol = adjustl(symbol)
-     do z = 1, NZ
-        if (norm_symbol == NAME(Z)) then
-           RETURN
-        endif
-     enddo
-     call die("Cannot find atomic number for " // norm_symbol)
-        
-   end FUNCTION atomic_number
-
-end module m_semicore_info_froyen
+end module m_ncps_utils
 
