@@ -998,12 +998,6 @@ C Sanity checks on values
                 endif
              endif
 
-             ! If we have decided on the non-perturbative approach,
-             ! make room for a new shell
-             if (basp%non_perturbative_polorbs) then
-                !nn=nn+1
-                print *, "non-pert::  l, nn:", l, nn
-             endif
           endif
                 
           ls%nn = nn
@@ -1033,12 +1027,21 @@ C Sanity checks on values
               endif
             endif
 
-            if (basp%non_perturbative_polorbs) then
-               if (s%polarized .and. (s%l == (l-1))) then
-                  ! Note that we have already seen this (parent) shell
-                  ! in the previous iteration of loop_l
-                  ind = ind + 1
-                  ! Copy again to inherit data
+            if (s%polarized .and. (s%l == (l-1))) then
+               ! Note that we have already seen this (parent) shell
+               ! in the previous iteration of loop_l
+               ind = ind + 1
+               if (.not. basp%non_perturbative_polorbs) then
+                  ! Placeholder empty shell for perturbative polarization orbital
+                  ls%shell(ind)%n=basp%ground_state%n(l)
+                  ls%shell(ind)%l = ls%l
+                  ls%shell(ind)%nzeta = 0
+                  print "(a,i1,a1)", trim(basp%label)//
+     $                ": adding empty (pol) shell: ",
+     $                 ls%shell(ind)%n, sym(l)
+
+               else             !! non_perturbative_polorbs
+                  ! Copy again to inherit relevant data
                   call copy_shell(source=s,target=ls%shell(ind))
                   ls%shell(ind)%n = basp%ground_state%n(l)     !! earlier: -1   ! reset to find later
                   ls%shell(ind)%l = l
@@ -1068,18 +1071,23 @@ C Sanity checks on values
      $                    "PAO.Polarization.Charge.Confinement",
      $                    0.0_dp)
                   endif
+                  print "(a,i1,a1)", trim(basp%label)//
+     $                 ": adding non-pert polarization shell: ",
+     $                  ls%shell(ind)%n, sym(l)
 
                endif
-            endif
+            endif  ! polarized shell for l-1
 
           enddo
 
           do i = 1, nn
              if (ls%shell(i)%n.eq.-1) then
-                 ls%shell(i)%n=basp%ground_state%n(l)
-                print *, trim(basp%label)// "Orphan shell: l, nn, i, n",
-     $               l, nn, i, ls%shell(i)%n 
-             endif
+                 print "(a,i1,a1,i1,a,i1,a)",
+     $                "ERROR: " // trim(basp%label)//
+     $                ": orphan shell for l: ", l, "(", i, " of ",
+     $                nn, ")"
+                 call die("Basis specs for "//trim(basp%label))
+              endif
           enddo
 
 !!##         if (nn.eq.1) then

@@ -187,6 +187,7 @@
       integer      ,save, public, pointer :: nkbl(:,:) => null()
       integer      ,save, public, pointer :: cnfigmx(:,:) => null()
       integer      ,save, public, pointer :: polorb(:,:,:) => null()
+      integer      ,save, public, pointer :: nprin(:,:,:) => null()
       integer      ,save, public, pointer :: nzeta(:,:,:) => null()
       real(dp)     ,save, public, pointer :: split_norm(:,:,:) => null()
       real(dp)     ,save, public, pointer :: vcte(:,:,:) => null()
@@ -253,6 +254,7 @@
       target%qyuk = source%qyuk
       target%qwid = source%qwid
       target%split_norm = source%split_norm
+      target%split_norm_specified = source%split_norm_specified
       target%filtercut = source%filtercut
 
       allocate(target%rc(1:size(source%rc)))
@@ -603,6 +605,9 @@
       nullify( polorb )
       call re_alloc( polorb, 0, lmaxd, 1, nsemx, 1, nsp,
      &               'polorb', 'basis_types' )
+      nullify( nprin )
+      call re_alloc( nprin, 0, lmaxd, 1, nsemx, 1, nsp,
+     $     'nprin', 'basis_types' )
       nullify( nzeta )
       call re_alloc( nzeta, 0, lmaxd, 1, nsemx, 1, nsp,
      &               'nzeta', 'basis_types' )
@@ -653,6 +658,7 @@
 !     Transfer
 !
       nkbl(:,:) = 0
+      nprin(:,:,:) = 0
       nzeta(:,:,:) = 0
       split_norm(:,:,:) = 0._dp
       filtercut(:,:,:) = 0._dp
@@ -696,6 +702,7 @@
                basp%shell_of(l,n)%s => s
                s%sequence_in_lshell = n
                cnfigmx(l,isp) = max(cnfigmx(l,isp),s%n)
+               nprin(l,n,isp) = s%n
                nzeta(l,n,isp) = s%nzeta
                polorb(l,n,isp) = s%nzeta_pol
                split_norm(l,n,isp) = s%split_norm
@@ -753,7 +760,7 @@
       type(dftushell_t), pointer :: dftu
 
       integer :: l, n, i
-      integer :: nprin
+      integer :: npri
       character(len=4) :: orb_id
       character(len=1), parameter   ::
      $                           sym(0:4) = (/ 's','p','d','f','g' /)
@@ -784,8 +791,9 @@
      $        'L=', l, 'Nsemic=', nsemic(l,is),
      $        'Cnfigmx=', cnfigmx(l,is)
          do n=1,nsemic(l,is)+1
-            nprin = cnfigmx(l,is) - nsemic(l,is) + n - 1
-            write(orb_id,"(a1,i1,a1,a1)") "(",nprin, sym(l), ")"
+!!!            nprin = cnfigmx(l,is) - nsemic(l,is) + n - 1
+            npri = nprin(l,n,is)
+            write(orb_id,"(a1,i1,a1,a1)") "(",npri, sym(l), ")"
             write(lun,'(10x,a2,i1,2x,a6,i1,2x,a7,i1,2x,a4)',
      $                 advance="no")
      $           'i=', n, 'nzeta=',nzeta(l,n,is),
@@ -803,7 +811,6 @@
                   write(lun,'(tr2,a)')
      $             '(empty shell -- could be pol. orbital)'
                endif
-               EXIT
                
             else if (basp%lshell(l)%shell(n)%polarized) then
                write(lun,'(tr2,a)')
@@ -885,6 +892,7 @@
       call de_alloc( lmxkb,      'lmxkb',      'basis_types' )
       call de_alloc( lmxo,       'lmxo',       'basis_types' )
       call de_alloc( nsemic,     'nsemic',     'basis_types' )
+      call de_alloc( nprin,      'nprin',      'basis_types' )
       call de_alloc( cnfigmx,    'cnfigmx',    'basis_types' )
       call de_alloc( nkbl,       'nkbl',       'basis_types' )
       call de_alloc( polorb,     'polorb',     'basis_types' )
