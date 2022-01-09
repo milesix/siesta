@@ -811,6 +811,7 @@
                   write(lun,'(tr2,a)')
      $             '(empty shell -- could be pol. orbital)'
                endif
+               CYCLE   ! Do not write any more information
                
             else if (basp%lshell(l)%shell(n)%polarized) then
                write(lun,'(tr2,a)')
