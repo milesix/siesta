@@ -560,7 +560,9 @@ C Sanity checks on values
               ! (See 'archaeological note' in the header of this file)
               ! ... but if the element was not in the PAO.Basis block, any such polarization orbital
               !     has been included in 'nn' already.
-              if (l>0 .and. basp%in_pao_basis_block) then
+              ! NOTE: the treatment of 'nn' has now been made consistent in both cases
+              !!!! if (l>0 .and. basp%in_pao_basis_block) then
+              if (.false.) then
                  do i = 1, basp%lshell(l-1)%nn
                     if (basp%lshell(l-1)%shell(i)%polarized) then
                        k%nkbl = k%nkbl + 1
@@ -960,8 +962,9 @@ C Sanity checks on values
           do ish= 1, basp%nshells_tmp
             s => basp%tmp_shell(ish)
             if (s%l .eq. l) nn=nn+1
-
+            ! Add here a record of nsemic... FIXME
             if (s%polarized .and. (s%l == (l-1))) then
+               nn = nn + 1
                will_have_polarization_orb = .true.
             endif
             
@@ -982,7 +985,7 @@ C Sanity checks on values
              ! been enabled (it is not by default), we switch to generating
              ! the orbital explicitly (unless forced by the user in the
              ! PAO.Polarization.Scheme block or with a global setting)
-             if (nn >= 1) then
+             if (nn >= 2) then
                 if (basp%non_pert_polorbs_fallback) then
                    if (.not. basp%force_perturbative_polorbs) then
                       basp%polorb_with_semicore = .true.
@@ -998,7 +1001,8 @@ C Sanity checks on values
              ! If we have decided on the non-perturbative approach,
              ! make room for a new shell
              if (basp%non_perturbative_polorbs) then
-                nn=nn+1
+                !nn=nn+1
+                print *, "non-pert::  l, nn:", l, nn
              endif
           endif
                 
@@ -1068,7 +1072,15 @@ C Sanity checks on values
                endif
             endif
 
-         enddo
+          enddo
+
+          do i = 1, nn
+             if (ls%shell(i)%n.eq.-1) then
+                 ls%shell(i)%n=basp%ground_state%n(l)
+                print *, trim(basp%label)// "Orphan shell: l, nn, i, n",
+     $               l, nn, i, ls%shell(i)%n 
+             endif
+          enddo
 
 !!##         if (nn.eq.1) then
             ! If n was not specified, set it to ground state n
@@ -1604,7 +1616,10 @@ c (according to atmass subroutine).
                call initialize(s)
                s%l = l
                ! e.g.: nsh=3; i=1:  n-2; i=2: n-1
-               s%n = basp%ground_state%n(l) - (nsh-i)
+               s%n = basp%ground_state%n(l) - (nsh-i) !! maybe FIXME
+               ! We have to find the 'canonical valence' n and set shells
+               ! below it only. Higher n's might be additional valence shells.
+               ! But note that 'automatic' specs cannot have higher valence shells.
                s%nzeta = 1
                s%polarized = .false.
                s%polarization_shell = .false.
