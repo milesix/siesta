@@ -319,8 +319,8 @@ C     Scaling factor for local-pseudopot. charge
         open(lun,file="r_ch_v.charge",form="formatted")
         write(lun,"(a,f12.6)") "# r  chlocal r*vlocal rchloc: ", rchloc
         do ir = 1, nrval
-           write(lun,"(3f16.10)") rofi(r), chlocal(ir),
-     $          rofi(r)*vlocal(ir)
+           write(lun,"(3f16.10)") rofi(ir), chlocal(ir),
+     $          rofi(ir)*vlocal(ir)
         enddo
         close(lun)
 
