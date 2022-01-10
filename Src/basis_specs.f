@@ -560,7 +560,9 @@ C Sanity checks on values
               ! (See 'archaeological note' in the header of this file)
               ! ... but if the element was not in the PAO.Basis block, any such polarization orbital
               !     has been included in 'nn' already.
-              if (l>0 .and. basp%in_pao_basis_block) then
+              ! NOTE: the treatment of 'nn' has now been made consistent in both cases
+              !!!! if (l>0 .and. basp%in_pao_basis_block) then
+              if (.false.) then
                  do i = 1, basp%lshell(l-1)%nn
                     if (basp%lshell(l-1)%shell(i)%polarized) then
                        k%nkbl = k%nkbl + 1
@@ -960,8 +962,9 @@ C Sanity checks on values
           do ish= 1, basp%nshells_tmp
             s => basp%tmp_shell(ish)
             if (s%l .eq. l) nn=nn+1
-
             if (s%polarized .and. (s%l == (l-1))) then
+               ! Add a new shell, which might have nzeta=0
+               nn = nn + 1
                will_have_polarization_orb = .true.
             endif
             
@@ -982,7 +985,7 @@ C Sanity checks on values
              ! been enabled (it is not by default), we switch to generating
              ! the orbital explicitly (unless forced by the user in the
              ! PAO.Polarization.Scheme block or with a global setting)
-             if (nn >= 1) then
+             if (nn >= 2) then
                 if (basp%non_pert_polorbs_fallback) then
                    if (.not. basp%force_perturbative_polorbs) then
                       basp%polorb_with_semicore = .true.
@@ -995,11 +998,6 @@ C Sanity checks on values
                 endif
              endif
 
-             ! If we have decided on the non-perturbative approach,
-             ! make room for a new shell
-             if (basp%non_perturbative_polorbs) then
-                nn=nn+1
-             endif
           endif
                 
           ls%nn = nn
@@ -1029,12 +1027,21 @@ C Sanity checks on values
               endif
             endif
 
-            if (basp%non_perturbative_polorbs) then
-               if (s%polarized .and. (s%l == (l-1))) then
-                  ! Note that we have already seen this (parent) shell
-                  ! in the previous iteration of loop_l
-                  ind = ind + 1
-                  ! Copy again to inherit data
+            if (s%polarized .and. (s%l == (l-1))) then
+               ! Note that we have already seen this (parent) shell
+               ! in the previous iteration of loop_l
+               ind = ind + 1
+               if (.not. basp%non_perturbative_polorbs) then
+                  ! Placeholder empty shell for perturbative polarization orbital
+                  ls%shell(ind)%n=basp%ground_state%n(l)
+                  ls%shell(ind)%l = ls%l
+                  ls%shell(ind)%nzeta = 0
+                  print "(a,i1,a1)", trim(basp%label)//
+     $                ": adding empty (pol) shell: ",
+     $                 ls%shell(ind)%n, sym(l)
+
+               else             !! non_perturbative_polorbs
+                  ! Copy again to inherit relevant data
                   call copy_shell(source=s,target=ls%shell(ind))
                   ls%shell(ind)%n = basp%ground_state%n(l)     !! earlier: -1   ! reset to find later
                   ls%shell(ind)%l = l
@@ -1042,9 +1049,12 @@ C Sanity checks on values
                   ls%shell(ind)%nzeta_pol = 0
                   ls%shell(ind)%polarized = .false.
                   ls%shell(ind)%polarization_shell = .true.
+                  if (.not. associated(polarized_shell_ptr)) then
+                     call die("repaobasis: pol_ptr not associated")
+                  endif
                   ls%shell(ind)%shell_being_polarized =>
      $                 polarized_shell_ptr
-                  polarized_shell_ptr => null()
+
                   ! rc's, lambdas, etc, will remain as in s.
 
                   ! ... except that we honor any explicit charge-confinement settings
@@ -1064,24 +1074,84 @@ C Sanity checks on values
      $                    "PAO.Polarization.Charge.Confinement",
      $                    0.0_dp)
                   endif
+                  print "(a,i1,a1)", trim(basp%label)//
+     $                 ": adding non-pert polarization shell: ",
+     $                  ls%shell(ind)%n, sym(l)
 
                endif
-            endif
+            endif  ! polarized shell for l-1
 
-         enddo
+          enddo
 
-!!##         if (nn.eq.1) then
-            ! If n was not specified, set it to ground state n
-!!            if (ls%shell(1)%n.eq.-1)
-!!     .        ls%shell(1)%n=basp%ground_state%n(l)
-!!##          endif
-          !! Do we have to sort by n value????
-          !!
+          do i = 1, nn
+             if (ls%shell(i)%n.eq.-1) then
+                 print "(a,i1,a1,i1,a,i1,a)",
+     $                "ERROR: " // trim(basp%label)//
+     $                ": orphan shell for l: ", l, "(", i, " of ",
+     $                nn, ")"
+                 call die("Basis specs for "//trim(basp%label))
+              endif
+          enddo
+
+          ! We have to sort by n value to avoid cases in which
+          ! a perturbative polarization orbital comes first
+          ! in the 'nsm' series
+          call sort_by_n(ls%shell)
+
         enddo loop_l
-        !! Destroy temporary shells in basp
-        !! Warning: This does seem to destroy information!!
+        ! Destroy temporary shells in basp
         call destroy(basp%tmp_shell)
       enddo
+
+      CONTAINS
+
+      subroutine sort_by_n(a)
+      type(shell_t), pointer :: a(:)
+
+      integer :: n, i, j, temp
+      type(shell_t), pointer :: new(:) => null()
+
+      integer, allocatable :: index(:), keys(:)
+      logical :: swapped
+
+      n = size(a)
+      allocate(index(n), keys(n))
+      do i = 1, n
+         keys(i) = a(i)%n
+         index(i) = i
+      enddo
+
+      ! Bubble sort on index array
+      DO j = n-1, 1, -1
+         swapped = .FALSE.
+         DO i = 1, j
+            IF (keys(i) > keys(i+1)) THEN
+               temp = index(i)
+               index(i) = index(i+1)
+               index(i+1) = temp
+               temp = keys(i)
+               keys(i) = keys(i+1)
+               keys(i+1) = temp
+               swapped = .TRUE.
+            END IF
+         END DO
+         IF (.NOT. swapped) EXIT
+      END DO
+
+      ! Now we create a new array and point a to it
+      allocate(new(n))
+      do i = 1, n
+         call copy_shell(source=a(index(i)), target=new(i))
+         ! relink the bookeeping pointer
+         ! (this works because lower l's are processed first)
+         if (associated(polarized_shell_ptr, a(index(i)))) then
+            polarized_shell_ptr => new(i)
+         endif
+      enddo
+      deallocate(index, keys)
+      call destroy(a)
+      a => new
+      end subroutine sort_by_n
 
       end subroutine repaobasis
 !_______________________________________________________________________
@@ -1604,7 +1674,10 @@ c (according to atmass subroutine).
                call initialize(s)
                s%l = l
                ! e.g.: nsh=3; i=1:  n-2; i=2: n-1
-               s%n = basp%ground_state%n(l) - (nsh-i)
+               s%n = basp%ground_state%n(l) - (nsh-i) !! maybe FIXME
+               ! We have to find the 'canonical valence' n and set shells
+               ! below it only. Higher n's might be additional valence shells.
+               ! But note that 'automatic' specs cannot have higher valence shells.
                s%nzeta = 1
                s%polarized = .false.
                s%polarization_shell = .false.

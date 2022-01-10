@@ -109,7 +109,7 @@
 
       CONTAINS !================================================
 
-        subroutine atom_main(izin,lmxkb_in,nkbl,erefkb,lmxo, nzeta, 
+        subroutine atom_main(izin,lmxkb_in,nkbl,erefkb,lmxo,nprin,nzeta, 
      .                       rco,lambda_in,atm_label,npolorb,semic,
      .                       nsemic,cnfigmx,charge_in,smass,basistype, 
      .                       ISIN,RINN,VCTE,qcoe,qyuk,qwid,
@@ -146,6 +146,9 @@
         integer, intent(IN) :: lmxo 
 !       Angular momentum cutoff for basis orbitals 
 !       (not including the polarization base functions)
+
+        integer, intent(in) :: nprin(0:lmaxd,nsemx)
+!       Principal quantum numbers for shells of a given l
 
         integer, intent(in) :: nzeta(0:lmaxd,nsemx)
 !       Number of shells of PAOs with the same angular momentum. 
@@ -352,7 +355,7 @@
          endif
 !           
         call new_specie(iz,lmxkb, nkbl, lmxo,
-     .                  nzeta, atm_label,
+     .                  nprin, nzeta, atm_label,
      .                  npolorb, semic, nsemic, cnfigmx,
      .                  is, new, no, nkb, basp) 
 ! 
@@ -2099,7 +2102,7 @@ C
         end subroutine com_vlocal
 !
         subroutine new_specie(iz,lmxkb, nkbl, lmxo,
-     .                        nzeta, atm_label,
+     .                        nprin, nzeta, atm_label,
      .                        npolorb, semic, nsemic, cnfigmx,
      .                        is, new, no, nkb, basp)
 
@@ -2110,7 +2113,7 @@ C
         integer
      .    iz, lmxkb, lmxo, nzeta(0:lmaxd,nsemx), npolorb(0:lmaxd,nsemx),
      .    nsemic(0:lmaxd), is, no, nkb, nkbl(0:lmaxd), cnfigmx(0:lmaxd)
-      
+        integer, intent(in) :: nprin(0:lmaxd,nsemx)
         character 
      .    atm_label*20 
 
@@ -2172,54 +2175,8 @@ C
         label_save(is)=atm_label
         semicsave(is)=semic   
             
-        cnfigtb(:,:,is) = 0
-
         ! Generate the array with 'n' quantum number information
-        if (iz.ne.-100) then  ! Normal case
-           
-          ! Note that lmxo now covers any polarization orbitals
-
-          do l=0,lmxo
-             do nsm=1, nsemic(l)+1
-                cnfigtb(l,nsm,is)=cnfigmx(l)-(nsemic(l)+1)+nsm
-             enddo
-
-             if (l==0) cycle
-
-             ! Special case for polarization orbitals with l<lmxo
-             ! Examples:
-             !    Ti: 3s2 3p6 4s2 3d2 4p0* 4p0 is a polarization
-             !                             orbital, with the same l as 3p.
-             !    Fe: 4s-4p*-3d
-             ! (See 'archaeological note' in the header of 'basis_specs.f')
-             ! We assign formally a "shell index" nsm beyond the last one,
-             ! and the appropriate n from the ground state record.
-             ! 
-             npols_lm1 = sum(npolorb(l-1,:))
-             if (npols_lm1 > 0) then
-                nsm = nsemic(l)+2
-                cnfigtb(l,nsm,is)= basp%ground_state%n(l)
-                if (basp%ground_state%occupied(l)) then
-                   call die("Inconsistency in polarization orbital")
-                endif
-             endif
-
-          enddo
-
-        else
-!
-!          For bessel-function states, the 'n' quantum number
-!          does not follow the heuristics for real 'atomic'
-!          states, but since the user has to specify them in the
-!          PAO.Basis block, we use them.           
-
-           do l=0,lmxo
-            do nsm=1,nsemic(l)+1
-              n_user = cnfigmx(l)-(nsemic(l)+1)+nsm
-              cnfigtb(l,nsm,is) = n_user
-            enddo
-          enddo 
-        endif   ! iz.ne.-100
+        cnfigtb(:,:,is) = nprin(:,:)
 
         no=0
         do l=0,lmxo
@@ -5464,13 +5421,13 @@ C
 
           if(l.le.3) qPAO(l,nsm_valence)=qatm(l) 
 
-          ! Fill 'semicore' shells (those with nsm<nsm_valence)
+          ! Fill 'semicore' shells (those with n<n_valence)
           do nsm=1,nsemic(l)+1
 
-              ! This is incomplete. It might be that the shell
-              ! was not among those used in the generation of the pseudopotential
-              ! Then, it will be artificially occupied.
-             if(nsm.lt.nsm_valence) then
+             ! This is incomplete. It might be that the shell
+             ! was not among those used in the generation of the pseudopotential
+             ! Then, it will be artificially occupied.
+             if (cnfigtb(l,nsm,is) .lt. cnfigtb(l,nsm_valence,is)) then
                 if (.not. semic) then
                    write(6,'(/,a)') 'WARNING: PAO with n<n_valence,' //
      $                  ' without semicore in PS'
