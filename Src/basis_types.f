@@ -221,7 +221,7 @@
       public  :: destroy, copy_shell, initialize
       public  :: write_basis_specs, basis_specs_transfer
       public  :: deallocate_spec_arrays
-      public  :: print_dftushell
+      public  :: print_dftushell, print_shell
 !---------------------------------------------------------
 
       PRIVATE
@@ -257,10 +257,14 @@
       target%split_norm_specified = source%split_norm_specified
       target%filtercut = source%filtercut
 
-      allocate(target%rc(1:size(source%rc)))
-      allocate(target%lambda(1:size(source%lambda)))
-      target%rc(:) = source%rc(:)
-      target%lambda(:) = source%lambda(:)
+      if (associated(source%rc)) then
+         allocate(target%rc(1:size(source%rc)))
+         target%rc(:) = source%rc(:)
+      endif
+      if (associated(source%lambda)) then
+         allocate(target%lambda(1:size(source%lambda)))
+         target%lambda(:) = source%lambda(:)
+      endif
       end subroutine copy_shell
 !-----------------------------------------------------------------------
 
@@ -362,8 +366,12 @@
       if (.not. associated(p)) return
       do i = 1, size(p)
          q=>p(i)
-         deallocate(q%rc)
-         deallocate(q%lambda)
+         if (associated(q%rc)) then
+            deallocate(q%rc)
+         endif
+         if (associated(q%lambda)) then
+            deallocate(q%lambda)
+         endif
       enddo
       deallocate(p)
       end subroutine destroy_shell
@@ -407,6 +415,8 @@
       subroutine print_shell(p)
       type(shell_t)            :: p
 
+      type(shell_t), pointer   :: s
+
       integer i
 
       write(6,*) 'SHELL-------------------------'
@@ -426,6 +436,10 @@
       do i = 1, p%nzeta
          write(6,'(5x,i2,2x,2g20.10)') i, p%rc(i), p%lambda(i)
       enddo
+      if (associated(p%shell_being_polarized)) then
+         s => p%shell_being_polarized
+         print *, "Shell being polarized:", s%n, s%l
+      endif
       write(6,*) '--------------------SHELL'
 
       end subroutine print_shell

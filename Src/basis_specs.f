@@ -962,8 +962,8 @@ C Sanity checks on values
           do ish= 1, basp%nshells_tmp
             s => basp%tmp_shell(ish)
             if (s%l .eq. l) nn=nn+1
-            ! Add here a record of nsemic... FIXME
             if (s%polarized .and. (s%l == (l-1))) then
+               ! Add a new shell, which might have nzeta=0
                nn = nn + 1
                will_have_polarization_orb = .true.
             endif
@@ -1049,9 +1049,12 @@ C Sanity checks on values
                   ls%shell(ind)%nzeta_pol = 0
                   ls%shell(ind)%polarized = .false.
                   ls%shell(ind)%polarization_shell = .true.
+                  if (.not. associated(polarized_shell_ptr)) then
+                     call die("repaobasis: pol_ptr not associated")
+                  endif
                   ls%shell(ind)%shell_being_polarized =>
      $                 polarized_shell_ptr
-                  polarized_shell_ptr => null()
+
                   ! rc's, lambdas, etc, will remain as in s.
 
                   ! ... except that we honor any explicit charge-confinement settings
@@ -1090,18 +1093,65 @@ C Sanity checks on values
               endif
           enddo
 
-!!##         if (nn.eq.1) then
-            ! If n was not specified, set it to ground state n
-!!            if (ls%shell(1)%n.eq.-1)
-!!     .        ls%shell(1)%n=basp%ground_state%n(l)
-!!##          endif
-          !! Do we have to sort by n value????
-          !!
+          ! We have to sort by n value to avoid cases in which
+          ! a perturbative polarization orbital comes first
+          ! in the 'nsm' series
+          call sort_by_n(ls%shell)
+
         enddo loop_l
-        !! Destroy temporary shells in basp
-        !! Warning: This does seem to destroy information!!
+        ! Destroy temporary shells in basp
         call destroy(basp%tmp_shell)
       enddo
+
+      CONTAINS
+
+      subroutine sort_by_n(a)
+      type(shell_t), pointer :: a(:)
+
+      integer :: n, i, j, temp
+      type(shell_t), pointer :: new(:) => null()
+
+      integer, allocatable :: index(:), keys(:)
+      logical :: swapped
+
+      n = size(a)
+      allocate(index(n), keys(n))
+      do i = 1, n
+         keys(i) = a(i)%n
+         index(i) = i
+      enddo
+
+      ! Bubble sort on index array
+      DO j = n-1, 1, -1
+         swapped = .FALSE.
+         DO i = 1, j
+            IF (keys(i) > keys(i+1)) THEN
+               temp = index(i)
+               index(i) = index(i+1)
+               index(i+1) = temp
+               temp = keys(i)
+               keys(i) = keys(i+1)
+               keys(i+1) = temp
+               swapped = .TRUE.
+            END IF
+         END DO
+         IF (.NOT. swapped) EXIT
+      END DO
+
+      ! Now we create a new array and point a to it
+      allocate(new(n))
+      do i = 1, n
+         call copy_shell(source=a(index(i)), target=new(i))
+         ! relink the bookeeping pointer
+         ! (this works because lower l's are processed first)
+         if (associated(polarized_shell_ptr, a(index(i)))) then
+            polarized_shell_ptr => new(i)
+         endif
+      enddo
+      deallocate(index, keys)
+      call destroy(a)
+      a => new
+      end subroutine sort_by_n
 
       end subroutine repaobasis
 !_______________________________________________________________________
