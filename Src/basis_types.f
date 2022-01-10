@@ -710,6 +710,7 @@
 !           (Kludge for now until future reorganization)
 !
             nsemic(l,isp) = max(ls%nn -1 ,0)
+            
             cnfigmx(l,isp) = 0
             do n=1,ls%nn
                s=>ls%shell(n)
@@ -748,10 +749,12 @@
                enddo
             enddo
 !
-!           Fix for l's without PAOs
+!           Fix for l's without PAOs (nn==0)
 !
-            if (cnfigmx(l,isp).eq.0)
-     $           cnfigmx(l,isp) = basp%ground_state%n(l)
+            if (ls%nn == 0) then
+               cnfigmx(l,isp) = basp%ground_state%n(l)
+               nprin(l,1,isp) = basp%ground_state%n(l)
+            endif
 
          enddo
          do l=0,basp%lmxkb
