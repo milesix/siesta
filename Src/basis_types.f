@@ -776,6 +776,8 @@
       type(basis_def_t), pointer :: basp
       type(dftushell_t), pointer :: dftu
 
+      type(lshell_t), pointer :: ls
+
       integer :: l, n, i
       integer :: npri
       character(len=4) :: orb_id
@@ -807,8 +809,9 @@
          write(lun,'(a2,i1,2x,a7,i1,2x,a8,i1)')
      $        'L=', l, 'Nsemic=', nsemic(l,is),
      $        'Cnfigmx=', cnfigmx(l,is)
-         do n=1,nsemic(l,is)+1
-!!!            nprin = cnfigmx(l,is) - nsemic(l,is) + n - 1
+
+         shells: do n=1,nsemic(l,is)+1
+
             npri = nprin(l,n,is)
             write(orb_id,"(a1,i1,a1,a1)") "(",npri, sym(l), ")"
             write(lun,'(10x,a2,i1,2x,a6,i1,2x,a7,i1,2x,a4)',
@@ -821,14 +824,21 @@
                ! (see, e.g. basis_specs::autobasis)
                ! It could be a polarization orbital with the new
                ! convention of setting lmxo including polorbs, or just empty
-               if (l == basp%lmxo) then
-                  write(lun,'(tr2,a)')
-     $             '(perturbative polarization orbital)'
-               else   ! It is difficult to detect a polarization orbital with intermediate l.
-                  write(lun,'(tr2,a)')
-     $             '(empty shell -- could be pol. orbital)'
+               if (l>0) then
+                  ls => basp%lshell(l-1)
+                  do i=1, ls%nn
+                     if (ls%shell(i)%polarized) then
+                        write(lun,'(tr2,a,i1,a)')
+     $                       '(perturbative polarization orbital)' //
+     $                       ' (from ', ls%shell(i)%n, sym(l-1) // ')'
+                        CYCLE shells  ! we are done with this shell
+                     endif
+                  enddo
                endif
-               CYCLE   ! Do not write any more information
+
+               ! Maybe warn about this?
+               write(lun,'(tr2,a)')  '(empty shell (??) )'
+               CYCLE  shells  ! Do not write any more information
                
             else if (basp%lshell(l)%shell(n)%polarized) then
                write(lun,'(tr2,a)')
@@ -839,9 +849,16 @@
             else if (basp%lshell(l)%shell(n)%polarization_shell) then
                write(lun,'(tr2,a)')
      $              '(non-perturbative polarization shell)'
+            else if (npri < basp%ground_state%n(l)) then
+               write(lun,'(tr2,a)')
+     $              '(semicore shell)'
+            else if (npri > basp%ground_state%n(l)) then
+               write(lun,'(tr2,a)')
+     $              '(higher-lying shell (n> n_valence(l)))'
             else
                write(lun,*)  ! end record
             endif
+
             if (basistype(is).eq.'filteret') then
                write(lun,'(10x,a10,2x,g12.5)') 
      $              'fcutoff:', filtercut(l,n,is)
@@ -863,8 +880,9 @@
      $           (rco(i,l,n,is),i=1,min(4,nzeta(l,n,is)))
             write(lun,'(10x,a10,2x,4g12.5)') 'lambdas:',
      $           (lambda(i,l,n,is),i=1,min(4,nzeta(l,n,is)))
-         end do
+         end do shells
       end do
+
       if ( lmxkb(is) > 0 ) then
          write(lun,'(79("-"))')
          do l=0,lmxkb(is)
