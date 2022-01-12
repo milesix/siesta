@@ -163,6 +163,11 @@ C     Allocate local arrays that depend on parameters
 !     Find maximum radius of the KB and LDA+U projectors of each species (and total)
 !     Also for orbitals (for possible future extra optimizations)
 !     
+      if ( allocated(rkbmax) )          deallocate(rkbmax)
+      if ( allocated(rorbmax) )         deallocate(rorbmax)
+      if ( allocated(rldaumax) )        deallocate(rldaumax)
+      if ( allocated(rmax_projectors) ) deallocate(rmax_projectors)
+
       allocate(rkbmax(nspecies),rorbmax(nspecies),rldaumax(nspecies))
       allocate(rmax_projectors(nspecies))
       rmaxo    = 0.0_dp
