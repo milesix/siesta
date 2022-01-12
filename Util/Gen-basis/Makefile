@@ -59,7 +59,7 @@ DEPS_GEN-BASIS=m_io.o io.o alloc.o basis_types.o precision.o  parallel.o \
           pxf.o dot.o  atom_options.o arw.o m_spin_orbit_potentials.o \
           xml.o m_walltime.o read_xc_info.o  $(SYSOBJ) \
           m_fft_gpfa.o m_cite.o version.o posix_calls.o reclat.o units.o \
-          semicore_info_froyen.o hamann.o files.o sys.o
+          hamann.o files.o sys.o
 
 # Siesta kpoint-scale
 DEPS_GEN-BASIS += get_kpoints_scale.o siesta_geom.o
@@ -71,7 +71,7 @@ DEPS_IONCAT=m_getopts.o basis_types.o precision.o  parallel.o \
           parsing.o m_io.o io.o alloc.o atom_options.o basis_io.o atm_types.o \
           atmparams.o radial.o  chkdim.o m_filter.o \
 	  chemical.o m_spin.o m_spin_orbit_potentials.o reclat.o \
-          basis_specs.o periodic_table.o pxf.o semicore_info_froyen.o \
+          basis_specs.o periodic_table.o pxf.o \
           atom.o atmfuncs.o spher_harm.o interpolation.o arw.o \
           xml.o m_walltime.o dftu_specs.o\
           hamann.o m_cite.o version.o posix_calls.o units.o files.o sys.o $(SYSOBJ)
@@ -160,9 +160,9 @@ basis_io.o: precision.o radial.o sys.o xml.o
 basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
 basis_io.o: precision.o radial.o sys.o xml.o
 basis_specs.o: basis_types.o chemical.o m_spin.o m_spin_orbit_potentials.o
-basis_specs.o: periodic_table.o precision.o semicore_info_froyen.o sys.o
+basis_specs.o: periodic_table.o precision.o sys.o
 basis_specs.o: basis_types.o chemical.o m_spin.o m_spin_orbit_potentials.o
-basis_specs.o: periodic_table.o precision.o semicore_info_froyen.o sys.o
+basis_specs.o: periodic_table.o precision.o sys.o
 basis_types.o: alloc.o atmparams.o precision.o sys.o
 basis_types.o: alloc.o atmparams.o precision.o sys.o
 bessph.o: precision.o sys.o
@@ -219,6 +219,5 @@ m_bessph.o: bessph.o
 m_get_kpoints_scale.o: get_kpoints_scale.o
 m_hamann.o: hamann.o
 m_radfft.o: radfft.o
-m_semicore_info_froyen.o: semicore_info_froyen.o
 t_spin.o: m_spin.o
 version_info.o: version.o
