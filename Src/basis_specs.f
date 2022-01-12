@@ -555,26 +555,16 @@ C Sanity checks on values
               k%nkbl = 1
             else
               ! Set equal to the number of PAO shells with this l
+              ! (with minimum of 1 and maximum of 2)
               k%nkbl = basp%lshell(l)%nn     
-              ! Should include polarization orbs (as in Ti case: 3p..4p*)
-              ! (See 'archaeological note' in the header of this file)
-              ! ... but if the element was not in the PAO.Basis block, any such polarization orbital
-              !     has been included in 'nn' already.
-              ! NOTE: the treatment of 'nn' has now been made consistent in both cases
-              !!!! if (l>0 .and. basp%in_pao_basis_block) then
-              if (.false.) then
-                 do i = 1, basp%lshell(l-1)%nn
-                    if (basp%lshell(l-1)%shell(i)%polarized) then
-                       k%nkbl = k%nkbl + 1
-                       write(6,"(a,i1,a)") trim(basp%label) //
-     $                  ': nkbl increased for l=',l,
-     $                  ' due to the presence of a polarization orbital'
-                    endif
-                 enddo
+              if (k%nkbl > 2) then
+                write(6,"(a,i1,a)") 'Warning: More than 2 PAOs for l=',
+     $                l, '. The number of KB projs is capped at 2'
+                k%nkbl = 1
               endif
               if (k%nkbl.eq.0) then
-                write(6,*) 'Warning: Empty PAO shell. l =', l
-                write(6,*) 'Will have a KB projector anyway...'
+                write(6,"(a,i1,a)") 'Warning: No PAOs for l =',
+     $                l, '. Will have a KB projector anyway...'
                 k%nkbl = 1
               endif
             endif
@@ -690,20 +680,6 @@ C Sanity checks on values
             write(6,'(a,i1,a)')
      .           trim(basp%label) //
      .           " pseudopotential only contains V_ls up to l=",
-     .           lmax_pseudo, " -- lmxkb reset."
-            basp%lmxkb = lmax_pseudo
-         endif
-      enddo
-
-      do isp=1,nsp
-!
-!      Check that we have enough semilocal components...
-!
-         basp=>basis_parameters(isp)
-         lmax_pseudo = basp%pseudopotential%npotd - 1 
-         if (basp%lmxkb > lmax_pseudo) then
-            write(6,'(a,i1,a)')
-     .           "Pseudopotential only contains V_ls up to l=",
      .           lmax_pseudo, " -- lmxkb reset."
             basp%lmxkb = lmax_pseudo
          endif
@@ -1550,7 +1526,7 @@ c (according to atmass subroutine).
      .        'Semicore shell(s) with ', nint(charge_loc),
      .        ' electrons included in the valence for ' //
      $        trim(basp%label)
-      else
+      else  ! charge_loc < 0  : Could be, e.g. Zn or Cu with no 3d in pseudo
          write(6,'(a,i2,a)') 'Nominally valence shell(s) with ',
      $          nint(abs(charge_loc)),
      .        ' electrons are kept in the core for ' // trim(basp%label)
