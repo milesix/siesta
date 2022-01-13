@@ -74,6 +74,5 @@ clean:
 atom_options.o: local_sys.o
 chemical.o: local_sys.o parallel.o precision.o
 io.o: m_io.o
-periodic_table.o: local_sys.o precision.o
 grimme.o: chemical.o periodic_table.o precision.o
 sys.o: local_sys.o

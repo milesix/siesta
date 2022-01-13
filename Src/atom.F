@@ -21,6 +21,7 @@
       use interpolation, only: polint  ! polynomial interpolation
       use basis_types, only: basis_parameters
       use basis_types, only: ground_state_t
+      use atom_options, only: debug_atom
       use atom_options, only: write_ion_plot_files, debug_kb_generation
       use atom_options, only: new_kb_reference_orbitals
       use m_filter, only: kcphi, filter, gen_filteret, gen_pol_filteret
@@ -2363,16 +2364,7 @@ C    drdi=dr/di =a*b*exp(a*(i-1))= a*[rofi(ir)+b]
        enddo
        
        vps_u = 0.0_dp
-       ! For backward compatibility with original OSSO branch,
-       ! put 'keep-npotu-bug T' in fdf file
-       ! To be removed altogether for releases
-       if (fdf_get('keep-npotu-bug',.false.))  then
-          nup_end =  min(lmax_ps,npotu-1)
-          write(6,'(a)') 'atom: *** Buggy code in highest-l ' //
-     $                   'SO component setup enabled ***'
-       else
-          nup_end = npotu
-       endif
+       nup_end = npotu
 
        ! Allow an overall factor for the SO part (for debugging only!)
        ! Note that (notably for the lj-based SO implementation) this
@@ -2721,8 +2713,10 @@ C
       call derivs(mmax,vl,al,0.0_dp,rr,vlp,vlpp,vllap)
       ch(:) = - vllap(:) / (8.0_dp*pi) ! Rydberg units
 
-      call file_out(mmax,rr,ch,
-     .     trim(global_label)//".Chlocal_rr_psml")
+      if (debug_atom) then
+         call file_out(mmax,rr,ch,
+     .        trim(global_label)//".Chlocal_rr_psml")
+      endif
 
 
       ! Now interpolate first into linear grid, using
@@ -2740,8 +2734,10 @@ C
       nrange = log(rr(mmax)/rr1)/al - 2  
       call dpnint(rr(n0),ch(n0),mmax-n0+1,rlin,chlocal_rlin,
      $            nrange,poly_order=poly_order_rlin)
-      call file_out(npts,rlin,chlocal_rlin,
-     .     trim(global_label)//".Chlocal_rlin_psml")
+      if (debug_atom) then
+         call file_out(npts,rlin,chlocal_rlin,
+     .        trim(global_label)//".Chlocal_rlin_psml")
+      endif
 
       ! Now interpolate into Siesta's grid
       chlocal(:) = 0.0_dp
@@ -2750,9 +2746,10 @@ C
       call dpnint(rlin,chlocal_rlin,npts,rofi,chlocal,
      $     nrval-20,poly_order=poly_order_rofi)
 
-      call file_out(nrval,rofi,chlocal,
-     .     trim(global_label)//".Chlocal_rofi_psml")
-
+      if (debug_atom) then
+         call file_out(nrval,rofi,chlocal,
+     .        trim(global_label)//".Chlocal_rofi_psml")
+      endif
       deallocate(rlin, chlocal_rlin)
       deallocate(rr, vl, ch, vlp, vlpp, vllap)
       
@@ -4192,8 +4189,10 @@ c                        write(68,*) r,rh,rphi(ir,l,ism)
               nrc=nrc1
               rco(izeta,l,nsm)=
      .             b*(exp(a*(nrc1-1))-1.0d0)*lambda(izeta,l,nsm)
-              write(6,*) 'rco redefined: l, nsm, izeta, rco:',
-     $                   l, nsm, izeta, rco(izeta,l,nsm)
+              if (debug_atom) then
+                 write(6,*) 'rco redefined: l, nsm, izeta, rco:',
+     $                l, nsm, izeta, rco(izeta,l,nsm)
+              endif
            endif
            
         endif  ! nsm > 1  (there are semicore states)

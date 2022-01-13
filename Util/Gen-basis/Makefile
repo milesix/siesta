@@ -159,10 +159,10 @@ basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
 basis_io.o: precision.o radial.o sys.o xml.o
 basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
 basis_io.o: precision.o radial.o sys.o xml.o
-basis_specs.o: basis_types.o chemical.o m_spin.o m_spin_orbit_potentials.o
-basis_specs.o: periodic_table.o precision.o sys.o
-basis_specs.o: basis_types.o chemical.o m_spin.o m_spin_orbit_potentials.o
-basis_specs.o: periodic_table.o precision.o sys.o
+basis_specs.o: atom_options.o basis_types.o chemical.o m_spin.o
+basis_specs.o: m_spin_orbit_potentials.o periodic_table.o precision.o sys.o
+basis_specs.o: atom_options.o basis_types.o chemical.o m_spin.o
+basis_specs.o: m_spin_orbit_potentials.o periodic_table.o precision.o sys.o
 basis_types.o: alloc.o atmparams.o precision.o sys.o
 basis_types.o: alloc.o atmparams.o precision.o sys.o
 bessph.o: precision.o sys.o
@@ -189,8 +189,6 @@ m_spin.o: alloc.o files.o get_kpoints_scale.o m_cite.o parallel.o precision.o
 m_spin.o: sys.o
 m_spin.o: alloc.o files.o get_kpoints_scale.o m_cite.o parallel.o precision.o
 m_spin.o: sys.o
-periodic_table.o: precision.o sys.o
-periodic_table.o: precision.o sys.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radial.o: alloc.o interpolation.o precision.o xml.o

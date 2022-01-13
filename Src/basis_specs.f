@@ -155,6 +155,7 @@
       use basis_types, only: destroy, copy_shell, initialize
       use m_ncps,      only: pseudo_init_constant
       use periodic_table, only: qvlofz, lmxofz, cnfig, atmass
+      use atom_options, only: write_ion_plot_files
       use chemical
       use sys
       use fdf
@@ -320,13 +321,15 @@ C Sanity checks on values
           call pseudo_read(basp%label,basp%pseudopotential,
      $         basp%psml_handle,basp%has_psml_ps,
      $         new_grid=reparametrize_pseudos,a=new_a,b=new_b,
-     $         rmax=new_rmax)
+     $         rmax=new_rmax,
+     $         debugging_enabled=write_ion_plot_files)
         else
           call ground_state(abs(int(basp%z)),basp%ground_state)
           call pseudo_read(basp%label,basp%pseudopotential,
      $         basp%psml_handle,basp%has_psml_ps,
      $         new_grid=reparametrize_pseudos,a=new_a,b=new_b,
-     $         rmax=new_rmax)
+     $         rmax=new_rmax,
+     $         debugging_enabled=write_ion_plot_files)
         endif
 !        if (reparametrize_pseudos.and. .not. basp%bessel)
 !     .    call pseudo_reparametrize(p=basp%pseudopotential,

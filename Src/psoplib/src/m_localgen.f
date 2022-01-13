@@ -21,7 +21,8 @@
      $                                  rmax_ps_check,
      $                                  fit_3derivs,
      $                                  use_charge_cutoff,
-     $                                  method_used)
+     $                                  method_used,
+     $                                  debugging_enabled)
 
       real(dp), intent(in) :: rofi(:), drdi(:), s(:)
       integer, intent(in)  :: nrval
@@ -41,10 +42,18 @@
       logical, intent(in)  :: use_charge_cutoff
 
       character(len=*), intent(out)     :: method_used
+      logical, intent(in), optional :: debugging_enabled
 
       ! local variables
       real(dp) :: rgauss, rgauss2
       integer  :: nrgauss
+
+      logical :: debug
+                
+      debug = .false.
+      if (present(debugging_enabled)) then
+         debug = debugging_enabled
+      endif
 
 ! Rgauss is approximately the maximum cut-off radius used in the 
 ! pseudopotential generation. 
@@ -83,7 +92,7 @@
 !
               call vlocal_as_fit(Zval,nrval,a,rofi,drdi,s,vps(:,0),
      .                     nrgauss,vlocal,nchloc,chlocal,
-     $                     fit_3derivs, use_charge_cutoff) 
+     $                     fit_3derivs, use_charge_cutoff,debug) 
               method_used = "siesta-fit"
 ! 
             else
@@ -97,7 +106,8 @@
      $                       " (local charge) for Vlocal"
 
               call vlocal_from_chlocal(Zval, nrval, a, rofi, drdi, s,
-     $                                 rgauss,vlocal,nchloc,chlocal)
+     $                                 rgauss,vlocal,nchloc,chlocal,
+     $                                 debug)
 
               method_used = "siesta-charge"
             endif 
@@ -183,7 +193,8 @@ C
 !-----------------------------------------------------
 
         subroutine vlocal_from_chlocal(Zval, nrval, a, rofi, drdi, s,
-     $                                 rgauss,vlocal, nchloc, chlocal)
+     $                                 rgauss,vlocal, nchloc, chlocal,
+     $                                 debugging_enabled)
 C
 C     This routine generates a smooth local pseudopotential.
 C     Written by D. Sanchez-Portal, Aug. 1998
@@ -194,7 +205,8 @@ C
         real(dp), intent(out)   :: vlocal(:)
         real(dp), intent(out)   :: chlocal(:)
         integer,  intent(out)   :: nchloc
-        real(dp), intent(inout) :: rgauss  ! r beyond which V_l's are equal
+        real(dp), intent(inout) :: rgauss ! r beyond which V_l's are equal
+        logical, intent(in), optional :: debugging_enabled
 C
 C Internal variables 
 C
@@ -206,6 +218,13 @@ C
         real(dp), allocatable :: chlocal_spline(:)
 
         parameter(eps=1.0d-4)
+
+        logical :: debug
+        
+        debug = .false.
+        if (present(debugging_enabled)) then
+           debug = debugging_enabled
+        endif
 C
 C     Usual local potential 
 C     (generated with an optimum Vandebilt function)
@@ -315,21 +334,25 @@ C     Scaling factor for local-pseudopot. charge
         enddo 
         chlocal(1)= -rhor1* zval/qtot
 
-        call get_free_lun(lun)
-        open(lun,file="r_ch_v.charge",form="formatted")
-        write(lun,"(a,f12.6)") "# r  chlocal r*vlocal rchloc: ", rchloc
-        do ir = 1, nrval
-           write(lun,"(3f16.10)") rofi(ir), chlocal(ir),
-     $          rofi(ir)*vlocal(ir)
-        enddo
-        close(lun)
+        if (debug) then
+           call get_free_lun(lun)
+           open(lun,file="r_ch_v.charge",form="formatted")
+           write(lun,"(a,f12.6)") "# r  chlocal r*vlocal rchloc: ",
+     $                             rchloc
+           do ir = 1, nrval
+              write(lun,"(3f16.10)") rofi(ir), chlocal(ir),
+     $             rofi(ir)*vlocal(ir)
+           enddo
+           close(lun)
+        endif
 
         end subroutine vlocal_from_chlocal
 
 
         subroutine vlocal_as_fit(Zval, nrval, a, rofi, drdi, s, vps,
      .                     nrgauss,vlocal,nchloc,chlocal,
-     $                     fit_3derivs, use_charge_cutoff) 
+     $                     fit_3derivs, use_charge_cutoff,
+     $                     debugging_enabled) 
 C
 C     This routine generates the local pseudopotential appropiate 
 C     for species with  a large core.
@@ -344,6 +367,9 @@ C
 
         logical, intent(in)     :: fit_3derivs
         logical, intent(in)     :: use_charge_cutoff
+
+        logical, intent(in), optional :: debugging_enabled
+
 C
 C Internal variables
 C
@@ -362,6 +388,14 @@ C
         real(dp), parameter  :: eps_vlocal=1.0d-5  ! this is eps
         real(dp), parameter  :: eps_charge=1.0d-4  ! for charge criterion
         real(dp) :: q1, q2
+
+        logical :: debug
+                
+        debug = .false.
+        if (present(debugging_enabled)) then
+           debug = debugging_enabled
+        endif
+
         allocate(other_chlocal(size(chlocal)))
         allocate(alt_chlocal(size(chlocal)))
         allocate(chlocal_spline(size(chlocal)))
@@ -549,15 +583,16 @@ C If third derivative fit
           endif
         enddo              
 
-        call get_free_lun(lun)
-        open(lun,file="chlocal.fit",form="formatted")
-        write(lun,"(a)") "# r  chlocal_Siesta (raw)"
-        do ir=2,nrval 
-           r=rofi(ir)  
-           write(lun,"(2f16.10)") r, chlocal(ir)
-        enddo
-        close(lun)
-        
+        if (debug) then
+           call get_free_lun(lun)
+           open(lun,file="chlocal.fit",form="formatted")
+           write(lun,"(a)") "# r  chlocal_Siesta (raw)"
+           do ir=2,nrval 
+              r=rofi(ir)  
+              write(lun,"(2f16.10)") r, chlocal(ir)
+           enddo
+           close(lun)
+        endif
 
 !     Decouple the different operations performed in the
 !     above loop:
