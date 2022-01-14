@@ -17,9 +17,12 @@ MODULE atom_options
   implicit none
   PUBLIC
 
+  ! Debugging and level of output variables
+  logical :: debug_atom              ! Catch-all variable
   logical :: write_ion_plot_files    ! Write small auxiliary files?
-  logical :: new_kb_reference_orbitals    ! New scheme for KB reference orbitals
   logical :: debug_kb_generation     ! Write auxiliary files for KB projectors
+
+  logical :: new_kb_reference_orbitals    ! New scheme for KB reference orbitals
 
 CONTAINS
 
@@ -35,8 +38,12 @@ CONTAINS
     if (Node /= 0) call die("Atom options can only be used by master node")
 #endif
 
-    write_ion_plot_files = fdf_boolean('WriteIonPlotFiles',.false.)
-    debug_kb_generation  = fdf_boolean('Atom.Debug.KB.Generation',.false.)
+    debug_atom  = fdf_boolean('Atom.Debug',.false.)
+    
+    write_ion_plot_files = fdf_boolean('WriteIonPlotFiles',debug_atom)
+    debug_kb_generation  = fdf_boolean('Atom.Debug.KB.Generation',debug_atom)
+
+    ! This is very specialized
     new_kb_reference_orbitals  = fdf_boolean('KB.New.Reference.Orbitals',.false.)
   end subroutine get_atom_options
 

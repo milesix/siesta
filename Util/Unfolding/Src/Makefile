@@ -74,7 +74,7 @@ SIESTA_OBJS= precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
              broadcast_basis.o dftu_specs.o basis_specs.o \
              atom.o hamann.o m_filter.o \
              m_cite.o m_spin_orbit_potentials.o \
-             coor.o chkdim.o semicore_info_froyen.o \
+             coor.o chkdim.o \
              zmatrix.o m_cell.o  periodic_table.o volcel.o digcel.o \
              arw.o redcel.o sys.o parallelsubs.o spatial.o \
              domain_decom.o printmatrix.o schecomm.o \
@@ -214,10 +214,10 @@ basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
 basis_io.o: precision.o radial.o sys.o xml.o
 basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
 basis_io.o: precision.o radial.o sys.o xml.o
-basis_specs.o: basis_types.o chemical.o m_spin.o m_spin_orbit_potentials.o
-basis_specs.o: periodic_table.o precision.o semicore_info_froyen.o sys.o
-basis_specs.o: basis_types.o chemical.o m_spin.o m_spin_orbit_potentials.o
-basis_specs.o: periodic_table.o precision.o semicore_info_froyen.o sys.o
+basis_specs.o: atom_options.o basis_types.o chemical.o m_spin.o
+basis_specs.o: m_spin_orbit_potentials.o periodic_table.o precision.o sys.o
+basis_specs.o: atom_options.o basis_types.o chemical.o m_spin.o
+basis_specs.o: m_spin_orbit_potentials.o periodic_table.o precision.o sys.o
 basis_types.o: alloc.o atmparams.o precision.o sys.o
 basis_types.o: alloc.o atmparams.o precision.o sys.o
 bessph.o: precision.o sys.o
@@ -311,8 +311,6 @@ moreParallelSubs.o: alloc.o m_io.o parallel.o precision.o sys.o
 moreParallelSubs.o: alloc.o m_io.o parallel.o precision.o sys.o
 parallelsubs.o: domain_decom.o parallel.o precision.o spatial.o sys.o
 parallelsubs.o: domain_decom.o parallel.o precision.o spatial.o sys.o
-periodic_table.o: precision.o sys.o
-periodic_table.o: precision.o sys.o
 printmatrix.o: alloc.o
 printmatrix.o: alloc.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
@@ -392,7 +390,6 @@ m_hamann.o: hamann.o
 m_minvec.o: minvec.o
 m_object_debug.o: object_debug.o
 m_radfft.o: radfft.o
-m_semicore_info_froyen.o: semicore_info_froyen.o
 m_timer_tree.o: timer_tree.o
 m_timestamp.o: timestamp.o
 mtprng.o: m_uuid.o

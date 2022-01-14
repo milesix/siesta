@@ -21,6 +21,7 @@
       use interpolation, only: polint  ! polynomial interpolation
       use basis_types, only: basis_parameters
       use basis_types, only: ground_state_t
+      use atom_options, only: debug_atom
       use atom_options, only: write_ion_plot_files, debug_kb_generation
       use atom_options, only: new_kb_reference_orbitals
       use m_filter, only: kcphi, filter, gen_filteret, gen_pol_filteret
@@ -109,7 +110,7 @@
 
       CONTAINS !================================================
 
-        subroutine atom_main(izin,lmxkb_in,nkbl,erefkb,lmxo, nzeta, 
+        subroutine atom_main(izin,lmxkb_in,nkbl,erefkb,lmxo,nprin,nzeta, 
      .                       rco,lambda_in,atm_label,npolorb,semic,
      .                       nsemic,cnfigmx,charge_in,smass,basistype, 
      .                       ISIN,RINN,VCTE,qcoe,qyuk,qwid,
@@ -146,6 +147,9 @@
         integer, intent(IN) :: lmxo 
 !       Angular momentum cutoff for basis orbitals 
 !       (not including the polarization base functions)
+
+        integer, intent(in) :: nprin(0:lmaxd,nsemx)
+!       Principal quantum numbers for shells of a given l
 
         integer, intent(in) :: nzeta(0:lmaxd,nsemx)
 !       Number of shells of PAOs with the same angular momentum. 
@@ -352,7 +356,7 @@
          endif
 !           
         call new_specie(iz,lmxkb, nkbl, lmxo,
-     .                  nzeta, atm_label,
+     .                  nprin, nzeta, atm_label,
      .                  npolorb, semic, nsemic, cnfigmx,
      .                  is, new, no, nkb, basp) 
 ! 
@@ -622,7 +626,7 @@ c    .          'atom: The above configuration will be used ',
 !  
              Rchloc = rofi(nchloc)
              write(6,'(2a,f10.5)') 'atom: Maximum radius for' ,
-     .            'chloc: ',Rchloc
+     .            ' chlocal: ',Rchloc
 
             call comlocal(is,a,b,rofi,chlocal,nchloc,flting,spp)
 !
@@ -2099,7 +2103,7 @@ C
         end subroutine com_vlocal
 !
         subroutine new_specie(iz,lmxkb, nkbl, lmxo,
-     .                        nzeta, atm_label,
+     .                        nprin, nzeta, atm_label,
      .                        npolorb, semic, nsemic, cnfigmx,
      .                        is, new, no, nkb, basp)
 
@@ -2110,7 +2114,7 @@ C
         integer
      .    iz, lmxkb, lmxo, nzeta(0:lmaxd,nsemx), npolorb(0:lmaxd,nsemx),
      .    nsemic(0:lmaxd), is, no, nkb, nkbl(0:lmaxd), cnfigmx(0:lmaxd)
-      
+        integer, intent(in) :: nprin(0:lmaxd,nsemx)
         character 
      .    atm_label*20 
 
@@ -2172,54 +2176,8 @@ C
         label_save(is)=atm_label
         semicsave(is)=semic   
             
-        cnfigtb(:,:,is) = 0
-
         ! Generate the array with 'n' quantum number information
-        if (iz.ne.-100) then  ! Normal case
-           
-          ! Note that lmxo now covers any polarization orbitals
-
-          do l=0,lmxo
-             do nsm=1, nsemic(l)+1
-                cnfigtb(l,nsm,is)=cnfigmx(l)-(nsemic(l)+1)+nsm
-             enddo
-
-             if (l==0) cycle
-
-             ! Special case for polarization orbitals with l<lmxo
-             ! Examples:
-             !    Ti: 3s2 3p6 4s2 3d2 4p0* 4p0 is a polarization
-             !                             orbital, with the same l as 3p.
-             !    Fe: 4s-4p*-3d
-             ! (See 'archaeological note' in the header of 'basis_specs.f')
-             ! We assign formally a "shell index" nsm beyond the last one,
-             ! and the appropriate n from the ground state record.
-             ! 
-             npols_lm1 = sum(npolorb(l-1,:))
-             if (npols_lm1 > 0) then
-                nsm = nsemic(l)+2
-                cnfigtb(l,nsm,is)= basp%ground_state%n(l)
-                if (basp%ground_state%occupied(l)) then
-                   call die("Inconsistency in polarization orbital")
-                endif
-             endif
-
-          enddo
-
-        else
-!
-!          For bessel-function states, the 'n' quantum number
-!          does not follow the heuristics for real 'atomic'
-!          states, but since the user has to specify them in the
-!          PAO.Basis block, we use them.           
-
-           do l=0,lmxo
-            do nsm=1,nsemic(l)+1
-              n_user = cnfigmx(l)-(nsemic(l)+1)+nsm
-              cnfigtb(l,nsm,is) = n_user
-            enddo
-          enddo 
-        endif   ! iz.ne.-100
+        cnfigtb(:,:,is) = nprin(:,:)
 
         no=0
         do l=0,lmxo
@@ -2406,16 +2364,7 @@ C    drdi=dr/di =a*b*exp(a*(i-1))= a*[rofi(ir)+b]
        enddo
        
        vps_u = 0.0_dp
-       ! For backward compatibility with original OSSO branch,
-       ! put 'keep-npotu-bug T' in fdf file
-       ! To be removed altogether for releases
-       if (fdf_get('keep-npotu-bug',.false.))  then
-          nup_end =  min(lmax_ps,npotu-1)
-          write(6,'(a)') 'atom: *** Buggy code in highest-l ' //
-     $                   'SO component setup enabled ***'
-       else
-          nup_end = npotu
-       endif
+       nup_end = npotu
 
        ! Allow an overall factor for the SO part (for debugging only!)
        ! Note that (notably for the lj-based SO implementation) this
@@ -2764,8 +2713,10 @@ C
       call derivs(mmax,vl,al,0.0_dp,rr,vlp,vlpp,vllap)
       ch(:) = - vllap(:) / (8.0_dp*pi) ! Rydberg units
 
-      call file_out(mmax,rr,ch,
-     .     trim(global_label)//".Chlocal_rr_psml")
+      if (debug_atom) then
+         call file_out(mmax,rr,ch,
+     .        trim(global_label)//".Chlocal_rr_psml")
+      endif
 
 
       ! Now interpolate first into linear grid, using
@@ -2783,8 +2734,10 @@ C
       nrange = log(rr(mmax)/rr1)/al - 2  
       call dpnint(rr(n0),ch(n0),mmax-n0+1,rlin,chlocal_rlin,
      $            nrange,poly_order=poly_order_rlin)
-      call file_out(npts,rlin,chlocal_rlin,
-     .     trim(global_label)//".Chlocal_rlin_psml")
+      if (debug_atom) then
+         call file_out(npts,rlin,chlocal_rlin,
+     .        trim(global_label)//".Chlocal_rlin_psml")
+      endif
 
       ! Now interpolate into Siesta's grid
       chlocal(:) = 0.0_dp
@@ -2793,9 +2746,10 @@ C
       call dpnint(rlin,chlocal_rlin,npts,rofi,chlocal,
      $     nrval-20,poly_order=poly_order_rofi)
 
-      call file_out(nrval,rofi,chlocal,
-     .     trim(global_label)//".Chlocal_rofi_psml")
-
+      if (debug_atom) then
+         call file_out(nrval,rofi,chlocal,
+     .        trim(global_label)//".Chlocal_rofi_psml")
+      endif
       deallocate(rlin, chlocal_rlin)
       deallocate(rr, vl, ch, vlp, vlpp, vllap)
       
@@ -3864,7 +3818,7 @@ C
         logical :: new_split_code, fix_split_table, split_tail_norm
 
         parameter (dlt=0.60d0)
-
+        real(dp) :: user_set_rc
 C
 C Number of points used by polint for the interpolation
 C 
@@ -3931,29 +3885,41 @@ C
      .                        nrval,l,a,b,nnodes,nprin,
      .                        eigen(l),rphi(1,l,nsm))
 
-                if (eigen(l).gt.0.0d0) then 
-                  write(6,'(/A,I2,A)')
+                if (eigen(l).gt.0.0d0) then
+                   ! Orbital is unbound. Try to get an rc from
+                   ! the input file (even if there is no PAO.Basis block)
+                   user_set_rc =
+     $                  fdf_get("PAO.rc.unbound.state",0.0_dp,"Bohr")
+                   print *, "user_set_rc:", user_set_rc
+                   if (user_set_rc == 0.0_dp) then
+                      
+                      write(6,'(/A,I2,A)')
      .       'SPLIT: ERROR Orbital with angular momentum L=',l,
      .       ' not bound in the atom'
-                  write(6,'(A)')
+                      write(6,'(A)')
      .       'SPLIT: ERROR a cut off radius must be explicitly given' 
-                  call die
-                endif 
+                      call die()
+                   else
+                      ! Use this rc
+                      rco(1,l,nsm) = user_set_rc
+                   endif 
 
-                ! Determine the rc from the energy shift
-                if (abs(eshift).gt.1.0d-5) then
-                  el=eigen(l)+eshift
+                else   !(bound state)
+
+                  ! Determine the rc from the energy shift
+                  if (abs(eshift).gt.1.0d-5) then
+                     el=eigen(l)+eshift
                   ! The rco coming out of this is not pinned to a grid point
-                  call rc_vs_e(a,b,rofi,Vpot,ve,nrval,l,el,
+                     call rc_vs_e(a,b,rofi,Vpot,ve,nrval,l,el,
      .                         nnodes,rco(1,l,nsm))
-                else
+                  else
                    ! out near "infinity" (should be catched?)
-                   rco(1,l,nsm)=rofi(nrval-2)  
-                endif
-                write(6,'(/,A,/,A,f10.6,A)')
+                     rco(1,l,nsm)=rofi(nrval-2)  
+                  endif
+                  write(6,'(/,A,/,A,f10.6,A)')
      .            'SPLIT: PAO cut-off radius determined from an',
      .            'SPLIT: energy shift=',eshift,' Ry'
-
+                endif
               endif  
 
               ! Check lambda
@@ -4223,8 +4189,10 @@ c                        write(68,*) r,rh,rphi(ir,l,ism)
               nrc=nrc1
               rco(izeta,l,nsm)=
      .             b*(exp(a*(nrc1-1))-1.0d0)*lambda(izeta,l,nsm)
-              write(6,*) 'rco redefined: l, nsm, izeta, rco:',
-     $                   l, nsm, izeta, rco(izeta,l,nsm)
+              if (debug_atom) then
+                 write(6,*) 'rco redefined: l, nsm, izeta, rco:',
+     $                l, nsm, izeta, rco(izeta,l,nsm)
+              endif
            endif
            
         endif  ! nsm > 1  (there are semicore states)
@@ -5387,7 +5355,6 @@ C
 C Returns the ground states atomic population for each species.
 C This information is required for the screening of the local 
 C pseudopotential.
-!! Even though qtb is passed, atom itself only uses qPAO...
 C Written by D. Sanchez-Portal, Aug. 1998
 C
 
@@ -5409,46 +5376,70 @@ C
         real(dp)  qatm(0:4)
           
         integer noPAO, l, izeta, m, norb, noPol, lpop,
-     .     nsm, nvalence, config(0:lmaxd), i
+     .     nsm, nsm_valence, config(0:lmaxd), i
         character*70  line
 
+        qPAO(0:lmaxd,1:nsemx) = 0.d0  ! AG
+        q(1:) = 0.0_dp
+        
+        ! These data refer to the 'valence' shell
+        ! for a given l. Semicore states will be handled below
         qatm(0:4) = basp%ground_state%occupation(0:4)
         config(:) = 0
         config(0:4) = basp%ground_state%n(0:4)
 
-        qPAO(0:lmaxd,1:nsemx) = 0.d0  ! AG
-!
-        do l=0,lmxo 
-          nvalence=nsemic(l)+1
-     .        -(cnfigtb(l,nsemic(l)+1,is)-config(l))
-!!          print *, "l, config(l), nvalence:", l, config(l), nvalence
-          nsm=nvalence
-C Add a check on whether nsemx is large enough
-          if (nsm.gt.nsemx) then
+        do l=0,lmxo
+           nsm_valence = -1
+           do nsm = 1, nsemic(l)+1
+              if (cnfigtb(l,nsm,is) == config(l)) then
+                 nsm_valence = nsm
+                 EXIT
+              endif
+           enddo
+!!          nsm_valence = nsemic(l)+1 -(cnfigtb(l,nsemic(l)+1,is)-config(l))
+          
+          if (nsm_valence < 0) then
+            ! Possible error in input of 'n' quantum number
+             write(6,'(/,a)') 'WARNING: ------'
+             write(6,'(a,i1,a)') 'atm_pop: For l=',l,
+     $            " I cannot find a PAO with the valence 'n':"
+             write(6,'(a,i2)') 'atm_pop: ' //
+     $            'GS n quantum number: ', config(l)
+             write(6,'(a,8i2)') 'atm_pop: ' //
+     $            'PAOs quantum numbers: ',  cnfigtb(l,1:nsemic(l)+1,is)
+             write(6,'(a,/)') '---------------'
+             if (qatm(l) > 0.0_dp) then
+                ! Shell is occupied in the ground state
+                call die('atm_pop: No PAO for shell occupied in GS')
+             endif
+          endif
+          
+          if (nsm_valence.gt.nsemx) then
             call die('need to increase nsemx')
           endif
-          qPAO(l,nsm)=0.0d0
-          if(l.le.3) qPAO(l,nsm)=qatm(l) 
-        enddo 
 
-        if (semic) then 
-          do l=0,lmxo
-            do nsm=1,nsemic(l)+1
-              nvalence=nsemic(l)+1
-     .              -(cnfigtb(l,nsemic(l)+1,is)-config(l))
-              ! This is incomplete. It might be that the shell
-              ! was not among those used in the generation of the pseudopotential
-              ! Then, it will be artificially occupied.
-              if(nsm.lt.nvalence) qPAO(l,nsm)=2*(2*l+1) 
-              if(nsm.gt.nvalence) qPAO(l,nsm)=0.0d0
-            enddo 
+          if(l.le.3) qPAO(l,nsm_valence)=qatm(l) 
+
+          ! Fill 'semicore' shells (those with n<n_valence)
+          do nsm=1,nsemic(l)+1
+
+             ! This is incomplete. It might be that the shell
+             ! was not among those used in the generation of the pseudopotential
+             ! Then, it will be artificially occupied.
+             if (cnfigtb(l,nsm,is) .lt. cnfigtb(l,nsm_valence,is)) then
+                if (.not. semic) then
+                   write(6,'(/,a)') 'WARNING: PAO with n<n_valence,' //
+     $                  ' without semicore in PS'
+                endif
+                qPAO(l,nsm)=2*(2*l+1) 
+             endif
           enddo 
-        endif 
+
+        enddo  ! l=0,lmxo
 
         noPAO=0
         do l=0,lmxo 
           do nsm=1,nsemic(l)+1
-            if (nzeta(l,nsm).gt.0) then 
               do izeta=1,nzeta(l,nsm) 
                 do m=1,2*l+1 
                   q(noPAO+m)=0.0d0
@@ -5457,21 +5448,18 @@ C Add a check on whether nsemx is large enough
                 enddo  
                 noPAO=noPAO+2*l+1
               enddo
-            endif 
           enddo 
         enddo 
 
         noPol=0
         do l=0,lmxo
           do nsm=1,nsemic(l)+1
-            if (polorb(l,nsm).gt.0) then 
               do izeta=1,polorb(l,nsm)
                 do m=1,2*(l+1)+1 
                   q(noPAO+noPol+m)=0.0d0
                 enddo  
                 noPol=noPol+2*(l+1)+1
               enddo    
-            endif 
           enddo
         enddo      
         norb=noPAO+noPol 
@@ -5493,6 +5481,7 @@ C Add a check on whether nsemx is large enough
 C Internal variables
 
         integer l, lpop, nsm, config(0:lmaxd), i
+        integer nval
         character*70  line
 
         config(:) = 0
@@ -5502,9 +5491,10 @@ C Internal variables
         write(6,'(/,2a)') 'atm_pop: Valence configuration',
      .                    ' (for local Pseudopot. screening):'
         do l=0,lpop
+!!          nval = nsemic(l)+1-(cnfigtb(l,nsemic(l)+1,is)-config(l))
           write(line,'(7(1x,i1,a1,a1,f5.2,a1))')
      .          (cnfigtb(l,nsm,is),sym(l),"(",qPAO(l,nsm),")",
-     .       nsm=1,nsemic(l)+1-(cnfigtb(l,nsemic(l)+1,is)-config(l)))
+     .            nsm=1,nsemic(l)+1)
           write(6,'(a)') line
         enddo
         end subroutine atm_pop_print
