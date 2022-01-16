@@ -7,13 +7,12 @@
 #
 #-------------------------------------------------------------------
 
-# DOCUMENTED arch.make
-
-# **WARNING**: This file is mostly obsolete regarding the structure of the
-# arch.make file (which has been superseded by the ideas in
-# ARCH-EXPERIMENTAL), but it can be useful as a guide to some features
-# of Makefile operation.
+# **WARNING**: This file is mostly obsolete regarding the structure of
+# the arch.make file (which is now much slimmer, as it delegates most
+# low-level functionality to other files), but it can be useful as a
+# guide to some features of Makefile operation.
 #
+
 # This block tells make to consider only these suffixes in its operation
 # It is included in most makefiles in the source tree, but it does not
 # hurt to have it here too.

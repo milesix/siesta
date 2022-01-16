@@ -608,13 +608,9 @@ generate the executable for any of several architectures, with a
 minimum of tuning required from the user and encapsulated in a
 separate file called \file{arch.make}.
 
-You are strongly encouraged to look at
-\shell{Obj/DOCUMENTED-TEMPLATE.make} for information about the
-fine points of the \file{arch.make} file. There are two sample make
-files for compilation of \siesta\ with \shell{gfortran} and
-\shell{ifort} named \shell{Obj/gfortran.make} and
-\shell{Obj/intel.make}, respectively. Please use those as guidelines
-for creating the final \file{arch.make}.
+Please see the \shell{README} filein the 
+\shell{Config/mk-build} directory for information about the
+build system and the contents the \file{arch.make} file.
 
 \note Intel compilers default to high optimizations which tend to
 break \siesta. We advice to use \shell{-fp-model source} flag and not

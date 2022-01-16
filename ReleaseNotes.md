@@ -18,16 +18,17 @@ grouped under headings representing past (and upcoming) releases.
 * Added support for PSML pseudopotential files:
 
    * An external LibGridXC replaces the built-in SiestaXC
-   * Libxc support through libGridXC
-   * External dependencies: xmlf90, libpsml
+   * Libxc support provided through libGridXC
+   * New mandatory dependencies: xmlf90, libpsml, libgridxc (libxc)
+   * Changes to offer more information about PAO generation, and to implement
+     new features such as automatic handling of semicore states.
    * New psoplib and ncps libraries in Libs handle KB generation and 'Froyen' interface
-   * New stand-alonne program Pseudo/vnl-operator/psop to generate PSML files with Siesta-style KB  projectors
+   * New stand-alone program Pseudo/vnl-operator/psop to generate PSML files with Siesta-style KB  projectors
    * New program Pseudo/converters/psml2psf
    * Alloc module revamped to make logging work with external libraries
    * Memory logging revamped
-   * Changes in atom.F to offer more information about PAO generation, and to implement
-     new features such as automatic handling of semicore states.
-   * Streamlined Util Makefiles with much smaller dependency lists
+   * Streamlined 'Util' makefiles with much smaller dependency lists
+   * New, more modular, building specification with slimmer arch.make file.
 
 * Allow parallelization over orbitals instead of over k-points in the unfold utility
 
