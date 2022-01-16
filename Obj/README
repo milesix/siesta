@@ -19,17 +19,8 @@ If you just want to compile the program, follow the following steps:
 
 2) Ensure that an 'arch.make' file is present in the build directory.
 
-It is suggested to start by taking a look at the ARCH-EXPERIMENTAL/README file.
-
-Then, make a local copy of ARCH-EXPERIMENTAL/master-raw.make:
-
-    cp ARCH-EXPERIMENTAL/master-raw.make arch.make
-
-and then, either edit directly the options in the file, or just
-uncomment the two lines starting at '#SELF_DIR' and create a small
-'fortran.mk' include file with options. Examples of .mk files for
-various architectures can be found also in the ARCH-EXPERIMENTAL
-directory.
+It is suggested to start by taking a look at the sample files in
+Config/mk-build/sample-arch-makes
 
 3) Then, again from the build directory, execute
 

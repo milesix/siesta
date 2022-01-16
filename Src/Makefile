@@ -25,6 +25,14 @@ default: siesta
 ARCH_MAKE?=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
 
+ifndef BUILD_MK_H__
+ $(info ** You need to include build.mk in your arch.make (see top of build.mk))
+ $(info ** to exploit all the features of the build system)
+ $(info **     If you want to go ahead using a legacy arch.make for testing purposes)
+ $(info **     use 'make DBUILD_MK_H__=1' to bypass this check)
+ $(error   --------)
+endif
+
 #
 # Ensure the correct implicit rules for the compilation
 # SIESTA relies on these extensions and thus we

@@ -14,18 +14,15 @@ SIESTA_ARCH=prace-intel
 # Use these symbols to request particular features
 # To turn on, set '=1'.
 #--------------
-# These are mandatory for PSML and MaX Versions,
-# but they should be turned off for 4.1
-WITH_PSML=1
-WITH_GRIDXC=1
+# These are set in build.mk
+# WITH_PSML=1
+# WITH_GRIDXC=1
 #-------------
 #
-WITH_EXTERNAL_ELPA=1
-WITH_ELSI=0
+WITH_ELPA=1
 WITH_FLOOK=1
 WITH_MPI=1
 WITH_NETCDF=1
-WITH_SEPARATE_NETCDF_FORTRAN=0
 WITH_NCDF=1
 WITH_LEGACY_GRIDXC_INSTALL=0
 WITH_GRID_SP=0
@@ -44,7 +41,7 @@ WITH_GRID_SP=0
 #ELPA_INCLUDE_DIRECTORY=
 #FLOOK_ROOT=
 #-------------------------------------------------------
-# Netcdf is subtle: Apparently they have all the dependencies (hdf5, etc) encoded in
+# For netCDF, they have all the dependencies (hdf5, etc) encoded in
 # the fortran library, so it is only necessary to specify NETCDF_ROOT (with 'ml netcdf')
 # BUT the spec has to be -L$(NETCDF_ROOT)/lib -lnetcdff
 # An explicit (static) library load will not work
@@ -81,3 +78,6 @@ create_Sparsity_SC.o: create_Sparsity_SC.F90
 	$(FC) -c $(FFLAGS_DEBUG) $(INCFLAGS) $(FPPFLAGS)  $<
 #
 RANLIB=echo
+# ----------------------------------------------------------
+SELF_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
+include $(SELF_DIR)build.mk

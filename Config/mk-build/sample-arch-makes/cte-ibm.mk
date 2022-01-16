@@ -1,5 +1,7 @@
 #
 # Defs for CTE-Power at BSC. IBM xl-16 compilers
+# (Incomplete regarding options and other features.
+#  Included just to show IBM compiler incantations.)
 #
 SCALAPACK_ROOT=/apps/SCALAPACK/2.0.2/IBM/SPECTRUM
 LAPACK_ROOT=/apps/LAPACK/3.8.0/IBM

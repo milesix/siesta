@@ -1,72 +1,95 @@
 #
-SIESTA_ARCH=Master-template
-
-# Machine specific settings might be:
+# This file (build.mk) takes care of the low-level details It needs to
+# be included at the *bottom* of the users' arch.make file using the
+# (uncommented) lines:
 #
-# 1. Inherited from environmental variables
-#    (paths, libraries, etc)
-# 2. Set from a 'fortran.mk' file that is
-#    included below (compiler names, flags, etc) (Uncomment first)
+#SELF_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
+#include $(SELF_DIR)build.mk
+#------------------------------------------------------------
+#
+ifdef BUILD_MK_H__
+$(info multiple inclusion of build.mk...)
+else
+  BUILD_MK_H__=1
 
-#--------------------------------------------------------
-# Use these symbols to request particular features
+#
+SIESTA_ARCH=build-mk-scheme
+
+# Options and machine specific settings (paths, libraries, etc)
+# might be:
+#
+# 1. Set here, perhaps inherited from environmental variables
+#    (See examples below)
+#
+# 2. Set from a 'arch.make' file that includes this file.
+#    This is the recommended operation mode.
+#
+#===========================================================
+# Symbols to request particular features or options
 # To turn on, set '=1'.
 #--------------
-# These are mandatory for PSML and MaX Versions,
-# but they should be turned off for 4.1
+# These are mandatory for PSML-enabled Versions
 WITH_PSML=1
 WITH_GRIDXC=1
 #-------------
 
-WITH_EXTERNAL_ELPA=0
-WITH_ELSI=0
-WITH_FLOOK=0
-WITH_MPI=1
-WITH_NETCDF=0
-WITH_SEPARATE_NETCDF_FORTRAN=0
-WITH_NCDF=0
-WITH_NCDF_PARALLEL=0
-WITH_LEGACY_GRIDXC_INSTALL=0
-WITH_GRID_SP=0
+# Other options supported:
+#
+# WITH_MPI=
+#
+# WITH_ELPA=
+# WITH_EXTERNAL_ELPA=    (synonymous with the above)
+
+# WITH_POST_2020_ELPA=
+# WITH_POST_2020_EXTERNAL_ELPA=
+# GPU_TYPE=NVIDIA_GPU  # or AMD_GPU, or INTEL_GPU (for >=2021 external ELPA)
+
+# WITH_FLOOK=
+
+# WITH_NETCDF=
+# WITH_EXPLICIT_NETCDF_SYMBOLS=
+# WITH_NCDF=
+# WITH_NCDF_PARALLEL=
+
+# WITH_GRID_SP=
+# WITH_LEGACY_GRIDXC_INSTALL=
 
 #===========================================================
-# Make sure you have the appropriate library symbols
-# (Either explicitly here, or through shell variables, perhaps
+# Symbols for locating the appropriate libraries
+# (Either explicit or through shell variables, perhaps
 #  set by a module system)
-# Define also compiler names and flags
 #--------------------------------------------------------
+
 #XMLF90_ROOT=
 #PSML_ROOT=
 #GRIDXC_ROOT=
-#ELSI_ROOT=
+#
 #ELPA_ROOT=
 #ELPA_INCLUDE_DIRECTORY=
 #FLOOK_ROOT=
-#--------------------------------------------------------
+#
 #NETCDF_ROOT=$(NETCDF_HOME)
-#NETCDF_FORTRAN_ROOT=$(NETCDF_HOME)
-#HDF5_LIBS=-L/apps/HDF5/1.8.20/GCC/OPENMPI/lib -lhdf5_hl -lhdf5 -lcurl -lz
+#NETCDF_LIBS=-lnetcdff -lnetcdf -L/opt/hdf5/lib -lhdf5_hl -lhdf5 -lcurl -lz
+#NETCDF_INCFLAGS=-I/usr/include
+#
 #SCALAPACK_LIBS=-lscalapack
 #LAPACK_LIBS=-llapack -lblas
 #FFTW_ROOT=/apps/FFTW/3.3.8/GCC/OPENMPI/
 # Needed for PEXSI (ELSI) support
 #LIBS_CPLUS=-lstdc++ -lmpi_cxx
-#--------------------------------------------------------
 
-#FC_PARALLEL=mpif90
-#FC_SERIAL=gfortran
-#FPP = $(FC_SERIAL) -E -P -x c
-#FFLAGS = -O2 
-#FFLAGS_DEBUG= -g -O0
-#RANLIB=echo
-
-# Alternatively, prepare a fortran.mk file with compiler definitions,
-# put it in this same directory, and uncomment the two lines below
-#
-#SELF_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
-#include $(SELF_DIR)fortran.mk
 #===========================================================
+# Compiler names and flags
+#
+# FC_PARALLEL=mpif90
+# FC_SERIAL=gfortran
+# FFLAGS = -O2 
+# FFLAGS_DEBUG= -g -O0
+#
+# FPP = $(FC_SERIAL) -E -P -x c
+# RANLIB=echo
 
+#===========================================================
 # Possible section on specific recipes for troublesome files, using
 # a lower optimization level.
 #
@@ -79,7 +102,9 @@ WITH_GRID_SP=0
 #atom.o: FFLAGS=$(FFLAGS_DEBUG)
 # would compile *all* dependencies of atom.o with that setting...
 
-#----------------------------------------------------------------
+#===========================================================
+# Support for idiosynchratic compilers
+#
 # In case your compiler does not understand the special meaning of 
 # the .F and .F90 extensions ("files in need of preprocessing"), you
 # will need to use an explicit preprocessing step.
@@ -89,16 +114,18 @@ WITH_GRID_SP=0
 # compiler with options '-E -P -x c'.
 #FPP = $(FC) -E -P -x c
 
-# This enables specific preprocessing options for certain source files.
-#FPPFLAGS_fixed_f = -qsuffix=cpp=F -qfixed
-#FPPFLAGS_free_f90 = -qsuffix=cpp=F90 -qfree=F90
-
 # Some compilers (notably IBM's) are not happy with the standard syntax for
 # definition of preprocessor symbols (-DSOME_SYMBOL), and thy need a prefix
 # (i.e. -WF,-DSOME_SYMBOL). This is used in some utility makefiles. Typically
 # this need not be defined.
 #DEFS_PREFIX = -WF,
 
+# This enables specific preprocessing options for certain source files.
+# (example for the IBM compilers)
+#FPPFLAGS_fixed_f = -qsuffix=cpp=F -qfixed
+#FPPFLAGS_free_f90 = -qsuffix=cpp=F90 -qfree=F90
+
+#===========================================================
 #--------------------------------------------------------
 # Nothing should need to be changed below
 #--------------------------------------------------------
@@ -111,10 +138,16 @@ LIBS=
 COMP_LIBS=
 
 # ---- ELPA configuration -----------
-#
-# An external ELPA library can be used through the native interface (-DSIESTA__ELPA) and
-# through the ELSI interface. Due to namespace collisions, the *same* external library
-# must be used.
+
+# For backwards compatibility, we allow both WITH_ELPA and WITH_EXTERNAL_ELPA to enable
+# the native ELPA interface.
+
+ifeq ($(WITH_ELPA),1)
+   WITH_EXTERNAL_ELPA=1
+endif
+ifeq ($(WITH_POST_2020_ELPA),1)
+   WITH_POST_2020_EXTERNAL_ELPA=1
+endif
 
 ifeq ($(WITH_EXTERNAL_ELPA),1)
    ifndef ELPA_ROOT	
@@ -126,6 +159,17 @@ ifeq ($(WITH_EXTERNAL_ELPA),1)
    endif
 
    FPPFLAGS_ELPA=$(DEFS_PREFIX)-DSIESTA__ELPA
+   ifeq ($(WITH_POST_2020_EXTERNAL_ELPA),1)
+     ifndef GPU_TYPE
+       $(info NVIDIA_GPU used for post-2020 ELPA kernel interface compilation)
+       $(info Set GPU_TYPE if you need another kind)
+       $(info or disregard if you do not have gpus)
+       GPU_TYPE=NVIDIA_GPU
+     endif
+     FPPFLAGS_ELPA+=$(DEFS_PREFIX)-DELPA_2STAGE_REAL_GPU=ELPA_2STAGE_REAL_$(GPU_TYPE)
+     FPPFLAGS_ELPA+=$(DEFS_PREFIX)-DELPA_2STAGE_COMPLEX_GPU=ELPA_2STAGE_COMPLEX_$(GPU_TYPE)
+   endif
+
    ELPA_INCFLAGS= -I$(ELPA_INCLUDE_DIRECTORY)
    INCFLAGS += $(ELPA_INCFLAGS)
    FPPFLAGS += $(FPPFLAGS_ELPA)
@@ -134,63 +178,32 @@ ifeq ($(WITH_EXTERNAL_ELPA),1)
 endif
 # ---- ELPA configuration -----------
 
-# ---- ELSI configuration -----------
-
-ifeq ($(WITH_ELSI),1)
- ifndef ELSI_ROOT
-   $(error you need to define ELSI_ROOT in your arch.make)
- endif
- #  Add the second symbol for MAGMA and EigenExa support
- FPPFLAGS_ELSI=$(DEFS_PREFIX)-DSIESTA__ELSI # -DSIESTA__ELSI_2_4_SOLVERS
-
- ELSI_INCFLAGS = -I$(ELSI_ROOT)/include
-
- ifeq ($(WITH_EXTERNAL_ELPA),1)
-   ELSI_ELPA_ROOT=$(ELPA_ROOT)
-   $(echo Make sure that ELSI is compiled with external ELPA...)
-   # Explicit checks?
- else
-   ELSI_ELPA_ROOT=$(ELSI_ROOT)
- endif
- # This assumes that ELSI has been compiled with PEXSI
- ELSI_LIB = -L$(ELSI_ROOT)/lib -lelsi \
-               -lfortjson -lOMM -lMatrixSwitch \
-               -lNTPoly \
-                -lpexsi -lsuperlu_dist \
-               -lptscotchparmetis -lptscotch -lptscotcherr \
-               -lscotchmetis -lscotch -lscotcherr \
-               -L$(ELSI_ELPA_ROOT)/lib -lelpa
-
- INCFLAGS += $(ELSI_INCFLAGS)
- FPPFLAGS += $(FPPFLAGS_ELSI)
- LIBS += $(ELSI_LIB) $(LIBS_CPLUS)
-endif
-
 
 ifeq ($(WITH_NETCDF),1)
- ifndef NETCDF_ROOT
-   $(error you need to define NETCDF_ROOT in your arch.make)
- endif
 
-# If NetCDF is enabled, for completeness in some installations,
-# we might need to deal separately with the install prefixes of NetCDF and
-# NetCDF-Fortran. By default both are the same
+   ifeq ($(WITH_EXPLICIT_NETCDF_SYMBOLS),1)
 
- ifeq ($(WITH_SEPARATE_NETCDF_FORTRAN),1)
-   ifndef NETCDF_FORTRAN_ROOT
-     $(error you need to define NETCDF_FORTRAN_ROOT in your arch.make)
+     ifndef NETCDF_INCFLAGS
+      $(error you need to define NETCDF_INCFLAGS in your arch.make)
+     endif
+     ifndef NETCDF_LIBS
+      $(error you need to define NETCDF_LIBS in your arch.make)
+     endif
+
+   else
+
+     ifndef NETCDF_ROOT
+       $(error you need to define NETCDF_ROOT in your arch.make)
+     endif
+
+     NETCDF_INCFLAGS = -I$(NETCDF_ROOT)/include
+     NETCDF_LIBS = -L$(NETCDF_ROOT)/lib -lnetcdff
    endif
-   NETCDF_INCFLAGS = -I$(NETCDF_ROOT)/include -I$(NETCDF_FORTRAN_ROOT)/include
-   NETCDF_LIBS = -L$(NETCDF_FORTRAN_ROOT)/lib -lnetcdff -L$(NETCDF_ROOT)/lib -lnetcdf
- else
-   NETCDF_INCFLAGS = -I$(NETCDF_ROOT)/include
-   NETCDF_LIBS = -L$(NETCDF_ROOT)/lib -lnetcdff
- endif
- NETCDF_LIBS += $(HDF5_LIBS)
- FPPFLAGS_CDF = $(DEFS_PREFIX)-DCDF
- FPPFLAGS += $(FPPFLAGS_CDF) 
- INCFLAGS += $(NETCDF_INCFLAGS)
- LIBS += $(NETCDF_LIBS)
+
+   FPPFLAGS_CDF = $(DEFS_PREFIX)-DCDF
+   FPPFLAGS += $(FPPFLAGS_CDF) 
+   INCFLAGS += $(NETCDF_INCFLAGS)
+   LIBS += $(NETCDF_LIBS)
 endif
 
 ifeq ($(WITH_NCDF),1)
@@ -283,3 +296,5 @@ endif
 	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FFLAGS_fixed_f)  $<
 .f90.o:
 	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FFLAGS_free_f90)  $<
+
+endif
