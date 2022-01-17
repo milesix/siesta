@@ -62,6 +62,8 @@ grouped under headings representing past (and upcoming) releases.
 
 ### Changes
 
+* Sort shells in PAO.Basis by n quantum number
+
 * Fixed reading Target.Pressure, reported on mailing list 24 March 2021.
 
 

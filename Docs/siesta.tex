@@ -635,6 +635,10 @@ safe to ignore and will look something like:
       |                  1
 Warning: Type mismatch between actual argument at (1) and actual argument at (2) (REAL(8)/INTEGER(4)).
 \end{shellexample}
+In addition, compilations with \shell{-pedantic} flag are no longer possible.
+\footnote{For more details on this, see the 
+\href{https://gitlab.com/siesta-project/siesta/-/issues/130}
+{issue discussion in the SIESTA project}. }
 
 % You can also get
 % inspiration by looking at the actual \file{arch.make} examples in
@@ -1403,13 +1407,14 @@ Here we offer a glimpse of it through the following rules:
 
 \begin{itemize}
 
-\item[$\bullet$] The \fdflib\ syntax is a 'data label' followed by its value.
-Values that are not specified in the datafile are assigned
-a default value.
+  \item[$\bullet$] The \fdflib\ syntax is a ``data label'' followed by
+  its value.  Values that are not specified in the datafile are
+  assigned a default value.
 
-\item[$\bullet$] \fdflib\ labels are case insensitive, and characters - \_ .
-in a data label are ignored. Thus, LatticeConstant and
-lattice\_constant represent the same label.
+  \item[$\bullet$] \fdflib\ labels are case insensitive, and
+  characters - \_ .  in a data label are ignored. Thus,
+  \fdf*{LatticeConstant} and \fdf*{lattice\_constant} represent the
+  same label.
 
 \item[$\bullet$] All text following the \# character is taken as comment.
 
@@ -1426,20 +1431,20 @@ it from an integer, in order to prevent ambiguities when mixing the types
 on the same input line.
 
 \item[$\bullet$] Complex data structures are called blocks and are
-placed between `\%block label'\index{block@\%block} and a `\%endblock label'
-(without the quotes).
+placed between ``\%block label''\index{block@\%block} and a
+``\%endblock label'' (without the quotes).
 
-\item[$\bullet$] You may `include' other \fdflib\ files and redirect the search
-for a particular data label to another file.
-If a data label appears more than once, its first appearance
-is used.
+\item[$\bullet$] You may ``include'' other \fdflib\ files and redirect
+the search for a particular data label to another file.  If a data
+label appears more than once, its first appearance is used.
 
-\item[$\bullet$] If the same label is specified twice, the first one takes precedence.
+\item[$\bullet$] If the same label is specified twice, the first one
+takes precedence.
 
-\item[$\bullet$] If a label is misspelled it will not be recognized (there is no
-  internal list of ``accepted'' tags in the program). You can check 
-  the actual value used by \siesta\ by looking for the label in the
-  output \file{fdf.log} file.
+\item[$\bullet$] If a label is misspelled it will not be recognized
+(there is no internal list of ``accepted'' tags in the program). You
+can check the actual value used by \siesta\ by looking for the label
+in the output \file{fdf.log} file.
 
 \end{itemize}
 
@@ -7892,9 +7897,8 @@ Apart from the LDOS-specific options below, the ``ordering'',
 ``verbosity'', and ``symbolic factorization'' options are honored.
 
 The current version of the code generates a real-space grid file with
-extension \sysfile{LDSI}, and (if netCDF is compiled-in) a file
-\file{Rho.grid.nc} (which unfortunately will overwrite any other
-charge-density files produced in the same run).
+extension \sysfile{LDOS}, and (if netCDF is compiled-in) a file
+\file{LDOS.grid.nc}.
 
 NOTE: The LDOS computed with this procedure is not exactly the same as
 the vanilla \siesta\ LDOS, which uses an explicit energy
@@ -7905,6 +7909,8 @@ energy.
 \begin{fdflogicalF}{PEXSI!LDOS}
 
   Whether to compute the LDOS using the PEXSI technology.
+
+  \note this flag is not compatible with \fdf{LocalDensityOfStates}.
   
 \end{fdflogicalF}
 
@@ -8354,6 +8360,11 @@ obtain simple STM images in the Tersoff-Hamann approximation (See
   
   \note the two energies of the range must be ordered, with lowest
   first.
+
+  \note this flag is not compatible with \fdf{PEXSI!LDOS}.
+  
+  If netCDF support is compiled in, the file \file{LDOS.grid.nc} is
+  produced.
 
 \end{fdfentry}
 
@@ -9078,8 +9089,8 @@ or interpolation of bands), can be downloaded from
 \begin{fdfentry}{ExternalElectricField}[block]
   
   It specifies an external electric field for molecules, chains and
-  slabs.  The electric field should be orthogonal to `bulk
-  directions', like those parallel to a slab (bulk electric fields,
+  slabs. The electric field should be orthogonal to ``bulk
+  directions'', like those parallel to a slab (bulk electric fields,
   like in dielectrics or ferroelectrics, are not allowed). If it is
   not, an error message is issued and the components of the field in
   bulk directions are suppressed automatically. The input is a vector
@@ -9094,6 +9105,10 @@ or interpolation of bands), can be downloaded from
   to a slab will by default enable the slab dipole correction, see
   \fdf{Slab.DipoleCorrection}. To reproduce older calculations, set
   this correction option explicitly to \fdffalse\ in the input file.
+
+  When examining a variety of electric fields it may be highly
+  advantageous to re-use the \sysfile{DM} from a previous calculation
+  with an electric field close to the current one.
 
 \end{fdfentry}
 
@@ -13940,13 +13955,13 @@ The bias contour is similarly defined as the equilibrium
 contours. Please use the \program{Util/TS/tselecs.sh} as a means to
 create default input blocks.
 
-\begin{fdfentry}{TS!Contours.nEq!Eta}[energy]<$\operatorname{min}[\eta_{\mathfrak e}]/100$>
+\begin{fdfentry}{TS!Contours.nEq!Eta}[energy]<$\operatorname{min}[\eta_{\mathfrak e}]/10$>
   \fdfdepend{TS!Elecs!Eta}%
 
   The imaginary part ($\eta$) of the device states. While this may be
   set to $0$ for most systems it defaults to the minimum $\eta$ value
   for the electrodes ($\operatorname{min}[\eta_{\mathfrak
-      e}]/100$). This ensures that the device broadening is always
+      e}]/10$). This ensures that the device broadening is always
   smaller than the electrodes while allowing broadening of localized
   states.
 
