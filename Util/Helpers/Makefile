@@ -84,6 +84,7 @@ dep:
 atom_options.o: local_sys.o
 chemical.o: local_sys.o parallel.o precision.o
 io.o: m_io.o
+m_io.o: local_sys.o
 memory.o: memory_log.o parallel.o
 memory_log.o: m_io.o parallel.o precision.o
 get_chem_labels.o: chemical.o

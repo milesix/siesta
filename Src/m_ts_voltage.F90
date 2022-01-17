@@ -421,7 +421,7 @@ contains
 #ifdef MPI
     use mpi_siesta, only : MPI_Comm_World, MPI_Bcast, MPI_Grid_Real
 #endif
-    use m_ncdf_io, only : cdf_r_grid
+    use ncdf_io_m, only : cdf_r_grid
     use netcdf_ncdf
 
 #ifdef TRANSIESTA_VOLTAGE_DEBUG
@@ -469,7 +469,7 @@ contains
 #ifdef TRANSIESTA_VOLTAGE_DEBUG
     tmpV(:) = tmpV(:) * fact + Vmm(1)
     call write_grid_netcdf( cell, nmesh, 1, product(nmeshl), tmpV, &
-        "TransiestaHartreePotential")
+        "TransiestaHartreePotential", unit='Ry')
     call bye('transiesta debug for Hartree potential')
 #endif
 

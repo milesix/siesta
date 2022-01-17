@@ -1,4 +1,4 @@
- #!/bin/sh
+#!/bin/sh
 #
 # The script is passed the (probably relative) path to the transiesta
 # executable
@@ -34,71 +34,85 @@ if [ -z "$TBT" ] ; then
     fi
 fi
 
-#
-# Start with the electrode calculation
-#
-ELEC=elec_au_100
-echo "Electrode Calculation"
-mkdir Elec
-cd Elec
-ln ../../Au.psf .
-ln ../../${ELEC}.fdf .
-${TS} --electrode ${ELEC}.fdf > ${ELEC}.out
-RETVAL=$?
-if [ $RETVAL -ne 0 ]; then
-   echo "The electrode calculation did not go well ..."
-   exit
-fi
-cp ${ELEC}.out ../..
-#
-# Go back to base directory
-#
-cd ..
+for ELEC in ts_au_100_elec_1x1 ts_au_100_elec_3x3 ; do
 
-#
-# Scattering region calculation
-#
-for SCAT in au_100
-do
-  echo "==> Scattering Region Calculation for $SCAT"
-  mkdir Scat_$SCAT
-  cd Scat_$SCAT
-  ln ../../Au.psf .
-  ln ../../${SCAT}.fdf .
-  # Copy the electrode's .TSHS
-  ln ../Elec/${ELEC}.TSHS .
-  $TS ${SCAT}.fdf > ${SCAT}.out
-  RETVAL=$?
-  if [ $RETVAL -ne 0 ]; then
-      echo "** The scattering region calculation for $SCAT did not go well ..."
-      exit
-  fi
-  cp ${SCAT}.out ../..
-#
-# Go back to base directory
-#
-  cd ..
+    # Start with the electrode calculation
+    echo "==> Electrode Calculation for $ELEC"
+    mkdir Elec_$ELEC
+    cd Elec_$ELEC
+    ln ../../Au.psf .
+    ln ../../$ELEC.fdf .
+    $TS --electrode $ELEC.fdf > $ELEC.out
+    RETVAL=$?
+    if [ $RETVAL -ne 0 ]; then
+	echo "The electrode calculation did not go well ..."
+	exit
+    fi
+    cp $ELEC.out ../..
+    # Go back to base directory
+    cd ..
 
-#
-# TBTrans calculation
-#
- echo "==> TBTrans Calculation for $SCAT"
- echo "==> Running $SCAT with tbtrans=$TBT"
- mkdir TBT_$SCAT
- cd TBT_$SCAT
- # Copy input files
- ln ../Elec/${ELEC}.TSHS .
- ln ../Scat_$SCAT/${SCAT}.TSHS .
- ln ../../${SCAT}.fdf .
- $TBT ${SCAT}.fdf > tbt_${SCAT}.out
- RETVAL=$?
- if [ $RETVAL -ne 0 ]; then
-   echo "The scattering region calculation did not go well ..."
-   exit
- fi
- cp tbt_${SCAT}.out $SCAT.TBT.TRANS_Left-Right ../..
+    # Scattering region calculation
+    if [ $ELEC == "ts_au_100_elec_1x1" ]; then
+	scats="ts_au_100_3x3 ts_au_100_3x3_0.25V"
+    else
+	scats="ts_au_100_1x1 ts_au_100_1x1_0.25V"
+    fi
+    previous=
+    for SCAT in $scats
+    do
+	echo "==> Scattering Region Calculation for $SCAT"
+	mkdir Scat_$SCAT
+	cd Scat_$SCAT
+	ln ../../Au.psf .
+	ln ../../$SCAT.fdf .
+	# Copy the electrode's .TSHS
+	ln ../Elec_$ELEC/$ELEC.TSHS .
+	if [ -e ../Scat_$previous/$previous.TSDE ]; then
+	    cp ../Scat_$previous/$previous.TSDE $SCAT.TSDE
+	fi
+	$TS $SCAT.fdf > $SCAT.out
+	RETVAL=$?
+	if [ $RETVAL -ne 0 ]; then
+	    echo "** The scattering region calculation for $SCAT did not go well ..."
+	    exit
+	fi
+	cp $SCAT.out ../..
+	rm *.TSGF*
+	previous=$SCAT
 
- cd ..
+	# Go back to base directory
+	cd ..
+
+
+	# TBTrans calculation
+	echo "==> TBTrans Calculation for $SCAT"
+	echo "==> Running $SCAT with tbtrans=$TBT"
+	mkdir TBT_$SCAT
+	cd TBT_$SCAT
+	# Copy input files
+	ln ../Elec_$ELEC/$ELEC.TSHS .
+	ln ../Scat_$SCAT/$SCAT.TSHS .
+	ln ../../$SCAT.fdf .
+	$TBT $SCAT.fdf > ${SCAT}_tbt.out
+	RETVAL=$?
+	if [ $RETVAL -ne 0 ]; then
+	    echo "The scattering region calculation did not go well ..."
+	    exit
+	fi
+
+	cp ${SCAT}_tbt.out ../../
+	for f in $SCAT.TBT.TRANS_* $SCAT.TBT.TEIG_* $SCAT.TBT.ADOS_*
+	do
+	    if [ -e $f ]; then
+		cp $f ../../
+	    fi
+	done
+	rm -f *.TBTGF*
+
+	cd ..
+    done
 done
+
 # If it gets here it's because it finished without error
 touch ../completed

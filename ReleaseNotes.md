@@ -13,6 +13,8 @@ grouped under headings representing past (and upcoming) releases.
   
 * The labels in the Mulliken analysis CML blocks have been changed to use "population" instead of "charge".
 
+* The HSX file format has changed to reduce disk-space and increase precision.
+
 ### Changes
 
 * Added support for PSML pseudopotential files:
@@ -73,6 +75,8 @@ grouped under headings representing past (and upcoming) releases.
   to the minimal electrode eta value / 100
 
 ### Changes
+
+* Sort shells in PAO.Basis by n quantum number
 
 * Fixed reading Target.Pressure, reported on mailing list 24 March 2021.
 

@@ -408,7 +408,7 @@ contains
     use mpi_siesta, only : MPI_Comm_Self
 #endif
 
-    use m_ncdf_io, only : cdf_r_Sp
+    use ncdf_io_m, only : cdf_r_Sp
 
     type(tDelta), intent(in) :: delta
 
@@ -620,7 +620,7 @@ contains
       use class_Sparsity
       use class_OrbitalDistribution
       use netcdf_ncdf, ncdf_parallel => parallel
-      use m_ncdf_io, only : cdf_r_Sp
+      use ncdf_io_m, only : cdf_r_Sp
 
 #ifdef MPI
       use mpi_siesta, only : MPI_Send, MPI_Recv

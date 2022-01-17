@@ -44,7 +44,7 @@ DEP_OBJS = precision.o parallel.o \
         alloc.o pxf.o units.o  \
 	memory_log.o m_io.o io.o \
 	m_sparse.o intrinsic_missing.o geom_helper.o reclat.o \
-	m_io_s.o m_ncdf_io.o m_ts_io.o sys.o
+	io_sparse.o ncdf_io.o m_ts_io.o sys.o
 
 # Add class objects
 DEP_OBJS += m_uuid.o object_debug.o \
@@ -171,16 +171,12 @@ geom_helper.o: intrinsic_missing.o
 geom_helper.o: intrinsic_missing.o
 io.o: m_io.o
 io.o: m_io.o
+io_sparse.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
+io_sparse.o: class_Sparsity.o precision.o
+io_sparse.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
+io_sparse.o: class_Sparsity.o precision.o
 m_io.o: sys.o
 m_io.o: sys.o
-m_io_s.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
-m_io_s.o: class_Sparsity.o parallel.o precision.o
-m_io_s.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
-m_io_s.o: class_Sparsity.o parallel.o precision.o
-m_ncdf_io.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
-m_ncdf_io.o: class_Sparsity.o m_io_s.o parallel.o precision.o
-m_ncdf_io.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
-m_ncdf_io.o: class_Sparsity.o m_io_s.o parallel.o precision.o
 m_sparse.o: alloc.o class_OrbitalDistribution.o class_SpData2D.o
 m_sparse.o: class_Sparsity.o geom_helper.o intrinsic_missing.o parallel.o
 m_sparse.o: precision.o
@@ -188,13 +184,17 @@ m_sparse.o: alloc.o class_OrbitalDistribution.o class_SpData2D.o
 m_sparse.o: class_Sparsity.o geom_helper.o intrinsic_missing.o parallel.o
 m_sparse.o: precision.o
 m_ts_io.o: alloc.o class_OrbitalDistribution.o class_SpData1D.o
-m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o m_io_s.o m_ncdf_io.o
-m_ts_io.o: m_os.o m_sparse.o memory_log.o parallel.o precision.o sys.o
+m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o io_sparse.o m_os.o
+m_ts_io.o: m_sparse.o memory_log.o ncdf_io.o parallel.o precision.o sys.o
 m_ts_io.o: alloc.o class_OrbitalDistribution.o class_SpData1D.o
-m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o m_io_s.o m_ncdf_io.o
-m_ts_io.o: m_os.o m_sparse.o memory_log.o parallel.o precision.o sys.o
+m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o io_sparse.o m_os.o
+m_ts_io.o: m_sparse.o memory_log.o ncdf_io.o parallel.o precision.o sys.o
 memory_log.o: m_io.o parallel.o precision.o
 memory_log.o: m_io.o parallel.o precision.o
+ncdf_io.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
+ncdf_io.o: class_Sparsity.o io_sparse.o parallel.o precision.o
+ncdf_io.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
+ncdf_io.o: class_Sparsity.o io_sparse.o parallel.o precision.o
 units.o: precision.o
 units.o: precision.o
 tshs2tshs.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
@@ -221,5 +221,7 @@ class_zdata1d.o: class_Data1D.o
 class_zdata2d.o: class_Data2D.o
 class_zspdata1d.o: class_SpData1D.o
 class_zspdata2d.o: class_SpData2D.o
+io_sparse_m.o: io_sparse.o
 m_object_debug.o: object_debug.o
 mtprng.o: m_uuid.o
+ncdf_io_m.o: ncdf_io.o
