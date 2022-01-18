@@ -6,12 +6,97 @@
 ! See Docs/Contributors.txt for a list of contributors.
 !
 
-!> \brief General purpose of the m_pot_ldau module
-!! In this subroutine we compute the projection of the Kohn-Sham orbitals into 
-!! the states of a localized basis of LDA+U projectors, 
-!! \f$ \vert \phi_{m}^{I} \rangle \f$.
+!> \brief General purpose of the m_pot_ldau module.
+!! Here, we compute the Hamiltonian matrix elements, and the energy
+!! forces, and stress contributions related with
+!! the U and the J in the non-collinear version of the LSDA+U Hamiltonian.
 !!
-!! Following Ref. \cite Himmetoglu:2014:RHC, Eq. (3)
+!! For the Hamiltonian matrix elements, we follow Eq. (3) and Eq.(6) 
+!! of Ref. \cite Bousquet-10.
+!! In the case of noncollinear magnetism, both the density and the Hamiltonian
+!! matrix elements between two atomic orbitals in the SIESTA basis 
+!! \f$ \mu \f$ and \f$ \nu \f$ are expressed as \f$ 2 \times 2 \f$ matrices,
+!! according with the two-component spinor formulation.
+!! And every entry of the matrix might be complex.
+!! Therefore, within SIESTA, the dimension of the Hamiltonian and Density 
+!! matrices in the case of non-collinear spin is 8 (the real and the imaginary
+!! part of every of the four entries in the matrices).
+!!
+!! Here, we redefine locally the structure of the matrices,
+!! \f{eqnarray*}{
+!! \rho_{\mu \nu}=&
+!! \begin{pmatrix}
+!! \rho^{\uparrow\uparrow}_{\mu \nu} & \rho^{\uparrow\downarrow}_{\mu \nu} \\
+!! \rho^{\downarrow\uparrow}_{\mu \nu} & \rho^{\downarrow\downarrow}_{\mu \nu}
+!! \end{pmatrix}
+!! \equiv \begin{pmatrix}
+!! \rm{Dscf\_cmplx\_1} & \rm{Dscf\_cmplx\_3} \\
+!! \rm{Dscf\_cmplx\_4} & \rm{Dscf\_cmplx\_2}
+!! \end{pmatrix}
+!! = \begin{pmatrix}
+!! \rm{Dscf(1)} + i \rm{Dscf(5)} & \rm{Dscf(3)} - i \rm{Dscf(4)} \\
+!! \rm{Dscf(7)} + i \rm{Dscf(8)} & \rm{Dscf(2)} + i \rm{Dscf(6)}
+!! \end{pmatrix}
+!! \f}
+!!
+!! The Hamiltonian matrix elements are split into a Hubbard-like term,
+!! that takes the shape of
+!! 
+!! \f{eqnarray*}{
+!! V^{\rm Hubbard, \uparrow \uparrow}_{\nu \mu}=& 
+!! \sum_{I} \sum_{m m^{\prime}}
+!! \sum_{m^{\prime \prime}m^{\prime \prime \prime}}
+!! \left[
+!! \langle m, m^{\prime \prime} \vert V_{\rm ee} \vert m^{\prime}, m^{\prime \prime \prime} \rangle 
+!! \left( 
+!! n_{m^{\prime \prime}m^{\prime \prime \prime}}^{I,\downarrow \downarrow} +  
+!! n_{m^{\prime \prime}m^{\prime \prime \prime}}^{I,\uparrow \uparrow} \right) -
+!! \langle m, m^{\prime \prime} \vert V_{\rm ee} \vert m^{\prime \prime \prime},m^{\prime} \rangle  
+!! n_{m^{\prime \prime}m^{\prime \prime \prime}}^{I,\uparrow \uparrow} 
+!! \right] 
+!! \langle \phi_{\nu} \vert \phi_{m^{\prime}}^{I} \rangle
+!!\langle \phi_{m}^{I} \vert \phi_{\mu} \rangle
+!! \f}
+!!
+!! \f{eqnarray*}{
+!! V^{\rm Hubbard, \downarrow \downarrow}_{\nu \mu}=& 
+!! \sum_{I} \sum_{m m^{\prime}}
+!! \sum_{m^{\prime \prime}m^{\prime \prime \prime}}
+!! \left[
+!! \langle m, m^{\prime \prime} \vert V_{\rm ee} \vert m^{\prime}, m^{\prime \prime \prime} \rangle 
+!! \left( 
+!! n_{m^{\prime \prime}m^{\prime \prime \prime}}^{I,\uparrow \uparrow} +  
+!! n_{m^{\prime \prime}m^{\prime \prime \prime}}^{I,\downarrow \downarrow} \right) -
+!! \langle m, m^{\prime \prime} \vert V_{\rm ee} \vert m^{\prime \prime \prime},m^{\prime} \rangle  
+!! n_{m^{\prime \prime}m^{\prime \prime \prime}}^{I,\downarrow \downarrow} 
+!! \right] 
+!! \langle \phi_{\nu} \vert \phi_{m^{\prime}}^{I} \rangle
+!!\langle \phi_{m}^{I} \vert \phi_{\mu} \rangle
+!! \f}
+!!
+!! \f{eqnarray*}{
+!! V^{\rm Hubbard, \uparrow \downarrow}_{\nu \mu}=& 
+!! \sum_{I} \sum_{m m^{\prime}}
+!! \sum_{m^{\prime \prime}m^{\prime \prime \prime}}
+!! \left( - \langle m, m^{\prime \prime} \vert V_{\rm ee} \vert m^{\prime \prime \prime}, m^{\prime} \rangle \right)
+!! n_{m^{\prime \prime}m^{\prime \prime \prime}}^{I,\uparrow \downarrow} 
+!! \langle \phi_{\nu} \vert \phi_{m^{\prime}}^{I} \rangle
+!!\langle \phi_{m}^{I} \vert \phi_{\mu} \rangle
+!! \f}
+!!
+!! \f{eqnarray*}{
+!! V^{\rm Hubbard, \downarrow \uparrow}_{\nu \mu}=& 
+!! \sum_{I} \sum_{m m^{\prime}}
+!! \sum_{m^{\prime \prime}m^{\prime \prime \prime}}
+!! \left( - \langle m, m^{\prime \prime} \vert V_{\rm ee} \vert m^{\prime \prime \prime}, m^{\prime} \rangle \right)
+!! n_{m^{\prime \prime}m^{\prime \prime \prime}}^{I,\downarrow \uparrow} 
+!! \langle \phi_{\nu} \vert \phi_{m^{\prime}}^{I} \rangle
+!!\langle \phi_{m}^{I} \vert \phi_{\mu} \rangle
+!! \f}
+!!
+!! where \f$ n_{m^{\prime\prime}m^{\prime\prime\prime}}^{I,\uparrow \uparrow}\f$
+!! and related terms are the occupancies computed in the module
+!! m_occ_proj following Ref. \cite Himmetoglu:2014:RHC, Eq. (3)
 !! \f{eqnarray*}{
 !!       n^{I,\sigma}_{mm^\prime} & = 
 !!      \langle \phi_{m}^{I} \vert \hat{\rho}^{\sigma} \vert \phi_{m^\prime}^{I} \rangle
@@ -48,26 +133,6 @@
 !! \f$ \rho^{\sigma}_{\mu \nu} = \langle \phi^{\mu} \vert \hat{\rho}^{\sigma} \vert 
 !! \phi^{\nu} \rangle \f$.
 !!
-!! These occupations are stored in the pointer "occupation", 
-!! which has four entries,
-!! that would correspond with \f$ {\rm occupation} (m, m^\prime, I, \sigma)
-!! \equiv n^{I,\sigma}_{mm^\prime} \f$.
-!!
-!! It is important to recall that LDA+U projectors, 
-!! \f$ \vert \phi_{m}^{I} \rangle \f$  , should be
-!! quite localized functions.  Otherwise the calculated populations
-!! loose their atomic character and physical meaning.
-!! In particular, they should not overlap with projectors belonging to 
-!! neighbour atoms, as specified in page 29 of Ref. \cite Himmetoglu:2014:RHC.
-!! If this is the case, the projectors form an orthogonal set of functions:
-!! between atoms, the overlap is zero. Within an atom, they are zero as 
-!! impossed by the inner product of the spherical harmonics.
-!! Therefore, due to the orthogonality, the basis of projectors is the same
-!! as the basis of their duals.
-!!
-!! The computation of the occupations are parallelized, 
-!! and all the nodes do have access to this information.
-
 
 module m_pot_ldau
 
@@ -554,21 +619,21 @@ subroutine ldau_so_hamil_2( H_ldau_so, fal, stressl )
     nldauproj = spp%nprojsldau
 
 !!   For debugging
-!    write(6,'(a,5i5)')                                                         &
+!    write(6,'(a,5i5)')                                                        &
 ! &    'ldau_so_hamil_2: Node, Nodes, atom, species, number LDA+U projectors: ',&
 ! &                      Node, Nodes, ka, ks, nldauproj
 !    do iproj = 1, nldauproj
-!      write(6,'(a,8i5,2f12.5)')                                                &
-! &      'ldau_so_hamil_2: Node, Nodes, iproj, index, n, l, m, gindex: ',       &
-! &      Node, Nodes, iproj, spp%pjldau_index(iproj), spp%pjldau_n(iproj),      &
-! &      spp%pjldau_l(iproj), spp%pjldau_m(iproj), spp%pjldau_gindex(iproj),    &
-! &      spp%pjldaunl_U(spp%pjldau_index(iproj)),                               &
+!      write(6,'(a,8i5,2f12.5)')                                               &
+! &      'ldau_so_hamil_2: Node, Nodes, iproj, index, n, l, m, gindex: ',      &
+! &      Node, Nodes, iproj, spp%pjldau_index(iproj), spp%pjldau_n(iproj),     &
+! &      spp%pjldau_l(iproj), spp%pjldau_m(iproj), spp%pjldau_gindex(iproj),   &
+! &      spp%pjldaunl_U(spp%pjldau_index(iproj)),                              &
 ! &      spp%pjldaunl_J(spp%pjldau_index(iproj))
 !      l_correlated = spp%pjldaunl_l(spp%pjldau_index(iproj))
 !      ldauintegrals => spp%ldau_so_integrals(spp%pjldau_index(iproj))
 !      do ildauso = 0, 2 * l_correlated
-!         write(6,'(a,3i5,f12.5)')                                              &
-! &             'ldau_so_hamil_2: Node, Nodes, index, Slater = ',               &
+!         write(6,'(a,3i5,f12.5)')                                             &
+! &             'ldau_so_hamil_2: Node, Nodes, index, Slater = ',              &
 ! &             Node, Nodes, ildauso, ldauintegrals%Slater_F(ildauso)
 !      enddo
 !
@@ -576,9 +641,9 @@ subroutine ldau_so_hamil_2( H_ldau_so, fal, stressl )
 !        do mprime = 1, 2*l_correlated+1
 !          do m2prime = 1, 2*l_correlated+1
 !            do m3prime = 1, 2*l_correlated+1
-!            write(6,'(a,6i5,f12.5)')                                           &
+!            write(6,'(a,6i5,f12.5)')                                          &
 ! &  'ldau_so_hamil_2: Node, Nodes, m, mprime, m2prime, m3prime, vee_integral_real = ',   &
-! &            Node, Nodes, m, mprime, m2prime, m3prime,                        &
+! &            Node, Nodes, m, mprime, m2prime, m3prime,                       &
 ! &            ldauintegrals%vee_4center_integrals(m, mprime, m2prime, m3prime)
 !            enddo
 !          enddo
@@ -1011,14 +1076,43 @@ subroutine ldau_so_hamil_2( H_ldau_so, fal, stressl )
         do ispin = 1, spin%grid
           H_ldau_so_dc(ind,ispin)      = H_ldau_so_dc(ind,ispin)      +    &
  &                                       Vi_dc(jo,ispin)      
-          H_ldau_so_Hubbard(ind,ispin) = H_ldau_so_Hubbard(ind,ispin) +    &
- &                                       Vi_Hubbard(jo,ispin)      
-          H_ldau_so(ind,ispin)         = H_ldau_so(ind,ispin)         +    &
- &                                       Vi_dc(jo,ispin)              +    &
-                                         Vi_Hubbard(jo,ispin)
-          Vi_dc(jo,ispin)      = cmplx( 0.0_dp, 0.0_dp, kind=dp )
-          Vi_Hubbard(jo,ispin) = cmplx( 0.0_dp, 0.0_dp, kind=dp )
         enddo
+
+        H_ldau_so_Hubbard(ind,1) = H_ldau_so_Hubbard(ind,1) +    &
+  &                                conjg(Vi_Hubbard(jo,1))       
+        H_ldau_so(ind,1)         = H_ldau_so(ind,1)         +    &
+  &                                Vi_dc(jo,1)              +    &
+  &                                conjg(Vi_Hubbard(jo,1))       
+
+        H_ldau_so_Hubbard(ind,2) = H_ldau_so_Hubbard(ind,2) +    &
+  &                                conjg(Vi_Hubbard(jo,2))       
+        H_ldau_so(ind,2)         = H_ldau_so(ind,2)         +    &
+  &                                Vi_dc(jo,2)              +    &
+  &                                conjg(Vi_Hubbard(jo,2))       
+
+        H_ldau_so_Hubbard(ind,3) = H_ldau_so_Hubbard(ind,3) +    &
+  &                                conjg(Vi_Hubbard(jo,4))       
+        H_ldau_so(ind,3)         = H_ldau_so(ind,3)         +    &
+  &                                Vi_dc(jo,3)              +    &
+  &                                conjg(Vi_Hubbard(jo,4))       
+
+        H_ldau_so_Hubbard(ind,4) = H_ldau_so_Hubbard(ind,4) +    &
+  &                                conjg(Vi_Hubbard(jo,3))       
+        H_ldau_so(ind,4)         = H_ldau_so(ind,4)         +    &
+  &                                Vi_dc(jo,4)              +    &
+  &                                conjg(Vi_Hubbard(jo,3))       
+
+!          H_ldau_so_Hubbard(ind,ispin) = H_ldau_so_Hubbard(ind,ispin) +    &
+! &                                       Vi_Hubbard(jo,ispin)      
+!          H_ldau_so(ind,ispin)         = H_ldau_so(ind,ispin)         +    &
+! &                                       Vi_dc(jo,ispin)              +    &
+!                                         Vi_Hubbard(jo,ispin)
+!          Vi_dc(jo,ispin)      = cmplx( 0.0_dp, 0.0_dp, kind=dp )
+!          Vi_Hubbard(jo,ispin) = cmplx( 0.0_dp, 0.0_dp, kind=dp )
+!        enddo
+
+        Vi_dc(jo,:)      = cmplx( 0.0_dp, 0.0_dp, kind=dp )
+        Vi_Hubbard(jo,:) = cmplx( 0.0_dp, 0.0_dp, kind=dp )
       enddo
 
     enddo  ! End loop on neighbour orbitals (ino)
