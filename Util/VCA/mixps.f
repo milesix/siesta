@@ -1,5 +1,5 @@
 ! ---
-! Copyright (C) 1996-2016       The SIESTA group
+! Copyright (C) 1996-2021       The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt .
@@ -15,7 +15,6 @@
      $                           pseudo_read, pseudo_write_formatted
       use periodic_table,  only: cnfig, qvlofz
       use interpolation,   only: generate_spline, evaluate_spline
-      use f2kcli
 
       implicit none
 
@@ -124,17 +123,17 @@
       allocate(p%chval(size(p1%r)))
       call mix(p1%chcore, p2%chcore, p%chcore, xmix)
       call mix(p1%chval, p2%chval, p%chval, xmix)
-      allocate(p%vdown(p%npotd,size(p1%r)))
+      allocate(p%vdown(size(p1%r),p%npotd))
       allocate(p%ldown(p%npotd))
       do i = 1, p%npotd
-         call mix(p1%vdown(i,:), p2%vdown(i,:), p%vdown(i,:), xmix)
+         call mix(p1%vdown(:,i), p2%vdown(:,i), p%vdown(:,i), xmix)
          p%ldown(i) = p1%ldown(i)
       enddo
       if (p%npotu /= 0) then
-         allocate(p%vup(p%npotu,size(p1%r)))
+         allocate(p%vup(size(p1%r),p%npotu))
          allocate(p%lup(p%npotu))
          do i = 1, p%npotu
-            call mix(p1%vup(i,:), p2%vup(i,:), p%vup(i,:), xmix)
+            call mix(p1%vup(:,i), p2%vup(:,i), p%vup(:,i), xmix)
             p%lup(i) = p1%lup(i)
          enddo
       endif

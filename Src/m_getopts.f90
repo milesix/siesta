@@ -1,6 +1,8 @@
 module m_getopts
-use f2kcli
-public :: getopts
+  implicit none
+
+  private
+  public :: getopts
 
 CONTAINS
 
@@ -25,6 +27,8 @@ subroutine getopts(optionstring,name,optarg,optind,exitcode)
 !           This subprogram is not thread-safe.
 !
 ! Program History Log:
+!   2021-06-02  J.M. Escartin: Remove f2kcli module [the compiler should
+!               provide get_command_argument (Fortran 2003)].
 !   2007-05-05  Alberto Garcia: Use f2k-compliant f2kcli module
 !   2000-08-22  Iredell
 !
@@ -100,7 +104,7 @@ subroutine getopts(optionstring,name,optarg,optind,exitcode)
 !     -----------------------------------------------------------
 !
 ! Attributes:
-!   Language: Fortran 90
+!   Language: Fortran 2003
 !
 !$$$
   implicit none
@@ -182,21 +186,21 @@ subroutine getopts(optionstring,name,optarg,optind,exitcode)
   name(lname:lname)=copt
   optarg=''
   if(lopt.lt.len(optionstring)) then
-   if (optionstring(lopt+1:lopt+1).eq.':') then
-    if(lcur.gt.larg) then
-      optind=optind+1
-      if(optind.gt.narg) then
-        name=':'
-        optarg=copt
-        RETURN
-      endif
-      call get_command_argument(number=optind,value=carg)
-      larg=len_trim(carg)
-      lcur=1
-    endif
-    optarg=carg(lcur:larg)
-    lcur=larg+1
-   endif
+     if (optionstring(lopt+1:lopt+1).eq.':') then
+        if(lcur.gt.larg) then
+           optind=optind+1
+           if(optind.gt.narg) then
+              name=':'
+              optarg=copt
+              RETURN
+           endif
+           call get_command_argument(number=optind,value=carg)
+           larg=len_trim(carg)
+           lcur=1
+        endif
+        optarg=carg(lcur:larg)
+        lcur=larg+1
+     endif
   endif
 end subroutine
 end module m_getopts

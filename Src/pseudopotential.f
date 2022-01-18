@@ -125,30 +125,30 @@
         call read_ps_conf(p%irel,p%npotd-1,p%text,p%gen_zval)
 
         p%nrval = p%nr + 1
-        allocate(p%r(1:p%nrval))
+        allocate(p%r(p%nrval))
         read(io_ps) (p%r(j),j=2,p%nrval)
         p%r(1) = 0.d0
 
         if (p%npotd.gt.0) then
-           allocate(p%vdown(1:p%npotd,1:p%nrval))
-           allocate(p%ldown(1:p%npotd))
+           allocate(p%vdown(p%nrval,p%npotd))
+           allocate(p%ldown(p%npotd))
         endif
         do i=1,p%npotd
-           read(io_ps) p%ldown(i), (p%vdown(i,j), j=2,p%nrval)
-           p%vdown(i,1) = p%vdown(i,2)
+           read(io_ps) p%ldown(i), (p%vdown(j,i), j=2,p%nrval)
+           p%vdown(1,i) = p%vdown(2,i)
         enddo
 
         if (p%npotu.gt.0) then
-           allocate(p%vup(1:p%npotu,1:p%nrval))
-           allocate(p%lup(1:p%npotu))
+           allocate(p%vup(p%nrval,p%npotu))
+           allocate(p%lup(p%npotu))
         endif
         do i=1,p%npotu
-           read(io_ps) p%lup(i), (p%vup(i,j), j=2,p%nrval)
-           p%vup(i,1) = p%vup(i,2)
+           read(io_ps) p%lup(i), (p%vup(j,i), j=2,p%nrval)
+           p%vup(1,i) = p%vup(2,i)
         enddo
 
-        allocate(p%chcore(1:p%nrval))
-        allocate(p%chval(1:p%nrval))
+        allocate(p%chcore(p%nrval))
+        allocate(p%chval(p%nrval))
 
         read(io_ps) (p%chcore(j),j=2,p%nrval)
         read(io_ps) (p%chval(j),j=2,p%nrval)
@@ -165,7 +165,8 @@
 
         integer io_ps, i, j, ios
         character(len=70) dummy
-        real(dp) :: r2, gen_zval_inline
+        character(len=256) line
+        real(dp) :: r2
 
         call io_assign(io_ps)
         open(io_ps,file=fname,form='formatted',status='unknown')
@@ -175,32 +176,25 @@
  8000   format(1x,i2)
  8005   format(1x,a2,1x,a2,1x,a3,1x,a4)
  8010   format(1x,6a10,/,1x,a70)
- 8015   format(1x,2i3,i5,4g20.12)
+ 8015   format(1x,2i3,i5,3g20.12)
  8030   format(4(g20.12))
  8040   format(1x,a)
 
         read(io_ps,8005) p%name, p%icorr, p%irel, p%nicore
         read(io_ps,8010) (p%method(i),i=1,6), p%text
-        read(io_ps,8015,iostat=ios)
-     $       p%npotd, p%npotu, p%nr, p%b, p%a, p%zval,
-     $       gen_zval_inline
-        if (ios < 0) gen_zval_inline = 0.0_dp
-        call read_ps_conf(p%irel,p%npotd-1,p%text,p%gen_zval)
-!
-!       (Some .psf files contain an extra field corresponding
-!       to the ps valence charge at generation time. If that
-!       field is not present, the information has to be decoded
-!       from the "text" variable.
-!
-!       "Zero" pseudos have gen_zval = 0, so they need a special case.
 
-        if (p%gen_zval == 0.0_dp) then
-           if (gen_zval_inline == 0.0_dp) then
-              if (p%method(1) /= "ZEROPSEUDO")
-     $             call die("Cannot get gen_zval")
-           else
-              p%gen_zval = gen_zval_inline
-           endif
+        read(io_ps,fmt="(a)") line
+        read(line,8015)  p%npotd, p%npotu, p%nr, p%b, p%a, p%zval
+
+        ! Above statement reads up to 72 chars
+        if (len_trim(line) >= 74) then
+           ! There is an explicit field for the total
+           ! generation valence charge
+           read(line(74:),fmt=*) p%gen_zval
+        else
+           ! Set total generation valence charge from the packed
+           ! information on pseudized shells
+           call read_ps_conf(p%irel,p%npotd-1,p%text,p%gen_zval)
         endif
 
         p%nrval = p%nr + 1
@@ -210,29 +204,29 @@
         p%r(1) = 0.d0
 
         if (p%npotd.gt.0) then
-           allocate(p%vdown(1:p%npotd,1:p%nrval))
-           allocate(p%ldown(1:p%npotd))
+           allocate(p%vdown(p%nrval,p%npotd))
+           allocate(p%ldown(p%npotd))
         endif
         do i=1,p%npotd
            read(io_ps,8040) dummy 
            read(io_ps,8000) p%ldown(i)
-           read(io_ps,8030) (p%vdown(i,j), j=2,p%nrval)
-           p%vdown(i,1) = p%vdown(i,2)
+           read(io_ps,8030) (p%vdown(j,i), j=2,p%nrval)
+           p%vdown(1,i) = p%vdown(2,i)
         enddo
 
         if (p%npotu.gt.0) then
-           allocate(p%vup(1:p%npotu,1:p%nrval))
-           allocate(p%lup(1:p%npotu))
+           allocate(p%vup(p%nrval,p%npotu))
+           allocate(p%lup(p%npotu))
         endif
         do i=1,p%npotu
            read(io_ps,8040) dummy 
            read(io_ps,8000) p%lup(i)
-           read(io_ps,8030) (p%vup(i,j), j=2,p%nrval)
-           p%vup(i,1) = p%vup(i,2)
+           read(io_ps,8030) (p%vup(j,i), j=2,p%nrval)
+           p%vup(1,i) = p%vup(2,i)
         enddo
 
-        allocate(p%chcore(1:p%nrval))
-        allocate(p%chval(1:p%nrval))
+        allocate(p%chcore(p%nrval))
+        allocate(p%chval(p%nrval))
 
         read(io_ps,8040) dummy
         read(io_ps,8030) (p%chcore(j),j=2,p%nrval)
@@ -276,13 +270,13 @@
         do i=1,p%npotd
            write(io_ps,8040) "Down potential follows (l on next line)"
            write(io_ps,8000) p%ldown(i)
-           write(io_ps,8030) (p%vdown(i,j), j=2,p%nrval)
+           write(io_ps,8030) (p%vdown(j,i), j=2,p%nrval)
         enddo
 
         do i=1,p%npotu
            write(io_ps,8040) "Up potential follows (l on next line)"
            write(io_ps,8000) p%lup(i)
-           write(io_ps,8030) (p%vup(i,j), j=2,p%nrval)
+           write(io_ps,8030) (p%vup(j,i), j=2,p%nrval)
         enddo
 
         write(io_ps,8040) "Core charge follows"
@@ -310,7 +304,7 @@
 
  9040    format(i6,1x,7f12.6)
          do j = 1, p%nrval
-            write(io_ps,9040) j, p%r(j), (p%vdown(i,j),i=1,p%npotd),
+            write(io_ps,9040) j, p%r(j), (p%vdown(j,i),i=1,p%npotd),
      $                        p%chval(j), p%chcore(j)
          enddo
          call io_close(io_ps)
@@ -500,30 +494,30 @@ c        end subroutine pseudo_header_string
 !
 !       Careful with 2D arrays...
 !
-        allocate(tmp2(p%npotd,new_nrval))
+        allocate(tmp2(new_nrval,p%npotd))
         do i=1,p%npotd
-           func => p%vdown(i,:)
+           func => p%vdown(:,i)
            call generate_spline(p%r,func,p%nrval,0.0_dp,0.0_dp,y2)
            do j = 1, new_nrval
-            call evaluate_spline(p%r,func,y2,p%nrval,new_r(j),tmp2(i,j))
+            call evaluate_spline(p%r,func,y2,p%nrval,new_r(j),tmp2(j,i))
            enddo
            nullify(func)
         enddo
-        deallocate(p%vdown)      ! Old data
-        p%vdown => tmp2          ! Point to new memory area
-        nullify(tmp2)            ! To re-use tmp
+        deallocate(p%vdown)     ! Old data
+        p%vdown => tmp2         ! Point to new memory area
+        nullify(tmp2)           ! To re-use tmp
 
-        if (p%npotu > 0) allocate(tmp2(p%npotu,new_nrval))
+        if (p%npotu > 0) allocate(tmp2(new_nrval,p%npotu))
         do i=1,p%npotu         ! Only executed if npotu > 0 ...
-           func => p%vup(i,:)
+           func => p%vup(:,i)
            call generate_spline(p%r,func,p%nrval,0.0_dp,0.0_dp,y2)
            do j = 1, new_nrval
-            call evaluate_spline(p%r,func,y2,p%nrval,new_r(j),tmp2(i,j))
+            call evaluate_spline(p%r,func,y2,p%nrval,new_r(j),tmp2(j,i))
            enddo
            nullify(func)
         enddo
         if (p%npotu > 0) then
-           deallocate(p%vup  )  ! Old data
+           deallocate(p%vup)    ! Old data
            p%vup => tmp2        ! Point to new memory area
            nullify(tmp2)        ! To re-use tmp
         endif

@@ -55,6 +55,11 @@ module m_tbt_tri_scat
   complex(dp), parameter :: z1  = cmplx( 1._dp, 0._dp, dp)
   complex(dp), parameter :: zm1 = cmplx(-1._dp, 0._dp, dp)
   complex(dp), parameter :: zi  = cmplx( 0._dp, 1._dp, dp)
+#ifdef USE_GEMM3M
+# define GEMM zgemm3m
+#else
+# define GEMM zgemm
+#endif
 
 contains
 
@@ -160,19 +165,14 @@ contains
       integer, intent(in) :: m,n
       complex(dp), pointer :: Gf(:), Mnn(:), XY(:)
 
-      XY  => val(Gfd_tri,m,n)
+      XY => val(Gfd_tri,m,n)
       Mnn => val(Gfd_tri,n,n)
-      Gf  => val(Gfo_tri,m,n)
+      Gf => val(Gfo_tri,m,n)
       
       ! We need to calculate the 
       ! Mnm1n/Mnp1n Green's function
-#ifdef USE_GEMM3M
-      call zgemm3m( &
-#else
-      call zgemm( &
-#endif
-           'N','N',no_i,no_o,no_o, &
-           zm1, XY,no_i, Mnn,no_o,z0, Gf,no_i)
+      call GEMM ('N','N',no_i,no_o,no_o, &
+          zm1, XY,no_i, Mnn,no_o,z0, Gf,no_i)
       
     end subroutine calc
 
@@ -308,7 +308,7 @@ contains
     
     ! The COOP calculation can be written as
     !
-    !   COOP(io,jo) = - Im{ [Gf - Gf^\dagger](io,jo) * S(jo,io) * e^(ik.R) } / 2Pi
+    !   COOP(io,jo) = - Im{ [Gf - Gf^\dagger](io,jo) * S(jo,io) * e^(-ik.R) } / 2Pi
     ! Here we want:
     !   DOS(io) = \sum_jo COOP(io,jo)
     ! since we know that COOP(io,jo) is the io -> jo DOS.
@@ -317,15 +317,8 @@ contains
     ! Note that this is not necessary if S is S(k). I.e. it is because
     ! we want the cross-cell COOP curves as well.
 
-    ! Create the phases
-    ! Since we have to do Gf.S we simply
-    ! create S(-k) (which is S^T)
-    ! and thus get the correct values.
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = exp(cmplx(0._dp, - &
-          k(1) * sc_off(1,io) - &
-          k(2) * sc_off(2,io) - &
-          k(3) * sc_off(3,io), kind=dp)) / (2._dp * Pi)
+      ph(io-1) = exp(cmplx(0._dp, -dot_product(k, sc_off(:,io)), dp)) / (Pi * 2._dp)
     end do
 
     call attach(sp,nrows_g=no_u, n_col=ncol,list_ptr=l_ptr,list_col=l_col)
@@ -337,13 +330,9 @@ contains
     Gfd => val(Gfd_tri)
     Gfo => val(Gfo_tri)
 
-!$OMP parallel default(shared), private(br,io,ind,iind,bc,ss,GfGfd)
-
-!$OMP workshare
     C(:) = 0._dp
-!$OMP end workshare
-    
-!$OMP do
+
+!$OMP parallel do default(shared), private(br,io,ind,iind,bc,ss,GfGfd)
     do br = 1, r%n
       io = r%r(br)
       
@@ -370,8 +359,7 @@ contains
       end do
           
     end do
-!$OMP end do
-!$OMP end parallel
+!$OMP end parallel do
 
 #ifdef TBTRANS_TIMING
     call timer('Gf-COP',2)
@@ -445,12 +433,8 @@ contains
     call attach(c_sp, n_col=cncol, list_ptr=cptr, list_col=ccol)
 
     ! Create the phases
-    ! We are using the explicit H(j, i) and thus the phases are consistent with +
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = exp(cmplx(0._dp, + &
-          k(1) * sc_off(1,io) + &
-          k(2) * sc_off(2,io) + &
-          k(3) * sc_off(3,io), kind=dp)) / (2._dp * Pi)
+      ph(io-1) = exp(cmplx(0._dp, -dot_product(k, sc_off(:,io)), dp)) / (Pi * 2._dp)
     end do
 
     Gfd => val(Gfd_tri)
@@ -482,8 +466,7 @@ contains
 
             call calc_GfGfd(br, pvt%r(jo), GfGfd)
             ! COHP(iind) += - Im[ (G(io,jo) - G^\dagger(io,jo)) * dH(jo,io)] / 2Pi
-            C(iind) = C(iind) &
-                - aimag( GfGfd * dH(ind) * ph( (l_col(ind)-1)/no_u ))
+            C(iind) = C(iind) - aimag( GfGfd * dH(ind) * ph( (l_col(ind)-1)/no_u ))
 
           end if
 
@@ -602,10 +585,7 @@ contains
     ! create the S(-k) (which is S^T)
     ! and thus get the correct values.
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = exp(cmplx(0._dp, - &
-          k(1) * sc_off(1,io) - &
-          k(2) * sc_off(2,io) - &
-          k(3) * sc_off(3,io), kind=dp)) / (2._dp * Pi)
+      ph(io-1) = exp(cmplx(0._dp, -dot_product(k, sc_off(:,io)), dp)) / (Pi * 2._dp)
     end do
 
     call attach(sp,nrows_g=no_u, n_col=ncol,list_ptr=l_ptr,list_col=l_col)
@@ -616,13 +596,9 @@ contains
 
     A => val(A_tri)
 
-!$OMP parallel default(shared), private(br,io,ind,iind,bc,ss)
-
-!$OMP workshare
     C(:) = 0._dp
-!$OMP end workshare
 
-!$OMP do
+!$OMP parallel do default(shared), private(br,io,ind,iind,bc,ss)
     do br = 1, r%n
       io = r%r(br)
 
@@ -649,8 +625,7 @@ contains
       end do
           
     end do
-!$OMP end do
-!$OMP end parallel
+!$OMP end parallel do
 
 #ifdef TBTRANS_TIMING
     call timer('A-COP',2)
@@ -700,12 +675,8 @@ contains
     call attach(c_sp, n_col=cncol, list_ptr=cptr, list_col=ccol)
     
     ! Create the phases
-    ! We are using the explicit H(j, i) and thus the phases are consistent with +
     do i = 1 , size(sc_off, dim=2)
-      ph(i-1) = exp(cmplx(0._dp, + &
-          k(1) * sc_off(1,i) + &
-          k(2) * sc_off(2,i) + &
-          k(3) * sc_off(3,i), kind=dp)) / (2._dp * Pi)
+      ph(i-1) = exp(cmplx(0._dp, -dot_product(k, sc_off(:,i)), dp)) / (Pi * 2._dp)
     end do
 
     A => val(A_tri)
@@ -820,9 +791,7 @@ contains
     call attach(sp,n_col=ncol,list_ptr=l_ptr,list_col=l_col)
     
     ! Initialize DOS to 0
-!$OMP parallel workshare default(shared)
     DOS(:) = 0._dp
-!$OMP end parallel workshare
 
     off2 = 0
     np = parts(Gf_tri)
@@ -856,11 +825,11 @@ contains
     do n = 1 , np
 
       no_o = nrows_g(Gf_tri,n)
-      
+
       ! Calculate the step size for the projection
       ! on this column
       step_o = min(max_p,no_o)
-      
+
       ! Loop over smaller group of columns in this block-column
       do i_o = 1 , no_o, step_o
         
@@ -906,22 +875,17 @@ contains
             
           else
             
-            XY  => val(Gf_tri,in,n)
+            XY => val(Gf_tri,in,n)
             Mnn => val(Gf_tri,n,n)
             ! re-point
             Mnn => Mnn((i_o-1)*no_o+1:)
             
-            Gf  => work(1:no_o*no_i)
+            Gf => work(1:no_o*no_i)
             
             ! We need to calculate the 
             ! Mnm1n/Mnp1n Green's function
-#ifdef USE_GEMM3M
-            call zgemm3m( &
-#else
-            call zgemm( &
-#endif
-                  'N','N',no_i,step_o,no_o, &
-                  zm1, XY,no_i, Mnn,no_o,z0, Gf,no_i)
+            call GEMM ('N','N',no_i,step_o,no_o, &
+                zm1, XY,no_i, Mnn,no_o,z0, Gf,no_i)
 
           end if
 
@@ -952,10 +916,8 @@ contains
       end do
       
     end do
-    
-!$OMP parallel workshare default(shared)
-    DOS(:) = DOS(:) / Pi
-!$OMP end parallel workshare
+
+    call dscal(r%n, 1._dp / Pi, DOS, 1)
 
   contains
     
@@ -1151,12 +1113,7 @@ contains
         ! if the entire electrode sits in one block
         A => val(A_tri,in,in)
 
-#ifdef USE_GEMM3M
-        call zgemm3m( &
-#else
-        call zgemm( &
-#endif
-            'N','N',no,no,no, z1, A(A_i*(isN+1)+1), isN, &
+        call GEMM ('N','N',no,no,no, z1, A(A_i*(isN+1)+1), isN, &
             El%Gamma(1), no, z0, work(1), no)
 
         ! Quick break of loop
@@ -1181,12 +1138,7 @@ contains
           A_j = El%inDpvt%r(j_Elec) - crows(jn-1)
         end if
 
-#ifdef USE_GEMM3M
-        call zgemm3m( &
-#else
-        call zgemm( &
-#endif
-            'N','N',jj,no,ii, z1, A(A_i*jsN + A_j), jsN, &
+        call GEMM ('N','N',jj,no,ii, z1, A(A_i*jsN + A_j), jsN, &
             El%Gamma(i_Elec), no, z, work(j_Elec), no)
 
         j_Elec = j_Elec + jj
@@ -1230,11 +1182,10 @@ contains
 #endif
 
     ! To remove any singular values we add a 1e-3 to the diagonal
-!$OMP parallel do default(shared), private(i)
     do i = 1 , n
       tt((i-1)*n+i) = tt((i-1)*n+i) + 1.e-3_dp
     end do
-!$OMP end parallel do
+
     call zgeev('N','N',n,tt,n,eig,work(1),1,work(1),1, &
         work,nwork,rwork,i)
     if ( i /= 0 ) then
@@ -1421,13 +1372,8 @@ contains
       i = i + El%inDpvt%r(i_Elec) - (crows(n)-sN) - 1
 
       ! Calculate the G \Gamma
-#ifdef USE_GEMM3M
-      call zgemm3m( &
-#else
-      call zgemm( &
-#endif
-           'N','T',nb,no,no, z1, z(i),sN, &
-           El%Gamma(1), no, z0, zwork(i_Elec), no)
+      call GEMM ('N','T',nb,no,no, z1, z(i),sN, &
+          El%Gamma(1), no, z0, zwork(i_Elec), no)
        
       i_Elec = i_Elec + nb
 
@@ -1458,13 +1404,8 @@ contains
 
       ii = ( i_Elec-1 ) * no + 1
       ! Calculate the G \Gamma G^\dagger
-#ifdef USE_GEMM3M
-      call zgemm3m( &
-#else
-      call zgemm( &
-#endif
-           'N','C',no,nb,no, z1, zwork(1),no, &
-           z(i), sN, z0, z(ii), no)
+      call GEMM ('N','C',no,nb,no, z1, zwork(1),no, &
+          z(i), sN, z0, z(ii), no)
        
       i_Elec = i_Elec + nb
 
@@ -1613,7 +1554,7 @@ contains
          n_col=l_ncol, list_ptr=l_ptr, list_col=l_col)
 
     i_sp => spar(orb_J)
-    J    => val (orb_J)
+    J => val (orb_J)
     call attach(i_sp, n_col=i_ncol, list_ptr=i_ptr, list_col=i_col)
 
     ! Create the phases
@@ -1621,21 +1562,15 @@ contains
     ! So since we are taking the complex part on the first entry we retrieve the H(j,i) (in k-space)
     ! component.
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = exp(cmplx(0._dp, + &
-          k(1) * sc_off(1,io) + &
-          k(2) * sc_off(2,io) + &
-          k(3) * sc_off(3,io), kind=dp))
+      ph(io-1) = exp(cmplx(0._dp, -dot_product(k, sc_off(:,io)), dp))
     end do
 
     A => val(A_tri)
-!$OMP parallel default(shared), private(iu,io,ju,jo,iind,ind,Hi,ss)
 
     ! we need this in case the device region gets enlarged due to dH
-!$OMP workshare
     J(:) = 0._dp
-!$OMP end workshare
-    
-!$OMP do
+
+!$OMP parallel do default(shared), private(iu,io,ju,jo,iind,ind,Hi,ss)
     do iu = 1, r%n
       io = r%r(iu)
 
@@ -1657,9 +1592,12 @@ contains
         ! of the device region
         if ( iind <= i_ptr(io) ) cycle
 
-        ! H_ind == H_ij
+        ! This is the full sparse matrix
+        ! We assume full TRS and H_ij == H_ji (when also taking into account
+        ! the supercell)
+        ! Hence H(ind) == H_ij
 
-        ! We may take the conjugate later as E is a real quantity
+        ! We may take the conjugate later as H - ES is a real quantity
         Hi = (H(ind) - E * S(ind)) * ph( (l_col(ind)-1)/no_u )
 
         ! J(iind) = J(io,jo)
@@ -1672,13 +1610,12 @@ contains
 
         ! We skip the pre-factors as the units are "never" used
 
-        ! Jij                Hji    * Aij    Hij * Aji
-        J(iind) = aimag( conjg(Hi) * A(jo) - Hi * A(ju) )
+        ! Jij             Aij    Hji  Aji     Hij
+        J(iind) = aimag( A(jo) * Hi - A(ju) * conjg(Hi) )
 
       end do
     end do
-!$OMP end do
-!$OMP end parallel
+!$OMP end parallel do
 
 #ifdef TBTRANS_TIMING
     call timer('orb-current',2)
@@ -1710,7 +1647,6 @@ contains
     integer, pointer :: i_ncol(:), i_ptr(:), i_col(:)
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:), col(:)
 
-    complex(dp) :: p
     complex(dp), pointer :: A(:)
     real(dp), pointer :: J(:)
     integer :: no_u, iu, io, ind, iind, ju, jo, jj
@@ -1726,21 +1662,19 @@ contains
         n_col=l_ncol, list_ptr=l_ptr, list_col=l_col)
 
     i_sp => spar(orb_J)
-    J    => val (orb_J)
+    J => val (orb_J)
     call attach(i_sp, n_col=i_ncol, list_ptr=i_ptr, list_col=i_col)
 
     ! Create the phases
     ! We are using the explicit H(j, i) and thus the phases are consistent with +
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = exp(cmplx(0._dp, + &
-          k(1) * sc_off(1,io) + &
-          k(2) * sc_off(2,io) + &
-          k(3) * sc_off(3,io), kind=dp))
+      ph(io-1) = exp(cmplx(0._dp, -dot_product(j, sc_off(:,io)), dp))
     end do
 
     A => val(A_tri)
+
 !$OMP parallel do default(shared), &
-!$OMP&private(iu,io,iind,jo,ju,ind,col,jj,p)
+!$OMP&private(iu,io,iind,jo,ju,ind,col,jj)
     do iu = 1, r%n
       io = r%r(iu)
 
@@ -1754,50 +1688,38 @@ contains
         ! Get jo orbital
         jo = ucorb(i_col(iind), no_u)
         ju = pvt%r(jo) ! pivoted orbital index in tri-diagonal matrix
-
         
         ! Check if the jo, io orbital exists in dH
-        if ( l_ncol(jo) < 1 ) then
-          ind = -1
-        else
+        if ( l_ncol(jo) > 0 ) then
           col => l_col(l_ptr(jo)+1:l_ptr(jo)+l_ncol(jo))
           ! Get transpose element
           jj = TO(i_col(iind)) + io
           ind = l_ptr(jo) + SFIND(col, jj)
-        end if
 
-        if ( ind > l_ptr(jo) ) then
+          if ( ind > l_ptr(jo) ) then
 
-          ! Add orbital current from ji
-          p = ph( (l_col(ind)-1)/no_u )
+            ! Check for the Hamiltonian element H_ji
+            jj = index(A_tri,iu,ju) ! A_ij
 
-          ! Check for the Hamiltonian element H_ji
-          jj = index(A_tri,iu,ju) ! A_ij
+            ! Jij                      Aij   * Hji
+            J(iind) = J(iind) + aimag( A(jj) * dH(ind) * ph( (l_col(ind)-1)/no_u ) )
 
-          ! Jij                      Aij   * Hji
-          J(iind) = J(iind) + aimag( A(jj) * dH(ind) * p )
-
+          end if
         end if
 
         ! Check if the io, jo orbital exists in dH
-        if ( l_ncol(io) < 1 ) then
-          ind = -1
-        else
+        if ( l_ncol(io) > 0 ) then
           col => l_col(l_ptr(io)+1:l_ptr(io)+l_ncol(io))
           ind = l_ptr(io) + SFIND(col, i_col(iind))
-        end if
+          if ( ind > l_ptr(io) ) then
 
-        if ( ind > l_ptr(io) ) then
+            ! Check for the Hamiltonian element H_ij
+            jj = index(A_tri,ju,iu) ! A_ji
 
-          ! Add orbital current from ij
-          p = ph( (l_col(ind)-1)/no_u )
+            ! Jij -=                   Aji   * Hij
+            J(iind) = J(iind) - aimag( A(jj) * dH(ind) * ph( (l_col(ind)-1)/no_u ) )
 
-          ! Check for the Hamiltonian element H_ij
-          jj = index(A_tri,ju,iu) ! A_ji
-
-          ! Jij -=                   Aji   * Hij
-          J(iind) = J(iind) - aimag( A(jj) * dH(ind) * p )
-
+          end if
         end if
 
       end do
@@ -1875,23 +1797,16 @@ contains
     ! Since we have to do Gf.exp(ikR) we simply
     ! create exp(-ikR) for the supercell connections.
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = exp(cmplx(0._dp, - &
-          k(1) * sc_off(1,io) - &
-          k(2) * sc_off(2,io) - &
-          k(3) * sc_off(3,io), kind=dp)) / (2._dp * Pi)
+      ph(io-1) = exp(cmplx(0._dp, -dot_product(k, sc_off(:,io)), dp)) / (Pi * 2._dp)
     end do
 
     Gfd => val(Gfd_tri)
     Gfo => val(Gfo_tri)
-    
-!$OMP parallel default(shared), private(iu,io,ind,ju,GfGfd)
 
     ! we need this in case the device region gets enlarged due to dH
-!$OMP workshare
     DM(:) = 0._dp
-!$OMP end workshare
-    
-!$OMP do
+
+!$OMP parallel do default(shared), private(iu,io,ind,ju,GfGfd)
     do iu = 1, r%n
       io = r%r(iu)
 
@@ -1909,8 +1824,7 @@ contains
 
       end do
     end do
-!$OMP end do
-!$OMP end parallel
+!$OMP end parallel do
 
 #ifdef TBTRANS_TIMING
     call timer('Gf-DM',2)
@@ -1976,21 +1890,15 @@ contains
     ! Since we have to do Gf.exp(ikR) we simply
     ! create exp(-ikR) for the supercell connections.
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = exp(cmplx(0._dp, - &
-          k(1) * sc_off(1,io) - &
-          k(2) * sc_off(2,io) - &
-          k(3) * sc_off(3,io), kind=dp)) / (2._dp * Pi)
+      ph(io-1) = exp(cmplx(0._dp, -dot_product(k, sc_off(:,io)), dp)) / (Pi * 2._dp)
     end do
 
     A => val(A_tri)
-!$OMP parallel default(shared), private(iu,io,ind,ju)
 
     ! we need this in case the device region gets enlarged due to dH
-!$OMP workshare
     DM(:) = 0._dp
-!$OMP end workshare
-    
-!$OMP do
+
+!$OMP parallel do default(shared), private(iu,io,ind,ju)
     do iu = 1, r%n
       io = r%r(iu)
 
@@ -2008,8 +1916,7 @@ contains
 
       end do
     end do
-!$OMP end do
-!$OMP end parallel
+!$OMP end parallel do
 
 #ifdef TBTRANS_TIMING
     call timer('A-DM',2)
@@ -2034,10 +1941,6 @@ contains
     ! local variables
     integer :: j, je, i, ie, no, idx
 
-#ifdef TBTRANS_TIMING
-    call timer('insert-SE',1)
-#endif
-
     idx = El%idx_o - 1
     no = TotUsedOrbs(El)
 
@@ -2048,44 +1951,36 @@ contains
     ! not bulk) A non-bulk electrode
 
     if ( El%Bulk ) then
-!$OMP parallel do default(shared), private(j,je,i,ie)
+!$OMP do private(j,je,i,ie)
       do j = 1 , n2
         je = r%r(off2+j) - idx
         if ( 1 <= je .and. je <= no ) then
           je = (je - 1) * no
           do i = 1 , n1
             ie = r%r(off1+i) - idx
-            if ( ie < 1 ) cycle
-            if ( no < ie ) cycle
-             
-            M(i,j) = El%Sigma(je + ie)
-            
+            if ( 1 <= ie .and. ie <= no ) then
+              M(i,j) = El%Sigma(je + ie)
+            end if
           end do
         end if
       end do
-!$OMP end parallel do
+!$OMP end do
     else
-!$OMP parallel do default(shared), private(j,je,i,ie)
+!$OMP do private(j,je,i,ie)
       do j = 1 , n2
         je = r%r(off2+j) - idx
         if ( 1 <= je .and. je <= no ) then
           je = (je - 1) * no
           do i = 1 , n1
             ie = r%r(off1+i) - idx
-            if ( ie < 1 ) cycle
-            if ( no < ie ) cycle
-
-            M(i,j) = M(i,j) - El%Sigma(je + ie)
-
+            if ( 1 <= ie .and. ie <= no ) then
+              M(i,j) = M(i,j) - El%Sigma(je + ie)
+            end if
           end do
         end if
       end do
-!$OMP end parallel do
+!$OMP end do
     end if
-
-#ifdef TBTRANS_TIMING
-    call timer('insert-SE',2)
-#endif
 
   end subroutine insert_Self_energy
 
@@ -2101,17 +1996,13 @@ contains
     ! local variables
     integer :: j, je, i, ii, idx, no
 
-#ifdef TBTRANS_TIMING
-    call timer('insert-SED',1)
-#endif
-
     no = El%o_inD%n
 
     ! A down-folded self-energy, this
     ! is always considered to be "non-bulk" as
     ! we have it downfolded.
 
-!$OMP parallel do default(shared), private(j,ii,je,i,idx)
+!$OMP do private(j,ii,je,i,idx)
     do j = 1 , no
       ii = (j-1)*no
       ! grab the index in the full tri-diagonal matrix
@@ -2124,12 +2015,10 @@ contains
         
       end do
     end do
-!$OMP end parallel do
+!$OMP end do
 
-#ifdef TBTRANS_TIMING
-    call timer('insert-SED',2)
-#endif
-    
   end subroutine insert_Self_energy_Dev
+
+#undef GEMM
 
 end module m_tbt_tri_scat

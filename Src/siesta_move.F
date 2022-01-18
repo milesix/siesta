@@ -97,11 +97,9 @@
       ! Save the last geometry for which the density matrix 
       ! (electronic structure) has been calculated
 
-!$OMP parallel workshare default(shared)
       xa_last(1:3,1:na_s) = xa(1:3,1:na_s)
       ucell_last(1:3,1:3) = ucell(1:3,1:3)
       scell_last(1:3,1:3) = scell(1:3,1:3)
-!$OMP end parallel workshare
 
 ! Move atoms ..........................................................
 !
@@ -441,7 +439,6 @@
       endif
 
       call timer( 'siesta_move', 2 )
-      call timer( 'IterGeom', 2 )
 ! End of one MD step - flush stdout
       if (ionode) call pxfflush(6)
 

@@ -26,7 +26,6 @@ program dmbs2dm
 !          dmbs2dm [-h] -i BlockedFile -o ClassicFile'
 
   use m_getopts
-  use f2kcli
 
 implicit none
 

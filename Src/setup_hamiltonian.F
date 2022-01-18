@@ -14,7 +14,7 @@
 
       USE siesta_options
       use sparse_matrices, only: H_kin_1D, H_vkb_1D
-      use sparse_matrices, only: H_ldau_2D
+      use sparse_matrices, only: H_dftu_2D
       use sparse_matrices, only: H_so_on_2D, H_so_off_2D
       use sparse_matrices, only: listh, listhptr, numh, maxnh
       use sparse_matrices, only: H, S, Hold
@@ -30,11 +30,11 @@
      .                    rmaxo, no_l
       use metaforce, only: lMetaForce, meta
       use molecularmechanics, only : twobody
-      use ldau_specs,   only: switch_ldau     ! This variable determines whether
+      use dftu_specs,   only: switch_dftu     ! This variable determines whether
                                               !   the subroutine to compute the
                                               !   Hubbard terms should be called
                                               !   or not
-      use m_ldau,       only: hubbard_term    ! Subroutine that compute the
+      use m_dftu,       only: hubbard_term    ! Subroutine that compute the
                                               !   Hubbard terms
       use m_dhscf,      only: dhscf
       use m_stress
@@ -71,7 +71,7 @@
       type(filesOut_t)    :: filesOut  ! blank output file names
       logical             :: use_rhog_in
 
-      real(dp), pointer   :: H_vkb(:), H_kin(:), H_ldau(:,:)
+      real(dp), pointer   :: H_vkb(:), H_kin(:), H_dftu(:,:)
       real(dp), pointer   :: H_so_on(:,:)
       complex(dp), pointer:: H_so_off(:,:)
 
@@ -223,7 +223,7 @@
       call update_E0()
 
 ! Hubbard term for LDA+U: energy, forces, stress and matrix elements ....
-      if( switch_ldau ) then
+      if( switch_dftu ) then
         if ( spin%NCol ) then
          call die('LDA+U cannot be used with non-collinear spin.')
         end if
@@ -233,22 +233,22 @@
 
         call re_alloc( fal, 1, 3, 1, na_u, 'fal', 'setup_hamiltonian' )
 
-        H_ldau => val(H_ldau_2D)
+        H_dftu => val(H_dftu_2D)
         call hubbard_term(scell, na_u, na_s, isa, xa, indxua,
      .                    maxnh, maxnh, lasto, iphorb, no_u, no_l, 
      .                    numh, listhptr, listh, numh, listhptr, listh,
-     .                    spin%spinor, Dscf, Eldau, DEldau, H_ldau, 
+     .                    spin%spinor, Dscf, Edftu, DEdftu, H_dftu, 
      .                    fal, stressl, H, iscf,
      .                    matrix_elements_only=.true.)
 
 #ifdef MPI
         ! Global reduction of energy terms
-        call globalize_sum(Eldau,buffer1)
-        Eldau = buffer1
-        ! DEldau should not be globalized
+        call globalize_sum(Edftu,buffer1)
+        Edftu = buffer1
+        ! DEdftu should not be globalized
         ! as it is based on globalized occupations
 #endif
-        Eldau = Eldau + DEldau
+        Edftu = Edftu + DEdftu
 
         call de_alloc( fal, 'fal', 'setup_hamiltonian' ) 
       endif
@@ -303,16 +303,6 @@
 
       want_partial_charges = .false.
       call de_alloc( fal, 'fal', 'setup_hamiltonian' ) 
-!  It is wasteful to write over and over H and S, as there are
-!  no different files.
-! Save Hamiltonian and overlap matrices ............................
-! Only in HSX format now.  Use Util/HSX/hsx2hs to generate an HS file
-
-      if (savehs .or. write_coop) then
-         call write_hsx( no_u, no_s, spin%H, indxuo,
-     &        maxnh, numh, listhptr, listh, H, S, qtot,
-     &        temp, xijo)
-      endif
 
       call timer('setup_H',2)
 #ifdef SIESTA__PEXSI
@@ -320,10 +310,19 @@
 #endif
 
       if ( h_setup_only ) then
-         call timer( 'all', 2 )  ! New call to close the tree
-         call timer( 'all', 3 )
-         call bye("H-Setup-Only requested")
-         STOP
+
+        ! Save Hamiltonian and overlap matrices ............................
+        ! Only in HSX format now.  Use Util/HSX/hsx2hs to generate an HS file
+        if (savehs .or. write_coop) then
+          call write_hsx( no_u, no_s, spin%H, indxuo,
+     &        maxnh, numh, listhptr, listh, H, S, qtot,
+     &        temp, xijo)
+        end if
+
+        call timer( 'all', 2 )  ! New call to close the tree
+        call timer( 'all', 3 )
+        call bye("H-Setup-Only requested")
+        STOP
       endif
 
 !------------------------------------------------------------------------- END

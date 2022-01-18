@@ -540,12 +540,12 @@ C Open file
           write(6,'(a)') 'writewave: Wave Functions Coefficients'
           write(6,*)
           write(6,'(a26,2x,i6)') 'Number of k-points = ', nk
-          write(6,'(a26,2x,i6)') 'Number of Spins = ', spin%Grid
+          write(6,'(a26,2x,i6)') 'Number of Spins = ', spin%H
           write(6,'(a26,2x,i6)') 'Number of basis orbs = ',nuotot
           write(6,*)
         endif
         write(iu) nk, gamma
-        write(iu) spin%Grid   ! This will be 1, 2, or 4
+        write(iu) spin%H   ! This will be 1, 2, 4 or 8 (to tell NC from SOC)
         write(iu) nuotot
         write(iu) (iaorb(j),labelfis(isa(iaorb(j))),
      .            iphorb(j), cnfigfio(isa(iaorb(j)),iphorb(j)),
@@ -561,9 +561,22 @@ c fixspin and qs are not used in diagk, since getD=.false. ...
       qs(1) = 0.0d0
       qs(2) = 0.0d0
 
+C Handle parallel over K points option which is not allowed for here
+      SaveParallelOverK = ParallelOverK
+      if ( ParallelOverK ) then
+        if ( Node .eq. 0 ) then
+          write(*,"(a)")
+     $        "*** Note: ParallelOverK option not used for "//
+     &        "WF info generation"
+        end if
+        ParallelOverK = .false.
+        Serial = (Nodes == 1)
+        call diag_init()
+      end if
+
 C Call appropriate diagonalization routine
 
-      if ( spin%Grid <= 2 ) then
+      if ( spin%none .or. spin%Col ) then
        if (gamma) then
          call diagg( spin%H, nuo, maxuo, maxnh, maxnh, 
      .               maxo, numh, listhptr, listh, numh, listhptr, 
@@ -572,19 +585,6 @@ C Call appropriate diagonalization routine
      .               e1, e2, ek, qk, Dnew, Enew, ef, efs, Entropy,
      .               Haux, Saux, psi, nuotot, occtol, 1, nuotot )
        else
-C Handle parallel over K points option which is not allowed for here
-          SaveParallelOverK = ParallelOverK
-          if ( ParallelOverK ) then
-             if ( Node .eq. 0 ) then
-                write(*,"(a)")
-     $               "*** Note: ParallelOverK option not used for "//
-     &               "WF info generation"
-             end if
-             ParallelOverK = .false.
-             Serial = (Nodes == 1)
-             call diag_init()
-          end if
-
          call diagk( spin%H, nuo, no, spin%spinor, maxnh, maxnh,
      .               maxo, numh, listhptr, listh, numh, listhptr, 
      .               listh, H, S, getD, getPSI,
@@ -593,10 +593,6 @@ C Handle parallel over K points option which is not allowed for here
      .               ek, qk, Dnew, Enew, ef, efs, Entropy,
      .               Haux, Saux, psi, Haux, Saux, aux, nuotot,
      .               occtol, 1, nuotot )
-
-         ParallelOverK = SaveParallelOverK
-         if ( ParallelOverK ) Serial = .true.
-         
        endif
 
       elseif ( spin%NCol) then
@@ -635,6 +631,9 @@ C Handle parallel over K points option which is not allowed for here
         endif
       endif
 
+      ! Restore ParallelOverK
+      ParallelOverK = SaveParallelOverK
+      if ( ParallelOverK ) Serial = .true.
 
       call resetDenseMatrix()
 C Free local arrays 
@@ -738,7 +737,7 @@ C First print the index and value of k-point
           write(6,*)
           write(6,'(a22,2x,i6,2x,3f10.6)') 'k-point = ',ik, k(1:3)
           if (non_coll) then
-             write(6,'(a22,2x,i6)') 'Spin component (non-collinear)= ',0
+             write(6,'(a22,2x)') 'Spinors have mixed spins'
           else
              write(6,'(a22,2x,i6)') 'Spin component = ',ispin
           endif

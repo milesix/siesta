@@ -104,6 +104,7 @@ C **********************************************************************
  
       LOGICAL FIRST
       integer :: idummy, number_of_wfns, spinor_comps
+      integer :: nspin_rho  ! Number of components needed for rho array ("spin%Grid")
 
       CHARACTER ::  SNAME*40, FNAME*256, stm_label*60
 
@@ -168,10 +169,12 @@ C Initialize neighbour subroutine --------------------------------------
       ALLOCATE(R2IJ(MAXNA))
       ALLOCATE(XIJ(3,MAXNA))
 
+      nspin_rho = min(4,nspin)
+
       allocate(CWAVE(spinor_comps))
       ALLOCATE(CW(0:NPX-1,0:NPY-1,spinor_comps))
       ALLOCATE(CWE(0:NPX-1,0:NPY-1,0:NPZ-1,spinor_comps))
-      ALLOCATE(RHO(0:NPX-1,0:NPY-1,0:NPZ-1,nspin))
+      ALLOCATE(RHO(0:NPX-1,0:NPY-1,0:NPZ-1,nspin_rho))
 
       FIRST = .TRUE.
       DO I = 1,3
@@ -423,9 +426,9 @@ C Initialize neighbour subroutine --------------------------------------
      $              [0.0_dp, 0.0_dp, ZMIN], ! Extra info for origin
      $              [.true.,.true.,.false.] ! Periodic ?
 
-      WRITE(grid_u) NPX, NPY, NPZ, nspin 
+      WRITE(grid_u) NPX, NPY, NPZ, nspin_rho 
 
-      do ispin = 1, nspin
+      do ispin = 1, nspin_rho
          DO IZ=0,NPZ-1
             DO IY=0,NPY-1
                WRITE(grid_u) (REAL(RHO(IX,IY,IZ,ispin),sp),IX=0,NPX-1)
@@ -480,9 +483,9 @@ C Initialize neighbour subroutine --------------------------------------
       ! Phase to cancel the phase of the wave function: -i.k.r
       
       PMIKR = -(K(1)*XPO(1) + K(2)*XPO(2) + K(3)*XPO(3))
-      SIMIKR=DSIN(PMIKR)
-      COMIKR=DCOS(PMIKR)
-      EXMIKR=DCMPLX(COMIKR,SIMIKR)
+      SIMIKR=SIN(PMIKR)
+      COMIKR=COS(PMIKR)
+      EXMIKR=CMPLX(COMIKR,SIMIKR,kind=dp)
 
 C Localize non-zero orbitals at each point in real space ---------------
      
@@ -512,9 +515,9 @@ C     Loop over Non-zero orbitals ------------------------------------------
      .        K(2)*(XPO(2)+XIJ(2,IAT1))+
      .        K(3)*(XPO(3)+XIJ(3,IAT1))
 
-         SI=DSIN(PHASE)
-         CO=DCOS(PHASE)
-         EXPPHI=DCMPLX(CO,SI)
+         SI=SIN(PHASE)
+         CO=COS(PHASE)
+         EXPPHI=CMPLX(CO,SI,kind=dp)
 
          DO IO = LASTO(IAVEC1-1) + 1, LASTO(IAVEC1)
             IPHI1 = IPHORB(IO)
