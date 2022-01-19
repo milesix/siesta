@@ -7,9 +7,10 @@
 ! ---
 module m_lib_omm
 
+#ifdef HAVE_LIBOMM
 use MatrixSwitch
 use omm_rand
-
+#endif
 
 use atomlist,       only : qa, lasto
 use fdf,            only : fdf_integer, fdf_boolean, fdf_get
@@ -170,6 +171,12 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
   endif
   call die()  
 #endif
+#ifndef HAVE_LIBOMM
+  if(ionode) then
+    write(6,*) 'omm_min: OMM requires compilation with MatrixSwitch and libOMM'
+  endif
+  call die()
+#endif
 
   call timer('blomm',1)
   m_operation = 'lap'
@@ -235,6 +242,12 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
 
   if(sparse) then
     m_storage ='pdcsr'   ! pdcsr MS format is used for sparse matrices
+#ifndef HAVE_DBCSR
+  if(ionode) then
+    write(6,*) 'omm_min: OMM with sparse matrices requires compilation with DBCSR'
+  endif
+  call die()
+#endif
   else
     m_storage ='pddbc'   ! pddbc MS format is used for dense matrices
   end if
@@ -331,7 +344,9 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
 
     if(sparse) then
       ! Setting up the DBCSR library for sparse matrices
-      call ms_dbcsr_setup(MPI_Comm_World, BlockSize, Use2D) 
+#ifdef HAVE_DBCSR
+      call ms_dbcsr_setup(MPI_Comm_World, BlockSize, Use2D)
+#endif
     else
       if(Use2D) then
         ! Setting up the ScaLAPACK library for dense matrices and 2D MPI grid

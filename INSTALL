@@ -1,9 +1,10 @@
-This is version of SIESTA with order-N methods implemented using omm-bundle and DBCSR libraries
+This is version of SIESTA with linear and cubic-scaling orbital minimization method (OMM)
+implemented using omm-bundle and DBCSR libraries.
 
 Installation notes
 ------------------
 
-1. Install dbcsr-2.1.0 version following instructions from
+1. For linear-scaling methods, install dbcsr-2.1.0 version following instructions from
    https://cp2k.github.io/dbcsr/develop/page/2-user-guide/1-installation/index.html
 
 2. Install omm-bundle from https://gitlab.com/irina_lebedeva/omm-bundle/-/tree/omm_sparse 
@@ -24,12 +25,18 @@ OMMLIBPATH = $(OMMPATH)/build_libOMM
 OMMLIB = -L$(OMMLIBPATH)/lib -lOMM
 OMMINC = -I$(OMMLIBPATH)/include
 
+FFLAGS += -DHAVE_LIBOMM
+LIBS += $(OMMLIB) $(MSLIB) $(PSPLIB)
+INCFLAGS += $(OMMINC) $(MSINC) $(PSPINC)
+
+# If DBCSR is used, add
 DBCSR     = <path to dbcsr-2.1.0 installation directory>
 DBCSRINC  = -I$(DBCSR)/install/include
 DBCSRLIB  = -L$(DBCSR)/install/lib -ldbcsr
 
-LIBS += $(OMMLIB) $(MSLIB) $(DBCSRLIB) $(PSPLIB)
-INCFLAGS += $(OMMINC) $(MSINC) $(DBCSRINC) $(PSPINC)
+FFLAGS += -DHAVE_DBCSR
+LIBS += $(DBCSRLIB)
+INCFLAGS += $(DBCSRINC)
 
 # If DBCSR and omm-bundle are installed with the OpenMP support, also add
 LIBS += -qopenmp
