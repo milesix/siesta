@@ -109,7 +109,7 @@ then
     echo >&2 "ERROR: Alternatively, you may clone the official SIESTA git"
     echo >&2 "ERROR: repository at https://gitlab.com/siesta-project/siesta ."
     echo >&2 ""
-    exit 2
+#    exit 2
 elif test "${Vnew}" = "${archived_commit}" -o  "${git_found}" = true
 then
     # Warn: this is not an official release.
