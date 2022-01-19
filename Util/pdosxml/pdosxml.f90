@@ -1,5 +1,5 @@
 ! 
-! Copyright (C) 1996-2016       The SIESTA group
+! Copyright (C) 1996-2021       The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt.
@@ -9,7 +9,6 @@ program pdosxml
 !
 ! Driver for Siesta PDOS processing
 !
-use f2kcli      ! Remove if it gives you trouble (see below)
 use flib_sax
 use m_pdos      ! Defines begin_element, end_element, pcdata_chunk
 
@@ -17,7 +16,7 @@ integer      :: iostat, i
 type(xml_t)  :: fxml
 
 !
-! If you have trouble with the command-line processor f2kcli, remove the
+! If you have trouble with the command-line processor, remove the
 ! lines from here...
 !
 integer             :: narg

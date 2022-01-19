@@ -712,10 +712,8 @@ contains
          if ( is_real ) then
             call ncdf_get_var(grp,'delta',rM, start = start )
             call MPI_Bcast(rM,nnz,MPI_Double_Precision, 0, &
-                 MPI_Comm_World, MPIerror)
-!$OMP parallel workshare default(shared)
+                MPI_Comm_World, MPIerror)
             zM(:) = rM(:)
-!$OMP end parallel workshare
             deallocate(rM)
          else
             call ncdf_get_var(grp,'delta',zM, start = start )
@@ -761,9 +759,7 @@ contains
       
       if ( is_real ) then
          call ncdf_get_var(grp,'delta',rM, start = start )
-!$OMP parallel workshare default(shared)
          zM(:) = rM(:)
-!$OMP end parallel workshare
          deallocate(rM)
       else
          call ncdf_get_var(grp,'delta',zM, start = start )
@@ -776,7 +772,7 @@ contains
     function idx_k(bk,fbk) result(i)
       real(dp), intent(in) :: bk(3), fbk(:,:)
       integer :: i
-      do i = 1 , size(fbk,dim=2)
+      do i = 1 , size(fbk, 2)
          if ( abs( fbk(1,i) - bk(1) ) + &
               abs( fbk(2,i) - bk(2) ) + &
               abs( fbk(3,i) - bk(3) ) < 0.0001_dp ) then
@@ -854,8 +850,8 @@ contains
 
     type(Sparsity), pointer :: sp
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
-    complex(dp), allocatable :: ph(:)
     complex(dp), pointer :: d(:), GFinv(:)
+    complex(dp) :: ph(0:size(sc_off, 2)-1)
 
     integer :: idx, iu, ju, ind, jo, no
 
@@ -866,12 +862,10 @@ contains
          n_col=l_ncol, list_ptr=l_ptr, list_col=l_col)
 
     ! Create the phases
-    allocate( ph(0:size(sc_off,dim=2)-1) )
-    do iu = 1 , size(sc_off, dim=2)
-       ph(iu-1) = exp(cmplx(0._dp, &
-            k(1) * sc_off(1,iu) + &
-            k(2) * sc_off(2,iu) + &
-            k(3) * sc_off(3,iu),kind=dp))
+    ! Note the sign-change wrt. m_ts_sparse_helper. This
+    ! is because the latter stores the transpose matrix elements.
+    do iu = 1 , size(sc_off, 2)
+       ph(iu-1) = exp(cmplx(0._dp, dot_product(k, sc_off(:,iu)), dp))
     end do
 
     Gfinv => val(Gfinv_tri)
@@ -896,8 +890,6 @@ contains
        end if
     end do
 !$OMP end parallel do
-
-    deallocate(ph)
     
   end subroutine add_zdelta_TriMat
   
@@ -920,8 +912,8 @@ contains
 
     type(Sparsity), pointer :: sp
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
-    complex(dp), allocatable :: ph(:)
     complex(dp), pointer :: d(:)
+    complex(dp) :: ph(0:size(sc_off, 2)-1)
 
     integer :: iu, ju, ind, jo, no
 
@@ -932,12 +924,10 @@ contains
          n_col=l_ncol, list_ptr=l_ptr, list_col=l_col)
 
     ! Create the phases
-    allocate( ph(0:size(sc_off,dim=2)-1) )
-    do iu = 1 , size(sc_off, dim=2)
-       ph(iu-1) = exp(cmplx(0._dp, &
-            k(1) * sc_off(1,iu) + &
-            k(2) * sc_off(2,iu) + &
-            k(3) * sc_off(3,iu),kind=dp))
+    ! Note the sign-change wrt. m_ts_sparse_helper. This
+    ! is because the latter stores the transpose matrix elements.
+    do iu = 1 , size(sc_off, 2)
+       ph(iu-1) = exp(cmplx(0._dp, dot_product(k, sc_off(:,iu)), dp))
     end do
     
 !$OMP parallel do default(shared), private(iu,jo,ind,ju)
@@ -948,9 +938,9 @@ contains
           
           do ind = l_ptr(jo) + 1 , l_ptr(jo) + l_ncol(jo)
              iu = rgn_pivot(r, MODP(l_col(ind), no)) - off2
-             if ( iu < 1 .or. n2 < iu ) cycle
-             
-             M(ju,iu) = M(ju,iu) - d(ind) * ph( (l_col(ind)-1)/no )
+             if ( 1 <= iu .and. iu <= n2 ) then
+               M(ju,iu) = M(ju,iu) - d(ind) * ph( (l_col(ind)-1)/no )
+             end if
           end do
           
        end if
@@ -958,8 +948,6 @@ contains
     end do
 !$OMP end parallel do
 
-    deallocate(ph)
-    
   end subroutine add_zdelta_Mat
   
 end module m_tbt_delta

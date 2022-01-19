@@ -175,8 +175,8 @@ contains
         compress_lvl=cdf_comp_lvl,atts=dic,chunks=chks)
 
     dic = dic//('info'.kv.'Overlap matrix gradient')//('unit'.kv.'1/Bohr')
-    call ncdf_def_var(grp,'S_gradient',NF90_DOUBLE,(/'nnzs', 'xyz '/), &
-        compress_lvl=cdf_comp_lvl,atts=dic,chunks=chks)
+    call ncdf_def_var(grp,'S_gradient',NF90_DOUBLE,(/'xyz ', 'nnzs'/), &
+        compress_lvl=cdf_comp_lvl,atts=dic,chunks=(/1,n_nzs/))
     call delete(dic)
 
     dic = dic//('info'.kv.'Density matrix')
@@ -194,7 +194,7 @@ contains
       call ncdf_def_var(grp,'H',NF90_DOUBLE,(/'nnzs','spin'/), &
           compress_lvl=cdf_comp_lvl,atts=dic,chunks=chks)
     end if
-    
+
     ! Even though I think we could do without, I add the
     ! xij array to the file
     ! Note that xij can be re-created using
@@ -318,6 +318,9 @@ contains
        call ncdf_def_var(grp,'Volt',NF90_DOUBLE,(/'one'/), &
             compress_lvl=0,atts=dic)
 
+       dic = dic//('info'.kv.'Hartree correction for FFT Poisson solver')
+       call ncdf_def_var(grp,'dHartree',NF90_DOUBLE,(/'one'/), &
+           compress_lvl=0,atts=dic)
        call delete(dic)
 
        ! Add all the electrodes
@@ -570,9 +573,9 @@ contains
 
   subroutine cdf_save_state(fname,dic_save)
     !    use m_gamma, only : Gamma
-    use m_energies, only: Ef, Efs
+    use m_energies, only: Ef, Efs, NEGF_Vha
     use atomlist, only : Qtot
-    use siesta_options, only: fixspin, total_spin
+    use siesta_options, only: fixspin, total_spin, isolve, SOLVE_TRANSI
     use siesta_geom, only: na_u, ucell, xa, va
     use siesta_geom, only: nsc, isc_off
     use sparse_matrices, only: sparse_pattern, block_dist
@@ -591,7 +594,7 @@ contains
 
     ! We just open it (prepending)
 #ifdef MPI
-    if ( Nodes > 1 .and. cdf_w_parallel ) then
+    if ( cdf_w_parallel ) then
        call ncdf_open(ncdf,fname, &
             mode=ior(NF90_WRITE,NF90_MPIIO), comm=MPI_Comm_World)
     else
@@ -648,6 +651,14 @@ contains
          call cdf_w_d2D(grp,'DM',DM_2D)
     if ( 'EDM' .in. dic_save ) &
          call cdf_w_d2D(grp,'EDM',EDM_2D)
+    
+    if ( isolve == SOLVE_TRANSI ) then
+       call ncdf_open_grp(ncdf,'TRANSIESTA',grp)
+
+       if ( 'NEGF_Vha' .in. dic_save ) &
+         call ncdf_put_var(grp,'dHartree',NEGF_Vha)
+
+    end if
 
     call ncdf_close(ncdf)
     
@@ -668,7 +679,7 @@ contains
 
     ! We just open it (prepending)
 #ifdef MPI
-    if ( Nodes > 1 .and. cdf_w_parallel ) then
+    if ( cdf_w_parallel ) then
        call ncdf_open(ncdf,fname, group='GRID', &
             mode=ior(NF90_WRITE,NF90_MPIIO), &
             comm=MPI_Comm_World)

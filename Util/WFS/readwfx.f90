@@ -1,5 +1,5 @@
 ! 
-! Copyright (C) 1996-2016       The SIESTA group
+! Copyright (C) 1996-2021       The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt.
@@ -9,7 +9,6 @@
 program readwfx
 
   use m_getopts
-  use f2kcli
 
 ! This program READWF reads a the coefficients of wavefunctions
 ! on the expansion of the atomic orbitals basis set, as written
@@ -121,7 +120,7 @@ integer, parameter :: sp = selected_real_kind(5,10)
   read(wfs_u) nk, gamma
 
   read(wfs_u) wfs_spin_flag   !  1, 2, or 4 
-  non_coll = (wfs_spin_flag == 4)
+  non_coll = (wfs_spin_flag >= 4)
   read(wfs_u) nuotot
   read(wfs_u)        !! Symbols, etc
 

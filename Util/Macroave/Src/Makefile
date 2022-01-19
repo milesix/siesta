@@ -1,5 +1,5 @@
 # ---
-# Copyright (C) 1996-2016	The SIESTA group
+# Copyright (C) 1996-2021       The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
 #  or http://www.gnu.org/copyleft/gpl.txt .
@@ -38,9 +38,8 @@ $(COM_OBJS):
 macroave:  $(ALL_OBJS)
 	$(FC) $(FFLAGS) $(LDFLAGS) -o macroave $(ALL_OBJS) 
 #
-permute.o: f2kcli.o
-permute:   f2kcli.o permute.o 
-	$(FC) $(FFLAGS) $(LDFLAGS) -o permute f2kcli.o permute.o
+permute:   permute.o 
+	$(FC) $(FFLAGS) $(LDFLAGS) -o permute permute.o
 #
 clean: 
 	@echo "==> Cleaning object, library, and executable files"

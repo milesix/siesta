@@ -1,12 +1,12 @@
 # ---
-# Copyright (C) 1996-2016	The SIESTA group
+# Copyright (C) 1996-2021       The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
 #  or http://www.gnu.org/copyleft/gpl.txt .
 # See Docs/Contributors.txt for a list of contributors.
 # ---
 #
-# The VPATH directive below helps to re-use f2kcli.F90 from the top Src.
+# The VPATH directive below allows to re-use m_getopts.f90 from the top Src.
 # Other points to note, until we switch to a better building system:
 #
 #  The arch.make file is supposed to be in $(OBJDIR). This is normally
@@ -37,7 +37,7 @@ DEFS:=$(DEFS) $(DEFS_PREFIX)-UMPI
 FPPFLAGS:=$(FPPFLAGS) $(DEFS_PREFIX)-UMPI 
 INCFLAGS:=$(INCFLAGS) $(NETCDF_INCFLAGS)
 #
-OBJS=m_getopts.o f2kcli.o 
+OBJS=m_getopts.o
 #
 default: Eig2DOS
 #
@@ -48,5 +48,4 @@ clean:
 	rm -f *.o *.mod Eig2DOS
 
 # Dependecies
-m_getopts.o: f2kcli.o
-Eig2DOS.o: m_getopts.o f2kcli.o
+Eig2DOS.o: m_getopts.o

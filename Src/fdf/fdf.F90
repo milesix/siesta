@@ -1440,7 +1440,7 @@ MODULE fdf
     SUBROUTINE fdf_addline(line)
       implicit none
 !--------------------------------------------------------------- Input Variables
-      character(len=MAX_LENGTH)  :: line
+      character(len=*)  :: line
 
 !--------------------------------------------------------------- Local Variables
       integer(ip)                :: ntok
@@ -1469,7 +1469,7 @@ MODULE fdf
     SUBROUTINE fdf_removelabel(label)
       implicit none
 !--------------------------------------------------------------- Input Variables
-      character(len=MAX_LENGTH)  :: label
+      character(len=*)  :: label
 
 !--------------------------------------------------------------- Local Variables
       type(line_dlist), pointer  :: mark
@@ -1517,7 +1517,7 @@ MODULE fdf
 !
     SUBROUTINE fdf_overwrite(line)
 !--------------------------------------------------------------- Input Variables
-      character(len=MAX_LENGTH)   :: line
+      character(len=*) :: line
 
 !--------------------------------------------------------------- Local Variables
       type(parsed_line), pointer  :: pline
@@ -1568,7 +1568,7 @@ MODULE fdf
     SUBROUTINE fdf_addtoken(line, pline)
       implicit none
 !--------------------------------------------------------------- Input Variables
-      character(len=MAX_LENGTH)  :: line
+      character(len=*)  :: line
       type(parsed_line), pointer :: pline
 
 !--------------------------------------------------------------- Local Variables
@@ -2571,7 +2571,7 @@ MODULE fdf
           'force   ', 'n         ', 1.d0, &
           'force   ', 'ev/ang    ', 1.60219d-9, &
           'force   ', 'ry/bohr   ', 4.11943d-8, &
-          'force   ', 'ha/bohr   ', 2.059715d-08 /
+          'force   ', 'ha/bohr   ', 8.23886d-08 /
 
       data (dimm(iu), name(iu), unit(iu), iu=44, 52) / &
           'pressure', 'pa        ', 1.d0, &

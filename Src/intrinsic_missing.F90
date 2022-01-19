@@ -42,6 +42,8 @@
 !             * NEAREST= 0: if not found, returns -1 (NORMAL behaviour)
 !  - MODP : Returns "FORTRAN" indexed MOD, i.e. if MOD would return 0,
 !           MODP returns the divisor.
+!  - MODULOP : Returns "FORTRAN" indexed MODULO, i.e. if MODULO would return 0,
+!           MODULOP returns the divisor.
 !  - EYE  : a routine to generate identity matrices
 !           this is a subroutine as I think a function would produce
 !           a large memory foot-print before it actually saves to the array.
@@ -95,7 +97,7 @@ module intrinsic_missing
 
 
 ! Elemental functions (can be called on arrays)
-  public :: MODP
+  public :: MODP, MODULOP
 
 ! Missing matrix stuff
   public :: EYE
@@ -233,6 +235,19 @@ contains
     integer :: MODP
     MODP = MOD(a-1,p) + 1
   end function MODP
+
+! A MODULO function which behaves differently on the edge.
+! It will NEVER return 0, but instead return the divisor.
+! This makes it useful in FORTRAN do-loops which are not zero-based
+! but 1-based.
+! Thus we have the following scheme:
+!  MODULOP(x',x) == x         for x' == x
+!  MODULOP(x',x) == MODULOP(x',x) for x' /= x
+  elemental function MODULOP(a,p)
+    integer, intent(in) :: a,p
+    integer :: MODULOP
+    MODULOP = MODULO(a-1,p) + 1
+  end function MODULOP
 
 ! Function to return the unique COUNT of an integer array.
 ! Thus will return how many DIFFERENT entries there exists.
@@ -1537,14 +1552,14 @@ contains
     integer :: j, k, lI
     lI = 1
     if ( present(I) ) lI = I
-!$OMP parallel do default(shared), private(k,j)
+!$OMP do private(k,j)
     do k = 1 , size
        do j = 1 , size
           array(j,k) = 0
        end do
        array(k,k) = lI
     end do
-!$OMP end parallel do
+!$OMP end do
   end subroutine EYE_i_2D
   subroutine EYE_sp_2D(size,array,I)
     integer, intent(in) :: size
@@ -1554,14 +1569,14 @@ contains
     integer :: j, k
     lI = 1._sp
     if ( present(I) ) lI = I
-!$OMP parallel do default(shared), private(k,j)
+!$OMP do private(k,j)
     do k = 1 , size
        do j = 1 , size
           array(j,k) = 0._sp
        end do
        array(k,k) = lI
     end do
-!$OMP end parallel do
+!$OMP end do
   end subroutine EYE_sp_2D
   subroutine EYE_dp_2D(size,array,I)
     integer, intent(in) :: size
@@ -1571,14 +1586,14 @@ contains
     integer :: j, k
     lI = 1._dp
     if ( present(I) ) lI = I
-!$OMP parallel do default(shared), private(k,j)
+!$OMP do private(k,j)
     do k = 1 , size
        do j = 1 , size
           array(j,k) = 0._dp
        end do
        array(k,k) = lI
     end do
-!$OMP end parallel do
+!$OMP end do
   end subroutine EYE_dp_2D
   subroutine EYE_cp_2D(size,array,I)
     integer, intent(in) :: size
@@ -1588,14 +1603,14 @@ contains
     integer :: j, k
     lI = cmplx(1._sp,0._sp)
     if ( present(I) ) lI = I
-!$OMP parallel do default(shared), private(k,j)
+!$OMP do private(k,j)
     do k = 1 , size
        do j = 1 , size
           array(j,k) = 0._sp
        end do
        array(k,k) = lI
     end do
-!$OMP end parallel do
+!$OMP end do
   end subroutine EYE_cp_2D
   subroutine EYE_zp_2D(size,array,I)
     integer, intent(in) :: size
@@ -1605,14 +1620,14 @@ contains
     integer :: j, k
     lI = cmplx(1._dp,0._dp,dp)
     if ( present(I) ) lI = I
-!$OMP parallel do default(shared), private(k,j)
+!$OMP do private(k,j)
     do k = 1 , size
        do j = 1 , size
           array(j,k) = cmplx(0._dp,0._dp,dp)
        end do
        array(k,k) = lI
     end do
-!$OMP end parallel do
+!$OMP end do
   end subroutine EYE_zp_2D
 
   subroutine EYE_i_1D(size,array)
@@ -1647,7 +1662,7 @@ contains
     real(dp), intent(inout) :: array(size,size)
     integer :: i, j
     real(dp) :: d
-!$OMP parallel do default(shared), private(i,j,d)
+!$OMP do private(i,j,d)
     do i = 1 , size - 1
        do j = i + 1 , size
           d = array(j,i)
@@ -1655,14 +1670,14 @@ contains
           array(i,j) = d
        end do
     end do
-!$OMP end parallel do
+!$OMP end do
   end subroutine TRANSPOSE_dp_2D
   subroutine TRANSPOSE_zp_2D(size,array)
     integer, intent(in) :: size
     complex(dp), intent(inout) :: array(size,size)
     integer :: i, j
     complex(dp) :: z
-!$OMP parallel do default(shared), private(i,j,z)
+!$OMP do private(i,j,z)
     do i = 1 , size - 1
        do j = i + 1 , size
           z = array(j,i)
@@ -1670,7 +1685,7 @@ contains
           array(i,j) = z
        end do
     end do
-!$OMP end parallel do
+!$OMP end do
   end subroutine TRANSPOSE_zp_2D
   
   subroutine TRANSPOSE_dp_1D(size,array)
@@ -1691,23 +1706,18 @@ contains
     real(dp) :: T
     integer :: i
     T = 0._dp
-!$OMP parallel do default(shared), private(i), reduction(+:T)
     do i = 1 , size
        T = T + array(i,i)
     end do
-!$OMP end parallel do
   end function TRACE_dp_2D 
   function TRACE_zp_2D(size,array) result(T)
     integer, intent(in) :: size
     complex(dp), intent(in) :: array(size,size)
     complex(dp) :: T
     integer :: i
-    T = cmplx(0._dp,0._dp,dp)
-!$OMP parallel do default(shared), private(i), reduction(+:T)
     do i = 1 , size
        T = T + array(i,i)
     end do
-!$OMP end parallel do
   end function TRACE_zp_2D
   
   function TRACE_dp_1D(size,array) result(T)

@@ -1262,7 +1262,7 @@ c  Lee-Yang-Parr correlation energy
       gam22=gdm(2)**2
       LYPa=-4*a*d(1)*d(2)/(den*dt)
       LYPb1=2**onzthd*cf*a*b*omega*d(1)*d(2)
-      LYPb2=d(1)**(8./3.)+d(2)**(8./3.)
+      LYPb2=d(1)**(8._dp/3._dp)+d(2)**(8._dp/3._dp)
       dLYP11=-a*b*omega*(d(1)*d(2)/9.*(1.-3.*delta-(delta-11.)
      .*d(1)/dt)-d(2)**2)
       dLYP12=-a*b*omega*(d(1)*d(2)/9.*(47.-7.*delta)
@@ -1276,7 +1276,7 @@ c    Density of energy
 
 c   Correlation energy derivatives
        domega=-thd*dt**(-fothd)*omega*(11.*dt**thd-c-dd/den)
-       ddelta=thd*(dd**2*dt**(-5./3.)/den**2-delta/dt)
+       ddelta=thd*(dd**2*dt**(-5._dp/3._dp)/den**2-delta/dt)
 
 c   Second derivatives with respect to the density
        dd1g11=domega/omega*dLYP11-a*b*omega*(d(2)/9.*
@@ -1284,9 +1284,9 @@ c   Second derivatives with respect to the density
      . ((3.+d(1)/dt)*ddelta-(delta-11.)*d(1)/dt**2))
 
        dd1g12=domega/omega*dLYP12-a*b*omega*(d(2)/9.*
-     . (47.-7.*delta)-7./9.*d(1)*d(2)*ddelta-8./3.*dt)
+     . (47.-7.*delta)-7._dp/9._dp*d(1)*d(2)*ddelta-8._dp/3._dp*dt)
 
-      dd1g22=domega/omega*dLYP22-a*b*omega*(1./9.*d(2)
+      dd1g22=domega/omega*dLYP22-a*b*omega*(1._dp/9._dp*d(2)
      . *(1.-3.*delta-(delta-11.)*d(2)/dt)-d(1)*d(2)/9.*
      . ((3.+d(2)/dt)*ddelta-(delta-11.)*d(2)/dt**2)-2*d(1))
 
@@ -1295,23 +1295,23 @@ c   Second derivatives with respect to the density
      . ((3+d(2)/dt)*ddelta-(delta-11.)*d(2)/dt**2))
       
       dd2g12=domega/omega*dLYP12-a*b*omega*(d(1)/9.*
-     . (47.-7.*delta)-7./9.*d(1)*d(2)*ddelta-8./3.*dt)
+     . (47.-7.*delta)-7._dp/9._dp*d(1)*d(2)*ddelta-8._dp/3._dp*dt)
       
-      dd2g11=domega/omega*dLYP11-a*b*omega*(1./9.*d(1)
+      dd2g11=domega/omega*dLYP11-a*b*omega*(1._dp/9._dp*d(1)
      . *(1.-3.*delta-(delta-11.)*d(1)/dt)-d(1)*d(2)/9.*
      . ((3.+d(1)/dt)*ddelta-(delta-11.)*d(1)/dt**2)-2*d(2))
 
         dLYPdd(1)=-4*a/den*d(1)*d(2)/dt*
      . (thd*dd*dt**(-fothd)/den
      . +1./d(1)-1./dt)-2**onzthd*cf*a*b*(domega*d(1)*d(2)*
-     . (d(1)**(8./3.)+d(2)**(8./3.))+omega*d(2)*(onzthd*
-     . d(1)**(8./3.)+d(2)**(8./3.)))+dd1g11*gam11+
+     . (d(1)**(8._dp/3._dp)+d(2)**(8._dp/3._dp))+omega*d(2)*(onzthd*
+     . d(1)**(8._dp/3._dp)+d(2)**(8._dp/3._dp)))+dd1g11*gam11+
      . dd1g12*gam12+dd1g22*gam22
 
        dLYPdd(2)=-4*a/den*d(1)*d(2)/dt*(thd*dd*dt**(-fothd)/den
      . +1./d(2)-1./dt)-2**onzthd*cf*a*b*(domega*d(1)*d(2)*
-     . (d(1)**(8./3.)+d(2)**(8./3.))+omega*d(1)*(onzthd*
-     . d(2)**(8./3.)+d(1)**(8./3.)))+dd2g22*gam22+
+     . (d(1)**(8._dp/3._dp)+d(2)**(8._dp/3._dp))+omega*d(1)*(onzthd*
+     . d(2)**(8._dp/3._dp)+d(1)**(8._dp/3._dp)))+dd2g22*gam22+
      . dd2g12*gam12+dd2g11*gam11
 
 c second derivatives with respect to the density gradient

@@ -296,16 +296,18 @@ CONTAINS
 
     ! Perform linear mixing if iscf = N x nkick
     !
-    if (nkick > 0 .AND. mod(iscf,nkick).eq.0) then
-       ! Reset the history information
-       if (Node == 0) then
+    if ( nkick > 0 ) then
+      if ( mod(iscf,nkick).eq.0) then
+        ! Reset the history information
+        if (Node == 0) then
           write(6,"(a,i4)") "Applying kick at iscf: ", iscf
           write(6,"(a,i4)") "Re-setting Pulay history"
-       endif
-       n_records_saved = 0
-
-       call linear_mixing(alphakick)
-       RETURN
+        endif
+        n_records_saved = 0
+        
+        call linear_mixing(alphakick)
+        RETURN
+      end if
     endif
 
 
@@ -510,9 +512,7 @@ CONTAINS
 
     ! Read former matrices for mixing .........
     !
-!$OMP parallel workshare default(shared)
     dmnew(1:maxnd,1:nspin) = 0._dp
-!$OMP end parallel workshare
     do i = 1 , maxmix
        i0 = (i-1) * numel
        do is = 1 , nspin
@@ -528,9 +528,7 @@ CONTAINS
 !$OMP end parallel do
        end do
     end do
-!$OMP parallel workshare default(shared)
     dmold(1:maxnd,1:nspin) = dmnew(1:maxnd,1:nspin)
-!$OMP end parallel workshare
 
     if (LM_after_pulay) last_was_pulay = .true.
 

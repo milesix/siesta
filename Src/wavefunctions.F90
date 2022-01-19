@@ -144,7 +144,7 @@ CONTAINS
         do ik=1,nk
           do i=1,nuotot
             do j=1,wavef_rw(ik,ispin)%dim2
-              call m_get_element(wavef_rw(ik,ispin),i,j,varaux,'lap')
+              call m_get_element(wavef_rw(ik,ispin),i,j,varaux,label='lap')
               if (Node==0) write(unit1) varaux
             enddo
           enddo

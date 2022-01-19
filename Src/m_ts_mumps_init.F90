@@ -212,18 +212,17 @@ contains
     call memory('A', 'Z', io, 'prep_LHS')
     allocate( mum%A( io ) )
 
-!$OMP parallel do default(shared), &
-!$OMP&private(io,ioff,ind)
-    do io = 1, nr
+!$OMP parallel do default(shared), private(io,ioff,ind)
+    do io = 1 , nr
 
        if ( l_ncol(io) /= 0 ) then
        
        ioff = io - orb_offset(io)
        
        do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io) 
-             
-          mum%IRN(ind) = l_col(ind) - orb_offset(l_col(ind))
-          mum%JCN(ind) = ioff
+
+         mum%IRN(ind) = ioff
+         mum%JCN(ind) = l_col(ind) - orb_offset(l_col(ind))
 
        end do
 
@@ -315,23 +314,16 @@ contains
 
     call allocate_mum(mum,nzs,N_Elec,Elecs,GF)
 
-!$OMP parallel default(shared), &
-!$OMP&private(io,j,ind)
-
     ! TODO, this requires that the sparsity pattern is symmetric
     ! Which it always is!
-!$OMP workshare
-    mum%IRHS_PTR(:) = 1 
-!$OMP end workshare
 
-!$OMP do
+!$OMP parallel do default(shared), private(io,ind)
     do io = 1 , nr
        if ( orb_type(io) /= TYP_BUFFER ) then
        mum%IRHS_PTR(io-orb_offset(io)) = l_ptr(io) + 1
        if ( l_ncol(io) /= 0 ) then ! no entries
        ! Create the row-index
-       do j = 1 , l_ncol(io)
-          ind = l_ptr(io) + j
+       do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
           mum%IRHS_SPARSE(ind) = l_col(ind) - orb_offset(l_col(ind))
        end do
 
@@ -339,15 +331,9 @@ contains
        end if
 
     end do
-!$OMP end do nowait
+!$OMP end parallel do
 
-!$OMP end parallel
     mum%IRHS_PTR(no_u_TS+1) = nzs + 1
-
-    if ( ind /= mum%NZ_RHS ) then
-       write(*,*)ind,mum%NZ_RHS
-       call die('Error in sparsity pattern of equilibrium')
-    end if
 
   end subroutine prep_RHS_Eq
 
@@ -361,7 +347,7 @@ contains
     integer, intent(in) :: no_u_TS, N_Elec
     type(Elec), intent(inout) :: Elecs(N_Elec)
     complex(dp), pointer :: Gf(:)
-    integer :: iEl, no, i, j, io, ind
+    integer :: iEl, no, io, j, jo, ind
 
     ! We only need a partial size of the Green function
     no = sum(TotUsedOrbs(Elecs))
@@ -369,16 +355,16 @@ contains
     call allocate_mum(mum,no*no_u_TS,N_Elec,Elecs,GF)
 
     ind = 0
-    do i = 1 , no_u_TS
-       mum%IRHS_PTR(i) = ind + 1
+    do j = 1 , no_u_TS
+       mum%IRHS_PTR(j) = ind + 1
        ! get correct siesta-orbital
-       io = ts2s_orb(i)
+       jo = ts2s_orb(j)
        iElec: do iEl = 1 , N_Elec
-          if ( .not. OrbInElec(Elecs(iEl),io) ) cycle
+          if ( .not. OrbInElec(Elecs(iEl),jo) ) cycle
           ! Create the row-index
-          do j = 1 , no_u_TS
+          do io = 1 , no_u_TS
              ind = ind + 1
-             mum%IRHS_SPARSE(ind) = j
+             mum%IRHS_SPARSE(ind) = io
           end do
           exit iElec
        end do iElec
@@ -406,10 +392,10 @@ contains
     if ( El%Bulk ) then
 !$OMP do private(ind,jso,iso,ii)
        do ind = 1 , mum%NZ
-          jso = ts2s_orb(mum%JCN(ind))
-          if ( OrbInElec(El,jso) ) then 
           iso = ts2s_orb(mum%IRN(ind))
           if ( OrbInElec(El,iso) ) then
+          jso = ts2s_orb(mum%JCN(ind))
+          if ( OrbInElec(El,jso) ) then
              ii = (jso - El%idx_o) * no + iso - off
              mum%A(ind) = El%Sigma(ii)
           end if
@@ -419,10 +405,10 @@ contains
     else
 !$OMP do private(ind,jso,iso,ii)
        do ind = 1 , mum%NZ
-          jso = ts2s_orb(mum%JCN(ind))
-          if ( OrbInElec(El,jso) ) then
           iso = ts2s_orb(mum%IRN(ind))
           if ( OrbInElec(El,iso) ) then
+          jso = ts2s_orb(mum%JCN(ind))
+          if ( OrbInElec(El,jso) ) then
              ii = (jso - El%idx_o) * no + iso - off
              mum%A(ind) = mum%A(ind) - El%Sigma(ii)
           end if

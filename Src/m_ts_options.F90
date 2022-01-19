@@ -28,6 +28,8 @@ module m_ts_options
   ! The tolerance
   real(dp) :: ts_Dtol ! = tolerance for density matrix
   real(dp) :: ts_Htol ! = tolerance for Hamiltonian
+  logical :: ts_converge_dQ = .true. ! whether we should converge the charge
+  real(dp) :: ts_dQtol ! = tolerance for charge in the device region (after SCF)
   integer :: ts_hist_keep = 0
 
   ! ###### end SIESTA-options #####
@@ -35,13 +37,14 @@ module m_ts_options
   ! Whether we should stop before transiesta begins...
   logical :: TS_siesta_stop = .false.
 
+  !< Whether TranSiesta is allowed to start without the 0-bias calculation.
+  logical :: TS_start_bias = .false.
+
   ! Controls to save the TSHS file
   logical :: TS_HS_save = .true.
   logical :: TS_DE_save = .false.
   ! whether we will use the bias-contour
   logical :: IsVolt = .false.
-  ! Whether the system has an electronic temperature gradient
-  logical :: has_T_gradient = .false.
   ! maximum difference between chemical potentials
   real(dp) :: Volt = 0._dp
   ! The temperature for transiesta calculations
@@ -61,11 +64,6 @@ module m_ts_options
   integer :: BTD_method = 0 ! Optimization method for determining the best tri-diagonal matrix split
   ! 0  == We optimize for speed
   ! 1  == We optimize for memory
-
-  ! Determines whether the voltage-drop should be located in the constriction
-  ! I.e. if the electrode starts at 10 Ang and the central region ends at 20 Ang
-  ! then the voltage drop will only take place between 10.125 Ang and 19.875 Ang
-  logical :: VoltageInC = .false.
 
   ! File name for reading in the grid for the Hartree potential
   character(len=150) :: Hartree_fname = ' '
@@ -113,7 +111,7 @@ contains
     use m_ts_method, only: TS_FULL, TS_BTD, TS_MUMPS, ts_method
 
     use m_ts_weight, only : read_ts_weight
-    use m_ts_charge, only : read_ts_charge_cor
+    use ts_dq_m, only : ts_dq_read
 
 #ifdef SIESTA__MUMPS
     use m_ts_mumps_init, only : read_ts_mumps
@@ -155,6 +153,10 @@ contains
     TS_HS_save = .true.
     TS_DE_save = .true.
 
+    ! Force the run of a biased TranSiesta run
+    ! from a pristine siesta calculation.
+    TS_start_bias = fdf_get('TS.Voltage.FromSiesta', .false.)
+
     ! Read in the transiesta SCF mixing options
     call mixers_init('TS.SCF', ts_scf_mixs )
     if ( .not. associated(ts_scf_mixs) ) then
@@ -195,9 +197,9 @@ contains
     end if
 
     chars = fdf_get('TS.BTD.Optimize','speed')
-    if ( leqi(chars,'speed') ) then
+    if ( leqi(chars, 'speed') .or. leqi(chars, 'performance') ) then
        BTD_method = 0
-    else if ( leqi(chars,'memory') ) then
+    else if ( leqi(chars, 'memory') ) then
        BTD_method = 1
     else
        call die('Could not determine flag TS.BTD.Optimize, please &
@@ -207,7 +209,8 @@ contains
     ! Determine whether the user wishes to only do an analyzation
     TS_Analyze = fdf_get('TS.Analyze',.false.)
 
-    call read_ts_charge_cor( )
+    ! Read charge-correction methods
+    call ts_dq_read( )
 
 #ifdef SIESTA__MUMPS
     call read_ts_mumps( )
@@ -435,7 +438,7 @@ contains
 
     ! Whether we should always set the DM to bulk
     ! values (by reading in from electrode DM)
-    if ( TS_scf_mode == 1 .or. .not. IsVolt ) then
+    if ( TS_scf_mode == 1 .and. .not. IsVolt ) then
       chars = 'bulk'
     else
       chars = 'diagon'
@@ -527,7 +530,7 @@ contains
 
       ! We add the real-space self-energy article
       if ( IONode ) then
-        call add_citation("arXiv:1905.11113")
+        call add_citation("10.1103/PhysRevB.100.195417")
       end if
 
     else
@@ -608,10 +611,9 @@ contains
     ! is applied.
     ! For N-terminal calculations we advice the user
     ! to use a Poisson solution they add.
-    VoltageInC = .false.
     if ( ts_tidx > 0 ) then
        ! We have a single unified semi-inifinite direction
-       chars = fdf_get('TS.Poisson','ramp-central')
+       chars = fdf_get('TS.Poisson','ramp')
     else
        chars = fdf_get('TS.Poisson','elec-box')
     end if
@@ -625,16 +627,9 @@ contains
     else
 #endif
        Hartree_fname = ' '
-       if ( leqi(chars,'ramp-cell') ) then
-          VoltageInC = .false.
+       if ( leqi(chars,'ramp') .or. leqi(chars, 'ramp-cell') ) then
           if ( ts_tidx <= 0 ) then
-             call die('TS.Poisson cannot be ramp-cell for &
-                  &anything but 2-electrodes with aligned transport direction.')
-          end if
-       else if ( leqi(chars, 'ramp-central') ) then
-          VoltageInC = .true.
-          if ( ts_tidx <= 0 ) then
-             call die('TS.Poisson cannot be ramp-central for &
+             call die('TS.Poisson cannot be ramp for &
                   &anything but 2-electrodes with aligned transport direction.')
           end if
        else if ( leqi(chars,'elec-box') ) then
@@ -642,10 +637,10 @@ contains
        else
 #ifdef NCDF_4
           call die('Error in specifying how the Hartree potential &
-               &should be placed. [ramp-cell|ramp-central|elec-box|NetCDF-file]')
+               &should be placed. [ramp|elec-box|NetCDF-file]')
 #else
           call die('Error in specifying how the Hartree potential &
-               &should be placed. [ramp-cell|ramp-central|elec-box]')
+               &should be placed. [ramp|elec-box]')
 #endif
        end if
 #ifdef NCDF_4
@@ -721,11 +716,13 @@ contains
 
     use fdf, only : fdf_get, leqi
     use intrinsic_missing, only : VNORM, IDX_SPC_PROJ, EYE
+    use atomlist, only : qa
+    use siesta_options, only : charnet
 
     use m_ts_global_vars, only: TSmode, onlyS
 
     use m_ts_method, only: TS_BTD_A_PROPAGATION, TS_BTD_A_COLUMN
-    use m_ts_method, only: ts_A_method
+    use m_ts_method, only: ts_A_method, a_isBuffer
 
     use m_ts_electype, only: check_Elec_sim
     
@@ -733,10 +730,9 @@ contains
     use m_ts_contour_eq, only: N_Eq, Eq_c
     
     use m_ts_weight, only : read_ts_weight
-    use m_ts_charge, only : read_ts_charge_cor
+    use ts_dq_m, only : ts_dq_read
     
     use m_ts_hartree, only: read_ts_hartree_options
-    use m_ts_hartree, only: ts_hartree_elec
 
 #ifdef SIESTA__MUMPS
     use m_ts_mumps_init, only : read_ts_mumps
@@ -753,6 +749,7 @@ contains
     ! Local variables
     character(len=50) :: chars
     integer :: i
+    real(dp) :: dev_q
     logical :: Gamma3(3)
 
     if ( onlyS .or. .not. TSmode ) return
@@ -776,7 +773,7 @@ contains
     
     ! Read in options again, at this point we have
     ! the correct ts_tidx
-    call read_ts_hartree_options(N_Elec, Elecs, cell, na_u, xa)
+    call read_ts_hartree_options()
     
     ! read in contour options
     call read_contour_options( N_Elec, Elecs, N_mu, mus, ts_kT, IsVolt, Volt )
@@ -804,11 +801,25 @@ contains
     end do
           
     do i = 1 , N_Elec
-       ! Initialize the electrode quantities for the
-       ! stored values
-       call check_Elec_sim(Elecs(i), nspin, cell, na_u, xa, &
-            Elecs_xa_EPS, lasto, Gamma3, ts_kscell, ts_kdispl)
+      ! Initialize the electrode quantities for the
+      ! stored values
+      call check_Elec_sim(Elecs(i), nspin, cell, na_u, xa, &
+          Elecs_xa_EPS, lasto, Gamma3, ts_kscell, ts_kdispl)
     end do
+
+    ! Now we know which atoms are buffer's and electrodes
+    ! This allows us to decide the tolerance for convergence of
+    ! the charges.
+    ! By default we allow a difference up to q(device) / 1000
+    dev_q = - charnet
+    do i = 1, na_u
+      if ( .not. a_isBuffer(i) ) then
+        ! count this atom
+        dev_q = dev_q + qa(i)
+      end if
+    end do
+    ts_dQtol = fdf_get('TS.SCF.dQ.Tolerance',dev_q / 1000._dp)
+    ts_converge_dQ = fdf_get('TS.SCF.dQ.Converge', .true.)
 
   end subroutine read_ts_after_Elec
 
@@ -834,9 +845,9 @@ contains
     use m_ts_method, only: TS_BTD_A_COLUMN, TS_BTD_A_PROPAGATION
     use m_ts_method, only: ts_A_method
 
-    use m_ts_charge, only: TS_RHOCORR_METHOD, TS_RHOCORR_BUFFER, TS_RHOCORR_FERMI
-    use m_ts_charge, only: TS_RHOCORR_FACTOR, TS_RHOCORR_FERMI_TOLERANCE
-    use m_ts_charge, only: TS_RHOCORR_FERMI_MAX
+    use ts_dq_m, only: TS_DQ_METHOD, TS_DQ_METHOD_BUFFER, TS_DQ_METHOD_FERMI
+    use ts_dq_m, only: TS_DQ_FACTOR, TS_DQ_FERMI_TOLERANCE
+    use ts_dq_m, only: TS_DQ_FERMI_MAX, TS_DQ_FERMI_ETA
 
     use m_ts_weight, only: TS_W_METHOD, TS_W_CORRELATED
     use m_ts_weight, only: TS_W_ORB_ORB, TS_W_TR_ATOM_ATOM, TS_W_SUM_ATOM_ATOM
@@ -848,8 +859,7 @@ contains
     use m_ts_mumps_init, only: MUMPS_mem, MUMPS_ordering, MUMPS_block
 #endif
 
-    use m_ts_hartree, only: TS_HA, Vha_frac, Vha_offset, El
-    use m_ts_hartree, only: TS_HA_NONE, TS_HA_PLANE, TS_HA_ELEC, TS_HA_ELEC_BOX
+    use m_ts_hartree, only: TS_HA_PLANES, TS_HA_frac, TS_HA_offset
 
     implicit none
 
@@ -873,21 +883,6 @@ contains
        
        write(*,f1) 'Save H and S matrices', TS_HS_save
        write(*,f1) 'Save DM and EDM matrices', TS_DE_save
-       select case ( TS_HA )
-       case ( TS_HA_PLANE )
-          select case ( ts_tidx ) 
-          case ( 1 )
-             write(*,f10) 'Fix Hartree potential at cell boundary', 'A1'
-          case ( 2 )
-             write(*,f10) 'Fix Hartree potential at cell boundary', 'A2'
-          case ( 3 )
-             write(*,f10) 'Fix Hartree potential at cell boundary', 'A3'
-          end select
-       case ( TS_HA_NONE ) 
-          write(*,f1) 'Fix Hartree potential',.false.
-       case default
-          call die('Error in coding setup, Vha_fix')
-       end select
        write(*,f1) 'Only save the overlap matrix S', onlyS
 
        write(*,f11) repeat('*', 62)
@@ -918,17 +913,17 @@ contains
        case ( 3 )
           write(*,f10) 'Transport along Cartesian vector','Z'
        end select
-    end if
-    select case ( TS_HA )
-    case ( TS_HA_PLANE , TS_HA_ELEC )
-       write(*,f10) 'Fixing Hartree potential at electrode-plane',trim(El%name)
-    case ( TS_HA_ELEC_BOX )
-       write(*,f10) 'Fixing Hartree potential in electrode-box',trim(El%name)
-    case default
-       call die('Vha, error in option collecting')
-    end select
-    write(*,f8) 'Fix Hartree potential fraction', Vha_frac
-    write(*,f7) 'Hartree potential offset', Vha_offset/eV, 'eV'
+     end if
+     chars = ' '
+     if ( TS_HA_PLANES(1, 1) ) chars = trim(chars) // '-A'
+     if ( TS_HA_PLANES(2, 1) ) chars = trim(chars) // '+A'
+     if ( TS_HA_PLANES(1, 2) ) chars = trim(chars) // '-B'
+     if ( TS_HA_PLANES(2, 2) ) chars = trim(chars) // '+B'
+     if ( TS_HA_PLANES(1, 3) ) chars = trim(chars) // '-C'
+     if ( TS_HA_PLANES(2, 3) ) chars = trim(chars) // '+C'
+     write(*,f10) 'Fixing Hartree potential at cell boundary', trim(chars)
+    write(*,f8) 'Fix Hartree potential fraction', TS_HA_frac
+    write(*,f7) 'Hartree potential offset', TS_HA_offset/eV, 'eV'
 
     if ( ts_method == TS_FULL ) then
        write(*,f10)'Solution method', 'Full inverse'
@@ -975,8 +970,10 @@ contains
        end select
 #endif
     end if
-    write(*,f9) 'SCF.TS DM tolerance',ts_Dtol
-    write(*,f7) 'SCF.TS Hamiltonian tolerance',ts_Htol/eV, 'eV'
+    write(*,f9) 'SCF DM tolerance',ts_Dtol
+    write(*,f7) 'SCF Hamiltonian tolerance',ts_Htol/eV, 'eV'
+    write(*,f1) 'SCF converge charge',ts_converge_dQ
+    write(*,f9) 'SCF charge tolerance',ts_dQtol
 
     select case ( TS_scf_mode )
     case ( 0 )
@@ -990,17 +987,11 @@ contains
                trim(Hartree_fname)
        else
           if ( ts_tidx > 0 ) then
-             write(*,f11) 'Hartree potential as linear ramp'
-             if ( VoltageInC ) then
-                write(*,f11) 'Hartree potential ramp across central region'
-             else
-                write(*,f11) 'Hartree potential ramp across entire cell'    
-             end if
+             write(*,f11) 'Hartree potential ramp across entire cell'
           else
              write(*,f11) 'Hartree potential will be placed in electrode box'
           end if
        end if
-       write(*,f1) 'Thermal non-equilibrium in distributions',has_T_gradient
 
        chars = 'Non-equilibrium contour weight method'
        select case ( TS_W_METHOD )
@@ -1040,22 +1031,23 @@ contains
        write(*,f11) '*** TranSiesta will NOT update forces ***'
     end if
 
-    if ( TS_RHOCORR_METHOD == 0 ) then
+    if ( TS_DQ_METHOD == 0 ) then
        write(*,f11)'Will not correct charge fluctuations'
-    else if ( TS_RHOCORR_METHOD == TS_RHOCORR_BUFFER ) then ! Correct in buffer
+    else if ( TS_DQ_METHOD == TS_DQ_METHOD_BUFFER ) then ! Correct in buffer
        if ( 0 < na_Buf ) then
-          write(*,f10)'Charge fluctuation correction','buffer'
+          write(*,f10)'Charge correction','buffer'
        else
           call die('Charge correction can not happen in buffer as no buffer &
                &atoms exist.')
        end if
-       write(*,f8)'Charge correction factor',TS_RHOCORR_FACTOR
-    else if ( TS_RHOCORR_METHOD == TS_RHOCORR_FERMI ) then ! Correct fermi-lever
+       write(*,f8)'Charge correction factor',TS_DQ_FACTOR
+    else if ( TS_DQ_METHOD == TS_DQ_METHOD_FERMI ) then ! Correct fermi-lever
        write(*,f10)'Charge correction','Fermi-level'
-       write(*,f8)'Charge correction tolerance',TS_RHOCORR_FERMI_TOLERANCE
-       write(*,f8)'Charge correction factor',TS_RHOCORR_FACTOR
+       write(*,f8)'Charge correction dQ tolerance',TS_DQ_FERMI_TOLERANCE
+       write(*,f7)'Fermi-level extrapolation eta value ',TS_DQ_FERMI_ETA/eV, 'eV'
+       write(*,f8)'Charge correction factor',TS_DQ_FACTOR
        write(*,f7)'Max change in Fermi-level allowed', &
-            TS_RHOCORR_FERMI_MAX / eV,'eV'
+            TS_DQ_FERMI_MAX / eV,'eV'
     end if
 
     ! Print mixing options
@@ -1067,10 +1059,8 @@ contains
 
     write(*,f11)'          >> Electrodes << '
     ltmp = ts_tidx < 1 .and. IsVolt
-    ltmp = ltmp .or. TS_HA == TS_HA_ELEC_BOX
     do i = 1 , size(Elecs)
        call print_settings(Elecs(i), 'ts', &
-            plane = TS_HA == TS_HA_ELEC , &
             box = ltmp)
     end do
 
@@ -1103,8 +1093,7 @@ contains
     use m_ts_contour_eq, only: N_Eq_E
     use m_ts_contour_neq, only: contour_neq_warnings
 
-    use m_ts_hartree, only: TS_HA, Vha_frac
-    use m_ts_hartree, only: TS_HA_NONE, TS_HA_PLANE, TS_HA_ELEC, TS_HA_ELEC_BOX
+    use m_ts_hartree, only: TS_HA_frac
 
     ! Input variables
     logical, intent(in) :: Gamma
@@ -1138,44 +1127,20 @@ contains
       end if
     end if
 
-    if ( .not. TSmode ) then
-       if ( TS_HA == TS_HA_ELEC ) then
-          call die('Hartree potiental cannot use electrodes without TranSiesta')
-       else if ( TS_HA == TS_HA_ELEC_BOX ) then
-          call die('Hartree potiental cannot use electrodes without TranSiesta')
-       end if
+    if ( TS_HA_frac /= 1._dp ) then
+      write(*,'(a)') 'Fraction of Hartree potential is NOT 1.'
+      warn = .true.
     end if
-
-    if ( TS_HA /= TS_HA_NONE ) then
-       if ( Vha_frac /= 1._dp ) then
-          write(*,'(a)') 'Fraction of Hartree potential is NOT 1.'
-          warn = .true.
-       end if
-       if ( Vha_frac < 0._dp .or. 1._dp < Vha_frac ) then
-          write(*,'(a)') 'Fraction of Hartree potential is below 0.'
-          write(*,'(a)') '  MUST be in range [0;1]'
-          call die('Vha fraction erronously set.')
-       end if
-    else if ( TS_DE_save ) then
-       ! means TS_HA == TS_HA_NONE
+    if ( TS_HA_frac < 0._dp .or. 1._dp < TS_HA_frac ) then
+      write(*,'(a)') 'Fraction of Hartree potential is below 0.'
+      write(*,'(a)') '  MUST be in range [0;1]'
+      call die('Vha fraction erronously set.')
     end if
-
     
     ! Return if not a transiesta calculation
     if ( onlyS .or. .not. TSmode ) then
        write(*,'(3a,/)') repeat('*',24),' End: TS CHECKS AND WARNINGS ',repeat('*',26)
        return
-    end if
-
-    if ( TS_HA == TS_HA_NONE ) then
-       write(*,'(a)') 'Hartree potiental fix REQUIRED when running TranSiesta'
-       err = .true.
-    end if
-
-    if ( ts_tidx < 1 .and. TS_HA == TS_HA_PLANE ) then
-       write(*,'(a)') 'Hartree potiental fix *must* be electrode as no transport &
-            &plane is well-defined.'
-       err = .true.
     end if
 
     if ( ts_tidx < 1 .and. len_trim(Hartree_fname) == 0 .and. IsVolt ) then
@@ -1538,6 +1503,10 @@ contains
          write(*,'(a)') '    I give this warning because it is not clear how your V = 0 calcualtion was done.'
        end if
        warn = .true.
+     else if ( any(Elecs(:)%DM_init == 0) ) then
+       write(*,'(a)') 'You are initializing the electrode EDM. &
+           &This may result in erroneous forces on electrode atoms. &
+           &Do not use forces from electrodes.'
     end if
 
     ! warn the user about suspicous work regarding the electrodes
@@ -1624,10 +1593,10 @@ contains
 
     end do
 
-    if ( N_Elec /= 2 .and. any(Elecs(:)%DM_update == 0) ) then
-       write(*,'(a,/,a)') 'Consider updating more elements when doing &
-            &N-electrode calculations. The charge conservation typically &
-            &increases.','  TS.Elecs.DM.Update [cross-terms|all]'
+    if ( any(Elecs(:)%DM_update == 0) ) then
+      write(*,'(a,/,a)') 'Consider updating more elements. &
+          &The charge conservation and force accuracy improves.',&
+          '  TS.Elecs.DM.Update [cross-terms|all]'
        warn = .true.
     end if
 

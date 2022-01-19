@@ -147,11 +147,10 @@ module sparse_matrices
   ! Pieces of H that do not depend on the SCF density matrix
   ! Formerly there was a single array H0 for this
   type(dSpData1D), public :: H_vkb_1D, H_kin_1D
-  ! LDA+U Hamiltonian
-  type(dSpData2D), public :: H_ldau_2D
+  ! DFT+U Hamiltonian
+  type(dSpData2D), public :: H_dftu_2D
   ! Spin-orbit (on-site) Hamiltonian
   type(dSpData2D), public :: H_so_on_2D
-  complex(dp), public, pointer :: H0_offsiteSO(:,:) => null()
   ! Spin-orbit (off-site) Hamiltonian
   type(zSpData2D), public :: H_so_off_2D
 
@@ -179,10 +178,9 @@ contains
 
     call delete( H_kin_1D )
     call delete( H_vkb_1D )
-    call delete( H_ldau_2D )
+    call delete( H_dftu_2D )
     call delete( H_so_on_2D )
     call delete( H_so_off_2D )
-    nullify(H0_offsiteSO)
 
     call delete( DM_2D )
     nullify(Dscf)
