@@ -303,13 +303,11 @@ contains
 
     ! Default node
     lNode = 0
+
 #ifdef MPI
     ! Default communicator
     comm = MPI_COMM_WORLD
-#else
-    ! Not used, or needed in serial compilations
-    comm = -1
-#endif
+
     ! Default to not use a distribution, nor b-casting
     ldit = present(dit)
     
@@ -325,7 +323,6 @@ contains
     end if
 
     ! Now parse options
-#ifdef MPI
     if ( ldit ) then
       comm = dist_comm(dit)
       lNode = dist_node(dit)
@@ -343,6 +340,12 @@ contains
       call MPI_Comm_rank(comm, lNode, ierr)
       
     end if
+
+#else
+    ! Not used, or needed in serial compilations
+    comm = -1
+    if ( present(ldit) ) ldit = .false.
+    if ( present(lBcast) ) lBcast = .false.
 #endif
 
   end subroutine parallel_default_args
@@ -390,7 +393,6 @@ contains
 
     ! Get default parameters
     call parallel_default_args(comm, lNode, dit, ldit, Bcast, lBcast)
-    if ( lBcast ) ldit = .false.
 
     if ( lNode == 0 ) then
       ! Local node
@@ -801,8 +803,6 @@ contains
 
     ! Get default parameters
     call parallel_default_args(comm, lNode, dit, ldit, Bcast, lBcast)
-    ! disable the distribution branch with b-casting
-    if ( lBcast ) ldit = .false.
 
     call attach(sp,nrows=lno,nrows_g=no, n_col=ncol,nnzs=n_nzs)
 
@@ -1233,8 +1233,6 @@ contains
 
     ! Get default parameters
     call parallel_default_args(comm, lNode, dit, ldit, Bcast, lBcast)
-    ! disable the distribution branch with b-casting
-    if ( lBcast ) ldit = .false.
 
     sp_dim = 1
     if ( present(sparsity_dim) ) sp_dim = sparsity_dim
