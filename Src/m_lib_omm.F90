@@ -176,7 +176,7 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
     write(6,*) 'omm_min: OMM requires compilation with MatrixSwitch and libOMM'
   endif
   call die()
-#endif
+#else
 
   call timer('blomm',1)
   m_operation = 'lap'
@@ -243,10 +243,10 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
   if(sparse) then
     m_storage ='pdcsr'   ! pdcsr MS format is used for sparse matrices
 #ifndef HAVE_DBCSR
-  if(ionode) then
-    write(6,*) 'omm_min: OMM with sparse matrices requires compilation with DBCSR'
-  endif
-  call die()
+    if(ionode) then
+      write(6,*) 'omm_min: OMM with sparse matrices requires compilation with DBCSR'
+    endif
+    call die()
 #endif
   else
     m_storage ='pddbc'   ! pddbc MS format is used for dense matrices
@@ -995,6 +995,7 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
     call timer('init_c_matrix', 2)
   end subroutine init_c_matrix
 
+#endif
 end subroutine omm_min_block
 
 !===============================================================================!
