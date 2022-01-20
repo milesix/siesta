@@ -112,7 +112,15 @@
                                                    !   derived type "species"
                                                    !   in module atm_types
       end type dftushell_t
-!
+
+      ! For options set in pao-polarization-scheme
+      type, public :: qconf_options_t
+         real(dp)    ::  qcoe 
+         real(dp)    ::  qyuk 
+         real(dp)    ::  qwid 
+      end type qconf_options_t
+
+!     
 !     Main data structure
 !
       type, public :: basis_def_t
@@ -152,9 +160,12 @@
           integer                   ::  lmxkb_requested
           integer                   ::  lmxdftupj_requested
           logical                   ::  non_pert_polorbs_req=.false.
-          logical                ::  force_perturbative_polorbs=.false.
+          logical                 ::  force_perturbative_polorbs=.false.
+          logical                  ::  non_pert_polorbs_fallback=.false.
           logical                   ::  non_perturbative_polorbs=.false.
-
+          logical                   ::  polorb_with_semicore =.false.
+          logical                   ::  qconf_options_polorbs_set
+          type(qconf_options_t)     ::  qconf_options_polorbs
           type(shell_t), pointer    ::  tmp_shell(:) => null()
           type(dftushell_t), pointer::  dftushell(:) => null()
           type(ref_container), allocatable :: shell_of(:,:)
@@ -176,6 +187,7 @@
       integer      ,save, public, pointer :: nkbl(:,:) => null()
       integer      ,save, public, pointer :: cnfigmx(:,:) => null()
       integer      ,save, public, pointer :: polorb(:,:,:) => null()
+      integer      ,save, public, pointer :: nprin(:,:,:) => null()
       integer      ,save, public, pointer :: nzeta(:,:,:) => null()
       real(dp)     ,save, public, pointer :: split_norm(:,:,:) => null()
       real(dp)     ,save, public, pointer :: vcte(:,:,:) => null()
@@ -209,7 +221,7 @@
       public  :: destroy, copy_shell, initialize
       public  :: write_basis_specs, basis_specs_transfer
       public  :: deallocate_spec_arrays
-      public  :: print_dftushell
+      public  :: print_dftushell, print_shell
 !---------------------------------------------------------
 
       PRIVATE
@@ -242,12 +254,17 @@
       target%qyuk = source%qyuk
       target%qwid = source%qwid
       target%split_norm = source%split_norm
+      target%split_norm_specified = source%split_norm_specified
       target%filtercut = source%filtercut
 
-      allocate(target%rc(1:size(source%rc)))
-      allocate(target%lambda(1:size(source%lambda)))
-      target%rc(:) = source%rc(:)
-      target%lambda(:) = source%lambda(:)
+      if (associated(source%rc)) then
+         allocate(target%rc(1:size(source%rc)))
+         target%rc(:) = source%rc(:)
+      endif
+      if (associated(source%lambda)) then
+         allocate(target%lambda(1:size(source%lambda)))
+         target%lambda(:) = source%lambda(:)
+      endif
       end subroutine copy_shell
 !-----------------------------------------------------------------------
 
@@ -349,8 +366,12 @@
       if (.not. associated(p)) return
       do i = 1, size(p)
          q=>p(i)
-         deallocate(q%rc)
-         deallocate(q%lambda)
+         if (associated(q%rc)) then
+            deallocate(q%rc)
+         endif
+         if (associated(q%lambda)) then
+            deallocate(q%lambda)
+         endif
       enddo
       deallocate(p)
       end subroutine destroy_shell
@@ -394,6 +415,8 @@
       subroutine print_shell(p)
       type(shell_t)            :: p
 
+      type(shell_t), pointer   :: s
+
       integer i
 
       write(6,*) 'SHELL-------------------------'
@@ -413,6 +436,10 @@
       do i = 1, p%nzeta
          write(6,'(5x,i2,2x,2g20.10)') i, p%rc(i), p%lambda(i)
       enddo
+      if (associated(p%shell_being_polarized)) then
+         s => p%shell_being_polarized
+         print *, "Shell being polarized:", s%n, s%l
+      endif
       write(6,*) '--------------------SHELL'
 
       end subroutine print_shell
@@ -592,6 +619,9 @@
       nullify( polorb )
       call re_alloc( polorb, 0, lmaxd, 1, nsemx, 1, nsp,
      &               'polorb', 'basis_types' )
+      nullify( nprin )
+      call re_alloc( nprin, 0, lmaxd, 1, nsemx, 1, nsp,
+     $     'nprin', 'basis_types' )
       nullify( nzeta )
       call re_alloc( nzeta, 0, lmaxd, 1, nsemx, 1, nsp,
      &               'nzeta', 'basis_types' )
@@ -642,6 +672,7 @@
 !     Transfer
 !
       nkbl(:,:) = 0
+      nprin(:,:,:) = 0
       nzeta(:,:,:) = 0
       split_norm(:,:,:) = 0._dp
       filtercut(:,:,:) = 0._dp
@@ -679,12 +710,14 @@
 !           (Kludge for now until future reorganization)
 !
             nsemic(l,isp) = max(ls%nn -1 ,0)
+            
             cnfigmx(l,isp) = 0
             do n=1,ls%nn
                s=>ls%shell(n)
                basp%shell_of(l,n)%s => s
                s%sequence_in_lshell = n
                cnfigmx(l,isp) = max(cnfigmx(l,isp),s%n)
+               nprin(l,n,isp) = s%n
                nzeta(l,n,isp) = s%nzeta
                polorb(l,n,isp) = s%nzeta_pol
                split_norm(l,n,isp) = s%split_norm
@@ -716,10 +749,12 @@
                enddo
             enddo
 !
-!           Fix for l's without PAOs
+!           Fix for l's without PAOs (nn==0)
 !
-            if (cnfigmx(l,isp).eq.0)
-     $           cnfigmx(l,isp) = basp%ground_state%n(l)
+            if (ls%nn == 0) then
+               cnfigmx(l,isp) = basp%ground_state%n(l)
+               nprin(l,1,isp) = basp%ground_state%n(l)
+            endif
 
          enddo
          do l=0,basp%lmxkb
@@ -741,8 +776,10 @@
       type(basis_def_t), pointer :: basp
       type(dftushell_t), pointer :: dftu
 
+      type(lshell_t), pointer :: ls
+
       integer :: l, n, i
-      integer :: nprin
+      integer :: npri
       character(len=4) :: orb_id
       character(len=1), parameter   ::
      $                           sym(0:4) = (/ 's','p','d','f','g' /)
@@ -772,9 +809,11 @@
          write(lun,'(a2,i1,2x,a7,i1,2x,a8,i1)')
      $        'L=', l, 'Nsemic=', nsemic(l,is),
      $        'Cnfigmx=', cnfigmx(l,is)
-         do n=1,nsemic(l,is)+1
-            nprin = cnfigmx(l,is) - nsemic(l,is) + n - 1
-            write(orb_id,"(a1,i1,a1,a1)") "(",nprin, sym(l), ")"
+
+         shells: do n=1,nsemic(l,is)+1
+
+            npri = nprin(l,n,is)
+            write(orb_id,"(a1,i1,a1,a1)") "(",npri, sym(l), ")"
             write(lun,'(10x,a2,i1,2x,a6,i1,2x,a7,i1,2x,a4)',
      $                 advance="no")
      $           'i=', n, 'nzeta=',nzeta(l,n,is),
@@ -785,14 +824,21 @@
                ! (see, e.g. basis_specs::autobasis)
                ! It could be a polarization orbital with the new
                ! convention of setting lmxo including polorbs, or just empty
-               if (l == basp%lmxo) then
-                  write(lun,'(tr2,a)')
-     $             '(perturbative polarization orbital)'
-               else   ! It is difficult to detect a polarization orbital with intermediate l.
-                  write(lun,'(tr2,a)')
-     $             '(empty shell -- could be pol. orbital)'
+               if (l>0) then
+                  ls => basp%lshell(l-1)
+                  do i=1, ls%nn
+                     if (ls%shell(i)%polarized) then
+                        write(lun,'(tr2,a,i1,a)')
+     $                       '(perturbative polarization orbital)' //
+     $                       ' (from ', ls%shell(i)%n, sym(l-1) // ')'
+                        CYCLE shells  ! we are done with this shell
+                     endif
+                  enddo
                endif
-               EXIT
+
+               ! Maybe warn about this?
+               write(lun,'(tr2,a)')  '(empty shell (??) )'
+               CYCLE  shells  ! Do not write any more information
                
             else if (basp%lshell(l)%shell(n)%polarized) then
                write(lun,'(tr2,a)')
@@ -803,9 +849,16 @@
             else if (basp%lshell(l)%shell(n)%polarization_shell) then
                write(lun,'(tr2,a)')
      $              '(non-perturbative polarization shell)'
+            else if (npri < basp%ground_state%n(l)) then
+               write(lun,'(tr2,a)')
+     $              '(semicore shell)'
+            else if (npri > basp%ground_state%n(l)) then
+               write(lun,'(tr2,a)')
+     $              '(higher-lying shell (n> n_valence(l)))'
             else
                write(lun,*)  ! end record
             endif
+
             if (basistype(is).eq.'filteret') then
                write(lun,'(10x,a10,2x,g12.5)') 
      $              'fcutoff:', filtercut(l,n,is)
@@ -827,8 +880,9 @@
      $           (rco(i,l,n,is),i=1,min(4,nzeta(l,n,is)))
             write(lun,'(10x,a10,2x,4g12.5)') 'lambdas:',
      $           (lambda(i,l,n,is),i=1,min(4,nzeta(l,n,is)))
-         end do
+         end do shells
       end do
+
       if ( lmxkb(is) > 0 ) then
          write(lun,'(79("-"))')
          do l=0,lmxkb(is)
@@ -874,6 +928,7 @@
       call de_alloc( lmxkb,      'lmxkb',      'basis_types' )
       call de_alloc( lmxo,       'lmxo',       'basis_types' )
       call de_alloc( nsemic,     'nsemic',     'basis_types' )
+      call de_alloc( nprin,      'nprin',      'basis_types' )
       call de_alloc( cnfigmx,    'cnfigmx',    'basis_types' )
       call de_alloc( nkbl,       'nkbl',       'basis_types' )
       call de_alloc( polorb,     'polorb',     'basis_types' )

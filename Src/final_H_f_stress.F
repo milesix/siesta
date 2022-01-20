@@ -54,7 +54,7 @@
       use m_dipol
       use m_forces,          only: fa
       use alloc, only: re_alloc, de_alloc
-      use m_hsx, only: write_hsx
+      use io_hsx_m, only: write_hsx
       use sys, only: die
       use fdf
 #ifdef MPI
@@ -68,7 +68,7 @@
 #endif
 #endif
       use siesta_options, only : idyn, ia1, write_tshs_history
-      use sparse_matrices, only: H_2D, S_1D
+      use sparse_matrices, only: H_2D, S_1D, xij_2D
       use files,        only : label_length
       use m_ts_options, only : TS_HS_save
       use ts_kpoint_scf_m, only: ts_kpoint_scf, ts_gamma_scf
@@ -305,10 +305,21 @@
 ! not the one computed (from DM_out) in this routine.
 ! This call could be moved to a more appropriate place
 !
-      if (savehs .or. write_coop ) then
-         call write_hsx( no_u, no_s, spin%H, indxuo,
-     &        maxnh, numh, listhptr, listh, H, S, Qtot,
-     &        Temp, xijo)
+      if ( savehs .or. write_coop ) then
+        if ( fixspin ) then
+! For fixed spin calculations we shift the Hamiltonian according
+! to the first spin such that we have a "common" E_F, after writing
+! we shift back again.
+          H_tmp => val(H_2D)
+          S_tmp => val(S_1D)
+          call daxpy(size(S_tmp),Efs(1)-Efs(2),S_tmp(1),1,H_tmp(1,2),1)
+          Ef = Efs(1)
+        end if
+        call write_hsx(H_2D, S_1D, Ef, Qtot, Temp)
+        if ( fixspin ) then
+          ! revert
+          call daxpy(size(S_tmp),Efs(2)-Efs(1),S_tmp(1),1,H_tmp(1,2),1)
+         end if
       endif
 #ifdef CDF
 #ifdef NCDF_4

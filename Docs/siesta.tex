@@ -612,13 +612,9 @@ generate the executable for any of several architectures, with a
 minimum of tuning required from the user and encapsulated in a
 separate file called \file{arch.make}.
 
-You are strongly encouraged to look at
-\shell{Obj/DOCUMENTED-TEMPLATE.make} for information about the
-fine points of the \file{arch.make} file. There are two sample make
-files for compilation of \siesta\ with \shell{gfortran} and
-\shell{ifort} named \shell{Obj/gfortran.make} and
-\shell{Obj/intel.make}, respectively. Please use those as guidelines
-for creating the final \file{arch.make}.
+Please see the \shell{README} filein the 
+\shell{Config/mk-build} directory for information about the
+build system and the contents the \file{arch.make} file.
 
 \note Intel compilers default to high optimizations which tend to
 break \siesta. We advice to use \shell{-fp-model source} flag and not
@@ -637,6 +633,10 @@ safe to ignore and will look something like:
       |                  1
 Warning: Type mismatch between actual argument at (1) and actual argument at (2) (REAL(8)/INTEGER(4)).
 \end{shellexample}
+In addition, compilations with \shell{-pedantic} flag are no longer possible.
+\footnote{For more details on this, see the 
+\href{https://gitlab.com/siesta-project/siesta/-/issues/130}
+{issue discussion in the SIESTA project}. }
 
 % You can also get
 % inspiration by looking at the actual \file{arch.make} examples in
@@ -1479,13 +1479,14 @@ Here we offer a glimpse of it through the following rules:
 
 \begin{itemize}
 
-\item[$\bullet$] The \fdflib\ syntax is a 'data label' followed by its value.
-Values that are not specified in the datafile are assigned
-a default value.
+  \item[$\bullet$] The \fdflib\ syntax is a ``data label'' followed by
+  its value.  Values that are not specified in the datafile are
+  assigned a default value.
 
-\item[$\bullet$] \fdflib\ labels are case insensitive, and characters - \_ .
-in a data label are ignored. Thus, LatticeConstant and
-lattice\_constant represent the same label.
+  \item[$\bullet$] \fdflib\ labels are case insensitive, and
+  characters - \_ .  in a data label are ignored. Thus,
+  \fdf*{LatticeConstant} and \fdf*{lattice\_constant} represent the
+  same label.
 
 \item[$\bullet$] All text following the \# character is taken as comment.
 
@@ -1502,20 +1503,20 @@ it from an integer, in order to prevent ambiguities when mixing the types
 on the same input line.
 
 \item[$\bullet$] Complex data structures are called blocks and are
-placed between `\%block label'\index{block@\%block} and a `\%endblock label'
-(without the quotes).
+placed between ``\%block label''\index{block@\%block} and a
+``\%endblock label'' (without the quotes).
 
-\item[$\bullet$] You may `include' other \fdflib\ files and redirect the search
-for a particular data label to another file.
-If a data label appears more than once, its first appearance
-is used.
+\item[$\bullet$] You may ``include'' other \fdflib\ files and redirect
+the search for a particular data label to another file.  If a data
+label appears more than once, its first appearance is used.
 
-\item[$\bullet$] If the same label is specified twice, the first one takes precedence.
+\item[$\bullet$] If the same label is specified twice, the first one
+takes precedence.
 
-\item[$\bullet$] If a label is misspelled it will not be recognized (there is no
-  internal list of ``accepted'' tags in the program). You can check 
-  the actual value used by \siesta\ by looking for the label in the
-  output \file{fdf.log} file.
+\item[$\bullet$] If a label is misspelled it will not be recognized
+(there is no internal list of ``accepted'' tags in the program). You
+can check the actual value used by \siesta\ by looking for the label
+in the output \file{fdf.log} file.
 
 \end{itemize}
 
@@ -1734,13 +1735,14 @@ default if a given tag is not found when needed (see \file{fdf.log}).
 
 \begin{fdfentry}{SyntheticAtoms}[block]
 
-  This block is an additional block to complement
-  \fdf{ChemicalSpeciesLabel} for special atomic numbers.
-  
-  Atomic numbers over $200$ are used to represent \emph{synthetic atoms}
-  \index{synthetic atoms} (created for example as a ``mixture'' of two
+  This block provides information about the ground-state valence configuration of
+  a species. Its main use is to complement the information in
+  \fdf{ChemicalSpeciesLabel} for \emph{synthetic} (alchemical)
+   \index{synthetic atoms}
+   species, which are represented by atomic numbers over $200$ in
+   \fdf{ChemicalSpeciesLabel}. These species are created for example as a ``mixture'' of two
   real ones for a ``virtual crystal'' (VCA)\index{VCA}
-  calculation). In this special case a new \fdf{SyntheticAtoms} block
+  calculation. In this special case a new \fdf{SyntheticAtoms} block
   must be present to give \siesta\ information about the ``ground
   state'' of the synthetic atom.
 
@@ -1761,6 +1763,69 @@ default if a given tag is not found when needed (see \file{fdf.log}).
   directory.
 
   Atomic numbers below $-200$ represent \emph{ghost synthetic atoms}.
+
+  Note that the procedure used in the automatic handling of semicore
+  states does not work for synthetic atoms.  If semicore states are
+  present, the species must be put in the \fdf{PAO!Basis} block.
+  Otherwise the program will assume that there are \emph{no} semicore
+  states.
+
+  This block can also be used to provide an alternate ground state
+  valence configuration for real atoms in some special cases.
+  \index{valence configuration (alternate)}
+  For example, the nominal valence configuration for Pd in the Siesta
+  internal tables is 5s1 5p0 4d9 4f0, but in some tables it appears as
+  5s0 5p0 4d10 4f0. In this case, the alternate configuration can be
+  specified by the block:
+  
+  \begin{fdfexample}
+     %block ChemicalSpeciesLabel
+        1   46 Pd
+     %endblock ChemicalSpeciesLabel
+     %block synthetic-atoms
+     1
+       5 5 4 4
+       0.0 0.0 10.0 0.0
+     %endblock synthetic-atoms
+  \end{fdfexample}
+
+  As another example, the nominal valence for Cu in Siesta is
+  4s1 4p0 3d10 4f0, but in some cases a pseudopotential might
+  be generated by considering the 3d shell as frozen in the core.
+  In this case the proper valence configuration is:
+
+  \begin{fdfexample}
+     %block ChemicalSpeciesLabel
+        1   29 Cu_3d_in_core
+     %endblock ChemicalSpeciesLabel
+     %block synthetic-atoms
+     1
+       4 4 4 4
+       1.0 0.0 0.0 0.0
+     %endblock synthetic-atoms
+  \end{fdfexample}
+
+  As a final example, the nominal valence configuration for Ce in
+  Siesta is 6s2 6p0 5d0 4f2, but on some tables it appears as [Xe] 6s2
+  4f1 5d1. In addition, the pseudo-dojo pseudopotential (in the NC SR+3 table) has
+  the 4f shell frozen in the core. This case can be handled by the
+  block:
+
+  \begin{fdfexample}
+     %block ChemicalSpeciesLabel
+        1   58 Ce_4f_in_core
+     %endblock ChemicalSpeciesLabel
+     %block synthetic-atoms
+     1
+       6 6 5 5
+       2.0 0.0 1.0 0.0
+     %endblock synthetic-atoms
+  \end{fdfexample}
+
+  Note that the change in the atomic ground-state configuration might
+  change the choice of polarization orbitals, and possibly other
+  Siesta heuristic decisions, so the results should be checked
+  carefully.
   
 \end{fdfentry}
 
@@ -1923,13 +1988,14 @@ Please take into account the following when using PSML files:
     
      \item Sometimes it is not possible to execute successfully the
        default split-norm algorithm. In this case, set the option
-       \fdf{PAO.TailSplitNorm} to \fdftrue, which guarantees
+       \fdf{PAO!SplitTailNorm} to \fdftrue, which guarantees
        convergence.
 
      \item The default perturbative scheme for polarization orbitals
        can fail in very specific cases. When the polarization orbital
        has to have a node due to the presence of a lower-lying orbital
-       with the same $l$, the program will automatically switch to
+       with the same $l$, the program can (if enabled by the
+       \fdf{PAO!Polarization!NonPerturbative.Fallback} option)  automatically switch to
        using a non-perturbative scheme. In other cases, include the
        \textit{Chemical\_label} in the following block to request a
        non-perturbative scheme:
@@ -1946,7 +2012,7 @@ Please take into account the following when using PSML files:
       been made while implementing support for PSML
       pseudopotentials. In particular, \siesta\ can now automatically
       detect and generate basis sets for atoms with semicore shells
-      without the explicit use of a \fdf{PAO.Basis} block.
+      without the explicit use of a \fdf{PAO!Basis} block.
 
     \end{itemize}
 
@@ -2586,7 +2652,7 @@ a block
   for each species. For example,
   \begin{fdfexample}
      %block PAO.PolarizationScheme
-         Si      non-perturbative
+         Si      non-perturbative  [ optional Q options]
          H       perturbative
      %endblock PAO.PolarizationScheme
   \end{fdfexample}
@@ -2597,6 +2663,9 @@ a block
   If a species does not appear in the block, the setting of 
   \fdf{PAO!Polarization!NonPerturbative} applies.
   The default scheme is perturbative.
+
+  An optional charge-confinement specification can follow, starting
+  with a 'Q', in exactly the same way as in the \fdf{PAO!Basis} block.
   
 \end{fdfentry}
 
@@ -2622,15 +2691,20 @@ value through the (global) option:
 Note that, empirically, the perturbative method seems to give better
 results (in the variational sense), so the alternative should only be
 used when the default fails for some reason, for full basis-set optimization,
-or for experimentation purposes.
+or for experimentation purposes. In particular, non-perturbatively
+generated polarization orbitals tend to bulge outwards. To correct
+this, the charge-confinement options in the \fdf{PAO!Basis} block (or
+in the \fdf{PAO!Polarization!Scheme} block) might be helpful.
 
 There is one case, however, which tends to exhibit problems in the
 perturbative algorithm: when a polarization orbital has to have a node
-due to the presence of a lower-lying orbital of the same $l$, then the
-program will automatically (unless the 'perturbative' option is
-explicitly set in the block above) switch to using the non-perturbative
-scheme. (This will happen, for example, for Ge if the $3d$ orbital is
-considered part of the valence.)
+due to the presence of a lower-lying orbital of the same $l$ (this
+will happen, for example, for Ge if the $3d$ orbital is considered
+part of the valence). In this case, the program can automatically
+switch to using the non-perturbative scheme.  To enable this automatic
+switch, the option \fdf{PAO!Polarization!NonPerturbative.Fallback}
+must be enabled. Note that if the 'perturbative' option is explicitly
+set in the block above, the fallback is overriden.
 
 A proper basis-set optimization should be carried out using
 a \fdf{PAO!Basis} block, which allows a full set of options.
@@ -6741,6 +6815,12 @@ the issue (see Sec.~\ref{sec:filtering}).
   is active.  \index{output!HSX file}
 
 
+  \note Since 5.0 the \sysfile{HSX} file format has changed to reduce
+  disk-space and store data in double precision. This means that the
+  file is not backward compatible and any external utilities should
+  adapt their \sysfile{HSX} file reading. See e.g. \program{Util/HSX}
+  for details on the new implementation.
+
   See also the \fdf{Write!DMHS.NetCDF} and \fdf{Write!DMHS.History.NetCDF}
   options.
 
@@ -8418,9 +8498,8 @@ Apart from the LDOS-specific options below, the ``ordering'',
 ``verbosity'', and ``symbolic factorization'' options are honored.
 
 The current version of the code generates a real-space grid file with
-extension \sysfile{LDSI}, and (if netCDF is compiled-in) a file
-\file{Rho.grid.nc} (which unfortunately will overwrite any other
-charge-density files produced in the same run).
+extension \sysfile{LDOS}, and (if netCDF is compiled-in) a file
+\file{LDOS.grid.nc}.
 
 NOTE: The LDOS computed with this procedure is not exactly the same as
 the vanilla \siesta\ LDOS, which uses an explicit energy
@@ -8431,6 +8510,8 @@ energy.
 \begin{fdflogicalF}{PEXSI!LDOS}
 
   Whether to compute the LDOS using the PEXSI technology.
+
+  \note this flag is not compatible with \fdf{LocalDensityOfStates}.
   
 \end{fdflogicalF}
 
@@ -8880,6 +8961,11 @@ obtain simple STM images in the Tersoff-Hamann approximation (See
   
   \note the two energies of the range must be ordered, with lowest
   first.
+
+  \note this flag is not compatible with \fdf{PEXSI!LDOS}.
+  
+  If netCDF support is compiled in, the file \file{LDOS.grid.nc} is
+  produced.
 
 \end{fdfentry}
 
@@ -9604,8 +9690,8 @@ or interpolation of bands), can be downloaded from
 \begin{fdfentry}{ExternalElectricField}[block]
   
   It specifies an external electric field for molecules, chains and
-  slabs.  The electric field should be orthogonal to `bulk
-  directions', like those parallel to a slab (bulk electric fields,
+  slabs. The electric field should be orthogonal to ``bulk
+  directions'', like those parallel to a slab (bulk electric fields,
   like in dielectrics or ferroelectrics, are not allowed). If it is
   not, an error message is issued and the components of the field in
   bulk directions are suppressed automatically. The input is a vector
@@ -9620,6 +9706,10 @@ or interpolation of bands), can be downloaded from
   to a slab will by default enable the slab dipole correction, see
   \fdf{Slab.DipoleCorrection}. To reproduce older calculations, set
   this correction option explicitly to \fdffalse\ in the input file.
+
+  When examining a variety of electric fields it may be highly
+  advantageous to re-use the \sysfile{DM} from a previous calculation
+  with an electric field close to the current one.
 
 \end{fdfentry}
 
@@ -11825,7 +11915,7 @@ spin-orbit coupling.
     to those used as an automatic basis set by \siesta.  The radii of
     these orbitals are controlled using the parameter
     \fdf{DFTU!EnergyShift} and/or the data included in the block
-    \fdf{DFTU!Proj} (quite similar to the data block \fdf{PAO.Basis}
+    \fdf{DFTU!Proj} (quite similar to the data block \fdf{PAO!Basis}
     used to specify the basis set, see below).
 
     \option[2]%
@@ -11843,7 +11933,7 @@ spin-orbit coupling.
   \fdfindex{LDAU!EnergyShift}%
 
   Energy increase used to define the localization radius of the DFT+U
-  projectors (similar to the parameter \fdf{PAO.EnergyShift}).
+  projectors (similar to the parameter \fdf{PAO!EnergyShift}).
 
   \note only used when \fdf{DFTU!ProjectorGenerationMethod} is \fdf*{1}.
 
@@ -14466,13 +14556,13 @@ The bias contour is similarly defined as the equilibrium
 contours. Please use the \program{Util/TS/tselecs.sh} as a means to
 create default input blocks.
 
-\begin{fdfentry}{TS!Contours.nEq!Eta}[energy]<$\operatorname{min}[\eta_{\mathfrak e}]/100$>
+\begin{fdfentry}{TS!Contours.nEq!Eta}[energy]<$\operatorname{min}[\eta_{\mathfrak e}]/10$>
   \fdfdepend{TS!Elecs!Eta}%
 
   The imaginary part ($\eta$) of the device states. While this may be
   set to $0$ for most systems it defaults to the minimum $\eta$ value
   for the electrodes ($\operatorname{min}[\eta_{\mathfrak
-      e}]/100$). This ensures that the device broadening is always
+      e}]/10$). This ensures that the device broadening is always
   smaller than the electrodes while allowing broadening of localized
   states.
 

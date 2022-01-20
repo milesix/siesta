@@ -117,8 +117,13 @@ dep:
 
 # DO NOT DELETE THIS LINE - used by make depend
 atom_options.o: local_sys.o
+atom_options.o: local_sys.o
 io.o: m_io.o
-periodic_table.o: local_sys.o precision.o
+io.o: m_io.o
+m_io.o: local_sys.o
+m_io.o: local_sys.o
 fractional.o: periodic_table.o precision.o
+fractional.o: periodic_table.o precision.o
+mixps.o: interpolation.o periodic_table.o precision.o
 mixps.o: interpolation.o periodic_table.o precision.o
 sys.o: local_sys.o

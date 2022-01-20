@@ -534,8 +534,8 @@
       call newdData2D(tmp_2D,xijo,'xijo')
       deallocate(xijo)
       write(oname,"(a,i0)") "xijo at geom step ", istep
-      call newdSpData2D(sparse_pattern,tmp_2D,block_dist,xij_2D, 
-     &     name=oname)
+      call newdSpData2D(sparse_pattern,tmp_2D,block_dist,xij_2D,
+     &    name=oname, sparsity_dim=2)
       call delete(tmp_2D) ! decrement container...
       xijo => val(xij_2D)
 

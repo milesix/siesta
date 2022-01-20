@@ -247,8 +247,8 @@
          end subroutine charge_from_ps_conf
 
          subroutine pseudo_reparametrize(p,a,b,label,new_rmax)
-         use interpolation, only: generate_spline
-         use interpolation, only: evaluate_spline
+         use ncps_interpolation, only: generate_spline
+         use ncps_interpolation, only: evaluate_spline
 !
 !        Interpolate values into new grid, given by a and b
 !

@@ -30,14 +30,14 @@ INCFLAGS:=$(INCFLAGS) $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS)
 #
 OBJS = 	psop_options.o\
 	psop.o m_kb.o  \
-        local_die.o psml_die.o handlers.o semicore_info_froyen.o\
+        local_die.o psml_die.o handlers.o periodic_table.o \
         check_grid.o m_uuid.o \
         m_libxc_list.o m_libxc_sxc_translation.o \
         m_siestaxc_list.o
 
 #
 #
-MOD_OBJS= m_getopts.o f2kcli.o
+MOD_OBJS= m_getopts.o
 #
 COM_OBJS=$(OBJS) 
 ALL_OBJS=$(MOD_OBJS) $(COM_OBJS)
@@ -53,10 +53,9 @@ psop:   $(NCPS) $(PSOP) $(ALL_OBJS)
         $(NCPS) $(PSOP) $(PSML_LIBS) $(XC) $(XMLF90_LIBS)
 #
 psop.o: psop_options.o m_uuid.o m_kb.o
-psop.o: m_getopts.o semicore_info_froyen.o
+psop.o: m_getopts.o periodic_table.o
 psop.o: m_libxc_sxc_translation.o 
 m_libxc_sxc_translation.o: m_libxc_list.o  m_siestaxc_list.o
-m_getopts.o: f2kcli.o
 #
 clean: 
 	@echo "==> Cleaning object, library, and executable files"

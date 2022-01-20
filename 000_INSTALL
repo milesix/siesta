@@ -27,7 +27,7 @@ with optional (recommended) external ELPA library. See README_ELSI.
   instructions in the appropriate packages).
 
 - Go back to the Siesta building directory and create an arch.make
-  file following the instructions in Obj/README, reviewing the
+  file following the instructions in Config/mk-build/README, reviewing the
   settings of the xmlf90, libpsml, and libgridxc import lines, and
   type
 
@@ -39,7 +39,7 @@ with optional (recommended) external ELPA library. See README_ELSI.
 NOTE: The structure of the arch.make file has been improved, and user
       settings are now based on setting internal options
       (e.g. WITH_MPI=1, WITH_NETCDF=1) and providing the location of
-      the needed libraries. Please read Obj/README.
+      the needed libraries. Please read Config/mk-build/README
 
       
     

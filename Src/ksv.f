@@ -587,28 +587,28 @@ C Deallocate local memory
           endif
           write(6,'(/,a)')
      .     'siesta: Macroscopic polarization per unit cell (a.u.):'
-          write(6,'(a,3f12.6)')
+          write(6,'(a,3(tr1,f13.6))')
      .     'siesta: Along the lattice vectors  ',
      .       (polR(ix,ispin),ix=1,3)
-          write(6,'(a,3f12.6)')
+          write(6,'(a,3(tr1,f13.6))')
      .     'siesta: Along cartesian directions ',
      .      (polxyz(ix,ispin),ix=1,3)
           write(6,'(/,a)')
      .     'siesta: Macroscopic polarization per unit cell (Debye):'
-          write(6,'(a,3f12.6)')
+          write(6,'(a,3(tr1,f13.6))')
      .     'siesta: Along the lattice vectors  ',
      .       (polR(ix,ispin)/Debye,ix=1,3)
-          write(6,'(a,3f12.6)')
+          write(6,'(a,3(tr1,f13.6))')
      .     'siesta: Along cartesian directions ',
      .      (polxyz(ix,ispin)/Debye,ix=1,3) 
         enddo 
         if (nspin.gt.1) then 
 C Modified so that compiler is happy when nspin = 1 and bounds checking
 C is turned on. JDG
-          write(6,'(/,a,/a,3f12.6)')
+          write(6,'(/,a,/a,3(tr1,f13.6))')
      .      'siesta: Sum along cartesian directions (a.u.): ',
      .      'siesta: ',(polxyz(ix,1)+polxyz(ix,min(nspin,2)),ix=1,3)
-          write(6,'(/,a,/a,3f12.6)')
+          write(6,'(/,a,/a,3(tr1,f13.6))')
      .      'siesta: Sum along cartesian directions (Debye): ',
      .      'siesta: ',((polxyz(ix,1)+polxyz(ix,min(nspin,2)))/Debye,
      .      ix=1,3)

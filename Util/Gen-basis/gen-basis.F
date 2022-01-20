@@ -23,6 +23,7 @@ C
      .           atm_label, polorb, semic, nsemic,
      .           cnfigmx, charge, smass, basistype,
      &           rinn, vcte, qcoe, qyuk, qwid, split_norm
+      use basis_types, only: nprin
       use basis_types, only: write_basis_specs
       use basis_types, only: initialize
       use basis_types, only: basis_def_t, basis_parameters
@@ -106,7 +107,7 @@ c Reading input for the pseudopotentials and atomic orbitals
         spp => species(is)
         call atom_main( iz(is), lmxkb(is),
      $      nkbl(0:,is), erefkb(1:,0:,is),lmxo(is),
-     $      nzeta(0:,1:,is), rco(1:,0:,1:,is), 
+     $      nzeta(0:,1:,is), nprin(0:,1,is), rco(1:,0:,1:,is), 
      $      lambda(1:,0:,1:,is), atm_label(is),
      $      polorb(0:,1:,is), semic(is), nsemic(0:,is),
      $      cnfigmx(0:,is),charge(is),

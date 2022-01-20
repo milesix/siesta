@@ -28,7 +28,6 @@ For bug reports, and other code suggestions, please follow the guidelines
 in the file Docs/REPORTING_BUGS
 
 ### MaX branch
-
 This is a special branch that contains all the features currently
 implemented within the [MaX Center of
 Excellence](http://www.max-centre.eu) EU H2020 project. It is
@@ -41,9 +40,13 @@ addition to the features in `master`:
     * Extra optimizations to the parallel operation
     * A more modular architecture, using libraries and other modules developed within MaX.
 
-Note that the libPSML and libGridXC libraries are mandatory, and ELSI
-(and ELPA) recommended. Please see 000_INSTALL for installation
-instructions, and README_ELSI and README_PSML for important information.
+Note that the libPSML and libGridXC libraries are now
+mandatory. Please see the 'Compilation' section of the manual for
+installation instructions and extra building advice.
+
+The ELSI library (and ELPA) are recommended. Please see 000_INSTALL for installation
+instructions, and README_ELSI for important information.
+
 
 
 

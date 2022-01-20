@@ -33,6 +33,7 @@
      &           atm_label, polorb, semic, nsemic,
      &           cnfigmx, charge, smass, basistype,
      &           rinn, vcte, qcoe, qyuk, qwid, split_norm
+      use basis_types, only: nprin
       use basis_types, only: write_basis_specs
       use basis_types, only: basis_def_t, basis_parameters
       use basis_specs, only: read_basis_specs
@@ -154,6 +155,7 @@
           spp => species(is)
           call ATOM_MAIN( iz(is), lmxkb(is), nkbl(0:lmaxd,is),
      &                    erefkb(1:nkbmx,0:lmaxd,is), lmxo(is),
+     &                    nprin(0:lmaxd,1:nsemx,is),
      &                    nzeta(0:lmaxd,1:nsemx,is),
      &                    rco(1:nzetmx,0:lmaxd,1:nsemx,is),
      &                    lambda(1:nzetmx,0:lmaxd,1:nsemx,is),
