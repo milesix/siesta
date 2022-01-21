@@ -1688,6 +1688,10 @@
                                        !   pseudopotential file)
       real(dp) :: projinputint(nrmax)  ! Radial part of the projector that
                                        !   enters the interpolation routines
+      real(dp) :: F4oF2                ! Ratio between the Stoner parameters
+                                       !   F4/F2. Taken as 0.625 following
+                                       !   Lichtenstein et al. 
+                                       !   PRB 52, R5467 (1995)
 
       integer, parameter  :: npoint = 4  ! Number of points used by polint 
                                          !    for the interpolation
@@ -1753,11 +1757,13 @@
             allocate( ldauintegrals%Slater_F(0:2*l) )
             ldauintegrals%Slater_F = 0.0_dp
             if( spp%pjldaunl_l(iproj) .eq. 2 ) then
+              F4oF2 = 0.625_dp     ! Taken from Lichtenstein et al. 
+                                   !    52, R5467 (1995)
               ldauintegrals%Slater_F(0) = spp%pjldaunl_U(iproj)
-              ldauintegrals%Slater_F(2) = (5390.0_dp/637.0_dp) * 
-     .                                     spp%pjldaunl_J(iproj)
-              ldauintegrals%Slater_F(4) = (3528.0_dp/637.0_dp) * 
-     .                                     spp%pjldaunl_J(iproj)
+              ldauintegrals%Slater_F(2) = spp%pjldaunl_J(iproj) * 
+     .                                    14.0_dp / (1.0_dp + F4oF2)
+              ldauintegrals%Slater_F(4) = ldauintegrals%Slater_F(2) * 
+     .                                    F4oF2 
             else 
               call die('Slater integrals not implemented')
             endif

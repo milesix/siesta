@@ -94,6 +94,37 @@
 !!\langle \phi_{m}^{I} \vert \phi_{\mu} \rangle
 !! \f}
 !!
+!! At different points in the module we shall make use of the
+!! fact that the Hamiltonian and density matrices are globally Hermitian,
+!! that means 
+!!
+!! \f{eqnarray*}{
+!!   H_{\nu\mu}^{\beta \alpha} = \left(H_{\mu\nu}^{\alpha \beta}\right)^{\ast}
+!! \f}
+!!
+!! For instance, at the time of computing the energy
+!!
+!! \f{eqnarray*}{
+!! E^{\rm Hubbard} = & \frac{1}{2} \mathrm{Tr} \left( \rho H \right) = \frac{1}{2} \sum_{\mu \nu} \mathrm{Tr} \left[
+!! \begin{pmatrix}
+!! \rho^{\uparrow\uparrow}_{\mu \nu} & \rho^{\uparrow\downarrow}_{\mu \nu} \\
+!! \rho^{\downarrow\uparrow}_{\mu \nu} & \rho^{\downarrow\downarrow}_{\mu \nu}
+!! \end{pmatrix}
+!! \begin{pmatrix}
+!! V^{\uparrow\uparrow}_{\nu \mu} & V^{\uparrow\downarrow}_{\nu \mu} \\
+!! V^{\downarrow\uparrow}_{\nu \mu} & V^{\downarrow\downarrow}_{\nu \mu}
+!! \end{pmatrix}
+!! \right]
+!! = \frac{1}{2} \sum_{\mu \nu} \left( \rho^{\uparrow\uparrow}_{\mu \nu} V^{\uparrow\uparrow}_{\nu \mu} +
+!!   \rho^{\uparrow\downarrow}_{\mu \nu} V^{\downarrow\uparrow}_{\nu \mu} + 
+!!   \rho^{\downarrow\uparrow}_{\mu \nu} V^{\uparrow\downarrow}_{\nu \mu} + 
+!!   \rho^{\downarrow\downarrow}_{\mu \nu} V^{\downarrow\downarrow}_{\nu \mu} \right)
+!! = \frac{1}{2} \sum_{\mu \nu} \left[ \left( \rho^{\uparrow\uparrow}_{\nu \mu} \right)^{\ast} V^{\uparrow\uparrow}_{\nu \mu} +
+!!   \left( \rho^{\downarrow\uparrow}_{\nu \mu} \right)^{\ast}  V^{\downarrow\uparrow}_{\nu \mu} + 
+!!   \left( \rho^{\uparrow\downarrow}_{\nu \mu} \right)^{\ast}  V^{\uparrow\downarrow}_{\nu \mu} + 
+!!   \left( \rho^{\downarrow\downarrow}_{\nu \mu} \right)^{\ast} V^{\downarrow\downarrow}_{\nu \mu} \right]
+!! \f}
+!!
 !! where \f$ n_{m^{\prime\prime}m^{\prime\prime\prime}}^{I,\uparrow \uparrow}\f$
 !! and related terms are the occupancies computed in the module
 !! m_occ_proj following Ref. \cite Himmetoglu:2014:RHC, Eq. (3)
@@ -644,7 +675,7 @@ subroutine ldau_so_hamil_2( H_ldau_so, fal, stressl )
 !            write(6,'(a,6i5,f12.5)')                                          &
 ! &  'ldau_so_hamil_2: Node, Nodes, m, mprime, m2prime, m3prime, vee_integral_real = ',   &
 ! &            Node, Nodes, m, mprime, m2prime, m3prime,                       &
-! &            ldauintegrals%vee_4center_integrals(m, mprime, m2prime, m3prime)
+! &            ldauintegrals%vee_4center_integrals(m, mprime, m2prime, m3prime)*13.6058
 !            enddo
 !          enddo
 !        enddo
@@ -1073,33 +1104,43 @@ subroutine ldau_so_hamil_2( H_ldau_so, fal, stressl )
         do ispin = 1, spin%dm
           Di(jo,ispin) = 0.0_dp
         enddo
-        do ispin = 1, spin%grid
-          H_ldau_so_dc(ind,ispin)      = H_ldau_so_dc(ind,ispin)      +    &
- &                                       Vi_dc(jo,ispin)      
-        enddo
 
+!       In the equations before we have computed V_{\nu \mu},
+!       and we want to store them in the matrix elements of H_{\mu \nu}
+!       The transformation explained in the doxygen documentation
+!       related with the globally Hermitian behavior of the Hamiltonian
+!       and density matrix has to be performed
+!       See the end of Sec. 7 of the SIESTA paper
+        H_ldau_so_dc(ind,1)      = H_ldau_so_dc(ind,1)      +    &
+ &                                 conjg(Vi_dc(jo,1))      
         H_ldau_so_Hubbard(ind,1) = H_ldau_so_Hubbard(ind,1) +    &
   &                                conjg(Vi_Hubbard(jo,1))       
         H_ldau_so(ind,1)         = H_ldau_so(ind,1)         +    &
-  &                                Vi_dc(jo,1)              +    &
+  &                                conjg(Vi_dc(jo,1))       +    &
   &                                conjg(Vi_Hubbard(jo,1))       
 
+        H_ldau_so_dc(ind,2)      = H_ldau_so_dc(ind,2)      +    &
+ &                                 conjg(Vi_dc(jo,2))      
         H_ldau_so_Hubbard(ind,2) = H_ldau_so_Hubbard(ind,2) +    &
   &                                conjg(Vi_Hubbard(jo,2))       
         H_ldau_so(ind,2)         = H_ldau_so(ind,2)         +    &
-  &                                Vi_dc(jo,2)              +    &
+  &                                conjg(Vi_dc(jo,2))       +    &
   &                                conjg(Vi_Hubbard(jo,2))       
 
+        H_ldau_so_dc(ind,3)      = H_ldau_so_dc(ind,3)      +    &
+ &                                 conjg(Vi_dc(jo,4))      
         H_ldau_so_Hubbard(ind,3) = H_ldau_so_Hubbard(ind,3) +    &
   &                                conjg(Vi_Hubbard(jo,4))       
         H_ldau_so(ind,3)         = H_ldau_so(ind,3)         +    &
-  &                                Vi_dc(jo,3)              +    &
+  &                                conjg(Vi_dc(jo,4))       +    &
   &                                conjg(Vi_Hubbard(jo,4))       
 
+        H_ldau_so_dc(ind,4)      = H_ldau_so_dc(ind,4)      +    &
+ &                                 conjg(Vi_dc(jo,3))      
         H_ldau_so_Hubbard(ind,4) = H_ldau_so_Hubbard(ind,4) +    &
   &                                conjg(Vi_Hubbard(jo,3))       
         H_ldau_so(ind,4)         = H_ldau_so(ind,4)         +    &
-  &                                Vi_dc(jo,4)              +    &
+  &                                conjg(Vi_dc(jo,3))       +    &
   &                                conjg(Vi_Hubbard(jo,3))       
 
 !          H_ldau_so_Hubbard(ind,ispin) = H_ldau_so_Hubbard(ind,ispin) +    &
@@ -1125,6 +1166,8 @@ subroutine ldau_so_hamil_2( H_ldau_so, fal, stressl )
     Dscf_cmplx_2 = cmplx(Dscf(ind,2),Dscf(ind,6), dp)
     Dscf_cmplx_3 = cmplx(Dscf(ind,3),-Dscf(ind,4), dp)
     Dscf_cmplx_4 = cmplx(Dscf(ind,7),Dscf(ind,8), dp)
+!   Compute the energy according to the Equations developed in
+!   the doxygen documentation
     E_ldau_so = E_ldau_so +                                                   &
  &    0.5_dp * ( real( H_ldau_so_Hubbard(ind,1)*conjg(Dscf_cmplx_1), dp)   +  &
  &               real( H_ldau_so_Hubbard(ind,2)*conjg(Dscf_cmplx_2), dp)   +  &
