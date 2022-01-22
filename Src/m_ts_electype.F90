@@ -86,9 +86,8 @@ module m_ts_electype
      ! Flag to signal how the DM should be initialized
      !   == 0 'diagon', use DM from Siesta
      !   == 1 'bulk' from the bulk DM electrode files
-     ! This should default to 1 IFF the DM/TSDE files are
-     ! present.
-     integer :: DM_init = 1
+     ! This defaults to 0
+     integer :: DM_init = 0
      ! chemical potential of the electrode
      type(ts_mu), pointer :: mu => null()
      ! infinity direction
@@ -109,7 +108,7 @@ module m_ts_electype
      integer :: pvt(3)
      ! whether the electrode should be bulk
      logical :: Bulk = .true.
-     integer :: DM_update = 0 ! This determines the update scheme for the crossterms
+     integer :: DM_update = 1 ! This determines the update scheme for the crossterms
                               ! == 0 means no update
                               ! == 1 means update cross-terms
                               ! == 2 means update everything (no matter Bulk)
@@ -153,7 +152,7 @@ module m_ts_electype
      ! --- --- completed the content of the TSHS file
      ! Below we create the content for the self-energy creation
      ! Notice that we can save some elements simply by extracting the 0-1 connections
-     ! for large systems this is a non-negligeble part of the memory...
+     ! for large systems this is a non-negligeable part of the memory...
      type(Sparsity)  :: sp00, sp01
      type(dSpData2D) :: H00, H01
      type(dSpData1D) :: S00, S01
@@ -293,7 +292,7 @@ contains
     ! prepare to read in the data...
     type(block_fdf) :: bfdf
     type(parsed_line), pointer :: pline => null()
-    logical :: info(6)
+    logical :: info(5)
     integer :: i, j, Bloch(3)
     integer :: cidx_a 
     real(dp) :: rcell(3,3), fmin, fmax, rc
@@ -572,7 +571,6 @@ contains
           else
              call die('DM-init: unrecognized option: '//trim(tmp))
           end if
-          info(6) = .true.
 
        else if ( leqi(ln,'V-fraction') ) then
 
@@ -698,7 +696,7 @@ contains
 
     ! If the user will not use bulk, set DM_update to 'all'
     if ( .not. this%Bulk ) then
-       this%DM_update = 2 ! set 'all'
+      this%DM_update = 2 ! set 'all'
     end if
     
     if ( .not. file_exist(this%HSfile, Bcast = .true.) ) then
@@ -900,13 +898,11 @@ contains
       ! of the DM
       if ( file_exist(this%DEfile, Bcast = .true.) ) then
         ! The file has been found! Great!
-      else if ( info(6) ) then ! the user has explicitly requested this!
+      else ! the user has explicitly requested this!
         call die('Requested initialization of the DM, however the DM/TSDE file &
             &does not exist!')
-      else
-        ! disable reading the DM file, it does not exist
-        this%DM_init = 0
       end if
+
       ! We do not allow the DM file to be written if the chemical potential
       ! is not 0.
       if ( is_volt ) &
@@ -916,12 +912,14 @@ contains
       ! User has forcefully requested an initialization
       if ( file_exist(this%DEfile, Bcast = .true.) ) then
         ! The file has been found! Great!
-      else if ( info(6) ) then ! the user has explicitly requested this!
+      else ! the user has explicitly requested this!
         call die('Forcefully requested initialization of the DM, however the DM/TSDE &
             &file does not exist!')
       end if
-      ! Signal we should read
+
+      ! Signal return to 1 since value 2 is just to be caught here
       this%DM_init = 1
+
     end if
 
   end function fdf_Elec
@@ -1205,10 +1203,21 @@ contains
             if ( j == this%t_dir ) cycle
             do i = 1 , 3
               if ( i == this%t_dir ) cycle
-              if ( j == i ) then
-                er = er .or. ( this_kcell(i,j) /= kcell(pvt(i),pvt(j))*k )
-              else 
-                er = er .or. ( this_kcell(i,j) /= kcell(pvt(i),pvt(j)) )
+              ! Check whether there are connections or not (i.e. if k-points
+              ! matter)
+              if ( this_nsc(i) == 1 ) then
+                ! check whether it is 1 or not
+                if ( j == i ) then
+                  er = er .or. ( this_kcell(i,j) /= 1 )
+                else
+                  er = er .or. ( this_kcell(i,j) /= 0 )
+                end if
+              else
+                if ( j == i ) then
+                  er = er .or. ( this_kcell(i,j) /= kcell(pvt(i),pvt(j))*k )
+                else 
+                  er = er .or. ( this_kcell(i,j) /= kcell(pvt(i),pvt(j)) )
+                end if
               end if
             end do
           end do
@@ -1216,16 +1225,21 @@ contains
 
         if ( er .and. IONode ) then
 
-          write(*,'(a)') 'Incompatible k-grids...'
+          write(*,'(3a)') "Electrode ", trim(this%name), " found incompatible k-grids"
+          write(*,'(a,i0)') "Electrode semi-infinite direction [A, B, C] index: ", this%t_dir
+          write(*,'(a,3(tr1,i0))') "Electrode Bloch expansion [A, B, C]:", this%Bloch%B
+
           write(*,'(a)') 'Electrode file k-grid:'
           do j = 1 , 3
-            write(*,'(3(i4,tr1),f8.4)') this_kcell(:,j), this_kdispl(j)
+            write(*,'(3(i5,tr1),f8.4)') this_kcell(:,j), this_kdispl(j)
           end do
           write(*,'(a)') 'System k-grid:'
           do j = 1 , 3
-            write(*,'(3(i4,tr1),f8.4)') kcell(:,j), kdispl(j)
+            write(*,'(3(i5,tr1),f8.4)') kcell(:,j), kdispl(j)
           end do
-          write(*,'(a)') 'Electrode file k-grid should probably be:'
+          write(*,'(a)') 'To match electrode Bloch expansion and system k-points'
+          write(*,'(a)') 'then the electrode k-grid should probably be:'
+
           ! Loop the electrode directions
           do j = 1 , 3
             if ( j == this%t_dir ) then
@@ -1235,10 +1249,16 @@ contains
               if ( this_kcell(j,j) < 20 ) then
                 this_kcell(j,j) = 50
               end if
+              this_kdispl(j) = kdispl(pvt(j))
+            else if ( this_nsc(j) == 1 ) then
+              this_kcell(:,j) = 0
+              this_kcell(j,j) = 1
+              this_kdispl(j) = 0._dp
             else
               this_kcell(:,j) = kcell(:,pvt(j)) * this%Bloch%B(j)
+              this_kdispl(j) = kdispl(pvt(j))
             end if
-            write(*,'(3(i4,tr1),f8.4)') this_kcell(:,j), kdispl(pvt(j))
+            write(*,'(3(i5,tr1),f8.4)') this_kcell(:,j), this_kdispl(j)
           end do
 
         end if
@@ -1438,29 +1458,9 @@ contains
     type(Elec), intent(in) :: this
     integer, intent(in) :: idx
     real(dp) :: q(3)
-    integer :: i,j,k,ii
-    i =     this%Bloch%B(1)
-    j = i * this%Bloch%B(2)
-    k = j * this%Bloch%B(3)
-    if ( idx <= i ) then
-       q(:) = this%bloch%get_k(idx,1,1)
-    else if ( idx <= j ) then
-       j = idx / i
-       if ( MOD(idx,i) /= 0 ) j = j + 1
-       i = idx - (j-1) * i
-       q(:) = this%bloch%get_k(i,j,1)
-    else if ( idx <= k ) then
-       ! this seems to work well!
-       k = idx / j
-       if ( MOD(idx,j) /= 0 ) k = k + 1
-       ii = idx - (k-1) * j
-       j = ii / i
-       if ( MOD(ii,i) /= 0 ) j = j + 1
-       i = ii - (j-1) * i
-       q(:) = this%bloch%get_k(i,j,k)
-    else
-       q(:) = 0._dp
-    end if
+    integer :: i(3)
+    call this%Bloch%unravel_index(idx, i)
+    q(:) = this%bloch%get_k(i(1), i(2), i(3))
   end function q_exp
 
   subroutine Elec_kpt(this,cell,k1,k2,opt)
@@ -1805,10 +1805,11 @@ contains
 
     ! Notice that we create the correct electrode transfer hamiltonian...
     if ( has_01 ) then
+      ! We use the *opposite* direction because of the order of io->jo
       if ( this%inf_dir == INF_NEGATIVE ) then
-        tm(this%t_dir) = -1
+        tm(this%t_dir) = 1
       else if ( this%inf_dir == INF_POSITIVE ) then
-        tm(this%t_dir) =  1
+        tm(this%t_dir) = -1
       else
         call die('Electrode direction not recognized')
       end if
@@ -1987,10 +1988,11 @@ contains
     S => val(this%S)
 
     tm(:) = TM_ALL
+    ! We use the *opposite* direction because of the order of io->jo
     if ( this%inf_dir == INF_POSITIVE ) then
-       tm(this%t_dir) =  2
-    else
        tm(this%t_dir) = -2
+    else
+       tm(this%t_dir) = 2
     end if
     call crtSparsity_SC(this%sp,sp02, TM=tm, &
          ucell=this%cell, isc_off=this%isc_off)
@@ -2153,8 +2155,7 @@ contains
     type(OrbitalDistribution) :: fake_dit
     type(Sparsity), pointer :: sp
     type(dSpData2D) :: f_DM_2D, f_EDM_2D
-    real(dp), pointer :: DM(:,:), EDM(:,:)
-    real(dp) :: tmp, Ef
+    real(dp) :: Ef
     integer :: Tile(3), Reps(3), fnsc(3)
     integer :: i
     logical :: found, alloc(3), is_TSDE
@@ -2174,7 +2175,7 @@ contains
             fnsc, f_DM_2D, f_EDM_2D, Ef, found, &
             Bcast = .true. )
     else
-       call read_dm( this%DEfile, fake_dit, fnsc, f_DM_2D, found, &
+       call read_dm(this%DEfile, fake_dit, fnsc, f_DM_2D, found, &
             Bcast = .true. )
     end if
     if ( .not. found ) call die('Could not read file: '//trim(this%DEfile))
@@ -2194,14 +2195,13 @@ contains
     ! TODO, there is some memory that could be leaking with the
     ! electrode arrays.
 
-    if ( is_TSDE ) then
-       ! Shift the energy matrix to the chemical potential :)
-       DM  => val(f_DM_2D)
-       EDM => val(f_EDM_2D)
-       i = size(DM)
-       tmp = -( Ef + this%mu%mu )
-       call daxpy(i,tmp,DM(1,1),1,EDM(1,1),1)
-    end if
+    ! TODO the global potential is not well-defined when mixing an external
+    ! electrode EDM with an internal EDM.
+    ! The problem arises because the electrode calculation has a Siesta
+    ! defined potential 0. While the transiesta device calculation
+    ! has a potential 0 determined from an integrated boundary.
+    ! This will even be a problem when using the fermi-level as
+    ! the reference level since that depends on all atoms in the cell.
 
     if ( this%inf_dir == INF_POSITIVE ) then
        i = 1

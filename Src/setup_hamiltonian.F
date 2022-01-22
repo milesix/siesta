@@ -13,8 +13,9 @@
       subroutine setup_hamiltonian( iscf )
 
       USE siesta_options
+      use sparse_matrices, only: H_2D, S_1D, xij_2D
       use sparse_matrices, only: H_kin_1D, H_vkb_1D
-      use sparse_matrices, only: H_ldau_2D, H_ldau_so_2D
+      use sparse_matrices, only: H_dftu_2D, H_dftu_so_2D
       use sparse_matrices, only: H_so_on_2D, H_so_off_2D
       use sparse_matrices, only: listh, listhptr, numh, maxnh
       use sparse_matrices, only: H, S, Hold
@@ -30,11 +31,11 @@
      .                    rmaxo, no_l
       use metaforce, only: lMetaForce, meta
       use molecularmechanics, only : twobody
-      use ldau_specs,   only: switch_ldau     ! This variable determines whether
+      use dftu_specs,   only: switch_dftu     ! This variable determines whether
                                               !   the subroutine to compute the
                                               !   Hubbard terms should be called
                                               !   or not
-      use m_ldau,       only: hubbard_term    ! Subroutine that compute the
+      use m_dftu,       only: hubbard_term    ! Subroutine that compute the
                                               !   Hubbard terms
       use m_dhscf,      only: dhscf
       use m_stress
@@ -47,12 +48,12 @@
 
       use m_dipol
       use alloc, only: re_alloc, de_alloc
-      use m_hsx, only: write_hsx
+      use io_hsx_m, only: write_hsx
       use sys, only: die, bye
       use m_partial_charges, only: want_partial_charges
       use files, only : filesOut_t    ! derived type for output file names
       use m_rhog, only: rhog_in, rhog
-      use m_ldau_so, only: ldau_so_hamil
+      use m_dftu_so, only: dftu_so_hamil
 #ifdef MPI
       use m_mpi_utils, only: globalize_sum
 #endif
@@ -72,9 +73,9 @@
       type(filesOut_t)    :: filesOut  ! blank output file names
       logical             :: use_rhog_in
 
-      real(dp), pointer   :: H_vkb(:), H_kin(:), H_ldau(:,:)
+      real(dp), pointer   :: H_vkb(:), H_kin(:), H_dftu(:,:)
       real(dp), pointer   :: H_so_on(:,:)
-      complex(dp), pointer:: H_ldau_so(:,:)
+      complex(dp), pointer:: H_dftu_so(:,:)
       complex(dp), pointer:: H_so_off(:,:)
 
       complex(dp):: Dc
@@ -225,52 +226,52 @@
       call update_E0()
 
 ! Hubbard term for LDA+U: energy, forces, stress and matrix elements ....
-      if( switch_ldau ) then
+      if( switch_dftu ) then
         call re_alloc(fal, 1, 3, 1, na_u, 'fal', 'setup_hamiltonian')      
         if ( spin%NCol ) then
           call die('LDA+U cannot be used with non-collinear spin.')
         else if ( spin%SO ) then
-          H_ldau_so => val(H_ldau_so_2D)
-          call ldau_so_hamil( H_ldau_so, fal, stressl )
+          H_dftu_so => val(H_dftu_so_2D)
+          call dftu_so_hamil( H_dftu_so, fal, stressl )
 
 !------- H(u,u)
-         H(:,1) = H(:,1) + real(H_ldau_so(:,1), dp)
-         H(:,5) = H(:,5) + dimag(H_ldau_so(:,1))
+         H(:,1) = H(:,1) + real(H_dftu_so(:,1), dp)
+         H(:,5) = H(:,5) + dimag(H_dftu_so(:,1))
 !------- H(d,d)
-         H(:,2) = H(:,2) + real(H_ldau_so(:,2), dp)
-         H(:,6) = H(:,6) + dimag(H_ldau_so(:,2))
+         H(:,2) = H(:,2) + real(H_dftu_so(:,2), dp)
+         H(:,6) = H(:,6) + dimag(H_dftu_so(:,2))
 !------- H(u,d)
-         H(:,3) = H(:,3) + real(H_ldau_so(:,3), dp)
-         H(:,4) = H(:,4) - dimag(H_ldau_so(:,3))
+         H(:,3) = H(:,3) + real(H_dftu_so(:,3), dp)
+         H(:,4) = H(:,4) - dimag(H_dftu_so(:,3))
 !------- H(d,u)
-         H(:,7) = H(:,7) + real(H_ldau_so(:,4), dp)
-         H(:,8) = H(:,8) + dimag(H_ldau_so(:,4))
+         H(:,7) = H(:,7) + real(H_dftu_so(:,4), dp)
+         H(:,8) = H(:,8) + dimag(H_dftu_so(:,4))
 
 #ifdef MPI
-          ! Global reduction of E_ldau_so 
-          call globalize_sum(E_ldau_so,buffer1)
-          E_ldau_so = buffer1
+          ! Global reduction of E_dftu_so 
+          call globalize_sum(E_dftu_so,buffer1)
+          E_dftu_so = buffer1
           ! Global reduction of E_correc_dc
           call globalize_sum(E_correc_dc,buffer1)
           E_correc_dc = buffer1
 #endif
         else  ! collinear spin
-          H_ldau => val(H_ldau_2D)
+          H_dftu => val(H_dftu_2D)
           call hubbard_term(scell, na_u, na_s, isa, xa, indxua,
      .                      maxnh, maxnh, lasto, iphorb, no_u, no_l, 
      .                      numh, listhptr, listh, numh, listhptr,listh,      
-     .                      spin%spinor, Dscf, Eldau, DEldau, H_ldau, 
+     .                      spin%spinor, Dscf, Edftu, DEdftu, H_dftu, 
      .                      fal, stressl, H, iscf,
      .                      matrix_elements_only=.true.)
 
 #ifdef MPI
           ! Global reduction of energy terms
-          call globalize_sum(Eldau,buffer1)
-          Eldau = buffer1
-          ! DEldau should not be globalized
+          call globalize_sum(Edftu,buffer1)
+          Edftu = buffer1
+          ! DEdftu should not be globalized
           ! as it is based on globalized occupations
 #endif
-          Eldau = Eldau + DEldau
+          Edftu = Edftu + DEdftu
 
         endif
         call de_alloc( fal, 'fal', 'setup_hamiltonian' ) 
@@ -334,16 +335,6 @@
 
       want_partial_charges = .false.
       call de_alloc( fal, 'fal', 'setup_hamiltonian' ) 
-!  It is wasteful to write over and over H and S, as there are
-!  no different files.
-! Save Hamiltonian and overlap matrices ............................
-! Only in HSX format now.  Use Util/HSX/hsx2hs to generate an HS file
-
-      if (savehs .or. write_coop) then
-         call write_hsx( no_u, no_s, spin%H, indxuo,
-     &        maxnh, numh, listhptr, listh, H, S, qtot,
-     &        temp, xijo)
-      endif
 
       call timer('setup_H',2)
 #ifdef SIESTA__PEXSI
@@ -351,10 +342,19 @@
 #endif
 
       if ( h_setup_only ) then
-         call timer( 'all', 2 )  ! New call to close the tree
-         call timer( 'all', 3 )
-         call bye("H-Setup-Only requested")
-         STOP
+
+        ! Save Hamiltonian and overlap matrices ............................
+        ! Only in HSX format now.  Use Util/HSX/hsx2hs to generate an HS file
+        if (savehs .or. write_coop) then
+!         We don't know the fermi-level of this one. So we will pass
+!         a huge number to signal this.
+          call write_hsx(H_2D, S_1D, huge(0._dp), qtot, temp)
+        end if
+
+        call timer( 'all', 2 )  ! New call to close the tree
+        call timer( 'all', 3 )
+        call bye("H-Setup-Only requested")
+        STOP
       endif
 
 !------------------------------------------------------------------------- END

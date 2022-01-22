@@ -1,5 +1,5 @@
 # 
-# Copyright (C) 1996-2016	The SIESTA group
+# Copyright (C) 1996-2021       The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
 #  or http://www.gnu.org/copyleft/gpl.txt.
@@ -7,6 +7,8 @@
 #
 #
 # Makefile for DM to DM-netCDF converter
+#
+# The VPATH directive below allows to re-use m_getopts.f90 from the top Src.
 #
 #  The arch.make file is supposed to be in $(OBJDIR). This is normally
 #  the top Obj, but if you are using architecture-dependent build directories
@@ -23,6 +25,8 @@
 default: dm2cdf cdf2dm dmbs2dm dmUnblock
 all: dm2cdf cdf2dm dmfilter dmbs2dm dmUnblock dm_noncol_sign_flip4
 #
+VPATH=../../Src
+#
 OBJDIR=Obj
 include ../../$(OBJDIR)/arch.make
 #
@@ -37,7 +41,7 @@ include ../../$(OBJDIR)/arch.make
 #
 INCFLAGS:= $(NETCDF_INCFLAGS) $(INCFLAGS)
 #
-OPT_OBJS=m_getopts.o f2kcli.o 
+OPT_OBJS=m_getopts.o
 #
 dmbs2dm.o: $(OPT_OBJS)
 dmbs2dm: dmbs2dm.o $(OPT_OBJS)
@@ -63,7 +67,6 @@ clean:
 	rm -f *.o dm2cdf cdf2dm dmfilter dmbs2dm dmUnblock *.o *.*d
 	rm -f dm_noncol_sign_flip4
 #
-m_getopts.o: f2kcli.o
 
 
 

@@ -102,11 +102,11 @@
 !
             ps = stress + kin_stress
             write(6,'(/,a,6f12.2)')
-     .           'Stress-tensor-Voigt (kbar):',
+     .           'Stress tensor Voigt[x,y,z,yz,xz,xy] (kbar):',
      .           (ps(jx,jx)/kbar,jx=1,3),
-     $            ps(1,2)/kbar,
      $            ps(2,3)/kbar,
-     $            ps(1,3)/kbar
+     $            ps(1,3)/kbar,
+     $            ps(1,2)/kbar
             Press = - ((ps(1,1) + ps(2,2) + ps(3,3))/3.0_dp)
             write(6,"(a,f14.4)") "(Free)E + p*V (eV/cell)",
      $           (FreeE + Press*volume_of_some_cell)/eV
@@ -114,11 +114,11 @@
             if (RemoveIntraMolecularPressure) then
                ps = mstress + kin_stress
                write(6,'(/,a,6f12.2)')
-     .           'Inter-Molecular-Stress-Voigt (kbar):',
+     .   'Inter molecular stress Voigt[x,y,z,yz,xz,xy] (kbar):',
      .           (ps(jx,jx)/kbar,jx=1,3),
-     $            ps(1,2)/kbar,
      $            ps(2,3)/kbar,
-     $            ps(1,3)/kbar
+     $            ps(1,3)/kbar,
+     $            ps(1,2)/kbar
                Press = - ((ps(1,1) + ps(2,2) + ps(3,3))/3.0_dp)
                write(6,"(a,f14.4)")
      $              "(Free)E + p_inter_molec * V  (eV/cell)",
@@ -303,7 +303,7 @@
       real(dp), intent(in) :: dDmax ! Max. change in dens. matrix elem.
       real(dp), intent(in) :: dHmax ! Max. change in H elements
 
-      real(dp) :: Eldau_write ! LDA+U energy
+      real(dp) :: Edftu_write ! LDA+U energy
       character(len=64) :: fmt
       character(len=17) :: enl_str, eso_str
 
@@ -321,9 +321,9 @@
       endif
 
       if (spin%SO) then
-         Eldau_write = E_ldau_so + E_correc_dc
+         Edftu_write = E_dftu_so + E_correc_dc
       else
-         Eldau_write = Eldau
+         Edftu_write = Edftu
       endif
       
       first_scf_step = (iscf == 1)
@@ -337,10 +337,12 @@
      .     'siesta: Ekin    =', Ekin/eV,
      .      enl_str, Enl/eV,
      .      eso_str, Eso/eV,
-     .     'siesta: Eldau   =', Eldau_write/eV,
+     .     'siesta: Edftu   =', Edftu_write/eV,
      .     'siesta: DEna    =', DEna/eV,
      .     'siesta: DUscf   =', DUscf/eV,
      .     'siesta: DUext   =', DUext/eV,
+     .     'siesta: Ex      =', Ex/eV,
+     .     'siesta: Ec      =', Ec/eV,
      .     'siesta: Exc     =', Exc/eV,
      .     'siesta: eta*DQ  =', Ecorrec/eV,
      .     'siesta: Emadel  =', Emad/eV,
@@ -379,9 +381,9 @@
           call cmlAddProperty(xf=mainXML, value=Enl/eV, 
      .         units='siestaUnits:eV', 
      .         dictref='siesta:Enl', fmt='r6')
-          call cmlAddProperty(xf=mainXML, value=Eldau_write/eV,
+          call cmlAddProperty(xf=mainXML, value=Edftu_write/eV,
      .         units='siestaUnits:eV',
-     .         dictref='siesta:Eldau', fmt='r6')
+     .         dictref='siesta:Edftu', fmt='r6')
           call cmlAddProperty(xf=mainXML, value=DEna/eV, 
      .         units='siestaUnits:eV', 
      .         dictref='siesta:DEna', fmt='r6')
@@ -394,6 +396,12 @@
           call cmlAddProperty(xf=mainXML, value=DUext/eV, 
      .         units='siestaUnits:eV', 
      .         dictref='siesta:DUext', fmt='r6')
+          call cmlAddProperty(xf=mainXML, value=Ex/eV, 
+     .         units='siestaUnits:eV', 
+     .         dictref='siesta:Ex', fmt='r6')
+          call cmlAddProperty(xf=mainXML, value=Ec/eV, 
+     .         units='siestaUnits:eV', 
+     .         dictref='siesta:Ec', fmt='r6')
           call cmlAddProperty(xf=mainXML, value=Exc/eV, 
      .         units='siestaUnits:eV', 
      .         dictref='siesta:Exc', fmt='r6')
@@ -584,9 +592,9 @@
         endif
 
         if (spin%SO) then
-           Eldau_write = E_ldau_so + E_correc_dc
+           Edftu_write = E_dftu_so + E_correc_dc
         else
-           Eldau_write = Eldau
+           Edftu_write = Edftu
         endif
 
         write(6,'(/,a)') 'siesta: Final energy (eV):'
@@ -594,9 +602,11 @@
      .    'siesta: ', 'Band Struct. =', Ebs/eV,
      .    'siesta: ',      'Kinetic =', Ekin/eV,
      .    'siesta: ',      'Hartree =', Uscf/eV,
-     .    'siesta: ',        'Eldau =', Eldau_write/eV,
+     .    'siesta: ',        'Edftu =', Edftu_write/eV,
      .    'siesta: ',      eso_str    , Eso/eV,
      .    'siesta: ',   'Ext. field =', DUext/eV,
+     .    'siesta: ',        'Exch. =', Ex/eV,
+     .    'siesta: ',        'Corr. =', Ec/eV,
      .    'siesta: ',  'Exch.-corr. =', Exc/eV,
      .    'siesta: ', 'Ion-electron =', (Enascf+Enl+DUscf-Uscf-Uatm)/eV,
      .    'siesta: ',      'Ion-ion =', (Ena+Uatm-Enaatm-Eions)/eV,
@@ -630,15 +640,21 @@
           call cmlAddProperty(xf=mainXML, value=Uscf/eV,  
      .         units='siestaUnits:eV', 
      .         dictref='siesta:Uscf', fmt='r7')
-          call cmlAddProperty(xf=mainXML, value=Eldau/eV,  
+          call cmlAddProperty(xf=mainXML, value=Edftu/eV,  
      .         units='siestaUnits:eV', 
-     .         dictref='siesta:Eldau', fmt='r7')
+     .         dictref='siesta:Edftu', fmt='r7')
           call cmlAddProperty(xf=mainXML, value=Eso/eV,
      .         units='siestaUnits:eV', 
      .         dictref='siesta:Eso', fmt='r7')
           call cmlAddProperty(xf=mainXML, value=DUext/eV, 
      .         units='siestaUnits:eV', 
      .         dictref='siesta:DUext', fmt='r7')
+          call cmlAddProperty(xf=mainXML, value=Ex/eV,   
+     .         units='siestaUnits:eV', 
+     .         dictref='siesta:Ex', fmt='r7')
+          call cmlAddProperty(xf=mainXML, value=Ec/eV,   
+     .         units='siestaUnits:eV', 
+     .         dictref='siesta:Ec', fmt='r7')
           call cmlAddProperty(xf=mainXML, value=Exc/eV,   
      .         units='siestaUnits:eV', 
      .         dictref='siesta:Exc', fmt='r7')
@@ -854,7 +870,7 @@
       call analyze_force(na_u, ts_fa(:,:,2), cfmax, cftot, fres)
       call analyze_force(na_u, ts_fa(:,:,1), fmax, ftot, fres)
       ! Correct residual for uncounted atoms
-      fres = fres * na_u / ts_na 
+      fres = fres * sqrt(real(na_u, dp) / real(ts_na, dp))
       
       ! Almost the same forces output whether during simulation
       ! or at the end. Unfortunately not quite, therefore slightly

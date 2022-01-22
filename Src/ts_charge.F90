@@ -167,12 +167,8 @@ contains
     ! **********************
     integer :: i
     real(dp), allocatable :: Q(:,:)
-    real(dp) :: sQtot
     integer :: ispin, lmethod
     logical :: has_buffer
-
-    ! Requested charge per spin if anti-ferromagnetic
-    sQtot = Qtot / real(nspin,dp)
 
     lmethod = TS_Q_INFO_FULL
     if ( present(method) ) lmethod = method
@@ -191,44 +187,44 @@ contains
     if ( lmethod == TS_Q_INFO_FULL ) then
       write(*,'(/,a,f12.5)') 'transiesta: Charge distribution, target = ',Qtot
       if ( nspin > 1 ) then
-        write(*,'(a,3(f12.5,tr1))') &
+        write(*,'(a,3(tr1,f12.5))') &
             'Total charge                  [Q]  :', &
             sum(Q(:,1)),sum(Q(:,2)),sum(Q)
-        write(*,'(a,2(f12.5,tr1))') &
+        write(*,'(a,2(tr1,f12.5))') &
             'Device                        [D]  :',Q(2,1), Q(2,2)
         do i = 1 , N_Elec
-          write(*,'(a,t31,a,i0,a,2(f12.5,tr1))') &
+          write(*,'(a,t31,a,i0,a,2(tr1,f12.5))') &
               trim(name(Elecs(i))),'[E',i,'] :', &
               Q(3+(i-1)*2,1), Q(3+(i-1)*2,2)
-          write(*,'(a,t22,a,i0,a,2(f12.5,tr1))') &
+          write(*,'(a,t22,a,i0,a,2(tr1,f12.5))') &
               trim(name(Elecs(i))),'/ device [C',i,'] :', &
               Q(4+(i-1)*2,1), Q(4+(i-1)*2,2)
         end do
-        write(*,'(a,2(f12.5,tr1))') &
+        write(*,'(a,2(tr1,f12.5))') &
             'Other                         [O]  :',Q(0,1), Q(0,2)
         if ( has_buffer ) then
-          write(*,'(a,2(f12.5,tr1))') &
+          write(*,'(a,2(tr1,f12.5))') &
             'Buffer                        [B]  :',Q(1,1), Q(1,2)
         end if
       else
-        write(*,'(a,f12.5)') &
+        write(*,'(a,tr1,f12.5)') &
             'Total charge                  [Q]  :', sum(Q(:,1))
-        write(*,'(a,f12.5)') &
+        write(*,'(a,tr1,f12.5)') &
             'Device                        [D]  :',Q(2,1)
         do i = 1 , N_Elec
-          write(*,'(a,t31,a,i0,a,f12.5)') &
+          write(*,'(a,t31,a,i0,a,tr1,f12.5)') &
               trim(name(Elecs(i)))         ,'[E',i,'] :',Q(3+(i-1)*2,1)
-          write(*,'(a,t22,a,i0,a,f12.5)') &
+          write(*,'(a,t22,a,i0,a,tr1,f12.5)') &
               trim(name(Elecs(i))),'/ device [C',i,'] :',Q(4+(i-1)*2,1)
         end do
         if ( has_buffer ) then
-          write(*,'(a,f12.5)') &
+          write(*,'(a,tr1,f12.5)') &
             'Buffer                        [B]  :',Q(1,1)
         end if
-        write(*,'(a,f12.5)') &
+        write(*,'(a,tr1,f12.5)') &
             'Other                         [O]  :',Q(0,1)
       end if
-      write(*,'(a,f12.5,/)') &
+      write(*,'(a,tr1,es12.5,/)') &
           'Excess charge                [dQ]  :',sum(Q) - Qtot
 
 
@@ -247,24 +243,22 @@ contains
         write(*,'(1x,a9)',advance='no') 'B'
       end if
       if ( nspin > 1 ) then
-        write(*,'(2(1x,a9))') 'dQ','dQtot'
+        write(*,'(2(1x,a9))') 'dQ','Qup-Qdn'
       else
         write(*,'(1x,a9)') 'dQ'
       end if
-      do ispin = 1 , nspin
-        write(*,'(a,1x,f9.3)',advance='no') 'ts-q:', Q(2,ispin)
-        do i = 1 , N_Elec
-          write(*,'(2(1x,f9.3))',advance='no') Q(3+(i-1)*2,ispin),Q(4+(i-1)*2,ispin)
-        end do
-        if ( has_buffer ) then
-          write(*,'(1x,f9.3)',advance='no') Q(1,ispin)
-        end if
-        if ( ispin > 1 .and. ispin == nspin ) then
-          write(*,'(2(1x,es9.3e1))') sum(Q(:,ispin)) - sQtot,sum(Q) - Qtot
-        else
-          write(*,'(1x,es9.3e1)') sum(Q(:,ispin)) - sQtot
-        end if
+      write(*,'(a,1x,f9.3)',advance='no') 'ts-q:', sum(Q(2,:))
+      do i = 1 , N_Elec
+        write(*,'(2(1x,f9.3))',advance='no') sum(Q(3+(i-1)*2,:)),sum(Q(4+(i-1)*2,:))
       end do
+      if ( has_buffer ) then
+        write(*,'(1x,f9.3)',advance='no') sum(Q(1,:))
+      end if
+      if ( nspin == 2 ) then
+        write(*,'(2(1x,e9.3))') sum(Q) - Qtot, sum(Q(:,1)) - sum(Q(:,2))
+      else
+        write(*,'(1x,e9.3)') sum(Q) - Qtot
+      end if
 
     end if
 
