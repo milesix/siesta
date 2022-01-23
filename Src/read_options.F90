@@ -27,7 +27,8 @@ subroutine read_options( na, ns, nspin )
   use units,     only : eV, Ang, Kelvin
   use siesta_cml
   use m_target_stress, only: set_target_stress
-  use m_spin, only: print_spin_options, spin
+  use m_spin, only: spin
+  use spin_subs_m, only: print_spin_options
 
   use m_charge_add, only : read_charge_add
   use m_hartree_add, only : read_hartree_add
