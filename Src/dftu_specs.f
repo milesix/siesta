@@ -1723,8 +1723,9 @@
         imcount = 0
         loop_projectors: do iproj = 1, spp%n_pjdftunl
           dftushell => basp%dftushell(iproj)
-          dftuintegrals => spp%dftu_so_integrals(iproj)
-
+          if ( spin%NCol .or. spin%SO ) then
+             dftuintegrals => spp%dftu_so_integrals(iproj)
+          endif
           spp%pjdftunl_n(iproj) = 1
           spp%pjdftunl_l(iproj) = dftushell%l
           spp%pjdftunl_U(iproj) = dftushell%U
