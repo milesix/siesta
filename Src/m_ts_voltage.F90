@@ -469,7 +469,7 @@ contains
 #ifdef TRANSIESTA_VOLTAGE_DEBUG
     tmpV(:) = tmpV(:) * fact + Vmm(1)
     call write_grid_netcdf( cell, nmesh, 1, product(nmeshl), tmpV, &
-        "TransiestaHartreePotential")
+        "TransiestaHartreePotential", unit='Ry')
     call bye('transiesta debug for Hartree potential')
 #endif
 

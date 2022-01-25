@@ -60,7 +60,7 @@ c Internal
          write(6,'(/,a,a)')
      .        'obc: Macroscopic polarization per unit cell',
      .        ' along the lattice vectors (Bohr): '
-         write(6,'(a,3f12.6)') 'obc:',(polR(ix,ispin),ix=1,3)
+         write(6,'(a,3(tr1,f13.6))') 'obc:',(polR(ix,ispin),ix=1,3)
       enddo 
 
       if (first_time) then
@@ -123,7 +123,7 @@ c Internal
          call io_assign(unit1)
          open( unit1, file=fname, status='old',position="append",
      $         action="write")
-         write(unit1,'(3f15.7)') (pxyz(ix)/dx,ix=1,3)
+         write(unit1,'(3(tr1,f15.7))') (pxyz(ix)/dx,ix=1,3)
          call io_close(unit1)
 
       endif

@@ -127,7 +127,7 @@ subroutine set_box_limits(mesh,nsm)
 
 end subroutine set_box_limits
 
-subroutine write_grid_netcdf(cell,mesh,nspin,npt_l,gridfunc,name)
+subroutine write_grid_netcdf(cell,mesh,nspin,npt_l,gridfunc,name, unit)
 use precision, only: dp, grid_p
 #ifdef CDF
 use netcdf
@@ -139,6 +139,7 @@ use netcdf
       integer, intent(in)          ::     npt_l         ! Total number of local points in rho, per spin
       real(grid_p), intent(in)     ::     gridfunc(npt_l,nspin)   ! Grid function
       character(len=*), intent(in) ::     name         ! Identifier
+      character(len=*), intent(in), optional ::     unit         ! Identifier for the unit
 
 #ifdef CDF
 integer  :: ncid , iret, ispin
@@ -180,6 +181,11 @@ integer  :: cell_id, n1_id, n2_id, n3_id, gridfunc_id
        iret = nf90_put_att(ncid,gridfunc_id,'Description', &
                "Grid function -- " // trim(name))
        call check(iret)
+
+       if ( present(unit) ) then
+         iret = nf90_put_att(ncid,gridfunc_id,'unit', unit)
+         call check(iret)
+       end if
 
        iret = nf90_enddef(ncid)
        call check(iret)
