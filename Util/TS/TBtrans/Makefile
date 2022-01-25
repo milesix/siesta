@@ -47,7 +47,7 @@ SIESTA_OBJS= precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
              moreParallelSubs.o m_mpi_utils.o \
              reclat.o idiag.o minvec.o \
              parallel.o io.o files.o cellsubs.o sorting.o \
-             kpoint_convert.o timestamp.o m_wallclock.o m_spin.o \
+             kpoint_convert.o timestamp.o m_wallclock.o spin_subs.o m_spin.o \
              diag.o diag_option.o bloch_unfold.o \
              debugmpi.o find_kgrid.o units.o m_cite.o posix_calls.o \
              runinfo_m.o cli_m.o sys.o
@@ -453,10 +453,8 @@ m_sparsity_handling.o: class_OrbitalDistribution.o class_SpData1D.o
 m_sparsity_handling.o: class_SpData2D.o class_Sparsity.o geom_helper.o
 m_sparsity_handling.o: intrinsic_missing.o m_interpolate.o m_region.o
 m_sparsity_handling.o: precision.o
-m_spin.o: alloc.o files.o get_kpoints_scale.o m_cite.o parallel.o precision.o
-m_spin.o: sys.o
-m_spin.o: alloc.o files.o get_kpoints_scale.o m_cite.o parallel.o precision.o
-m_spin.o: sys.o
+m_spin.o: precision.o
+m_spin.o: precision.o
 m_timer.o: m_io.o m_walltime.o moreParallelSubs.o parallel.o precision.o sys.o
 m_timer.o: m_io.o m_walltime.o moreParallelSubs.o parallel.o precision.o sys.o
 m_trimat_invert.o: class_TriMat.o m_pivot_array.o precision.o
@@ -601,6 +599,10 @@ runinfo_m.o: parallel.o posix_calls.o
 runinfo_m.o: parallel.o posix_calls.o
 siesta_geom.o: precision.o
 siesta_geom.o: precision.o
+spin_subs.o: alloc.o files.o get_kpoints_scale.o m_cite.o m_spin.o parallel.o
+spin_subs.o: precision.o sys.o
+spin_subs.o: alloc.o files.o get_kpoints_scale.o m_cite.o m_spin.o parallel.o
+spin_subs.o: precision.o sys.o
 timer.o: m_timer.o parallel.o sys.o timer_tree.o
 timer.o: m_timer.o parallel.o sys.o timer_tree.o
 timer_tree.o: m_walltime.o
@@ -637,12 +639,12 @@ m_tbt_gf.o: m_os.o m_tbt_contour.o m_ts_cctype.o m_ts_electrode.o
 m_tbt_gf.o: m_ts_electype.o m_ts_gf.o parallel.o precision.o sys.o
 m_tbt_hs.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
 m_tbt_hs.o: class_Sparsity.o files.o m_handle_sparse.o m_interpolate.o
-m_tbt_hs.o: m_sparsity_handling.o m_spin.o m_ts_io.o m_ts_io_ctype.o parallel.o
-m_tbt_hs.o: precision.o units.o
+m_tbt_hs.o: m_sparsity_handling.o m_ts_io.o m_ts_io_ctype.o parallel.o
+m_tbt_hs.o: precision.o spin_subs.o units.o
 m_tbt_hs.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
 m_tbt_hs.o: class_Sparsity.o files.o m_handle_sparse.o m_interpolate.o
-m_tbt_hs.o: m_sparsity_handling.o m_spin.o m_ts_io.o m_ts_io_ctype.o parallel.o
-m_tbt_hs.o: precision.o units.o
+m_tbt_hs.o: m_sparsity_handling.o m_ts_io.o m_ts_io_ctype.o parallel.o
+m_tbt_hs.o: precision.o spin_subs.o units.o
 m_tbt_kpoint.o: fdf_extra.o files.o find_kgrid.o intrinsic_missing.o
 m_tbt_kpoint.o: m_gauss_quad.o m_integrate.o m_os.o m_tbt_save.o m_ts_tdir.o
 m_tbt_kpoint.o: m_verbosity.o parallel.o precision.o units.o
@@ -830,6 +832,7 @@ m_timestamp.o: timestamp.o
 mtprng.o: m_uuid.o
 ncdf_io_m.o: ncdf_io.o
 sorted_search_m.o: sorted_search.o
+spin_subs_m.o: spin_subs.o
 t_spin.o: m_spin.o
 timer_options.o: timer.o
 version_info.o: version.o

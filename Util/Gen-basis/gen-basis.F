@@ -37,7 +37,8 @@ C
       use atom_options, only : get_atom_options, write_ion_plot_files
       use atm_types, only: species, species_info, nspecies
 
-      use m_spin,             only: init_spin, spin
+      use m_spin,             only: spin
+      use spin_subs_m,        only: init_spin
       
       use dftu_specs, only: read_dftu_specs
       use dftu_specs, only: dftu_proj_gen

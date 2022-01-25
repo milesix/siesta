@@ -154,7 +154,7 @@ OBJS =  automatic_cell.o atom_options.o \
         molecularmechanics.o zm_broyden_optim.o \
         cell_broyden_optim.o remove_intramol_pressure.o \
         m_ntm.o m_dipol.o m_kinetic.o m_rmaxh.o \
-        m_forces.o m_stress.o m_eo.o m_spin.o io_hsx.o m_fire.o setup_H0.o \
+        m_forces.o m_stress.o m_eo.o m_spin.o spin_subs.o io_hsx.o m_fire.o setup_H0.o \
         get_kpoints_scale.o get_target_stress.o fire_optim.o zm_fire_optim.o \
         cell_fire_optim.o m_fire_para.o m_fire_mixing.o write_raw_efs.o \
         pdos2g.o pdos2k.o pdos3g.o pdos3k.o spinorbit.o moments.o \
@@ -992,8 +992,7 @@ m_sparsity_handling.o: class_OrbitalDistribution.o class_SpData1D.o
 m_sparsity_handling.o: class_SpData2D.o class_Sparsity.o geom_helper.o
 m_sparsity_handling.o: intrinsic_missing.o m_interpolate.o m_region.o
 m_sparsity_handling.o: precision.o
-m_spin.o: alloc.o files.o get_kpoints_scale.o m_cite.o parallel.o precision.o
-m_spin.o: sys.o
+m_spin.o: precision.o
 m_stress.o: precision.o
 m_supercell.o: atom_graph.o class_OrbitalDistribution.o class_SpData2D.o
 m_supercell.o: parallel.o parallelsubs.o precision.o
@@ -1248,7 +1247,8 @@ radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radial.o: alloc.o interpolation.o precision.o xml.o
 read_options.o: files.o m_charge_add.o m_chess.o m_cite.o m_hartree_add.o
 read_options.o: m_mixing_scf.o m_spin.o m_target_stress.o parallel.o
-read_options.o: precision.o siesta_cml.o siesta_options.o sys.o units.o
+read_options.o: precision.o siesta_cml.o siesta_options.o spin_subs.o sys.o
+read_options.o: units.o
 read_xc_info.o: parallel.o precision.o sys.o
 redcel.o: parallel.o precision.o sys.o
 register_rfs.o: atm_types.o atmfuncs.o matel_registry.o parallel.o precision.o
@@ -1350,8 +1350,8 @@ siesta_init.o: m_spin.o m_steps.o m_supercell.o m_timer.o m_wallclock.o
 siesta_init.o: memory_log.o metaforce.o molecularmechanics.o object_debug.o
 siesta_init.o: parallel.o parallelsubs.o projected_DOS.o reinit_m.o runinfo_m.o
 siesta_init.o: siesta_cmlsubs.o siesta_dicts.o siesta_geom.o siesta_options.o
-siesta_init.o: sparse_matrices.o struct_init.o sys.o timer.o timestamp.o
-siesta_init.o: ts_init.o units.o version.o writewave.o zmatrix.o
+siesta_init.o: sparse_matrices.o spin_subs.o struct_init.o sys.o timer.o
+siesta_init.o: timestamp.o ts_init.o units.o version.o writewave.o zmatrix.o
 siesta_master.o: iopipes.o iosockets.o precision.o sys.o
 siesta_move.o: atomlist.o broyden_optim.o cell_broyden_optim.o
 siesta_move.o: cell_fire_optim.o dynamics.o fire_optim.o flook_siesta.o ioxv.o
@@ -1373,6 +1373,8 @@ sparse_matrices.o: class_SpData2D.o class_SpData2D.o class_Sparsity.o
 sparse_matrices.o: precision.o
 spatial.o: precision.o
 spher_harm.o: alloc.o precision.o sys.o
+spin_subs.o: alloc.o files.o get_kpoints_scale.o m_cite.o m_spin.o parallel.o
+spin_subs.o: precision.o sys.o
 spinorbit.o: atm_types.o atmfuncs.o atmparams.o basis_types.o m_mpi_utils.o
 spinorbit.o: parallel.o parallelsubs.o precision.o
 state_analysis.o: atomlist.o born_charge.o flook_siesta.o m_energies.o
@@ -1618,6 +1620,7 @@ neighbour.o: mneighb.o
 on_core.o: onmod.o
 on_main.o: onmod.o
 printmat.o: printmatrix.o
+spin_subs_m.o: spin_subs.o
 t_spin.o: m_spin.o
 timer_options.o: timer.o
 trialorbitalclass.o: m_trialorbitalclass.o

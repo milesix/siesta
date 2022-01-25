@@ -62,7 +62,7 @@ DEPS_GEN-BASIS=m_io.o io.o alloc.o basis_types.o precision.o  parallel.o \
           hamann.o files.o sys.o
 
 # Siesta kpoint-scale
-DEPS_GEN-BASIS += get_kpoints_scale.o siesta_geom.o
+DEPS_GEN-BASIS += spin_subs.o get_kpoints_scale.o siesta_geom.o
 
 GEN-BASIS_LOCAL_OBJS=gen-basis.o handlers.o 
 OBJS_GEN-BASIS=$(DEPS_GEN-BASIS) $(GEN-BASIS_LOCAL_OBJS)
@@ -75,9 +75,6 @@ DEPS_IONCAT=m_getopts.o basis_types.o precision.o  parallel.o \
           atom.o atmfuncs.o spher_harm.o interpolation.o arw.o \
           xml.o m_walltime.o dftu_specs.o\
           hamann.o m_cite.o version.o posix_calls.o units.o files.o sys.o $(SYSOBJ)
-
-# Siesta kpoint-scale
-DEPS_IONCAT += get_kpoints_scale.o siesta_geom.o
 
 IONCAT_LOCAL_OBJS=ioncat.o handlers.o 
 OBJS_IONCAT=$(DEPS_IONCAT) $(IONCAT_LOCAL_OBJS)
@@ -185,10 +182,8 @@ m_filter.o: bessph.o precision.o radfft.o sys.o
 m_filter.o: bessph.o precision.o radfft.o sys.o
 m_io.o: sys.o
 m_io.o: sys.o
-m_spin.o: alloc.o files.o get_kpoints_scale.o m_cite.o parallel.o precision.o
-m_spin.o: sys.o
-m_spin.o: alloc.o files.o get_kpoints_scale.o m_cite.o parallel.o precision.o
-m_spin.o: sys.o
+m_spin.o: precision.o
+m_spin.o: precision.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radial.o: alloc.o interpolation.o precision.o xml.o
@@ -199,14 +194,18 @@ siesta_geom.o: precision.o
 siesta_geom.o: precision.o
 spher_harm.o: alloc.o precision.o sys.o
 spher_harm.o: alloc.o precision.o sys.o
+spin_subs.o: alloc.o files.o get_kpoints_scale.o m_cite.o m_spin.o parallel.o
+spin_subs.o: precision.o sys.o
+spin_subs.o: alloc.o files.o get_kpoints_scale.o m_cite.o m_spin.o parallel.o
+spin_subs.o: precision.o sys.o
 units.o: precision.o
 units.o: precision.o
 xml.o: precision.o
 xml.o: precision.o
 gen-basis.o: atm_types.o atom.o atom_options.o basis_io.o basis_specs.o
-gen-basis.o: basis_types.o chemical.o dftu_specs.o m_spin.o sys.o
+gen-basis.o: basis_types.o chemical.o dftu_specs.o m_spin.o spin_subs.o sys.o
 gen-basis.o: atm_types.o atom.o atom_options.o basis_io.o basis_specs.o
-gen-basis.o: basis_types.o chemical.o dftu_specs.o m_spin.o sys.o
+gen-basis.o: basis_types.o chemical.o dftu_specs.o m_spin.o spin_subs.o sys.o
 ioncat.o: atm_types.o atmfuncs.o basis_io.o m_getopts.o precision.o
 ioncat.o: atm_types.o atmfuncs.o basis_io.o m_getopts.o precision.o
 aux_proj.o: atom.o
@@ -217,5 +216,6 @@ m_bessph.o: bessph.o
 m_get_kpoints_scale.o: get_kpoints_scale.o
 m_hamann.o: hamann.o
 m_radfft.o: radfft.o
+spin_subs_m.o: spin_subs.o
 t_spin.o: m_spin.o
 version_info.o: version.o
