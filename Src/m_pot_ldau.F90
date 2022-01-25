@@ -164,6 +164,62 @@
 !! \f$ \rho^{\sigma}_{\mu \nu} = \langle \phi^{\mu} \vert \hat{\rho}^{\sigma} \vert 
 !! \phi^{\nu} \rangle \f$.
 !!
+!! The double counting energy is taken from Eq.(13) of Ref. \cite Bultmark-09,
+!! that considers the possibility of non-collinear spins
+!!
+!! \f{eqnarray*}{
+!!   E_{\rm dc}^{\rm FLL} = \frac{1}{4} 
+!!     \left[ 2 U n (n-1) -2J n \left( \frac{n}{2} -1 \right) - J \vec{m} \cdot \vec{m} \right],
+!! \f}
+!!
+!! where \f$ n \f$ is the total electronic charge in the correlated shell,
+!! and \f$ \vec{m} \f$ the magnetization contribution.
+!! In the case of non-collinear spin
+!!
+!! \f{eqnarray*}{
+!!    n^{I} & = \sum_{m} \left( n_{mm}^{I \uparrow \uparrow} + n_{mm}^{I \downarrow \downarrow} \right),  
+!!    \nonumber \\
+!!    \vec{m}^{I} & = \left( 
+!!    \sum_{m} \left( n_{mm}^{I \uparrow \downarrow} + n_{mm}^{I \downarrow \uparrow} \right),
+!!    i \sum_{m} \left( n_{mm}^{I \uparrow \downarrow} - n_{mm}^{I \downarrow \uparrow} \right),
+!!    \sum_{m} \left( n_{mm}^{I \uparrow \uparrow} - n_{mm}^{I \downarrow \downarrow} \right).
+!!    \right)
+!! \f}
+!!
+!! Taking the functional derivatives with respect the density matrix, the
+!! double counting energy contributes with the following potential matrix elements
+!!
+!! \f{eqnarray*}{
+!! V^{\rm dc, \uparrow \uparrow}_{\nu \mu}=& 
+!! - \sum_{I} \sum_{m} U^{I} \left(S_{m \mu}^{I} S^{I}_{\nu m} \right) \left( n^{I} - \frac{1}{2} \right)  
+!! + \sum_{I} \sum_{m} J^{I} \left(S_{m \mu}^{I} S^{I}_{\nu m} \right) 
+!!  \left( \sum_{m^{\prime}} \sum_{\mu^{\prime} \nu^{\prime}} \rho_{\mu^\prime \nu^\prime}^{\uparrow \uparrow} 
+!!  S^{I}_{m^\prime \mu^\prime} S^{I}_{\nu^\prime m^\prime} - \frac{1}{2}   \right)
+!! \f}
+!!
+!! \f{eqnarray*}{
+!! V^{\rm dc, \downarrow \downarrow}_{\nu \mu}=& 
+!! - \sum_{I} \sum_{m} U^{I} \left(S_{m \mu}^{I} S^{I}_{\nu m} \right) \left( n^{I} - \frac{1}{2} \right)  
+!! + \sum_{I} \sum_{m} J^{I} \left(S_{m \mu}^{I} S^{I}_{\nu m} \right) 
+!!  \left( \sum_{m^{\prime}} \sum_{\mu^{\prime} \nu^{\prime}} \rho_{\mu^\prime \nu^\prime}^{\downarrow \downarrow} 
+!!  S^{I}_{m^\prime \mu^\prime} S^{I}_{\nu^\prime m^\prime} - \frac{1}{2}   \right)
+!! \f}
+!!
+!! \f{eqnarray*}{
+!! V^{\rm dc, \uparrow \downarrow}_{\nu \mu}=& 
+!! + \sum_{I} \sum_{m} J^{I} \left(S_{m \mu}^{I} S^{I}_{\nu m} \right) 
+!!  \left( \sum_{m^{\prime}} \sum_{\mu^{\prime} \nu^{\prime}} \rho_{\mu^\prime \nu^\prime}^{\uparrow \downarrow} 
+!!  S^{I}_{m^\prime \mu^\prime} S^{I}_{\nu^\prime m^\prime}  \right)
+!! \f}
+!!
+!! \f{eqnarray*}{
+!! V^{\rm dc, \downarrow \uparrow}_{\nu \mu}=& 
+!! + \sum_{I} \sum_{m} J^{I} \left(S_{m \mu}^{I} S^{I}_{\nu m} \right) 
+!!  \left( \sum_{m^{\prime}} \sum_{\mu^{\prime} \nu^{\prime}} \rho_{\mu^\prime \nu^\prime}^{\downarrow \uparrow} 
+!!  S^{I}_{m^\prime \mu^\prime} S^{I}_{\nu^\prime m^\prime}  \right)
+!! \f}
+!!
+!! 
 
 module m_pot_ldau
 
