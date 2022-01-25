@@ -284,7 +284,7 @@ contains
           gk_results%Jzloc(a)= gk_results%Jzloc(a) + &
                & 2.d0 * dble(tc_v(igp) * conjg(u_g(ig,a))) ! Mind the factor of 2
 
-          write(700+a, *) gk_results%Jzloc(a) !debug
+          ! write(700+a, *) gk_results%Jzloc(a) !debug
        end do                                              ! Summation over G>, Aris M. notes (3.8)
        if (gstart_vmd == 2) then
           gk_results%Jzloc(a) = gk_results%Jzloc(a) + dble(tc_v(1) * conjg(u_g(1,a)))

@@ -561,8 +561,6 @@ clean:
 
 
 # DO NOT DELETE THIS LINE - used by make depend
-Fstack.o: basic_type.inc
-Pair.o: basic_type.inc
 alloc_error_report.o: parallel.o
 alloc_memory_event.o: memory_log.o
 amn.o: alloc.o atmfuncs.o atomlist.o m_orderbands.o m_trialorbitalclass.o
@@ -621,15 +619,9 @@ chkdim.o: sys.o
 chkgmx.o: cellsubs.o minvec.o precision.o sys.o
 class_Data1D.o: class_Data1D.T90 basic_type.inc
 class_Data1D.o: alloc.o
-class_Data1D.o: basic_type.inc
-class_Data1D.o: alloc.o
 class_Data2D.o: class_Data2D.T90 basic_type.inc
 class_Data2D.o: alloc.o
-class_Data2D.o: basic_type.inc
-class_Data2D.o: alloc.o
 class_Data3D.o: class_Data3D.T90 basic_type.inc
-class_Data3D.o: alloc.o
-class_Data3D.o: basic_type.inc
 class_Data3D.o: alloc.o
 class_Distribution.o: basic_type.inc
 class_Fstack_Data1D.o: Fstack.T90 basic_type.inc
@@ -652,23 +644,15 @@ class_Pair_SpData1D.o: class_SpData1D.o class_SpData1D.o
 class_SpData1D.o: class_SpData1D.T90 basic_type.inc
 class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
 class_SpData1D.o: class_Data1D.o class_OrbitalDistribution.o class_Sparsity.o
-class_SpData1D.o: basic_type.inc
-class_SpData1D.o: class_OrbitalDistribution.o class_Sparsity.o
 class_SpData2D.o: class_SpData2D.T90 basic_type.inc
 class_SpData2D.o: class_Data2D.o class_Data2D.o class_Data2D.o
-class_SpData2D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData2D.o: basic_type.inc
 class_SpData2D.o: class_OrbitalDistribution.o class_Sparsity.o
 class_SpData3D.o: class_SpData3D.T90 basic_type.inc
 class_SpData3D.o: class_Data3D.o class_Data3D.o class_Data3D.o
 class_SpData3D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData3D.o: basic_type.inc
-class_SpData3D.o: class_OrbitalDistribution.o class_Sparsity.o
 class_Sparsity.o: basic_type.inc
 class_Sparsity.o: alloc.o
 class_TriMat.o: class_TriMat.T90 basic_type.inc
-class_TriMat.o: alloc.o intrinsic_missing.o
-class_TriMat.o: basic_type.inc
 class_TriMat.o: alloc.o intrinsic_missing.o
 cli_m.o: sys.o
 coceri.o: files.o periodic_table.o precision.o units.o
@@ -1305,10 +1289,10 @@ setup_hamiltonian.o: siesta_options.o sparse_matrices.o sys.o
 setup_ordern_indexes.o: alloc.o domain_decom.o parallel.o spatial.o
 shaper.o: atmfuncs.o mneighb.o precision.o
 show_distribution.o: atomlist.o parallel.o parallelsubs.o siesta_geom.o sys.o
-siesta.o: alloc.o extrae_module.o m_mpi_utils.o m_steps.o m_ts_global_vars.o
-siesta.o: parallel.o siesta_analysis.o siesta_end.o siesta_forces.o
-siesta.o: siesta_init.o siesta_move.o siesta_options.o siesta_tddft.o sys.o
-siesta.o: thermal_flux.o
+siesta.o: alloc.o extrae_module.o m_io.o m_mpi_utils.o m_steps.o
+siesta.o: m_ts_global_vars.o parallel.o siesta_analysis.o siesta_end.o
+siesta.o: siesta_forces.o siesta_geom.o siesta_init.o siesta_move.o
+siesta.o: siesta_options.o siesta_tddft.o sys.o thermal_flux.o
 siesta2wannier90.o: files.o m_digest_nnkp.o m_spin.o m_trialorbitalclass.o
 siesta2wannier90.o: parallel.o precision.o siesta_options.o sys.o
 siesta_analysis.o: alloc.o atomlist.o bands.o basis_enthalpy.o dhscf.o files.o
@@ -1475,181 +1459,181 @@ zm_broyden_optim.o: zmatrix.o
 zm_fire_optim.o: m_fire.o parallel.o precision.o siesta_options.o units.o
 zm_fire_optim.o: zmatrix.o
 zmatrix.o: alloc.o m_cell.o parallel.o precision.o siesta_geom.o sys.o units.o
-aux_proj.o: atom.o
-band.o: bands.o
-bloch_unfold_m.o: bloch_unfold.o
-class_ctrimat.o: class_TriMat.o
-class_ddata1d.o: class_Data1D.o
-class_ddata2d.o: class_Data2D.o
-class_ddata3d.o: class_Data3D.o
-class_dspdata1d.o: class_SpData1D.o
-class_dspdata2d.o: class_SpData2D.o
-class_dspdata3d.o: class_SpData3D.o
-class_dtrimat.o: class_TriMat.o
-class_fstack_ddata1d.o: class_Fstack_Data1D.o
-class_fstack_gdata1d.o: class_Fstack_Data1D.o
-class_fstack_pair_ddata1d.o: class_Fstack_Pair_Data1D.o
-class_fstack_pair_dspdata1d.o: class_Fstack_Pair_SpData1D.o
-class_fstack_pair_gdata1d.o: class_Fstack_Pair_Data1D.o
-class_fstack_pair_geometry_dspdata2d.o: class_Fstack_Pair_Geometry_SpData2D.o
-class_fstack_pair_gspdata1d.o: class_Fstack_Pair_SpData1D.o
-class_fstack_pair_sdata1d.o: class_Fstack_Pair_Data1D.o
-class_fstack_pair_sspdata1d.o: class_Fstack_Pair_SpData1D.o
-class_fstack_sdata1d.o: class_Fstack_Data1D.o
-class_gdata1d.o: class_Data1D.o
-class_gspdata1d.o: class_SpData1D.o
-class_idata1d.o: class_Data1D.o
-class_idata2d.o: class_Data2D.o
-class_idata3d.o: class_Data3D.o
-class_ispdata1d.o: class_SpData1D.o
-class_ispdata2d.o: class_SpData2D.o
-class_ispdata3d.o: class_SpData3D.o
-class_itrimat.o: class_TriMat.o
-class_ldata1d.o: class_Data1D.o
-class_lspdata1d.o: class_SpData1D.o
-class_ltrimat.o: class_TriMat.o
-class_pair_ddata1d.o: class_Pair_Data1D.o
-class_pair_dspdata1d.o: class_Pair_SpData1D.o
-class_pair_gdata1d.o: class_Pair_Data1D.o
-class_pair_geometry_dspdata2d.o: class_Pair_Geometry_SpData2D.o
-class_pair_gspdata1d.o: class_Pair_SpData1D.o
-class_pair_sdata1d.o: class_Pair_Data1D.o
-class_pair_sspdata1d.o: class_Pair_SpData1D.o
-class_sdata1d.o: class_Data1D.o
-class_sspdata1d.o: class_SpData1D.o
-class_strimat.o: class_TriMat.o
-class_zdata1d.o: class_Data1D.o
-class_zdata2d.o: class_Data2D.o
-class_zdata3d.o: class_Data3D.o
-class_zspdata1d.o: class_SpData1D.o
-class_zspdata2d.o: class_SpData2D.o
-class_zspdata3d.o: class_SpData3D.o
-class_ztrimat.o: class_TriMat.o
-derivation_routines.o: thermal_deriv.o
-dipole_m.o: dipole.o
-f90sockets.o: fsockets.o
-fsiesta.o: fsiesta_sockets.o
-gpfa_core_dp.o: m_fft_gpfa.o
-gpfa_core_sp.o: m_fft_gpfa.o
-gpfa_fft.o: m_fft_gpfa.o
-iofa_m.o: iofa.o
-kpoint_dos_m.o: kpoint_dos.o
-kpoint_ldos_m.o: kpoint_ldos.o
-kpoint_pdos_m.o: kpoint_pdos.o
-kpoint_scf_m.o: kpoint_scf.o
-kpoint_t_m.o: kpoint_t.o
-listsc_module.o: listsc.o
-m_bessph.o: bessph.o
-m_born_charge.o: born_charge.o
-m_broyden_optim.o: broyden_optim.o
-m_cell_broyden_optim.o: cell_broyden_optim.o
-m_cell_fire_optim.o: cell_fire_optim.o
-m_cgwf.o: cgwf.o
-m_chempot.o: chempot.o
-m_chkgmx.o: chkgmx.o
-m_compute_dm.o: compute_dm.o
-m_compute_ebs_shift.o: compute_ebs_shift.o
-m_compute_energies.o: compute_energies.o
-m_compute_max_diff.o: compute_max_diff.o
-m_conjgr.o: conjgr.o
-m_conjgr_old.o: conjgr_old.o
-m_delk.o: delk.o
-m_denmat.o: denmat.o
-m_dfscf.o: dfscf.o
-m_dftu.o: dftu.o
-m_dhscf.o: dhscf.o
-m_diag.o: diag.o
-m_diag_option.o: diag_option.o
-m_diagon.o: diagon.o
-m_dm_charge.o: dm_charge.o
-m_dnaefs.o: dnaefs.o
-m_doping_uniform.o: doping_uniform.o
-m_dynamics.o: dynamics.o
-m_eandg.o: egandd.o
-m_ener3.o: ener3.o
-m_errorf.o: errorf.o
-m_fermid.o: fermid.o
-m_fft.o: fft.o
-m_final_h_f_stress.o: final_H_f_stress.o
-m_find_kgrid.o: find_kgrid.o
-m_fire_optim.o: fire_optim.o
-m_forhar.o: forhar.o
-m_get_kpoints_scale.o: get_kpoints_scale.o
-m_gradient.o: gradient.o
-m_grdsam.o: grdsam.o
-m_hamann.o: hamann.o
-m_hsparse.o: hsparse.o
-m_intramol_pressure.o: remove_intramol_pressure.o
-m_iotdxv.o: iotdxv.o
-m_ioxv.o: ioxv.o
-m_kinefsm.o: kinefsm.o
-m_ksv.o: ksv.o
-m_ksvinit.o: ksvinit.o
-m_linpack.o: linpack.o
-m_local_dos.o: local_DOS.o
-m_matel_registry.o: matel_registry.o
-m_minvec.o: minvec.o
-m_mixer.o: mixer.o
-m_naefs.o: naefs.o
-m_nlefsm.o: nlefsm.o
-m_norm.o: compute_norm.o
-m_normalize_dm.o: normalize_dm.o
-m_object_debug.o: object_debug.o
-m_on_subs.o: on_subs.o
-m_ordern.o: ordern.o
-m_overfsm.o: overfsm.o
-m_overlap.o: overlap.o
-m_pexsi_solver.o: m_pexsi_driver.o
-m_post_scf_work.o: post_scf_work.o
-m_projected_dos.o: projected_DOS.o
-m_proximity_check.o: proximity_check.o
-m_radfft.o: radfft.o
-m_restruct_spdata2d.o: restructSpData2D.o
-m_rhofft.o: rhofft.o
-m_rhoofd.o: rhoofd.o
-m_rhoofdsp.o: rhoofdsp.o
-m_rmatrix.o: rmatrix.o
-m_rusage.o: rusage.o
-m_sankey_change_basis.o: sankey_change_basis.o
-m_save_density_matrix.o: save_density_matrix.o
-m_scf_options.o: m_options.o
-m_scfconvergence_test.o: scfconvergence_test.o
-m_semicore_info_froyen.o: semicore_info_froyen.o
-m_setup_h0.o: setup_H0.o
-m_setup_hamiltonian.o: setup_hamiltonian.o
-m_siesta2wannier90.o: siesta2wannier90.o
-m_siesta_analysis.o: siesta_analysis.o
-m_siesta_end.o: siesta_end.o
-m_siesta_forces.o: siesta_forces.o
-m_siesta_init.o: siesta_init.o
-m_siesta_move.o: siesta_move.o
-m_siesta_tddft.o: siesta_tddft.o
-m_state_analysis.o: state_analysis.o
-m_state_init.o: state_init.o
-m_struct_init.o: struct_init.o
-m_thermal_flux_settings.o: thermal_flux_data.o
-m_timer_tree.o: timer_tree.o
-m_timestamp.o: timestamp.o
-m_ts_init.o: ts_init.o
-m_vmat.o: vmat.o
-m_vmatsp.o: vmatsp.o
-m_zm_broyden_optim.o: zm_broyden_optim.o
-m_zm_fire_optim.o: zm_fire_optim.o
-matdiagon.o: m_matdiag.o
-matswinversion.o: m_matswinvers.o
-mtprng.o: m_uuid.o
-neighbour.o: mneighb.o
-on_core.o: onmod.o
-on_main.o: onmod.o
-printmat.o: printmatrix.o
-t_spin.o: m_spin.o
-timer_options.o: timer.o
-trialorbitalclass.o: m_trialorbitalclass.o
-ts_charge_m.o: ts_charge.o
-ts_dq_m.o: ts_dq.o
-ts_energies_m.o: ts_energies.o
-ts_kpoint_scf_m.o: ts_kpoint_scf.o
-version_info.o: version.o
-write_subs_energies.o: write_subs.o
-write_subs_positions.o: write_subs.o
-write_subs_pressure.o: write_subs.o
+aux_proj.mod: atom.o
+band.mod: bands.o
+bloch_unfold_m.mod: bloch_unfold.o
+class_ctrimat.mod: class_TriMat.o
+class_ddata1d.mod: class_Data1D.o
+class_ddata2d.mod: class_Data2D.o
+class_ddata3d.mod: class_Data3D.o
+class_dspdata1d.mod: class_SpData1D.o
+class_dspdata2d.mod: class_SpData2D.o
+class_dspdata3d.mod: class_SpData3D.o
+class_dtrimat.mod: class_TriMat.o
+class_fstack_ddata1d.mod: class_Fstack_Data1D.o
+class_fstack_gdata1d.mod: class_Fstack_Data1D.o
+class_fstack_pair_ddata1d.mod: class_Fstack_Pair_Data1D.o
+class_fstack_pair_dspdata1d.mod: class_Fstack_Pair_SpData1D.o
+class_fstack_pair_gdata1d.mod: class_Fstack_Pair_Data1D.o
+class_fstack_pair_geometry_dspdata2d.mod: class_Fstack_Pair_Geometry_SpData2D.o
+class_fstack_pair_gspdata1d.mod: class_Fstack_Pair_SpData1D.o
+class_fstack_pair_sdata1d.mod: class_Fstack_Pair_Data1D.o
+class_fstack_pair_sspdata1d.mod: class_Fstack_Pair_SpData1D.o
+class_fstack_sdata1d.mod: class_Fstack_Data1D.o
+class_gdata1d.mod: class_Data1D.o
+class_gspdata1d.mod: class_SpData1D.o
+class_idata1d.mod: class_Data1D.o
+class_idata2d.mod: class_Data2D.o
+class_idata3d.mod: class_Data3D.o
+class_ispdata1d.mod: class_SpData1D.o
+class_ispdata2d.mod: class_SpData2D.o
+class_ispdata3d.mod: class_SpData3D.o
+class_itrimat.mod: class_TriMat.o
+class_ldata1d.mod: class_Data1D.o
+class_lspdata1d.mod: class_SpData1D.o
+class_ltrimat.mod: class_TriMat.o
+class_pair_ddata1d.mod: class_Pair_Data1D.o
+class_pair_dspdata1d.mod: class_Pair_SpData1D.o
+class_pair_gdata1d.mod: class_Pair_Data1D.o
+class_pair_geometry_dspdata2d.mod: class_Pair_Geometry_SpData2D.o
+class_pair_gspdata1d.mod: class_Pair_SpData1D.o
+class_pair_sdata1d.mod: class_Pair_Data1D.o
+class_pair_sspdata1d.mod: class_Pair_SpData1D.o
+class_sdata1d.mod: class_Data1D.o
+class_sspdata1d.mod: class_SpData1D.o
+class_strimat.mod: class_TriMat.o
+class_zdata1d.mod: class_Data1D.o
+class_zdata2d.mod: class_Data2D.o
+class_zdata3d.mod: class_Data3D.o
+class_zspdata1d.mod: class_SpData1D.o
+class_zspdata2d.mod: class_SpData2D.o
+class_zspdata3d.mod: class_SpData3D.o
+class_ztrimat.mod: class_TriMat.o
+derivation_routines.mod: thermal_deriv.o
+dipole_m.mod: dipole.o
+f90sockets.mod: fsockets.o
+fsiesta.mod: fsiesta_sockets.o
+gpfa_core_dp.mod: m_fft_gpfa.o
+gpfa_core_sp.mod: m_fft_gpfa.o
+gpfa_fft.mod: m_fft_gpfa.o
+iofa_m.mod: iofa.o
+kpoint_dos_m.mod: kpoint_dos.o
+kpoint_ldos_m.mod: kpoint_ldos.o
+kpoint_pdos_m.mod: kpoint_pdos.o
+kpoint_scf_m.mod: kpoint_scf.o
+kpoint_t_m.mod: kpoint_t.o
+listsc_module.mod: listsc.o
+m_bessph.mod: bessph.o
+m_born_charge.mod: born_charge.o
+m_broyden_optim.mod: broyden_optim.o
+m_cell_broyden_optim.mod: cell_broyden_optim.o
+m_cell_fire_optim.mod: cell_fire_optim.o
+m_cgwf.mod: cgwf.o
+m_chempot.mod: chempot.o
+m_chkgmx.mod: chkgmx.o
+m_compute_dm.mod: compute_dm.o
+m_compute_ebs_shift.mod: compute_ebs_shift.o
+m_compute_energies.mod: compute_energies.o
+m_compute_max_diff.mod: compute_max_diff.o
+m_conjgr.mod: conjgr.o
+m_conjgr_old.mod: conjgr_old.o
+m_delk.mod: delk.o
+m_denmat.mod: denmat.o
+m_dfscf.mod: dfscf.o
+m_dftu.mod: dftu.o
+m_dhscf.mod: dhscf.o
+m_diag.mod: diag.o
+m_diag_option.mod: diag_option.o
+m_diagon.mod: diagon.o
+m_dm_charge.mod: dm_charge.o
+m_dnaefs.mod: dnaefs.o
+m_doping_uniform.mod: doping_uniform.o
+m_dynamics.mod: dynamics.o
+m_eandg.mod: egandd.o
+m_ener3.mod: ener3.o
+m_errorf.mod: errorf.o
+m_fermid.mod: fermid.o
+m_fft.mod: fft.o
+m_final_h_f_stress.mod: final_H_f_stress.o
+m_find_kgrid.mod: find_kgrid.o
+m_fire_optim.mod: fire_optim.o
+m_forhar.mod: forhar.o
+m_get_kpoints_scale.mod: get_kpoints_scale.o
+m_gradient.mod: gradient.o
+m_grdsam.mod: grdsam.o
+m_hamann.mod: hamann.o
+m_hsparse.mod: hsparse.o
+m_intramol_pressure.mod: remove_intramol_pressure.o
+m_iotdxv.mod: iotdxv.o
+m_ioxv.mod: ioxv.o
+m_kinefsm.mod: kinefsm.o
+m_ksv.mod: ksv.o
+m_ksvinit.mod: ksvinit.o
+m_linpack.mod: linpack.o
+m_local_dos.mod: local_DOS.o
+m_matel_registry.mod: matel_registry.o
+m_minvec.mod: minvec.o
+m_mixer.mod: mixer.o
+m_naefs.mod: naefs.o
+m_nlefsm.mod: nlefsm.o
+m_norm.mod: compute_norm.o
+m_normalize_dm.mod: normalize_dm.o
+m_object_debug.mod: object_debug.o
+m_on_subs.mod: on_subs.o
+m_ordern.mod: ordern.o
+m_overfsm.mod: overfsm.o
+m_overlap.mod: overlap.o
+m_pexsi_solver.mod: m_pexsi_driver.o
+m_post_scf_work.mod: post_scf_work.o
+m_projected_dos.mod: projected_DOS.o
+m_proximity_check.mod: proximity_check.o
+m_radfft.mod: radfft.o
+m_restruct_spdata2d.mod: restructSpData2D.o
+m_rhofft.mod: rhofft.o
+m_rhoofd.mod: rhoofd.o
+m_rhoofdsp.mod: rhoofdsp.o
+m_rmatrix.mod: rmatrix.o
+m_rusage.mod: rusage.o
+m_sankey_change_basis.mod: sankey_change_basis.o
+m_save_density_matrix.mod: save_density_matrix.o
+m_scf_options.mod: m_options.o
+m_scfconvergence_test.mod: scfconvergence_test.o
+m_semicore_info_froyen.mod: semicore_info_froyen.o
+m_setup_h0.mod: setup_H0.o
+m_setup_hamiltonian.mod: setup_hamiltonian.o
+m_siesta2wannier90.mod: siesta2wannier90.o
+m_siesta_analysis.mod: siesta_analysis.o
+m_siesta_end.mod: siesta_end.o
+m_siesta_forces.mod: siesta_forces.o
+m_siesta_init.mod: siesta_init.o
+m_siesta_move.mod: siesta_move.o
+m_siesta_tddft.mod: siesta_tddft.o
+m_state_analysis.mod: state_analysis.o
+m_state_init.mod: state_init.o
+m_struct_init.mod: struct_init.o
+m_thermal_flux_settings.mod: thermal_flux_data.o
+m_timer_tree.mod: timer_tree.o
+m_timestamp.mod: timestamp.o
+m_ts_init.mod: ts_init.o
+m_vmat.mod: vmat.o
+m_vmatsp.mod: vmatsp.o
+m_zm_broyden_optim.mod: zm_broyden_optim.o
+m_zm_fire_optim.mod: zm_fire_optim.o
+matdiagon.mod: m_matdiag.o
+matswinversion.mod: m_matswinvers.o
+mtprng.mod: m_uuid.o
+neighbour.mod: mneighb.o
+on_core.mod: onmod.o
+on_main.mod: onmod.o
+printmat.mod: printmatrix.o
+t_spin.mod: m_spin.o
+timer_options.mod: timer.o
+trialorbitalclass.mod: m_trialorbitalclass.o
+ts_charge_m.mod: ts_charge.o
+ts_dq_m.mod: ts_dq.o
+ts_energies_m.mod: ts_energies.o
+ts_kpoint_scf_m.mod: ts_kpoint_scf.o
+version_info.mod: version.o
+write_subs_energies.mod: write_subs.o
+write_subs_positions.mod: write_subs.o
+write_subs_pressure.mod: write_subs.o
