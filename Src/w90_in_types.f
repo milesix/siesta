@@ -118,9 +118,16 @@
                                        ! Write lattice vectors, 
                                        !   Hamiltonian, and position
                                        !   operator in WF basis
+          logical                :: write_unk = .false.
+                                       ! Write the UNK matrices
           type(trialorbital), allocatable :: proj_w90_in(:)
                                        ! Initial guess for the localized 
                                        !   functions
+          real(dp)               :: threshold = 1.d-6
+                                 ! Threshold for the real part of the 
+                                 !   coefficients of a Wannier in a basis 
+                                 !   of NAO to compute the contribution to 
+                                 !   the tight-binding matrix elements
       end type w90_in_manifold_t
 
       type(w90_in_manifold_t), public,

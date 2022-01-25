@@ -154,13 +154,13 @@ MD.UseSaveCG           .false.      # Instructs to read the conjugate-gradient
 #
 # Variables related with the Wannierization of the manifolds
 #
-%block WannierManifolds
+%block Wannier.Manifolds
   first
   second
   third
 %endblock
 
-%block WannierManifold.first
+%block Wannier.Manifold.first
   # Indices of the initial and final band of the manifold
   bands 12 20
   # Indices of the orbitals that will be used as localized trial orbitals
@@ -176,7 +176,7 @@ MD.UseSaveCG           .false.      # Instructs to read the conjugate-gradient
   write_tb true
 %endblock
 
-%block WannierManifold.second
+%block Wannier.Manifold.second
   bands 21 23
   trial-orbitals [24 25 27]
   spreading.nitt 0
@@ -186,7 +186,7 @@ MD.UseSaveCG           .false.      # Instructs to read the conjugate-gradient
   write_tb true
 %endblock
 
-%block WannierManifold.third
+%block Wannier.Manifold.third
   bands 12 23
   spreading.nitt 0
   trial-orbitals 24 25 27
@@ -199,9 +199,10 @@ MD.UseSaveCG           .false.      # Instructs to read the conjugate-gradient
   write_tb true
 %endblock
 
+Wannier.Manifolds.Unk  .false.
+
 Wannier.k [4 4 4]
 
-Wannier90_in_SIESTA_compute_unk  .false.
 
 #  *************************************************************************
 #                     Input variables for Denchar

@@ -34,19 +34,14 @@ module m_w90_in_siesta
                                           ! Number of bands manifolds 
                                           !  that will be considered
                                           !  for Wannier transformation
-  use siesta_options, only: index_perturbed_manifold
+  use siesta_options, only: w90_index_perturbed_manifold
                                           ! Index of the manifold that will
                                           !   be perturbed with an external  
                                           !   chemical potential
-  use siesta_options, only: r_between_manifolds     
+  use siesta_options, only: w90_r_between_manifolds
                                           ! Will the position operator matrix
                                           !  elements be computed between bands
                                           !  of different manifolds
-  use siesta_options, only: w90_in_siesta_compute_unk
-                                          ! Shall SIESTA compute the files 
-                                          !   which contains the periodic part 
-                                          !   of the wave function in the 
-                                          !   unit cell on a grid
   use parallel,       only: Node          ! Local processor number
   use parallel,       only: Nodes         ! Total number of processors in a 
                                           !  parallel run
@@ -425,7 +420,20 @@ module m_w90_in_siesta
 !   Read the WannierManifolds block
 !   First check whether the block is present in the fdf file.
 !   If it is not present, do nothing
-    if (.not. fdf_block('WannierManifolds',bfdf)) RETURN
+    if (.not. fdf_block('Wannier.Manifolds',bfdf)) RETURN
+
+    ! Threshold for the real part of the 
+    ! coefficients of a Wannier in a basis 
+    ! of NAO to compute the contribution to 
+    ! the tight-binding matrix elements
+    manifold_bands_w90_in(:)%threshold = &
+        fdf_get('Wannier.Manifolds.Threshold', 1.d-6)
+
+    ! Shall SIESTA compute the files which contain
+    ! the periodic part of a Bloch function 
+    ! in the unit cell on a grid
+    manifold_bands_w90_in(:)%write_unk = &
+        fdf_get('Wannier.Manifolds.Unk', .false.)
 
     ! Read the content of the block, line by line
     index_manifold = 0
@@ -446,7 +454,7 @@ module m_w90_in_siesta
 !   to allocate the variable.
     nullify( chempotwann_val )
     call re_alloc( chempotwann_val,                              &
- &                 1, manifold_bands_w90_in(index_perturbed_manifold)%numbands_w90_in,  &
+ &                 1, manifold_bands_w90_in(w90_index_perturbed_manifold)%numbands_w90_in,  &
  &                 1, spin%H,                                    & 
  &                 name='chempotwann_val',                       &
  &                 routine='read_w90_in_siesta_specs')
@@ -455,7 +463,7 @@ module m_w90_in_siesta
 !   Read the chemical potential associated with a given Wannier function
 !   First check whether the block is present in the fdf file.
 !   If it is not present, do nothing
-    if (.not. fdf_block('ChemicalPotentialWannier',bfdf)) RETURN
+    if (.not. fdf_block('Wannier.ChemicalPotential',bfdf)) RETURN
 
 !   If the block with the chemical potentials is present,
 !   set to true the flag to compute the shifts of the matrix elements
@@ -466,7 +474,7 @@ module m_w90_in_siesta
     do while(fdf_bline(bfdf, pline))       
       if( spin%H .eq. 1) then
         if (.not. fdf_bmatch(pline,'ivn')) &   ! We expect that the first line
- &        call die('Wrong format in ChemicalPotentialWannier')
+ &        call die('Wrong format in Wannier.ChemicalPotential')
       elseif( spin%H .eq. 2) then
         if (.not. fdf_bmatch(pline,'ivvn')) &  ! We expect that the first line
  &        call die('Wrong format in ChemicalPotentialWannier')
@@ -512,7 +520,7 @@ module m_w90_in_siesta
                                                      !  block-cyclic distributions
 #endif
 
-      if ( .not. fdf_block('WannierManifold.'//trim(name), bfdf) ) then
+      if ( .not. fdf_block('Wannier.Manifold.'//trim(name), bfdf) ) then
         call die("WannierManifold."//trim(name)//" could not be found &
             &, this name was found in WannierManifolds and should exist!")
       end if
@@ -576,7 +584,7 @@ module m_w90_in_siesta
 
           w90man%num_iter = fdf_bintegers(pline, 1)
 
-        else if ( leqi(key, "wannier_plot") ) then
+        else if ( leqi(key, "wannier_plot") .or. leqi(key, "wannier-plot") ) then
           key_found(4) = .true.
 
           w90man%wannier_plot = .true.
@@ -589,7 +597,7 @@ module m_w90_in_siesta
             w90man%wannier_plot_supercell(:) = fdf_bintegers(pline, 1)
           end if
 
-        else if ( leqi(key, "fermi_surface_plot") ) then
+        else if ( leqi(key, "fermi_surface_plot") .or. leqi(key, "fermi-surface-plot") ) then
           key_found(5) = .true.
 
           if ( fdf_bnnames(pline) == 2 ) then
@@ -598,7 +606,7 @@ module m_w90_in_siesta
             w90man%fermi_surface_plot = .true.
           end if
 
-        else if ( leqi(key, "write_hr") ) then
+        else if ( leqi(key, "write_hr") .or. leqi(key,"write-hr") ) then
           key_found(6) = .true.
 
           if ( fdf_bnnames(pline) == 2 ) then
@@ -607,7 +615,7 @@ module m_w90_in_siesta
             w90man%write_hr = .true.
           end if
 
-        else if ( leqi(key, "write_tb") ) then
+        else if ( leqi(key, "write_tb") .or. leqi(key,"write-tb") ) then
           key_found(7) = .true.
 
           if ( fdf_bnnames(pline) == 2 ) then
@@ -632,6 +640,20 @@ module m_w90_in_siesta
           w90man%dis_froz(1) = fdf_bvalues(pline, 1) * conv
           w90man%dis_froz(2) = fdf_bvalues(pline, 2) * conv
 
+        else if ( leqi(key, "threshold") ) then
+          key_found(10) = .true.
+
+          w90man%threshold = fdf_bvalues(pline, 1)
+
+        else if ( leqi(key, "write_unk") .or. leqi(key,"write-unk") ) then
+          key_found(11) = .true.
+
+          if ( fdf_bnnames(pline) == 2 ) then
+            w90man%write_unk = fdf_bboolean(pline, 1, after=1)
+          else
+            w90man%write_unk = .true.
+          end if
+
         else
 
           call die("W90[...]: Unknown key: "//trim(key)//" perhaps you mispelled?")
@@ -640,7 +662,7 @@ module m_w90_in_siesta
 
       end do
 
-      if ( .not. w90_in_siesta_compute_unk ) then
+      if ( .not. w90man%write_unk ) then
         w90man%wannier_plot = .false.
       end if
 
@@ -664,7 +686,7 @@ module m_w90_in_siesta
       w90man%disentanglement = w90man%number_of_bands /= w90man%numbands_w90_in
 
       ! Update seedname for wannier90
-      write(w90man%seedname_w90_in, '(3a)') trim(slabel), ".manifold.", name
+      write(w90man%seedname_w90_in, '(3a)') trim(slabel), ".manifold.", trim(name)
 
       ! Check option logic
       if ( w90man%disentanglement ) then
@@ -792,7 +814,7 @@ module m_w90_in_siesta
 !       write(6,*) 
 !       write(6,'(a,l5)')                                                   & 
 ! &       'setup_w90_in_siesta: r_between_manifolds = ',                    &
-! &       r_between_manifolds
+! &       w90_r_between_manifolds
 !       write(6,'(a,6i5)')                                                  & 
 ! &       'setup_w90_in_siesta: index_manifold, Node, Nodes, nincbands_loc_tmp, numincbands_tmp, Blocksize = ',  &
 ! &       index_manifold, Node, Nodes, nincbands_loc_tmp, numincbands_tmp,                  &
@@ -1698,7 +1720,7 @@ module m_w90_in_siesta
 
 !   Check if the computations of the position operator matrix elements
 !   between manifolds has to be carried out
-    if( r_between_manifolds ) then
+    if( w90_r_between_manifolds ) then
       if( index_manifold .eq. 3) then
         if( (.not. compute_chempotwann) .or. first_chempotwann ) then
 #ifdef MPI
@@ -1759,7 +1781,7 @@ module m_w90_in_siesta
 !   SystemLabel.eigW
     if( IOnode ) call writeeig( ispin )
 
-    if( w90_in_siesta_compute_unk ) call writeunk( ispin )
+    if( manifold_bands_w90_in(index_manifold)%write_unk ) call writeunk( ispin )
 
     if (IONode) then
       write(6,'(/,a)')  &

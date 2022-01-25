@@ -104,21 +104,12 @@ MODULE siesta_options
                                  !   (not as an external post-processing tool)
   integer :: n_wannier_manifolds ! Number of bands manifolds that will be 
                                  !   considered for Wannier transformation
-  integer :: index_perturbed_manifold 
+  integer :: w90_index_perturbed_manifold 
                                  ! Index of the manifold that will be perturbed
                                  !   with a chemical potential
-  logical :: r_between_manifolds ! Will we compute the position operator
-                                 !   matrix elements between bands in
-                                 !   different manifolds?
-  logical :: w90_in_siesta_compute_unk 
-                                 ! Shall SIESTA compute the files which contain
-                                 !   the periodic part of a Bloch function 
-                                 !   in the unit cell on a grid
-  real(dp):: w90_in_siesta_threshold_coeff
-                                 ! Threshold for the real part of the 
-                                 !   coefficients of a Wannier in a basis 
-                                 !   of NAO to compute the contribution to 
-                                 !   the tight-binding matrix elements
+  logical :: w90_r_between_manifolds ! Will we compute the position operator
+                                     !   matrix elements between bands in
+                                     !   different manifolds?
 !----------------------------------------------------
   logical :: writef        ! Write atomic forces at every geometry step?
   logical :: writek        ! Write the k vectors of the BZ integration mesh?

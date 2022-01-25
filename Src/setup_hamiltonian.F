@@ -335,7 +335,8 @@
                 call compute_matrices( ispin, index_manifold )
                 call compute_wannier( ispin, index_manifold )
                 call wannier_in_nao( ispin, index_manifold )
-                if ( index_manifold .eq. index_perturbed_manifold ) then
+                if ( index_manifold .eq.
+     &              w90_index_perturbed_manifold ) then
                   call chempotwann(index_manifold, ispin, H_chempotwann)
                 endif 
               enddo 

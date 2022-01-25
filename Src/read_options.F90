@@ -1839,17 +1839,12 @@ subroutine read_options( na, ns, nspin )
   !   Wannier90 within SIESTA -related flags
   !
 
-  n_wannier_manifolds = fdf_block_linecount( 'WannierManifolds' )
+  n_wannier_manifolds = fdf_block_linecount( 'Wannier.Manifolds' )
   if( n_wannier_manifolds .ne. 0 ) w90_in_siesta_processing = .true.
 
-  r_between_manifolds = fdf_get( 'R_between_manifolds', .false. )
+  w90_r_between_manifolds = fdf_get( 'Wannier.Manifolds.R.between', .false. )
 
-  w90_in_siesta_compute_unk =fdf_get('Wannier90_in_SIESTA_compute_unk', .false.)
-
-  w90_in_siesta_threshold_coeff =fdf_get('Wannier90_in_SIESTA_threshold_coeff',&
- &                            1.d-6)
-
-  index_perturbed_manifold = fdf_get( 'Wannier90_Index_Perturbed_Manifold', 1 )
+  w90_index_perturbed_manifold = fdf_get( 'Wannier.Manifold.IndexPerturbed', 1 )
 
   if (ionode) then
      write(6,'(2a)') 'redata: ', repeat('*', 71)
