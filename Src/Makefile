@@ -190,7 +190,6 @@ OBJS =  automatic_cell.o atom_options.o \
 	matel_registry.o register_rfs.o new_matel.o \
 	kpoint_convert.o \
 	m_target_stress.o compute_max_diff.o \
-        m_spin_orbit_potentials.o \
 	m_initwf.o wavefunctions.o \
 	m_evolve.o cranknic_evolk.o cranknic_evolg.o sankey_change_basis.o m_iotddft.o \
 	m_matdiag.o m_matswinvers.o iotdxv.o  m_inversemm.o runinfo_m.o cli_m.o \
@@ -592,8 +591,8 @@ bands.o: precision.o siesta_geom.o sys.o writewave.o
 basis_enthalpy.o: atmfuncs.o atomlist.o precision.o siesta_geom.o units.o
 basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
 basis_io.o: precision.o radial.o sys.o xml.o
-basis_specs.o: atom_options.o basis_types.o chemical.o m_spin.o
-basis_specs.o: m_spin_orbit_potentials.o periodic_table.o precision.o sys.o
+basis_specs.o: atom_options.o basis_types.o chemical.o periodic_table.o
+basis_specs.o: precision.o sys.o
 basis_types.o: alloc.o atmparams.o precision.o sys.o
 bessph.o: precision.o sys.o
 bloch_unfold.o: units.o
@@ -818,7 +817,7 @@ idiag.o: parallel.o sys.o
 init_output.o: files.o reinit_m.o
 initatom.o: atm_types.o atmparams.o atom.o atom_options.o basis_io.o
 initatom.o: basis_specs.o basis_types.o chemical.o dftu_specs.o electrostatic.o
-initatom.o: m_spin.o m_spin_orbit_potentials.o precision.o
+initatom.o: m_spin.o precision.o
 initparallel.o: alloc.o class_OrbitalDistribution.o domain_decom.o parallel.o
 initparallel.o: parallelsubs.o precision.o siesta_options.o sparse_matrices.o
 initparallel.o: spatial.o sys.o

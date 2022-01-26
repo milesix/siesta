@@ -37,9 +37,6 @@ C
       use atom_options, only : get_atom_options, write_ion_plot_files
       use atm_types, only: species, species_info, nspecies
 
-      use m_spin,             only: spin
-      use spin_subs_m,        only: init_spin
-      
       use dftu_specs, only: read_dftu_specs
       use dftu_specs, only: dftu_proj_gen
       use dftu_specs, only: populate_species_info_dftu
@@ -77,8 +74,6 @@ c Reading input for the pseudopotentials and atomic orbitals
       
       call fdf_init(filein,'gen-basis_fdf.log')
       
-         call init_spin()
-         
       call get_atom_options()
       write_ion_plot_files = .true. ! get them always
       
@@ -119,7 +114,7 @@ c Reading input for the pseudopotentials and atomic orbitals
      &      qwid(0:,1:,is),
      $      split_norm(0:,1:,is),
      &      filtercut(0:,1:,is), basp, spp,
-     &           lj_projs=spin%SO_offsite)
+     &      lj_projs=fdf_get('lj-projs',.false.))
         
 !       Generate the projectors for the LDA+U simulations (if requested)
         call dftu_proj_gen(is)

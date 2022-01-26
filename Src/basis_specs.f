@@ -200,9 +200,7 @@
 !---
       subroutine read_basis_specs()
 
-      use m_spin, only: SpOrb
       use m_ncps, only: pseudo_read
-      use m_spin_orbit_potentials, only: valid_spin_orbit_potentials
 
       character(len=15), parameter  :: basis_size_default='standard'
       character(len=10), parameter  :: basistype_default='split'
@@ -334,14 +332,6 @@ C Sanity checks on values
 !        if (reparametrize_pseudos.and. .not. basp%bessel)
 !     .    call pseudo_reparametrize(p=basp%pseudopotential,
 !     .                             a=new_a, b=new_b,label=basp%label)
-
-             if (SpOrb .and. basp%has_psml_ps) then
-                if (.not. valid_spin_orbit_potentials(basp%psml_handle))
-     $                    then
-                   call die(
-     $            "Cannot do spin-orbit without proper semilocal pots")
-                endif
-             endif
 
       enddo
 

@@ -51,7 +51,6 @@
       use dftu_specs, only: dftu_proj_gen
       use dftu_specs, only: populate_species_info_dftu
       use m_ncps, only: pseudo_read
-      use m_spin_orbit_potentials, only: valid_spin_orbit_potentials
 
       use chemical
 
@@ -120,14 +119,6 @@
              basp%label = species_label(is)
              call pseudo_read(basp%label,basp%pseudopotential,
      $            basp%psml_handle,basp%has_psml_ps)
-             if (basp%has_psml_ps) then
-                if (.not. valid_spin_orbit_potentials(basp%psml_handle))
-     $                    then
-                   call die(
-     $            "Cannot do spin-orbit 'onsite' without " //
-     $            "proper semilocal potentials in the psml file")
-                endif
-             endif
           end do
        end if
        write(6,'(/a)') 'Reading PAOs and KBs from ascii files...'

@@ -5,6 +5,7 @@ module m_ncps_utils
   integer, parameter :: dp = selected_real_kind(10,100)
   
   public :: get_n_semicore_shells
+  public :: ncps_has_spin_orbit_potentials
 
 CONTAINS
 
@@ -171,6 +172,16 @@ subroutine get_ps_conf(irel,lmax,text,chgvps, &
          call die("Error in get_ps_conf")
 
          end subroutine get_ps_conf
+
+   function ncps_has_spin_orbit_potentials(p) result(valid)
+      use m_ncps_froyen_ps_t,  only: froyen_ps_t
+
+      type(froyen_ps_t), intent(in) :: p
+      logical                :: valid
+
+      valid = ((p%irel == "rel") .and. (p%npotu > 0))
+
+   end function ncps_has_spin_orbit_potentials
 
 end module m_ncps_utils
 
