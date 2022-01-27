@@ -31,7 +31,7 @@ module thermal_flux_jks
   !! psi_hat_c will have no_u rows and n_wfs columnns
   !!
 
-  use precision,       only: dp, grid_p
+  use precision,       only: sp, dp, grid_p
   use atomlist,        only: no_u, no_l, indxuo, iaorb, qtot, amass
   use siesta_geom,     only: na_u
   use densematrix,     only: psi ! To get at the c^i_\mu coefficients of the wavefunctions
@@ -82,7 +82,7 @@ contains
     ! Compute first P_c [H,r] |Psi_iw>
 
     alpha_reg = fdf_get('alpha.reg',alpha_reg)
-    
+
     do idx=1,3
        do iw = 1,n_wfs
 
@@ -137,7 +137,7 @@ contains
        do iw = 1,n_wfs
           do idx=1,3
 
- 
+
              !TEST-hat intermediate for RHS of linear equation
              ! Norm and scalar product with original wavefunction. The latter
              ! should be zero, since the RHS lives in the unoccupied subspace
@@ -149,7 +149,7 @@ contains
                    tr_hat = tr_hat + S_base(mu,nu) * psi_hat_c(mu,iw,idx) * psi_hat_c(nu,iw,idx)
                 end do
              end do
-          
+
              print *, "[TEST-hat-1]", iw, idx, tr_hat, tr_shat
              !TEST END
           enddo
@@ -169,12 +169,12 @@ contains
        amat = 0.0_dp
        do i = 1, no_u
           do j = 1, no_u
-             amat(i,j) = sinv_h_mat(i,j) + alpha_reg*dm_s_mat(i,j) 
+             amat(i,j) = sinv_h_mat(i,j) + alpha_reg*dm_s_mat(i,j)
           enddo
           amat(i,i) = amat(i,i) - eo_base(iw)
        enddo
 
-         
+
 ! subroutine dgesv	(	integer 	N,
 ! integer 	NRHS,
 ! double precision, dimension( lda, * ) 	A,
@@ -182,8 +182,8 @@ contains
 ! integer, dimension( * ) 	IPIV,
 ! double precision, dimension( ldb, * ) 	B,
 ! integer 	LDB,
-! integer 	INFO 
-! )	
+! integer 	INFO
+! )
 
        ! Do each cartesian direction separately.
        amat_save = amat
@@ -213,7 +213,7 @@ contains
           endif
 
        enddo ! idx
-       
+
     enddo ! iw
 
     deallocate(ipiv, amat, amat_save, sinv_h_mat, dm_s_mat)
@@ -224,9 +224,9 @@ contains
       real(dp), intent(in) :: a(:)
       integer, intent(in)  :: iw   ! wavefunction index
       character(len=*), intent(in) :: str   ! label
-      
+
       real(dp) :: sprod
-      
+
       integer :: mu, nu, n
 
       n = size(a)
@@ -237,11 +237,11 @@ contains
             sprod = sprod + S_base(mu,nu) * psi_base(mu,iw) * a(nu)
          end do
       end do
-          
+
       print *, trim(str), sprod
      end subroutine check_orthog
 
-     
+
   end subroutine compute_psi_hat_c
 
 
@@ -423,6 +423,8 @@ contains
     ! real(dp):: ks_flux_Jks(3)
     real(dp):: ks_flux_Jks_A(3), ks_flux_Jks_B(3), ks_flux_Jele(3)
 
+    character(len=1024) :: fname
+
     no_occ_wfs = nint(qtot/2)
 
     allocate(psi_hat_c(no_u,no_occ_wfs,3))
@@ -477,6 +479,18 @@ contains
     gk_results%Jks(:)   = 2.0_dp * (ks_flux_Jks_A(:) + ks_flux_Jks_B(:))
     gk_results%Jele(:)  = 2.0_dp * 2.0_dp * ks_flux_Jele(:)   ! Why the multiplication by 2*2??
     !
+    if (gk_setup%verbose_output) then
+       ! Output of `pseudo-wfs-objects`:
+
+       write(fname, "(A12)") "Psi-dot.WFSX"
+       call write_ks_psi(psi_dot_c, fname)
+
+       do idx=1,3
+          write(fname, "(A8,I1,A5)") "Psi-hat-", idx, ".WFSX"
+          call write_ks_psi(psi_hat_c(:,:,idx), fname)
+       end do
+    end if
+
     deallocate(psi_hat_c)
     deallocate(psi_dot_c)
 
@@ -588,7 +602,7 @@ contains
         ! Compute the [V_nl,r] part of the commutator
         ! NOTE: The geometry information here corresponds probably to
         !       a "virtual step"...
-        
+
         ! Loop on atoms with KB projectors
         do ka = 1,na
           ks = isa(ka)
@@ -623,7 +637,7 @@ contains
                 enddo
 
                 if (.not. within) CYCLE
-                
+
                 ! Find matrix elements between this orbital and the KB projectors on 'ka'
                 ! and store information for later
 
@@ -667,7 +681,7 @@ contains
           ! where i is an orbital in this processor and j is linked to it by
           ! the Hamiltonian sparsity
           ! Question: What is the domain of GlobalToLocalOrb? Can it do io>no_u?
-          
+
           do ino = 1,nno
             io = iono(ino)
             call GlobalToLocalOrb(io,Node,Nodes,iio)
@@ -730,7 +744,7 @@ contains
           enddo  ! ino
           !
           ! Note that there might be several contributions to the same (i,j)
-          ! entry from different ka's. 
+          ! entry from different ka's.
         enddo  ! ka
 
       !------
@@ -750,5 +764,61 @@ contains
       call reset_neighbour_arrays( )
   end subroutine compute_hr_commutator
 
+
+  subroutine write_ks_psi(ks_psi, fname)
+    !! `WFSX`-file format follows `writewave.F`
+
+    use kpoint_scf_m, only : kpoint_scf
+    use atmfuncs,     only : symfio, cnfigfio, labelfis, nofis
+    use atomlist,     only : iaorb, iphorb
+    use siesta_geom,  only : isa
+    use m_eo,         only : eo
+    use units,        only : eV
+
+    real(sp), dimension(:), allocatable :: aux   !! NOTE SP
+
+    real(dp), intent(in) :: ks_psi(:,:)
+    character(len=1024), intent(in)   :: fname
+
+    integer :: nuotot
+    integer :: iu, j
+    integer :: iw, idx, no_occ_wfs
+    external io_assign, io_close
+
+    nuotot = no_u
+    no_occ_wfs = nint(qtot/2)
+
+    allocate(aux(nuotot))         ! 1-d since 1 spin component now
+
+    call io_assign(iu)
+    open(iu,file=trim(fname),form="unformatted",&
+         & action='write',status='unknown')
+    ! Writing header
+    write (iu) 1, 1               ! nk, gamma
+    write (iu) 1                  ! spin%H
+    write (iu) nuotot
+    write(iu) (iaorb(j),labelfis(isa(iaorb(j))),&
+         & iphorb(j), cnfigfio(isa(iaorb(j)),iphorb(j)),&
+         & symfio(isa(iaorb(j)),iphorb(j)), j=1,nuotot)
+
+    write(iu) 1, 0.0_dp, 0.0_dp, 0.0_dp, 1.0_dp ! ik, k(1:3), kpoint_weight - at Gamma
+    write(iu) 1              ! ispin
+    write(iu) no_occ_wfs     ! nwflist(ik)
+
+    do iw = 1,no_occ_wfs
+       ! coerce input array to sp:
+       do j = 1,nuotot
+          aux(j) = real(ks_psi(j, iw), kind=sp)
+       enddo
+
+       write(iu) iw               ! indwf
+       write(iu) eo(iw,1,1)/eV    ! eo here left for compatibility
+       write(iu) aux(:)           ! (aux(1:,j), j=1,nuotot)
+    end do
+
+    call io_close(iu)
+    deallocate(aux)
+
+  end subroutine write_ks_psi
 
 end module thermal_flux_jks
