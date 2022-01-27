@@ -727,7 +727,7 @@
 !     Compute and save inverse of overlap matrix
       if (compute_thermal_flux.and.(substep.eq.1)) then
          call get_sinv()
-         call compute_hr_commutator()
+c$$$         call compute_hr_commutator()
       endif
 #endif
 
