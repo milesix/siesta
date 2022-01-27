@@ -17,7 +17,7 @@ integer, parameter  ::  idef = kind(1)
 if (idef > 0) then
    if (i8b > 0) then
       if (idef /= i8b) then
-         write(unit=*,'(I0,1X,I0)') idef, i8b
+         write(unit=*,fmt='(I0,1X,I0)') idef, i8b
          write(unit=0,fmt=*) "int def: ", idef, " 8-byte int kind: ", i8b
       else
          write(unit=*,fmt=*) idef
