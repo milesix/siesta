@@ -20,7 +20,7 @@ integer, parameter   ::  default_p = kind(1.0)
 if (sp > 0) then
    if (dp > 0) then
       if (sp /= dp) then
-         write(unit=*,'(I0,1X,I0)') sp, dp
+         write(unit=*,fmt='(I0,1X,I0)') sp, dp
          write(unit=0,fmt=*) "Single: ", sp, " Double: ", dp
       else
          write(unit=*,fmt=*) dp
