@@ -512,6 +512,7 @@ contains
       use class_dSpData1D
       use class_dSpData2D
       use alloc, only : re_alloc
+      use m_ts_electype
       type(Elec), intent(inout) :: El
       
       ! If already initialized, return immediately

@@ -64,7 +64,7 @@ SIESTA_OBJS= precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
              moreParallelSubs.o m_mpi_utils.o atmfuncs.o atm_types.o \
              radial.o reclat.o idiag.o minvec.o \
              parallel.o io.o files.o cellsubs.o sorting.o \
-	     kpoint_convert.o timestamp.o m_wallclock.o m_spin.o \
+	     timestamp.o m_wallclock.o \
              diag.o diag_option.o bloch_unfold.o \
 	     debugmpi.o find_kgrid.o units.o posix_calls.o xml.o \
              interpolation.o spher_harm.o basis_types.o atmparams.o basis_io.o \
@@ -73,7 +73,7 @@ SIESTA_OBJS= precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
              radfft.o bessph.o m_fft_gpfa.o \
              broadcast_basis.o dftu_specs.o basis_specs.o \
              atom.o hamann.o m_filter.o \
-             m_cite.o m_spin_orbit_potentials.o \
+             m_cite.o \
              coor.o chkdim.o \
              zmatrix.o m_cell.o  periodic_table.o volcel.o digcel.o \
              arw.o redcel.o sys.o parallelsubs.o spatial.o \
@@ -214,10 +214,10 @@ basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
 basis_io.o: precision.o radial.o sys.o xml.o
 basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
 basis_io.o: precision.o radial.o sys.o xml.o
-basis_specs.o: atom_options.o basis_types.o chemical.o m_spin.o
-basis_specs.o: m_spin_orbit_potentials.o periodic_table.o precision.o sys.o
-basis_specs.o: atom_options.o basis_types.o chemical.o m_spin.o
-basis_specs.o: m_spin_orbit_potentials.o periodic_table.o precision.o sys.o
+basis_specs.o: atom_options.o basis_types.o chemical.o periodic_table.o
+basis_specs.o: precision.o sys.o
+basis_specs.o: atom_options.o basis_types.o chemical.o periodic_table.o
+basis_specs.o: precision.o sys.o
 basis_types.o: alloc.o atmparams.o precision.o sys.o
 basis_types.o: alloc.o atmparams.o precision.o sys.o
 bessph.o: precision.o sys.o
@@ -283,8 +283,6 @@ idiag.o: parallel.o sys.o
 idiag.o: parallel.o sys.o
 io.o: m_io.o
 io.o: m_io.o
-kpoint_convert.o: precision.o sys.o units.o
-kpoint_convert.o: precision.o sys.o units.o
 m_cell.o: precision.o siesta_geom.o units.o
 m_cell.o: precision.o siesta_geom.o units.o
 m_filter.o: bessph.o precision.o radfft.o sys.o
@@ -293,10 +291,6 @@ m_io.o: sys.o
 m_io.o: sys.o
 m_mpi_utils.o: precision.o sys.o
 m_mpi_utils.o: precision.o sys.o
-m_spin.o: alloc.o files.o get_kpoints_scale.o m_cite.o parallel.o precision.o
-m_spin.o: sys.o
-m_spin.o: alloc.o files.o get_kpoints_scale.o m_cite.o parallel.o precision.o
-m_spin.o: sys.o
 m_timer.o: m_io.o m_walltime.o moreParallelSubs.o parallel.o precision.o sys.o
 m_timer.o: m_io.o m_walltime.o moreParallelSubs.o parallel.o precision.o sys.o
 m_wallclock.o: m_walltime.o
@@ -394,5 +388,4 @@ m_timer_tree.o: timer_tree.o
 m_timestamp.o: timestamp.o
 mtprng.o: m_uuid.o
 printmat.o: printmatrix.o
-t_spin.o: m_spin.o
 timer_options.o: timer.o

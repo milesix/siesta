@@ -4,5 +4,6 @@ module m_ncps
   use m_ncps_writers, only: pseudo_write_formatted, pseudo_header_print
   use m_ncps_reader, only: pseudo_read, pseudo_read_from_file
   use m_ncps_utils, only: get_n_semicore_shells
+  use m_ncps_utils, only: ncps_has_spin_orbit_potentials
   public
 end module m_ncps

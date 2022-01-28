@@ -739,7 +739,7 @@ contains
     fmt = 'mix.'//trim(prefix)//':'
 
     if ( debug_mix ) then
-       write(*,'(2a,t50,''= '',l)') trim(fmt), &
+       write(*,'(2a,t50,''= '',l1)') trim(fmt), &
             ' Debug messages',debug_mix
     end if
 

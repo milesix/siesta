@@ -7,7 +7,8 @@
 !
       module aux_proj
       ! Kludge to pass info to comkb while using the new psop lib
-      integer, parameter, private :: dp = selected_real_kind(10,100)
+      use precision,only: dp
+      private
       integer, public :: is
       real(dp), public :: a, b
       end module aux_proj
@@ -539,18 +540,21 @@ c    .          'atom: The above configuration will be used ',
                 vlocal_on_file = ps_HasLocalPotential(basp%psml_handle)
                 kb_projs_on_file = ps_HasProjectors(basp%psml_handle)
              endif
-             
-             use_psml_kb_projectors =
-     $           fdf_boolean("PSML.KB.Projectors",kb_projs_on_file)
-
-             use_psml_vlocal = fdf_boolean('PSML.Vlocal',
-     $                                     vlocal_on_file)
 
              ! Older labels
              use_psml_kb_projectors =
      $            fdf_boolean("Use.PSML.KB.Projectors",
+     $                        kb_projs_on_file)
+             use_psml_vlocal =
+     $            fdf_boolean('Use.PSML.Vlocal',
+     $                        vlocal_on_file)
+
+             use_psml_kb_projectors =
+     $            fdf_boolean("PSML.KB.Projectors",
      $                        use_psml_kb_projectors)
-             use_psml_vlocal = fdf_boolean('Use.PSML.Vlocal',
+             
+             use_psml_vlocal =
+     $            fdf_boolean('PSML.Vlocal',
      $                        use_psml_vlocal)
 
              ! Sanity checks
