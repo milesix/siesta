@@ -665,7 +665,7 @@ C       The communication is from dst to src
               elseif( irelim .eq. 2) then
                 Vs(listVsptr(iio)+1:listVsptr(iio)+numVs(iio)) = 
      &          Vs(listVsptr(iio)+1:listVsptr(iio)+numVs(iio)) + 
-     &          buffer(mm+1:mm+numVs(iio)) * cmplx(0.0_dp,1.0_dp,kind=dp)
+     &          buffer(mm+1:mm+numVs(iio))*cmplx(0.0_dp,1.0_dp,kind=dp)
               endif
               mm = mm + numVs(iio)
             enddo
