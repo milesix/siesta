@@ -269,8 +269,8 @@ dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o parallel.o
 dftu_specs.o: precision.o radial.o sys.o units.o
 diag.o: alloc.o diag_option.o parallel.o precision.o sys.o
 diag.o: alloc.o diag_option.o parallel.o precision.o sys.o
-diag_option.o: parallel.o precision.o
-diag_option.o: parallel.o precision.o
+diag_option.o: m_cite.o parallel.o precision.o
+diag_option.o: m_cite.o parallel.o precision.o
 domain_decom.o: alloc.o parallel.o precision.o printmatrix.o schecomm.o
 domain_decom.o: sparse_matrices.o sys.o
 domain_decom.o: alloc.o parallel.o precision.o printmatrix.o schecomm.o
@@ -327,8 +327,8 @@ sparse_matrices.o: class_SpData2D.o class_SpData2D.o class_Sparsity.o
 sparse_matrices.o: precision.o
 spatial.o: precision.o
 spatial.o: precision.o
-spher_harm.o: alloc.o precision.o sys.o
-spher_harm.o: alloc.o precision.o sys.o
+spher_harm.o: precision.o
+spher_harm.o: precision.o
 timer.o: m_timer.o parallel.o sys.o timer_tree.o
 timer.o: m_timer.o parallel.o sys.o timer_tree.o
 timer_tree.o: m_walltime.o
