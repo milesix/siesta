@@ -82,7 +82,6 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
   ! So we only need one descriptor
   integer :: ctxt, desc(9)
   
-  integer :: BNode, Bnuo, ibandg, maxnuo, MPIerror
   real(dp), dimension(:,:,:), pointer :: aux_red => null()
 #endif
 
@@ -271,7 +270,7 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
 
   ! Global reduction of dpr matrix
   call MPI_Reduce(dpr(1,1,1),aux_red(1,1,1),nuotot*nhist*nspin, &
-      MPI_double_precision,MPI_sum,0,MPI_Comm_World,MPIerror)
+      MPI_double_precision,MPI_sum,0,MPI_Comm_World,ierror)
   dpr(:,:,:) = aux_red(:,:,:)
 
   call de_alloc(aux_red, name='aux_red_dpr', routine='pdosg' )
@@ -281,7 +280,7 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
 
   ! Global reduction of dtot matrix
   call MPI_Reduce(dtot(1,1),aux_red(1,1,1),nhist*nspin, &
-      MPI_double_precision,MPI_sum,0,MPI_Comm_World,MPIerror)
+      MPI_double_precision,MPI_sum,0,MPI_Comm_World,ierror)
   dtot(:,:) = aux_red(:,:,1)
 
   call de_alloc(aux_red, name='aux_red_dtot', routine='pdosg' )
