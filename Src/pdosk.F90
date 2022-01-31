@@ -92,7 +92,7 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
 #endif
 
   ! Initialize some variables
-  delta = (E2 - E1)/nhist
+  delta = (E2 - E1)/(nhist-1)
 
   ! Solve eigenvalue problem for each k-point
   do ispin = 1, nspin
