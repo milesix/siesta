@@ -102,9 +102,8 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
   delta = (E2 - E1)/(nhist-1)
 
   inv_sigma2 = 1._dp / sigma**2
-  ! Increase limit (from 15)
-  ! TODO, change to 30 => exp(-30) ~ 1e-13
-  limit = sqrt(15._dp) * sigma
+  ! Limit is exp(-20) ~ 2e-9
+  limit = sqrt(20._dp) * sigma
 
   ! Solve eigenvalue problem for each k-point
   do ispin = 1, nspin
