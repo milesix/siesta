@@ -162,17 +162,12 @@ subroutine pdos( NO, nspin, maxspn, NO_L, MAXNH, &
   call allocDenseMatrix(nhs, nhs, npsi)
   nullify( dtot, dpr )
   call re_alloc( dtot, 1, nhist, 1, spin%EDM, 'dtot', 'pdos' )
-  call re_alloc( dpr, 1, nhist, 1, no_u, 1, spin%EDM, 'dpr', 'pdos' )
+  call re_alloc( dpr, 1, no_u, 1, nhist, 1, spin%EDM, 'dpr', 'pdos' )
 
   ! Initialize the projected density of states ---------------------------
-  do ispin = 1, spin%EDM
-    do ihist = 1,nhist
-      dtot(ihist,ispin) = 0.d0
-      do iuo = 1,no_u
-        dpr(ihist,iuo,ispin) = 0.d0
-      enddo
-    enddo
-  enddo
+  dtot(:,:) = 0._dp
+  dpr(:,:,:) = 0._dp
+  ! On return they will only be meaning full on Node == 0
 
   !  Call appropiate routine ----------------------------------------------
   if (nspin.le.2 .and. gamma) then
@@ -328,23 +323,23 @@ subroutine pdos( NO, nspin, maxspn, NO_L, MAXNH, &
       select case ( spin%EDM ) 
       case ( 1 )
         do ihist = 1, nhist
-          tmp(ihist) = dpr(ihist,i,1) * eV
+          tmp(ihist) = dpr(i,ihist,1) * eV
           write(iunit2,'(e17.9)') tmp(ihist)
         end do
         call xml_AddArray(xf,tmp(1:nhist))
       case ( 2 )
         do ihist = 1, nhist
-          tmp(ihist*2-1) = dpr(ihist,i,1) * eV
-          tmp(ihist*2) = dpr(ihist,i,2) * eV
+          tmp(ihist*2-1) = dpr(i,ihist,1) * eV
+          tmp(ihist*2) = dpr(i,ihist,2) * eV
           write(iunit2,'(2(tr1,e17.9))') tmp(ihist*2-1:ihist*2)
         end do
         call xml_AddArray(xf,tmp(1:2*nhist))
       case ( 4 )
         do ihist = 1, nhist
-          tmp(ihist*4-3) = dpr(ihist,i,1) * eV
-          tmp(ihist*4-2) = dpr(ihist,i,2) * eV
-          tmp(ihist*4-1) = 2 * dpr(ihist,i,3) * eV
-          tmp(ihist*4  ) = 2 * dpr(ihist,i,4) * eV
+          tmp(ihist*4-3) = dpr(i,ihist,1) * eV
+          tmp(ihist*4-2) = dpr(i,ihist,2) * eV
+          tmp(ihist*4-1) = 2 * dpr(i,ihist,3) * eV
+          tmp(ihist*4  ) = 2 * dpr(i,ihist,4) * eV
           write(iunit2,'(4f10.5)') tmp(ihist*4-3:ihist*4)
         end do
         call xml_AddArray(xf,tmp(1:4*nhist))

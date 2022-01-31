@@ -51,8 +51,8 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
   ! REAL*8  Saux(2,nuo,nuo)   : Auxiliary space for the overlap matrix
   ! REAL*8  psi(2,nuo,nuo)    : Auxiliary space for the eigenvectors
   ! ****  OUTPUT  ********************************************************
-  ! REAL*8  dtot(nhist,2)   : Total density of states
-  ! REAL*8  dpr(nhist,nuo,2): Proyected density of states
+  ! REAL*8  dtot(nhist,nspin)   : Total density of states
+  ! REAL*8  dpr(nuo,nhist,nspin): Projected density of states
   ! **********************************************************************
 
   use precision
@@ -64,6 +64,7 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
   use mpi_siesta
 #endif
   use sys,          only : die
+  use m_diag, only: diag_get_1d_context, diag_descinit
 
   implicit none
 
@@ -73,16 +74,22 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
   real(dp) :: H(maxnh,nspin), S(maxnh), E1, E2, sigma, &
       xij(3,maxnh), kpoint(3,nk), eo(maxo,maxspn,nk), &
       Haux(2,nuotot,nuo), Saux(2,nuotot,nuo), psi(2,nuotot,nuo), &
-      dtot(nhist,2), dpr(nhist,nuotot,2), wk(nk)
+      dtot(nhist,nspin), dpr(nuotot,nhist,nspin), wk(nk)
 
   ! Internal variables ---------------------------------------------------
   integer :: ik, ispin, iuo, juo, J, JO, ihist, iband, ind, ierror
+  integer :: iEmin, iEmax
 
   real(dp) :: delta, ener, diff, pipj1, pipj2, pipjS1, gauss, norm, wksum
+  real(dp) :: limit, inv_sigma2
 
 #ifdef MPI
+  ! All of our matrices are described in the same manner
+  ! So we only need one descriptor
+  integer :: ctxt, desc(9)
+  
   integer :: BNode, Bnuo, ibandg, maxnuo, MPIerror
-  real(dp), dimension(:,:,:), pointer :: Sloc
+  real(dp), dimension(:,:,:), pointer :: aux_red => null()
 #endif
 
   external :: cdiag
@@ -93,6 +100,11 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
 
   ! Initialize some variables
   delta = (E2 - E1)/(nhist-1)
+
+  inv_sigma2 = 1._dp / sigma**2
+  ! Increase limit (from 15)
+  ! TODO, change to 30 => exp(-30) ~ 1e-13
+  limit = sqrt(15._dp) * sigma
 
   ! Solve eigenvalue problem for each k-point
   do ispin = 1, nspin
@@ -114,89 +126,154 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
             eo(1,ispin,IK), psi, nuotot, 1, ierror, BlockSize )
       end if
 
+      ! Figure out the minimum and maximum eigenstates that will contribute
+      ! This ensures we calculate fewer columns of the psi basis
+      ! Note, eo *MUST* be sorted. This is ensured by lapack/scalapack.
+      iEmin = 1
+      do jo = 1, nuotot
+        diff = abs(E1 - EO(jo,ispin,IK))
+        if ( diff < limit ) then
+          iEmin = jo
+          exit
+        end if
+      end do
+
+      iEmax = nuotot
+      do jo = nuotot, 1, -1
+        diff = abs(E2 - EO(jo,ispin,IK))
+        if ( diff < limit ) then
+          iEmax = jo
+          exit
+        end if
+      end do
+
+      ! correct wrong cases, should probably never be found?
+      if ( iEmin > iEmax ) then
+        iEmin = 1
+        iEmax = 0
+      end if
+
       ! Setup overlap matrix
       call setup_Sk(kpoint(:,ik))
 
+      ! Total number of elements calculated (jo is allowed to be 0)
+      jo = iEmax - iEmin + 1
+
 #ifdef MPI
-      ! Find maximum number of orbitals per node
-      call MPI_AllReduce(nuo,maxnuo,1,MPI_integer,MPI_max, &
-          MPI_Comm_World,MPIerror)
 
-      ! Allocate workspace array for broadcast overlap matrix
-      nullify( Sloc )
-      call re_alloc( Sloc, 1, 2, 1, nuotot, 1, maxnuo, name='Sloc', routine='pdosk' )
+      ! We need to define the contexts and matrix descriptors
+      ctxt = diag_get_1d_context()
+      call diag_descinit(nuotot, nuotot, BlockSize, desc, ctxt)
 
-      ! Loop over nodes broadcasting overlap matrix
-      do BNode = 0,Nodes-1
+      ! Now perform the matrix-multiplications
+      ! This is: S | psi >
+      call pzgemm('N', 'N', nuotot, jo, nuotot, cmplx(1._dp, 0._dp, dp), &
+          Saux(1,1,1), 1, 1, desc, psi(1,1,1), 1, iEmin, desc, &
+          cmplx(0._dp, 0._dp, dp), Haux(1,1,1), 1, iEmin, desc)
 
-        ! Find out how many orbitals there are on the broadcast node
-        call GetNodeOrbs(nuotot,BNode,Nodes,Bnuo)
+      ! Convert iEmin/iEmax to local indices
+      iuo = iEmin
+      juo = iEmax
+      ! reset
+      iEmin = 1
+      iEmax = 0
+      do jo = 1, nuo
+        call LocalToGlobalOrb(jo, Node, Nodes, j)
+        if ( iuo <= j ) then
+          ! lowest point where we have this orbital
+          iEmin = jo
+          exit
+        end if
+      end do
+      do jo = nuo, 1, -1
+        call LocalToGlobalOrb(jo, Node, Nodes, j)
+        if ( j <= juo ) then
+          iEmax = jo
+          exit
+        end if
+      end do
 
-        ! Transfer data
-        if (Node.eq.BNode) then
-          Sloc(1:2,1:nuotot,1:Bnuo) = Saux(1:2,1:nuotot,1:Bnuo)
-        endif
-        call MPI_Bcast(Sloc(1,1,1),2*nuotot*Bnuo, &
-            MPI_double_precision,BNode,MPI_Comm_World,MPIerror)
+      ! Now iEmin, iEmax are local indices
 
-        ! Loop over all the energy range
-        do ihist = 1, nhist
-          ener = E1 + (ihist - 1) * delta
-          do 170 iband = 1, nuo
-            call LocalToGlobalOrb(iband,Node,Nodes,ibandg)
-            diff = (ener - EO(ibandg,ispin,IK))**2 / (sigma ** 2)
-            if (diff < 15.0D0) then
-              gauss = exp(-diff) * wk(ik)
-              if (Node.eq.BNode) then
-                ! Only add once to dtot - not everytime loop over processors is executed
-                dtot(ihist,ispin) = dtot(ihist,ispin) + gauss
-              endif
-              do jo = 1, Bnuo
-                call LocalToGlobalOrb(jo,BNode,Nodes,juo)
-                do iuo = 1, nuotot
-                  ! This is:  psi(iuo) * psi(juo)^*
-                  pipj1 = psi(1,iuo,iband) * psi(1,juo,iband) + &
-                      psi(2,iuo,iband) * psi(2,juo,iband)
-                  pipj2 = - psi(1,iuo,iband) * psi(2,juo,iband) + &
-                      psi(2,iuo,iband) * psi(1,juo,iband)
-                  pipjS1= pipj1*Sloc(1,iuo,JO)-pipj2*Sloc(2,iuo,JO)
-                  dpr(ihist,juo,ispin)= dpr(ihist,juo,ispin) + pipjS1*gauss
-                enddo
-              enddo
-            endif
-170       enddo
+!!$OMP parallel default(none) shared(Haux,psi,dtot,dpr,iEmin,iEmax,inv_sigma2) &
+!!$OMP& shared(nhist,Node,Nodes,eo,limit,wk,nuotot,nuo,ispin,ik,delta,e1) &
+!!$OMP& private(jo,iuo,ihist,ener,iband,diff,gauss,j)
 
-        enddo
+      ! Ensure we multiply with the local nodes complex conjugate
+      ! This is the final step of < psi | S | psi >
+      ! but doing it element wise, rather than a dot-product
+!!$OMP do schedule(static)
+      do jo = iEmin, iEmax
+        do iuo = 1, nuotot
+          Haux(1,iuo,jo) = psi(1,iuo,jo) * Haux(1,iuo,jo) + psi(2,iuo,jo) * Haux(2,iuo,jo)
+        end do
+      end do
+!!$OMP end do
 
-        ! End loop over broadcast nodes
-      enddo
-
-      ! Free workspace array for overlap
-      call de_alloc( Sloc, name='Sloc' )
-
-#else
-      ! Loop over all the energy range
+!!$OMP do schedule(static,16)
       do ihist = 1, nhist
         ener = E1 + (ihist - 1) * delta
-        do 170 iband = 1,nuo
-          diff = (ener - EO(iband,ispin,IK))**2 / (sigma ** 2)
-          if (diff < 15.0d0) then
-            gauss = exp(-diff) * wk(ik)
+        do iband = iEmin, iEmax
+          ! the energy comes from the global array
+          call LocalToGlobalOrb(iband, Node, Nodes, j)
+          diff = abs(ener - eo(j,ispin,ik))
+          
+          if ( diff < limit ) then
+            gauss = exp(-diff**2*inv_sigma2) * wk(ik)
             dtot(ihist,ispin) = dtot(ihist,ispin) + gauss
             do iuo = 1, nuotot
-              do juo = 1, nuotot
-                pipj1 = psi(1,iuo,iband) * psi(1,juo,iband) + &
-                    psi(2,iuo,iband) * psi(2,juo,iband)
-                pipj2 = - psi(1,iuo,iband) * psi(2,juo,iband) + &
-                    psi(2,iuo,iband) * psi(1,juo,iband)
-                pipjS1= pipj1*Saux(1,iuo,juo)-pipj2*Saux(2,iuo,juo)
-                dpr(ihist,juo,ispin)= dpr(ihist,juo,ispin) + pipjS1*gauss
-              enddo
-            enddo
-          endif
-170     enddo
+              dpr(iuo,ihist,ispin) = dpr(iuo,ihist,ispin) + Haux(1,iuo,iband) * gauss
+            end do
+          end if
+          
+        end do
+      end do
+!!$OMP end do nowait
 
-      enddo
+!!$OMP end parallel
+
+#else
+
+      ! Now perform the matrix-multiplications
+      ! This is: S | psi >
+      call zgemm('N','N',nuotot, jo, nuotot, cmplx(1._dp, 0._dp, dp), &
+          Saux(1,1,1),nuotot, psi(1,1,iEmin),nuotot,cmplx(0._dp, 0._dp, dp), &
+          Haux(1,1,iEmin), nuotot)
+
+!!$OMP parallel default(none) shared(Haux,psi,dtot,dpr,iEmin,iEmax,inv_sigma2) &
+!!$OMP& shared(nhist,Node,Nodes,eo,limit,wk,nuotot,nuo,ispin,ik,delta,e1) &
+!!$OMP& private(jo,iuo,ihist,ener,iband,diff,gauss,j)
+
+      ! Ensure we multiply with the local nodes complex conjugate
+      ! This is the final step of < psi | S | psi >
+      ! but doing it element wise, rather than a dot-product
+!!$OMP do schedule(static)
+      do jo = iEmin, iEmax
+        do iuo = 1, nuotot
+          Haux(1,iuo,jo) = psi(1,iuo,jo) * Haux(1,iuo,jo) + psi(2,iuo,jo) * Haux(2,iuo,jo)
+        end do
+      end do
+!!$OMP end do
+
+!!$OMP do schedule(static,16)
+      do ihist = 1, nhist
+        ener = E1 + (ihist - 1) * delta
+        do iband = iEmin, iEmax
+          diff = abs(ener - eo(iband,ispin,ik))
+          
+          if ( diff < limit ) then
+            gauss = exp(-diff**2*inv_sigma2) * wk(ik)
+            dtot(ihist,ispin) = dtot(ihist,ispin) + gauss
+            do iuo = 1, nuotot
+              dpr(iuo,ihist,ispin) = dpr(iuo,ihist,ispin) + Haux(1,iuo,iband) * gauss
+            end do
+          end if
+          
+        end do
+      end do
+!!$OMP end do nowait
+
+!!$OMP end parallel
 #endif
 
     enddo
@@ -205,41 +282,49 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
 
 #ifdef MPI
   ! Allocate workspace array for global reduction
-  nullify( Sloc )
-  call re_alloc( Sloc, 1, nhist, 1, max(nuotot,nspin), &
-      1, nspin, name='Sloc', routine='pdosk' )
+  call re_alloc( aux_red, 1, nuotot, 1, nhist, 1, nspin, &
+      name='aux_red_dpr', routine='pdosk' )
 
   ! Global reduction of dpr matrix
-  Sloc(1:nhist,1:nuotot,1:nspin) = 0.0d0
-  call MPI_AllReduce(dpr(1,1,1),Sloc(1,1,1),nhist*nuotot*nspin, &
-      MPI_double_precision,MPI_sum,MPI_Comm_World,MPIerror)
-  dpr(1:nhist,1:nuotot,1:nspin) = Sloc(1:nhist,1:nuotot,1:nspin)
+  call MPI_Reduce(dpr(1,1,1),aux_red(1,1,1),nuotot*nhist*nspin, &
+      MPI_double_precision,MPI_sum,0,MPI_Comm_World,MPIerror)
+  dpr(:,:,:) = aux_red(:,:,:)
+
+  call de_alloc(aux_red, name='aux_red_dpr', routine='pdosk' )
+
+  call re_alloc( aux_red, 1, nhist, 1, nspin, 1, 1, &
+      name='aux_red_dtot', routine='pdosk' )
 
   ! Global reduction of dtot matrix
-  Sloc(1:nhist,1:nspin,1) = 0.0d0
-  call MPI_AllReduce(dtot(1,1),Sloc(1,1,1),nhist*nspin, &
-      MPI_double_precision,MPI_sum,MPI_Comm_World,MPIerror)
-  dtot(1:nhist,1:nspin) = Sloc(1:nhist,1:nspin,1)
+  call MPI_Reduce(dtot(1,1),aux_red(1,1,1),nhist*nspin, &
+      MPI_double_precision,MPI_sum,0,MPI_Comm_World,MPIerror)
+  dtot(:,:) = aux_red(:,:,1)
 
-  ! Free workspace array for global reduction
-  call de_alloc( Sloc, name='Sloc' )
+  call de_alloc(aux_red, name='aux_red_dtot', routine='pdosk' )
+
 #endif
 
+  ! Normalize for correct amplitudes
   wksum = 0.0d0
   do IK = 1,NK
     wksum = wksum + WK(IK)
-  enddo
+  end do
 
-  norm = sigma * sqrt(PI) * wksum
+  norm = 1._dp / (sigma * sqrt(PI) * wksum)
 
-  do ihist = 1, nhist
-    do ispin = 1, nspin
-      dtot(ihist,ispin) = dtot(ihist,ispin) / norm
+  do ispin = 1, nspin
+    do ihist = 1, nhist
+      dtot(ihist,ispin) = dtot(ihist,ispin) * norm
+    end do
+  end do
+
+  do ispin = 1, nspin
+    do ihist = 1, nhist
       do iuo = 1, nuotot
-        dpr(ihist,iuo,ispin) = dpr(ihist,iuo,ispin) /norm
-      enddo
-    enddo
-  enddo
+        dpr(iuo,ihist,ispin) = dpr(iuo,ihist,ispin) * norm
+      end do
+    end do
+  end do
 
 #ifdef DEBUG
   call write_debug( '    POS pdosk' )
