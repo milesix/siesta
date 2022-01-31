@@ -94,7 +94,7 @@ C Internal variables ---------------------------------------------------
 #endif
 
 C Initialize some variables
-      delta = (E2 - E1)/nhist
+      delta = (E2 - E1)/(nhist-1)
 
       call re_alloc(Spr, 1, nuotot, 1, nuo, name='Spr',
      &     routine='pdos2g')

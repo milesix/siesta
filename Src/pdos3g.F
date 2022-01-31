@@ -93,7 +93,7 @@ C Internal variables ---------------------------------------------------
 #endif
 
 C Initialize some variables
-      delta = (E2 - E1)/nhist
+      delta = (E2 - E1)/(nhist-1)
 
 C Initialize auxiliary variables
 

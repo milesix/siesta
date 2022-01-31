@@ -107,7 +107,7 @@ C Internal variables ---------------------------------------------------
       external cdiag
 
 C Initialize some variables
-      delta = (E2 - E1)/nhist
+      delta = (E2 - E1)/(nhist-1)
 
 C Globalise list arrays - assumes listh and listd are the same
 

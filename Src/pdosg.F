@@ -92,7 +92,7 @@ C Internal variables ---------------------------------------------------
       external rdiag
 
 C Initialize some variables
-      delta = (E2 - E1)/nhist
+      delta = (E2 - E1)/(nhist-1)
 
 C Solve eigenvalue problem for each k-point
       do ispin = 1, nspin

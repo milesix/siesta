@@ -118,6 +118,9 @@ contains
       ! Get sigma and n-hist
       sigma = fdf_breals(pline,3) * factor
       nhist = fdf_bintegers(pline,1)
+      if ( nhist == 1 ) then
+        call die("PDOS can only be calculated for more than 1 energy-point!")
+      end if
 
       ! Close block
       call fdf_bclose(bfdf)
