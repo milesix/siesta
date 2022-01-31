@@ -39,6 +39,9 @@
       use metaforce,          only: initmeta
       use m_mpi_utils,        only: broadcast
       use alloc,              only: re_alloc
+#ifdef HAVE_F2008
+      use alloc,              only: alloc_set_memory_event_handler
+#endif
       use memory_log,         only: memory_report
       use parallelsubs,       only: getnodeorbs
       use m_iostruct,         only: write_struct, read_struct
@@ -113,6 +116,9 @@
       external :: read_options
       external :: reset_messages_file
 
+#ifdef HAVE_F2008
+      external :: alloc_memory_event_long
+#endif
 !---------------------------------------------------------------------- BEGIN
 ! Initialise MPI unless siesta is running as a subroutine 
 ! of a driver program that may have initialized MPI already
@@ -300,6 +306,9 @@ C     Initialise MPI and set processor number
       call timer( 'siesta', 1 )
       call timer( 'Setup', 1 )
 
+#ifdef HAVE_F2008
+      call alloc_set_memory_event_handler(alloc_memory_event_long)
+#endif
 ! Set allocation report level .........................................
       call memory_report( level=fdf_get('alloc_report_level',0),
      $           file=trim(slabel)//'.alloc',

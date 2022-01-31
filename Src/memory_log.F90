@@ -61,6 +61,7 @@
 MODULE memory_log
 
   use precision, only: dp        ! Double precision real type
+  use precision, only: i8b       ! Long integer
   use parallel,  only: Node      ! My processor node index
   use parallel,  only: Nodes     ! Number of parallel processors
   use parallel,  only: ionode    ! Am I the I/O processor?
@@ -91,6 +92,11 @@ integer, public :: mem_stat    ! (legacy) For use in calls to allocate
 
 PRIVATE      ! Nothing is declared public beyond this point
 
+interface memory_event
+   module procedure memory_event_int
+   module procedure memory_event_long
+end interface memory_event
+   
   ! Initial default values
   character(len=*), parameter :: &
     DEFAULT_NAME = 'unknown_name'         ! Array name default
@@ -217,11 +223,22 @@ END SUBROUTINE memory_report
 ! Internal subroutines
 ! ==================================================================
 
-SUBROUTINE memory_event( bytes, aname )
+SUBROUTINE memory_event_int( bytes, aname )
+
+  implicit none
+
+  integer, intent(in)          :: bytes
+  character(len=*), intent(in) :: aname
+
+  call memory_event_long(int(bytes,kind=i8b),aname)
+  
+END SUBROUTINE memory_event_int
+
+SUBROUTINE memory_event_long( bytes, aname )
 
 implicit none
 
-integer, intent(in)          :: bytes
+integer(i8b), intent(in)     :: bytes
 character(len=*), intent(in) :: aname
 
 character(len=1)    :: memType, task
@@ -283,7 +300,7 @@ if (REPORT_LEVEL == 4 .and. node == 0) then
   write(REPORT_UNIT,'(a32,1x,2f15.6)') &
      aname, delta_mem/MBYTE, TOT_MEM/MBYTE
 end if
-END SUBROUTINE memory_event
+END SUBROUTINE memory_event_long
 
 ! ==================================================================
 

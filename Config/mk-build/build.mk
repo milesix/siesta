@@ -133,7 +133,11 @@ WITH_GRIDXC=1
 FC_ASIS=$(FC_SERIAL)
 
 # These are for initialization of variables added to below
-FPPFLAGS= $(DEFS_PREFIX)-DF2003 
+#
+# Note that we pick up any definitions specified by the
+# user in WITH_FPPFLAGS. For example, this could be "-DHAVE_F2008"
+#
+FPPFLAGS= $(DEFS_PREFIX)-DF2003 $(WITH_FPPFLAGS)
 LIBS=
 COMP_LIBS=
 
