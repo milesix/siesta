@@ -85,6 +85,8 @@ module m_diag
   ! Diagonalization routines (real and complex)
   public :: diag_r, diag_c
 
+  public :: diag_get_1d_context
+
 contains
 
   subroutine diag_init()
@@ -148,6 +150,15 @@ contains
 #endif
     
   end subroutine diag_init
+
+  function diag_get_1d_context() result(ctxt)
+    integer :: ctxt
+    ctxt = -1
+#ifdef MPI
+    if ( iCTXT < 0 ) call diag_init()
+    ctxt = iCTXT
+#endif
+  end function diag_get_1d_context
 
   subroutine diag_exit()
 #ifdef SIESTA__ELPA
