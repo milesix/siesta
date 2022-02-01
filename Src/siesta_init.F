@@ -23,7 +23,7 @@
       use units,              only: Kelvin
       use siesta_options
       use timer_options,      only: use_tree_timer, use_parallel_timer
-      use sparse_matrices
+      use sparse_matrices,    only: dm_history
       use class_Fstack_Pair_Geometry_dSpData2D, only: new, max_size
       use siesta_geom
       use atomlist,           only: no_u, rmaxkb, amass, lasto, qtot,
@@ -50,8 +50,8 @@
       use parallel,           only: SIESTA_Group, SIESTA_Comm
       use m_energies
       use m_steps
-      use m_spin,             only: init_spin, spin
-      use m_spin,             only: init_spiral
+      use m_spin,             only: spin
+      use spin_subs_m,        only: init_spin, init_spiral
       use m_rmaxh
       use m_forces 
       use m_eo

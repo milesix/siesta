@@ -47,7 +47,7 @@ SIESTA_OBJS= precision.o local_sys.o m_io.o alloc.o memoryinfo.o memory.o pxf.o 
              moreParallelSubs.o m_mpi_utils.o \
              reclat.o idiag.o minvec.o \
              parallel.o io.o files.o cellsubs.o sorting.o \
-             kpoint_convert.o timestamp.o m_wallclock.o m_spin.o \
+             kpoint_convert.o timestamp.o m_wallclock.o spin_subs.o m_spin.o \
              diag.o diag_option.o bloch_unfold.o \
              debugmpi.o find_kgrid.o m_cite.o posix_calls.o \
              runinfo_m.o cli_m.o
@@ -469,13 +469,13 @@ dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
 dftu_specs.o: basis_specs.o basis_types.o interpolation.o local_sys.o m_cite.o
 dftu_specs.o: parallel.o precision.o pseudopotential.o radial.o units.o
 dhscf.o: alloc.o atmfuncs.o delk.o dfscf.o dipole.o doping_uniform.o files.o
-dhscf.o: forhar.o iogrid_netcdf.o local_sys.o m_charge_add.o m_efield.o
-dhscf.o: m_energies.o m_hartree_add.o m_iorho.o m_iotddft.o m_mesh_node.o
-dhscf.o: m_ncdf_siesta.o m_partial_charges.o m_rhog.o m_spin.o m_ts_electype.o
-dhscf.o: m_ts_global_vars.o m_ts_hartree.o m_ts_options.o m_ts_voltage.o mesh.o
-dhscf.o: meshdscf.o meshsubs.o moremeshsubs.o ncdf_io.o parallel.o parsing.o
-dhscf.o: precision.o rhofft.o rhoofd.o rhoofdsp.o siesta_options.o units.o
-dhscf.o: vmat.o vmatsp.o
+dhscf.o: forhar.o iogrid_netcdf.o local_sys.o m_char.o m_charge_add.o
+dhscf.o: m_efield.o m_energies.o m_hartree_add.o m_iorho.o m_iotddft.o
+dhscf.o: m_mesh_node.o m_ncdf_siesta.o m_partial_charges.o m_rhog.o m_spin.o
+dhscf.o: m_ts_electype.o m_ts_global_vars.o m_ts_hartree.o m_ts_options.o
+dhscf.o: m_ts_voltage.o mesh.o meshdscf.o meshsubs.o moremeshsubs.o ncdf_io.o
+dhscf.o: parallel.o parsing.o precision.o rhofft.o rhoofd.o rhoofdsp.o
+dhscf.o: siesta_options.o units.o vmat.o vmatsp.o
 diag.o: alloc.o diag_option.o local_sys.o parallel.o precision.o
 diag2g.o: fermid.o intrinsic_missing.o local_sys.o parallel.o parallelsubs.o
 diag2g.o: precision.o writewave.o
@@ -577,7 +577,7 @@ io_hsx.o: class_SpData1D.o class_SpData2D.o class_Sparsity.o files.o
 io_hsx.o: io_sparse.o local_sys.o parallel.o parallelsubs.o precision.o
 io_hsx.o: siesta_geom.o
 io_sparse.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
-io_sparse.o: class_Sparsity.o parallel.o precision.o
+io_sparse.o: class_Sparsity.o precision.o
 iocg.o: files.o local_sys.o precision.o
 iodm.o: alloc.o files.o local_sys.o parallel.o parallelsubs.o precision.o
 iodm_netcdf.o: alloc.o local_sys.o parallel.o parallelsubs.o precision.o
@@ -747,7 +747,6 @@ m_sparsity_handling.o: class_OrbitalDistribution.o class_SpData1D.o
 m_sparsity_handling.o: class_SpData2D.o class_Sparsity.o geom_helper.o
 m_sparsity_handling.o: intrinsic_missing.o m_interpolate.o m_region.o
 m_sparsity_handling.o: precision.o
-m_spin.o: alloc.o files.o get_kpoints_scale.o local_sys.o m_cite.o parallel.o
 m_spin.o: precision.o
 m_stress.o: precision.o
 m_supercell.o: atom_graph.o class_OrbitalDistribution.o class_SpData2D.o
@@ -1008,7 +1007,8 @@ radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radial.o: alloc.o interpolation.o precision.o xml.o
 read_options.o: files.o local_sys.o m_charge_add.o m_chess.o m_cite.o
 read_options.o: m_hartree_add.o m_mixing_scf.o m_spin.o m_target_stress.o
-read_options.o: parallel.o precision.o siesta_cml.o siesta_options.o units.o
+read_options.o: parallel.o precision.o siesta_cml.o siesta_options.o
+read_options.o: spin_subs.o units.o
 read_xc_info.o: local_sys.o parallel.o precision.o
 redcel.o: local_sys.o parallel.o precision.o
 register_rfs.o: atm_types.o atmfuncs.o matel_registry.o parallel.o precision.o
@@ -1115,8 +1115,8 @@ siesta_init.o: m_spin.o m_steps.o m_supercell.o m_timer.o m_wallclock.o
 siesta_init.o: metaforce.o molecularmechanics.o object_debug.o parallel.o
 siesta_init.o: parallelsubs.o projected_DOS.o reinit_m.o runinfo_m.o
 siesta_init.o: siesta_cmlsubs.o siesta_dicts.o siesta_geom.o siesta_options.o
-siesta_init.o: sparse_matrices.o struct_init.o timer.o timestamp.o ts_init.o
-siesta_init.o: units.o version.o writewave.o zmatrix.o
+siesta_init.o: sparse_matrices.o spin_subs.o struct_init.o timer.o timestamp.o
+siesta_init.o: ts_init.o units.o version.o writewave.o zmatrix.o
 siesta_master.o: iopipes.o iosockets.o local_sys.o precision.o
 siesta_move.o: atomlist.o broyden_optim.o cell_broyden_optim.o
 siesta_move.o: cell_fire_optim.o dynamics.o fire_optim.o flook_siesta.o ioxv.o
@@ -1137,6 +1137,8 @@ sparse_matrices.o: class_SpData2D.o class_SpData2D.o class_Sparsity.o
 sparse_matrices.o: precision.o
 spatial.o: precision.o
 spher_harm.o: alloc.o local_sys.o precision.o
+spin_subs.o: alloc.o files.o get_kpoints_scale.o local_sys.o m_cite.o m_spin.o
+spin_subs.o: parallel.o precision.o
 spinorbit.o: atm_types.o atmfuncs.o atmparams.o basis_types.o m_mpi_utils.o
 spinorbit.o: parallel.o parallelsubs.o precision.o pseudopotential.o
 state_analysis.o: atomlist.o born_charge.o flook_siesta.o m_energies.o
@@ -1236,8 +1238,8 @@ m_tbt_gf.o: local_sys.o m_os.o m_tbt_contour.o m_ts_cctype.o m_ts_electrode.o
 m_tbt_gf.o: m_ts_electype.o m_ts_gf.o parallel.o precision.o
 m_tbt_hs.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
 m_tbt_hs.o: class_Sparsity.o files.o m_handle_sparse.o m_interpolate.o
-m_tbt_hs.o: m_sparsity_handling.o m_spin.o m_ts_io.o m_ts_io_ctype.o parallel.o
-m_tbt_hs.o: precision.o units.o
+m_tbt_hs.o: m_sparsity_handling.o m_ts_io.o m_ts_io_ctype.o parallel.o
+m_tbt_hs.o: precision.o spin_subs.o units.o
 m_tbt_kpoint.o: fdf_extra.o files.o find_kgrid.o intrinsic_missing.o
 m_tbt_kpoint.o: m_gauss_quad.o m_integrate.o m_os.o m_tbt_save.o m_ts_tdir.o
 m_tbt_kpoint.o: m_verbosity.o parallel.o precision.o units.o
@@ -1477,6 +1479,7 @@ on_core.o: onmod.o
 on_main.o: onmod.o
 printmat.o: printmatrix.o
 sorted_search_m.o: sorted_search.o
+spin_subs_m.o: spin_subs.o
 sys.o: local_sys.o
 t_spin.o: m_spin.o
 timer_options.o: timer.o

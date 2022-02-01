@@ -18,6 +18,7 @@ module m_ts_sparse
 
   use class_Sparsity
   use class_iSpData1D
+  use class_OrbitalDistribution
 
   use precision, only : dp
 
@@ -70,8 +71,6 @@ contains
        ucell, nsc, na_u,xa,lasto, dit,sparse_pattern, Gamma, &
        isc_off)
     
-    use class_OrbitalDistribution
-
     use alloc
 #ifdef MPI
     use mpi_siesta, only : MPI_Comm_Self
@@ -276,8 +275,6 @@ contains
 
     use parallel, only: IONode
     
-    use class_OrbitalDistribution
-    use class_Sparsity
     use m_region
 
     use m_ts_electype
@@ -398,7 +395,6 @@ contains
 #ifdef MPI
     use mpi_siesta
 #endif
-    use class_OrbitalDistribution
     use intrinsic_missing, only : SORT_QUICK
     use create_Sparsity_SC
     use m_ts_electype
@@ -580,7 +576,6 @@ contains
 
     use geom_helper, only : UCORB
     use create_Sparsity_SC
-    use class_OrbitalDistribution
     use m_ts_method
     use m_ts_electype
 ! **********************
@@ -717,7 +712,6 @@ contains
   end subroutine ts_Sparsity_Update
 
   subroutine ts_Sparsity_Subset_pointer(dit,sp,sub_sp,ipnt)
-    use class_OrbitalDistribution
 
 ! **********************
 ! * INPUT variables    *
