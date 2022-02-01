@@ -29,6 +29,8 @@ module m_thermal_flux_settings
      integer  :: n_max_ewald = 5
      !! Number of periodic cell images for Ewald scheme
      !! Read from .fdf input under `ThermalFlux.Jion.Nmax`
+     logical :: use_sternheimer =.false.  !! Use Sternheimer equation method
+     !! for `psi_hat_c`-s in computation of Jks
      logical :: qeheat_units   = .false.  !! Use QuantumEspresso Heat suite thermal flux units for comparison
      logical :: verbose_output = .false.  !! Eval and print extra debug test info
    contains
@@ -106,6 +108,11 @@ contains
        if(fdf_get('ThermalFlux.QEHeat.Units', .false.)) then
           this%qeheat_units = .true.
           write(*,"(2X,A)") "[gk:.init] Using QEHeat units for thermal flux results output."
+       end if
+
+       if(fdf_get('ThermalFlux.UseSternheimer', .false.)) then
+          this%use_sternheimer = .true.
+          write(*,"(2X,A)") "[gk:.init] Sternheimer Equation method for computation of Jks."
        end if
 
        if(fdf_get('ThermalFlux.VerboseOutput', .false.)) then
@@ -237,7 +244,7 @@ module thermal_flux_data
   !! Rmatrix copy from "base" step.
   real(dp), allocatable, save   :: hr_commutator(:,:)
   !! [H,r] computed at base step
-  
+
   real(dp), pointer, save :: Sinv(:,:) => null()
   !! Inverse of the overlap matrix.
   !! Computed in diagg at the beginning of the scf cycle of
@@ -246,7 +253,7 @@ module thermal_flux_data
   real(dp), pointer, save :: H_base(:,:) => null() ! ^mem
   real(dp), pointer, save :: eo_base(:) => null()
   real(dp), pointer, save :: psi_base(:,:) => null()
-  
+
   ! Common auxilliary state data regarding mesh, gvectors etc:
   real(dp), dimension(3,3), save :: cell_vmd !! Unit cell vectors
   integer, dimension(3), save    :: mesh_vmd

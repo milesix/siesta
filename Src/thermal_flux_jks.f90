@@ -63,16 +63,19 @@ contains
     real(dp) :: tr_hat, tr_shat
 
     real(dp), allocatable :: tmp_g(:)
-    ! real(dp), allocatable :: amat(:,:), amat_save(:,:)
-    ! real(dp), allocatable :: sinv_h_mat(:,:), dm_s_mat(:,:)
-    ! integer, allocatable :: ipiv(:)
-    ! real(dp)    :: alpha_reg = 0.001_dp ! To regularize (H-e)^-1
-    ! integer :: i, j,  info
+    real(dp), allocatable :: amat(:,:), amat_save(:,:)
+    real(dp), allocatable :: sinv_h_mat(:,:), dm_s_mat(:,:)
+    integer, allocatable :: ipiv(:)
+    real(dp)    :: alpha_reg = 0.001_dp ! To regularize (H-e)^-1
+    integer :: i, j,  info
 
     allocate (tmp_g(no_l))
-    ! allocate(ipiv(no_u), amat(no_u,no_u))
-    ! allocate(amat_save(no_u,no_u))
-    ! allocate(sinv_h_mat(no_u,no_u), dm_s_mat(no_u,no_u))
+
+    if (gk_setup%use_sternheimer) then
+       allocate(ipiv(no_u), amat(no_u,no_u))
+       allocate(amat_save(no_u,no_u))
+       allocate(sinv_h_mat(no_u,no_u), dm_s_mat(no_u,no_u))
+    end if
 
     ! computing and storage of every of the 3 components
     ! should be available to order in the .fdf
@@ -81,7 +84,7 @@ contains
 
     ! Compute first P_c [H,r] |Psi_iw>
 
-    ! alpha_reg = fdf_get('alpha.reg',alpha_reg)
+    alpha_reg = fdf_get('alpha.reg',alpha_reg)
 
     do idx=1,3
        do iw = 1,n_wfs
@@ -93,16 +96,20 @@ contains
                 k = listhptr(nu) + ij
                 col = listh(k)
 
-                tmp_g(nu) = tmp_g(nu) + psi_base(col,iw) * Rmat_base(k,idx)
-                ! New equations: Use [H,r] trick and linear equations.
-                ! Gamma_mu_nu in former version of notes is now hr_commutator_mu_nu
-                ! (** take care of mu_nu vs nu_mu issues **)
+                if (gk_setup%use_sternheimer) then
+                   ! New equations: Use [H,r] trick and linear equations.
+                   ! Gamma_mu_nu in former version of notes is now hr_commutator_mu_nu
+                   ! (** take care of mu_nu vs nu_mu issues **)
 
-                ! Only momentum part of [H,r]...
-                ! tmp_g(nu) = tmp_g(nu) + psi_base(col,iw) * gradS_base(idx,k)
+                   ! Only momentum part of [H,r]...
+                   ! tmp_g(nu) = tmp_g(nu) + psi_base(col,iw) * gradS_base(idx,k)
 
-                ! Complete commutator
-                ! tmp_g(nu) = tmp_g(nu) + psi_base(col,iw) * hr_commutator(k,idx)
+                   ! Complete commutator
+                   tmp_g(nu) = tmp_g(nu) + psi_base(col,iw) * hr_commutator(k,idx)
+                else
+                   ! Original R-Matrix element Garcia-Ordejon approach.
+                   tmp_g(nu) = tmp_g(nu) + psi_base(col,iw) * Rmat_base(k,idx)
+                end if
 
              end do
           end do
@@ -156,8 +163,10 @@ contains
        enddo
     end if
 
-    ! sinv_h_mat = matmul(Sinv,H_base)
-    ! dm_s_mat = matmul(DM_save(:,:,1,1),S_base)
+    if (gk_setup%use_sternheimer) then
+       sinv_h_mat = matmul(Sinv,H_base)
+       dm_s_mat = matmul(DM_save(:,:,1,1),S_base)
+    end if
 
     do iw = 1,n_wfs
 
@@ -166,13 +175,15 @@ contains
        ! But note tensorial issues
     ! Use dgesv for AX=B, with the solution X overwriting B (just what we need)
 
-       ! amat = 0.0_dp
-       ! do i = 1, no_u
-       !    do j = 1, no_u
-       !       amat(i,j) = sinv_h_mat(i,j) + alpha_reg*dm_s_mat(i,j)
-       !    enddo
-       !    amat(i,i) = amat(i,i) - eo_base(iw)
-       ! enddo
+       if (gk_setup%use_sternheimer) then
+          amat = 0.0_dp
+          do i = 1, no_u
+             do j = 1, no_u
+                amat(i,j) = sinv_h_mat(i,j) + alpha_reg*dm_s_mat(i,j)
+             enddo
+             amat(i,i) = amat(i,i) - eo_base(iw)
+          enddo
+       end if
 
 
 ! subroutine dgesv	(	integer 	N,
@@ -186,17 +197,19 @@ contains
 ! )
 
        ! ! Do each cartesian direction separately.
-       ! amat_save = amat
+       if (gk_setup%use_sternheimer) amat_save = amat
 
        do idx = 1, 3
-          ! amat = amat_save ! amat is destroyed at each iteration...
-          ! call dgesv(no_u, 1, amat, no_u, ipiv, psi_hat_c(1,iw,idx), no_u, info)
-          ! if (info < 0) then
-          !    write(0,*) "Argument had an illegal value: ", -info
-          !    call die("Error in dgesv call")
-          ! else if (info > 0) then
-          !    call die("A is singular in dgesv call")
-          ! endif
+          if (gk_setup%use_sternheimer) then
+             amat = amat_save ! amat is destroyed at each iteration...
+             call dgesv(no_u, 1, amat, no_u, ipiv, psi_hat_c(1,iw,idx), no_u, info)
+             if (info < 0) then
+                write(0,*) "Argument had an illegal value: ", -info
+                call die("Error in dgesv call")
+             else if (info > 0) then
+                call die("A is singular in dgesv call")
+             endif
+          end if
 
           if (gk_setup%verbose_output) then
              ! Norm and scalar product with original wavefunction. The latter
@@ -216,7 +229,7 @@ contains
 
     enddo ! iw
 
-    ! deallocate(ipiv, amat, amat_save, sinv_h_mat, dm_s_mat)
+    if (gk_setup%use_sternheimer) deallocate(ipiv, amat, amat_save, sinv_h_mat, dm_s_mat)
 
   CONTAINS
 
