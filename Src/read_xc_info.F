@@ -20,7 +20,7 @@ C
 
 C     LOCAL variables
 
-      integer, parameter      :: MaxFunc = 10
+      integer, parameter      :: MaxFunc = 20
       integer                 :: nXCfunc
       character(len=50)       :: XCauth(MaxFunc)
       character(len=20)       :: XCfunc(MaxFunc)
@@ -35,29 +35,42 @@ C     LOCAL variables
         type(block_fdf)            :: bfdf
         type(parsed_line), pointer :: pline
 
+        logical  :: found_block
+        
 !      Read XC functionals
+
+        found_block = .false.
         
-        if (fdf_block('xc.hybrid',bfdf)) then
-           call die('XC.hybrid block is deprecated. Use XC.cocktail')
+        if (fdf_block('xc.mix',bfdf)) then
+           found_block = .true.
+        else if (fdf_block('xc.cocktail',bfdf)) then
+           call message(' (info)',
+     $          'XC.cocktail block is deprecated. Use XC.mix')
+           found_block = .true.
+        else if (fdf_block('xc.hybrid',bfdf)) then
+           call message(' (info)',
+     $          'XC.hybrid block is deprecated. Use XC.mix')
+           found_block = .true.
         endif
-        
-        if (fdf_block('xc.cocktail',bfdf)) then
+
+        if (found_block) then
+           
           if (.not. fdf_bline(bfdf,pline)) then
-            call die('setXC: ERROR no data in xc.cocktail block')
+            call die('read_xc: ERROR no data in xc.mix block')
           endif
           ni = fdf_bnintegers(pline)
 
           if (ni .eq. 0) then
-            call die('setXC: Number of functionals missing in ' //
-     .               'xc.cocktail')
+            call die('read_xc: Number of functionals missing in '
+     $            // 'xc.mix')
           endif
           nXCfunc = abs(fdf_bintegers(pline,1))
           if (nXCfunc .gt. MaxFunc) then
-            call die('setXC: Too many functionals in xc.cocktail')
+            call die('read_xc: Too many (>20) functionals in xc.mix')
           endif
           do n= 1, nXCfunc
             if (.not. fdf_bline(bfdf,pline)) then
-              call die('setXC: Number of XC functionals does not match')
+              call die('read_xc: Too few functional lines in xc.mix')
             endif
             nn = fdf_bnnames(pline)
             nr = fdf_bnreals(pline)
@@ -92,10 +105,10 @@ C     LOCAL variables
           XCweightC(1) = 1.0_dp
         endif
 
-C Output data for cocktail functionals
+C Output data for mix of functionals
         if ((nXCfunc .gt. 1) .and. (Node .eq. 0)) then
           write(6,'(/,''xc:'')')
-          write(6,'(''xc:  Cocktail exchange-correlation functional:'')
+          write(6,'(''xc: Exchange-correlation functional mix:'')
      .      ')
           write(6,'(''xc:'')')
           write(6,'(''xc: Number     Functional     Authors  '',
