@@ -17,6 +17,7 @@ subroutine pdos3g( nuo, no, maxuo, maxnh, &
   ! Written by J. Junquera and E. Artacho. Nov' 99
   ! Gamma point version adapted from PDOSK by Julian Gale. Feb' 03
   ! Spin-orbit coupling version by J. Ferrer, October 2007
+  ! Huge performance increase by N. Papior, 2022
   ! ****  INPUT  *********************************************************
   ! integer nuo               : Number of atomic orbitals in the unit cell
   ! integer no                : Number of atomic orbitals in the supercell
@@ -31,7 +32,7 @@ subroutine pdos3g( nuo, no, maxuo, maxnh, &
   !                             hamiltonian matrix
   ! integer listh(maxnh)      : Nonzero hamiltonian-matrix element
   !                             column indexes for each matrix row
-  ! real*8  H(maxnh,4)    : Hamiltonian in sparse format
+  ! real*8  H(maxnh,8)    : Hamiltonian in sparse format
   ! real*8  S(maxnh)          : Overlap in sparse format
   ! real*8  E1, E2            : Energy range for density-matrix states
   !                             (to find local density of states)
@@ -39,15 +40,15 @@ subroutine pdos3g( nuo, no, maxuo, maxnh, &
   ! integer nhist             : Number of the subdivisions of the histogram
   ! real*8  sigma             : Width of the gaussian to expand the eigenvectors
   ! integer indxuo(no)        : Index of equivalent orbital in unit cell
-  ! real*8  eo(maxo,2)   : Eigenvalues
+  ! real*8  eo(maxo*2)   : Eigenvalues
   ! integer nuotot            : Total number of orbitals per unit cell
   ! ****  AUXILIARY  *****************************************************
-  ! real*8  haux(nuo,nuo)     : Auxiliary space for the hamiltonian matrix
-  ! real*8  saux(nuo,nuo)     : Auxiliary space for the overlap matrix
-  ! real*8  psi(nuo,nuo)      : Auxiliary space for the eigenvectors
+  ! real*8  haux(nuotot,nuo)     : Auxiliary space for the hamiltonian matrix
+  ! real*8  saux(nuotot,nuo)     : Auxiliary space for the overlap matrix
+  ! real*8  psi(nuotot,nuo)      : Auxiliary space for the eigenvectors
   ! ****  OUTPUT  ********************************************************
-  ! real*8  dtot(nhist,4)   : Total density of states
-  ! real*8  dpr(nhist,nuo,4): Proyected density of states
+  ! real*8  dtot(4,nhist)   : Total density of states
+  ! real*8  dpr(4,nuotot,nhist): Proyected density of states
   ! **********************************************************************
 
   use precision
@@ -59,6 +60,7 @@ subroutine pdos3g( nuo, no, maxuo, maxnh, &
   use mpi_siesta
 #endif
   use sys,          only : die
+  use m_diag, only: diag_get_1d_context, diag_descinit
 
   implicit none
 
@@ -67,54 +69,301 @@ subroutine pdos3g( nuo, no, maxuo, maxnh, &
   integer :: numh(nuo), listhptr(nuo), listh(maxnh), indxuo(no)
 
   real(dp) :: H(maxnh,8), S(maxnh), E1, E2, sigma, eo(maxo*2), &
-      dtot(nhist,4), dpr(nhist,nuotot,4)
-  complex(dp) :: psi(2,nuotot,2*nuo)
+      dtot(4,nhist), dpr(4,nuotot,nhist)
+  complex(dp) :: psi(2,nuotot,2,nuo)
   complex(dp) Haux(2,nuotot,2,nuo), Saux(2,nuotot,2,nuo)
-  complex(dp), pointer :: caux(:,:)
 
   ! Internal variables ---------------------------------------------------
-  integer :: ispin, iuo, juo, io, j, jo, ihist, iband, ind, ierror
+  integer :: ik, ispin, iuo, io, juo, j, jo, ihist, iband, ind, ierror
+  integer :: iEmin, iEmax
+  integer :: nuo2, nuotot2, BlockSize2
 
-  real(dp) :: delta, ener, diff, rpipj, ipipj, gauss, norm
-  real(dp), pointer :: Spr(:,:) => null()
+  real(dp) :: delta, ener, diff, gauss, norm, wksum
+  real(dp) :: limit, inv_sigma2
+  real(dp) :: D1, D2
 
 #ifdef MPI
-  integer :: BNode, Bnuo, ibandg, maxnuo, MPIerror
-  real(dp), pointer :: Sloc(:,:)
-  real(dp) :: tmp(nhist,nuotot,4)
+  ! All of our matrices are described in the same manner
+  ! So we only need one descriptor
+  integer :: ctxt, desc(9)
+  real(dp), dimension(:,:,:), pointer :: aux_red => null()
 #endif
 
   external :: cdiag
 
   ! Initialize some variables
-  delta = (E2 - E1)/(nhist-1)
+  delta = (e2 - e1)/(nhist-1)
+  inv_sigma2 = 1._dp / sigma**2
+  ! Limit is exp(-20) ~ 2e-9
+  limit = sqrt(20._dp) * sigma
+  nuo2 = nuo * 2
+  nuotot2 = nuotot * 2
+  BlockSize2 = BlockSize * 2
 
-  ! Initialize auxiliary variables
+  call setup_Gamma()
 
-  call re_alloc(Spr, 1, nuotot, 1, nuo, name='Spr', routine='pdos3g')
-
-  do io = 1,nuo
-    Saux(:,:,:,io) = 0._dp
-    Haux(:,:,:,io) = 0._dp
-    do j = 1,numh(io)
-      ind = listhptr(io) + j
-      jo = listh(ind)
-      jo = indxuo(jo)
-      Saux(1,jo,1,io) = Saux(1,jo,1,io) + cmplx( S(ind), 0.0_dp,dp)
-      Saux(2,jo,2,io) = Saux(2,jo,2,io) + cmplx( S(ind), 0.0_dp,dp)
-      Haux(1,jo,1,io) = Haux(1,jo,1,io) + cmplx(H(ind,1), H(ind,5),dp)
-      Haux(2,jo,2,io) = Haux(2,jo,2,io) + cmplx(H(ind,2), H(ind,6),dp)
-      Haux(1,jo,2,io) = Haux(1,jo,2,io) + cmplx(H(ind,3),-H(ind,4),dp)
-      Haux(2,jo,1,io) = Haux(2,jo,1,io) + cmplx(H(ind,7), H(ind,8),dp)
-    enddo
-  enddo
   ! Diagonalize at the Gamma point
-  call cdiag( Haux, Saux, 2*nuotot, 2*nuo, 2*nuotot, &
-      eo, psi, 2*nuotot, 1, ierror, 2*BlockSize )
-  if (ierror.gt.0) then
+  call cdiag( Haux, Saux, nuotot2, nuo2, nuotot2, &
+      eo, psi, nuotot2, 1, ierror, BlockSize2 )
+  if ( ierror > 0 ) then
     call die('Terminating due to failed diagonalisation')
-  elseif (ierror .lt. 0) then
+  elseif ( ierror < 0 ) then
     ! Repeat diagonalisation with increased memory to handle clustering
+    call setup_Gamma()
+    call cdiag(Haux,Saux,nuotot2,nuo2,nuotot2,eo,psi, &
+        nuotot2,1,ierror,BlockSize2)
+  end if
+
+  ! Figure out the minimum and maximum eigenstates that will contribute
+  ! This ensures we calculate fewer columns of the psi basis
+  ! Note, eo *MUST* be sorted. This is ensured by lapack/scalapack.
+  iEmin = 1
+  do jo = 1, nuotot2
+    diff = abs(E1 - EO(jo))
+    if ( diff < limit ) then
+      iEmin = jo
+      exit
+    end if
+  end do
+
+  iEmax = nuotot2
+  do jo = nuotot2, 1, -1
+    diff = abs(E2 - EO(jo))
+    if ( diff < limit ) then
+      iEmax = jo
+      exit
+    end if
+  end do
+  ! Ensure that they are in full sections (makes the below easier)
+  iEmin = iEmin - mod(iEmin-1,2)
+  iEmax = iEmax + mod(iEmax,2)
+
+  ! correct wrong cases, should probably never be found?
+  if ( iEmin > iEmax ) then
+    iEmin = 1
+    iEmax = 0
+  end if
+
+  ! Recalculate again the overlap matrix in k-space
+  call setup_S()
+
+  ! Total number of elements calculated (jo is allowed to be 0)
+  jo = iEmax - iEmin + 1
+  ! Convert iEmin/iEmax to local indices (not factor 2)
+  iEmin = (iEmin + 1)/2
+  iEmax = iEmax / 2
+
+#ifdef MPI
+
+  ! We need to define the contexts and matrix descriptors
+  ctxt = diag_get_1d_context()
+  call diag_descinit(nuotot2, nuotot2, BlockSize2, desc, ctxt)
+
+  ! Now perform the matrix-multiplications
+  ! This is: S | psi >
+  call pzgemm('N', 'N', nuotot2, jo, nuotot2, cmplx(1._dp, 0._dp, dp), &
+      Saux(1,1,1,1), 1, 1, desc, psi(1,1,1,1), 1, iEmin*2-1, desc, &
+      cmplx(0._dp, 0._dp, dp), Haux(1,1,1,1), 1, iEmin*2-1, desc)
+
+  ! reset
+  iuo = iEmin
+  juo = iEmax
+  iEmin = 1
+  iEmax = 0
+  do jo = 1, nuo
+    call LocalToGlobalOrb(jo, Node, Nodes, j)
+    if ( iuo <= j ) then
+      ! lowest point where we have this orbital
+      iEmin = jo
+      exit
+    end if
+  end do
+  do jo = nuo, 1, -1
+    call LocalToGlobalOrb(jo, Node, Nodes, j)
+    if ( j <= juo ) then
+      iEmax = jo
+      exit
+    end if
+  end do
+
+  ! Now iEmin, iEmax are local indices
+
+!!$OMP parallel default(none) shared(Haux,psi,dtot,dpr,iEmin,iEmax,inv_sigma2,D1,D2) &
+!!$OMP& shared(nhist,Node,Nodes,eo,limit,wk,nuotot,nuo,ik,delta,e1) &
+!!$OMP& private(jo,iuo,ihist,ener,iband,diff,gauss,j)
+
+  ! Ensure we multiply with the local nodes complex conjugate
+  ! This is the final step of < psi | S | psi >
+  ! but doing it element wise, rather than a dot-product
+  ! Now we will do some magic.
+  ! A complex array is equivalent to two reals next to each other.
+  ! So to utilize daxpy below, we just ensure the following:
+  !   UU = real(UU)
+  !   DD = aimag(UU)
+  !   X  = real(UD)
+  !   Y  = aimag(UD)
+  ! This enables us efficient usage of BLAS while obfuscating things
+  ! a bit.
+  ! Additionally consider that we want the correct sign to use daxpy.
+  ! So basically we need to calculate D21 + conjg(D12) which
+  ! then has the correct signs.
+
+!!$OMP do schedule(static)
+  do jo = iEmin, iEmax
+    do io = 1, nuotot
+      D1 = real(conjg(psi(1,io,1,jo)) * Haux(1,io,1,jo), dp)
+      D2 = real(conjg(psi(2,io,1,jo)) * Haux(2,io,1,jo), dp)
+      Haux(2,io,1,jo) = conjg(psi(1,io,1,jo)) * Haux(2,io,1,jo) &
+          + psi(2,io,1,jo) * conjg(Haux(1,io,1,jo))
+      Haux(1,io,1,jo) = cmplx(D1, D2, dp)
+    end do
+    do io = 1, nuotot
+      D1 = real(conjg(psi(1,io,2,jo)) * Haux(1,io,2,jo), dp)
+      D2 = real(conjg(psi(2,io,2,jo)) * Haux(2,io,2,jo), dp)
+      Haux(2,io,2,jo) = conjg(psi(1,io,2,jo)) * Haux(2,io,2,jo) &
+          + psi(2,io,2,jo) * conjg(Haux(1,io,2,jo))
+      Haux(1,io,2,jo) = cmplx(D1, D2, dp)
+    end do
+  end do
+!!$OMP end do
+
+!!$OMP do schedule(static,16)
+  do ihist = 1, nhist
+    ener = E1 + (ihist - 1) * delta
+    do iband = iEmin, iEmax
+      ! the energy comes from the global array
+      call LocalToGlobalOrb(iband, Node, Nodes, j)
+      diff = abs(ener - eo(j*2-1))
+
+      ! TODO, this *could* be merged into a single zgemm call with gauss(2), but...
+      ! In fact, all of iEmin ... iEmax could be merged to do everything *once*
+      ! But a bit more complicated.
+
+      if ( diff < limit ) then
+        gauss = exp(-diff**2*inv_sigma2)
+        ! See discussion about daxpy + OMP usage in pdosg.F90
+        call daxpy(nuotot*4,gauss,Haux(1,1,1,iband),1,dpr(1,1,ihist),1)
+      end if
+
+      diff = abs(ener - eo(j*2))
+      if ( diff < limit ) then
+        gauss = exp(-diff**2*inv_sigma2)
+        ! See discussion about daxpy + OMP usage in pdosg.F90
+        call daxpy(nuotot*4,gauss,Haux(1,1,2,iband),1,dpr(1,1,ihist),1)
+      end if
+
+    end do
+  end do
+!!$OMP end do nowait
+
+!!$OMP end parallel
+
+#else
+  ! Now perform the matrix-multiplications
+  ! This is: S | psi >
+
+  ! Convert iEmin/iEmax to local indices
+  call zgemm('N','N',nuotot2, jo, nuotot2, cmplx(1._dp, 0._dp, dp), &
+      Saux(1,1,1,1),nuotot2, psi(1,1,1,iEmin),nuotot2, cmplx(0._dp, 0._dp, dp), &
+      Haux(1,1,1,iEmin), nuotot2)
+
+!!$OMP parallel default(none) shared(Haux,psi,dtot,dpr,iEmin,iEmax,inv_sigma2,D1,D2) &
+!!$OMP& shared(nhist,Node,Nodes,eo,limit,wk,nuotot,nuo,ik,delta,e1) &
+!!$OMP& private(jo,iuo,ihist,ener,iband,diff,gauss,j)
+
+  ! Ensure we multiply with the local nodes complex conjugate
+  ! This is the final step of < psi | S | psi >
+  ! but doing it element wise, rather than a dot-product
+  ! Now we will do some magic.
+  ! A complex array is equivalent to two reals next to each other.
+  ! So to utilize daxpy below, we just ensure the following:
+  !   UU = real(UU)
+  !   DD = aimag(UU)
+  !   X  = real(UD)
+  !   Y  = aimag(UD)
+  ! This enables us efficient usage of BLAS while obfuscating things
+  ! a bit.
+  ! Additionally consider that we want the correct sign to use daxpy.
+  ! So basically we need to calculate D21 + conjg(D12) which
+  ! then has the correct signs.
+
+!!$OMP do schedule(static)
+  do jo = iEmin, iEmax
+    do io = 1, nuotot
+      D1 = real(conjg(psi(1,io,1,jo)) * Haux(1,io,1,jo), dp)
+      D2 = real(conjg(psi(2,io,1,jo)) * Haux(2,io,1,jo), dp)
+      Haux(2,io,1,jo) = conjg(psi(1,io,1,jo)) * Haux(2,io,1,jo) &
+          + psi(2,io,1,jo) * conjg(Haux(1,io,1,jo))
+      Haux(1,io,1,jo) = cmplx(D1, D2, dp)
+    end do
+    do io = 1, nuotot
+      D1 = real(conjg(psi(1,io,2,jo)) * Haux(1,io,2,jo), dp)
+      D2 = real(conjg(psi(2,io,2,jo)) * Haux(2,io,2,jo), dp)
+      Haux(2,io,2,jo) = conjg(psi(1,io,2,jo)) * Haux(2,io,2,jo) &
+          + psi(2,io,2,jo) * conjg(Haux(1,io,2,jo))
+      Haux(1,io,2,jo) = cmplx(D1, D2, dp)
+    end do
+  end do
+!!$OMP end do
+
+!!$OMP do schedule(static,16)
+  do ihist = 1, nhist
+    ener = E1 + (ihist - 1) * delta
+    do iband = iEmin, iEmax
+      ! the energy comes from the global array
+      call LocalToGlobalOrb(iband, Node, Nodes, j)
+      diff = abs(ener - eo(j*2-1))
+
+      if ( diff < limit ) then
+        gauss = exp(-diff**2*inv_sigma2)
+        ! See discussion about daxpy + OMP usage in pdosg.F90
+        call daxpy(nuotot*4,gauss,Haux(1,1,1,iband),1,dpr(1,1,ihist),1)
+      end if
+
+      diff = abs(ener - eo(j*2))
+      if ( diff < limit ) then
+        gauss = exp(-diff**2*inv_sigma2)
+        ! See discussion about daxpy + OMP usage in pdosg.F90
+        call daxpy(nuotot*4,gauss,Haux(1,1,2,iband),1,dpr(1,1,ihist),1)
+      end if
+
+    end do
+  end do
+!!$OMP end do nowait
+
+!!$OMP end parallel
+
+#endif
+
+
+#ifdef MPI
+  ! Allocate workspace array for global reduction
+  call re_alloc( aux_red, 1, 4, 1, nuotot, 1, nhist, &
+      name='aux_red', routine='pdos3g')
+
+  ! Global reduction of dpr matrix
+  call MPI_Reduce(dpr(1,1,1),aux_red(1,1,1),4*nuotot*nhist, &
+      MPI_double_precision,MPI_sum,0,MPI_Comm_World,ierror)
+  dpr(:,:,:) = aux_red(:,:,:)
+
+  call de_alloc(aux_red, name='aux_red', routine='pdos3g')
+
+#endif
+
+  norm = 1._dp / (sigma * sqrt(pi))
+  call dscal(4*nuotot*nhist,norm,dpr(1,1,1),1)
+
+  do ihist = 1, nhist
+    dtot(1,ihist) = sum(dpr(1,:,ihist))
+    dtot(2,ihist) = sum(dpr(2,:,ihist))
+    dtot(3,ihist) = sum(dpr(3,:,ihist))
+    dtot(4,ihist) = sum(dpr(4,:,ihist))
+  end do
+
+contains
+
+  subroutine setup_Gamma()
+
     do io = 1,nuo
       Saux(:,:,:,io) = 0._dp
       Haux(:,:,:,io) = 0._dp
@@ -128,127 +377,24 @@ subroutine pdos3g( nuo, no, maxuo, maxnh, &
         Haux(2,jo,2,io) = Haux(2,jo,2,io) + cmplx(H(ind,2), H(ind,6),dp)
         Haux(1,jo,2,io) = Haux(1,jo,2,io) + cmplx(H(ind,3),-H(ind,4),dp)
         Haux(2,jo,1,io) = Haux(2,jo,1,io) + cmplx(H(ind,7), H(ind,8),dp)
-      enddo
-    enddo
-    call cdiag(Haux,Saux,2*nuotot,2*nuo,2*nuotot,eo,psi, &
-        2*nuotot,1,ierror,2*BlockSize)
-  endif
+      end do
+    end do
 
-  !     Rebuild the full overlap matrix
-  Spr = 0._dp
-  do io = 1, nuo
-    do j = 1, numh(io)
-      ind = listhptr(io) + j
-      jo = listh(ind)
-      jo = indxuo(jo)
-      Spr(jo,io) = Spr(jo,io) + S(ind)
-    enddo
-  enddo
+  end subroutine setup_Gamma
 
-#ifdef MPI
-  ! Find maximum number of orbitals per node
-  call MPI_AllReduce(nuo,maxnuo,1,MPI_integer,MPI_max, MPI_Comm_World,MPIerror)
+  subroutine setup_S()
 
-  ! Allocate workspace array for broadcast overlap matrix
-  nullify( Sloc )
-  call re_alloc( Sloc, 1, nuotot, 1, maxnuo, name='Sloc', routine='pdos3g' )
+    do io = 1,nuo
+      Saux(:,:,:,io) = 0._dp
+      do j = 1,numh(io)
+        ind = listhptr(io) + j
+        jo = listh(ind)
+        jo = indxuo(jo)
+        Saux(1,jo,1,io) = Saux(1,jo,1,io) + cmplx( S(ind), 0.0_dp,dp)
+        Saux(2,jo,2,io) = Saux(2,jo,2,io) + cmplx( S(ind), 0.0_dp,dp)
+      end do
+    end do
 
-  ! Loop over nodes broadcasting overlap matrix
-  do BNode = 0,Nodes-1
+  end subroutine setup_S
 
-    ! Find out how many orbitals there are on the broadcast node
-    call GetNodeOrbs(nuotot,BNode,Nodes,Bnuo)
-
-    ! Transfer data
-    if (Node.eq.BNode) then
-      Sloc(1:nuotot,1:Bnuo) = Spr(1:nuotot,1:Bnuo)
-    endif
-    call MPI_Bcast(Sloc(1,1),nuotot*Bnuo, MPI_double_precision,BNode, &
-        MPI_Comm_World,MPIerror)
-
-    do ihist = 1, nhist
-      ener = E1 + (ihist - 1) * delta
-      do iband = 1, nuo*2
-        call LocalToGlobalOrb((iband+1)/2,Node,Nodes,ibandg)
-        ibandg = ibandg * 2 - mod(iband, 2) 
-        diff = (ener - eo(ibandg))**2 / (sigma ** 2)
-        if (diff .gt. 15.0d0) cycle
-        gauss = exp(-diff)
-        caux => psi(:,:,iband) ! c_{up,j}, c_{down,j}
-        do jo = 1, Bnuo
-          call LocalToGlobalOrb(jo,BNode,Nodes,juo)
-          do io = 1, nuotot
-            rpipj = real(caux(1,io)*conjg(caux(1,juo)),dp)*gauss
-            dpr(ihist,juo,1)=dpr(ihist,juo,1)+rpipj*Sloc(io,jo)
-
-            rpipj = real(caux(2,io)*conjg(caux(2,juo)),dp)*gauss
-            dpr(ihist,juo,2)=dpr(ihist,juo,2)+rpipj*Sloc(io,jo)
-
-            rpipj = real(caux(1,io)*conjg(caux(2,juo)),dp)*gauss
-            dpr(ihist,juo,3)=dpr(ihist,juo,3)+rpipj*Sloc(io,jo)
-
-            ipipj = aimag(caux(1,io)*conjg(caux(2,juo)))*gauss
-            dpr(ihist,juo,4)=dpr(ihist,juo,4)-ipipj*Sloc(io,jo)
-          enddo
-        enddo
-      enddo
-    enddo
-
-  enddo  !BNode
-
-  ! Free workspace array for overlap
-  call de_alloc(Sloc, 'Sloc', 'pdos3g')
-
-#else
-  ! Loop over all the energy range
-
-  do ihist = 1, nhist
-    ener = E1 + (ihist - 1) * delta
-    do iband = 1, nuo*2
-      diff = (ener - eo(iband))**2 / (sigma ** 2)
-      if (diff .gt. 15.0d0) cycle
-      gauss = exp(-diff)
-      caux => psi(:,:,iband) ! c_{up,j}, c_{down,j}
-      do jo = 1, nuotot
-        do io = 1, nuotot
-          rpipj = real(caux(1,io)*conjg(caux(1,jo)),dp)*gauss
-          dpr(ihist,jo,1)=dpr(ihist,jo,1)+rpipj*Spr(io,jo)
-
-          rpipj = real(caux(2,io)*conjg(caux(2,jo)),dp)*gauss
-          dpr(ihist,jo,2)=dpr(ihist,jo,2)+rpipj*Spr(io,jo)
-
-          rpipj = real(caux(1,io)*conjg(caux(2,jo)),dp)*gauss
-          dpr(ihist,jo,3)=dpr(ihist,jo,3)+rpipj*Spr(io,jo)
-
-          ipipj = aimag(caux(1,io)*conjg(caux(2,jo)))*gauss
-          dpr(ihist,jo,4)=dpr(ihist,jo,4)-ipipj*Spr(io,jo)
-        enddo
-      enddo
-    enddo
-  enddo
-#endif
-
-  call de_alloc(Spr, 'Spr', 'pdos3g')
-
-#ifdef MPI
-
-  ! Global reduction of dpr matrix
-  tmp = 0.0d0
-  call MPI_AllReduce(dpr(1,1,1),tmp(1,1,1),nhist*nuotot*4, &
-      MPI_double_precision,MPI_sum,MPI_Comm_World,MPIerror)
-  dpr = tmp
-
-#endif
-
-  norm = sigma * sqrt(pi)
-  dpr = dpr / norm
-
-  do ihist = 1, nhist
-    dtot(ihist,1) = sum(dpr(ihist,:,1))
-    dtot(ihist,2) = sum(dpr(ihist,:,2))
-    dtot(ihist,3) = sum(dpr(ihist,:,3))
-    dtot(ihist,4) = sum(dpr(ihist,:,4))
-  enddo
-
-  return
 end subroutine pdos3g
