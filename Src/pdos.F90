@@ -161,8 +161,13 @@ subroutine pdos( NO, nspin, maxspn, NO_L, MAXNH, &
   ! -----
   call allocDenseMatrix(nhs, nhs, npsi)
   nullify( dtot, dpr )
-  call re_alloc( dtot, 1, nhist, 1, spin%EDM, 'dtot', 'pdos' )
-  call re_alloc( dpr, 1, no_u, 1, nhist, 1, spin%EDM, 'dpr', 'pdos' )
+  if ( spin%EDM <= 2 ) then
+    call re_alloc( dtot, 1, nhist, 1, spin%EDM, 'dtot', 'pdos' )
+    call re_alloc( dpr, 1, no_u, 1, nhist, 1, spin%EDM, 'dpr', 'pdos' )
+  else
+    call re_alloc( dtot, 1, spin%EDM, 1, nhist, 'dtot', 'pdos' )
+    call re_alloc( dpr, 1, spin%EDM, 1, no_u, 1, nhist, 'dpr', 'pdos' )
+  end if
 
   ! Initialize the projected density of states ---------------------------
   dtot(:,:) = 0._dp
@@ -235,8 +240,8 @@ subroutine pdos( NO, nspin, maxspn, NO_L, MAXNH, &
     case default 
       do ihist = 1,nhist
         ENER = E1 + (ihist-1) * delta
-        write(iunit1,'(5f20.5)') ener/ev,dtot(ihist,1)*eV, &
-            dtot(ihist,2)*eV,2.0_dp*dtot(ihist,3)*eV,2.0_dp*dtot(ihist,4)*eV
+        write(iunit1,'(5f20.5)') ener/ev,dtot(1,ihist)*eV, &
+            dtot(2,ihist)*eV,dtot(3,ihist)*eV,dtot(4,ihist)*eV
       enddo
     end select
 
@@ -336,10 +341,10 @@ subroutine pdos( NO, nspin, maxspn, NO_L, MAXNH, &
         call xml_AddArray(xf,tmp(1:2*nhist))
       case ( 4 )
         do ihist = 1, nhist
-          tmp(ihist*4-3) = dpr(i,ihist,1) * eV
-          tmp(ihist*4-2) = dpr(i,ihist,2) * eV
-          tmp(ihist*4-1) = 2 * dpr(i,ihist,3) * eV
-          tmp(ihist*4  ) = 2 * dpr(i,ihist,4) * eV
+          tmp(ihist*4-3) = dpr(1,i,ihist) * eV
+          tmp(ihist*4-2) = dpr(2,i,ihist) * eV
+          tmp(ihist*4-1) = dpr(3,i,ihist) * eV
+          tmp(ihist*4  ) = dpr(4,i,ihist) * eV
           write(iunit2,'(4f10.5)') tmp(ihist*4-3:ihist*4)
         end do
         call xml_AddArray(xf,tmp(1:4*nhist))
