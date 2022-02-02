@@ -219,9 +219,9 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
           if ( diff < limit ) then
             gauss = exp(-diff**2*inv_sigma2) * wk(ik)
             dtot(ihist,ispin) = dtot(ihist,ispin) + gauss
-            do iuo = 1, nuotot
-              dpr(iuo,ihist,ispin) = dpr(iuo,ihist,ispin) + Haux(1,iuo,iband) * gauss
-            end do
+            ! See discussion about daxpy + OMP usage in pdosg.F90
+            call daxpy(nuotot,gauss,Haux(1,1,iband),2,dpr(1,ihist,ispin),1)
+
           end if
           
         end do
@@ -262,9 +262,8 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
           if ( diff < limit ) then
             gauss = exp(-diff**2*inv_sigma2) * wk(ik)
             dtot(ihist,ispin) = dtot(ihist,ispin) + gauss
-            do iuo = 1, nuotot
-              dpr(iuo,ihist,ispin) = dpr(iuo,ihist,ispin) + Haux(1,iuo,iband) * gauss
-            end do
+            ! See discussion about daxpy + OMP usage in pdosg.F90
+            call daxpy(nuotot,gauss,Haux(1,1,iband),2,dpr(1,ihist,ispin),1)
           end if
           
         end do
