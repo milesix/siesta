@@ -48,7 +48,7 @@
   
     if (SIESTA_worker) then
        !Find the LDOS in the real space mesh
-       filesOut%rho = trim(slabel) // '.LDSI'
+       filesOut%rho = trim(slabel) // '.LDOS'
        g2max = g2cut
   
        ! There is too much clutter here, because dhscf is

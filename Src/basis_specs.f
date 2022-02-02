@@ -909,13 +909,63 @@ C Sanity checks on values
             if (ls%shell(1)%n.eq.-1)
      .        ls%shell(1)%n=basp%ground_state%n(l)
           endif
-          !! Do we have to sort by n value????
-          !!
+
+          ! We have to sort by n value to avoid cases in which
+          ! a higher-lying orbital is put first in PAO.Basis,
+          ! thus altering the order in the 'nsm' series. This
+          ! could happen when there are semicore states.
+          call sort_by_n(ls%shell)
+
         enddo loop_l
         !! Destroy temporary shells in basp
         !! Warning: This does seem to destroy information!!
         call destroy(basp%tmp_shell)
       enddo
+
+            CONTAINS
+
+      subroutine sort_by_n(a)
+      type(shell_t), pointer :: a(:)
+
+      integer :: n, i, j, temp
+      type(shell_t), pointer :: new(:) => null()
+
+      integer, allocatable :: index(:), keys(:)
+      logical :: swapped
+
+      n = size(a)
+      allocate(index(n), keys(n))
+      do i = 1, n
+         keys(i) = a(i)%n
+         index(i) = i
+      enddo
+
+      ! Bubble sort on index array
+      DO j = n-1, 1, -1
+         swapped = .FALSE.
+         DO i = 1, j
+            IF (keys(i) > keys(i+1)) THEN
+               temp = index(i)
+               index(i) = index(i+1)
+               index(i+1) = temp
+               temp = keys(i)
+               keys(i) = keys(i+1)
+               keys(i+1) = temp
+               swapped = .TRUE.
+            END IF
+         END DO
+         IF (.NOT. swapped) EXIT
+      END DO
+
+      ! Now we create a new array and point a to it
+      allocate(new(n))
+      do i = 1, n
+         call copy_shell(source=a(index(i)), target=new(i))
+      enddo
+      deallocate(index, keys)
+      call destroy(a)
+      a => new
+      end subroutine sort_by_n
 
       end subroutine repaobasis
 !_______________________________________________________________________

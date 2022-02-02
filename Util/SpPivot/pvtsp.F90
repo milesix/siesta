@@ -25,7 +25,7 @@ program pvtsp
   use class_Sparsity
 
   use geom_helper, only : UCORB
-  use m_io_s
+  use io_sparse_m
   use m_os, only : file_exist
   use create_sparsity_SC
 

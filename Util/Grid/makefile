@@ -1,5 +1,5 @@
 # 
-# Copyright (C) 1996-2016	The SIESTA group
+# Copyright (C) 1996-2021       The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
 #  or http://www.gnu.org/copyleft/gpl.txt.
@@ -55,9 +55,9 @@ cdf_diff.o: m_grid.o
 cdf_fft: cdf_fft.o fft3d.o m_fft_gpfa.o local_die.o
 	$(FC) $(LDFLAGS) -o $@  cdf_fft.o \
                local_die.o fft3d.o m_fft_gpfa.o $(NETCDF_LIBS)
-cdf_laplacian: cdf_laplacian.o fft3d.o m_fft_gpfa.o f2kcli.o m_getopts.o reclat.o local_die.o
+cdf_laplacian: cdf_laplacian.o fft3d.o m_fft_gpfa.o m_getopts.o reclat.o local_die.o
 	$(FC) $(LDFLAGS) -o $@  cdf_laplacian.o \
-               local_die.o fft3d.o m_fft_gpfa.o m_getopts.o f2kcli.o reclat.o $(NETCDF_LIBS)
+               local_die.o fft3d.o m_fft_gpfa.o m_getopts.o reclat.o $(NETCDF_LIBS)
 #
 V_INFO_OBJS=m_gridfunc.o v_info.o
 #
@@ -66,18 +66,16 @@ v_info: $(V_INFO_OBJS)
 v_info.o: m_gridfunc.o
 #
 #
-G2C_NG_OBJS=m_getopts.o reclat.o m_struct.o m_gridfunc.o local_die.o g2c_ng.o f2kcli.o
+G2C_NG_OBJS=m_getopts.o reclat.o m_struct.o m_gridfunc.o local_die.o g2c_ng.o
 #
 g2c_ng: $(G2C_NG_OBJS)
 	$(FC) $(LDFLAGS) -o $@  $(G2C_NG_OBJS) $(NETCDF_LIBS)
 #
 cdf_laplacian.o: m_getopts.o
-m_getopts.o: f2kcli.o
 fft3d.o: m_fft_gpfa.o
 #------------------
-grid2val.o: f2kcli.o
 grid2val: grid2val.o
-	$(FC) $(LDFLAGS) -o $@ f2kcli.o grid2val.o 
+	$(FC) $(LDFLAGS) -o $@ grid2val.o 
 #
 #------------------
 grid2cube: grid2cube.o

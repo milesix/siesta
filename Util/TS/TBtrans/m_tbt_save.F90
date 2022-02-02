@@ -322,7 +322,7 @@ contains
 
     use dictionary, assign_int => assign
     use netcdf_ncdf, ncdf_parallel => parallel
-    use m_ncdf_io, only : cdf_w_Sp
+    use ncdf_io_m, only : cdf_w_Sp
     use m_timestamp, only : datestring
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD, MPI_Integer, MPI_Logical
@@ -701,7 +701,7 @@ contains
        call newDistribution(TSHS%no_u,-1           ,fdit,name='TBT-fake dist')
 #endif
 
-       call cdf_w_Sp(ncdf,fdit,sp_dev_sc)
+       call cdf_w_Sp(ncdf,sp_dev_sc,fdit)
        call delete(fdit)
        call delete(dic)
 

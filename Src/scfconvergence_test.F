@@ -11,7 +11,7 @@
       CONTAINS
 
       subroutine scfconvergence_test( first, iscf,
-     &                                dDmax, dHmax, dEmax,
+     &                                dDmax, dHmax, dEmax, dQ,
      $                                conv_harris, conv_freeE,
      $                                converged)
       use precision, only: dp
@@ -24,8 +24,11 @@
       use units, only: eV
       use m_convergence, only: converger_t, tolerance
       use m_convergence, only: add_value, is_converged
-      use ldau_specs,    only: switch_ldau, dTol_ldaupop
-      use m_ldau,        only: LDAU_dPop
+      use dftu_specs,    only: switch_dftu, dTol_dftupop
+      use m_dftu,        only: DFTU_dPop
+
+      use m_ts_global_vars, only: TSrun
+      use m_ts_options,  only: ts_dQtol, ts_converge_dQ
 
       use sparse_matrices, only:  Dscf, S, numh, listhptr, listh, maxnh
       use siesta_geom, only: na_u, isa
@@ -40,11 +43,12 @@
       real(dp), intent(in) :: dDmax ! Max. change in dens. matrix
       real(dp), intent(in) :: dHmax ! Max. change in H
       real(dp), intent(in) :: dEmax ! Max. change in EDM
+      real(dp), intent(in) :: dQ ! Max. change in charge (mainly for TS)
 
       type(converger_t), intent(inout)  :: conv_harris, conv_freeE
       logical, intent(out)              :: converged
 
-      logical :: is_LDAU_conv
+      logical :: is_DFTU_conv
       real(dp) :: dummy_qspin(8)
       character(len=64) :: conv_text
 
@@ -64,12 +68,12 @@
           if (cml_p) then
             call cmlStartPropertyList(mainXML, title='SCF Cycle')
             call cmlAddProperty(xf=mainXML, value=Eharrs/eV,
-     .       units="siestaUnits:eV", dictRef="siesta:Eharrs", 
+     .       units="siestaUnits:eV", dictRef="siesta:Eharrs",
      .       fmt="r7")
             call cmlEndPropertyList(mainXML)
           endif
         endif
-       
+
         ! flush stdout
         call pxfflush(6)
         call wallclock("-------------- end of scf step")
@@ -93,46 +97,49 @@
      &                 lasto, iaorb, iphorb )
       endif
 
-      is_LDAU_conv = switch_ldau .and.
-     &     LDAU_dPop < dTol_ldaupop
+      is_DFTU_conv = switch_dftu .and.
+     &     DFTU_dPop < dTol_dftupop
 
       ! Assume initial convergence
       ! Since 4.1 this logic has changed to be fully determined
       ! by the user.
       ! The defaults are however as in pre 4.1 versions so there
       ! should be no surprises.
-      
       converged = .true.
       conv_text = ' '
       if ( converge_Eharr ) then
-         conv_text = trim(conv_text)//'+Harris'
-         converged = converged .and. is_converged(conv_harris)
+        conv_text = trim(conv_text)//'+Harris'
+        converged = converged .and. is_converged(conv_harris)
       end if
       if ( converge_FreeE ) then
-         conv_text = trim(conv_text)//'+FreeE'
-         converged = converged .and. is_converged(conv_FreeE)
+        conv_text = trim(conv_text)//'+FreeE'
+        converged = converged .and. is_converged(conv_FreeE)
       end if
       if ( converge_EDM ) then
-         conv_text = trim(conv_text)//'+EDM'
-         converged = converged .and. dEmax < tolerance_EDM
+        conv_text = trim(conv_text)//'+EDM'
+        converged = converged .and. dEmax < tolerance_EDM
       end if
       if ( converge_DM ) then
-         conv_text = trim(conv_text)//'+DM'
-         converged = converged .and. dDmax < dDtol
+        conv_text = trim(conv_text)//'+DM'
+        converged = converged .and. dDmax < dDtol
       end if
       if ( converge_H ) then
-         conv_text = trim(conv_text)//'+H'
-         converged = converged .and. dHmax < dHtol
+        conv_text = trim(conv_text)//'+H'
+        converged = converged .and. dHmax < dHtol
       end if
-      
+      if ( TSrun .and. ts_converge_dQ ) then
+        conv_text = trim(conv_text)//'+dQ'
+        converged = converged .and. abs(dQ) < ts_dQtol
+      end if
+
       if (converged .and. IOnode) then
-         
+
          ! Remove the initial '+'
          conv_text = conv_text(2:)
 
          write(6,"(/,3a)") "SCF Convergence by ",trim(conv_text),
      &        " criterion"
-         
+
          if ( converge_Eharr ) then
             write(6,"(a,f14.8)") "|EH_i-EH_(i-1)| (eV) < ",
      &           tolerance(conv_harris)/eV
@@ -147,13 +154,13 @@
          if ( mix_charge ) then
             write(6,"(a,f16.10)") "max |DM_i - DM_(i-1)|        : ",
      &           dDmax
-            if ( dEmax >= 0._dp ) 
+            if ( dEmax >= 0._dp )
      &      write(6,"(a,f16.10)") "max |EDM_i - EDM_(i-1)| (eV) : ",
      &              dEmax/eV
          else
             write(6,"(a,f16.10)") "max |DM_out - DM_in|         : ",
      &           dDmax
-            if ( dEmax >= 0._dp ) 
+            if ( dEmax >= 0._dp )
      &      write(6,"(a,f16.10)") "max |EDM_out - EDM_in|  (eV) : ",
      &              dEmax/eV
          endif
@@ -161,15 +168,19 @@
             write(6,"(a,f16.10)") "max |H_out - H_in|      (eV) : ",
      &           dHmax/eV
          end if
-
-         if ( is_LDAU_conv ) then
-            ! Inform of LDA+U population convergence
-            write(6,"(a)") 
-     &           "LDA+U population converged by dTol_pop criteria:"
-            write(6,"(a,f16.10)") 
-     &           "max |pop(LDA+U)_i - pop(LDA+U)_j|: ", LDAU_dPop
+         if ( TSrun ) then
+           write(6,"(a,f16.10)") "     Q(TS) - Q(dev)          : ",
+     &         dQ
          end if
-         
+
+	 if ( is_DFTU_conv ) then
+           ! Inform of DFT+U population convergence
+           write(6,"(a)") 
+     &         "DFT+U population converged by dTol_pop criteria:"
+           write(6,"(a,f16.10)")
+     &         "max |pop(DFT+U)_i - pop(DFT+U)_j|: ", DFTU_dPop
+         end if
+
          write(6,"(a,i0,a)") "SCF cycle converged after ",
      &           iscf," iterations"
 

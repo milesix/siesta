@@ -1,5 +1,5 @@
 ! ---
-! Copyright (C) 1996-2016	The SIESTA group
+! Copyright (C) 1996-2021	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt .
@@ -23,13 +23,13 @@
       use units,              only: Kelvin
       use siesta_options
       use timer_options,      only: use_tree_timer, use_parallel_timer
-      use sparse_matrices
+      use sparse_matrices,    only: dm_history
       use class_Fstack_Pair_Geometry_dSpData2D, only: new, max_size
       use siesta_geom
       use atomlist,           only: no_u, rmaxkb, amass, lasto, qtot,
      &                              qtots,
      &                              iza, rmaxo, zvaltot, superc,
-     &                              initatomlists, no_l, rmaxldau
+     &                              initatomlists, no_l, rmaxdftu
       use fdf
       use sys,                only: die, bye
       use molecularmechanics, only: inittwobody
@@ -50,8 +50,8 @@
       use parallel,           only: SIESTA_Group, SIESTA_Comm
       use m_energies
       use m_steps
-      use m_spin,             only: init_spin, spin
-      use m_spin,             only: init_spiral
+      use m_spin,             only: spin
+      use spin_subs_m,        only: init_spin, init_spiral
       use m_rmaxh
       use m_forces 
       use m_eo
@@ -76,7 +76,8 @@
       use m_ts_init, only : ts_init
 
       use m_diag_option, only: read_diag, print_diag
-      
+      use m_diag_option, only: diag_recognizes_neigwanted
+
 #ifdef SIESTA__FLOOK
       use siesta_dicts, only : dict_populate
       use flook_siesta, only : slua_init, slua_call, LUA_INITIALIZE
@@ -85,28 +86,10 @@
 #ifdef NCDF_4
       use netcdf_ncdf
 #endif
-#ifdef _OPENMP
-      use omp_lib, only : omp_get_num_threads
-      use omp_lib, only : omp_get_nested, omp_set_nested
-      use omp_lib, only : omp_get_max_active_levels
-      use omp_lib, only : omp_get_schedule, omp_set_schedule
-#if _OPENMP >= 201307
-      ! The above value should correspond to OMP-4.0
-      use omp_lib, only : omp_get_proc_bind
-      use omp_lib, only : OMP_PROC_BIND_FALSE, OMP_PROC_BIND_TRUE
-      use omp_lib, only : OMP_PROC_BIND_MASTER
-      use omp_lib, only : OMP_PROC_BIND_CLOSE, OMP_PROC_BIND_SPREAD
-#endif
-      use omp_lib, only : OMP_SCHED_STATIC, OMP_SCHED_DYNAMIC
-      use omp_lib, only : OMP_SCHED_GUIDED, OMP_SCHED_AUTO
-#else
-!$    use omp_lib, only : omp_get_num_threads
-!$    use omp_lib, only : omp_get_nested, omp_get_max_active_levels
-!$    use omp_lib, only : omp_get_max_active_levels
-!$    use omp_lib, only : omp_get_schedule, omp_set_schedule
-!$    use omp_lib, only : OMP_SCHED_STATIC, OMP_SCHED_DYNAMIC
-!$    use omp_lib, only : OMP_SCHED_GUIDED, OMP_SCHED_AUTO
-#endif
+
+      use reinit_m, only: reinit, parse_command_line
+      use runinfo_m, only: runinfo
+      use version_info, only: prversion
 
       implicit none
 
@@ -120,7 +103,7 @@
       integer :: ns           ! Number of species
       logical :: not_using_auxcell
       real(dp) :: walltime_m, walltime_s
-
+      integer :: nstates_spin(2)  ! dummy intermediate variable
       integer :: World_Group
       integer :: npSIESTA
       external :: read_options
@@ -149,23 +132,31 @@ C     Initialise MPI and set processor number
         call MPItrace_shutdown( )
 #endif
       endif ! (.not.initialized)
-      
+
       call MPI_Comm_Rank( MPI_Comm_World, Node, MPIerror )
+#endif
+
+      ! As soon as each node knows its rank,
+      ! deal with info command options
+      call parse_command_line(info=.true.)
+
+#ifdef MPI
       call MPI_Comm_Size( MPI_Comm_World, Nodes, MPIerror )
       
       ! Keeper for PEXSI-runs..
       PEXSINodes = Nodes
+#endif
 
       call reset_messages_file()
-      
 
+#ifdef MPI
       if (.not. fdf_parallel()) then
         call die('siesta_init: ERROR: FDF module ' //
      &           'doesn''t have parallel support')
       endif
-#else
-      call reset_messages_file()
 #endif
+
+
       if (Node==0) then
          ! Make sure we delete this sentinel file
          open(unit=1,file="0_NORMAL_EXIT",status="unknown")
@@ -182,85 +173,21 @@ C     Initialise MPI and set processor number
       call setDebugOutputUnit()
 #endif /* DEBUG_XC */
 
-      ! We have to immediately write out the options used to compile SIESTA
+      ! We have to immediately write out the options used
+      ! to compile and run SIESTA
       if ( Node == 0 ) then
-         ! Print version information
-         call prversion()
-#ifdef MPI
-         ! Sadly PEXSI workers can only be determined after
-         ! fdf has been opened, so we can't print-out that information
-         ! (for now)
-         if ( Nodes > 1 ) then
-            write(6,'(/,a,i0,a)')
-     &           '* Running on ', Nodes, ' nodes in parallel'
-         else
-            write(6,'(/,a)') '* Running in serial mode with MPI'
-         endif
-#else
-         write(6,'(/,a)') '* Running in serial mode'
-#endif
-!$OMP parallel default(shared)
-!$OMP master
-!$    i = omp_get_num_threads()
-!$    write(*,'(a,i0,a)') '* Running ',i,' OpenMP threads.'
-!$    write(*,'(a,i0,a)') '* Running ',Nodes*i,' processes.'
-#ifdef _OPENMP
-!$    write(*,'(a,i0)') '* OpenMP version ', _OPENMP
-#endif
-#if _OPENMP >= 201307
-!$    i = omp_get_proc_bind()
-!$    select case ( i )
-!$    case ( OMP_PROC_BIND_FALSE ) 
-!$    write(*,'(a)') '* OpenMP NOT bound (please bind threads!)'
-!$    case ( OMP_PROC_BIND_TRUE ) 
-!$    write(*,'(a)') '* OpenMP bound'
-!$    case ( OMP_PROC_BIND_MASTER ) 
-!$    write(*,'(a)') '* OpenMP bound (master)'
-!$    case ( OMP_PROC_BIND_CLOSE ) 
-!$    write(*,'(a)') '* OpenMP bound (close)'
-!$    case ( OMP_PROC_BIND_SPREAD ) 
-!$    write(*,'(a)') '* OpenMP bound (spread)'
-!$    case default
-!$    write(*,'(a)') '* OpenMP bound (unknown)'
-!$    end select
-#endif
-!$    call omp_get_schedule(i,is)
-!$    select case ( i )
-!$    case ( OMP_SCHED_STATIC ) 
-!$    write(*,'(a,i0)') '* OpenMP runtime schedule STATIC, chunks ',is
-!$    case ( OMP_SCHED_DYNAMIC ) 
-!$    write(*,'(a,i0)') '* OpenMP runtime schedule DYNAMIC, chunks ',is
-!$    if ( is == 1 ) then
-!$     ! this is the default scheduling, probably the user
-!$     ! have not set the value, predefine it to 32
-!$     is = 32
-!$     write(*,'(a,i0)')'** OpenMP runtime schedule DYNAMIC, chunks ',is
-!$    end if
-!$    case ( OMP_SCHED_GUIDED ) 
-!$    write(*,'(a,i0)') '* OpenMP runtime schedule GUIDED, chunks ',is
-!$    case ( OMP_SCHED_AUTO ) 
-!$    write(*,'(a,i0)') '* OpenMP runtime schedule AUTO, chunks ',is
-!$    case default
-!$    write(*,'(a,i0)') '* OpenMP runtime schedule UNKNOWN, chunks ',is
-!$    end select
-!     Now write out about nested levels
-!$    if ( omp_get_nested() ) then
-!$       ns = omp_get_max_active_levels()
-!$    else
-!$       write(*,'(a)') '** OpenMP (trying to FORCE nesting)'
-!$       call omp_set_nested(.true.)
-!$       ns = omp_get_max_active_levels()
-!$    end if
-!$    write(*,'(a,i0,a)') '* OpenMP allows ',ns,' nested levels.'
-!$OMP end master
-!$OMP end parallel
-!$    call omp_set_schedule(i,is)
+
+         ! Print version and other compilation information.
+         call prversion
+
+         ! Print parallelisation runtime information.
+         call runinfo
 
          ! Write time-stamp at the top of the output
          call timestamp('Start of run')
       end if
       
-      ! Initialise input/output...........................................
+      ! Initialise input
       call reinit( sname )
 
 #ifdef MPI
@@ -314,7 +241,6 @@ C     Initialise MPI and set processor number
       call ncdf_IONode( IONode )
 #endif
 
-!     Print version information
       if ( IOnode ) then
 #ifdef MPI
          if ( PEXSINodes /= Nodes ) then
@@ -327,19 +253,11 @@ C     Initialise MPI and set processor number
          call wallclock('Start of run')
       end if
 
-!
-!     Nullify arrays
-      nullify(Dscf,Dold,Escf)
-      nullify(listh)
-      nullify(H,S)
-      nullify(xijo)
-
 !     Initialize some variables
       call init_Energies()
       
-!
+
 !     Set object debugging level
-!
       call set_object_debug_level(0)
       i = fdf_get('DebugObjects.Node',0)
       if (Node==i) then
@@ -498,17 +416,71 @@ C     Initialise MPI and set processor number
      &              ' for collinear spin polarized calculations.' )
         qtots(1) = (qtot + total_spin) / 2.0_dp
         qtots(2) = (qtot - total_spin) / 2.0_dp
+        if (IOnode) then
+          write(6,"(a,f12.6)") 'Total number of UP electrons: ',
+     &        qtots(1)
+          write(6,"(a,f12.6)") 'Total number of DOWN electrons: ',
+     &        qtots(2)
+        end if
       else
-        do ispin = 1,spin%spinor
-           qtots(ispin) = qtot/spin%spinor
-        end do
+        ! Distribute electrons equally per spin
+        ! (For spin%spinor = 1, qtots(2) should not be referenced)
+        qtots(:) = qtot / spin%spinor
       end if
+
+      ! Get number of eigenstates that need to be calculated This
+      ! generally needs to be set to half the number of charges plus a
+      ! few extra states (such that the temperature tail can be found).
+      ! When states are spinors (for collinear or non-collinear spin,
+      ! i.e., for spin%spinor=2), to be occupied by a single electron
+      ! each, this number refers to half the number of spinors.
+      neigwanted = fdf_get('NumberOfEigenStates',no_u)
+
+      ! This is the rough number of states to be occupied (per spin channel)
+      ! For spin%spinor=1, this is half the number of electrons
+      nstates_spin(1:2) = ceiling ( (qtots(1:2)/2.0_dp) *  spin%spinor )
+      
+      ! Calculate the number of eigenstates
+      ! dependent on the # of spin-components.
+      neigmin = 0
+      do is = 1 , spin%spinor
+        neigmin = max(neigmin, nstates_spin(is))
+      end do
+      
+      ! Always at least have one additional state per 200 K.  This
+      ! choice is rather arbitrary. If the system is large it is likely
+      ! to have many states "close" to the Fermi level, and then the
+      ! number of extra states should be higher. See below
+
+      neigmin = neigmin + ceiling((temp / Kelvin) / 200._dp)
+
+      ! Correct the number of calculated eigenstates
+      if ( neigwanted < 0 ) then
+         
+         ! If this number is negative it corresponds to the number of
+         ! states ABOVE the charge neutrality point to be included.  For
+         ! normal temperatures and small/medium systems, a number such
+         ! as 10 might be enough, but for very high temperatures and/or
+         ! large systems, this number might need to be increased significantly.
+
+         ! Add the user requested states.
+         neigwanted = neigmin + abs(neigwanted)
+
+      end if
+
+      ! Check number of eigenstates - cannot be larger than number of
+      ! basis functions or smaller than number of occupied states + 1
+      ! so that the Fermi level can be estimated
+      neigwanted = max(neigwanted, neigmin)
+      ! Truncate value to number of basis orbitals
+      neigwanted = min(neigwanted,no_u)
+
 
 !     Find maximum interaction range
       if ( negl ) then
-        rmaxh = 2.0_dp*(rmaxo + rmaxldau)
+        rmaxh = 2.0_dp*(rmaxo + rmaxdftu)
       else
-        rmaxh = 2.0_dp*(rmaxo + max(rmaxkb,rmaxldau))
+        rmaxh = 2.0_dp*(rmaxo + max(rmaxkb,rmaxdftu))
       endif
 
 !     Madelung correction for charged systems
@@ -522,60 +494,6 @@ C     Initialise MPI and set processor number
 
 !     Find number of locally stored orbitals and allocated related arrays
       call GetNodeOrbs(no_u,Node,Nodes,no_l)
-
-!     Initialise arrays
-      nullify( listhptr, numh )
-      call re_alloc( listhptr, 1, max(1,no_l), 'listhptr', 'sparseMat' )
-      call re_alloc( numh,     1, max(1,no_l), 'numh',     'sparseMat' )
-      listhptr    = 0
-      numh        = 0
-
-      ! Get number of eigenstates that need to be calculated
-      ! This generally needs to be set to halve the number of
-      ! charges plus some few states (such that the temperature
-      ! tail can be found).
-      neigwanted = fdf_get('NumberOfEigenStates',no_u)
-
-      ! Calculate the number of eigenstates
-      ! dependent on the # of spin-components.
-      neigmin = 0
-      do is = 1 , spin%spinor
-        neigmin = max(neigmin, ceiling(qtots(is)))
-      end do
-      
-      if ( spin%spinor == 1 ) then
-        ! Only take halve the number of states because the filling
-        ! is doubled. Otherwise the number of states is
-        ! correct. For NC and SOC the diag[23]* routines
-        ! intrinsically doubles neigwanted.
-        neigmin = neigmin / 2
-      end if
-      ! Always at least have one additional state per 100 K.
-      ! This choice is rather arbitrary.
-      neigmin = neigmin + ceiling((temp / Kelvin) / 100._dp)
-
-      ! Correct the number of calculated eigenstates
-      if ( neigwanted < 0 ) then
-         
-         ! If this number is negative it corresponds to the
-         ! number of orbitals ABOVE the charge neutrality point
-         ! to be included.
-         ! For very high temperatures this may be difficult to 
-         ! choose, however, for moderate temperatures this
-         ! need not be somewhat more than say 10.
-
-         ! Add the user requested states.
-         neigwanted = neigmin - neigwanted
-
-      end if
-
-      ! Check number of eigenstates - cannot be larger than number of
-      ! basis functions or smaller than number of occupied states + 1
-      ! so that the Fermi level can be estimated
-      neigwanted = max(neigwanted, neigmin)
-
-      ! Truncate value
-      neigwanted = min(neigwanted,no_u)
       
 !     Find k-grid for Brillouin zone integration 
 !     NOTE: We need to know whether gamma is .true. or
@@ -604,6 +522,15 @@ C     Initialise MPI and set processor number
       ! taking care of this option
       call read_diag(Gamma_scf, spin%H)
       call print_diag()
+
+      if ( diag_recognizes_neigwanted() ) then
+        if ( IONode .and. neigwanted /= no_u )
+     &      write(6,"(a,t53,'= ',i0,' / ',i0)")
+     &      'diag: Number of calculated states [no_calc / no_u]',
+     &      neigwanted, no_u
+      else
+        neigwanted = no_u
+      end if
 
       nullify(eo,qo)
       call re_alloc(eo, 1, no_u, 1, spin%spinor, 1, kpoint_scf%N, 'eo', 
@@ -698,7 +625,7 @@ C     Initialise MPI and set processor number
      &    call vmb( na_u, tempinit, amass, xa, isa, va )
 
       istp = 0
-      
+
       call ts_init(spin%Grid,ucell,na_u,xa,lasto,no_u,inicoor,fincoor)
 
 #ifdef SIESTA__FLOOK
@@ -723,8 +650,8 @@ C     Initialise MPI and set processor number
 
       call timer( 'Setup', 2 )
 
-!--------------------------------------------------------------------------- END
-
       END subroutine siesta_init
+
+!--------------------------------------------------------------------------- END
 
       END MODULE m_siesta_init
