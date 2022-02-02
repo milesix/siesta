@@ -15,6 +15,7 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
   ! where n run over all the bands between two given energies
   ! Written by J. Junquera and E. Artacho. Nov' 99
   ! Gamma point version adapted from PDOSK by Julian Gale. Feb' 03
+  ! Huge performance increase by N. Papior, 2022
   ! ****  INPUT  *********************************************************
   ! integer nspin             : Number of spin components (1 or 2)
   ! integer nuo               : Number of atomic orbitals in the unit cell
@@ -46,7 +47,7 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
   ! real*8  psi(nuo,nuo)      : Auxiliary space for the eigenvectors
   ! ****  OUTPUT  ********************************************************
   ! real*8  dtot(nhist,2)   : Total density of states
-  ! real*8  dpr(nhist,nuo,2): Proyected density of states
+  ! real*8  dpr(nhist,nuo,2): Projected density of states
   ! **********************************************************************
 
   use precision

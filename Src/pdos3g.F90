@@ -48,7 +48,7 @@ subroutine pdos3g( nuo, no, maxuo, maxnh, &
   ! real*8  psi(nuotot,nuo)      : Auxiliary space for the eigenvectors
   ! ****  OUTPUT  ********************************************************
   ! real*8  dtot(4,nhist)   : Total density of states
-  ! real*8  dpr(4,nuotot,nhist): Proyected density of states
+  ! real*8  dpr(4,nuotot,nhist): Projected density of states
   ! **********************************************************************
 
   use precision
