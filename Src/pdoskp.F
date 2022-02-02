@@ -49,12 +49,12 @@ C real*8  wk(nk)            : Weights for k points
 C real*8  eo(maxo,maxspn,nk): Eigenvalues
 C integer nuotot            : Total number of orbitals per unit cell
 C ****  AUXILIARY  *****************************************************
-C real*8  Haux(2,nuo,nuo)   : Auxiliary space for the hamiltonian matrix
-C real*8  Saux(2,nuo,nuo)   : Auxiliary space for the overlap matrix
-C real*8  psi(2,nuo,nuo)    : Auxiliary space for the eigenvectors
+C real*8  Haux(2,nuotot,nuo)   : Auxiliary space for the hamiltonian matrix
+C real*8  Saux(2,nuotot,nuo)   : Auxiliary space for the overlap matrix
+C real*8  psi(2,nuotot,nuo)    : Auxiliary space for the eigenvectors
 C ****  OUTPUT  ********************************************************
 C real*8  dtot(nhist,2)   : Total density of states
-C real*8  dpr(nhist,nuo,2): Proyected density of states
+C real*8  dpr(nuotot,nhist,2): Proyected density of states
 C **********************************************************************
 
       use precision
@@ -83,7 +83,7 @@ C **********************************************************************
      .  xij(3,maxnh), kpoint(3,nk), eo(maxo,maxspn,nk),
      .  Haux(2,nuotot,nuotot), Saux(2,nuotot,nuotot),
      .  psi(2,nuotot,nuotot),
-     .  dtot(nhist,2), dpr(nhist,nuotot,2), wk(nk)
+     .  dtot(nhist,nspin), dpr(nuotot,nhist,nspin), wk(nk)
 
 C Internal variables ---------------------------------------------------
       integer
@@ -95,6 +95,7 @@ C Internal variables ---------------------------------------------------
       real(dp)
      .  kxij, Ckxij, Skxij, delta, ener, diff, pipj1, pipj2, 
      .  pipjS1, gauss, norm, wksum
+      real(dp) :: limit, inv_sigma2
 
       real(dp), dimension(:), pointer   ::  Snew
       real(dp), dimension(:,:), pointer ::  Hnew, xijloc
@@ -108,6 +109,9 @@ C Internal variables ---------------------------------------------------
 
 C Initialize some variables
       delta = (E2 - E1)/(nhist-1)
+      inv_sigma2 = 1._dp / sigma**2
+! Limit is exp(-20) ~ 2e-9
+      limit = sqrt(20._dp) * sigma
 
 C Globalise list arrays - assumes listh and listd are the same
 
@@ -304,11 +308,9 @@ C Loop over all the energy range
           do ihist = 1,nhist
             ener = E1 + (ihist - 1) * delta
             do 170 iband = 1,nuog
-              diff = (ener - eo(iband,is,ik))**2 / (sigma**2)
-              if (diff .gt. 15.0d0) then
-                cycle
-              else
-                gauss = exp(-diff) * wk(ik)
+              diff = abs(ener - eo(iband,is,ik))
+              if ( diff < limit ) then
+                gauss = exp(-diff**2*inv_sigma2) * wk(ik)
                 dtot(ihist,is) = dtot(ihist,is) + gauss
                 do juo = 1, nuotot
                   do iuo = 1, nuotot
@@ -318,7 +320,7 @@ C Loop over all the energy range
                     pipj2 = - psi(1,iuo,iband) * psi(2,juo,iband) +
      .                      psi(2,iuo,iband) * psi(1,juo,iband)
                     pipjS1 = pipj1*Saux(1,iuo,juo)-pipj2*Saux(2,iuo,juo)
-                    dpr(ihist,juo,is) = dpr(ihist,juo,is) + pipjS1*gauss
+                    dpr(juo,ihist,is) = dpr(juo,ihist,is) + pipjS1*gauss
                   enddo
                 enddo
               endif
@@ -341,20 +343,25 @@ C Free local memory from computation of dpr
 #ifdef MPI
 C Allocate workspace array for global reduction
       nullify( Sloc )
-      call re_alloc( Sloc, 1, nhist, 1, max(nuotot,nspin), 
-     &               1, nspin, name='Sloc', routine='pdoskp' )
+      call re_alloc( Sloc, 1, nuotot, 1, nhist, 1, nspin,
+     &    name='Sloc', routine='pdoskp' )
 
 C Global reduction of dpr matrix
-      Sloc(1:nhist,1:nuotot,1:nspin) = 0.0d0
-      call MPI_AllReduce(dpr(1,1,1),Sloc(1,1,1),nhist*nuotot*nspin,
+      Sloc(:,:,:) = 0._dp
+      call MPI_AllReduce(dpr(1,1,1),Sloc(1,1,1),nuotot*nhist*nspin,
      .  MPI_double_precision,MPI_sum,MPI_Comm_World,MPIerror)
-      dpr(1:nhist,1:nuotot,1:nspin) = Sloc(1:nhist,1:nuotot,1:nspin)
+      dpr(:,:,:) = Sloc(:,:,:)
+
+      call de_alloc( Sloc, name='Sloc' )
+
+      call re_alloc( Sloc, 1, nhist, 1, nspin, 1, 1,
+     &    name='Sloc', routine='pdoskp' )
 
 C Global reduction of dtot matrix
-      Sloc(1:nhist,1:nspin,1) = 0.0d0
+      Sloc(:,:,:) = 0.0d0
       call MPI_AllReduce(dtot(1,1),Sloc(1,1,1),nhist*nspin,
      .  MPI_double_precision,MPI_sum,MPI_Comm_World,MPIerror)
-      dtot(1:nhist,1:nspin) = Sloc(1:nhist,1:nspin,1)
+      dtot(:,:) = Sloc(:,:,1)
 
 C Free workspace array for global reduction
       call de_alloc( Sloc, name='Sloc' )
@@ -365,13 +372,13 @@ C Free workspace array for global reduction
         wksum = wksum + wk(ik)
       enddo
 
-      norm = sigma * sqrt(pi) * wksum
+      norm = 1._dp / (sigma * sqrt(pi) * wksum)
 
-      do ihist = 1,nhist
-        do is = 1,nspin
-          dtot(ihist,is) = dtot(ihist,is) / norm
+      do is = 1,nspin
+        do ihist = 1,nhist
+          dtot(ihist,is) = dtot(ihist,is) * norm
           do iuo = 1,nuotot
-            dpr(ihist,iuo,is) = dpr(ihist,iuo,is) /norm
+            dpr(iuo,ihist,is) = dpr(iuo,ihist,is) * norm
           enddo
         enddo
       enddo
