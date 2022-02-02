@@ -53,6 +53,7 @@ C     LOCAL variables
            found_block = .true.
         endif
 
+
         if (found_block) then
            
           if (.not. fdf_bline(bfdf,pline)) then
@@ -104,6 +105,11 @@ C     LOCAL variables
           XCweightX(1) = 1.0_dp
           XCweightC(1) = 1.0_dp
         endif
+
+        ! Announce the deprecated flags (if used)...
+        ! ... after closing the block
+        call fdf_deprecated('XC.hybrid','XC.mix')
+        call fdf_deprecated('XC.cocktail','XC.mix')
 
 C Output data for mix of functionals
         if ((nXCfunc .gt. 1) .and. (Node .eq. 0)) then
