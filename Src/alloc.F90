@@ -150,7 +150,7 @@ PUBLIC ::             &
   de_alloc,           &! Deallocation
   allocDefaults        ! Derived type to hold allocation defaults
 
-#ifdef HAVE_F2008
+#ifdef WITH_ALLOC_PROC_POINTER
  public :: alloc_set_memory_event_handler
 
  interface
@@ -161,10 +161,16 @@ PUBLIC ::             &
    end subroutine alloc_memory_event_long_interf
  end interface
 
+#ifdef F2008
  procedure(alloc_memory_event_long_interf),  &
      pointer, public, protected  ::       &
      alloc_memory_event_long => simple_alloc_memory_event_long
-
+#else
+ procedure(alloc_memory_event_long_interf),  &
+     pointer, public, protected  ::       &
+     alloc_memory_event_long => null()
+#endif
+ 
 #endif
  
 PRIVATE      ! Nothing is declared public beyond this point
@@ -191,7 +197,7 @@ interface
    ! to disambiguate with other handlers (this
    ! is needed until proper isolation with
    ! procedure pointers is implemented)
-#ifndef HAVE_F2008
+#ifndef WITH_ALLOC_PROC_POINTER
     subroutine alloc_memory_event_long(bytes,name)
       integer, parameter :: i8b = selected_int_kind(18)
       integer(i8b), intent(in)     :: bytes
@@ -255,7 +261,7 @@ CONTAINS
 
 ! ==================================================================
 
-#ifdef HAVE_F2008
+#ifdef WITH_ALLOC_PROC_POINTER
     subroutine simple_alloc_memory_event_long(bytes,name)
       integer, parameter :: i8b = selected_int_kind(18)
       integer(i8b), intent(in)     :: bytes
@@ -1886,6 +1892,14 @@ end if
 ! Find memory increment and total allocated memory
 bytes = delta_size * type_mem(type)
 
+#ifdef WITH_ALLOC_PROC_POINTER
+#ifndef F2008
+if (.not. associated(alloc_memory_event_long)) then
+   alloc_memory_event_long => simple_alloc_memory_event_long
+endif
+#endif
+#endif
+
 call alloc_memory_event_long(bytes,trim(aname))
 
 CONTAINS
@@ -1939,14 +1953,14 @@ END MODULE alloc
 program testalloc
 use alloc, only: re_alloc, de_alloc
 
-#ifdef HAVE_F2008
+#ifdef WITH_ALLOC_PROC_POINTER
 use alloc, only: alloc_set_memory_event_handler
 #endif
 
 real, pointer :: x(:) => null()
 real(kind=kind(1.d0)), pointer :: y(:,:) => null()
 
-#ifdef HAVE_F2008
+#ifdef WITH_ALLOC_PROC_POINTER
   call alloc_set_memory_event_handler(memory_event)
 #endif
 
@@ -1957,7 +1971,7 @@ print *, "Shape of y: ", shape(y)
 call de_alloc(x,"x","testalloc")
 call de_alloc(y,"y","testalloc")
 
-#ifdef HAVE_F2008
+#ifdef WITH_ALLOC_PROC_POINTER
 CONTAINS
  subroutine memory_event(bytes,name)
  integer, parameter :: i8b = selected_int_kind(18)
@@ -1972,7 +1986,7 @@ end program testalloc
 ! Note: In systems with weak symbols, these handlers
 ! could be compiled marked as such. (Future extension)
 !
-#ifndef HAVE_F2008
+#ifndef WITH_ALLOC_PROC_POINTER
 
  subroutine alloc_memory_event_long(bytes,name)
  integer, parameter :: i8b = selected_int_kind(18)

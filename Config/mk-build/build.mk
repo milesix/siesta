@@ -135,7 +135,7 @@ FC_ASIS=$(FC_SERIAL)
 # These are for initialization of variables added to below
 #
 # Note that we pick up any definitions specified by the
-# user in WITH_FPPFLAGS. For example, this could be "-DHAVE_F2008"
+# user in WITH_FPPFLAGS. For example, this could be "-DF2008"
 #
 FPPFLAGS= $(DEFS_PREFIX)-DF2003 $(WITH_FPPFLAGS)
 LIBS=

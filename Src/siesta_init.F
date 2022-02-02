@@ -39,7 +39,7 @@
       use metaforce,          only: initmeta
       use m_mpi_utils,        only: broadcast
       use alloc,              only: re_alloc
-#ifdef HAVE_F2008
+#ifdef WITH_ALLOC_PROC_POINTER
       use alloc,              only: alloc_set_memory_event_handler
 #endif
       use memory_log,         only: memory_report
@@ -116,7 +116,7 @@
       external :: read_options
       external :: reset_messages_file
 
-#ifdef HAVE_F2008
+#ifdef WITH_ALLOC_PROC_POINTER
       external :: alloc_memory_event_long
 #endif
 !---------------------------------------------------------------------- BEGIN
@@ -306,7 +306,7 @@ C     Initialise MPI and set processor number
       call timer( 'siesta', 1 )
       call timer( 'Setup', 1 )
 
-#ifdef HAVE_F2008
+#ifdef WITH_ALLOC_PROC_POINTER
       call alloc_set_memory_event_handler(alloc_memory_event_long)
 #endif
 ! Set allocation report level .........................................
