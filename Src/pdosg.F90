@@ -207,9 +207,12 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
           if ( diff < limit ) then
             gauss = exp(-diff**2*inv_sigma2)
             dtot(ihist,ispin) = dtot(ihist,ispin) + gauss
-            do iuo = 1, nuotot
-              dpr(iuo,ihist,ispin) = dpr(iuo,ihist,ispin) + Haux(iuo,iband) * gauss
-            end do
+            ! When OMP is inserted, this should still work fine since
+            ! BLAS does not fork threads that are already forked.
+            ! However, this should be carefully checked, and possibly be able
+            ! to switch off the behaviour. I do know that ELPA does the same,
+            ! so perhaps it is fine in generic situations after all.
+            call daxpy(nuotot,gauss,Haux(1,iband),1,dpr(1,ihist,ispin),1)
           end if
           
         end do
@@ -249,9 +252,12 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
           if ( diff < limit ) then
             gauss = exp(-diff**2*inv_sigma2)
             dtot(ihist,ispin) = dtot(ihist,ispin) + gauss
-            do iuo = 1, nuotot
-              dpr(iuo,ihist,ispin) = dpr(iuo,ihist,ispin) + Haux(iuo,iband) * gauss
-            end do
+            ! When OMP is inserted, this should still work fine since
+            ! BLAS does not fork threads that are already forked.
+            ! However, this should be carefully checked, and possibly be able
+            ! to switch off the behaviour. I do know that ELPA does the same,
+            ! so perhaps it is fine in generic situations after all.
+            call daxpy(nuotot,gauss,Haux(1,iband),1,dpr(1,ihist,ispin),1)
           end if
           
         end do
