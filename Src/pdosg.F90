@@ -47,7 +47,7 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
   ! real*8  psi(nuo,nuo)      : Auxiliary space for the eigenvectors
   ! ****  OUTPUT  ********************************************************
   ! real*8  dtot(nhist,2)   : Total density of states
-  ! real*8  dpr(nhist,nuo,2): Projected density of states
+  ! real*8  dpr(nuo,nhist,2): Projected density of states
   ! **********************************************************************
 
   use precision
