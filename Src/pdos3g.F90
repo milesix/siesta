@@ -43,9 +43,9 @@ subroutine pdos3g( nuo, no, maxuo, maxnh, &
   ! real*8  eo(maxo*2)   : Eigenvalues
   ! integer nuotot            : Total number of orbitals per unit cell
   ! ****  AUXILIARY  *****************************************************
-  ! real*8  haux(nuotot,nuo)     : Auxiliary space for the hamiltonian matrix
-  ! real*8  saux(nuotot,nuo)     : Auxiliary space for the overlap matrix
-  ! real*8  psi(nuotot,nuo)      : Auxiliary space for the eigenvectors
+  ! complex*16  haux(2,nuotot,2,nuo)     : Auxiliary space for the hamiltonian matrix
+  ! complex*16  saux(2,nuotot,2,nuo)     : Auxiliary space for the overlap matrix
+  ! complex*16  psi(2,nuotot,2,nuo)      : Auxiliary space for the eigenvectors
   ! ****  OUTPUT  ********************************************************
   ! real*8  dtot(4,nhist)   : Total density of states
   ! real*8  dpr(4,nuotot,nhist): Projected density of states

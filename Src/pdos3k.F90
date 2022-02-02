@@ -31,7 +31,7 @@ subroutine pdos3k( nuo, no, maxuo, maxnh, &
   !                             hamiltonian matrix
   ! INTEGER LISTH(MAXNH)      : Nonzero hamiltonian-matrix element
   !                             column indexes for each matrix row
-  ! REAL*8  H(MAXNH,4)    : Hamiltonian in sparse format
+  ! REAL*8  H(MAXNH,8)    : Hamiltonian in sparse format
   ! REAL*8  S(MAXNH)          : Overlap in sparse format
   ! REAL*8  E1, E2            : Energy range for density-matrix states
   !                             (to find local density of states)
@@ -44,15 +44,15 @@ subroutine pdos3k( nuo, no, maxuo, maxnh, &
   ! INTEGER NK                : Number of k points
   ! REAL*8  KPOINT(3,NK)      : k point vectors
   ! REAL*8  WK(NK)            : Weights for k points
-  ! REAL*8  EO(MAXO,2,NK): Eigenvalues
+  ! REAL*8  EO(MAXO*2,NK): Eigenvalues
   ! INTEGER NUOTOT            : Total number of orbitals per unit cell
   ! ****  AUXILIARY  *****************************************************
-  ! REAL*8  HAUX(2,NUOTOT,2,NUO)   : Auxiliary space for the hamiltonian matrix
-  ! REAL*8  SAUX(2,NUOTOT,2,NUO)   : Auxiliary space for the overlap matrix
-  ! REAL*8  PSI(2,NUOTOT,2,NUO)    : Auxiliary space for the eigenvectors
+  ! complex*16  HAUX(2,NUOTOT,2,NUO)   : Auxiliary space for the hamiltonian matrix
+  ! complex*16  SAUX(2,NUOTOT,2,NUO)   : Auxiliary space for the overlap matrix
+  ! complex*16  PSI(2,NUOTOT,2,NUO)    : Auxiliary space for the eigenvectors
   ! ****  OUTPUT  ********************************************************
   ! REAL*8  DTOT(4,NHIST)      : Total density of states
-  ! REAL*8  DPR(4,NHIST,NUOTOT): Projected density of states
+  ! REAL*8  DPR(4,nuotot,NHIST): Projected density of states
   ! **********************************************************************
 
   use precision

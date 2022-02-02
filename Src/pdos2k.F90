@@ -44,15 +44,15 @@ subroutine pdos2k( nuo, no, maxuo, maxnh, &
   ! INTEGER NK                : Number of k points
   ! REAL*8  KPOINT(3,NK)      : k point vectors
   ! REAL*8  WK(NK)            : Weights for k points
-  ! REAL*8  EO(MAXO,2,NK): Eigenvalues
+  ! REAL*8  EO(MAXO*2,NK): Eigenvalues
   ! INTEGER NUOTOT            : Total number of orbitals per unit cell
   ! ****  AUXILIARY  *****************************************************
-  ! REAL*8  HAUX(2,NUOTOT,2,NUO)   : Auxiliary space for the hamiltonian matrix
-  ! REAL*8  SAUX(2,NUOTOT,2,NUO)   : Auxiliary space for the overlap matrix
-  ! REAL*8  PSI(2,NUOTOT,2,NUO)    : Auxiliary space for the eigenvectors
+  ! complex*16  HAUX(2,NUOTOT,2,NUO)   : Auxiliary space for the hamiltonian matrix
+  ! complex*16  SAUX(2,NUOTOT,2,NUO)   : Auxiliary space for the overlap matrix
+  ! complex*16  PSI(2,NUOTOT,2,NUO)    : Auxiliary space for the eigenvectors
   ! ****  OUTPUT  ********************************************************
   ! REAL*8  DTOT(4,NHIST)      : Total density of states
-  ! REAL*8  DPR(4,NHIST,NUOTOT): Projected density of states
+  ! REAL*8  DPR(4,nuotot,NHIST): Projected density of states
   ! **********************************************************************
 
   use precision
