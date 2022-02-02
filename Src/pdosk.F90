@@ -16,6 +16,7 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
   !     D_mu(E) = Sum(n,k,nu) C(mu,n,k) C(nu,n,k) S(mu,nu,k) Delta(E-E(n,k))
   ! where n run over all the bands between two given energies
   ! Written by J. Junquera and E. Artacho. Nov' 99
+  ! Huge performance increase by N. Papior, 2022
   ! ****  INPUT  *********************************************************
   ! INTEGER nspin             : Number of spin components (1 or 2)
   ! INTEGER nuo               : Number of atomic orbitals in the unit cell
