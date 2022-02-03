@@ -32,9 +32,9 @@ completed_$(label):
 	@echo ">>>> Running $(name) test..."
 	@if [ -d $(label) ] ; then rm -rf $(label) ; fi; mkdir $(label)
 	@if [ -n "$(EXTRAFILES)" ] ; then cp -f $(EXTRAFILES) $(label) ; fi
-	@for i in `cat $(name).pseudos` ; do \
-          echo "    ==> Copying pseudopotential file for $$i..." ;\
-          ln ../Pseudos/$$i.psf $(label)/$$i.psf ;\
+	@for ps in `cat $(name).pseudos` ; do \
+          echo "    ==> Copying pseudopotential file $$ps ..." ;\
+          ln ../Pseudos/$$ps $(label)/$$ps ;\
          done
 	@echo "    ==> Running SIESTA as $(MPI) $(SIESTA) -fdf XML.Write ../$(name).fdf "
 	@(cd $(label) ; $(MPI) $(SIESTA) -fdf XML.Write ../$(name).fdf 2>&1 > $(name).out ) \

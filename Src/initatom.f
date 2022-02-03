@@ -33,6 +33,7 @@
      &           atm_label, polorb, semic, nsemic,
      &           cnfigmx, charge, smass, basistype,
      &           rinn, vcte, qcoe, qyuk, qwid, split_norm
+      use basis_types, only: nprin
       use basis_types, only: write_basis_specs
       use basis_types, only: basis_def_t, basis_parameters
       use basis_specs, only: read_basis_specs
@@ -49,9 +50,8 @@
       use dftu_specs, only: read_dftu_specs
       use dftu_specs, only: dftu_proj_gen
       use dftu_specs, only: populate_species_info_dftu
+      use m_ncps, only: pseudo_read
 
-      use pseudopotential, only: pseudo_read
-      
       use chemical
 
       use m_spin, only: spin
@@ -113,11 +113,12 @@
           ! We still need to read the pseudopotential information
           ! because the .ion files do not contain V_so information
           write(6,'(a)') ' initatom: spin-orbit-onsite with user-basis'
-          write(6,'(a)') ' initatom: Still need to read the psf files.'
+          write(6,'(a)') ' initatom: still needs pseudopotential files'
           do is = 1 , nsp
              basp => basis_parameters(is)
              basp%label = species_label(is)
-             call pseudo_read(basp%label,basp%pseudopotential)
+             call pseudo_read(basp%label,basp%pseudopotential,
+     $            basp%psml_handle,basp%has_psml_ps)
           end do
        end if
        write(6,'(/a)') 'Reading PAOs and KBs from ascii files...'
@@ -137,14 +138,15 @@
         call setup_atom_tables(nsp)
 
         lj_projs = (spin%SO_offsite)
-
+        
         allocate(species(nspecies))
         do is = 1,nsp
           call write_basis_specs(6,is)
-          basp=>basis_parameters(is)
+          basp => basis_parameters(is)
           spp => species(is)
           call ATOM_MAIN( iz(is), lmxkb(is), nkbl(0:lmaxd,is),
      &                    erefkb(1:nkbmx,0:lmaxd,is), lmxo(is),
+     &                    nprin(0:lmaxd,1:nsemx,is),
      &                    nzeta(0:lmaxd,1:nsemx,is),
      &                    rco(1:nzetmx,0:lmaxd,1:nsemx,is),
      &                    lambda(1:nzetmx,0:lmaxd,1:nsemx,is),
@@ -164,6 +166,7 @@
         enddo 
 
         call prinput(nsp)
+          ! DO: call destroy(basp) !!  ?? is it safe here?
 
 !       Create the new data structures for atmfuncs.
         call populate_species_info_dftu()

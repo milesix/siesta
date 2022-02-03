@@ -325,7 +325,6 @@ C Argument types and dimensions
       integer           :: maxnd, maxndl, nspin, nuo, numd(nuo),
      &                     listdptr(nuo)
       real(dp)          :: Dscf(maxnd,nspin), DscfL(maxndl,nspin)
-      external             memory
 
 C Internal variables and arrays
       integer           :: io, ispin

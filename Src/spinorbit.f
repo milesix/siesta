@@ -67,7 +67,8 @@ C
 
       use basis_types,     only: basis_parameters
       use atm_types,       only: nspecies
-      use pseudopotential, only: pseudopotential_t
+      use m_ncps,          only: pseudopotential_t => froyen_ps_t
+      use m_ncps,          only: ncps_has_spin_orbit_potentials
       use atmparams,       only: lmaxd
       use parallel,        only: Node
       use m_mpi_utils,     only: broadcast
@@ -105,7 +106,7 @@ C
          there_are_so_potentials = .false.
          do is = 1, nspecies
             p=> basis_parameters(is)%pseudopotential
-            if ((p%irel == "rel") .and. (p%npotu > 0)) then
+            if (ncps_has_spin_orbit_potentials(p)) then
                write(6,"(a)") "  Adding spin-orbit effects for "
      $                         // trim(p%name)
                there_are_so_potentials = .true.

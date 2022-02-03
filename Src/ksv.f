@@ -116,7 +116,7 @@ C Internal variables
 
       character         shape*10
 
-      external          ddot, volcel, reclat, memory
+      external          ddot, volcel, reclat
 
       integer, dimension(:), pointer ::  muo => null()
       real(dp), dimension(:), pointer :: psi1 => null()

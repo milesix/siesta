@@ -50,9 +50,9 @@ $(_JOBS): completed_$(label)_%:
 	@echo ">>>> Running $(name)_$* test..."
 	@if [ -d $(label)_$* ] ; then rm -rf $(label)_$* ; fi; mkdir $(label)_$*
 	@if [ -n "$(EXTRAFILES)" ] ; then cp -f $(EXTRAFILES) $(label)_$* ; fi
-	@for i in `cat $(name).pseudos` ; do \
-          echo "    ==> Copying pseudopotential file for $$i..." ;\
-          ln ../Pseudos/$$i.psf $(label)_$*/$$i.psf ;\
+	@for ps in `cat $(name).pseudos` ; do \
+          echo "    ==> Copying pseudopotential file $$ps ..." ;\
+          ln ../Pseudos/$$ps $(label)_$*/$$ps ;\
          done
 	@echo "    ==> Running SIESTA as $(MPI) $(SIESTA) -L $(name)_$* -fdf XML.Write -fdf $(FDF_LIST):$* ../$(name).fdf"
 	@(cd $(label)_$* ; $(MPI) $(SIESTA) -L $(name)_$* -fdf XML.Write -fdf $(FDF_LIST):$* ../$(name).fdf 2>&1 > $(name)_$*.out ) \
