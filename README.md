@@ -27,3 +27,14 @@ Alternatively, manuals in pdf can be found in the Documentation section of the m
 For bug reports, and other code suggestions, please follow the guidelines
 in the file Docs/REPORTING_BUGS
 
+This version of SIESTA is able to use pseudopotentials in PSML form, in particular those from
+the [Pseudo-Dojo](https://www.pseudo-dojo.org) project.
+
+
+Note that the libPSML and libGridXC libraries are now
+mandatory. Please see the 'Compilation' section of the manual for
+installation instructions and extra building advice.
+
+
+
+
