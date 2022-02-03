@@ -1369,7 +1369,7 @@ logical,          optional, intent(in) :: copy
 logical,          optional, intent(in) :: shrink
 
 ! Internal variables and arrays
-character, parameter           :: type='S'
+character, parameter           :: type='H'
 integer, parameter             :: rank=1
 character(len=len(array)), dimension(:), pointer :: old_array
 integer, dimension(2,rank)     :: b, c, new_bounds, old_bounds
@@ -1673,7 +1673,7 @@ implicit none
 character(len=*), dimension(:), pointer :: array
 character(len=*), optional, intent(in)  :: name, routine
 if (associated(array)) then
-  call alloc_count( -size(array)*len(array), 'S', name, routine ) 
+  call alloc_count( -size(array)*len(array), 'H', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 end if
@@ -1825,7 +1825,7 @@ character, intent(in)        :: type        ! 'I' => integer
                                             ! 'D' => real*8
                                             ! 'Z' => complex*16
                                             ! 'L' => logical
-                                            ! 'S' => character (string)
+                                            ! 'H' => character (string)
 character(len=*), optional, intent(in) :: name
 character(len=*), optional, intent(in) :: routine
 
@@ -1875,7 +1875,7 @@ case('E', 'D', 'C')
   type_mem = 8
 case('Z')
   type_mem = 16
-case('S')
+case('H')
   type_mem = 1
 case default
   write(message,"(2a)") &

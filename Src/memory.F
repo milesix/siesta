@@ -23,7 +23,7 @@ C                   :                    'X' = grid precision real
 C                   :                    'L' = logical
 C                   :                    'C' = single precision complex
 C                   :                    'Z' = double precision complex
-C                   :                    'S' = character data (we assume takes one word)
+C                   :                    'H' = character data (we assume takes one word)
 C                   :                    'E' = double precision integer
 C integer NElements : number of array elements being 
 C                   : allocated/deallocated

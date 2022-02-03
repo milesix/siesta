@@ -81,13 +81,9 @@ MODULE memory_log
 
 PUBLIC ::             &
   memory_report,       &! Sets log report defaults
-  memory_event,        &! Memory counting for allocs
-  type_mem              ! Converter
+  memory_event         ! Memory counting for allocs
 
 public :: memory   ! The old (re-furbished) routine
-
-integer, public :: mem_stat    ! (legacy) For use in calls to allocate 
-                               ! and deallocate
 
 PRIVATE      ! Nothing is declared public beyond this point
 
@@ -316,7 +312,7 @@ case('E')
   type_mem = 8
 case('D')
   type_mem = 8
-case('S')
+case('H')
   type_mem = 1
 case default
   write(message,"(2a)") &
@@ -547,7 +543,7 @@ subroutine memory( Task, Type, NElements, CallingRoutine, &
 !                   :                    'L' = logical
 !                   :                    'C' = single precision complex
 !                   :                    'Z' = double precision complex
-!                   :                    'S' = character data (we assume takes one word)
+!                   :                    'H' = character data (we assume takes one word)
 !                   :                    'E' = double precision integer
 ! integer NElements : number of array elements being 
 !                   : allocated/deallocated
@@ -583,7 +579,7 @@ subroutine memory( Task, Type, NElements, CallingRoutine, &
       endif
 
       select case(Type)
-      case('S') ! This one is very counter intuitive... type_mem in alloc has another definition of S
+      case('S')         ! 'S' is in common usage for 'single'
         allocType = 'R'
         allocSize = NElements
       case('X')
