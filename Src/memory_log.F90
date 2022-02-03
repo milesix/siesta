@@ -85,6 +85,9 @@ PUBLIC ::             &
 
 public :: memory   ! The old (re-furbished) routine
 
+integer, public :: mem_stat    ! (legacy) For use in calls to allocate 
+                               ! and deallocate
+
 PRIVATE      ! Nothing is declared public beyond this point
 
   ! Initial default values
