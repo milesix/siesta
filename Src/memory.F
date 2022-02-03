@@ -44,15 +44,9 @@ C Local variables
       character(len=1):: allocType
 
       select case(Type)
-      case('S')
+      case('S') ! This one is very counter intuitive... type_mem in alloc has another definition of S
         allocType = 'R'
         allocSize = NElements
-      case('C')
-        allocType = 'R'
-        allocSize = NElements*2
-      case('Z')
-        allocType = 'D'
-        allocSize = NElements*2
       case('X')
 #ifdef GRID_DP
         allocType = 'D'
