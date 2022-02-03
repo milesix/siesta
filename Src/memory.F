@@ -6,7 +6,9 @@
 ! See Docs/Contributors.txt for a list of contributors.
 !
       subroutine memory( Task, Type, NElements, CallingRoutine )
-C 
+
+!     (Now a simple wrapper for legacy calls)
+      
 C This subroutine keeps track of information relating to the use 
 C of dynamic memory
 C
@@ -30,8 +32,7 @@ C   CallingRoutine  : string containing the name of the calling routine
 C
 C Created by J.D. Gale, October 1999
 C
-      use parallel, only: Node
-      use memory_log,    only: memory_event, type_mem
+      use memory_log,    only: memory_log_memory => memory
 
       implicit none
 
@@ -39,28 +40,6 @@ C
       character(len=1), intent(in)        :: Task, Type
       character(len=*), intent(in)        :: CallingRoutine
 
-C Local variables
-      integer         :: allocSize, bytes
-      character(len=1):: allocType
-
-      select case(Type)
-      case('S') ! This one is very counter intuitive... type_mem in alloc has another definition of S
-        allocType = 'R'
-        allocSize = NElements
-      case('X')
-#ifdef GRID_DP
-        allocType = 'D'
-#else
-        allocType = 'R'
-#endif
-        allocSize = NElements
-      case default
-        allocType = Type
-        allocSize = NElements
-      end select
-      if (Task=='D') allocSize = -allocSize
-      bytes = allocSize*type_mem(allocType)
-      call memory_event(bytes,
-     $       aname=trim(CallingRoutine)//'@'//'unknown' )
+      call memory_log_memory( Task, Type, NElements, CallingRoutine )
 
       end subroutine memory

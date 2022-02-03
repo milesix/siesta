@@ -1160,7 +1160,7 @@ m_zminim.o: sys.o
 madelung.o: parallel.o precision.o sys.o
 matel_registry.o: m_trialorbitalclass.o precision.o radial.o spher_harm.o sys.o
 md_out.o: files.o m_energies.o precision.o sys.o units.o
-memory.o: memory_log.o parallel.o
+memory.o: memory_log.o
 memory_all.o: rusage.o
 memory_log.o: m_io.o parallel.o precision.o
 memory_snapshot.o: rusage.o
