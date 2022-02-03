@@ -4242,7 +4242,7 @@ are always stored in the file \sysfile{KP}.
 
 (Apart from the built-in functionals, \siesta\ can use the functionals
 provided by the LibXC library, if support for it is compiled-in in the
-libGridXC library. See the description of the \fdf{XC.cocktail} block
+libGridXC library. See the description of the \fdf{XC.mix} block
 below for the appropriate syntax. \index{LibXC library})
 
 \begin{fdfentry}{XC!Functional}[string]<LDA>
@@ -4386,7 +4386,7 @@ below for the appropriate syntax. \index{LibXC library})
 \end{fdfentry}
 
 
-\begin{fdfentry}{XC!Cocktail}[block]
+\begin{fdfentry}{XC!Mix}[block]
 
   This data block allows the user to create a ``cocktail'' functional by
   mixing the desired amounts of exchange and correlation from each of
@@ -4403,11 +4403,11 @@ the functionals described under XC.authors.
   energy:
   
   \begin{fdfexample}
-     %block XC.cocktail
+     %block XC.mix
         2
         LDA CA  0.5 0.75
         GGA PBE 0.5 0.25
-     %endblock XC.cocktail
+     %endblock XC.mix
   \end{fdfexample}
 
 These blocks can also be used to request the use of LibXC functionals
@@ -4415,11 +4415,11 @@ These blocks can also be used to request the use of LibXC functionals
 with LibXC support).  \index{LibXC library} For example:
 
 \begin{fdfexample}
-     %block XC.cocktail
+     %block XC.mix
      2
      GGA LIBXC-00-GGA_X_PBE 1.0 0.0
      GGA LIBXC-00-GGA_C_PBE 0.0 1.0
-     %endblock XC.cocktail
+     %endblock XC.mix
 \end{fdfexample}
 
 The weights reflect the ``exchange'' or ``correlation''
@@ -4429,11 +4429,11 @@ functional id field as zero. It is also possible to use only the
 numerical id:
 
 \begin{fdfexample}
-     %block XC.cocktail
+     %block XC.mix
      2
      GGA LIBXC-101 1.0 0.0
      GGA LIBXC-130 0.0 1.0
-     %endblock XC.cocktail
+     %endblock XC.mix
 \end{fdfexample}
 
 
@@ -4442,7 +4442,8 @@ If both fields are used the information must be compatible. Also, the
 specified.
 
 \textbf{NOTE:} In previous versions of the program this block was named,
-confusingly, \textbf{XC.Hybrid}
+confusingly, \textbf{XC.Hybrid}, and in some other versions,
+\textbf{XC.Cocktail}. Those names are still allowed, but are deprecated.
 
 \textit{Default value:} If the block is not present, the XC
 information is read from the fdf variables above.

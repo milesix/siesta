@@ -1172,7 +1172,7 @@ matel_table.o: matel_ylm.o parallel.o precision.o radfft.o spher_harm.o
 matel_ylm.o: alloc.o matel_params.o matel_registry.o parallel.o precision.o
 matel_ylm.o: radfft.o spher_harm.o sys.o
 md_out.o: files.o m_energies.o precision.o sys.o units.o
-memory.o: memory_log.o parallel.o
+memory.o: memory_log.o
 memory_all.o: rusage.o
 memory_log.o: m_io.o parallel.o precision.o
 memory_snapshot.o: rusage.o

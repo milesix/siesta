@@ -65,7 +65,7 @@ C records.
       real(grid_p), intent(in)     ::     rho(maxp,nspin)
       real(dp), intent(in)         ::     cell(3,3)
 
-      external          io_assign, io_close, memory
+      external          io_assign, io_close
 
 C Internal variables and arrays
       character(len=12):: fform, fileFormat
@@ -288,7 +288,7 @@ C Arguments
       real(grid_p), intent(out)    ::     rho(maxp,nspin)
       real(dp), intent(out)        ::     cell(3,3)
 
-      external          io_assign, io_close, memory
+      external          io_assign, io_close
 
 C Internal variables and arrays
       character(len=12) :: fform, fileFormat

@@ -272,7 +272,7 @@
         real(dp)         :: vps_u(nrmax,0:lmaxd)   !! Target??
 
         real(dp)
-     .    rofi(nrmax), drdi(nrmax), s(nrmax),
+     .    rofi(nrmax), drdi(nrmax), srdrdi(nrmax), sqdrdi(nrmax),
      .    rphi(nrmax,0:lmaxd,nsemx),
      .    vxc(nrmax), ve(nrmax),
      .    rho(nrmax), chcore(nrmax), rho_PAO(nrmax), auxrho(nrmax),
@@ -364,17 +364,22 @@
         basistype_save(is) = basistype
         spp%mass = smass
 
-        if (iz.ne.-100) then
-!
-! Reading pseudopotentials
-! 
-          call read_vps(lmxo, lmxkb, nrval,a,b,rofi,drdi,s,vps,vps_u,
+        if (iz.ne.-100) then     ! (not a Bessel floating species)
+
+          ! Process pseudopotential information
+
+          call read_vps(lmxo, lmxkb, nrval,a,b,rofi,drdi,srdrdi,
+     $        vps, vps_u,
      .        rho, chcore, zval, chgvps, nicore, irel, icorr,basp) 
 
           ! drdi(:) : derivative of the r(i) function, or equivalently
           !           distance between points.
-          ! s(:) = sqrt(drdi(:))  *** Note that it will be redefined for
-          !                           the purposes of integration
+          ! srdrdi(:) = sqrt(drdi(:)), used in the calls to vhrtre
+          ! sqdrdi(:) = (drdi(:))**2, used in the integration of Schrodinger eq.
+
+          ! could be computed directly in read_vps
+          sqdrdi(2:nrval) = drdi(2:nrval)*drdi(2:nrval)
+          sqdrdi(1) = sqdrdi(2)    ! legacy practice
 
           do ir=1,nrval
             rho(ir)=chgvps*rho(ir)/zval
@@ -444,7 +449,7 @@ c    .          'atom: The above configuration will be used ',
 ! For Kleinman-Bylander projectors calculation
 ! We use the same valence charge as in ps generation
 !
-          call vhrtre(rho,ve,rofi,drdi,s,nrval,a)  
+          call vhrtre(rho,ve,rofi,drdi,srdrdi,nrval,a)  
           if (write_ion_plot_files) then
              call file_out(nrval,rofi,ve,trim(global_label)//".Vhart")
           endif
@@ -459,7 +464,7 @@ c    .          'atom: The above configuration will be used ',
           do ir = 2,nrval 
             rho_PAO(ir) = (zval-charge)*rho(ir)/chgvps
           enddo 
-          call vhrtre(rho_PAO,vePAO,rofi,drdi,s,nrval,a) 
+          call vhrtre(rho_PAO,vePAO,rofi,drdi,srdrdi,nrval,a) 
           chargesave(is) = charge
           if (write_ion_plot_files) then
              call file_out(nrval,rofi,vePAO,
@@ -594,7 +599,8 @@ c    .          'atom: The above configuration will be used ',
                 do ir = 1, nrval
                    local_charge(ir) =  4*pi*rofi(ir)**2 * chlocal(ir)
                 enddo
-                call vhrtre(local_charge,vlocal_tmp,rofi,drdi,s,nrval,a)
+                call vhrtre(local_charge,vlocal_tmp,
+     $                      rofi,drdi,srdrdi,nrval,a)
                 if (write_ion_plot_files) then
                    call file_out(nrval,rofi,vlocal_tmp,
      .                  trim(global_label)//".Vlocal_from_chlocal")
@@ -607,11 +613,16 @@ c    .          'atom: The above configuration will be used ',
                 Rmax_ps_check =
      $                 fdf_physical("Rmax.PS.Check",rofi(nrval),"Bohr")
                 fit_3derivs = fdf_boolean("Vlocal.Fit.3derivs",.false.)
+                ! standard flag name
                 use_charge_cutoff =
-     $                 fdf_boolean("use-charge-cutoff-for-large-core",
+     $           fdf_get("chlocal-use-charge-cutoff-for-vlocal-fit",
      $                  .false.)
+                ! alternate flag name
+                use_charge_cutoff =
+     $                 fdf_get("use-charge-cutoff-for-large-core",
+     $                  use_charge_cutoff)
 
-                call compute_vlocal_chlocal(rofi,nrval,drdi,s,Zval,
+                call compute_vlocal_chlocal(rofi,nrval,drdi,srdrdi,Zval,
      $                                      lmxkb, vps, 
      $                                      a, b, nicore,
      $                                      nchloc,chlocal,
@@ -640,8 +651,7 @@ c    .          'atom: The above configuration will be used ',
             red_vlocal(1:nrval) =
      .        rofi(1:nrval)*vlocal(1:nrval) + 2.0_dp*Zval
 !
-!  Use the same eps=1.0e-4 as in other Vlocal-related routines
-!  Actually, eps=1.0e-5 in the "vlocal as fit" routine...
+!  Use the same eps=1.0e-5 as in other Vlocal-related routines
 !
             do ir = nrval,2,-1
               if (abs(red_vlocal(ir)) .gt. 1.0e-5_dp) then
@@ -657,12 +667,6 @@ c    .          'atom: The above configuration will be used ',
 !
 !-------------------------------------------------------------------
 ! 
-! Array S for the Schrodinger eq. integration
-! Note that previously s was sqrt(drdi) !!!!
-! 
-            s(2:nrval) = drdi(2:nrval)*drdi(2:nrval)
-            s(1) = s(2)
-
             lmxkb_true = lmxkb
 
             if (use_psml_kb_projectors) then
@@ -679,7 +683,7 @@ c    .          'atom: The above configuration will be used ',
             ignore_ghosts = fdf_boolean('Atom.Ignore.Ghosts',.false.)
             kb_rmax = fdf_physical("KB.Rmax", 0.0_dp, "Bohr")
 
-               call KBgen(is, a,b,rofi,drdi,s,
+               call KBgen(is, a,b,rofi,drdi,sqdrdi,
      .                 vps, vps_u, vlocal, ve, nrval, Zval, lmxkb, 
      .                 nkbl, erefkb, nkb,
      $                 new_kb_reference_orbitals,
@@ -709,12 +713,6 @@ c    .          'atom: The above configuration will be used ',
             nvlocal = 0
             call com_vlocal(is,a,b,rofi,red_vlocal,nvlocal,
      .                      zval,flting,spp)
-!
-! Array S for the Schrodinger eq. integration
-!          (Needed for the calculation of the basis set )
-
-            s(2:nrval) = drdi(2:nrval)*drdi(2:nrval)
-            s(1) = s(2)
 
           endif
 !------------------------------------------------------------
@@ -766,7 +764,7 @@ c    .          'atom: The above configuration will be used ',
             ! a neutral or a cationic one). This 've' will be used only in
             ! the determination of the rc from the energy_shift value. Presumably
             ! this is done to avoid problems of convergence for anions.
-            call Basis_gen(Zval,is, iz, a,b,rofi,drdi,s,
+            call Basis_gen(Zval,is, iz, a,b,rofi,drdi,sqdrdi,
      .                     vps, ve, vePAO, nrval, lmxo,nsemic,
      .                     nzeta, rco, lambda, npolorb, basistype,
      .                     rphi, no, rinn, vcte, qcoe, qyuk, qwid,
@@ -786,7 +784,7 @@ c    .          'atom: The above configuration will be used ',
      .  'atom: to generate the pseudopotential'
             endif
 
-            call Basis_gen(Zval,is, iz, a,b,rofi,drdi,s,
+            call Basis_gen(Zval,is, iz, a,b,rofi,drdi,sqdrdi,
      .                     vps, vePAO, vePAO, nrval, lmxo,nsemic,
      .                     nzeta, rco, lambda, npolorb, basistype,
      .                     rphi, no, rinn, vcte, qcoe, qyuk, qwid,
@@ -807,58 +805,59 @@ c    .          'atom: The above configuration will be used ',
 ! 
           if (flting.gt.0.0d0) then
 !             
-!     Print initial populations for the atomic orbitals
+            ! Print initial populations for the atomic orbitals
             call atm_pop_print(is,qPAO,lmxo,nsemic,basp)
-!
-! Screening of the atomic local pseudopotential
-! 
+
+            ! Screening of the atomic local pseudopotential
             call Vna(is,Zval,qPAO,rphi,rco,nsemic,vlocal,
      .               a,b,rofi,drdi,nrval,lmxo,nVna,spp)
-!       
-!  Calculation of the electrostatic self-energy oF the 
-!  local pseudopotential charge density 
-!
+
+            ! Calculation of the electrostatic self-energy oF the 
+            ! local pseudopotential charge density 
             call slfe_local(spp%self_energy,vlocal,rofi,a,nVna,drdi) 
  
           elseif(flting.lt.0.0d0) then 
 
-! Zero neutral-atom pseudopotential if floating orbitals
+            ! Zero neutral-atom pseudopotential if floating orbitals
             nVna=0
             call comVna(is,a,b,rofi,vlocal,nVna,flting,spp)
-! Zero self-energy for the local pseudopotential charge
+            ! Zero self-energy for the local pseudopotential charge
             spp%self_energy=0.0d0
+            
           endif 
-! 
-! Common block with pseudocore information
-! used for non-linear-core-correction for exchange-correlation energy
-! 
+
+          ! Common block with pseudocore information
+          ! used for non-linear-core-correction for exchange-correlation energy
+
           call comcore(is,a,b,rofi,chcore,nrval,nicore,flting,spp)
 
         elseif(iz.eq.-100) then
-!
-! Set up the mesh points and its derivative
-! only for floating orbs
-          call set_mesh(a,b,rofi,drdi,s)
+
+          ! Set up the mesh points and its derivative
+          ! for Bessel (floating) orbs
+          call set_mesh(a,b,rofi,drdi,sqdrdi)
+
           flting=dsign(1.0d0,dble(iz)) 
           spp%zval=0.0_dp
           chargesave(is) = 0.d0
-! No core charge
+          ! No core charge
           call comcore(is,a,b,rofi,chcore,nrval,nicore,flting,spp) 
-! No KB projectors
+          ! No KB projectors
           nkb = 0 
           spp%nprojs = 0
-! No local potential
+          ! No local potential
           nchloc = 0
           call comlocal(is,a,b,rofi,chlocal,nchloc,flting,spp)    
           call com_vlocal(is,a,b,rofi,red_vlocal,nvlocal,zval,
      $                        flting,spp)
-! Zero neutral-atom pseudopotential if floating orbitals
+          ! Zero neutral-atom pseudopotential if floating orbitals
           nVna = 0
           call comVna(is,a,b,rofi,vlocal,nVna,flting,spp)
-! Zero self-energy for the local pseudopotential charge
+          ! Zero self-energy for the local pseudopotential charge
           spp%self_energy = 0.0d0
-! Calculate Bessel functions
-          call Bessel(is,a,b,rofi,drdi,s,
+
+          ! Calculate Bessel functions
+          call Bessel(is,a,b,rofi,drdi,sqdrdi,
      .                lmxo,nzeta,rco,lambda,filtercut,no,nsemic,spp)
  
           write(6,'(/a,i3)')
@@ -2210,35 +2209,31 @@ C
 
 !
         subroutine read_vps(lmxo, lmxkb,
-     .             nrval,a,b,rofi,drdi,s,vps,vps_u,
+     .             nrval,a,b,rofi,drdi,srdrdi,vps,vps_u,
      .             rho, chcore, zval, chgvps,
      .             nicore, irel, icorr,basp)
 
         use basis_specs, only: restricted_grid
         use basis_specs, only: rmax_radial_grid
-C
-C   Read the file generated by the pseudopotential generation code.
-C   Written by D. Sanchez-Portal, Aug. 1998
-C
+
+        ! Process the file generated by the pseudopotential generation code.
+
         implicit none 
 
         type(basis_def_t), pointer   :: basp
       
-        real(dp)
-     .    rofi(nrmax), drdi(nrmax), s(nrmax), vps(nrmax,0:lmaxd),
+        integer, intent(in)    ::  lmxo, lmxkb 
+        real(dp), intent(out) ::
+     .    rofi(nrmax), drdi(nrmax), srdrdi(nrmax), vps(nrmax,0:lmaxd),
      .    vps_u(nrmax,0:lmaxd),
      .    rho(nrmax), chcore(nrmax) 
 
-        real(dp)
-     .    a, b, zval
-        integer  nrval, lmxo, lmxkb 
-        character nicore*4, irel*3, icorr*2
+        real(dp), intent(out)  ::  a, b, zval
+        integer, intent(out)   ::  nrval
+        character, intent(out) ::  nicore*4, irel*3, icorr*2
 C
 C Internal variables
 C
-        real(dp) 
-     .    ve(nrmax)
-
         real(dp) 
      .    ea, rpb, chgvps
 
@@ -2336,7 +2331,7 @@ C
 
         rofi(1:nrval) = vp%r(1:nrval)
 
-C    Calculate drdi and s 
+C    Calculate drdi and srdrdi 
 C    drdi is the derivative of the radial distance respect to the mesh index
 C    i.e. rofi(ir)= b*[ exp( a*(i-1) ) - 1 ] and therefore 
 C    drdi=dr/di =a*b*exp(a*(i-1))= a*[rofi(ir)+b] 
@@ -2345,7 +2340,7 @@ C    drdi=dr/di =a*b*exp(a*(i-1))= a*[rofi(ir)+b]
         ea=exp(a)
         do ir=1,nrval
           drdi(ir)=a*rpb
-          s(ir)=sqrt(a*rpb)
+          srdrdi(ir)=sqrt(a*rpb)
           rpb=rpb*ea
         enddo 
 
@@ -2500,11 +2495,20 @@ C
 
        end subroutine comkb
 !
+!     Routines for extracting vlocal and chlocal from a PSML
+!     file. If produced within the Siesta ecosystem of utilities,
+!     the file might already contain chlocal.
+!     If not, chlocal must be constructed from vlocal, using a
+!     set of heuristics and parameters that are controlled by
+!     fdf symbols starting with 'psml.chlocal'. Full documentation
+!     will be produced soon.
+      
       subroutine get_psml_vlocal_chlocal(ps,is,rofi,drdi,nrval,
      $                                   Zval,vlocal,chlocal,nchloc)
 
       !! Extracts Vlocal from PSML file and computes Chlocal
-      !! by computing its Laplacian
+      !! by computing its Laplacian (or extracts it from file,
+      !! if available)
       
       use m_psml, psml_t => ps_t
 
@@ -2546,7 +2550,6 @@ C
      $     has_local_charge=psml_chlocal,
      $     func_local_charge=rfunc_chlocal)
       
-!      vlocal_type = ps_LocalPotential_Type(ps)
       write(6,"(a)") "Got Vlocal (" // trim(vlocal_type)
      $               // ") from psml data"
 
@@ -2566,7 +2569,6 @@ C
      $           " psml data"
          
             do ir = 1, nrval
-!               chlocal(ir) = ps_LocalCharge_Value(ps,rofi(ir))
                chlocal(ir) = ps_GetValue(rfunc_chlocal,rofi(ir))
             enddo
             ! Get the chlocal cutoff from PSML file
@@ -2659,17 +2661,21 @@ C
       ! Heuristics for parameters
 
       call ps_LocalPotential_Get(ps,type=vlocal_type)
-!      vlocal_type = ps_LocalPotential_Type(ps)
+
       select case (trim(vlocal_type))
         case ("siesta-fit")
-           use_charge_cutoff = fdf_boolean(
-     $          "use-charge-cutoff-for-vlocal-fit",.false.)
+           ! PSML file produced within the Siesta ecosystem,
+           ! using the 'large-core scheme'
+           use_charge_cutoff = fdf_get(
+     $      "chlocal-use-charge-cutoff-for-vlocal-fit",.false.)
            !
            r0 = fdf_get("psml.chlocal.build.r0",0.004_dp)
            delta = fdf_get("psml.chlocal.build.delta",0.005_dp)
            poly_order_rlin =
      $          fdf_get("psml.chlocal.build.poly_order_rlin",4)
         case ("siesta-charge")
+           ! PSML file produced within the Siesta ecosystem,
+           ! using the 'small-core scheme'
            use_charge_cutoff = .true.
            !
            r0 = fdf_get("psml.chlocal.build.r0",0.009_dp)
@@ -2684,7 +2690,8 @@ C
            poly_order_rlin =
      $          fdf_get("psml.chlocal.build.poly_order_rlin",4)
            use_charge_cutoff =
-     $           fdf_boolean("use-charge-cutoff-for-vlocal-fit",.false.)
+     $        fdf_get("chlocal-use-charge-cutoff-for-vlocal-fit",
+     $                     .false.)
         end select
 
 
@@ -6916,15 +6923,15 @@ C
         
        end subroutine compol
 !
-        subroutine set_mesh(a,b,rofi,drdi,s)
+        subroutine set_mesh(a,b,rofi,drdi,sqdrdi)
 C
 C Setting up mesh points an its derivatives from standard values
 C D. Sanchez-Portal, Aug. 98
 C
         implicit none
 
-        real(dp) 
-     .     rofi(nrmax), drdi(nrmax), s(nrmax), a, b
+        real(dp), intent(out) ::
+     .     rofi(nrmax), drdi(nrmax), sqdrdi(nrmax), a, b
 
 C
 C Internal variables
@@ -6950,13 +6957,13 @@ C
         do ir=1,nrmax
           drdi(ir)=a*rpb
           rofi(ir)=b*(ea2-1.0d0)
-          s(ir)=(a*rpb)**2
+          sqdrdi(ir)=(a*rpb)**2
           rpb=rpb*ea
           ea2=ea2*ea
         enddo
         end subroutine set_mesh
 !
-        subroutine BESSEL(is,a,b,rofi,drdi,s,lmxo,
+        subroutine BESSEL(is,a,b,rofi,drdi,sqdrdi,lmxo,
      .                    nzeta,rco,lambda,filtercut,
      .                    norb,nsemic,spp) 
 
@@ -6971,7 +6978,7 @@ C
 
         real(dp)
      .    a, b, rofi(nrmax),
-     .    drdi(nrmax), s(nrmax), 
+     .    drdi(nrmax), sqdrdi(nrmax), 
      .    rco(nzetmx,0:lmaxd,nsemx),
      .    lambda(nzetmx, 0:lmaxd,nsemx),
      .    filtercut(0:lmaxd,nsemx)
@@ -7081,7 +7088,7 @@ C
 
               nnodes=izeta      ! Including the one at r=rc...
               nprin=l+1       
-              call schro_eq(1.0d0,rofi,v,v,s,drdi,
+              call schro_eq(1.0d0,rofi,v,v,sqdrdi,drdi,
      .                      nrc,l,a,b,nnodes,nprin,
      .                      eorb,g) 
               dnrm=0.0d0
