@@ -59,9 +59,9 @@ subroutine pdos( NO, nspin, maxspn, NO_L, MAXNH, &
   use atomlist,     only : iphorb, iaorb
   use atmfuncs,     only : zetafio, mofio, lofio, cnfigfio, labelfis
   use atmfuncs,     only : pol, izofis
-  use flib_wxml,    only : xmlf_t, xml_OpenFile, xml_NewElement
-  use flib_wxml,    only : xml_AddArray, xml_AddPCData
-  use flib_wxml,    only : xml_AddAttribute, xml_EndElement, xml_Close
+  use xmlf90_wxml,  only : xmlf_t, xml_OpenFile, xml_NewElement
+  use xmlf90_wxml,  only : xml_AddArray, xml_AddPCData
+  use xmlf90_wxml,  only : xml_AddAttribute, xml_EndElement, xml_Close
   use xml,          only : str, xml_dump_attribute
   use densematrix,  only : allocDenseMatrix, resetDenseMatrix
   use densematrix,  only : Haux, Saux, psi
