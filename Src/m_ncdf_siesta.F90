@@ -326,14 +326,9 @@ contains
        ! Add all the electrodes
       do iEl = 1 , N_Elec
 
-<<<<<<< HEAD
         call ncdf_def_grp(grp,trim(Elecs(iEl)%name),grp2)
-=======
-          tmp = Elecs(iEl)%device_atoms()
-          call ncdf_def_dim(grp2,'na',tmp)
->>>>>>> 8cee28cea... maint: finally cleaned the electrode type
 
-        tmp = TotUsedAtoms(Elecs(iEl))
+        tmp = Elecs(iEl)%device_atoms()
         call ncdf_def_dim(grp2,'na',tmp)
 
         dic = ('info'.kv.'Atoms belonging to electrode')
@@ -385,16 +380,12 @@ contains
 
       call ncdf_put_var(grp,'Volt',Volt)
 
-<<<<<<< HEAD
       ! Add all the electrodes
       do iEl = 1 , N_Elec
-=======
-          tmp = Elecs(iEl)%device_atoms()
->>>>>>> 8cee28cea... maint: finally cleaned the electrode type
 
         call ncdf_open_grp(grp,trim(Elecs(iEl)%name),grp2)
 
-        tmp = TotUsedAtoms(Elecs(iEl))
+        tmp = Elecs(iEl)%device_atoms()
 
         allocate(ibuf(tmp))
         do i = 1 , tmp

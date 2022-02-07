@@ -725,7 +725,7 @@ contains
 
     use dictionary, assign_int => assign
     use netcdf_ncdf, ncdf_parallel => parallel
-    use m_ncdf_io, only : cdf_w_Sp
+    use ncdf_io_m, only : cdf_w_Sp
     use m_timestamp, only : datestring
     use m_tbt_hs, only : tTSHS
     use ts_electrode_m
@@ -1048,7 +1048,7 @@ contains
     use netcdf_ncdf, ncdf_parallel => parallel
     use dictionary, assign_int => assign
     use byte_count_m, only: byte_count_t
-    use m_ncdf_io, only : cdf_w_Sp
+    use ncdf_io_m, only : cdf_w_Sp
     use class_OrbitalDistribution
     use class_Sparsity
 #ifdef MPI
@@ -1090,7 +1090,7 @@ contains
     call newDistribution(no_u,-1           ,fdit,name='TBT-fake dist')
 #endif
 
-    call cdf_w_Sp(ncdf,fdit,sp_dev_sc)
+    call cdf_w_Sp(ncdf,sp_dev_sc,fdit)
 
     ! Clean-up
     call delete(fdit)
