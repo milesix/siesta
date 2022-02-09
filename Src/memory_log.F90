@@ -297,24 +297,16 @@ character(len=40)     :: message
 
 select case( var_type )
 #ifdef OLD_CRAY
-  case('I')
-    type_mem = 8
-  case('R')
-    type_mem = 8
-  case('L')
-    type_mem = 8
+case('I', 'R', 'L')
+  type_mem = 8
 #else
-  case('I')
-    type_mem = 4
-  case('R')
-    type_mem = 4
-  case('L')
-    type_mem = 4
+case('I', 'R', 'L')
+  type_mem = 4
 #endif
-case('E')
+case('E', 'D', 'C')
   type_mem = 8
-case('D')
-  type_mem = 8
+case('Z')
+  type_mem = 16
 case('H')
   type_mem = 1
 case default

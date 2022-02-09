@@ -101,7 +101,7 @@
       use iodmhs_netcdf, only: setup_dmhs_netcdf_file
 #endif
 #ifdef NCDF_4
-      use dictionary
+      use dictionary, dict_first => first
       use m_ncdf_siesta, only : cdf_init_file, cdf_save_settings
       use m_ncdf_siesta, only : cdf_save_state, cdf_save_basis
 #ifdef MPI
