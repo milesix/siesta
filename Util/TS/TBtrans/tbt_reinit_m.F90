@@ -38,6 +38,10 @@ contains
     use fdf
     use m_verbosity
 
+#ifdef MPI
+    use mpi_siesta
+#endif
+
     implicit none
 
     character(len=*), intent(out) :: sname, slabel
@@ -180,7 +184,14 @@ contains
     ! the string used below conforms to ISO 8601 with millisecond precision.
     write(fileout,"(a)") 'fdf.' // mydate // 'T' // mytime // ".log"
 
-    call fdf_init(filein,trim(fileout))
+    if (Node .eq. 0) then
+       call fdf_init(filein, trim(fileout))
+    else
+       ! the other nodes will get the data structure
+    endif
+#ifdef MPI      
+      call broadcast_fdf_struct(0,mpi_comm_world)
+#endif
 
     ! Parse the command line
     call tbt_parse_command_line(info=.false.)

@@ -55,7 +55,6 @@ FSIESTA_SOCKETS= posix_calls.o fsockets.o sockets.o fsiesta_sockets.o
 # Siesta libraries used by MPI version
 #
 SIESTA_LIB=libSiestaForces.a
-FDF=libfdf.a
 
 XMLPARSER=$(XMLF90_LIBS)
 XC=$(GRIDXC_LIBS)
@@ -70,7 +69,7 @@ INCFLAGS:=$(NETCDF_INCFLAGS) \
 #
 MS=MatrixSwitch.a
 #
-ALL_LIBS= $(SIESTA_LIB) $(FDF) $(XC) \
+ALL_LIBS= $(SIESTA_LIB) $(FDF_LIBS) $(XC) \
 	$(NCPS) $(PSML) $(XMLF90_LIBS) $(PSOP) $(MS) \
 	$(MPI_INTERFACE) $(COMP_LIBS) $(LIBS)
 #
