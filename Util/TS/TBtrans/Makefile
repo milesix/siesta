@@ -266,7 +266,7 @@ libsiestaLAPACK.a: $(VPATH)/Libs/lapack.F
 # This will setup the correct compilation sequence as
 # FDF => MPI
 $(DEP_OBJS): $(FDF) $(COMP_LIBS) $(FDICT)
-#$(TBTOBJS): $(DEP_OBJS)
+$(TBTOBJS): $(FDF) $(FDICT)
 
 .PHONY: check-tbtrans
 check-tbtrans:
