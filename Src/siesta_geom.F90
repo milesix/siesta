@@ -39,14 +39,14 @@ MODULE siesta_geom
   ! Matrix of auxiliary supercell
   integer :: mscell(3,3)
 
-  ! Unit cell "velocity" (time derivative)
+  ! Unit cell "velocity" (time derivative) [Bohr/fs]
   real(dp):: vcell(3,3)
 
   ! Atomic coordinates
   real(dp), pointer               :: xa(:,:)
   real(dp), pointer               :: xa_last(:,:)
 
-  ! Atomic velocities
+  ! Atomic velocities [Bohr/fs]
   real(dp), pointer               :: va(:,:)
 
   ! integer isa(na)           : Species index of each atom
