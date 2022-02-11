@@ -361,12 +361,17 @@ contains
     ! Write out the current along the bulk-bias direction and each of the other ones
     select case ( spin%spinor )
     case ( 1 )
-      write(*,'(tr5,3a,e15.7,tr3,3(tr1,e15.7))') 'bulk-bias: |v| / {v} [',trim(suffix),'] ', I(1:4,1)
-      write(*,'(tr5,a,2(tr1,e15.7))') 'bulk-bias: {dq,q0}', results(4:5,1)
+      write(*,'(tr5,3a,3(tr1,e15.7),a,e15.7)') &
+          'bulk-bias: {v}    , |v|    [',trim(suffix),'] {', I(2:4,1), " }   ", I(1,1)
+
+      write(*,'(tr5,a,2(tr1,e15.7))') 'bulk-bias: dq , q0 = ', results(4:5,1)
     case ( 2 )
-      write(*,'(tr5,3a,e15.7,tr3,3(tr1,e15.7))') 'bulk-bias: |v|    / {v}    [',trim(suffix),'] ', I(1:4,1)+I(1:4,2)
-      write(*,'(tr5,3a,e15.7,tr3,3(tr1,e15.7))') 'bulk-bias: |v|_Sz / {v}_Sz [',trim(suffix),'] ', I(1:4,1)-I(1:4,2)
-      write(*,'(tr5,a,2(tr1,e15.7))') 'bulk-bias: {dq,q0}', results(4:5,1)+results(4:5,2)
+      write(*,'(tr5,3a,3(tr1,e15.7),a,e15.7)') &
+          'bulk-bias: {v}    , |v|    [',trim(suffix),'] {', I(2:4,1)+I(2:4,2), " }   ", I(1,1)+I(1,2)
+      write(*,'(tr5,3a,3(tr1,e15.7),a,e15.7)') &
+          'bulk-bias: {v}_Sz , |v|_Sz [',trim(suffix),'] {', I(2:4,1)-I(2:4,2), " }   ", I(1,1)-I(1,2)
+
+      write(*,'(tr5,a,2(tr1,e15.7))') 'bulk-bias: dq , q0 = ', results(4:5,1)+results(4:5,2)
     end select
 
   end subroutine velocity_results_print_pol
@@ -427,15 +432,19 @@ contains
 
     ! Write out the current along the bulk-bias direction and each of the other ones
     I = dot_product(velocity_dir, IS(:,0))
-    write(*,'(tr5,3a,e15.7,tr3,3(tr1,e15.7))') 'bulk-bias: |v|    / {v}    [',trim(suffix),'] ', I, IS(:,0)
+    write(*,'(tr5,3a,3(tr1,e15.7),a,e15.7)') &
+        'bulk-bias: {v}    , |v|    [',trim(suffix),'] {', IS(:,0), " }   ", I
     I = dot_product(velocity_dir, IS(:,1))
-    write(*,'(tr5,3a,e15.7,tr3,3(tr1,e15.7))') 'bulk-bias: |v|_Sx / {v}_Sx [',trim(suffix),'] ', I, IS(:,1)
+    write(*,'(tr5,3a,3(tr1,e15.7),a,e15.7)') &
+        'bulk-bias: {v}_Sx , |v_Sx| [',trim(suffix),'] {', IS(:,1), " }   ", I
     I = dot_product(velocity_dir, IS(:,2))
-    write(*,'(tr5,3a,e15.7,tr3,3(tr1,e15.7))') 'bulk-bias: |v|_Sy / {v}_Sy [',trim(suffix),'] ', I, IS(:,2)
+    write(*,'(tr5,3a,3(tr1,e15.7),a,e15.7)') &
+        'bulk-bias: {v}_Sy , |v_Sy| [',trim(suffix),'] {', IS(:,2), " }   ", I
     I = dot_product(velocity_dir, IS(:,3))
-    write(*,'(tr5,3a,e15.7,tr3,3(tr1,e15.7))') 'bulk-bias: |v|_Sz / {v}_Sz [',trim(suffix),'] ', I, IS(:,3)
+    write(*,'(tr5,3a,3(tr1,e15.7),a,e15.7)') &
+        'bulk-bias: {v}_Sz , |v_Sz| [',trim(suffix),'] {', IS(:,3), " }   ", I
 
-    write(*,'(tr5,a,2(tr1,e15.7))') 'bulk-bias: {dq,q0}', results(1:2,4)
+    write(*,'(tr5,a,2(tr1,e15.7))') 'bulk-bias: dq , q0 = ', results(1:2,4)
 
   end subroutine velocity_results_print_nc
 
