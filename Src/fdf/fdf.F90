@@ -2619,7 +2619,9 @@ CONTAINS
           end if
         end do
 
-      end if
+        call fdf_bclose(bfdf)
+
+     end if
 
       ! Restore output
       fdf_output = orig_fdf_output
