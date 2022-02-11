@@ -313,11 +313,6 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
   do ispin = 1, nspin
     do ihist = 1, nhist
       dtot(ihist,ispin) = dtot(ihist,ispin) * norm
-    end do
-  end do
-
-  do ispin = 1, nspin
-    do ihist = 1, nhist
       do iuo = 1, nuotot
         dpr(iuo,ihist,ispin) = dpr(iuo,ihist,ispin) * norm
       end do

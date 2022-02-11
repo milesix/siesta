@@ -82,24 +82,29 @@ subroutine pdoskp(nspin, nuo, no, maxspn, maxnh, &
       dtot(nhist,nspin), dpr(nuotot,nhist,nspin), wk(nk)
 
   ! Internal variables ---------------------------------------------------
-  integer ::, ispin, iio, io, iuo, juo, j, jo, ihist, iband, ind, ierror,
+  integer :: ispin, ik, iio, io, iuo, juo, j, jo, ihist, iband, ind, ierror
   integer :: maxnhg, nuog, BNode
+  integer :: iEmin, iEmax
 
   integer, dimension(:), pointer :: numhg, listhptrg, listhg
 
-  real(dp) :: kxij, Ckxij, Skxij, delta, ener, diff, pipj1, pipj2, 
-  real(dp) :: pipjS1, gauss, norm, wksum
+  real(dp) :: kxij, Ckxij, Skxij, delta, ener, diff
+  real(dp) :: gauss, norm, wksum
   real(dp) :: limit, inv_sigma2
 
-  real(dp), dimension(:), pointer   ::  Sg
-  real(dp), dimension(:,:), pointer ::  Hg, xijg
+  real(dp), dimension(:), pointer :: Sg
+  real(dp), dimension(:,:), pointer :: Hg, xijg
 
 #ifdef MPI
   integer ::  MPIerror
-  real(dp), dimension(:,:,:), pointer :: Sloc
+  real(dp), dimension(:,:,:), pointer :: aux_red => null()
 #endif
 
   external :: cdiag
+
+#ifdef DEBUG
+  call write_debug( '    PRE pdoskp' )
+#endif
 
   ! Initialize some variables
   delta = (E2 - E1)/(nhist-1)
@@ -111,9 +116,9 @@ subroutine pdoskp(nspin, nuo, no, maxspn, maxnh, &
 
   ! Allocate local memory for global list arrays
   nullify( numhg )
-  call re_alloc( numhg, 1, nuotot, name='numhg', routine='pdoskp' )
+  call re_alloc( numhg, 1, nuotot, name='numhg', routine='pdoskp')
   nullify( listhptrg )
-  call re_alloc( listhptrg, 1, nuotot, name='listhptrg', routine='pdoskp' )
+  call re_alloc( listhptrg, 1, nuotot, name='listhptrg', routine='pdoskp')
 
   ! Globalise numh
   do io = 1,nuotot
@@ -136,7 +141,7 @@ subroutine pdoskp(nspin, nuo, no, maxspn, maxnh, &
   ! Globalse listh
   maxnhg = listhptrg(nuotot) + numhg(nuotot)
   nullify( listhg )
-  call re_alloc( listhg, 1, maxnhg, name='listhg', routine='pdoskp' )
+  call re_alloc( listhg, 1, maxnhg, name='listhg', routine='pdoskp')
   do io = 1,nuotot
     call WhichNodeOrb(io,Nodes,BNode)
     if (Node.eq.BNode) then
@@ -179,8 +184,8 @@ subroutine pdoskp(nspin, nuo, no, maxspn, maxnh, &
       enddo
     endif
 #ifdef MPI
-    do is = 1,nspin
-      call MPI_Bcast(Hg(listhptrg(io)+1,is),numhg(io), &
+    do ispin = 1,nspin
+      call MPI_Bcast(Hg(listhptrg(io)+1,ispin),numhg(io), &
           MPI_double_precision,BNode,MPI_Comm_World,MPIerror)
     end do
     call MPI_Bcast(Sg(listhptrg(io)+1),numhg(io), &
@@ -212,34 +217,83 @@ subroutine pdoskp(nspin, nuo, no, maxspn, maxnh, &
             eo(1,ispin,ik), psi, nuotot, 1, ierror, -1) !dummy blocksize
       end if
 
+      ! Figure out the minimum and maximum eigenstates that will contribute
+      ! This ensures we calculate fewer columns of the psi basis
+      ! Note, eo *MUST* be sorted. This is ensured by lapack/scalapack.
+      iEmin = 1
+      do jo = 1, nuotot
+        diff = abs(E1 - EO(jo,ispin,IK))
+        if ( diff < limit ) then
+          iEmin = jo
+          exit
+        end if
+      end do
+
+      iEmax = nuotot
+      do jo = nuotot, 1, -1
+        diff = abs(E2 - EO(jo,ispin,IK))
+        if ( diff < limit ) then
+          iEmax = jo
+          exit
+        end if
+      end do
+
+      ! correct wrong cases, should probably never be found?
+      if ( iEmin > iEmax ) then
+        iEmin = 1
+        iEmax = 0
+      end if
+
       ! Recalculate again the overlap matrix in k-space
       call setup_Sk(kpoint(:,ik))
 
-      ! Loop over all the energy range
-      do ihist = 1,nhist
+      ! Total number of elements calculated (jo is allowed to be 0)
+      jo = iEmax - iEmin + 1
+
+      ! Now perform the matrix-multiplications
+      ! This is: S | psi >
+      call zgemm('N','N',nuotot, jo, nuotot, cmplx(1._dp, 0._dp, dp), &
+          Saux(1,1,1),nuotot, psi(1,1,iEmin),nuotot,cmplx(0._dp, 0._dp, dp), &
+          Haux(1,1,iEmin), nuotot)
+
+
+      !!$OMP parallel default(none) shared(Haux,psi,dtot,dpr,iEmin,iEmax,inv_sigma2) &
+!!$OMP& shared(nhist,Node,Nodes,eo,limit,wk,nuotot,nuo,ispin,ik,delta,e1) &
+!!$OMP& private(jo,iuo,ihist,ener,iband,diff,gauss,j)
+
+      ! Ensure we multiply with the local nodes complex conjugate
+      ! This is the final step of < psi | S | psi >
+      ! but doing it element wise, rather than a dot-product
+!!$OMP do schedule(static)
+      do jo = iEmin, iEmax
+        do iuo = 1, nuotot
+          Haux(1,iuo,jo) = psi(1,iuo,jo) * Haux(1,iuo,jo) + psi(2,iuo,jo) * Haux(2,iuo,jo)
+        end do
+      end do
+!!$OMP end do
+
+!!$OMP do schedule(static,16)
+      do ihist = 1, nhist
         ener = E1 + (ihist - 1) * delta
-        do 170 iband = 1,nuog
-          diff = abs(ener - eo(iband,is,ik))
+        do iband = iEmin, iEmax
+          diff = abs(ener - eo(iband,ispin,ik))
+          
           if ( diff < limit ) then
             gauss = exp(-diff**2*inv_sigma2) * wk(ik)
-            dtot(ihist,is) = dtot(ihist,is) + gauss
-            do juo = 1, nuotot
-              do iuo = 1, nuotot
-                !                   This is:  psi(iuo) * psi(juo)^*
-                pipj1 = psi(1,iuo,iband) * psi(1,juo,iband) + psi(2,iuo,iband) * psi(2,juo,iband)
-                pipj2 = - psi(1,iuo,iband) * psi(2,juo,iband) + psi(2,iuo,iband) * psi(1,juo,iband)
-                pipjS1 = pipj1*Saux(1,iuo,juo)-pipj2*Saux(2,iuo,juo)
-                dpr(juo,ihist,ispin) = dpr(juo,ihist,ispin) + pipjS1*gauss
-              enddo
-            enddo
-          endif
-170     enddo
+            dtot(ihist,ispin) = dtot(ihist,ispin) + gauss
+            ! See discussion about daxpy + OMP usage in pdosg.F90
+            call daxpy(nuotot,gauss,Haux(1,1,iband),2,dpr(1,ihist,ispin),1)
+          end if
+          
+        end do
+      end do
+!!$OMP end do nowait
 
-      enddo
+!!$OMP end parallel
 
-    enddo
+    end do
 
-  enddo
+  end do
 
   ! Free local memory from computation of dpr
   call de_alloc( xijg, name='xijg' )
@@ -251,27 +305,26 @@ subroutine pdoskp(nspin, nuo, no, maxspn, maxnh, &
 
 #ifdef MPI
   ! Allocate workspace array for global reduction
-  nullify( Sloc )
-  call re_alloc( Sloc, 1, nuotot, 1, nhist, 1, nspin, name='Sloc', routine='pdoskp' )
+  call re_alloc( aux_red, 1, nuotot, 1, nhist, 1, nspin, &
+      name='aux_red_dpr', routine='pdosk' )
 
   ! Global reduction of dpr matrix
-  Sloc(:,:,:) = 0._dp
-  call MPI_AllReduce(dpr(1,1,1),Sloc(1,1,1),nuotot*nhist*nspin, &
-      MPI_double_precision,MPI_sum,MPI_Comm_World,MPIerror)
-  dpr(:,:,:) = Sloc(:,:,:)
+  call MPI_Reduce(dpr(1,1,1),aux_red(1,1,1),nuotot*nhist*nspin, &
+      MPI_double_precision,MPI_sum,0,MPI_Comm_World,ierror)
+  dpr(:,:,:) = aux_red(:,:,:)
 
-  call de_alloc( Sloc, name='Sloc' )
+  call de_alloc(aux_red, name='aux_red_dpr', routine='pdosk' )
 
-  call re_alloc( Sloc, 1, nhist, 1, nspin, 1, 1, name='Sloc', routine='pdoskp' )
+  call re_alloc( aux_red, 1, nhist, 1, nspin, 1, 1, &
+      name='aux_red_dtot', routine='pdosk' )
 
   ! Global reduction of dtot matrix
-  Sloc(:,:,:) = 0.0d0
-  call MPI_AllReduce(dtot(1,1),Sloc(1,1,1),nhist*nspin, &
-      MPI_double_precision,MPI_sum,MPI_Comm_World,MPIerror)
-  dtot(:,:) = Sloc(:,:,1)
+  call MPI_Reduce(dtot(1,1),aux_red(1,1,1),nhist*nspin, &
+      MPI_double_precision,MPI_sum,0,MPI_Comm_World,ierror)
+  dtot(:,:) = aux_red(:,:,1)
 
-  ! Free workspace array for global reduction
-  call de_alloc( Sloc, name='Sloc' )
+  call de_alloc(aux_red, name='aux_red_dtot', routine='pdosk' )
+
 #endif
 
   wksum = 0.0d0
@@ -281,14 +334,18 @@ subroutine pdoskp(nspin, nuo, no, maxspn, maxnh, &
 
   norm = 1._dp / (sigma * sqrt(pi) * wksum)
 
-  do is = 1,nspin
+  do ispin = 1,nspin
     do ihist = 1,nhist
-      dtot(ihist,is) = dtot(ihist,is) * norm
+      dtot(ihist,ispin) = dtot(ihist,ispin) * norm
       do iuo = 1,nuotot
-        dpr(iuo,ihist,is) = dpr(iuo,ihist,is) * norm
+        dpr(iuo,ihist,ispin) = dpr(iuo,ihist,ispin) * norm
       enddo
     enddo
   enddo
+
+#ifdef DEBUG
+  call write_debug( '    POS pdoskp' )
+#endif
 
 contains
 
