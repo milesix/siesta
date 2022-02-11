@@ -160,11 +160,11 @@ subroutine pdos2k( nuo, no, maxuo, maxnh, &
     ! Recalculate again the overlap matrix in k-space
     call setup_Sk(kpoint(:,ik))
 
-    ! Total number of elements calculated (jo is allowed to be 0)
-    jo = iEmax - iEmin + 1
     ! Convert iEmin/iEmax to local indices (not factor 2)
     iEmin = (iEmin + 1)/2
     iEmax = iEmax / 2
+    ! Total number of elements calculated (jo is allowed to be 0)
+    jo = (iEmax - iEmin + 1) * 2
 
 #ifdef MPI
 
@@ -324,8 +324,7 @@ subroutine pdos2k( nuo, no, maxuo, maxnh, &
       ener = E1 + (ihist - 1) * delta
       do iband = iEmin, iEmax
         ! the energy comes from the global array
-        call LocalToGlobalOrb(iband, Node, Nodes, j)
-        diff = abs(ener - eo(j*2-1,ik))
+        diff = abs(ener - eo(iband*2-1,ik))
           
         if ( diff < limit ) then
           gauss = exp(-diff**2*inv_sigma2) * wk(ik)
@@ -333,7 +332,7 @@ subroutine pdos2k( nuo, no, maxuo, maxnh, &
           call daxpy(nuotot*4,gauss,Haux(1,1,1,iband),1,dpr(1,1,ihist),1)
         end if
           
-        diff = abs(ener - eo(j*2,ik))
+        diff = abs(ener - eo(iband*2,ik))
         if ( diff < limit ) then
           gauss = exp(-diff**2*inv_sigma2) * wk(ik)
           ! See discussion about daxpy + OMP usage in pdosg.F90

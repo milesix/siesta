@@ -147,11 +147,11 @@ subroutine pdos2g( nuo, no, maxuo, maxnh, &
   ! Recalculate again the overlap matrix in k-space
   call setup_S()
 
-  ! Total number of elements calculated (jo is allowed to be 0)
-  jo = iEmax - iEmin + 1
   ! Convert iEmin/iEmax to local indices (not factor 2)
   iEmin = (iEmin + 1)/2
   iEmax = iEmax / 2
+  ! Total number of elements calculated (jo is allowed to be 0)
+  jo = (iEmax - iEmin + 1) * 2
 
 #ifdef MPI
 
@@ -311,16 +311,14 @@ subroutine pdos2g( nuo, no, maxuo, maxnh, &
     ener = E1 + (ihist - 1) * delta
     do iband = iEmin, iEmax
       ! the energy comes from the global array
-      call LocalToGlobalOrb(iband, Node, Nodes, j)
-      diff = abs(ener - eo(j*2-1))
-
+      diff = abs(ener - eo(iband*2-1))
       if ( diff < limit ) then
         gauss = exp(-diff**2*inv_sigma2)
         ! See discussion about daxpy + OMP usage in pdosg.F90
         call daxpy(nuotot*4,gauss,Haux(1,1,1,iband),1,dpr(1,1,ihist),1)
       end if
 
-      diff = abs(ener - eo(j*2))
+      diff = abs(ener - eo(iband*2))
       if ( diff < limit ) then
         gauss = exp(-diff**2*inv_sigma2)
         ! See discussion about daxpy + OMP usage in pdosg.F90
@@ -339,14 +337,14 @@ subroutine pdos2g( nuo, no, maxuo, maxnh, &
 #ifdef MPI
   ! Allocate workspace array for global reduction
   call re_alloc( aux_red, 1, 4, 1, nuotot, 1, nhist, &
-      name='aux_red', routine='pdos3g')
+      name='aux_red', routine='pdos2g')
 
   ! Global reduction of dpr matrix
   call MPI_Reduce(dpr(1,1,1),aux_red(1,1,1),4*nuotot*nhist, &
       MPI_double_precision,MPI_sum,0,MPI_Comm_World,ierror)
   dpr(:,:,:) = aux_red(:,:,:)
 
-  call de_alloc(aux_red, name='aux_red', routine='pdos3g')
+  call de_alloc(aux_red, name='aux_red', routine='pdos2g')
 
 #endif
 
