@@ -406,12 +406,9 @@ MODULE utils
 
 !
 !   Die routine (Abort/Terminate program)
-!   MPI-awareness (MPI_Abort)
 !
     SUBROUTINE die(routine, msg, file, line, unit, rc, cline)
-#if defined(CLUSTER) || defined(BLOCKING)
-      use mpi_siesta
-#endif
+
       implicit none
 !--------------------------------------------------------------- Input Variables
       character(len=*), intent(in)           :: routine, msg
@@ -420,10 +417,6 @@ MODULE utils
 
 !--------------------------------------------------------------- Local Variables
       integer(ip)                            :: die_unit
-#if defined(CLUSTER) || defined(BLOCKING)
-      integer(ip)                            :: ierr, rc2
-#endif
-
 !------------------------------------------------------------------------- BEGIN
       if (PRESENT(unit)) then
         die_unit = unit
@@ -445,17 +438,8 @@ MODULE utils
         write(die_unit,'(a)') 'Stopping Program'
       endif
 
-#if defined(CLUSTER) || defined(BLOCKING)
-      if (.not. PRESENT(rc)) then
-        rc2 = 0
-      else
-        rc2 = rc
-      endif
-
-      call MPI_Abort(MPI_COMM_WORLD, rc2, ierr)
-#else
+      ! Replace this by a call to a proper handler
       STOP 'Stopping Program'
-#endif
 !--------------------------------------------------------------------------- END
     END SUBROUTINE die
 
