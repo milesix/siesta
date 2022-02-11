@@ -7,7 +7,9 @@
 #-------
 ## compute-forces F
 SolutionMethod ELSI
-#MPI.Nprocs.SIESTA 1
+elsi-output-level 3
+elsi-solver elpa
+elsi-elpa-flavor 2
 
 WriteDMHS.NetCDF F
 WriteDM.NetCDF F

@@ -385,7 +385,7 @@ C
      .              S(maxnh), xij(3,maxnh), occtol
       logical, intent(in) :: getPSI
 
-      external ::       io_assign, io_close, memory
+      external ::       io_assign, io_close
 
 
       character(len=label_length+6) :: fname

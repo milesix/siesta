@@ -1,5 +1,5 @@
 ! ---
-! Copyright (C) 1996-2016       The SIESTA group
+! Copyright (C) 1996-2021       The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt .
@@ -10,7 +10,6 @@ program get_chem_labels
 ! Prints to standard output a list of chemical species labels in an fdf file.
 ! Alberto Garcia, Sep 2009
 !
-  use f2kcli     
   use chemical, only: read_chemical_types, number_of_species, species_label
   use fdf, only : fdf_init
 

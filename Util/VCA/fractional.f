@@ -1,5 +1,5 @@
 ! ---
-! Copyright (C) 1996-2016       The SIESTA group
+! Copyright (C) 1996-2021       The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt .
@@ -11,16 +11,18 @@
 !     fraction to simulate "fractional occupation" in the VCA
 !
       use precision,       only: dp
-      use pseudopotential, only: pseudopotential_t,
-     $                           pseudo_read, pseudo_write_formatted
+      use m_ncps, only: pseudopotential_t => froyen_ps_t
+      use m_ncps, only: pseudo_read, pseudo_write_formatted
+      use m_psml, only: psml_t => ps_t
       use periodic_table,  only: cnfig, qvlofz
-      use f2kcli
 
       implicit none
 
       type(pseudopotential_t), target :: pot1, pmix
       type(pseudopotential_t), pointer :: p1,  p
+      type(psml_t), target             :: psml_handle
       
+      logical  :: has_psml_ps
       real(dp) :: xfraction, z1
       integer  :: i, iostat, nargs, l
       character(len=200) :: name, name1, xmixstr
@@ -36,7 +38,7 @@
 
       call get_command_argument(1,value=name1,status=iostat)
       if (iostat == 0) then
-         call pseudo_read(trim(name1), pot1)
+         call pseudo_read(trim(name1), pot1, psml_handle, has_psml_ps)
       else
          call die("Cannot get first argument")
       endif
@@ -97,17 +99,17 @@
       allocate(p%chval(size(p1%r)))
       p%chcore = xfraction * p1%chcore
       p%chval = xfraction * p1%chval
-      allocate(p%vdown(p%npotd,size(p1%r)))
+      allocate(p%vdown(size(p1%r),p%npotd))
       allocate(p%ldown(p%npotd))
       do i = 1, p%npotd
-         p%vdown(i,:) = xfraction*p1%vdown(i,:)
+         p%vdown(:,i) = xfraction*p1%vdown(:,i)
          p%ldown(i) = p1%ldown(i)
       enddo
       if (p%npotu /= 0) then
-         allocate(p%vup(p%npotu,size(p1%r)))
+         allocate(p%vup(size(p1%r),p%npotu))
          allocate(p%lup(p%npotu))
          do i = 1, p%npotu
-            p%vup(i,:) = xfraction*p1%vup(i,:)
+            p%vup(:,i) = xfraction*p1%vup(:,i)
             p%lup(i) = p1%lup(i)
          enddo
       endif

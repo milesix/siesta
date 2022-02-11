@@ -50,7 +50,7 @@
       integer  :: ia, jx, ix
       real(dp) :: volume
       logical  :: eggbox_block=.true. ! Read eggbox info from data file?
-      real(dp) :: qspin
+      real(dp) :: qspin(spin%Grid)
       
       external :: eggbox, mulliken, moments
       real(dp), external :: volcel

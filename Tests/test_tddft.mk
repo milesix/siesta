@@ -1,5 +1,5 @@
 #
-# Single-test makefile template
+# Single-test makefile template (TDDFT version)
 #
 # You can edit the SIESTA macro here, or pass it on the command line
 
@@ -8,7 +8,7 @@ SIESTA=../../../siesta
 
 # Example for BSC runs
 #
-#MPI= mpirun -np 2 
+#MPI=mpirun -np 2
 #SIESTA= ../../../siesta
 
 # Make compatibility layer for old test-runs
@@ -32,9 +32,9 @@ completed_$(label):
 	@echo ">>>> Running $(name)1 test..."
 	@if [ -d $(label) ] ; then rm -rf $(label) ; fi; mkdir $(label)
 	@if [ -n "$(EXTRAFILES)" ] ; then cp -f $(EXTRAFILES) $(label) ; fi
-	@for i in `cat $(name).pseudos` ; do \
-          echo "    ==> Copying pseudopotential file for $$i..." ;\
-          ln ../Pseudos/$$i.psf $(label)/$$i.psf ;\
+	@for ps in `cat $(name).pseudos` ; do \
+          echo "    ==> Copying pseudopotential file $$ps ..." ;\
+          ln ../Pseudos/$$ps $(label)/$$ps ;\
          done
 	@echo "    ==> Running SIESTA as $(MPI) ${SIESTA}"
 	@(cd $(label) ; $(MPI) $(SIESTA) 2>&1 > $(name)1.out < ../$(name)1.fdf) \

@@ -165,7 +165,7 @@
 \hrulefill
 \vspace{0.5cm}
 
-{\Large \printdate}
+{\Large Jan 20, 2020 }
 
 \vspace{1.5cm}
 {\Large \url{https://siesta-project.org}}
@@ -306,8 +306,6 @@ which still uses many of the algorithms developed by them.
   tutorial material prepared for \siesta\ schools and workshops at
   the project's web page} \url{https://siesta-project.org}
 
-
-\textbf{NOTE: See the description of changes in the logic of the SCF loop}
 
 \siesta\index{Siesta@\siesta} (Spanish Initiative for
 Electronic Simulations with
@@ -610,13 +608,9 @@ generate the executable for any of several architectures, with a
 minimum of tuning required from the user and encapsulated in a
 separate file called \file{arch.make}.
 
-You are strongly encouraged to look at
-\shell{Obj/DOCUMENTED-TEMPLATE.make} for information about the
-fine points of the \file{arch.make} file. There are two sample make
-files for compilation of \siesta\ with \shell{gfortran} and
-\shell{ifort} named \shell{Obj/gfortran.make} and
-\shell{Obj/intel.make}, respectively. Please use those as guidelines
-for creating the final \file{arch.make}.
+Please see the \shell{README} filein the 
+\shell{Config/mk-build} directory for information about the
+build system and the contents the \file{arch.make} file.
 
 \note Intel compilers default to high optimizations which tend to
 break \siesta. We advice to use \shell{-fp-model source} flag and not
@@ -635,6 +629,10 @@ safe to ignore and will look something like:
       |                  1
 Warning: Type mismatch between actual argument at (1) and actual argument at (2) (REAL(8)/INTEGER(4)).
 \end{shellexample}
+In addition, compilations with \shell{-pedantic} flag are no longer possible.
+\footnote{For more details on this, see the 
+\href{https://gitlab.com/siesta-project/siesta/-/issues/130}
+{issue discussion in the SIESTA project}. }
 
 % You can also get
 % inspiration by looking at the actual \file{arch.make} examples in
@@ -703,11 +701,9 @@ To enable MPI in \siesta\ the compilation options are required to be
 changed accordingly, here is the most basic changes to the
 \file{arch.make} for standard binary names
 \begin{shellexample}
+  FC_PARALLEL = mpifort # or mpif90
   CC = mpicc
-  FC = mpifort # or mpif90
-  MPI_INTERFACE = libmpi_f90.a
-  MPI_INCLUDE = .
-  FPPFLAGS += -DMPI
+  WITH_MPI=1
 \end{shellexample}
 \index{compile!pre-processor!-DMPI}
 
@@ -744,6 +740,9 @@ The above will yield the most basic parallelism using OpenMP. However,
 the BLAS/LAPACK libraries which is the most time-consuming part of
 \siesta\ also requires to be threaded, please see Sec.~\ref{sec:libs}
 for correct linking.
+
+The minimum required version of OpenMP is 3.0
+(internally identified by the YYYYMM date string \shell{200805}).
 
 Subsequently one may run \siesta\ using OpenMP through the environment
 variable \shell{OMP\_NUM\_THREADS} which determine the number of
@@ -811,7 +810,13 @@ Currently \siesta\ is shipped with these installation scripts:
 
   \item \shell{install\_flook.bash}; installs \program{flook} which
   enables interaction with Lua and \siesta.
-  
+
+  \item \shell{install\_gridxc.bash}; installs \program{libxc} and
+  \program{libGridXC}
+
+  \item \shell{install\_psml.bash}; installs \program{xmlf90} and
+  \program{libpsml}
+
 \end{itemize}
 Note that these scripts are guidance scripts and users are encouraged
 to check the mailing list for or seek help there in non-standard. The
@@ -819,6 +824,38 @@ installation scripts finishes by telling \emph{what} to add to the
 \file{arch.make} file to correctly link the just installed libraries.
 
 \begin{description}
+
+  \item[XMLF90] %
+  \index{External library!xmlf90}%
+  is required as a prerequisite for \program{libPSML}.
+  (\href{https://gitlab.com/siesta-project/libraries/xmlf90}). n
+
+  To easily install \program{xmlf90} please see the installation file:
+  \shell{Docs/install\_psml.bash}.
+
+  \item[libPSML] %
+  \index{External library!libPSML}%
+  is required to use pseudopotentials in PSML format
+  (\href{https://gitlab.com/siesta-project/libraries/libpsml}) 
+
+  To easily install \program{libPSML} please see the installation file:
+  \shell{Docs/install\_psml.bash}.
+
+  \item[libGridXC] %
+  \index{External library!libGridXC}%
+  is required.
+  (\href{https://gitlab.com/siesta-project/libraries/libgridxc})
+
+  To easily install \program{libGridXC} please see the installation file:
+  \shell{Docs/install\_gridxc.bash}.
+
+  \item[libXC] %
+  \index{External library!libXC}%
+  is optional, depending on the options used in the compilation of libGridXC.
+  (\href{https://gitlab.com/libxc/libxc})
+
+  To easily install \program{libxc} please see the installation file:
+  \shell{Docs/install\_gridxc.bash}.
 
   \item[BLAS] %
   \index{External library!BLAS}%
@@ -1305,7 +1342,7 @@ The standard output of the program, that you
 have already seen passing on the screen, was copied to
 file h2o.out by the tee command. Have a look at it
 and refer to the output-explanation section if necessary.
-You may also want to look at the fdf.log\index{fdf.log} file to see all
+You may also want to look at the \file{fdf.log} file to see all
 the default values that siesta has chosen for you, before
 studying the input-explanation section and start changing them.
 
@@ -1322,37 +1359,73 @@ is
 which uses a \emph{pipe} statement. 
 %
 \siesta\ 4.1 and later does not require one to pipe in the input file
-and the input file may instead be specified on the command line.
+and the input file may instead be specified on the command line:
 \begin{shellexample}
   siesta RUN.fdf > RUN.out
 \end{shellexample}
-This allows for \siesta\ to accept special flags described in what
-follows. Each flag may be quoted if it contains spaces, or one may
-substitute spaces by \fdf*{:}.
+\siesta\ 4.1 and later also accepts special flags and options
+described in what follows:
+\begin{itemize}
+\item
+All flags must start by one or more dashes (\shell{-}).
+The number of leading dashes is irrelevant,
+as long as there is at least one of them.
+\item
+Some flags (e.g., \shell[-L])
+must be followed by a properly formed option string.
+Other flags (e.g., \shell[-elec])
+are logical toggles and they are not followed by option strings.
+\item
+Flags and option strings must all be separated by spaces
+(and only spaces are valid separators for this).
+\item
+Option strings may be quoted.
+Option strings that contain spaces need to either be quoted
+or have the spaces replaced by a colon (\shell{:}) or by
+an equal sign (\shell{=}).
+\item
+If the input file is not piped in, it can be given as an argument:
+\begin{shellexample}
+  siesta -L Hello -V 0.25:eV RUN.fdf > RUN.out
+  siesta -L Hello RUN.fdf -V 0.25:eV > RUN.out
+\end{shellexample}
+\end{itemize}
+
+The list of available flags and options is:
 \begin{fdfoptions}
 
-  \option[-h]%
+  \option[-help|-h]%
   \fdfindex*{Command line options:-h}%
-  print a help instruction and quit
+  Print a help instruction and quit.
 
-  \option[-L]%
-  \fdfindex*{Command line options:-L}%
-  Override, temporarily, the \fdf{SystemLabel} flag. 
-
-  \shell{siesta -L Hello}.
+  \option[-version|-v]%
+  \fdfindex*{Command line options:-v}%
+  Print version information and quit.
 
   \option[-out|-o]%
   \fdfindex*{Command line options:-out}%
   \fdfindex*{Command line options:-o}%
   Specify the output file (instead of printing to the terminal).
+  Example:
 
-  \shell{siesta -out RUN.out}.
+  \begin{shellexample}
+  siesta --out RUN.out
+  \end{shellexample}
+
+  \option[-L]%
+  \fdfindex*{Command line options:-L}%
+  Override, temporarily, the \fdf{SystemLabel} flag.
+  Example:
+
+  \begin{shellexample}
+  siesta -L Hello
+  \end{shellexample}
 
   \option[-electrode|-elec]%
   \fdfindex*{Command line options:-electrode}%
   \fdfindex*{Command line options:-elec}%
   \fdfoverwrite{TS!HS.Save,TS!DE.Save}
-  denote this as an electrode calculation which forces the
+  Denote this as an electrode calculation which forces the
   \sysfile{TSHS} and \sysfile{TSDE} files to be saved.
 
   \note This is equivalent to specifying \fdf{TS!HS.Save:true} and
@@ -1361,13 +1434,28 @@ substitute spaces by \fdf*{:}.
   \option[-V]%
   \fdfindex*{Command line options:-V}%
   \fdfoverwrite{TS!Voltage}
-  specify the bias for the current \tsiesta\ run.
+  Specify the bias for the current \tsiesta\ run.
+  If no units are specified, $\mathrm{eV}$ are assumed.
+  Example: any of the following three commands set the applied bias to
+  $0.25\,\mathrm{eV}$:
 
-  \shell{siesta -V 0.25:eV} or \shell{siesta -V "0.25 eV"}
-  which sets the applied bias to $0.25\,\mathrm{eV}$.
+  \begin{shellexample}
+  siesta -V 0.25:eV
+  siesta -V "0.25 eV"
+  siesta -V 0.25
+  \end{shellexample}
 
   \note This is equivalent to specifying \fdf{TS!Voltage} in the input
   file.
+
+  \option[-fdf]%
+  \fdfindex*{Command line options:-fdf}%
+  Specify any FDF option string.  For example, another way to specify the bias
+  of the example of the previous option would be:
+
+  \begin{shellexample}
+  siesta --fdf TS.Voltage=0.25:eV
+  \end{shellexample}
 
 \end{fdfoptions}
 
@@ -1387,13 +1475,14 @@ Here we offer a glimpse of it through the following rules:
 
 \begin{itemize}
 
-\item[$\bullet$] The \fdflib\ syntax is a 'data label' followed by its value.
-Values that are not specified in the datafile are assigned
-a default value.
+  \item[$\bullet$] The \fdflib\ syntax is a ``data label'' followed by
+  its value.  Values that are not specified in the datafile are
+  assigned a default value.
 
-\item[$\bullet$] \fdflib\ labels are case insensitive, and characters - \_ .
-in a data label are ignored. Thus, LatticeConstant and
-lattice\_constant represent the same label.
+  \item[$\bullet$] \fdflib\ labels are case insensitive, and
+  characters - \_ .  in a data label are ignored. Thus,
+  \fdf*{LatticeConstant} and \fdf*{lattice\_constant} represent the
+  same label.
 
 \item[$\bullet$] All text following the \# character is taken as comment.
 
@@ -1410,20 +1499,20 @@ it from an integer, in order to prevent ambiguities when mixing the types
 on the same input line.
 
 \item[$\bullet$] Complex data structures are called blocks and are
-placed between `\%block label'\index{block@\%block} and a `\%endblock label'
-(without the quotes).
+placed between ``\%block label''\index{block@\%block} and a
+``\%endblock label'' (without the quotes).
 
-\item[$\bullet$] You may `include' other \fdflib\ files and redirect the search
-for a particular data label to another file.
-If a data label appears more than once, its first appearance
-is used.
+\item[$\bullet$] You may ``include'' other \fdflib\ files and redirect
+the search for a particular data label to another file.  If a data
+label appears more than once, its first appearance is used.
 
-\item[$\bullet$] If the same label is specified twice, the first one takes precedence.
+\item[$\bullet$] If the same label is specified twice, the first one
+takes precedence.
 
-\item[$\bullet$] If a label is misspelled it will not be recognized (there is no
-  internal list of ``accepted'' tags in the program). You can check 
-  the actual value used by siesta by looking for the label in the
-  output \textit{fdf.log}\index{fdf.log} file.
+\item[$\bullet$] If a label is misspelled it will not be recognized
+(there is no internal list of ``accepted'' tags in the program). You
+can check the actual value used by \siesta\ by looking for the label
+in the output \file{fdf.log} file.
 
 \end{itemize}
 
@@ -1451,12 +1540,16 @@ These are some examples:
            %include mydefaults.fdf
 \end{verbatim}
 
-The file \textit{fdf.log} contains all the parameters used by \siesta\
+The file \file{fdf.log} contains all the parameters used by \siesta\
 in a given run, both those specified in the input fdf file and
 those taken by default. They are written in fdf format, so that
 you may reuse them as input directly. Input data blocks are
-copied to the fdf.log file only if you specify the \textit{dump} option
+copied to the \file{fdf.log} file only if you specify the \textit{dump} option
 for them.
+In practice, the name of a FDF log file contains a sequence of five
+digits (e.g., \shell{fdf-12345.log}) chosen on-the-fly
+in order to have a reduced chance of overwriting other FDF log files
+that may be present in the same directory.
 
 \section{PROGRAM OUTPUT}
 
@@ -1476,7 +1569,7 @@ subroutine. It prints some of the information it digests. It is
 important to note that it is only part of it, some other information
 being accessed by the different subroutines when they need it during
 the run (in the spirit of \fdflib\ input).  A complete list of the input
-used by the code can be found at the end in the file \shell{fdf.log},
+used by the code can be found at the end in the file \file{fdf.log},
 including defaults used by the code in the run.
 
 After that, the program reads the pseudopotentials, factorizes them
@@ -1564,7 +1657,7 @@ values. For historical reasons the names of the tags do not have an
 uniform structure, and can be confusing at times.
 
 Almost all of the tags are optional: \siesta\ will assign a
-default if a given tag is not found when needed (see \shell{fdf.log}).
+default if a given tag is not found when needed (see \file{fdf.log}).
 
 
 \subsection{General system descriptors}
@@ -1638,13 +1731,14 @@ default if a given tag is not found when needed (see \shell{fdf.log}).
 
 \begin{fdfentry}{SyntheticAtoms}[block]
 
-  This block is an additional block to complement
-  \fdf{ChemicalSpeciesLabel} for special atomic numbers.
-  
-  Atomic numbers over $200$ are used to represent \emph{synthetic atoms}
-  \index{synthetic atoms} (created for example as a ``mixture'' of two
+  This block provides information about the ground-state valence configuration of
+  a species. Its main use is to complement the information in
+  \fdf{ChemicalSpeciesLabel} for \emph{synthetic} (alchemical)
+   \index{synthetic atoms}
+   species, which are represented by atomic numbers over $200$ in
+   \fdf{ChemicalSpeciesLabel}. These species are created for example as a ``mixture'' of two
   real ones for a ``virtual crystal'' (VCA)\index{VCA}
-  calculation). In this special case a new \fdf{SyntheticAtoms} block
+  calculation. In this special case a new \fdf{SyntheticAtoms} block
   must be present to give \siesta\ information about the ``ground
   state'' of the synthetic atom.
 
@@ -1665,6 +1759,69 @@ default if a given tag is not found when needed (see \shell{fdf.log}).
   directory.
 
   Atomic numbers below $-200$ represent \emph{ghost synthetic atoms}.
+
+  Note that the procedure used in the automatic handling of semicore
+  states does not work for synthetic atoms.  If semicore states are
+  present, the species must be put in the \fdf{PAO!Basis} block.
+  Otherwise the program will assume that there are \emph{no} semicore
+  states.
+
+  This block can also be used to provide an alternate ground state
+  valence configuration for real atoms in some special cases.
+  \index{valence configuration (alternate)}
+  For example, the nominal valence configuration for Pd in the Siesta
+  internal tables is 5s1 5p0 4d9 4f0, but in some tables it appears as
+  5s0 5p0 4d10 4f0. In this case, the alternate configuration can be
+  specified by the block:
+  
+  \begin{fdfexample}
+     %block ChemicalSpeciesLabel
+        1   46 Pd
+     %endblock ChemicalSpeciesLabel
+     %block synthetic-atoms
+     1
+       5 5 4 4
+       0.0 0.0 10.0 0.0
+     %endblock synthetic-atoms
+  \end{fdfexample}
+
+  As another example, the nominal valence for Cu in Siesta is
+  4s1 4p0 3d10 4f0, but in some cases a pseudopotential might
+  be generated by considering the 3d shell as frozen in the core.
+  In this case the proper valence configuration is:
+
+  \begin{fdfexample}
+     %block ChemicalSpeciesLabel
+        1   29 Cu_3d_in_core
+     %endblock ChemicalSpeciesLabel
+     %block synthetic-atoms
+     1
+       4 4 4 4
+       1.0 0.0 0.0 0.0
+     %endblock synthetic-atoms
+  \end{fdfexample}
+
+  As a final example, the nominal valence configuration for Ce in
+  Siesta is 6s2 6p0 5d0 4f2, but on some tables it appears as [Xe] 6s2
+  4f1 5d1. In addition, the pseudo-dojo pseudopotential (in the NC SR+3 table) has
+  the 4f shell frozen in the core. This case can be handled by the
+  block:
+
+  \begin{fdfexample}
+     %block ChemicalSpeciesLabel
+        1   58 Ce_4f_in_core
+     %endblock ChemicalSpeciesLabel
+     %block synthetic-atoms
+     1
+       6 6 5 5
+       2.0 0.0 1.0 0.0
+     %endblock synthetic-atoms
+  \end{fdfexample}
+
+  Note that the change in the atomic ground-state configuration might
+  change the choice of polarization orbitals, and possibly other
+  Siesta heuristic decisions, so the results should be checked
+  carefully.
   
 \end{fdfentry}
 
@@ -1700,26 +1857,162 @@ default if a given tag is not found when needed (see \shell{fdf.log}).
 \siesta\ uses pseudopotentials to represent the electron-ion
 interaction (as do most plane-wave codes and in contrast to so-called
 ``all-electron'' programs). In particular, the pseudopotentials are of
-the ``norm-conserving'' kind, and can be generated by the \program{Atom} program,
-(see \shell{Pseudo/README.ATOM}). Remember that \textbf{all pseudopotentials
-  should be thoroughly tested} before using them. We refer you to the
-standard literature on pseudopotentials and to the \program{ATOM} manual
-for more information. A number of
-other codes (such as \program{APE}) can generate pseudopotentials that
-\siesta\ can use directly (typically in the \shell{.psf} format).
+the ``norm-conserving'' kind. 
 
 The pseudopotentials will be read by \siesta\ from different files, one
 for each defined species (species defined either in block
 \fdf{ChemicalSpeciesLabel}).\index{pseudopotential!files}
-The name of the files should be:
+The name of the files can be:
+\begin{itemize}
 
-\textit{Chemical\_label}\texttt{.vps} (unformatted) or
-\textit{Chemical\_label}\texttt{.psf} (ASCII)
+\item \textit{Chemical\_label}\texttt{.vps} (unformatted) or
+\item \textit{Chemical\_label}\texttt{.psf} (ASCII) or
+\item \textit{Chemical\_label}\texttt{.psml} (PSML format)
+
+\end{itemize}
 
 \noindent
 where \textit{Chemical\_label} corresponds to the label defined in the
 \fdf{ChemicalSpeciesLabel} block.
 
+\index{pseudopotential!ATOM code}
+Pseudopotential files in the \shell{.psf} format  can be generated by the \program{ATOM} program,
+(see \shell{Pseudo/README.ATOM}) and by a number of other codes such as
+\program{APE}. The \shell{.vps} format is a binary version of the
+\shell{.psf} format, and is deprecated.
+
+\index{PSML format}\index{pseudopotential!PSML format}
+Pseudopotential files in the PSML format (see~\citet{Garcia2018}) can
+be produced by the combination of \program{ATOM} and \program{psop} (see directory
+\shell{Pseudo/vnl-operator})\index{PSML!from \siesta's vnl-operator}
+in a form fully compatible with the \siesta\ procedures to
+generate the non-local pseudopotential operator.  Notably, they can
+also be produced  by suitably patched versions of D.R. Hamann's \program{oncvpsp}
+program (see directory
+\shell{Pseudo/Third-Party-Tools/ONCVPSP}).\index{pseudopotential!oncvpsp
+  code}\index{PSML!from oncvpsp code}. The \program{oncvpsp} code can
+generate several projectors per $l$ channel, leading to
+pseudopotentials that are more transferable.
+
+For more information on the format itself and the PSML
+ecosystem of generators and client ab-initio codes, please see
+\url{http://esl.cecam.org/PSML}.
+
+Note that curated databases of high-quality PSML files are available.
+In particular, the Pseudo-Dojo project \url{https://www.pseudo-dojo.org}
+offers PSML files for almost the whole periodic table, together with a
+report of the tests carried out during the generation procedure.
+
+In this connection, it should be stressed that \textbf{all
+  pseudopotentials should be thoroughly tested} before using them. We
+refer you to the standard literature on pseudopotentials, to the
+\program{ATOM} manual, and to the Pseudo-Dojo site for more
+information.
+
+Please take into account the following when using PSML files:
+
+\begin{itemize}
+
+  \item If present in the execution directory, \shell{.psf} files take precedence
+  over \shell{.psml} files.  That is, if both
+  \textit{Chemical\_label}\texttt{.psf} and \textit{Chemical\_label}\texttt{.psml}
+  are present, \siesta\ will process the former.
+  
+  \item PSML files typically contain semilocal potentials, a local
+  potential, and non-local projectors. By default, \siesta\ will use the
+  local potential and non-local projectors from the PSML file, unless the
+  respective options \fdf{PSML!Vlocal} and \fdf{PSML!KB.projectors}
+  are set to \fdffalse. These options are \fdftrue\ by default.
+  Several combinations are  possible with these options:
+  \begin{itemize}
+
+    \item One could use only the semilocal potentials from the PSML file,
+  and proceed to generate a local potential and KB projectors with the
+  traditional \siesta\ algorithm.
+
+  \item One could use the semilocal potentials and the local potential
+    from the PSML file, and generate a set of KB projectors from them.
+
+  \item (The default, and recommended) Use the local potential and projectors
+    from the PSML file.
+
+  \end{itemize}
+
+    
+  \item In order to generate its basis set of pseudo-atomic orbitals (PAOs),
+  \siesta\ still needs the semilocal parts of the pseudopotential.
+  Currently all available PSML files (generated by \program{ATOM+psop} or \program{ONCVPSP})
+  contain semilocal potentials, but this might change in the future
+  (for example, when a PSML file is obtained from a projectors-only
+  UPF file). This restriction will be lifted in a later version:
+  \siesta\ will then be able to use the full pseudopotential operator to
+  generate the PAOs.
+
+  \item For the 'offsite' (default) version of spin-orbit-coupling
+    (SOC), SIESTA uses fully relativistic ($lj$) projectors. These are
+    available in PSML files generated by \program{ONCVPSP} in
+    fully-relativistic mode, if the \shell{psfile} option \shell{upf}
+    or \shell{both} is used in the appropriate place in the input
+    file. To obtain appropriate PSML files with the
+    \program{ATOM+psop} chain (see the directory
+    \shell{Pseudo/vnl-operator}), the projector generation with \program{psop}
+    must use the \shell{-r} option.  Note that $lj$ projectors can
+    still be directly generated by \siesta\ from relativistic
+    semilocal potentials.
+
+  \item Fully-relativistic PSML files with only $lj$ non-local projectors
+  cannot be used directly in calculations not involving ``offsite''
+  SOC. For this, \siesta\ needs the ``scalar-relativistic'' projectors. An
+  algorithm for direct generation of SR projectors from an $lj$ set
+  already exists as part of the \program{oncvpsp} code, and it will be
+  integrated in a forthcoming version. In the meantime, while in
+  principle it is possible to read only the semilocal potentials from
+  the file and proceed to generate the appropriate projectors, it is
+  better to use PSML files which contain both (actually three) sets of
+  non-local projectors: ``sr'', ``so'', and $lj$. These can be obtained
+  with \program{ONCVPSP} with the \shell{both} option. (For the \program{ATOM+psop} chain, it is
+  currently necessary to run \program{psop} twice (once with the -r option) and
+  generate two different PSML files, and then ``graft'' the ``sr'' set
+  into the file containing the $lj$ set.)
+
+  \item  A large number of PSML files obtained from the Pseudo-Dojo database
+  are generated with (several) semicore shells. Dealing with them has
+  uncovered a few weaknesses in the standard heuristics used
+  traditionally in \siesta\ to generate basis sets:
+
+  \begin{itemize}
+    
+     \item Sometimes it is not possible to execute successfully the
+       default split-norm algorithm. In this case, set the option
+       \fdf{PAO!SplitTailNorm} to \fdftrue, which guarantees
+       convergence.
+
+     \item The default perturbative scheme for polarization orbitals
+       can fail in very specific cases. When the polarization orbital
+       has to have a node due to the presence of a lower-lying orbital
+       with the same $l$, the program can (if enabled by the
+       \fdf{PAO!Polarization!NonPerturbative.Fallback} option)  automatically switch to
+       using a non-perturbative scheme. In other cases, include the
+       \textit{Chemical\_label} in the following block to request a
+       non-perturbative scheme:
+
+         \begin{fdfexample}
+    %block PAO.PolarizationScheme
+      Mg non-perturbative           
+    %endblock PAO.PolarizationScheme
+         \end{fdfexample}
+         
+    Please see the relevant section for a fuller explanation.
+
+    \item A number of improvements to the PAO generation code have
+      been made while implementing support for PSML
+      pseudopotentials. In particular, \siesta\ can now automatically
+      detect and generate basis sets for atoms with semicore shells
+      without the explicit use of a \fdf{PAO!Basis} block.
+
+    \end{itemize}
+
+\end{itemize}
 
 \subsection{Basis set and KB projectors}
 
@@ -1747,7 +2040,7 @@ cutoff radius chosen by the user.
 Most users, however, do not have their own basis sets. For these users
 we have devised some schemes to generate basis sets within the program
 with a minimum input from the user.  If nothing is specified in the
-input file, Siesta generates a default basis set of a reasonable
+input file, \siesta\ generates a default basis set of a reasonable
 quality that might constitute a good starting point.  Of course,
 depending on the accuracy required in the particular problem, the user
 has the degree of freedom to tune several parameters that can be
@@ -2124,19 +2417,25 @@ set to their problem under consideration.
     \option[DZP|standard]%
     \fdfindex*{PAO!BasisSize:DZP}%
     
-    Like \fdf*{DZ} plus polarization orbitals. Polarization orbitals
-    are constructed from perturbation theory,\index{perturbative
-        polarization} and they are defined so they
-    have\index{basis!polarization} the minimum angular momentum $l$
-    such that there are not occupied orbitals with the same $l$ in the
-    valence shell of the ground-state atomic configuration. They
-    polarize the corresponding $l-1$ shell.
+    Like \fdf*{DZ} plus polarization orbitals. 
 
     \note The ground-state atomic configuration used internally by
     \siesta\ is defined in the source file
     \shell{Src/periodic\_table.f}.  For some elements (e.g., Pd), the
     configuration might not be the standard one\index{Ground-state
         atomic configuration}.
+
+    \note By default, polarization orbitals
+    are constructed from perturbation theory,\index{perturbative
+        polarization} and they are defined so they
+    have\index{basis!polarization} the minimum angular momentum $l$
+    such that there are no occupied orbitals with the same $l$ in the
+    valence shell of the ground-state atomic configuration. They
+    polarize the corresponding $l-1$ shell.
+
+    See \fdf{PAO!Polarization!NonPerturbative} and
+    \fdf{PAO!Polarization!Scheme} in Sec.~\ref{sec:non-pert-pols} for
+    options to generate polarization orbitals non-perturbatively.
     
   \end{fdfoptions}
 
@@ -2201,7 +2500,7 @@ set to their problem under consideration.
   split-off piece has to carry. The split radius is defined
   accordingly. If multiple-$\zeta$\index{multiple-$\zeta$} is used,
   the corresponding radii are obtained by imposing smaller fractions
-  of the SplitNorm (1/2, 1/4 ...) value as norm carried by the higher
+  of the SplitNorm (1/2, 1/4, 1/6 ...) value as norm carried by the higher
   zetas. It only has an effect when the block \fdf{PAO!Basis} is
   not present or when the radii specified in that block are zero for
   zetas higher than one.
@@ -2312,6 +2611,99 @@ As a summary of the above options:
   
 \end{fdfentry}
 
+\subsubsection{Polarization-orbital options}
+\label{sec:non-pert-pols}
+
+Polarization orbitals can be requested through an automatic basis-size
+specification such as DZP, or TZP, etc, or through the use of the 'P'
+shell option in the \fdf{PAO!Basis} block. 
+
+In these cases, by default, polarization orbitals are generated
+perturbatively, by formally applying an electric field to the orbital
+being polarized.
+
+Polarization shells can also be put explicitly in the \fdf{PAO!Basis}
+block. In this case, the orbitals are generated in the standard way,
+using the appropriate confinement and split-norm options.
+
+If the perturbative method is not wanted, even when using the standard
+basis specifications, the following global option
+can be used:
+
+\begin{fdflogicalF}{PAO!Polarization!NonPerturbative}
+  \index{basis!polarization orbitals}
+
+  If enabled, it will promote any polarization shells to the status
+  of explicit shells, thus using the standard generation options.
+  
+\end{fdflogicalF}
+
+Also, this setting can be controlled species by species, by using
+a block
+
+\begin{fdfentry}{PAO!Polarization!Scheme}[block]
+  \index{basis!polarization orbitals}
+
+  Block which allows to specify a different polarization scheme
+  for each species. For example,
+  \begin{fdfexample}
+     %block PAO.PolarizationScheme
+         Si      non-perturbative  [ optional Q options]
+         H       perturbative
+     %endblock PAO.PolarizationScheme
+  \end{fdfexample}
+
+  The presence of 'perturbative' for a species in the block has
+  the effect of \emph{forcing} the use of the perturbative option.
+  
+  If a species does not appear in the block, the setting of 
+  \fdf{PAO!Polarization!NonPerturbative} applies.
+  The default scheme is perturbative.
+
+  An optional charge-confinement specification can follow, starting
+  with a 'Q', in exactly the same way as in the \fdf{PAO!Basis} block.
+  
+\end{fdfentry}
+
+The perturbative method does not require any extra information
+regarding confinement, since the $r_c$ value for the polarization
+shell is the same as the one for the polarized shell.  If the
+perturbative method is turned off, the new explicit shell created for
+the polarization orbital will be assigned an $r_c$ equal to the one
+actually used for the polarized shell (for the 1st zeta). The only
+extra control offered at this point is a possible expansion of this
+value through the (global) option:
+
+\begin{fdfentry}{PAO!Polarization!Rc-Expansion-Factor}[real]<$1.0$>
+  \index{basis!confinement radius expansion} 
+
+  When turning off the perturbative method for the generation of
+  polarization orbitals, assign to the 1st zeta of the explicit
+  polarization shell the $r_c$ of the polarized shell multiplied by
+  this factor.
+  
+\end{fdfentry}
+
+Note that, empirically, the perturbative method seems to give better
+results (in the variational sense), so the alternative should only be
+used when the default fails for some reason, for full basis-set optimization,
+or for experimentation purposes. In particular, non-perturbatively
+generated polarization orbitals tend to bulge outwards. To correct
+this, the charge-confinement options in the \fdf{PAO!Basis} block (or
+in the \fdf{PAO!Polarization!Scheme} block) might be helpful.
+
+There is one case, however, which tends to exhibit problems in the
+perturbative algorithm: when a polarization orbital has to have a node
+due to the presence of a lower-lying orbital of the same $l$ (this
+will happen, for example, for Ge if the $3d$ orbital is considered
+part of the valence). In this case, the program can automatically
+switch to using the non-perturbative scheme.  To enable this automatic
+switch, the option \fdf{PAO!Polarization!NonPerturbative.Fallback}
+must be enabled. Note that if the 'perturbative' option is explicitly
+set in the block above, the fallback is overriden.
+
+A proper basis-set optimization should be carried out using
+a \fdf{PAO!Basis} block, which allows a full set of options.
 
 
 \subsubsection{Soft-confinement options}
@@ -2351,6 +2743,13 @@ As a summary of the above options:
 
 \subsubsection{Kleinman-Bylander projectors}
 
+\index{PSML}{\index{Kleinman-Bylander projectors!from PSML file} NOTE:
+  \siesta\ is now able to read directly the non-local projectors
+  from a PSML file. For this, the options \fdf{PSML!Vlocal} and
+  \fdf{PSML!KB.projectors} must be set to \fdftrue (they are by default), and a
+  \shell{Chemical\_label.psml} file must be present. The rest of the
+  options discussed in this section will have no effect in that case.
+
 
 \begin{fdfentry}{PS!lmax}[block]
 
@@ -2379,28 +2778,24 @@ in the pseudopotential file.
 
 \begin{fdfentry}{PS.KBprojectors}[block]
 
-  This block provides
-  information about the number of Kleinman-Bylander projectors per
-  angular momentum, and for each species, that will used in the
-  calculation. This block is optional.  If the block is absent, or for
-  species not mentioned in it, only one projector will be used for
-  each angular momentum (except for l-shells with semicore states, for
-  which two projectors will be constructed). The projectors will be
-  constructed using the eigenfunctions of the respective
-  pseudopotentials.
+This block provides information about the number of Kleinman-Bylander
+projectors per angular momentum that will used in the
+calculation. This block is optional.  If it is absent, or for species
+not mentioned in it, only one projector will be used for each angular
+momentum (except for l-shells with semicore states, for which two
+projectors will be constructed). The projectors will be constructed
+using the eigenfunctions of the respective pseudopotentials.
 
-
-This block allows to specify the number of projector for each l, and also
-the reference energies of the wavefunctions used to build them.
-The specification of the reference energies is optional. If these
-energies are not given, the program will use the eigenfunctions with an
-increasing number of nodes (if there is not bound state with
-the corresponding number of nodes, the ``eigenstates'' are taken to be just
-functions which are made zero at very long distance of the nucleus).
-The units for the energy can be optionally specified; if not, the
-program will assumed that they are given in Rydbergs.
-The data provided in this block must be consistent with those
-read from the block \fdf{PS!lmax}. For example,
+This block allows to specify also the reference energies of the
+wavefunctions used to build them.  The specification of the reference
+energies is optional. If these energies are not given, the program
+will use the eigenfunctions with an increasing number of nodes (if
+there is not bound state with the corresponding number of nodes, the
+``eigenstates'' are taken to be just functions which are made zero at
+very long distance of the nucleus).  The units for the energy can be
+optionally specified; if not, the program will assumed that they are
+given in Rydbergs.  The data provided in this block must be consistent
+with those read from the block \fdf{PS!lmax}. For example,
 
 \begin{verbatim}
          %block PS.KBprojectors
@@ -2428,7 +2823,7 @@ therefore they are only read if present):
 \end{verbatim}
 
 All angular momentum shells should be specified.  Default values are
-assigned to missing shells with l below lmax, where lmax is the
+assigned to missing shells with $l$ below lmax, where lmax is the
 highest angular momentum present in the block for that particular
 species. High-l shells (beyond lmax) not specified in the block will
 also be assigned default values.
@@ -2441,10 +2836,10 @@ When a very high energy, higher that 1000 Ry, is specified, the
 default is taken instead.  On the other hand, very low (negative)
 energies, lower than -1000 Ry, are used to indicate that the energy
 derivative of the last state must be used. For example, in the block
-given above, two projectors will be used for the \textit{s}
+given above, two projectors will be used for the $s$
 pseudopotential of Si. One generated using a reference energy of -0.5
 Hartree, and the second one using the energy derivative of this
-state. For the \textit{p} pseudopotential of Ga, three projectors will be
+state. For the $p$ pseudopotential of Ga, three projectors will be
 used.  The second one will be constructed from an automatically
 generated wavefunction with one node, and the other projectors from
 states at -1.0 and -6.0 Rydberg.
@@ -2469,7 +2864,8 @@ For full spin-orbit calculations, the program generates $lj$
 projectors using the $l+1/2$ and $l-1/2$ components of the
 (relativistic) pseudopotentials. In this case the specification of the
 reference energies for projectors is not changed: only $l$ is
-relevant.
+relevant. Fully relativistic projectors can also be read from a
+suitably generated PSML file.
 
 \end{fdfentry}  
 
@@ -2478,7 +2874,7 @@ relevant.
 
   If \fdftrue, the routine to generate KB projectors will use slightly
   different parameters for the construction of the reference orbitals
-  involved (Rmax=60 Bohr both for integration and normalization).
+  involved (\shell{Rmax=60} Bohr both for integration and normalization).
   
 \end{fdflogicalF}
 
@@ -2715,8 +3111,8 @@ but neither pseudopotential nor electrons are considered for that
 ghost atom. Useful for BSSE\index{basis!basis set superposition
 error (BSSE)} correction.
 
-\textit{Use:} This block is optional, except when Bessel functions or
-semicore states are present.
+\textit{Use:} This block is optional, except when Bessel functions
+are present.
 
 \textit{Default:} Basis characteristics defined by global definitions given
 above.
@@ -3459,7 +3855,7 @@ structural information (maybe too many).
 \begin{itemize}
 
   \item\sysfile{STRUCT\_OUT}:%
-  Siesta always produces a \sysfile*{STRUCT\_OUT} file with cell
+  \siesta\ always produces a \sysfile*{STRUCT\_OUT} file with cell
   vectors in {\AA} and atomic positions in fractional
   coordinates. This file, renamed to \sysfile*{STRUCT\_IN} can be used
   for crystal-structure input.  Note that the geometry reported is the
@@ -3840,6 +4236,11 @@ are always stored in the file \sysfile{KP}.
 \subsection{Exchange-correlation functionals}
 
 
+(Apart from the built-in functionals, \siesta\ can use the functionals
+provided by the LibXC library, if support for it is compiled-in in the
+libGridXC library. See the description of the \fdf{XC.mix} block
+below for the appropriate syntax. \index{LibXC library})
+
 \begin{fdfentry}{XC!Functional}[string]<LDA>
   
   Exchange-correlation functional type. May be \fdf*{LDA} (local
@@ -3981,15 +4382,11 @@ are always stored in the file \sysfile{KP}.
 \end{fdfentry}
 
 
-\begin{fdfentry}{XC!Hybrid}[block]
-  
+\begin{fdfentry}{XC!Mix}[block]
+
   This data block allows the user to create a ``cocktail'' functional by
   mixing the desired amounts of exchange and correlation from each of
-  the functionals described under XC.authors. Note that these ``mixed''
-  functionals do \emph{not} have the exact Hartree-Fock exchange which
-  is a key ingredient of the true ``hybrid'' functionals. The use of
-  the word ``hybrid'' in the label is unfortunate in this regard, and
-  might be deprecated in a future version.
+the functionals described under XC.authors.
 
   The first line of the block must contain the number of functionals to
   be mixed. On the subsequent lines the values of XC.functl and
@@ -4002,12 +4399,50 @@ are always stored in the file \sysfile{KP}.
   energy:
   
   \begin{fdfexample}
-     %block XC.hybrid
+     %block XC.mix
         2
         LDA CA  0.5 0.75
         GGA PBE 0.5 0.25
-     %endblock XC.hybrid
+     %endblock XC.mix
   \end{fdfexample}
+
+These blocks can also be used to request the use of LibXC functionals
+(if the version of libGridXC in use is 0.7 or later and was compiled
+with LibXC support).  \index{LibXC library} For example:
+
+\begin{fdfexample}
+     %block XC.mix
+     2
+     GGA LIBXC-00-GGA_X_PBE 1.0 0.0
+     GGA LIBXC-00-GGA_C_PBE 0.0 1.0
+     %endblock XC.mix
+\end{fdfexample}
+
+The weights reflect the ``exchange'' or ``correlation''
+character of each individual functional. In the above example we use
+mnemonic symbols for the functionals and leave the numerical
+functional id field as zero. It is also possible to use only the
+numerical id:
+
+\begin{fdfexample}
+     %block XC.mix
+     2
+     GGA LIBXC-101 1.0 0.0
+     GGA LIBXC-130 0.0 1.0
+     %endblock XC.mix
+\end{fdfexample}
+
+
+If both fields are used the information must be compatible. Also, the
+``family'' field (GGA, LDA) must be compatible with the functional
+specified.
+
+\textbf{NOTE:} In previous versions of the program this block was named,
+confusingly, \textbf{XC.Hybrid}, and in some other versions,
+\textbf{XC.Cocktail}. Those names are still allowed, but are deprecated.
+
+\textit{Default value:} If the block is not present, the XC
+information is read from the fdf variables above.
 
 \end{fdfentry}
 
@@ -4240,8 +4675,10 @@ could still be difficult.
   spin-orbit interaction from zero to any positive value. It can be
   used for both the on-site and off-site SOC flavors, but only for
   debugging and testing purposes, as the only physical value is 1.0.
-  Note that this feature is implemented by modifying the SO parts of the
-  semilocal potentials read from a \code{.psf} file. Care must be
+  Note that this feature is currently implemented by modifying the SO parts of the
+  semilocal potentials read from a \code{.psf} file. It will not work
+  when reading the $lj$ projectors directly from a PSML file (or from
+  a previous run's \code{.ion} file). Care must be
   taken when re-using any \code{.ion} files produced.
   
 \end{fdfentry}
@@ -4300,7 +4737,7 @@ using the ``in'' DM. The typical DM used as input for the calculation
 of H was not directly computed from a set of wave-functions (it was
 either the product of mixing or of the initialization from atomic
 values). In this case, the ``kinetic energy'' term in the total energy
-computed in the way stated in the Siesta paper had an error which
+computed in the way stated in the \siesta\ paper had an error which
 decreased with the approach to self-consistency, but was non-zero. The
 net result was that the Kohn-Sham energy converged more slowly than
 the ``Harris'' energy (which is correctly computed).
@@ -4645,6 +5082,40 @@ $\RRes[i] = \Res[i] - \Res[i-1]$.
   \end{equation}
   For details regarding the other methods please see
   \fdf{SCF.Mixer!Method}.
+
+  Convergence of a system heavily depends on:
+  \begin{description}
+    \item[\fdf{SCF.Mixer!Weight}]
+
+    A high value retains much of the output solution, which may result
+    in leaving the convergence basin. However, when close to the
+    solution a high value might decrease needed SCF steps.
+
+    A low value only uses very little of the output solution. This may
+    result in high number of SCF steps but is more likely to
+    converge since it becomes harder for the solution to leave the
+    convergence basin.
+
+    This value is heavily system dependent.
+
+    \item[\fdf{SCF.Mixer!Method}]
+
+    The linear mixing is the only method that does not make use of 
+    prior steps, for hard to converge systems it should only be tried
+    with very low mixing weights.
+
+    The choice of method may result in some reduction of SCF steps,
+    but experimentation with the mixing weight is preferred as a first
+    resort.
+
+    \item[\fdf{SCF.Mixer!History}]
+
+    Number of previous steps to use for the mixing. A too low value
+    (say $2$ -- $6$) might change the convergence properties a
+    lot. While two different high values might not change the
+    convergence properties significantly, if at all.
+
+  \end{description}
 
   \note the older keyword \fdf{DM!MixingWeight} is used if this key is
   not found in the input.
@@ -5309,7 +5780,7 @@ other criterion should be made the default (max $|\Delta rho(G)|$,
 convergence of the free-energy...)
 
 Note that with charge mixing the Harris energy as it is currently
-computed in Siesta loses its meaning, since there is no
+computed in \siesta\ loses its meaning, since there is no
 \texttt{DM\_in}. The program prints zeroes in the Harris energy field.
 
 Note that the KS energy is correctly computed throughout the scf
@@ -5684,7 +6155,7 @@ probably be worse.
 \begin{fdflogicalF}{SCF.Read.Deformation.Charge.NetCDF}
   \index{reading saved data!deformation charge density} 
   
-  Instructs Siesta to read the deformation charge density stored in
+  Instructs \siesta\ to read the deformation charge density stored in
   the netCDF file \file{DeltaRho.IN.grid.nc}. This feature allows the
   easier re-use of electronic-structure information from a previous
   run. It is not necessary that the basis sets are ``similar'' (a
@@ -5694,7 +6165,7 @@ probably be worse.
 
   \note This is an experimental feature. Until robust checks are
   implemented, care must be taken to make sure that the FFT grids in
-  the \sysfile*{grid.nc} file and in Siesta are the same.
+  the \sysfile*{grid.nc} file and in \siesta\ are the same.
 
 \end{fdflogicalF}
 
@@ -5723,7 +6194,7 @@ analysis of data and to increase the efficiency.
   The new format is not backwards compatible. A converter program
   (\shell{Util/DensityMatrix/dmUnblock.F90}) has been written to
   post-process those files intended for further analysis or re-use in
-  Siesta. This is the best option for now, since it allows liberal
+  \siesta. This is the best option for now, since it allows liberal
   checkpointing with a much smaller time consumption, and only incurs
   costs when re-using or analyzing files.
   
@@ -6340,6 +6811,12 @@ the issue (see Sec.~\ref{sec:filtering}).
   \siesta\ produces also an \sysfile*{HSX} file if the \fdf{COOP.Write} option
   is active.  \index{output!HSX file}
 
+
+  \note Since 5.0 the \sysfile{HSX} file format has changed to reduce
+  disk-space and store data in double precision. This means that the
+  file is not backward compatible and any external utilities should
+  adapt their \sysfile{HSX} file reading. See e.g. \program{Util/HSX}
+  for details on the new implementation.
 
   See also the \fdf{Write!DMHS.NetCDF} and \fdf{Write!DMHS.History.NetCDF}
   options.
@@ -8018,9 +8495,8 @@ Apart from the LDOS-specific options below, the ``ordering'',
 ``verbosity'', and ``symbolic factorization'' options are honored.
 
 The current version of the code generates a real-space grid file with
-extension \sysfile{LDSI}, and (if netCDF is compiled-in) a file
-\file{Rho.grid.nc} (which unfortunately will overwrite any other
-charge-density files produced in the same run).
+extension \sysfile{LDOS}, and (if netCDF is compiled-in) a file
+\file{LDOS.grid.nc}.
 
 NOTE: The LDOS computed with this procedure is not exactly the same as
 the vanilla \siesta\ LDOS, which uses an explicit energy
@@ -8031,6 +8507,8 @@ energy.
 \begin{fdflogicalF}{PEXSI!LDOS}
 
   Whether to compute the LDOS using the PEXSI technology.
+
+  \note this flag is not compatible with \fdf{LocalDensityOfStates}.
   
 \end{fdflogicalF}
 
@@ -8480,6 +8958,11 @@ obtain simple STM images in the Tersoff-Hamann approximation (See
   
   \note the two energies of the range must be ordered, with lowest
   first.
+
+  \note this flag is not compatible with \fdf{PEXSI!LDOS}.
+  
+  If netCDF support is compiled in, the file \file{LDOS.grid.nc} is
+  produced.
 
 \end{fdfentry}
 
@@ -9204,8 +9687,8 @@ or interpolation of bands), can be downloaded from
 \begin{fdfentry}{ExternalElectricField}[block]
   
   It specifies an external electric field for molecules, chains and
-  slabs.  The electric field should be orthogonal to `bulk
-  directions', like those parallel to a slab (bulk electric fields,
+  slabs. The electric field should be orthogonal to ``bulk
+  directions'', like those parallel to a slab (bulk electric fields,
   like in dielectrics or ferroelectrics, are not allowed). If it is
   not, an error message is issued and the components of the field in
   bulk directions are suppressed automatically. The input is a vector
@@ -9220,6 +9703,10 @@ or interpolation of bands), can be downloaded from
   to a slab will by default enable the slab dipole correction, see
   \fdf{Slab.DipoleCorrection}. To reproduce older calculations, set
   this correction option explicitly to \fdffalse\ in the input file.
+
+  When examining a variety of electric fields it may be highly
+  advantageous to re-use the \sysfile{DM} from a previous calculation
+  with an electric field close to the current one.
 
 \end{fdfentry}
 
@@ -10632,7 +11119,7 @@ build up the Jacobian matrix. (See D.D. Johnson, PRB 38, 12807
 \begin{fdfentry}{MD.Broyden!Initial.Inverse.Jacobian}[real]<$1$>
 
   Initial inverse Jacobian for the optimization procedure. (The units
-  are those implied by the internal Siesta usage. The default value
+  are those implied by the internal \siesta\ usage. The default value
   seems to work well for most systems.
 
 \end{fdfentry}
@@ -11056,7 +11543,7 @@ Anneal) is followed by another (e.g., Nose)), and permits
 to re-use dynamical information from old runs.
 
 This restart fix is not satisfactory from a fundamental point of view,
-so the MD subsystem in Siesta will have to be redesigned
+so the MD subsystem in \siesta\ will have to be redesigned
 eventually. In the meantime, users are reminded that the scripting
 hooks being steadily introduced (see \shell{Util/Scripting}) might be used to
 create custom-made MD scripts.
@@ -11425,7 +11912,7 @@ spin-orbit coupling.
     to those used as an automatic basis set by \siesta.  The radii of
     these orbitals are controlled using the parameter
     \fdf{DFTU!EnergyShift} and/or the data included in the block
-    \fdf{DFTU!Proj} (quite similar to the data block \fdf{PAO.Basis}
+    \fdf{DFTU!Proj} (quite similar to the data block \fdf{PAO!Basis}
     used to specify the basis set, see below).
 
     \option[2]%
@@ -11443,7 +11930,7 @@ spin-orbit coupling.
   \fdfindex{LDAU!EnergyShift}%
 
   Energy increase used to define the localization radius of the DFT+U
-  projectors (similar to the parameter \fdf{PAO.EnergyShift}).
+  projectors (similar to the parameter \fdf{PAO!EnergyShift}).
 
   \note only used when \fdf{DFTU!ProjectorGenerationMethod} is \fdf*{1}.
 
@@ -11984,7 +12471,7 @@ electronic transport properties using the \tsiesta\ method. This
 Section describes how to use these
 capabilities, and a reference guide to the relevant \fdflib\
 options. We describe here only the additional options available for
-\tsiesta\ calculations, while the rest of the Siesta functionalities
+\tsiesta\ calculations, while the rest of the \siesta\ functionalities
 and variables are described in the previous sections of this User's
 Guide.
 
@@ -14066,11 +14553,15 @@ The bias contour is similarly defined as the equilibrium
 contours. Please use the \program{Util/TS/tselecs.sh} as a means to
 create default input blocks.
 
-\begin{fdfentry}{TS!Contours.nEq!Eta}[energy]<$0\,\mathrm{eV}$>
+\begin{fdfentry}{TS!Contours.nEq!Eta}[energy]<$\operatorname{min}[\eta_{\mathfrak e}]/10$>
+  \fdfdepend{TS!Elecs!Eta}%
 
-  The imaginary part ($\eta$) of the device states. Generally this is
-  not necessary to define as the imaginary part naturally arises from
-  the self-energies (where $\eta>0$).
+  The imaginary part ($\eta$) of the device states. While this may be
+  set to $0$ for most systems it defaults to the minimum $\eta$ value
+  for the electrodes ($\operatorname{min}[\eta_{\mathfrak
+      e}]/10$). This ensures that the device broadening is always
+  smaller than the electrodes while allowing broadening of localized
+  states.
 
 \end{fdfentry}
 
@@ -14457,7 +14948,7 @@ the ccViz script.
 \section{APPENDIX: Selection of precision for storage}
 \index{Precision selection}
 
-Some of the real arrays used in Siesta are by default
+Some of the real arrays used in \siesta\ are by default
 single-precision, to save memory. This applies to the array that holds
 the values of the basis orbitals on the real-space grid, to the
 historical data sets in Broyden mixing, and to the arrays used in the

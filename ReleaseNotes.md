@@ -16,7 +16,6 @@ grouped under headings representing past (and upcoming) releases.
 * ELSI-DM interface as a new "solution-method", with various solvers available.
 
 
-
 # Development version
 
 ### Backward compatibility issues
@@ -26,7 +25,28 @@ grouped under headings representing past (and upcoming) releases.
   
 * The labels in the Mulliken analysis CML blocks have been changed to use "population" instead of "charge".
 
+* The HSX file format has changed to reduce disk-space and increase precision.
+
+* Mixtures of exchange-correlation functionals should now be specified in the XC.mix block
+
 ### Changes
+
+* Added support for PSML pseudopotential files:
+
+   * Changes to offer more information about PAO generation, and to implement
+     new features such as automatic handling of semicore states.
+   * New psoplib and ncps libraries in Libs handle KB generation and 'Froyen' interface
+   * New stand-alone program Pseudo/vnl-operator/psop to generate PSML files with Siesta-style KB  projectors
+   * New program Pseudo/converters/psml2psf
+   * An external LibGridXC replaces the built-in SiestaXC
+   * Libxc support provided through libGridXC (with xc specs in XC.mix block)
+   * New mandatory dependencies: xmlf90, libpsml, libgridxc (with optional libxc)
+   * Alloc module revamped to make logging work with external libraries
+   * Memory logging revamped
+   * Streamlined 'Util' makefiles with much smaller dependency lists
+   * New, more modular, building specification with slimmer arch.make file.
+
+* Allow parallelization over orbitals instead of over k-points in the unfold utility
 
 * Allow mesh parallel distributions with different numbers of subpoint multiplicity.
 
@@ -63,7 +83,14 @@ grouped under headings representing past (and upcoming) releases.
 
 # 4.1.X versions
 
+### Backward compatibility issues
+
+* TranSiesta/TBtrans eta values for the device region are now defaulted
+  to the minimal electrode eta value / 100
+
 ### Changes
+
+* Sort shells in PAO.Basis by n quantum number
 
 * Fixed reading Target.Pressure, reported on mailing list 24 March 2021.
 

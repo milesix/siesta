@@ -33,6 +33,8 @@
 
       use precision,      only : dp, grid_p
       use m_dfscf,        only : dfscf
+      use sys,            only : die, bye
+      
       implicit none
 
       real(grid_p),   pointer :: rhopcc(:), rhoatm(:), Vna(:)
@@ -64,10 +66,10 @@
       use parallel,       only : Node, Nodes
       use atmfuncs,       only : rcut, rcore
       use fdf
-      use sys,            only : die
       use mesh,           only : xdsp, nsm, nsp, meshLim
       use parsing
 
+      use gridXC, only : getXC=>gridxc_getXC   ! Returns the XC functional used
       use alloc,          only : re_alloc, de_alloc
       use siesta_options, only : harrisfun
       use meshsubs,       only : PartialCoreOnMesh
@@ -88,7 +90,7 @@
 #ifdef NCDF_4
       use files,         only  : slabel
       use m_ncdf_siesta, only : cdf_init_grid
-      use m_ncdf_io, only : cdf_init_mesh
+      use ncdf_io_m, only : cdf_init_mesh
 #endif
       use m_efield,       only : initialize_efield, acting_efield
       use m_efield,       only : user_specified_field
@@ -606,11 +608,11 @@ C ----------------------------------------------------------------------
 C     Modules
       use precision,     only  : dp, grid_p
 
+      use m_char, only: lcase, ucase
       use parallel,      only  : Node, Nodes
       use atmfuncs,      only  : rcut, rcore
       use units,         only  : Debye, eV, Ang
       use fdf
-      use sys,           only  : die, bye
       use mesh,          only  : nsm, nsp, meshLim
       use parsing
       use m_iorho,       only  : write_rho
@@ -630,11 +632,8 @@ C     Modules
       use m_partial_charges, only: compute_partial_charges
       use m_partial_charges, only: want_partial_charges
 
-      use siestaXC, only : cellXC ! Finds xc energy and potential
-      use siestaXC, only : myMeshBox    ! Returns my processor mesh box
-      use siestaXC, only : jms_setMeshDistr => setMeshDistr
-                                        ! Sets a distribution of mesh
-                                        ! points over parallel processors
+      use gridXC, only : cellXC=>gridxc_cellXC       ! Finds xc energy and potential
+
       use m_vmat, only: vmat
       use m_vmatsp, only: vmatsp
       use m_rhoofd, only: rhoofd
@@ -798,6 +797,7 @@ C     Work arrays
      &                         DRho_quad(:,:) => null()
       ! Temporary reciprocal spin quantity
       real(grid_p) :: rnsd
+      character(len=6) :: suffix
 
 #ifdef MPI
       integer  :: MPIerror
@@ -860,12 +860,14 @@ C-------------------------------------------------------------------------
         else
            call write_rho( filesOut%vna, 
      &          cell, ntm, nsm, ntpl, 1, Vna)
-           call write_grid_netcdf( cell, ntm, 1, ntpl, Vna, "Vna")
+           call write_grid_netcdf( cell, ntm, 1, ntpl, Vna, "Vna",
+     &         unit='Ry')
         end if
 #else
         call write_rho( filesOut%vna,
      &       cell, ntm, nsm, ntpl, 1, Vna )
-        call write_grid_netcdf( cell, ntm, 1, ntpl, Vna, "Vna")
+        call write_grid_netcdf( cell, ntm, 1, ntpl, Vna, "Vna",
+     &         unit='Ry')
 #endif
       endif
 
@@ -962,13 +964,13 @@ C       Set the UNIFORM distribution again and copy DRho to it
              call write_rho( "RHO_INIT", cell, ntm, nsm, ntpl,
      $            nspin, DRho)
              call write_grid_netcdf( cell, ntm, nspin, ntpl, DRho,
-     $            "RhoInit")
+     $            "RhoInit", unit='1/Bohr**3')
           end if
 #else
           call write_rho( "RHO_INIT", cell, ntm, nsm, ntpl,
      $         nspin, DRho)
           call write_grid_netcdf( cell, ntm, nspin, ntpl, DRho,
-     $         "RhoInit")
+     $         "RhoInit", unit='1/Bohr**3')
 #endif
           call timer('DHSCF3',2)
           call timer('DHSCF',2)
@@ -1025,19 +1027,30 @@ C Save electron density
 C ----------------------------------------------------------------------
       if (filesOut%rho .ne. ' ') then
         !  DRho is already using a uniform, sequential form
+
+        ! Get suffix of the file
+        suffix = trim(filesOut%rho(
+     &      index(filesOut%rho, ".", back=.true.)+1:))
+        if ( suffix(1:1) == 'R' ) then
+          ! We will only do lower case stuff if the suffix is RHO
+          suffix(2:) = lcase(suffix(2:))
+          ! If the suffix is LDOS, then we retain the value
+        end if
 #ifdef NCDF_4
         if ( write_cdf ) then
-           call cdf_save_grid(trim(slabel)//'.nc','Rho',nspin,ntml,
-     &          DRho)
+          call cdf_save_grid(trim(slabel)//'.nc',trim(suffix),nspin,ntml
+     &        ,DRho)
         else
            call write_rho( filesOut%rho, cell, ntm, nsm, ntpl, nspin,
-     &          DRho )
-           call write_grid_netcdf( cell, ntm, nspin, ntpl, DRho, "Rho")
+     &        DRho )
+           call write_grid_netcdf( cell, ntm, nspin, ntpl, DRho,
+     &         trim(suffix), unit='1/Bohr**3')
         end if
 #else
         call write_rho( filesOut%rho, cell, ntm, nsm, ntpl, nspin,
      &       DRho )
-        call write_grid_netcdf( cell, ntm, nspin, ntpl, DRho, "Rho")
+        call write_grid_netcdf( cell, ntm, nspin, ntpl, DRho,
+     &      trim(suffix), unit='1/Bohr**3')
 #endif
       endif
 C-----------------------------------------------------------------------
@@ -1077,13 +1090,13 @@ C       Save diffuse ionic charge
              call write_rho( filesOut%psch, cell, ntm, nsm, ntpl, 1,
      &            Chlocal)
              call write_grid_netcdf( cell, ntm, 1, ntpl, Chlocal,
-     &            'Chlocal' )
+     &            'Chlocal', unit='1/Bohr**3')
           end if
 #else
           call write_rho( filesOut%psch, cell, ntm, nsm, ntpl, 1,
      &         Chlocal)
           call write_grid_netcdf( cell, ntm, 1, ntpl,
-     &         Chlocal, 'Chlocal' )
+     &         Chlocal, 'Chlocal', unit='1/Bohr**3')
 #endif
         endif
 
@@ -1116,13 +1129,13 @@ C       Save total (ionic+electronic) charge
            else
               call write_rho(filesOut%toch,cell,ntm,nsm,ntpl,1,Chlocal)
               call write_grid_netcdf( cell, ntm, 1, ntpl, Chlocal, 
-     &             "TotalCharge")
+     &             "TotalCharge", unit='1/Bohr**3')
            end if
 #else
            call write_rho( filesOut%toch, cell, ntm, nsm, ntpl, 1,
      &          Chlocal )
            call write_grid_netcdf( cell, ntm, 1, ntpl,
-     &          Chlocal, "TotalCharge")
+     &          Chlocal, "TotalCharge", unit='1/Bohr**3')
 #endif
         end if 
         call de_alloc( Chlocal, 'Chlocal', 'dhscf' )
@@ -1162,13 +1175,13 @@ C ----------------------------------------------------------------------
            call write_rho( filesOut%drho, cell, ntm, nsm, ntpl, nspin,
      &          DRho )
            call write_grid_netcdf( cell, ntm, nspin, ntpl, DRho, 
-     &          "DeltaRho")
+     &          "DeltaRho", unit='1/Bohr**3')
         end if
 #else
         call write_rho( filesOut%drho, cell, ntm, nsm, ntpl, nspin,
      &       DRho )
         call write_grid_netcdf( cell, ntm, nspin, ntpl,
-     &       DRho, "DeltaRho")
+     &       DRho, "DeltaRho", unit='1/Bohr**3')
 #endif
       endif
 
@@ -1427,12 +1440,12 @@ C ----------------------------------------------------------------------
         else
            call write_rho( filesOut%vh, cell, ntm, nsm, ntpl, 1, Vaux )
            call write_grid_netcdf( cell, ntm, 1, ntpl, Vaux, 
-     &          "ElectrostaticPotential")
+     &          "ElectrostaticPotential", unit='Ry')
         end if
 #else
         call write_rho( filesOut%vh, cell, ntm, nsm, ntpl, 1, Vaux )
         call write_grid_netcdf( cell, ntm, 1, ntpl,
-     &       Vaux, "ElectrostaticPotential")
+     &       Vaux, "ElectrostaticPotential", unit='Ry')
 #endif
       endif
 
@@ -1491,13 +1504,13 @@ C ----------------------------------------------------------------------
            call write_rho( filesOut%rhoxc, cell, ntm, nsm, ntpl, nspin,
      &          DRho )
            call write_grid_netcdf( cell, ntm, nspin, ntpl, DRho, 
-     &          "RhoXC")
+     &          "RhoXC", unit='1/Bohr**3')
         end if
 #else
         call write_rho( filesOut%rhoxc, cell, ntm, nsm, ntpl, nspin,
      &       DRho )
         call write_grid_netcdf( cell, ntm, nspin, ntpl, DRho, 
-     &       "RhoXC")
+     &       "RhoXC", unit='1/Bohr**3')
 #endif
       endif
 
@@ -1618,12 +1631,12 @@ C ----------------------------------------------------------------------
            call write_rho( filesOut%vt, cell, ntm, nsm, ntpl, nspin,
      &          Vscf )
            call write_grid_netcdf( cell, ntm, nspin, ntpl, Vscf, 
-     &          "TotalPotential")
+     &          "TotalPotential", unit='Ry')
         end if
 #else
         call write_rho( filesOut%vt, cell, ntm, nsm, ntpl, nspin, Vscf)
         call write_grid_netcdf( cell, ntm, nspin, ntpl,
-     &       Vscf, "TotalPotential")
+     &       Vscf, "TotalPotential", unit='Ry')
 #endif
       endif
 
@@ -1880,13 +1893,13 @@ C ----------------------------------------------------------------------
          call write_rho( trim(slabel)// ".BADER", cell,
      $        ntm, nsm, ntpl, 1, BaderCharge )
          call write_grid_netcdf( cell, ntm, 1, ntpl,
-     $        BaderCharge, "BaderCharge")
+     $        BaderCharge, "BaderCharge", unit='1/Bohr**3')
       end if
 #else
       call write_rho( trim(slabel)// ".BADER", cell,
      $     ntm, nsm, ntpl, 1, BaderCharge )
       call write_grid_netcdf( cell, ntm, 1, ntpl,
-     $     BaderCharge, "BaderCharge")
+     $     BaderCharge, "BaderCharge", unit='1/Bohr**3')
 #endif
 
       call de_alloc( BaderCharge, name='BaderCharge' )
@@ -1975,7 +1988,7 @@ C ----------------------------------------------------------------------
       !> BSC's version of cellxc, and whether we have a vdw
       !> functional
       subroutine xc_setup(need_grads,is_vdw)
-      use siestaxc, only: getxc
+      use gridxc, only: getxc=>gridxc_getxc
 
       logical, intent(out) :: need_grads
       logical, intent(out) :: is_vdw

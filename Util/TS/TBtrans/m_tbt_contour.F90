@@ -70,8 +70,13 @@ contains
 
     Ry2eV = fdf_convfac('Ry', 'eV')
 
-    ! broadening
-    tbt_Eta = fdf_get('TBT.Contours.Eta',0._dp,'Ry')
+    ! broadening defaults to the electrodes Eta values and their
+    ! propagation. Since there may be localized states
+    ! we default to an eta with a number equal to min(Elecs(:)%eta) / 10
+    ! This ensures a minimal broadening that will by default be smaller
+    ! than the electrodes.
+    tbt_Eta = minval(Elecs(:)%eta) / 10._dp
+    tbt_Eta = fdf_get('TBT.Contours.Eta',tbt_Eta,'Ry')
     if ( tbt_Eta < 0._dp .and. Node == 0 ) then
       call die('tbtrans: error cannot use the advanced Green function')
        write(*,'(a)')'*** NOTICE ***'

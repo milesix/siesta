@@ -86,7 +86,7 @@ contains
     use files, only : slabel
     use units, only : eV
     use m_interpolate
-    use m_spin, only: init_spin
+    use spin_subs_m, only: init_spin
 
     use m_ts_io, only: ts_read_TSHS_opt
     use m_ts_io_ctype, only : ts_c_bphysical, ts_c_bisphysical

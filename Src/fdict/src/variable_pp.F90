@@ -33,7 +33,7 @@ module variable
 
   ! Load the iso_c_binding for containing a C-pointer
   use, intrinsic :: iso_c_binding
-  
+
   implicit none
 
   private 
@@ -54,107 +54,113 @@ module variable
   integer, parameter, public :: VARIABLE_TYPE_LENGTH = 4
 
   type :: variable_t
-     !! Container for _any_ fortran data-type, intrinsically handles all
-     !! from fortran and any external type may be added via external routines.
-     !!
-     !! The container is based on a type-transfer method by storing a pointer
-     !! to the data and transfer the type to a character array via encoding.
-     !! This enables one to retrieve the pointer position later and thus enables
-     !! pointer assignments and easy copying of data.
-     
-     character(len=VARIABLE_TYPE_LENGTH) :: t = '    '
-     ! The encoding placement of all data
-     character(len=1), dimension(:), allocatable :: enc
+    !! Container for _any_ fortran data-type, intrinsically handles all
+    !! from fortran and any external type may be added via external routines.
+    !!
+    !! The container is based on a type-transfer method by storing a pointer
+    !! to the data and transfer the type to a character array via encoding.
+    !! This enables one to retrieve the pointer position later and thus enables
+    !! pointer assignments and easy copying of data.
+
+    character(len=VARIABLE_TYPE_LENGTH) :: t = '    '
+    ! The encoding placement of all data
+    character(len=1), dimension(:), allocatable :: enc
   end type variable_t
   public :: variable_t
 
   interface which
-     !! Type of content stored in the variable (`character(len=VARIABLE_TYPE_LENGTH)`)
-     module procedure which_
-  end interface
+    !! Type of content stored in the variable (`character(len=VARIABLE_TYPE_LENGTH)`)
+    module procedure which_
+  end interface which
   public :: which
   interface delete
-     !! Delete the variable (equivalent to `deallocate(<>)`).
-     module procedure delete_
-  end interface
+    !! Delete the variable (equivalent to `deallocate(<>)`).
+    module procedure delete_
+  end interface delete
   public :: delete
   interface nullify
-     !! Nullify the variable (equivalent to `nullify(<>)`).
-     module procedure nullify_
-  end interface
+    !! Nullify the variable (equivalent to `nullify(<>)`).
+    module procedure nullify_
+  end interface nullify
   public :: nullify
 
+  interface empty
+    !! check if empty (equivalent to `nullify(<>)`).
+    module procedure empty_
+  end interface empty
+  public :: empty
+
   interface print
-     !! Print (to std-out) information regarding the variable, i.e. the type.
-     module procedure print_
-  end interface
+    !! Print (to std-out) information regarding the variable, i.e. the type.
+    module procedure print_
+  end interface print
   public :: print
 
   ! Specific routines for passing types to variables
   interface associate_type
-     module procedure associate_type_
-  end interface
+    module procedure associate_type_
+  end interface associate_type
   public :: associate_type
   interface enc
-     !! The encoding of the stored pointer (`character, dimension(:)`)
-     !!
-     !! This is mainly intenteded for internal use to transfer between real
-     !! data and the data containers.
-     !!
-     !! It is however required to enable external type storage routines.
-     module procedure enc_
-  end interface
+    !! The encoding of the stored pointer (`character, dimension(:)`)
+    !!
+    !! This is mainly intenteded for internal use to transfer between real
+    !! data and the data containers.
+    !!
+    !! It is however required to enable external type storage routines.
+    module procedure enc_
+  end interface enc
   public :: enc
   interface size_enc
-     !! The size of the encoding character array (`size(enc(<>))`)
-     !!
-     !! This is mainly intenteded for internal use to transfer between real
-     !! data and the data containers.
-     module procedure size_enc_
-  end interface
+    !! The size of the encoding character array (`size(enc(<>))`)
+    !!
+    !! This is mainly intenteded for internal use to transfer between real
+    !! data and the data containers.
+    module procedure size_enc_
+  end interface size_enc
   public :: size_enc
 
 
   ! Specific routine for packing a character(len=*) to
   ! character(len=1) (:)
   interface cpack
-     !! Convert a `character(len=*)` to `character, dimension(:)`
-     !!
-     !! A routine requirement for creating pointers to character storages.
-     !! One can convert from `len=*` to an array of `len=1` and back using [[cunpack]].
-     !!
-     !! Because fortran requires dimensions of arrays assignments to be same size it
-     !! one has to specify ranges if the length of the character is not equivalent
-     !! to the size of the array.
-     !!
-     !! Example:
-     !!
-     !!```fortran
-     !! character(len=20) :: a
-     !! character :: b(10)
-     !! a = 'Hello'
-     !! b(1:5) = cpack('Hello')
-     !!```
-     !!
-     !! @note
-     !! This is a requirement because it is not possible to create a unified pointer
-     !! to arbitrary length characters. Hence we store all `len=*` variables as `len=1` character arrays.
-     module procedure cpack_
+    !! Convert a `character(len=*)` to `character, dimension(:)`
+    !!
+    !! A routine requirement for creating pointers to character storages.
+    !! One can convert from `len=*` to an array of `len=1` and back using [[cunpack]].
+    !!
+    !! Because fortran requires dimensions of arrays assignments to be same size it
+    !! one has to specify ranges if the length of the character is not equivalent
+    !! to the size of the array.
+    !!
+    !! Example:
+    !!
+    !!```fortran
+    !! character(len=20) :: a
+    !! character :: b(10)
+    !! a = 'Hello'
+    !! b(1:5) = cpack('Hello')
+    !!```
+    !!
+    !! @note
+    !! This is a requirement because it is not possible to create a unified pointer
+    !! to arbitrary length characters. Hence we store all `len=*` variables as `len=1` character arrays.
+    module procedure cpack_
   end interface cpack
   public :: cpack
 
   ! Specific routine for packing a character(len=*) to
   ! character(len=1) (:)
   interface cunpack
-     !! Convert a `character(len=1), dimensions(:)` to `character(len=*)`
-     !!
-     !! Pack an array into a character of arbitrary length.
-     !! This convenience function helps converting between arrays of characters
-     !! and fixed length characters.
-     !!
-     !! As character assignment is not restricted similarly as array assignments
-     !! it is not a requirement to specify ranges when using this function.
-     module procedure cunpack_
+    !! Convert a `character(len=1), dimensions(:)` to `character(len=*)`
+    !!
+    !! Pack an array into a character of arbitrary length.
+    !! This convenience function helps converting between arrays of characters
+    !! and fixed length characters.
+    !!
+    !! As character assignment is not restricted similarly as array assignments
+    !! it is not a requirement to specify ranges when using this function.
+    module procedure cunpack_
   end interface cunpack
   public :: cunpack
 
@@ -172,7 +178,7 @@ contains
     character(len=VARIABLE_TYPE_LENGTH) :: t
     t = this%t
   end function which_
-    
+
   subroutine delete_(this,dealloc)
     type(variable_t), intent(inout) :: this
     logical, intent(in), optional :: dealloc
@@ -184,14 +190,14 @@ contains
     if ( present(dealloc) ) ldealloc = dealloc
     if ( ldealloc ) then
 #include "variable_delete_.inc"
-       
-       if ( this%t == 'a-' ) then
-          pa_ = transfer(this%enc,pa_)
-          do i = 1 , size(pa_%p)
-             deallocate(pa_%p(i)%p)
-          end do
-          deallocate(pa_%p)
-       end if
+
+      if ( this%t == 'a-' ) then
+        pa_ = transfer(this%enc,pa_)
+        do i = 1 , size(pa_%p)
+          deallocate(pa_%p(i)%p)
+        end do
+        deallocate(pa_%p)
+      end if
     end if
     call nullify(this)
   end subroutine delete_
@@ -202,6 +208,11 @@ contains
     if ( allocated(this%enc) ) deallocate(this%enc)
   end subroutine nullify_
 
+  elemental function empty_(this)
+    type(variable_t), intent(in) :: this
+    logical :: empty_
+    empty_ = .not. allocated(this%enc)
+  end function empty_
 
   ! Returns the bare encoding of this variable
   ! This can ease the process of assigning
@@ -216,15 +227,15 @@ contains
     character(len=1), intent(out) :: enc(:)
     integer :: i
     if ( this%t == '  ' ) then
-       enc = ' '
+      enc = ' '
     else
-       ! We do have an encoding
-       i = size(this%enc)
-       if ( i > size(enc) ) then
-          enc = ' '
-       else
-          enc(1:i) = this%enc
-       end if
+      ! We do have an encoding
+      i = size(this%enc)
+      if ( i > size(enc) ) then
+        enc = ' '
+      else
+        enc(1:i) = this%enc
+      end if
     end if
   end subroutine enc_
 
@@ -232,11 +243,11 @@ contains
     type(variable_t), intent(in) :: this
     integer :: len
     if ( this%t == '  ' ) then
-       len = 0
+      len = 0
     else
-       len = size(this%enc)
+      len = size(this%enc)
     end if
-    
+
   end function size_enc_
 
   ! We allow the user to pass an encoding field.
@@ -254,20 +265,25 @@ contains
   ! passed the full-encoding WITHOUT padding of ' '.
   ! We cannot know for sure whether the encoding actually terminates
   ! in a bit corresponding to char(' ')!
-  subroutine associate_type_(this,enc,dealloc)
+  subroutine associate_type_(this,enc,dealloc,which)
     type(variable_t), intent(inout) :: this
     character(len=1), intent(in) :: enc(:)
     logical, intent(in), optional :: dealloc
+    character(len=*), intent(in), optional :: which
     logical :: ldealloc
     ldealloc = .false.
     if(present(dealloc))ldealloc = dealloc
     if (.not. ldealloc) then
-       ! if we do not deallocate, nullify
-       call nullify(this)
+      ! if we do not deallocate, nullify
+      call nullify(this)
     else
-       call delete(this)
+      call delete(this)
     end if
-    this%t = 'USER'
+    if ( present(which) ) then
+      this%t = trim(which)
+    else
+      this%t = "USER"
+    end if
     allocate(this%enc(size(enc)))
     this%enc(:) = enc(:)
 
@@ -277,11 +293,11 @@ contains
     character(len=*), intent(in) :: c
     character(len=1) :: car(len(c))
     integer :: i
-    
+
     do i = 1 , len(c)
-       car(i) = c(i:i)
+      car(i) = c(i:i)
     end do
-    
+
   end function cpack_
   pure function cunpack_(car) result(c)
     character(len=1), intent(in) :: car(:)
@@ -289,9 +305,9 @@ contains
     integer :: i
 
     do i = 1 , size(car)
-       c(i:i) = car(i)
+      c(i:i) = car(i)
     end do
-    
+
   end function cunpack_
 
   subroutine assignment_(this,rhs)
@@ -311,28 +327,28 @@ contains
     ldealloc = .true.
     if(present(dealloc))ldealloc = dealloc
     if (.not. ldealloc) then
-       ! if we do not deallocate, nullify
-       call nullify(this)
+      ! if we do not deallocate, nullify
+      call nullify(this)
     else
-       call delete(this)
+      call delete(this)
     end if
     this%t = rhs%t
     ! First allocate the LHS
 #include "variable_variable_alloc_.inc"
 
     if ( this%t == 'a-' ) then ! character(len=*)
-       pa__2 = transfer(rhs%enc, pa__2)
-       allocate(pa__1%p(size(pa__2%p)))
-       do i = 1 , size(pa__2%p)
-          allocate(pa__1%p(i)%p)
-          pa__1%p(i)%p = pa__2%p(i)%p
-       end do
-       allocate(this%enc(size(transfer(pa__1, local_enc_type))))
-       this%enc(:) = transfer(pa__1, local_enc_type)
-       do i = 1 , size(pa__1%p)
-         nullify(pa__1%p(i)%p)
-       end do
-       nullify(pa__1%p)
+      pa__2 = transfer(rhs%enc, pa__2)
+      allocate(pa__1%p(size(pa__2%p)))
+      do i = 1 , size(pa__2%p)
+        allocate(pa__1%p(i)%p)
+        pa__1%p(i)%p = pa__2%p(i)%p
+      end do
+      allocate(this%enc(size(transfer(pa__1, local_enc_type))))
+      this%enc(:) = transfer(pa__1, local_enc_type)
+      do i = 1 , size(pa__1%p)
+        nullify(pa__1%p(i)%p)
+      end do
+      nullify(pa__1%p)
     end if
 
     ! copy over RHS and Save encoding
@@ -352,12 +368,12 @@ contains
     if ( present(success) ) success  = .true.
     if ( present(dealloc) ) ldealloc = dealloc
     if (.not. ldealloc) then
-       ! if we do not deallocate, nullify
-       call nullify(this)
+      ! if we do not deallocate, nullify
+      call nullify(this)
     else
-       call delete(this)
+      call delete(this)
     end if
-    
+
     ! Association is done by copying the encoding
     this%t = rhs%t
     allocate(this%enc(size(rhs%enc)))
@@ -372,9 +388,9 @@ contains
 #include "variable_declarations2_.inc"
     ret = this%t==rhs%t
     if ( .not. ret ) return
-    
+
 #include "variable_variable_assoc_.inc"
-    
+
   end function associatd_var
 
   ! The character(len=*) is a bit difficult because
@@ -391,12 +407,21 @@ contains
     logical, intent(in), optional :: dealloc
     character(len=1), pointer :: c(:) => null()
     integer :: i
+    logical :: ldealloc
+    ! ASSIGNMENT in fortran is per default destructive
+    ldealloc = .true.
+    if(present(dealloc)) ldealloc = dealloc
+    if(ldealloc) then
+      call delete(this)
+    else
+      call nullify(this)
+    end if
     allocate(c(len(rhs)))
     do i = 1 , size(c)
-       c(i) = rhs(i:i)
+      c(i) = rhs(i:i)
     end do
     ! This is still a "copy"
-    call associate(this, c, dealloc)
+    call associate(this, c)
     nullify(c)
   end subroutine assign_set_a0_0
   subroutine assign_get_a0_0(lhs,this,success)
@@ -412,7 +437,7 @@ contains
     lhs = ' '
     if ( .not. lsuccess ) return
     do i = 1 , size(c)
-       lhs(i:i) = c(i)
+      lhs(i:i) = c(i)
     end do
   end subroutine assign_get_a0_0
 
@@ -427,10 +452,10 @@ contains
     logical, intent(in), optional :: dealloc
     logical :: ldealloc
     type :: pta_
-       type(pta__), pointer :: p(:) => null()
+      type(pta__), pointer :: p(:) => null()
     end type pta_
     type :: pta__
-       character(len=1), pointer :: p => null()
+      character(len=1), pointer :: p => null()
     end type pta__
     type(pta_) :: p
     integer :: i
@@ -438,16 +463,16 @@ contains
     ldealloc = .false.
     if(present(dealloc))ldealloc = dealloc
     if (ldealloc) then
-       call delete(this)
+      call delete(this)
     else
-       call nullify(this)
+      call nullify(this)
     end if
     ! With pointer transfer we need to deallocate
     ! else bounds might change...
     this%t = 'a-'
     allocate(p%p(len(rhs)))
     do i = 1 , len(rhs)
-       p%p(i)%p => rhs(i:i)
+      p%p(i)%p => rhs(i:i)
     end do
     allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
     this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
@@ -462,28 +487,28 @@ contains
     logical, intent(out), optional :: success
     logical :: ldealloc, lsuccess
     type :: pt
-       type(ptc), pointer :: p(:) => null()
+      type(ptc), pointer :: p(:) => null()
     end type pt
     type :: ptc
-       character(len=1), pointer :: p => null()
+      character(len=1), pointer :: p => null()
     end type ptc
     type(pt) :: p
     integer :: i, ns
     lsuccess = this%t == 'a-'
     if ( lsuccess ) then
-       p = transfer(this%enc, p)
-       ! Figure out the trimmed length of the string
-       ! If it is smaller or equal to the output string
-       ! then all is good, else we consider it a failure
-       ns = size(p%p)
-       do i = size(p%p), 1, -1
-          if ( p%p(i)%p == ' ' ) then
-             ns = i-1
-          else
-             exit
-          end if
-       end do
-       lsuccess = len(lhs) >= ns
+      p = transfer(this%enc, p)
+      ! Figure out the trimmed length of the string
+      ! If it is smaller or equal to the output string
+      ! then all is good, else we consider it a failure
+      ns = size(p%p)
+      do i = size(p%p), 1, -1
+        if ( p%p(i)%p == ' ' ) then
+          ns = i-1
+        else
+          exit
+        end if
+      end do
+      lsuccess = len(lhs) >= ns
     end if
     ldealloc = .false.
     if( present(dealloc) ) ldealloc = dealloc
@@ -493,12 +518,12 @@ contains
     if ( .not. lsuccess ) return
     ns = min(ns, size(p%p))
     do i = 1, ns
-       lhs(i:i) => p%p(i)%p(1:1)
+      lhs(i:i) => p%p(i)%p(1:1)
     end do
   end subroutine associate_get_a0_0
 #endif
 
 #include "variable_funcs_.inc"
-  
+
 end module variable
 

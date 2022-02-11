@@ -1,5 +1,5 @@
 ! ---
-! Copyright (C) 1996-2016       The SIESTA group
+! Copyright (C) 1996-2021       The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt .
@@ -12,7 +12,6 @@
 ! input of a standard input file
 program grimme_program
 
-  use f2kcli
   use fdf
   use periodic_table
   use chemical, only: read_chemical_types, number_of_species, species_label

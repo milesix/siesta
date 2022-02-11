@@ -1,5 +1,5 @@
 ! 
-! Copyright (C) 1996-2016	The SIESTA group
+! Copyright (C) 1996-2022	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt.
@@ -325,7 +325,6 @@ C Argument types and dimensions
       integer           :: maxnd, maxndl, nspin, nuo, numd(nuo),
      &                     listdptr(nuo)
       real(dp)          :: Dscf(maxnd,nspin), DscfL(maxndl,nspin)
-      external             memory
 
 C Internal variables and arrays
       integer           :: io, ispin
@@ -661,11 +660,11 @@ C       The communication is from dst to src
               if( irelim .eq. 1) then
                 Vs(listVsptr(iio)+1:listVsptr(iio)+numVs(iio)) = 
      &          Vs(listVsptr(iio)+1:listVsptr(iio)+numVs(iio)) + 
-     &          buffer(mm+1:mm+numVs(iio)) * cmplx(1.0,0.0,kind=dp)
+     &          buffer(mm+1:mm+numVs(iio))
               elseif( irelim .eq. 2) then
                 Vs(listVsptr(iio)+1:listVsptr(iio)+numVs(iio)) = 
      &          Vs(listVsptr(iio)+1:listVsptr(iio)+numVs(iio)) + 
-     &          buffer(mm+1:mm+numVs(iio)) * cmplx(0.0,1.0,kind=dp)
+     &          buffer(mm+1:mm+numVs(iio))*cmplx(0.0_dp,1.0_dp,kind=dp)
               endif
               mm = mm + numVs(iio)
             enddo

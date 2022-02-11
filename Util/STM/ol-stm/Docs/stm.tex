@@ -195,9 +195,10 @@ source of {\sc WFS2LDOS} from $\sim$/siesta/Util/STM/ol-stm/Src.
  {\bf COOP.Write T} fdf option (in this case the
  wavefunctions at all k-points used to sample the BZ during
  self-consistency are included).
- Finally, you need the file containing the Hartree potential on the grid 
- {\it Systemlabel}.VH (printed by {\sc Siesta} using the 
- {\bf SaveElectrostaticPotential} descriptor)
+ Finally, if the code needs to project wavefunctions using the reference plane
+ (i.e. {\bf STM.MaxZ} is bigger than {\bf STM.RefZ}), you need the file 
+ containing the Hartree potential on the grid {\it Systemlabel}.VH (printed by {\sc Siesta}
+ using the {\bf SaveElectrostaticPotential} descriptor)
  in order to define the vacuum potential. 
  These files need to be present in the
  directory where {\sc WFS2LDOS} will run.
