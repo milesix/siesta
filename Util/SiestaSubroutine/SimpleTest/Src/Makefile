@@ -41,6 +41,7 @@ VPATH:=$(TOP_LEVEL)
 #
 NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
 PSOP_INCFLAGS=-I$(MAIN_OBJDIR)/psoplib/src
+FDF_INCFLAGS=-I$(MAIN_OBJDIR)/fdf
 
 #
 # Uncomment the following line for debugging support
@@ -62,8 +63,9 @@ PSML=$(PSML_LIBS)
 #
 NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
 PSOP=$(MAIN_OBJDIR)/psoplib/src/libpsop.a
+FDF_LIBS=$(MAIN_OBJDIR)/fdf/libfdf.a
 PSML=$(PSML_LIBS)
-INCFLAGS:=$(NETCDF_INCFLAGS) \
+INCFLAGS:=$(NETCDF_INCFLAGS) $(FDF_INCFLAGS) \
           $(NCPS_INCFLAGS) $(PSOP_INCFLAGS) $(PSML_INCFLAGS) \
           $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS) $(INCFLAGS)
 #

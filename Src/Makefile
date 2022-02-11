@@ -56,7 +56,6 @@ dep:
 	sfmakedepend --depend=obj --modext=o \
           $(VPATH)/*.f $(VPATH)/*.f90 $(VPATH)/*.F $(VPATH)/*.F90 ; \
         fi
-	#@sed -i -e "/^siesta_cmlsubs.o:/s/version.o//" Makefile
 	@sed -i -e 's/\.T90\.o:/.o:/g' Makefile
 
 
@@ -65,6 +64,7 @@ XC=$(GRIDXC_LIBS)
 
 NCPS_INCFLAGS=-I $(MAIN_OBJDIR)/ncps/src
 PSOP_INCFLAGS=-I $(MAIN_OBJDIR)/psoplib/src
+FDF_INCFLAGS=-I $(MAIN_OBJDIR)/fdf
 INCFLAGS:= $(NETCDF_INCFLAGS)  $(PSML_INCFLAGS) $(NCPS_INCFLAGS) \
            $(PSOP_INCFLAGS) $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS) \
            $(PEXSI_INCFLAGS) $(FDF_INCFLAGS) $(INCFLAGS)
@@ -298,18 +298,24 @@ FC_SERIAL?=$(FC_DEFAULT)
 # makefiles. But in some other cases they are needed: VPATH, for
 # example, needs to be passed always.
 #
+FDF_LIBS=fdf/libfdf.a
+$(FDF_LIBS):
+	(cd fdf ; $(MAKE) -j 1 VPATH="$(VPATH)/fdf" \
+	ARCH_MAKE=$(ARCH_MAKE) \
+	FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+#--------------------------------------------------------------
 NCPS=ncps/src/libncps.a
 $(NCPS): $(PSML)
 	(cd ncps/src ; $(MAKE) -j 1 VPATH="$(VPATH)/ncps/src" \
 	ARCH_MAKE=$(ARCH_MAKE) \
 	"PSML_INCFLAGS=$(PSML_INCFLAGS)" \
-	FFFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+	FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 #--------------------------------------------------------------
 PSOP=psoplib/src/libpsop.a
 $(PSOP): 
 	(cd psoplib/src ; $(MAKE) -j 1 VPATH="$(VPATH)/psoplib/src" \
 	ARCH_MAKE=$(ARCH_MAKE) \
-	FFFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+	FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 
 #--------------------------------------------------------------
 libmpi_f90.a: 
@@ -509,7 +515,7 @@ libSiestaForces.a: $(OBJS) $(SYSOBJ)
 	-$(RANLIB) libSiestaForces.a
 #
 siesta: what version \
-                $(MPI_INTERFACE) $(MS) $(NCPS) $(PSOP) \
+                $(MPI_INTERFACE) $(FDF_LIBS) $(MS) $(NCPS) $(PSOP) \
                 $(COMP_LIBS) $(ALL_OBJS) 
 	$(FC) -o siesta \
 	       $(LDFLAGS) $(ALL_OBJS) $(MS)  \
@@ -518,7 +524,6 @@ siesta: what version \
 	       $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) \
 	       $(FDF_LIBS) $(LIBS)
 	@echo "--- reference section "
-	@echo "FDF libs: $(FDF_LIBS)"
 	@echo "PSML-related libs: $(PSML_LIBS)"
 	@echo "XMLf90 libs: $(XMLF90_LIBS)"
 	@echo "GRIDXC libs: $(GRIDXC_LIBS)"

@@ -24,8 +24,6 @@ MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
 
-INCFLAGS += $(FDF_INCFLAGS)
-
 FC_DEFAULT := $(FC)
 FC_SERIAL  ?= $(FC_DEFAULT)
 
@@ -53,13 +51,16 @@ what:
 
 NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
 PSOP_INCFLAGS=-I$(MAIN_OBJDIR)/psoplib/src
-INCFLAGS:=$(NETCDF_INCFLAGS) \
+FDF_INCFLAGS=-I$(MAIN_OBJDIR)/fdf
+
+INCFLAGS:=$(NETCDF_INCFLAGS) $(FDF_INCFLAGS) \
           $(NCPS_INCFLAGS) $(PSML_INCFLAGS) $(PSOP_INCFLAGS) \
           $(INCFLAGS)
 
 XC = $(GRIDXC_LIBS)
 NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
 PSOP=$(MAIN_OBJDIR)/psoplib/src/libpsop.a
+FDF_LIBS=$(MAIN_OBJDIR)/fdf/libfdf.a
 
 INCFLAGS += $(GRIDXC_INCFLAGS)
 
@@ -149,7 +150,7 @@ libsiestaLAPACK.a: $(VPATH)/Libs/lapack.F
 
 $(DEP_OBJS): $(COMP_LIBS) 
 
-unfold: $(MPI_INTERFACE) $(COMP_LIBS) $(DEP_OBJS) $(UNFOLD_OBJS) 
+unfold: $(MPI_INTERFACE) $(COMP_LIBS) $(FDF_LIBS) $(DEP_OBJS) $(UNFOLD_OBJS) 
 	$(FC) $(FFLAGS) $(LDFLAGS) -o unfold \
               $(DEP_OBJS) $(UNFOLD_OBJS) $(MPI_INTERFACE) \
               $(XC) $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) $(FDF_LIBS) $(COMP_LIBS) $(LIBS)

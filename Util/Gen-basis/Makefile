@@ -45,7 +45,8 @@ FPPFLAGS:=$(DEFS_PREFIX) -UMPI $(FPPFLAGS) $(DEFS_PREFIX) -UMPI
 
 NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
 PSOP_INCFLAGS=-I$(MAIN_OBJDIR)/psoplib/src
-INCFLAGS:=$(NETCDF_INCFLAGS) \
+FDF_INCFLAGS=-I$(MAIN_OBJDIR)/fdf
+INCFLAGS:=$(NETCDF_INCFLAGS) $(FDF_INCFLAGS) \
           $(NCPS_INCFLAGS) $(PSOP_INCFLAGS) $(PSML_INCFLAGS) \
           $(INCFLAGS)
 SYSOBJ=$(SYS).o
@@ -81,11 +82,10 @@ OBJS_IONCAT=$(DEPS_IONCAT) $(IONCAT_LOCAL_OBJS)
 #
 XC = $(GRIDXC_LIBS)
 INCFLAGS:= $(INCFLAGS) $(GRIDXC_INCFLAGS)
-INCFLAGS:= $(INCFLAGS) $(FDF_INCFLAGS)
-
 #
 NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
 PSOP=$(MAIN_OBJDIR)/psoplib/src/libpsop.a
+FDF_LIBS=$(MAIN_OBJDIR)/fdf/libfdf.a
 
 #
 # Simple hack to link to any compiled lapack/blas code
@@ -96,11 +96,11 @@ link_linalg:
    [ -f ../../$(OBJDIR)/$$llibs ] && ln -sf ../../$(OBJDIR)/$$llibs . ; \
 	done
 
-gen-basis: $(NCPS) $(PSOP) $(OBJS_GEN-BASIS) link_linalg
+gen-basis: $(NCPS) $(PSOP) $(FDF_LIBS) $(OBJS_GEN-BASIS) link_linalg
 	$(FC) -o gen-basis \
 	       $(LDFLAGS) $(OBJS_GEN-BASIS) $(FDF_LIBS) $(XC) \
               $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) $(NETCDF_LIBS) $(COMP_LIBS) $(LIBS)
-ioncat:  $(NCPS) $(PSOP) $(OBJS_IONCAT)
+ioncat:  $(NCPS) $(PSOP) $(FDF_LIBS) $(OBJS_IONCAT)
 	$(FC) -o ioncat \
 	       $(LDFLAGS) $(OBJS_IONCAT) $(FDF_LIBS) \
               $(NCPS) $(PSOP) $(XC) $(PSML_LIBS) $(XMLF90_LIBS) $(NETCDF_LIBS) $(LIBS)

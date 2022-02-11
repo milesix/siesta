@@ -20,6 +20,10 @@ OBJDIR=Obj
 ARCH_MAKE=../../../$(OBJDIR)/arch.make
 include $(ARCH_MAKE)
 
+MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
+
+FDF_INCFLAGS=-I$(MAIN_OBJDIR)/fdf
+FDF_LIBS=$(MAIN_OBJDIR)/fdf/libfdf.a
 INCFLAGS += $(FDF_INCFLAGS)
 
 # Set the default non-mpi routines
@@ -258,7 +262,7 @@ libsiestaLAPACK.a: $(VPATH)/Libs/lapack.F
 # This will setup the correct compilation sequence
 
 $(DEP_OBJS): $(COMP_LIBS) $(FDICT)
-$(TBTOBJS): $(FDF) $(FDICT)
+$(TBTOBJS): $(FDF_LIBS) $(FDICT)
 
 .PHONY: check-tbtrans
 check-tbtrans:
