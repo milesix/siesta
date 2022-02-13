@@ -1127,7 +1127,7 @@ read_xc_info.o: parallel.o precision.o sys.o
 redcel.o: parallel.o precision.o sys.o
 register_rfs.o: atm_types.o atmfuncs.o matel_registry.o parallel.o precision.o
 register_rfs.o: radial.o
-reinit_m.o: cli_m.o files.o parallel.o siesta_master.o version.o
+reinit_m.o: cli_m.o files.o parallel.o siesta_master.o version.o units.o
 remove_intramol_pressure.o: precision.o zmatrix.o
 reoptical.o: m_spin.o parallel.o precision.o sys.o
 reord.o: alloc.o precision.o
