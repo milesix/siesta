@@ -2437,6 +2437,8 @@ MODULE fdf
 
         unitstr = names(mark%pline, 1, 2)
         if (.not. leqi(unitstr, defunit)) then
+           ! The enclosing 'if' might not be adequate if
+           ! at some point we want to demand case-insensitivity
            fdf_physical = value * fdf_convfac(unitstr, defunit)
         endif
 
@@ -2516,6 +2518,8 @@ MODULE fdf
       if ( leqi(unitstr, defunit) ) then
          fdf_bphysical = value
       else
+         ! The enclosing 'if' might not be adequate if
+         ! at some point we want to demand case-insensitivity
          fdf_bphysical = value * fdf_convfac(unitstr, defunit)
       end if
 
