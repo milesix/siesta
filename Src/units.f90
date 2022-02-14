@@ -1,23 +1,45 @@
 ! 
-! Copyright (C) 1996-2016	The SIESTA group
+! Copyright (C) 1996-2022	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
 module units
-  ! Define various unit conversion factors from internal units.
+  
+  ! Comprehensive handling of units (WIP)
 
-  ! internally, siesta works with length: Bohr.
-  !                               energy: Rydberg.
-  !                                 time: femtosecond
+  ! This (client-side) module contains the materials-physics "units
+  ! table" formerly in the fdf package, and a 'unit_conversion_factor'
+  ! function that performs unit conversions in a form tailored to the
+  ! domain and the preferred use case.
+  !
+  ! 'unit_conversion_factor' can be used by fdf (through the use of a
+  ! procedure pointer) to provide unit conversion to that package. For
+  ! convenience, fdf might re-export the unit converter
+  ! ('fdf_convfac'), but this is not strictly necessary, and other
+  ! simplified handlers can be written.
+  !
+  ! fdf should only be concerned with processing two abstract unit
+  ! specification strings, and not with the details of the processing,
+  ! or the domain.
+  !
 
+  ! In addition, this module defines various unit conversion factors from Siesta's
+  ! internal units.
+
+  !=================================================================================
+  
   use precision, only : dp
 !     Maybe separate leqi from fdf
   use fdf, only: leqi
 
 
   implicit none
+
+  ! Internally, siesta works with length: Bohr.
+  !                               energy: Rydberg.
+  !                                 time: femtosecond
 
 !  The easy way to make sense of units conversion:
 
@@ -37,7 +59,15 @@ module units
   ! For consistency, these should be better defined in terms of the units table.
   ! Parameter initialization cannot use non-intrinsic functions, though.
   ! These could be then made into 'protected variables' and initialized
-  ! in a call to a "units initialization function". 
+  ! in a call to a "units initialization function".
+
+  !! real(dp), public, protected :: Ang
+  !! ...
+  !! subroutine units_initialization()
+  !!    Ang = unit_conversion_factor('ang','bohr',...)
+  !!    eV  = unit_conversion_factor('ang','bohr',...)
+  !!    ...
+  !! end subroutine units_initialization
   
   real(dp), parameter, public :: Ang    = 1._dp / 0.529177_dp
   real(dp), parameter, public :: eV     = 1._dp / 13.60580_dp
@@ -52,13 +82,24 @@ module units
   real(dp), parameter, public :: pi = 3.14159265358979323846264338327950288419716939937510_dp
   real(dp), parameter, public :: deg = pi / 180.0_dp
 
+  ! Note re-designed table structure.
+  ! Instead of using a 'data' statement, we employ derived-type initializers
+  ! and a parameter array.
+  !
+  ! In the Fortran 95 standard, a maximum of 39 continuation lines are allowed, but most
+  ! compilers would allow more.
+  ! In Fortran 2003 and Fortran 2008, a maximum of 255 are allowed.
+
+  ! The new format reduces the need for the 'fdf_units.py' script. The extra "consistency checks"
+  ! implemented in that script could be part of an initialization sanity check in this module.
+
       type, private :: unit
         character(8) :: dimm
         character(10) :: name
         real(dp)      :: value
       end type
 
-      type(unit), dimension(86), private, parameter :: table = [ &
+      type(unit), private, parameter, dimension(85) :: table = [ &
           unit('mass    ', 'g         ', 1.d-3), &
           unit('mass    ', 'kg        ', 1.d0), &
           unit('mass    ', 'amu       ', 1.66054d-27), &
@@ -155,15 +196,27 @@ module units
           unit('torque  ', 'mry/deg   ', 13.6058d-3), &
           unit('torque  ', 'mry/rad   ', 0.237466d-3), &
           unit('torque  ', 'ry/deg    ', 13.6058d0), &
-          unit('torque  ', 'ry/rad    ', 0.237466d0), &
-      !
-      unit('dummy', 'dummy', 0.0) ]
+          unit('torque  ', 'ry/rad    ', 0.237466d0) ]
 
       private
       public :: unit_conversion_factor
 
     CONTAINS
 
+      ! Strings 'from' and 'to' could be anything that this client chooses
+      ! For example, to request a specific "quantity", we could use the
+      ! form (suggested, and to be implemented below if needed):
+      !
+      ! B_field = fdf_get("magnetic-field", 0.0_dp, "G@bfield" )
+      !
+      ! which means "get me G (Gauss) in the bfield group in the table" (not grams)"
+      !
+      ! The group specification can do away with most ambiguities regarding case,
+      ! but if case-sensitivity is allowed, the syntax could be:
+      !
+      ! B_field = fdf_get("magnetic-field", 0.0_dp, "!G@bfield" )
+      !
+      
       function unit_conversion_factor(from,to,stat,msg) result (factor)
         character(len=*), intent(in)   :: from, to
         integer, intent(out)           :: stat
