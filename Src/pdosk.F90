@@ -66,6 +66,7 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
 #endif
   use sys,          only : die
   use m_diag, only: diag_get_1d_context, diag_descinit
+  use m_diag_option, only: Serial
 
   implicit none
 
@@ -158,17 +159,26 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
       ! Total number of elements calculated (jo is allowed to be 0)
       jo = iEmax - iEmin + 1
 
-#ifdef MPI
-
-      ! We need to define the contexts and matrix descriptors
-      ctxt = diag_get_1d_context()
-      call diag_descinit(nuotot, nuotot, BlockSize, desc, ctxt)
-
       ! Now perform the matrix-multiplications
       ! This is: S | psi >
-      call pzgemm('N', 'N', nuotot, jo, nuotot, cmplx(1._dp, 0._dp, dp), &
-          Saux(1,1,1), 1, 1, desc, psi(1,1,1), 1, iEmin, desc, &
-          cmplx(0._dp, 0._dp, dp), Haux(1,1,1), 1, iEmin, desc)
+
+      if ( Serial ) then
+        call zgemm('N','N',nuotot, jo, nuotot, cmplx(1._dp, 0._dp, dp), &
+            Saux(1,1,1),nuotot, psi(1,1,iEmin),nuotot,cmplx(0._dp, 0._dp, dp), &
+            Haux(1,1,iEmin), nuotot)
+      end if
+
+#ifdef MPI
+
+      if ( .not. Serial ) then
+        ! We need to define the contexts and matrix descriptors
+        ctxt = diag_get_1d_context()
+        call diag_descinit(nuotot, nuotot, BlockSize, desc, ctxt)
+
+        call pzgemm('N', 'N', nuotot, jo, nuotot, cmplx(1._dp, 0._dp, dp), &
+            Saux(1,1,1), 1, 1, desc, psi(1,1,1), 1, iEmin, desc, &
+            cmplx(0._dp, 0._dp, dp), Haux(1,1,1), 1, iEmin, desc)
+      end if
 
       ! Convert iEmin/iEmax to local indices
       iuo = iEmin
@@ -232,12 +242,6 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
 !!$OMP end parallel
 
 #else
-
-      ! Now perform the matrix-multiplications
-      ! This is: S | psi >
-      call zgemm('N','N',nuotot, jo, nuotot, cmplx(1._dp, 0._dp, dp), &
-          Saux(1,1,1),nuotot, psi(1,1,iEmin),nuotot,cmplx(0._dp, 0._dp, dp), &
-          Haux(1,1,iEmin), nuotot)
 
 !!$OMP parallel default(none) shared(Haux,psi,dtot,dpr,iEmin,iEmax,inv_sigma2) &
 !!$OMP& shared(nhist,Node,Nodes,eo,limit,wk,nuotot,nuo,ispin,ik,delta,e1) &
