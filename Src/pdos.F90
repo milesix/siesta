@@ -5,10 +5,10 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-subroutine pdos( NO, nspin, maxspn, NO_L, MAXNH, &
+subroutine pdos( NO, nspin, NO_L, MAXNH, &
     MAXO, NUMH, LISTHPTR, LISTH, H, S, &
     E1, E2, SIGMA, NHIST, &
-    XIJ, INDXUO, GAMMA, NK, KPOINT, WK, EO, NO_U )
+    XIJ, INDXUO, GAMMA, NK, KPOINT, WK, NO_U )
   ! **********************************************************************
   ! Subroutine to calculate the projected density of states on the
   ! atomic orbitals for a given eigenvalue spectra
@@ -16,7 +16,6 @@ subroutine pdos( NO, nspin, maxspn, NO_L, MAXNH, &
   ! ***********  INPUT  **************************************************
   ! INTEGER NO                  : Number of basis orbitals in the supercell
   ! integer nspin=h_spin_dim    : Number of spin components of H and D
-  ! integer maxspn=spinor_dim   : Number of spin components of eo
   ! INTEGER NO_L                : Maximum number of atomic orbitals in the unit 
   !                               cell. First dimension of eo, qo, last of xij
   !                               Must be at least max(indxuo)
@@ -47,7 +46,6 @@ subroutine pdos( NO, nspin, maxspn, NO_L, MAXNH, &
   ! INTEGER NK                  : Number of k points
   ! REAL*8  KPOINT(3,NK)        : k point vectors
   ! REAL*8  WK(NK)              : k point weights (must sum one)
-  ! REAL*8  EO(NO_L,maxspn,NK) : Eigenvalues
   ! INTEGER NO_U              : Total number of orbitals in unit cell
   ! **********************************************************************
 
@@ -76,13 +74,13 @@ subroutine pdos( NO, nspin, maxspn, NO_L, MAXNH, &
 
   implicit none
 
-  integer :: NO, NSPIN, MAXSPN, NO_L, MAXNH, NK, NHIST, MAXO, NO_U
+  integer :: NO, NSPIN, NO_L, MAXNH, NK, NHIST, MAXO, NO_U
 
   logical, intent(in) :: Gamma
   integer :: NUMH(*), LISTH(MAXNH), LISTHPTR(*), INDXUO(NO)
 
   real(dp) :: H(MAXNH,NSPIN), S(MAXNH), E1, E2, SIGMA, &
-      XIJ(3,MAXNH), KPOINT(3,NK), WK(NK), EO(MAXO,MAXSPN,NK)
+      XIJ(3,MAXNH), KPOINT(3,NK), WK(NK)
 
   ! Dynamic arrays -------------------------------------------------------
   real(dp), dimension(:,:)  , pointer :: DTOT
@@ -140,7 +138,7 @@ subroutine pdos( NO, nspin, maxspn, NO_L, MAXNH, &
   ! Check internal dimensions --------------------------------------------
   if ( nspin.le.2 .and. gamma) then
     nhs  = no_u * nuo
-    npsi = no_u * no_l * maxspn
+    npsi = no_u * no_l * nspin
   elseif ( nspin.le.2 .and. .not.gamma) then
     if (ParallelOverK) then
       nhs  = 2 * no_u * no_u
@@ -176,45 +174,45 @@ subroutine pdos( NO, nspin, maxspn, NO_L, MAXNH, &
 
   !  Call appropiate routine ----------------------------------------------
   if (nspin.le.2 .and. gamma) then
-    call pdosg( nspin, NUO, NO, maxspn, MAXNH, &
+    call pdosg( nspin, NUO, NO, MAXNH, &
         MAXO, NUMH, LISTHPTR, LISTH, H, S, &
-        E1, E2, NHIST, SIGMA, INDXUO, EO, &
+        E1, E2, NHIST, SIGMA, INDXUO, &
         HAUX, SAUX, PSI, DTOT, DPR, NO_U )
   elseif ( nspin.le.2 .and. .not.gamma) then
     if (ParallelOverK) then
-      call pdoskp( nspin, NUO, NO, maxspn, MAXNH, &
+      call pdoskp( nspin, NUO, NO, MAXNH, &
           MAXO, NUMH, LISTHPTR, LISTH, H, S, &
           E1, E2, NHIST, SIGMA, &
-          XIJ, INDXUO, NK, KPOINT, WK, EO, &
+          XIJ, INDXUO, NK, KPOINT, WK, &
           HAUX, SAUX, PSI, DTOT, DPR, NO_U )
     else
-      call pdosk( nspin, NUO, NO, maxspn, MAXNH, &
+      call pdosk( nspin, NUO, NO, MAXNH, &
           MAXO, NUMH, LISTHPTR, LISTH, H, S, &
           E1, E2, NHIST, SIGMA, &
-          XIJ, INDXUO, NK, KPOINT, WK, EO, &
+          XIJ, INDXUO, NK, KPOINT, WK, &
           HAUX, SAUX, PSI, DTOT, DPR, NO_U )
     endif
   elseif (nspin == 4 .and. gamma) then
     call pdos2g( NUO, NO, NO_L, MAXNH, &
         MAXO, NUMH, LISTHPTR, LISTH, H, S, &
-        E1, E2, NHIST, SIGMA, INDXUO, EO, &
+        E1, E2, NHIST, SIGMA, INDXUO, &
         HAUX, SAUX, PSI, DTOT, DPR, NO_U )
   elseif (nspin == 4 .and. .not. gamma) then
     call pdos2k( NUO, NO, NO_L, MAXNH, &
         MAXO, NUMH, LISTHPTR, LISTH, H, S, &
         E1, E2, NHIST, SIGMA, &
-        XIJ, INDXUO, NK, KPOINT, WK, EO, &
+        XIJ, INDXUO, NK, KPOINT, WK, &
         HAUX, SAUX, PSI, DTOT, DPR, NO_U )
   elseif (nspin == 8 .and. gamma) then
     call pdos3g( NUO, NO, NO_L, MAXNH, &
         MAXO, NUMH, LISTHPTR, LISTH, H, S, &
-        E1, E2, NHIST, SIGMA, INDXUO, EO, &
+        E1, E2, NHIST, SIGMA, INDXUO, &
         HAUX, SAUX, PSI, DTOT, DPR, NO_U )
   elseif (nspin == 8 .and. .not. gamma) then
     call pdos3k( NUO, NO, NO_L, MAXNH, &
         MAXO, NUMH, LISTHPTR, LISTH, H, S, &
         E1, E2, NHIST, SIGMA, &
-        XIJ, INDXUO, NK, KPOINT, WK, EO, &
+        XIJ, INDXUO, NK, KPOINT, WK, &
         HAUX, SAUX, PSI, DTOT, DPR, NO_U )
   end if
 

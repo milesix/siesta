@@ -62,7 +62,6 @@ contains
     use Kpoint_pdos_m, only: kpoint_pdos, gamma_pdos
     use parallel,    only: IOnode
     use m_energies, only: Ef
-    use m_eo
     use m_spin,      only: h_spin_dim, spinor_dim
     use units,       only: eV
       
@@ -130,15 +129,10 @@ contains
             e1/eV, e2/eV, sigma/eV, nhist
       end if
 
-      ! If the k points have been set specifically for the PDOS then use this set
-      if ( kpoint_pdos%N > kpoint_scf%N ) then
-        call re_alloc(eo,1,no_u,1,spinor_dim,1,kpoint_pdos%N,name="eo", routine="projected_dos")
-      end if
-      
-      call pdos( no_s, h_spin_dim, spinor_dim, no_l, &
+      call pdos( no_s, h_spin_dim, no_l, &
           maxnh, no_u, numh, listhptr, listh, H, S, &
           e1, e2, sigma, nhist, xijo, indxuo, gamma_pdos, &
-          kpoint_pdos%N, kpoint_pdos%k, kpoint_pdos%w, eo, no_u)
+          kpoint_pdos%N, kpoint_pdos%k, kpoint_pdos%w, no_u)
 
     else
 

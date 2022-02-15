@@ -7,7 +7,7 @@
 !
 subroutine pdos2g( nuo, no, maxuo, maxnh, &
     maxo, numh, listhptr, listh, H, S, &
-    E1, E2, nhist, sigma, indxuo, eo, &
+    E1, E2, nhist, sigma, indxuo, &
     haux, saux, psi, dtot, dpr, nuotot )
 
   ! **********************************************************************
@@ -40,7 +40,6 @@ subroutine pdos2g( nuo, no, maxuo, maxnh, &
   ! integer nhist             : Number of the subdivisions of the histogram
   ! real*8  sigma             : Width of the gaussian to expand the eigenvectors
   ! integer indxuo(no)        : Index of equivalent orbital in unit cell
-  ! real*8  eo(maxo*2)   : Eigenvalues
   ! integer nuotot            : Total number of orbitals per unit cell
   ! ****  AUXILIARY  *****************************************************
   ! complex*16  haux(2,nuotot,2,nuo)     : Auxiliary space for the hamiltonian matrix
@@ -69,7 +68,7 @@ subroutine pdos2g( nuo, no, maxuo, maxnh, &
 
   integer :: numh(nuo), listhptr(nuo), listh(maxnh), indxuo(no)
 
-  real(dp) :: H(maxnh,4), S(maxnh), E1, E2, sigma, eo(maxo*2), &
+  real(dp) :: H(maxnh,4), S(maxnh), E1, E2, sigma, &
       dtot(4,nhist), dpr(4,nuotot,nhist)
   complex(dp) :: psi(2,nuotot,2,nuo)
   complex(dp) Haux(2,nuotot,2,nuo), Saux(2,nuotot,2,nuo)
@@ -79,7 +78,7 @@ subroutine pdos2g( nuo, no, maxuo, maxnh, &
   integer :: iEmin, iEmax
   integer :: nuo2, nuotot2, BlockSize2
 
-  real(dp) :: delta, ener, diff, gauss, norm, wksum
+  real(dp) :: eo(maxo*2), delta, ener, diff, gauss, norm, wksum
   real(dp) :: limit, inv_sigma2
   real(dp) :: D1, D2
 

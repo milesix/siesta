@@ -5,9 +5,9 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
+subroutine pdosg( nspin, nuo, no, maxnh, &
     maxo, numh, listhptr, listh, H, S, &
-    E1, E2, nhist, sigma, indxuo, eo, &
+    E1, E2, nhist, sigma, indxuo, &
     haux, saux, psi, dtot, dpr, nuotot )
   ! **********************************************************************
   ! Find the density of states projected onto the atomic orbitals
@@ -20,8 +20,6 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
   ! integer nspin             : Number of spin components (1 or 2)
   ! integer nuo               : Number of atomic orbitals in the unit cell
   ! integer no                : Number of atomic orbitals in the supercell
-  ! integer maxspn            : Second dimension of eo and qo 
-  !                             (maximum number of differents spin polarizations)
   ! integer maxnh             : Maximum number of orbitals interacting
   !                             with any orbital
   ! integer maxo              : First dimension of eo
@@ -39,7 +37,6 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
   ! integer nhist             : Number of the subdivisions of the histogram
   ! real*8  sigma             : Width of the gaussian to expand the eigenvectors
   ! integer indxuo(no)        : Index of equivalent orbital in unit cell
-  ! real*8  eo(maxo,maxspn)   : Eigenvalues
   ! integer nuotot            : Total number of orbitals per unit cell
   ! ****  AUXILIARY  *****************************************************
   ! real*8  haux(nuo,nuo)     : Auxiliary space for the hamiltonian matrix
@@ -64,11 +61,11 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
 
   implicit none
 
-  integer :: nspin, nuo, no, maxspn, maxnh, maxo, nhist, nuotot
+  integer :: nspin, nuo, no, maxnh, maxo, nhist, nuotot
 
   integer :: numh(nuo), listhptr(nuo), listh(maxnh), indxuo(no)
 
-  real(dp) :: H(maxnh,nspin), S(maxnh), E1, E2, sigma, eo(maxo,maxspn), &
+  real(dp) :: H(maxnh,nspin), S(maxnh), E1, E2, sigma, &
       haux(nuotot,nuo), saux(nuotot,nuo), psi(nuotot,nuo), &
       dtot(nhist,nspin), dpr(nuotot,nhist,nspin)
 
@@ -76,7 +73,7 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
   integer :: ispin, iuo, juo, j, jo, ihist, iband, ind, ierror
   integer :: iEmin, iEmax
 
-  real(dp) :: delta, ener, diff, gauss, norm
+  real(dp) :: eo(maxo), delta, ener, diff, gauss, norm
   real(dp) :: limit, inv_sigma2
 
 #ifdef MPI
@@ -102,7 +99,7 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
     call setup_Gamma()
 
     ! Diagonalize at the Gamma point
-    call rdiag( haux, saux, nuotot, nuo, nuotot, eo(1,ispin), &
+    call rdiag( haux, saux, nuotot, nuo, nuotot, eo, &
         psi, nuotot, 1, ierror, BlockSize)
 
     ! Check error flag and take appropriate action
@@ -110,7 +107,7 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
       call die('Terminating due to failed diagonalisation')
     elseif ( ierror < 0 ) then
       call setup_Gamma()
-      call rdiag( haux, saux, nuotot, nuo, nuotot, eo(1,ispin), &
+      call rdiag( haux, saux, nuotot, nuo, nuotot, eo, &
           psi, nuotot, 1, ierror, BlockSize)
     endif
 
@@ -119,7 +116,7 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
     ! Note, eo *MUST* be sorted. This is ensured by lapack/scalapack.
     iEmin = 1
     do jo = 1, nuotot
-      diff = abs(E1 - EO(jo,ispin))
+      diff = abs(E1 - EO(jo))
       if ( diff < limit ) then
         iEmin = jo
         exit
@@ -128,7 +125,7 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
 
     iEmax = nuotot
     do jo = nuotot, 1, -1
-      diff = abs(E2 - EO(jo,ispin))
+      diff = abs(E2 - EO(jo))
       if ( diff < limit ) then
         iEmax = jo
         exit
@@ -161,6 +158,7 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
     if ( .not. Serial ) then
       ! We need to define the contexts and matrix descriptors
       ctxt = diag_get_1d_context()
+      write(6,*) 'pdosg.F90: ctxt=', ctxt
       call diag_descinit(nuotot, nuotot, BlockSize, desc, ctxt)
 
       call pdgemm('N', 'N', nuotot, jo, nuotot, 1._dp, &
@@ -213,7 +211,7 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
       do iband = iEmin, iEmax
         ! the energy comes from the global array
         call LocalToGlobalOrb(iband, Node, Nodes, j)
-        diff = abs(ener - eo(j,ispin))
+        diff = abs(ener - eo(j))
           
         if ( diff < limit ) then
           gauss = exp(-diff**2*inv_sigma2)
@@ -253,7 +251,7 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
     do ihist = 1, nhist
       ener = E1 + (ihist - 1) * delta
       do iband = iEmin, iEmax
-        diff = abs(ener - eo(iband,ispin))
+        diff = abs(ener - eo(iband))
           
         if ( diff < limit ) then
           gauss = exp(-diff**2*inv_sigma2)

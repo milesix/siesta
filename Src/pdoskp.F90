@@ -5,10 +5,10 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-subroutine pdoskp(nspin, nuo, no, maxspn, maxnh, &
+subroutine pdoskp(nspin, nuo, no, maxnh, &
     maxo, numh, listhptr, listh, H, S, &
     E1, E2, nhist, sigma, &
-    xij, indxuo, nk, kpoint, wk, eo, &
+    xij, indxuo, nk, kpoint, wk, &
     Haux, Saux, psi, dtot, dpr, nuotot )
 
   ! **********************************************************************
@@ -22,8 +22,6 @@ subroutine pdoskp(nspin, nuo, no, maxspn, maxnh, &
   ! integer nspin             : Number of spin components (1 or 2)
   ! integer nuo               : Number of atomic orbitals in the unit cell
   ! integer NO                : Number of atomic orbitals in the supercell
-  ! integer maxspn            : Second dimension of eo and qo 
-  !                             (maximum number of differents spin polarizations)
   ! integer maxnh             : Maximum number of orbitals interacting
   !                             with any orbital
   ! integer maxo              : First dimension of eo
@@ -46,7 +44,6 @@ subroutine pdoskp(nspin, nuo, no, maxspn, maxnh, &
   ! integer nk                : Number of k points
   ! real*8  kpoint(3,nk)      : k point vectors
   ! real*8  wk(nk)            : Weights for k points
-  ! real*8  eo(maxo,maxspn,nk): Eigenvalues
   ! integer nuotot            : Total number of orbitals per unit cell
   ! ****  AUXILIARY  *****************************************************
   ! real*8  Haux(2,nuotot,nuo)   : Auxiliary space for the hamiltonian matrix
@@ -76,7 +73,7 @@ subroutine pdoskp(nspin, nuo, no, maxspn, maxnh, &
   integer :: numh(nuo), listhptr(nuo), listh(maxnh), indxuo(no)
 
   real(dp) :: H(maxnh,nspin), S(maxnh), E1, E2, sigma, &
-      xij(3,maxnh), kpoint(3,nk), eo(maxo,maxspn,nk), &
+      xij(3,maxnh), kpoint(3,nk), &
       Haux(2,nuotot,nuotot), Saux(2,nuotot,nuotot), &
       psi(2,nuotot,nuotot), &
       dtot(nhist,nspin), dpr(nuotot,nhist,nspin), wk(nk)
@@ -88,7 +85,7 @@ subroutine pdoskp(nspin, nuo, no, maxspn, maxnh, &
 
   integer, dimension(:), pointer :: numhg, listhptrg, listhg
 
-  real(dp) :: kxij, Ckxij, Skxij, delta, ener, diff
+  real(dp) :: eo(maxo), kxij, Ckxij, Skxij, delta, ener, diff
   real(dp) :: gauss, norm, wksum
   real(dp) :: limit, inv_sigma2
 
@@ -204,7 +201,7 @@ subroutine pdoskp(nspin, nuo, no, maxspn, maxnh, &
 
       ! Diagonalize for each k point
       call cdiag( Haux, Saux, nuotot, nuog, nuotot, &
-          eo(1,ispin,ik), psi, nuotot, 1, ierror, -1) !dummy blocksize
+          eo, psi, nuotot, 1, ierror, -1) !dummy blocksize
 
       ! Check error flag and take appropriate action
       if ( ierror > 0 ) then
@@ -214,7 +211,7 @@ subroutine pdoskp(nspin, nuo, no, maxspn, maxnh, &
         ! Repeat diagonalisation with increased memory to handle clustering
         call setup_k(kpoint(:,ik))
         call cdiag( Haux, Saux, nuotot, nuog, nuotot, &
-            eo(1,ispin,ik), psi, nuotot, 1, ierror, -1) !dummy blocksize
+            eo, psi, nuotot, 1, ierror, -1) !dummy blocksize
       end if
 
       ! Figure out the minimum and maximum eigenstates that will contribute
@@ -222,7 +219,7 @@ subroutine pdoskp(nspin, nuo, no, maxspn, maxnh, &
       ! Note, eo *MUST* be sorted. This is ensured by lapack/scalapack.
       iEmin = 1
       do jo = 1, nuotot
-        diff = abs(E1 - EO(jo,ispin,IK))
+        diff = abs(E1 - EO(jo))
         if ( diff < limit ) then
           iEmin = jo
           exit
@@ -231,7 +228,7 @@ subroutine pdoskp(nspin, nuo, no, maxspn, maxnh, &
 
       iEmax = nuotot
       do jo = nuotot, 1, -1
-        diff = abs(E2 - EO(jo,ispin,IK))
+        diff = abs(E2 - EO(jo))
         if ( diff < limit ) then
           iEmax = jo
           exit
@@ -276,7 +273,7 @@ subroutine pdoskp(nspin, nuo, no, maxspn, maxnh, &
       do ihist = 1, nhist
         ener = E1 + (ihist - 1) * delta
         do iband = iEmin, iEmax
-          diff = abs(ener - eo(iband,ispin,ik))
+          diff = abs(ener - eo(iband))
           
           if ( diff < limit ) then
             gauss = exp(-diff**2*inv_sigma2) * wk(ik)
