@@ -60,6 +60,7 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
 #endif
   use sys,          only : die
   use m_diag, only: diag_get_1d_context, diag_descinit
+  use m_diag_option, only: Serial
 
   implicit none
 
@@ -146,123 +147,127 @@ subroutine pdosg( nspin, nuo, no, maxspn, maxnh, &
     ! Total number of elements calculated (jo is allowed to be 0)
     jo = iEmax - iEmin + 1
 
+    ! Now perform the matrix-multiplications
+    ! This is: S | psi >
+
+    if ( Serial ) then
+      call dgemm('N','N',nuotot, jo, nuotot, 1._dp, &
+          Saux(1,1), nuotot, psi(1,iEmin),nuotot, 0._dp, &
+          Haux(1,iEmin), nuotot)
+    end if
+
 #ifdef MPI
 
-    ! We need to define the contexts and matrix descriptors
+    if ( .not. Serial ) then
+      ! We need to define the contexts and matrix descriptors
       ctxt = diag_get_1d_context()
       call diag_descinit(nuotot, nuotot, BlockSize, desc, ctxt)
 
-      ! Now perform the matrix-multiplications
-      ! This is: S | psi >
       call pdgemm('N', 'N', nuotot, jo, nuotot, 1._dp, &
           Saux(1,1), 1, 1, desc, psi(1,1), 1, iEmin, desc, &
           0._dp, Haux(1,1), 1, iEmin, desc)
+    end if
 
-      ! Convert iEmin/iEmax to local indices
-      iuo = iEmin
-      juo = iEmax
-      ! reset
-      iEmin = 1
-      iEmax = 0
-      do jo = 1, nuo
-        call LocalToGlobalOrb(jo, Node, Nodes, j)
-        if ( iuo <= j ) then
-          ! lowest point where we have this orbital
-          iEmin = jo
-          exit
-        end if
-      end do
-      do jo = nuo, 1, -1
-        call LocalToGlobalOrb(jo, Node, Nodes, j)
-        if ( j <= juo ) then
-          iEmax = jo
-          exit
-        end if
-      end do
+    ! Convert iEmin/iEmax to local indices
+    iuo = iEmin
+    juo = iEmax
+    ! reset
+    iEmin = 1
+    iEmax = 0
+    do jo = 1, nuo
+      call LocalToGlobalOrb(jo, Node, Nodes, j)
+      if ( iuo <= j ) then
+        ! lowest point where we have this orbital
+        iEmin = jo
+        exit
+      end if
+    end do
+    do jo = nuo, 1, -1
+      call LocalToGlobalOrb(jo, Node, Nodes, j)
+      if ( j <= juo ) then
+        iEmax = jo
+        exit
+      end if
+    end do
 
-      ! Now iEmin, iEmax are local indices
+    ! Now iEmin, iEmax are local indices
 
 !!$OMP parallel default(none) shared(Haux,psi,dtot,dpr,iEmin,iEmax,inv_sigma2) &
 !!$OMP& shared(nhist,Node,Nodes,eo,limit,nuotot,nuo,ispin,delta,e1) &
 !!$OMP& private(jo,iuo,ihist,ener,iband,diff,gauss,j)
 
-      ! Ensure we multiply with the local nodes complex conjugate
-      ! This is the final step of < psi | S | psi >
-      ! but doing it element wise, rather than a dot-product
+    ! Ensure we multiply with the local nodes complex conjugate
+    ! This is the final step of < psi | S | psi >
+    ! but doing it element wise, rather than a dot-product
 !!$OMP do schedule(static)
-      do jo = iEmin, iEmax
-        do iuo = 1, nuotot
-          Haux(iuo,jo) = psi(iuo,jo) * Haux(iuo,jo)
-        end do
+    do jo = iEmin, iEmax
+      do iuo = 1, nuotot
+        Haux(iuo,jo) = psi(iuo,jo) * Haux(iuo,jo)
       end do
+    end do
 !!$OMP end do
 
 !!$OMP do schedule(static,16)
-      do ihist = 1, nhist
-        ener = E1 + (ihist - 1) * delta
-        do iband = iEmin, iEmax
-          ! the energy comes from the global array
-          call LocalToGlobalOrb(iband, Node, Nodes, j)
-          diff = abs(ener - eo(j,ispin))
+    do ihist = 1, nhist
+      ener = E1 + (ihist - 1) * delta
+      do iband = iEmin, iEmax
+        ! the energy comes from the global array
+        call LocalToGlobalOrb(iband, Node, Nodes, j)
+        diff = abs(ener - eo(j,ispin))
           
-          if ( diff < limit ) then
-            gauss = exp(-diff**2*inv_sigma2)
-            dtot(ihist,ispin) = dtot(ihist,ispin) + gauss
-            ! When OMP is inserted, this should still work fine since
-            ! BLAS does not fork threads that are already forked.
-            ! However, this should be carefully checked, and possibly be able
-            ! to switch off the behaviour. I do know that ELPA does the same,
-            ! so perhaps it is fine in generic situations after all.
-            call daxpy(nuotot,gauss,Haux(1,iband),1,dpr(1,ihist,ispin),1)
-          end if
+        if ( diff < limit ) then
+          gauss = exp(-diff**2*inv_sigma2)
+          dtot(ihist,ispin) = dtot(ihist,ispin) + gauss
+          ! When OMP is inserted, this should still work fine since
+          ! BLAS does not fork threads that are already forked.
+          ! However, this should be carefully checked, and possibly be able
+          ! to switch off the behaviour. I do know that ELPA does the same,
+          ! so perhaps it is fine in generic situations after all.
+          call daxpy(nuotot,gauss,Haux(1,iband),1,dpr(1,ihist,ispin),1)
+        end if
           
-        end do
       end do
+    end do
 !!$OMP end do nowait
 
 !!$OMP end parallel
 
 #else
-      ! Now perform the matrix-multiplications
-      ! This is: S | psi >
-      call dgemm('N','N',nuotot, jo, nuotot, 1._dp, &
-          Saux(1,1), nuotot, psi(1,iEmin),nuotot, 0._dp, &
-          Haux(1,iEmin), nuotot)
 
 !!$OMP parallel default(none) shared(Haux,psi,dtot,dpr,iEmin,iEmax,inv_sigma2) &
 !!$OMP& shared(nhist,Node,Nodes,eo,limit,nuotot,nuo,ispin,delta,e1) &
 !!$OMP& private(jo,iuo,ihist,ener,iband,diff,gauss,j)
 
-      ! Ensure we multiply with the local nodes complex conjugate
-      ! This is the final step of < psi | S | psi >
-      ! but doing it element wise, rather than a dot-product
+    ! Ensure we multiply with the local nodes complex conjugate
+    ! This is the final step of < psi | S | psi >
+    ! but doing it element wise, rather than a dot-product
 !!$OMP do schedule(static)
-      do jo = iEmin, iEmax
-        do iuo = 1, nuotot
-          Haux(iuo,jo) = psi(iuo,jo) * Haux(iuo,jo)
-        end do
+    do jo = iEmin, iEmax
+      do iuo = 1, nuotot
+        Haux(iuo,jo) = psi(iuo,jo) * Haux(iuo,jo)
       end do
+    end do
 !!$OMP end do
 
 !!$OMP do schedule(static,16)
-      do ihist = 1, nhist
-        ener = E1 + (ihist - 1) * delta
-        do iband = iEmin, iEmax
-          diff = abs(ener - eo(iband,ispin))
+    do ihist = 1, nhist
+      ener = E1 + (ihist - 1) * delta
+      do iband = iEmin, iEmax
+        diff = abs(ener - eo(iband,ispin))
           
-          if ( diff < limit ) then
-            gauss = exp(-diff**2*inv_sigma2)
-            dtot(ihist,ispin) = dtot(ihist,ispin) + gauss
-            ! When OMP is inserted, this should still work fine since
-            ! BLAS does not fork threads that are already forked.
-            ! However, this should be carefully checked, and possibly be able
-            ! to switch off the behaviour. I do know that ELPA does the same,
-            ! so perhaps it is fine in generic situations after all.
-            call daxpy(nuotot,gauss,Haux(1,iband),1,dpr(1,ihist,ispin),1)
-          end if
+        if ( diff < limit ) then
+          gauss = exp(-diff**2*inv_sigma2)
+          dtot(ihist,ispin) = dtot(ihist,ispin) + gauss
+          ! When OMP is inserted, this should still work fine since
+          ! BLAS does not fork threads that are already forked.
+          ! However, this should be carefully checked, and possibly be able
+          ! to switch off the behaviour. I do know that ELPA does the same,
+          ! so perhaps it is fine in generic situations after all.
+          call daxpy(nuotot,gauss,Haux(1,iband),1,dpr(1,ihist,ispin),1)
+        end if
           
-        end do
       end do
+    end do
 !!$OMP end do nowait
 
 !!$OMP end parallel
