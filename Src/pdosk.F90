@@ -5,10 +5,10 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
+subroutine pdosk( nspin, nuo, no, maxnh, &
     maxo, numh, listhptr, listh, H, S, &
     E1, E2, nhist, sigma, &
-    xij, indxuo, nk, kpoint, wk, eo, &
+    xij, indxuo, nk, kpoint, wk, &
     Haux, Saux, psi, dtot, dpr, nuotot )
 
   ! **********************************************************************
@@ -21,8 +21,6 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
   ! INTEGER nspin             : Number of spin components (1 or 2)
   ! INTEGER nuo               : Number of atomic orbitals in the unit cell
   ! INTEGER NO                : Number of atomic orbitals in the supercell
-  ! INTEGER maxspn            : Second dimension of eo and qo 
-  !                             (maximum number of differents spin polarizations)
   ! INTEGER maxnh             : Maximum number of orbitals interacting
   !                             with any orbital
   ! INTEGER maxo              : First dimension of eo
@@ -45,7 +43,6 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
   ! INTEGER NK                : Number of k points
   ! REAL*8  kpoint(3,nk)      : k point vectors
   ! REAL*8  WK(nk)            : Weights for k points
-  ! REAL*8  EO(maxo,maxspn,nk): Eigenvalues
   ! INTEGER nuotot            : Total number of orbitals per unit cell
   ! ****  AUXILIARY  *****************************************************
   ! REAL*8  Haux(2,nuo,nuo)   : Auxiliary space for the hamiltonian matrix
@@ -70,11 +67,11 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
 
   implicit none
 
-  integer :: nspin, nuo, no, maxspn, maxnh, NK, maxo, nhist, nuotot
+  integer :: nspin, nuo, no, maxnh, NK, maxo, nhist, nuotot
 
   integer :: numh(nuo), listhptr(nuo), listh(maxnh), indxuo(no)
   real(dp) :: H(maxnh,nspin), S(maxnh), E1, E2, sigma, &
-      xij(3,maxnh), kpoint(3,nk), eo(maxo,maxspn,nk), &
+      xij(3,maxnh), kpoint(3,nk),  &
       Haux(2,nuotot,nuo), Saux(2,nuotot,nuo), psi(2,nuotot,nuo), &
       dtot(nhist,nspin), dpr(nuotot,nhist,nspin), wk(nk)
 
@@ -82,7 +79,7 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
   integer :: ik, ispin, iuo, juo, J, JO, ihist, iband, ind, ierror
   integer :: iEmin, iEmax
 
-  real(dp) :: delta, ener, diff, gauss, norm, wksum
+  real(dp) :: eo(maxo), delta, ener, diff, gauss, norm, wksum
   real(dp) :: limit, inv_sigma2
 
 #ifdef MPI
@@ -115,7 +112,7 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
 
       ! Diagonalize for each k point
       call cdiag( Haux, Saux, nuotot, nuo, nuotot, &
-          eo(1,ispin,IK), psi, nuotot, 1, ierror, BlockSize)
+          eo, psi, nuotot, 1, ierror, BlockSize)
 
       ! Check error flag and take appropriate action
       if ( ierror > 0 ) then
@@ -123,7 +120,7 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
       else if ( ierror < 0 ) then
         call setup_k(kpoint(:,ik))
         call cdiag( Haux, Saux, nuotot, nuo, nuotot, &
-            eo(1,ispin,IK), psi, nuotot, 1, ierror, BlockSize )
+            eo, psi, nuotot, 1, ierror, BlockSize )
       end if
 
       ! Figure out the minimum and maximum eigenstates that will contribute
@@ -131,7 +128,7 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
       ! Note, eo *MUST* be sorted. This is ensured by lapack/scalapack.
       iEmin = 1
       do jo = 1, nuotot
-        diff = abs(E1 - EO(jo,ispin,IK))
+        diff = abs(E1 - EO(jo))
         if ( diff < limit ) then
           iEmin = jo
           exit
@@ -140,7 +137,7 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
 
       iEmax = nuotot
       do jo = nuotot, 1, -1
-        diff = abs(E2 - EO(jo,ispin,IK))
+        diff = abs(E2 - EO(jo))
         if ( diff < limit ) then
           iEmax = jo
           exit
@@ -225,7 +222,7 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
         do iband = iEmin, iEmax
           ! the energy comes from the global array
           call LocalToGlobalOrb(iband, Node, Nodes, j)
-          diff = abs(ener - eo(j,ispin,ik))
+          diff = abs(ener - eo(j))
           
           if ( diff < limit ) then
             gauss = exp(-diff**2*inv_sigma2) * wk(ik)
@@ -262,7 +259,7 @@ subroutine pdosk( nspin, nuo, no, maxspn, maxnh, &
       do ihist = 1, nhist
         ener = E1 + (ihist - 1) * delta
         do iband = iEmin, iEmax
-          diff = abs(ener - eo(iband,ispin,ik))
+          diff = abs(ener - eo(iband))
           
           if ( diff < limit ) then
             gauss = exp(-diff**2*inv_sigma2) * wk(ik)

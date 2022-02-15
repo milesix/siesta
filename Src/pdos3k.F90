@@ -8,7 +8,7 @@
 subroutine pdos3k( nuo, no, maxuo, maxnh, &
     maxo, numh, listhptr, listh, H, S, &
     E1, E2, nhist, sigma, &
-    xij, indxuo, nk, kpoint, wk, eo, &
+    xij, indxuo, nk, kpoint, wk, &
     Haux, Saux, psi, dtot, dpr, nuotot )
 
   ! **********************************************************************
@@ -44,7 +44,6 @@ subroutine pdos3k( nuo, no, maxuo, maxnh, &
   ! INTEGER NK                : Number of k points
   ! REAL*8  KPOINT(3,NK)      : k point vectors
   ! REAL*8  WK(NK)            : Weights for k points
-  ! REAL*8  EO(MAXO*2,NK): Eigenvalues
   ! INTEGER NUOTOT            : Total number of orbitals per unit cell
   ! ****  AUXILIARY  *****************************************************
   ! complex*16  HAUX(2,NUOTOT,2,NUO)   : Auxiliary space for the hamiltonian matrix
@@ -73,7 +72,7 @@ subroutine pdos3k( nuo, no, maxuo, maxnh, &
   integer :: numh(nuo), listhptr(nuo), listh(maxnh), indxuo(no)
 
   real(dp) :: H(maxnh,8), S(maxnh), E1, E2, sigma, &
-      xij(3,maxnh), kpoint(3,nk), eo(maxo*2,nk), &
+      xij(3,maxnh), kpoint(3,nk), &
       dtot(4,nhist), dpr(4,nuotot,nhist), wk(nk)
   complex(dp) :: Haux(2,nuotot,2,nuo), Saux(2,nuotot,2,nuo)
   complex(dp) :: psi(2,nuotot,2,nuo)
@@ -83,7 +82,7 @@ subroutine pdos3k( nuo, no, maxuo, maxnh, &
   integer :: iEmin, iEmax
   integer :: nuo2, nuotot2, BlockSize2
 
-  real(dp) :: delta, ener, diff, gauss, norm, wksum
+  real(dp) :: eo(maxo*2), delta, ener, diff, gauss, norm, wksum
   real(dp) :: limit, inv_sigma2
   real(dp) :: D1, D2
 
@@ -114,7 +113,7 @@ subroutine pdos3k( nuo, no, maxuo, maxnh, &
 
     ! Diagonalize for each k point. Note duplication of problem size
     call cdiag( Haux, Saux, nuotot2, nuo2, nuotot2, &
-        eo(:,ik), psi, nuotot2, 1, ierror, BlockSize2 )
+        eo, psi, nuotot2, 1, ierror, BlockSize2 )
 
     if ( ierror > 0 ) then
       call die('Terminating due to failed diagonalisation')
@@ -125,7 +124,7 @@ subroutine pdos3k( nuo, no, maxuo, maxnh, &
       call setup_k(kpoint(:,ik))
 
       call cdiag( Haux, Saux, nuotot2, nuo2, nuotot2, &
-          eo(:,ik), psi, nuotot2, 1, ierror, BlockSize2 )
+          eo, psi, nuotot2, 1, ierror, BlockSize2 )
     endif
 
     ! Figure out the minimum and maximum eigenstates that will contribute
@@ -133,7 +132,7 @@ subroutine pdos3k( nuo, no, maxuo, maxnh, &
     ! Note, eo *MUST* be sorted. This is ensured by lapack/scalapack.
     iEmin = 1
     do jo = 1, nuotot2
-      diff = abs(E1 - EO(jo,ik))
+      diff = abs(E1 - EO(jo))
       if ( diff < limit ) then
         iEmin = jo
         exit
@@ -142,7 +141,7 @@ subroutine pdos3k( nuo, no, maxuo, maxnh, &
 
     iEmax = nuotot2
     do jo = nuotot2, 1, -1
-      diff = abs(E2 - EO(jo,ik))
+      diff = abs(E2 - EO(jo))
       if ( diff < limit ) then
         iEmax = jo
         exit
@@ -256,7 +255,7 @@ subroutine pdos3k( nuo, no, maxuo, maxnh, &
       do iband = iEmin, iEmax
         ! the energy comes from the global array
         call LocalToGlobalOrb(iband, Node, Nodes, j)
-        diff = abs(ener - eo(j*2-1,ik))
+        diff = abs(ener - eo(j*2-1))
 
         ! TODO, this *could* be merged into a single zgemm call with gauss(2), but...
         ! In fact, all of iEmin ... iEmax could be merged to do everything *once*
@@ -268,7 +267,7 @@ subroutine pdos3k( nuo, no, maxuo, maxnh, &
           call daxpy(nuotot*4,gauss,Haux(1,1,1,iband),1,dpr(1,1,ihist),1)
         end if
           
-        diff = abs(ener - eo(j*2,ik))
+        diff = abs(ener - eo(j*2))
         if ( diff < limit ) then
           gauss = exp(-diff**2*inv_sigma2) * wk(ik)
           ! See discussion about daxpy + OMP usage in pdosg.F90
@@ -327,7 +326,7 @@ subroutine pdos3k( nuo, no, maxuo, maxnh, &
       ener = E1 + (ihist - 1) * delta
       do iband = iEmin, iEmax
         ! the energy comes from the global array
-        diff = abs(ener - eo(iband*2-1,ik))
+        diff = abs(ener - eo(iband*2-1))
           
         if ( diff < limit ) then
           gauss = exp(-diff**2*inv_sigma2) * wk(ik)
@@ -335,7 +334,7 @@ subroutine pdos3k( nuo, no, maxuo, maxnh, &
           call daxpy(nuotot*4,gauss,Haux(1,1,1,iband),1,dpr(1,1,ihist),1)
         end if
           
-        diff = abs(ener - eo(iband*2,ik))
+        diff = abs(ener - eo(iband*2))
         if ( diff < limit ) then
           gauss = exp(-diff**2*inv_sigma2) * wk(ik)
           ! See discussion about daxpy + OMP usage in pdosg.F90

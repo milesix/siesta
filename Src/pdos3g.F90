@@ -7,7 +7,7 @@
 !
 subroutine pdos3g( nuo, no, maxuo, maxnh, &
     maxo, numh, listhptr, listh, H, S, &
-    E1, E2, nhist, sigma, indxuo, eo, &
+    E1, E2, nhist, sigma, indxuo, &
     haux, saux, psi, dtot, dpr, nuotot )
 
   ! **********************************************************************
@@ -40,7 +40,6 @@ subroutine pdos3g( nuo, no, maxuo, maxnh, &
   ! integer nhist             : Number of the subdivisions of the histogram
   ! real*8  sigma             : Width of the gaussian to expand the eigenvectors
   ! integer indxuo(no)        : Index of equivalent orbital in unit cell
-  ! real*8  eo(maxo*2)   : Eigenvalues
   ! integer nuotot            : Total number of orbitals per unit cell
   ! ****  AUXILIARY  *****************************************************
   ! complex*16  haux(2,nuotot,2,nuo)     : Auxiliary space for the hamiltonian matrix
