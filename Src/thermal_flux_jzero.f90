@@ -491,8 +491,8 @@ contains
                          end do
                       end do
 
-                      Jznl_alt(1:3) = Jznl_alt(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(mu,nu,1,1) ! only 1st spin component
-                      ! Jznl_alt(1:3) = Jznl_alt(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(iph_mu,iph_nu,1,1) ! only 1st spin component
+                      ! Jznl_alt(1:3) = Jznl_alt(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(mu,nu,1,1) ! only 1st spin component
+                      Jznl_alt(1:3) = Jznl_alt(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(iph_mu,iph_nu,1,1) ! only 1st spin component
                    end do
                 end do
 
