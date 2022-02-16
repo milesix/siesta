@@ -7,10 +7,14 @@ module thermal_flux_jzero
   use atomlist, only: no_u, no_l, iaorb, iphorb
   use sparse_matrices, only: listh, listhptr, numh
 
+  use atm_types,     only : nspecies
+  use atmfuncs,      only : nofis, nkbfis
+
   use matel_mod, only: new_matel
   use thermal_flux_data
 
   implicit none
+  real(dp), allocatable :: rorbmax(:), rkbmax(:)
 
   real(DP), allocatable, save :: tab_local(:,:,:)
   !! One-dimensional table for radial pseudopotential part.
@@ -396,9 +400,34 @@ contains
        enddo
     enddo
     rmax = rmaxo + rmaxkb
+    print*, "[Znl_alt_rmax1]", rmax
+
+    allocate(rorbmax(nspecies),rkbmax(nspecies))
+    do is = 1, nspecies
+
+       ! Species orbital range
+       rorbmax(is) = 0.0_dp
+       do io = 1, nofis(is)
+          rorbmax(is) = max(rorbmax(is), rcut(is,io))
+       enddo
+
+       ! Species KB range
+       io = nkbfis(is)
+       rkbmax(is) = 0.0_dp
+       do ikb = 1, io
+          rkbmax(is) = max(rkbmax(is), rcut(is,-ikb))
+       enddo
+
+    enddo
+    rmaxo = maxval(rorbmax(1:nspecies))
+    rmaxkb = maxval(rkbmax(1:nspecies))
+    ! Calculate max extend
+    rmax = rmaxo + rmaxkb
+    print*, "[Znl_alt_rmax2]", rmax
 
     ! Initialize neighb subroutine
-    call mneighb( scell, 2.0d0*rmaxo, na, xa_in, 0, 0, nnia )
+    ! call mneighb( scell, 2.0d0*rmaxo, na, xa_in, 0, 0, nnia )
+    call mneighb( scell, rmax, na, xa_in, 0, 0, nnia )
 
     Jznl_alt(:) = 0.0_dp
 
@@ -462,8 +491,8 @@ contains
                          end do
                       end do
 
-                      ! Jznl_alt(1:3) = Jznl_alt(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(mu,nu,1,1) ! only 1st spin component
-                      Jznl_alt(1:3) = Jznl_alt(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(iph_mu,iph_nu,1,1) ! only 1st spin component
+                      Jznl_alt(1:3) = Jznl_alt(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(mu,nu,1,1) ! only 1st spin component
+                      ! Jznl_alt(1:3) = Jznl_alt(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(iph_mu,iph_nu,1,1) ! only 1st spin component
                    end do
                 end do
 
