@@ -7,9 +7,6 @@ module thermal_flux_jzero
   use atomlist, only: no_u, no_l, iaorb, iphorb
   use sparse_matrices, only: listh, listhptr, numh
 
-  use atm_types,     only : nspecies
-  use atmfuncs,      only : nofis, nkbfis
-
   use matel_mod, only: new_matel
   use thermal_flux_data
 
@@ -89,7 +86,7 @@ contains
     real(dp) :: rmax, rmaxkb, rmaxo, qa_sp
     integer  :: iio, ind, io, ioa, j, ja, jn, jo, joa, js, jg, nnia, nna, norb, ks, koa, ikb
     integer  :: na, no, nua, nuo, nai, naj
-    real(dp) :: Jznl_alt(3)
+    ! real(dp) :: Jznl_alt(3)
 
     complex(grid_p), dimension (:), pointer :: tc_v => null()
     integer  :: np
@@ -301,71 +298,74 @@ contains
     deallocate(H_g)
     deallocate(tab_local)
 
-    ! This should add NL-part of the zero current
-    !FIXME: For an auxiliary supercell this will be erroneous.
-    !`na_s != na_u` means aux sc is used.
-    jzero_nl: do I_ind=1,na_u
-       R_I(1:3) = xa_in(1:3,I_ind)
-       vel(1:3) = va_in(1:3,I_ind)
+    !NOTE: The following computation omitted in favor of (presumably)
+    !more accurate variant of summation over neighbours of each ionic site.
 
-       do mu=1,no_l
-          iamu = iaorb(mu)
-          is   = isa(iamu)
-          ioa  = iphorb(mu)
-          iph_mu = orb_gindex(is, ioa)
+    ! ! This should add NL-part of the zero current
+    ! !FIXME: For an auxiliary supercell this will be erroneous.
+    ! !`na_s != na_u` means aux sc is used.
+    ! jzero_nl: do I_ind=1,na_u
+    !    R_I(1:3) = xa_in(1:3,I_ind)
+    !    vel(1:3) = va_in(1:3,I_ind)
 
-          R_mu(1:3) = xa_in(1:3,iamu)
+    !    do mu=1,no_l
+    !       iamu = iaorb(mu)
+    !       is   = isa(iamu)
+    !       ioa  = iphorb(mu)
+    !       iph_mu = orb_gindex(is, ioa)
 
-          do nu=1,no_l
-             ianu = iaorb(nu)
-             js   = isa(ianu)
-             joa  = iphorb(nu)
-             iph_nu = orb_gindex(js, joa)
-             ! ianu = iaorb(nu)
-             ! iph_nu = iphorb(nu)
+    !       R_mu(1:3) = xa_in(1:3,iamu)
 
-             R_nu(1:3) = xa_in(1:3,ianu)
+    !       do nu=1,no_l
+    !          ianu = iaorb(nu)
+    !          js   = isa(ianu)
+    !          joa  = iphorb(nu)
+    !          iph_nu = orb_gindex(js, joa)
+    !          ! ianu = iaorb(nu)
+    !          ! iph_nu = iphorb(nu)
 
-             J_tmp(1:3) = 0.0_dp
-             ! is = isa(I_ind)
-             ! spp => species(is)
+    !          R_nu(1:3) = xa_in(1:3,ianu)
 
-             do ikb = lastkb(I_ind-1)+1,lastkb(I_ind)
-                ks = isa(I_ind)
-                koa    = iphKB(ikb)
-                alpha  = kbproj_gindex(ks,koa)
-             ! do inda=1,spp%nprojs
-             !    alpha=spp%pj_gindex(inda)
+    !          J_tmp(1:3) = 0.0_dp
+    !          ! is = isa(I_ind)
+    !          ! spp => species(is)
 
-                do grad_ind = 1,3
-                   call new_MATEL(coord_table(grad_ind), iph_mu, alpha, (R_I(:)-R_mu(:)), val, grad)
-                   tmp_nl = val
+    !          do ikb = lastkb(I_ind-1)+1,lastkb(I_ind)
+    !             ks = isa(I_ind)
+    !             koa    = iphKB(ikb)
+    !             alpha  = kbproj_gindex(ks,koa)
+    !          ! do inda=1,spp%nprojs
+    !          !    alpha=spp%pj_gindex(inda)
 
-                   call new_MATEL(SG(grad_ind), iph_nu, alpha, (R_I(:)-R_nu(:)), val, grad)
+    !             do grad_ind = 1,3
+    !                call new_MATEL(coord_table(grad_ind), iph_mu, alpha, (R_I(:)-R_mu(:)), val, grad)
+    !                tmp_nl = val
 
-                   J_tmp(grad_ind) = J_tmp(grad_ind) - val*tmp_nl*vel(grad_ind)
-                end do
+    !                call new_MATEL(SG(grad_ind), iph_nu, alpha, (R_I(:)-R_nu(:)), val, grad)
 
-                call new_MATEL('S', iph_nu, alpha, (R_I(:)-R_nu(:)), val, grad)
-                tmp_nl = val
+    !                J_tmp(grad_ind) = J_tmp(grad_ind) - val*tmp_nl*vel(grad_ind)
+    !             end do
 
-                do r_ind = 1,3
-                   do grad_ind = 1,3
-                      call new_MATEL(RG(r_ind,grad_ind), iph_mu, alpha, (R_I(:)-R_mu(:)), val, grad)
+    !             call new_MATEL('S', iph_nu, alpha, (R_I(:)-R_nu(:)), val, grad)
+    !             tmp_nl = val
 
-                      J_tmp(r_ind) = J_tmp(r_ind) - val*tmp_nl*vel(grad_ind)
-                   end do
-                end do
+    !             do r_ind = 1,3
+    !                do grad_ind = 1,3
+    !                   call new_MATEL(RG(r_ind,grad_ind), iph_mu, alpha, (R_I(:)-R_mu(:)), val, grad)
 
-             end do
+    !                   J_tmp(r_ind) = J_tmp(r_ind) - val*tmp_nl*vel(grad_ind)
+    !                end do
+    !             end do
 
-             ! gk_results%Jznl(1:3) = gk_results%Jznl(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(mu,nu,1,1) ! only 1st spin component
-             gk_results%Jznl(1:3) = gk_results%Jznl(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(iph_mu,iph_nu,1,1) ! only 1st spin component
-          enddo
-       enddo
-    end do jzero_nl
+    !          end do
 
-    gk_results%Jzero(:) = gk_results%Jzloc(:) + gk_results%Jznl(:)
+    !          ! gk_results%Jznl(1:3) = gk_results%Jznl(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(mu,nu,1,1) ! only 1st spin component
+    !          gk_results%Jznl(1:3) = gk_results%Jznl(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(iph_mu,iph_nu,1,1) ! only 1st spin component
+    !       enddo
+    !    enddo
+    ! end do jzero_nl
+
+    ! gk_results%Jzero(:) = gk_results%Jzloc(:) + gk_results%Jznl(:)
 
 !!!!!
     ! This should really add NL-part of the zero current
@@ -400,38 +400,13 @@ contains
        enddo
     enddo
     rmax = rmaxo + rmaxkb
-    print*, "[Znl_alt_rmax1]", rmax
-
-    allocate(rorbmax(nspecies),rkbmax(nspecies))
-    do is = 1, nspecies
-
-       ! Species orbital range
-       rorbmax(is) = 0.0_dp
-       do io = 1, nofis(is)
-          rorbmax(is) = max(rorbmax(is), rcut(is,io))
-       enddo
-
-       ! Species KB range
-       io = nkbfis(is)
-       rkbmax(is) = 0.0_dp
-       do ikb = 1, io
-          rkbmax(is) = max(rkbmax(is), rcut(is,-ikb))
-       enddo
-
-    enddo
-    rmaxo = maxval(rorbmax(1:nspecies))
-    rmaxkb = maxval(rkbmax(1:nspecies))
-    ! Calculate max extend
-    rmax = rmaxo + rmaxkb
-    print*, "[Znl_alt_rmax2]", rmax
 
     ! Initialize neighb subroutine
-    ! call mneighb( scell, 2.0d0*rmaxo, na, xa_in, 0, 0, nnia )
     call mneighb( scell, rmax, na, xa_in, 0, 0, nnia )
 
-    Jznl_alt(:) = 0.0_dp
+    ! Jznl_alt(:) = 0.0_dp
 
-    jzero_nl_alt: do I_ind=1,na_u
+    jzero_nl_alt: do I_ind=1,na_s
 
        ks = isa(I_ind)
 
@@ -491,8 +466,8 @@ contains
                          end do
                       end do
 
-                      ! Jznl_alt(1:3) = Jznl_alt(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(mu,nu,1,1) ! only 1st spin component
-                      Jznl_alt(1:3) = Jznl_alt(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(iph_mu,iph_nu,1,1) ! only 1st spin component
+                      ! Jznl_alt(1:3) = Jznl_alt(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(iph_mu,iph_nu,1,1) ! only 1st spin component
+                      gk_results%Jznl(1:3) = gk_results%Jznl(1:3) + J_tmp(1:3) * 0.5_dp*DM_save(iph_mu,iph_nu,1,1) ! only 1st spin component
                    end do
                 end do
 
@@ -503,7 +478,9 @@ contains
 
     end do jzero_nl_alt
 
-    print*, "[test_Jznl_alt]", Jznl_alt * 0.0483776900146_dp  !to compare with QE at once
+    gk_results%Jzero(:) = gk_results%Jzloc(:) + gk_results%Jznl(:)
+
+    ! print*, "[test_Jznl_alt]", Jznl_alt * 0.0483776900146_dp  !to compare with QE at once
     call reset_neighbour_arrays( )
 !!!!!
 
