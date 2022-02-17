@@ -6,10 +6,10 @@
 ! See Docs/Contributors.txt for a list of contributors.
 !
 subroutine pdoskp(nspin, nuo, no, maxnh, &
-    maxo, numh, listhptr, listh, H, S, &
+    nuotot, numh, listhptr, listh, H, S, &
     E1, E2, nhist, sigma, &
     xij, indxuo, nk, kpoint, wk, &
-    Haux, Saux, psi, dtot, dpr, nuotot )
+    Haux, Saux, psi, eo, dtot, dpr)
 
   ! **********************************************************************
   ! Find the density of states projected onto the atomic orbitals
@@ -24,7 +24,7 @@ subroutine pdoskp(nspin, nuo, no, maxnh, &
   ! integer NO                : Number of atomic orbitals in the supercell
   ! integer maxnh             : Maximum number of orbitals interacting
   !                             with any orbital
-  ! integer maxo              : First dimension of eo
+  ! integer nuotot            : Total number of orbitals per unit cell
   ! integer numh(nuo)         : Number of nonzero elements of each row
   !                             of hamiltonian matrix
   ! integer listhptr(nuo)     : Pointer to each row (-1) of the
@@ -44,11 +44,11 @@ subroutine pdoskp(nspin, nuo, no, maxnh, &
   ! integer nk                : Number of k points
   ! real*8  kpoint(3,nk)      : k point vectors
   ! real*8  wk(nk)            : Weights for k points
-  ! integer nuotot            : Total number of orbitals per unit cell
   ! ****  AUXILIARY  *****************************************************
-  ! real*8  Haux(2,nuotot,nuo)   : Auxiliary space for the hamiltonian matrix
-  ! real*8  Saux(2,nuotot,nuo)   : Auxiliary space for the overlap matrix
-  ! real*8  psi(2,nuotot,nuo)    : Auxiliary space for the eigenvectors
+  ! real*8  Haux(2,nuotot,nuo) : Auxiliary space for the hamiltonian matrix
+  ! real*8  Saux(2,nuotot,nuo) : Auxiliary space for the overlap matrix
+  ! real*8  psi(2,nuotot,nuo)  : Auxiliary space for the eigenvectors
+  ! real*8  eo(nuotot)         : Auxiliary space for the eigenvalues
   ! ****  OUTPUT  ********************************************************
   ! real*8  dtot(nhist,2)   : Total density of states
   ! real*8  dpr(nuotot,nhist,2): Proyected density of states
@@ -67,8 +67,7 @@ subroutine pdoskp(nspin, nuo, no, maxnh, &
 
   implicit none
 
-  integer :: nspin, nuo, no, maxspn, maxnh, NK, &
-      maxo, nhist, nuotot
+  integer :: nspin, nuo, no, maxspn, maxnh, NK, nhist, nuotot
 
   integer :: numh(nuo), listhptr(nuo), listh(maxnh), indxuo(no)
 
@@ -77,6 +76,7 @@ subroutine pdoskp(nspin, nuo, no, maxnh, &
       Haux(2,nuotot,nuotot), Saux(2,nuotot,nuotot), &
       psi(2,nuotot,nuotot), &
       dtot(nhist,nspin), dpr(nuotot,nhist,nspin), wk(nk)
+  real(dp) :: eo(nuotot)
 
   ! Internal variables ---------------------------------------------------
   integer :: ispin, ik, iio, io, iuo, juo, j, jo, ihist, iband, ind, ierror
@@ -85,7 +85,7 @@ subroutine pdoskp(nspin, nuo, no, maxnh, &
 
   integer, dimension(:), pointer :: numhg, listhptrg, listhg
 
-  real(dp) :: eo(maxo), kxij, Ckxij, Skxij, delta, ener, diff
+  real(dp) :: delta, ener, diff
   real(dp) :: gauss, norm, wksum
   real(dp) :: limit, inv_sigma2
 

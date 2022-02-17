@@ -6,10 +6,10 @@
 ! See Docs/Contributors.txt for a list of contributors.
 !
 subroutine pdosk( nspin, nuo, no, maxnh, &
-    maxo, numh, listhptr, listh, H, S, &
+    nuotot, numh, listhptr, listh, H, S, &
     E1, E2, nhist, sigma, &
     xij, indxuo, nk, kpoint, wk, &
-    Haux, Saux, psi, dtot, dpr, nuotot )
+    Haux, Saux, psi, eo, dtot, dpr )
 
   ! **********************************************************************
   ! Find the density of states projected onto the atomic orbitals
@@ -23,7 +23,7 @@ subroutine pdosk( nspin, nuo, no, maxnh, &
   ! INTEGER NO                : Number of atomic orbitals in the supercell
   ! INTEGER maxnh             : Maximum number of orbitals interacting
   !                             with any orbital
-  ! INTEGER maxo              : First dimension of eo
+  ! INTEGER nuotot            : Total number of orbitals per unit cell
   ! INTEGER numh(nuo)         : Number of nonzero elements of each row
   !                             of hamiltonian matrix
   ! INTEGER listhptr(nuo)     : Pointer to each row (-1) of the
@@ -43,11 +43,11 @@ subroutine pdosk( nspin, nuo, no, maxnh, &
   ! INTEGER NK                : Number of k points
   ! REAL*8  kpoint(3,nk)      : k point vectors
   ! REAL*8  WK(nk)            : Weights for k points
-  ! INTEGER nuotot            : Total number of orbitals per unit cell
   ! ****  AUXILIARY  *****************************************************
   ! REAL*8  Haux(2,nuo,nuo)   : Auxiliary space for the hamiltonian matrix
   ! REAL*8  Saux(2,nuo,nuo)   : Auxiliary space for the overlap matrix
   ! REAL*8  psi(2,nuo,nuo)    : Auxiliary space for the eigenvectors
+  ! real*8  eo(nuotot)        : Auxiliary space for the eigenvalues
   ! ****  OUTPUT  ********************************************************
   ! REAL*8  dtot(nhist,nspin)   : Total density of states
   ! REAL*8  dpr(nuo,nhist,nspin): Projected density of states
@@ -67,19 +67,20 @@ subroutine pdosk( nspin, nuo, no, maxnh, &
 
   implicit none
 
-  integer :: nspin, nuo, no, maxnh, NK, maxo, nhist, nuotot
+  integer :: nspin, nuo, no, maxnh, NK, nhist, nuotot
 
   integer :: numh(nuo), listhptr(nuo), listh(maxnh), indxuo(no)
   real(dp) :: H(maxnh,nspin), S(maxnh), E1, E2, sigma, &
       xij(3,maxnh), kpoint(3,nk),  &
       Haux(2,nuotot,nuo), Saux(2,nuotot,nuo), psi(2,nuotot,nuo), &
       dtot(nhist,nspin), dpr(nuotot,nhist,nspin), wk(nk)
+  real(dp) :: eo(nuotot)
 
   ! Internal variables ---------------------------------------------------
   integer :: ik, ispin, iuo, juo, J, JO, ihist, iband, ind, ierror
   integer :: iEmin, iEmax
 
-  real(dp) :: eo(maxo), delta, ener, diff, gauss, norm, wksum
+  real(dp) :: delta, ener, diff, gauss, norm, wksum
   real(dp) :: limit, inv_sigma2
 
 #ifdef MPI

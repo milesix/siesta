@@ -6,10 +6,10 @@
 ! See Docs/Contributors.txt for a list of contributors.
 !
 subroutine pdos3k( nuo, no, maxuo, maxnh, &
-    maxo, numh, listhptr, listh, H, S, &
+    nuotot, numh, listhptr, listh, H, S, &
     E1, E2, nhist, sigma, &
     xij, indxuo, nk, kpoint, wk, &
-    Haux, Saux, psi, dtot, dpr, nuotot )
+    Haux, Saux, psi, eo, dtot, dpr )
 
   ! **********************************************************************
   ! Find the density of states projected onto the atomic orbitals
@@ -24,7 +24,7 @@ subroutine pdos3k( nuo, no, maxuo, maxnh, &
   ! INTEGER MAXUO             : Maximum number of atomic orbitals in the unit cell
   ! INTEGER MAXNH             : Maximum number of orbitals interacting
   !                             with any orbital
-  ! INTEGER MAXO              : First dimension of eo
+  ! INTEGER NUOTOT            : Total number of orbitals per unit cell
   ! INTEGER NUMH(NUO)         : Number of nonzero elements of each row
   !                             of hamiltonian matrix
   ! INTEGER LISTHPTR(NUO)     : Pointer to each row (-1) of the
@@ -44,11 +44,11 @@ subroutine pdos3k( nuo, no, maxuo, maxnh, &
   ! INTEGER NK                : Number of k points
   ! REAL*8  KPOINT(3,NK)      : k point vectors
   ! REAL*8  WK(NK)            : Weights for k points
-  ! INTEGER NUOTOT            : Total number of orbitals per unit cell
   ! ****  AUXILIARY  *****************************************************
-  ! complex*16  HAUX(2,NUOTOT,2,NUO)   : Auxiliary space for the hamiltonian matrix
-  ! complex*16  SAUX(2,NUOTOT,2,NUO)   : Auxiliary space for the overlap matrix
-  ! complex*16  PSI(2,NUOTOT,2,NUO)    : Auxiliary space for the eigenvectors
+  ! complex*16  HAUX(2,NUOTOT,2,NUO) : Auxiliary space for the hamiltonian matrix
+  ! complex*16  SAUX(2,NUOTOT,2,NUO) : Auxiliary space for the overlap matrix
+  ! complex*16  PSI(2,NUOTOT,2,NUO)  : Auxiliary space for the eigenvectors
+  ! real*8      eo(nuotot*2)         : Auxiliary space for the eigenvalues
   ! ****  OUTPUT  ********************************************************
   ! REAL*8  DTOT(4,NHIST)      : Total density of states
   ! REAL*8  DPR(4,nuotot,NHIST): Projected density of states
@@ -68,7 +68,7 @@ subroutine pdos3k( nuo, no, maxuo, maxnh, &
 
   implicit none
 
-  integer :: nuo, no, maxuo, maxnh, nk, maxo, nhist, nuotot
+  integer :: nuo, no, maxuo, maxnh, nk, nhist, nuotot
   integer :: numh(nuo), listhptr(nuo), listh(maxnh), indxuo(no)
 
   real(dp) :: H(maxnh,8), S(maxnh), E1, E2, sigma, &
@@ -76,13 +76,14 @@ subroutine pdos3k( nuo, no, maxuo, maxnh, &
       dtot(4,nhist), dpr(4,nuotot,nhist), wk(nk)
   complex(dp) :: Haux(2,nuotot,2,nuo), Saux(2,nuotot,2,nuo)
   complex(dp) :: psi(2,nuotot,2,nuo)
+  real(dp) :: eo(nuotot*2)
 
   ! Internal variables ---------------------------------------------------
   integer :: ik, ispin, iuo, io, juo, j, jo, ihist, iband, ind, ierror
   integer :: iEmin, iEmax
   integer :: nuo2, nuotot2, BlockSize2
 
-  real(dp) :: eo(maxo*2), delta, ener, diff, gauss, norm, wksum
+  real(dp) :: delta, ener, diff, gauss, norm, wksum
   real(dp) :: limit, inv_sigma2
   real(dp) :: D1, D2
 

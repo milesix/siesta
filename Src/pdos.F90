@@ -6,9 +6,9 @@
 ! See Docs/Contributors.txt for a list of contributors.
 !
 subroutine pdos( NO, nspin, NO_L, MAXNH, &
-    MAXO, NUMH, LISTHPTR, LISTH, H, S, &
+    no_u, NUMH, LISTHPTR, LISTH, H, S, &
     E1, E2, SIGMA, NHIST, &
-    XIJ, INDXUO, GAMMA, NK, KPOINT, WK, NO_U )
+    XIJ, INDXUO, GAMMA, NK, KPOINT, WK)
   ! **********************************************************************
   ! Subroutine to calculate the projected density of states on the
   ! atomic orbitals for a given eigenvalue spectra
@@ -22,7 +22,7 @@ subroutine pdos( NO, nspin, NO_L, MAXNH, &
   !                               IN THIS PROCESSOR
   ! INTEGER MAXNH               : Maximum number of orbitals interacting 
   !                               with any orbital
-  ! INTEGER MAXO                : First dimension of eo 
+  ! INTEGER no_u                : Number of total orbitals in unit cell
   ! INTEGER NUMH(NUO)           : Number of nonzero elements of each row
   !                               of hamiltonian matrix
   ! INTEGER LISTH(MAXNH)        : Nonzero hamiltonian-matrix element
@@ -46,7 +46,6 @@ subroutine pdos( NO, nspin, NO_L, MAXNH, &
   ! INTEGER NK                  : Number of k points
   ! REAL*8  KPOINT(3,NK)        : k point vectors
   ! REAL*8  WK(NK)              : k point weights (must sum one)
-  ! INTEGER NO_U              : Total number of orbitals in unit cell
   ! **********************************************************************
 
   use precision,    only : dp
@@ -74,7 +73,7 @@ subroutine pdos( NO, nspin, NO_L, MAXNH, &
 
   implicit none
 
-  integer :: NO, NSPIN, NO_L, MAXNH, NK, NHIST, MAXO, NO_U
+  integer :: NO, NSPIN, NO_L, MAXNH, NK, NHIST, NO_U
 
   logical, intent(in) :: Gamma
   integer :: NUMH(*), LISTH(MAXNH), LISTHPTR(*), INDXUO(NO)
@@ -89,11 +88,12 @@ subroutine pdos( NO, nspin, NO_L, MAXNH, &
   ! Internal variables ---------------------------------------------------
   integer :: nuo, nhs, npsi, iuo, ihist, ispin, iunit1, iunit2, i
 
-  integer :: iat, spec, ii, iorb
+  integer :: iat, spec, ii, iorb, nspin_pdos
 
   logical :: orig_ParallelOverK, orig_Serial
 
   real(dp), dimension(:), pointer :: tmp
+  real(dp), dimension(:), pointer :: eig => null()
 
   character*40 pos_string
 
@@ -136,10 +136,10 @@ subroutine pdos( NO, nspin, NO_L, MAXNH, &
 #endif
 
   ! Check internal dimensions --------------------------------------------
-  if ( nspin.le.2 .and. gamma) then
+  if ( nspin <= 2 .and. gamma) then
     nhs  = no_u * nuo
     npsi = no_u * no_l * nspin
-  elseif ( nspin.le.2 .and. .not.gamma) then
+  elseif ( nspin <= 2 .and. .not.gamma) then
     if (ParallelOverK) then
       nhs  = 2 * no_u * no_u
       npsi = 2 * no_u * no_u
@@ -147,7 +147,7 @@ subroutine pdos( NO, nspin, NO_L, MAXNH, &
       nhs  = 2 * no_u * nuo
       npsi = 2 * no_u * nuo
     endif
-  elseif (nspin.ge.4) then
+  elseif (nspin >= 4) then
     nhs  = 2 * (2*no_u) * (2*nuo)
     npsi = 2 * (2*no_u) * (2*nuo)
   else
@@ -159,12 +159,16 @@ subroutine pdos( NO, nspin, NO_L, MAXNH, &
   ! -----
   call allocDenseMatrix(nhs, nhs, npsi)
   nullify( dtot, dpr )
-  if ( spin%EDM <= 2 ) then
-    call re_alloc( dtot, 1, nhist, 1, spin%EDM, 'dtot', 'pdos' )
-    call re_alloc( dpr, 1, no_u, 1, nhist, 1, spin%EDM, 'dpr', 'pdos' )
-  else
-    call re_alloc( dtot, 1, spin%EDM, 1, nhist, 'dtot', 'pdos' )
-    call re_alloc( dpr, 1, spin%EDM, 1, no_u, 1, nhist, 'dpr', 'pdos' )
+  if ( spin%H <= 2 ) then
+    nspin_pdos = spin%H
+    call re_alloc( dtot, 1, nhist, 1, nspin_pdos, 'dtot', 'pdos' )
+    call re_alloc( dpr, 1, no_u, 1, nhist, 1, nspin_pdos, 'dpr', 'pdos' )
+    call re_alloc( eig, 1, no_u, 'eig', 'pdos' )
+  else ! must be larger than 4
+    nspin_pdos = 4
+    call re_alloc( dtot, 1, nspin_pdos, 1, nhist, 'dtot', 'pdos' )
+    call re_alloc( dpr, 1, nspin_pdos, 1, no_u, 1, nhist, 'dpr', 'pdos' )
+    call re_alloc( eig, 1, no_u*2, 'eig', 'pdos' )
   end if
 
   ! Initialize the projected density of states ---------------------------
@@ -173,48 +177,51 @@ subroutine pdos( NO, nspin, NO_L, MAXNH, &
   ! On return they will only be meaning full on Node == 0
 
   !  Call appropiate routine ----------------------------------------------
-  if (nspin.le.2 .and. gamma) then
+  if (nspin <= 2 .and. gamma) then
     call pdosg( nspin, NUO, NO, MAXNH, &
-        MAXO, NUMH, LISTHPTR, LISTH, H, S, &
+        no_u, NUMH, LISTHPTR, LISTH, H, S, &
         E1, E2, NHIST, SIGMA, INDXUO, &
-        HAUX, SAUX, PSI, DTOT, DPR, NO_U )
-  elseif ( nspin.le.2 .and. .not.gamma) then
+        HAUX, SAUX, PSI, eig, DTOT, DPR )
+  elseif ( nspin <= 2 .and. .not.gamma) then
     if (ParallelOverK) then
       call pdoskp( nspin, NUO, NO, MAXNH, &
-          MAXO, NUMH, LISTHPTR, LISTH, H, S, &
+          no_u, NUMH, LISTHPTR, LISTH, H, S, &
           E1, E2, NHIST, SIGMA, &
           XIJ, INDXUO, NK, KPOINT, WK, &
-          HAUX, SAUX, PSI, DTOT, DPR, NO_U )
+          HAUX, SAUX, PSI, eig, DTOT, DPR )
     else
       call pdosk( nspin, NUO, NO, MAXNH, &
-          MAXO, NUMH, LISTHPTR, LISTH, H, S, &
+          no_u, NUMH, LISTHPTR, LISTH, H, S, &
           E1, E2, NHIST, SIGMA, &
           XIJ, INDXUO, NK, KPOINT, WK, &
-          HAUX, SAUX, PSI, DTOT, DPR, NO_U )
+          HAUX, SAUX, PSI, eig, DTOT, DPR )
     endif
   elseif (nspin == 4 .and. gamma) then
     call pdos2g( NUO, NO, NO_L, MAXNH, &
-        MAXO, NUMH, LISTHPTR, LISTH, H, S, &
+        no_u, NUMH, LISTHPTR, LISTH, H, S, &
         E1, E2, NHIST, SIGMA, INDXUO, &
-        HAUX, SAUX, PSI, DTOT, DPR, NO_U )
+        HAUX, SAUX, PSI, eig, DTOT, DPR )
   elseif (nspin == 4 .and. .not. gamma) then
     call pdos2k( NUO, NO, NO_L, MAXNH, &
-        MAXO, NUMH, LISTHPTR, LISTH, H, S, &
+        no_u, NUMH, LISTHPTR, LISTH, H, S, &
         E1, E2, NHIST, SIGMA, &
         XIJ, INDXUO, NK, KPOINT, WK, &
-        HAUX, SAUX, PSI, DTOT, DPR, NO_U )
+        HAUX, SAUX, PSI, eig, DTOT, DPR )
   elseif (nspin == 8 .and. gamma) then
     call pdos3g( NUO, NO, NO_L, MAXNH, &
-        MAXO, NUMH, LISTHPTR, LISTH, H, S, &
+        no_u, NUMH, LISTHPTR, LISTH, H, S, &
         E1, E2, NHIST, SIGMA, INDXUO, &
-        HAUX, SAUX, PSI, DTOT, DPR, NO_U )
+        HAUX, SAUX, PSI, eig, DTOT, DPR )
   elseif (nspin == 8 .and. .not. gamma) then
     call pdos3k( NUO, NO, NO_L, MAXNH, &
-        MAXO, NUMH, LISTHPTR, LISTH, H, S, &
+        no_u, NUMH, LISTHPTR, LISTH, H, S, &
         E1, E2, NHIST, SIGMA, &
         XIJ, INDXUO, NK, KPOINT, WK, &
-        HAUX, SAUX, PSI, DTOT, DPR, NO_U )
+        HAUX, SAUX, PSI, eig, DTOT, DPR )
   end if
+
+  ! Clean up memory
+  call de_alloc( eig, 'eig', 'pdos' )
 
 
   if (IOnode) then
@@ -224,7 +231,7 @@ subroutine pdos( NO, nspin, NO_L, MAXNH, &
     open(unit=iunit1, file=fnametot, form='formatted', status='unknown') 
 
     ! Output histogram
-    select case ( spin%EDM )
+    select case ( spin%H )
     case ( 1 )
       do ihist = 1,nhist
         ENER = E1 + (ihist-1) * delta
@@ -235,7 +242,8 @@ subroutine pdos( NO, nspin, NO_L, MAXNH, &
         ENER = E1 + (ihist-1) * delta
         write(iunit1,'(3f20.5)') ener/ev,dtot(ihist,1)*eV, dtot(ihist,2)*eV
       enddo
-    case default 
+    case default
+      ! non-collinear case
       do ihist = 1,nhist
         ENER = E1 + (ihist-1) * delta
         write(iunit1,'(5f20.5)') ener/ev,dtot(1,ihist)*eV, &
@@ -256,14 +264,14 @@ subroutine pdos( NO, nspin, NO_L, MAXNH, &
     open(iunit2,file=fnamepro,form='formatted',status='unknown')
     call xml_NewElement(xf,"pdos")
     call xml_NewElement(xf,"nspin")
-    call xml_AddPCData(xf,spin%EDM)
+    call xml_AddPCData(xf,nspin_pdos)
     call xml_EndElement(xf,"nspin")
     call xml_NewElement(xf,"norbitals")
     call xml_AddPCData(xf,no_u)
     call xml_EndElement(xf,"norbitals")
 
     write(iunit2,'(a)') '<pdos>'
-    write(iunit2,'(a,i1,a)') '<nspin>', spin%EDM, '</nspin>'
+    write(iunit2,'(a,i1,a)') '<nspin>', nspin_pdos, '</nspin>'
     write(iunit2,'(a,i0,a)') '<norbitals>', no_u, '</norbitals>'
 
     ! Write fermi-level
@@ -279,7 +287,7 @@ subroutine pdos( NO, nspin, NO_L, MAXNH, &
     call xml_AddAttribute(xf,"units","eV")
 
     nullify( tmp )
-    call re_alloc( tmp, 1, spin%EDM*nhist, 'tmp', 'pdos' )
+    call re_alloc( tmp, 1, nspin_pdos*nhist, 'tmp', 'pdos' )
     do ihist = 1,nhist
       ENER = E1 + (ihist-1) * delta
       tmp(ihist) = ener/eV
@@ -323,7 +331,7 @@ subroutine pdos( NO, nspin, NO_L, MAXNH, &
       !------------------------------------------------------------
       call xml_NewElement(xf,"data")
       write(iunit2,'(a)') '<data>'
-      select case ( spin%EDM ) 
+      select case ( spin%H )
       case ( 1 )
         do ihist = 1, nhist
           tmp(ihist) = dpr(i,ihist,1) * eV
@@ -337,7 +345,7 @@ subroutine pdos( NO, nspin, NO_L, MAXNH, &
           write(iunit2,'(2(tr1,e17.9))') tmp(ihist*2-1:ihist*2)
         end do
         call xml_AddArray(xf,tmp(1:2*nhist))
-      case ( 4 )
+      case ( 4, 8 )
         do ihist = 1, nhist
           tmp(ihist*4-3) = dpr(1,i,ihist) * eV
           tmp(ihist*4-2) = dpr(2,i,ihist) * eV

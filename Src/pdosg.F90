@@ -6,9 +6,9 @@
 ! See Docs/Contributors.txt for a list of contributors.
 !
 subroutine pdosg( nspin, nuo, no, maxnh, &
-    maxo, numh, listhptr, listh, H, S, &
+    nuotot, numh, listhptr, listh, H, S, &
     E1, E2, nhist, sigma, indxuo, &
-    haux, saux, psi, dtot, dpr, nuotot )
+    haux, saux, psi, eo, dtot, dpr)
   ! **********************************************************************
   ! Find the density of states projected onto the atomic orbitals
   !     D_mu(E) = Sum(n,k,nu) C(mu,n,k) C(nu,n,k) S(mu,nu,k) Delta(E-E(n,k))
@@ -22,7 +22,7 @@ subroutine pdosg( nspin, nuo, no, maxnh, &
   ! integer no                : Number of atomic orbitals in the supercell
   ! integer maxnh             : Maximum number of orbitals interacting
   !                             with any orbital
-  ! integer maxo              : First dimension of eo
+  ! integer nuotot            : Total number of orbitals per unit cell
   ! integer numh(nuo)         : Number of nonzero elements of each row
   !                             of hamiltonian matrix
   ! integer listhptr(nuo)     : Pointer to each row (-1) of the
@@ -37,11 +37,11 @@ subroutine pdosg( nspin, nuo, no, maxnh, &
   ! integer nhist             : Number of the subdivisions of the histogram
   ! real*8  sigma             : Width of the gaussian to expand the eigenvectors
   ! integer indxuo(no)        : Index of equivalent orbital in unit cell
-  ! integer nuotot            : Total number of orbitals per unit cell
   ! ****  AUXILIARY  *****************************************************
   ! real*8  haux(nuo,nuo)     : Auxiliary space for the hamiltonian matrix
   ! real*8  saux(nuo,nuo)     : Auxiliary space for the overlap matrix
   ! real*8  psi(nuo,nuo)      : Auxiliary space for the eigenvectors
+  ! real*8  eo(nuotot)        : Auxiliary space for the eigenvalues
   ! ****  OUTPUT  ********************************************************
   ! real*8  dtot(nhist,2)   : Total density of states
   ! real*8  dpr(nuo,nhist,2): Projected density of states
@@ -61,19 +61,20 @@ subroutine pdosg( nspin, nuo, no, maxnh, &
 
   implicit none
 
-  integer :: nspin, nuo, no, maxnh, maxo, nhist, nuotot
+  integer :: nspin, nuo, no, maxnh, nhist, nuotot
 
   integer :: numh(nuo), listhptr(nuo), listh(maxnh), indxuo(no)
 
   real(dp) :: H(maxnh,nspin), S(maxnh), E1, E2, sigma, &
       haux(nuotot,nuo), saux(nuotot,nuo), psi(nuotot,nuo), &
       dtot(nhist,nspin), dpr(nuotot,nhist,nspin)
+  real(dp) :: eo(nuotot)
 
   ! Internal variables ---------------------------------------------------
   integer :: ispin, iuo, juo, j, jo, ihist, iband, ind, ierror
   integer :: iEmin, iEmax
 
-  real(dp) :: eo(maxo), delta, ener, diff, gauss, norm
+  real(dp) :: delta, ener, diff, gauss, norm
   real(dp) :: limit, inv_sigma2
 
 #ifdef MPI

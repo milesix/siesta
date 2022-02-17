@@ -58,8 +58,7 @@ contains
     use atomlist,    only : indxuo, no_s, no_u, no_l
     use fdf
     use sys,         only : die
-    use kpoint_scf_m, only: kpoint_scf
-    use Kpoint_pdos_m, only: kpoint_pdos, gamma_pdos
+    use kpoint_pdos_m, only: kpoint_pdos, gamma_pdos
     use parallel,    only: IOnode
     use m_energies, only: Ef
     use m_spin,      only: h_spin_dim, spinor_dim

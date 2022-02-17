@@ -6,9 +6,9 @@
 ! See Docs/Contributors.txt for a list of contributors.
 !
 subroutine pdos2g( nuo, no, maxuo, maxnh, &
-    maxo, numh, listhptr, listh, H, S, &
+    nuotot, numh, listhptr, listh, H, S, &
     E1, E2, nhist, sigma, indxuo, &
-    haux, saux, psi, dtot, dpr, nuotot )
+    haux, saux, psi, eo, dtot, dpr )
 
   ! **********************************************************************
   ! Find the density of states projected onto the atomic orbitals
@@ -25,7 +25,7 @@ subroutine pdos2g( nuo, no, maxuo, maxnh, &
   ! integer maxuo             : Maximum number of atomic orbitals in the unit cell
   ! integer maxnh             : Maximum number of orbitals interacting
   !                             with any orbital
-  ! integer maxo              : First dimension of eo
+  ! integer nuotot            : Total number of orbitals per unit cell
   ! integer numh(nuo)         : Number of nonzero elements of each row
   !                             of hamiltonian matrix
   ! integer listhptr(nuo)     : Pointer to each row (-1) of the
@@ -40,11 +40,11 @@ subroutine pdos2g( nuo, no, maxuo, maxnh, &
   ! integer nhist             : Number of the subdivisions of the histogram
   ! real*8  sigma             : Width of the gaussian to expand the eigenvectors
   ! integer indxuo(no)        : Index of equivalent orbital in unit cell
-  ! integer nuotot            : Total number of orbitals per unit cell
   ! ****  AUXILIARY  *****************************************************
-  ! complex*16  haux(2,nuotot,2,nuo)     : Auxiliary space for the hamiltonian matrix
-  ! complex*16  saux(2,nuotot,2,nuo)     : Auxiliary space for the overlap matrix
-  ! complex*16  psi(2,nuotot,2,nuo)      : Auxiliary space for the eigenvectors
+  ! complex*16  haux(2,nuotot,2,nuo) : Auxiliary space for the hamiltonian matrix
+  ! complex*16  saux(2,nuotot,2,nuo) : Auxiliary space for the overlap matrix
+  ! complex*16  psi(2,nuotot,2,nuo)  : Auxiliary space for the eigenvectors
+  ! real*8      eo(nuotot*2)         : Auxiliary space for the eigenvalues
   ! ****  OUTPUT  ********************************************************
   ! real*8  dtot(4,nhist)   : Total density of states
   ! real*8  dpr(4,nuotot,nhist): Projected density of states
@@ -64,7 +64,7 @@ subroutine pdos2g( nuo, no, maxuo, maxnh, &
 
   implicit none
 
-  integer :: nuo, no, maxuo, maxnh, maxo, nhist, nuotot
+  integer :: nuo, no, maxuo, maxnh, nhist, nuotot
 
   integer :: numh(nuo), listhptr(nuo), listh(maxnh), indxuo(no)
 
@@ -72,13 +72,14 @@ subroutine pdos2g( nuo, no, maxuo, maxnh, &
       dtot(4,nhist), dpr(4,nuotot,nhist)
   complex(dp) :: psi(2,nuotot,2,nuo)
   complex(dp) Haux(2,nuotot,2,nuo), Saux(2,nuotot,2,nuo)
+  real(dp) :: eo(nuotot*2)
 
   ! Internal variables ---------------------------------------------------
   integer :: ik, ispin, iuo, io, juo, j, jo, ihist, iband, ind, ierror
   integer :: iEmin, iEmax
   integer :: nuo2, nuotot2, BlockSize2
 
-  real(dp) :: eo(maxo*2), delta, ener, diff, gauss, norm, wksum
+  real(dp) :: delta, ener, diff, gauss, norm, wksum
   real(dp) :: limit, inv_sigma2
   real(dp) :: D1, D2
 
