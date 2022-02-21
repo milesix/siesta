@@ -1007,11 +1007,13 @@ libraries
   \begin{enumerate}
     \item Download version 3.0.0 or 3.1.0 of \program{wannier90} and extract
 
-    \item Apply patches to \program{wannier90} source code
+    \item Apply a patch to \program{wannier90} source code
 \begin{shellexample}
- $ patch -p1 < /path/to/siesta/Util/Wannier90/wannier90-3.0.0-siesta.patch
- $ patch -p1 < /path/to/siesta/Util/Wannier90/wannier90-3.0.0-bug.patch
+ $ patch -p1 < /path/to/siesta/Util/Wannier90/wannier90-3.0.0.patch
 \end{shellexample}
+% $
+
+    Change the \shell{3.0.0} to the appropriate version of the library.
 
     \item Compile \program{wannier90} library with \shell{make lib},
     if \siesta\ is compiled in parallel, it is vital that
@@ -1031,7 +1033,7 @@ libraries
 \end{shellexample}
   \index{compile!pre-processor!-DSIESTA\_\_WANNIER90}
 
-  See \program{Tests/wannier90_in_siesta}\index{Tests} for an example
+  See \program{Tests/w90\_in\_siesta}\index{Tests} for an example
   on the \program{wannier90} in library mode.
 
 \end{description}
@@ -8853,7 +8855,7 @@ or interpolation of bands), can be downloaded from
          representations are available within \program{siesta}.
    \item The coefficients of the Wannier functions in the 
          basis of the atomic orbitals of the supercell in \program{siesta} 
-         are written in a file with .WANNX extension. This can be plotted using
+         are written in a file with \sysfile{WANNX} extension. This can be plotted using
          \program{denchar} using the same method as for the wave functions.
  \end{itemize}
 
@@ -8866,7 +8868,10 @@ or interpolation of bands), can be downloaded from
 
 \begin{shellexample}
  $ patch -p1 < /path/to/siesta/Util/Wannier90/wannier90-3.0.0-siesta.patch
-\end{shellexample}%$
+\end{shellexample}
+% $
+
+ Adapt the version number.
 
  In the near future, a version of the \program{wannier90} code will be
  distributed directly within the siesta-bundle.
@@ -8875,8 +8880,116 @@ or interpolation of bands), can be downloaded from
  functionality can be found in Sec.~\ref{sec:libs} or the file \file{README} in the
  \shell{Util/Wannier90} directory and in the presentation below
 
-https://personales.unican.es/junqueraj/JavierJunquera\_files/Metodos/Wannier/Exercise-Wannier90-within-siesta.pdf
+ \url{https://personales.unican.es/junqueraj/JavierJunquera_files/Metodos/Wannier/Exercise-Wannier90-within-siesta.pdf}
 
+\begin{fdfentry}{Wannier!Manifolds}[block]
+
+  Each line denotes the name of a manifold to be processed by Wannier90.
+
+  Options for each manifold is specified in the \fdf{Wannier!Manifold.<>}
+  
+\end{fdfentry}
+
+
+\begin{fdfentry}{Wannier!Manifold.<>}[block]
+
+  Each line represents a setting for the Wannier manifold to be
+  processed.
+
+  \begin{fdfoptions}
+
+    \option[bands]%
+    \fdfindex*{Wannier!Manifold.<>!bands}%
+
+    Two integers specifying the initial and final band of the manifold
+    to be wannierized.
+
+    \note required input
+
+    
+    \option[trial-orbitals]%
+    \fdfindex*{Wannier!Manifold.<>!trial-orbitals}%
+
+    ...
+    
+    \note required input
+
+    
+    \option[spreading.nitt]%
+    \fdfindex*{Wannier!Manifold.<>!spreading.nitt}%
+
+    ...
+
+
+    \option[wannier-plot]%
+    \fdfindex*{Wannier!Manifold.<>!wannier-plot}%
+
+    ...
+
+
+    \option[fermi-surface-plot]%
+    \fdfindex*{Wannier!Manifold.<>!fermi-surface-plot}%
+
+    ...
+
+
+    \option[write-hr]%
+    \fdfindex*{Wannier!Manifold.<>!write-hr}%
+
+    ...
+
+
+    \option[write-tb]%
+    \fdfindex*{Wannier!Manifold.<>!write-tb}%
+
+    ...
+
+
+    \option[write-unk]%
+    \fdfindex*{Wannier!Manifold.<>!write-unk}%
+
+    ...
+
+
+    \option[window]%
+    \fdfindex*{Wannier!Manifold.<>!window}%
+
+    ...
+
+
+    \option[window.frozen]%
+    \fdfindex*{Wannier!Manifold.<>!window.frozen}%
+
+    ...
+
+
+    \option[threshold]%
+    \fdfindex*{Wannier!Manifold.<>!window.threshold}%
+
+    ...
+
+  \end{fdfoptions}
+
+  An example of a manifold:
+
+  \begin{fdfexample}
+%block Wannier.Manifold.second
+  bands 21 23
+  trial-orbitals [24 25 27]
+  spreading.nitt 0
+  wannier_plot 3
+  fermi_surface_plot true
+  write_hr true
+  write_tb true
+%endblock
+  \end{fdfexample}
+
+\end{fdfentry}
+
+
+
+\iffalse
+% These lines should be deleted once documentation is complete
 \begin{fdfentry}{NumberOfBandManifoldsForWannier}[integer]<\fdfvalue{Number of band manifolds to be wannierized}>
 
   Number of band manifolds that will be considered for Wannierization.
@@ -8994,8 +9107,11 @@ https://personales.unican.es/junqueraj/JavierJunquera\_files/Metodos/Wannier/Exe
 
 \end{fdfentry}
 
-\begin{fdfentry}{WannierProjectors}[block]
-<\fdfvalue{Information on the projection functions as in wannier90}>
+\fi
+
+
+\begin{fdfentry}{Wannier!Projectors}[block]
+<\fdfvalue{projection functions as in wannier90}>
 
 Information on the projection functions \`a-la-\program{wannier90},
 used to construct the
@@ -9006,30 +9122,32 @@ fourth line of the block \fdf{WannierManifolds} are negative.
 
  For instance, to specify the projectors for the bottom of the 
  conduction band of bulk SrTiO$_{3}$, we can write a 
- block \fdf{WannierManifolds} as
+ block \fdf{Wannier!Manifold.<>} as
 
-  \begin{fdfexample}
-  1                  # Sequential index of the manifold, from 1 to NumberOfBandManifoldsForWannier
-  21  23             # Indices of the initial and final band of the manifold
-  3                  # Number of bands for Wannier transformation
-  -1 -2 -3           # Indices of the orbitals that will be used as localized trial orbitals
-  num_iter 0         # Number of iterations for the minimization of \Omega
-  wannier_plot  3    # Plot the Wannier function
-  fermi_surface_plot # Plot the Fermi surface
-  write_hr           # Write the Hamiltonian in the WF basis
-  write_tb           # Write lattice vectors, Hamiltonian, and position operator in WF basis
+ \begin{fdfexample}
+%block Wannier.Manifold.example
+   # Indices of the initial and final band of the manifold
+   bands  21  23
+   # Number of bands for Wannier transformation
+   trial-orbitals  -1 -2 -3
+   spreading.nitt 0         # Number of iterations for the minimization of \Omega
+   wannier-plot  3    # Plot the Wannier function
+   fermi-surface-plot # Plot the Fermi surface
+   write-hr           # Write the Hamiltonian in the WF basis
+   write-tb           # Write lattice vectors, Hamiltonian, and position operator in WF basis
+%endblock
   \end{fdfexample}
 
  Then, the three projector functions that will be generated
  following the recipe of \program{wannier90} will be
 
   \begin{fdfexample}
-%block WannierProjectors
+%block Wannier.Projectors
    1 3
    0.5 0.5 0.5  2  2  1 0.00  0.00  1.00   1.00  0.00  0.00    1.00
    0.5 0.5 0.5  2  3  1 0.00  0.00  1.00   1.00  0.00  0.00    1.00
    0.5 0.5 0.5  2  5  1 0.00  0.00  1.00   1.00  0.00  0.00    1.00
-%endblock WannierProjectors
+%endblock
   \end{fdfexample}
 
  The first line contains two integers:
@@ -9065,33 +9183,48 @@ fourth line of the block \fdf{WannierManifolds} are negative.
 \end{fdfentry}
 
 
-\begin{fdflogicalF}{Wannier90.in.SIESTA.compute.unk}
+\begin{fdfentry}{Wannier!Manifolds!Threshold}[real]<$10^{-6}$>
+
+  Global specification of the threshold for the real part of the
+  coefficients of a Wannier in a basis of NAO to compute the
+  contribution to the tight-binding matrix elements.
+
+  Individual manifolds can be controlled via
+  \fdf{Wannier!Manifold.<>!threshold} 
+
+\end{fdfentry}
+
+\begin{fdflogicalF}{Wannier!Manifolds!Unk}
   
-  Flag that determines whether the periodic part of the wave function
+  Global flag that determines whether the periodic part of the wave function
   in the real space grid will be computed (as using Siesta2Wannier90.WriteUnk),
-  and whether the files .xsf directly readable by \program{xcrysden}
+  and whether the files \file{xsf} directly readable by \program{xcrysden}
   will be produced.
+
+  Individual manifolds can be controlled via
+  \fdf{Wannier!Manifold.<>!write-unk}.
 
   The computation of the UNK files might be rather expensive.
   To plot the shape of the Wannier functions, the expansion of the Wannier functions
-  in the basis of Numerical Atomic Orbitals to produce .WFSX files, and the
+  in the basis of Numerical Atomic Orbitals to produce \sysfile{WFSX} files, and the
   subsequent use of \program{denchar} is recommended.
-  \note The default value will be false
-
+  
 \end{fdflogicalF}
 
-\begin{fdfentry}{kMeshforWannier}[block]
+\begin{fdfentry}{Wannier!k}[list/block]<$\Gamma$-point>
   \index{output!kpoint mesh for Wannierization}
 
   Dimension of the Monkhorst-Pack grid of k-points that will be used
   during the wannierization.
   The overlap matrices between periodic parts of the wavefunctions
   at neighbour k-points in this grid will be computed.
- 
+
   \begin{fdfexample}
-%block kMeshforWannier
+Wannier.k [4 4 4]
+# Or equivalently
+%block Wannier.k
    4  4  4
-%endblock kMeshforWannier
+%endblock
   \end{fdfexample}
 \end{fdfentry}
 

@@ -38,7 +38,9 @@ module m_wannier_in_nao
 
   implicit none
 
-  CONTAINS
+CONTAINS
+
+#ifdef SIESTA__WANNIER90
 
   subroutine wannier_in_nao( ispin, index_manifold )
     use parallel,       only: Nodes          ! Total number of Nodes
@@ -269,9 +271,9 @@ module m_wannier_in_nao
                                              !    coefficients as explained 
                                              !    by Souza et al. 
                                              !    as explained below
-    real(dp), pointer :: psi_real_1d(:)      ! Temporal array to store the 
+    real(dp), pointer :: psi_real_1d(:)      ! Temporal array to store the
                                              !    coefficients of the Wanniers
-                                             !    in a basis of NAO in a 
+                                             !    in a basis of NAO in a
                                              !    1D array in order to print
                                              !    them
 
@@ -627,5 +629,12 @@ module m_wannier_in_nao
 !!   End debugging
 
   end subroutine wannier_in_nao
+
+#else
+
+  subroutine wannier_in_nao
+
+  end subroutine wannier_in_nao
+#endif
 
 end module m_wannier_in_nao

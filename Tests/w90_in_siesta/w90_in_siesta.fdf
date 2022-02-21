@@ -5,7 +5,7 @@ SystemName      Strontium titanate (SrTiO3) cubic structure
 #               Mesh Cutoff: 400 Ry
 #               Monkhorst-Pack grid: 6 x 6 x 6 ; displaced 0.5 0.5 0.5 
 
-SystemLabel	SrTiO3
+SystemLabel	w90_in_siesta
 NumberOfSpecies	3
 NumberOfAtoms	5
 %block ChemicalSpeciesLabel
@@ -154,44 +154,55 @@ MD.UseSaveCG           .false.      # Instructs to read the conjugate-gradient
 #
 # Variables related with the Wannierization of the manifolds
 #
+%block Wannier.Manifolds
+  first
+  second
+  third
+%endblock
 
-NumberOfBandManifoldsForWannier   3
+%block Wannier.Manifold.first
+  # Indices of the initial and final band of the manifold
+  bands 12 20
+  # Indices of the orbitals that will be used as localized trial orbitals
+  #   (any number of lines allowed)
+  trial-orbitals [36 37 38]
+  trial-orbitals [49 50 51]
+  trial-orbitals [62 63 64]
+  # Number of iterations for the minimization of \Omega
+  spreading.nitt 0
+  wannier_plot 3
+  fermi_surface_plot true
+  write_hr true
+  write_tb true
+%endblock
 
-%block WannierManifolds
-  1                  # Sequential index of the manifold, from 1 to NumberOfBandManifoldsForWannier
-  12  20             # Indices of the initial and final band of the manifold
-  9                  # Number of bands for Wannier transformation
-  36 37 38 49 50 51 62 63 64  # Indices of the orbitals that will be used as localized trial orbitals
-  num_iter 0         # Number of iterations for the minimization of \Omega
-  wannier_plot  3    # Plot the Wannier function
-  fermi_surface_plot # Plot the Fermi surface
-  write_hr           # Write the Hamiltonian in the WF basis
-  write_tb           # Write lattice vectors, Hamiltonian, and position operator in WF basis
-  2                  # Sequential index of the manifold, from 1 to NumberOfBandManifoldsForWannier
-  21  23             # Indices of the initial and final band of the manifold
-  3                  # Number of bands for Wannier transformation
-  24 25 27           # Indices of the orbitals that will be used as localized trial orbitals
-  num_iter 0         # Number of iterations for the minimization of \Omega
-  wannier_plot  3    # Plot the Wannier function
-  fermi_surface_plot # Plot the Fermi surface
-  write_hr           # Write the Hamiltonian in the WF basis
-  write_tb           # Write lattice vectors, Hamiltonian, and position operator in WF basis
-  3                  # Sequential index of the manifold, from 1 to NumberOfBandManifoldsForWannier
-  12  23             # Indices of the initial and final band of the manifold
-  12                 # Number of bands for Wannier transformation
-  36 37 38 49 50 51 62 63 64 24 25 27 # Indices of the orbitals that will be used as localized trial orbitals
-  num_iter 0         # Number of iterations for the minimization of \Omega
-  wannier_plot  3    # Plot the Wannier function
-  fermi_surface_plot # Plot the Fermi surface
-  write_hr           # Write the Hamiltonian in the WF basis
-  write_tb           # Write lattice vectors, Hamiltonian, and position operator in WF basis
-%endblock WannierManifolds
+%block Wannier.Manifold.second
+  bands 21 23
+  trial-orbitals [24 25 27]
+  spreading.nitt 0
+  wannier_plot 3
+  fermi_surface_plot true
+  write_hr true
+  write_tb true
+%endblock
 
-%block kMeshforWannier
-   4  4  4
-%endblock kMeshforWannier
+%block Wannier.Manifold.third
+  bands 12 23
+  spreading.nitt 0
+  trial-orbitals 24 25 27
+  trial-orbitals [36 37 38]
+  trial-orbitals [49 50 51]
+  trial-orbitals 62 63 64
+  wannier_plot 3
+  fermi_surface_plot true
+  write_hr true
+  write_tb true
+%endblock
 
-Wannier90_in_SIESTA_compute_unk  .false.
+Wannier.Manifolds.Unk  .false.
+
+Wannier.k [4 4 4]
+
 
 #  *************************************************************************
 #                     Input variables for Denchar

@@ -137,6 +137,7 @@ subroutine amn( ispin, index_manifold )
                                                     !   element column indices 
                                                     !   for each matrix row
 
+  use w90_in_siesta_types, only: manifold_bands_w90_in
   use w90_in_siesta_types,   only: numh_man_proj
                                                ! Number of projections that will
                                                !  be  handled in the local node
@@ -168,14 +169,6 @@ subroutine amn( ispin, index_manifold )
                                                !   Second index: NAO in the
                                                !       supercell
                                                !   Third index: Spin component
-  use siesta_options,     only: w90_in_siesta_threshold_coeff
-                                                    ! Threshold for the real 
-                                                    !   part of the coefficients
-                                                    !   of a Wannier in a basis 
-                                                    !   of NAO to compute the 
-                                                    !   contribution to the
-                                                    !   the tight-binding matrix
-                                                    !   elements
 
 !
 ! Variables for the diagonalization
@@ -536,7 +529,7 @@ kpoints:                 &
         iproj_global = listh_man_proj(ind_proj)
         do iorb = 1, no_s
           if( abs(real(coeffs_wan_nao(ind_proj,iorb,ispin))) .gt. &
- &            w90_in_siesta_threshold_coeff ) then 
+ &            manifold_bands_w90_in(index_manifold)%threshold ) then 
             iuo = indxuo (iorb)                ! Equivalent orbital in 
                                                !   first unit cell
             iua = iaorb(iuo)                   ! Equivalent atom in 

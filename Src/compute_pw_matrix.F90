@@ -81,7 +81,7 @@ subroutine compute_pw_matrix( nncount, bvectorsfrac )
 !
 ! Internal variables
 !
-  integer  :: inn, ind
+  integer  :: inn
   real(dp) :: bvector(3)
 
 !! For debugging
@@ -96,7 +96,7 @@ subroutine compute_pw_matrix( nncount, bvectorsfrac )
 ! plane waves will be stored
   if ( .not. associated(delkmatgen) ) then
     nullify(delkmatgen)
-    call re_alloc(delkmatgen, 1, nncount, 1, maxnh,                  &
+    call re_alloc(delkmatgen, 1, maxnh, 1, nncount, &
  &                name='delkmatgen', routine='compute_pw_matrix')
   endif
   if ( .not. associated(delkmat) ) then
@@ -130,9 +130,7 @@ subroutine compute_pw_matrix( nncount, bvectorsfrac )
 !   in a permanent array,
 !   (array delkmatgen)
 !   So delkmat can be rewritten for the next wave vector.
-    do ind = 1, maxnh
-      delkmatgen(inn,ind) = delkmat(ind)
-    enddo
+    delkmatgen(:,inn) = delkmat(:)
 
 !! For debugging
 !      onlygamma = .false.

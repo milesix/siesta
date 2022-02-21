@@ -25,14 +25,8 @@ evolution of the source code.
 Building a modified Wannier90
 -----------------------------
 
-To build a version of Wannier90 compatible with SIESTA, you first have to get
-a version of SIESTA able to perform Lowdin calculations:
-
-  https://launchpad.net/~javier-junquera/siesta/lowdin/
-
-A Util/Wannier90/ subdirectory is present at the top of the source tree.
-Within, you will find one or more patch files referring to specific Wannier90
-versions and this README file.
+In this directory you will find the required patches for a specific Wannier90
+version.
 
 The next step is to download an official release tarball from the Wannier90
 website:
@@ -41,7 +35,7 @@ website:
 
 The version to download must correspond exactly to the version of the patch
 you want to apply. For instance, if the patch is called
-"wannier90-3.0.0-siesta.patch", you have to download the 3.0.0 version of
+"wannier90-3.0.0.patch", you have to download the 3.0.0 version of
 Wannier90. Applying the patch to other versions will likely fail. We will use
 this version as an example for the rest of these instructions.
 
@@ -52,8 +46,7 @@ Uncompress the source code of Wannier90 and go to its top directory, e.g.:
 
 From there, you can apply the patch from SIESTA:
 
-  patch -p1 < /path/to/siesta/Util/Wannier90/wannier90-3.0.0-siesta.patch
-  patch -p1 < /path/to/siesta/Util/Wannier90/wannier90-3.0.0-bug.patch
+  patch -p1 < /path/to/siesta/Util/Wannier90/wannier90-3.0.0.patch
 
 where you replace /path/to/siesta/Util/Wannier90 by the directory path
 containing the patch file.

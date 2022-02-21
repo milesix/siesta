@@ -17,7 +17,6 @@ module m_digest_nnkp
 CONTAINS
 ! subroutine read_nnkp
 ! subroutine scan_file_to
-! function   vectorproduct
 ! subroutine chosing_b_vectors
 ! subroutine set_excluded_bands
 ! function   getdelkmatgenhandle
@@ -263,8 +262,8 @@ subroutine read_nnkp( seedname, latvec, reclatvec, numkpoints,          &
 
         projections(iw)%zaxis  = zaxis
         projections(iw)%xaxis  = xaxis
-!       Compute the y-axis
-        projections(iw)%yaxis = vectorproduct(zaxis,xaxis)
+        ! Compute the y-axis
+        call cross(zaxis, xaxis, projections(iw)%yaxis)
         projections(iw)%yaxis = projections(iw)%yaxis /     &
  &         sqrt(dot_product(projections(iw)%yaxis,projections(iw)%yaxis))
 
@@ -428,20 +427,6 @@ subroutine scan_file_to (keyword)
 20 write (6,*) keyword," data-block missing "
    call die("--")
 end subroutine scan_file_to
-!-----------------------------------------------------------------------
-
-!
-!-----------------------------------------------------------------------
-function vectorproduct(a,b)
-!
-! This function computes the vector product of two vectors a and b
-!
-  real(dp),intent(in),dimension(3) :: a,b
-  real(dp),dimension(3)            :: vectorproduct
-  vectorproduct(1) = a(2) * b(3) - a(3) * b(2)
-  vectorproduct(2) = a(3) * b(1) - a(1) * b(3)
-  vectorproduct(3) = a(1) * b(2) - a(2) * b(1)
-end function vectorproduct
 !-----------------------------------------------------------------------
 
 !

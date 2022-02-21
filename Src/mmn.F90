@@ -124,7 +124,6 @@ subroutine Mmn( ispin )
   integer  :: jo             ! Counter for the orbital loop
   integer  :: iuo            ! Counter for the orbital loop
   integer  :: iband          ! Counter for the bands loop
-  integer  :: ih             ! Counter for the neighbour loop
   integer  :: inn            ! Counter for the k-point neighbor loop
   integer  :: indexneig      ! Index of the neighbour k-point in the list
                              !   of k-points
@@ -283,9 +282,7 @@ kneighbour:                      &
       handle = getdelkmatgenhandle( bvectoraux, nncount, bvectorsfrac )
       call getkvector( bvectoraux, bvector )
 
-      do ih = 1, maxnh
-        delkmat(ih) = delkmatgen(handle,ih)
-      enddo
+      delkmat(:) = delkmatgen(:,handle)
 
 !! For debugging
 !      if ( IOnode ) then

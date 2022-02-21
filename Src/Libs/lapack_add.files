@@ -62,6 +62,8 @@ dlapy2.f
 dlapy3.f
 dla_syrcond.f
 dla_syrpvgrw.f
+dgesvd.f
+dspevx.f
 dzsum1.f
 icmax1.f
 ieeeck.f
@@ -141,3 +143,8 @@ zla_porpvgrw.f
 zla_syrcond_c.f
 zla_syrcond_x.f
 zla_syrpvgrw.f
+zgees.f
+zgesvd.f
+zgbsv.f
+zhpevx.f
+zhpgvx.f
