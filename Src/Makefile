@@ -188,6 +188,8 @@ OBJS =  automatic_cell.o atom_options.o \
 	m_evolve.o cranknic_evolk.o cranknic_evolg.o sankey_change_basis.o m_iotddft.o \
 	m_matdiag.o m_matswinvers.o iotdxv.o  m_inversemm.o runinfo_m.o cli_m.o \
         hamann.o \
+	m_matdiag.o m_matswinvers.o iotdxv.o  m_inversemm.o \
+        m_host.o \
 	m_vee_integrals.o m_occ_proj_dftu.o m_dftu_so.o m_pot_dftu.o
 
 OBJS += kpoint_t.o kpoint_scf.o kpoint_dos.o kpoint_pdos.o kpoint_ldos.o
@@ -819,6 +821,7 @@ m_ncdf_siesta.o: kpoint_scf.o m_energies.o m_forces.o m_spin.o m_stress.o
 m_ncdf_siesta.o: m_ts_options.o ncdf_io.o parallel.o precision.o radial.o
 m_ncdf_siesta.o: siesta_geom.o siesta_options.o sparse_matrices.o timestamp.o
 m_ncdf_siesta.o: ts_electrode.o ts_kpoint_scf.o
+m_ncdf_siesta.o: moremeshsubs.o  m_host.o
 m_new_dm.o: alloc.o atomlist.o class_Data2D.o class_Fstack_Data1D.o
 m_new_dm.o: class_Fstack_Pair_Geometry_SpData2D.o class_Geometry.o
 m_new_dm.o: class_OrbitalDistribution.o class_Pair_Geometry_SpData2D.o
@@ -1065,6 +1068,7 @@ mulliken.o: siesta_cml.o
 naefs.o: atmfuncs.o mneighb.o new_matel.o precision.o
 ncdf_io.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
 ncdf_io.o: class_Sparsity.o io_sparse.o parallel.o precision.o
+ncdf_io.o: alloc.o m_host.o
 new_matel.o: alloc.o errorf.o interpolation.o matel_registry.o parallel.o
 new_matel.o: precision.o radfft.o spher_harm.o sys.o
 nlefsm.o: alloc.o atm_types.o atmfuncs.o atomlist.o chemical.o mneighb.o
@@ -1518,3 +1522,4 @@ version_info.o: version.o
 write_subs_energies.o: write_subs.o
 write_subs_positions.o: write_subs.o
 write_subs_pressure.o: write_subs.o
+m_host.o: parallel.o alloc.o
