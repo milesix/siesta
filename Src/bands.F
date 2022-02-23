@@ -29,6 +29,7 @@
       subroutine setup_bands( )
         implicit none
         ! Find number of band k-points
+        nbk = 0
         maxbk = 1
         nullify(bk)
         call re_alloc( bk, 1, 3, 1, maxbk, 'bk', 'band',
