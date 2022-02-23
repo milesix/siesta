@@ -62,12 +62,9 @@ dep:
 #
 XC=$(GRIDXC_LIBS)
 
-NCPS_INCFLAGS=-I $(MAIN_OBJDIR)/ncps/src
-PSOP_INCFLAGS=-I $(MAIN_OBJDIR)/psoplib/src
-FDF_INCFLAGS=-I $(MAIN_OBJDIR)/fdf
 INCFLAGS:= $(NETCDF_INCFLAGS)  $(PSML_INCFLAGS) $(NCPS_INCFLAGS) \
            $(PSOP_INCFLAGS) $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS) \
-           $(PEXSI_INCFLAGS) $(FDF_INCFLAGS) $(INCFLAGS)
+           $(PEXSI_INCFLAGS) $(FDF_INCFLAGS) $(MS_INCFLAGS) $(INCFLAGS)
 #
 # For removing any -ipo compilation in sub directories...
 # Later compilers are also having this enabled, and it lets you
@@ -292,31 +289,6 @@ m_pexsi.o m_pexsi_driver.o m_pexsi_dos.o m_pexsi_local_dos.o: f_ppexsi_interface
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 #
-# These subordinate make processes take options from the top level.
-# In some cases they are superfluous, since they can be read
-# from the arch.make file, which is 'included' by all subordinate
-# makefiles. But in some other cases they are needed: VPATH, for
-# example, needs to be passed always.
-#
-FDF_LIBS=fdf/libfdf.a
-$(FDF_LIBS):
-	(cd fdf ; $(MAKE) -j 1 VPATH="$(VPATH)/fdf" \
-	ARCH_MAKE=$(ARCH_MAKE) \
-	FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
-#--------------------------------------------------------------
-NCPS=ncps/src/libncps.a
-$(NCPS): $(PSML)
-	(cd ncps/src ; $(MAKE) -j 1 VPATH="$(VPATH)/ncps/src" \
-	ARCH_MAKE=$(ARCH_MAKE) \
-	"PSML_INCFLAGS=$(PSML_INCFLAGS)" \
-	FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
-#--------------------------------------------------------------
-PSOP=psoplib/src/libpsop.a
-$(PSOP): 
-	(cd psoplib/src ; $(MAKE) -j 1 VPATH="$(VPATH)/psoplib/src" \
-	ARCH_MAKE=$(ARCH_MAKE) \
-	FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
-
 #--------------------------------------------------------------
 libmpi_f90.a: 
 	@(cd MPI ; $(MAKE) -j 1 \
@@ -326,14 +298,7 @@ libmpi_f90.a:
                     "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" )
 
 #--------------------------------------------------------------
-MS=MatrixSwitch.a
-$(MS): $(MPI_INTERFACE)
-	(cd MatrixSwitch/src ; \
-	 $(MAKE) -j 1 \
-	            "VPATH=$(VPATH)/MatrixSwitch/src" \
-		    "FPPFLAGS=$(FPPFLAGS)" \
-		    "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module)
-#
+
 m_initwf.o sankey_change_basis.o m_evolve.o cranknic_evolg.o cranknic_evolk.o: $(MS)
 wavefunctions.o m_matdiag.o m_matswinvers.o m_inversemm.o: $(MS)
 #--------------------------------------------------------------
@@ -508,7 +473,8 @@ ALL_OBJS=$(OBJS) $(SYSOBJ) $(MAIN_OBJ)
 
 $(ALL_OBJS): $(COMP_LIBS)
 
-libSiestaForces.a: $(OBJS) $(SYSOBJ)
+libSiestaForces.a: $(MPI_INTERFACE) $(FDF_LIBS) $(MS) $(NCPS) $(PSOP) \
+                   $(COMP_LIBS) $(OBJS) $(SYSOBJ)
 	$(AR) $(ARFLAGS_EXTRA) cru libSiestaForces.a $(OBJS) $(SYSOBJ)
 	@if [ ! -z "$(MPI_INTERFACE)" ] ; then \
             $(AR) $(ARFLAGS_EXTRA) cru libSiestaForces.a MPI/*.o ; fi
@@ -544,6 +510,7 @@ clean:
 	rm -f compinfo.F90 tmp.F90
 	rm -f *.bck *~
 	rm -f aux_*.f aux_*.f90
+	(cd fdf ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean)
 	(cd ncps/src ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean)
 	(cd psoplib/src ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean)
 	@if [ -d MPI ] ; then (cd MPI && $(MAKE) clean ) ; fi

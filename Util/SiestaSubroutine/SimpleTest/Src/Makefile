@@ -39,10 +39,6 @@ include $(ARCH_MAKE)
 TOP_LEVEL=$(shell pwd)/../../../../Src
 VPATH:=$(TOP_LEVEL)
 #
-NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
-PSOP_INCFLAGS=-I$(MAIN_OBJDIR)/psoplib/src
-FDF_INCFLAGS=-I$(MAIN_OBJDIR)/fdf
-
 #
 # Uncomment the following line for debugging support
 #
@@ -61,15 +57,10 @@ XMLPARSER=$(XMLF90_LIBS)
 XC=$(GRIDXC_LIBS)
 PSML=$(PSML_LIBS)
 #
-NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
-PSOP=$(MAIN_OBJDIR)/psoplib/src/libpsop.a
-FDF_LIBS=$(MAIN_OBJDIR)/fdf/libfdf.a
 PSML=$(PSML_LIBS)
-INCFLAGS:=$(NETCDF_INCFLAGS) $(FDF_INCFLAGS) \
+INCFLAGS:=$(NETCDF_INCFLAGS) $(FDF_INCFLAGS) $(MS_INCFLAGS) \
           $(NCPS_INCFLAGS) $(PSOP_INCFLAGS) $(PSML_INCFLAGS) \
           $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS) $(INCFLAGS)
-#
-MS=MatrixSwitch.a
 #
 ALL_LIBS= $(SIESTA_LIB) $(FDF_LIBS) $(XC) \
 	$(NCPS) $(PSML) $(XMLF90_LIBS) $(PSOP) $(MS) \

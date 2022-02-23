@@ -17,13 +17,11 @@ default: what tbtrans
 
 VPATH:=$(shell pwd)/../../../Src
 OBJDIR=Obj
-ARCH_MAKE=../../../$(OBJDIR)/arch.make
-include $(ARCH_MAKE)
 
 MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
+ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
+include $(ARCH_MAKE)
 
-FDF_INCFLAGS=-I$(MAIN_OBJDIR)/fdf
-FDF_LIBS=$(MAIN_OBJDIR)/fdf/libfdf.a
 INCFLAGS += $(FDF_INCFLAGS)
 
 # Set the default non-mpi routines
@@ -188,7 +186,7 @@ libmpi_f90.a:
 	-mkdir -p MPI
 	(cd MPI ; \
 	$(MAKE) -f $(MPI_MAKEFILE) -j 1 "VPATH=$(VPATH)/MPI" \
-	"MAKEFILES=$(MPI_MAKEFILE)" "ARCH_MAKE=../$(ARCH_MAKE)" \
+	"MAKEFILES=$(MPI_MAKEFILE)" "ARCH_MAKE=$(ARCH_MAKE)" \
 	"FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module_built)
 
 #######################
@@ -296,7 +294,7 @@ pht: phtrans
 # We append the -DTBTRANS as some special routines
 # which could take advantage of this preprocessing flag
 tbtrans: FPPFLAGS += -DTBTRANS
-tbtrans: version $(MPI_INTERFACE) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(DEP_OBJS) $(TBTOBJS) 
+tbtrans: version $(MPI_INTERFACE) $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(DEP_OBJS) $(TBTOBJS) 
 	$(FC) $(FFLAGS) $(LDFLAGS) -o tbtrans \
               $(DEP_OBJS) $(TBTOBJS) $(MPI_INTERFACE) \
               $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(LIBS)
@@ -305,7 +303,7 @@ tbtrans: version $(MPI_INTERFACE) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(DEP_O
 # which could take advantage of this preprocessing flag
 # Tbtrans has TBT_PHONON flags to compile special capabilities
 phtrans: FPPFLAGS += -DTBTRANS -DTBT_PHONON
-phtrans: version $(MPI_INTERFACE) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(DEP_OBJS) $(TBTOBJS)
+phtrans: version $(MPI_INTERFACE) $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(DEP_OBJS) $(TBTOBJS)
 	$(FC) $(FFLAGS) $(LDFLAGS) -o phtrans \
               $(DEP_OBJS) $(TBTOBJS) $(MPI_INTERFACE) \
               $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(LIBS)

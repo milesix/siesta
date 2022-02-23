@@ -18,8 +18,6 @@ include $(ARCH_MAKE)
 # Library module libfdf.a
 default: module
 module: libfdf.a
-	cp libfdf.a ..
-	@cp -p *.*d ..     
 #
 OBJS=iso_fortran_env.o fdf.o io_fdf.o parse.o utils.o prec.o 
 libfdf.a: $(OBJS)
