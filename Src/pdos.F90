@@ -118,9 +118,6 @@ subroutine pdos( NO, nspin, NO_L, MAXNH, &
   ! Find the intervals between the subdivisions in the energy scale ------
   delta = (E2 - E1) / (NHIST-1)
 
-  ! Ensure we only use paralleloverk for
-  ! spin-(un)polarized calculations
-  if ( nspin > 2 ) ParallelOverK = .false.
   ! Reset for Gamma-only PDOS calculations
   if ( Gamma ) ParallelOverK = .false.
 
@@ -140,16 +137,29 @@ subroutine pdos( NO, nspin, NO_L, MAXNH, &
     nhs  = no_u * nuo
     npsi = no_u * no_l * nspin
   elseif ( nspin <= 2 .and. .not.gamma) then
+#ifdef MPI
     if (ParallelOverK) then
       nhs  = 2 * no_u * no_u
       npsi = 2 * no_u * no_u
     else
+#endif
       nhs  = 2 * no_u * nuo
       npsi = 2 * no_u * nuo
+#ifdef MPI
     endif
+#endif
   elseif (nspin >= 4) then
-    nhs  = 2 * (2*no_u) * (2*nuo)
-    npsi = 2 * (2*no_u) * (2*nuo)
+#ifdef MPI
+    if(ParallelOverK) then
+      nhs  = 2 * (2*no_u) * (2*no_u)
+      npsi = 2 * (2*no_u) * (2*no_u)
+    else
+#endif
+      nhs  = 2 * (2*no_u) * (2*nuo)
+      npsi = 2 * (2*no_u) * (2*nuo)
+#ifdef MPI
+    endif
+#endif
   else
     call die('diagon: ERROR: incorrect value of nspin')
   endif
@@ -183,6 +193,7 @@ subroutine pdos( NO, nspin, NO_L, MAXNH, &
         E1, E2, NHIST, SIGMA, INDXUO, &
         HAUX, SAUX, PSI, eig, DTOT, DPR )
   elseif ( nspin <= 2 .and. .not.gamma) then
+#ifdef MPI
     if (ParallelOverK) then
       call pdoskp( nspin, NUO, NO, MAXNH, &
           no_u, NUMH, LISTHPTR, LISTH, H, S, &
@@ -190,34 +201,61 @@ subroutine pdos( NO, nspin, NO_L, MAXNH, &
           XIJ, INDXUO, NK, KPOINT, WK, &
           HAUX, SAUX, PSI, eig, DTOT, DPR )
     else
+#endif
       call pdosk( nspin, NUO, NO, MAXNH, &
           no_u, NUMH, LISTHPTR, LISTH, H, S, &
           E1, E2, NHIST, SIGMA, &
           XIJ, INDXUO, NK, KPOINT, WK, &
           HAUX, SAUX, PSI, eig, DTOT, DPR )
+#ifdef MPI
     endif
+#endif    
   elseif (nspin == 4 .and. gamma) then
     call pdos2g( NUO, NO, NO_L, MAXNH, &
         no_u, NUMH, LISTHPTR, LISTH, H, S, &
         E1, E2, NHIST, SIGMA, INDXUO, &
         HAUX, SAUX, PSI, eig, DTOT, DPR )
   elseif (nspin == 4 .and. .not. gamma) then
-    call pdos2k( NUO, NO, NO_L, MAXNH, &
-        no_u, NUMH, LISTHPTR, LISTH, H, S, &
-        E1, E2, NHIST, SIGMA, &
-        XIJ, INDXUO, NK, KPOINT, WK, &
-        HAUX, SAUX, PSI, eig, DTOT, DPR )
+#ifdef MPI
+    if (ParallelOverK) then
+      call pdos2kp( NUO, NO, NO_L, MAXNH, &
+          no_u, NUMH, LISTHPTR, LISTH, H, S, &
+          E1, E2, NHIST, SIGMA, &
+          XIJ, INDXUO, NK, KPOINT, WK, &
+          HAUX, SAUX, PSI, eig, DTOT, DPR )
+    else
+#endif      
+      call pdos2k( NUO, NO, NO_L, MAXNH, &
+          no_u, NUMH, LISTHPTR, LISTH, H, S, &
+          E1, E2, NHIST, SIGMA, &
+          XIJ, INDXUO, NK, KPOINT, WK, &
+          HAUX, SAUX, PSI, eig, DTOT, DPR )
+#ifdef MPI
+    endif
+#endif    
   elseif (nspin == 8 .and. gamma) then
     call pdos3g( NUO, NO, NO_L, MAXNH, &
         no_u, NUMH, LISTHPTR, LISTH, H, S, &
         E1, E2, NHIST, SIGMA, INDXUO, &
         HAUX, SAUX, PSI, eig, DTOT, DPR )
   elseif (nspin == 8 .and. .not. gamma) then
-    call pdos3k( NUO, NO, NO_L, MAXNH, &
-        no_u, NUMH, LISTHPTR, LISTH, H, S, &
-        E1, E2, NHIST, SIGMA, &
-        XIJ, INDXUO, NK, KPOINT, WK, &
-        HAUX, SAUX, PSI, eig, DTOT, DPR )
+#ifdef MPI
+    if (ParallelOverK) then
+      call pdos3kp( NUO, NO, NO_L, MAXNH, &
+          no_u, NUMH, LISTHPTR, LISTH, H, S, &
+          E1, E2, NHIST, SIGMA, &
+          XIJ, INDXUO, NK, KPOINT, WK, &
+          HAUX, SAUX, PSI, eig, DTOT, DPR )
+    else
+#endif      
+      call pdos3k( NUO, NO, NO_L, MAXNH, &
+          no_u, NUMH, LISTHPTR, LISTH, H, S, &
+          E1, E2, NHIST, SIGMA, &
+          XIJ, INDXUO, NK, KPOINT, WK, &
+          HAUX, SAUX, PSI, eig, DTOT, DPR )
+#ifdef MPI
+    endif
+#endif    
   end if
 
   ! Clean up memory
