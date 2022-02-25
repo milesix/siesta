@@ -5,6 +5,7 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
+#ifdef MPI
 subroutine pdoskp(nspin, nuo, no, maxnh, &
     nuotot, numh, listhptr, listh, H, S, &
     E1, E2, nhist, sigma, &
@@ -411,3 +412,4 @@ contains
   end subroutine setup_Sk
 
 end subroutine pdoskp
+#endif
