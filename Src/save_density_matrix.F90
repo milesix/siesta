@@ -42,7 +42,7 @@ contains
 #ifdef NCDF_4
     use dictionary
     use siesta_options, only:  write_cdf
-    use m_ncdf_siesta, only : cdf_save_state
+    use m_ncdf_siesta, only : cdf_save_state, cdf_save_state_new
 #endif
 #endif
     use sparse_matrices,      only:  EDM_2D
@@ -96,11 +96,12 @@ contains
           (idyn == 6 .and. istp == 1 ) ) then
         
         dic_save = ('Ef'.kv.1)//('DM'.kv.1)//('EDM'.kv.1)
+# ifdef NEW_NCDF
+# define cdf_save_state cdf_save_state_new
+# endif
         call cdf_save_state(trim(slabel)//'.nc',dic_save)
-        
         call delete(dic_save)
       end if
-      
     end if
 #endif
 #endif

@@ -40,6 +40,8 @@ C
       PUBLIC :: initMeshExtencil, distExtMeshData, gathExtMeshData
 #endif
       PUBLIC :: allocASynBuffer
+      PUBLIC :: prepareMeshBuffers, reduceMeshToMaster
+      PUBLIC :: getLocalBox
 !     Symbolic names for parallel mesh distributions
 
       integer, parameter, public :: UNIFORM = 1
@@ -225,6 +227,7 @@ C     Reset data if necessay
       endif
 
       distr => meshDistr(oDistr)
+      distr%nMesh = nm
 C     Allocate memory for the current distribution
       call re_alloc( distr%box, 1, 2, 1, 3, 1, Nodes,
      &               'distr%box', moduName )
@@ -3479,4 +3482,86 @@ C     Save the list of communications for the current process
 !--------------------------------------------------------------------------- END
       end subroutine compMeshComm
 #endif
+
+      subroutine prepareMeshBuffers( iDistr, counts, displs,
+     &                               nlocal, n, nx, ny, nz )
+      implicit none
+      integer :: iDistr, counts(Nodes), displs(Nodes), nlocal, n
+      integer :: nx, ny, nz
+      integer :: nsm3, i, j
+      integer, pointer :: lbox(:,:)
+      type(meshDisType), pointer :: dist
+!------------------------------------------------------------------------- BEGIN
+      dist => meshDistr(iDistr)
+      lbox => dist%box(:,:,Node+1)
+      nsm3 = dist%nsm**3
+      nlocal = nsm3*product(lbox(2,:)-lbox(1,:)+1)
+      if (Node==0) then
+        nx = dist%nsm*dist%nMesh(1)
+        ny = dist%nsm*dist%nMesh(2)
+        nz = dist%nsm*dist%nMesh(3)
+        n = 0
+        do i=1, Nodes
+          lbox => dist%box(:,:,i)
+          j = nsm3*product(lbox(2,:)-lbox(1,:)+1)
+          displs(i) = n
+          counts(i) = j
+          n = n + j
+        enddo
+      else
+        n = 1
+        nx = 1
+        ny = 1
+        nz = 1
+      endif
+!--------------------------------------------------------------------------- END
+      end subroutine prepareMeshBuffers
+
+      subroutine reduceMeshToMaster( iDistr, counts, displs,
+     &    nlocal, fsrc,  n, rbuf, nx, ny, nz, wbuf )
+#ifdef MPI
+      use mpi_siesta
+#endif
+      implicit none
+      integer :: iDistr, counts(Nodes), displs(Nodes), nlocal, n
+      integer :: nx, ny, nz
+      real(grid_p) :: fsrc(nlocal), rbuf(n), wbuf(nx,ny,nz)
+      integer      :: ierr, nsm, p, ig, ix, iy, iz, ix2, iy2, iz2
+      integer      :: gx, gy, gz
+      type(meshDisType), pointer :: dist
+      integer :: lbox(2,3)
+!------------------------------------------------------------------------- BEGIN
+#ifdef MPI
+      call MPI_Gatherv( fsrc, nlocal, MPI_grid_real, rbuf, counts,
+     &    displs, MPI_grid_real, 0, MPI_COMM_WORLD, ierr )
+#endif
+      if (Node==0) then
+        dist => meshDistr(iDistr)
+        nsm = dist%nsm
+        ig  = 1
+        do p=1, Nodes
+          lbox(1,:) = (dist%box(1,:,p)-1)*nsm+1
+          lbox(2,:) = dist%box(2,:,p)*nsm
+          do iz=lbox(1,3), lbox(2,3)
+            do iy=lbox(1,2), lbox(2,2)
+              do ix=lbox(1,1), lbox(2,1)
+                wbuf(ix,iy,iz) = rbuf(ig)
+                ig = ig + 1
+              enddo
+            enddo
+          enddo
+        enddo
+      endif
+!--------------------------------------------------------------------------- END
+      end subroutine reduceMeshToMaster
+
+      subroutine getLocalBox( iDistr, inode, lbox )
+      implicit none
+      integer :: iDistr, inode, lbox(2,3)
+      type(meshDisType), pointer :: dist
+      dist => meshDistr(iDistr)
+      lbox(1,:) = (dist%box(1,:,inode)-1)*dist%nsm + 1
+      lbox(2,:) = dist%box(2,:,inode)*dist%nsm
+      end subroutine getLocalBox
+
       END MODULE moreMeshSubs

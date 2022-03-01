@@ -101,8 +101,9 @@
 #endif
 #ifdef NCDF_4
       use dictionary, dict_first => first
-      use m_ncdf_siesta, only : cdf_init_file, cdf_save_settings
-      use m_ncdf_siesta, only : cdf_save_state, cdf_save_basis
+      use m_ncdf_siesta, only : cdf_init_file, cdf_init_file_new
+      use m_ncdf_siesta, only : cdf_save_basis, cdf_save_basis_new
+      use m_ncdf_siesta, only : cdf_save_state, cdf_save_state_new
 #ifdef MPI
       use mpi_siesta
 #endif
@@ -693,18 +694,19 @@
 !     Before continuing we will create the CDF file output
 !
 !     Initialize the NC file
+
+# ifdef NEW_NCDF
+# define cdf_init_file  cdf_init_file_new
+# define cdf_save_basis cdf_save_basis_new
+# define cdf_save_state cdf_save_state_new
+# endif
+
       if ( write_cdf ) then
         if ( inicoor == istep ) then
           call cdf_init_file(trim(slabel)//'.nc', is_FC=(idyn==6))
-#ifdef MPI
-          call MPI_Barrier(MPI_Comm_World,MPIerror)
-#endif
 
 !         Save the basis set (only once)
           call cdf_save_basis(trim(slabel)//'.nc')
-#ifdef MPI
-          call MPI_Barrier(MPI_Comm_World,MPIerror)
-#endif
 
           d_sav = d_sav//('xa'.kv.1)//('cell'.kv.1)
           d_sav = d_sav//('sp'.kv.1)//('S'.kv.1)//('xij'.kv.1)
@@ -714,11 +716,9 @@
           end if
           call cdf_save_state(trim(slabel)//'.nc',d_sav)
           call delete(d_sav)
-
         end if
       end if
 #endif
-
       ! Clean-up (regardless of specified
       call delete(gradS_2D)
 

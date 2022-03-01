@@ -89,6 +89,9 @@
       use iogrid_netcdf, only: set_box_limits
 #ifdef NCDF_4
       use files,         only  : slabel
+# ifdef NEW_NCDF
+# define cdf_init_grid  cdf_init_grid_new
+# endif
       use m_ncdf_siesta, only : cdf_init_grid
       use ncdf_io_m, only : cdf_init_mesh
 #endif
@@ -665,6 +668,9 @@ C     Modules
 
 #ifdef NCDF_4
       use siesta_options, only: write_cdf
+# ifdef NEW_NCDF
+# define cdf_save_grid  cdf_save_grid_new
+# endif
       use m_ncdf_siesta, only: cdf_save_grid
 #endif
       use m_rhofft,       only: rhofft, FORWARD, BACKWARD

@@ -75,7 +75,7 @@ contains
 
 #ifdef NCDF_4
     use dictionary
-    use m_ncdf_siesta, only : cdf_save_settings
+    use m_ncdf_siesta, only : cdf_save_settings, cdf_save_settings_new
 #endif
     use m_compute_energies, only: compute_energies
 
@@ -235,6 +235,9 @@ contains
 
 !       Save the settings (important to do here since mesh-cutoff may
 !       have changed).
+#ifdef NEW_NCDF
+#define cdf_save_settings cdf_save_settings_new
+#endif
         call cdf_save_settings(trim(slabel)//'.nc')
 #ifdef MPI
         call MPI_Barrier(MPI_Comm_World,MPIerror)

@@ -357,6 +357,9 @@
       endif
 #ifdef CDF
 #ifdef NCDF_4
+# ifdef NEW_NCDF
+# define cdf_save_state cdf_save_state_new
+# endif
       if ( write_cdf ) then
         if ( idyn == 6 ) then
           call cdf_save_fc(trim(slabel)//'.nc', istep)
