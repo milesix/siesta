@@ -22,30 +22,40 @@
 
       use parallel, only: SIESTA_worker ! whether part of Siesta's communicator
       use parallel, only: ionode
-#ifdef MPI      
+#ifdef MPI
       use mpi_siesta, only: true_mpi_comm_world
-#endif      
+#endif
       use m_mpi_utils, only: broadcast
 
 #ifdef TRACING_SOLVEONLY
       use extrae_module
 #endif
 
+#ifdef SIESTA__THERMAL_FLUX
+      use m_io,           only: io_assign, io_close
+      use siesta_options, only: compute_thermal_flux
+      use siesta_geom,    only: xa, va, na_u
+      use thermal_flux
+#endif
+
       implicit none
 
       integer :: istep
       logical :: relaxd
+#ifdef SIESTA__THERMAL_FLUX
+      integer :: write_xvs_int = 0  !! when .gt.0 output xvs data each this number of steps
+#endif
 
 ! Notes for PEXSI operation
 !
-! A subset of nodes carries out non-PEXSI Siesta operations 
-! (i.e., setting up H, moving atoms, diagonalizing...). 
+! A subset of nodes carries out non-PEXSI Siesta operations
+! (i.e., setting up H, moving atoms, diagonalizing...).
 ! These are tagged as "SIESTA_worker" (admittedly, a bad name)
 ! All nodes are involved in the PEXSI electronic-structure solver,
 ! and in the new LocalDOS computation based on selected inversion.
 !
 ! 'siesta_init', 'siesta_forces', and 'siesta_analysis' need to
-! be called by all nodes. 
+! be called by all nodes.
 !
 ! In some cases, the result of a computation by "SIESTA_worker" nodes needs
 ! to be broadcast to guarantee proper control-flow logic (for example,
@@ -58,7 +68,7 @@
 
 #ifdef TRACING_SOLVEONLY
       call extrae_shutdown
-#endif      
+#endif
 
 #ifdef SIESTA__PEXSI
       if (ionode) call memory_snapshot("after siesta_init")
@@ -67,16 +77,45 @@
 C     Begin of coordinate relaxation iteration
       relaxd = .false.
 
-#ifdef SIESTA__PEXSI      
+#ifdef SIESTA__PEXSI
       ! Broadcast relevant things for program logic
       ! These were set in siesta_options, called only by "SIESTA_workers".
       call broadcast(inicoor,comm=true_MPI_Comm_World)
       call broadcast(fincoor,comm=true_MPI_Comm_World)
 #endif
+
+#ifdef SIESTA__THERMAL_FLUX
+      write_xvs_int = fdf_integer("MD.WriteXVSinterval", 0)
+      if (write_xvs_int.gt.0) then
+         write(*,"(A,I2,A)") "Raw XVS output for each ",
+     $        write_xvs_int, " line requested."
+      end if
+#endif
+
       istep  = inicoor
       DO WHILE ((istep.le.fincoor) .AND. (.not. relaxd))
 
         call timer('IterGeom', 1)
+
+#ifdef SIESTA__THERMAL_FLUX
+         if (compute_thermal_flux) then
+            call init_thermal_flux()
+
+            do substep=1, gk_setup%dpoints
+               call make_small_move()
+               call siesta_forces( istep )
+               if (substep.eq.1) call init_data_base_step()
+               call init_data_each_step()
+            end do
+
+            call compute_derivatives() ! calculate derivatives via selected scheme
+            call compute_flux() ! calculate thermal flux components
+            call thermal_flux_tesults() ! output the thermal transport results
+
+            call reset_thermal_flux()
+            call bye("Done Thermal Transport calculation, exiting.")
+         end if
+#endif
 
          if ( td_elec_dyn ) then
             call siesta_tddft( istep )
@@ -88,8 +127,12 @@ C     Begin of coordinate relaxation iteration
              call bye("Saved S only, exiting.")
          end if
 
+#ifdef SIESTA__THERMAL_FLUX
+         if (write_xvs_int.gt.0) call write_xvs(istep, write_xvs_int)
+#endif
+
         if (SIESTA_worker) call siesta_move( istep, relaxd )
-#ifdef SIESTA__PEXSI        
+#ifdef SIESTA__PEXSI
         call broadcast(relaxd,comm=true_MPI_Comm_World)
 #endif
 
@@ -104,7 +147,7 @@ C     Begin of coordinate relaxation iteration
 
       ENDDO
 
-C     End of coordinate-relaxation loop 
+C     End of coordinate-relaxation loop
       call siesta_analysis( relaxd )
 #ifdef SIESTA__PEXSI
       if (ionode) call memory_snapshot("after siesta_analysis")
@@ -116,4 +159,31 @@ C     End of coordinate-relaxation loop
 #endif
 
 !-----------------------------------------------------------------------END
+#ifdef SIESTA__THERMAL_FLUX
+      contains
+
+      subroutine write_xvs (curr_step, interval)
+        !! Raw output of XVS data on each interval
+        !! into `fort.curr_step' file.
+        integer, intent(in) :: curr_step, interval
+        integer :: ia, iu
+        character(len=10) :: file_id
+        character(len=50) :: file_name
+
+        if (mod(curr_step, interval).eq.0) then
+           write(file_id, '(i0)') curr_step
+           file_name = 'XVS_' // trim(adjustl(file_id)) // '.dat'
+
+           call io_assign(iu)
+           open(iu, file=file_name, status='unknown',
+     $          form='formatted', action='write')
+
+           do ia=1, na_u
+              write(iu, *) xa(1:3, ia), va(1:3,ia)
+           end do
+
+           call io_close(iu)
+        end if
+      end subroutine write_xvs
+#endif
       END program siesta

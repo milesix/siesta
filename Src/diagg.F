@@ -1,12 +1,12 @@
-! 
+!
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-      subroutine diagg( h_spin_dim, nuo, maxuo, maxnh, maxnd, 
-     &                  maxo, numh, listhptr, listh, numd, 
+      subroutine diagg( h_spin_dim, nuo, maxuo, maxnh, maxnd,
+     &                  maxo, numh, listhptr, listh, numd,
      &                  listdptr, listd, H, S,
      &                  getD, getPSI, fixspin, qtot, qs, temp, e1, e2,
      &                  eo, qo, Dnew, Enew, ef, efs, Entropy,
@@ -14,32 +14,32 @@
      &                  iscf, neigwanted )
 C *********************************************************************
 C Subroutine to calculate the eigenvalues and eigenvectors, density
-C and energy-density matrices, and occupation weights of each 
+C and energy-density matrices, and occupation weights of each
 C eigenvector, for given Hamiltonian and Overlap matrices (including
 C spin polarization). Gamma-point version.
 C Writen by J.Soler, August 1998.
 C **************************** INPUT **********************************
 C integer h_spin_dim    : Number of spin components of H and D
 C integer spinor_dim          : # of spin components of eo and qo, qs, efs
-C integer e_spin_dim          : Number of spin components of E_dm  
+C integer e_spin_dim          : Number of spin components of E_dm
 C integer nuo                 : Number of basis orbitals local to node
 C integer maxuo               : Last dimension of xij
 C                               Must be at least max(indxuo)
-C integer maxnh               : Maximum number of orbitals interacting  
-C integer maxnd               : Maximum number of nonzero elements of 
+C integer maxnh               : Maximum number of orbitals interacting
+C integer maxnd               : Maximum number of nonzero elements of
 C                               each row of density matrix
 C integer maxo                : First dimension of eo and qo
-C integer numh(nuo)           : Number of nonzero elements of each row 
+C integer numh(nuo)           : Number of nonzero elements of each row
 C                               of hamiltonian matrix
 C integer listhptr(nuo)       : Pointer to each row (-1) of the
 C                               hamiltonian matrix
-C integer listh(maxnh)        : Nonzero hamiltonian-matrix element  
+C integer listh(maxnh)        : Nonzero hamiltonian-matrix element
 C                               column indexes for each matrix row
-C integer numd(nuo)           : Number of nonzero elements of each row 
+C integer numd(nuo)           : Number of nonzero elements of each row
 C                               ofdensity matrix
 C integer listdptr(nuo)       : Pointer to each row (-1) of the
 C                               density matrix
-C integer listd(maxnd)        : Nonzero density-matrix element column 
+C integer listd(maxnd)        : Nonzero density-matrix element column
 C                               indexes for each matrix row
 C real*8  H(maxnh,h_spin_dim) : Hamiltonian in sparse form
 C real*8  S(maxnh)            : Overlap in sparse form
@@ -49,7 +49,7 @@ C logical fixspin             : Fix the spin of the system?
 C real*8  qtot                : Number of electrons in unit cell
 C real*8  qs(spinor_dim)      : Number of electrons in unit cell for each
 C                               spin component (if fixed spin option is used)
-C real*8  temp                : Electronic temperature 
+C real*8  temp                : Electronic temperature
 C real*8  e1, e2              : Energy range for density-matrix states
 C                               (to find local density of states)
 C                               Not used if e1 > e2
@@ -96,10 +96,15 @@ C
       use mpi_siesta
 #endif
 
+#ifdef SIESTA__THERMAL_FLUX
+      use siesta_options, only : compute_thermal_flux
+      use thermal_flux_data
+#endif
+
       implicit none
 
 #ifdef MPI
-      integer 
+      integer
      &  MPIerror
 #endif
 
@@ -107,18 +112,18 @@ C
      &  iscf, maxnd, maxnh, maxuo, maxo, nuo, nuotot,
      &  neigwanted, h_spin_dim
 
-      integer 
+      integer
      &  listh(maxnh), numh(nuo), listhptr(nuo),
      &  listd(maxnd), numd(nuo), listdptr(nuo)
 
       real(dp)
-     &  Dnew(maxnd,h_spin_dim), e1, e2, ef, Enew(maxnd,e_spin_dim), 
-     &  Entropy, eo(maxo,spinor_dim), H(maxnh,h_spin_dim), 
-     &  qo(maxo,spinor_dim), qtot, qs(spinor_dim), S(maxnh), temp, 
+     &  Dnew(maxnd,h_spin_dim), e1, e2, ef, Enew(maxnd,e_spin_dim),
+     &  Entropy, eo(maxo,spinor_dim), H(maxnh,h_spin_dim),
+     &  qo(maxo,spinor_dim), qtot, qs(spinor_dim), S(maxnh), temp,
      &  efs(spinor_dim), occtol
-     
+
       real(dp) Haux(nuotot,nuo), Saux(nuotot,nuo)
-      real(dp), target :: psi(nuotot,maxuo,spinor_dim) 
+      real(dp), target :: psi(nuotot,maxuo,spinor_dim)
       real(dp), pointer :: psi_real_1d(:)
       real(dp), dimension(1), parameter :: wk = (/ 1.0_dp /)
       integer, parameter                :: nk = 1
@@ -145,7 +150,7 @@ C  Internal variables .............................................
       endif
 
 C Solve eigenvalue problem
-      
+
       do ispin = 1,spinor_dim
 
         call timer( 'r-eigvec', 1 )
@@ -164,12 +169,36 @@ C Solve eigenvalue problem
         enddo
 !$OMP end parallel do
         call timer( 'r-buildHS', 2 )
+
+#ifdef SIESTA__THERMAL_FLUX
+        if (compute_thermal_flux.and.(substep.eq.1)) then
+           if (iscf.eq.1) then
+              ! Spin 1 for now
+              call re_alloc(H_base,1, nuo, 1, nuotot,
+     $             'H_base', 'diagg')
+              call re_alloc(eo_base, 1, nuo,
+     $             'eo_base', 'diagg')
+              call re_alloc(psi_base,1,nuo,1,nuo,
+     $             'psi_base', 'diagg')
+           endif
+
+           ! Store Hamiltonian at `base' (first) substep:
+           H_base(:,:) = Haux(:,:) !NOTE: maybe chek if it is the last scf?
+        endif
+#endif
+
         call rdiag( Haux, Saux, nuotot, nuo, nuotot,
-     $       eo(1,ispin), 
+     $       eo(1,ispin),
      .       psi(1,1,ispin), neigwanted, iscf, ierror,
      .       BlockSize)
         call timer( 'r-eigvec', 2 )
 
+#ifdef SIESTA__THERMAL_FLUX
+        if (compute_thermal_flux.and.(substep.eq.1)) then
+           eo_base(:) = eo(:,1)
+           psi_base(:,:) = psi(:,:,1)
+        end if
+#endif
 
 C Check error flag and take appropriate action
         if (ierror.gt.0) then
@@ -189,10 +218,18 @@ C Repeat diagonalisation with increased memory to handle clustering
             enddo
           enddo
 !$OMP end parallel do
-          call rdiag( Haux, Saux, nuotot, nuo, nuotot, eo(1,ispin), 
+          call rdiag( Haux, Saux, nuotot, nuo, nuotot, eo(1,ispin),
      &         psi(1,1,ispin), neigwanted, iscf, ierror,
      .         BlockSize )
-        endif
+
+#ifdef SIESTA__THERMAL_FLUX
+!     Just in case...
+          if (compute_thermal_flux.and.(substep.eq.1)) then
+             eo_base(:) = eo(:,1)
+             psi_base(:,:) = psi(:,:,1)
+          end if
+#endif
+       endif
 
         if (getPSI) then
           ! We do not have info about occupation
@@ -238,13 +275,13 @@ C Find weights for local density of states ............................
         do ispin = 1,spinor_dim
           do io = 1,nuotot
             qo(io,ispin) = ( stepf((eo(io,ispin)-e2)*rt) -
-     &                       stepf((eo(io,ispin)-e1)*rt)) * 
+     &                       stepf((eo(io,ispin)-e1)*rt)) *
      &                       2.0d0/dble(spinor_dim)
           enddo
         enddo
 !$OMP end parallel do
       endif
-      
+
       if (nuo.gt.0) then
 C New density and energy-density matrices of unit-cell orbitals .......
         nd = listdptr(nuo) + numd(nuo)
@@ -269,6 +306,23 @@ C Global operation to form new density matrix
       nullify( PSI_TMP )
       call re_alloc( PSI_TMP, 1, nuotot*maxnuo*spinor_dim, 'PSI_TMP',
      &               'diagg' )
+
+#ifdef SIESTA__THERMAL_FLUX
+      ! These arrays are not distributed... For parallel operation, and
+      ! to match the "sparse" convention, we should probably make the first
+      ! dimension "nuo"
+
+C     ! Allocate full DMs at both points for derivative:
+      if (compute_thermal_flux .and..not.(allocated(DM_save))) then
+         allocate(DM_save(nuotot, nuotot, h_spin_dim, gk_setup%dpoints))
+      end if
+
+      !NOTE: Some overhead here since DM_save processed on every SCF cycle.
+      ! Must be harmless because in the end it stores full DM at convergence. 
+
+      ! Init corresponding array:
+      if (compute_thermal_flux) DM_save(:,:,:,substep) = 0.0_dp
+#endif
 
       do Bnode=0, Nodes-1
         if (BNode.eq.Node) then
@@ -296,6 +350,15 @@ C Global operation to form new density matrix
                 paux => PSI_TMP(mm+1:mm+nuotot)
                 qei = qe*paux(iio)
                 eei = qei*eo(ie,ispin)
+#ifdef SIESTA__THERMAL_FLUX
+C     !FIXME: Extract this loop?
+                if (compute_thermal_flux) then
+                   do jo = 1,nuotot
+                      DM_save(io,jo,ispin,substep) =
+     $                     DM_save(io,jo,ispin,substep) + qei*paux(jo)
+                   enddo
+                end if
+#endif
                 do j = 1,numd(io)
                   ind = listdptr(io) + j
                   jo  = listd(ind)
@@ -317,4 +380,4 @@ C Global operation to form new density matrix
 #ifdef DEBUG
       call write_debug( '    POS diagg' )
 #endif
-      end 
+      end

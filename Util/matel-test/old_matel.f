@@ -6,10 +6,10 @@
 ! See Docs/Contributors.txt for a list of contributors.
 !
 !
-      module m_new_matel
-      public :: new_matel
+      module m_old_matel
+      public :: old_matel
       CONTAINS
-      SUBROUTINE new_MATEL( OPERAT, IG1, IG2, R12, S12, DSDR )
+      SUBROUTINE old_matel( OPERAT, IG1, IG2, R12, S12, DSDR )
 C *******************************************************************
 C Finds two-center matrix elements between 'atomic orbitals' 
 C with finite radial and angular momentum cutoffs.
@@ -75,7 +75,6 @@ C Modules -----------------------------------------------------------
       use interpolation, only: spline, splint
       use m_errorf, only: derf
       use spher_harm, only: rlylm, ylmexp, ylmylm, lofilm
-      use spher_harm, only: reset_spher_harm
       use sys,     only: die
       use m_radfft
 C -------------------------------------------------------------------
@@ -164,7 +163,7 @@ C Nullify pointers
 
 C Check if tables must be re-initialized 
       IF ( IG1.LE.0 .OR. IG2.LE.0 ) THEN
-        CALL RESET_SPHER_HARM( )
+
         CALL RESET_RADFFT( )
         CALL DE_ALLOC( IFFR, 'IFFR', MYNAME )
         CALL DE_ALLOC( ILM, 'ILM', MYNAME )
@@ -614,5 +613,5 @@ C Stop time counter
 
 !------------------------ Internal procedures
 
-      END SUBROUTINE new_MATEL
-      end module m_new_matel
+      END SUBROUTINE old_matel
+      end module m_old_matel

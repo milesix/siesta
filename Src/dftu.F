@@ -106,7 +106,7 @@ C
       use neighbour    , only : iana=>jan, r2ki=>r2ij, xki=>xij
       use neighbour    , only : mneighb
       use alloc,         only : re_alloc, de_alloc
-      use m_new_matel,   only : new_matel
+      use matel_mod,     only : new_matel
       use radial,        only : rad_func
       use atm_types,     only : nspecies
       use atm_types,     only : species_info    ! Derived type with all the info

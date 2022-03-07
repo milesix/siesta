@@ -1,11 +1,11 @@
-! 
+!
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-      module m_overlap
+      module m_rmatrix
 
       use precision,     only : dp
       use parallel,      only : Node, Nodes
@@ -22,20 +22,33 @@
 
       implicit none
 
-      public :: overlap
+      public :: rmatrix
       private
 
       CONTAINS
 
-      subroutine overlap(nua, na, no, scell, xa, indxua, rmaxo,
-     &                   maxnh, lasto, iphorb, isa, 
-     &                   numh, listhptr, listh, S, gradS)
-C *********************************************************************
-C Computes the overlap matrix
-C Energies in Ry. Lengths in Bohr.
-C Based on overfsm, but removing all references to Escf/Emat  (AG)
-C Overfsm Writen by J.Soler and P.Ordejon, August-October'96, June'98
-C **************************** INPUT **********************************
+      subroutine rmatrix(nua, na, no, scell, xa, indxua, rmaxo,
+     &                   maxnh, lasto, iphorb, isa,
+     &                   numh, listhptr, listh, Rmat)
+!
+!     This routine computes B_nu,mu = tau_mu*S_nu,mu + X_nu,mu,
+!     where S_nu,mu is the overlap matrix, and X_nu,mu is the matrix
+!     element of r (with the matel convention).
+!     The 'rmatrix' name and Rmat argument refer to the r matrix element.
+
+!     Note that nu in this routine is distributed.
+!     Note also that B_nu,mu is not equal to B_mu,nu
+!
+!     This is a "real space" version of B_nu,mu. What is needed in the
+!     thermal transport module, for the Gamma point case,  is the k=0
+!     fourier transform. If an auxiliary supercell is not used (the common case
+!     for Gamma-point calculations, the (folded over R by default) real-space object
+!     is just the k=0 FT needed. If for some reason an auxiliary supercell is
+!     used, an extra folding (as done for example in the diag* routines) is needed.
+
+!     Energies in Ry. Lengths in Bohr.
+!     Based on 'overlap'
+
 C integer nua              : Number of atoms in unit cell
 C integer na               : Number of atoms in supercell
 C integer no               : Number of orbitals in supercell
@@ -51,40 +64,35 @@ C integer numh(nuotot)     : Number of nonzero elements of each row
 C                            of the overlap matrix
 C integer listhptr(nuotot) : Pointer to start of rows (-1) of overlap
 C                            matrix
-C integer listh(maxnh)     : Column indexes of the nonzero elements  
+C integer listh(maxnh)     : Column indexes of the nonzero elements
 C                            of each row of the overlap matrix
 C **************************** OUTPUT *********************************
-C real*8  S(maxnh)         : Sparse overlap matrix
-C real*8  gradS(3,maxnh)  *: Gradient of overlap matrix
+C real*8  Rmat(maxnh,3)    : Matrix elements of "R"
 
       integer, intent(in)   ::  maxnh, na, no, nua
       integer, intent(in)   :: indxua(na), iphorb(no), isa(na),
      &                         lasto(0:na), listh(maxnh), numh(*),
      &                         listhptr(*)
       real(dp) , intent(in) :: scell(3,3), rmaxo, xa(3,na)
-      real(dp), intent(out) :: S(maxnh)
-      real(dp), intent(out), optional :: gradS(3,maxnh)
+      real(dp), intent(out) :: Rmat(maxnh,3)
 C Internal variables ......................................................
       integer               :: ia, ind, io, ioa, is,  iio, j, ja, jn,
      &                         jo, joa, js, jua, nnia, ig, jg
-      real(dp)              :: grSij(3) , rij, Sij
-      real(dp), pointer :: Si(:,:) => null()
+      real(dp)              :: grSij(3) , rij, Sij, Overlap_ij
+      real(dp),     pointer :: Ri(:,:)
       external  timer
-      logical :: has_grad
 
 C     Start timer
-      call timer( 'overlap', 1 )
+      call timer( 'rmatrix', 1 )
 
-C     Initialize neighb subroutine 
+C     Initialize neighb subroutine
       call mneighb( scell, 2.d0*rmaxo, na, xa, 0, 0, nnia )
 
 C     Allocate local memory
-      has_grad = present(gradS)
-      if ( has_grad ) then
-        call re_alloc( Si, 0, 3, 1, no, 'Si', 'overlap' )
-      else
-        call re_alloc( Si, 0, 0, 1, no, 'Si', 'overlap' )
-      end if
+      nullify(Ri)
+      call re_alloc( Ri, 1, no, 1, 3, 'Ri', 'rmatrix' )
+
+      Ri(:,:) = 0.0_dp
 
       do ia = 1,nua
         is = isa(ia)
@@ -109,50 +117,37 @@ C           Valid orbital
                 ! Use global indexes for new version of matel
                 !
                 jg = orb_gindex(js,joa)
+
+                ! Compute tau_mu*S_nu,mu + X_nu,mu, where
+                ! tau_mu is the unit-cell coordinate of mu ( hene jua)
+                !
                 if (rcut(is,ioa)+rcut(js,joa) .gt. rij) then
                   call new_MATEL( 'S', ig, jg, xij(1:3,jn),
-     &                        Sij, grSij )
-                  Si(0,jo) = Si(0,jo) + Sij
-                  if ( has_grad )
-     &                Si(1:3,jo) = Si(1:3,jo) + grSij
+     $                        Overlap_ij, grSij )
+                  call new_MATEL( 'X', ig, jg, xij(1:3,jn), Sij, grSij )
+                  Ri(jo,1) = Ri(jo,1) + Sij + Overlap_ij*xa(1,jua)
+                  call new_MATEL( 'Y', ig, jg, xij(1:3,jn), Sij, grSij )
+                  Ri(jo,2) = Ri(jo,2) + Sij + Overlap_ij*xa(2,jua)
+                  call new_MATEL( 'Z', ig, jg, xij(1:3,jn), Sij, grSij )
+                  Ri(jo,3) = Ri(jo,3) + Sij + Overlap_ij*xa(3,jua)
                 endif
               enddo
             enddo
             do j = 1,numh(iio)
               ind = listhptr(iio)+j
               jo = listh(ind)
-              S(ind) = Si(0,jo)
-              if ( has_grad )
-     &            gradS(:,ind) = Si(1:3,jo)
-              Si(:,jo) = 0.0d0
+              Rmat(ind,:) = Ri(jo,:)
+              Ri(jo,:) = 0.0d0
             enddo
           endif
         enddo
       enddo
 
 C     Deallocate local memory
-!      call new_MATEL( 'S', 0, 0, xij, Sij, grSij )
       call reset_neighbour_arrays( )
-      call de_alloc( Si, 'Si', 'overlap' )
-
-      if (fdf_get("Sonly",.false.)) then
-         call write_dm(maxnh, no_l, 1,
-     &               numh, listhptr, listh, S,
-     $               userfile="SOLD")
-
-         call write_mat(maxnh, no_l, 1,
-     &               numh, listhptr, listh, S,
-     $               userfile="SMAT")
-
-         call timer("fastWriteMat",1)
-         call write_mat(maxnh, no_l, 1,
-     &               numh, listhptr, listh, S,
-     $               userfile="SMATBS",compatible=.false.)
-         call timer("fastWriteMat",2)
-      endif
-
+      call de_alloc( Ri, 'Ri', 'rmatrix' )
 
 C     Finish timer
-      call timer( 'overlap', 2 )
-      end subroutine overlap
-      end module m_overlap
+      call timer( 'rmatrix', 2 )
+      end subroutine rmatrix
+      end module m_rmatrix
