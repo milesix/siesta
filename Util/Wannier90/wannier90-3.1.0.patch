@@ -192,7 +192,7 @@ index 457405c..bd5226a 100644
        if (ierr /= 0) call io_error('Error in allocating m_matrix_local in overlap_read')
        m_matrix_local = cmplx_0
 diff --git a/src/parameters.F90 b/src/parameters.F90
-index 7f3aebb..2809bc7 100644
+index 7f3aebb..cdf6278 100644
 --- a/src/parameters.F90
 +++ b/src/parameters.F90
 @@ -151,7 +151,10 @@ module w90_parameters
@@ -473,11 +473,12 @@ index 7f3aebb..2809bc7 100644
 +!    dis_froz_min = -1.0_dp; dis_froz_max = 0.0_dp
 +!!   end jjunquer    
      ! no default for dis_froz_max
-     frozen_states = .false.
-+!   jjunquer
-+    if( dis_froz_min /= -1.0_dp .and. dis_froz_max /= 0.0_dp ) &
-+ &     frozen_states=.true.
-+!   end jjunquer
+-    frozen_states = .false.
++!    frozen_states = .false.
++!!   jjunquer
++!    if( dis_froz_min /= -1.0_dp .and. dis_froz_max /= 0.0_dp ) &
++! &     frozen_states=.true.
++!!   end jjunquer
      call param_get_keyword('dis_froz_max', found, r_value=dis_froz_max)
      if (found) then
        frozen_states = .true.
