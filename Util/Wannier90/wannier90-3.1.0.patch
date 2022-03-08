@@ -1,5 +1,5 @@
 diff --git a/src/disentangle.F90 b/src/disentangle.F90
-index d2fbd3e..c2b55a6 100644
+index d2fbd3e..e4ba59e 100644
 --- a/src/disentangle.F90
 +++ b/src/disentangle.F90
 @@ -184,6 +184,10 @@ contains
@@ -13,7 +13,7 @@ index d2fbd3e..c2b55a6 100644
        if (on_root) then
          allocate (m_matrix(num_wann, num_wann, nntot, num_kpts), stat=ierr)
          if (ierr /= 0) call io_error('Error in allocating m_matrix in dis_main')
-@@ -201,6 +205,11 @@ contains
+@@ -201,9 +205,16 @@ contains
  
      else
  
@@ -25,6 +25,11 @@ index d2fbd3e..c2b55a6 100644
        if (on_root) then
          allocate (m_matrix(num_wann, num_wann, nntot, num_kpts), stat=ierr)
          if (ierr /= 0) call io_error('Error in allocating m_matrix in dis_main')
++      else
++        allocate (m_matrix(0, 0, 0, 0), stat=ierr)
+       endif
+       allocate (m_matrix_local(num_wann, num_wann, nntot, counts(my_node_id)), stat=ierr)
+       if (ierr /= 0) call io_error('Error in allocating m_matrix_local in dis_main')
 diff --git a/src/hamiltonian.F90 b/src/hamiltonian.F90
 index 269e808..7992afa 100644
 --- a/src/hamiltonian.F90
@@ -139,10 +144,10 @@ index 1a0ad52..ac60ac7 100644
      !! Data about each stopwatch - for timing routines
      integer :: ncalls
 diff --git a/src/overlap.F90 b/src/overlap.F90
-index 457405c..bd5226a 100644
+index 457405c..3e4e892 100644
 --- a/src/overlap.F90
 +++ b/src/overlap.F90
-@@ -56,27 +56,48 @@ contains
+@@ -56,27 +56,52 @@ contains
  
      call comms_array_split(num_kpts, counts, displs)
  
@@ -154,12 +159,14 @@ index 457405c..bd5226a 100644
      u_matrix = cmplx_0
  
      if (disentanglement) then
++!!    jjunquer
++      if( allocated(m_matrix_orig) ) deallocate(m_matrix_orig)
++!!    end jjunquer
        if (on_root) then
-+!!      jjunquer
-+        if( allocated(m_matrix_orig) ) deallocate(m_matrix_orig)
-+!!      end jjunquer
          allocate (m_matrix_orig(num_bands, num_bands, nntot, num_kpts), stat=ierr)
          if (ierr /= 0) call io_error('Error in allocating m_matrix_orig in overlap_read')
++      else
++        allocate (m_matrix_orig(0, 0, 0, 0))
        endif
 +!!    jjunquer
 +      if( allocated(m_matrix_orig_local) ) deallocate(m_matrix_orig_local)
@@ -177,13 +184,15 @@ index 457405c..bd5226a 100644
        allocate (u_matrix_opt(num_bands, num_wann, num_kpts), stat=ierr)
        if (ierr /= 0) call io_error('Error in allocating u_matrix_opt in overlap_read')
      else
++!!    jjunquer
++      if( allocated(m_matrix) ) deallocate(m_matrix)
++!!    end jjunquer
        if (on_root) then
-+!!      jjunquer
-+        if( allocated(m_matrix) ) deallocate(m_matrix)
-+!!      end jjunquer
          allocate (m_matrix(num_wann, num_wann, nntot, num_kpts), stat=ierr)
          if (ierr /= 0) call io_error('Error in allocating m_matrix in overlap_read')
          m_matrix = cmplx_0
++      else
++        allocate (m_matrix(0, 0, 0, 0))
        endif
 +!!    jjunquer
 +      if( allocated(m_matrix_local) ) deallocate(m_matrix_local)
@@ -191,6 +200,39 @@ index 457405c..bd5226a 100644
        allocate (m_matrix_local(num_wann, num_wann, nntot, counts(my_node_id)), stat=ierr)
        if (ierr /= 0) call io_error('Error in allocating m_matrix_local in overlap_read')
        m_matrix_local = cmplx_0
+@@ -563,12 +588,12 @@ contains
+       deallocate (a_matrix, stat=ierr)
+       if (ierr /= 0) call io_error('Error deallocating a_matrix in overlap_dealloc')
+     end if
+-    if (on_root) then
++!    if (on_root) then
+     if (allocated(m_matrix_orig)) then
+       deallocate (m_matrix_orig, stat=ierr)
+       if (ierr /= 0) call io_error('Error deallocating m_matrix_orig in overlap_dealloc')
+     endif
+-    endif
++!    endif
+     if (allocated(m_matrix_orig_local)) then
+       deallocate (m_matrix_orig_local, stat=ierr)
+       if (ierr /= 0) call io_error('Error deallocating m_matrix_orig_local in overlap_dealloc')
+@@ -588,12 +613,12 @@ contains
+ !    if (ierr/=0) call io_error('Error deallocating m_matrix_local in overlap_dealloc')
+ !    deallocate ( u_matrix, stat=ierr )
+ !    if (ierr/=0) call io_error('Error deallocating u_matrix in overlap_dealloc')
+-    if (on_root) then
+-      if (allocated(m_matrix)) then
+-        deallocate (m_matrix, stat=ierr)
+-        if (ierr /= 0) call io_error('Error deallocating m_matrix in overlap_dealloc')
+-      endif
++!    if (on_root) then
++    if (allocated(m_matrix)) then
++      deallocate (m_matrix, stat=ierr)
++      if (ierr /= 0) call io_error('Error deallocating m_matrix in overlap_dealloc')
+     endif
++!    endif
+     if (allocated(m_matrix_local)) then
+       deallocate (m_matrix_local, stat=ierr)
+       if (ierr /= 0) call io_error('Error deallocating m_matrix_local in overlap_dealloc')
 diff --git a/src/parameters.F90 b/src/parameters.F90
 index 7f3aebb..cdf6278 100644
 --- a/src/parameters.F90
