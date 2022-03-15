@@ -893,6 +893,10 @@ C-------------------------------------------------------------------------
 #endif
       endif
 
+#ifdef SIESTA__THERMAL_FLUX
+      Vna_G0 = sum(Vna(:))*dvol/volume
+#endif
+
 C     Allocate memory for DRho using the UNIFORM data distribution
       call re_alloc( DRho, 1, ntpl, 1, nspin, 'DRho','dhscf' )
 

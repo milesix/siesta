@@ -265,6 +265,9 @@ module thermal_flux_data
   !! Number of sub-mesh points per mesh point along each axis
   real(dp), save :: alat_vmd !! Lattice constant, retrieved in Bohr
   real(dp), save :: at_vmd(3,3) !! Lattice vectors scaled by alat
+  real(dp), save :: Vna_G0
+  !! Vna(G=0) obtained as a sum(Vna)*dvol/volume
+  !! on a real space grid.
 
   real(grid_p), pointer, save :: charge_g(:,:) => null()
   !! charge density in the reciprocal space.

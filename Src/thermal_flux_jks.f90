@@ -462,7 +462,12 @@ contains
 
              ! H_el_S = H_base(mu,nu) + eo_base(iw) * S_base(mu,nu)   ! These are (k=0) matrices
              H_el_S = H_base(mu,nu)
+             ! if(mu==nu) then
+             !    ! print*, H_el_S, 2.0_dp*Vna_G0, H_el_S - 2.0_dp*Vna_G0
+             !    H_el_S = H_el_S - 2.0_dp*Vna_G0
+             ! end if
              S_el_S = eo_base(iw) * S_base(mu,nu)   ! These are (k=0) matrices
+             ! S_el_S = (eo_base(iw) - Vna_G0) * S_base(mu,nu)   ! These are (k=0) matrices
 
              do idx = 1,3
                 ! ks_flux_Jks(idx) = ks_flux_Jks(idx) + &
@@ -470,6 +475,7 @@ contains
 
                 ks_flux_Jks_A(idx) = ks_flux_Jks_A(idx) + &
                      psi_hat_c(mu,iw,idx) * H_el_S * psi_dot_c(nu,iw)
+                     ! psi_hat_c(mu,iw,idx) * (H_el_S - 2.0*Vna_G0) * psi_dot_c(nu,iw)
 
                 ks_flux_Jks_B(idx) = ks_flux_Jks_B(idx) + &
                      psi_hat_c(mu,iw,idx) * S_el_S * psi_dot_c(nu,iw)
@@ -491,6 +497,14 @@ contains
     gk_results%Jks_B(:) = 2.0_dp * ks_flux_Jks_B(:)   ! x2 For spin
     gk_results%Jks(:)   = 2.0_dp * (ks_flux_Jks_A(:) + ks_flux_Jks_B(:))
     gk_results%Jele(:)  = 2.0_dp * 2.0_dp * ks_flux_Jele(:)   ! Why the multiplication by 2*2??
+    ! gk_results%Jks(:)   = 2.0_dp * (ks_flux_Jks_A(:) + ks_flux_Jks_B(:) - 4.0_dp * ks_flux_Jele(:) * Vna_G0)
+    print*,"[dbg]", Vna_G0
+    print*,"[dbg Jele  QE]", gk_results%Jele(:) * 0.0483776900146_dp
+    print*,"[dbg d_Jks QE]", gk_results%Jele(:) * 2.0 * Vna_G0 * 0.0483776900146_dp
+    !!!!!!!
+    print*,"[dbg K QE]", (gk_results%Jks(:) - gk_results%Jele(:) * 2.0 * Vna_G0) * 0.0483776900146_dp
+    print*,"[dbg A QE]", (gk_results%Jks_A(:) - gk_results%Jele(:) * Vna_G0) * 0.0483776900146_dp
+    print*,"[dbg B QE]", (gk_results%Jks_B(:) - gk_results%Jele(:) * Vna_G0) * 0.0483776900146_dp
     !
     if (gk_setup%verbose_output) then
        ! Output of `pseudo-wfs-objects`:

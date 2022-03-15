@@ -68,12 +68,6 @@ external :: io_assign
       print *, "Warning: No of particles rather small..."
    endif
 
-     print *, "Number of variables: ", nvars
-     print *, "Number of particles: ", nparts
-     print *, "Omega, c1, c2: ", omega, c1, c2
-     print *, "Max no of iterations, tolerance: ", itmax, ftol
-
-
    allocate(x(nvars,nparts),v(nvars,nparts))
    allocate(best(nvars,nparts))
    allocate(y(nparts),best_value(nparts))
@@ -81,6 +75,12 @@ external :: io_assign
    allocate(gbest(nvars))
 
    omega = omega_max
+
+   print *, "Number of variables: ", nvars
+   print *, "Number of particles: ", nparts
+   print *, "Omega, c1, c2: ", omega, c1, c2
+   print *, "Max no of iterations, tolerance: ", itmax, ftol
+
 !
 !    Initial random guesses
 !
@@ -116,7 +116,7 @@ external :: io_assign
    worst_value = maxval(y)
    converged = ((worst_value - best_of_this_iteration) < ftol)
 
-iter = 1   
+iter = 1
 do
 
 !!$   do i = 1, nparts
@@ -150,7 +150,7 @@ do
       call random_number(r2(1:nvars))
       v(1:nvars,i) = omega * v(1:nvars,i) + &
                          c1*r1(1:nvars)*(best(:,i)-x(:,i)) + &
-                         c2*r2(1:nvars)*(gbest(:)-x(:,i)) 
+                         c2*r2(1:nvars)*(gbest(:)-x(:,i))
    enddo
 
    omega = omega - (omega_max-omega_min)/(itmax-1)
@@ -168,7 +168,7 @@ do
          ! Damping constraints: If the particle flies away,
          ! put particle in boundary, and reflect the
          ! velocity component with a damping factor
-         ! See: Xu and Rahmat-Samii, 
+         ! See: Xu and Rahmat-Samii,
          ! IEEE Trans. Antenna and Propag. Vol 55, no 3, March 2007
 
          if (x(i,j) < var(i)%min) then
@@ -197,7 +197,7 @@ do
          best(:,i) = x(:,i)
       endif
    enddo
-   
+
    ! Update global best
    best_of_this_iteration = minval(y)
    if (best_of_this_iteration  < gbest_value) then
@@ -215,6 +215,3 @@ enddo
 !
 
 End Program swarm
-
-
-
