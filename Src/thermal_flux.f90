@@ -33,6 +33,7 @@ contains
     allocate(va_in(3, na_u))
 
     call read_xvs()             ! will fail if coordinates not specified
+    call calculate_cm_velocities() ! knowing atomic kind, positions and velocities for the snapshot
 
     call gk_setup%init_thermal_flux_settings()
     call gk_results%init_thermal_flux_results()
@@ -127,6 +128,7 @@ contains
   subroutine thermal_flux_tesults()
 
     call gk_results%write_thermal_flux_results(gk_setup)
+    call write_cm_velocities()
 
   end subroutine thermal_flux_tesults
 
@@ -136,6 +138,8 @@ contains
 
     deallocate(xa_in)
     deallocate(va_in)
+    deallocate(v_cm)
+    deallocate(nasp)
     deallocate(DM_save)
 
     if (allocated(thtr_dexcdGD)) deallocate(thtr_dexcdGD)

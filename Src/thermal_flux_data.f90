@@ -228,6 +228,8 @@ module thermal_flux_data
 
   real(dp), allocatable, save :: xa_in(:,:) !! system coordinates input for the snapshot
   real(dp), allocatable, save :: va_in(:,:) !! system velocities input for the snapshot
+  real(dp), allocatable, save :: v_cm(:,:)  !! center of mass velocities for each atomic kind
+  integer, allocatable, save  :: nasp(:) !! number of atoms of a certain kind
 
   real(dp), allocatable, save :: DM_save(:,:,:,:) !! Full density matrix storage +1 dim:
   !! Last dimension goes over substep points
@@ -324,5 +326,49 @@ module thermal_flux_data
   real(dp), allocatable :: I_first_g(:,:,:)
   real(dp), allocatable :: I_second_g(:)
 
+contains
+
+    subroutine calculate_cm_velocities()
+      !! Calculate center of mass velocities for each atomic type.
+      !!
+      !! Subtraction is not performed here (as is not in QEHeat by default),
+      !! rather the J_cm[sp][1-3] outputted for post-processing (decorrelation).
+
+      use atm_types,   only: species, species_info
+      use basis_types, only: nsp
+      use siesta_geom, only: isa, na_u
+
+      integer :: iatom, itype
+      real(dp) :: delta(3), mean(3)
+
+      allocate (v_cm(3, nsp))
+      allocate (nasp(nsp))
+      nasp = 0
+      v_cm = 0.0_dp
+
+      do iatom = 1, na_u
+         itype = isa(iatom)
+         nasp(itype) = nasp(itype) + 1
+         delta = (va_in(:, iatom) - v_cm(:, itype))/real(nasp(itype), dp)
+         v_cm(:, itype) = v_cm(:, itype) + delta
+      end do
+
+  end subroutine calculate_cm_velocities
+
+
+  subroutine write_cm_velocities()
+    use basis_types, only: nsp
+    integer :: itype
+    real(dp), parameter :: qeheat_factor = 0.0483776900146_dp
+    real(dp)            :: scale_factor  = 1.0_dp
+
+    if (gk_setup%qeheat_units) scale_factor = qeheat_factor
+
+    write (*,*) "#           ====================== Center of mass currents/ atom type:"
+    do itype = 1, nsp
+       write (*, '(A,1I2,A,3E20.12)') "[gk:.Jcm", itype, "]", real(nasp(itype), dp) * v_cm(:, itype) * scale_factor
+    end do
+
+  end subroutine write_cm_velocities
 
 end module thermal_flux_data
