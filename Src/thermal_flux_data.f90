@@ -366,7 +366,7 @@ contains
 
     write (*,*) "#           ====================== Center of mass currents/ atom type:"
     do itype = 1, nsp
-       write (*, '(A,1I2,A,3E20.12)') "[gk:.Jcm", itype, "]", real(nasp(itype), dp) * v_cm(:, itype) * scale_factor
+       write (*, '(A,I0.3,A,3E20.12)') "[gk:.Jcm", itype, "]", real(nasp(itype), dp) * v_cm(:, itype) * scale_factor
     end do
 
   end subroutine write_cm_velocities
