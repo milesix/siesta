@@ -12635,7 +12635,8 @@ electrodes in a generic input format.
 
     This defaults to \fdftrue. If there are buffer atoms \emph{behind}
     the electrode it may be advantageous to set this to false to
-    extend the electrode region.
+    extend the electrode region, otherwise it is recommended to keep
+    the default.
 
     \option[DM-update]%
     \fdfindex*{TS!Elec.<>!DM-update}%
@@ -12644,11 +12645,28 @@ electrodes in a generic input format.
     \fdfdepend{TS!Elec.<>!Bulk}%
     String of values \fdf*{none}, \fdf*{cross-terms} or \fdf*{all}
     which controls which part of the electrode density matrix elements
-    that are updated. If \fdf*{all}, both the density matrix elements
-    in the electrode and the coupling elements between the electrode
-    and scattering region are updated. If \fdf*{cross-terms}; only the
-    coupling elements between the electrode and the scattering region
-    are updated.
+    that are updated.
+    %
+    The density matrices that comprises an electrode and
+    device-electrode region can be written as (omitting the central
+    device region)
+    \begin{equation}
+      \label{eq:ts-dm-update}
+      \DM =
+      \begin{bmatrix}
+        \DM_{\mathfrak e} & \DM_{\mathfrak eD} & 0
+        \\
+        \DM_{D\mathfrak e} & \ddots & \ddots
+        \\
+        0  & \ddots
+      \end{bmatrix}
+    \end{equation}
+    This flag determines whether $\DM_{\mathfrak e}$ (\fdf*{all}) or
+    $\DM_{\mathfrak eD}$ (\fdf*{cross-terms} and \fdf*{all}) or
+    neither (\fdf*{none}) are updated in the SCF. The density matrices
+    contains the charges and thus affects the Hamiltonian and Poisson
+    solutions. Generally the default value will suffice and is
+    recommended.
 
     If \fdf{TS!Elec.<>!Bulk:false} this is forced to \fdf*{all} and
     cannot be changed.
@@ -12806,6 +12824,8 @@ electrodes in a generic input format.
     \note this option \emph{only} makes sense for
     \fdf{TS!Elec.<>!DM-update:none} since otherwise the electrostatic
     potential will be incorporated in the Hamiltonian.
+
+    Only expert users should play with this number.
 
     \option[check-kgrid]%
     \fdfindex*{TS!Elec.<>!check-kgrid}%

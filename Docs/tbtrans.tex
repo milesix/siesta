@@ -809,7 +809,19 @@ calculation has completed.
   \fdfdepend{TBT.Atoms!Device}
 
   Calculate the DOS from the Green function on the atoms in the device
-  region. 
+  region:
+  \begin{align}
+    \label{eq:dos-gf}
+    \mathbf G(E) &= [E\mathbf S - \mathbf H -
+    \sum_{\mathfrak e}\boldsymbol\Sigma_{\mathfrak e}(E)]^{-1}
+    \\
+    &=
+    \sum_{\mathfrak e}\mathbf G(E)\boldsymbol\Gamma_{\mathfrak
+        e}(E)\mathbf G^\dagger(E) + \text{bound states}
+    \\
+    &=
+    \sum_{\mathfrak e}\mathbf A_{\mathfrak e}(E) + \text{bound states}
+  \end{align}
 
   \note this flag should only be used if there are bound states in the
   scattering region (or if one wish to uncover whether there are bound
@@ -832,7 +844,12 @@ calculation has completed.
 
   Calculate the DOS from the spectral function. This will not
   calculate the DOS from the last electrode (last in the list
-  \fdf{TBT.Elecs}), see \fdf{TBT.DOS!A.All}. 
+  \fdf{TBT.Elecs}), see \fdf{TBT.DOS!A.All}.
+
+  Its relation to the Green function DOS can be inferred from
+  Eq.~\eqref{eq:dos-gf} (see \fdf{TBT.DOS!Gf}). If there are no bound
+  states in the device region then prefer this option and
+  \fdf{TBT.DOS!A.All}.
 
   This generates \sysfile{ADOS\_<>} and \sysfile{AVADOS\_<>}.
 
