@@ -141,6 +141,9 @@ contains
     integer :: no_u_TS, off, no
     real(dp), parameter :: bkpt(3) = (/0._dp,0._dp,0._dp/)
 ! ************************************************************
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_pre_Econtours', 1)
+#endif
 
 #ifdef TRANSIESTA_DEBUG
     call write_debug( 'PRE transiesta mem' )
@@ -249,6 +252,11 @@ contains
     call itt_init  (Sp,end=nspin)
     ! point to the index iterators
     call itt_attach(Sp,cur=ispin)
+
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_pre_Econtours', 2)
+    call timer('TS_Econtours', 1)
+#endif
 
     do while ( .not. itt_step(Sp) )
 
@@ -550,6 +558,11 @@ contains
 
     end do ! spin
 
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_Econtours', 2)
+    call timer('TS_post_Econtours', 1)
+#endif
+
     call itt_destroy(Sp)
 
 #ifdef TRANSIESTA_DEBUG
@@ -604,6 +617,9 @@ contains
 
 #ifdef TRANSIESTA_DEBUG
     call write_debug( 'POS transiesta mem' )
+#endif
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_post_Econtours', 2)
 #endif
 
   end subroutine ts_mumpsg
@@ -660,6 +676,9 @@ contains
     integer :: s_ptr_begin, s_ptr_end, sin
     integer :: i1, i2
     logical :: hasEDM, lis_eq, calc_q
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_add_DM', 1)
+#endif
 
     lis_eq = .true.
     if ( present(is_eq) ) lis_eq = is_eq
@@ -829,6 +848,9 @@ contains
       end if
 
     end if
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_add_DM', 2)
+#endif
 
     ! For ts_dq we should not multiply by 2 since we don't do G + G^\dagger for Gamma-only
     ! this is because G is ensured symmetric for Gamma-point and thus it is not needed.

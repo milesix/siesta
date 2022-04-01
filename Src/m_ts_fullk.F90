@@ -181,6 +181,9 @@ contains
 ! ******************* Miscalleneous variables ****************
     integer :: ierr, no_u_TS, off, no, no_col, no_Els
 ! ************************************************************
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_pre_Econtours', 1)
+#endif
 
 #ifdef TRANSIESTA_DEBUG
     call write_debug( 'PRE transiesta mem' )
@@ -305,6 +308,11 @@ contains
     call itt_init  (SpKp,end1=nspin,end2=ts_kpoint_scf%N)
     ! point to the index iterators
     call itt_attach(SpKp,cur1=ispin,cur2=ikpt)
+
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_pre_Econtours', 2)
+    call timer('TS_Econtours', 1)
+#endif
 
     do while ( .not. itt_step(SpKp) )
 
@@ -612,6 +620,11 @@ contains
 
     end do ! spin
 
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_Econtours', 2)
+    call timer('TS_post_Econtours', 1)
+#endif
+
     call itt_destroy(SpKp)
 
 #ifdef TRANSIESTA_DEBUG
@@ -651,6 +664,9 @@ contains
    
 #ifdef TRANSIESTA_DEBUG
     call write_debug( 'POS transiesta mem' )
+#endif
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_post_Econtours', 2)
 #endif
 
   end subroutine ts_fullk
@@ -704,6 +720,9 @@ contains
     integer :: sp, sind
     integer :: iu, iuT, ju, juT, i1, i2
     logical :: lis_eq, hasEDM, calc_q
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_add_DM', 1)
+#endif
 
     lis_eq = .true.
     if ( present(is_eq) ) lis_eq = is_eq
@@ -865,6 +884,9 @@ contains
 
       end if
     end if
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_add_DM', 2)
+#endif
 
   contains
     

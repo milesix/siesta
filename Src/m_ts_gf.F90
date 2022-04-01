@@ -431,6 +431,10 @@ contains
 #endif
     type(ts_c_idx) :: c
 
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_read_next_GS', 1)
+#endif
+
     c = cE
     ! save the current weight of the point
     ! This is where we include the factor-of-two for spin and
@@ -548,6 +552,10 @@ contains
           end if
        end if
     end do
+
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_read_next_GS', 2)
+#endif
 
   end subroutine read_next_GS
 
