@@ -1,7 +1,7 @@
 #
 # Default compilation directory
 #
-Obj/*
+Obj*/*
 #
 /.git
 #

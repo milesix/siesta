@@ -146,7 +146,6 @@ contains
     this%ndist  => ndist
     this%scount => scount
     this%rcount => rcount
-    deallocate(ndist,scount,rcount)
   endif
 # endif /* MPI */
   end subroutine init_ng
@@ -1474,7 +1473,6 @@ contains
     call ncdf_close(ncdf)
 
     call timer('CDF',2)
-
   end subroutine cdf_save_state
 
   subroutine cdf_save_state_new(fname,dic_save)
@@ -1504,7 +1502,7 @@ contains
          ('DM' .in. dic_save) .or. ('EDM' .in. dic_save) ) &
          max_dsize = max(max_dsize,dp)
     if ( 'gradS' .in. dic_save ) max_dsize = max(max_dsize,dp*3)
-    call ncdfSp%init_Sp( sparse_pattern, max_dsize )
+    call ncdfSp%init_Sp( sparse_pattern, block_dist, max_dsize )
 
     cmode = IOR(NF90_WRITE,NF90_NETCDF4)
     if (ncdfSp%nwriters==1) then
