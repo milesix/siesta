@@ -22,7 +22,7 @@ module thermal_flux_jzero
 
   real(dp), parameter :: dq = 0.01_dp
   !! space between points in the pseudopotential tab.
-  !!FIXME: constant?
+  !!FIXME: constant? - possible problem
   real(dp), parameter :: cell_factor = 1.0_dp
   !! maximum expected (linear) cell contraction
   !! during relaxation/MD

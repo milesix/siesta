@@ -179,7 +179,7 @@ C     End of coordinate-relaxation loop
      $          form='formatted', action='write')
 
            do ia=1, na_u
-              write(iu, *) xa(1:3, ia), va(1:3,ia)
+              write(iu, '(6E20.12)') xa(1:3, ia), va(1:3,ia)
            end do
 
            call io_close(iu)
