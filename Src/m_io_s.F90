@@ -178,7 +178,7 @@ contains
           if ( Node == lNode ) then
              gcol(gio:gio-1+n) = ncol(io:io-1+n)
           else
-             call MPI_ISSend( ncol(io) , n, MPI_Integer, &
+             call MPI_ISend( ncol(io) , n, MPI_Integer, &
                   lNode, gio, MPI_Comm_World, ibuf(ib), MPIerror)
           end if
        else if ( Node == lNode ) then
@@ -310,7 +310,7 @@ contains
 
           else if ( Node == 0 ) then
 
-             call MPI_ISSend( lncol(gio) , n, MPI_Integer, &
+             call MPI_ISend( lncol(gio) , n, MPI_Integer, &
                   BNode, ib, MPI_Comm_World, ibuf(ib), MPIerror)
 
           end if
@@ -578,7 +578,7 @@ contains
 #endif
              else
                 i = sum(ncol(io:io-1+n))
-                call MPI_ISSend( l_col(ind+1) , i, MPI_Integer, &
+                call MPI_ISend( l_col(ind+1) , i, MPI_Integer, &
                      0, ib, MPI_Comm_World, ibuf(ib), MPIerror)
                 ind = ind + i
              end if
@@ -896,7 +896,7 @@ contains
 #endif
              else
                 i = sum(ncol(io:io-1+n))
-                call MPI_ISSend( a(ind+1) , i, MPI_Double_Precision, &
+                call MPI_ISend( a(ind+1) , i, MPI_Double_Precision, &
                      0, ib, MPI_Comm_World, ibuf(ib), MPIerror)
                 ind = ind + i
              end if
@@ -1293,7 +1293,7 @@ contains
 #endif
                 else
                    i = sum(ncol(io:io-1+n))
-                   call MPI_ISSend( a(ind+1,s) , i, MPI_Double_Precision, &
+                   call MPI_ISend( a(ind+1,s) , i, MPI_Double_Precision, &
                         0, ib, MPI_Comm_World, ibuf(ib), MPIerror)
                    ind = ind + i
                 end if
@@ -1356,7 +1356,7 @@ contains
 #endif
              else
                 i = sum(ncol(io:io-1+n))
-                call MPI_ISSend( a(1,ind+1) , dim2*i, MPI_Double_Precision, &
+                call MPI_ISend( a(1,ind+1) , dim2*i, MPI_Double_Precision, &
                      0, ib, MPI_Comm_World, ibuf(ib), MPIerror)
                 ind = ind + i
              end if
