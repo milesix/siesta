@@ -266,13 +266,18 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
     ! Creating C_old2 matrix for wavefunctions two MD steps before if extrapolation is used
     if(C_extrapol .and. (istp > 2)) then
       do is = 1, nspin
-        call m_copy(C_old2(is), C_old(is)) ! Creating C_old copy
+        if (.not. C_old2(is)%is_initialized) call m_allocate(C_old2(is), wf_dim, h_dim, &
+           label=m_storage, blocksize1=BlockSize_c, blocksize2=BlockSize)
+        call m_set(C_old2(is), 'a', 0.0_dp, 0.0_dp)
+        call m_add(C_old(is), 'n', C_old2(is), 1.0_dp, 0.0_dp) ! Creating C_old copy
       end do
     end if
     if(sparse .or. C_extrapol) then
       do is = 1, nspin
-        if(C_old(is)%is_initialized) call m_deallocate(C_old(is)) ! Deallocating old C_old
-        call m_copy(C_old(is), C_min(is)) ! Creating C_min copy
+        if (.not. C_old(is)%is_initialized) call m_allocate(C_old(is), wf_dim, h_dim, &
+           label=m_storage, blocksize1=BlockSize_c, blocksize2=BlockSize)        
+        call m_set(C_old(is), 'a', 0.0_dp, 0.0_dp)
+        call m_add(C_min(is), 'n', C_old(is), 1.0_dp, 0.0_dp) ! Creating C_min copy
       end do
     end if
     call timer('c_extrapol', 2)
@@ -284,10 +289,12 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
         use_kim, .false., m_storage)
       if(nspin > 1) then
          do is = 2, nspin
-           if(C_min(is)%is_initialized) call m_deallocate(C_min(is))
-           call m_copy(C_min(is), C_min(1)) ! Setting the sparsity of the coefficient matrix for
-                                            ! the second spin component the same as of 
-                                            ! the first one
+           if (.not. C_min(is)%is_initialized) call m_allocate(C_min(is), wf_dim, h_dim, &
+             label=m_storage, blocksize1=BlockSize_c, blocksize2=BlockSize)   
+           call m_set(C_min(is), 'a', 0.0_dp, 0.0_dp)
+           ! Setting the sparsity of the coefficient matrix for
+           ! the second spin component the same as of the first one
+           call m_add(C_min(1), 'n', C_min(is), 1.0_dp, 0.0_dp)  
          end do
       end if
     end if
