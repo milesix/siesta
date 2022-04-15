@@ -156,7 +156,7 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
   logical, save :: Use2D               ! Use a 2D MPI grid for distribution of matrix blocks?
   logical, save :: C_extrapol          ! Extrapolate coefficient matrix linearly 
                                        ! based on the results of the two previous MD steps?
-  logical :: dealloc                   ! Deallocate matrices at each SCF step?
+  logical, save :: dealloc             ! Deallocate matrices at each SCF step?
   logical, save :: first_call=.true.   ! Is this the first call to this subroutine?
 
   character(len=100) :: WF_COEFFS_filename ! Path to the restart file for wavefunctions 
@@ -207,6 +207,7 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
     C_extrapol = fdf_boolean('OMM.Extrapolate', .false.)  ! Extrapolate the C_min 
                                                           ! based on the results of two previous 
                                                           ! MD steps?
+    dealloc = fdf_boolean('OMM.Deallocate', .true.)       ! Deallocate matrices each SCF step?
     long_out = fdf_boolean('OMM.LongOutput', .true.)      ! Print detailed information on CG 
                                                           ! iterations to libOMM.log?
     cg_tol = fdf_get('OMM.RelTol', 1.0d-9)                ! Tolerance for CG iterations
@@ -252,7 +253,6 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
     m_storage ='pddbc'   ! pddbc MS format is used for dense matrices
   end if
 
-  dealloc = .true.
   new_S = .false.
   if(first_call) istp_prev = 0
   if(first_call .or. (istp .ne. istp_prev)) then
@@ -265,6 +265,7 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
     ! Creating C_old matrix for wavefunctions at the previous MD step
     ! Creating C_old2 matrix for wavefunctions two MD steps before if extrapolation is used
     if(C_extrapol .and. (istp > 2)) then
+      if(.not. allocated(C_old2)) allocate(C_old2(1:nspin))
       do is = 1, nspin
         if (.not. C_old2(is)%is_initialized) call m_allocate(C_old2(is), wf_dim, h_dim, &
            label=m_storage, blocksize1=BlockSize_c, blocksize2=BlockSize)
@@ -273,6 +274,7 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
       end do
     end if
     if(sparse .or. C_extrapol) then
+      if(.not. allocated(C_old)) allocate(C_old(1:nspin))
       do is = 1, nspin
         if (.not. C_old(is)%is_initialized) call m_allocate(C_old(is), wf_dim, h_dim, &
            label=m_storage, blocksize1=BlockSize_c, blocksize2=BlockSize)        
@@ -309,15 +311,17 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
         ! That is the elements that should be now empty are empty. 
         ! The new nonempty elements are initialized to zero.
         call m_copy(C_min(is), C_old2(is))
-        call m_deallocate(C_old2(is)) ! Deallocating C_old2
+        if(dealloc) call m_deallocate(C_old2(is)) ! Deallocating C_old2
       end do
+      if(dealloc) deallocate(C_old2)
     else
       if(sparse) then
         do is = 1, nspin
           ! Copying C_old to C_min maintaining the sparsity of the latter.
           call m_copy(C_min(is), C_old(is))
-          if(.not. C_extrapol) call m_deallocate(C_old(is)) ! Deallocating C_old
+          if(.not. C_extrapol .and. dealloc) call m_deallocate(C_old(is)) ! Deallocating C_old
         end do
+        if(.not. C_extrapol .and. dealloc) deallocate(C_old)
       end if
     end if  
     if(sparse) then
@@ -337,7 +341,6 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
       if((precon_st .lt. 0) .or. (precon_st .ge. iscf)) precon = .true.
     end if
   end if
-
 
   if(.not. allocated(H)) allocate(H(1:nspin))
   if(.not. allocated(D_min)) allocate(D_min(1:nspin))
@@ -365,10 +368,6 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
     end if
 
     if(.not. allocated(C_min)) allocate(C_min(1:nspin))
-    if(.not. allocated(C_old)) allocate(C_old(1:nspin))
-    if(C_extrapol) then
-      if(.not. allocated(C_old2)) allocate(C_old2(1:nspin))
-    end if
 
     if(sparse .and. (rcoor_init .gt. 0.0_dp)) then
       ! Initializing the first spin component for the coefficient matrix.
@@ -378,6 +377,7 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
       rcoor0 = rcoor ! Temporarily saving the cutoff radius
       ! Initializing C_old using the initial cutoff radius
       rcoor = rcoor_init
+      if(.not. allocated(C_old)) allocate(C_old(1:nspin))
       call init_c_matrix(C_old(1), wf_dim, h_dim, BlockSize_c, BlockSize, use_kim, &
         .true., m_storage)
       ! Computing the sparsity of C_min using the cutoff radius used for futher calculations.
@@ -387,7 +387,12 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
         .false., m_storage)
       ! Copying C_old to C_min keeping the sparsity of the latter.
       call m_copy(C_min(1), C_old(1))
-      call m_deallocate(C_old(1))
+      if(dealloc) then
+        do is = 1, nspin 
+          call m_deallocate(C_old(is))
+        end do
+        deallocate(C_old)
+      end if
     else
       ! If the initial cutoff radius is not defined, the usual value is used for initialization.
       ! For dense matrices, the cutoff radius (initial or usual one) is also used 
@@ -410,21 +415,23 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
       do is = 1, nspin
         write(sfile,'(a, i1)') '.', is
         WF_COEFFS_filename = trim(slabel)//'.WF_COEFFS_BLOMM'//trim(sfile)
-        if(nspin==1) then
+        if(nspin == 1) then
           ! The wavefunctions are read from the file *.WF_COEFFS_BLOMM
           WF_COEFFS_filename = trim(slabel)//'.WF_COEFFS_BLOMM' 
         else
           if(is > 1) then
-            if(C_min(is)%is_initialized) call m_deallocate(C_min(is))
-            ! Setting the sparsity pattern of the second component of the coefficient
-            ! matrix the same as of the first one
-            call m_copy(C_min(is), C_min(1)) 
+            if (.not. C_min(is)%is_initialized) call m_allocate(C_min(is), wf_dim, h_dim, &
+              label=m_storage, blocksize1=BlockSize_c, blocksize2=BlockSize)   
+            call m_set(C_min(is), 'a', 0.0_dp, 0.0_dp)
+            ! Setting the sparsity of the coefficient matrix for
+            ! the second spin component the same as of the first one
+            call m_add(C_min(1), 'n', C_min(is), 1.0_dp, 0.0_dp)
           end if
         end if
         call m_read(C_min(is), WF_COEFFS_filename, file_exist=file_exist(is),&
           keep_sparsity=.true., use_dbcsrlib=ReadUseLib,nze=nze)
         if(file_exist(is)) then
-          if(ionode) print'(a,i1)','File for C is read ', is
+          if(ionode) print'(a, i1)','File for C is read ', is
         end if
       end do
       call timer('ReadCoeffs', 2)
@@ -496,14 +503,14 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
       end if
     end if
     do is = 1, nspin
-      if (.not. H(is)%is_initialized) then
-        ! Allocating the Hamiltonian matrix
-        if(Use2D .or. (.not. sparse)) then
-          call m_allocate(H(is), h_dim, h_dim, label=m_storage)
-        else
-          ! This is needed to reuse the sparsity pattern if the overlap and Hamiltonian matrices 
-          ! are distributed on a 1D MPI grid
-          call m_copy(H(is), S) 
+      ! Allocating the Hamiltonian matrix
+      if (.not. H(is)%is_initialized) call m_allocate(H(is), h_dim, h_dim, label=m_storage)
+      if (new_S .or. dealloc) then
+        call m_set(H(is), 'a', 0.0_dp, 0.0_dp)
+        if(sparse .and. (.not. Use2D)) then
+          ! This is needed to reuse the sparsity pattern if the overlap and  
+          ! Hamiltonian matrices are distributed on a 1D MPI grid
+          call m_add(S, 'n', H(is), 1.0_dp, 0.0_dp)
         end if
       end if
       ! Passing pointers to the Hamiltonian matrix in the csr format to MS and using the
@@ -521,7 +528,7 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
   do is = 1, nspin
     if (.not. D_min(is)%is_initialized) call m_allocate(D_min(is), h_dim, h_dim, label=m_storage)
   end do
-  call timer('m_register',2)
+  call timer('m_register', 2)
 
   init_C = .true.
   
@@ -538,16 +545,17 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
     end if
     if(first_call .and. (is > 1)) then
       if((.not. ReadCoeffs) .or. (.not. file_exist(is))) then
-        if(C_min(is)%is_initialized) call m_deallocate(C_min(is))
         if(ionode) print'(a)','Copy C_min(1)'
-        call m_copy(C_min(is), C_min(1))
+        ! Setting the coefficient matrix for
+        ! the second spin component equal to the first one
+        call m_add(C_min(1), 'n', C_min(is), 1.0_dp, 0.0_dp)
       end if
     end if
 
     ! Calling the libOMM library for CG minimization of the energy functional and calculation
     ! of the density matrix
-    call omm(h_dim, wf_dim, n_occ, H(is), S, new_S, e_min, D_min(is), calcE, eta,&
-      C_min(is), init_C, T, tau, flavour, nspin, is, cg_tol, long_out, dealloc,&
+    call omm(h_dim, wf_dim, n_occ, H(is), S, new_S, e_min, D_min(is), calcE, eta, &
+      C_min(is), init_C, T, tau, flavour, nspin, is, cg_tol, long_out, dealloc, &
       m_storage, m_operation)
     if(.not. calcE) then
        call timer('omm_density', 2)
@@ -565,7 +573,7 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
     call m_register_csr(csr_mat, h_dim, h_dim, nbasis, listhptr, listh, numh, d_sparse(:,is), &
       ind_ordered=ind_ordered, order=.false.)
     ! Converting the format of the density matrix from MS format to csr
-    call m_copy(csr_mat, D_min(is))
+    call m_copy(csr_mat, D_min(is), m_sp=brd_mat)
     ! Removing the pointers to the density matrix in the csr format from MS
     call m_deallocate(csr_mat)
     if(.not. calcE) then
@@ -574,19 +582,22 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
       call timer('e_copy', 2)
     end if
   end do
+
   ! Deallocating matrices
-  do is = 1, nspin
-    if(D_min(is)%is_initialized) call m_deallocate(D_min(is))
-    if(H(is)%is_initialized) call m_deallocate(H(is))
-  end do
-  deallocate(D_min)
-  deallocate(H)
-  if(T%is_initialized) call m_deallocate(T)
-  if(calcE) then
-    if(S%is_initialized) call m_deallocate(S)
-    ! Deallocating the intermediate 1D-distributed matrix used for format conversion of
-    ! the overlap and Hamiltonian matrices
-    if(brd_mat%is_initialized) call m_deallocate(brd_mat)
+  if(dealloc) then
+    do is = 1, nspin
+      if(D_min(is)%is_initialized) call m_deallocate(D_min(is))
+      if(H(is)%is_initialized) call m_deallocate(H(is))
+    end do
+    deallocate(D_min)
+    deallocate(H)
+    if(T%is_initialized) call m_deallocate(T)
+    if(calcE) then
+      if(S%is_initialized) call m_deallocate(S)
+      ! Deallocating the intermediate 1D-distributed matrix used for format conversion of
+      ! the overlap and Hamiltonian matrices
+      if(brd_mat%is_initialized) call m_deallocate(brd_mat)
+    end if
   end if
 
   first_call = .false.
