@@ -462,68 +462,66 @@ subroutine omm_min_block(CalcE, PreviousCallDiagon, iscf, istp, nbasis, nspin, h
   end if
 
   call timer('m_register', 1)
-  if(.not. calcE) then
-    ! If computing the density matrix, not the energy density
-    if(new_S) then
-      ! If sparsity has changed, the indices of the csr matrices should be reordered again
-      ! (in such a way that the column indices are in the growing order)
-      my_order = .false.
-      if(sparse) then
-        if(allocated(ind_ordered)) then
-          if(size(ind_ordered) .lt. nhmax) then
-            deallocate(ind_ordered)
-            allocate(ind_ordered(nhmax))
-          end if
-        else
+  if(new_S) then
+    ! If sparsity has changed, the indices of the csr matrices should be reordered again
+    ! (in such a way that the column indices are in the growing order)
+    my_order = .false.
+    if(sparse) then
+      if(allocated(ind_ordered)) then
+        if(size(ind_ordered) .lt. nhmax) then
+          deallocate(ind_ordered)
           allocate(ind_ordered(nhmax))
         end if
-        ind_ordered(:) = 0
-        my_order = .true.
+      else
+        allocate(ind_ordered(nhmax))
       end if
-      ! Passing pointers to the overlap matrix in the csr format to MS and ordering the indices
-      ! of the csr matrix using the array ind_ordered
-      call m_register_csr(csr_mat, h_dim, h_dim, nbasis, listhptr, listh, numh, s_sparse, &
-        ind_ordered=ind_ordered, order=my_order)
-      ! Allocating overlap matrix in the MS format
-      if (.not. S%is_initialized) call m_allocate(S, h_dim, h_dim, label=m_storage)
-      ! Converting the overlap matrix from csr to MS format using m_sp as an intermediate matrix
-      ! distributed on a 1D MPI grid
-      call m_copy(S, csr_mat, m_sp=brd_mat) ! Converting and creating the intermediate matrix
-      ! Removing the pointers to the overlap matrix in the csr format from MS
+      ind_ordered(:) = 0
+      my_order = .true.
+    end if
+    ! Passing pointers to the overlap matrix in the csr format to MS and ordering the indices
+    ! of the csr matrix using the array ind_ordered
+    call m_register_csr(csr_mat, h_dim, h_dim, nbasis, listhptr, listh, numh, s_sparse, &
+      ind_ordered=ind_ordered, order=my_order)
+    ! Allocating overlap matrix in the MS format
+    if (.not. S%is_initialized) call m_allocate(S, h_dim, h_dim, label=m_storage)
+    ! Converting the overlap matrix from csr to MS format using m_sp as an intermediate matrix
+    ! distributed on a 1D MPI grid
+    call m_copy(S, csr_mat, m_sp=brd_mat) ! Converting and creating the intermediate matrix
+    ! Removing the pointers to the overlap matrix in the csr format from MS
+    call m_deallocate(csr_mat)
+    if(precon) then ! If preconditioning is used
+      ! Allocating the kinetic energy matrix in the MS format
+      if (.not. T%is_initialized) call m_allocate(T, h_dim, h_dim, label=m_storage)
+      ! Passing the pointers to the arrays of the kinetic energy matrix in the csr format to MS
+      call m_register_csr(csr_mat, h_dim, h_dim, nbasis, listhptr, listh, numh, t_sparse)
+      ! Converting the format of the kinetic energy matrix from csr to MS
+      call m_copy(T, csr_mat)
+      ! Removing the pointers to the kinetic energy matrix in the csr format from MS
       call m_deallocate(csr_mat)
-      if(precon) then ! If preconditioning is used
-        ! Allocating the kinetic energy matrix in the MS format
-        if (.not. T%is_initialized) call m_allocate(T, h_dim, h_dim, label=m_storage)
-        ! Passing the pointers to the arrays of the kinetic energy matrix in the csr format to MS
-        call m_register_csr(csr_mat, h_dim, h_dim, nbasis, listhptr, listh, numh, t_sparse)
-        ! Converting the format of the kinetic energy matrix from csr to MS
-        call m_copy(T, csr_mat)
-        ! Removing the pointers to the kinetic energy matrix in the csr format from MS
-        call m_deallocate(csr_mat)
+    end if
+  end if
+  do is = 1, nspin
+    ! Allocating the Hamiltonian matrix
+    if (.not. H(is)%is_initialized) call m_allocate(H(is), h_dim, h_dim, label=m_storage)
+    if (new_S .or. dealloc) then
+      call m_set(H(is), 'a', 0.0_dp, 0.0_dp)
+      if(sparse .and. (.not. Use2D)) then
+        ! This is needed to reuse the sparsity pattern if the overlap and
+        ! Hamiltonian matrices are distributed on a 1D MPI grid
+        call m_add(S, 'n', H(is), 1.0_dp, 0.0_dp)
       end if
     end if
-    do is = 1, nspin
-      ! Allocating the Hamiltonian matrix
-      if (.not. H(is)%is_initialized) call m_allocate(H(is), h_dim, h_dim, label=m_storage)
-      if (new_S .or. dealloc) then
-        call m_set(H(is), 'a', 0.0_dp, 0.0_dp)
-        if(sparse .and. (.not. Use2D)) then
-          ! This is needed to reuse the sparsity pattern if the overlap and  
-          ! Hamiltonian matrices are distributed on a 1D MPI grid
-          call m_add(S, 'n', H(is), 1.0_dp, 0.0_dp)
-        end if
-      end if
-      ! Passing pointers to the Hamiltonian matrix in the csr format to MS and using the
-      ! previously prepared array of ordered indices ind_ordered
-      call m_register_csr(csr_mat, h_dim, h_dim, nbasis, listhptr, listh, numh, h_sparse(:,is), &
-        ind_ordered=ind_ordered, order=.false.)
-      ! Converting the Hamiltonian matrix from csr to MS format reusing m_sp 
-      ! as an intermediate matrix
-      call m_copy(H(is), csr_mat, m_sp=brd_mat)
-      ! Removing the pointers to the Hamiltonian matrix in the csr format from MS
-      call m_deallocate(csr_mat)
-    end do
-  end if
+    ! Passing pointers to the Hamiltonian matrix in the csr format to MS and using the
+    ! previously prepared array of ordered indices ind_ordered
+    call m_register_csr(csr_mat, h_dim, h_dim, nbasis, listhptr, listh, numh, h_sparse(:,is), &
+      ind_ordered=ind_ordered, order=.false.)
+    ! Converting the Hamiltonian matrix from csr to MS format reusing m_sp
+    ! as an intermediate matrix
+    call m_copy(H(is), csr_mat, m_sp=brd_mat)
+    ! Removing the pointers to the Hamiltonian matrix in the csr format from MS
+    call m_deallocate(csr_mat)
+  end do
+
   ! Allocating density matrix in the MS format
   do is = 1, nspin
     if (.not. D_min(is)%is_initialized) call m_allocate(D_min(is), h_dim, h_dim, label=m_storage)
