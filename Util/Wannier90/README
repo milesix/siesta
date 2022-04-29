@@ -66,10 +66,18 @@ SIESTA source code.
 
 Then, make sure that your arch.make contains the following lines:
 
+If you are compiling the serial version:
 
   WANNIER90_ROOT = /path/to/wannier90
   LIBS += -L$(WANNIER90_ROOT) -lwannier
   INCFLAGS += -I$(WANNIER90_ROOT)/src/obj
+  FPPFLAGS += -DSIESTA__WANNIER90
+
+If you are compiling the parallel version:
+
+  WANNIER90_ROOT = /path/to/wannier90
+  LIBS += -L$(WANNIER90_ROOT) -lwannier
+  INCFLAGS += -I$(WANNIER90_ROOT)/src/objp -I$(WANNIER90_ROOT)/src/obj
   FPPFLAGS += -DSIESTA__WANNIER90
 
 where you replace /path/to/wannier90 by the full path to the top source

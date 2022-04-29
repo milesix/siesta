@@ -230,12 +230,15 @@ module m_w90_in_siesta
 !     ... to the Marzari and Vanderbilt paper on 
 !     Maximally Localized Wannier Functions
       call add_citation("10.1103/PhysRevB.56.12847")
-!     ... to the paper describing the WANNIER90 code
-      call add_citation("10.1016/j.cpc.2014.05.003")
+!     ... to the Review of Modern Physics on
+!     Maximally Localized Wannier Functions
+      call add_citation("10.1103/RevModPhys.84.1419")
+!!     ... to the paper describing the WANNIER90 code, version 2.x
+!      call add_citation("10.1016/j.cpc.2014.05.003")
 !!     ... to the paper describing the Löwdin orthogonalization
 !      call add_citation("arXiv/cond-mat/0407677")
-!!     ... to the paper describing the WANNIER90 code, version 3.0.0
-      call add_citation("arXiv/1907.09788")
+!!     ... to the paper describing the WANNIER90 code, version 3.x
+      call add_citation("10.1088/1361-648x/ab51ff")
 
     end if   ! close if( IONode )
 
@@ -639,6 +642,7 @@ module m_w90_in_siesta
           conv = fdf_convfac(val, "eV")
           w90man%dis_froz(1) = fdf_bvalues(pline, 1) * conv
           w90man%dis_froz(2) = fdf_bvalues(pline, 2) * conv
+          w90man%frozen_states = .true.
 
         else if ( leqi(key, "threshold") ) then
           key_found(10) = .true.
@@ -757,11 +761,12 @@ module m_w90_in_siesta
 !
 !!     Write the values of the inner (frozen) energy window for 
 !!     band disentanglement
-!      write(6,'(a,i5,2f12.5)')                                      &
+!      write(6,'(a,i5,2f12.5,l5)')                                   &
 ! &      'read_w90_in_siesta_specs: Inner (frozen) energy window  (eV) = ', &
 ! &      index_manifold,                                             &
 ! &      w90man%dis_froz_min,         &
-! &      w90man%dis_froz_max 
+! &      w90man%dis_froz_max,         & 
+! &      w90man%frozen_states         & 
 !
 !!     Write the values of the inner (frozen) energy window for 
 !!     band disentanglement
@@ -1954,6 +1959,9 @@ module m_w90_in_siesta
     use w90_parameters, only : dis_froz_max    ! upper bound of the 
                                                !   disentanglement inner
                                                !   (frozen) window
+    use w90_parameters, only : frozen_states   ! logical value that determines
+                                               !   whether an inner energy
+                                               !   window has been specified
 !
 !   Variables related with the input/output coming from SIESTA   
 !
@@ -2214,6 +2222,7 @@ module m_w90_in_siesta
     dis_win_max = manifold_bands_w90_in(index_manifold)%dis_win(2)
     dis_froz_min = manifold_bands_w90_in(index_manifold)%dis_froz(1)
     dis_froz_max = manifold_bands_w90_in(index_manifold)%dis_froz(2)
+    frozen_states= manifold_bands_w90_in(index_manifold)%frozen_states
 
 !   Set up the variables for post-processing
     wannier_plot    = manifold_bands_w90_in(index_manifold)%wannier_plot
@@ -2443,6 +2452,8 @@ module m_w90_in_siesta
 ! &    'compute_wannier: dis_froz_min    = ', dis_froz(1)
 !    write(6,'(a,f12.5)')                         &
 ! &    'compute_wannier: dis_froz_max    = ', dis_froz(2)
+!    write(6,'(a,l5)')                            &
+! &    'compute_wannier: frozen_states   = ', frozen_states
 !
 !    do nsp=1,nspecies
 !      do nat=1,atoms_species_num(nsp)

@@ -101,6 +101,9 @@
                                        !     Read from the fdf input
                                        !     in the 
                                        !     %block WannierProjections
+          logical                :: frozen_states
+                                       ! Flag that determines whether an inner energy
+                                       !     window has been defined
           logical                :: disentanglement  
                                        ! Is the disentanglement 
                                        !   procedure required for this manifold?

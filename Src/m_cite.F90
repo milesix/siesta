@@ -74,7 +74,7 @@ module m_cite
   ! Increment this after having added a new
   ! citation!
   ! OTHERWISE YOU WILL EXPERIENCE A SEG-FAULT.
-  integer, parameter :: N_citations = 14
+  integer, parameter :: N_citations = 15
 
   private
 
@@ -229,9 +229,12 @@ contains
       case ( "arXiv/cond-mat/0407677" )
         ! Lowdin orthogonalization
         lID = 13
-      case ( "arXiv/1907.09788" )
+      case ( "10.1088/1361-648x/ab51ff" )
         ! Wannier90 paper (version 3.0.0)
         lID = 14
+      case ( "10.1103/RevModPhys.84.1419" )
+        ! MLWF review
+        lID = 15
       end select
 
     end if
@@ -395,17 +398,30 @@ contains
        cit%cite_key = "Lowdin"
 
     case ( 14 )
-       ! article describing the Wannier90 code, version 3.0.0
-       cit%comment = "Wannier90 paper, version 3.0.0"
+       ! article describing the Wannier90 code, version 3.X
+       cit%comment = "Wannier90 paper, version 3.X"
        cit%author = "G. Pizzi et al."
        cit%title = "Wannier90 as a community code: new features and applications"
-       cit%doi = "https://arxiv.org/abs/1907.09788"
-       cit%journal = "arXiv:1907.09788"
-       cit%year = 2019
-       cit%volume = ""
-       cit%issue = ""
-       cit%page = ""
+       cit%doi = "10.1088/1361-648x/ab51ff"
+       cit%journal = "J. Phys.: Condens. Matter"
+       cit%year = 2020
+       cit%volume = "32"
+       cit%issue = "16"
+       cit%page = "165902"
        cit%cite_key = "Wannier90-v3.0.0"
+       
+    case ( 15 )
+       ! review on Maximally Localized Wannier function
+       cit%comment = "Review paper on Maximally Localized Wannier functions"
+       cit%author = "N. Marzari et al."
+       cit%title = "Maximally localized Wannier functions: Theory and applications"
+       cit%doi = "10.1103/RevModPhys.84.1419"
+       cit%journal = "Rev. Mod. Phys."
+       cit%year = 2012
+       cit%volume = "84"
+       cit%issue = "4"
+       cit%page = "1419"
+       cit%cite_key = "MLWF-review"
        
        
 

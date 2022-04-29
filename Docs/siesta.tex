@@ -8674,7 +8674,7 @@ The interface between \program{siesta} and  \program{wannier90}
 implemented, so the later code can be called directly from \program{siesta} as a library,
 or used as a post-processing tool.
 
-Please note that both \program{wannier90} and \siesta\ should be
+Please note that both \program{wannier90} and \program{siesta} should be
 compiled with the same parallel configuration (serial or MPI).
 
 
@@ -8855,8 +8855,9 @@ or interpolation of bands), can be downloaded from
          representations are available within \program{siesta}.
    \item The coefficients of the Wannier functions in the 
          basis of the atomic orbitals of the supercell in \program{siesta} 
-         are written in a file with \sysfile{WANNX} extension. This can be plotted using
-         \program{denchar} using the same method as for the wave functions.
+         are written in a file with \sysfile{WANNX} extension. Then, 
+         the Wannier functions can be plotted using
+         \program{denchar}, following the same method as for the wave functions.
  \end{itemize}
 
  To run \program{wannier90} in this mode, you have to 
@@ -8910,63 +8911,107 @@ or interpolation of bands), can be downloaded from
     \option[trial-orbitals]%
     \fdfindex*{Wannier!Manifold.<>!trial-orbitals}%
 
-    ...
+    Indices of the orbitals that will be used 
+    as localized trial orbitals in the first step of the minimization 
+    of the spreading. 
+    The user has to specify the same number of atomic orbitals as the number
+    of Wannier functions required.
+    For the sake of readiness, the number of trial orbitals can be split in
+    several lines, all of them starting with \fdf{[trial-orbitals]}.
+    These indices can be found by inspection of the 
+    \file{SystemLabel.ORB\_INDX} file.
+    If there are negative integers in this line, then the projectors will
+    be generated \`a-la-Wannier90, with the instructions given in the
+    WannierProjectors block. 
+    If there are negative numbers, then they must appear always after
+    the list of positive indices.
     
     \note required input
-
     
     \option[spreading.nitt]%
     \fdfindex*{Wannier!Manifold.<>!spreading.nitt}%
 
-    ...
-
+    Number of iterations that \program{wannier90} 
+    will carry out to minimize the spreading.
+    If zero, then the procedure is the same as a L\"owdin orthonormalization.
+    In such a case, the resulting Wannier function will keep the symmetry
+    of the trial projection function, but it will not be maximally localized.
 
     \option[wannier-plot]%
     \fdfindex*{Wannier!Manifold.<>!wannier-plot}%
 
-    ...
-
+    Instructs \program{wannier90} to produce the files
+    required to plot the Wannier functions 
+    (if \fdf{w90.in.siesta.compute.unk} is set to true).
+    The integer refers to the size of the supercell for plotting the 
+    Wannier functions (see the variable
+    \fdf{wannier.plot.supercell} in the \program{wannier90} User's Guide).
+    This will produce files with the .xsf extension, that can be directly plotted
+    with \program{xcrysden}.
 
     \option[fermi-surface-plot]%
     \fdfindex*{Wannier!Manifold.<>!fermi-surface-plot}%
 
-    ...
-
+    Is the file required to plot the Fermi surface computed?
+    If true, this will produce files with the .bxsf extension, that can be directly plotted
+    with \program{xcrysden}.
 
     \option[write-hr]%
     \fdfindex*{Wannier!Manifold.<>!write-hr}%
 
-    ...
+    Is the file with the Hamiltonian in real space in a basis of Wannier functions written?
+    If true, this will produce files with the \_hr.dat extension.
 
 
     \option[write-tb]%
     \fdfindex*{Wannier!Manifold.<>!write-tb}%
 
-    ...
-
+    Is the file with the tight-binding parameters in a basis of Wannier functions written?
+    (this includes the lattice vectors, Hamiltonian
+    in real space, and position operator in a basis of Wannier functions.
+    If true, this will produce files with the \_tb.dat extension.
 
     \option[write-unk]%
     \fdfindex*{Wannier!Manifold.<>!write-unk}%
 
-    ...
+    Are the files that contain the periodic part
+    of a Bloch function in the unit cell on a grid computed?
+    If true, files like those described in \fdf{Siesta2Wannier90.WriteUnk}
+    are written for this manifold, and then
+    the corresponding .xsf files directly readable by \program{xcrysden}
+    will be produced.
+    The computation of the UNK files might be rather expensive.
+    To plot the shape of the Wannier functions, the expansion of the Wannier functions
+    in the basis of Numerical Atomic Orbitals to produce .WFSX files, and the
+    subsequent use of \program{denchar} is recommended.
 
+    If a disentanglement procedure is required two extra lines are mandatory:
 
     \option[window]%
     \fdfindex*{Wannier!Manifold.<>!window}%
 
-    ...
-
+    It refers to the bottom and top of the outer 
+    energy window for band disentanglement. The units for the energy are 
+    introduced as the last character string of the line.
 
     \option[window.frozen]%
     \fdfindex*{Wannier!Manifold.<>!window.frozen}%
 
-    ...
-
+    It refers to the bottom and top of the inner 
+    energy window for band disentanglement. The units for the energy are 
+    introduced as the last character string of the line.
+    This is the energy window where some Bloch states are forced to be
+    preserved identically in the projected manifold.
 
     \option[threshold]%
     \fdfindex*{Wannier!Manifold.<>!window.threshold}%
 
-    ...
+    Specification of the threshold for the real part of the
+    coefficients of a Wannier in a basis of NAO that will be written in 
+    a \sysfile{WANNX} extension file. 
+    This file can be used to plot the Wannier functions using 
+    \program{denchar}, following the same method as for the wave functions.
+    This threshold is particularized for a particular manifold.
 
   \end{fdfoptions}
 
@@ -9109,7 +9154,6 @@ or interpolation of bands), can be downloaded from
 
 \fi
 
-
 \begin{fdfentry}{Wannier!Projectors}[block]
 <\fdfvalue{projection functions as in wannier90}>
 
@@ -9118,7 +9162,7 @@ used to construct the
 initial guesses for the unitary transformations.
 
 These are used when some of the atomic orbitals in the 
-fourth line of the block \fdf{WannierManifolds} are negative.
+\fdf{trial-orbitals} lines of the block \fdf{Wannier!Manifold.<>} are negative.
 
  For instance, to specify the projectors for the bottom of the 
  conduction band of bulk SrTiO$_{3}$, we can write a 
@@ -9142,22 +9186,14 @@ fourth line of the block \fdf{WannierManifolds} are negative.
  following the recipe of \program{wannier90} will be
 
   \begin{fdfexample}
-%block Wannier.Projectors
-   1 3
+%block Wannier.Projectors.example
    0.5 0.5 0.5  2  2  1 0.00  0.00  1.00   1.00  0.00  0.00    1.00
    0.5 0.5 0.5  2  3  1 0.00  0.00  1.00   1.00  0.00  0.00    1.00
    0.5 0.5 0.5  2  5  1 0.00  0.00  1.00   1.00  0.00  0.00    1.00
 %endblock
   \end{fdfexample}
 
- The first line contains two integers:
- the first one refer to the index of manifold for which these projections
- will be used;
- the second one refers to the number of projections that will be read in this form
- \`a-la-\program{wannier90}. This second integer should be the same as the 
- number of negative numbers in the fourth line of the block \fdf{WannierManifolds}
-
- The rest of the numbers are written following the \program{wannier90} format
+ The different lines in this block are written following the \program{wannier90} format
  provided in the .nnkp file.
 
  centre: three real numbers; projection function centre in crystallographic 
@@ -9186,8 +9222,10 @@ fourth line of the block \fdf{WannierManifolds} are negative.
 \begin{fdfentry}{Wannier!Manifolds!Threshold}[real]<$10^{-6}$>
 
   Global specification of the threshold for the real part of the
-  coefficients of a Wannier in a basis of NAO to compute the
-  contribution to the tight-binding matrix elements.
+  coefficients of a Wannier in a basis of NAO that will be written in
+  a \sysfile{WANNX} extension file. 
+  This file can be used to plot the Wannier functions using 
+  \program{denchar}, following the same method as for the wave functions.
 
   Individual manifolds can be controlled via
   \fdf{Wannier!Manifold.<>!threshold} 
