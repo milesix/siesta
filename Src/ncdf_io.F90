@@ -76,6 +76,18 @@ module ncdf_io_m
   end type t_ncdfSparse
   public :: t_ncdfSparse
 
+  ! Create the type to hold the mesh distribution data
+  type :: tMeshDist
+    private
+    ! number of mesh divisions in each axis
+    integer :: m(3)
+    ! mesh box bounds of each node in each direction
+    ! box(1,iAxis,iNode)=lower bounds
+    ! box(2,iAxis,iNode)=upper bounds
+    integer, allocatable :: box(:,:,:)
+  end type tMeshDist
+  type(tMeshDist), save :: distr
+
 contains
 
 #ifdef NCDF_4
@@ -88,8 +100,6 @@ contains
       call MPI_Abort( MPI_COMM_WORLD, 0, ierr )
     end if
   end subroutine cdf_err
-
-
 
   subroutine cdf_init_mesh(mesh,nsm)
 
