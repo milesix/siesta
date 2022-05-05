@@ -60,7 +60,7 @@ contains
     use class_zSpData1D
     use class_zSpData2D
 
-    use m_ts_electype
+    use ts_electrode_m
     ! Self-energy read
     use m_ts_gf
     ! Self-energy expansion
@@ -101,7 +101,7 @@ contains
 ! * INPUT variables  *
 ! ********************
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     integer, intent(in) :: nq(N_Elec), uGF(N_Elec)
     real(dp), intent(in) :: ucell(3,3)
     integer, intent(in) :: nspin, na_u, lasto(0:na_u)
@@ -310,7 +310,7 @@ contains
        no = no_u_TS
        do iEl = 1 , N_Elec
           if ( Elecs(iEl)%DM_update == 0 ) then
-             no = no - TotUsedOrbs(Elecs(iEl))
+             no = no - Elecs(iEl)%device_orbitals()
           end if
        end do
        iE = Nodes - Node
@@ -505,7 +505,7 @@ contains
                 ! solve for all electrode columns... (not very sparse :( )
                 
                 ! offset and number of orbitals
-                no = TotUsedOrbs(Elecs(iEl))
+                no = Elecs(iEl)%device_orbitals()
                 
                 ! step to the next electrode position
                 off = off + no
@@ -664,7 +664,7 @@ contains
     use class_Sparsity
     use class_zSpData1D
     use class_zSpData2D
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_method, only : ts2s_orb
     include 'zmumps_struc.h'
 
@@ -676,7 +676,7 @@ contains
     ! the mumps structure
     type(zMUMPS_STRUC), intent(inout) :: mum
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! the index of the partition
     integer, intent(in) :: DMidx
     integer, intent(in), optional :: EDMidx
@@ -902,7 +902,7 @@ contains
     use intrinsic_missing, only : SFIND
     use class_zSpData1D
     use class_Sparsity
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_cctype, only : ts_c_idx
     use m_ts_method, only : ts2s_orb
     include 'zmumps_struc.h'
@@ -911,7 +911,7 @@ contains
     type(ts_c_idx), intent(in) :: cE
     type(zMUMPS_STRUC), intent(inout) :: mum
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! The Hamiltonian and overlap sparse matrices
     type(zSpData1D), intent(inout) :: spH, spS
 

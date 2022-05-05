@@ -43,7 +43,7 @@ contains
 
   subroutine ts_init_voltage(cell, na_u, xa, nmesh)
     use parallel, only : IONode
-    use m_ts_electype, only : TotUsedAtoms, Elec
+    use ts_electrode_m, only : electrode_t
     use m_ts_options, only : Elecs, N_Elec
     use m_ts_options, only : Volt, Hartree_fname
     use units, only : eV, ang
@@ -108,7 +108,7 @@ contains
       bool = .false.
       zero = 0._dp
       do iEl = 1 , N_Elec
-        do ia = 1 , TotUsedAtoms(Elecs(iEl))
+        do ia = 1 , Elecs(iEl)%device_atoms()
           iia = Elecs(iEl)%idx_a - 1 + ia
           ll = xa(:,iia)
           if (.not.voxel_in_box(Elecs(iEl)%box,ll,zero)) then
@@ -146,12 +146,11 @@ contains
   contains
 
     subroutine get_elec_indices(Elecs, cell, na_u, xa, iElL, iElR)
-      use m_ts_electype, only : Elec_frac
 
       ! ***********************
       ! * INPUT variables     *
       ! ***********************
-      type(Elec), intent(in) :: Elecs(2)
+      type(electrode_t), intent(in) :: Elecs(2)
       real(dp), intent(in) :: cell(3,3)
       integer,  intent(in) :: na_u
       real(dp), intent(in) :: xa(3,na_u)
@@ -164,11 +163,10 @@ contains
       ! ***********************
       ! * LOCAL variables     *
       ! ***********************
-      integer  :: i
       real(dp) :: r1, r2
 
-      call Elec_frac(Elecs(1), cell, na_u, xa, ts_tidx, fmin = r1)
-      call Elec_frac(Elecs(2), cell, na_u, xa, ts_tidx, fmin = r2)
+      call Elecs(1)%fractional_cell(cell, na_u, xa, ts_tidx, fmin = r1)
+      call Elecs(2)%fractional_cell(cell, na_u, xa, ts_tidx, fmin = r2)
 
       if ( r1 < r2 ) then
         iElL = 1
@@ -218,7 +216,6 @@ contains
   ! Apply a ramp to the electrostatic potential.
   subroutine ts_ramp(cell, nmesh, nmeshl, Vscf)
     use precision,    only : grid_p
-    use m_ts_options, only : Volt
     use m_mesh_node,  only : offset_i
     ! ***********************
     ! * INPUT variables     *
@@ -234,7 +231,7 @@ contains
     ! ***********************
     ! * LOCAL variables     *
     ! ***********************
-    integer  :: i1, i2, i3, idT, imesh
+    integer  :: i1, i2, i3, imesh
     real(dp) :: dF, dV
 
     ! field in [0;end]: v = e*x = f*index
@@ -302,7 +299,7 @@ contains
     use mpi_siesta
 #endif
 
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_options, only : N_Elec, Elecs
     use m_mesh_node,  only : dL
     use m_mesh_node,  only : dMesh, offset_r, offset_i, mesh_correct_idx
@@ -333,7 +330,7 @@ contains
     ! We do a loop in the local grid
     do iEl = 1 , N_Elec
 
-      call Elec_box2grididx(Elecs(iEl),nmesh,dL,imin,imax)
+      call Elecs(iEl)%box_in_grid(nmesh, dL, imin, imax)
 
       ! Now we have the minimum index for the box encompassing
       ! the electrode
