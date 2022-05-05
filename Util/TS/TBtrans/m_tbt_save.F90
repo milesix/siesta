@@ -1082,7 +1082,7 @@ contains
     dic = ('info'.kv. 'Supercell column indices in the sparse format ')
     call ncdf_def_var(ncdf,'list_col',NF90_INT,(/'nnzs'/), &
         compress_lvl=cmp_lvl,atts=dic, chunks = (/nnzs_dev/) )
-    call mem%add(NF90_INT, nnzs_dev)
+    call mem%add_cdf(NF90_INT, nnzs_dev)
 
 #ifdef MPI
     call newDistribution(no_u,MPI_Comm_Self,fdit,name='TBT-fake dist')

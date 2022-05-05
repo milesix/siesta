@@ -1706,9 +1706,9 @@ contains
       if ( verbosity < 5 ) return
 
       ! Total number of elements
-      nsize = nnzs_tri(DevTri%n,DevTri%r)
-      call mem%add(16, nsize)
-      call mem%add(16, padding)
+      nsize = nnzs_tri(DevTri%n, DevTri%r)
+      call mem%add_type(cmplx(0, 0, dp), nsize)
+      call mem%add_type(cmplx(0, 0, dp), padding)
 
       call mem%get_string(c_tmp)
       write(*,'(4a)') 'tbt: [memory] ',name,' inversion + padding: ', trim(c_tmp)

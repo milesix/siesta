@@ -35,7 +35,7 @@ module byte_count_m
 
   type :: byte_count_t
 
-    !< Bytes accummulated in MB
+    !< Mega bytes accummulated
     real(dp) :: MB = 0._dp
 
   contains
@@ -48,12 +48,31 @@ module byte_count_m
 #endif
     procedure, pass, private :: add_i4_, add_i8_, add_i8i8_
     procedure, pass, private :: add_ai4_, add_ai8_, add_ai8i8_
-    procedure, pass, private :: add_bc_
+    procedure, pass, private :: add_bc_, add_r8i4_, add_r8i8_
     generic :: add => add_bc_, add_i4_, add_i8_, add_i8i8_, &
-        add_ai4_, add_ai8_, add_ai8i8_
+        add_ai4_, add_ai8_, add_ai8i8_, add_r8i4_, add_r8i8_
+
+    ! Type based (using storage_size)
+    procedure, pass, private :: add_type_l_i4_, add_type_l_i8_
+    procedure, pass, private :: add_type_i4_i4_, add_type_i4_i8_
+    procedure, pass, private :: add_type_i8_i4_, add_type_i8_i8_
+    procedure, pass, private :: add_type_r4_i4_, add_type_r4_i8_
+    procedure, pass, private :: add_type_r8_i4_, add_type_r8_i8_
+    procedure, pass, private :: add_type_c4_i4_, add_type_c4_i8_
+    procedure, pass, private :: add_type_c8_i4_, add_type_c8_i8_
+
+    generic :: add_type => &
+        add_type_l_i4_, add_type_l_i8_, &
+        add_type_i4_i4_, add_type_i4_i8_, &
+        add_type_i8_i4_, add_type_i8_i8_, &
+        add_type_r4_i4_, add_type_r4_i8_, &
+        add_type_r8_i4_, add_type_r8_i8_, &
+        add_type_c4_i4_, add_type_c4_i8_, &
+        add_type_c8_i4_, add_type_c8_i8_
 
     ! Mathematical stuff
     procedure, pass, private :: assign_, add_
+
     generic :: assignment(=) => assign_
     generic :: operator(+) => add_
 
@@ -63,6 +82,8 @@ module byte_count_m
 
   !< Conversion from bytes to mega-bytes
   real(dp), private, parameter :: B2MB = 1._dp / 1024._dp ** 2
+  real(dp), private, parameter :: Bi2B = 1._dp / 8._dp
+  real(dp), private, parameter :: Bi2MB = Bi2B * B2MB
 
 contains
 
@@ -210,10 +231,53 @@ contains
 
   end subroutine add_i8i8_
 
+  subroutine add_r8i4_(this, bytes, n1, n2, n3, n4, n5, n6)
+    class(byte_count_t), intent(inout) :: this
+    real(dp), intent(in) :: bytes
+    integer(i4b), intent(in) :: n1
+    integer(i4b), intent(in), optional :: n2, n3, n4, n5, n6
+
+    real(dp) :: MB
+
+    ! Number of elements
+    MB = bytes * real(n1, dp) * B2MB
+    if ( present(n2) ) MB = MB * real(n2, dp)
+    if ( present(n3) ) MB = MB * real(n3, dp)
+    if ( present(n4) ) MB = MB * real(n4, dp)
+    if ( present(n5) ) MB = MB * real(n5, dp)
+    if ( present(n6) ) MB = MB * real(n6, dp)
+
+    this%MB = this%MB + MB
+
+  end subroutine add_r8i4_
+
+  subroutine add_r8i8_(this, bytes, n1, n2, n3, n4, n5, n6)
+    class(byte_count_t), intent(inout) :: this
+    real(dp), intent(in) :: bytes
+    integer(i8b), intent(in) :: n1
+    integer(i8b), intent(in), optional :: n2, n3, n4, n5, n6
+
+    real(dp) :: MB
+
+    ! Number of elements
+    MB = bytes * real(n1, dp) * B2MB
+    if ( present(n2) ) MB = MB * real(n2, dp)
+    if ( present(n3) ) MB = MB * real(n3, dp)
+    if ( present(n4) ) MB = MB * real(n4, dp)
+    if ( present(n5) ) MB = MB * real(n5, dp)
+    if ( present(n6) ) MB = MB * real(n6, dp)
+
+    this%MB = this%MB + MB
+
+  end subroutine add_r8i8_
+
 #ifdef NCDF_4
   subroutine add_cdf_basic_(this, nf_var, n1, n2, n3, n4, n5, n6)
-    use netcdf_ncdf, only: NF90_INT
-    use netcdf_ncdf, only: NF90_FLOAT, NF90_DOUBLE
+    use netcdf, only: NF90_BYTE, NF90_UBYTE
+    use netcdf, only: NF90_SHORT, NF90_USHORT
+    use netcdf, only: NF90_INT, NF90_UINT
+    use netcdf, only: NF90_INT64, NF90_UINT64
+    use netcdf, only: NF90_FLOAT, NF90_DOUBLE
 
     class(byte_count_t), intent(inout) :: this
     integer, intent(in) :: nf_var
@@ -231,10 +295,16 @@ contains
     if ( present(n6) ) MB = MB * real(n6, dp)
 
     select case ( nf_var )
-    case ( NF90_INT, NF90_FLOAT )
+    case ( NF90_BYTE, NF90_UBYTE )
+      ! do nothing
+    case ( NF90_SHORT, NF90_USHORT )
+      MB = MB * 2
+    case ( NF90_INT, NF90_UINT, NF90_FLOAT )
       MB = MB * 4
-    case ( NF90_DOUBLE )
+    case ( NF90_INT64, NF90_UINT64, NF90_DOUBLE )
       MB = MB * 8
+    case default
+      !error
     end select
 
     this%MB = this%MB + MB
@@ -269,6 +339,150 @@ contains
 
   end subroutine add_cdf_complex_
 #endif
+
+  ! Type additions
+
+  subroutine add_type_l_i4_(this, typ, n1, n2, n3, n4, n5, n6)
+    class(byte_count_t), intent(inout) :: this
+    logical, intent(in) :: typ
+    integer(i4b), intent(in) :: n1
+    integer(i4b), intent(in), optional :: n2, n3, n4, n5, n6
+
+    call this%add(storage_size(typ) * Bi2B, n1, n2, n3, n4, n5, n6)
+
+  end subroutine add_type_l_i4_
+
+  subroutine add_type_l_i8_(this, typ, n1, n2, n3, n4, n5, n6)
+    class(byte_count_t), intent(inout) :: this
+    logical, intent(in) :: typ
+    integer(i8b), intent(in) :: n1
+    integer(i8b), intent(in), optional :: n2, n3, n4, n5, n6
+
+    call this%add(storage_size(typ) * Bi2B, n1, n2, n3, n4, n5, n6)
+
+  end subroutine add_type_l_i8_
+
+
+  subroutine add_type_i4_i4_(this, typ, n1, n2, n3, n4, n5, n6)
+    class(byte_count_t), intent(inout) :: this
+    integer(i4b), intent(in) :: typ
+    integer(i4b), intent(in) :: n1
+    integer(i4b), intent(in), optional :: n2, n3, n4, n5, n6
+
+    call this%add(storage_size(typ) * Bi2B, n1, n2, n3, n4, n5, n6)
+
+  end subroutine add_type_i4_i4_
+
+  subroutine add_type_i4_i8_(this, typ, n1, n2, n3, n4, n5, n6)
+    class(byte_count_t), intent(inout) :: this
+    integer(i4b), intent(in) :: typ
+    integer(i8b), intent(in) :: n1
+    integer(i8b), intent(in), optional :: n2, n3, n4, n5, n6
+
+    call this%add(storage_size(typ) * Bi2B, n1, n2, n3, n4, n5, n6)
+
+  end subroutine add_type_i4_i8_
+
+  subroutine add_type_i8_i4_(this, typ, n1, n2, n3, n4, n5, n6)
+    class(byte_count_t), intent(inout) :: this
+    integer(i8b), intent(in) :: typ
+    integer(i4b), intent(in) :: n1
+    integer(i4b), intent(in), optional :: n2, n3, n4, n5, n6
+
+    call this%add(storage_size(typ) * Bi2B, n1, n2, n3, n4, n5, n6)
+
+  end subroutine add_type_i8_i4_
+
+  subroutine add_type_i8_i8_(this, typ, n1, n2, n3, n4, n5, n6)
+    class(byte_count_t), intent(inout) :: this
+    integer(i8b), intent(in) :: typ
+    integer(i8b), intent(in) :: n1
+    integer(i8b), intent(in), optional :: n2, n3, n4, n5, n6
+
+    call this%add(storage_size(typ) * Bi2B, n1, n2, n3, n4, n5, n6)
+
+  end subroutine add_type_i8_i8_
+
+  subroutine add_type_r4_i4_(this, typ, n1, n2, n3, n4, n5, n6)
+    class(byte_count_t), intent(inout) :: this
+    real(sp), intent(in) :: typ
+    integer(i4b), intent(in) :: n1
+    integer(i4b), intent(in), optional :: n2, n3, n4, n5, n6
+
+    call this%add(storage_size(typ) * Bi2B, n1, n2, n3, n4, n5, n6)
+
+  end subroutine add_type_r4_i4_
+
+  subroutine add_type_r4_i8_(this, typ, n1, n2, n3, n4, n5, n6)
+    class(byte_count_t), intent(inout) :: this
+    real(sp), intent(in) :: typ
+    integer(i8b), intent(in) :: n1
+    integer(i8b), intent(in), optional :: n2, n3, n4, n5, n6
+
+    call this%add(storage_size(typ) * Bi2B, n1, n2, n3, n4, n5, n6)
+
+  end subroutine add_type_r4_i8_
+
+  subroutine add_type_r8_i4_(this, typ, n1, n2, n3, n4, n5, n6)
+    class(byte_count_t), intent(inout) :: this
+    real(dp), intent(in) :: typ
+    integer(i4b), intent(in) :: n1
+    integer(i4b), intent(in), optional :: n2, n3, n4, n5, n6
+
+    call this%add(storage_size(typ) * Bi2B, n1, n2, n3, n4, n5, n6)
+
+  end subroutine add_type_r8_i4_
+
+  subroutine add_type_r8_i8_(this, typ, n1, n2, n3, n4, n5, n6)
+    class(byte_count_t), intent(inout) :: this
+    real(dp), intent(in) :: typ
+    integer(i8b), intent(in) :: n1
+    integer(i8b), intent(in), optional :: n2, n3, n4, n5, n6
+
+    call this%add(storage_size(typ) * Bi2B, n1, n2, n3, n4, n5, n6)
+
+  end subroutine add_type_r8_i8_
+
+  subroutine add_type_c4_i4_(this, typ, n1, n2, n3, n4, n5, n6)
+    class(byte_count_t), intent(inout) :: this
+    complex(sp), intent(in) :: typ
+    integer(i4b), intent(in) :: n1
+    integer(i4b), intent(in), optional :: n2, n3, n4, n5, n6
+
+    call this%add(storage_size(typ) * Bi2B, n1, n2, n3, n4, n5, n6)
+
+  end subroutine add_type_c4_i4_
+
+  subroutine add_type_c4_i8_(this, typ, n1, n2, n3, n4, n5, n6)
+    class(byte_count_t), intent(inout) :: this
+    complex(sp), intent(in) :: typ
+    integer(i8b), intent(in) :: n1
+    integer(i8b), intent(in), optional :: n2, n3, n4, n5, n6
+
+    call this%add(storage_size(typ) * Bi2B, n1, n2, n3, n4, n5, n6)
+
+  end subroutine add_type_c4_i8_
+
+  subroutine add_type_c8_i4_(this, typ, n1, n2, n3, n4, n5, n6)
+    class(byte_count_t), intent(inout) :: this
+    complex(dp), intent(in) :: typ
+    integer(i4b), intent(in) :: n1
+    integer(i4b), intent(in), optional :: n2, n3, n4, n5, n6
+
+    call this%add(storage_size(typ) * Bi2B, n1, n2, n3, n4, n5, n6)
+
+  end subroutine add_type_c8_i4_
+
+  subroutine add_type_c8_i8_(this, typ, n1, n2, n3, n4, n5, n6)
+    class(byte_count_t), intent(inout) :: this
+    complex(dp), intent(in) :: typ
+    integer(i8b), intent(in) :: n1
+    integer(i8b), intent(in), optional :: n2, n3, n4, n5, n6
+
+    call this%add(storage_size(typ) * Bi2B, n1, n2, n3, n4, n5, n6)
+
+  end subroutine add_type_c8_i8_
+
 
   subroutine get_string_(this, mem_str, unit)
     use m_char, only: lcase 

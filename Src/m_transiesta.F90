@@ -589,19 +589,19 @@ contains
       if ( IsVolt .or. .not. Elecs(i)%Bulk ) then
         ! Hamiltonian and overlap
         if ( Elecs(i)%pre_expand > 1 ) then
-          call m_elec%add(16, no_E, no_E, 2)
+          call m_elec%add_type(cmplx(0, 0, dp), no_E, no_E, 2)
         else
-          call m_elec%add(16, no_E, no_used, 2)
+          call m_elec%add_type(cmplx(0, 0, dp), no_E, no_used, 2)
         end if
       end if
 
       if ( IsVolt ) then
-        call m_elec%add(16, no_E, no_E) ! GS/Gamma
+        call m_elec%add_type(cmplx(0, 0, dp), no_E, no_E) ! GS/Gamma
       else
         if ( Elecs(i)%pre_expand > 0 ) then
-          call m_elec%add(16, no_E, no_E)
+          call m_elec%add_type(cmplx(0, 0, dp), no_E, no_E)
         else
-          call m_elec%add(16, no_E, no_used)
+          call m_elec%add_type(cmplx(0, 0, dp), no_E, no_used)
         end if
       end if
        
@@ -615,9 +615,9 @@ contains
     ! Global arrays
     nel = nnzs(ts_sp_uc)
     if ( ts_gamma_scf ) then
-      call m_glob%add(8, nel, 2_i8b)
+      call m_glob%add_type(0._dp, nel, 2_i8b)
     else
-      call m_glob%add(16, nel, 2_i8b)
+      call m_glob%add_type(cmplx(0, 0, dp), nel, 2_i8b)
     end if
 
     ! global sparsity update
@@ -628,9 +628,9 @@ contains
       i = max(N_mu,N_nEq_id)
     end if
     if ( ts_gamma_scf ) then
-      call m_glob%add(8, nel, int(i, i8b))
+      call m_glob%add_type(0._dp, nel, int(i, i8b))
     else
-      call m_glob%add(16, nel, int(i, i8b))
+      call m_glob%add_type(cmplx(0, 0, dp), nel, int(i, i8b))
     end if
 
     call m_glob%get_string(c_tmp)
@@ -647,9 +647,9 @@ contains
       no_E = i
 #endif
       if ( Calc_Forces ) then
-        call m_local%add(8, no_E, 2 * N_mu + N_nEq_id)
+        call m_local%add_type(0._dp, no_E, 2 * N_mu + N_nEq_id)
       else
-        call m_local%add(8, no_E, N_mu + N_nEq_id)
+        call m_local%add_type(0._dp, no_E, N_mu + N_nEq_id)
       end if
 
       ! Bias local sparsity pattern is always in double precision
@@ -676,9 +676,9 @@ contains
       if ( nel + max(padding, worksize) > huge(1) ) then
         call die('transiesta: Memory consumption is too large!')
       end if
-      call m_inv%add(16, nel, 2_i8b)
-      call m_inv%add(16, padding)
-      call m_inv%add(16, worksize)
+      call m_inv%add_type(cmplx(0, 0, dp), nel, 2_i8b)
+      call m_inv%add_type(cmplx(0, 0, dp), padding)
+      call m_inv%add_type(cmplx(0, 0, dp), worksize)
       call m_inv%get_string(c_tmp)
       if ( IONode ) then
         write(*,'(a,t55,a)') 'transiesta: [memory] tri-diagonal matrices: ', trim(c_tmp)
@@ -691,12 +691,12 @@ contains
       no_E = sum(Elecs(:)%device_orbitals(),Elecs(:)%DM_update==0)
       i = nrows_g(ts_sp_uc) - no_Buf
       ! LHS
-      call m_inv%add(16, i, i)
+      call m_inv%add_type(cmplx(0, 0, dp), i, i)
       ! RHS
       if ( IsVolt ) then
-        call m_inv%add(16, i, max(i-no_E,sum(Elecs%device_orbitals())))
+        call m_inv%add_type(cmplx(0, 0, dp), i, max(i-no_E,sum(Elecs%device_orbitals())))
       else
-        call m_inv%add(16, i, i-no_E)
+        call m_inv%add_type(cmplx(0, 0, dp), i, i-no_E)
       end if
       call m_inv%get_string(c_tmp)
       if ( IONode ) then

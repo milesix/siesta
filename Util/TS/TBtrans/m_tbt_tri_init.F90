@@ -872,9 +872,9 @@ contains
         work = 0
       end if
 
-      call mem%add(16, els, 2_i8b)
-      call mem%add(16, pad)
-      call mem%add(16, work)
+      call mem%add_type(cmplx(0, 0, dp), els, 2_i8b)
+      call mem%add_type(cmplx(0, 0, dp), pad)
+      call mem%add_type(cmplx(0, 0, dp), work)
 
       if ( IONode ) then
         call mem%get_string(fname)

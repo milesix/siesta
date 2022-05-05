@@ -372,13 +372,13 @@ contains
 
     subroutine print_memory()
 
-      use class_dSpData2D, only: nnzs
+      use class_dSpData2D, only: nnzs, spar_dim, size
       use precision, only: i8b
       use m_verbosity, only : verbosity
       use m_tbt_regions, only : sp_uc, sp_dev_sc
       use byte_count_m, only: byte_count_t
 
-      integer :: nsize
+      integer :: nsize, nspin
 
       character(len=32) :: c_tmp
       type(byte_count_t) :: mem, spaux
@@ -395,17 +395,22 @@ contains
         ! These are doubles (not complex)
         ! hence, we need not count the overlap matrices as they are already
         ! doubled in the complex conversion
+        if ( spar_dim(Elecs(iEl)%H00) == 1 ) then
+          nspin = size(Elecs(iEl)%H00, 2)
+        else
+          nspin = size(Elecs(iEl)%H00, 1)
+        end if
         nsize = nnzs(Elecs(iEl)%H00)
-        call mem%add(8, nsize, 2) ! H, S
-        call mem%add(4, nsize) ! sparse pattern
+        call mem%add_type(0._dp, nsize, nspin + 1) ! H, S
+        call mem%add_type(0, nsize) ! sparse pattern
         nsize = nnzs(Elecs(iEl)%H01)
-        call mem%add(8, nsize, 2) ! H, S
-        call mem%add(4, nsize) ! sparse pattern
+        call mem%add_type(0._dp, nsize, nspin + 1) ! H, S
+        call mem%add_type(0, nsize) ! sparse pattern
 
         if ( .not. Elecs(iEl)%Bulk ) then
-          call mem%add(16, size(Elecs(iEl)%HA), 2) ! H, S
+          call mem%add_type(cmplx(0, 0, dp), size(Elecs(iEl)%HA), 2) ! H, S
         end if
-        call mem%add(16, size(Elecs(iEl)%Gamma))
+        call mem%add_type(cmplx(0, 0, dp), size(Elecs(iEl)%Gamma))
       end do
 
       ! Electrode memory usage in KB
@@ -417,21 +422,21 @@ contains
       ! Since we immediately reduce to only one spin-component we never
       ! have spin-degeneracy as a memory requirement.
       nsize = nnzs(TSHS%sp)
-      call spaux%add(8, nsize, 2) ! H, S
-      call spaux%add(4, nsize) ! sparse pattern
+      call spaux%add_type(0._dp, nsize, 2) ! H, S
+      call spaux%add_type(0, nsize) ! sparse pattern
 #ifdef NCDF_4
       if ( initialized(sp_dev_sc) ) then
         ! this is the sparse orbital currents/COOP/COHP
         nsize = nnzs(sp_dev_sc)
-        call spaux%add(8, nsize)
-        call spaux%add(4, nsize) ! sparse pattern
+        call spaux%add_type(0._dp, nsize)
+        call spaux%add_type(0, nsize) ! sparse pattern
       end if
 #endif
 
       ! Now the complex sparse matrices H, S, these could essentially be removed
       nsize = nnzs(sp_uc)
-      call spaux%add(16, nsize) ! H, S
-      call spaux%add(4, nsize) ! sparse pattern
+      call spaux%add_type(cmplx(0, 0, dp), nsize) ! H, S
+      call spaux%add_type(0, nsize) ! sparse pattern
       call spaux%get_string(c_tmp)
       write(*,'(2a)') 'tbt: [memory] H, S and auxiliary matrices: ', trim(c_tmp)
 
