@@ -1984,7 +1984,7 @@ contains
   end subroutine insert_Self_energy
 
 
-  pure subroutine insert_Self_energy_Dev(Gfinv_tri,Gfinv,r,El)
+  subroutine insert_Self_energy_Dev(Gfinv_tri,Gfinv,r,El)
 
     type(zTriMat), intent(inout) :: GFinv_tri
     complex(dp), intent(inout) :: Gfinv(:)
