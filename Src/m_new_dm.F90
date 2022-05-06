@@ -65,7 +65,6 @@ contains
     use fdf, only: fdf_get, fdf_defined
     use units, only : eV
     use m_ts_global_vars,only: TSrun
-    use m_ts_electype, only : copy_DM
     use m_ts_options, only : TS_analyze
     use m_ts_options, only : N_Elec, Elecs
     use m_ts_method
@@ -291,7 +290,7 @@ contains
             ! Copy over the DM in the lead
             ! Notice that the EDM matrix that is copied over
             ! will be equivalent at Ef == 0
-            call copy_DM(Elecs(iElec),na_u,xa,lasto,nsc,isc_off, &
+            call Elecs(iElec)%copy_DM(na_u,xa,lasto,nsc,isc_off, &
                 ucell, DM_2D, EDM_2D, na_a, allowed_a)
             
           end do

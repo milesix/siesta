@@ -15,7 +15,7 @@ module m_ts_contour_neq
 ! Use the type associated with the contour
 ! Maybe they should be collected to this module.
 ! However, I like this partition.
-  use m_ts_electype
+  use ts_electrode_m
 
   use m_ts_chem_pot
   use m_ts_cctype
@@ -31,7 +31,7 @@ module m_ts_contour_neq
   ! For further attributions see the original paper by Brandbyge, et. al, 2002: DOI: 10.1103/PhysRevB.65.165401
   
   ! The non-equilibrium contour IO-segments
-  integer, save, public :: N_nEq
+  integer, save, public :: N_nEq = 0
   type(ts_c_io), pointer, save, public :: nEq_io(:) => null()
   type(ts_cw)  , pointer, save, public :: nEq_c(:) => null()
 
@@ -60,7 +60,7 @@ module m_ts_contour_neq
      type(ts_mu), pointer :: mu => null()
      ! The index for the electrode attached to this
      ! integration quantity
-     type(Elec), pointer :: El => null()
+     type(electrode_t), pointer :: El => null()
      ! The index associated with the non-equilibrium 
      ! array index as calculated in the tri|full|mumps[gk] routines
      integer :: ID = 0
@@ -87,6 +87,8 @@ module m_ts_contour_neq
   public :: c2weight_neq
   public :: ID2mu
 
+  public :: ts_contour_neq_reset
+
   private
 
 contains
@@ -94,11 +96,11 @@ contains
   subroutine read_contour_neq_options(N_Elec,Elecs,N_mu,mus,kT,Volt)
 
     use fdf
-    use m_ts_electype
+    use ts_electrode_m
 
     ! only to gain access to the chemical shifts
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in), target :: Elecs(N_Elec)
+    type(electrode_t), intent(in), target :: Elecs(N_Elec)
     integer, intent(in) :: N_mu
     type(ts_mu), intent(in), target :: mus(N_mu)
     ! This temperature is the SIESTA electronic temperature
@@ -119,10 +121,10 @@ contains
 
     ! broadening defaults to the electrodes Eta values and their
     ! propagation. Since there may be localized states
-    ! we default to an eta with a number equal to min(Elecs(:)%eta) / 100
+    ! we default to an eta with a number equal to min(Elecs(:)%eta) / 10
     ! This ensures a minimal broadening that will by default be smaller
     ! than the electrodes.
-    nEq_Eta = minval(Elecs(:)%eta) / 100._dp
+    nEq_Eta = minval(Elecs(:)%eta) / 10._dp
     nEq_Eta = fdf_get('TS.Contours.nEq.Eta',nEq_Eta,'Ry')
     if ( nEq_Eta < 0._dp ) call die('ERROR: nEq_Eta < 0, we do not allow &
         &for using the advanced Green function, please correct.')
@@ -969,5 +971,25 @@ contains
     call die(msg)
 
   end subroutine neq_die
+
+  subroutine ts_contour_neq_reset
+
+    integer :: i
+
+    if ( N_nEq <= 0 ) return
+
+    do i = 1, N_nEq
+      call delete(nEq_io(i))
+      deallocate(nEq_c(i)%c)
+      deallocate(nEq_c(i)%w)
+      nullify(nEq_c(i)%c_io)
+    end do
+
+    deallocate(nEq_io, nEq_c)
+    if ( N_nEq_id > 0 ) then
+      deallocate(nEq_ID)
+    end if
+
+  end subroutine ts_contour_neq_reset
     
 end module m_ts_contour_neq

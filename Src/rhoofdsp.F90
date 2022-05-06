@@ -69,7 +69,7 @@ contains
 
     real(dp) :: Dscf(maxnd,nspin), q(3)
 
-    external :: memory, timer, ipack
+    external :: timer, ipack
 
     ! Internal variables and arrays
     integer, parameter :: minloc = 1000 ! Min buffer size for local copy of Dscf

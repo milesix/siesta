@@ -19,7 +19,7 @@ MODULE siesta_geom
   real(dp)                        :: scell(3,3), scell_last(3,3)
 
   ! Shape of the system
-  character(len=150)              :: shape*10
+  character(len=10)               :: shape
 
   ! Unit cell volume  (dangerous: the old code might have a BUG,
   ! as the volume is printed at the end 
@@ -39,14 +39,14 @@ MODULE siesta_geom
   ! Matrix of auxiliary supercell
   integer :: mscell(3,3)
 
-  ! Unit cell "velocity" (time derivative)
+  ! Unit cell "velocity" (time derivative) [Bohr/fs]
   real(dp):: vcell(3,3)
 
   ! Atomic coordinates
   real(dp), pointer               :: xa(:,:)
   real(dp), pointer               :: xa_last(:,:)
 
-  ! Atomic velocities
+  ! Atomic velocities [Bohr/fs]
   real(dp), pointer               :: va(:,:)
 
   ! integer isa(na)           : Species index of each atom

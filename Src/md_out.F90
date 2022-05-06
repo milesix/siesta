@@ -128,61 +128,75 @@ integer        :: atom_no
 
        iret = nf90_def_var(ncid,'isa',nf90_int,(/atom_id/),isa_id)
        call check(iret)
-       iret = nf90_put_att(ncid,isa_id,'Description',"Species index")
+       iret = nf90_put_att(ncid,isa_id,'info',"Species index")
        call check(iret)
        iret = nf90_def_var(ncid,'iza',nf90_int,(/atom_id/),iza_id)
        call check(iret)
-       iret = nf90_put_att(ncid,iza_id,'Description',"Atomic number")
+       iret = nf90_put_att(ncid,iza_id,'info',"Atomic number")
        call check(iret)
 
        iret = nf90_def_var(ncid,'temp',nf90_double,(/step_id/),temp_id)
        call check(iret)
-       iret = nf90_put_att(ncid,temp_id,'Description',"Temperature in K")
+       iret = nf90_put_att(ncid,temp_id,'info',"Temperature")
+       call check(iret)
+       iret = nf90_put_att(ncid,temp_id,'unit',"Kelvin")
        call check(iret)
 
        iret = nf90_def_var(ncid,'psol',nf90_double,(/step_id/),psol_id)
        call check(iret)
-       iret = nf90_put_att(ncid,psol_id,'Description',"Pressure in Kbar")
+       iret = nf90_put_att(ncid,psol_id,'info',"Pressure")
+       call check(iret)
+       iret = nf90_put_att(ncid,psol_id,'unit',"Kbar")
        call check(iret)
 
        iret = nf90_def_var(ncid,'eks',nf90_double,(/step_id/),eks_id)
        call check(iret)
-       iret = nf90_put_att(ncid,eks_id,'Description',"Kohn-Sham energy in ")
+       iret = nf90_put_att(ncid,eks_id,'info',"Kohn-Sham energy")
+       call check(iret)
+       iret = nf90_put_att(ncid,eks_id,'unit',"Ry")
+
        call check(iret)
 
        iret = nf90_def_var(ncid,'etot',nf90_double,(/step_id/),etot_id)
        call check(iret)
-       iret = nf90_put_att(ncid,etot_id,'Description',"Total energy in")
+       iret = nf90_put_att(ncid,etot_id,'info',"Total energy")
+       call check(iret)
+       iret = nf90_put_att(ncid,etot_id,'unit',"Ry")
        call check(iret)
 
        iret = nf90_def_var(ncid,'xa',nf90_double,(/xyz_id,atom_id,step_id/),xa_id)
        call check(iret)
-       iret = nf90_put_att(ncid,xa_id,'Description', &
-             "Atomic coordinates in cartesian Angstrom: xyz, ia, step")
+       iret = nf90_put_att(ncid,xa_id,'info', 'Atomic coordinates')
+       call check(iret)
+       iret = nf90_put_att(ncid,xa_id,'unit', 'Bohr')
        call check(iret)
 
        iret = nf90_def_var(ncid,'va',nf90_double,(/xyz_id,atom_id,step_id/),va_id)
        call check(iret)
-       iret = nf90_put_att(ncid,va_id,'Description', &
-             "Atomic velocities in cartesian Angstrom/time?: xyz, ia, step")
+       iret = nf90_put_att(ncid,va_id,'info', 'Atomic velocities')
+       call check(iret)
+       iret = nf90_put_att(ncid,va_id,'unit', 'Bohr/fs')
        call check(iret)
 
-          iret = nf90_def_var(ncid,'cell',nf90_double,(/xyz_id,abc_id,step_id/),cell_id)
+       iret = nf90_def_var(ncid,'cell',nf90_double,(/xyz_id,abc_id,step_id/),cell_id)
        call check(iret)
-          iret = nf90_put_att(ncid,cell_id,'Description', &
-               "Variable cell vectors in Ang: xyz, abc, step")
+       iret = nf90_put_att(ncid,cell_id,'info', 'Cell vectors')
        call check(iret)
-
-          iret = nf90_def_var(ncid,'vcell',nf90_double,(/xyz_id,abc_id,step_id/),vcell_id)
-       call check(iret)
-          iret = nf90_put_att(ncid,vcell_id,'Description', &
-             "Cell vectors' velocities in Ang/time?: xyz, abc, step")
+       iret = nf90_put_att(ncid,cell_id,'unit', 'Bohr')
        call check(iret)
 
-          iret = nf90_def_var(ncid,'volume',nf90_double,(/step_id/),volume_id)
+       iret = nf90_def_var(ncid,'vcell',nf90_double,(/xyz_id,abc_id,step_id/),vcell_id)
        call check(iret)
-          iret = nf90_put_att(ncid,volume_id,'Description', &
-               "Cell volume in Ang**3")
+       iret = nf90_put_att(ncid,vcell_id,'info', 'Cell vector velocities')
+       call check(iret)
+       iret = nf90_put_att(ncid,vcell_id,'unit', 'Bohr/fs')
+       call check(iret)
+
+       iret = nf90_def_var(ncid,'volume',nf90_double,(/step_id/),volume_id)
+       call check(iret)
+       iret = nf90_put_att(ncid,volume_id,'info', 'Cell volume')
+       call check(iret)
+       iret = nf90_put_att(ncid,volume_id,'unit', 'Ang**3')
        call check(iret)
 
        iret = nf90_enddef(ncid)

@@ -27,7 +27,8 @@ subroutine read_options( na, ns, nspin )
   use units,     only : eV, Ang, Kelvin
   use siesta_cml
   use m_target_stress, only: set_target_stress
-  use m_spin, only: print_spin_options, spin
+  use m_spin, only: spin
+  use spin_subs_m, only: print_spin_options
 
   use m_charge_add, only : read_charge_add
   use m_hartree_add, only : read_hartree_add
@@ -873,7 +874,8 @@ subroutine read_options( na, ns, nspin )
   ! For SOC calculations: If .false., Enl will contain
   ! the SO part of the energy.
   if (spin%SO) then
-     split_sr_so = fdf_get('SOC.Split.SR.SO',.true.)
+     ! Avoid splitting if we are using the 'offsite' flavor of SOC
+     split_sr_so = fdf_get('SOC.Split.SR.SO',(.not. spin%SO_offsite))
      if (ionode) then
         write(6,1) 'redata: Split SR and SO contributions', split_sr_so
      endif

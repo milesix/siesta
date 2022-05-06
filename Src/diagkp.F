@@ -120,7 +120,7 @@ C
      &                  Haux(2,nuotot,nuotot), Saux(2,nuotot,nuotot),
      &                  psi(2,nuotot,nuotot), aux(2,nuotot)
       logical           getD, fixspin
-      external          cdiag, memory
+      external          cdiag
 
 C  Internal variables .............................................
       integer           :: BNode, ie, ierror, ik, io, iio, ind, is,

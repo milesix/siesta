@@ -1,6 +1,6 @@
 #
 # Single-test makefile
 #
-name=ts_term3
+name=ts_graphene
 #
 include ../../script_ts.mk
