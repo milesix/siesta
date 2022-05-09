@@ -228,7 +228,7 @@ contains
 
         else if ( Node == 0 ) then
           nb = nb + 1
-          call MPI_ISSend(lgncol(gio), n, MPI_Integer, &
+          call MPI_ISend(lgncol(gio), n, MPI_Integer, &
               BNode, gio, MPI_Comm_World, ibuf(nb), MPIerror)
 
         end if
@@ -574,7 +574,7 @@ contains
             gind = gind + i
           else
             nb = nb + 1
-            call MPI_ISSend(l_col(ind+1), i, MPI_Integer, &
+            call MPI_ISend(l_col(ind+1), i, MPI_Integer, &
                 0, gio, MPI_Comm_World, ibuf(nb), MPIerror)
           end if
           ind = ind + i
@@ -938,7 +938,7 @@ contains
             gind = gind + i
           else
             nb = nb + 1
-            call MPI_ISSend(a(ind+1), i, MPI_Double_Precision, &
+            call MPI_ISend(a(ind+1), i, MPI_Double_Precision, &
                 0, gio, MPI_Comm_World, ibuf(nb), MPIerror)
           end if
           ind = ind + i
@@ -1420,7 +1420,7 @@ contains
               gind = gind + i
             else
               nb = nb + 1
-              call MPI_ISSend(a(ind+1,is), i, MPI_Double_Precision, &
+              call MPI_ISend(a(ind+1,is), i, MPI_Double_Precision, &
                   0, gio, MPI_Comm_World, ibuf(nb), MPIerror)
             end if
             ind = ind + i
@@ -1491,7 +1491,7 @@ contains
             gind = gind + i
           else
             nb = nb + 1
-            call MPI_ISSend(a(1,ind+1), i*dim2, MPI_Double_Precision, &
+            call MPI_ISend(a(1,ind+1), i*dim2, MPI_Double_Precision, &
                 0, gio, MPI_Comm_World, ibuf(nb), MPIerror)
           end if
           ind = ind + i
