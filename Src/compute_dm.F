@@ -36,7 +36,7 @@
 #ifdef SIESTA__PEXSI
       use m_pexsi_solver,  only: pexsi_solver
 #endif
-      use m_hsx, only      : write_hs_formatted
+      use io_hsx_m, only      : write_hs_formatted
 #ifdef MPI
       use mpi_siesta
 #endif

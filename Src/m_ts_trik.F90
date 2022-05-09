@@ -67,7 +67,7 @@ contains
     use class_zSpData2D
     use class_zTriMat
 
-    use m_ts_electype
+    use ts_electrode_m
     ! Self-energy read
     use m_ts_gf
     ! Self-energy expansion
@@ -114,7 +114,7 @@ contains
 ! * INPUT variables  *
 ! ********************
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     integer, intent(in) :: nq(N_Elec), uGF(N_Elec)
     real(dp), intent(in) :: ucell(3,3)
     integer, intent(in) :: nspin, na_u, lasto(0:na_u)
@@ -203,7 +203,7 @@ contains
     end if
     ! Now figure out the required worksize for SE expansion
     call UC_minimum_worksize(IsVolt, N_Elec, Elecs, idx)
-    io = nnzs_tri(c_Tri%n, c_Tri%r)
+    io = int( nnzs_tri(c_Tri%n, c_Tri%r) )
     padding = max(padding, idx - io)
     call newzTriMat(zwork_tri,c_Tri%n,c_Tri%r,'GFinv', &
          padding=padding)
@@ -236,7 +236,7 @@ contains
        ! it is required that prepare_GF_inv is called
        ! immediately (which it is)
        ! Hence the GF must NOT be used in between these two calls!
-       io = TotUsedOrbs(Elecs(iEl)) ** 2
+       io = Elecs(iEl)%device_orbitals() ** 2
        Elecs(iEl)%Sigma => zwork(no+1:no+io)
        no = no + io
 
@@ -246,7 +246,7 @@ contains
 
        io  = Elecs(iEl)%idx_o
        io  = io - orb_offset(io)
-       idx = io + TotUsedOrbs(Elecs(iEl)) - 1
+       idx = io + Elecs(iEl)%device_orbitals() - 1
 
     end do
 
@@ -693,7 +693,7 @@ contains
     use class_Sparsity
     use class_zTriMat
 
-    use m_ts_electype
+    use ts_electrode_m
 
     ! The DM and EDM equivalent matrices
     type(zSpData2D), intent(inout) :: DM
@@ -705,7 +705,7 @@ contains
     type(zTriMat), intent(inout) :: GF_tri
     type(tRgn), intent(in) :: r, pvt
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! the index of the partition
     integer, intent(in) :: DMidx
     integer, intent(in), optional :: EDMidx
@@ -892,7 +892,7 @@ contains
     use class_Sparsity
     use class_zSpData1D
     use class_zTriMat
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_tri_scat, only : insert_Self_Energies
     use m_ts_cctype, only : ts_c_idx
 
@@ -901,7 +901,7 @@ contains
     type(zTriMat), intent(inout) :: GFinv_tri
     type(tRgn), intent(in) :: r, pvt
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! The Hamiltonian and overlap sparse matrices
     type(zSpData1D), intent(inout) :: spH,  spS
 

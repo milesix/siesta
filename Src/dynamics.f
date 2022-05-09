@@ -131,7 +131,7 @@ C Internal variables ...........................................................
       integer :: old_natoms, dummy_iza, iacc
 
       real(dp) :: volcel
-      external :: volcel, memory
+      external :: volcel
 
 C ......................................................................
 
@@ -653,7 +653,7 @@ C Internal variables
       integer :: old_natoms, dummy_iza, iacc
 
       real(dp) :: volcel
-      external :: volcel, memory
+      external :: volcel
 C ...............................................................................
       
       restart_file = trim(slabel) // '.PR_RESTART'
@@ -1135,8 +1135,6 @@ C
      .  ma(natoms),mn,tt,
      .  va(3,natoms),vn,xa(3,natoms)
 
-      external
-     .  memory
 C Internal variables .........................................................
 
       logical
@@ -1458,7 +1456,7 @@ C Internal variables ...........................................................
       real(dp), dimension(3) :: xdum, xaold
       logical :: have_t_target, have_p_target
        external
-     &  volcel, memory
+     &  volcel
 C ....................................................................
 
       if (iunit .ne. 1 .and. iunit .ne. 2)
@@ -1794,8 +1792,6 @@ C
      .  dt,fa(3,natoms),kin,ma(natoms),
      .  va(3,natoms),xa(3,natoms)
 
-      external
-     .  memory
 
 C Internal variables ..........................................................
  
@@ -1965,8 +1961,6 @@ C *****************************************************************************
      .  dt,fa(3,natoms),kin,ma(natoms),
      .  va(3,natoms),xa(3,natoms)
 
-      external
-     .  memory
 
 C Internal variables ..........................................................
  

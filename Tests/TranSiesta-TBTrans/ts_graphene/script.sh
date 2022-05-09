@@ -1,30 +1,31 @@
-#!/bin/bash
-
+#!/bin/sh
+#
 # The script is passed the (probably relative) path to the transiesta
 # executable
-
-# Retrieve transiesta executable
-TS_RAW="$@"
-
+#
+### set -x
+TS_RAW="$1"
+#
 # Extract last component, in case of mpirun-style string
-TS_REL_PATH="$(echo $TS_RAW | awk '{print $NF}')"
-TS_EXEC_PREFIX="$(echo $TS_RAW | awk '{$NF=""; print}')"
-
-TS_NAME="$(basename $TS_REL_PATH)"
-EXEC_DIR="$(dirname $TS_REL_PATH)"
-
-
+# 
+TS_REL_PATH=$(echo ${TS_RAW} | awk '{print $NF}')
+TS_EXEC_PREFIX=$(echo ${TS_RAW} | awk '{$NF=""; print}')
+#
+TS_NAME=$(basename ${TS_REL_PATH})
+EXEC_DIR=$(dirname ${TS_REL_PATH})
+#
 # Find absolute path -------
-pushd $EXEC_DIR
+#
+pushd ${EXEC_DIR}
 ABS_EXEC_DIR=$(pwd)
 popd
-
-TS_ABS="$ABS_EXEC_DIR/$TS_NAME"
+#---------------------------
+TS_ABS=${ABS_EXEC_DIR}/${TS_NAME}
 TS="$TS_EXEC_PREFIX $TS_ABS"
+OBJDIR=$(basename ${ABS_EXEC_DIR})
+ROOT_DIR=$(dirname ${ABS_EXEC_DIR})
+echo "Running script with TranSIESTA=$TS, compiled in OBJDIR=${OBJDIR}"
 
-OBJDIR=$(basename $ABS_EXEC_DIR)
-ROOT_DIR=$(dirname $ABS_EXEC_DIR)
-echo "Running script with TranSIESTA=$TS, compiled in OBJDIR=$OBJDIR"
 
 if [ -z "$TBT" ] ; then
     TBT="${TS_EXEC_PREFIX} ${ROOT_DIR}/Util/TS/TBtrans/tbtrans"
@@ -36,30 +37,33 @@ fi
 
 
 # Start with the electrode calculation
-ELEC=elec
-echo "Electrode $ELEC Calculation"
-mkdir $ELEC
-cd $ELEC
+ELEC=ts_graphene_elec
+echo "==> Electrode Calculation for $ELEC"
+mkdir Elec
+cd Elec
 ln ../../C.psf .
-ln ../../${ELEC}.fdf .
+ln ../../$ELEC.fdf .
 $TS --electrode $ELEC.fdf > $ELEC.out
 RETVAL=$?
 if [ $RETVAL -ne 0 ]; then
-    echo "The electrode ($ELEC) calculation did not go well ..."
+    echo "The electrode calculation did not go well ..."
     exit
-    fi
+fi
 cp $ELEC.out ../..
+# Go back to base directory
 cd ..
 
 
 # Scattering region calculation
-for SCAT in graphene graphene-UA
+for SCAT in ts_graphene_hexagonal ts_graphene_buffer
 do
-    echo "==> Scattering Region Calculation ($SCAT)"
-    mkdir $SCAT
-    cd $SCAT
+    echo "==> Scattering Region Calculation for $SCAT"
+    mkdir Scat_$SCAT
+    cd Scat_$SCAT
     ln ../../C.psf .
     ln ../../$SCAT.fdf .
+    # Copy the electrode's .TSHS
+    ln ../Elec/$ELEC.TSHS .
     $TS $SCAT.fdf > $SCAT.out
     RETVAL=$?
     if [ $RETVAL -ne 0 ]; then
@@ -67,28 +71,38 @@ do
 	exit
     fi
     cp $SCAT.out ../..
-
+    rm *.TSGF*
+    # Go back to base directory
     cd ..
 
-    
+
     # TBTrans calculation
     echo "==> TBTrans Calculation for $SCAT"
-    
+
     echo "==> Running $SCAT with tbtrans=$TBT"
-    mkdir $SCAT-tbt
-    cd $SCAT-tbt
-    
-    ln ../$SCAT/$SCAT.TSHS .
+    mkdir TBT_$SCAT
+    cd TBT_$SCAT
+    # Copy input files
+    ln ../Elec/$ELEC.TSHS .
+    ln ../Scat_$SCAT/$SCAT.TSHS .
     ln ../../$SCAT.fdf .
-    $TBT $SCAT.fdf > tbt_$SCAT.out
+    $TBT $SCAT.fdf > ${SCAT}_tbt.out
     RETVAL=$?
     if [ $RETVAL -ne 0 ]; then
-	echo "The transport calculation did not go well ..."
+	echo "The scattering region calculation did not go well ..."
 	exit
     fi
-    cp tbt_$SCAT.out $SCAT.TBT.TRANS_Left-Right ../..
-    cd ..
 
+    cp ${SCAT}_tbt.out ../../
+    for f in $SCAT.TBT.TRANS_* $SCAT.TBT.TEIG_* $SCAT.TBT.ADOS_*
+    do
+	if [ -e $f ]; then
+	    cp $f ../../
+	fi
+    done
+    rm -f *.TBTGF*
+    
+    cd ..
 done
 
 # If it gets here it's because it finished without error

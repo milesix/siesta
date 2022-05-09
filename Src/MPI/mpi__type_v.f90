@@ -17,8 +17,6 @@
 !       (C) 1996  Michael Hennecke, RZ Universitaet Karlsruhe
 !
 !
-        USE TIMER_MPI_M, only: timer_mpi
-
         IMPLICIT NONE
         PRIVATE
 
@@ -139,6 +137,11 @@
         PUBLIC :: MPI_BCAST
         INTERFACE MPI_BCAST
           MODULE PROCEDURE MPI_BCAST_T
+        END INTERFACE ! MPI_BCAST
+
+        PUBLIC :: MPI_IBCAST
+        INTERFACE MPI_IBCAST
+          MODULE PROCEDURE MPI_IBCAST_T
         END INTERFACE ! MPI_BCAST
 
         PUBLIC :: MPI_GATHER
@@ -558,7 +561,23 @@
      &      BUFFER, COUNT, DATATYPE, ROOT, COMM, IERROR) 
           call timer_mpi('MPI_BCAST',2)
         END SUBROUTINE  MPI_BCAST_T
-                  
+
+        SUBROUTINE MPI_IBCAST_T(                                         &
+     &      BUFFER, COUNT, DATATYPE, ROOT, COMM, REQUEST, IERROR) 
+          type, INTENT(INOUT) :: BUFFER(*) 
+          INTEGER, INTENT(IN)  :: COUNT
+          INTEGER, INTENT(IN)  :: DATATYPE
+          INTEGER, INTENT(IN)  :: ROOT
+          INTEGER, INTENT(IN)  :: COMM
+          INTEGER, INTENT(OUT) :: REQUEST
+          INTEGER, INTENT(OUT) :: IERROR 
+          EXTERNAL MPI_IBCAST
+          call timer_mpi('MPI_IBCAST',1)
+          CALL     MPI_IBCAST(                                          &
+     &      BUFFER, COUNT, DATATYPE, ROOT, COMM, REQUEST, IERROR) 
+          call timer_mpi('MPI_IBCAST',2)
+        END SUBROUTINE  MPI_IBCAST_T
+
         SUBROUTINE MPI_GATHER_T(                                        &
      &      SENDBUF, SENDCOUNT, SENDTYPE, RECVBUF, RECVCOUNT,           &
      &      RECVTYPE, ROOT, COMM, IERROR) 

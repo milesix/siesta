@@ -13,8 +13,8 @@
 
       subroutine siesta_end( )
       use fdf,             only : fdf_shutdown
+      use memory_log,      only : memory_report
       use precision,       only : dp
-      use alloc,           only : alloc_report
       use siesta_cml,      only : cml_p, mainXML, cmlEndModule
       use siesta_cmlsubs,  only : siesta_cml_exit
       use siesta_master,   only : siesta_subroutine  ! Is siesta a subroutine?
@@ -46,6 +46,12 @@
       use kpoint_ldos_m, only: reset_kpoint_ldos
       use ts_kpoint_scf_m, only: reset_ts_kpoint_scf
 
+      use m_ts_method, only: ts_method_reset
+      use m_ts_contour_eq, only: ts_contour_eq_reset
+      use m_ts_contour_neq, only: ts_contour_neq_reset
+      use m_ts_options, only: ts_options_reset
+      use m_ts_sparse, only: ts_sparse_reset
+
 #ifdef SIESTA__CHESS
       use m_chess, only: CheSS_finalize
 #endif
@@ -54,6 +60,7 @@
       use flook_siesta,    only : slua_call, LUA_FINALIZE
       use flook_siesta,    only : slua_close
       use siesta_options,  only : LUA
+      use siesta_dicts,  only : dict_clean
 #endif
 
       use m_diag, only: diag_exit
@@ -89,6 +96,7 @@
       call slua_call(LUA,LUA_FINALIZE)
       ! Clean up the lua environment
       call slua_close(LUA)
+      call dict_clean()
 #endif
 
 !     Free allocated memory
@@ -118,6 +126,13 @@
       call reset_ts_kpoint_scf()
       call reset_kpoint_scf()
 
+      ! Clean transiesta stuff
+      call ts_contour_eq_reset()
+      call ts_contour_neq_reset()
+      call ts_sparse_reset()
+      call ts_method_reset()
+      call ts_options_reset()
+
       ! Clean diagonalization
       call diag_exit()
 
@@ -131,7 +146,7 @@
 !!      call printmemory( 6, 1 )
 
 !     Print allocation report
-      call alloc_report( printNow=.true. , shutdown=.true.)
+      call memory_report( printNow=.true. , shutdown=.true.)
 
 #ifdef DEBUG_XC
 ! Close debug outup file

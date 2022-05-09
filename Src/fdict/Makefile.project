@@ -4,8 +4,8 @@ _SMEKA_project = 1
 
 # Step this version upon new versions
 PROJECT_MAJOR = 0
-PROJECT_MINOR = 7
-PROJECT_MICRO = 2
+PROJECT_MINOR = 8
+PROJECT_MICRO = 1
 PROJECT_VERSION = $(PROJECT_MAJOR).$(PROJECT_MINOR).$(PROJECT_MICRO)
 
 # These are constant default
@@ -43,17 +43,18 @@ endif
 .NOTPARALLEL: install-mod
 smeka-install: install-mod
 install-mod: $(F_MODS)
-	$(INSTALL) -pm $(_OCT_rwrr) -t $(DESTDIR)$(FMOD_DIR) $(F_MODS)
+	$(INSTALL) -m $(_OCT_rwxrxrx) -d $(DESTDIR)$(FMOD_DIR)
+	$(INSTALL) -m $(_OCT_rwrr) $(F_MODS) $(DESTDIR)$(FMOD_DIR)
 
 .NOTPARALLEL: install-settings
 smeka-install: install-settings
-install-settings: settings.bash
-	$(INSTALL) -pm $(_OCT_rwrr) -t $(DESTDIR)$(BIN_DIR) settings.bash
+install-settings: settings.bash smeka-install-init-dir
+	$(INSTALL) -m $(_OCT_rwrr) settings.bash $(DESTDIR)$(BIN_DIR)
 
 .NOTPARALLEL: install-header
 smeka-install: install-header
-install-header: fdict.inc
-	$(INSTALL) -pm $(_OCT_rwrr) -t $(DESTDIR)$(INC_DIR) fdict.inc
+install-header: fdict.inc smeka-install-init-dir
+	$(INSTALL) -m $(_OCT_rwrr) fdict.inc $(DESTDIR)$(INC_DIR)
 
 
 # Force the deletion of both libraries

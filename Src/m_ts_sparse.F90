@@ -18,6 +18,7 @@ module m_ts_sparse
 
   use class_Sparsity
   use class_iSpData1D
+  use class_OrbitalDistribution
 
   use precision, only : dp
 
@@ -70,8 +71,6 @@ contains
        ucell, nsc, na_u,xa,lasto, dit,sparse_pattern, Gamma, &
        isc_off)
     
-    use class_OrbitalDistribution
-
     use alloc
 #ifdef MPI
     use mpi_siesta, only : MPI_Comm_Self
@@ -79,7 +78,7 @@ contains
     use parallel, only: IONode
 
     use create_Sparsity_SC
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_method
 #ifdef TRANSIESTA_DEBUG
     use m_ts_debug
@@ -94,7 +93,7 @@ contains
     character(len=*), intent(in) :: slabel
     logical, intent(in) :: IsVolt ! bias calculation
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     ! Unit cell
     real(dp), intent(in) :: ucell(3,3)
     ! Number of super-cells in each direction
@@ -128,7 +127,7 @@ contains
     no_u_TS = nrows_g(sparse_pattern) - no_Buf
 
     ! Do a crude check of the sizes
-    if ( no_u_TS <= sum(TotUsedOrbs(Elecs)) ) then
+    if ( no_u_TS <= sum(Elecs%device_orbitals()) ) then
       call die("The contact region size is &
           &smaller than the electrode size. Please correct.")
     end if
@@ -276,11 +275,9 @@ contains
 
     use parallel, only: IONode
     
-    use class_OrbitalDistribution
-    use class_Sparsity
     use m_region
 
-    use m_ts_electype
+    use ts_electrode_m
 
     use m_sparsity_handling
     use m_ts_method
@@ -288,7 +285,7 @@ contains
     type(OrbitalDistribution), intent(inout) :: dit
     type(Sparsity), intent(inout) :: s_sp ! the local sparse pattern
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     real(dp), intent(in) :: ucell(3,3)
     integer, intent(in) :: nsc(3), isc_off(3,product(nsc))
     ! the global sparse pattern for the calculation region (in SC format)
@@ -315,7 +312,7 @@ contains
 
        ! Create electrode region
        i = Elecs(iEl)%idx_o
-       call rgn_range(r_oE(iEl), i, i+TotUsedOrbs(Elecs(iEl))-1)
+       call rgn_range(r_oE(iEl), i, i+Elecs(iEl)%device_orbitals()-1)
 
        ! Remove the connections that cross the boundary
        ! starting from this electrode
@@ -398,10 +395,9 @@ contains
 #ifdef MPI
     use mpi_siesta
 #endif
-    use class_OrbitalDistribution
     use intrinsic_missing, only : SORT_QUICK
     use create_Sparsity_SC
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_method
     use m_sparsity_handling
 
@@ -419,7 +415,7 @@ contains
     type(Sparsity), intent(inout) :: s_sp
     ! All the electrodes
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! the returned update region.    
     type(Sparsity), intent(inout) :: ts_sp
 
@@ -580,9 +576,8 @@ contains
 
     use geom_helper, only : UCORB
     use create_Sparsity_SC
-    use class_OrbitalDistribution
     use m_ts_method
-    use m_ts_electype
+    use ts_electrode_m
 ! **********************
 ! * INPUT variables    *
 ! **********************
@@ -590,7 +585,7 @@ contains
     type(Sparsity), intent(inout) :: s_sp
     ! the electrodes
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     type(Sparsity), intent(inout) :: tsup_sp
 
 ! **********************
@@ -717,7 +712,6 @@ contains
   end subroutine ts_Sparsity_Update
 
   subroutine ts_Sparsity_Subset_pointer(dit,sp,sub_sp,ipnt)
-    use class_OrbitalDistribution
 
 ! **********************
 ! * INPUT variables    *
@@ -794,5 +788,18 @@ contains
     end if
 
   end subroutine ts_Sparsity_Subset_pointer
+
+
+  subroutine ts_sparse_reset()
+
+    use alloc, only: de_alloc
+
+    call delete(ts_sp_uc)
+    call delete(tsup_sp_uc)
+    call delete(ltsup_sp_sc)
+    call delete(ltsup_sc_pnt)
+    call de_alloc(sc_off)
+
+  end subroutine ts_sparse_reset
 
 end module m_ts_sparse

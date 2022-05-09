@@ -26,7 +26,7 @@ module bloch_unfold_m
     integer, public :: B(3) = 1
 
     !< Local variable for quick query of product(this%B)
-    integer, private :: prod_B = 1
+    integer, public :: prod_B = 1
 
   contains
 

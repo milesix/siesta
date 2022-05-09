@@ -19,7 +19,7 @@ subroutine tbt_init()
   use precision, only : dp
   use parallel, only : parallel_init, Node, Nodes, IONode
   use m_timer, only : timer_report
-  use alloc, only   : alloc_report
+  use memory_log,      only : memory_report
   use files, only   : slabel
   use m_timestamp, only : timestamp
   use m_wallclock, only : wallclock
@@ -39,8 +39,7 @@ subroutine tbt_init()
 
   use dictionary
 
-  use m_ts_electrode, only : init_Electrode_HS
-  use m_ts_electype
+  use ts_electrode_m
 
   use m_tbt_kpoint
   use m_tbt_regions
@@ -141,7 +140,7 @@ subroutine tbt_init()
   level = fdf_get('alloc_report_level', 0)
   threshold = fdf_get('alloc_report_threshold', 0._dp)
   call name_save(1,1,fname,end='alloc')
-  call alloc_report( level=level, file=trim(fname), &
+  call memory_report( level=level, file=trim(fname), &
        threshold=threshold, printNow=.false. )
 
 #ifdef NCDF_4
@@ -157,7 +156,7 @@ subroutine tbt_init()
   ! do interpolation due to bias not matching any TSHS files
   ! passed to the program.
   ! This will also read in the required information about the system
-  call tbt_init_HSfile( )
+  call tbt_HS_init( )
 
   ! Read in generic options
   call read_tbt_generic(TSHS%na_u, TSHS%lasto)
@@ -203,7 +202,7 @@ subroutine tbt_init()
      if ( IONode ) write(*,*) ! newline
 
      ! initialize the electrode for Green's function calculation
-     call init_Electrode_HS(Elecs(iEl))
+     call Elecs(iEl)%prepare_SE()
 
      if ( Elecs(iEl)%is_gamma ) then
        call do_Green(Elecs(iEl), &
@@ -216,7 +215,7 @@ subroutine tbt_init()
      end if
      
      ! clean-up
-     call delete(Elecs(iEl))
+     call Elecs(iEl)%delete()
      
   end do
 
@@ -241,7 +240,7 @@ subroutine tbt_init()
   ! Hence, in order to change the sparsity patterns of the data
   ! we need to retain both!
   tmp_sp = TSHS%sp
-  call tbt_init_regions(N_Elec,Elecs,TSHS%cell, &
+  call tbt_regions_init(N_Elec,Elecs,TSHS%cell, &
        TSHS%na_u,TSHS%xa,TSHS%lasto, &
        TSHS%dit,tmp_sp, &
        product(TSHS%nsc),TSHS%isc_off)
@@ -266,9 +265,9 @@ subroutine tbt_init()
   call delete(tmp_sp)
 
   ! Create the device region sparsity pattern
-  call tbt_region_options( TSHS%sp, save_DATA )
+  call tbt_regions_options( TSHS%sp, save_DATA )
 
-  call tbt_print_regions( TSHS%na_u, TSHS%lasto, N_Elec, Elecs)
+  call tbt_regions_print( TSHS%na_u, TSHS%lasto, N_Elec, Elecs)
 
   call tbt_print_kRegions( TSHS%cell )
 
