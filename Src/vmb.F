@@ -198,7 +198,14 @@ C  For other distributions med may be different from cero.
       med = 0.0
       pi = acos(-1.0d0)
       var = sqrt(temp/mass)
-C  conversion factor to bohr/fs
+C     conversion factor to bohr/fs
+! NOTE: This number seems to be sqrt(Kelvin/amu)
+! The amu in Siesta is renormalized to account for the different
+! time unit. But in any case, sqrt(Kelvin/amu) should be 0.00172313
+! using the 'original' units.
+
+! So better to write:
+      !!       var = sqrt(temp*Kelvin/(mass*amu))
       var = var * 0.00172309d0
  
       arg1 = sqrt((-2.) * log(randomg(iseed)))
@@ -295,7 +302,9 @@ C Kinetic energy of atoms
         enddo
       enddo
 
-C Instantaneous temperature (Kelvin)
+C     Instantaneous temperature (Kelvin)
+! Note: This conversion factor is naked.
+      ! 8.617e-5 should be (Kelvin/eV)
       if (iunit .eq. 1) then
         tempe = 2.0d0*kin/(3.0d0*natoms-3.0d0-ntcon)/8.617d-5
       else

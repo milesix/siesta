@@ -5,6 +5,14 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
+
+      ! NOTES
+      ! 8.617e-5 should be (Kelvin/eV)
+! we could define legacy_kelvin_over_eV = 8.617e-5
+
+! And have a module-wide definition for units, with the #ifdefs
+! and avoid them elsewhere.
+      
       module m_dynamics
 
       use precision
@@ -27,6 +35,16 @@
       logical, parameter   :: debug = .false.
       character(len=60)    :: restart_file
       logical              :: first_time = .true.
+
+      real(dp), parameter :: kelvin_over_eV
+      
+#ifdef SIESTA__UNITS_ORIGINAL
+      real(dp), parameter :: legacy_kelvin_over_eV = 8.617e-5
+      kelvin_over_eV = legacy_kelvin_over_eV
+#else
+      kelvin_over_eV = Kelvin/eV
+#endif      
+      
 
       CONTAINS
 
