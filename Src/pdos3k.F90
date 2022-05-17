@@ -131,19 +131,17 @@ subroutine pdos3k( nuo, no, maxuo, maxnh, &
     ! Figure out the minimum and maximum eigenstates that will contribute
     ! This ensures we calculate fewer columns of the psi basis
     ! Note, eo *MUST* be sorted. This is ensured by lapack/scalapack.
-    iEmin = 1
+    iEmin = nuotot2
     do jo = 1, nuotot2
-      diff = abs(E1 - EO(jo))
-      if ( diff < limit ) then
+      if ( (E1 - limit) < EO(jo) .and. EO(jo) < (E2 + limit) ) then
         iEmin = jo
         exit
       end if
     end do
 
-    iEmax = nuotot2
+    iEmax = 1
     do jo = nuotot2, 1, -1
-      diff = abs(E2 - EO(jo))
-      if ( diff < limit ) then
+      if ( (E1 - limit) < EO(jo) .and. EO(jo) < (E2 + limit) ) then
         iEmax = jo
         exit
       end if
