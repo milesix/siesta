@@ -36,7 +36,8 @@ C *********************************************************************
 
 C     Modules
       use precision,   only : dp, grid_p
-      use parallel,    only : Node, Nodes, ProcessorY
+      use parallel,    only : Node, Nodes
+      use moreMeshSubs, only : UNIFORM, getMeshBox
       use sys,         only : die
       use alloc,       only : re_alloc, de_alloc
       use m_fft,       only : fft     ! 3-D fast Fourier transform
@@ -53,10 +54,9 @@ C     Input/output variables
       real(dp)              :: CELL(3,3), STRESS(3,3), U
 C     Local variables
       integer               :: I, I1, I2, I3, IX, J, J1, J2, J3, JX,
-     &                         NP, NG, NG2, NG3, 
-     &                         ProcessorZ, Py, Pz, J2min, J2max,
-     &                         J3min, J3max, J2L, J3L, NRemY, NRemZ,
-     &                         BlockSizeY, BlockSizeZ
+     &                         NP, NG, NG1, NG2, NG3, J2L, J3L
+      integer               :: J1min, J1max, J2min, J2max, J3min, J3max
+      integer,      pointer :: box(:,:,:)
       real(dp)              :: C, B(3,3), DU, G(3), G2, G2MAX, 
      &                         PI, VG, VOLUME, PI8
       real(grid_p), pointer :: CG(:,:)
@@ -110,55 +110,31 @@ C     Initialize stress contribution
       enddo
 
 C     Work out processor grid dimensions
-      ProcessorZ = Nodes/ProcessorY
-      if (ProcessorY*ProcessorZ.ne.Nodes) 
-     &     call die('ERROR: ProcessorY must be a factor of the' //
-     &     ' number of processors!')
-      Py = (Node/ProcessorZ) + 1
-      Pz = Node - (Py - 1)*ProcessorZ + 1
+      call getMeshBox( UNIFORM, box )
+      J1min = (box(1,1,Node+1)-1)*NSM
+      J1max = box(2,1,Node+1)*NSM-1
+      J2min = (box(1,2,Node+1)-1)*NSM
+      J2max = box(2,2,Node+1)*NSM-1
+      J3min = (box(1,3,Node+1)-1)*NSM
+      J3max = box(2,3,Node+1)*NSM-1
 
 C     Multiply by 8*PI/G2 to get the potential
       PI  = 4.0_dp * atan(1.0_dp)
       PI8 = PI * 8._dp
       U = 0.0_dp
+
+      NG1 = Mesh(1)
       NG2 = Mesh(2)
       NG3 = Mesh(3)
-      BlockSizeY = ((NG2/NSM)/ProcessorY)*NSM
-      BlockSizeZ = ((NG3/NSM)/ProcessorZ)*NSM
-      NRemY = (NG2 - BlockSizeY*ProcessorY)/NSM
-      NRemZ = (NG3 - BlockSizeZ*ProcessorZ)/NSM
-      J2min = (Py-1)*BlockSizeY + NSM*min(Py-1,NRemY)
-      J2max = J2min + BlockSizeY - 1
-      if (Py-1.lt.NRemY) J2max = J2max + NSM
-      J2max = min(J2max,NG2-1)
-      J3min = (Pz-1)*BlockSizeZ + NSM*min(Pz-1,NRemZ)
-      J3max = J3min + BlockSizeZ - 1
-      if (Pz-1.lt.NRemZ) J3max = J3max + NSM
-      J3max = min(J3max,NG3-1)
 
-!$OMP parallel do default(shared), 
-!$OMP&private(J3,J3L,I3,J2,J2L,I2,J1,I1,G,G2), 
-!$OMP&private(J,VG,DU,C), reduction(+:U,STRESS)
       do J3 = J3min,J3max
         J3L = J3 - J3min 
-        if (J3.gt.NG3/2) then
-          I3 = J3 - NG3
-        else
-          I3 = J3
-        endif
+        I3 = merge( J3 - NG3, J3, J3.gt.NG3/2 )
         do J2 = J2min,J2max
           J2L = J2 - J2min 
-          if (J2.gt.NG2/2) then
-            I2 = J2 - NG2
-          else
-            I2 = J2
-          endif
-          do J1 = 0,N1-1
-            if (J1.gt.N1/2) then
-              I1 = J1 - N1
-            else
-              I1 = J1
-            endif
+          I2 = merge( J2 - NG2, J2, J2.gt.NG2/2 )
+          do J1 = J1min, J1max
+            I1 = merge( J1 - NG1, J1, J1.gt.NG1/2 )
             G(1)= B(1,1) * I1 + B(1,2) * I2 + B(1,3) * I3
             G(2)= B(2,1) * I1 + B(2,2) * I2 + B(2,3) * I3
             G(3)= B(3,1) * I1 + B(3,2) * I2 + B(3,3) * I3

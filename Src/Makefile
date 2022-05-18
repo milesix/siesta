@@ -479,7 +479,7 @@ broadcast_basis.o: parallel.o radial.o
 broadcast_projections.o: m_trialorbitalclass.o parallel.o siesta2wannier90.o
 broyden_optim.o: m_broyddj_nocomm.o memory_log.o parallel.o precision.o
 broyden_optim.o: siesta_options.o sys.o units.o
-bsc_cellxc.o: alloc.o mesh.o moremeshsubs.o parallel.o parallelsubs.o
+bsc_cellxc.o: alloc.o mesh.o moremeshsubs.o parallel.o
 bsc_cellxc.o: precision.o sys.o
 bye.o: siesta_cml.o
 byte_count.o: m_char.o precision.o
@@ -656,8 +656,8 @@ extrapolateSpData2D.o: class_SpData2D.o class_Sparsity.o restructSpData2D.o
 extrapolon.o: parallel.o precision.o sys.o
 fdf_extra.o: m_region.o
 fermid.o: errorf.o parallel.o precision.o sys.o
-fft.o: alloc.o m_fft_gpfa.o m_timer.o mesh.o parallel.o parallelsubs.o
-fft.o: precision.o sys.o
+fft.o: alloc.o m_fft_gpfa.o m_timer.o mesh.o parallel.o
+fft.o: precision.o sys.o  moremeshsubs.o
 fft1d.o: parallel.o precision.o sys.o
 final_H_f_stress.o: alloc.o atomlist.o class_SpData1D.o class_SpData2D.o
 final_H_f_stress.o: class_SpData2D.o compute_max_diff.o dftu.o dftu_specs.o
@@ -711,7 +711,7 @@ iodm_netcdf.o: alloc.o parallel.o parallelsubs.o precision.o sys.o
 iodmhs_netcdf.o: alloc.o parallel.o parallelsubs.o precision.o sys.o
 ioeig.o: files.o precision.o siesta_cml.o units.o
 iofa.o: files.o precision.o units.o
-iogrid_netcdf.o: alloc.o parallel.o precision.o sys.o
+iogrid_netcdf.o: alloc.o parallel.o precision.o sys.o moremeshsubs.o
 iokp.o: files.o precision.o
 iolwf.o: alloc.o files.o onmod.o parallel.o parallelsubs.o precision.o sys.o
 iomd.o: files.o precision.o units.o
@@ -798,7 +798,7 @@ m_iodm.o: class_OrbitalDistribution.o class_SpData2D.o class_Sparsity.o
 m_iodm.o: io_sparse.o m_os.o parallel.o
 m_iodm_old.o: alloc.o files.o m_matio.o m_mpi_utils.o parallel.o parallelsubs.o
 m_iodm_old.o: precision.o sparse_matrices.o sys.o
-m_iorho.o: alloc.o parallel.o parallelsubs.o precision.o sys.o
+m_iorho.o: alloc.o parallel.o moremeshsubs.o precision.o sys.o
 m_iostruct.o: alloc.o files.o m_mpi_utils.o parallel.o precision.o
 m_iostruct.o: siesta_geom.o sys.o units.o
 m_iotddft.o: files.o m_dipol.o m_io.o m_steps.o parallel.o siesta_options.o
@@ -808,7 +808,7 @@ m_mat_invert.o: intrinsic_missing.o m_pivot_array.o precision.o
 m_matdiag.o: precision.o
 m_matio.o: alloc.o parallel.o
 m_matswinvers.o: precision.o
-m_mesh_node.o: intrinsic_missing.o parallel.o precision.o units.o
+m_mesh_node.o: intrinsic_missing.o parallel.o precision.o units.o moremeshsubs.o
 m_mixing.o: class_Data1D.o class_Fstack_Data1D.o parallel.o precision.o
 m_mixing_scf.o: class_Fstack_Data1D.o m_mixing.o parallel.o precision.o
 m_monitor.o: alloc.o class_OrbitalDistribution.o class_Sparsity.o geom_helper.o
@@ -867,7 +867,7 @@ m_region.o: class_OrbitalDistribution.o class_Sparsity.o geom_helper.o
 m_region.o: intrinsic_missing.o
 m_rhog.o: alloc.o atomlist.o class_Data1D.o class_Fstack_Pair_Data1D.o
 m_rhog.o: class_Pair_Data1D.o m_diis.o m_mpi_utils.o m_spin.o parallel.o
-m_rhog.o: precision.o siesta_options.o sorting.o
+m_rhog.o: precision.o siesta_options.o sorting.o moremeshsubs.o
 m_rmaxh.o: precision.o
 m_sparse.o: alloc.o class_OrbitalDistribution.o class_SpData2D.o
 m_sparse.o: class_Sparsity.o geom_helper.o intrinsic_missing.o parallel.o
@@ -1046,7 +1046,7 @@ meshdscf.o: alloc.o atomlist.o m_dscfcomm.o meshphi.o parallel.o parallelsubs.o
 meshdscf.o: precision.o
 meshphi.o: alloc.o precision.o
 meshsubs.o: alloc.o atm_types.o atmfuncs.o cellsubs.o chkgmx.o m_fft_gpfa.o
-meshsubs.o: mesh.o meshphi.o moremeshsubs.o parallel.o parallelsubs.o
+meshsubs.o: mesh.o meshphi.o moremeshsubs.o parallel.o
 meshsubs.o: precision.o siesta_cml.o sys.o
 metaforce.o: alloc.o parallel.o precision.o sys.o
 minvec.o: cellsubs.o precision.o sorting.o sys.o
@@ -1103,7 +1103,7 @@ phirphi_opt.o: alloc.o atm_types.o atmfuncs.o atmparams.o mneighb.o new_matel.o
 phirphi_opt.o: parallel.o parallelsubs.o precision.o spher_harm.o sys.o
 pixmol.o: files.o periodic_table.o precision.o units.o
 plcharge.o: files.o parallel.o precision.o
-poison.o: alloc.o cellsubs.o chkgmx.o fft.o parallel.o precision.o sys.o
+poison.o: alloc.o cellsubs.o chkgmx.o fft.o parallel.o precision.o sys.o moremeshsubs.o
 post_scf_work.o: atomlist.o class_Fstack_Pair_Geometry_SpData2D.o
 post_scf_work.o: class_Geometry.o class_Pair_Geometry_SpData2D.o compute_dm.o
 post_scf_work.o: diagon.o final_H_f_stress.o kpoint_scf.o m_dminim.o

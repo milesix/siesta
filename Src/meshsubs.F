@@ -33,7 +33,6 @@
 !  Modules
       use precision,     only : dp, i8b
       use parallel,      only : Node, Nodes
-      use parallelsubs,  only : HowManyMeshPerNode, GlobalToLocalMesh
       use moreMeshSubs,  only : initMeshDistr, setMeshDistr
       use moreMeshSubs,  only : UNIFORM
       use alloc,         only : re_alloc, de_alloc

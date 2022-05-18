@@ -123,8 +123,7 @@ C *******************************************************************
 #ifdef MPI
 C  Modules
       use mesh,         only : nmeshg
-      use parallel,     only : Node, Nodes, ProcessorY
-      use parallelsubs, only : HowManyMeshPerNode
+      use parallel,     only : Node, Nodes
       use mpi_siesta
       use moreMeshSubs, only : distExtMeshData, gathExtMeshData
 #endif

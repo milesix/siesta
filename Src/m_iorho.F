@@ -28,7 +28,7 @@
 #ifdef MPI
       use mpi_siesta
       use parallel,     only : Nodes
-      use parallelsubs, only : HowManyMeshPerNode
+      use moreMeshSubs, only : UNIFORM, getMeshBox
 #endif
 
       implicit          none
@@ -298,8 +298,9 @@ C Internal variables and arrays
      .           iy, iz, izm, Ind, ir
 
 #ifdef MPI
-      integer    Ind2, MPIerror, Request, meshl(3),
+      integer    Ind2, MPIerror, Request,
      .           Status(MPI_Status_Size), BNode, NBlock
+      integer, pointer :: box(:,:,:)
       logical    ltmp
       real(grid_p), pointer :: bdens(:) => null()
 #endif
@@ -364,7 +365,10 @@ C Get local dimensions
           meshnsm(2) = mesh(2)/nsm
           meshnsm(3) = mesh(3)/nsm
 #ifdef MPI
-          call HowManyMeshPerNode(meshnsm,Node,Nodes,npl,meshl)
+          call getMeshBox( UNIFORM, box )
+          npl = (box(2,1,node+1)-box(1,1,node+1)+1)*nsm* 
+     &          (box(2,2,node+1)-box(1,2,node+1)+1)*nsm*
+     &          (box(2,3,node+1)-box(1,3,node+1)+1)*nsm
 #else
           npl = np
 #endif
@@ -515,7 +519,7 @@ C logical overflow        : True if maxp or nspin were changed
       integer  :: mesh(3)
       integer  :: meshnsm(3), npl, ns, iu, np, npmax
 #ifdef MPI
-      integer  :: meshl(3)
+      integer, pointer :: box(:,:,:)
       logical  :: ltmp
       integer  :: MPIerror
 #endif
@@ -566,7 +570,10 @@ C Get local dimensions
           meshnsm(2) = mesh(2)/nsm
           meshnsm(3) = mesh(3)/nsm
 #ifdef MPI
-          call HowManyMeshPerNode(meshnsm,Node,Nodes,npl,meshl)
+          call getMeshBox( UNIFORM, box )
+          npl = (box(2,1,node+1)-box(1,1,node+1)+1)*nsm* 
+     &          (box(2,2,node+1)-box(1,2,node+1)+1)*nsm*
+     &          (box(2,3,node+1)-box(1,3,node+1)+1)*nsm
 #else
           npl = np
 #endif

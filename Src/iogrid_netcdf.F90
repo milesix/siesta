@@ -7,7 +7,8 @@
 ! ---
 module iogrid_netcdf
 
-use parallel, only: Node, Nodes, ProcessorY
+use parallel, only: Node, Nodes
+use moreMeshSubs, only : UNIFORM, getMeshBox
 use alloc, only: re_alloc, de_alloc
 use sys, only: die
 #ifdef MPI
@@ -41,89 +42,22 @@ subroutine set_box_limits(mesh,nsm)
 !
   integer, intent(in)  :: mesh(3)     ! Mesh divisions (fine points) 
   integer, intent(in)  :: nsm         ! Number of fine points per big point
+  integer,     pointer :: box(:,:,:)
+  integer              :: p
 
- integer :: nm(3)
- integer, allocatable :: npt_node(:)
-
- integer :: ProcessorZ, PP
- integer :: blocY, blocZ, nremY, nremZ
- integer :: dimY, dimZ, dimX, iniY, iniZ
- integer :: iNode, npt_total, npt_mesh
- integer :: PY, PZ, j
-
-
-! Allocate memory for the current distribution
- if (.not. initialized) then
+  distr%nMesh(1:3) = mesh(1:3)
+  call getMeshBox( UNIFORM, box )
+  ! Allocate memory for the current distribution
+  if (.not. initialized) then
     nullify( distr%box )
     call re_alloc( distr%box, 1, 2, 1, 3, 1, Nodes, name='distr%box',  &
                              routine='set_box_limits' )
     initialized = .true.
- endif
-
- allocate(npt_node(1:Nodes))
-
- nm(1:3) = mesh(1:3) / nsm
- npt_mesh = mesh(1)*mesh(2)*mesh(3)
- distr%nMesh(1:3) = mesh(1:3)
-
-     ProcessorZ = Nodes/ProcessorY
-
-     blocY = (nm(2)/ProcessorY) 
-     blocZ = (nm(3)/ProcessorZ) 
-     nremY = nm(2) - blocY*ProcessorY
-     nremZ = nm(3) - blocZ*ProcessorZ
-
-     dimX = nm(1)*nsm
-
-     npt_total = 0
-
-     PP   = 1
-     iniY = 1
-     do PY = 1, ProcessorY
-
-        dimY = blocY
-        if (PY.LE.nremY) dimY = dimY + 1  ! Add extra points starting from the first nodes
-        dimY = dimY * nsm                 ! For fine points
-
-        iniZ = 1
-        do PZ = 1, ProcessorZ
-           dimZ = blocZ
-           if (PZ.LE.nremZ) dimZ = dimZ + 1
-           dimZ = dimZ*nsm                 ! For fine points
-           
-           distr%box(1,1,PP) = 1
-           distr%box(2,1,PP) = dimX
-           distr%box(1,2,PP) = iniY
-           distr%box(2,2,PP) = iniY + dimY - 1
-           distr%box(1,3,PP) = iniZ
-           distr%box(2,3,PP) = iniZ + dimZ - 1
-
-           npt_node(PP) = dimX * dimY * dimZ
-           npt_total = npt_total + npt_node(PP)
-
-           iniZ = iniZ + dimZ
-           PP   = PP + 1
-           
-        enddo
-        iniY = iniY + dimY
-     enddo
-
-     if (npt_total /= npt_mesh) then
-        if (Node == 0) then
-           write(6,*) "Nominal npt: ", npt_mesh, " /= assigned npt:", npt_total
-        endif
-        call die()
-     endif
-
-! JMS: commented out. 2009/02/06
-!     if (Node == 0) then
-!        do iNode= 1, Nodes
-!           write(6,"(a,i4,a,i12,3x,3(i4,a1,i4))") "iogrid_netcdf: -- Node ", iNode, " :", npt_node(iNode), &
-!                           (distr%box(1,j,iNode), ":", distr%box(2,j,iNode), j=1,3)
-!        enddo
-!     endif
-
-     deallocate(npt_node)
+ 	endif
+  do p=1, NODES
+    distr%box(1,:,p) = (box(1,:,p)-1)*nsm+1
+    distr%box(2,:,p) = box(2,:,p)*nsm
+  enddo
 
 end subroutine set_box_limits
 

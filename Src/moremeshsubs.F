@@ -40,6 +40,7 @@ C
       PUBLIC :: initMeshExtencil, distExtMeshData, gathExtMeshData
 #endif
       PUBLIC :: allocASynBuffer
+      PUBLIC :: getMeshBox
 !     Symbolic names for parallel mesh distributions
 
       integer, parameter, public :: UNIFORM = 1
@@ -241,14 +242,14 @@ C     The first distribution should be the uniform distribution
         nremZ = nm(3) - blocZ*ProcessorZ
 
         PP   = 1
-        iniY = 1
-        do PY = 1, ProcessorY
-          dimY = blocY
-          if (PY.LE.nremY) dimY = dimY + 1
-          iniZ = 1
-          do PZ = 1, ProcessorZ
-            dimZ = blocZ
-            if (PZ.LE.nremZ) dimZ = dimZ + 1
+        iniZ = 1
+        do PZ = 1, ProcessorZ
+          dimZ = blocZ
+          if (PZ.LE.nremZ) dimZ = dimZ + 1
+          iniY = 1
+          do PY = 1, ProcessorY
+            dimY = blocY
+            if (PY.LE.nremY) dimY = dimY + 1
 
             distr%box(1,1,PP) = 1
             distr%box(2,1,PP) = nm(1)
@@ -257,10 +258,10 @@ C     The first distribution should be the uniform distribution
             distr%box(1,3,PP) = iniZ
             distr%box(2,3,PP) = iniZ + dimZ - 1
 
-            iniZ = iniZ + dimZ
+            iniY = iniY + dimY
             PP   = PP + 1
           enddo
-          iniY = iniY + dimY
+          iniZ = iniZ + dimZ
         enddo
       else
 C       In order to compute the other data distributions, we should split
@@ -3479,4 +3480,27 @@ C     Save the list of communications for the current process
 !--------------------------------------------------------------------------- END
       end subroutine compMeshComm
 #endif
+
+C ==================================================================
+C Returns the box of selected distribution
+C ==================================================================
+C SUBROUTINE compMeshComm( distr, box )
+C
+C INPUT:
+C meshDisType  distr     : Selected distribution
+C
+C OUTPUT:
+C integer pointer box    : pointer to a box
+C
+C BEHAVIOR:
+C Returns the box of selected distribution
+C 
+C ==================================================================
+      subroutine getMeshBox( distr, box )
+      implicit none
+      integer :: distr
+      integer, pointer :: box(:,:,:)
+      box => meshDistr(distr)%box
+      end subroutine getMeshBox
+
       END MODULE moreMeshSubs

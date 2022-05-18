@@ -23,7 +23,6 @@
 ! use sys,          only: die           ! Termination routine
 ! use alloc,        only: de_alloc      ! De-allocation routine
 ! use alloc,        only: re_alloc      ! Re-allocation routine
-! use parallelsubs, only: HowManyMeshPerNode
 ! use fft1d,        only: gpfa          ! 1-D FFT routine
 ! use fft1d,        only: setgpfa       ! Sets gpfa routine
 ! use m_timer,      only: timer_start   ! Start counting CPU time
@@ -48,8 +47,8 @@
       MODULE m_fft
 
       use precision,    only : dp, grid_p
-      use parallel,     only : Node, Nodes, ProcessorY
-      use parallelsubs, only : HowManyMeshPerNode
+      use parallel,     only : Node, Nodes, processorY
+      use moreMeshSubs, only : UNIFORM, getMeshBox
       use sys,          only : die
       use alloc,        only : re_alloc, de_alloc
       use mesh,         only : nsm
@@ -67,6 +66,19 @@
      .  fft      ! 3D complex FFT
 
       PRIVATE ! Nothing is declared public beyond this point
+      logical :: frsttime = .TRUE.
+      integer :: maxtrigs = 256
+      real(dp), pointer :: trigs(:,:)
+      integer :: OldMesh(3) = (/ 0, 0, 0 /)
+
+      integer :: ProcessorZ
+      integer :: PY
+      integer :: PZ
+      integer :: COMM_Y
+      integer :: COMM_Z
+      integer, pointer :: xdispl(:)
+      integer, pointer :: ydispl(:)
+      integer, pointer :: zdispl(:)
 
       CONTAINS
 
@@ -92,174 +104,155 @@ C
 C
 C  Passed arguments
 C
-      real(grid_p)
-     .  f(*)
-      integer
-     .  nMesh(3), isn
+      real(grid_p) :: f(*)
+      integer :: nMesh(3), isn
 C
 C  Local variables
 C 
-      integer
-     .  maxmaxtrigs, ntrigs,
-     .  n1, n2, n3, n2l, n3l, CMeshG(3), CMeshL(3), i, n,
-     .  nf, nft, ng, nmeshl, ProcessorZ, IOffSet, OldMesh(3)
-      integer, save ::
-     .  maxtrigs
-      logical
-     .  LocalPoints, lredimension
-      real(dp)
-     .  scale
-      real(dp), dimension(:,:), pointer, save ::   trigs => null()
-#ifdef MPI
-      integer
-     .  n1lf, nrem, Py, Pz
-      real(grid_p), dimension(:), pointer  ::   ft
-#endif
-
-      save OldMesh
-      data OldMesh/0,0,0/
+      integer :: n1, n2, n3, ng, n1l, n2l, n3l, n
+      integer :: i, di, mo, ntrigs, bsize, nft, ioffset, j, ii
+      integer :: maxmaxtrigs, ierr
+      integer, pointer :: box(:,:,:)
+      logical :: LocalPoints, lredimension
+      real(grid_p), pointer :: ft(:)
+      real(dp) :: scale
 
       call timer( 'fft', 1 )
 C
-C  Set mesh size variables
+C     Global dimensions
 C
       n1 = nMesh(1)
       n2 = nMesh(2)
       n3 = nMesh(3)
-      CMeshG(1) = n1/nsm
-      CMeshG(2) = n2/nsm
-      CMeshG(3) = n3/nsm
-      call HowManyMeshPerNode(CMeshG, Node, Nodes, nmeshl, CMeshL)
-      n2l = CMeshL(2)*nsm
-      n3l = CMeshL(3)*nsm
-
-      n = n1*n2l*n3l
       ng = n1*n2*n3
-      nf = 2*ng   ! size(f)
-
+C
+C     Local dimensions
+C
+      call getMeshBox( UNIFORM, box )
+      !n1l = (box(2,1,Node+1)-box(1,1,Node+1)+1)*NSM
+      n2l = (box(2,2,Node+1)-box(1,2,Node+1)+1)*NSM
+      n3l = (box(2,3,Node+1)-box(1,3,Node+1)+1)*NSM
+      n = n1*n2l*n3l
 C
 C  Set logical as to whether there are any locally stored points
 C
       LocalPoints = (n.gt.0) 
-
-C
-C  Work out processor grid size
-C
-      ProcessorZ = Nodes/ProcessorY
-      if (ProcessorY*ProcessorZ.ne.Nodes) 
-     $     call die('ERROR: ProcessorY must be a factor of the' //
-     $     ' number of processors!')
-
-C
-C  Allocate trigs array
-C
-      if (.not.associated(trigs)) then
-        maxtrigs = 256
-        nullify( trigs )
-        call re_alloc( trigs, 1, maxtrigs, 1, 3, name='trigs',
-     &                 routine='fft' )
+      if (frsttime) then
+        nullify(trigs)
+        call re_alloc( trigs, 1, maxtrigs, 1, 3, 'trigs', 'fft' )
+        frsttime = .FALSE.
+#ifdef MPI
+        ProcessorZ = NODES/ProcessorY
+        PY = mod(Node,ProcessorY)+1
+        PZ = Node/ProcessorY+1
+        call MPI_Comm_Split( MPI_Comm_World, PZ, PY, COMM_Y, ierr )
+        call MPI_Comm_Split( MPI_Comm_World, PY, PZ, COMM_Z, ierr )
+        nullify(xdispl,ydispl,zdispl)
+        call re_alloc( xdispl, 1, ProcessorY+1, 'xdispl', 'fft' )
+        call re_alloc( ydispl, 1, ProcessorY+1, 'ydispl', 'fft' )
+        call re_alloc( zdispl, 1, ProcessorZ+1, 'zdispl', 'fft' )
+        
+        di = n1/ProcessorY
+        mo = mod(n1,ProcessorY)
+        xdispl(1) = 1
+        do i= 1, ProcessorY
+          xdispl(i+1) = xdispl(i) + di + merge(1,0,i<=mo)
+        enddo
+        ydispl(1) = 1
+        do i= 1, ProcessorY
+          ydispl(i+1) = box(2,2,i)*NSM+1
+        enddo
+        zdispl(1) = 1
+        do i= 1, ProcessorZ
+          zdispl(i+1) = box(2,3,(i-1)*ProcessorY+1)*NSM+1
+        enddo
+#endif
       endif
 C
 C  Initialise the tables for the FFT if the mesh has changed
 C
- 10   lredimension = .false.
-      maxmaxtrigs = maxtrigs
-      do i=1,3
-        if (OldMesh(i).ne.nMesh(i)) then
-          call setgpfa(trigs(:,i), maxtrigs, ntrigs, nMesh(i))
-          if (ntrigs.gt.maxmaxtrigs) then
-            lredimension = .true.
-            maxmaxtrigs = ntrigs
-          else
-            OldMesh(i) = nMesh(i)
+      do
+        lredimension = .false.
+        maxmaxtrigs = maxtrigs
+        do i=1,3
+          if (OldMesh(i).ne.nMesh(i)) then
+            call setgpfa( trigs(:,i), maxtrigs, ntrigs, nMesh(i) )
+            if (ntrigs.gt.maxmaxtrigs) then
+              lredimension = .true.
+              maxmaxtrigs = ntrigs
+            else
+              OldMesh(i) = nMesh(i)
+            endif
           endif
-        endif
-      enddo
-      if (lredimension) then
+        enddo
+        if (.not. lredimension) exit
 C
 C  Resize FFT array for trig factors and set OldMesh to 0 to force recalculation
 C
         maxtrigs = maxmaxtrigs
-        call re_alloc( trigs, 1, maxtrigs, 1, 3, name='trigs',
-     &                 routine='fft' )
+        call re_alloc( trigs, 1, maxtrigs, 1, 3, 'trigs', 'fft' )
         OldMesh(1:3) = 0
-        goto 10
-      endif
-
+      enddo
 C
 C  FFT in X direction
 C
       if (LocalPoints) then
-        call gpfa(f(1:nf),f(2:nf),trigs(:,1),2,2*n1,n1,n2l*n3l,-isn)
+        call gpfa(f(1:2*n),f(2:2*n),trigs(:,1),2,2*n1,n1,n2l*n3l,-isn)
       endif
+
 #ifdef MPI
 C***********************
 C  2-D Processor Grid  *
 C***********************
-      n1lf = n1/ProcessorY
-      nrem = n1 - n1lf*ProcessorY
-      Py = (Node/ProcessorZ) + 1
-      Pz = Node - (Py - 1)*ProcessorZ + 1
-      if (Py.le.nrem) n1lf = n1lf + 1
+      n1l = n1/ProcessorY + merge(1,0,PY.le.mod(n1,ProcessorY))
 C
 C  Allocate local memory
 C
       nullify( ft )
-      call re_alloc( ft, 1, 2*n1lf*n2*n3l, name='ft', routine='fft' )
+      call re_alloc( ft, 1, 2*n1l*max(n2*n3l,n2l*n3), 'ft', 'fft' )
+
 C
 C  Redistribute data to be distributed by X and Z
 C
-      call redistribXZ(f,n1,n2l,n3l,ft,n1lf,n2,1,nsm,Node,Nodes)
+      call redistribXZ( f, n1, n2l, n3l, ft, n1l, n2, 1,
+     &    nsm, Node, Nodes )
 C
 C  FFT in Y direction
 C
       if (LocalPoints) then
-        nft = size(ft)
-        do i=0,n3l-1
-          IOffSet=2*n1lf*n2*i
+        nft = 2*n1l*n2*n3l
+        do i= 0, n3l-1
+          IOffSet=2*n1l*n2*i
           call gpfa(ft(IOffSet+1:nft),ft(IOffSet+2:nft),trigs(:,2),
-     .            2*n1lf,2,n2,n1lf,-isn)
+     .            2*n1l, 2, n2, n1l, -isn )
         enddo
       endif
 C
 C  Redistribute data back to original form
 C
-      call redistribXZ(f,n1,n2l,n3l,ft,n1lf,n2,-1,nsm,Node,Nodes)
-C
-C  Free local memory ready for re-use
-C
-      call de_alloc( ft, name='ft', routine='fft' )
-C
-C  Find new distributed x dimension
-C
-      n1lf = n1/ProcessorZ
-      nrem = n1 - n1lf*ProcessorZ
-      if (Pz.le.nrem) n1lf = n1lf + 1
-C
-C  Allocate local memory
-C
-      nullify( ft )   ! AG
-      call re_alloc( ft, 1, 2*n1lf*n2l*n3, name='ft', routine='fft' )
+      call redistribXZ( f, n1, n2l, n3l, ft, n1l, n2,
+     &    -1, nsm, Node, Nodes )
 C
 C  Redistribute data to be distributed by X and Y
 C
-      call redistribXY(f,n1,n2l,n3l,ft,n1lf,n3,1,nsm,Node,Nodes)
+      call redistribXY( f, n1, n2l, n3l, ft, n1l, n3,
+     &    1, nsm, Node, Nodes )
 C
 C  FFT in Z direction
 C
       if (LocalPoints) then
-        nft = size(ft)
+        nft = 2*n1l*n2l*n3
         call gpfa(ft(1:nft),ft(2:nft),trigs(:,3),
-     $            2*n1lf*n2l,2,n3,n1lf*n2l,-isn)
+     $            2*n1l*n2l,2,n3,n1l*n2l,-isn)
       endif
 C
 C  Redistribute data to be distributed by Z again
 C
-      call redistribXY(f,n1,n2l,n3l,ft,n1lf,n3,-1,nsm,Node,Nodes)
+      call redistribXY(f,n1,n2l,n3l,ft,n1l,n3,-1,nsm,Node,Nodes)
 C
 C  Free local memory
 C
-      call de_alloc( ft, name='ft', routine='fft' )
+      call de_alloc( ft, 'ft', 'fft' )
 #else
 C
 C  FFT in Y direction
@@ -273,8 +266,7 @@ C
 C  FFT in Z direction
 C
       call gpfa(f(1:nf),f(2:nf),trigs(:,3),2*n1*n2,2,n3,n1*n2,-isn)
-#endif
-
+#endif /* MPI */
 C
 C  Scale values
 C
@@ -286,15 +278,18 @@ C
       endif
 
       call timer( 'fft', 2 )
-
       return
+
       end subroutine fft
+
+
+
 
 
 !******************************************************************************
 
 #ifdef MPI
-      subroutine redistribXZ(f,n1,n2l,n3l,ft,n1lf,n2,idir,nsm,
+      subroutine redistribXZ(f,n1,n2l,n3l,ft,n1l,n2,idir,nsm,
      .  Node,Nodes)
 C
 C  This routine redistributes the data over the Nodes as needed
@@ -317,82 +312,24 @@ C
 C  Passed arguments
 C
       integer
-     .  n1, n2, n2l, n1lf, n3l, Node, Nodes, idir, nsm
+     .  n1, n2, n2l, n1l, n3l, Node, Nodes, idir, nsm
       real(grid_p)
-     .  f(2,n1,n2l,n3l), ft(2,n1lf,n2,n3l)
+     .  f(2,n1,n2l,n3l), ft(2,n1l,n2,n3l)
 C
 C  Local variables
 C
-      integer
-     .  BlockSizeY, BlockSizeYMax, jmin, jmax, jloc, n1lmax, NRemY,
-     .  i, j, k, jl, kl, BNode, INode, SNode, jminS, jmaxS
-
-      integer
-     .  MPIerror, RequestR, RequestS, Status(MPI_Status_Size)
-
-      integer, save ::
-     .  ProcessorZ, Py, Pz, ZCommunicator, ZNode, ZNodes
-
-      logical, save :: firsttimeZ = .true.
-
-      real(grid_p), dimension(:,:,:,:), pointer  :: ftmp,ftmp2
-
-      if (firsttimeZ) then
+      integer :: i, j, k, j1, k1, pl, pr, l, p
+      integer :: maxn1l, maxn2l, n1t, n2t
+      integer :: ierr, r_send, r_recv, Status(MPI_Status_Size)
+      real(grid_p), pointer  :: fbuf(:,:), tbuf(:,:)
 C
-C  Determine processor grid coordinates
+C  Allocate local memory
 C
-        ProcessorZ = Nodes/ProcessorY
-        if (ProcessorY*ProcessorZ.ne.Nodes) 
-     $     call die('ERROR: ProcessorY must be a factor of the' //
-     $     ' number of processors!')
-        Py = (Node/ProcessorZ) + 1
-        Pz = Node - (Py - 1)*ProcessorZ + 1
-C
-C  Group processors into subsets by Z
-C
-        call MPI_Comm_Split(MPI_Comm_World, Pz, Py, ZCommunicator,
-     .    MPIerror)
-        call MPI_Comm_Rank(ZCommunicator,ZNode,MPIerror)
-        call MPI_Comm_Size(ZCommunicator,ZNodes,MPIerror)
-        firsttimeZ = .false.
-      endif
-
-      BlockSizeY = ((n2/nsm)/ProcessorY)*nsm
-      NRemY = (n2 - ProcessorY*BlockSizeY)/nsm
-      if (NRemY.gt.0) then
-        BlockSizeYMax = BlockSizeY + nsm
-      else
-        BlockSizeYMax = BlockSizeY
-      endif
-      n1lmax = ((n1-1)/ProcessorY) + 1
-C
-C  Work out local dimensions
-C
-      jmin = (Py-1)*BlockSizeY + nsm*min(Py-1,NRemY) + 1
-      jmax = jmin + BlockSizeY - 1
-      if (Py-1.lt.NRemY) jmax = jmax + nsm
-      jmax = min(jmax,n2)
-      jloc = jmax - jmin + 1
-C
-C  Allocate local memory and initialise
-C
-      nullify( ftmp )
-      call re_alloc( ftmp, 1, 2, 1, n1lmax, 1, BlockSizeYMax, 1, n3l,
-     &               name='ftmp', routine='redistribXZ' )
-      nullify( ftmp2 )
-      call re_alloc( ftmp2, 1, 2, 1, n1lmax, 1, BlockSizeYMax, 1, n3l,
-     &               name='ftmp2', routine='redistribXZ' )
-
-      do i = 1,n3l
-        do j = 1,BlockSizeYMax
-          do k = 1,n1lmax
-            ftmp(1,k,j,i) = 0.0_grid_p
-            ftmp(2,k,j,i) = 0.0_grid_p
-            ftmp2(1,k,j,i) = 0.0_grid_p
-            ftmp2(2,k,j,i) = 0.0_grid_p
-          enddo
-        enddo
-      enddo
+      maxn1l = xdispl(2)-xdispl(1)
+      maxn2l = ydispl(2)-ydispl(1)
+      nullify(fbuf,tbuf)
+      call re_alloc( fbuf, 1, 2, 1, maxn1l*n2l*n3l, 'fbuf', 'fft' ) 
+      call re_alloc( tbuf, 1, 2, 1, n1l*maxn2l*n3l, 'tbuf', 'fft' )
 
       if (idir.gt.0) then
 C***********
@@ -401,157 +338,138 @@ C***********
 C
 C  Handle transfer of terms which are purely local
 C
-        do i = 1,n3l
-          do j = jmin,jmax
-            jl = j - jmin + 1
-            kl = 0
-            do k = 1+ZNode, n1, ZNodes
-              kl = kl + 1
-              ft(1,kl,j,i) = f(1,k,jl,i)
-              ft(2,kl,j,i) = f(2,k,jl,i)
+        do i= 1, n3l
+          j1 = ydispl(py)
+          do j= 1, n2l
+            k1 = 1
+            do k=xdispl(py), xdispl(py+1)-1
+              ft(:,k1,j1,i) = f(:,k,j,i)
+              k1 = k1 + 1
             enddo
+            j1 = j1 + 1
           enddo
         enddo
-
 C  Loop over all Node-Node vectors exchanging local data
 C
-        do INode = 1,ProcessorY-1
-          BNode = (ZNode+INode)
-          BNode = mod(BNode,ProcessorY)
-          SNode = (ZNode-INode)
-          SNode = mod(SNode+ProcessorY,ProcessorY)
+        do p=1, ProcessorY-1
+          ! Let's receive from left node and send to the right node
+          pl = mod(py-1+ProcessorY-p,ProcessorY)+1
+          pr = mod(py-1+p,ProcessorY)+1
 C
 C  Collect data to send
-          do i = 1,n3l
-            do jl = 1,jloc
-              kl = 0
-              do k = 1+BNode, n1, ZNodes
-                kl = kl + 1
-                ftmp(1,kl,jl,i) = f(1,k,jl,i)
-                ftmp(2,kl,jl,i) = f(2,k,jl,i)
+C
+          l = 1
+          do i= 1, n3l
+            do j= 1, n2l
+              do k= xdispl(pr), xdispl(pr+1)-1
+                fbuf(:,l) = f(:,k,j,i)
+                l = l+1
               enddo
             enddo
           enddo
-
 C
 C  Exchange data - send to right and receive from left
 C
-          call MPI_IRecv(ftmp2(1,1,1,1),2*n1lmax*BlockSizeYMax*n3l,
-     .      MPI_grid_real,SNode,1,ZCommunicator,RequestR,MPIerror)
-          call MPI_ISend(ftmp(1,1,1,1),2*n1lmax*BlockSizeYMax*n3l,
-     .      MPI_grid_real,BNode,1,ZCommunicator,RequestS,MPIerror)
+          n2t = ydispl(pl+1)-ydispl(pl)
+          n1t = xdispl(pr+1)-xdispl(pr)
+          call MPI_IRecv( tbuf(1,1), 2*n1l*n2t*n3l,
+     .      MPI_grid_real, pl-1, 1, COMM_Y, r_recv, ierr )
+          call MPI_ISend( fbuf(1,1), 2*n1t*n2l*n3l,
+     .      MPI_grid_real, pr-1, 1, COMM_Y, r_send, ierr )
 C
 C  Wait for receive to complete
 C
-          call MPI_Wait(RequestR,Status,MPIerror)
+          call MPI_Wait( r_recv, Status, ierr )
 C
 C  Place received data into correct array
 C
-          jminS = SNode*BlockSizeY + nsm*min(SNode,NRemY) + 1
-          jmaxS = jminS + BlockSizeY - 1
-          if (SNode.lt.NRemY) jmaxS = jmaxS + nsm
-          jmaxS = min(jmaxS,n2)
-          do i = 1,n3l
-            do j = jminS,jmaxS
-              jl = j - jminS + 1
-              kl = 0
-              do k = 1+ZNode, n1, ZNodes
-                kl = kl + 1
-                ft(1,kl,j,i) = ftmp2(1,kl,jl,i)
-                ft(2,kl,j,i) = ftmp2(2,kl,jl,i)
+          l = 1
+          do i= 1, n3l
+            do j= ydispl(pl), ydispl(pl+1)-1
+              do k= 1, n1l
+                ft(:,k,j,i) = tbuf(:,l)
+                l = l+1
               enddo
             enddo
           enddo
-
 C  Wait for send to complete
 C
-          call MPI_Wait(RequestS,Status,MPIerror)
+          call MPI_Wait( r_send, Status, ierr )
         enddo
-      elseif (idir.lt.0) then
+      else
 C***********
 C  FT -> F *
 C***********
 C
 C  Handle transfer of terms which are purely local
-
-        do i = 1,n3l
-          do j = jmin,jmax
-            jl = j - jmin + 1
-            kl = 0
-            do k = 1+ZNode, n1, ZNodes
-              kl = kl + 1
-              f(1,k,jl,i) = ft(1,kl,j,i) 
-              f(2,k,jl,i) = ft(2,kl,j,i) 
+        do i= 1, n3l
+          j1 = ydispl(py)
+          do j= 1, n2l
+            k1 = 1
+            do k=xdispl(py), xdispl(py+1)-1
+              f(:,k,j,i) = ft(:,k1,j1,i)
+              k1 = k1 + 1
             enddo
+            j1 = j1 + 1
           enddo
         enddo
-
 C  Loop over all Node-Node vectors exchanging local data
 C
-        do INode = 1,ProcessorY-1
-          BNode = (ZNode+INode)
-          BNode = mod(BNode,ProcessorY)
-          SNode = (ZNode-INode)
-          SNode = mod(SNode+ProcessorY,ProcessorY)
+        do p=1, ProcessorY-1
+          ! Let's receive from left node and send to the right node
+          pl = mod(py-1+ProcessorY-p,ProcessorY)+1
+          pr = mod(py-1+p,ProcessorY)+1
 C
 C  Collect data to send
 C
-          jminS = SNode*BlockSizeY + nsm*min(SNode,NRemY) + 1
-          jmaxS = jminS + BlockSizeY - 1
-          if (SNode.lt.NRemY) jmaxS = jmaxS + nsm
-          jmaxS = min(jmaxS,n2)
-          do i = 1,n3l
-            do j = jminS,jmaxS
-              jl = j - jminS + 1
-              kl = 0
-              do k = 1+ZNode, n1, ZNodes
-                kl = kl + 1
-                ftmp(1,kl,jl,i) = ft(1,kl,j,i) 
-                ftmp(2,kl,jl,i) = ft(2,kl,j,i) 
+          l = 1
+          do i= 1, n3l
+            do j= ydispl(pr), ydispl(pr+1)-1
+              do k= 1, n1l
+                tbuf(:,l) = ft(:,k,j,i)
+                l = l+1
               enddo
             enddo
           enddo
 
 C  Exchange data - send to right and receive from left
 C
-          call MPI_IRecv(ftmp2(1,1,1,1),2*n1lmax*BlockSizeYMax*n3l,
-     .      MPI_grid_real,BNode,1,ZCommunicator,RequestR,MPIerror)
-          call MPI_ISend(ftmp(1,1,1,1),2*n1lmax*BlockSizeYMax*n3l,
-     .      MPI_grid_real,SNode,1,ZCommunicator,RequestS,MPIerror)
+          n2t = ydispl(pr+1)-ydispl(pr)
+          n1t = xdispl(pl+1)-xdispl(pl)
+          call MPI_IRecv( fbuf(1,1),  2*n1t*n2l*n3l,
+     .      MPI_grid_real, pl-1, 1, COMM_Y, r_recv, ierr )
+          call MPI_ISend( tbuf(1,1), 2*n1l*n2t*n3l,
+     .      MPI_grid_real, pr-1, 1, COMM_Y, r_send, ierr )
 C
 C  Wait for receive to complete
 C
-          call MPI_Wait(RequestR,Status,MPIerror)
+          call MPI_Wait( r_recv, Status, ierr )
 C
 C  Place received data into correct array
-
-          do i = 1,n3l
-            do jl = 1,jloc
-              kl = 0
-              do k = 1+BNode, n1, ZNodes
-                kl = kl + 1
-                f(1,k,jl,i) = ftmp2(1,kl,jl,i) 
-                f(2,k,jl,i) = ftmp2(2,kl,jl,i) 
+          l = 1
+          do i= 1, n3l
+            do j= 1, n2l
+              do k= xdispl(pl), xdispl(pl+1)-1
+                f(:,k,j,i) = fbuf(:,l)
+                l = l+1
               enddo
             enddo
           enddo
-
 C  Wait for send to complete
 C
-          call MPI_Wait(RequestS,Status,MPIerror)
+          call MPI_Wait( r_send, Status, ierr )
         enddo
       endif
 C
 C  Free local memory
 C
-      call de_alloc( ftmp2, name='ftmp2', routine='redistribXZ' )
-      call de_alloc( ftmp, name='ftmp', routine='redistribXZ' )
-
+      call de_alloc( fbuf, 'fbuf', 'fft' )
+      call de_alloc( tbuf, 'tbuf', 'fft' )
       end subroutine redistribXZ
 
 !******************************************************************************
 
-      subroutine redistribXY(f,n1,n2l,n3l,ft,n1lf,n3,idir,nsm,
+      subroutine redistribXY(f,n1,n2l,n3l,ft,n1l,n3,idir,nsm,
      .  Node,Nodes)
 C
 C  This routine redistributes the data over the Nodes as needed
@@ -577,155 +495,85 @@ C
 C  Passed arguments
 C
       integer
-     .  n1, n3, n2l, n1lf, n3l, nsm, Node, Nodes, idir
+     .  n1, n3, n2l, n1l, n3l, nsm, Node, Nodes, idir
       real(grid_p)
-     .  f(2,n1,n2l,n3l), ft(2,n1lf,n2l,n3)
+     .  f(2,n1,n2l,n3l), ft(2,n1l,n2l,n3)
 C
 C  Local variables
 C
-      integer
-     .  i, j, k, il, kl, BNode, BlockSizeZ, imin, imax, iloc,
-     .  INode, n1lmax, SNode, iminS, imaxS, NRemZ, BlockSizeZMax
-
-      integer
-     .  MPIerror, RequestR, RequestS, Status(MPI_Status_Size)
-
-      integer, save ::
-     .  ProcessorZ, Py, Pz, YCommunicator, YNode, YNodes
-
-      logical, save :: firsttimeY = .true.
-
-      real(grid_p), dimension(:,:,:,:), pointer :: ftmp,ftmp2
-
-      if (firsttimeY) then
+      integer :: i, j, k, i1, k1, pl, pr, l, p
+      integer :: maxn1l, maxn3l, n1t, n3t
+      integer :: ierr, r_send, r_recv, Status(MPI_Status_Size)
+      real(grid_p), pointer  :: fbuf(:,:), tbuf(:,:)
 C
-C  Determine processor grid coordinates
+C  Allocate local memory
 C
-        ProcessorZ = Nodes/ProcessorY
-        if (ProcessorY*ProcessorZ.ne.Nodes) 
-     $     call die('ERROR: ProcessorY must be a factor of the' //
-     $     ' number of processors!')
-        Py = (Node/ProcessorZ) + 1
-        Pz = Node - (Py - 1)*ProcessorZ + 1
-C
-C  Group processors into subsets by Y
-C
-        call MPI_Comm_Split(MPI_Comm_World, Py, Pz, YCommunicator,
-     .    MPIerror)
-        call MPI_Comm_Rank(YCommunicator,YNode,MPIerror)
-        call MPI_Comm_Size(YCommunicator,YNodes,MPIerror)
-        firsttimeY = .false.
-      endif
-
-      BlockSizeZ = ((n3/nsm)/ProcessorZ)*nsm
-      NRemZ = (n3 - ProcessorZ*BlockSizeZ)/nsm
-      if (NRemZ.gt.0) then
-        BlockSizeZMax = BlockSizeZ + nsm
-      else
-        BlockSizeZMax = BlockSizeZ
-      endif
-      n1lmax = ((n1-1)/ProcessorZ) + 1
-C
-C  Allocate local memory and initialise
-C
-      nullify( ftmp )
-      call re_alloc( ftmp, 1, 2, 1, n1lmax, 1, n2l, 1, BlockSizeZMax,
-     &               name='ftmp', routine='redistribXY' )
-      nullify( ftmp2 )
-      call re_alloc( ftmp2, 1, 2, 1, n1lmax, 1, n2l, 1, BlockSizeZMax,
-     &               name='ftmp2', routine='redistribXY' )
-
-      do i = 1,BlockSizeZMax
-        do j = 1,n2l
-          do k = 1,n1lmax
-            ftmp(1,k,j,i) = 0.0_grid_p
-            ftmp(2,k,j,i) = 0.0_grid_p
-            ftmp2(1,k,j,i) = 0.0_grid_p
-            ftmp2(2,k,j,i) = 0.0_grid_p
-          enddo
-        enddo
-      enddo
-
-C  Work out local dimensions
-C
-      imin = (Pz-1)*BlockSizeZ + nsm*min(Pz-1,NRemZ) + 1
-      imax = imin + BlockSizeZ - 1
-      if (Pz-1.lt.NRemZ) imax = imax + nsm
-      imax = min(imax,n3)
-      iloc = imax - imin + 1
-
+      maxn1l = xdispl(2)-xdispl(1)
+      maxn3l = zdispl(2)-zdispl(1)
+      nullify(fbuf,tbuf)
+      call re_alloc( fbuf, 1, 2, 1, maxn1l*n2l*n3l, 'fbuf', 'fft' ) 
+      call re_alloc( tbuf, 1, 2, 1, n1l*n2l*maxn3l, 'tbuf', 'fft' )
       if (idir.gt.0) then
 C***********
 C  F -> FT *
 C***********
 C
 C  Handle transfer of terms which are purely local
-
-        do i = imin,imax
-          il = i - imin + 1
-          do j = 1,n2l
-            kl = 0
-            do k = 1+YNode, n1, YNodes
-              kl = kl + 1
-              ft(1,kl,j,i) = f(1,k,j,il)
-              ft(2,kl,j,i) = f(2,k,j,il)
+        i1 = zdispl(pz)
+        do i= 1, n3l
+          do j= 1, n2l
+            k1 = 1
+            do k=xdispl(pz), xdispl(pz+1)-1
+              ft(:,k1,j,i1) = f(:,k,j,i)
+              k1 = k1 + 1
             enddo
           enddo
+            i1 = i1 + 1
         enddo
-
 C  Loop over all Node-Node vectors exchanging local data
 C
-        do INode = 1,ProcessorZ-1
-          BNode = (YNode+INode)
-          BNode = mod(BNode,ProcessorZ)
-          SNode = (YNode-INode)
-          SNode = mod(SNode+ProcessorZ,ProcessorZ)
+        do p=1, ProcessorZ-1
+          ! Let's receive from left node and send to the right node
+          pl = mod(pz-1+ProcessorZ-p,ProcessorZ)+1
+          pr = mod(pz-1+p,ProcessorZ)+1
 C
 C  Collect data to send
-
-          do il = 1,iloc
-            do j = 1,n2l
-              kl = 0
-              do k = 1+BNode, n1, YNodes
-                kl = kl + 1
-                ftmp(1,kl,j,il) = f(1,k,j,il)
-                ftmp(2,kl,j,il) = f(2,k,j,il)
+          l = 1
+          do i= 1, n3l
+            do j= 1, n2l
+              do k= xdispl(pr), xdispl(pr+1)-1
+                fbuf(:,l) = f(:,k,j,i)
+                l = l+1
               enddo
             enddo
           enddo
-
 C  Exchange data - send to right and receive from left
 C
-          call MPI_IRecv(ftmp2(1,1,1,1),2*n1lmax*n2l*BlockSizeZMax,
-     .      MPI_grid_real,SNode,1,YCommunicator,RequestR,MPIerror)
-          call MPI_ISend(ftmp(1,1,1,1),2*n1lmax*n2l*BlockSizeZMax,
-     .      MPI_grid_real,BNode,1,YCommunicator,RequestS,MPIerror)
+          n3t = zdispl(pl+1)-zdispl(pl)
+          n1t = xdispl(pr+1)-xdispl(pr)
+          call MPI_IRecv( tbuf(1,1), 2*n1l*n2l*n3t,
+     .      MPI_grid_real, pl-1, 1, COMM_Z, r_recv, ierr )
+          call MPI_ISend( fbuf(1,1), 2*n1t*n2l*n3l,
+     .      MPI_grid_real, pr-1, 1, COMM_Z, r_send, ierr )
 C
 C  Wait for receive to complete
 C
-          call MPI_Wait(RequestR,Status,MPIerror)
+          call MPI_Wait( r_recv, Status, ierr )
 C
 C  Place received data into correct array
 C
-          iminS = SNode*BlockSizeZ + nsm*min(SNode,NRemZ) + 1
-          imaxS = iminS + BlockSizeZ - 1
-          if (SNode.lt.NRemZ) imaxS = imaxS + nsm
-          imaxS = min(imaxS,n3)
-          do i = iminS,imaxS
-            il = i - iminS + 1
-            do j = 1,n2l
-              kl = 0
-              do k = 1+YNode, n1, YNodes
-                kl = kl + 1
-                ft(1,kl,j,i) = ftmp2(1,kl,j,il)
-                ft(2,kl,j,i) = ftmp2(2,kl,j,il)
+          l = 1
+          do i= zdispl(pl), zdispl(pl+1)-1
+            do j=1, n2l 
+              do k= 1, n1l
+                ft(:,k,j,i) = tbuf(:,l)
+                l = l+1
               enddo
             enddo
           enddo
-
 C  Wait for send to complete
 C
-          call MPI_Wait(RequestS,Status,MPIerror)
+          call MPI_Wait( r_send, Status, ierr )
         enddo
       elseif (idir.lt.0) then
 C***********
@@ -733,84 +581,72 @@ C  FT -> F *
 C***********
 C
 C  Handle transfer of terms which are purely local
-
-        do i = imin,imax
-          il = i - imin + 1
-          do j = 1,n2l
-            kl = 0
-            do k = 1+YNode, n1, YNodes
-              kl = kl + 1
-              f(1,k,j,il) = ft(1,kl,j,i)
-              f(2,k,j,il) = ft(2,kl,j,i)
+        i1 = zdispl(pz)
+        do i= 1, n3l
+          do j= 1, n2l
+            k1 = 1
+            do k=xdispl(pz), xdispl(pz+1)-1
+              f(:,k,j,i) = ft(:,k1,j,i1)
+              k1 = k1 + 1
             enddo
           enddo
+          i1 = i1 + 1
         enddo
-
 C  Loop over all Node-Node vectors exchanging local data
 C
-        do INode = 1,ProcessorZ-1
-          BNode = (YNode+INode)
-          BNode = mod(BNode,ProcessorZ)
-          SNode = (YNode-INode)
-          SNode = mod(SNode+ProcessorZ,ProcessorZ)
+        do p=1, ProcessorZ-1
+          ! Let's receive from left node and send to the right node
+          pl = mod(pz-1+ProcessorZ-p,ProcessorZ)+1
+          pr = mod(pz-1+p,ProcessorZ)+1
 C
 C  Collect data to send
 C
-          iminS = SNode*BlockSizeZ + nsm*min(SNode,NRemZ) + 1
-          imaxS = iminS + BlockSizeZ - 1
-          if (SNode.lt.NRemZ) imaxS = imaxS + nsm
-          imaxS = min(imaxS,n3)
-          do i = iminS,imaxS
-            il = i - iminS + 1
-            do j = 1,n2l
-              kl = 0
-              do k = 1+YNode, n1, YNodes
-                kl = kl + 1
-                ftmp(1,kl,j,il) = ft(1,kl,j,i)
-                ftmp(2,kl,j,il) = ft(2,kl,j,i)
+          l = 1
+          do i= zdispl(pr), zdispl(pr+1)-1
+            do j= 1, n2l
+              do k= 1, n1l
+                tbuf(:,l) = ft(:,k,j,i)
+                l = l+1
               enddo
             enddo
           enddo
-
 C
 C  Exchange data - send to right and receive from left
 C
-          call MPI_IRecv(ftmp2(1,1,1,1),2*n1lmax*n2l*BlockSizeZMax,
-     .      MPI_grid_real,BNode,1,YCommunicator,RequestR,MPIerror)
-          call MPI_ISend(ftmp(1,1,1,1),2*n1lmax*n2l*BlockSizeZMax,
-     .      MPI_grid_real,SNode,1,YCommunicator,RequestS,MPIerror)
+          n3t = zdispl(pr+1)-zdispl(pr)
+          n1t = xdispl(pl+1)-xdispl(pl)
+          call MPI_IRecv( fbuf(1,1),  2*n1t*n2l*n3l,
+     .      MPI_grid_real, pl-1, 1, COMM_Z, r_recv, ierr )
+          call MPI_ISend( tbuf(1,1), 2*n1l*n2l*n3t,
+     .      MPI_grid_real, pr-1, 1, COMM_Z, r_send, ierr )
 C
 C  Wait for receive to complete
 C
-          call MPI_Wait(RequestR,Status,MPIerror)
+          call MPI_Wait( r_recv, Status, ierr )
 C
 C  Place received data into correct array
 C
-          do il = 1,iloc
-            do j = 1,n2l
-              kl = 0
-              do k = 1+BNode, n1, YNodes
-                kl = kl + 1
-                f(1,k,j,il) = ftmp2(1,kl,j,il)
-                f(2,k,j,il) = ftmp2(2,kl,j,il)
+          l = 1
+          do i= 1, n3l
+            do j= 1, n2l
+              do k= xdispl(pl), xdispl(pl+1)-1
+                f(:,k,j,i) = fbuf(:,l)
+                l = l+1
               enddo
             enddo
           enddo
-
 C  Wait for send to complete
 C
-          call MPI_Wait(RequestS,Status,MPIerror)
+          call MPI_Wait( r_send, Status, ierr )
         enddo
       endif
 C
 C  Free local memory
 C
-      call de_alloc( ftmp2, name='ftmp2', routine='redistribXY' )
-      call de_alloc( ftmp, name='ftmp', routine='redistribXY' )
-
-      return
+      call de_alloc( fbuf, 'fbuf', 'fft' )
+      call de_alloc( tbuf, 'tbuf', 'fft' )
       end subroutine redistribXY
-#endif
+#endif /* MPI */
 
 !******************************************************************************
 
