@@ -76,7 +76,8 @@
       integer :: PZ
       integer :: COMM_Y
       integer :: COMM_Z
-      integer, pointer :: xdispl(:)
+      integer, pointer :: xydisp(:)
+      integer, pointer :: xzdisp(:)
       integer, pointer :: ydispl(:)
       integer, pointer :: zdispl(:)
 
@@ -109,7 +110,7 @@ C
 C
 C  Local variables
 C 
-      integer :: n1, n2, n3, ng, n1l, n2l, n3l, n
+      integer :: n1, n2, n3, ng, n1l, n2l, n3l, n, n1l_y, n1l_z
       integer :: i, di, mo, ntrigs, bsize, nft, ioffset, j, ii
       integer :: maxmaxtrigs, ierr
       integer, pointer :: box(:,:,:)
@@ -147,16 +148,23 @@ C
         PZ = Node/ProcessorY+1
         call MPI_Comm_Split( MPI_Comm_World, PZ, PY, COMM_Y, ierr )
         call MPI_Comm_Split( MPI_Comm_World, PY, PZ, COMM_Z, ierr )
-        nullify(xdispl,ydispl,zdispl)
-        call re_alloc( xdispl, 1, ProcessorY+1, 'xdispl', 'fft' )
+        nullify(xydisp,xzdisp,ydispl,zdispl)
+        call re_alloc( xydisp, 1, ProcessorY+1, 'xydisp', 'fft' )
+        call re_alloc( xzdisp, 1, ProcessorZ+1, 'xzdisp', 'fft' )
         call re_alloc( ydispl, 1, ProcessorY+1, 'ydispl', 'fft' )
         call re_alloc( zdispl, 1, ProcessorZ+1, 'zdispl', 'fft' )
         
         di = n1/ProcessorY
         mo = mod(n1,ProcessorY)
-        xdispl(1) = 1
+        xydisp(1) = 1
         do i= 1, ProcessorY
-          xdispl(i+1) = xdispl(i) + di + merge(1,0,i<=mo)
+          xydisp(i+1) = xydisp(i) + di + merge(1,0,i<=mo)
+        enddo
+        di = n1/ProcessorZ
+        mo = mod(n1,ProcessorZ)
+        xzdisp(1) = 1
+        do i= 1, ProcessorZ
+          xzdisp(i+1) = xzdisp(i) + di + merge(1,0,i<=mo)
         enddo
         ydispl(1) = 1
         do i= 1, ProcessorY
@@ -204,12 +212,15 @@ C
 C***********************
 C  2-D Processor Grid  *
 C***********************
-      n1l = n1/ProcessorY + merge(1,0,PY.le.mod(n1,ProcessorY))
+      n1l_y = xydisp(py+1)-xydisp(py)
+      n1l_z = xzdisp(pz+1)-xzdisp(pz)
 C
 C  Allocate local memory
 C
       nullify( ft )
-      call re_alloc( ft, 1, 2*n1l*max(n2*n3l,n2l*n3), 'ft', 'fft' )
+      bsize = 2*max(n1l_y*n2*n3l,n1l_z*n2l*n3)
+      call re_alloc( ft, 1, bsize, 'ft', 'fft' )
+      n1l = n1l_y
 
 C
 C  Redistribute data to be distributed by X and Z
@@ -235,6 +246,7 @@ C
 C
 C  Redistribute data to be distributed by X and Y
 C
+      n1l = n1l_z
       call redistribXY( f, n1, n2l, n3l, ft, n1l, n3,
      &    1, nsm, Node, Nodes )
 C
@@ -325,7 +337,7 @@ C
 C
 C  Allocate local memory
 C
-      maxn1l = xdispl(2)-xdispl(1)
+      maxn1l = xydisp(2)-xydisp(1)
       maxn2l = ydispl(2)-ydispl(1)
       nullify(fbuf,tbuf)
       call re_alloc( fbuf, 1, 2, 1, maxn1l*n2l*n3l, 'fbuf', 'fft' ) 
@@ -342,7 +354,7 @@ C
           j1 = ydispl(py)
           do j= 1, n2l
             k1 = 1
-            do k=xdispl(py), xdispl(py+1)-1
+            do k=xydisp(py), xydisp(py+1)-1
               ft(:,k1,j1,i) = f(:,k,j,i)
               k1 = k1 + 1
             enddo
@@ -361,7 +373,7 @@ C
           l = 1
           do i= 1, n3l
             do j= 1, n2l
-              do k= xdispl(pr), xdispl(pr+1)-1
+              do k= xydisp(pr), xydisp(pr+1)-1
                 fbuf(:,l) = f(:,k,j,i)
                 l = l+1
               enddo
@@ -371,7 +383,7 @@ C
 C  Exchange data - send to right and receive from left
 C
           n2t = ydispl(pl+1)-ydispl(pl)
-          n1t = xdispl(pr+1)-xdispl(pr)
+          n1t = xydisp(pr+1)-xydisp(pr)
           call MPI_IRecv( tbuf(1,1), 2*n1l*n2t*n3l,
      .      MPI_grid_real, pl-1, 1, COMM_Y, r_recv, ierr )
           call MPI_ISend( fbuf(1,1), 2*n1t*n2l*n3l,
@@ -406,7 +418,7 @@ C  Handle transfer of terms which are purely local
           j1 = ydispl(py)
           do j= 1, n2l
             k1 = 1
-            do k=xdispl(py), xdispl(py+1)-1
+            do k=xydisp(py), xydisp(py+1)-1
               f(:,k,j,i) = ft(:,k1,j1,i)
               k1 = k1 + 1
             enddo
@@ -435,7 +447,7 @@ C
 C  Exchange data - send to right and receive from left
 C
           n2t = ydispl(pr+1)-ydispl(pr)
-          n1t = xdispl(pl+1)-xdispl(pl)
+          n1t = xydisp(pl+1)-xydisp(pl)
           call MPI_IRecv( fbuf(1,1),  2*n1t*n2l*n3l,
      .      MPI_grid_real, pl-1, 1, COMM_Y, r_recv, ierr )
           call MPI_ISend( tbuf(1,1), 2*n1l*n2t*n3l,
@@ -449,7 +461,7 @@ C  Place received data into correct array
           l = 1
           do i= 1, n3l
             do j= 1, n2l
-              do k= xdispl(pl), xdispl(pl+1)-1
+              do k= xydisp(pl), xydisp(pl+1)-1
                 f(:,k,j,i) = fbuf(:,l)
                 l = l+1
               enddo
@@ -508,7 +520,7 @@ C
 C
 C  Allocate local memory
 C
-      maxn1l = xdispl(2)-xdispl(1)
+      maxn1l = xzdisp(2)-xzdisp(1)
       maxn3l = zdispl(2)-zdispl(1)
       nullify(fbuf,tbuf)
       call re_alloc( fbuf, 1, 2, 1, maxn1l*n2l*n3l, 'fbuf', 'fft' ) 
@@ -523,7 +535,7 @@ C  Handle transfer of terms which are purely local
         do i= 1, n3l
           do j= 1, n2l
             k1 = 1
-            do k=xdispl(pz), xdispl(pz+1)-1
+            do k=xzdisp(pz), xzdisp(pz+1)-1
               ft(:,k1,j,i1) = f(:,k,j,i)
               k1 = k1 + 1
             enddo
@@ -541,7 +553,7 @@ C  Collect data to send
           l = 1
           do i= 1, n3l
             do j= 1, n2l
-              do k= xdispl(pr), xdispl(pr+1)-1
+              do k= xzdisp(pr), xzdisp(pr+1)-1
                 fbuf(:,l) = f(:,k,j,i)
                 l = l+1
               enddo
@@ -550,7 +562,7 @@ C  Collect data to send
 C  Exchange data - send to right and receive from left
 C
           n3t = zdispl(pl+1)-zdispl(pl)
-          n1t = xdispl(pr+1)-xdispl(pr)
+          n1t = xzdisp(pr+1)-xzdisp(pr)
           call MPI_IRecv( tbuf(1,1), 2*n1l*n2l*n3t,
      .      MPI_grid_real, pl-1, 1, COMM_Z, r_recv, ierr )
           call MPI_ISend( fbuf(1,1), 2*n1t*n2l*n3l,
@@ -585,7 +597,7 @@ C  Handle transfer of terms which are purely local
         do i= 1, n3l
           do j= 1, n2l
             k1 = 1
-            do k=xdispl(pz), xdispl(pz+1)-1
+            do k=xzdisp(pz), xzdisp(pz+1)-1
               f(:,k,j,i) = ft(:,k1,j,i1)
               k1 = k1 + 1
             enddo
@@ -614,7 +626,7 @@ C
 C  Exchange data - send to right and receive from left
 C
           n3t = zdispl(pr+1)-zdispl(pr)
-          n1t = xdispl(pl+1)-xdispl(pl)
+          n1t = xzdisp(pl+1)-xzdisp(pl)
           call MPI_IRecv( fbuf(1,1),  2*n1t*n2l*n3l,
      .      MPI_grid_real, pl-1, 1, COMM_Z, r_recv, ierr )
           call MPI_ISend( tbuf(1,1), 2*n1l*n2l*n3t,
@@ -629,7 +641,7 @@ C
           l = 1
           do i= 1, n3l
             do j= 1, n2l
-              do k= xdispl(pl), xdispl(pl+1)-1
+              do k= xzdisp(pl), xzdisp(pl+1)-1
                 f(:,k,j,i) = fbuf(:,l)
                 l = l+1
               enddo
