@@ -83,8 +83,7 @@ WITH_GRIDXC=1
 #
 # FC_PARALLEL=mpif90
 # FC_SERIAL=gfortran
-# FFLAGS = -O2
-# IPO_FLAG = -ipo  # (keep it separate from FFLAGS)
+# FFLAGS = -O2 
 # FFLAGS_DEBUG= -g -O0
 #
 # FPP = $(FC_SERIAL) -E -P -x c
@@ -289,24 +288,17 @@ endif
 #
 # Built-in libraries
 #
-# Each of these snippets will define XXX_INCFLAGS and XXX_LIBS (or simply XXX, for
-# backwards compatibility) for the "internal" libraries. Their use elsewhere is thus
-# very similar to that of external libraries.
-#
-# Note the use of variables that are inherited from the client makefiles:
-#
-# MAIN_OBJDIR: The place where the arch.make file resides
-# ARCH_MAKE:   The absolute path name of the arch.make file
-# VPATH:       The top source directory Src
-#
 .PHONY: DO_FDF
-FDF_LIBS=$(MAIN_OBJDIR)/fdf/libfdf.a
-FDF_INCFLAGS=-I$(MAIN_OBJDIR)/fdf
+#
+# FDF code from libfdf, symlinked into Src/libfdf
+# Note that a 'makefile' in Siesta style is needed in libfdf/makefile
+#
+FDF_LIBS=$(MAIN_OBJDIR)/libfdf/src/libfdf.a
+FDF_INCFLAGS=-I$(MAIN_OBJDIR)/libfdf/src
 $(FDF_LIBS): DO_FDF
 DO_FDF:
-	(cd $(MAIN_OBJDIR)/fdf ; $(MAKE) -j 1 VPATH="$(VPATH)/fdf" \
-	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" )
-module)
+	(cd $(MAIN_OBJDIR)/libfdf/src ; $(MAKE) -j 1 VPATH="$(VPATH)/libfdf/src" \
+	ARCH_MAKE="$(ARCH_MAKE)" module)
 #--------------------
 .PHONY: DO_NCPS
 NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
@@ -314,7 +306,7 @@ NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
 $(NCPS): DO_NCPS
 DO_NCPS:
 	(cd $(MAIN_OBJDIR)/ncps/src ; $(MAKE) -j 1 VPATH="$(VPATH)/ncps/src" \
-	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+	ARCH_MAKE="$(ARCH_MAKE)" module)
 #--------------------
 .PHONY: DO_PSOP
 PSOP=$(MAIN_OBJDIR)/psoplib/src/libpsop.a
@@ -322,7 +314,7 @@ PSOP_INCFLAGS=-I$(MAIN_OBJDIR)/psoplib/src
 $(PSOP): DO_PSOP
 DO_PSOP:
 	(cd $(MAIN_OBJDIR)/psoplib/src ; $(MAKE) -j 1 VPATH="$(VPATH)/psoplib/src" \
-	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+	ARCH_MAKE="$(ARCH_MAKE)" module)
 #--------------------
 .PHONY: DO_MS
 MS=$(MAIN_OBJDIR)/MatrixSwitch/src/libMatrixSwitch.a
@@ -331,7 +323,7 @@ $(MS): DO_MS
 DO_MS:
 	(cd $(MAIN_OBJDIR)/MatrixSwitch/src ; \
          $(MAKE) -j 1 VPATH="$(VPATH)/MatrixSwitch/src" \
-	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+	ARCH_MAKE="$(ARCH_MAKE)" module)
 #--------------------
 
 

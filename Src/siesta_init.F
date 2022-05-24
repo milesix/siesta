@@ -33,6 +33,7 @@
      &                              iza, rmaxo, zvaltot, superc,
      &                              initatomlists, no_l, rmaxdftu
       use fdf
+      use units,              only: unit_conversion_factor
       use sys,                only: die, bye
       use gridxc,             only: gridxc_init
       use molecularmechanics, only: inittwobody
@@ -153,6 +154,8 @@ C     Initialise MPI and set processor number
 
       call reset_messages_file()
 
+      call fdf_set_unit_conversion_function(unit_conversion_factor)
+      
       if (Node==0) then
          ! Make sure we delete this sentinel file
          open(unit=1,file="0_NORMAL_EXIT",status="unknown")
