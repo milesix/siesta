@@ -22,7 +22,7 @@
 
       implicit none
 
-      public :: rmatrix
+      public :: rmatrix, rmatrix_new
       private
 
       CONTAINS
@@ -150,4 +150,139 @@ C     Deallocate local memory
 C     Finish timer
       call timer( 'rmatrix', 2 )
       end subroutine rmatrix
+
+      subroutine rmatrix_new(nua, na, no, scell, xa, indxua, rmaxo,
+     &                   maxnh, lasto, iphorb, isa,
+     &                   numh, listhptr, listh, Rmat)
+!
+!     This routine computes R_mu_nu = tau_mu*S_mu,nu(x_mu_nu)  + X_nu,mu( -x_mu_nu)
+!     where S_mu,nu is the overlap matrix, and X_nu,mu is the matrix
+!     element of r (with the matel convention).
+!     mu is an orbital in the unit cell. mu is an orbital "in range" of mu, as in standard Siesta usage.
+!     x_mu_nu is the relative position vector of the nu orbital with respect to the mu orbital.
+!     Note the reversed order of orbitals and the sign change in the X term.
+      
+!     The 'rmatrix' name and Rmat argument refer to the r matrix element.
+
+!     Note that mu in this routine is distributed in MPI operation
+!     Note also that R_mu,nu is in general not equal to R_nu,mu
+!
+!     This is a "real space" version of R_mu,nu. What is needed in the
+!     thermal transport module, for the Gamma point case,  is the k=0
+!     fourier transform. If an auxiliary supercell is not used (the common case
+!     for Gamma-point calculations, the (folded over R by default) real-space object
+!     is just the k=0 FT needed. If for some reason an auxiliary supercell is
+!     used, an extra folding (as done for example in the diag* routines) is needed.
+
+!     Energies in Ry. Lengths in Bohr.
+!     Based on 'overlap'
+
+C integer nua              : Number of atoms in unit cell
+C integer na               : Number of atoms in supercell
+C integer no               : Number of orbitals in supercell
+C real*8  scell(3,3)       : Supercell vectors SCELL(IXYZ,IVECT)
+C real*8  xa(3,na)         : Atomic positions in cartesian coordinates
+c integer indxua(na)       : Index of equivalent atom in unit cell
+C real*8  rmaxo            : Maximum cutoff for atomic orbitals
+C integer maxnh            : First dimension of S and listh
+C integer lasto(0:na)      : Last orbital index of each atom
+C integer iphorb(no)       : Orbital index of each orbital in its atom
+C integer isa(na)          : Species index of each atom
+C integer numh(nuotot)     : Number of nonzero elements of each row
+C                            of the overlap matrix
+C integer listhptr(nuotot) : Pointer to start of rows (-1) of overlap
+C                            matrix
+C integer listh(maxnh)     : Column indexes of the nonzero elements
+C                            of each row of the overlap matrix
+C **************************** OUTPUT *********************************
+C real*8  Rmat(maxnh,3)    : Matrix elements of "R"
+
+      integer, intent(in)   ::  maxnh, na, no, nua
+      integer, intent(in)   :: indxua(na), iphorb(no), isa(na),
+     &                         lasto(0:na), listh(maxnh), numh(*),
+     &                         listhptr(*)
+      real(dp) , intent(in) :: scell(3,3), rmaxo, xa(3,na)
+      real(dp), intent(out) :: Rmat(maxnh,3)
+C Internal variables ......................................................
+      integer               :: ia, ind, io, ioa, is,  iio, j, ja, jn,
+     &                         jo, joa, js, jua, nnia, ig, jg
+      real(dp)              :: grSij(3) , rij, Sij, Overlap_ij, xinv(3)
+      real(dp),     pointer :: Ri(:,:)
+      external  timer
+
+C     Start timer
+      call timer( 'rmatrix_new', 1 )
+
+C     Initialize neighb subroutine
+      call mneighb( scell, 2.d0*rmaxo, na, xa, 0, 0, nnia )
+
+C     Allocate local memory
+      nullify(Ri)
+      call re_alloc( Ri, 1, no, 1, 3, 'Ri', 'rmatrix_new' )
+
+      Ri(:,:) = 0.0_dp
+
+      do ia = 1,nua
+        is = isa(ia)
+        call mneighb( scell, 2.d0*rmaxo, na, xa, ia, 0, nnia )
+        do io = lasto(ia-1)+1,lasto(ia)
+
+C         Is this orbital on this Node?
+          call GlobalToLocalOrb(io,Node,Nodes,iio)
+          if (iio.gt.0) then
+
+C           Valid orbital
+            ioa = iphorb(io)
+            ig = orb_gindex(is,ioa)
+            do jn = 1,nnia
+              ja = jna(jn)
+              jua = indxua(ja)
+              rij = sqrt( r2ij(jn) )
+              do jo = lasto(ja-1)+1,lasto(ja)
+                joa = iphorb(jo)
+                js = isa(ja)
+                !
+                ! Use global indexes for new version of matel
+                !
+                jg = orb_gindex(js,joa)
+
+                ! Compute tau_mu*S_mu,nu(x_mu_nu) + X_nu,mu(-x_mu_nu), where
+                ! tau_mu is the unit-cell coordinate of mu
+                ! mu ranges over the unit cell, carried by ia:1..nua, hence
+                ! tau_mu = xa(:,ia) since the first nua atoms in the supercell
+                ! are in the unit cell.
+
+                if (rcut(is,ioa)+rcut(js,joa) .gt. rij) then
+                   
+                  call new_MATEL( 'S', ig, jg, xij(1:3,jn),
+     $                        Overlap_ij, grSij )
+                  ! Note reversed i,j indexes, and inverse position vector
+                  xinv(1:3)  = -xij(1:3,jn)
+                  call new_MATEL( 'X', jg, ig, xinv, Sij, grSij )
+                  Ri(jo,1) = Ri(jo,1) + Sij + Overlap_ij*xa(1,ia)
+                  call new_MATEL( 'Y', jg, ig, xinv, Sij, grSij )
+                  Ri(jo,2) = Ri(jo,2) + Sij + Overlap_ij*xa(2,ia)
+                  call new_MATEL( 'Z', jg, ig, xinv, Sij, grSij )
+                  Ri(jo,3) = Ri(jo,3) + Sij + Overlap_ij*xa(3,ia)
+                  
+                endif
+              enddo
+            enddo
+            do j = 1,numh(iio)
+              ind = listhptr(iio)+j
+              jo = listh(ind)
+              Rmat(ind,:) = Ri(jo,:)
+              Ri(jo,:) = 0.0d0
+            enddo
+          endif
+        enddo
+      enddo
+
+C     Deallocate local memory
+      call reset_neighbour_arrays( )
+      call de_alloc( Ri, 'Ri', 'rmatrix_new' )
+
+C     Finish timer
+      call timer( 'rmatrix_new', 2 )
+      end subroutine rmatrix_new
       end module m_rmatrix

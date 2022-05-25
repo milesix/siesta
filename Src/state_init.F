@@ -31,7 +31,7 @@
       use sparse_matrices, only: gradS, gradS_2D
 
 #ifdef SIESTA__THERMAL_FLUX
-      use m_rmatrix, only: rmatrix
+      use m_rmatrix, only: rmatrix, rmatrix_new
       use sparse_matrices, only: Rmat, Rmat_2D
 #endif
 
@@ -694,8 +694,17 @@
 
       if (compute_thermal_flux.and.(substep.eq.1)) then
       !     Find rmatrix, that we need for Kohn-Sham J-flux component (ThTr)
-         call rmatrix(na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
-     &        lasto, iphorb, isa, numh, listhptr, listh, Rmat )
+
+         if (fdf_get('Rmatrix.NewVersion',.true.)) then
+            call rmatrix_new(na_u, na_s, no_s, scell, xa,
+     $           indxua, rmaxo, maxnh,
+     &           lasto, iphorb, isa, numh, listhptr, listh, Rmat )
+         else
+            call rmatrix(na_u, na_s, no_s, scell, xa,
+     $           indxua, rmaxo, maxnh,
+     &           lasto, iphorb, isa, numh, listhptr, listh, Rmat )
+         endif
+
          allocate(Rmat_base, source=Rmat)
       endif
 #endif
