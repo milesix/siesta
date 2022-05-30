@@ -215,13 +215,11 @@ C  FFT in Y direction
 C
       if (LocalPoints) then
         nft = size(ft)
-!$OMP parallel do default(shared), private(i,IOffSet)
         do i=0,n3l-1
           IOffSet=2*n1lf*n2*i
           call gpfa(ft(IOffSet+1:nft),ft(IOffSet+2:nft),trigs(:,2),
      .            2*n1lf,2,n2,n1lf,-isn)
         enddo
-!$OMP end parallel do
       endif
 C
 C  Redistribute data back to original form
@@ -265,13 +263,11 @@ C
 C
 C  FFT in Y direction
 C
-!$OMP parallel do default(shared), private(i,IOffSet)
       do i=0,n3-1
          IOffSet=2*n1*n2*i
          call gpfa(f(IOffSet+1:nf),f(IOffSet+2:nf),trigs(:,2),
      .             2*n1,2,n2,n1,-isn)
       enddo
-!$OMP end parallel do
 C
 C  FFT in Z direction
 C
@@ -283,11 +279,9 @@ C  Scale values
 C
       if (LocalPoints.and.isn.gt.0) then
         scale=1.0_dp/dble(ng)
-!$OMP parallel do default(shared), private(i)
         do i=1,2*n
           f(i)=f(i)*scale
         enddo
-!$OMP end parallel do
       endif
 
       call timer( 'fft', 2 )
@@ -388,7 +382,6 @@ C
       call re_alloc( ftmp2, 1, 2, 1, n1lmax, 1, BlockSizeYMax, 1, n3l,
      &               name='ftmp2', routine='redistribXZ' )
 
-!$OMP parallel do default(shared), private(i,j,k)
       do i = 1,n3l
         do j = 1,BlockSizeYMax
           do k = 1,n1lmax
@@ -399,7 +392,6 @@ C
           enddo
         enddo
       enddo
-!$OMP end parallel do
 
       if (idir.gt.0) then
 C***********
@@ -408,7 +400,6 @@ C***********
 C
 C  Handle transfer of terms which are purely local
 C
-!$OMP parallel do default(shared), private(i,j,jl,kl,k)
         do i = 1,n3l
           do j = jmin,jmax
             jl = j - jmin + 1
@@ -420,7 +411,6 @@ C
             enddo
           enddo
         enddo
-!$OMP end parallel do
 
 C  Loop over all Node-Node vectors exchanging local data
 C
@@ -431,7 +421,6 @@ C
           SNode = mod(SNode+ProcessorY,ProcessorY)
 C
 C  Collect data to send
-!$OMP parallel do default(shared), private(i,jl,kl,k)
           do i = 1,n3l
             do jl = 1,jloc
               kl = 0
@@ -442,7 +431,6 @@ C  Collect data to send
               enddo
             enddo
           enddo
-!$OMP end parallel do
 
 C
 C  Exchange data - send to right and receive from left
@@ -462,7 +450,6 @@ C
           jmaxS = jminS + BlockSizeY - 1
           if (SNode.lt.NRemY) jmaxS = jmaxS + nsm
           jmaxS = min(jmaxS,n2)
-!$OMP parallel do default(shared), private(i,j,jl,kl,k)
           do i = 1,n3l
             do j = jminS,jmaxS
               jl = j - jminS + 1
@@ -474,7 +461,6 @@ C
               enddo
             enddo
           enddo
-!$OMP end parallel do
 
 C  Wait for send to complete
 C
@@ -487,7 +473,6 @@ C***********
 C
 C  Handle transfer of terms which are purely local
 
-!$OMP parallel do default(shared), private(i,j,jl,kl,k)
         do i = 1,n3l
           do j = jmin,jmax
             jl = j - jmin + 1
@@ -499,7 +484,6 @@ C  Handle transfer of terms which are purely local
             enddo
           enddo
         enddo
-!$OMP end parallel do
 
 C  Loop over all Node-Node vectors exchanging local data
 C
@@ -515,7 +499,6 @@ C
           jmaxS = jminS + BlockSizeY - 1
           if (SNode.lt.NRemY) jmaxS = jmaxS + nsm
           jmaxS = min(jmaxS,n2)
-!$OMP parallel do default(shared), private(i,j,jl,kl,k)
           do i = 1,n3l
             do j = jminS,jmaxS
               jl = j - jminS + 1
@@ -527,7 +510,6 @@ C
               enddo
             enddo
           enddo
-!$OMP end parallel do
 
 C  Exchange data - send to right and receive from left
 C
@@ -542,7 +524,6 @@ C
 C
 C  Place received data into correct array
 
-!$OMP parallel do default(shared), private(i,jl,kl,k)
           do i = 1,n3l
             do jl = 1,jloc
               kl = 0
@@ -553,7 +534,6 @@ C  Place received data into correct array
               enddo
             enddo
           enddo
-!$OMP end parallel do
 
 C  Wait for send to complete
 C
@@ -654,7 +634,6 @@ C
       call re_alloc( ftmp2, 1, 2, 1, n1lmax, 1, n2l, 1, BlockSizeZMax,
      &               name='ftmp2', routine='redistribXY' )
 
-!$OMP parallel do default(shared), private(i,j,k)
       do i = 1,BlockSizeZMax
         do j = 1,n2l
           do k = 1,n1lmax
@@ -665,7 +644,6 @@ C
           enddo
         enddo
       enddo
-!$OMP end parallel do
 
 C  Work out local dimensions
 C
@@ -682,7 +660,6 @@ C***********
 C
 C  Handle transfer of terms which are purely local
 
-!$OMP parallel do default(shared), private(i,il,j,kl,k)
         do i = imin,imax
           il = i - imin + 1
           do j = 1,n2l
@@ -694,7 +671,6 @@ C  Handle transfer of terms which are purely local
             enddo
           enddo
         enddo
-!$OMP end parallel do
 
 C  Loop over all Node-Node vectors exchanging local data
 C
@@ -706,7 +682,6 @@ C
 C
 C  Collect data to send
 
-!$OMP parallel do default(shared), private(il,j,kl,k)
           do il = 1,iloc
             do j = 1,n2l
               kl = 0
@@ -717,7 +692,6 @@ C  Collect data to send
               enddo
             enddo
           enddo
-!$OMP end parallel do
 
 C  Exchange data - send to right and receive from left
 C
@@ -736,7 +710,6 @@ C
           imaxS = iminS + BlockSizeZ - 1
           if (SNode.lt.NRemZ) imaxS = imaxS + nsm
           imaxS = min(imaxS,n3)
-!$OMP parallel do default(shared), private(i,il,j,kl,k)
           do i = iminS,imaxS
             il = i - iminS + 1
             do j = 1,n2l
@@ -748,7 +721,6 @@ C
               enddo
             enddo
           enddo
-!$OMP end parallel do
 
 C  Wait for send to complete
 C
@@ -761,7 +733,6 @@ C***********
 C
 C  Handle transfer of terms which are purely local
 
-!$OMP parallel do default(shared), private(i,il,j,kl,k)
         do i = imin,imax
           il = i - imin + 1
           do j = 1,n2l
@@ -773,7 +744,6 @@ C  Handle transfer of terms which are purely local
             enddo
           enddo
         enddo
-!$OMP end parallel do
 
 C  Loop over all Node-Node vectors exchanging local data
 C
@@ -789,7 +759,6 @@ C
           imaxS = iminS + BlockSizeZ - 1
           if (SNode.lt.NRemZ) imaxS = imaxS + nsm
           imaxS = min(imaxS,n3)
-!$OMP parallel do default(shared), private(i,il,j,kl,k)
           do i = iminS,imaxS
             il = i - iminS + 1
             do j = 1,n2l
@@ -801,7 +770,6 @@ C
               enddo
             enddo
           enddo
-!$OMP end parallel do
 
 C
 C  Exchange data - send to right and receive from left
@@ -817,7 +785,6 @@ C
 C
 C  Place received data into correct array
 C
-!$OMP parallel do default(shared), private(il,j,kl,k)
           do il = 1,iloc
             do j = 1,n2l
               kl = 0
@@ -828,7 +795,6 @@ C
               enddo
             enddo
           enddo
-!$OMP end parallel do
 
 C  Wait for send to complete
 C
