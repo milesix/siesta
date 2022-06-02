@@ -27,9 +27,9 @@ module m_ts_rgn2trimat
   use precision, only : dp, i8b
   use m_region
 
-  use m_ts_electype
+  use ts_electrode_m
   use m_ts_tri_common, only : GFGGF_needed_worksize
-  use m_ts_tri_common, only : nnzs_tri_i8b
+  use m_ts_tri_common, only : nnzs_tri
 
   ! method of BTD matrix
   use m_ts_method, only: TS_BTD_A_PROPAGATION, TS_BTD_A_COLUMN
@@ -64,7 +64,7 @@ contains
 
     ! electrodes
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! Whether an entire column should be calculated
     logical, intent(in) :: IsVolt
     ! the distribution
@@ -139,8 +139,10 @@ contains
        ! Initialize the guess for the 
        call guess_TriMat_last(r%n,mm_col,nblock_guess,blocks_guess,last_block)
        if ( valid_tri(r%n,mm_col,nblock_guess, blocks_guess,last_block) == VALID ) then
-          nblocks = nblock_guess
-          blocks(1:nblocks) = blocks_guess(1:nblocks)
+         nblocks = nblock_guess
+         do i = 1, nblocks
+           blocks(i) = blocks_guess(i)
+         end do
        end if
     end if
 
@@ -312,8 +314,8 @@ contains
       integer, intent(in) :: method
       integer, intent(inout) :: nblock_cur
       integer, intent(in) :: nblock_guess
-      integer, intent(inout) :: blocks_cur(max(nblock_cur,nblock_guess))
-      integer, intent(in) :: blocks_guess(nblock_guess)
+      integer, intent(inout) :: blocks_cur(:)
+      integer, intent(in) :: blocks_guess(:)
       
       logical :: copy
       integer :: cur_work, guess_work
@@ -350,8 +352,8 @@ contains
         end if
 
         ! Difference between the two BTD matrices
-        guess_pad = nnzs_tri_i8b(nblock_cur, blocks_cur) - &
-            nnzs_tri_i8b(nblock_guess, blocks_guess)
+        guess_pad = nnzs_tri(nblock_cur, blocks_cur) - &
+            nnzs_tri(nblock_guess, blocks_guess)
 
         ! total difference in number of elements
         ! If this is positive the guessed BTD matrix has fewer
@@ -381,7 +383,7 @@ contains
       type(Sparsity), intent(inout) :: sp
       type(tRgn), intent(in) :: r
       integer, intent(in) :: nblocks
-      integer, intent(in) :: blocks(nblocks)
+      integer, intent(in) :: blocks(:)
       character(len=64) :: fname
 
       type(tRgn) :: pvt
@@ -402,22 +404,27 @@ contains
         pvt%r(r%r(i)) = i
       end do
 
-      ! Write out the BTD format in a file to easily be processed
-      ! by python, this is the pivoted sparsity pattern
-      call io_assign(iu)
-      open(iu, file=trim(fname)//'.sp',action='write')
-      write(iu,'(i0)') r%n
-      do i = 1 , r%n
-        io = r%r(i)
-        if ( l_ncol(io) == 0 ) cycle
-        do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
-          jo = UCORB(l_col(ind),no_u)
-          j = pvt%r(jo)
-          if ( j > i ) cycle ! only print upper half (it is hermitian)
-          write(iu,'(2(i0,tr1),i1)') i, j, 1
+      ! This write-out is very heavy, and we should limit it
+      if ( fdf_get('TS.BTD.Output.Sparse',.false.) ) then
+        ! Write out the BTD format in a file to easily be processed
+        ! by python, this is the pivoted sparsity pattern
+        call io_assign(iu)
+        open(iu, file=trim(fname)//'.sp',action='write')
+        write(iu,'(i0)') r%n
+        do i = 1 , r%n
+          io = r%r(i)
+          if ( l_ncol(io) == 0 ) cycle
+          write(iu,'(i0)', advance='no') i
+          do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
+            jo = UCORB(l_col(ind),no_u)
+            j = pvt%r(jo)
+            if ( j > i ) cycle ! only print upper half (it is hermitian)
+            write(iu,'(tr1,i0)', advance='no') j
+          end do
+          write(iu,*) ! empty line
         end do
-      end do
-      call io_close(iu)
+        call io_close(iu)
+      end if
 
       call io_assign(iu)
       open(iu, file=trim(fname)//'.pvt',action='write')
@@ -445,10 +452,10 @@ contains
 
   subroutine guess_btd_blocks(no,mm_col,first_block,nblocks,blocks,last_block)
 
-    integer, intent(in) :: no, mm_col(2,no) ! number of orbitals, max,min
+    integer, intent(in) :: no, mm_col(:,:) ! number of orbitals, max,min
     integer, intent(in) :: first_block
     integer, intent(inout) :: nblocks
-    integer, intent(inout) :: blocks(no)
+    integer, intent(inout) :: blocks(:)
     integer, intent(in) :: last_block
 
     ! Local variables
@@ -499,7 +506,7 @@ contains
 
   subroutine guess_TriMat_last(no,mm_col,nblocks,blocks,last_block)
 
-    integer, intent(in) :: no, mm_col(2,no) ! number of orbitals, max,min
+    integer, intent(in) :: no, mm_col(:,:) ! number of orbitals, max,min
     integer, intent(inout) :: nblocks
     integer, intent(inout) :: blocks(:)
     integer, intent(in) :: last_block
@@ -526,8 +533,8 @@ contains
   end subroutine guess_TriMat_last
 
   function faster_blocks(n1,blocks1,n2,blocks2) result(faster)
-    integer, intent(in) :: n1, blocks1(n1)
-    integer, intent(in) :: n2, blocks2(n2)
+    integer, intent(in) :: n1, blocks1(:)
+    integer, intent(in) :: n2, blocks2(:)
     logical :: faster
 
     integer :: i, n
@@ -604,7 +611,7 @@ contains
   ! part.
   ! We save it in blocks(part)
   subroutine set_next_block_size(no,mm_col,sRow,eRow,block_size)
-    integer, intent(in) :: no, mm_col(2,no)
+    integer, intent(in) :: no, mm_col(:,:)
     ! the part we are going to create
     ! eRow is sum(blocks(:-1))
     integer, intent(in) :: sRow, eRow
@@ -633,10 +640,10 @@ contains
   ! part.
   ! We save it in nblocks(part)
   subroutine guess_prev_block_size(no,mm_col,block,nblocks,blocks)
-    integer, intent(in) :: no, mm_col(2,no)
+    integer, intent(in) :: no, mm_col(:,:)
     ! the part we are going to create
     integer, intent(in) :: block, nblocks
-    integer, intent(inout) :: blocks(nblocks)
+    integer, intent(inout) :: blocks(:)
     ! Local variables
     integer :: i, sRow, eRow, mcol
     
@@ -675,12 +682,12 @@ contains
   subroutine smoothen_blocks(method,no,mm_col,nblocks,blocks, last_block, iwork)
 
     integer, intent(in) :: method ! the method used for creating the blocks
-    integer, intent(in) :: no, mm_col(2,no)
+    integer, intent(in) :: no, mm_col(:,:)
     ! the block we are going to create
     integer, intent(in) :: nblocks
-    integer, intent(inout) :: blocks(nblocks)
+    integer, intent(inout) :: blocks(:)
     integer, intent(in) :: last_block
-    integer, intent(inout) :: iwork(nblocks,2)
+    integer, intent(inout) :: iwork(:,:)
     ! Local variables
     integer :: n, d
     logical :: changed
@@ -701,17 +708,17 @@ contains
       do
         changed = .false.
         do n = 2 , nblocks - 1
-          call smoothen_block(no, mm_col, nblocks, blocks, iwork(1,2), n, last_block)
-          call diff_perf(n, nblocks, blocks, iwork(1,1), d)
+          call smoothen_block(no, mm_col, nblocks, blocks, iwork(:,2), n, last_block)
+          call diff_perf(n, nblocks, blocks, iwork(:,1), d)
           call select(d)
         end do
         n = 1
-        call smoothen_block(no, mm_col, nblocks, blocks, iwork(1,2), n, last_block)
-        call diff_perf(n, nblocks, blocks, iwork(1,1), d)
+        call smoothen_block(no, mm_col, nblocks, blocks, iwork(:,2), n, last_block)
+        call diff_perf(n, nblocks, blocks, iwork(:,1), d)
         call select(d)
         n = nblocks
-        call smoothen_block(no, mm_col, nblocks, blocks, iwork(1,2), n, last_block)
-        call diff_perf(n, nblocks, blocks, iwork(1,1), d)
+        call smoothen_block(no, mm_col, nblocks, blocks, iwork(:,2), n, last_block)
+        call diff_perf(n, nblocks, blocks, iwork(:,1), d)
         call select(d)
         
         if ( .not. changed ) exit
@@ -722,17 +729,17 @@ contains
       do
         changed = .false.
         do n = 2 , nblocks - 1
-          call smoothen_block(no, mm_col, nblocks, blocks, iwork(1,2), n, last_block)
-          call diff_mem(n, nblocks, blocks, iwork(1,1), d)
+          call smoothen_block(no, mm_col, nblocks, blocks, iwork(:,2), n, last_block)
+          call diff_mem(n, nblocks, blocks, iwork(:,1), d)
           call select(d)
         end do
         n = 1
-        call smoothen_block(no, mm_col, nblocks, blocks, iwork(1,2), n, last_block)
-        call diff_mem(n, nblocks, blocks, iwork(1,1), d)
+        call smoothen_block(no, mm_col, nblocks, blocks, iwork(:,2), n, last_block)
+        call diff_mem(n, nblocks, blocks, iwork(:,1), d)
         call select(d)
         n = nblocks
-        call smoothen_block(no, mm_col, nblocks, blocks, iwork(1,2), n, last_block)
-        call diff_mem(n, nblocks, blocks, iwork(1,1), d)
+        call smoothen_block(no, mm_col, nblocks, blocks, iwork(:,2), n, last_block)
+        call diff_mem(n, nblocks, blocks, iwork(:,1), d)
         call select(d)
         
         if ( .not. changed ) exit
@@ -750,25 +757,25 @@ contains
       integer, intent(in) :: d
       if ( d == 0 ) then
         ! Simply store. It could be that we swapped a few things
-        call store_block(nblocks, blocks, iwork(1,1), n)
-        call store_cum_block(nblocks, blocks, iwork(1,2), n)
+        call store_block(nblocks, blocks, iwork(:,1), n)
+        call store_cum_block(nblocks, blocks, iwork(:,2), n)
       else if ( d > 0 ) then
         ! We have that the just tested BTD matrix is not as performant
         ! as the current
-        call store_block(nblocks, iwork(1,1), blocks, n)
+        call store_block(nblocks, iwork(:,1), blocks, n)
         ! the cumultative blocks are not changed since we restore them
       else
         ! the penalty is negative which means we have found a new candidate
-        call store_block(nblocks, blocks, iwork(1,1), n)
-        call store_cum_block(nblocks, blocks, iwork(1,2), n)
+        call store_block(nblocks, blocks, iwork(:,1), n)
+        call store_cum_block(nblocks, blocks, iwork(:,2), n)
         changed = .true.
       end if
     end subroutine select
 
     subroutine store_block(nblocks, blocks, store_blocks, n)
       integer, intent(in) :: n, nblocks
-      integer, intent(in) :: blocks(nblocks)
-      integer, intent(inout) :: store_blocks(nblocks)
+      integer, intent(in) :: blocks(:)
+      integer, intent(inout) :: store_blocks(:)
       
       store_blocks(n) = blocks(n)
       if ( n == 1 ) then
@@ -784,8 +791,8 @@ contains
 
     subroutine store_cum_block(nblocks, blocks, cum_blocks, n)
       integer, intent(in) :: n, nblocks
-      integer, intent(in) :: blocks(nblocks)
-      integer, intent(inout) :: cum_blocks(nblocks)
+      integer, intent(in) :: blocks(:)
+      integer, intent(inout) :: cum_blocks(:)
 
       if ( n == 1 ) then
         cum_blocks(n) = blocks(n)
@@ -811,8 +818,8 @@ contains
     
     function changed_block(nblocks, blocks, store_blocks, n) result(changed)
       integer, intent(in) :: n, nblocks
-      integer, intent(in) :: blocks(nblocks)
-      integer, intent(inout) :: store_blocks(nblocks)
+      integer, intent(in) :: blocks(:)
+      integer, intent(inout) :: store_blocks(:)
       logical :: changed
       
       changed = store_blocks(n) /= blocks(n)
@@ -830,10 +837,10 @@ contains
   end subroutine smoothen_blocks
 
   subroutine smoothen_block(no,mm_col,nblocks,blocks, cum_blocks, n, last_block)
-    integer, intent(in) :: no, mm_col(2,no)
+    integer, intent(in) :: no, mm_col(:,:)
     ! the block we are going to create
-    integer, intent(in) :: nblocks, cum_blocks(nblocks)
-    integer, intent(inout) :: blocks(nblocks)
+    integer, intent(in) :: nblocks, cum_blocks(:)
+    integer, intent(inout) :: blocks(:)
     integer, intent(in) :: n, last_block
     
     ! Local variables
@@ -948,7 +955,7 @@ contains
     ! The sparsity pattern
     type(Sparsity), intent(inout) :: sp
     type(tRgn), intent(in) :: r
-    integer, intent(inout) :: mm_col(2,r%n)
+    integer, intent(inout) :: mm_col(:,:)
     ! The results
     type(tRgn) :: pvt
     integer :: ir, row, ptr, nr, j
@@ -996,7 +1003,7 @@ contains
   subroutine diff_mem(p, n, block1, block2, mem)
     integer, intent(in) :: p
     integer, intent(in) :: n
-    integer, intent(in) :: block1(n), block2(n)
+    integer, intent(in) :: block1(:), block2(:)
     integer, intent(inout) :: mem
 
     if ( p == 1 ) then
@@ -1050,7 +1057,7 @@ contains
     use precision, only: dp
     integer, intent(in) :: p
     integer, intent(in) :: n
-    integer, intent(in) :: block1(n), block2(n)
+    integer, intent(in) :: block1(:), block2(:)
     integer, intent(inout) :: perf
     real(dp) :: one_third = 0.33333333333333333333333_dp
     real(dp) :: pf
@@ -1119,8 +1126,8 @@ contains
   end subroutine diff_perf
   
   function valid_tri(no,mm_col,nblocks,blocks,last_block) result(val)
-    integer, intent(in) :: no, mm_col(2,no)
-    integer, intent(in) :: nblocks, blocks(nblocks), last_block
+    integer, intent(in) :: no, mm_col(:,:)
+    integer, intent(in) :: nblocks, blocks(:), last_block
     integer :: val
     ! Local variables
     integer :: i, N, Nm1, Np1, col_min, col_max
@@ -1225,7 +1232,7 @@ contains
   contains
 
     pure subroutine find_min_max(no, mm_col, N1, N2, col_min, col_max)
-      integer, intent(in) :: no, mm_col(2,no), N1, N2
+      integer, intent(in) :: no, mm_col(:,:), N1, N2
       integer, intent(inout) :: col_min, col_max
       integer :: ir
       col_min = mm_col(1,N1)

@@ -1,24 +1,26 @@
-Siesta Version  : v4.1.5-1-g384057250
+Siesta Version  : 5.0.0-alpha-56-g943f9ccc9
 Architecture    : x86_64-linux-gcc
 Compiler version: GNU Fortran (GCC) 11.2.0
-Compiler flags  : mpifort -m64 -fPIC -O3 -ftree-vectorize -fexpensive-optimizations -funroll-loops -fprefetch-loop-arrays -fgraphite -fipa-icf -fipa-pure-const -march=native -fschedule-fusion -fselective-scheduling -fstack-arrays -fmax-stack-var-size=10000 -fipa-sra -fipa-cp -fcheck=recursion,array-temps -fno-second-underscore -Wrealloc-lhs -Wrealloc-lhs-all -fallow-argument-mismatch
-PP flags        : -DSIESTA__FLOOK -DSIESTA__METIS -DSIESTA__FFTW -DTS_PVT_METIS -DSIESTA__MRRR -DSIESTA__SCALAPACK_RESET -DMPI -DFC_HAVE_FLUSH -DFC_HAVE_ABORT -DCDF -DGRID_DP -DMPI_TIMING -DTRANSIESTA_TIMING -DTBTRANS_TIMING -DSIESTA__MUMPS -DNCDF_PARALLEL -DNCDF -DNCDF_4 -DSCALAPACK_DEBUG -D_DIAG_WORK -DSIESTA__DIAG_2STAGE -DSIESTA__ELPA
-Libraries       : libncdf.a libfdict.a  -lzmumps -lmumps_common -lpord -lparmetis -lmetis -lesmumps -lscotch -lscotcherr -L/opt/gnu/11.2.0/elpa/2020.05.001/lib -Wl,-rpath=/opt/gnu/11.2.0/elpa/2020.05.001/lib -lelpa -L/opt/gnu/11.2.0/scalapack-debug/2.1.0/lib -Wl,-rpath=/opt/gnu/11.2.0/scalapack-debug/2.1.0/lib -lscalapack  -L/opt/gnu/11.2.0/openblas/0.3.18/lib -Wl,-rpath=/opt/gnu/11.2.0/openblas/0.3.18/lib -lopenblas -L/home/nicpa/codes/flook/obj -lflookall -ldl -l:libnetcdff.so  -m64 -fPIC -O3 -ftree-vectorize -fexpensive-optimizations -funroll-loops -fprefetch-loop-arrays -fgraphite -fipa-icf -fipa-pure-const -march=native -fschedule-fusion -fselective-scheduling -fstack-arrays -fmax-stack-var-size=10000 -fipa-sra -fipa-cp -fcheck=recursion,array-temps -fno-second-underscore -Wrealloc-lhs -Wrealloc-lhs-all -fallow-argument-mismatch -L/opt/gnu/11.2.0/fftw/3.3.10/lib -Wl,-rpath=/opt/gnu/11.2.0/fftw/3.3.10/lib -lfftw3
-PARALLEL version
+Compiler flags  : mpifort -m64 -fPIC -O3 -ftree-vectorize -fexpensive-optimizations -funroll-loops -fprefetch-loop-arrays -fgraphite -fipa-icf -fipa-pure-const -march=native -fschedule-fusion -fselective-scheduling -fstack-arrays -fmax-stack-var-size=10000 -fipa-sra -fipa-cp -fcheck=recursion,array-temps -fno-second-underscore -Wrealloc-lhs -Wrealloc-lhs-all -fallow-argument-mismatch -fcheck-array-temporaries -Warray-temporaries -fcheck=array-temps
+PP flags        : -DSIESTA__DEV_INFO -DSIESTA__FLOOK -DSIESTA__METIS -DSIESTA__FFTW -DTS_PVT_METIS -DSIESTA__MRRR -DSIESTA__SCALAPACK_RESET -DMPI -DFC_HAVE_FLUSH -DFC_HAVE_ABORT -DCDF -DGRID_DP -DMPI_TIMING -DTRANSIESTA_TIMING -DTBTRANS_TIMING -D1 -DNCDF_PARALLEL -DNCDF -DNCDF_4 -DSCALAPACK_DEBUG -D_DIAG_WORK -DSIESTA__DIAG_2STAGE -DSIESTA__ELPA
+Libraries       : libncdf.a libfdict.a  -lzmumps -lmumps_common -lpord -lparmetis -lmetis -lesmumps -lscotch -lscotcherr -L/opt/gnu/11.2.0/elpa/2020.05.001/lib -Wl,-rpath=/opt/gnu/11.2.0/elpa/2020.05.001/lib -lelpa -L/opt/gnu/11.2.0/scalapack-debug/2.1.0/lib -Wl,-rpath=/opt/gnu/11.2.0/scalapack-debug/2.1.0/lib -lscalapack  -L/opt/gnu/11.2.0/openblas/0.3.18/lib -Wl,-rpath=/opt/gnu/11.2.0/openblas/0.3.18/lib -lopenblas -L/home/nicpa/codes/flook/obj -lflookall -ldl -l:libnetcdff.so  -m64 -fPIC -O3 -ftree-vectorize -fexpensive-optimizations -funroll-loops -fprefetch-loop-arrays -fgraphite -fipa-icf -fipa-pure-const -march=native -fschedule-fusion -fselective-scheduling -fstack-arrays -fmax-stack-var-size=10000 -fipa-sra -fipa-cp -fcheck=recursion,array-temps -fno-second-underscore -Wrealloc-lhs -Wrealloc-lhs-all -fallow-argument-mismatch -fcheck-array-temporaries -Warray-temporaries -fcheck=array-temps -L/opt/gnu/11.2.0/fftw/3.3.10/lib -Wl,-rpath=/opt/gnu/11.2.0/fftw/3.3.10/lib -lfftw3
+Parallelisations: MPI
 NetCDF support
 NetCDF-4 support
 NetCDF-4 MPI-IO support
 METIS ordering support
 Lua support
 
-* Running on 6 nodes in parallel
->> Start of run:   3-NOV-2021  22:02:19
+Runtime information:
+* Directory : /home/nicpa/siesta/siesta/Obj/Tests/TranSiesta-TBTrans/ts_au/work/Scat_ts_au_111_capacitor_x2
+* Running on 6 nodes in parallel.
+>> Start of run:  29-APR-2022   9:18:58
 
-                           ***********************       
-                           *  WELCOME TO SIESTA  *       
-                           ***********************       
+                           *********************** 
+                           *  WELCOME TO SIESTA  * 
+                           *********************** 
 
-reinit: Reading from ts_au_111_capacitor_x2.fdf
+reinit: Reading from file ts_au_111_capacitor_x2.fdf
 
 reinit: -----------------------------------------------------------------------
 reinit: System Name: au_111_capacitor
@@ -29,27 +31,32 @@ reinit: -----------------------------------------------------------------------
 initatom: Reading input for the pseudopotentials and atomic orbitals ----------
 Species number:   1 Atomic number:   79 Label: Au
 
+
+ ---- Processing specs for species: Au
 Ground state valence configuration:   6s01  5d10
 Reading pseudopotential information in formatted form from Au.psf
 
-Pseudopotential generated from a relativistic atomic calculation
+---- Pseudopotential check for Au
 
-Valence configuration for pseudopotential generation:
+Pseudopotential generated from a fully relativistic atomic calculation
+There are spin-orbit semi-local pseudopotentials available
+
+Pseudized shells:
 6s( 1.00) rc: 2.32
 6p( 0.00) rc: 2.32
 5d(10.00) rc: 2.32
 5f( 0.00) rc: 2.32
+Valence configuration for ps generation: (assumed as above)
 For Au, standard SIESTA heuristics set lmxkb to 3
  (one more than the basis l, including polarization orbitals).
 Use PS.lmax or PS.KBprojectors blocks to override.
-Au: nkbl increased for l=1 due to the presence of a polarization orbital
 
 <basis_specs>
 ===============================================================================
 Au                   Z=  79    Mass=  196.97        Charge= 0.17977+309
 Lmxo=2 Lmxkb= 3    BasisType=split      Semic=F
 L=0  Nsemic=0  Cnfigmx=6
-          i=1  nzeta=1  polorb=1  (6s)
+          i=1  nzeta=1  polorb=1  (6s)  (to be polarized perturbatively)
             splnorm:   0.15000    
                vcte:    0.0000    
                rinn:    0.0000    
@@ -59,6 +66,7 @@ L=0  Nsemic=0  Cnfigmx=6
                 rcs:    0.0000    
             lambdas:    1.0000    
 L=1  Nsemic=0  Cnfigmx=6
+          i=1  nzeta=0  polorb=0  (6p)  (perturbative polarization orbital) (from 6s)
 L=2  Nsemic=0  Cnfigmx=5
           i=1  nzeta=1  polorb=0  (5d)
             splnorm:   0.15000    
@@ -71,7 +79,7 @@ L=2  Nsemic=0  Cnfigmx=5
             lambdas:    1.0000    
 -------------------------------------------------------------------------------
 L=0  Nkbl=1  erefs: 0.17977+309
-L=1  Nkbl=2  erefs: 0.17977+309 0.17977+309
+L=1  Nkbl=1  erefs: 0.17977+309
 L=2  Nkbl=1  erefs: 0.17977+309
 L=3  Nkbl=1  erefs: 0.17977+309
 ===============================================================================
@@ -81,7 +89,7 @@ atom: Called for Au                    (Z =  79)
 
 read_vps: Pseudopotential generation method:
 read_vps: ATM3      Troullier-Martins                       
-Valence charge for ps generation:   11.00000
+Valence charge in pseudo generation:   11.00000
 
 xc_check: Exchange-correlation functional:
 xc_check: Ceperley-Alder
@@ -92,27 +100,29 @@ V l=3 = -2*Zval/r beyond r=  3.7361
 All V_l potentials equal beyond r=  2.2946
 This should be close to max(r_c) in ps generation
 All pots = -2*Zval/r beyond r=  3.7361
-Using large-core scheme for Vlocal
+Using large-core scheme (fit) for Vlocal
 
 atom: Estimated core radius    3.73611
 
 atom: Including non-local core corrections could be a good idea
-atom: Maximum radius for 4*pi*r*r*local-pseudopot. charge    4.07775
-atom: Maximum radius for r*vlocal+2*Zval:    3.78310
-GHOST: No ghost state for L =  0
-KBgen: More than one KB projector for l=  1
-KBgen: ghost states analysis will be not performed
-GHOST: No ghost state for L =  2
-GHOST: No ghost state for L =  3
+Fit of Vlocal with continuous 2nd derivative
+Fitting vlocal at       2.3822
+Choosing vlocal chloc cutoff:943  4.077746
+qtot up to nchloc:   10.99914104
+atom: Maximum radius for chlocal:    4.07775
+atom: Maximum radius for r*vlocal+2*Zval:    4.07775
 
 KBgen: Kleinman-Bylander projectors: 
+GHOST: No ghost state for L =  0
    l= 0   rc=  2.382235   el= -0.445645   Ekb=  4.511922   kbcos=  0.274440
+GHOST: No ghost state for L =  1
    l= 1   rc=  2.382235   el= -0.065316   Ekb=  2.560647   kbcos=  0.223707
-   l= 1   rc=  2.382235   el=  0.001421   Ekb=  2.131832   kbcos=  0.034244
+GHOST: No ghost state for L =  2
    l= 2   rc=  2.382235   el= -0.526293   Ekb= -5.024070   kbcos= -0.676934
+GHOST: No ghost state for L =  3
    l= 3   rc=  2.382235   el=  0.003438   Ekb= -2.070042   kbcos= -0.013117
 
-KBgen: Total number of Kleinman-Bylander projectors:   19
+KBgen: Total number of Kleinman-Bylander projectors:  16
 atom: -------------------------------------------------------------------------
 
 atom: SANKEY-TYPE ORBITALS:
@@ -169,7 +179,9 @@ Vna:  Cut-off radius for the neutral-atom potential:   7.246712
 
 atom: _________________________________________________________________________
 
-prinput: Basis input ----------------------------------------------------------
+prinput: Basis input 
+* WARNING: This information might be incomplete!!!
+----------------------------------------------------------
 
 PAO.BasisType split     
 
@@ -178,6 +190,7 @@ PAO.BasisType split
 %endblock ChemicalSpeciesLabel
 
 %block PAO.Basis                 # Define Basis set
+# WARNING: This information might be incomplete!!!
 Au                    2                    # Species label, number of l-shells
  n=6   0   1 P   1                   # n, l, Nzeta, Polarization, NzetaPol
    7.247   
@@ -219,9 +232,9 @@ siesta:      8.28582  -1.59461  54.12275  1       20
 
 siesta: System type = bulk      
 
-initatomlists: Number of atoms, orbitals, and projectors:     20   180   380
+initatomlists: Number of atoms, orbitals, and projectors:     20   180   320
 
-coxmol: Writing XMOL coordinates into file ts_au_111_capacitor_x2.xyz                                          
+coxmol: Writing XMOL coordinates into file ts_au_111_capacitor_x2.xyz                                                                                                                                                                                                          
 
 siesta: ******************** Simulation parameters ****************************
 siesta:
@@ -266,6 +279,8 @@ redata: Use continuation files for DM               =   T
 redata: Neglect nonoverlap interactions             =   F
 redata: Method of Calculation                       = Transiesta
 redata: Fix the spin of the system                  =   F
+redata: Max. number of TDED Iter                    =        1
+redata: Number of TDED substeps                     =        3
 redata: Dynamics option                             = Single-point calculation
 mix.SCF: Pulay mixing                            = Pulay
 mix.SCF:    Variant                              = stable
@@ -296,7 +311,7 @@ Size of DM history Fstack: 1
 Total number of electrons:   220.000000
 Total ionic charge:   220.000000
 
-* ProcessorY, Blocksize:    2  24
+* ProcessorY, Blocksize:    1  24
 
 
 * Orbital distribution balance (max,min):    48    24
@@ -305,9 +320,10 @@ k-point displ. along   1 input, could be:     0.00    0.50
 k-point displ. along   2 input, could be:     0.00    0.50
  Kpoints in:          480 . Kpoints trimmed:          480
 
-siesta: k-grid: Number of k-points =   480
-siesta: k-grid: Cutoff (effective) =    11.692 Ang
-siesta: k-grid: Supercell and displacements
+siesta: k-grid: Number of k-points =       480
+siesta: k-points from Monkhorst-Pack grid
+siesta: k-cutoff (effective) =    11.692 Ang
+siesta: k-point supercell and displacements
 siesta: k-grid:    4   0   0      0.000
 siesta: k-grid:    0   8   0      0.000
 siesta: k-grid:    0   0  30      0.500
@@ -323,17 +339,19 @@ diag: Orthogonalization factor                      =  0.100E-05
 diag: Memory factor                                 =  1.0000
 
 superc: Internal auxiliary supercell:     5 x     9 x     3  =     135
-superc: Number of atoms, orbitals, and projectors:   2700  24300  51300
+superc: Number of atoms, orbitals, and projectors:   2700  24300  43200
 
 k-point displ. along   1 input, could be:     0.00    0.50
 k-point displ. along   2 input, could be:     0.00    0.50
  Kpoints in:           20 . Kpoints trimmed:           19
 
-transiesta: k-grid: Number of Green function k-points =    19
-transiesta: k-grid: Supercell and displacements
-transiesta: k-grid:    4   0   0      0.000
-transiesta: k-grid:    0   8   0      0.000
-transiesta: k-grid:    0   0   1      0.000
+siesta: transiesta k-grid: Number of k-points =        19
+siesta: transiesta k-points from Monkhorst-Pack grid
+siesta: transiesta k-cutoff (effective) =    11.692 Ang
+siesta: transiesta k-point supercell and displacements
+siesta: k-grid:    4   0   0      0.000
+siesta: k-grid:    0   8   0      0.000
+siesta: k-grid:    0   0   1      0.000
 
 ts: **************************************************************
 ts: Voltage                                         =    1.0000 Volts
@@ -362,9 +380,9 @@ ts:           >> Electrodes <<
 ts: >> Left
 ts:   Electrode cell pivoting: E1, E2, E3           = A1, A2, A3
 ts:   GF file                                       = ts_au_111_capacitor_x2.TSGFLeft
-ts:   Reuse existing GF-file                        =    F
+ts:   GF file reuse if found                        =    F
 ts:   Electrode TSHS file                           = ./ts_au_elec_111_abc.TSHS
-ts:   # atoms used in electrode                     =    3
+ts:   # atoms in electrode used / total             = 3 / 3
 ts:   Electrode Bloch repeating [E1 x E2 x E3]      = 2 x 1 x 1
 ts:   Position in geometry                          = 1 -- 6
 ts:   Semi-infinite direction for electrode         = negative wrt. E3
@@ -383,9 +401,9 @@ ts:   Electrode inter-layer distance (semi-inf)     =    2.3867 Ang
 ts: >> Right
 ts:   Electrode cell pivoting: E1, E2, E3           = A1, A2, A3
 ts:   GF file                                       = ts_au_111_capacitor_x2.TSGFRight
-ts:   Reuse existing GF-file                        =    F
+ts:   GF file reuse if found                        =    F
 ts:   Electrode TSHS file                           = ./ts_au_elec_111_abc.TSHS
-ts:   # atoms used in electrode                     =    3
+ts:   # atoms in electrode used / total             = 3 / 3
 ts:   Electrode Bloch repeating [E1 x E2 x E3]      = 2 x 1 x 1
 ts:   Position in geometry                          = 15 -- 20
 ts:   Semi-infinite direction for electrode         = positive wrt. E3
@@ -531,24 +549,19 @@ transiesta: Regions of atoms:
     nrows_g=27 nrows=27 sparsity=44.2757 nnzs=32277, refcount: 3>
   <sparsity:(TM [--,--, 0] of: ./ts_au_elec_111_abc.TSHS)
     nrows_g=27 nrows=27 sparsity=25.1152 nnzs=18309, refcount: 3>
-  <sparsity:(TM [--,--,-1] of: ./ts_au_elec_111_abc.TSHS)
+  <sparsity:(TM [--,--, 1] of: ./ts_au_elec_111_abc.TSHS)
     nrows_g=27 nrows=27 sparsity=9.4486 nnzs=6888, refcount: 3>
  Left principal cell is extending out with 96 elements:
-    Atom 1 connects with atom 3
-    Orbital 8 connects with orbital 26
-    Hamiltonian value: |H(8,7046)|@R=-2 =  0.102E-18 eV
-    Overlap          :  S(8,7046)|@R=-2 =   0.00    
+    Atom 3 connects with atom 1
+    Orbital 26 connects with orbital 8
+    Hamiltonian value: |H(26,6353)|@R=2 =  0.898E-20 eV
+    Overlap          :  S(26,6353)|@R=2 =   0.00    
 
-Calculating all surface Green functions for: Left
- Fermi level shift in electrode (chemical potential) :        0.50000  eV
- Atoms available    / used atoms   :      3 /      3
- Orbitals available / used orbitals:     27 /     27
- Total self-energy calculations: 10754
- Bloch expansion k-points in A_1 direction [b_1]: 2
+Calculating surface Green functions for: Left
  Saving surface Green functions in: ts_au_111_capacitor_x2.TSGFLeft
- Estimated file size:    240.938 MB
+ Estimated file size: 240.944 MB
  Lopez Sancho, Lopez Sancho & Rubio recursive surface self-energy calculation...
- Lopez Sancho, Lopez Sancho & Rubio: Mean/std iterations:     7.2553 /     4.5228
+ Lopez Sancho, Lopez Sancho & Rubio: Mean/std iterations:     7.2588 /     4.5247
  Lopez Sancho, Lopez Sancho & Rubio: Min/Max iterations :          3 /         16
 Done creating 'ts_au_111_capacitor_x2.TSGFLeft'.
 
@@ -556,24 +569,19 @@ Done creating 'ts_au_111_capacitor_x2.TSGFLeft'.
     nrows_g=27 nrows=27 sparsity=44.2757 nnzs=32277, refcount: 3>
   <sparsity:(TM [--,--, 0] of: ./ts_au_elec_111_abc.TSHS)
     nrows_g=27 nrows=27 sparsity=25.1152 nnzs=18309, refcount: 3>
-  <sparsity:(TM [--,--, 1] of: ./ts_au_elec_111_abc.TSHS)
+  <sparsity:(TM [--,--,-1] of: ./ts_au_elec_111_abc.TSHS)
     nrows_g=27 nrows=27 sparsity=9.4486 nnzs=6888, refcount: 3>
  Right principal cell is extending out with 96 elements:
-    Atom 3 connects with atom 1
-    Orbital 26 connects with orbital 8
-    Hamiltonian value: |H(26,6353)|@R=2 =  0.102E-18 eV
-    Overlap          :  S(26,6353)|@R=2 =   0.00    
+    Atom 1 connects with atom 3
+    Orbital 8 connects with orbital 26
+    Hamiltonian value: |H(8,7046)|@R=-2 =  0.898E-20 eV
+    Overlap          :  S(8,7046)|@R=-2 =   0.00    
 
-Calculating all surface Green functions for: Right
- Fermi level shift in electrode (chemical potential) :       -0.50000  eV
- Atoms available    / used atoms   :      3 /      3
- Orbitals available / used orbitals:     27 /     27
- Total self-energy calculations: 10754
- Bloch expansion k-points in A_1 direction [b_1]: 2
+Calculating surface Green functions for: Right
  Saving surface Green functions in: ts_au_111_capacitor_x2.TSGFRight
- Estimated file size:    240.938 MB
+ Estimated file size: 240.944 MB
  Lopez Sancho, Lopez Sancho & Rubio recursive surface self-energy calculation...
- Lopez Sancho, Lopez Sancho & Rubio: Mean/std iterations:     8.3666 /     5.0341
+ Lopez Sancho, Lopez Sancho & Rubio: Mean/std iterations:     8.3669 /     5.0345
  Lopez Sancho, Lopez Sancho & Rubio: Min/Max iterations :          3 /         16
 Done creating 'ts_au_111_capacitor_x2.TSGFRight'.
 
@@ -583,7 +591,7 @@ Done creating 'ts_au_111_capacitor_x2.TSGFRight'.
                      ====================================
 
 superc: Internal auxiliary supercell:     5 x     9 x     3  =     135
-superc: Number of atoms, orbitals, and projectors:   2700  24300  51300
+superc: Number of atoms, orbitals, and projectors:   2700  24300  43200
 
 outcell: Unit cell vectors (Ang):
         5.846220    0.000000    0.000000
@@ -615,36 +623,36 @@ transiesta: Initialization run using siesta
 ts: We highly recommend you to perform 0-bias calculations before *any* bias calculations
 
 No. of atoms with KB's overlaping orbs in proc 0. Max # of overlaps:     144     237
-New grid distribution:   1
-           1       1:   30    1:    8    1:   60
-           2       1:   30    1:    8   61:  120
-           3       1:   30    1:    8  121:  180
-           4       1:   30    9:   15    1:   60
-           5       1:   30    9:   15   61:  120
-           6       1:   30    9:   15  121:  180
 
-InitMesh: MESH =    60 x    30 x   360 =      648000
+InitMesh: MESH = 60 x 30 x 360 = 648000
 InitMesh: (bp) =    30 x    15 x   180 =       81000
 InitMesh: Mesh cutoff (required, used) =   350.000   372.067 Ry
-ExtMesh (bp) on 0 =   122 x   100 x   152 =     1854400
-New grid distribution:   2
-           1       1:   30    1:   15  138:  158
-           2       1:   30    1:   15   44:  115
-           3       1:   30    1:   15  159:  180
+New grid distribution [1]: sub = 2
+           1       1:   30    1:   15    1:   30
+           2       1:   30    1:   15   31:   60
+           3       1:   30    1:   15   61:   90
+           4       1:   30    1:   15   91:  120
+           5       1:   30    1:   15  121:  150
+           6       1:   30    1:   15  151:  180
+ExtMesh (bp) on 0 =   122 x   107 x   122 =     1592588
+New grid distribution [2]: sub = 2
+           1       1:   30    1:   15    1:   22
+           2       1:   30    1:   15  138:  158
+           3       1:   30    1:   15   44:  115
            4       1:   30    1:   15   23:   43
-           5       1:   30    1:   15    1:   22
-           6       1:   30    1:   15  116:  137
-New grid distribution:   3
-           1       1:   30    1:   15    1:   28
-           2       1:   30    1:   15   57:   96
-           3       1:   30    1:   15  153:  180
+           5       1:   30    1:   15  116:  137
+           6       1:   30    1:   15  159:  180
+New grid distribution [3]: sub = 2
+           1       1:   30    1:   15  125:  152
+           2       1:   30    1:   15    1:   28
+           3       1:   30    1:   15   57:   96
            4       1:   30    1:   15   29:   56
            5       1:   30    1:   15   97:  124
-           6       1:   30    1:   15  125:  152
+           6       1:   30    1:   15  153:  180
 Setting up quadratic distribution...
-ExtMesh (bp) on 0 =   122 x   107 x   113 =     1475102
-PhiOnMesh: Number of (b)points on node 0 =                 9450
-PhiOnMesh: nlist on node 0 =               772882
+ExtMesh (bp) on 0 =   122 x   107 x   114 =     1488156
+PhiOnMesh: Number of (b)points on node 0 =                 9900
+PhiOnMesh: nlist on node 0 =               809210
 
 ts-voltage: Ramp  0.500 eV to -0.500 eV placed in cell
 ts-Vha: -0.11478195E-05 eV
@@ -662,109 +670,136 @@ cdiag-debug: jobz=V, algo= 5, Node=    2, work=       20768, rwork=       10548,
 cdiag-debug: jobz=V, algo= 5, Node=    3, work=       20768, rwork=       10548, iwork=        1080
 cdiag-debug: jobz=V, algo= 5, Node=    4, work=       20768, rwork=       10548, iwork=        1080
 cdiag-debug: jobz=V, algo= 5, Node=    0, work=       20768, rwork=       10548, iwork=        1080
-ts-Vha: -0.13710843E+02 eV
+ts-Vha: -0.13786114E+02 eV
 
 siesta: Program's energy decomposition (eV):
-siesta: Ebs     =       333.973368
+siesta: Ebs     =       342.783403
 siesta: Eions   =     23424.498348
 siesta: Ena     =      1167.255813
-siesta: Ekin    =     12439.927909
-siesta: Enl     =     -5723.867652
+siesta: Ekin    =     12435.513600
+siesta: Enl     =     -5721.873179
 siesta: Eso     =         0.000000
 siesta: Edftu   =         0.000000
-siesta: DEna    =       234.548390
-siesta: DUscf   =        22.940259
+siesta: DEna    =       235.767739
+siesta: DUscf   =        23.188647
 siesta: DUext   =         0.000000
-siesta: Exc     =     -2796.765649
+siesta: Ex      =     -2459.261236
+siesta: Ec      =      -337.050021
+siesta: Exc     =     -2796.311258
 siesta: eta*DQ  =         0.000000
 siesta: Emadel  =         0.000000
 siesta: Emeta   =         0.000000
 siesta: Emolmec =         0.000000
 siesta: Ekinion =         0.000000
-siesta: Eharris =    -18050.220389
-siesta: Etot    =    -18080.459278
-siesta: FreeEng =    -18080.462726
+siesta: Eharris =    -18050.663331
+siesta: Etot    =    -18080.956985
+siesta: FreeEng =    -18080.960321
 
         iscf     Eharris(eV)        E_KS(eV)     FreeEng(eV)     dDmax    Ef(eV) dHmax(eV)
-   scf:    1   -18050.220389   -18080.459278   -18080.462726  0.237449 -2.582722 21.456005
-timer: Routine,Calls,Time,% = IterSCF        1      14.852  74.84
-ts-Vha:  0.12683218E+02 eV
-   scf:    2   -18063.307887   -18080.429788   -18080.433449  0.050530 -2.341927 23.510220
-ts-Vha:  0.12862534E+00 eV
-   scf:    3   -18087.667377   -18085.890338   -18085.894144  0.030586 -2.513317  5.147232
-ts-Vha: -0.38608756E+01 eV
-   scf:    4   -18087.097789   -18086.737503   -18086.741211  0.013192 -2.561513  4.368197
-ts-Vha:  0.59339496E+01 eV
-   scf:    5   -18085.029704   -18086.966004   -18086.971263  0.035074 -2.471073 12.851142
-ts-Vha: -0.56127203E+02 eV
-   scf:    6   -17840.183156   -18012.522116   -18012.525778  0.140391 -3.407823 91.206800
-ts-Vha: -0.15941408E+02 eV
-   scf:    7   -18112.604294   -18083.423805   -18083.431086  0.093198 -2.695045 23.896980
-ts-Vha: -0.28932148E+02 eV
-   scf:    8   -18054.025604   -18071.027606   -18071.031414  0.053340 -2.964762 42.826688
-ts-Vha: -0.28061756E+02 eV
-   scf:    9   -18073.389940   -18072.270870   -18072.273960  0.013543 -3.034174 41.088960
-ts-Vha: -0.73757587E+01 eV
-   scf:   10   -18096.223581   -18089.420031   -18089.427554  0.079130 -2.845982 10.363767
-ts-Vha: -0.11370900E+02 eV
-   scf:   11   -18085.649006   -18087.733218   -18087.741047  0.011457 -2.897263 16.917986
-ts-Vha: -0.25529405E+01 eV
-   scf:   12   -18091.121148   -18090.400614   -18090.408152  0.027044 -2.789464  2.630822
-ts-Vha: -0.20476598E+01 eV
-   scf:   13   -18090.463121   -18090.435495   -18090.443035  0.002856 -2.786083  1.854014
-ts-Vha: -0.11722057E+01 eV
-   scf:   14   -18090.447274   -18090.452836   -18090.460642  0.006822 -2.760031  0.395840
-ts-Vha: -0.11759163E+01 eV
-   scf:   15   -18090.452891   -18090.452864   -18090.460669  0.000074 -2.760178  0.403104
-ts-Vha: -0.10761484E+01 eV
-   scf:   16   -18090.492801   -18090.474077   -18090.481906  0.002637 -2.767890  0.175228
-ts-Vha: -0.94209931E+00 eV
-   scf:   17   -18090.506327   -18090.492737   -18090.500575  0.004743 -2.784454  0.144628
-ts-Vha: -0.97964804E+00 eV
-   scf:   18   -18090.491118   -18090.492082   -18090.499914  0.001221 -2.787444  0.080926
-ts-Vha: -0.97714084E+00 eV
-   scf:   19   -18090.493092   -18090.492604   -18090.500439  0.000459 -2.788341  0.069806
-ts-Vha: -0.98477081E+00 eV
-   scf:   20   -18090.493589   -18090.493125   -18090.500958  0.000650 -2.790372  0.064282
-ts-Vha: -0.10105964E+01 eV
-   scf:   21   -18090.496049   -18090.494821   -18090.502587  0.003238 -2.793035  0.026419
-ts-Vha: -0.10090409E+01 eV
-   scf:   22   -18090.495182   -18090.495021   -18090.502761  0.000900 -2.792458  0.016785
-ts-Vha: -0.10106294E+01 eV
-   scf:   23   -18090.495151   -18090.495090   -18090.502809  0.000456 -2.792746  0.011959
-ts-Vha: -0.10104282E+01 eV
-   scf:   24   -18090.495262   -18090.495183   -18090.502874  0.000379 -2.794171  0.012958
-ts-Vha: -0.10104542E+01 eV
-   scf:   25   -18090.495233   -18090.495209   -18090.502888  0.000167 -2.794573  0.010084
-ts-Vha: -0.10118611E+01 eV
-   scf:   26   -18090.495224   -18090.495211   -18090.502881  0.000106 -2.794884  0.008411
-ts-Vha: -0.10112301E+01 eV
-   scf:   27   -18090.495261   -18090.495236   -18090.502898  0.000146 -2.795008  0.007525
-ts-Vha: -0.10126875E+01 eV
-   scf:   28   -18090.495329   -18090.495285   -18090.502927  0.000301 -2.795120  0.008414
-ts-Vha: -0.10095227E+01 eV
-   scf:   29   -18090.495288   -18090.495289   -18090.502939  0.000173 -2.794224  0.006560
-ts-Vha: -0.10098077E+01 eV
-   scf:   30   -18090.495312   -18090.495301   -18090.502943  0.000111 -2.794248  0.004893
-ts-Vha: -0.10102806E+01 eV
-   scf:   31   -18090.495309   -18090.495305   -18090.502944  0.000036 -2.794274  0.003979
-ts-Vha: -0.10116481E+01 eV
-   scf:   32   -18090.495339   -18090.495323   -18090.502948  0.000163 -2.794512  0.001070
-ts-Vha: -0.10120393E+01 eV
-   scf:   33   -18090.495328   -18090.495325   -18090.502948  0.000027 -2.794540  0.001048
-ts-Vha: -0.10118134E+01 eV
-   scf:   34   -18090.495323   -18090.495324   -18090.502948  0.000013 -2.794515  0.000856
+   scf:    1   -18050.663331   -18080.956985   -18080.960321  0.240188 -2.583999 21.584065
+timer: Routine,Calls,Time,% = IterSCF        1      17.358  74.04
+ts-Vha:  0.12761393E+02 eV
+   scf:    2   -18063.618220   -18080.938730   -18080.942392  0.050628 -2.342853 23.653177
+ts-Vha:  0.13950102E+00 eV
+   scf:    3   -18088.259159   -18086.460209   -18086.464018  0.030596 -2.515267  5.180264
+ts-Vha: -0.38613493E+01 eV
+   scf:    4   -18087.681775   -18087.315693   -18087.319402  0.013162 -2.563726  4.361561
+ts-Vha:  0.59075473E+01 eV
+   scf:    5   -18085.658260   -18087.564430   -18087.569754  0.035064 -2.473976 12.825055
+ts-Vha: -0.56400390E+02 eV
+   scf:    6   -17838.324897   -18012.324030   -18012.327692  0.140710 -3.419191 91.685722
+ts-Vha: -0.17238239E+02 eV
+   scf:    7   -18113.999419   -18083.023452   -18083.030709  0.091347 -2.705206 25.984122
+ts-Vha: -0.31521886E+02 eV
+   scf:    8   -18047.604893   -18068.078047   -18068.081775  0.058268 -3.034633 46.964803
+ts-Vha: -0.29348810E+02 eV
+   scf:    9   -18074.271505   -18071.280049   -18071.283385  0.012740 -3.072613 43.126279
+ts-Vha:  0.64626638E+01 eV
+   scf:   10   -18075.838676   -18089.359637   -18089.366586  0.112321 -2.607974 12.421811
+ts-Vha: -0.42296411E+01 eV
+   scf:   11   -18089.119052   -18090.690602   -18090.698543  0.028714 -2.770219  5.944557
+ts-Vha: -0.14141377E+01 eV
+   scf:   12   -18090.724497   -18090.821857   -18090.830091  0.012577 -2.701571  0.818946
+ts-Vha: -0.12525760E+01 eV
+   scf:   13   -18091.029287   -18090.932647   -18090.940717  0.006139 -2.726521  0.440034
+ts-Vha: -0.12479123E+01 eV
+   scf:   14   -18091.009944   -18090.972237   -18090.980239  0.002790 -2.736228  0.454640
+ts-Vha: -0.13113035E+01 eV
+   scf:   15   -18091.081462   -18091.028400   -18091.036331  0.003761 -2.753394  0.548715
+ts-Vha: -0.92297206E+00 eV
+   scf:   16   -18091.150904   -18091.099613   -18091.107370  0.012103 -2.780776  0.282951
+ts-Vha: -0.83238586E+00 eV
+   scf:   17   -18091.101682   -18091.101904   -18091.109589  0.003521 -2.788630  0.358274
+ts-Vha: -0.99793092E+00 eV
+   scf:   18   -18091.103721   -18091.103297   -18091.111048  0.001956 -2.788818  0.119209
+ts-Vha: -0.95468049E+00 eV
+   scf:   19   -18091.106057   -18091.104750   -18091.112519  0.000702 -2.788868  0.104627
+ts-Vha: -0.94860086E+00 eV
+   scf:   20   -18091.109375   -18091.107235   -18091.115066  0.002365 -2.789230  0.113607
+ts-Vha: -0.97911650E+00 eV
+   scf:   21   -18091.110043   -18091.108912   -18091.116746  0.003002 -2.791193  0.084770
+ts-Vha: -0.10211543E+01 eV
+   scf:   22   -18091.110088   -18091.109563   -18091.117369  0.000902 -2.794867  0.057649
+ts-Vha: -0.10250223E+01 eV
+   scf:   23   -18091.110170   -18091.109904   -18091.117688  0.000519 -2.796899  0.032698
+ts-Vha: -0.10047714E+01 eV
+   scf:   24   -18091.110072   -18091.109998   -18091.117773  0.000257 -2.797138  0.025097
+ts-Vha: -0.10100141E+01 eV
+   scf:   25   -18091.110063   -18091.110031   -18091.117801  0.000115 -2.797743  0.017851
+ts-Vha: -0.10092948E+01 eV
+   scf:   26   -18091.110128   -18091.110089   -18091.117840  0.000369 -2.799299  0.015423
+ts-Vha: -0.10104165E+01 eV
+   scf:   27   -18091.110115   -18091.110102   -18091.117849  0.000081 -2.799423  0.013624
+ts-Vha: -0.10159114E+01 eV
+   scf:   28   -18091.110323   -18091.110222   -18091.117923  0.000901 -2.800148  0.006324
+ts-Vha: -0.10149984E+01 eV
+   scf:   29   -18091.110282   -18091.110254   -18091.117933  0.000379 -2.800478  0.005109
+ts-Vha: -0.10146833E+01 eV
+   scf:   30   -18091.110262   -18091.110258   -18091.117936  0.000027 -2.800481  0.004569
+ts-Vha: -0.10156998E+01 eV
+   scf:   31   -18091.110304   -18091.110284   -18091.117956  0.000183 -2.800191  0.006561
+ts-Vha: -0.10135133E+01 eV
+   scf:   32   -18091.110263   -18091.110274   -18091.117953  0.000127 -2.800192  0.003374
+ts-Vha: -0.10140611E+01 eV
+   scf:   33   -18091.110302   -18091.110288   -18091.117957  0.000163 -2.800115  0.001516
+ts-Vha: -0.10143986E+01 eV
+   scf:   34   -18091.110291   -18091.110289   -18091.117958  0.000019 -2.800078  0.001625
+ts-Vha: -0.10143995E+01 eV
+   scf:   35   -18091.110292   -18091.110291   -18091.117958  0.000022 -2.800078  0.001380
+ts-Vha: -0.10149216E+01 eV
+   scf:   36   -18091.110301   -18091.110296   -18091.117958  0.000091 -2.800021  0.001649
+ts-Vha: -0.10146023E+01 eV
+   scf:   37   -18091.110288   -18091.110292   -18091.117958  0.000069 -2.800056  0.001711
+ts-Vha: -0.10149399E+01 eV
+   scf:   38   -18091.110295   -18091.110294   -18091.117958  0.000030 -2.800045  0.001515
+ts-Vha: -0.10148142E+01 eV
+   scf:   39   -18091.110297   -18091.110295   -18091.117958  0.000027 -2.800027  0.001674
+ts-Vha: -0.10144720E+01 eV
+   scf:   40   -18091.110294   -18091.110295   -18091.117959  0.000019 -2.800016  0.001542
+ts-Vha: -0.10146020E+01 eV
+   scf:   41   -18091.110292   -18091.110293   -18091.117959  0.000022 -2.800011  0.001337
+ts-Vha: -0.10145939E+01 eV
+   scf:   42   -18091.110292   -18091.110292   -18091.117958  0.000017 -2.800032  0.001529
+ts-Vha: -0.10142825E+01 eV
+   scf:   43   -18091.110290   -18091.110291   -18091.117958  0.000017 -2.800027  0.001558
+ts-Vha: -0.10147812E+01 eV
+   scf:   44   -18091.110300   -18091.110296   -18091.117959  0.000073 -2.799973  0.001495
+ts-Vha: -0.10146601E+01 eV
+   scf:   45   -18091.110296   -18091.110296   -18091.117959  0.000006 -2.799943  0.001362
+ts-Vha: -0.10143001E+01 eV
+   scf:   46   -18091.110293   -18091.110294   -18091.117959  0.000026 -2.799866  0.001022
+ts-Vha: -0.10144379E+01 eV
+   scf:   47   -18091.110293   -18091.110294   -18091.117959  0.000013 -2.799845  0.000846
 
 SCF Convergence by DM+H criterion
-max |DM_out - DM_in|         :     0.0000125617
-max |H_out - H_in|      (eV) :     0.0008564848
-SCF cycle converged after 34 iterations
+max |DM_out - DM_in|         :     0.0000129905
+max |H_out - H_in|      (eV) :     0.0008463849
+SCF cycle converged after 47 iterations
 
                      ***************************
                      *  WELCOME TO TRANSIESTA  *
                      ***************************
 
-ts-Vha: -0.10118134E+01 eV
 
 transiesta: created H and S sparsity pattern:
   <sparsity:(M of: G ((UC of: T T T sparsity for geom step 0)))
@@ -781,236 +816,278 @@ transiesta: created update sparsity pattern:
 transiesta: Determining an optimal tri-matrix using: atom+Left
 transiesta: Established a near-optimal partition for the tri-diagonal matrix.
 BTD partitions (4): 
-  [ [45] * 4 ]
+  [ [45]*4 ]
 transiesta: Matrix elements in % of full matrix:  62.50000 %
 
-transiesta: mem of electrodes (static):                     0.27MB
-transiesta: mem of global update arrays (static):           0.42MB
-transiesta: mem of master node sparse arrays:               0.00MB
-transiesta: mem of tri-diagonal matrices:                   0.62MB
-transiesta: Total memory usage:                             1.86MB
+transiesta: [memory] electrodes (static):             273.375 kB
+transiesta: [memory] global update arrays (static):   428.500 kB
+transiesta: [memory] bias sparse arrays (max):        572.062 kB
+transiesta: [memory] tri-diagonal matrices:           632.812 kB
+transiesta: [memory] total:                           1.862 MB
 
 transiesta: Charge distribution, target =    220.00000
 Total charge                  [Q]  :    220.00000
-Device                        [D]  :     87.39896
-Left                          [E1] :     65.40214
-Left                 / device [C1] :      0.61233
-Right                         [E2] :     65.40213
-Right                / device [C2] :      0.61234
-Other                         [O]  :      0.57209
-Excess charge                [dQ]  :  1.13687E-13
+Device                        [D]  :     87.39480
+Left                          [E1] :    65.39799
+Left                 / device [C1] :     0.61647
+Right                         [E2] :    65.39798
+Right                / device [C2] :     0.61648
+Other                         [O]  :      0.57627
+Excess charge                [dQ]  :  4.26326E-13
 
-ts-err-D: ij(   55,    55), M = 0.78089   , ew = -.39132E-1, em = 0.39132E-1. avg_em = -.23496E-04
-ts-err-E: ij(   55,    55), M = -3.3562   , ew = -.61351E-2, em = 0.61351E-2. avg_em = -.25613E-05
+ts-err-D: ij(   55,    55), M = 0.82196   , ew = -.10612   , em = 0.10612   . avg_em = -.68951E-04
+ts-err-E: ij(   55,    55), M = -3.6023   , ew = -.32384E-2, em = 0.32384E-2. avg_em = -.57253E-06
 ts-w-q:               qP1       qP2
-ts-w-q:            44.213    43.091
-ts-q:         D        E1        C1        E2        C2        dQ
-ts-q:    87.304    65.402     0.612    65.402     0.612 -.952E-01
-ts-Vha:  0.25760116E+01 eV
+ts-w-q:            44.503    42.932
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.434    65.398     0.616    65.398     0.616  0.396E-01
+ts-Vha:  0.27492690E+01 eV
 
 siesta: Program's energy decomposition (eV):
-siesta: Ebs     =     -2282.336084
+siesta: Ebs     =     -2343.765005
 siesta: Eions   =     23424.498348
 siesta: Ena     =      1167.255813
-siesta: Ekin    =     12728.018118
-siesta: Enl     =     -5899.727026
+siesta: Ekin    =     12727.680131
+siesta: Enl     =     -5898.510388
 siesta: Eso     =         0.000000
 siesta: Edftu   =         0.000000
-siesta: DEna    =       156.715550
-siesta: DUscf   =        18.375224
+siesta: DEna    =       156.156549
+siesta: DUscf   =        28.869914
 siesta: DUext   =         0.000000
-siesta: Exc     =     -2825.321210
+siesta: Ex      =     -2488.286123
+siesta: Ec      =      -338.468082
+siesta: Exc     =     -2826.754205
 siesta: eta*DQ  =         0.000000
 siesta: Emadel  =         0.000000
 siesta: Emeta   =         0.000000
 siesta: Emolmec =         0.000000
 siesta: Ekinion =         0.000000
-siesta: Eharris =    -18056.800249
-siesta: Etot    =    -18079.181878
-siesta: FreeEng =    -18079.181878
-ts: E-dN      =         0.560846
-ts: Band Stru =      -911.505395
-ts: Kinetic   =      5085.302004
-ts: Ion-elec  =    -92969.917608
-ts: Eharris   =    -22164.470306
-ts: Etot      =    -22186.851935
-ts: FreeEng   =    -22186.851935
+siesta: Eharris =    -18027.235665
+siesta: Etot    =    -18069.800533
+siesta: FreeEng =    -18069.800533
+ts: E-dN      =         0.785593
+ts: Band Stru =      -848.155050
+ts: Kinetic   =      5086.466153
+ts: Ion-elec  =    -92889.168241
+ts: Eharris   =    -22133.697482
+ts: Etot      =    -22176.262351
+ts: FreeEng   =    -22176.262351
 
         iscf     Eharris(eV)        E_KS(eV)     FreeEng(eV)     dDmax    Ef(eV) dHmax(eV)
-ts-scf:    1   -22164.470306   -22186.851935   -22186.851935  0.087752 -2.794515 24.526674
-timer: Routine,Calls,Time,% = TS             1       2.158   0.43
-ts-err-D: ij(  118,   118), M = 0.81087   , ew = 0.65892E-3, em = 0.65892E-3. avg_em = -.18943E-06
-ts-err-E: ij(   55,    55), M = -2.9923   , ew = -.13340E-3, em = 0.13340E-3. avg_em = -.36336E-08
+ts-scf:    1   -22133.697482   -22176.262351   -22176.262351  0.111680 -2.799845 33.139700
+timer: Routine,Calls,Time,% = TS             1       2.626   0.32
+ts-err-D: ij(  109,   109), M = 0.81829   , ew = 0.66527E-3, em = 0.66527E-3. avg_em = -.15830E-06
+ts-err-E: ij(   55,    55), M = -2.9916   , ew = -.12947E-3, em = 0.12947E-3. avg_em = -.83664E-08
 ts-w-q:               qP1       qP2
-ts-w-q:            43.285    44.289
-ts-q:         D        E1        C1        E2        C2        dQ
-ts-q:    87.574    65.402     0.612    65.402     0.612 0.175E+00
-ts-Vha: -0.55572452E+01 eV
-ts-scf:    2   -22152.181904   -22190.375493   -22190.375493  0.176223 -2.794515 25.664363
-ts-err-D: ij(   98,    98), M = 0.27927E-1, ew = 0.33713E-2, em = 0.33713E-2. avg_em = 0.37282E-05
-ts-err-E: ij(   98,  1007), M = 0.25352E-2, ew = -.13567E-2, em = -.13567E-2. avg_em = 0.15904E-05
+ts-w-q:            43.248    44.389
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.636    65.398     0.616    65.398     0.616  0.242E+00
+ts-Vha: -0.64256409E+01 eV
+ts-scf:    2   -22132.970851   -22187.745369   -22187.745369  0.210390 -2.799845 29.232236
+ts-err-D: ij(  107,   107), M = 0.28246E-1, ew = 0.34158E-2, em = 0.34158E-2. avg_em = 0.59378E-05
+ts-err-E: ij(  107,  1178), M = 0.25341E-2, ew = -.13703E-2, em = -.13703E-2. avg_em = 0.27251E-05
 ts-w-q:               qP1       qP2
-ts-w-q:            43.681    43.640
-ts-q:         D        E1        C1        E2        C2        dQ
-ts-q:    87.321    65.402     0.612    65.402     0.612 -.777E-01
-ts-Vha: -0.30337029E+00 eV
-ts-scf:    3   -22196.587445   -22198.127622   -22198.127622  0.091900 -2.794515  1.629567
-ts-err-D: ij(   80,    80), M = 0.33204E-1, ew = -.23918E-2, em = 0.23918E-2. avg_em = 0.53283E-05
-ts-err-E: ij(   80,    80), M = -.92891E-1, ew = -.11740E-2, em = 0.11740E-2. avg_em = 0.26273E-05
+ts-w-q:            43.724    43.573
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.298    65.398     0.616    65.398     0.616 -0.972E-01
+ts-Vha:  0.24970207E+00 eV
+ts-scf:    3   -22192.714172   -22197.473921   -22197.473921  0.114550 -2.799845  4.131497
+ts-err-D: ij(   80,    80), M = 0.33598E-1, ew = -.27719E-2, em = 0.27719E-2. avg_em = 0.63153E-05
+ts-err-E: ij(   80,    80), M = -.92811E-1, ew = -.13415E-2, em = 0.13415E-2. avg_em = 0.30510E-05
 ts-w-q:               qP1       qP2
-ts-w-q:            43.719    43.668
-ts-q:         D        E1        C1        E2        C2        dQ
-ts-q:    87.386    65.402     0.612    65.402     0.612 -.125E-01
-ts-Vha: -0.83033778E+00 eV
-ts-scf:    4   -22198.604304   -22198.398863   -22198.398863  0.004822 -2.794515  0.808659
-ts-err-D: ij(   98,    98), M = 0.28564E-1, ew = 0.28743E-2, em = 0.28743E-2. avg_em = 0.34730E-05
-ts-err-E: ij(  107,  7298), M = 0.24871E-2, ew = -.12468E-2, em = -.12468E-2. avg_em = 0.16083E-05
+ts-w-q:            43.741    43.672
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.414    65.398     0.616    65.398     0.616  0.189E-01
+ts-Vha: -0.94960134E+00 eV
+ts-scf:    4   -22198.566306   -22198.136052   -22198.136052  0.014130 -2.799845  0.764824
+ts-err-D: ij(   98,    98), M = 0.28618E-1, ew = 0.34039E-2, em = 0.34039E-2. avg_em = 0.71965E-05
+ts-err-E: ij(   80,    80), M = -.92846E-1, ew = -.14705E-2, em = 0.14705E-2. avg_em = 0.32845E-05
 ts-w-q:               qP1       qP2
-ts-w-q:            43.698    43.693
-ts-q:         D        E1        C1        E2        C2        dQ
-ts-q:    87.391    65.402     0.612    65.402     0.612 -.775E-02
-ts-Vha: -0.98268276E+00 eV
-ts-scf:    5   -22198.481395   -22198.459986   -22198.459986  0.005324 -2.794515  0.843497
-ts-err-D: ij(  107,   107), M = 0.29092E-1, ew = 0.32088E-2, em = 0.32088E-2. avg_em = 0.33726E-05
-ts-err-E: ij(   98,  1007), M = 0.24580E-2, ew = -.14358E-2, em = -.14358E-2. avg_em = 0.15912E-05
+ts-w-q:            43.751    43.667
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.418    65.398     0.616    65.398     0.616  0.233E-01
+ts-Vha: -0.93871814E+00 eV
+ts-scf:    5   -22198.123531   -22198.130484   -22198.130484  0.001210 -2.799845  1.019941
+ts-err-D: ij(  107,   107), M = 0.29229E-1, ew = 0.34138E-2, em = 0.34138E-2. avg_em = 0.16951E-05
+ts-err-E: ij(   98,  8027), M = 0.24717E-2, ew = -.15344E-2, em = -.15344E-2. avg_em = 0.71189E-06
 ts-w-q:               qP1       qP2
-ts-w-q:            43.725    43.672
-ts-q:         D        E1        C1        E2        C2        dQ
-ts-q:    87.397    65.402     0.612    65.402     0.612 -.205E-02
-ts-Vha: -0.91981024E+00 eV
-ts-scf:    6   -22198.417970   -22198.452662   -22198.452662  0.007096 -2.794515  0.486689
-ts-err-D: ij(   98,    98), M = 0.29161E-1, ew = 0.33990E-2, em = 0.33990E-2. avg_em = 0.26584E-05
-ts-err-E: ij(   98,  1007), M = 0.24510E-2, ew = -.15338E-2, em = -.15338E-2. avg_em = 0.12091E-05
+ts-w-q:            43.743    43.652
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.395    65.398     0.616    65.398     0.616 -0.237E-03
+ts-Vha: -0.82409970E+00 eV
+ts-scf:    6   -22197.929534   -22198.025524   -22198.025524  0.006390 -2.799845  1.213459
+ts-err-D: ij(  107,   107), M = 0.29310E-1, ew = 0.33868E-2, em = 0.33868E-2. avg_em = 0.36578E-05
+ts-err-E: ij(   98,  8027), M = 0.24472E-2, ew = -.15580E-2, em = -.15580E-2. avg_em = 0.16687E-05
 ts-w-q:               qP1       qP2
-ts-w-q:            43.711    43.681
-ts-q:         D        E1        C1        E2        C2        dQ
-ts-q:    87.393    65.402     0.612    65.402     0.612 -.622E-02
-ts-Vha: -0.93659138E+00 eV
-ts-scf:    7   -22198.456961   -22198.458475   -22198.458475  0.001383 -2.794515  0.118486
-ts-err-D: ij(  107,   107), M = 0.29283E-1, ew = 0.32203E-2, em = 0.32203E-2. avg_em = 0.22188E-05
-ts-err-E: ij(   98,  1007), M = 0.24639E-2, ew = -.14731E-2, em = -.14731E-2. avg_em = 0.10275E-05
+ts-w-q:            43.690    43.700
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.390    65.398     0.616    65.398     0.616 -0.455E-02
+ts-Vha: -0.10152788E+01 eV
+ts-scf:    7   -22198.069656   -22198.104694   -22198.104694  0.007885 -2.799845  0.927845
+ts-err-D: ij(   80,    80), M = 0.32894E-1, ew = -.24482E-2, em = 0.24482E-2. avg_em = 0.49855E-05
+ts-err-E: ij(   80,    80), M = -.93579E-1, ew = -.12005E-2, em = 0.12005E-2. avg_em = 0.29900E-05
 ts-w-q:               qP1       qP2
-ts-w-q:            43.708    43.682
-ts-q:         D        E1        C1        E2        C2        dQ
-ts-q:    87.390    65.402     0.612    65.402     0.612 -.904E-02
-ts-Vha: -0.90803414E+00 eV
-ts-scf:    8   -22198.433496   -22198.445618   -22198.445618  0.001735 -2.794515  0.112469
-ts-err-D: ij(  107,   107), M = 0.29344E-1, ew = 0.33839E-2, em = 0.33839E-2. avg_em = 0.22099E-05
-ts-err-E: ij(   98,  1007), M = 0.24585E-2, ew = -.15571E-2, em = -.15571E-2. avg_em = 0.10006E-05
+ts-w-q:            43.738    43.681
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.418    65.398     0.616    65.398     0.616  0.234E-01
+ts-Vha: -0.10950037E+01 eV
+ts-scf:    8   -22198.173746   -22198.168732   -22198.168732  0.006129 -2.799845  0.886493
+ts-err-D: ij(   98,    98), M = 0.29559E-1, ew = 0.29216E-2, em = 0.29216E-2. avg_em = 0.20610E-05
+ts-err-E: ij(  107,  1178), M = 0.24426E-2, ew = -.13535E-2, em = -.13535E-2. avg_em = 0.98910E-06
 ts-w-q:               qP1       qP2
-ts-w-q:            43.708    43.686
-ts-q:         D        E1        C1        E2        C2        dQ
-ts-q:    87.394    65.402     0.612    65.402     0.612 -.495E-02
-ts-Vha: -0.95006511E+00 eV
-ts-scf:    9   -22198.476694   -22198.463871   -22198.463871  0.000581 -2.794515  0.020182
-ts-err-D: ij(  107,   107), M = 0.29345E-1, ew = 0.33839E-2, em = 0.33839E-2. avg_em = 0.22310E-05
-ts-err-E: ij(   98,  1007), M = 0.24586E-2, ew = -.15572E-2, em = -.15572E-2. avg_em = 0.10111E-05
+ts-w-q:            43.671    43.677
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.348    65.398     0.616    65.398     0.616 -0.468E-01
+ts-Vha: -0.68323658E+00 eV
+ts-scf:    9   -22197.675427   -22197.930254   -22197.930254  0.007926 -2.799845  1.084836
+ts-err-D: ij(  107,   107), M = 0.30160E-1, ew = 0.30536E-2, em = 0.30536E-2. avg_em = 0.29888E-05
+ts-err-E: ij(   98,  8027), M = 0.23335E-2, ew = -.14636E-2, em = -.14636E-2. avg_em = 0.14602E-05
 ts-w-q:               qP1       qP2
-ts-w-q:            43.708    43.686
-ts-q:         D        E1        C1        E2        C2        dQ
-ts-q:    87.394    65.402     0.612    65.402     0.612 -.545E-02
-ts-Vha: -0.94495606E+00 eV
-ts-scf:   10   -22198.459270   -22198.461253   -22198.461253  0.000067 -2.794515  0.012544
-ts-err-D: ij(   98,    98), M = 0.29383E-1, ew = 0.33552E-2, em = 0.33552E-2. avg_em = 0.23425E-05
-ts-err-E: ij(   98,  1007), M = 0.24529E-2, ew = -.15488E-2, em = -.15488E-2. avg_em = 0.10711E-05
+ts-w-q:            43.709    43.690
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.399    65.398     0.616    65.398     0.616  0.446E-02
+ts-Vha: -0.10077488E+01 eV
+ts-scf:   10   -22198.265959   -22198.129671   -22198.129671  0.004824 -2.799845  0.159759
+ts-err-D: ij(  107,   107), M = 0.30023E-1, ew = 0.30208E-2, em = 0.30208E-2. avg_em = 0.31353E-05
+ts-err-E: ij(   98,  8027), M = 0.23761E-2, ew = -.14417E-2, em = -.14417E-2. avg_em = 0.15295E-05
 ts-w-q:               qP1       qP2
-ts-w-q:            43.708    43.686
-ts-q:         D        E1        C1        E2        C2        dQ
-ts-q:    87.393    65.402     0.612    65.402     0.612 -.550E-02
-ts-Vha: -0.94583480E+00 eV
-ts-scf:   11   -22198.457215   -22198.459225   -22198.459225  0.000436 -2.794515  0.009013
-ts-err-D: ij(   98,    98), M = 0.29402E-1, ew = 0.33120E-2, em = 0.33120E-2. avg_em = 0.24172E-05
-ts-err-E: ij(   98,  1007), M = 0.24486E-2, ew = -.15310E-2, em = -.15310E-2. avg_em = 0.11140E-05
+ts-w-q:            43.707    43.686
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.393    65.398     0.616    65.398     0.616 -0.162E-02
+ts-Vha: -0.95987817E+00 eV
+ts-scf:   11   -22198.085658   -22198.104249   -22198.104249  0.000625 -2.799845  0.081717
+ts-err-D: ij(  107,   107), M = 0.29965E-1, ew = 0.27829E-2, em = 0.27829E-2. avg_em = 0.32902E-05
+ts-err-E: ij(  107,  1178), M = 0.23877E-2, ew = -.13251E-2, em = -.13251E-2. avg_em = 0.16353E-05
 ts-w-q:               qP1       qP2
-ts-w-q:            43.708    43.685
-ts-q:         D        E1        C1        E2        C2        dQ
-ts-q:    87.393    65.402     0.612    65.402     0.612 -.548E-02
-ts-Vha: -0.94602415E+00 eV
-ts-scf:   12   -22198.457105   -22198.458156   -22198.458156  0.000272 -2.794515  0.006934
-ts-err-D: ij(   98,    98), M = 0.29398E-1, ew = 0.33176E-2, em = 0.33176E-2. avg_em = 0.24373E-05
-ts-err-E: ij(   98,  1007), M = 0.24475E-2, ew = -.15333E-2, em = -.15333E-2. avg_em = 0.11221E-05
+ts-w-q:            43.706    43.687
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.393    65.398     0.616    65.398     0.616 -0.180E-02
+ts-Vha: -0.96929281E+00 eV
+ts-scf:   12   -22198.105503   -22198.104814   -22198.104814  0.000361 -2.799845  0.058384
+ts-err-D: ij(   98,  3347), M = -.45581E-3, ew = -.19272E-2, em = -.19272E-2. avg_em = 0.27230E-05
+ts-err-E: ij(   98,  7118), M = 0.12333E-2, ew = 0.92099E-3, em = 0.92099E-3. avg_em = 0.20690E-05
 ts-w-q:               qP1       qP2
-ts-w-q:            43.708    43.686
-ts-q:         D        E1        C1        E2        C2        dQ
-ts-q:    87.394    65.402     0.612    65.402     0.612 -.523E-02
-ts-Vha: -0.94603574E+00 eV
-ts-scf:   13   -22198.459691   -22198.459025   -22198.459025  0.000098 -2.794515  0.003934
-ts-err-D: ij(   98,    98), M = 0.29406E-1, ew = 0.32810E-2, em = 0.32810E-2. avg_em = 0.24794E-05
-ts-err-E: ij(  107,  7298), M = 0.24450E-2, ew = -.15175E-2, em = -.15175E-2. avg_em = 0.11479E-05
+ts-w-q:            43.706    43.686
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.391    65.398     0.616    65.398     0.616 -0.331E-02
+ts-Vha: -0.96446871E+00 eV
+ts-scf:   13   -22198.094921   -22198.098908   -22198.098908  0.000457 -2.799845  0.057377
+ts-err-D: ij(   98,    98), M = 0.29811E-1, ew = 0.29940E-2, em = 0.29940E-2. avg_em = 0.35435E-05
+ts-err-E: ij(  107,  1178), M = 0.24170E-2, ew = -.14159E-2, em = -.14159E-2. avg_em = 0.17139E-05
 ts-w-q:               qP1       qP2
-ts-w-q:            43.708    43.686
-ts-q:         D        E1        C1        E2        C2        dQ
-ts-q:    87.394    65.402     0.612    65.402     0.612 -.488E-02
-ts-Vha: -0.94736605E+00 eV
-ts-scf:   14   -22198.460198   -22198.459755   -22198.459755  0.000160 -2.794515  0.003210
-ts-err-D: ij(   98,    98), M = 0.29405E-1, ew = 0.32854E-2, em = 0.32854E-2. avg_em = 0.24601E-05
-ts-err-E: ij(  107,  7298), M = 0.24459E-2, ew = -.15194E-2, em = -.15194E-2. avg_em = 0.11380E-05
+ts-w-q:            43.706    43.684
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.390    65.398     0.616    65.398     0.616 -0.468E-02
+ts-Vha: -0.95849665E+00 eV
+ts-scf:   14   -22198.090006   -22198.093560   -22198.093560  0.000549 -2.799845  0.040609
+ts-err-D: ij(   98,    98), M = 0.29834E-1, ew = 0.28639E-2, em = 0.28639E-2. avg_em = 0.35270E-05
+ts-err-E: ij(  107,  1178), M = 0.24091E-2, ew = -.13547E-2, em = -.13547E-2. avg_em = 0.17291E-05
 ts-w-q:               qP1       qP2
-ts-w-q:            43.708    43.686
-ts-q:         D        E1        C1        E2        C2        dQ
-ts-q:    87.394    65.402     0.612    65.402     0.612 -.492E-02
-ts-Vha: -0.94723473E+00 eV
-ts-scf:   15   -22198.459918   -22198.459839   -22198.459839  0.000041 -2.794515  0.001819
-ts-err-D: ij(   98,    98), M = 0.29406E-1, ew = 0.32794E-2, em = 0.32794E-2. avg_em = 0.24660E-05
-ts-err-E: ij(   98,  1007), M = 0.24457E-2, ew = -.15168E-2, em = -.15168E-2. avg_em = 0.11418E-05
+ts-w-q:            43.707    43.684
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.391    65.398     0.616    65.398     0.616 -0.361E-02
+ts-Vha: -0.95900076E+00 eV
+ts-scf:   15   -22198.100884   -22198.097682   -22198.097682  0.000401 -2.799845  0.037262
+ts-err-D: ij(  107,   107), M = 0.29743E-1, ew = 0.32504E-2, em = 0.32504E-2. avg_em = 0.29972E-05
+ts-err-E: ij(  107,  1178), M = 0.24222E-2, ew = -.15329E-2, em = -.15329E-2. avg_em = 0.13909E-05
 ts-w-q:               qP1       qP2
-ts-w-q:            43.708    43.686
-ts-q:         D        E1        C1        E2        C2        dQ
-ts-q:    87.394    65.402     0.612    65.402     0.612 -.490E-02
-ts-Vha: -0.94728425E+00 eV
-ts-scf:   16   -22198.459869   -22198.459863   -22198.459863  0.000023 -2.794515  0.001681
-ts-err-D: ij(   98,    98), M = 0.29404E-1, ew = 0.32857E-2, em = 0.32857E-2. avg_em = 0.24742E-05
-ts-err-E: ij(  107,  1178), M = 0.24458E-2, ew = -.15196E-2, em = -.15196E-2. avg_em = 0.11447E-05
+ts-w-q:            43.706    43.683
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.389    65.398     0.616    65.398     0.616 -0.579E-02
+ts-Vha: -0.95382045E+00 eV
+ts-scf:   16   -22198.085265   -22198.090359   -22198.090359  0.000690 -2.799845  0.037824
+ts-err-D: ij(  107,   107), M = 0.29744E-1, ew = 0.32521E-2, em = 0.32521E-2. avg_em = 0.27648E-05
+ts-err-E: ij(  107,  1178), M = 0.24159E-2, ew = -.15335E-2, em = -.15335E-2. avg_em = 0.12722E-05
 ts-w-q:               qP1       qP2
-ts-w-q:            43.708    43.686
-ts-q:         D        E1        C1        E2        C2        dQ
-ts-q:    87.394    65.402     0.612    65.402     0.612 -.490E-02
-ts-Vha: -0.94731608E+00 eV
-ts-scf:   17   -22198.460006   -22198.459931   -22198.459931  0.000017 -2.794515  0.001230
-ts-err-D: ij(   98,    98), M = 0.29402E-1, ew = 0.32941E-2, em = 0.32941E-2. avg_em = 0.24794E-05
-ts-err-E: ij(   98,  1007), M = 0.24460E-2, ew = -.15232E-2, em = -.15232E-2. avg_em = 0.11459E-05
+ts-w-q:            43.706    43.683
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.389    65.398     0.616    65.398     0.616 -0.533E-02
+ts-Vha: -0.95082734E+00 eV
+ts-scf:   17   -22198.096156   -22198.093378   -22198.093378  0.000356 -2.799845  0.014401
+ts-err-D: ij(   98,    98), M = 0.29770E-1, ew = 0.32024E-2, em = 0.32024E-2. avg_em = 0.32635E-05
+ts-err-E: ij(   98,  8027), M = 0.24123E-2, ew = -.15120E-2, em = -.15120E-2. avg_em = 0.15321E-05
 ts-w-q:               qP1       qP2
-ts-w-q:            43.708    43.686
-ts-q:         D        E1        C1        E2        C2        dQ
-ts-q:    87.394    65.402     0.612    65.402     0.612 -.497E-02
-ts-Vha: -0.94701633E+00 eV
-ts-scf:   18   -22198.459578   -22198.459714   -22198.459714  0.000019 -2.794515  0.000877
+ts-w-q:            43.707    43.684
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.390    65.398     0.616    65.398     0.616 -0.461E-02
+ts-Vha: -0.95417594E+00 eV
+ts-scf:   18   -22198.098361   -22198.096304   -22198.096304  0.000213 -2.799845  0.004007
+ts-err-D: ij(   98,    98), M = 0.29768E-1, ew = 0.32066E-2, em = 0.32066E-2. avg_em = 0.32433E-05
+ts-err-E: ij(  107,  1178), M = 0.24125E-2, ew = -.15139E-2, em = -.15139E-2. avg_em = 0.15211E-05
+ts-w-q:               qP1       qP2
+ts-w-q:            43.707    43.684
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.390    65.398     0.616    65.398     0.616 -0.467E-02
+ts-Vha: -0.95411458E+00 eV
+ts-scf:   19   -22198.096008   -22198.096127   -22198.096127  0.000013 -2.799845  0.004572
+ts-err-D: ij(  107,   107), M = 0.29765E-1, ew = 0.32186E-2, em = 0.32186E-2. avg_em = 0.32811E-05
+ts-err-E: ij(  107,  1178), M = 0.24137E-2, ew = -.15192E-2, em = -.15192E-2. avg_em = 0.15390E-05
+ts-w-q:               qP1       qP2
+ts-w-q:            43.706    43.683
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.390    65.398     0.616    65.398     0.616 -0.497E-02
+ts-Vha: -0.95276050E+00 eV
+ts-scf:   20   -22198.094712   -22198.095277   -22198.095277  0.000080 -2.799845  0.002978
+ts-err-D: ij(   98,    98), M = 0.29767E-1, ew = 0.32127E-2, em = 0.32127E-2. avg_em = 0.33346E-05
+ts-err-E: ij(  107,  1178), M = 0.24137E-2, ew = -.15166E-2, em = -.15166E-2. avg_em = 0.15674E-05
+ts-w-q:               qP1       qP2
+ts-w-q:            43.706    43.683
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.390    65.398     0.616    65.398     0.616 -0.487E-02
+ts-Vha: -0.95367507E+00 eV
+ts-scf:   21   -22198.096200   -22198.095809   -22198.095809  0.000051 -2.799845  0.001478
+ts-err-D: ij(  107,   107), M = 0.29764E-1, ew = 0.32178E-2, em = 0.32178E-2. avg_em = 0.33408E-05
+ts-err-E: ij(  107,  1178), M = 0.24144E-2, ew = -.15188E-2, em = -.15188E-2. avg_em = 0.15697E-05
+ts-w-q:               qP1       qP2
+ts-w-q:            43.706    43.683
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.390    65.398     0.616    65.398     0.616 -0.489E-02
+ts-Vha: -0.95360871E+00 eV
+ts-scf:   22   -22198.095907   -22198.095850   -22198.095850  0.000019 -2.799845  0.001369
+ts-err-D: ij(  107,   107), M = 0.29759E-1, ew = 0.32278E-2, em = 0.32278E-2. avg_em = 0.33469E-05
+ts-err-E: ij(  107,  1178), M = 0.24157E-2, ew = -.15232E-2, em = -.15232E-2. avg_em = 0.15713E-05
+ts-w-q:               qP1       qP2
+ts-w-q:            43.706    43.683
+ts-q:         D        E1        C1        E2        C2         dQ
+ts-q:    87.390    65.398     0.616    65.398     0.616 -0.488E-02
+ts-Vha: -0.95363672E+00 eV
+ts-scf:   23   -22198.096286   -22198.096069   -22198.096069  0.000039 -2.799845  0.000921
 
 SCF Convergence by DM+H+dQ criterion
-max |DM_out - DM_in|         :     0.0000187362
-max |H_out - H_in|      (eV) :     0.0008769014
-     Q(TS) - Q(dev)          :    -0.0049714448
-SCF cycle converged after 18 iterations
+max |DM_out - DM_in|         :     0.0000387402
+max |H_out - H_in|      (eV) :     0.0009207466
+     Q(TS) - Q(dev)          :    -0.0048824417
+SCF cycle converged after 23 iterations
 
 Using DM_out to compute the final energy and forces
 No. of atoms with KB's overlaping orbs in proc 0. Max # of overlaps:     144     237
-ts-Vha: -0.94701633E+00 eV
+ts-Vha: -0.95363672E+00 eV
 
-siesta: E_KS(eV) =           -18090.2402
+siesta: E_KS(eV) =           -18090.8602
 
-siesta: E_KS - E_eggbox =    -18090.2402
+siesta: E_KS - E_eggbox =    -18090.8602
 
 siesta: Atomic forces (eV/Ang):
 ----------------------------------------
-   Tot    0.000000   -0.000000    0.336294
+   Tot   -0.000000   -0.000000    0.337201
 ----------------------------------------
-   Max    0.245483
-   Res    0.063458    sqrt( Sum f_i^2 / 3N )
+   Max    0.246316
+   Res    0.063776    sqrt( Sum f_i^2 / 3N )
 ----------------------------------------
-   Max    0.245483    constrained
+   Max    0.246316    constrained
 
 ts: Atomic forces (eV/Ang):
 ----------------------------------------
-   Tot   -0.000000   -0.000000    0.103454
+   Tot    0.000000   -0.000000    0.105822
 ----------------------------------------
-   Max    0.245483
-   Res    0.067720    sqrt( Sum f_i^2 / 3N )
+   Max    0.246316
+   Res    0.068170    sqrt( Sum f_i^2 / 3N )
 ----------------------------------------
-   Max    0.245483    constrained
+   Max    0.246316    constrained
 
-Stress tensor Voigt[x,y,z,yz,xz,xy] (kbar):       38.71       38.71       27.49        0.00       -0.00        0.00
-(Free)E + p*V (eV/cell)   -18100.2632
-Target enthalpy (eV/cell)   -18090.2402
+Stress tensor Voigt[x,y,z,yz,xz,xy] (kbar):       40.41       40.41       28.94        0.00        0.00        0.00
+(Free)E + p*V (eV/cell)   -18101.3459
+Target enthalpy (eV/cell)   -18090.8602
 
 mulliken: Atomic and Orbital Populations:
 
@@ -1018,132 +1095,136 @@ Species: Au
 Atom  Qatom  Qorb
                6s      5dxy    5dyz    5dz2    5dxz    5dx2-y2 6Ppy    6Ppz    
                6Ppx    
-   1 11.002   1.007   1.907   1.918   1.893   1.918   1.907   0.151   0.149
+   1 11.002   1.005   1.907   1.918   1.892   1.918   1.907   0.152   0.150
+              0.152
+   2 11.002   1.005   1.907   1.918   1.892   1.918   1.907   0.152   0.150
+              0.152
+   3 10.996   0.996   1.906   1.923   1.889   1.923   1.906   0.151   0.153
               0.151
-   2 11.002   1.007   1.907   1.918   1.893   1.918   1.907   0.151   0.149
+   4 10.996   0.996   1.906   1.923   1.889   1.923   1.906   0.151   0.153
               0.151
-   3 10.996   0.998   1.906   1.923   1.889   1.923   1.906   0.150   0.152
-              0.150
-   4 10.996   0.998   1.906   1.923   1.889   1.923   1.906   0.150   0.152
-              0.150
-   5 10.999   1.005   1.909   1.919   1.890   1.919   1.909   0.151   0.146
-              0.151
-   6 10.999   1.005   1.909   1.919   1.890   1.919   1.909   0.151   0.146
-              0.151
-   7 10.976   0.989   1.908   1.927   1.888   1.927   1.908   0.146   0.136
-              0.146
-   8 10.976   0.989   1.908   1.927   1.888   1.927   1.908   0.146   0.136
-              0.146
-   9 11.032   1.062   1.891   1.938   1.926   1.938   1.891   0.138   0.112
+   5 10.999   1.003   1.909   1.918   1.890   1.918   1.909   0.153   0.147
+              0.153
+   6 10.999   1.003   1.909   1.918   1.890   1.918   1.909   0.153   0.147
+              0.153
+   7 10.976   0.987   1.907   1.927   1.888   1.927   1.907   0.147   0.138
+              0.147
+   8 10.976   0.987   1.907   1.927   1.888   1.927   1.907   0.147   0.138
+              0.147
+   9 11.032   1.060   1.890   1.937   1.926   1.937   1.890   0.138   0.114
               0.138
-  10 11.032   1.062   1.891   1.938   1.926   1.938   1.891   0.138   0.112
+  10 11.032   1.060   1.890   1.937   1.926   1.937   1.890   0.138   0.114
               0.138
-  11 11.021   1.058   1.891   1.938   1.926   1.938   1.891   0.137   0.106
-              0.137
-  12 11.021   1.058   1.891   1.938   1.926   1.938   1.891   0.137   0.106
-              0.137
-  13 10.974   0.988   1.908   1.928   1.888   1.928   1.908   0.146   0.136
-              0.146
-  14 10.974   0.988   1.908   1.928   1.888   1.928   1.908   0.146   0.136
-              0.146
-  15 10.999   1.005   1.909   1.919   1.890   1.919   1.909   0.151   0.146
+  11 11.021   1.056   1.891   1.938   1.925   1.938   1.891   0.138   0.107
+              0.138
+  12 11.021   1.056   1.891   1.938   1.925   1.938   1.891   0.138   0.107
+              0.138
+  13 10.975   0.986   1.907   1.927   1.887   1.927   1.907   0.148   0.137
+              0.148
+  14 10.975   0.986   1.907   1.927   1.887   1.927   1.907   0.148   0.137
+              0.148
+  15 10.999   1.003   1.909   1.918   1.890   1.918   1.909   0.153   0.147
+              0.153
+  16 10.999   1.003   1.909   1.918   1.890   1.918   1.909   0.153   0.147
+              0.153
+  17 10.996   0.996   1.906   1.923   1.889   1.923   1.906   0.151   0.153
               0.151
-  16 10.999   1.005   1.909   1.919   1.890   1.919   1.909   0.151   0.146
+  18 10.996   0.996   1.906   1.923   1.889   1.923   1.906   0.151   0.153
               0.151
-  17 10.996   0.998   1.906   1.923   1.889   1.923   1.906   0.150   0.152
-              0.150
-  18 10.996   0.998   1.906   1.923   1.889   1.923   1.906   0.150   0.152
-              0.150
-  19 11.002   1.007   1.907   1.918   1.893   1.918   1.907   0.151   0.149
-              0.151
-  20 11.002   1.007   1.907   1.918   1.893   1.918   1.907   0.151   0.149
-              0.151
+  19 11.002   1.005   1.907   1.918   1.892   1.918   1.907   0.152   0.150
+              0.152
+  20 11.002   1.005   1.907   1.918   1.892   1.918   1.907   0.152   0.150
+              0.152
 
 mulliken: Qtot =      219.995
 
 transiesta: Charge distribution, target =    220.00000
-Total charge                  [Q]  :    219.99503
-Device                        [D]  :     87.39399
-Left                          [E1] :     65.40214
-Left                 / device [C1] :      0.61233
-Right                         [E2] :     65.40213
-Right                / device [C2] :      0.61234
-Other                         [O]  :      0.57209
-Excess charge                [dQ]  : -4.97144E-03
+Total charge                  [Q]  :    219.99512
+Device                        [D]  :     87.38992
+Left                          [E1] :    65.39799
+Left                 / device [C1] :     0.61647
+Right                         [E2] :    65.39798
+Right                / device [C2] :     0.61648
+Other                         [O]  :      0.57627
+Excess charge                [dQ]  : -4.88244E-03
 
 
-coxmol: Writing XMOL coordinates into file ts_au_111_capacitor_x2.xyz                                          
+coxmol: Writing XMOL coordinates into file ts_au_111_capacitor_x2.xyz                                                                                                                                                                                                          
 
 siesta: Program's energy decomposition (eV):
-siesta: Ebs     =     -1525.404942
+siesta: Ebs     =     -1526.341678
 siesta: Eions   =     23424.498348
 siesta: Ena     =      1167.255813
-siesta: Ekin    =     12734.649440
-siesta: Enl     =     -5902.769870
+siesta: Ekin    =     12731.919060
+siesta: Enl     =     -5901.783372
 siesta: Eso     =         0.000000
 siesta: Edftu   =         0.000000
-siesta: DEna    =       154.493817
-siesta: DUscf   =         7.567346
+siesta: DEna    =       155.249602
+siesta: DUscf   =         7.641877
 siesta: DUext   =         0.000000
-siesta: Exc     =     -2826.938375
+siesta: Ex      =     -2488.225414
+siesta: Ec      =      -338.419393
+siesta: Exc     =     -2826.644807
 siesta: eta*DQ  =         0.000000
 siesta: Emadel  =         0.000000
 siesta: Emeta   =         0.000000
 siesta: Emolmec =         0.000000
 siesta: Ekinion =         0.000000
-siesta: Eharris =    -18090.240039
-siesta: Etot    =    -18090.240176
-siesta: FreeEng =    -18090.240176
-ts: E-dN      =         0.011365
-ts: Band Stru =      -593.436124
-ts: Kinetic   =      5091.933326
-ts: Ion-elec  =    -93754.939154
-ts: Eharris   =    -22198.459578
-ts: Etot      =    -22198.459714
-ts: FreeEng   =    -22198.459714
+siesta: Eharris =    -18090.860392
+siesta: Etot    =    -18090.860174
+siesta: FreeEng =    -18090.860174
+ts: E-dN      =         0.011516
+ts: Band Stru =      -593.631723
+ts: Kinetic   =      5090.705082
+ts: Ion-elec  =    -93753.230005
+ts: Eharris   =    -22198.096286
+ts: Etot      =    -22198.096069
+ts: FreeEng   =    -22198.096069
 
 siesta: Final energy (eV):
-siesta:  Band Struct. =   -1525.404942
-siesta:       Kinetic =   12734.649440
-siesta:       Hartree =   43365.599018
+siesta:  Band Struct. =   -1526.341678
+siesta:       Kinetic =   12731.919060
+siesta:       Hartree =   43365.188040
 siesta:       Edftu   =       0.000000
 siesta:       Eso     =       0.000000
 siesta:    Ext. field =       0.000000
-siesta:   Exch.-corr. =   -2826.938375
-siesta:  Ion-electron =  -97289.424365
+siesta:         Exch. =   -2488.225414
+siesta:         Corr. =    -338.419393
+siesta:   Exch.-corr. =   -2826.644807
+siesta:  Ion-electron =  -97287.196573
 siesta:       Ion-ion =   25925.874106
 siesta:       Ekinion =       0.000000
-siesta:         Total =  -18090.240176
-ts:         E-dN  =       0.011365
-ts:     Band Stru =    -593.436124
-ts:       Kinetic =    5091.933326
-ts:      Ion-elec =  -93754.939154
-ts:         Total =  -22198.459714
-siesta:         Fermi =      -2.794515
+siesta:         Total =  -18090.860174
+ts:         E-dN  =       0.011516
+ts:     Band Stru =    -593.631723
+ts:       Kinetic =    5090.705082
+ts:      Ion-elec =  -93753.230005
+ts:         Total =  -22198.096069
+siesta:         Fermi =      -2.799845
 
 siesta: Atomic forces (eV/Ang):
-siesta:      1   -0.000000   -0.000000    0.149226
-siesta:      2    0.000000   -0.000000    0.149226
-siesta:      3   -0.000000   -0.000000    0.007403
-siesta:      4    0.000000   -0.000000    0.007403
-siesta:      5    0.000000    0.000000    0.014869
-siesta:      6   -0.000000    0.000000    0.014869
-siesta:      7   -0.000000   -0.000000   -0.187328
-siesta:      8    0.000000   -0.000000   -0.187328
-siesta:      9    0.000000   -0.000000   -0.024811
-siesta:     10    0.000000   -0.000000   -0.024811
-siesta:     11   -0.000000    0.000000    0.018383
-siesta:     12    0.000000    0.000000    0.018383
-siesta:     13   -0.000000    0.000000    0.245483
-siesta:     14    0.000000    0.000000    0.245483
-siesta:     15   -0.000000   -0.000000   -0.021206
-siesta:     16    0.000000   -0.000000   -0.021206
-siesta:     17   -0.000000   -0.000000    0.004650
-siesta:     18    0.000000   -0.000000    0.004650
-siesta:     19    0.000000    0.000000   -0.038522
-siesta:     20    0.000000    0.000000   -0.038522
+siesta:      1   -0.000000   -0.000000    0.148892
+siesta:      2    0.000000   -0.000000    0.148892
+siesta:      3   -0.000000   -0.000000    0.006948
+siesta:      4    0.000000   -0.000000    0.006948
+siesta:      5    0.000000    0.000000    0.014938
+siesta:      6   -0.000000    0.000000    0.014938
+siesta:      7   -0.000000   -0.000000   -0.187054
+siesta:      8   -0.000000   -0.000000   -0.187054
+siesta:      9    0.000000   -0.000000   -0.034079
+siesta:     10    0.000000   -0.000000   -0.034079
+siesta:     11   -0.000000    0.000000    0.027729
+siesta:     12    0.000000    0.000000    0.027729
+siesta:     13   -0.000000    0.000000    0.246316
+siesta:     14   -0.000000    0.000000    0.246316
+siesta:     15   -0.000000   -0.000000   -0.021392
+siesta:     16    0.000000   -0.000000   -0.021392
+siesta:     17   -0.000000   -0.000000    0.005108
+siesta:     18    0.000000   -0.000000    0.005108
+siesta:     19    0.000000    0.000000   -0.038803
+siesta:     20    0.000000    0.000000   -0.038803
 siesta: ----------------------------------------
-siesta:    Tot    0.000000   -0.000000    0.336294
+siesta:    Tot   -0.000000   -0.000000    0.337201
 
 ts: Atomic forces (eV/Ang):
 ts:      1    0.000000    0.000000    0.000000
@@ -1152,14 +1233,14 @@ ts:      3    0.000000    0.000000    0.000000
 ts:      4    0.000000    0.000000    0.000000
 ts:      5    0.000000    0.000000    0.000000
 ts:      6    0.000000    0.000000    0.000000
-ts:      7   -0.000000   -0.000000   -0.187328
-ts:      8    0.000000   -0.000000   -0.187328
-ts:      9    0.000000   -0.000000   -0.024811
-ts:     10    0.000000   -0.000000   -0.024811
-ts:     11   -0.000000    0.000000    0.018383
-ts:     12    0.000000    0.000000    0.018383
-ts:     13   -0.000000    0.000000    0.245483
-ts:     14    0.000000    0.000000    0.245483
+ts:      7   -0.000000   -0.000000   -0.187054
+ts:      8   -0.000000   -0.000000   -0.187054
+ts:      9    0.000000   -0.000000   -0.034079
+ts:     10    0.000000   -0.000000   -0.034079
+ts:     11   -0.000000    0.000000    0.027729
+ts:     12    0.000000    0.000000    0.027729
+ts:     13   -0.000000    0.000000    0.246316
+ts:     14   -0.000000    0.000000    0.246316
 ts:     15    0.000000    0.000000    0.000000
 ts:     16    0.000000    0.000000    0.000000
 ts:     17    0.000000    0.000000    0.000000
@@ -1167,28 +1248,28 @@ ts:     18    0.000000    0.000000    0.000000
 ts:     19    0.000000    0.000000    0.000000
 ts:     20    0.000000    0.000000    0.000000
 ts: ----------------------------------------
-ts:    Tot   -0.000000   -0.000000    0.103454
+ts:    Tot    0.000000   -0.000000    0.105822
 
 siesta: Stress tensor (static) (eV/Ang**3):
-siesta:     0.024163    0.000000   -0.000000
-siesta:     0.000000    0.024163    0.000000
-siesta:    -0.000000    0.000000    0.017157
+siesta:     0.025223    0.000000   -0.000000
+siesta:     0.000000    0.025223    0.000000
+siesta:     0.000000    0.000000    0.018060
 
 siesta: Cell volume =        459.191485 Ang**3
 
 siesta: Pressure (static):
 siesta:                Solid            Molecule  Units
-siesta:          -0.00023773         -0.00024151  Ry/Bohr**3
-siesta:          -0.02182757         -0.02217500  eV/Ang**3
-siesta:         -34.97200806        -35.52864862  kBar
-(Free)E+ p_basis*V_orbitals  =      -18076.381703
-(Free)Eharris+ p_basis*V_orbitals  =      -18076.381567
-ts-Vha: -0.94701633E+00 eV
+siesta:          -0.00024870         -0.00025410  Ry/Bohr**3
+siesta:          -0.02283518         -0.02333084  eV/Ang**3
+siesta:         -36.58638785        -37.38052476  kBar
+(Free)E+ p_basis*V_orbitals  =      -18077.001702
+(Free)Eharris+ p_basis*V_orbitals  =      -18077.001920
+ts-Vha: -0.95363672E+00 eV
 
-dhscf: Vacuum level (max, mean) =    2.364776    2.183334 eV
+dhscf: Vacuum level (max, mean) =    2.383974    2.200068 eV
 
 cite: Please see "ts_au_111_capacitor_x2.bib" for an exhaustive BiBTeX file.
-cite: Please clearly indicate Siesta version in published work: v4.1.5-1-g384057250
+cite: Please clearly indicate Siesta version in published work: 5.0.0-alpha-56-g943f9ccc9
 cite: This calculation has made use of the following articles
 cite: which are encouraged to be cited in a published work.
         Primary SIESTA paper
@@ -1198,5 +1279,6 @@ cite: which are encouraged to be cited in a published work.
         TranSiesta N-electrode
           DOI: www.doi.org/10.1016/j.cpc.2016.09.022
 
->> End of run:   3-NOV-2021  22:11:24
+
+>> End of run:  29-APR-2022   9:34:01
 Job completed

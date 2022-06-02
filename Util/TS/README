@@ -24,6 +24,12 @@ by:
     www.github.com/zerothi/sisl
 
 
+- tscontour
+  Create contours from an fdf file.
+  This may be handy if you want to use the contours in external
+  programs, or simply check them before running the full calculation.
+  It reads only the chemical potential and contour blocks.
+
 - ts2ts
   A small utility which takes an old input file for TranSIESTA
   and converts it into the new input format.

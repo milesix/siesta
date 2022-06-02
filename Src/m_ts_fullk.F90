@@ -90,7 +90,7 @@ contains
     use class_zSpData1D
     use class_zSpData2D
 
-    use m_ts_electype
+    use ts_electrode_m
     ! Self-energy read
     use m_ts_gf
     ! Self-energy expansion
@@ -129,7 +129,7 @@ contains
 ! * INPUT variables  *
 ! ********************
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     integer, intent(in) :: nq(N_Elec), uGF(N_Elec)
     real(dp), intent(in) :: ucell(3,3)
     integer, intent(in) :: nspin, na_u, lasto(0:na_u)
@@ -181,6 +181,9 @@ contains
 ! ******************* Miscalleneous variables ****************
     integer :: ierr, no_u_TS, off, no, no_col, no_Els
 ! ************************************************************
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_pre_Econtours', 1)
+#endif
 
 #ifdef TRANSIESTA_DEBUG
     call write_debug( 'PRE transiesta mem' )
@@ -218,7 +221,7 @@ contains
     no_Els = 0
     no_col = no_u_TS
     do iEl = 1 , N_Elec
-      no = TotUsedOrbs(Elecs(iEl))
+      no = Elecs(iEl)%device_orbitals()
       if ( Elecs(iEl)%DM_update == 0 ) then
         no_col = no_col - no
       end if
@@ -248,7 +251,7 @@ contains
        ! it is required that prepare_GF_inv is called
        ! immediately (which it is)
        ! Hence the GF must NOT be used in between these two calls!
-       io = TotUsedOrbs(Elecs(iEl))
+       io = Elecs(iEl)%device_orbitals()
        Elecs(iEl)%Sigma => GF(no+1:no+io**2)
        no = no + io ** 2
 
@@ -257,7 +260,7 @@ contains
     if ( IsVolt ) then
        ! we need only allocate one work-array for
        ! Gf.G.Gf^\dagger
-       call re_alloc(GFGGF_work,1,maxval(TotUsedOrbs(Elecs))**2,routine='transiesta')
+       call re_alloc(GFGGF_work,1,maxval(Elecs%device_orbitals())**2,routine='transiesta')
     end if
 
     ! Create the Fake distribution
@@ -305,6 +308,11 @@ contains
     call itt_init  (SpKp,end1=nspin,end2=ts_kpoint_scf%N)
     ! point to the index iterators
     call itt_attach(SpKp,cur1=ispin,cur2=ikpt)
+
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_pre_Econtours', 2)
+    call timer('TS_Econtours', 1)
+#endif
 
     do while ( .not. itt_step(SpKp) )
 
@@ -531,7 +539,7 @@ contains
              if ( cE%fake ) cycle ! in case we implement an MPI communication solution
 
              ! offset and number of orbitals
-             no = TotUsedOrbs(Elecs(iEl))
+             no = Elecs(iEl)%device_orbitals()
 
              call GF_Gamma_GF(Elecs(iEl), no_u_TS, no, &
                   Gf(no_u_TS*off+1), zwork, size(GFGGF_work), GFGGF_work)
@@ -612,6 +620,11 @@ contains
 
     end do ! spin
 
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_Econtours', 2)
+    call timer('TS_post_Econtours', 1)
+#endif
+
     call itt_destroy(SpKp)
 
 #ifdef TRANSIESTA_DEBUG
@@ -652,6 +665,9 @@ contains
 #ifdef TRANSIESTA_DEBUG
     call write_debug( 'POS transiesta mem' )
 #endif
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_post_Econtours', 2)
+#endif
 
   end subroutine ts_fullk
 
@@ -671,7 +687,7 @@ contains
     use class_Sparsity
     use class_zSpData1D
     use class_zSpData2D
-    use m_ts_electype
+    use ts_electrode_m
 
     ! The DM and EDM equivalent matrices
     type(zSpData2D), intent(inout) :: DM
@@ -683,7 +699,7 @@ contains
     ! The Green function
     complex(dp), intent(in) :: GF(no1,no2)
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! the index of the partition
     integer, intent(in) :: DMidx
     integer, intent(in), optional :: EDMidx
@@ -704,6 +720,9 @@ contains
     integer :: sp, sind
     integer :: iu, iuT, ju, juT, i1, i2
     logical :: lis_eq, hasEDM, calc_q
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_add_DM', 1)
+#endif
 
     lis_eq = .true.
     if ( present(is_eq) ) lis_eq = is_eq
@@ -865,15 +884,18 @@ contains
 
       end if
     end if
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_add_DM', 2)
+#endif
 
   contains
     
      function offset(N_Elec,Elecs,io)
       integer, intent(in) :: N_Elec
-      type(Elec), intent(in) :: Elecs(N_Elec)
+      type(electrode_t), intent(in) :: Elecs(N_Elec)
       integer, intent(in) :: io
       integer :: offset
-      offset = sum(TotUsedOrbs(Elecs(:)), &
+      offset = sum(Elecs(:)%device_orbitals(), &
           MASK=(Elecs(:)%DM_update == 0) .and. Elecs(:)%idx_o <= io )
     end function offset
 
@@ -887,7 +909,7 @@ contains
 
     use class_zSpData1D
     use class_Sparsity
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_cctype, only : ts_c_idx
     use m_ts_full_scat, only : insert_Self_Energies
 
@@ -896,7 +918,7 @@ contains
     integer, intent(in) :: no_u
     complex(dp), intent(out) :: GFinv(no_u,no_u)
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! The Hamiltonian and overlap sparse matrices
     type(zSpData1D), intent(inout) :: spH,  spS
 

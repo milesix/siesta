@@ -16,7 +16,6 @@ module m_ts_electrode
   implicit none
 
   public :: create_Green
-  public :: init_Electrode_HS
   public :: calc_next_GS_Elec
 
   private
@@ -71,8 +70,8 @@ contains
 ! ***********************
     integer,     intent(in) :: no
     complex(dp), intent(in) :: ZE 
-    complex(dp), intent(in) :: H00(no*no),S00(no*no)
-    complex(dp), intent(in) :: H01(no*no),S01(no*no)
+    complex(dp), intent(in) :: H00(:), S00(:)
+    complex(dp), intent(in) :: H01(:), S01(:)
     real(dp), intent(in) :: accu
 
     integer, intent(in) :: nwork
@@ -82,9 +81,9 @@ contains
 ! ***********************
 ! * OUTPUT variables    *
 ! ***********************
-    complex(dp), intent(inout), target :: GS(no*no)
-    complex(dp), intent(inout), target :: zwork(nwork)
-    real(dp), intent(inout) :: DOS(no)
+    complex(dp), intent(inout), target :: GS(:)
+    complex(dp), intent(inout), target :: zwork(:)
+    real(dp), intent(inout) :: DOS(:)
     real(dp), intent(inout) :: T
 
     integer, intent(inout), optional :: iterations
@@ -190,16 +189,16 @@ contains
 
       ! rh = -(Z*S01-H01) ,j<no
       ! rh = -(Z*S10-H10) ,j>no
-      call zcopy(nosq*2, alpha, 1, rh, 1)
+      call zcopy(nosq*2, alpha(1), 1, rh(1), 1)
       ! alpha and beta are always consecutive
       ! so we can do with one call
       !     call zcopy(nosq, alpha, 1, rh, 1)
       !     call zcopy(nosq, beta, 1, rh(nosq+1), 1)
-      call zcopy(nosq, GB, 1, w, 1)
+      call zcopy(nosq, GB(1), 1, w(1), 1)
 
       ! rh =  rh1^(-1)*rh
       ! rh =  t0
-      call zgesv(no, no2, w, no, ipiv, rh, no, ierr)
+      call zgesv(no, no2, w(1), no, ipiv, rh(1), no, ierr)
       if ( ierr /= 0 ) then
         write(*,*) 'ERROR: SSR_sGreen_DOS 1 MATRIX INVERSION FAILED'
         write(*,*) 'ERROR: LAPACK INFO = ',ierr
@@ -209,21 +208,21 @@ contains
       call switch_alpha_beta_rh1(as_first)
 
       ! alpha = -(Z*S01-H01)*t0
-      call GEMM ('N','N',no,no,no,z_1,rh1(1),no,rh(1),no,z_0,alpha,no)
+      call GEMM ('N','N',no,no,no,z_1,rh1(1),no,rh(1),no,z_0,alpha(1),no)
       ! beta  = -(Z*S10-H10)*t0 ??
-      call GEMM ('N','N',no,no,no,z_1,rh1(nosq+1),no,rh(nosq+1),no,z_0,beta,no)
+      call GEMM ('N','N',no,no,no,z_1,rh1(nosq+1),no,rh(nosq+1),no,z_0,beta(1),no)
 
       ! ba    = (Z*S10-H10)*t0b
-      call GEMM ('N','N',no,no,no,z_m1,rh1(nosq+1),no,rh(1),no,z_0,w,no)
+      call GEMM ('N','N',no,no,no,z_m1,rh1(nosq+1),no,rh(1),no,z_0,w(1),no)
 
-      call zaxpy(nosq, z_1, w, 1, GB, 1)
-      call zaxpy(nosq, z_1, w, 1, gsL, 1)
+      call zaxpy(nosq, z_1, w(1), 1, GB(1), 1)
+      call zaxpy(nosq, z_1, w(1), 1, gsL(1), 1)
 
       ! ab    = (Z*S01-H01)*t0
-      call GEMM ('N','N',no,no,no,z_m1,rh1(1),no,rh(nosq+1),no,z_0,w,no)
+      call GEMM ('N','N',no,no,no,z_m1,rh1(1),no,rh(nosq+1),no,z_0,w(1),no)
 
-      call zaxpy(nosq, z_1, w, 1, GB, 1)
-      call zaxpy(nosq, z_1, w, 1, gsR, 1)
+      call zaxpy(nosq, z_1, w(1), 1, GB(1), 1)
+      call zaxpy(nosq, z_1, w(1), 1, gsR(1), 1)
 
       ro = abs(w(1))
       do i = 2 , nosq
@@ -303,7 +302,7 @@ contains
         ! we return a non-inverted matrix
         ! hence prohibit the inversion of the matrix
         ! by moving data to another work-array
-        call zcopy(nosq, gsR, 1, rh1, 1)
+        call zcopy(nosq, gsR(1), 1, rh1(1), 1)
         gsR => rh1(1:nosq)
 
       end if
@@ -325,11 +324,11 @@ contains
     
 
     ! Calculate bulk transmision
-    call GEMM ('N','N',no,no,no,z_1,GB,no,alpha,no,z_0,w,no)
-    call GEMM ('N','C',no,no,no,z_1,w,no,GB,no,z_0,alpha,no)
+    call GEMM ('N','N',no,no,no,z_1,GB(1),no,alpha(1),no,z_0,w(1),no)
+    call GEMM ('N','C',no,no,no,z_1,w(1),no,GB(1),no,z_0,alpha(1),no)
 
     ! Calculate bulk-transmission (same as matrix product + trace)
-    T = T - real(zdotu(nosq,alpha,1,beta,1),dp)
+    T = T - real(zdotu(nosq,alpha(1),1,beta(1),1),dp)
 
 
     ! We now calculate the density of states...
@@ -356,15 +355,15 @@ contains
     ! DOS = diag{ G_b * S00 + 
     !             G_l * (H01 - E * S01 ) * G_b * S10 +
     !             G_r * (H10 - E * S10 ) * G_b * S01   }
-    call GEMM ('N','N',no,no,no,z_1,gsL,no,alpha,no,z_0,w,no)
+    call GEMM ('N','N',no,no,no,z_1,gsL(1),no,alpha(1),no,z_0,w(1),no)
     ! Note that GB is transposed, (so transpose back here)
-    call GEMM ('N','T',no,no,no,z_1,w,no,GB,no,z_0,rh(i),no)
+    call GEMM ('N','T',no,no,no,z_1,w(1),no,GB(1),no,z_0,rh(i),no)
     ! Note that GB is transposed, (so transpose back here)
-    call GEMM ('C','T',no,no,no,z_1,beta ,no,GB,no,z_0,rh(j),no)
+    call GEMM ('C','T',no,no,no,z_1,beta(1),no,GB(1),no,z_0,rh(j),no)
     ! Transpose the matrix product to align the following
     ! dot product (reduces the need to calculate the total
     ! matrix before we take the trace)
-    call GEMM ('T','T',no,no,no,z_1,rh(j),no,gsR,no,z_0,w,no)
+    call GEMM ('T','T',no,no,no,z_1,rh(j),no,gsR(1),no,z_0,w(1),no)
 
     ! We resort to use the zdotu/zdotc to not calculate
     ! unnessary elements (for large systems this should
@@ -447,8 +446,8 @@ contains
 ! ***********************
     integer,     intent(in) :: no
     complex(dp), intent(in) :: ZE 
-    complex(dp), intent(in) :: H00(no*no),S00(no*no)
-    complex(dp), intent(in) :: H01(no*no),S01(no*no)
+    complex(dp), intent(in) :: H00(:),S00(:)
+    complex(dp), intent(in) :: H01(:),S01(:)
     real(dp), intent(in) :: accu
 
     integer,     intent(in) :: nwork
@@ -458,8 +457,8 @@ contains
 ! ***********************
 ! * OUTPUT variables    *
 ! ***********************
-    complex(dp), intent(inout), target :: GS(no*no)
-    complex(dp), intent(inout), target :: zwork(nwork)
+    complex(dp), intent(inout), target :: GS(:)
+    complex(dp), intent(inout), target :: zwork(:)
 
     integer, intent(inout), optional :: iterations
 
@@ -547,17 +546,17 @@ contains
 
       ! rh = -(Z*S01-H01) ,j<no
       ! rh = -(Z*S10-H10) ,j>no
-      call zcopy(nosq*2, alpha, 1, rh, 1)
+      call zcopy(nosq*2, alpha(1), 1, rh(1), 1)
       ! alpha and beta are always consecutive
       ! so we can do with one call
       !     call zcopy(nosq, alpha, 1, rh, 1)
       !     call zcopy(nosq, beta, 1, rh(nosq+1), 1)
       ! w = Z*S00-H00
-      call zcopy(nosq, GB, 1, w, 1)
+      call zcopy(nosq, GB(1), 1, w(1), 1)
 
       ! rh =  rh1^(-1)*rh
       ! rh =  t0
-      call zgesv(no, no2, w, no, ipiv, rh, no, ierr)
+      call zgesv(no, no2, w(1), no, ipiv, rh(1), no, ierr)
 
       if ( ierr /= 0 ) then
         write(*,*) 'ERROR: SSR_sGreen_NoDOS 1 MATRIX INVERSION FAILED'
@@ -568,18 +567,18 @@ contains
       call switch_alpha_beta_rh1(as_first)
 
       ! alpha = -(Z*S01-H01)*t0
-      call GEMM ('N','N',no,no,no,z_1,rh1(1),no,rh(1),no,z_0,alpha,no)
+      call GEMM ('N','N',no,no,no,z_1,rh1(1),no,rh(1),no,z_0,alpha(1),no)
       ! beta  = -(Z*S10-H10)*t0 ??
-      call GEMM ('N','N',no,no,no,z_1,rh1(nosq+1),no,rh(nosq+1),no,z_0,beta,no)
+      call GEMM ('N','N',no,no,no,z_1,rh1(nosq+1),no,rh(nosq+1),no,z_0,beta(1),no)
 
       ! gb = gb + [ba    = (Z*S10-H10)*t0b]
-      call GEMM ('N','N',no,no,no,z_m1,rh1(nosq+1),no,rh(1),no,z_1,GB,no)
+      call GEMM ('N','N',no,no,no,z_m1,rh1(nosq+1),no,rh(1),no,z_1,GB(1),no)
 
       ! ab    = (Z*S01-H01)*t0
-      call GEMM ('N','N',no,no,no,z_m1,rh1(1),no,rh(nosq+1),no,z_0,w,no)
+      call GEMM ('N','N',no,no,no,z_m1,rh1(1),no,rh(nosq+1),no,z_0,w(1),no)
 
-      call zaxpy(nosq, z_1, w, 1, GB, 1)
-      call zaxpy(nosq, z_1, w, 1, GS, 1)
+      call zaxpy(nosq, z_1, w(1), 1, GB(1), 1)
+      call zaxpy(nosq, z_1, w(1), 1, GS(1), 1)
 
       ro = abs(w(1))
       do i = 2 , nosq
@@ -643,72 +642,54 @@ contains
     use precision,  only : dp
     use parallel, only: IONode
     use units,      only : eV
+    use byte_count_m, only: byte_count_t
 
-    use m_ts_electype
+    use ts_electrode_m
 
     ! Input variables
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
     ! Number of energy-points
     integer :: NE
     ! Number of k-points
     integer :: nkpt
 
     ! Local variables
-    integer :: i, j
-    real(dp) :: b
+    type(byte_count_t) :: mem
+    character(len=32) :: c_tmp
+    integer :: no
     ! Whether the electrode is pre-expanded...
     integer :: nq
-    logical :: pre_expand
 
     if ( .not. IONode ) return
 
-    nq = El%Bloch%size()
-    pre_expand = El%pre_expand > 0 .and. nq > 1
 
-    write(*,'(/,2a)') 'Calculating all surface Green functions for: ',trim(name(El))
-    write(*,'(a,f14.5,1x,a)') &
-         ' Fermi level shift in electrode (chemical potential) : ',El%mu%mu/eV,' eV'
-
-    ! Show the number of used atoms and orbitals
-    write(*,'(a,i6,'' / '',i6)') ' Atoms available    / used atoms   : ', &
-         El%na_u,El%na_used
-    write(*,'(a,i6,'' / '',i6)') ' Orbitals available / used orbitals: ', &
-         El%no_u,El%no_used
-
-    write(*,'(1x,a,i0)') 'Total self-energy calculations: ',nq*NE*nkpt
-
-    ! We show them in units of reciprocal lattice vectors
-    do i = 1 , 3
-      if ( El%Bloch%B(i) > 1 ) then
-        write(*,'(3(a,i0))') ' Bloch expansion k-points in A_',i, &
-            ' direction [b_',i,']: ',El%Bloch%B(i)
-      end if
-    end do
-
+    write(*,'(/,2a)') 'Calculating surface Green functions for: ',trim(El%name)
     write(*,'(2a)') ' Saving surface Green functions in: ',trim(El%GFfile)
 
-    if ( pre_expand .and. El%pre_expand == 1 ) then
-       ! only the SSG is expanded
-       b = El%nspin * nkpt * ( 2 + NE * nq )
+    call mem%reset()
+
+    ! All this is basically nothing, but why not have it...
+    call mem%add(4, 12) ! basic integers
+    call mem%add(4, El%no_used + 1) ! lasto
+    call mem%add(8, 3 + El%na_used, 3) ! cell and coordinates
+    call mem%add(8, nkpt, 4) ! k + weight
+    call mem%add(16, NE) ! energy-points
+
+    nq = El%Bloch%size()
+    if ( El%pre_expand > 0 ) then
+      no = nq
     else
-       b = El%nspin * nkpt * ( 2 + NE ) * nq
+      no = 1
+    end if
+    if ( El%pre_expand == 1 ) then
+      ! only the SSG is expanded
+      call mem%add(16, El%no_used ** 2, El%nspin, nkpt, 2 + NE * nq, no)
+    else
+      call mem%add(16, El%no_used ** 2, El%nspin, nkpt, 2 + NE, nq, no)
     end if
 
-    ! Correct estimated file-size for fully expanded
-    if ( pre_expand ) b = b * nq
-
-    ! to complex double precision
-    b = b * El%no_used ** 2 * 16._dp
-
-    ! to MB
-    b = b / 1024._dp ** 2
-
-    if ( b > 2001._dp ) then
-       b = b / 1024._dp
-       write(*,'(a,f10.3,a)') ' Estimated file size: ',b,' GB'
-    else
-       write(*,'(a,f10.3,a)') ' Estimated file size: ',b,' MB'
-    end if
+    call mem%get_string(c_tmp)
+    write(*,'(2a)') ' Estimated file size: ', trim(c_tmp)
 
   end subroutine print_Elec_Green
 
@@ -738,10 +719,10 @@ contains
     use mpi_siesta, only : MPI_double_complex
     use mpi_siesta, only : MPI_double_precision
 #endif
-    use m_ts_electype
+    use ts_electrode_m
     use m_mat_invert
 
-    use m_ts_elec_se, only : update_UC_expansion_A
+    use m_ts_elec_se, only : update_UC_expansion_A1D
 
     use class_Sparsity
     use class_dSpData1D
@@ -752,7 +733,7 @@ contains
 ! ***********************
 ! * INPUT variables     *
 ! ***********************
-    type(Elec), intent(inout) :: El  ! The electrode 
+    type(electrode_t), intent(inout) :: El  ! The electrode
     integer,  intent(in)      :: nkpnt ! Number of k-points
     real(dp), intent(in)      :: kpoint(3,nkpnt) ! k-points
     real(dp), intent(in)      :: kweight(nkpnt) ! weights of kpoints
@@ -854,7 +835,17 @@ contains
     ! Calculate offsets
     n_s = size(El%isc_off,dim=2)
     allocate(sc_off(3,n_s))
-    sc_off(:,:) = matmul(El%cell,El%isc_off)
+    do i = 1, n_s
+      sc_off(1,i) = El%cell(1,1) * El%isc_off(1,i) + &
+          El%cell(1,2) * El%isc_off(2,i) + &
+          El%cell(1,3) * El%isc_off(3,i)
+      sc_off(2,i) = El%cell(2,1) * El%isc_off(1,i) + &
+          El%cell(2,2) * El%isc_off(2,i) + &
+          El%cell(2,3) * El%isc_off(3,i)
+      sc_off(3,i) = El%cell(3,1) * El%isc_off(1,i) + &
+          El%cell(3,2) * El%isc_off(2,i) + &
+          El%cell(3,3) * El%isc_off(3,i)
+    end do
 
     ! Print information on file-size and electrode type.
     call print_Elec_Green(El, NEn, nkpnt)
@@ -971,7 +962,7 @@ contains
        end if
        
        ! Init kpoint, in reciprocal vector units ( from CONTACT ucell)
-       call Elec_kpt(El,ucell,kpoint(:,ikpt),bkpt, opt = 2)
+       call El%kpoint_convert(ucell,kpoint(:,ikpt),bkpt, opt = 2)
        ! We need to save the k-point for the "expanded" super-cell
        El%bkpt_cur = bkpt
        
@@ -985,9 +976,9 @@ contains
           S01 => zHS((3*nq+iqpt-1)*nS+1:(3*nq+iqpt)*nS)
 
           ! init qpoint in reciprocal lattice vectors
-          kpt = bkpt(:) + q_exp(El,iqpt)
+          kpt(:) = bkpt(:) + El%unfold_k(iqpt)
           ! Convert to 1/Bohr
-          call kpoint_convert(rcell,kpt,kq,-2)
+          call kpoint_convert(rcell,kpt(1),kq(1),-2)
 
           ! Setup the transfer matrix and the intra cell at the k-point and q-point
           ! Calculate transfer matrices @Ef (including the chemical potential)
@@ -1110,7 +1101,7 @@ contains
 
              if ( pre_expand ) then
                 ! Expand this energy-point
-                call update_UC_expansion_A(nuou_E,no_X,El,nq, &
+                call update_UC_expansion_A1D(nuou_E,no_X,El,nq, &
                      El%na_used,El%lasto_used,Gq,X)
                 if ( reduce_size ) then
                    call mat_invert(X(1:n_X),zwork(1:n_X),&
@@ -1220,6 +1211,8 @@ contains
     call memory('D','Z',size(zHS),'create_green')
     deallocate(zHS)
 
+    deallocate(sc_off)
+
     if ( CalcDOS ) deallocate(lDOS)
 
     if ( pre_expand ) deallocate(X)
@@ -1305,7 +1298,7 @@ contains
       allocate(kE(3,nkpnt))
       do i = 1 , nkpnt
          ! Store the k-points in units of reciprocal lattice
-         call Elec_kpt(El,ucell,kpoint(:,i),kE(:,i), opt = 2)
+         call El%kpoint_convert(ucell,kpoint(:,i),kE(:,i), opt = 2)
       end do
       write(uGF) kE, kweight
       deallocate(kE)
@@ -1324,10 +1317,10 @@ contains
       write(uGF) ikpt, 1, ce(1) ! k-point and energy point
       if ( reduce_size ) then
          if ( pre_expand .and. El%pre_expand > 1 ) then
-            call update_UC_expansion_A(nuou_E,no_X,El,nq,&
+            call update_UC_expansion_A1D(nuou_E,no_X,El,nq,&
                  El%na_used,El%lasto_used,Hq,X)
             write(uGF) X
-            call update_UC_expansion_A(nuou_E,no_X,El,nq,&
+            call update_UC_expansion_A1D(nuou_E,no_X,El,nq,&
                  El%na_used,El%lasto_used,Sq,X)
             write(uGF) X
          else
@@ -1338,10 +1331,10 @@ contains
          H00 => zHS(      1:nq*nS  )
          S00 => zHS(nq*nS+1:nq*nS*2)
          if ( pre_expand .and. El%pre_expand > 1 ) then
-            call update_UC_expansion_A(nuo_E,no_X,El,nq, &
+            call update_UC_expansion_A1D(nuo_E,no_X,El,nq, &
                  El%na_used,El%lasto_used,H00,X)
             write(uGF) X
-            call update_UC_expansion_A(nuo_E,no_X,El,nq,&
+            call update_UC_expansion_A1D(nuo_E,no_X,El,nq,&
                  El%na_used,El%lasto_used,S00,X)
             write(uGF) X
          else
@@ -1387,80 +1380,18 @@ contains
   end subroutine create_Green
 
 
-  subroutine init_Electrode_HS(El)
-    use fdf, only: fdf_get
-#ifdef MPI
-    use mpi_siesta
-#endif
-    use class_Sparsity
-    use class_dSpData1D
-    use class_dSpData2D
-    use m_ts_electype
-
-    type(Elec), intent(inout) :: El
-#ifdef MPI
-    integer :: error
-#endif
-    logical :: neglect_conn
-    
-    ! Read-in and create the corresponding transfer-matrices
-    call delete(El) ! ensure clean electrode
-    call read_Elec(El,Bcast=.true.)
-
-    if ( .not. associated(El%isc_off) ) then
-       call die('An electrode file needs to be a non-Gamma calculation. &
-            &Ensure good periodicity in the T-direction.')
-    end if
-
-    ! Create the default sparsity patterns in the sub-spaces needed
-    ! for the self-energy calculations
-    ! This is also important to create before running
-    ! check_connectivity because of used-atoms possibly being set.
-    call create_sp2sp01(El)
-
-    ! print out the precision of the electrode (whether it extends
-    ! beyond first principal layer)
-    if ( check_connectivity(El) ) then
-       neglect_conn = .true.
-    else
-       neglect_conn = fdf_get('TS.Elecs.Neglect.Principal', .false.)
-#ifdef TBTRANS
-       neglect_conn = fdf_get('TBT.Elecs.Neglect.Principal', neglect_conn)
-#endif
-    end if
-    
-#ifdef MPI
-    call MPI_Barrier(MPI_Comm_World,error)
-#endif
-    if ( .not. neglect_conn ) then
-       call die('Electrode connectivity is not perfect, &
-            &refer to the manual for achieving a perfect electrode.')
-    end if
-    
-    ! Clean-up, we will not need these!
-    ! we should not be very memory hungry now, but just in case...
-    call delete(El%H)
-    call delete(El%S)
-   
-    ! We do not accept onlyS files
-    if ( .not. initialized(El%H00) ) then
-       call die('An electrode file must contain the Hamiltonian')
-    end if
-
-    call delete(El%sp)
-
-  end subroutine init_Electrode_HS
-
-
 !**********
 ! Create the Hamiltonian for the electrode as well
 ! as creating the transfer matrix.
 !**********
   subroutine set_HS_Transfer_1d(ispin,El,n_s,sc_off,kq, &
-       no,Hk,Sk,Hk_T,Sk_T)
+      no,Hk,Sk,Hk_T,Sk_T)
+
+    use iso_c_binding
+
     use sys, only : die
     use precision, only : dp
-    use m_ts_electype
+    use ts_electrode_m
     use geom_helper, only : ucorb
     use class_Sparsity
     use class_dSpData1D
@@ -1470,17 +1401,24 @@ contains
 ! * INPUT variables     *
 ! ***********************
     integer, intent(in)    :: ispin, no
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     integer, intent(in) :: n_s
     real(dp), intent(in) :: sc_off(3,0:n_s-1)
     real(dp), intent(in) :: kq(3)   ! k + q-point in [1/Bohr]
 ! ***********************
 ! * OUTPUT variables    *
 ! ***********************
-    complex(dp), dimension(no**2) :: Hk,Sk,Hk_T,Sk_T
+    complex(dp), dimension(:), target, intent(inout) :: Hk,Sk,Hk_T,Sk_T
+
+    complex(dp), dimension(:,:), pointer :: Hk2D,Sk2D,Hk_T2D,Sk_T2D
+
+    call c_f_pointer(c_loc(Hk), Hk2D, [no, no])
+    call c_f_pointer(c_loc(Sk), Sk2D, [no, no])
+    call c_f_pointer(c_loc(Hk_T), Hk_T2D, [no, no])
+    call c_f_pointer(c_loc(Sk_T), Sk_T2D, [no, no])
 
     call set_HS_Transfer_2d(ispin,El,n_s,sc_off,kq, &
-         no,Hk,Sk,Hk_T,Sk_T)
+        no,Hk2D,Sk2D,Hk_T2D,Sk_T2D)
     
   end subroutine set_HS_Transfer_1d
   
@@ -1488,7 +1426,7 @@ contains
        no,Hk,Sk,Hk_T,Sk_T)
     use sys, only : die
     use precision, only : dp
-    use m_ts_electype
+    use ts_electrode_m
     use geom_helper, only : ucorb
     use class_Sparsity
     use class_dSpData1D
@@ -1498,14 +1436,14 @@ contains
 ! * INPUT variables     *
 ! ***********************
     integer, intent(in) :: ispin, no
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     integer, intent(in) :: n_s
     real(dp), intent(in) :: sc_off(3,0:n_s-1)
-    real(dp), intent(in) :: kq(3)   ! k + q-point in [1/Bohr]
+    real(dp), intent(in) :: kq(3) ! k + q-point in [1/Bohr]
 ! ***********************
 ! * OUTPUT variables    *
 ! ***********************
-    complex(dp), dimension(no,no) :: Hk, Sk, Hk_T, Sk_T
+    complex(dp), dimension(:,:) :: Hk, Sk, Hk_T, Sk_T
 
 ! ***********************
 ! * LOCAL variables     *
@@ -1589,9 +1527,10 @@ contains
   end subroutine set_HS_Transfer_2d
 
   subroutine calc_next_GS_Elec(El,ispin,bkpt,Z,nzwork,in_zwork,DOS,T)
+    use iso_c_binding
     use precision,  only : dp
 
-    use m_ts_electype
+    use ts_electrode_m
     use m_mat_invert
 
     use class_Sparsity
@@ -1603,7 +1542,7 @@ contains
     ! ***********************
     ! * INPUT variables     *
     ! ***********************
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     integer, intent(in) :: ispin
     ! the k-point in reciprocal units of the electrode
     ! also with / Rep
@@ -1627,6 +1566,7 @@ contains
 
     ! Electrode transfer and hamiltonian matrix
     complex(dp), pointer :: H00(:), H01(:), S00(:), S01(:)
+
     complex(dp), pointer :: zwork(:)
     complex(dp), pointer :: zHS(:) => null()
     real(dp), allocatable :: sc_off(:,:)
@@ -1654,14 +1594,14 @@ contains
     ! constants for this electrode
     nuo_E  = El%no_u
     nS     = nuo_E ** 2
-    nuou_E = El%no_used
+    nuou_E = El%used_orbitals()
     nuS    = nuou_E ** 2
     ! create expansion k-points
     nq     = El%Bloch%size()
     ! We also need to invert to get the contribution in the
     ! reduced region
     reduce_size = nuo_E /= nuou_E
-    nuouT_E = TotUsedOrbs(El)
+    nuouT_E = El%device_orbitals()
 
     if ( calc_DOS ) then
        if ( nuo_E > size(DOS) ) &
@@ -1673,7 +1613,17 @@ contains
 
     n_s = size(El%isc_off,dim=2)
     allocate(sc_off(3,n_s))
-    sc_off(:,:) = matmul(El%cell,El%isc_off)
+    do i = 1, n_s
+      sc_off(1,i) = El%cell(1,1) * El%isc_off(1,i) + &
+          El%cell(1,2) * El%isc_off(2,i) + &
+          El%cell(1,3) * El%isc_off(3,i)
+      sc_off(2,i) = El%cell(2,1) * El%isc_off(1,i) + &
+          El%cell(2,2) * El%isc_off(2,i) + &
+          El%cell(2,3) * El%isc_off(3,i)
+      sc_off(3,i) = El%cell(3,1) * El%isc_off(1,i) + &
+          El%cell(3,2) * El%isc_off(2,i) + &
+          El%cell(3,3) * El%isc_off(3,i)
+    end do
     
     ! whether we already have the H and S set correctly, 
     ! update accordingly, it will save a bit of time, but not much
@@ -1784,21 +1734,27 @@ contains
     q_loop: do iq = 1 , nq
 
        ! init qpoint in reciprocal lattice vectors
-       kpt(:) = bkpt(:) + q_exp(El,iq)
+       kpt(:) = bkpt(:) + El%unfold_k(iq)
       
        ! Convert to 1/Bohr
-       call kpoint_convert(rcell,kpt,kq,-2)
+       call kpoint_convert(rcell,kpt(1),kq(1),-2)
 
        ! Calculate transfer matrices @Ef (including the chemical potential)
        call set_HS_Transfer(ispin, El, n_s,sc_off, kq, &
             nuo_E, H00,S00,H01,S01)
        
        if ( .not. same_k ) then
-          ! we only need to copy over the data if we don't already have it calculated
+         if ( reduce_size ) then
+           ! we only need to copy over the data if we don't already have it calculated
 !$OMP parallel default(shared)
-          call copy_over(is_left,nuo_E,H00,nuou_E,El%HA(:,:,iq),off)
-          call copy_over(is_left,nuo_E,S00,nuou_E,El%SA(:,:,iq),off)
+           call copy_over(is_left,nuo_E,H00,nuou_E,El%HA(:,:,iq),off)
+           call copy_over(is_left,nuo_E,S00,nuou_E,El%SA(:,:,iq),off)
 !$OMP end parallel
+         else
+           ! means that it is the full thing
+           call zcopy(nuS, H00(1), 1, El%HA(1,1,iq), 1)
+           call zcopy(nuS, S00(1), 1, El%SA(1,1,iq), 1)
+         end if
        end if
 
        if ( .not. reduce_size ) then
