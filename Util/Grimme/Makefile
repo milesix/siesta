@@ -16,16 +16,18 @@ VPATH:=$(shell pwd)/../../Src
 EXE = fdf2grimme
 default: $(EXE)
 
+override WITH_MPI=
+override WITH_NETCDF=
+
 MAIN_OBJDIR:=$(shell cd -P -- ../../\$(OBJDIR) && pwd -P)
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
-DEFS:=$(DEFS_PREFIX) -UMPI $(DEFS) $(DEFS_PREFIX) -UMPI
-FPPFLAGS:=$(DEFS_PREFIX) -UMPI $(FPPFLAGS) $(DEFS_PREFIX) -UMPI
 INCFLAGS:=$(NETCDF_INCFLAGS) $(FDF_INCFLAGS) $(INCFLAGS)
 
 # Uncomment the following line for debugging support

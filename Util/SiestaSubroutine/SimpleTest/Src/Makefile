@@ -35,6 +35,8 @@ default: simple_pipes_serial simple_sockets_serial simple_mpi_serial \
 MAIN_OBJDIR:=$(shell cd -P -- ../../../../\$(OBJDIR) && pwd -P)
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
 #
 TOP_LEVEL=$(shell pwd)/../../../../Src
 VPATH:=$(TOP_LEVEL)

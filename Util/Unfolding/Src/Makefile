@@ -23,6 +23,7 @@ OBJDIR=Obj
 MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 FC_DEFAULT := $(FC)
 FC_SERIAL  ?= $(FC_DEFAULT)

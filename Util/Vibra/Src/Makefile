@@ -38,7 +38,7 @@ OBJDIR=Obj
 MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
-
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
@@ -47,9 +47,6 @@ FC:=$(FC_SERIAL)         # Make it non-recursive
 override WITH_MPI=
 override WITH_NETCDF=
 
-DEFS:=$(DEFS_PREFIX)-UMPI $(DEFS_PREFIX)-UCDF $(DEFS) $(DEFS_PREFIX)-UMPI $(DEFS_PREFIX)-UCDF
-FPPFLAGS:=$(DEFS_PREFIX)-UMPI $(DEFS_PREFIX)-UCDF $(FPPFLAGS) $(DEFS_PREFIX)-UMPI $(DEFS_PREFIX)-UCDF
-
 # Define these if desired
 #
 ### FPPFLAGS += -DSANKEY_DIAG
@@ -57,9 +54,9 @@ FPPFLAGS:=$(DEFS_PREFIX)-UMPI $(DEFS_PREFIX)-UCDF $(FPPFLAGS) $(DEFS_PREFIX)-UMP
 
 # Objects from Siesta
 SYSOBJ = $(SYS).o
-SIESTA_OBJS = local_sys.o precision.o units.o m_io.o io.o parallel.o pxf.o reclat.o $(SYSOBJ)
+SIESTA_OBJS = local_sys.o precision.o units.o m_io.o io.o reclat.o $(SYSOBJ)
 
-COMMON_OBJS = recoor.o
+COMMON_OBJS = recoor.o 
 BUILD_OBJS = fcbuild.o $(COMMON_OBJS)
 VIBRA_OBJS = vibra.o hermdp.o klines.o outbands.o $(COMMON_OBJS)
 

@@ -29,6 +29,7 @@ OBJDIR=Obj
 VPATH=../../Src
 #
 include ../../$(OBJDIR)/arch.make
+include ../../$(OBJDIR)/check_for_build_mk.mk
 #
 # This is needed on some systems to avoid loading the parallel libraries, which
 # sometimes force running on queuing systems

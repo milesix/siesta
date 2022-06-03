@@ -17,6 +17,7 @@ OBJDIR=Obj
 all: grid2cdf cdf2xsf cdf2grid grid2val grid2cube grid_rotate g2c_ng cdf_laplacian
 #
 include ../../$(OBJDIR)/arch.make
+include ../../$(OBJDIR)/check_for_build_mk.mk
 #
 # This is needed on some systems to avoid loading the parallel libraries, which
 # sometimes force running on queuing systems

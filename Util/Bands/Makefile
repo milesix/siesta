@@ -27,14 +27,14 @@ OBJDIR=Obj
 all: eigfat2plot gnubands
 
 include ../../$(OBJDIR)/arch.make
+include ../../$(OBJDIR)/check_for_build_mk.mk
 
+override WITH_MPI=
 
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
-DEFS:=$(DEFS) $(DEFS_PREFIX)-UMPI 
-FPPFLAGS:=$(FPPFLAGS) $(DEFS_PREFIX)-UMPI 
 INCFLAGS:=$(INCFLAGS) $(NETCDF_INCFLAGS)
 
 OBJS=m_getopts.o
