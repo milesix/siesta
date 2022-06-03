@@ -16,6 +16,8 @@ OBJDIR=Obj
 EXE = ts2ts
 default: $(EXE)
 
+override WITH_MPI=
+
 VPATH:=$(shell pwd)/../../../Src
 MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
@@ -27,7 +29,6 @@ dep:
           $(VPATH)/*.f $(VPATH)/*.f90 $(VPATH)/*.F $(VPATH)/*.F90 $(VPATH)/*.T90
 	@sed -i -e 's/\.T90\.o:/.o:/g' Makefile
 
-override WITH_MPI=
 
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)

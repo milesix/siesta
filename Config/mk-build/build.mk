@@ -205,17 +205,16 @@ ifeq ($(WITH_NETCDF),1)
    FPPFLAGS += $(FPPFLAGS_CDF) 
    INCFLAGS += $(NETCDF_INCFLAGS)
    LIBS += $(NETCDF_LIBS)
-endif
 
-ifeq ($(WITH_NCDF),1)
- ifneq ($(WITH_NETCDF),1)
-   $(error For NCDF you need to define also WITH_NETCDF=1 in your arch.make)
- endif
- FPPFLAGS += $(DEFS_PREFIX)-DNCDF $(DEFS_PREFIX)-DNCDF_4
- ifeq ($(WITH_NCDF_PARALLEL),1)
-   FPPFLAGS += $(DEFS_PREFIX)-DNCDF_PARALLEL
- endif
- COMP_LIBS += libncdf.a libfdict.a
+   ifeq ($(WITH_NCDF),1)
+     FPPFLAGS += $(DEFS_PREFIX)-DNCDF $(DEFS_PREFIX)-DNCDF_4
+     COMP_LIBS += libncdf.a libfdict.a
+
+     ifeq ($(WITH_NCDF_PARALLEL),1)
+       FPPFLAGS += $(DEFS_PREFIX)-DNCDF_PARALLEL
+     endif
+
+   endif
 endif
 
 ifeq ($(WITH_FLOOK),1)
