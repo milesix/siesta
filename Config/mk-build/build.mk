@@ -236,11 +236,21 @@ ifeq ($(WITH_MPI),1)
  MPI_INCLUDE=.      # Note . for no-op
  FPPFLAGS_MPI = $(DEFS_PREFIX)-DMPI $(DEFS_PREFIX)-DMPI_TIMING
  LIBS += $(SCALAPACK_LIBS)
- LIBS += $(LAPACK_LIBS)
  FPPFLAGS += $(FPPFLAGS_MPI) 
 else
  FC = $(FC_SERIAL)
- LIBS += $(LAPACK_LIBS)
+endif
+
+ifeq ($(WITH_BUILTIN_LAPACK),1)
+  ifeq ($(WITH_MPI),1)
+    $(error You should not use the built-in LAPACK routines with Scalapack)
+  else
+    COMP_LIBS += $(BUILTIN_LAPACK) $(BUILTIN_BLAS)
+    FPPFLAGS += -DSIESTA__DIAG_2STAGE
+    FPPFLAGS += -DSIESTA__MRRR
+  endif
+else
+  LIBS += $(LAPACK_LIBS)
 endif
 
 # ------------- libGridXC configuration -----------
@@ -331,6 +341,21 @@ DO_MS:
          $(MAKE) -j 1 VPATH="$(VPATH)/MatrixSwitch/src" \
 	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 #--------------------
+.PHONY: DO_BUILTIN_LAPACK
+BUILTIN_LAPACK=$(MAIN_OBJDIR)/Libs/libsiestaLAPACK.a
+$(BUILTIN_LAPACK): DO_BUILTIN_LAPACK
+DO_BUILTIN_LAPACK:
+	(cd $(MAIN_OBJDIR)/Libs ; $(MAKE) -j 1 VPATH="$(VPATH)/Libs" \
+	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" libsiestaLAPACK.a)
+#--------------------
+.PHONY: DO_BUILTIN_BLAS
+BUILTIN_BLAS=$(MAIN_OBJDIR)/Libs/libsiestaBLAS.a
+$(BUILTIN_BLAS): DO_BUILTIN_BLAS
+DO_BUILTIN_BLAS:
+	(cd $(MAIN_OBJDIR)/Libs ; $(MAKE) -j 1 VPATH="$(VPATH)/Libs" \
+	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" libsiestaBLAS.a)
+#--------------------
+
 
 
 # Define default compilation methods

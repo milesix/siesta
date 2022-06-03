@@ -120,26 +120,6 @@ libmpi_f90.a:
 	"FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module_built)
 
 #######################
-#
-# Linear algebra routines
-#
-libsiestaBLAS.a: $(VPATH)/Libs/blas.F
-	@echo "==> Compiling libsiestaBLAS.a in Libs..."
-	-mkdir -p Libs
-	@(cd Libs ; $(MAKE) -f $(VPATH)/Libs/Makefile -j 1 \
-		"VPATH=$(VPATH)/Libs" \
-		"ARCH_MAKE=$(ARCH_MAKE)" \
-		"FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" libsiestaBLAS.a)
-	@cp Libs/libsiestaBLAS.a .
-libsiestaLAPACK.a: $(VPATH)/Libs/lapack.F
-	@echo "==> Compiling libsiestaLAPACK.a in Libs..."
-	-mkdir -p Libs
-	@(cd Libs ; $(MAKE) -f $(VPATH)/Libs/Makefile -j 1 \
-		"VPATH=$(VPATH)/Libs" \
-		"ARCH_MAKE=$(ARCH_MAKE)" \
-		"FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" libsiestaLAPACK.a)
-	@cp Libs/libsiestaLAPACK.a .
-
 
 $(DEP_OBJS): $(COMP_LIBS) 
 
@@ -153,7 +133,6 @@ clean:
 	@echo "==> Cleaning object, library, and executable files"
 	-rm -f unfold *.o *.a *.mod
 	-rm -rf ./MPI
-	-rm -rf ./Libs
 
 # Dependencies
 .PHONY: dep

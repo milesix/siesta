@@ -240,27 +240,6 @@ $(NCDF): $(FDICT)
 
 #######################
 
-#
-# Linear algebra routines
-#
-libsiestaBLAS.a: $(VPATH)/Libs/blas.F
-	@echo "==> Compiling libsiestaBLAS.a in Libs..."
-	-mkdir -p Libs
-	@(cd Libs ; $(MAKE) -f $(VPATH)/Libs/Makefile -j 1 \
-		"VPATH=$(VPATH)/Libs" \
-		"ARCH_MAKE=$(VPATH)/../$(OBJDIR)/arch.make" \
-		"FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" libsiestaBLAS.a)
-	@cp Libs/libsiestaBLAS.a .
-libsiestaLAPACK.a: $(VPATH)/Libs/lapack.F
-	@echo "==> Compiling libsiestaLAPACK.a in Libs..."
-	-mkdir -p Libs
-	@(cd Libs ; $(MAKE) -f $(VPATH)/Libs/Makefile -j 1 \
-		"VPATH=$(VPATH)/Libs" \
-		"ARCH_MAKE=$(VPATH)/../$(OBJDIR)/arch.make" \
-		"FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" libsiestaLAPACK.a)
-	@cp Libs/libsiestaLAPACK.a .
-
-
 # This will setup the correct compilation sequence
 
 $(DEP_OBJS): $(COMP_LIBS) $(FDICT)
@@ -326,7 +305,6 @@ clean:
 	-rm -rf ./MPI
 	-rm -rf ./fdict
 	-rm -rf ./ncdf
-	-rm -rf ./Libs
 
 # Dependencies
 .PHONY: dep

@@ -31,6 +31,7 @@ VPATH:=$(shell pwd)/../../Src
 default: gen-basis ioncat
 
 override WITH_MPI=
+override WITH_NCDF=
 
 MAIN_OBJDIR:=$(shell cd -P -- ../../\$(OBJDIR) && pwd -P)
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
@@ -78,23 +79,14 @@ OBJS_IONCAT=$(DEPS_IONCAT) $(IONCAT_LOCAL_OBJS)
 XC = $(GRIDXC_LIBS)
 INCFLAGS:= $(INCFLAGS) $(GRIDXC_INCFLAGS)
 
-#
-# Simple hack to link to any compiled lapack/blas code
-# If COMP_LIBS is empty, we do a no-op, else link the library file here.
-#
-link_linalg:
-	for llibs in $(COMP_LIBS); do \
-   [ -f ../../$(OBJDIR)/$$llibs ] && ln -sf ../../$(OBJDIR)/$$llibs . ; \
-	done
-
-gen-basis: $(NCPS) $(PSOP) $(FDF_LIBS) $(OBJS_GEN-BASIS) link_linalg
+gen-basis: $(NCPS) $(PSOP) $(FDF_LIBS) $(OBJS_GEN-BASIS) $(COMP_LIBS)
 	$(FC) -o gen-basis \
 	       $(LDFLAGS) $(OBJS_GEN-BASIS) $(FDF_LIBS) $(XC) \
               $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) $(NETCDF_LIBS) $(COMP_LIBS) $(LIBS)
-ioncat:  $(NCPS) $(PSOP) $(FDF_LIBS) $(OBJS_IONCAT)
+ioncat:  $(NCPS) $(PSOP) $(FDF_LIBS) $(OBJS_IONCAT) $(COMP_LIBS)
 	$(FC) -o ioncat \
 	       $(LDFLAGS) $(OBJS_IONCAT) $(FDF_LIBS) \
-              $(NCPS) $(PSOP) $(XC) $(PSML_LIBS) $(XMLF90_LIBS) $(NETCDF_LIBS) $(LIBS)
+              $(NCPS) $(PSOP) $(XC) $(PSML_LIBS) $(XMLF90_LIBS) $(NETCDF_LIBS) $(COMP_LIBS) $(LIBS)
 clean:
 	@echo "==> Cleaning object, library, and executable files"
 	rm -f gen-basis ioncat *.o  *.a

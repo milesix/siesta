@@ -35,6 +35,9 @@ default: fcbuild vibra
 VPATH:=$(shell pwd)/../../../Src
 OBJDIR=Obj
 
+override WITH_MPI=
+override WITH_NETCDF=
+
 MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
@@ -44,8 +47,6 @@ FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
-override WITH_MPI=
-override WITH_NETCDF=
 
 # Define these if desired
 #
@@ -70,9 +71,9 @@ fcbuild: $(FDF_LIBS) $(SIESTA_OBJS) $(BUILD_OBJS)
 	$(FC) -o fcbuild \
 	       $(LDFLAGS) $(BUILD_OBJS) $(SIESTA_OBJS) $(FDF_LIBS)
 
-vibra: $(FDF_LIBS) $(SIESTA_OBJS) $(VIBRA_OBJS)
+vibra: $(FDF_LIBS) $(COMP_LIBS) $(SIESTA_OBJS) $(VIBRA_OBJS)
 	$(FC) -o vibra \
-	       $(LDFLAGS) $(VIBRA_OBJS) $(SIESTA_OBJS) $(FDF_LIBS) $(LIBS)
+	       $(LDFLAGS) $(VIBRA_OBJS) $(SIESTA_OBJS) $(FDF_LIBS) $(COMP_LIBS) $(LIBS)
 
 clean: 
 	@echo "==> Cleaning object and executable files"

@@ -348,53 +348,6 @@ $(NCDF): $(FDICT)
 
 #######################
 
-#
-# Linear algebra routines
-#
-libsiestaBLAS.a: Libs/blas.F
-	@echo "==> Compiling libsiestaBLAS.a in Libs..."
-	@(cd Libs ; $(MAKE) -j 1 "VPATH=$(VPATH)/Libs" "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" libsiestaBLAS.a)
-	@cp Libs/libsiestaBLAS.a .
-
-ifneq (,$(findstring libsiestaLAPACK.a,$(COMP_LIBS)))
- # Automatically add the DIAG_2STAGE solvers.
- ifeq (,$(findstring SIESTA__DIAG_2STAGE,$(FPPFLAGS)))
-   FPPFLAGS += -DSIESTA__DIAG_2STAGE
- endif
- ifeq (,$(findstring MPI,$(FPPFLAGS)))
-   ifeq (,$(findstring SIESTA__MRRR,$(FPPFLAGS)))
-     FPPFLAGS += -DSIESTA__MRRR
-   endif
- endif
-endif
-libsiestaLAPACK.a: Libs/lapack.F
-	@echo "==> Compiling libsiestaLAPACK.a in Libs..."
-	@(cd Libs ; $(MAKE) -j 1 "VPATH=$(VPATH)/Libs" "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" libsiestaLAPACK.a)
-	@cp Libs/libsiestaLAPACK.a .
-
-libblas.a:
-	@echo ""
-	@echo "SIESTA: $@ has been deprecated in favor of:"
-	@echo "  COMP_LIBS += libsiestaBLAS.a"
-	@echo "Please update your arch.make file accordingly..."
-	@echo ""
-	@false
-liblapack.a dc_lapack.a zgesv_lapack.a essl_lapack.a:
-	@echo ""
-	@echo "SIESTA: $@ has been deprecated in favor of:"
-	@echo "  COMP_LIBS += libsiestaLAPACK.a"
-	@echo "Please update your arch.make file accordingly..."
-	@echo ""
-	@false
-linalg.a:
-	@echo ""
-	@echo "SIESTA: $@ has been deprecated in favor of:"
-	@echo "  COMP_LIBS += libsiestaLAPACK.a libsiestaBLAS.a"
-	@echo "Please update your arch.make file accordingly..."
-	@echo ""
-	@false
-
-
 # Extract information of the compiler version used.
 # This is very basic but for intel, gcc, pgi and open64
 # this at least contain the version string of the compiler.
@@ -486,7 +439,7 @@ siesta: what version \
 	$(FC) -o siesta \
 	       $(LDFLAGS) $(ALL_OBJS) $(MS)  \
                $(XC) $(MPI_INTERFACE) \
-               $(COMP_LIBS) $(LIBS) \
+               $(COMP_LIBS) \
 	       $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) \
 	       $(FDF_LIBS) $(LIBS)
 	@echo "--- reference section "
