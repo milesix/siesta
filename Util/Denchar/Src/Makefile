@@ -37,6 +37,7 @@ ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 
 override WITH_MPI=
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
@@ -72,7 +73,6 @@ SIESTA_OBJS =  bessph.o chkdim.o dismin.o \
                dot.o  io.o iodm.o memory.o memory_log.o\
 	       pxf.o radfft.o m_fft_gpfa.o volcel.o
 
-       
 SIESTA_OBJS += precision.o parallel.o debugmpi.o m_io.o alloc.o listsc.o  \
          atmparams.o atom_options.o atmfuncs.o atm_types.o \
          radial.o spher_harm.o basis_io.o basis_types.o parallelsubs.o \
