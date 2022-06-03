@@ -23,9 +23,10 @@ testdir=$(dirname $srcdir)/Tests
 #
 destdir=$(pwd)
 #
-# Copy build.mk
+# Copy build.mk and the checker snippet
 #
 cp -p ${srcdir}/../Config/mk-build/build.mk ${destdir}
+cp -p ${srcdir}/../Config/mk-build/check_for_build_mk.mk ${destdir}
 #
 # Replicate the hierarchy of makefiles
 #

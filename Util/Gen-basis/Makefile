@@ -35,19 +35,7 @@ override WITH_MPI=
 MAIN_OBJDIR:=$(shell cd -P -- ../../\$(OBJDIR) && pwd -P)
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
-
-ifndef BUILD_MK_H__
-  ifndef IGNORE_BUILD_MK
-    $(info ** You should include build.mk in your arch.make)
-    $(info ** to take advantage of the building rules coded in it.)
-    $(info ** ---> See top of $(MAIN_OBJDIR)/build.mk )
-    $(info **   You can still go ahead using a legacy arch.make,)
-    $(info **   as long as you define the proper symbols.)
-    $(info **   Use 'make IGNORE_BUILD_MK=1' to bypass this check.)
-    $(error --- )
-  endif
-endif
-
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)

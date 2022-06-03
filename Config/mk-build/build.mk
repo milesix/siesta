@@ -305,8 +305,7 @@ FDF_INCFLAGS=-I$(MAIN_OBJDIR)/fdf
 $(FDF_LIBS): DO_FDF
 DO_FDF:
 	(cd $(MAIN_OBJDIR)/fdf ; $(MAKE) -j 1 VPATH="$(VPATH)/fdf" \
-	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" )
-module)
+	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 #--------------------
 .PHONY: DO_NCPS
 NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
