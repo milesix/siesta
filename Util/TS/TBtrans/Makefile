@@ -24,6 +24,7 @@ include $(ARCH_MAKE)
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 INCFLAGS += $(FDF_INCFLAGS)
+INCFLAGS += $(MPI_WRAPPERS_INCFLAGS)
 
 # Set the default non-mpi routines
 FC_DEFAULT := $(FC)
@@ -185,13 +186,6 @@ $(SIESTA_VERSION_FILE): FORCE
 
 
 # Interfaces to libraries
-MPI_MAKEFILE=$(VPATH)/MPI/Makefile
-libmpi_f90.a: 
-	-mkdir -p MPI
-	(cd MPI ; \
-	$(MAKE) -f $(MPI_MAKEFILE) -j 1 "VPATH=$(VPATH)/MPI" \
-	"MAKEFILES=$(MPI_MAKEFILE)" "ARCH_MAKE=$(ARCH_MAKE)" \
-	"FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module_built)
 
 #######################
 #  TS-TBT libs:
@@ -302,7 +296,6 @@ clean:
 	@echo "==> Cleaning object, library, and executable files"
 	-rm -f tbtrans phtrans *.o *.a *.mod
 	-rm -f .phtrans .tbtrans
-	-rm -rf ./MPI
 	-rm -rf ./fdict
 	-rm -rf ./ncdf
 

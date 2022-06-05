@@ -65,6 +65,7 @@ XC=$(GRIDXC_LIBS)
 INCFLAGS:= $(NETCDF_INCFLAGS)  $(PSML_INCFLAGS) $(NCPS_INCFLAGS) \
            $(PSOP_INCFLAGS) $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS) \
            $(PEXSI_INCFLAGS) $(FDF_INCFLAGS) $(MS_INCFLAGS) $(INCFLAGS)
+INCFLAGS += $(MPI_WRAPPERS_INCFLAGS)
 #
 # For removing any -ipo compilation in sub directories...
 # Later compilers are also having this enabled, and it lets you
@@ -289,14 +290,6 @@ m_pexsi.o m_pexsi_driver.o m_pexsi_dos.o m_pexsi_local_dos.o: f_ppexsi_interface
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 #
-#--------------------------------------------------------------
-libmpi_f90.a: 
-	@(cd MPI ; $(MAKE) -j 1 \
-                    "VPATH=$(VPATH)/MPI" \
-	             MAIN_OBJDIR=$(MAIN_OBJDIR) \
-		    "FPPFLAGS=$(FPPFLAGS)" \
-                    "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" )
-
 #--------------------------------------------------------------
 
 m_initwf.o sankey_change_basis.o m_evolve.o cranknic_evolg.o cranknic_evolk.o: $(MS)

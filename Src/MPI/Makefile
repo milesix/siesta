@@ -9,6 +9,7 @@
 .SUFFIXES: .o .F90 .f90 .F .f .a 
 #
 default: module_built 
+module_built: libmpi_f90.a
 #
 # This makefile can also be used "remotely", so we allow
 # for an external specification of the (relative) location 
@@ -36,10 +37,7 @@ int_explorer: int_explorer.o
 #
 mpi_interfaces.o: mpi__include.o Interfaces.o V_S.uses VS.uses
 #
-module_built: libmpi_f90.a
-	@cp libmpi_f90.a ..
-	@cp *.mod ..
-	@touch module_built
+
 #
 libmpi_f90.a: mpi_interfaces.o mpi__include.o Interfaces.o mpi_siesta.o
 	@$(AR) $(ARFLAGS_EXTRA) cru libmpi_f90.a mpi_interfaces.o \
@@ -48,6 +46,6 @@ libmpi_f90.a: mpi_interfaces.o mpi__include.o Interfaces.o mpi_siesta.o
 #
 clean:
 	@rm -f Interfaces.f90 *.o *.mod
-	@rm -f module_built *.uses kind_explorer int_explorer
+	@rm -f *.uses kind_explorer int_explorer
 	@rm -f libmpi_f90.a
 

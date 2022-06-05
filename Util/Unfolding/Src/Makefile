@@ -49,12 +49,11 @@ what:
 	@echo $(COMMENTS)
 	@echo
 
-INCFLAGS:=$(NETCDF_INCFLAGS) $(FDF_INCFLAGS) \
-          $(NCPS_INCFLAGS) $(PSML_INCFLAGS) $(PSOP_INCFLAGS) \
-          $(INCFLAGS)
+INCFLAGS += $(NETCDF_INCFLAGS) $(FDF_INCFLAGS) \
+            $(NCPS_INCFLAGS) $(PSML_INCFLAGS) $(PSOP_INCFLAGS)
+INCFLAGS += $(MPI_WRAPPERS_INCFLAGS)
 
 XC = $(GRIDXC_LIBS)
-
 INCFLAGS += $(GRIDXC_INCFLAGS)
 
 SYSOBJ=$(SYS).o
@@ -110,15 +109,6 @@ UNFOLD_OBJS += unfold.o
 UNFOLD_OBJS += handlers.o
 #
 
-# Interfaces to libraries
-MPI_MAKEFILE=$(VPATH)/MPI/Makefile
-libmpi_f90.a: 
-	-mkdir -p MPI
-	(cd MPI ; \
-	$(MAKE) -f $(MPI_MAKEFILE) -j 1 "VPATH=$(VPATH)/MPI" \
-	"MAKEFILES=$(MPI_MAKEFILE)" "ARCH_MAKE=$(ARCH_MAKE)" \
-	"FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module_built)
-
 #######################
 
 $(DEP_OBJS): $(COMP_LIBS) 
@@ -132,7 +122,6 @@ unfold: $(MPI_INTERFACE) $(COMP_LIBS) $(FDF_LIBS) $(NCPS) $(PSOP) $(DEP_OBJS) $(
 clean: 
 	@echo "==> Cleaning object, library, and executable files"
 	-rm -f unfold *.o *.a *.mod
-	-rm -rf ./MPI
 
 # Dependencies
 .PHONY: dep

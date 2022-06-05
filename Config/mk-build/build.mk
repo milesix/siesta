@@ -232,7 +232,7 @@ endif
 
 ifeq ($(WITH_MPI),1)
  FC=$(FC_PARALLEL)
- MPI_INTERFACE=libmpi_f90.a
+ MPI_INTERFACE=$(MPI_WRAPPERS)
  MPI_INCLUDE=.      # Note . for no-op
  FPPFLAGS_MPI = $(DEFS_PREFIX)-DMPI $(DEFS_PREFIX)-DMPI_TIMING
  LIBS += $(SCALAPACK_LIBS)
@@ -355,7 +355,16 @@ DO_BUILTIN_BLAS:
 	(cd $(MAIN_OBJDIR)/Libs ; $(MAKE) -j 1 VPATH="$(VPATH)/Libs" \
 	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" libsiestaBLAS.a)
 #--------------------
-
+.PHONY: DO_MPI_WRAPPERS
+MPI_WRAPPERS=$(MAIN_OBJDIR)/MPI/libmpi_f90.a
+MPI_WRAPPERS_INCFLAGS=-I$(MAIN_OBJDIR)/MPI
+$(MPI_WRAPPERS): DO_MPI_WRAPPERS
+DO_MPI_WRAPPERS:
+	(cd $(MAIN_OBJDIR)/MPI ; $(MAKE) -j 1 \
+                    "VPATH=$(VPATH)/MPI" \
+	             MAIN_OBJDIR=$(MAIN_OBJDIR) \
+		    "FPPFLAGS=$(FPPFLAGS)" \
+                    "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" )
 
 
 # Define default compilation methods
