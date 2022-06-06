@@ -13,7 +13,8 @@ OBJDIR=Obj
 
 default: tscontour
 
-ARCH_MAKE=../../../$(OBJDIR)/arch.make
+MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
+ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
 
 # Set the default non-mpi routines
@@ -37,17 +38,30 @@ DEFS += $(DEFS_PREFIX)-USIESTA__MUMPS
 FPPFLAGS:=$(DEFS_PREFIX) $(FPPFLAGS) $(DEFS_PREFIX)-UMPI
 FPPFLAGS += $(DEFS_PREFIX)-UNCDF $(DEFS_PREFIX)-UNCDF_4 $(DEFS_PREFIX)-UNCDF_PARALLEL
 FPPFLAGS += $(DEFS_PREFIX)-USIESTA__MUMPS
-INCFLAGS:=$(NETCDF_INCFLAGS) $(INCFLAGS)
+
+NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
+PSOP_INCFLAGS=-I$(MAIN_OBJDIR)/psoplib/src
+INCFLAGS:=$(NETCDF_INCFLAGS) \
+          $(NCPS_INCFLAGS) $(PSOP_INCFLAGS) $(PSML_INCFLAGS) \
+          $(INCFLAGS)
 
 SYSOBJ=$(SYS).o
 
 # systematic siesta files
 OBJS = precision.o parallel.o \
         alloc.o pxf.o units.o local_sys.o \
-	memory.o memoryinfo.o m_io.o io.o \
+	memory_log.o memory.o m_io.o io.o \
 	intrinsic_missing.o files.o reclat.o \
 	m_char.o m_os.o geom_helper.o \
-	m_iodm.o siesta_options.o m_io_s.o
+	m_iodm.o siesta_options.o io_sparse.o \
+        atomlist.o m_energies.o \
+        atmfuncs.o atm_types.o dftu_specs.o \
+        siesta_geom.o \
+        atom.o basis_specs.o radial.o \
+        basis_types.o interpolation.o \
+        spher_harm.o arw.o xml.o atom_options.o \
+        chemical.o m_filter.o hamann.o chkdim.o \
+        periodic_table.o
 
 OBJS += fdf_extra.o m_cite.o kpoint_convert.o
 OBJS += sorting.o m_mesh_node.o densematrix.o
@@ -86,7 +100,14 @@ OBJS += m_integrate.o m_interpolate.o
 # Add sys object
 OBJS += $(SYSOBJ)
 
-OBJS += tscontour.o
+OBJS += tscontour.o handlers.o
+
+XC = $(GRIDXC_LIBS)
+INCFLAGS:= $(INCFLAGS) $(GRIDXC_INCFLAGS)
+
+#
+NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
+PSOP=$(MAIN_OBJDIR)/psoplib/src/libpsop.a
 
 #######################
 #  TS-TBT libs:
@@ -144,7 +165,7 @@ FDF_MAKEFILE=$(VPATH)/fdf/makefile
 FDF_INCFLAGS:=-I$(VPATH)/fdf $(INCFLAGS)
 $(FDF): 
 	(mkdir -p fdf ; cd fdf ; $(MAKE) -f $(FDF_MAKEFILE) "FC=$(FC)" "VPATH=$(VPATH)/fdf" \
-                          "ARCH_MAKE=../$(ARCH_MAKE)" \
+                          "ARCH_MAKE=$(ARCH_MAKE)" \
                           "DEFS=$(DEFS)" "FPPFLAGS=$(FPPFLAGS)" \
                           "MPI_INTERFACE= " \
                           "INCFLAGS=$(FDF_INCFLAGS)" "FFLAGS=$(FFLAGS)" module)
@@ -153,9 +174,11 @@ tscontour.o: $(OBJS)
 
 $(OBJS): $(FDF) $(COMP_LIBS)
 .PHONY: tscontour
-tscontour: $(FDF) $(COMP_LIBS) $(OBJS) 
+tscontour: $(FDF) $(COMP_LIBS) $(NCPS) $(PSOP) $(OBJS) 
 	$(FC) $(FFLAGS) $(LDFLAGS) -o tscontour \
-		$(OBJS) $(COMP_LIBS) $(FDF) $(LIBS) 
+	$(OBJS) $(COMP_LIBS) $(FDF) \
+        $(NCPS) $(PSOP) $(XC) $(PSML_LIBS) $(XMLF90_LIBS) \
+        $(LIBS) 
 
 clean:
 	@echo "==> Cleaning object, library, and executable files"

@@ -127,7 +127,7 @@ contains
     type(hNCDF) :: grp
 #endif
 
-#ifdef MPI
+#ifdef NCDF_PARALLEL
     ! Open the netcdf file
     if ( save_parallel ) then
       call ncdf_open(ncdf,fname, mode=ior(NF90_WRITE,NF90_MPIIO), &

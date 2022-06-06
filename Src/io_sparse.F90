@@ -6,18 +6,6 @@
 ! Fully implemented by Nick Papior Andersen
 
 ! SIESTA io-module
-
-!
-! In certain cases (notably some runs of the BLOMM solver)
-! the MPI_ISSend calls give trouble. We provide this pre-processing
-! option until the issue is fully debugged.
-!
-#ifdef MPI_NONBLOCKING_SEND_IS_ISEND
-#define MPI_NONBLOCKING_SEND MPI_ISend
-#else
-#define MPI_NONBLOCKING_SEND MPI_ISSend
-#endif
-
 module io_sparse_m
 
   use class_OrbitalDistribution
@@ -236,7 +224,7 @@ contains
             gncol(gio:gio-1+n) = ncol(io:io-1+n)
           else
             nb = nb + 1
-            call MPI_NONBLOCKING_SEND(ncol(io), n, MPI_Integer, &
+            call MPI_ISend(ncol(io), n, MPI_Integer, &
                 toNode, gio, comm, ibuf(nb), MPIerror)
           end if
         else if ( lNode == toNode ) then
@@ -460,7 +448,7 @@ contains
 
         else if ( lNode == 0 ) then
           nb = nb + 1
-          call MPI_NONBLOCKING_SEND(lgncol(gio), n, MPI_Integer, &
+          call MPI_ISend(lgncol(gio), n, MPI_Integer, &
               BNode, gio, comm, ibuf(nb), MPIerror)
 
         end if
@@ -732,7 +720,7 @@ contains
           else
             i = sum(ncol(io:io-1+n))
             nb = nb + 1
-            call MPI_NONBLOCKING_SEND(l_col(ind+1), i, MPI_Integer, &
+            call MPI_ISend(l_col(ind+1), i, MPI_Integer, &
                 0, gio, comm, ibuf(nb), MPIerror)
             ind = ind + i
           end if
@@ -1033,7 +1021,7 @@ contains
           else
             i = sum(ncol(io:io-1+n))
             nb = nb + 1
-            call MPI_NONBLOCKING_SEND(a(ind+1), i, MPI_Double_Precision, &
+            call MPI_ISend(a(ind+1), i, MPI_Double_Precision, &
                 0, gio, comm, ibuf(nb), MPIerror)
             ind = ind + i
           end if
@@ -1164,7 +1152,7 @@ contains
           else
             i = sum(ncol(io:io-1+n))
             nb = nb + 1
-            call MPI_NONBLOCKING_SEND(a(ind+1), i, MPI_Double_Precision, &
+            call MPI_ISend(a(ind+1), i, MPI_Double_Precision, &
                 0, gio, comm, ibuf(nb), MPIerror)
             ind = ind + i
           end if
@@ -1588,7 +1576,7 @@ contains
               else
                 i = sum(ncol(io:io-1+n))
                 nb = nb + 1
-                call MPI_NONBLOCKING_SEND(a(ind+1,s), i, MPI_Double_Precision, &
+                call MPI_ISend(a(ind+1,s), i, MPI_Double_Precision, &
                     0, gio, comm, ibuf(nb), MPIerror)
                 ind = ind + i
               end if
@@ -1695,7 +1683,7 @@ contains
             else
               i = sum(ncol(io:io-1+n))
               nb = nb + 1
-              call MPI_NONBLOCKING_SEND(a(1,ind+1), dim2*i, MPI_Double_Precision, &
+              call MPI_ISend(a(1,ind+1), dim2*i, MPI_Double_Precision, &
                   0, gio, comm, ibuf(nb), MPIerror)
               ind = ind + i
             end if
@@ -1845,7 +1833,7 @@ contains
               else
                 i = sum(ncol(io:io-1+n))
                 nb = nb + 1
-                call MPI_NONBLOCKING_SEND(a(ind+1,s), i, MPI_Double_Precision, &
+                call MPI_ISend(a(ind+1,s), i, MPI_Double_Precision, &
                     0, gio, comm, ibuf(nb), MPIerror)
                 ind = ind + i
               end if
@@ -1951,7 +1939,7 @@ contains
             else
               i = sum(ncol(io:io-1+n))
               nb = nb + 1
-              call MPI_NONBLOCKING_SEND(a(1,ind+1), dim2*i, MPI_Double_Precision, &
+              call MPI_ISend(a(1,ind+1), dim2*i, MPI_Double_Precision, &
                   0, gio, comm, ibuf(nb), MPIerror)
               ind = ind + i
             end if

@@ -247,7 +247,9 @@ contains
     end if
 
     do while ( .not. converged )
-
+#ifdef TRANSIESTA_TIMING
+      call timer('TS_IterdQ', 1)
+#endif
       call open_GF(N_Elec,Elecs,uGF,NEn)
 
       select case ( ts_method )
@@ -385,6 +387,10 @@ contains
         converged = .true.
 
       end if
+
+#ifdef TRANSIESTA_TIMING
+      call timer('TS_IterdQ', 2)
+#endif
 
     end do
 

@@ -493,6 +493,10 @@ contains
     integer :: lnr, nr, uind, lio, io, lind, ind, ljo, jo, rind
     logical :: hasipnt, hasEDM, lUpSpGlobal
 
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_update_DM', 1)
+#endif
+
     call attach(sp, n_col=l_ncol,list_ptr=l_ptr,list_col=l_col, &
          nrows=lnr,nrows_g=nr)
     s => spar(spDM)
@@ -650,6 +654,10 @@ contains
 
     end if
 
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_update_DM', 2)
+#endif
+
   end subroutine update_DM
 
   ! This routine will ONLY be called if .not. IsVolt,
@@ -686,6 +694,9 @@ contains
     integer :: lio, io, jo, ind, nr
     integer :: lnr, lind, rind
     logical :: hasEDM
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_update_zDM', 1)
+#endif
 
     call attach(sp, n_col=l_ncol,list_ptr=l_ptr,list_col=l_col, &
          nrows=lnr,nrows_g=nr)
@@ -763,6 +774,10 @@ contains
     end do
 !$OMP end parallel do
 
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_update_zDM', 2)
+#endif
+
   end subroutine update_zDM
 
 
@@ -784,6 +799,10 @@ contains
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
     integer, pointer :: lup_ncol(:), lup_ptr(:), lup_col(:), lupp_col(:)
     integer :: lnr, lio, lind, io, jo, ind, nr
+
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_init_DM', 1)
+#endif
 
     call attach(sp, n_col=l_ncol,list_ptr=l_ptr,list_col=l_col, &
          nrows=lnr,nrows_g=nr)
@@ -844,6 +863,10 @@ contains
        end do
 !$OMP end parallel do
     end if
+
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_init_DM', 2)
+#endif
     
   end subroutine init_DM
 

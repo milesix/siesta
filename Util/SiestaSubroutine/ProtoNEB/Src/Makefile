@@ -35,7 +35,6 @@ VPATH:=$(TOP_LEVEL)
 SIESTA_LIB=libSiestaForces.a
 FDF=libfdf.a
 #
-MS=MatrixSwitch.a
 XMLPARSER=$(XMLF90_LIBS)
 XC=$(GRIDXC_LIBS)
 PSML=$(PSML_LIBS)
