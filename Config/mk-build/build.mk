@@ -37,8 +37,9 @@ WITH_GRIDXC=1
 # In particular, the omm-bundle provides MatrixSwitch,
 # needed also for TD-DFT.
 #
-WITH_OMM_SPARSE_BUNDLE=1
-WITH_DBCSR=1
+#WITH_OMM_SPARSE_BUNDLE=1
+#WITH_DBCSR=1
+WITH_BLOMM=1
 #-------------
 # Other options supported:
 #
@@ -156,7 +157,7 @@ COMP_LIBS=
 
 # ---- OMM_BUNDLE configuration -----------
 
-ifeq ($(WITH_OMM_SPARSE_BUNDLE),1)
+ifeq ($(WITH_BLOMM),1)
 
    ifndef OMM_SPARSE_BUNDLE_ROOT	
      $(error you need to define OMM_SPARSE_BUNDLE_ROOT in your arch.make)
@@ -175,9 +176,10 @@ ifeq ($(WITH_OMM_SPARSE_BUNDLE),1)
    OMMLIB = -L$(OMMLIBPATH)/lib -lOMM
    OMMINC = -I$(OMMLIBPATH)/include
 
+   FPPFLAGS += -DSIESTA__BLOMM
    FPPFLAGS += -DHAVE_LIBOMM
-   LIBS += $(OMMLIB) $(MSLIB) $(PSPLIB)
-   INCFLAGS += $(OMMINC) $(MSINC) $(PSPINC)
+   MS = $(OMMLIB) $(MSLIB) $(PSPLIB)
+   MS_INCFLAGS += $(OMMINC) $(MSINC) $(PSPINC)
 
    ifeq ($(WITH_DBCSR),1)
 
@@ -187,11 +189,15 @@ ifeq ($(WITH_OMM_SPARSE_BUNDLE),1)
      DBCSR     = $(DBCSR_ROOT)
      DBCSRINC  = -I$(DBCSR)/include
      DBCSRLIB  = -L$(DBCSR)/lib -ldbcsr
-     FPPFLAGS += -DHAVE_DBCSR
+     MS_INCFLAGS += -DHAVE_DBCSR
 
-     LIBS += $(DBCSRLIB)
-     INCFLAGS += $(DBCSRINC)
+     MS += $(DBCSRLIB)
+     MS_INCFLAGS += $(DBCSRINC)
     endif
+else
+   MS = $(BUILTIN_MATRIXSWITCH)
+   FPPFLAGS += -DHAVE_BUILTIN_MATRIXSWITCH
+   MS_INCFLAGS += $(MAIN_OBJDIR)/Src/MatrixSwitch/src
 endif
 
 # ---- ELPA configuration -----------

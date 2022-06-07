@@ -731,6 +731,7 @@ subroutine read_options( na, ns, nspin )
         write(*,3) 'redata: Method of Calculation', 'Orbital Minimization Method'
      endif
   else if (leqi(method,'blomm')) then
+#ifdef SIESTA__BLOMM     
      isolve = SOLVE_BLOMM
      call_diagon_default=fdf_integer('OMM.Diagon',0)
      call_diagon_first_step=fdf_integer('OMM.DiagonFirstStep',call_diagon_default)
@@ -738,6 +739,9 @@ subroutine read_options( na, ns, nspin )
      if (ionode) then
         write(*,3) 'redata: Method of Calculation', 'Orbital Minimization Method using libOMM with block matrices'
      endif
+#else
+     call die("BLOMM solver is not compiled in. Use -DSIESTA__BLOMM")
+#endif
 
   else if (leqi(method,"pexsi")) then
 #ifdef SIESTA__PEXSI     
@@ -779,7 +783,10 @@ subroutine read_options( na, ns, nspin )
 #ifdef SIESTA__PEXSI
           'PEXSI, '//&
 #endif
-          'OrderN, OMM, BLOMM, Diagon, Transiesta, or Dummy' )
+#ifdef SIESTA__BLOMM
+          'BLOMM, '//&
+#endif
+          'OrderN, OMM, Diagon, Transiesta, or Dummy' )
   endif
 
 #ifdef DEBUG

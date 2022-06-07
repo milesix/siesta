@@ -37,7 +37,9 @@
       use m_diagon,       only : diagon 
       use m_dminim,       only : dminim
       use m_zminim,       only : zminim
+#ifdef SIESTA__BLOMM
       use m_lib_omm,      only : omm_min_block
+#endif
       use m_steps,        only : istp, inicoor
       use m_compute_dm,   only : PreviousCallDiagon
       use m_eo
@@ -97,6 +99,7 @@
         endif
       endif
 
+#ifdef SIESTA__BLOMM      
       if (isolve .eq. SOLVE_BLOMM) then
         if ( no_u == no_s ) then ! Not using an auxiliary supercell
           call omm_min_block(.true., .false., iscf, istp, 
@@ -108,6 +111,7 @@
 !          call die('ERROR: Auxilary supercell yet implemented with OMM!')
         end if
       endif
+#endif
 
 !     Find final energy, forces and stress.
 

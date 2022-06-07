@@ -44,7 +44,9 @@
       use iodmhs_netcdf, only: write_dmh_netcdf
 #endif
       use m_dminim,        only : dminim
+#ifdef SIESTA__BLOMM
       use m_lib_omm,       only : omm_min_block
+#endif
       use m_zminim,        only : zminim
       use m_ordern,        only : ordern
       use m_steps,         only : istp
@@ -221,6 +223,7 @@ c$$$     &           S, 'S.matrix')
         Entropy = 0.0_dp
         PreviousCallDiagon=.false.
 
+#ifdef SIESTA__BLOMM
       elseif (isolve .eq. SOLVE_BLOMM) then
         if ( spin%NCol .or. spin%SO )
      &      call die('ERROR: Non-collinear spin calculations
@@ -243,7 +246,7 @@ c$$$     &           S, 'S.matrix')
         Ecorrec = 0.0_dp
         Entropy = 0.0_dp
         PreviousCallDiagon=.false.
-
+#endif
 
 #ifdef SIESTA__CHESS
       elseif (isolve .eq. SOLVE_CHESS) then

@@ -7,6 +7,7 @@
 ! ---
 module m_lib_omm
 
+#ifdef SIESTA__BLOMM
 #ifdef HAVE_LIBOMM
 use MatrixSwitch
 use omm_rand
@@ -1061,4 +1062,5 @@ subroutine get_number_of_lwfs_on_atom(ia, use_kim, nelectr, indexi)
 
 end subroutine get_number_of_lwfs_on_atom
 
+#endif
 end module m_lib_omm
