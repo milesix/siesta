@@ -388,10 +388,10 @@ CONTAINS
 
       call getMeshBox( UNIFORM, box )
 
-      J3min = (box(1,3,Node)-1)*NSM + 1
-      J3max = (box(2,3,Node)-1)*NSM + 1
-      J2min = (box(1,2,Node)-1)*NSM + 1
-      J2max = (box(2,2,Node)-1)*NSM + 1
+      J3min = (box(1,3,Node+1)-1)*NSM
+      J3max = box(2,3,Node+1)*NSM-1
+      J2min = (box(1,2,Node+1)-1)*NSM
+      J2max = box(2,2,Node+1)*NSM-1
 
       NG2 = Mesh(2)
       NG3 = Mesh(3)

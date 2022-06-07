@@ -40,7 +40,7 @@ C     Modules
       use moreMeshSubs, only : UNIFORM, getMeshBox
       use sys,         only : die
       use alloc,       only : re_alloc, de_alloc
-      use m_fft,       only : fft     ! 3-D fast Fourier transform
+      use m_fft,       only : fft, fft_init, getFFTLims
       use cellsubs,    only : reclat  ! Finds reciprocal lattice vectors
       use cellsubs,    only : volcel  ! Finds unit cell volume
       use m_chkgmx,    only : chkgmx  ! Checks planewave cutoff of a mesh
@@ -54,13 +54,14 @@ C     Input/output variables
       real(dp)              :: CELL(3,3), STRESS(3,3), U
 C     Local variables
       integer               :: I, I1, I2, I3, IX, J, J1, J2, J3, JX,
-     &                         NP, NG, NG1, NG2, NG3, J2L, J3L
-      integer               :: J1min, J1max, J2min, J2max, J3min, J3max
+     &                         NP, NG, NG1, NG2, NG3, j1l, J2L, J3L, JJ
+      integer               :: lbox(2,3)
       integer,      pointer :: box(:,:,:)
       real(dp)              :: C, B(3,3), DU, G(3), G2, G2MAX, 
      &                         PI, VG, VOLUME, PI8
-      real(grid_p), pointer :: CG(:,:)
+      real(grid_p), pointer :: CG1(:,:), CG2(:,:)
       real(dp),   parameter :: K0(3)= (/0.d0,0.d0,0.d0/), TINY= 1.d-15
+      integer :: sz1, sz2
 #ifdef MPI
       integer               :: MPIerror
 #endif
@@ -76,9 +77,13 @@ C     Local variables
 C     Start time counter
       call timer( 'POISON', 1 )
 
+C     Find fourier transform of density
+      call fft_init( .false., Mesh, sz1, sz2 )
+
 C     Allocate local memory
-      nullify( CG )
-      call re_alloc( CG, 1, 2, 1, n1*n2*n3, 'CG', 'poison' )
+      nullify( CG1, CG2 )
+      call re_alloc( CG1, 1, 2, 1, sz1, 'CG1', 'poison' )
+      call re_alloc( CG2, 1, 2, 1, sz2, 'CG2', 'poison' )
 
 C     Find unit cell volume
       VOLUME = VOLCEL( CELL )
@@ -92,15 +97,13 @@ C     Find maximun planewave cutoff
       call CHKGMX( K0, B, Mesh, G2MAX )
 
 C     Copy density to complex array
-!$OMP parallel do default(shared), private(I)
       do I = 1, NP
-        CG(1,I) = RHO(I)
-        CG(2,I) = 0.0_grid_p
+        CG1(1,I) = RHO(I)
+        CG1(2,I) = 0.0_grid_p
       enddo
-!$OMP end parallel do
 
 C     Find fourier transform of density
-      call fft( CG, Mesh, -1 )
+      call fft( CG1, CG2, -1 )
 
 C     Initialize stress contribution
       do IX = 1,3
@@ -110,13 +113,8 @@ C     Initialize stress contribution
       enddo
 
 C     Work out processor grid dimensions
-      call getMeshBox( UNIFORM, box )
-      J1min = (box(1,1,Node+1)-1)*NSM
-      J1max = box(2,1,Node+1)*NSM-1
-      J2min = (box(1,2,Node+1)-1)*NSM
-      J2max = box(2,2,Node+1)*NSM-1
-      J3min = (box(1,3,Node+1)-1)*NSM
-      J3max = box(2,3,Node+1)*NSM-1
+      call getFFTLims( lbox )
+      lbox = lbox -1
 
 C     Multiply by 8*PI/G2 to get the potential
       PI  = 4.0_dp * atan(1.0_dp)
@@ -127,22 +125,25 @@ C     Multiply by 8*PI/G2 to get the potential
       NG2 = Mesh(2)
       NG3 = Mesh(3)
 
-      do J3 = J3min,J3max
-        J3L = J3 - J3min 
+C     getFFTLims returns the limits of current distribution
+      J = 1
+      do J3 = lbox(1,3), lbox(2,3)           ! Z direction
+        J3L = J3 - lbox(1,3)
         I3 = merge( J3 - NG3, J3, J3.gt.NG3/2 )
-        do J2 = J2min,J2max
-          J2L = J2 - J2min 
+        do J2 = lbox(1,2), lbox(2,2)               ! Y directiron
+          J2L = J2 - lbox(1,2)
           I2 = merge( J2 - NG2, J2, J2.gt.NG2/2 )
-          do J1 = J1min, J1max
+          do J1 = lbox(1,1), lbox(2,1)             ! X directiron
+            J1L = J1 - lbox(1,1)
             I1 = merge( J1 - NG1, J1, J1.gt.NG1/2 )
+
             G(1)= B(1,1) * I1 + B(1,2) * I2 + B(1,3) * I3
             G(2)= B(2,1) * I1 + B(2,2) * I2 + B(2,3) * I3
             G(3)= B(3,1) * I1 + B(3,2) * I2 + B(3,3) * I3
             G2 = G(1)**2 + G(2)**2 + G(3)**2
-            J = 1 + J1 + N1 * J2L + N1 * N2 * J3L
             if (G2.LT.G2MAX .AND. G2.GT.TINY) then
               VG = PI8 / G2
-              DU = VG * ( CG(1,J)**2 + CG(2,J)**2 )
+              DU = VG * ( CG1(1,J)**2 + CG1(2,J)**2 )
               U = U + DU
               C = 2.0_dp * DU / G2
               DO IX = 1,3
@@ -150,16 +151,16 @@ C     Multiply by 8*PI/G2 to get the potential
                   STRESS(JX,IX) = STRESS(JX,IX) + C * G(IX) * G(JX)
                 ENDDO
               ENDDO
-              CG(1,J) = VG * CG(1,J)
-              CG(2,J) = VG * CG(2,J)
+              CG1(1,J) = VG * CG1(1,J)
+              CG1(2,J) = VG * CG1(2,J)
             else
-              CG(1,J) = 0.0_dp
-              CG(2,J) = 0.0_dp
+              CG1(1,J) = 0.0_dp
+              CG1(2,J) = 0.0_dp
             endif
+            J = J+1
           enddo
         enddo
       enddo
-!$OMP end parallel do
 
       NG = Mesh(1)*Mesh(2)*Mesh(3)
       U = 0.5_dp * U * VOLUME / DBLE(NG)**2
@@ -172,17 +173,16 @@ C     Multiply by 8*PI/G2 to get the potential
       enddo
  
 C     Go back to real space
-      call fft( CG, Mesh, +1 )
+      call fft( CG1, CG2, +1 )
 
 C     Copy potential to array V
-!$OMP parallel do default(shared), private(I)
       do I = 1, NP
-        V(I) = CG(1,I)
+        V(I) = CG1(1,I)
       enddo
-!$OMP end parallel do
  
 C     Free local memory
-      call de_alloc( CG, 'CG', 'poison' )
+      call de_alloc( CG1, 'CG1', 'poison' )
+      call de_alloc( CG2, 'CG2', 'poison' )
 
 #ifdef _TRACE_
       call MPI_Barrier( MPI_Comm_World, MPIerror )

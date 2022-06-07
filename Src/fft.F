@@ -62,8 +62,9 @@
 
       implicit none
 
-      PUBLIC:: 
-     .  fft      ! 3D complex FFT
+      PUBLIC :: fft
+      PUBLIC :: fft_init
+      PUBLIC :: getFFTLims
 
       PRIVATE ! Nothing is declared public beyond this point
       logical :: frsttime = .TRUE.
@@ -71,100 +72,61 @@
       real(dp), pointer :: trigs(:,:)
       integer :: OldMesh(3) = (/ 0, 0, 0 /)
 
+      integer :: gmesh(3)
       integer :: ProcessorZ
       integer :: PY
       integer :: PZ
       integer :: COMM_Y
       integer :: COMM_Z
-      integer, pointer :: xydisp(:)
-      integer, pointer :: xzdisp(:)
-      integer, pointer :: ydispl(:)
-      integer, pointer :: zdispl(:)
+      logical :: k_ori_distro
+      integer, pointer :: xzdisp(:) => null()
+      integer, pointer :: ydispl(:) => null()
+      integer, pointer :: zdispl(:) => null()
+      integer, pointer :: xdispl(:) => null()
+      integer, pointer :: yzdisp(:) => null()
+
+      !type FFT_ARR
+      !  real(grid_p), pointer :: f1(:)
+      !  real(grid_p), pointer :: f2(:)
+      !end type FFT_ARR
 
       CONTAINS
 
 !******************************************************************************
 
-      subroutine fft( f, nMesh, isn )
-C
-C  Parallel FFT based on FFT routine of Templeton
-C
-C  On input :
-C
-C  real*8 f()       : contains data to be Fourier transformed
-C  integer nMesh(3) : contains global dimensions of grid
-C  integer isn      : indicates the direction of the transform
-C
-C  On exit :
-C
-C  real*8 f()      : contains data Fourier transformed
-C
-C  Julian Gale, July 1999
-C
+      subroutine fft_init( ori_distr, nMesh, size1, size2 )
       implicit none
-C
-C  Passed arguments
-C
-      real(grid_p) :: f(*)
-      integer :: nMesh(3), isn
-C
-C  Local variables
-C 
-      integer :: n1, n2, n3, ng, n1l, n2l, n3l, n, n1l_y, n1l_z
-      integer :: i, di, mo, ntrigs, bsize, nft, ioffset, j, ii
-      integer :: maxmaxtrigs, ierr
+      logical :: ori_distr                      ! Keep original distribution
+      integer :: nMesh(3), size1, size2
       integer, pointer :: box(:,:,:)
-      logical :: LocalPoints, lredimension
-      real(grid_p), pointer :: ft(:)
-      real(dp) :: scale
+      integer :: i, di, mo, s1, s2, s3
+      integer :: ierr, maxmaxtrigs, ntrigs
+      logical :: lredimension
 
-      call timer( 'fft', 1 )
-C
-C     Global dimensions
-C
-      n1 = nMesh(1)
-      n2 = nMesh(2)
-      n3 = nMesh(3)
-      ng = n1*n2*n3
-C
-C     Local dimensions
-C
-      call getMeshBox( UNIFORM, box )
-      !n1l = (box(2,1,Node+1)-box(1,1,Node+1)+1)*NSM
-      n2l = (box(2,2,Node+1)-box(1,2,Node+1)+1)*NSM
-      n3l = (box(2,3,Node+1)-box(1,3,Node+1)+1)*NSM
-      n = n1*n2l*n3l
-C
-C  Set logical as to whether there are any locally stored points
-C
-      LocalPoints = (n.gt.0) 
+      k_ori_distro = ori_distr
+
+      gmesh(1:3) = nMesh(1:3)
+
       if (frsttime) then
         nullify(trigs)
         call re_alloc( trigs, 1, maxtrigs, 1, 3, 'trigs', 'fft' )
-        frsttime = .FALSE.
+
 #ifdef MPI
+        call getMeshBox( UNIFORM, box )
+
         ProcessorZ = NODES/ProcessorY
         PY = mod(Node,ProcessorY)+1
         PZ = Node/ProcessorY+1
         call MPI_Comm_Split( MPI_Comm_World, PZ, PY, COMM_Y, ierr )
         call MPI_Comm_Split( MPI_Comm_World, PY, PZ, COMM_Z, ierr )
-        nullify(xydisp,xzdisp,ydispl,zdispl)
-        call re_alloc( xydisp, 1, ProcessorY+1, 'xydisp', 'fft' )
-        call re_alloc( xzdisp, 1, ProcessorZ+1, 'xzdisp', 'fft' )
+        call re_alloc( xdispl, 1, ProcessorY+1, 'xdispl', 'fft' )
         call re_alloc( ydispl, 1, ProcessorY+1, 'ydispl', 'fft' )
         call re_alloc( zdispl, 1, ProcessorZ+1, 'zdispl', 'fft' )
-        
-        di = n1/ProcessorY
-        mo = mod(n1,ProcessorY)
-        xydisp(1) = 1
+        di = gmesh(1)/ProcessorY
+        mo = mod(gmesh(1),ProcessorY)
+        xdispl(1) = 1
         do i= 1, ProcessorY
-          xydisp(i+1) = xydisp(i) + di + merge(1,0,i<=mo)
-        enddo
-        di = n1/ProcessorZ
-        mo = mod(n1,ProcessorZ)
-        xzdisp(1) = 1
-        do i= 1, ProcessorZ
-          xzdisp(i+1) = xzdisp(i) + di + merge(1,0,i<=mo)
+          xdispl(i+1) = xdispl(i) + di + merge(1,0,i<=mo)
         enddo
         ydispl(1) = 1
         do i= 1, ProcessorY
@@ -175,7 +137,9 @@ C
           zdispl(i+1) = box(2,3,(i-1)*ProcessorY+1)*NSM+1
         enddo
 #endif
+        frsttime = .false.
       endif
+
 C
 C  Initialise the tables for the FFT if the mesh has changed
 C
@@ -201,463 +165,394 @@ C
         call re_alloc( trigs, 1, maxtrigs, 1, 3, 'trigs', 'fft' )
         OldMesh(1:3) = 0
       enddo
-C
-C  FFT in X direction
-C
-      if (LocalPoints) then
-        call gpfa(f(1:2*n),f(2:2*n),trigs(:,1),2,2*n1,n1,n2l*n3l,-isn)
-      endif
 
 #ifdef MPI
-C***********************
-C  2-D Processor Grid  *
-C***********************
-      n1l_y = xydisp(py+1)-xydisp(py)
-      n1l_z = xzdisp(pz+1)-xzdisp(pz)
+        s1 = gMesh(1)*(ydispl(py+1)-ydispl(py))*
+     &                (zdispl(pz+1)-zdispl(pz))
+        s2 = gMesh(2)*(xdispl(py+1)-xdispl(py))*
+     &                (zdispl(pz+1)-zdispl(pz))
+      if (k_ori_distro) then
+        if (.not.associated(xzdisp)) then
+          call re_alloc( xzdisp, 1, ProcessorZ+1, 'xzdisp', 'fft' )
+          di = gmesh(1)/ProcessorZ
+          mo = mod(gmesh(1),ProcessorZ)
+          xzdisp(1) = 1
+          do i= 1, ProcessorZ
+            xzdisp(i+1) = xzdisp(i) + di + merge(1,0,i<=mo)
+          enddo
+        endif
+        s3 = gMesh(3)*(ydispl(py+1)-ydispl(py))*
+     &                (xzdisp(pz+1)-xzdisp(pz))
+        size1 = s1
+        size2 = max(s2,s3)
+      else
+        if (.not.associated(yzdisp)) then
+          call re_alloc( yzdisp, 1, ProcessorZ+1, 'yzdisp', 'fft' )
+          di = gmesh(2)/ProcessorZ
+          mo = mod(gmesh(2),ProcessorZ)
+          yzdisp(1) = 1
+          do i= 1, ProcessorZ
+            yzdisp(i+1) = yzdisp(i) + di + merge(1,0,i<=mo)
+          enddo
+        endif
+        s3 = gMesh(3)*(xdispl(py+1)-xdispl(py))*
+     &       (yzdisp(pz+1)-yzdisp(pz))
+        size1 = max(s1,s3)
+        size2 = s2
+      endif
+#else
+        size1 = gMesh(1)*gMesh(2)*gMesh(3)
+        size2 = 0
+#endif
+      end subroutine fft_init
+
+      subroutine getFFTLims( lbox )
+      implicit none
+      integer :: lbox(2,3)
+#ifdef MPI
+      if (k_ori_distro) then
+        lbox(1,1) = 1
+        lbox(2,1) = gmesh(1)
+        lbox(1,2) = ydispl(py) 
+        lbox(2,2) = ydispl(py+1)-1
+        lbox(1,3) = zdispl(pz)
+        lbox(2,3) = zdispl(pz+1)-1
+      else
+        lbox(1,1) = xdispl(py)
+        lbox(2,1) = xdispl(py+1)-1
+        lbox(1,2) = yzdisp(pz)
+        lbox(2,2) = yzdisp(pz+1)-1
+        lbox(1,3) = 1
+        lbox(2,3) = gmesh(3)
+      endif
+#else
+      lbox(1,1:3) = 1
+      lbox(2,1:3) = gMehs(1:3)
+#endif
+      end subroutine getFFTLims
+
+      subroutine fft( f1, f2, isn )
+      implicit none
+      real(grid_p), target :: f1(*), f2(*)
+      integer :: isn
+      integer :: ierr, n, n1, n2, n3, n2a, n3a, n1b, n3b, n1c, n2c
+      integer :: i, j, k, ng, ioffset
+      real(dp) :: scale
+
+      call timer( 'fft', 1 )
+
+      n1 = gmesh(1)
+      n2 = gmesh(2)
+      n3 = gmesh(3)
+
+#ifdef MPI
+      if (k_ori_distro) then
+        n2a = ydispl(py+1)-ydispl(py)
+        n3a = zdispl(pz+1)-zdispl(pz)
+        n1b = xdispl(py+1)-xdispl(py)
+        n3b = n3a
+        n1c = xzdisp(pz+1)-xzdisp(pz)
+        n2c = n2a
 C
-C  Allocate local memory
+C       FFT in X direction
 C
-      nullify( ft )
-      bsize = 2*max(n1l_y*n2*n3l,n1l_z*n2l*n3)
-      call re_alloc( ft, 1, bsize, 'ft', 'fft' )
-      n1l = n1l_y
+        n = n1*n2a*n3a
+        if (n>0) then  
+          call gpfa( f1(1:2*n), f1(2:2*n), trigs(:,1), 2, 2*n1, n1,
+     &               n2a*n3a, -isn )
+        endif
+C
+C       Transpose data from X to Y direction
+C
+        call redistributePencil( 1, n1, n2a, n3a, f1,
+     &                           2, n1b, n2, n3b, f2,
+     &                           py, ProcessorY, xdispl, ydispl,
+     &                           COMM_Y )
+C
+C       FFT in Y direction
+C
+        n = n1b*n2*n3b
+        if (n>0) then
+          IOffSet = 1
+          do i= 1, n3b
+            call gpfa(f2(IOffSet:2*n),f2(IOffSet+1:2*n), trigs(:,2),
+     .            2*n1b, 2, n2, n1b, -isn )
+            IOffSet = Ioffset + 2*n1b*n2
+          enddo
+        endif
+C
+C       Transpose data from Y to X and then to Z direction
+C
+        call redistributePencil( 2, n1b, n2, n3b, f2,
+     &                           1, n1, n2a, n3a, f1,
+     &                           py, ProcessorY, ydispl, xdispl,
+     &                           COMM_Y )
+        call redistributePencil( 1, n1, n2a, n3a, f1,
+     &                           3, n1c, n2c, n3, f2,
+     &                           pz, ProcessorZ, xzdisp, zdispl,
+     &                           COMM_Z )
+C
+C       FFT in Z direction
+C
+        n = n3*n1c*n2c
+        if (n>0) then
+          call gpfa( f2(1:2*n), f2(2:2*n), trigs(:,3), 2*n1c*n2c, 2,
+     &    n3, n1c*n2c,-isn )
+        endif
+C
+C       Transpose data back from Z to X
+C
+        call redistributePencil( 3, n1c, n2c, n3, f2,
+     &                           1, n1, n2a, n3a, f1,
+     &                           pz, ProcessorZ, zdispl, xzdisp,
+     &                           COMM_Z )
+C
+C       Scale values
+C
+        if (isn.gt.0) then
+          ng = n1*n2*n3
+          scale=1.0_dp/dble(ng)
+          do i=1,2*n
+            f1(i)=f1(i)*scale
+          enddo
+        endif
+      else ! .not. k_ori_distro
+        n2a = ydispl(py+1)-ydispl(py)
+        n3a = zdispl(pz+1)-zdispl(pz)
+        n1b = xdispl(py+1)-xdispl(py)
+        n3b = n3a
+        n1c = n1b
+        n2c = yzdisp(pz+1)-yzdisp(pz)
+        if (isn==-1) then
+C
+C         FFT in X direction
+C
+          n = n1*n2a*n3a
+          if (n>0) then
+           call gpfa( f1(1:2*n), f1(2:2*n), trigs(:,1), 2, 2*n1, n1,
+     &                  n2a*n3a, -isn )
+           endif
+C
+C         Transpose data from X to Y direction
+C
+          call redistributePencil( 1, n1, n2a, n3a, f1,
+     &                             2, n1b, n2, n3b, f2,
+     &                             py, ProcessorY, xdispl, ydispl,
+     &                             COMM_Y )
+C
+C         FFT in Y direction
+C
+          n = n1b*n2*n3b
+          if (n>0) then
+            IOffSet = 1
+            do i= 1, n3b
+              call gpfa(f2(IOffSet:2*n),f2(IOffSet+1:2*n), trigs(:,2),
+     .              2*n1b, 2, n2, n1b, -isn )
+              IOffSet = Ioffset + 2*n1b*n2
+            enddo
+          endif
+C
+C         Transpose data from Y to Z direction
+C
+          call redistributePencil( 2, n1b, n2, n3b, f2,
+     &                             3, n1c, n2c, n3, f1,
+     &                             pz, ProcessorZ, yzdisp, zdispl,
+     &                             COMM_Z )
+C
+C         FFT in Z direction
+C
+          n = n3*n1c*n2c
+          if (n>0) then
+            call gpfa( f1(1:2*n), f1(2:2*n), trigs(:,3), 2*n1c*n2c, 2,
+     &      n3, n1c*n2c,-isn )
+          endif
+        else ! isn==1
+C
+C         FFT in Z direction
+C
+          n = n3*n1c*n2c
+          if (n>0) then
+            call gpfa( f1(1:2*n), f1(2:2*n), trigs(:,3), 2*n1c*n2c, 2,
+     &      n3, n1c*n2c,-isn )
+          endif
 
 C
-C  Redistribute data to be distributed by X and Z
+C         Transpose data from Z to Y direction
 C
-      call redistribXZ( f, n1, n2l, n3l, ft, n1l, n2, 1,
-     &    nsm, Node, Nodes )
+          call redistributePencil( 3, n1c, n2c, n3, f1,
+     &                             2, n1b, n2, n3b, f2,
+     &                             pz, ProcessorZ, zdispl, yzdisp,
+     &                             COMM_Z )
 C
-C  FFT in Y direction
+C         FFT in Y direction
 C
-      if (LocalPoints) then
-        nft = 2*n1l*n2*n3l
-        do i= 0, n3l-1
-          IOffSet=2*n1l*n2*i
-          call gpfa(ft(IOffSet+1:nft),ft(IOffSet+2:nft),trigs(:,2),
-     .            2*n1l, 2, n2, n1l, -isn )
-        enddo
+          n = n1b*n2*n3b
+          if (n>0) then
+            IOffSet = 1
+            do i= 1, n3b
+              call gpfa(f2(IOffSet:2*n),f2(IOffSet+1:n), trigs(:,2),
+     .              2*n1b, 2, n2, n1b, -isn )
+              IOffSet = Ioffset + 2*n1b*n2
+            enddo
+          endif
+C
+C         Transpose data from Y to X direction
+C
+          call redistributePencil( 2, n1b, n2, n3b, f2,
+     &                             1, n1, n2a, n3a, f1,
+     &                             py, ProcessorY, ydispl, xdispl,
+     &                             COMM_Y )
+C
+C         FFT in X direction
+C
+          n = n1*n2a*n3a
+          if (n>0) then
+            call gpfa( f1(1:2*n), f1(2:2*n), trigs(:,1), 2, 2*n1, n1,
+     &                  n2a*n3a, -isn )
+C
+C           SCALE the result
+C
+            ng = n1*n2*n3
+            scale=1.0_dp/dble(ng)
+            do i=1,2*n
+              f1(i)=f1(i)*scale
+            enddo
+          endif
+        endif
       endif
-C
-C  Redistribute data back to original form
-C
-      call redistribXZ( f, n1, n2l, n3l, ft, n1l, n2,
-     &    -1, nsm, Node, Nodes )
-C
-C  Redistribute data to be distributed by X and Y
-C
-      n1l = n1l_z
-      call redistribXY( f, n1, n2l, n3l, ft, n1l, n3,
-     &    1, nsm, Node, Nodes )
-C
-C  FFT in Z direction
-C
-      if (LocalPoints) then
-        nft = 2*n1l*n2l*n3
-        call gpfa(ft(1:nft),ft(2:nft),trigs(:,3),
-     $            2*n1l*n2l,2,n3,n1l*n2l,-isn)
-      endif
-C
-C  Redistribute data to be distributed by Z again
-C
-      call redistribXY(f,n1,n2l,n3l,ft,n1l,n3,-1,nsm,Node,Nodes)
-C
-C  Free local memory
-C
-      call de_alloc( ft, 'ft', 'fft' )
 #else
+        n = n1*n2*n3
+C
+C       FFT in X direction
+C
+        call gpfa( f1(1:2*n), f1(2:2*n), trigs(:,1), 2, 2*n1, n1,
+     &             n2*n3, -isn )
 C
 C  FFT in Y direction
 C
       do i=0,n3-1
          IOffSet=2*n1*n2*i
-         call gpfa(f(IOffSet+1:nf),f(IOffSet+2:nf),trigs(:,2),
+         call gpfa(f(IOffSet+1:2*n),f(IOffSet+2:2*n),trigs(:,2),
      .             2*n1,2,n2,n1,-isn)
       enddo
 C
 C  FFT in Z direction
 C
-      call gpfa(f(1:nf),f(2:nf),trigs(:,3),2*n1*n2,2,n3,n1*n2,-isn)
-#endif /* MPI */
+      call gpfa(f(1:2*n),f(2:2*n),trigs(:,3),2*n1*n2,2,n3,n1*n2,-isn)
 C
 C  Scale values
 C
-      if (LocalPoints.and.isn.gt.0) then
-        scale=1.0_dp/dble(ng)
+      if (isn.gt.0) then
+        scale=1.0_dp/dble(n)
         do i=1,2*n
           f(i)=f(i)*scale
         enddo
       endif
-
+#endif /* MPI */
       call timer( 'fft', 2 )
-      return
-
       end subroutine fft
 
-
-
-
-
-!******************************************************************************
-
 #ifdef MPI
-      subroutine redistribXZ(f,n1,n2l,n3l,ft,n1l,n2,idir,nsm,
-     .  Node,Nodes)
-C
-C  This routine redistributes the data over the Nodes as needed
-C  for the FFT routines between the arrays f and ft
-C
-C  Array f is distributed in the Y/Z direction while ft is distributed
-C  in the X/Z direction
-C
-C  idir = direction of redistribution : > 0 => f->ft
-C                                       < 0 => ft->f
-C
-C  Use the processor grid to divide communicator according to Z
-C
-C  Julian Gale, July 1999
-C
-
+      subroutine redistributePencil( src, s1, s2, s3, fsrc,
+     &                               dst, d1, d2, d3, fdst,
+     &                               p, np, srcd, dstd, comm )
       implicit none
-
+      integer :: src, dst, s1, s2, s3, d1, d2, d3
+      integer :: p, np, srcd(np+1), dstd(np+1), comm
+      real*8 :: fsrc(2,s1,s2,s3), fdst(2,d1,d2,d3)
+      integer :: i, j, k, l, ii, jj, kk, pi, pl, pr, nsend, nrecv
+      integer :: ierr, r_recv, r_send, status(MPI_Status_Size)
+      integer :: bsize_s, bsize_r
+      integer :: sbox(2,3), dbox(2,3)
+      real(grid_p), pointer  :: sbuf(:,:), rbuf(:,:)
+      sbox(1,:) = 1
+      sbox(2,:) = (/ s1, s2, s3 /)
+      dbox(1,:) = 1
+      dbox(2,:) = (/ d1, d2, d3 /)
+C     Compute the buffer sizes
+      bsize_s = (s1*s2*s3/sbox(2,src))*(srcd(2)-srcd(1))
+      bsize_r = (d1*d2*d3/dbox(2,dst))*(dstd(2)-dstd(1))
+      call re_alloc( sbuf, 1, 2, 1, bsize_s, 'sbuf', 'fft' )
+      call re_alloc( rbuf, 1, 2, 1, bsize_r, 'rbuf', 'fft' )
 C
-C  Passed arguments
+C     Handle transfer of terms which are purely local
 C
-      integer
-     .  n1, n2, n2l, n1l, n3l, Node, Nodes, idir, nsm
-      real(grid_p)
-     .  f(2,n1,n2l,n3l), ft(2,n1l,n2,n3l)
-C
-C  Local variables
-C
-      integer :: i, j, k, j1, k1, pl, pr, l, p
-      integer :: maxn1l, maxn2l, n1t, n2t
-      integer :: ierr, r_send, r_recv, Status(MPI_Status_Size)
-      real(grid_p), pointer  :: fbuf(:,:), tbuf(:,:)
-C
-C  Allocate local memory
-C
-      maxn1l = xydisp(2)-xydisp(1)
-      maxn2l = ydispl(2)-ydispl(1)
-      nullify(fbuf,tbuf)
-      call re_alloc( fbuf, 1, 2, 1, maxn1l*n2l*n3l, 'fbuf', 'fft' ) 
-      call re_alloc( tbuf, 1, 2, 1, n1l*maxn2l*n3l, 'tbuf', 'fft' )
-
-      if (idir.gt.0) then
-C***********
-C  F -> FT *
-C***********
-C
-C  Handle transfer of terms which are purely local
-C
-        do i= 1, n3l
-          j1 = ydispl(py)
-          do j= 1, n2l
-            k1 = 1
-            do k=xydisp(py), xydisp(py+1)-1
-              ft(:,k1,j1,i) = f(:,k,j,i)
-              k1 = k1 + 1
-            enddo
-            j1 = j1 + 1
+      sbox(1,src) = srcd(p)
+      sbox(2,src) = srcd(p+1)-1
+      dbox(1,dst) = dstd(p)
+      dbox(2,dst) = dstd(p+1)-1
+      ii = dbox(1,3)
+      do i= sbox(1,3), sbox(2,3)
+        jj = dbox(1,2)
+        do j= sbox(1,2), sbox(2,2)
+          kk = dbox(1,1)
+          do k= sbox(1,1), sbox(2,1)
+            fdst(:,kk,jj,ii) = fsrc(:,k,j,i)
+            kk = kk+1
           enddo
+          jj = jj+1
         enddo
+        ii =ii+1
+      enddo
+C
 C  Loop over all Node-Node vectors exchanging local data
 C
-        do p=1, ProcessorY-1
-          ! Let's receive from left node and send to the right node
-          pl = mod(py-1+ProcessorY-p,ProcessorY)+1
-          pr = mod(py-1+p,ProcessorY)+1
+      do pi=1, NP-1
+        ! Let's receive from left node and send to the right node
+        pl = mod(p-1+NP-pi,NP)+1
+        pr = mod(p-1+pi,NP)+1
+        ! Destination boxes
+        dbox(1,dst) = dstd(pl)
+        dbox(2,dst) = dstd(pl+1)-1
+        sbox(1,src) = srcd(pr)
+        sbox(2,src) = srcd(pr+1)-1
+        ! Number of elements to send/receive
+        nsend = 2*PRODUCT( sbox(2,:)-sbox(1,:)+1 )
+        nrecv = 2*PRODUCT( dbox(2,:)-dbox(1,:)+1 )
 C
-C  Collect data to send
+C       Collect data to send
 C
-          l = 1
-          do i= 1, n3l
-            do j= 1, n2l
-              do k= xydisp(pr), xydisp(pr+1)-1
-                fbuf(:,l) = f(:,k,j,i)
-                l = l+1
-              enddo
+        l = 1
+        do i= sbox(1,3), sbox(2,3)
+          do j= sbox(1,2), sbox(2,2)
+            do k= sbox(1,1), sbox(2,1)
+              sbuf(:,l) = fsrc(:,k,j,i)
+              l = l+1
             enddo
           enddo
+        enddo
 C
-C  Exchange data - send to right and receive from left
+C       Exchange data - send to right and receive from left
 C
-          n2t = ydispl(pl+1)-ydispl(pl)
-          n1t = xydisp(pr+1)-xydisp(pr)
-          call MPI_IRecv( tbuf(1,1), 2*n1l*n2t*n3l,
-     .      MPI_grid_real, pl-1, 1, COMM_Y, r_recv, ierr )
-          call MPI_ISend( fbuf(1,1), 2*n1t*n2l*n3l,
-     .      MPI_grid_real, pr-1, 1, COMM_Y, r_send, ierr )
+        call MPI_IRecv( rbuf(1,1), nrecv,
+     .    MPI_grid_real, pl-1, 1, COMM, r_recv, ierr )
+        call MPI_ISend( sbuf(1,1), nsend,
+     .    MPI_grid_real, pr-1, 1, COMM, r_send, ierr )
 C
-C  Wait for receive to complete
+C       Wait for receive to complete
 C
-          call MPI_Wait( r_recv, Status, ierr )
+        call MPI_Wait( r_recv, Status, ierr )
 C
-C  Place received data into correct array
+C       Place received data into correct array
 C
-          l = 1
-          do i= 1, n3l
-            do j= ydispl(pl), ydispl(pl+1)-1
-              do k= 1, n1l
-                ft(:,k,j,i) = tbuf(:,l)
-                l = l+1
-              enddo
+        l = 1
+        do i= dbox(1,3), dbox(2,3)
+          do j= dbox(1,2), dbox(2,2)
+            do k= dbox(1,1), dbox(2,1)
+              fdst(:,k,j,i) = rbuf(:,l)
+              l = l+1
             enddo
           enddo
+        enddo
+C
 C  Wait for send to complete
 C
-          call MPI_Wait( r_send, Status, ierr )
-        enddo
-      else
-C***********
-C  FT -> F *
-C***********
-C
-C  Handle transfer of terms which are purely local
-        do i= 1, n3l
-          j1 = ydispl(py)
-          do j= 1, n2l
-            k1 = 1
-            do k=xydisp(py), xydisp(py+1)-1
-              f(:,k,j,i) = ft(:,k1,j1,i)
-              k1 = k1 + 1
-            enddo
-            j1 = j1 + 1
-          enddo
-        enddo
-C  Loop over all Node-Node vectors exchanging local data
-C
-        do p=1, ProcessorY-1
-          ! Let's receive from left node and send to the right node
-          pl = mod(py-1+ProcessorY-p,ProcessorY)+1
-          pr = mod(py-1+p,ProcessorY)+1
-C
-C  Collect data to send
-C
-          l = 1
-          do i= 1, n3l
-            do j= ydispl(pr), ydispl(pr+1)-1
-              do k= 1, n1l
-                tbuf(:,l) = ft(:,k,j,i)
-                l = l+1
-              enddo
-            enddo
-          enddo
+        call MPI_Wait( r_send, Status, ierr )
+      enddo
 
-C  Exchange data - send to right and receive from left
-C
-          n2t = ydispl(pr+1)-ydispl(pr)
-          n1t = xydisp(pl+1)-xydisp(pl)
-          call MPI_IRecv( fbuf(1,1),  2*n1t*n2l*n3l,
-     .      MPI_grid_real, pl-1, 1, COMM_Y, r_recv, ierr )
-          call MPI_ISend( tbuf(1,1), 2*n1l*n2t*n3l,
-     .      MPI_grid_real, pr-1, 1, COMM_Y, r_send, ierr )
-C
-C  Wait for receive to complete
-C
-          call MPI_Wait( r_recv, Status, ierr )
-C
-C  Place received data into correct array
-          l = 1
-          do i= 1, n3l
-            do j= 1, n2l
-              do k= xydisp(pl), xydisp(pl+1)-1
-                f(:,k,j,i) = fbuf(:,l)
-                l = l+1
-              enddo
-            enddo
-          enddo
-C  Wait for send to complete
-C
-          call MPI_Wait( r_send, Status, ierr )
-        enddo
-      endif
-C
-C  Free local memory
-C
-      call de_alloc( fbuf, 'fbuf', 'fft' )
-      call de_alloc( tbuf, 'tbuf', 'fft' )
-      end subroutine redistribXZ
-
-!******************************************************************************
-
-      subroutine redistribXY(f,n1,n2l,n3l,ft,n1l,n3,idir,nsm,
-     .  Node,Nodes)
-C
-C  This routine redistributes the data over the Nodes as needed
-C  for the FFT routines between the arrays f and ft
-C
-C  Array f is distributed in the Y/Z direction while ft is distributed
-C  in the X/Y direction
-C
-C  idir = direction of redistribution : > 0 => f->ft
-C                                       < 0 => ft->f
-C
-C  Use the processor grid to divide communicator according to Y
-C
-C  Currently written in not the most efficient but simple way! 
-C  Need to improve communication later.
-C
-C  Julian Gale, July 1999
-C
-
-      implicit none
-
-C
-C  Passed arguments
-C
-      integer
-     .  n1, n3, n2l, n1l, n3l, nsm, Node, Nodes, idir
-      real(grid_p)
-     .  f(2,n1,n2l,n3l), ft(2,n1l,n2l,n3)
-C
-C  Local variables
-C
-      integer :: i, j, k, i1, k1, pl, pr, l, p
-      integer :: maxn1l, maxn3l, n1t, n3t
-      integer :: ierr, r_send, r_recv, Status(MPI_Status_Size)
-      real(grid_p), pointer  :: fbuf(:,:), tbuf(:,:)
-C
-C  Allocate local memory
-C
-      maxn1l = xzdisp(2)-xzdisp(1)
-      maxn3l = zdispl(2)-zdispl(1)
-      nullify(fbuf,tbuf)
-      call re_alloc( fbuf, 1, 2, 1, maxn1l*n2l*n3l, 'fbuf', 'fft' ) 
-      call re_alloc( tbuf, 1, 2, 1, n1l*n2l*maxn3l, 'tbuf', 'fft' )
-      if (idir.gt.0) then
-C***********
-C  F -> FT *
-C***********
-C
-C  Handle transfer of terms which are purely local
-        i1 = zdispl(pz)
-        do i= 1, n3l
-          do j= 1, n2l
-            k1 = 1
-            do k=xzdisp(pz), xzdisp(pz+1)-1
-              ft(:,k1,j,i1) = f(:,k,j,i)
-              k1 = k1 + 1
-            enddo
-          enddo
-            i1 = i1 + 1
-        enddo
-C  Loop over all Node-Node vectors exchanging local data
-C
-        do p=1, ProcessorZ-1
-          ! Let's receive from left node and send to the right node
-          pl = mod(pz-1+ProcessorZ-p,ProcessorZ)+1
-          pr = mod(pz-1+p,ProcessorZ)+1
-C
-C  Collect data to send
-          l = 1
-          do i= 1, n3l
-            do j= 1, n2l
-              do k= xzdisp(pr), xzdisp(pr+1)-1
-                fbuf(:,l) = f(:,k,j,i)
-                l = l+1
-              enddo
-            enddo
-          enddo
-C  Exchange data - send to right and receive from left
-C
-          n3t = zdispl(pl+1)-zdispl(pl)
-          n1t = xzdisp(pr+1)-xzdisp(pr)
-          call MPI_IRecv( tbuf(1,1), 2*n1l*n2l*n3t,
-     .      MPI_grid_real, pl-1, 1, COMM_Z, r_recv, ierr )
-          call MPI_ISend( fbuf(1,1), 2*n1t*n2l*n3l,
-     .      MPI_grid_real, pr-1, 1, COMM_Z, r_send, ierr )
-C
-C  Wait for receive to complete
-C
-          call MPI_Wait( r_recv, Status, ierr )
-C
-C  Place received data into correct array
-C
-          l = 1
-          do i= zdispl(pl), zdispl(pl+1)-1
-            do j=1, n2l 
-              do k= 1, n1l
-                ft(:,k,j,i) = tbuf(:,l)
-                l = l+1
-              enddo
-            enddo
-          enddo
-C  Wait for send to complete
-C
-          call MPI_Wait( r_send, Status, ierr )
-        enddo
-      elseif (idir.lt.0) then
-C***********
-C  FT -> F *
-C***********
-C
-C  Handle transfer of terms which are purely local
-        i1 = zdispl(pz)
-        do i= 1, n3l
-          do j= 1, n2l
-            k1 = 1
-            do k=xzdisp(pz), xzdisp(pz+1)-1
-              f(:,k,j,i) = ft(:,k1,j,i1)
-              k1 = k1 + 1
-            enddo
-          enddo
-          i1 = i1 + 1
-        enddo
-C  Loop over all Node-Node vectors exchanging local data
-C
-        do p=1, ProcessorZ-1
-          ! Let's receive from left node and send to the right node
-          pl = mod(pz-1+ProcessorZ-p,ProcessorZ)+1
-          pr = mod(pz-1+p,ProcessorZ)+1
-C
-C  Collect data to send
-C
-          l = 1
-          do i= zdispl(pr), zdispl(pr+1)-1
-            do j= 1, n2l
-              do k= 1, n1l
-                tbuf(:,l) = ft(:,k,j,i)
-                l = l+1
-              enddo
-            enddo
-          enddo
-C
-C  Exchange data - send to right and receive from left
-C
-          n3t = zdispl(pr+1)-zdispl(pr)
-          n1t = xzdisp(pl+1)-xzdisp(pl)
-          call MPI_IRecv( fbuf(1,1),  2*n1t*n2l*n3l,
-     .      MPI_grid_real, pl-1, 1, COMM_Z, r_recv, ierr )
-          call MPI_ISend( tbuf(1,1), 2*n1l*n2l*n3t,
-     .      MPI_grid_real, pr-1, 1, COMM_Z, r_send, ierr )
-C
-C  Wait for receive to complete
-C
-          call MPI_Wait( r_recv, Status, ierr )
-C
-C  Place received data into correct array
-C
-          l = 1
-          do i= 1, n3l
-            do j= 1, n2l
-              do k= xzdisp(pl), xzdisp(pl+1)-1
-                f(:,k,j,i) = fbuf(:,l)
-                l = l+1
-              enddo
-            enddo
-          enddo
-C  Wait for send to complete
-C
-          call MPI_Wait( r_send, Status, ierr )
-        enddo
-      endif
-C
-C  Free local memory
-C
-      call de_alloc( fbuf, 'fbuf', 'fft' )
-      call de_alloc( tbuf, 'tbuf', 'fft' )
-      end subroutine redistribXY
+      call de_alloc( sbuf, 'sbuf', 'fft' ) 
+      call de_alloc( rbuf, 'rbuf', 'fft' )
+      end subroutine redistributePencil
 #endif /* MPI */
 
 !******************************************************************************

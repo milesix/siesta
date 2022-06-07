@@ -1136,7 +1136,7 @@ reordpsi.o: alloc.o m_orderbands.o parallel.o parallelsubs.o precision.o
 reordpsi.o: siesta2wannier90.o
 restructSpData2D.o: class_Data2D.o class_OrbitalDistribution.o class_SpData2D.o
 restructSpData2D.o: class_Sparsity.o
-rhofft.o: cellsubs.o fft.o precision.o sys.o
+rhofft.o: cellsubs.o fft.o precision.o sys.o alloc.o
 rhooda.o: atmfuncs.o atomlist.o mesh.o meshphi.o precision.o
 rhoofd.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o m_spin.o mesh.o
 rhoofd.o: meshdscf.o meshphi.o parallel.o parallelsubs.o precision.o sys.o
