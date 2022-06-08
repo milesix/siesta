@@ -34,69 +34,55 @@ default: fcbuild vibra
 
 VPATH:=$(shell pwd)/../../../Src
 OBJDIR=Obj
-ARCH_MAKE=../../../$(OBJDIR)/arch.make
+
+override WITH_MPI=
+override WITH_NETCDF=
+
+MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
+ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
-override WITH_MPI=
-override WITH_NETCDF=
-
-DEFS:=$(DEFS_PREFIX)-UMPI $(DEFS_PREFIX)-UCDF $(DEFS) $(DEFS_PREFIX)-UMPI $(DEFS_PREFIX)-UCDF
-FPPFLAGS:=$(DEFS_PREFIX)-UMPI $(DEFS_PREFIX)-UCDF $(FPPFLAGS) $(DEFS_PREFIX)-UMPI $(DEFS_PREFIX)-UCDF
 
 # Define these if desired
 #
 ### FPPFLAGS += -DSANKEY_DIAG
 ### FPPFLAGS += -DVIBRA_DEBUG
 
-
-FDF=libfdf.a
-FDF_MAKEFILE=$(VPATH)/fdf/makefile
-FDF_INCFLAGS:=-I$(VPATH)/fdf $(INCFLAGS)
-$(FDF): 
-	(mkdir -p fdf; cd fdf ; $(MAKE) -f $(FDF_MAKEFILE) "FC=$(FC_SERIAL)" \
-                          "VPATH=$(VPATH)/fdf" \
-                          "ARCH_MAKE=../$(ARCH_MAKE)" \
-                          "DEFS=$(DEFS)" \
-                          "FPPFLAGS=$(FPPFLAGS)" \
-                          "MPI_INTERFACE= " \
-                          "INCFLAGS=$(FDF_INCFLAGS)" "FFLAGS=$(FFLAGS)" module)
-
 # Objects from Siesta
 SYSOBJ = $(SYS).o
-SIESTA_OBJS = local_sys.o precision.o units.o m_io.o io.o parallel.o pxf.o reclat.o $(SYSOBJ)
+SIESTA_OBJS = local_sys.o precision.o units.o m_io.o io.o reclat.o $(SYSOBJ)
 
-COMMON_OBJS = recoor.o
+COMMON_OBJS = recoor.o 
 BUILD_OBJS = fcbuild.o $(COMMON_OBJS)
 VIBRA_OBJS = vibra.o hermdp.o klines.o outbands.o $(COMMON_OBJS)
 
+INCFLAGS:= $(FDF_INCFLAGS) $(INCFLAGS)
 
 # Build dependencies
-$(BUILD_OBJS): $(FDF) $(SIESTA_OBJS)
-$(VIBRA_OBJS): $(FDF) $(SIESTA_OBJS)
+$(BUILD_OBJS): $(FDF_LIBS) $(SIESTA_OBJS)
+$(VIBRA_OBJS): $(FDF_LIBS) $(SIESTA_OBJS)
 
-fcbuild: $(FDF) $(SIESTA_OBJS) $(BUILD_OBJS)
+fcbuild: $(FDF_LIBS) $(SIESTA_OBJS) $(BUILD_OBJS)
 	$(FC) -o fcbuild \
-	       $(LDFLAGS) $(BUILD_OBJS) $(SIESTA_OBJS) $(FDF)
+	       $(LDFLAGS) $(BUILD_OBJS) $(SIESTA_OBJS) $(FDF_LIBS)
 
-vibra: $(FDF) $(SIESTA_OBJS) $(VIBRA_OBJS)
+vibra: $(FDF_LIBS) $(COMP_LIBS) $(SIESTA_OBJS) $(VIBRA_OBJS)
 	$(FC) -o vibra \
-	       $(LDFLAGS) $(VIBRA_OBJS) $(SIESTA_OBJS) $(FDF) $(LIBS)
+	       $(LDFLAGS) $(VIBRA_OBJS) $(SIESTA_OBJS) $(FDF_LIBS) $(COMP_LIBS) $(LIBS)
 
 clean: 
 	@echo "==> Cleaning object and executable files"
-	rm -f fcbuild vibra *.o *.mod libfdf.a
-	rm -rf ./fdf
+	rm -f fcbuild vibra *.o *.mod
 
 
 # Dependencies
 DEP_OBJS= $(SIESTA_OBJS)
 LOCAL_OBJS=$(VIBRA_OBJS) $(BUILD_OBJS)
-
-$(BUILD_OBJS) $(VIBRA_OBJS): $(FDF)
 
 dep:
 	sfmakedepend --depend=obj --modext=o \

@@ -16,6 +16,7 @@ default: tscontour
 MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 # Set the default non-mpi routines
 FC_DEFAULT := $(FC)
@@ -39,9 +40,7 @@ FPPFLAGS:=$(DEFS_PREFIX) $(FPPFLAGS) $(DEFS_PREFIX)-UMPI
 FPPFLAGS += $(DEFS_PREFIX)-UNCDF $(DEFS_PREFIX)-UNCDF_4 $(DEFS_PREFIX)-UNCDF_PARALLEL
 FPPFLAGS += $(DEFS_PREFIX)-USIESTA__MUMPS
 
-NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
-PSOP_INCFLAGS=-I$(MAIN_OBJDIR)/psoplib/src
-INCFLAGS:=$(NETCDF_INCFLAGS) \
+INCFLAGS:=$(NETCDF_INCFLAGS) $(FDF_INCFLAGS) \
           $(NCPS_INCFLAGS) $(PSOP_INCFLAGS) $(PSML_INCFLAGS) \
           $(INCFLAGS)
 
@@ -105,10 +104,6 @@ OBJS += tscontour.o handlers.o
 XC = $(GRIDXC_LIBS)
 INCFLAGS:= $(INCFLAGS) $(GRIDXC_INCFLAGS)
 
-#
-NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
-PSOP=$(MAIN_OBJDIR)/psoplib/src/libpsop.a
-
 #######################
 #  TS-TBT libs:
 #
@@ -159,31 +154,19 @@ $(NCDF): $(FDICT)
 
 #######################
 
-# Use the makefile in Src/fdf and all the sources there.
-FDF=libfdf.a
-FDF_MAKEFILE=$(VPATH)/fdf/makefile
-FDF_INCFLAGS:=-I$(VPATH)/fdf $(INCFLAGS)
-$(FDF): 
-	(mkdir -p fdf ; cd fdf ; $(MAKE) -f $(FDF_MAKEFILE) "FC=$(FC)" "VPATH=$(VPATH)/fdf" \
-                          "ARCH_MAKE=$(ARCH_MAKE)" \
-                          "DEFS=$(DEFS)" "FPPFLAGS=$(FPPFLAGS)" \
-                          "MPI_INTERFACE= " \
-                          "INCFLAGS=$(FDF_INCFLAGS)" "FFLAGS=$(FFLAGS)" module)
-
 tscontour.o: $(OBJS)
 
-$(OBJS): $(FDF) $(COMP_LIBS)
+$(OBJS): $(FDF_LIBS) $(COMP_LIBS)
 .PHONY: tscontour
-tscontour: $(FDF) $(COMP_LIBS) $(NCPS) $(PSOP) $(OBJS) 
+tscontour: $(FDF_LIBS) $(COMP_LIBS) $(NCPS) $(PSOP) $(OBJS) 
 	$(FC) $(FFLAGS) $(LDFLAGS) -o tscontour \
-	$(OBJS) $(COMP_LIBS) $(FDF) \
+	$(OBJS) $(COMP_LIBS) $(FDF_LIBS) \
         $(NCPS) $(PSOP) $(XC) $(PSML_LIBS) $(XMLF90_LIBS) \
         $(LIBS) 
 
 clean:
 	@echo "==> Cleaning object, library, and executable files"
 	rm -f tscontour *.o *.a *.mod
-	-rm -rf ./fdf
 	-rm -rf ./fdict
 	-rm -rf ./ncdf
 

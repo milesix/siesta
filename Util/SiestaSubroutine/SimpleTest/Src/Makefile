@@ -35,13 +35,12 @@ default: simple_pipes_serial simple_sockets_serial simple_mpi_serial \
 MAIN_OBJDIR:=$(shell cd -P -- ../../../../\$(OBJDIR) && pwd -P)
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
 #
 TOP_LEVEL=$(shell pwd)/../../../../Src
 VPATH:=$(TOP_LEVEL)
 #
-NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
-PSOP_INCFLAGS=-I$(MAIN_OBJDIR)/psoplib/src
-
 #
 # Uncomment the following line for debugging support
 #
@@ -55,22 +54,17 @@ FSIESTA_SOCKETS= posix_calls.o fsockets.o sockets.o fsiesta_sockets.o
 # Siesta libraries used by MPI version
 #
 SIESTA_LIB=libSiestaForces.a
-FDF=libfdf.a
 
 XMLPARSER=$(XMLF90_LIBS)
 XC=$(GRIDXC_LIBS)
 PSML=$(PSML_LIBS)
 #
-NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
-PSOP=$(MAIN_OBJDIR)/psoplib/src/libpsop.a
 PSML=$(PSML_LIBS)
-INCFLAGS:=$(NETCDF_INCFLAGS) \
+INCFLAGS:=$(NETCDF_INCFLAGS) $(FDF_INCFLAGS) $(MS_INCFLAGS) \
           $(NCPS_INCFLAGS) $(PSOP_INCFLAGS) $(PSML_INCFLAGS) \
           $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS) $(INCFLAGS)
 #
-MS=MatrixSwitch.a
-#
-ALL_LIBS= $(SIESTA_LIB) $(FDF) $(XC) \
+ALL_LIBS= $(SIESTA_LIB) $(FDF_LIBS) $(XC) \
 	$(NCPS) $(PSML) $(XMLF90_LIBS) $(PSOP) $(MS) \
 	$(MPI_INTERFACE) $(COMP_LIBS) $(LIBS)
 #

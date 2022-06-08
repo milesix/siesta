@@ -60,8 +60,6 @@ SYSOBJ=$(SYS).o
 #
 #------------------------------------------------------------------------
 #
-# Use the makefile in Src/fdf and all the sources there.
-#
 OTHER_OBJS=fsockets.o sockets.o
 
 f2fmaster: f2fmaster.o $(OTHER_OBJS)

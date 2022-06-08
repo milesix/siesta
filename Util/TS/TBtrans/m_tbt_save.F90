@@ -2766,7 +2766,7 @@ contains
           cu = cu + 1
 
           ! save bulk transmission
-          call local_save_DAT(iounits(cu),nE,ipvt,1,T(iEl))
+          call local_save_DAT(iounits(cu),nE,ipvt,1, [ T(iEl) ] )
 
           cu = cu + 1
           

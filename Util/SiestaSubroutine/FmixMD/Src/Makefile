@@ -24,6 +24,8 @@ default: simple driver para
 #
 ARCH_MAKE=../../../../$(OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include ../../../../$(OBJDIR)/check_for_build_mk.mk
+
 #
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)

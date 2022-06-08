@@ -18,6 +18,7 @@ MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 # Set the default non-mpi routines
 FC_DEFAULT  := $(FC)
@@ -114,31 +115,17 @@ $(NCDF): $(FDICT)
 	cp ncdf/$(NCDF) ./
 
 #######################
-
-# Use the makefile in Src/fdf and all the sources there.
-FDF=libfdf.a
-FDF_MAKEFILE=$(VPATH)/fdf/makefile
-FDF_INCFLAGS:=-I$(VPATH)/fdf $(INCFLAGS)
-$(FDF): 
-	(mkdir -p fdf ; cd fdf ; $(MAKE) -f $(FDF_MAKEFILE) "FC=$(FC)" "VPATH=$(VPATH)/fdf" \
-                          "ARCH_MAKE=$(ARCH_MAKE)" \
-                          "DEFS=$(DEFS)" "FPPFLAGS=$(FPPFLAGS)" \
-                          "MPI_INTERFACE= " \
-                          "INCFLAGS=$(FDF_INCFLAGS)" "FFLAGS=$(FFLAGS)" module)
-
-NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
-
-$(OBJS): $(FDF) $(COMP_LIBS) $(TSHS_COMP_LIBS)
-$(EXE): $(FDF) $(NCPS) $(COMP_LIBS) $(TSHS_COMP_LIBS) $(OBJS) 
+#
+$(EXE): $(COMP_LIBS) $(TSHS_COMP_LIBS) $(OBJS) 
 	$(FC) $(FFLAGS) $(LDFLAGS) -o $(EXE) \
-		$(OBJS) $(COMP_LIBS) $(TSHS_COMP_LIBS) $(FDF) $(LIBS) 
+		$(OBJS) $(COMP_LIBS) $(TSHS_COMP_LIBS) $(LIBS) 
 
 clean:
 	@echo "==> Cleaning object, library, and executable files"
 	rm -f $(EXE) *.o *.a *.mod
 	-rm -rf ./fdict
 	-rm -rf ./NCDF
-	-rm -rf ./fdf
+
 
 # Dependencies
 .PHONY: dep

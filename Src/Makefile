@@ -44,7 +44,7 @@ endif
 .SUFFIXES: .f .f90 .F .F90 .c .o .a
 
 
-lib: libfdf.a libSiestaForces.a
+lib: libSiestaForces.a
 
 dist:
 	make -f makefile.lit dist
@@ -56,18 +56,16 @@ dep:
 	sfmakedepend --depend=obj --modext=o \
           $(VPATH)/*.f $(VPATH)/*.f90 $(VPATH)/*.F $(VPATH)/*.F90 ; \
         fi
-	#@sed -i -e "/^siesta_cmlsubs.o:/s/version.o//" Makefile
 	@sed -i -e 's/\.T90\.o:/.o:/g' Makefile
 
 
 #
 XC=$(GRIDXC_LIBS)
 
-NCPS_INCFLAGS=-I $(MAIN_OBJDIR)/ncps/src
-PSOP_INCFLAGS=-I $(MAIN_OBJDIR)/psoplib/src
 INCFLAGS:= $(NETCDF_INCFLAGS)  $(PSML_INCFLAGS) $(NCPS_INCFLAGS) \
            $(PSOP_INCFLAGS) $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS) \
-           $(PEXSI_INCFLAGS) $(INCFLAGS)
+           $(PEXSI_INCFLAGS) $(FDF_INCFLAGS) $(MS_INCFLAGS) $(INCFLAGS)
+INCFLAGS += $(MPI_WRAPPERS_INCFLAGS)
 #
 # For removing any -ipo compilation in sub directories...
 # Later compilers are also having this enabled, and it lets you
@@ -197,7 +195,9 @@ OBJS =  automatic_cell.o atom_options.o \
 
 OBJS += kpoint_t.o kpoint_scf.o kpoint_dos.o kpoint_pdos.o kpoint_ldos.o
 
+OBJS += broadcast_fdf_struct.o
 OBJS += init_output.o byte_count.o
+
 
 # Diagonalization algorithm
 OBJS += diag_option.o diag.o
@@ -290,50 +290,8 @@ m_pexsi.o m_pexsi_driver.o m_pexsi_dos.o m_pexsi_local_dos.o: f_ppexsi_interface
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 #
-# These subordinate make processes take options from the top level.
-# In some cases they are superfluous, since they can be read
-# from the arch.make file, which is 'included' by all subordinate
-# makefiles. But in some other cases they are needed: VPATH, for
-# example, needs to be passed always.
-#
-NCPS=ncps/src/libncps.a
-$(NCPS): $(PSML)
-	(cd ncps/src ; $(MAKE) -j 1 VPATH="$(VPATH)/ncps/src" \
-	ARCH_MAKE=$(ARCH_MAKE) \
-	"PSML_INCFLAGS=$(PSML_INCFLAGS)" \
-	FFFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 #--------------------------------------------------------------
-PSOP=psoplib/src/libpsop.a
-$(PSOP): 
-	(cd psoplib/src ; $(MAKE) -j 1 VPATH="$(VPATH)/psoplib/src" \
-	ARCH_MAKE=$(ARCH_MAKE) \
-	FFFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 
-#--------------------------------------------------------------
-libmpi_f90.a: 
-	@(cd MPI ; $(MAKE) -j 1 \
-                    "VPATH=$(VPATH)/MPI" \
-	             MAIN_OBJDIR=$(MAIN_OBJDIR) \
-		    "FPPFLAGS=$(FPPFLAGS)" \
-                    "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" )
-
-#--------------------------------------------------------------
-FDF=libfdf.a
-$(FDF): $(MPI_INTERFACE)
-	(cd fdf ; $(MAKE) -j 1 "VPATH=$(VPATH)/fdf" \
-	MAIN_OBJDIR=$(MAIN_OBJDIR) \
-		    "FPPFLAGS=$(FPPFLAGS)" \
-		    "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module )
-
-#--------------------------------------------------------------
-MS=MatrixSwitch.a
-$(MS): $(MPI_INTERFACE)
-	(cd MatrixSwitch/src ; \
-	 $(MAKE) -j 1 \
-	            "VPATH=$(VPATH)/MatrixSwitch/src" \
-		    "FPPFLAGS=$(FPPFLAGS)" \
-		    "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module)
-#
 m_initwf.o sankey_change_basis.o m_evolve.o cranknic_evolg.o cranknic_evolk.o: $(MS)
 wavefunctions.o m_matdiag.o m_matswinvers.o m_inversemm.o: $(MS)
 #--------------------------------------------------------------
@@ -382,56 +340,6 @@ $(NCDF): $(FDICT)
 	cp ncdf/obj/$(NCDF) ./
 
 #######################
-cranknic_evolk.o: $(FDF)
-cranknic_evolg.o: $(FDF)
-sankey_change_basis.o iotdxv.o: $(FDF)
-
-#
-# Linear algebra routines
-#
-libsiestaBLAS.a: Libs/blas.F
-	@echo "==> Compiling libsiestaBLAS.a in Libs..."
-	@(cd Libs ; $(MAKE) -j 1 "VPATH=$(VPATH)/Libs" "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" libsiestaBLAS.a)
-	@cp Libs/libsiestaBLAS.a .
-
-ifneq (,$(findstring libsiestaLAPACK.a,$(COMP_LIBS)))
- # Automatically add the DIAG_2STAGE solvers.
- ifeq (,$(findstring SIESTA__DIAG_2STAGE,$(FPPFLAGS)))
-   FPPFLAGS += -DSIESTA__DIAG_2STAGE
- endif
- ifeq (,$(findstring MPI,$(FPPFLAGS)))
-   ifeq (,$(findstring SIESTA__MRRR,$(FPPFLAGS)))
-     FPPFLAGS += -DSIESTA__MRRR
-   endif
- endif
-endif
-libsiestaLAPACK.a: Libs/lapack.F
-	@echo "==> Compiling libsiestaLAPACK.a in Libs..."
-	@(cd Libs ; $(MAKE) -j 1 "VPATH=$(VPATH)/Libs" "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" libsiestaLAPACK.a)
-	@cp Libs/libsiestaLAPACK.a .
-
-libblas.a:
-	@echo ""
-	@echo "SIESTA: $@ has been deprecated in favor of:"
-	@echo "  COMP_LIBS += libsiestaBLAS.a"
-	@echo "Please update your arch.make file accordingly..."
-	@echo ""
-	@false
-liblapack.a dc_lapack.a zgesv_lapack.a essl_lapack.a:
-	@echo ""
-	@echo "SIESTA: $@ has been deprecated in favor of:"
-	@echo "  COMP_LIBS += libsiestaLAPACK.a"
-	@echo "Please update your arch.make file accordingly..."
-	@echo ""
-	@false
-linalg.a:
-	@echo ""
-	@echo "SIESTA: $@ has been deprecated in favor of:"
-	@echo "  COMP_LIBS += libsiestaLAPACK.a libsiestaBLAS.a"
-	@echo "Please update your arch.make file accordingly..."
-	@echo ""
-	@false
-
 
 # Extract information of the compiler version used.
 # This is very basic but for intel, gcc, pgi and open64
@@ -509,28 +417,24 @@ OBJS += $(TS_OBJS)
 # Create all objects
 ALL_OBJS=$(OBJS) $(SYSOBJ) $(MAIN_OBJ)
 
-# All objects require the FDF library (in theory)
-# In practice they do not but it greatly simplifies the logic
-# here.
-# This will setup the correct compilation sequence as
-# FDF => MPI
-$(ALL_OBJS): $(FDF) $(COMP_LIBS)
+$(ALL_OBJS): $(COMP_LIBS)
 
-libSiestaForces.a: $(OBJS) $(SYSOBJ)
+libSiestaForces.a: $(MPI_INTERFACE) $(FDF_LIBS) $(MS) $(NCPS) $(PSOP) \
+                   $(COMP_LIBS) $(OBJS) $(SYSOBJ)
 	$(AR) $(ARFLAGS_EXTRA) cru libSiestaForces.a $(OBJS) $(SYSOBJ)
 	@if [ ! -z "$(MPI_INTERFACE)" ] ; then \
             $(AR) $(ARFLAGS_EXTRA) cru libSiestaForces.a MPI/*.o ; fi
 	-$(RANLIB) libSiestaForces.a
 #
 siesta: what version \
-                $(MPI_INTERFACE) $(FDF) $(MS) $(NCPS) $(PSOP) \
+                $(MPI_INTERFACE) $(FDF_LIBS) $(MS) $(NCPS) $(PSOP) \
                 $(COMP_LIBS) $(ALL_OBJS) 
 	$(FC) -o siesta \
-	       $(LDFLAGS) $(ALL_OBJS) $(FDF) $(MS)  \
+	       $(LDFLAGS) $(ALL_OBJS) $(MS)  \
                $(XC) $(MPI_INTERFACE) \
-               $(COMP_LIBS) $(LIBS) \
+               $(COMP_LIBS) \
 	       $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) \
-	       $(LIBS)
+	       $(FDF_LIBS) $(LIBS)
 	@echo "--- reference section "
 	@echo "PSML-related libs: $(PSML_LIBS)"
 	@echo "XMLf90 libs: $(XMLF90_LIBS)"
@@ -552,7 +456,7 @@ clean:
 	rm -f compinfo.F90 tmp.F90
 	rm -f *.bck *~
 	rm -f aux_*.f aux_*.f90
-	(cd fdf ; $(MAKE) clean)
+	(cd fdf ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean)
 	(cd ncps/src ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean)
 	(cd psoplib/src ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean)
 	@if [ -d MPI ] ; then (cd MPI && $(MAKE) clean ) ; fi

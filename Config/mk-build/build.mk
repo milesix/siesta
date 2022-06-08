@@ -83,7 +83,8 @@ WITH_GRIDXC=1
 #
 # FC_PARALLEL=mpif90
 # FC_SERIAL=gfortran
-# FFLAGS = -O2 
+# FFLAGS = -O2
+# IPO_FLAG = -ipo  # (keep it separate from FFLAGS)
 # FFLAGS_DEBUG= -g -O0
 #
 # FPP = $(FC_SERIAL) -E -P -x c
@@ -204,17 +205,16 @@ ifeq ($(WITH_NETCDF),1)
    FPPFLAGS += $(FPPFLAGS_CDF) 
    INCFLAGS += $(NETCDF_INCFLAGS)
    LIBS += $(NETCDF_LIBS)
-endif
 
-ifeq ($(WITH_NCDF),1)
- ifneq ($(WITH_NETCDF),1)
-   $(error For NCDF you need to define also WITH_NETCDF=1 in your arch.make)
- endif
- FPPFLAGS += $(DEFS_PREFIX)-DNCDF $(DEFS_PREFIX)-DNCDF_4
- ifeq ($(WITH_NCDF_PARALLEL),1)
-   FPPFLAGS += $(DEFS_PREFIX)-DNCDF_PARALLEL
- endif
- COMP_LIBS += libncdf.a libfdict.a
+   ifeq ($(WITH_NCDF),1)
+     FPPFLAGS += $(DEFS_PREFIX)-DNCDF $(DEFS_PREFIX)-DNCDF_4
+     COMP_LIBS += libncdf.a libfdict.a
+
+     ifeq ($(WITH_NCDF_PARALLEL),1)
+       FPPFLAGS += $(DEFS_PREFIX)-DNCDF_PARALLEL
+     endif
+
+   endif
 endif
 
 ifeq ($(WITH_FLOOK),1)
@@ -232,15 +232,25 @@ endif
 
 ifeq ($(WITH_MPI),1)
  FC=$(FC_PARALLEL)
- MPI_INTERFACE=libmpi_f90.a
+ MPI_INTERFACE=$(MPI_WRAPPERS)
  MPI_INCLUDE=.      # Note . for no-op
  FPPFLAGS_MPI = $(DEFS_PREFIX)-DMPI $(DEFS_PREFIX)-DMPI_TIMING
  LIBS += $(SCALAPACK_LIBS)
- LIBS += $(LAPACK_LIBS)
  FPPFLAGS += $(FPPFLAGS_MPI) 
 else
  FC = $(FC_SERIAL)
- LIBS += $(LAPACK_LIBS)
+endif
+
+ifeq ($(WITH_BUILTIN_LAPACK),1)
+  ifeq ($(WITH_MPI),1)
+    $(error You should not use the built-in LAPACK routines with Scalapack)
+  else
+    COMP_LIBS += $(BUILTIN_LAPACK) $(BUILTIN_BLAS)
+    FPPFLAGS += -DSIESTA__DIAG_2STAGE
+    FPPFLAGS += -DSIESTA__MRRR
+  endif
+else
+  LIBS += $(LAPACK_LIBS)
 endif
 
 # ------------- libGridXC configuration -----------
@@ -284,6 +294,78 @@ ifeq ($(WITH_GRIDXC),1)
     include $(GRIDXC_ROOT)/share/org.siesta-project/gridxc_$(GRIDXC_CONFIG_PREFIX).mk
   endif
 endif
+
+#
+# Built-in libraries
+#
+# Each of these snippets will define XXX_INCFLAGS and XXX_LIBS (or simply XXX, for
+# backwards compatibility) for the "internal" libraries. Their use elsewhere is thus
+# very similar to that of external libraries.
+#
+# Note the use of variables that are inherited from the client makefiles:
+#
+# MAIN_OBJDIR: The place where the arch.make file resides
+# ARCH_MAKE:   The absolute path name of the arch.make file
+# VPATH:       The top source directory Src
+#
+.PHONY: DO_FDF
+FDF_LIBS=$(MAIN_OBJDIR)/fdf/libfdf.a
+FDF_INCFLAGS=-I$(MAIN_OBJDIR)/fdf
+$(FDF_LIBS): DO_FDF
+DO_FDF:
+	(cd $(MAIN_OBJDIR)/fdf ; $(MAKE) -j 1 VPATH="$(VPATH)/fdf" \
+	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+#--------------------
+.PHONY: DO_NCPS
+NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
+NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
+$(NCPS): DO_NCPS
+DO_NCPS:
+	(cd $(MAIN_OBJDIR)/ncps/src ; $(MAKE) -j 1 VPATH="$(VPATH)/ncps/src" \
+	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+#--------------------
+.PHONY: DO_PSOP
+PSOP=$(MAIN_OBJDIR)/psoplib/src/libpsop.a
+PSOP_INCFLAGS=-I$(MAIN_OBJDIR)/psoplib/src
+$(PSOP): DO_PSOP
+DO_PSOP:
+	(cd $(MAIN_OBJDIR)/psoplib/src ; $(MAKE) -j 1 VPATH="$(VPATH)/psoplib/src" \
+	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+#--------------------
+.PHONY: DO_MS
+MS=$(MAIN_OBJDIR)/MatrixSwitch/src/libMatrixSwitch.a
+MS_INCFLAGS=-I$(MAIN_OBJDIR)/MatrixSwitch/src
+$(MS): DO_MS
+DO_MS:
+	(cd $(MAIN_OBJDIR)/MatrixSwitch/src ; \
+         $(MAKE) -j 1 VPATH="$(VPATH)/MatrixSwitch/src" \
+	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+#--------------------
+.PHONY: DO_BUILTIN_LAPACK
+BUILTIN_LAPACK=$(MAIN_OBJDIR)/Libs/libsiestaLAPACK.a
+$(BUILTIN_LAPACK): DO_BUILTIN_LAPACK
+DO_BUILTIN_LAPACK:
+	(cd $(MAIN_OBJDIR)/Libs ; $(MAKE) -j 1 VPATH="$(VPATH)/Libs" \
+	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" libsiestaLAPACK.a)
+#--------------------
+.PHONY: DO_BUILTIN_BLAS
+BUILTIN_BLAS=$(MAIN_OBJDIR)/Libs/libsiestaBLAS.a
+$(BUILTIN_BLAS): DO_BUILTIN_BLAS
+DO_BUILTIN_BLAS:
+	(cd $(MAIN_OBJDIR)/Libs ; $(MAKE) -j 1 VPATH="$(VPATH)/Libs" \
+	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" libsiestaBLAS.a)
+#--------------------
+.PHONY: DO_MPI_WRAPPERS
+MPI_WRAPPERS=$(MAIN_OBJDIR)/MPI/libmpi_f90.a
+MPI_WRAPPERS_INCFLAGS=-I$(MAIN_OBJDIR)/MPI
+$(MPI_WRAPPERS): DO_MPI_WRAPPERS
+DO_MPI_WRAPPERS:
+	(cd $(MAIN_OBJDIR)/MPI ; $(MAKE) -j 1 \
+                    "VPATH=$(VPATH)/MPI" \
+	             MAIN_OBJDIR=$(MAIN_OBJDIR) \
+		    "FPPFLAGS=$(FPPFLAGS)" \
+                    "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" )
+
 
 # Define default compilation methods
 .c.o:

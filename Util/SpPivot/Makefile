@@ -13,10 +13,14 @@
 
 default: what pvtsp
 
+override WITH_MPI=
+override WITH_NETCDF=
+
 VPATH:=$(shell pwd)/../../Src
 OBJDIR=Obj
 ARCH_MAKE=../../$(OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include ../../$(OBJDIR)/check_for_build_mk.mk
 
 what:
 	@echo
@@ -55,16 +59,16 @@ LOCAL_OBJS= pvtsp.o handlers.o
 
 OBJS = $(SIESTA_OBJS) $(LOCAL_OBJS)
 
-pvtsp: FPPFLAGS+=$(DEFS_PREFIX) -UMPI -UNCDF -UNCDF_4 -UNCDF_PARALLEL
-pvtsp: COMP_LIBS := $(filter-out libncdf.a,$(COMP_LIBS))
-pvtsp: COMP_LIBS := $(filter-out libfdict.a,$(COMP_LIBS))
-pvtsp: COMP_LIBS := $(filter-out libsiestaLAPACK.a,$(COMP_LIBS))
-pvtsp: COMP_LIBS := $(filter-out libsiestaBLAS.a,$(COMP_LIBS))
-pvtsp: LIBS := $(filter-out libncdf.a,$(LIBS))
-pvtsp: LIBS := $(filter-out libfdict.a,$(LIBS))
+#pvtsp: FPPFLAGS+=$(DEFS_PREFIX) -UMPI -UNCDF -UNCDF_4 -UNCDF_PARALLEL
+#pvtsp: COMP_LIBS := $(filter-out libncdf.a,$(COMP_LIBS))
+#pvtsp: COMP_LIBS := $(filter-out libfdict.a,$(COMP_LIBS))
+#pvtsp: COMP_LIBS := $(filter-out libsiestaLAPACK.a,$(COMP_LIBS))
+#pvtsp: COMP_LIBS := $(filter-out libsiestaBLAS.a,$(COMP_LIBS))
+#pvtsp: LIBS := $(filter-out libncdf.a,$(LIBS))
+#pvtsp: LIBS := $(filter-out libfdict.a,$(LIBS))
 pvtsp: $(OBJS)
 	$(FC) $(FFLAGS) $(LDFLAGS) -o pvtsp \
-              $(OBJS) $(COMP_LIBS) $(LIBS)
+              $(OBJS) # $(COMP_LIBS) $(LIBS)
 
 clean: 
 	@echo "==> Cleaning object, library, and executable files"

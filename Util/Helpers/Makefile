@@ -17,21 +17,19 @@ VPATH:=$(shell pwd)/../../Src
 default: get_chem_labels
 #
 override WITH_MPI=
-override WITH_NCDF=
+override WITH_NETCDF=
 override WITH_FLOOK=
 
 MAIN_OBJDIR:=$(shell cd -P -- ../../\$(OBJDIR) && pwd -P)
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
-DEFS:=$(DEFS_PREFIX) -UMPI $(DEFS) $(DEFS_PREFIX) -UMPI
-FPPFLAGS:=$(DEFS_PREFIX) -UMPI $(FPPFLAGS) $(DEFS_PREFIX) -UMPI
-
-INCFLAGS:=$(NETCDF_INCFLAGS) $(INCFLAGS)
+INCFLAGS:=$(NETCDF_INCFLAGS) $(FDF_INCFLAGS) $(INCFLAGS)
 #
 # Uncomment the following line for debugging support
 #
@@ -51,28 +49,14 @@ LOCAL_OBJS=get_chem_labels.o handlers.o local_sys.o
 OBJS_GET_CHEM_LABELS=$(SIESTA_OBJS) $(LOCAL_OBJS)
 #
 #
-# Use the makefile in Src/fdf and all the sources there.
-#
-FDF=libfdf.a
-FDF_MAKEFILE=$(VPATH)/fdf/makefile
-FDF_INCFLAGS:=-I $(VPATH)/fdf $(INCFLAGS)
-$(FDF): 
-	(mkdir -p fdf; cd fdf ; $(MAKE) -f $(FDF_MAKEFILE) "FC=$(FC)" "VPATH=$(VPATH)/fdf" \
-                          "ARCH_MAKE=$(ARCH_MAKE)" \
-                          "DEFS=$(DEFS)" \
-                          "FPPFLAGS=$(FPPFLAGS)" \
-                          "MPI_INTERFACE= " \
-                          "INCFLAGS=$(FDF_INCFLAGS)" "FFLAGS=$(FFLAGS)" module)
-#
-get_chem_labels: $(FDF)  $(OBJS_GET_CHEM_LABELS)
+get_chem_labels: $(FDF_LIBS)  $(OBJS_GET_CHEM_LABELS)
 	$(FC) -o get_chem_labels \
-	       $(LDFLAGS) $(OBJS_GET_CHEM_LABELS) $(FDF) $(LIBS)
+	       $(LDFLAGS) $(OBJS_GET_CHEM_LABELS) $(FDF_LIBS) $(LIBS)
 #
 clean:
 	@echo "==> Cleaning object, library, and executable files"
 	rm -f get_chem_labels  *.o  *.a
 	rm -f *.mod .tmp_fdflog
-	rm -rf fdf
 
 # Dependencies
 .PHONY: dep
