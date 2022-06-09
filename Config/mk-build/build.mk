@@ -257,6 +257,18 @@ endif
 FPPFLAGS += $(FPPFLAGS_GRID) 
 # -------------------------------------------------
 
+ifeq ($(WITH_CHESS),1)
+ ifndef CHESS_ROOT
+   $(error you need to define CHESS_ROOT in your arch.make)
+ endif
+ CHESS_INCFLAGS=-I$(CHESS_ROOT)/include
+ INCFLAGS += $(CHESS_INCFLAGS)
+ CHESS_LIBS= -L$(CHESS_ROOT)/lib -lCheSS-1 -lfutile-1 -lyaml
+ FPPFLAGS_CHESS = $(DEFS_PREFIX)-DSIESTA__CHESS
+ FPPFLAGS += $(FPPFLAGS_CHESS) 
+ LIBS += $(CHESS_LIBS)
+
+endif
 
 SYS=nag
 

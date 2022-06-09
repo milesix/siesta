@@ -382,7 +382,7 @@
 !         for CheSS
           chess_value = get_chess_parameter('chess_buffer_kernel')
           call hsparse( negl, scell, nsc, na_s, isa, xa, lasto,
-     &              lastkb, iphorb, iphKB, maxnh, gamma, 
+     &              lastkb, iphorb, iphKB, maxnh, 
      &              set_xijo=.true., folding=folding1,
      $              diagonal_folding=diag_folding1,
      $              buffer=chess_value)
@@ -395,7 +395,7 @@
     
           chess_value = get_chess_parameter('chess_buffer_mult')
           call hsparse( negl, scell, nsc, na_s, isa, xa, lasto,
-     &                  lastkb, iphorb, iphKB, maxnh, gamma,
+     &                  lastkb, iphorb, iphKB, maxnh,
      &                  set_xijo=.true., folding=folding1,
      $                  diagonal_folding=diag_folding1,
      $                  buffer=chess_value)
@@ -417,7 +417,7 @@
       call delete(xij_2D) ! as xijo will be reallocated
       nullify(xijo)
       call hsparse( negl, scell, nsc, na_s, isa, xa, lasto,
-     &              lastkb, iphorb, iphKB, maxnh, .not. use_aux_cell,
+     &              lastkb, iphorb, iphKB, maxnh,
      $              set_xijo=.true., folding=folding1,
      $              diagonal_folding=diag_folding1,
      $              debug_folding=fdf_get('debug-folding',.false.))

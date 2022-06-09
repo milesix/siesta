@@ -222,12 +222,14 @@ c$$$     &           S, 'S.matrix')
 #ifdef SIESTA__CHESS
       elseif (isolve .eq. SOLVE_CHESS) then
         ! FOE solver from the CheSS library
-        if (gamma) then
-          call CheSS_wrapper(.false., PreviousCallDiagon, 
+        if (gamma_SCF) then
+           call CheSS_wrapper(.false., PreviousCallDiagon, 
      &         iscf, istp, no_l,
      &         spin%spinor, no_u, maxnh, numh, listhptr, listh, 
-     &         qs, h, s,
+     &         qtots, h, s,
      &         Dscf, Escf, Ef)
+        else
+           call die("Cannot use CheSS with k-points.")
         end if
         Ecorrec = 0.0_dp
         Entropy = 0.0_dp

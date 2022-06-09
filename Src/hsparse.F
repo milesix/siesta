@@ -47,7 +47,7 @@ C  Modules
 C
       subroutine hsparse( negl, cell, nsc, na, isa, xa,
      &                    lasto, lastkb, iphorb, iphkb,     
-     &                    nlhmax, gamma,
+     &                    nlhmax, 
      $                    set_xijo, folding,
      $                    diagonal_folding, debug_folding,
      $                    buffer)
@@ -80,7 +80,6 @@ C
       real(dp),          intent(in) :: cell(3,3), xa(3,na)
       logical,           intent(in) :: negl
       integer,        intent(out)   :: nlhmax
-      logical, intent(in)           :: gamma
       logical, intent(in)           :: set_xijo
       logical, intent(out)          :: folding
       logical, intent(out)          :: diagonal_folding
