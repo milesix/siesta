@@ -10,11 +10,12 @@
 EXE = tshs2tshs
 default: $(EXE)
 
-VPATH:=$(shell pwd)/../../../Src
+TOPDIR=.
+MAIN_OBJDIR=.
 
-OBJDIR=Obj
+VPATH=$(TOPDIR)/Util/TS/tshs2tshs:$(TOPDIR)/Src
+TOPSRC=$(TOPDIR)/Src
 
-MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 
 include $(ARCH_MAKE)
@@ -77,11 +78,11 @@ COMP_LIBS := $(filter-out libsiestaBLAS.a,$(COMP_LIBS))
 # This library can be found at:
 #  https://github.com/zerothi/fdict
 FDICT=libfdict.a
-FDICT_MAKEFILE=$(VPATH)/fdict/Makefile
+FDICT_MAKEFILE=$(TOPSRC)/fdict/Makefile
 $(FDICT): 
 	-mkdir -p fdict
 	(cd fdict ; \
-	echo "TOP_DIR=$(VPATH)/fdict" > Makefile ; echo "include $(VPATH)/fdict/Makefile" >> Makefile ; \
+	echo "TOP_DIR=$(TOPSRC)/fdict" > Makefile ; echo "include $(TOPSRC)/fdict/Makefile" >> Makefile ; \
 	echo "FC=$(FC_SERIAL)" > setup.make ; \
 	echo "AR=$(AR)" >> setup.make ; \
 	echo "RANLIB=$(RANLIB)" >> setup.make ; \
@@ -94,12 +95,12 @@ $(FDICT):
 # This library can be found at:
 #  https://github.com/zerothi/ncdf
 NCDF=libncdf.a
-NCDF_MAKEFILE=$(VPATH)/NCDF/src/Makefile
+NCDF_MAKEFILE=$(TOPSRC)/NCDF/src/Makefile
 $(NCDF): COMP_LIBS += $(FDICT)
 $(NCDF): $(FDICT)
 	-mkdir -p ncdf
 	(cd ncdf ; \
-	echo "TOP_DIR=$(VPATH)/ncdf" > Makefile ; echo "include $(VPATH)/ncdf/Makefile" >> Makefile ; \
+	echo "TOP_DIR=$(TOPSRC)/ncdf" > Makefile ; echo "include $(TOPSRC)/ncdf/Makefile" >> Makefile ; \
 	echo "settings.bash: FORCE" >> Makefile ; \
 	printf '%s\n' "	-cp ../fdict/settings.bash ." >> Makefile ; \
 	echo "FC=$(FC)" > setup.make ; \
@@ -131,9 +132,9 @@ clean:
 .PHONY: dep
 dep:
 	@sfmakedepend --depend=obj --modext=o \
-		$(addprefix $(VPATH)/,$(DEP_OBJS:.o=.f) $(DEP_OBJS:.o=.f90)) \
-		$(addprefix $(VPATH)/,$(DEP_OBJS:.o=.F) $(DEP_OBJS:.o=.F90)) \
-		$(VPATH)/class*.T90 \
+		$(addprefix $(TOPSRC)/,$(DEP_OBJS:.o=.f) $(DEP_OBJS:.o=.f90)) \
+		$(addprefix $(TOPSRC)/,$(DEP_OBJS:.o=.F) $(DEP_OBJS:.o=.F90)) \
+		$(TOPSRC)/class*.T90 \
 		$(LOCAL_OBJS:.o=.f90) $(LOCAL_OBJS:.o=.F90) \
 		$(LOCAL_OBJS:.o=.f) $(LOCAL_OBJS:.o=.F) || true
 	@sed -i -e 's/\.T90\.o:/.o:/g' Makefile

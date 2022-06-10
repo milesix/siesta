@@ -15,10 +15,13 @@
 
 default: what tbtrans 
 
-VPATH:=$(shell pwd)/../../../Src
-OBJDIR=Obj
+TOPDIR=.
+MAIN_OBJDIR=.
 
-MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
+VPATH=$(TOPDIR)/Util/TS/TBtrans:$(TOPDIR)/Src
+TOPSRC=$(TOPDIR)/Src
+
+
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
@@ -182,7 +185,7 @@ version: version.F90 posix_calls.o $(SIESTA_VERSION_FILE)
 	@mv compinfo.o version.o
 	@echo
 $(SIESTA_VERSION_FILE): FORCE
-	@(cd ../../../ && ./SIESTA_vgen.sh)
+	@(cd $(TOPDIR) && ./SIESTA_vgen.sh)
 
 
 # Interfaces to libraries
@@ -201,7 +204,7 @@ FDICT=libfdict.a
 $(FDICT): 
 	-mkdir -p fdict
 	(cd fdict ; \
-	echo "TOP_DIR=$(VPATH)/fdict" > Makefile ; echo "include $(VPATH)/fdict/Makefile" >> Makefile ; \
+	echo "TOP_DIR=$(TOPSRC)/fdict" > Makefile ; echo "include $(TOPSRC)/fdict/Makefile" >> Makefile ; \
 	echo "FC=$(FC_SERIAL)" > setup.make ; \
 	echo "AR=$(AR)" >> setup.make ; \
 	echo "RANLIB=$(RANLIB)" >> setup.make ; \
@@ -217,7 +220,7 @@ NCDF=libncdf.a
 $(NCDF): $(FDICT)
 	-mkdir -p ncdf
 	(cd ncdf ; \
-	echo "TOP_DIR=$(VPATH)/ncdf" > Makefile ; echo "include $(VPATH)/ncdf/Makefile" >> Makefile ; \
+	echo "TOP_DIR=$(TOPSRC)/ncdf" > Makefile ; echo "include $(TOPSRC)/ncdf/Makefile" >> Makefile ; \
 	echo "settings.bash: FORCE" >> Makefile ; \
 	printf '%s\n' "	-cp ../fdict/settings.bash ." >> Makefile ; \
 	echo "FC=$(FC)" > setup.make ; \
@@ -303,9 +306,9 @@ clean:
 .PHONY: dep
 dep:
 	@sfmakedepend --depend=obj --modext=o \
-		$(addprefix $(VPATH)/,$(DEP_OBJS:.o=.f) $(DEP_OBJS:.o=.f90)) \
-		$(addprefix $(VPATH)/,$(DEP_OBJS:.o=.F) $(DEP_OBJS:.o=.F90)) \
-		$(VPATH)/class*.T90 \
+		$(addprefix $(TOPSRC)/,$(DEP_OBJS:.o=.f) $(DEP_OBJS:.o=.f90)) \
+		$(addprefix $(TOPSRC)/,$(DEP_OBJS:.o=.F) $(DEP_OBJS:.o=.F90)) \
+		$(TOPSRC)/class*.T90 \
 		$(TBTOBJS:.o=.f90) $(TBTOBJS:.o=.F90) \
 		$(TBTOBJS:.o=.f) $(TBTOBJS:.o=.F) || true
 

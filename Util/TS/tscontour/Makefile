@@ -7,13 +7,15 @@
 # ---
 .SUFFIXES: .f .F .o .a .f90 .F90 .c
 
-VPATH:=$(shell pwd)/../../../Src
-
-OBJDIR=Obj
-
 default: tscontour
 
-MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
+TOPDIR=.
+MAIN_OBJDIR=.
+
+VPATH=$(TOPDIR)/Util/TS/tscontour:$(TOPDIR)/Src
+TOPSRC=$(TOPDIR)/Src
+
+
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
@@ -24,7 +26,7 @@ FC_SERIAL ?= $(FC_DEFAULT)
 
 dep:
 	-sfmakedepend --depend=obj --modext=o \
-          $(VPATH)/*.f $(VPATH)/*.f90 $(VPATH)/*.F $(VPATH)/*.F90 $(VPATH)/*.T90 *.f90
+          $(TOPSRC)/*.f $(TOPSRC)/*.f90 $(TOPSRC)/*.F $(TOPSRC)/*.F90 $(TOPSRC)/*.T90 *.f90
 	@sed -i -e "/^siesta_cmlsubs.o:/s/version.o//" Makefile
 	@sed -i -e 's/\.T90\.o:/.o:/g' Makefile
 
@@ -115,11 +117,11 @@ INCFLAGS:= $(INCFLAGS) $(GRIDXC_INCFLAGS)
 # This library can be found at:
 #  https://github.com/zerothi/fdict
 FDICT=libfdict.a
-FDICT_MAKEFILE=$(VPATH)/fdict/Makefile
+FDICT_MAKEFILE=$(TOPSRC)/fdict/Makefile
 $(FDICT): 
 	-mkdir -p fdict
 	(cd fdict ; \
-	echo "TOP_DIR=$(VPATH)/fdict" > Makefile ; echo "include $(VPATH)/fdict/Makefile" >> Makefile ; \
+	echo "TOP_DIR=$(TOPSRC)/fdict" > Makefile ; echo "include $(TOPSRC)/fdict/Makefile" >> Makefile ; \
 	echo "FC=$(FC_SERIAL)" > setup.make ; \
 	echo "AR=$(AR)" >> setup.make ; \
 	echo "RANLIB=$(RANLIB)" >> setup.make ; \
@@ -132,12 +134,12 @@ $(FDICT):
 # This library can be found at:
 #  https://github.com/zerothi/ncdf
 NCDF=libncdf.a
-NCDF_MAKEFILE=$(VPATH)/NCDF/src/Makefile
+NCDF_MAKEFILE=$(TOPSRC)/NCDF/src/Makefile
 $(NCDF): COMP_LIBS += $(FDICT)
 $(NCDF): $(FDICT)
 	-mkdir -p ncdf
 	(cd ncdf ; \
-	echo "TOP_DIR=$(VPATH)/ncdf" > Makefile ; echo "include $(VPATH)/ncdf/Makefile" >> Makefile ; \
+	echo "TOP_DIR=$(TOPSRC)/ncdf" > Makefile ; echo "include $(TOPSRC)/ncdf/Makefile" >> Makefile ; \
 	echo "settings.bash: FORCE" >> Makefile ; \
 	printf '%s\n' "	-cp ../fdict/settings.bash ." >> Makefile ; \
 	echo "FC=$(FC)" > setup.make ; \

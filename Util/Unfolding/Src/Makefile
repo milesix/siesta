@@ -11,6 +11,9 @@
 .SUFFIXES:
 .SUFFIXES: .f .F .o .a .f90 .F90
 
+TOPDIR=.
+MAIN_OBJDIR=.
+
 .PHONY: default what dep version  clean
 
 override WITH_NCDF=
@@ -18,9 +21,9 @@ override WITH_FLOOK=
 
 default: what unfold 
 
-VPATH:=$(shell pwd)/../../../Src
-OBJDIR=Obj
-MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
+VPATH=$(TOPDIR)/Util/Unfolding/Src:$(TOPDIR)/Src
+TOPSRC=$(TOPDIR)/Src
+
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
@@ -127,9 +130,9 @@ clean:
 .PHONY: dep
 dep:
 	@sfmakedepend --depend=obj --modext=o \
-		$(addprefix $(VPATH)/,$(DEP_OBJS:.o=.f) $(DEP_OBJS:.o=.f90)) \
-		$(addprefix $(VPATH)/,$(DEP_OBJS:.o=.F) $(DEP_OBJS:.o=.F90)) \
-		$(VPATH)/class*.T90 \
+		$(addprefix $(TOPSRC)/,$(DEP_OBJS:.o=.f) $(DEP_OBJS:.o=.f90)) \
+		$(addprefix $(TOPSRC)/,$(DEP_OBJS:.o=.F) $(DEP_OBJS:.o=.F90)) \
+		$(TOPSRC)/class*.T90 \
 		$(UNFOLD_OBJS:.o=.f90) $(UNFOLD_OBJS:.o=.F90) \
 		$(UNFOLD_OBJS:.o=.f) $(UNFOLD_OBJS:.o=.F) || true
 

@@ -13,8 +13,11 @@
 # Remove implicit rules
 .SUFFIXES:
 
-VPATH=.
+TOPDIR=.
 MAIN_OBJDIR=.
+
+TOPSRC=$(TOPDIR)/Src
+VPATH=$(TOPSRC)
 
 # Default compiler variables
 AR ?= ar
@@ -49,12 +52,12 @@ lib: libSiestaForces.a
 dist:
 	make -f makefile.lit dist
 dep:
-	-if [ $(VPATH) = "." ] ; then \
+	-if [ $(TOPDIR) = "." ] ; then \
 	sfmakedepend --depend=obj --modext=o \
                               *.f *.f90 *.F *.F90 *.T90 ; \
         else \
 	sfmakedepend --depend=obj --modext=o \
-          $(VPATH)/*.f $(VPATH)/*.f90 $(VPATH)/*.F $(VPATH)/*.F90 ; \
+          $(TOPSRC)/*.f $(TOPSRC)/*.f90 $(TOPSRC)/*.F $(TOPSRC)/*.F90 ; \
         fi
 	@sed -i -e 's/\.T90\.o:/.o:/g' Makefile
 
@@ -79,7 +82,7 @@ IPO_FLAG?= -ipo
 
 what:
 	@echo
-	@if [ "$(VPATH)" = . ]; then \
+	@if [ "$(TOPDIR)" = . ]; then \
               echo "** You can no longer build SIESTA in Src." ;\
               echo "** Go to the Obj directory and see the README file." ;\
               false ;\
@@ -309,7 +312,7 @@ wavefunctions.o m_matdiag.o m_matswinvers.o m_inversemm.o: $(MS)
 FDICT=libfdict.a
 $(FDICT): 
 	(cd fdict ; rm -rf obj ; mkdir obj ; cd obj ; \
-	echo "TOP_DIR=$(VPATH)/fdict" > Makefile ; echo "include $(VPATH)/fdict/Makefile" >> Makefile ; \
+	echo "TOP_DIR=$(TOPSRC)/fdict" > Makefile ; echo "include $(TOPSRC)/fdict/Makefile" >> Makefile ; \
 	echo "FC=$(FC_SERIAL)" > setup.make ; \
 	echo "AR=$(AR)" >> setup.make ; \
 	echo "RANLIB=$(RANLIB)" >> setup.make ; \
@@ -324,7 +327,7 @@ $(FDICT):
 NCDF=libncdf.a
 $(NCDF): $(FDICT)
 	(cd ncdf ; rm -rf obj ; mkdir obj ; cd obj ; \
-	echo "TOP_DIR=$(VPATH)/ncdf" > Makefile ; echo "include $(VPATH)/ncdf/Makefile" >> Makefile ; \
+	echo "TOP_DIR=$(TOPSRC)/ncdf" > Makefile ; echo "include $(TOPSRC)/ncdf/Makefile" >> Makefile ; \
 	echo "settings.bash: FORCE" >> Makefile ; \
 	printf '%s\n' "	-cp ../../fdict/obj/settings.bash ." >> Makefile ; \
 	echo "FC=$(FC)" > setup.make ; \
@@ -352,7 +355,7 @@ ifeq ($(COMPILER_VERSION),)
 endif
 
 .PHONY: version version.o FORCE
-SIESTA_VERSION_FILE:=$(VPATH)/../SIESTA.version
+SIESTA_VERSION_FILE:=$(TOPDIR)/SIESTA.version
 version.o: version
 version: version.F90 posix_calls.o $(SIESTA_VERSION_FILE)
 	@echo
@@ -371,7 +374,7 @@ version: version.F90 posix_calls.o $(SIESTA_VERSION_FILE)
 	@mv compinfo.o version.o
 	@echo
 $(SIESTA_VERSION_FILE): FORCE
-	@(cd $(VPATH)/../ && ./SIESTA_vgen.sh)
+	@(cd $(TOPDIR) && ./SIESTA_vgen.sh)
 
 
 #----------------------------------------------------------------------------

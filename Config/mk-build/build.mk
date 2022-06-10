@@ -306,14 +306,14 @@ endif
 #
 # MAIN_OBJDIR: The place where the arch.make file resides
 # ARCH_MAKE:   The absolute path name of the arch.make file
-# VPATH:       The top source directory Src
+# TOPDIR:      The top distribution directory
 #
 .PHONY: DO_FDF
 FDF_LIBS=$(MAIN_OBJDIR)/fdf/libfdf.a
 FDF_INCFLAGS=-I$(MAIN_OBJDIR)/fdf
 $(FDF_LIBS): DO_FDF
 DO_FDF:
-	(cd $(MAIN_OBJDIR)/fdf ; $(MAKE) -j 1 VPATH="$(VPATH)/fdf" \
+	(cd $(MAIN_OBJDIR)/fdf ; $(MAKE) -j 1 VPATH="$(TOPDIR)/Src/fdf" \
 	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 #--------------------
 .PHONY: DO_NCPS
@@ -321,7 +321,7 @@ NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
 NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
 $(NCPS): DO_NCPS
 DO_NCPS:
-	(cd $(MAIN_OBJDIR)/ncps/src ; $(MAKE) -j 1 VPATH="$(VPATH)/ncps/src" \
+	(cd $(MAIN_OBJDIR)/ncps/src ; $(MAKE) -j 1 VPATH="$(TOPDIR)/Src/ncps/src" \
 	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 #--------------------
 .PHONY: DO_PSOP
@@ -329,7 +329,7 @@ PSOP=$(MAIN_OBJDIR)/psoplib/src/libpsop.a
 PSOP_INCFLAGS=-I$(MAIN_OBJDIR)/psoplib/src
 $(PSOP): DO_PSOP
 DO_PSOP:
-	(cd $(MAIN_OBJDIR)/psoplib/src ; $(MAKE) -j 1 VPATH="$(VPATH)/psoplib/src" \
+	(cd $(MAIN_OBJDIR)/psoplib/src ; $(MAKE) -j 1 VPATH="$(TOPDIR)/Src/psoplib/src" \
 	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 #--------------------
 .PHONY: DO_MS
@@ -338,21 +338,21 @@ MS_INCFLAGS=-I$(MAIN_OBJDIR)/MatrixSwitch/src
 $(MS): DO_MS
 DO_MS:
 	(cd $(MAIN_OBJDIR)/MatrixSwitch/src ; \
-         $(MAKE) -j 1 VPATH="$(VPATH)/MatrixSwitch/src" \
+         $(MAKE) -j 1 VPATH="$(TOPDIR)/Src/MatrixSwitch/src" \
 	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 #--------------------
 .PHONY: DO_BUILTIN_LAPACK
 BUILTIN_LAPACK=$(MAIN_OBJDIR)/Libs/libsiestaLAPACK.a
 $(BUILTIN_LAPACK): DO_BUILTIN_LAPACK
 DO_BUILTIN_LAPACK:
-	(cd $(MAIN_OBJDIR)/Libs ; $(MAKE) -j 1 VPATH="$(VPATH)/Libs" \
+	(cd $(MAIN_OBJDIR)/Libs ; $(MAKE) -j 1 VPATH="$(TOPDIR)/Src/Libs" \
 	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" libsiestaLAPACK.a)
 #--------------------
 .PHONY: DO_BUILTIN_BLAS
 BUILTIN_BLAS=$(MAIN_OBJDIR)/Libs/libsiestaBLAS.a
 $(BUILTIN_BLAS): DO_BUILTIN_BLAS
 DO_BUILTIN_BLAS:
-	(cd $(MAIN_OBJDIR)/Libs ; $(MAKE) -j 1 VPATH="$(VPATH)/Libs" \
+	(cd $(MAIN_OBJDIR)/Libs ; $(MAKE) -j 1 VPATH="$(TOPDIR)/Src/Libs" \
 	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" libsiestaBLAS.a)
 #--------------------
 .PHONY: DO_MPI_WRAPPERS
@@ -361,7 +361,7 @@ MPI_WRAPPERS_INCFLAGS=-I$(MAIN_OBJDIR)/MPI
 $(MPI_WRAPPERS): DO_MPI_WRAPPERS
 DO_MPI_WRAPPERS:
 	(cd $(MAIN_OBJDIR)/MPI ; $(MAKE) -j 1 \
-                    "VPATH=$(VPATH)/MPI" \
+                    "VPATH=$(TOPDIR)/Src/MPI" \
 	             MAIN_OBJDIR=$(MAIN_OBJDIR) \
 		    "FPPFLAGS=$(FPPFLAGS)" \
                     "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" )

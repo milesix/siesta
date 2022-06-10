@@ -11,9 +11,15 @@
 #
 default: macroave
 #
-OBJDIR=Obj
-VPATH:=$(shell pwd)/../../../Src
-include ../../../$(OBJDIR)/arch.make
+
+TOPDIR=.
+MAIN_OBJDIR=.
+
+VPATH=$(TOPDIR)/Util/Macroave/Src:$(TOPDIR)/Src
+
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
 #
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
@@ -21,7 +27,7 @@ FC:=$(FC_SERIAL)         # Make it non-recursive
 #
 # Note that machine-specific files are now in top Src directory.
 #
-OBJS = io.o iorho.o macroave.o thetaft.o \
+OBJS =  io.o iorho.o macroave.o thetaft.o \
 	surpla.o volcel.o hdr_io.o\
         local_die.o interpolation.o dpnint1.o m_fft_gpfa.o
 #
@@ -35,7 +41,7 @@ ALL_OBJS=$(MOD_OBJS) $(COM_OBJS)
 #
 $(COM_OBJS): 
 #
-macroave:  $(ALL_OBJS)
+macroave: $(ALL_OBJS)
 	$(FC) $(FFLAGS) $(LDFLAGS) -o macroave $(ALL_OBJS) 
 #
 permute:   permute.o 

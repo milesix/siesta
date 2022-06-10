@@ -8,8 +8,6 @@
 #
 # Makefile for stand-alone get_chem_labels
 
-OBJDIR=Obj
-
 .SUFFIXES:
 .SUFFIXES: .f .F .o .a .f90 .F90
 
@@ -18,15 +16,19 @@ default: $(EXE)
 
 override WITH_MPI=
 
-VPATH:=$(shell pwd)/../../../Src
-MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
+TOPDIR=.
+MAIN_OBJDIR=.
+
+VPATH=$(TOPDIR)/Util/TS/ts2ts:$(TOPDIR)/Src
+TOPSRC=$(TOPDIR)/Src
+
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 dep:
 	sfmakedepend --depend=obj  --modext=o \
-          $(VPATH)/*.f $(VPATH)/*.f90 $(VPATH)/*.F $(VPATH)/*.F90 $(VPATH)/*.T90
+          $(TOPSRC)/*.f $(TOPSRC)/*.f90 $(TOPSRC)/*.F $(TOPSRC)/*.F90 $(TOPSRC)/*.T90
 	@sed -i -e 's/\.T90\.o:/.o:/g' Makefile
 
 
@@ -61,8 +63,8 @@ clean:
 .PHONY: dep
 dep:
 	@sfmakedepend --depend=obj --modext=o \
-		$(addprefix $(VPATH)/,$(DEP_OBJS:.o=.f) $(DEP_OBJS:.o=.f90)) \
-		$(addprefix $(VPATH)/,$(DEP_OBJS:.o=.F) $(DEP_OBJS:.o=.F90)) \
+		$(addprefix $(TOPSRC)/,$(DEP_OBJS:.o=.f) $(DEP_OBJS:.o=.f90)) \
+		$(addprefix $(TOPSRC)/,$(DEP_OBJS:.o=.F) $(DEP_OBJS:.o=.F90)) \
 		$(LOCAL_OBJS:.o=.f90) $(LOCAL_OBJS:.o=.F90) \
 		$(LOCAL_OBJS:.o=.f) $(LOCAL_OBJS:.o=.F) || true
 

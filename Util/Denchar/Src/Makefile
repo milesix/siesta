@@ -23,19 +23,18 @@
 #  
 #  The dependency list at the end is overly large, but harmless
 
-OBJDIR=Obj
-
 .SUFFIXES:
 .SUFFIXES: .f .F .o .a  .f90 .F90
 
-VPATH:=$(shell pwd)/../../../Src
+TOPDIR=.
+MAIN_OBJDIR=.
+
+VPATH=$(TOPDIR)/Util/Denchar/Src:$(TOPDIR)/Src
 
 default: what denchar
 
-MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
-ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
-
 override WITH_MPI=
+ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
 

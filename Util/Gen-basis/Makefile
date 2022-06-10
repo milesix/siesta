@@ -26,14 +26,16 @@ OBJDIR=Obj
 .SUFFIXES:
 .SUFFIXES: .f .F .o .a  .f90 .F90
 
-VPATH:=$(shell pwd)/../../Src
+TOPDIR=.
+MAIN_OBJDIR=.
 
 default: gen-basis ioncat
 
 override WITH_MPI=
 override WITH_NCDF=
 
-MAIN_OBJDIR:=$(shell cd -P -- ../../\$(OBJDIR) && pwd -P)
+VPATH=$(TOPDIR)/Util/Gen-basis:$(TOPDIR)/Src
+
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
