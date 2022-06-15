@@ -59,6 +59,7 @@
 #ifdef MPI
       use mpi_siesta
 #endif
+      use fftw3
 
       implicit none
 
@@ -68,8 +69,13 @@
 
       PRIVATE ! Nothing is declared public beyond this point
       logical :: frsttime = .TRUE.
+#ifdef _FFTW_
+      type(C_PTR), target :: plan_fw(3)
+      type(C_PTR), target :: plan_bw(3)
+#else
       integer :: maxtrigs = 256
       real(dp), pointer :: trigs(:,:)
+#endif
       integer :: OldMesh(3) = (/ 0, 0, 0 /)
 
       integer :: gmesh(3)
@@ -102,15 +108,19 @@
       integer :: i, di, mo, s1, s2, s3
       integer :: ierr, maxmaxtrigs, ntrigs
       logical :: lredimension
-
+#ifdef _FFTW_
+      integer :: rank, n(1), howmany, inembed(1), istride, idist
+      complex(C_DOUBLE_COMPLEX) :: in(1)
+#endif
       k_ori_distro = ori_distr
 
       gmesh(1:3) = nMesh(1:3)
 
       if (frsttime) then
+#ifndef _FFTW_
         nullify(trigs)
         call re_alloc( trigs, 1, maxtrigs, 1, 3, 'trigs', 'fft' )
-
+#endif
 #ifdef MPI
         call getMeshBox( UNIFORM, box )
 
@@ -139,33 +149,6 @@
 #endif
         frsttime = .false.
       endif
-
-C
-C  Initialise the tables for the FFT if the mesh has changed
-C
-      do
-        lredimension = .false.
-        maxmaxtrigs = maxtrigs
-        do i=1,3
-          if (OldMesh(i).ne.nMesh(i)) then
-            call setgpfa( trigs(:,i), maxtrigs, ntrigs, nMesh(i) )
-            if (ntrigs.gt.maxmaxtrigs) then
-              lredimension = .true.
-              maxmaxtrigs = ntrigs
-            else
-              OldMesh(i) = nMesh(i)
-            endif
-          endif
-        enddo
-        if (.not. lredimension) exit
-C
-C  Resize FFT array for trig factors and set OldMesh to 0 to force recalculation
-C
-        maxtrigs = maxmaxtrigs
-        call re_alloc( trigs, 1, maxtrigs, 1, 3, 'trigs', 'fft' )
-        OldMesh(1:3) = 0
-      enddo
-
 #ifdef MPI
         s1 = gMesh(1)*(ydispl(py+1)-ydispl(py))*
      &                (zdispl(pz+1)-zdispl(pz))
@@ -204,6 +187,79 @@ C
         size1 = gMesh(1)*gMesh(2)*gMesh(3)
         size2 = 0
 #endif
+#ifdef _FFTW_
+      rank = 1
+      n = (/ gmesh(1) /)
+      howmany = (ydispl(py+1)-ydispl(py))*(zdispl(pz+1)-zdispl(pz))
+      inembed = (/ gmesh(1) /)
+      istride = 1
+      idist   = gmesh(1)
+      plan_fw(1) = fftw_plan_many_dft( rank, n, howmany,
+     &                                  in, inembed, istride, idist,
+     &                                  in, inembed, istride, idist,
+     &                                  FFTW_FORWARD, FFTW_ESTIMATE )
+      plan_bw(1) = fftw_plan_many_dft( rank, n, howmany,
+     &                                  in, inembed, istride, idist,
+     &                                  in, inembed, istride, idist,
+     &                                  FFTW_BACKWARD, FFTW_ESTIMATE )
+      n = (/ gmesh(2) /)
+      howmany = (xdispl(py+1)-xdispl(py))
+      inembed = (/ gmesh(2) /)
+      istride = (xdispl(py+1)-xdispl(py))
+      idist   = 1
+      plan_fw(2) = fftw_plan_many_dft( rank, n, howmany,
+     &                                  in, inembed, istride, idist,
+     &                                  in, inembed, istride, idist,
+     &                                  FFTW_FORWARD, FFTW_ESTIMATE )
+      plan_bw(2) = fftw_plan_many_dft( rank, n, howmany,
+     &                                  in, inembed, istride, idist,
+     &                                  in, inembed, istride, idist,
+     &                                  FFTW_BACKWARD, FFTW_ESTIMATE )
+ 
+      n = (/ gmesh(3) /)
+      if (k_ori_distro) then
+        howmany = (xzdisp(pz+1)-xzdisp(pz))*(ydispl(py+1)-ydispl(py))
+      else
+        howmany = (xdispl(py+1)-xdispl(py))*(yzdisp(pz+1)-yzdisp(pz))
+      endif
+      istride = howmany
+      idist   = 1
+      inembed = (/ gmesh(3) /)
+      plan_fw(3) = fftw_plan_many_dft( rank, n, howmany,
+     &                                  in, inembed, istride, idist,
+     &                                  in, inembed, istride, idist,
+     &                                  FFTW_FORWARD, FFTW_ESTIMATE )
+      plan_bw(3) = fftw_plan_many_dft( rank, n, howmany,
+     &                                  in, inembed, istride, idist,
+     &                                  in, inembed, istride, idist,
+     &                                  FFTW_BACKWARD, FFTW_ESTIMATE )
+#else
+C
+C  Initialise the tables for the FFT if the mesh has changed
+C
+      do
+        lredimension = .false.
+        maxmaxtrigs = maxtrigs
+        do i=1,3
+          if (OldMesh(i).ne.nMesh(i)) then
+            call setgpfa( trigs(:,i), maxtrigs, ntrigs, nMesh(i) )
+            if (ntrigs.gt.maxmaxtrigs) then
+              lredimension = .true.
+              maxmaxtrigs = ntrigs
+            else
+              OldMesh(i) = nMesh(i)
+            endif
+          endif
+        enddo
+        if (.not. lredimension) exit
+C
+C  Resize FFT array for trig factors and set OldMesh to 0 to force recalculation
+C
+        maxtrigs = maxmaxtrigs
+        call re_alloc( trigs, 1, maxtrigs, 1, 3, 'trigs', 'fft' )
+        OldMesh(1:3) = 0
+      enddo
+#endif
       end subroutine fft_init
 
       subroutine getFFTLims( lbox )
@@ -238,14 +294,23 @@ C
       integer :: ierr, n, n1, n2, n3, n2a, n3a, n1b, n3b, n1c, n2c
       integer :: i, j, k, ng, ioffset
       real(dp) :: scale
-
+#     ifdef _FFTW_
+      complex(grid_p), pointer :: in(:)
+      type(C_PTR), pointer :: plan(:)
+#     endif
       call timer( 'fft', 1 )
 
       n1 = gmesh(1)
       n2 = gmesh(2)
       n3 = gmesh(3)
-
 #ifdef MPI
+#     ifdef _FFTW_
+      if (isn<0) then
+        plan => plan_fw
+      else
+        plan => plan_bw
+      endif
+#     endif
       if (k_ori_distro) then
         n2a = ydispl(py+1)-ydispl(py)
         n3a = zdispl(pz+1)-zdispl(pz)
@@ -258,8 +323,13 @@ C       FFT in X direction
 C
         n = n1*n2a*n3a
         if (n>0) then  
+#ifdef _FFTW_
+          call c_f_pointer( c_loc(f1), in, shape=[n] )
+          call fftw_execute_dft( plan(1), in, in )
+#else
           call gpfa( f1(1:2*n), f1(2:2*n), trigs(:,1), 2, 2*n1, n1,
      &               n2a*n3a, -isn )
+#endif
         endif
 C
 C       Transpose data from X to Y direction
@@ -275,8 +345,14 @@ C
         if (n>0) then
           IOffSet = 1
           do i= 1, n3b
+#           ifdef _FFTW_
+            call c_f_pointer( c_loc(f2(IOffSet:IOffSet+n1b*n2-1)),
+     &                  in, shape=[n1b*n2] )
+            call fftw_execute_dft( plan(2), in, in )
+#           else
             call gpfa(f2(IOffSet:2*n),f2(IOffSet+1:2*n), trigs(:,2),
      .            2*n1b, 2, n2, n1b, -isn )
+#           endif
             IOffSet = Ioffset + 2*n1b*n2
           enddo
         endif
@@ -296,8 +372,13 @@ C       FFT in Z direction
 C
         n = n3*n1c*n2c
         if (n>0) then
+#         ifdef _FFTW_
+          call c_f_pointer( c_loc(f2), in, shape=[n] )
+          call fftw_execute_dft( plan(3), in, in )
+#         else
           call gpfa( f2(1:2*n), f2(2:2*n), trigs(:,3), 2*n1c*n2c, 2,
      &    n3, n1c*n2c,-isn )
+#         endif
         endif
 C
 C       Transpose data back from Z to X
@@ -329,8 +410,13 @@ C         FFT in X direction
 C
           n = n1*n2a*n3a
           if (n>0) then
+#ifdef _FFTW_
+            call c_f_pointer( c_loc(f1), in, shape=[n] )
+            call fftw_execute_dft( plan(1), in, in )
+#else
            call gpfa( f1(1:2*n), f1(2:2*n), trigs(:,1), 2, 2*n1, n1,
      &                  n2a*n3a, -isn )
+#endif
            endif
 C
 C         Transpose data from X to Y direction
@@ -346,8 +432,14 @@ C
           if (n>0) then
             IOffSet = 1
             do i= 1, n3b
+#ifdef _FFTW_
+              call c_f_pointer( c_loc(f2(IOffSet:IOffSet+n1b*n2-1)),
+     &                  in, shape=[n1b*n2] )
+              call fftw_execute_dft( plan(2), in, in )
+#else
               call gpfa(f2(IOffSet:2*n),f2(IOffSet+1:2*n), trigs(:,2),
      .              2*n1b, 2, n2, n1b, -isn )
+#endif
               IOffSet = Ioffset + 2*n1b*n2
             enddo
           endif
@@ -363,8 +455,13 @@ C         FFT in Z direction
 C
           n = n3*n1c*n2c
           if (n>0) then
+#ifdef 	    _FFTW_
+            call c_f_pointer( c_loc(f1), in, shape=[n] )
+            call fftw_execute_dft( plan(3), in, in )
+#else
             call gpfa( f1(1:2*n), f1(2:2*n), trigs(:,3), 2*n1c*n2c, 2,
      &      n3, n1c*n2c,-isn )
+#endif
           endif
         else ! isn==1
 C
@@ -372,10 +469,14 @@ C         FFT in Z direction
 C
           n = n3*n1c*n2c
           if (n>0) then
+#ifdef      _FFTW_
+            call c_f_pointer( c_loc(f1), in, shape=[n] )
+            call fftw_execute_dft( plan(3), in, in )
+#else
             call gpfa( f1(1:2*n), f1(2:2*n), trigs(:,3), 2*n1c*n2c, 2,
      &      n3, n1c*n2c,-isn )
+#endif
           endif
-
 C
 C         Transpose data from Z to Y direction
 C
@@ -390,8 +491,14 @@ C
           if (n>0) then
             IOffSet = 1
             do i= 1, n3b
+#ifdef        _FFTW_
+              call c_f_pointer( c_loc(f2(IOffSet:IOffSet+n1b*n2-1)),
+     &                  in, shape=[n1b*n2] )
+              call fftw_execute_dft( plan(2), in, in )
+#else
               call gpfa(f2(IOffSet:2*n),f2(IOffSet+1:n), trigs(:,2),
      .              2*n1b, 2, n2, n1b, -isn )
+#endif
               IOffSet = Ioffset + 2*n1b*n2
             enddo
           endif
@@ -407,8 +514,13 @@ C         FFT in X direction
 C
           n = n1*n2a*n3a
           if (n>0) then
+#ifdef _FFTW_
+            call c_f_pointer( c_loc(f1), in, shape=[n] )
+            call fftw_execute_dft( plan(1), in, in )
+#else
             call gpfa( f1(1:2*n), f1(2:2*n), trigs(:,1), 2, 2*n1, n1,
      &                  n2a*n3a, -isn )
+#endif
 C
 C           SCALE the result
 C
@@ -425,20 +537,37 @@ C
 C
 C       FFT in X direction
 C
+#ifdef _FFTW_
+        call c_f_pointer( c_loc(f1), in, shape=[n] )
+        call fftw_execute_dft( plan(1), in, in )
+#else
         call gpfa( f1(1:2*n), f1(2:2*n), trigs(:,1), 2, 2*n1, n1,
      &             n2*n3, -isn )
+#endif
 C
 C  FFT in Y direction
 C
+      IOffSet = 1
       do i=0,n3-1
-         IOffSet=2*n1*n2*i
-         call gpfa(f(IOffSet+1:2*n),f(IOffSet+2:2*n),trigs(:,2),
+#       ifdef  _FFTW_
+        call c_f_pointer( c_loc(f1(IOffSet:IOffSet+n1*n2-1)),
+     &              in, shape=[n1*n2] )
+        call fftw_execute_dft( plan(2), in, in )
+#       else
+        call gpfa(f1(IOffSet:2*n),f1(IOffSet:2*n),trigs(:,2),
      .             2*n1,2,n2,n1,-isn)
+#       endif
+        IOffSet = Ioffset + 2*n1*n2
       enddo
 C
 C  FFT in Z direction
 C
-      call gpfa(f(1:2*n),f(2:2*n),trigs(:,3),2*n1*n2,2,n3,n1*n2,-isn)
+#     ifdef  _FFTW_
+      call c_f_pointer( c_loc(f1), in, shape=[n] )
+      call fftw_execute_dft( plan(3), in, in )
+#     else
+      call gpfa(f1(1:2*n),f1(2:2*n),trigs(:,3),2*n1*n2,2,n3,n1*n2,-isn)
+#     endif
 C
 C  Scale values
 C

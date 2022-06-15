@@ -98,7 +98,7 @@ OBJS =  automatic_cell.o atom_options.o \
         born_charge.o cgwf.o chkdim.o chkgmx.o \
 	chempot.o coceri.o coxmol.o cross.o compute_norm.o\
 	denmat.o denmatlomem.o detover.o dfscf.o diagon.o digcel.o \
-        fft.o dhscf.o constr.o diagk_file.o diagmemory.o \
+        fft.o fftw3.o dhscf.o constr.o diagk_file.o diagmemory.o \
 	diagg.o diagk.o diagkp.o diag2g.o diag2k.o diag2kp.o diag3g.o diag3k.o diag3kp.o diagpol.o \
 	diag2kspiral.o dipole.o dismin.o dnaefs.o doping_uniform.o dot.o  \
 	m_efield.o egandd.o ener3.o ener3lomem.o errorf.o extrapolon.o \
@@ -657,7 +657,7 @@ extrapolon.o: parallel.o precision.o sys.o
 fdf_extra.o: m_region.o
 fermid.o: errorf.o parallel.o precision.o sys.o
 fft.o: alloc.o m_fft_gpfa.o m_timer.o mesh.o parallel.o
-fft.o: precision.o sys.o  moremeshsubs.o
+fft.o: precision.o sys.o  moremeshsubs.o fftw3.o
 fft1d.o: parallel.o precision.o sys.o
 final_H_f_stress.o: alloc.o atomlist.o class_SpData1D.o class_SpData2D.o
 final_H_f_stress.o: class_SpData2D.o compute_max_diff.o dftu.o dftu_specs.o
