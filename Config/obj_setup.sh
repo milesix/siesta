@@ -2,61 +2,63 @@
 #
 ##set -x
 #
-# Get absolute path of this script, as that will be the Src directory to use
-# as reference when copying files.
-# 
+#
+# Absolute path of the MAIN_OBJDIR (compilation directory)
 #
 objdir=$(
 cd -P -- "$(pwd)" &&
 pwd -P
 )
 #
-srcdir=$(
+# Get absolute path of this script, as that will be the Config directory to use
+# as reference when copying files.
+# 
+configdir=$(
 cd -P -- "$(dirname -- "$0")" &&
 pwd -P
 )
+topdir=$(dirname $configdir)
+
 # The above construct is more robust than:  srcdir=$(dirname $0)
 # (It will work if $0 is "../Src", since we want an *absolute* path
 #
-testdir=$(dirname $srcdir)/Tests
-utildir=$(dirname $srcdir)/Util
-pseudodir=$(dirname $srcdir)/Pseudo
-topdir=$(dirname $srcdir)
-#
-destdir=$(pwd)
+srcdir=${topdir}/Src
+testdir=${topdir}/Tests
+utildir=${topdir}/Util
+pseudodir=${topdir}/Pseudo
 #
 # Copy build.mk and the checker snippet
 #
-cp -p ${srcdir}/../Config/mk-build/build.mk ${destdir}
-cp -p ${srcdir}/../Config/mk-build/check_for_build_mk.mk ${destdir}
+cp -p ${configdir}/mk-build/build.mk ${objdir}
+cp -p ${configdir}/mk-build/check_for_build_mk.mk ${objdir}
 #
 # Replicate the hierarchy of makefiles
 #
 (cd $srcdir;
   for i in $(find . -name \[mM\]akefile ) ; do
     relpath=${i%/*}
-    mkdir -p ${destdir}/$relpath
+    mkdir -p ${objdir}/Src/$relpath
     filename=$(basename $i)
     sed "s#TOPDIR=\.#TOPDIR=${topdir}#g" $i | \
-    sed "s#MAIN_OBJDIR=\.#MAIN_OBJDIR=${objdir}#g" > ${destdir}/$relpath/$filename
+    sed "s#MAIN_OBJDIR=\.#MAIN_OBJDIR=${objdir}#g" > ${objdir}/Src/$relpath/$filename
   done
 )
 (cd $utildir;
-  for i in $(find . -name \[mM\]akefile | grep -v \\./Makefile) ; do
+  for i in $(find . -name \[mM\]akefile ) ; do
     relpath=${i%/*}
-    mkdir -p ${destdir}/Util/$relpath
+    mkdir -p ${objdir}/Util/$relpath
     filename=$(basename $i)
     sed "s#TOPDIR=\.#TOPDIR=${topdir}#g" $i | \
-    sed "s#MAIN_OBJDIR=\.#MAIN_OBJDIR=${objdir}#g" > ${destdir}/Util/$relpath/$filename
+    sed "s#MAIN_OBJDIR=\.#MAIN_OBJDIR=${objdir}#g" > ${objdir}/Util/$relpath/$filename
   done
 )
 (cd $pseudodir;
-  for i in $(find . -name \[mM\]akefile | grep -v \\./Makefile) ; do
+  for i in $(find . -name \[mM\]akefile ) ; do
     relpath=${i%/*}
-    mkdir -p ${destdir}/Pseudo/$relpath
+    mkdir -p ${objdir}/Pseudo/$relpath
     filename=$(basename $i)
     sed "s#TOPDIR=\.#TOPDIR=${topdir}#g" $i | \
-    sed "s#MAIN_OBJDIR=\.#MAIN_OBJDIR=${objdir}#g" > ${destdir}/Pseudo/$relpath/$filename
+    sed "s#MAIN_OBJDIR=\.#MAIN_OBJDIR=${objdir}#g" > ${objdir}/Pseudo/$relpath/$filename
   done
 )
 # Replicate any .inc files
@@ -64,8 +66,8 @@ cp -p ${srcdir}/../Config/mk-build/check_for_build_mk.mk ${destdir}
 (cd $srcdir;
   for i in $(find . -name '*.inc' ); do
     relpath=${i%/*}
-    mkdir -p ${destdir}/$relpath
-    cp -fp $relpath/*.inc ${destdir}/$relpath
+    mkdir -p ${objdir}/Src/$relpath
+    cp -fp $relpath/*.inc ${objdir}/Src/$relpath
   done
 )
 #
@@ -78,13 +80,9 @@ cp -p ${srcdir}/../Config/mk-build/check_for_build_mk.mk ${destdir}
               -path *Reference-xml -prune -o  \
               -path *work -prune      -o  \
               -path *.arch-ids  -prune -o -print \
-              | tar -cf - --no-recursion -T- )   | ( cd ${destdir} ; tar xf -)
+              | tar -cf - --no-recursion -T- )   | ( cd ${objdir} ; tar xf -)
 #
-# (deactivated for now)
 echo " *** Compilation setup done. "
 echo " *** Remember to copy an arch.make file into the directory."
-echo " *** These files are template arch.make files:"
-echo " ***    gfortran.make (for gfortran compiler)"
-echo " ***    intel.make (for intel compiler)"
-echo " ***    DOCUMENTED-TEMPLATE.make (requires customization)"
+echo " *** Build Siesta in Src."
 

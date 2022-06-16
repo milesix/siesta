@@ -15,7 +15,7 @@ module_built: libmpi_f90.a
 # for an external specification of the (relative) location 
 # of the arch.make file.
 #
-ARCH_MAKE_DEFAULT=../arch.make
+ARCH_MAKE_DEFAULT=$(MAIN_OBJDIR)/arch.make
 ARCH_MAKE?=$(ARCH_MAKE_DEFAULT)
 include $(ARCH_MAKE)
 #
