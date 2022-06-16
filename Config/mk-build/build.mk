@@ -308,11 +308,30 @@ endif
 # ARCH_MAKE:   The absolute path name of the arch.make file
 # TOPDIR:      The top distribution directory
 #
+# Truly external libraries can be phony targets
+#
+.PHONY: $(PSML_LIBS)
+$(PSML_LIBS):
+	@echo ">>> PSML_LIBS: $(PSML_LIBS)"
+#
+.PHONY: $(XMLF90_LIBS)
+$(XMLF90_LIBS):
+	@echo ">>> XMLF90_LIBS: $(XMLF90_LIBS)"
+#
+.PHONY: $(GRIDXC_LIBS)
+$(GRIDXC_LIBS):
+	@echo ">>> GRIDXC_LIBS: $(GRIDXC_LIBS)"
+#
+.PHONY: 
+#
+#
+
 .PHONY: DO_FDF
 FDF_LIBS=$(MAIN_OBJDIR)/fdf/libfdf.a
 FDF_INCFLAGS=-I$(MAIN_OBJDIR)/fdf
 $(FDF_LIBS): DO_FDF
 DO_FDF:
+	@echo "+++ Compiling internal FDF library"
 	(cd $(MAIN_OBJDIR)/fdf ; $(MAKE) -j 1 VPATH="$(TOPDIR)/Src/fdf" \
 	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 #--------------------

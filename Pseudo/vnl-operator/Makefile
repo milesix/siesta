@@ -43,7 +43,7 @@ XC=$(GRIDXC_LIBS)
 #
 what:
 	echo "VPATH: " $(VPATH)
-psop:   $(NCPS) $(PSOP) $(ALL_OBJS)
+psop:   $(NCPS) $(PSOP) $(PSML_LIBS) $(XC) $(XMLF90_LIBS) $(ALL_OBJS)
 	$(FC) $(FFLAGS) $(LDFLAGS) -o psop $(ALL_OBJS) \
         $(NCPS) $(PSOP) $(PSML_LIBS) $(XC) $(XMLF90_LIBS)
 #
