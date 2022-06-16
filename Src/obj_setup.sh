@@ -20,6 +20,7 @@ pwd -P
 #
 testdir=$(dirname $srcdir)/Tests
 utildir=$(dirname $srcdir)/Util
+pseudodir=$(dirname $srcdir)/Pseudo
 topdir=$(dirname $srcdir)
 #
 destdir=$(pwd)
@@ -47,7 +48,15 @@ cp -p ${srcdir}/../Config/mk-build/check_for_build_mk.mk ${destdir}
     filename=$(basename $i)
     sed "s#TOPDIR=\.#TOPDIR=${topdir}#g" $i | \
     sed "s#MAIN_OBJDIR=\.#MAIN_OBJDIR=${objdir}#g" > ${destdir}/Util/$relpath/$filename
-    # cp -p $relpath/*akefile ${destdir}/Util/$relpath
+  done
+)
+(cd $pseudodir;
+  for i in $(find . -name \[mM\]akefile | grep -v \\./Makefile) ; do
+    relpath=${i%/*}
+    mkdir -p ${destdir}/Pseudo/$relpath
+    filename=$(basename $i)
+    sed "s#TOPDIR=\.#TOPDIR=${topdir}#g" $i | \
+    sed "s#MAIN_OBJDIR=\.#MAIN_OBJDIR=${objdir}#g" > ${destdir}/Pseudo/$relpath/$filename
   done
 )
 # Replicate any .inc files

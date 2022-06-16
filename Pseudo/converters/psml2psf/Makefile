@@ -7,24 +7,22 @@
 #
 default: psml2psf
 #
-OBJDIR=Obj
-TOP_LEVEL=$(shell cd -P -- ../../../Src && pwd -P)
-VPATH:=$(TOP_LEVEL)
+MAIN_OBJDIR=.
+TOPDIR=.
 
-MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
+VPATH:=$(TOPDIR)/Src:$(TOPDIR)/Pseudo/converters/psml2psf
+
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 #
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
 #
-NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
 
-NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
-
-INCFLAGS:=$(INCFLAGS) $(PSML_INCFLAGS) $(NCPS_INCFLAGS)
-INCFLAGS:=$(INCFLAGS) $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS)
+INCFLAGS+= $(PSML_INCFLAGS) $(NCPS_INCFLAGS)
+INCFLAGS+= $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS)
 #
 OBJS = 	psml2psf.o handlers.o
 #
@@ -48,13 +46,6 @@ clean:
 	@echo "==> Cleaning object, library, and executable files"
 	rm -f psml2psf *.o  *.a *.pcl *.pc *.mod
 	rm -f *.mod
-#
-$(NCPS):
-	@echo "Making sure that the ncps library is compiled..."
-	(cd $(MAIN_OBJDIR)/ncps/src ; make \
-                                     "ARCH_MAKE=$(ARCH_MAKE)"\
-                                     "PSML_INCFLAGS=$(PSML_INCFLAGS)"\
-                                     "VPATH=$(VPATH)/ncps/src")
 #
 
 
