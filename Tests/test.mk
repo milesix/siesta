@@ -3,13 +3,11 @@
 #
 # You can edit the SIESTA macro here, or pass it on the command line
 
-MPI=mpirun -np 2
-SIESTA=../../../siesta
+TOPDIR=.
+MAIN_OBJDIR=.
 
-# Example for BSC runs
-#
-#MPI=mpirun -np 2
-#SIESTA= ../../../siesta
+MPI=mpirun -np 2
+SIESTA=$(MAIN_OBJDIR)/Src/siesta
 
 # Make compatibility layer for old test-runs
 ifeq ($(strip $(firstword $(SIESTA))),mpirun)
@@ -20,7 +18,7 @@ MPI=
 endif
 
 #----------------------------------------------------------------------------
-REFERENCE_DIR?=../../../Tests/Reference
+REFERENCE_DIR?=$(TOPDIR)/Tests/Reference
 REFERENCE_CHECKER?=../cmp_digest.sh
 
 label=work

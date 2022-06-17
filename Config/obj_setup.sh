@@ -79,8 +79,16 @@ cp -p ${configdir}/mk-build/check_for_build_mk.mk ${objdir}
               -path *Reference -prune -o  \
               -path *Reference-xml -prune -o  \
               -path *work -prune      -o  \
+              -path *.mk -prune      -o  \
               -path *.arch-ids  -prune -o -print \
               | tar -cf - --no-recursion -T- )   | ( cd ${objdir} ; tar xf -)
+(cd ${testdir};
+    for i in *.mk ; do
+	sed "s#TOPDIR=\.#TOPDIR=${topdir}#g" $i | \
+        sed "s#MAIN_OBJDIR=\.#MAIN_OBJDIR=${objdir}#g" > ${objdir}/Tests/$i
+    done
+)    
+ 
 #
 echo " *** Compilation setup done. "
 echo " *** Remember to copy an arch.make file into the directory."
