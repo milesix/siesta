@@ -23,11 +23,14 @@ override WITH_FLOOK=
 MAIN_OBJDIR:=$(shell cd -P -- ../../\$(OBJDIR) && pwd -P)
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
-#
+
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
-#
+
+DEFS:=$(DEFS_PREFIX) -UMPI $(DEFS) $(DEFS_PREFIX) -UMPI
+FPPFLAGS:=$(DEFS_PREFIX) -UMPI $(FPPFLAGS) $(DEFS_PREFIX) -UMPI
+
 INCFLAGS:=$(NETCDF_INCFLAGS) $(INCFLAGS)
 #
 # Uncomment the following line for debugging support
@@ -85,7 +88,7 @@ atom_options.o: local_sys.o
 chemical.o: local_sys.o parallel.o precision.o
 io.o: m_io.o
 m_io.o: local_sys.o
-memory.o: memory_log.o parallel.o
+memory.o: memory_log.o
 memory_log.o: m_io.o parallel.o precision.o
 get_chem_labels.o: chemical.o
 sys.o: local_sys.o

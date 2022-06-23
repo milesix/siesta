@@ -37,13 +37,13 @@ DEFS:=$(DEFS) $(DEFS_PREFIX)-UMPI
 FPPFLAGS:=$(FPPFLAGS) $(DEFS_PREFIX)-UMPI 
 INCFLAGS:=$(INCFLAGS) $(NETCDF_INCFLAGS)
 
-FAT_OBJS=m_getopts.o
+OBJS=m_getopts.o
 
 gnubands: $(OBJS) gnubands.o
-	$(FC) -o $@ $(LDFLAGS) $(FAT_OBJS) gnubands.o
+	$(FC) -o $@ $(LDFLAGS) $(OBJS) gnubands.o
 
 eigfat2plot: $(OBJS) eigfat2plot.o
-	$(FC) -o $@ $(LDFLAGS) $(FAT_OBJS) eigfat2plot.o
+	$(FC) -o $@ $(LDFLAGS) $(OBJS) eigfat2plot.o
 
 clean:
 	rm -f *.o *.mod eigfat2plot gnubands
@@ -53,5 +53,3 @@ dep:
 		*.f90 *.F90 *.f *.F
 
 # DO NOT DELETE THIS LINE - used by make depend
-eigfat2plot.o: m_getopts.o
-gnubands.o: m_getopts.o

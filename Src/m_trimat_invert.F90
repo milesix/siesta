@@ -214,7 +214,7 @@ contains
       Cn => val(M,n,n+1)
       ! Calculate: A1 - X1
       call GEMM ('N','N',sN,sN,sNp1,zm1, &
-          Cn,sN,Xn,sNp1,z1,Mp,sN)
+          Cn(1),sN,Xn(1),sNp1,z1,Mp(1),sN)
 
     else if ( n == parts(M) ) then
       ! Retrieve the Yn/Bn-1 array
@@ -223,7 +223,7 @@ contains
       Bn => val(M,n,n-1)
       ! Calculate: An - Yn
       call GEMM ('N','N',sN,sN,sNm1,zm1, &
-          Bn,sN,Yn,sNm1,z1,Mp,sN)
+          Bn(1),sN,Yn(1),sNm1,z1,Mp(1),sN)
 
     else
       ! Retrieve the Xn/Cn+1 array
@@ -232,23 +232,23 @@ contains
       Cn => val(M,n,n+1)
       ! Calculate: An - Xn
       call GEMM ('N','N',sN,sN,sNp1,zm1, &
-          Cn,sN,Xn,sNp1,z1,Mp,sN)
+          Cn(1),sN,Xn(1),sNp1,z1,Mp(1),sN)
       ! Retrieve the Yn/Bn-1 array
       Yn => Yn_div_Bn_m1(Minv,n)
       ! The Bn-1 array
       Bn => val(M,n,n-1)
       ! Calculate: An - Xn - Yn
       call GEMM ('N','N',sN,sN,sNm1,zm1, &
-          Bn,sN,Yn,sNm1,z1,Mp,sN)
+          Bn(1),sN,Yn(1),sNm1,z1,Mp(1),sN)
   
     end if
 
     ! Retrive the position in the inverted matrix
     Mpinv => val(Minv,n,n)
-    call zcopy(sN*sN, Mp, 1, Mpinv, 1)
-    call zgetrf(sN, sN, Mpinv, sN, ipiv, i)
+    call zcopy(sN*sN, Mp(1), 1, Mpinv(1), 1)
+    call zgetrf(sN, sN, Mpinv(1), sN, ipiv, i)
     if ( i == 0 ) then
-      call zgetri(sN, Mpinv, sN, ipiv, Mp, sN*sN, i)
+      call zgetri(sN, Mpinv(1), sN, ipiv, Mp(1), sN*sN, i)
     else
       call die('Error on LU factorization of Mnn')
     end if
@@ -286,13 +286,13 @@ contains
     Xn => Xn_div_Cn_p1(M,n)
     Mpinv => Xn_div_Cn_p1(Minv,n)
 
-    call zcopy(sN*sNp1,Mpinv,1,Xn,1)
+    call zcopy(sN*sNp1,Mpinv(1),1,Xn(1),1)
 
     ! Do matrix-multiplication
     Mp => val(Minv,n,n)
     ! Calculate: Xn/Cn+1 * Mnn
     call GEMM ('N','N',sNp1,sN,sN,zm1, &
-        Xn,sNp1,Mp,sN,z0,Mpinv,sNp1)
+        Xn(1),sNp1,Mp(1),sN,z0,Mpinv(1),sNp1)
 
   end subroutine calc_Mnp1n_inv
 
@@ -325,13 +325,13 @@ contains
     Yn => Yn_div_Bn_m1(M,n)
     Mpinv => Yn_div_Bn_m1(Minv,n)
 
-    call zcopy(sN*sNm1,Mpinv,1,Yn,1)
+    call zcopy(sN*sNm1,Mpinv(1),1,Yn(1),1)
 
     ! Do matrix-multiplication
     Mp => val(Minv,n,n)
     ! Calculate: Yn/Bn-1 * Mnn
     call GEMM ('N','N',sNm1,sN,sN,zm1, &
-        Yn,sNm1,Mp,sN,z0,Mpinv,sNm1)
+        Yn(1),sNm1,Mp(1),sN,z0,Mpinv(1),sNm1)
           
   end subroutine calc_Mnm1n_inv
     
@@ -349,7 +349,7 @@ contains
   subroutine calc_Xn_div_Cn_p1(M,Minv,n,zwork,nz)
     type(zTriMat), intent(inout) :: M, Minv
     integer, intent(in) :: n, nz
-    complex(dp), intent(inout) :: zwork(nz)
+    complex(dp), intent(inout) :: zwork(:)
     ! Local variables
     complex(dp), pointer :: ztmp(:), Xn(:), Cnp2(:)
     integer :: sN, sNp1, sNp1SQ, sNp2, ierr
@@ -385,7 +385,7 @@ contains
        Cnp2 => val(M,n+1,n+2)
        ! Calculate: An+1 - Xn+1
        call GEMM ('N','N',sNp1,sNp1,sNp2,zm1, &
-           Cnp2,sNp1,ztmp,sNp2,z1,zwork,sNp1)
+           Cnp2(1),sNp1,ztmp(1),sNp2,z1,zwork(1),sNp1)
     end if
 
     ! Calculate Xn/Cn+1
@@ -399,16 +399,16 @@ contains
     if ( sNp1 * 2 > sN ) then
       ! Copy over the Bn array
       call zcopy(sN*sNp1, Cnp2(1), 1, Xn(1), 1)
-      call zgesv(sNp1,sN,zwork,sNp1,ipiv,Xn,sNp1,ierr)
+      call zgesv(sNp1,sN,zwork(1),sNp1,ipiv,Xn(1),sNp1,ierr)
     else
       ! Here we know that sNp1 * 2 < sN and thus we
       ! can use the result array (Xn) as work array
       ! Since Xn has dimensions sNp1,sN > sNp1,sNp1
-      call zgetrf(sNp1, sNp1, zwork, sNp1, ipiv, ierr)
+      call zgetrf(sNp1, sNp1, zwork(1), sNp1, ipiv, ierr)
       if ( ierr == 0 ) then
-        call zgetri(sNp1, zwork, sNp1, ipiv, Xn, sNp1SQ, ierr)
+        call zgetri(sNp1, zwork(1), sNp1, ipiv, Xn(1), sNp1SQ, ierr)
         call GEMM ('N', 'N', sNp1, sN, sNp1, z1, &
-            zwork, sNp1, Cnp2, sNp1, z0, Xn, sNp1)
+            zwork(1), sNp1, Cnp2(1), sNp1, z0, Xn(1), sNp1)
       end if
     end if
     if ( ierr /= 0 ) then
@@ -438,7 +438,7 @@ contains
   subroutine calc_Yn_div_Bn_m1(M,Minv,n,zwork,nz)
     type(zTriMat), intent(inout) :: M, Minv
     integer, intent(in) :: n, nz
-    complex(dp), intent(inout) :: zwork(nz)
+    complex(dp), intent(inout) :: zwork(:)
     ! Local variables
     complex(dp), pointer :: ztmp(:), Yn(:), Bnm2(:)
     integer :: sN, sNm1, sNm1SQ, sNm2, ierr
@@ -473,7 +473,7 @@ contains
       Bnm2 => val(M,n-1,n-2)
       ! Calculate: An-1 - Yn-1
       call GEMM ('N','N',sNm1,sNm1,sNm2,zm1, &
-          Bnm2,sNm1,ztmp,sNm2,z1,zwork,sNm1)
+          Bnm2(1),sNm1,ztmp(1),sNm2,z1,zwork(1),sNm1)
     end if
 
     ! Calculate Yn/Bn-1
@@ -486,16 +486,16 @@ contains
     ! For n,m n>m*2 zgetrf+zgetri+zgemm is faster than zgesv
     if ( sNm1 * 2 > sN ) then
       call zcopy(sN*sNm1, Bnm2(1), 1, Yn(1), 1)
-      call zgesv(sNm1,sN,zwork,sNm1,ipiv,Yn,sNm1,ierr)
+      call zgesv(sNm1,sN,zwork(1),sNm1,ipiv,Yn(1),sNm1,ierr)
     else
       ! Here we know that sNm1 * 2 < sN and thus we
       ! can use the result array (Yn) as work array
       ! Since Yn has dimensions sNm1,sN > sNm1,sNm1
-      call zgetrf(sNm1, sNm1, zwork, sNm1, ipiv, ierr)
+      call zgetrf(sNm1, sNm1, zwork(1), sNm1, ipiv, ierr)
       if ( ierr == 0 ) then
-        call zgetri(sNm1, zwork, sNm1, ipiv, Yn, sNm1SQ, ierr)
+        call zgetri(sNm1, zwork(1), sNm1, ipiv, Yn(1), sNm1SQ, ierr)
         call GEMM ('N', 'N', sNm1, sN, sNm1, z1, &
-            zwork, sNm1, Bnm2, sNm1, z0, Yn, sNm1)
+            zwork(1), sNm1, Bnm2(1), sNm1, z0, Yn(1), sNm1)
       end if
     end if
     if ( ierr /= 0 ) then

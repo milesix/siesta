@@ -68,12 +68,14 @@ module m_ts_chem_pot
   end interface copy
   public :: copy
 
+  interface delete
+     module procedure delete_
+  end interface delete
+  public :: delete
+
   public :: Eq_segs
-
   public :: chem_pot_add_Elec
-
   public :: fdf_nmu, fdffake_mu, fdf_mu
-
   public :: print_mus_block
 
   private
@@ -562,6 +564,18 @@ contains
     allocate(copy%Eq_seg(size(this%Eq_seg)))
     copy%Eq_seg(:) = this%Eq_seg(:)
   end subroutine copy_
+
+  subroutine delete_(this)
+    type(ts_mu), intent(inout) :: this
+
+    if ( allocated(this%Eq_seg) ) then
+      deallocate(this%Eq_seg)
+    end if
+    deallocate(this%el)
+    nullify(this%el)
+    this%N_El = 0
+
+  end subroutine delete_
 
 end module m_ts_chem_pot
   

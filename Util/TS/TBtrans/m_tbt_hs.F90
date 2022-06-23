@@ -80,7 +80,7 @@ module m_tbt_hs
 
 contains
 
-  subroutine tbt_init_HSfile( )
+  subroutine tbt_hs_init( )
 
     use fdf
     use files, only : slabel
@@ -248,7 +248,7 @@ contains
       call prep_next_HS(spin_idx, Volt)
     end if
 
-  end subroutine tbt_init_HSfile
+  end subroutine tbt_hs_init
                                 
   subroutine prep_next_HS(ispin, Volt)
 
@@ -435,14 +435,20 @@ contains
     call delete(TSHS%S_1D)
     call delete(TSHS%H_2D)
     if ( associated(TSHS%isc_off) ) then
-       ! Everything must have been allocated
-       deallocate(TSHS%isc_off,TSHS%sc_off)
-       deallocate(TSHS%xa,TSHS%lasto)
-       nullify(TSHS%isc_off, TSHS%sc_off)
-       nullify(TSHS%xa,TSHS%lasto)
+      ! Everything must have been allocated
+      deallocate(TSHS%isc_off,TSHS%sc_off)
+      deallocate(TSHS%xa,TSHS%lasto)
+      nullify(TSHS%isc_off, TSHS%sc_off)
+      nullify(TSHS%xa,TSHS%lasto)
     end if
+
   end subroutine clean_HS
 
-end module m_tbt_hs
+  subroutine tbt_hs_reset()
 
-  
+    call clean_HS()
+    deallocate(tHS)
+
+  end subroutine tbt_hs_reset
+
+end module m_tbt_hs

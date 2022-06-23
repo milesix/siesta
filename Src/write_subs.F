@@ -965,7 +965,6 @@
       use m_ts_method, only: r_aBuf
       use m_ts_options, only: N_Elec, Elecs
       use m_region, only: rgn_size
-      use m_ts_electype, only: TotUsedAtoms
 
       integer, intent(in) :: na_u
       real(dp), intent(in) :: fa(3,na_u)
@@ -984,8 +983,8 @@
       ! Zero out electrode atoms where bulk is false
       do iE = 1, N_elec
         if ( Elecs(iE)%DM_update < 2 ) then
-          na = na_u - TotUsedAtoms(Elecs(iE))
-          do ia = 1, TotUsedAtoms(Elecs(iE))
+          na = na_u - Elecs(iE)%device_atoms()
+          do ia = 1, Elecs(iE)%device_atoms()
             ts_fa(:, Elecs(iE)%idx_a+ia-1) = 0._dp
           end do
         end if

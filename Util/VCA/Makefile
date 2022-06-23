@@ -38,13 +38,12 @@ MAIN_OBJDIR:=$(shell cd -P -- ../../\$(OBJDIR) && pwd -P)
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
 
-# FC_DEFAULT:=$(FC)
-# FC_SERIAL?=$(FC_DEFAULT)
-# FC:=$(FC_SERIAL)         # Make it non-recursive
+FC_DEFAULT:=$(FC)
+FC_SERIAL?=$(FC_DEFAULT)
+FC:=$(FC_SERIAL)         # Make it non-recursive
 
-# DEFS:=$(DEFS_PREFIX)-UMPI $(DEFS) $(DEFS_PREFIX)-UMPI
-# #
-# FPPFLAGS:=$(DEFS_PREFIX)-UMPI $(FPPFLAGS) $(DEFS_PREFIX)-UMPI
+DEFS:=$(DEFS_PREFIX)-UMPI $(DEFS) $(DEFS_PREFIX)-UMPI
+FPPFLAGS:=$(DEFS_PREFIX)-UMPI $(FPPFLAGS) $(DEFS_PREFIX)-UMPI
 
 NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
 
@@ -117,13 +116,8 @@ dep:
 
 # DO NOT DELETE THIS LINE - used by make depend
 atom_options.o: local_sys.o
-atom_options.o: local_sys.o
-io.o: m_io.o
 io.o: m_io.o
 m_io.o: local_sys.o
-m_io.o: local_sys.o
 fractional.o: periodic_table.o precision.o
-fractional.o: periodic_table.o precision.o
-mixps.o: interpolation.o periodic_table.o precision.o
 mixps.o: interpolation.o periodic_table.o precision.o
 sys.o: local_sys.o

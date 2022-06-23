@@ -60,7 +60,7 @@ contains
     use class_zSpData1D
     use class_zSpData2D
 
-    use m_ts_electype
+    use ts_electrode_m
     ! Self-energy read
     use m_ts_gf
     ! Self-energy expansion
@@ -101,7 +101,7 @@ contains
 ! * INPUT variables  *
 ! ********************
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     integer, intent(in) :: nq(N_Elec), uGF(N_Elec)
     real(dp), intent(in) :: ucell(3,3)
     integer, intent(in) :: nspin, na_u, lasto(0:na_u)
@@ -151,6 +151,9 @@ contains
 ! ******************* Miscalleneous variables ****************
     integer :: no_u_TS, off, no
 ! ************************************************************
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_pre_Econtours', 1)
+#endif
 
 #ifdef TRANSIESTA_DEBUG
     call write_debug( 'PRE transiesta mem' )
@@ -252,6 +255,11 @@ contains
     ! point to the index iterators
     call itt_attach(SpKp,cur1=ispin,cur2=ikpt)
 
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_pre_Econtours', 2)
+    call timer('TS_Econtours', 1)
+#endif
+
     do while ( .not. itt_step(SpKp) )
 
        if ( itt_stepped(SpKp,1) ) then ! spin has incremented
@@ -310,7 +318,7 @@ contains
        no = no_u_TS
        do iEl = 1 , N_Elec
           if ( Elecs(iEl)%DM_update == 0 ) then
-             no = no - TotUsedOrbs(Elecs(iEl))
+             no = no - Elecs(iEl)%device_orbitals()
           end if
        end do
        iE = Nodes - Node
@@ -505,7 +513,7 @@ contains
                 ! solve for all electrode columns... (not very sparse :( )
                 
                 ! offset and number of orbitals
-                no = TotUsedOrbs(Elecs(iEl))
+                no = Elecs(iEl)%device_orbitals()
                 
                 ! step to the next electrode position
                 off = off + no
@@ -589,6 +597,11 @@ contains
 
     end do ! spin, k-point
 
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_Econtours', 2)
+    call timer('TS_post_Econtours', 1)
+#endif
+
     call itt_destroy(SpKp)
 
 #ifdef TRANSIESTA_DEBUG
@@ -644,6 +657,9 @@ contains
 #ifdef TRANSIESTA_DEBUG
     call write_debug( 'POS transiesta mem' )
 #endif
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_post_Econtours', 2)
+#endif
 
   end subroutine ts_mumpsk
 
@@ -664,7 +680,7 @@ contains
     use class_Sparsity
     use class_zSpData1D
     use class_zSpData2D
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_method, only : ts2s_orb
     include 'zmumps_struc.h'
 
@@ -676,7 +692,7 @@ contains
     ! the mumps structure
     type(zMUMPS_STRUC), intent(inout) :: mum
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! the index of the partition
     integer, intent(in) :: DMidx
     integer, intent(in), optional :: EDMidx
@@ -697,6 +713,9 @@ contains
     integer :: sp, sind
     integer :: i1, i2
     logical :: hasEDM, lis_eq, calc_q
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_add_DM', 1)
+#endif
 
     lis_eq = .true.
     if ( present(is_eq) ) lis_eq = is_eq
@@ -891,6 +910,9 @@ contains
     ! value. This is exact since we are calculating the total charge
     ! (not PDOS) where the transposed value could be important.
     if ( calc_q ) q = q * 2._dp
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_add_DM', 2)
+#endif
 
   end subroutine add_DM
 
@@ -902,7 +924,7 @@ contains
     use intrinsic_missing, only : SFIND
     use class_zSpData1D
     use class_Sparsity
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_cctype, only : ts_c_idx
     use m_ts_method, only : ts2s_orb
     include 'zmumps_struc.h'
@@ -911,7 +933,7 @@ contains
     type(ts_c_idx), intent(in) :: cE
     type(zMUMPS_STRUC), intent(inout) :: mum
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! The Hamiltonian and overlap sparse matrices
     type(zSpData1D), intent(inout) :: spH, spS
 

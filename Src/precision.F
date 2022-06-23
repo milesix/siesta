@@ -12,10 +12,19 @@
 !     Precision handling
 !
       implicit none
-      
-      integer, parameter :: i8b = selected_int_kind(18)
 
+      !< Short integer kind
+      integer, parameter :: i2b = selected_int_kind(4)
+      !< Integer kind
+      integer, parameter :: i4b = selected_int_kind(9)
+      !< Long kind
+      integer, parameter :: i8b = selected_int_kind(18)
+      !< Double long kind
+      integer, parameter :: i16b = selected_int_kind(38)
+
+      !< Real kind
       integer, parameter :: sp = selected_real_kind(6,30)
+      !< Double kind
       integer, parameter :: dp = selected_real_kind(14,100)
 !
 !     Select precision of certain parts of the program

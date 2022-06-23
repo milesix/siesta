@@ -38,7 +38,7 @@ contains
 #endif
     use m_os, only : file_exist
     use m_ts_cctype
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_electrode, only : create_Green
 
     use m_tbt_contour
@@ -48,7 +48,7 @@ contains
 ! ***********************
 ! * INPUT variables     *
 ! ***********************
-    type(Elec), intent(inout)     :: El
+    type(electrode_t), intent(inout)     :: El
     integer, intent(in)           :: nkpnt ! Number of k-points
     real(dp), intent(in)          :: kpoint(3,nkpnt) ! k-points
     real(dp), intent(in)          :: kweight(nkpnt) ! weights of kpoints

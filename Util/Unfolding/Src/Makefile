@@ -28,6 +28,10 @@ include $(ARCH_MAKE)
 FC_DEFAULT := $(FC)
 FC_SERIAL  ?= $(FC_DEFAULT)
 
+# Filter out non-needed libraries
+COMP_LIBS := $(filter-out libncdf.a, $(COMP_LIBS))
+COMP_LIBS := $(filter-out libfdict.a, $(COMP_LIBS))
+
 # For removing any -ipo compilation in sub directories...
 # Later compilers are also having this enabled, and it lets you
 # specify what to not be used in libraries.

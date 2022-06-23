@@ -224,7 +224,7 @@ contains
             gncol(gio:gio-1+n) = ncol(io:io-1+n)
           else
             nb = nb + 1
-            call MPI_ISSend(ncol(io), n, MPI_Integer, &
+            call MPI_ISend(ncol(io), n, MPI_Integer, &
                 toNode, gio, comm, ibuf(nb), MPIerror)
           end if
         else if ( lNode == toNode ) then
@@ -448,7 +448,7 @@ contains
 
         else if ( lNode == 0 ) then
           nb = nb + 1
-          call MPI_ISSend(lgncol(gio), n, MPI_Integer, &
+          call MPI_ISend(lgncol(gio), n, MPI_Integer, &
               BNode, gio, comm, ibuf(nb), MPIerror)
 
         end if
@@ -720,7 +720,7 @@ contains
           else
             i = sum(ncol(io:io-1+n))
             nb = nb + 1
-            call MPI_ISSend(l_col(ind+1), i, MPI_Integer, &
+            call MPI_ISend(l_col(ind+1), i, MPI_Integer, &
                 0, gio, comm, ibuf(nb), MPIerror)
             ind = ind + i
           end if
@@ -1021,7 +1021,7 @@ contains
           else
             i = sum(ncol(io:io-1+n))
             nb = nb + 1
-            call MPI_ISSend(a(ind+1), i, MPI_Double_Precision, &
+            call MPI_ISend(a(ind+1), i, MPI_Double_Precision, &
                 0, gio, comm, ibuf(nb), MPIerror)
             ind = ind + i
           end if
@@ -1152,7 +1152,7 @@ contains
           else
             i = sum(ncol(io:io-1+n))
             nb = nb + 1
-            call MPI_ISSend(a(ind+1), i, MPI_Double_Precision, &
+            call MPI_ISend(a(ind+1), i, MPI_Double_Precision, &
                 0, gio, comm, ibuf(nb), MPIerror)
             ind = ind + i
           end if
@@ -1576,7 +1576,7 @@ contains
               else
                 i = sum(ncol(io:io-1+n))
                 nb = nb + 1
-                call MPI_ISSend(a(ind+1,s), i, MPI_Double_Precision, &
+                call MPI_ISend(a(ind+1,s), i, MPI_Double_Precision, &
                     0, gio, comm, ibuf(nb), MPIerror)
                 ind = ind + i
               end if
@@ -1683,7 +1683,7 @@ contains
             else
               i = sum(ncol(io:io-1+n))
               nb = nb + 1
-              call MPI_ISSend(a(1,ind+1), dim2*i, MPI_Double_Precision, &
+              call MPI_ISend(a(1,ind+1), dim2*i, MPI_Double_Precision, &
                   0, gio, comm, ibuf(nb), MPIerror)
               ind = ind + i
             end if
@@ -1833,7 +1833,7 @@ contains
               else
                 i = sum(ncol(io:io-1+n))
                 nb = nb + 1
-                call MPI_ISSend(a(ind+1,s), i, MPI_Double_Precision, &
+                call MPI_ISend(a(ind+1,s), i, MPI_Double_Precision, &
                     0, gio, comm, ibuf(nb), MPIerror)
                 ind = ind + i
               end if
@@ -1939,7 +1939,7 @@ contains
             else
               i = sum(ncol(io:io-1+n))
               nb = nb + 1
-              call MPI_ISSend(a(1,ind+1), dim2*i, MPI_Double_Precision, &
+              call MPI_ISend(a(1,ind+1), dim2*i, MPI_Double_Precision, &
                   0, gio, comm, ibuf(nb), MPIerror)
               ind = ind + i
             end if
