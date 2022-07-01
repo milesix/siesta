@@ -110,6 +110,9 @@ MODULE siesta_options
   logical :: w90_r_between_manifolds ! Will we compute the position operator
                                      !   matrix elements between bands in
                                      !   different manifolds?
+  logical :: w90_mmn_diagonal        ! Will we force the matrix elements of the
+                                     !   Mmn matrix to be diagonal between 
+                                     !   bands of different manifolds?
 !----------------------------------------------------
   logical :: writef        ! Write atomic forces at every geometry step?
   logical :: writek        ! Write the k vectors of the BZ integration mesh?

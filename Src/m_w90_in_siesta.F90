@@ -42,6 +42,10 @@ module m_w90_in_siesta
                                           ! Will the position operator matrix
                                           !  elements be computed between bands
                                           !  of different manifolds
+  use siesta_options, only: w90_mmn_diagonal
+                                          ! Will the Mmn matrix be forced to 
+                                          !  be diagonal between bands of different
+                                          !  manifolds?
   use parallel,       only: Node          ! Local processor number
   use parallel,       only: Nodes         ! Total number of processors in a 
                                           !  parallel run
@@ -1748,23 +1752,25 @@ module m_w90_in_siesta
               enddo
             enddo
 
-            do nkp = 1, numkpoints
-              do icount = 1, nncount
-                do mband = 1, manifold_bands_w90_in(1)%number_of_bands
-                  do nband = manifold_bands_w90_in(1)%number_of_bands+1, &
-                             manifold_bands_w90_in(1)%number_of_bands +   &
-                             manifold_bands_w90_in(2)%number_of_bands
-                    Mmnkb(mband,nband,nkp,icount) = cmplx(0.0_dp,0.0_dp,kind=dp)
+            if( w90_mmn_diagonal ) then
+              do nkp = 1, numkpoints
+                do icount = 1, nncount
+                  do mband = 1, manifold_bands_w90_in(1)%number_of_bands
+                    do nband = manifold_bands_w90_in(1)%number_of_bands+1, &
+                               manifold_bands_w90_in(1)%number_of_bands +   &
+                               manifold_bands_w90_in(2)%number_of_bands
+                      Mmnkb(mband,nband,nkp,icount) = cmplx(0.0_dp,0.0_dp,kind=dp)
+                    enddo 
+                  enddo 
+                  do mband = manifold_bands_w90_in(1)%numbands_w90_in+1,    &
+                             manifold_bands_w90_in(3)%numbands_w90_in
+                    do nband = 1, manifold_bands_w90_in(1)%number_of_bands
+                      Mmnkb(mband,nband,nkp,icount) = cmplx(0.0_dp,0.0_dp,kind=dp)
+                    enddo 
                   enddo 
                 enddo 
-                do mband = manifold_bands_w90_in(1)%numbands_w90_in+1,    &
-                           manifold_bands_w90_in(3)%numbands_w90_in
-                  do nband = 1, manifold_bands_w90_in(1)%number_of_bands
-                    Mmnkb(mband,nband,nkp,icount) = cmplx(0.0_dp,0.0_dp,kind=dp)
-                  enddo 
-                enddo 
-              enddo 
-            enddo
+              enddo
+            endif
 
 !           Write the Mmn overlap matrices in a file, in the format required
 !           by Wannier90

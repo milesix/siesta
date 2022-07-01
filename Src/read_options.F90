@@ -1846,6 +1846,8 @@ subroutine read_options( na, ns, nspin )
 
   w90_index_perturbed_manifold = fdf_get( 'Wannier.Manifold.IndexPerturbed', 1 )
 
+  w90_mmn_diagonal = fdf_get( 'Wannier.Mmn.Diagonal', .false. )
+
   if (ionode) then
      write(6,'(2a)') 'redata: ', repeat('*', 71)
   endif
