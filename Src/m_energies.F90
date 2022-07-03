@@ -137,7 +137,7 @@ contains
     if ( TSrun ) then
       NEGF_Etot = Ena + NEGF_Ekin + NEGF_Enl - Eions + &
           DEna + DUscf + DUext + Exc + Ecorrec + Emad + Emm + Emeta + &
-          Edftu + NEGF_DE
+          Edftu
     end if
     
   end subroutine update_Etot
