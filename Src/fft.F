@@ -84,7 +84,7 @@
       integer :: PZ
       integer :: COMM_Y
       integer :: COMM_Z
-      logical :: k_ori_distro
+      logical :: k_ori_distr = .false.
       integer, pointer :: xzdisp(:) => null()
       integer, pointer :: ydispl(:) => null()
       integer, pointer :: zdispl(:) => null()
@@ -112,8 +112,6 @@
       integer :: rank, n(1), howmany, inembed(1), istride, idist
       complex(C_DOUBLE_COMPLEX) :: in(1)
 #endif
-      k_ori_distro = ori_distr
-
       gmesh(1:3) = nMesh(1:3)
 
       if (frsttime) then
@@ -122,8 +120,6 @@
         call re_alloc( trigs, 1, maxtrigs, 1, 3, 'trigs', 'fft' )
 #endif
 #ifdef MPI
-        call getMeshBox( UNIFORM, box )
-
         ProcessorZ = NODES/ProcessorY
         PY = mod(Node,ProcessorY)+1
         PZ = Node/ProcessorY+1
@@ -132,6 +128,22 @@
         call re_alloc( xdispl, 1, ProcessorY+1, 'xdispl', 'fft' )
         call re_alloc( ydispl, 1, ProcessorY+1, 'ydispl', 'fft' )
         call re_alloc( zdispl, 1, ProcessorZ+1, 'zdispl', 'fft' )
+        call re_alloc( xzdisp, 1, ProcessorZ+1, 'xzdisp', 'fft' )
+        yzdisp => xzdisp
+#endif
+        frsttime = .false.
+      endif
+#ifdef MPI
+#else
+        size1 = gMesh(1)*gMesh(2)*gMesh(3)
+        size2 = 0
+#endif
+
+      if ( any(OldMesh/=gmesh) .or. ori_distr/=k_ori_distr ) then
+C
+C       Compute the limits of the differents pencils in each possible direction
+C
+        call getMeshBox( UNIFORM, box )
         di = gmesh(1)/ProcessorY
         mo = mod(gmesh(1),ProcessorY)
         xdispl(1) = 1
@@ -146,31 +158,14 @@
         do i= 1, ProcessorZ
           zdispl(i+1) = box(2,3,(i-1)*ProcessorY+1)*NSM+1
         enddo
-#endif
-        frsttime = .false.
-      endif
-#ifdef MPI
-        s1 = gMesh(1)*(ydispl(py+1)-ydispl(py))*
-     &                (zdispl(pz+1)-zdispl(pz))
-        s2 = gMesh(2)*(xdispl(py+1)-xdispl(py))*
-     &                (zdispl(pz+1)-zdispl(pz))
-      if (k_ori_distro) then
-        if (.not.associated(xzdisp)) then
-          call re_alloc( xzdisp, 1, ProcessorZ+1, 'xzdisp', 'fft' )
+        if (ori_distr) then
           di = gmesh(1)/ProcessorZ
           mo = mod(gmesh(1),ProcessorZ)
           xzdisp(1) = 1
           do i= 1, ProcessorZ
             xzdisp(i+1) = xzdisp(i) + di + merge(1,0,i<=mo)
           enddo
-        endif
-        s3 = gMesh(3)*(ydispl(py+1)-ydispl(py))*
-     &                (xzdisp(pz+1)-xzdisp(pz))
-        size1 = s1
-        size2 = max(s2,s3)
-      else
-        if (.not.associated(yzdisp)) then
-          call re_alloc( yzdisp, 1, ProcessorZ+1, 'yzdisp', 'fft' )
+        else
           di = gmesh(2)/ProcessorZ
           mo = mod(gmesh(2),ProcessorZ)
           yzdisp(1) = 1
@@ -178,6 +173,100 @@
             yzdisp(i+1) = yzdisp(i) + di + merge(1,0,i<=mo)
           enddo
         endif
+#ifdef _FFTW_
+        if (any(OldMesh/=0)) then
+          call fftw_destroy_plan( plan_fw(1) )
+          call fftw_destroy_plan( plan_fw(2) )
+          call fftw_destroy_plan( plan_fw(3) )
+          call fftw_destroy_plan( plan_bw(1) )
+          call fftw_destroy_plan( plan_bw(2) )
+          call fftw_destroy_plan( plan_bw(3) )
+        endif
+        rank = 1
+        n = (/ gmesh(1) /)
+        howmany = (ydispl(py+1)-ydispl(py))*(zdispl(pz+1)-zdispl(pz))
+        inembed = (/ gmesh(1) /)
+        istride = 1
+        idist   = gmesh(1)
+        plan_fw(1) = fftw_plan_many_dft( rank, n, howmany,
+     &                                    in, inembed, istride, idist,
+     &                                    in, inembed, istride, idist,
+     &                                    FFTW_FORWARD, FFTW_ESTIMATE )
+        plan_bw(1) = fftw_plan_many_dft( rank, n, howmany,
+     &                                    in, inembed, istride, idist,
+     &                                    in, inembed, istride, idist,
+     &                                    FFTW_BACKWARD, FFTW_ESTIMATE )
+        n = (/ gmesh(2) /)
+        howmany = (xdispl(py+1)-xdispl(py))
+        inembed = (/ gmesh(2) /)
+        istride = (xdispl(py+1)-xdispl(py))
+        idist   = 1
+        plan_fw(2) = fftw_plan_many_dft( rank, n, howmany,
+     &                                    in, inembed, istride, idist,
+     &                                    in, inembed, istride, idist,
+     &                                    FFTW_FORWARD, FFTW_ESTIMATE )
+        plan_bw(2) = fftw_plan_many_dft( rank, n, howmany,
+     &                                    in, inembed, istride, idist,
+     &                                    in, inembed, istride, idist,
+     &                                    FFTW_BACKWARD, FFTW_ESTIMATE )
+ 
+        n = (/ gmesh(3) /)
+        if (ori_distr) then
+          howmany = (xzdisp(pz+1)-xzdisp(pz))*(ydispl(py+1)-ydispl(py))
+        else
+          howmany = (xdispl(py+1)-xdispl(py))*(yzdisp(pz+1)-yzdisp(pz))
+        endif
+        istride = howmany
+        idist   = 1
+        inembed = (/ gmesh(3) /)
+        plan_fw(3) = fftw_plan_many_dft( rank, n, howmany,
+     &                                    in, inembed, istride, idist,
+     &                                    in, inembed, istride, idist,
+     &                                    FFTW_FORWARD, FFTW_ESTIMATE )
+        plan_bw(3) = fftw_plan_many_dft( rank, n, howmany,
+     &                                    in, inembed, istride, idist,
+     &                                    in, inembed, istride, idist,
+     &                                    FFTW_BACKWARD, FFTW_ESTIMATE )
+        OldMesh = gmesh
+#else
+C
+C       Initialise the tables for the FFT if the mesh has changed
+C
+        do
+          lredimension = .false.
+          maxmaxtrigs = maxtrigs
+          do i=1,3
+            if (OldMesh(i).ne.gmesh(i)) then
+              call setgpfa( trigs(:,i), maxtrigs, ntrigs, gmesh(i) )
+              if (ntrigs.gt.maxmaxtrigs) then
+                lredimension = .true.
+                maxmaxtrigs = ntrigs
+              else
+                OldMesh(i) = gmesh(i)
+              endif
+            endif
+          enddo
+          if (.not. lredimension) exit
+C
+C         Resize FFT array for trig factors and set OldMesh to 0 to force recalculation
+C
+          maxtrigs = maxmaxtrigs
+          call re_alloc( trigs, 1, maxtrigs, 1, 3, 'trigs', 'fft' )
+          OldMesh(1:3) = 0
+        enddo
+#endif
+      endif
+#ifdef MPI
+        s1 = gMesh(1)*(ydispl(py+1)-ydispl(py))*
+     &                (zdispl(pz+1)-zdispl(pz))
+        s2 = gMesh(2)*(xdispl(py+1)-xdispl(py))*
+     &                (zdispl(pz+1)-zdispl(pz))
+      if (ori_distr) then
+        s3 = gMesh(3)*(ydispl(py+1)-ydispl(py))*
+     &                (xzdisp(pz+1)-xzdisp(pz))
+        size1 = s1
+        size2 = max(s2,s3)
+      else
         s3 = gMesh(3)*(xdispl(py+1)-xdispl(py))*
      &       (yzdisp(pz+1)-yzdisp(pz))
         size1 = max(s1,s3)
@@ -187,86 +276,14 @@
         size1 = gMesh(1)*gMesh(2)*gMesh(3)
         size2 = 0
 #endif
-#ifdef _FFTW_
-      rank = 1
-      n = (/ gmesh(1) /)
-      howmany = (ydispl(py+1)-ydispl(py))*(zdispl(pz+1)-zdispl(pz))
-      inembed = (/ gmesh(1) /)
-      istride = 1
-      idist   = gmesh(1)
-      plan_fw(1) = fftw_plan_many_dft( rank, n, howmany,
-     &                                  in, inembed, istride, idist,
-     &                                  in, inembed, istride, idist,
-     &                                  FFTW_FORWARD, FFTW_ESTIMATE )
-      plan_bw(1) = fftw_plan_many_dft( rank, n, howmany,
-     &                                  in, inembed, istride, idist,
-     &                                  in, inembed, istride, idist,
-     &                                  FFTW_BACKWARD, FFTW_ESTIMATE )
-      n = (/ gmesh(2) /)
-      howmany = (xdispl(py+1)-xdispl(py))
-      inembed = (/ gmesh(2) /)
-      istride = (xdispl(py+1)-xdispl(py))
-      idist   = 1
-      plan_fw(2) = fftw_plan_many_dft( rank, n, howmany,
-     &                                  in, inembed, istride, idist,
-     &                                  in, inembed, istride, idist,
-     &                                  FFTW_FORWARD, FFTW_ESTIMATE )
-      plan_bw(2) = fftw_plan_many_dft( rank, n, howmany,
-     &                                  in, inembed, istride, idist,
-     &                                  in, inembed, istride, idist,
-     &                                  FFTW_BACKWARD, FFTW_ESTIMATE )
- 
-      n = (/ gmesh(3) /)
-      if (k_ori_distro) then
-        howmany = (xzdisp(pz+1)-xzdisp(pz))*(ydispl(py+1)-ydispl(py))
-      else
-        howmany = (xdispl(py+1)-xdispl(py))*(yzdisp(pz+1)-yzdisp(pz))
-      endif
-      istride = howmany
-      idist   = 1
-      inembed = (/ gmesh(3) /)
-      plan_fw(3) = fftw_plan_many_dft( rank, n, howmany,
-     &                                  in, inembed, istride, idist,
-     &                                  in, inembed, istride, idist,
-     &                                  FFTW_FORWARD, FFTW_ESTIMATE )
-      plan_bw(3) = fftw_plan_many_dft( rank, n, howmany,
-     &                                  in, inembed, istride, idist,
-     &                                  in, inembed, istride, idist,
-     &                                  FFTW_BACKWARD, FFTW_ESTIMATE )
-#else
-C
-C  Initialise the tables for the FFT if the mesh has changed
-C
-      do
-        lredimension = .false.
-        maxmaxtrigs = maxtrigs
-        do i=1,3
-          if (OldMesh(i).ne.nMesh(i)) then
-            call setgpfa( trigs(:,i), maxtrigs, ntrigs, nMesh(i) )
-            if (ntrigs.gt.maxmaxtrigs) then
-              lredimension = .true.
-              maxmaxtrigs = ntrigs
-            else
-              OldMesh(i) = nMesh(i)
-            endif
-          endif
-        enddo
-        if (.not. lredimension) exit
-C
-C  Resize FFT array for trig factors and set OldMesh to 0 to force recalculation
-C
-        maxtrigs = maxmaxtrigs
-        call re_alloc( trigs, 1, maxtrigs, 1, 3, 'trigs', 'fft' )
-        OldMesh(1:3) = 0
-      enddo
-#endif
+      k_ori_distr = ori_distr
       end subroutine fft_init
 
       subroutine getFFTLims( lbox )
       implicit none
       integer :: lbox(2,3)
 #ifdef MPI
-      if (k_ori_distro) then
+      if (k_ori_distr) then
         lbox(1,1) = 1
         lbox(2,1) = gmesh(1)
         lbox(1,2) = ydispl(py) 
@@ -311,7 +328,7 @@ C
         plan => plan_bw
       endif
 #     endif
-      if (k_ori_distro) then
+      if (k_ori_distr) then
         n2a = ydispl(py+1)-ydispl(py)
         n3a = zdispl(pz+1)-zdispl(pz)
         n1b = xdispl(py+1)-xdispl(py)
@@ -397,7 +414,7 @@ C
             f1(i)=f1(i)*scale
           enddo
         endif
-      else ! .not. k_ori_distro
+      else ! .not. k_ori_distr
         n2a = ydispl(py+1)-ydispl(py)
         n3a = zdispl(pz+1)-zdispl(pz)
         n1b = xdispl(py+1)-xdispl(py)
@@ -414,7 +431,7 @@ C
             call c_f_pointer( c_loc(f1), in, shape=[n] )
             call fftw_execute_dft( plan(1), in, in )
 #else
-           call gpfa( f1(1:2*n), f1(2:2*n), trigs(:,1), 2, 2*n1, n1,
+            call gpfa( f1(1:2*n), f1(2:2*n), trigs(:,1), 2, 2*n1, n1,
      &                  n2a*n3a, -isn )
 #endif
            endif

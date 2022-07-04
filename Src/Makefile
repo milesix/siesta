@@ -98,7 +98,7 @@ OBJS =  automatic_cell.o atom_options.o \
         born_charge.o cgwf.o chkdim.o chkgmx.o \
 	chempot.o coceri.o coxmol.o cross.o compute_norm.o\
 	denmat.o denmatlomem.o detover.o dfscf.o diagon.o digcel.o \
-        fft.o fftw3.o dhscf.o constr.o diagk_file.o diagmemory.o \
+        fft.o dhscf.o constr.o diagk_file.o diagmemory.o \
 	diagg.o diagk.o diagkp.o diag2g.o diag2k.o diag2kp.o diag3g.o diag3k.o diag3kp.o diagpol.o \
 	diag2kspiral.o dipole.o dismin.o dnaefs.o doping_uniform.o dot.o  \
 	m_efield.o egandd.o ener3.o ener3lomem.o errorf.o extrapolon.o \
@@ -281,6 +281,11 @@ OBJS += flook_siesta.o siesta_dicts.o
 
 # Add citation package
 OBJS += m_cite.o
+
+ifneq (,$(findstring -D_FFTW_,$(FPPFLAGS)))
+fft.o: fftw3.o
+OBJS += fftw3.o
+endif
 
 # Special dependency that sfmakedepend cannot grasp for now
 m_pexsi.o m_pexsi_driver.o m_pexsi_dos.o m_pexsi_local_dos.o: f_ppexsi_interface.o
