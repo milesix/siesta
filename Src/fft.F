@@ -9,10 +9,13 @@
 ! MODULE m_fft
 ! 3-D fast complex Fourier transform
 ! Written by J.D.Gale (July 1999)
+! Modified by Rogeli Grima (June 2022)
 !******************************************************************************
 !
 !   PUBLIC procedures available from this module:
-! fft   : 3-D complex FFT. Old version of J.D.Gale
+! fft_init   : Initiallization of the FFT
+! getFFTLims : Returns the limits of the arrays in the Transformed domain
+! fft        : 3-D complex FFT
 !
 !   PUBLIC parameters, types, and variables available from this module:
 ! none
@@ -59,7 +62,9 @@
 #ifdef MPI
       use mpi_siesta
 #endif
+#ifdef _FFTW_
       use fftw3
+#endif
 
       implicit none
 
@@ -85,22 +90,39 @@
       integer :: COMM_Y
       integer :: COMM_Z
       logical :: k_ori_distr = .false.
-      integer, pointer :: xzdisp(:) => null()
+      integer, pointer :: xdispl(:) => null()
       integer, pointer :: ydispl(:) => null()
       integer, pointer :: zdispl(:) => null()
-      integer, pointer :: xdispl(:) => null()
+      integer, pointer :: xzdisp(:) => null()
       integer, pointer :: yzdisp(:) => null()
-
-      !type FFT_ARR
-      !  real(grid_p), pointer :: f1(:)
-      !  real(grid_p), pointer :: f2(:)
-      !end type FFT_ARR
 
       CONTAINS
 
 !******************************************************************************
 
       subroutine fft_init( ori_distr, nMesh, size1, size2 )
+C **********************************************************************
+C Initiallize data structures to compute the FFT:
+C   INTEGER PROCESSORZ : NODES/PROCESSORY
+C   INTEGER PY, PZ     : INDICES of the current process in a 2-D grid of
+C                        processors of size PROCESSORY by PROCESSORZ.
+C   INTEGER COMM_Y     : global communicator for Y dimension
+C   INTEGER COMM_Z     : global communicator for Z dimension
+C   INTEGER XDISPL()   : (ProcessorY) cuts in the X direction
+C   INTEGER YDISPL()   : (ProcessorY) cuts in the Y direction
+C   INTEGER ZDISPL()   : (ProcessorZ) cuts in the Z direction
+C   INTEGER XZDISP()   : (ProcessorZ) cuts in the X direction (if needed)
+C   INTEGER YZDISP()   : (ProcessorZ) cuts in the Y direction (if needed)
+C Initiallize the FFT plans
+C Rogeli Grima (June 2022)
+C ************ INPUT ***************************************************
+C LOGICAL  ori_distr :
+C   true: To keep the original distribution (Pencil in X direction)
+C   false: If we swap from X to Z (forward) or from Z to X (backward)
+C INTEGER nMesh(3)  : Global mesh dimension
+C INTEGER SIZE1     : returns the size needed for the first array
+C INTEGER SIZE2     :  returns the size needed for the second array
+C **********************************************************************
       implicit none
       logical :: ori_distr                      ! Keep original distribution
       integer :: nMesh(3), size1, size2
@@ -138,7 +160,10 @@
         size1 = gMesh(1)*gMesh(2)*gMesh(3)
         size2 = 0
 #endif
-
+C
+C     Recompute plans and displacements if there is a change in the grid size or 
+C     in the value of k_ori_distr
+C
       if ( any(OldMesh/=gmesh) .or. ori_distr/=k_ori_distr ) then
 C
 C       Compute the limits of the differents pencils in each possible direction
@@ -257,6 +282,10 @@ C
 #endif
       endif
 #ifdef MPI
+C
+C       Compute the size of the local pencils before
+C       the allocation of input arrays
+C
         s1 = gMesh(1)*(ydispl(py+1)-ydispl(py))*
      &                (zdispl(pz+1)-zdispl(pz))
         s2 = gMesh(2)*(xdispl(py+1)-xdispl(py))*
@@ -280,6 +309,12 @@ C
       end subroutine fft_init
 
       subroutine getFFTLims( lbox )
+C **********************************************************************
+C Get the limits of the local pencil in the transformed domain
+C Rogeli Grima (June 2022)
+C ************ INPUT ***************************************************
+C   INTEGER LBOX(2,3) : Local limits
+C **********************************************************************
       implicit none
       integer :: lbox(2,3)
 #ifdef MPI
@@ -305,6 +340,25 @@ C
       end subroutine getFFTLims
 
       subroutine fft( f1, f2, isn )
+C **********************************************************************
+C Computes the 3-D FFT
+C In order to compute the 3D FFT we have to reorder our data in 3 different
+C directions: pencil-X, pencil-Y and pencil-Z.
+C The user can set two modes for k_ori_distr
+C   true: To keep the original distribution (Pencil in X direction)
+C         FFT-X MOV(X=>Y) FFT-Y MOV(Y=>X) MOV(X=>Z) FFT-Z MOV(Z=>X)
+C   false: If we swap from X to Z (forward) or from Z to X (backward)
+C         FFT-X MOV(X=>Y) FFT-Y MOV(Y=>Z) FFT-Z (forward mode)
+C         FFT-Z MOV(Z=>Y) FFT-Y MOV(Y=>X) FFT-X (backward mode)
+C When we set k_ori_distr to false we can achieve the 3-D FFT with less
+C communications, but we have to adapt the calling code in order to work
+C with the pencil-Z data distribution
+C Rogeli Grima (June 2022)
+C ************ INPUT ***************************************************
+C   real f1(*) : Input array
+C   real f2(*) : Auxiliar array
+C   integer isn : FFT direction
+C **********************************************************************
       implicit none
       real(grid_p), target :: f1(*), f2(*)
       integer :: isn
