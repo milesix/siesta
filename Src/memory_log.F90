@@ -81,8 +81,7 @@ MODULE memory_log
 
 PUBLIC ::             &
   memory_report,       &! Sets log report defaults
-  memory_event,        &! Memory counting for allocs
-  type_mem              ! Converter
+  memory_event         ! Memory counting for allocs
 
 public :: memory   ! The old (re-furbished) routine
 
@@ -298,25 +297,17 @@ character(len=40)     :: message
 
 select case( var_type )
 #ifdef OLD_CRAY
-  case('I')
-    type_mem = 8
-  case('R')
-    type_mem = 8
-  case('L')
-    type_mem = 8
+case('I', 'R', 'L')
+  type_mem = 8
 #else
-  case('I')
-    type_mem = 4
-  case('R')
-    type_mem = 4
-  case('L')
-    type_mem = 4
+case('I', 'R', 'L')
+  type_mem = 4
 #endif
-case('E')
+case('E', 'D', 'C')
   type_mem = 8
-case('D')
-  type_mem = 8
-case('S')
+case('Z')
+  type_mem = 16
+case('H')
   type_mem = 1
 case default
   write(message,"(2a)") &
@@ -547,7 +538,7 @@ subroutine memory( Task, Type, NElements, CallingRoutine, &
 !                   :                    'L' = logical
 !                   :                    'C' = single precision complex
 !                   :                    'Z' = double precision complex
-!                   :                    'S' = character data (we assume takes one word)
+!                   :                    'H' = character data (we assume takes one word)
 !                   :                    'E' = double precision integer
 ! integer NElements : number of array elements being 
 !                   : allocated/deallocated
@@ -583,15 +574,9 @@ subroutine memory( Task, Type, NElements, CallingRoutine, &
       endif
 
       select case(Type)
-      case('S')
+      case('S')         ! 'S' is in common usage for 'single'
         allocType = 'R'
         allocSize = NElements
-      case('C')
-        allocType = 'R'
-        allocSize = NElements*2
-      case('Z')
-        allocType = 'D'
-        allocSize = NElements*2
       case('X')
 #ifdef GRID_DP
         allocType = 'D'

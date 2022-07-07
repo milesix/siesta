@@ -382,7 +382,7 @@ contains
   subroutine rgn_assoc_list(lhs,n,r, dealloc)
     type(tRgn), intent(inout) :: lhs
     integer, intent(in) :: n
-    integer, intent(in), target :: r(n)
+    integer, intent(in), target :: r(:)
     ! whether a pre-deallocation of the lhs should occur
     logical, intent(in), optional :: dealloc
     if ( present(dealloc) ) then
@@ -402,7 +402,7 @@ contains
   subroutine rgn_remove_list(r,n,list,rout)
     type(tRgn), intent(in) :: r
     type(tRgn), intent(inout) :: rout
-    integer, intent(in) :: n, list(n)
+    integer, intent(in) :: n, list(:)
 
     type(tRgn) :: rr
 
@@ -872,7 +872,7 @@ contains
     ! the region we wish to find the connections to
     type(tRgn), intent(inout) :: r
     ! The sparsity pattern
-    integer, intent(in) :: n, nnzs, n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n, nnzs, n_col(:), l_ptr(:), l_col(:)
     ! the sorting region (i.e. the orbitals that are allowed to be pivoted)
     type(tRgn), intent(in) :: sr
     ! The method used for sorting
@@ -1293,7 +1293,7 @@ contains
 
   subroutine rgn_insert_list(r,n,list,rout,idx)
     type(tRgn), intent(in) :: r
-    integer, intent(in), target :: n, list(n)
+    integer, intent(in), target :: n, list(:)
     type(tRgn), intent(inout) :: rout
     ! The place of insertion
     integer, intent(in) :: idx
@@ -1521,7 +1521,7 @@ contains
     ! Region to put list in
     type(tRgn), intent(inout) :: r
     ! list to copy over
-    integer, intent(in) :: n, list(n)
+    integer, intent(in) :: n, list(:)
     character(len=*), intent(in), optional :: name
     integer :: i
 
@@ -1592,7 +1592,7 @@ contains
     ! that it already overlaps
     type(tRgn), intent(inout) :: r
     ! The last orbitals of each atom
-    integer, intent(in) :: na_u, lasto(0:na_u)
+    integer, intent(in) :: na_u, lasto(0:)
 
     ! ** local variables
     logical :: r_sorted
@@ -1652,7 +1652,7 @@ contains
     ! that it already overlaps
     type(tRgn), intent(in) :: ar
     ! The last orbitals of each atom
-    integer, intent(in) :: na_u, lasto(0:na_u)
+    integer, intent(in) :: na_u, lasto(0:)
     type(tRgn), intent(inout) :: or
 
     ! ** local variables
@@ -1703,7 +1703,7 @@ contains
     ! region
     type(tRgn), intent(in) :: or
     ! The last orbitals of each atom
-    integer, intent(in) :: na_u, lasto(0:na_u)
+    integer, intent(in) :: na_u, lasto(0:)
     type(tRgn), intent(inout) :: ar
 
     ! ** local variables
@@ -1865,7 +1865,7 @@ contains
           if ( k == 1 ) then
              write(*,'(tr1,i0,a)',advance='no') c,','
           else
-             write(*,'(tr1,2(a,i0),a)',advance='no') '[',c,'] * ',k,','
+             write(*,'(tr1,2(a,i0),a)',advance='no') '[',c,']*',k,','
           end if
           
           ! Reset
@@ -1881,7 +1881,7 @@ contains
        if ( k == 1 ) then
           write(*,'(tr1,i0,a)') c,' ]'
        else
-          write(*,'(tr1,2(a,i0),a)') '[',c,'] * ',k,' ]'
+          write(*,'(tr1,2(a,i0),a)') '[',c,']*',k,' ]'
        end if
 
        return
@@ -2017,7 +2017,7 @@ contains
   function rgn_push_list(r,n,val,sorted) result(good)
     type(tRgn), intent(inout) :: r
     integer, intent(in) :: n
-    integer, intent(in), target :: val(n)
+    integer, intent(in), target :: val(:)
     logical, intent(in), optional :: sorted
     type(tRgn) :: tmp
     logical :: good

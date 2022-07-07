@@ -8,6 +8,7 @@ add_library(
   m_ncps_psml_plugins.f90
   m_ncps_reader.f
   m_ncps_translators.f90
+  m_ncps_utils.f90
   m_ncps_writers.f90
   )
 

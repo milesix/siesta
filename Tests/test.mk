@@ -52,5 +52,5 @@ check-only:
 	@REFERENCE_DIR=$(REFERENCE_DIR) sh $(REFERENCE_CHECKER) $(name).out
 
 clean:
-	@echo ">>>> Cleaning $(name) test..."
+	@echo ">>>> Cleaning $(name) [label=$(label)] test..."
 	rm -rf $(label) completed_$(label) $(name).out $(name).xml

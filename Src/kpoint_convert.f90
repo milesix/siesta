@@ -32,15 +32,15 @@ subroutine kpoint_convert(ucell,kin,kout,iopt)
   use units    , only : Pi
   use sys      , only : die
   
-  real(dp), dimension(3,3), intent(in)  :: ucell
-  real(dp), dimension(3)  , intent(in)  :: kin
-  real(dp), dimension(3)  , intent(out) :: kout
-  integer                 , intent(in)  :: iopt
+  real(dp), intent(in)  :: ucell(3,3)
+  real(dp), intent(in)  :: kin(3)
+  real(dp), intent(inout) :: kout(3)
+  integer, intent(in)  :: iopt
   
 ! ***********************
 ! * LOCAL variables     *
 ! ***********************
-  real(dp), dimension(3,3) :: rcell
+  real(dp) :: rcell(3,3)
   
   if ( iopt == 1 ) then
      kout(1) = sum(ucell(:,1) * kin(:)) * 0.5_dp / Pi

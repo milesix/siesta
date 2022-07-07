@@ -32,6 +32,7 @@ set(siesta_sources
   broyden_optim.F
   bsc_cellxc.F
   bye.F
+  byte_count.F90
   cart2frac.f
   cell_broyden_optim.F
   cell_fire_optim.F
@@ -163,6 +164,7 @@ set(siesta_sources
   intrinsic_missing.F90
   inver.f
   io.f
+  io_sparse.F90
   iocg.f
   iodm.F
   iodm_netcdf.F90
@@ -242,13 +244,12 @@ set(siesta_sources
   m_handle_sparse.F90
   m_hartree_add.F90
   m_hs_matrix.f90
-  m_hsx.F
+  io_hsx.F90
   m_initwf.F90
   m_integrate.f90
   m_interpolate.F90
   m_inversemm.F90
   m_io.f
-  m_io_s.F90
   m_io_yaml.F90
   m_iodipol.F90
   m_iodm.F90
@@ -267,7 +268,6 @@ set(siesta_sources
   m_mixing_scf.F90
   m_monitor.F90
   m_mpi_utils.F
-  m_ncdf_io.F90
   m_ncdf_siesta.F90
   m_new_dm.F90
   m_noccbands.f
@@ -293,7 +293,6 @@ set(siesta_sources
   m_sparse.F90
   m_sparsity_handling.F90
   m_spin.F90
-  m_spin_orbit_potentials.f90
   m_steps.F90
   m_stress.F90
   m_supercell.F90
@@ -314,7 +313,6 @@ set(siesta_sources
   m_ts_dm_update.F90
   m_ts_elec_se.F90
   m_ts_electrode.F90
-  m_ts_electype.F90
   m_ts_full_scat.F90
   m_ts_fullg.F90
   m_ts_fullk.F90
@@ -374,6 +372,7 @@ set(siesta_sources
   mulliken.F
   naefs.f
   nag.f
+  ncdf_io.F90
   new_matel.F
   nlefsm.f
   normalize_dm.F90
@@ -442,7 +441,6 @@ set(siesta_sources
   savepsi.F
   scfconvergence_test.F
   schecomm.F
-  semicore_info_froyen.f90
   setatomnodes.F
   setspatial.f
   setup_H0.F
@@ -470,6 +468,7 @@ set(siesta_sources
   sparse_matrices.F90
   spatial.F
   spher_harm.f
+  spin_subs.F90
   spinorbit.f
   state_analysis.F
   state_init.F
@@ -482,6 +481,7 @@ set(siesta_sources
   ts_charge.F90
   ts_dq.F90
   ts_energies.F90
+  ts_electrode.F90
   ts_init.F90
   ts_kpoint_scf.F90
   ts_show_regions.f90

@@ -52,10 +52,10 @@ public  :: read_hs_file, write_hs_file
 !        ij = listhptr(io)+j                   ! sparse-matrix array index
 !        jos = listh(ij)                       ! index of connected orbital
 !        jo = indxuo(jos)                      ! equiv. orbital in unit cell
-!        phase = exp(i*sum(k(:)*xij(:,ij)))    ! phase factor between orbs.
-!        H(io,jo,1:nspin) = H(io,jo,1:nspin) + ! hamiltonian matrix element
-!                           phase*hamilt(ij,1:spin)
-!        S(io,jo) = S(io,jo) + phase*Sover(ij) ! overlap matrix element
+!        phase = exp(-i*sum(k(:)*xij(:,ij)))   ! phase factor between orbs.
+!        H(jo,io,:) += phase*hamilt(ij,:)      ! hamiltonian matrix element
+!                           
+!        S(jo,io) += phase*Sover(ij)           ! overlap matrix element
 !     enddo
 !   enddo
 ! Notice that io,jo are within unit cell, and jos is within supercell
@@ -64,11 +64,13 @@ type, public :: hsx_t
   integer :: nspecies
   integer :: na_u
   integer :: no_u
+  integer :: nsc(3)
   integer :: no_s
   integer :: nspin
   integer :: nh
   logical :: gamma
   logical :: has_xij = .false.
+  real(dp) :: ucell(3,3) = 0._dp
   integer, pointer :: no(:) => null()
   integer, pointer :: nquant(:,:) => null()
   integer, pointer :: lquant(:,:) => null()
@@ -80,250 +82,550 @@ type, public :: hsx_t
   integer, pointer  :: listhptr(:) => null()
   integer, pointer  :: listh(:) => null()  
   integer, pointer  :: indxuo(:) => null()
+  real(dp), pointer :: xa(:,:) => null()
   real(dp), pointer :: hamilt(:,:) => null()
   real(dp), pointer :: Sover(:) => null()
   real(dp), pointer :: xij(:,:) => null()
+  integer, pointer :: isc_off(:,:) => null()
   integer, pointer  :: isa(:) => null()
   real(dp), pointer :: zval(:) => null()
-  real(dp)          :: qtot, temp           !  fossils
+  real(dp)          :: Ef=0._dp, qtot=0._dp, temp=0._dp
+  integer :: version = 0
 end type
 
 private
 
 CONTAINS
 
-subroutine read_hsx_file(hsx,fname)
-type(hsx_t), intent(out)  :: hsx
-character(len=*), intent(in) :: fname
+  subroutine read_hsx_file(hsx, fname)
+    type(hsx_t), intent(out)  :: hsx
+    character(len=*), intent(in) :: fname
 
-!
-! Reads HSX file "fname" and stores the info in the hsx data structure
-! (Real arrays are stored in double precision)
+    integer :: version
 
-  integer, allocatable  :: ibuff(:)
-  real(sp), allocatable  :: hbuff(:)
-  real(sp), allocatable  :: buff3(:,:)
+    version = HSX_version(fname)
+    if ( version == 0 ) then
+      call read_hsx_file_version0(hsx, fname)
+    else if ( version == 1 ) then
+      call read_hsx_file_version1(hsx, fname)
+    else
+      STOP "unknown HSX file version [0, 1]"
+    end if
+  end subroutine read_hsx_file
 
-  integer numx, ind, no_u, nnz, na_u, nspecies, nspin, nh, i
-  integer :: im, is, hsx_u, ia, io, iostat, k, naoatx, no_s
-  logical  :: debug = .false.
+  function HSX_version(fname) result(version)
+    character(len=*), intent(in) :: fname
+    integer :: version
+    integer :: iu
+    integer :: na_u, no_u, no_s, nspin, n_nzs, err
+    
+    ! Initialize
+    version = 0
 
-  call get_unit_number(hsx_u)
-  print *, "Using unit: ", hsx_u
+    call get_unit_number(iu)
 
-  open(hsx_u,file=trim(fname),status='old',form='unformatted')
+    ! Open file
+    open( iu, file=fname, form='unformatted', status='unknown' )
 
-  read(hsx_u,iostat=iostat) hsx%no_u, hsx%no_s, hsx%nspin, hsx%nh
-  if (iostat /= 0) STOP "nnao, no_s..."
+    read(iu,iostat=err) na_u, no_s, nspin, n_nzs
+    if ( err == 0 ) then
+       ! we can successfully read 4 integers
+       version = 0
+    else
+       backspace(iu)
+       read(iu,iostat=err) version
+    end if
 
-  no_u = hsx%no_u
-  no_s = hsx%no_s
+    close(iu)
 
-  read(hsx_u,iostat=iostat) hsx%gamma
-  if (iostat /= 0) STOP "gamma"
-  IF (DEBUG) PRINT *, "GAMMA=", hsx%gamma
-  if (.not. hsx%gamma) then
-     allocate(hsx%indxuo(no_s))
-     read(hsx_u) (hsx%indxuo(i),i=1,hsx%no_s)
-  else
-     allocate(hsx%indxuo(hsx%no_u))
-     do i=1,hsx%no_u
+  end function HSX_version
+
+
+  subroutine read_hsx_file_version1(hsx, fname)
+    type(hsx_t), intent(out)  :: hsx
+    character(len=*), intent(in) :: fname
+
+    integer :: hs_u, iostat
+    integer :: io, jo, is, ind, ia, ja
+    integer :: max_atom_orbs
+    logical :: is_dp
+    integer, allocatable :: lasto(:)
+    real(sp), allocatable :: rbuf(:)
+
+    call get_unit_number(hs_u)
+
+    write(6,"(1x,a)",advance='no') trim(fname)
+    open(hs_u,file=trim(fname),status='old',form='unformatted')
+
+    ! skip version
+    read(hs_u, iostat=iostat) hsx%version
+    if (iostat /= 0) STOP "version"
+
+    if ( hsx%version /= 1 ) then
+      STOP "incorrect call [version/=1]"
+    end if
+
+    ! now read whether this is double precision or not
+    read(hs_u, iostat=iostat) is_dp
+    if ( iostat /= 0 ) STOP "is_dp"
+
+    read(hs_u,iostat=iostat) hsx%na_u, hsx%no_u, hsx%nspin, hsx%nspecies, hsx%nsc
+    if ( iostat /= 0 ) STOP "geometry dimensions"
+    hsx%no_s = hsx%no_u * product(hsx%nsc)
+    hsx%gamma = hsx%no_s == hsx%no_u
+
+    read(hs_u,iostat=iostat) hsx%ucell, hsx%Ef, hsx%qtot, hsx%temp
+
+    ! Allocate the arrays for the atomic information
+    ! First local arrays that won't be shared
+    allocate(hsx%xa(3,hsx%na_u), lasto(0:hsx%na_u), hsx%isc_off(3, product(hsx%nsc)))
+    lasto(0) = 0
+    ! allocate shared variables
+    allocate(hsx%isa(hsx%na_u), hsx%iaorb(hsx%no_u), hsx%iphorb(hsx%no_u))
+    allocate(hsx%label(hsx%nspecies), hsx%zval(hsx%nspecies), hsx%no(hsx%nspecies))
+
+    ! Now read data
+    read(hs_u,iostat=iostat) hsx%isc_off, hsx%xa, hsx%isa, lasto(1:hsx%na_u)
+    if ( iostat /= 0 ) STOP "geometry coordinates"
+    read(hs_u,iostat=iostat) (hsx%label(is), hsx%zval(is), hsx%no(is), is=1,hsx%nspecies)
+    if ( iostat /= 0 ) STOP "species information"
+
+    ! Allocate remaning orbital information
+    max_atom_orbs = maxval(hsx%no)
+    allocate(hsx%nquant(hsx%nspecies,max_atom_orbs), hsx%lquant(hsx%nspecies,max_atom_orbs))
+    allocate(hsx%zeta(hsx%nspecies,max_atom_orbs))
+    do is = 1, hsx%nspecies
+      read(hs_u,iostat=iostat) (hsx%nquant(is,io), hsx%lquant(is,io), hsx%zeta(is,io), io=1,hsx%no(is))
+      if ( iostat /= 0 ) STOP "specific specie information"
+    end do
+
+    ! Populate iaorb and iphorb
+    ind = 0
+    do ia = 1, hsx%na_u
+      do io = 1, lasto(ia) - lasto(ia-1)
+        ind = ind + 1
+        hsx%iaorb(ind) = ia
+        hsx%iphorb(ind) = io
+      end do
+    end do
+
+    ! Now create indxuo (siesta always produces the same order)
+    allocate(hsx%indxuo(hsx%no_s))
+    ind = 0
+    do is = 1 , product(hsx%nsc)
+      do io = 1, hsx%no_u
+        ind = ind + 1
+        hsx%indxuo(ind) = io
+      end do
+    end do
+
+    allocate(hsx%numh(hsx%no_u))
+    read(hs_u,iostat=iostat) hsx%numh
+    if (iostat /= 0) STOP "numh(io)"
+  
+    ! Create pointer
+    allocate(hsx%listhptr(hsx%no_u))
+    hsx%listhptr(1) = 0
+    do io=2,hsx%no_u
+      hsx%listhptr(io) = hsx%listhptr(io-1) + hsx%numh(io-1)
+    end do
+
+    ! Now read sparse data
+    hsx%nh = hsx%listhptr(hsx%no_u) + hsx%numh(hsx%no_u)
+    allocate(hsx%listh(hsx%nh))
+  
+    do io=1,hsx%no_u
+      read(hs_u,iostat=iostat) hsx%listh(hsx%listhptr(io)+1:hsx%listhptr(io)+hsx%numh(io))
+      if (iostat /= 0) STOP "listh"
+    end do
+
+
+    ! Now we need to re-create the xij array
+    allocate(hsx%xij(3,hsx%nh))
+
+    ! Create xij and dij
+    do ia = 1 , hsx%na_u
+      do io = lasto(ia-1) + 1, lasto(ia)
+        do ind = hsx%listhptr(io) + 1, hsx%listhptr(io) + hsx%numh(io)
+          is = (hsx%listh(ind) - 1) / hsx%no_u + 1
+          ja = hsx%iaorb(ucorb(hsx%listh(ind), hsx%no_u))
+
+          hsx%xij(:, ind) = hsx%xa(:,ja) - hsx%xa(:,ia) + &
+              hsx%isc_off(1,is) * hsx%ucell(:,1) + &
+              hsx%isc_off(2,is) * hsx%ucell(:,2) + &
+              hsx%isc_off(3,is) * hsx%ucell(:,3)
+          
+        end do
+      end do
+    end do
+
+    ! Clean-up
+    deallocate(lasto)
+    
+    ! Read H and S
+    allocate(hsx%hamilt(hsx%nh,hsx%nspin))
+    allocate(hsx%Sover(hsx%nh))
+
+    if ( is_dp ) then
+      do is = 1, hsx%nspin
+        do io = 1, hsx%no_u
+          read(hs_u,iostat=iostat) hsx%hamilt(hsx%listhptr(io)+1:hsx%listhptr(io)+hsx%numh(io),is)
+          if (iostat /= 0) STOP "H(dp)"
+        end do
+      end do
+      
+      do io = 1, hsx%no_u
+        read(hs_u,iostat=iostat) hsx%Sover(hsx%listhptr(io)+1:hsx%listhptr(io)+hsx%numh(io))
+        if (iostat /= 0) STOP "S(dp)"
+      end do
+      
+    else
+      allocate(rbuf(maxval(hsx%numh)))
+
+      do is = 1, hsx%nspin
+        do io = 1, hsx%no_u
+          read(hs_u,iostat=iostat) rbuf(1:hsx%numh(io))
+          if (iostat /= 0) STOP "H(sp)"
+          hsx%hamilt(hsx%listhptr(io)+1:hsx%listhptr(io)+hsx%numh(io),is) = rbuf(1:hsx%numh(io))
+        end do
+      end do
+
+      do io = 1, hsx%no_u
+        read(hs_u,iostat=iostat) rbuf(1:hsx%numh(io))
+        if (iostat /= 0) STOP "S(sp)"
+        hsx%Sover(hsx%listhptr(io)+1:hsx%listhptr(io)+hsx%numh(io)) = rbuf(1:hsx%numh(io))
+      end do
+
+      deallocate(rbuf)
+    end if
+
+    close(hs_u)
+    
+  contains
+    
+    elemental function UCORB(a,p)
+      integer, intent(in) :: a,p
+      integer :: UCORB
+      UCORB = MOD(a-1,p) + 1
+    end function 
+    
+  end subroutine read_hsx_file_version1
+
+  
+  subroutine read_hsx_file_version0(hsx,fname)
+    type(hsx_t), intent(out)  :: hsx
+    character(len=*), intent(in) :: fname
+
+    !
+    ! Reads HSX file "fname" and stores the info in the hsx data structure
+    ! (Real arrays are stored in double precision)
+
+    integer, allocatable  :: ibuff(:)
+    real(sp), allocatable  :: hbuff(:)
+    real(sp), allocatable  :: buff3(:,:)
+
+    integer numx, ind, no_u, nnz, na_u, nspecies, nspin, nh, i
+    integer :: im, is, hsx_u, ia, io, iostat, k, naoatx, no_s
+    logical  :: debug = .false.
+
+    call get_unit_number(hsx_u)
+    print *, "Using unit: ", hsx_u
+
+    hsx%version = 0
+
+    open(hsx_u,file=trim(fname),status='old',form='unformatted')
+
+    read(hsx_u,iostat=iostat) hsx%no_u, hsx%no_s, hsx%nspin, hsx%nh
+    if (iostat /= 0) STOP "nnao, no_s..."
+
+    no_u = hsx%no_u
+    no_s = hsx%no_s
+
+    read(hsx_u,iostat=iostat) hsx%gamma
+    if (iostat /= 0) STOP "gamma"
+    IF (DEBUG) PRINT *, "GAMMA=", hsx%gamma
+    if (.not. hsx%gamma) then
+      allocate(hsx%indxuo(no_s))
+      read(hsx_u) (hsx%indxuo(i),i=1,hsx%no_s)
+    else
+      allocate(hsx%indxuo(hsx%no_u))
+      do i=1,hsx%no_u
         hsx%indxuo(i) = i
-     enddo
-  endif
+      enddo
+    endif
 
-  nh  = hsx%nh
-  nspin = hsx%nspin
-  print *, "nh: ", nh
-  allocate (hsx%numh(no_u), hsx%listhptr(no_u), hsx%listh(nh))
+    nh  = hsx%nh
+    nspin = hsx%nspin
+    print *, "nh: ", nh
+    allocate (hsx%numh(no_u), hsx%listhptr(no_u), hsx%listh(nh))
 
-       allocate (hsx%xij(3,nh),stat=iostat)
-       allocate (hsx%hamilt(nh,nspin),stat=iostat)
-       allocate (hsx%Sover(nh),stat=iostat)
+    allocate (hsx%xij(3,nh),stat=iostat)
+    allocate (hsx%hamilt(nh,nspin),stat=iostat)
+    allocate (hsx%Sover(nh),stat=iostat)
 
-  read(hsx_u,iostat=iostat) (hsx%numh(io), io=1,no_u)      
-  if (iostat /= 0) STOP "numh"
+    read(hsx_u,iostat=iostat) (hsx%numh(io), io=1,no_u)      
+    if (iostat /= 0) STOP "numh"
 
-  numx = maxval(hsx%numh(1:no_u))
-  allocate(ibuff(numx), hbuff(numx), buff3(3,numx))
+    numx = maxval(hsx%numh(1:no_u))
+    allocate(ibuff(numx), hbuff(numx), buff3(3,numx))
 
-  nnz = sum(hsx%numh(1:hsx%no_u))
-   if (nnz > nh) STOP "nh overflow in HS"
-  ! Create listhptr 
-  hsx%listhptr(1)=0
-  do io=2,hsx%no_u
-     hsx%listhptr(io)=hsx%listhptr(io-1)+hsx%numh(io-1)
-  enddo
+    nnz = sum(hsx%numh(1:hsx%no_u))
+    if (nnz > nh) STOP "nh overflow in HS"
+    ! Create listhptr 
+    hsx%listhptr(1)=0
+    do io=2,hsx%no_u
+      hsx%listhptr(io)=hsx%listhptr(io-1)+hsx%numh(io-1)
+    enddo
 
-  do io=1,hsx%no_u
-     read(hsx_u,iostat=iostat) (ibuff(im), im=1,hsx%numh(io))
-     if (iostat /= 0) STOP "listh"
-     do im=1,hsx%numh(io)
+    do io=1,hsx%no_u
+      read(hsx_u,iostat=iostat) (ibuff(im), im=1,hsx%numh(io))
+      if (iostat /= 0) STOP "listh"
+      do im=1,hsx%numh(io)
         hsx%listh(hsx%listhptr(io)+im) = ibuff(im)
-     enddo
-  enddo
+      enddo
+    enddo
 
-  do is=1,hsx%nspin
-     do io=1,hsx%no_u
+    do is=1,hsx%nspin
+      do io=1,hsx%no_u
         read(hsx_u,iostat=iostat) (hbuff(im), im=1,hsx%numh(io))
         if (iostat /= 0) STOP "Hamilt"
         do im=1,hsx%numh(io)
-           hsx%hamilt(hsx%listhptr(io)+im,is) = hbuff(im)
-           if (debug) print *, "Hamilt ", io, im, hbuff(im)
+          hsx%hamilt(hsx%listhptr(io)+im,is) = hbuff(im)
+          if (debug) print *, "Hamilt ", io, im, hbuff(im)
         enddo
-     enddo
-  enddo
-  !
-  !       Read overlap matrix
-  !
-  do io=1,hsx%no_u
-     read(hsx_u,iostat=iostat) (hbuff(im), im=1,hsx%numh(io))
-     if (iostat /= 0) STOP "Overlap matrix read error"
-     do im=1,hsx%numh(io)
+      enddo
+    enddo
+    !
+    !       Read overlap matrix
+    !
+    do io=1,hsx%no_u
+      read(hsx_u,iostat=iostat) (hbuff(im), im=1,hsx%numh(io))
+      if (iostat /= 0) STOP "Overlap matrix read error"
+      do im=1,hsx%numh(io)
         hsx%Sover(hsx%listhptr(io)+im) = hbuff(im)
         if (debug) print *, "S ", io, im, hbuff(im)
-     enddo
-  enddo
+      enddo
+    enddo
 
-  read(hsx_u,iostat=iostat) hsx%qtot, hsx%temp           ! fossils
-  if (iostat /= 0) STOP "Qtot, temp, read error"
+    read(hsx_u,iostat=iostat) hsx%qtot, hsx%temp           ! fossils
+    if (iostat /= 0) STOP "Qtot, temp, read error"
 
-  !
-  !        Always read xijk
-  !
-  do io=1,hsx%no_u
-     read(hsx_u,iostat=iostat) ((buff3(k,im), k=1,3), im=1,hsx%numh(io))
-     if (iostat /= 0) STOP "xij(k) read error"
-     do im=1,hsx%numh(io)
+    !
+    !        Always read xijk
+    !
+    do io=1,hsx%no_u
+      read(hsx_u,iostat=iostat) ((buff3(k,im), k=1,3), im=1,hsx%numh(io))
+      if (iostat /= 0) STOP "xij(k) read error"
+      do im=1,hsx%numh(io)
         ind = hsx%listhptr(io)+im
         if (debug) print *, "xijk ", buff3(:,im)
         hsx%xij(1:3,ind) = buff3(1:3,im)
-     enddo
-  enddo
-  hsx%has_xij = .true.
+      enddo
+    enddo
+    hsx%has_xij = .true.
 
-  !
-  !        Read auxiliary info
-  !
-  read(hsx_u) hsx%nspecies
-  nspecies = hsx%nspecies
-  print *, "nspecies: ", nspecies
-  allocate(hsx%label(nspecies), hsx%zval(nspecies), hsx%no(nspecies))
-  read(hsx_u) (hsx%label(is),hsx%zval(is),hsx%no(is), is=1,nspecies)
-  naoatx = maxval(hsx%no(1:nspecies))
-  allocate (hsx%nquant(nspecies,naoatx), hsx%lquant(nspecies,naoatx), &
-       hsx%zeta(nspecies,naoatx))
-  do is=1, nspecies
-     do io=1, hsx%no(is)
+    !
+    !        Read auxiliary info
+    !
+    read(hsx_u) hsx%nspecies
+    nspecies = hsx%nspecies
+    print *, "nspecies: ", nspecies
+    allocate(hsx%label(nspecies), hsx%zval(nspecies), hsx%no(nspecies))
+    read(hsx_u) (hsx%label(is),hsx%zval(is),hsx%no(is), is=1,nspecies)
+    naoatx = maxval(hsx%no(1:nspecies))
+    allocate (hsx%nquant(nspecies,naoatx), hsx%lquant(nspecies,naoatx), &
+        hsx%zeta(nspecies,naoatx))
+    do is=1, nspecies
+      do io=1, hsx%no(is)
         read(hsx_u) hsx%nquant(is,io), hsx%lquant(is,io), hsx%zeta(is,io)
-     enddo
-  enddo
-  read(hsx_u) hsx%na_u
-  na_u = hsx%na_u
-  allocate(hsx%isa(na_u))
-  allocate(hsx%iaorb(no_u), hsx%iphorb(no_u))
-  read(hsx_u) (hsx%isa(ia), ia=1,na_u)
-  read(hsx_u) (hsx%iaorb(io), hsx%iphorb(io), io=1,no_u)
+      enddo
+    enddo
+    read(hsx_u) hsx%na_u
+    na_u = hsx%na_u
+    allocate(hsx%isa(na_u))
+    allocate(hsx%iaorb(no_u), hsx%iphorb(no_u))
+    read(hsx_u) (hsx%isa(ia), ia=1,na_u)
+    read(hsx_u) (hsx%iaorb(io), hsx%iphorb(io), io=1,no_u)
 
-  close(hsx_u)
-  deallocate(ibuff, hbuff, buff3)
+    close(hsx_u)
+    deallocate(ibuff, hbuff, buff3)
 
-end subroutine read_hsx_file
+  end subroutine read_hsx_file_version0
+
 
 !--------------------------------------------------------------
 
-subroutine write_hsx_file(hsx,fname)
-type(hsx_t), intent(in)  :: hsx
-character(len=*), intent(in) :: fname
+  subroutine write_hsx_file(hsx,fname, version)
+    type(hsx_t), intent(in)  :: hsx
+    character(len=*), intent(in) :: fname
+    integer, intent(in), optional :: version
 
-!
-! Writes HSX file "fname" 
+    if ( present(version) ) then
+      if ( version == 0 ) then
+        call write_hsx_file_version0(hsx,fname)
+      else if ( version == 1 ) then
+        call write_hsx_file_version1(hsx,fname)
+      else
+        print *, 'Unknown version specifier for HSX file [0, 1]: ', version
+        stop 'Unknown version specifier [0, 1]?'
+      end if
+    else if ( associated(hsx%isc_off) ) then
+      ! Check for variables only in 1
+      call write_hsx_file_version1(hsx,fname)
+    else
+      call write_hsx_file_version0(hsx,fname)
+    end if
 
-  integer :: no_u, nnz, na_u, nspecies, nspin, nh, i
-  integer :: im, is, hsx_u, ia, io, iostat, k, no_s
+  end subroutine write_hsx_file
 
-  if ( .not. hsx%has_xij) then
-     print *, "Cannot generate an HSX file without Xij information"
-     STOP
-  endif
-  call get_unit_number(hsx_u)
-  print *, "Using unit: ", hsx_u
+  subroutine write_hsx_file_version1(hsx, fname)
+    type(hsx_t), intent(in)  :: hsx
+    character(len=*), intent(in) :: fname
 
-  open(hsx_u,file=trim(fname),status='unknown',form='unformatted')
+    integer :: iu, ia, io, ind, is
+    integer, allocatable :: lasto(:)
 
-  write(hsx_u,iostat=iostat) hsx%no_u, hsx%no_s, hsx%nspin, hsx%nh
-  if (iostat /= 0) STOP "nnao, no_s..."
+    call get_unit_number(iu)
 
-  no_u = hsx%no_u
-  no_s = hsx%no_s
+    ! Open file
+    open( iu, file=trim(fname), form='unformatted', status='unknown' )
 
-  write(hsx_u,iostat=iostat) hsx%gamma
-  if (.not. hsx%gamma) then
-     write(hsx_u) (hsx%indxuo(i),i=1,hsx%no_s)
-  endif
+    ! Write version specification (to easily distinguish between different versions)
+    write(iu) 1
+    ! And what precision
+    write(iu) .true.
 
-  nh  = hsx%nh
-  nspin = hsx%nspin
-  print *, "nh: ", nh
+    ! Write overall data
+    write(iu) hsx%na_u, hsx%no_u, hsx%nspin, hsx%nspecies, hsx%nsc
+    write(iu) hsx%ucell, hsx%Ef, hsx%qtot, hsx%temp
 
-  write(hsx_u,iostat=iostat) (hsx%numh(io), io=1,no_u)      
-  if (iostat /= 0) STOP "numh"
+    ! Recreate lasto for easier storage
+    allocate(lasto(hsx%na_u))
+    lasto(1) = hsx%no(hsx%isa(1))
+    do ia = 2, hsx%na_u
+      lasto(ia) = lasto(ia-1) + hsx%no(hsx%isa(ia))
+    end do
+    write(iu) hsx%isc_off, hsx%xa, hsx%isa, lasto
+    deallocate(lasto)
 
-  nnz = sum(hsx%numh(1:hsx%no_u))
-  if (nnz /= nh) STOP "nnz /= nh"
+    ! Write other useful info
+    write(iu) (hsx%label(is),hsx%zval(is),hsx%no(is),is=1,hsx%nspecies)
+    do is = 1, hsx%nspecies
+      write(iu) (hsx%nquant(is,io), hsx%lquant(is,io), hsx%zeta(is,io),io=1,hsx%no(is))
+    end do
 
-  do io=1,hsx%no_u
-     write(hsx_u,iostat=iostat)  &
-             (hsx%listh(hsx%listhptr(io)+im), im=1,hsx%numh(io))
-  enddo
+    write(iu) hsx%numh
 
-  do is=1,hsx%nspin
-     do io=1,hsx%no_u
+    do io = 1, hsx%no_u
+      write(iu) hsx%listh(hsx%listhptr(io)+1:hsx%listhptr(io)+hsx%numh(io))
+    end do
+
+    do is = 1, hsx%nspin
+      do io = 1, hsx%no_u
+        write(iu) hsx%hamilt(hsx%listhptr(io)+1:hsx%listhptr(io)+hsx%numh(io),is)
+      end do
+    end do
+
+    do io = 1, hsx%no_u
+      write(iu) hsx%Sover(hsx%listhptr(io)+1:hsx%listhptr(io)+hsx%numh(io))
+    end do
+
+    close( iu )
+
+  end subroutine write_hsx_file_version1
+
+  subroutine write_hsx_file_version0(hsx,fname)
+    type(hsx_t), intent(in)  :: hsx
+    character(len=*), intent(in) :: fname
+
+    !
+    ! Writes HSX file "fname" 
+
+    integer :: no_u, nnz, na_u, nspecies, nspin, nh, i
+    integer :: im, is, hsx_u, ia, io, iostat, k, no_s
+
+    if ( .not. hsx%has_xij) then
+      print *, "Cannot generate an HSX file without Xij information"
+      STOP
+    endif
+    call get_unit_number(hsx_u)
+    print *, "Using unit: ", hsx_u
+
+    open(hsx_u,file=trim(fname),status='unknown',form='unformatted')
+
+    write(hsx_u,iostat=iostat) hsx%no_u, hsx%nspin, hsx%nsc
+    if (iostat /= 0) STOP "nnao, no_s..."
+
+    no_u = hsx%no_u
+    no_s = hsx%no_s
+
+    write(hsx_u,iostat=iostat) hsx%gamma
+    if (.not. hsx%gamma) then
+      write(hsx_u) (hsx%indxuo(i),i=1,hsx%no_s)
+    endif
+
+    nh  = hsx%nh
+    nspin = hsx%nspin
+    print *, "nh: ", nh
+
+    write(hsx_u,iostat=iostat) (hsx%numh(io), io=1,no_u)      
+    if (iostat /= 0) STOP "numh"
+
+    nnz = sum(hsx%numh(1:hsx%no_u))
+    if (nnz /= nh) STOP "nnz /= nh"
+
+    do io=1,hsx%no_u
+      write(hsx_u,iostat=iostat)  &
+          (hsx%listh(hsx%listhptr(io)+im), im=1,hsx%numh(io))
+    enddo
+
+    do is=1,hsx%nspin
+      do io=1,hsx%no_u
         write(hsx_u,iostat=iostat)   &
-                 (real(hsx%hamilt(hsx%listhptr(io)+im,is),kind=sp),   &
-                               im=1,hsx%numh(io))
-     enddo
-  enddo
-  !
-  !   overlap matrix
-  !
-  do io=1,hsx%no_u
-     write(hsx_u,iostat=iostat)    &
+            (real(hsx%hamilt(hsx%listhptr(io)+im,is),kind=sp),   &
+            im=1,hsx%numh(io))
+      enddo
+    enddo
+    !
+    !   overlap matrix
+    !
+    do io=1,hsx%no_u
+      write(hsx_u,iostat=iostat)    &
           (real(hsx%Sover(hsx%listhptr(io)+im),kind=sp),im=1,hsx%numh(io))
-  enddo
+    enddo
 
-  write(hsx_u,iostat=iostat) hsx%qtot, hsx%temp           ! fossils
-  !
-  !        Always write xijk
-  !
-  do io=1,hsx%no_u
-     write(hsx_u,iostat=iostat)    &
-            ((real(hsx%xij(k,hsx%listhptr(io)+im),kind=sp), &
-                           k=1,3), im=1,hsx%numh(io))
-  enddo
-  !
-  !        Write auxiliary info
-  !
-  write(hsx_u) hsx%nspecies
-  nspecies = hsx%nspecies
-  print *, "nspecies: ", nspecies
-  write(hsx_u) (hsx%label(is),hsx%zval(is),hsx%no(is), is=1,nspecies)
+    write(hsx_u,iostat=iostat) hsx%qtot, hsx%temp           ! fossils
+    !
+    !        Always write xijk
+    !
+    do io=1,hsx%no_u
+      write(hsx_u,iostat=iostat)    &
+          ((real(hsx%xij(k,hsx%listhptr(io)+im),kind=sp), &
+          k=1,3), im=1,hsx%numh(io))
+    enddo
+    !
+    !        Write auxiliary info
+    !
+    write(hsx_u) hsx%nspecies
+    nspecies = hsx%nspecies
+    print *, "nspecies: ", nspecies
+    write(hsx_u) (hsx%label(is),hsx%zval(is),hsx%no(is), is=1,nspecies)
 
-  do is=1, nspecies
-     do io=1, hsx%no(is)
+    do is=1, nspecies
+      do io=1, hsx%no(is)
         write(hsx_u) hsx%nquant(is,io), hsx%lquant(is,io), hsx%zeta(is,io)
-     enddo
-  enddo
-  write(hsx_u) hsx%na_u
+      enddo
+    enddo
+    write(hsx_u) hsx%na_u
 
-  na_u = hsx%na_u
+    na_u = hsx%na_u
 
-  write(hsx_u) (hsx%isa(ia), ia=1,na_u)
-  write(hsx_u) (hsx%iaorb(io), hsx%iphorb(io), io=1,no_u)
+    write(hsx_u) (hsx%isa(ia), ia=1,na_u)
+    write(hsx_u) (hsx%iaorb(io), hsx%iphorb(io), io=1,no_u)
 
-  close(hsx_u)
+    close(hsx_u)
 
-end subroutine write_hsx_file
+  end subroutine write_hsx_file_version0
 
 !----------------------------------------------------------
 subroutine get_unit_number(lun)

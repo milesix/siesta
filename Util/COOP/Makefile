@@ -82,22 +82,12 @@ clean:
 
 # DO NOT DELETE THIS LINE - used by make depend
 io.o: m_io.o
-io.o: m_io.o
-iodm_netcdf.o: alloc.o parallel.o precision.o sys.o
 iodm_netcdf.o: alloc.o parallel.o precision.o sys.o
 m_io.o: sys.o
-m_io.o: sys.o
-moreParallelSubs.o: alloc.o m_io.o parallel.o precision.o sys.o
 moreParallelSubs.o: alloc.o m_io.o parallel.o precision.o sys.o
 units.o: precision.o
-units.o: precision.o
-io_hs.o: main_vars.o precision.o
 io_hs.o: main_vars.o precision.o
 main_vars.o: m_getopts.o precision.o subs.o units.o
-main_vars.o: m_getopts.o precision.o subs.o units.o
-orbital_set.o: main_vars.o subs.o
 orbital_set.o: main_vars.o subs.o
 read_curves.o: orbital_set.o precision.o
-read_curves.o: orbital_set.o precision.o
-subs.o: precision.o
 subs.o: precision.o

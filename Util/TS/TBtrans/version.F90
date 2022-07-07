@@ -27,13 +27,11 @@ public :: version_str
 public :: siesta_arch, fflags, fppflags, libs
 public :: compiler_version
 
-public :: prversion
-
+end module version_info
 !================================================================
 
-CONTAINS
-
 subroutine prversion
+use version_info
 
 !$ use omp_lib, only: openmp_version
 
@@ -93,5 +91,3 @@ write(6,'(a)') 'METIS ordering support'
 #endif
 
 end subroutine prversion
-
-end module version_info

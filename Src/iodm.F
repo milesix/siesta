@@ -89,7 +89,7 @@ C Saved internal variables:
       character(len=*), parameter :: floatfmt = '(ES22.14)'
 
 C External procedures
-      external          chkdim, memory
+      external          chkdim
 
 ! We might want to use formatted DM files in order to
 ! transfer them between computers. 

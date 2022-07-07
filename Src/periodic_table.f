@@ -7,15 +7,15 @@
 !
       module periodic_table
 
-      use precision
-      use sys
-
       implicit none
 
       public :: qvlofz, lmxofz, cnfig, symbol, atmass
 
       private
 
+      integer, parameter :: dp = selected_real_kind(10,100)
+      external :: die
+      
       CONTAINS
 
 

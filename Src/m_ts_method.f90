@@ -210,16 +210,16 @@ contains
   end subroutine ts_init_regions
 
   subroutine ts_init_electrodes(na_u,lasto,N_Elec,Elecs)
-    use m_ts_electype
+    use ts_electrode_m
 
     integer,    intent(in) :: na_u, lasto(0:na_u)
     integer,    intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     integer :: iE, ia
 
     do iE = 1 , N_Elec
-      do ia = 1 , TotUsedAtoms(Elecs(iE))
-        call set_type(iE,Elecs(iE)%idx_a - 1 + ia,na_u,lasto)
+      do ia = 0 , Elecs(iE)%device_atoms() - 1
+        call set_type(iE,Elecs(iE)%idx_a + ia,na_u,lasto)
       end do
     end do
 
@@ -305,6 +305,17 @@ contains
     logical :: typ
     typ = a_type(ia) == TYP_DEVICE
   end function a_isDev
+
+  subroutine ts_method_reset()
+
+    call rgn_delete(r_aBuf, r_oBuf, r_aC, r_oC, r_pvt)
+
+    if ( allocated(a_type) ) deallocate(a_type)
+    if ( allocated(o_type) ) deallocate(o_type)
+    if ( allocated(a_offset) ) deallocate(a_offset)
+    if ( allocated(o_offset) ) deallocate(o_offset)
+
+  end subroutine ts_method_reset
 
 end module m_ts_method
 

@@ -62,7 +62,7 @@ contains
 
     use ts_kpoint_scf_m, only : ts_kpoint_scf, ts_gamma_scf
 
-    use m_ts_electype
+    use ts_electrode_m
 
     use m_ts_options, only : N_Elec, Elecs
     use m_ts_options, only : IsVolt, Calc_Forces
@@ -197,7 +197,7 @@ contains
        ! Allocate the non-repeated hamiltonian and overlaps...
        no_used = Elecs(iEl)%no_used
        if ( Elecs(iEl)%pre_expand > 1 ) then ! > 1 also expand H, S before writing
-          no_used = TotUsedOrbs(Elecs(iEl))
+          no_used = Elecs(iEl)%device_orbitals()
           nq(iEl) = 1
        end if
 
@@ -208,7 +208,7 @@ contains
           call re_alloc(Elecs(iEl)%SA,1,no_used,1,no_used,1,nq(iEl),routine='transiesta')
        end if
 
-       no_used = TotUsedOrbs(Elecs(iEl))
+       no_used = Elecs(iEl)%device_orbitals()
        if ( IsVolt ) then
           ! We need Gamma's with voltages (now they are both GAA and GammaT)
           no_used2 = no_used
@@ -247,7 +247,9 @@ contains
     end if
 
     do while ( .not. converged )
-
+#ifdef TRANSIESTA_TIMING
+      call timer('TS_IterdQ', 1)
+#endif
       call open_GF(N_Elec,Elecs,uGF,NEn)
 
       select case ( ts_method )
@@ -386,6 +388,10 @@ contains
 
       end if
 
+#ifdef TRANSIESTA_TIMING
+      call timer('TS_IterdQ', 2)
+#endif
+
     end do
 
     ! We will only do major extrapolation when we are
@@ -474,7 +480,7 @@ contains
     !***********************
     do iEl = 1 , N_Elec
       if ( .not. Elecs(iEl)%out_of_core ) then
-        call delete(Elecs(iEl))
+        call Elecs(iEl)%delete()
       end if
     end do
 
@@ -487,6 +493,7 @@ contains
         call de_alloc(Elecs(iEl)%SA,routine='transiesta')
       end if
       call de_alloc(Elecs(iEl)%Gamma,routine='transiesta')
+      nullify(Elecs(iEl)%GA)
     end do
 
     deallocate(uGF,nq)
@@ -507,44 +514,9 @@ contains
 
   contains
 
-    subroutine init_Electrode_HS(El)
-      use class_Sparsity
-      use class_dSpData1D
-      use class_dSpData2D
-      use alloc, only : re_alloc
-      type(Elec), intent(inout) :: El
-      
-      ! If already initialized, return immediately
-      if ( initialized(El%sp) ) return
-
-      ! Read-in and create the corresponding transfer-matrices
-      call delete(El) ! ensure clean electrode
-      call read_Elec(El,Bcast=.true., IO = .false.)
-      
-      if ( .not. associated(El%isc_off) ) then
-        call die('An electrode file needs to be a non-Gamma calculation. &
-            &Ensure at least two k-points in the T-direction.')
-      end if
-      
-      call create_sp2sp01(El, IO = .false.)
-
-      ! Clean-up, we will not need these!
-      ! we should not be very memory hungry now, but just in case...
-      call delete(El%H)
-      call delete(El%S)
-      
-      ! We do not accept onlyS files
-      if ( .not. initialized(El%H00) ) then
-        call die('An electrode file must contain the Hamiltonian')
-      end if
-
-      call delete(El%sp)
-
-    end subroutine init_Electrode_HS
-
     subroutine open_GF(N_Elec,Elecs,uGF,NEn)
       integer, intent(in) :: N_Elec
-      type(Elec), intent(inout) :: Elecs(N_Elec)
+      type(electrode_t), intent(inout) :: Elecs(N_Elec)
       integer, intent(out) :: uGF(N_Elec)
       integer, intent(in) :: NEn
 
@@ -566,7 +538,7 @@ contains
         else
 
           ! prepare the electrode to create the surface self-energy
-          call init_Electrode_HS(Elecs(iEl))
+          call Elecs(iEl)%prepare_SE(IO=.false.)
 
         end if
 
@@ -588,7 +560,7 @@ contains
 #ifdef MPI
     use mpi_siesta, only : MPI_Comm_World
     use mpi_siesta, only : MPI_Max
-    use mpi_siesta, only : MPI_Double_Precision
+    use mpi_siesta, only : MPI_Integer
 #endif 
 
     use class_Sparsity
@@ -596,64 +568,62 @@ contains
     use m_ts_options, only : N_mu, N_Elec, Elecs
     use m_ts_contour_neq, only : N_nEq_id
     use m_ts_sparse, only : ts_sp_uc, tsup_sp_uc, ltsup_sp_sc
-    use m_ts_electype
+    use ts_electrode_m
 
     use m_ts_tri_init, only : c_Tri
     use m_ts_tri_common, only : GFGGF_needed_worksize
-    use m_ts_tri_common, only : nnzs_tri_i8b
+    use m_ts_tri_common, only : nnzs_tri
     use m_ts_method, only : no_Buf
+    use byte_count_m, only: byte_count_t
 
     logical, intent(in) :: ts_gamma_scf ! transiesta Gamma
     integer :: i, no_E, no_used
     integer(i8b) :: nel
     integer :: padding, worksize
-    real(dp) :: mem, dmem, zmem
+    character(len=32) :: c_tmp
+    type(byte_count_t) :: m_elec, m_glob, m_local, m_inv
 #ifdef MPI
     integer :: MPIerror
 #endif
 
     ! Estimate electrode sizes
-    zmem = 0._dp
     do i = 1 , N_Elec
 
       no_used = Elecs(i)%no_used
-      no_E = TotUsedOrbs(Elecs(i))
+      no_E = Elecs(i)%device_orbitals()
 
       if ( IsVolt .or. .not. Elecs(i)%Bulk ) then
         ! Hamiltonian and overlap
         if ( Elecs(i)%pre_expand > 1 ) then
-          zmem = zmem + no_E ** 2 * 2
+          call m_elec%add_type(cmplx(0, 0, dp), no_E, no_E, 2)
         else
-          zmem = zmem + no_E * no_used * 2
+          call m_elec%add_type(cmplx(0, 0, dp), no_E, no_used, 2)
         end if
       end if
 
       if ( IsVolt ) then
-        zmem = zmem + no_E ** 2 ! GS/Gamma
+        call m_elec%add_type(cmplx(0, 0, dp), no_E, no_E) ! GS/Gamma
       else
         if ( Elecs(i)%pre_expand > 0 ) then
-          zmem = zmem + no_E ** 2
+          call m_elec%add_type(cmplx(0, 0, dp), no_E, no_E)
         else
-          zmem = zmem + no_E * no_used
+          call m_elec%add_type(cmplx(0, 0, dp), no_E, no_used)
         end if
       end if
        
     end do
-    zmem = zmem * 16._dp / 1024._dp ** 2
+
+    call m_elec%get_string(c_tmp)
     if ( IONode ) then
-      write(*,'(/,a,t55,f10.2,a)') &
-          'transiesta: mem of electrodes (static): ', zmem,'MB'
+      write(*,'(/,a,t55,a)') 'transiesta: [memory] electrodes (static): ', trim(c_tmp)
     end if
-    mem = zmem
 
     ! Global arrays
-    dmem = 0._dp
-    zmem = 0._dp
-    nel = nnzs(ts_sp_uc) * 2
+    nel = nnzs(ts_sp_uc)
     if ( ts_gamma_scf ) then
-      dmem = dmem + nel
+      call m_glob%add_type(0._dp, nel, 2_i8b)
     else
-      zmem = zmem + nel
+      call m_glob%add_type(cmplx(0, 0, dp), nel, 2_i8b)
     end if
 
     ! global sparsity update
@@ -664,36 +634,35 @@ contains
       i = max(N_mu,N_nEq_id)
     end if
     if ( ts_gamma_scf ) then
-      dmem = dmem + nel * i
+      call m_glob%add_type(0._dp, nel, int(i, i8b))
     else
-      zmem = zmem + nel * i
+      call m_glob%add_type(cmplx(0, 0, dp), nel, int(i, i8b))
     end if
-    ! Convert to MB
-    dmem = dmem * 8._dp / 1024._dp ** 2
-    zmem = zmem * 16._dp / 1024._dp ** 2
-    mem = mem + dmem + zmem
 
+    call m_glob%get_string(c_tmp)
     if ( IONode ) then
-      write(*,'(a,t55,f10.2,a)') &
-          'transiesta: mem of global update arrays (static): ', dmem+zmem,'MB'
+      write(*,'(a,t55,a)') 'transiesta: [memory] global update arrays (static): ', trim(c_tmp)
     end if
 
     ! Local sparsity update
     if ( IsVolt ) then
-      nel = nnzs(ltsup_sp_sc)
+      no_E = nnzs(ltsup_sp_sc)
+#ifdef MPI
+      call MPI_Reduce(no_E,i,1,MPI_INTEGER, &
+          MPI_MAX, 0, MPI_Comm_World, MPIerror)
+      no_E = i
+#endif
       if ( Calc_Forces ) then
-        dmem = nel * ( 2 * N_mu + N_nEq_id )
+        call m_local%add_type(0._dp, no_E, 2 * N_mu + N_nEq_id)
       else
-        dmem = nel * ( N_mu + N_nEq_id )
+        call m_local%add_type(0._dp, no_E, N_mu + N_nEq_id)
       end if
-      ! Bias local sparsity pattern is always
-      ! in double precision
-      dmem = dmem * 8._dp / 1024._dp ** 2
+
+      ! Bias local sparsity pattern is always in double precision
+      call m_local%get_string(c_tmp)
       if ( IONode ) then
-        write(*,'(a,t55,f10.2,a)') &
-            'transiesta: mem of master node sparse arrays: ', dmem,'MB'
+        write(*,'(a,t55,a)') 'transiesta: [memory] bias sparse arrays (max): ', trim(c_tmp)
       end if
-      mem = mem + dmem
     end if
 
     if ( ts_method == TS_BTD ) then
@@ -708,53 +677,52 @@ contains
             N_Elec, Elecs, padding, worksize)
       end if
 
-      nel = nnzs_tri_i8b(c_Tri%n,c_Tri%r)
-      if ( nel > huge(1) ) then
+      nel = nnzs_tri(c_Tri%n,c_Tri%r)
+      ! Check we do not cross allowed indexing routines
+      if ( nel + max(padding, worksize) > huge(1) ) then
         call die('transiesta: Memory consumption is too large!')
       end if
-      zmem = (nel * 2._dp + padding + worksize ) * 16._dp / 1024._dp ** 2
-      if ( IONode ) &
-          write(*,'(a,t55,f10.2,a)') &
-          'transiesta: mem of tri-diagonal matrices: ', zmem,'MB'
-      mem = mem + zmem
+      call m_inv%add_type(cmplx(0, 0, dp), nel, 2_i8b)
+      call m_inv%add_type(cmplx(0, 0, dp), padding)
+      call m_inv%add_type(cmplx(0, 0, dp), worksize)
+      call m_inv%get_string(c_tmp)
+      if ( IONode ) then
+        write(*,'(a,t55,a)') 'transiesta: [memory] tri-diagonal matrices: ', trim(c_tmp)
+      end if
 
     else if ( ts_method == TS_FULL ) then
+
       ! Calculate size of the full matrices
       ! Here we calculate number of electrodes not needed to update the cross-terms
-      no_E = sum(TotUsedOrbs(Elecs),Elecs(:)%DM_update==0)
+      no_E = sum(Elecs(:)%device_orbitals(),Elecs(:)%DM_update==0)
       i = nrows_g(ts_sp_uc) - no_Buf
       ! LHS
-      zmem = i ** 2
+      call m_inv%add_type(cmplx(0, 0, dp), i, i)
       ! RHS
       if ( IsVolt ) then
-        zmem = zmem + i * max(i-no_E,sum(TotUsedOrbs(Elecs)))
+        call m_inv%add_type(cmplx(0, 0, dp), i, max(i-no_E,sum(Elecs%device_orbitals())))
       else
-        zmem = zmem + i * (i-no_E)
+        call m_inv%add_type(cmplx(0, 0, dp), i, i-no_E)
       end if
-      zmem = zmem * 16._dp / 1024._dp ** 2
-      if ( IONode ) &
-          write(*,'(a,t55,f10.2,a)') &
-          'transiesta: mem of full matrices: ', zmem,'MB'
-      mem = mem + zmem
+      call m_inv%get_string(c_tmp)
+      if ( IONode ) then
+        write(*,'(a,t55,a)') 'transiesta: [memory] full matrices: ', trim(c_tmp)
+      end if
+
 #ifdef SIESTA__MUMPS
     else if ( ts_method == TS_MUMPS ) then
       if ( IONode ) then
-        write(*,'(a)')'transiesta: mem is determined by MUMPS.'
-        write(*,'(a)')'transiesta: Search in TS_MUMPS_<Node>.dat for: ### Minimum memory.'
+        write(*,'(a)')'transiesta: [memory] search TS_MUMPS_<Node>.dat for: ### Minimum memory.'
       end if
 #endif
     end if
 
-#ifdef MPI
-    call MPI_Reduce(mem,zmem,1,MPI_Double_Precision, &
-        MPI_MAX, 0, MPI_Comm_World, MPIerror)
-#else
-    zmem = mem
-#endif
+    ! Sum different parts
+    m_glob = m_elec + m_glob + m_local + m_inv
 
+    call m_glob%get_string(c_tmp)
     if ( IONode ) then
-      write(*,'(a,t55,f10.2,a)') &
-          'transiesta: Total memory usage: ', zmem,'MB'
+      write(*,'(a,t55,a)') 'transiesta: [memory] total: ', trim(c_tmp)
     end if
 
   end subroutine ts_print_memory

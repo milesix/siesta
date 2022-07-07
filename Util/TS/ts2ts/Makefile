@@ -33,6 +33,9 @@ FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
+DEFS:=$(DEFS_PREFIX) -UMPI $(DEFS) $(DEFS_PREFIX) -UMPI
+FPPFLAGS:=$(DEFS_PREFIX) -UMPI $(FPPFLAGS) $(DEFS_PREFIX) -UMPI
+
 INCFLAGS:=$(NETCDF_INCFLAGS) $(INCFLAGS)
 
 # Uncomment the following line for debugging support
@@ -80,8 +83,5 @@ dep:
 
 # DO NOT DELETE THIS LINE - used by make depend
 m_io.o: sys.o
-m_io.o: sys.o
 units.o: precision.o
-units.o: precision.o
-ts2ts.o: precision.o units.o
 ts2ts.o: precision.o units.o

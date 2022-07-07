@@ -52,7 +52,7 @@ contains
 #endif
     use m_os, only : file_exist
     use m_ts_cctype
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_electrode, only : create_Green
 
     use m_ts_contour_eq
@@ -63,7 +63,7 @@ contains
     ! ***********************
     ! * INPUT variables     *
     ! ***********************
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     integer, intent(in) :: nkpnt ! Number of k-points
     real(dp), intent(in) :: kpoint(3,nkpnt) ! k-points
     real(dp), intent(in) :: kweight(nkpnt) ! weights of kpoints
@@ -193,7 +193,7 @@ contains
     use parallel, only : IONode, Node, Nodes
     use units,    only : eV
 
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_cctype
 
 #ifdef MPI
@@ -209,7 +209,7 @@ contains
     integer, intent(in) :: uGF, ikpt
     integer, intent(in) :: NEReqs
     ! The electrode also contains the arrays
-    type(Elec), intent(in out) :: El
+    type(electrode_t), intent(in out) :: El
     type(ts_c_idx), intent(in)     :: cE
     ! The work array passed, this means we do not have
     ! to allocate anything down here.
@@ -336,13 +336,15 @@ contains
        end if
        
        ! If the k-point does not match what we expected...
-       if ( IONode .and. ikpt /= ikGS ) then
-          write(*,*) 'GF-file: '//trim(El%GFfile)
-          write(*,'(2(a,i0))') 'k-point, TS / Gf: ', &
+       if ( IONode ) then
+         if ( ikpt /= ikGS ) then
+           write(*,*) 'GF-file: '//trim(El%GFfile)
+           write(*,'(2(a,i0))') 'k-point, TS / Gf: ', &
                ikpt, ' / ', ikGS
-          call die('Read k-point in GF file does not match &
+           call die('Read k-point in GF file does not match &
                &the requested k-point. Please correct your &
                &GF files.')
+         end if
        end if
 
        if ( iEni == 1 ) then
@@ -409,7 +411,7 @@ contains
     use mpi_siesta, only : MPI_Comm_World
 #endif
 
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_cctype
     use m_ts_electrode, only: calc_next_GS_Elec
       
@@ -417,9 +419,9 @@ contains
     real(dp), intent(in) :: bkpt(3)
     type(ts_c_idx), intent(in) :: cE
     integer, intent(in) :: N_Elec, uGF(N_Elec)
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     integer, intent(in) :: nzwork
-    complex(dp), intent(inout), target :: zwork(nzwork)
+    complex(dp), intent(inout), target :: zwork(:)
     logical, intent(in), optional :: reread, forward
     ! When requesting density of states
     real(dp), intent(out), optional :: DOS(:,:), T(:)
@@ -430,6 +432,10 @@ contains
     integer :: MPIerror
 #endif
     type(ts_c_idx) :: c
+
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_read_next_GS', 1)
+#endif
 
     c = cE
     ! save the current weight of the point
@@ -549,6 +555,10 @@ contains
        end if
     end do
 
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_read_next_GS', 2)
+#endif
+
   end subroutine read_next_GS
 
 
@@ -572,15 +582,15 @@ contains
     use mpi_siesta, only: MPI_Double_Precision
     use mpi_siesta !, only: MPI_logical, MPI_Bcast
 #endif
-    use m_ts_electype
+    use ts_electrode_m
     real(dp) , parameter :: EPS = 1.e-6_dp
     
 ! ***********************
 ! * INPUT variables     *
 ! ***********************
-    integer, intent(in)  :: funit ! unit of gf-file
-    type(Elec), intent(in) :: El
-    integer, intent(in)  :: c_nkpar, c_NEn
+    integer, intent(in) :: funit ! unit of gf-file
+    type(electrode_t), intent(in) :: El
+    integer, intent(in) :: c_nkpar, c_NEn
 
 ! ***********************
 ! * LOCAL variables     *
@@ -727,10 +737,10 @@ contains
   !> This routine does not check *any* content in the file as that *must* be done prior.
   subroutine reread_Gamma_Green(El, funit, NE, ispin)
     use parallel, only: IONode
-    use m_ts_electype
+    use ts_electrode_m
 
     !< Electrode which is to be re-read.
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
     !< Unit that has the TSGF file currently open
     integer, intent(in) :: funit
     !< Total number of energy-points stored in the GF file
@@ -795,7 +805,7 @@ contains
     use fdf, only: fdf_convfac
     use units, only: Ang
     use m_ts_cctype
-    use m_ts_electype
+    use ts_electrode_m
 
     real(dp) , parameter :: EPS = 1d-6
 
@@ -803,21 +813,21 @@ contains
 ! * INPUT variables     *
 ! ***********************
 ! file for reading, Green function file
-    integer, intent(in)        :: funit
-    type(Elec), intent(in)     :: El
-    real(dp), intent(in)       :: c_ucell(3,3) ! Unit cell of the CONTACT
+    integer, intent(in) :: funit
+    type(electrode_t), intent(in) :: El
+    real(dp), intent(in) :: c_ucell(3,3) ! Unit cell of the CONTACT
     ! k-point information
-    integer, intent(in)        :: c_nkpar
-    real(dp), intent(in)       :: c_kpar(3,c_nkpar) , c_wkpar(c_nkpar)
+    integer, intent(in) :: c_nkpar
+    real(dp), intent(in) :: c_kpar(3,c_nkpar) , c_wkpar(c_nkpar)
 ! Energy point on the contour used 
-    integer, intent(in)        :: c_NEn
-    complex(dp), intent(in)    :: c_ce(c_NEn)
-    real(dp), intent(in)       :: xa_Eps
+    integer, intent(in) :: c_NEn
+    complex(dp), intent(in) :: c_ce(c_NEn)
+    real(dp), intent(in) :: xa_Eps
 ! ***********************
 ! * OUTPUT variables    *
 ! ***********************
 ! Return whether it is a correct Green function file
-    logical, intent(out)       :: errorGF
+    logical, intent(out) :: errorGF
 
 ! ***********************
 ! * LOCAL variables     *
@@ -992,13 +1002,13 @@ contains
       ! we need to compare that with those of the CONTACT cell!
       ! The advantage of this is that the GF files can be re-used for
       ! the same system with different lengths between the electrode layers.
-      call Elec_kpt(El,c_ucell,c_kpar(:,i),kpt, opt = 2)
+      call El%kpoint_convert(c_ucell,c_kpar(:,i),kpt, opt = 2)
       if ( abs(kpar(1,i)-kpt(1)) > EPS .or. &
           abs(kpar(2,i)-kpt(2)) > EPS .or. &
           abs(kpar(3,i)-kpt(3)) > EPS ) then
         write(*,*)"k-points are not the same:"
         do j = 1 , min(c_nkpar,nkpar)
-          call Elec_kpt(El,c_ucell,c_kpar(:,j),kpt, opt = 2)
+          call El%kpoint_convert(c_ucell,c_kpar(:,j),kpt, opt = 2)
           write(*,'(3(tr1,f14.10),a,3(tr1,f14.10))') kpt(:),'  :  ',kpar(:,j)
         end do
         localErrorGf = .true.

@@ -33,6 +33,7 @@
      &           atm_label, polorb, semic, nsemic,
      &           cnfigmx, charge, smass, basistype,
      &           rinn, vcte, qcoe, qyuk, qwid, split_norm
+      use basis_types, only: nprin
       use basis_types, only: write_basis_specs
       use basis_types, only: basis_def_t, basis_parameters
       use basis_specs, only: read_basis_specs
@@ -50,7 +51,6 @@
       use dftu_specs, only: dftu_proj_gen
       use dftu_specs, only: populate_species_info_dftu
       use m_ncps, only: pseudo_read
-      use m_spin_orbit_potentials, only: valid_spin_orbit_potentials
 
       use chemical
 
@@ -119,14 +119,6 @@
              basp%label = species_label(is)
              call pseudo_read(basp%label,basp%pseudopotential,
      $            basp%psml_handle,basp%has_psml_ps)
-             if (basp%has_psml_ps) then
-                if (.not. valid_spin_orbit_potentials(basp%psml_handle))
-     $                    then
-                   call die(
-     $            "Cannot do spin-orbit 'onsite' without " //
-     $            "proper semilocal potentials in the psml file")
-                endif
-             endif
           end do
        end if
        write(6,'(/a)') 'Reading PAOs and KBs from ascii files...'
@@ -154,6 +146,7 @@
           spp => species(is)
           call ATOM_MAIN( iz(is), lmxkb(is), nkbl(0:lmaxd,is),
      &                    erefkb(1:nkbmx,0:lmaxd,is), lmxo(is),
+     &                    nprin(0:lmaxd,1:nsemx,is),
      &                    nzeta(0:lmaxd,1:nsemx,is),
      &                    rco(1:nzetmx,0:lmaxd,1:nsemx,is),
      &                    lambda(1:nzetmx,0:lmaxd,1:nsemx,is),

@@ -14,7 +14,8 @@
 
         subroutine pseudo_read(label,p,
      $                         psml_handle,has_psml_ps,
-     $                         new_grid,a,b,rmax,directory)
+     $                         new_grid,a,b,rmax,directory,
+     $                         debugging_enabled)
 
         use m_ncps_froyen_reader,  only: pseudo_read_formatted
         use m_ncps_froyen_reader,  only: pseudo_read_unformatted
@@ -33,6 +34,8 @@
         real(dp), intent(in), optional :: rmax
         character(len=*), intent(in), optional   :: directory
 
+        logical, intent(in), optional :: debugging_enabled
+
 !       PS information can be in a .vps file (unformatted)
 !       or in a .psf file (formatted)
 !       or in a .psml file 
@@ -40,6 +43,13 @@
         character(len=200) fname, prefix
         character(len=36) uuid
         logical found, reparametrize
+
+        logical :: debug
+                
+        debug = .false.
+        if (present(debugging_enabled)) then
+           debug = debugging_enabled
+        endif
 
         has_psml_ps = .false.
 
@@ -90,14 +100,17 @@
               endif
            endif
         endif
-        ! Dump locally
-        call pseudo_dump(trim(label) // ".psdump",p)
-        call pseudo_write_formatted(trim(label) // ".out.psf",p,
-     $                              print_gen_zval=.true.)
+        if (debug) then
+           ! Dump locally
+           call pseudo_dump(trim(label) // ".psdump",p)
+           call pseudo_write_formatted(trim(label) // ".out.psf",p,
+     $          print_gen_zval=.true.)
+        endif
         end subroutine pseudo_read
 
         subroutine pseudo_read_from_file(filename,p,
-     $                                   new_grid,a,b,rmax)
+     $                                   new_grid,a,b,rmax,
+     $                                   debugging_enabled)
 
         use m_ncps_froyen_reader,  only: pseudo_read_formatted
         use m_ncps_froyen_reader,  only: pseudo_read_unformatted
@@ -111,11 +124,19 @@
         real(dp), intent(in), optional :: a
         real(dp), intent(in), optional :: b
         real(dp), intent(in), optional :: rmax
+        logical, intent(in), optional :: debugging_enabled
 
         character(len=30)   :: label, ext
         integer :: status
 
         logical reparametrize
+
+        logical :: debug
+                
+        debug = .false.
+        if (present(debugging_enabled)) then
+           debug = debugging_enabled
+        endif
 
         reparametrize = .false.
         if (present(new_grid)) then
@@ -146,10 +167,12 @@
      .                'Extension not supported: ', trim(ext)
            call die("")
         endif
-        ! Dump locally
-        call pseudo_dump(trim(label) // ".psdump",p)
-        call pseudo_write_formatted(trim(label) // ".out.psf",p,
-     $                              print_gen_zval=.true.)
+        if (debug) then
+           ! Dump locally
+           call pseudo_dump(trim(label) // ".psdump",p)
+           call pseudo_write_formatted(trim(label) // ".out.psf",p,
+     $          print_gen_zval=.true.)
+        endif
         end subroutine pseudo_read_from_file
 !
         subroutine pseudo_read_psml(fname,p,

@@ -815,7 +815,19 @@ calculation has completed.
   \fdfdepend{TBT.Atoms!Device}
 
   Calculate the DOS from the Green function on the atoms in the device
-  region. 
+  region:
+  \begin{align}
+    \label{eq:dos-gf}
+    \mathbf G(E) &= [E\mathbf S - \mathbf H -
+    \sum_{\mathfrak e}\boldsymbol\Sigma_{\mathfrak e}(E)]^{-1}
+    \\
+    &=
+    \sum_{\mathfrak e}\mathbf G(E)\boldsymbol\Gamma_{\mathfrak
+        e}(E)\mathbf G^\dagger(E) + \text{bound states}
+    \\
+    &=
+    \sum_{\mathfrak e}\mathbf A_{\mathfrak e}(E) + \text{bound states}
+  \end{align}
 
   \note this flag should only be used if there are bound states in the
   scattering region (or if one wish to uncover whether there are bound
@@ -838,7 +850,12 @@ calculation has completed.
 
   Calculate the DOS from the spectral function. This will not
   calculate the DOS from the last electrode (last in the list
-  \fdf{TBT.Elecs}), see \fdf{TBT.DOS!A.All}. 
+  \fdf{TBT.Elecs}), see \fdf{TBT.DOS!A.All}.
+
+  Its relation to the Green function DOS can be inferred from
+  Eq.~\eqref{eq:dos-gf} (see \fdf{TBT.DOS!Gf}). If there are no bound
+  states in the device region then prefer this option and
+  \fdf{TBT.DOS!A.All}.
 
   This generates \sysfile{ADOS\_<>} and \sysfile{AVADOS\_<>}.
 
@@ -1378,7 +1395,7 @@ semi-infinite electrodes.
 It is thus important to define an energy grid for analysis of the DOS
 and transmission.
 
-\begin{fdfentry}{TBT.Contours!Eta}[energy]<$\operatorname{min}[\eta_{\mathfrak e}]/100$>
+\begin{fdfentry}{TBT.Contours!Eta}[energy]<$\operatorname{min}[\eta_{\mathfrak e}]/10$>
   \fdfdepend{TBT!Elecs!Eta}%
 
   The imaginary ($\eta$) part of the Green function in the device
@@ -1389,7 +1406,7 @@ and transmission.
   axis. Generally one need not take into account $\eta$ values
   different from 0. However, in cases where localized states are found
   a smearing in the device region can help numerics. Therefore it
-  defaults to $\operatorname{min}[\eta_{\mathfrak e}]/100$. This ensures
+  defaults to $\operatorname{min}[\eta_{\mathfrak e}]/10$. This ensures
   that the device broadening is always smaller than the electrodes
   while allowing broadening of localized states.
 

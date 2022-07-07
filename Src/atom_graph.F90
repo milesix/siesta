@@ -6,6 +6,7 @@ module atom_graph
   use class_lSpData1D
   use class_iSpData2D
   use class_dSpData2D
+  use class_OrbitalDistribution
 
   implicit none
 
@@ -63,7 +64,6 @@ contains
   
   subroutine atom_graph_generate( negl, ucell, na_u, isa, xa, ag, dit, set_xijo)
     
-    use class_OrbitalDistribution
 #ifdef MPI
     use mpi_siesta, only : MPI_Comm_Self
 #endif
@@ -449,8 +449,6 @@ contains
   end subroutine atom_graph_generate
   
   subroutine atom_graph_print(ag,na_u,isa,xa)
-    
-    use class_OrbitalDistribution
     
     type(tAtomGraph), intent(in) :: ag
     integer,  intent(in)    :: na_u

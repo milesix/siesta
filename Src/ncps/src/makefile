@@ -23,7 +23,7 @@ libxc-compat:
 #
 OBJFILES= m_ncps.o m_ncps_froyen_reader.o m_ncps_translators.o \
           m_ncps_froyen_ps_t.o m_ncps_reader.o	m_ncps_writers.o \
-          interpolation.o m_ncps_psml_plugins.o
+          interpolation.o m_ncps_psml_plugins.o m_ncps_utils.o
 #
 INCFLAGS:= -I libxc-compat $(PSML_INCFLAGS)
 #
@@ -42,10 +42,11 @@ clean:
 # DO NOT DELETE THIS LINE - used by make depend
 m_libxc_sxc_translation.o: m_libxc_list.o
 m_ncps.o: m_ncps_froyen_ps_t.o m_ncps_reader.o m_ncps_translators.o
-m_ncps.o: m_ncps_writers.o
+m_ncps.o: m_ncps_writers.o m_ncps_utils.o
 m_ncps_froyen_reader.o: interpolation.o m_ncps_froyen_ps_t.o
 m_ncps_reader.o: m_ncps_froyen_ps_t.o m_ncps_froyen_reader.o
 m_ncps_reader.o: m_ncps_translators.o m_ncps_writers.o
 m_ncps_translators.o: m_ncps_froyen_ps_t.o
 m_ncps_translators.o: m_ncps_psml_plugins.o
 m_ncps_writers.o: m_ncps_froyen_ps_t.o
+m_ncps_utils.o: m_ncps_froyen_ps_t.o

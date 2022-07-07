@@ -40,7 +40,9 @@ FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
-#
+DEFS:=$(DEFS_PREFIX) -UMPI $(DEFS) $(DEFS_PREFIX) -UMPI
+FPPFLAGS:=$(DEFS_PREFIX) -UMPI $(FPPFLAGS) $(DEFS_PREFIX) -UMPI
+
 NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
 PSOP_INCFLAGS=-I$(MAIN_OBJDIR)/psoplib/src
 INCFLAGS:=$(NETCDF_INCFLAGS) \
@@ -54,15 +56,12 @@ SYSOBJ=$(SYS).o
 DEPS_GEN-BASIS=m_io.o io.o alloc.o basis_types.o precision.o  parallel.o \
           parsing.o basis_io.o chemical.o atm_types.o \
           atmparams.o radial.o interpolation.o \
-	  bessph.o radfft.o  sorting.o m_filter.o m_spin.o \
+	  bessph.o radfft.o  sorting.o m_filter.o \
           basis_specs.o dftu_specs.o atom.o periodic_table.o\
-          pxf.o dot.o  atom_options.o arw.o m_spin_orbit_potentials.o \
+          pxf.o dot.o  atom_options.o arw.o \
           xml.o m_walltime.o read_xc_info.o  $(SYSOBJ) \
           m_fft_gpfa.o m_cite.o version.o posix_calls.o reclat.o units.o \
-          semicore_info_froyen.o hamann.o files.o sys.o
-
-# Siesta kpoint-scale
-DEPS_GEN-BASIS += get_kpoints_scale.o siesta_geom.o
+          hamann.o files.o sys.o
 
 GEN-BASIS_LOCAL_OBJS=gen-basis.o handlers.o 
 OBJS_GEN-BASIS=$(DEPS_GEN-BASIS) $(GEN-BASIS_LOCAL_OBJS)
@@ -70,14 +69,11 @@ OBJS_GEN-BASIS=$(DEPS_GEN-BASIS) $(GEN-BASIS_LOCAL_OBJS)
 DEPS_IONCAT=m_getopts.o basis_types.o precision.o  parallel.o \
           parsing.o m_io.o io.o alloc.o atom_options.o basis_io.o atm_types.o \
           atmparams.o radial.o  chkdim.o m_filter.o \
-	  chemical.o m_spin.o m_spin_orbit_potentials.o reclat.o \
-          basis_specs.o periodic_table.o pxf.o semicore_info_froyen.o \
+	  chemical.o reclat.o \
+          basis_specs.o periodic_table.o pxf.o \
           atom.o atmfuncs.o spher_harm.o interpolation.o arw.o \
           xml.o m_walltime.o dftu_specs.o\
           hamann.o m_cite.o version.o posix_calls.o units.o files.o sys.o $(SYSOBJ)
-
-# Siesta kpoint-scale
-DEPS_IONCAT += get_kpoints_scale.o siesta_geom.o
 
 IONCAT_LOCAL_OBJS=ioncat.o handlers.o 
 OBJS_IONCAT=$(DEPS_IONCAT) $(IONCAT_LOCAL_OBJS)
@@ -142,83 +138,40 @@ dep:
 
 # DO NOT DELETE THIS LINE - used by make depend
 arw.o: alloc.o parallel.o precision.o sys.o
-arw.o: alloc.o parallel.o precision.o sys.o
 atm_types.o: precision.o radial.o
-atm_types.o: precision.o radial.o
-atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o sys.o
 atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o sys.o
 atom.o: atm_types.o atmparams.o atom_options.o basis_specs.o basis_types.o
 atom.o: hamann.o interpolation.o m_filter.o periodic_table.o precision.o
 atom.o: radial.o sys.o
-atom.o: atm_types.o atmparams.o atom_options.o basis_specs.o basis_types.o
-atom.o: hamann.o interpolation.o m_filter.o periodic_table.o precision.o
-atom.o: radial.o sys.o
-atom_options.o: sys.o
 atom_options.o: sys.o
 basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
 basis_io.o: precision.o radial.o sys.o xml.o
-basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
-basis_io.o: precision.o radial.o sys.o xml.o
-basis_specs.o: basis_types.o chemical.o m_spin.o m_spin_orbit_potentials.o
-basis_specs.o: periodic_table.o precision.o semicore_info_froyen.o sys.o
-basis_specs.o: basis_types.o chemical.o m_spin.o m_spin_orbit_potentials.o
-basis_specs.o: periodic_table.o precision.o semicore_info_froyen.o sys.o
-basis_types.o: alloc.o atmparams.o precision.o sys.o
+basis_specs.o: atom_options.o basis_types.o chemical.o periodic_table.o
+basis_specs.o: precision.o sys.o
 basis_types.o: alloc.o atmparams.o precision.o sys.o
 bessph.o: precision.o sys.o
-bessph.o: precision.o sys.o
 chemical.o: parallel.o precision.o sys.o
-chemical.o: parallel.o precision.o sys.o
-chkdim.o: sys.o
 chkdim.o: sys.o
 dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
 dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o parallel.o
 dftu_specs.o: precision.o radial.o sys.o units.o
-dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
-dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o parallel.o
-dftu_specs.o: precision.o radial.o sys.o units.o
-get_kpoints_scale.o: parallel.o siesta_geom.o units.o
-get_kpoints_scale.o: parallel.o siesta_geom.o units.o
-io.o: m_io.o
 io.o: m_io.o
 m_filter.o: bessph.o precision.o radfft.o sys.o
-m_filter.o: bessph.o precision.o radfft.o sys.o
 m_io.o: sys.o
-m_io.o: sys.o
-m_spin.o: alloc.o files.o get_kpoints_scale.o m_cite.o parallel.o precision.o
-m_spin.o: sys.o
-m_spin.o: alloc.o files.o get_kpoints_scale.o m_cite.o parallel.o precision.o
-m_spin.o: sys.o
-periodic_table.o: precision.o sys.o
-periodic_table.o: precision.o sys.o
-radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radial.o: alloc.o interpolation.o precision.o xml.o
-radial.o: alloc.o interpolation.o precision.o xml.o
 read_xc_info.o: parallel.o precision.o sys.o
-read_xc_info.o: parallel.o precision.o sys.o
-siesta_geom.o: precision.o
-siesta_geom.o: precision.o
-spher_harm.o: alloc.o precision.o sys.o
 spher_harm.o: alloc.o precision.o sys.o
 units.o: precision.o
-units.o: precision.o
-xml.o: precision.o
 xml.o: precision.o
 gen-basis.o: atm_types.o atom.o atom_options.o basis_io.o basis_specs.o
-gen-basis.o: basis_types.o chemical.o dftu_specs.o m_spin.o sys.o
-gen-basis.o: atm_types.o atom.o atom_options.o basis_io.o basis_specs.o
-gen-basis.o: basis_types.o chemical.o dftu_specs.o m_spin.o sys.o
-ioncat.o: atm_types.o atmfuncs.o basis_io.o m_getopts.o precision.o
+gen-basis.o: basis_types.o chemical.o dftu_specs.o sys.o
 ioncat.o: atm_types.o atmfuncs.o basis_io.o m_getopts.o precision.o
 aux_proj.o: atom.o
 gpfa_core_dp.o: m_fft_gpfa.o
 gpfa_core_sp.o: m_fft_gpfa.o
 gpfa_fft.o: m_fft_gpfa.o
 m_bessph.o: bessph.o
-m_get_kpoints_scale.o: get_kpoints_scale.o
 m_hamann.o: hamann.o
 m_radfft.o: radfft.o
-m_semicore_info_froyen.o: semicore_info_froyen.o
-t_spin.o: m_spin.o
 version_info.o: version.o

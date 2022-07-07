@@ -23,6 +23,10 @@ testdir=$(dirname $srcdir)/Tests
 #
 destdir=$(pwd)
 #
+# Copy build.mk
+#
+cp -p ${srcdir}/../Config/mk-build/build.mk ${destdir}
+#
 # Replicate the hierarchy of makefiles
 #
 (cd $srcdir;

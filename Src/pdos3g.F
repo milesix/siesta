@@ -84,6 +84,7 @@ C Internal variables ---------------------------------------------------
       real(dp)
      .  delta, ener, diff, rpipj, ipipj, gauss, norm
       real(dp), pointer :: Spr(:,:) => null()
+      complex(dp) :: D11, D12, D22, D21
 
 #ifdef MPI
       integer :: BNode, Bnuo, ibandg, maxnuo, MPIerror
@@ -194,17 +195,19 @@ C Transfer data
               do jo = 1, Bnuo
                 call LocalToGlobalOrb(jo,BNode,Nodes,juo)
                 do io = 1, nuotot
-                  rpipj = real(caux(1,io)*conjg(caux(1,juo)),dp)*gauss
-                  dpr(ihist,juo,1)=dpr(ihist,juo,1)+rpipj*Sloc(io,jo)
+                  D11 = caux(1,io) * conjg(caux(1,juo)) * Sloc(io,jo)
+                  D22 = caux(2,io) * conjg(caux(2,juo)) * Sloc(io,jo)
+                  D12 = caux(1,io) * conjg(caux(2,juo)) * Sloc(io,jo)
+                  D21 = caux(2,io) * conjg(caux(1,juo)) * Sloc(io,jo)
 
-                  rpipj = real(caux(2,io)*conjg(caux(2,juo)),dp)*gauss
-                  dpr(ihist,juo,2)=dpr(ihist,juo,2)+rpipj*Sloc(io,jo)
+                  D11 = gauss*D11
+                  D22 = gauss*D22
+                  D12 = gauss*(D12+conjg(D21))*0.5_dp
 
-                  rpipj = real(caux(1,io)*conjg(caux(2,juo)),dp)*gauss
-                  dpr(ihist,juo,3)=dpr(ihist,juo,3)+rpipj*Sloc(io,jo)
-
-                  ipipj = aimag(caux(1,io)*conjg(caux(2,juo)))*gauss
-                  dpr(ihist,juo,4)=dpr(ihist,juo,4)-ipipj*Sloc(io,jo)
+                  dpr(ihist,juo,1) = dpr(ihist,juo,1) + real(D11,dp)
+                  dpr(ihist,juo,2) = dpr(ihist,juo,2) + real(D22,dp)
+                  dpr(ihist,juo,3) = dpr(ihist,juo,3) + real(D12,dp)
+                  dpr(ihist,juo,4) = dpr(ihist,juo,4) - aimag(D12)
                 enddo
               enddo
             enddo
@@ -227,17 +230,20 @@ C Loop over all the energy range
             caux => psi(:,:,iband) ! c_{up,j}, c_{down,j}
             do jo = 1, nuotot
               do io = 1, nuotot
-                rpipj = real(caux(1,io)*conjg(caux(1,jo)),dp)*gauss
-                dpr(ihist,jo,1)=dpr(ihist,jo,1)+rpipj*Spr(io,jo)
+                D11 = caux(1,io) * conjg(caux(1,juo)) * Spr(io,jo)
+                D22 = caux(2,io) * conjg(caux(2,juo)) * Spr(io,jo)
+                D12 = caux(1,io) * conjg(caux(2,juo)) * Spr(io,jo)
+                D21 = caux(2,io) * conjg(caux(1,juo)) * Spr(io,jo)
 
-                rpipj = real(caux(2,io)*conjg(caux(2,jo)),dp)*gauss
-                dpr(ihist,jo,2)=dpr(ihist,jo,2)+rpipj*Spr(io,jo)
+                D11 = gauss*D11
+                D22 = gauss*D22
+                D12 = gauss*(D12+conjg(D21))*0.5_dp
 
-                rpipj = real(caux(1,io)*conjg(caux(2,jo)),dp)*gauss
-                dpr(ihist,jo,3)=dpr(ihist,jo,3)+rpipj*Spr(io,jo)
+                dpr(ihist,juo,1) = dpr(ihist,juo,1) + real(D11,dp)
+                dpr(ihist,juo,2) = dpr(ihist,juo,2) + real(D22,dp)
+                dpr(ihist,juo,3) = dpr(ihist,juo,3) + real(D12,dp)
+                dpr(ihist,juo,4) = dpr(ihist,juo,4) - aimag(D12)
 
-                ipipj = aimag(caux(1,io)*conjg(caux(2,jo)))*gauss
-                dpr(ihist,jo,4)=dpr(ihist,jo,4)-ipipj*Spr(io,jo)
               enddo
             enddo
           enddo

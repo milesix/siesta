@@ -3,7 +3,7 @@ set(top_srcdir "${CMAKE_SOURCE_DIR}/Src")
 add_library(psop_top_objs OBJECT
     "${top_srcdir}/m_getopts.f90"
     "${top_srcdir}/m_uuid.f90"
-    "${top_srcdir}/semicore_info_froyen.f90"
+    "${top_srcdir}/periodic_table.f"
 )
 
 add_executable(

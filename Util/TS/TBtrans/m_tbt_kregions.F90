@@ -59,7 +59,7 @@ contains
 
     use class_OrbitalDistribution
     use class_Sparsity
-    use m_ts_electype
+    use ts_electrode_m
 
     use m_tbt_kpoint, only : kpoint, kweight, read_kgrid
 
@@ -67,7 +67,7 @@ contains
     type(tRgn), intent(in) :: r_aBuf
     ! Number of electrodes
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! The unit cell
     real(dp), intent(in) :: cell(3,3)
     ! the orbital distribution for the sparsity pattern
@@ -155,7 +155,7 @@ contains
     do iEl = 1 , N_Elec
        ! Create a region of this electrode atoms
        i = Elecs(iEl)%idx_a
-       call rgn_range(r1,i,i-1 + TotUsedAtoms(Elecs(iEl)) )
+       call rgn_range(r1,i,i-1 + Elecs(iEl)%device_atoms() )
        do il = 1 , n_k
           ! Check that the entire electrode exists in
           ! any one of the regions.
@@ -299,11 +299,11 @@ contains
 
     use class_OrbitalDistribution
     use class_Sparsity
-    use m_ts_electype
+    use ts_electrode_m
 
     ! Number of electrodes
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! the orbital distribution for the sparsity pattern
     type(OrbitalDistribution), intent(in) :: dit
     ! sparsity pattern
@@ -364,7 +364,7 @@ contains
 
     use class_OrbitalDistribution
     use class_Sparsity
-    use m_ts_electype
+    use ts_electrode_m
 
     ! INPUT
     type(block_fdf), intent(inout) :: bfdf
@@ -477,18 +477,18 @@ contains
     use mpi_siesta !, only : MPI_AllReduce, MPI_Sum, MPI_Integer
 #endif
 
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_cctype
     use m_ts_electrode, only: calc_next_GS_Elec
       
     integer, intent(in) :: ispin
     type(ts_c_idx), intent(in) :: cE
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     ! Index of the k-region that belongs to the electrode
     integer, intent(in) :: k_idx(N_Elec)
     integer, intent(in) :: nzwork
-    complex(dp), intent(inout), target :: zwork(nzwork)
+    complex(dp), intent(inout), target :: zwork(:)
 
     integer :: i
     type(ts_c_idx) :: c
