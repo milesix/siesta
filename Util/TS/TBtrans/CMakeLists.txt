@@ -2,7 +2,7 @@ set(top_srcdir "${CMAKE_SOURCE_DIR}/Src" )
 
 set(sources
 
- local_sys.F
+ handlers.F
  m_tbt_contour.F90
  m_tbt_dH.F90
  m_tbt_dSE.F90
@@ -27,7 +27,8 @@ set(sources
  sorted_search.F90
  tbt_end.F90
  tbt_init.F90
- tbt_reinit.F90
+ tbt_init_output.f90
+ tbt_reinit_m.F90
  tbtrans.F90
 
 )
@@ -54,6 +55,7 @@ list(
   "${top_srcdir}/class_Sparsity.F90"
   "${top_srcdir}/class_TriMat.F90"
   "${top_srcdir}/class_TriMat.T90"
+  "${top_srcdir}/cli_m.f90"
   "${top_srcdir}/create_Sparsity_SC.F90"
   "${top_srcdir}/create_Sparsity_Union.F90"
   "${top_srcdir}/cross.f"
@@ -67,7 +69,6 @@ list(
   "${top_srcdir}/geom_helper.f90"
   "${top_srcdir}/get_kpoints_scale.f90"
   "${top_srcdir}/idiag.f"
-  "${top_srcdir}/init_output.F90"
   "${top_srcdir}/intrinsic_missing.F90"
   "${top_srcdir}/io.f"
   "${top_srcdir}/kpoint_convert.f90"
@@ -138,16 +139,19 @@ list(
   "${top_srcdir}/m_wallclock.f90"
   "${top_srcdir}/m_walltime.f90"
   "${top_srcdir}/memory.F"
-  "${top_srcdir}/memoryinfo.F"
+  "${top_srcdir}/memory_log.F90"
   "${top_srcdir}/minvec.f"
   "${top_srcdir}/moreParallelSubs.F90"
   "${top_srcdir}/object_debug.F90"
   "${top_srcdir}/parallel.F"
+  "${top_srcdir}/posix_calls.f90"
   "${top_srcdir}/precision.F"
   "${top_srcdir}/pxf.F90"
   "${top_srcdir}/reclat.f"
+  "${top_srcdir}/runinfo_m.F90"
   "${top_srcdir}/siesta_geom.F90"
   "${top_srcdir}/sorting.f"
+  "${top_srcdir}/sys.F"
   "${top_srcdir}/timer.F90"
   "${top_srcdir}/timer_tree.f90"
   "${top_srcdir}/timestamp.f90"
@@ -189,7 +193,7 @@ if(WITH_MPI)
   target_link_libraries(
     tbtrans
     PRIVATE
-    ${PROJECT_NAME}-mpi-int
+    mpi_siesta
   )
 endif()
 
@@ -202,43 +206,23 @@ TARGET_LINK_LIBRARIES(
 
 if (WITH_MPI)
 
-  target_include_directories(tbtrans PUBLIC
-  "${CMAKE_BINARY_DIR}/mod-fdf-mpi")
-
   TARGET_LINK_LIBRARIES(
     tbtrans
     PRIVATE
-    ${PROJECT_NAME}-libfdf-mpi
+    fdf-mpi
 )
 
 else()
 
-  target_include_directories(tbtrans PUBLIC
-    "${CMAKE_BINARY_DIR}/mod-fdf")
-
   TARGET_LINK_LIBRARIES(
     tbtrans
     PRIVATE
-    ${PROJECT_NAME}-libfdf
+    fdf-serial
 )
 endif()
 
 # External libraries.
 
-# 
-# find_package("lapack" REQUIRED)
-# find_package("blas" REQUIRED)
-# set(
-#   lib-deps
-#   "blas::blas"
-#   "lapack::lapack"
-# )
-
-# target_link_libraries(
-#   ${PROJECT_NAME}-siesta
-#   PUBLIC
-#   "${lib-deps}"
-# )
 
 if(WITH_MPI)
   target_link_libraries(
@@ -254,29 +238,26 @@ TARGET_LINK_LIBRARIES(
   "$ENV{LAPACK_LIBS}")
 
 if(WITH_NETCDF)
+
+  TARGET_LINK_LIBRARIES(
+    tbtrans
+    PRIVATE
+    NetCDF::NetCDF_Fortran
+)
+  target_compile_definitions(
+    tbtrans
+    PUBLIC
+    CDF
+    NCDF
+    NCDF_4
+  )
+
   TARGET_LINK_LIBRARIES(
     tbtrans
     PRIVATE
     ${PROJECT_NAME}-libncdf
 )
-  target_compile_definitions(
-  tbtrans
-  PUBLIC
-  CDF
-  NCDF
-  NCDF_4
-  )
-  target_include_directories(
-    tbtrans
-    PRIVATE
-    ${NETCDF_INCLUDEDIR}
-    ${NETCDF_INCLUDE_DIRS}
-)
- target_link_libraries(
-    tbtrans
-    PRIVATE
-   ${NETCDF_LINK_LIBRARIES}
-)
+
 endif()
 
 install(

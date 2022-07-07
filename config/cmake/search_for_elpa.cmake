@@ -40,4 +40,4 @@
  # Fix non-standard setting
  #
  set(ELPA_INCFLAGS "${ELPA_INCLUDE_DIRS}/modules")
- message(STATUS "ELPA_INCFLAGS to be used: ${ELPA_INCFLAGS")
+ message(STATUS "ELPA_INCFLAGS to be used: ${ELPA_INCFLAGS}")

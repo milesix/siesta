@@ -11,7 +11,11 @@ if (gridxc_FOUND)
 else()
 
   find_package(PkgConfig QUIET)
-  pkg_check_modules(gridxc IMPORTED_TARGET GLOBAL gridxc>=0.11.0)
+  if (WITH_MPI)
+    pkg_check_modules(gridxc IMPORTED_TARGET GLOBAL libgridxc_dp_mpi>=0.10.0)
+  else()
+    pkg_check_modules(gridxc IMPORTED_TARGET GLOBAL libgridxc_dp>=0.10.0)
+  endif()  
 
   if(gridxc_FOUND)
     message(STATUS "Found gridxc through pkgconfig")

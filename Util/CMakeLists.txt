@@ -1,4 +1,4 @@
-#add_subdirectory("TS/TBtrans")
+add_subdirectory("TS/TBtrans")
 add_subdirectory("Gen-basis")
 
 if(WITH_UTILS)

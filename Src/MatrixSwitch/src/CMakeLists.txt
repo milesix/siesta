@@ -31,8 +31,20 @@ if (WITH_MPI)
 # target_link_libraries(
 #  ${PROJECT_NAME}-libms
 #  PRIVATE
-#  ${PROJECT_NAME}-mpi-int
+#  mpi_siesta
 # )
+
+  # Hence, add ground stuff for MPI
+  # This enables correct compilation and also correct flags for
+  # MPI builds.
+  # Also, it ensures that the include directories are correctly setup
+
+ target_compile_options(${PROJECT_NAME}-libms PUBLIC ${MPI_Fortran_COMPILE_FLAGS})
+ target_include_directories(${PROJECT_NAME}-libms PUBLIC ${MPI_Fortran_INCLUDE_DIRS})
+ target_link_directories(${PROJECT_NAME}-libms PUBLIC ${MPI_Fortran_LIBRARY_DIRS})
+ target_link_libraries(${PROJECT_NAME}-libms PUBLIC  ${MPI_Fortran_LIBRARIES})
+  
+
 endif()
 
 target_include_directories(

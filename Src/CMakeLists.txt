@@ -526,7 +526,7 @@ if(WITH_MPI)
   target_link_libraries(
     ${PROJECT_NAME}-siesta
     PRIVATE
-    ${PROJECT_NAME}-mpi-int
+    mpi_siesta
   )
 endif()
 
@@ -543,24 +543,18 @@ TARGET_LINK_LIBRARIES(
 
 if (WITH_MPI)
 
-  target_include_directories(${PROJECT_NAME}-siesta PUBLIC
-  "${CMAKE_BINARY_DIR}/mod-fdf-mpi")
-
   TARGET_LINK_LIBRARIES(
     ${PROJECT_NAME}-siesta
     PRIVATE
-    ${PROJECT_NAME}-libfdf-mpi
+    fdf-mpi
 )
 
 else()
 
-  target_include_directories(${PROJECT_NAME}-siesta PUBLIC
-    "${CMAKE_BINARY_DIR}/mod-fdf")
-
   TARGET_LINK_LIBRARIES(
     ${PROJECT_NAME}-siesta
     PRIVATE
-    ${PROJECT_NAME}-libfdf
+    fdf-serial
 )
 endif()
 
@@ -631,16 +625,17 @@ if(WITH_NETCDF)
   PUBLIC
   CDF
   )
-  target_include_directories(
-    ${PROJECT_NAME}-siesta
-    PRIVATE
-    ${NETCDF_INCLUDEDIR}
-    ${NETCDF_INCLUDE_DIRS}
-)
+##   target_include_directories(
+##     ${PROJECT_NAME}-siesta
+##     PRIVATE
+##     ${NETCDF_INCLUDEDIR}
+##     ${NETCDF_INCLUDE_DIRS}
+## )
  target_link_libraries(
     ${PROJECT_NAME}-siesta
     PRIVATE
-   ${NETCDF_LINK_LIBRARIES}
+##   ${NETCDF_LINK_LIBRARIES}
+    NetCDF::NetCDF_Fortran
 )
 endif()
 

@@ -14,11 +14,11 @@ if (psml_FOUND)
 else()
 
   find_package(PkgConfig QUIET)
-  pkg_check_modules(psml IMPORTED_TARGET GLOBAL psml>=1.1.11)
+  pkg_check_modules(libpsml IMPORTED_TARGET GLOBAL libpsml>=1.1.10)
 
-  if(psml_FOUND)
+  if(libpsml_FOUND)
     message(STATUS "Found libpsml through pkgconfig")
-    add_library(libpsml ALIAS PkgConfig::psml)
+    add_library(libpsml ALIAS PkgConfig::libpsml)
   elseif(DOWNLOAD_FALLBACK)
     include(FetchContent)
     FetchContent_Declare(libpsml

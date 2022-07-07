@@ -38,24 +38,14 @@ add_executable(
 
 target_link_libraries(fcbuild
     vibra_top_objs
-    ${PROJECT_NAME}-libfdf
+    fdf-serial
     )
 target_link_libraries(vibra
     vibra_top_objs
-    ${PROJECT_NAME}-libfdf
+    fdf-serial
     $ENV{LAPACK_LIBS}
     )
     
-target_include_directories(
-   fcbuild
-   PRIVATE
-   "${CMAKE_BINARY_DIR}/mod-fdf")
-   
-target_include_directories(
-   vibra
-   PRIVATE
-   "${CMAKE_BINARY_DIR}/mod-fdf")
-   
 install(
   TARGETS fcbuild vibra
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
