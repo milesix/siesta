@@ -20,9 +20,9 @@ project(
   DESCRIPTION "A first-principles materials simulation code using DFT."
   )
 
-# Default build-type is Release
+# Default build-type is Release (Debug for now)
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Release")
+  set(CMAKE_BUILD_TYPE "Debug")
 endif()
 
 # First setup the environment

@@ -65,18 +65,13 @@ install(
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   )
 
- target_include_directories(
-     gen-basis
-     PUBLIC
-    "${CMAKE_BINARY_DIR}/mod-fdf")
-
 #
 # lapack is needed for m_filter...
 #
  target_link_libraries(
   gen-basis
   PRIVATE
-  ${PROJECT_NAME}-libfdf
+  fdf-serial
   ${PROJECT_NAME}-libSiestaXC
   "$ENV{LAPACK_LIBS}"
  )

@@ -1,17 +1,27 @@
 set(fdf_sources
   fdf.F90
   io_fdf.F90
-  utils.F90
   parse.F90
   prec.F90
+  utils.F90
   )
 
 # fdf library without MPI support (serial)
 # Plain, serial version
 add_library(fdf-serial ${fdf_sources})
 
+# Use a known top-level place to store the modules, since
+# we have to have two separate versions to link to different
+# targets in the suite (see below)
+
+set_target_properties(
+  fdf-serial
+  PROPERTIES
+  Fortran_MODULE_DIRECTORY "${CMAKE_BINARY_DIR}/mod-fdf-serial"
+)
+
 # For stuff that depends on libfdf, add these include directories
-target_include_directories(fdf-serial INTERFACE ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(fdf-serial INTERFACE "${CMAKE_BINARY_DIR}/mod-fdf-serial")
 
 # In case the user also has MPI enabled, also build this one
 # In principle we should have a stricter CMakeLists.txt file
@@ -23,8 +33,13 @@ if( WITH_MPI )
   # TODO missing features such as -DCLUSTER and -DBLOCKING
   add_library(fdf-mpi ${fdf_sources})
 
+  set_target_properties(
+   fdf-mpi
+   PROPERTIES
+   Fortran_MODULE_DIRECTORY "${CMAKE_BINARY_DIR}/mod-fdf-mpi"
+)
   # For stuff that depends on libfdf, add these include directories
-  target_include_directories(fdf-mpi INTERFACE ${CMAKE_CURRENT_BINARY_DIR})
+  target_include_directories(fdf-mpi INTERFACE "${CMAKE_BINARY_DIR}/mod-fdf-mpi" )
 
   # Add stuff for MPI
   # This enables correct compilation and also correct flags for

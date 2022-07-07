@@ -189,7 +189,7 @@ if(WITH_MPI)
   target_link_libraries(
     tbtrans
     PRIVATE
-    ${PROJECT_NAME}-mpi-int
+    mpi_siesta
   )
 endif()
 
@@ -202,43 +202,23 @@ TARGET_LINK_LIBRARIES(
 
 if (WITH_MPI)
 
-  target_include_directories(tbtrans PUBLIC
-  "${CMAKE_BINARY_DIR}/mod-fdf-mpi")
-
   TARGET_LINK_LIBRARIES(
     tbtrans
     PRIVATE
-    ${PROJECT_NAME}-libfdf-mpi
+    fdf-mpi
 )
 
 else()
 
-  target_include_directories(tbtrans PUBLIC
-    "${CMAKE_BINARY_DIR}/mod-fdf")
-
   TARGET_LINK_LIBRARIES(
     tbtrans
     PRIVATE
-    ${PROJECT_NAME}-libfdf
+    fdf-serial
 )
 endif()
 
 # External libraries.
 
-# 
-# find_package("lapack" REQUIRED)
-# find_package("blas" REQUIRED)
-# set(
-#   lib-deps
-#   "blas::blas"
-#   "lapack::lapack"
-# )
-
-# target_link_libraries(
-#   ${PROJECT_NAME}-siesta
-#   PUBLIC
-#   "${lib-deps}"
-# )
 
 if(WITH_MPI)
   target_link_libraries(
@@ -254,29 +234,26 @@ TARGET_LINK_LIBRARIES(
   "$ENV{LAPACK_LIBS}")
 
 if(WITH_NETCDF)
+
+  TARGET_LINK_LIBRARIES(
+    tbtrans
+    PRIVATE
+    NetCDF::NetCDF_Fortran
+)
+  target_compile_definitions(
+    tbtrans
+    PUBLIC
+    CDF
+    NCDF
+    NCDF_4
+  )
+
   TARGET_LINK_LIBRARIES(
     tbtrans
     PRIVATE
     ${PROJECT_NAME}-libncdf
 )
-  target_compile_definitions(
-  tbtrans
-  PUBLIC
-  CDF
-  NCDF
-  NCDF_4
-  )
-  target_include_directories(
-    tbtrans
-    PRIVATE
-    ${NETCDF_INCLUDEDIR}
-    ${NETCDF_INCLUDE_DIRS}
-)
- target_link_libraries(
-    tbtrans
-    PRIVATE
-   ${NETCDF_LINK_LIBRARIES}
-)
+
 endif()
 
 install(

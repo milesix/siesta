@@ -70,7 +70,7 @@ if (WITH_MPI)
  target_link_libraries(
   ${PROJECT_NAME}-libSiestaXC
   PRIVATE
-  ${PROJECT_NAME}-mpi-int
+  mpi_siesta
   )
   
 endif()
