@@ -85,7 +85,7 @@
 !! correlated electrons and the  magnetic moment
 !! are computed as
 !!
-!! \f$ n = \sum_{m} \left(n^{I \uparrow \uparrow }_{mm} +
+!! \f$ n^{I} = \sum_{m} \left(n^{I \uparrow \uparrow }_{mm} +
 !!                        n^{I \downarrow \downarrow }_{mm} \right) \f$
 !!
 !! \f$ m^{I}_{x} = \sum_{m} \left(n^{I \uparrow \downarrow }_{mm} +
@@ -793,7 +793,7 @@ subroutine occ_proj_dftu
 !    write(6,'(a,3i5,3f12.5)')' occ_proj_dftu: Node, Nodes, ka, magnetic  = ' , &
 ! &    Node, Nodes, ka, magnetic_moment(:,ka)
 !  enddo 
-!  call die()
+!!  call die()
 !! End debugging
 
 ! Deallocate local memory

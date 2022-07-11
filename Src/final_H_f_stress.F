@@ -11,7 +11,7 @@
       CONTAINS
 
       subroutine final_H_f_stress( istep, iscf , SCFconverged )
-      use units, only: eV
+      use units, only: eV, Ang
 
       use files,        only : slabel
 #ifdef NCDF_4

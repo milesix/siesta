@@ -559,7 +559,7 @@ module m_vee_integrals
     ! l = 2: (-2,-1,0,1,2)     => (xy,yz,z2,xz,x2-y2)
     ! l = 3: (-3-2,-1,0,1,2,3) => (y(3x2-y2), xyz, yz2, z3, z(x2-y2), x(x2-3y2))
     ! This order is in agreement with what is implemented in the
-    ! subroutine tlylm in spher_harm.F90
+    ! subroutine rlylm in spher_harm.F90
 
     complex(dp), intent(out) ::    transmat( 2*l_value+1, 2*l_value+1 )
     ! Transformation matrix between the imaginary
@@ -801,13 +801,6 @@ module m_vee_integrals
  &                    trans_inv( m_a, m )        * transmat( mprime, m_b )   * &
  &                    trans_inv( m_ap, m2prime ) * transmat( m3prime, m_bp ) * &
  &                     imag_ints( m_a, m_b, m_ap, m_bp )
-
-!                    real_ints(m,mprime,m2prime,m3prime) =                      &
-! &                    real_ints(m,mprime,m2prime,m3prime)    +                 &
-! &                    trans_inv( m_a, m ) * trans_inv( m_b, mprime )        *  &
-! &                    transmat( m_ap, m2prime ) * transmat( m3prime, m_bp ) *  &
-! &                     imag_ints( m_a, m_b, m_ap, m_bp )
-
                   enddo
                 enddo
               enddo

@@ -353,14 +353,7 @@ subroutine dftu_so_hamil_2( H_dftu_so, fal, stressl )
   use m_occ_proj,      only : number_corr_electrons   
                                          ! Number of correlated electrons 
                                          !    on a given atom
-  use m_occ_proj,      only : magnetic_moment
-                                         ! Magnetic moment
-                                         !    on a given atom
-                                         !    This is not the same as the 
-                                         !    same as the one traditionally 
-                                         !    computed since here we only 
-                                         !    sum over the orbitals of the
-                                         !    correlated shell
+  use units, only: eV, Ang
 
 #ifdef MPI
   use m_mpi_utils, only: globalize_sum
@@ -756,11 +749,7 @@ subroutine dftu_so_hamil_2( H_dftu_so, fal, stressl )
       if (Node .eq. 0 ) then
         if( ka .le. na_u ) then
           E_correc_dc = E_correc_dc +                                    &
- &           0.5_dp * (U-J) * number_corr_electrons(ka)**2 +             &
- &           J / 4.0_dp * ( number_corr_electrons(ka)**2 -               &
- &                          (magnetic_moment(1,ka)**2 +                  &
- &                           magnetic_moment(2,ka)**2 +                  &
- &                           magnetic_moment(3,ka)**2 ) )                
+ &           0.25_dp * (U-J) * number_corr_electrons(ka)
         endif
       else
         E_correc_dc = 0.0_dp
@@ -1229,13 +1218,13 @@ subroutine dftu_so_hamil_2( H_dftu_so, fal, stressl )
  &               real( H_dftu_so_Hubbard(ind,2)*conjg(Dscf_cmplx_2), dp)   +  &
  &               real( H_dftu_so_Hubbard(ind,4)*conjg(Dscf_cmplx_4), dp)   +  &
  &               real( H_dftu_so_Hubbard(ind,3)*conjg(Dscf_cmplx_3), dp) ) +  &
- &    1.0_dp * ( real( H_dftu_so_dc(ind,1)*conjg(Dscf_cmplx_1), dp)        +  &
+ &    0.5_dp * ( real( H_dftu_so_dc(ind,1)*conjg(Dscf_cmplx_1), dp)        +  &
  &               real( H_dftu_so_dc(ind,2)*conjg(Dscf_cmplx_2), dp)        +  &
  &               real( H_dftu_so_dc(ind,4)*conjg(Dscf_cmplx_4), dp)        +  &
  &               real( H_dftu_so_dc(ind,3)*conjg(Dscf_cmplx_3), dp) )
   enddo 
 
-!! For debugging
+! For debugging
 !  do io_local = 1, no_l
 !    do jneig = 1, numh(io_local)
 !      ind = listhptr(io_local) + jneig
@@ -1243,12 +1232,18 @@ subroutine dftu_so_hamil_2( H_dftu_so, fal, stressl )
 !      do ispin = 1, spin%grid
 !        if( abs(real(H_dftu_so(ind,ispin))) .gt. 1.d-4 .or.               &
 ! &          abs(aimag(H_dftu_so(ind,ispin))) .gt. 1.d-4 )                 &
-! &      write(6,'(a,6i5,2f12.5)')                                         &
+! &      write(6,'(a,6i7,2f12.5)')                                         &
 ! &      'dftu_so_hamil_2: Node, Nodes, io, ind, jo, ispin, H_dftu_so = ', &
 ! &       Node, Nodes, io_local, ind, jo, ispin, H_dftu_so(ind,ispin)
 !      enddo 
 !    enddo 
 !  enddo 
+!
+!   do ia = 1, 3
+!     write(6,'(a,i5,3f12.5)')            &
+! &     'dftu_so_hamil_2: ia, stress = ',     &
+! &      ia, stressl(:,ia)
+!   enddo
 !
 !   write(6,'(a,2i5,f12.5)')                           &
 ! &   'dftu_so_hamil_2: Node, Nodes, E_dftu_so    = ', &

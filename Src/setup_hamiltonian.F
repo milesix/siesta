@@ -40,7 +40,7 @@
       use m_dhscf,      only: dhscf
       use m_stress
       use m_energies
-      use parallel, only: Node
+      use parallel, only: Node, Nodes
       use m_steps, only: istp
       use m_ntm
 
@@ -79,7 +79,7 @@
       complex(dp), pointer:: H_so_off(:,:)
 
       complex(dp):: Dc
-      integer :: ind, i, j
+      integer :: ind, i, j, jo
 
 !------------------------------------------------------------------------- BEGIN
 
@@ -177,8 +177,19 @@
 !
 
       if ( spin%SO_offsite ) then
-        do io = 1, maxnh
+!!       For debugging
+!        do io = 1, no_u
+!          do j = 1, numh(io)
+!            ind = listhptr(io) + j
+!            jo = listh(ind)
+!            if( io .eq. jo ) then
+!              H_so_off(ind,*)= cmplx(0.0_dp,0.0_dp,kind=dp)
+!            endif
+!          enddo 
+!        enddo 
+!!       End debugging
 
+        do io = 1, maxnh
 !-------- Eso(u,u)
           Dc = cmplx(Dscf(io,1),Dscf(io,5), dp)
           Eso = Eso + real( H_so_off(io,1)*Dc, dp)
@@ -191,7 +202,6 @@
 !-------- Eso(d,u)
           Dc = cmplx(Dscf(io,7),-Dscf(io,8), dp)
           Eso = Eso + real( H_so_off(io,3)*Dc, dp)
-
         end do
 
       else if ( spin%SO_onsite ) then
@@ -319,11 +329,42 @@
          H(:,8) = H(:,8) - aimag(H_so_off(:,4))
 
 !!        For debugging
-!         do ind = 1, maxnh
-!!           write(6,'(a,i5,8f12.5)')' H-SO = ', ind, H_so_off(ind,:)
-!           write(6,'(a,i5,8f12.5)')' H-SO = ', ind, H(ind,:)
-!         enddo
-!!         stop
+!         do io = 1, no_u
+!           do j = 1, numh(io)
+!             ind = listhptr(io) + j
+!             jo = listh(ind)
+!             write(6,'(a,6i7,8f12.5)') 
+!     .         ' Node, Nodes, io, jo, j, ind, Dscf = ' , 
+!     .           Node, Nodes, io, jo, j, ind, Dscf(ind,:)
+!           enddo 
+!         enddo 
+!         do io = 1, no_u
+!           do j = 1, numh(io)
+!             ind = listhptr(io) + j
+!             jo = listh(ind)
+!             write(6,'(a,6i7,8f12.5)') 
+!     .         ' Node, Nodes, io, jo, j, ind, H-LDAU = ' , 
+!     .           Node, Nodes, io, jo, j, ind, H_dftu_so(ind,:)
+!           enddo 
+!         enddo 
+!         do io = 1, no_u
+!           do j = 1, numh(io)
+!             ind = listhptr(io) + j
+!             jo = listh(ind)
+!             write(6,'(a,6i7,8f12.5)') 
+!     .         ' Node, Nodes, io, jo, j, ind, H-SO = ' , 
+!     .           Node, Nodes, io, jo, j, ind, H_so_off(ind,:)
+!           enddo 
+!         enddo 
+!         do io = 1, no_u
+!           do j = 1, numh(io)
+!             ind = listhptr(io) + j
+!             jo = listh(ind)
+!             write(6,'(a,6i7,8f12.5)') 
+!     .         ' Node, Nodes, io, jo, j, ind, H = ' , 
+!     .           Node, Nodes, io, jo, j, ind, H(ind,:)
+!           enddo 
+!         enddo 
 !!        End debugging
 
       endif
