@@ -137,7 +137,10 @@ include(search_for_xmlf90)
 include(search_for_libpsml)
 include(search_for_gridxc)
 
-
+if (WITH_UTILS)
+  # For STM/ol-stm
+  include(search_for_fftw)
+endif()
 
 
 # For now we add each directory manually.
