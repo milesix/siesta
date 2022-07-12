@@ -181,14 +181,14 @@ target_include_directories(
 # Add -DTBTRANS
 target_compile_definitions(
   tbtrans
-  PUBLIC
+  PRIVATE
   TBTRANS
 )
 
 if(WITH_MPI)
   target_compile_definitions(
   tbtrans
-  PUBLIC
+  PRIVATE
   MPI
   )
 # MPI interfaces
@@ -248,7 +248,7 @@ if(WITH_NETCDF)
 )
   target_compile_definitions(
     tbtrans
-    PUBLIC
+    PRIVATE
     CDF
     NCDF
     NCDF_4
