@@ -12,7 +12,6 @@ module: libpsop.a
 ARCH_MAKE_DEFAULT=fortran.mk
 ARCH_MAKE?=$(ARCH_MAKE_DEFAULT)
 include $(ARCH_MAKE)
-VPATH=.
 #
 OBJFILES= m_psop.o m_kbgen.o m_localgen.o schrodinger.o arw.o \
           psop_params.o 

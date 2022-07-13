@@ -459,14 +459,16 @@ clean:
 	rm -f compinfo.F90 tmp.F90
 	rm -f *.bck *~
 	rm -f aux_*.f aux_*.f90
+	@echo "==> Cleaning internal libraries"
 	(cd fdf ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean)
 	(cd ncps/src ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean)
 	(cd psoplib/src ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean)
-	@if [ -d MPI ] ; then (cd MPI && $(MAKE) clean ) ; fi
-	@if [ -d fdict/obj ] ; then $(MAKE) -C fdict/obj clean ; fi
-	@if [ -d ncdf/obj ] ; then $(MAKE) -C ncdf/obj clean ; fi
-	(cd Libs ; $(MAKE) clean )
-	(cd MatrixSwitch/src ; $(MAKE) clean )
+	if [ -d MPI ] ; then (cd MPI && $(MAKE) \
+                              ARCH_MAKE=$(ARCH_MAKE) clean ) ; fi
+	if [ -d fdict/obj ] ; then $(MAKE) -C fdict/obj clean ; fi
+	if [ -d ncdf/obj ] ; then $(MAKE) -C ncdf/obj clean ; fi
+	(cd Libs ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean ) 
+	(cd MatrixSwitch/src ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean )
 
 
 # DO NOT DELETE THIS LINE - used by make depend

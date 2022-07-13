@@ -34,6 +34,10 @@ cp -p ${configdir}/mk-build/check_for_build_mk.mk ${objdir}
 #
 # Replicate the hierarchy of makefiles
 #
+# First the top-level
+#
+cp -p ${topdir}/Makefile ${objdir}
+#
 (cd $srcdir;
   for i in $(find . -name \[mM\]akefile ) ; do
     relpath=${i%/*}

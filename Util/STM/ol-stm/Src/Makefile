@@ -22,21 +22,23 @@
 #  in the mpi libraries even if we explicitly undefine MPI below.
 #  
 
-OBJDIR=Obj
-
 .SUFFIXES:
 .SUFFIXES: .f .F .o .a .f90 .F90
 
-VPATH:=$(shell pwd)/../../../../Src
-VPATH_GRID:=$(shell pwd)/../../../../Util/Grid
+TOPDIR=.
+MAIN_OBJDIR=.
 
 default: what stm
 
-MAIN_OBJDIR:=$(shell cd -P -- ../../../../\$(OBJDIR) && pwd -P)
-ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
+override WITH_MPI=
+override WITH_NCDF=
 
+VPATH=$(TOPDIR)/Util/STM/ol-stm/Src:$(TOPDIR)/Util/Grid:$(TOPDIR)/Src
+
+ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
 
 #------------- NOTE
 # Special needs for the use of FFTW
@@ -83,11 +85,11 @@ SYSOBJ=$(SYS).o
 
 # Note that machine-specific files are now in top Src directory.
 
-INCFLAGS:=$(NETCDF_INCFLAGS) \
+INCFLAGS+=$(NETCDF_INCFLAGS) \
           $(NCPS_INCFLAGS) \
-          $(PSML_INCFLAGS) $(FDF_INCFLAGS) \
-          $(INCFLAGS)
-INCFLAGS:= $(FFTW_INCFLAGS) $(INCFLAGS)
+          $(PSML_INCFLAGS) $(FDF_INCFLAGS) 
+
+INCFLAGS+= $(FFTW_INCFLAGS) 
 #
 
 LOCAL_OBJS = fftw3_mymod.o extrapolate.o \
@@ -121,8 +123,7 @@ SIESTA_OBJS += m_uuid.o object_debug.o class_Sparsity.o \
 
 ALL_OBJS_STM= $(SIESTA_OBJS) $(LOCAL_OBJS)
 
-m_gridfunc.o: $(VPATH_GRID)/m_gridfunc.F90
-	$(FC) -c $(FFLAGS) $(INCFLAGS)  $(FPPFLAGS) $<
+# m_gridfunc is compiled through the Util/Grid VPATH component
 vacpot.o: m_gridfunc.o
 
 stm: $(FDF_LIBS)  $(NCPS) $(ALL_OBJS_STM)

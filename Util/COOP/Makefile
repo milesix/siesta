@@ -21,8 +21,6 @@
 .SUFFIXES:
 .SUFFIXES: .f .f90 .F .F90 .o
 
-VPATH:=$(shell pwd)/../../Src
-OBJDIR=Obj
 
 default: mprop fat spin_texture
 
@@ -30,9 +28,12 @@ all: mprop dm_creator fat spin_texture
 
 override WITH_MPI=
 
-MAIN_OBJDIR:=$(shell cd -P -- ../../\$(OBJDIR) && pwd -P)
-ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
-include $(ARCH_MAKE)
+TOPDIR=.
+MAIN_OBJDIR=.
+
+VPATH=$(TOPDIR)/Util/COOP:$(TOPDIR)/Src
+
+include $(MAIN_OBJDIR)/arch.make
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 FC_DEFAULT:=$(FC)

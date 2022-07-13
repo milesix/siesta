@@ -340,6 +340,7 @@ NCPS=$(MAIN_OBJDIR)/Src/ncps/src/libncps.a
 NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/Src/ncps/src
 $(NCPS): DO_NCPS
 DO_NCPS:
+	@echo "+++ Compiling internal ncps library"
 	(cd $(MAIN_OBJDIR)/Src/ncps/src ; $(MAKE) -j 1 VPATH="$(TOPDIR)/Src/ncps/src" \
 	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 #--------------------
@@ -380,10 +381,10 @@ MPI_WRAPPERS_INCFLAGS=-I$(MAIN_OBJDIR)/Src/MPI
 $(MPI_WRAPPERS): DO_MPI_WRAPPERS
 DO_MPI_WRAPPERS:
 	(cd $(MAIN_OBJDIR)/Src/MPI ; $(MAKE) -j 1 \
-                    "VPATH=$(TOPDIR)/Src/MPI" \
-	             MAIN_OBJDIR=$(MAIN_OBJDIR) \
-		    "FPPFLAGS=$(FPPFLAGS)" \
-                    "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" )
+                     VPATH="$(TOPDIR)/Src/MPI" \
+	             ARCH_MAKE="$(ARCH_MAKE)" \
+		     FPPFLAGS="$(FPPFLAGS)" \
+                     FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" )
 
 
 # Define default compilation methods

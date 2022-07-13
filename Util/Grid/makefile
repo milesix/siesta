@@ -11,13 +11,16 @@
 .SUFFIXES: 
 .SUFFIXES: .f .F .o .a  .f90 .F90
 #
-VPATH:=$(shell pwd)/../../Src
-OBJDIR=Obj
 #
 all: grid2cdf cdf2xsf cdf2grid grid2val grid2cube grid_rotate g2c_ng cdf_laplacian
 #
-include ../../$(OBJDIR)/arch.make
-include ../../$(OBJDIR)/check_for_build_mk.mk
+TOPDIR=.
+MAIN_OBJDIR=.
+
+VPATH=$(TOPDIR)/Util/Grid:$(TOPDIR)/Src
+
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 #
 # This is needed on some systems to avoid loading the parallel libraries, which
 # sometimes force running on queuing systems
@@ -36,7 +39,7 @@ FC:=$(FC_SERIAL)         # Make it non-recursive
 # NETCDF_INCFLAGS=-I$(NETCDF_ROOT)/include
 # NETCDF_LIBS=-L$(NETCDF_ROOT)/lib -lnetcdf
 #
-INCFLAGS:= $(NETCDF_INCFLAGS) $(INCFLAGS)
+INCFLAGS+= $(NETCDF_INCFLAGS) 
 #------------------
 grid2cdf: grid2cdf.o
 	$(FC) $(LDFLAGS) -o $@  grid2cdf.o  $(NETCDF_LIBS)

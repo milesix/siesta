@@ -28,20 +28,17 @@
 
 default: fcbuild vibra
 
-# You should have compiled Siesta in the main Src directory (or
-# in an architecture-specific object directory) before attempting 
-# to compile the Vibra package.
-
-VPATH:=$(shell pwd)/../../../Src
-OBJDIR=Obj
-
 override WITH_MPI=
 override WITH_NETCDF=
 
-MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
+MAIN_OBJDIR=.
+TOPDIR=.
+
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
+VPATH=$(TOPDIR)/Util/Vibra/Src:$(TOPDIR)/Src
 
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
@@ -61,7 +58,7 @@ COMMON_OBJS = recoor.o
 BUILD_OBJS = fcbuild.o $(COMMON_OBJS)
 VIBRA_OBJS = vibra.o hermdp.o klines.o outbands.o $(COMMON_OBJS)
 
-INCFLAGS:= $(FDF_INCFLAGS) $(INCFLAGS)
+INCFLAGS+= $(FDF_INCFLAGS) 
 
 # Build dependencies
 $(BUILD_OBJS): $(FDF_LIBS) $(SIESTA_OBJS)
