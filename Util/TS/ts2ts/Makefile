@@ -59,6 +59,10 @@ clean:
 	@echo "==> Cleaning object, library, and executable files"
 	rm -f $(EXE) *.o  *.a *.mod
 
+PROGS:= ts2ts
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+
 # Dependencies
 .PHONY: dep
 dep:

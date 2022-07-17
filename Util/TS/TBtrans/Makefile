@@ -302,6 +302,10 @@ clean:
 	-rm -rf ./fdict
 	-rm -rf ./ncdf
 
+PROGS:= tbtrans
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+
 # Dependencies
 .PHONY: dep
 dep:

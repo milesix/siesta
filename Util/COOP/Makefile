@@ -21,10 +21,8 @@
 .SUFFIXES:
 .SUFFIXES: .f .f90 .F .F90 .o
 
-
-default: mprop fat spin_texture
-
-all: mprop dm_creator fat spin_texture
+PROGS:= mprop fat dm_creator spin_texture
+default: $(PROGS)
 
 override WITH_MPI=
 
@@ -81,6 +79,9 @@ spin_texture: $(TEXTURE_OBJS) spin_texture.o
 
 clean:
 	rm -f *.o *.mod mprop dm_creator fat spin_texture
+
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 # DO NOT DELETE THIS LINE - used by make depend
 io.o: m_io.o

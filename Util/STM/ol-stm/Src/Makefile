@@ -135,6 +135,11 @@ clean:
 	rm -f stm *.o  *.a
 	rm -f *.mod
 
+PROGS:= stm
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+	cp -p stm $(SIESTA_INSTALL_DIRECTORY)/bin/wfs2ldos
+
 # Dependencies
 .PHONY: dep
 dep:

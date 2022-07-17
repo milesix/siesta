@@ -47,6 +47,9 @@ clean:
 	rm -f psml2psf *.o  *.a *.pcl *.pc *.mod
 	rm -f *.mod
 #
+PROGS:= psml2psf
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 
 

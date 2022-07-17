@@ -172,6 +172,9 @@ clean:
 	-rm -rf ./fdict
 	-rm -rf ./ncdf
 
+PROGS:= tscontour
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 # DO NOT DELETE THIS LINE - used by make depend
 alloc_error_report.o: parallel.o

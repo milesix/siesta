@@ -95,6 +95,10 @@ clean:
 	rm -f *.mod
 	rm -f _tmp_deps deps.list  protomake*
 
+PROGS:= gen-basis ioncat
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+#
 ALL_OBJS=$(OBJS_IONCAT) $(OBJS_GEN-BASIS)
 
 DEP_OBJS= $(DEPS_GEN-BASIS) $(DEPS_IONCAT)

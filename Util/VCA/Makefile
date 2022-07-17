@@ -31,7 +31,7 @@ OBJDIR=Obj
 override WITH_MPI=
 override WITH_NETCDF=
 
-default: what mixps fractional
+default: mixps fractional
 
 TOPDIR=.
 MAIN_OBJDIR=.
@@ -52,14 +52,6 @@ INCFLAGS:=$(NETCDF_INCFLAGS)\
           $(PSML_INCFLAGS) \
           $(FDF_INCFLAGS) \
           $(INCFLAGS)
-what:
-	@echo
-	@echo "Compilation architecture to be used: ${SIESTA_ARCH}"
-	@echo "If this is not what you want, create the right"
-	@echo "arch.make file using the models in Sys"
-	@echo
-	@echo "Hit ^C to abort..."
-	@sleep 2
 
 SYSOBJ=$(SYS).o
 
@@ -89,6 +81,10 @@ clean:
 	@echo "==> Cleaning object, library, and executable files"
 	rm -f mixps fractional *.o  *.a
 	rm -f *.mod
+
+PROGS:= mixps fractional
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 DEP_OBJS= $(MIXPS_DEPS) $(FRACTIONAL_DEPS)
 LOCAL_OBJS=$(FRACTIONAL_LOCAL_OBJS) $(MIXPS_LOCAL_OBJS)

@@ -26,7 +26,8 @@
 
 .PHONY: default dep clean
 
-default: fcbuild vibra
+PROGS:= fcbuild vibra
+default: $(PROGS)
 
 override WITH_MPI=
 override WITH_NETCDF=
@@ -75,6 +76,9 @@ vibra: $(FDF_LIBS) $(COMP_LIBS) $(SIESTA_OBJS) $(VIBRA_OBJS)
 clean: 
 	@echo "==> Cleaning object and executable files"
 	rm -f fcbuild vibra *.o *.mod
+
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 
 # Dependencies

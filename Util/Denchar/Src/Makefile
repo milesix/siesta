@@ -31,7 +31,7 @@ MAIN_OBJDIR=.
 
 VPATH=$(TOPDIR)/Util/Denchar/Src:$(TOPDIR)/Src
 
-default: what denchar
+default: denchar
 
 override WITH_MPI=
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
@@ -56,14 +56,6 @@ FPPFLAGS := $(FPPFLAGS) $(DENCHAR_UNDEF)
 # Uncomment the following line for debugging support
 #FFLAGS=$(FFLAGS_DEBUG)
 
-what:
-	@echo
-	@echo "Compilation architecture to be used: ${SIESTA_ARCH}"
-	@echo "If this is not what you want, create the right"
-	@echo "arch.make file using the models in Sys"
-	@echo
-	@echo "Hit ^C to abort..."
-	@sleep 2
 
 SYSOBJ=$(SYS).o
 
@@ -109,6 +101,10 @@ clean:
 	rm -f denchar *.o  *.a
 	rm -f *.mod
 	rm -f _tmp_deps deps.list _deps.list* protomake*
+
+PROGS:= denchar
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 # Dependencies
 .PHONY: dep

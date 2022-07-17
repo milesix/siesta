@@ -127,6 +127,9 @@ clean:
 	-rm -rf ./fdict
 	-rm -rf ./NCDF
 
+PROGS:= tshs2tshs
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 # Dependencies
 .PHONY: dep

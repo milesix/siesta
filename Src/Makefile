@@ -470,6 +470,10 @@ clean:
 	(cd Libs ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean ) 
 	(cd MatrixSwitch/src ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean )
 
+PROGS:= siesta
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+
 
 # DO NOT DELETE THIS LINE - used by make depend
 Fstack.o: basic_type.inc

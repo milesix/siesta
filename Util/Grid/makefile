@@ -12,7 +12,7 @@
 .SUFFIXES: .f .F .o .a  .f90 .F90
 #
 #
-all: grid2cdf cdf2xsf cdf2grid grid2val grid2cube grid_rotate g2c_ng cdf_laplacian
+dummy:
 #
 TOPDIR=.
 MAIN_OBJDIR=.
@@ -21,6 +21,13 @@ VPATH=$(TOPDIR)/Util/Grid:$(TOPDIR)/Src
 
 include $(MAIN_OBJDIR)/arch.make
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
+PROGS:=grid2val grid2cube grid_rotate g2c_ng grid_supercell v_info
+ifeq ($(WITH_NETCDF),1)
+ PROGS+= grid2cdf cdf2xsf cdf2grid cdf_laplacian cdfget cdf_diff cdf_fft
+endif
+default: $(PROGS)
+
 #
 # This is needed on some systems to avoid loading the parallel libraries, which
 # sometimes force running on queuing systems
@@ -95,10 +102,12 @@ grid_supercell: grid_supercell.o
 #
 #------------------
 clean: 
-	rm -f *.o grid2cdf grid2val grid2cube cdf2grid cdf2xsf *.o *.*d
-	rm -f cdf_laplacian g2c_ng grid_rotate grid_supercell v_info
+	rm -f *.o *.*d
+	rm -f $(PROGS)
 #
-
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+#
 
 
 

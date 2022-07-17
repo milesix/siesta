@@ -52,6 +52,10 @@ clean:
 	rm -f macroave permute *.o  *.a *.pcl *.pc *.mod
 	rm -f *.mod
 #
+PROGS:= macroave permute
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+
 macroave.o: defs_basis.o interpolation.o m_fft_gpfa.o
 thetaft.o: defs_basis.o
 

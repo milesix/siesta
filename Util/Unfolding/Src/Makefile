@@ -126,6 +126,10 @@ clean:
 	@echo "==> Cleaning object, library, and executable files"
 	-rm -f unfold *.o *.a *.mod
 
+PROGS:= unfold
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+
 # Dependencies
 .PHONY: dep
 dep:
