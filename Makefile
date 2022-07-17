@@ -21,15 +21,16 @@ UTILS = Util/Denchar/Src \
 	Util/Macroave/Src \
 	Util/STM/ol-stm/Src \
 	Util/Unfolding/Src \
-	Pseudo/converters/psml2psf
+	Pseudo/converters/psml2psf \
+        Pseudo/vnl-operator
 
 .PHONY: utils clean_utils install_utils siesta $(UTILS)
 .PHONY: install_siesta create_install_directory
 
 siesta:
-	(cd Src; make)
+	(cd Src; $(MAKE))
 clean_siesta:
-	(cd Src; make clean)
+	(cd Src; $(MAKE) clean)
 #
 utils:  MODE=
 utils:  $(UTILS)
@@ -38,14 +39,14 @@ clean_utils: MODE=clean
 clean_utils: $(UTILS)
 
 install_utils: create_install_directory
-install_utils: MODE=install
+install_utils: MODE=SIESTA_INSTALL_DIRECTORY="$(SIESTA_INSTALL_DIRECTORY)" install
 install_utils: $(UTILS)
 
 $(UTILS):
 	$(MAKE) -C $@ $(MODE)
 
 install_siesta: create_install_directory 
-	(cd Src; make install)
+	(cd Src; $(MAKE) SIESTA_INSTALL_DIRECTORY="$(SIESTA_INSTALL_DIRECTORY)" install)
 
 create_install_directory:
 	mkdir -p $(SIESTA_INSTALL_DIRECTORY)/bin

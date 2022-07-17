@@ -37,12 +37,8 @@ MOD_OBJS= m_getopts.o
 COM_OBJS=$(OBJS) 
 ALL_OBJS=$(MOD_OBJS) $(COM_OBJS)
 #
-$(COM_OBJS): 
-#
 XC=$(GRIDXC_LIBS)
 #
-what:
-	echo "VPATH: " $(VPATH)
 psop:   $(NCPS) $(PSOP) $(PSML_LIBS) $(XC) $(XMLF90_LIBS) $(ALL_OBJS)
 	$(FC) $(FFLAGS) $(LDFLAGS) -o psop $(ALL_OBJS) \
         $(NCPS) $(PSOP) $(PSML_LIBS) $(XC) $(XMLF90_LIBS)
@@ -57,6 +53,9 @@ clean:
 	rm -f psop *.o  *.a *.pcl *.pc *.mod
 	rm -f *.mod
 #
+PROGS:= psop
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 
 
