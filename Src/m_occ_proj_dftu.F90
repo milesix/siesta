@@ -687,6 +687,25 @@ subroutine occ_proj_dftu
 
 !             Transform the density matrix between the two atomic orbital
 !             in a complex (2x2) matrix 
+!             When SO coupling is considered, the density matrix and the 
+!             Hamiltonian must be globally Hermitian 
+!             (see last sentence of Section 7 of the
+!             technical SIESTA paper in JPCM 14, 2745 (2002).
+!             However, in diag3k, the sign of the imaginary part of the 
+!             (up,down) matrix elements is changed:
+!             Dnew(ind,1) = Dnew(ind,1) + real(D11,dp)
+!             Dnew(ind,2) = Dnew(ind,2) + real(D22,dp)
+!             Dnew(ind,3) = Dnew(ind,3) + real(D12,dp)
+!             Dnew(ind,4) = Dnew(ind,4) - aimag(D12)
+!             Dnew(ind,5) = Dnew(ind,5) + aimag(D11)
+!             Dnew(ind,6) = Dnew(ind,6) + aimag(D22)
+!             Dnew(ind,7) = Dnew(ind,7) + real(D21,dp)
+!             Dnew(ind,8) = Dnew(ind,8) + aimag(D21)
+!             In the subroutines to compute the corresponding DFT+U 
+!             matrix elements:
+!             - We change locally the sign of this imaginary part, so the
+!               density matrix recovers all its properties
+!             - The occupations are computed with the "good" DM.
               Dij(1) =cmplx( Di(jo,1), Di(jo,5),           kind = dp )
               Dij(2) =cmplx( Di(jo,2), Di(jo,6),           kind = dp )
               Dij(3) =cmplx( Di(jo,3), -1.0_dp * Di(jo,4), kind = dp )

@@ -235,15 +235,36 @@
 !     Non-SCF part of total energy
       call update_E0()
 
-! Hubbard term for LDA+U: energy, forces, stress and matrix elements ....
+! Hubbard term for DFT+U: energy, forces, stress and matrix elements ....
       if( switch_dftu ) then
         call re_alloc(fal, 1, 3, 1, na_u, 'fal', 'setup_hamiltonian')      
         if ( spin%NCol ) then
-          call die('LDA+U cannot be used with non-collinear spin.')
+          call die('DFT+U cannot be used with non-collinear spin.')
         else if ( spin%SO ) then
           H_dftu_so => val(H_dftu_so_2D)
           call dftu_so_hamil( H_dftu_so, fal, stressl )
+!        When SO coupling is considered, the density matrix and the Hamiltonian
+!        must be globally Hermitian (see last sentence of Section 7 of the 
+!        technical SIESTA paper in JPCM 14, 2745 (2002).
+!        However, in diag3k, the sign of the imaginary part of the (up,down) 
+!        matrix elements is changed:
+!        Dnew(ind,1) = Dnew(ind,1) + real(D11,dp)
+!        Dnew(ind,2) = Dnew(ind,2) + real(D22,dp)
+!        Dnew(ind,3) = Dnew(ind,3) + real(D12,dp)
+!        Dnew(ind,4) = Dnew(ind,4) - aimag(D12)
+!        Dnew(ind,5) = Dnew(ind,5) + aimag(D11)
+!        Dnew(ind,6) = Dnew(ind,6) + aimag(D22)
+!        Dnew(ind,7) = Dnew(ind,7) + real(D21,dp)
+!        Dnew(ind,8) = Dnew(ind,8) + aimag(D21)
+!        In the subroutines to compute the corresponding DFT+U matrix elements:
+!        - We change locally the sign of this imaginary part, so the 
+!          density matrix recovers all its properties
+!        - The Potential matrix elements are computed with the "good" DM.
+!        - Here, at the time of adding up the new Hamiltonian matrix elements
+!          to the potential, we change the sign of the imaginary part of the
+!          (up,down) component
 
+!        
 !------- H(u,u)
          H(:,1) = H(:,1) + real(H_dftu_so(:,1), dp)
          H(:,5) = H(:,5) + dimag(H_dftu_so(:,1))
@@ -343,7 +364,7 @@
 !             ind = listhptr(io) + j
 !             jo = listh(ind)
 !             write(6,'(a,6i7,8f12.5)') 
-!     .         ' Node, Nodes, io, jo, j, ind, H-LDAU = ' , 
+!     .         ' Node, Nodes, io, jo, j, ind, H-DFTU = ' , 
 !     .           Node, Nodes, io, jo, j, ind, H_dftu_so(ind,:)
 !           enddo 
 !         enddo 

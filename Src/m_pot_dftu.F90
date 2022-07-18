@@ -914,6 +914,24 @@ subroutine dftu_so_hamil_2( H_dftu_so, fal, stressl )
 
 !         Store in complex format the density matrix between
 !         orbitals mu and nu
+!         When SO coupling is considered, the density matrix and the Hamiltonian
+!         must be globally Hermitian (see last sentence of Section 7 of the
+!         technical SIESTA paper in JPCM 14, 2745 (2002).
+!         However, in diag3k, the sign of the imaginary part of the (up,down)
+!         matrix elements is changed:
+!         Dnew(ind,1) = Dnew(ind,1) + real(D11,dp)
+!         Dnew(ind,2) = Dnew(ind,2) + real(D22,dp)
+!         Dnew(ind,3) = Dnew(ind,3) + real(D12,dp)
+!         Dnew(ind,4) = Dnew(ind,4) - aimag(D12)
+!         Dnew(ind,5) = Dnew(ind,5) + aimag(D11)
+!         Dnew(ind,6) = Dnew(ind,6) + aimag(D22)
+!         Dnew(ind,7) = Dnew(ind,7) + real(D21,dp)
+!         Dnew(ind,8) = Dnew(ind,8) + aimag(D21)
+!         In the subroutines to compute the corresponding DFT+U matrix elements:
+!         - We change locally the sign of this imaginary part, so the
+!           density matrix recovers all its properties
+!         - The Potential matrix elements are computed with the "good" DM.
+ 
           Dscf_cmplx_1 = cmplx(Di(jo,1),Di(jo,5),  dp)
           Dscf_cmplx_2 = cmplx(Di(jo,2),Di(jo,6),  dp)
           Dscf_cmplx_3 = cmplx(Di(jo,3),-Di(jo,4), dp)
@@ -1207,12 +1225,17 @@ subroutine dftu_so_hamil_2( H_dftu_so, fal, stressl )
 
   E_dftu_so   = 0.0_dp
   do ind = 1, maxnh
+!   Note the change in the imaginary part of the (up,down) component,
+!   as discussed above
     Dscf_cmplx_1 = cmplx(Dscf(ind,1),Dscf(ind,5), dp)
     Dscf_cmplx_2 = cmplx(Dscf(ind,2),Dscf(ind,6), dp)
     Dscf_cmplx_3 = cmplx(Dscf(ind,3),-Dscf(ind,4), dp)
     Dscf_cmplx_4 = cmplx(Dscf(ind,7),Dscf(ind,8), dp)
 !   Compute the energy according to the Equations developed in
 !   the doxygen documentation
+!   Here, we are computing the trace of the the potential times the 
+!   density matrix, considering that both of them are (2x2) matrices
+!   and the global hermitian of the density matrix
     E_dftu_so = E_dftu_so +                                                   &
  &    0.5_dp * ( real( H_dftu_so_Hubbard(ind,1)*conjg(Dscf_cmplx_1), dp)   +  &
  &               real( H_dftu_so_Hubbard(ind,2)*conjg(Dscf_cmplx_2), dp)   +  &
