@@ -294,7 +294,9 @@ ifeq ($(WITH_GRIDXC),1)
     include $(GRIDXC_ROOT)/share/org.siesta-project/gridxc_$(GRIDXC_CONFIG_PREFIX).mk
   endif
 endif
-
+#
+EXTRA_FPPFLAGS:= $(foreach flag,$(WITH_EXTRA_FPPFLAGS),$(DEFS_PREFIX)-D$(flag))
+FPPFLAGS+=$(EXTRA_FPPFLAGS)
 #
 # Built-in libraries
 #

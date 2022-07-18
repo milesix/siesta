@@ -511,7 +511,7 @@ build directory (\shell{Obj}), follow the following steps:
 \item
 From within the build directory, issue the command:
 \begin{shellexample}
-       $ sh ../Src/obj_setup.sh
+       $ sh ../Config/obj_setup.sh
 \end{shellexample}
 in order to populate it with with the minimal scaffolding of makefiles.
 
@@ -527,8 +527,7 @@ Then, again from the build directory, execute
 \end{shellexample}
 \end{enumerate}
 
-
-The executable should work for any job. (This is not exactly true,
+to compile \siesta\ . The executable should work for any job. (This is not exactly true,
 since some of the parameters in the atomic routines are still
 hardwired, see \shell{Src/atmparams.f}, but those would seldom need to
 be changed.)
@@ -540,12 +539,32 @@ Otherwise, the \shell{VPATH} mechanism used by \shell{make} to compile \siesta\ 
 directory will get confused, and the compilation may fail or produce an invalid
 \program{siesta} binary.
 
-To compile utility programs (those living in the top-level \shell{Util}
-directory), you can simply use the provided makefiles: go to the \shell{Util}
-sub-directory containing the relevant utility source code, and execute \shell{make}
-as appropriate.  The resulting utility executable (and utility object files)
-will be created in that very same utility sub-directory from where \shell{make} was
-invoked.
+To compile utility programs (those living in the top-level
+\shell{Util} directory), you can simply use the provided makefiles: go
+to the \shell{Obj/Util} sub-directory, which was also created by the
+invokation of the \shell{obj\_setup.sh} script mentioned earlier, and
+type
+
+\begin{shellexample}
+       $ make utils
+\end{shellexample}
+
+It is also possible to type \shell{make} in the appropriate
+subdirectories of \shell{Obj/Util} to compile single utility programs,
+as needed.
+
+Optionally, you can install the executables. You should define the
+variable \shell{SIESTA\_INSTALL\_DIRECTORY} in your \file{arch.make}
+file, and then type:
+
+\begin{shellexample}
+       $ make install
+\end{shellexample}
+
+The executables will be stored in
+\shell{SIESTA\_INSTALL\_DIRECTORY}/bin. If the installation variable is
+not defined, the \file{local\_install} subdirectory of the build
+directory will be used as a staging area for executables.
 
 \subsubsection{Advanced compilation and multiple targets}
 \label{sec:advanced-compilation}
@@ -557,7 +576,7 @@ main difference being that the first command will need to use a correct path
 directory you will need to execute
 
 \begin{shellexample}
-       $ sh <path/to/Src>/obj_setup.sh
+       $ sh <path/to/Config>/obj_setup.sh
 \end{shellexample}
 
 Note also that your \file{arch.make} file needs to be in that chosen build directory
@@ -567,36 +586,6 @@ Since compilations done in separate build directories are independent, one can
 compile as many different version of the \program{siesta} executable as needed (e.g.,
 with different compilers, levels of optimization, serial/parallel, debug, etc.\@)
 by appropriately defining different \file{arch.make} files in each build directory.
-
-If \siesta\ is not compiled from the default \shell{Obj} directory, when you compile your
-utility programs you will need to specify the correct \shell{OBJDIR} option:
-
-\begin{shellexample}
-       $ make OBJDIR=ObjName
-\end{shellexample}
-
-where \shell{ObjName} is the path to the \siesta\ build directory of your choice
-\emph{relative} to the \siesta\ top directory.
-E.g., if you already compiled \siesta\ from the build directory
-\shell{Obj/intel/parallel/2021.2}, and you want to compile \program{denchar}, you need to
-
-\begin{shellexample}
-       $ cd Util/Denchar/Src
-       $ make OBJDIR=Obj/intel/parallel/2021.2
-\end{shellexample}
-
-Note that, irrespective of the value of the \shell{OBJDIR} parameter, the resulting
-utility executable and object files will be created in the utility
-sub-directory from where \shell{make} is invoked (\shell{Util/Denchar/Src} in the example
-above), and that they will be overwritten if a different \shell{OBJDIR} is later used.
-There is currently no support for having different coexisting compiled versions
-of a given utility program. Before attempting to recompile a utility program,
-please remember to execute
-\begin{shellexample}
-       $ make clean
-\end{shellexample}
-from the corresponding utility sub-directory
-(and with the appropriate \shell{OBJDIR} option, if needed).
 
 
 \subsection{The arch.make file}
@@ -633,23 +622,6 @@ In addition, compilations with \shell{-pedantic} flag are no longer possible.
 \footnote{For more details on this, see the 
 \href{https://gitlab.com/siesta-project/siesta/-/issues/130}
 {issue discussion in the SIESTA project}. }
-
-% You can also get
-% inspiration by looking at the actual \file{arch.make} examples in
-% the \shell{Src/Sys} subdirectory. If you intend to create a parallel
-% version of \siesta, make sure you have all the extra support libraries
-% (\program{MPI}, \program{ScaLAPACK}, \program{blacs}\dots) (see Sec.~\ref{sec:parallel}).
-  
-% Optionally, the command \shell{../Src/configure} will start an
-% automatic scan of your system and try to build an \file{arch.make}
-% for you. Please note that the configure script might need some help in
-% order to find your Fortran compiler, and that the created
-% \file{arch.make} may not be optimal, mostly in regard to compiler
-% switches and preprocessor definitions, but the process should provide
-% a reasonable first version. Type \shell{../Src/configure --help} to
-% see the flags understood by the script, and take a look at the
-% \shell{Src/Confs} subdirectory for some examples of their explicit
-% use. 
 
 
 \subsection{Debug options}

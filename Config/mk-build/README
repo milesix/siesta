@@ -8,6 +8,11 @@ information, which is structured in four sections:
 A) Features needed.
 
 They are selected by setting the 'WITH_XXX' variables to 1.
+It is also possible to define the variable
+
+   WITH_EXTRA_FPPFLAGS= SIESTA__FEATURE_X SIESTA__FEATURE_Y HAVE_Z
+
+containing extra definitions for further manual control.
 
 B) Symbols related to location of libraries.
 
@@ -37,6 +42,4 @@ the 'default' target line was placed *after* including the arch.make
 file. The 'atom.o' dependency line in the mn-intel.mk helper file
 forced the creation of 'atom.o', which was wrong.
 To fix this, the 'default' target line has to come near the top of the makefile.
-
-This framework works for versions of Siesta >= 4.1
 

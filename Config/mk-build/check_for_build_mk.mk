@@ -9,5 +9,5 @@ ifndef BUILD_MK_H__
     $(error --- )
   endif
 else
-    $(info ** Using build.mk )
+#    $(info ** Using build.mk )
 endif
