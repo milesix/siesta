@@ -1,7 +1,7 @@
 default: siesta
 
-TOPDIR=/Users/ag/code/GITLAB/Siesta/garalb
-MAIN_OBJDIR=/Users/ag/code/GITLAB/Siesta/garalb/_util
+TOPDIR=.
+MAIN_OBJDIR=.
 include $(MAIN_OBJDIR)/arch.make
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
@@ -50,6 +50,8 @@ install_siesta: create_install_directory
 
 create_install_directory:
 	mkdir -p $(SIESTA_INSTALL_DIRECTORY)/bin
+	mkdir -p $(SIESTA_INSTALL_DIRECTORY)/lib
 
 install: install_siesta install_utils
 clean: clean_siesta clean_utils
+	rm -rf local_install

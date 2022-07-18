@@ -2,12 +2,14 @@ New mechanism for building.
 
 The file 'build.mk' contains the logic for building Siesta. It
 provides low-level code to act on the user-level specification
-information, which is structured in four sections:
+information, which is typically in the file arch.make, and structured
+in four sections:
 
 -------------------
 A) Features needed.
 
 They are selected by setting the 'WITH_XXX' variables to 1.
+
 It is also possible to define the variable
 
    WITH_EXTRA_FPPFLAGS= SIESTA__FEATURE_X SIESTA__FEATURE_Y HAVE_Z
@@ -27,10 +29,9 @@ D) Specific needs for certain files (for example, compilation without optimizati
 
 -------------------
 
-These sections could be completed in-situ in the file, but the
-recommended practice is to put them in an 'arch.make' file that in
-turn, at its bottom, includes this file (this 'reversed role' is
-needed for backwards compatibility of makefile hierarchies).
+The contents of the build.mk file should be included after 'arch.make'
+has been processed, either with a separate 'include' or by inserting
+appropriate lines in arch.make itself.
 
 Examples of arch.make files can be found in the 
 sample-arch-makes directory. 

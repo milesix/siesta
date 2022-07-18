@@ -8,21 +8,6 @@
 #
 # Makefile for stand-alone Gen-basis and ioncat
 #
-# The idea is to use the code in the top Src directory as much as possible.
-# This is achieved by the VPATH directive below.
-# Other points to note, until we switch to a better building system:
-#
-#  The arch.make file is supposed to be in $(OBJDIR). This is normally
-#  the top Obj, but if you are using architecture-dependent build directories
-#  you might want to change this. (If you do not understand this, you do not
-#  need to change anything. Power users can do "make OBJDIR=Whatever".)
-#
-#  If your main Siesta build used an mpi compiler, you might need to
-#  define an FC_SERIAL symbol in your top arch.make, to avoid linking
-#  in the mpi libraries even if we explicitly undefine MPI below.
-
-OBJDIR=Obj
-
 .SUFFIXES:
 .SUFFIXES: .f .F .o .a  .f90 .F90
 
@@ -33,6 +18,7 @@ default: gen-basis ioncat
 
 override WITH_MPI=
 override WITH_NCDF=
+override WITH_FLOOK=
 
 VPATH=$(TOPDIR)/Util/Gen-basis:$(TOPDIR)/Src
 

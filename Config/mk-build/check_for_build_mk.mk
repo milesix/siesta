@@ -1,3 +1,5 @@
+include $(MAIN_OBJDIR)/build.mk
+
 ifndef BUILD_MK_H__
   ifndef IGNORE_BUILD_MK
     $(info ** You should include build.mk in your arch.make)

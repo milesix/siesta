@@ -11,14 +11,14 @@
 default: module_built 
 module_built: libmpi_f90.a
 #
-# This makefile can also be used "remotely", so we allow
-# for an external specification of the (relative) location 
-# of the arch.make file.
+TOPDIR=.
+MAIN_OBJDIR=.
 #
-ARCH_MAKE_DEFAULT=dummy_arch.make
-ARCH_MAKE?=$(ARCH_MAKE_DEFAULT)
-include $(ARCH_MAKE)
-#
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
+VPATH=$(TOPDIR)/Src/MPI
+
 #
 TEMPLATES= mpi__type_s.f90 mpi__type_sv.f90 mpi__type_v.f90 mpi__type_vs.f90
 #

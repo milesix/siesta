@@ -6,9 +6,14 @@
 
 module: libMatrixSwitch.a
 
-ARCH_MAKE_DEFAULT=../../arch.make
-ARCH_MAKE?=$(ARCH_MAKE_DEFAULT)
-include $(ARCH_MAKE)
+TOPDIR=.
+MAIN_OBJDIR=.
+#
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
+VPATH=$(TOPDIR)/Src/MatrixSwitch/src
+
 
 # Add -DSLAP for MPI compilations only
 #

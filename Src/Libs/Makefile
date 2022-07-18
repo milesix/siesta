@@ -8,8 +8,13 @@
 
 default: libsiestaLAPACK.a libsiestaBLAS.a
 
-ARCH_MAKE?=../arch.make
-include $(ARCH_MAKE)
+TOPDIR=.
+MAIN_OBJDIR=.
+#
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
+VPATH=$(TOPDIR)/Src/Libs
 
 ###########
 # These are now the preferred complete BLAS and LAPACK

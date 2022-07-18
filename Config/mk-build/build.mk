@@ -1,7 +1,8 @@
 #
-# This file (build.mk) takes care of the low-level details It needs to
-# be included at the *bottom* of the users' arch.make file using the
-# (uncommented) lines:
+# This file (build.mk) takes care of the low-level details for
+# building.  It needs to be included after the users' arch.make file,
+# either with an explicit separate include, or maybe using the
+# (uncommented) lines *at the end* of the arch.make file:
 #
 #SELF_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 #include $(SELF_DIR)build.mk
@@ -53,6 +54,8 @@ WITH_GRIDXC=1
 
 # WITH_GRID_SP=
 # WITH_LEGACY_GRIDXC_INSTALL=
+
+# WITH_EXTRA_FPPFLAGS=
 
 #===========================================================
 # Symbols for locating the appropriate libraries
@@ -116,7 +119,7 @@ WITH_GRIDXC=1
 #FPP = $(FC) -E -P -x c
 
 # Some compilers (notably IBM's) are not happy with the standard syntax for
-# definition of preprocessor symbols (-DSOME_SYMBOL), and thy need a prefix
+# definition of preprocessor symbols (-DSOME_SYMBOL), and they need a prefix
 # (i.e. -WF,-DSOME_SYMBOL). This is used in some utility makefiles. Typically
 # this need not be defined.
 #DEFS_PREFIX = -WF,
@@ -177,7 +180,7 @@ ifeq ($(WITH_EXTERNAL_ELPA),1)
    ELPA_LIB = -L$(ELPA_ROOT)/lib -lelpa
    LIBS +=$(ELPA_LIB) 
 endif
-# ---- ELPA configuration -----------
+# ---- end of ELPA configuration -----------
 
 
 ifeq ($(WITH_NETCDF),1)
@@ -298,18 +301,6 @@ endif
 EXTRA_FPPFLAGS:= $(foreach flag,$(WITH_EXTRA_FPPFLAGS),$(DEFS_PREFIX)-D$(flag))
 FPPFLAGS+=$(EXTRA_FPPFLAGS)
 #
-# Built-in libraries
-#
-# Each of these snippets will define XXX_INCFLAGS and XXX_LIBS (or simply XXX, for
-# backwards compatibility) for the "internal" libraries. Their use elsewhere is thus
-# very similar to that of external libraries.
-#
-# Note the use of variables that are inherited from the client makefiles:
-#
-# MAIN_OBJDIR: The place where the arch.make file resides
-# ARCH_MAKE:   The absolute path name of the arch.make file
-# TOPDIR:      The top distribution directory
-#
 # Truly external libraries can be phony targets
 #
 .PHONY: $(PSML_LIBS)
@@ -324,18 +315,19 @@ $(XMLF90_LIBS):
 $(GRIDXC_LIBS):
 	@echo ">>> GRIDXC_LIBS: $(GRIDXC_LIBS)"
 #
-.PHONY: 
+# Built-in libraries
 #
+# Each of these snippets will define XXX_INCFLAGS and XXX_LIBS (or simply XXX, for
+# backwards compatibility) for the "internal" libraries. Their use elsewhere is thus
+# very similar to that of external libraries.
 #
-
 .PHONY: DO_FDF
 FDF_LIBS=$(MAIN_OBJDIR)/Src/fdf/libfdf.a
 FDF_INCFLAGS=-I$(MAIN_OBJDIR)/Src/fdf
 $(FDF_LIBS): DO_FDF
 DO_FDF:
 	@echo "+++ Compiling internal FDF library"
-	(cd $(MAIN_OBJDIR)/Src/fdf ; $(MAKE) -j 1 VPATH="$(TOPDIR)/Src/fdf" \
-	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+	(cd $(MAIN_OBJDIR)/Src/fdf ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 #--------------------
 .PHONY: DO_NCPS
 NCPS=$(MAIN_OBJDIR)/Src/ncps/src/libncps.a
@@ -343,50 +335,46 @@ NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/Src/ncps/src
 $(NCPS): DO_NCPS
 DO_NCPS:
 	@echo "+++ Compiling internal ncps library"
-	(cd $(MAIN_OBJDIR)/Src/ncps/src ; $(MAKE) -j 1 VPATH="$(TOPDIR)/Src/ncps/src" \
-	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+	(cd $(MAIN_OBJDIR)/Src/ncps/src ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 #--------------------
 .PHONY: DO_PSOP
 PSOP=$(MAIN_OBJDIR)/Src/psoplib/src/libpsop.a
 PSOP_INCFLAGS=-I$(MAIN_OBJDIR)/Src/psoplib/src
 $(PSOP): DO_PSOP
 DO_PSOP:
-	(cd $(MAIN_OBJDIR)/Src/psoplib/src ; $(MAKE) -j 1 VPATH="$(TOPDIR)/Src/psoplib/src" \
-	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+	@echo "+++ Compiling internal psoplib library"
+	(cd $(MAIN_OBJDIR)/Src/psoplib/src ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 #--------------------
 .PHONY: DO_MS
 MS=$(MAIN_OBJDIR)/Src/MatrixSwitch/src/libMatrixSwitch.a
 MS_INCFLAGS=-I$(MAIN_OBJDIR)/Src/MatrixSwitch/src
 $(MS): DO_MS
 DO_MS:
+	@echo "+++ Compiling internal MatrixSwitch library"
 	(cd $(MAIN_OBJDIR)/Src/MatrixSwitch/src ; \
-         $(MAKE) -j 1 VPATH="$(TOPDIR)/Src/MatrixSwitch/src" \
-	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+         $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 #--------------------
 .PHONY: DO_BUILTIN_LAPACK
 BUILTIN_LAPACK=$(MAIN_OBJDIR)/Src/Libs/libsiestaLAPACK.a
 $(BUILTIN_LAPACK): DO_BUILTIN_LAPACK
 DO_BUILTIN_LAPACK:
-	(cd $(MAIN_OBJDIR)/Src/Libs ; $(MAKE) -j 1 VPATH="$(TOPDIR)/Src/Libs" \
-	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" libsiestaLAPACK.a)
+	@echo "+++ Compiling internal LAPACK library"
+	(cd $(MAIN_OBJDIR)/Src/Libs ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" libsiestaLAPACK.a)
 #--------------------
 .PHONY: DO_BUILTIN_BLAS
 BUILTIN_BLAS=$(MAIN_OBJDIR)/Src/Libs/libsiestaBLAS.a
 $(BUILTIN_BLAS): DO_BUILTIN_BLAS
 DO_BUILTIN_BLAS:
-	(cd $(MAIN_OBJDIR)/Src/Libs ; $(MAKE) -j 1 VPATH="$(TOPDIR)/Src/Libs" \
-	ARCH_MAKE="$(ARCH_MAKE)" FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" libsiestaBLAS.a)
+	@echo "+++ Compiling internal BLAS library"
+	(cd $(MAIN_OBJDIR)/Src/Libs ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" libsiestaBLAS.a)
 #--------------------
 .PHONY: DO_MPI_WRAPPERS
 MPI_WRAPPERS=$(MAIN_OBJDIR)/Src/MPI/libmpi_f90.a
 MPI_WRAPPERS_INCFLAGS=-I$(MAIN_OBJDIR)/Src/MPI
 $(MPI_WRAPPERS): DO_MPI_WRAPPERS
 DO_MPI_WRAPPERS:
-	(cd $(MAIN_OBJDIR)/Src/MPI ; $(MAKE) -j 1 \
-                     VPATH="$(TOPDIR)/Src/MPI" \
-	             ARCH_MAKE="$(ARCH_MAKE)" \
-		     FPPFLAGS="$(FPPFLAGS)" \
-                     FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" )
+	@echo "+++ Compiling MPI wrappers library"
+	(cd $(MAIN_OBJDIR)/Src/MPI ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" )
 
 
 # Define default compilation methods

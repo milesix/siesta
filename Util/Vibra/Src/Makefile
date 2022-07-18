@@ -6,20 +6,6 @@
 # See Docs/Contributors.txt for a list of contributors.
 #
 # Makefile for Vibra package
-#
-# Pablo Ordejon, August 1998
-# Modified by Alberto Garcia, February 2006
-#
-# Points to note, until we switch to a better building system:
-#
-#  The arch.make file is supposed to be in $(OBJDIR). This is normally
-#  the top Obj, but if you are using architecture-dependent build directories
-#  you might want to change this. (If you do not understand this, you do not
-#  need to change anything. Power users can do "make OBJDIR=Whatever".)
-#
-#  If your main Siesta build used an mpi compiler, you might need to
-#  define an FC_SERIAL symbol in your top arch.make, to avoid linking
-#  in the mpi libraries even if we explicitly undefine MPI below.
 
 .SUFFIXES:
 .SUFFIXES: .f .F .o .a .f90 .F90
@@ -31,6 +17,7 @@ default: $(PROGS)
 
 override WITH_MPI=
 override WITH_NETCDF=
+override WITH_FLOOK=
 
 MAIN_OBJDIR=.
 TOPDIR=.

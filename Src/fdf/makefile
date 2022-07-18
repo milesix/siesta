@@ -4,20 +4,19 @@
 .SUFFIXES:
 .SUFFIXES: .f .F .o .a  .f90 .F90
 #
-# This makefile can also be used "remotely", so we allow
-# for an external specification of the (relative) location 
-# of the arch.make file.
-#
-ARCH_MAKE_DEFAULT=../arch.make
-ARCH_MAKE?=$(ARCH_MAKE_DEFAULT)
-include $(ARCH_MAKE)
-#
-# Include copying operations in rule to make sure that
-# they are always performed.
-#
+
+TOPDIR=.
+MAIN_OBJDIR=.
+
 # Library module libfdf.a
 default: module
 module: libfdf.a
+
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
+VPATH=$(TOPDIR)/Src/fdf
+
 #
 OBJS=iso_fortran_env.o fdf.o io_fdf.o parse.o utils.o prec.o 
 libfdf.a: $(OBJS)
