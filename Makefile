@@ -11,8 +11,15 @@ UTILS = Util/Denchar/Src \
         Util/VCA \
         Util/Eig2DOS \
 	Util/Grid \
+	Util/WFS \
+	Util/HSX \
+	Util/DensityMatrix \
+	Util/Bands \
 	Util/Gen-basis \
+	Util/Grimme \
+	Util/Helpers \
 	Util/COOP \
+	Util/Sockets \
 	Util/TS/TBtrans \
 	Util/TS/tscontour \
 	Util/TS/tshs2tshs \
@@ -20,6 +27,7 @@ UTILS = Util/Denchar/Src \
 	Util/Vibra/Src \
 	Util/Macroave/Src \
 	Util/STM/ol-stm/Src \
+	Util/STM/simple-stm \
 	Util/Unfolding/Src \
 	Pseudo/converters/psml2psf \
         Pseudo/vnl-operator
@@ -51,7 +59,10 @@ install_siesta: create_install_directory
 create_install_directory:
 	mkdir -p $(SIESTA_INSTALL_DIRECTORY)/bin
 	mkdir -p $(SIESTA_INSTALL_DIRECTORY)/lib
+	mkdir -p $(SIESTA_INSTALL_DIRECTORY)/include
+	mkdir -p $(SIESTA_INSTALL_DIRECTORY)/share
 
 install: install_siesta install_utils
+
 clean: clean_siesta clean_utils
 	rm -rf local_install

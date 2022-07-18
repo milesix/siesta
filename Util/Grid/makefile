@@ -12,7 +12,7 @@
 .SUFFIXES: .f .F .o .a  .f90 .F90
 #
 #
-dummy:
+dummy: default
 #
 TOPDIR=.
 MAIN_OBJDIR=.

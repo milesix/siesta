@@ -10,11 +10,14 @@
 .SUFFIXES: 
 .SUFFIXES: .f .F .o .a  .f90 .F90
 
-default: pi3 blacs_prb pblas_prb mpi_test newcomm dist
+TOPDIR=.
+MAIN_OBJDIR=.
 
-OBJDIR=Obj
-VPATH=$(shell pwd)/../../Src
-MAIN_OBJDIR:=$(shell cd -P -- ../../\$(OBJDIR) && pwd -P)
+PROGS:= pi3 blacs_prb pblas_prb mpi_test newcomm dist
+default: $(PROGS)
+
+VPATH=$(TOPDIR)/Util/MPI_test:$(TOPDIR)/Src
+
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
@@ -79,7 +82,10 @@ mpi_test: $(MPI_INTERFACE) $(MT_OBJS) mpi_test.o
 .PHONY: clean
 clean:
 	rm -f *.o *.*d  
-	rm -f pi3 blacs_prb pblas_prb newcomm dist mpi_test
+	rm -f $(PROGS)
+
+install:
+	@echo "Will not install any files from MPI_test"
 
 # Manual dependencies
 m_mpi_utils.o: local_sys.o

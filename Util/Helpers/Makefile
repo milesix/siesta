@@ -7,33 +7,30 @@
 # ---
 #
 # Makefile for stand-alone get_chem_labels
-#
-OBJDIR=Obj
-#
+
 .SUFFIXES: .f .F .o .a  .f90 .F90
-#
-VPATH:=$(shell pwd)/../../Src
-#
+
+TOPDIR=.
+MAIN_OBJDIR=.
+
 default: get_chem_labels
 #
 override WITH_MPI=
 override WITH_NETCDF=
 override WITH_FLOOK=
 
-MAIN_OBJDIR:=$(shell cd -P -- ../../\$(OBJDIR) && pwd -P)
+VPATH=$(TOPDIR)/Util/Helpers:$(TOPDIR)/Src
+
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
 
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
-INCFLAGS:=$(NETCDF_INCFLAGS) $(FDF_INCFLAGS) $(INCFLAGS)
-#
-# Uncomment the following line for debugging support
-#
-#FFLAGS=$(FFLAGS_DEBUG)
+INCFLAGS+=$(FDF_INCFLAGS)
 #
 SYSOBJ=$(SYS).o
 #
@@ -57,6 +54,10 @@ clean:
 	@echo "==> Cleaning object, library, and executable files"
 	rm -f get_chem_labels  *.o  *.a
 	rm -f *.mod .tmp_fdflog
+
+PROGS:= get_chem_labels
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 # Dependencies
 .PHONY: dep

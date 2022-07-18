@@ -6,12 +6,7 @@
 # See Docs/Contributors.txt for a list of contributors.
 # ---
 
-OBJDIR=Obj
-
 .SUFFIXES: .f .F .o .a  .f90 .F90
-
-VPATH:=$(shell pwd)/../../Src
-
 
 EXE = fdf2grimme
 default: $(EXE)
@@ -19,19 +14,19 @@ default: $(EXE)
 override WITH_MPI=
 override WITH_NETCDF=
 
-MAIN_OBJDIR:=$(shell cd -P -- ../../\$(OBJDIR) && pwd -P)
-ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
-include $(ARCH_MAKE)
+TOPDIR=.
+MAIN_OBJDIR=.
+
+VPATH=$(TOPDIR)/Util/Grimme:$(TOPDIR)/Src
+
+include $(MAIN_OBJDIR)/arch.make
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
-INCFLAGS:=$(NETCDF_INCFLAGS) $(FDF_INCFLAGS) $(INCFLAGS)
-
-# Uncomment the following line for debugging support
-#FFLAGS=$(FFLAGS_DEBUG)
+INCFLAGS+= $(FDF_INCFLAGS) 
 
 SYSOBJ=$(SYS).o
 
@@ -59,6 +54,10 @@ clean:
 	@echo "==> Cleaning object, library, and executable files"
 	rm -f $(EXE) *.o  *.a *.mod
 
+PROGS:= fdf2grimme
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+#
 
 # DO NOT DELETE THIS LINE - used by make depend
 atom_options.o: local_sys.o
