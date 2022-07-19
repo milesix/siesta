@@ -138,68 +138,36 @@ dep:
 
 # DO NOT DELETE THIS LINE - used by make depend
 arw.o: alloc.o parallel.o precision.o sys.o
-arw.o: alloc.o parallel.o precision.o sys.o
 atm_types.o: precision.o radial.o
-atm_types.o: precision.o radial.o
-atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o sys.o
 atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o sys.o
 atom.o: atm_types.o atmparams.o atom_options.o basis_specs.o basis_types.o
 atom.o: hamann.o interpolation.o m_filter.o periodic_table.o precision.o
 atom.o: radial.o sys.o
-atom.o: atm_types.o atmparams.o atom_options.o basis_specs.o basis_types.o
-atom.o: hamann.o interpolation.o m_filter.o periodic_table.o precision.o
-atom.o: radial.o sys.o
 atom_options.o: sys.o
-atom_options.o: sys.o
-basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
-basis_io.o: precision.o radial.o sys.o xml.o
 basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
 basis_io.o: precision.o radial.o sys.o xml.o
 basis_specs.o: atom_options.o basis_types.o chemical.o periodic_table.o
 basis_specs.o: precision.o sys.o
-basis_specs.o: atom_options.o basis_types.o chemical.o periodic_table.o
-basis_specs.o: precision.o sys.o
-basis_types.o: alloc.o atmparams.o precision.o sys.o
 basis_types.o: alloc.o atmparams.o precision.o sys.o
 bessph.o: precision.o sys.o
-bessph.o: precision.o sys.o
 chemical.o: parallel.o precision.o sys.o
-chemical.o: parallel.o precision.o sys.o
-chkdim.o: sys.o
 chkdim.o: sys.o
 dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
 dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o m_spin.o
 dftu_specs.o: m_vee_integrals.o parallel.o precision.o radial.o sys.o units.o
-dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
-dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o m_spin.o
-dftu_specs.o: m_vee_integrals.o parallel.o precision.o radial.o sys.o units.o
-io.o: m_io.o
 io.o: m_io.o
 m_filter.o: bessph.o precision.o radfft.o sys.o
-m_filter.o: bessph.o precision.o radfft.o sys.o
-m_io.o: sys.o
 m_io.o: sys.o
 m_spin.o: precision.o
-m_spin.o: precision.o
-m_vee_integrals.o: precision.o sys.o
 m_vee_integrals.o: precision.o sys.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
-radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
-radial.o: alloc.o interpolation.o precision.o xml.o
 radial.o: alloc.o interpolation.o precision.o xml.o
 read_xc_info.o: parallel.o precision.o sys.o
-read_xc_info.o: parallel.o precision.o sys.o
-spher_harm.o: alloc.o precision.o sys.o
 spher_harm.o: alloc.o precision.o sys.o
 units.o: precision.o
-units.o: precision.o
-xml.o: precision.o
 xml.o: precision.o
 gen-basis.o: atm_types.o atom.o atom_options.o basis_io.o basis_specs.o
 gen-basis.o: basis_types.o chemical.o dftu_specs.o sys.o
-gen-basis.o: atm_types.o atom.o atom_options.o basis_io.o basis_specs.o
-gen-basis.o: basis_types.o chemical.o dftu_specs.o sys.o
-ioncat.o: atm_types.o atmfuncs.o basis_io.o m_getopts.o precision.o
 ioncat.o: atm_types.o atmfuncs.o basis_io.o m_getopts.o precision.o
 aux_proj.o: atom.o
 gpfa_core_dp.o: m_fft_gpfa.o
