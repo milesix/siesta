@@ -168,12 +168,14 @@
 !! that considers the possibility of non-collinear spins
 !!
 !! \f{eqnarray*}{
-!!   E_{\rm dc}^{\rm FLL} = \frac{1}{4} 
-!!     \left[ 2 U n (n-1) -2J n \left( \frac{n}{2} -1 \right) - J \vec{m} \cdot \vec{m} \right],
+!!   E_{\rm dc}^{\rm FLL} = \frac{1}{4} \sum_{I}
+!!     \left[ 2 U^{I} n^{I} (n^{I}-1) -2J^{I} n^{I}
+!! \left( \frac{n^{I}}{2} -1 \right) - J \vec{m}^{I} \cdot \vec{m}^{I} \right],
 !! \f}
 !!
-!! where \f$ n \f$ is the total electronic charge in the correlated shell,
-!! and \f$ \vec{m} \f$ the magnetization contribution.
+!! where \f$ n^{I} \f$ is the total electronic charge in the correlated shell
+!! of the atom \f$ I \f$,
+!! and \f$ \vec{m}^{I} \f$ the magnetization contribution.
 !! In the case of non-collinear spin
 !!
 !! \f{eqnarray*}{
