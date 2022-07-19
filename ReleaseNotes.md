@@ -19,6 +19,8 @@ grouped under headings representing past (and upcoming) releases.
 
 ### Changes
 
+* Made the DFT+U scheme compatible with spin-orbit coupling.
+
 * Added support for PSML pseudopotential files:
 
    * Changes to offer more information about PAO generation, and to implement
