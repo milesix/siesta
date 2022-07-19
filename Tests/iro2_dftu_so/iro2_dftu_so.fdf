@@ -121,14 +121,14 @@ MD.UseSaveCG           .false.      # Instructs to read the conjugate-gradient
                                     #   SystemLabel.CG by a previous run.
 
 %block PAO.Basis                 # Define Basis set
-Ir   2     
+Ir_dftu_so   2     
 n=6   0   1   E   100.00000     4.00000
      6.00000 
      1.00000 
 n=5   2   1   E   100.00000     3.50000
      4.50000 
      1.00000 
-O    2    
+O_dftu_so    2    
 n=2   0   1   E   100.00000     4.00000
      6.00000
      1.00000
@@ -168,7 +168,7 @@ Spin.OrbitStrength  1.0
 
 LDAU.ProjectorGenerationMethod      1
 %block LDAU.proj
-Ir   1        # number of shells of projectors
+Ir_dftu_so   1        # number of shells of projectors
 n=5 2         # n, l
 2.000 0.500   # U(eV), J(eV)
 3.000         # rc, \omega (default values)

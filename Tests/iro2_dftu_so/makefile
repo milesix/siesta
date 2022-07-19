@@ -1,6 +1,6 @@
 #
 # Single-test makefile
 #
-name=iro2_ldau_so
+name=iro2_dftu_so
 #
 include ../test.mk
