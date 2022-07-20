@@ -465,7 +465,6 @@
       subroutine print_dftushell(p)
       type(dftushell_t)            :: p
 
-
       write(6,*) 'DFTUSHELL-------'
       write(6,'(5x,a25,i20)')   'Principal quantum number',  p%n
       write(6,'(5x,a25,i20)')   'Angular momentum',          p%l

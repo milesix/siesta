@@ -204,11 +204,6 @@ C ......................
       nullify( grSki, Ski, xno, iono, iano )
       nullify( listedall, listed, Vi, Di )
 
-!!     For debugging
-!      fa(:,:) = 0.0_dp
-!      stress(:,:) = 0.0_dp
-!!     End debugging
-
       ! Make sure the energies are zero
       Edftu = 0.0_dp
       DEdftu = 0.0_dp
@@ -258,6 +253,7 @@ C ......................
       occupations: if( first .or.
      &                 (dDmax_current .lt. dDmax_threshold) .or.
      &                 dftu_shift ) then 
+
 
 !       Find unit cell volume
         volume = volcel( scell ) * nua / na
@@ -552,6 +548,7 @@ C ......................
         
         pop_conv = ( DFTU_dPop < dtol_dftupop )
         if( .not. pop_conv ) occu_old = occu
+
         recalc_hamilt: if( .not. pop_conv .or. first .or. 
      &                     .not. matrix_elements_only ) then
           if ( Node == 0 ) then 
@@ -779,32 +776,6 @@ C ......................
             enddo   
           endif
         enddo
-
-!!       For debugging
-!        do iio = 1 , no_l
-!           do j = 1, numh(iio)
-!              ind = listhptr(iio) + j
-!              jo = listh(ind)
-!              do ispin = 1, nspin
-!                if( abs(Hdftu(ind,ispin)) .gt. 1.d-4 )               
-!     &            write(6,'(a,6i7,2f12.5)')                          
-!     & 'add_hamilt: Node, Nodes, io, ind, jo, ispin, H_dftu_so = ', 
-!     &              Node, Nodes, iio, ind, jo, ispin, Hdftu(ind,ispin)
-!              end do
-!           end do
-!        end do
-!         do ia = 1, nua
-!           write(6,'(a,i5,3f12.5)') 
-!     &       'add_hamil: ia, fa = ',
-!     &        ia, fa(:,ia)
-!         enddo
-!         do ia = 1, 3
-!           write(6,'(a,i5,3f12.5)') 
-!     &       'add_hamil: ia, stress = ',
-!     &        ia, stress(:,ia)
-!         enddo
-!
-!!       End debugging
 
       endif add_hamilt
 
