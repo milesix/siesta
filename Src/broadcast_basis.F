@@ -22,7 +22,7 @@
       use dftu_specs, only: dDmax_threshold
       use dftu_specs, only: dftu_shift, dftu_init
       use dftu_specs, only: switch_dftu
-
+      use m_spin,     only: spin
 #ifdef MPI
       use mpi_siesta
       use m_mpi_utils, only: broadcast
@@ -38,7 +38,7 @@
 #else
       integer MPIerror
 
-      integer is, i
+      integer is, i, l
       type(species_info), pointer  :: spp
       type(rad_func), pointer      :: func
 
@@ -97,8 +97,6 @@
      $                 0,MPI_Comm_World,MPIerror)
         call MPI_Bcast(spp%orbnl_pop,maxn_orbnl,MPI_double_precision,
      $                 0,MPI_Comm_World,MPIerror)
-
-
 
         call MPI_Bcast(spp%n_pjnl,1,MPI_integer,
      $                 0,MPI_Comm_World,MPIerror)
@@ -175,6 +173,31 @@
            allocate(spp%orbnl(spp%n_orbnl))
            allocate(spp%pjnl(spp%n_pjnl))
            allocate(spp%pjdftu(spp%n_pjdftunl))
+        endif
+
+        if ( spin%NCol .or. spin%SO ) then
+
+           if (Node.ne.0) then
+              allocate(spp%dftu_so_integrals(spp%n_pjdftunl))
+           endif
+           do i=1,spp%n_pjdftunl
+              l = spp%pjdftunl_l(i)
+              if (Node.ne.0) then
+                 allocate(spp%dftu_so_integrals(i)%Slater_F(0:2*l))
+                 allocate(spp%dftu_so_integrals(i)%vee_4center_integrals
+     $             ( 2 * l + 1,
+     $               2 * l + 1,
+     $               2 * l + 1,
+     $               2 * l + 1  ) )
+              endif 
+              call MPI_Bcast(spp%dftu_so_integrals(i)%Slater_F,2*l+1,
+     $             MPI_double_precision,0,MPI_Comm_World,MPIerror)
+              call MPI_Bcast(
+     $             spp%dftu_so_integrals(i)%vee_4center_integrals
+     $             (1,1,1,1),
+     $             (2*l+1)**4,
+     $             MPI_double_precision,0,MPI_Comm_World,MPIerror)
+           enddo
         endif
         
         do i=1,spp%n_orbnl

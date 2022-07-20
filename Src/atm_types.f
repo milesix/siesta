@@ -125,6 +125,8 @@
          integer, dimension(maxnprojs)   ::  pjdftu_l
          integer, dimension(maxnprojs)   ::  pjdftu_m
          integer, dimension(maxnprojs)   ::  pjdftu_gindex
+         type(dftu_so_integrals_type), dimension(:), pointer
+     .                                   ::  dftu_so_integrals
 !
          type(rad_func), dimension(:), pointer       ::  orbnl
          type(rad_func), dimension(:), pointer       ::  pjnl
@@ -138,6 +140,36 @@
 
          logical                        :: read_from_file
       end type species_info
+
+!     Derived type for the definition of the on-site four-center-integrals
+!     required for LDA+U + Spin orbit
+      type, public ::  dftu_so_integrals_type
+         real(dp), dimension(:), pointer :: Slater_F
+                                             ! Slater integrals,
+                                             !   involving the radial part
+                                             !   of the atomic wave funcs.
+                                             !   Used when LDA+U is used
+                                             !   together with Spin-Orbit
+                                             !   or non-collinear
+                                             !   magnetism
+         real(dp), dimension(:,:,:,:), pointer :: vee_4center_integrals
+                                             ! Values of the four center
+                                             !   integrals with the
+                                             !   electron–electron
+                                             !   interactions, that are
+                                             !   expressed as the
+                                             !   integrals of the Coulomb
+                                             !   kernel on the
+                                             !   wave functions of the
+                                             !   localized basis set
+                                             !   (e.g. d atomic states)
+                                             !   Used when LDA+U is used
+                                             !   together with Spin-Orbit
+                                             !   or non-collinear
+                                             !   magnetism
+      end type dftu_so_integrals_type
+
+
 
 !
       integer, save, public             :: nspecies
