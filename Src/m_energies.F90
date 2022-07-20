@@ -46,7 +46,7 @@ module m_energies
   real(dp):: Uscf       ! SCF hartree electron energy,  calculated in dhscf
   real(dp):: Ebs        ! Band-structure energy, Tr(DM*H), calculated in compute_dm
   real(dp):: Eso        ! Spin-orbit energy
-  real(dp):: E_dftu_so ! Spin-orbit energy when DFT+U is considered
+  real(dp):: E_dftu_so  ! Spin-orbit energy when DFT+U is considered
   real(dp):: E_correc_dc! Correction energy required for the 
   real(dp):: Edftu      
   real(dp):: DEdftu

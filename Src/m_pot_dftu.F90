@@ -1177,7 +1177,7 @@ subroutine dftu_so_hamil_2( H_dftu_so, fal, stressl )
 !       and density matrix has to be performed
 !       See the end of Sec. 7 of the SIESTA paper
         H_dftu_so_dc(ind,1)      = H_dftu_so_dc(ind,1)      +    &
- &                                 conjg(Vi_dc(jo,1))      
+  &                                conjg(Vi_dc(jo,1))      
         H_dftu_so_Hubbard(ind,1) = H_dftu_so_Hubbard(ind,1) +    &
   &                                conjg(Vi_Hubbard(jo,1))       
         H_dftu_so(ind,1)         = H_dftu_so(ind,1)         +    &
@@ -1185,7 +1185,7 @@ subroutine dftu_so_hamil_2( H_dftu_so, fal, stressl )
   &                                conjg(Vi_Hubbard(jo,1))       
 
         H_dftu_so_dc(ind,2)      = H_dftu_so_dc(ind,2)      +    &
- &                                 conjg(Vi_dc(jo,2))      
+  &                                conjg(Vi_dc(jo,2))      
         H_dftu_so_Hubbard(ind,2) = H_dftu_so_Hubbard(ind,2) +    &
   &                                conjg(Vi_Hubbard(jo,2))       
         H_dftu_so(ind,2)         = H_dftu_so(ind,2)         +    &
@@ -1193,7 +1193,7 @@ subroutine dftu_so_hamil_2( H_dftu_so, fal, stressl )
   &                                conjg(Vi_Hubbard(jo,2))       
 
         H_dftu_so_dc(ind,3)      = H_dftu_so_dc(ind,3)      +    &
- &                                 conjg(Vi_dc(jo,4))      
+  &                                conjg(Vi_dc(jo,4))      
         H_dftu_so_Hubbard(ind,3) = H_dftu_so_Hubbard(ind,3) +    &
   &                                conjg(Vi_Hubbard(jo,4))       
         H_dftu_so(ind,3)         = H_dftu_so(ind,3)         +    &
@@ -1201,21 +1201,12 @@ subroutine dftu_so_hamil_2( H_dftu_so, fal, stressl )
   &                                conjg(Vi_Hubbard(jo,4))       
 
         H_dftu_so_dc(ind,4)      = H_dftu_so_dc(ind,4)      +    &
- &                                 conjg(Vi_dc(jo,3))      
+  &                                conjg(Vi_dc(jo,3))      
         H_dftu_so_Hubbard(ind,4) = H_dftu_so_Hubbard(ind,4) +    &
   &                                conjg(Vi_Hubbard(jo,3))       
         H_dftu_so(ind,4)         = H_dftu_so(ind,4)         +    &
   &                                conjg(Vi_dc(jo,3))       +    &
   &                                conjg(Vi_Hubbard(jo,3))       
-
-!          H_dftu_so_Hubbard(ind,ispin) = H_dftu_so_Hubbard(ind,ispin) +    &
-! &                                       Vi_Hubbard(jo,ispin)      
-!          H_dftu_so(ind,ispin)         = H_dftu_so(ind,ispin)         +    &
-! &                                       Vi_dc(jo,ispin)              +    &
-!                                         Vi_Hubbard(jo,ispin)
-!          Vi_dc(jo,ispin)      = cmplx( 0.0_dp, 0.0_dp, kind=dp )
-!          Vi_Hubbard(jo,ispin) = cmplx( 0.0_dp, 0.0_dp, kind=dp )
-!        enddo
 
         Vi_dc(jo,:)      = cmplx( 0.0_dp, 0.0_dp, kind=dp )
         Vi_Hubbard(jo,:) = cmplx( 0.0_dp, 0.0_dp, kind=dp )
