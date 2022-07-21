@@ -46,7 +46,7 @@ DEPS_GEN-BASIS=m_io.o io.o alloc.o basis_types.o precision.o  parallel.o \
           pxf.o dot.o  atom_options.o arw.o \
           xml.o m_walltime.o read_xc_info.o  $(SYSOBJ) \
           m_fft_gpfa.o m_cite.o version.o posix_calls.o reclat.o units.o \
-          hamann.o files.o sys.o
+          hamann.o files.o sys.o m_spin.o m_vee_integrals.o
 
 GEN-BASIS_LOCAL_OBJS=gen-basis.o handlers.o 
 OBJS_GEN-BASIS=$(DEPS_GEN-BASIS) $(GEN-BASIS_LOCAL_OBJS)
@@ -57,7 +57,7 @@ DEPS_IONCAT=m_getopts.o basis_types.o precision.o  parallel.o \
 	  chemical.o reclat.o \
           basis_specs.o periodic_table.o pxf.o \
           atom.o atmfuncs.o spher_harm.o interpolation.o arw.o \
-          xml.o m_walltime.o dftu_specs.o\
+          xml.o m_walltime.o dftu_specs.o m_spin.o m_vee_integrals.o \
           hamann.o m_cite.o version.o posix_calls.o units.o files.o sys.o $(SYSOBJ)
 
 IONCAT_LOCAL_OBJS=ioncat.o handlers.o 
@@ -115,11 +115,13 @@ bessph.o: precision.o sys.o
 chemical.o: parallel.o precision.o sys.o
 chkdim.o: sys.o
 dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
-dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o parallel.o
-dftu_specs.o: precision.o radial.o sys.o units.o
+dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o m_spin.o
+dftu_specs.o: m_vee_integrals.o parallel.o precision.o radial.o sys.o units.o
 io.o: m_io.o
 m_filter.o: bessph.o precision.o radfft.o sys.o
 m_io.o: sys.o
+m_spin.o: precision.o
+m_vee_integrals.o: precision.o sys.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radial.o: alloc.o interpolation.o precision.o xml.o
 read_xc_info.o: parallel.o precision.o sys.o
@@ -136,4 +138,5 @@ gpfa_fft.o: m_fft_gpfa.o
 m_bessph.o: bessph.o
 m_hamann.o: hamann.o
 m_radfft.o: radfft.o
+t_spin.o: m_spin.o
 version_info.o: version.o
