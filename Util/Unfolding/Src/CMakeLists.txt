@@ -95,6 +95,8 @@ list(
   ${top_srcdir}/m_uuid.f90
   ${top_srcdir}/object_debug.F90
   ${top_srcdir}/nag.f
+  ${top_srcdir}/m_spin.F90
+  ${top_srcdir}/m_vee_integrals.F90 
 )
 
 add_executable(unfold "${sources}")

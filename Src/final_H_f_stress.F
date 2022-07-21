@@ -11,7 +11,7 @@
       CONTAINS
 
       subroutine final_H_f_stress( istep, iscf , SCFconverged )
-      use units, only: eV
+      use units, only: eV, Ang
 
       use files,        only : slabel
 #ifdef NCDF_4
@@ -23,7 +23,7 @@
       use siesta_options, only: recompute_H_after_scf
       use sparse_matrices, only: numh, listh, listhptr
       use sparse_matrices, only: H, S, Dscf, Escf, maxnh, xijo
-      use sparse_matrices, only: H_dftu_2D, H_so_off_2D
+      use sparse_matrices, only: H_dftu_2D, H_so_off_2D, H_dftu_so_2D
       use class_dSpData1D, only: val
       use class_dSpData2D, only: val
       use class_zSpData2D, only: val
@@ -46,6 +46,7 @@
                                               !   or not
       use m_dftu,       only: hubbard_term    ! Subroutine that compute the
                                               !   Hubbard terms
+      use m_dftu_so, only: dftu_so_hamil
       use m_stress
       use m_energies
       use m_ntm
@@ -93,6 +94,7 @@
       real(dp), pointer :: S_tmp(:) => null()
       complex(dp), pointer  :: H_so_off(:,:)
       real(dp), pointer :: H_dftu(:,:)
+      complex(dp), pointer  :: H_dftu_so(:,:)
 #ifdef FINAL_CHECK_HS
       real(dp) :: diff_H
 #endif
@@ -197,21 +199,34 @@
 
 ! Hubbard term for LDA+U: energy, forces, stress and matrix elements ....
       if( switch_dftu ) then
-         H_dftu => val(H_dftu_2D)
-         call hubbard_term(scell, na_u, na_s, isa, xa, indxua,
-     .        maxnh, maxnh, lasto, iphorb, no_u, no_l, 
-     .        numh, listhptr, listh, numh, listhptr, listh,
-     .        spin%spinor, Dscf, Edftu, DEdftu, H_dftu, 
-     .        fal, stressl, H_tmp, iscf,
-     .        matrix_elements_only=.false.)
+        if ( spin%SO ) then
+          H_dftu_so => val(H_dftu_so_2D)
+          call dftu_so_hamil( H_dftu_so, fal, stressl )
 #ifdef MPI
-         ! Global reduction of energy terms
-         call globalize_sum(Edftu,buffer1)
-         Edftu = buffer1
-         ! DEdftu should not be globalized as it 
-         ! is based on globalized occupations
+          ! Global reduction of energy terms
+          call globalize_sum(E_dftu_so,buffer1)
+          E_dftu_so = buffer1
+          ! Global reduction of E_correc_dc
+          call globalize_sum(E_correc_dc,buffer1)
+          E_correc_dc = buffer1
 #endif
-         Edftu = Edftu + DEdftu
+        else
+          H_dftu => val(H_dftu_2D)
+          call hubbard_term(scell, na_u, na_s, isa, xa, indxua,
+     .         maxnh, maxnh, lasto, iphorb, no_u, no_l, 
+     .         numh, listhptr, listh, numh, listhptr, listh,
+     .         spin%spinor, Dscf, Edftu, DEdftu, H_dftu, 
+     .         fal, stressl, H_tmp, iscf,
+     .         matrix_elements_only=.false.)
+#ifdef MPI
+          ! Global reduction of energy terms
+          call globalize_sum(Edftu,buffer1)
+          Edftu = buffer1
+          ! DEdftu should not be globalized as it 
+          ! is based on globalized occupations
+#endif
+          Edftu = Edftu + DEdftu
+        endif
       endif
 ! ..................
 

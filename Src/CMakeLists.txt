@@ -206,6 +206,7 @@ set(siesta_sources
   m_chess.F90
   m_cite.F90
   m_convergence.f90
+  m_dftu_so.F90
   m_digest_nnkp.F90
   m_diis.F90
   m_dipol.F90
@@ -272,6 +273,7 @@ set(siesta_sources
   m_new_dm.F90
   m_noccbands.f
   m_ntm.F90
+  m_occ_proj_dftu.F90
   m_options.f90
   m_orderbands.F
   m_os.F90
@@ -286,6 +288,7 @@ set(siesta_sources
   m_pivot_methods.F90
   m_planewavematrix.F90
   m_planewavematrixvar.F90
+  m_pot_dftu.F90
   m_redist_spmatrix.F90
   m_region.F90
   m_rhog.F90
@@ -343,6 +346,7 @@ set(siesta_sources
   m_ts_voltage.F90
   m_ts_weight.F90
   m_uuid.f90
+  m_vee_integrals.F90
   m_wallclock.f90
   m_walltime.f90
   m_writedelk.F

@@ -83,7 +83,7 @@ LDAU.ProjectorGenerationMethod 2
 
 %block LDAU.proj
 Mn_ldau  1       # number of shells of projectors
-n=4 0       # n, l
+n=3 2       # n, l
 3.000 0.000 # U(eV), J(eV)
 0.000 0.000 # rc, \omega (default values)
 %endblock LDAU.proj

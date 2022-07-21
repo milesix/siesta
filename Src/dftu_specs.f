@@ -216,12 +216,19 @@
                                                 !   stored
       use atm_types,   only : nspecies          ! Total number of different  
                                                 !   atomic species
+      use atm_types,   only : dftu_so_integrals_type
+                                                ! Derived type for the 
+                                                !   definition of the on-site 
+                                                !   four-center-integrals
+                                                !   required for LDA+U+Spinorbit
       use units,       only : pi, eV            ! Conversions
       use alloc,       only : re_alloc          ! Allocation routines
       use radial                                ! Derived type for the radial
                                                 !   functions
       use interpolation, only: spline           ! set spline interpolation
       use interpolation, only: polint           ! polynomial interpolation
+      use m_spin,        only: spin             ! relevant information regarding
+                                                !   spin configuration
 
 
       implicit none
@@ -620,7 +627,6 @@
      .               1, nrmax, 
      .               'projector', 'dftu_proj_gen' )
       projector = 0.0_dp
-
 
 !!     For debugging
 !      call die('Testing read_dftu_specs')
@@ -1632,11 +1638,14 @@
 !     derived type related with the DFT+U projectors.
 !
       use alloc, only : de_alloc
-      type(species_info),      pointer :: spp
-      type(basis_def_t),       pointer :: basp
+      use m_vee_integrals, only: ee_4index_int_real
+
+      type(species_info),           pointer :: spp
+      type(basis_def_t),            pointer :: basp
       type(dftushell_t),       pointer :: dftushell
-      type(rad_func),          pointer :: pp
-      type(pseudopotential_t), pointer :: vps   
+      type(dftu_so_integrals_type), pointer :: dftuintegrals
+      type(rad_func),               pointer :: pp
+      type(pseudopotential_t),      pointer :: vps   
 
 !     Internal variables
       integer  :: is      ! Counter for the loop on atomic species
@@ -1668,6 +1677,10 @@
                                        !   pseudopotential file)
       real(dp) :: projinputint(nrmax)  ! Radial part of the projector that
                                        !   enters the interpolation routines
+      real(dp) :: F4oF2                ! Ratio between the Stoner parameters
+                                       !   F4/F2. Taken as 0.625 following
+                                       !   Lichtenstein et al. 
+                                       !   PRB 52, R5467 (1995)
 
       integer, parameter  :: npoint = 4  ! Number of points used by polint 
                                          !    for the interpolation
@@ -1698,13 +1711,22 @@
 !       for each atomic specie
         spp%lmax_dftu_projs = basp%lmxdftupj
 
+!       Allocate the pointers for the value of the Slater and four center 
+!       integrals required in the case of spin-orbit and non-collinear spin
+        if ( spin%NCol .or. spin%SO ) then
+          nullify( spp%dftu_so_integrals ) 
+          allocate( spp%dftu_so_integrals(spp%n_pjdftunl) )
+        endif 
+
 !       Loop on all the projectors for a given specie
 !       This loop is done only on the different radial shapes,
 !       without considering the (2l + 1) possible angular dependencies
         imcount = 0
         loop_projectors: do iproj = 1, spp%n_pjdftunl
           dftushell => basp%dftushell(iproj)
-
+          if ( spin%NCol .or. spin%SO ) then
+             dftuintegrals => spp%dftu_so_integrals(iproj)
+          endif
           spp%pjdftunl_n(iproj) = 1
           spp%pjdftunl_l(iproj) = dftushell%l
           spp%pjdftunl_U(iproj) = dftushell%U
@@ -1719,6 +1741,35 @@
             spp%pjdftu_m(imcount)     = im
             spp%pjdftu_index(imcount) = iproj
           enddo 
+
+          if ( spin%NCol .or. spin%SO ) then
+            nullify( dftuintegrals%Slater_F ) 
+            allocate( dftuintegrals%Slater_F(0:2*l) )
+            dftuintegrals%Slater_F = 0.0_dp
+            if( spp%pjdftunl_l(iproj) .eq. 2 ) then
+              F4oF2 = 0.625_dp     ! Taken from Lichtenstein et al. 
+                                   !    52, R5467 (1995)
+              dftuintegrals%Slater_F(0) = spp%pjdftunl_U(iproj)
+              dftuintegrals%Slater_F(2) = spp%pjdftunl_J(iproj) * 
+     .                                    14.0_dp / (1.0_dp + F4oF2)
+              dftuintegrals%Slater_F(4) = dftuintegrals%Slater_F(2) * 
+     .                                    F4oF2 
+            else 
+              call die('Slater integrals not implemented')
+            endif
+
+            nullify( dftuintegrals%vee_4center_integrals )
+            allocate(dftuintegrals%vee_4center_integrals(
+     .               2 * spp%pjdftunl_l(iproj) + 1, 
+     .               2 * spp%pjdftunl_l(iproj) + 1, 
+     .               2 * spp%pjdftunl_l(iproj) + 1, 
+     .               2 * spp%pjdftunl_l(iproj) + 1  ) )
+            dftuintegrals%vee_4center_integrals = 0.0_dp
+            call ee_4index_int_real( spp%pjdftunl_l(iproj),
+     .                             dftuintegrals%Slater_F, 
+     .                             dftuintegrals%vee_4center_integrals )
+          endif 
+
         enddo loop_projectors ! End loop on projectors for a given specie
         if( imcount .ne. spp%nprojsdftu ) call die('DFT+U indexing...')
 

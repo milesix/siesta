@@ -54,6 +54,8 @@ list(
     "${top_srcdir}/sys.F"
     "${top_srcdir}/units.f90"
     "${top_srcdir}/xml.f"
+     ${top_srcdir}/m_spin.F90
+     ${top_srcdir}/m_vee_integrals.F90 
 
 )
 

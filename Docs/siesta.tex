@@ -11666,8 +11666,15 @@ For large or intermediate values of $U_{\mathrm{eff}}$ the convergence
 is sometimes difficult. A step-by-step increase of the
 value of $U_{\mathrm{eff}}$ can be advisable in such cases.
 
-Currently, the DFT+U implementation does not support non-collinear, nor
-spin-orbit coupling.
+If DFT+U is used in combination with non-collinear or spin-orbit coupling, 
+the Liechtenstein approach is implemented, where the $U$ and the exchange $J$ parameters are treated separately [see, A. I. Liechtenstein 
+\textit{et al.}, Phys. Rev. B \textbf{52}, R5467 (1995)].
+The generalization for the spin-orbit or non-collinear cases follows the recipe given by
+E. Bousquet and N. Spaldin, Phys. Rev. B \textbf{82}, 220402(R) (2010).
+Currently, only the $d$-shell can be considered as the correlated shell where the $U$ and $J$ are applied.  
+The computation of the occupancies on the orbitals of the correlated shells is done following the same recipe as for the Dudarev approach. 
+That means that the following entries related with the generation of the DFT+U projectors are still relevant.
+However, the input options \fdf{DFTU!FirstIteration}, \fdf{DFTU!ThresholdTol}, \fdf{DFTU!PopTol}, and \fdf{DFTU!PotentialShift}  are irrelevant when DFT+U is used in combination with spin-orbit or non-collinear magnetism.
 
 \begin{fdfentry}{DFTU!ProjectorGenerationMethod}[integer]<2>
   \fdfindex{LDAU!ProjectorGenerationMethod}%

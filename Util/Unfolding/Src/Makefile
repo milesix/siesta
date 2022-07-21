@@ -85,8 +85,8 @@ SIESTA_OBJS= precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
              pspltm1.o mmio.o qsort.o \
              sparse_matrices.o
 
-# Siesta timings
 SIESTA_OBJS += m_walltime.o timer_tree.o m_timer.o timer.o
+SIESTA_OBJS += m_spin.o m_vee_integrals.o
 
 
 # Add specific class objects
@@ -214,8 +214,8 @@ basis_specs.o: precision.o sys.o
 basis_types.o: alloc.o atmparams.o precision.o sys.o
 bessph.o: precision.o sys.o
 bloch_unfold.o: units.o
-broadcast_basis.o: atm_types.o chemical.o dftu_specs.o m_mpi_utils.o parallel.o
-broadcast_basis.o: radial.o
+broadcast_basis.o: atm_types.o chemical.o dftu_specs.o m_mpi_utils.o m_spin.o
+broadcast_basis.o: parallel.o radial.o
 cellsubs.o: precision.o
 chemical.o: parallel.o precision.o sys.o
 chkdim.o: sys.o
@@ -225,10 +225,9 @@ class_Data3D.o: alloc.o
 class_Fstack_Pair_Geometry_SpData2D.o: class_Pair_Geometry_SpData2D.o
 class_Geometry.o: alloc.o
 class_Pair_Geometry_SpData2D.o: class_Geometry.o class_SpData2D.o
-class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
 class_SpData1D.o: class_Data1D.o
 class_SpData1D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData2D.o: class_Data2D.o class_Data2D.o class_Data2D.o
+class_SpData2D.o: class_Data2D.o
 class_SpData2D.o: class_OrbitalDistribution.o class_Sparsity.o
 class_SpData3D.o: class_OrbitalDistribution.o class_Sparsity.o
 class_Sparsity.o: alloc.o
@@ -237,8 +236,8 @@ coor.o: alloc.o atmfuncs.o parallel.o precision.o siesta_geom.o sys.o units.o
 coor.o: zmatrix.o
 debugmpi.o: parallel.o
 dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
-dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o parallel.o
-dftu_specs.o: precision.o radial.o sys.o units.o
+dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o m_spin.o
+dftu_specs.o: m_vee_integrals.o parallel.o precision.o radial.o sys.o units.o
 diag.o: alloc.o diag_option.o parallel.o precision.o sys.o
 diag_option.o: parallel.o precision.o
 domain_decom.o: alloc.o parallel.o precision.o printmatrix.o schecomm.o
@@ -251,7 +250,9 @@ m_cell.o: precision.o siesta_geom.o units.o
 m_filter.o: bessph.o precision.o radfft.o sys.o
 m_io.o: sys.o
 m_mpi_utils.o: precision.o sys.o
+m_spin.o: precision.o
 m_timer.o: m_io.o m_walltime.o moreParallelSubs.o parallel.o precision.o sys.o
+m_vee_integrals.o: precision.o sys.o
 m_wallclock.o: m_walltime.o
 memory.o: memory_log.o
 memory_log.o: m_io.o parallel.o precision.o
@@ -319,4 +320,5 @@ m_timer_tree.o: timer_tree.o
 m_timestamp.o: timestamp.o
 mtprng.o: m_uuid.o
 printmat.o: printmatrix.o
+t_spin.o: m_spin.o
 timer_options.o: timer.o
