@@ -376,6 +376,15 @@ DO_MPI_WRAPPERS:
 	@echo "+++ Compiling MPI wrappers library"
 	(cd $(MAIN_OBJDIR)/Src/MPI ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" )
 
+#--------------------
+.PHONY: DO_SIESTA_LIB
+SIESTA_LIB=$(MAIN_OBJDIR)/Src/libSiestaForces.a
+SIESTA_LIB_INCFLAGS=-I$(MAIN_OBJDIR)/Src
+$(SIESTA_LIB): DO_SIESTA_LIB
+DO_SIESTA_LIB:
+	@echo "+++ Compiling libSiestaForces"
+	(cd $(MAIN_OBJDIR)/Src ; $(MAKE) libSiestaForces.a)
+
 
 # Define default compilation methods
 .c.o:
