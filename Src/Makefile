@@ -462,9 +462,10 @@ clean:
 	(cd Libs ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean ) 
 	(cd MatrixSwitch/src ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean )
 
-PROGS:= siesta
+PROGS:= siesta libSiestaForces.a
 install: $(PROGS)
-	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+	cp -p siesta $(SIESTA_INSTALL_DIRECTORY)/bin
+	cp -p libSiestaForces.a $(SIESTA_INSTALL_DIRECTORY)/lib
 
 
 # DO NOT DELETE THIS LINE - used by make depend
