@@ -522,7 +522,7 @@ set_target_properties(
 
 if(WITH_MPI)
   target_compile_definitions(
-  "${PROJECT_NAME}-siesta"
+  ${PROJECT_NAME}-siesta
   PUBLIC
   MPI
   )
@@ -544,6 +544,7 @@ TARGET_LINK_LIBRARIES(
   gridxc
   libpsml
 )
+
 
 if (WITH_MPI)
 
@@ -580,21 +581,6 @@ target_include_directories(
 
 # External libraries.
 
-# 
-# find_package("lapack" REQUIRED)
-# find_package("blas" REQUIRED)
-# set(
-#   lib-deps
-#   "blas::blas"
-#   "lapack::lapack"
-# )
-
-# target_link_libraries(
-#   ${PROJECT_NAME}-siesta
-#   PUBLIC
-#   "${lib-deps}"
-# )
-
 if(WITH_MPI)
   target_link_libraries(
     ${PROJECT_NAME}-siesta
@@ -625,22 +611,44 @@ endif()
 
 if(WITH_NETCDF)
   target_compile_definitions(
-  "${PROJECT_NAME}-siesta"
+  ${PROJECT_NAME}-siesta
   PUBLIC
   CDF
   )
-##   target_include_directories(
-##     ${PROJECT_NAME}-siesta
-##     PRIVATE
-##     ${NETCDF_INCLUDEDIR}
-##     ${NETCDF_INCLUDE_DIRS}
-## )
+
  target_link_libraries(
     ${PROJECT_NAME}-siesta
     PRIVATE
-##   ${NETCDF_LINK_LIBRARIES}
     NetCDF::NetCDF_Fortran
 )
+endif()
+
+if(WITH_NCDF)
+  target_compile_definitions(
+  ${PROJECT_NAME}-siesta
+  PUBLIC
+  NCDF
+  NCDF_4
+  )
+#
+  if(WITH_NCDF_PARALLEL)
+    target_compile_definitions(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+    NCDF_PARALLEL
+    )
+  endif()
+
+  target_link_libraries(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+    ${PROJECT_NAME}-libncdf
+    )
+  target_link_libraries(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+    ${PROJECT_NAME}-libfdict
+    )
 endif()
 
 if(WITH_ELPA)

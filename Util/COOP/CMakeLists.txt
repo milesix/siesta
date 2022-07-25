@@ -71,6 +71,7 @@ add_executable(
    ${sources_dm_creator}
 )
 target_link_libraries(dm_creator
+   PRIVATE
    coop_common_objs
    )
 

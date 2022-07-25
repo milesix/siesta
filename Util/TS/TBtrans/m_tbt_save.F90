@@ -2303,7 +2303,8 @@ contains
   ! These routines are for creating the output data in
   ! pure ASCII format.
   
-
+  ! ... but they still require FDICT...
+  
   ! This routine prepares the files for saving ASCII format
   ! data.
   ! NOTE that ASCII data will only be created in case

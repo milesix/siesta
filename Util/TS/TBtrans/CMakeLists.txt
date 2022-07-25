@@ -199,13 +199,6 @@ if(WITH_MPI)
   )
 endif()
 
-
-TARGET_LINK_LIBRARIES(
-  tbtrans
-  PRIVATE
-  ${PROJECT_NAME}-libfdict
-)
-
 if (WITH_MPI)
 
   TARGET_LINK_LIBRARIES(
@@ -225,6 +218,15 @@ endif()
 
 # External libraries.
 
+# Due to some design decisions in the code,
+# TBtrans depends on FDICT even if not
+# using NCDF
+
+    target_link_libraries(
+      tbtrans
+      PRIVATE
+      ${PROJECT_NAME}-libfdict
+      )
 
 if(WITH_MPI)
   target_link_libraries(
@@ -245,21 +247,40 @@ if(WITH_NETCDF)
     tbtrans
     PRIVATE
     NetCDF::NetCDF_Fortran
-)
+  )
   target_compile_definitions(
     tbtrans
     PRIVATE
     CDF
-    NCDF
-    NCDF_4
   )
 
-  TARGET_LINK_LIBRARIES(
+  if(WITH_NCDF)
+    target_compile_definitions(
     tbtrans
-    PRIVATE
-    ${PROJECT_NAME}-libncdf
-)
+    PRIVATE 
+    NCDF
+    NCDF_4
+    )
+#
+    if(WITH_NCDF_PARALLEL)
+      target_compile_definitions(
+      tbtrans
+      PRIVATE
+      NCDF_PARALLEL
+      )
+    endif()
 
+    target_link_libraries(
+      tbtrans
+      PRIVATE
+      ${PROJECT_NAME}-libncdf
+      )
+    target_link_libraries(
+      tbtrans
+      PRIVATE
+      ${PROJECT_NAME}-libfdict
+      )
+  endif()
 endif()
 
 install(

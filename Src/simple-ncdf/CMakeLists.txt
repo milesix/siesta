@@ -1,17 +1,18 @@
 #
-# I got this "pre-processed" file from the ncdf distribution, but I do
-# not remember under which conditions.
+# Use a pre-generated source file (see top of file)
 #
 add_library(
   ${PROJECT_NAME}-libncdf
    
-  netcdf_ncdf.f90
+  netcdf_ncdf.F90
   )
 
 target_link_libraries(
    ${PROJECT_NAME}-libncdf
+   # 'PUBLIC' to bring in fdict
    PRIVATE
    ${PROJECT_NAME}-libfdict
+   NetCDF::NetCDF_Fortran
 )
 
 target_include_directories(
@@ -20,26 +21,12 @@ target_include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-# The conditional should be superfluous
-if(WITH_NETCDF)
+if(WITH_NETCDF_PARALLEL)
   target_compile_definitions(
   "${PROJECT_NAME}-libncdf"
   PRIVATE
-  CDF
-  NCDF
-  NCDF_4
+  NCDF_PARALLEL
   )
-  target_include_directories(
-    ${PROJECT_NAME}-libncdf
-    PRIVATE
-    ${NETCDF_INCLUDEDIR}
-    ${NETCDF_INCLUDE_DIRS}
-)
-#  target_link_libraries(
-#     ${PROJECT_NAME}-siesta
-#     PRIVATE
-#    ${NETCDF_LINK_LIBRARIES}
-# )
 endif()
 
 

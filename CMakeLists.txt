@@ -105,6 +105,9 @@ endif()
 find_package(NetCDF 4.0.0 OPTIONAL_COMPONENTS Fortran C)
 option(WITH_NETCDF "Build Siesta with NetCDF support" ${NetCDF_FOUND})
 
+option(WITH_NCDF "Use the NCDF library" ${WITH_NETCDF})
+option(WITH_NCDF_PARALLEL "Use NCDF_PARALLEL" FALSE)
+
 
 
 # TODO
@@ -171,7 +174,8 @@ add_subdirectory("Src/ncps/src/libxc-compat")
 add_subdirectory("Src/ncps/src")
 add_subdirectory("Src/psoplib/src")
 add_subdirectory("Src/MatrixSwitch/src")
-if (WITH_NETCDF)
+if (WITH_NCDF)
+  message("---- Using the NCDF library")
   add_subdirectory("Src/simple-ncdf")
 endif()
 
