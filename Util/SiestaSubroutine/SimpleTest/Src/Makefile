@@ -29,13 +29,6 @@ MAIN_OBJDIR=.
 #  Do not move default list from here, or else a default target from arch.make can
 #  interfere
 all: default
-
-PROGS:= simple_pipes_serial simple_sockets_serial simple_mpi_serial
-ifeq ($(WITH_MPI),1)
-  PROGS+= simple_pipes_parallel simple_sockets_parallel simple_mpi_parallel
-  PROGS+= phonons
-endif
-default: $(PROGS)
 #
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
@@ -43,6 +36,12 @@ include $(MAIN_OBJDIR)/check_for_build_mk.mk
 #
 VPATH:=$(TOPDIR)/Util/SiestaSubroutine/SimpleTest/Src:$(TOPDIR)/Src
 #
+PROGS:= simple_pipes_serial simple_sockets_serial simple_mpi_serial
+ifeq ($(WITH_MPI),1)
+  PROGS+= simple_pipes_parallel simple_sockets_parallel simple_mpi_parallel
+  PROGS+= phonons
+endif
+default: $(PROGS)
 #
 # Uncomment the following line for debugging support
 #

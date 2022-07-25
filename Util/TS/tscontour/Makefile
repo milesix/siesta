@@ -9,12 +9,18 @@
 
 default: tscontour
 
+# To Do: streamline dependencies
+
 TOPDIR=.
 MAIN_OBJDIR=.
 
 VPATH=$(TOPDIR)/Util/TS/tscontour:$(TOPDIR)/Src
 TOPSRC=$(TOPDIR)/Src
 
+override WITH_MPI=
+override WITH_NCDF=
+override WITH_NCDF_PARALLEL=
+override WITH_FLOOK=
 
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
@@ -34,12 +40,12 @@ dep:
 # which case we need the mpi-compiler :(
 # However, we still compile everything else as though it did not exist
 #FC:=$(FC_SERIAL)         # Make it non-recursive
+#
+# AG: With the above override of MPI, FC_SERIAL would be used. If the NetCDF libraries
+# are parallel, the appropriate extra libraries should be added, perhaps in NETCDF_LIBS
 
-DEFS:=$(DEFS_PREFIX) $(DEFS) $(DEFS_PREFIX)-UMPI
-DEFS += $(DEFS_PREFIX)-UNCDF $(DEFS_PREFIX)-UNCDF_4 $(DEFS_PREFIX)-UNCDF_PARALLEL
-DEFS += $(DEFS_PREFIX)-USIESTA__MUMPS
-FPPFLAGS:=$(DEFS_PREFIX) $(FPPFLAGS) $(DEFS_PREFIX)-UMPI
-FPPFLAGS += $(DEFS_PREFIX)-UNCDF $(DEFS_PREFIX)-UNCDF_4 $(DEFS_PREFIX)-UNCDF_PARALLEL
+#FPPFLAGS:=$(DEFS_PREFIX) $(FPPFLAGS) $(DEFS_PREFIX)-UMPI
+#FPPFLAGS += $(DEFS_PREFIX)-UNCDF $(DEFS_PREFIX)-UNCDF_4 $(DEFS_PREFIX)-UNCDF_PARALLEL
 FPPFLAGS += $(DEFS_PREFIX)-USIESTA__MUMPS
 
 INCFLAGS:=$(NETCDF_INCFLAGS) $(FDF_INCFLAGS) \
@@ -123,56 +129,6 @@ OBJS += tscontour.o handlers.o
 XC = $(GRIDXC_LIBS)
 INCFLAGS:= $(INCFLAGS) $(GRIDXC_INCFLAGS)
 
-#######################
-#  TS-TBT libs:
-#
-# Libraries used by transiesta and tbtrans
-# They are currently supplied by this distribution
-# All rights reserved for the author of these libraries.
-# Author: Nick Papior
-
-# This library can be found at:
-#  https://github.com/zerothi/fdict
-FDICT=libfdict.a
-FDICT_MAKEFILE=$(TOPSRC)/fdict/Makefile
-$(FDICT): 
-	-mkdir -p fdict
-	(cd fdict ; \
-	echo "TOP_DIR=$(TOPSRC)/fdict" > Makefile ; echo "include $(TOPSRC)/fdict/Makefile" >> Makefile ; \
-	echo "FC=$(FC_SERIAL)" > setup.make ; \
-	echo "AR=$(AR)" >> setup.make ; \
-	echo "RANLIB=$(RANLIB)" >> setup.make ; \
-	echo "FFLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "LINK_FLAGS=$(FFLAGS)" >> setup.make ; \
-	$(MAKE) -j 1 copy ; $(MAKE) -j 1 lib SHARED=0)
-	@cp -p fdict/*.mod ./
-	cp fdict/$(FDICT) ./
-
-# This library can be found at:
-#  https://github.com/zerothi/ncdf
-NCDF=libncdf.a
-NCDF_MAKEFILE=$(TOPSRC)/NCDF/src/Makefile
-$(NCDF): COMP_LIBS += $(FDICT)
-$(NCDF): $(FDICT)
-	-mkdir -p ncdf
-	(cd ncdf ; \
-	echo "TOP_DIR=$(TOPSRC)/ncdf" > Makefile ; echo "include $(TOPSRC)/ncdf/Makefile" >> Makefile ; \
-	echo "settings.bash: FORCE" >> Makefile ; \
-	printf '%s\n' "	-cp ../fdict/settings.bash ." >> Makefile ; \
-	echo "FC=$(FC)" > setup.make ; \
-	echo "AR=$(AR)" >> setup.make ; \
-	echo "RANLIB=$(RANLIB)" >> setup.make ; \
-	echo "FFLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "LINK_FLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "FPPFLAGS = $(FPPFLAGS)" >> setup.make ; \
-	echo "INCLUDES = $(INCFLAGS) -I../" >> setup.make ; \
-	echo "LIBS = $(LIBS) -lfdict" >> setup.make ; \
-	$(MAKE) -j 1 copy ; $(MAKE) -j 1 lib SHARED=0)
-	@cp -p ncdf/*.mod ./
-	cp ncdf/$(NCDF) ./
-
-#######################
-
 tscontour.o: $(OBJS)
 
 $(OBJS): $(FDF_LIBS) $(COMP_LIBS)
@@ -186,8 +142,6 @@ tscontour: $(FDF_LIBS) $(COMP_LIBS) $(NCPS) $(PSOP) $(OBJS)
 clean:
 	@echo "==> Cleaning object, library, and executable files"
 	rm -f tscontour *.o *.a *.mod
-	-rm -rf ./fdict
-	-rm -rf ./ncdf
 
 PROGS:= tscontour
 install: $(PROGS)

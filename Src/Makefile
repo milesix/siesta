@@ -60,6 +60,7 @@ INCFLAGS+= $(NETCDF_INCFLAGS)  $(PSML_INCFLAGS) $(NCPS_INCFLAGS) \
            $(PSOP_INCFLAGS) $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS) \
            $(PEXSI_INCFLAGS) $(FDF_INCFLAGS) $(MS_INCFLAGS)
 INCFLAGS+= $(MPI_WRAPPERS_INCFLAGS)
+INCFLAGS+= $(FDICT_INCFLAGS) $(NCDF_INCFLAGS)
 #
 # For removing any -ipo compilation in sub directories...
 # Later compilers are also having this enabled, and it lets you
@@ -295,45 +296,11 @@ wavefunctions.o m_matdiag.o m_matswinvers.o m_inversemm.o: $(MS)
 #  TS-TBT libs:
 #
 # Libraries used by transiesta and tbtrans
-# They are currently supplied by this distribution
-# All rights reserved for the author of these libraries.
-# Author: Nick R. Papior
-
-# This library can be found at:
-#  https://github.com/zerothi/fdict
-FDICT=libfdict.a
-$(FDICT): 
-	(cd fdict ; rm -rf obj ; mkdir obj ; cd obj ; \
-	echo "TOP_DIR=$(TOPSRC)/fdict" > Makefile ; echo "include $(TOPSRC)/fdict/Makefile" >> Makefile ; \
-	echo "FC=$(FC_SERIAL)" > setup.make ; \
-	echo "AR=$(AR)" >> setup.make ; \
-	echo "RANLIB=$(RANLIB)" >> setup.make ; \
-	echo "FFLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "LINK_FLAGS=$(FFLAGS)" >> setup.make ; \
-	$(MAKE) -j 1 copy ; $(MAKE) -j 1 lib SHARED=0)
-	@cp -p fdict/obj/*.mod ./
-	cp fdict/obj/$(FDICT) ./
-
-# This library can be found at:
-#  https://github.com/zerothi/ncdf
-NCDF=libncdf.a
-$(NCDF): $(FDICT)
-	(cd ncdf ; rm -rf obj ; mkdir obj ; cd obj ; \
-	echo "TOP_DIR=$(TOPSRC)/ncdf" > Makefile ; echo "include $(TOPSRC)/ncdf/Makefile" >> Makefile ; \
-	echo "settings.bash: FORCE" >> Makefile ; \
-	printf '%s\n' "	-cp ../../fdict/obj/settings.bash ." >> Makefile ; \
-	echo "FC=$(FC)" > setup.make ; \
-	echo "AR=$(AR)" >> setup.make ; \
-	echo "RANLIB=$(RANLIB)" >> setup.make ; \
-	echo "FFLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "LINK_FLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "FPPFLAGS = $(FPPFLAGS)" >> setup.make ; \
-	echo "INCLUDES = $(INCFLAGS) -I../../" >> setup.make ; \
-	echo "LIBS = $(LIBS) -lfdict" >> setup.make ; \
-	$(MAKE) -j 1 copy ; $(MAKE) -j 1 lib SHARED=0)
-	@cp -p ncdf/obj/*.mod ./
-	cp ncdf/obj/$(NCDF) ./
-
+#
+# FDICT, NCDF
+#
+# Currently added to COMP_LIBS by build.mk
+# Alternatively, they could be added explicitly
 #######################
 
 # Extract information of the compiler version used.
@@ -455,10 +422,10 @@ clean:
 	(cd fdf ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean)
 	(cd ncps/src ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean)
 	(cd psoplib/src ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean)
+	(cd easy-fdict ; $(MAKE) clean)
+	(cd easy-ncdf ; $(MAKE) clean)
 	if [ -d MPI ] ; then (cd MPI && $(MAKE) \
                               ARCH_MAKE=$(ARCH_MAKE) clean ) ; fi
-	if [ -d fdict/obj ] ; then $(MAKE) -C fdict/obj clean ; fi
-	if [ -d ncdf/obj ] ; then $(MAKE) -C ncdf/obj clean ; fi
 	(cd Libs ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean ) 
 	(cd MatrixSwitch/src ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean )
 

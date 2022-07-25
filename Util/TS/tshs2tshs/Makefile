@@ -13,6 +13,9 @@ default: $(EXE)
 TOPDIR=.
 MAIN_OBJDIR=.
 
+#override WITH_MPI=
+override WITH_NCDF_PARALLEL=
+
 VPATH=$(TOPDIR)/Util/TS/tshs2tshs:$(TOPDIR)/Src
 TOPSRC=$(TOPDIR)/Src
 
@@ -30,9 +33,11 @@ FC_SERIAL   ?= $(FC_DEFAULT)
 # which case we need the mpi-compiler :(
 # However, we still compile everything else as though it did not exist
 #FC:=$(FC_SERIAL)         # Make it non-recursive
+# (With the override of MPI suggested above, one should add the appropriate
+# libraries to NETCDF_LIBS...)
 
-DEFS:=$(DEFS_PREFIX) $(DEFS) $(DEFS_PREFIX)-UMPI $(DEFS_PREFIX)-UNCDF_PARALLEL
-FPPFLAGS:=$(DEFS_PREFIX) $(FPPFLAGS) $(DEFS_PREFIX)-UMPI $(DEFS_PREFIX)-UNCDF_PARALLEL
+FPPFLAGS += $(DEFS_PREFIX)-UMPI 
+#FPPFLAGS += $(DEFS_PREFIX)-UNCDF_PARALLEL
 
 INCFLAGS:=$(NETCDF_INCFLAGS) $(INCFLAGS)
 
@@ -74,47 +79,8 @@ COMP_LIBS := $(filter-out libsiestaBLAS.a,$(COMP_LIBS))
 # They are currently supplied by this distribution
 # All rights reserved for the author of these libraries.
 # Author: Nick Papior Andersen
-
-# This library can be found at:
-#  https://github.com/zerothi/fdict
-FDICT=libfdict.a
-FDICT_MAKEFILE=$(TOPSRC)/fdict/Makefile
-$(FDICT): 
-	-mkdir -p fdict
-	(cd fdict ; \
-	echo "TOP_DIR=$(TOPSRC)/fdict" > Makefile ; echo "include $(TOPSRC)/fdict/Makefile" >> Makefile ; \
-	echo "FC=$(FC_SERIAL)" > setup.make ; \
-	echo "AR=$(AR)" >> setup.make ; \
-	echo "RANLIB=$(RANLIB)" >> setup.make ; \
-	echo "FFLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "LINK_FLAGS=$(FFLAGS)" >> setup.make ; \
-	$(MAKE) -j 1 copy ; $(MAKE) -j 1 lib SHARED=0)
-	@cp -p fdict/*.mod ./
-	cp fdict/$(FDICT) ./
-
-# This library can be found at:
-#  https://github.com/zerothi/ncdf
-NCDF=libncdf.a
-NCDF_MAKEFILE=$(TOPSRC)/NCDF/src/Makefile
-$(NCDF): COMP_LIBS += $(FDICT)
-$(NCDF): $(FDICT)
-	-mkdir -p ncdf
-	(cd ncdf ; \
-	echo "TOP_DIR=$(TOPSRC)/ncdf" > Makefile ; echo "include $(TOPSRC)/ncdf/Makefile" >> Makefile ; \
-	echo "settings.bash: FORCE" >> Makefile ; \
-	printf '%s\n' "	-cp ../fdict/settings.bash ." >> Makefile ; \
-	echo "FC=$(FC)" > setup.make ; \
-	echo "AR=$(AR)" >> setup.make ; \
-	echo "RANLIB=$(RANLIB)" >> setup.make ; \
-	echo "FFLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "LINK_FLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "FPPFLAGS = $(FPPFLAGS)" >> setup.make ; \
-	echo "INCLUDES = $(INCFLAGS) -I../" >> setup.make ; \
-	echo "LIBS = $(LIBS) -lfdict" >> setup.make ; \
-	$(MAKE) -j 1 copy ; $(MAKE) -j 1 lib SHARED=0)
-	@cp -p ncdf/*.mod ./
-	cp ncdf/$(NCDF) ./
-
+#
+INCFLAGS += $(FDICT_INCFLAGS) $(NCDF_INCFLAGS)
 #######################
 #
 $(EXE): $(COMP_LIBS) $(TSHS_COMP_LIBS) $(OBJS) 
@@ -124,8 +90,6 @@ $(EXE): $(COMP_LIBS) $(TSHS_COMP_LIBS) $(OBJS)
 clean:
 	@echo "==> Cleaning object, library, and executable files"
 	rm -f $(EXE) *.o *.a *.mod
-	-rm -rf ./fdict
-	-rm -rf ./NCDF
 
 PROGS:= tshs2tshs
 install: $(PROGS)

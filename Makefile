@@ -30,8 +30,8 @@ UTILS = Util/Denchar/Src \
 	Util/STM/simple-stm \
 	Util/Unfolding/Src \
         Pseudo/converters/psml2psf \
-        Pseudo/vnl-operator 
-#        Util/SiestaSubroutine/SimpleTest/Src \
+        Pseudo/vnl-operator \
+        Util/SiestaSubroutine/SimpleTest/Src 
 
 .PHONY: utils clean_utils install_utils siesta $(UTILS)
 .PHONY: install_siesta create_install_directory

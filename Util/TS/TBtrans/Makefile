@@ -197,50 +197,15 @@ $(SIESTA_VERSION_FILE): FORCE
 # They are currently supplied by this distribution
 # All rights reserved for the author of these libraries.
 # Author: Nick R. Papior
-
-# This library can be found at:
-#  https://github.com/zerothi/fdict
-FDICT=libfdict.a
-$(FDICT): 
-	-mkdir -p fdict
-	(cd fdict ; \
-	echo "TOP_DIR=$(TOPSRC)/fdict" > Makefile ; echo "include $(TOPSRC)/fdict/Makefile" >> Makefile ; \
-	echo "FC=$(FC_SERIAL)" > setup.make ; \
-	echo "AR=$(AR)" >> setup.make ; \
-	echo "RANLIB=$(RANLIB)" >> setup.make ; \
-	echo "FFLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "LINK_FLAGS=$(FFLAGS)" >> setup.make ; \
-	$(MAKE) -j 1 copy ; $(MAKE) -j 1 lib SHARED=0)
-	@cp -p fdict/*.mod ./
-	cp fdict/$(FDICT) ./
-
-# This library can be found at:
-#  https://github.com/zerothi/ncdf
-NCDF=libncdf.a
-$(NCDF): $(FDICT)
-	-mkdir -p ncdf
-	(cd ncdf ; \
-	echo "TOP_DIR=$(TOPSRC)/ncdf" > Makefile ; echo "include $(TOPSRC)/ncdf/Makefile" >> Makefile ; \
-	echo "settings.bash: FORCE" >> Makefile ; \
-	printf '%s\n' "	-cp ../fdict/settings.bash ." >> Makefile ; \
-	echo "FC=$(FC)" > setup.make ; \
-	echo "AR=$(AR)" >> setup.make ; \
-	echo "RANLIB=$(RANLIB)" >> setup.make ; \
-	echo "FFLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "LINK_FLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "FPPFLAGS = $(FPPFLAGS)" >> setup.make ; \
-	echo "INCLUDES = $(INCFLAGS) $(NETCDF_INCFLAGS) -I../" >> setup.make ; \
-	echo "LIBS = $(LIBS) -lfdict" >> setup.make ; \
-	$(MAKE) -j 1 copy ; $(MAKE) -j 1 lib SHARED=0)
-	@cp -p ncdf/*.mod ./
-	cp ncdf/$(NCDF) ./
-
+# (FDICT, NCDF: Handled by build.mk through COMP_LIBS)
+#
+INCFLAGS += $(FDICT_INCFLAGS) $(NCDF_INCFLAGS)
 #######################
 
 # This will setup the correct compilation sequence
 
-$(DEP_OBJS): $(COMP_LIBS) $(FDICT)
-$(TBTOBJS): $(FDF_LIBS) $(FDICT)
+$(DEP_OBJS): $(COMP_LIBS) $(FDICT_LIBS)
+$(TBTOBJS): $(FDF_LIBS) $(FDICT_LIBS)
 
 .PHONY: check-tbtrans
 check-tbtrans:
@@ -273,19 +238,19 @@ pht: phtrans
 
 # We append the -DTBTRANS as some special routines
 # which could take advantage of this preprocessing flag
-tbtrans: version $(MPI_INTERFACE) $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(DEP_OBJS) $(TBTOBJS) 
+tbtrans: version $(MPI_INTERFACE) $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT_LIBS) $(DEP_OBJS) $(TBTOBJS) 
 	$(FC) $(FFLAGS) $(LDFLAGS) -o tbtrans \
               $(DEP_OBJS) $(TBTOBJS) $(MPI_INTERFACE) \
-              $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(LIBS)
+              $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT_LIBS) $(LIBS)
 
 # We append the -DTBTRANS as some special routines
 # which could take advantage of this preprocessing flag
 # Tbtrans has TBT_PHONON flags to compile special capabilities
 phtrans: FPPFLAGS += -DTBT_PHONON
-phtrans: version $(MPI_INTERFACE) $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(DEP_OBJS) $(TBTOBJS)
+phtrans: version $(MPI_INTERFACE) $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT_LIBS) $(DEP_OBJS) $(TBTOBJS)
 	$(FC) $(FFLAGS) $(LDFLAGS) -o phtrans \
               $(DEP_OBJS) $(TBTOBJS) $(MPI_INTERFACE) \
-              $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(LIBS)
+              $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT_LIBS) $(LIBS)
 
 .PHONY: clean-tbt
 clean-tbt:
@@ -299,8 +264,6 @@ clean:
 	@echo "==> Cleaning object, library, and executable files"
 	-rm -f tbtrans phtrans *.o *.a *.mod
 	-rm -f .phtrans .tbtrans
-	-rm -rf ./fdict
-	-rm -rf ./ncdf
 
 PROGS:= tbtrans
 install: $(PROGS)

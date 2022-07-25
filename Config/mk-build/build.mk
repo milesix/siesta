@@ -211,7 +211,7 @@ ifeq ($(WITH_NETCDF),1)
 
    ifeq ($(WITH_NCDF),1)
      FPPFLAGS += $(DEFS_PREFIX)-DNCDF $(DEFS_PREFIX)-DNCDF_4
-     COMP_LIBS += libncdf.a libfdict.a
+     COMP_LIBS += $(NCDF_LIBS) $(FDICT_LIBS)
 
      ifeq ($(WITH_NCDF_PARALLEL),1)
        FPPFLAGS += $(DEFS_PREFIX)-DNCDF_PARALLEL
@@ -230,7 +230,7 @@ ifeq ($(WITH_FLOOK),1)
  FPPFLAGS_FLOOK = $(DEFS_PREFIX)-DSIESTA__FLOOK
  FPPFLAGS += $(FPPFLAGS_FLOOK) 
  LIBS += $(FLOOK_LIBS)
- COMP_LIBS += libfdict.a
+ COMP_LIBS += $(FDICT_LIBS)
 endif
 
 ifeq ($(WITH_MPI),1)
@@ -376,6 +376,22 @@ DO_MPI_WRAPPERS:
 	@echo "+++ Compiling MPI wrappers library"
 	(cd $(MAIN_OBJDIR)/Src/MPI ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" )
 
+#--------------------
+.PHONY: DO_FDICT
+FDICT_LIBS=$(MAIN_OBJDIR)/Src/easy-fdict/libfdict.a
+FDICT_INCFLAGS=-I$(MAIN_OBJDIR)/Src/easy-fdict
+$(FDICT_LIBS): DO_FDICT
+DO_FDICT:
+	@echo "+++ Compiling internal FDICT library"
+	(cd $(MAIN_OBJDIR)/Src/easy-fdict ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+#--------------------
+.PHONY: DO_NCDF
+NCDF_LIBS=$(MAIN_OBJDIR)/Src/easy-ncdf/libncdf.a
+NCDF_INCFLAGS=-I$(MAIN_OBJDIR)/Src/easy-ncdf
+$(NCDF_LIBS): DO_NCDF
+DO_NCDF:
+	@echo "+++ Compiling internal NCDF library"
+	(cd $(MAIN_OBJDIR)/Src/easy-ncdf ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 #--------------------
 .PHONY: DO_SIESTA_LIB
 SIESTA_LIB=$(MAIN_OBJDIR)/Src/libSiestaForces.a
