@@ -1,3 +1,7 @@
+#
+# This file actually includes build.mk. The rest of the text is kept for
+# use in special cases.
+#
 include $(MAIN_OBJDIR)/build.mk
 
 ifndef BUILD_MK_H__

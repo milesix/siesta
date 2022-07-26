@@ -483,37 +483,46 @@ For more information you can visit the web page
 \section{COMPILATION}
 \label{sec:compilation}
 
-\subsection{The build directory}
+\subsection{Experimental CMake-based framework}
+
+Please see the file \shell{INSTALL.Cmake} in the top
+directory of the \siesta\ distribution for basic instructions
+on how to use CMake to build \siesta\ and a selection of utility
+programs.
+
+\subsection{Makefile-based framework}
+
+Until the CMake framework is fully implemented, this is the
+preferred way to install \siesta\ and its utility programs.
+
+\subsubsection{The build directory}
 
 \siesta\ cannot be compiled from the top-level \shell{Src}
-directory, it must be compiled from an ad-hoc build directory.
-At the end of the compilation, the build
-directory will contain the \program{siesta} binary as well as
-the object files,
-module files, and libraries resulting from the compilation of the
-sources in \shell{Src}.
+directory: it must be compiled from an ad-hoc build directory.
 
-The default build directory is the top-level \shell{Obj} directory.
-Instructions on how to compile \siesta\ from \shell{Obj} are given in
-Sec.~\ref{sec:basic-compilation}.
-If you are interested in compiling \siesta\ from other directories,
-or in multiple concurrent compilations of Siesta (e.g., with
-different compilers or optimization levels), see also
-Sec.~\ref{sec:advanced-compilation} below.
+You can create a directory with any name, and in any
+location. However, it is advisable to use a name with a distinctive
+prefix, such as '\_' or ';', and to place it in the top-directory of
+the distribution:
+
+\begin{shellexample}
+       ('cd' to the top of the Siesta distribution)
+       mkdir _build
+\end{shellexample}
 
 \subsubsection{Basic compilation}
 \label{sec:basic-compilation}
 
-If you just want to compile the program from the default
-build directory (\shell{Obj}), follow the following steps:
-
+Please follow these steps for setup and compilation:
 \begin{enumerate}
 \item
-From within the build directory, issue the command:
+From within the build directory (\shell{\_build} in the above
+example), issue the command:
 \begin{shellexample}
-       $ sh ../Config/obj_setup.sh
+       sh ../Config/obj_setup.sh
 \end{shellexample}
-in order to populate it with with the minimal scaffolding of makefiles.
+in order to populate it with with the minimal scaffolding of makefiles
+and auxiliary files.
 
 \item
 Ensure that an appropriate \file{arch.make} file is present in the build directory
@@ -523,42 +532,39 @@ Ensure that an appropriate \file{arch.make} file is present in the build directo
 Then, again from the build directory, execute
 
 \begin{shellexample}
-       $ make
+        make
 \end{shellexample}
+to compile \siesta\ . The executable should work for any job. (This is
+not exactly true, since some of the parameters in the atomic routines
+are still hardwired, see \shell{Src/atmparams.f}, but those would
+seldom need to be changed.)
 \end{enumerate}
 
-to compile \siesta\ . The executable should work for any job. (This is not exactly true,
-since some of the parameters in the atomic routines are still
-hardwired, see \shell{Src/atmparams.f}, but those would seldom need to
-be changed.)
-
 Please note that, unless you really know what you are doing, the
-\shell{Src} directory (including its sub-directories) must be preserved
-without any changes, especially without any object or module files.
-Otherwise, the \shell{VPATH} mechanism used by \shell{make} to compile \siesta\ from the build
-directory will get confused, and the compilation may fail or produce an invalid
-\program{siesta} binary.
+\shell{Src} and \shell{Util} directories (including their
+sub-directories) must be preserved without any changes, especially
+without any object or module files.  Otherwise, the \shell{VPATH}
+mechanism used by \shell{make} to compile \siesta\ and the utility
+programs from the build directory will get confused, and the
+compilation may fail or produce invalid binaries.
 
 To compile utility programs (those living in the top-level
-\shell{Util} directory), you can simply use the provided makefiles: go
-to the \shell{Obj/Util} sub-directory, which was also created by the
-invokation of the \shell{obj\_setup.sh} script mentioned earlier, and
-type
+\shell{Util} directory), type, from the top of the build directory:
 
 \begin{shellexample}
        $ make utils
 \end{shellexample}
 
 It is also possible to type \shell{make} in the appropriate
-subdirectories of \shell{Obj/Util} to compile single utility programs,
+subdirectories of \shell{\_build/Util} to compile single utility programs,
 as needed.
 
 Optionally, you can install the executables. You should define the
 variable \shell{SIESTA\_INSTALL\_DIRECTORY} in your \file{arch.make}
-file, and then type:
+file, and then type, from the top of the build directory:
 
 \begin{shellexample}
-       $ make install
+        make install
 \end{shellexample}
 
 The executables will be stored in
@@ -566,44 +572,27 @@ The executables will be stored in
 not defined, the \file{local\_install} subdirectory of the build
 directory will be used as a staging area for executables.
 
-\subsubsection{Advanced compilation and multiple targets}
-\label{sec:advanced-compilation}
-
-It is possible to build \siesta\ from any build directory of your choice (instead
-of \shell{Obj}). You will need to follow the same three steps as described above, the
-main difference being that the first command will need to use a correct path
-(absolute or relative) to the \file{obj\_setup.sh} script, i.e., from your chosen build
-directory you will need to execute
-
-\begin{shellexample}
-       $ sh <path/to/Config>/obj_setup.sh
-\end{shellexample}
-
-Note also that your \file{arch.make} file needs to be in that chosen build directory
-before you can execute \shell{make}.
-
-Since compilations done in separate build directories are independent, one can
-compile as many different version of the \program{siesta} executable as needed (e.g.,
-with different compilers, levels of optimization, serial/parallel, debug, etc.\@)
-by appropriately defining different \file{arch.make} files in each build directory.
+Since compilations done in separate build directories are independent,
+one can compile as many different version of \program{siesta} and its
+associated utilities as needed (e.g., with different compilers, levels
+of optimization, serial/parallel, debug, etc.\@) by appropriately
+defining different \file{arch.make} files in each build directory.
 
 
 \subsection{The arch.make file}
 \label{sec:arch-make}
 
-The compilation of the program is done using a \shell{Makefile} that is
-provided with the code.\index{Makefile} This \shell{Makefile} will
-generate the executable for any of several architectures, with a
-minimum of tuning required from the user and encapsulated in a
-separate file called \file{arch.make}.
+The compilation of the program and utilities is carried out with a
+minimum of tuning required from the user, encapsulated in a separate
+file called \file{arch.make}.
 
-Please see the \shell{README} filein the 
+Please see the \shell{README} file in the 
 \shell{Config/mk-build} directory for information about the
 build system and the contents the \file{arch.make} file.
 
 \note Intel compilers default to high optimizations which tend to
-break \siesta. We advice to use \shell{-fp-model source} flag and not
-compile with higher optimizations than \shell{-O2}.
+break \siesta. We advice to use \shell{-fp-model source} flag and to
+avoid optimizations higher than \shell{-O2}.
 
 \note Since \shell{gfortran} version 10.x the interfaces are strictly
 checked. Currently you have to add \shell{-fallow-argument-mismatch}
@@ -632,7 +621,8 @@ and debugging builds.
 
 When changing build flags in the \file{arch.make} file it is
 imperative to clean the build directory. Please do a \shell{make
-    clean} then do \shell{make}.
+  clean} then do \shell{make}. (Perhaps it is better to use a different
+build directory if you want different flags or options.)
 
 For GFortran, use the following flags:
 \begin{shellexample}
@@ -647,8 +637,6 @@ For Intel, use the following flags:
 This will make \siesta\ run significantly slower. Please report any
 crashes to the developer team at
 \url{https://gitlab.com/siesta-project/siesta/-/issues}.
-
-
 
 
 \subsection{Parallel}
@@ -710,7 +698,7 @@ To enable OpenMP, simply add this to your \file{arch.make}
 \end{shellexample}
 The above will yield the most basic parallelism using OpenMP. However,
 the BLAS/LAPACK libraries which is the most time-consuming part of
-\siesta\ also requires to be threaded, please see Sec.~\ref{sec:libs}
+\siesta\ are also required to be threaded, please see Sec.~\ref{sec:libs}
 for correct linking.
 
 The minimum required version of OpenMP is 3.0

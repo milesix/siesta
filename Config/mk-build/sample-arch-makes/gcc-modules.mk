@@ -31,5 +31,3 @@ FFLAGS= -O2 -g
 FFLAGS_DEBUG= -g -O0 #-fcheck=all
 RANLIB=echo
 # ----------------------------------------------------------
-SELF_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
-include $(SELF_DIR)build.mk

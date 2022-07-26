@@ -33,13 +33,12 @@ The contents of the build.mk file should be included after 'arch.make'
 has been processed, either with a separate 'include' or by inserting
 appropriate lines in arch.make itself.
 
-Examples of arch.make files can be found in the 
-sample-arch-makes directory. 
+Examples of arch.make files can be found in the 'sample-arch-makes' directory. 
 
 Regarding block D): if the modified dependency lines are now at the
 top of the arch.make file, they might cause an unwanted setting of the
 "default" target in some makefiles. For example, in Util/TS/tshs2tshs,
-the 'default' target line was placed *after* including the arch.make
+the 'default' target line used to be placed *after* including the arch.make
 file. The 'atom.o' dependency line in the mn-intel.mk helper file
 forced the creation of 'atom.o', which was wrong.
 To fix this, the 'default' target line has to come near the top of the makefile.

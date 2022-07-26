@@ -79,5 +79,3 @@ create_Sparsity_SC.o: create_Sparsity_SC.F90
 #
 RANLIB=echo
 # ----------------------------------------------------------
-SELF_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
-include $(SELF_DIR)build.mk
