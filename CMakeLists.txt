@@ -163,14 +163,14 @@ endif()
 add_subdirectory("Src/fdf")
 add_library(Siesta::libfdf ALIAS fdf)
 
-add_subdirectory("Src/simple-fdict")
+add_subdirectory("Src/easy-fdict")
 add_subdirectory("Src/ncps/src/libxc-compat")
 add_subdirectory("Src/ncps/src")
 add_subdirectory("Src/psoplib/src")
 add_subdirectory("Src/MatrixSwitch/src")
 if (WITH_NCDF)
   message("---- Using the NCDF library")
-  add_subdirectory("Src/simple-ncdf")
+  add_subdirectory("Src/easy-ncdf")
 endif()
 
 # Siesta sources

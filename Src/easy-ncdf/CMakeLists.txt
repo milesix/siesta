@@ -21,7 +21,7 @@ target_include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-if(WITH_NETCDF_PARALLEL)
+if(WITH_NCDF_PARALLEL)
   target_compile_definitions(
   "${PROJECT_NAME}-libncdf"
   PRIVATE
