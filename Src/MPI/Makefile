@@ -25,15 +25,15 @@ TEMPLATES= mpi__type_s.f90 mpi__type_sv.f90 mpi__type_v.f90 mpi__type_vs.f90
 INCFLAGS:= $(INCFLAGS) -I$(MPI_INCLUDE)
 #
 Interfaces.f90 V_S.uses VS.uses: $(TEMPLATES)
-	if [ -z "$(KINDS)" ] ; then  $(MAKE) kind_explorer ; fi
-	$(MAKE) int_explorer
+	if [ -z "$(KINDS)" ] ; then  $(MAKE) mpi_kind_explorer ; fi
+	$(MAKE) mpi_int_explorer
 	sh ${<D}/generate.sh "$(KINDS)"
 #
-kind_explorer: kind_explorer.o
-	$(FC) $(FFLAGS) -o kind_explorer $(LDFLAGS) kind_explorer.o
+mpi_kind_explorer: kind_explorer.o
+	$(FC) $(FFLAGS) -o mpi_kind_explorer $(LDFLAGS) kind_explorer.o
 #
-int_explorer: int_explorer.o
-	$(FC) $(FFLAGS) -o int_explorer $(LDFLAGS) int_explorer.o
+mpi_int_explorer: int_explorer.o
+	$(FC) $(FFLAGS) -o mpi_int_explorer $(LDFLAGS) int_explorer.o
 #
 mpi_interfaces.o: mpi__include.o Interfaces.o V_S.uses VS.uses
 #
@@ -46,6 +46,6 @@ libmpi_f90.a: mpi_interfaces.o mpi__include.o Interfaces.o mpi_siesta.o
 #
 clean:
 	@rm -f Interfaces.f90 *.o *.mod
-	@rm -f *.uses kind_explorer int_explorer
+	@rm -f module_built *.uses mpi_kind_explorer mpi_int_explorer
 	@rm -f libmpi_f90.a
 

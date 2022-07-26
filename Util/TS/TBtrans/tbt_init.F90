@@ -55,10 +55,11 @@ subroutine tbt_init()
   use m_sparsity_handling
 
   use runinfo_m, only: runinfo
-  use version_info, only: prversion
 
   implicit none
 
+  external :: prversion
+  
   integer :: level
   real(dp) :: threshold
 #ifdef MPI

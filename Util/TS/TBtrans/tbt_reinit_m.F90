@@ -258,8 +258,10 @@ contains
     use mpi_siesta
 #endif
     use parallel,     only: Node
-    use version_info, only: prversion
+
     implicit none
+
+    external :: prversion
 
     ! Arguments
     logical, intent(in), optional :: info

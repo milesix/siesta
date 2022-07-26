@@ -1,0 +1,12 @@
+add_subdirectory("TS/TBtrans")
+add_subdirectory("Gen-basis")
+
+if(WITH_UTILS)
+  add_subdirectory("Eig2DOS")
+  add_subdirectory("COOP")
+  add_subdirectory("Vibra/Src")
+  add_subdirectory("Denchar/Src")
+  add_subdirectory("Macroave/Src")
+  add_subdirectory("Unfolding/Src")
+  add_subdirectory("STM/ol-stm/Src")
+endif()
