@@ -256,7 +256,28 @@ else
   LIBS += $(LAPACK_LIBS)
 endif
 
+# Remove this
+SYS=nag
+
+#-----------
+# Pre-installed required libraries
+ifeq ($(WITH_PREINSTALLED_REQS),1)
+
+# These lines make use of a custom mechanism to generate library lists and
+# include-file management. The mechanism is not implemented in all libraries.
+#---------------------------------------------
+ifeq ($(WITH_PSML),1)
+ include $(XMLF90_ROOT)/share/org.siesta-project/xmlf90.mk
+ include $(PSML_ROOT)/share/org.siesta-project/psml.mk
+endif
+
 # ------------- libGridXC configuration -----------
+
+ifeq ($(WITH_LIBXC),1)
+   $(info The setting WITH_LIBXC depends on the installed GRIDXC)
+   $(info It might not be honored)
+endif
+
 
 ifeq ($(WITH_GRID_SP),1)
   GRIDXC_CONFIG_PREFIX=sp
@@ -269,18 +290,6 @@ ifeq ($(WITH_MPI),1)
 endif
 FPPFLAGS += $(FPPFLAGS_GRID) 
 # -------------------------------------------------
-
-
-SYS=nag
-
-# These lines make use of a custom mechanism to generate library lists and
-# include-file management. The mechanism is not implemented in all libraries.
-#---------------------------------------------
-ifeq ($(WITH_PSML),1)
- include $(XMLF90_ROOT)/share/org.siesta-project/xmlf90.mk
- include $(PSML_ROOT)/share/org.siesta-project/psml.mk
-endif
-
 # A legacy libGridXC installation will have dual 'serial' and 'mpi' subdirectories,
 # whereas a modern one, generated with the 'multiconfig' option,  will have split
 # include directories but a flat lib directory. The details are still handled by
@@ -298,22 +307,58 @@ ifeq ($(WITH_GRIDXC),1)
   endif
 endif
 #
+EXTLIBS=
+EXTLIBS_SPECS=
+EXTLIBS_RECIPE=
+EXTLIBS_ONELINER=
+#-----------
+#  End of section for pre-installed required libraries
+#-------------------------------------------
+else
+
+# Automatic compilation of required external libraries
+#
+# ToDo: Put here the CMake rules (or in an included file)
+#
+EXTLIBS= psml gridxc
+PKG_PATH=$(MAIN_OBJDIR)/ExtLibs_installs/lib/pkgconfig
+
+ifeq ($(WITH_LIBXC),1)
+ ifndef LIBXC_ROOT
+   $(info For on-the-fly compilation of GRIDXC with LIBXC)
+   $(info a pre-installed libxc is needed)
+   $(error You need to define LIBXC_ROOT in your arch.make)
+ endif
+ LIBXC_INCFLAGS=$(shell PKG_CONFIG_PATH=$(LIBXC_ROOT)/lib/pkgconfig  pkg-config --cflags libxcf03 libxc)
+ LIBXC_LIBS=$(shell PKG_CONFIG_PATH=$(LIBXC_ROOT)/lib/pkgconfig  pkg-config --libs libxcf03 libxc)
+endif
+
+define EXTLIBS_SPECS
+ XMLF90_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags xmlf90) \
+ XMLF90_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs xmlf90) \
+ PSML_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags psml) \
+ PSML_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs psml) \
+ GRIDXC_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags gridxc) $(LIBXC_INCFLAGS) \
+ GRIDXC_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs gridxc) $(LIBXC_LIBS) 
+endef
+
+
+define EXTLIBS_RECIPE
+$(TARGET): $(EXTLIBS)
+	(cd $(SUBDIR); $(MAKE) \
+ XMLF90_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags xmlf90) \
+ XMLF90_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs xmlf90) \
+ PSML_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags psml) \
+ PSML_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs psml) \
+ GRIDXC_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags gridxc) $(LIBXC_INCFLAGS) \
+ GRIDXC_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs gridxc) $(LIBXC_LIBS) )
+
+endef
+
+endif
+
 EXTRA_FPPFLAGS:= $(foreach flag,$(WITH_EXTRA_FPPFLAGS),$(DEFS_PREFIX)-D$(flag))
 FPPFLAGS+=$(EXTRA_FPPFLAGS)
-#
-# Truly external libraries can be phony targets
-#
-.PHONY: $(PSML_LIBS)
-$(PSML_LIBS):
-	@echo ">>> PSML_LIBS: $(PSML_LIBS)"
-#
-.PHONY: $(XMLF90_LIBS)
-$(XMLF90_LIBS):
-	@echo ">>> XMLF90_LIBS: $(XMLF90_LIBS)"
-#
-.PHONY: $(GRIDXC_LIBS)
-$(GRIDXC_LIBS):
-	@echo ">>> GRIDXC_LIBS: $(GRIDXC_LIBS)"
 #
 # Built-in libraries
 #

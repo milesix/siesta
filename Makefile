@@ -74,12 +74,18 @@ ifeq ($(WITH_MPI), 1)
 else
   MPI_FLAG=OFF
 endif
+ifeq ($(WITH_LIBXC), 1)
+  LIBXC_FLAG=ON
+else
+  LIBXC_FLAG=OFF
+endif
 
 $(CMAKE_BUILD_DIR_gridxc)/Makefile: $(CMAKE_SOURCE_DIR_gridxc)/CMakeLists.txt
 	cmake -S $(<D) -B $(@D) \
              -DCMAKE_INSTALL_PREFIX=$(MAIN_OBJDIR)/ExtLibs_installs \
-             -DCMAKE_PREFIX_PATH=$(MAIN_OBJDIR)/ExtLibs_installs \
-             -DWITH_MPI=$(MPI_FLAG)
+             -DCMAKE_PREFIX_PATH="$(MAIN_OBJDIR)/ExtLibs_installs;$(LIBXC_ROOT)" \
+             -DWITH_MPI=$(MPI_FLAG) \
+             -DWITH_LIBXC=$(LIBXC_FLAG)
 
 .PHONY: $(CMAKE_BUILD_DIR_gridxc)/libgridxc.a  # to allow CMake's make check the build
 $(CMAKE_BUILD_DIR_gridxc)/libgridxc.a: $(CMAKE_BUILD_DIR_gridxc)/Makefile
@@ -89,13 +95,14 @@ $(CMAKE_BUILD_DIR_gridxc)/libgridxc.a: $(CMAKE_BUILD_DIR_gridxc)/Makefile
 gridxc: $(CMAKE_BUILD_DIR_gridxc)/libgridxc.a
 #-----------------------------------------
 
-siesta:
-	(cd Src; $(MAKE))
+siesta: $(EXTLIBS) 
+	(cd Src; $(MAKE) $(EXTLIBS_SPECS)  siesta )
+
 clean_siesta:
 	(cd Src; $(MAKE) clean)
 #
-utils:  MODE=
-utils:  $(UTILS)
+utils:  MODE= 
+utils:  $(EXTLIBS) $(UTILS)
 
 clean_utils: MODE=clean
 clean_utils: $(UTILS)
@@ -105,7 +112,7 @@ install_utils: MODE=SIESTA_INSTALL_DIRECTORY="$(SIESTA_INSTALL_DIRECTORY)" insta
 install_utils: $(UTILS)
 
 $(UTILS):
-	$(MAKE) -C $@ $(MODE)
+	$(MAKE) -C $@ $(MODE) $(EXTLIBS_SPECS)
 
 install_siesta: create_install_directory 
 	(cd Src; $(MAKE) SIESTA_INSTALL_DIRECTORY="$(SIESTA_INSTALL_DIRECTORY)" install)
@@ -120,3 +127,5 @@ install: install_siesta install_utils
 
 clean: clean_siesta clean_utils
 	rm -rf local_install
+
+
