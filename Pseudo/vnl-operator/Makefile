@@ -7,8 +7,8 @@
 #
 default: psop
 #
-MAIN_OBJDIR=.
-TOPDIR=.
+MAIN_OBJDIR=/Users/ag/code/GITLAB/Siesta/garalb/Linked/streamline-build/_new
+TOPDIR=/Users/ag/code/GITLAB/Siesta/garalb/Linked/streamline-build
 
 VPATH:=$(TOPDIR)/Src:$(TOPDIR)/Pseudo/vnl-operator
 
@@ -39,9 +39,9 @@ ALL_OBJS=$(MOD_OBJS) $(COM_OBJS)
 #
 XC=$(GRIDXC_LIBS)
 #
-psop:   $(NCPS) $(PSOP) $(PSML_LIBS) $(XC) $(XMLF90_LIBS) $(ALL_OBJS)
+psop:   $(NCPS) $(PSOP) $(ALL_OBJS)
 	$(FC) $(FFLAGS) $(LDFLAGS) -o psop $(ALL_OBJS) \
-        $(NCPS) $(PSOP) $(PSML_LIBS) $(XC) $(XMLF90_LIBS)
+              $(NCPS) $(PSOP) $(PSML_LIBS) $(XC) $(XMLF90_LIBS)
 #
 psop.o: psop_options.o m_uuid.o m_kb.o
 psop.o: m_getopts.o periodic_table.o

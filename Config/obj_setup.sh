@@ -27,9 +27,10 @@ testdir=${topdir}/Tests
 utildir=${topdir}/Util
 pseudodir=${topdir}/Pseudo
 #
-# Copy build.mk and the checker snippet
+# Copy build.mk and its subordinate files and the checker snippet
 #
 cp -p ${configdir}/mk-build/build.mk ${objdir}
+cp -p ${configdir}/mk-build/extlibs.mk ${objdir}
 cp -p ${configdir}/mk-build/check_for_build_mk.mk ${objdir}
 #
 # Replicate the hierarchy of makefiles

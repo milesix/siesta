@@ -318,7 +318,7 @@ else
 
 # Automatic compilation of required external libraries
 #
-# ToDo: Put here the CMake rules (or in an included file)
+include $(MAIN_OBJDIR)/extlibs.mk
 #
 EXTLIBS= psml gridxc
 PKG_PATH=$(MAIN_OBJDIR)/ExtLibs_installs/lib/pkgconfig
