@@ -7,8 +7,8 @@
 #
 default: psop
 #
-MAIN_OBJDIR=/Users/ag/code/GITLAB/Siesta/garalb/Linked/streamline-build/_new
-TOPDIR=/Users/ag/code/GITLAB/Siesta/garalb/Linked/streamline-build
+MAIN_OBJDIR=.
+TOPDIR=.
 
 VPATH:=$(TOPDIR)/Src:$(TOPDIR)/Pseudo/vnl-operator
 
