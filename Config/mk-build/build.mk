@@ -334,25 +334,24 @@ ifeq ($(WITH_LIBXC),1)
 endif
 
 define EXTLIBS_SPECS
- XMLF90_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags xmlf90) \
- XMLF90_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs xmlf90) \
- PSML_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags psml) \
- PSML_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs psml) \
- GRIDXC_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags gridxc) $(LIBXC_INCFLAGS) \
- GRIDXC_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs gridxc) $(LIBXC_LIBS) 
+ XMLF90_INCFLAGS="$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags xmlf90)" \
+ XMLF90_LIBS="$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs xmlf90)" \
+ PSML_INCFLAGS="$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags psml)" \
+ PSML_LIBS="$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs psml)" \
+ GRIDXC_INCFLAGS="$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags gridxc) $(LIBXC_INCFLAGS)" \
+ GRIDXC_LIBS="$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs gridxc) $(LIBXC_LIBS)" 
 endef
 
 
 define EXTLIBS_RECIPE
 $(TARGET): $(EXTLIBS)
 	(cd $(SUBDIR); $(MAKE) \
- XMLF90_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags xmlf90) \
- XMLF90_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs xmlf90) \
- PSML_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags psml) \
- PSML_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs psml) \
- GRIDXC_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags gridxc) $(LIBXC_INCFLAGS) \
- GRIDXC_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs gridxc) $(LIBXC_LIBS) )
-
+ XMLF90_INCFLAGS="$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags xmlf90)" \
+ XMLF90_LIBS="$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs xmlf90)" \
+ PSML_INCFLAGS="$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags psml)" \
+ PSML_LIBS="$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs psml)" \
+ GRIDXC_INCFLAGS="$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags gridxc) $(LIBXC_INCFLAGS)" \
+ GRIDXC_LIBS="$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs gridxc) $(LIBXC_LIBS)" )
 endef
 
 endif
