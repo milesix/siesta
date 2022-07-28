@@ -1,16 +1,65 @@
-SIESTA can be built using an experimental CMake framework (see file INSTALL.CMake for details,
+SIESTA can be built:
+
+* Using an experimental CMake framework (see file INSTALL.CMake for details,
 quirks, and missing bits).
 
-The traditional makefile-based approach, which has been streamlined
-and made more user-friendly, is still the recommended way:
+* Using the traditional makefile-based approach, which has been streamlined
+and made more user-friendly, and is still the recommended way:
 
-mkdir _build
-cd _build
-sh ../Config/obj_setup.sh
-(create arch.make --- see Config/mk-build/README)
+  mkdir _build
+  cd _build
+  sh ../Config/obj_setup.sh
+  (create arch.make --- see Config/mk-build/README)
 
-make
-make utils
-make install
+  make
+  make utils
+  make install
+
+
+In both cases, several external libraries must be installed before Siesta can be compiled. This installation
+can be made on-the-fly, using CMake, pkg-config, and git submodules:
+
+- The xmlf90, libpsml, and libgridxc (required) libraries are available as
+  submodules in the ExtLibs subdirectory, set to the appropriate
+  branches and/or tags for use in the current version of Siesta. If
+  you want to use them, and you are using git, you need to do (just
+  once, after you have fetched/cloned this Siesta branch):
+
+     git submodule update --init --recursive <path>
+
+  where <path> is the path to the submodule. Leave out '<path>' to
+  enable all submodules.
+
+- (If you plan to compile Siesta in a system without internet access
+   (e.g. MareNostrum), you can use the 'staget_submodules.sh' script
+   in the top level of the distribution to gather all the source files
+   for later uploading)
+
+- Make sure that your arch.make in the _build directory defines
+
+       WITH_AUTOMATIC_REQ_LIBS=1
+
+- Type 'make' or 'make utils' or 'make install'.  CMake will configure
+  and build the three libraries above, and the building scripts will
+  arrange the right variables for library discovery using pkg-config.
+
+- You need a relatively recent version of CMake.
+
+- The building scripts assume that CMake will install the pkg-config
+  libraries under the 'lib' subdirectory. In some systems (e.g. MareNostrum),
+  the 'lib64' subdirectory is used instead. Until this can be catched in
+  a clean way, please define, in the arch.make file:
+
+     WITH_CMAKE_LIB_IS_LIB64=1
+
+
+The above steps involve a hybrid "makefile-CMake" approach. Very
+soon it should be possible to use CMake for the installation of Siesta itself, with
+automatic installation of the required libraries.
+
+
+
+
+
 
  

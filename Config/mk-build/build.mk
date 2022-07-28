@@ -260,13 +260,54 @@ endif
 SYS=nag
 
 #-----------
-# Pre-installed required libraries
-ifeq ($(WITH_PREINSTALLED_REQS),1)
+ifeq ($(WITH_AUTOMATIC_REQ_LIBS),1)
+
+# Automatic compilation of required external libraries
+#
+include $(MAIN_OBJDIR)/extlibs.mk
+#
+EXTLIBS= xmlf90 psml gridxc
+ifeq ($(WITH_CMAKE_LIB_IS_LIB64),1)
+ PKG_PATH=$(MAIN_OBJDIR)/ExtLibs_installs/lib64/pkgconfig
+else
+ PKG_PATH=$(MAIN_OBJDIR)/ExtLibs_installs/lib/pkgconfig
+endif
+
+ifeq ($(WITH_LIBXC),1)
+ ifndef LIBXC_ROOT
+   $(info For on-the-fly compilation of libgridxc with libxc)
+   $(info a pre-installed libxc is needed)
+   $(error You need to define LIBXC_ROOT in your arch.make)
+ endif
+ LIBXC_INCFLAGS=$(shell PKG_CONFIG_PATH=$(LIBXC_ROOT)/lib/pkgconfig  pkg-config --cflags libxcf03 libxc)
+ LIBXC_LIBS=$(shell PKG_CONFIG_PATH=$(LIBXC_ROOT)/lib/pkgconfig  pkg-config --libs libxcf03 libxc)
+endif
+
+define EXTLIBS_SPECS
+ XMLF90_INCFLAGS="$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags xmlf90)" \
+ XMLF90_LIBS="$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs xmlf90)" \
+ PSML_INCFLAGS="$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags psml)" \
+ PSML_LIBS="$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs psml)" \
+ GRIDXC_INCFLAGS="$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags gridxc) $(LIBXC_INCFLAGS)" \
+ GRIDXC_LIBS="$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs gridxc) $(LIBXC_LIBS)" 
+endef
+
+else        
+
+#  Use of pre-installed required libraries
 
 # These lines make use of a custom mechanism to generate library lists and
 # include-file management. The mechanism is not implemented in all libraries.
 #---------------------------------------------
 ifeq ($(WITH_PSML),1)
+ ifndef XMLF90_ROOT
+   $(info A pre-installed xmlf90 library is needed)
+   $(error You need to define XMLF90_ROOT in your arch.make)
+ endif
+ ifndef PSML_ROOT
+   $(info A pre-installed libpsml library is needed)
+   $(error You need to define PSML_ROOT in your arch.make)
+ endif
  include $(XMLF90_ROOT)/share/org.siesta-project/xmlf90.mk
  include $(PSML_ROOT)/share/org.siesta-project/psml.mk
 endif
@@ -300,6 +341,12 @@ FPPFLAGS += $(FPPFLAGS_GRID)
 # make sure that your installation is 'single'...
 #
 ifeq ($(WITH_GRIDXC),1)
+
+  ifndef GRIDXC_ROOT
+    $(info A pre-installed libgrixc library is needed)
+    $(error You need to define GRIDXC_ROOT in your arch.make)
+  endif
+
   ifeq ($(WITH_LEGACY_GRIDXC_INSTALL),1)
     include $(GRIDXC_ROOT)/gridxc.mk
   else
@@ -309,51 +356,9 @@ endif
 #
 EXTLIBS=
 EXTLIBS_SPECS=
-EXTLIBS_RECIPE=
-EXTLIBS_ONELINER=
 #-----------
 #  End of section for pre-installed required libraries
 #-------------------------------------------
-else
-
-# Automatic compilation of required external libraries
-#
-include $(MAIN_OBJDIR)/extlibs.mk
-#
-EXTLIBS= psml gridxc
-PKG_PATH=$(MAIN_OBJDIR)/ExtLibs_installs/lib/pkgconfig
-
-ifeq ($(WITH_LIBXC),1)
- ifndef LIBXC_ROOT
-   $(info For on-the-fly compilation of GRIDXC with LIBXC)
-   $(info a pre-installed libxc is needed)
-   $(error You need to define LIBXC_ROOT in your arch.make)
- endif
- LIBXC_INCFLAGS=$(shell PKG_CONFIG_PATH=$(LIBXC_ROOT)/lib/pkgconfig  pkg-config --cflags libxcf03 libxc)
- LIBXC_LIBS=$(shell PKG_CONFIG_PATH=$(LIBXC_ROOT)/lib/pkgconfig  pkg-config --libs libxcf03 libxc)
-endif
-
-define EXTLIBS_SPECS
- XMLF90_INCFLAGS="$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags xmlf90)" \
- XMLF90_LIBS="$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs xmlf90)" \
- PSML_INCFLAGS="$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags psml)" \
- PSML_LIBS="$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs psml)" \
- GRIDXC_INCFLAGS="$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags gridxc) $(LIBXC_INCFLAGS)" \
- GRIDXC_LIBS="$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs gridxc) $(LIBXC_LIBS)" 
-endef
-
-
-define EXTLIBS_RECIPE
-$(TARGET): $(EXTLIBS)
-	(cd $(SUBDIR); $(MAKE) \
- XMLF90_INCFLAGS="$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags xmlf90)" \
- XMLF90_LIBS="$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs xmlf90)" \
- PSML_INCFLAGS="$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags psml)" \
- PSML_LIBS="$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs psml)" \
- GRIDXC_INCFLAGS="$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags gridxc) $(LIBXC_INCFLAGS)" \
- GRIDXC_LIBS="$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs gridxc) $(LIBXC_LIBS)" )
-endef
-
 endif
 
 EXTRA_FPPFLAGS:= $(foreach flag,$(WITH_EXTRA_FPPFLAGS),$(DEFS_PREFIX)-D$(flag))
@@ -447,15 +452,33 @@ DO_SIESTA_LIB:
 
 
 # Define default compilation methods
+ifeq ($(WITH_COMPACT_LOG),1)
+.c.o:
+	@$(CC) -c $(CFLAGS) $(INCFLAGS) $(CPPFLAGS) $< 
+	@echo "   CC $<"
+.F.o:
+	@$(FC) -c $(FFLAGS) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_fixed_F)  $< 
+	@echo "   FC $<"
+.F90.o:
+	@$(FC) -c $(FFLAGS) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_free_F90) $<
+	@echo "   FC $<"
+.f.o:
+	@$(FC) -c $(FFLAGS) $(INCFLAGS) $(FFLAGS_fixed_f)  $<
+	@echo "   FC $<"
+.f90.o:
+	@$(FC) -c $(FFLAGS) $(INCFLAGS) $(FFLAGS_free_f90)  $<
+	@echo "   FC $<"
+else
 .c.o:
 	$(CC) -c $(CFLAGS) $(INCFLAGS) $(CPPFLAGS) $< 
 .F.o:
 	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_fixed_F)  $< 
 .F90.o:
-	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_free_F90) $< 
+	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_free_F90) $<
 .f.o:
 	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FFLAGS_fixed_f)  $<
 .f90.o:
 	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FFLAGS_free_f90)  $<
+endif
 
 endif

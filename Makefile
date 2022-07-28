@@ -28,6 +28,7 @@ UTILS = Util/Denchar/Src \
 	Util/Macroave/Src \
 	Util/STM/ol-stm/Src \
 	Util/STM/simple-stm \
+	Util/SpPivot \
 	Util/Unfolding/Src \
         Pseudo/converters/psml2psf \
         Pseudo/vnl-operator \

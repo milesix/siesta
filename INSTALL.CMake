@@ -85,10 +85,14 @@ MPI compatibility issues).
         one would have to use 'mpirun ...' for serial utilities
         linking to GRIDXC (gen-basis, for example).
 
-      - It should be possible to use the FetchContent package in CMake
-        to pull the source for external libraries and build them as
-        sub-projects, but as of now the needed libraries need to be
-        updated to fine-tune the CMake support.
+      - Very soon it should be possible to use CMake to build external
+        libraries as sub-projects. (See INSTALL for a hybrid approach
+        using CMake and makefiles).
+
+      - Some utility programs are still not enabled for building with
+        CMake. (One can use the WITH_COMPACT_LOG=1 option in the hybrid
+	approach (see INSTALL) to ease the burden of preparing lists
+        of source files.)
 
 
  

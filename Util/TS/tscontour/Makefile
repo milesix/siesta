@@ -124,18 +124,19 @@ OBJS += m_integrate.o m_interpolate.o
 # Add sys object
 OBJS += $(SYSOBJ)
 
-OBJS += tscontour.o handlers.o
+OBJS += handlers.o
 
 XC = $(GRIDXC_LIBS)
 INCFLAGS:= $(INCFLAGS) $(GRIDXC_INCFLAGS)
 
 tscontour.o: $(OBJS)
+ALL_OBJS = $(OBJS) tscontour.o
 
 $(OBJS): $(FDF_LIBS) $(COMP_LIBS)
 .PHONY: tscontour
-tscontour: $(FDF_LIBS) $(COMP_LIBS) $(NCPS) $(PSOP) $(OBJS) 
+tscontour: $(FDF_LIBS) $(COMP_LIBS) $(NCPS) $(PSOP) $(ALL_OBJS)
 	$(FC) $(FFLAGS) $(LDFLAGS) -o tscontour \
-	$(OBJS) $(COMP_LIBS) $(FDF_LIBS) \
+	$(ALL_OBJS)  $(COMP_LIBS) $(FDF_LIBS) \
         $(NCPS) $(PSOP) $(XC) $(PSML_LIBS) $(XMLF90_LIBS) \
         $(LIBS) 
 
