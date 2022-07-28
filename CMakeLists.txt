@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.14)
 # We will prefer to use CMAKE_MODULE_PATH
 list(APPEND
   CMAKE_MODULE_PATH
-  ${CMAKE_CURRENT_SOURCE_DIR}/config/cmake
+  ${CMAKE_CURRENT_SOURCE_DIR}/Config/cmake
   )
 
 # Define project details
