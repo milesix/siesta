@@ -283,6 +283,11 @@ ifeq ($(WITH_LIBXC),1)
  LIBXC_LIBS=$(shell PKG_CONFIG_PATH=$(LIBXC_ROOT)/lib/pkgconfig  pkg-config --libs libxcf03 libxc)
 endif
 
+ifeq ($(WITH_GRID_SP),1)
+  FPPFLAGS_GRID= $(DEFS_PREFIX)-DGRID_SP
+  FPPFLAGS += $(FPPFLAGS_GRID) 
+endif
+
 define EXTLIBS_SPECS
  XMLF90_INCFLAGS="$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags xmlf90)" \
  XMLF90_LIBS="$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs xmlf90)" \

@@ -53,13 +53,19 @@ ifeq ($(WITH_LIBXC), 1)
 else
   LIBXC_FLAG=OFF
 endif
+ifeq ($(WITH_GRID_SP), 1)
+  SP_FLAG=ON
+else
+  SP_FLAG=OFF
+endif
 
 $(CMAKE_BUILD_DIR_gridxc)/Makefile: $(CMAKE_SOURCE_DIR_gridxc)/CMakeLists.txt
 	cmake -S $(<D) -B $(@D) \
              -DCMAKE_INSTALL_PREFIX=$(MAIN_OBJDIR)/ExtLibs_installs \
              -DCMAKE_PREFIX_PATH="$(MAIN_OBJDIR)/ExtLibs_installs;$(LIBXC_ROOT)" \
              -DWITH_MPI=$(MPI_FLAG) \
-             -DWITH_LIBXC=$(LIBXC_FLAG)
+             -DWITH_LIBXC=$(LIBXC_FLAG) \
+             -DWITH_GRID_SP=$(SP_FLAG)
 
 .PHONY: $(CMAKE_BUILD_DIR_gridxc)/libgridxc.a  # to allow CMake's make check the build
 $(CMAKE_BUILD_DIR_gridxc)/libgridxc.a: $(CMAKE_BUILD_DIR_gridxc)/Makefile
