@@ -31,7 +31,7 @@ can be made on-the-fly, using CMake, pkg-config, and git submodules:
   enable all submodules.
 
 - (If you plan to compile Siesta in a system without internet access
-   (e.g. MareNostrum), you can use the 'staget_submodules.sh' script
+   (e.g. MareNostrum), you can use the 'stage_submodules.sh' script
    in the top level of the distribution to gather all the source files
    for later uploading)
 
