@@ -35,11 +35,26 @@ appropriate lines in arch.make itself.
 
 Examples of arch.make files can be found in the 'sample-arch-makes' directory. 
 
-Regarding block D): if the modified dependency lines are now at the
-top of the arch.make file, they might cause an unwanted setting of the
-"default" target in some makefiles. For example, in Util/TS/tshs2tshs,
-the 'default' target line used to be placed *after* including the arch.make
-file. The 'atom.o' dependency line in the mn-intel.mk helper file
-forced the creation of 'atom.o', which was wrong.
-To fix this, the 'default' target line has to come near the top of the makefile.
+NOTE: Makefiles using this mechanism MUST have a relevant target line BEFORE
+including arch.make (and build.mk). Otherwise, optional target lines in arch.make (e.g.,
+special rules for block D above, and targets in build.mk and its subordinate files, can
+take precedence and confuse the building process. As an example:
 
+    default: gen-basis ioncat
+    # ...
+    ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
+    include $(ARCH_MAKE)
+    include $(MAIN_OBJDIR)/check_for_build_mk.mk
+    # ...
+
+or, if targets need to be built from information in aarch.make:
+
+    dummy: default
+    #...
+    include $(MAIN_OBJDIR)/arch.make
+    include $(MAIN_OBJDIR)/check_for_build_mk.mk
+    PROGS:= grid2cube
+    ifeq ($(WITH_NETCDF),1)
+      PROGS+= grid2cdf
+    endif
+    default: $(PROGS)

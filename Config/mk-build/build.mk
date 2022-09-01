@@ -134,6 +134,8 @@ WITH_GRIDXC=1
 # Nothing should need to be changed below
 #--------------------------------------------------------
 
+SIESTA_INSTALL_DIRECTORY?=$(MAIN_OBJDIR)/local_install
+
 FC_ASIS=$(FC_SERIAL)
 
 # These are for initialization of variables added to below
@@ -267,6 +269,7 @@ ifeq ($(WITH_AUTOMATIC_REQ_LIBS),1)
 include $(MAIN_OBJDIR)/extlibs.mk
 #
 EXTLIBS= xmlf90 psml gridxc
+
 ifeq ($(WITH_CMAKE_LIB_IS_LIB64),1)
  PKG_PATH=$(MAIN_OBJDIR)/ExtLibs_installs/lib64/pkgconfig
 else
@@ -288,14 +291,12 @@ ifeq ($(WITH_GRID_SP),1)
   FPPFLAGS += $(FPPFLAGS_GRID) 
 endif
 
-define EXTLIBS_SPECS
- XMLF90_INCFLAGS="$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags xmlf90)" \
- XMLF90_LIBS="$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs xmlf90)" \
- PSML_INCFLAGS="$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags psml)" \
- PSML_LIBS="$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs psml)" \
- GRIDXC_INCFLAGS="$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags gridxc) $(LIBXC_INCFLAGS)" \
- GRIDXC_LIBS="$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs gridxc) $(LIBXC_LIBS)" 
-endef
+XMLF90_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags xmlf90)
+XMLF90_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs xmlf90)
+PSML_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags psml)
+PSML_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs psml)
+GRIDXC_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags gridxc) $(LIBXC_INCFLAGS)
+GRIDXC_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs gridxc) $(LIBXC_LIBS)
 
 else        
 
@@ -360,7 +361,6 @@ ifeq ($(WITH_GRIDXC),1)
 endif
 #
 EXTLIBS=
-EXTLIBS_SPECS=
 #-----------
 #  End of section for pre-installed required libraries
 #-------------------------------------------
