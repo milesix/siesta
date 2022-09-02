@@ -24,6 +24,7 @@ UTILS = Util/Denchar/Src \
 	Util/TS/ts2ts \
 	Util/Vibra/Src \
 	Util/Macroave/Src \
+	Util/ON \
 	Util/STM/ol-stm/Src \
 	Util/STM/simple-stm \
 	Util/SpPivot \
