@@ -9,35 +9,33 @@
 #
 # JM Soler, A Garcia
 #
-OBJDIR=Obj
+TOPDIR=.
+MAIN_OBJDIR=.
 #
 .SUFFIXES:
 .SUFFIXES: .f .F .o .a .f90 .F90
 #
-VPATH:=$(shell pwd)/../../../../Src
+dummy: default
+#
+override WITH_NETCDF=
+override WITH_MPI=
+#
+ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
+include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+#
+VPATH:=$(TOPDIR)/Util/SiestaSubroutine/FmixMD/Src:$(TOPDIR)/Src
 #
 #       driver: Mixed molecular dynamics
 #       simple: Simple test
 #       para  : Test driver for parallel calculation
 #
-default: simple driver para
-#
-ARCH_MAKE=../../../../$(OBJDIR)/arch.make
-include $(ARCH_MAKE)
-include ../../../../$(OBJDIR)/check_for_build_mk.mk
-
+PROGS:= driver simple para   # Consider keeping only the first one
+default: $(PROGS)
 #
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
-#
-DEFS:=$(DEFS) $(DEFS_PREFIX)-UMPI $(DEFS_PREFIX)-UCDF
-FPPFLAGS:=$(FPPFLAGS) $(DEFS_PREFIX)-UMPI $(DEFS_PREFIX)-UCDF
-#
-# Uncomment the following line for debugging support
-#
-#FFLAGS=$(FFLAGS_DEBUG)
-#
 #
 driver.o: fmixmd.o sample.o
 fmixmd.o: sample.o
@@ -55,7 +53,10 @@ para: fsiesta_pipes.o para.o pxf.o posix_calls.o
 #
 clean: 
 	@echo "==> Cleaning object and executable files"
-	rm -f driver simple para *.o *.mod
+	rm -f $(PROGS) *.o *.mod
+
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 
 

@@ -22,7 +22,7 @@ include $(MAIN_OBJDIR)/check_for_build_mk.mk
 PROGS=
 ifeq ($(WITH_NETCDF),1)
  PROGS+= lwf2cdf
- COPY="cp -p"
+ COPY=cp -p
 else
  COPY=echo
 endif

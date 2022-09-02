@@ -32,7 +32,15 @@ UTILS = Util/Denchar/Src \
         Pseudo/converters/psml2psf \
         Pseudo/vnl-operator \
         Util/SiestaSubroutine/SimpleTest/Src \
-        Util/Contrib/APostnikov
+	Util/SiestaSubroutine/FmixMD/Src \
+	Util/SiestaSubroutine/ProtoNEB/Src \
+        Util/Contrib/APostnikov \
+        Util/Contour \
+	Util/JobList/Src \
+	Util/Optical \
+	Util/Optimizer \
+	Util/Projections \
+	Util/pdosxml
 
 .PHONY: utils clean_utils install_utils siesta $(UTILS)
 .PHONY: install_siesta create_install_directory
