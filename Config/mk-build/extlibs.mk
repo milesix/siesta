@@ -11,11 +11,17 @@
 # deployed in directory ExtLibs
 #
 #-----------------------------------------
+EXTLIBS_INSTALL_PREFIX=$(MAIN_OBJDIR)/ExtLibs_installs
+## EXTLIBS_TOOLCHAIN_FILE=$(MAIN_OBJDIR)/extlibs_toolchain.cmake
+
 CMAKE_BUILD_DIR_xmlf90 := $(MAIN_OBJDIR)/__extlib_xmlf90
 CMAKE_SOURCE_DIR_xmlf90 := $(TOPDIR)/ExtLibs/xmlf90
 
 $(CMAKE_BUILD_DIR_xmlf90)/Makefile: $(CMAKE_SOURCE_DIR_xmlf90)/CMakeLists.txt
-	cmake -S $(<D) -B $(@D) -DCMAKE_INSTALL_PREFIX=$(MAIN_OBJDIR)/ExtLibs_installs
+	cmake -S $(<D) -B $(@D) \
+             -DCMAKE_INSTALL_PREFIX=$(EXTLIBS_INSTALL_PREFIX) \
+             -DCMAKE_INSTALL_LIBDIR=$(LIBPREFIX)
+
 
 .PHONY: $(CMAKE_BUILD_DIR_xmlf90)/libxmlf90.a  # to allow CMake's make check the build
 $(CMAKE_BUILD_DIR_xmlf90)/libxmlf90.a: $(CMAKE_BUILD_DIR_xmlf90)/Makefile
@@ -30,8 +36,9 @@ CMAKE_SOURCE_DIR_psml := $(TOPDIR)/ExtLibs/libpsml
 
 $(CMAKE_BUILD_DIR_psml)/Makefile: $(CMAKE_SOURCE_DIR_psml)/CMakeLists.txt
 	cmake -S $(<D) -B $(@D) \
-             -DCMAKE_INSTALL_PREFIX=$(MAIN_OBJDIR)/ExtLibs_installs \
-             -DCMAKE_PREFIX_PATH=$(MAIN_OBJDIR)/ExtLibs_installs
+             -DCMAKE_INSTALL_PREFIX=$(EXTLIBS_INSTALL_PREFIX) \
+             -DCMAKE_PREFIX_PATH=$(EXTLIBS_INSTALL_PREFIX)  \
+             -DCMAKE_INSTALL_LIBDIR=$(LIBPREFIX)
 
 .PHONY: $(CMAKE_BUILD_DIR_psml)/libpsml.a  # to allow CMake's make check the build
 $(CMAKE_BUILD_DIR_psml)/libpsml.a: $(CMAKE_BUILD_DIR_psml)/Makefile
@@ -61,8 +68,9 @@ endif
 
 $(CMAKE_BUILD_DIR_gridxc)/Makefile: $(CMAKE_SOURCE_DIR_gridxc)/CMakeLists.txt
 	cmake -S $(<D) -B $(@D) \
-             -DCMAKE_INSTALL_PREFIX=$(MAIN_OBJDIR)/ExtLibs_installs \
-             -DCMAKE_PREFIX_PATH="$(MAIN_OBJDIR)/ExtLibs_installs;$(LIBXC_ROOT)" \
+             -DCMAKE_INSTALL_PREFIX=$(EXTLIBS_INSTALL_PREFIX) \
+             -DCMAKE_INSTALL_LIBDIR=$(LIBPREFIX) \
+             -DCMAKE_PREFIX_PATH="$(EXTLIBS_INSTALL_PREFIX);$(LIBXC_ROOT)" \
              -DWITH_MPI=$(MPI_FLAG) \
              -DWITH_LIBXC=$(LIBXC_FLAG) \
              -DWITH_GRID_SP=$(SP_FLAG)
@@ -77,4 +85,4 @@ gridxc: $(CMAKE_BUILD_DIR_gridxc)/libgridxc.a
 
 clean_extlibs:
 	-rm -rf $(MAIN_OBJDIR)/__extlib_*
-	-rm -rf $(MAIN_OBJDIR)ExtLibs_installs
+	-rm -rf $(EXTLIBS_INSTALL_PREFIX)

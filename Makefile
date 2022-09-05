@@ -45,6 +45,7 @@ UTILS = Util/Denchar/Src \
 .PHONY: utils clean_utils install_utils siesta $(UTILS)
 .PHONY: install_siesta create_install_directory
 
+extlibs: $(EXTLIBS)
 
 siesta: $(EXTLIBS) 
 	(cd Src; $(MAKE) siesta )

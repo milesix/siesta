@@ -266,15 +266,12 @@ ifeq ($(WITH_AUTOMATIC_REQ_LIBS),1)
 
 # Automatic compilation of required external libraries
 #
+LIBPREFIX=lib
 include $(MAIN_OBJDIR)/extlibs.mk
 #
 EXTLIBS= xmlf90 psml gridxc
 
-ifeq ($(WITH_CMAKE_LIB_IS_LIB64),1)
- PKG_PATH=$(MAIN_OBJDIR)/ExtLibs_installs/lib64/pkgconfig
-else
- PKG_PATH=$(MAIN_OBJDIR)/ExtLibs_installs/lib/pkgconfig
-endif
+PKG_PATH=$(MAIN_OBJDIR)/ExtLibs_installs/$(LIBPREFIX)/pkgconfig
 
 ifeq ($(WITH_LIBXC),1)
  ifndef LIBXC_ROOT
@@ -282,6 +279,7 @@ ifeq ($(WITH_LIBXC),1)
    $(info a pre-installed libxc is needed)
    $(error You need to define LIBXC_ROOT in your arch.make)
  endif
+ # LIBPREFIX for libxc is here set to 'lib'. This might not be appropriate
  LIBXC_INCFLAGS=$(shell PKG_CONFIG_PATH=$(LIBXC_ROOT)/lib/pkgconfig  pkg-config --cflags libxcf03 libxc)
  LIBXC_LIBS=$(shell PKG_CONFIG_PATH=$(LIBXC_ROOT)/lib/pkgconfig  pkg-config --libs libxcf03 libxc)
 endif

@@ -11,7 +11,7 @@ and made more user-friendly, and is still the recommended way:
   sh ../Config/obj_setup.sh
   (create arch.make --- see Config/mk-build/README)
 
-  make
+  make               (This will build the Siesta executable)
   make utils
   make install
 
@@ -44,14 +44,6 @@ can be made on-the-fly, using CMake, pkg-config, and git submodules:
   arrange the right variables for library discovery using pkg-config.
 
 - You need a relatively recent version of CMake.
-
-- The building scripts assume that CMake will install the pkg-config
-  libraries under the 'lib' subdirectory. In some systems (e.g. MareNostrum),
-  the 'lib64' subdirectory is used instead. Until this can be catched in
-  a clean way, please define, in the arch.make file:
-
-     WITH_CMAKE_LIB_IS_LIB64=1
-
 
 The above steps involve a hybrid "makefile-CMake" approach. Very
 soon it should be possible to use CMake for the installation of Siesta itself, with
