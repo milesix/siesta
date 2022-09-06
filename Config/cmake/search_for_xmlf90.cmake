@@ -20,13 +20,11 @@ else()
         GIT_REPOSITORY https://gitlab.com/siesta-project/libraries/xmlf90
         GIT_TAG cmake
     )
-    message(STATUS "... Downloading xmlf90 with git into build hierarchy")
+    set(FETCHCONTENT_SOURCE_DIR_XMLF90  ${CMAKE_SOURCE_DIR}/ExtLibs/xmlf90)
+    
+    #message(STATUS "... Downloading xmlf90 with git into build hierarchy")
     FetchContent_MakeAvailable(xmlf90)
     message(STATUS "... Adding xmlf90 target as a dependency")
-    # I cannot see why this does not work...
-    # target_link_libraries(${atom_target} PRIVATE xmlf90::xmlf90-lib)
-    # ... whereas this does
-   # target_link_libraries(${atom_target} PRIVATE xmlf90)
   else()
     message(FATAL_ERROR "Cannot find xmlf90... enable download or use a submodule")
   endif()

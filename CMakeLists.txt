@@ -136,8 +136,24 @@ endif()
 
 option(DOWNLOAD_FALLBACK "Download dependencies if not found" ON)
 
-include(search_for_xmlf90)
-include(search_for_libpsml)
+#include(search_for_xmlf90)
+#include(search_for_libpsml)
+
+include(FetchContent)
+    FetchContent_Declare(xmlf90
+        GIT_REPOSITORY https://gitlab.com/siesta-project/libraries/xmlf90
+        GIT_TAG cmake
+    )
+    set(FETCHCONTENT_SOURCE_DIR_XMLF90  ${CMAKE_SOURCE_DIR}/ExtLibs/xmlf90)
+    
+    FetchContent_Declare(libpsml
+        GIT_REPOSITORY https://gitlab.com/siesta-project/libraries/libpsml
+        GIT_TAG cmake
+    )
+    set(FETCHCONTENT_SOURCE_DIR_LIBPSML  ${CMAKE_SOURCE_DIR}/ExtLibs/libpsml)
+
+FetchContent_MakeAvailable(xmlf90 libpsml)
+
 include(search_for_gridxc)
 
 if (WITH_UTILS)

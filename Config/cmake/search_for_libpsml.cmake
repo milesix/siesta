@@ -25,7 +25,7 @@ else()
         GIT_REPOSITORY https://gitlab.com/siesta-project/libraries/libpsml
         GIT_TAG cmake
     )
-    message(STATUS "... Downloading libpsml with git into build hierarchy")
+    set(FETCHCONTENT_SOURCE_DIR_LIBPSML  ${CMAKE_SOURCE_DIR}/ExtLibs/libpsml)
     FetchContent_MakeAvailable(libpsml)
     message(STATUS "... Adding libpsml target as a dependency")
   else()
