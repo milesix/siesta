@@ -1,3 +1,20 @@
+#
+# Top-level makefile for Siesta plus auxiliary programs (Util, Pseudo)
+# 
+# Simply typing "make" will build the Siesta executable.
+# The whole set of auxiliary programs can be built by "make utils".
+#
+# Installation: 'make install_siesta' or 'make install_utils'
+#
+# Two auxiliary targets, "extlibs" and "create_install_directory" are
+# called implicitly by the targets above. They can also be called
+# directly to carry out the pre-compilation of the dependencies needed
+# and to set up the installation directory, respectively. Once these
+# two tasks are done, individual auxiliary programs can be built and
+# installed independently by going to the relevant directory and
+# typing "make" or "make install".
+#
+
 default: siesta
 
 TOPDIR=.

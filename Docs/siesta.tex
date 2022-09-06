@@ -548,16 +548,17 @@ mechanism used by \shell{make} to compile \siesta\ and the utility
 programs from the build directory will get confused, and the
 compilation may fail or produce invalid binaries.
 
-To compile utility programs (those living in the top-level
-\shell{Util} directory), type, from the top of the build directory:
+To compile utility and other auxiliary programs (those living in the
+top-level \shell{Util} and \shell{Pseudo} directories), type, from the
+top of the build directory:
 
 \begin{shellexample}
        $ make utils
 \end{shellexample}
 
 It is also possible to type \shell{make} in the appropriate
-subdirectories of \shell{\_build/Util} to compile single utility programs,
-as needed.
+subdirectories to compile single auxiliary programs, as needed. (See
+the instructions in the top-level Makefile)
 
 Optionally, you can install the executables. You should define the
 variable \shell{SIESTA\_INSTALL\_DIRECTORY} in your \file{arch.make}
@@ -575,7 +576,7 @@ directory will be used as a staging area for executables.
 Since compilations done in separate build directories are independent,
 one can compile as many different version of \program{siesta} and its
 associated utilities as needed (e.g., with different compilers, levels
-of optimization, serial/parallel, debug, etc.\@) by appropriately
+of optimization, serial/parallel, debug, etc.) by appropriately
 defining different \file{arch.make} files in each build directory.
 
 
@@ -759,6 +760,11 @@ architecture used.
 libraries and how each of them may be added to the compilation step
 (\file{arch.make}).
 
+{\bf NOTE:} The \emph{required} libraries: \program{xmlf90},
+\program{libPSML}, and  \program{libGridXC}, can be installed
+on-the-fly (follow instructions in the top-level \program{INSTALL}
+file).
+
 \siesta\ is distributed with scripts that install the most useful
 libraries. These installation scripts may be located in the
 \shell{Docs/} folder with names: \shell{install\_*.bash}.
@@ -779,8 +785,8 @@ Currently \siesta\ is shipped with these installation scripts:
 
 \end{itemize}
 Note that these scripts are guidance scripts and users are encouraged
-to check the mailing list for or seek help there in non-standard. The
-installation scripts finishes by telling \emph{what} to add to the
+to check the mailing list or seek help there in non-standard cases. The
+installation scripts finishe by telling \emph{what} to add to the
 \file{arch.make} file to correctly link the just installed libraries.
 
 \begin{description}
