@@ -13,9 +13,13 @@
 #-----------------------------------------
 EXTLIBS_INSTALL_PREFIX=$(MAIN_OBJDIR)/ExtLibs_installs
 ## EXTLIBS_TOOLCHAIN_FILE=$(MAIN_OBJDIR)/extlibs_toolchain.cmake
+EXTLIBS_VERSION_CHECK_FILE=$(TOPDIR)/Config/mk-build/extlibs_cmake_version_check.cmake
 
 CMAKE_BUILD_DIR_xmlf90 := $(MAIN_OBJDIR)/__extlib_xmlf90
 CMAKE_SOURCE_DIR_xmlf90 := $(TOPDIR)/ExtLibs/xmlf90
+
+check_cmake_version:
+	@cmake -P $(EXTLIBS_VERSION_CHECK_FILE)
 
 $(CMAKE_BUILD_DIR_xmlf90)/Makefile: $(CMAKE_SOURCE_DIR_xmlf90)/CMakeLists.txt
 	cmake -S $(<D) -B $(@D) \
@@ -28,6 +32,7 @@ $(CMAKE_BUILD_DIR_xmlf90)/libxmlf90.a: $(CMAKE_BUILD_DIR_xmlf90)/Makefile
 	cmake --build $(CMAKE_BUILD_DIR_xmlf90) 
 	cmake --install $(CMAKE_BUILD_DIR_xmlf90)
 
+xmlf90: check_cmake_version
 xmlf90: $(CMAKE_BUILD_DIR_xmlf90)/libxmlf90.a
 
 #-----------------------------------------
@@ -45,6 +50,7 @@ $(CMAKE_BUILD_DIR_psml)/libpsml.a: $(CMAKE_BUILD_DIR_psml)/Makefile
 	cmake --build $(CMAKE_BUILD_DIR_psml) 
 	cmake --install $(CMAKE_BUILD_DIR_psml)
 
+psml: check_cmake_version
 psml: xmlf90 $(CMAKE_BUILD_DIR_psml)/libpsml.a
 #-----------------------------------------
 CMAKE_BUILD_DIR_gridxc := $(MAIN_OBJDIR)/__extlib_gridxc
@@ -80,6 +86,7 @@ $(CMAKE_BUILD_DIR_gridxc)/libgridxc.a: $(CMAKE_BUILD_DIR_gridxc)/Makefile
 	cmake --build $(CMAKE_BUILD_DIR_gridxc) 
 	cmake --install $(CMAKE_BUILD_DIR_gridxc)
 
+gridxc: check_cmake_version
 gridxc: $(CMAKE_BUILD_DIR_gridxc)/libgridxc.a
 #-----------------------------------------
 
