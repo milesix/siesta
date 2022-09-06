@@ -24,8 +24,8 @@ check_cmake_version:
 $(CMAKE_BUILD_DIR_xmlf90)/Makefile: $(CMAKE_SOURCE_DIR_xmlf90)/CMakeLists.txt
 	cmake -S $(<D) -B $(@D) \
              -DCMAKE_INSTALL_PREFIX=$(EXTLIBS_INSTALL_PREFIX) \
+             -DCMAKE_Fortran_COMPILER=$(FC_SERIAL) \
              -DCMAKE_INSTALL_LIBDIR=$(LIBPREFIX)
-
 
 .PHONY: $(CMAKE_BUILD_DIR_xmlf90)/libxmlf90.a  # to allow CMake's make check the build
 $(CMAKE_BUILD_DIR_xmlf90)/libxmlf90.a: $(CMAKE_BUILD_DIR_xmlf90)/Makefile
@@ -42,6 +42,7 @@ CMAKE_SOURCE_DIR_psml := $(TOPDIR)/ExtLibs/libpsml
 $(CMAKE_BUILD_DIR_psml)/Makefile: $(CMAKE_SOURCE_DIR_psml)/CMakeLists.txt
 	cmake -S $(<D) -B $(@D) \
              -DCMAKE_INSTALL_PREFIX=$(EXTLIBS_INSTALL_PREFIX) \
+             -DCMAKE_Fortran_COMPILER=$(FC_SERIAL) \
              -DCMAKE_PREFIX_PATH=$(EXTLIBS_INSTALL_PREFIX)  \
              -DCMAKE_INSTALL_LIBDIR=$(LIBPREFIX)
 
@@ -58,8 +59,10 @@ CMAKE_SOURCE_DIR_gridxc := $(TOPDIR)/ExtLibs/libgridxc
 
 ifeq ($(WITH_MPI), 1)
   MPI_FLAG=ON
+  FORTRAN_COMPILER=$(FC_PARALLEL)
 else
   MPI_FLAG=OFF
+  FORTRAN_COMPILER=$(FC_SERIAL)
 endif
 ifeq ($(WITH_LIBXC), 1)
   LIBXC_FLAG=ON
@@ -75,6 +78,7 @@ endif
 $(CMAKE_BUILD_DIR_gridxc)/Makefile: $(CMAKE_SOURCE_DIR_gridxc)/CMakeLists.txt
 	cmake -S $(<D) -B $(@D) \
              -DCMAKE_INSTALL_PREFIX=$(EXTLIBS_INSTALL_PREFIX) \
+             -DCMAKE_Fortran_COMPILER=$(FORTRAN_COMPILER) \
              -DCMAKE_INSTALL_LIBDIR=$(LIBPREFIX) \
              -DCMAKE_PREFIX_PATH="$(EXTLIBS_INSTALL_PREFIX);$(LIBXC_ROOT)" \
              -DWITH_MPI=$(MPI_FLAG) \
