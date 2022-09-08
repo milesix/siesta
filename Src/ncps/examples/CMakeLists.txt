@@ -14,7 +14,7 @@ add_executable(
 
 target_link_libraries(test-ncps
    ${PROJECT_NAME}-libncps
-   libpsml
-   xmlf90
+   libpsml::libpsml
+   xmlf90::xmlf90
 )
 

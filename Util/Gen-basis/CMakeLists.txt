@@ -77,7 +77,7 @@ install(
   PRIVATE
   fdf
   gridxc
-  libpsml
+  libpsml::libpsml
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
   "$ENV{LAPACK_LIBS}"

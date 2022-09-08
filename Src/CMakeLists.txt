@@ -542,9 +542,9 @@ TARGET_LINK_LIBRARIES(
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
   fdf
-  xmlf90
+  xmlf90::xmlf90
   gridxc
-  libpsml
+  libpsml::libpsml
 )
 
 # -- Version information

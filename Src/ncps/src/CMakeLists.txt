@@ -16,7 +16,7 @@ target_link_libraries(
   ${PROJECT_NAME}-libncps
   PRIVATE
   ${PROJECT_NAME}-libxc-trans
-  libpsml
+  libpsml::libpsml
 )
 target_include_directories(
   ${PROJECT_NAME}-libncps
