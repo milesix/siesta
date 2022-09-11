@@ -158,7 +158,7 @@ set(siesta_sources
   hamann.f90
   hsparse.F
   idiag.f
-  init_output.F90
+  init_output.f90
   initatom.f
   initparallel.F
   interpolation.f90
@@ -378,7 +378,7 @@ set(siesta_sources
   naefs.f
   nag.f
   ncdf_io.F90
-  new_matel.F
+  new_matel.f
   nlefsm.f
   normalize_dm.F90
   obc.f
