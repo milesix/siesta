@@ -60,7 +60,6 @@ endif()
 find_package(PkgConfig)
 
 
-
 # Find MPI
 find_package(MPI OPTIONAL_COMPONENTS Fortran C)
 if( NOT MPI_FOUND )
@@ -115,6 +114,26 @@ option(WITH_ELPA "Use the ELPA library (direct interface)" FALSE)
 option(WITH_LUA "Use the flook library for Lua scripting" FALSE)
 option(WITH_UTILS "Compile all utilities (besides tbtrans)" TRUE)
 
+# Handle external dependencies
+# Use proper order for xmlf90 and libpsml dependencies
+
+if (NOT TARGET xmlf90::xmlf90)
+  find_package(xmlf90)
+endif()
+
+if (NOT TARGET libpsml::libpsml)
+  find_package(libpsml)
+endif()
+
+if(WITH_LIBXC)
+  if (NOT TARGET libxc::XC_Fortran)
+     include(search_for_libxc)
+  endif()
+endif()  
+
+if (NOT TARGET libgridxc::libgridxc)
+  find_package(libgridxc)
+endif()
 
 # Search for flook
 if (WITH_LUA)
@@ -124,23 +143,6 @@ endif()
 if (WITH_ELPA)
  include(search_for_elpa)
 endif()
-
-# This might be necessary if we are not compiling libgridxc
-# (pending pkg-config support for the libs.required)
-#
-if(WITH_LIBXC)
-  include(search_for_libxc)
-endif()  
-
-# Handle external dependencies
-
-option(DOWNLOAD_FALLBACK "Download dependencies if not found" ON)
-
-find_package(xmlf90)
-find_package(libpsml)
-
-include(search_for_gridxc)
-
 
 if (WITH_UTILS)
   # For STM/ol-stm

@@ -28,7 +28,7 @@ add_executable(
   psop
   
   psop_top_objs
-  gridxc
+  libgridxc::libgridxc
   libpsml::libpsml
   xmlf90::xmlf90
   ${PROJECT_NAME}-libncps

@@ -159,8 +159,8 @@ endif()
  target_link_libraries(
   unfold
   PRIVATE
-  gridxc
-  libpsml
+  libgridxc::libgridxc
+  libpsml::libpsml
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
  )

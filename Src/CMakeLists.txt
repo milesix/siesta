@@ -543,7 +543,7 @@ TARGET_LINK_LIBRARIES(
   ${PROJECT_NAME}-libpsop
   fdf
   xmlf90::xmlf90
-  gridxc
+  libgridxc::libgridxc
   libpsml::libpsml
 )
 

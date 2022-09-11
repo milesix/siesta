@@ -76,7 +76,7 @@ install(
   gen-basis
   PRIVATE
   fdf
-  gridxc
+  libgridxc::libgridxc
   libpsml::libpsml
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
