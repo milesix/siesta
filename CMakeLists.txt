@@ -85,8 +85,11 @@ endif()
 
 
 
-# Find NetCDF, some fallbacks are provided for pkg-config
-if( (NOT DEFINED NetCDF_ROOT) AND (NOT DEFINED NetCDF_PATH) )
+option(WITH_NETCDF "Build Siesta with NetCDF support" TRUE)
+
+if (WITH_NETCDF)
+ # Find NetCDF, some fallbacks are provided for pkg-config
+ if( (NOT DEFINED NetCDF_ROOT) AND (NOT DEFINED NetCDF_PATH) )
   if( PKG_CONFIG_FOUND )
     # Define NetCDF_PATH if not defined
     # Use pkg-config to retrieve the path
@@ -102,11 +105,11 @@ endif()
 
 # Require at least 4.0.0 version (we need >=4)
 find_package(NetCDF 4.0.0 OPTIONAL_COMPONENTS Fortran C)
-option(WITH_NETCDF "Build Siesta with NetCDF support" ${NetCDF_FOUND})
+
+endif()
 
 option(WITH_NCDF "Use the NCDF library" ${WITH_NETCDF})
 option(WITH_NCDF_PARALLEL "Use NCDF_PARALLEL" FALSE)
-
 
 
 # TODO
