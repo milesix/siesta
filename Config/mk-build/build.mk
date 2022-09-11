@@ -269,7 +269,7 @@ ifeq ($(WITH_AUTOMATIC_REQ_LIBS),1)
 LIBPREFIX=lib
 include $(MAIN_OBJDIR)/extlibs.mk
 #
-EXTLIBS= xmlf90 psml gridxc
+EXTLIBS= xmlf90 libpsml libgridxc
 
 PKG_PATH=$(MAIN_OBJDIR)/ExtLibs_installs/$(LIBPREFIX)/pkgconfig
 
@@ -291,10 +291,10 @@ endif
 
 XMLF90_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags xmlf90)
 XMLF90_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs xmlf90)
-PSML_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags psml)
-PSML_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs psml)
-GRIDXC_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags gridxc) $(LIBXC_INCFLAGS)
-GRIDXC_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs gridxc) $(LIBXC_LIBS)
+PSML_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags libpsml)
+PSML_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs libpsml)
+GRIDXC_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags libgridxc) $(LIBXC_INCFLAGS)
+GRIDXC_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs libgridxc) $(LIBXC_LIBS)
 
 else        
 

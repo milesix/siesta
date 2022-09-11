@@ -36,26 +36,26 @@ xmlf90: check_cmake_version
 xmlf90: $(CMAKE_BUILD_DIR_xmlf90)/libxmlf90.a
 
 #-----------------------------------------
-CMAKE_BUILD_DIR_psml := $(MAIN_OBJDIR)/__extlib_psml
-CMAKE_SOURCE_DIR_psml := $(TOPDIR)/ExtLibs/libpsml
+CMAKE_BUILD_DIR_libpsml := $(MAIN_OBJDIR)/__extlib_libpsml
+CMAKE_SOURCE_DIR_libpsml := $(TOPDIR)/ExtLibs/libpsml
 
-$(CMAKE_BUILD_DIR_psml)/Makefile: $(CMAKE_SOURCE_DIR_psml)/CMakeLists.txt
+$(CMAKE_BUILD_DIR_libpsml)/Makefile: $(CMAKE_SOURCE_DIR_libpsml)/CMakeLists.txt
 	cmake -S $(<D) -B $(@D) \
              -DCMAKE_INSTALL_PREFIX=$(EXTLIBS_INSTALL_PREFIX) \
              -DCMAKE_Fortran_COMPILER=$(FC_SERIAL) \
              -DCMAKE_PREFIX_PATH=$(EXTLIBS_INSTALL_PREFIX)  \
              -DCMAKE_INSTALL_LIBDIR=$(LIBPREFIX)
 
-.PHONY: $(CMAKE_BUILD_DIR_psml)/libpsml.a  # to allow CMake's make check the build
-$(CMAKE_BUILD_DIR_psml)/libpsml.a: $(CMAKE_BUILD_DIR_psml)/Makefile
-	cmake --build $(CMAKE_BUILD_DIR_psml) 
-	cmake --install $(CMAKE_BUILD_DIR_psml)
+.PHONY: $(CMAKE_BUILD_DIR_libpsml)/libpsml.a  # to allow CMake's make check the build
+$(CMAKE_BUILD_DIR_libpsml)/libpsml.a: $(CMAKE_BUILD_DIR_libpsml)/Makefile
+	cmake --build $(CMAKE_BUILD_DIR_libpsml) 
+	cmake --install $(CMAKE_BUILD_DIR_libpsml)
 
-psml: check_cmake_version
-psml: xmlf90 $(CMAKE_BUILD_DIR_psml)/libpsml.a
+libpsml: check_cmake_version
+libpsml: xmlf90 $(CMAKE_BUILD_DIR_libpsml)/libpsml.a
 #-----------------------------------------
-CMAKE_BUILD_DIR_gridxc := $(MAIN_OBJDIR)/__extlib_gridxc
-CMAKE_SOURCE_DIR_gridxc := $(TOPDIR)/ExtLibs/libgridxc
+CMAKE_BUILD_DIR_libgridxc := $(MAIN_OBJDIR)/__extlib_libgridxc
+CMAKE_SOURCE_DIR_libgridxc := $(TOPDIR)/ExtLibs/libgridxc
 
 ifeq ($(WITH_MPI), 1)
   MPI_FLAG=ON
@@ -75,7 +75,7 @@ else
   SP_FLAG=OFF
 endif
 
-$(CMAKE_BUILD_DIR_gridxc)/Makefile: $(CMAKE_SOURCE_DIR_gridxc)/CMakeLists.txt
+$(CMAKE_BUILD_DIR_libgridxc)/Makefile: $(CMAKE_SOURCE_DIR_libgridxc)/CMakeLists.txt
 	cmake -S $(<D) -B $(@D) \
              -DCMAKE_INSTALL_PREFIX=$(EXTLIBS_INSTALL_PREFIX) \
              -DCMAKE_Fortran_COMPILER=$(FORTRAN_COMPILER) \
@@ -85,13 +85,13 @@ $(CMAKE_BUILD_DIR_gridxc)/Makefile: $(CMAKE_SOURCE_DIR_gridxc)/CMakeLists.txt
              -DWITH_LIBXC=$(LIBXC_FLAG) \
              -DWITH_GRID_SP=$(SP_FLAG)
 
-.PHONY: $(CMAKE_BUILD_DIR_gridxc)/libgridxc.a  # to allow CMake's make check the build
-$(CMAKE_BUILD_DIR_gridxc)/libgridxc.a: $(CMAKE_BUILD_DIR_gridxc)/Makefile
-	cmake --build $(CMAKE_BUILD_DIR_gridxc) 
-	cmake --install $(CMAKE_BUILD_DIR_gridxc)
+.PHONY: $(CMAKE_BUILD_DIR_libgridxc)/libgridxc.a  # to allow CMake's make check the build
+$(CMAKE_BUILD_DIR_libgridxc)/libgridxc.a: $(CMAKE_BUILD_DIR_libgridxc)/Makefile
+	cmake --build $(CMAKE_BUILD_DIR_libgridxc) 
+	cmake --install $(CMAKE_BUILD_DIR_libgridxc)
 
-gridxc: check_cmake_version
-gridxc: $(CMAKE_BUILD_DIR_gridxc)/libgridxc.a
+libgridxc: check_cmake_version
+libgridxc: $(CMAKE_BUILD_DIR_libgridxc)/libgridxc.a
 #-----------------------------------------
 
 clean_extlibs:
