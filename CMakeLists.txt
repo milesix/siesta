@@ -60,14 +60,22 @@ endif()
 find_package(PkgConfig)
 
 
-# Find MPI
-find_package(MPI OPTIONAL_COMPONENTS Fortran C)
-if( NOT MPI_FOUND )
-  message(STATUS "MPI could not be found by the CMake configuration files. Will default to not build Siesta with parallel support.")
-  message(WARNING "To enable MPI support redefine MPI_Fortran and MPI_C variables and set -DWITH_MPI=on.")
+option(WITH_MPI "Build Siesta with MPI support" TRUE)
+if (WITH_MPI)
+  if (NOT TARGET MPI::MPI_Fortran)
+   # Find MPI
+   find_package(MPI OPTIONAL_COMPONENTS Fortran C)
+   if( NOT MPI_Fortran_FOUND )
+     # To change the setting to not build Siesta with parallel support,
+     # use the following line
+     #set(WITH_MPI OFF CACHE BOOL "Could not find MPI" FORCE)
+     message(STATUS "MPI could not be found by CMake")
+     message(STATUS "Try setting MPI_Fortran_COMPILER to an MPI wrapper, or the MPI_HOME env variable")
+     message(STATUS "If unsuccessful, set -DWITH_MPI=OFF")
+     message(FATAL_ERROR "MPI could not be found by CMake")
+   endif()
+  endif()
 endif()
-option(WITH_MPI "Build Siesta with MPI support" ${MPI_FOUND})
-
 
 # Find OpenMP
 find_package(OpenMP COMPONENTS Fortran C)
@@ -82,8 +90,6 @@ if( WITH_OPENMP )
     message(ERROR_FATAL "Requesting OpenMP support but could not find any OpenMP flags (default FindOpenMP search)")
   endif()
 endif()
-
-
 
 option(WITH_NETCDF "Build Siesta with NetCDF support" TRUE)
 
@@ -195,6 +201,11 @@ install(
 )
 
 # add the testsuite
-#enable_testing()
+
+enable_testing()
+if(WITH_MPI)
+  add_subdirectory("Util/MPI_test")
+endif(WITH_MPI)
+
 add_subdirectory("Src/ncps/examples")
 

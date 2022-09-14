@@ -1,5 +1,6 @@
+# Built-in MatrixSwitch
 #
-set(ms_sources
+ add_library(${PROJECT_NAME}-libms
 
   MatrixSwitch.F90
   MatrixSwitch_m_add.F90
@@ -12,44 +13,39 @@ set(ms_sources
   MatrixSwitch_wrapper_params.F90
 )
 
- add_library(
-  ${PROJECT_NAME}-libms
-  ${ms_sources}  
- )
-
 if (WITH_MPI)
- # specific preprocessor variable
+
+ # specific preprocessor variables for compilation of MS itself
  target_compile_definitions(
   ${PROJECT_NAME}-libms
-  PUBLIC
+  PRIVATE
   HAVE_MPI
   HAVE_SCALAPACK
  )
 
-# Note that this library does not use
-# mpi_siesta...
-# target_link_libraries(
-#  ${PROJECT_NAME}-libms
-#  PRIVATE
-#  mpi_siesta
-# )
+# Note that this library does NOT use mpi_siesta... We need the
+# standard MPI dependency, for itself and any users
 
-  # Hence, add ground stuff for MPI
-  # This enables correct compilation and also correct flags for
-  # MPI builds.
-  # Also, it ensures that the include directories are correctly setup
+ target_link_libraries(${PROJECT_NAME}-libms PUBLIC MPI::MPI_Fortran)
 
- target_compile_options(${PROJECT_NAME}-libms PUBLIC ${MPI_Fortran_COMPILE_FLAGS})
- target_include_directories(${PROJECT_NAME}-libms PUBLIC ${MPI_Fortran_INCLUDE_DIRS})
- target_link_directories(${PROJECT_NAME}-libms PUBLIC ${MPI_Fortran_LIBRARY_DIRS})
- target_link_libraries(${PROJECT_NAME}-libms PUBLIC  ${MPI_Fortran_LIBRARIES})
-  
+ # Note that the variables below are already incorporated as
+ # properties of the MPI::MPI_Fortran target by the FindMPI module. For
+ # example:
+ # set_property(TARGET MPI::MPI_${LANG}
+ #                     PROPERTY INTERFACE_COMPILE_DEFINITIONS
+ #                     "${MPI_${LANG}_COMPILE_DEFINITIONS}")
 
-endif()
+  ## --- old ---
+  ## This enables correct compilation and also correct flags for
+  ## MPI builds.
+  ## Also, it ensures that the include directories are correctly setup
+  ##  target_compile_options(${PROJECT_NAME}-libms PUBLIC ${MPI_Fortran_COMPILE_FLAGS})
+  ##  target_include_directories(${PROJECT_NAME}-libms PUBLIC ${MPI_Fortran_INCLUDE_DIRS})
+  ##  target_link_directories(${PROJECT_NAME}-libms PUBLIC ${MPI_Fortran_LIBRARY_DIRS})
+  ##  target_link_libraries(${PROJECT_NAME}-libms PUBLIC  ${MPI_Fortran_LIBRARIES})
 
-target_include_directories(
-  ${PROJECT_NAME}-libms
-  INTERFACE
-  ${CMAKE_CURRENT_BINARY_DIR}
-)
+endif(WITH_MPI)
+
+# So that targets using MS can find its modules:
+target_include_directories(${PROJECT_NAME}-libms INTERFACE ${CMAKE_CURRENT_BINARY_DIR})
 
