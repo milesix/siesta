@@ -165,7 +165,12 @@ endif()
 
 if (WITH_UTILS)
   # For STM/ol-stm
-  include(search_for_fftw)
+  find_package(FFTW QUIET COMPONENTS DOUBLE_LIB)
+  if (FFTW_DOUBLE_LIB_FOUND)
+     message(STATUS "Found FFTW Double")
+  else()
+     message(FATAL_ERROR "Did not find FFTW -- Deactivate  STM/ol-stm...")
+  endif()
 endif()
 
 

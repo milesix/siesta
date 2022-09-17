@@ -96,18 +96,12 @@ install(
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   )
 
- target_include_directories(
-  ol-stm
-  PRIVATE
-  ${FFTW_INCLUDE_DIRS}
-  )
-  
  target_link_libraries(
   ol-stm
   PRIVATE
   fdf
   libpsml
   ${PROJECT_NAME}-libncps
-  ${FFTW_LINK_LIBRARIES}
+  FFTW::Double
  )
 
