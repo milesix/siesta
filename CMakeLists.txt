@@ -123,6 +123,16 @@ option(WITH_ELPA "Use the ELPA library (direct interface)" FALSE)
 option(WITH_LUA "Use the flook library for Lua scripting" FALSE)
 option(WITH_UTILS "Compile all utilities (besides tbtrans)" TRUE)
 
+#
+# Look for BLAS and LAPACK
+#
+find_package(CustomBlas REQUIRED)
+find_package(CustomLapack REQUIRED)
+if (WITH_MPI)
+  find_package(CustomScalapack REQUIRED)
+endif()
+
+
 # Handle external dependencies
 # Use proper order for xmlf90 and libpsml dependencies
 

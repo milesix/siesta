@@ -222,14 +222,14 @@ if(WITH_MPI)
   target_link_libraries(
     tbtrans
     PRIVATE
-    "$ENV{SCALAPACK_LIBS}"
+    Scalapack::Scalapack
   )
 endif()
   
 TARGET_LINK_LIBRARIES(
   tbtrans
   PRIVATE
-  "$ENV{LAPACK_LIBS}")
+  LAPACK::LAPACK)
 
 if(WITH_NETCDF)
 

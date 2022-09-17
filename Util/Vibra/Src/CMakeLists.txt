@@ -43,7 +43,7 @@ target_link_libraries(fcbuild
 target_link_libraries(vibra
     vibra_top_objs
     fdf
-    $ENV{LAPACK_LIBS}
+    LAPACK::LAPACK
     )
     
 install(

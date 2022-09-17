@@ -30,15 +30,31 @@ add_executable(blacs_prb
   blacs_prb.f90
   )
 
+
+add_executable(pblas_prb
+  # Sources
+  pblas_prb.f90
+  )
+
+target_link_libraries(pblas_prb
+  PRIVATE
+  Scalapack::Scalapack
+  MPI::MPI_Fortran
+  LAPACK::LAPACK
+)
+add_test(NAME pblas_prb_Runs_inMPI
+         COMMAND
+	 ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${MPIEXEC_MAX_NUMPROCS}
+         ${MPIEXEC_PREFLAGS} pblas_prb ${MPIEXEC_POSTFLAGS})
+
 target_link_libraries(blacs_prb
   PRIVATE
-  "$ENV{SCALAPACK_LIBS}"
+  Scalapack::Scalapack
   MPI::MPI_Fortran
 )
 add_test(NAME blacs_prb_Runs_inMPI
          COMMAND
 	 ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${MPIEXEC_MAX_NUMPROCS}
          ${MPIEXEC_PREFLAGS} blacs_prb ${MPIEXEC_POSTFLAGS})
-
 
 

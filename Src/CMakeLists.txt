@@ -568,7 +568,7 @@ if(WITH_MPI)
   target_link_libraries(
     ${PROJECT_NAME}-siesta
     PRIVATE
-    "$ENV{SCALAPACK_LIBS}"
+    Scalapack::Scalapack
   )
 endif()
 
@@ -655,7 +655,7 @@ endif()
 TARGET_LINK_LIBRARIES(
   ${PROJECT_NAME}-siesta
   PRIVATE
-  "$ENV{LAPACK_LIBS}")
+  LAPACK::LAPACK)
 
 install(
   TARGETS ${PROJECT_NAME}-siesta

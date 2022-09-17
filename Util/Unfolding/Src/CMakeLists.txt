@@ -130,14 +130,14 @@ if(WITH_MPI)
   target_link_libraries(
     unfold
     PRIVATE
-    "$ENV{SCALAPACK_LIBS}"
+    LAPACK::LAPACK
   )
 endif()
   
 TARGET_LINK_LIBRARIES(
   unfold
   PRIVATE
-  "$ENV{LAPACK_LIBS}")
+  Scalapack::Scalapack)
 
 if(WITH_NETCDF)
 
