@@ -105,7 +105,7 @@ add_executable(unfold "${sources}")
 if(WITH_MPI)
   target_compile_definitions(
   unfold
-  PUBLIC
+  PRIVATE
   MPI
   )
 # MPI interfaces
@@ -126,18 +126,6 @@ TARGET_LINK_LIBRARIES(
 # External libraries.
 
 
-if(WITH_MPI)
-  target_link_libraries(
-    unfold
-    PRIVATE
-    LAPACK::LAPACK
-  )
-endif()
-  
-TARGET_LINK_LIBRARIES(
-  unfold
-  PRIVATE
-  Scalapack::Scalapack)
 
 if(WITH_NETCDF)
 
@@ -148,7 +136,7 @@ if(WITH_NETCDF)
 )
   target_compile_definitions(
     unfold
-    PUBLIC
+    PRIVATE
     CDF
     NCDF
     NCDF_4
@@ -163,7 +151,23 @@ endif()
   libpsml::libpsml
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
+  "$<$<BOOL:WITH_MPI>:Scalapack::Scalapack>"
+  LAPACK::LAPACK
  )
+
+## if(WITH_MPI)
+##   target_link_libraries(
+##     unfold
+##     PRIVATE
+##     Scalapack::Scalapack
+##   )
+## endif()
+  
+## TARGET_LINK_LIBRARIES(
+##   unfold
+##   PRIVATE
+##   LAPACK::LAPACK
+## )
 
 install(
   TARGETS unfold
