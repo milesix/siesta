@@ -87,7 +87,7 @@ else()
       # Try Scalapack via CMake export file
       find_package(scalapack)
       if(scalapack_FOUND)
-        get_target_property(_scalapack_library scalapack IMPORTED_LINK_INTERFACE_LIBRARIES_NOCONFIG)
+        get_target_property(_scalapack_library scalapack INTERFACE_LINK_LIBRARIES)
         set(SCALAPACK_LIBRARY "${_scalapack_library}" CACHE STRING "ScaLAPACK library to link"
           FORCE)
         unset(_scalapack_library)
