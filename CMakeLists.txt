@@ -132,6 +132,7 @@ if (WITH_MPI)
   find_package(CustomScalapack REQUIRED)
 endif()
 
+include(check_for_linalg_features)
 
 # Handle external dependencies
 # Use proper order for xmlf90 and libpsml dependencies

@@ -102,72 +102,34 @@ list(
 
 add_executable(unfold "${sources}")
 
-if(WITH_MPI)
-  target_compile_definitions(
-  unfold
-  PRIVATE
-  MPI
-  )
-# MPI interfaces
-  target_link_libraries(
-    unfold
-    PRIVATE
-    mpi_siesta
-  )
-endif()
-
-
-TARGET_LINK_LIBRARIES(
-    unfold
-    PRIVATE
-    fdf
-)
-
-# External libraries.
-
-
-
-if(WITH_NETCDF)
-
-  TARGET_LINK_LIBRARIES(
-    unfold
-    PRIVATE
-    NetCDF::NetCDF_Fortran
-)
-  target_compile_definitions(
-    unfold
-    PRIVATE
-    CDF
-    NCDF
-    NCDF_4
-  )
-
-endif()
-
  target_link_libraries(
   unfold
   PRIVATE
+  fdf
   libgridxc::libgridxc
   libpsml::libpsml
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
-  "$<$<BOOL:WITH_MPI>:Scalapack::Scalapack>"
+  "$<$<BOOL:${WITH_MPI}>:mpi_siesta>"
+  "$<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>"
+ ##  Unfold does not seem to depend on NCDF
+ ##  "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>"
+ ##  "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libfdict>"
+  "$<$<BOOL:${WITH_MPI}>:Scalapack::Scalapack>"
   LAPACK::LAPACK
  )
 
-## if(WITH_MPI)
-##   target_link_libraries(
-##     unfold
-##     PRIVATE
-##     Scalapack::Scalapack
-##   )
-## endif()
-  
-## TARGET_LINK_LIBRARIES(
-##   unfold
-##   PRIVATE
-##   LAPACK::LAPACK
-## )
+target_compile_definitions(
+  unfold
+  PRIVATE
+  "$<$<BOOL:${WITH_MPI}>:MPI>"
+  "$<$<BOOL:${HAS_MRRR}>:SIESTA__MRRR>"
+  "$<$<BOOL:${WITH_NETCDF}>:CDF>"
+ ##  Unfold does not seem to depend on NCDF
+ ##  "$<$<BOOL:${WITH_NCDF}>:NCDF>"
+ ##  "$<$<BOOL:${WITH_NCDF}>:NCDF_4>"
+)
+
 
 install(
   TARGETS unfold

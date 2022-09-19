@@ -521,6 +521,15 @@ set_target_properties(
   OUTPUT_NAME "siesta"
 )
 
+if(HAS_MRRR)
+  message(STATUS " ----> HAVE_MRRR")
+  target_compile_definitions(
+  ${PROJECT_NAME}-siesta
+  PRIVATE
+  SIESTA__MRRR
+  )
+endif()
+
 if(WITH_MPI)
   target_compile_definitions(
   ${PROJECT_NAME}-siesta
