@@ -24,7 +24,7 @@ include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 PROGS:=grid2val grid2cube grid_rotate g2c_ng grid_supercell v_info
 ifeq ($(WITH_NETCDF),1)
- PROGS+= grid2cdf cdf2xsf cdf2grid cdf_laplacian cdfget cdf_diff cdf_fft
+ PROGS+= grid2cdf cdf2xsf cdf2grid cdf_laplacian cdf_get_cell cdf_diff cdf_fft
 endif
 default: $(PROGS)
 
@@ -57,8 +57,8 @@ cdf2grid: cdf2grid.o
 cdf2xsf: cdf2xsf.o
 	$(FC) $(LDFLAGS) -o $@  cdf2xsf.o  $(NETCDF_LIBS)
 #
-cdfget: cdfget.o
-	$(FC) $(LDFLAGS) -o $@  cdfget.o  $(NETCDF_LIBS)
+cdf_get_cell: m_grid.o cdf_get_cell.o
+	$(FC) $(LDFLAGS) -o $@  cdf_get_cell.o  $(NETCDF_LIBS)
 cdf_diff: m_grid.o cdf_diff.o 
 	$(FC) $(LDFLAGS) -o $@  m_grid.o cdf_diff.o  $(NETCDF_LIBS)
 cdf_diff.o: m_grid.o
