@@ -14,7 +14,7 @@ add_library(
 
 target_link_libraries(
   ${PROJECT_NAME}-libncps
-  PRIVATE
+  PUBLIC
   ${PROJECT_NAME}-libxc-trans
   libpsml::libpsml
 )
