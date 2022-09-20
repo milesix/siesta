@@ -6,7 +6,7 @@
 # 
 # There are several non-standard issues:
 #
-# 1. The pkgconfig filename is typicall of the form
+# 1. The pkgconfig filename might be of the form
 #
 #     elpa-2020.05.001.rc1.pc
 #
@@ -31,13 +31,28 @@
  find_package(PkgConfig REQUIRED)
  pkg_check_modules(ELPA REQUIRED elpa)
 
- message(STATUS "ELPA Libdir: ${ELPA_LIBDIR}")
- message(STATUS "Elpa Libraries: ${ELPA_LIBRARIES}")
+ message(DEBUG "ELPA Libdir: ${ELPA_LIBDIR}")
+ message(DEBUG "Elpa Libraries: ${ELPA_LIBRARIES}")
  message(STATUS "Elpa Link libraries: ${ELPA_LINK_LIBRARIES}")
- message(STATUS "ELPA_INCLUDEDIR: ${ELPA_INCLUDEDIR}")
+ message(DEBUG "ELPA_INCLUDEDIR: ${ELPA_INCLUDEDIR}")
  message(STATUS "ELPA_INCLUDE_DIRS: ${ELPA_INCLUDE_DIRS}")
+
+ pkg_get_variable(ELPA_FCFLAGS elpa fcflags)
+ message(DEBUG "ELPA_FCFLAGS: ${ELPA_FCFLAGS}")
+
  #
- # Fix non-standard setting
+ # Fix non-standard setting of Fortran module directory
  #
- set(ELPA_INCFLAGS "${ELPA_INCLUDE_DIRS}/modules")
- message(STATUS "ELPA_INCFLAGS to be used: ${ELPA_INCFLAGS}")
+ if(ELPA_FCFLAGS)
+    message(STATUS "   --- Using fcflags variable setting...")
+    string(REPLACE "-I" "" ELPA_FORTRAN_INC_DIRS ${ELPA_FCFLAGS}) 
+ else()
+    message(STATUS "   --- Adding modules subdir manually...")
+    set(ELPA_FORTRAN_INC_DIRS "${ELPA_INCLUDE_DIRS}/modules")
+ endif()
+ 
+ message(STATUS "ELPA Fortran search path to be used: ${ELPA_FORTRAN_INC_DIRS}")
+
+ add_library(Elpa::elpa INTERFACE IMPORTED)
+ target_link_libraries(Elpa::elpa INTERFACE  ${ELPA_LINK_LIBRARIES})
+ target_include_directories(Elpa::elpa INTERFACE ${ELPA_FORTRAN_INC_DIRS})

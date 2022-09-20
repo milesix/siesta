@@ -649,15 +649,11 @@ if(WITH_ELPA)
   PUBLIC
   SIESTA__ELPA
   )
-  target_include_directories(
-    ${PROJECT_NAME}-siesta
-    PRIVATE
-    ${ELPA_INCFLAGS}
-)
+
  target_link_libraries(
     ${PROJECT_NAME}-siesta
     PRIVATE
-   ${ELPA_LINK_LIBRARIES}
+    Elpa::elpa
 )
 endif()
 

@@ -115,6 +115,7 @@ add_executable(unfold "${sources}")
  ##  Unfold does not seem to depend on NCDF
  ##  "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>"
  ##  "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libfdict>"
+  $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
   "$<$<BOOL:${WITH_MPI}>:Scalapack::Scalapack>"
   LAPACK::LAPACK
  )
@@ -124,6 +125,7 @@ target_compile_definitions(
   PRIVATE
   "$<$<BOOL:${WITH_MPI}>:MPI>"
   "$<$<BOOL:${HAS_MRRR}>:SIESTA__MRRR>"
+  "$<$<BOOL:${WITH_ELPA}>:SIESTA__ELPA>"
   "$<$<BOOL:${WITH_NETCDF}>:CDF>"
  ##  Unfold does not seem to depend on NCDF
  ##  "$<$<BOOL:${WITH_NCDF}>:NCDF>"
