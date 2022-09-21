@@ -19,8 +19,9 @@ set(_pkg "LIBGRIDXC")
 set(_url "https://gitlab.com/siesta-project/libraries/libgridxc")
 set(_tag "cmake-master")
 
-# For now, allow only compilation as a subproject or by fetching
-set(LIBGRIDXC_FIND_METHOD "subproject" "fetch")
+# For now, allow only compilation as a subproject or by fetching,
+# or as a pre-compiled cmake-ready package
+set(LIBGRIDXC_FIND_METHOD "cmake" "subproject" "fetch")
 
 if(NOT DEFINED "${_pkg}_FIND_METHOD")
   if(DEFINED "${PROJECT_NAME}-dependency-method")
