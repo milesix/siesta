@@ -1,4 +1,4 @@
-set(siesta_sources
+set(libsiesta_sources
 
   Fstack.T90
   Pair.T90
@@ -453,7 +453,6 @@ set(siesta_sources
   setup_ordern_indexes.F90
   shaper.f
   show_distribution.f
-  siesta.F
   siesta2wannier90.F90
   siesta_analysis.F
   siesta_cml.f90
@@ -512,7 +511,20 @@ set(siesta_sources
 
 )
 
-add_executable(${PROJECT_NAME}-siesta "${siesta_sources}")
+add_library(${PROJECT_NAME}-libsiesta "${libsiesta_sources}")
+set_target_properties(
+  ${PROJECT_NAME}-libsiesta
+  PROPERTIES
+  VERSION "${PROJECT_VERSION}"
+  OUTPUT_NAME "SiestaForces"
+)
+
+add_executable(${PROJECT_NAME}-siesta   siesta.F )
+target_link_libraries(
+    ${PROJECT_NAME}-siesta
+    PRIVATE
+    ${PROJECT_NAME}-libsiesta
+  )
 
 set_target_properties(
   ${PROJECT_NAME}-siesta
@@ -521,39 +533,35 @@ set_target_properties(
   OUTPUT_NAME "siesta"
 )
 
-if(HAS_MRRR)
-  message(STATUS " ----> HAVE_MRRR")
-  target_compile_definitions(
-  ${PROJECT_NAME}-siesta
-  PRIVATE
-  SIESTA__MRRR
-  )
-endif()
-
-if(WITH_MPI)
-  target_compile_definitions(
-  ${PROJECT_NAME}-siesta
+target_compile_definitions(
+  ${PROJECT_NAME}-libsiesta
   PUBLIC
-  MPI
-  )
-# MPI interfaces
-  target_link_libraries(
-    ${PROJECT_NAME}-siesta
-    PRIVATE
-    mpi_siesta
-  )
-endif()
+  "$<$<BOOL:${WITH_MPI}>:MPI>"
+  "$<$<BOOL:${HAS_MRRR}>:SIESTA__MRRR>"
+  "$<$<BOOL:${WITH_ELPA}>:SIESTA__ELPA>"
+  "$<$<BOOL:${WITH_NETCDF}>:CDF>"
+  "$<$<BOOL:${WITH_NCDF}>:NCDF>"
+  "$<$<BOOL:${WITH_NCDF}>:NCDF_4>"
+  "$<$<BOOL:${WITH_NCDF_PARALLEL}>:NCDF_PARALLEL>"
+)
 
-TARGET_LINK_LIBRARIES(
-  ${PROJECT_NAME}-siesta
-  PRIVATE
-  ${PROJECT_NAME}-libms
-  ${PROJECT_NAME}-libncps
-  ${PROJECT_NAME}-libpsop
+target_link_libraries(
+  ${PROJECT_NAME}-libsiesta
+  PUBLIC
   fdf
   xmlf90::xmlf90
-  libgridxc::libgridxc
   libpsml::libpsml
+  libgridxc::libgridxc
+  ${PROJECT_NAME}-libncps
+  ${PROJECT_NAME}-libpsop
+  ${PROJECT_NAME}-libms
+  "$<$<BOOL:${WITH_MPI}>:mpi_siesta>"
+  "$<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>"
+  "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>"
+  "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libfdict>"
+   $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
+  "$<$<BOOL:${WITH_MPI}>:Scalapack::Scalapack>"
+  LAPACK::LAPACK
 )
 
 # -- Version information
@@ -566,102 +574,35 @@ configure_file(
   )
 
 target_include_directories(
-  ${PROJECT_NAME}-siesta
-  PRIVATE
+  ${PROJECT_NAME}-libsiesta
+  PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR}/generated
   )
 
-# External libraries.
-
-if(WITH_MPI)
-  target_link_libraries(
-    ${PROJECT_NAME}-siesta
-    PRIVATE
-    Scalapack::Scalapack
-  )
-endif()
-
 if(WITH_LUA)
   target_compile_definitions(
-  ${PROJECT_NAME}-siesta
+  ${PROJECT_NAME}-libsiesta
   PUBLIC
   SIESTA__FLOOK
   )
   target_include_directories(
-    ${PROJECT_NAME}-siesta
-    PRIVATE
+    ${PROJECT_NAME}-libsiesta
+    PUBLIC
     ${FLOOK_INCLUDE_DIRS}
 )
   target_link_libraries(
-    ${PROJECT_NAME}-siesta
-    PRIVATE
+    ${PROJECT_NAME}-libsiesta
+    PUBLIC
     ${PROJECT_NAME}-libfdict
     ${FLOOK_LIBS}
 )
 
 endif()
 
-if(WITH_NETCDF)
-  target_compile_definitions(
-  ${PROJECT_NAME}-siesta
-  PUBLIC
-  CDF
+install(
+  TARGETS ${PROJECT_NAME}-libsiesta
+  RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}
   )
-
- target_link_libraries(
-    ${PROJECT_NAME}-siesta
-    PRIVATE
-    NetCDF::NetCDF_Fortran
-)
-endif()
-
-if(WITH_NCDF)
-  target_compile_definitions(
-  ${PROJECT_NAME}-siesta
-  PUBLIC
-  NCDF
-  NCDF_4
-  )
-#
-  if(WITH_NCDF_PARALLEL)
-    target_compile_definitions(
-    ${PROJECT_NAME}-siesta
-    PRIVATE
-    NCDF_PARALLEL
-    )
-  endif()
-
-  target_link_libraries(
-    ${PROJECT_NAME}-siesta
-    PRIVATE
-    ${PROJECT_NAME}-libncdf
-    )
-  target_link_libraries(
-    ${PROJECT_NAME}-siesta
-    PRIVATE
-    ${PROJECT_NAME}-libfdict
-    )
-endif()
-
-if(WITH_ELPA)
-  target_compile_definitions(
-  "${PROJECT_NAME}-siesta"
-  PUBLIC
-  SIESTA__ELPA
-  )
-
- target_link_libraries(
-    ${PROJECT_NAME}-siesta
-    PRIVATE
-    Elpa::elpa
-)
-endif()
-
-TARGET_LINK_LIBRARIES(
-  ${PROJECT_NAME}-siesta
-  PRIVATE
-  LAPACK::LAPACK)
-
 install(
   TARGETS ${PROJECT_NAME}-siesta
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
