@@ -51,6 +51,7 @@ target_link_libraries(blacs_prb
   PRIVATE
   Scalapack::Scalapack
   MPI::MPI_Fortran
+  LAPACK::LAPACK
 )
 add_test(NAME blacs_prb_Runs_inMPI
          COMMAND
