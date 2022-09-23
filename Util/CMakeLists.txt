@@ -11,7 +11,6 @@
   add_subdirectory("VCA")
   add_subdirectory("Macroave/Src")
   add_subdirectory("Unfolding/Src")
-  add_subdirectory("STM/ol-stm/Src")
   add_subdirectory("STM/simple-stm")
   add_subdirectory("Sockets")
 

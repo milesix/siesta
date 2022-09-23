@@ -20,7 +20,14 @@ project(
   DESCRIPTION "A first-principles materials simulation code using DFT."
   )
 
-# Default build-type is Release (Debug for now)
+set(SIESTA_AUTHOR  "Siesta group")
+set(SIESTA_LICENSE "GPLv3")
+
+# Include Siesta specific utility functions
+include(SiestaUtils)
+siesta_util_ensure_out_of_source_build()
+
+# Default build-type 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug")
 endif()
@@ -42,31 +49,12 @@ option(WITH_ELPA "Use the ELPA library (direct interface)" FALSE)
 option(WITH_LUA "Use the flook library for Lua scripting" FALSE)
 #--------------------------------------
 
+# Compiler flags
 include(flags)
-
-set(SIESTA_AUTHOR  "Siesta group")
-set(SIESTA_LICENSE "GPLv3")
 
 # Follow GNU conventions for installing directories
 # This will use the bin/ include/ etc. folder structure
 include(GNUInstallDirs)
-
-
-# Include Siesta specific utility functions
-include(SiestaUtils)
-siesta_util_ensure_out_of_source_build()
-
-
-# Top-level handlers for compilers
-# Ensure all sub-projects gets added a flag for the GCC fortran compiler (for GCC>=10)
-if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
-  # Append -fallow-argument-mismatch for specific versions
-  if ( CMAKE_Fortran_COMPILER_VERSION VERSION_GREATER_EQUAL 10.0 )
-    message(STATUS "Using GNU compilers with a version >= 10.0 requires -fallow-argument-mismatch, forcefully added")
-    set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch")
-  endif()
-endif()
-
 
 # We will search for packages and base defaults on these
 # Use Pkg-Config if available
@@ -167,7 +155,7 @@ if (WITH_ELPA)
 endif()
 
 if (WITH_FFTW)
-  # For STM/ol-stm
+  # For STM/ol-stm only for now
   find_package(FFTW QUIET COMPONENTS DOUBLE_LIB)
   if (FFTW_DOUBLE_LIB_FOUND)
      message(STATUS "Found FFTW Double")
