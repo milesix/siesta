@@ -8,7 +8,7 @@ if(CMAKE_Fortran_COMPILER_ID MATCHES Intel)
     message("Using an Intel compiler")
     
     if (NOT CMAKE_Fortran_FLAGS_RELEASE)
-      set(CMAKE_Fortran_FLAGS_RELEASE "-O2 -ip -xHOST")
+      set(CMAKE_Fortran_FLAGS_RELEASE "-O2 -ip -xHOST -fp-model=strict -prec-div -prec-sqrt")
     endif()
     if (NOT CMAKE_Fortran_FLAGS_RELWITHDEBINFO)
       set(CMAKE_Fortran_FLAGS_RELWITHDEBINFO   "-g  ${CMAKE_Fortran_FLAGS_RELEASE} -traceback")
