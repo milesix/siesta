@@ -55,7 +55,7 @@ contains
     ! atomic connections
     type(Sparsity), intent(inout) :: in
     ! number of orbitals per atom
-    integer, intent(in) :: na_u, lasto(0:na_u)
+    integer, intent(in) :: na_u, lasto(0:)
     ! The out-put sparsity is _never_ distributed
     ! downfolding to atoms is a huge decrease, and 
     ! it makes no sense to distribue it...
@@ -157,7 +157,7 @@ contains
     ! sparsity pattern to be reduced
     type(Sparsity), intent(inout) :: in
     ! The supercell connections (in integers)
-    integer, intent(in) :: nsc, isc_off(3,0:nsc-1)
+    integer, intent(in) :: nsc, isc_off(:,0:)
     ! The direction in the unit-cell we wish to remove connections to
     ! All OUT OF unit-cell connections will be removed!
     integer, intent(in) :: dir
@@ -940,7 +940,7 @@ contains
     integer, intent(in) :: N
     type(dSpData2D), intent(inout) :: A_2Ds(N)
     ! The real values that we wish to interpolate from
-    real(dp), intent(in) :: x(N), x0 ! and to
+    real(dp), intent(in) :: x(:), x0 ! and to
 
     ! Container to do array assignments
     type :: A2D

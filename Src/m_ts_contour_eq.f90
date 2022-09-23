@@ -16,7 +16,7 @@ module m_ts_contour_eq
 ! Use the type associated with the contour
 ! Maybe they should be collected to this module.
 ! However, I like this partition.
-  use m_ts_electype
+  use ts_electrode_m
 
   use m_ts_cctype
   use m_ts_chem_pot
@@ -27,7 +27,7 @@ module m_ts_contour_eq
   implicit none
 
   ! equilibrium contour IO-segments
-  integer, save, public :: N_Eq
+  integer, save, public :: N_Eq = 0
   type(ts_c_io), pointer, save, public :: Eq_io(:) => null()
   type(ts_cw)  , pointer, save, public :: Eq_c(:) => null()
 
@@ -58,6 +58,8 @@ module m_ts_contour_eq
      module procedure ID2idx_cw
      module procedure ID2idx_cidx
   end interface
+
+  public :: ts_contour_eq_reset
 
   private
 
@@ -1855,5 +1857,23 @@ contains
     call print_contour_eq_block('TS')
     call die(msg)
   end subroutine eq_die
+
+  subroutine ts_contour_eq_reset
+
+    integer :: i
+
+    if ( N_Eq <= 0 ) return
+
+    do i = 1, N_Eq
+      call delete(Eq_io(i))
+      deallocate(Eq_c(i)%ID)
+      deallocate(Eq_c(i)%c)
+      deallocate(Eq_c(i)%w)
+      nullify(Eq_c(i)%c_io)
+    end do
+
+    deallocate(Eq_io, Eq_c)
+
+  end subroutine ts_contour_eq_reset
 
 end module m_ts_contour_eq

@@ -60,7 +60,7 @@ contains
     ! amongst any of these)
     type(tRgn), intent(in), optional :: start
     ! The priority of the rows, optional
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
     logical, intent(in), optional :: only_sub
 
     type(tRgn) :: lsub

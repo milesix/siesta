@@ -19,6 +19,7 @@ SIESTA_ARCH=prace-intel
 # WITH_GRIDXC=1
 #-------------
 #
+WITH_CMAKE_LIB_IS_LIB64=1
 WITH_ELPA=1
 WITH_FLOOK=1
 WITH_MPI=1
@@ -90,5 +91,3 @@ create_Sparsity_SC.o: create_Sparsity_SC.F90
 #
 RANLIB=echo
 # ----------------------------------------------------------
-SELF_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
-include $(SELF_DIR)build.mk

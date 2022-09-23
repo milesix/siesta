@@ -21,23 +21,23 @@
 .SUFFIXES:
 .SUFFIXES: .f .f90 .F .F90 .o
 
-VPATH:=$(shell pwd)/../../Src
-OBJDIR=Obj
+PROGS:= mprop fat dm_creator spin_texture
+default: $(PROGS)
 
-default: mprop fat spin_texture
+override WITH_MPI=
 
-all: mprop dm_creator fat spin_texture
+TOPDIR=.
+MAIN_OBJDIR=.
 
-MAIN_OBJDIR:=$(shell cd -P -- ../../\$(OBJDIR) && pwd -P)
-ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
-include $(ARCH_MAKE)
+VPATH=$(TOPDIR)/Util/COOP:$(TOPDIR)/Src
+
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
-DEFS:=$(DEFS) $(DEFS_PREFIX)-UMPI 
-FPPFLAGS:=$(FPPFLAGS) $(DEFS_PREFIX)-UMPI 
 INCFLAGS:=$(INCFLAGS) $(NETCDF_INCFLAGS)
 
 # Two ways of splitting the list of object files:
@@ -80,24 +80,17 @@ spin_texture: $(TEXTURE_OBJS) spin_texture.o
 clean:
 	rm -f *.o *.mod mprop dm_creator fat spin_texture
 
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+
 # DO NOT DELETE THIS LINE - used by make depend
 io.o: m_io.o
-io.o: m_io.o
-iodm_netcdf.o: alloc.o parallel.o precision.o sys.o
 iodm_netcdf.o: alloc.o parallel.o precision.o sys.o
 m_io.o: sys.o
-m_io.o: sys.o
-moreParallelSubs.o: alloc.o m_io.o parallel.o precision.o sys.o
 moreParallelSubs.o: alloc.o m_io.o parallel.o precision.o sys.o
 units.o: precision.o
-units.o: precision.o
-io_hs.o: main_vars.o precision.o
 io_hs.o: main_vars.o precision.o
 main_vars.o: m_getopts.o precision.o subs.o units.o
-main_vars.o: m_getopts.o precision.o subs.o units.o
-orbital_set.o: main_vars.o subs.o
 orbital_set.o: main_vars.o subs.o
 read_curves.o: orbital_set.o precision.o
-read_curves.o: orbital_set.o precision.o
-subs.o: precision.o
 subs.o: precision.o

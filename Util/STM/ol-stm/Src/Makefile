@@ -22,20 +22,23 @@
 #  in the mpi libraries even if we explicitly undefine MPI below.
 #  
 
-OBJDIR=Obj
-
 .SUFFIXES:
 .SUFFIXES: .f .F .o .a .f90 .F90
 
-VPATH:=$(shell pwd)/../../../../Src
-VPATH_GRID:=$(shell pwd)/../../../../Util/Grid
+TOPDIR=.
+MAIN_OBJDIR=.
 
 default: what stm
 
-MAIN_OBJDIR:=$(shell cd -P -- ../../../../\$(OBJDIR) && pwd -P)
-ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
+override WITH_MPI=
+override WITH_NCDF=
 
+VPATH=$(TOPDIR)/Util/STM/ol-stm/Src:$(TOPDIR)/Util/Grid:$(TOPDIR)/Src
+
+ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
 
 #------------- NOTE
 # Special needs for the use of FFTW
@@ -82,27 +85,12 @@ SYSOBJ=$(SYS).o
 
 # Note that machine-specific files are now in top Src directory.
 
+INCFLAGS+=$(NETCDF_INCFLAGS) \
+          $(NCPS_INCFLAGS) \
+          $(PSML_INCFLAGS) $(FDF_INCFLAGS) 
 
-NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
-#PSOP_INCFLAGS=-I$(MAIN_OBJDIR)/psoplib/src
-INCFLAGS:=$(NETCDF_INCFLAGS) \
-          $(NCPS_INCFLAGS) $(PSOP_INCFLAGS) \
-          $(PSML_INCFLAGS) \
-          $(INCFLAGS)
-INCFLAGS:= $(FFTW_INCFLAGS) $(INCFLAGS)
+INCFLAGS+= $(FFTW_INCFLAGS) 
 #
-NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
-# Use the makefile in Src/fdf and all the sources there.
-
-FDF=libfdf.a
-FDF_MAKEFILE=$(VPATH)/fdf/makefile
-FDF_INCFLAGS:=-I$(VPATH)/fdf $(INCFLAGS)
-$(FDF): 
-	(cd fdf ; $(MAKE) -f $(FDF_MAKEFILE) "FC=$(FC)" "VPATH=$(VPATH)/fdf" \
-                          "DEFS=$(DEFS)" \
-                          "FPPFLAGS=$(FPPFLAGS)"\
-                          "ARCH_MAKE=$(ARCH_MAKE)" \
-                          "INCFLAGS=$(FDF_INCFLAGS)" "FFLAGS=$(FFLAGS)" module)
 
 LOCAL_OBJS = fftw3_mymod.o extrapolate.o \
         mainstm.o neighb.o ranger.o \
@@ -135,19 +123,22 @@ SIESTA_OBJS += m_uuid.o object_debug.o class_Sparsity.o \
 
 ALL_OBJS_STM= $(SIESTA_OBJS) $(LOCAL_OBJS)
 
-m_gridfunc.o: $(VPATH_GRID)/m_gridfunc.F90
-	$(FC) -c $(FFLAGS) $(INCFLAGS)  $(FPPFLAGS) $<
+# m_gridfunc is compiled through the Util/Grid VPATH component
 vacpot.o: m_gridfunc.o
 
-stm: $(FDF)  $(NCPS) $(ALL_OBJS_STM)
+stm: $(FDF_LIBS)  $(NCPS) $(ALL_OBJS_STM)
 	$(FC) -o stm \
-	       $(LDFLAGS) $(ALL_OBJS_STM) $(FDF) $(NCPS) \
+	       $(LDFLAGS) $(ALL_OBJS_STM) $(FDF_LIBS) $(NCPS) \
                $(PSML_LIBS) $(XMLF90_LIBS) $(FFTW_LIBS) 
 clean:
 	@echo "==> Cleaning object, library, and executable files"
 	rm -f stm *.o  *.a
 	rm -f *.mod
-	(cd fdf ; $(MAKE) -f $(FDF_MAKEFILE) "ARCH_MAKE=$(ARCH_MAKE)" clean)
+
+PROGS:= stm
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+	cp -p stm $(SIESTA_INSTALL_DIRECTORY)/bin/wfs2ldos
 
 # Dependencies
 .PHONY: dep
@@ -162,101 +153,55 @@ dep:
 
 # DO NOT DELETE THIS LINE - used by make depend
 atm_types.o: precision.o radial.o
-atm_types.o: precision.o radial.o
 atmfuncs.o: atm_types.o local_sys.o precision.o radial.o spher_harm.o
-atmfuncs.o: atm_types.o local_sys.o precision.o radial.o spher_harm.o
-atom_options.o: local_sys.o
 atom_options.o: local_sys.o
 basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
 basis_io.o: local_sys.o precision.o radial.o xml.o
-basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
-basis_io.o: local_sys.o precision.o radial.o xml.o
-basis_types.o: alloc.o atmparams.o local_sys.o precision.o
 basis_types.o: alloc.o atmparams.o local_sys.o precision.o
 bessph.o: local_sys.o precision.o
-bessph.o: local_sys.o precision.o
 chemical.o: local_sys.o parallel.o precision.o
-chemical.o: local_sys.o parallel.o precision.o
-chkdim.o: local_sys.o
 chkdim.o: local_sys.o
 class_Data1D.o: alloc.o
 class_Data2D.o: alloc.o
 class_Data3D.o: alloc.o
 class_Fstack_Pair_Data1D.o: class_Pair_Data1D.o class_Pair_Data1D.o
-class_Fstack_Pair_Data1D.o: class_Pair_Data1D.o class_Pair_Data1D.o
-class_Fstack_Pair_Geometry_SpData2D.o: class_Pair_Geometry_SpData2D.o
 class_Fstack_Pair_Geometry_SpData2D.o: class_Pair_Geometry_SpData2D.o
 class_Geometry.o: alloc.o
-class_Geometry.o: alloc.o
 class_Pair_Data1D.o: class_Data1D.o class_Data1D.o
-class_Pair_Data1D.o: class_Data1D.o class_Data1D.o
-class_Pair_Geometry_SpData2D.o: class_Geometry.o class_SpData2D.o
 class_Pair_Geometry_SpData2D.o: class_Geometry.o class_SpData2D.o
 class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
 class_SpData1D.o: class_Data1D.o
 class_SpData1D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
-class_SpData1D.o: class_Data1D.o
 class_SpData2D.o: class_Data2D.o class_Data2D.o class_Data2D.o
 class_SpData2D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData2D.o: class_Data2D.o class_Data2D.o class_Data2D.o
 class_SpData3D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_Sparsity.o: alloc.o
 class_Sparsity.o: alloc.o
 class_TriMat.o: alloc.o
 domain_decom.o: alloc.o local_sys.o parallel.o precision.o printmatrix.o
 domain_decom.o: schecomm.o sparse_matrices.o
-domain_decom.o: alloc.o local_sys.o parallel.o precision.o printmatrix.o
-domain_decom.o: schecomm.o sparse_matrices.o
-io.o: m_io.o
 io.o: m_io.o
 iodm.o: alloc.o files.o local_sys.o parallel.o parallelsubs.o precision.o
-iodm.o: alloc.o files.o local_sys.o parallel.o parallelsubs.o precision.o
-listsc.o: alloc.o
 listsc.o: alloc.o
 m_io.o: local_sys.o
-m_io.o: local_sys.o
-memory.o: memory_log.o parallel.o
-memory.o: memory_log.o parallel.o
-memory_log.o: m_io.o parallel.o precision.o
+memory.o: memory_log.o
 memory_log.o: m_io.o parallel.o precision.o
 parallelsubs.o: domain_decom.o local_sys.o parallel.o precision.o spatial.o
-parallelsubs.o: domain_decom.o local_sys.o parallel.o precision.o spatial.o
-printmatrix.o: alloc.o
 printmatrix.o: alloc.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
-radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radial.o: alloc.o interpolation.o precision.o xml.o
-radial.o: alloc.o interpolation.o precision.o xml.o
-schecomm.o: alloc.o
 schecomm.o: alloc.o
 sparse_matrices.o: alloc.o class_Fstack_Pair_Geometry_SpData2D.o
 sparse_matrices.o: class_OrbitalDistribution.o class_SpData1D.o
 sparse_matrices.o: class_SpData2D.o class_SpData2D.o class_Sparsity.o
 sparse_matrices.o: precision.o
-sparse_matrices.o: alloc.o class_Fstack_Pair_Geometry_SpData2D.o
-sparse_matrices.o: class_OrbitalDistribution.o class_SpData1D.o
-sparse_matrices.o: class_SpData2D.o class_SpData2D.o class_Sparsity.o
-sparse_matrices.o: precision.o
 spatial.o: precision.o
-spatial.o: precision.o
-spher_harm.o: precision.o
-units.o: precision.o
-xml.o: precision.o
 xml.o: precision.o
 extrapolate.o: fftw3_mymod.o precision.o
-extrapolate.o: fftw3_mymod.o precision.o
-handlers.o: memory_log.o
 handlers.o: memory_log.o
 mainstm.o: basis_io.o listsc.o precision.o sts.o
-mainstm.o: basis_io.o listsc.o precision.o sts.o
-ranger.o: precision.o
 ranger.o: precision.o
 stm.o: atmfuncs.o chemical.o precision.o
-stm.o: atmfuncs.o chemical.o precision.o
 sts.o: atmfuncs.o chemical.o precision.o
-sts.o: atmfuncs.o chemical.o precision.o
-vacpot.o: precision.o units.o
 vacpot.o: precision.o units.o
 broadening.o: sts.o
 class_ddata1d.o: class_Data1D.o

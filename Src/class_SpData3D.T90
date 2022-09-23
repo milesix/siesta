@@ -175,9 +175,11 @@
            call VAR_NEW_TYPE(this%data%a, &
                 dim1,dim2,nnzs(sp),"(new from "//STR_TYPE_NAME//")")
        end if
+       this%data%sp_dim = sparsity_dim
     else ! Regular handling, sparsity_dim == 1
        call VAR_NEW_TYPE(this%data%a, &
             nnzs(sp),dim1,dim2,"(new from "//STR_TYPE_NAME//")")
+       this%data%sp_dim = 1
     end if
     
     if (present(name)) then

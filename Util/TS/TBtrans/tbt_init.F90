@@ -39,8 +39,7 @@ subroutine tbt_init()
 
   use dictionary
 
-  use m_ts_electrode, only : init_Electrode_HS
-  use m_ts_electype
+  use ts_electrode_m
 
   use m_tbt_kpoint
   use m_tbt_regions
@@ -56,10 +55,11 @@ subroutine tbt_init()
   use m_sparsity_handling
 
   use runinfo_m, only: runinfo
-  use version_info, only: prversion
 
   implicit none
 
+  external :: prversion
+  
   integer :: level
   real(dp) :: threshold
 #ifdef MPI
@@ -101,12 +101,6 @@ subroutine tbt_init()
 
   ! Initialize the output
   call tbt_init_output(Node == 0)
-
-#ifdef MPI
-  if (.not. fdf_parallel()) then
-     call die('tbt_init: ERROR: FDF module doesn''t have parallel support')
-  endif
-#endif
 
 ! Print version information ...........................................
   if (IOnode) then
@@ -157,7 +151,7 @@ subroutine tbt_init()
   ! do interpolation due to bias not matching any TSHS files
   ! passed to the program.
   ! This will also read in the required information about the system
-  call tbt_init_HSfile( )
+  call tbt_HS_init( )
 
   ! Read in generic options
   call read_tbt_generic(TSHS%na_u, TSHS%lasto)
@@ -203,7 +197,7 @@ subroutine tbt_init()
      if ( IONode ) write(*,*) ! newline
 
      ! initialize the electrode for Green's function calculation
-     call init_Electrode_HS(Elecs(iEl))
+     call Elecs(iEl)%prepare_SE()
 
      if ( Elecs(iEl)%is_gamma ) then
        call do_Green(Elecs(iEl), &
@@ -216,7 +210,7 @@ subroutine tbt_init()
      end if
      
      ! clean-up
-     call delete(Elecs(iEl))
+     call Elecs(iEl)%delete()
      
   end do
 
@@ -241,7 +235,7 @@ subroutine tbt_init()
   ! Hence, in order to change the sparsity patterns of the data
   ! we need to retain both!
   tmp_sp = TSHS%sp
-  call tbt_init_regions(N_Elec,Elecs,TSHS%cell, &
+  call tbt_regions_init(N_Elec,Elecs,TSHS%cell, &
        TSHS%na_u,TSHS%xa,TSHS%lasto, &
        TSHS%dit,tmp_sp, &
        product(TSHS%nsc),TSHS%isc_off)
@@ -266,9 +260,9 @@ subroutine tbt_init()
   call delete(tmp_sp)
 
   ! Create the device region sparsity pattern
-  call tbt_region_options( TSHS%sp, save_DATA )
+  call tbt_regions_options( TSHS%sp, save_DATA )
 
-  call tbt_print_regions( TSHS%na_u, TSHS%lasto, N_Elec, Elecs)
+  call tbt_regions_print( TSHS%na_u, TSHS%lasto, N_Elec, Elecs)
 
   call tbt_print_kRegions( TSHS%cell )
 

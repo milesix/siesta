@@ -12,7 +12,7 @@ module m_ts_options
 
   use m_mixing, only: tMixer
 
-  use m_ts_electype, only : Elec
+  use ts_electrode_m, only : electrode_t
   use m_ts_chem_pot, only : ts_mu
   use m_ts_tdir
 
@@ -51,7 +51,7 @@ module m_ts_options
   real(dp) :: ts_kT
   ! Electrodes and different chemical potentials
   integer :: N_Elec = 0
-  type(Elec), allocatable, target :: Elecs(:)
+  type(electrode_t), allocatable, target :: Elecs(:)
   integer :: N_mu = 0
   type(ts_mu), allocatable, target :: mus(:)
 
@@ -319,9 +319,8 @@ contains
     
     use m_ts_chem_pot, only : copy, chem_pot_add_Elec
 
-    use m_ts_electype, only : fdf_nElec, fdf_Elec
-    use m_ts_electype, only : Name, TotUsedOrbs, TotUsedAtoms
-    use m_ts_electype, only : init_Elec_sim
+    use ts_electrode_m, only : fdf_nElec, fdf_Elec
+    use ts_electrode_m, only : electrode_t
 
     use m_ts_method, only : ts_init_electrodes, a_isBuffer
     use m_cite, only : add_citation
@@ -438,7 +437,7 @@ contains
 
     ! Whether we should always set the DM to bulk
     ! values (by reading in from electrode DM)
-    if ( TS_scf_mode == 1 .and. .not. IsVolt ) then
+    if ( TS_scf_mode == 1 ) then
       chars = 'bulk'
     else
       chars = 'diagon'
@@ -487,7 +486,7 @@ contains
           err = fdf_Elec('TS',slabel,Elecs(i),N_mu,mus)
        end if
        if ( .not. err ) then
-          call die('Could not find electrode: '//trim(name(Elecs(i))))
+          call die('Could not find electrode: '//trim(Elecs(i)%name))
        end if
 
        if ( Elecs(i)%idx_a < 0 ) &
@@ -507,11 +506,11 @@ contains
              end do
              Elecs(i)%idx_a = j
           else
-             j = Elecs(i)%idx_a + TotUsedAtoms(Elecs(i)) - 1
+             j = Elecs(i)%idx_a + Elecs(i)%device_atoms() - 1
              do while ( a_isBuffer(j) )
                 j = j - 1
              end do
-             Elecs(i)%idx_a = j - TotUsedAtoms(Elecs(i)) + 1
+             Elecs(i)%idx_a = j - Elecs(i)%device_atoms() + 1
           end if
        end if
        ! set the placement in orbitals
@@ -519,7 +518,7 @@ contains
 
        ! Initialize the electrode quantities for the
        ! stored values
-       call init_Elec_sim(Elecs(i), cell, na_u, xa)
+       call Elecs(i)%init_in_cell(cell, na_u, xa)
 
     end do
 
@@ -696,9 +695,10 @@ contains
        end if
     end do
 
-    if ( na_u <= sum(TotUsedAtoms(Elecs)) ) then
+    i = sum(Elecs%device_atoms())
+    if ( na_u <= i ) then
       write(*,'(a)') 'Please stop this madness. What where you thinking?'
-      write(*,*) na_u, sum(TotUsedAtoms(Elecs))
+      write(*,*) na_u, i
       call die('Electrodes occupy the entire device!!!')
     end if
     
@@ -724,8 +724,6 @@ contains
     use m_ts_method, only: TS_BTD_A_PROPAGATION, TS_BTD_A_COLUMN
     use m_ts_method, only: ts_A_method, a_isBuffer
 
-    use m_ts_electype, only: check_Elec_sim
-    
     use m_ts_contour, only: read_contour_options
     use m_ts_contour_eq, only: N_Eq, Eq_c
     
@@ -799,11 +797,11 @@ contains
           Gamma3(i) = .true.
        end if
     end do
-          
+
     do i = 1 , N_Elec
       ! Initialize the electrode quantities for the
       ! stored values
-      call check_Elec_sim(Elecs(i), nspin, cell, na_u, xa, &
+      call Elecs(i)%check_in_cell(nspin, cell, na_u, xa, &
           Elecs_xa_EPS, lasto, Gamma3, ts_kscell, ts_kdispl)
     end do
 
@@ -818,6 +816,7 @@ contains
         dev_q = dev_q + qa(i)
       end if
     end do
+
     ts_dQtol = fdf_get('TS.SCF.dQ.Tolerance',dev_q / 1000._dp)
     ts_converge_dQ = fdf_get('TS.SCF.dQ.Converge', .true.)
 
@@ -834,8 +833,6 @@ contains
 
     use m_mixing, only: mixers_print
     use m_mixing_scf, only: scf_mixs
-
-    use m_ts_electype, only: print_settings
 
     use m_ts_global_vars, only: TSmode, onlyS
 
@@ -1060,8 +1057,7 @@ contains
     write(*,f11)'          >> Electrodes << '
     ltmp = ts_tidx < 1 .and. IsVolt
     do i = 1 , size(Elecs)
-       call print_settings(Elecs(i), 'ts', &
-            box = ltmp)
+      call Elecs(i)%print_settings('ts', box = ltmp)
     end do
 
     ! Print the contour information
@@ -1085,7 +1081,6 @@ contains
 
     use m_ts_global_vars, only: TSmode, onlyS
     use m_ts_chem_pot, only : Name, Eq_segs
-    use m_ts_electype, only : TotUsedAtoms, Name, Elec_frac
 
     use m_ts_method, only : a_isElec, a_isBuffer
     use m_ts_method, only : ts_A_method, TS_BTD_A_COLUMN
@@ -1199,7 +1194,7 @@ contains
     ! we need to check that they indeed do not overlap
     do i = 1 , N_Elec
        idx1 = Elecs(i)%idx_a
-       idx2 = idx1 + TotUsedAtoms(Elecs(i)) - 1
+       idx2 = idx1 + Elecs(i)%device_atoms() - 1
        ! we need to check every electrode,
        ! specifically because if one of the electrodes is fully located
        ! inside the other and we check the "small" one 
@@ -1208,18 +1203,18 @@ contains
           if ( i == j ) cycle
           idx = Elecs(j)%idx_a
           if ( (idx <= idx1 .and. &
-               idx1 < idx + TotUsedAtoms(Elecs(j))) ) then
+               idx1 < idx + Elecs(j)%device_atoms()) ) then
              ltmp = .true.
           end if
           if ( (idx <= idx2 .and. &
-               idx2 < idx + TotUsedAtoms(Elecs(j))) ) then
+               idx2 < idx + Elecs(j)%device_atoms()) ) then
              ltmp = .true.
           end if
           if ( ltmp ) then
              write(*,'(a)') 'Electrode: '//trim(Elecs(i)%name)
              write(*,'(a,i0,a,i0)') 'Positions: ',idx1,' -- ',idx2 
              idx1 = Elecs(j)%idx_a
-             idx2 = idx1 + TotUsedAtoms(Elecs(j)) - 1
+             idx2 = idx1 + Elecs(j)%device_atoms() - 1
              write(*,'(a)') 'Electrode: '//trim(Elecs(j)%name)
              write(*,'(a,i0,a,i0)') 'Positions: ',idx1,' -- ',idx2 
              write(*,'(a)') 'Overlapping electrodes is not physical, please correct.'
@@ -1275,20 +1270,6 @@ contains
           write(*,'(a)')'WARNING: Requesting immediate start, yet we &
                &do not update cross-terms.'
           warn = .true.
-       end if
-    end if
-    
-    ! Calculate the number of optimal contour points
-    i = mod(N_Eq_E(), Nodes) ! get remaining part of equilibrium contour
-    if ( i /= 0 ) then
-       i = Nodes - i
-       write(*,'(a)')'Without loosing performance you can increase &
-            &the equilibrium integration precision.'
-       write(*,'(a,i0,a)')'You can add ',i,' more energy points in the &
-            &equilibrium contours, for FREE!'
-       if ( i/N_mu > 0 ) then
-          write(*,'(a,i0,a)')'This is ',i/N_mu, &
-               ' more energy points per chemical potential.'
        end if
     end if
     
@@ -1394,9 +1375,9 @@ contains
           
           ! Get the electrode fraction of the position
           if ( N_Elec == 1 ) then
-             
-             call Elec_frac(Elecs(1),cell,na_u,xa,ts_tidx, fmin = bdir(1))
-             call Elec_frac(Elecs(1),cell,na_u,xa,ts_tidx, fmax = bdir(2))
+
+            call Elecs(1)%fractional_cell(cell, na_u, xa, ts_tidx, &
+                fmin=bdir(1), fmax=bdir(2))
              iEl = 1
              if ( bdir(1) < bdir(2) ) then
                 i = 1
@@ -1407,8 +1388,10 @@ contains
           else
              
              ! Get the electrode fraction of the position
-             call Elec_frac(Elecs(1),cell,na_u,xa,ts_tidx, fmin = bdir(1))
-             call Elec_frac(Elecs(2),cell,na_u,xa,ts_tidx, fmin = bdir(2))
+            call Elecs(1)%fractional_cell(cell, na_u, xa, ts_tidx, &
+                fmin=bdir(1))
+            call Elecs(2)%fractional_cell(cell, na_u, xa, ts_tidx, &
+                fmin=bdir(2))
 
              ! Determine the electrode closest to the
              ! lower boundary
@@ -1416,12 +1399,16 @@ contains
                 ! The first electrode is closest
                 i = 1
                 iEl = 1
-                call Elec_frac(Elecs(2),cell,na_u,xa,ts_tidx, fmax = bdir(2))
+                call Elecs(2)%fractional_cell(cell, na_u, xa, ts_tidx, &
+                    fmax=bdir(2))
              else
                 ! The second electrode is closest
                 i = 2
                 iEl = 2
-                call Elec_frac(Elecs(1),cell,na_u,xa,ts_tidx, fmax = bdir(1))
+                call Elecs(1)%fractional_cell(cell, na_u, xa, ts_tidx, &
+                    fmax=bdir(1))
+                call Elecs(1)%fractional_cell(cell, na_u, xa, ts_tidx, &
+                    fmax = bdir(1))
              end if
              
           end if
@@ -1513,13 +1500,7 @@ contains
     do i = 1 , N_Elec
 
        idx1 = Elecs(i)%idx_a
-       idx2 = idx1 + TotUsedAtoms(Elecs(i)) - 1
-
-       if ( .not. Elecs(i)%Bulk ) then
-          write(*,'(a)') 'Electrode '//trim(Elecs(i)%name)//' will &
-               &not use bulk Hamiltonian.'
-          warn = .true.
-       end if
+       idx2 = idx1 + Elecs(i)%device_atoms() - 1
 
        if ( Elecs(i)%DM_update == 0 ) then
           write(*,'(a)') 'Electrode '//trim(Elecs(i)%name)//' will &
@@ -1597,7 +1578,6 @@ contains
       write(*,'(a,/,a)') 'Consider updating more elements. &
           &The charge conservation and force accuracy improves.',&
           '  TS.Elecs.DM.Update [cross-terms|all]'
-       warn = .true.
     end if
 
     ! Check that the pivoting table is unique
@@ -1675,5 +1655,20 @@ contains
     v1  = v2
     v2  = tmp
   end subroutine val_swap
-  
+
+  subroutine ts_options_reset()
+    use m_ts_chem_pot, only: delete
+    integer :: i
+
+    do i = 1, N_Elec
+      call Elecs(i)%delete(all=.true.)
+    end do
+    if ( allocated(Elecs) ) deallocate(Elecs)
+    do i = 1, N_mu
+      call delete(mus(i))
+    end do
+    if ( allocated(mus) ) deallocate(mus)
+
+  end subroutine ts_options_reset
+
 end module m_ts_options

@@ -1,0 +1,12 @@
+[submodule "ExtLibs/xmlf90"]
+	path = ExtLibs/xmlf90
+	url = https://gitlab.com/siesta-project/libraries/xmlf90.git
+	branch = cmake
+[submodule "ExtLibs/libpsml"]
+	path = ExtLibs/libpsml
+	url = https://gitlab.com/siesta-project/libraries/libpsml.git
+	branch = cmake
+[submodule "ExtLibs/libgridxc"]
+	path = ExtLibs/libgridxc
+	url = https://gitlab.com/siesta-project/libraries/libgridxc.git
+	branch = cmake-master

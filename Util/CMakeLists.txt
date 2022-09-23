@@ -1,0 +1,21 @@
+# Utilities
+
+  add_subdirectory("TS/TBtrans")
+  add_subdirectory("Gen-basis")
+  add_subdirectory("Eig2DOS")
+  add_subdirectory("COOP")
+  add_subdirectory("Vibra/Src")
+  add_subdirectory("Denchar/Src")
+  add_subdirectory("Bands")
+  add_subdirectory("Grid")
+  add_subdirectory("VCA")
+  add_subdirectory("Macroave/Src")
+  add_subdirectory("Unfolding/Src")
+  add_subdirectory("STM/simple-stm")
+  add_subdirectory("Sockets")
+
+if(FFTW_DOUBLE_LIB_FOUND)
+  add_subdirectory("STM/ol-stm/Src")
+else()
+  message(WARNING "Util/STM/ol-stm will not be built for lack of FFTW support")
+endif()

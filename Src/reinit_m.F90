@@ -35,6 +35,9 @@ contains
     use files,       only : stdin_file, stdout_file
     use siesta_master, only: input_file  ! fdf data file
 
+#ifdef MPI
+      use mpi_siesta, only: mpi_comm_world
+#endif
     implicit none
 
     character(len=*), intent(out) :: sname
@@ -178,8 +181,14 @@ contains
     ! the string used below conforms to ISO 8601 with millisecond precision.
     write(fileout,"(a)") 'fdf.' // mydate // 'T' // mytime // ".log"
 
-    call fdf_init(stdin_file, trim(fileout))
-
+    if (Node .eq. 0) then
+       call fdf_init(stdin_file, trim(fileout))
+    else
+       ! the other nodes will get the data structure
+    endif
+#ifdef MPI      
+      call broadcast_fdf_struct(0,mpi_comm_world)
+#endif
     ! Parse the command line
     call parse_command_line(info=.false.)
 
