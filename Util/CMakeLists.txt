@@ -1,7 +1,7 @@
-add_subdirectory("TS/TBtrans")
-add_subdirectory("Gen-basis")
+# Utilities
 
-if(WITH_UTILS)
+  add_subdirectory("TS/TBtrans")
+  add_subdirectory("Gen-basis")
   add_subdirectory("Eig2DOS")
   add_subdirectory("COOP")
   add_subdirectory("Vibra/Src")
@@ -14,4 +14,9 @@ if(WITH_UTILS)
   add_subdirectory("STM/ol-stm/Src")
   add_subdirectory("STM/simple-stm")
   add_subdirectory("Sockets")
+
+if(FFTW_DOUBLE_LIB_FOUND)
+  add_subdirectory("STM/ol-stm/Src")
+else()
+  message(WARNING "Util/STM/ol-stm will not be built for lack of FFTW support")
 endif()

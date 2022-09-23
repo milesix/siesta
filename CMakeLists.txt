@@ -21,16 +21,29 @@ project(
   )
 
 # Default build-type is Release (Debug for now)
-option(WITH_LIBXC "Include libxc support" FALSE)
-option(WITH_UTILS "Compile all utilities (besides tbtrans)" TRUE)
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug")
 endif()
 
+# -- Options ----------------------------------------
+#
+option(WITH_MPI "Build Siesta with MPI support" TRUE)
+
+option(WITH_NETCDF "Build Siesta with NetCDF support" TRUE)
+option(WITH_NCDF "Use the NCDF library" ${WITH_NETCDF})
+option(WITH_NCDF_PARALLEL "Use NCDF_PARALLEL" FALSE)
+
+option(WITH_FFTW "FFTW support (for STM/ol-stm utility)" TRUE)
+option(WITH_LIBXC "Include libxc support" FALSE)
+
+option(WITH_OPENMP "Build Siesta with OpenMP support" ${OpenMP_FOUND})
+
+option(WITH_ELPA "Use the ELPA library (direct interface)" FALSE)
+option(WITH_LUA "Use the flook library for Lua scripting" FALSE)
+#--------------------------------------
+
 include(flags)
 
-# First setup the environment
-# Define library specific content
 set(SIESTA_AUTHOR  "Siesta group")
 set(SIESTA_LICENSE "GPLv3")
 
@@ -60,7 +73,6 @@ endif()
 find_package(PkgConfig)
 
 
-option(WITH_MPI "Build Siesta with MPI support" TRUE)
 if (WITH_MPI)
   if (NOT TARGET MPI::MPI_Fortran)
    # Find MPI
@@ -79,7 +91,7 @@ endif()
 
 # Find OpenMP
 find_package(OpenMP COMPONENTS Fortran C)
-option(WITH_OPENMP "Build Siesta with OpenMP support" ${OpenMP_FOUND})
+
 if( WITH_OPENMP )
   if( OpenMP_FOUND )
     # Check that the OpenMP compiler has the omp_lib.mod file
@@ -91,7 +103,6 @@ if( WITH_OPENMP )
   endif()
 endif()
 
-option(WITH_NETCDF "Build Siesta with NetCDF support" TRUE)
 
 if (WITH_NETCDF)
  # Find NetCDF, some fallbacks are provided for pkg-config
@@ -113,15 +124,6 @@ endif()
 find_package(NetCDF 4.0.0 OPTIONAL_COMPONENTS Fortran C)
 
 endif()
-
-option(WITH_NCDF "Use the NCDF library" ${WITH_NETCDF})
-option(WITH_NCDF_PARALLEL "Use NCDF_PARALLEL" FALSE)
-
-
-# TODO
-option(WITH_ELPA "Use the ELPA library (direct interface)" FALSE)
-option(WITH_LUA "Use the flook library for Lua scripting" FALSE)
-option(WITH_UTILS "Compile all utilities (besides tbtrans)" TRUE)
 
 #
 # Look for BLAS and LAPACK
@@ -164,16 +166,13 @@ if (WITH_ELPA)
  include(search_for_elpa)
 endif()
 
-if (WITH_UTILS)
+if (WITH_FFTW)
   # For STM/ol-stm
   find_package(FFTW QUIET COMPONENTS DOUBLE_LIB)
   if (FFTW_DOUBLE_LIB_FOUND)
      message(STATUS "Found FFTW Double")
-  else()
-     message(FATAL_ERROR "Did not find FFTW -- Deactivate  STM/ol-stm...")
   endif()
 endif()
-
 
 # For now we add each directory manually.
 # This follows the code structure since each
