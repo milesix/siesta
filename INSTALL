@@ -1,11 +1,12 @@
 SIESTA can be built:
 
 * Using an experimental CMake framework (see file INSTALL.CMake for details,
-quirks, and missing bits).
+quirks, and missing bits), including (new) Spack support.
 
 * Using the traditional makefile-based approach, which has been
-streamlined and made more user-friendly, and is still the most
-complete and recommended way:
+streamlined and made more user-friendly. It is still the most
+complete (in the sense that it is able to install all the utilities),
+but it can be slower.
 
   mkdir _build
   cd _build
@@ -14,6 +15,8 @@ complete and recommended way:
   (Now create arch.make in _build --- see Config/mk-build/README)
 
   make               (This will build the Siesta executable)
+                     (It is best to do this first)
+		     
   make utils         (See below for more options)
   make install       ( " )
 

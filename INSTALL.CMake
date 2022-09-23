@@ -2,15 +2,41 @@ Installation of Siesta with CMake
 
 This is a work-in-progress implementation. Please report problems and suggestions.
 
-It needs cmake >= 3.17 (3.14 if libgridxc tests are disabled), and the
-ninja (>=1.10) backend. Both cmake and ninja can be installed easily
-in most systems, in particular with conda.
+It needs cmake >= 3.14, and (if used) the ninja (>=1.10) backend.
+Both cmake and ninja can be installed easily in most systems, in
+particular with conda.
 
 The CMake approach facilitates the handling of the external libraries
 that must be installed before Siesta can be compiled. Depending on the
 needs and experience of the user, several modes of operation are
 available.
 
+_NEW_) SPACK packages are available in Config/spack_package_defs
+
+   After setting up spack and defining compilers, etc, a user can simply install
+   a new repo with the 'siesta-project' namespace:
+
+     spack repo add /path/to/spack_package_defs
+
+   and issue commands such as:
+
+     spack install xmlf90
+     spack info siesta
+     spack spec siesta +mpi +netcdf +libxc +elpa
+     spack install siesta -mpi build_type=Debug
+
+   Note that the spack builtin repo *might have* other Siesta-related
+   recipes prepared in the past by other members of the community.
+   By making sure that the 'siesta-project' repo is listed first in the
+   spack repository chain, those can be avoided. Check:
+
+     spack repo list
+     
+   At this point, the spack recipes pull sources from development
+   branches of Siesta, without a well-defined source id. This is
+   a temporary situation during the final stages of development of
+   the CMake framework and the update of the dependency libraries.
+   
 A) Installation on-the-fly, using git submodules for the external
 libraries.
 
@@ -34,7 +60,7 @@ libraries.
   (If you got a full-source package with the ExtLibs subdirectories already
    populated, you do not need to do anything at this point).
 
-  The basic invocation will then be:
+  The basic invocation will then be: (-GNinja is optional)
   
   cmake -S. -GNinja -B_build -DCMAKE_INSTALL_PREFIX=/path/to/installation
   cmake --build _build
@@ -68,7 +94,7 @@ if present the variables SCALAPACK_LIBRARY and SCALAPACK_LIBRARY_DIR). Please wa
 MPI compatibility issues, as they are NOT currently checked.
 
 (The CMake support for the linear-algebra library search has been
-borrowed from the DFTB+ project).
+borrowed from the DFTB+ project, and somewhat refined).
 
 To have libgridxc compiled with libxc support, change the invocation to:
 
@@ -97,16 +123,13 @@ C) Pre-installed external libraries can be discovered using cmake packages or pk
    system will fall back to the "submodule" and "fetch" scenarios, in
    that order.
 
+   
 Developers and experienced users can experiment with different
 versions of the libraries by setting different values for the *_ROOT
 variables, or by selectively leaving out *_ROOT variables from
 CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
 
 * Accepted options:
-
-      - WITH_UTILS: Compiles programs in Util besides TBtrans (currently
-                    just a few representative examples) (ON by default)
-		    NOTE: You need to set and pass $FFTW_ROOT for Util/STM/ol-stm.
 
       - WITH_MPI:   It is ON by default if MPI is found on the system.
                     To deactivate, use -DWITH_MPI=OFF
@@ -128,8 +151,11 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
 
       - WITH_ELPA:  See config/cmake/search_for_elpa.cmake. Due to the
                     idiosynchracies of the ELPA build system, some preparation
-		    is needed.
+		    might be needed.
 		    
+      - WITH_FFTW:  (ON by default) If not set, Util/STM/ol-stm will
+                    not be compiled.
+
       - WITH_LUA:   The environmental variable FLOOK_ROOT must be set and
                     point to an installation of the flook library.
 
@@ -154,10 +180,12 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
         the linking string is hard-coded, as there is no proper
         pkgconfig file yet.
 
-      - GRIDXC cannot yet be incorporated from a pre-compiled package. It
-        must be compiled from the submodule source in ExtLibs/libgridxc or
-        by fetching the source on-the-fly.
-        Some more work is needed to interface correctly to versions of
+      - Old versions of GRIDXC cannot yet be
+        incorporated. CMake-enabled installed versions are fine, but
+        the setting of WITH_LIBXC must be consistent. Otherwise,
+        GRIDXC must be compiled from the submodule source in
+        ExtLibs/libgridxc or by fetching the source on-the-fly.  Some
+        more work is needed to interface correctly to versions of
         libgridxc installed with the autotools build system.
         
       - When using MPI, a single MPI version of GRIDXC is compiled, and it
