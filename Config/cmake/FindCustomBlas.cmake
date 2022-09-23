@@ -112,7 +112,7 @@ else()
   set(Blas_FOUND ${CUSTOMBLAS_FOUND})
 
   if (BLAS_FOUND AND NOT TARGET BLAS::BLAS)
-    add_library(BLAS::BLAS INTERFACE IMPORTED)
+    add_library(BLAS::BLAS INTERFACE IMPORTED GLOBAL)
     if(NOT "${BLAS_LIBRARY}" STREQUAL "NONE")
       target_link_libraries(BLAS::BLAS INTERFACE "${BLAS_LIBRARY}")
     endif()
