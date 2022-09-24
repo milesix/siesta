@@ -216,8 +216,8 @@ listsc.o: alloc.o
 listsc.o: alloc.o
 m_io.o: local_sys.o
 m_io.o: local_sys.o
-memory.o: memory_log.o parallel.o
-memory.o: memory_log.o parallel.o
+memory.o: memory_log.o
+memory.o: memory_log.o
 memory_log.o: m_io.o parallel.o precision.o
 memory_log.o: m_io.o parallel.o precision.o
 parallelsubs.o: domain_decom.o local_sys.o parallel.o precision.o spatial.o
@@ -241,6 +241,8 @@ sparse_matrices.o: precision.o
 spatial.o: precision.o
 spatial.o: precision.o
 spher_harm.o: precision.o
+spher_harm.o: precision.o
+units.o: precision.o
 units.o: precision.o
 xml.o: precision.o
 xml.o: precision.o

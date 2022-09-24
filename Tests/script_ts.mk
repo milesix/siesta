@@ -16,18 +16,23 @@ ifeq ($(strip $(firstword $(TS))),"mpiexec")
 MPI=
 endif
 
-completed:
+label=work
+
+.PHONY: completed
+completed: completed_$(label)
+
+completed_$(label):
 	@echo ">>>> Running $(name) test..."
-	@if [ -d work ] ; then rm -rf work ; fi; mkdir work
-	@if [ -f script.sh ] ; then cp -f script.sh work ; fi
+	@if [ -d $(label) ] ; then rm -rf $(label) ; fi; mkdir $(label)
+	@if [ -f script.sh ] ; then cp -f script.sh $(label) ; fi
 	@echo "    ==> Running script with TranSIESTA as $(TS)"
-	@(cd work ; $(SHELL) script.sh "$(MPI) $(TS)" )
+	@(cd $(label) ; $(SHELL) script.sh "$(MPI) $(TS)" )
 	@if [ -f completed ] ; then \
            echo "    ===> Script finished successfully";\
          else \
            echo " **** Test $(name) did not complete successfully";\
          fi
-#
+
 clean:
-	@echo ">>>> Cleaning $(name) test..."
-	rm -rf work completed *.out 
+	@echo ">>>> Cleaning $(name) [label=$(label)] test..."
+	rm -rf $(label) completed_$(label) $(name).out $(name).xml

@@ -85,8 +85,8 @@ SIESTA_OBJS= precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
              pspltm1.o mmio.o qsort.o \
              sparse_matrices.o
 
-# Siesta timings
 SIESTA_OBJS += m_walltime.o timer_tree.o m_timer.o timer.o
+SIESTA_OBJS += m_spin.o m_vee_integrals.o
 
 
 # Add specific class objects
@@ -228,10 +228,10 @@ bessph.o: precision.o sys.o
 bessph.o: precision.o sys.o
 bloch_unfold.o: units.o
 bloch_unfold.o: units.o
-broadcast_basis.o: atm_types.o chemical.o dftu_specs.o m_mpi_utils.o parallel.o
-broadcast_basis.o: radial.o
-broadcast_basis.o: atm_types.o chemical.o dftu_specs.o m_mpi_utils.o parallel.o
-broadcast_basis.o: radial.o
+broadcast_basis.o: atm_types.o chemical.o dftu_specs.o m_mpi_utils.o m_spin.o
+broadcast_basis.o: parallel.o radial.o
+broadcast_basis.o: atm_types.o chemical.o dftu_specs.o m_mpi_utils.o m_spin.o
+broadcast_basis.o: parallel.o radial.o
 cellsubs.o: precision.o
 cellsubs.o: precision.o
 chemical.o: parallel.o precision.o sys.o
@@ -266,11 +266,11 @@ coor.o: zmatrix.o
 debugmpi.o: parallel.o
 debugmpi.o: parallel.o
 dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
-dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o parallel.o
-dftu_specs.o: precision.o radial.o sys.o units.o
+dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o m_spin.o
+dftu_specs.o: m_vee_integrals.o parallel.o precision.o radial.o sys.o units.o
 dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
-dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o parallel.o
-dftu_specs.o: precision.o radial.o sys.o units.o
+dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o m_spin.o
+dftu_specs.o: m_vee_integrals.o parallel.o precision.o radial.o sys.o units.o
 diag.o: alloc.o diag_option.o parallel.o precision.o sys.o
 diag.o: alloc.o diag_option.o parallel.o precision.o sys.o
 diag_option.o: m_cite.o parallel.o precision.o
@@ -295,12 +295,16 @@ m_io.o: sys.o
 m_io.o: sys.o
 m_mpi_utils.o: precision.o sys.o
 m_mpi_utils.o: precision.o sys.o
+m_spin.o: precision.o
+m_spin.o: precision.o
 m_timer.o: m_io.o m_walltime.o moreParallelSubs.o parallel.o precision.o sys.o
 m_timer.o: m_io.o m_walltime.o moreParallelSubs.o parallel.o precision.o sys.o
+m_vee_integrals.o: precision.o sys.o
+m_vee_integrals.o: precision.o sys.o
 m_wallclock.o: m_walltime.o
 m_wallclock.o: m_walltime.o
-memory.o: memory_log.o parallel.o
-memory.o: memory_log.o parallel.o
+memory.o: memory_log.o
+memory.o: memory_log.o
 memory_log.o: m_io.o parallel.o precision.o
 memory_log.o: m_io.o parallel.o precision.o
 minvec.o: cellsubs.o precision.o sorting.o sys.o
@@ -392,4 +396,5 @@ m_timer_tree.o: timer_tree.o
 m_timestamp.o: timestamp.o
 mtprng.o: m_uuid.o
 printmat.o: printmatrix.o
+t_spin.o: m_spin.o
 timer_options.o: timer.o

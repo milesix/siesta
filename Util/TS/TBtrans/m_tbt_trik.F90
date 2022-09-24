@@ -33,7 +33,7 @@ module m_tbt_trik
   use m_region
 
   use m_ts_method, only: ts_A_method, TS_BTD_A_COLUMN, TS_BTD_A_PROPAGATION
-  use m_ts_electype
+  use ts_electrode_m
   use m_ts_sparse_helper, only : create_HS
   use m_ts_tri_common, only : nnzs_tri
 
@@ -82,7 +82,7 @@ contains
     use netcdf_ncdf, only: hNCDF, ncdf_close
 #endif
 
-    use m_ts_electype
+    use ts_electrode_m
     ! Self-energy read
     use m_tbt_gf
     ! Self-energy expansion
@@ -139,7 +139,7 @@ contains
 ! ********************
     integer, intent(in) :: ispin
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     type(tTSHS), intent(inout) :: TSHS
     integer, intent(in) :: nq(N_Elec)
     integer, intent(in) :: uGF(N_Elec)
@@ -200,7 +200,7 @@ contains
     ! We will at each energy re-create the projection
     ! Matrix. This will take a little time, but it should
     ! be rather fast.
-    type(Elec) :: El_p
+    type(electrode_t) :: El_p
     type(tLvlMolEl), pointer :: p_E
     real(dp), allocatable :: pDOS(:,:,:)
     real(dp), allocatable :: bTk(:,:), bTkeig(:,:,:)
@@ -256,6 +256,7 @@ contains
 
 ! ******************** Timer variables ***********************
     real(dp) :: loop_time, init_time
+    integer :: n_loops
     real :: last_progress, cur_progress
 ! ************************************************************
 
@@ -400,7 +401,7 @@ contains
 
     ! Correct the actual padding by subtracting the 
     ! initial size of the tri-diagonal matrix
-    pad_LHS = pad_LHS - nnzs_tri(DevTri%n,DevTri%r)
+    pad_LHS = pad_LHS - int( nnzs_tri(DevTri%n,DevTri%r) )
 
     ! We now have the maximum size of the electrode down-folding
     ! region.
@@ -441,7 +442,7 @@ contains
     ! The minimum padding must be the maximum value of the 
     ! 1) padding required to contain a down-folding region
     ! 2) padding required to calculate the entire Gf column (not always)
-    pad_LHS = max(pad_LHS,pad_RHS)
+    pad_LHS = max(pad_LHS, pad_RHS)
 
     ! In case the user requests eigenchannel calculations
     ! we need to do a work-query from lapack
@@ -462,7 +463,7 @@ contains
        
        ! 'no' is the maximum size of the electrodes
        ! Work-query of eigenvalue calculations
-       call zgeev('N','N',no,zwork(2),no,eig,zwork(2),1,zwork(2),1, &
+       call zgeev('N','N',no,zwork(2),no,eig(1),zwork(2),1,zwork(2),1, &
             zwork(1),-1,Teig(1,1,1),info)
        if ( info /= 0 ) then
          print *,info
@@ -489,10 +490,10 @@ contains
     ! self-energies and nothing more.
     ! Here we pad with the missing elements to contain
     ! all self-energies.
-    pad_RHS = nnzs_tri(DevTri%n,DevTri%r)
+    pad_RHS = int( nnzs_tri(DevTri%n,DevTri%r) )
     io = 0
     do iEl = 1 , N_Elec
-       io = io + max(TotUsedOrbs(Elecs(iEl)),Elecs(iEl)%o_inD%n)**2
+       io = io + max(Elecs(iEl)%device_orbitals(),Elecs(iEl)%o_inD%n)**2
     end do
     pad_RHS = io - pad_RHS
     pad_RHS = max(pad_RHS,0) ! truncate at 0
@@ -500,7 +501,7 @@ contains
     ! allocating a new region, 
     ! this is only preferred in tbtrans as there might be 
     ! padding any-way.
-    pad_RHS = max(pad_RHS,nGFGGF)
+    pad_RHS = max(pad_RHS, nGFGGF)
 
     ! Note that padding is the extra size to be able to calculate
     ! the spectral function in the BTD format
@@ -554,7 +555,7 @@ contains
     ! initialize the matrix inversion tool
     no = maxval(DevTri%r)
     do iEl = 1 , N_Elec
-       no = max(no,maxval(ElTri(iEl)%r))
+       no = max(no, maxval(ElTri(iEl)%r))
     end do
     call init_mat_inversion(no)
 
@@ -570,7 +571,7 @@ contains
        ! it is required that prepare_GF_inv is called
        ! immediately (which it is)
        ! Hence the GF must NOT be used in between these two calls!
-       io = max(TotUsedOrbs(Elecs(iEl)),Elecs(iEl)%o_inD%n) ** 2
+       io = max(Elecs(iEl)%device_orbitals(),Elecs(iEl)%o_inD%n) ** 2
        Elecs(iEl)%Sigma => Gfwork(no+1:no+io)
        no = no + io
 
@@ -578,7 +579,7 @@ contains
 
 #ifdef NOT_WORKING
        ! Calculate size of life-time array
-       io = r_oEl(iEl)%n - TotUsedOrbs(Elecs(iEl))
+       io = r_oEl(iEl)%n - Elecs(iEl)%device_orbitals()
        allocate(life(iEl)%life(io))
 #endif
 
@@ -589,7 +590,7 @@ contains
     ! Notice that we DO need it to be the SIESTA size.
     no = nrows_g(sp_uc)
 #ifdef MPI
-    call newDistribution(no,MPI_Comm_Self,fdist,name='TBT-fake dist')
+    call newDistribution(no, MPI_Comm_Self,fdist,name='TBT-fake dist')
 #else
     call newDistribution(no,-1           ,fdist,name='TBT-fake dist')
 #endif
@@ -740,16 +741,20 @@ contains
     ! Number of energy points
     N_E = N_TBT_E()
 
+    ! For tracking time
+    n_loops =  (N_E + mod(N_E, Nodes)) / Nodes
+    n_loops = n_loops * Nodes * itt_steps(Kp)
+
 #ifdef NCDF_4
     ! Open the NetCDF handles
     if ( .not. (only_proj .or. only_sigma) ) then
       ! *.TBT.nc file
-      call open_cdf_save(cdf_fname, TBTcdf)
+      call open_cdf_save(cdf_fname, TBTcdf, N_Elec, Elecs)
     end if
     ! *.TBT.Proj.nc file
     call open_cdf_proj(cdf_fname_proj, PROJcdf)
     ! *.TBT.SE.nc file
-    call open_cdf_Sigma(cdf_fname_sigma, SEcdf)
+    call open_cdf_Sigma(cdf_fname_sigma, SEcdf, N_Elec, Elecs)
 
 #else
     ! Allocate units for IO ASCII
@@ -778,7 +783,7 @@ contains
     ! record the initial time to take that into account
     call timer_start('E-loop')
     call timer_stop('E-loop')
-    call timer_get('E-loop',totTime=init_time)
+    call timer_get('E-loop', totTime=init_time)
 
     do while ( .not. itt_step(Kp) )
 
@@ -875,31 +880,28 @@ contains
           ! Print out information about current progress.
           ! We print out a progress report every 5 %
           ! Calculate progress
-          jEl = (itt_cur_step(Kp) - 1) * N_E + iE
-          iEl = itt_steps(Kp) * N_E
-          cur_progress = 100. * real(jEl)/real(iEl)
+          cur_progress = real((itt_cur_step(Kp) - 1) * N_E + iE) / n_loops
           if ( cur_progress - last_progress >= percent_tracker ) then
-             ! We have passed another 'percent_tracker'% of calculation time
+            ! We have passed another 'percent_tracker'% of calculation time
 
-             ! save current progress in integer form
-             last_progress = cur_progress
+            ! save current progress
+            last_progress = cur_progress
 
-             ! Stop timer
-             call timer_stop('E-loop')
+            ! Stop timer
+            call timer_stop('E-loop')
 
-             ! Calculate time passed by correcting for the initial time
-             call timer_get('E-loop',totTime=loop_time)
-             loop_time = loop_time - init_time
+            ! Calculate time passed by correcting for the initial time
+            call timer_get('E-loop', totTime=loop_time)
+            loop_time = loop_time - init_time
 
-             if ( IONode ) then
-                loop_time = loop_time / cur_progress
-                loop_time = loop_time * ( 100._dp - cur_progress )
-                write(*,'(a,f7.3,'' %, ETA in '',f20.3,'' s'')') &
-                     'tbt: Calculated ', cur_progress, loop_time
-             end if
+            if ( IONode ) then
+              loop_time = loop_time / cur_progress - loop_time
+              write(*,'(a,f7.2,'' %, ETA in '',f20.1,'' s'')') &
+                  'tbt: Calculated ', cur_progress * 100., loop_time
+            end if
 
-             ! Start the timer again
-             call timer_start('E-loop')
+            ! Start the timer again
+            call timer_start('E-loop')
 
           end if
 
@@ -925,13 +927,13 @@ contains
                      DOS_El, T(:,1), save_DATA)
 #else
                 call state_save_Elec(iounits_El,nE,N_Elec,Elecs, &
-                     DOS_El, T(:,1), save_DATA )
+                     DOS_El, T(:,1), save_DATA)
 #endif
 
              else
                 call read_next_GS(1, ikpt, bkpt, &
                      cE, N_Elec, uGF, Elecs, &
-                     nzwork, zwork, .false., forward=.false. )
+                     nzwork, zwork, .false., forward=.false.)
              end if
           else
              call calc_GS_k(1, cE, N_Elec, Elecs, uGF, &
@@ -959,7 +961,7 @@ contains
              ! create the Gamma.
              ! Hence it is a waste of time if this is done in this
              ! loop....
-             call UC_expansion(cE, Elecs(iEl), nzwork, zwork, non_Eq=.false. ) 
+             call UC_expansion(cE, Elecs(iEl), nzwork, zwork, non_Eq=.false.)
 
              ! Down-fold immediately :)
 #ifdef TBT_PHONON
@@ -1000,8 +1002,10 @@ contains
 
              end do
 
-             ! Save the energies
-             call cdf_save_E(PROJcdf,nE)
+             if ( ikpt == 1 ) then
+               ! Save the energies
+               call cdf_save_E(PROJcdf,nE)
+             end if
 
              ! Save the projected values
              call proj_cdf_save_bGammak(PROJcdf,N_proj_ME,proj_ME, &
@@ -1025,10 +1029,10 @@ contains
           ! *******************
 #ifdef TBT_PHONON
           call prepare_invGF(cOmega, zwork_tri, r_oDev, pvt, &
-               N_Elec, Elecs, spH , spS, TSHS%sc_off, kpt)
+               N_Elec, Elecs, spH, spS, TSHS%sc_off, kpt)
 #else
           call prepare_invGF(cE, zwork_tri, r_oDev, pvt, &
-               N_Elec, Elecs, spH , spS, TSHS%sc_off, kpt)
+               N_Elec, Elecs, spH, spS, TSHS%sc_off, kpt)
 #endif
 
           ! ********************
@@ -1542,14 +1546,12 @@ contains
              call timer_stop('E-loop')
 
              ! Calculate time passed
-             call timer_get('E-loop',totTime=loop_time)
+             call timer_get('E-loop', totTime=loop_time)
              loop_time = loop_time - init_time
 
              if ( IONode ) then
-                iEl = itt_steps(Kp) * N_E
-                loop_time = iEl * loop_time / real(Nodes,dp) - loop_time
-                write(*,'(a,f20.3,'' s'')') 'tbt: Initial ETA in ', &
-                     loop_time
+               loop_time = n_loops * loop_time / Nodes - loop_time
+               write(*,'(a,f20.1,'' s'')') 'tbt: Initial ETA in ', loop_time
              end if
 
              ! Start the timer again
@@ -1672,6 +1674,11 @@ contains
     end if
 #endif
 
+    do iEl = 1 , N_Elec
+      ! Remove pointer of sigma
+      nullify(Elecs(iEl)%Sigma)
+    end do
+
 #ifdef MPI
     ! Ensure that we are finished will ALL IO before we
     ! proceed. Otherwise some routines may finalized before actual end...
@@ -1683,38 +1690,28 @@ contains
     subroutine print_memory(name,padding)
       use m_verbosity, only : verbosity
       use precision, only : i8b
-      use m_ts_tri_common, only : nnzs_tri_i8b
+      use m_ts_tri_common, only : nnzs_tri
+
+      use byte_count_m, only: byte_count_t
+
       character(len=*), intent(in) :: name
       integer, intent(in) :: padding
+
+      type(byte_count_t) :: mem
+
+      character(len=32) :: c_tmp
       integer(i8b) :: nsize
-      real(dp) :: mem
-      character(len=2) :: unit
-
-      ! Total number of elements
-      nsize = nnzs_tri_i8b(DevTri%n,DevTri%r)
-      nsize = nsize + padding
-
-      if ( nsize > huge(1) ) then
-        call die('tbt_trik: required contiguous allocated space requires long &
-            &integers. Currently not supported.')
-      end if
 
       if ( .not. IONode ) return
       if ( verbosity < 5 ) return
 
-      unit = 'KB'
-      mem = real(nsize, dp) * 16._dp / 1024._dp
-      if ( mem > 1024._dp ) then
-        mem = mem / 1024._dp
-        unit = 'MB'
-        if ( mem > 1024._dp ) then
-          mem = mem / 1024._dp
-          unit = 'GB'
-        end if
-      end if
+      ! Total number of elements
+      nsize = nnzs_tri(DevTri%n, DevTri%r)
+      call mem%add_type(cmplx(0, 0, dp), nsize)
+      call mem%add_type(cmplx(0, 0, dp), padding)
 
-      write(*,'(3a,i0,a,f8.3,tr1,a)') 'tbt: ',name,' Green function padding / memory: ', &
-          padding,' / ',mem, unit
+      call mem%get_string(c_tmp)
+      write(*,'(4a)') 'tbt: [memory] ',name,' inversion + padding: ', trim(c_tmp)
       
     end subroutine print_memory
 
@@ -1741,7 +1738,7 @@ contains
     type(zTriMat), intent(inout) :: GFinv_tri
     type(tRgn), intent(in) :: r, pvt
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     ! The Hamiltonian and overlap sparse matrices
     type(zSpData1D), intent(inout) :: spH,  spS
     real(dp), intent(in) :: sc_off(:,:), kpt(3)
@@ -1820,14 +1817,14 @@ contains
 
     use class_Sparsity
     use class_zSpData1D
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_cctype, only : ts_c_idx
 
     ! the current energy point
     type(ts_c_idx), intent(in) :: cE
     ! Electrode, this *REQUIRES* that the down-folding region
     ! only contains the self-energies of this electrode... :(
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     ! The hamiltonian and overlap
     type(zSpData1D), intent(in) :: spH, spS
     ! The region of downfolding... (+ the region connecting to the device..)
@@ -1835,12 +1832,12 @@ contains
     ! number of parts that constitute the tri-diagonal region
     integer, intent(in) :: np
     ! parts associated
-    integer, intent(in) :: p(np)
+    integer, intent(in) :: p(:)
     ! super-cell offsets and k-point
     real(dp), intent(in) :: sc_off(:,:), kpt(3)
     ! Work-arrays...
     integer, intent(in) :: nwork
-    complex(dp), intent(inout), target :: work(nwork)
+    complex(dp), intent(inout), target :: work(:)
 
     ! All our work-arrays...
     complex(dp), pointer :: A(:), B(:), C(:), Y(:)
@@ -1866,8 +1863,8 @@ contains
     ! Check that there is space enough in the work array.
     do ip = 1 , np - 1
       itmp = p(ip) * p(ip+1) * 2 ! B,C
-      itmp = itmp  + p(ip) ** 2   ! A
-      itmp = itmp  + p(ip+1) ** 2 ! Y
+      itmp = itmp + p(ip) ** 2 ! A
+      itmp = itmp + p(ip+1) ** 2 ! Y
       if ( itmp > nwork ) then
         call die('Work array is too small... A, B, C, Y')
       end if
@@ -1904,7 +1901,7 @@ contains
       call prep_HS(cE%E,El,spH,spS,r,off,sNm1,off,sNm1,A, sc_off, kpt)
 
       if ( ip > 2 ) then
-        call zaxpy(sNm1SQ, zm1, Y, 1, A, 1)
+        call zaxpy(sNm1SQ, zm1, Y(1), 1, A(1), 1)
       end if
 
       ! Ensures that Y is not overwritten
@@ -1930,17 +1927,17 @@ contains
       ! For n,m n>m*2 zgetrf+zgetri+zgemm is faster than zgesv
       ! Here n = sNm1, m = sN
       if ( sNm1 * 2 > sN ) then
-        call zgesv(sNm1,sN,A,sNm1,ipiv,C,sNm1,ierr)
+        call zgesv(sNm1,sN,A(1),sNm1,ipiv,C(1),sNm1,ierr)
       else
         ! Here we know that sNm1 * 2 < sN and thus we
         ! can use the result array (Y) as work array
         ! Since Y has dimensions sNm1,sN > sNm1,sNm1
-        call zgetrf(sNm1, sNm1, A, sNm1, ipiv, ierr)
+        call zgetrf(sNm1, sNm1, A(1), sNm1, ipiv, ierr)
         if ( ierr == 0 ) then
-          call zgetri(sNm1, A, sNm1, ipiv, Y, sNm1SQ, ierr)
+          call zgetri(sNm1, A(1), sNm1, ipiv, Y(1), sNm1SQ, ierr)
           call GEMM ('N', 'N', sNm1, sN, sNm1, z1, &
-              A, sNm1, C, sNm1, z0, Y, sNm1)
-          call zcopy(sNm1*sN, Y, 1, C, 1)
+              A(1), sNm1, C(1), sNm1, z0, Y(1), sNm1)
+          call zcopy(sNm1*sN, Y(1), 1, C(1), 1)
         end if
       end if
       if ( ierr /= 0 ) then
@@ -1949,7 +1946,7 @@ contains
        
       ! Calculate: Bn-1 [An-1 - Yn-1] ^-1 Cn
       call GEMM ('N','N',sN,sN,sNm1,z1, &
-          B,sN,C,sNm1,z0,Y,sN)
+          B(1),sN,C(1),sNm1,z0,Y(1),sN)
        
     end do
 
@@ -1989,7 +1986,7 @@ contains
 
     use class_Sparsity
     use class_zSpData1D
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_cctype, only : ts_c_idx
 
     use m_mat_invert
@@ -1998,7 +1995,7 @@ contains
     type(ts_c_idx), intent(in) :: cE
     ! Electrode, this *REQUIRES* that the down-folding region
     ! only contains the self-energies of this electrode... :(
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     ! The hamiltonian and overlap
     type(zSpData1D), intent(in) :: spH, spS
     ! The region of downfolding... (+ the region connecting to the device..)
@@ -2034,7 +2031,7 @@ contains
     ! Check that there is space enough in the work array.
     do ip = 1 , np - 1
       itmp = p(ip) * p(ip+1) * 2 ! B,C
-      itmp = itmp  + p(ip) ** 2   ! A
+      itmp = itmp  + p(ip) ** 2 ! A
       itmp = itmp  + p(ip+1) ** 2 ! Y
       if ( itmp > nwork ) then
         call die('Work array is too small... A, B, C, Y')
@@ -2106,9 +2103,9 @@ contains
 
       ! Calculate matrix product
       call GEMM ('N','T',ierr,ierr,ierr,cmplx(1._dp,0._dp,dp), &
-          A,ierr,C,ierr,cmplx(0._dp,0._dp,dp),B,ierr)
+          A(1),ierr,C(1),ierr,cmplx(0._dp,0._dp,dp),B(1),ierr)
       call GEMM ('N','C',ierr,ierr,ierr,cmplx(1._dp,0._dp,dp), &
-          B,ierr,A,ierr,cmplx(0._dp,0._dp,dp),El%Sigma,ierr)
+          B(1),ierr,A(1),ierr,cmplx(0._dp,0._dp,dp),El%Sigma(1),ierr)
 
       ! Calculate trace
       do i = 1 , ierr
@@ -2142,14 +2139,14 @@ contains
 
       ! Calculate: [An-1 - Yn-1] ^-1 Cn
       call GEMM ('N','N',p(ip-1),p(ip),p(ip-1),cmplx(1._dp,0._dp,dp), &
-          A,p(ip-1),B,p(ip-1),cmplx(0._dp,0._dp,dp),C,p(ip))
+          A,p(ip-1),B,p(ip-1),cmplx(0._dp,0._dp,dp),C(1),p(ip))
 
       call prep_HS(cE%E,El,spH,spS,r,i,p(ip),off,p(ip-1),B, &
           sc_off, kpt)
 
       ! Calculate: Bn-1 [An-1 - Yn-1] ^-1 Cn
       call GEMM ('N','N',p(ip),p(ip),p(ip-1),cmplx(1._dp,0._dp,dp), &
-          B,p(ip),C,p(ip-1),cmplx(0._dp,0._dp,dp),Y,p(ip))
+          B,p(ip),C,p(ip-1),cmplx(0._dp,0._dp,dp),Y(1),p(ip))
 
     end do
 
@@ -2190,6 +2187,8 @@ contains
   subroutine prep_HS(Z, El, spH, spS, &
        r,off1,n1,off2,n2,M, sc_off, kpt)
 
+    use iso_c_binding
+
     use class_Sparsity
     use class_zSpData1D
     use m_tbt_tri_scat, only : insert_Self_Energy
@@ -2204,20 +2203,20 @@ contains
     ! the current energy point
     complex(dp), intent(in) :: Z
     ! Electrode
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     ! The Hamiltonian and overlap sparse matrices
     type(zSpData1D), intent(in) :: spH,  spS
     ! the region which describes the current segment of insertion
     type(tRgn), intent(in) :: r
     ! The sizes and offsets of the matrix
     integer, intent(in) :: off1, n1, off2, n2
-    complex(dp), intent(out) :: M(n1,n2)
+    complex(dp), target, intent(inout) :: M(:)
     real(dp), intent(in) :: sc_off(:,:), kpt(3)
 
     ! Local variables
     type(Sparsity), pointer :: sp
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
-    complex(dp), pointer :: H(:), S(:)
+    complex(dp), pointer :: H(:), S(:), M2D(:,:)
     integer :: io, iu, ind, ju
     type(ssearch_t) :: ss
 
@@ -2227,15 +2226,17 @@ contains
 
     call attach(sp, n_col=l_ncol, list_ptr=l_ptr, list_col=l_col)
 
+    call c_f_pointer(c_loc(M), M2D, [n1, n2])
+
+    ! Initialize
+    M2D(:, :) = cmplx(0._dp, 0._dp, dp)
+
     ! We will only loop in the region
 !$OMP parallel default(shared), private(iu,io,ind,ju,ss)
 
 !$OMP do
     do iu = 1 , n2
       io = r%r(off2+iu) ! get the orbital in the sparsity pattern
-
-      ! Initialize to zero
-      M(:,iu) = cmplx(0._dp,0._dp,dp)
 
       if ( l_ncol(io) /= 0 ) then
 
@@ -2247,28 +2248,29 @@ contains
           ! Check if the orbital exists in the region
           ! We are dealing with a UC sparsity pattern.
           ind = ssearch_find(ss, r%r(off1+ju))
-          if ( ind == 0 ) cycle
-          ind = l_ptr(io) + ind
+          if ( ind > 0 ) then
+            ind = l_ptr(io) + ind
 
-          M(ju,iu) = Z * S(ind) - H(ind)
+            M2D(ju,iu) = Z * S(ind) - H(ind)
+          end if
 
         end do
       end if
     end do
 !$OMP end do
 
-    call insert_Self_Energy(n1,n2,M,r,El,off1,off2)
+    call insert_Self_Energy(n1,n2,M2D,r,El,off1,off2)
 
 !$OMP end parallel
 
 #ifdef NCDF_4
     if ( dH%lvl > 0 ) then
       ! Add dH
-      call add_zdelta_Mat(dH%d, r, off1,n1,off2,n2, M, sc_off, kpt)
+      call add_zdelta_Mat(dH%d, r, off1,n1,off2,n2, M2D, sc_off, kpt)
     end if
     if ( dSE%lvl > 0 ) then
       ! Add dSE
-      call add_zdelta_Mat(dSE%d, r, off1,n1,off2,n2, M, sc_off, kpt)
+      call add_zdelta_Mat(dSE%d, r, off1,n1,off2,n2, M2D, sc_off, kpt)
     end if
 #endif
 

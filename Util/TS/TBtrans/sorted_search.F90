@@ -41,9 +41,9 @@ module sorted_search_m
 
 contains
 
-  subroutine ssearch_init(this, array)
+  pure subroutine ssearch_init(this, array)
     type(ssearch_t), intent(inout) :: this
-    integer, target :: array(:)
+    integer, intent(inout), target :: array(:)
 
     this%list => array
     this%prev = 1

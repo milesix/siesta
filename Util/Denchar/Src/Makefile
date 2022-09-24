@@ -145,116 +145,64 @@ dep:
 
 # DO NOT DELETE THIS LINE - used by make depend
 atm_types.o: precision.o radial.o
-atm_types.o: precision.o radial.o
 atmfuncs.o: atm_types.o local_sys.o precision.o radial.o spher_harm.o
-atmfuncs.o: atm_types.o local_sys.o precision.o radial.o spher_harm.o
-atom_options.o: local_sys.o
 atom_options.o: local_sys.o
 basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
 basis_io.o: local_sys.o precision.o radial.o xml.o
-basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
-basis_io.o: local_sys.o precision.o radial.o xml.o
-basis_types.o: alloc.o atmparams.o local_sys.o precision.o
 basis_types.o: alloc.o atmparams.o local_sys.o precision.o
 bessph.o: local_sys.o precision.o
-bessph.o: local_sys.o precision.o
 chemical.o: local_sys.o parallel.o precision.o
-chemical.o: local_sys.o parallel.o precision.o
-chkdim.o: local_sys.o
 chkdim.o: local_sys.o
 class_Data1D.o: alloc.o
 class_Data2D.o: alloc.o
 class_Data3D.o: alloc.o
 class_Fstack_Pair_Data1D.o: class_Pair_Data1D.o class_Pair_Data1D.o
-class_Fstack_Pair_Data1D.o: class_Pair_Data1D.o class_Pair_Data1D.o
-class_Fstack_Pair_Geometry_SpData2D.o: class_Pair_Geometry_SpData2D.o
 class_Fstack_Pair_Geometry_SpData2D.o: class_Pair_Geometry_SpData2D.o
 class_Geometry.o: alloc.o
-class_Geometry.o: alloc.o
 class_Pair_Data1D.o: class_Data1D.o class_Data1D.o
-class_Pair_Data1D.o: class_Data1D.o class_Data1D.o
-class_Pair_Geometry_SpData2D.o: class_Geometry.o class_SpData2D.o
 class_Pair_Geometry_SpData2D.o: class_Geometry.o class_SpData2D.o
 class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
 class_SpData1D.o: class_Data1D.o
 class_SpData1D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
-class_SpData1D.o: class_Data1D.o
 class_SpData2D.o: class_Data2D.o class_Data2D.o class_Data2D.o
 class_SpData2D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData2D.o: class_Data2D.o class_Data2D.o class_Data2D.o
 class_SpData3D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_Sparsity.o: alloc.o
 class_Sparsity.o: alloc.o
 class_TriMat.o: alloc.o
 debugmpi.o: parallel.o
-debugmpi.o: parallel.o
-domain_decom.o: alloc.o local_sys.o parallel.o precision.o printmatrix.o
-domain_decom.o: schecomm.o sparse_matrices.o
 domain_decom.o: alloc.o local_sys.o parallel.o precision.o printmatrix.o
 domain_decom.o: schecomm.o sparse_matrices.o
 io.o: m_io.o
-io.o: m_io.o
-iodm.o: alloc.o files.o local_sys.o parallel.o parallelsubs.o precision.o
 iodm.o: alloc.o files.o local_sys.o parallel.o parallelsubs.o precision.o
 listsc.o: alloc.o
-listsc.o: alloc.o
 m_io.o: local_sys.o
-m_io.o: local_sys.o
-memory.o: memory_log.o parallel.o
-memory.o: memory_log.o parallel.o
-memory_log.o: m_io.o parallel.o precision.o
+memory.o: memory_log.o
 memory_log.o: m_io.o parallel.o precision.o
 parallelsubs.o: domain_decom.o local_sys.o parallel.o precision.o spatial.o
-parallelsubs.o: domain_decom.o local_sys.o parallel.o precision.o spatial.o
-printmatrix.o: alloc.o
 printmatrix.o: alloc.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
-radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radial.o: alloc.o interpolation.o precision.o xml.o
-radial.o: alloc.o interpolation.o precision.o xml.o
-schecomm.o: alloc.o
 schecomm.o: alloc.o
 sparse_matrices.o: alloc.o class_Fstack_Pair_Geometry_SpData2D.o
 sparse_matrices.o: class_OrbitalDistribution.o class_SpData1D.o
 sparse_matrices.o: class_SpData2D.o class_SpData2D.o class_Sparsity.o
 sparse_matrices.o: precision.o
-sparse_matrices.o: alloc.o class_Fstack_Pair_Geometry_SpData2D.o
-sparse_matrices.o: class_OrbitalDistribution.o class_SpData1D.o
-sparse_matrices.o: class_SpData2D.o class_SpData2D.o class_Sparsity.o
-sparse_matrices.o: precision.o
-spatial.o: precision.o
 spatial.o: precision.o
 spher_harm.o: precision.o
 xml.o: precision.o
-xml.o: precision.o
-atompla.o: local_sys.o precision.o
 atompla.o: local_sys.o precision.o
 colinear.o: precision.o
-colinear.o: precision.o
-denchar.o: basis_io.o listsc.o m_getopts.o parallel.o precision.o
 denchar.o: basis_io.o listsc.o m_getopts.o parallel.o precision.o
 length.o: precision.o
-length.o: precision.o
-local_reinit.o: files.o
 local_reinit.o: files.o
 matvect.o: precision.o
-matvect.o: precision.o
-neighb.o: precision.o
 neighb.o: precision.o
 planed.o: precision.o
-planed.o: precision.o
-ranger.o: precision.o
 ranger.o: precision.o
 readpla.o: precision.o
-readpla.o: precision.o
-redata_denchar.o: precision.o
 redata_denchar.o: precision.o
 rhoofr.o: atmfuncs.o chemical.o listsc.o planed.o precision.o
-rhoofr.o: atmfuncs.o chemical.o listsc.o planed.o precision.o
 wavofr.o: atmfuncs.o chemical.o planed.o precision.o
-wavofr.o: atmfuncs.o chemical.o planed.o precision.o
-wrout.o: precision.o
 wrout.o: precision.o
 class_ddata1d.o: class_Data1D.o
 class_ddata2d.o: class_Data2D.o

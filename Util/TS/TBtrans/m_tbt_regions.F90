@@ -50,13 +50,14 @@ module m_tbt_regions
   ! The buffer region, just for completeness
   public :: r_aBuf, r_oBuf
 
-  public :: tbt_init_regions
-  public :: tbt_region_options
-  public :: tbt_print_regions
+  public :: tbt_regions_init
+  public :: tbt_regions_options
+  public :: tbt_regions_print
+  public :: tbt_regions_reset
 
 contains
 
-  subroutine tbt_init_regions(N_Elec, Elecs, cell, na_u, xa, lasto, &
+  subroutine tbt_regions_init(N_Elec, Elecs, cell, na_u, xa, lasto, &
        dit, sp, &
        nsc, isc_off)
 
@@ -77,7 +78,7 @@ contains
     use create_Sparsity_SC
     use create_Sparsity_Union
 
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_method, only : atom_type, TYP_DEVICE, TYP_BUFFER
 
     use m_ts_sparse, only : ts_Sparsity_Global
@@ -92,19 +93,19 @@ contains
     ! Number of electrodes
     integer, intent(in) :: N_Elec
     ! electrodes
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     ! The device region unit-cell
     real(dp), intent(in) :: cell(3,3)
     ! Last orbital of each atom
-    integer, intent(in) :: na_u, lasto(0:na_u)
+    integer, intent(in) :: na_u, lasto(0:)
     ! The atomic coordinates
-    real(dp), intent(in) :: xa(3,na_u)
+    real(dp), intent(in) :: xa(:,:)
     ! The distribution for the sparsity pattern
     type(OrbitalDistribution), intent(inout) :: dit
     ! The sparsity pattern
     type(Sparsity), intent(inout) :: sp
     ! The supercell information
-    integer, intent(in) :: nsc, isc_off(3,nsc)
+    integer, intent(in) :: nsc, isc_off(:,:)
 
     integer :: iEl, jEl
 
@@ -144,11 +145,11 @@ contains
 
        ! Create electrode region
        ia1 = Elecs(iEl)%idx_a
-       ia2 = ia1 - 1 + TotUsedAtoms(Elecs(iEl))
+       ia2 = ia1 - 1 + Elecs(iEl)%device_atoms()
        call rgn_range(r_aEl_alone(iEl), ia1, ia2)
 
        ia1 = Elecs(iEl)%idx_o
-       ia2 = ia1 - 1 + TotUsedOrbs(Elecs(iEl))
+       ia2 = ia1 - 1 + Elecs(iEl)%device_orbitals()
        call rgn_range(r_oEl_alone(iEl), ia1, ia2)
        
        ! Check that we have a legal region
@@ -787,10 +788,10 @@ contains
       
     end function sort_contain
 
-  end subroutine tbt_init_regions
+  end subroutine tbt_regions_init
 
 
-  subroutine tbt_region_options( sp, save_DATA )
+  subroutine tbt_regions_options( sp, save_DATA )
     use dictionary
 #ifdef MPI
     use mpi_siesta, only : MPI_Comm_Self
@@ -841,18 +842,18 @@ contains
     end if
 #endif
 
-  end subroutine tbt_region_options
+  end subroutine tbt_regions_options
 
-  subroutine tbt_print_regions(na_u, lasto, N_Elec, Elecs)
+  subroutine tbt_regions_print(na_u, lasto, N_Elec, Elecs)
 
     use parallel, only : Node
     use m_verbosity, only : verbosity
-    use m_ts_electype
+    use ts_electrode_m
 
     integer, intent(in) :: na_u
-    integer, intent(in) :: lasto(0:na_u)
+    integer, intent(in) :: lasto(0:)
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     integer :: i
     type(tRgn) :: r
 
@@ -928,6 +929,24 @@ contains
 
     end subroutine local_print
 
-  end subroutine tbt_print_regions
+  end subroutine tbt_regions_print
+
+  subroutine tbt_regions_reset()
+    integer :: iEl
+
+    call rgn_delete(r_aBuf, r_oBuf, r_aDev, r_oDev)
+    call delete(sp_uc)
+    call delete(sp_dev_sc)
+
+    if ( allocated(r_aEl) ) then
+      do iEl = 1, size(r_aEl)
+        call rgn_delete(r_aEl(iEl))
+        call rgn_delete(r_oEl(iEl))
+        call rgn_delete(r_oElpD(iEl))
+      end do
+      deallocate(r_aEl, r_oEl, r_oElpD)
+    end if
+
+  end subroutine tbt_regions_reset
 
 end module m_tbt_regions

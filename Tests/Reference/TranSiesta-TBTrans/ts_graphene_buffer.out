@@ -1,24 +1,26 @@
-Siesta Version  : v4.1.5-1-g384057250
+Siesta Version  : 5.0.0-alpha-56-g943f9ccc9
 Architecture    : x86_64-linux-gcc
 Compiler version: GNU Fortran (GCC) 11.2.0
-Compiler flags  : mpifort -m64 -fPIC -O3 -ftree-vectorize -fexpensive-optimizations -funroll-loops -fprefetch-loop-arrays -fgraphite -fipa-icf -fipa-pure-const -march=native -fschedule-fusion -fselective-scheduling -fstack-arrays -fmax-stack-var-size=10000 -fipa-sra -fipa-cp -fcheck=recursion,array-temps -fno-second-underscore -Wrealloc-lhs -Wrealloc-lhs-all -fallow-argument-mismatch
-PP flags        : -DSIESTA__FLOOK -DSIESTA__METIS -DSIESTA__FFTW -DTS_PVT_METIS -DSIESTA__MRRR -DSIESTA__SCALAPACK_RESET -DMPI -DFC_HAVE_FLUSH -DFC_HAVE_ABORT -DCDF -DGRID_DP -DMPI_TIMING -DTRANSIESTA_TIMING -DTBTRANS_TIMING -DSIESTA__MUMPS -DNCDF_PARALLEL -DNCDF -DNCDF_4 -DSCALAPACK_DEBUG -D_DIAG_WORK -DSIESTA__DIAG_2STAGE -DSIESTA__ELPA
-Libraries       : libncdf.a libfdict.a  -lzmumps -lmumps_common -lpord -lparmetis -lmetis -lesmumps -lscotch -lscotcherr -L/opt/gnu/11.2.0/elpa/2020.05.001/lib -Wl,-rpath=/opt/gnu/11.2.0/elpa/2020.05.001/lib -lelpa -L/opt/gnu/11.2.0/scalapack-debug/2.1.0/lib -Wl,-rpath=/opt/gnu/11.2.0/scalapack-debug/2.1.0/lib -lscalapack  -L/opt/gnu/11.2.0/openblas/0.3.18/lib -Wl,-rpath=/opt/gnu/11.2.0/openblas/0.3.18/lib -lopenblas -L/home/nicpa/codes/flook/obj -lflookall -ldl -l:libnetcdff.so  -m64 -fPIC -O3 -ftree-vectorize -fexpensive-optimizations -funroll-loops -fprefetch-loop-arrays -fgraphite -fipa-icf -fipa-pure-const -march=native -fschedule-fusion -fselective-scheduling -fstack-arrays -fmax-stack-var-size=10000 -fipa-sra -fipa-cp -fcheck=recursion,array-temps -fno-second-underscore -Wrealloc-lhs -Wrealloc-lhs-all -fallow-argument-mismatch -L/opt/gnu/11.2.0/fftw/3.3.10/lib -Wl,-rpath=/opt/gnu/11.2.0/fftw/3.3.10/lib -lfftw3
-PARALLEL version
+Compiler flags  : mpifort -m64 -fPIC -O3 -ftree-vectorize -fexpensive-optimizations -funroll-loops -fprefetch-loop-arrays -fgraphite -fipa-icf -fipa-pure-const -march=native -fschedule-fusion -fselective-scheduling -fstack-arrays -fmax-stack-var-size=10000 -fipa-sra -fipa-cp -fcheck=recursion,array-temps -fno-second-underscore -Wrealloc-lhs -Wrealloc-lhs-all -fallow-argument-mismatch -fcheck-array-temporaries -Warray-temporaries -fcheck=array-temps
+PP flags        : -DSIESTA__DEV_INFO -DSIESTA__FLOOK -DSIESTA__METIS -DSIESTA__FFTW -DTS_PVT_METIS -DSIESTA__MRRR -DSIESTA__SCALAPACK_RESET -DMPI -DFC_HAVE_FLUSH -DFC_HAVE_ABORT -DCDF -DGRID_DP -DMPI_TIMING -DTRANSIESTA_TIMING -DTBTRANS_TIMING -D1 -DNCDF_PARALLEL -DNCDF -DNCDF_4 -DSCALAPACK_DEBUG -D_DIAG_WORK -DSIESTA__DIAG_2STAGE -DSIESTA__ELPA
+Libraries       : libncdf.a libfdict.a  -lzmumps -lmumps_common -lpord -lparmetis -lmetis -lesmumps -lscotch -lscotcherr -L/opt/gnu/11.2.0/elpa/2020.05.001/lib -Wl,-rpath=/opt/gnu/11.2.0/elpa/2020.05.001/lib -lelpa -L/opt/gnu/11.2.0/scalapack-debug/2.1.0/lib -Wl,-rpath=/opt/gnu/11.2.0/scalapack-debug/2.1.0/lib -lscalapack  -L/opt/gnu/11.2.0/openblas/0.3.18/lib -Wl,-rpath=/opt/gnu/11.2.0/openblas/0.3.18/lib -lopenblas -L/home/nicpa/codes/flook/obj -lflookall -ldl -l:libnetcdff.so  -m64 -fPIC -O3 -ftree-vectorize -fexpensive-optimizations -funroll-loops -fprefetch-loop-arrays -fgraphite -fipa-icf -fipa-pure-const -march=native -fschedule-fusion -fselective-scheduling -fstack-arrays -fmax-stack-var-size=10000 -fipa-sra -fipa-cp -fcheck=recursion,array-temps -fno-second-underscore -Wrealloc-lhs -Wrealloc-lhs-all -fallow-argument-mismatch -fcheck-array-temporaries -Warray-temporaries -fcheck=array-temps -L/opt/gnu/11.2.0/fftw/3.3.10/lib -Wl,-rpath=/opt/gnu/11.2.0/fftw/3.3.10/lib -lfftw3
+Parallelisations: MPI
 NetCDF support
 NetCDF-4 support
 NetCDF-4 MPI-IO support
 METIS ordering support
 Lua support
 
-* Running on 6 nodes in parallel
->> Start of run:   3-NOV-2021  23:22:29
+Runtime information:
+* Directory : /home/nicpa/siesta/siesta/Obj/Tests/TranSiesta-TBTrans/ts_graphene/work/Scat_ts_graphene_buffer
+* Running on 6 nodes in parallel.
+>> Start of run:  29-APR-2022  11:05:16
 
-                           ***********************       
-                           *  WELCOME TO SIESTA  *       
-                           ***********************       
+                           *********************** 
+                           *  WELCOME TO SIESTA  * 
+                           *********************** 
 
-reinit: Reading from ts_graphene_buffer.fdf
+reinit: Reading from file ts_graphene_buffer.fdf
 
 reinit: -----------------------------------------------------------------------
 reinit: System Name: 
@@ -29,19 +31,24 @@ reinit: -----------------------------------------------------------------------
 initatom: Reading input for the pseudopotentials and atomic orbitals ----------
 Species number:   1 Atomic number:    6 Label: C
 
+
+ ---- Processing specs for species: C
 Ground state valence configuration:   2s02  2p02
 Reading pseudopotential information in formatted form from C.psf
 
-Valence configuration for pseudopotential generation:
+---- Pseudopotential check for C 
+
+Pseudized shells:
 2s( 2.00) rc: 1.49
 2p( 2.00) rc: 1.52
 3d( 0.00) rc: 1.58
+Valence configuration for ps generation: (assumed as above)
 relmxkb: Read Max KB Ang. Momentum=    2 for species C
 
 <basis_specs>
 ===============================================================================
 C                    Z=   6    Mass=  12.010        Charge= 0.17977+309
-Lmxo=1 Lmxkb= 2    BasisType=split      Semic=F
+Lmxo=2 Lmxkb= 2    BasisType=split      Semic=F
 L=0  Nsemic=0  Cnfigmx=2
           i=1  nzeta=1  polorb=0  (2s)
             splnorm:   0.15000    
@@ -53,7 +60,7 @@ L=0  Nsemic=0  Cnfigmx=2
                 rcs:    0.0000    
             lambdas:    1.0000    
 L=1  Nsemic=0  Cnfigmx=2
-          i=1  nzeta=1  polorb=1  (2p)
+          i=1  nzeta=1  polorb=1  (2p)  (to be polarized perturbatively)
             splnorm:   0.15000    
                vcte:    0.0000    
                rinn:    0.0000    
@@ -62,6 +69,8 @@ L=1  Nsemic=0  Cnfigmx=2
                qwid:   0.10000E-01
                 rcs:    0.0000    
             lambdas:    1.0000    
+L=2  Nsemic=0  Cnfigmx=3
+          i=1  nzeta=0  polorb=0  (3d)  (perturbative polarization orbital) (from 2p)
 -------------------------------------------------------------------------------
 L=0  Nkbl=1  erefs: 0.17977+309
 L=1  Nkbl=1  erefs: 0.17977+309
@@ -73,7 +82,7 @@ atom: Called for C                     (Z =   6)
 
 read_vps: Pseudopotential generation method:
 read_vps: ATM3      Troullier-Martins                       
-Valence charge for ps generation:    4.00000
+Valence charge in pseudo generation:    4.00000
 
 xc_check: Exchange-correlation functional:
 xc_check: Ceperley-Alder
@@ -83,21 +92,22 @@ V l=2 = -2*Zval/r beyond r=  1.5612
 All V_l potentials equal beyond r=  1.5612
 This should be close to max(r_c) in ps generation
 All pots = -2*Zval/r beyond r=  1.5612
+Using small-core scheme (local charge) for Vlocal
 
-VLOCAL1: 99.0% of the norm of Vloc inside     17.809 Ry
-VLOCAL1: 99.9% of the norm of Vloc inside     40.586 Ry
-atom: Maximum radius for 4*pi*r*r*local-pseudopot. charge    1.88329
-atom: Maximum radius for r*vlocal+2*Zval:    1.62091
-GHOST: No ghost state for L =  0
-GHOST: No ghost state for L =  1
-GHOST: No ghost state for L =  2
+VLOCAL_FROM_CHLOCAL: 99.0% of the norm of Vloc inside     17.809 Ry
+VLOCAL_FROM_CHLOCAL: 99.9% of the norm of Vloc inside     40.586 Ry
+atom: Maximum radius for chlocal:    1.88329
+atom: Maximum radius for r*vlocal+2*Zval:    1.72547
 
 KBgen: Kleinman-Bylander projectors: 
+GHOST: No ghost state for L =  0
    l= 0   rc=  1.747182   el= -1.001947   Ekb=  5.181700   kbcos=  0.300603
+GHOST: No ghost state for L =  1
    l= 1   rc=  1.747182   el= -0.398598   Ekb= -4.328763   kbcos= -0.367074
+GHOST: No ghost state for L =  2
    l= 2   rc=  1.955272   el=  0.002326   Ekb= -1.016175   kbcos= -0.009979
 
-KBgen: Total number of Kleinman-Bylander projectors:    9
+KBgen: Total number of Kleinman-Bylander projectors:   9
 atom: -------------------------------------------------------------------------
 
 atom: SANKEY-TYPE ORBITALS:
@@ -147,13 +157,16 @@ atom: Total number of Sankey-type orbitals:  9
 atm_pop: Valence configuration (for local Pseudopot. screening):
  2s( 2.00)                                                            
  2p( 2.00)                                                            
+ 3d( 0.00)                                                            
 Vna: chval, zval:    4.00000   4.00000
 
 Vna:  Cut-off radius for the neutral-atom potential:   4.870301
 
 atom: _________________________________________________________________________
 
-prinput: Basis input ----------------------------------------------------------
+prinput: Basis input 
+* WARNING: This information might be incomplete!!!
+----------------------------------------------------------
 
 PAO.BasisType split     
 
@@ -162,6 +175,7 @@ PAO.BasisType split
 %endblock ChemicalSpeciesLabel
 
 %block PAO.Basis                 # Define Basis set
+# WARNING: This information might be incomplete!!!
 C                     2                    # Species label, number of l-shells
  n=2   0   1                         # n, l, Nzeta 
    4.192   
@@ -244,6 +258,8 @@ redata: Use continuation files for DM               =   T
 redata: Neglect nonoverlap interactions             =   F
 redata: Method of Calculation                       = Transiesta
 redata: Fix the spin of the system                  =   F
+redata: Max. number of TDED Iter                    =        1
+redata: Number of TDED substeps                     =        3
 redata: Dynamics option                             = Single-point calculation
 mix.SCF: Pulay mixing                            = Pulay
 mix.SCF:    Variant                              = stable
@@ -274,7 +290,7 @@ Size of DM history Fstack: 1
 Total number of electrons:    72.000000
 Total ionic charge:    72.000000
 
-* ProcessorY, Blocksize:    2  24
+* ProcessorY, Blocksize:    1  24
 
 
 * Orbital distribution balance (max,min):    42    24
@@ -282,9 +298,10 @@ Total ionic charge:    72.000000
 k-point displ. along   1 input, could be:     0.00    0.50
  Kpoints in:          510 . Kpoints trimmed:          506
 
-siesta: k-grid: Number of k-points =   506
-siesta: k-grid: Cutoff (effective) =     7.225 Ang
-siesta: k-grid: Supercell and displacements
+siesta: k-grid: Number of k-points =       506
+siesta: k-points from Monkhorst-Pack grid
+siesta: k-cutoff (effective) =     7.225 Ang
+siesta: k-point supercell and displacements
 siesta: k-grid:   10   0   0      0.000
 siesta: k-grid:    0 101   0      0.000
 siesta: k-grid:    0   0   1      0.000
@@ -304,11 +321,13 @@ superc: Number of atoms, orbitals, and projectors:    270   2430   2430
 
  Kpoints in:           51 . Kpoints trimmed:           51
 
-transiesta: k-grid: Number of Green function k-points =    51
-transiesta: k-grid: Supercell and displacements
-transiesta: k-grid:    1   0   0      0.000
-transiesta: k-grid:    0 101   0      0.000
-transiesta: k-grid:    0   0   1      0.000
+siesta: transiesta k-grid: Number of k-points =        51
+siesta: transiesta k-points from Monkhorst-Pack grid
+siesta: transiesta k-cutoff (effective) =     7.225 Ang
+siesta: transiesta k-point supercell and displacements
+siesta: k-grid:    1   0   0      0.000
+siesta: k-grid:    0 101   0      0.000
+siesta: k-grid:    0   0   1      0.000
 
 ts: **************************************************************
 ts: Voltage                                         =    0.0000 Volts
@@ -333,9 +352,9 @@ ts:           >> Electrodes <<
 ts: >> Left
 ts:   Electrode cell pivoting: E1, E2, E3           = A1, A2, A3
 ts:   GF file                                       = ts_graphene_buffer.TSGFLeft
-ts:   Reuse existing GF-file                        =    T
+ts:   GF file reuse if found                        =    T
 ts:   Electrode TSHS file                           = ./ts_graphene_elec.TSHS
-ts:   # atoms used in electrode                     =    4
+ts:   # atoms in electrode used / total             = 4 / 6
 ts:   Electrode Bloch unity [E1 x E2 x E3]          = 1 x 1 x 1
 ts:   Position in geometry                          = 3 -- 6
 ts:   Semi-infinite direction for electrode         = negative wrt. E1
@@ -352,9 +371,9 @@ ts:   Electrode inter-layer distance (semi-inf)     =    1.6685 Ang
 ts: >> Right
 ts:   Electrode cell pivoting: E1, E2, E3           = A1, A2, A3
 ts:   GF file                                       = ts_graphene_buffer.TSGFRight
-ts:   Reuse existing GF-file                        =    T
+ts:   GF file reuse if found                        =    T
 ts:   Electrode TSHS file                           = ./ts_graphene_elec.TSHS
-ts:   # atoms used in electrode                     =    4
+ts:   # atoms in electrode used / total             = 4 / 6
 ts:   Electrode Bloch unity [E1 x E2 x E3]          = 1 x 1 x 1
 ts:   Position in geometry                          = 13 -- 16
 ts:   Semi-infinite direction for electrode         = positive wrt. E1
@@ -388,9 +407,6 @@ ts:   tail contour method                           =    Gauss-Fermi (0kT)
 ts: **************************************************************
 
 ************************ Begin: TS CHECKS AND WARNINGS ************************
-Without loosing performance you can increase the equilibrium integration precision.
-You can add 3 more energy points in the equilibrium contours, for FREE!
-This is 3 more energy points per chemical potential.
 You are initializing the electrode EDM. This may result in erroneous forces on electrode atoms. Do not use forces from electrodes.
 ************************ End: TS CHECKS AND WARNINGS **************************
 
@@ -439,17 +455,13 @@ transiesta: Regions of atoms:
     nrows_g=54 nrows=54 sparsity=6.1667 nnzs=17982, refcount: 3>
   <sparsity:(TM [ 0,--,--] of: ./ts_graphene_elec.TSHS)
     nrows_g=54 nrows=54 sparsity=3.9444 nnzs=11502, refcount: 3>
-  <sparsity:(TM [-1,--,--] of: ./ts_graphene_elec.TSHS)
+  <sparsity:(TM [ 1,--,--] of: ./ts_graphene_elec.TSHS)
     nrows_g=54 nrows=54 sparsity=1.1111 nnzs=3240, refcount: 3>
  Left principal cell is perfect!
 
-Calculating all surface Green functions for: Left
- Fermi level shift in electrode (chemical potential) :        0.00000  eV
- Atoms available    / used atoms   :      6 /      4
- Orbitals available / used orbitals:     54 /     36
- Total self-energy calculations: 2601
+Calculating surface Green functions for: Left
  Saving surface Green functions in: ts_graphene_buffer.TSGFLeft
- Estimated file size:     53.453 MB
+ Estimated file size: 53.456 MB
  Lopez Sancho, Lopez Sancho & Rubio recursive surface self-energy calculation...
  Lopez Sancho, Lopez Sancho & Rubio: Mean/std iterations:     3.8185 /     0.8156
  Lopez Sancho, Lopez Sancho & Rubio: Min/Max iterations :          3 /          9
@@ -459,17 +471,13 @@ Done creating 'ts_graphene_buffer.TSGFLeft'.
     nrows_g=54 nrows=54 sparsity=6.1667 nnzs=17982, refcount: 3>
   <sparsity:(TM [ 0,--,--] of: ./ts_graphene_elec.TSHS)
     nrows_g=54 nrows=54 sparsity=3.9444 nnzs=11502, refcount: 3>
-  <sparsity:(TM [ 1,--,--] of: ./ts_graphene_elec.TSHS)
+  <sparsity:(TM [-1,--,--] of: ./ts_graphene_elec.TSHS)
     nrows_g=54 nrows=54 sparsity=1.1111 nnzs=3240, refcount: 3>
  Right principal cell is perfect!
 
-Calculating all surface Green functions for: Right
- Fermi level shift in electrode (chemical potential) :        0.00000  eV
- Atoms available    / used atoms   :      6 /      4
- Orbitals available / used orbitals:     54 /     36
- Total self-energy calculations: 2601
+Calculating surface Green functions for: Right
  Saving surface Green functions in: ts_graphene_buffer.TSGFRight
- Estimated file size:     53.453 MB
+ Estimated file size: 53.456 MB
  Lopez Sancho, Lopez Sancho & Rubio recursive surface self-energy calculation...
  Lopez Sancho, Lopez Sancho & Rubio: Mean/std iterations:     3.8185 /     0.8156
  Lopez Sancho, Lopez Sancho & Rubio: Min/Max iterations :          3 /          9
@@ -511,26 +519,26 @@ refcount: 1>
 transiesta: Initialization run using siesta
 
 No. of atoms with KB's overlaping orbs in proc 0. Max # of overlaps:      35     117
-New grid distribution:   1
-           1       1:   96    1:    6    1:   24
-           2       1:   96    1:    6   25:   48
-           3       1:   96    1:    6   49:   72
-           4       1:   96    7:   12    1:   24
-           5       1:   96    7:   12   25:   48
-           6       1:   96    7:   12   49:   72
 
-InitMesh: MESH =   192 x    24 x   144 =      663552
+InitMesh: MESH = 192 x 24 x 144 = 663552
 InitMesh: (bp) =    96 x    12 x    72 =       82944
 InitMesh: Mesh cutoff (required, used) =   250.000   267.732 Ry
-ExtMesh (bp) on 0 =   148 x    66 x    76 =      742368
-New grid distribution:   2
+New grid distribution [1]: sub = 2
+           1       1:   96    1:   12    1:   12
+           2       1:   96    1:   12   13:   24
+           3       1:   96    1:   12   25:   36
+           4       1:   96    1:   12   37:   48
+           5       1:   96    1:   12   49:   60
+           6       1:   96    1:   12   61:   72
+ExtMesh (bp) on 0 =   148 x    72 x    64 =      681984
+New grid distribution [2]: sub = 2
            1       1:   48    1:   12    1:    5
            2      25:   48    1:   12    6:   72
            3      73:   96    1:   12    6:   72
            4      49:   96    1:   12    1:    5
            5      49:   72    1:   12    6:   72
            6       1:   24    1:   12    6:   72
-New grid distribution:   3
+New grid distribution [3]: sub = 2
            1       1:   48    1:   12    1:    9
            2      25:   48    1:   12   10:   72
            3      73:   96    1:   12   10:   72
@@ -563,6 +571,8 @@ siesta: Edftu   =         0.000000
 siesta: DEna    =        38.686838
 siesta: DUscf   =         2.664837
 siesta: DUext   =         0.000000
+siesta: Ex      =      -717.015925
+siesta: Ec      =      -106.023613
 siesta: Exc     =      -823.039537
 siesta: eta*DQ  =         0.000000
 siesta: Emadel  =         0.000000
@@ -575,7 +585,7 @@ siesta: FreeEng =     -2779.338889
 
         iscf     Eharris(eV)        E_KS(eV)     FreeEng(eV)     dDmax    Ef(eV) dHmax(eV)
    scf:    1    -2772.223641    -2779.338777    -2779.338889  1.482043 -4.992108  0.886763
-timer: Routine,Calls,Time,% = IterSCF        1       7.982  78.06
+timer: Routine,Calls,Time,% = IterSCF        1       9.894  77.17
 ts-Vha: -0.12142226E-01 eV
    scf:    2    -2779.344345    -2779.341552    -2779.341665  0.000546 -5.072183  0.792330
 ts-Vha: -0.12246453E-01 eV
@@ -590,15 +600,14 @@ ts-Vha: -0.12149771E-01 eV
    scf:    7    -2779.352267    -2779.352266    -2779.352381  0.000011 -5.760295  0.000199
 
 SCF Convergence by DM+H criterion
-max |DM_out - DM_in|         :     0.0000110481
-max |H_out - H_in|      (eV) :     0.0001988336
+max |DM_out - DM_in|         :     0.0000110480
+max |H_out - H_in|      (eV) :     0.0001988342
 SCF cycle converged after 7 iterations
 
                      ***************************
                      *  WELCOME TO TRANSIESTA  *
                      ***************************
 
-ts-Vha: -0.12149771E-01 eV
 
 transiesta: created H and S sparsity pattern:
   <sparsity:(M of: G ((UC of: T T T T sparsity for geom step 0)))
@@ -609,40 +618,42 @@ transiesta: update sparsity pattern same as H and S.
 transiesta: Determining an optimal tri-matrix using: atom+Left
 transiesta: Established a near-optimal partition for the tri-diagonal matrix.
 BTD partitions (4): 
-  [ 18, [36] * 3 ]
+  [ 18, [36]*3 ]
 transiesta: Matrix elements in % of full matrix:  67.34694 %
 
-transiesta: mem of electrodes (static):                     0.04MB
-transiesta: mem of global update arrays (static):           0.42MB
-transiesta: mem of tri-diagonal matrices:                   0.33MB
-transiesta: Total memory usage:                             0.78MB
+transiesta: [memory] electrodes (static):             40.500 kB
+transiesta: [memory] global update arrays (static):   425.250 kB
+transiesta: [memory] tri-diagonal matrices:           334.125 kB
+transiesta: [memory] total:                           799.875 kB
 
 transiesta: Charge distribution, target =     72.00000
 Total charge                  [Q]  :     72.00000
 Device                        [D]  :     23.26737
-Left                          [E1] :     15.26734
-Left                 / device [C1] :      0.73263
-Right                         [E2] :     15.26730
-Right                / device [C2] :      0.73263
+Left                          [E1] :    15.26734
+Left                 / device [C1] :     0.73263
+Right                         [E2] :    15.26730
+Right                / device [C2] :     0.73263
 Buffer                        [B]  :     15.26727
 Other                         [O]  :      1.46546
-Excess charge                [dQ]  :  2.84217E-14
+Excess charge                [dQ]  : -7.10543E-14
 
-ts-q:         D        E1        C1        E2        C2         B        dQ
-ts-q:    23.267    15.267     0.733    15.267     0.733    15.267 -.102E-03
-ts-Vha: -0.11873590E-01 eV
+ts-q:         D        E1        C1        E2        C2         B         dQ
+ts-q:    23.267    15.267     0.733    15.267     0.733    15.267 -0.102E-03
+ts-Vha: -0.11873566E-01 eV
 
 siesta: Program's energy decomposition (eV):
-siesta: Ebs     =     -1069.477450
+siesta: Ebs     =     -1069.477454
 siesta: Eions   =      4487.129717
 siesta: Ena     =       885.239345
-siesta: Ekin    =      1847.808528
+siesta: Ekin    =      1847.808527
 siesta: Enl     =      -241.806482
 siesta: Eso     =         0.000000
 siesta: Edftu   =         0.000000
 siesta: DEna    =        37.276119
 siesta: DUscf   =         2.605845
 siesta: DUext   =         0.000000
+siesta: Ex      =      -717.305049
+siesta: Ec      =      -106.039203
 siesta: Exc     =      -823.344252
 siesta: eta*DQ  =         0.000000
 siesta: Emadel  =         0.000000
@@ -650,44 +661,44 @@ siesta: Emeta   =         0.000000
 siesta: Emolmec =         0.000000
 siesta: Ekinion =         0.000000
 siesta: Eharris =     -2779.348968
-siesta: Etot    =     -2779.350617
-siesta: FreeEng =     -2779.350617
+siesta: Etot    =     -2779.350616
+siesta: FreeEng =     -2779.350616
 ts: E-dN      =         0.000000
-ts: Band Stru =      -368.833393
+ts: Band Stru =      -368.833395
 ts: Kinetic   =       631.052610
-ts: Ion-elec  =    -19575.582430
+ts: Ion-elec  =    -19575.582426
 ts: Eharris   =     -3835.578148
 ts: Etot      =     -3835.579796
 ts: FreeEng   =     -3835.579796
 
         iscf     Eharris(eV)        E_KS(eV)     FreeEng(eV)     dDmax    Ef(eV) dHmax(eV)
 ts-scf:    1    -3835.578148    -3835.579796    -3835.579796  0.000016 -5.760295  0.001183
-timer: Routine,Calls,Time,% = TS             1       0.622   1.07
-ts-q:         D        E1        C1        E2        C2         B        dQ
-ts-q:    23.267    15.267     0.733    15.267     0.733    15.267 -.114E-04
-ts-Vha: -0.12127449E-01 eV
+timer: Routine,Calls,Time,% = TS             1       1.061   1.42
+ts-q:         D        E1        C1        E2        C2         B         dQ
+ts-q:    23.267    15.267     0.733    15.267     0.733    15.267 -0.114E-04
+ts-Vha: -0.12127447E-01 eV
 ts-scf:    2    -3835.582207    -3835.581002    -3835.581002  0.000010 -5.760295  0.000043
 
 SCF Convergence by DM+H+dQ criterion
-max |DM_out - DM_in|         :     0.0000101923
-max |H_out - H_in|      (eV) :     0.0000428170
-     Q(TS) - Q(dev)          :    -0.0000114157
+max |DM_out - DM_in|         :     0.0000101933
+max |H_out - H_in|      (eV) :     0.0000428178
+     Q(TS) - Q(dev)          :    -0.0000114163
 SCF cycle converged after 2 iterations
 SCF cycle continued for minimum number of iterations: 3
-ts-q:         D        E1        C1        E2        C2         B        dQ
-ts-q:    23.267    15.267     0.733    15.267     0.733    15.267 -.111E-04
-ts-Vha: -0.12127289E-01 eV
+ts-q:         D        E1        C1        E2        C2         B         dQ
+ts-q:    23.267    15.267     0.733    15.267     0.733    15.267 -0.111E-04
+ts-Vha: -0.12127288E-01 eV
 ts-scf:    3    -3835.581032    -3835.581017    -3835.581017  0.000000 -5.760295  0.000033
 
 SCF Convergence by DM+H+dQ criterion
 max |DM_out - DM_in|         :     0.0000004871
-max |H_out - H_in|      (eV) :     0.0000333851
-     Q(TS) - Q(dev)          :    -0.0000111254
+max |H_out - H_in|      (eV) :     0.0000333864
+     Q(TS) - Q(dev)          :    -0.0000111261
 SCF cycle converged after 3 iterations
 
 Using DM_out to compute the final energy and forces
 No. of atoms with KB's overlaping orbs in proc 0. Max # of overlaps:      35     117
-ts-Vha: -0.12127289E-01 eV
+ts-Vha: -0.12127288E-01 eV
 
 siesta: E_KS(eV) =            -2779.3518
 
@@ -695,25 +706,25 @@ siesta: E_KS - E_eggbox =     -2779.3518
 
 siesta: Atomic forces (eV/Ang):
      1   -0.002570   -0.002117    0.000000
-     2   -0.002546    0.005892   -0.000000
-     3   -0.006475   -0.002421   -0.000000
+     2   -0.002546    0.005892    0.000000
+     3   -0.006475   -0.002421    0.000000
      4   -0.010526   -0.011784    0.000000
      5    0.006798    0.009007   -0.000000
      6    0.008416    0.006381   -0.000000
      7   -0.002351   -0.002027    0.000000
      8   -0.002727    0.005869    0.000000
-     9   -0.006292   -0.002397    0.000000
+     9   -0.006292   -0.002397   -0.000000
     10   -0.010711   -0.011815    0.000000
     11    0.007005    0.009081    0.000000
     12    0.008274    0.006448    0.000000
     13   -0.002492   -0.001959   -0.000000
     14   -0.002529    0.005927   -0.000000
     15   -0.006473   -0.002422    0.000000
-    16   -0.010525   -0.011786   -0.000000
+    16   -0.010525   -0.011786    0.000000
     17    0.006818    0.009049    0.000000
-    18    0.008493    0.006536    0.000000
+    18    0.008493    0.006536   -0.000000
 ----------------------------------------
-   Tot   -0.020414    0.015460    0.000000
+   Tot   -0.020414    0.015460   -0.000000
 ----------------------------------------
    Max    0.011815
    Res    0.005731    sqrt( Sum f_i^2 / 3N )
@@ -729,7 +740,7 @@ ts: Atomic forces (eV/Ang):
      6    0.000000    0.000000    0.000000
      7   -0.002351   -0.002027    0.000000
      8   -0.002727    0.005869    0.000000
-     9   -0.006292   -0.002397    0.000000
+     9   -0.006292   -0.002397   -0.000000
     10   -0.010711   -0.011815    0.000000
     11    0.007005    0.009081    0.000000
     12    0.008274    0.006448    0.000000
@@ -747,7 +758,7 @@ ts: Atomic forces (eV/Ang):
 ----------------------------------------
    Max    0.011815    constrained
 
-Stress tensor Voigt[x,y,z,yz,xz,xy] (kbar):       26.19       25.94        0.01        0.00       -0.00        0.25
+Stress tensor Voigt[x,y,z,yz,xz,xy] (kbar):       26.19       25.94        0.01       -0.00        0.00        0.25
 (Free)E + p*V (eV/cell)    -2787.0061
 Target enthalpy (eV/cell)    -2779.3518
 
@@ -799,13 +810,13 @@ mulliken: Qtot =       72.000
 transiesta: Charge distribution, target =     72.00000
 Total charge                  [Q]  :     71.99999
 Device                        [D]  :     23.26738
-Left                          [E1] :     15.26734
-Left                 / device [C1] :      0.73262
-Right                         [E2] :     15.26730
-Right                / device [C2] :      0.73262
+Left                          [E1] :    15.26734
+Left                 / device [C1] :     0.73262
+Right                         [E2] :    15.26730
+Right                / device [C2] :     0.73262
 Buffer                        [B]  :     15.26727
 Other                         [O]  :      1.46546
-Excess charge                [dQ]  : -1.11254E-05
+Excess charge                [dQ]  : -1.11261E-05
 
 
 siesta: Program's energy decomposition (eV):
@@ -819,6 +830,8 @@ siesta: Edftu   =         0.000000
 siesta: DEna    =        37.274300
 siesta: DUscf   =         2.605767
 siesta: DUext   =         0.000000
+siesta: Ex      =      -717.306219
+siesta: Ec      =      -106.039353
 siesta: Exc     =      -823.345572
 siesta: eta*DQ  =         0.000000
 siesta: Emadel  =         0.000000
@@ -843,6 +856,8 @@ siesta:       Hartree =    8947.554211
 siesta:       Edftu   =       0.000000
 siesta:       Eso     =       0.000000
 siesta:    Ext. field =       0.000000
+siesta:         Exch. =    -717.306219
+siesta:         Corr. =    -106.039353
 siesta:   Exch.-corr. =    -823.345572
 siesta:  Ion-electron =  -19736.151943
 siesta:       Ion-ion =    6984.780657
@@ -858,7 +873,7 @@ siesta:         Fermi =      -5.760295
 siesta: Stress tensor (static) (eV/Ang**3):
 siesta:     0.016349    0.000159   -0.000000
 siesta:     0.000159    0.016191   -0.000000
-siesta:    -0.000000    0.000000    0.000008
+siesta:     0.000000   -0.000000    0.000008
 
 siesta: Cell volume =        705.501493 Ang**3
 
@@ -866,7 +881,7 @@ siesta: Pressure (static):
 siesta:                Solid            Molecule  Units
 siesta:          -0.00011816         -0.00011905  Ry/Bohr**3
 siesta:          -0.01084933         -0.01093090  eV/Ang**3
-siesta:         -17.38273477        -17.51341727  kBar
+siesta:         -17.38273479        -17.51341709  kBar
 (Free)E+ p_basis*V_orbitals  =       -2775.102164
 (Free)Eharris+ p_basis*V_orbitals  =       -2775.102179
 
@@ -874,7 +889,7 @@ siesta: Electric dipole (a.u.)  =   -0.000000   -0.000000   -0.000000
 siesta: Electric dipole (Debye) =   -0.000000   -0.000000   -0.000000
 
 cite: Please see "ts_graphene_buffer.bib" for an exhaustive BiBTeX file.
-cite: Please clearly indicate Siesta version in published work: v4.1.5-1-g384057250
+cite: Please clearly indicate Siesta version in published work: 5.0.0-alpha-56-g943f9ccc9
 cite: This calculation has made use of the following articles
 cite: which are encouraged to be cited in a published work.
         Primary SIESTA paper
@@ -884,5 +899,6 @@ cite: which are encouraged to be cited in a published work.
         TranSiesta N-electrode
           DOI: www.doi.org/10.1016/j.cpc.2016.09.022
 
->> End of run:   3-NOV-2021  23:23:30
+
+>> End of run:  29-APR-2022  11:06:34
 Job completed
