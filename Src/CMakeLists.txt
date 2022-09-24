@@ -538,6 +538,7 @@ target_compile_definitions(
   PUBLIC
   "$<$<BOOL:${WITH_MPI}>:MPI>"
   "$<$<BOOL:${HAS_MRRR}>:SIESTA__MRRR>"
+  "$<$<BOOL:${WITH_ELSI}>:SIESTA__ELSI>"
   "$<$<BOOL:${WITH_ELPA}>:SIESTA__ELPA>"
   "$<$<BOOL:${WITH_NETCDF}>:CDF>"
   "$<$<BOOL:${WITH_NCDF}>:NCDF>"
@@ -559,6 +560,7 @@ target_link_libraries(
   "$<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>"
   "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>"
   "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libfdict>"
+   $<$<BOOL:${WITH_ELSI}>:elsi::elsi>
    $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
   "$<$<BOOL:${WITH_MPI}>:Scalapack::Scalapack>"
   LAPACK::LAPACK

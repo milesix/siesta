@@ -45,6 +45,7 @@ option(WITH_LIBXC "Include libxc support" FALSE)
 
 option(WITH_OPENMP "Build Siesta with OpenMP support" ${OpenMP_FOUND})
 
+option(WITH_ELSI "Use the ELSI interface for extra solvers" TRUE)
 option(WITH_ELPA "Use the ELPA library (direct interface)" FALSE)
 option(WITH_LUA "Use the flook library for Lua scripting" FALSE)
 #--------------------------------------
@@ -148,6 +149,11 @@ endif()
 # Search for flook
 if (WITH_LUA)
   include(search_for_flook)
+endif()
+
+if (WITH_ELSI)
+  find_package(elsi 2.8.0 REQUIRED)
+  ## for targets:   target_link_libraries(my_project PRIVATE elsi::elsi)
 endif()
 
 if (WITH_ELPA)
