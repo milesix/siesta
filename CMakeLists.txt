@@ -152,6 +152,7 @@ if (WITH_LUA)
 endif()
 
 if (WITH_ELSI)
+  enable_language(CXX)
   find_package(elsi 2.8.0 REQUIRED)
   ## for targets:   target_link_libraries(my_project PRIVATE elsi::elsi)
 endif()

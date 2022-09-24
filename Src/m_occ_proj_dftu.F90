@@ -249,7 +249,7 @@ subroutine occ_proj_dftu
   use sparse_matrices, only : listhptr   ! Pointer to start of each row
                                          !   of the hamiltonian matrix
   use sparse_matrices, only : Dscf       ! Density matrix
-  use m_new_matel,     only : new_matel  ! Returns the overlap matrix elements
+  use matel_mod,       only : new_matel  ! Returns the overlap matrix elements
                                          !   between an atomic orbital and a
                                          !   LDA+U projector 
 #ifdef MPI

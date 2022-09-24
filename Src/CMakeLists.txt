@@ -120,7 +120,7 @@ set(libsiesta_sources
   dipole.F90
   dismin.f
   dm_charge.F90
-  dnaefs.f
+  dnaefs.F
   domain_decom.F
   doping_uniform.F
   dot.f
@@ -145,6 +145,7 @@ set(libsiesta_sources
   find_kgrid.F
   fire_optim.F
   flook_siesta.F90
+  fold_auxcell.f90
   forhar.F
   fsiesta_mpi.F90
   fsockets.f90
@@ -185,7 +186,7 @@ set(libsiesta_sources
   ipack.f
   kgrid.F
   kgridinit.F
-  kinefsm.f
+  kinefsm.F
   kpoint_convert.f90
   kpoint_dos.F90
   kpoint_ldos.F90
@@ -270,6 +271,7 @@ set(libsiesta_sources
   m_mixing.F90
   m_mixing_scf.F90
   m_monitor.F90
+  m_mpi_inplace.F90
   m_mpi_utils.F
   m_ncdf_siesta.F90
   m_new_dm.F90
@@ -376,7 +378,7 @@ set(libsiesta_sources
   moreParallelSubs.F90
   moremeshsubs.F
   mulliken.F
-  naefs.f
+  naefs.F
   nag.f
   ncdf_io.F90
   nlefsm.f
@@ -484,8 +486,8 @@ set(libsiesta_sources
   transition_rate.F
   ts_charge.F90
   ts_dq.F90
-  ts_energies.F90
   ts_electrode.F90
+  ts_energies.F90
   ts_init.F90
   ts_kpoint_scf.F90
   ts_show_regions.f90

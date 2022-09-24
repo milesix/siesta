@@ -310,7 +310,7 @@ subroutine dftu_so_hamil_2( H_dftu_so, fal, stressl )
                                          !   interacting
                                          !   NOTE: In parallel runs,
                                          !   maxnh changes from node to node
-  use m_new_matel,     only : new_matel  ! Returns the overlap matrix elements
+  use matel_mod,       only : new_matel  ! Returns the overlap matrix elements
                                          !   between an atomic orbital and a
                                          !   LDA+U projector 
   use m_energies,      only : E_dftu_so  ! Contribution to the energy coming
