@@ -564,6 +564,11 @@ target_link_libraries(
   LAPACK::LAPACK
 )
 
+# For stuff that depends on libsiesta, add its include directory
+target_include_directories(${PROJECT_NAME}-libsiesta
+                           INTERFACE
+			   ${CMAKE_CURRENT_BINARY_DIR})
+
 # -- Version information
 
 # 
