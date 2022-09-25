@@ -170,7 +170,7 @@ contains
 
     use netcdf_ncdf, ncdf_parallel => parallel
 #ifdef MPI
-    use mpi_siesta !, only : MPI_COMM_WORLD, MPI_Bcast, MPI_Logical, MPI_Barrier
+    use mpi_siesta, only : MPI_COMM_WORLD, MPI_Bcast, MPI_Logical, MPI_Barrier
 #endif
     use ts_electrode_m
     use m_region
@@ -380,8 +380,8 @@ contains
 
     use netcdf_ncdf, ncdf_parallel => parallel
 #ifdef MPI
-    use mpi_siesta !,  only : MPI_COMM_WORLD, MPI_Gather
-    use mpi_siesta !, only : MPI_Send, MPI_Recv, MPI_DOUBLE_COMPLEX
+    use mpi_siesta, only : MPI_COMM_WORLD, MPI_Gather
+    use mpi_siesta, only : MPI_Send, MPI_Recv, MPI_DOUBLE_COMPLEX
     use mpi_siesta, only : MPI_Integer, MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
 #endif
@@ -488,8 +488,8 @@ contains
     use dictionary
     use netcdf_ncdf, ncdf_parallel => parallel
 #ifdef MPI
-    use mpi_siesta !, only : MPI_COMM_WORLD, MPI_Gather
-    use mpi_siesta !, only : MPI_Send, MPI_Recv, MPI_DOUBLE_COMPLEX
+    use mpi_siesta, only : MPI_COMM_WORLD, MPI_Gather
+    use mpi_siesta, only : MPI_Send, MPI_Recv, MPI_DOUBLE_COMPLEX
     use mpi_siesta, only : MPI_Integer, MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
     use mpi_siesta, only : MPI_Barrier

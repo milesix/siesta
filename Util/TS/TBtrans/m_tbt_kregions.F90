@@ -474,7 +474,7 @@ contains
        nzwork, zwork)
 
 #ifdef MPI
-    use mpi_siesta !, only : MPI_AllReduce, MPI_Sum, MPI_Integer
+    use mpi_siesta, only : MPI_AllReduce, MPI_Sum, MPI_Integer
 #endif
 
     use ts_electrode_m

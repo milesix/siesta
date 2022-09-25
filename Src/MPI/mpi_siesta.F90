@@ -32,8 +32,7 @@ MODULE MPI_SIESTA
 
 #else /* NO_MPI_INTERFACES */
 ! Removed interfaces and timing versions of the MPI routines.
-!!  USE MPI__INCLUDE, true_MPI_Comm_World => MPI_Comm_World
-    USE mpi, true_MPI_Comm_World => MPI_Comm_World
+  USE MPI__INCLUDE, true_MPI_Comm_World => MPI_Comm_World
 #endif /* NO_MPI_INTERFACES */
 
 ! The following construction allows to supplant MPI_Comm_World within SIESTA,

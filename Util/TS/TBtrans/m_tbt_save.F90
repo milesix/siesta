@@ -79,7 +79,7 @@ contains
 
   subroutine MPI_BcastNode(iE, cE, nE)
 #ifdef MPI
-    use mpi_siesta !, only : MPI_AllGather, MPI_Comm_World
+    use mpi_siesta, only : MPI_AllGather, MPI_Comm_World
     use mpi_siesta, only : MPI_Integer, MPI_Double_Precision
 #endif
     integer, intent(in) :: iE
@@ -1102,7 +1102,7 @@ contains
 
     use netcdf_ncdf, ncdf_parallel => parallel
 #ifdef MPI
-    use mpi_siesta !, only : MPI_COMM_WORLD, MPI_Bcast
+    use mpi_siesta, only : MPI_COMM_WORLD, MPI_Bcast
     use mpi_siesta, only : MPI_Integer
     use mpi_siesta, only : Mpi_double_precision
 #endif
@@ -1183,7 +1183,7 @@ contains
     use parallel, only : Node
     use netcdf_ncdf, ncdf_parallel => parallel
 #ifdef MPI
-    use mpi_siesta !, only : MPI_COMM_WORLD, MPI_Bcast
+    use mpi_siesta, only : MPI_COMM_WORLD, MPI_Bcast
     use mpi_siesta, only : MPI_Integer
 #endif
 
@@ -1306,10 +1306,10 @@ contains
     use dictionary
     use netcdf_ncdf, ncdf_parallel => parallel
 #ifdef MPI
-    use mpi_siesta !, only : MPI_COMM_WORLD, MPI_Gather
-    use mpi_siesta !, only : MPI_Send, MPI_Recv, MPI_DOUBLE_COMPLEX
+    use mpi_siesta, only : MPI_COMM_WORLD, MPI_Gather
+    use mpi_siesta, only : MPI_Send, MPI_Recv, MPI_DOUBLE_COMPLEX
     use mpi_siesta, only : MPI_Integer, MPI_STATUS_SIZE
-    use mpi_siesta , only : Mpi_double_precision
+    use mpi_siesta, only : Mpi_double_precision
 #endif
     use ts_electrode_m
 
@@ -1587,8 +1587,8 @@ contains
 
     use parallel, only : Node, Nodes
 #ifdef MPI
-    use mpi_siesta !, only : MPI_COMM_WORLD, MPI_Gather
-    use mpi_siesta !, only : MPI_Send, MPI_Recv, MPI_DOUBLE_COMPLEX
+    use mpi_siesta, only : MPI_COMM_WORLD, MPI_Gather
+    use mpi_siesta, only : MPI_Send, MPI_Recv, MPI_DOUBLE_COMPLEX
     use mpi_siesta, only : MPI_Integer, MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
 #endif
@@ -1656,7 +1656,7 @@ contains
     use netcdf_ncdf, ncdf_parallel => parallel
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD
-    use mpi_siesta !, only : MPI_Send, MPI_Recv
+    use mpi_siesta, only : MPI_Send, MPI_Recv
     use mpi_siesta, only : MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
 #endif
@@ -2303,8 +2303,7 @@ contains
   ! These routines are for creating the output data in
   ! pure ASCII format.
   
-  ! ... but they still require FDICT...
-  
+
   ! This routine prepares the files for saving ASCII format
   ! data.
   ! NOTE that ASCII data will only be created in case
@@ -2787,8 +2786,8 @@ contains
     use units, only : eV
 
 #ifdef MPI
-    use mpi_siesta !, only : MPI_COMM_WORLD, MPI_Gather
-    use mpi_siesta !, only : MPI_Send, MPI_Recv, MPI_DOUBLE_COMPLEX
+    use mpi_siesta, only : MPI_COMM_WORLD, MPI_Gather
+    use mpi_siesta, only : MPI_Send, MPI_Recv, MPI_DOUBLE_COMPLEX
     use mpi_siesta, only : MPI_Integer, MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
 #endif
@@ -2844,8 +2843,8 @@ contains
     use units, only : eV
 
 #ifdef MPI
-    use mpi_siesta !, only : MPI_COMM_WORLD, MPI_Gather
-    use mpi_siesta !, only : MPI_Send, MPI_Recv, MPI_DOUBLE_COMPLEX
+    use mpi_siesta, only : MPI_COMM_WORLD, MPI_Gather
+    use mpi_siesta, only : MPI_Send, MPI_Recv, MPI_DOUBLE_COMPLEX
     use mpi_siesta, only : MPI_Integer, MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
 #endif
