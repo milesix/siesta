@@ -1,6 +1,9 @@
 # Utilities
 
   add_subdirectory("TS/TBtrans")
+  add_subdirectory("TS/tscontour")
+  add_subdirectory("TS/ts2ts")
+  add_subdirectory("TS/tshs2tshs")
   add_subdirectory("Gen-basis")
   add_subdirectory("Eig2DOS")
   add_subdirectory("COOP")
