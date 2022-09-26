@@ -60,3 +60,9 @@ endif()
   unset(_buildtype)
   unset(_buildtype_upper)
 
+#
+# For tagging in version-info.inc
+#
+string(TOUPPER ${CMAKE_BUILD_TYPE} _buildtype_upper)
+set(Fortran_FLAGS_CURRENT ${CMAKE_Fortran_FLAGS}
+                          ${CMAKE_Fortran_FLAGS_${_buildtype_upper}})

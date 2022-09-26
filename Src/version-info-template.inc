@@ -9,17 +9,19 @@ module version_info
 
 implicit none
 
-character(len=*), parameter :: version_str =  "@PROJECT_VERSION@"
-character(len=*), parameter :: compiler_version = "@CMAKE_Fortran_COMPILER@"
+character(len=*), parameter :: version_str = &
+   "@SIESTA_VERSION@"
+character(len=*), parameter :: compiler_version = &
+   "@CMAKE_Fortran_COMPILER_ID@-@CMAKE_Fortran_COMPILER_VERSION@"
 
 character(len=*), parameter :: siesta_arch= &
-"SIESTA_ARCH"
+   " ---- "
 character(len=*), parameter :: fflags= &
-"FFLAGS"
+   "@Fortran_FLAGS_CURRENT@"
 character(len=*), parameter :: fppflags= &
-"FPPFLAGS"
+   " ---- "
 character(len=*), parameter :: libs= &
-"LIBS"
+   " ---- "
 
 private
 public :: version_str
