@@ -1,6 +1,9 @@
 # Utilities
 
   add_subdirectory("TS/TBtrans")
+  add_subdirectory("TS/tscontour")
+  add_subdirectory("TS/ts2ts")
+  add_subdirectory("TS/tshs2tshs")
   add_subdirectory("Gen-basis")
   add_subdirectory("Eig2DOS")
   add_subdirectory("COOP")
@@ -8,11 +11,15 @@
   add_subdirectory("Denchar/Src")
   add_subdirectory("Bands")
   add_subdirectory("Grid")
+  add_subdirectory("WFS")
   add_subdirectory("VCA")
   add_subdirectory("Macroave/Src")
   add_subdirectory("Unfolding/Src")
   add_subdirectory("STM/simple-stm")
   add_subdirectory("Sockets")
+  add_subdirectory("SiestaSubroutine/SimpleTest/Src")
+  add_subdirectory("SiestaSubroutine/FmixMD/Src")
+  add_subdirectory("SiestaSubroutine/ProtoNEB/Src")
 
 if(FFTW_DOUBLE_LIB_FOUND)
   add_subdirectory("STM/ol-stm/Src")

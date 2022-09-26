@@ -129,7 +129,7 @@ contains
     use fdf, only: fdf_get
     use parallel, only : IONode
 #ifdef MPI
-    use mpi_siesta ! , only: MPI_Bcast, MPI_Comm_World
+    use mpi_siesta, only: MPI_Bcast, MPI_Comm_World
 #endif
     use class_OrbitalDistribution
     use class_Sparsity

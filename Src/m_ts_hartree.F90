@@ -122,7 +122,7 @@ contains
     use precision, only : grid_p
     use units, only: eV
 #ifdef MPI
-    use mpi_siesta !, only : MPI_AllReduce, MPI_Sum
+    use mpi_siesta, only : MPI_AllReduce, MPI_Sum
     use mpi_siesta, only : MPI_Comm_World, MPI_integer
     use mpi_siesta, only : MPI_double_precision
 #endif

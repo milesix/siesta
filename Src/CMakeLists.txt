@@ -568,20 +568,11 @@ target_link_libraries(
   LAPACK::LAPACK
 )
 
-# -- Version information
+# For stuff that depends on libsiesta, add its include directory
+target_include_directories(${PROJECT_NAME}-libsiesta
+                           INTERFACE
+			   ${CMAKE_CURRENT_BINARY_DIR})
 
-# 
-configure_file(
-  version-info-template.inc
-  ${CMAKE_CURRENT_BINARY_DIR}/generated/version-info.inc
-  @ONLY
-  )
-
-target_include_directories(
-  ${PROJECT_NAME}-libsiesta
-  PUBLIC
-    ${CMAKE_CURRENT_BINARY_DIR}/generated
-  )
 
 if(WITH_LUA)
   target_compile_definitions(
@@ -602,6 +593,29 @@ if(WITH_LUA)
 )
 
 endif()
+
+# -- Version information
+
+execute_process(COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/SIESTA_cmake_vgen.sh
+                WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+                OUTPUT_VARIABLE SIESTA_VERSION
+		ERROR_VARIABLE  VERSION_STDERR)
+
+string(STRIP "${SIESTA_VERSION}" SIESTA_VERSION)
+message(STATUS "SIESTA_VERSION: ${SIESTA_VERSION}")
+## message(STATUS " --- stderr from version script:  ${VERSION_STDERR}")
+#
+configure_file(
+  version-info-template.inc
+  ${CMAKE_CURRENT_BINARY_DIR}/generated/version-info.inc
+  @ONLY
+  )
+
+target_include_directories(
+  ${PROJECT_NAME}-libsiesta
+  PUBLIC
+    ${CMAKE_CURRENT_BINARY_DIR}/generated
+  )
 
 install(
   TARGETS ${PROJECT_NAME}-libsiesta
