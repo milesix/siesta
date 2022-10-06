@@ -164,16 +164,17 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
 * Handling of compiler flags
 
   For Intel and GNU compilers, a set of default flags for the
-  different build_types (Debug, Release, RelWithDebInfo, None) are
+  different build_types (Debug, Check, Release, RelWithDebInfo, None) are
   hard-coded in the file Config/cmake/flags.cmake.
 
   Those settings can be changed in the command line by setting either
   of
 
        Fortran_FLAGS            (will affect all build_types)
-       Fortran_FLAGS_DEBUG
+       Fortran_FLAGS_DEBUG      (this in the sense of "not optimized", with debug symbols)
+       Fortran_FLAGS_CHECK      (with extra checks on array bounds, pointers, etc)
        Fortran_FLAGS_RELEASE
-       Fortran_FLAGS_RELWITHDEBINFO
+       Fortran_FLAGS_RELWITHDEBINFO   (release with debug symbols)
        Fortran_FLAGS_NONE      
 
 * Toolchain files

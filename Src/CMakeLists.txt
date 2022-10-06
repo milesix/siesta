@@ -570,6 +570,20 @@ target_include_directories(${PROJECT_NAME}-libsiesta
                            INTERFACE
 			   ${CMAKE_CURRENT_BINARY_DIR})
 
+#
+#  Compile some files with no optimization for the Intel compiler
+#
+if(CMAKE_Fortran_COMPILER_ID MATCHES Intel)
+
+  set(DEBUG_OPTIONS_LIST "${Fortran_FLAGS_DEBUG}")  # Should set this
+  separate_arguments(DEBUG_OPTIONS_LIST)   # Turns empty space to ';'
+  message(STATUS "Debug flags for some files in Src: ${DEBUG_OPTIONS_LIST}")
+  set_source_files_properties(
+             atom.F
+	     state_analysis.F
+	     create_Sparsity_SC.F90
+             PROPERTIES  COMPILE_OPTIONS "${DEBUG_OPTIONS_LIST}")
+endif()
 
 if(WITH_LUA)
   target_compile_definitions(

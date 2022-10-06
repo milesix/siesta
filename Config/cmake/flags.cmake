@@ -28,7 +28,8 @@ if(CMAKE_Fortran_COMPILER_ID MATCHES Intel)
     
       set(Fortran_FLAGS_RELEASE "-O2 -ip -xHOST -fp-model=strict -prec-div -prec-sqrt" CACHE STRING "Fortran release flags")
       set(Fortran_FLAGS_RELWITHDEBINFO   "-g  ${Fortran_FLAGS_RELEASE} -traceback" CACHE STRING "Fortran rel-with-deb-info flags")
-      set(Fortran_FLAGS_DEBUG  "-g -O0 -check -traceback" CACHE STRING "Fortran debug flags")
+      set(Fortran_FLAGS_CHECK  "-g -O0 -check -traceback" CACHE STRING "Fortran debug flags")
+      set(Fortran_FLAGS_DEBUG  "-g -O0 -traceback" CACHE STRING "Fortran debug flags")
     
 endif()
 
@@ -47,7 +48,8 @@ if(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
     set(Fortran_FLAGS_RELWITHDEBINFO   "-g  ${Fortran_FLAGS_RELEASE} -traceback"
                 CACHE STRING "Fortran rel-with-debinfo flags")
 
-    set(Fortran_FLAGS_DEBUG  "-g -O0 -fbounds-check" CACHE STRING "Fortran debug flags")
+    set(Fortran_FLAGS_CHECK  "-g -O0 -fbounds-check" CACHE STRING "Fortran debug flags")
+    set(Fortran_FLAGS_DEBUG  "-g -O0" CACHE STRING "Fortran debug flags")
 
 endif()
 
@@ -63,12 +65,14 @@ set(Fortran_FLAGS_NONE  " " CACHE STRING "Fortran 'none' flags")
 set(C_FLAGS ${CMAKE_C_FLAGS} CACHE STRING "Build-type independent flags")
 set(C_FLAGS_NONE  " " CACHE STRING "C 'none' flags")
 set(C_FLAGS_DEBUG  " -g -O0 " CACHE STRING "C 'Debug' flags")
+set(C_FLAGS_CHECK  " -g -O0 " CACHE STRING "C 'Debug' flags")
 set(C_FLAGS_RELEASE  " -O2 " CACHE STRING "C 'Release' flags")
 set(C_FLAGS_RELWITHDEBINFO  "-g -O2 " CACHE STRING "C 'RelWithDebInfo' flags")
 
 set(CXX_FLAGS ${CMAKE_CXX_FLAGS} CACHE STRING "Build-type independent flags")
 set(CXX_FLAGS_NONE  " " CACHE STRING "C++ 'none' flags")
 set(CXX_FLAGS_DEBUG  " -g -O0 " CACHE STRING "C++ 'Debug' flags")
+set(CXX_FLAGS_CHECK  " -g -O0 " CACHE STRING "C++ 'Debug' flags")
 set(CXX_FLAGS_RELEASE  " -O2 " CACHE STRING "C++ 'Release' flags")
 set(CXX_FLAGS_RELWITHDEBINFO  "-g -O2 " CACHE STRING "C++ 'RelWithDebInfo' flags")
 
