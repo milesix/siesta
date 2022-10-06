@@ -131,32 +131,34 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
 
 * Accepted options:
 
-      - WITH_MPI:   It is ON by default if MPI is found on the system.
-                    To deactivate, use -DWITH_MPI=OFF
+      - WITH_MPI:   It is ON by default. To deactivate, use -DWITH_MPI=OFF
 
-      - WITH_NETCDF: It is ON by default if NetCDF is found on the system.
+      - WITH_OPENMP: It is OFF by default. To activate, use -DWITH_OPENMP=ON.
+                     This option affects only Siesta and TBTrans for now.
+		     Check the setting of OMP_NUM_THREADS for execution.
+
+      - WITH_NETCDF: It is ON by default.
                      At the same time, it will set WITH_NCDF to ON.
 		     WITH_NCDF_PARALLEL will remain OFF by default.
 
-      - WITH_NCDF:   It is ON by default if NetCDF is found on the system.
-                     To deactivate, use -DWITH_NCDF=OFF
+      - WITH_NCDF:   Its default value is determined by that of WITH_NETCDF.
+                     To activate/deactivate independently, use -DWITH_NCDF=ON/OFF
 
       - WITH_NCDF_PARALLEL: It is OFF by default. Only meaningful if NetCDF is ON.
                             To enable, use -DWITH_NCDF_PARALLEL=ON
-
 
       - WITH_LIBXC: When compiling GRIDXC, use the optional libxc library. The latter
                     must be pre-compiled, and incorporated into the build by adding
 		    the appropriate $LIBXC_ROOT to the CMAKE_PREFIX_PATH.
 
       - WITH_ELPA:  See config/cmake/search_for_elpa.cmake. Due to the
-                    idiosynchracies of the ELPA build system, some preparation
+                    idiosyncrasies of the ELPA build system, some preparation
 		    might be needed.
 		    
       - WITH_FFTW:  (ON by default) If not set, Util/STM/ol-stm will
                     not be compiled.
 
-      - WITH_LUA:   The environmental variable FLOOK_ROOT must be set and
+      - WITH_LUA:   The *environment* variable FLOOK_ROOT must be set and
                     point to an installation of the flook library.
 
 * Handling of compiler flags

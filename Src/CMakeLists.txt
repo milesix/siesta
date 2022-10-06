@@ -548,6 +548,7 @@ target_compile_definitions(
 target_link_libraries(
   ${PROJECT_NAME}-libsiesta
   PUBLIC
+  OpenMP::OpenMP_Fortran
   fdf
   xmlf90::xmlf90
   libpsml::libpsml

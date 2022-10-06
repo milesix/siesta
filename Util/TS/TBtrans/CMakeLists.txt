@@ -196,6 +196,7 @@ target_compile_definitions(
 TARGET_LINK_LIBRARIES(
   tbtrans
   PRIVATE
+  OpenMP::OpenMP_Fortran
   fdf
   $<$<BOOL:${WITH_MPI}>:mpi_siesta>
   $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>

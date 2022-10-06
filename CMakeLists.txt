@@ -43,7 +43,7 @@ option(WITH_NCDF_PARALLEL "Use NCDF_PARALLEL" FALSE)
 option(WITH_FFTW "FFTW support (for STM/ol-stm utility)" TRUE)
 option(WITH_LIBXC "Include libxc support" FALSE)
 
-option(WITH_OPENMP "Build Siesta with OpenMP support" ${OpenMP_FOUND})
+option(WITH_OPENMP "Build Siesta and TBTrans with OpenMP support" FALSE)
 
 option(WITH_ELPA "Use the ELPA library (direct interface)" FALSE)
 option(WITH_LUA "Use the flook library for Lua scripting" FALSE)
@@ -77,18 +77,36 @@ if (WITH_MPI)
   endif()
 endif()
 
-# Find OpenMP
-find_package(OpenMP COMPONENTS Fortran C)
+#---------------------------- OpenMP
 
 if( WITH_OPENMP )
-  if( OpenMP_FOUND )
-    # Check that the OpenMP compiler has the omp_lib.mod file
-    if(NOT OpenMP_Fortran_HAVE_OMPLIB_MODULE)
-      message(ERROR_FATAL "OpenMP does not have the 'omp_lib' module which is required for Siesta OpenMP usage")
+
+  if(NOT TARGET OpenMP::OpenMP_Fortran)
+    find_package(OpenMP COMPONENTS Fortran C)
+
+    if( OpenMP_FOUND )
+
+      if(NOT OpenMP_Fortran_HAVE_OMPLIB_MODULE)
+             message(ERROR_FATAL
+	             "OpenMP does not have the 'omp_lib' module used by Siesta OpenMP")
+      endif()
+      
+    else()
+       message(ERROR_FATAL
+               "OpenMP support requested but could not find any OpenMP flags")
     endif()
-  else()
-    message(ERROR_FATAL "Requesting OpenMP support but could not find any OpenMP flags (default FindOpenMP search)")
   endif()
+  
+else()
+
+  # Create dummy empty targets
+  if(NOT TARGET OpenMP::OpenMP_Fortran)
+    add_library(OpenMP::OpenMP_Fortran INTERFACE IMPORTED)
+  endif()
+  if(NOT TARGET OpenMP::OpenMP_C)
+    add_library(OpenMP::OpenMP_C INTERFACE IMPORTED)
+  endif()
+
 endif()
 
 
