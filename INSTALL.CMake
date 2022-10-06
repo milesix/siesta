@@ -159,26 +159,54 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
       - WITH_LUA:   The environmental variable FLOOK_ROOT must be set and
                     point to an installation of the flook library.
 
+* Handling of compiler flags
 
- Quirks, workarounds, and missing bits:
+  For Intel and GNU compilers, a set of default flags for the
+  different build_types (Debug, Release, RelWithDebInfo, None) are
+  hard-coded in the file Config/cmake/flags.cmake.
+
+  Those settings can be changed in the command line by setting either
+  of
+
+       Fortran_FLAGS            (will affect all build_types)
+       Fortran_FLAGS_DEBUG
+       Fortran_FLAGS_RELEASE
+       Fortran_FLAGS_RELWITHDEBINFO
+       Fortran_FLAGS_NONE      
+
+* Toolchain files
+
+  As an experimental feature, some pre-packaged "toolchain" files can
+  be found in the Config/cmake/toolchains directory. They contain
+  compiler flags and library search hints.  They can be used as:
+
+     cmake -C /path/to/toolchain/file ......
+
+  or as
+
+     cmake -DCMAKE_TOOLCHAIN_FILE=/path/to/toolchain/file
+
+
+  These files can also be used to set options. Some variables can be
+  in the toolchain file, and some others given in the command line:
+
+     cmake -C /path/to/toolchain/file -DWITH_MPI=OFF 
+
+  If a variable is set *both* in the toolchain file and in the command
+  line, the command-line value takes precedence.
+  
+ * Quirks, workarounds, and missing bits:
  
-    * Version, compiler, and library information is now designed to be
-      incorporated into the Siesta executable through a 'configure'd"
-      version-info template, but the variables needed are not fully
-      implemented. The version is taken from the project declaration.
 
     * The handling of external libraries should be improved:
-
-      - Lapack and Scalapack need the linker flags in environment
-        variables.
 
       - ELPA is handled through its pkgconfig files,
         which might not be well constructed (see the modules
         in config/cmake)
 
-      - The flook library needs its path to be set in FLOOK_ROOT, and
-        the linking string is hard-coded, as there is no proper
-        pkgconfig file yet.
+      - The flook library needs its path to be set in the
+        *environment* variable FLOOK_ROOT, and the linking string is
+        hard-coded, as there is no proper pkgconfig file yet.
 
       - Old versions of GRIDXC cannot yet be
         incorporated. CMake-enabled installed versions are fine, but
@@ -188,16 +216,12 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
         more work is needed to interface correctly to versions of
         libgridxc installed with the autotools build system.
         
-      - When using MPI, a single MPI version of GRIDXC is compiled, and it
-        is used also for those targets that would only need a serial version.
-        This will work in most systems, but in some others (e.g. IBM's mpi)
-        one would have to use 'mpirun ...' for serial utilities
-        linking to GRIDXC (gen-basis, for example).
+      - When using MPI, a single MPI version of GRIDXC is compiled,
+        and it is used also for those targets that would only need a
+        serial version.  This will work in most systems, but in some
+        others (e.g. IBM's mpi) one would have to use 'mpirun ...' for
+        serial utilities linking to GRIDXC (gen-basis, for example).
 
-      - Some utility programs are still not enabled for building with
-        CMake. (One can use the WITH_COMPACT_LOG=1 option in the hybrid
-	approach (see INSTALL) to ease the burden of preparing lists
-        of source files.)
 
 
  

@@ -1,4 +1,6 @@
 #
+# Handling of compiler flags
+#
 # Following ideas and code borrowed from DFTB+ project
 #
 # The options hard-coded in this file can be overridden by the use of
@@ -14,10 +16,12 @@
 #  Toolchain files, or .cmake files processed with -C  might also be useful for this.
 #
 
-# Fortran only for now, and just a couple of vendors
-
 # Pick up any default flags
 set(Fortran_FLAGS ${CMAKE_Fortran_FLAGS} CACHE STRING "Build-type independent flags")
+
+
+
+# Just a couple of vendors for now. Others should really be put in a toolchain file.
 
 if(CMAKE_Fortran_COMPILER_ID MATCHES Intel)
     message("Using an Intel compiler")
@@ -47,6 +51,26 @@ if(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
 
 endif()
 
+#
+#  This is common for all compilers, as a convenience fallback for fuller control
+#  Set it explicitly from the command line or use in combination with Fortran_FLAGS.
+#
+set(Fortran_FLAGS_NONE  " " CACHE STRING "Fortran 'none' flags")
+
+#
+# Minimal support for C and CXX
+#
+set(C_FLAGS ${CMAKE_C_FLAGS} CACHE STRING "Build-type independent flags")
+set(C_FLAGS_NONE  " " CACHE STRING "C 'none' flags")
+set(C_FLAGS_DEBUG  " -g -O0 " CACHE STRING "C 'Debug' flags")
+set(C_FLAGS_RELEASE  " -O2 " CACHE STRING "C 'Release' flags")
+set(C_FLAGS_RELWITHDEBINFO  "-g -O2 " CACHE STRING "C 'RelWithDebInfo' flags")
+
+set(CXX_FLAGS ${CMAKE_CXX_FLAGS} CACHE STRING "Build-type independent flags")
+set(CXX_FLAGS_NONE  " " CACHE STRING "C++ 'none' flags")
+set(CXX_FLAGS_DEBUG  " -g -O0 " CACHE STRING "C++ 'Debug' flags")
+set(CXX_FLAGS_RELEASE  " -O2 " CACHE STRING "C++ 'Release' flags")
+set(CXX_FLAGS_RELWITHDEBINFO  "-g -O2 " CACHE STRING "C++ 'RelWithDebInfo' flags")
 
 #
   if(CMAKE_BUILD_TYPE)
