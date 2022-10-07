@@ -212,7 +212,7 @@ add_subdirectory("Src")
 
 # -- Utilities
 add_subdirectory("Util")
-add_subdirectory("Pseudo/vnl-operator")
+add_subdirectory("Pseudo")
 
 # Package license files
 install(
