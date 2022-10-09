@@ -50,7 +50,7 @@
      &                             rmaxo, rmaxkb, rmaxv, rmaxdftu,
      &                             lastkb, lasto, superc, indxuo,
      &                             no_u, no_s, no_l, iza, qtots
-      use alloc,             only: re_alloc, de_alloc, alloc_report
+      use alloc,             only: re_alloc, de_alloc
       use m_hsparse,         only: hsparse
       use m_overlap,         only: overlap
       use m_supercell,       only: exact_sc_ag
@@ -101,7 +101,7 @@
       use iodmhs_netcdf, only: setup_dmhs_netcdf_file
 #endif
 #ifdef NCDF_4
-      use dictionary
+      use dictionary, dict_first => first
       use m_ncdf_siesta, only : cdf_init_file, cdf_save_settings
       use m_ncdf_siesta, only : cdf_save_state, cdf_save_basis
 #ifdef MPI

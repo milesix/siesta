@@ -9,7 +9,7 @@ program pdosxml
 !
 ! Driver for Siesta PDOS processing
 !
-use flib_sax
+use xmlf90_sax
 use m_pdos      ! Defines begin_element, end_element, pcdata_chunk
 
 integer      :: iostat, i

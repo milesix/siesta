@@ -19,11 +19,8 @@ If you just want to compile the program, follow the following steps:
 
 2) Ensure that an 'arch.make' file is present in the build directory.
 
-   The Obj directory contains two default arch.make files:
-     * gfortran.make for the serial compilation of Siesta using gfortran
-     * intel.make for the serial compilation of Siesta using the Intel compiler
-   You may rename one of these files to 'arch.make' or generate
-   a file of your own.
+It is suggested to start by taking a look at the sample files in
+Config/mk-build/sample-arch-makes
 
 3) Then, again from the build directory, execute
 
