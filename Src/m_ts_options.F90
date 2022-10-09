@@ -28,6 +28,8 @@ module m_ts_options
   ! The tolerance
   real(dp) :: ts_Dtol ! = tolerance for density matrix
   real(dp) :: ts_Htol ! = tolerance for Hamiltonian
+  logical :: ts_converge_dQ = .true. ! whether we should converge the charge
+  real(dp) :: ts_dQtol ! = tolerance for charge in the device region (after SCF)
   integer :: ts_hist_keep = 0
 
   ! ###### end SIESTA-options #####
@@ -43,8 +45,6 @@ module m_ts_options
   logical :: TS_DE_save = .false.
   ! whether we will use the bias-contour
   logical :: IsVolt = .false.
-  ! Whether the system has an electronic temperature gradient
-  logical :: has_T_gradient = .false.
   ! maximum difference between chemical potentials
   real(dp) :: Volt = 0._dp
   ! The temperature for transiesta calculations
@@ -716,11 +716,13 @@ contains
 
     use fdf, only : fdf_get, leqi
     use intrinsic_missing, only : VNORM, IDX_SPC_PROJ, EYE
+    use atomlist, only : qa
+    use siesta_options, only : charnet
 
     use m_ts_global_vars, only: TSmode, onlyS
 
     use m_ts_method, only: TS_BTD_A_PROPAGATION, TS_BTD_A_COLUMN
-    use m_ts_method, only: ts_A_method
+    use m_ts_method, only: ts_A_method, a_isBuffer
 
     use m_ts_electype, only: check_Elec_sim
     
@@ -747,6 +749,7 @@ contains
     ! Local variables
     character(len=50) :: chars
     integer :: i
+    real(dp) :: dev_q
     logical :: Gamma3(3)
 
     if ( onlyS .or. .not. TSmode ) return
@@ -798,11 +801,25 @@ contains
     end do
           
     do i = 1 , N_Elec
-       ! Initialize the electrode quantities for the
-       ! stored values
-       call check_Elec_sim(Elecs(i), nspin, cell, na_u, xa, &
-            Elecs_xa_EPS, lasto, Gamma3, ts_kscell, ts_kdispl)
+      ! Initialize the electrode quantities for the
+      ! stored values
+      call check_Elec_sim(Elecs(i), nspin, cell, na_u, xa, &
+          Elecs_xa_EPS, lasto, Gamma3, ts_kscell, ts_kdispl)
     end do
+
+    ! Now we know which atoms are buffer's and electrodes
+    ! This allows us to decide the tolerance for convergence of
+    ! the charges.
+    ! By default we allow a difference up to q(device) / 1000
+    dev_q = - charnet
+    do i = 1, na_u
+      if ( .not. a_isBuffer(i) ) then
+        ! count this atom
+        dev_q = dev_q + qa(i)
+      end if
+    end do
+    ts_dQtol = fdf_get('TS.SCF.dQ.Tolerance',dev_q / 1000._dp)
+    ts_converge_dQ = fdf_get('TS.SCF.dQ.Converge', .true.)
 
   end subroutine read_ts_after_Elec
 
@@ -953,8 +970,10 @@ contains
        end select
 #endif
     end if
-    write(*,f9) 'SCF.TS DM tolerance',ts_Dtol
-    write(*,f7) 'SCF.TS Hamiltonian tolerance',ts_Htol/eV, 'eV'
+    write(*,f9) 'SCF DM tolerance',ts_Dtol
+    write(*,f7) 'SCF Hamiltonian tolerance',ts_Htol/eV, 'eV'
+    write(*,f1) 'SCF converge charge',ts_converge_dQ
+    write(*,f9) 'SCF charge tolerance',ts_dQtol
 
     select case ( TS_scf_mode )
     case ( 0 )
@@ -973,7 +992,6 @@ contains
              write(*,f11) 'Hartree potential will be placed in electrode box'
           end if
        end if
-       write(*,f1) 'Thermal non-equilibrium in distributions',has_T_gradient
 
        chars = 'Non-equilibrium contour weight method'
        select case ( TS_W_METHOD )
@@ -1485,6 +1503,10 @@ contains
          write(*,'(a)') '    I give this warning because it is not clear how your V = 0 calcualtion was done.'
        end if
        warn = .true.
+     else if ( any(Elecs(:)%DM_init == 0) ) then
+       write(*,'(a)') 'You are initializing the electrode EDM. &
+           &This may result in erroneous forces on electrode atoms. &
+           &Do not use forces from electrodes.'
     end if
 
     ! warn the user about suspicous work regarding the electrodes
@@ -1571,10 +1593,10 @@ contains
 
     end do
 
-    if ( N_Elec /= 2 .and. any(Elecs(:)%DM_update == 0) ) then
-       write(*,'(a,/,a)') 'Consider updating more elements when doing &
-            &N-electrode calculations. The charge conservation typically &
-            &increases.','  TS.Elecs.DM.Update [cross-terms|all]'
+    if ( any(Elecs(:)%DM_update == 0) ) then
+      write(*,'(a,/,a)') 'Consider updating more elements. &
+          &The charge conservation and force accuracy improves.',&
+          '  TS.Elecs.DM.Update [cross-terms|all]'
        warn = .true.
     end if
 

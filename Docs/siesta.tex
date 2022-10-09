@@ -88,7 +88,7 @@
 % will create additional information in the PDF with 
 % proper dependencies and hyperlinks to the fdf-flags.
 % To document a flag has replaced another flag, use
-%  \fdfreplace{...} in the same manner as \fdfdepend{...}.
+%  \fdfdeprecates{...} in the same manner as \fdfdepend{...}.
 %
 %
 % !!!IMPORTANT!!!
@@ -112,8 +112,8 @@
 
 % Local command for the software version for printing
 % \unskip helps when space/newline chars are present in the
-% version.info file.
-\providecommand\softwareversion{\input{../version.info}\unskip}
+% SIESTA.version file.
+\providecommand\softwareversion{\input{../SIESTA.version}\unskip}
 
 % Title (note that \input above will fail in the title, we however
 % don't care since it is only meaningful for final publications where
@@ -159,7 +159,7 @@
 \hrulefill
 \vspace{1cm}
 
-{\Huge \textbf{S I E S T A \, \, \softwareversion}}
+{\Huge \textbf{S I E S T A \, \, \softwareversion}\par}
 
 \vspace{1cm}
 \hrulefill
@@ -168,7 +168,7 @@
 {\Large \printdate}
 
 \vspace{1.5cm}
-{\Large \url{http://www.uam.es/siesta}}
+{\Large \url{https://siesta-project.org}}
 
 \vspace{2.5cm}
 \siesta\ Steering Committee:
@@ -214,7 +214,7 @@
  
 \vspace{0.5cm}
 
-\siesta\ is Copyright \copyright\ 1996-2019 by The Siesta Group
+\siesta\ is Copyright \copyright\ 1996-2021 by The Siesta Group
 
 \end{center}
 
@@ -304,7 +304,7 @@ which still uses many of the algorithms developed by them.
   output and execution features of \siesta, but is not really a
   tutorial introduction to the program. Interested users can find
   tutorial material prepared for \siesta\ schools and workshops at
-  the project's web page} \url{http://www.uam.es/siesta}.
+  the project's web page} \url{https://siesta-project.org}
 
 
 \textbf{NOTE: See the description of changes in the logic of the SCF loop}
@@ -344,7 +344,7 @@ time and memory scale linearly with the number of atoms.
 Simulations with several hundred atoms are feasible with
 modest workstations.
 \item
-It is written in Fortran 95 and memory is allocated dynamically.
+It is written in Fortran 2003 and memory is allocated dynamically.
 \item
 It may be compiled for serial or parallel execution (under MPI).
 
@@ -458,7 +458,7 @@ Extensive review of applications as of summer 2003.
 
 \item
  ``Improvements on non-equilibrium and transport Green function techniques: The next-generation TranSIESTA'',
- Nick Papior, Nicolas Lorente, Thomas Frederiksen, Alberto García and
+ Nick Papior, Nicolas Lorente, Thomas Frederiksen, Alberto Garc\'{\i}a and
  Mads Brandbyge, Computer Physics Communications, \textbf{212}, 8--24 (2017).
 
  Description of the \tsiesta\ method.
@@ -470,68 +470,135 @@ Extensive review of applications as of summer 2003.
 
  Description of the original \tsiesta\ method (prior to 4.1).
 
+ \item
+ ``Siesta: Recent developments and applications'',
+ Alberto Garc\'{\i}a, \emph{et al.}, J. Chem. Phys. \textbf{152}, 204108
+ (2020).
+
+ Extensive review of applications and developments as of 2020.
+
 \end{itemize}
 
 For more information you can visit the web page
-\url{http://www.uam.es/siesta}.
+\url{https://siesta-project.org}.
 
 \section{COMPILATION}
 \label{sec:compilation}
 
 \subsection{The build directory}
 
-Rather than using the top-level Src directory as building directory,
-the user has to use an ad-hoc building directory (by default the
-top-level \shell{Obj} directory, but it can be any (new) directory in
-the top level).  The building directory will hold the object files,
+\siesta\ cannot be compiled from the top-level \shell{Src}
+directory, it must be compiled from an ad-hoc build directory.
+At the end of the compilation, the build
+directory will contain the \program{siesta} binary as well as
+the object files,
 module files, and libraries resulting from the compilation of the
-sources in \shell{Src}.  The \shell{VPATH} mechanism of modern \shell{make}
-programs is used. This scheme has many advantages. Among them:
+sources in \shell{Src}.
 
-\begin{itemize}
-\item The Src directory is kept pristine.
-\item Many different object directories can be used concurrently to
-  compile the program with different compilers or optimization levels.
-\end{itemize}
+The default build directory is the top-level \shell{Obj} directory.
+Instructions on how to compile \siesta\ from \shell{Obj} are given in
+Sec.~\ref{sec:basic-compilation}.
+If you are interested in compiling \siesta\ from other directories,
+or in multiple concurrent compilations of Siesta (e.g., with
+different compilers or optimization levels), see also
+Sec.~\ref{sec:advanced-compilation} below.
 
-If you just want to compile the program, go to \shell{Obj} and issue the
-command:
+\subsubsection{Basic compilation}
+\label{sec:basic-compilation}
+
+If you just want to compile the program from the default
+build directory (\shell{Obj}), follow the following steps:
+
+\begin{enumerate}
+\item
+From within the build directory, issue the command:
 \begin{shellexample}
-  sh ../Src/obj_setup.sh
+       $ sh ../Src/obj_setup.sh
 \end{shellexample}
-to populate this directory with the minimal scaffolding of makefiles,
-and then make sure that you create or generate an appropriate \file{arch.make}
-file (see below, in Sec.~\ref{sec:arch-make}). Then, type
+in order to populate it with with the minimal scaffolding of makefiles.
+
+\item
+Ensure that an appropriate \file{arch.make} file is present in the build directory
+(see Sec.~\ref{sec:arch-make} below for instructions on how to create it).
+
+\item
+Then, again from the build directory, execute
+
 \begin{shellexample}
-  make
+       $ make
 \end{shellexample}
+\end{enumerate}
+
+
 The executable should work for any job. (This is not exactly true,
 since some of the parameters in the atomic routines are still
-hardwired (see \shell{Src/atmparams.f}), but those would seldom need to
+hardwired, see \shell{Src/atmparams.f}, but those would seldom need to
 be changed.)
 
-To compile utility programs (those living in \shell{Util}), you can just
-simply use the provided makefiles, typing ``make'' as appropriate.
+Please note that, unless you really know what you are doing, the
+\shell{Src} directory (including its sub-directories) must be preserved
+without any changes, especially without any object or module files.
+Otherwise, the \shell{VPATH} mechanism used by \shell{make} to compile \siesta\ from the build
+directory will get confused, and the compilation may fail or produce an invalid
+\program{siesta} binary.
 
-\subsubsection{Multiple-target compilation}
+To compile utility programs (those living in the top-level \shell{Util}
+directory), you can simply use the provided makefiles: go to the \shell{Util}
+sub-directory containing the relevant utility source code, and execute \shell{make}
+as appropriate.  The resulting utility executable (and utility object files)
+will be created in that very same utility sub-directory from where \shell{make} was
+invoked.
 
-The mechanism described here can be repeated in other directories at
-the same level as Obj, with different names. In this way one can
-compile as many different versions of the \siesta\ executable as
-needed (for example, with different levels of optimization, serial,
-parallel, debug, etc), by working in separate building directories.
+\subsubsection{Advanced compilation and multiple targets}
+\label{sec:advanced-compilation}
 
-Simply provide the appropriate arch.make, and issue the setup command
-above. To compile utility programs, you need to use the form:
+It is possible to build \siesta\ from any build directory of your choice (instead
+of \shell{Obj}). You will need to follow the same three steps as described above, the
+main difference being that the first command will need to use a correct path
+(absolute or relative) to the \file{obj\_setup.sh} script, i.e., from your chosen build
+directory you will need to execute
+
 \begin{shellexample}
-   make OBJDIR=ObjName
+       $ sh <path/to/Src>/obj_setup.sh
 \end{shellexample}
-where \shell{ObjName} is the name of the object directory of your
-choice. Be sure to type \shell{make clean} before attempting to
-re-compile a utility program.
 
-(The pristine Src directory should be kept ``clean'', without objects, or else
-the compilation in the build directories will get confused)
+Note also that your \file{arch.make} file needs to be in that chosen build directory
+before you can execute \shell{make}.
+
+Since compilations done in separate build directories are independent, one can
+compile as many different version of the \program{siesta} executable as needed (e.g.,
+with different compilers, levels of optimization, serial/parallel, debug, etc.\@)
+by appropriately defining different \file{arch.make} files in each build directory.
+
+If \siesta\ is not compiled from the default \shell{Obj} directory, when you compile your
+utility programs you will need to specify the correct \shell{OBJDIR} option:
+
+\begin{shellexample}
+       $ make OBJDIR=ObjName
+\end{shellexample}
+
+where \shell{ObjName} is the path to the \siesta\ build directory of your choice
+\emph{relative} to the \siesta\ top directory.
+E.g., if you already compiled \siesta\ from the build directory
+\shell{Obj/intel/parallel/2021.2}, and you want to compile \program{denchar}, you need to
+
+\begin{shellexample}
+       $ cd Util/Denchar/Src
+       $ make OBJDIR=Obj/intel/parallel/2021.2
+\end{shellexample}
+
+Note that, irrespective of the value of the \shell{OBJDIR} parameter, the resulting
+utility executable and object files will be created in the utility
+sub-directory from where \shell{make} is invoked (\shell{Util/Denchar/Src} in the example
+above), and that they will be overwritten if a different \shell{OBJDIR} is later used.
+There is currently no support for having different coexisting compiled versions
+of a given utility program. Before attempting to recompile a utility program,
+please remember to execute
+\begin{shellexample}
+       $ make clean
+\end{shellexample}
+from the corresponding utility sub-directory
+(and with the appropriate \shell{OBJDIR} option, if needed).
 
 
 \subsection{The arch.make file}
@@ -551,9 +618,27 @@ files for compilation of \siesta\ with \shell{gfortran} and
 \shell{Obj/intel.make}, respectively. Please use those as guidelines
 for creating the final \file{arch.make}.
 
-Note that Intel compilers default to high optimizations which tends to
+\note Intel compilers default to high optimizations which tend to
 break \siesta. We advice to use \shell{-fp-model source} flag and not
 compile with higher optimizations than \shell{-O2}.
+
+\note Since \shell{gfortran} version 10.x the interfaces are strictly
+checked. Currently you have to add \shell{-fallow-argument-mismatch}
+to \shell{FFLAGS} to turn errors into warnings. These warnings are
+safe to ignore and will look something like:
+\begin{shellexample}[xleftmargin=1ex,fontsize=\footnotesize]
+  .../siesta/Src/fsiesta_mpi.F90:441:18:
+
+  440 |   call MPI_Bcast( n, 1, MPI_Integer, 0, MPI_Comm_Siesta, error )
+      |                  2
+  441 |   call MPI_Bcast( x, 3*na, MPI_Double_Precision, 0, MPI_Comm_Siesta, error )
+      |                  1
+Warning: Type mismatch between actual argument at (1) and actual argument at (2) (REAL(8)/INTEGER(4)).
+\end{shellexample}
+In addition, compilations with \shell{-pedantic} flag are no longer possible.
+\footnote{For more details on this, see the 
+\href{https://gitlab.com/siesta-project/siesta/-/issues/130}
+{issue discussion in the SIESTA project}. }
 
 % You can also get
 % inspiration by looking at the actual \file{arch.make} examples in
@@ -571,6 +656,32 @@ compile with higher optimizations than \shell{-O2}.
 % see the flags understood by the script, and take a look at the
 % \shell{Src/Confs} subdirectory for some examples of their explicit
 % use. 
+
+
+\subsection{Debug options}
+\label{sec:build:debug}
+
+Being able to build \siesta\ in debug mode is crucial for finding bugs
+and debugging builds.
+
+When changing build flags in the \file{arch.make} file it is
+imperative to clean the build directory. Please do a \shell{make
+    clean} then do \shell{make}.
+
+For GFortran, use the following flags:
+\begin{shellexample}
+  FFLAGS = -Og -g -pedantic -Wall -fcheck=all -fbacktrace -Warray-bounds -Wunused -Wuninitialized
+\end{shellexample}
+
+For Intel, use the following flags:
+\begin{shellexample}
+  FFLAGS = -Og -g -check bounds -traceback -fp-model strict
+\end{shellexample}
+
+This will make \siesta\ run significantly slower. Please report any
+crashes to the developer team at
+\url{https://gitlab.com/siesta-project/siesta/-/issues}.
+
 
 
 
@@ -637,6 +748,9 @@ The above will yield the most basic parallelism using OpenMP. However,
 the BLAS/LAPACK libraries which is the most time-consuming part of
 \siesta\ also requires to be threaded, please see Sec.~\ref{sec:libs}
 for correct linking.
+
+The minimum required version of OpenMP is 3.0
+(internally identified by the YYYYMM date string \shell{200805}).
 
 Subsequently one may run \siesta\ using OpenMP through the environment
 variable \shell{OMP\_NUM\_THREADS} which determine the number of
@@ -766,7 +880,7 @@ installation scripts finishes by telling \emph{what} to add to the
 
   Example variables
 \begin{shellexample}
-  # OpenBLAS (OpenBLAS will default to build in LAPACK 3.6)
+  # OpenBLAS (OpenBLAS will default to build in LAPACK)
   LIBS += -L/opt/openblas/lib -lopenblas
   # or for MKL
   LIBS += -L/opt/intel/.../mkl/lib/intel64 -lmkl_lapack95_lp64 ...
@@ -918,20 +1032,25 @@ libraries
   where \shell{<>} are any libraries that MUMPS depend on.
 
 
-  \item[\href{https://math.berkeley.edu/~linlin/pexsi}{PEXSI}]%
+  \item[\href{http://pexsi.org}{PEXSI}]%
   \index{PEXSI}%
   \index{External library!PEXSI}%
-  The PEXSI library may be used with \siesta\ for exa-scale
-  calculations, see Sec.~\ref{SolverPEXSI}. Currently the interface is
-  implemented (tested) as in PEXSI version 0.8.0, 0.9.0 and 0.9.2. If
-  newer versions retain the same interface they may also be used.
+  The PEXSI library may be used with this version of \siesta\ for massively-parallel
+  calculations, see Sec.~\ref{SolverPEXSI}. Note however that the
+  PEXSI interface in this version is the original one, corresponding
+  to PEXSI versions 0.8.X and 0.9.X. In particular, it has been tested
+  for 0.8.0, 0.9.0 and 0.9.2. It is possible that it might work for 
+  newer versions of the form 0.9.X, but, beginning with version 1.0,
+  the PEXSI library is no longer compatible with this interface. Newer
+  versions of \siesta\ (in the Gitlab development site) can use
+  the current PEXSI library through the ELSI library interface.
 
   To successfully compile \siesta\ with PEXSI support one require the
   PEXSI fortran interface. When installing PEXSI copy the
   \shell{f\_interface.f90} file to the include directory of
   PEXSI such that the module may be found\footnote{Optionally the file
       may be copied to the \shell{Obj} directory where the compilation
-      takes place.} when compiling \siesta.
+      takes place} when compiling \siesta.
 
   Add these flags to your \file{arch.make} file to enable PEXSI
 \begin{shellexample}
@@ -1194,7 +1313,7 @@ The standard output of the program, that you
 have already seen passing on the screen, was copied to
 file h2o.out by the tee command. Have a look at it
 and refer to the output-explanation section if necessary.
-You may also want to look at the fdf.log\index{fdf.log} file to see all
+You may also want to look at the \file{fdf.log} file to see all
 the default values that siesta has chosen for you, before
 studying the input-explanation section and start changing them.
 
@@ -1211,37 +1330,73 @@ is
 which uses a \emph{pipe} statement. 
 %
 \siesta\ 4.1 and later does not require one to pipe in the input file
-and the input file may instead be specified on the command line.
+and the input file may instead be specified on the command line:
 \begin{shellexample}
   siesta RUN.fdf > RUN.out
 \end{shellexample}
-This allows for \siesta\ to accept special flags described in what
-follows. Each flag may be quoted if it contains spaces, or one may
-substitute spaces by \fdf*{:}.
+\siesta\ 4.1 and later also accepts special flags and options
+described in what follows:
+\begin{itemize}
+\item
+All flags must start by one or more dashes (\shell{-}).
+The number of leading dashes is irrelevant,
+as long as there is at least one of them.
+\item
+Some flags (e.g., \shell[-L])
+must be followed by a properly formed option string.
+Other flags (e.g., \shell[-elec])
+are logical toggles and they are not followed by option strings.
+\item
+Flags and option strings must all be separated by spaces
+(and only spaces are valid separators for this).
+\item
+Option strings may be quoted.
+Option strings that contain spaces need to either be quoted
+or have the spaces replaced by a colon (\shell{:}) or by
+an equal sign (\shell{=}).
+\item
+If the input file is not piped in, it can be given as an argument:
+\begin{shellexample}
+  siesta -L Hello -V 0.25:eV RUN.fdf > RUN.out
+  siesta -L Hello RUN.fdf -V 0.25:eV > RUN.out
+\end{shellexample}
+\end{itemize}
+
+The list of available flags and options is:
 \begin{fdfoptions}
 
-  \option[-h]%
+  \option[-help|-h]%
   \fdfindex*{Command line options:-h}%
-  print a help instruction and quit
+  Print a help instruction and quit.
 
-  \option[-L]%
-  \fdfindex*{Command line options:-L}%
-  Override, temporarily, the \fdf{SystemLabel} flag. 
-
-  \shell{siesta -L Hello}.
+  \option[-version|-v]%
+  \fdfindex*{Command line options:-v}%
+  Print version information and quit.
 
   \option[-out|-o]%
   \fdfindex*{Command line options:-out}%
   \fdfindex*{Command line options:-o}%
   Specify the output file (instead of printing to the terminal).
+  Example:
 
-  \shell{siesta -out RUN.out}.
+  \begin{shellexample}
+  siesta --out RUN.out
+  \end{shellexample}
+
+  \option[-L]%
+  \fdfindex*{Command line options:-L}%
+  Override, temporarily, the \fdf{SystemLabel} flag.
+  Example:
+
+  \begin{shellexample}
+  siesta -L Hello
+  \end{shellexample}
 
   \option[-electrode|-elec]%
   \fdfindex*{Command line options:-electrode}%
   \fdfindex*{Command line options:-elec}%
-  \fdfreplace{TS!HS.Save,TS!DE.Save}
-  denote this as an electrode calculation which forces the
+  \fdfoverwrite{TS!HS.Save,TS!DE.Save}
+  Denote this as an electrode calculation which forces the
   \sysfile{TSHS} and \sysfile{TSDE} files to be saved.
 
   \note This is equivalent to specifying \fdf{TS!HS.Save:true} and
@@ -1249,14 +1404,29 @@ substitute spaces by \fdf*{:}.
 
   \option[-V]%
   \fdfindex*{Command line options:-V}%
-  \fdfreplace{TS!Voltage}
-  specify the bias for the current \tsiesta\ run.
+  \fdfoverwrite{TS!Voltage}
+  Specify the bias for the current \tsiesta\ run.
+  If no units are specified, $\mathrm{eV}$ are assumed.
+  Example: any of the following three commands set the applied bias to
+  $0.25\,\mathrm{eV}$:
 
-  \shell{siesta -V 0.25:eV} or \shell{siesta -V "0.25 eV"}
-  which sets the applied bias to $0.25\,\mathrm{eV}$.
+  \begin{shellexample}
+  siesta -V 0.25:eV
+  siesta -V "0.25 eV"
+  siesta -V 0.25
+  \end{shellexample}
 
   \note This is equivalent to specifying \fdf{TS!Voltage} in the input
   file.
+
+  \option[-fdf]%
+  \fdfindex*{Command line options:-fdf}%
+  Specify any FDF option string.  For example, another way to specify the bias
+  of the example of the previous option would be:
+
+  \begin{shellexample}
+  siesta --fdf TS.Voltage=0.25:eV
+  \end{shellexample}
 
 \end{fdfoptions}
 
@@ -1276,13 +1446,14 @@ Here we offer a glimpse of it through the following rules:
 
 \begin{itemize}
 
-\item[$\bullet$] The \fdflib\ syntax is a 'data label' followed by its value.
-Values that are not specified in the datafile are assigned
-a default value.
+  \item[$\bullet$] The \fdflib\ syntax is a ``data label'' followed by
+  its value.  Values that are not specified in the datafile are
+  assigned a default value.
 
-\item[$\bullet$] \fdflib\ labels are case insensitive, and characters - \_ .
-in a data label are ignored. Thus, LatticeConstant and
-lattice\_constant represent the same label.
+  \item[$\bullet$] \fdflib\ labels are case insensitive, and
+  characters - \_ .  in a data label are ignored. Thus,
+  \fdf*{LatticeConstant} and \fdf*{lattice\_constant} represent the
+  same label.
 
 \item[$\bullet$] All text following the \# character is taken as comment.
 
@@ -1299,20 +1470,20 @@ it from an integer, in order to prevent ambiguities when mixing the types
 on the same input line.
 
 \item[$\bullet$] Complex data structures are called blocks and are
-placed between `\%block label'\index{block@\%block} and a `\%endblock label'
-(without the quotes).
+placed between ``\%block label''\index{block@\%block} and a
+``\%endblock label'' (without the quotes).
 
-\item[$\bullet$] You may `include' other \fdflib\ files and redirect the search
-for a particular data label to another file.
-If a data label appears more than once, its first appearance
-is used.
+\item[$\bullet$] You may ``include'' other \fdflib\ files and redirect
+the search for a particular data label to another file.  If a data
+label appears more than once, its first appearance is used.
 
-\item[$\bullet$] If the same label is specified twice, the first one takes precedence.
+\item[$\bullet$] If the same label is specified twice, the first one
+takes precedence.
 
-\item[$\bullet$] If a label is misspelled it will not be recognized (there is no
-  internal list of ``accepted'' tags in the program). You can check 
-  the actual value used by siesta by looking for the label in the
-  output \textit{fdf.log}\index{fdf.log} file.
+\item[$\bullet$] If a label is misspelled it will not be recognized
+(there is no internal list of ``accepted'' tags in the program). You
+can check the actual value used by \siesta\ by looking for the label
+in the output \file{fdf.log} file.
 
 \end{itemize}
 
@@ -1322,7 +1493,7 @@ These are some examples:
 \begin{verbatim}
            SystemName      Water molecule  # This is a comment
            SystemLabel     h2o
-           SpinPolarized        yes
+           Spin polarized
            SaveRho
            NumberOfAtoms         64
            LatticeConstant       5.42 Ang
@@ -1340,12 +1511,16 @@ These are some examples:
            %include mydefaults.fdf
 \end{verbatim}
 
-The file \textit{fdf.log} contains all the parameters used by \siesta\
+The file \file{fdf.log} contains all the parameters used by \siesta\
 in a given run, both those specified in the input fdf file and
 those taken by default. They are written in fdf format, so that
 you may reuse them as input directly. Input data blocks are
-copied to the fdf.log file only if you specify the \textit{dump} option
+copied to the \file{fdf.log} file only if you specify the \textit{dump} option
 for them.
+In practice, the name of a FDF log file contains a sequence of five
+digits (e.g., \shell{fdf-12345.log}) chosen on-the-fly
+in order to have a reduced chance of overwriting other FDF log files
+that may be present in the same directory.
 
 \section{PROGRAM OUTPUT}
 
@@ -1365,7 +1540,7 @@ subroutine. It prints some of the information it digests. It is
 important to note that it is only part of it, some other information
 being accessed by the different subroutines when they need it during
 the run (in the spirit of \fdflib\ input).  A complete list of the input
-used by the code can be found at the end in the file \shell{fdf.log},
+used by the code can be found at the end in the file \file{fdf.log},
 including defaults used by the code in the run.
 
 After that, the program reads the pseudopotentials, factorizes them
@@ -1453,7 +1628,7 @@ values. For historical reasons the names of the tags do not have an
 uniform structure, and can be confusing at times.
 
 Almost all of the tags are optional: \siesta\ will assign a
-default if a given tag is not found when needed (see \shell{fdf.log}).
+default if a given tag is not found when needed (see \file{fdf.log}).
 
 
 \subsection{General system descriptors}
@@ -3450,7 +3625,7 @@ structural information (maybe too many).
     There is an alternative for animation by generating a \sysfile*{arc} file for
     \method{CERIUS}. It is through the
     \method{Sies2arc}\index{Sies2arc@\program{Sies2arc}} postprocessing
-    utility in the Util/ directory, and it 
+    utility in the \shell{Util/} directory, and it
     requires the coordinates to be accumulated in the output file, i.e.,
     \fdf{WriteCoorStep} \fdftrue.
 
@@ -3689,21 +3864,20 @@ is equivalent to their precedence.
 \begin{fdflogicalT}{TimeReversalSymmetryForKpoints}
 
 If \fdftrue, the k-points in the BZ generated by the methods above
-are paired as (k,-k) and only one member of the pair is retained. This
+are paired as ($k$, $-k$) and only one member of the pair is retained. This
 symmetry is valid in the absence of external magnetic fields or
-non-collinear/spin-orbit interaction.
+non-colinear/spin-orbit interaction.
 
 This flag is only honored for spinless or collinear-spin calculations,
 as the code will produce wrong results if there is no support for the
 appropriate symmetrization.
 
-The default value is \fdftrue unless: a) the option \fdf{Spin!Spiral} 
+The default value is \fdftrue unless: a) the option \fdf{Spin!Spiral}
 is used. In this case time-reversal-symmetry is broken explicitly. b)
-non-collinear spin calculations. This case is less clear cut, but the
-time-reversal symmetry is not used to avoid possible breakings due to
-subtle implementation details, and to make the set of wavefunctions
+non-colinear/spin-orbit calculations. This case is less clear cut, but
+the time-reversal symmetry is not used to avoid possible breakings due
+to subtle implementation details, and to make the set of wavefunctions
 compatible with spin-orbit case in analysis tools.
-
 
 
 \end{fdflogicalT}
@@ -3916,6 +4090,7 @@ are always stored in the file \sysfile{KP}.
 
 
 \begin{fdfentry}{Spin}[string]<non-polarized>
+  \fdfdeprecates{SpinPolarized,NonCollinearSpin,SpinOrbit}
 
   Choose the spin-components in the simulation.
 
@@ -3928,10 +4103,12 @@ are always stored in the file \sysfile{KP}.
     Perform a calculation with spin-degeneracy (only one component).
 
     \option[polarized]%
+    \fdfindex*{SpinPolarized}%
     \fdfindex*{Spin:polarized}%
     Perform a calculation with colinear spin (two spin components).
 
     \option[non-colinear]%
+    \fdfindex*{NonCollinearSpin}%
     \fdfindex*{Spin:non-colinear}%
     Perform a calculation with non-colinear spin (4 spin components),
     up-down and angles.
@@ -3942,6 +4119,7 @@ are always stored in the file \sysfile{KP}.
     Phys: Cond. Matt \textbf{16}, 5453 (2004).
 
     \option[spin-orbit]%
+    \fdfindex*{SpinOrbit}%
     \fdfindex*{Spin:spin-orbit}%
     Performs calculations including the spin-orbit coupling. By default the 
     off-site SO option is set to \fdftrue. To perform an on-site SO calculations 
@@ -3982,6 +4160,44 @@ are always stored in the file \sysfile{KP}.
   
 \end{fdfentry}
 
+\begin{fdfentry}{Spin!Spiral}[block]
+  \fdfdepend{Spin}
+
+  Specify the spiral $q$ vector for the non-collinear spin.
+
+  \begin{fdfexample}
+    Spin.Spiral.Scale ReciprocalLatticeVectors
+    %block Spin.Spiral
+      0. 0. 0.5
+    %endblock
+  \end{fdfexample}
+
+  \note this option only applies for non-collinear spin (not for
+  spin-orbit).
+
+  \note this part of the code has not been tested, we would welcome
+  any person who could assert its correctness and provide tests. Use
+  with \emph{extreme} care.
+
+\end{fdfentry}
+
+\begin{fdfentry}{Spin!Spiral.Scale}[string]
+  \fdfdepend{Spin!Spiral}
+
+  Specifies the scale of the spiral vector $q$ vectors given in \fdf{Spin!Spiral}.
+  The options are:
+  \begin{fdfoptions}
+    \option[pi/a]%
+    vector is given in Cartesian coordinates, in units
+    of $\pi/a$, where $a$ is the lattice constant (\fdf{LatticeConstant})
+
+    \option[ReciprocalLatticeVectors]%
+    vector is given in reciprocal-lattice-vector coordinates
+
+  \end{fdfoptions}
+
+\end{fdfentry}
+
 \begin{fdflogicalF}{SingleExcitation}
 
   If \fdftrue, \siesta\ calculates a very rough approximation to the
@@ -3995,27 +4211,31 @@ are always stored in the file \sysfile{KP}.
 \subsection{Spin-Orbit coupling}
 \label{sec:spin-orbit}
 
-\siesta\ includes the posibility to perform fully relativistic
-calculations by means of the inclusion in the total Hamiltonian not
+\siesta\ includes the possibility to perform fully relativistic
+calculations by including in the total Hamiltonian not
 only the Darwin and velocity correction terms~(Scalar--Relativistic
 calculations), but also the spin-orbit~(SO) contribution. There are
-two approaches regarding the SO formalism: on-site and off-site.
+two approaches regarding the SO formalism: the ``on-site''
+approximation and the full treatment (sometimes called ``off-site'').
 Within the on-site approximation only the intra-atomic SO
-contribution is taken into account. In the off-site scheme additional
+contribution is taken into account. In the full scheme, additional
 neighboring interactions are also included in the SO term. By default,
-the off-site SO formalism is switched on, being necessary to change
+the full (``off-site'')  SO formalism is switched on, being necessary to change
 the \fdf{Spin} flag in the input file if the on-site approximation
 wants to be used. See \fdf{Spin} on how to handle the spin-orbit
 coupling.
 
 The on-site spin-orbit scheme in this version of \siesta\ has been implemented by
-Dr. Ram\'on Cuadrado based on the original on-site SO formalism and
-implementation developed by Prof. Jaime Ferrer and his collaborators \textit{et al}~(L
+Dr. Ram\'on Cuadrado based on the original formalism and implementation
+developed by Prof. Jaime Ferrer and his collaborators (L
 Fern\'andez--Seivane, M Oliveira, S Sanvito, and J Ferrer, Journal of
 Physics: Condensed Matter, \textbf{18}, 7999 (2006); L Fern\'andez--Seivane 
 and Jaime Ferrer, Phys. Rev. Lett. \textbf{99}, 183401 (2007)).
+183401). It should be noted that this approximation, while based on
+the physically reasonable idea of the short-range of the SO
+interaction, might not be completely appropriate in all cases.
 
-The off-site scheme has been implemented by
+The ``off-site'' scheme has been implemented by
 Dr. Ram\'on Cuadrado and Dr. Jorge I. Cerd\'a based on their initial 
 work~(R. Cuadrado and J. I. Cerd\'a ``Fully relativistic pseudopotential 
 formalism under an atomic orbital basis: spin-orbit splittings and 
@@ -4041,54 +4261,39 @@ dimensions are twice as large as for the collinear (unmixed) spin
 problem. Due to this, we advise to take special
 attention to the memory needed to perform a spin-orbit calculation.
 
+Apart from the study of effects of the spin--orbit interaction in the
+band structure, a feature enabled by a SO formalism is the computation
+of the Magnetic Anisotropy Energy~(MAE): it can be obtained as the
+difference in the total selfconsistent energy in two different spin
+orientations, usually along the easy axis and the hard axis. In
+\siesta\ it is possible to perform calculations for different
+magnetization orientations using the block \fdf{DM.InitSpin} in the
+fdf file. In doing so one will be able to include the initial
+orientation angles of the magnetization for each atom, as well as an
+initial value of their net magnetic moments. See
+also the recent review~\cite{doi:10.1063/5.0005077}.
 
-Unless explicitly advised the following type of calculation can be carried out 
-regardless of whether on-site or off-site approximation is employed: 
-\begin{itemize}
-  % 
-  \item Selfconsistent calculations for gamma point as well as for
-  bulks.
-  %
-  \item Structure optimizations 
-  %
-  %%% *** Incompatible... \item LDA+U calculations~(See Sect.\ref{sec:lda+u} for further info).
-  % 
-  \item Magnetic Anisotropy Energy~(MAE) can be easily
-    calculated. From first principles it is obtained after subtracting
-    the total selfconsistent energy calculated for two different
-    magnetic orientations. In \siesta\ it is possible to perform
-    calculations with different initial magnetic orderings
-    by means of the use of the block \fdf{DM.InitSpin} in the fdf
-    file. In doing so one will be able to include the initial
-    orientation angles of the magnetization for each atom, as well as
-    an initial value of its net magnetic moments.
-  % 
-  \item By means of Mulliken analysis, after the selfconsistent
-  procedure, local spin and orbital moments can be calculated by means
-  of the flags \fdf{WriteMullikenPop} and \fdf{WriteOrbMom}.
-  % 
-\end{itemize}
+%%% *** Incompatible... \item LDA+U calculations~(See Sect.\ref{sec:lda+u} for further info).
 
-Note: Due to the small SO contribution to the total energy, the level
-of precision required to perform a proper fully relativistic
-calculation during the selfconsistent process is quite demanding. The
-following values must be carefully converged and checked for each
-specific system to assure that the results are accurate enough:
-\fdf{SCF.H!Tolerance} during the selfconsistency (typically between
-$10^{-3}\,\mathrm{eV}$ -- $10^{-4}\,\mathrm{eV}$),
-\fdf{ElectronicTemperature}, \textbf{k}--point sampling and high
-values of \fdf{MeshCutoff}~(specifically for extended solids). In
-general, one can say that a good calculation will have high number of
-\textbf{k}--points, low \fdf{ElectronicTemperature}, extremely small
-\fdf{SCF.H!Tolerance} and high values of \fdf{MeshCutoff}.  We
-encourage the user to test carefully these options for each system. An
-additional point to take into account is the mixing scheme
-employed. You are encouraged to use \fdf{SCF.Mix:Hamiltonian}
-(currently this is the default) instead of density matrix mixing,
-since it speeds up the convergence.  The pseudopotentials have to be
-properly generated and tested for each specific system and they have
-to be in their fully relativistic form, together with the non-linear
-core corrections. Finally it is worth to mention that the
+Note: Due to the small contribution of the spin--orbit interaction to
+the total energy, the level of precision required is quite high. The
+following parameters should be carefully checked for each
+specific system to assure that the results are converged and accurate enough:
+\fdf{SCF.H!Tolerance} during the selfconsistency~(typically
+<10$^{-4}$eV), \fdf{ElectronicTemperature}, \textbf{k}-point sampling,
+and \fdf{Mesh!Cutoff}~(specifically for extended
+solids). In general, one can say that a good calculation will have
+a high number of k--points, low \fdf{ElectronicTemperature}, very
+small \fdf{SCF.H!Tolerance} and high values of \fdf{Mesh!Cutoff}.  We
+encourage the user to test carefully these options for each system.
+
+An additional point to take into account when the spin--orbit
+contribution is included is the mixing scheme to use. You are
+encouraged to use the option to mix the Hamiltonian (\fdf{SCF.Mix} \fdf*{hamiltonian}) instead of the
+density matrix to speed up convergence. In addition, the pseudopotentials
+have to be well tested for each specific system. They 
+have to be generated in their fully relativistic form, and should use
+non-linear core corrections. Finally it is worth to mention that the
 selfconsistent convergence for some non-highly symmetric
 magnetizations directions with respect to the physical symmetry axis
 could still be difficult.
@@ -4187,7 +4392,7 @@ The current version introduces several changes:
   value of the changes in the entries of H, but its actual meaning
   depends on whether DM or H mixing is in effect: if mixing the DM,
   dHmax refers to the change in H(in) with respect to the previous
-  step; if mixing H, dHmax refers to H(out)-H(in) in the previous(?)
+  step; if mixing H, dHmax refers to H(out)-H(in) in the current
   step.
 
   \item When achieving convergence, the loop might be exited without a
@@ -4336,7 +4541,7 @@ by potentially saving many self-consistency steps in production runs.
 
 \begin{fdflogicalT}{SCF.Mix!First}
   \fdfindex*{DM.MixSCF1}[|see SCF.Mix.First]
-  \fdfreplace{DM.MixSCF1}%
+  \fdfdeprecates{DM.MixSCF1}%
   \fdfdepend{SCF.Mix!First.Force}%
 
   This flag is used to decide whether mixing (of the DM or H) should
@@ -4494,7 +4699,7 @@ $\RRes[i] = \Res[i] - \Res[i-1]$.
 \end{fdfentry}
 
 \begin{fdfentry}{SCF.Mixer!Weight}[real]<0.25>%
-  \fdfreplace{DM!MixingWeight}%
+  \fdfdeprecates{DM!MixingWeight}%
   \fdfindex*{DM!MixingWeight}[|see SCF.Mixer.Weight]
 
   The mixing weight used to mix the quantity.
@@ -4505,6 +4710,40 @@ $\RRes[i] = \Res[i] - \Res[i-1]$.
   For details regarding the other methods please see
   \fdf{SCF.Mixer!Method}.
 
+  Convergence of a system heavily depends on:
+  \begin{description}
+    \item[\fdf{SCF.Mixer!Weight}]
+
+    A high value retains much of the output solution, which may result
+    in leaving the convergence basin. However, when close to the
+    solution a high value might decrease needed SCF steps.
+
+    A low value only uses very little of the output solution. This may
+    result in high number of SCF steps but is more likely to
+    converge since it becomes harder for the solution to leave the
+    convergence basin.
+
+    This value is heavily system dependent.
+
+    \item[\fdf{SCF.Mixer!Method}]
+
+    The linear mixing is the only method that does not make use of 
+    prior steps, for hard to converge systems it should only be tried
+    with very low mixing weights.
+
+    The choice of method may result in some reduction of SCF steps,
+    but experimentation with the mixing weight is preferred as a first
+    resort.
+
+    \item[\fdf{SCF.Mixer!History}]
+
+    Number of previous steps to use for the mixing. A too low value
+    (say $2$ -- $6$) might change the convergence properties a
+    lot. While two different high values might not change the
+    convergence properties significantly, if at all.
+
+  \end{description}
+
   \note the older keyword \fdf{DM!MixingWeight} is used if this key is
   not found in the input.
 
@@ -4512,7 +4751,7 @@ $\RRes[i] = \Res[i] - \Res[i-1]$.
 
 
 \begin{fdfentry}{SCF.Mixer!History}[integer]<2>%
-  \fdfreplace{DM.NumberPulay,DM.NumberBroyden}%
+  \fdfdeprecates{DM.NumberPulay,DM.NumberBroyden}%
   \fdfindex*{DM.NumberPulay}[|see SCF.Mixer.History]%
   \fdfindex*{DM.NumberBroyden}[|see SCF.Mixer.History]
 
@@ -5439,11 +5678,11 @@ The Density matrix can be:
   polarized. The atoms not contemplated in the block will be given
   non-polarized initialization. 
 
-  For non-colinear spin, the spin direction may be specified for each
+  For non-collinear spin, the spin direction may be specified for each
   atom by the polar angle $\theta$ and the azimuthal angle $\phi$
   (using the physics ISO convention), given as the last two arguments
   in degrees. If not specified, $\theta=0$ is assumed
-  ($z$-polarized). \fdf{Spin} must be set to use non-colinear or
+  ($z$-polarized). \fdf{Spin} must be set to use non-collinear or
   spin-orbit for the directions to have effect.
 
   Example:
@@ -6129,7 +6368,7 @@ the issue (see Sec.~\ref{sec:filtering}).
   components to be introduced. They can be obtained by moving one
   isolated atom through the cell to be used in the calculation (for a
   give cell size, shape and mesh), once for each species.  The
-  Util/Scripting/eggbox\_checker.py script can be used as a starting
+  \program{Util/Scripting/eggbox\_checker.py} script can be used as a starting
   point for this.
 
 \end{fdfentry}
@@ -6199,6 +6438,12 @@ the issue (see Sec.~\ref{sec:filtering}).
   \siesta\ produces also an \sysfile*{HSX} file if the \fdf{COOP.Write} option
   is active.  \index{output!HSX file}
 
+
+  \note Since 5.0 the \sysfile{HSX} file format has changed to reduce
+  disk-space and store data in double precision. This means that the
+  file is not backward compatible and any external utilities should
+  adapt their \sysfile{HSX} file reading. See e.g. \program{Util/HSX}
+  for details on the new implementation.
 
   See also the \fdf{Write!DMHS.NetCDF} and \fdf{Write!DMHS.History.NetCDF}
   options.
@@ -6332,7 +6577,7 @@ system sizes) would not benefit from the O(N) or PEXSI solvers.
 
 
 \begin{fdfentry}{Diag!WFS.Cache}[string]<none|cdf>
-  \fdfreplace{UseNewDiagk}
+  \fdfdeprecates{UseNewDiagk}
 
   Specify whether \siesta\ should cache wavefunctions in the
   diagonalization routine. Without a cache, a standard two-pass
@@ -6420,6 +6665,7 @@ system sizes) would not benefit from the O(N) or PEXSI solvers.
 
 
 \begin{fdfentry}{Diag!Algorithm}[string]<Divide-and-Conquer|...>
+  \fdfdeprecates{Diag!DivideAndConquer,Diag!MRRR,Diag!ELPA,Diag!NoExpert}
 
   Select the algorithm when calculating the eigenvalues and/or
   eigenvectors.
@@ -6541,10 +6787,6 @@ system sizes) would not benefit from the O(N) or PEXSI solvers.
   compilation of the ELPA library. At present, detection of GPU
   support in the code is not fool-proof, so this flag should only be
   enabled if GPU support is indeed available.
-
-  At present, ELPA offers GPU support in the 'elpa-1' solver in
-  released versions, whereas GPU support for the 'elpa-2' solver has
-  not been released officially.
 
 \end{fdflogicalF}
 
@@ -6692,7 +6934,7 @@ if the \fdf{COOP.Write} option is in effect.
   $\vec k$ points, in the main output file.  If \fdffalse, it
   writes them in the file \sysfile{EIG}, which can be used
   by the \program{Eig2DOS}\index{Eig2DOS@\textsc{Eig2DOS}}
-  postprocessing utility (in the Util/Eig2DOS directory) for obtaining
+  postprocessing utility (in the \shell{Util/Eig2DOS} directory) for obtaining
   the density of states.\index{density of states}
 
   \note this option only works for \fdf{SolutionMethod} which
@@ -6798,7 +7040,7 @@ fixed, integer number of electrons at each k point/spin is
 allowed. Therefore, only spin-polarized calculations with
 \fdf{Spin!Fix} are allowed, and \fdf{Spin!Total} must be chosen
 appropriately. For non-$\Gamma$ point calculations, the number of
-electrons is set to be equal at all k points. Non-colinear
+electrons is set to be equal at all k points. Non-collinear
 calculations (see \fdf{Spin}) are not supported at present.
 The OMM implementation was initially developed by Fabiano Corsetti.
 
@@ -7213,17 +7455,22 @@ large systems has a much lower computational complexity than that
 associated with the matrix diagonalization procedure. It is also
 highly scalable.
 
-The PEXSI technique can be used to evaluate the electron density, free
+The PEXSI technique can be used in this version of \siesta\ to evaluate the electron density, free
 energy, atomic forces, density of states and local density of states
 without computing any eigenvalue or eigenvector of the Kohn-Sham
 Hamiltonian. It can achieve accuracy fully comparable to that obtained
 from a matrix diagonalization procedure for general systems, including
 metallic systems at low temperature.  
 
-The current implementation of the PEXSI solver in \siesta\ makes
-use of the full fine-grained-level interface in the PEXSI library
-(\url{http://pexsi.org}), and can deal with spin-polarization, but it
-is still restricted to $\Gamma$-point calculations. 
+The current implementation of the PEXSI solver in \siesta\ makes use
+of a full fine-grained-level interface to earlier versions (0.8.X and
+0.9.X) of the PEXSI library (\url{http://pexsi.org}), and can deal
+with spin-polarization, but it is still restricted to $\Gamma$-point
+calculations.  Newer versions of \siesta\ (in the Gitlab development
+site) can use the current PEXSI library through the ELSI library
+interface, which offers some more options, although not currently the
+density-of-states calculation.
+
 
 The following is a brief description of the input-file parameters
 relevant to the workings of the PEXSI solver. For more background,
@@ -7689,9 +7936,8 @@ Apart from the LDOS-specific options below, the ``ordering'',
 ``verbosity'', and ``symbolic factorization'' options are honored.
 
 The current version of the code generates a real-space grid file with
-extension \sysfile{LDSI}, and (if netCDF is compiled-in) a file
-\file{Rho.grid.nc} (which unfortunately will overwrite any other
-charge-density files produced in the same run).
+extension \sysfile{LDOS}, and (if netCDF is compiled-in) a file
+\file{LDOS.grid.nc}.
 
 NOTE: The LDOS computed with this procedure is not exactly the same as
 the vanilla \siesta\ LDOS, which uses an explicit energy
@@ -7702,6 +7948,8 @@ energy.
 \begin{fdflogicalF}{PEXSI!LDOS}
 
   Whether to compute the LDOS using the PEXSI technology.
+
+  \note this flag is not compatible with \fdf{LocalDensityOfStates}.
   
 \end{fdflogicalF}
 
@@ -7838,7 +8086,7 @@ kAtEndOfLastLine, kPointLabel \\
 
 \noindent
 The \program{gnubands}\index{gnubands@\texttt{gnubands}} postprocessing
-utility program (found in the Util/Bands directory) reads the
+utility program (found in the \shell{Util/Bands} directory) reads the
 \sysfile{bands} for plotting.  See the \fdf{BandLines} data
 descriptor above for more information.
 
@@ -7967,7 +8215,7 @@ convert to the old format.
 \noindent
 The \program{readwf}\index{readwf} and
 \program{readwfsx}\index{readwfsx} postprocessing utilities programs
-(found in the Util/WFS directory) read the \sysfile{WFS} or
+(found in the \shell{Util/WFS} directory) read the \sysfile{WFS} or
 \sysfile{WFSX} files, respectively, and generate a readable file.
 
 
@@ -8151,6 +8399,11 @@ obtain simple STM images in the Tersoff-Hamann approximation (See
   
   \note the two energies of the range must be ordered, with lowest
   first.
+
+  \note this flag is not compatible with \fdf{PEXSI!LDOS}.
+  
+  If netCDF support is compiled in, the file \file{LDOS.grid.nc} is
+  produced.
 
 \end{fdfentry}
 
@@ -8659,7 +8912,7 @@ References:
 {Maximally Localized Wannier Functions. \\
     Interface with the \textsc{wannier90} code}
 
-\program{wannier90} (http://www.wannier.org) is a code to generate
+\program{wannier90} (\url{http://www.wannier.org}) is a code to generate
 maximally localized wannier functions according to the original
 Marzari and Vanderbilt recipe.
 
@@ -9286,6 +9539,9 @@ Wannier.k [4 4 4]
   \textit{Use:} For example, the F$^-$ ion would have \fdf{NetCharge}
   \fdf*{-1} , and the Na$^+$ ion would have \fdf{NetCharge} \fdf*{1}.
   Fractional charges can also be used.
+
+  \note Doing non-neutral charge calculations with
+  \fdf{Slab.DipoleCorrection} is discouraged.
   
 \end{fdfentry}
 
@@ -9298,9 +9554,9 @@ Wannier.k [4 4 4]
   charge of the system, and adds a compensating background charge that
   makes the system neutral. This background charge is constant at
   points of the mesh near the atoms, and zero at points far from the
-  atoms.  This simulates situations like doped slabs, where the extra
-  electrons (holes) are compensated by oposite charges at the material
-  (the ionized dopant impurities), but not at the vacuum.  This serves
+  atoms. This simulates situations like doped slabs, where the extra
+  electrons (holes) are compensated by opposite charges at the material
+  (the ionized dopant impurities), but not at the vacuum. This serves
   to simulate properly doped systems in which there are large portions
   of vacuum, such as doped slabs.
 
@@ -9311,8 +9567,8 @@ Wannier.k [4 4 4]
 \begin{fdfentry}{ExternalElectricField}[block]
   
   It specifies an external electric field for molecules, chains and
-  slabs.  The electric field should be orthogonal to `bulk
-  directions', like those parallel to a slab (bulk electric fields,
+  slabs. The electric field should be orthogonal to ``bulk
+  directions'', like those parallel to a slab (bulk electric fields,
   like in dielectrics or ferroelectrics, are not allowed). If it is
   not, an error message is issued and the components of the field in
   bulk directions are suppressed automatically. The input is a vector
@@ -9325,37 +9581,166 @@ Wannier.k [4 4 4]
 
   Starting with version 4.0, applying an electric field perpendicular
   to a slab will by default enable the slab dipole correction, see
-  \fdf{SlabDipoleCorrection}. To reproduce older calculations, set
+  \fdf{Slab.DipoleCorrection}. To reproduce older calculations, set
   this correction option explicitly to \fdffalse\ in the input file.
+
+  When examining a variety of electric fields it may be highly
+  advantageous to re-use the \sysfile{DM} from a previous calculation
+  with an electric field close to the current one.
 
 \end{fdfentry}
 
-\begin{fdflogicalF}{SlabDipoleCorrection}
+\begin{fdfentry}{Slab.DipoleCorrection}[string]<?|\fdftrue|\fdffalse|charge|vacuum|none>
+  \fdfdepend{ExternalElectricField}%
   
-  If \fdftrue, \siesta\ calculates the electric field required to
+  If not \fdffalse, \siesta\ calculates the electric field required to
   compensate the dipole of the system at every iteration of the
-  self-consistent cycle. The potential added to the grid corresponds
-  to that of a dipole layer at the middle of the vacuum layer. For
-  slabs, this exactly compensates the electric field at the vacuum
-  created by the dipole moment of the system, thus allowing to treat
-  asymmetric slabs (including systems with an adsorbate on one
-  surface) and compute properties such as the work funcion of each of
-  the surfaces.
+  self-consistent cycle.
 
-  NOTE: If the program is fed a starting density matrix from an
+  The dipole correction only works for Fourier transformed Poisson
+  solutions of the Hartree potential since that will introduce a
+  compensating field in the vacuum region to counter any inherent
+  dipole in the system. Do not use this option together with
+  \fdf{NetCharge} (charged systems).
+
+  There are two ways of calculating the dipole of the system:
+  \begin{fdfoptions}
+
+    \option[charge|\fdftrue]%
+    \fdfindex*{Slab.DipoleCorrection:charge}%
+
+    The dipole of the system is calculated via
+    \begin{equation}
+      \mathbf D = - e \int(\mathbf r - \mathbf r_0) \delta\boldsymbol\rho(\mathbf r)
+    \end{equation}
+    where $\mathbf r_0$ is the dipole origin, see \fdf{Slab.DipoleCorrection!Origin},
+    and $\delta\boldsymbol\rho$ is valence pseudocharge density minus
+    the atomic valence pseudocharge densities.
+
+    \option[vacuum]%
+    \fdfindex*{Slab.DipoleCorrection:vacuum}%
+
+    The electric field of the system is calculated via
+    \begin{equation}
+      \mathbf E \propto \left.\iint \mathrm d \mathbf r_{\perp \mathbf D} V(\mathbf
+        r)\right|_{\mathbf r_{\mathrm{vacuum}}}
+    \end{equation}
+    where $\mathbf r_{\mathrm{vacuum}}$ is a point located in the
+    vacuum region, see \fdf{Slab.DipoleCorrection!Vacuum}. Once the field is
+    determined it is converted to an intrinsic system dipole.
+
+    This feature is mainly intended for \fdf{Geometry!Charge}
+    calculations where \fdf{Slab.DipoleCorrection:charge} may fail if the dipole
+    center is determined incorrectly.
+
+    For regular systems both this and \fdf*{charge} should yield
+    approximately (down to numeric precision) the same dipole moments.
+
+  \end{fdfoptions}
+
+  The dipole correction should exactly compensate the electric field
+  at the vacuum level thus allowing one to treat asymmetric slabs
+  (including systems with an adsorbate on one surface) and compute
+  properties such as the work funcion of each of the surfaces.
+
+  \note If the program is fed a starting density matrix from an
   uncorrected calculation (i.e., with an exagerated dipole), the first
   iteration might use a compensating field that is too big, with the
   risk of taking the system out of the convergence basin. In that
-  case, it is advisable to use the
-  \fdf{SCF.Mix!First}\index{Slab dipole correction} option to request a mix of the input and
+  case, it is advisable to use the \fdf{SCF.Mix!First}\index{Slab
+      dipole correction} option to request a mix of the input and
   output density matrices after that first iteration.
 
-  See \shell{Tests/sic-slab}.
+  \note \fdf*{charge} and \fdf*{vacuum} will for many systems yield
+  the same result. If in doubt try both and see which one gives the
+  best result.
+
+  See \shell{Tests/sic-slab}, \shell{Tests/h2o\_2\_dipol\_gate}.
 
   This will default to \fdftrue\ if an external field is applied to a
   slab calculation, otherwise it will default to \fdffalse.
 
-\end{fdflogicalF}
+\end{fdfentry}
+
+\begin{fdfentry}{Slab.DipoleCorrection!Origin}[block]
+  \fdfdepend{Slab.DipoleCorrection:charge}
+
+  Specify the origin of the dipole in the calculation of the dipole
+  from the charge distribution.
+
+  Its format is
+  \begin{fdfexample}
+     %block Slab.DipoleCorrection.Origin
+        0.000  10.000  0.500  Ang
+     %endblock
+  \end{fdfexample}
+
+  If this block is not specified the origin of the dipole will be the
+  average position of the atoms.
+
+  \note this will only be read if \fdf{Slab.DipoleCorrection:charge}
+  is used.
+  %
+  \note this should only affect calculations with
+  \fdf{Geometry!Charge} due to the non-trivial dipole origin, see
+  e.g. \shell{Tests/h2o\_2\_dipol\_gate} and try and see if you can
+  manually place the dipole origin to achieve similar results as the
+  vacuum method.
+
+\end{fdfentry}
+
+\begin{fdfentry}{Slab.DipoleCorrection!Vacuum}[block]
+  \fdfdepend{Slab.DipoleCorrection:vacuum}
+
+  Options for the vacuum field determination.
+
+  \begin{fdfoptions}
+
+    \option[direction]%
+
+    Mandatory input for chain and molecule calculations.
+
+    Specify along which direction we should determine the electric
+    field/dipole.
+
+    For slabs this defaults to the non-bulk direction.
+
+    \option[position]%
+
+    Specify a point in the vacuum region.
+
+    Defaults to the vacuum region based on the atomic coordinates.
+
+    \option[tolerance]%
+
+    Tolerance for determining whether we are in a vacuum region.
+    The premise of the electric field calculation in the vacuum region
+    is that the derivative of the potential ($\mathbf E$) is
+    flat. When the electric field changes by more than this tolerance
+    the region is not vacuum anymore and the point is disregarded.
+
+    Defaults to $10^{-4}\,\mathrm{eV/Ang/e}$.
+
+  \end{fdfoptions}
+
+  Its format is
+  \begin{fdfexample}
+     %block Slab.DipoleCorrection.Vacuum
+        # this is optional
+        # default position is the center of system + 0.5 lattice vector
+        # along 'direction'
+        position 0.000  10.000  0.500  Ang
+        # this is optional
+        # default is 1e-4 eV/Ang/e
+        tolerance 0.001 eV/Ang/e
+        # this is mandatory
+        direction 0.000  1.000  0.
+     %endblock
+  \end{fdfexample}
+
+  \note this will only be read if \fdf{Slab.DipoleCorrection:vacuum} is used.
+
+\end{fdfentry}
 
 
 \begin{fdfentry}{Geometry!Hartree}[block]%
@@ -9376,7 +9761,7 @@ Wannier.k [4 4 4]
   \begin{fdfoptions}
     
 
-    \option[Infinite plane]%
+     \option[Infinite plane]%
     \index{Gate!infinite plane}%
 
     Define a geometry by an infinite plane which cuts the unit-cell.
@@ -9517,7 +9902,8 @@ Wannier.k [4 4 4]
 
   To see how the input should be formatted, see
   \fdf{Geometry!Hartree} and remove the unit-specification. Note that
-  the input value is number of electrons (similar to \fdf{NetCharge}).
+  the input value is number of electrons (similar to \fdf{NetCharge},
+  however this method ensures charge-neutrality).
 
   Details regarding this implementation may be found in
   \citet{Papior2016a}.
@@ -9676,6 +10062,26 @@ an alternative way to plot the charge density (and wavefunctions).
 
 \end{fdflogicalF}
 
+\begin{fdfentry}{SaveGridFunc.Format}[string]<binary>
+  \index{output!charge density}
+
+  Format of the (requested) output files \sysfile{RHO}, 
+\sysfile{DRHO}, \sysfile{RHOXC}, 
+\sysfile{VH}, \sysfile{VNA}, \sysfile{VT}, \sysfile{IOCH}, and
+\sysfile{TOCH}. 
+  The options are
+\begin{itemize}
+\item
+ascii : ASCII text format
+\item
+binary : unformatted (machine dependent)
+\end{itemize}
+
+  \note ASCII files require much more space than binary and NetCDF files. 
+Consider using the tools in \shell{Util/Grid} to translate between formats.
+  
+\end{fdfentry}
+
 \begin{fdflogicalF}{SaveBaderCharge}
   \index{output!Bader charge}
 
@@ -9742,6 +10148,7 @@ an alternative way to plot the charge density (and wavefunctions).
 \end{fdflogicalF}
 
 \begin{fdflogicalF}{SaveInitialChargeDensity}
+  \fdfdeprecatedby{AnalyzeChargeDensityOnly}
   \index{output!charge density}
 
   If \fdftrue, the program generates a \sysfile{RHOINIT}
@@ -9876,9 +10283,24 @@ used for that.
   should be divided so that the number of mesh points per processor
   along each axis is as similar as possible.
 
-  Defaults to a multiple of number of processors.
+  Defaults to a value set automatically by the program. There are two
+  methods. The default is to set \fdf{ProcessorY} to a factor of the
+  number of processors which takes into account the relative sizes of
+  the second and third lattice vectors. An older method based only on
+  searching for factors of the number of processors in the set
+  \{2,3,5\} can be enabled by the following option.
 
 \end{fdfentry}
+
+\begin{fdflogicalF}{FFT!ProcessorY!Traditional}
+  \index{ProcessorY}  
+
+  If \fdftrue, the program sets the default value for the FFT
+  ProcessorY variable by searching for factors of the total number of
+  processors in the set \{2,3,5\}. Note that this default value can
+  still be overridden by setting \fdf{ProcessorY} explicitly.
+
+\end{fdflogicalF}
 
 
 \subsubsection{Parallel decompositions for O(N)}
@@ -10318,7 +10740,7 @@ implemented, selected by
   Appart from being able to act as a force subroutine for a driver
   program that uses module fsiesta, \siesta\ is also prepared to
   communicate with the i-PI code (see
-  \texttt{http://epfl-cosmo.github.io/gle4md/index.html?page=ipi}).
+  \url{https://github.com/i-pi/i-pi}).
   To do this, \siesta\ must be started after i-PI (it acts as a client
   of i-PI, communicating with it through Inet or Unix sockets), and
   the following lines must be present in the .fdf data file:
@@ -10386,8 +10808,8 @@ misleading but kept for historical reasons.
   If \fdftrue, the lattice is relaxed together with the atomic
   coordinates. It allows to target hydrostatic pressures or arbitrary
   stress tensors. See \fdf{MD.MaxStressTol},
-  \fdf{MD.TargetPressure}, \fdf{MD.TargetStress},
-  \fdf{MD.ConstantVolume}, and
+  \fdf{Target!Pressure}, \fdf{Target!Stress.Voigt},
+  \fdf{Constant!Volume}, and
   \fdf{MD.PreconditionVariableCell}.
 
   \note only compatible with \fdf{MD.TypeOfRun:CG},
@@ -10396,7 +10818,9 @@ misleading but kept for historical reasons.
 \end{fdflogicalF}
 
 
-\begin{fdflogicalF}{MD.ConstantVolume}
+\begin{fdflogicalF}{Constant!Volume}
+  \fdfindex*{MD.ConstantVolume}
+  \fdfdeprecates{MD.ConstantVolume}%
   \index{constant-volume cell relaxation} 
 
   If \fdftrue, the cell volume is kept constant in a variable-cell
@@ -10404,7 +10828,7 @@ misleading but kept for historical reasons.
   allowed to change.  Note that it does not make much sense to specify
   a target stress or pressure in this case, except for anisotropic
   (traceless) stresses.  See \fdf{MD.VariableCell},
-  \fdf{MD.TargetStress}.
+  \fdf{Target.Stress.Voigt}.
 
   \note only compatible with \fdf{MD.TypeOfRun:CG},
   \fdf*{Broyden} or \fdf*{fire}.
@@ -10452,7 +10876,7 @@ misleading but kept for historical reasons.
 
 \begin{fdfentry}{MD.Steps}[integer]<0>
   \fdfindex*{MD.NumCGsteps}
-  \fdfreplace{MD.NumCGsteps}
+  \fdfdeprecates{MD.NumCGsteps}
   
   Maximum number of steps in a minimization routine
   (the minimization will stop if tolerance is reached before; see
@@ -10465,7 +10889,7 @@ misleading but kept for historical reasons.
 
 \begin{fdfentry}{MD.MaxDispl}[length]<$0.2\,\mathrm{Bohr}$>
   \fdfindex*{MD.MaxCGDispl}
-  \fdfreplace{MD.MaxCGDispl}
+  \fdfdeprecates{MD.MaxCGDispl}
   
   Maximum atomic displacements in an optimization move.
 
@@ -10679,7 +11103,9 @@ of MD steps requested (this is arguably a bug).
 Useful for structural optimizations and constant-pressure molecular
 dynamics.
 
-\begin{fdfentry}{MD.TargetPressure}[pressure]<$0\,\mathrm{GPa}$>
+\begin{fdfentry}{Target!Pressure}[pressure]<$0\,\mathrm{GPa}$>
+  \fdfindex*{MD.TargetPressure}
+  \fdfdeprecates{MD.TargetPressure}
   
   Target pressure for Parrinello-Rahman method, variable cell
   optimizations, and annealing options.
@@ -10692,22 +11118,32 @@ dynamics.
 \end{fdfentry}
 
 
-\begin{fdfentry}{MD.TargetStress}[block]<$-1 -1 -1 0 0 0$>
+\begin{fdfentry}{Target!Stress.Voigt}[block]<$-1$ $-1$ $-1$ $0$ $0$ $0$>
+  \fdfdeprecates{MD.TargetStress}
   
   External or target stress tensor for variable cell optimizations.
-  Stress components are given in a line, in the order \texttt{xx, yy,
-      zz, xy, xz, yz}. In units of \fdf{MD.TargetPressure}, but
+  Stress components are given in a line, in the Voigt order \texttt{xx, yy,
+      zz, yz, xz, xy}. In units of \fdf{Target!Pressure}, but
   with the opposite sign. For example, a uniaxial compressive stress
   of 2 GPa along the 100 direction would be given by
   \begin{fdfexample}
-     MD.TargetPressure  2. GPa
-     %block MD.TargetStress
+     Target.Pressure  2. GPa
+     %block Target.Stress.Voigt
          -1.0  0.0  0.0  0.0  0.0  0.0
-     %endblock MD.TargetStress
+     %endblock
   \end{fdfexample}
 
   Only used if \fdf{MD.TypeOfRun} is \fdf*{CG}, \fdf*{Broyden} or
   \fdf*{FIRE} and \fdf{MD.VariableCell} is \fdftrue.
+
+\end{fdfentry}
+
+\begin{fdfentry}{MD.TargetStress}[block]<$-1$ $-1$ $-1$ $0$ $0$ $0$>
+  \fdfdeprecatedby{Target!Stress.Voigt}
+
+  Same as \fdf{Target!Stress.Voigt} but the order is same as older
+  \siesta\ version (prior to 4.1). Order is \texttt{xx, yy, zz, xy,
+      xz, yz}.
 
 \end{fdfentry}
 
@@ -10729,6 +11165,11 @@ dynamics.
   If the intra-molecular stress is removed, the corrected static and
   total stresses are printed in addition to the uncorrected items.
   The corrected Voigt form is also printed.
+
+  \note versions prior to 4.1 (also 4.1-beta releases) printed the
+  Voigt stress-tensor in this format: \shell{[x, y, z, xy, yz,
+      xz]}. In 4.1 and later \siesta\ \emph{only} show the correct
+  Voigt representation: \shell{[x, y, z, yz, xz, xy]}.
 
 \end{fdflogicalF}
 
@@ -10984,7 +11425,7 @@ to re-use dynamical information from old runs.
 This restart fix is not satisfactory from a fundamental point of view,
 so the MD subsystem in Siesta will have to be redesigned
 eventually. In the meantime, users are reminded that the scripting
-hooks being steadily introduced (see Util/Scripting) might be used to
+hooks being steadily introduced (see \shell{Util/Scripting}) might be used to
 create custom-made MD scripts.
 
 
@@ -11309,32 +11750,37 @@ the forces in the $x$, $y$ and $z$ direction for one of the atoms.
 If constraints are used, the file \sysfile{FCC} is also written.
 
 
-\section{LDA+U}
+\section{DFT+U}
 \label{sec:lda+u}
 
-Important note: Current implementation is based on the simplified
-rotationally invariant LDA+U formulation of Dudarev and collaborators
-[see, Dudarev \textit{et al.}, Phys. Rev. B \textbf{57}, 1505 (1998)].
-Although the input allows to define independent values of the U and J
+\note This implementation works for both LDA and GGA, hence named
+DFT+U in the main text.
+
+\note Current implementation is based on the simplified rotationally
+invariant DFT+U formulation of Dudarev and collaborators [see, Dudarev
+\textit{et al.}, Phys. Rev. B \textbf{57}, 1505 (1998)].  Although the
+input allows to define independent values of the $U$ and $J$
 parameters for each atomic shell, in the actual calculation the two
 parameters are combined to produce an effective Coulomb repulsion
 $U_{\mathrm{eff}}=U-J$. $U_{\mathrm{eff}}$ is the parameter actually
 used in the calculations for the time being.
 
+
 For large or intermediate values of $U_{\mathrm{eff}}$ the convergence
 is sometimes difficult. A step-by-step increase of the
 value of $U_{\mathrm{eff}}$ can be advisable in such cases.
 
-Currently, the LDA+U implementation does not support non-colinear, nor
+Currently, the DFT+U implementation does not support non-collinear, nor
 spin-orbit coupling.
 
-\begin{fdfentry}{LDAU.ProjectorGenerationMethod}[integer]<2>
+\begin{fdfentry}{DFTU!ProjectorGenerationMethod}[integer]<2>
+  \fdfindex{LDAU!ProjectorGenerationMethod}%
   
-  Generation method of the LDA+U projectors. The LDA+U projectors are
+  Generation method of the DFT+U projectors. The DFT+U projectors are
   the localized functions used to calculate the local populations used
   in a Hubbard-like term that modifies the LDA Hamiltonian and
-  energy. It is important to recall that LDA+U projectors should be
-  quite localized functions.  Otherwise the calculated populations
+  energy. It is important to recall that DFT+U projectors should be
+  quite localized functions. Otherwise the calculated populations
   loose their atomic character and physical meaning. Even more
   importantly, the interaction range can increase so much that
   jeopardizes the efficiency of the calculation.
@@ -11345,53 +11791,56 @@ spin-orbit coupling.
     Projectors are slightly-excited numerical atomic orbitals similar
     to those used as an automatic basis set by \siesta.  The radii of
     these orbitals are controlled using the parameter
-    \fdf{LDAU.EnergyShift} and/or the data included in the block
-    \fdf{LDAU.Proj} (quite similar to the data block \fdf{PAO.Basis}
+    \fdf{DFTU!EnergyShift} and/or the data included in the block
+    \fdf{DFTU!Proj} (quite similar to the data block \fdf{PAO.Basis}
     used to specify the basis set, see below).
 
     \option[2]%
     Projectors are exact solutions of the pseudoatomic problem (and,
     in principle, are not strictly localized) which are cut using a
     Fermi function $1/\{1+\exp[(r-r_c)\omega]\}$.  The values of $r_c$
-    and $\omega$ are controlled using the parameter \fdf{LDAU.CutoffNorm}
-    and/or the data included in the block \fdf{LDAU.Proj}.
+    and $\omega$ are controlled using the parameter \fdf{DFTU!CutoffNorm}
+    and/or the data included in the block \fdf{DFTU!Proj}.
 
   \end{fdfoptions}
 
 \end{fdfentry}
 
-\begin{fdfentry}{LDAU.EnergyShift}[energy]<$0.05\,\mathrm{Ry}$>
-  
-  Energy increase used to define the localization radius of the LDA+U
+\begin{fdfentry}{DFTU!EnergyShift}[energy]<$0.05\,\mathrm{Ry}$>
+  \fdfindex{LDAU!EnergyShift}%
+
+  Energy increase used to define the localization radius of the DFT+U
   projectors (similar to the parameter \fdf{PAO.EnergyShift}).
 
-  \note only used when \fdf{LDAU.ProjectorGenerationMethod} is \fdf*{1}.
+  \note only used when \fdf{DFTU!ProjectorGenerationMethod} is \fdf*{1}.
 
 \end{fdfentry}
 
-\begin{fdfentry}{LDAU.CutoffNorm}[real]<$0.9$>
-  
+\begin{fdfentry}{DFTU!CutoffNorm}[real]<$0.9$>
+  \fdfindex{LDAU!CutoffNorm}%
+
   Parameter used to define the value of $r_c$ used in the Fermi
-  distribution to cut the LDA+U projectors generated according to
-  generation method 2 (see above). \fdf{LDAU.CutoffNorm} is the norm of the
+  distribution to cut the DFT+U projectors generated according to
+  generation method 2 (see above). \fdf{DFTU!CutoffNorm} is the norm of the
   original pseudoatomic orbital contained inside a sphere of radius
   equal to $r_c$.
 
-  \note only used when \fdf{LDAU.ProjectorGenerationMethod} is \fdf*{2}.
+  \note only used when \fdf{DFTU!ProjectorGenerationMethod} is \fdf*{2}.
 
 \end{fdfentry}
 
 
-\begin{fdfentry}{LDAU.Proj}[block]
+\begin{fdfentry}{DFTU!Proj}[block]
+  \fdfindex{LDAU!Proj}%
   
-  Data block used to specify the LDA+U projectors.
+  Data block used to specify the DFT+U projectors.
 
   \begin{itemize}
     \item%
-    If \fdf{LDAU.ProjectorGenerationMethod} is \fdf*{1}, the
+    If \fdf{DFTU!ProjectorGenerationMethod} is \fdf*{1}, the
     syntax is as follows:
     \begin{fdfexample}
-%block LDAU.Proj      # Define LDA+U projectors
+%block DFTU.Proj      # Define DFT+U projectors
  Fe    2              # Label, l_shells
   n=3 2  E 50.0 2.5   # n (opt if not using semicore levels),l,Softconf(opt)
       5.00  0.35      # U(eV), J(eV) for this shell
@@ -11399,15 +11848,15 @@ spin-orbit coupling.
       0.95            # scaleFactor (opt)
       0               #    l
       1.00  0.05      # U(eV), J(eV) for this shell
-      0.00            # rc(Bohr) (if 0, automatic r_c from LDAU.EnergyShift)
-%endblock LDAU.Proj
+      0.00            # rc(Bohr) (if 0, automatic r_c from DFTU.EnergyShift)
+%endblock DFTU.Proj
    \end{fdfexample}
 
     \item%
-    If \fdf{LDAU.ProjectorGenerationMethod} is \fdf*{2}, the
+    If \fdf{DFTU!ProjectorGenerationMethod} is \fdf*{2}, the
     syntax is as follows:
     \begin{fdfexample}
-%block LDAU.Proj      # Define LDAU projectors
+%block DFTU.Proj      # Define DFTU projectors
  Fe    2              # Label, l_shells
   n=3 2  E 50.0 2.5   # n (opt if not using semicore levels),l,Softconf(opt)
       5.00  0.35      # U(eV), J(eV) for this shell
@@ -11415,27 +11864,28 @@ spin-orbit coupling.
       0.95            # scaleFactor (opt)
       0               #    l
       1.00  0.05      # U(eV), J(eV) for this shell
-      0.00  0.00      # rc(Bohr), \omega(Bohr) (if 0 r_c from LDAU.CutoffNorm
-%endblock LDAU.Proj   #                         and \omega from default value)
+      0.00  0.00      # rc(Bohr), \omega(Bohr) (if 0 r_c from DFTU.CutoffNorm
+%endblock DFTU.Proj   #                         and \omega from default value)
     \end{fdfexample}
   \end{itemize}
   
   Certain of the quantites have default values:
 
   \begin{tabular}{cc}
-    U & \fdf*{0.0 eV} \\
-    J & \fdf*{0.0 eV} \\
+    $U$ & \fdf*{0.0 eV} \\
+    $J$ & \fdf*{0.0 eV} \\
     $\omega$ & \fdf*{0.05 Bohr} \\
     Scale factor & \fdf*{1.0}
   \end{tabular}
 
-  $r_c$ depends on \fdf{LDAU.EnergyShift} or \fdf{LDAU.CutoffNorm}
+  $r_c$ depends on \fdf{DFTU!EnergyShift} or \fdf{DFTU!CutoffNorm}
   depending on the generation method.
 
 \end{fdfentry}
 
-\begin{fdflogicalF}{LDAU.FirstIteration}
-  
+\begin{fdflogicalF}{DFTU!FirstIteration}
+  \fdfindex{LDAU!FirstIteration}%
+
   If \fdftrue, local populations are calculated and Hubbard-like term
   is switch on in the first iteration.  Useful if restarting a
   calculation reading a converged or an almost converged density
@@ -11443,28 +11893,31 @@ spin-orbit coupling.
 
 \end{fdflogicalF}
 
-\begin{fdfentry}{LDAU.ThresholdTol}[real]<$0.01$>
+\begin{fdfentry}{DFTU!ThresholdTol}[real]<$0.01$>
+  \fdfindex{LDAU!ThresholdTol}%
   
   Local populations only calculated and/or updated if the change in the
-  density matrix elements (dDmax) is lower than \fdf{LDAU.ThresholdTol}.
+  density matrix elements (dDmax) is lower than \fdf{DFTU!ThresholdTol}.
 
 \end{fdfentry}
 
-\begin{fdfentry}{LDAU.PopTol}[real]<$0.001$>
-  
-  Convergence criterium for the LDA+U local populations.  In the
+\begin{fdfentry}{DFTU!PopTol}[real]<$0.001$>
+  \fdfindex{LDAU!PopTol}%
+
+  Convergence criterium for the DFT+U local populations. In the
   current implementation the Hubbard-like term of the Hamiltonian is
   only updated (except for the last iteration) if the variations of
   the local populations are larger than this value.
 
 \end{fdfentry}
 
-\begin{fdflogicalF}{LDAU.PotentialShift}
+\begin{fdflogicalF}{DFTU!PotentialShift}
+  \fdfindex{LDAU!PotentialShift}%
 
   If set to \fdftrue, the value given to the $U$ parameter in the
   input file is interpreted as a local potential shift. Recording the
   change of the local populations as a function of this potential
-  shift, we can calculate the appropriate value of U for the system
+  shift, we can calculate the appropriate value of $U$ for the system
   under study following the methology proposed by Cococcioni and
   Gironcoli in Phys. Rev. B \textbf{71}, 035105 (2005).
 
@@ -11618,6 +12071,7 @@ instantaneous time-dependent density is saved. May require a lot of
 disk space.
 
 \end{fdfentry}
+
 
 \section{External control of \texorpdfstring{\siesta}{SIESTA}}
 \label{sec:lua}
@@ -12514,6 +12968,44 @@ One have to set \fdf{SolutionMethod} to \fdf*{transiesta} to enable
 
 \end{fdfentry}
 
+\begin{fdfentry}{TS!SCF!DM.Tolerance}[real]<\fdfvalue{SCF.DM!Tolerance}>%
+  \fdfdepend{SCF.DM!Tolerance,SCF.DM!Converge}
+
+  The density matrix tolerance for the \tsiesta\ SCF cycle.
+
+\end{fdfentry}
+
+\begin{fdfentry}{TS!SCF!H.Tolerance}[energy]<\fdfvalue{SCF.H!Tolerance}>%
+  \fdfdepend{SCF.H!Tolerance,SCF.H!Converge}
+
+  The Hamiltonian tolerance for the \tsiesta\ SCF cycle.
+
+\end{fdfentry}
+
+\begin{fdflogicalT}{TS!SCF!dQ.Converge}
+
+  Whether \tsiesta\ should check whether the total charge is within a
+  provided tolerance, see \fdf{TS!SCF!dQ.Tolerance}.
+
+\end{fdflogicalT}
+
+\begin{fdfentry}{TS!SCF!dQ.Tolerance}[real]<$\mathrm{Q(device)}\cdot 10^{-3}$>%
+  \fdfdepend{TS!SCF!dQ.Converge}
+  
+  The charge tolerance during the SCF.
+
+  The charge is not stable in \tsiesta\ calculations and this flag
+  ensures that one does not, by accident, do post-processing of files
+  where the charge distribution is completely wrong.
+
+  A too high tolerance may heavily influence the electrostatics of the
+  simulation.
+
+  \note Please see \fdf{TS!dQ} for ways to reduce charge loss in
+  equilibrium calculations.
+
+\end{fdfentry}
+
 \begin{fdfentry}{TS!SCF.Initialize}[string]<diagon|transiesta>%
 
   Control which initial guess should be used for \tsiesta. The general
@@ -12713,6 +13205,9 @@ ts-q:   436.147   392.146     3.871   392.146     3.871  7.996E-3
   Any excess/deficiency of charge can be re-adjusted after each
   \tsiesta\ cycle to reduce charge fluctuations in the cell.
 
+  \note recommended to \emph{only} use charge corrections for
+  $0\,\mathrm{V}$ calculations.
+
   The non-neutral charge in \tsiesta\ cycles is an expression of one
   of the following things:
   \begin{enumerate}
@@ -12773,9 +13268,6 @@ Total charge                  [Q]  :   395.9995
 
     \item A combination of the above, this is the typical case.
   \end{enumerate}
-
-  \note we recommend only to use charge corrections for
-  $0\,\mathrm{V}$ calculations. 
 
   \begin{fdfoptions}
 
@@ -13359,6 +13851,10 @@ electrodes in a generic input format.
     If \fdf{TS!Elec.<>!Bulk:true} this defaults to \fdf*{cross-terms},
     but may be changed.
 
+    \note if this is \fdf*{none} the forces on the atoms coupled to
+    the electrode regions are \emph{not} to be trusted. The value
+    \fdf*{none} should be avoided, if possible.
+
     \option[DM-init]%
     \fdfindex*{TS!Elec.<>!DM-init}%
     \fdfindex*{TS!Elec.<>!DM-init:diagon}%
@@ -13937,11 +14433,15 @@ The bias contour is similarly defined as the equilibrium
 contours. Please use the \program{Util/TS/tselecs.sh} as a means to
 create default input blocks.
 
-\begin{fdfentry}{TS!Contours.nEq!Eta}[energy]<$0\,\mathrm{eV}$>
+\begin{fdfentry}{TS!Contours.nEq!Eta}[energy]<$\operatorname{min}[\eta_{\mathfrak e}]/10$>
+  \fdfdepend{TS!Elecs!Eta}%
 
-  The imaginary part ($\eta$) of the device states. Generally this is
-  not necessary to define as the imaginary part naturally arises from
-  the self-energies (where $\eta>0$).
+  The imaginary part ($\eta$) of the device states. While this may be
+  set to $0$ for most systems it defaults to the minimum $\eta$ value
+  for the electrodes ($\operatorname{min}[\eta_{\mathfrak
+      e}]/10$). This ensures that the device broadening is always
+  smaller than the electrodes while allowing broadening of localized
+  states.
 
 \end{fdfentry}
 
@@ -14056,7 +14556,7 @@ of the most commonly encountered things.
 
 In the \texttt{Util/Scripting} directory we provide an experimental
 python scripting framework built on top of the ``Atomic Simulation
-Environment'' (see \texttt{https://wiki.fysik.dtu.dk/ase2}) by the Campos
+Environment'' (see \url{https://wiki.fysik.dtu.dk/ase}) by the CAMD
 group at DTU, Denmark.
 
 (NOTE: ``ASE version 2'', not the new version 3, is needed)
@@ -14113,10 +14613,11 @@ any problem, or would like to offer a suggestion for improvement,
 please follow the instructions in the file
 \texttt{Docs/REPORTING\_BUGS}. 
 
-Since \siesta\ has moved to Launchpad you are encouraged to follow the
-instructions presented at:
-\url{https://answers.launchpad.net/siesta/+faq/2779}.
-
+Since \siesta\ has moved to
+\url{https://gitlab.com/siesta-project/siesta} you are encouraged to
+follow the instructions by pressing ``New Issue'' and selecting
+``Bug'' in the Description drop-down. Also please follow the debug
+build options, see Sec.~\ref{sec:build:debug}
 
 
 \section{ACKNOWLEDGMENTS}
@@ -14290,11 +14791,11 @@ graphically rich, fashion. This section will explain how to do this.
 
 \subsection{Controlling XML output}
 
-\begin{fdflogicalT}{XML!Write}
+\begin{fdflogicalF}{XML!Write}
 
   Determine if the main XML file should be created for this run.
   
-\end{fdflogicalT}
+\end{fdflogicalF}
 
 \subsection{Converting XML to XHTML}
 

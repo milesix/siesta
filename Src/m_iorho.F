@@ -24,6 +24,7 @@
       use parallel,     only : Node, ProcessorY
       use sys,          only : die
       use alloc,        only : re_alloc, de_alloc
+      use fdf,          only : fdf_get, leqi
 #ifdef MPI
       use mpi_siesta
       use parallel,     only : Nodes
@@ -31,8 +32,6 @@
 #endif
 
       implicit          none
-
-      character(len=*), parameter  :: fform = "unformatted"
 
       public :: write_rho, read_rho, check_rho
          
@@ -69,6 +68,7 @@ C records.
       external          io_assign, io_close, memory
 
 C Internal variables and arrays
+      character(len=12):: fform, fileFormat
       integer    i, ip, iu, is, j, np,
      .           BlockSizeY, BlockSizeZ, ProcessorZ,
      .           meshnsm(3), NRemY, NRemZ,
@@ -97,6 +97,16 @@ C Work out density block dimensions
 #else
       ProcessorZ = 1
 #endif
+
+C Find file format
+      fileFormat = fdf_get('SaveGridFunc.Format','binary')
+      if (leqi(fileFormat,'ASCII')) then
+        fform = 'formatted'
+      elseif (leqi(fileFormat,'binary')) then
+        fform = 'unformatted'
+      else
+        return
+      endif
 
       call re_alloc( temp, 1, mesh(1), 'temp', 'write_rho' )
 C Open file
@@ -281,6 +291,7 @@ C Arguments
       external          io_assign, io_close, memory
 
 C Internal variables and arrays
+      character(len=12) :: fform, fileFormat
       integer    ip, iu, is, np, ns, 
      .           BlockSizeY, BlockSizeZ, ProcessorZ,
      .           meshnsm(3), npl, NRemY, NRemZ,
@@ -314,6 +325,16 @@ C Check if input file exists
           inquire( file=fname, exist=found )
           if (.not. found) call die("Cannot find file " // trim(fname))
         endif
+
+C Find file format
+      fileFormat = fdf_get('SaveGridFunc.Format','binary')
+      if (leqi(fileFormat,'ASCII')) then
+        fform = 'formatted'
+      elseif (leqi(fileFormat,'binary')) then
+        fform = 'unformatted'
+      else
+        return
+      endif
 
 C Open file
           if (Node.eq.0) then
@@ -489,6 +510,7 @@ C logical overflow        : True if maxp or nspin were changed
       integer, intent(inout)       ::     maxp, nspin
       logical, intent(out)         ::     found, overflow
 
+      character(len=12) :: fform, fileFormat
       real(dp) :: cell(3,3)
       integer  :: mesh(3)
       integer  :: meshnsm(3), npl, ns, iu, np, npmax
@@ -506,6 +528,16 @@ C Check if input file exists
         call MPI_Bcast(found,1,MPI_logical,0,MPI_Comm_World,MPIerror)
 #endif
         if (.not. found) return
+
+C Find file format
+      fileFormat = fdf_get('SaveGridFunc.Format','binary')
+      if (leqi(fileFormat,'ASCII')) then
+        fform = 'formatted'
+      elseif (leqi(fileFormat,'binary')) then
+        fform = 'unformatted'
+      else
+        return
+      endif
 
 C Open file
           if (Node.eq.0) then

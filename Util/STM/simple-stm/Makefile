@@ -1,5 +1,5 @@
 # 
-# Copyright (C) 1996-2016	The SIESTA group
+# Copyright (C) 1996-2021       The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
 #  or http://www.gnu.org/copyleft/gpl.txt.
@@ -17,6 +17,7 @@ all: plstm plsts
 
 include ../../../$(OBJDIR)/arch.make
 vpath %.F90 ../../Grid
+vpath m_getopts.f90 ../../../Src
 
 #
 # The m_gridfunc module (a dependency) has netCDF support, which is currently
@@ -39,10 +40,10 @@ FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
-plstm.o: m_gridfunc.o options.o
+plstm.o: m_gridfunc.o m_getopts.o
 plsts.o: m_gridfunc.o
-plstm: options.o plstm.o m_gridfunc.o
-	$(FC) $(LDFLAGS) -o $@  plstm.o m_gridfunc.o options.o $(LIBS)
+plstm: m_getopts.o plstm.o m_gridfunc.o
+	$(FC) $(LDFLAGS) -o $@  plstm.o m_gridfunc.o m_getopts.o $(LIBS)
 
 
 plsts: plsts.o m_gridfunc.o 

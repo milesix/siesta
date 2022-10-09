@@ -673,7 +673,7 @@ contains
 #endif
     use alloc, only : re_alloc
     use geom_helper,  only : iaorb, ucorb
-    use m_io_s
+    use io_sparse_m
     use m_os, only : file_exist
     use class_Sparsity
     use class_OrbitalDistribution
@@ -924,24 +924,24 @@ contains
        nullify(ncol,l_ptr,l_col)
 
     else if ( version == 1 ) then
-       call io_read_Sp(iu,no_u,sp,tag=trim(ltag),Bcast=Bcast)
+       call io_read(iu,no_u,sp,tag=trim(ltag),Bcast=Bcast)
     end if
 
     ! Read in S
-    call io_read_d1D(iu,sp,S,trim(ltag)//': S',Bcast=Bcast)
+    call io_read(iu,sp,S,trim(ltag)//': S',Bcast=Bcast)
 
     ! Utilize the same distribution for the others
     dit => dist(S)
 
     if ( .not. onlyS ) then
        ! Read in H
-       call io_read_d2D(iu,sp,H,nspin,trim(ltag)//': H',Bcast=Bcast,dit=dit)
+       call io_read(iu,sp,H,nspin,trim(ltag)//': H',Bcast=Bcast,dit=dit)
     end if
 
     if ( .not. Gamma ) then
 
        if ( version == 0 ) then
-          call io_read_d2D(iu,sp,xij,3,'xij',sparsity_dim=2, &
+          call io_read(iu,sp,xij,3,'xij',sparsity_dim=2, &
                dit=dit, Bcast=Bcast)
 
           call attach(sp,n_col=ncol)
@@ -1026,7 +1026,7 @@ contains
        Ef, Qtot, Temp, &
        tag, Bcast)
 
-    use m_ncdf_io, only : cdf_r_Sp, cdf_r_d1D, cdf_r_d2D
+    use ncdf_io_m, only : cdf_r_Sp, cdf_r_d1D, cdf_r_d2D
 
     use netcdf_ncdf, ncdf_parallel => parallel
     use sys,          only : die
@@ -1232,7 +1232,7 @@ contains
     use geom_helper, only : ucorb
     use m_sparse, only : xij_offset
 
-    use m_io_s, only: io_write_Sp, io_write_d1D, io_write_d2D
+    use io_sparse_m, only: io_write
 #ifdef MPI
     use mpi_siesta
 #endif
@@ -1339,15 +1339,15 @@ contains
     gncol(1) = -1
 
     ! Write out sparsity pattern
-    call io_write_Sp(iu,sp,dit,gncol=gncol)
+    call io_write(iu,sp,dit,gncol=gncol)
 
     ! Write overlap matrix
-    call io_write_d1D(iu,S1D,gncol=gncol)
+    call io_write(iu,S1D,gncol=gncol)
 
     if ( .not. onlyS ) then
 
        ! Write Hamiltonian
-       call io_write_d2D(iu,H2D,gncol=gncol)
+       call io_write(iu,H2D,gncol=gncol)
 
     end if
 

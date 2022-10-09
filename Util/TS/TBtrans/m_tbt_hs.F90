@@ -86,7 +86,7 @@ contains
     use files, only : slabel
     use units, only : eV
     use m_interpolate
-    use m_spin, only: init_spin
+    use spin_subs_m, only: init_spin
 
     use m_ts_io, only: ts_read_TSHS_opt
     use m_ts_io_ctype, only : ts_c_bphysical, ts_c_bisphysical
@@ -229,6 +229,8 @@ contains
       ! If there is only one spin, then
       ! we do not read in the option.
       spin_idx = 0
+    else if ( nspin > 2 ) then
+      call die("TBtrans is currently not implemented for non-collinear or spin-orbit")
     else
       spin_idx = fdf_get('TBT.Spin',0)
       if ( spin_idx > nspin ) then
@@ -335,7 +337,7 @@ contains
 !    call print_type(files(N_HS)%H_2D)
 
     ! Now we interpolate the 
-    call dSpData2D_interp(N_HS,files(:)%H_2D,tHS(:)%Volt,Volt)
+    call SpData_interp(N_HS,files(:)%H_2D,tHS(:)%Volt,Volt)
 
     ! Now files(1) contains the interpolated values
     ! copy files(1) to the original one...

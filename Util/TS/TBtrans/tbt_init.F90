@@ -1,5 +1,5 @@
 ! ---
-! Copyright (C) 1996-2016       The SIESTA group
+! Copyright (C) 1996-2021       The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt .
@@ -51,28 +51,12 @@ subroutine tbt_init()
   use m_tbt_gf
   use m_tbt_save
   use m_tbt_proj
+  use tbt_reinit_m, only: tbt_reinit, tbt_parse_command_line
 
   use m_sparsity_handling
 
-#ifdef _OPENMP
-  use omp_lib, only : omp_get_num_threads
-  use omp_lib, only : omp_get_schedule, omp_set_schedule
-  use omp_lib, only : omp_get_proc_bind
-  use omp_lib, only : OMP_SCHED_STATIC, OMP_SCHED_DYNAMIC
-  use omp_lib, only : OMP_SCHED_GUIDED, OMP_SCHED_AUTO
-  use omp_lib, only : OMP_PROC_BIND_FALSE, OMP_PROC_BIND_TRUE
-  use omp_lib, only : OMP_PROC_BIND_MASTER
-  use omp_lib, only : OMP_PROC_BIND_CLOSE, OMP_PROC_BIND_SPREAD
-#else
-!$ use omp_lib, only : omp_get_num_threads
-!$ use omp_lib, only : omp_get_schedule, omp_set_schedule
-!$ use omp_lib, only : omp_get_proc_bind
-!$ use omp_lib, only : OMP_SCHED_STATIC, OMP_SCHED_DYNAMIC
-!$ use omp_lib, only : OMP_SCHED_GUIDED, OMP_SCHED_AUTO
-!$ use omp_lib, only : OMP_PROC_BIND_FALSE, OMP_PROC_BIND_TRUE
-!$ use omp_lib, only : OMP_PROC_BIND_MASTER
-!$ use omp_lib, only : OMP_PROC_BIND_CLOSE, OMP_PROC_BIND_SPREAD
-#endif
+  use runinfo_m, only: runinfo
+  use version_info, only: prversion
 
   implicit none
 
@@ -92,20 +76,31 @@ subroutine tbt_init()
 #ifdef MPI
 #ifdef _OPENMP
   call MPI_Init_Thread(MPI_Thread_Funneled, it, MPIerror)
-  if ( MPI_Thread_Funneled /= it ) then
-     ! the requested threading level cannot be asserted
-     ! Notify the user
-     write(0,'(a)') '!!! Could not assert funneled threads'
-  end if
 #else
   call MPI_Init( MPIerror )
 #endif
 #endif
-  
+
+  ! Initialize node values
   call parallel_init()
 
+  ! Check for version/help command and quit quickly
+  call tbt_parse_command_line(info=.true.)
+
+#ifdef MPI
+#ifdef _OPENMP
+  if ( MPI_Thread_Funneled /= it ) then
+    ! the requested threading level cannot be asserted
+    ! Notify the user
+    ! We only write this out in case the user did not request
+    ! info or help
+    write(0,'(a)') '!!! Could not assert funneled threads'
+  end if
+#endif
+#endif
+
   ! Initialize the output
-  call init_output(Node == 0)
+  call tbt_init_output(Node == 0)
 
 #ifdef MPI
   if (.not. fdf_parallel()) then
@@ -118,59 +113,8 @@ subroutine tbt_init()
      
      call prversion()
 
-#ifdef MPI
-     if (Nodes > 1) then
-        write(*,'(/,a,i0,tr1,a)') '* Running on ', Nodes, &
-             'nodes in parallel'
-     else
-        write(*,'(/,a)') '* Running in serial mode with MPI'
-     endif
-#else
-     write(*,'(/,a)') '* Running in serial mode'
-#endif
-!$OMP parallel default(shared)
-!$OMP master
-!$    it = omp_get_num_threads()
-!$    write(*,'(a,i0,a)') '* Running ',it,' OpenMP threads.'
-!$    write(*,'(a,i0,a)') '* Running ',Nodes*it,' processes.'
-!$    it = omp_get_proc_bind()
-!$    select case ( it )
-!$    case ( OMP_PROC_BIND_FALSE ) 
-!$    write(*,'(a)') '* OpenMP threads NOT bound (please bind threads!)'
-!$    case ( OMP_PROC_BIND_TRUE ) 
-!$    write(*,'(a)') '* OpenMP threads bound'
-!$    case ( OMP_PROC_BIND_MASTER ) 
-!$    write(*,'(a)') '* OpenMP threads bound (master)'
-!$    case ( OMP_PROC_BIND_CLOSE ) 
-!$    write(*,'(a)') '* OpenMP threads bound (close)'
-!$    case ( OMP_PROC_BIND_SPREAD ) 
-!$    write(*,'(a)') '* OpenMP threads bound (spread)'
-!$    case default
-!$    write(*,'(a)') '* OpenMP threads bound (unknown)'
-!$    end select
-     
-!$    call omp_get_schedule(it,itmp)
-!$    select case ( it )
-!$    case ( OMP_SCHED_STATIC ) 
-!$    write(*,'(a,i0)') '* OpenMP runtime schedule STATIC, chunks ',itmp
-!$    case ( OMP_SCHED_DYNAMIC ) 
-!$    write(*,'(a,i0)') '* OpenMP runtime schedule DYNAMIC, chunks ',itmp
-!$    if ( itmp == 1 ) then
-!$     ! this is the default scheduling, probably the user
-!$     ! have not set the value, predefine it to 32
-!$     itmp = 32
-!$     write(*,'(a,i0)')'** OpenMP runtime schedule DYNAMIC, chunks ',itmp
-!$    end if
-!$    case ( OMP_SCHED_GUIDED ) 
-!$    write(*,'(a,i0)') '* OpenMP runtime schedule GUIDED, chunks ',itmp
-!$    case ( OMP_SCHED_AUTO ) 
-!$    write(*,'(a,i0)') '* OpenMP runtime schedule AUTO, chunks ',itmp
-!$    case default
-!$    write(*,'(a,i0)') '* OpenMP runtime schedule UNKNOWN, chunks ',itmp
-!$    end select
-!$OMP end master
-!$OMP end parallel
-!$    call omp_set_schedule(it,itmp)
+     call runinfo
+
      call timestamp('Start of run')
      call wallclock('Start of run')
   endif
@@ -312,10 +256,10 @@ subroutine tbt_init()
   end if
 
   ! Change the data 
-  call dSpData1D_to_Sp(TSHS%S_1D,tmp_sp,tmp_1D)
+  call SpData_to_Sp(TSHS%S_1D,tmp_sp,tmp_1D)
   TSHS%S_1D = tmp_1D
   call delete(tmp_1D)
-  call dSpData2D_to_Sp(TSHS%H_2D,tmp_sp,tmp_2D)
+  call SpData_to_Sp(TSHS%H_2D,tmp_sp,tmp_2D)
   TSHS%H_2D = tmp_2D
   call delete(tmp_2D)
   TSHS%sp = tmp_sp

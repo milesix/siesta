@@ -31,7 +31,7 @@
       use sparse_matrices, only: gradS_2D
 
       use sparse_matrices, only: H_kin_1D, H_vkb_1D
-      use sparse_matrices, only: H_ldau_2D
+      use sparse_matrices, only: H_dftu_2D
       use sparse_matrices, only: H_chempotwann_2D
       use sparse_matrices, only: H_so_on_2D, H_so_off_2D
 
@@ -47,7 +47,7 @@
 
       use siesta_geom
       use atomlist,          only: iphorb, iphkb, indxua, iaorb,
-     &                             rmaxo, rmaxkb, rmaxv, rmaxldau,
+     &                             rmaxo, rmaxkb, rmaxv, rmaxdftu,
      &                             lastkb, lasto, superc, indxuo,
      &                             no_u, no_s, no_l, iza, qtots
       use alloc,             only: re_alloc, de_alloc, alloc_report
@@ -77,7 +77,7 @@
       use m_mpi_utils,       only: globalize_or
       use m_mpi_utils,       only: globalize_sum
       use domain_decom,      only: domainDecom, use_dd, use_dd_perm
-      use ldau_specs,        only: switch_ldau, ldau_init
+      use dftu_specs,        only: switch_dftu, dftu_init
       use fdf,               only: fdf_get
       use sys,               only: message, die, bye
       use m_sparse, only : xij_offset
@@ -100,7 +100,6 @@
       use iodm_netcdf, only: setup_dm_netcdf_file
       use iodmhs_netcdf, only: setup_dmhs_netcdf_file
 #endif
-      use overlap_gradient_m, only: overlap_gradient
 #ifdef NCDF_4
       use dictionary
       use m_ncdf_siesta, only : cdf_init_file, cdf_save_settings
@@ -162,7 +161,7 @@
       integer :: MPIerror
 #endif
 #endif
-      
+      real(dp), pointer :: gradS(:,:)
       character(len=256)            :: oname
 
       type(dData2D) :: tmp_2D
@@ -173,7 +172,6 @@
 
       real(dp) :: dummy_qspin(8)
 !------------------------------------------------------------------- BEGIN
-      call timer( 'IterGeom', 1 )
 
       call timer( 'state_init', 1 )
 
@@ -350,9 +348,9 @@
 !     Use largest possible range in program, except hsparse...
 !     2 * rmaxv: Vna overlap
 !     rmaxo + rmaxkb: Non-local KB action
-!     2 * (rmaxo + rmaxldau): Interaction through LDAU projector
+!     2 * (rmaxo + rmaxdftu): Interaction through DFTU projector
 !     2.0_dp * (rmaxo+rmaxkb) : Orbital interaction through KB projectors
-      rmax = max( 2._dp*rmaxv, 2._dp*(rmaxo+rmaxldau), rmaxo+rmaxkb)
+      rmax = max( 2._dp*rmaxv, 2._dp*(rmaxo+rmaxdftu), rmaxo+rmaxkb)
 
       if ( .not. negl ) then
         rmax = max(rmax, 2.0_dp * (rmaxo+rmaxkb) )
@@ -535,8 +533,8 @@
       call newdData2D(tmp_2D,xijo,'xijo')
       deallocate(xijo)
       write(oname,"(a,i0)") "xijo at geom step ", istep
-      call newdSpData2D(sparse_pattern,tmp_2D,block_dist,xij_2D, 
-     &     name=oname)
+      call newdSpData2D(sparse_pattern,tmp_2D,block_dist,xij_2D,
+     &    name=oname, sparsity_dim=2)
       call delete(tmp_2D) ! decrement container...
       xijo => val(xij_2D)
 
@@ -608,22 +606,22 @@
       call newdSpData1D(sparse_pattern,block_dist,H_kin_1D,name=oname)
       !if (ionode) call print_type(H_kin_1D)
 
-      if ( switch_ldau ) then
-         write(oname,"(a,i0)") "H_ldau at geom step ", istep
+      if ( switch_dftu ) then
+         write(oname,"(a,i0)") "H_dftu at geom step ", istep
          call newdSpData2D(sparse_pattern,spin%spinor,
-     &        block_dist,H_ldau_2D,name=oname)
+     &        block_dist,H_dftu_2D,name=oname)
          
          ! Initialize to 0, LDA+U may re-calculate
          !   this matrix sporadically doing the SCF.
          ! Hence initialization MUST be performed upon
          ! re-allocation.
-         call init_val(H_ldau_2D)
+         call init_val(H_dftu_2D)
          if ( inicoor /= istep ) then
             ! Force initialization of the LDA+U
             ! when changing geometry
             ! For the first geometry this is controlled
             ! by the user via an fdf-key
-            ldau_init = .true.
+            dftu_init = .true.
          end if
       end if
 
@@ -679,12 +677,17 @@
 
       
 !     Find overlap matrix 
-      call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
-     &    lasto, iphorb, isa, numh, listhptr, listh, S )
-
       if ( fdf_get('Save.Overlap.Gradient', .false.) ) then
-        call newdSpData2D(sparse_pattern,3,block_dist,gradS_2D)
-        call overlap_gradient(na_U, lasto, isa, maxnh, xijo, gradS_2D)
+        write(oname,"(a,i0)") "gradS at geom step ", istep
+        call newdSpData2D(sparse_pattern,3,block_dist,gradS_2D,
+     &      name=oname, sparsity_dim=2)
+        gradS => val(gradS_2D)
+        
+        call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
+     &      lasto, iphorb, isa, numh, listhptr, listh, S, gradS )
+      else
+        call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
+     &      lasto, iphorb, isa, numh, listhptr, listh, S )
       end if
 
 #ifdef NCDF_4

@@ -1982,13 +1982,13 @@ C
         rc=rofi(nrc)
       
         if (rc.lt.0.5d0) then
-          write(6,"('KBproj: WARNING: Rc(',i2,')=',f12.4)")l,rc
+          write(6,"('KBproj: WARNING: Rc(',i0,')=',f12.4)")l,rc
           write(6,"(2a)") 'KBproj: WARNING: ',
-     .            'Cut of radius for the KB projector too small' 
+     .            'Cut off radius for the KB projector too small'
         elseif(rc.gt.4.5d0) then
-          write(6,"('KBproj: WARNING: Rc(',i2,')=',f12.4)")l,rc
+          write(6,"('KBproj: WARNING: Rc(',i0,')=',f12.4)")l,rc
           write(6,"(2a)") 'KBproj: WARNING: ',
-     .            'Cut of radius for the KB projector too big'
+     .            'Cut off radius for the KB projector too big'
           write(6,"(2a)") 'KBproj: WARNING: ',
      .            'Increasing the tolerance parameter eps'
           write(6,"(a)") 'KBproj: WARNING: might be a good idea'
@@ -2840,7 +2840,8 @@ C
           
         !Total charge density used for the pseudopotential generation
         chgvps = vp%gen_zval
-        write(6,'(a,f10.5)') 'Total valence charge: ', chgvps
+        write(6,'(a,f10.5)') 'Valence charge for ps generation: ',
+     $                       chgvps
 
         if (nicore.ne.'nc  ') then
           write(6,'(/,a)')
@@ -2894,7 +2895,7 @@ C    drdi=dr/di =a*b*exp(a*(i-1))= a*[rofi(ir)+b]
             write(6,'(a)')
      . 'atom: Pseudopotential should be ordered by increasing l'
           endif
-          vps(1:nrval,l) = vp%vdown(ndown,1:nrval)
+          vps(1:nrval,l) = vp%vdown(1:nrval,ndown)
           do ir=2,nrval
             vps(ir,l)=vps(ir,l)/rofi(ir)
           enddo
@@ -2928,8 +2929,8 @@ C    drdi=dr/di =a*b*exp(a*(i-1))= a*[rofi(ir)+b]
 
        do nup=1,nup_end
           l = vp%lup(nup)
-          vp%vup(nup,1:nrval) = so_strength * vp%vup(nup,1:nrval)
-          vps_u(1:nrval,l) = vp%vup(nup,1:nrval)
+          vp%vup(1:nrval,nup) = so_strength * vp%vup(1:nrval,nup)
+          vps_u(1:nrval,l) = vp%vup(1:nrval,nup)
           do ir=2,nrval
             vps_u(ir,l)=vps_u(ir,l)/rofi(ir)
           enddo

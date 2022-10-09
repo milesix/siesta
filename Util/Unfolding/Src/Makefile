@@ -40,11 +40,13 @@ XC=libSiestaXC.a
 ALL_LIBS= $(SIESTA_LIB) $(FDF) $(WXML) $(XMLPARSER) $(XC) \
 	  $(MPI_INTERFACE) $(COMP_LIBS) $(LIBS)
 
+hsx_m.f90: $(HSXDIR)/hsx_m.f90
+	cp $(HSXDIR)/hsx_m.f90 $(WDIR)
+
 libs_collected:
 	(cd $(OBJ_DIR) ; \
 	make libSiestaForces.a ; \
 	cp -f *.a *.mod $(WDIR) )
-	cp -f $(HSXDIR)/hsx_m.f90 $(WDIR)
 	touch libs_collected
 
 unfold.o: unfold.F90 hsx_m.f90 libs_collected
@@ -58,5 +60,5 @@ meshgen: meshgen.c
 
 clean:
 	@echo "==> Cleaning object, library, and executable files"
-	rm -f unfold meshgen *.o *.a *.mod libs_collected
+	rm -f unfold meshgen *.o *.a *.mod libs_collected hsx_m.f90
 

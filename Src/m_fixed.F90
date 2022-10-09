@@ -568,7 +568,7 @@ contains
   subroutine print_fixed( )
 
     use parallel, only : Node
-    use m_region
+    use m_region, only : tRgn, rgn_print, rgn_list, rgn_delete
 
     integer :: if
     character(len=70) :: name

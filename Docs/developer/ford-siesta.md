@@ -48,7 +48,7 @@ md_extensions: markdown.extensions.toc
 -- heading matter: do not move above, as FORD seems to get confused...
 --
 project: SIESTA
-version: {!../../version.info!} 
+version: {!../../SIESTA.version!}
 author: SIESTA Group
 
 @note
