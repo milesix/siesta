@@ -78,6 +78,13 @@ WITH_GRIDXC=1
 # Needed for PEXSI (ELSI) support
 #LIBS_CPLUS=-lstdc++ -lmpi_cxx
 
+
+# For Wannier90 support. Make sure you build a modified version of
+# Wannier90 as instructed in the Util/Wannier90/README file present in
+# the SIESTA source tree. (But here we use 'include' and 'lib')
+
+#WANNIER90_ROOT= /software/dft/wannier90-3.0.0
+
 #===========================================================
 # Compiler names and flags
 #
@@ -215,6 +222,18 @@ ifeq ($(WITH_NCDF),1)
    FPPFLAGS += $(DEFS_PREFIX)-DNCDF_PARALLEL
  endif
  COMP_LIBS += libncdf.a libfdict.a
+endif
+
+ifeq ($(WITH_WANNIER90),1)
+ ifndef WANNIER90_ROOT
+   $(error you need to define WANNIER90_ROOT in your arch.make)
+ endif
+ WANNIER90_INCFLAGS = -I$(WANNIER90_ROOT)/include
+ INCFLAGS += $(WANNIER90_INCFLAGS)
+ WANNIER90_LIBS = -L$(WANNIER90_ROOT)/lib -lwannier
+ FPPFLAGS_WANNIER90 = $(DEFS_PREFIX)-DSIESTA__WANNIER90
+ FPPFLAGS += $(FPPFLAGS_WANNIER90) 
+ LIBS += $(WANNIER90_LIBS)
 endif
 
 ifeq ($(WITH_FLOOK),1)

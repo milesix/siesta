@@ -303,6 +303,7 @@
       real(dp), intent(in) :: dDmax ! Max. change in dens. matrix elem.
       real(dp), intent(in) :: dHmax ! Max. change in H elements
 
+      real(dp) :: Edftu_write ! LDA+U energy
       character(len=64) :: fmt
       character(len=17) :: enl_str, eso_str
 
@@ -318,6 +319,12 @@
          enl_str = 'siesta: Enl     ='
          eso_str = 'siesta: Eso     ='
       endif
+
+      if (spin%SO) then
+         Edftu_write = E_dftu_so + E_correc_dc
+      else
+         Edftu_write = Edftu
+      endif
       
       first_scf_step = (iscf == 1)
       ! Only print out full decomposition at very beginning and end.
@@ -330,7 +337,7 @@
      .     'siesta: Ekin    =', Ekin/eV,
      .      enl_str, Enl/eV,
      .      eso_str, Eso/eV,
-     .     'siesta: Edftu   =', Edftu/eV,
+     .     'siesta: Edftu   =', Edftu_write/eV,
      .     'siesta: DEna    =', DEna/eV,
      .     'siesta: DUscf   =', DUscf/eV,
      .     'siesta: DUext   =', DUext/eV,
@@ -374,7 +381,7 @@
           call cmlAddProperty(xf=mainXML, value=Enl/eV, 
      .         units='siestaUnits:eV', 
      .         dictref='siesta:Enl', fmt='r6')
-          call cmlAddProperty(xf=mainXML, value=Edftu/eV,
+          call cmlAddProperty(xf=mainXML, value=Edftu_write/eV,
      .         units='siestaUnits:eV',
      .         dictref='siesta:Edftu', fmt='r6')
           call cmlAddProperty(xf=mainXML, value=DEna/eV, 
@@ -584,12 +591,18 @@
            eso_str = '      Eso     ='
         endif
 
+        if (spin%SO) then
+           Edftu_write = E_dftu_so + E_correc_dc
+        else
+           Edftu_write = Edftu
+        endif
+
         write(6,'(/,a)') 'siesta: Final energy (eV):'
         write(6,'(a,a15,f15.6)')
      .    'siesta: ', 'Band Struct. =', Ebs/eV,
      .    'siesta: ',      'Kinetic =', Ekin/eV,
      .    'siesta: ',      'Hartree =', Uscf/eV,
-     .    'siesta: ',      'Edftu   =', Edftu/eV,
+     .    'siesta: ',        'Edftu =', Edftu_write/eV,
      .    'siesta: ',      eso_str    , Eso/eV,
      .    'siesta: ',   'Ext. field =', DUext/eV,
      .    'siesta: ',        'Exch. =', Ex/eV,
@@ -952,7 +965,6 @@
       use m_ts_method, only: r_aBuf
       use m_ts_options, only: N_Elec, Elecs
       use m_region, only: rgn_size
-      use m_ts_electype, only: TotUsedAtoms
 
       integer, intent(in) :: na_u
       real(dp), intent(in) :: fa(3,na_u)
@@ -971,8 +983,8 @@
       ! Zero out electrode atoms where bulk is false
       do iE = 1, N_elec
         if ( Elecs(iE)%DM_update < 2 ) then
-          na = na_u - TotUsedAtoms(Elecs(iE))
-          do ia = 1, TotUsedAtoms(Elecs(iE))
+          na = na_u - Elecs(iE)%device_atoms()
+          do ia = 1, Elecs(iE)%device_atoms()
             ts_fa(:, Elecs(iE)%idx_a+ia-1) = 0._dp
           end do
         end if

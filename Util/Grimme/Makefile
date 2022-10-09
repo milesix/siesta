@@ -72,13 +72,8 @@ clean:
 
 # DO NOT DELETE THIS LINE - used by make depend
 atom_options.o: local_sys.o
-atom_options.o: local_sys.o
-chemical.o: local_sys.o parallel.o precision.o
 chemical.o: local_sys.o parallel.o precision.o
 io.o: m_io.o
-io.o: m_io.o
 m_io.o: local_sys.o
-m_io.o: local_sys.o
-grimme.o: chemical.o periodic_table.o precision.o
 grimme.o: chemical.o periodic_table.o precision.o
 sys.o: local_sys.o

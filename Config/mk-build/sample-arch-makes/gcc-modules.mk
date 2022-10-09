@@ -20,6 +20,8 @@ WITH_NCDF=1
 WITH_LEGACY_GRIDXC_INSTALL=
 WITH_GRID_SP=
 
+WITH_WANNIER90=
+
 #-------------
 # Define compiler names and flags
 #

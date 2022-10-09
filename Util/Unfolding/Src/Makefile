@@ -85,8 +85,8 @@ SIESTA_OBJS= precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
              pspltm1.o mmio.o qsort.o \
              sparse_matrices.o
 
-# Siesta timings
 SIESTA_OBJS += m_walltime.o timer_tree.o m_timer.o timer.o
+SIESTA_OBJS += m_spin.o m_vee_integrals.o
 
 
 # Add specific class objects
@@ -201,154 +201,82 @@ $(DEP_OBJS): $(FDF)
 
 # DO NOT DELETE THIS LINE - used by make depend
 arw.o: alloc.o parallel.o precision.o sys.o
-arw.o: alloc.o parallel.o precision.o sys.o
 atm_types.o: precision.o radial.o
-atm_types.o: precision.o radial.o
-atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o sys.o
 atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o sys.o
 atom.o: atm_types.o atmparams.o atom_options.o basis_specs.o basis_types.o
 atom.o: hamann.o interpolation.o m_filter.o periodic_table.o precision.o
 atom.o: radial.o sys.o
-atom.o: atm_types.o atmparams.o atom_options.o basis_specs.o basis_types.o
-atom.o: hamann.o interpolation.o m_filter.o periodic_table.o precision.o
-atom.o: radial.o sys.o
 atom_options.o: sys.o
-atom_options.o: sys.o
-basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
-basis_io.o: precision.o radial.o sys.o xml.o
 basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
 basis_io.o: precision.o radial.o sys.o xml.o
 basis_specs.o: atom_options.o basis_types.o chemical.o periodic_table.o
 basis_specs.o: precision.o sys.o
-basis_specs.o: atom_options.o basis_types.o chemical.o periodic_table.o
-basis_specs.o: precision.o sys.o
-basis_types.o: alloc.o atmparams.o precision.o sys.o
 basis_types.o: alloc.o atmparams.o precision.o sys.o
 bessph.o: precision.o sys.o
-bessph.o: precision.o sys.o
 bloch_unfold.o: units.o
-bloch_unfold.o: units.o
-broadcast_basis.o: atm_types.o chemical.o dftu_specs.o m_mpi_utils.o parallel.o
-broadcast_basis.o: radial.o
-broadcast_basis.o: atm_types.o chemical.o dftu_specs.o m_mpi_utils.o parallel.o
-broadcast_basis.o: radial.o
-cellsubs.o: precision.o
+broadcast_basis.o: atm_types.o chemical.o dftu_specs.o m_mpi_utils.o m_spin.o
+broadcast_basis.o: parallel.o radial.o
 cellsubs.o: precision.o
 chemical.o: parallel.o precision.o sys.o
-chemical.o: parallel.o precision.o sys.o
-chkdim.o: sys.o
 chkdim.o: sys.o
 class_Data1D.o: alloc.o
 class_Data2D.o: alloc.o
 class_Data3D.o: alloc.o
 class_Fstack_Pair_Geometry_SpData2D.o: class_Pair_Geometry_SpData2D.o
-class_Fstack_Pair_Geometry_SpData2D.o: class_Pair_Geometry_SpData2D.o
-class_Geometry.o: alloc.o
 class_Geometry.o: alloc.o
 class_Pair_Geometry_SpData2D.o: class_Geometry.o class_SpData2D.o
-class_Pair_Geometry_SpData2D.o: class_Geometry.o class_SpData2D.o
-class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
 class_SpData1D.o: class_Data1D.o
 class_SpData1D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
-class_SpData1D.o: class_Data1D.o
-class_SpData2D.o: class_Data2D.o class_Data2D.o class_Data2D.o
+class_SpData2D.o: class_Data2D.o
 class_SpData2D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData2D.o: class_Data2D.o class_Data2D.o class_Data2D.o
 class_SpData3D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_Sparsity.o: alloc.o
 class_Sparsity.o: alloc.o
 class_TriMat.o: alloc.o
 coor.o: alloc.o atmfuncs.o parallel.o precision.o siesta_geom.o sys.o units.o
 coor.o: zmatrix.o
-coor.o: alloc.o atmfuncs.o parallel.o precision.o siesta_geom.o sys.o units.o
-coor.o: zmatrix.o
-debugmpi.o: parallel.o
 debugmpi.o: parallel.o
 dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
-dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o parallel.o
-dftu_specs.o: precision.o radial.o sys.o units.o
-dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
-dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o parallel.o
-dftu_specs.o: precision.o radial.o sys.o units.o
+dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o m_spin.o
+dftu_specs.o: m_vee_integrals.o parallel.o precision.o radial.o sys.o units.o
 diag.o: alloc.o diag_option.o parallel.o precision.o sys.o
-diag.o: alloc.o diag_option.o parallel.o precision.o sys.o
-diag_option.o: m_cite.o parallel.o precision.o
-diag_option.o: m_cite.o parallel.o precision.o
-domain_decom.o: alloc.o parallel.o precision.o printmatrix.o schecomm.o
-domain_decom.o: sparse_matrices.o sys.o
+diag_option.o: parallel.o precision.o
 domain_decom.o: alloc.o parallel.o precision.o printmatrix.o schecomm.o
 domain_decom.o: sparse_matrices.o sys.o
 find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
-find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
-get_kpoints_scale.o: parallel.o siesta_geom.o units.o
 get_kpoints_scale.o: parallel.o siesta_geom.o units.o
 idiag.o: parallel.o sys.o
-idiag.o: parallel.o sys.o
-io.o: m_io.o
 io.o: m_io.o
 m_cell.o: precision.o siesta_geom.o units.o
-m_cell.o: precision.o siesta_geom.o units.o
-m_filter.o: bessph.o precision.o radfft.o sys.o
 m_filter.o: bessph.o precision.o radfft.o sys.o
 m_io.o: sys.o
-m_io.o: sys.o
 m_mpi_utils.o: precision.o sys.o
-m_mpi_utils.o: precision.o sys.o
+m_spin.o: precision.o
 m_timer.o: m_io.o m_walltime.o moreParallelSubs.o parallel.o precision.o sys.o
-m_timer.o: m_io.o m_walltime.o moreParallelSubs.o parallel.o precision.o sys.o
+m_vee_integrals.o: precision.o sys.o
 m_wallclock.o: m_walltime.o
-m_wallclock.o: m_walltime.o
-memory.o: memory_log.o parallel.o
-memory.o: memory_log.o parallel.o
-memory_log.o: m_io.o parallel.o precision.o
+memory.o: memory_log.o
 memory_log.o: m_io.o parallel.o precision.o
 minvec.o: cellsubs.o precision.o sorting.o sys.o
-minvec.o: cellsubs.o precision.o sorting.o sys.o
-moreParallelSubs.o: alloc.o m_io.o parallel.o precision.o sys.o
 moreParallelSubs.o: alloc.o m_io.o parallel.o precision.o sys.o
 parallelsubs.o: domain_decom.o parallel.o precision.o spatial.o sys.o
-parallelsubs.o: domain_decom.o parallel.o precision.o spatial.o sys.o
-printmatrix.o: alloc.o
 printmatrix.o: alloc.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
-radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
-radial.o: alloc.o interpolation.o precision.o xml.o
 radial.o: alloc.o interpolation.o precision.o xml.o
 redcel.o: parallel.o precision.o sys.o
-redcel.o: parallel.o precision.o sys.o
 schecomm.o: alloc.o
-schecomm.o: alloc.o
-siesta_geom.o: precision.o
 siesta_geom.o: precision.o
 sparse_matrices.o: alloc.o class_Fstack_Pair_Geometry_SpData2D.o
 sparse_matrices.o: class_OrbitalDistribution.o class_SpData1D.o
 sparse_matrices.o: class_SpData2D.o class_SpData2D.o class_Sparsity.o
 sparse_matrices.o: precision.o
-sparse_matrices.o: alloc.o class_Fstack_Pair_Geometry_SpData2D.o
-sparse_matrices.o: class_OrbitalDistribution.o class_SpData1D.o
-sparse_matrices.o: class_SpData2D.o class_SpData2D.o class_Sparsity.o
-sparse_matrices.o: precision.o
 spatial.o: precision.o
-spatial.o: precision.o
-spher_harm.o: precision.o
-spher_harm.o: precision.o
-timer.o: m_timer.o parallel.o sys.o timer_tree.o
+spher_harm.o: alloc.o precision.o sys.o
 timer.o: m_timer.o parallel.o sys.o timer_tree.o
 timer_tree.o: m_walltime.o
-timer_tree.o: m_walltime.o
-units.o: precision.o
 units.o: precision.o
 xml.o: precision.o
-xml.o: precision.o
-zmatrix.o: alloc.o m_cell.o parallel.o precision.o siesta_geom.o sys.o units.o
 zmatrix.o: alloc.o m_cell.o parallel.o precision.o siesta_geom.o sys.o units.o
 array.o: precision.o sys.o
-array.o: precision.o sys.o
-unfold.o: alloc.o array.o atmfuncs.o basis_io.o basis_types.o cellsubs.o
-unfold.o: diag_option.o get_kpoints_scale.o hsx_m.o m_io.o m_mpi_utils.o
-unfold.o: m_timer.o memory_log.o parallel.o parallelsubs.o precision.o radfft.o
-unfold.o: siesta_geom.o spher_harm.o sys.o
 unfold.o: alloc.o array.o atmfuncs.o basis_io.o basis_types.o cellsubs.o
 unfold.o: diag_option.o get_kpoints_scale.o hsx_m.o m_io.o m_mpi_utils.o
 unfold.o: m_timer.o memory_log.o parallel.o parallelsubs.o precision.o radfft.o
@@ -392,4 +320,5 @@ m_timer_tree.o: timer_tree.o
 m_timestamp.o: timestamp.o
 mtprng.o: m_uuid.o
 printmat.o: printmatrix.o
+t_spin.o: m_spin.o
 timer_options.o: timer.o

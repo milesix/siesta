@@ -12144,8 +12144,15 @@ For large or intermediate values of $U_{\mathrm{eff}}$ the convergence
 is sometimes difficult. A step-by-step increase of the
 value of $U_{\mathrm{eff}}$ can be advisable in such cases.
 
-Currently, the DFT+U implementation does not support non-collinear, nor
-spin-orbit coupling.
+If DFT+U is used in combination with non-collinear or spin-orbit coupling, 
+the Liechtenstein approach is implemented, where the $U$ and the exchange $J$ parameters are treated separately [see, A. I. Liechtenstein 
+\textit{et al.}, Phys. Rev. B \textbf{52}, R5467 (1995)].
+The generalization for the spin-orbit or non-collinear cases follows the recipe given by
+E. Bousquet and N. Spaldin, Phys. Rev. B \textbf{82}, 220402(R) (2010).
+Currently, only the $d$-shell can be considered as the correlated shell where the $U$ and $J$ are applied.  
+The computation of the occupancies on the orbitals of the correlated shells is done following the same recipe as for the Dudarev approach. 
+That means that the following entries related with the generation of the DFT+U projectors are still relevant.
+However, the input options \fdf{DFTU!FirstIteration}, \fdf{DFTU!ThresholdTol}, \fdf{DFTU!PopTol}, and \fdf{DFTU!PotentialShift}  are irrelevant when DFT+U is used in combination with spin-orbit or non-collinear magnetism.
 
 \begin{fdfentry}{DFTU!ProjectorGenerationMethod}[integer]<2>
   \fdfindex{LDAU!ProjectorGenerationMethod}%
@@ -14204,7 +14211,8 @@ electrodes in a generic input format.
 
     This defaults to \fdftrue. If there are buffer atoms \emph{behind}
     the electrode it may be advantageous to set this to false to
-    extend the electrode region.
+    extend the electrode region, otherwise it is recommended to keep
+    the default.
 
     \option[DM-update]%
     \fdfindex*{TS!Elec.<>!DM-update}%
@@ -14213,11 +14221,28 @@ electrodes in a generic input format.
     \fdfdepend{TS!Elec.<>!Bulk}%
     String of values \fdf*{none}, \fdf*{cross-terms} or \fdf*{all}
     which controls which part of the electrode density matrix elements
-    that are updated. If \fdf*{all}, both the density matrix elements
-    in the electrode and the coupling elements between the electrode
-    and scattering region are updated. If \fdf*{cross-terms}; only the
-    coupling elements between the electrode and the scattering region
-    are updated.
+    that are updated.
+    %
+    The density matrices that comprises an electrode and
+    device-electrode region can be written as (omitting the central
+    device region)
+    \begin{equation}
+      \label{eq:ts-dm-update}
+      \DM =
+      \begin{bmatrix}
+        \DM_{\mathfrak e} & \DM_{\mathfrak eD} & 0
+        \\
+        \DM_{D\mathfrak e} & \ddots & \ddots
+        \\
+        0  & \ddots
+      \end{bmatrix}
+    \end{equation}
+    This flag determines whether $\DM_{\mathfrak e}$ (\fdf*{all}) or
+    $\DM_{\mathfrak eD}$ (\fdf*{cross-terms} and \fdf*{all}) or
+    neither (\fdf*{none}) are updated in the SCF. The density matrices
+    contains the charges and thus affects the Hamiltonian and Poisson
+    solutions. Generally the default value will suffice and is
+    recommended.
 
     If \fdf{TS!Elec.<>!Bulk:false} this is forced to \fdf*{all} and
     cannot be changed.
@@ -14375,6 +14400,8 @@ electrodes in a generic input format.
     \note this option \emph{only} makes sense for
     \fdf{TS!Elec.<>!DM-update:none} since otherwise the electrostatic
     potential will be incorporated in the Hamiltonian.
+
+    Only expert users should play with this number.
 
     \option[check-kgrid]%
     \fdfindex*{TS!Elec.<>!check-kgrid}%

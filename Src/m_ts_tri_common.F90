@@ -18,7 +18,7 @@ module m_ts_tri_common
   private
 
   public :: GFGGF_needed_worksize
-  public :: nnzs_tri, nnzs_tri_i8b
+  public :: nnzs_tri
 
   public :: ts_pivot_tri_sort
   public :: ts_pivot_tri_sort_El
@@ -29,12 +29,12 @@ contains
   subroutine GFGGF_needed_worksize(N_tri, tri, &
        N_Elec, Elecs, padding, worksize)
 
-    use m_ts_electype
+    use ts_electrode_m
 
     integer, intent(in) :: N_tri
-    integer, intent(in) :: tri(N_tri)
+    integer, intent(in) :: tri(:)
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     integer, intent(out) :: padding, worksize
 
     ! els "could" be very large
@@ -53,7 +53,7 @@ contains
       no_max = max(no_max,Elecs(io)%o_inD%n)
     end do
 #else
-    no_max = maxval(TotUsedOrbs(Elecs))
+    no_max = maxval(Elecs%device_orbitals())
 #endif
 
     ! We just need to find the maximum overlap of
@@ -65,7 +65,7 @@ contains
     ! of the last two parts due to that being calculated
     ! last.
 
-    els = nnzs_tri_i8b(N_tri,tri)
+    els = nnzs_tri(N_tri,tri)
     worksize = maxval(tri(:)) * no_max
 
     ! subtract total column size
@@ -121,18 +121,7 @@ contains
   end subroutine GFGGF_needed_worksize
 
   pure function nnzs_tri(N_tri,tri) result(elem)
-    integer, intent(in) :: N_tri, tri(N_tri)
-    integer :: elem, i
-    
-    elem = tri(1) ** 2
-    do i = 2 , N_tri
-      elem = elem + tri(i)*( tri(i) + 2 * tri(i-1) )
-    end do
-    
-  end function nnzs_tri
-
-  pure function nnzs_tri_i8b(N_tri,tri) result(elem)
-    integer, intent(in) :: N_tri, tri(N_tri)
+    integer, intent(in) :: N_tri, tri(:)
     integer(i8b) :: elem
     integer :: i
     
@@ -141,7 +130,7 @@ contains
        elem = elem + int(tri(i), i8b)*( int(tri(i),i8b) + 2 * int(tri(i-1),i8b) )
     end do
     
-  end function nnzs_tri_i8b
+  end function nnzs_tri
 
   ! This routine sorts the orbitals/atoms within each
   ! block to create the most consecutive blocks.
@@ -196,7 +185,7 @@ contains
   subroutine ts_pivot_tri_sort_el(no_u, pvt, N_Elec, Elecs, tri)
 
     use m_region
-    use m_ts_electype
+    use ts_electrode_m
 
     ! Total number of orbitals (including buffer atoms)
     integer, intent(in) :: no_u
@@ -208,7 +197,7 @@ contains
     ! part, at will.
     type(tRgn), intent(inout) :: pvt
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     ! The tri-diagonal parts
     type(tRgn), intent(in) :: tri
 
@@ -234,7 +223,7 @@ contains
       call rgn_sort(rEl)
 #else
       call rgn_range(rEl,Elecs(iE)%idx_o, &
-          Elecs(iE)%idx_o + TotUsedOrbs(Elecs(iE))-1)
+          Elecs(iE)%idx_o + Elecs(iE)%device_orbitals()-1)
 #endif
 
       ! Figure out the parts of the electrode

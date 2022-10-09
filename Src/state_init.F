@@ -31,7 +31,7 @@
       use sparse_matrices, only: gradS_2D
 
       use sparse_matrices, only: H_kin_1D, H_vkb_1D
-      use sparse_matrices, only: H_dftu_2D
+      use sparse_matrices, only: H_dftu_2D, H_dftu_so_2D
       use sparse_matrices, only: H_chempotwann_2D
       use sparse_matrices, only: H_so_on_2D, H_so_off_2D
 
@@ -87,7 +87,7 @@
       use m_ts_options, only : BTD_method
       use m_ts_options, only : TS_Analyze
       use m_ts_options, only : N_Elec, Elecs, IsVolt
-      use m_ts_electype
+      use ts_electrode_m
       use m_ts_global_vars, only: TSrun, TSmode, onlyS
       use m_ts_io, only : fname_TSHS, ts_write_tshs
       use m_ts_sparse, only : ts_sparse_init
@@ -607,21 +607,30 @@
       !if (ionode) call print_type(H_kin_1D)
 
       if ( switch_dftu ) then
+         if( .not. spin%SO_onsite .and. .not. spin%SO_offsite) then
          write(oname,"(a,i0)") "H_dftu at geom step ", istep
-         call newdSpData2D(sparse_pattern,spin%spinor,
+           call newdSpData2D(sparse_pattern,spin%spinor,
      &        block_dist,H_dftu_2D,name=oname)
          
-         ! Initialize to 0, LDA+U may re-calculate
-         !   this matrix sporadically doing the SCF.
-         ! Hence initialization MUST be performed upon
-         ! re-allocation.
+           ! Initialize to 0, LDA+U may re-calculate
+           !   this matrix sporadically doing the SCF.
+           ! Hence initialization MUST be performed upon
+           ! re-allocation.
          call init_val(H_dftu_2D)
-         if ( inicoor /= istep ) then
-            ! Force initialization of the LDA+U
-            ! when changing geometry
-            ! For the first geometry this is controlled
-            ! by the user via an fdf-key
+           if ( inicoor /= istep ) then
+              ! Force initialization of the LDA+U
+              ! when changing geometry
+              ! For the first geometry this is controlled
+              ! by the user via an fdf-key
             dftu_init = .true.
+           end if
+         else if( spin%SO_offsite ) then  ! If LDA+U and SO
+           write(oname,"(a,i0)") "H_dftu at geom step ", istep
+           call newzSpData2D(sparse_pattern,4,
+     &        block_dist,H_dftu_so_2D,name=oname)
+           call init_val(H_dftu_so_2D)
+         else 
+           call die('LDA+U and on-site spin orbit not implemented')  
          end if
       end if
 

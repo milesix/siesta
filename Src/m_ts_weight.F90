@@ -141,7 +141,7 @@ contains
     use class_OrbitalDistribution
     use class_dSpData2D
 
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_chem_pot, only : ts_mu
     use m_ts_contour_neq, only : N_nEq_ID, ID2mu
 #ifdef TRANSIESTA_DEBUG_NELEC
@@ -157,7 +157,7 @@ contains
     ! * OUTPUT variables  *
     ! *********************
     integer,            intent(in) :: N_Elec
-    type(Elec),         intent(in) :: Elecs(N_Elec)
+    type(electrode_t),         intent(in) :: Elecs(N_Elec)
     integer,            intent(in) :: N_mu
     type(ts_mu),        intent(in) :: mus(N_mu)
     ! The last-orbital of each atom
@@ -397,7 +397,7 @@ contains
           ! weight if Elec%Bulk
           if ( (.not. Elecs(io)%Bulk) .and. Elecs(io)%DM_update /= 2 ) cycle
           ! if we are not in the electrode we do not correct weight
-          if ( .not. AtomInElec(Elecs(io),ia) ) cycle
+          if ( .not. Elecs(io)%has_atom(ia) ) cycle
           ! in case of sum with the off-diagonal terms we have to sum (otherwise it should be (:,ia) = tmp ; (mu%ID,ia) = 0._dp) 
           atom_w(:,ia) = 0._dp
           atom_w(Elecs(io)%mu%ID,ia) = 1._dp

@@ -31,6 +31,7 @@
        module procedure globalize_sum_dp, globalize_sum_int
        module procedure globalize_sum_v_dp
        module procedure globalize_sum_vv_dp
+       module procedure globalize_sum_vv_cmplx
       end interface
       interface broadcast
        module procedure broadcast_dp, broadcast_int, broadcast_logical
@@ -322,6 +323,33 @@
       global = local
 #endif
       end subroutine Globalize_sum_vv_dp
+
+      subroutine Globalize_sum_vv_cmplx(local,global,comm)
+      complex(dp), intent(in), dimension(:,:)  :: local
+      complex(dp), intent(out), dimension(:,:) :: global
+      integer, intent(in), optional :: comm
+
+      integer :: n
+      integer :: mpi_comm
+
+      n = size(local)
+      if ( n /= size(global))
+     $     call die("Globalize_sum_v_dp error")
+
+#ifdef MPI
+      mpi_comm = mpi_comm_world
+      if (present(comm)) then
+         mpi_comm = comm
+      endif
+      call MPI_AllReduce(local(1,1),global(1,1),n,
+     $     MPI_double_complex,
+     $     MPI_sum,MPI_Comm,MPIerror)
+
+#else
+      global = local
+#endif
+      end subroutine Globalize_sum_vv_cmplx
+
 
       subroutine Globalize_sum_int(local,global,comm)
       integer, intent(in) :: local
