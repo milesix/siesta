@@ -37,7 +37,7 @@ module m_matel_registry
   private
 
   type id_t
-     character(len=10) :: func_type = "null"
+     character(len=15) :: func_type = "null"
      integer           :: n_indexes = 0
      integer           :: indexes(4) = (/-1,-1,-1,-1/)
   end type id_t
@@ -83,6 +83,9 @@ module m_matel_registry
   public :: evaluate, rcut, lcut
   public :: evaluate_x, evaluate_y, evaluate_z
   public :: show_pool
+  !
+  public :: peek_at_registered_radfunc
+  public :: is_registered_radfunc
 
 CONTAINS
 
@@ -92,6 +95,28 @@ CONTAINS
 
     ok = (gindex > 0 .AND. gindex <= nfuncs)
   end function valid
+
+  function is_registered_radfunc(index) result (is_radfunc)
+    integer, intent(in) :: index
+    logical :: is_radfunc
+
+    is_radfunc = associated(matel_pool(index)%rf)
+
+  end function is_registered_radfunc
+
+  subroutine peek_at_registered_radfunc(index,rfunc,l,m)
+    integer, intent(in)    :: index
+    type(rad_func), pointer :: rfunc
+    integer, intent(out)   :: l, m
+
+    if (.not. is_registered_radfunc(index)) &
+         call die("registry object does not contain a radfunc")
+
+    rfunc => matel_pool(index)%rf%func
+    l =  matel_pool(index)%rf%l
+    m =  matel_pool(index)%rf%m
+
+  end subroutine peek_at_registered_radfunc
 
   !> Extends the size of the pool if needed
   subroutine check_size_of_pool(nfuncs)
@@ -184,15 +209,32 @@ CONTAINS
   end subroutine register_in_tf_pool
 
 !--------------------------------------------------------------
-  subroutine show_pool()
+  subroutine show_pool(first, last)
     use trialorbitalclass, only: print_trialorb
 
-    integer :: gindex
+    integer, intent(in), optional :: first
+    integer, intent(in), optional :: last
 
-    do gindex = 1, nfuncs
+    integer :: istart, iend, gindex
+    
+    if (present(first)) then
+       istart = first
+    else
+       istart = 1
+    endif
+
+    if (present(last)) then
+       iend = last
+    else
+       iend = nfuncs
+    endif
+
+    do gindex = istart, iend
        if (associated(matel_pool(gindex)%rf)) then
+          write(*,advance="no",fmt="(i6)") gindex
           call print_rf(matel_pool(gindex)%rf)
        else if (associated(matel_pool(gindex)%tf)) then
+          write(*,advance="no",fmt="(i6,a)") gindex, " trial_orbital:"
           call print_trialorb(matel_pool(gindex)%tf)
        endif
     enddo
@@ -366,7 +408,7 @@ CONTAINS
 
   subroutine print_rf(rf)
     type(ext_radfunc_t), intent(in) :: rf
-    print "(a,i2,i2,f8.4)", trim(rf%id%func_type), rf%l, rf%m, rf%func%cutoff
+    print "(a15,i3,i3,f8.4)", trim(rf%id%func_type), rf%l, rf%m, rf%func%cutoff
   end subroutine print_rf
 
 end module m_matel_registry

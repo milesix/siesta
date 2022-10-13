@@ -56,9 +56,7 @@ dep:
 	sfmakedepend --depend=obj --modext=o \
           $(VPATH)/*.f $(VPATH)/*.f90 $(VPATH)/*.F $(VPATH)/*.F90 ; \
         fi
-	#@sed -i -e "/^siesta_cmlsubs.o:/s/version.o//" Makefile
 	@sed -i -e 's/\.T90\.o:/.o:/g' Makefile
-
 
 #
 XC=$(GRIDXC_LIBS)
@@ -67,7 +65,7 @@ NCPS_INCFLAGS=-I $(MAIN_OBJDIR)/ncps/src
 PSOP_INCFLAGS=-I $(MAIN_OBJDIR)/psoplib/src
 INCFLAGS:= $(NETCDF_INCFLAGS)  $(PSML_INCFLAGS) $(NCPS_INCFLAGS) \
            $(PSOP_INCFLAGS) $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS) \
-           $(PEXSI_INCFLAGS) $(INCFLAGS)
+           $(PEXSI_INCFLAGS) $(WANNIER90_INCFLAGS) $(INCFLAGS)
 #
 # For removing any -ipo compilation in sub directories...
 # Later compilers are also having this enabled, and it lets you
@@ -797,7 +795,7 @@ final_H_f_stress.o: m_ncdf_siesta.o m_ntm.o m_spin.o m_stress.o m_ts_io.o
 final_H_f_stress.o: m_ts_options.o metaforce.o molecularmechanics.o naefs.o
 final_H_f_stress.o: nlefsm.o overfsm.o parallel.o siesta_geom.o
 final_H_f_stress.o: siesta_options.o sparse_matrices.o spinorbit.o sys.o
-final_H_f_stress.o: ts_kpoint_scf.o units.o
+final_H_f_stress.o: ts_kpoint_scf.o units.o w90_in_types.o
 find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
 fire_optim.o: alloc.o m_fire.o m_mpi_utils.o parallel.o precision.o
 fire_optim.o: siesta_options.o units.o
@@ -1176,6 +1174,7 @@ m_writedelk.o: parallelsubs.o precision.o siesta_geom.o sys.o
 m_zminim.o: files.o parallel.o parallelsubs.o precision.o siesta_options.o
 m_zminim.o: sys.o
 madelung.o: parallel.o precision.o sys.o
+master.spher_harm.o: alloc.o precision.o sys.o
 matel_registry.o: m_trialorbitalclass.o precision.o radial.o spher_harm.o sys.o
 md_out.o: files.o m_energies.o precision.o sys.o units.o
 memory.o: memory_log.o
@@ -1333,6 +1332,7 @@ siesta_analysis.o: m_switch_local_proj.o m_ts_global_vars.o m_w90_in_siesta.o
 siesta_analysis.o: m_wannier_in_nao.o parallel.o projected_DOS.o
 siesta_analysis.o: siesta2wannier90.o siesta_cml.o siesta_geom.o
 siesta_analysis.o: siesta_options.o sparse_matrices.o units.o write_subs.o
+siesta_analysis.o: writewave.o zmatrix.o
 siesta_analysis.o: writewave.o zmatrix.o
 siesta_cmlsubs.o: files.o m_uuid.o parallel.o siesta_cml.o timestamp.o
 siesta_cmlsubs.o: version.o

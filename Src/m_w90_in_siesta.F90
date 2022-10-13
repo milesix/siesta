@@ -422,38 +422,38 @@ module m_w90_in_siesta
 
 !   Allocate the pointer where all the data required for every manifold
 !   will be stored
+
     allocate(manifold_bands_w90_in(n_wannier_manifolds))
     
-!   Read the WannierManifolds block
-!   First check whether the block is present in the fdf file.
-!   If it is not present, do nothing
-    if (.not. fdf_block('Wannier.Manifolds',bfdf)) RETURN
-
-    ! Threshold for the real part of the 
+    ! Global default: threshold for the real part of the 
     ! coefficients of a Wannier in a basis 
     ! of NAO to compute the contribution to 
     ! the tight-binding matrix elements
     manifold_bands_w90_in(:)%threshold = &
         fdf_get('Wannier.Manifolds.Threshold', 1.d-6)
 
-    ! Shall SIESTA compute the files which contain
+    ! Global default: Shall SIESTA compute the files which contain
     ! the periodic part of a Bloch function 
-    ! in the unit cell on a grid
+    ! in the unit cell on a grid?
     manifold_bands_w90_in(:)%write_unk = &
         fdf_get('Wannier.Manifolds.Unk', .false.)
 
-    ! Read the content of the block, line by line
+
+!   Read the WannierManifolds block
+!   If it is not present, do nothing
+    if (.not. fdf_block('Wannier.Manifolds',bfdf)) RETURN
+    ! 
     index_manifold = 0
     do while(fdf_bline(bfdf, pline))
-
-      ! Read in names for the manifold
       index_manifold = index_manifold + 1
+      ! Read in the manifold name ...
       string_manifold = fdf_bnames(pline, 1)
+      ! ... and process the corresponding named block 
       call read_manifold(trim(string_manifold), &
           manifold_bands_w90_in(index_manifold))
+    end do 
 
-    end do ! end loop over all the lines in the block WannierManifolds
-
+!   --------------------------- Wannier 'Chemical Potential' shifts
 !   Allocate the pointer where the chemical potential associated with 
 !   a given Wannier function will be stored.
 !   The correction will be applied only on the bands associated with 
@@ -1006,13 +1006,20 @@ module m_w90_in_siesta
                                !   function). 
                                !   Units always in reciprocal Angstrom. 
                                !   Default is zovera = 1.0.
-      integer  :: number_projectors_block
+      integer  :: nprojs_wannier90_style
                                ! Number of projectors whose information 
-                               !   is included in the WannierProjectors."name" block
+                               !   must be included in the WannierProjectors."name" block
+      integer  :: nprojs_in_block
+                               ! Number of projectors actually
+                               !   included in the WannierProjectors."name" block
+
+      integer  :: idx
+      integer, allocatable :: trial_orbs_index(:)
+      
       integer  :: i, j
       real(dp) :: xnorm_tmp    ! Norm of the x-vector read from WannierProjectors
       real(dp) :: znorm_tmp    ! Norm of the z-vector read from WannierProjectors
-      real(dp) :: coseno       ! Cosine between the x and z vectors
+      real(dp) :: cosine       ! Cosine between the x and z vectors
 
       real(dp), parameter :: eps4  = 1.0e-4_dp
       real(dp), parameter :: eps6  = 1.0e-6_dp
@@ -1048,11 +1055,14 @@ module m_w90_in_siesta
       if (allocated(w90man%proj_w90_in)) deallocate( w90man%proj_w90_in )
       allocate(w90man%proj_w90_in(number_projections))
 
-      number_projectors_block = 0
+      nprojs_wannier90_style = 0
+      ! trial_orbs are "classic Wannier trial functions" (as opposed to Siesta PAOs)
+      allocate(trial_orbs_index(number_projections))  ! for bookeeping below
+      
       do iproj = 1, number_projections
         ! Identify the atomic orbitals on which we are going to project
         iorb = w90man%orbital_indices(iproj)
-        if( iorb > 0 ) then
+        if( iorb > 0 ) then      ! Siesta orbital
           ia = iaorb(iorb)               ! Atom to which orbital belongs
           is = isa(ia)                   ! Atomic species of the atom where the
                                          !   orbital is centered
@@ -1072,20 +1082,23 @@ module m_w90_in_siesta
           w90man%proj_w90_in(iproj)%lmax   = l
           w90man%proj_w90_in(iproj)%from_basis_orbital = .true.
           w90man%proj_w90_in(iproj)%iorb   = iorb
-          w90man%proj_w90_in(iproj)%iorb_gindex = orb_gindex(is,iao) 
-        else
-          number_projectors_block = number_projectors_block + 1
+          w90man%proj_w90_in(iproj)%iorb_gindex = orb_gindex(is,iao)
+
+        else   ! Wannier90-style trial orbital, to be specified in block
+           
+           nprojs_wannier90_style = nprojs_wannier90_style + 1
+           trial_orbs_index(nprojs_wannier90_style) = iproj
         end if
       end do
 
     ! Read the information for the projectors from the Block, 
     ! in case some hybrid trial functions are required
-    if( number_projectors_block > 0 ) then
+    if( nprojs_wannier90_style > 0 ) then
       ! Count that there is the correct number of lines present
-      iproj = fdf_block_linecount('WannierProjectors.'//name, 'rrriiirrrrrrr')
-      if ( number_projectors_block /= iproj ) then
+      nprojs_in_block = fdf_block_linecount('WannierProjectors.'//name, 'rrriiirrrrrrr')
+      if ( nprojs_wannier90_style /= nprojs_in_block ) then
         write(6,'(3a)') 'Wrong number of projectors in the WannierProjectors.',name,' block'
-        write(6,'(a,i5)')' number_projectors_block = ', number_projectors_block 
+        write(6,'(a,i5)')' nprojs_wannier90_style = ', nprojs_wannier90_style 
         write(6,'(a,i5)')' projectors_in_block   = ', iproj
         call die('Wrong number of projectors in the WannierProjectors.'//name//' block')
       end if
@@ -1095,111 +1108,91 @@ module m_w90_in_siesta
       end if
         
       ! Read the content of the block, line by line
-      iproj = number_projections - number_projectors_block
+      ! Using the trial_orbs_index array we can relax the requirement
+      ! that the 'negative indices' appear last in the manifold
+      iproj = 0
       do while ( fdf_bline(bfdf, pline) )
         iproj = iproj + 1
         if ( iproj > number_projections ) &
             call die("Error in logic, should never be reached (check above)")
+
         center_tmp(1) = fdf_breals(pline,1)
         center_tmp(2) = fdf_breals(pline,2)
         center_tmp(3) = fdf_breals(pline,3)
-        w90man%proj_w90_in(iproj)%zaxis(1)  = fdf_breals(pline,4)
-        w90man%proj_w90_in(iproj)%zaxis(2)  = fdf_breals(pline,5)
-        w90man%proj_w90_in(iproj)%zaxis(3)  = fdf_breals(pline,6)
-        w90man%proj_w90_in(iproj)%xaxis(1)  = fdf_breals(pline,7)
-        w90man%proj_w90_in(iproj)%xaxis(2)  = fdf_breals(pline,8)
-        w90man%proj_w90_in(iproj)%xaxis(3)  = fdf_breals(pline,9)
-        w90man%proj_w90_in(iproj)%zovera    = fdf_breals(pline,10)
-        w90man%proj_w90_in(iproj)%l         = fdf_bintegers(pline,1)
-        w90man%proj_w90_in(iproj)%mr        = fdf_bintegers(pline,2)
-        w90man%proj_w90_in(iproj)%r         = fdf_bintegers(pline,3)
-        w90man%proj_w90_in(iproj)%from_basis_orbital = .false.
 
-        xaxis_tmp = w90man%proj_w90_in(iproj)%xaxis
-        zaxis_tmp = w90man%proj_w90_in(iproj)%zaxis
+        idx = trial_orbs_index(iproj)
+        ASSOCIATE ( proj => w90man%proj_w90_in(idx) ) ! Compact notation
+
+        proj%zaxis(1)  = fdf_breals(pline,4)
+        proj%zaxis(2)  = fdf_breals(pline,5)
+        proj%zaxis(3)  = fdf_breals(pline,6)
+        proj%xaxis(1)  = fdf_breals(pline,7)
+        proj%xaxis(2)  = fdf_breals(pline,8)
+        proj%xaxis(3)  = fdf_breals(pline,9)
+        proj%zovera    = fdf_breals(pline,10)
+        proj%l         = fdf_bintegers(pline,1)
+        proj%mr        = fdf_bintegers(pline,2)
+        proj%r         = fdf_bintegers(pline,3)
+        proj%from_basis_orbital = .false.
+
+        xaxis_tmp = proj%xaxis
+        zaxis_tmp = proj%zaxis
+        
         ! Check that the xaxis and the zaxis are orthogonal to each other
         xnorm_tmp = sqrt( dot_product(xaxis_tmp, xaxis_tmp) )
         if (xnorm_tmp < eps6) call die('define_trial_orbitals: |xaxis_tmp| < eps ')
         znorm_tmp = sqrt( dot_product(zaxis_tmp, zaxis_tmp) )
         if (znorm_tmp < eps6) call die('define_trial_orbitals: |zaxis_tmp| < eps ')
 
-        coseno = dot_product(xaxis_tmp, zaxis_tmp) / (xnorm_tmp * znorm_tmp)
-        if ( abs(coseno) > eps6 ) &
+        cosine = dot_product(xaxis_tmp, zaxis_tmp) / (xnorm_tmp * znorm_tmp)
+        if ( abs(cosine) > eps6 ) &
             call die('define_trial_orbitals: xaxis_tmp and zaxis_tmp are not orthogonal')
-        if ( w90man%proj_w90_in(iproj)%zovera < eps6 ) &
+        if ( proj%zovera < eps6 ) &
             call die('define_trial_orbitals: zovera value must be positive')
 
         ! Compute the y-axis
         call cross(zaxis, xaxis, yaxis_tmp)
-        w90man%proj_w90_in(iproj)%yaxis = yaxis_tmp / sqrt(dot_product(yaxis_tmp,yaxis_tmp))
+        proj%yaxis = yaxis_tmp / sqrt(dot_product(yaxis_tmp,yaxis_tmp))
 
         ! Now convert "center" from ScaledByLatticeVectors to Bohrs
         do i = 1 , 3
-          w90man%proj_w90_in(iproj)%center(i) = 0.0_dp
+          proj%center(i) = 0.0_dp
           do j = 1 , 3
-            w90man%proj_w90_in(iproj)%center(i) = center_tmp(j)*ucell(i,j) + &
-                w90man%proj_w90_in(iproj)%center(i)
+            proj%center(i) = center_tmp(j)*ucell(i,j) + proj%center(i)
           end do
         end do
 
-        w90man%proj_w90_in(iproj)%zovera = w90man%proj_w90_in(iproj)%zovera * Ang  !To Bohr^-1
+        proj%zovera = proj%zovera * Ang  !To Bohr^-1
 
         ! Select the maximum angular momentum
-        select case(w90man%proj_w90_in(iproj)%l)
+        select case(proj%l)
         case(0:3)
-          w90man%proj_w90_in(iproj)%lmax = w90man%proj_w90_in(iproj)%l
+          proj%lmax = proj%l
         case(-3:-1)
-          w90man%proj_w90_in(iproj)%lmax = 1 ! spN hybrids
+          proj%lmax = 1 ! spN hybrids
         case(-5:-4)
-          w90man%proj_w90_in(iproj)%lmax = 2 ! spdN hybrids
+          proj%lmax = 2 ! spdN hybrids
         case default
           call die("Invalid l in define_trial_orbitals")
         end select
 
         ! Further checks
-        if ( w90man%proj_w90_in(iproj)%mr < 1 ) &
-            call die("Invalid mr in define_trial_orbitals ")
-        if ( w90man%proj_w90_in(iproj)%r > 3 .or. &
-            w90man%proj_w90_in(iproj)%r < 1 ) then
+        if ( proj%mr < 1 ) call die("Invalid mr in define_trial_orbitals ")
+        if ( proj%r > 3 .or. proj%r < 1 ) then
           call die("Invalid r in define_trial_orbitals")
-        else if ( w90man%proj_w90_in(iproj)%l  >= 0 .and. &
-            w90man%proj_w90_in(iproj)%mr > 2*w90man%proj_w90_in(iproj)%l+1 ) then
+        else if ( proj%l  >= 0 .and. proj%mr > 2*proj%l+1 ) then
           call die("Invalid mr_w in define_trial_orbitals")
-        else if ( w90man%proj_w90_in(iproj)%l < 0 .and. &
-            w90man%proj_w90_in(iproj)%mr > 1-w90man%proj_w90_in(iproj)%l ) then
+        else if ( proj%l < 0 .and. proj%mr > 1-proj%l ) then
           call die("Invalid mr_w in define_trial_orbitals")
         end if
 
         ! Cut-off initialization (in Bohr)
-        w90man%proj_w90_in(iproj)%rcut = cutoffs(w90man%proj_w90_in(iproj)%r) / &
-            w90man%proj_w90_in(iproj)%zovera
-
+        proj%rcut = cutoffs(proj%r) / proj%zovera
+        
+        END ASSOCIATE   ! --- cosmetic device to simplify code
       end do !  do while lines in the fdf block
     end if
 
-!!   For debugging
-!    write(6,'(a)')    'define_trial_orbitals: Begin projections'
-!    write(6,'(a,i6)') 'define_trial_orbitals: Number of projectors = ', number_projections
-!    write(6,'(a,i6)') 'define_trial_orbitals: Projections read from block = ', index_proj_from_block 
-!    do iproj = 1, number_projections
-!      write(6,'(3(f10.5,1x),2x,3i3)') &
-! &      w90man%proj_w90_in(iproj)%center(1), &
-! &      w90man%proj_w90_in(iproj)%center(2), &
-! &      w90man%proj_w90_in(iproj)%center(3), &
-! &      w90man%proj_w90_in(iproj)%l,         &
-! &      w90man%proj_w90_in(iproj)%mr,        &
-! &      w90man%proj_w90_in(iproj)%r   
-!      write(6,'(2x,3f11.7,1x,3f11.7,1x,f7.2)') &
-! &      w90man%proj_w90_in(iproj)%zaxis(1),  &
-! &      w90man%proj_w90_in(iproj)%zaxis(2),  &
-! &      w90man%proj_w90_in(iproj)%zaxis(3),  &
-! &      w90man%proj_w90_in(iproj)%xaxis(1),  &
-! &      w90man%proj_w90_in(iproj)%xaxis(2),  &
-! &      w90man%proj_w90_in(iproj)%xaxis(3),  &
-! &      w90man%proj_w90_in(iproj)%zovera
-!    enddo
-!    write(6,'(a)')    'define_trial_orbitals: End projections'
-!!   End debugging
   end subroutine define_trial_orbitals
 
   subroutine int_array_extend(orig, add)

@@ -127,30 +127,29 @@ BandLinesScale      ReciprocalLatticeVectors
 #
 # Variables related with the Wannierization of the manifolds
 #
+%block Wannier.Manifolds
+  entangled
+%endblock Wannier.Manifolds
 
-NumberOfBandManifoldsForWannier   1
+%block Wannier.Manifold.entangled
+ # Indices of the initial and final band of the manifold
+ bands   1   8
+ # Indices of the orbitals that will be used as localized trial orbitals
+ trial-orbitals  9 10 11  3  7
+ # Number of iterations for the minimization of \Omega
+ spreading.nitt 0         
+ wannier_plot  3 
+ fermi_surface_plot true
+ write_hr true
+ write_tb true
+ # Bottom and top of the outer energy window for band disentanglement
+ window  -30.0    5.0   eV
+ # Bottom and top of the inner energy window for band disentanglement
+ window.frozen  -30.0   -7.5   eV
+%endblock Wannier.Manifold.entangled
 
-%block WannierProjections
-  1                  # Sequential index of the manifold, from 1 to NumberOfBandManifoldsForWannier
-  1   8              # Indices of the initial and final band of the manifold
-  5                  # Number of bands for Wannier transformation
-  9 10 11  3  7      # Indices of the orbitals that will be used as localized trial orbitals
-  num_iter 0         # Number of iterations for the minimization of \Omega
-  wannier_plot  3    # Plot the Wannier function 
-  fermi_surface_plot # Plot the Fermi surface
-  write_hr           # Write the Hamiltonian in the WF basis
-  write_tb           # Write the Hamiltonian in the WF basis
-  -30.0    5.0       # Bottom and top of the outer energy window for band disentanglement (in eV)
-  -30.0   -7.5       # Bottom and top of the inner energy window for band disentanglement (in eV)
-%endblock WannierProjections
-
-%block kMeshforWannier
-   20  20  1  
-%endblock kMeshforWannier
-
-Siesta2Wannier90.UnkGrid1       30
-Siesta2Wannier90.UnkGrid2       30
-Siesta2Wannier90.UnkGrid3       30
+Wannier.Manifolds.Unk  .false.
+Wannier.k [20  20  1]
 
 WriteMullikenPop    1
 

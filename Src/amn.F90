@@ -100,6 +100,7 @@ subroutine amn( ispin, index_manifold )
                                                     !    global index to the 
                                                     !    trial projection
                                                     !    functions
+  use m_matel_registry,   only: show_pool
   use m_new_matel,        only: new_matel           ! New MATEL implementation 
                                                     !   with the global indices 
                                                     !   of the radial functions 
@@ -383,13 +384,43 @@ subroutine amn( ispin, index_manifold )
     if (allocated(projector_gindex)) deallocate(projector_gindex)
     allocate ( projector_gindex(numproj) )
     do iproj = 1, numproj
-      tf = projections( iproj )
-      call register_in_tf_pool( tf, gindex )
+       tf = projections( iproj )
+       ! Check whether it is a "Siesta orbital", In that case, generate a
+       ! new trial orbital with the right orientation, and register it properly:
+       if (tf%from_basis_orbital) then
+          block
+            use radial, only: radial_rescale_radfunc, rad_func
+            use m_matel_registry, only: peek_at_registered_radfunc
+            use m_matel_registry, only: register_in_rf_pool
+            
+            integer :: orb_gindex, l, m
+            type(rad_func), pointer :: rfunc, func_new => null()
+            
+            orb_gindex = tf%iorb_gindex
+            call peek_at_registered_radfunc(orb_gindex,rfunc,l,m)
+            if ( modulo(m,2) == 1 ) then
+               allocate(func_new)
+               call radial_rescale_radfunc(rfunc,func_new,scale=-1.0_dp)
+               call register_in_rf_pool(func_new, l, m, "wann_twin_orb", [iproj], gindex)
+            else
+               call register_in_rf_pool(rfunc, l, m, "wann_orb", [iproj], gindex)
+            endif
+         end block
+      else
+         call register_in_tf_pool( tf, gindex )
+      endif
       projector_gindex( iproj ) = gindex
     enddo
+    if (ionode) then
+       write(*, "(a)") "Registered Wannier projectors:"
+       call show_pool(first = projector_gindex(1), &
+            last = projector_gindex(numproj))
+    endif
+    
+    !!!! (For modern branches: remember to initialize the matel tables)
     firsttime = .false.
   endif
-
+  
 ! Find reciprocal unit cell vectors (without 2*pi factor)
   call reclat( ucell, rcell, 0 )
 
@@ -614,8 +645,7 @@ OrbitalQueue:                                                        &
       do while (associated(item))
         r12 = trialcenter - item%center
         globalindexorbital = orb_gindex( item%specie, item%specieindex )
-        if( projections(indexproj)%from_basis_orbital )             &
- &        globalindexproj = projections(indexproj)%iorb_gindex
+
         call new_matel('S',                & ! Compute the overlap
  &                     globalindexorbital, & ! Between orbital with globalinde
  &                     globalindexproj,    & ! And projector with globalindex
