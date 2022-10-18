@@ -544,6 +544,7 @@ target_compile_definitions(
   "$<$<BOOL:${WITH_NCDF}>:NCDF>"
   "$<$<BOOL:${WITH_NCDF}>:NCDF_4>"
   "$<$<BOOL:${WITH_NCDF_PARALLEL}>:NCDF_PARALLEL>"
+  "$<$<BOOL:${WITH_LUA}>:SIESTA__FLOOK>"
 )
 
 target_link_libraries(
@@ -557,6 +558,7 @@ target_link_libraries(
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
   ${PROJECT_NAME}-libms
+  "$<$<BOOL:${WITH_LUA}>:flook::flook>"
   "$<$<BOOL:${WITH_MPI}>:mpi_siesta>"
   "$<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>"
   "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>"
@@ -584,26 +586,6 @@ if(CMAKE_Fortran_COMPILER_ID MATCHES Intel)
 	     state_analysis.F
 	     create_Sparsity_SC.F90
              PROPERTIES  COMPILE_OPTIONS "${DEBUG_OPTIONS_LIST}")
-endif()
-
-if(WITH_LUA)
-  target_compile_definitions(
-  ${PROJECT_NAME}-libsiesta
-  PUBLIC
-  SIESTA__FLOOK
-  )
-  target_include_directories(
-    ${PROJECT_NAME}-libsiesta
-    PUBLIC
-    ${FLOOK_INCLUDE_DIRS}
-)
-  target_link_libraries(
-    ${PROJECT_NAME}-libsiesta
-    PUBLIC
-    ${PROJECT_NAME}-libfdict
-    ${FLOOK_LIBS}
-)
-
 endif()
 
 # -- Version information

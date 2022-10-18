@@ -161,8 +161,9 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
       - WITH_FFTW:  (ON by default) If not set, Util/STM/ol-stm will
                     not be compiled.
 
-      - WITH_LUA:   The *environment* variable FLOOK_ROOT must be set and
-                    point to an installation of the flook library.
+      - WITH_LUA:   Use either an *environment* variable FLOOK_ROOT
+                    that points to an installation of the flook library, or
+		    a filepath cache variable (-DFLOOK_ROOT=/path/to/flook)
 
 * Handling of compiler flags
 
@@ -210,9 +211,9 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
         which might not be well constructed (see the modules
         in config/cmake)
 
-      - The flook library needs its path to be set in the
-        *environment* variable FLOOK_ROOT, and the linking string is
-        hard-coded, as there is no proper pkgconfig file yet.
+      - The libraries and module search paths for the flook library
+        are hard-coded (based on $FLOOK_ROOT), as there is no proper
+        pkgconfig file yet.
 
       - When using MPI, a single MPI version of GRIDXC is compiled (or
         found) and it is used also for the utility programs that would

@@ -17,9 +17,9 @@ file(COPY H2O/h2o.fdf DESTINATION "${CMAKE_BINARY_DIR}/install_tests/H2O")
 file(COPY Vps/O.psf Vps/H.psf DESTINATION "${CMAKE_BINARY_DIR}/install_tests/H2O")
 
 add_test(  NAME    siesta-mgo_test
-           COMMAND siesta-siesta MgO.fdf
+           COMMAND siesta-siesta -out OUT MgO.fdf
            WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/install_tests/MgO" )
 
 add_test(  NAME    siesta-h2o_test
-           COMMAND siesta-siesta h2o.fdf
+           COMMAND siesta-siesta -out OUT h2o.fdf
            WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/install_tests/H2O" )

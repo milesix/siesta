@@ -226,6 +226,8 @@ install(
 
 enable_testing()
 add_subdirectory(Examples)
+add_subdirectory(Tests)
+
 if(WITH_MPI)
   add_subdirectory("Util/MPI_test")
 endif(WITH_MPI)
