@@ -537,6 +537,7 @@ target_compile_definitions(
   ${PROJECT_NAME}-libsiesta
   PUBLIC
   "$<$<BOOL:${WITH_MPI}>:MPI>"
+  "$<$<BOOL:${WITH_GRID_SP}>:GRID_SP>"
   "$<$<BOOL:${HAS_MRRR}>:SIESTA__MRRR>"
   "$<$<BOOL:${WITH_ELPA}>:SIESTA__ELPA>"
   "$<$<BOOL:${WITH_NETCDF}>:CDF>"

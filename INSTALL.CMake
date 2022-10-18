@@ -151,6 +151,9 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
                     must be pre-compiled, and incorporated into the build by adding
 		    the appropriate $LIBXC_ROOT to the CMAKE_PREFIX_PATH.
 
+      - WITH_GRID_SP: Use single-precision (SP) for grid arrays.
+                      It needs to find a SP libgridxc.
+
       - WITH_ELPA:  See config/cmake/search_for_elpa.cmake. Due to the
                     idiosyncrasies of the ELPA build system, some preparation
 		    might be needed.
@@ -211,19 +214,12 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
         *environment* variable FLOOK_ROOT, and the linking string is
         hard-coded, as there is no proper pkgconfig file yet.
 
-      - Old versions of GRIDXC cannot yet be
-        incorporated. CMake-enabled installed versions are fine, but
-        the setting of WITH_LIBXC must be consistent. Otherwise,
-        GRIDXC must be compiled from the submodule source in
-        ExtLibs/libgridxc or by fetching the source on-the-fly.  Some
-        more work is needed to interface correctly to versions of
-        libgridxc installed with the autotools build system.
-        
-      - When using MPI, a single MPI version of GRIDXC is compiled,
-        and it is used also for those targets that would only need a
-        serial version.  This will work in most systems, but in some
-        others (e.g. IBM's mpi) one would have to use 'mpirun ...' for
-        serial utilities linking to GRIDXC (gen-basis, for example).
+      - When using MPI, a single MPI version of GRIDXC is compiled (or
+        found) and it is used also for the utility programs that would
+        only need a serial version (since they call only the 'atomxc'
+        routine).  This will work in most systems, but in some others
+        (e.g. IBM's mpi) one would have to use 'mpirun ...' for serial
+        utilities linking to GRIDXC (gen-basis, for example).
 
 
 

@@ -42,6 +42,7 @@ option(WITH_NCDF_PARALLEL "Use NCDF_PARALLEL" FALSE)
 
 option(WITH_FFTW "FFTW support (for STM/ol-stm utility)" TRUE)
 option(WITH_LIBXC "Include libxc support" FALSE)
+option(WITH_GRID_SP "Use single-precision for grid magnitudes" FALSE)
 
 option(WITH_OPENMP "Build Siesta and TBTrans with OpenMP support" FALSE)
 
@@ -160,7 +161,7 @@ if(WITH_LIBXC)
 endif()  
 
 if (NOT TARGET libgridxc::libgridxc)
-  find_package(libgridxc)
+  include(search_for_gridxc)
 endif()
 
 # Search for flook

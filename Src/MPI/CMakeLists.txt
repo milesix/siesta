@@ -15,6 +15,12 @@ add_library(mpi_siesta
 ###set(CMAKE_INCLUDE_CURRENT_DIR ON)
 target_include_directories(mpi_siesta PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
+target_compile_definitions(
+  mpi_siesta
+  PUBLIC
+  "$<$<BOOL:${WITH_GRID_SP}>:GRID_SP>"
+)
+
   target_link_libraries(mpi_siesta PUBLIC MPI::MPI_Fortran)
   # So that clients of mpi_siesta can find its modules:
   target_include_directories(mpi_siesta INTERFACE ${CMAKE_CURRENT_BINARY_DIR})
