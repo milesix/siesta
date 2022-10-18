@@ -5,30 +5,33 @@
 #
 set(top_src_dir "${CMAKE_SOURCE_DIR}/Src")
 
+# To avoid "multiple rules" in Ninja
+# Maybe turn into global-utility targets
+
+add_library(aux_opts     ${top_src_dir}/m_getopts.f90)
+add_library(aux_gridfunc  m_gridfunc.F90)
+
 #-----------------------------------------
 add_executable(g2c_ng
-   ${top_src_dir}/m_getopts.f90
    ${top_src_dir}/reclat.f
    m_struct.f90
-   m_gridfunc.F90
    local_die.f90
    g2c_ng.f
 )
 
 # For future enabling of NetCDF in m_gridfunc
 target_link_libraries(g2c_ng PRIVATE $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>)
+target_link_libraries(g2c_ng PRIVATE aux_opts aux_gridfunc)
 target_compile_definitions(g2c_ng  PRIVATE $<$<BOOL:${WITH_NETCDF}>:CDF> )
 		     
 install(TARGETS g2c_ng RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} )
 #---------------------------------------------------------------------
 
-add_executable(v_info
-   m_gridfunc.F90
-   v_info.f90
-)
+add_executable(v_info v_info.f90)
 
 # For future enabling of NetCDF in m_gridfunc
 target_link_libraries(v_info PRIVATE $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>)
+target_link_libraries(v_info PRIVATE aux_gridfunc)
 target_compile_definitions(v_info  PRIVATE $<$<BOOL:${WITH_NETCDF}>:CDF> )
 		     
 install(TARGETS v_info RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} )
@@ -93,14 +96,13 @@ install(TARGETS cdf_get_cell RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} )
 add_library(aux_fft  ${top_src_dir}/m_fft_gpfa.F)
 
 add_executable(cdf_laplacian
-   ${top_src_dir}/m_getopts.f90
    ${top_src_dir}/reclat.f
    fft3d.f
    local_die.f90
    cdf_laplacian.F90
 )
 
-target_link_libraries(cdf_laplacian PRIVATE aux_fft)
+target_link_libraries(cdf_laplacian PRIVATE aux_fft aux_opts)
 target_link_libraries(cdf_laplacian PRIVATE NetCDF::NetCDF_Fortran )
 target_compile_definitions(cdf_laplacian  PRIVATE CDF )
 		     
