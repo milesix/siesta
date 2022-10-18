@@ -225,6 +225,7 @@ install(
 # add the testsuite
 
 enable_testing()
+add_subdirectory(Examples)
 if(WITH_MPI)
   add_subdirectory("Util/MPI_test")
 endif(WITH_MPI)
