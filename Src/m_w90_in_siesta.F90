@@ -638,6 +638,7 @@ module m_w90_in_siesta
           conv = fdf_convfac(val, "eV")
           w90man%dis_win(1) = fdf_bvalues(pline, 1) * conv
           w90man%dis_win(2) = fdf_bvalues(pline, 2) * conv
+          w90man%dis_win_siesta = .true.
 
         else if ( leqi(key, "window.frozen") ) then
           key_found(9) = .true.
@@ -647,6 +648,7 @@ module m_w90_in_siesta
           w90man%dis_froz(1) = fdf_bvalues(pline, 1) * conv
           w90man%dis_froz(2) = fdf_bvalues(pline, 2) * conv
           w90man%frozen_states = .true.
+          w90man%dis_win_froz_siesta = .true.
 
         else if ( leqi(key, "threshold") ) then
           key_found(10) = .true.
@@ -1968,6 +1970,13 @@ module m_w90_in_siesta
     use w90_parameters, only : frozen_states   ! logical value that determines
                                                !   whether an inner energy
                                                !   window has been specified
+    use w90_parameters, only : dis_win_siesta  ! logical value that determines
+                                               !   whether the output window
+                                               !   will be introduced from siest
+    use w90_parameters, only : dis_win_froz_siesta   
+                                               ! logical value that determines
+                                               !   whether the frozen window
+                                               !   will be introduced from siest
 !
 !   Variables related with the input/output coming from SIESTA   
 !
@@ -2229,6 +2238,8 @@ module m_w90_in_siesta
     dis_froz_min = manifold_bands_w90_in(index_manifold)%dis_froz(1)
     dis_froz_max = manifold_bands_w90_in(index_manifold)%dis_froz(2)
     frozen_states= manifold_bands_w90_in(index_manifold)%frozen_states
+    dis_win_siesta = manifold_bands_w90_in(index_manifold)%dis_win_siesta
+    dis_win_froz_siesta = manifold_bands_w90_in(index_manifold)%dis_win_froz_siesta
 
 !   Set up the variables for post-processing
     wannier_plot    = manifold_bands_w90_in(index_manifold)%wannier_plot

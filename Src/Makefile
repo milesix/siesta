@@ -103,7 +103,7 @@ MAIN_OBJ = siesta.o
 OBJS =  automatic_cell.o atom_options.o \
         arw.o  atomlwf.o bands.o basis_enthalpy.o bessph.o bonds.o \
         born_charge.o cgwf.o chkdim.o chkgmx.o \
-	chempot.o coceri.o coxmol.o cross.o compute_norm.o\
+	cellsubs.o chempot.o coceri.o coxmol.o cross.o compute_norm.o\
 	denmat.o denmatlomem.o detover.o dfscf.o diagon.o digcel.o \
         fft.o dhscf.o constr.o diagk_file.o diagmemory.o \
 	diagg.o diagk.o diagkp.o diag2g.o diag2k.o diag2kp.o diag3g.o diag3k.o diag3kp.o diagpol.o \
@@ -574,7 +574,7 @@ alloc_error_report.o: parallel.o
 alloc_memory_event.o: memory_log.o
 amn.o: m_switch_local_proj.o m_trialorbitalclass.o matel_registry.o mneighb.o
 amn.o: new_matel.o parallel.o parallelsubs.o precision.o siesta_geom.o
-amn.o: siesta_options.o sparse_matrices.o sys.o w90_in_types.o
+amn.o: siesta_options.o sparse_matrices.o sys.o w90_in_types.o m_orderbands.o
 arw.o: alloc.o parallel.o precision.o sys.o
 atm_types.o: precision.o radial.o
 atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o sys.o
