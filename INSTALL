@@ -26,7 +26,7 @@ Siesta can be compiled. This installation can be made on-the-fly,
 using CMake, pkg-config, and git submodules:
 
 - The xmlf90, libpsml, and libgridxc (required) libraries are available as
-  submodules in the ExtLibs subdirectory, set to the appropriate
+  submodules in the External subdirectory, set to the appropriate
   branches and/or tags for use in the current version of Siesta. If
   you want to use them, and you are using git, you need to do (just
   once, after you have fetched/cloned this Siesta branch):

@@ -271,7 +271,7 @@ include $(MAIN_OBJDIR)/extlibs.mk
 #
 EXTLIBS= xmlf90 libpsml libgridxc
 
-PKG_PATH=$(MAIN_OBJDIR)/ExtLibs_installs/$(LIBPREFIX)/pkgconfig
+PKG_PATH=$(MAIN_OBJDIR)/External_installs/$(LIBPREFIX)/pkgconfig
 
 ifeq ($(WITH_LIBXC),1)
  ifndef LIBXC_ROOT

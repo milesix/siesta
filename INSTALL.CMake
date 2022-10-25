@@ -41,7 +41,7 @@ A) Installation on-the-fly, using git submodules for the external
 libraries.
 
 - The xmlf90, libpsml, and libgridxc (required) libraries are
-  available as submodules in the ExtLibs subdirectory, set to the
+  available as submodules in the External subdirectory, set to the
   appropriate branches and/or tags for use in the current version of
   Siesta. To use them, if you got your sources from the git repo, you
   just need to do (just once, after you have fetched/cloned this
@@ -57,7 +57,7 @@ libraries.
    in the top level of the distribution to gather all the source files
    for later uploading)
 
-  (If you got a full-source package with the ExtLibs subdirectories already
+  (If you got a full-source package with the External subdirectories already
    populated, you do not need to do anything at this point).
 
   The basic invocation will then be: (-GNinja is optional)

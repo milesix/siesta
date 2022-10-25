@@ -8,15 +8,15 @@
 # https://stackoverflow.com/questions/62218250/wrapping-cmake-build-with-makefile
 #
 # Source code for the libraries is handled through git submodules
-# deployed in directory ExtLibs
+# deployed in directory External
 #
 #-----------------------------------------
-EXTLIBS_INSTALL_PREFIX=$(MAIN_OBJDIR)/ExtLibs_installs
+EXTLIBS_INSTALL_PREFIX=$(MAIN_OBJDIR)/External_installs
 ## EXTLIBS_TOOLCHAIN_FILE=$(MAIN_OBJDIR)/extlibs_toolchain.cmake
 EXTLIBS_VERSION_CHECK_FILE=$(TOPDIR)/Config/mk-build/extlibs_cmake_version_check.cmake
 
 CMAKE_BUILD_DIR_xmlf90 := $(MAIN_OBJDIR)/__extlib_xmlf90
-CMAKE_SOURCE_DIR_xmlf90 := $(TOPDIR)/ExtLibs/xmlf90
+CMAKE_SOURCE_DIR_xmlf90 := $(TOPDIR)/External/xmlf90
 
 check_cmake_version:
 	@cmake -P $(EXTLIBS_VERSION_CHECK_FILE)
@@ -37,7 +37,7 @@ xmlf90: $(CMAKE_BUILD_DIR_xmlf90)/libxmlf90.a
 
 #-----------------------------------------
 CMAKE_BUILD_DIR_libpsml := $(MAIN_OBJDIR)/__extlib_libpsml
-CMAKE_SOURCE_DIR_libpsml := $(TOPDIR)/ExtLibs/libpsml
+CMAKE_SOURCE_DIR_libpsml := $(TOPDIR)/External/libpsml
 
 $(CMAKE_BUILD_DIR_libpsml)/Makefile: $(CMAKE_SOURCE_DIR_libpsml)/CMakeLists.txt
 	cmake -S $(<D) -B $(@D) \
@@ -55,7 +55,7 @@ libpsml: check_cmake_version
 libpsml: xmlf90 $(CMAKE_BUILD_DIR_libpsml)/libpsml.a
 #-----------------------------------------
 CMAKE_BUILD_DIR_libgridxc := $(MAIN_OBJDIR)/__extlib_libgridxc
-CMAKE_SOURCE_DIR_libgridxc := $(TOPDIR)/ExtLibs/libgridxc
+CMAKE_SOURCE_DIR_libgridxc := $(TOPDIR)/External/libgridxc
 
 ifeq ($(WITH_MPI), 1)
   MPI_FLAG=ON

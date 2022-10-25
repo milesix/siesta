@@ -172,8 +172,8 @@ endif()
 
 # -- Submodule
 
-  set(GRIDXC_SOURCE_DIR "${PROJECT_SOURCE_DIR}/ExtLibs/libgridxc")
-  set(GRIDXC_BINARY_DIR "${PROJECT_BINARY_DIR}/ExtLibs/libgridxc")
+  set(GRIDXC_SOURCE_DIR "${PROJECT_SOURCE_DIR}/External/libgridxc")
+  set(GRIDXC_BINARY_DIR "${PROJECT_BINARY_DIR}/External/libgridxc")
   if(EXISTS "${GRIDXC_SOURCE_DIR}/CMakeLists.txt")
     message(STATUS "Include libgridxc from subprojects")
     add_subdirectory(

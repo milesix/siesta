@@ -65,8 +65,8 @@ macro(
     endif()
 
     if("${method}" STREQUAL "subproject")
-      set("${_pkg_uc}_SOURCE_DIR" "${PROJECT_SOURCE_DIR}/ExtLibs/${package}")
-      set("${_pkg_uc}_BINARY_DIR" "${PROJECT_BINARY_DIR}/ExtLibs/${package}")
+      set("${_pkg_uc}_SOURCE_DIR" "${PROJECT_SOURCE_DIR}/External/${package}")
+      set("${_pkg_uc}_BINARY_DIR" "${PROJECT_BINARY_DIR}/External/${package}")
       if(EXISTS "${${_pkg_uc}_SOURCE_DIR}/CMakeLists.txt")
         message(STATUS "Include ${package} from subprojects")
         add_subdirectory(
