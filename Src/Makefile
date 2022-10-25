@@ -127,6 +127,7 @@ OBJS =  automatic_cell.o atom_options.o \
 	siesta_tddft.o \
         io.o sparse_matrices.o \
         coor.o \
+        cellsubs.o \
         broadcast_basis.o eggbox.o \
         optical.o phirphi_opt.o reoptical.o transition_rate.o \
         initparallel.o show_distribution.o setspatial.o setatomnodes.o uncell.o \

@@ -68,7 +68,7 @@ OBJS = precision.o parallel.o \
         basis_types.o interpolation.o \
         spher_harm.o arw.o xml.o atom_options.o \
         chemical.o m_filter.o hamann.o chkdim.o \
-        periodic_table.o
+        bessph.o radfft.o m_fft_gpfa.o periodic_table.o
 
 OBJS += fdf_extra.o m_cite.o kpoint_convert.o
 OBJS += sorting.o m_mesh_node.o densematrix.o
