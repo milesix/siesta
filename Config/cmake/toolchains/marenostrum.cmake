@@ -1,7 +1,7 @@
 #
 # Marenostrum with Intel 2017.4 toolchain. NO OPENMP
 #
-set(WITH_OMP OFF CACHE BOOL "OpenMP setting")
+set(WITH_OMP "OFF" CACHE BOOL "OpenMP setting")
 
 set(LAPACK_LIBRARY
     "-L/apps/INTEL/2017.4/mkl/lib/intel64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core"
