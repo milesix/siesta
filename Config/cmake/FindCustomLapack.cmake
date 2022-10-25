@@ -140,6 +140,26 @@ endif()
 #
 if (LAPACK_FOUND)
  include(CheckFortranSourceRuns)
+ include(CheckFortranSourceCompiles)
+
+set(CMAKE_REQUIRED_LIBRARIES LAPACK::LAPACK)
+check_fortran_source_compiles(
+"
+external :: sgemm, dsysv
+call sgemm()
+call dsysv()
+end
+"
+LAPACK_WORKS)
+unset(CMAKE_REQUIRED_LIBRARIES)
+
+if (NOT LAPACK_WORKS)
+ message(STATUS "  ---------------------------------------------")
+ message(STATUS "  *** LAPACK library does not link properly")
+ message(STATUS "  Please check the library linking string found or used by CMake")
+ message(STATUS "  ---------------------------------------------")
+ message(FATAL_ERROR "  *** LAPACK library does not link properly")
+endif()
 
 set(CMAKE_REQUIRED_LIBRARIES LAPACK::LAPACK)
 check_fortran_source_runs(
