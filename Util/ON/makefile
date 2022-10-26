@@ -16,6 +16,7 @@ MAIN_OBJDIR=.
 
 VPATH=$(TOPDIR)/Util/ON
 
+default: all
 include $(MAIN_OBJDIR)/arch.make
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
@@ -26,7 +27,7 @@ ifeq ($(WITH_NETCDF),1)
 else
  COPY=echo
 endif
-default: $(PROGS)
+all: $(PROGS)
 
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
