@@ -1,4 +1,4 @@
-[submodule "External</xmlf90"]
+[submodule "External/xmlf90"]
 	path = External/xmlf90
 	url = https://gitlab.com/siesta-project/libraries/xmlf90.git
 	branch = cmake
