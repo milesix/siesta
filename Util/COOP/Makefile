@@ -48,24 +48,25 @@ DEF_OBJS += io_hs.o
 DEF_OBJS += main_vars.o
 
 # Create objects for each routine
-MPROP_OBJS = $(SIESTA_OBJS) $(DEF_OBJS) read_curves.o orbital_set.o handlers.o
-FAT_OBJS   = $(SIESTA_OBJS) $(DEF_OBJS) read_curves.o orbital_set.o handlers.o
-DM_OBJS    = $(SIESTA_OBJS) $(DEF_OBJS) iodm_netcdf.o write_dm.o handlers.o
+MPROP_OBJS = $(SIESTA_OBJS) $(DEF_OBJS) read_curves.o orbital_set.o handlers.o 
+FAT_OBJS   = $(SIESTA_OBJS) $(DEF_OBJS) read_curves.o orbital_set.o handlers.o 
+DM_OBJS    = $(SIESTA_OBJS) $(DEF_OBJS) iodm_netcdf.o write_dm.o handlers.o 
 TEXTURE_OBJS  = $(SIESTA_OBJS) $(DEF_OBJS) handlers.o
 
 # 2. By whether they are in VPATH or in the local directory (for deps processing)
 DEP_OBJS = $(SIESTA_OBJS)
 DEP_OBJS += m_getopts.o io.o  units.o iodm_netcdf.o write_dm.o
-LOCAL_OBJS= subs.o io_hs.o main_vars.o read_curves.o orbital_set.o handlers.o
+LOCAL_OBJS= subs.o io_hs.o main_vars.o read_curves.o orbital_set.o handlers.o \
+            mprop.o fat.o dm_creator.o spin_texture.o
 
 # Dependencies
 .PHONY: dep
 dep:
 	@sfmakedepend --depend=obj --modext=o \
-		$(addprefix $(VPATH)/,$(DEP_OBJS:.o=.f) $(DEP_OBJS:.o=.f90)) \
-		$(addprefix $(VPATH)/,$(DEP_OBJS:.o=.F) $(DEP_OBJS:.o=.F90)) \
-		$(LOCAL_OBJS:.o=.f90) $(LOCAL_OBJS:.o=.F90) \
-		$(LOCAL_OBJS:.o=.f) $(LOCAL_OBJS:.o=.F) || true
+		$(addprefix $(TOPDIR)/Src/,$(DEP_OBJS:.o=.f) $(DEP_OBJS:.o=.f90)) \
+		$(addprefix $(TOPDIR)/Src/,$(DEP_OBJS:.o=.F) $(DEP_OBJS:.o=.F90)) \
+		$(addprefix $(TOPDIR)/Util/COOP/,$(LOCAL_OBJS:.o=.f90) $(LOCAL_OBJS:.o=.F90)) \
+		$(addprefix $(TOPDIR)/Util/COOP/,$(LOCAL_OBJS:.o=.f) $(LOCAL_OBJS:.o=.F)) || true
 
 
 mprop: $(MPROP_OBJS) mprop.o
@@ -89,8 +90,12 @@ iodm_netcdf.o: alloc.o parallel.o precision.o sys.o
 m_io.o: sys.o
 moreParallelSubs.o: alloc.o m_io.o parallel.o precision.o sys.o
 units.o: precision.o
+dm_creator.o: io_hs.o iodm_netcdf.o main_vars.o subs.o
+fat.o: io_hs.o main_vars.o orbital_set.o read_curves.o
 io_hs.o: main_vars.o precision.o
 main_vars.o: m_getopts.o precision.o subs.o units.o
+mprop.o: io_hs.o main_vars.o orbital_set.o read_curves.o subs.o
 orbital_set.o: main_vars.o subs.o
 read_curves.o: orbital_set.o precision.o
+spin_texture.o: io_hs.o main_vars.o subs.o
 subs.o: precision.o
