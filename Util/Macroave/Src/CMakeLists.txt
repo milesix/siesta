@@ -27,12 +27,6 @@ list(
 
 add_executable(macroave "${sources}")
 
-TARGET_LINK_LIBRARIES(
-    macroave
-    PRIVATE
-    fdf
-)
-
 install(
   TARGETS macroave
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

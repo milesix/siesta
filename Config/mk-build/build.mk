@@ -484,4 +484,17 @@ else
 	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FFLAGS_free_f90)  $<
 endif
 
+# Some useful macros
+#
+# Change typical fortran extesions to .o 
+# Use as:
+#   OBJS:= $(call change_extensions $(SRCS))
+#
+define change_extensions
+ $(patsubst %.F90,%.o, \
+ $(patsubst %.F,%.o,  \
+ $(patsubst %.f,%.o,  \
+ $(patsubst %.f90,%.o,$(1)))))
+endef
+
 endif
