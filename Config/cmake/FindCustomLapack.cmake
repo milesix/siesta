@@ -112,6 +112,7 @@ else()
   set(Lapack_FOUND ${CUSTOMLAPACK_FOUND})
 
   if (LAPACK_FOUND AND NOT TARGET LAPACK::LAPACK)
+    message(STATUS "Lapack Found but no target LAPACK::LAPACK")
     if(NOT "${LAPACK_LIBRARY}" STREQUAL "NONE")
       add_library(LAPACK::LAPACK INTERFACE IMPORTED)
       target_link_libraries(LAPACK::LAPACK INTERFACE "${LAPACK_LIBRARY}")
@@ -119,13 +120,17 @@ else()
         target_link_options(LAPACK::LAPACK INTERFACE "${LAPACK_LINKER_FLAG}")
       endif()
       if(TARGET BLAS::BLAS)
+        message(STATUS "Adding dependency on BLAS::BLAS")
         target_link_libraries(LAPACK::LAPACK INTERFACE BLAS::BLAS)
       endif()
     else()
+      message(STATUS "Lapack set to NONE. Use just BLAS::BLAS")
       if(TARGET BLAS::BLAS)
         message(STATUS "Lapack will be just interface")
         add_library(LAPACK::LAPACK INTERFACE IMPORTED)
 	target_link_libraries(LAPACK::LAPACK INTERFACE BLAS::BLAS)
+      else()
+        message(STATUS "... but there is no target BLAS::BLAS !!")
       endif()
     endif()
   endif()
@@ -134,60 +139,4 @@ else()
 
 endif()
 #
-# Run sanity checks on the libraries.
-# In particular, check that the return convention is appropriate on MacOS
-# (See https://github.com/mcg1969/vecLibFort for more details)
-#
-if (LAPACK_FOUND)
- include(CheckFortranSourceRuns)
- include(CheckFortranSourceCompiles)
-
-set(CMAKE_REQUIRED_LIBRARIES LAPACK::LAPACK)
-check_fortran_source_compiles(
-"
-external :: sgemm, dsysv
-call sgemm()
-call dsysv()
-end
-"
-LAPACK_WORKS SRC_EXT F90)
-unset(CMAKE_REQUIRED_LIBRARIES)
-
-if (NOT LAPACK_WORKS)
- message(STATUS "  ---------------------------------------------")
- message(STATUS "  *** LAPACK library does not link properly")
- message(STATUS "  Please check the library linking string found or used by CMake")
- message(STATUS "  ---------------------------------------------")
- message(FATAL_ERROR "  *** LAPACK library does not link properly")
-endif()
-
-set(CMAKE_REQUIRED_LIBRARIES LAPACK::LAPACK)
-check_fortran_source_runs(
-"
-complex :: c
-complex, dimension(2) :: a = [ 1, 2 ]
-complex :: cdotu
-external :: cdotu
-c=cdotu(2,a(:),1,a(:),1)
-end
-"
-LAPACK_RETURN_CONVENTION_OK SRC_EXT F90)
-unset(CMAKE_REQUIRED_LIBRARIES)
-
-if (NOT LAPACK_RETURN_CONVENTION_OK)
- message(STATUS "  ---------------------------------------------")
- message(STATUS "  *** LAPACK library uses wrong return-value convention!!!")
- message(STATUS "  This is likely to happen on MacOS if the default Accelerate framework is used")
- message(STATUS "  You can install veclibfort (https://github.com/mcg1969/vecLibFort)")
- message(STATUS "  and then set -DLAPACK_LIBRARY=-lveclibfort in your cmake invocation")
- message(STATUS "  You can also set -DBLAS_LIBRARY=-lveclibfort, but it is not strictly needed")
- message(STATUS "    (The key is that -lveclibfort appears first in the link stage,")
- message(STATUS "     so the BLAS library can still point to the raw Accelerate")
- message(STATUS "  ")
- message(STATUS "  Alternatively you can install OpenBLAS and set the variables accordingly")
- message(STATUS "  ---------------------------------------------")
- message(FATAL_ERROR "  *** LAPACK library uses wrong return-value convention!!!")
-endif()
-
-endif(LAPACK_FOUND)
 

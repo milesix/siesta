@@ -137,6 +137,7 @@ endif()
 #
 find_package(CustomBlas REQUIRED)
 find_package(CustomLapack REQUIRED)
+include(check_lapack)
 if (WITH_MPI)
   find_package(CustomScalapack REQUIRED)
 endif()
