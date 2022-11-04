@@ -446,7 +446,7 @@ alloc_error_report.o: parallel.o
 alloc_memory_event.o: memory_log.o
 amn.o: m_switch_local_proj.o m_trialorbitalclass.o matel_registry.o mneighb.o
 amn.o: new_matel.o parallel.o parallelsubs.o precision.o siesta_geom.o
-amn.o: siesta_options.o sparse_matrices.o sys.o w90_in_types.o
+amn.o: siesta_options.o sparse_matrices.o sys.o w90_in_types.o m_orderbands.o
 arw.o: alloc.o parallel.o precision.o sys.o
 atm_types.o: precision.o radial.o
 atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o sys.o

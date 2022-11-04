@@ -102,11 +102,19 @@
                                        !     in the 
                                        !     %block WannierProjections
           logical                :: frozen_states
-                                       ! Flag that determines whether an inner energy
-                                       !     window has been defined
+                                       ! Flag that determines whether an inner
+                                       !     energy window has been defined
           logical                :: disentanglement  
                                        ! Is the disentanglement 
                                        !   procedure required for this manifold?
+          logical                :: dis_win_siesta
+                                       ! Flag that determines whether the
+                                       !    outer window will be read from the
+                                       !    fdf file
+          logical                :: dis_win_froz_siesta
+                                       ! Flag that determines whether the
+                                       !    inner frozen window will be
+                                       !    read from the fdf file
           logical                :: wannier_plot = .false.
                                        ! Plot the Wannier functions?
           integer               :: wannier_plot_supercell(3) = (/1,1,1/)
