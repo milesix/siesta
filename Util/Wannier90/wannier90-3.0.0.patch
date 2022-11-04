@@ -1,5 +1,5 @@
 diff --git a/src/disentangle.F90 b/src/disentangle.F90
-index 3b85147..3a99b4d 100644
+index 3b85147b..3a99b4dd 100644
 --- a/src/disentangle.F90
 +++ b/src/disentangle.F90
 @@ -184,6 +184,10 @@ contains
@@ -31,7 +31,7 @@ index 3b85147..3a99b4d 100644
        allocate (m_matrix_local(num_wann, num_wann, nntot, counts(my_node_id)), stat=ierr)
        if (ierr /= 0) call io_error('Error in allocating m_matrix_local in dis_main')
 diff --git a/src/hamiltonian.F90 b/src/hamiltonian.F90
-index 269e808..7992afa 100644
+index 269e8086..7992afad 100644
 --- a/src/hamiltonian.F90
 +++ b/src/hamiltonian.F90
 @@ -52,7 +52,9 @@ module w90_hamiltonian
@@ -127,7 +127,7 @@ index 269e808..7992afa 100644
      if (timing_level > 1) call io_stopwatch('hamiltonian: write_tb', 2)
  
 diff --git a/src/io.F90 b/src/io.F90
-index 9c90f7a..503f741 100644
+index 9c90f7ad..503f741b 100644
 --- a/src/io.F90
 +++ b/src/io.F90
 @@ -35,6 +35,12 @@ module w90_io
@@ -144,7 +144,7 @@ index 9c90f7a..503f741 100644
      !! Data about each stopwatch - for timing routines
      integer :: ncalls
 diff --git a/src/overlap.F90 b/src/overlap.F90
-index 457405c..3e4e892 100644
+index 457405c7..3e4e8922 100644
 --- a/src/overlap.F90
 +++ b/src/overlap.F90
 @@ -56,27 +56,52 @@ contains
@@ -234,10 +234,10 @@ index 457405c..3e4e892 100644
        deallocate (m_matrix_local, stat=ierr)
        if (ierr /= 0) call io_error('Error deallocating m_matrix_local in overlap_dealloc')
 diff --git a/src/parameters.F90 b/src/parameters.F90
-index 8449f5d..4fcfd81 100644
+index 8449f5d9..b0e5f25e 100644
 --- a/src/parameters.F90
 +++ b/src/parameters.F90
-@@ -151,7 +151,10 @@ module w90_parameters
+@@ -151,7 +151,12 @@ module w90_parameters
    logical, public, save :: fermi_surface_plot
    integer, public, save :: fermi_surface_num_points
    character(len=20), public, save :: fermi_surface_plot_format
@@ -245,11 +245,13 @@ index 8449f5d..4fcfd81 100644
 +! jjunquer
 +!  real(kind=dp), save :: fermi_energy
 +  real(kind=dp),     public, save :: fermi_energy
++  logical, public, save :: dis_win_siesta
++  logical, public, save :: dis_win_froz_siesta
 +! end jjunquer
  
    ! module  k p a t h
    logical, public, save :: kpath
-@@ -545,7 +548,12 @@ contains
+@@ -545,7 +550,12 @@ contains
      integer, allocatable, dimension(:, :) :: nnkpts_block
      integer, allocatable, dimension(:) :: nnkpts_idx
  
@@ -263,7 +265,7 @@ index 8449f5d..4fcfd81 100644
  
      !%%%%%%%%%%%%%%%%
      ! Site symmetry
-@@ -621,10 +629,17 @@ contains
+@@ -621,10 +631,17 @@ contains
        end if
      end if
  
@@ -285,7 +287,7 @@ index 8449f5d..4fcfd81 100644
  
      num_exclude_bands = 0
      call param_get_range_vector('exclude_bands', found, num_exclude_bands, lcount=.true.)
-@@ -640,22 +655,24 @@ contains
+@@ -640,22 +657,24 @@ contains
  
      ! AAM_2016-09-16: some changes to logic to patch a problem with uninitialised num_bands in library mode
  !    num_bands       =   -1
@@ -326,7 +328,7 @@ index 8449f5d..4fcfd81 100644
  
      num_dump_cycles = 100          ! frequency to write backups at
      call param_get_keyword('num_dump_cycles', found, i_value=num_dump_cycles)
-@@ -674,7 +691,13 @@ contains
+@@ -674,7 +693,13 @@ contains
      if (.not. library .and. .not. effective_model) then
        if (found) mp_grid = iv_temp
        if (.not. found) then
@@ -341,7 +343,7 @@ index 8449f5d..4fcfd81 100644
        elseif (any(mp_grid < 1)) then
          call io_error('Error: mp_grid must be greater than zero')
        end if
-@@ -765,9 +788,13 @@ contains
+@@ -765,9 +790,13 @@ contains
      ! Wannierise
      !%%%%%%%%%%%
  
@@ -358,7 +360,7 @@ index 8449f5d..4fcfd81 100644
  
      num_cg_steps = 5
      call param_get_keyword('num_cg_steps', found, i_value=num_cg_steps)
-@@ -845,27 +872,31 @@ contains
+@@ -845,27 +874,31 @@ contains
      ! Plotting
      !%%%%%%%%%
  
@@ -411,7 +413,7 @@ index 8449f5d..4fcfd81 100644
  
      wannier_plot_format = 'xcrysden'
      call param_get_keyword('wannier_plot_format', found, c_value=wannier_plot_format)
-@@ -974,8 +1005,10 @@ contains
+@@ -974,8 +1007,10 @@ contains
        if (bands_num_points < 0) call io_error('Error: bands_num_points must be positive')
      endif
  
@@ -424,7 +426,7 @@ index 8449f5d..4fcfd81 100644
  
      fermi_surface_num_points = 50
      call param_get_keyword('fermi_surface_num_points', found, i_value=fermi_surface_num_points)
-@@ -984,13 +1017,17 @@ contains
+@@ -984,13 +1019,17 @@ contains
      call param_get_keyword('fermi_surface_plot_format', &
                             found, c_value=fermi_surface_plot_format)
  
@@ -449,7 +451,7 @@ index 8449f5d..4fcfd81 100644
      !
      fermi_energy_scan = .false.
      call param_get_keyword('fermi_energy_min', found, r_value=fermi_energy_min)
-@@ -1409,14 +1446,21 @@ contains
+@@ -1409,14 +1448,21 @@ contains
      hr_plot = .false.
      call param_get_keyword('hr_plot', found, l_value=hr_plot)
      if (found) call io_error('Input parameter hr_plot is no longer used. Please use write_hr instead.')
@@ -475,7 +477,7 @@ index 8449f5d..4fcfd81 100644
  
      hr_cutoff = 0.0_dp
      call param_get_keyword('hr_cutoff', found, r_value=hr_cutoff)
-@@ -1568,7 +1612,10 @@ contains
+@@ -1568,7 +1614,10 @@ contains
      if (.not. library .and. .not. effective_model) then
  
        if (.not. postproc_setup) then
@@ -487,7 +489,7 @@ index 8449f5d..4fcfd81 100644
          if (.not. eig_found) then
            if (disentanglement) then
              call io_error('No '//trim(seedname)//'.eig file found. Needed for disentanglement')
-@@ -1578,11 +1625,17 @@ contains
+@@ -1578,11 +1627,17 @@ contains
            end if
          else
            ! Allocate only here
@@ -506,25 +508,66 @@ index 8449f5d..4fcfd81 100644
            do k = 1, num_kpts
              do n = 1, num_bands
                read (eig_unit, *, err=106, end=106) i, j, eigval(n, k)
-@@ -1616,9 +1669,15 @@ contains
-     if (eig_found .and. (dis_win_max .lt. dis_win_min)) &
-       call io_error('Error: param_read: check disentanglement windows')
+@@ -1607,31 +1662,36 @@ contains
  
+     if (library .and. allocated(eigval)) eig_found = .true.
+ 
+-    dis_win_min = -1.0_dp; dis_win_max = 0.0_dp
+-    if (eig_found) dis_win_min = minval(eigval)
+-    call param_get_keyword('dis_win_min', found, r_value=dis_win_min)
++!   jjunquer: New modified lines
++    if( .not. dis_win_siesta ) then
++      dis_win_min = -1.0_dp; dis_win_max = 0.0_dp
++      if (eig_found) dis_win_min = minval(eigval)
++      call param_get_keyword('dis_win_min', found, r_value=dis_win_min)
+ 
+-    if (eig_found) dis_win_max = maxval(eigval)
+-    call param_get_keyword('dis_win_max', found, r_value=dis_win_max)
+-    if (eig_found .and. (dis_win_max .lt. dis_win_min)) &
+-      call io_error('Error: param_read: check disentanglement windows')
+-
 -    dis_froz_min = -1.0_dp; dis_froz_max = 0.0_dp
-+!!   jjunquer: dis_froz_min and dis_froz_max are directly passed from SIESTA
-+!    dis_froz_min = -1.0_dp; dis_froz_max = 0.0_dp
-+!!   end jjunquer    
++      if (eig_found) dis_win_max = maxval(eigval)
++      call param_get_keyword('dis_win_max', found, r_value=dis_win_max)
++      if (eig_found .and. (dis_win_max .lt. dis_win_min)) &
++        call io_error('Error: param_read: check disentanglement windows')
++    endif
++    if( .not. dis_win_froz_siesta ) then
++      dis_froz_min = -1.0_dp; dis_froz_max = 0.0_dp
      ! no default for dis_froz_max
 -    frozen_states = .false.
-+!    frozen_states = .false.
-+!!   jjunquer
-+!    if( dis_froz_min /= -1.0_dp .and. dis_froz_max /= 0.0_dp ) &
-+! &     frozen_states=.true.
-+!!   end jjunquer
-     call param_get_keyword('dis_froz_max', found, r_value=dis_froz_max)
-     if (found) then
-       frozen_states = .true.
-@@ -1998,28 +2057,37 @@ contains
+-    call param_get_keyword('dis_froz_max', found, r_value=dis_froz_max)
+-    if (found) then
+-      frozen_states = .true.
+-      dis_froz_min = dis_win_min ! default value for the bottom of frozen window
+-    end if
+-    call param_get_keyword('dis_froz_min', found2, r_value=dis_froz_min)
+-    if (eig_found) then
+-      if (dis_froz_max .lt. dis_froz_min) &
+-        call io_error('Error: param_read: check disentanglement frozen windows')
+-      if (found2 .and. .not. found) &
+-        call io_error('Error: param_read: found dis_froz_min but not dis_froz_max')
++      frozen_states = .false.
++      call param_get_keyword('dis_froz_max', found, r_value=dis_froz_max)
++      if (found) then
++        frozen_states = .true.
++        dis_froz_min = dis_win_min ! default value for the bottom of frozen window
++      end if
++      call param_get_keyword('dis_froz_min', found2, r_value=dis_froz_min)
++      if (eig_found) then
++        if (dis_froz_max .lt. dis_froz_min) &
++          call io_error('Error: param_read: check disentanglement frozen windows')
++        if (found2 .and. .not. found) &
++          call io_error('Error: param_read: found dis_froz_min but not dis_froz_max')
++      endif
+     endif
+-
++!   end jjunquer: End of modified lines
++    
+     dis_num_iter = 200
+     call param_get_keyword('dis_num_iter', found, i_value=dis_num_iter)
+     if (dis_num_iter < 0) call io_error('Error: dis_num_iter must be positive')
+@@ -1998,28 +2058,37 @@ contains
  
      call param_get_keyword_block('unit_cell_cart', found, 3, 3, r_value=real_lattice_tmp)
      if (found .and. library) write (stdout, '(a)') ' Ignoring <unit_cell_cart> in input file'
@@ -578,7 +621,7 @@ index 8449f5d..4fcfd81 100644
  
      ! Calculate the kpoints in cartesian coordinates
      if (.not. effective_model) then
-@@ -2137,24 +2205,26 @@ contains
+@@ -2137,24 +2206,26 @@ contains
                            module_kmesh_spacing=dos_kmesh_spacing)
  
      ! Atoms
@@ -623,7 +666,7 @@ index 8449f5d..4fcfd81 100644
  
      ! Projections
      auto_projections = .false.
-@@ -2244,17 +2314,19 @@ contains
+@@ -2244,17 +2315,19 @@ contains
  
  302 continue
  
@@ -654,7 +697,7 @@ index 8449f5d..4fcfd81 100644
  
      if (transport .and. tran_read_ht) goto 303
  
-@@ -2263,8 +2335,10 @@ contains
+@@ -2263,8 +2336,10 @@ contains
  
  303 continue
  
@@ -667,7 +710,7 @@ index 8449f5d..4fcfd81 100644
  
      if (transport .and. tran_read_ht) return
  
-@@ -2524,11 +2598,13 @@ contains
+@@ -2524,11 +2599,13 @@ contains
          atoms_label(nsp) (1:1) = char(ic + ichar('Z') - ichar('z'))
      enddo
  
@@ -686,7 +729,7 @@ index 8449f5d..4fcfd81 100644
  
      ! Bands labels (eg, x --> X)
      do loop = 1, bands_num_spec_points
-@@ -2596,21 +2672,39 @@ contains
+@@ -2596,21 +2673,39 @@ contains
      write (stdout, *) ' '
      ! Atoms
      if (num_atoms > 0) then
@@ -734,7 +777,7 @@ index 8449f5d..4fcfd81 100644
      else
        write (stdout, '(25x,a)') 'No atom positions specified'
      end if
-@@ -3464,26 +3558,31 @@ contains
+@@ -3464,26 +3559,31 @@ contains
        deallocate (bands_spec_points, stat=ierr)
        if (ierr /= 0) call io_error('Error in deallocating bands_spec_points in param_dealloc')
      end if
@@ -782,7 +825,7 @@ index 8449f5d..4fcfd81 100644
      if (allocated(input_proj_site)) then
        deallocate (input_proj_site, stat=ierr)
        if (ierr /= 0) call io_error('Error in deallocating input_proj_site in param_dealloc')
-@@ -3833,10 +3932,15 @@ contains
+@@ -3833,10 +3933,15 @@ contains
        read (chk_unit) omega_invariant     ! omega invariant
  
        ! lwindow
@@ -800,7 +843,7 @@ index 8449f5d..4fcfd81 100644
        read (chk_unit, err=122) ((lwindow(i, nkp), i=1, num_bands), nkp=1, num_kpts)
  
        ! ndimwin
-@@ -3847,26 +3951,44 @@ contains
+@@ -3847,26 +3952,44 @@ contains
        read (chk_unit, err=123) (ndimwin(nkp), nkp=1, num_kpts)
  
        ! U_matrix_opt
@@ -851,7 +894,7 @@ index 8449f5d..4fcfd81 100644
      read (chk_unit, err=126) ((((m_matrix(i, j, k, l), i=1, num_wann), j=1, num_wann), k=1, nntot), l=1, num_kpts)
  
      ! wannier_centres
-@@ -4615,28 +4737,34 @@ contains
+@@ -4615,28 +4738,34 @@ contains
        end do
      end do
  
@@ -903,7 +946,7 @@ index 8449f5d..4fcfd81 100644
  
      do loop = 1, num_species
        counter = 0
-@@ -4644,18 +4772,22 @@ contains
+@@ -4644,18 +4773,22 @@ contains
          if (trim(atoms_label(loop)) == trim(atoms_label_tmp(loop2))) then
            counter = counter + 1
            atoms_pos_frac(:, counter, loop) = atoms_pos_frac_tmp(:, loop2)
@@ -934,7 +977,7 @@ index 8449f5d..4fcfd81 100644
  
      return
  
-@@ -4704,28 +4836,33 @@ contains
+@@ -4704,28 +4837,33 @@ contains
        end do
      end do
  
@@ -986,7 +1029,7 @@ index 8449f5d..4fcfd81 100644
  
      do loop = 1, num_species
        counter = 0
-@@ -4733,22 +4870,26 @@ contains
+@@ -4733,22 +4871,26 @@ contains
          if (trim(atoms_label(loop)) == trim(atoms_label_tmp(loop2))) then
            counter = counter + 1
            atoms_pos_frac(:, counter, loop) = atoms_pos_frac_tmp(:, loop2)
@@ -1025,7 +1068,7 @@ index 8449f5d..4fcfd81 100644
  
      return
  
-@@ -6008,6 +6149,9 @@ contains
+@@ -6008,6 +6150,9 @@ contains
      call comms_bcast(num_exclude_bands, 1)
      if (num_exclude_bands > 0) then
        if (.not. on_root) then
@@ -1035,7 +1078,7 @@ index 8449f5d..4fcfd81 100644
          allocate (exclude_bands(num_exclude_bands), stat=ierr)
          if (ierr /= 0) &
            call io_error('Error in allocating exclude_bands in param_dist')
-@@ -6028,6 +6172,9 @@ contains
+@@ -6028,6 +6173,9 @@ contains
      call comms_bcast(dis_spheres_num, 1)
      if (dis_spheres_num > 0) then
        if (.not. on_root) then
@@ -1045,7 +1088,7 @@ index 8449f5d..4fcfd81 100644
          allocate (dis_spheres(4, dis_spheres_num), stat=ierr)
          if (ierr /= 0) &
            call io_error('Error in allocating dis_spheres in param_dist')
-@@ -6043,6 +6190,9 @@ contains
+@@ -6043,6 +6191,9 @@ contains
      call comms_bcast(num_wannier_plot, 1)
      if (num_wannier_plot > 0) then
        if (.not. on_root) then
@@ -1055,7 +1098,7 @@ index 8449f5d..4fcfd81 100644
          allocate (wannier_plot_list(num_wannier_plot), stat=ierr)
          if (ierr /= 0) &
            call io_error('Error in allocating wannier_plot_list in param_dist')
-@@ -6063,6 +6213,9 @@ contains
+@@ -6063,6 +6214,9 @@ contains
  
      if (num_bands_project > 0) then
        if (.not. on_root) then
@@ -1065,7 +1108,7 @@ index 8449f5d..4fcfd81 100644
          allocate (bands_plot_project(num_bands_project), stat=ierr)
          if (ierr /= 0) &
            call io_error('Error in allocating bands_plot_project in param_dist')
-@@ -6239,6 +6392,10 @@ contains
+@@ -6239,6 +6393,10 @@ contains
      call comms_bcast(selective_loc, 1)
      if (selective_loc .and. slwf_constrain) then
        if (.not. on_root) then
@@ -1076,7 +1119,7 @@ index 8449f5d..4fcfd81 100644
          allocate (ccentres_frac(num_wann, 3), stat=ierr)
          if (ierr /= 0) call io_error('Error allocating ccentres_frac in param_get_centre_constraints')
          allocate (ccentres_cart(num_wann, 3), stat=ierr)
-@@ -6255,6 +6412,10 @@ contains
+@@ -6255,6 +6413,10 @@ contains
      call comms_bcast(lhasproj, 1)
      if (lhasproj) then
        if (.not. on_root) then
@@ -1087,7 +1130,7 @@ index 8449f5d..4fcfd81 100644
          allocate (input_proj_site(3, num_proj), stat=ierr)
          if (ierr /= 0) call io_error('Error allocating input_proj_site in param_dist')
          allocate (proj_site(3, num_wann), stat=ierr)
-@@ -6268,6 +6429,13 @@ contains
+@@ -6268,6 +6430,13 @@ contains
      ! allocatable, and in param_read they were allocated on the root node only
      !
      if (.not. on_root) then
@@ -1101,7 +1144,7 @@ index 8449f5d..4fcfd81 100644
        allocate (fermi_energy_list(nfermi), stat=ierr)
        if (ierr /= 0) call io_error( &
          'Error allocating fermi_energy_read in postw90_param_dist')
-@@ -6279,10 +6447,16 @@ contains
+@@ -6279,10 +6448,16 @@ contains
          call io_error('Error allocating dos_project in postw90_param_dist')
        if (.not. effective_model) then
          if (eig_found) then
@@ -1118,7 +1161,7 @@ index 8449f5d..4fcfd81 100644
          allocate (kpt_latt(3, num_kpts), stat=ierr)
          if (ierr /= 0) &
            call io_error('Error allocating kpt_latt in postw90_param_dist')
-@@ -6297,8 +6471,10 @@ contains
+@@ -6297,8 +6472,10 @@ contains
  
      if (nfermi > 0) call comms_bcast(fermi_energy_list(1), nfermi)
      if (kubo_nfreq > 0) call comms_bcast(kubo_freq_list(1), kubo_nfreq)
@@ -1131,7 +1174,7 @@ index 8449f5d..4fcfd81 100644
      if (num_dos_project > 0) call comms_bcast(dos_project(1), num_dos_project)
      if (.not. effective_model) then
        if (eig_found) then
-@@ -6314,6 +6490,14 @@ contains
+@@ -6314,6 +6491,14 @@ contains
        call comms_bcast(wbtot, 1)
  
        if (.not. on_root) then
@@ -1146,7 +1189,7 @@ index 8449f5d..4fcfd81 100644
          allocate (nnlist(num_kpts, nntot), stat=ierr)
          if (ierr /= 0) &
            call io_error('Error in allocating nnlist in param_dist')
-@@ -6349,6 +6533,10 @@ contains
+@@ -6349,6 +6534,10 @@ contains
      call comms_bcast(have_disentangled, 1)
  
      if (.not. on_root) then
@@ -1157,7 +1200,7 @@ index 8449f5d..4fcfd81 100644
        allocate (wannier_centres(3, num_wann), stat=ierr)
        if (ierr /= 0) call io_error('Error allocating wannier_centres in param_dist')
        wannier_centres = 0.0_dp
-@@ -6356,6 +6544,10 @@ contains
+@@ -6356,6 +6545,10 @@ contains
        if (ierr /= 0) call io_error('Error in allocating wannier_spreads in param_dist')
        wannier_spreads = 0.0_dp
        if (disentanglement) then
@@ -1169,7 +1212,7 @@ index 8449f5d..4fcfd81 100644
          if (ierr /= 0) call io_error('Error allocating ndimwin in param_dist')
          allocate (lwindow(num_bands, num_kpts), stat=ierr)
 diff --git a/src/plot.F90 b/src/plot.F90
-index 4d6ad70..36b91c3 100644
+index 4d6ad709..36b91c3a 100644
 --- a/src/plot.F90
 +++ b/src/plot.F90
 @@ -159,6 +159,25 @@ contains
@@ -1216,7 +1259,7 @@ index 4d6ad70..36b91c3 100644
      allocate (ham_pack((num_wann*(num_wann + 1))/2), stat=ierr)
      if (ierr /= 0) call io_error('Error in allocating ham_pack plot_fermi_surface')
 diff --git a/src/ws_distance.F90 b/src/ws_distance.F90
-index e48199a..4f23af9 100644
+index e48199a6..4f23af91 100644
 --- a/src/ws_distance.F90
 +++ b/src/ws_distance.F90
 @@ -98,12 +98,20 @@ contains
