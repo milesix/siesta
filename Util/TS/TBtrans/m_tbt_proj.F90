@@ -2914,7 +2914,7 @@ contains
                 start = (/1,1,nE%iE(iN),ikpt/) )
           end do
         else if ( nE%iE(Node) > 0 ) then
-          call MPI_ISend(proj_ME(iE)%bGk,nl*nl,Mpi_double_complex, &
+          call MPI_ISend(proj_ME(iE)%bGk(1,1),nl*nl,Mpi_double_complex, &
               0, Node, Mpi_comm_world,reqs(iE),MPIerror)
         end if
 #endif
@@ -2923,7 +2923,7 @@ contains
 
 #ifdef MPI
       if ( Node /= 0 ) then
-        call MPI_WaitAll(N_proj_ME,reqs(1),MPI_STATUSES_IGNORE,MPIerror)
+        call MPI_WaitAll(N_proj_ME,reqs,MPI_STATUSES_IGNORE,MPIerror)
       end if
       deallocate(tmp)
 #endif

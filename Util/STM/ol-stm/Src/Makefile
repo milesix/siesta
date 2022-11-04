@@ -22,20 +22,23 @@
 #  in the mpi libraries even if we explicitly undefine MPI below.
 #  
 
-OBJDIR=Obj
-
 .SUFFIXES:
 .SUFFIXES: .f .F .o .a .f90 .F90
 
-VPATH:=$(shell pwd)/../../../../Src
-VPATH_GRID:=$(shell pwd)/../../../../Util/Grid
+TOPDIR=.
+MAIN_OBJDIR=.
 
 default: what stm
 
-MAIN_OBJDIR:=$(shell cd -P -- ../../../../\$(OBJDIR) && pwd -P)
-ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
+override WITH_MPI=
+override WITH_NCDF=
 
+VPATH=$(TOPDIR)/Util/STM/ol-stm/Src:$(TOPDIR)/Util/Grid:$(TOPDIR)/Src
+
+ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
 
 #------------- NOTE
 # Special needs for the use of FFTW
@@ -82,27 +85,12 @@ SYSOBJ=$(SYS).o
 
 # Note that machine-specific files are now in top Src directory.
 
+INCFLAGS+=$(NETCDF_INCFLAGS) \
+          $(NCPS_INCFLAGS) \
+          $(PSML_INCFLAGS) $(FDF_INCFLAGS) 
 
-NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
-#PSOP_INCFLAGS=-I$(MAIN_OBJDIR)/psoplib/src
-INCFLAGS:=$(NETCDF_INCFLAGS) \
-          $(NCPS_INCFLAGS) $(PSOP_INCFLAGS) \
-          $(PSML_INCFLAGS) \
-          $(INCFLAGS)
-INCFLAGS:= $(FFTW_INCFLAGS) $(INCFLAGS)
+INCFLAGS+= $(FFTW_INCFLAGS) 
 #
-NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
-# Use the makefile in Src/fdf and all the sources there.
-
-FDF=libfdf.a
-FDF_MAKEFILE=$(VPATH)/fdf/makefile
-FDF_INCFLAGS:=-I$(VPATH)/fdf $(INCFLAGS)
-$(FDF): 
-	(cd fdf ; $(MAKE) -f $(FDF_MAKEFILE) "FC=$(FC)" "VPATH=$(VPATH)/fdf" \
-                          "DEFS=$(DEFS)" \
-                          "FPPFLAGS=$(FPPFLAGS)"\
-                          "ARCH_MAKE=$(ARCH_MAKE)" \
-                          "INCFLAGS=$(FDF_INCFLAGS)" "FFLAGS=$(FFLAGS)" module)
 
 LOCAL_OBJS = fftw3_mymod.o extrapolate.o \
         mainstm.o neighb.o ranger.o \
@@ -135,19 +123,22 @@ SIESTA_OBJS += m_uuid.o object_debug.o class_Sparsity.o \
 
 ALL_OBJS_STM= $(SIESTA_OBJS) $(LOCAL_OBJS)
 
-m_gridfunc.o: $(VPATH_GRID)/m_gridfunc.F90
-	$(FC) -c $(FFLAGS) $(INCFLAGS)  $(FPPFLAGS) $<
+# m_gridfunc is compiled through the Util/Grid VPATH component
 vacpot.o: m_gridfunc.o
 
-stm: $(FDF)  $(NCPS) $(ALL_OBJS_STM)
+stm: $(FDF_LIBS)  $(NCPS) $(ALL_OBJS_STM)
 	$(FC) -o stm \
-	       $(LDFLAGS) $(ALL_OBJS_STM) $(FDF) $(NCPS) \
+	       $(LDFLAGS) $(ALL_OBJS_STM) $(FDF_LIBS) $(NCPS) \
                $(PSML_LIBS) $(XMLF90_LIBS) $(FFTW_LIBS) 
 clean:
 	@echo "==> Cleaning object, library, and executable files"
 	rm -f stm *.o  *.a
 	rm -f *.mod
-	(cd fdf ; $(MAKE) -f $(FDF_MAKEFILE) "ARCH_MAKE=$(ARCH_MAKE)" clean)
+
+PROGS:= stm
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+	cp -p stm $(SIESTA_INSTALL_DIRECTORY)/bin/wfs2ldos
 
 # Dependencies
 .PHONY: dep

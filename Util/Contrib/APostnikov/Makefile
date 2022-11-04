@@ -1,15 +1,23 @@
 #
-#  Makefile for Sies2xcf set of tools
+#  Makefile for Sies2xsf set of tools
 #
 # --------------------------------- proper interface to Siesta building system
-OBJDIR=Obj
 #
 .SUFFIXES:
 .SUFFIXES: .f .F .o .a  .f90 .F90
 #
-default: all
-ARCH_MAKE=../../../$(OBJDIR)/arch.make
-include $(ARCH_MAKE)
+dummy: default
+#
+TOPDIR=.
+MAIN_OBJDIR=.
+
+VPATH=$(TOPDIR)/Util/Contrib/APostnikov
+
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
+PROGS:=eig2bxsf xv2xsf md2axsf rho2xsf vib2xsf fmpdos
+default: $(PROGS)
 #
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
@@ -17,8 +25,6 @@ FC:=$(FC_SERIAL)         # Make it non-recursive
 #
 # --------------------------------- 
 #
-EXECS = eig2bxsf xv2xsf md2axsf rho2xsf vib2xsf fmpdos
-all: $(EXECS)
    eig_obj = eig2bxsf.o inver3.o opnout.o 
    xv_obj  = xv2xsf.o  opnout.o
    md_obj  = md2axsf.o makebox.o  fillbox.o inver3.o  hit.o \
@@ -43,5 +49,11 @@ all: $(EXECS)
 
 clean:
 	@echo " Cleaning up"
-	rm -f $(EXECS) *.o core
+	rm -f *.o *.*d
+	rm -f $(PROGS)
+#
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+#
+
 

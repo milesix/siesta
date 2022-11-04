@@ -1,0 +1,79 @@
+SIESTA can be built:
+
+* Using an experimental CMake framework (see file INSTALL.CMake for details,
+quirks, and missing bits).
+
+* Using the traditional makefile-based approach, which has been
+streamlined and made more user-friendly.
+
+  mkdir _build
+  cd _build
+  sh ../Config/obj_setup.sh           # *** Note changed directory
+
+  (Now create arch.make in _build --- see Config/mk-build/README)
+
+  make               (This will build the Siesta executable)
+                     (It is best to do this first)
+		     
+  make utils         (See below for more options)
+  make install       ( " )
+
+
+In both cases, several external libraries must be installed before
+Siesta can be compiled. This installation can be made on-the-fly,
+using CMake, pkg-config, and git submodules:
+
+- The xmlf90, libpsml, and libgridxc (required) libraries are available as
+  submodules in the External subdirectory, set to the appropriate
+  branches and/or tags for use in the current version of Siesta. If
+  you want to use them, and you are using git, you need to do (just
+  once, after you have fetched/cloned this Siesta branch):
+
+     git submodule update --init --recursive <path>
+
+  where <path> is the path to the submodule. Leave out '<path>' to
+  enable all submodules.
+
+- (If you plan to compile Siesta in a system without internet access
+   (e.g. MareNostrum), you can use the 'stage_submodules.sh' script
+   in the top level of the distribution to gather all the source files
+   for later uploading)
+
+- Make sure that your arch.make in the _build directory defines
+
+       WITH_AUTOMATIC_REQ_LIBS=1
+
+- Simply typing "make" will build the Siesta executable. CMake will
+  configure and build the three libraries above, and the building
+  scripts will arrange the right variables for library discovery in
+  Siesta using pkg-config.
+  The whole set of auxiliary programs can be built by "make utils".
+
+- Installation: 'make install_siesta' or 'make install_utils'. The
+  installation directory can be set in arch.make using the variable
+  SIESTA_INSTALLATION_DIRECTORY. Executable programs will be copied
+  to the 'bin' subdirectory.
+
+- Two auxiliary targets, "extlibs" and "create_install_directory" are
+  called implicitly by the targets above. They can also be called
+  directly to carry out the pre-compilation of the dependencies needed
+  and to set up the installation directory, respectively. Once these
+  two tasks are done, individual auxiliary programs can be built and
+  installed independently by going to the relevant directory and
+  typing "make" or "make install".
+
+- You need a relatively recent version of CMake (>= 3.14)
+
+The above steps involve a hybrid "makefile-CMake" approach. As
+mentioned at the top, it is possible to use CMake for the installation
+of Siesta itself, also with automatic installation of the required
+libraries. The CMake framework is functional, but still needs some ironing out.
+If you try it, please report problems and/or suggestions for improvement.
+
+
+
+
+
+
+
+ 

@@ -1,7 +1,8 @@
 #
-# This file (build.mk) takes care of the low-level details It needs to
-# be included at the *bottom* of the users' arch.make file using the
-# (uncommented) lines:
+# This file (build.mk) takes care of the low-level details for
+# building.  It needs to be included after the users' arch.make file,
+# either with an explicit separate include, or maybe using the
+# (uncommented) lines *at the end* of the arch.make file:
 #
 #SELF_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 #include $(SELF_DIR)build.mk
@@ -54,6 +55,8 @@ WITH_GRIDXC=1
 # WITH_GRID_SP=
 # WITH_LEGACY_GRIDXC_INSTALL=
 
+# WITH_EXTRA_FPPFLAGS=
+
 #===========================================================
 # Symbols for locating the appropriate libraries
 # (Either explicit or through shell variables, perhaps
@@ -83,7 +86,8 @@ WITH_GRIDXC=1
 #
 # FC_PARALLEL=mpif90
 # FC_SERIAL=gfortran
-# FFLAGS = -O2 
+# FFLAGS = -O2
+# IPO_FLAG = -ipo  # (keep it separate from FFLAGS)
 # FFLAGS_DEBUG= -g -O0
 #
 # FPP = $(FC_SERIAL) -E -P -x c
@@ -115,7 +119,7 @@ WITH_GRIDXC=1
 #FPP = $(FC) -E -P -x c
 
 # Some compilers (notably IBM's) are not happy with the standard syntax for
-# definition of preprocessor symbols (-DSOME_SYMBOL), and thy need a prefix
+# definition of preprocessor symbols (-DSOME_SYMBOL), and they need a prefix
 # (i.e. -WF,-DSOME_SYMBOL). This is used in some utility makefiles. Typically
 # this need not be defined.
 #DEFS_PREFIX = -WF,
@@ -129,6 +133,8 @@ WITH_GRIDXC=1
 #--------------------------------------------------------
 # Nothing should need to be changed below
 #--------------------------------------------------------
+
+SIESTA_INSTALL_DIRECTORY?=$(MAIN_OBJDIR)/local_install
 
 FC_ASIS=$(FC_SERIAL)
 
@@ -176,7 +182,7 @@ ifeq ($(WITH_EXTERNAL_ELPA),1)
    ELPA_LIB = -L$(ELPA_ROOT)/lib -lelpa
    LIBS +=$(ELPA_LIB) 
 endif
-# ---- ELPA configuration -----------
+# ---- end of ELPA configuration -----------
 
 
 ifeq ($(WITH_NETCDF),1)
@@ -204,17 +210,16 @@ ifeq ($(WITH_NETCDF),1)
    FPPFLAGS += $(FPPFLAGS_CDF) 
    INCFLAGS += $(NETCDF_INCFLAGS)
    LIBS += $(NETCDF_LIBS)
-endif
 
-ifeq ($(WITH_NCDF),1)
- ifneq ($(WITH_NETCDF),1)
-   $(error For NCDF you need to define also WITH_NETCDF=1 in your arch.make)
- endif
- FPPFLAGS += $(DEFS_PREFIX)-DNCDF $(DEFS_PREFIX)-DNCDF_4
- ifeq ($(WITH_NCDF_PARALLEL),1)
-   FPPFLAGS += $(DEFS_PREFIX)-DNCDF_PARALLEL
- endif
- COMP_LIBS += libncdf.a libfdict.a
+   ifeq ($(WITH_NCDF),1)
+     FPPFLAGS += $(DEFS_PREFIX)-DNCDF $(DEFS_PREFIX)-DNCDF_4
+     COMP_LIBS += $(NCDF_LIBS) $(FDICT_LIBS)
+
+     ifeq ($(WITH_NCDF_PARALLEL),1)
+       FPPFLAGS += $(DEFS_PREFIX)-DNCDF_PARALLEL
+     endif
+
+   endif
 endif
 
 ifeq ($(WITH_FLOOK),1)
@@ -227,23 +232,97 @@ ifeq ($(WITH_FLOOK),1)
  FPPFLAGS_FLOOK = $(DEFS_PREFIX)-DSIESTA__FLOOK
  FPPFLAGS += $(FPPFLAGS_FLOOK) 
  LIBS += $(FLOOK_LIBS)
- COMP_LIBS += libfdict.a
+ COMP_LIBS += $(FDICT_LIBS)
 endif
 
 ifeq ($(WITH_MPI),1)
  FC=$(FC_PARALLEL)
- MPI_INTERFACE=libmpi_f90.a
+ MPI_INTERFACE=$(MPI_WRAPPERS)
  MPI_INCLUDE=.      # Note . for no-op
  FPPFLAGS_MPI = $(DEFS_PREFIX)-DMPI $(DEFS_PREFIX)-DMPI_TIMING
  LIBS += $(SCALAPACK_LIBS)
- LIBS += $(LAPACK_LIBS)
  FPPFLAGS += $(FPPFLAGS_MPI) 
 else
  FC = $(FC_SERIAL)
- LIBS += $(LAPACK_LIBS)
+endif
+
+ifeq ($(WITH_BUILTIN_LAPACK),1)
+  ifeq ($(WITH_MPI),1)
+    $(error You should not use the built-in LAPACK routines with Scalapack)
+  else
+    COMP_LIBS += $(BUILTIN_LAPACK) $(BUILTIN_BLAS)
+    FPPFLAGS += -DSIESTA__DIAG_2STAGE
+    FPPFLAGS += -DSIESTA__MRRR
+  endif
+else
+  LIBS += $(LAPACK_LIBS)
+endif
+
+# Remove this
+SYS=nag
+
+#-----------
+ifeq ($(WITH_AUTOMATIC_REQ_LIBS),1)
+
+# Automatic compilation of required external libraries
+#
+LIBPREFIX=lib
+include $(MAIN_OBJDIR)/extlibs.mk
+#
+EXTLIBS= xmlf90 libpsml libgridxc
+
+PKG_PATH=$(MAIN_OBJDIR)/External_installs/$(LIBPREFIX)/pkgconfig
+
+ifeq ($(WITH_LIBXC),1)
+ ifndef LIBXC_ROOT
+   $(info For on-the-fly compilation of libgridxc with libxc)
+   $(info a pre-installed libxc is needed)
+   $(error You need to define LIBXC_ROOT in your arch.make)
+ endif
+ # LIBPREFIX for libxc is here set to 'lib'. This might not be appropriate
+ LIBXC_INCFLAGS=$(shell PKG_CONFIG_PATH=$(LIBXC_ROOT)/lib/pkgconfig  pkg-config --cflags libxcf03 libxc)
+ LIBXC_LIBS=$(shell PKG_CONFIG_PATH=$(LIBXC_ROOT)/lib/pkgconfig  pkg-config --libs libxcf03 libxc)
+endif
+
+ifeq ($(WITH_GRID_SP),1)
+  FPPFLAGS_GRID= $(DEFS_PREFIX)-DGRID_SP
+  FPPFLAGS += $(FPPFLAGS_GRID) 
+endif
+
+XMLF90_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags xmlf90)
+XMLF90_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs xmlf90)
+PSML_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags libpsml)
+PSML_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs libpsml)
+GRIDXC_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags libgridxc) $(LIBXC_INCFLAGS)
+GRIDXC_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs libgridxc) $(LIBXC_LIBS)
+
+else        
+
+#  Use of pre-installed required libraries
+
+# These lines make use of a custom mechanism to generate library lists and
+# include-file management. The mechanism is not implemented in all libraries.
+#---------------------------------------------
+ifeq ($(WITH_PSML),1)
+ ifndef XMLF90_ROOT
+   $(info A pre-installed xmlf90 library is needed)
+   $(error You need to define XMLF90_ROOT in your arch.make)
+ endif
+ ifndef PSML_ROOT
+   $(info A pre-installed libpsml library is needed)
+   $(error You need to define PSML_ROOT in your arch.make)
+ endif
+ include $(XMLF90_ROOT)/share/org.siesta-project/xmlf90.mk
+ include $(PSML_ROOT)/share/org.siesta-project/psml.mk
 endif
 
 # ------------- libGridXC configuration -----------
+
+ifeq ($(WITH_LIBXC),1)
+   $(info The setting WITH_LIBXC depends on the installed GRIDXC)
+   $(info It might not be honored)
+endif
+
 
 ifeq ($(WITH_GRID_SP),1)
   GRIDXC_CONFIG_PREFIX=sp
@@ -256,18 +335,6 @@ ifeq ($(WITH_MPI),1)
 endif
 FPPFLAGS += $(FPPFLAGS_GRID) 
 # -------------------------------------------------
-
-
-SYS=nag
-
-# These lines make use of a custom mechanism to generate library lists and
-# include-file management. The mechanism is not implemented in all libraries.
-#---------------------------------------------
-ifeq ($(WITH_PSML),1)
- include $(XMLF90_ROOT)/share/org.siesta-project/xmlf90.mk
- include $(PSML_ROOT)/share/org.siesta-project/psml.mk
-endif
-
 # A legacy libGridXC installation will have dual 'serial' and 'mpi' subdirectories,
 # whereas a modern one, generated with the 'multiconfig' option,  will have split
 # include directories but a flat lib directory. The details are still handled by
@@ -278,23 +345,156 @@ endif
 # make sure that your installation is 'single'...
 #
 ifeq ($(WITH_GRIDXC),1)
+
+  ifndef GRIDXC_ROOT
+    $(info A pre-installed libgrixc library is needed)
+    $(error You need to define GRIDXC_ROOT in your arch.make)
+  endif
+
   ifeq ($(WITH_LEGACY_GRIDXC_INSTALL),1)
     include $(GRIDXC_ROOT)/gridxc.mk
   else
     include $(GRIDXC_ROOT)/share/org.siesta-project/gridxc_$(GRIDXC_CONFIG_PREFIX).mk
   endif
 endif
+#
+EXTLIBS=
+#-----------
+#  End of section for pre-installed required libraries
+#-------------------------------------------
+endif
+
+EXTRA_FPPFLAGS:= $(foreach flag,$(WITH_EXTRA_FPPFLAGS),$(DEFS_PREFIX)-D$(flag))
+FPPFLAGS+=$(EXTRA_FPPFLAGS)
+#
+# Built-in libraries
+#
+# Each of these snippets will define XXX_INCFLAGS and XXX_LIBS (or simply XXX, for
+# backwards compatibility) for the "internal" libraries. Their use elsewhere is thus
+# very similar to that of external libraries.
+#
+.PHONY: DO_FDF
+FDF_LIBS=$(MAIN_OBJDIR)/Src/fdf/libfdf.a
+FDF_INCFLAGS=-I$(MAIN_OBJDIR)/Src/fdf
+$(FDF_LIBS): DO_FDF
+DO_FDF:
+	@echo "+++ Compiling internal FDF library"
+	(cd $(MAIN_OBJDIR)/Src/fdf ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+#--------------------
+.PHONY: DO_NCPS
+NCPS=$(MAIN_OBJDIR)/Src/ncps/src/libncps.a
+NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/Src/ncps/src
+$(NCPS): DO_NCPS
+DO_NCPS:
+	@echo "+++ Compiling internal ncps library"
+	(cd $(MAIN_OBJDIR)/Src/ncps/src ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+#--------------------
+.PHONY: DO_PSOP
+PSOP=$(MAIN_OBJDIR)/Src/psoplib/src/libpsop.a
+PSOP_INCFLAGS=-I$(MAIN_OBJDIR)/Src/psoplib/src
+$(PSOP): DO_PSOP
+DO_PSOP:
+	@echo "+++ Compiling internal psoplib library"
+	(cd $(MAIN_OBJDIR)/Src/psoplib/src ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+#--------------------
+.PHONY: DO_MS
+MS=$(MAIN_OBJDIR)/Src/MatrixSwitch/src/libMatrixSwitch.a
+MS_INCFLAGS=-I$(MAIN_OBJDIR)/Src/MatrixSwitch/src
+$(MS): DO_MS
+DO_MS:
+	@echo "+++ Compiling internal MatrixSwitch library"
+	(cd $(MAIN_OBJDIR)/Src/MatrixSwitch/src ; \
+         $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+#--------------------
+.PHONY: DO_BUILTIN_LAPACK
+BUILTIN_LAPACK=$(MAIN_OBJDIR)/Src/Libs/libsiestaLAPACK.a
+$(BUILTIN_LAPACK): DO_BUILTIN_LAPACK
+DO_BUILTIN_LAPACK:
+	@echo "+++ Compiling internal LAPACK library"
+	(cd $(MAIN_OBJDIR)/Src/Libs ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" libsiestaLAPACK.a)
+#--------------------
+.PHONY: DO_BUILTIN_BLAS
+BUILTIN_BLAS=$(MAIN_OBJDIR)/Src/Libs/libsiestaBLAS.a
+$(BUILTIN_BLAS): DO_BUILTIN_BLAS
+DO_BUILTIN_BLAS:
+	@echo "+++ Compiling internal BLAS library"
+	(cd $(MAIN_OBJDIR)/Src/Libs ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" libsiestaBLAS.a)
+#--------------------
+.PHONY: DO_MPI_WRAPPERS
+MPI_WRAPPERS=$(MAIN_OBJDIR)/Src/MPI/libmpi_f90.a
+MPI_WRAPPERS_INCFLAGS=-I$(MAIN_OBJDIR)/Src/MPI
+$(MPI_WRAPPERS): DO_MPI_WRAPPERS
+DO_MPI_WRAPPERS:
+	@echo "+++ Compiling MPI wrappers library"
+	(cd $(MAIN_OBJDIR)/Src/MPI ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" )
+
+#--------------------
+.PHONY: DO_FDICT
+FDICT_LIBS=$(MAIN_OBJDIR)/Src/easy-fdict/libfdict.a
+FDICT_INCFLAGS=-I$(MAIN_OBJDIR)/Src/easy-fdict
+$(FDICT_LIBS): DO_FDICT
+DO_FDICT:
+	@echo "+++ Compiling internal FDICT library"
+	(cd $(MAIN_OBJDIR)/Src/easy-fdict ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+#--------------------
+.PHONY: DO_NCDF
+NCDF_LIBS=$(MAIN_OBJDIR)/Src/easy-ncdf/libncdf.a
+NCDF_INCFLAGS=-I$(MAIN_OBJDIR)/Src/easy-ncdf
+$(NCDF_LIBS): DO_NCDF
+DO_NCDF:
+	@echo "+++ Compiling internal NCDF library"
+	(cd $(MAIN_OBJDIR)/Src/easy-ncdf ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+#--------------------
+.PHONY: DO_SIESTA_LIB
+SIESTA_LIB=$(MAIN_OBJDIR)/Src/libSiestaForces.a
+SIESTA_LIB_INCFLAGS=-I$(MAIN_OBJDIR)/Src
+$(SIESTA_LIB): DO_SIESTA_LIB
+DO_SIESTA_LIB:
+	@echo "+++ Compiling libSiestaForces"
+	(cd $(MAIN_OBJDIR)/Src ; $(MAKE) libSiestaForces.a)
+
 
 # Define default compilation methods
+ifeq ($(WITH_COMPACT_LOG),1)
+.c.o:
+	@$(CC) -c $(CFLAGS) $(INCFLAGS) $(CPPFLAGS) $< 
+	@echo "   CC $<"
+.F.o:
+	@$(FC) -c $(FFLAGS) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_fixed_F)  $< 
+	@echo "   FC $<"
+.F90.o:
+	@$(FC) -c $(FFLAGS) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_free_F90) $<
+	@echo "   FC $<"
+.f.o:
+	@$(FC) -c $(FFLAGS) $(INCFLAGS) $(FFLAGS_fixed_f)  $<
+	@echo "   FC $<"
+.f90.o:
+	@$(FC) -c $(FFLAGS) $(INCFLAGS) $(FFLAGS_free_f90)  $<
+	@echo "   FC $<"
+else
 .c.o:
 	$(CC) -c $(CFLAGS) $(INCFLAGS) $(CPPFLAGS) $< 
 .F.o:
 	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_fixed_F)  $< 
 .F90.o:
-	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_free_F90) $< 
+	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_free_F90) $<
 .f.o:
 	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FFLAGS_fixed_f)  $<
 .f90.o:
 	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FFLAGS_free_f90)  $<
+endif
+
+# Some useful macros
+#
+# Change typical fortran extesions to .o 
+# Use as:
+#   OBJS:= $(call change_extensions $(SRCS))
+#
+define change_extensions
+ $(patsubst %.F90,%.o, \
+ $(patsubst %.F,%.o,  \
+ $(patsubst %.f,%.o,  \
+ $(patsubst %.f90,%.o,$(1)))))
+endef
 
 endif

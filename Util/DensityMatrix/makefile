@@ -7,40 +7,28 @@
 #
 #
 # Makefile for DM to DM-netCDF converter
-#
-# The VPATH directive below allows to re-use m_getopts.f90 from the top Src.
-#
-#  The arch.make file is supposed to be in $(OBJDIR). This is normally
-#  the top Obj, but if you are using architecture-dependent build directories
-#  you might want to change this. (If you do not understand this, you do not
-#  need to change anything. Power users can do "make OBJDIR=Whatever".)
-#
-#  If your main Siesta build used an mpi compiler, you might need to
-#  define an FC_SERIAL symbol in your top arch.make, to avoid linking
-#  in the mpi libraries even if we explicitly undefine MPI below.
+# and other utilities
 #
 .SUFFIXES: 
 .SUFFIXES: .f .F .o .a  .f90 .F90
 #
-default: dm2cdf cdf2dm dmbs2dm dmUnblock
-all: dm2cdf cdf2dm dmfilter dmbs2dm dmUnblock dm_noncol_sign_flip4
 #
-VPATH=../../Src
+dummy: default
 #
-OBJDIR=Obj
-include ../../$(OBJDIR)/arch.make
-#
-# We assume that the top arch.make defines the relevant NetCDF symbols,
-# including the INCFLAGS line. If not, uncomment the following lines, 
-# using appropriate information
-#
-# NETCDF_ROOT=/some/path
-# INCFLAGS=-I$(NETCDF_ROOT)/include
-# NETCDF_LIBS=-L$(NETCDF_ROOT)/lib -lnetcdf
-#
-#
-INCFLAGS:= $(NETCDF_INCFLAGS) $(INCFLAGS)
-#
+TOPDIR=.
+MAIN_OBJDIR=.
+
+VPATH=$(TOPDIR)/Util/DensityMatrix:$(TOPDIR)/Src
+
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
+PROGS:=dmfilter dmbs2dm dmUnblock dm_noncol_sign_flip4
+ifeq ($(WITH_NETCDF),1)
+ PROGS+= dm2cdf cdf2dm 
+endif
+default: $(PROGS)
+
 OPT_OBJS=m_getopts.o
 #
 dmbs2dm.o: $(OPT_OBJS)
@@ -64,10 +52,12 @@ dm_noncol_sign_flip4: dm_noncol_sign_flip4.o
 	$(FC) $(LDFLAGS) -o $@ dm_noncol_sign_flip4.o
 #
 clean: 
-	rm -f *.o dm2cdf cdf2dm dmfilter dmbs2dm dmUnblock *.o *.*d
-	rm -f dm_noncol_sign_flip4
+	rm -f *.o *.*d
+	rm -f $(PROGS)
 #
-
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+#
 
 
 
