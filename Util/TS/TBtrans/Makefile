@@ -15,10 +15,19 @@
 
 default: what tbtrans 
 
-VPATH:=$(shell pwd)/../../../Src
-OBJDIR=Obj
-ARCH_MAKE=../../../$(OBJDIR)/arch.make
+TOPDIR=.
+MAIN_OBJDIR=.
+
+VPATH=$(TOPDIR)/Util/TS/TBtrans:$(TOPDIR)/Src
+TOPSRC=$(TOPDIR)/Src
+
+
+ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
+INCFLAGS += $(FDF_INCFLAGS)
+INCFLAGS += $(MPI_WRAPPERS_INCFLAGS)
 
 # Set the default non-mpi routines
 FC_DEFAULT := $(FC)
@@ -88,6 +97,9 @@ SIESTA_OBJS += ncdf_io.o
 # Geometry modules
 SIESTA_OBJS += m_geom_aux.o m_geom_objects.o
 SIESTA_OBJS += m_geom_box.o m_geom_coord.o m_geom_square.o m_geom_plane.o
+
+# Broadcast fdf data structure
+SIESTA_OBJS += broadcast_fdf_struct.o
 
 # The needed transiesta objects
 TS_OBJS  = ts_electrode.o m_ts_method.o m_ts_chem_pot.o
@@ -173,27 +185,10 @@ version: version.F90 posix_calls.o $(SIESTA_VERSION_FILE)
 	@mv compinfo.o version.o
 	@echo
 $(SIESTA_VERSION_FILE): FORCE
-	@(cd ../../../ && ./SIESTA_vgen.sh)
+	@(cd $(TOPDIR) && ./SIESTA_vgen.sh)
 
 
 # Interfaces to libraries
-MPI_MAKEFILE=$(VPATH)/MPI/Makefile
-libmpi_f90.a: 
-	-mkdir -p MPI
-	(cd MPI ; \
-	$(MAKE) -f $(MPI_MAKEFILE) -j 1 "VPATH=$(VPATH)/MPI" \
-	"MAKEFILES=$(MPI_MAKEFILE)" "ARCH_MAKE=../$(ARCH_MAKE)" \
-	"FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module_built)
-
-FDF=libfdf.a
-FDF_MAKEFILE=$(VPATH)/fdf/makefile
-FDF_INCFLAGS:=-I$(VPATH)/fdf -I../MPI $(INCFLAGS)
-$(FDF): $(MPI_INTERFACE)
-	-mkdir -p fdf
-	(cd fdf ; \
-	$(MAKE) -f $(FDF_MAKEFILE) -j 1 "FC=$(FC)" "VPATH=$(VPATH)/fdf" \
-	"ARCH_MAKE=../$(ARCH_MAKE)" \
-	"INCFLAGS=$(FDF_INCFLAGS)" "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module)
 
 #######################
 #  TS-TBT libs:
@@ -202,74 +197,15 @@ $(FDF): $(MPI_INTERFACE)
 # They are currently supplied by this distribution
 # All rights reserved for the author of these libraries.
 # Author: Nick R. Papior
-
-# This library can be found at:
-#  https://github.com/zerothi/fdict
-FDICT=libfdict.a
-$(FDICT): 
-	-mkdir -p fdict
-	(cd fdict ; \
-	echo "TOP_DIR=$(VPATH)/fdict" > Makefile ; echo "include $(VPATH)/fdict/Makefile" >> Makefile ; \
-	echo "FC=$(FC_SERIAL)" > setup.make ; \
-	echo "AR=$(AR)" >> setup.make ; \
-	echo "RANLIB=$(RANLIB)" >> setup.make ; \
-	echo "FFLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "LINK_FLAGS=$(FFLAGS)" >> setup.make ; \
-	$(MAKE) -j 1 copy ; $(MAKE) -j 1 lib SHARED=0)
-	@cp -p fdict/*.mod ./
-	cp fdict/$(FDICT) ./
-
-# This library can be found at:
-#  https://github.com/zerothi/ncdf
-NCDF=libncdf.a
-$(NCDF): $(FDICT)
-	-mkdir -p ncdf
-	(cd ncdf ; \
-	echo "TOP_DIR=$(VPATH)/ncdf" > Makefile ; echo "include $(VPATH)/ncdf/Makefile" >> Makefile ; \
-	echo "settings.bash: FORCE" >> Makefile ; \
-	printf '%s\n' "	-cp ../fdict/settings.bash ." >> Makefile ; \
-	echo "FC=$(FC)" > setup.make ; \
-	echo "AR=$(AR)" >> setup.make ; \
-	echo "RANLIB=$(RANLIB)" >> setup.make ; \
-	echo "FFLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "LINK_FLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "FPPFLAGS = $(FPPFLAGS)" >> setup.make ; \
-	echo "INCLUDES = $(INCFLAGS) $(NETCDF_INCFLAGS) -I../" >> setup.make ; \
-	echo "LIBS = $(LIBS) -lfdict" >> setup.make ; \
-	$(MAKE) -j 1 copy ; $(MAKE) -j 1 lib SHARED=0)
-	@cp -p ncdf/*.mod ./
-	cp ncdf/$(NCDF) ./
-
+# (FDICT, NCDF: Handled by build.mk through COMP_LIBS)
+#
+INCFLAGS += $(FDICT_INCFLAGS) $(NCDF_INCFLAGS)
 #######################
 
-#
-# Linear algebra routines
-#
-libsiestaBLAS.a: $(VPATH)/Libs/blas.F
-	@echo "==> Compiling libsiestaBLAS.a in Libs..."
-	-mkdir -p Libs
-	@(cd Libs ; $(MAKE) -f $(VPATH)/Libs/Makefile -j 1 \
-		"VPATH=$(VPATH)/Libs" \
-		"ARCH_MAKE=$(VPATH)/../$(OBJDIR)/arch.make" \
-		"FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" libsiestaBLAS.a)
-	@cp Libs/libsiestaBLAS.a .
-libsiestaLAPACK.a: $(VPATH)/Libs/lapack.F
-	@echo "==> Compiling libsiestaLAPACK.a in Libs..."
-	-mkdir -p Libs
-	@(cd Libs ; $(MAKE) -f $(VPATH)/Libs/Makefile -j 1 \
-		"VPATH=$(VPATH)/Libs" \
-		"ARCH_MAKE=$(VPATH)/../$(OBJDIR)/arch.make" \
-		"FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" libsiestaLAPACK.a)
-	@cp Libs/libsiestaLAPACK.a .
+# This will setup the correct compilation sequence
 
-
-# All objects require the FDF library
-# In practice they do not but it greatly simplifies the logic
-# here.
-# This will setup the correct compilation sequence as
-# FDF => MPI
-$(DEP_OBJS): $(FDF) $(COMP_LIBS) $(FDICT)
-$(TBTOBJS): $(FDF) $(FDICT)
+$(DEP_OBJS): $(COMP_LIBS) $(FDICT_LIBS)
+$(TBTOBJS): $(FDF_LIBS) $(FDICT_LIBS)
 
 .PHONY: check-tbtrans
 check-tbtrans:
@@ -302,19 +238,19 @@ pht: phtrans
 
 # We append the -DTBTRANS as some special routines
 # which could take advantage of this preprocessing flag
-tbtrans: version $(MPI_INTERFACE) $(FDF) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(DEP_OBJS) $(TBTOBJS) 
+tbtrans: version $(MPI_INTERFACE) $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT_LIBS) $(DEP_OBJS) $(TBTOBJS) 
 	$(FC) $(FFLAGS) $(LDFLAGS) -o tbtrans \
               $(DEP_OBJS) $(TBTOBJS) $(MPI_INTERFACE) \
-              $(FDF) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(LIBS)
+              $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT_LIBS) $(LIBS)
 
 # We append the -DTBTRANS as some special routines
 # which could take advantage of this preprocessing flag
 # Tbtrans has TBT_PHONON flags to compile special capabilities
 phtrans: FPPFLAGS += -DTBT_PHONON
-phtrans: version $(MPI_INTERFACE) $(FDF) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(DEP_OBJS) $(TBTOBJS)
+phtrans: version $(MPI_INTERFACE) $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT_LIBS) $(DEP_OBJS) $(TBTOBJS)
 	$(FC) $(FFLAGS) $(LDFLAGS) -o phtrans \
               $(DEP_OBJS) $(TBTOBJS) $(MPI_INTERFACE) \
-              $(FDF) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT) $(LIBS)
+              $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT_LIBS) $(LIBS)
 
 .PHONY: clean-tbt
 clean-tbt:
@@ -328,26 +264,23 @@ clean:
 	@echo "==> Cleaning object, library, and executable files"
 	-rm -f tbtrans phtrans *.o *.a *.mod
 	-rm -f .phtrans .tbtrans
-	-rm -rf ./fdf
-	-rm -rf ./MPI
-	-rm -rf ./fdict
-	-rm -rf ./ncdf
-	-rm -rf ./Libs
+
+PROGS:= tbtrans
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 # Dependencies
 .PHONY: dep
 dep:
 	@sfmakedepend --depend=obj --modext=o \
-		$(addprefix $(VPATH)/,$(DEP_OBJS:.o=.f) $(DEP_OBJS:.o=.f90)) \
-		$(addprefix $(VPATH)/,$(DEP_OBJS:.o=.F) $(DEP_OBJS:.o=.F90)) \
-		$(VPATH)/class*.T90 \
+		$(addprefix $(TOPSRC)/,$(DEP_OBJS:.o=.f) $(DEP_OBJS:.o=.f90)) \
+		$(addprefix $(TOPSRC)/,$(DEP_OBJS:.o=.F) $(DEP_OBJS:.o=.F90)) \
+		$(TOPSRC)/class*.T90 \
 		$(TBTOBJS:.o=.f90) $(TBTOBJS:.o=.F90) \
 		$(TBTOBJS:.o=.f) $(TBTOBJS:.o=.F) || true
 
 	@sed -i -e 's/\.T90\.o:/.o:/g' Makefile
 
-# Assert that FDF is compiled on before hand
-$(DEP_OBJS): $(FDF)
 
 # DO NOT DELETE THIS LINE - used by make depend
 bloch_unfold.o: units.o
@@ -356,10 +289,9 @@ cellsubs.o: precision.o
 class_Data1D.o: alloc.o
 class_Data2D.o: alloc.o
 class_Data3D.o: alloc.o
-class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
-class_SpData1D.o: class_Data1D.o
 class_SpData1D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData2D.o: class_Data2D.o class_Data2D.o class_Data2D.o
+class_SpData1D.o: class_Data1D.o
+class_SpData2D.o: class_Data2D.o 
 class_SpData2D.o: class_OrbitalDistribution.o class_Sparsity.o
 class_SpData3D.o: class_OrbitalDistribution.o class_Sparsity.o
 class_Sparsity.o: alloc.o

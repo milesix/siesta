@@ -29,9 +29,7 @@ FC_PARALLEL=mpif90
 FC_SERIAL=gfortran
 #
 FPP = $(FC_SERIAL) -E -P -x c
-FFLAGS= -O2 -g 
-FFLAGS_DEBUG= -g -O0 #-fcheck=all
+FFLAGS= -O2 -g # -fallow-argument-mismatch  for GCC >=10.0
+FFLAGS_DEBUG= -g -O0 #-fcheck=all # -fallow-argument-mismatch  for GCC >=10.0
 RANLIB=echo
 # ----------------------------------------------------------
-SELF_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
-include $(SELF_DIR)build.mk

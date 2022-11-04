@@ -58,35 +58,6 @@
 !       thread-safe because each thread keeps its relative information
 !       about the search/query that the caller program requests.
 !
-!    2) MPI-aware: For MPI executions, FDF library renames output/debugging
-!       or log files to prevent overlaps of these files in a
-!       shared/parallel filesystem.
-!
-!       This option is enabled with _MPI_ macro, and superseded by
-!       CLUSTER and BLOCKING macros.
-!
-!    3) Cluster filesystem: It is able to read the input FDF file from a
-!       non-shared filesystem and broadcast the information to the rest
-!       of the nodes in the execution.
-!
-!       The implementation is as follows: the first node in the MPI rank
-!       that is the owner of the input FDF file, process the file and
-!       send it to the rest of the nodes in the MPI communicator.
-!
-!       This option is enabled with CLUSTER macro. This option cannot be
-!       used if BLOCKING macro is enabled.
-!
-!    4) Blocking reading: For huge executions (> 1.000 nodes) this option
-!       is useful for shared/parallel filesystems where reading the same
-!       file by several nodes could be a problem (collapsing system).
-!
-!       The implementation is as follows: reading phase is done in blocking
-!       pattern of size BLOCKSIZE nodes (configurable at compile time).
-!       This means that the number of steps needed is STEPS = #NODES/BLOCKSIZE.
-!
-!       This option is enabled with BLOCKING macro. This option cannot be
-!       used if CLUSTER macro is enabled.
-!
 ! Alberto Garcia, 1996-2007
 ! Raul de la Cruz (BSC), September 2007
 !
@@ -135,8 +106,8 @@ MODULE fdf
 
 ! User callable routines in FDF library
 
-! Start, stop and check parallelism in FDF system
-  public :: fdf_init, fdf_shutdown, fdf_parallel
+! Start, stop FDF system
+  public :: fdf_init, fdf_shutdown
 
 ! Reading label functions
   public :: fdf_get
@@ -164,7 +135,7 @@ MODULE fdf
   public :: fdf_bintegers, fdf_breals, fdf_bvalues, fdf_bnames, fdf_btokens
   public :: fdf_bboolean, fdf_bphysical
   public :: fdf_bnlists, fdf_blists
-
+  
 ! Match, search over blocks, and destroy block structure
   public :: fdf_bmatch, fdf_bsearch, fdf_substring_search
 
@@ -184,21 +155,8 @@ MODULE fdf
 ! Destroy dynamic list of FDF structure (called in fdf_shutdown)
   private :: fdf_destroy, fdf_destroy_dl
 
-! MPI init/finalize functions
-#ifdef _MPI_
-  private :: fdf_mpi_init, fdf_mpi_finalize
-#endif
-
-! Reading functions for CLUSTER and BLOCKING configuration
-#ifdef CLUSTER
-  private :: setup_fdf_cluster, broadcast_fdf_struct
-#endif
-#ifdef BLOCKING
-  private :: fdf_readblocking
-#endif
-
 ! Debugging functions, level and prints debugging info
-  private :: fdf_printfdf
+  public :: fdf_printfdf
 
 ! Finds a label in the FDF herarchy
   private :: fdf_locate
@@ -284,12 +242,6 @@ MODULE fdf
   integer(ip), private            :: fdf_in(maxdepth)
   integer(ip), private            :: fdf_out, fdf_err, fdf_log
 
-! MPI variables (id, number of MPI tasks)
-#ifdef _MPI_
-  logical, private                :: mpiflag
-  integer(ip), private            :: rank, ntasks
-#endif
-
 ! Structure for searching inside fdf blocks
   type, public :: block_fdf
     character(len=MAX_LENGTH) :: label
@@ -312,9 +264,13 @@ MODULE fdf
   end type fdf_file
 
 ! Input FDF file
-  type(fdf_file), pointer, private :: file_in => null()
+  type(fdf_file), private :: file_in 
 
+! Export the following to enable serialization by clients of the library
 
+  public :: fdf_serialize_struct
+  public :: fdf_recreate_struct
+  public :: fdf_set_started
 
 ! Define by default all the others inherit module entities as privated
 ! avoiding redefinitions of entities in several module files with same name
@@ -323,7 +279,7 @@ MODULE fdf
   private
 
 
-  CONTAINS
+CONTAINS
 
 !
 !   Initialization for fdf.
@@ -349,9 +305,6 @@ MODULE fdf
                  THIS_FILE, __LINE__, fdf_err)
       endif
 
-#ifdef _MPI_
-      call fdf_mpi_init()
-#endif
       call fdf_initdata()
 
       call io_geterr(fdf_err)
@@ -361,20 +314,10 @@ MODULE fdf
                            fileInput, fileOutput, unitInput )
       filedebug = trim(fileout) // ".debug"
 
-#ifdef FDF_DEBUG
-      ! To monitor the parsing and the build-up of the
-      ! fdf data structures in all nodes
-      call fdf_setdebug(2,filedebug)  
-      call fdf_setoutput(2,fileout)   ! All nodes print output
-#endif
-
-!!      call fdf_set_output_file(fileout)
-
       call fdf_input(filein)
 
       fdf_started = .TRUE.
 
-#ifndef FDF_DEBUG
       ! Flags within the fdf file itself.
 
       ! At this point only the final fdf data structure will be shown,
@@ -385,18 +328,13 @@ MODULE fdf
       ! The default is to have output only in the master node
       output_level = fdf_get('fdf-output', 1)
       call fdf_setoutput(output_level,fileout)
-#endif
 
-      if (fdf_debug2) call fdf_printfdf()
+      if (debug_level >= 2) call fdf_printfdf()
 
-#ifdef _MPI_
-      call fdf_mpi_finalize()
-#endif
 !$OMP END SINGLE
       RETURN
 !------------------------------------------------------------------------- END
       END SUBROUTINE fdf_init
-
 
       SUBROUTINE set_file_names( fileIn, fileOut, &
                                  optFileIn, optFileOut, unitIn )
@@ -421,10 +359,6 @@ MODULE fdf
       character(len=maxFileNameLength) fileName
 
 !------------------------------------------------------------------------- BEGIN
-#ifdef _MPI_
-      if (rank==0) then
-#endif
-
       ! Find a job-specific number
       call system_clock( count )
       count = mod(count,100000)
@@ -491,83 +425,11 @@ MODULE fdf
         endif ! (fileName=='stdin')
 
       endif ! (present(optFileIn))
-
-#ifdef _MPI_
-      endif ! (rank==0)
-#endif
 !--------------------------------------------------------------------------- END
       END SUBROUTINE set_file_names
 
 !
-!   Initialize MPI subsystem if the application calling/using FDF
-!   library is not running with MPI enabled.
-!
-#ifdef _MPI_
-    SUBROUTINE fdf_mpi_init()
-      use mpi_siesta
-      implicit none
-!--------------------------------------------------------------- Local Variables
-      integer(ip) :: ierr
-
-!------------------------------------------------------------------------- BEGIN
-      call MPI_Initialized(mpiflag, ierr)
-      if (ierr .ne. MPI_SUCCESS) then
-        call die('FDF module: fdf_mpi_init', 'Error initializing MPI system.' // &
-                 'Terminating.', THIS_FILE, __LINE__, fdf_err, rc=ierr)
-      endif
-
-      if (.not. mpiflag) then
-        call MPI_Init(ierr)
-        if (ierr .ne. MPI_SUCCESS) then
-          call die('FDF module: fdf_mpi_init', 'Error initializing MPI system.' // &
-                   'Terminating.', THIS_FILE, __LINE__, fdf_err, rc=ierr)
-        endif
-      endif
-
-      call MPI_Comm_Rank(MPI_COMM_WORLD, rank, ierr)
-      if (ierr .ne. MPI_SUCCESS) then
-        call die('FDF module: fdf_mpi_init', 'Error getting MPI comm rank.' // &
-                 'Terminating.', THIS_FILE, __LINE__, fdf_err, rc= ierr)
-      endif
-
-      call MPI_Comm_Size(MPI_COMM_WORLD, ntasks, ierr)
-      if (ierr .ne. MPI_SUCCESS) then
-        call die('FDF module: fdf_mpi_init', 'Error getting MPI comm size.' // &
-                 'Terminating.', THIS_FILE, __LINE__, fdf_err, rc=ierr)
-      endif
-      RETURN
-!--------------------------------------------------------------------------- END
-    END SUBROUTINE fdf_mpi_init
-#endif
-
-!
-!   Finalize MPI subsystem if the application calling/using FDF
-!   library is not running with MPI enabled.
-!
-#ifdef _MPI_
-    SUBROUTINE fdf_mpi_finalize()
-      use mpi_siesta
-      implicit none
-!--------------------------------------------------------------- Local Variables
-      integer(ip)   :: ierr
-
-!------------------------------------------------------------------------- BEGIN
-      if (.not. mpiflag) then
-        call MPI_Finalize(ierr)
-        if (ierr .ne. MPI_SUCCESS) then
-          call die('FDF module: fdf_mpi_finalize', 'Error finalizing MPI system.' // &
-                   'Terminating.', THIS_FILE, __LINE__, fdf_err, rc=ierr)
-        endif
-      endif
-
-      RETURN
-!--------------------------------------------------------------------------- END
-    END SUBROUTINE fdf_mpi_finalize
-#endif
-
-!
-!   Reads the input file depending on the configuration of the system:
-!   Shared Filesystem, Cluster Filesystem or Blocking input access
+!   Reads the input file
 !
     SUBROUTINE fdf_input(filein)
       implicit none
@@ -575,14 +437,8 @@ MODULE fdf
       character(*)  :: filein
 
 !------------------------------------------------------------------------- BEGIN
-#ifdef CLUSTER
-!!      call fdf_readcluster(filein)
-      call setup_fdf_cluster(filein)
-#elif defined(BLOCKING)
-      call fdf_readblocking(filein)
-#else
+
       call fdf_read(filein)
-#endif
 
       if (fdf_output) write(fdf_out,'(a,a,a,i3)') '#FDF module: Opened ', filein,   &
                                   ' for input. Unit:', fdf_in(1)
@@ -591,238 +447,9 @@ MODULE fdf
 !--------------------------------------------------------------------------- END
     END SUBROUTINE fdf_input
 
-!
-!   Reading code for Cluster Architecture, where the filesystem
-!   is not shared along all the nodes in the system.
-!
-#ifdef CLUSTER
-    SUBROUTINE fdf_readcluster(filein)
-      use mpi_siesta
-      implicit none
-!--------------------------------------------------------------- Input Variables
-      character(*)  :: filein
-
-!--------------------------------------------------------------- Local Variables
-      character(80)  :: msg
-      character(256) :: fileinTmp
-      integer(ip)    :: ierr, texist_send, texist_recv
-#ifdef SOPHISTICATED_SEARCH
-      logical        :: file_exist
-#endif
-!------------------------------------------------------------------------- BEGIN
-!     Tests if the running node has the input file:
-!       If found: texist_send = rank
-!       Else    : texist_send = error_code (ntasks + 1)
-
-#ifdef SOPHISTICATED_SEARCH
-      INQUIRE(file=filein, exist=file_exist)
-      if (file_exist) then
-        texist_send = rank
-      else
-        texist_send = ntasks + 1
-      endif
-
-      call MPI_AllReduce(texist_send, texist_recv, 1, MPI_INTEGER,      &
-                         MPI_MIN, MPI_COMM_WORLD, ierr)
-      if (ierr .ne. MPI_SUCCESS) then
-        call die('FDF module: fdf_readcluster', 'Error in MPI_AllReduce (task_exist).' //  &
-                 'Terminating.', THIS_FILE, __LINE__, fdf_err, rc=ierr)
-      endif
-#else
-!
-!     Simplify: Assume node 0 has the file
-!
-      texist_recv = 0
-#endif
-
-!     The node owner of the input file send the data to the other ones
-!     if none node has an input file with such name abort the application
-      if (texist_recv .eq. ntasks + 1) then
-        write(msg,*) 'No node found in the cluster with ',              &
-                     ' input file ', filein,'. Terminating.'
-        call die('FDF module: fdf_readcluster', msg,                    &
-                 THIS_FILE, __LINE__, fdf_err, rc=ierr)
-      else
-        if (texist_recv .eq. rank) then
-          call fdf_read(filein)
-          call fdf_sendInput()
-!!Debug          call MPI_Barrier( MPI_COMM_WORLD, ierr )
-          if (fdf_output) write(fdf_out,*) '#FDF module: Node', rank, 'reading/sending', &
-                           ' input file ', filein
-        else
-          call fdf_recvInput(texist_recv, filein, fileinTmp)
-!!Debug          call MPI_Barrier( MPI_COMM_WORLD, ierr )
-          call fdf_read(fileinTmp)
-          if (fdf_output) write(fdf_out,*) '#FDF module: Node', rank, 'receiving input', &
-                           ' file from', texist_recv, 'to ', TRIM(fileinTmp)
-        endif
-      endif
-      RETURN
-!--------------------------------------------------------------------------- END
-    END SUBROUTINE fdf_readcluster
-!
-!
-    SUBROUTINE setup_fdf_cluster(filein)
-!
-!     A more efficient alternative to fdf_sendInput/fdf_recvInput
-!     that avoids the creation of scratch files by non-root nodes.
-!
-!     Alberto Garcia, April 2011
-
-      use mpi_siesta
-      implicit none
-!--------------------------------------------------------------- Input Variables
-      character(*), intent(in)  :: filein   ! File name
-
-!--------------------------------------------------------------- Local Variables
-      character(80)  :: msg
-      character(256) :: fileinTmp
-      integer(ip)    :: ierr, texist_send, reading_node
-#ifdef SOPHISTICATED_SEARCH
-      logical        :: file_exist
-#endif
-!------------------------------------------------------------------------- BEGIN
-!     Tests if the running node has the input file:
-!       If found: texist_send = rank
-!       Else    : texist_send = error_code (ntasks + 1)
-
-#ifdef SOPHISTICATED_SEARCH
-      INQUIRE(file=filein, exist=file_exist)
-      if (file_exist) then
-        texist_send = rank
-      else
-        texist_send = ntasks + 1
-      endif
-
-      call MPI_AllReduce(texist_send, reading_node, 1, MPI_INTEGER,      &
-                         MPI_MIN, MPI_COMM_WORLD, ierr)
-      if (ierr .ne. MPI_SUCCESS) then
-        call die('FDF module: fdf_readcluster', 'Error in MPI_AllReduce (task_exist).' //  &
-                 'Terminating.', THIS_FILE, __LINE__, fdf_err, rc=ierr)
-      endif
-#else
-!
-!     Simplify: Assume node 0 has the file
-!
-      reading_node = 0
-#endif
-
-!     If no node has an input file with such name abort the application
-      if (reading_node .eq. ntasks + 1) then
-         write(msg,*) 'No node found in the cluster with ',              &
-              ' input file ', filein,'. Terminating.'
-         call die('FDF module: fdf_readcluster', msg,                    &
-              THIS_FILE, __LINE__, fdf_err, rc=ierr)
-      endif
-
-!     The root node reads and digests the input file 
-!     and sends the serialized fdf_file data structure to the other nodes
-
-      if (rank == reading_node) then
-         call fdf_read(filein)
-      endif
-      call broadcast_fdf_struct(reading_node)
-
-      RETURN
-!--------------------------------------------------------------------------- END
-    END SUBROUTINE setup_fdf_cluster
-
-!
-!   Broadcast complete fdf structure
-!
-    SUBROUTINE broadcast_fdf_struct(reading_node)
-      use mpi_siesta
-      implicit none
-
-      integer, intent(in)       :: reading_node         ! Node which contains the struct
-
-!--------------------------------------------------------------- Local Variables
-      character, pointer        :: bufferFDF(:) => null()
-      integer(ip)               :: i, j, k, ierr, nlines
-
-!------------------------------------------------------------------------- BEGIN
-
-      if (rank == reading_node) then
-         nlines = file_in%nlines
-      endif
-
-      call MPI_Bcast(nlines, 1,                                 &
-                     MPI_INTEGER, reading_node, MPI_COMM_WORLD, ierr)
-      if (ierr .ne. MPI_SUCCESS) then
-        call die('FDF module: broadcast_fdf', 'Error Broadcasting nlines.' // &
-                 'Terminating.', THIS_FILE, __LINE__, fdf_err, rc=ierr)
-      endif
-
-      ALLOCATE(bufferFDF(nlines*SERIALIZED_LENGTH), stat=ierr)
-      if (ierr .ne. 0) then
-        call die('FDF module: broadcast_fdf', 'Error allocating bufferFDF', &
-                 THIS_FILE, __LINE__, fdf_err, rc=ierr)
-      endif
-
-      if (rank == reading_node) then
-         call serialize_fdf_struct(bufferFDF)
-      endif
-
-      call MPI_Bcast(bufferFDF, size(bufferFDF),              &
-                     MPI_CHARACTER, reading_node, MPI_COMM_WORLD, ierr)
-      if (ierr .ne. MPI_SUCCESS) then
-        call die('FDF module: broadcast_fdf', 'Error Broadcasting bufferFDF.' // &
-                 'Terminating.', THIS_FILE, __LINE__, fdf_err, rc=ierr)
-      endif
-      if (rank /= reading_node) then
-         call recreate_fdf_struct(nlines,bufferFDF)
-      endif
-
-      DEALLOCATE(bufferFDF)
-
-      RETURN
-!--------------------------------------------------------------------------- END
-    END SUBROUTINE broadcast_fdf_struct
-#endif
-!
-!   Reading code for Blocking read. The reading of the input file is
-!   splitted in several steps of size BLOCKSIZE. The number of steps
-!   needed to read the file in all the nodes depends on the total nodes,
-!   being ntasks/BLOCKINGSIZE.
-!
-!   With this method we can avoid a colapse of a global parallel filesystem
-!   if the execution of the application runs over a huge amount of nodes.
-!
-#ifdef BLOCKING
 # ifndef BLOCKSIZE
 #   define BLOCKSIZE 2
 # endif
-    SUBROUTINE fdf_readblocking(filein)
-      use mpi_siesta
-      implicit none
-!--------------------------------------------------------------- Input Variables
-      character(*) :: filein
-
-!--------------------------------------------------------------- Local Variables
-      integer(ip)  :: i, ierr
-
-!------------------------------------------------------------------------- BEGIN
-
-      do i= 0, ntasks-1, BLOCKSIZE
-        if ((rank .ge. i) .and. (rank .le. i+BLOCKSIZE-1)) then
-          call fdf_read(filein)
-          if (fdf_output) write(fdf_out,*) '#FDF module: Task', rank, 'reading input', &
-                           ' file ', filein, ' in step', (i/BLOCKSIZE)+1
-        endif
-
-        call MPI_Barrier(MPI_COMM_WORLD, ierr)
-        if (ierr .ne. MPI_SUCCESS) then
-          call die('FDF module: fdf_readblocking', 'Error in MPI_Barrier (fdf_read).' //    &
-                   'Terminating.', THIS_FILE, __LINE__, fdf_err, rc=ierr)
-        endif
-      enddo
-
-      RETURN
-!--------------------------------------------------------------------------- END
-    END SUBROUTINE fdf_readblocking
-#endif
-
-!
 !   Read an input file (and include files) and builds memory
 !   structure that will contain the data and will help in searching
 !
@@ -1419,12 +1046,6 @@ MODULE fdf
 !------------------------------------------------------------------------- BEGIN
       ndepth = 0
 
-      ALLOCATE(file_in, stat=ierr)
-      if (ierr .ne. 0) then
-        call die('FDF module: fdf_initdata', 'Error allocating file_in', &
-                 THIS_FILE, __LINE__, fdf_err, rc=ierr)
-      endif
-
       file_in%nlines = 0
       NULLIFY(file_in%first)
       NULLIFY(file_in%last)
@@ -1486,7 +1107,7 @@ MODULE fdf
          endif
 
          ! To circumvent the first/last line in the fdf-file
-         ! we have to check for the existance of the 
+         ! we have to check for the existence of the
          ! first/last mark being the one removed.
          ! That special case *must* correct the first/last
          ! tokens.
@@ -1688,45 +1309,8 @@ MODULE fdf
 !----------------------------------------------------- BEGIN
       call io_assign(fdf_out)
 
-#ifdef _MPI_
-      if (rank /= 0) then
-         fileouttmp = "/tmp/" // trim(fileout) // "." // i2s(rank)
-      else
-         fileouttmp = fileout
-      endif
-#else
-      fileouttmp = fileout
-#endif
-
-#ifdef FDF_DEBUG
-      !
-      !     If debugging, all the nodes use named log files
-      !
-      open( unit=fdf_out, file=TRIM(fileouttmp), form='formatted', &
+      open( unit=fdf_out, file=TRIM(fileout), form='formatted', &
            access='sequential', status='replace' )
-#else
-      !
-      !     Only the master node opens a named log file in the current dir.
-      !     Non-master nodes use a scratch file.
-      !     These log files tend to be quite small, so there
-      !     should not be problems such as filling up filesystems.
-      !     ... your mileage might vary. This is a grey area.
-      !     Some compilers allow the user to specify where scratch
-      !     files go.
-      !
-#ifdef _MPI_
-      if (rank /= 0) then
-         open( unit=fdf_out, form='formatted', &
-              access='sequential', status='scratch' )
-      else
-         open( unit=fdf_out, file=TRIM(fileouttmp), form='formatted', &
-              access='sequential', status='replace' )
-      end if
-#else
-      open( unit=fdf_out, file=TRIM(fileouttmp), form='formatted', &
-           access='sequential', status='replace' )
-#endif
-#endif
 
       RETURN
 !--------------------------------------------------------------------------- END
@@ -1757,11 +1341,10 @@ MODULE fdf
     SUBROUTINE fdf_destroy(fdfp)
       implicit none
 !-------------------------------------------------------------- Output Variables
-      type(fdf_file), pointer :: fdfp
+      type(fdf_file) :: fdfp
 
 !------------------------------------------------------------------------- BEGIN
       if (ASSOCIATED(fdfp%first)) call fdf_destroy_dl(fdfp%first)
-      DEALLOCATE(fdfp)
 
       RETURN
 !--------------------------------------------------------------------------- END
@@ -1775,7 +1358,10 @@ MODULE fdf
 !-------------------------------------------------------------- Output Variables
       type(line_dlist), pointer :: dlp
 
-!------------------------------------------------------------------------- BEGIN
+      !! Use for tail recursion later:      type(line_dlist), pointer :: pnext
+
+      !------------------------------------------------------------------------- BEGIN
+      ! This is NOT tail-recursive!!
       if (ASSOCIATED(dlp%next)) call fdf_destroy_dl(dlp%next)
       call destroy(dlp%pline)
       DEALLOCATE(dlp)
@@ -1783,27 +1369,6 @@ MODULE fdf
       RETURN
 !--------------------------------------------------------------------------- END
     END SUBROUTINE fdf_destroy_dl
-
-!
-!   Tells when FDF library has been compiled with parallel
-!   execution support. Depends on _MPI_ macro.
-!
-    FUNCTION fdf_parallel()
-      implicit none
-!-------------------------------------------------------------- Output Variables
-      logical      :: fdf_parallel
-
-!------------------------------------------------------------------------- BEGIN
-#ifdef _MPI_
-      fdf_parallel = .TRUE.
-#else
-      fdf_parallel = .FALSE.
-#endif
-
-      RETURN
-!--------------------------------------------------------------------------- END
-    END FUNCTION fdf_parallel
-
 !
 !   Read a line of the 'ndepth' input file, returning .TRUE. if
 !   there are more lines to read from input file, .FALSE. otherwise.
@@ -3054,7 +2619,9 @@ MODULE fdf
           end if
         end do
 
-      end if
+        call fdf_bclose(bfdf)
+
+     end if
 
       ! Restore output
       fdf_output = orig_fdf_output
@@ -3121,30 +2688,11 @@ MODULE fdf
         endif
       else
         if (.not. fdf_output) then
-#ifdef _MPI_
-          if (rank /= 0) then
-             if (level .ge. 2) then
-                fileout = "/tmp/" // trim(fileout) // "." // i2s(rank)
-                call io_assign(fdf_out)
-                open(fdf_out, file=fileout, form='formatted',               &
-                     status='unknown')
-                REWIND(fdf_out)
-                fdf_output = .TRUE.
-             endif
-          else
-             call io_assign(fdf_out)
-             open(fdf_out, file=fileout, form='formatted',               &
-                  status='unknown')
-             REWIND(fdf_out)
-             fdf_output = .TRUE.
-          endif
-#else
           call io_assign(fdf_out)
           open(fdf_out, file=fileout, form='formatted',               &
                status='unknown')
           REWIND(fdf_out)
           fdf_output = .TRUE.
-#endif
         endif
       endif
 !----------------------------------------------------------------------- END
@@ -3171,11 +2719,6 @@ MODULE fdf
       else
         if (.not. fdf_debug) then
           call io_assign(fdf_log)
-#ifdef _MPI_
-          if (rank /= 0) then
-             filedebug = "/tmp/" // trim(filedebug) // "." // i2s(rank)
-          endif
-#endif
           open(fdf_log, file=filedebug, form='formatted',               &
                status='unknown')
           REWIND(fdf_log)
@@ -3237,14 +2780,21 @@ MODULE fdf
 !--------------------------------------------------------------------------- END
     end subroutine fdf_obsolete
 
-
-    subroutine serialize_fdf_struct(buffer)
-    character, pointer        :: buffer(:)
+!===================== Serialization utilities for clients
+    
+    subroutine fdf_serialize_struct(buffer)
+    character(len=1), intent(inout), allocatable   :: buffer(:)
 
     character(len=SERIALIZED_LENGTH)  bufline
     type(line_dlist), pointer :: mark
     integer(ip) :: i, length, init, final
 
+    integer :: nchars ! total size of serialized content
+
+    if (allocated(buffer)) deallocate(buffer)
+    nchars = file_in%nlines * SERIALIZED_LENGTH
+    allocate(buffer(nchars))
+    
     mark => file_in%first
     do i= 1, file_in%nlines
        call serialize_pline(mark%pline,bufline,length)
@@ -3253,16 +2803,17 @@ MODULE fdf
        call convert_string_to_array_of_chars(bufline,buffer(init:final))
        mark => mark%next
     enddo
-  end subroutine serialize_fdf_struct
+  end subroutine fdf_serialize_struct
 
-    subroutine recreate_fdf_struct(nlines,bufferFDF)
-    character, pointer        :: bufferFDF(:)
-    integer, intent(in)       :: nlines
+    subroutine fdf_recreate_struct(bufferFDF)
+    character(len=1), intent(in)    :: bufferFDF(:)
 
     character(len=SERIALIZED_LENGTH)  bufline
     type(parsed_line), pointer    :: pline
-    integer(ip) :: i, init, final
+    integer(ip) :: nlines, i, init, final
 
+    nlines = size(bufferFDF) / SERIALIZED_LENGTH
+    
     do i= 1, nlines
        init  = (i-1)*SERIALIZED_LENGTH+1
        final = (i)*SERIALIZED_LENGTH
@@ -3271,121 +2822,14 @@ MODULE fdf
        call recreate_pline(pline,bufline)
        call fdf_addtoken(pline%line,pline)
     enddo
-    ! print *, "Processed: ", file_in%nlines, " lines."
 
-  end subroutine recreate_fdf_struct
+  end subroutine fdf_recreate_struct
 
-!=================================================================
-!--------- Obsolete routines ----------------
-!
-!   The owner node of the input file sends data file to the
-!   other processes in the MPI communicator.
-!
-#ifdef CLUSTER
-    SUBROUTINE fdf_sendInput()
-      use mpi_siesta
-      implicit none
-!--------------------------------------------------------------- Local Variables
-      character, pointer        :: bufferFDF(:) => null()
-      integer(ip)               :: i, j, k, ierr
-      type(line_dlist), pointer :: mark
+      ! To enable client-side setting
+    SUBROUTINE fdf_set_started(status)
+      logical, intent(in) :: status
 
-!------------------------------------------------------------------------- BEGIN
-      ALLOCATE(bufferFDF(file_in%nlines*MAX_LENGTH), stat=ierr)
-      if (ierr .ne. 0) then
-        call die('FDF module: fdf_sendInput', 'Error allocating bufferFDF', &
-                 THIS_FILE, __LINE__, fdf_err, rc=ierr)
-      endif
+      fdf_started = status
+    end SUBROUTINE fdf_set_started
 
-      mark => file_in%first
-      do i= 1, file_in%nlines*MAX_LENGTH, MAX_LENGTH
-        bufferFDF(i:i+MAX_LENGTH-1) = s2arr(mark%str)
-        mark => mark%next
-      enddo
-
-      call MPI_Bcast(file_in%nlines, 1,                                 &
-                     MPI_INTEGER, rank, MPI_COMM_WORLD, ierr)
-
-      if (ierr .ne. MPI_SUCCESS) then
-        call die('FDF module: fdf_sendInput', 'Error Broadcasting nlines.' // &
-                 'Terminating.', THIS_FILE, __LINE__, fdf_err, rc=ierr)
-      endif
-
-      call MPI_Bcast(bufferFDF, file_in%nlines*MAX_LENGTH,              &
-                     MPI_CHARACTER, rank, MPI_COMM_WORLD, ierr)
-      if (ierr .ne. MPI_SUCCESS) then
-        call die('FDF module: fdf_sendInput', 'Error Broadcasting bufferFDF.' // &
-                 'Terminating.', THIS_FILE, __LINE__, fdf_err, rc=ierr)
-      endif
-
-      DEALLOCATE(bufferFDF)
-
-      RETURN
-!--------------------------------------------------------------------------- END
-    END SUBROUTINE fdf_sendInput
-#endif
-
-!
-!   Remaining nodes recieve the input data file from the owner
-!   of the FDF file inside the cluster.
-!
-#ifdef CLUSTER
-    SUBROUTINE fdf_recvInput(root, filein, fileinTmp)
-      use mpi_siesta
-      implicit none
-!--------------------------------------------------------------- Input Variables
-      character(*)       :: filein, fileinTmp
-      integer(ip)        :: root
-
-!--------------------------------------------------------------- Local Variables
-      integer(ip)        :: i, j, lun, ierr, nlines
-      character, pointer :: bufferFDF(:) => null()
-      character(len=10)  :: fmt
-!------------------------------------------------------------------------- BEGIN
-      call MPI_Bcast(nlines, 1,                                         &
-                     MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
-      if (ierr .ne. MPI_SUCCESS) then
-        call die('FDF module: fdf_recvInput', 'Error Broadcasting nlines.' // &
-                 'Terminating.', THIS_FILE, __LINE__, fdf_err, rc=ierr)
-      endif
-
-      ALLOCATE(bufferFDF(nlines*MAX_LENGTH), stat=ierr)
-      if (ierr .ne. 0) then
-        call die('FDF module: fdf_recvInput', 'Error allocating bufferFDF', &
-                 THIS_FILE, __LINE__, fdf_err, rc=ierr)
-      endif
-
-      call MPI_Bcast(bufferFDF, nlines*MAX_LENGTH,                      &
-                     MPI_CHARACTER, root, MPI_COMM_WORLD, ierr)
-      if (ierr .ne. MPI_SUCCESS) then
-        call die('FDF module: fdf_recvInput', 'Error Broadcasting bufferFDF.' // &
-                 'Terminating.', THIS_FILE, __LINE__, fdf_err, rc=ierr)
-      endif
-
-      call io_assign(lun)
-      fileinTmp = TRIM(filein) // '.' // i2s(rank)
-      open(unit=lun, file=fileinTmp, form='formatted',                  &
-           status='unknown')
-
-      if (MAX_LENGTH.lt.10) then
-        write(fmt,"(a1,I1,a2)") "(", MAX_LENGTH, "a)"
-      else if (MAX_LENGTH.lt.100) then
-        write(fmt,"(a1,I2,a2)") "(", MAX_LENGTH, "a)"
-      else if (MAX_LENGTH.lt.1000) then
-        write(fmt,"(a1,I3,a2)") "(", MAX_LENGTH, "a)"
-      else
-        write(fmt,"(a1,I4,a2)") "(", MAX_LENGTH, "a)"
-      endif
-
-      do i= 1, nlines*MAX_LENGTH, MAX_LENGTH
-        write(lun,fmt) (bufferFDF(j),j=i,i+MAX_LENGTH-1)
-      enddo
-      call io_close(lun)
-
-      DEALLOCATE(bufferFDF)
-
-      RETURN
-!--------------------------------------------------------------------------- END
-    END SUBROUTINE fdf_recvInput
-#endif
 END MODULE fdf

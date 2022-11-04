@@ -11,12 +11,23 @@
 .SUFFIXES: 
 .SUFFIXES: .f .F .o .a  .f90 .F90
 #
-VPATH:=$(shell pwd)/../../Src
-OBJDIR=Obj
 #
-all: grid2cdf cdf2xsf cdf2grid grid2val grid2cube grid_rotate g2c_ng cdf_laplacian
+dummy: default
 #
-include ../../$(OBJDIR)/arch.make
+TOPDIR=.
+MAIN_OBJDIR=.
+
+VPATH=$(TOPDIR)/Util/Grid:$(TOPDIR)/Src
+
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
+PROGS:=grid2val grid2cube grid_rotate g2c_ng grid_supercell v_info
+ifeq ($(WITH_NETCDF),1)
+ PROGS+= grid2cdf cdf2xsf cdf2grid cdf_laplacian cdf_get_cell cdf_diff cdf_fft
+endif
+default: $(PROGS)
+
 #
 # This is needed on some systems to avoid loading the parallel libraries, which
 # sometimes force running on queuing systems
@@ -35,7 +46,7 @@ FC:=$(FC_SERIAL)         # Make it non-recursive
 # NETCDF_INCFLAGS=-I$(NETCDF_ROOT)/include
 # NETCDF_LIBS=-L$(NETCDF_ROOT)/lib -lnetcdf
 #
-INCFLAGS:= $(NETCDF_INCFLAGS) $(INCFLAGS)
+INCFLAGS+= $(NETCDF_INCFLAGS) 
 #------------------
 grid2cdf: grid2cdf.o
 	$(FC) $(LDFLAGS) -o $@  grid2cdf.o  $(NETCDF_LIBS)
@@ -46,8 +57,9 @@ cdf2grid: cdf2grid.o
 cdf2xsf: cdf2xsf.o
 	$(FC) $(LDFLAGS) -o $@  cdf2xsf.o  $(NETCDF_LIBS)
 #
-cdfget: cdfget.o
-	$(FC) $(LDFLAGS) -o $@  cdfget.o  $(NETCDF_LIBS)
+cdf_get_cell: m_grid.o cdf_get_cell.o
+	$(FC) $(LDFLAGS) -o $@  m_grid.o cdf_get_cell.o  $(NETCDF_LIBS)
+cdf_get_cell.o: m_grid.o
 cdf_diff: m_grid.o cdf_diff.o 
 	$(FC) $(LDFLAGS) -o $@  m_grid.o cdf_diff.o  $(NETCDF_LIBS)
 cdf_diff.o: m_grid.o
@@ -91,10 +103,12 @@ grid_supercell: grid_supercell.o
 #
 #------------------
 clean: 
-	rm -f *.o grid2cdf grid2val grid2cube cdf2grid cdf2xsf *.o *.*d
-	rm -f cdf_laplacian g2c_ng grid_rotate grid_supercell v_info
+	rm -f *.o *.*d
+	rm -f $(PROGS)
 #
-
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+#
 
 
 

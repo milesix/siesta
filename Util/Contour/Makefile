@@ -11,21 +11,18 @@
 .SUFFIXES: 
 .SUFFIXES: .f .F .o .a .f90 .F90
 #
-VPATH:=$(shell pwd)/../../Src
-OBJDIR=Obj
+TOPDIR=.
+MAIN_OBJDIR=.
 
-all: grid1d grid2d
+VPATH=$(TOPDIR)/Util/Contour:$(TOPDIR)/Src
 
-include ../../$(OBJDIR)/arch.make
+PROGS= grid1d grid2d
+default: $(PROGS)
 
-# This is needed on some systems to avoid loading the parallel libraries, which
-# sometimes force running on queuing systems
-#
-FC_DEFAULT:=$(FC)
-FC_SERIAL?=$(FC_DEFAULT)
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
 FC:=$(FC_SERIAL)         # Make it non-recursive
-#
-##FFLAGS=$(FFLAGS_DEBUG)
 
 grid1d: grid1d.o
 	$(FC) $(LDFLAGS) -o $@  grid1d.o
@@ -33,4 +30,7 @@ grid2d: grid2d.o
 	$(FC) $(LDFLAGS) -o $@  grid2d.o
 
 clean: 
-	rm -f *.o grid1d grid2d
+	rm -f *.o $(PROGS)
+#
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
