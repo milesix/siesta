@@ -6,12 +6,12 @@ dir=$(dirname $0)
 echo " ===> Generating module files from templates..."
 
 if [ -z "$@" ] ; then
-    KINDS=`./kind_explorer`
+    KINDS=`./mpi_kind_explorer`
 else
     KINDS=$@
 fi
 
-INT_KINDS=`./int_explorer`
+INT_KINDS=`./mpi_int_explorer`
 #
 echo $KINDS
 rm -f *.uses Interfaces.f90

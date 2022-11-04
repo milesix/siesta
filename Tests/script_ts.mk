@@ -4,9 +4,11 @@
 # We do not have popd and pushd in "sh" scripts, thus force the SHELL to be bash
 SHELL=/bin/bash
 
-MPI=mpirun -np 2
-TS = ../../../../siesta
+TOPDIR=.
+MAIN_OBJDIR=.
 
+MPI=mpirun -np 2
+SIESTA=$(MAIN_OBJDIR)/Src/siesta
 
 # Make compatibility layer for old test-runs
 ifeq ($(strip $(firstword $(TS))),"mpirun")

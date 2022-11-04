@@ -8,14 +8,17 @@
 .SUFFIXES:
 .SUFFIXES: .f .f90 .F .F90 .o
 #
-OBJDIR=Obj
-#
-default: swarm simplex
-#
-include ../../$(OBJDIR)/arch.make
-#
-FC_DEFAULT:=$(FC)
-FC_SERIAL?=$(FC_DEFAULT)
+TOPDIR=.
+MAIN_OBJDIR=.
+
+VPATH=$(TOPDIR)/Util/Optimizer
+
+PROGS= swarm simplex
+default: $(PROGS)
+
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
 FC:=$(FC_SERIAL)         # Make it non-recursive
 #
 # Optimization flags are not really necessary, but do include
@@ -43,7 +46,10 @@ swarm: $(SWARM_OBJS)
 
 
 clean:
-	rm -f *.o *.mod swarm simplex
+	rm -f *.o *.mod $(PROGS)
+#
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 # DO NOT DELETE THIS LINE - used by make depend
 amoeba.o: precision.o vars_module.o
