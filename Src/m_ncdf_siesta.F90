@@ -56,7 +56,7 @@ contains
     use siesta_options, only: fixspin, total_spin
     use siesta_options, only: ia1, ia2, dx ! FC information
     use m_timestamp, only: datestring
-    use m_ts_electype, elec_name => name
+    use ts_electrode_m, only: electrode_t
     use m_ts_options, only : Volt, N_Elec, Elecs
     use m_ts_options, only : TS_HS_Save
 
@@ -329,7 +329,7 @@ contains
 
         call ncdf_def_grp(grp,trim(Elecs(iEl)%name),grp2)
 
-        tmp = TotUsedAtoms(Elecs(iEl))
+        tmp = Elecs(iEl)%device_atoms()
         call ncdf_def_dim(grp2,'na',tmp)
 
         dic = ('info'.kv.'Atoms belonging to electrode')
@@ -388,7 +388,7 @@ contains
 
         call ncdf_open_grp(grp,trim(Elecs(iEl)%name),grp2)
 
-        tmp = TotUsedAtoms(Elecs(iEl))
+        tmp = Elecs(iEl)%device_atoms()
 
         allocate(ibuf(tmp))
         do i = 1 , tmp

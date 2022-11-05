@@ -153,14 +153,6 @@ C     Initialise MPI and set processor number
 
       call reset_messages_file()
 
-#ifdef MPI
-      if (.not. fdf_parallel()) then
-        call die('siesta_init: ERROR: FDF module ' //
-     &           'doesn''t have parallel support')
-      endif
-#endif
-
-
       if (Node==0) then
          ! Make sure we delete this sentinel file
          open(unit=1,file="0_NORMAL_EXIT",status="unknown")

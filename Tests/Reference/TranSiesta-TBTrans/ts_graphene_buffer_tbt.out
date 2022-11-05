@@ -1,22 +1,25 @@
-TBtrans Version: v4.1.5-1-g384057250
-Architecture  : x86_64-linux-gcc
-Compiler flags: mpifort -m64 -fPIC -O3 -ftree-vectorize -fexpensive-optimizations -funroll-loops -fprefetch-loop-arrays -fgraphite -fipa-icf -fipa-pure-const -march=native -fschedule-fusion -fselective-scheduling -fstack-arrays -fmax-stack-var-size=10000 -fipa-sra -fipa-cp -fcheck=recursion,array-temps -fno-second-underscore -Wrealloc-lhs -Wrealloc-lhs-all -fallow-argument-mismatch
-PP flags      : -DSIESTA__FLOOK -DSIESTA__METIS -DSIESTA__FFTW -DTS_PVT_METIS -DSIESTA__MRRR -DSIESTA__SCALAPACK_RESET -DMPI -DFC_HAVE_FLUSH -DFC_HAVE_ABORT -DCDF -DGRID_DP -DMPI_TIMING -DTRANSIESTA_TIMING -DTBTRANS_TIMING -DSIESTA__MUMPS -DNCDF_PARALLEL -DNCDF -DNCDF_4 -DSCALAPACK_DEBUG -D_DIAG_WORK -DSIESTA__DIAG_2STAGE -DSIESTA__ELPA -DTBTRANS
-Libraries     : libncdf.a libfdict.a  -lzmumps -lmumps_common -lpord -lparmetis -lmetis -lesmumps -lscotch -lscotcherr -L/opt/gnu/11.2.0/elpa/2020.05.001/lib -Wl,-rpath=/opt/gnu/11.2.0/elpa/2020.05.001/lib -lelpa -L/opt/gnu/11.2.0/scalapack-debug/2.1.0/lib -Wl,-rpath=/opt/gnu/11.2.0/scalapack-debug/2.1.0/lib -lscalapack  -L/opt/gnu/11.2.0/openblas/0.3.18/lib -Wl,-rpath=/opt/gnu/11.2.0/openblas/0.3.18/lib -lopenblas -L/home/nicpa/codes/flook/obj -lflookall -ldl -l:libnetcdff.so  -m64 -fPIC -O3 -ftree-vectorize -fexpensive-optimizations -funroll-loops -fprefetch-loop-arrays -fgraphite -fipa-icf -fipa-pure-const -march=native -fschedule-fusion -fselective-scheduling -fstack-arrays -fmax-stack-var-size=10000 -fipa-sra -fipa-cp -fcheck=recursion,array-temps -fno-second-underscore -Wrealloc-lhs -Wrealloc-lhs-all -fallow-argument-mismatch -L/opt/gnu/11.2.0/fftw/3.3.10/lib -Wl,-rpath=/opt/gnu/11.2.0/fftw/3.3.10/lib -lfftw3
-PARALLEL version
+TBtrans Version : 5.0.0-alpha-56-g943f9ccc9
+Architecture    : x86_64-linux-gcc
+Compiler version: GNU Fortran (GCC) 11.2.0
+Compiler flags  : mpifort -m64 -fPIC -O3 -ftree-vectorize -fexpensive-optimizations -funroll-loops -fprefetch-loop-arrays -fgraphite -fipa-icf -fipa-pure-const -march=native -fschedule-fusion -fselective-scheduling -fstack-arrays -fmax-stack-var-size=10000 -fipa-sra -fipa-cp -fcheck=recursion,array-temps -fno-second-underscore -Wrealloc-lhs -Wrealloc-lhs-all -fallow-argument-mismatch -fcheck-array-temporaries -Warray-temporaries -fcheck=array-temps
+PP flags        : -DSIESTA__DEV_INFO -DSIESTA__FLOOK -DSIESTA__METIS -DSIESTA__FFTW -DTS_PVT_METIS -DSIESTA__MRRR -DSIESTA__SCALAPACK_RESET -DMPI -DFC_HAVE_FLUSH -DFC_HAVE_ABORT -DCDF -DGRID_DP -DMPI_TIMING -DTRANSIESTA_TIMING -DTBTRANS_TIMING -D1 -DNCDF_PARALLEL -DNCDF -DNCDF_4 -DSCALAPACK_DEBUG -D_DIAG_WORK -DSIESTA__DIAG_2STAGE -DSIESTA__ELPA -DTBTRANS
+Libraries       : libncdf.a libfdict.a  -lzmumps -lmumps_common -lpord -lparmetis -lmetis -lesmumps -lscotch -lscotcherr -L/opt/gnu/11.2.0/elpa/2020.05.001/lib -Wl,-rpath=/opt/gnu/11.2.0/elpa/2020.05.001/lib -lelpa -L/opt/gnu/11.2.0/scalapack-debug/2.1.0/lib -Wl,-rpath=/opt/gnu/11.2.0/scalapack-debug/2.1.0/lib -lscalapack  -L/opt/gnu/11.2.0/openblas/0.3.18/lib -Wl,-rpath=/opt/gnu/11.2.0/openblas/0.3.18/lib -lopenblas -L/home/nicpa/codes/flook/obj -lflookall -ldl -l:libnetcdff.so  -m64 -fPIC -O3 -ftree-vectorize -fexpensive-optimizations -funroll-loops -fprefetch-loop-arrays -fgraphite -fipa-icf -fipa-pure-const -march=native -fschedule-fusion -fselective-scheduling -fstack-arrays -fmax-stack-var-size=10000 -fipa-sra -fipa-cp -fcheck=recursion,array-temps -fno-second-underscore -Wrealloc-lhs -Wrealloc-lhs-all -fallow-argument-mismatch -fcheck-array-temporaries -Warray-temporaries -fcheck=array-temps -L/opt/gnu/11.2.0/fftw/3.3.10/lib -Wl,-rpath=/opt/gnu/11.2.0/fftw/3.3.10/lib -lfftw3
+Parallelisations: MPI
 NetCDF support
 NetCDF-4 support
 NetCDF-4 MPI-IO support
 METIS ordering support
 
-* Running on 6 nodes in parallel
->> Start of run:   3-NOV-2021  23:23:30
+Runtime information:
+* Directory : /home/nicpa/siesta/siesta/Obj/Tests/TranSiesta-TBTrans/ts_graphene/work/TBT_ts_graphene_buffer
+* Running on 6 nodes in parallel.
+>> Start of run:  29-APR-2022  11:06:34
 
                            ************************ 
                            *  WELCOME TO TBtrans  * 
                            ************************ 
 
-reinit: Reading from ts_graphene_buffer.fdf
+reinit: Reading from file ts_graphene_buffer.fdf
 
 reinit: -----------------------------------------------------------------------
 reinit: System Name: 
@@ -68,7 +71,7 @@ tbt: >> Left
 tbt:   Electrode cell pivoting: E1, E2, E3          = A1, A2, A3
 tbt:   In-core self-energy calculation
 tbt:   Electrode TSHS file                          = ./ts_graphene_elec.TSHS
-tbt:   # atoms used in electrode                    =    4
+tbt:   # atoms in electrode used / total            = 4 / 6
 tbt:   Electrode Bloch unity [E1 x E2 x E3]         = 1 x 1 x 1
 tbt:   Position in geometry                         = 3 -- 6
 tbt:   Semi-infinite direction for electrode        = negative wrt. E1
@@ -84,7 +87,7 @@ tbt: >> Right
 tbt:   Electrode cell pivoting: E1, E2, E3          = A1, A2, A3
 tbt:   In-core self-energy calculation
 tbt:   Electrode TSHS file                          = ./ts_graphene_elec.TSHS
-tbt:   # atoms used in electrode                    =    4
+tbt:   # atoms in electrode used / total            = 4 / 6
 tbt:   Electrode Bloch unity [E1 x E2 x E3]         = 1 x 1 x 1
 tbt:   Position in geometry                         = 13 -- 16
 tbt:   Semi-infinite direction for electrode        = positive wrt. E1
@@ -132,7 +135,7 @@ Electrode information:
     nrows_g=54 nrows=54 sparsity=6.1667 nnzs=17982, refcount: 3>
   <sparsity:(TM [ 0,--,--] of: ./ts_graphene_elec.TSHS)
     nrows_g=54 nrows=54 sparsity=3.9444 nnzs=11502, refcount: 3>
-  <sparsity:(TM [-1,--,--] of: ./ts_graphene_elec.TSHS)
+  <sparsity:(TM [ 1,--,--] of: ./ts_graphene_elec.TSHS)
     nrows_g=54 nrows=54 sparsity=1.1111 nnzs=3240, refcount: 3>
  Left principal cell is perfect!
 
@@ -140,7 +143,7 @@ Electrode information:
     nrows_g=54 nrows=54 sparsity=6.1667 nnzs=17982, refcount: 3>
   <sparsity:(TM [ 0,--,--] of: ./ts_graphene_elec.TSHS)
     nrows_g=54 nrows=54 sparsity=3.9444 nnzs=11502, refcount: 3>
-  <sparsity:(TM [ 1,--,--] of: ./ts_graphene_elec.TSHS)
+  <sparsity:(TM [-1,--,--] of: ./ts_graphene_elec.TSHS)
     nrows_g=54 nrows=54 sparsity=1.1111 nnzs=3240, refcount: 3>
  Right principal cell is perfect!
 
@@ -177,45 +180,45 @@ Region (4): [A]-Right folding in D
 tbt: Creating electrode tri-diagonal matrix blocks
 tbt: Creating device tri-diagonal matrix blocks
 Region (2): [TRI] device region
-  [ [27] * 2 ]
-tbt: Matrix elements in BTD: 2916
+  [ [27]*2 ]
 
 tbt: Electrodes tri-diagonal matrices
 Region (2): [TRI] Left
-  [ [36] * 2 ]
+  [ [36]*2 ]
 Region (2): [TRI] Right
-  [ [36] * 2 ]
+  [ [36]*2 ]
 
-tbt: Electrode memory:  616.344 KB
-tbt: Sparse H, S and auxiliary matrices memory:  932.133 KB
-tbt: Sum of electrode and sparse memory:    1.512 MB
+tbt: [memory] electrode: 616.359 kB
+tbt: [memory] H, S and auxiliary matrices: 825.820 kB
+tbt: [memory] sum of electrode and sparse: 1.408 MB
 
 tbt: Initializing data file: ts_graphene_buffer.TBT.nc
-tbt: Estimated file size of ts_graphene_buffer.TBT.nc:   2.145 MB
+tbt: Estimated file size of ts_graphene_buffer.TBT.nc: 2.146 MB
 
-tbt: LHS Green function padding / memory: 34992 /  592.312 KB
-tbt: RHS Green function padding / memory: 0 /   45.562 KB
-tbt: Initial ETA in               18.521 s
-tbt: Calculated   5.039 %, ETA in                8.624 s
-tbt: Calculated  10.039 %, ETA in                8.051 s
-tbt: Calculated  15.078 %, ETA in                7.636 s
-tbt: Calculated  20.078 %, ETA in                7.207 s
-tbt: Calculated  25.118 %, ETA in                6.753 s
-tbt: Calculated  30.118 %, ETA in                6.313 s
-tbt: Calculated  35.157 %, ETA in                5.872 s
-tbt: Calculated  40.157 %, ETA in                5.446 s
-tbt: Calculated  45.157 %, ETA in                5.031 s
-tbt: Calculated  50.196 %, ETA in                4.636 s
-tbt: Calculated  55.196 %, ETA in                4.339 s
-tbt: Calculated  60.235 %, ETA in                4.031 s
-tbt: Calculated  65.294 %, ETA in                3.783 s
-tbt: Calculated  70.333 %, ETA in                3.445 s
-tbt: Calculated  75.333 %, ETA in                2.966 s
-tbt: Calculated  80.373 %, ETA in                2.365 s
-tbt: Calculated  85.373 %, ETA in                1.734 s
-tbt: Calculated  90.373 %, ETA in                1.120 s
-tbt: Calculated  95.412 %, ETA in                0.525 s
-tbt: Completed in               11.274 s
+tbt: [memory] LHS inversion + padding: 592.312 kB
+tbt: [memory] RHS inversion + padding: 45.562 kB
+tbt: Initial ETA in                 21.3 s
+tbt: Calculated    5.03 %, ETA in                 16.0 s
+tbt: Calculated   10.08 %, ETA in                 14.1 s
+tbt: Calculated   15.11 %, ETA in                 12.8 s
+tbt: Calculated   20.16 %, ETA in                 11.8 s
+tbt: Calculated   25.19 %, ETA in                 10.9 s
+tbt: Calculated   30.24 %, ETA in                 10.1 s
+tbt: Calculated   35.27 %, ETA in                  9.2 s
+tbt: Calculated   40.32 %, ETA in                  8.4 s
+tbt: Calculated   45.36 %, ETA in                  7.7 s
+tbt: Calculated   50.41 %, ETA in                  7.0 s
+tbt: Calculated   55.44 %, ETA in                  6.4 s
+tbt: Calculated   60.49 %, ETA in                  5.9 s
+tbt: Calculated   65.54 %, ETA in                  5.4 s
+tbt: Calculated   70.57 %, ETA in                  4.9 s
+tbt: Calculated   75.62 %, ETA in                  4.3 s
+tbt: Calculated   80.65 %, ETA in                  3.4 s
+tbt: Calculated   85.70 %, ETA in                  2.5 s
+tbt: Calculated   90.73 %, ETA in                  1.6 s
+tbt: Calculated   95.78 %, ETA in                  0.7 s
+tbt: Calculated  100.81 %, ETA in                 -0.1 s
+tbt: Completed in               16.678 s
 
 Currents (ensure entire Fermi function window):
 Left -> Right, V [V] / I [A]:  0.00000     V /  0.00000     A
@@ -223,39 +226,28 @@ Left -> Right, V [V] / P [W]:  0.00000     V /  0.00000     W
 
 
              Section          Calls    Walltime       %
- global_section                   1      11.447  100.00
-  tbtrans                         1      11.447  100.00
-   MPI_COMM_RANK                  1       0.000    0.00
-   MPI_COMM_SIZE                  1       0.000    0.00
-   MPI_BCAST                     83       0.001    0.01
-   MPI_BARRIER                    3       0.002    0.02
+ global_section                   1      16.874  100.00
+  tbtrans                         1      16.874  100.00
    init-region+sp                 1       0.002    0.01
    pivot-elec                     1       0.002    0.01
     pivot                         1       0.000    0.00
-    MPI_BCAST                    24       0.001    0.01
    pivot-device                   1       0.000    0.00
     pivot                         1       0.000    0.00
-   tri-init                       1       0.005    0.05
-    tri-init-elec                 1       0.004    0.04
+   tri-init                       1       0.005    0.03
+    tri-init-elec                 1       0.001    0.00
      TS-rgn2tri                   1       0.000    0.00
-     MPI_BCAST                    6       0.004    0.04
-    TS-rgn2tri                    1       0.000    0.00
-     MPI_BCAST                   12       0.000    0.00
-   TBT                            1      11.419   99.76
-    MPI_BCAST                    39       0.001    0.01
-    MPI_BARRIER                   3       0.000    0.00
-    setup-HS                     51       0.041    0.35
-    MPI_ALLGATHER              3468       0.018    0.16
-    read-GS                    1734       9.345   81.63
-    SE-dwn                     1734       0.390    3.40
-     ts_expand                 3366       0.012    0.11
-    Gf-prep                    1734       0.397    3.47
-     V_TM_Pinv                 1683       0.178    1.56
-    analysis                   1734       1.085    9.48
-     dGFGGF                    1683       0.111    0.97
-     A-DOS                     1683       0.120    1.05
-     A-Gamma                   1683       0.006    0.05
-     cdf-w-DOS-T               1734       0.843    7.36
-      MPI_RECV                17187       0.358    3.13
-    cdf2ascii                     1       0.100    0.87
->> End of run:   3-NOV-2021  23:23:41
+    TS-rgn2tri                    1       0.003    0.02
+   TBT                            1      16.842   99.81
+    setup-HS                     51       0.043    0.25
+    read-GS                    1734      12.471   73.90
+    SE-dwn                     1734       0.526    3.12
+     ts_expand                 3366       0.020    0.12
+    Gf-prep                    1734       0.595    3.53
+     V_TM_Pinv                 1683       0.243    1.44
+    analysis                   1734       2.980   17.66
+     dGFGGF                    1683       0.138    0.82
+     A-DOS                     1683       0.197    1.17
+     A-Gamma                   1683       0.010    0.06
+     cdf-w-DOS-T               1734       2.621   15.53
+    cdf2ascii                     1       0.115    0.68
+>> End of run:  29-APR-2022  11:06:51

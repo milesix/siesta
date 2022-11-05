@@ -38,7 +38,7 @@ contains
   subroutine mat_invert(M,zwork,no,method,ierr)
     use intrinsic_missing, only : EYE
     integer, intent(in) :: no ! Size of problem
-    complex(dp), target :: M(no*no), zwork(no*no)
+    complex(dp), target :: M(:), zwork(:)
     integer, intent(in), optional :: method
     integer, intent(out), optional :: ierr
 
@@ -61,7 +61,7 @@ contains
 
     select case ( lmethod )
     case ( MI_IN_PLACE_LAPACK ) 
-      call zgetrf(no, no, M, no, ipiv, lierr )
+      call zgetrf(no, no, M(1), no, ipiv, lierr )
       if ( lierr /= 0 ) then
         if ( present(ierr) ) then
           ierr = lierr
@@ -70,7 +70,7 @@ contains
           call die('Error in LU-decomposition')
         end if
       end if
-      call zgetri(no, M, no, ipiv, zwork, no**2, lierr)
+      call zgetri(no, M(1), no, ipiv, zwork(1), no**2, lierr)
       if ( lierr /= 0 ) then
         if ( present(ierr) ) then
           ierr = lierr
@@ -83,7 +83,7 @@ contains
       call mat_invert_recursive(M,zwork,no,ierr=ierr)
     case ( MI_WORK )
       call EYE(no,zwork)
-      call zgesv(no,no,M,no,ipiv,zwork,no,lierr)
+      call zgesv(no,no,M(1),no,ipiv,zwork(1),no,lierr)
       if ( lierr /= 0 ) then
         if ( present(ierr) ) then
           ierr = lierr
@@ -101,7 +101,7 @@ contains
 
   recursive subroutine mat_invert_recursive(M, zwork, no, ierr)
     integer, intent(in) :: no ! Size of problem
-    complex(dp), target :: M(no*no), zwork(no*no)
+    complex(dp), target :: M(:), zwork(:)
     integer, intent(out), optional :: ierr
 
     ! The maximum dimensionality of the problem before we turn to a direct inversion algorithm
@@ -143,7 +143,7 @@ contains
     A2 => zwork(sA2:)
 
     ! Copy over everything to preserve values for inversion
-    call zcopy(no * no, M, 1, zwork, 1)
+    call zcopy(no * no, M(1), 1, zwork(1), 1)
     
     ! Calculate Y2/B1
     call zgesv(n1,n2,A1(1),no,ipiv,C2(1),no,i)
@@ -186,7 +186,7 @@ contains
       end if
     end if
 
-    call zgetrf(n2, n2, M(sA2), no, ipiv, i )
+    call zgetrf(n2, n2, M(sA2), no, ipiv, i)
     if ( i /= 0 ) then
       if ( present(ierr) ) then
         ierr = i
@@ -201,8 +201,8 @@ contains
     ! because they are used to calculate the off-diagonal
     ! Note it has to be done in this order
     !   A1, B1, C2, A2 is the order of matrices in the array
-    call copy(n1,n2,zwork(1),zwork(sB1),no)
-    call copy(n1,n2,zwork(n1*n2+1),zwork(sC2),no)
+    call copy(n1,n2,zwork(1:),zwork(sB1:),no)
+    call copy(n1,n2,zwork(n1*n2+1:),zwork(sC2:),no)
     j = n1*n2*2 + 1
 
     call zgetri(n1, M(1), no, ipiv, zwork(j), no**2-j, i)

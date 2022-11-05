@@ -60,6 +60,3 @@ FFLAGS = -O2
 FFLAGS_DEBUG= -g -O0
 RANLIB=echo
 
-#
-SELF_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
-include $(SELF_DIR)build.mk

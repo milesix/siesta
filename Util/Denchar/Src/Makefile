@@ -23,28 +23,27 @@
 #  
 #  The dependency list at the end is overly large, but harmless
 
-OBJDIR=Obj
-
 .SUFFIXES:
 .SUFFIXES: .f .F .o .a  .f90 .F90
 
-VPATH:=$(shell pwd)/../../../Src
+TOPDIR=.
+MAIN_OBJDIR=.
 
-default: what denchar
+VPATH=$(TOPDIR)/Util/Denchar/Src:$(TOPDIR)/Src
 
-MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
-ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
+default: denchar
 
 override WITH_MPI=
+ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC := $(FC_SERIAL)         # Make it non-recursive
 #
 
-NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
-INCFLAGS:=$(NCPS_INCFLAGS) $(PSML_INCFLAGS) $(INCFLAGS)
+INCFLAGS:=$(NCPS_INCFLAGS) $(FDF_INCFLAGS) $(PSML_INCFLAGS) $(INCFLAGS)
 
 DENCHAR_UNDEF  = $(DEFS_PREFIX)-UMPI
 DENCHAR_UNDEF += $(DEFS_PREFIX)-UCDF
@@ -57,39 +56,14 @@ FPPFLAGS := $(FPPFLAGS) $(DENCHAR_UNDEF)
 # Uncomment the following line for debugging support
 #FFLAGS=$(FFLAGS_DEBUG)
 
-what:
-	@echo
-	@echo "Compilation architecture to be used: ${SIESTA_ARCH}"
-	@echo "If this is not what you want, create the right"
-	@echo "arch.make file using the models in Sys"
-	@echo
-	@echo "Hit ^C to abort..."
-	@sleep 2
 
 SYSOBJ=$(SYS).o
-
-# Use the makefile in Src/fdf and all the sources there.
-FDF=libfdf.a
-FDF_MAKEFILE:=$(VPATH)/fdf/makefile
-FDF_INCFLAGS:=-I$(VPATH)/fdf $(INCFLAGS)
-$(FDF): 
-	-mkdir -p fdf
-	(cd fdf ; $(MAKE) -f $(FDF_MAKEFILE) "FC=$(FC)" "VPATH=$(VPATH)/fdf" \
-		"ARCH_MAKE=$(ARCH_MAKE)" \
-		"DEFS=$(DEFS)" \
-		"FPPFLAGS=$(FPPFLAGS)" \
-		"MPI_INTERFACE= " \
-		"INCFLAGS=$(FDF_INCFLAGS)" "FFLAGS=$(FFLAGS)" module)
-
-# This is crude but will have to do for now.
-# Note : precision must be the first module
 
 # Note that machine-specific files are now in top Src directory.
 SIESTA_OBJS =  bessph.o chkdim.o dismin.o \
                dot.o  io.o iodm.o memory.o memory_log.o\
 	       pxf.o radfft.o m_fft_gpfa.o volcel.o
 
-       
 SIESTA_OBJS += precision.o parallel.o debugmpi.o m_io.o alloc.o listsc.o  \
          atmparams.o atom_options.o atmfuncs.o atm_types.o \
          radial.o spher_harm.o basis_io.o basis_types.o parallelsubs.o \
@@ -117,11 +91,9 @@ LOCAL_OBJS= atompla.o colinear.o denchar.o length.o \
 
 ALL_OBJS_DENCHAR= $(SIESTA_OBJS) $(LOCAL_OBJS)
 
-NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
-#
-denchar: $(FDF)  $(ALL_OBJS_DENCHAR) $(NCPS) 
+denchar: $(FDF_LIBS) $(NCPS) $(ALL_OBJS_DENCHAR)
 	$(FC) -o denchar \
-	       $(LDFLAGS) $(ALL_OBJS_DENCHAR) $(FDF) $(NCPS) $(PSML_LIBS) \
+	       $(LDFLAGS) $(ALL_OBJS_DENCHAR) $(FDF_LIBS) $(NCPS) $(PSML_LIBS) \
                $(XMLF90_LIBS) $(METIS_LIB)
 
 clean:
@@ -129,8 +101,10 @@ clean:
 	rm -f denchar *.o  *.a
 	rm -f *.mod
 	rm -f _tmp_deps deps.list _deps.list* protomake*
-	(cd fdf ; $(MAKE) -f $(FDF_MAKEFILE) "ARCH_MAKE=$(ARCH_MAKE)" clean)
 
+PROGS:= denchar
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 # Dependencies
 .PHONY: dep
@@ -145,117 +119,64 @@ dep:
 
 # DO NOT DELETE THIS LINE - used by make depend
 atm_types.o: precision.o radial.o
-atm_types.o: precision.o radial.o
 atmfuncs.o: atm_types.o local_sys.o precision.o radial.o spher_harm.o
-atmfuncs.o: atm_types.o local_sys.o precision.o radial.o spher_harm.o
-atom_options.o: local_sys.o
 atom_options.o: local_sys.o
 basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
 basis_io.o: local_sys.o precision.o radial.o xml.o
-basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
-basis_io.o: local_sys.o precision.o radial.o xml.o
-basis_types.o: alloc.o atmparams.o local_sys.o precision.o
 basis_types.o: alloc.o atmparams.o local_sys.o precision.o
 bessph.o: local_sys.o precision.o
-bessph.o: local_sys.o precision.o
 chemical.o: local_sys.o parallel.o precision.o
-chemical.o: local_sys.o parallel.o precision.o
-chkdim.o: local_sys.o
 chkdim.o: local_sys.o
 class_Data1D.o: alloc.o
 class_Data2D.o: alloc.o
 class_Data3D.o: alloc.o
 class_Fstack_Pair_Data1D.o: class_Pair_Data1D.o class_Pair_Data1D.o
-class_Fstack_Pair_Data1D.o: class_Pair_Data1D.o class_Pair_Data1D.o
-class_Fstack_Pair_Geometry_SpData2D.o: class_Pair_Geometry_SpData2D.o
 class_Fstack_Pair_Geometry_SpData2D.o: class_Pair_Geometry_SpData2D.o
 class_Geometry.o: alloc.o
-class_Geometry.o: alloc.o
 class_Pair_Data1D.o: class_Data1D.o class_Data1D.o
-class_Pair_Data1D.o: class_Data1D.o class_Data1D.o
-class_Pair_Geometry_SpData2D.o: class_Geometry.o class_SpData2D.o
 class_Pair_Geometry_SpData2D.o: class_Geometry.o class_SpData2D.o
 class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
 class_SpData1D.o: class_Data1D.o
 class_SpData1D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
-class_SpData1D.o: class_Data1D.o
 class_SpData2D.o: class_Data2D.o class_Data2D.o class_Data2D.o
 class_SpData2D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData2D.o: class_Data2D.o class_Data2D.o class_Data2D.o
 class_SpData3D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_Sparsity.o: alloc.o
 class_Sparsity.o: alloc.o
 class_TriMat.o: alloc.o
 debugmpi.o: parallel.o
-debugmpi.o: parallel.o
-domain_decom.o: alloc.o local_sys.o parallel.o precision.o printmatrix.o
-domain_decom.o: schecomm.o sparse_matrices.o
 domain_decom.o: alloc.o local_sys.o parallel.o precision.o printmatrix.o
 domain_decom.o: schecomm.o sparse_matrices.o
 io.o: m_io.o
-io.o: m_io.o
-iodm.o: alloc.o files.o local_sys.o parallel.o parallelsubs.o precision.o
 iodm.o: alloc.o files.o local_sys.o parallel.o parallelsubs.o precision.o
 listsc.o: alloc.o
-listsc.o: alloc.o
-m_io.o: local_sys.o
 m_io.o: local_sys.o
 memory.o: memory_log.o
-memory.o: memory_log.o
-memory_log.o: m_io.o parallel.o precision.o
 memory_log.o: m_io.o parallel.o precision.o
 parallelsubs.o: domain_decom.o local_sys.o parallel.o precision.o spatial.o
-parallelsubs.o: domain_decom.o local_sys.o parallel.o precision.o spatial.o
-printmatrix.o: alloc.o
 printmatrix.o: alloc.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
-radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radial.o: alloc.o interpolation.o precision.o xml.o
-radial.o: alloc.o interpolation.o precision.o xml.o
-schecomm.o: alloc.o
 schecomm.o: alloc.o
 sparse_matrices.o: alloc.o class_Fstack_Pair_Geometry_SpData2D.o
 sparse_matrices.o: class_OrbitalDistribution.o class_SpData1D.o
 sparse_matrices.o: class_SpData2D.o class_SpData2D.o class_Sparsity.o
 sparse_matrices.o: precision.o
-sparse_matrices.o: alloc.o class_Fstack_Pair_Geometry_SpData2D.o
-sparse_matrices.o: class_OrbitalDistribution.o class_SpData1D.o
-sparse_matrices.o: class_SpData2D.o class_SpData2D.o class_Sparsity.o
-sparse_matrices.o: precision.o
-spatial.o: precision.o
 spatial.o: precision.o
 spher_harm.o: alloc.o local_sys.o precision.o
-spher_harm.o: alloc.o local_sys.o precision.o
-xml.o: precision.o
 xml.o: precision.o
 atompla.o: local_sys.o precision.o
-atompla.o: local_sys.o precision.o
-colinear.o: precision.o
 colinear.o: precision.o
 denchar.o: basis_io.o listsc.o m_getopts.o parallel.o precision.o
-denchar.o: basis_io.o listsc.o m_getopts.o parallel.o precision.o
-length.o: precision.o
 length.o: precision.o
 local_reinit.o: files.o
-local_reinit.o: files.o
-matvect.o: precision.o
 matvect.o: precision.o
 neighb.o: precision.o
-neighb.o: precision.o
-planed.o: precision.o
 planed.o: precision.o
 ranger.o: precision.o
-ranger.o: precision.o
-readpla.o: precision.o
 readpla.o: precision.o
 redata_denchar.o: precision.o
-redata_denchar.o: precision.o
-rhoofr.o: atmfuncs.o chemical.o listsc.o planed.o precision.o
 rhoofr.o: atmfuncs.o chemical.o listsc.o planed.o precision.o
 wavofr.o: atmfuncs.o chemical.o planed.o precision.o
-wavofr.o: atmfuncs.o chemical.o planed.o precision.o
-wrout.o: precision.o
 wrout.o: precision.o
 class_ddata1d.o: class_Data1D.o
 class_ddata2d.o: class_Data2D.o

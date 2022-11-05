@@ -46,8 +46,11 @@ module m_energies
   real(dp):: Uscf       ! SCF hartree electron energy,  calculated in dhscf
   real(dp):: Ebs        ! Band-structure energy, Tr(DM*H), calculated in compute_dm
   real(dp):: Eso        ! Spin-orbit energy
+  real(dp):: E_dftu_so  ! Spin-orbit energy when DFT+U is considered
+  real(dp):: E_correc_dc! Correction energy required for the 
   real(dp):: Edftu      
   real(dp):: DEdftu
+                        !    LDA+U+SO calculations
 
   real(dp) :: NEGF_DE  ! NEGF total energy contribution = - e * \sum_i N_i \mu_i
   real(dp) :: NEGF_Vha ! Potential offset for fixing the boundary conditions for NEGF
@@ -98,6 +101,8 @@ contains
     Uscf = 0._dp
     Ebs = 0._dp
     Eso = 0._dp
+    E_dftu_so = 0._dp
+    E_correc_dc = 0._dp
     Edftu = 0._dp      
     DEdftu = 0._dp
 
@@ -134,7 +139,7 @@ contains
     use m_ts_global_vars, only: TSrun
     
     ! DUext (external electric field) -- should it be in or out?
-    Etot = Ena + Ekin + Enl + Eso - Eions + &
+    Etot = Ena + Ekin + Enl + Eso + E_dftu_so + E_correc_dc - Eions + &
         DEna + DUscf + DUext + Exc + &
         Ecorrec + Emad + Emm + Emeta + Edftu
 

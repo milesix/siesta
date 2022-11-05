@@ -483,37 +483,50 @@ For more information you can visit the web page
 \section{COMPILATION}
 \label{sec:compilation}
 
-\subsection{The build directory}
+\subsection{Experimental CMake-based framework and Spack recipes}
+
+Please see the file \shell{INSTALL.Cmake} in the top
+directory of the \siesta\ distribution for basic instructions
+on how to use CMake to build \siesta\ and a selection of utility
+programs.
+
+A set of Spack recipes is also available to handle dependencies
+and multiple build configurations automatically. More information
+in \shell{INSTALL.Cmake}.
+
+\subsection{Makefile-based framework}
+
+Until the CMake framework is fully implemented, this is the
+preferred way to install \siesta\ and all its utility programs.
+
+\subsubsection{The build directory}
 
 \siesta\ cannot be compiled from the top-level \shell{Src}
-directory, it must be compiled from an ad-hoc build directory.
-At the end of the compilation, the build
-directory will contain the \program{siesta} binary as well as
-the object files,
-module files, and libraries resulting from the compilation of the
-sources in \shell{Src}.
+directory: it must be compiled from an ad-hoc build directory.
 
-The default build directory is the top-level \shell{Obj} directory.
-Instructions on how to compile \siesta\ from \shell{Obj} are given in
-Sec.~\ref{sec:basic-compilation}.
-If you are interested in compiling \siesta\ from other directories,
-or in multiple concurrent compilations of Siesta (e.g., with
-different compilers or optimization levels), see also
-Sec.~\ref{sec:advanced-compilation} below.
+You can create a directory with any name, and in any
+location. However, it is advisable to use a name with a distinctive
+prefix, such as '\_' or ';', and to place it in the top-directory of
+the distribution:
+
+\begin{shellexample}
+       ('cd' to the top of the Siesta distribution)
+       mkdir _build
+\end{shellexample}
 
 \subsubsection{Basic compilation}
 \label{sec:basic-compilation}
 
-If you just want to compile the program from the default
-build directory (\shell{Obj}), follow the following steps:
-
+Please follow these steps for setup and compilation:
 \begin{enumerate}
 \item
-From within the build directory, issue the command:
+From within the build directory (\shell{\_build} in the above
+example), issue the command:
 \begin{shellexample}
-       $ sh ../Src/obj_setup.sh
+       sh ../Config/obj_setup.sh
 \end{shellexample}
-in order to populate it with with the minimal scaffolding of makefiles.
+in order to populate it with with the minimal scaffolding of makefiles
+and auxiliary files.
 
 \item
 Ensure that an appropriate \file{arch.make} file is present in the build directory
@@ -523,98 +536,68 @@ Ensure that an appropriate \file{arch.make} file is present in the build directo
 Then, again from the build directory, execute
 
 \begin{shellexample}
-       $ make
+        make
 \end{shellexample}
+to compile \siesta\ . The executable should work for any job. (This is
+not exactly true, since some of the parameters in the atomic routines
+are still hardwired, see \shell{Src/atmparams.f}, but those would
+seldom need to be changed.)
 \end{enumerate}
 
-
-The executable should work for any job. (This is not exactly true,
-since some of the parameters in the atomic routines are still
-hardwired, see \shell{Src/atmparams.f}, but those would seldom need to
-be changed.)
-
 Please note that, unless you really know what you are doing, the
-\shell{Src} directory (including its sub-directories) must be preserved
-without any changes, especially without any object or module files.
-Otherwise, the \shell{VPATH} mechanism used by \shell{make} to compile \siesta\ from the build
-directory will get confused, and the compilation may fail or produce an invalid
-\program{siesta} binary.
+\shell{Src} and \shell{Util} directories (including their
+sub-directories) must be preserved without any changes, especially
+without any object or module files.  Otherwise, the \shell{VPATH}
+mechanism used by \shell{make} to compile \siesta\ and the utility
+programs from the build directory will get confused, and the
+compilation may fail or produce invalid binaries.
 
-To compile utility programs (those living in the top-level \shell{Util}
-directory), you can simply use the provided makefiles: go to the \shell{Util}
-sub-directory containing the relevant utility source code, and execute \shell{make}
-as appropriate.  The resulting utility executable (and utility object files)
-will be created in that very same utility sub-directory from where \shell{make} was
-invoked.
-
-\subsubsection{Advanced compilation and multiple targets}
-\label{sec:advanced-compilation}
-
-It is possible to build \siesta\ from any build directory of your choice (instead
-of \shell{Obj}). You will need to follow the same three steps as described above, the
-main difference being that the first command will need to use a correct path
-(absolute or relative) to the \file{obj\_setup.sh} script, i.e., from your chosen build
-directory you will need to execute
+To compile utility and other auxiliary programs (those living in the
+top-level \shell{Util} and \shell{Pseudo} directories), type, from the
+top of the build directory:
 
 \begin{shellexample}
-       $ sh <path/to/Src>/obj_setup.sh
+       $ make utils
 \end{shellexample}
 
-Note also that your \file{arch.make} file needs to be in that chosen build directory
-before you can execute \shell{make}.
+It is also possible to type \shell{make} in the appropriate
+subdirectories to compile single auxiliary programs, as needed. (See
+the instructions in the top-level Makefile)
 
-Since compilations done in separate build directories are independent, one can
-compile as many different version of the \program{siesta} executable as needed (e.g.,
-with different compilers, levels of optimization, serial/parallel, debug, etc.\@)
-by appropriately defining different \file{arch.make} files in each build directory.
-
-If \siesta\ is not compiled from the default \shell{Obj} directory, when you compile your
-utility programs you will need to specify the correct \shell{OBJDIR} option:
+Optionally, you can install the executables. You should define the
+variable \shell{SIESTA\_INSTALL\_DIRECTORY} in your \file{arch.make}
+file, and then type, from the top of the build directory:
 
 \begin{shellexample}
-       $ make OBJDIR=ObjName
+        make install
 \end{shellexample}
 
-where \shell{ObjName} is the path to the \siesta\ build directory of your choice
-\emph{relative} to the \siesta\ top directory.
-E.g., if you already compiled \siesta\ from the build directory
-\shell{Obj/intel/parallel/2021.2}, and you want to compile \program{denchar}, you need to
+The executables will be stored in
+\shell{SIESTA\_INSTALL\_DIRECTORY}/bin. If the installation variable is
+not defined, the \file{local\_install} subdirectory of the build
+directory will be used as a staging area for executables.
 
-\begin{shellexample}
-       $ cd Util/Denchar/Src
-       $ make OBJDIR=Obj/intel/parallel/2021.2
-\end{shellexample}
-
-Note that, irrespective of the value of the \shell{OBJDIR} parameter, the resulting
-utility executable and object files will be created in the utility
-sub-directory from where \shell{make} is invoked (\shell{Util/Denchar/Src} in the example
-above), and that they will be overwritten if a different \shell{OBJDIR} is later used.
-There is currently no support for having different coexisting compiled versions
-of a given utility program. Before attempting to recompile a utility program,
-please remember to execute
-\begin{shellexample}
-       $ make clean
-\end{shellexample}
-from the corresponding utility sub-directory
-(and with the appropriate \shell{OBJDIR} option, if needed).
+Since compilations done in separate build directories are independent,
+one can compile as many different version of \program{siesta} and its
+associated utilities as needed (e.g., with different compilers, levels
+of optimization, serial/parallel, debug, etc.) by appropriately
+defining different \file{arch.make} files in each build directory.
 
 
 \subsection{The arch.make file}
 \label{sec:arch-make}
 
-The compilation of the program is done using a \shell{Makefile} that is
-provided with the code.\index{Makefile} This \shell{Makefile} will
-generate the executable for any of several architectures, with a
-minimum of tuning required from the user and encapsulated in a
-separate file called \file{arch.make}.
+The compilation of the program and utilities is carried out with a
+minimum of tuning required from the user, encapsulated in a separate
+file called \file{arch.make}.
 
-Please see the \shell{README} filein the 
+Please see the \shell{README} file in the 
 \shell{Config/mk-build} directory for information about the
 build system and the contents the \file{arch.make} file.
 
 \note Intel compilers default to high optimizations which tend to
-break \siesta. We advice to use \shell{-fp-model source} flag and not
-compile with higher optimizations than \shell{-O2}.
+break \siesta. We advice to use \shell{-fp-model source} flag and to
+avoid optimizations higher than \shell{-O2}.
 
 \note Since \shell{gfortran} version 10.x the interfaces are strictly
 checked. Currently you have to add \shell{-fallow-argument-mismatch}
@@ -634,23 +617,6 @@ In addition, compilations with \shell{-pedantic} flag are no longer possible.
 \href{https://gitlab.com/siesta-project/siesta/-/issues/130}
 {issue discussion in the SIESTA project}. }
 
-% You can also get
-% inspiration by looking at the actual \file{arch.make} examples in
-% the \shell{Src/Sys} subdirectory. If you intend to create a parallel
-% version of \siesta, make sure you have all the extra support libraries
-% (\program{MPI}, \program{ScaLAPACK}, \program{blacs}\dots) (see Sec.~\ref{sec:parallel}).
-  
-% Optionally, the command \shell{../Src/configure} will start an
-% automatic scan of your system and try to build an \file{arch.make}
-% for you. Please note that the configure script might need some help in
-% order to find your Fortran compiler, and that the created
-% \file{arch.make} may not be optimal, mostly in regard to compiler
-% switches and preprocessor definitions, but the process should provide
-% a reasonable first version. Type \shell{../Src/configure --help} to
-% see the flags understood by the script, and take a look at the
-% \shell{Src/Confs} subdirectory for some examples of their explicit
-% use. 
-
 
 \subsection{Debug options}
 \label{sec:build:debug}
@@ -660,7 +626,8 @@ and debugging builds.
 
 When changing build flags in the \file{arch.make} file it is
 imperative to clean the build directory. Please do a \shell{make
-    clean} then do \shell{make}.
+  clean} then do \shell{make}. (Perhaps it is better to use a different
+build directory if you want different flags or options.)
 
 For GFortran, use the following flags:
 \begin{shellexample}
@@ -675,8 +642,6 @@ For Intel, use the following flags:
 This will make \siesta\ run significantly slower. Please report any
 crashes to the developer team at
 \url{https://gitlab.com/siesta-project/siesta/-/issues}.
-
-
 
 
 \subsection{Parallel}
@@ -738,7 +703,7 @@ To enable OpenMP, simply add this to your \file{arch.make}
 \end{shellexample}
 The above will yield the most basic parallelism using OpenMP. However,
 the BLAS/LAPACK libraries which is the most time-consuming part of
-\siesta\ also requires to be threaded, please see Sec.~\ref{sec:libs}
+\siesta\ are also required to be threaded, please see Sec.~\ref{sec:libs}
 for correct linking.
 
 The minimum required version of OpenMP is 3.0
@@ -799,6 +764,11 @@ architecture used.
 libraries and how each of them may be added to the compilation step
 (\file{arch.make}).
 
+{\bf NOTE:} The \emph{required} libraries: \program{xmlf90},
+\program{libPSML}, and  \program{libGridXC}, can be installed
+on-the-fly (follow instructions in the top-level \program{INSTALL}
+file).
+
 \siesta\ is distributed with scripts that install the most useful
 libraries. These installation scripts may be located in the
 \shell{Docs/} folder with names: \shell{install\_*.bash}.
@@ -819,8 +789,8 @@ Currently \siesta\ is shipped with these installation scripts:
 
 \end{itemize}
 Note that these scripts are guidance scripts and users are encouraged
-to check the mailing list for or seek help there in non-standard. The
-installation scripts finishes by telling \emph{what} to add to the
+to check the mailing list or seek help there in non-standard cases. The
+installation scripts finishe by telling \emph{what} to add to the
 \file{arch.make} file to correctly link the just installed libraries.
 
 \begin{description}
@@ -11890,8 +11860,15 @@ For large or intermediate values of $U_{\mathrm{eff}}$ the convergence
 is sometimes difficult. A step-by-step increase of the
 value of $U_{\mathrm{eff}}$ can be advisable in such cases.
 
-Currently, the DFT+U implementation does not support non-collinear, nor
-spin-orbit coupling.
+If DFT+U is used in combination with non-collinear or spin-orbit coupling, 
+the Liechtenstein approach is implemented, where the $U$ and the exchange $J$ parameters are treated separately [see, A. I. Liechtenstein 
+\textit{et al.}, Phys. Rev. B \textbf{52}, R5467 (1995)].
+The generalization for the spin-orbit or non-collinear cases follows the recipe given by
+E. Bousquet and N. Spaldin, Phys. Rev. B \textbf{82}, 220402(R) (2010).
+Currently, only the $d$-shell can be considered as the correlated shell where the $U$ and $J$ are applied.  
+The computation of the occupancies on the orbitals of the correlated shells is done following the same recipe as for the Dudarev approach. 
+That means that the following entries related with the generation of the DFT+U projectors are still relevant.
+However, the input options \fdf{DFTU!FirstIteration}, \fdf{DFTU!ThresholdTol}, \fdf{DFTU!PopTol}, and \fdf{DFTU!PotentialShift}  are irrelevant when DFT+U is used in combination with spin-orbit or non-collinear magnetism.
 
 \begin{fdfentry}{DFTU!ProjectorGenerationMethod}[integer]<2>
   \fdfindex{LDAU!ProjectorGenerationMethod}%
@@ -13950,7 +13927,8 @@ electrodes in a generic input format.
 
     This defaults to \fdftrue. If there are buffer atoms \emph{behind}
     the electrode it may be advantageous to set this to false to
-    extend the electrode region.
+    extend the electrode region, otherwise it is recommended to keep
+    the default.
 
     \option[DM-update]%
     \fdfindex*{TS!Elec.<>!DM-update}%
@@ -13959,11 +13937,28 @@ electrodes in a generic input format.
     \fdfdepend{TS!Elec.<>!Bulk}%
     String of values \fdf*{none}, \fdf*{cross-terms} or \fdf*{all}
     which controls which part of the electrode density matrix elements
-    that are updated. If \fdf*{all}, both the density matrix elements
-    in the electrode and the coupling elements between the electrode
-    and scattering region are updated. If \fdf*{cross-terms}; only the
-    coupling elements between the electrode and the scattering region
-    are updated.
+    that are updated.
+    %
+    The density matrices that comprises an electrode and
+    device-electrode region can be written as (omitting the central
+    device region)
+    \begin{equation}
+      \label{eq:ts-dm-update}
+      \DM =
+      \begin{bmatrix}
+        \DM_{\mathfrak e} & \DM_{\mathfrak eD} & 0
+        \\
+        \DM_{D\mathfrak e} & \ddots & \ddots
+        \\
+        0  & \ddots
+      \end{bmatrix}
+    \end{equation}
+    This flag determines whether $\DM_{\mathfrak e}$ (\fdf*{all}) or
+    $\DM_{\mathfrak eD}$ (\fdf*{cross-terms} and \fdf*{all}) or
+    neither (\fdf*{none}) are updated in the SCF. The density matrices
+    contains the charges and thus affects the Hamiltonian and Poisson
+    solutions. Generally the default value will suffice and is
+    recommended.
 
     If \fdf{TS!Elec.<>!Bulk:false} this is forced to \fdf*{all} and
     cannot be changed.
@@ -14121,6 +14116,8 @@ electrodes in a generic input format.
     \note this option \emph{only} makes sense for
     \fdf{TS!Elec.<>!DM-update:none} since otherwise the electrostatic
     potential will be incorporated in the Hamiltonian.
+
+    Only expert users should play with this number.
 
     \option[check-kgrid]%
     \fdfindex*{TS!Elec.<>!check-kgrid}%

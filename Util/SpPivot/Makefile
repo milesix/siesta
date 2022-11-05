@@ -11,26 +11,18 @@
 .SUFFIXES:
 .SUFFIXES: .f .F .o .a .f90 .F90
 
-default: what pvtsp
+default: pvtsp
 
-VPATH:=$(shell pwd)/../../Src
-OBJDIR=Obj
-ARCH_MAKE=../../$(OBJDIR)/arch.make
-include $(ARCH_MAKE)
+override WITH_MPI=
+override WITH_NETCDF=
 
-what:
-	@echo
-	@echo "Compilation architecture to be used: $(SIESTA_ARCH)"
-	@echo "Your 'arch.make' file is: $(ARCH_MAKE)"
-	@echo "You may select a different 'arch.make' file by assigning"
-	@echo "an appropriate value to OBJDIR in your make invocation."
-	@echo $(COMMENTS)
-	@echo
+TOPDIR=.
+MAIN_OBJDIR=.
 
-# Set the default non-mpi routines
-FC_DEFAULT := $(FC)
-FC_SERIAL  ?= $(FC_DEFAULT)
-FC := $(FC_SERIAL)
+VPATH=$(TOPDIR)/Util/SpPivot:$(TOPDIR)/Src
+
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 # We force the compilation of the graphviz library
 FPPFLAGS += -DGRAPHVIZ
@@ -55,21 +47,17 @@ LOCAL_OBJS= pvtsp.o handlers.o
 
 OBJS = $(SIESTA_OBJS) $(LOCAL_OBJS)
 
-pvtsp: FPPFLAGS+=$(DEFS_PREFIX) -UMPI -UNCDF -UNCDF_4 -UNCDF_PARALLEL
-pvtsp: COMP_LIBS := $(filter-out libncdf.a,$(COMP_LIBS))
-pvtsp: COMP_LIBS := $(filter-out libfdict.a,$(COMP_LIBS))
-pvtsp: COMP_LIBS := $(filter-out libsiestaLAPACK.a,$(COMP_LIBS))
-pvtsp: COMP_LIBS := $(filter-out libsiestaBLAS.a,$(COMP_LIBS))
-pvtsp: LIBS := $(filter-out libncdf.a,$(LIBS))
-pvtsp: LIBS := $(filter-out libfdict.a,$(LIBS))
 pvtsp: $(OBJS)
-	$(FC) $(FFLAGS) $(LDFLAGS) -o pvtsp \
-              $(OBJS) $(COMP_LIBS) $(LIBS)
+	$(FC) $(FFLAGS) $(LDFLAGS) -o pvtsp $(OBJS) 
 
 clean: 
 	@echo "==> Cleaning object, library, and executable files"
 	-rm -f pvtsp *.o *.a *.mod
-
+#
+PROGS:= pvtsp
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+#
 # Dependencies
 .PHONY: dep
 dep:
@@ -90,38 +78,21 @@ class_Data3D.o: alloc.o
 class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
 class_SpData1D.o: class_Data1D.o
 class_SpData1D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
-class_SpData1D.o: class_Data1D.o
 class_SpData2D.o: class_Data2D.o class_Data2D.o class_Data2D.o
 class_SpData2D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData2D.o: class_Data2D.o class_Data2D.o class_Data2D.o
 class_SpData3D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_Sparsity.o: alloc.o
 class_Sparsity.o: alloc.o
 class_TriMat.o: alloc.o intrinsic_missing.o
 create_Sparsity_SC.o: class_Sparsity.o geom_helper.o intrinsic_missing.o
-create_Sparsity_SC.o: class_Sparsity.o geom_helper.o intrinsic_missing.o
 geom_helper.o: intrinsic_missing.o
-geom_helper.o: intrinsic_missing.o
-io.o: m_io.o
 io.o: m_io.o
 io_sparse.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
 io_sparse.o: class_Sparsity.o precision.o
-io_sparse.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
-io_sparse.o: class_Sparsity.o precision.o
-m_io.o: sys.o
 m_io.o: sys.o
 m_pivot.o: class_Sparsity.o m_pivot_methods.o m_region.o
-m_pivot.o: class_Sparsity.o m_pivot_methods.o m_region.o
-m_pivot_methods.o: class_Sparsity.o m_region.o precision.o
 m_pivot_methods.o: class_Sparsity.o m_region.o precision.o
 m_region.o: class_OrbitalDistribution.o class_Sparsity.o geom_helper.o
 m_region.o: intrinsic_missing.o
-m_region.o: class_OrbitalDistribution.o class_Sparsity.o geom_helper.o
-m_region.o: intrinsic_missing.o
-m_sparse.o: alloc.o class_OrbitalDistribution.o class_SpData2D.o
-m_sparse.o: class_Sparsity.o geom_helper.o intrinsic_missing.o parallel.o
-m_sparse.o: precision.o
 m_sparse.o: alloc.o class_OrbitalDistribution.o class_SpData2D.o
 m_sparse.o: class_Sparsity.o geom_helper.o intrinsic_missing.o parallel.o
 m_sparse.o: precision.o
@@ -130,24 +101,11 @@ m_sparsity_handling.o: class_OrbitalDistribution.o class_SpData1D.o
 m_sparsity_handling.o: class_SpData2D.o class_Sparsity.o geom_helper.o
 m_sparsity_handling.o: intrinsic_missing.o m_interpolate.o m_region.o
 m_sparsity_handling.o: precision.o
-m_sparsity_handling.o: class_Data1D.o class_Data2D.o
-m_sparsity_handling.o: class_OrbitalDistribution.o class_SpData1D.o
-m_sparsity_handling.o: class_SpData2D.o class_Sparsity.o geom_helper.o
-m_sparsity_handling.o: intrinsic_missing.o m_interpolate.o m_region.o
-m_sparsity_handling.o: precision.o
-m_ts_io.o: alloc.o class_OrbitalDistribution.o class_SpData1D.o
-m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o io_sparse.o m_os.o
-m_ts_io.o: m_sparse.o memory_log.o parallel.o precision.o sys.o
 m_ts_io.o: alloc.o class_OrbitalDistribution.o class_SpData1D.o
 m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o io_sparse.o m_os.o
 m_ts_io.o: m_sparse.o memory_log.o parallel.o precision.o sys.o
 memory.o: memory_log.o
-memory.o: memory_log.o
 memory_log.o: m_io.o parallel.o precision.o
-memory_log.o: m_io.o parallel.o precision.o
-pvtsp.o: class_OrbitalDistribution.o class_Sparsity.o create_Sparsity_SC.o
-pvtsp.o: geom_helper.o io_sparse.o m_os.o m_pivot.o m_pivot_methods.o
-pvtsp.o: m_region.o m_sparsity_handling.o m_ts_io.o precision.o
 pvtsp.o: class_OrbitalDistribution.o class_Sparsity.o create_Sparsity_SC.o
 pvtsp.o: geom_helper.o io_sparse.o m_os.o m_pivot.o m_pivot_methods.o
 pvtsp.o: m_region.o m_sparsity_handling.o m_ts_io.o precision.o

@@ -10,14 +10,19 @@
 EXE = tshs2tshs
 default: $(EXE)
 
-VPATH:=$(shell pwd)/../../../Src
+TOPDIR=.
+MAIN_OBJDIR=.
 
-OBJDIR=Obj
+#override WITH_MPI=
+override WITH_NCDF_PARALLEL=
 
-MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
+VPATH=$(TOPDIR)/Util/TS/tshs2tshs:$(TOPDIR)/Src
+TOPSRC=$(TOPDIR)/Src
+
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 # Set the default non-mpi routines
 FC_DEFAULT  := $(FC)
@@ -28,9 +33,11 @@ FC_SERIAL   ?= $(FC_DEFAULT)
 # which case we need the mpi-compiler :(
 # However, we still compile everything else as though it did not exist
 #FC:=$(FC_SERIAL)         # Make it non-recursive
+# (With the override of MPI suggested above, one should add the appropriate
+# libraries to NETCDF_LIBS...)
 
-DEFS:=$(DEFS_PREFIX) $(DEFS) $(DEFS_PREFIX)-UMPI $(DEFS_PREFIX)-UNCDF_PARALLEL
-FPPFLAGS:=$(DEFS_PREFIX) $(FPPFLAGS) $(DEFS_PREFIX)-UMPI $(DEFS_PREFIX)-UNCDF_PARALLEL
+FPPFLAGS += $(DEFS_PREFIX)-UMPI 
+#FPPFLAGS += $(DEFS_PREFIX)-UNCDF_PARALLEL
 
 INCFLAGS:=$(NETCDF_INCFLAGS) $(INCFLAGS)
 
@@ -72,81 +79,29 @@ COMP_LIBS := $(filter-out libsiestaBLAS.a,$(COMP_LIBS))
 # They are currently supplied by this distribution
 # All rights reserved for the author of these libraries.
 # Author: Nick Papior Andersen
-
-# This library can be found at:
-#  https://github.com/zerothi/fdict
-FDICT=libfdict.a
-FDICT_MAKEFILE=$(VPATH)/fdict/Makefile
-$(FDICT): 
-	-mkdir -p fdict
-	(cd fdict ; \
-	echo "TOP_DIR=$(VPATH)/fdict" > Makefile ; echo "include $(VPATH)/fdict/Makefile" >> Makefile ; \
-	echo "FC=$(FC_SERIAL)" > setup.make ; \
-	echo "AR=$(AR)" >> setup.make ; \
-	echo "RANLIB=$(RANLIB)" >> setup.make ; \
-	echo "FFLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "LINK_FLAGS=$(FFLAGS)" >> setup.make ; \
-	$(MAKE) -j 1 copy ; $(MAKE) -j 1 lib SHARED=0)
-	@cp -p fdict/*.mod ./
-	cp fdict/$(FDICT) ./
-
-# This library can be found at:
-#  https://github.com/zerothi/ncdf
-NCDF=libncdf.a
-NCDF_MAKEFILE=$(VPATH)/NCDF/src/Makefile
-$(NCDF): COMP_LIBS += $(FDICT)
-$(NCDF): $(FDICT)
-	-mkdir -p ncdf
-	(cd ncdf ; \
-	echo "TOP_DIR=$(VPATH)/ncdf" > Makefile ; echo "include $(VPATH)/ncdf/Makefile" >> Makefile ; \
-	echo "settings.bash: FORCE" >> Makefile ; \
-	printf '%s\n' "	-cp ../fdict/settings.bash ." >> Makefile ; \
-	echo "FC=$(FC)" > setup.make ; \
-	echo "AR=$(AR)" >> setup.make ; \
-	echo "RANLIB=$(RANLIB)" >> setup.make ; \
-	echo "FFLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "LINK_FLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "FPPFLAGS = $(FPPFLAGS)" >> setup.make ; \
-	echo "INCLUDES = $(INCFLAGS) -I../" >> setup.make ; \
-	echo "LIBS = $(LIBS) -lfdict" >> setup.make ; \
-	$(MAKE) -j 1 copy ; $(MAKE) -j 1 lib SHARED=0)
-	@cp -p ncdf/*.mod ./
-	cp ncdf/$(NCDF) ./
-
+#
+INCFLAGS += $(FDICT_INCFLAGS) $(NCDF_INCFLAGS)
 #######################
-
-# Use the makefile in Src/fdf and all the sources there.
-FDF=libfdf.a
-FDF_MAKEFILE=$(VPATH)/fdf/makefile
-FDF_INCFLAGS:=-I$(VPATH)/fdf $(INCFLAGS)
-$(FDF): 
-	(mkdir -p fdf ; cd fdf ; $(MAKE) -f $(FDF_MAKEFILE) "FC=$(FC)" "VPATH=$(VPATH)/fdf" \
-                          "ARCH_MAKE=$(ARCH_MAKE)" \
-                          "DEFS=$(DEFS)" "FPPFLAGS=$(FPPFLAGS)" \
-                          "MPI_INTERFACE= " \
-                          "INCFLAGS=$(FDF_INCFLAGS)" "FFLAGS=$(FFLAGS)" module)
-
-NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
-
-$(OBJS): $(FDF) $(COMP_LIBS) $(TSHS_COMP_LIBS)
-$(EXE): $(FDF) $(NCPS) $(COMP_LIBS) $(TSHS_COMP_LIBS) $(OBJS) 
+#
+$(EXE): $(COMP_LIBS) $(TSHS_COMP_LIBS) $(OBJS) 
 	$(FC) $(FFLAGS) $(LDFLAGS) -o $(EXE) \
-		$(OBJS) $(COMP_LIBS) $(TSHS_COMP_LIBS) $(FDF) $(LIBS) 
+		$(OBJS) $(COMP_LIBS) $(TSHS_COMP_LIBS) $(LIBS) 
 
 clean:
 	@echo "==> Cleaning object, library, and executable files"
 	rm -f $(EXE) *.o *.a *.mod
-	-rm -rf ./fdict
-	-rm -rf ./NCDF
-	-rm -rf ./fdf
+
+PROGS:= tshs2tshs
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 # Dependencies
 .PHONY: dep
 dep:
 	@sfmakedepend --depend=obj --modext=o \
-		$(addprefix $(VPATH)/,$(DEP_OBJS:.o=.f) $(DEP_OBJS:.o=.f90)) \
-		$(addprefix $(VPATH)/,$(DEP_OBJS:.o=.F) $(DEP_OBJS:.o=.F90)) \
-		$(VPATH)/class*.T90 \
+		$(addprefix $(TOPSRC)/,$(DEP_OBJS:.o=.f) $(DEP_OBJS:.o=.f90)) \
+		$(addprefix $(TOPSRC)/,$(DEP_OBJS:.o=.F) $(DEP_OBJS:.o=.F90)) \
+		$(TOPSRC)/class*.T90 \
 		$(LOCAL_OBJS:.o=.f90) $(LOCAL_OBJS:.o=.F90) \
 		$(LOCAL_OBJS:.o=.f) $(LOCAL_OBJS:.o=.F) || true
 	@sed -i -e 's/\.T90\.o:/.o:/g' Makefile
@@ -158,48 +113,26 @@ class_Data3D.o: alloc.o
 class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
 class_SpData1D.o: class_Data1D.o
 class_SpData1D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
-class_SpData1D.o: class_Data1D.o
 class_SpData2D.o: class_Data2D.o class_Data2D.o class_Data2D.o
 class_SpData2D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData2D.o: class_Data2D.o class_Data2D.o class_Data2D.o
 class_SpData3D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_Sparsity.o: alloc.o
 class_Sparsity.o: alloc.o
 class_TriMat.o: alloc.o intrinsic_missing.o
 geom_helper.o: intrinsic_missing.o
-geom_helper.o: intrinsic_missing.o
-io.o: m_io.o
 io.o: m_io.o
 io_sparse.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
 io_sparse.o: class_Sparsity.o precision.o
-io_sparse.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
-io_sparse.o: class_Sparsity.o precision.o
 m_io.o: sys.o
-m_io.o: sys.o
-m_sparse.o: alloc.o class_OrbitalDistribution.o class_SpData2D.o
-m_sparse.o: class_Sparsity.o geom_helper.o intrinsic_missing.o parallel.o
-m_sparse.o: precision.o
 m_sparse.o: alloc.o class_OrbitalDistribution.o class_SpData2D.o
 m_sparse.o: class_Sparsity.o geom_helper.o intrinsic_missing.o parallel.o
 m_sparse.o: precision.o
 m_ts_io.o: alloc.o class_OrbitalDistribution.o class_SpData1D.o
 m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o io_sparse.o m_os.o
 m_ts_io.o: m_sparse.o memory_log.o ncdf_io.o parallel.o precision.o sys.o
-m_ts_io.o: alloc.o class_OrbitalDistribution.o class_SpData1D.o
-m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o io_sparse.o m_os.o
-m_ts_io.o: m_sparse.o memory_log.o ncdf_io.o parallel.o precision.o sys.o
-memory_log.o: m_io.o parallel.o precision.o
 memory_log.o: m_io.o parallel.o precision.o
 ncdf_io.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
 ncdf_io.o: class_Sparsity.o io_sparse.o parallel.o precision.o
-ncdf_io.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
-ncdf_io.o: class_Sparsity.o io_sparse.o parallel.o precision.o
 units.o: precision.o
-units.o: precision.o
-tshs2tshs.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
-tshs2tshs.o: class_Sparsity.o geom_helper.o m_sparse.o m_ts_io.o parallel.o
-tshs2tshs.o: precision.o units.o
 tshs2tshs.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
 tshs2tshs.o: class_Sparsity.o geom_helper.o m_sparse.o m_ts_io.o parallel.o
 tshs2tshs.o: precision.o units.o
@@ -223,5 +156,6 @@ class_zspdata1d.o: class_SpData1D.o
 class_zspdata2d.o: class_SpData2D.o
 io_sparse_m.o: io_sparse.o
 m_object_debug.o: object_debug.o
+m_ts_io_version.o: geom_helper.o
 mtprng.o: m_uuid.o
 ncdf_io_m.o: ncdf_io.o

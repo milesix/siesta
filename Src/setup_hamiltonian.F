@@ -15,7 +15,7 @@
       USE siesta_options
       use sparse_matrices, only: H_2D, S_1D, xij_2D
       use sparse_matrices, only: H_kin_1D, H_vkb_1D
-      use sparse_matrices, only: H_dftu_2D
+      use sparse_matrices, only: H_dftu_2D, H_dftu_so_2D
       use sparse_matrices, only: H_so_on_2D, H_so_off_2D
       use sparse_matrices, only: listh, listhptr, numh, maxnh
       use sparse_matrices, only: H, S, Hold
@@ -40,7 +40,7 @@
       use m_dhscf,      only: dhscf
       use m_stress
       use m_energies
-      use parallel, only: Node
+      use parallel, only: Node, Nodes
       use m_steps, only: istp
       use m_ntm
 
@@ -53,6 +53,7 @@
       use m_partial_charges, only: want_partial_charges
       use files, only : filesOut_t    ! derived type for output file names
       use m_rhog, only: rhog_in, rhog
+      use m_dftu_so, only: dftu_so_hamil
 #ifdef MPI
       use m_mpi_utils, only: globalize_sum
 #endif
@@ -74,10 +75,11 @@
 
       real(dp), pointer   :: H_vkb(:), H_kin(:), H_dftu(:,:)
       real(dp), pointer   :: H_so_on(:,:)
+      complex(dp), pointer:: H_dftu_so(:,:)
       complex(dp), pointer:: H_so_off(:,:)
 
       complex(dp):: Dc
-      integer :: ind, i, j
+      integer :: ind, i, j, jo
 
 !------------------------------------------------------------------------- BEGIN
 
@@ -141,7 +143,7 @@
         end do
 
       end if
-         
+
 ! ..................
 
 ! Non-SCF part of total energy .......................................
@@ -175,8 +177,19 @@
 !
 
       if ( spin%SO_offsite ) then
-        do io = 1, maxnh
+!!       For debugging
+!        do io = 1, no_u
+!          do j = 1, numh(io)
+!            ind = listhptr(io) + j
+!            jo = listh(ind)
+!            if( io .eq. jo ) then
+!              H_so_off(ind,*)= cmplx(0.0_dp,0.0_dp,kind=dp)
+!            endif
+!          enddo 
+!        enddo 
+!!       End debugging
 
+        do io = 1, maxnh
 !-------- Eso(u,u)
           Dc = cmplx(Dscf(io,1),Dscf(io,5), dp)
           Eso = Eso + real( H_so_off(io,1)*Dc, dp)
@@ -189,7 +202,6 @@
 !-------- Eso(d,u)
           Dc = cmplx(Dscf(io,7),-Dscf(io,8), dp)
           Eso = Eso + real( H_so_off(io,3)*Dc, dp)
-
         end do
 
       else if ( spin%SO_onsite ) then
@@ -203,7 +215,7 @@
          end do
 !$OMP end do nowait
 
-       end if
+      end if
 
 !$OMP end parallel
 
@@ -223,34 +235,76 @@
 !     Non-SCF part of total energy
       call update_E0()
 
-! Hubbard term for LDA+U: energy, forces, stress and matrix elements ....
+! Hubbard term for DFT+U: energy, forces, stress and matrix elements ....
       if( switch_dftu ) then
+        call re_alloc(fal, 1, 3, 1, na_u, 'fal', 'setup_hamiltonian')      
         if ( spin%NCol ) then
-         call die('LDA+U cannot be used with non-collinear spin.')
-        end if
-        if ( spin%SO ) then
-         call die('LDA+U cannot be used with spin-orbit coupling.')
-        end if
+          call die('DFT+U cannot be used with non-collinear spin.')
+        else if ( spin%SO ) then
+          H_dftu_so => val(H_dftu_so_2D)
+          call dftu_so_hamil( H_dftu_so, fal, stressl )
+!        When SO coupling is considered, the density matrix and the Hamiltonian
+!        must be globally Hermitian (see last sentence of Section 7 of the 
+!        technical SIESTA paper in JPCM 14, 2745 (2002).
+!        However, in diag3k, the sign of the imaginary part of the (up,down) 
+!        matrix elements is changed:
+!        Dnew(ind,1) = Dnew(ind,1) + real(D11,dp)
+!        Dnew(ind,2) = Dnew(ind,2) + real(D22,dp)
+!        Dnew(ind,3) = Dnew(ind,3) + real(D12,dp)
+!        Dnew(ind,4) = Dnew(ind,4) - aimag(D12)
+!        Dnew(ind,5) = Dnew(ind,5) + aimag(D11)
+!        Dnew(ind,6) = Dnew(ind,6) + aimag(D22)
+!        Dnew(ind,7) = Dnew(ind,7) + real(D21,dp)
+!        Dnew(ind,8) = Dnew(ind,8) + aimag(D21)
+!        In the subroutines to compute the corresponding DFT+U matrix elements:
+!        - We change locally the sign of this imaginary part, so the 
+!          density matrix recovers all its properties
+!        - The Potential matrix elements are computed with the "good" DM.
+!        - Here, at the time of adding up the new Hamiltonian matrix elements
+!          to the potential, we change the sign of the imaginary part of the
+!          (up,down) component
 
-        call re_alloc( fal, 1, 3, 1, na_u, 'fal', 'setup_hamiltonian' )
-
-        H_dftu => val(H_dftu_2D)
-        call hubbard_term(scell, na_u, na_s, isa, xa, indxua,
-     .                    maxnh, maxnh, lasto, iphorb, no_u, no_l, 
-     .                    numh, listhptr, listh, numh, listhptr, listh,
-     .                    spin%spinor, Dscf, Edftu, DEdftu, H_dftu, 
-     .                    fal, stressl, H, iscf,
-     .                    matrix_elements_only=.true.)
+!        
+!------- H(u,u)
+         H(:,1) = H(:,1) + real(H_dftu_so(:,1), dp)
+         H(:,5) = H(:,5) + aimag(H_dftu_so(:,1))
+!------- H(d,d)
+         H(:,2) = H(:,2) + real(H_dftu_so(:,2), dp)
+         H(:,6) = H(:,6) + aimag(H_dftu_so(:,2))
+!------- H(u,d)
+         H(:,3) = H(:,3) + real(H_dftu_so(:,3), dp)
+         H(:,4) = H(:,4) - aimag(H_dftu_so(:,3))
+!------- H(d,u)
+         H(:,7) = H(:,7) + real(H_dftu_so(:,4), dp)
+         H(:,8) = H(:,8) + aimag(H_dftu_so(:,4))
 
 #ifdef MPI
-        ! Global reduction of energy terms
-        call globalize_sum(Edftu,buffer1)
-        Edftu = buffer1
-        ! DEdftu should not be globalized
-        ! as it is based on globalized occupations
+          ! Global reduction of E_dftu_so 
+          call globalize_sum(E_dftu_so,buffer1)
+          E_dftu_so = buffer1
+          ! Global reduction of E_correc_dc
+          call globalize_sum(E_correc_dc,buffer1)
+          E_correc_dc = buffer1
 #endif
-        Edftu = Edftu + DEdftu
+        else  ! collinear spin
+          H_dftu => val(H_dftu_2D)
+          call hubbard_term(scell, na_u, na_s, isa, xa, indxua,
+     .                      maxnh, maxnh, lasto, iphorb, no_u, no_l, 
+     .                      numh, listhptr, listh, numh, listhptr,listh,      
+     .                      spin%spinor, Dscf, Edftu, DEdftu, H_dftu, 
+     .                      fal, stressl, H, iscf,
+     .                      matrix_elements_only=.true.)
 
+#ifdef MPI
+          ! Global reduction of energy terms
+          call globalize_sum(Edftu,buffer1)
+          Edftu = buffer1
+          ! DEdftu should not be globalized
+          ! as it is based on globalized occupations
+#endif
+          Edftu = Edftu + DEdftu
+
+        endif
         call de_alloc( fal, 'fal', 'setup_hamiltonian' ) 
       endif
 ! ..................
@@ -284,16 +338,55 @@
         
 !------- H(u,u)
          H(:,1) = H(:,1) + real(H_so_off(:,1), dp)
-         H(:,5) =         aimag(H_so_off(:,1))
+         H(:,5) = H(:,5) + aimag(H_so_off(:,1))
 !------- H(d,d)
          H(:,2) = H(:,2) + real(H_so_off(:,2), dp)
-         H(:,6) =         aimag(H_so_off(:,2))
+         H(:,6) = H(:,6) + aimag(H_so_off(:,2))
 !------- H(u,d)
          H(:,3) = H(:,3) + real(H_so_off(:,3), dp)
-         H(:,4) = H(:,4) +aimag(H_so_off(:,3))
+         H(:,4) = H(:,4) + aimag(H_so_off(:,3))
 !------- H(d,u)
          H(:,7) = H(:,7) + real(H_so_off(:,4), dp)
-         H(:,8) = H(:,8) -aimag(H_so_off(:,4))
+         H(:,8) = H(:,8) - aimag(H_so_off(:,4))
+
+!!        For debugging
+!         do io = 1, no_u
+!           do j = 1, numh(io)
+!             ind = listhptr(io) + j
+!             jo = listh(ind)
+!             write(6,'(a,6i7,8f12.5)') 
+!     .         ' Node, Nodes, io, jo, j, ind, Dscf = ' , 
+!     .           Node, Nodes, io, jo, j, ind, Dscf(ind,:)
+!           enddo 
+!         enddo 
+!         do io = 1, no_u
+!           do j = 1, numh(io)
+!             ind = listhptr(io) + j
+!             jo = listh(ind)
+!             write(6,'(a,6i7,8f12.5)') 
+!     .         ' Node, Nodes, io, jo, j, ind, H-DFTU = ' , 
+!     .           Node, Nodes, io, jo, j, ind, H_dftu_so(ind,:)
+!           enddo 
+!         enddo 
+!         do io = 1, no_u
+!           do j = 1, numh(io)
+!             ind = listhptr(io) + j
+!             jo = listh(ind)
+!             write(6,'(a,6i7,8f12.5)') 
+!     .         ' Node, Nodes, io, jo, j, ind, H-SO = ' , 
+!     .           Node, Nodes, io, jo, j, ind, H_so_off(ind,:)
+!           enddo 
+!         enddo 
+!         do io = 1, no_u
+!           do j = 1, numh(io)
+!             ind = listhptr(io) + j
+!             jo = listh(ind)
+!             write(6,'(a,6i7,8f12.5)') 
+!     .         ' Node, Nodes, io, jo, j, ind, H = ' , 
+!     .           Node, Nodes, io, jo, j, ind, H(ind,:)
+!           enddo 
+!         enddo 
+!!        End debugging
 
       endif
 

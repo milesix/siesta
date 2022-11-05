@@ -40,7 +40,7 @@ contains
 
     use m_region
 
-    use m_ts_electype
+    use ts_electrode_m
     use m_tbt_options, only : N_Elec, Elecs
 
     use m_tbt_hs, only: tTSHS, spin_idx, Volt, prep_next_HS
@@ -174,7 +174,7 @@ contains
        ! Allocate the non-repeated hamiltonian and overlaps...
        no_used = Elecs(iEl)%no_used
        if ( Elecs(iEl)%pre_expand > 1 ) then ! > 1 also expand H, S before writing
-          no_used = TotUsedOrbs(Elecs(iEl))
+          no_used = Elecs(iEl)%device_orbitals()
           nq(iEl) = 1
        end if
 
@@ -190,7 +190,7 @@ contains
        ! We need to retain the maximum size of Gamma
        ! I.e. take into account that the down-projected region
        ! could be larger than the read in self-energy
-       no_used = TotUsedOrbs(Elecs(iEl))
+       no_used = Elecs(iEl)%device_orbitals()
        no_used2 = no_used
        if ( Elecs(iEl)%pre_expand == 0 ) then
           no_used2 = Elecs(iEl)%no_used
@@ -261,16 +261,16 @@ contains
 
        ! The initial spin has already been 
        ! setup for the first spin, hence we
-       ! only need to re-read them for 
+       ! only need to re-read them for
        ! following spin calculations
        if ( ils > 1 ) then
           call prep_next_HS(ispin, Volt)
           do iEl = 1 , N_Elec
-             ! Re-read in the electrode 
-             ! Hamiltonian and build the H/S
-             ! for this spin.
-             if ( Elecs(iEl)%out_of_core ) cycle
-             call init_Electrode_HS(Elecs(iEl), ispin)
+            ! Re-read in the electrode
+            ! Hamiltonian and build the H/S
+            ! for this spin.
+            if ( Elecs(iEl)%out_of_core ) cycle
+            call Elecs(iEl)%prepare_SE(IO=.false., spin=ispin)
           end do
        end if
 
@@ -347,7 +347,7 @@ contains
     !***********************
     do iEl = 1 , N_Elec
        if ( .not. Elecs(iEl)%out_of_core ) then
-          call delete(Elecs(iEl))
+          call Elecs(iEl)%delete()
        end if
     end do
 
@@ -360,6 +360,8 @@ contains
           call de_alloc(Elecs(iEl)%SA,routine='tbtrans')
        end if
        call de_alloc(Elecs(iEl)%Gamma,routine='tbtrans')
+       ! Clean pointer
+       nullify(Elecs(iEl)%GA)
     end do
 
     deallocate(uGF,nq)
@@ -370,131 +372,84 @@ contains
 
     subroutine print_memory()
 
-      use class_dSpData2D, only: nnzs
+      use class_dSpData2D, only: nnzs, spar_dim, size
       use precision, only: i8b
       use m_verbosity, only : verbosity
       use m_tbt_regions, only : sp_uc, sp_dev_sc
+      use byte_count_m, only: byte_count_t
 
-      integer(i8b) :: nsize
-      real(dp) :: mem, elec_mem, out
+      integer :: nsize, nspin
 
-      character(len=2) :: unit
+      character(len=32) :: c_tmp
+      type(byte_count_t) :: mem, spaux
       integer :: iEl
 
       if ( .not. IONode ) return
       if ( verbosity <= 4 ) return
-      
+
+      call mem%reset()
+
       ! Calculate size of electrodes
       nsize = 0
       do iEl = 1 , N_Elec
         ! These are doubles (not complex)
         ! hence, we need not count the overlap matrices as they are already
         ! doubled in the complex conversion
-        nsize = nsize + nnzs(Elecs(iEl)%H00) + nnzs(Elecs(iEl)%H01) ! double
-        nsize = nsize + (nnzs(Elecs(iEl)%H00) + nnzs(Elecs(iEl)%H01))/4 ! integer (SP)
+        if ( spar_dim(Elecs(iEl)%H00) == 1 ) then
+          nspin = size(Elecs(iEl)%H00, 2)
+        else
+          nspin = size(Elecs(iEl)%H00, 1)
+        end if
+        nsize = nnzs(Elecs(iEl)%H00)
+        call mem%add_type(0._dp, nsize, nspin + 1) ! H, S
+        call mem%add_type(0, nsize) ! sparse pattern
+        nsize = nnzs(Elecs(iEl)%H01)
+        call mem%add_type(0._dp, nsize, nspin + 1) ! H, S
+        call mem%add_type(0, nsize) ! sparse pattern
 
         if ( .not. Elecs(iEl)%Bulk ) then
-          nsize = nsize + 2 * size(Elecs(iEl)%HA) ! double complex
+          call mem%add_type(cmplx(0, 0, dp), size(Elecs(iEl)%HA), 2) ! H, S
         end if
-        nsize = nsize + size(Elecs(iEl)%Gamma) ! double complex
+        call mem%add_type(cmplx(0, 0, dp), size(Elecs(iEl)%Gamma))
       end do
 
       ! Electrode memory usage in KB
-      elec_mem = nsize * 16._dp / 1024._dp
-      call pretty_memory(elec_mem, out, unit)
-      write(*,'(a,f8.3,tr1,a)') 'tbt: Electrode memory: ', out, unit
+      call mem%get_string(c_tmp)
+      write(*,'(2a)') 'tbt: [memory] electrode: ', trim(c_tmp)
 
+      call spaux%reset()
       ! first the size of the real matrices (H and S)
       ! Since we immediately reduce to only one spin-component we never
       ! have spin-degeneracy as a memory requirement.
-      nsize = nnzs(TSHS%sp) * 2 ! double
-      nsize = nsize + nnzs(TSHS%sp) / 2 ! integer (SP)
+      nsize = nnzs(TSHS%sp)
+      call spaux%add_type(0._dp, nsize, 2) ! H, S
+      call spaux%add_type(0, nsize) ! sparse pattern
 #ifdef NCDF_4
       if ( initialized(sp_dev_sc) ) then
         ! this is the sparse orbital currents/COOP/COHP
-        nsize = nsize + nnzs(sp_dev_sc) ! double
-        nsize = nsize + nnzs(sp_dev_sc) / 2 ! integer (SP)
+        nsize = nnzs(sp_dev_sc)
+        call spaux%add_type(0._dp, nsize)
+        call spaux%add_type(0, nsize) ! sparse pattern
       end if
 #endif
-      mem = nsize * 8._dp / 1024._dp
+
       ! Now the complex sparse matrices H, S, these could essentially be removed
       nsize = nnzs(sp_uc)
-      nsize = nsize * 2 + nsize / 4 ! double complex (H,S) / integer (SP)
-      mem = mem + nsize * 16._dp / 1024._dp ! double complex
-      call pretty_memory(mem, out, unit)
-      write(*,'(a,f8.3,tr1,a)') 'tbt: Sparse H, S and auxiliary matrices memory: ', &
-          out, unit
+      call spaux%add_type(cmplx(0, 0, dp), nsize) ! H, S
+      call spaux%add_type(0, nsize) ! sparse pattern
+      call spaux%get_string(c_tmp)
+      write(*,'(2a)') 'tbt: [memory] H, S and auxiliary matrices: ', trim(c_tmp)
 
       ! Total memory
-      mem = elec_mem + mem
-      call pretty_memory(mem, out, unit)
-      write(*,'(a,f8.3,tr1,a/)') 'tbt: Sum of electrode and sparse memory: ', &
-          out, unit
+      mem = mem + spaux
+      call mem%get_string(c_tmp)
+      write(*,'(2a/)') 'tbt: [memory] sum of electrode and sparse: ', trim(c_tmp)
 
     end subroutine print_memory
 
-    pure subroutine pretty_memory(in_mem, out_mem, unit)
-      use precision, only: dp
-      real(dp), intent(in) :: in_mem
-      real(dp), intent(out) :: out_mem
-      character(len=2), intent(out) :: unit
-
-      unit = 'KB'
-      out_mem = in_mem
-      if ( out_mem > 1024._dp ) then
-        out_mem = out_mem / 1024._dp
-        unit = 'MB'
-        if ( out_mem > 1024._dp ) then
-          out_mem = out_mem / 1024._dp
-          unit = 'GB'
-          if ( out_mem > 1024._dp ) then
-            out_mem = out_mem / 1024._dp
-            unit = 'TB'
-          end if
-        end if
-      end if
-
-    end subroutine pretty_memory
-
-    subroutine init_Electrode_HS(El, spin_idx)
-      use class_Sparsity
-      use class_dSpData1D
-      use class_dSpData2D
-      use alloc, only : re_alloc
-      type(Elec), intent(inout) :: El
-      integer, intent(in) :: spin_idx
-
-      ! If already initialized, return immediately
-      if ( initialized(El%sp) ) return
-
-      ! Read-in and create the corresponding transfer-matrices
-      call delete(El) ! ensure clean electrode
-      call read_Elec(El, Bcast=.true., IO = .false., ispin = spin_idx )
-      
-      if ( .not. associated(El%isc_off) ) then
-         call die('An electrode file needs to be a non-Gamma calculation. &
-              &Ensure at least two k-points in the T-direction.')
-      end if
-      
-      call create_sp2sp01(El, IO = .false.)
-
-      ! Clean-up, we will not need these!
-      ! we should not be very memory hungry now, but just in case...
-      call delete(El%H)
-      call delete(El%S)
-      
-      ! We do not accept onlyS files
-      if ( .not. initialized(El%H00) ) then
-         call die('An electrode file must contain the Hamiltonian')
-      end if
-
-      call delete(El%sp)
-
-    end subroutine init_Electrode_HS
-
     subroutine open_GF(N_Elec,Elecs,uGF,nkpnt,NEn,spin_idx)
       integer, intent(in) :: N_Elec
-      type(Elec), intent(inout) :: Elecs(N_Elec)
+      type(electrode_t), intent(inout) :: Elecs(N_Elec)
       integer, intent(out) :: uGF(N_Elec)
       integer, intent(in) :: nkpnt, NEn, spin_idx
 
@@ -533,8 +488,8 @@ contains
 
          else
             
-            ! prepare the electrode to create the surface self-energy
-            call init_Electrode_HS(Elecs(iEl),max(1,spin_idx))
+           ! prepare the electrode to create the surface self-energy
+           call Elecs(iEl)%prepare_SE(IO=.false., spin=max(1, spin_idx))
             
          end if
 

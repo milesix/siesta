@@ -115,7 +115,6 @@
 
       use m_ts_global_vars,only: TSmode
       use m_ts_options,   only : IsVolt, N_Elec, Elecs
-      use m_ts_electype,  only : Elec_ortho2semi_inf
       use m_ts_voltage,   only : ts_init_voltage
 
       implicit none
@@ -473,7 +472,7 @@ C ----------------------------------------------------------------------
            ! directions since that would mean an infinite field.
            select case ( Elecs(1)%t_dir )
            case ( 4 , 5 , 6, 7 )
-             is_ortho = Elec_ortho2semi_inf(Elecs(1),
+             is_ortho = Elecs(1)%is_semi_inf_orthogonal(
      &           user_specified_field)
            end select
          else
@@ -481,7 +480,7 @@ C ----------------------------------------------------------------------
            ! fields along the semi-infinite directions.
            do iE = 1 , N_Elec
              is_ortho = is_ortho .and.
-     &           Elec_ortho2semi_inf(Elecs(iE), user_specified_field)
+     &           Elecs(iE)%is_semi_inf_orthogonal(user_specified_field)
            end do
          end if
          if ( .not. is_ortho ) then

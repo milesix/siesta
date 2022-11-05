@@ -3,10 +3,14 @@
 #
 default: objs_and_modules
 #
-ARCH_MAKE_DEFAULT=../fortran.mk
-ARCH_MAKE?=$(ARCH_MAKE_DEFAULT)
-include $(ARCH_MAKE)
-VPATH=.
+TOPDIR=.
+MAIN_OBJDIR=.
+#
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
+VPATH=$(TOPDIR)/Src/ncps/src/libxc-compat
+
 #
 OBJFILES= m_libxc_compat.o m_libxc_list.o m_libxc_sxc_translation.o \
           m_siestaxc_list.o
