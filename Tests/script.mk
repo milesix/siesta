@@ -2,8 +2,11 @@
 # Single-test makefile template for script usage
 SHELL=/bin/bash
 
+TOPDIR=.
+MAIN_OBJDIR=.
+
 MPI=mpirun -np 2
-SIESTA=../../../siesta
+SIESTA=$(MAIN_OBJDIR)/Src/siesta
 
 # Make compatibility layer for old test-runs
 ifeq ($(strip $(firstword $(SIESTA))),"mpirun")

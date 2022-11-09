@@ -7,7 +7,9 @@ code is that its accuracy and cost can be tuned in a wide range, from
 quick exploratory calculations to highly accurate simulations matching
 the quality of other approaches, such as plane-wave methods.
 
-The main web page for the project is at [icmab.es/siesta](https://icmab.es/siesta).
+The main web page for the project is at [siesta-project.org](https://siesta-project.org).
+
+Online documentation, tutorials, and how-to's are being developed in [docs.siesta-project.org](https://docs.siesta-project.org).
 
 Further information:
 
@@ -20,9 +22,6 @@ versions can be found
 
 * The LaTeX source for the manual is in Docs/siesta.tex. Assuming you have
 a working Tex/LaTeX installation, you can type `make final` to generate a pdf file.
-Alternatively, manuals in pdf can be found in the Documentation section of the main web page.
-
-* Tutorial material can be found also in the Documentation section of the main web page.
 
 For bug reports, and other code suggestions, please follow the guidelines
 in the file Docs/REPORTING_BUGS

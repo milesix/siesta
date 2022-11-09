@@ -11,23 +11,18 @@
 .SUFFIXES: 
 .SUFFIXES: .f .F .o .a .f90 .F90
 
-# No VPATH should be used here.
-# This utility is self-contained and will interfere
-# with the optical.F code (in Src)
-OBJDIR=Obj
+TOPDIR=.
+MAIN_OBJDIR=.
 
-all: optical_input optical
+VPATH=$(TOPDIR)/Util/Optical
 
-include ../../$(OBJDIR)/arch.make
+PROGS= optical_input optical
+default: $(PROGS)
 
-# This is needed on some systems to avoid loading the parallel libraries, which
-# sometimes force running on queuing systems
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
-FC_DEFAULT:=$(FC)
-FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
-
-##FFLAGS=$(FFLAGS_DEBUG)
 
 optical_input: optical_input.o
 	$(FC) $(LDFLAGS) -o $@ optical_input.o
@@ -36,4 +31,8 @@ optical: optical.o
 	$(FC) $(LDFLAGS) -o $@ optical.o
 
 clean: 
-	rm -f *.o optical_input optical
+	rm -f *.o $(PROGS)
+#
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+

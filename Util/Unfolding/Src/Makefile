@@ -11,6 +11,9 @@
 .SUFFIXES:
 .SUFFIXES: .f .F .o .a .f90 .F90
 
+TOPDIR=.
+MAIN_OBJDIR=.
+
 .PHONY: default what dep version  clean
 
 override WITH_NCDF=
@@ -18,13 +21,13 @@ override WITH_FLOOK=
 
 default: what unfold 
 
-VPATH:=$(shell pwd)/../../../Src
-OBJDIR=Obj
-MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
+VPATH=$(TOPDIR)/Util/Unfolding/Src:$(TOPDIR)/Src
+TOPSRC=$(TOPDIR)/Src
+
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
-# Set the default non-mpi routines
 FC_DEFAULT := $(FC)
 FC_SERIAL  ?= $(FC_DEFAULT)
 
@@ -49,17 +52,11 @@ what:
 	@echo $(COMMENTS)
 	@echo
 
-
-NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
-PSOP_INCFLAGS=-I$(MAIN_OBJDIR)/psoplib/src
-INCFLAGS:=$(NETCDF_INCFLAGS) \
-          $(NCPS_INCFLAGS) $(PSML_INCFLAGS) $(PSOP_INCFLAGS) \
-          $(INCFLAGS)
+INCFLAGS += $(NETCDF_INCFLAGS) $(FDF_INCFLAGS) \
+            $(NCPS_INCFLAGS) $(PSML_INCFLAGS) $(PSOP_INCFLAGS)
+INCFLAGS += $(MPI_WRAPPERS_INCFLAGS)
 
 XC = $(GRIDXC_LIBS)
-NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
-PSOP=$(MAIN_OBJDIR)/psoplib/src/libpsop.a
-
 INCFLAGS += $(GRIDXC_INCFLAGS)
 
 SYSOBJ=$(SYS).o
@@ -80,7 +77,8 @@ SIESTA_OBJS= precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
              m_cite.o \
              coor.o chkdim.o \
              zmatrix.o m_cell.o  periodic_table.o volcel.o digcel.o \
-             arw.o redcel.o sys.o parallelsubs.o spatial.o \
+             arw.o redcel.o broadcast_fdf_struct.o \
+             sys.o parallelsubs.o spatial.o \
              domain_decom.o printmatrix.o schecomm.o \
              pspltm1.o mmio.o qsort.o \
              sparse_matrices.o
@@ -113,91 +111,36 @@ UNFOLD_OBJS += unfold.o
 # Handlers and resolvers of last resort
 UNFOLD_OBJS += handlers.o
 #
-# Extract information of the compiler version used.
-# This is very basic but for intel, gcc, pgi and open64
-# this at least contain the version string of the compiler.
-# Possibly later the used compiler version may be extracted.
-COMPILER_VERSION := $(shell $(FC) --version | sed '/^[ ]*$$/d;q')
-ifeq ($(COMPILER_VERSION),)
-  # Just try and capture the case were it can not figure out anything
-  COMPILER_VERSION := Unknown version
-endif
-
-# Interfaces to libraries
-MPI_MAKEFILE=$(VPATH)/MPI/Makefile
-libmpi_f90.a: 
-	-mkdir -p MPI
-	(cd MPI ; \
-	$(MAKE) -f $(MPI_MAKEFILE) -j 1 "VPATH=$(VPATH)/MPI" \
-	"MAKEFILES=$(MPI_MAKEFILE)" "ARCH_MAKE=$(ARCH_MAKE)" \
-	"FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module_built)
-
-FDF=libfdf.a
-FDF_MAKEFILE=$(VPATH)/fdf/makefile
-FDF_INCFLAGS:=-I$(VPATH)/fdf -I../MPI $(INCFLAGS)
-$(FDF): $(MPI_INTERFACE)
-	-mkdir -p fdf
-	(cd fdf ; \
-	$(MAKE) -f $(FDF_MAKEFILE) -j 1 "FC=$(FC)" "VPATH=$(VPATH)/fdf" \
-	"ARCH_MAKE=$(ARCH_MAKE)" \
-	"INCFLAGS=$(FDF_INCFLAGS)" "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module)
 
 #######################
-#
-# Linear algebra routines
-#
-libsiestaBLAS.a: $(VPATH)/Libs/blas.F
-	@echo "==> Compiling libsiestaBLAS.a in Libs..."
-	-mkdir -p Libs
-	@(cd Libs ; $(MAKE) -f $(VPATH)/Libs/Makefile -j 1 \
-		"VPATH=$(VPATH)/Libs" \
-		"ARCH_MAKE=$(ARCH_MAKE)" \
-		"FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" libsiestaBLAS.a)
-	@cp Libs/libsiestaBLAS.a .
-libsiestaLAPACK.a: $(VPATH)/Libs/lapack.F
-	@echo "==> Compiling libsiestaLAPACK.a in Libs..."
-	-mkdir -p Libs
-	@(cd Libs ; $(MAKE) -f $(VPATH)/Libs/Makefile -j 1 \
-		"VPATH=$(VPATH)/Libs" \
-		"ARCH_MAKE=$(ARCH_MAKE)" \
-		"FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" libsiestaLAPACK.a)
-	@cp Libs/libsiestaLAPACK.a .
 
+$(DEP_OBJS): $(COMP_LIBS) 
 
-# All objects require the FDF library
-# In practice they do not but it greatly simplifies the logic
-# here.
-# This will setup the correct compilation sequence as
-# FDF => MPI
-$(DEP_OBJS): $(FDF) $(COMP_LIBS) 
-
-unfold: $(MPI_INTERFACE) $(FDF) $(COMP_LIBS) $(DEP_OBJS) $(UNFOLD_OBJS) 
+unfold: $(MPI_INTERFACE) $(COMP_LIBS) $(FDF_LIBS) $(NCPS) $(PSOP) $(DEP_OBJS) $(UNFOLD_OBJS) 
 	$(FC) $(FFLAGS) $(LDFLAGS) -o unfold \
               $(DEP_OBJS) $(UNFOLD_OBJS) $(MPI_INTERFACE) \
-              $(FDF) $(XC) $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) $(COMP_LIBS) $(LIBS)
+              $(XC) $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) $(FDF_LIBS) $(COMP_LIBS) $(LIBS)
 
 .PHONY: clean
 clean: 
 	@echo "==> Cleaning object, library, and executable files"
 	-rm -f unfold *.o *.a *.mod
-	-rm -rf ./fdf
-	-rm -rf ./MPI
-	-rm -rf ./Libs
+
+PROGS:= unfold
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 # Dependencies
 .PHONY: dep
 dep:
 	@sfmakedepend --depend=obj --modext=o \
-		$(addprefix $(VPATH)/,$(DEP_OBJS:.o=.f) $(DEP_OBJS:.o=.f90)) \
-		$(addprefix $(VPATH)/,$(DEP_OBJS:.o=.F) $(DEP_OBJS:.o=.F90)) \
-		$(VPATH)/class*.T90 \
+		$(addprefix $(TOPSRC)/,$(DEP_OBJS:.o=.f) $(DEP_OBJS:.o=.f90)) \
+		$(addprefix $(TOPSRC)/,$(DEP_OBJS:.o=.F) $(DEP_OBJS:.o=.F90)) \
+		$(TOPSRC)/class*.T90 \
 		$(UNFOLD_OBJS:.o=.f90) $(UNFOLD_OBJS:.o=.F90) \
 		$(UNFOLD_OBJS:.o=.f) $(UNFOLD_OBJS:.o=.F) || true
 
 	@sed -i -e 's/\.T90\.o:/.o:/g' Makefile
-
-# Assert that FDF is compiled on before hand
-$(DEP_OBJS): $(FDF)
 
 # DO NOT DELETE THIS LINE - used by make depend
 arw.o: alloc.o parallel.o precision.o sys.o
@@ -272,7 +215,7 @@ dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
 dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o m_spin.o
 dftu_specs.o: m_vee_integrals.o parallel.o precision.o radial.o sys.o units.o
 diag.o: alloc.o diag_option.o parallel.o precision.o sys.o
-diag.o: alloc.o diag_option.o parallel.o precision.o sys.o
+diag_option.o: m_cite.o parallel.o precision.o
 diag_option.o: m_cite.o parallel.o precision.o
 diag_option.o: m_cite.o parallel.o precision.o
 domain_decom.o: alloc.o parallel.o precision.o printmatrix.o schecomm.o

@@ -24,8 +24,7 @@ program unfold
   use cellsubs,     only: reclat, volcel
   use fdf,          only: block_fdf, fdf_bintegers, fdf_bline, fdf_block, &
                           fdf_bmatch, fdf_bnames, fdf_bnnames, fdf_bnvalues, &
-                          fdf_bvalues, fdf_convfac, fdf_get, fdf_init, &
-                          fdf_parallel, parsed_line
+                          fdf_bvalues, fdf_convfac, fdf_get, fdf_init, parsed_line
   use hsx_m,        only: hsx_t, read_hsx_file
   use m_array,      only: array_copy
   use m_get_kpoints_scale, &
@@ -120,11 +119,13 @@ program unfold
 #endif
 
   ! Initialize input
-#ifdef MPI
-  if (.not.fdf_parallel()) &
-    call die('unfold ERROR: FDF has no parallel support')
+
+  if (myNode == 0) then
+     call fdf_init( fileOutput='unfold.fdflog', unitInput=5 )
+  endif
+#ifdef MPI      
+  call broadcast_fdf_struct(0,mpi_comm_world)
 #endif
-  call fdf_init( fileOutput='unfold.fdflog', unitInput=5 )
 
   ! Initialize timer
   threshold = fdf_get('TimerReportThreshold', 0._dp)

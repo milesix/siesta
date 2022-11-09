@@ -48,10 +48,18 @@ C --- open LOG file:
 C --- read Fermi energy and total number of bands from .EIG :
       read  (ii2,*) efermi
       read  (ii2,*) nbands, nspin, nkp
-      if (nspin.ne.1.and.nspin.ne.2) then
+      if ( all(nspin /= [1, 2, 4, 8]) ) then
         write (6,*) 'A problem encountered: nspin=',nspin
         stop
       endif
+
+      if ( nspin > 2 ) then
+C ---   In the case of NC/SOC, the system is treated as one with
+C ---   a single spin component since there are twice as many
+C ---   bands as orbitals. This is already reflected in the
+C ---   no variable in the .EIG file
+        nspin = 1
+      end if
 
 C --- finds bands crossing the Fermi energy:
       do is=1,nspin
@@ -66,7 +74,7 @@ C --- finds bands crossing the Fermi energy:
         stop
       endif
       do ik=1,nkp
-        read (ii2,"(i5,10f12.5,/,(5x,10f12.5))") iik,   !  written in
+        read (ii2,"(i10,10(tr1,e17.9),/,(tr10,10(tr1,e17.9)))") iik,   !  written in
      .  ((eneb(ib,is),ib=1,nbands),is=1,min(nspin,2))   !  ioeif.f
         if (iik.ne.ik) then
           write (6,*) ' iik=',iik,'.ne. ik=',ik,' for spin ',is
@@ -263,7 +271,7 @@ C     and write them in the correct order into .BXSF
           read  (ii2,*) ndum, ndum, ndum
 C --- read in all energy values over all k points for the given spin band:
           do ik=1,nkp
-            read (ii2,"(i5,10f12.5,/,(5x,10f12.5))") iik, 
+            read (ii2,"(i10,10(tr1,e17.9),/,(tr10,10(tr1,e17.9)))") iik, 
      .      ((dum,ib=1,nbands),iis=1,is-1),    ! dummy read prev. spin, if any
      .       (dum,ib=1,iband-1),enek(ik),(dum,ib=iband+1,nbands),
      .      ((dum,ib=1,nbands),iis=is+1,nspin) ! dummy read next spin, if any

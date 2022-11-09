@@ -21,12 +21,16 @@
 .SUFFIXES:
 .SUFFIXES: .f .f90 .F .F90 .o
 #
-VPATH:=$(shell pwd)/../../Src
-OBJDIR=Obj
+PROGS= Eig2DOS
+default: $(PROGS)
 #
-all: Eig2DOS
-#
-include ../../$(OBJDIR)/arch.make
+TOPDIR=.
+MAIN_OBJDIR=.
+
+VPATH=$(TOPDIR)/Util/Eig2DOS:$(TOPDIR)/Src
+
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 #
 #
 FC_DEFAULT:=$(FC)
@@ -39,13 +43,14 @@ INCFLAGS:=$(INCFLAGS) $(NETCDF_INCFLAGS)
 #
 OBJS=m_getopts.o
 #
-default: Eig2DOS
-#
 Eig2DOS: $(OBJS) Eig2DOS.o
 	$(FC) -o $@ $(LDFLAGS) $(OBJS) Eig2DOS.o
 #
 clean:
 	rm -f *.o *.mod Eig2DOS
+
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 # Dependecies
 Eig2DOS.o: m_getopts.o

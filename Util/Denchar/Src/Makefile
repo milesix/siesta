@@ -23,28 +23,27 @@
 #  
 #  The dependency list at the end is overly large, but harmless
 
-OBJDIR=Obj
-
 .SUFFIXES:
 .SUFFIXES: .f .F .o .a  .f90 .F90
 
-VPATH:=$(shell pwd)/../../../Src
+TOPDIR=.
+MAIN_OBJDIR=.
 
-default: what denchar
+VPATH=$(TOPDIR)/Util/Denchar/Src:$(TOPDIR)/Src
 
-MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
-ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
+default: denchar
 
 override WITH_MPI=
+ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC := $(FC_SERIAL)         # Make it non-recursive
 #
 
-NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
-INCFLAGS:=$(NCPS_INCFLAGS) $(PSML_INCFLAGS) $(INCFLAGS)
+INCFLAGS:=$(NCPS_INCFLAGS) $(FDF_INCFLAGS) $(PSML_INCFLAGS) $(INCFLAGS)
 
 DENCHAR_UNDEF  = $(DEFS_PREFIX)-UMPI
 DENCHAR_UNDEF += $(DEFS_PREFIX)-UCDF
@@ -57,39 +56,14 @@ FPPFLAGS := $(FPPFLAGS) $(DENCHAR_UNDEF)
 # Uncomment the following line for debugging support
 #FFLAGS=$(FFLAGS_DEBUG)
 
-what:
-	@echo
-	@echo "Compilation architecture to be used: ${SIESTA_ARCH}"
-	@echo "If this is not what you want, create the right"
-	@echo "arch.make file using the models in Sys"
-	@echo
-	@echo "Hit ^C to abort..."
-	@sleep 2
 
 SYSOBJ=$(SYS).o
-
-# Use the makefile in Src/fdf and all the sources there.
-FDF=libfdf.a
-FDF_MAKEFILE:=$(VPATH)/fdf/makefile
-FDF_INCFLAGS:=-I$(VPATH)/fdf $(INCFLAGS)
-$(FDF): 
-	-mkdir -p fdf
-	(cd fdf ; $(MAKE) -f $(FDF_MAKEFILE) "FC=$(FC)" "VPATH=$(VPATH)/fdf" \
-		"ARCH_MAKE=$(ARCH_MAKE)" \
-		"DEFS=$(DEFS)" \
-		"FPPFLAGS=$(FPPFLAGS)" \
-		"MPI_INTERFACE= " \
-		"INCFLAGS=$(FDF_INCFLAGS)" "FFLAGS=$(FFLAGS)" module)
-
-# This is crude but will have to do for now.
-# Note : precision must be the first module
 
 # Note that machine-specific files are now in top Src directory.
 SIESTA_OBJS =  bessph.o chkdim.o dismin.o \
                dot.o  io.o iodm.o memory.o memory_log.o\
 	       pxf.o radfft.o m_fft_gpfa.o volcel.o
 
-       
 SIESTA_OBJS += precision.o parallel.o debugmpi.o m_io.o alloc.o listsc.o  \
          atmparams.o atom_options.o atmfuncs.o atm_types.o \
          radial.o spher_harm.o basis_io.o basis_types.o parallelsubs.o \
@@ -117,11 +91,9 @@ LOCAL_OBJS= atompla.o colinear.o denchar.o length.o \
 
 ALL_OBJS_DENCHAR= $(SIESTA_OBJS) $(LOCAL_OBJS)
 
-NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
-#
-denchar: $(FDF)  $(ALL_OBJS_DENCHAR) $(NCPS) 
+denchar: $(FDF_LIBS) $(NCPS) $(ALL_OBJS_DENCHAR)
 	$(FC) -o denchar \
-	       $(LDFLAGS) $(ALL_OBJS_DENCHAR) $(FDF) $(NCPS) $(PSML_LIBS) \
+	       $(LDFLAGS) $(ALL_OBJS_DENCHAR) $(FDF_LIBS) $(NCPS) $(PSML_LIBS) \
                $(XMLF90_LIBS) $(METIS_LIB)
 
 clean:
@@ -129,8 +101,10 @@ clean:
 	rm -f denchar *.o  *.a
 	rm -f *.mod
 	rm -f _tmp_deps deps.list _deps.list* protomake*
-	(cd fdf ; $(MAKE) -f $(FDF_MAKEFILE) "ARCH_MAKE=$(ARCH_MAKE)" clean)
 
+PROGS:= denchar
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 # Dependencies
 .PHONY: dep

@@ -8,44 +8,29 @@
 #
 # Makefile for stand-alone Gen-basis and ioncat
 #
-# The idea is to use the code in the top Src directory as much as possible.
-# This is achieved by the VPATH directive below.
-# Other points to note, until we switch to a better building system:
-#
-#  The arch.make file is supposed to be in $(OBJDIR). This is normally
-#  the top Obj, but if you are using architecture-dependent build directories
-#  you might want to change this. (If you do not understand this, you do not
-#  need to change anything. Power users can do "make OBJDIR=Whatever".)
-#
-#  If your main Siesta build used an mpi compiler, you might need to
-#  define an FC_SERIAL symbol in your top arch.make, to avoid linking
-#  in the mpi libraries even if we explicitly undefine MPI below.
-
-OBJDIR=Obj
-
 .SUFFIXES:
 .SUFFIXES: .f .F .o .a  .f90 .F90
 
-VPATH:=$(shell pwd)/../../Src
+TOPDIR=.
+MAIN_OBJDIR=.
 
 default: gen-basis ioncat
 
 override WITH_MPI=
+override WITH_NCDF=
+override WITH_FLOOK=
 
-MAIN_OBJDIR:=$(shell cd -P -- ../../\$(OBJDIR) && pwd -P)
+VPATH=$(TOPDIR)/Util/Gen-basis:$(TOPDIR)/Src
+
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
-DEFS:=$(DEFS_PREFIX) -UMPI $(DEFS) $(DEFS_PREFIX) -UMPI
-FPPFLAGS:=$(DEFS_PREFIX) -UMPI $(FPPFLAGS) $(DEFS_PREFIX) -UMPI
-
-NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
-PSOP_INCFLAGS=-I$(MAIN_OBJDIR)/psoplib/src
-INCFLAGS:=$(NETCDF_INCFLAGS) \
+INCFLAGS:=$(NETCDF_INCFLAGS) $(FDF_INCFLAGS) \
           $(NCPS_INCFLAGS) $(PSOP_INCFLAGS) $(PSML_INCFLAGS) \
           $(INCFLAGS)
 SYSOBJ=$(SYS).o
@@ -69,7 +54,7 @@ OBJS_GEN-BASIS=$(DEPS_GEN-BASIS) $(GEN-BASIS_LOCAL_OBJS)
 DEPS_IONCAT=m_getopts.o basis_types.o precision.o  parallel.o \
           parsing.o m_io.o io.o alloc.o atom_options.o basis_io.o atm_types.o \
           atmparams.o radial.o  chkdim.o m_filter.o \
-	  chemical.o reclat.o \
+	  bessph.o radfft.o m_fft_gpfa.o chemical.o reclat.o \
           basis_specs.o periodic_table.o pxf.o \
           atom.o atmfuncs.o spher_harm.o interpolation.o arw.o \
           xml.o m_walltime.o dftu_specs.o m_spin.o m_vee_integrals.o \
@@ -82,47 +67,24 @@ OBJS_IONCAT=$(DEPS_IONCAT) $(IONCAT_LOCAL_OBJS)
 XC = $(GRIDXC_LIBS)
 INCFLAGS:= $(INCFLAGS) $(GRIDXC_INCFLAGS)
 
-#
-NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
-PSOP=$(MAIN_OBJDIR)/psoplib/src/libpsop.a
-#
-# Use the makefile in Src/fdf and all the sources there.
-#
-FDF=libfdf.a
-FDF_MAKEFILE=$(VPATH)/fdf/makefile
-FDF_INCFLAGS:=-I $(VPATH)/fdf $(INCFLAGS)
-$(FDF): 
-	(mkdir -p fdf ; cd fdf ; $(MAKE) -f $(FDF_MAKEFILE) "FC=$(FC)" "VPATH=$(VPATH)/fdf" \
-                          "ARCH_MAKE=$(ARCH_MAKE)" \
-                          "DEFS=$(DEFS)" \
-                          "FPPFLAGS=$(FPPFLAGS)" \
-                          "MPI_INTERFACE= " \
-                          "INCFLAGS=$(FDF_INCFLAGS)" "FFLAGS=$(FFLAGS)" module)
-
-#
-# Simple hack to link to any compiled lapack/blas code
-# If COMP_LIBS is empty, we do a no-op, else link the library file here.
-#
-link_linalg:
-	for llibs in $(COMP_LIBS); do \
-   [ -f ../../$(OBJDIR)/$$llibs ] && ln -sf ../../$(OBJDIR)/$$llibs . ; \
-	done
-
-gen-basis: $(FDF) $(NCPS) $(PSOP) $(OBJS_GEN-BASIS) link_linalg
+gen-basis: $(NCPS) $(PSOP) $(FDF_LIBS) $(OBJS_GEN-BASIS) $(COMP_LIBS)
 	$(FC) -o gen-basis \
-	       $(LDFLAGS) $(OBJS_GEN-BASIS) $(FDF) $(XC) \
+	       $(LDFLAGS) $(OBJS_GEN-BASIS) $(FDF_LIBS) $(XC) \
               $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) $(NETCDF_LIBS) $(COMP_LIBS) $(LIBS)
-ioncat:  $(FDF) $(NCPS) $(PSOP) $(OBJS_IONCAT)
+ioncat:  $(NCPS) $(PSOP) $(FDF_LIBS) $(OBJS_IONCAT) $(COMP_LIBS)
 	$(FC) -o ioncat \
-	       $(LDFLAGS) $(OBJS_IONCAT) $(FDF) \
-              $(NCPS) $(PSOP) $(XC) $(PSML_LIBS) $(XMLF90_LIBS) $(NETCDF_LIBS) $(LIBS)
+	       $(LDFLAGS) $(OBJS_IONCAT) $(FDF_LIBS) \
+              $(NCPS) $(PSOP) $(XC) $(PSML_LIBS) $(XMLF90_LIBS) $(NETCDF_LIBS) $(COMP_LIBS) $(LIBS)
 clean:
 	@echo "==> Cleaning object, library, and executable files"
 	rm -f gen-basis ioncat *.o  *.a
 	rm -f *.mod
-	rm -rf fdf
 	rm -f _tmp_deps deps.list  protomake*
 
+PROGS:= gen-basis ioncat
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+#
 ALL_OBJS=$(OBJS_IONCAT) $(OBJS_GEN-BASIS)
 
 DEP_OBJS= $(DEPS_GEN-BASIS) $(DEPS_IONCAT)
