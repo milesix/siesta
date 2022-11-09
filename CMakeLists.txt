@@ -231,7 +231,7 @@ add_subdirectory(Docs)
 # add a few very basic tests for now
 
 enable_testing()
-add_subdirectory(Examples)
+include(TestMPIConfig)
 add_subdirectory(Tests)
 
 if(WITH_MPI)
