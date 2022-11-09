@@ -19,6 +19,10 @@ grouped under headings representing past (and upcoming) releases.
 
 ### Changes
 
+* New "library" interface to Wannier90
+
+   (Please Expand)
+
 * New building framework, including CMake support and streamlining of makefile-based scheme
 
    * The fdf code in Src/fdf is now serial-only, with clients taking
