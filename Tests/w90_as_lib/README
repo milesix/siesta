@@ -1,0 +1,12 @@
+(* This is a simpler version of the w90_in_siesta test,
+   with fewer k-points and lower cutoffs *)
+   
+In this example we will generate the Wannier functions of three
+different manifolds in SIESTA.
+
+The first one includes the top of the valence bands
+The second one the bottom of the conduction bands
+The third one, the two previous set of bands considered together
+
+Wannier90 will be called directly from SIESTA, 
+without the need to prepare a special input file for Wannier90

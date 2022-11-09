@@ -48,6 +48,8 @@ option(WITH_OPENMP "Build Siesta and TBTrans with OpenMP support" FALSE)
 option(WITH_ELPA "Use the ELPA library (direct interface)" FALSE)
 option(WITH_LUA "Use the flook library for Lua scripting" FALSE)
 option(WITH_WANNIER90 "Use the wannier90 interface" FALSE)
+# 
+option(BUILD_DOCS "Create Doxygen-based documentation (wip)" FALSE)
 #--------------------------------------
 
 # Compiler flags
@@ -227,10 +229,14 @@ install(
   DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/${PROJECT_NAME}"
 )
 
+# Docs
+# Enable BUILD_DOCS to create Doxygen-based documentation (wip)
+add_subdirectory(Docs)
+
 # add a few very basic tests for now
 
 enable_testing()
-add_subdirectory(Examples)
+include(TestMPIConfig)
 add_subdirectory(Tests)
 
 if(WITH_MPI)

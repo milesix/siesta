@@ -43,7 +43,7 @@
       endif
 
       call MPI_Bcast(bufferFDF, nchars,              &
-                     MPI_CHARACTER, reading_node, MPI_COMM_WORLD, ierr)
+                     MPI_CHARACTER, reading_node, comm, ierr)
       if (ierr .ne. MPI_SUCCESS) then
         call die("Error Broadcasting bufferFDF")
       endif
