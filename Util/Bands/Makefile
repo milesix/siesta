@@ -7,35 +7,27 @@
 # ---
 #
 # The VPATH directive below allows to re-use m_getopts.f90 from the top Src.
-# Other points to note, until we switch to a better building system:
-#
-#  The arch.make file is supposed to be in $(OBJDIR). This is normally
-#  the top Obj, but if you are using architecture-dependent build directories
-#  you might want to change this. (If you do not understand this, you do not
-#  need to change anything. Power users can do "make OBJDIR=Whatever".)
-#
-#  If your main Siesta build used an mpi compiler, you might need to
-#  define an FC_SERIAL symbol in your top arch.make, to avoid linking
-#  in the mpi libraries even if we explicitly undefine MPI below.
 
 .SUFFIXES:
 .SUFFIXES: .f .f90 .F .F90 .o
 
-VPATH:=$(shell pwd)/../../Src
-OBJDIR=Obj
+TOPDIR=.
+MAIN_OBJDIR=.
 
-all: eigfat2plot gnubands
+PROGS:= eigfat2plot gnubands
+all: $(PROGS)
 
-include ../../$(OBJDIR)/arch.make
+override WITH_MPI=
 
+VPATH=$(TOPDIR)/Util/Bands:$(TOPDIR)/Src
+
+ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
+include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
-
-DEFS:=$(DEFS) $(DEFS_PREFIX)-UMPI 
-FPPFLAGS:=$(FPPFLAGS) $(DEFS_PREFIX)-UMPI 
-INCFLAGS:=$(INCFLAGS) $(NETCDF_INCFLAGS)
 
 OBJS=m_getopts.o
 
@@ -47,6 +39,9 @@ eigfat2plot: $(OBJS) eigfat2plot.o
 
 clean:
 	rm -f *.o *.mod eigfat2plot gnubands
+
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 dep:
 	-sfmakedepend --depend=obj --modext=o \

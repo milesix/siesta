@@ -9,30 +9,28 @@
 .SUFFIXES: 
 .SUFFIXES: .f .F .o .a  .f90 .F90
 #
-##VPATH:=$(shell pwd)/../../Src
-OBJDIR=Obj
-#
-all: orbmol_proj
-#
-include ../../$(OBJDIR)/arch.make
-#
-# This is needed on some systems to avoid loading the parallel libraries, which
-# sometimes force running on queuing systems
-#
-FC_DEFAULT:=$(FC)
-FC_SERIAL?=$(FC_DEFAULT)
+TOPDIR=.
+MAIN_OBJDIR=.
+
+VPATH=$(TOPDIR)/Util/Projections
+
+PROGS= orbmol_proj
+default: $(PROGS)
+
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
 FC:=$(FC_SERIAL)         # Make it non-recursive
-#
-##FFLAGS=$(FFLAGS_DEBUG)
-#
 #------------------
 orbmol_proj: orbmol_proj.o
 	$(FC) $(LDFLAGS) -o $@  orbmol_proj.o
-#
 #------------------
 clean: 
 	rm -f *.o orbmol_proj *.o *.*d
 #
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+
 
 
 

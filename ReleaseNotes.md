@@ -19,6 +19,48 @@ grouped under headings representing past (and upcoming) releases.
 
 ### Changes
 
+* New building framework, including CMake support and streamlining of makefile-based scheme
+
+   * The fdf code in Src/fdf is now serial-only, with clients taking
+     care of the broadcast of the fdf database object. This removes
+     the need for multiple compilations of the library to suit each
+     client.
+     
+   * The rest of the internal libraries (in directories under Src)
+     have been made to follow the same scheme of single compilation:
+     MPI, psoplib, ncps, MatrixSwitch, and the linear-algebra
+     fallbacks in Src/Libs.
+
+   * New versions of the ncdf and fdict libraries (renamed as
+     'easy-fdict' and 'easy-ncdf') have been prepared and used to
+     follow the single-compilation scheme.
+
+   * Programs in Utils and Pseudo are now compiled under the same
+     building directory as Siesta itself. The main user-facing change
+     is the location of the setup script for the build directory. The
+     typical step is now 'sh ../Config/obj_setup.sh' from the build
+     directory. A new target 'utils' builds the whole suite, and new
+     'install' and 'install_utils' targets copy everything to an
+     installation directory.  This approach removes the need to handle
+     OBJDIR when dealing with different builds, and simplifies the
+     installation of all the programs.
+
+   * Automatic compilation of required library dependencies can be
+     achieved by setting a flag in arch.make, using library code in
+     git submodules in ExtLibs/. CMake is used for the building of the
+     libraries.
+
+   * In addition to the above upgrades of the makefile-based building
+     scheme, there is now an independent CMake framework, which enables
+     mostly seamless compilation of the suite of programs. A variety of
+     mechanisms for discovery and use of dependencies are supported.
+
+   * New experimental spack recipes (intended to be used for now in a
+     separately configured spack repo) are available.
+     
+   
+* Made the DFT+U scheme compatible with spin-orbit coupling.
+
 * Added support for PSML pseudopotential files:
 
    * Changes to offer more information about PAO generation, and to implement

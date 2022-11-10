@@ -6,71 +6,60 @@
 #  or http://www.gnu.org/copyleft/gpl.txt.
 # See Docs/Contributors.txt for a list of contributors.
 #
-# Makefile for Client-Server example
+# Makefile for Siesta as Subroutine example
 #
 # JM Soler, J Nara, A Garcia, E Anglada
 #
-WORK_DIR=$(shell pwd)
-OBJDIR=Obj
+TOPDIR=.
+MAIN_OBJDIR=.
 #
 .SUFFIXES:
 .SUFFIXES: .f .F .o .a .f90 .F90
 #
-
 all: default
-default: protoNEB
-
-MAIN_OBJDIR:=$(shell cd -P -- ../../../../\$(OBJDIR) && pwd -P)
+#
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 #
-TOP_LEVEL=$(shell pwd)/../../../../Src
-VPATH:=$(TOP_LEVEL)
+VPATH:=$(TOPDIR)/Util/SiestaSubroutine/ProtoNEB/Src  #:$(TOPDIR)/Src
 #
+PROGS:= protoNEB
+default: $(PROGS)
 #
-# Routines used by pipes version (VPATH knows where they are)
-#
-# Siesta libraries used by MPI version
-#
-SIESTA_LIB=libSiestaForces.a
-FDF=libfdf.a
-#
-XMLPARSER=$(XMLF90_LIBS)
 XC=$(GRIDXC_LIBS)
 PSML=$(PSML_LIBS)
 #
-NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
-PSOP=$(MAIN_OBJDIR)/psoplib/src/libpsop.a
+# For compilation of local sources
 #
-NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
-PSOP_INCFLAGS=-I$(MAIN_OBJDIR)/psoplib/src
+INCFLAGS+= $(FDF_INCFLAGS) 
+INCFLAGS+= $(MPI_WRAPPERS_INCFLAGS)
+INCFLAGS+= $(SIESTA_LIB_INCFLAGS)
 #
-INCFLAGS:=$(NETCDF_INCFLAGS) \
-          $(NCPS_INCFLAGS) $(PSOP_INCFLAGS) $(PSML_INCFLAGS) \
-          $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS) $(INCFLAGS)
+# The "Siesta library" is used by this MPI-based driver
+SIESTA_LIB=$(MAIN_OBJDIR)/Src/libSiestaForces.a
 #
-ALL_LIBS= $(SIESTA_LIB) $(FDF)  $(XC) \
+# Link-time dependencies (could be handled by SIESTA_LIB logic...)
+#
+ALL_LIBS= $(SIESTA_LIB) $(FDF_LIBS)  $(XC) \
 	$(NCPS) $(PSML) $(XMLF90_LIBS) $(PSOP) $(MS)\
 	$(MPI_INTERFACE) $(COMP_LIBS) $(LIBS)
 #
-libs_collected:
-	(cd $(MAIN_OBJDIR) ; \
-	make libSiestaForces.a ; \
-	cp -f *.a *.mod $(WORK_DIR) )
-	touch libs_collected
-#
-protoNEB: libs_collected protoNEB.o handlers.o
+protoNEB: $(SIESTA_LIB) protoNEB.o handlers.o
 	$(FC) $(LDFLAGS) -o protoNEB \
 	      protoNEB.o handlers.o $(ALL_LIBS)
 #
 intermediate: 
 	@echo "==> Cleaning intermediate files ONLY"
 	@echo "==> Use make clean to remove executable files"
-	rm -f *.a *.o *.mod libs_collected
+	rm -f *.a *.o *.mod
 #
 pristine: clean
 clean:
 	@echo "==> Cleaning all intermediate and executable files"
 	rm -f protoNEB
-	rm -f *.a *.o *.mod libs_collected
+	rm -f *.a *.o *.mod 
+#
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 

@@ -55,10 +55,11 @@ subroutine tbt_init()
   use m_sparsity_handling
 
   use runinfo_m, only: runinfo
-  use version_info, only: prversion
 
   implicit none
 
+  external :: prversion
+  
   integer :: level
   real(dp) :: threshold
 #ifdef MPI
@@ -100,12 +101,6 @@ subroutine tbt_init()
 
   ! Initialize the output
   call tbt_init_output(Node == 0)
-
-#ifdef MPI
-  if (.not. fdf_parallel()) then
-     call die('tbt_init: ERROR: FDF module doesn''t have parallel support')
-  endif
-#endif
 
 ! Print version information ...........................................
   if (IOnode) then

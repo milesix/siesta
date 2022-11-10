@@ -11,26 +11,18 @@
 .SUFFIXES:
 .SUFFIXES: .f .F .o .a .f90 .F90
 
-default: what pvtsp
+default: pvtsp
 
-VPATH:=$(shell pwd)/../../Src
-OBJDIR=Obj
-ARCH_MAKE=../../$(OBJDIR)/arch.make
-include $(ARCH_MAKE)
+override WITH_MPI=
+override WITH_NETCDF=
 
-what:
-	@echo
-	@echo "Compilation architecture to be used: $(SIESTA_ARCH)"
-	@echo "Your 'arch.make' file is: $(ARCH_MAKE)"
-	@echo "You may select a different 'arch.make' file by assigning"
-	@echo "an appropriate value to OBJDIR in your make invocation."
-	@echo $(COMMENTS)
-	@echo
+TOPDIR=.
+MAIN_OBJDIR=.
 
-# Set the default non-mpi routines
-FC_DEFAULT := $(FC)
-FC_SERIAL  ?= $(FC_DEFAULT)
-FC := $(FC_SERIAL)
+VPATH=$(TOPDIR)/Util/SpPivot:$(TOPDIR)/Src
+
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 # We force the compilation of the graphviz library
 FPPFLAGS += -DGRAPHVIZ
@@ -55,21 +47,17 @@ LOCAL_OBJS= pvtsp.o handlers.o
 
 OBJS = $(SIESTA_OBJS) $(LOCAL_OBJS)
 
-pvtsp: FPPFLAGS+=$(DEFS_PREFIX) -UMPI -UNCDF -UNCDF_4 -UNCDF_PARALLEL
-pvtsp: COMP_LIBS := $(filter-out libncdf.a,$(COMP_LIBS))
-pvtsp: COMP_LIBS := $(filter-out libfdict.a,$(COMP_LIBS))
-pvtsp: COMP_LIBS := $(filter-out libsiestaLAPACK.a,$(COMP_LIBS))
-pvtsp: COMP_LIBS := $(filter-out libsiestaBLAS.a,$(COMP_LIBS))
-pvtsp: LIBS := $(filter-out libncdf.a,$(LIBS))
-pvtsp: LIBS := $(filter-out libfdict.a,$(LIBS))
 pvtsp: $(OBJS)
-	$(FC) $(FFLAGS) $(LDFLAGS) -o pvtsp \
-              $(OBJS) $(COMP_LIBS) $(LIBS)
+	$(FC) $(FFLAGS) $(LDFLAGS) -o pvtsp $(OBJS) 
 
 clean: 
 	@echo "==> Cleaning object, library, and executable files"
 	-rm -f pvtsp *.o *.a *.mod
-
+#
+PROGS:= pvtsp
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+#
 # Dependencies
 .PHONY: dep
 dep:

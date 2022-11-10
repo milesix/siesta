@@ -5,15 +5,14 @@
 default:  libpsop.a
 module: libpsop.a
 #
-# We allow for an external specification of the location 
-# of the arch.make file. This must be an absolute path
+TOPDIR=.
+MAIN_OBJDIR=.
 #
-#
-ARCH_MAKE_DEFAULT=fortran.mk
-ARCH_MAKE?=$(ARCH_MAKE_DEFAULT)
-include $(ARCH_MAKE)
-VPATH=.
-#
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
+VPATH=$(TOPDIR)/Src/psoplib/src
+
 OBJFILES= m_psop.o m_kbgen.o m_localgen.o schrodinger.o arw.o \
           psop_params.o 
 #

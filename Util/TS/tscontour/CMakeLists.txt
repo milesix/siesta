@@ -1,0 +1,187 @@
+set(top_srcdir "${CMAKE_SOURCE_DIR}/Src")
+
+set(sources
+
+   local_sys.f90
+   handlers.F
+   tscontour.F90
+  
+)
+list(
+    APPEND
+    sources
+
+   ${top_srcdir}/precision.F
+   ${top_srcdir}/parallel.F
+   ${top_srcdir}/alloc.F90
+   ${top_srcdir}/pxf.F90
+   ${top_srcdir}/units.f90
+   ${top_srcdir}/m_io.f
+   ${top_srcdir}/memory_log.F90
+   ${top_srcdir}/memory.F
+   ${top_srcdir}/io.f
+   ${top_srcdir}/intrinsic_missing.F90
+   ${top_srcdir}/files.f
+   ${top_srcdir}/reclat.f
+   ${top_srcdir}/m_char.f90
+   ${top_srcdir}/m_os.F90
+   ${top_srcdir}/geom_helper.f90
+   ${top_srcdir}/class_OrbitalDistribution.F90
+   ${top_srcdir}/class_Data2D.F90
+   ${top_srcdir}/class_Sparsity.F90
+   ${top_srcdir}/class_SpData2D.F90
+   ${top_srcdir}/class_Data1D.F90
+   ${top_srcdir}/class_SpData1D.F90
+   ${top_srcdir}/io_sparse.F90
+   ${top_srcdir}/m_iodm.F90
+   ${top_srcdir}/siesta_options.F90
+   ${top_srcdir}/interpolation.f90
+   ${top_srcdir}/xml.f
+   ${top_srcdir}/radial.f
+   ${top_srcdir}/atm_types.f
+   ${top_srcdir}/spher_harm.f
+   ${top_srcdir}/atmfuncs.f
+   ${top_srcdir}/atmparams.f
+   ${top_srcdir}/atom_options.F90
+   ${top_srcdir}/basis_types.f
+   ${top_srcdir}/chemical.f
+   ${top_srcdir}/periodic_table.f
+   ${top_srcdir}/pspltm1.F
+   ${top_srcdir}/basis_specs.f
+   ${top_srcdir}/hamann.f90
+   ${top_srcdir}/bessph.f
+   ${top_srcdir}/m_fft_gpfa.F
+   ${top_srcdir}/radfft.f
+   ${top_srcdir}/m_filter.f90
+   ${top_srcdir}/atom.F
+   ${top_srcdir}/m_cite.F90
+   ${top_srcdir}/m_spin.F90
+   ${top_srcdir}/m_vee_integrals.F90
+   ${top_srcdir}/dftu_specs.f
+   ${top_srcdir}/siesta_geom.F90
+   ${top_srcdir}/atomlist.f
+   ${top_srcdir}/densematrix.f90
+   ${top_srcdir}/m_ts_global_vars.f90
+   ${top_srcdir}/m_energies.F90
+   ${top_srcdir}/arw.f
+   ${top_srcdir}/chkdim.f
+   ${top_srcdir}/m_region.F90
+   ${top_srcdir}/fdf_extra.F90
+   ${top_srcdir}/kpoint_convert.f90
+   ${top_srcdir}/sorting.f
+   ${top_srcdir}/m_mesh_node.F90
+   ${top_srcdir}/m_mpi_utils.F
+   ${top_srcdir}/mneighb.f
+   ${top_srcdir}/errorf.f
+   ${top_srcdir}/m_trialorbitalclass.f90
+   ${top_srcdir}/matel_registry.F90
+   ${top_srcdir}/new_matel.f
+   ${top_srcdir}/printmatrix.F
+   ${top_srcdir}/schecomm.F
+   ${top_srcdir}/class_Geometry.F90
+   ${top_srcdir}/class_Pair_Geometry_SpData2D.F90
+   ${top_srcdir}/class_Fstack_Pair_Geometry_SpData2D.F90
+   ${top_srcdir}/sparse_matrices.F90
+   ${top_srcdir}/domain_decom.F
+   ${top_srcdir}/spatial.F
+   ${top_srcdir}/parallelsubs.F
+   ${top_srcdir}/m_occ_proj_dftu.F90
+   ${top_srcdir}/m_pot_dftu.F90
+   ${top_srcdir}/m_dftu_so.F90
+   ${top_srcdir}/qsort.F
+   ${top_srcdir}/mmio.F
+   ${top_srcdir}/propor.f
+   ${top_srcdir}/volcel.f
+   ${top_srcdir}/debugmpi.F
+   ${top_srcdir}/m_uuid.f90
+   ${top_srcdir}/object_debug.F90
+   ${top_srcdir}/class_Fstack_Data1D.F90
+   ${top_srcdir}/m_sparse.F90
+   ${top_srcdir}/ncdf_io.F90
+   ${top_srcdir}/m_ts_io.F90
+   ${top_srcdir}/m_handle_sparse.F90
+   ${top_srcdir}/m_mixing.F90
+   ${top_srcdir}/m_mixing_scf.F90
+   ${top_srcdir}/m_geom_aux.f90
+   ${top_srcdir}/m_geom_box.f90
+   ${top_srcdir}/m_geom_coord.f90
+   ${top_srcdir}/m_geom_plane.f90
+   ${top_srcdir}/m_geom_square.f90
+   ${top_srcdir}/m_geom_objects.f90
+   ${top_srcdir}/bloch_unfold.F90
+   ${top_srcdir}/create_Sparsity_SC.F90
+   ${top_srcdir}/m_gauss_fermi_inf.f90
+   ${top_srcdir}/m_ts_io_ctype.f90
+   ${top_srcdir}/m_ts_cctype.f90
+   ${top_srcdir}/m_ts_chem_pot.F90
+   ${top_srcdir}/m_ts_iodm.F90
+   ${top_srcdir}/ts_electrode.F90
+   ${top_srcdir}/m_ts_tdir.f90
+   ${top_srcdir}/m_ts_hartree.F90
+   ${top_srcdir}/m_ts_aux.F90
+   ${top_srcdir}/m_ts_method.f90
+   ${top_srcdir}/ts_charge.F90
+   ${top_srcdir}/m_gauss_quad.f90
+   ${top_srcdir}/m_integrate.f90
+   ${top_srcdir}/m_ts_io_contour.f90
+   ${top_srcdir}/m_ts_contour_neq.f90
+   ${top_srcdir}/m_ts_weight.F90
+   ${top_srcdir}/m_interpolate.F90
+   ${top_srcdir}/m_gauss_fermi_17.f90
+   ${top_srcdir}/m_gauss_fermi_18.f90
+   ${top_srcdir}/m_gauss_fermi_19.f90
+   ${top_srcdir}/m_gauss_fermi_20.f90
+   ${top_srcdir}/m_gauss_fermi_22.f90
+   ${top_srcdir}/m_gauss_fermi_24.f90
+   ${top_srcdir}/m_gauss_fermi_26.f90
+   ${top_srcdir}/m_gauss_fermi_28.f90
+   ${top_srcdir}/m_gauss_fermi_30.f90
+   ${top_srcdir}/m_ts_contour_eq.f90
+   ${top_srcdir}/ts_dq.F90
+   ${top_srcdir}/m_ts_contour.f90
+   ${top_srcdir}/create_Sparsity_Union.F90
+   ${top_srcdir}/m_ts_elec_se.F90
+   ${top_srcdir}/m_sparsity_handling.F90
+   ${top_srcdir}/class_TriMat.F90
+   ${top_srcdir}/m_ts_debug.F90
+   ${top_srcdir}/m_ts_sparse.F90
+   ${top_srcdir}/m_ts_mumps_init.F90
+   ${top_srcdir}/m_ts_options.F90
+   ${top_srcdir}/nag.f
+
+)
+
+add_executable(
+   tscontour
+   ${sources}
+)
+
+install(
+  TARGETS tscontour
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  )
+
+#
+ target_link_libraries(
+  tscontour
+  PRIVATE
+  fdf
+  libpsml::libpsml
+  libgridxc::libgridxc
+  ${PROJECT_NAME}-libncps
+  ${PROJECT_NAME}-libpsop
+  $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>
+  "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>"
+  "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libfdict>"
+   LAPACK::LAPACK
+ )
+
+target_compile_definitions(
+  tscontour
+  PRIVATE
+  "$<$<BOOL:${WITH_NETCDF}>:CDF>"
+  "$<$<BOOL:${WITH_NCDF}>:NCDF>"
+  "$<$<BOOL:${WITH_NCDF}>:NCDF_4>"
+  "$<$<BOOL:${WITH_NCDF_PARALLEL}>:NCDF_PARALLEL>"
+)
+

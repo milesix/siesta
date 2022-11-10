@@ -7,15 +7,24 @@
 # ---
 .SUFFIXES: .f .F .o .a .f90 .F90 .c
 
-VPATH:=$(shell pwd)/../../../Src
-
-OBJDIR=Obj
-
 default: tscontour
 
-MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
+# To Do: streamline dependencies
+
+TOPDIR=.
+MAIN_OBJDIR=.
+
+VPATH=$(TOPDIR)/Util/TS/tscontour:$(TOPDIR)/Src
+TOPSRC=$(TOPDIR)/Src
+
+override WITH_MPI=
+override WITH_NCDF=
+override WITH_NCDF_PARALLEL=
+override WITH_FLOOK=
+
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 # Set the default non-mpi routines
 FC_DEFAULT := $(FC)
@@ -23,7 +32,7 @@ FC_SERIAL ?= $(FC_DEFAULT)
 
 dep:
 	-sfmakedepend --depend=obj --modext=o \
-          $(VPATH)/*.f $(VPATH)/*.f90 $(VPATH)/*.F $(VPATH)/*.F90 $(VPATH)/*.T90 *.f90
+          $(TOPSRC)/*.f $(TOPSRC)/*.f90 $(TOPSRC)/*.F $(TOPSRC)/*.F90 $(TOPSRC)/*.T90 *.f90
 	@sed -i -e "/^siesta_cmlsubs.o:/s/version.o//" Makefile
 	@sed -i -e 's/\.T90\.o:/.o:/g' Makefile
 
@@ -31,17 +40,15 @@ dep:
 # which case we need the mpi-compiler :(
 # However, we still compile everything else as though it did not exist
 #FC:=$(FC_SERIAL)         # Make it non-recursive
+#
+# AG: With the above override of MPI, FC_SERIAL would be used. If the NetCDF libraries
+# are parallel, the appropriate extra libraries should be added, perhaps in NETCDF_LIBS
 
-DEFS:=$(DEFS_PREFIX) $(DEFS) $(DEFS_PREFIX)-UMPI
-DEFS += $(DEFS_PREFIX)-UNCDF $(DEFS_PREFIX)-UNCDF_4 $(DEFS_PREFIX)-UNCDF_PARALLEL
-DEFS += $(DEFS_PREFIX)-USIESTA__MUMPS
-FPPFLAGS:=$(DEFS_PREFIX) $(FPPFLAGS) $(DEFS_PREFIX)-UMPI
-FPPFLAGS += $(DEFS_PREFIX)-UNCDF $(DEFS_PREFIX)-UNCDF_4 $(DEFS_PREFIX)-UNCDF_PARALLEL
+#FPPFLAGS:=$(DEFS_PREFIX) $(FPPFLAGS) $(DEFS_PREFIX)-UMPI
+#FPPFLAGS += $(DEFS_PREFIX)-UNCDF $(DEFS_PREFIX)-UNCDF_4 $(DEFS_PREFIX)-UNCDF_PARALLEL
 FPPFLAGS += $(DEFS_PREFIX)-USIESTA__MUMPS
 
-NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
-PSOP_INCFLAGS=-I$(MAIN_OBJDIR)/psoplib/src
-INCFLAGS:=$(NETCDF_INCFLAGS) \
+INCFLAGS:=$(NETCDF_INCFLAGS) $(FDF_INCFLAGS) \
           $(NCPS_INCFLAGS) $(PSOP_INCFLAGS) $(PSML_INCFLAGS) \
           $(INCFLAGS)
 
@@ -61,10 +68,27 @@ OBJS = precision.o parallel.o \
         basis_types.o interpolation.o \
         spher_harm.o arw.o xml.o atom_options.o \
         chemical.o m_filter.o hamann.o chkdim.o \
-        periodic_table.o
+        bessph.o radfft.o m_fft_gpfa.o periodic_table.o
 
 OBJS += fdf_extra.o m_cite.o kpoint_convert.o
 OBJS += sorting.o m_mesh_node.o densematrix.o
+
+OBJS += m_spin.o
+OBJS +=	m_vee_integrals.o m_occ_proj_dftu.o m_dftu_so.o m_pot_dftu.o
+OBJS += sparse_matrices.o parallelsubs.o
+
+# Add specific class objects
+# class Objects
+OBJS += class_Fstack_Pair_Geometry_SpData2D.o \
+        class_Pair_Geometry_SpData2D.o \
+        class_Geometry.o
+
+OBJS += domain_decom.o spatial.o schecomm.o qsort.o mmio.o
+
+OBJS += new_matel.o matel_registry.o propor.o errorf.o
+OBJS += m_trialorbitalclass.o
+###OBJS += timer.o m_timer.o timer_tree.o
+OBJS += mneighb.o volcel.o debugmpi.o
 
 # Add class objects
 OBJS += m_uuid.o object_debug.o \
@@ -100,93 +124,29 @@ OBJS += m_integrate.o m_interpolate.o
 # Add sys object
 OBJS += $(SYSOBJ)
 
-OBJS += tscontour.o handlers.o
+OBJS += handlers.o
 
 XC = $(GRIDXC_LIBS)
 INCFLAGS:= $(INCFLAGS) $(GRIDXC_INCFLAGS)
 
-#
-NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
-PSOP=$(MAIN_OBJDIR)/psoplib/src/libpsop.a
-
-#######################
-#  TS-TBT libs:
-#
-# Libraries used by transiesta and tbtrans
-# They are currently supplied by this distribution
-# All rights reserved for the author of these libraries.
-# Author: Nick Papior
-
-# This library can be found at:
-#  https://github.com/zerothi/fdict
-FDICT=libfdict.a
-FDICT_MAKEFILE=$(VPATH)/fdict/Makefile
-$(FDICT): 
-	-mkdir -p fdict
-	(cd fdict ; \
-	echo "TOP_DIR=$(VPATH)/fdict" > Makefile ; echo "include $(VPATH)/fdict/Makefile" >> Makefile ; \
-	echo "FC=$(FC_SERIAL)" > setup.make ; \
-	echo "AR=$(AR)" >> setup.make ; \
-	echo "RANLIB=$(RANLIB)" >> setup.make ; \
-	echo "FFLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "LINK_FLAGS=$(FFLAGS)" >> setup.make ; \
-	$(MAKE) -j 1 copy ; $(MAKE) -j 1 lib SHARED=0)
-	@cp -p fdict/*.mod ./
-	cp fdict/$(FDICT) ./
-
-# This library can be found at:
-#  https://github.com/zerothi/ncdf
-NCDF=libncdf.a
-NCDF_MAKEFILE=$(VPATH)/NCDF/src/Makefile
-$(NCDF): COMP_LIBS += $(FDICT)
-$(NCDF): $(FDICT)
-	-mkdir -p ncdf
-	(cd ncdf ; \
-	echo "TOP_DIR=$(VPATH)/ncdf" > Makefile ; echo "include $(VPATH)/ncdf/Makefile" >> Makefile ; \
-	echo "settings.bash: FORCE" >> Makefile ; \
-	printf '%s\n' "	-cp ../fdict/settings.bash ." >> Makefile ; \
-	echo "FC=$(FC)" > setup.make ; \
-	echo "AR=$(AR)" >> setup.make ; \
-	echo "RANLIB=$(RANLIB)" >> setup.make ; \
-	echo "FFLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "LINK_FLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "FPPFLAGS = $(FPPFLAGS)" >> setup.make ; \
-	echo "INCLUDES = $(INCFLAGS) -I../" >> setup.make ; \
-	echo "LIBS = $(LIBS) -lfdict" >> setup.make ; \
-	$(MAKE) -j 1 copy ; $(MAKE) -j 1 lib SHARED=0)
-	@cp -p ncdf/*.mod ./
-	cp ncdf/$(NCDF) ./
-
-#######################
-
-# Use the makefile in Src/fdf and all the sources there.
-FDF=libfdf.a
-FDF_MAKEFILE=$(VPATH)/fdf/makefile
-FDF_INCFLAGS:=-I$(VPATH)/fdf $(INCFLAGS)
-$(FDF): 
-	(mkdir -p fdf ; cd fdf ; $(MAKE) -f $(FDF_MAKEFILE) "FC=$(FC)" "VPATH=$(VPATH)/fdf" \
-                          "ARCH_MAKE=$(ARCH_MAKE)" \
-                          "DEFS=$(DEFS)" "FPPFLAGS=$(FPPFLAGS)" \
-                          "MPI_INTERFACE= " \
-                          "INCFLAGS=$(FDF_INCFLAGS)" "FFLAGS=$(FFLAGS)" module)
-
 tscontour.o: $(OBJS)
+ALL_OBJS = $(OBJS) tscontour.o
 
-$(OBJS): $(FDF) $(COMP_LIBS)
+$(OBJS): $(FDF_LIBS) $(COMP_LIBS)
 .PHONY: tscontour
-tscontour: $(FDF) $(COMP_LIBS) $(NCPS) $(PSOP) $(OBJS) 
+tscontour: $(FDF_LIBS) $(COMP_LIBS) $(NCPS) $(PSOP) $(ALL_OBJS)
 	$(FC) $(FFLAGS) $(LDFLAGS) -o tscontour \
-	$(OBJS) $(COMP_LIBS) $(FDF) \
+	$(ALL_OBJS)  $(COMP_LIBS) $(FDF_LIBS) \
         $(NCPS) $(PSOP) $(XC) $(PSML_LIBS) $(XMLF90_LIBS) \
         $(LIBS) 
 
 clean:
 	@echo "==> Cleaning object, library, and executable files"
 	rm -f tscontour *.o *.a *.mod
-	-rm -rf ./fdf
-	-rm -rf ./fdict
-	-rm -rf ./ncdf
 
+PROGS:= tscontour
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 # DO NOT DELETE THIS LINE - used by make depend
 alloc_error_report.o: parallel.o
@@ -224,8 +184,8 @@ bloch_unfold.o: units.o
 bonds.o: alloc.o atmfuncs.o mneighb.o precision.o sorting.o units.o
 born_charge.o: atomlist.o ksv.o ksvinit.o m_mpi_utils.o m_spin.o parallel.o
 born_charge.o: precision.o siesta_geom.o siesta_options.o sparse_matrices.o
-broadcast_basis.o: atm_types.o chemical.o dftu_specs.o m_mpi_utils.o parallel.o
-broadcast_basis.o: radial.o
+broadcast_basis.o: atm_types.o chemical.o dftu_specs.o m_mpi_utils.o m_spin.o
+broadcast_basis.o: parallel.o radial.o
 broadcast_projections.o: m_trialorbitalclass.o parallel.o siesta2wannier90.o
 broyden_optim.o: local_sys.o m_broyddj_nocomm.o memory_log.o parallel.o
 broyden_optim.o: precision.o siesta_options.o units.o
@@ -317,7 +277,8 @@ dftu.o: m_mpi_utils.o mneighb.o new_matel.o parallel.o parallelsubs.o
 dftu.o: precision.o radial.o
 dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
 dftu_specs.o: basis_specs.o basis_types.o interpolation.o local_sys.o m_cite.o
-dftu_specs.o: parallel.o precision.o radial.o units.o
+dftu_specs.o: m_spin.o m_vee_integrals.o parallel.o precision.o radial.o
+dftu_specs.o: units.o
 dhscf.o: alloc.o atmfuncs.o delk.o dfscf.o dipole.o doping_uniform.o files.o
 dhscf.o: forhar.o iogrid_netcdf.o local_sys.o m_char.o m_charge_add.o
 dhscf.o: m_efield.o m_energies.o m_hartree_add.o m_iorho.o m_iotddft.o
@@ -384,7 +345,7 @@ fft1d.o: local_sys.o parallel.o precision.o
 final_H_f_stress.o: alloc.o atomlist.o class_SpData1D.o class_SpData2D.o
 final_H_f_stress.o: class_SpData2D.o compute_max_diff.o dftu.o dftu_specs.o
 final_H_f_stress.o: dnaefs.o files.o grdsam.o io_hsx.o kinefsm.o local_sys.o
-final_H_f_stress.o: m_dipol.o m_energies.o m_forces.o m_mpi_utils.o
+final_H_f_stress.o: m_dftu_so.o m_dipol.o m_energies.o m_forces.o m_mpi_utils.o
 final_H_f_stress.o: m_ncdf_siesta.o m_ntm.o m_spin.o m_stress.o m_ts_io.o
 final_H_f_stress.o: m_ts_options.o metaforce.o molecularmechanics.o naefs.o
 final_H_f_stress.o: nlefsm.o overfsm.o parallel.o siesta_geom.o
@@ -476,6 +437,7 @@ m_charge_add.o: intrinsic_missing.o m_cite.o m_geom_objects.o m_mesh_node.o
 m_charge_add.o: parallel.o precision.o units.o
 m_check_walltime.o: m_walltime.o
 m_chess.o: parallel.o parallelsubs.o precision.o
+m_dftu_so.o: m_occ_proj_dftu.o m_pot_dftu.o precision.o sparse_matrices.o
 m_digest_nnkp.o: alloc.o atomlist.o files.o local_sys.o m_mpi_utils.o
 m_digest_nnkp.o: m_noccbands.o m_spin.o m_trialorbitalclass.o parallel.o
 m_digest_nnkp.o: precision.o siesta_geom.o siesta_options.o sparse_matrices.o
@@ -556,6 +518,10 @@ m_new_dm.o: restructSpData2D.o siesta_geom.o siesta_options.o sparse_matrices.o
 m_new_dm.o: units.o
 m_noccbands.o: alloc.o atmfuncs.o local_sys.o m_spin.o parallel.o precision.o
 m_noccbands.o: siesta_geom.o
+m_occ_proj_dftu.o: alloc.o atm_types.o atmfuncs.o atomlist.o local_sys.o
+m_occ_proj_dftu.o: m_mpi_utils.o m_spin.o mneighb.o new_matel.o parallel.o
+m_occ_proj_dftu.o: parallelsubs.o precision.o radial.o siesta_geom.o
+m_occ_proj_dftu.o: sparse_matrices.o
 m_options.o: precision.o
 m_orderbands.o: alloc.o local_sys.o parallel.o parallelsubs.o
 m_orderbands.o: siesta2wannier90.o
@@ -579,6 +545,10 @@ m_pivot_methods.o: class_Sparsity.o m_region.o precision.o
 m_planewavematrix.o: atomlist.o dhscf.o m_planewavematrixvar.o precision.o
 m_planewavematrix.o: siesta_geom.o sparse_matrices.o
 m_planewavematrixvar.o: precision.o
+m_pot_dftu.o: alloc.o atm_types.o atmfuncs.o atomlist.o local_sys.o
+m_pot_dftu.o: m_energies.o m_mpi_utils.o m_occ_proj_dftu.o m_spin.o mneighb.o
+m_pot_dftu.o: new_matel.o parallel.o parallelsubs.o precision.o radial.o
+m_pot_dftu.o: siesta_geom.o sparse_matrices.o
 m_pulay.o: alloc.o atomlist.o local_sys.o m_mpi_utils.o m_spin.o m_svd.o
 m_pulay.o: parallel.o precision.o siesta_options.o sparse_matrices.o
 m_redist_spmatrix.o: alloc.o class_Distribution.o
@@ -749,6 +719,7 @@ m_ts_voltage.o: units.o
 m_ts_weight.o: class_OrbitalDistribution.o class_SpData2D.o class_Sparsity.o
 m_ts_weight.o: geom_helper.o intrinsic_missing.o m_ts_chem_pot.o
 m_ts_weight.o: m_ts_contour_neq.o parallel.o precision.o ts_electrode.o units.o
+m_vee_integrals.o: local_sys.o precision.o
 m_wallclock.o: m_walltime.o
 m_writedelk.o: atm_types.o atmfuncs.o atomlist.o files.o local_sys.o parallel.o
 m_writedelk.o: parallelsubs.o precision.o siesta_geom.o
@@ -891,7 +862,7 @@ setup_H0.o: naefs.o nlefsm.o siesta_geom.o siesta_options.o sparse_matrices.o
 setup_H0.o: spinorbit.o
 setup_hamiltonian.o: alloc.o atmfuncs.o atomlist.o class_SpData1D.o
 setup_hamiltonian.o: class_SpData2D.o class_SpData2D.o dftu.o dftu_specs.o
-setup_hamiltonian.o: dhscf.o files.o io_hsx.o local_sys.o m_dipol.o
+setup_hamiltonian.o: dhscf.o files.o io_hsx.o local_sys.o m_dftu_so.o m_dipol.o
 setup_hamiltonian.o: m_energies.o m_mpi_utils.o m_ntm.o m_partial_charges.o
 setup_hamiltonian.o: m_rhog.o m_spin.o m_steps.o m_stress.o metaforce.o
 setup_hamiltonian.o: molecularmechanics.o parallel.o siesta_geom.o
@@ -1186,6 +1157,7 @@ m_nlefsm.o: nlefsm.o
 m_norm.o: compute_norm.o
 m_normalize_dm.o: normalize_dm.o
 m_object_debug.o: object_debug.o
+m_occ_proj.o: m_occ_proj_dftu.o
 m_on_subs.o: on_subs.o
 m_ordern.o: ordern.o
 m_overfsm.o: overfsm.o

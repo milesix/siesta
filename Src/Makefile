@@ -13,8 +13,11 @@
 # Remove implicit rules
 .SUFFIXES:
 
-VPATH=.
+TOPDIR=.
 MAIN_OBJDIR=.
+
+TOPSRC=$(TOPDIR)/Src
+VPATH=$(TOPSRC)
 
 # Default compiler variables
 AR ?= ar
@@ -24,16 +27,7 @@ default: siesta
 
 ARCH_MAKE?=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
-
-ifndef BUILD_MK_H__
-  ifndef IGNORE_BUILD_MK
-    $(info ** It is recommended to include build.mk in your arch.make (see top of build.mk))
-    $(info ** to take advantage of the building rules coded in it.)
-    $(info **   You can still go ahead using a legacy arch.make,)
-    $(info **   as long as you define the proper symbols.)
-    $(info **   Use 'make IGNORE_BUILD_MK=1' to bypass this check.)
-  endif
-endif
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 #
 # Ensure the correct implicit rules for the compilation
@@ -44,30 +38,29 @@ endif
 .SUFFIXES: .f .f90 .F .F90 .c .o .a
 
 
-lib: libfdf.a libSiestaForces.a
+lib: libSiestaForces.a
 
 dist:
 	make -f makefile.lit dist
 dep:
-	-if [ $(VPATH) = "." ] ; then \
+	-if [ $(TOPDIR) = "." ] ; then \
 	sfmakedepend --depend=obj --modext=o \
                               *.f *.f90 *.F *.F90 *.T90 ; \
         else \
 	sfmakedepend --depend=obj --modext=o \
-          $(VPATH)/*.f $(VPATH)/*.f90 $(VPATH)/*.F $(VPATH)/*.F90 ; \
+          $(TOPSRC)/*.f $(TOPSRC)/*.f90 $(TOPSRC)/*.F $(TOPSRC)/*.F90 ; \
         fi
-	#@sed -i -e "/^siesta_cmlsubs.o:/s/version.o//" Makefile
 	@sed -i -e 's/\.T90\.o:/.o:/g' Makefile
 
 
 #
 XC=$(GRIDXC_LIBS)
 
-NCPS_INCFLAGS=-I $(MAIN_OBJDIR)/ncps/src
-PSOP_INCFLAGS=-I $(MAIN_OBJDIR)/psoplib/src
-INCFLAGS:= $(NETCDF_INCFLAGS)  $(PSML_INCFLAGS) $(NCPS_INCFLAGS) \
+INCFLAGS+= $(NETCDF_INCFLAGS)  $(PSML_INCFLAGS) $(NCPS_INCFLAGS) \
            $(PSOP_INCFLAGS) $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS) \
-           $(PEXSI_INCFLAGS) $(INCFLAGS)
+           $(PEXSI_INCFLAGS) $(FDF_INCFLAGS) $(MS_INCFLAGS)
+INCFLAGS+= $(MPI_WRAPPERS_INCFLAGS)
+INCFLAGS+= $(FDICT_INCFLAGS) $(NCDF_INCFLAGS)
 #
 # For removing any -ipo compilation in sub directories...
 # Later compilers are also having this enabled, and it lets you
@@ -81,7 +74,7 @@ IPO_FLAG?= -ipo
 
 what:
 	@echo
-	@if [ "$(VPATH)" = . ]; then \
+	@if [ "$(TOPDIR)" = . ]; then \
               echo "** You can no longer build SIESTA in Src." ;\
               echo "** Go to the Obj directory and see the README file." ;\
               false ;\
@@ -134,6 +127,7 @@ OBJS =  automatic_cell.o atom_options.o \
 	siesta_tddft.o \
         io.o sparse_matrices.o \
         coor.o \
+        cellsubs.o \
         broadcast_basis.o eggbox.o \
         optical.o phirphi_opt.o reoptical.o transition_rate.o \
         initparallel.o show_distribution.o setspatial.o setatomnodes.o uncell.o \
@@ -193,11 +187,14 @@ OBJS =  automatic_cell.o atom_options.o \
 	m_initwf.o wavefunctions.o \
 	m_evolve.o cranknic_evolk.o cranknic_evolg.o sankey_change_basis.o m_iotddft.o \
 	m_matdiag.o m_matswinvers.o iotdxv.o  m_inversemm.o runinfo_m.o cli_m.o \
-        hamann.o
+        hamann.o \
+	m_vee_integrals.o m_occ_proj_dftu.o m_dftu_so.o m_pot_dftu.o
 
 OBJS += kpoint_t.o kpoint_scf.o kpoint_dos.o kpoint_pdos.o kpoint_ldos.o
 
+OBJS += broadcast_fdf_struct.o
 OBJS += init_output.o byte_count.o
+
 
 # Diagonalization algorithm
 OBJS += diag_option.o diag.o
@@ -291,137 +288,19 @@ m_pexsi.o m_pexsi_driver.o m_pexsi_dos.o m_pexsi_local_dos.o: f_ppexsi_interface
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 #
-# These subordinate make processes take options from the top level.
-# In some cases they are superfluous, since they can be read
-# from the arch.make file, which is 'included' by all subordinate
-# makefiles. But in some other cases they are needed: VPATH, for
-# example, needs to be passed always.
-#
-NCPS=ncps/src/libncps.a
-$(NCPS): $(PSML)
-	(cd ncps/src ; $(MAKE) -j 1 VPATH="$(VPATH)/ncps/src" \
-	ARCH_MAKE=$(ARCH_MAKE) \
-	"PSML_INCFLAGS=$(PSML_INCFLAGS)" \
-	FFFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 #--------------------------------------------------------------
-PSOP=psoplib/src/libpsop.a
-$(PSOP): 
-	(cd psoplib/src ; $(MAKE) -j 1 VPATH="$(VPATH)/psoplib/src" \
-	ARCH_MAKE=$(ARCH_MAKE) \
-	FFFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 
-#--------------------------------------------------------------
-libmpi_f90.a: 
-	@(cd MPI ; $(MAKE) -j 1 \
-                    "VPATH=$(VPATH)/MPI" \
-	             MAIN_OBJDIR=$(MAIN_OBJDIR) \
-		    "FPPFLAGS=$(FPPFLAGS)" \
-                    "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" )
-
-#--------------------------------------------------------------
-FDF=libfdf.a
-$(FDF): $(MPI_INTERFACE)
-	(cd fdf ; $(MAKE) -j 1 "VPATH=$(VPATH)/fdf" \
-	MAIN_OBJDIR=$(MAIN_OBJDIR) \
-		    "FPPFLAGS=$(FPPFLAGS)" \
-		    "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module )
-
-#--------------------------------------------------------------
 
 #######################
 #  TS-TBT libs:
 #
 # Libraries used by transiesta and tbtrans
-# They are currently supplied by this distribution
-# All rights reserved for the author of these libraries.
-# Author: Nick R. Papior
-
-# This library can be found at:
-#  https://github.com/zerothi/fdict
-FDICT=libfdict.a
-$(FDICT): 
-	(cd fdict ; rm -rf obj ; mkdir obj ; cd obj ; \
-	echo "TOP_DIR=$(VPATH)/fdict" > Makefile ; echo "include $(VPATH)/fdict/Makefile" >> Makefile ; \
-	echo "FC=$(FC_SERIAL)" > setup.make ; \
-	echo "AR=$(AR)" >> setup.make ; \
-	echo "RANLIB=$(RANLIB)" >> setup.make ; \
-	echo "FFLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "LINK_FLAGS=$(FFLAGS)" >> setup.make ; \
-	$(MAKE) -j 1 copy ; $(MAKE) -j 1 lib SHARED=0)
-	@cp -p fdict/obj/*.mod ./
-	cp fdict/obj/$(FDICT) ./
-
-# This library can be found at:
-#  https://github.com/zerothi/ncdf
-NCDF=libncdf.a
-$(NCDF): $(FDICT)
-	(cd ncdf ; rm -rf obj ; mkdir obj ; cd obj ; \
-	echo "TOP_DIR=$(VPATH)/ncdf" > Makefile ; echo "include $(VPATH)/ncdf/Makefile" >> Makefile ; \
-	echo "settings.bash: FORCE" >> Makefile ; \
-	printf '%s\n' "	-cp ../../fdict/obj/settings.bash ." >> Makefile ; \
-	echo "FC=$(FC)" > setup.make ; \
-	echo "AR=$(AR)" >> setup.make ; \
-	echo "RANLIB=$(RANLIB)" >> setup.make ; \
-	echo "FFLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "LINK_FLAGS=$(FFLAGS)" >> setup.make ; \
-	echo "FPPFLAGS = $(FPPFLAGS)" >> setup.make ; \
-	echo "INCLUDES = $(INCFLAGS) -I../../" >> setup.make ; \
-	echo "LIBS = $(LIBS) -lfdict" >> setup.make ; \
-	$(MAKE) -j 1 copy ; $(MAKE) -j 1 lib SHARED=0)
-	@cp -p ncdf/obj/*.mod ./
-	cp ncdf/obj/$(NCDF) ./
-
+#
+# FDICT, NCDF
+#
+# Currently added to COMP_LIBS by build.mk
+# Alternatively, they could be added explicitly
 #######################
-cranknic_evolk.o: $(FDF)
-cranknic_evolg.o: $(FDF)
-sankey_change_basis.o iotdxv.o: $(FDF)
-
-#
-# Linear algebra routines
-#
-libsiestaBLAS.a: Libs/blas.F
-	@echo "==> Compiling libsiestaBLAS.a in Libs..."
-	@(cd Libs ; $(MAKE) -j 1 "VPATH=$(VPATH)/Libs" "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" libsiestaBLAS.a)
-	@cp Libs/libsiestaBLAS.a .
-
-ifneq (,$(findstring libsiestaLAPACK.a,$(COMP_LIBS)))
- # Automatically add the DIAG_2STAGE solvers.
- ifeq (,$(findstring SIESTA__DIAG_2STAGE,$(FPPFLAGS)))
-   FPPFLAGS += -DSIESTA__DIAG_2STAGE
- endif
- ifeq (,$(findstring MPI,$(FPPFLAGS)))
-   ifeq (,$(findstring SIESTA__MRRR,$(FPPFLAGS)))
-     FPPFLAGS += -DSIESTA__MRRR
-   endif
- endif
-endif
-libsiestaLAPACK.a: Libs/lapack.F
-	@echo "==> Compiling libsiestaLAPACK.a in Libs..."
-	@(cd Libs ; $(MAKE) -j 1 "VPATH=$(VPATH)/Libs" "FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" libsiestaLAPACK.a)
-	@cp Libs/libsiestaLAPACK.a .
-
-libblas.a:
-	@echo ""
-	@echo "SIESTA: $@ has been deprecated in favor of:"
-	@echo "  COMP_LIBS += libsiestaBLAS.a"
-	@echo "Please update your arch.make file accordingly..."
-	@echo ""
-	@false
-liblapack.a dc_lapack.a zgesv_lapack.a essl_lapack.a:
-	@echo ""
-	@echo "SIESTA: $@ has been deprecated in favor of:"
-	@echo "  COMP_LIBS += libsiestaLAPACK.a"
-	@echo "Please update your arch.make file accordingly..."
-	@echo ""
-	@false
-linalg.a:
-	@echo ""
-	@echo "SIESTA: $@ has been deprecated in favor of:"
-	@echo "  COMP_LIBS += libsiestaLAPACK.a libsiestaBLAS.a"
-	@echo "Please update your arch.make file accordingly..."
-	@echo ""
-	@false
-
 
 # Extract information of the compiler version used.
 # This is very basic but for intel, gcc, pgi and open64
@@ -434,7 +313,7 @@ ifeq ($(COMPILER_VERSION),)
 endif
 
 .PHONY: version version.o FORCE
-SIESTA_VERSION_FILE:=$(VPATH)/../SIESTA.version
+SIESTA_VERSION_FILE:=$(TOPDIR)/SIESTA.version
 version.o: version
 version: version.F90 posix_calls.o $(SIESTA_VERSION_FILE)
 	@echo
@@ -453,7 +332,7 @@ version: version.F90 posix_calls.o $(SIESTA_VERSION_FILE)
 	@mv compinfo.o version.o
 	@echo
 $(SIESTA_VERSION_FILE): FORCE
-	@(cd $(VPATH)/../ && ./SIESTA_vgen.sh)
+	@(cd $(TOPDIR) && ./SIESTA_vgen.sh)
 
 
 #----------------------------------------------------------------------------
@@ -499,28 +378,24 @@ OBJS += $(TS_OBJS)
 # Create all objects
 ALL_OBJS=$(OBJS) $(SYSOBJ) $(MAIN_OBJ)
 
-# All objects require the FDF library (in theory)
-# In practice they do not but it greatly simplifies the logic
-# here.
-# This will setup the correct compilation sequence as
-# FDF => MPI
-$(ALL_OBJS): $(FDF) $(COMP_LIBS)
+$(ALL_OBJS): $(COMP_LIBS)
 
-libSiestaForces.a: $(OBJS) $(SYSOBJ)
+libSiestaForces.a: $(MPI_INTERFACE) $(FDF_LIBS) $(MS) $(NCPS) $(PSOP) \
+                   $(COMP_LIBS) $(OBJS) $(SYSOBJ)
 	$(AR) $(ARFLAGS_EXTRA) cru libSiestaForces.a $(OBJS) $(SYSOBJ)
 	@if [ ! -z "$(MPI_INTERFACE)" ] ; then \
             $(AR) $(ARFLAGS_EXTRA) cru libSiestaForces.a MPI/*.o ; fi
 	-$(RANLIB) libSiestaForces.a
 #
 siesta: what version \
-                $(MPI_INTERFACE) $(FDF) $(MS) $(NCPS) $(PSOP) \
+                $(MPI_INTERFACE) $(FDF_LIBS) $(MS) $(NCPS) $(PSOP) \
                 $(COMP_LIBS) $(ALL_OBJS) 
 	$(FC) -o siesta \
-	       $(LDFLAGS) $(ALL_OBJS) $(FDF) $(MS)  \
+	       $(LDFLAGS) $(ALL_OBJS) $(MS)  \
                $(XC) $(MPI_INTERFACE) \
-               $(COMP_LIBS) $(LIBS) \
+               $(COMP_LIBS) \
 	       $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) \
-	       $(LIBS)
+	       $(FDF_LIBS) $(LIBS)
 	@echo "--- reference section "
 	@echo "PSML-related libs: $(PSML_LIBS)"
 	@echo "XMLf90 libs: $(XMLF90_LIBS)"
@@ -542,13 +417,20 @@ clean:
 	rm -f compinfo.F90 tmp.F90
 	rm -f *.bck *~
 	rm -f aux_*.f aux_*.f90
-	(cd fdf ; $(MAKE) clean)
+	@echo "==> Cleaning internal libraries"
+	(cd fdf ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean)
 	(cd ncps/src ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean)
 	(cd psoplib/src ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean)
-	@if [ -d MPI ] ; then (cd MPI && $(MAKE) clean ) ; fi
-	@if [ -d fdict/obj ] ; then $(MAKE) -C fdict/obj clean ; fi
-	@if [ -d ncdf/obj ] ; then $(MAKE) -C ncdf/obj clean ; fi
-	(cd Libs ; $(MAKE) clean )
+	(cd easy-fdict ; $(MAKE) clean)
+	(cd easy-ncdf ; $(MAKE) clean)
+	if [ -d MPI ] ; then (cd MPI && $(MAKE) \
+                              ARCH_MAKE=$(ARCH_MAKE) clean ) ; fi
+	(cd Libs ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean ) 
+
+PROGS:= siesta libSiestaForces.a
+install: $(PROGS)
+	cp -p siesta $(SIESTA_INSTALL_DIRECTORY)/bin
+	cp -p libSiestaForces.a $(SIESTA_INSTALL_DIRECTORY)/lib
 
 # DO NOT DELETE THIS LINE - used by make depend
 Fstack.o: basic_type.inc
@@ -587,8 +469,8 @@ bloch_unfold.o: units.o
 bonds.o: alloc.o atmfuncs.o mneighb.o precision.o sorting.o units.o
 born_charge.o: atomlist.o ksv.o ksvinit.o m_mpi_utils.o m_spin.o parallel.o
 born_charge.o: precision.o siesta_geom.o siesta_options.o sparse_matrices.o
-broadcast_basis.o: atm_types.o chemical.o dftu_specs.o m_mpi_utils.o parallel.o
-broadcast_basis.o: radial.o
+broadcast_basis.o: atm_types.o chemical.o dftu_specs.o m_mpi_utils.o m_spin.o
+broadcast_basis.o: parallel.o radial.o
 broadcast_projections.o: m_trialorbitalclass.o parallel.o siesta2wannier90.o
 broyden_optim.o: m_broyddj_nocomm.o memory_log.o parallel.o precision.o
 broyden_optim.o: siesta_options.o sys.o units.o
@@ -709,8 +591,8 @@ dftu.o: alloc.o atm_types.o atmfuncs.o compute_max_diff.o dftu_specs.o
 dftu.o: m_mpi_utils.o mneighb.o new_matel.o parallel.o parallelsubs.o
 dftu.o: precision.o radial.o
 dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
-dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o parallel.o
-dftu_specs.o: precision.o radial.o sys.o units.o
+dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o m_spin.o
+dftu_specs.o: m_vee_integrals.o parallel.o precision.o radial.o sys.o units.o
 dhscf.o: alloc.o atmfuncs.o delk.o dfscf.o dipole.o doping_uniform.o files.o
 dhscf.o: forhar.o iogrid_netcdf.o m_char.o m_charge_add.o m_efield.o
 dhscf.o: m_energies.o m_hartree_add.o m_iorho.o m_iotddft.o m_mesh_node.o
@@ -774,12 +656,13 @@ fft.o: precision.o sys.o
 fft1d.o: parallel.o precision.o sys.o
 final_H_f_stress.o: alloc.o atomlist.o class_SpData1D.o class_SpData2D.o
 final_H_f_stress.o: class_SpData2D.o compute_max_diff.o dftu.o dftu_specs.o
-final_H_f_stress.o: dnaefs.o files.o grdsam.o io_hsx.o kinefsm.o m_dipol.o
-final_H_f_stress.o: m_energies.o m_forces.o m_mpi_utils.o m_ncdf_siesta.o
-final_H_f_stress.o: m_ntm.o m_spin.o m_stress.o m_ts_io.o m_ts_options.o
-final_H_f_stress.o: metaforce.o molecularmechanics.o naefs.o nlefsm.o overfsm.o
-final_H_f_stress.o: parallel.o siesta_geom.o siesta_options.o sparse_matrices.o
-final_H_f_stress.o: spinorbit.o sys.o ts_kpoint_scf.o units.o
+final_H_f_stress.o: dnaefs.o files.o grdsam.o io_hsx.o kinefsm.o m_dftu_so.o
+final_H_f_stress.o: m_dipol.o m_energies.o m_forces.o m_mpi_utils.o
+final_H_f_stress.o: m_ncdf_siesta.o m_ntm.o m_spin.o m_stress.o m_ts_io.o
+final_H_f_stress.o: m_ts_options.o metaforce.o molecularmechanics.o naefs.o
+final_H_f_stress.o: nlefsm.o overfsm.o parallel.o siesta_geom.o
+final_H_f_stress.o: siesta_options.o sparse_matrices.o spinorbit.o sys.o
+final_H_f_stress.o: ts_kpoint_scf.o units.o
 find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
 fire_optim.o: alloc.o m_fire.o m_mpi_utils.o parallel.o precision.o
 fire_optim.o: siesta_options.o units.o
@@ -861,6 +744,7 @@ m_charge_add.o: intrinsic_missing.o m_cite.o m_geom_objects.o m_mesh_node.o
 m_charge_add.o: parallel.o precision.o units.o
 m_check_walltime.o: m_walltime.o
 m_chess.o: parallel.o parallelsubs.o precision.o
+m_dftu_so.o: m_occ_proj_dftu.o m_pot_dftu.o precision.o sparse_matrices.o
 m_digest_nnkp.o: alloc.o atomlist.o files.o m_mpi_utils.o m_noccbands.o
 m_digest_nnkp.o: m_spin.o m_trialorbitalclass.o parallel.o precision.o
 m_digest_nnkp.o: siesta_geom.o siesta_options.o sparse_matrices.o sys.o units.o
@@ -944,6 +828,9 @@ m_new_dm.o: restructSpData2D.o siesta_geom.o siesta_options.o sparse_matrices.o
 m_new_dm.o: sys.o units.o
 m_noccbands.o: alloc.o atmfuncs.o m_spin.o parallel.o precision.o siesta_geom.o
 m_noccbands.o: sys.o
+m_occ_proj_dftu.o: alloc.o atm_types.o atmfuncs.o atomlist.o m_mpi_utils.o
+m_occ_proj_dftu.o: m_spin.o mneighb.o new_matel.o parallel.o parallelsubs.o
+m_occ_proj_dftu.o: precision.o radial.o siesta_geom.o sparse_matrices.o sys.o
 m_options.o: precision.o
 m_orderbands.o: alloc.o parallel.o parallelsubs.o siesta2wannier90.o sys.o
 m_overkkneig.o: alloc.o atomlist.o m_orderbands.o parallel.o parallelsubs.o
@@ -967,6 +854,10 @@ m_pivot_methods.o: class_Sparsity.o m_region.o precision.o
 m_planewavematrix.o: atomlist.o dhscf.o m_planewavematrixvar.o precision.o
 m_planewavematrix.o: siesta_geom.o sparse_matrices.o
 m_planewavematrixvar.o: precision.o
+m_pot_dftu.o: alloc.o atm_types.o atmfuncs.o atomlist.o m_energies.o
+m_pot_dftu.o: m_mpi_utils.o m_occ_proj_dftu.o m_spin.o mneighb.o new_matel.o
+m_pot_dftu.o: parallel.o parallelsubs.o precision.o radial.o siesta_geom.o
+m_pot_dftu.o: sparse_matrices.o sys.o
 m_pulay.o: alloc.o atomlist.o m_mpi_utils.o m_spin.o m_svd.o parallel.o
 m_pulay.o: precision.o siesta_options.o sparse_matrices.o sys.o
 m_redist_spmatrix.o: alloc.o class_Distribution.o
@@ -1134,6 +1025,7 @@ m_ts_voltage.o: units.o
 m_ts_weight.o: class_OrbitalDistribution.o class_SpData2D.o class_Sparsity.o
 m_ts_weight.o: geom_helper.o intrinsic_missing.o m_ts_chem_pot.o
 m_ts_weight.o: m_ts_contour_neq.o parallel.o precision.o ts_electrode.o units.o
+m_vee_integrals.o: precision.o sys.o
 m_wallclock.o: m_walltime.o
 m_writedelk.o: atm_types.o atmfuncs.o atomlist.o files.o parallel.o
 m_writedelk.o: parallelsubs.o precision.o siesta_geom.o sys.o
@@ -1274,9 +1166,9 @@ setup_H0.o: naefs.o nlefsm.o siesta_geom.o siesta_options.o sparse_matrices.o
 setup_H0.o: spinorbit.o
 setup_hamiltonian.o: alloc.o atmfuncs.o atomlist.o class_SpData1D.o
 setup_hamiltonian.o: class_SpData2D.o class_SpData2D.o dftu.o dftu_specs.o
-setup_hamiltonian.o: dhscf.o files.o io_hsx.o m_dipol.o m_energies.o
-setup_hamiltonian.o: m_mpi_utils.o m_ntm.o m_partial_charges.o m_rhog.o
-setup_hamiltonian.o: m_spin.o m_steps.o m_stress.o metaforce.o
+setup_hamiltonian.o: dhscf.o files.o io_hsx.o m_dftu_so.o m_dipol.o
+setup_hamiltonian.o: m_energies.o m_mpi_utils.o m_ntm.o m_partial_charges.o
+setup_hamiltonian.o: m_rhog.o m_spin.o m_steps.o m_stress.o metaforce.o
 setup_hamiltonian.o: molecularmechanics.o parallel.o siesta_geom.o
 setup_hamiltonian.o: siesta_options.o sparse_matrices.o sys.o
 setup_ordern_indexes.o: alloc.o domain_decom.o parallel.o spatial.o
@@ -1565,6 +1457,7 @@ m_nlefsm.o: nlefsm.o
 m_norm.o: compute_norm.o
 m_normalize_dm.o: normalize_dm.o
 m_object_debug.o: object_debug.o
+m_occ_proj.o: m_occ_proj_dftu.o
 m_on_subs.o: on_subs.o
 m_ordern.o: ordern.o
 m_overfsm.o: overfsm.o
