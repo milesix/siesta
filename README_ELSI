@@ -3,6 +3,8 @@ solvers, with a number of performance-enhancement options.
 
 (Please read the ELSI manual for a full description of the options)
 
+(Version numbers below should be updated as new versions of ELSI and ELPA appear)
+
 The suggested recipe involves downloading version 2.6.2 of the ELSI library from
 
     https://wordpress.elsi-interchange.org/index.php/download/
@@ -22,8 +24,10 @@ site for up-to-date code in the 'master' or other development branches).
 
 * Compilation of the external ELPA library
 
-ELPA uses an auto-tools-based building system. Create a 'build' subdirectory and execute the following script in it (This is
-appropriate to the Intel development environment. Change paths appropriately).
+ELPA uses an auto-tools-based building system. Create a 'build'
+subdirectory and execute the following script in it (This is
+appropriate to the Intel development environment. Change paths
+appropriately).
 
 #!/bin/sh
 
@@ -76,9 +80,16 @@ make install
 
 * Building Siesta with ELSI and an external ELPA library.
 
-The appropriate incantations needed can be seen in the example file Obj/ARCH-EXPERIMENTAL/mn4.elsi-ext-elpa.make, appropriate
-for MareNostrum IV at BSC, but easily adaptable to any system by changing the paths to the libraries and the compiler
-names.
+Although the makefile-based building system can cope with this (see
+the logic in Config/mk-build/build.mk), it is suggested to use
+the CMake building framework for this. Just define
+
+  -DWITH_ELPA=ON  -DWITH_ELSI=ON
+
+and make sure that you have compiled ELSI with an external ELPA, and
+that you include both the $ELPA_ROOT directory and the $ELSI_ROOT
+directory in CMAKE_PREFIX_PATH. Of course, the ELPA library used to
+compile ELSI *must be* the same pointed to by $ELPA_ROOT.
 
 * Using the ELSI solvers for increased performance in large HPC systems.
 
@@ -103,8 +114,9 @@ fdf file:
 
 where N is the number of scf steps to be run in single-precision.
 
-It has been found empirically that most scf steps can be run in single-precision, and just the final one or two
-in double precision, to reproduce the results of a full-double run.
+It has been found empirically that most scf steps can be run in
+single-precision, and just the final one or two in double precision,
+to reproduce the results of a full-double run.
 
 -- ELPA solver with GPU support
 
@@ -115,8 +127,11 @@ feature, use the flag:
 
   elsi-elpa-gpu 1
 
-GPU support is available both in the built-in ELPA code in ELSI and in an externally-compiled ELPA library.
+GPU support is available both in the built-in ELPA code in ELSI and in
+an externally-compiled ELPA library.
 
+(Please report experiences and suggestions for improvement in this
+area)
 
 -- PEXSI solver
 
@@ -136,10 +151,11 @@ The total number of processors used must be a multiple of Npp*Nmu*Nkpoints*Nspin
 For complete parallelization, number of processors =  Npp*Nmu*Nkpoints*Nspins*Npoles
 
 -- NTPoly solver
-
 (Built-in in ELSI)
-It uses density-matrix purification algorithms to achieve linear scaling for suitably gapped systems.
-See the manual for the tolerance options involved.
+
+It uses density-matrix purification algorithms to achieve linear
+scaling for suitably gapped systems.  See the manual for the tolerance
+options involved.
 
 
 -- EigenExa solver
@@ -148,11 +164,12 @@ It needs an externally compiled EigenExa library from
 
     https://www.r-ccs.riken.jp/labs/lpnctrt/en/projects/eigenexa/
 
-It uses a novel algorithm for diagonalization of penta-diagonal matrices, with favorable
-scaling. It can compute a full set of eigenvectors or none, which reduces somewhat its
-usefulness.
+It uses a novel algorithm for diagonalization of penta-diagonal
+matrices, with favorable scaling. It can compute a full set of
+eigenvectors or none, which reduces somewhat its usefulness.
 
 It needs the extra Siesta preprocessor option -DSIESTA__ELSI_2_4_SOLVERS
+(in the makefile-based build system).
 
 
 

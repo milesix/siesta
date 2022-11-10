@@ -173,13 +173,48 @@ endif()
 
 if (WITH_ELPA)
  include(search_for_elpa)
+ message(DEBUG "ELPA lib directory (for ELSI linking): ${ELPA_LIBDIR}")
 endif()
 
 if (WITH_ELSI AND NOT TARGET elsi::elsi)
   set(ELSI_MIN_VERSION "2.5.0")
   find_package(elsi ${ELSI_MIN_VERSION} REQUIRED)
+  message(STATUS "Found ELSI library (CMake package) Version: ${elsi_VERSION}")
+
+  if(NOT TARGET elsi::elpa)
+     # ELSI uses an external ELPA library
+     # To link it properly, we need to add the right ELPA directory,
+     # as the CMake-based ELSI package just links "-lelpa".
+     # Alternatively (see https://gitlab.com/elsi_project/elsi_interface/-/issues/57)
+     # we could discover ELSI using pkgconfig, as the pkg-config file provides the
+     # right directory
+     if(NOT ELPA_LIBDIR)
+       # We have not searched for ELPA...
+       # Since Siesta can use a native interface to ELPA, we just suggest to
+       # the user to set -DWITH_ELPA=ON. Alternatively, the user should provide
+       # the right value in ELPA_LIBDIR
+       message(STATUS "**")
+       message(STATUS "The found ELSI library needs an external ELPA library")
+       message(STATUS "Either set -DWITH_ELPA=ON")
+       message(STATUS "  (recommended, and you get also the native Siesta interface to ELPA)")
+       message(STATUS "or set -DELPA_LIBDIR=/path/to/elpa/libdir")
+       message(STATUS "  (this might not work with all compilers)")
+       message(FATAL_ERROR "**")
+     else()
+       message(STATUS "The found ELSI library needs an external ELPA library")
+       message(STATUS "Adding ELPA directory for ELSI linking: ${ELPA_LIBDIR}")
+       target_link_directories(elsi::elsi INTERFACE "${ELPA_LIBDIR}")
+       #
+       # Note: Some compilers (e.g., maybe the NEC one) migh need access to
+       # the full chain of modules. In that case we would also need:
+       #     target_include_directories(elsi::elsi INTERFACE ${ELPA_FORTRAN_INC_DIRS})
+       # It might be better to just 'include(search_for_elpa)' here
+       # and use the variables. 
+     endif()
+  endif()
 
   if(TARGET elsi::pexsi)
+    message(STATUS "The found ELSI library contains a built-in PEXSI")
     set(ELSI_WITH_PEXSI TRUE)
     enable_language(CXX)
     # Avoid to link everything associated with PEXSI with C++
