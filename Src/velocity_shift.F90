@@ -71,6 +71,7 @@ contains
     use siesta_cml
     use intrinsic_missing, only: VNORM
     use m_spin, only: TrSym
+    use m_cite, only: add_citation
 
     type(block_fdf) :: bfdf
     type(parsed_line), pointer :: pline
@@ -118,6 +119,8 @@ contains
     
     ! Immediately return if not used
     if ( .not. use_velocity_shift ) return
+
+    call add_citation("10.1103/PhysRevB.106.155401")
 
     ! Ensure that all k-points are not using TRS
     call fdf_overwrite("TimeReversalSymmetryForKpoints false")

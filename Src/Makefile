@@ -1318,8 +1318,8 @@ typecell.o: precision.o
 uncell.o: precision.o
 units.o: precision.o
 vacuum_level.o: moreParallelSubs.o precision.o
-velocity_shift.o: fermid.o intrinsic_missing.o m_energies.o m_spin.o m_spin.o
-velocity_shift.o: parallel.o precision.o siesta_cml.o units.o
+velocity_shift.o: fermid.o intrinsic_missing.o m_cite.o m_energies.o m_spin.o
+velocity_shift.o: m_spin.o parallel.o precision.o siesta_cml.o units.o
 vmat.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o m_spin.o mesh.o
 vmat.o: meshdscf.o meshphi.o parallel.o parallelsubs.o precision.o
 vmatsp.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o mesh.o meshdscf.o
