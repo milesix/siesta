@@ -1346,7 +1346,10 @@ end if
     allocate(this%enc(size(rhs%enc)))
     this%enc(:) = rhs%enc(:)
   end subroutine associate_var
-  pure function associatd_var(this,rhs) result(ret)
+#ifndef _CRAYFTN
+  pure &
+#endif
+  function associatd_var(this,rhs) result(ret)
     type(variable_t), intent(in) :: this
     type(variable_t), intent(in) :: rhs
     logical :: ret
@@ -1810,7 +1813,10 @@ subroutine associate_set_a1(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_a1
-pure function associatd_l_a1(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_a1(lhs,this) result(ret)
   character(len=1), pointer , dimension(:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -1825,7 +1831,10 @@ pure function associatd_l_a1(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_a1
-pure function associatd_r_a1(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_a1(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   character(len=1), pointer , dimension(:) :: rhs
   logical :: ret
@@ -1929,7 +1938,10 @@ subroutine associate_set_s0(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_s0
-pure function associatd_l_s0(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_s0(lhs,this) result(ret)
   real(sp), pointer :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -1944,7 +1956,10 @@ pure function associatd_l_s0(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_s0
-pure function associatd_r_s0(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_s0(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   real(sp), pointer :: rhs
   logical :: ret
@@ -2053,7 +2068,10 @@ subroutine associate_set_s1(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_s1
-pure function associatd_l_s1(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_s1(lhs,this) result(ret)
   real(sp), pointer , dimension(:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -2068,7 +2086,10 @@ pure function associatd_l_s1(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_s1
-pure function associatd_r_s1(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_s1(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   real(sp), pointer , dimension(:) :: rhs
   logical :: ret
@@ -2177,7 +2198,10 @@ subroutine associate_set_s2(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_s2
-pure function associatd_l_s2(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_s2(lhs,this) result(ret)
   real(sp), pointer , dimension(:,:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -2192,7 +2216,10 @@ pure function associatd_l_s2(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_s2
-pure function associatd_r_s2(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_s2(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   real(sp), pointer , dimension(:,:) :: rhs
   logical :: ret
@@ -2301,7 +2328,10 @@ subroutine associate_set_s3(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_s3
-pure function associatd_l_s3(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_s3(lhs,this) result(ret)
   real(sp), pointer , dimension(:,:,:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -2316,7 +2346,10 @@ pure function associatd_l_s3(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_s3
-pure function associatd_r_s3(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_s3(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   real(sp), pointer , dimension(:,:,:) :: rhs
   logical :: ret
@@ -2420,7 +2453,10 @@ subroutine associate_set_d0(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_d0
-pure function associatd_l_d0(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_d0(lhs,this) result(ret)
   real(dp), pointer :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -2435,7 +2471,10 @@ pure function associatd_l_d0(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_d0
-pure function associatd_r_d0(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_d0(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   real(dp), pointer :: rhs
   logical :: ret
@@ -2544,7 +2583,10 @@ subroutine associate_set_d1(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_d1
-pure function associatd_l_d1(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_d1(lhs,this) result(ret)
   real(dp), pointer , dimension(:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -2559,7 +2601,10 @@ pure function associatd_l_d1(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_d1
-pure function associatd_r_d1(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_d1(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   real(dp), pointer , dimension(:) :: rhs
   logical :: ret
@@ -2668,7 +2713,10 @@ subroutine associate_set_d2(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_d2
-pure function associatd_l_d2(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_d2(lhs,this) result(ret)
   real(dp), pointer , dimension(:,:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -2683,7 +2731,10 @@ pure function associatd_l_d2(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_d2
-pure function associatd_r_d2(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_d2(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   real(dp), pointer , dimension(:,:) :: rhs
   logical :: ret
@@ -2792,7 +2843,10 @@ subroutine associate_set_d3(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_d3
-pure function associatd_l_d3(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_d3(lhs,this) result(ret)
   real(dp), pointer , dimension(:,:,:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -2807,7 +2861,10 @@ pure function associatd_l_d3(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_d3
-pure function associatd_r_d3(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_d3(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   real(dp), pointer , dimension(:,:,:) :: rhs
   logical :: ret
@@ -2911,7 +2968,10 @@ subroutine associate_set_c0(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_c0
-pure function associatd_l_c0(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_c0(lhs,this) result(ret)
   complex(sp), pointer :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -2926,7 +2986,10 @@ pure function associatd_l_c0(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_c0
-pure function associatd_r_c0(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_c0(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   complex(sp), pointer :: rhs
   logical :: ret
@@ -3035,7 +3098,10 @@ subroutine associate_set_c1(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_c1
-pure function associatd_l_c1(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_c1(lhs,this) result(ret)
   complex(sp), pointer , dimension(:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -3050,7 +3116,10 @@ pure function associatd_l_c1(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_c1
-pure function associatd_r_c1(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_c1(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   complex(sp), pointer , dimension(:) :: rhs
   logical :: ret
@@ -3159,7 +3228,10 @@ subroutine associate_set_c2(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_c2
-pure function associatd_l_c2(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_c2(lhs,this) result(ret)
   complex(sp), pointer , dimension(:,:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -3174,7 +3246,10 @@ pure function associatd_l_c2(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_c2
-pure function associatd_r_c2(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_c2(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   complex(sp), pointer , dimension(:,:) :: rhs
   logical :: ret
@@ -3283,7 +3358,10 @@ subroutine associate_set_c3(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_c3
-pure function associatd_l_c3(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_c3(lhs,this) result(ret)
   complex(sp), pointer , dimension(:,:,:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -3298,7 +3376,10 @@ pure function associatd_l_c3(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_c3
-pure function associatd_r_c3(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_c3(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   complex(sp), pointer , dimension(:,:,:) :: rhs
   logical :: ret
@@ -3402,7 +3483,10 @@ subroutine associate_set_z0(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_z0
-pure function associatd_l_z0(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_z0(lhs,this) result(ret)
   complex(dp), pointer :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -3417,7 +3501,10 @@ pure function associatd_l_z0(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_z0
-pure function associatd_r_z0(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_z0(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   complex(dp), pointer :: rhs
   logical :: ret
@@ -3526,7 +3613,10 @@ subroutine associate_set_z1(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_z1
-pure function associatd_l_z1(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_z1(lhs,this) result(ret)
   complex(dp), pointer , dimension(:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -3541,7 +3631,10 @@ pure function associatd_l_z1(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_z1
-pure function associatd_r_z1(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_z1(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   complex(dp), pointer , dimension(:) :: rhs
   logical :: ret
@@ -3650,7 +3743,10 @@ subroutine associate_set_z2(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_z2
-pure function associatd_l_z2(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_z2(lhs,this) result(ret)
   complex(dp), pointer , dimension(:,:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -3665,7 +3761,10 @@ pure function associatd_l_z2(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_z2
-pure function associatd_r_z2(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_z2(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   complex(dp), pointer , dimension(:,:) :: rhs
   logical :: ret
@@ -3774,7 +3873,10 @@ subroutine associate_set_z3(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_z3
-pure function associatd_l_z3(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_z3(lhs,this) result(ret)
   complex(dp), pointer , dimension(:,:,:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -3789,7 +3891,10 @@ pure function associatd_l_z3(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_z3
-pure function associatd_r_z3(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_z3(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   complex(dp), pointer , dimension(:,:,:) :: rhs
   logical :: ret
@@ -3893,7 +3998,10 @@ subroutine associate_set_b0(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_b0
-pure function associatd_l_b0(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_b0(lhs,this) result(ret)
   logical, pointer :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -3908,7 +4016,10 @@ pure function associatd_l_b0(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_b0
-pure function associatd_r_b0(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_b0(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   logical, pointer :: rhs
   logical :: ret
@@ -4017,7 +4128,10 @@ subroutine associate_set_b1(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_b1
-pure function associatd_l_b1(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_b1(lhs,this) result(ret)
   logical, pointer , dimension(:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -4032,7 +4146,10 @@ pure function associatd_l_b1(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_b1
-pure function associatd_r_b1(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_b1(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   logical, pointer , dimension(:) :: rhs
   logical :: ret
@@ -4141,7 +4258,10 @@ subroutine associate_set_b2(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_b2
-pure function associatd_l_b2(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_b2(lhs,this) result(ret)
   logical, pointer , dimension(:,:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -4156,7 +4276,10 @@ pure function associatd_l_b2(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_b2
-pure function associatd_r_b2(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_b2(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   logical, pointer , dimension(:,:) :: rhs
   logical :: ret
@@ -4265,7 +4388,10 @@ subroutine associate_set_b3(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_b3
-pure function associatd_l_b3(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_b3(lhs,this) result(ret)
   logical, pointer , dimension(:,:,:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -4280,7 +4406,10 @@ pure function associatd_l_b3(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_b3
-pure function associatd_r_b3(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_b3(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   logical, pointer , dimension(:,:,:) :: rhs
   logical :: ret
@@ -4384,7 +4513,10 @@ subroutine associate_set_h0(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_h0
-pure function associatd_l_h0(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_h0(lhs,this) result(ret)
   integer(ih), pointer :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -4399,7 +4531,10 @@ pure function associatd_l_h0(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_h0
-pure function associatd_r_h0(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_h0(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   integer(ih), pointer :: rhs
   logical :: ret
@@ -4508,7 +4643,10 @@ subroutine associate_set_h1(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_h1
-pure function associatd_l_h1(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_h1(lhs,this) result(ret)
   integer(ih), pointer , dimension(:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -4523,7 +4661,10 @@ pure function associatd_l_h1(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_h1
-pure function associatd_r_h1(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_h1(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   integer(ih), pointer , dimension(:) :: rhs
   logical :: ret
@@ -4632,7 +4773,10 @@ subroutine associate_set_h2(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_h2
-pure function associatd_l_h2(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_h2(lhs,this) result(ret)
   integer(ih), pointer , dimension(:,:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -4647,7 +4791,10 @@ pure function associatd_l_h2(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_h2
-pure function associatd_r_h2(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_h2(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   integer(ih), pointer , dimension(:,:) :: rhs
   logical :: ret
@@ -4756,7 +4903,10 @@ subroutine associate_set_h3(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_h3
-pure function associatd_l_h3(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_h3(lhs,this) result(ret)
   integer(ih), pointer , dimension(:,:,:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -4771,7 +4921,10 @@ pure function associatd_l_h3(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_h3
-pure function associatd_r_h3(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_h3(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   integer(ih), pointer , dimension(:,:,:) :: rhs
   logical :: ret
@@ -4875,7 +5028,10 @@ subroutine associate_set_i0(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_i0
-pure function associatd_l_i0(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_i0(lhs,this) result(ret)
   integer(is), pointer :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -4890,7 +5046,10 @@ pure function associatd_l_i0(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_i0
-pure function associatd_r_i0(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_i0(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   integer(is), pointer :: rhs
   logical :: ret
@@ -4999,7 +5158,10 @@ subroutine associate_set_i1(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_i1
-pure function associatd_l_i1(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_i1(lhs,this) result(ret)
   integer(is), pointer , dimension(:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -5014,7 +5176,10 @@ pure function associatd_l_i1(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_i1
-pure function associatd_r_i1(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_i1(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   integer(is), pointer , dimension(:) :: rhs
   logical :: ret
@@ -5123,7 +5288,10 @@ subroutine associate_set_i2(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_i2
-pure function associatd_l_i2(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_i2(lhs,this) result(ret)
   integer(is), pointer , dimension(:,:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -5138,7 +5306,10 @@ pure function associatd_l_i2(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_i2
-pure function associatd_r_i2(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_i2(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   integer(is), pointer , dimension(:,:) :: rhs
   logical :: ret
@@ -5247,7 +5418,10 @@ subroutine associate_set_i3(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_i3
-pure function associatd_l_i3(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_i3(lhs,this) result(ret)
   integer(is), pointer , dimension(:,:,:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -5262,7 +5436,10 @@ pure function associatd_l_i3(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_i3
-pure function associatd_r_i3(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_i3(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   integer(is), pointer , dimension(:,:,:) :: rhs
   logical :: ret
@@ -5366,7 +5543,10 @@ subroutine associate_set_l0(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_l0
-pure function associatd_l_l0(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_l0(lhs,this) result(ret)
   integer(il), pointer :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -5381,7 +5561,10 @@ pure function associatd_l_l0(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_l0
-pure function associatd_r_l0(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_l0(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   integer(il), pointer :: rhs
   logical :: ret
@@ -5490,7 +5673,10 @@ subroutine associate_set_l1(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_l1
-pure function associatd_l_l1(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_l1(lhs,this) result(ret)
   integer(il), pointer , dimension(:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -5505,7 +5691,10 @@ pure function associatd_l_l1(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_l1
-pure function associatd_r_l1(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_l1(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   integer(il), pointer , dimension(:) :: rhs
   logical :: ret
@@ -5614,7 +5803,10 @@ subroutine associate_set_l2(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_l2
-pure function associatd_l_l2(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_l2(lhs,this) result(ret)
   integer(il), pointer , dimension(:,:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -5629,7 +5821,10 @@ pure function associatd_l_l2(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_l2
-pure function associatd_r_l2(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_l2(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   integer(il), pointer , dimension(:,:) :: rhs
   logical :: ret
@@ -5738,7 +5933,10 @@ subroutine associate_set_l3(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_l3
-pure function associatd_l_l3(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_l3(lhs,this) result(ret)
   integer(il), pointer , dimension(:,:,:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -5753,7 +5951,10 @@ pure function associatd_l_l3(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_l3
-pure function associatd_r_l3(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_l3(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   integer(il), pointer , dimension(:,:,:) :: rhs
   logical :: ret
@@ -5857,7 +6058,10 @@ subroutine associate_set_cp0(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_cp0
-pure function associatd_l_cp0(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_cp0(lhs,this) result(ret)
   type(c_ptr), pointer :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -5872,7 +6076,10 @@ pure function associatd_l_cp0(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_cp0
-pure function associatd_r_cp0(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_cp0(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   type(c_ptr), pointer :: rhs
   logical :: ret
@@ -5981,7 +6188,10 @@ subroutine associate_set_cp1(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_cp1
-pure function associatd_l_cp1(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_cp1(lhs,this) result(ret)
   type(c_ptr), pointer , dimension(:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -5996,7 +6206,10 @@ pure function associatd_l_cp1(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_cp1
-pure function associatd_r_cp1(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_cp1(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   type(c_ptr), pointer , dimension(:) :: rhs
   logical :: ret
@@ -6100,7 +6313,10 @@ subroutine associate_set_fp0(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_fp0
-pure function associatd_l_fp0(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_fp0(lhs,this) result(ret)
   type(c_funptr), pointer :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -6115,7 +6331,10 @@ pure function associatd_l_fp0(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_fp0
-pure function associatd_r_fp0(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_fp0(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   type(c_funptr), pointer :: rhs
   logical :: ret
@@ -6224,7 +6443,10 @@ subroutine associate_set_fp1(this,rhs,dealloc)
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
   this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine associate_set_fp1
-pure function associatd_l_fp1(lhs,this) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_l_fp1(lhs,this) result(ret)
   type(c_funptr), pointer , dimension(:) :: lhs
   type(variable_t), intent(in) :: this
   logical :: ret
@@ -6239,7 +6461,10 @@ pure function associatd_l_fp1(lhs,this) result(ret)
     ret = associated(lhs,p%p)
   endif
 end function associatd_l_fp1
-pure function associatd_r_fp1(this,rhs) result(ret)
+#ifndef _CRAYFTN
+pure &
+#endif
+function associatd_r_fp1(this,rhs) result(ret)
   type(variable_t), intent(in) :: this
   type(c_funptr), pointer , dimension(:) :: rhs
   logical :: ret
