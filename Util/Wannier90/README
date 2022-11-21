@@ -25,6 +25,20 @@ evolution of the source code.
 Building a modified Wannier90
 -----------------------------
 
+A) With CMake
+
+   Just define the WANNIER90_PACKAGE environment variable to point to
+   a pristine wannier90-3.1.0.tar.gz package (possibly remote):
+
+   export WANNIER90_PACKAGE=/path/to/wannier90-3.1.0.tar.gz
+   export WANNIER90_PACKAGE=https://github.com/wannier-developers/wannier90/archive/v3.1.0.tar.gz
+
+   and set -DWITH_WANNIER90=ON in the CMake invocation line for Siesta. The build system will
+   unpack and patch the wannier90 distribution automatically, and compile the appropriate version
+   (serial or mpi) of the library.
+
+B) With the makefile-based build system
+
 In this directory you will find the required patches for a specific Wannier90
 version.
 
@@ -60,27 +74,18 @@ If SIESTA is compiled with MPI, so should Wannier90.
 Using a modified Wannier90 from SIESTA
 --------------------------------------
 
-To use the Wannier90 library you just have built with SIESTA, start by
-configuring your SIESTA object dir as instructed in the Obj/README file of the
-SIESTA source code.
+To use the Wannier90 library you just have built with SIESTA:
 
-Then, make sure that your arch.make contains the following lines:
+- Add 'WITH_WANNIER90=1' to your arch.make
+- Set WANNIER90_ROOT to point to an installation of WANNIER90
+- (... but make sure that you have the .mod files in the include/
+   subdirectory and the .a file in the lib/ subdirectory)
+   You can achieve this by
 
-If you are compiling the serial version:
-
-  WANNIER90_ROOT = /path/to/wannier90
-  LIBS += -L$(WANNIER90_ROOT) -lwannier
-  INCFLAGS += -I$(WANNIER90_ROOT)/src/obj
-  FPPFLAGS += -DSIESTA__WANNIER90
-
-If you are compiling the parallel version:
-
-  WANNIER90_ROOT = /path/to/wannier90
-  LIBS += -L$(WANNIER90_ROOT) -lwannier
-  INCFLAGS += -I$(WANNIER90_ROOT)/src/objp -I$(WANNIER90_ROOT)/src/obj
-  FPPFLAGS += -DSIESTA__WANNIER90
-
-where you replace /path/to/wannier90 by the full path to the top source
-directory of Wannier90.
+   cd $WANNIER90_ROOT
+   mkdir lib
+   cp libwannier.a lib
+   mkdir include
+   ln -sf $(pwd)/src/obj $(pwd)/include
 
 Once done, you can proceed as usual with the build of SIESTA.
