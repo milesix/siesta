@@ -71,43 +71,14 @@ CONTAINS
                                              !   corresponds to the shell which
                                              !   is polarized by the orbital io)
     use atmfuncs,       only: symfio         ! Symmetry of the orbital
-    use w90_parameters, only: num_kpts       ! Total number of k-points that
-                                             !   will be used within
-                                             !   Wannier90
-    use w90_parameters, only: kpt_latt       ! Coordinates of the k-points
-                                             !   that will be used within
-                                             !   Wannier90
-                                             !   In fractional units, i. e.
-                                             !   in units of the reciprocal
-                                             !   lattice vectors
-                                             !   First  index: component
-                                             !   Second index: k-vector
-    use w90_parameters, only: recip_lattice  ! Reciprocal lattice vectors
-                                             !   as used inside
-                                             !   Wannier90
-                                             !   The factor 2.0 * pi
-                                             !   is included
-                                             !   BE CAREFUL: In WANNIER90,the
-                                             !   order of the indices is
-                                             !   inverted with respect to
-                                             !   SIESTA
-                                             !   First  index: vector
-                                             !   Second index: component
-                                             !   In Angstroms^-1
-    use w90_parameters, only: num_proj       ! Number of projections
-    use w90_parameters, only: num_bands      ! Number of bands Wannierized
-    use w90_parameters, only: u_matrix       ! Unitary rotations from the 
-                                             !   optimal subspace to the
-                                             !   optimally smooth states.
-    use w90_parameters, only: u_matrix_opt   ! Unitary rotations from the 
-    use w90_parameters, only: disentanglement ! logical value
-                                             !   .true.:
-                                             !   disentanglement active
-                                             !   .false.:
-                                             !   disentanglement inactive
-    use w90_constants,  only: bohr_angstrom_internal  
-                                             ! Conversion factor from 
-                                             !   Bohr to Ang
+
+    ! data to map to info formerly inside wannier modules ----
+    use w90_in_siesta_types,       only: w90_in_manifold_t
+    use w90_in_siesta_types,       only: manifold_bands_w90_in
+    use w90_in_siesta_types,       only: reclatvec_w90_in, &
+                                         numkpoints_w90_in, &
+                                         kpointsfrac_w90_in
+    !-------------
     use w90_in_siesta_types,       only: numh_man_proj
                                              ! Number of projectors that will be
                                              !   handled in the local node
@@ -288,6 +259,25 @@ CONTAINS
     integer, external :: numroc
 #endif
 
+    type(w90_in_manifold_t), pointer :: mnf
+
+    ! mapping variables
+    real(kind=dp), parameter :: bohr_angstrom_internal = 0.52917720859_dp    
+    integer :: num_proj, num_bands, num_kpts
+    logical :: disentanglement
+    real(dp) :: recip_lattice(3,3)
+    real(dp), allocatable :: kpt_latt(:,:)
+
+    ! Convenience device to point to manifold data
+    mnf => manifold_bands_w90_in(index_manifold)
+    
+    num_proj = mnf%numbands_w90_in
+    num_bands = mnf%number_of_bands
+    num_kpts = numkpoints_w90_in
+    disentanglement = mnf%disentanglement
+    recip_lattice(:,:) = reclatvec_w90_in(:,:)
+    allocate(kpt_latt,source=kpointsfrac_w90_in)
+    
 !   Find reciprocal unit cell vectors (without 2*pi factor)
     call reclat( ucell, rcell, 0 )
 
@@ -357,7 +347,7 @@ CONTAINS
           do iprojn = 1, num_proj
             do iband = 1, num_bands
               coeffs_opt(iorb,iprojn,ik) = coeffs_opt(iorb,iprojn,ik) +  &
- &              u_matrix_opt(iband,iprojn,ik) * psiloc(iorb,iband)
+ &              mnf%u_matrix_opt(iband,iprojn,ik) * psiloc(iorb,iband)
             enddo 
           enddo
         enddo
@@ -373,8 +363,8 @@ CONTAINS
 !        do iprojn = 1, num_proj
 !          do iband = 1, num_bands
 !            write(6,'(a,3i5,2f12.5)')                & 
-! &           'Node, iband, iprojn, u_matrix_opt = ', &
-! &            Node, iband, iprojn, u_matrix_opt(iband,iprojn,ik)
+! &           'Node, iband, iprojn, mnf%u_matrix_opt = ', &
+! &            Node, iband, iprojn, mnf%u_matrix_opt(iband,iprojn,ik)
 !          enddo 
 !        enddo 
 !      endif
@@ -405,7 +395,7 @@ CONTAINS
           do iprojn = 1, num_proj
             do iband = 1, num_bands
               coeffs_opt(iorb,iprojn,ik) = coeffs_opt(iorb,iprojn,ik) +  &
- &              u_matrix_opt(iband,iprojn,ik) * psiloc(iorb,iband)
+ &              mnf%u_matrix_opt(iband,iprojn,ik) * psiloc(iorb,iband)
             enddo 
           enddo
         enddo
@@ -481,7 +471,7 @@ CONTAINS
           do iprojm = 1, num_proj
             coeffs_wan_nao(ind,iorb,ispin) =                   &
  &            coeffs_wan_nao(ind,iorb,ispin) +                 &
- &            u_matrix(iprojm,iproj_global,ik)           *     &
+ &            mnf%u_matrix(iprojm,iproj_global,ik)           *     &
  &            coeffs_opt(iuo,iprojm,ik)                  *     &
  &            cmplx(ckxmu,skxmu,kind=dp) 
           enddo 
@@ -524,7 +514,7 @@ CONTAINS
 !        do iorb = 1, no_u
 !          write(6,'(a,3i5,4f12.5)')' ik, iproj, iorb, coeff = ', &
 ! &          ik, iproj, iorb, coeffs(iorb,iproj,ik),              &
-! &          u_matrix(iproj,iproj,ik)
+! &          mnf%u_matrix(iproj,iproj,ik)
 !        enddo 
 !      enddo 
 !    enddo 

@@ -472,11 +472,12 @@ subroutine chosing_b_vectors( kpointsfrac, nncount, nnlist, nnfolding, &
 
   implicit none
 
-  integer,  intent(in)           :: nncount
-  integer,  pointer  :: nnlist(:,:)
-  integer,  pointer  :: nnfolding(:,:,:)
-  real(dp), pointer  :: kpointsfrac(:,:)
-  real(dp), pointer  :: bvectorsfrac(:,:)
+  integer, intent(in)           :: nncount
+  integer, intent(in)           :: nnlist(:,:)
+  integer, intent(in)           :: nnfolding(:,:,:)
+  real(dp), intent(in)          :: kpointsfrac(:,:)
+
+  real(dp), pointer :: bvectorsfrac(:,:)
 
 !
 ! Internal variables
