@@ -550,7 +550,7 @@ C
             call wannier_in_nao( ispin, index_manifold )
           enddo 
         enddo
-        call deallocate_wannier
+        call deallocate_wannier()
         w90_in_siesta_processing = .false.
       endif
 #endif

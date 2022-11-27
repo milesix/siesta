@@ -137,6 +137,8 @@ module m_w90_in_siesta
 
   private
 
+  integer :: w90_comm    ! Communicator for wannier90 wrapper
+
   CONTAINS
 
 !> \brief General purpose of the subroutine setup_w90_in_siesta:
@@ -224,9 +226,13 @@ module m_w90_in_siesta
     integer, external :: numroc                    ! Scalapack routine for 
                                                    !  block-cyclic distributions
     integer, allocatable :: blocksizeprojectors(:)
-    integer :: blocksize_tmp 
+    integer :: blocksize_tmp
+    integer :: ierr
 #endif
 
+#ifdef MPI
+    call MPI_Comm_Dup(mpi_comm_world, w90_comm, ierr)
+#endif
 
     if( IONode ) then
 
@@ -1442,7 +1448,11 @@ module m_w90_in_siesta
       !      its periodic image that is needed for computing the
       !      overlap matrices M_mn(k,b)
 
-      call wannier_newlib("_nnkp", nnkp_mode=.true., &
+      call wannier_newlib("_nnkp",        &
+#ifdef MPI
+                       mpi_comm=w90_comm, &
+#endif
+                       nnkp_mode=.true., &
                        nntot_out=nncount_w90_in, &
                        nnlist_out=nnlist_w90_in, &
                        nncell_out=nnfolding_w90_in)
@@ -1561,17 +1571,21 @@ module m_w90_in_siesta
     integer            :: MPIError
 #endif
 
+    type(w90_in_manifold_t), pointer :: mnf
+
+    mnf => manifold_bands_w90_in(index_manifold)
+
     if( spin%H .eq. 1) then
-      seedname = manifold_bands_w90_in(index_manifold)%seedname_w90_in
+      seedname = mnf%seedname_w90_in
     else if( spin%H .gt. 1) then
       write(seedname, "(a,'.spin.',i1.1)") &
-          trim(manifold_bands_w90_in(index_manifold)%seedname_w90_in), ispin
+          trim(mnf%seedname_w90_in), ispin
     end if
 
     number_of_bands_in_manifold_local =                                  &
- &        manifold_bands_w90_in(index_manifold)%nincbands_loc_w90_in
+ &        mnf%nincbands_loc_w90_in
     number_of_bands_to_project =                                         &
- &        manifold_bands_w90_in(index_manifold)%numbands_w90_in
+ &        mnf%numbands_w90_in
 
 !   Compute the matrix elements of the plane wave,
 !   for all the wave vectors that connect a given k-point to its nearest
@@ -1652,7 +1666,7 @@ module m_w90_in_siesta
 !   SystemLabel.eigW
     if( IOnode ) call writeeig( ispin )
 
-    if( manifold_bands_w90_in(index_manifold)%write_unk ) call writeunk( ispin )
+    if( mnf%write_unk ) call writeunk( ispin )
 
     if (IONode) then
       write(6,'(/,a)')  &
@@ -1770,20 +1784,6 @@ module m_w90_in_siesta
           trim(mnf%seedname_w90_in), ispin
     end if
 
-
-    !   Set up the variables related with the k-point sampling
-    ! Why do we get nnlist_neig and nnfolding from switch_local...??
-    ! mp_grid   = kmesh_w90_in
-    ! num_kpts  = numkpoints
-    ! nntot     = nncount
-    ! if ( allocated(nnlist) ) deallocate(nnlist)
-    ! allocate(nnlist(num_kpts,nntot))
-    ! nnlist(:,:) = nnlist_neig(:,:)
-    ! if ( allocated(nncell) ) deallocate(nncell)
-    ! allocate(nncell(3,num_kpts,nntot))
-    ! nncell(:,:,:) = nnfolding(:,:,:)
-
-
     block
       use wannier_m
       integer:: w90_lun, w90_eig, ik, ia, iband
@@ -1841,23 +1841,18 @@ module m_w90_in_siesta
          
          close(w90_lun)
 
-         filename = trim(seedname) // ".eigw90"
-         open(newunit=w90_eig,file=filename,status="replace",action="write")
-         ! Units of eo??
-         do ik = 1, size(kpointsfrac_w90_in,dim=2)
-            do iband = 1, mnf%number_of_bands
-               write(w90_eig, fmt="(i5,i5,3x,f12.5)")       &
-                              iband, ik, eo(iband,ik)
-            enddo
-         enddo
-         close(w90_eig)
-
       end if
 
-      !   Call wannier90 in "full" mode, and
+      !   Call wannier90 in "full" mode,
       !   store the U and U_opt matrices
+      !   Files .amn, .mmn, and .eigW have by
+      !   now been created in compute_matrices
 
-      call wannier_newlib(seedname, eigfile_ext =".eigw90",   &
+      call wannier_newlib(seedname,          &
+#ifdef MPI
+                          mpi_comm=w90_comm, &
+#endif
+                          eigfile_ext =".eigW",               &
                           u_matrix_out=mnf%u_matrix,          &
                           u_matrix_opt_out=mnf%u_matrix_opt)
 
@@ -1866,30 +1861,17 @@ module m_w90_in_siesta
   end subroutine compute_wannier
 
 
-!> \brief General purpouse of the subroutine deallocate_wannier:
-!! deallocate some of the arrays that were allocated during the WANNIER90 run
+!> \brief General purpose of the subroutine deallocate_wannier:
+!! free data structures (wip) and communicator
 !!
 
-  subroutine deallocate_wannier
+  subroutine deallocate_wannier()
 
-    use w90_parameters,  only : lsitesymmetry       ! Symmetry-adapted 
-                                                    !   Wannier functions
-! 
-! Deallocation routines
-!
-    use w90_parameters,  only: param_dealloc
-    use w90_overlap,     only: overlap_dealloc
-    use w90_sitesym,     only: sitesym_dealloc
-    use w90_kmesh,       only: kmesh_dealloc
-    use w90_transport,   only: tran_dealloc
-    use w90_hamiltonian, only: hamiltonian_dealloc
-
-    call tran_dealloc()
-    call hamiltonian_dealloc()
-    call overlap_dealloc()
-    call kmesh_dealloc()
-    call param_dealloc()
-    if (lsitesymmetry) call sitesym_dealloc() !YN:
+#ifdef MPI
+    integer :: ierr
+    
+    call MPI_Comm_Free(w90_comm, ierr)
+#endif
 
   end subroutine deallocate_wannier
 
