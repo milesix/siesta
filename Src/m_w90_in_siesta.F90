@@ -1332,7 +1332,6 @@ module m_w90_in_siesta
                                                !    nearest neighbours.
 
     use units, only : Ang
-    use m_mpi_utils, only: broadcast
     
 !   Internal variables
     integer :: ik                   
@@ -1345,7 +1344,6 @@ module m_w90_in_siesta
     type(block_fdf)            :: bfdf
     type(parsed_line), pointer :: pline
 
-    if (IOnode) then
     ! Read the data to generate the grid in reciprocal space that will be used
     ! for the Wannier Projections
     if ( fdf_block("Wannier.k", bfdf) ) then
@@ -1372,10 +1370,6 @@ module m_w90_in_siesta
        kmesh_w90_in(:) = 1
     end if
 
-    endif ! IOnode
-    call broadcast(kmesh_w90_in)
-    
- 
 !   Define the total number of k-points used in the Wannier projection
     numkpoints_w90_in = kmesh_w90_in(1) * kmesh_w90_in(2) * kmesh_w90_in(3)
 
@@ -1418,7 +1412,7 @@ module m_w90_in_siesta
 
     !
     block
-      use wannier_m
+      use wannier90_m, only: wannier90_wrapper
       integer:: w90_lun, ik
 
       if (IOnode) then
@@ -1448,7 +1442,7 @@ module m_w90_in_siesta
       !      its periodic image that is needed for computing the
       !      overlap matrices M_mn(k,b)
 
-      call wannier_newlib("_nnkp",        &
+      call wannier90_wrapper("_nnkp",        &
 #ifdef MPI
                        mpi_comm=w90_comm, &
 #endif
@@ -1465,18 +1459,6 @@ module m_w90_in_siesta
     call chosing_b_vectors( kpointsfrac_w90_in, nncount_w90_in,  &
  &                          nnlist_w90_in, nnfolding_w90_in,     &
  &                          bvectorsfrac_w90_in )
-
-!!     For debugging
-!      write(6,'(a)') 'begin nnkpts'
-!      write(6,'(i4)') nntot
-!      do nkp=1,num_kpts
-!         do nn=1,nntot
-!            write(6,'(2i6,3x,3i4)') &
-!               nkp,nnlist(nkp,nn),(nncell(i,nkp,nn),i=1,3)
-!         end do
-!      end do
-!      write(6,'(a/)') 'end nnkpts'
-!!     End debugging
 
   end subroutine read_kpoints_wannier
 
@@ -1578,14 +1560,11 @@ module m_w90_in_siesta
     if( spin%H .eq. 1) then
       seedname = mnf%seedname_w90_in
     else if( spin%H .gt. 1) then
-      write(seedname, "(a,'.spin.',i1.1)") &
-          trim(mnf%seedname_w90_in), ispin
+      write(seedname, "(a,'.spin.',i1.1)") trim(mnf%seedname_w90_in), ispin
     end if
 
-    number_of_bands_in_manifold_local =                                  &
- &        mnf%nincbands_loc_w90_in
-    number_of_bands_to_project =                                         &
- &        mnf%numbands_w90_in
+    number_of_bands_in_manifold_local = mnf%nincbands_loc_w90_in
+    number_of_bands_to_project = mnf%numbands_w90_in
 
 !   Compute the matrix elements of the plane wave,
 !   for all the wave vectors that connect a given k-point to its nearest
@@ -1675,17 +1654,6 @@ module m_w90_in_siesta
  &     'compute_matrices: End of the interface between Siesta and Wannier90'
     endif
 
-!! For debugging
-!#ifdef MPI
-!    call MPI_barrier(MPI_Comm_world,MPIError)
-!#endif
-!    call die()
-!! End debugging
-
-     return 
-
-102  call die('Error: Problem opening input file '//trim(filename))
-
   end subroutine compute_matrices
 
 
@@ -1693,8 +1661,7 @@ module m_w90_in_siesta
 !!
 !! Within this subroutine:
 !! 1. We create a .win file required by wannier90 using
-!!    variables transferred from different modules in SIESTA,
-!!    mostly m_switch_local_projection
+!!    variables transferred from different modules in SIESTA.
 !! 2. We call the wannier90 wrapper in "full" mode.
 
   subroutine compute_wannier( ispin, index_manifold )
@@ -1717,35 +1684,10 @@ module m_w90_in_siesta
 !
     use w90_in_siesta_types,   only: latvec_w90_in   ! Lattice vectors
     use w90_in_siesta_types,   only: kpointsfrac_w90_in
+    use w90_in_siesta_types,   only: numkpoints_w90_in
     use w90_in_siesta_types,   only: kmesh_w90_in  
                                                ! Number of divisions along the
                                                !   reciprocal lattice vectors
-    use m_switch_local_projection, only: numkpoints
-                                               ! Number of k-points in the
-                                               !    Monkhorst-Pack grid that
-                                               !    will be used in the 
-                                               !    Wannierization
-    use m_switch_local_projection, only: nncount 
-                                               ! The number of nearest
-                                               !   neighbours belonging to
-                                               !   each k-point of the 
-                                               !   Monkhorst-Pack mesh
-    use m_switch_local_projection, only: nnlist_neig
-                                               ! Index of the
-                                               !   inn-neighbour of ikp-point
-                                               !   in the Monkhorst-Pack grid
-    use m_switch_local_projection, only: nnfolding
-                                               ! nnfolding(i,ikp,inn) is the
-                                               !   i-component of the reciprocal
-                                               !   lattice vector,
-                                               !   in reduced units, that brings
-                                               !   the inn-neighbour specified 
-                                               !   in nnlist_neig (which is in
-                                               !   the first BZ)
-                                               !   to the actual 
-                                               !   \vec{k} + \vec{b}
-                                               !   that we need.
-                                               !   In reciprocal lattice units.
 !
 !   Variables related with the input/output coming from SIESTA   
 !
@@ -1755,8 +1697,6 @@ module m_w90_in_siesta
 !
 !   Variables related with the post-processing coming from SIESTA
 !
-    use m_switch_local_projection, only: eo    ! Eigenvalues of the Hamiltonian
-                                               !    at the numkpoints
     use m_energies,     only: ef               ! Fermi energy
     use units,          only: eV               ! Conversion factor from Ry to eV
 
@@ -1785,7 +1725,7 @@ module m_w90_in_siesta
     end if
 
     block
-      use wannier_m
+      use wannier90_m, only: wannier90_wrapper
       integer:: w90_lun, w90_eig, ik, ia, iband
       character(len=256) :: filename
       
@@ -1800,7 +1740,7 @@ module m_w90_in_siesta
          if (mnf%write_hr) write(w90_lun,*) "write_hr = T"
          if (mnf%write_tb) write(w90_lun,*) "write_tb = T"
          
-         if (numkpoints==1) write(w90_lun,*) "gamma_only = T"
+         if (numkpoints_w90_in==1) write(w90_lun,*) "gamma_only = T"
 
          if (mnf%dis_win_siesta) then
             write(w90_lun,"(a,f14.6)") "dis_win_min =", mnf%dis_win(1)
@@ -1827,7 +1767,7 @@ module m_w90_in_siesta
 
          write(w90_lun,"(a,1x,3i4)") "mp_grid", kmesh_w90_in(1:3)
          write(w90_lun,*) "begin kpoints"
-         do ik = 1, numkpoints
+         do ik = 1, numkpoints_w90_in
             write(w90_lun,'(3f12.5)') kpointsfrac_w90_in(:,ik)
          enddo
          write(w90_lun,*) "end kpoints"
@@ -1848,7 +1788,7 @@ module m_w90_in_siesta
       !   Files .amn, .mmn, and .eigW have by
       !   now been created in compute_matrices
 
-      call wannier_newlib(seedname,          &
+      call wannier90_wrapper(seedname,          &
 #ifdef MPI
                           mpi_comm=w90_comm, &
 #endif

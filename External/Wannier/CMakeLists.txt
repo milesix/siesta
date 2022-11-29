@@ -14,12 +14,27 @@ if (NOT TARGET libwannier90::libwannier90)
      # Better ship tar.gz file around
      #
      set(url "${CMAKE_SOURCE_DIR}/External/Wannier/libwannier90")
+
+  elseif(EXISTS
+     "${CMAKE_SOURCE_DIR}/External/Wannier/patched_libwannier90/CMakeLists.txt")
+
+    # Intended for developers
+    message(STATUS "Adding External/Wannier/patched_libwannier90 subdirectory...")
+    message(STATUS "... containing already-patched sources for w90 wrapper")
+
+    add_subdirectory("${CMAKE_SOURCE_DIR}/External/Wannier/patched_libwannier90")
+    add_library("libwannier90::libwannier90" ALIAS "libwannier90-lib")
+    RETURN()
+    
   else()
     message(STATUS "Please set environment variable WANNIER90_PACKAGE")
     message(STATUS "to point to a pristine (possibly remote) wannier90-3.1.0.tar.gz package,")
     message(STATUS "or populate ${CMAKE_SOURCE_DIR}/External/Wannier/libwannier90/")
-    message(STATUS "with a pristine wannier90 v3.1.0 src/ directory plus the LICENSE file")
-    message(FATAL_ERROR "Cannot find pristine wannier90 sources")
+    message(STATUS "with a pristine wannier90 v3.1.0 src/ directory plus the LICENSE file,")
+    message(STATUS "or populate ${CMAKE_SOURCE_DIR}/External/Wannier/patched_libwannier90/")
+    message(STATUS "with the already patched w90 wrapper sources")
+
+    message(FATAL_ERROR "Cannot find wannier90 sources")
   endif()
   
   set(package "libwannier90")
