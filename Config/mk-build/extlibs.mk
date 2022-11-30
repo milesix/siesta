@@ -93,7 +93,42 @@ $(CMAKE_BUILD_DIR_libgridxc)/libgridxc.a: $(CMAKE_BUILD_DIR_libgridxc)/Makefile
 libgridxc: check_cmake_version
 libgridxc: $(CMAKE_BUILD_DIR_libgridxc)/libgridxc.a
 #-----------------------------------------
+CMAKE_BUILD_DIR_libwannier90 := $(MAIN_OBJDIR)/__extlib_libwannier90
+CMAKE_SOURCE_DIR_libwannier90 := $(MAIN_OBJDIR)/wannier90-3.1.0
+
+ifeq ($(WITH_MPI), 1)
+  MPI_FLAG=ON
+  FORTRAN_COMPILER=$(FC_PARALLEL)
+else
+  MPI_FLAG=OFF
+  FORTRAN_COMPILER=$(FC_SERIAL)
+endif
+
+$(CMAKE_SOURCE_DIR_libwannier90)/CMakeLists.txt:
+	tar xzf $(WANNIER90_PACKAGE) -C $(MAIN_OBJDIR) wannier90-3.1.0/src \
+                                                       wannier90-3.1.0/LICENSE
+	(cd $(CMAKE_SOURCE_DIR_libwannier90); \
+            patch -p1 -i $(TOPDIR)/External/Wannier/Patches/3.1.0.patch)
+
+$(CMAKE_BUILD_DIR_libwannier90)/Makefile: $(CMAKE_SOURCE_DIR_libwannier90)/CMakeLists.txt
+	cmake -S $(<D) -B $(@D) \
+             -DCMAKE_INSTALL_PREFIX=$(EXTLIBS_INSTALL_PREFIX) \
+             -DCMAKE_Fortran_COMPILER=$(FORTRAN_COMPILER) \
+             -DCMAKE_INSTALL_LIBDIR=$(LIBPREFIX) \
+             -DLAPACK_LIBRARY=$(LAPACK_LIBS) \
+             -DWITH_MPI=$(MPI_FLAG)
+
+
+.PHONY: $(CMAKE_BUILD_DIR_libwannier90)/libwannier90.a  # to allow CMake's make check the build
+$(CMAKE_BUILD_DIR_libwannier90)/libwannier90.a: $(CMAKE_BUILD_DIR_libwannier90)/Makefile
+	cmake --build $(CMAKE_BUILD_DIR_libwannier90) 
+	cmake --install $(CMAKE_BUILD_DIR_libwannier90)
+
+libwannier90: check_cmake_version
+libwannier90: $(CMAKE_BUILD_DIR_libwannier90)/libwannier90.a
+#-----------------------------------------
 
 clean_extlibs:
 	-rm -rf $(MAIN_OBJDIR)/__extlib_*
+	-rm -rf $(MAIN_OBJDIR)/wannier90-3.1.0
 	-rm -rf $(EXTLIBS_INSTALL_PREFIX)
