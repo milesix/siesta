@@ -165,9 +165,8 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
                     that points to an installation of the flook library, or
 		    a filepath cache variable (-DFLOOK_ROOT=/path/to/flook)
 
-      - WITH_WANNIER90:   Use either an *environment* variable WANNIER90_ROOT
-                    that points to an installation of the W90 library, or
-		    a filepath cache variable (-DWANNIER90_ROOT=/path/to/wannier90)
+      - WITH_WANNIER90:   Use an *environment* variable WANNIER90_PACKAGE
+                    that points to a pristine wannier90-3.1.0.tar.gz file.
 
 * Handling of compiler flags
 
@@ -215,10 +214,6 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
 
       - The libraries and module search paths for the flook library
         are hard-coded (based on $FLOOK_ROOT), as there is no proper
-        pkgconfig file yet.
-
-      - The libraries and module search paths for the wannier90 library
-        are hard-coded (based on $WANNIER90_ROOT), as there is no proper
         pkgconfig file yet.
 
       - When using MPI, a single MPI version of GRIDXC is compiled (or
