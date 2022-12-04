@@ -6,6 +6,8 @@
 # granted to it by virtue of its status as an intergovernmental organisation nor
 # does it submit to any jurisdiction.
 
+# (Minor change for use in Siesta: near line 225)
+
 # Try to find NetCDF includes and library.
 # Supports static and shared libaries and allows each component to be found in sepearte prefixes.
 #
@@ -222,7 +224,8 @@ foreach( _comp IN LISTS _search_components )
   else()
     set( NetCDF_${_comp}_LIBRARIES ${NetCDF_${_comp}_LIBRARY} )
     if(NOT NetCDF_${_comp}_LIBRARY_SHARED)
-      message(SEND_ERROR "Unable to properly find NetCDF.  Found static libraries at: ${NetCDF_${_comp}_LIBRARY} but could not run nc-config: ${NetCDF_CONFIG_EXECUTABLE}")
+      ## Remove this as the error message is incoherent and uninformative (AG: Dec 4, 2022)
+      ## message(SEND_ERROR "Unable to properly find NetCDF.  Found static libraries at: ${NetCDF_${_comp}_LIBRARY} but could not run nc-config: ${NetCDF_CONFIG_EXECUTABLE}")
     endif()
   endif()
 

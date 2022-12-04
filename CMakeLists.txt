@@ -112,26 +112,39 @@ endif()
 
 
 if (WITH_NETCDF)
- # Find NetCDF, some fallbacks are provided for pkg-config
- if( (NOT DEFINED NetCDF_ROOT) AND (NOT DEFINED NetCDF_PATH) )
-  if( PKG_CONFIG_FOUND )
-    # Define NetCDF_PATH if not defined
-    # Use pkg-config to retrieve the path
-    pkg_get_variable(NetCDF_PATH netcdf prefix)
-  else()
-    if( DEFINED NETCDF_ROOT )
-      set(NetCDF_ROOT ${NETCDF_ROOT})
-    elseif( DEFINED NETCDF_PATH )
-      set(NetCDF_PATH ${NETCDF_PATH})
+  if(NOT TARGET NetCDF::NetCDF_Fortran)
+    if( (NOT DEFINED NetCDF_ROOT) AND (NOT DEFINED NetCDF_PATH) )
+      if( PKG_CONFIG_FOUND )
+        # Define NetCDF_PATH if not defined
+        # Use pkg-config to retrieve the path
+        pkg_get_variable(NetCDF_PATH netcdf prefix)
+      else()
+        if( DEFINED NETCDF_ROOT )
+          set(NetCDF_ROOT ${NETCDF_ROOT})
+        elseif( DEFINED NETCDF_PATH )
+          set(NetCDF_PATH ${NETCDF_PATH})
+        endif()
+      endif()
+    endif()
+    
+    # Require at least 4.0.0 version (we need >=4)
+    
+    find_package(NetCDF 4.0.0 OPTIONAL_COMPONENTS Fortran C)
+    if( NOT NetCDF_Fortran_FOUND )
+     message(STATUS "NetCDF_Fortran could not be found by CMake")
+     message(STATUS "Try setting variables: ")
+     message(STATUS "    NetCDF_ROOT or NetCDF_PATH")
+     message(STATUS " or NETCDF_ROOT or NETCDF_PATH")
+     message(STATUS " or NetCDF_INCLUDE_DIR or NetCDF_Fortran_INCLUDE_DIR")
+     message(STATUS " or NetCDF_INCLUDE_DIRS or NetCDF_Fortran_INCLUDE_DIRS")
+     message(STATUS "to appropriate values,")
+     message(STATUS "or use an appropriate path in CMAKE_PREFIX_PATH")
+     message(STATUS "If unsuccessful, set -DWITH_NETCDF=OFF")
+     message(STATUS "   (some Siesta functionalities will not be available)")
+     message(FATAL_ERROR "NetCDF could not be found by CMake")
     endif()
   endif()
 endif()
-
-# Require at least 4.0.0 version (we need >=4)
-find_package(NetCDF 4.0.0 OPTIONAL_COMPONENTS Fortran C)
-
-endif()
-
 #
 # Look for LAPACK
 #
@@ -181,10 +194,6 @@ if (WITH_FFTW)
   endif()
 endif()
 
-# For now we add each directory manually.
-# This follows the code structure since each
-# folder contains a library.
-# Each added sub-directory should thus be a directory
 
 if( WITH_MPI )
   # optional mpi-siesta library
