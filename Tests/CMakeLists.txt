@@ -25,7 +25,7 @@ function(setup_test name pseudos extrafiles)
 	  $<TARGET_FILE:siesta-siesta> -out OUT ${name}.fdf
           ${MPIEXEC_POSTFLAGS})
 	  
-   add_test( NAME    siesta-${name}_mpi
+   add_test( NAME    siesta-${name}_mpi_np_${num_ranks}
              COMMAND ${MPIEXEC_EXECUTABLE} ${mpiexec_args}
              WORKING_DIRECTORY "${wdir}" )
 

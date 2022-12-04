@@ -239,12 +239,15 @@ add_subdirectory(Docs)
 # add a few very basic tests for now
 
 enable_testing()
+
 include(TestMPIConfig)
-add_subdirectory(Tests)
 
 if(WITH_MPI)
   add_subdirectory("Util/MPI_test")
 endif(WITH_MPI)
+
+add_subdirectory(Tests)
+
 
 #add_subdirectory("Src/ncps/examples")
 
