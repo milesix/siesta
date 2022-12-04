@@ -133,9 +133,8 @@ find_package(NetCDF 4.0.0 OPTIONAL_COMPONENTS Fortran C)
 endif()
 
 #
-# Look for BLAS and LAPACK
+# Look for LAPACK
 #
-find_package(CustomBlas REQUIRED)
 find_package(CustomLapack REQUIRED)
 include(check_lapack)
 if (WITH_MPI)

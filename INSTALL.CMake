@@ -75,26 +75,30 @@ If MPI is found on the system, it will be used by default (WITH_MPI=ON).
 If NetCDF is found on the system, it will be used by default (WITH_NETCDF=ON), and
 so will the NCDF library (See below for a fuller option list).
 
-The system will try to find a LAPACK library automatically, but it will honor
-the setting of the LAPACK_LIBRARY variable, and/or a directory path LAPACK_LIBRARY_DIR
-in which to search.
+The system will try to find a LAPACK library automatically, using a
+custom module. The search can be helped by the setting of the
+LAPACK_LIBRARY variable, and/or a directory path LAPACK_LIBRARY_DIR in
+which to search.
 
   cmake [ other options ]  -DLAPACK_LIBRARY="openblas"
   cmake [ other options ]  -DLAPACK_LIBRARY_DIR="/opt/lapack"
 
-A search for a BLAS library will be carried out before searching for LAPACK (honoring
-if present the analogous variables BLAS_LIBRARY and BLAS_LIBRARY_DIR).
-Targets BLAS::BLAS and LAPACK::LAPACK will be defined, and the latter made to depend on
-the first. See the appropriate Config/cmake/Find* files for more details, including the
-possible need to set BLAS_LIBRARY or LAPACK_LIBRARY to "NONE" if either of them is
-redundant.
+The search will also take into account the setting of the variables
+BLAS_LIBRARIES and LAPACK_LIBRARIES, which are handled by the standard
+CMake 'findLAPACK' module.
+
+NOTE: In systems in which Lapack is implicitly linked (e.g., Cray systems),
+it might be necessary to set LAPACK_LIBRARY to "NONE". Newer versions of
+CMake detect this automatically.
   
-If WITH_MPI=ON, the system will search also for a Scalapack library (honoring
-if present the variables SCALAPACK_LIBRARY and SCALAPACK_LIBRARY_DIR). Please watch out for
-MPI compatibility issues, as they are NOT currently checked.
+If WITH_MPI=ON, the system will search also for a Scalapack library
+(honoring if present the variables SCALAPACK_LIBRARY and
+SCALAPACK_LIBRARY_DIR). Please watch out for MPI compatibility issues,
+as they are NOT currently checked. The same "implicit linking" note
+above applies.
 
 (The CMake support for the linear-algebra library search has been
-borrowed from the DFTB+ project, and somewhat refined).
+borrowed from the DFTB+ and SIRIUS projects.)
 
 To have libgridxc compiled with libxc support, change the invocation to:
 
