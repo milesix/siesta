@@ -7,8 +7,6 @@ set(LAPACK_LIBRARY
     "-L/apps/INTEL/2017.4/mkl/lib/intel64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core"
         CACHE STRING "lapack library chosen")
 	
-set(BLAS_LIBRARY "NONE" CACHE STRING "blas library chosen")
-
 set(SCALAPACK_LIBRARY
     "-L/apps/INTEL/2017.4/mkl/lib/intel64 -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core"
      CACHE STRING "scalapack library chosen")
