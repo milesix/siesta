@@ -538,6 +538,7 @@ set_target_properties(
 target_compile_definitions(
   ${PROJECT_NAME}-libsiesta
   PUBLIC
+  "$<$<BOOL:${WITH_DEBUG}>:DEBUG>"
   "$<$<BOOL:${WITH_MPI}>:MPI>"
   "$<$<BOOL:${WITH_GRID_SP}>:GRID_SP>"
   "$<$<BOOL:${HAS_MRRR}>:SIESTA__MRRR>"
