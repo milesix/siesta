@@ -55,7 +55,7 @@ contains
     use class_dSpData1D
     use class_dSpData2D
 
-    use m_ts_electype
+    use ts_electrode_m
     ! Self-energy read
     use m_ts_gf
     ! Self-energy expansion
@@ -91,7 +91,7 @@ contains
 ! * INPUT variables  *
 ! ********************
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     integer, intent(in) :: nq(N_Elec), uGF(N_Elec)
     integer, intent(in) :: nspin, na_u, lasto(0:na_u)
     type(OrbitalDistribution), intent(inout) :: sp_dist
@@ -141,6 +141,9 @@ contains
     integer :: no_u_TS, off, no
     real(dp), parameter :: bkpt(3) = (/0._dp,0._dp,0._dp/)
 ! ************************************************************
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_pre_Econtours', 1)
+#endif
 
 #ifdef TRANSIESTA_DEBUG
     call write_debug( 'PRE transiesta mem' )
@@ -250,6 +253,11 @@ contains
     ! point to the index iterators
     call itt_attach(Sp,cur=ispin)
 
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_pre_Econtours', 2)
+    call timer('TS_Econtours', 1)
+#endif
+
     do while ( .not. itt_step(Sp) )
 
        write(mum%ICNTL(1),'(/,a,i0,/)') '### Solving for spin: ',ispin
@@ -292,7 +300,7 @@ contains
        no = no_u_TS
        do iEl = 1 , N_Elec
           if ( Elecs(iEl)%DM_update == 0 ) then
-             no = no - TotUsedOrbs(Elecs(iEl))
+             no = no - Elecs(iEl)%device_orbitals()
           end if
        end do
        iE = Nodes - Node
@@ -481,7 +489,7 @@ contains
                 ! solve for all electrode columns... (not very sparse :( )
                 
                 ! offset and number of orbitals
-                no = TotUsedOrbs(Elecs(iEl))
+                no = Elecs(iEl)%device_orbitals()
                 
                 ! step to the next electrode position
                 off = off + no
@@ -550,6 +558,11 @@ contains
 
     end do ! spin
 
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_Econtours', 2)
+    call timer('TS_post_Econtours', 1)
+#endif
+
     call itt_destroy(Sp)
 
 #ifdef TRANSIESTA_DEBUG
@@ -605,6 +618,9 @@ contains
 #ifdef TRANSIESTA_DEBUG
     call write_debug( 'POS transiesta mem' )
 #endif
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_post_Econtours', 2)
+#endif
 
   end subroutine ts_mumpsg
 
@@ -625,7 +641,7 @@ contains
     use class_Sparsity
     use class_dSpData1D
     use class_dSpData2D
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_method, only : ts2s_orb
 
     include 'zmumps_struc.h'
@@ -638,7 +654,7 @@ contains
     ! the mumps structure
     type(zMUMPS_STRUC), intent(inout) :: mum
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! the index of the partition
     integer, intent(in) :: DMidx
     integer, intent(in), optional :: EDMidx
@@ -660,6 +676,9 @@ contains
     integer :: s_ptr_begin, s_ptr_end, sin
     integer :: i1, i2
     logical :: hasEDM, lis_eq, calc_q
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_add_DM', 1)
+#endif
 
     lis_eq = .true.
     if ( present(is_eq) ) lis_eq = is_eq
@@ -691,25 +710,26 @@ contains
 
       if ( calc_q .and. hasEDM ) then
 
-!$OMP parallel do default(shared), private(ir,jo,ind,io,Hn,ind_H,s_ptr_begin,s_ptr_end,sin)
+!$OMP parallel do default(shared), &
+!$OMP&  private(ir,jo,ind,io,Hn,ind_H,s_ptr_begin,s_ptr_end,sin), &
+!$OMP&  reduction(-:q)
         do ir = 1 , mum%NRHS
           
           ! this is column index
-          jo = ts2s_orb(ir)
+          io = ts2s_orb(ir)
+          Hn = l_ncol(io)
+
+          s_ptr_begin = s_ptr(io) + 1
+          s_ptr_end = s_ptr(io) + s_ncol(io)
 
           ! The update region equivalent GF part
           do ind = mum%IRHS_PTR(ir) , mum%IRHS_PTR(ir+1)-1
 
-            io = ts2s_orb(mum%IRHS_SPARSE(ind))
+            jo = ts2s_orb(mum%IRHS_SPARSE(ind))
 
-            Hn    = l_ncol(io)
-            ind_H = l_ptr(io)
             ! Requires that l_col is sorted
-            ind_H = ind_H + SFIND(l_col(ind_H+1:ind_H+Hn),jo)
+            ind_H = l_ptr(io) + SFIND(l_col(l_ptr(io)+1:l_ptr(io)+Hn),jo)
             if ( ind_H > l_ptr(io) ) then
-
-              s_ptr_begin = s_ptr(io) + 1
-              s_ptr_end = s_ptr(io) + s_ncol(io)
 
               ! Search for overlap index
               ! spS is transposed, so we have to conjugate the
@@ -729,12 +749,11 @@ contains
 
 !$OMP parallel do default(shared), private(ir,jo,ind,io,Hn,ind_H)
         do ir = 1 , mum%NRHS
-          jo = ts2s_orb(ir)
+          io = ts2s_orb(ir)
+          Hn = l_ncol(io)
           do ind = mum%IRHS_PTR(ir) , mum%IRHS_PTR(ir+1)-1
-            io = ts2s_orb(mum%IRHS_SPARSE(ind))
-            Hn    = l_ncol(io)
-            ind_H = l_ptr(io)
-            ind_H = ind_H + SFIND(l_col(ind_H+1:ind_H+Hn),jo)
+            jo = ts2s_orb(mum%IRHS_SPARSE(ind))
+            ind_H = l_ptr(io) + SFIND(l_col(l_ptr(io)+1:l_ptr(io)+Hn),jo)
             if ( ind_H > l_ptr(io) ) then
               D(ind_H,i1) = D(ind_H,i1) - aimag( GF(ind) * DMfact  )
               E(ind_H,i2) = E(ind_H,i2) - aimag( GF(ind) * EDMfact )
@@ -747,15 +766,14 @@ contains
 
 !$OMP parallel do default(shared), private(ir,jo,ind,io,Hn,ind_H,s_ptr_begin,s_ptr_end,sin)
         do ir = 1 , mum%NRHS
-          jo = ts2s_orb(ir)
+          io = ts2s_orb(ir)
+          Hn = l_ncol(io)
+          s_ptr_begin = s_ptr(io) + 1
+          s_ptr_end = s_ptr(io) + s_ncol(io)
           do ind = mum%IRHS_PTR(ir) , mum%IRHS_PTR(ir+1)-1
-            io = ts2s_orb(mum%IRHS_SPARSE(ind))
-            Hn    = l_ncol(io)
-            ind_H = l_ptr(io)
-            ind_H = ind_H + SFIND(l_col(ind_H+1:ind_H+Hn),jo)
+            jo = ts2s_orb(mum%IRHS_SPARSE(ind))
+            ind_H = l_ptr(io) + SFIND(l_col(l_ptr(io)+1:l_ptr(io)+Hn),jo)
             if ( ind_H > l_ptr(io) ) then
-              s_ptr_begin = s_ptr(io) + 1
-              s_ptr_end = s_ptr(io) + s_ncol(io)
               sin = s_ptr_begin - 1 + SFIND(s_col(s_ptr_begin:s_ptr_end), jo)
               if ( sin >= s_ptr_begin ) q = q - aimag(GF(ind) * Sg(sin))
               D(ind_H,i1) = D(ind_H,i1) - aimag( GF(ind) * DMfact  )
@@ -768,12 +786,11 @@ contains
 
 !$OMP parallel do default(shared), private(ir,jo,ind,io,Hn,ind_H)
         do ir = 1 , mum%NRHS
-          jo = ts2s_orb(ir)
+          io = ts2s_orb(ir)
+          Hn = l_ncol(io)
           do ind = mum%IRHS_PTR(ir) , mum%IRHS_PTR(ir+1)-1
-            io = ts2s_orb(mum%IRHS_SPARSE(ind))
-            Hn    = l_ncol(io)
-            ind_H = l_ptr(io)
-            ind_H = ind_H + SFIND(l_col(ind_H+1:ind_H+Hn),jo)
+            jo = ts2s_orb(mum%IRHS_SPARSE(ind))
+            ind_H = l_ptr(io) + SFIND(l_col(l_ptr(io)+1:l_ptr(io)+Hn),jo)
             if ( ind_H > l_ptr(io) ) then
               D(ind_H,i1) = D(ind_H,i1) - aimag( GF(ind) * DMfact  )
             end if
@@ -819,7 +836,7 @@ contains
         do ind = 1 , mum%NZ
           io = ts2s_orb(mum%JCN(ind))
           jo = ts2s_orb(mum%IRN(ind))
-          Hn    = l_ncol(io)
+          Hn = l_ncol(io)
           ind_H = l_ptr(io)
           ind_H = ind_H + SFIND(l_col(ind_H+1:ind_H+Hn),jo)
           if ( ind_H > l_ptr(io) ) then
@@ -831,6 +848,9 @@ contains
       end if
 
     end if
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_add_DM', 2)
+#endif
 
     ! For ts_dq we should not multiply by 2 since we don't do G + G^\dagger for Gamma-only
     ! this is because G is ensured symmetric for Gamma-point and thus it is not needed.
@@ -846,7 +866,7 @@ contains
     use intrinsic_missing, only : SFIND
     use class_dSpData1D
     use class_Sparsity
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_cctype, only : ts_c_idx
     use m_ts_method, only : ts2s_orb
     include 'zmumps_struc.h'
@@ -855,7 +875,7 @@ contains
     type(ts_c_idx), intent(in) :: cE
     type(zMUMPS_STRUC), intent(inout) :: mum
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! The Hamiltonian and overlap sparse matrices
     type(dSpData1D), intent(inout) :: spH,  spS
 
@@ -905,8 +925,6 @@ contains
 
        if ( ind_H > l_ptr(io) ) then
        
-          ! Notice that we transpose S and H back here
-          ! See symmetrize_HS_Gamma (H is hermitian)
           iG(ind) = Z * S(ind_H) - H(ind_H)
 
        end if

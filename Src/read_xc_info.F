@@ -11,7 +11,7 @@ C     Reads the exchange-correlation functional information
 C     and calls setXC to store it
 C
       use precision, only : dp
-      use SiestaXC,  only : setXC
+      use gridXC,  only : setXC=>gridxc_setXC
       use fdf
       use parallel,  only : Node
       use sys,       only : die
@@ -20,9 +20,9 @@ C
 
 C     LOCAL variables
 
-      integer, parameter      :: MaxFunc = 10
+      integer, parameter      :: MaxFunc = 20
       integer                 :: nXCfunc
-      character(len=20)       :: XCauth(MaxFunc)
+      character(len=50)       :: XCauth(MaxFunc)
       character(len=20)       :: XCfunc(MaxFunc)
       real(dp)                :: XCweightX(MaxFunc)
       real(dp)                :: XCweightC(MaxFunc)
@@ -35,24 +35,43 @@ C     LOCAL variables
         type(block_fdf)            :: bfdf
         type(parsed_line), pointer :: pline
 
-C Read XC functionals
-        if (fdf_block('xc.hybrid',bfdf)) then
+        logical  :: found_block
+        
+!      Read XC functionals
+
+        found_block = .false.
+        
+        if (fdf_block('xc.mix',bfdf)) then
+           found_block = .true.
+        else if (fdf_block('xc.cocktail',bfdf)) then
+           call message(' (info)',
+     $          'XC.cocktail block is deprecated. Use XC.mix')
+           found_block = .true.
+        else if (fdf_block('xc.hybrid',bfdf)) then
+           call message(' (info)',
+     $          'XC.hybrid block is deprecated. Use XC.mix')
+           found_block = .true.
+        endif
+
+
+        if (found_block) then
+           
           if (.not. fdf_bline(bfdf,pline)) then
-            call die('setXC: ERROR no data in XC.hybrid block')
+            call die('read_xc: ERROR no data in xc.mix block')
           endif
           ni = fdf_bnintegers(pline)
 
           if (ni .eq. 0) then
-            call die('setXC: Number of functionals missing in ' //
-     .               'XC.hybrid')
+            call die('read_xc: Number of functionals missing in '
+     $            // 'xc.mix')
           endif
           nXCfunc = abs(fdf_bintegers(pline,1))
           if (nXCfunc .gt. MaxFunc) then
-            call die('setXC: Too many functionals in XC.hybrid')
+            call die('read_xc: Too many (>20) functionals in xc.mix')
           endif
           do n= 1, nXCfunc
             if (.not. fdf_bline(bfdf,pline)) then
-              call die('setXC: Number of XC functionals does not match')
+              call die('read_xc: Too few functional lines in xc.mix')
             endif
             nn = fdf_bnnames(pline)
             nr = fdf_bnreals(pline)
@@ -87,10 +106,15 @@ C Read XC functionals
           XCweightC(1) = 1.0_dp
         endif
 
-C Output data for hybrid functionals
+        ! Announce the deprecated flags (if used)...
+        ! ... after closing the block
+        call fdf_deprecated('XC.hybrid','XC.mix')
+        call fdf_deprecated('XC.cocktail','XC.mix')
+
+C Output data for mix of functionals
         if ((nXCfunc .gt. 1) .and. (Node .eq. 0)) then
           write(6,'(/,''xc:'')')
-          write(6,'(''xc:  Hybrid exchange-correlation functional:'')
+          write(6,'(''xc: Exchange-correlation functional mix:'')
      .      ')
           write(6,'(''xc:'')')
           write(6,'(''xc: Number     Functional     Authors  '',

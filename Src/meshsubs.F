@@ -279,7 +279,7 @@ C     Create extended mesh arrays for the first data distribution
       use parallel,      only : IOnode
       use cellsubs,      only : reclat  ! Finds reciprocal unit cell
       use m_chkgmx,      only : chkgmx  ! Checks planewave cutoff of a mesh
-      use fft1d,         only : nfft    ! Finds allowed value for 1-D FFT
+      use gpfa_fft,      only : nfft    ! Finds allowed value for 1-D FFT
       use fdf
       use sys,           only : die, message
 
@@ -291,7 +291,7 @@ C     Create extended mesh arrays for the first data distribution
       
       real(dp)  :: rcell(3,3), vecmod
       integer   :: i, itmp
-      real(dp), parameter     :: k0(3) = (/ 0.0, 0.0, 0.0 /)
+      real(dp), parameter     :: k0(3) = (/ 0.d0, 0.d0, 0.d0 /)
 
       type(block_fdf)            :: bfdf
       type(parsed_line), pointer :: pline
@@ -549,7 +549,7 @@ C     If cell has changed then it is necessary to reinitialise coordinates
 !     (Re)allocate atom-mesh arrays
       call allocIpaDistr( distr, na )
       if (na.ne.lastna) then
-        call re_alloc( dxa, 1,3, 1,na, myName//'dxa' )
+        call re_alloc( dxa, 1,3, 1,na, 'dxa', myName )
         call re_alloc( iatfold, 1,3, 1,na, myName//'iatfold' )
       endif
       lastna = na
@@ -847,9 +847,8 @@ C ----------------------------------------------------------------------
 C real    Chlocal(ntpl)     : Sum of diffuse ionic charge densities
 C ----------------------------------------------------------------------
       use precision, only: dp, grid_p
-      use atmfuncs,  only: rcut, psch
+      use atmfuncs,  only: rcut, psch, rchlocal
       use atm_types, only: species
-      use radial,    only: rad_func
       use mesh,      only: dxa, idop, indexp, ipa, mop, nsp, xdop, xdsp
       implicit none
 C     Passed arguments
@@ -859,8 +858,6 @@ C     Passed arguments
 C     Internal variables
       integer                   :: ia, iop, ip, ip0, is, isp, iua
       real(dp)                  :: dx(3), grpsch(3), r, ra, pschloc
-      type(rad_func), pointer  :: func   
- 
 !------------------------------------------------------------------------- BEGIN
 #ifdef DEBUG
       call write_debug( '      PRE LocalChargeOnMesh' )
@@ -872,8 +869,7 @@ C     Initialise array to zero
         if (ipa(ia)==0) cycle ! Atomic sphere does not intersec my Box
         iua = indxua(ia)
         is = isa(ia)
-        func => species(is)%chlocal
-        ra = func%cutoff
+        ra = rchlocal(is)
 C       Loop over mesh points inside rmax
         do iop = 1,mop
           ip0 = indexp( ipa(ia) + idop(iop) )
@@ -917,7 +913,7 @@ C real    ModelCore(ntpl)     : Sum of model core charge densities
 C ----------------------------------------------------------------------
 
       use precision,     only : dp, grid_p
-      use atmfuncs, only: izofis, zvalfis
+      use atmfuncs, only: izofis, zvalfis, rchlocal
       use atm_types, only : species
       use mesh,     only: dxa, idop, indexp, ipa, mop, nsp, xdop, xdsp
       use fdf
@@ -941,7 +937,6 @@ C
       real(dp) dx(3), ra, charge_ratio, r
       real(dp) core_charge
       real(dp), parameter :: pi = 3.141592653589793_dp
-
         ! We want a total core charge of (Z-Zval), localized in a
         ! region of around 1.0 bohr.
         ! Note that we put 1 electron (extra!) for Hydrogen atoms,

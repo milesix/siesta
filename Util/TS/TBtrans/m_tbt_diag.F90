@@ -130,15 +130,17 @@ contains
     ! hence all eigenvalues are positive.
     ! This "check" ensures that this is enforced.
     if ( any(eig < 0._dp) ) then
-       write(*,'(3a,e12.5)')'tbt: Projection ',trim(orb%name), &
-            ' is not completely positive definite, lowest eig of S: ', &
-            minval(eig)
+      write(*,'(3a,e12.5)')'tbt: Projection ',trim(orb%name), &
+          ' is not completely positive definite, lowest eig of S: ', &
+          minval(eig)
     end if
-    where ( eig < 0.0_dp )
-       eig = 0._dp
-    elsewhere
-       eig = dsqrt(eig)
-    end where
+    do i = 1, no
+      if ( eig(i) < 0._dp ) then
+        eig(i) = 0._dp
+      else
+        eig(i) = sqrt(eig(i))
+      end if
+    end do
 
     ! Calculate S^(1/2)
     ! Calculate v.sqrt(eig)
@@ -195,7 +197,7 @@ contains
     lwork = 3 * no
     if ( use_DC ) then
        ! Do a work-size query
-       call dspgvd(1,NV,'U', no, H_UT, S_UT, eig, lstate, no, &
+       call dspgvd(1,NV,'U', no, H_UT(1), S_UT(1), eig(1), lstate(1,1), no, &
             S_UT(1), -1, liwork, -1, info)
        lwork = max(no,nint(S_UT(1)))
        allocate(iwork(liwork))
@@ -211,12 +213,12 @@ contains
     call create_U(dit, sp, no, orb, n_nzs, H(:,1), H_UT)
 
     if ( use_DC ) then
-       call dspgvd(1,NV,'U', no, H_UT, S_UT, eig, lstate, no, &
-            work, lwork, iwork, liwork, info)
+       call dspgvd(1,NV,'U', no, H_UT(1), S_UT(1), eig(1), lstate(1,1), no, &
+            work(1), lwork, iwork, liwork, info)
        deallocate(iwork)
     else
-       call dspgv(1,NV,'U', no, H_UT, S_UT, eig, lstate, no, &
-            work, info)
+       call dspgv(1,NV,'U', no, H_UT(1), S_UT(1), eig(1), lstate(1,1), no, &
+            work(1), info)
     end if
 
     deallocate(H_UT,S_UT)
@@ -351,12 +353,14 @@ contains
        write(*,'(3a,e12.5)')'tbt: Projection ',trim(orb%name), &
             ' is not completely positive definite, lowest eig of S: ', &
             minval(eig)
-    end if
-    where ( eig < 0.0_dp )
-       eig = 0._dp
-    elsewhere
-       eig = dsqrt(eig)
-    end where
+     end if
+     do i = 1, no
+       if ( eig(i) < 0._dp ) then
+         eig(i) = 0._dp
+       else
+         eig(i) = sqrt(eig(i))
+       end if
+     end do
 
     ! Calculate S^(1/2)
     ! Calculate v.sqrt(eig)
@@ -418,8 +422,8 @@ contains
     lrwork = 3 * no
     if ( use_DC ) then
        ! work-size query
-       call zhpgvd(1,NV,'U', no, H_UT, S_UT, eig, lstate, no, &
-            S_UT(1), -1, eig, -1, liwork, -1, info)
+       call zhpgvd(1,NV,'U', no, H_UT(1), S_UT(1), eig(1), lstate(1,1), no, &
+            S_UT(1), -1, eig(1), -1, liwork, -1, info)
        lwork = max(no,nint(real(S_UT(1),dp)))
        lrwork = nint(eig(1))
        allocate(iwork(liwork))
@@ -436,12 +440,12 @@ contains
     call create_U(dit, sp, no, orb, n_nzs, nsc, H(:,1), sc_off,H_UT, kpt)
 
     if ( use_DC ) then
-       call zhpgvd(1,NV,'U', no, H_UT, S_UT, eig, lstate, no, &
-            work, lwork, rwork, lrwork, iwork, liwork, info)
+       call zhpgvd(1,NV,'U', no, H_UT(1), S_UT(1), eig(1), lstate(1,1), no, &
+            work(1), lwork, rwork, lrwork, iwork(1), liwork, info)
        deallocate(iwork)
     else
-       call zhpgv(1,NV,'U', no, H_UT, S_UT, eig, lstate, no, &
-         work, rwork, info)
+       call zhpgv(1,NV,'U', no, H_UT(1), S_UT(1), eig(1), lstate(1,1), no, &
+         work(1), rwork, info)
     end if
 
     deallocate(H_UT,S_UT)

@@ -129,7 +129,7 @@ contains
     ! Option name used (dH or dSE)
     character(len=*), intent(in) :: opt
     type(tDelta), intent(inout) :: delta
-    
+
 #ifdef NCDF_4
     type(hNCDF) :: ndelta, grp
 #endif
@@ -145,15 +145,18 @@ contains
 
 #ifdef NCDF_4
 
+    ! Check if file name is defined, if so it *must* be a valid file
+    if ( .not. fdf_defined("TBT." // opt) ) then
+      delta%fname = " "
+      return
+    end if
+
     ! just set a file-name that should never be created by any user :).
     delta%fname = fdf_get('TBT.'//opt,'NONE 1234567890')
 
-    ! If the file exists, use it
+    ! If the file does not exists, then stop and tell user!
     if ( .not. file_exist(delta%fname, Bcast = .true.) ) then
-       
-       delta%fname = ' '
-       return
-       
+      call die('TBT.'//opt//' file does not exist: '//trim(delta%fname))
     end if
 
     ! Ok, the file exists, lets see if all can see the file...
@@ -408,7 +411,7 @@ contains
     use mpi_siesta, only : MPI_Comm_Self
 #endif
 
-    use m_ncdf_io, only : cdf_r_Sp
+    use ncdf_io_m, only : cdf_r_Sp
 
     type(tDelta), intent(in) :: delta
 
@@ -488,10 +491,12 @@ contains
     integer :: MPIerror
 #endif
 
-    character(len=*), parameter :: f1 = '(a,i0,a,tr1,a)'
-    character(len=*), parameter :: f2 = '(a,i0,a,tr1,2a,"[",2(" ",f7.4,", "),f7.4,"]")'
-    character(len=*), parameter :: f3 = '(a,i0,a,tr1,2a,f8.4,tr1,a)'
-    character(len=*), parameter :: f4 = '(a,i0,a,tr1,2a,"[",2(" ",f7.4,", "),f7.4,"]",a,f8.4,tr1,a)'
+    character(len=*), parameter :: f0 = '(a,": ",a,i0,a)'
+    character(len=*), parameter :: f1 = '(a,": ",a,i0,a,i0)'
+    character(len=*), parameter :: f2 = '(a,": ",a,i0,a,i0,a,"[",2(" ",f7.4,", "),f7.4,"]")'
+    character(len=*), parameter :: f3 = '(a,": ",a,i0,a,i0,a,f8.4,tr1,a)'
+    character(len=*), parameter :: f4 = '(a,": ",a,i0,a,i0,a,"[",2(" ",f7.4,", "),f7.4,"]",a,f8.4,tr1,a)'
+    character(len=*), parameter :: fc = '(a,": ",a,i0,a)'
 
 #ifdef TBTRANS_TIMING
     call timer('read-delta',1)
@@ -503,23 +508,23 @@ contains
     allocate(nlvl(0:Nodes-1))
     nlvl(Node) = 0
     if ( delta_has_level(delta, 4) ) then
-       ik = idx_k(bkpt,delta%bkpt4)
-       if ( ik > 0 ) then
-          iE = idx_E(nE%E(Node),delta%E4)
-          if ( iE == 0 ) ik = 0
-       end if
-       if ( ik + iE /= 0 ) nlvl(Node) = 4
+      ik = idx_k(bkpt,delta%bkpt4)
+      if ( ik > 0 ) then
+        iE = idx_E(nE%E(Node),delta%E4)
+        if ( iE == 0 ) ik = 0
+      end if
+      if ( ik + iE /= 0 ) nlvl(Node) = 4
     end if
     if ( delta_has_level(delta, 3) .and. nlvl(Node) == 0 ) then
-       iE = idx_E(nE%E(Node),delta%E3)
-       if ( iE /= 0 ) nlvl(Node) = 3
+      iE = idx_E(nE%E(Node),delta%E3)
+      if ( iE /= 0 ) nlvl(Node) = 3
     end if
     if ( delta_has_level(delta, 2) .and. nlvl(Node) == 0 ) then
-       ik = idx_k(bkpt,delta%bkpt2)
-       if ( ik /= 0 ) nlvl(Node) = 2
+      ik = idx_k(bkpt,delta%bkpt2)
+      if ( ik /= 0 ) nlvl(Node) = 2
     end if
     if ( delta_has_level(delta, 1) .and. nlvl(Node) == 0 ) then
-       nlvl(Node) = 1
+      nlvl(Node) = 1
     end if
     
     !print *,Node,nlvl(node),ik,bkpt,iE,nE%E(Node) * 13.60580_dp
@@ -527,83 +532,94 @@ contains
     ! In case there is only one IO node
     if ( .not. cdf_r_parallel ) then
 #ifdef MPI
-       ! Gather levels on IO
-       call MPI_Gather(nlvl(Node),1,MPI_Integer, &
-            nlvl(0),1,MPI_Integer,0,MPI_Comm_World, MPIerror)
+      ! Gather levels on IO
+      call MPI_Gather(nlvl(Node),1,MPI_Integer, &
+          nlvl(0),1,MPI_Integer,0,MPI_Comm_World, MPIerror)
 #endif
 
-       ! We can only all read the same level
-       ! This is because a change in sparsity pattern
-       ! might prohibit the Bcast mechanism for the sparsity
-       ! patterns.
-       if ( IONode .and. .not. all(nlvl == nlvl(0)) ) then
-          write(*,'(a,1000(tr1,i2))')'Node levels: ',nlvl
-          write(*,'(3a)')'Error in using ', opt, ' functionality'
-          write(*,'(a)')'When using non-parallel reading of a delta file you must &
-               &ensure that at each iteration each core will use the same level.'
-          write(*,'(a)')'For (easy) full functionality please see if you can place the delta-file &
-               &so that all MPI-cores can see it.'
-          call die('Differing level designation and non-MPI IO, please see output...')
-       end if
+      ! We can only all read the same level
+      ! This is because a change in sparsity pattern
+      ! might prohibit the Bcast mechanism for the sparsity
+      ! patterns.
+      if ( IONode .and. .not. all(nlvl == nlvl(0)) ) then
+        write(*,'(a,1000(tr1,i2))')'Node levels: ',nlvl
+        write(*,'(3a)')'Error in using ', opt, ' functionality'
+        write(*,'(a)')'When using non-parallel reading of a delta file you must &
+            &ensure that at each iteration each core will use the same level.'
+        write(*,'(a)')'For (easy) full functionality please see if you can place the delta-file &
+            &so that all MPI-cores can see it.'
+        call die('Differing level designation and non-MPI IO, please see output...')
+      end if
 
     end if
 
     if ( nlvl(Node) /= delta%lvl ) then
 
-       ! Ensure it is emptied if the level is changed.
-       call clean_delta( delta )
+      ! Ensure it is emptied if the level is changed.
+      ! This is because the sparsity pattern may be different for the different
+      ! levels
+      call clean_delta( delta )
+      if ( verbosity > 7 .and. delta%lvl >= 1 ) then
+        write(*,fc) opt, 'Changing level (',Node,')'
+      end if
 
     end if
 
     select case ( nlvl(Node) )
     case ( 1 )
 
-       if ( delta%lvl /= 1 ) then
+      if ( delta%lvl /= 1 ) then
 
-          ! Read the delta term
-          call sub_read_delta(delta,1,delta%lvls(1) == 1,0,0)
-          if ( verbosity > 7 ) then
-             write(*,f1) 'Level 1 (',Node,')',opt
-          end if
+        ! Read the delta term
+        call sub_read_delta(delta,1,delta%lvls(1) == 1,0,0)
+        if ( verbosity > 7 ) then
+          write(*,f1) opt, 'Level 1 (',Node,') spin = ', delta%ispin
+        end if
 
-       end if
+      end if
 
     case ( 2 )
        
-       if ( sum(abs(delta%bkpt(:) - bkpt(:))) > 0.00001_dp ) then
+      if ( sum(abs(delta%bkpt(:) - bkpt(:))) > 0.00001_dp ) then
           
-          ! The k-point has changed, read the new delta term
-          delta%bkpt(:) = bkpt(:)
-          call sub_read_delta(delta,2,delta%lvls(2) == 1,ik,0)
+        ! The k-point has changed, read the new delta term
+        delta%bkpt(:) = bkpt(:)
+        call sub_read_delta(delta,2,delta%lvls(2) == 1,ik,0)
 
-          if ( verbosity > 7 ) then
-             write(*,f2) 'Level 2 (',Node,')',opt, ', kpt = ',bkpt
-          end if
+        if ( verbosity > 7 ) then
+          write(*,f2) opt, 'Level 2 (',Node,') spin = ', delta%ispin, &
+              ', kpt = ',bkpt
+        end if
 
-       end if
+      end if
 
     case ( 3 )
        
-       ! We should not have two same energy-points
-       ! consecutively
-       call sub_read_delta(delta,3,delta%lvls(3) == 1,0,iE)
+      ! We should not have two same energy-points
+      ! consecutively
+      call sub_read_delta(delta,3,delta%lvls(3) == 1,0,iE)
 
-       if ( verbosity > 7 ) then
-          write(*,f3) 'Level 3 (',Node,')',opt,', E = ', nE%E(Node) / eV, 'eV'
-       end if
+      if ( verbosity > 7 ) then
+        write(*,f3) opt, 'Level 3 (',Node,') spin = ', delta%ispin, &
+            ', E = ', nE%E(Node) / eV, 'eV'
+      end if
        
     case ( 4 )
 
-       call sub_read_delta(delta,4,delta%lvls(4) == 1,ik,iE)
+      call sub_read_delta(delta,4,delta%lvls(4) == 1,ik,iE)
 
-       if ( verbosity > 7 ) then
-          write(*,f4) 'Level 4 (',Node,')',opt,', kpt = ',bkpt,', E = ',nE%E(Node) / eV, 'eV'
-       end if
+      if ( verbosity > 7 ) then
+        write(*,f4) opt, 'Level 4 (',Node,') spin = ', delta%ispin, &
+            ', kpt = ',bkpt,', E = ',nE%E(Node) / eV, 'eV'
+      end if
 
     end select
 
     ! Inform the delta type to the current level
     delta%lvl = nlvl(Node)
+    if ( verbosity > 7 .and. delta%lvl < 1 ) then
+      write(*,f0) opt, 'No level (',Node,')'
+    end if
 
     deallocate(nlvl)
 
@@ -612,7 +628,7 @@ contains
 #endif
 
   contains
-    
+
     subroutine sub_read_delta(delta, lvl, is_real, ik, iE)
 
       use parallel, only : Node
@@ -620,7 +636,7 @@ contains
       use class_Sparsity
       use class_OrbitalDistribution
       use netcdf_ncdf, ncdf_parallel => parallel
-      use m_ncdf_io, only : cdf_r_Sp
+      use ncdf_io_m, only : cdf_r_Sp
 
 #ifdef MPI
       use mpi_siesta, only : MPI_Send, MPI_Recv
@@ -655,33 +671,33 @@ contains
       ! At this point we know which levels we should read
       ! on each node
       write(igrp,'(a,i0)') 'LEVEL-',lvl
-      
+
       !print *,Node,lvl,ik,iE
       
       if ( cdf_r_parallel ) then
-         call ncdf_open(grp,delta%fname, mode = IOR(NF90_SHARE,NF90_NOWRITE) , &
-              group = igrp , parallel = .true. )
+        call ncdf_open(grp,delta%fname, mode = IOR(NF90_SHARE,NF90_NOWRITE), &
+            group=igrp , parallel=.true. )
       else
-         call ncdf_open(grp,delta%fname, mode = NF90_NOWRITE , group = igrp )
+        call ncdf_open(grp,delta%fname, mode = NF90_NOWRITE , group = igrp )
       end if
       
       ! First read in sparsity pattern (the user can have
       ! different sparsity patterns for each level)
       if ( delta%lvl /= lvl ) then
          
-         call cdf_r_Sp(grp,no_u,sp, 'sp-delta', Bcast = .not. cdf_r_parallel )
+        call cdf_r_Sp(grp,no_u,sp, 'sp-delta', Bcast = .not. cdf_r_parallel )
          
 #ifdef MPI
-         call newDistribution(no_u,MPI_Comm_Self,fdist,name='TBT-fake dist')
+        call newDistribution(no_u,MPI_Comm_Self,fdist,name='TBT-fake dist')
 #else
-         call newDistribution(no_u,-1           ,fdist,name='TBT-fake dist')
+        call newDistribution(no_u,-1           ,fdist,name='TBT-fake dist')
 #endif
           
-         ! Create the data container
-         call newzSpData1D(sp,fdist,delta%d,name='delta')
+        ! Create the data container
+        call newzSpData1D(sp,fdist,delta%d,name='delta')
          
-         call delete(sp)
-         call delete(fdist)
+        call delete(sp)
+        call delete(fdist)
          
       end if
       
@@ -691,78 +707,78 @@ contains
       ! If the dH file is not read by NF90_SHARE
       ! We must have the IO-node to read and distribute
       if ( is_real ) then
-         allocate(rM(nnz))
+        allocate(rM(nnz))
       end if
       
-      start(:)    =  1
-      start(2)    =  delta%ispin
+      start(:) = 1
+      start(2) = delta%ispin
       select case ( lvl )
       case ( 2 )
-         start(3) = ik
+        start(3) = ik
       case ( 3 )
-         start(3) = iE
+        start(3) = iE
       case ( 4 )
-         start(3) = iE
-         start(4) = ik
+        start(3) = iE
+        start(4) = ik
       end select
          
 #ifdef MPI
       if ( .not. cdf_r_parallel ) then
-      if ( lvl == 1 .or. lvl == 2 ) then
-         if ( is_real ) then
+        if ( lvl == 1 .or. lvl == 2 ) then
+          if ( is_real ) then
             call ncdf_get_var(grp,'delta',rM, start = start )
-            call MPI_Bcast(rM,nnz,MPI_Double_Precision, 0, &
+            call MPI_Bcast(rM(1),nnz,MPI_Double_Precision, 0, &
                 MPI_Comm_World, MPIerror)
             zM(:) = rM(:)
             deallocate(rM)
-         else
+          else
             call ncdf_get_var(grp,'delta',zM, start = start )
-            call MPI_Bcast(zM,nnz,MPI_Double_Complex, 0, &
-                 MPI_Comm_World, MPIerror)
-         end if
+            call MPI_Bcast(zM(1),nnz,MPI_Double_Complex, 0, &
+                MPI_Comm_World, MPIerror)
+          end if
 
-         return
+          return
 
-      else 
-      if ( Node == 0 ) then
-         do iN = 1 , Node - 1
-            ! Retrieve the energy point (the k-point IS the same)
-            call MPI_Recv(oE,1,MPI_Integer, iN, iN, &
-                 MPI_Comm_World, status, MPIerror)
-            start(3) = oE
+        else
+          if ( Node == 0 ) then
+            do iN = 1 , Node - 1
+              ! Retrieve the energy point (the k-point IS the same)
+              call MPI_Recv(oE,1,MPI_Integer, iN, iN, &
+                  MPI_Comm_World, status, MPIerror)
+              start(3) = oE
+              if ( is_real ) then
+                call ncdf_get_var(grp,'delta',rM, start = start )
+                call MPI_Send(rM(1),nnz,MPI_Double_Precision, iN, iN, &
+                    MPI_Comm_World, MPIerror)
+              else
+                call ncdf_get_var(grp,'delta',zM, start = start )
+                call MPI_Send(zM(1),nnz,MPI_Double_Complex, iN, iN, &
+                    MPI_Comm_World, MPIerror)
+              end if
+            end do
+            ! set back the original starting place
+            start(3) = iE
+          else
+            call MPI_Send(iE,1,MPI_Integer, 0, Node, &
+                MPI_Comm_World, MPIerror)
             if ( is_real ) then
-               call ncdf_get_var(grp,'delta',rM, start = start )
-               call MPI_Send(rM,nnz,MPI_Double_Precision, iN, iN, &
-                    MPI_Comm_World, MPIerror)
+              call MPI_Recv(rM(1),nnz,MPI_Double_Precision, 0, Node, &
+                  MPI_Comm_World, status, MPIerror)
             else
-               call ncdf_get_var(grp,'delta',zM, start = start )
-               call MPI_Send(zM,nnz,MPI_Double_Complex, iN, iN, &
-                    MPI_Comm_World, MPIerror)
+              call MPI_Recv(zM(1),nnz,MPI_Double_Complex, 0, Node, &
+                  MPI_Comm_World, status, MPIerror)
             end if
-         end do
-         ! set back the original starting place
-         start(3) = iE
-      else
-         call MPI_Send(iE,1,MPI_Integer, 0, Node, &
-              MPI_Comm_World, MPIerror)
-         if ( is_real ) then
-            call MPI_Recv(rM,nnz,MPI_Double_Precision, 0, Node, &
-                 MPI_Comm_World, status, MPIerror)
-         else
-            call MPI_Recv(zM,nnz,MPI_Double_Complex, 0, Node, &
-                 MPI_Comm_World, status, MPIerror)
-         end if
-      end if
-      end if
+          end if
+        end if
       end if
 #endif
       
       if ( is_real ) then
-         call ncdf_get_var(grp,'delta',rM, start = start )
-         zM(:) = rM(:)
-         deallocate(rM)
+        call ncdf_get_var(grp,'delta',rM, start = start )
+        zM(:) = rM(:)
+        deallocate(rM)
       else
-         call ncdf_get_var(grp,'delta',zM, start = start )
+        call ncdf_get_var(grp,'delta',zM, start = start )
       end if
 
       call ncdf_close(grp)
@@ -772,7 +788,7 @@ contains
     function idx_k(bk,fbk) result(i)
       real(dp), intent(in) :: bk(3), fbk(:,:)
       integer :: i
-      do i = 1 , size(fbk,dim=2)
+      do i = 1 , size(fbk, 2)
          if ( abs( fbk(1,i) - bk(1) ) + &
               abs( fbk(2,i) - bk(2) ) + &
               abs( fbk(3,i) - bk(3) ) < 0.0001_dp ) then
@@ -786,9 +802,9 @@ contains
       real(dp), intent(in) :: E, fE(:)
       integer :: i
       do i = 1 , size(fE)
-         if ( abs(fE(i) - E) < 7.349806700083788e-06_dp ) then
-            return
-         end if
+        if ( abs(fE(i) - E) < 7.349806700083788e-06_dp ) then
+          return
+        end if
       end do
       i = 0
     end function idx_E
@@ -796,11 +812,11 @@ contains
     subroutine correct_idx(ik,iE)
       integer, intent(inout), optional :: ik, iE
       if ( present(iE) .and. present(ik) ) then
-         if ( iE == 0 ) then
-            ik = 0
-         else if ( ik == 0 ) then
-            iE = 0
-         end if
+        if ( iE == 0 ) then
+          ik = 0
+        else if ( ik == 0 ) then
+          iE = 0
+        end if
       end if
     end subroutine correct_idx
 
@@ -834,7 +850,7 @@ contains
 #endif
 
   ! Add the delta to the tri-diagonal matrix
-  subroutine add_zdelta_TriMat( zd, GFinv_tri, r, pvt, sc_off, k)
+  subroutine add_zdelta_TriMat(zd, GFinv_tri, r, pvt, sc_off, k)
 
     use class_zTriMat
     use class_Sparsity
@@ -850,8 +866,8 @@ contains
 
     type(Sparsity), pointer :: sp
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
-    complex(dp), allocatable :: ph(:)
     complex(dp), pointer :: d(:), GFinv(:)
+    complex(dp) :: ph(0:size(sc_off, 2)-1)
 
     integer :: idx, iu, ju, ind, jo, no
 
@@ -859,47 +875,42 @@ contains
     d => val(zd)
 
     call attach(sp, nrows_g=no, &
-         n_col=l_ncol, list_ptr=l_ptr, list_col=l_col)
+        n_col=l_ncol, list_ptr=l_ptr, list_col=l_col)
 
     ! Create the phases
-    allocate( ph(0:size(sc_off,dim=2)-1) )
-    do iu = 1 , size(sc_off, dim=2)
-       ph(iu-1) = exp(cmplx(0._dp, &
-            k(1) * sc_off(1,iu) + &
-            k(2) * sc_off(2,iu) + &
-            k(3) * sc_off(3,iu),kind=dp))
+    ! Note the sign-change wrt. m_ts_sparse_helper. This
+    ! is because the latter stores the transpose matrix elements.
+    do iu = 1 , size(sc_off, 2)
+       ph(iu-1) = exp(cmplx(0._dp, dot_product(k, sc_off(:,iu)), dp))
     end do
 
     Gfinv => val(Gfinv_tri)
 
 !$OMP parallel do default(shared), private(iu,jo,ind,ju,idx)
     do ju = 1, r%n
-       jo = r%r(ju) ! get the orbital in the big sparsity pattern
-       if ( l_ncol(jo) /= 0 ) then
+      jo = r%r(ju) ! get the orbital in the big sparsity pattern
+      if ( l_ncol(jo) /= 0 ) then
           
-          ! Loop on entries here...
-          do ind = l_ptr(jo) + 1 , l_ptr(jo) + l_ncol(jo)
-             ! Look up in the pivoting array what the pivoted orbital is
-             iu = pvt%r(MODP(l_col(ind), no))
-             ! Check whether this element should be added
-             if ( iu == 0 ) cycle
+        ! Loop on entries here...
+        do ind = l_ptr(jo) + 1 , l_ptr(jo) + l_ncol(jo)
+          ! Look up in the pivoting array what the pivoted orbital is
+          iu = pvt%r(MODP(l_col(ind), no))
+          ! Check whether this element should be added
+          if ( iu == 0 ) cycle
              
-             idx = index(Gfinv_tri,ju,iu)
+          idx = index(Gfinv_tri,ju,iu)
              
-             GFinv(idx) = GFinv(idx) - d(ind) * ph( (l_col(ind)-1)/no )
-          end do
+          GFinv(idx) = GFinv(idx) - d(ind) * ph( (l_col(ind)-1)/no )
+        end do
           
-       end if
+      end if
     end do
 !$OMP end parallel do
-
-    deallocate(ph)
     
   end subroutine add_zdelta_TriMat
   
   ! Add the delta to the tri-diagonal matrix
-  subroutine add_zdelta_Mat( zd , r, off1, n1, off2, n2, M, &
-       sc_off, k)
+  subroutine add_zdelta_Mat(zd, r, off1, n1, off2, n2, M, sc_off, k)
 
     use class_Sparsity
     use m_region
@@ -910,14 +921,14 @@ contains
     type(tRgn), intent(in) :: r
     ! The sizes and offsets of the matrix
     integer, intent(in) :: off1, n1, off2, n2
-    complex(dp), intent(inout) :: M(n1,n2)
+    complex(dp), intent(inout) :: M(:,:)
     ! Super-cell offset and k-point
-    real(dp), intent(in) :: sc_off(:,:), k(3)
+    real(dp), intent(in) :: sc_off(:,:), k(:)
 
     type(Sparsity), pointer :: sp
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
-    complex(dp), allocatable :: ph(:)
     complex(dp), pointer :: d(:)
+    complex(dp) :: ph(0:size(sc_off, 2)-1)
 
     integer :: iu, ju, ind, jo, no
 
@@ -925,37 +936,33 @@ contains
     d => val(zd)
 
     call attach(sp, nrows_g=no, &
-         n_col=l_ncol, list_ptr=l_ptr, list_col=l_col)
+        n_col=l_ncol, list_ptr=l_ptr, list_col=l_col)
 
     ! Create the phases
-    allocate( ph(0:size(sc_off,dim=2)-1) )
-    do iu = 1 , size(sc_off, dim=2)
-       ph(iu-1) = exp(cmplx(0._dp, &
-            k(1) * sc_off(1,iu) + &
-            k(2) * sc_off(2,iu) + &
-            k(3) * sc_off(3,iu),kind=dp))
+    ! Note the sign-change wrt. m_ts_sparse_helper. This
+    ! is because the latter stores the transpose matrix elements.
+    do iu = 1 , size(sc_off, 2)
+       ph(iu-1) = exp(cmplx(0._dp, dot_product(k, sc_off(:,iu)), dp))
     end do
     
 !$OMP parallel do default(shared), private(iu,jo,ind,ju)
     do ju = 1 , n1
-       jo = r%r(off1+ju) ! get the orbital in the sparsity pattern
+      jo = r%r(off1+ju) ! get the orbital in the sparsity pattern
        
-       if ( l_ncol(jo) /= 0 ) then
+      if ( l_ncol(jo) /= 0 ) then
+
+        do ind = l_ptr(jo) + 1 , l_ptr(jo) + l_ncol(jo)
+          iu = rgn_pivot(r, MODP(l_col(ind), no)) - off2
+          if ( 1 <= iu .and. iu <= n2 ) then
+            M(ju,iu) = M(ju,iu) - d(ind) * ph( (l_col(ind)-1)/no )
+          end if
+        end do
           
-          do ind = l_ptr(jo) + 1 , l_ptr(jo) + l_ncol(jo)
-             iu = rgn_pivot(r, MODP(l_col(ind), no)) - off2
-             if ( 1 <= iu .and. iu <= n2 ) then
-               M(ju,iu) = M(ju,iu) - d(ind) * ph( (l_col(ind)-1)/no )
-             end if
-          end do
-          
-       end if
+      end if
 
     end do
 !$OMP end parallel do
 
-    deallocate(ph)
-    
   end subroutine add_zdelta_Mat
   
 end module m_tbt_delta

@@ -52,7 +52,7 @@ contains
     use class_dSpData1D
     use class_dSpData2D
 
-    use m_ts_electype
+    use ts_electrode_m
     ! Self-energy read
     use m_ts_gf
     ! Self-energy expansion
@@ -87,7 +87,7 @@ contains
 ! * INPUT variables  *
 ! ********************
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     integer, intent(in) :: nq(N_Elec), uGF(N_Elec)
     integer, intent(in) :: nspin, na_u, lasto(0:na_u)
     type(OrbitalDistribution), intent(inout) :: sp_dist
@@ -141,6 +141,9 @@ contains
     real(dp), parameter :: bkpt(3) = (/0._dp,0._dp,0._dp/)
 ! ************************************************************
 
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_pre_Econtours', 1)
+#endif
 #ifdef TRANSIESTA_DEBUG
     call write_debug( 'PRE transiesta mem' )
 #endif
@@ -175,7 +178,7 @@ contains
     no_Els = 0
     no_col = no_u_TS
     do iEl = 1 , N_Elec
-      no = TotUsedOrbs(Elecs(iEl))
+      no = Elecs(iEl)%device_orbitals()
       if ( Elecs(iEl)%DM_update == 0 ) then ! no elements in electrode are updated
         no_col = no_col - no
       end if
@@ -205,16 +208,16 @@ contains
        ! it is required that prepare_GF_inv is called
        ! immediately (which it is)
        ! Hence the GF must NOT be used in between these two calls!
-       io = TotUsedOrbs(Elecs(iEl))
-       Elecs(iEl)%Sigma => GF(no+1:no+io**2)
-       no = no + io ** 2
+       io = Elecs(iEl)%device_orbitals() ** 2
+       Elecs(iEl)%Sigma => GF(no+1:no+io)
+       no = no + io
 
     end do
 
     if ( IsVolt ) then
        ! we need only allocate one work-array for
        ! Gf.G.Gf^\dagger
-       call re_alloc(GFGGF_work,1,maxval(TotUsedOrbs(Elecs))**2,routine='transiesta')
+       call re_alloc(GFGGF_work,1,maxval(Elecs%device_orbitals())**2,routine='transiesta')
     end if
 
     ! Create the Fake distribution
@@ -273,6 +276,11 @@ contains
     ! point to the index iterators
     call itt_attach(Sp,cur=ispin)
 
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_pre_Econtours', 2)
+    call timer('TS_Econtours', 1)
+#endif
+
     do while ( .not. itt_step(Sp) )
 
        call init_DM(sp_dist, sparse_pattern, &
@@ -280,8 +288,7 @@ contains
             tsup_sp_uc, Calc_Forces)
 
        ! Include spin factor and 1/\pi
-       kw = 1._dp / Pi
-       if ( nspin == 1 ) kw = kw * 2._dp
+       kw = 2._dp / (Pi * nspin)
 
 #ifdef TRANSIESTA_TIMING
        call timer('TS_HS',1)
@@ -475,7 +482,7 @@ contains
              if ( cE%fake ) cycle ! in case we implement an MPI communication solution
 
              ! offset and number of orbitals
-             no = TotUsedOrbs(Elecs(iEl))
+             no = Elecs(iEl)%device_orbitals()
 
              call GF_Gamma_GF(Elecs(iEl), no_u_TS, no, &
                   Gf(no_u_TS*off+1), zwork, size(GFGGF_work), GFGGF_work)
@@ -543,6 +550,11 @@ contains
 
     end do ! spin
 
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_Econtours', 2)
+    call timer('TS_post_Econtours', 1)
+#endif
+
     call itt_destroy(Sp)
 
 #ifdef TRANSIESTA_DEBUG
@@ -584,6 +596,10 @@ contains
     call write_debug( 'POS transiesta mem' )
 #endif
 
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_post_Econtours', 2)
+#endif
+
   end subroutine ts_fullg
 
   ! Update DM
@@ -602,7 +618,7 @@ contains
     use class_Sparsity
     use class_dSpData1D
     use class_dSpData2D
-    use m_ts_electype
+    use ts_electrode_m
 
     ! The DM and EDM equivalent matrices
     type(dSpData2D), intent(inout) :: DM
@@ -614,7 +630,7 @@ contains
     ! The Green function
     complex(dp), intent(in) :: GF(no1,no2)
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! the index of the partition
     integer, intent(in) :: DMidx
     integer, intent(in), optional :: EDMidx
@@ -629,12 +645,15 @@ contains
     ! Arrays needed for looping the sparsity
     type(Sparsity), pointer :: s
     integer,  pointer :: l_ncol(:), l_ptr(:), l_col(:)
-    integer, pointer :: s_ncol(:), s_ptr(:), s_col(:)
+    integer, pointer :: s_ncol(:), s_ptr(:), s_col(:), sp_col(:)
     real(dp), pointer :: D(:,:), E(:,:), Sg(:)
     integer :: io, ind, nr
-    integer :: s_ptr_begin, s_ptr_end, sin
+    integer :: sp, sind
     integer :: iu, ju, i1, i2
     logical :: lis_eq, hasEDM, calc_q
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_add_DM', 1)
+#endif
 
     lis_eq = .true.
     if ( present(is_eq) ) lis_eq = is_eq
@@ -665,28 +684,29 @@ contains
       if ( calc_q .and. hasEDM ) then
 
 !$OMP parallel do default(shared), &
-!$OMP&private(io,iu,ind,ju,s_ptr_begin,s_ptr_end,sin)
+!$OMP&  private(io,iu,ind,ju,sp,sp_col,sind), &
+!$OMP&  reduction(-:q)
         do io = 1 , nr
           ! Quickly go past the buffer atoms...
           if ( l_ncol(io) /= 0 ) then
 
-            s_ptr_begin = s_ptr(io) + 1
-            s_ptr_end = s_ptr(io) + s_ncol(io)
+            sp = s_ptr(io)
+            sp_col => s_col(sp+1:sp+s_ncol(io))
 
             ! The update region equivalent GF part
             iu = io - orb_offset(io)
 
             do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
 
-              ju = l_col(ind) - orb_offset(l_col(ind)) - &
-                  offset(N_Elec,Elecs,l_col(ind))
+              ju = l_col(ind) - orb_offset(l_col(ind)) - offset(N_Elec,Elecs,l_col(ind))
 
               ! Search for overlap index
-              ! spS is transposed, so we have to conjugate the
-              ! S value, then we may take the imaginary part.
-              sin = s_ptr_begin - 1 + SFIND(s_col(s_ptr_begin:s_ptr_end), l_col(ind))
+              sind = sp + SFIND(sp_col, l_col(ind))
+              if ( sp < sind ) then
+                ! Gf = -Gf^\dagger @ \Gamma, no need to worry about Gf.S
+                q = q - aimag(Gf(iu,ju) * Sg(sind))
+              end if
 
-              if ( sin >= s_ptr_begin ) q = q - aimag(GF(iu,ju) * Sg(sin))
               D(ind,i1) = D(ind,i1) - aimag( GF(iu,ju) * DMfact  )
               E(ind,i2) = E(ind,i2) - aimag( GF(iu,ju) * EDMfact )
               
@@ -703,8 +723,7 @@ contains
           if ( l_ncol(io) /= 0 ) then
             iu = io - orb_offset(io)
             do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
-              ju = l_col(ind) - orb_offset(l_col(ind)) - &
-                  offset(N_Elec,Elecs,l_col(ind))
+              ju = l_col(ind) - orb_offset(l_col(ind)) - offset(N_Elec,Elecs,l_col(ind))
               D(ind,i1) = D(ind,i1) - aimag( GF(iu,ju) * DMfact  )
               E(ind,i2) = E(ind,i2) - aimag( GF(iu,ju) * EDMfact )
             end do
@@ -715,17 +734,17 @@ contains
       else if ( calc_q ) then
 
 !$OMP parallel do default(shared), &
-!$OMP&private(io,iu,ind,ju,s_ptr_begin,s_ptr_end,sin)
+!$OMP&  private(io,iu,sp,sp_col,ind,ju,sind), &
+!$OMP&  reduction(-:q)
         do io = 1 , nr
           if ( l_ncol(io) /= 0 ) then
-            s_ptr_begin = s_ptr(io) + 1
-            s_ptr_end = s_ptr(io) + s_ncol(io)
+            sp = s_ptr(io)
+            sp_col => s_col(sp+1:sp+s_ncol(io))
             iu = io - orb_offset(io)
             do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
-              ju = l_col(ind) - orb_offset(l_col(ind)) - &
-                  offset(N_Elec,Elecs,l_col(ind))
-              sin = s_ptr_begin - 1 + SFIND(s_col(s_ptr_begin:s_ptr_end), l_col(ind))
-              if ( sin >= s_ptr_begin ) q = q - aimag(GF(iu,ju) * Sg(sin))
+              ju = l_col(ind) - orb_offset(l_col(ind)) - offset(N_Elec,Elecs,l_col(ind))
+              sind = sp + SFIND(sp_col, l_col(ind))
+              if ( sp < sind ) q = q - aimag(GF(iu,ju) * Sg(sind))
               D(ind,i1) = D(ind,i1) - aimag( GF(iu,ju) * DMfact  )
             end do
           end if
@@ -740,8 +759,7 @@ contains
           if ( l_ncol(io) /= 0 ) then
             iu = io - orb_offset(io)
             do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
-              ju = l_col(ind) - orb_offset(l_col(ind)) - &
-                  offset(N_Elec,Elecs,l_col(ind))
+              ju = l_col(ind) - orb_offset(l_col(ind)) - offset(N_Elec,Elecs,l_col(ind))
               D(ind,i1) = D(ind,i1) - aimag( GF(iu,ju) * DMfact )
             end do
           end if
@@ -785,19 +803,22 @@ contains
       end if
     end if
 
-    ! For ts_dq we should not multiply by 2 since we don't do G + G^\dagger for Gamma-only
-    ! this is because G is ensured symmetric for Gamma-point and thus it is not needed.
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_add_DM', 2)
+#endif
 
   contains
     
     pure function offset(N_Elec,Elecs,io)
       integer, intent(in) :: N_Elec
-      type(Elec), intent(in) :: Elecs(N_Elec)
+      type(electrode_t), intent(in) :: Elecs(N_Elec)
       integer, intent(in) :: io
       integer :: offset
-      offset = sum(TotUsedOrbs(Elecs(:)), &
+      offset = sum(Elecs(:)%device_orbitals(), &
            MASK=(Elecs(:)%DM_update==0) .and. Elecs(:)%idx_o <= io )
     end function offset
+
+
     
   end subroutine add_DM
 
@@ -809,7 +830,7 @@ contains
 
     use class_dSpData1D
     use class_Sparsity
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_cctype, only : ts_c_idx
     use m_ts_full_scat, only : insert_Self_Energies
 
@@ -818,9 +839,9 @@ contains
     ! Remark that we need the left buffer orbitals
     ! to calculate the actual orbital of the sparse matrices...
     integer, intent(in) :: no_u
-    complex(dp), intent(out) :: GFinv(no_u**2)
+    complex(dp), intent(out) :: GFinv(no_u,no_u)
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! The Hamiltonian and overlap sparse matrices
     type(dSpData1D), intent(inout) :: spH,  spS
 
@@ -829,7 +850,7 @@ contains
     type(Sparsity), pointer :: sp
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
     real(dp), pointer :: H(:), S(:)
-    integer :: io, iu, ind, ioff, nr
+    integer :: io, iu, ind, nr
 
     if ( cE%fake ) return
 
@@ -847,9 +868,9 @@ contains
          nrows_g=nr)
 
     ! Initialize
-    GFinv(:) = cmplx(0._dp,0._dp, dp)
+    GFinv(:,:) = cmplx(0._dp,0._dp, dp)
 
-!$OMP parallel default(shared), private(io,ioff,iu,ind)
+!$OMP parallel default(shared), private(io,iu,ind)
 
     ! We will only loop in the central region
     ! We have constructed the sparse array to only contain
@@ -859,16 +880,11 @@ contains
 
        if ( l_ncol(io) /= 0 ) then
        
-       ioff = orb_offset(io)
-       iu = (io - ioff - 1) * no_u
+       iu = io - orb_offset(io)
        
        do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io) 
              
-          ioff = orb_offset(l_col(ind))
-          
-          ! Notice that we transpose S and H back here
-          ! See symmetrize_HS_Gamma (H is hermitian)
-          GFinv(iu+l_col(ind)-ioff) = Z * S(ind) - H(ind)
+          GFinv(l_col(ind)-orb_offset(l_col(ind)),iu) = Z * S(ind) - H(ind)
 
        end do
 

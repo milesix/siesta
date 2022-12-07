@@ -554,7 +554,7 @@ contains
           call elpa_check(info, 'setup')
 
           if (elpa_use_gpu) then
-             call ELPAt%set('gpu', 1, info)
+             call ELPAt%set('nvidia-gpu', 1, info)
              call elpa_check(info, 'gpu set')
              if ( algorithm == ELPA_2stage ) then
                 call ELPAt%set("complex_kernel",ELPA_2STAGE_COMPLEX_GPU,info) 
@@ -1544,7 +1544,7 @@ contains
           call elpa_check(info, 'setup')
 
           if (elpa_use_gpu) then
-             call ELPAt%set('gpu', 1, info)
+             call ELPAt%set('nvidia-gpu', 1, info)
              call elpa_check(info, 'gpu set')
              if ( algorithm == ELPA_2stage ) then
                 call ELPAt%set("real_kernel",ELPA_2STAGE_REAL_GPU,info) 

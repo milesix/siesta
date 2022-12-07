@@ -65,7 +65,6 @@ contains
     use fdf, only: fdf_get, fdf_defined
     use units, only : eV
     use m_ts_global_vars,only: TSrun
-    use m_ts_electype, only : copy_DM
     use m_ts_options, only : TS_analyze
     use m_ts_options, only : N_Elec, Elecs
     use m_ts_method
@@ -233,12 +232,11 @@ contains
           set_Ef = abs(Ef) < 0.00001_dp .and. &
                (.not. fdf_defined('TS.Fermi.Initial') ) 
           if ( IONode ) then
-             write(*,'(/,a)') 'transiesta: Will read in bulk &
-                  &density matrices for electrodes'
-             if ( set_Ef ) then
-                write(*,'(a)') &
-                     'transiesta: Will average Fermi-levels of electrodes'
-             end if
+            write(*,*) ! new line
+            if ( set_Ef ) then
+              write(*,'(a)') &
+                  'transiesta: Estimates Fermi-level from electrodes average'
+            end if
           end if
 
           if ( init_method == 0 ) then
@@ -272,6 +270,9 @@ contains
             end do
           end if
 
+          ! Initialize Ef
+          if ( set_Ef ) Ef = 0._dp
+          
           do iElec = 1 , N_Elec
 
             ! We shift the mean by one fraction of the electrode
@@ -282,26 +283,25 @@ contains
             if ( Elecs(iElec)%DM_init == 0 ) cycle
             
             if ( IONode ) then
-              write(*,'(/,2a)') 'transiesta: Reading in electrode TSDE for ', &
+              write(*,'(2a)') 'transiesta: Reading electrode TSDE for ', &
                   trim(Elecs(iElec)%Name)
             end if
             
             ! Copy over the DM in the lead
             ! Notice that the EDM matrix that is copied over
             ! will be equivalent at Ef == 0
-            call copy_DM(Elecs(iElec),na_u,xa,lasto,nsc,isc_off, &
+            call Elecs(iElec)%copy_DM(na_u,xa,lasto,nsc,isc_off, &
                 ucell, DM_2D, EDM_2D, na_a, allowed_a)
             
           end do
+
+          if ( IONode ) write(*,*) !newline
 
           ! Clean-up
           deallocate(allowed_a)
 
        end if
         
-       ! Initialize the Fermi-level
-       diff_Ef = Ef
-
        if ( fdf_defined('TS.Fermi.Initial') ) then
           ! Write out some information regarding
           ! how the Ef is set
@@ -318,7 +318,6 @@ contains
           end if
 
           if ( IONode ) then
-             write(*,*) ! new-line
              if ( abs(init_method) < 2 ) then
                 write(*,'(a,f9.5,a)')'transiesta: Setting the Fermi-level to: ', &
                      Ef / eV,' eV'
@@ -326,16 +325,10 @@ contains
                 write(*,'(a,2(f10.6,a))')'transiesta: Changing Fermi-level from -> to: ', &
                      old_Ef / eV,' -> ',Ef / eV, ' eV'
              end if
+             write(*,*) !newline
           end if
 
        end if
-
-       ! The electrode EDM is aligned at Ef == 0
-       ! We need to align the energy matrix
-       iElec = nnzs(sparse_pattern) * spin%EDM
-       DM => val(DM_2D)
-       EDM => val(EDM_2D)
-       call daxpy(iElec,diff_Ef,DM(1,1),1,EDM(1,1),1)
 
     end if
 

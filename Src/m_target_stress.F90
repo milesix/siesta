@@ -23,7 +23,7 @@ module m_target_stress
 
 CONTAINS
 
-  subroutine set_target_stress()
+  subroutine set_target_stress(tp)
 
     ! It allows an external target stress:
     !   %block MD.TargetStress
@@ -37,9 +37,12 @@ CONTAINS
     use fdf
     use units, only: kBar
 
+    !< TargetPressure from outside
+    real(dp), intent(in) :: tp
+
     ! Internal variables and arrays
 
-    real(dp) :: trace, tp
+    real(dp) :: trace
     integer  :: i, j
 
     real(dp) :: sxx, syy, szz, sxy, sxz, syz
@@ -48,11 +51,6 @@ CONTAINS
     type(parsed_line), pointer :: pline=>null()
 
     ! Check if we want a constant-volume simulation
-    ! Set scale for target stress
-    call fdf_deprecated("MD.TargetPressure", "Target.Pressure")
-    tp = fdf_get('MD.TargetPressure',0.0_dp,'Ry/Bohr**3')
-    tp = fdf_get('Target.Pressure',tp,'Ry/Bohr**3')
-
     call fdf_deprecated("MD.ConstantVolume", "Constant.Volume")
     constant_volume = fdf_get("MD.ConstantVolume", .false.)
     constant_volume = fdf_get("Constant.Volume", constant_volume)

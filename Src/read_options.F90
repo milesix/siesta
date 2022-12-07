@@ -27,7 +27,8 @@ subroutine read_options( na, ns, nspin )
   use units,     only : eV, Ang, Kelvin
   use siesta_cml
   use m_target_stress, only: set_target_stress
-  use m_spin, only: print_spin_options, spin
+  use m_spin, only: spin
+  use spin_subs_m, only: print_spin_options
 
   use m_charge_add, only : read_charge_add
   use m_hartree_add, only : read_hartree_add
@@ -869,7 +870,8 @@ subroutine read_options( na, ns, nspin )
   ! For SOC calculations: If .false., Enl will contain
   ! the SO part of the energy.
   if (spin%SO) then
-     split_sr_so = fdf_get('SOC.Split.SR.SO',.true.)
+     ! Avoid splitting if we are using the 'offsite' flavor of SOC
+     split_sr_so = fdf_get('SOC.Split.SR.SO',(.not. spin%SO_offsite))
      if (ionode) then
         write(6,1) 'redata: Split SR and SO contributions', split_sr_so
      endif
@@ -1391,11 +1393,13 @@ subroutine read_options( na, ns, nspin )
 
   ! Target Temperature and Pressure
   tt = fdf_get('MD.TargetTemperature',0.0_dp,'K')
-  tp = fdf_get('MD.TargetPressure',0.0_dp,'Ry/Bohr**3')
-  !
-  ! Used for now for the call of the PR md routine if quenching
-  if (idyn == 3 .AND. iquench > 0) call set_target_stress()
 
+  call fdf_deprecated("MD.TargetPressure", "Target.Pressure")
+  tp = fdf_get('MD.TargetPressure',0.0_dp,'Ry/Bohr**3')
+  tp = fdf_get('Target.Pressure',tp,'Ry/Bohr**3')
+
+  ! Used for now for the call of the PR md routine if quenching
+  if (idyn == 3 .AND. iquench > 0) call set_target_stress(tp)
 
   ! Mass of Nose variable
   mn = fdf_get('MD.NoseMass',100._dp,'Ry*fs**2')
@@ -1405,10 +1409,10 @@ subroutine read_options( na, ns, nspin )
 
   if (idyn==2 .or. idyn==4) then
      if (ionode) then
-        write(6,6) 'redata: Nose mass',mn/eV,' eV/fs**2'
+        write(6,6) 'redata: Nose mass',mn/eV,' eV*fs**2'
      endif
      if (cml_p) then
-        call cmlAddParameter( xf    = mainXML,              &
+        call cmlAddParameter( xf    = mainXML,&
              name  = 'MD.NoseMass',        &
              value = mn,                   &
              units = 'siestaUnits:Ry_fs__2')
@@ -1417,12 +1421,12 @@ subroutine read_options( na, ns, nspin )
 
   if (idyn==3 .or. idyn==4) then
      if (ionode) then
-        write(6,6) 'redata: Parrinello-Rahman mass',mpr/eV,' eV/fs**2'
+        write(6,6) 'redata: Parrinello-Rahman mass',mpr/eV,' eV*fs**2'
      endif
      if (cml_p) then
         call cmlAddParameter( xf    = mainXML,                   &
              name  = 'MD.ParrinelloRahmanMass', &
-             value = mn,                        &
+             value = mpr, &
              units = 'siestaUnits:Ry_fs__2' )
      endif
   endif

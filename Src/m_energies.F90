@@ -35,6 +35,8 @@ module m_energies
   real(dp):: Emeta      ! Metadynamics energy contribution  calculated in meta
   real(dp):: Entropy    ! Entropy due to electron state occupations
   real(dp):: Etot       ! Total electronic energy
+  real(dp):: Ex         ! Exchange energy,  calculated in dhscf
+  real(dp):: Ec         ! Correlation energy,  calculated in dhscf
   real(dp):: Exc        ! Exchange-correlation energy,  calculated in dhscf
   real(dp):: E0         ! Non-SCF part of total energy
   real(dp):: Emm        ! Classical two-body term, calculated in  twobody
@@ -44,10 +46,14 @@ module m_energies
   real(dp):: Uscf       ! SCF hartree electron energy,  calculated in dhscf
   real(dp):: Ebs        ! Band-structure energy, Tr(DM*H), calculated in compute_dm
   real(dp):: Eso        ! Spin-orbit energy
-  real(dp):: Eldau      
-  real(dp):: DEldau
+  real(dp):: E_dftu_so  ! Spin-orbit energy when DFT+U is considered
+  real(dp):: E_correc_dc! Correction energy required for the 
+  real(dp):: Edftu      
+  real(dp):: DEdftu
+                        !    LDA+U+SO calculations
 
   real(dp) :: NEGF_DE  ! NEGF total energy contribution = - e * \sum_i N_i \mu_i
+  real(dp) :: NEGF_Vha ! Potential offset for fixing the boundary conditions for NEGF
   ! Generally we should only calculate energies in the regions where we are updating elements
   ! As such we need a specific energy for the NEGF part
   ! Their meaning is directly transferable to the above listed energies (in the updating regions)
@@ -84,6 +90,8 @@ contains
     Emeta = 0._dp
     Entropy = 0._dp
     Etot = 0._dp
+    Ex = 0._dp
+    Ec = 0._dp
     Exc = 0._dp
     E0 = 0._dp
     Emm = 0._dp
@@ -93,11 +101,14 @@ contains
     Uscf = 0._dp
     Ebs = 0._dp
     Eso = 0._dp
-    Eldau = 0._dp      
-    DEldau = 0._dp
+    E_dftu_so = 0._dp
+    E_correc_dc = 0._dp
+    Edftu = 0._dp      
+    DEdftu = 0._dp
 
     ! NEGF part
     NEGF_DE = 0._dp
+    NEGF_Vha = 0._dp
     NEGF_Ebs = 0._dp
     NEGF_Ekin = 0._dp
     NEGF_Enl = 0._dp
@@ -128,14 +139,14 @@ contains
     use m_ts_global_vars, only: TSrun
     
     ! DUext (external electric field) -- should it be in or out?
-    Etot = Ena + Ekin + Enl + Eso - Eions + &
+    Etot = Ena + Ekin + Enl + Eso + E_dftu_so + E_correc_dc - Eions + &
         DEna + DUscf + DUext + Exc + &
-        Ecorrec + Emad + Emm + Emeta + Eldau
+        Ecorrec + Emad + Emm + Emeta + Edftu
 
     if ( TSrun ) then
       NEGF_Etot = Ena + NEGF_Ekin + NEGF_Enl - Eions + &
           DEna + DUscf + DUext + Exc + Ecorrec + Emad + Emm + Emeta + &
-          Eldau + NEGF_DE
+          Edftu + NEGF_DE
     end if
     
   end subroutine update_Etot

@@ -42,6 +42,8 @@
 !             * NEAREST= 0: if not found, returns -1 (NORMAL behaviour)
 !  - MODP : Returns "FORTRAN" indexed MOD, i.e. if MOD would return 0,
 !           MODP returns the divisor.
+!  - MODULOP : Returns "FORTRAN" indexed MODULO, i.e. if MODULO would return 0,
+!           MODULOP returns the divisor.
 !  - EYE  : a routine to generate identity matrices
 !           this is a subroutine as I think a function would produce
 !           a large memory foot-print before it actually saves to the array.
@@ -95,7 +97,7 @@ module intrinsic_missing
 
 
 ! Elemental functions (can be called on arrays)
-  public :: MODP
+  public :: MODP, MODULOP
 
 ! Missing matrix stuff
   public :: EYE
@@ -233,6 +235,19 @@ contains
     integer :: MODP
     MODP = MOD(a-1,p) + 1
   end function MODP
+
+! A MODULO function which behaves differently on the edge.
+! It will NEVER return 0, but instead return the divisor.
+! This makes it useful in FORTRAN do-loops which are not zero-based
+! but 1-based.
+! Thus we have the following scheme:
+!  MODULOP(x',x) == x         for x' == x
+!  MODULOP(x',x) == MODULOP(x',x) for x' /= x
+  elemental function MODULOP(a,p)
+    integer, intent(in) :: a,p
+    integer :: MODULOP
+    MODULOP = MODULO(a-1,p) + 1
+  end function MODULOP
 
 ! Function to return the unique COUNT of an integer array.
 ! Thus will return how many DIFFERENT entries there exists.
@@ -417,8 +432,8 @@ contains
 
     pure subroutine insert_mid(DA,SO,array,sF,sA,P)
       integer, intent(in)     :: DA
-      integer, intent(in out) :: SO(DA)
-      integer, intent(in)     :: array(DA)
+      integer, intent(in out) :: SO(:)
+      integer, intent(in)     :: array(:)
       ! The place where we found a SO(sF) <= array(sA)
       integer, intent(in out) :: sF
       integer, intent(in) :: sA ! The current reached iteration in array
@@ -502,8 +517,8 @@ contains
 
     pure subroutine insert_front(DA,SO,array,sA,P)
       integer, intent(in)     :: DA
-      integer, intent(in out) :: SO(DA)
-      integer, intent(in)     :: array(DA)
+      integer, intent(in out) :: SO(:)
+      integer, intent(in)     :: array(:)
       integer, intent(in)     :: sA
       integer, intent(out)    :: P ! The number of Pasted values
 
@@ -553,8 +568,8 @@ contains
 
     pure subroutine insert_back(DA,SO,array,sA,P)
       integer, intent(in)     :: DA
-      integer, intent(in out) :: SO(DA)
-      integer, intent(in)     :: array(DA)
+      integer, intent(in out) :: SO(:)
+      integer, intent(in)     :: array(:)
       integer, intent(in)     :: sA
       integer, intent(out)    :: P ! 
 
@@ -677,8 +692,8 @@ contains
 
     pure subroutine insert_mid(DA,SO,array,sF,sA,P)
       integer, intent(in)     :: DA
-      integer, intent(in out) :: SO(DA)
-      integer, intent(in)     :: array(DA)
+      integer, intent(in out) :: SO(:)
+      integer, intent(in)     :: array(:)
       ! The place where we found a SO(sF) <= array(sA)
       integer, intent(in out) :: sF
       integer, intent(in) :: sA ! The current reached iteration in array
@@ -771,8 +786,8 @@ contains
 
     pure subroutine insert_front(DA,SO,array,sA,P)
       integer, intent(in)     :: DA
-      integer, intent(in out) :: SO(DA)
-      integer, intent(in)     :: array(DA)
+      integer, intent(in out) :: SO(:)
+      integer, intent(in)     :: array(:)
       integer, intent(in)     :: sA
       integer, intent(out)    :: P ! The number of Pasted values
 
@@ -831,8 +846,8 @@ contains
 
     pure subroutine insert_back(DA,SO,array,sA,P)
       integer, intent(in)     :: DA
-      integer, intent(in out) :: SO(DA)
-      integer, intent(in)     :: array(DA)
+      integer, intent(in out) :: SO(:)
+      integer, intent(in)     :: array(:)
       integer, intent(in)     :: sA
       integer, intent(out)    :: P ! 
 
@@ -899,15 +914,17 @@ contains
 ! *******************************************************************
     
     integer, intent(in) :: N      ! Dimensions of array x
-    integer, intent(in) :: A(n)   ! Array with the values to be ordered
+    integer, intent(in) :: A(:)   ! Array with the values to be ordered
                                   ! will order against the first element (m)
-    integer, intent(inout) :: idx(n) ! Increasing order of A(:)
+    integer, intent(inout) :: idx(:) ! Increasing order of A(:)
     
     integer:: k, nFamily, parent
     
     ! Construct the heap (family tree)
-    idx = (/(k,k=1,n)/)            ! initial array order, to be modified
-    
+    ! initial array order, to be modified
+    do k = 1, n
+      idx(k) = k
+    end do
     
     ! Swap to create the actual parent tree
     nFamily = n                     ! number of persons in the family tree
@@ -968,7 +985,7 @@ contains
   
   recursive pure subroutine sort_quick(n, array)
     integer, intent(in) :: n
-    integer, intent(inout) :: array(n)
+    integer, intent(inout) :: array(:)
 
     integer :: div
 
@@ -976,15 +993,15 @@ contains
 
     ! Retrieve the partition ID
     call partition(n, array, div)
-    call sort_quick(div-1, array(1))
-    call sort_quick(n-div+1, array(div))
+    call sort_quick(div-1, array(1:))
+    call sort_quick(n-div+1, array(div:))
 
   contains
 
     ! Partition an array by swapping
     pure subroutine partition(n, array, mark)
       integer, intent(in) :: n
-      integer, intent(inout) :: array(n)
+      integer, intent(inout) :: array(:)
       integer, intent(out) :: mark
       
       integer :: i, j, x, t
@@ -1532,7 +1549,7 @@ contains
   ! This ensures direct writes, instead of temporary eye-arrays...
   subroutine EYE_i_2D(size,array,I)
     integer, intent(in) :: size
-    integer, intent(out) :: array(size,size)
+    integer, intent(out) :: array(:,:)
     integer, intent(in), optional :: I
     integer :: j, k, lI
     lI = 1
@@ -1548,7 +1565,7 @@ contains
   end subroutine EYE_i_2D
   subroutine EYE_sp_2D(size,array,I)
     integer, intent(in) :: size
-    real(sp), intent(out) :: array(size,size)
+    real(sp), intent(out) :: array(:,:)
     real(sp), intent(in), optional :: I
     real(sp) :: lI
     integer :: j, k
@@ -1565,7 +1582,7 @@ contains
   end subroutine EYE_sp_2D
   subroutine EYE_dp_2D(size,array,I)
     integer, intent(in) :: size
-    real(dp), intent(out) :: array(size,size)
+    real(dp), intent(out) :: array(:,:)
     real(dp), intent(in), optional :: I
     real(dp) :: lI
     integer :: j, k
@@ -1582,7 +1599,7 @@ contains
   end subroutine EYE_dp_2D
   subroutine EYE_cp_2D(size,array,I)
     integer, intent(in) :: size
-    complex(sp), intent(out) :: array(size,size)
+    complex(sp), intent(out) :: array(:,:)
     complex(sp), intent(in), optional :: I
     complex(sp) :: lI
     integer :: j, k
@@ -1599,7 +1616,7 @@ contains
   end subroutine EYE_cp_2D
   subroutine EYE_zp_2D(size,array,I)
     integer, intent(in) :: size
-    complex(dp), intent(out) :: array(size,size)
+    complex(dp), intent(out) :: array(:,:)
     complex(dp), intent(in), optional :: I
     complex(dp) :: lI
     integer :: j, k
@@ -1617,34 +1634,69 @@ contains
 
   subroutine EYE_i_1D(size,array)
     integer, intent(in) :: size
-    integer, intent(out) :: array(size*size)
-    call EYE_i_2D(size,array)
+    integer, intent(out) :: array(:)
+    integer :: i, j
+
+    array(:) = 0
+    j = 1
+    do i = 1, size
+      array(j) = 1
+      j = j + size + 1
+    end do
   end subroutine EYE_i_1D
   subroutine EYE_sp_1D(size,array)
     integer, intent(in) :: size
-    real(sp), intent(out) :: array(size*size)
-    call EYE_sp_2D(size,array)
+    real(sp), intent(out) :: array(:)
+    integer :: i, j
+
+    array(:) = 0._sp
+    j = 1
+    do i = 1, size
+      array(j) = 1._sp
+      j = j + size + 1
+    end do
   end subroutine EYE_sp_1D
   subroutine EYE_dp_1D(size,array)
     integer, intent(in) :: size
-    real(dp), intent(out) :: array(size*size)
-    call EYE_dp_2D(size,array)
+    real(dp), intent(out) :: array(:)
+    integer :: i, j
+
+    array(:) = 0._dp
+    j = 1
+    do i = 1, size
+      array(j) = 1._dp
+      j = j + size + 1
+    end do
   end subroutine EYE_dp_1D
   subroutine EYE_cp_1D(size,array)
     integer, intent(in) :: size
-    complex(sp), intent(out) :: array(size*size)
-    call EYE_cp_2D(size,array)
+    complex(sp), intent(out) :: array(:)
+    integer :: i, j
+
+    array(:) = cmplx(0._sp, 0._sp, sp)
+    j = 1
+    do i = 1, size
+      array(j) = cmplx(1._sp, 0._sp, sp)
+      j = j + size + 1
+    end do
   end subroutine EYE_cp_1D
   subroutine EYE_zp_1D(size,array)
     integer, intent(in) :: size
-    complex(dp), intent(out) :: array(size*size)
-    call EYE_zp_2D(size,array)
+    complex(dp), intent(out) :: array(:)
+    integer :: i, j
+
+    array(:) = cmplx(0._dp, 0._dp, dp)
+    j = 1
+    do i = 1, size
+      array(j) = cmplx(1._dp, 0._dp, dp)
+      j = j + size + 1
+    end do
   end subroutine EYE_zp_1D
 
   
   subroutine TRANSPOSE_dp_2D(size,array)
     integer, intent(in) :: size
-    real(dp), intent(inout) :: array(size,size)
+    real(dp), intent(inout) :: array(:,:)
     integer :: i, j
     real(dp) :: d
 !$OMP do private(i,j,d)
@@ -1659,7 +1711,7 @@ contains
   end subroutine TRANSPOSE_dp_2D
   subroutine TRANSPOSE_zp_2D(size,array)
     integer, intent(in) :: size
-    complex(dp), intent(inout) :: array(size,size)
+    complex(dp), intent(inout) :: array(:,:)
     integer :: i, j
     complex(dp) :: z
 !$OMP do private(i,j,z)
@@ -1675,47 +1727,76 @@ contains
   
   subroutine TRANSPOSE_dp_1D(size,array)
     integer, intent(in) :: size
-    real(dp), intent(inout) :: array(size*size)
-    call TRANSPOSE_dp_2D(size,array)
+    real(dp), intent(inout) :: array(:)
+    real(dp) :: d
+    integer :: i, j
+    do i = 1, size
+      do j = i + 1, size
+        d = array((i-1)*size + j)
+        array((i-1)*size + j) = array((j-1)*size + i)
+        array((j-1)*size + i) = d
+      end do
+    end do
   end subroutine TRANSPOSE_dp_1D
   subroutine TRANSPOSE_zp_1D(size,array)
     integer, intent(in) :: size
-    complex(dp), intent(inout) :: array(size*size)
-    call TRANSPOSE_zp_2D(size,array)
+    complex(dp), intent(inout) :: array(:)
+    complex(dp) :: z
+    integer :: i, j
+    do i = 1, size
+      do j = i + 1, size
+        z = array((i-1)*size + j)
+        array((i-1)*size + j) = array((j-1)*size + i)
+        array((j-1)*size + i) = z
+      end do
+    end do
   end subroutine TRANSPOSE_zp_1D
 
 
   function TRACE_dp_2D(size,array) result(T)
     integer, intent(in) :: size
-    real(dp), intent(in) :: array(size,size)
+    real(dp), intent(in) :: array(:,:)
     real(dp) :: T
     integer :: i
     T = 0._dp
     do i = 1 , size
-       T = T + array(i,i)
+      T = T + array(i,i)
     end do
   end function TRACE_dp_2D 
   function TRACE_zp_2D(size,array) result(T)
     integer, intent(in) :: size
-    complex(dp), intent(in) :: array(size,size)
+    complex(dp), intent(in) :: array(:,:)
     complex(dp) :: T
     integer :: i
+    T = 0._dp
     do i = 1 , size
-       T = T + array(i,i)
+      T = T + array(i,i)
     end do
   end function TRACE_zp_2D
   
   function TRACE_dp_1D(size,array) result(T)
     integer, intent(in) :: size
-    real(dp), intent(in) :: array(size*size)
+    real(dp), intent(in) :: array(:)
     real(dp) :: T
-    T = TRACE_dp_2D(size,array)
+    integer :: i, ii
+    T = array(1)
+    ii = size + 2
+    do i = 2 , size
+      T = T + array(ii)
+      ii = ii + size + 1
+    end do
   end function TRACE_dp_1D
   function TRACE_zp_1D(size,array) result(T)
     integer, intent(in) :: size
-    complex(dp), intent(in) :: array(size*size)
+    complex(dp), intent(in) :: array(:)
     complex(dp) :: T
-    T = TRACE_zp_2D(size,array)
+    integer :: i, ii
+    T = array(1)
+    ii = size + 2
+    do i = 2 , size
+      T = T + array(ii)
+      ii = ii + size + 1
+    end do
   end function TRACE_zp_1D
 
 

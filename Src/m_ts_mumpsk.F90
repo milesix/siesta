@@ -60,7 +60,7 @@ contains
     use class_zSpData1D
     use class_zSpData2D
 
-    use m_ts_electype
+    use ts_electrode_m
     ! Self-energy read
     use m_ts_gf
     ! Self-energy expansion
@@ -101,7 +101,7 @@ contains
 ! * INPUT variables  *
 ! ********************
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     integer, intent(in) :: nq(N_Elec), uGF(N_Elec)
     real(dp), intent(in) :: ucell(3,3)
     integer, intent(in) :: nspin, na_u, lasto(0:na_u)
@@ -151,6 +151,9 @@ contains
 ! ******************* Miscalleneous variables ****************
     integer :: no_u_TS, off, no
 ! ************************************************************
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_pre_Econtours', 1)
+#endif
 
 #ifdef TRANSIESTA_DEBUG
     call write_debug( 'PRE transiesta mem' )
@@ -252,6 +255,11 @@ contains
     ! point to the index iterators
     call itt_attach(SpKp,cur1=ispin,cur2=ikpt)
 
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_pre_Econtours', 2)
+    call timer('TS_Econtours', 1)
+#endif
+
     do while ( .not. itt_step(SpKp) )
 
        if ( itt_stepped(SpKp,1) ) then ! spin has incremented
@@ -310,7 +318,7 @@ contains
        no = no_u_TS
        do iEl = 1 , N_Elec
           if ( Elecs(iEl)%DM_update == 0 ) then
-             no = no - TotUsedOrbs(Elecs(iEl))
+             no = no - Elecs(iEl)%device_orbitals()
           end if
        end do
        iE = Nodes - Node
@@ -505,7 +513,7 @@ contains
                 ! solve for all electrode columns... (not very sparse :( )
                 
                 ! offset and number of orbitals
-                no = TotUsedOrbs(Elecs(iEl))
+                no = Elecs(iEl)%device_orbitals()
                 
                 ! step to the next electrode position
                 off = off + no
@@ -589,6 +597,11 @@ contains
 
     end do ! spin, k-point
 
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_Econtours', 2)
+    call timer('TS_post_Econtours', 1)
+#endif
+
     call itt_destroy(SpKp)
 
 #ifdef TRANSIESTA_DEBUG
@@ -644,6 +657,9 @@ contains
 #ifdef TRANSIESTA_DEBUG
     call write_debug( 'POS transiesta mem' )
 #endif
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_post_Econtours', 2)
+#endif
 
   end subroutine ts_mumpsk
 
@@ -664,7 +680,7 @@ contains
     use class_Sparsity
     use class_zSpData1D
     use class_zSpData2D
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_method, only : ts2s_orb
     include 'zmumps_struc.h'
 
@@ -676,7 +692,7 @@ contains
     ! the mumps structure
     type(zMUMPS_STRUC), intent(inout) :: mum
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! the index of the partition
     integer, intent(in) :: DMidx
     integer, intent(in), optional :: EDMidx
@@ -690,13 +706,16 @@ contains
 
     ! Arrays needed for looping the sparsity
     type(Sparsity), pointer :: s
-    integer,  pointer :: l_ncol(:), l_ptr(:), l_col(:)
-    integer, pointer :: s_ncol(:), s_ptr(:), s_col(:)
+    integer,  pointer :: l_ncol(:), l_ptr(:), l_col(:), lp_col(:)
+    integer, pointer :: s_ncol(:), s_ptr(:), s_col(:), sp_col(:)
     complex(dp), pointer :: D(:,:), E(:,:), GF(:), Sk(:)
-    integer :: io, jo, ind, ir, nr, Hn, ind_H
-    integer :: s_ptr_begin, s_ptr_end, sin
+    integer :: io, jo, ind, jr, nr, ind_H
+    integer :: sp, sind
     integer :: i1, i2
     logical :: hasEDM, lis_eq, calc_q
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_add_DM', 1)
+#endif
 
     lis_eq = .true.
     if ( present(is_eq) ) lis_eq = is_eq
@@ -728,33 +747,45 @@ contains
 
       if ( calc_q .and. hasEDM ) then
 
-!$OMP parallel do default(shared), private(ir,jo,ind,io,Hn,ind_H,s_ptr_begin,s_ptr_end,sin)
-        do ir = 1 , mum%NRHS
+!$OMP parallel do default(shared), &
+!$OMP&  private(jr,jo,sp,sp_col,lp_col,ind,io,ind_H,sind), &
+!$OMP&  reduction(-:q)
+        do jr = 1 , mum%NRHS
 
-          ! this is column index
-          jo = ts2s_orb(ir)
+          ! this is row index
+          jo = ts2s_orb(jr)
+
+          sp = s_ptr(jo)
+          sp_col => s_col(sp+1:sp+s_ncol(jo))
+          lp_col => l_col(l_ptr(jo)+1:l_ptr(jo)+l_ncol(jo))
 
           ! The update region equivalent GF part
-          do ind = mum%IRHS_PTR(ir) , mum%IRHS_PTR(ir+1)-1
+          do ind = mum%IRHS_PTR(jr) , mum%IRHS_PTR(jr+1)-1
 
             io = ts2s_orb(mum%IRHS_SPARSE(ind))
 
-            Hn    = l_ncol(io)
-            ind_H = l_ptr(io)
             ! Requires that l_col is sorted
-            ind_H = ind_H + SFIND(l_col(ind_H+1:ind_H+Hn),jo)
-            if ( ind_H > l_ptr(io) ) then
-              s_ptr_begin = s_ptr(io) + 1
-              s_ptr_end = s_ptr(io) + s_ncol(io)
+            ind_H = l_ptr(jo) + SFIND(lp_col,io)
+            if ( l_ptr(jo) < ind_H ) then
 
               ! Search for overlap index
-              ! spS is transposed, so we have to conjugate the
-              ! S value, then we may take the imaginary part.
-              sin = s_ptr_begin - 1 + SFIND(s_col(s_ptr_begin:s_ptr_end), jo)
-              if ( sin >= s_ptr_begin ) q = q - aimag(GF(ind) * Sk(sin))
-              
-              D(ind_H,i1) = D(ind_H,i1) - GF(ind) * DMfact
-              E(ind_H,i2) = E(ind_H,i2) - GF(ind) * EDMfact
+              sind = sp + SFIND(sp_col, io)
+              if ( sp < sind ) then
+                ! For charge calculation it is Tr[(G-G^\dagger).S] i.e. the matrix
+                ! multiplication
+                ! Gf(ind) == Gf(io,jo)
+                ! Sk(sind) == Sk(jo,io)
+                q = q - aimag(Gf(ind) * Sk(sind))
+              end if
+
+              D(ind_H,i1) = D(ind_H,i1) - conjg(GF(ind) * DMfact)
+              E(ind_H,i2) = E(ind_H,i2) - conjg(GF(ind) * EDMfact)
+
+              ! Add the transpose value
+              ind_H = l_ptr(io) + SFIND(l_col(l_ptr(io)+1:l_ptr(io)+l_ncol(io)),jo)
+              D(ind_H,i1) = D(ind_H,i1) + GF(ind) * DMfact
+              E(ind_H,i2) = E(ind_H,i2) + GF(ind) * EDMfact
+
             end if
 
           end do
@@ -763,17 +794,21 @@ contains
 
       else if ( hasEDM ) then
        
-!$OMP parallel do default(shared), private(ir,jo,ind,io,Hn,ind_H)
-        do ir = 1 , mum%NRHS
-          jo = ts2s_orb(ir)
-          do ind = mum%IRHS_PTR(ir) , mum%IRHS_PTR(ir+1)-1
+!$OMP parallel do default(shared), private(jr,jo,lp_col,ind,io,ind_H)
+        do jr = 1 , mum%NRHS
+          jo = ts2s_orb(jr)
+          lp_col => l_col(l_ptr(jo)+1:l_ptr(jo)+l_ncol(jo))
+          do ind = mum%IRHS_PTR(jr) , mum%IRHS_PTR(jr+1)-1
             io = ts2s_orb(mum%IRHS_SPARSE(ind))
-            Hn    = l_ncol(io)
-            ind_H = l_ptr(io)
-            ind_H = ind_H + SFIND(l_col(ind_H+1:ind_H+Hn),jo)
-            if ( ind_H > l_ptr(io) ) then
-              D(ind_H,i1) = D(ind_H,i1) - GF(ind) * DMfact
-              E(ind_H,i2) = E(ind_H,i2) - GF(ind) * EDMfact
+            ind_H = l_ptr(jo) + SFIND(lp_col,io)
+            if ( l_ptr(jo) < ind_H ) then
+              D(ind_H,i1) = D(ind_H,i1) - conjg(GF(ind) * DMfact)
+              E(ind_H,i2) = E(ind_H,i2) - conjg(GF(ind) * EDMfact)
+
+              ind_H = l_ptr(io) + SFIND(l_col(l_ptr(io)+1:l_ptr(io)+l_ncol(io)),jo)
+              D(ind_H,i1) = D(ind_H,i1) + GF(ind) * DMfact
+              E(ind_H,i2) = E(ind_H,i2) + GF(ind) * EDMfact
+
             end if
           end do
         end do
@@ -781,20 +816,24 @@ contains
        
       else if ( calc_q ) then
 
-!$OMP parallel do default(shared), private(ir,jo,ind,io,Hn,ind_H,s_ptr_begin,s_ptr_end,sin)
-        do ir = 1 , mum%NRHS
-          jo = ts2s_orb(ir)
-          do ind = mum%IRHS_PTR(ir) , mum%IRHS_PTR(ir+1)-1
+!$OMP parallel do default(shared), &
+!$OMP&  private(jr,jo,sp,sp_col,lp_col,ind,io,ind_H,sind), &
+!$OMP&  reduction(-:q)
+        do jr = 1 , mum%NRHS
+          jo = ts2s_orb(jr)
+          sp = s_ptr(jo)
+          sp_col => s_col(sp+1:sp+s_ncol(jo))
+          lp_col => l_col(l_ptr(jo)+1:l_ptr(jo)+l_ncol(jo))
+          do ind = mum%IRHS_PTR(jr) , mum%IRHS_PTR(jr+1)-1
             io = ts2s_orb(mum%IRHS_SPARSE(ind))
-            Hn    = l_ncol(io)
-            ind_H = l_ptr(io)
-            ind_H = ind_H + SFIND(l_col(ind_H+1:ind_H+Hn),jo)
-            if ( ind_H > l_ptr(io) ) then
-              s_ptr_begin = s_ptr(io) + 1
-              s_ptr_end = s_ptr(io) + s_ncol(io)
-              sin = s_ptr_begin - 1 + SFIND(s_col(s_ptr_begin:s_ptr_end), jo)
-              if ( sin >= s_ptr_begin ) q = q - aimag(GF(ind) * Sk(sin))
-              D(ind_H,i1) = D(ind_H,i1) - GF(ind) * DMfact
+            ind_H = l_ptr(jo) + SFIND(lp_col,io)
+            if ( l_ptr(jo) < ind_H ) then
+              sind = sp + SFIND(sp_col, io)
+              if ( sp < sind ) q = q - aimag(Gf(ind) * Sk(sind))
+              D(ind_H,i1) = D(ind_H,i1) - conjg(GF(ind) * DMfact)
+
+              ind_H = l_ptr(io) + SFIND(l_col(l_ptr(io)+1:l_ptr(io)+l_ncol(io)),jo)
+              D(ind_H,i1) = D(ind_H,i1) + GF(ind) * DMfact
             end if
           end do
         end do
@@ -802,16 +841,17 @@ contains
 
       else
 
-!$OMP parallel do default(shared), private(ir,jo,ind,io,Hn,ind_H)
-        do ir = 1 , mum%NRHS
-          jo = ts2s_orb(ir)
-          do ind = mum%IRHS_PTR(ir) , mum%IRHS_PTR(ir+1)-1
+!$OMP parallel do default(shared), private(jr,jo,lp_col,ind,io,ind_H)
+        do jr = 1 , mum%NRHS
+          jo = ts2s_orb(jr)
+          lp_col => l_col(l_ptr(jo)+1:l_ptr(jo)+l_ncol(jo))
+          do ind = mum%IRHS_PTR(jr) , mum%IRHS_PTR(jr+1)-1
             io = ts2s_orb(mum%IRHS_SPARSE(ind))
-            Hn    = l_ncol(io)
-            ind_H = l_ptr(io)
-            ind_H = ind_H + SFIND(l_col(ind_H+1:ind_H+Hn),jo)
-            if ( ind_H > l_ptr(io) ) then
-              D(ind_H,i1) = D(ind_H,i1) - GF(ind) * DMfact
+            ind_H = l_ptr(jo) + SFIND(lp_col,io)
+            if ( l_ptr(jo) < ind_H ) then
+              D(ind_H,i1) = D(ind_H,i1) - conjg(GF(ind) * DMfact)
+              ind_H = l_ptr(io) + SFIND(l_col(l_ptr(io)+1:l_ptr(io)+l_ncol(io)),jo)
+              D(ind_H,i1) = D(ind_H,i1) + GF(ind) * DMfact
             end if
           end do
         end do
@@ -821,24 +861,24 @@ contains
 
     else ! lis_eq
 
+      ! See m_ts_mumps_scat
+      ! The Gf.G.Gf^\dagger calculated will be the transposed MM
       GF => mum%A(:)
 
       if ( hasEDM ) then
 
-!$OMP parallel do default(shared), private(ind,io,jo,Hn,ind_H)
+!$OMP parallel do default(shared), private(ind,io,jo,ind_H)
         do ind = 1 , mum%NZ ! looping A
           
           ! collect the two indices
-          io = ts2s_orb(mum%JCN(ind)) ! this is row index for Gf.G.Gf^\dagger
-          jo = ts2s_orb(mum%IRN(ind)) ! this is column index for Gf.G.Gf^\dagger
+          io = ts2s_orb(mum%IRN(ind)) ! this is row index for Gf.G.Gf^\dagger
+          jo = ts2s_orb(mum%JCN(ind)) ! this is column index for Gf.G.Gf^\dagger
 
-          Hn    = l_ncol(io)
-          ind_H = l_ptr(io)
           ! Check that the entry exists
           ! Requires that l_col is sorted
-          ind_H = ind_H + SFIND(l_col(ind_H+1:ind_H+Hn),jo)
+          ind_H = l_ptr(io) + SFIND(l_col(l_ptr(io)+1:l_ptr(io)+l_ncol(io)),jo)
                     
-          if ( ind_H > l_ptr(io) ) then ! this occurs as mum%A contains
+          if ( l_ptr(io) < ind_H ) then ! this occurs as mum%A contains
                                         ! the electrode as well
           
             D(ind_H,i1) = D(ind_H,i1) + GF(ind) * DMfact
@@ -851,14 +891,12 @@ contains
        
       else
 
-!$OMP parallel do default(shared), private(ind,io,jo,Hn,ind_H)
+!$OMP parallel do default(shared), private(ind,io,jo,ind_H)
         do ind = 1 , mum%NZ
-          io = ts2s_orb(mum%JCN(ind))
-          jo = ts2s_orb(mum%IRN(ind))
-          Hn    = l_ncol(io)
-          ind_H = l_ptr(io)
-          ind_H = ind_H + SFIND(l_col(ind_H+1:ind_H+Hn),jo)
-          if ( ind_H > l_ptr(io) ) then
+          io = ts2s_orb(mum%IRN(ind))
+          jo = ts2s_orb(mum%JCN(ind))
+          ind_H = l_ptr(io) + SFIND(l_col(l_ptr(io)+1:l_ptr(io)+l_ncol(io)),jo)
+          if ( l_ptr(io) < ind_H ) then
             D(ind_H,i1) = D(ind_H,i1) + GF(ind) * DMfact
           end if
         end do
@@ -868,7 +906,13 @@ contains
 
     end if
 
+    ! In the MUMPS @ k result it is difficult to extract the transposed
+    ! value. This is exact since we are calculating the total charge
+    ! (not PDOS) where the transposed value could be important.
     if ( calc_q ) q = q * 2._dp
+#ifdef TRANSIESTA_TIMING
+    call timer('TS_add_DM', 2)
+#endif
 
   end subroutine add_DM
 
@@ -880,7 +924,7 @@ contains
     use intrinsic_missing, only : SFIND
     use class_zSpData1D
     use class_Sparsity
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_cctype, only : ts_c_idx
     use m_ts_method, only : ts2s_orb
     include 'zmumps_struc.h'
@@ -889,7 +933,7 @@ contains
     type(ts_c_idx), intent(in) :: cE
     type(zMUMPS_STRUC), intent(inout) :: mum
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! The Hamiltonian and overlap sparse matrices
     type(zSpData1D), intent(inout) :: spH, spS
 
@@ -898,7 +942,7 @@ contains
     type(Sparsity), pointer :: sp
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
     complex(dp), pointer :: H(:), S(:), iG(:)
-    integer :: io, jo, ind, Hn, ind_H
+    integer :: io, jo, ind, ind_H
 
     if ( cE%fake ) return
 
@@ -915,30 +959,27 @@ contains
     ! Initialize
     iG => mum%A(:)
 
-!$OMP parallel default(shared), private(ind,io,jo,Hn,ind_H)
+!$OMP parallel default(shared), private(ind,io,jo,ind_H)
 
 !$OMP do
     do ind = 1, mum%NZ
 
        iG(ind) = 0._dp
-       
-       io = ts2s_orb(mum%JCN(ind))
+
+       ! Transpose to match phase convention in ts_sparse_helper (- phase)
        jo = ts2s_orb(mum%IRN(ind))
+       io = ts2s_orb(mum%JCN(ind))
 
-       Hn = l_ncol(io)
-       if ( Hn /= 0 ) then
+       if ( l_ncol(io) > 0 ) then
 
-       ind_H = l_ptr(io)
-       ! Requires that l_col is sorted
-       ind_H = ind_H + SFIND(l_col(ind_H+1:ind_H+Hn),jo)
+         ! Requires that l_col is sorted
+         ind_H = l_ptr(io) + SFIND(l_col(l_ptr(io)+1:l_ptr(io)+l_ncol(io)),jo)
 
-       if ( ind_H > l_ptr(io) ) then
+         if ( l_ptr(io) < ind_H ) then
        
-          ! Notice that we transpose S and H back here
-          ! See symmetrize_HS_Gamma (H is hermitian)
-          iG(ind) = Z * S(ind_H) - H(ind_H)
+           iG(ind) = Z * S(ind_H) - H(ind_H)
           
-       end if
+         end if
        end if
 
     end do

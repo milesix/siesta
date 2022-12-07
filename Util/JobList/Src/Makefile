@@ -8,15 +8,19 @@
 .SUFFIXES:
 .SUFFIXES: .f .f90 .F .F90 .o
 #
-OBJDIR=Obj
-#
-default: countJobs runJobs getResults horizontal
-#
-include ../../../$(OBJDIR)/arch.make
-#
-FC_DEFAULT:=$(FC)
-FC_SERIAL?=$(FC_DEFAULT)
+TOPDIR=.
+MAIN_OBJDIR=.
+
+VPATH=$(TOPDIR)/Util/JobList/Src:$(TOPDIR)/Src
+
+PROGS= countJobs runJobs getResults horizontal
+default: $(PROGS)
+
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
 FC:=$(FC_SERIAL)         # Make it non-recursive
+
 #
 COUNTJOBS_OBJS=jobList.o countJobs.o posix_calls.o
 RUNJOBS_OBJS=jobList.o runJobs.o posix_calls.o
@@ -39,7 +43,10 @@ horizontal: $(HORIZONTAL_OBJS)
 	$(FC) -o $@ $(HORIZONTAL_OBJS)
 #
 clean:
-	rm -f *.o *.mod countJobs runJobs getResults horizontal
+	rm -f *.o *.mod $(PROGS)
+#
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 # DO NOT DELETE THIS LINE - used by make depend
 countJobs.o: jobList.o

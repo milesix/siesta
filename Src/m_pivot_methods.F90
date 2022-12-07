@@ -117,13 +117,13 @@ contains
     ! the dimensionality of the system
     integer, intent(in) :: n, nnzs
     ! The sparse pattern
-    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n_col(:), l_ptr(:), l_col(:)
     ! The region of interest
     type(tRgn), intent(in) :: sub
     ! The currently indexs of the pivoted arrays
     type(tRgn), intent(inout) :: pvt
     ! The priority of the rows, optional
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
     ! The allowed range to save the node point in the new set (step II-(a))
     integer, intent(in), optional :: range
 
@@ -843,13 +843,13 @@ contains
     ! the dimensionality of the system
     integer, intent(in) :: n, nnzs
     ! The sparse pattern
-    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n_col(:), l_ptr(:), l_col(:)
     ! The region of interest
     type(tRgn), intent(in) :: sub
     ! The currently indexs of the pivoted arrays
     type(tRgn), intent(inout) :: pvt
     ! The priority of the rows, optional
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
     ! The allowed range to save the node point in the new set (step II-(a))
     integer, intent(in), optional :: range
 
@@ -1094,10 +1094,10 @@ contains
 
   subroutine rev_GGPS(n,nnzs,n_col,l_ptr,l_col,sub,pvt,priority)
     integer, intent(in) :: n, nnzs
-    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n_col(:), l_ptr(:), l_col(:)
     type(tRgn), intent(in) :: sub
     type(tRgn), intent(inout) :: pvt
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
 
     call GGPS(n,nnzs,n_col,l_ptr,l_col,sub,pvt, priority=priority)
 
@@ -1110,13 +1110,13 @@ contains
     ! the dimensionality of the system
     integer, intent(in) :: n, nnzs
     ! The sparse pattern
-    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n_col(:), l_ptr(:), l_col(:)
     ! The region of interest
     type(tRgn), intent(in) :: sub
     ! The currently indexs of the pivoted arrays
     type(tRgn), intent(inout) :: pvt
     ! The priority of the rows, optional
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
 
     ! The level structure created by the algo_i_ii
     type(tLevelStructure) :: lvl
@@ -1175,10 +1175,10 @@ contains
 
   subroutine rev_GPS(n,nnzs,n_col,l_ptr,l_col,sub,pvt,priority)
     integer, intent(in) :: n, nnzs
-    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n_col(:), l_ptr(:), l_col(:)
     type(tRgn), intent(in) :: sub
     type(tRgn), intent(inout) :: pvt
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
 
     call GPS(n,nnzs,n_col,l_ptr,l_col,sub,pvt, priority=priority)
 
@@ -1196,7 +1196,7 @@ contains
     ! the dimensionality of the system
     integer, intent(in) :: n, nnzs
     ! The sparse pattern
-    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n_col(:), l_ptr(:), l_col(:)
     ! The region of interest
     type(tRgn), intent(in) :: sub
     ! The currently indexs of the pivoted arrays
@@ -1205,7 +1205,7 @@ contains
     ! hence we can force the algorithm to start from some point
     type(tRgn), intent(in), optional :: start
     ! The priority of the rows, optional
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
     ! Whether we should only allow to find the pivoting for the sub-graph
     ! This means that the pivoting table will not necessarily have all sub elements
     logical, intent(in), optional :: only_sub
@@ -1336,7 +1336,7 @@ contains
     ! the dimensionality of the system
     integer, intent(in) :: n, nnzs
     ! The sparse pattern
-    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n_col(:), l_ptr(:), l_col(:)
     ! The region of interest
     type(tRgn), intent(in) :: sub
     ! The currently indexs of the pivoted arrays
@@ -1345,7 +1345,7 @@ contains
     ! hence we can force the algorithm to start from some point
     type(tRgn), intent(in), optional :: start
     ! The priority of the rows, optional
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
     ! Whether we should only allow to find the pivoting for the sub-graph
     ! This means that the pivoting table will not necessarily have all sub elements
     logical, intent(in), optional :: only_sub
@@ -1369,7 +1369,7 @@ contains
     ! the dimensionality of the system
     integer, intent(in) :: n, nnzs
     ! The sparse pattern
-    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n_col(:), l_ptr(:), l_col(:)
     ! The region of interest
     type(tRgn), intent(in) :: sub
     ! The currently indexs of the pivoted arrays
@@ -1377,7 +1377,7 @@ contains
     ! The starting for the peripheral
     type(tRgn), intent(in), optional :: start
     ! The priority of the rows, optional
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
     logical, intent(in), optional :: only_sub
 
     ! Another temporary level structure
@@ -1510,11 +1510,11 @@ contains
 
   subroutine rev_PCG(n,nnzs,n_col,l_ptr,l_col,sub,pvt,start,priority,only_sub)
     integer, intent(in) :: n, nnzs
-    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n_col(:), l_ptr(:), l_col(:)
     type(tRgn), intent(in) :: sub
     type(tRgn), intent(inout) :: pvt
     type(tRgn), intent(in), optional :: start
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
     logical, intent(in), optional :: only_sub
 
     call PCG(n,nnzs,n_col,l_ptr,l_col,sub,pvt,start,priority,only_sub)
@@ -1530,10 +1530,10 @@ contains
       xadj, adjncy, w, priority)
     use iso_c_binding, only: c_int
     integer, intent(in) :: n, nnzs
-    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n_col(:), l_ptr(:), l_col(:)
     type(tRgn), intent(in) :: sub
     integer(c_int), intent(inout), allocatable :: xadj(:), adjncy(:), w(:)
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
 
     integer :: io, i, ptr, ind, nc, j, nadj
 
@@ -1608,10 +1608,10 @@ contains
   subroutine metis_NodeND_pvt(n,nnzs,n_col,l_ptr,l_col,sub,pvt, priority)
     use iso_c_binding, only: c_int, c_ptr, c_loc
     integer, intent(in) :: n, nnzs
-    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n_col(:), l_ptr(:), l_col(:)
     type(tRgn), intent(in) :: sub
     type(tRgn), intent(inout) :: pvt
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
 
     ! METIS variables
     integer(c_int), allocatable :: xadj(:), adjncy(:)
@@ -1713,10 +1713,10 @@ contains
   subroutine metis_PartGraphKway_pvt(n,nnzs,n_col,l_ptr,l_col,sub,pvt, priority)
     use iso_c_binding, only: c_int, c_ptr, c_loc, c_null_ptr
     integer, intent(in) :: n, nnzs
-    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n_col(:), l_ptr(:), l_col(:)
     type(tRgn), intent(in) :: sub
     type(tRgn), intent(inout) :: pvt
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
 
     ! METIS variables
     integer(c_int), allocatable :: xadj(:), adjncy(:)
@@ -1847,10 +1847,10 @@ contains
   subroutine metis_PartGraphRecursive_pvt(n,nnzs,n_col,l_ptr,l_col,sub,pvt, priority)
     use iso_c_binding, only: c_int, c_ptr, c_loc, c_null_ptr
     integer, intent(in) :: n, nnzs
-    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n_col(:), l_ptr(:), l_col(:)
     type(tRgn), intent(in) :: sub
     type(tRgn), intent(inout) :: pvt
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
 
     ! METIS variables
     integer(c_int), allocatable :: xadj(:), adjncy(:)
@@ -1982,7 +1982,7 @@ contains
 
 
   subroutine breadth_first_search(n, nnzs, n_col, l_ptr, l_col, start, bfs, skip)
-    integer, intent(in) :: n, nnzs, n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n, nnzs, n_col(:), l_ptr(:), l_col(:)
 
     ! BFS search start
     type(tRgn), intent(in) :: start
@@ -2092,7 +2092,7 @@ contains
   end subroutine breadth_first_search
 
   subroutine level_structure(n, nnzs, n_col, l_ptr, l_col, ls, start, skip, priority, only_sub)
-    integer, intent(in) :: n, nnzs, n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n, nnzs, n_col(:), l_ptr(:), l_col(:)
 
     ! The LV table
     type(tLevelStructure), intent(inout), target :: ls
@@ -2101,7 +2101,7 @@ contains
     ! Optional discarded elements
     type(tRgn), intent(in), optional :: skip
     ! The priority of the rows, optional
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
     ! Allow only a sub-graph
     logical, intent(in), optional :: only_sub
 
@@ -2230,8 +2230,8 @@ contains
   contains
 
     subroutine next_level(n,nnzs,n_col,l_ptr,l_col, qin, qout, priority)
-      integer, intent(in) :: n, nnzs, n_col(n), l_ptr(n), l_col(nnzs)
-      integer, intent(in), optional :: priority(n)
+      integer, intent(in) :: n, nnzs, n_col(:), l_ptr(:), l_col(:)
+      integer, intent(in), optional :: priority(:)
 
       type(tRgn), intent(in) :: qin
       type(tRgn), intent(inout) :: qout
@@ -2362,7 +2362,7 @@ contains
     ! the dimensionality of the system
     integer, intent(in) :: n, nnzs
     ! The sparse pattern
-    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n_col(:), l_ptr(:), l_col(:)
     ! The region of interest
     type(tRgn), intent(in) :: sub
     ! The level tree
@@ -2374,7 +2374,7 @@ contains
     ! It also returns the entry that creates that structure
     integer, intent(out), optional :: small_wd(3)
     ! The priority of the rows, optional
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
 
     ! Another temporary level structure
     type(tLevelStructure) :: level_s2
@@ -2520,7 +2520,7 @@ contains
 
 
   function bandwidth(n,nnzs,n_col,l_ptr,l_col,sub) result(beta)
-    integer, intent(in) :: n, nnzs, n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n, nnzs, n_col(:), l_ptr(:), l_col(:)
     type(tRgn), intent(in) :: sub
     type(tRgn) :: pvt
     integer :: beta
@@ -2546,7 +2546,7 @@ contains
   end function bandwidth
 
   function profile(n,nnzs,n_col,l_ptr,l_col,sub) result(p)
-    integer, intent(in) :: n, nnzs, n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n, nnzs, n_col(:), l_ptr(:), l_col(:)
     type(tRgn), intent(in) :: sub
     integer(i8b) :: p
     type(tRgn) :: pvt
@@ -2603,7 +2603,7 @@ contains
     ! the dimensionality of the system
     integer, intent(in) :: n, nnzs
     ! The sparse pattern
-    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n_col(:), l_ptr(:), l_col(:)
     ! We start this pseudo-periphael from this index
     integer, intent(in) :: idx
     ! The region of interest
@@ -2613,7 +2613,7 @@ contains
     ! of element pvt%r(1))
     type(tRgn) :: pvt, lvl
     ! The priority of the rows, optional
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
 
     ! Temporary region used to contain the connectivity graph
     type(tRgn) :: con, con_c, skip
@@ -2738,7 +2738,7 @@ contains
     ! the dimensionality of the system
     integer, intent(in) :: n, nnzs
     ! The sparse pattern
-    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n_col(:), l_ptr(:), l_col(:)
     ! The region of interest
     type(tRgn), intent(in) :: sub
     ! The level tree
@@ -2748,7 +2748,7 @@ contains
     ! It also returns the entry that creates that structure
     integer, intent(out), optional :: small_wd(3)
     ! The priority of the rows, optional
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
 
     ! Local variables
     type(tRgn) :: pvt, lvl, S
@@ -2833,13 +2833,13 @@ contains
     ! the dimensionality of the system
     integer, intent(in) :: n, nnzs
     ! The sparse pattern
-    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n_col(:), l_ptr(:), l_col(:)
     ! The region of interest
     type(tRgn), intent(in) :: sub
     ! The sub sorted
     type(tRgn), intent(inout) :: sub_sort
     ! The priority of the rows, optional
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
 
     ! local variables
     type(tRgn) :: s
@@ -2881,7 +2881,7 @@ contains
     ! the dimensionality of the system
     integer, intent(in) :: n, nnzs
     ! The sparse pattern
-    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n_col(:), l_ptr(:), l_col(:)
     ! The region of interest
     type(tRgn), intent(in) :: sub
     ! The currently indexs of the pivoted arrays
@@ -2890,7 +2890,7 @@ contains
     ! hence we can force the algorithm to start from some point
     type(tRgn), intent(in), optional :: start
     ! The priority of the rows, optional
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
     logical, intent(in), optional :: only_sub
 
     ! The queue list
@@ -3042,11 +3042,11 @@ contains
 
   subroutine rev_Cuthill_Mckee(n,nnzs,n_col,l_ptr,l_col,sub,pvt,start,priority, only_sub)
     integer, intent(in) :: n, nnzs
-    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n_col(:), l_ptr(:), l_col(:)
     type(tRgn), intent(in) :: sub
     type(tRgn), intent(inout) :: pvt
     type(tRgn), intent(in), optional :: start
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
     logical, intent(in), optional :: only_sub
 
     call Cuthill_Mckee(n,nnzs,n_col,l_ptr,l_col,sub,pvt, &
@@ -3064,7 +3064,7 @@ contains
     ! the dimensionality of the system
     integer, intent(in) :: n, nnzs
     ! The sparse pattern
-    integer, intent(in) :: n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n_col(:), l_ptr(:), l_col(:)
     ! The region of interest
     type(tRgn), intent(in) :: sub
     ! The neighbouring region
@@ -3072,7 +3072,7 @@ contains
     ! The sub sorted
     type(tRgn), intent(inout) :: sort
     ! The priority of the rows, optional
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
 
     ! local variables
     type(tRgn) :: connect, sort_neigh
@@ -3157,7 +3157,7 @@ contains
   ! Returns all indices that connects to the 'idx'
   ! It does not add it-self to the list
   subroutine graph_connect(idx,n,nnzs,n_col,l_ptr,l_col,con,skip)
-    integer, intent(in) :: idx, n, nnzs, n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: idx, n, nnzs, n_col(:), l_ptr(:), l_col(:)
     type(tRgn), intent(inout) :: con
     type(tRgn), intent(in), optional :: skip
 
@@ -3193,13 +3193,13 @@ contains
   !   See the D_* variables in the top to see their meaning
   function idx_degree(method,n,nnzs,n_col,l_ptr,l_col,sub,skip,priority) result(idx)
     integer, intent(in) :: method
-    integer, intent(in) :: n, nnzs, n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n, nnzs, n_col(:), l_ptr(:), l_col(:)
     ! Only look at this sub-set of the full sparsity pattern
     type(tRgn), intent(in) :: sub
     ! Skip these entries, say if they already have been added
     ! or something else
     type(tRgn), intent(in), optional :: skip
-    integer, intent(in), optional :: priority(n)
+    integer, intent(in), optional :: priority(:)
     ! Returned index for the degree function
     integer :: idx, etr
     type(tRgn) :: self
@@ -3272,7 +3272,7 @@ contains
 
   function degree(method,n,nnzs,n_col,l_ptr,l_col,etr,self) result(deg)
     integer, intent(in) :: method
-    integer, intent(in) :: n, nnzs, n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n, nnzs, n_col(:), l_ptr(:), l_col(:)
     integer, intent(in) :: etr ! the entry which we want the degree from
     type(tRgn), intent(inout) :: self ! used to create connectivity graph
     integer :: deg
@@ -3314,9 +3314,9 @@ contains
 
   subroutine sp2graphviz_lists(file,n,nnzs,n_col,l_ptr,l_col,types,method,pvt)
     character(len=*), intent(in) :: file
-    integer, intent(in) :: n, nnzs, n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n, nnzs, n_col(:), l_ptr(:), l_col(:)
     ! Methods applied
-    integer, intent(in), optional :: types(n)
+    integer, intent(in), optional :: types(:)
     integer, intent(in), optional :: method
     type(tRgn), intent(in), optional :: pvt
 

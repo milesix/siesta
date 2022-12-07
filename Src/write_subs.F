@@ -115,7 +115,6 @@
                ps = mstress + kin_stress
                write(6,'(/,a,6f12.2)')
      .   'Inter molecular stress Voigt[x,y,z,yz,xz,xy] (kbar):',
-     .           ' (kbar):',
      .           (ps(jx,jx)/kbar,jx=1,3),
      $            ps(2,3)/kbar,
      $            ps(1,3)/kbar,
@@ -304,6 +303,7 @@
       real(dp), intent(in) :: dDmax ! Max. change in dens. matrix elem.
       real(dp), intent(in) :: dHmax ! Max. change in H elements
 
+      real(dp) :: Edftu_write ! LDA+U energy
       character(len=64) :: fmt
       character(len=17) :: enl_str, eso_str
 
@@ -319,6 +319,12 @@
          enl_str = 'siesta: Enl     ='
          eso_str = 'siesta: Eso     ='
       endif
+
+      if (spin%SO) then
+         Edftu_write = E_dftu_so + E_correc_dc
+      else
+         Edftu_write = Edftu
+      endif
       
       first_scf_step = (iscf == 1)
       ! Only print out full decomposition at very beginning and end.
@@ -331,10 +337,12 @@
      .     'siesta: Ekin    =', Ekin/eV,
      .      enl_str, Enl/eV,
      .      eso_str, Eso/eV,
-     .     'siesta: Eldau   =', Eldau/eV,
+     .     'siesta: Edftu   =', Edftu_write/eV,
      .     'siesta: DEna    =', DEna/eV,
      .     'siesta: DUscf   =', DUscf/eV,
      .     'siesta: DUext   =', DUext/eV,
+     .     'siesta: Ex      =', Ex/eV,
+     .     'siesta: Ec      =', Ec/eV,
      .     'siesta: Exc     =', Exc/eV,
      .     'siesta: eta*DQ  =', Ecorrec/eV,
      .     'siesta: Emadel  =', Emad/eV,
@@ -373,9 +381,9 @@
           call cmlAddProperty(xf=mainXML, value=Enl/eV, 
      .         units='siestaUnits:eV', 
      .         dictref='siesta:Enl', fmt='r6')
-          call cmlAddProperty(xf=mainXML, value=Eldau/eV,
+          call cmlAddProperty(xf=mainXML, value=Edftu_write/eV,
      .         units='siestaUnits:eV',
-     .         dictref='siesta:Eldau', fmt='r6')
+     .         dictref='siesta:Edftu', fmt='r6')
           call cmlAddProperty(xf=mainXML, value=DEna/eV, 
      .         units='siestaUnits:eV', 
      .         dictref='siesta:DEna', fmt='r6')
@@ -388,6 +396,12 @@
           call cmlAddProperty(xf=mainXML, value=DUext/eV, 
      .         units='siestaUnits:eV', 
      .         dictref='siesta:DUext', fmt='r6')
+          call cmlAddProperty(xf=mainXML, value=Ex/eV, 
+     .         units='siestaUnits:eV', 
+     .         dictref='siesta:Ex', fmt='r6')
+          call cmlAddProperty(xf=mainXML, value=Ec/eV, 
+     .         units='siestaUnits:eV', 
+     .         dictref='siesta:Ec', fmt='r6')
           call cmlAddProperty(xf=mainXML, value=Exc/eV, 
      .         units='siestaUnits:eV', 
      .         dictref='siesta:Exc', fmt='r6')
@@ -577,14 +591,22 @@
            eso_str = '      Eso     ='
         endif
 
+        if (spin%SO) then
+           Edftu_write = E_dftu_so + E_correc_dc
+        else
+           Edftu_write = Edftu
+        endif
+
         write(6,'(/,a)') 'siesta: Final energy (eV):'
         write(6,'(a,a15,f15.6)')
      .    'siesta: ', 'Band Struct. =', Ebs/eV,
      .    'siesta: ',      'Kinetic =', Ekin/eV,
      .    'siesta: ',      'Hartree =', Uscf/eV,
-     .    'siesta: ',      'Eldau   =', Eldau/eV,
+     .    'siesta: ',        'Edftu =', Edftu_write/eV,
      .    'siesta: ',      eso_str    , Eso/eV,
      .    'siesta: ',   'Ext. field =', DUext/eV,
+     .    'siesta: ',        'Exch. =', Ex/eV,
+     .    'siesta: ',        'Corr. =', Ec/eV,
      .    'siesta: ',  'Exch.-corr. =', Exc/eV,
      .    'siesta: ', 'Ion-electron =', (Enascf+Enl+DUscf-Uscf-Uatm)/eV,
      .    'siesta: ',      'Ion-ion =', (Ena+Uatm-Enaatm-Eions)/eV,
@@ -618,15 +640,21 @@
           call cmlAddProperty(xf=mainXML, value=Uscf/eV,  
      .         units='siestaUnits:eV', 
      .         dictref='siesta:Uscf', fmt='r7')
-          call cmlAddProperty(xf=mainXML, value=Eldau/eV,  
+          call cmlAddProperty(xf=mainXML, value=Edftu/eV,  
      .         units='siestaUnits:eV', 
-     .         dictref='siesta:Eldau', fmt='r7')
+     .         dictref='siesta:Edftu', fmt='r7')
           call cmlAddProperty(xf=mainXML, value=Eso/eV,
      .         units='siestaUnits:eV', 
      .         dictref='siesta:Eso', fmt='r7')
           call cmlAddProperty(xf=mainXML, value=DUext/eV, 
      .         units='siestaUnits:eV', 
      .         dictref='siesta:DUext', fmt='r7')
+          call cmlAddProperty(xf=mainXML, value=Ex/eV,   
+     .         units='siestaUnits:eV', 
+     .         dictref='siesta:Ex', fmt='r7')
+          call cmlAddProperty(xf=mainXML, value=Ec/eV,   
+     .         units='siestaUnits:eV', 
+     .         dictref='siesta:Ec', fmt='r7')
           call cmlAddProperty(xf=mainXML, value=Exc/eV,   
      .         units='siestaUnits:eV', 
      .         dictref='siesta:Exc', fmt='r7')
@@ -937,7 +965,6 @@
       use m_ts_method, only: r_aBuf
       use m_ts_options, only: N_Elec, Elecs
       use m_region, only: rgn_size
-      use m_ts_electype, only: TotUsedAtoms
 
       integer, intent(in) :: na_u
       real(dp), intent(in) :: fa(3,na_u)
@@ -956,8 +983,8 @@
       ! Zero out electrode atoms where bulk is false
       do iE = 1, N_elec
         if ( Elecs(iE)%DM_update < 2 ) then
-          na = na_u - TotUsedAtoms(Elecs(iE))
-          do ia = 1, TotUsedAtoms(Elecs(iE))
+          na = na_u - Elecs(iE)%device_atoms()
+          do ia = 1, Elecs(iE)%device_atoms()
             ts_fa(:, Elecs(iE)%idx_a+ia-1) = 0._dp
           end do
         end if

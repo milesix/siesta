@@ -1,46 +1,89 @@
 #!/bin/sh
 #
-##set -x
+# This is a dummy script to redirect users to the new one
 #
+echo "***"
+echo "***  Some details of the building procedure have changed. ***"
+echo "***"
+echo "***  Please use the new script: Config/obj_setup.sh       ***"
+echo "***"
+echo "***  and see the INSTALL file in the top directory        ***"
+echo "***"
+
+#
+#  Put here the right code to emulate the other script, taking care
+#  to use the right paths. This is for backwards compatibility.
+#
+# Absolute path of the MAIN_OBJDIR (compilation directory)
+#
+objdir=$(
+cd -P -- "$(pwd)" &&
+pwd -P
+)
+# 
 # Get absolute path of this script, as that will be the Src directory to use
 # as reference when copying files.
 # 
-#
 srcdir=$(
 cd -P -- "$(dirname -- "$0")" &&
 pwd -P
 )
-# The above construct is more robust than:  srcdir=$(dirname $0)
-# (It will work if $0 is "../Src", since we want an *absolute* path
+topdir=$(dirname $srcdir)
 #
-user_specified_dir=$(dirname $0)
-testdir=$(dirname $srcdir)/Tests
+configdir=${topdir}/Config
+testdir=${topdir}/Tests
+utildir=${topdir}/Util
+pseudodir=${topdir}/Pseudo
 #
-destdir=$(pwd)
+# Copy build.mk and its subordinate files and the checker snippet
+#
+cp -p ${configdir}/mk-build/build.mk ${objdir}
+cp -p ${configdir}/mk-build/extlibs.mk ${objdir}
+cp -p ${configdir}/mk-build/check_for_build_mk.mk ${objdir}
 #
 # Replicate the hierarchy of makefiles
 #
-(cd $srcdir;
-  for i in $(find . -name \[mM\]akefile | grep -v \\./Makefile) ; do
-    relpath=${i%/*}
-    mkdir -p ${destdir}/$relpath
-    cp $relpath/*akefile ${destdir}/$relpath
-  done
-)
-# Replicate any .h files
-# This is needed in some systems with broken include file import heuristics
-# (e.g., CSCS blanc)
+# First the top-level Makefile
+#
+sed "s#TOPDIR=\.#TOPDIR=${topdir}#g" ${topdir}/Makefile | \
+sed "s#MAIN_OBJDIR=\.#MAIN_OBJDIR=${objdir}#g" > ${objdir}/Makefile
 #
 (cd $srcdir;
-  for i in $(find . -name '*.h' ); do
+  for i in $(find . -name \[mM\]akefile ) ; do
     relpath=${i%/*}
-    mkdir -p ${destdir}/$relpath
-    cp -f $relpath/*.h ${destdir}/$relpath
+    mkdir -p ${objdir}/Src/$relpath
+    filename=$(basename $i)
+    sed "s#TOPDIR=\.#TOPDIR=${topdir}#g" $i | \
+    sed "s#MAIN_OBJDIR=\.#MAIN_OBJDIR=${objdir}#g" > ${objdir}/Src/$relpath/$filename
   done
 )
+(cd $utildir;
+  for i in $(find . -name \[mM\]akefile ) ; do
+    relpath=${i%/*}
+    mkdir -p ${objdir}/Util/$relpath
+    filename=$(basename $i)
+    sed "s#TOPDIR=\.#TOPDIR=${topdir}#g" $i | \
+    sed "s#MAIN_OBJDIR=\.#MAIN_OBJDIR=${objdir}#g" > ${objdir}/Util/$relpath/$filename
+  done
+)
+(cd $pseudodir;
+  for i in $(find . -name \[mM\]akefile ) ; do
+    relpath=${i%/*}
+    mkdir -p ${objdir}/Pseudo/$relpath
+    filename=$(basename $i)
+    sed "s#TOPDIR=\.#TOPDIR=${topdir}#g" $i | \
+    sed "s#MAIN_OBJDIR=\.#MAIN_OBJDIR=${objdir}#g" > ${objdir}/Pseudo/$relpath/$filename
+  done
+)
+# Replicate any .inc files
 #
-sed "s#VPATH=\.#VPATH=${srcdir}#g" ${srcdir}/Makefile > ${destdir}/Makefile
-
+(cd $srcdir;
+  for i in $(find . -name '*.inc' ); do
+    relpath=${i%/*}
+    mkdir -p ${objdir}/Src/$relpath
+    cp -fp $relpath/*.inc ${objdir}/Src/$relpath
+  done
+)
 #
 # Tests directory
 # Create a list of files and use tar to process the list and copy the files
@@ -50,14 +93,18 @@ sed "s#VPATH=\.#VPATH=${srcdir}#g" ${srcdir}/Makefile > ${destdir}/Makefile
               -path *Reference -prune -o  \
               -path *Reference-xml -prune -o  \
               -path *work -prune      -o  \
+              -path *.mk -prune      -o  \
               -path *.arch-ids  -prune -o -print \
-              | tar -cf - --no-recursion -T- )   | ( cd ${destdir} ; tar xf -)
+              | tar -cf - --no-recursion -T- )   | ( cd ${objdir} ; tar xf -)
+(cd ${testdir};
+    for i in *.mk ; do
+	sed "s#TOPDIR=\.#TOPDIR=${topdir}#g" $i | \
+        sed "s#MAIN_OBJDIR=\.#MAIN_OBJDIR=${objdir}#g" > ${objdir}/Tests/$i
+    done
+)    
+ 
 #
-# (deactivated for now)
 echo " *** Compilation setup done. "
-echo " *** Remember to copy an arch.make file into the directory."
-echo " *** These files are template arch.make files:"
-echo " ***    gfortran.make (for gfortran compiler)"
-echo " ***    intel.make (for intel compiler)"
-echo " ***    DOCUMENTED-TEMPLATE.make (requires customization)"
+echo " *** Remember to copy an arch.make file into this directory."
+echo " *** Build Siesta in Src here."
 

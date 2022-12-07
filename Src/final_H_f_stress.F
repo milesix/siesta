@@ -11,18 +11,19 @@
       CONTAINS
 
       subroutine final_H_f_stress( istep, iscf , SCFconverged )
-      use units, only: eV
+      use units, only: eV, Ang
 
       use files,        only : slabel
 #ifdef NCDF_4
       use siesta_options, only: write_cdf
 #endif
       use siesta_options, only: fixspin
-      use siesta_options, only: g2cut, savehs, temp, nmove
+      use siesta_options, only: savehs, write_coop
+      use siesta_options, only: g2cut, temp, nmove
       use siesta_options, only: recompute_H_after_scf
       use sparse_matrices, only: numh, listh, listhptr
       use sparse_matrices, only: H, S, Dscf, Escf, maxnh, xijo
-      use sparse_matrices, only: H_ldau_2D, H_so_off_2D
+      use sparse_matrices, only: H_dftu_2D, H_so_off_2D, H_dftu_so_2D
       use class_dSpData1D, only: val
       use class_dSpData2D, only: val
       use class_zSpData2D, only: val
@@ -39,12 +40,13 @@
       use m_naefs,      only: naefs
       use m_dnaefs,     only: dnaefs
       use m_grdsam,     only: grdsam
-      use ldau_specs,   only: switch_ldau     ! This variable determines whether
+      use dftu_specs,   only: switch_dftu     ! This variable determines whether
                                               !   the subroutine to compute the
                                               !   Hubbard terms should be called
                                               !   or not
-      use m_ldau,       only: hubbard_term    ! Subroutine that compute the
+      use m_dftu,       only: hubbard_term    ! Subroutine that compute the
                                               !   Hubbard terms
+      use m_dftu_so, only: dftu_so_hamil
       use m_stress
       use m_energies
       use m_ntm
@@ -53,7 +55,7 @@
       use m_dipol
       use m_forces,          only: fa
       use alloc, only: re_alloc, de_alloc
-      use m_hsx, only: write_hsx
+      use io_hsx_m, only: write_hsx
       use sys, only: die
       use fdf
 #ifdef MPI
@@ -67,7 +69,7 @@
 #endif
 #endif
       use siesta_options, only : idyn, ia1, write_tshs_history
-      use sparse_matrices, only: H_2D, S_1D
+      use sparse_matrices, only: H_2D, S_1D, xij_2D
       use files,        only : label_length
       use m_ts_options, only : TS_HS_save
       use ts_kpoint_scf_m, only: ts_kpoint_scf, ts_gamma_scf
@@ -89,9 +91,10 @@
       real(dp)              :: g2max
       ! To avoid overwriting the current Hamiltonian and S
       real(dp), pointer :: H_tmp(:,:) => null()
-      real(dp), pointer :: H_ldau(:,:), S_tmp(:)
+      real(dp), pointer :: S_tmp(:) => null()
       complex(dp), pointer  :: H_so_off(:,:)
-
+      real(dp), pointer :: H_dftu(:,:)
+      complex(dp), pointer  :: H_dftu_so(:,:)
 #ifdef FINAL_CHECK_HS
       real(dp) :: diff_H
 #endif
@@ -195,22 +198,35 @@
       call update_E0()
 
 ! Hubbard term for LDA+U: energy, forces, stress and matrix elements ....
-      if( switch_ldau ) then
-         H_ldau => val(H_ldau_2D)
-         call hubbard_term(scell, na_u, na_s, isa, xa, indxua,
-     .        maxnh, maxnh, lasto, iphorb, no_u, no_l, 
-     .        numh, listhptr, listh, numh, listhptr, listh,
-     .        spin%spinor, Dscf, Eldau, DEldau, H_ldau, 
-     .        fal, stressl, H_tmp, iscf,
-     .        matrix_elements_only=.false.)
+      if( switch_dftu ) then
+        if ( spin%SO ) then
+          H_dftu_so => val(H_dftu_so_2D)
+          call dftu_so_hamil( H_dftu_so, fal, stressl )
 #ifdef MPI
-         ! Global reduction of energy terms
-         call globalize_sum(Eldau,buffer1)
-         Eldau = buffer1
-         ! DEldau should not be globalized as it 
-         ! is based on globalized occupations
+          ! Global reduction of energy terms
+          call globalize_sum(E_dftu_so,buffer1)
+          E_dftu_so = buffer1
+          ! Global reduction of E_correc_dc
+          call globalize_sum(E_correc_dc,buffer1)
+          E_correc_dc = buffer1
 #endif
-         Eldau = Eldau + DEldau
+        else
+          H_dftu => val(H_dftu_2D)
+          call hubbard_term(scell, na_u, na_s, isa, xa, indxua,
+     .         maxnh, maxnh, lasto, iphorb, no_u, no_l, 
+     .         numh, listhptr, listh, numh, listhptr, listh,
+     .         spin%spinor, Dscf, Edftu, DEdftu, H_dftu, 
+     .         fal, stressl, H_tmp, iscf,
+     .         matrix_elements_only=.false.)
+#ifdef MPI
+          ! Global reduction of energy terms
+          call globalize_sum(Edftu,buffer1)
+          Edftu = buffer1
+          ! DEdftu should not be globalized as it 
+          ! is based on globalized occupations
+#endif
+          Edftu = Edftu + DEdftu
+        endif
       endif
 ! ..................
 
@@ -299,10 +315,21 @@
 ! not the one computed (from DM_out) in this routine.
 ! This call could be moved to a more appropriate place
 !
-      if (savehs) then
-         call write_hsx( no_u, no_s, spin%H, indxuo,
-     &        maxnh, numh, listhptr, listh, H, S, Qtot,
-     &        Temp, xijo)
+      if ( savehs .or. write_coop ) then
+        if ( fixspin ) then
+! For fixed spin calculations we shift the Hamiltonian according
+! to the first spin such that we have a "common" E_F, after writing
+! we shift back again.
+          H_tmp => val(H_2D)
+          S_tmp => val(S_1D)
+          call daxpy(size(S_tmp),Efs(1)-Efs(2),S_tmp(1),1,H_tmp(1,2),1)
+          Ef = Efs(1)
+        end if
+        call write_hsx(H_2D, S_1D, Ef, Qtot, Temp)
+        if ( fixspin ) then
+          ! revert
+          call daxpy(size(S_tmp),Efs(2)-Efs(1),S_tmp(1),1,H_tmp(1,2),1)
+         end if
       endif
 #ifdef CDF
 #ifdef NCDF_4
@@ -310,7 +337,8 @@
         if ( idyn == 6 ) then
           call cdf_save_fc(trim(slabel)//'.nc', istep)
           if ( istep == 0 ) then
-            dic_save = ('fa'.kv.1)//('stress'.kv.1)
+            dic_save = ('fa'.kv.1)//('stress'.kv.1)//('Ef'.kv.1)
+            dic_save = dic_save//('NEGF_Vha'.kv.1)
             if ( savehs .or. TS_HS_save )
      &          dic_save = dic_save//('H'.kv.1)
             call cdf_save_state(trim(slabel)//'.nc',dic_save)
@@ -319,7 +347,8 @@
         else if ( idyn /=0 .or. nmove /= 0 ) then
           !call cdf_save_md(trim(slabel)//'.nc')
         else
-          dic_save = ('fa'.kv.1)//('stress'.kv.1)
+          dic_save = ('fa'.kv.1)//('stress'.kv.1)//('Ef'.kv.1)
+          dic_save = dic_save//('NEGF_Vha'.kv.1)
           if ( savehs .or. TS_HS_save ) dic_save = dic_save //('H'.kv.1)
           call cdf_save_state(trim(slabel)//'.nc',dic_save)
           call delete(dic_save)

@@ -18,7 +18,7 @@ module m_tbt_contour
 ! Use the type associated with the contour
 ! Maybe they should be collected to this module.
 ! However, I like this partition.
-  use m_ts_electype
+  use ts_electrode_m
 
   use m_ts_chem_pot
   use m_ts_cctype
@@ -45,6 +45,7 @@ module m_tbt_contour
   public :: N_tbt_E
   public :: tbt_E
   public :: c2weight
+  public :: tbt_contour_reset
 
   private
 
@@ -54,11 +55,11 @@ contains
 
     use parallel, only : Node
     use fdf
-    use m_ts_electype
+    use ts_electrode_m
 
     ! only to gain access to the chemical shifts
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in), target :: Elecs(N_Elec)
+    type(electrode_t), intent(in), target :: Elecs(N_Elec)
     integer, intent(in) :: N_mu
     type(ts_mu), intent(in), target :: mus(N_mu)
     
@@ -70,8 +71,13 @@ contains
 
     Ry2eV = fdf_convfac('Ry', 'eV')
 
-    ! broadening
-    tbt_Eta = fdf_get('TBT.Contours.Eta',0._dp,'Ry')
+    ! broadening defaults to the electrodes Eta values and their
+    ! propagation. Since there may be localized states
+    ! we default to an eta with a number equal to min(Elecs(:)%eta) / 10
+    ! This ensures a minimal broadening that will by default be smaller
+    ! than the electrodes.
+    tbt_Eta = minval(Elecs(:)%eta) / 10._dp
+    tbt_Eta = fdf_get('TBT.Contours.Eta',tbt_Eta,'Ry')
     if ( tbt_Eta < 0._dp .and. Node == 0 ) then
       call die('tbtrans: error cannot use the advanced Green function')
        write(*,'(a)')'*** NOTICE ***'
@@ -634,5 +640,22 @@ contains
     call die(msg)
 
   end subroutine neq_die
-    
+
+  subroutine tbt_contour_reset
+
+    integer :: i
+
+    if ( N_tbt <= 0 ) return
+
+    do i = 1, N_tbt
+      call delete(tbt_io(i))
+      deallocate(tbt_c(i)%c)
+      deallocate(tbt_c(i)%w)
+      nullify(tbt_c(i)%c_io)
+    end do
+
+    deallocate(tbt_io, tbt_c)
+
+  end subroutine tbt_contour_reset
+
 end module m_tbt_contour

@@ -21,7 +21,7 @@ module m_tbt_tri_scat
   use m_ts_tri_scat, only : GF_Gamma_GF, dir_GF_Gamma_GF
   use m_ts_tri_common, only : GFGGF_needed_worksize
 
-  use m_ts_electype
+  use ts_electrode_m
 
   implicit none
 
@@ -82,7 +82,7 @@ contains
     type(zTriMat), intent(inout) :: Gfd_tri, Gfo_tri
     type(zSpData1D), intent(inout) :: S_1D ! (transposed S(k))
     type(tRgn), intent(in) :: pvt
-    real(dp), intent(out) :: DOS(r%n)
+    real(dp), intent(out) :: DOS(:)
 
     type(Sparsity), pointer :: sp
     complex(dp), pointer :: S(:)
@@ -172,11 +172,11 @@ contains
       ! We need to calculate the 
       ! Mnm1n/Mnp1n Green's function
       call GEMM ('N','N',no_i,no_o,no_o, &
-          zm1, XY,no_i, Mnn,no_o,z0, Gf,no_i)
+          zm1,XY(1),no_i,Mnn(1),no_o,z0,Gf(1),no_i)
       
     end subroutine calc
 
-    subroutine calc_GfGfd(br, bc, G)
+    pure subroutine calc_GfGfd(br, bc, G)
       integer, intent(in) :: br, bc
       complex(dp), intent(inout) :: G
       integer :: p_r, i_r, p_c, i_c, i
@@ -212,7 +212,7 @@ contains
     type(zTriMat), intent(inout) :: A_tri
     type(zSpData1D), intent(inout) :: S_1D ! (transposed S(k))
     type(tRgn), intent(in) :: pvt ! from sparse matrix to BTD
-    real(dp), intent(out) :: DOS(r%n)
+    real(dp), intent(out) :: DOS(:)
 
     type(Sparsity), pointer :: sp
     complex(dp), pointer :: S(:), A(:)
@@ -308,7 +308,7 @@ contains
     
     ! The COOP calculation can be written as
     !
-    !   COOP(io,jo) = - Im{ [Gf - Gf^\dagger](io,jo) * S(jo,io) * e^(ik.R) } / 2Pi
+    !   COOP(io,jo) = - Im{ [Gf - Gf^\dagger](io,jo) * S(jo,io) * e^(-ik.R) } / 2Pi
     ! Here we want:
     !   DOS(io) = \sum_jo COOP(io,jo)
     ! since we know that COOP(io,jo) is the io -> jo DOS.
@@ -317,15 +317,8 @@ contains
     ! Note that this is not necessary if S is S(k). I.e. it is because
     ! we want the cross-cell COOP curves as well.
 
-    ! Create the phases
-    ! Since we have to do Gf.S we simply
-    ! create S(-k) (which is S^T)
-    ! and thus get the correct values.
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = exp(cmplx(0._dp, - &
-          k(1) * sc_off(1,io) - &
-          k(2) * sc_off(2,io) - &
-          k(3) * sc_off(3,io), kind=dp)) / (2._dp * Pi)
+      ph(io-1) = exp(cmplx(0._dp, -dot_product(k, sc_off(:,io)), dp)) / (Pi * 2._dp)
     end do
 
     call attach(sp,nrows_g=no_u, n_col=ncol,list_ptr=l_ptr,list_col=l_col)
@@ -374,7 +367,7 @@ contains
 
   contains
 
-    subroutine calc_GfGfd(br, bc, G)
+    pure subroutine calc_GfGfd(br, bc, G)
       integer, intent(in) :: br, bc
       complex(dp), intent(inout) :: G
       integer :: p_r, i_r, p_c, i_c, i
@@ -440,12 +433,8 @@ contains
     call attach(c_sp, n_col=cncol, list_ptr=cptr, list_col=ccol)
 
     ! Create the phases
-    ! We are using the explicit H(j, i) and thus the phases are consistent with +
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = exp(cmplx(0._dp, + &
-          k(1) * sc_off(1,io) + &
-          k(2) * sc_off(2,io) + &
-          k(3) * sc_off(3,io), kind=dp)) / (2._dp * Pi)
+      ph(io-1) = exp(cmplx(0._dp, -dot_product(k, sc_off(:,io)), dp)) / (Pi * 2._dp)
     end do
 
     Gfd => val(Gfd_tri)
@@ -477,8 +466,7 @@ contains
 
             call calc_GfGfd(br, pvt%r(jo), GfGfd)
             ! COHP(iind) += - Im[ (G(io,jo) - G^\dagger(io,jo)) * dH(jo,io)] / 2Pi
-            C(iind) = C(iind) &
-                - aimag( GfGfd * dH(ind) * ph( (l_col(ind)-1)/no_u ))
+            C(iind) = C(iind) - aimag( GfGfd * dH(ind) * ph( (l_col(ind)-1)/no_u ))
 
           end if
 
@@ -495,7 +483,7 @@ contains
 
   contains
 
-    subroutine calc_GfGfd(br, bc, G)
+    pure subroutine calc_GfGfd(br, bc, G)
       integer, intent(in) :: br, bc
       complex(dp), intent(inout) :: G
       integer :: p_r, i_r, p_c, i_c, i
@@ -597,10 +585,7 @@ contains
     ! create the S(-k) (which is S^T)
     ! and thus get the correct values.
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = exp(cmplx(0._dp, - &
-          k(1) * sc_off(1,io) - &
-          k(2) * sc_off(2,io) - &
-          k(3) * sc_off(3,io), kind=dp)) / (2._dp * Pi)
+      ph(io-1) = exp(cmplx(0._dp, -dot_product(k, sc_off(:,io)), dp)) / (Pi * 2._dp)
     end do
 
     call attach(sp,nrows_g=no_u, n_col=ncol,list_ptr=l_ptr,list_col=l_col)
@@ -690,12 +675,8 @@ contains
     call attach(c_sp, n_col=cncol, list_ptr=cptr, list_col=ccol)
     
     ! Create the phases
-    ! We are using the explicit H(j, i) and thus the phases are consistent with +
     do i = 1 , size(sc_off, dim=2)
-      ph(i-1) = exp(cmplx(0._dp, + &
-          k(1) * sc_off(1,i) + &
-          k(2) * sc_off(2,i) + &
-          k(3) * sc_off(3,i), kind=dp)) / (2._dp * Pi)
+      ph(i-1) = exp(cmplx(0._dp, -dot_product(k, sc_off(:,i)), dp)) / (Pi * 2._dp)
     end do
 
     A => val(A_tri)
@@ -904,7 +885,7 @@ contains
             ! We need to calculate the 
             ! Mnm1n/Mnp1n Green's function
             call GEMM ('N','N',no_i,step_o,no_o, &
-                zm1, XY,no_i, Mnn,no_o,z0, Gf,no_i)
+                zm1,XY(1),no_i,Mnn(1),no_o,z0,Gf(1),no_i)
 
           end if
 
@@ -973,7 +954,7 @@ contains
   subroutine A_Gamma(A_tri,El,T)
 
     type(zTriMat), intent(inout) :: A_tri ! Spectral function
-    type(Elec), intent(in) :: El ! contains Gamma == (Sigma - Sigma^\dagger)^T
+    type(electrode_t), intent(in) :: El ! contains Gamma == (Sigma - Sigma^\dagger)^T
     real(dp), intent(out) :: T
 
     ! Here we need a double loop
@@ -1077,10 +1058,10 @@ contains
     use intrinsic_missing, only : transpose, trace
     
     type(zTriMat), intent(inout) :: A_tri ! Spectral function
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     real(dp), intent(out) :: T
     integer, intent(in) :: nwork
-    complex(dp), intent(inout) :: work(nwork)
+    complex(dp), intent(inout) :: work(:)
 
     ! Here we need a double loop
     integer :: no
@@ -1171,7 +1152,7 @@ contains
     end do
     
     ! Calculate transmission
-    T = real(trace(no,work),dp)
+    T = real( trace(no, work(:)), dp)
     
     ! Now we have the square matrix product
     !   tt = G \Gamma_1 G^\dagger \Gamma_El
@@ -1187,10 +1168,10 @@ contains
 
   subroutine TT_eigen(n,tt,nwork,work,eig)
     integer, intent(in) :: n
-    complex(dp), intent(inout) :: tt(n*n)
+    complex(dp), intent(inout) :: tt(:)
     integer, intent(in) :: nwork
-    complex(dp), intent(inout) :: work(nwork)
-    complex(dp), intent(inout) :: eig(n)
+    complex(dp), intent(inout) :: work(:)
+    complex(dp), intent(inout) :: eig(:)
 
     real(dp) :: rwork(n*2)
     complex(dp) :: z
@@ -1205,8 +1186,8 @@ contains
       tt((i-1)*n+i) = tt((i-1)*n+i) + 1.e-3_dp
     end do
 
-    call zgeev('N','N',n,tt,n,eig,work(1),1,work(1),1, &
-        work,nwork,rwork,i)
+    call zgeev('N','N',n,tt(1),n,eig(1),work(1),1,work(1),1, &
+        work(1),nwork,rwork(1),i)
     if ( i /= 0 ) then
       print *,i
       call die('TT_eigen: Could not calculate eigenvalues.')
@@ -1236,7 +1217,7 @@ contains
     use m_ts_trimat_invert, only : TriMat_Bias_idxs
 
     type(zTriMat), intent(inout) :: Gfcol
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     real(dp), intent(out) :: T
 
     complex(dp), pointer :: Gf(:)
@@ -1335,10 +1316,10 @@ contains
     use m_ts_trimat_invert, only : TriMat_Bias_idxs
 
     type(zTriMat), intent(inout) :: Gfcol
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     real(dp), intent(out) :: T_Gf, T_self
     integer, intent(in) :: nzwork
-    complex(dp), intent(out) :: zwork(nzwork)
+    complex(dp), intent(inout) :: zwork(:)
 
     complex(dp), pointer :: z(:)
 
@@ -1402,8 +1383,7 @@ contains
     !    Tr[(G \Gamma)^\dagger]
     ! Now we have:
     !    = G \Gamma
-    T_Gf = - aimag( TRACE(no,zwork) ) * 2._dp
-
+    T_Gf = - aimag( TRACE(no, zwork) ) * 2._dp
 
     ! Now we need to correct for the current electrode
     
@@ -1499,7 +1479,7 @@ contains
 
   subroutine consecutive_index(Tri,El,current,p,n)
     type(zTriMat), intent(inout) :: Tri
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
     integer, intent(in) :: current
     integer, intent(out) :: p, n
 
@@ -1581,10 +1561,7 @@ contains
     ! So since we are taking the complex part on the first entry we retrieve the H(j,i) (in k-space)
     ! component.
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = exp(cmplx(0._dp, + &
-          k(1) * sc_off(1,io) + &
-          k(2) * sc_off(2,io) + &
-          k(3) * sc_off(3,io), kind=dp))
+      ph(io-1) = exp(cmplx(0._dp, -dot_product(k, sc_off(:,io)), dp))
     end do
 
     A => val(A_tri)
@@ -1614,9 +1591,12 @@ contains
         ! of the device region
         if ( iind <= i_ptr(io) ) cycle
 
-        ! H_ind == H_ij
+        ! This is the full sparse matrix
+        ! We assume full TRS and H_ij == H_ji (when also taking into account
+        ! the supercell)
+        ! Hence H(ind) == H_ij
 
-        ! We may take the conjugate later as E is a real quantity
+        ! We may take the conjugate later as H - ES is a real quantity
         Hi = (H(ind) - E * S(ind)) * ph( (l_col(ind)-1)/no_u )
 
         ! J(iind) = J(io,jo)
@@ -1629,8 +1609,8 @@ contains
 
         ! We skip the pre-factors as the units are "never" used
 
-        ! Jij                Hji    * Aij    Hij * Aji
-        J(iind) = aimag( conjg(Hi) * A(jo) - Hi * A(ju) )
+        ! Jij             Aij    Hji  Aji     Hij
+        J(iind) = aimag( A(jo) * Hi - A(ju) * conjg(Hi) )
 
       end do
     end do
@@ -1666,7 +1646,6 @@ contains
     integer, pointer :: i_ncol(:), i_ptr(:), i_col(:)
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:), col(:)
 
-    complex(dp) :: p
     complex(dp), pointer :: A(:)
     real(dp), pointer :: J(:)
     integer :: no_u, iu, io, ind, iind, ju, jo, jj
@@ -1682,22 +1661,19 @@ contains
         n_col=l_ncol, list_ptr=l_ptr, list_col=l_col)
 
     i_sp => spar(orb_J)
-    J    => val (orb_J)
+    J => val (orb_J)
     call attach(i_sp, n_col=i_ncol, list_ptr=i_ptr, list_col=i_col)
 
     ! Create the phases
     ! We are using the explicit H(j, i) and thus the phases are consistent with +
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = exp(cmplx(0._dp, + &
-          k(1) * sc_off(1,io) + &
-          k(2) * sc_off(2,io) + &
-          k(3) * sc_off(3,io), kind=dp))
+      ph(io-1) = exp(cmplx(0._dp, -dot_product(j, sc_off(:,io)), dp))
     end do
 
     A => val(A_tri)
 
 !$OMP parallel do default(shared), &
-!$OMP&private(iu,io,iind,jo,ju,ind,col,jj,p)
+!$OMP&private(iu,io,iind,jo,ju,ind,col,jj)
     do iu = 1, r%n
       io = r%r(iu)
 
@@ -1711,50 +1687,38 @@ contains
         ! Get jo orbital
         jo = ucorb(i_col(iind), no_u)
         ju = pvt%r(jo) ! pivoted orbital index in tri-diagonal matrix
-
         
         ! Check if the jo, io orbital exists in dH
-        if ( l_ncol(jo) < 1 ) then
-          ind = -1
-        else
+        if ( l_ncol(jo) > 0 ) then
           col => l_col(l_ptr(jo)+1:l_ptr(jo)+l_ncol(jo))
           ! Get transpose element
           jj = TO(i_col(iind)) + io
           ind = l_ptr(jo) + SFIND(col, jj)
-        end if
 
-        if ( ind > l_ptr(jo) ) then
+          if ( ind > l_ptr(jo) ) then
 
-          ! Add orbital current from ji
-          p = ph( (l_col(ind)-1)/no_u )
+            ! Check for the Hamiltonian element H_ji
+            jj = index(A_tri,iu,ju) ! A_ij
 
-          ! Check for the Hamiltonian element H_ji
-          jj = index(A_tri,iu,ju) ! A_ij
+            ! Jij                      Aij   * Hji
+            J(iind) = J(iind) + aimag( A(jj) * dH(ind) * ph( (l_col(ind)-1)/no_u ) )
 
-          ! Jij                      Aij   * Hji
-          J(iind) = J(iind) + aimag( A(jj) * dH(ind) * p )
-
+          end if
         end if
 
         ! Check if the io, jo orbital exists in dH
-        if ( l_ncol(io) < 1 ) then
-          ind = -1
-        else
+        if ( l_ncol(io) > 0 ) then
           col => l_col(l_ptr(io)+1:l_ptr(io)+l_ncol(io))
           ind = l_ptr(io) + SFIND(col, i_col(iind))
-        end if
+          if ( ind > l_ptr(io) ) then
 
-        if ( ind > l_ptr(io) ) then
+            ! Check for the Hamiltonian element H_ij
+            jj = index(A_tri,ju,iu) ! A_ji
 
-          ! Add orbital current from ij
-          p = ph( (l_col(ind)-1)/no_u )
+            ! Jij -=                   Aji   * Hij
+            J(iind) = J(iind) - aimag( A(jj) * dH(ind) * ph( (l_col(ind)-1)/no_u ) )
 
-          ! Check for the Hamiltonian element H_ij
-          jj = index(A_tri,ju,iu) ! A_ji
-
-          ! Jij -=                   Aji   * Hij
-          J(iind) = J(iind) - aimag( A(jj) * dH(ind) * p )
-
+          end if
         end if
 
       end do
@@ -1832,10 +1796,7 @@ contains
     ! Since we have to do Gf.exp(ikR) we simply
     ! create exp(-ikR) for the supercell connections.
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = exp(cmplx(0._dp, - &
-          k(1) * sc_off(1,io) - &
-          k(2) * sc_off(2,io) - &
-          k(3) * sc_off(3,io), kind=dp)) / (2._dp * Pi)
+      ph(io-1) = exp(cmplx(0._dp, -dot_product(k, sc_off(:,io)), dp)) / (Pi * 2._dp)
     end do
 
     Gfd => val(Gfd_tri)
@@ -1870,7 +1831,7 @@ contains
     
   contains
     
-    subroutine calc_GfGfd(br, bc, G)
+    pure subroutine calc_GfGfd(br, bc, G)
       integer, intent(in) :: br, bc
       complex(dp), intent(inout) :: G
       integer :: p_r, i_r, p_c, i_c, i
@@ -1928,10 +1889,7 @@ contains
     ! Since we have to do Gf.exp(ikR) we simply
     ! create exp(-ikR) for the supercell connections.
     do io = 1 , size(sc_off, dim=2)
-      ph(io-1) = exp(cmplx(0._dp, - &
-          k(1) * sc_off(1,io) - &
-          k(2) * sc_off(2,io) - &
-          k(3) * sc_off(3,io), kind=dp)) / (2._dp * Pi)
+      ph(io-1) = exp(cmplx(0._dp, -dot_product(k, sc_off(:,io)), dp)) / (Pi * 2._dp)
     end do
 
     A => val(A_tri)
@@ -1971,11 +1929,11 @@ contains
 
     ! The sizes of the matrix
     integer, intent(in) :: n1, n2
-    complex(dp), intent(inout) :: M(n1,n2)
+    complex(dp), intent(inout) :: M(:,:)
     ! the region which describes the current segment of insertion
     type(tRgn), intent(in) :: r
     ! Electrodes...
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     ! The offsets of the matrix
     integer, intent(in) :: off1, off2
 
@@ -1983,7 +1941,7 @@ contains
     integer :: j, je, i, ie, no, idx
 
     idx = El%idx_o - 1
-    no = TotUsedOrbs(El)
+    no = El%device_orbitals()
 
     ! We are dealing with the intrinsic electrode
     ! self energy
@@ -2032,7 +1990,7 @@ contains
     complex(dp), intent(inout) :: Gfinv(:)
     ! the region which describes the current segment of insertion
     type(tRgn), intent(in) :: r
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
 
     ! local variables
     integer :: j, je, i, ii, idx, no

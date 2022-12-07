@@ -10,7 +10,7 @@
       use precision, only: dp
       use radial, only: rad_func
 !
-!     Derived types for orbitals,  KB projectors, and LDA+U projectors
+!     Derived types for orbitals,  KB projectors, and DFT+U projectors
 !
       implicit none
 !
@@ -23,12 +23,12 @@
       integer, parameter, public  :: maxnorbs = 100
 !       Maximum number of nlm orbitals
 !
-      integer, parameter, public  :: maxn_pjnl = 20
+      integer, parameter, public  :: maxn_pjnl = 40
 !       Maximum number of projectors (not counting different "m" copies)
       integer, parameter, public  :: maxn_orbnl = 200
 !       Maximum number of nl orbitals (not counting different "m" copies)
 !       Now very large to accommodate filteret basis sets
-      integer, parameter, public  :: maxnprojs = 100
+      integer, parameter, public  :: maxnprojs = 200
 !       Maximum number of nlm projectors
 !
 
@@ -97,39 +97,40 @@
          real(dp), dimension(maxnprojs)  ::  pj_j
          integer, dimension(maxnprojs)   ::  pj_m
          integer, dimension(maxnprojs)   ::  pj_gindex
-!----------------------------
-!        LDA+U Projectors
+!        DFT+U Projectors
 !        Here we follow the scheme used for the KB projectors
 !        
-         integer                         ::  n_pjldaunl = 0
+         integer                         ::  n_pjdftunl = 0
                                              ! num of "nl" projs
                                              ! not counting the "m copies"
-         integer                         ::  lmax_ldau_projs = 0
-                                             ! l cutoff for LDA+U proj
-         integer, dimension(maxn_pjnl)   ::  pjldaunl_l ! l of each nl proj
-         integer, dimension(maxn_pjnl)   ::  pjldaunl_n ! n of each nl proj
+         integer                         ::  lmax_dftu_projs = 0
+                                             ! l cutoff for DFT+U proj
+         integer, dimension(maxn_pjnl)   ::  pjdftunl_l ! l of each nl proj
+         integer, dimension(maxn_pjnl)   ::  pjdftunl_n ! n of each nl proj
                                              ! Here, n is not the principal
                                              ! quantum number, but a sequential
                                              ! index from 1 to the total 
                                              ! number of projectors for that l.
-                                             ! In the case of LDA+U projectors,
+                                             ! In the case of DFT+U projectors,
                                              ! It is always equal to 1.
-         real(dp), dimension(maxn_pjnl)  ::  pjldaunl_U ! U of each nl projector
-         real(dp), dimension(maxn_pjnl)  ::  pjldaunl_J ! J of each nl projector
+         real(dp), dimension(maxn_pjnl)  ::  pjdftunl_U ! U of each nl projector
+         real(dp), dimension(maxn_pjnl)  ::  pjdftunl_J ! J of each nl projector
 
-         integer                         ::  nprojsldau = 0
-                                             ! Total number of LDA+U proj.
+         integer                         ::  nprojsdftu = 0
+                                             ! Total number of DFT+U proj.
                                              ! counting the "m copies"
                                              ! (including the (2l + 1) factor))
-         integer, dimension(maxnprojs)   ::  pjldau_index
-         integer, dimension(maxnprojs)   ::  pjldau_n
-         integer, dimension(maxnprojs)   ::  pjldau_l
-         integer, dimension(maxnprojs)   ::  pjldau_m
-         integer, dimension(maxnprojs)   ::  pjldau_gindex
+         integer, dimension(maxnprojs)   ::  pjdftu_index
+         integer, dimension(maxnprojs)   ::  pjdftu_n
+         integer, dimension(maxnprojs)   ::  pjdftu_l
+         integer, dimension(maxnprojs)   ::  pjdftu_m
+         integer, dimension(maxnprojs)   ::  pjdftu_gindex
+         type(dftu_so_integrals_type), dimension(:), pointer
+     .                                   ::  dftu_so_integrals
 !
          type(rad_func), dimension(:), pointer       ::  orbnl
          type(rad_func), dimension(:), pointer       ::  pjnl
-         type(rad_func), dimension(:), pointer       ::  pjldau
+         type(rad_func), dimension(:), pointer       ::  pjdftu
          type(rad_func)                              ::  vna
          integer                                     ::  vna_gindex=0
          type(rad_func)                              ::  chlocal
@@ -139,6 +140,36 @@
 
          logical                        :: read_from_file
       end type species_info
+
+!     Derived type for the definition of the on-site four-center-integrals
+!     required for LDA+U + Spin orbit
+      type, public ::  dftu_so_integrals_type
+         real(dp), dimension(:), pointer :: Slater_F
+                                             ! Slater integrals,
+                                             !   involving the radial part
+                                             !   of the atomic wave funcs.
+                                             !   Used when LDA+U is used
+                                             !   together with Spin-Orbit
+                                             !   or non-collinear
+                                             !   magnetism
+         real(dp), dimension(:,:,:,:), pointer :: vee_4center_integrals
+                                             ! Values of the four center
+                                             !   integrals with the
+                                             !   electron–electron
+                                             !   interactions, that are
+                                             !   expressed as the
+                                             !   integrals of the Coulomb
+                                             !   kernel on the
+                                             !   wave functions of the
+                                             !   localized basis set
+                                             !   (e.g. d atomic states)
+                                             !   Used when LDA+U is used
+                                             !   together with Spin-Orbit
+                                             !   or non-collinear
+                                             !   magnetism
+      end type dftu_so_integrals_type
+
+
 
 !
       integer, save, public             :: nspecies

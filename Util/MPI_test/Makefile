@@ -10,37 +10,44 @@
 .SUFFIXES: 
 .SUFFIXES: .f .F .o .a  .f90 .F90
 
-.PHONY: MPI clean
+TOPDIR=.
+MAIN_OBJDIR=.
 
-default: pi3 blacs_prb pblas_prb # mpi_test
+PROGS:= pi3 blacs_prb pblas_prb mpi_test newcomm dist
+default: $(PROGS)
 
-OBJDIR=Obj
-VPATH=$(shell pwd)/../../Src
-ARCH_MAKE=../../$(OBJDIR)/arch.make
+VPATH=$(TOPDIR)/Util/MPI_test:$(TOPDIR)/Src
+
+ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
-# Remove timings
-FFLAGS := $(filter-out -DMPI_TIMING, $(FFLAGS))
-FPPFLAGS := $(filter-out -DMPI_TIMING, $(FPPFLAGS))
+INCFLAGS += $(MPI_WRAPPERS_INCFLAGS)
 
-MPI_INTERFACE= libmpi_f90.a 
+#----------------------------------------------------------------------------
+pi3: $(MPI_INTERFACE) pi3.o handlers.o
+	$(FC) -o pi3 $(LDFLAGS) pi3.o handlers.o $(MPI_INTERFACE)
 
-pi3: $(MPI_INTERFACE) pi3.o timer_stub.o
-	$(FC) -o pi3 $(LDFLAGS) pi3.o $(MPI_INTERFACE) timer_stub.o
+#----------------------------------------------------------------------------
+newcomm: $(MPI_INTERFACE) newcomm.o  handlers.o
+	$(FC) -o newcomm $(LDFLAGS) newcomm.o handlers.o $(MPI_INTERFACE)
 
-newcomm:    MPI newcomm.o 
-	$(FC) -o newcomm $(LDFLAGS) newcomm.o $(MPI_INTERFACE_LIB) $(MPI_LIBS) 
+#----------------------------------------------------------------------------
 DISTOBJS=class_BlockCyclicDist.o class_PEXSIDist.o class_Dist.o \
          m_matrix.o m_transfers.o m_redist.o m_uuid.o \
-         dielocal.o object_debug.o pxf.o dist.o
-dist:    MPI $(DISTOBJS)
-	$(FC) -o $@ $(LDFLAGS) $(DISTOBJS) $(MPI_INTERFACE_LIB) $(MPI_LIBS) 
+         dielocal.o object_debug.o pxf.o dist.o handlers.o
+
+dist:   $(MPI_INTERFACE) $(DISTOBJS)
+	$(FC) -o $@ $(LDFLAGS) $(DISTOBJS) $(MPI_INTERFACE)
+#----------------------------------------------------------------------------
 #
 # Blacs test
+# It does not need Siesta MPI wrappers
 #
 blacs_prb: blacs_prb.o
-	$(FC) -o blacs_prb $(LDFLAGS) blacs_prb.o $(LIBS)
+	$(FC) -o blacs_prb $(LDFLAGS) blacs_prb.o $(SCALAPACK_LIBS)
 
+#----------------------------------------------------------------------------
 #
 # Pblas test. You might need to uncomment the following line
 # in those systems where pdlaprnt is not in the standard library.
@@ -54,37 +61,32 @@ pblas_prb: pblas_prb.o $(EXTRA_ROUTINE)
 	@echo --if that routine is not in the standard library on your system...
 	@echo --..or if its interface is not compatible, i.e., segfaults
 	@echo
-	$(FC) -o pblas_prb $(LDFLAGS) pblas_prb.o $(EXTRA_ROUTINE) $(LIBS)
+	$(FC) -o pblas_prb $(LDFLAGS) pblas_prb.o $(EXTRA_ROUTINE) $(SCALAPACK_LIBS) $(LAPACK_LIBS)
 
 #
-# Siesta-specific MPI test --- iffy on some systems
 #----------------------------------------------------------------------------
-MT_OBJS=precision.o m_mpi_utils.o sys.o parallel.o pxf.o
+#
+# Siesta-specific MPI test --- iffy on some systems
+#
+MT_OBJS=precision.o m_mpi_utils.o parallel.o local_sys.o pxf.o handlers.o
 mpi_test: $(MPI_INTERFACE) $(MT_OBJS) mpi_test.o
 	$(FC) -o mpi_test \
-	       $(LDFLAGS) mpi_test.o $(MT_OBJS) $(MPI_INTERFACE) $(LIBS)
+	       $(LDFLAGS) mpi_test.o $(MT_OBJS) $(MPI_INTERFACE) $(SCALAPACK_LIBS)
 
 
 # Note that -DMPI_TIMING might not be removed here in some systems,
 # hence the timer_stub routine.
 #
-MPI_MAKEFILE=$(VPATH)/MPI/Makefile
-libmpi_f90.a: 
-	-mkdir -p MPI
-	(cd MPI ; \
-	$(MAKE) -f $(MPI_MAKEFILE) -j 1 "VPATH=$(VPATH)/MPI" \
-	"MAKEFILES=$(MPI_MAKEFILE)" "ARCH_MAKE=../$(ARCH_MAKE)" \
-	"FPPFLAGS=$(FPPFLAGS)" \
-	"FFLAGS=$(FFLAGS:$(IPO_FLAG)=)" module_built)
-
-
 #----------------------------------------------------------------------------
 #
+.PHONY: clean
 clean:
 	rm -f *.o *.*d  
-	rm -f pi3 blacs_prb pblas_prb newcomm
-	rm -rf MPI $(MPI_INTERFACE)
+	rm -f $(PROGS)
+
+install:
+	@echo "Will not install any files from MPI_test"
 
 # Manual dependencies
-m_mpi_utils.o: sys.o
-sys.o: parallel.o
+m_mpi_utils.o: local_sys.o
+local_sys.o: parallel.o

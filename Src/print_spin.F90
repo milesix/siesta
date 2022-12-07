@@ -66,7 +66,8 @@ subroutine print_spin(qspin)
     Svec(2) = 0.0_dp
     Svec(3) = qspin(1) - qspin(2)
     Stot = Svec(3)
-    write(6,'(5x,a,f10.5,2f10.1,f10.5)') 'spin moment: S , {S} = ', Stot, Svec
+    write(6,'(5x,a,2(f10.1,tr1),f10.5,tr1,"}",tr2,f10.5)') &
+        'spin moment: {S} , |S| = { ', Svec, Stot
     if (cml_p) call cmlAddProperty(xf=mainXML,            &
         value=qspin(1)-qspin(2), dictref='siesta:stot', &
         units='siestaUnits:spin')
@@ -74,7 +75,8 @@ subroutine print_spin(qspin)
   else if ( spin%Grid == 4 ) then
 
     call spnvec( spin%Grid, qspin, qaux, Stot, Svec )
-    write(6,'(5x,a,4f10.5)') 'spin moment: S , {S} = ', Stot, Svec
+    write(6,'(5x,a,2(f10.5,tr1),f10.5,tr1,"}",tr2,f10.5)') &
+        'spin moment: {S} , |S| = { ', Svec, Stot
     if (cml_p) then
       call cmlAddProperty(xf=mainXML, value=Stot,  &
           dictref='siesta:stot', units='siestaUnits:spin')

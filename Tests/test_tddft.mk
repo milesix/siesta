@@ -1,15 +1,14 @@
 #
-# Single-test makefile template
+# Single-test makefile template (TDDFT version)
 #
 # You can edit the SIESTA macro here, or pass it on the command line
 
-MPI=mpirun -np 2
-SIESTA=../../../siesta
+TOPDIR=.
+MAIN_OBJDIR=.
 
-# Example for BSC runs
-#
-#MPI= mpirun -np 2 
-#SIESTA= ../../../siesta
+MPI=mpirun -np 2
+SIESTA=$(MAIN_OBJDIR)/Src/siesta
+
 
 # Make compatibility layer for old test-runs
 ifeq ($(strip $(firstword $(SIESTA))),mpirun)
@@ -20,7 +19,7 @@ MPI=
 endif
 
 #----------------------------------------------------------------------------
-REFERENCE_DIR?=../../../Tests/Reference
+REFERENCE_DIR?=$(TOPDIR)/Tests/Reference
 REFERENCE_CHECKER?=../cmp_digest.sh
 
 label=work
@@ -32,9 +31,9 @@ completed_$(label):
 	@echo ">>>> Running $(name)1 test..."
 	@if [ -d $(label) ] ; then rm -rf $(label) ; fi; mkdir $(label)
 	@if [ -n "$(EXTRAFILES)" ] ; then cp -f $(EXTRAFILES) $(label) ; fi
-	@for i in `cat $(name).pseudos` ; do \
-          echo "    ==> Copying pseudopotential file for $$i..." ;\
-          ln ../Pseudos/$$i.psf $(label)/$$i.psf ;\
+	@for ps in `cat $(name).pseudos` ; do \
+          echo "    ==> Copying pseudopotential file $$ps ..." ;\
+          ln ../Pseudos/$$ps $(label)/$$ps ;\
          done
 	@echo "    ==> Running SIESTA as $(MPI) ${SIESTA}"
 	@(cd $(label) ; $(MPI) $(SIESTA) 2>&1 > $(name)1.out < ../$(name)1.fdf) \
