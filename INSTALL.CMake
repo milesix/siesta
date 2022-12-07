@@ -165,9 +165,13 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
       - WITH_FFTW:  (ON by default) If not set, Util/STM/ol-stm will
                     not be compiled.
 
-      - WITH_LUA:   Use either an *environment* variable FLOOK_ROOT
-                    that points to an installation of the flook library, or
-		    a filepath cache variable (-DFLOOK_ROOT=/path/to/flook)
+      - WITH_LUA: The flook library can be compiled on-the-fly, using
+                  the code in a git submodule in
+                  External/Lua-Engine/flook, or in a tarball pointed
+                  to by FLOOK_PACKAGE. Pre-compiled installations can
+                  be used by setting the environment variable
+                  FLOOK_ROOT or a CMake variable (-DFLOOK_ROOT=/path/to/flook),
+		  or by adding $FLOOK_ROOT to CMAKE_PREFIX_PATH.
 
 * Handling of compiler flags
 
@@ -212,10 +216,6 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
       - ELPA is handled through its pkgconfig files,
         which might not be well constructed (see the modules
         in config/cmake)
-
-      - The libraries and module search paths for the flook library
-        are hard-coded (based on $FLOOK_ROOT), as there is no proper
-        pkgconfig file yet.
 
       - When using MPI, a single MPI version of GRIDXC is compiled (or
         found) and it is used also for the utility programs that would

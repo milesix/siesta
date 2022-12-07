@@ -179,7 +179,7 @@ endif()
 
 # Search for flook
 if (WITH_LUA)
-  include(search_for_flook)
+   add_subdirectory("External/Lua-Engine")
 endif()
 
 if (WITH_ELPA)

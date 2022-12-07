@@ -10,3 +10,6 @@
 	path = External/libgridxc
 	url = https://gitlab.com/siesta-project/libraries/libgridxc.git
 	branch = cmake-master
+[submodule "External/Lua-Engine/flook"]
+	path = External/Lua-Engine/flook
+	url = https://github.com/ElectronicStructureLibrary/flook.git

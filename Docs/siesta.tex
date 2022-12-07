@@ -1105,15 +1105,16 @@ libraries
   
   Add these flags to your \file{arch.make} file to enable \program{flook}
 \begin{shellexample}
-  LIBS += -L/opt/flook/lib -lflookall -ldl
-  COMP_LIBS += libfdict.a
-  FPPFLAGS += -DSIESTA__FLOOK
+  WITH_FLOOK=1
+  FLOOK_ROOT=/path/to/flook_installation  # perhaps set in the environment
 \end{shellexample}
   \index{compile!pre-processor!-DSIESTA\_\_FLOOK}
   
   See \program{Tests/h2o\_lua}\index{Tests} for an example on the LUA interface.
 
-  To easily install \program{flook} please see the installation file:
+  If using the CMake framework, the \program{flook} library can be
+  installed on the fly (see \shell{INSTALL.CMake}). Alternatively,
+  to easily install \program{flook} please see the installation file:
   \shell{Docs/install\_flook.bash}.
 
 \end{description}
