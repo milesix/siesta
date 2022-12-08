@@ -1,0 +1,13 @@
+Submodules pinned at the 1.9.0 tag of the bigdft-suite repo
+
+  https://gitlab.com/l_sim/bigdft-suite.git
+
+ 01b3b858ee12c159f9e3e33c5f8a1556fca1c809 External/BigDFT/atlab (01b3b85)
+ 83f93d6047769020f95a4b231984afe2a4ebbb82 External/BigDFT/futile (83f93d6)
+ 79d41d1926e0b5d5639aa4ddfd9996ba77def2e0 External/BigDFT/psolver (79d41d1)
+ d1003a9d40b674520934f4f38ffc4ff2a809bc2d External/BigDFT/yaml (0.1.6)
+ 
+(which uses git-subrepo to handle dependencies).
+
+libyaml (repo yaml) is pinned at 0.1.6. It seems to work OK,
+but YMMV.

@@ -13,3 +13,15 @@
 [submodule "External/Lua-Engine/flook"]
 	path = External/Lua-Engine/flook
 	url = https://github.com/ElectronicStructureLibrary/flook.git
+[submodule "External/BigDFT/psolver"]
+	path = External/BigDFT/psolver
+	url = https://gitlab.com/l_sim/psolver.git
+[submodule "External/BigDFT/futile"]
+	path = External/BigDFT/futile
+	url = https://gitlab.com/l_sim/futile.git
+[submodule "External/BigDFT/atlab"]
+	path = External/BigDFT/atlab
+	url = https://gitlab.com/l_sim/atlab.git
+[submodule "External/BigDFT/yaml"]
+	path = External/BigDFT/yaml
+	url = https://github.com/yaml/libyaml.git
