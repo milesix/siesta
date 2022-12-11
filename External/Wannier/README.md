@@ -91,7 +91,10 @@ an appropriate Lapack library):
 ```
   cmake -S. -B _build [ -DWITH_MPI=ON ] [-DLAPACK_LIBRARY=   ] [ -DCMAKE_INSTALL_PREFIX=/path/to/inst ]
   cmake --build _build
-  [ cmake --install _build ]
+
+  # (optional)  cd _build ; ctest ; cd ..
+
+  # (optional) cmake --install _build
 ```
 
   

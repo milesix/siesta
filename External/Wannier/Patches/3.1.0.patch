@@ -65,10 +65,10 @@ index 00000000..02da51c8
 +
 diff --git a/CMakeLists.txt b/CMakeLists.txt
 new file mode 100644
-index 00000000..6b4ce1ca
+index 00000000..fa6e30f7
 --- /dev/null
 +++ b/CMakeLists.txt
-@@ -0,0 +1,143 @@
+@@ -0,0 +1,145 @@
 +
 +cmake_minimum_required(VERSION 3.14)
 +
@@ -212,6 +212,8 @@ index 00000000..6b4ce1ca
 +endif()
 +target_link_libraries(w90_driver   "${PROJECT_NAME}-lib")
 +
++enable_testing()
++add_subdirectory("examples")
 diff --git a/config/CMakeLists.txt b/config/CMakeLists.txt
 new file mode 100644
 index 00000000..53a73e98
@@ -553,6 +555,45 @@ index 00000000..1f9e5903
 +Version: @PROJECT_VERSION@
 +Libs: -L${libdir} -l@LIBRARY_OUTPUT_NAME@
 +Cflags: -I${includedir} -I${includedir}/@module-dir@
+diff --git a/examples/CMakeLists.txt b/examples/CMakeLists.txt
+new file mode 100644
+index 00000000..28c298ab
+--- /dev/null
++++ b/examples/CMakeLists.txt
+@@ -0,0 +1,33 @@
++
++set(test_dir "${CMAKE_BINARY_DIR}/install_tests")
++
++file(MAKE_DIRECTORY "${test_dir}")
++
++function(setup_test name)
++ file(COPY "${name}/"  DESTINATION "${test_dir}")
++endfunction()
++#
++setup_test("example01")
++setup_test("example02")
++setup_test("example03")
++setup_test("example04")
++
++if(WITH_MPI)
++   set(num_ranks 2)
++   set(mpiexec_args
++          ${MPIEXEC_NUMPROC_FLAG} ${num_ranks}
++          ${MPIEXEC_PREFLAGS}
++	  $<TARGET_FILE:w90_driver> 
++          ${MPIEXEC_POSTFLAGS})
++	  
++   add_test( NAME    w90-driver_mpi
++             COMMAND ${MPIEXEC_EXECUTABLE} ${mpiexec_args}
++             WORKING_DIRECTORY "${test_dir}" )
++
++ else()
++ 
++   add_test( NAME    w90-driver
++             COMMAND 	  $<TARGET_FILE:w90_driver> 
++             WORKING_DIRECTORY "${test_dir}" )
++
++endif(WITH_MPI)
 diff --git a/src/comms.F90 b/src/comms.F90
 index 054b7ccd..37a3f7f1 100644
 --- a/src/comms.F90
@@ -1174,10 +1215,10 @@ index 00000000..844ca757
 +
 +end module wannier90_m
 diff --git a/src/wannier_prog.F90 b/src/wannier_prog.F90
-index 71dc710a..af3ec055 100644
+index 71dc710a..96d8ae82 100644
 --- a/src/wannier_prog.F90
 +++ b/src/wannier_prog.F90
-@@ -49,12 +49,28 @@
+@@ -49,12 +49,30 @@
  ! https://github.com/wannier-developers/wannier90            !
  !------------------------------------------------------------!
  
@@ -1204,11 +1245,13 @@ index 71dc710a..af3ec055 100644
    use w90_constants
    use w90_parameters
    use w90_io
++#ifdef MPI
 +  use w90_mpi, only: set_w90_comm
++#endif
    use w90_hamiltonian
    use w90_kmesh
    use w90_disentangle
-@@ -64,15 +80,40 @@ program wannier
+@@ -64,15 +82,40 @@ program wannier
    use w90_transport
    use w90_comms, only: on_root, num_nodes, comms_setup, comms_end, comms_bcast, my_node_id
    use w90_sitesym !YN:
@@ -1249,7 +1292,7 @@ index 71dc710a..af3ec055 100644
    call comms_setup
  
    library = .false.
-@@ -80,10 +121,32 @@ program wannier
+@@ -80,10 +123,32 @@ program wannier
    time0 = io_time()
  
    if (on_root) then
@@ -1284,7 +1327,7 @@ index 71dc710a..af3ec055 100644
    call comms_bcast(len_seedname, 1)
    call comms_bcast(seedname, len_seedname)
    call comms_bcast(dryrun, 1)
-@@ -144,7 +207,10 @@ program wannier
+@@ -144,7 +209,10 @@ program wannier
        write (stdout, *) '                       No problems found with win file'
        write (stdout, *) '                       ==============================='
      endif
@@ -1296,7 +1339,7 @@ index 71dc710a..af3ec055 100644
    endif
  
    ! We now distribute the parameters to the other nodes
-@@ -191,12 +257,32 @@ program wannier
+@@ -191,12 +259,32 @@ program wannier
  
    if (postproc_setup) then
      if (on_root) call kmesh_write()
@@ -1330,7 +1373,7 @@ index 71dc710a..af3ec055 100644
    endif
  
    if (lsitesymmetry) call sitesym_read()   ! update this to read on root and bcast - JRY
-@@ -254,10 +340,22 @@ program wannier
+@@ -254,10 +342,22 @@ program wannier
      end if
    endif
  
@@ -1353,7 +1396,7 @@ index 71dc710a..af3ec055 100644
    call param_dealloc()
    if (lsitesymmetry) call sitesym_dealloc() !YN:
  
-@@ -276,5 +374,6 @@ program wannier
+@@ -276,5 +376,6 @@ program wannier
  
    call comms_end
  
@@ -1378,10 +1421,10 @@ index c21b2b8b..2ba21fd3 100644
      real(kind=dp) :: om_i
 diff --git a/w90_driver.F90 b/w90_driver.F90
 new file mode 100644
-index 00000000..cd63cc56
+index 00000000..e10cb8af
 --- /dev/null
 +++ b/w90_driver.F90
-@@ -0,0 +1,75 @@
+@@ -0,0 +1,72 @@
 +program w90_driver
 +  use wannier90_m, only: wannier90_wrapper
 +#ifdef MPI
@@ -1398,32 +1441,28 @@ index 00000000..cd63cc56
 +  call MPI_init(MPI_err)
 +#endif
 +  
-+  call wannier90_wrapper("minimal",         &
-+#ifdef MPI
-+                       mpi_comm=mpi_comm_world, &
-+#endif
-+                       nnkp_mode=.true., &
-+                       nntot_out=nntot, &
-+                       nnlist_out=nnlist, &
-+                       nncell_out=nncell)
-+                       
-+     print *, "Done minimal preprocessing"
-+     print *, "nntot: ", nntot
-+     print *, "shape nnlist: ", shape(nnlist)
-+     print *, "shape nncell: ", shape(nncell)
-+     
 +     call wannier90_wrapper("gaas",  &
 +#ifdef MPI
 +                       mpi_comm=mpi_comm_world, &
 +#endif
 +                       dryrun_mode=.true.)
 +     print *, "Done gaas dryrun"
-+     call wannier90_wrapper("gaas", &
++     
 +#ifdef MPI
-+                       mpi_comm=mpi_comm_world &
++     call wannier90_wrapper("gaas", mpi_comm=mpi_comm_world)
++#else
++     call wannier90_wrapper("gaas")
 +#endif
-+                        )
++                        
 +     print *, "Done gaas"
++
++#ifdef MPI
++     call wannier90_wrapper("silicon", mpi_comm=mpi_comm_world)
++#else
++     call wannier90_wrapper("silicon")
++#endif
++                        
++     print *, "Done silicon"
 +
 +     call wannier90_wrapper("lead",  &
 +#ifdef MPI
@@ -1438,18 +1477,19 @@ index 00000000..cd63cc56
 +     print *, "shape nnlist: ", shape(nnlist)
 +     print *, "shape nncell: ", shape(nncell)
 +
-+     call wannier90_wrapper("gaas", &
 +#ifdef MPI
-+                       mpi_comm=mpi_comm_world &
++     call wannier90_wrapper("gaas", mpi_comm=mpi_comm_world)
++#else
++     call wannier90_wrapper("gaas")
 +#endif
-+                        )
++
 +     print *, "Done gaas again"
 +
-+     call wannier90_wrapper("../example04/copper", &
 +#ifdef MPI
-+                       mpi_comm=mpi_comm_world &
++     call wannier90_wrapper("copper", mpi_comm=mpi_comm_world)
++#else
++     call wannier90_wrapper("copper")
 +#endif
-+                        )
 +     print *, "Done copper"
 +     
 +#ifdef MPI
