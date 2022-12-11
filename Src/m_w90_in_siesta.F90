@@ -1417,16 +1417,17 @@ module m_w90_in_siesta
 
       if (IOnode) then
          open(newunit=w90_lun,file="_nnkp.win",status="replace",action="write")
-         write(w90_lun,*) "num_wann  =  66"
+         ! This is not used, but needed in the input. The number is arbitrary
+         write(w90_lun,*) "num_wann  =  120"
          write(w90_lun,*) "begin unit_cell_cart"
          do ik = 1, 3
-            write(w90_lun,'(3f12.5)') latvec_w90_in(ik,:)
+            write(w90_lun,'(3f14.6)') latvec_w90_in(ik,:)
          enddo
          write(w90_lun,*) "end unit_cell_cart"
          write(w90_lun,"(a,1x,3i4)") "mp_grid", kmesh_w90_in(1:3)
          write(w90_lun,*) "begin kpoints"
          do ik = 1, numkpoints_w90_in
-            write(w90_lun,'(3f12.5)') kpointsfrac_w90_in(:,ik)
+            write(w90_lun,'(3f18.12)') kpointsfrac_w90_in(:,ik)
          enddo
          write(w90_lun,*) "end kpoints"
          close(w90_lun)
@@ -1753,7 +1754,7 @@ module m_w90_in_siesta
             
          write(w90_lun,*) "begin unit_cell_cart"
          do ik = 1, 3
-            write(w90_lun,'(3f12.5)') latvec_w90_in(ik,:)
+            write(w90_lun,'(3f14.6)') latvec_w90_in(ik,:)
          enddo
          write(w90_lun,*) "end unit_cell_cart"
 
@@ -1768,7 +1769,7 @@ module m_w90_in_siesta
          write(w90_lun,"(a,1x,3i4)") "mp_grid", kmesh_w90_in(1:3)
          write(w90_lun,*) "begin kpoints"
          do ik = 1, numkpoints_w90_in
-            write(w90_lun,'(3f12.5)') kpointsfrac_w90_in(:,ik)
+            write(w90_lun,'(3f18.12)') kpointsfrac_w90_in(:,ik)
          enddo
          write(w90_lun,*) "end kpoints"
 
@@ -1777,7 +1778,7 @@ module m_w90_in_siesta
                                mnf%wannier_plot_supercell(1:3)
 
          if (mnf%fermi_surface_plot) write(w90_lun,*) "fermi_surface_plot = T"
-         write(w90_lun,'(a,f12.5)') "fermi_energy = ", ef/eV
+         write(w90_lun,'(a,f14.6)') "fermi_energy = ", ef/eV
          
          close(w90_lun)
 
