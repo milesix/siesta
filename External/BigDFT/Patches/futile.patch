@@ -1,0 +1,12 @@
+diff --git a/futile.pc.in b/futile.pc.in
+index b17f084..83486af 100644
+--- a/futile.pc.in
++++ b/futile.pc.in
+@@ -3,7 +3,6 @@ exec_prefix=@exec_prefix@
+ libdir=@libdir@
+ includedir=@includedir@
+ linalglibs=@LINALG_LIBS@
+-pythondir=@pythondir@
+ 
+ Name: libfutile
+ Description: library for Fortran utilities.

@@ -185,7 +185,8 @@ endif()
 
 # Search for Psolver libraries
 if (WITH_PSOLVER)
-   include(search_for_psolver)
+##   include(search_for_psolver)
+   add_subdirectory("External/BigDFT")
 endif()
 
 if (WITH_ELPA)
