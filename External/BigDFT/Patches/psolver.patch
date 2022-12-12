@@ -1,0 +1,20 @@
+diff --git a/src/PStypes.f90 b/src/PStypes.f90
+index 19c76a5..9f55666 100644
+--- a/src/PStypes.f90
++++ b/src/PStypes.f90
+@@ -556,10 +556,11 @@ contains
+ 
+        group_size=nproc
+        !if the taskgroup size is not a divisor of nproc do not create taskgroups
+-       if (nproc >1 .and. taskgroup_size > 0 .and. taskgroup_size < nproc .and.&
+-            mod(nproc,taskgroup_size)==0) then
+-          group_size=taskgroup_size
+-       end if
++       if (nproc >1 .and. taskgroup_size > 0 ) then
++          if ( taskgroup_size < nproc .and. mod(nproc,taskgroup_size)==0) then
++             group_size=taskgroup_size
++          end if
++       endif
+        call mpi_environment_set(kernel%mpi_env,iproc,nproc,mpiworld(),group_size)
+     end if
+ 

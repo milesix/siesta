@@ -45,8 +45,10 @@ ExternalProject_Add(yaml
  URL ${CMAKE_CURRENT_LIST_DIR}/yaml
  UPDATE_DISCONNECTED true
  CONFIGURE_HANDLED_BY_BUILD true
- CONFIGURE_COMMAND FC="${CMAKE_Fortran_COMPILER}"
+ CONFIGURE_COMMAND FC=${CMAKE_Fortran_COMPILER}
                    FCFLAGS="-g"
+		   CC=${CMAKE_C_COMPILER}
+		   CCFLAGS="-g"
                    <SOURCE_DIR>/configure ${config_flags} --prefix=${install_prefix}
  BUILD_COMMAND ${MAKE_EXECUTABLE} -j
  INSTALL_COMMAND ${MAKE_EXECUTABLE} -j install
@@ -67,7 +69,7 @@ ExternalProject_Add(futile
  UPDATE_DISCONNECTED true
  CONFIGURE_HANDLED_BY_BUILD true
  CONFIGURE_COMMAND FC=${MPI_Fortran_COMPILER}
-                   <SOURCE_DIR>/configure
+                   <SOURCE_DIR>/configure FCFLAGS=${Fortran_FLAGS_CURRENT}
 		   --with-yaml-path=${install_prefix}
 		   --with-ext-linalg=${LAPACK_LIBRARY}
 		   ${config_flags} --prefix=${install_prefix}
@@ -92,7 +94,7 @@ ExternalProject_Add(atlab
  CONFIGURE_HANDLED_BY_BUILD true
  CONFIGURE_COMMAND FC=${MPI_Fortran_COMPILER}
                    PKG_CONFIG_PATH=${install_prefix}/lib/pkgconfig
-                   <SOURCE_DIR>/configure
+                   <SOURCE_DIR>/configure  FCFLAGS=${Fortran_FLAGS_CURRENT}
 		   ${config_flags} --prefix=${install_prefix}
  BUILD_COMMAND ${MAKE_EXECUTABLE} -j
  INSTALL_COMMAND ${MAKE_EXECUTABLE} -j install
@@ -111,11 +113,11 @@ add_dependencies(atlab futile)
 
 ExternalProject_Add(psolver
  URL ${CMAKE_CURRENT_LIST_DIR}/psolver
+ PATCH_COMMAND patch -p1 -i "${CMAKE_SOURCE_DIR}/External/BigDFT/Patches/psolver.patch"
  UPDATE_DISCONNECTED true
  CONFIGURE_HANDLED_BY_BUILD true
- CONFIGURE_COMMAND FC=${MPI_Fortran_COMPILER}
+ CONFIGURE_COMMAND <SOURCE_DIR>/configure FC=${MPI_Fortran_COMPILER} FCFLAGS=${Fortran_FLAGS_CURRENT}
                    PKG_CONFIG_PATH=${install_prefix}/lib/pkgconfig
-                   <SOURCE_DIR>/configure
 		   ${config_flags} --prefix=${install_prefix}
  BUILD_COMMAND ${MAKE_EXECUTABLE} -j
  INSTALL_COMMAND ${MAKE_EXECUTABLE} -j install

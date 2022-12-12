@@ -38,7 +38,7 @@ if(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
  
     if ( CMAKE_Fortran_COMPILER_VERSION VERSION_GREATER_EQUAL 10.0 )
       message(STATUS "  Adding '-fallow-argument-mismatch' for GNU >= 10.0")
-      set(Fortran_FLAGS "${Fortran_FLAGS} -fallow-argument-mismatch")
+      set(Fortran_FLAGS "-fallow-argument-mismatch ${Fortran_FLAGS}" )
     endif()
 
     set(Fortran_FLAGS_RELEASE "-Ofast -march=native"
@@ -64,9 +64,9 @@ set(Fortran_FLAGS_NONE  " " CACHE STRING "Fortran 'none' flags")
 #
 set(C_FLAGS ${CMAKE_C_FLAGS} CACHE STRING "Build-type independent flags")
 set(C_FLAGS_NONE  " " CACHE STRING "C 'none' flags")
-set(C_FLAGS_DEBUG  " -g -O0 " CACHE STRING "C 'Debug' flags")
-set(C_FLAGS_CHECK  " -g -O0 " CACHE STRING "C 'Debug' flags")
-set(C_FLAGS_RELEASE  " -O2 " CACHE STRING "C 'Release' flags")
+set(C_FLAGS_DEBUG  "-g -O0" CACHE STRING "C 'Debug' flags")
+set(C_FLAGS_CHECK  "-g -O0" CACHE STRING "C 'Debug' flags")
+set(C_FLAGS_RELEASE  "-O2" CACHE STRING "C 'Release' flags")
 set(C_FLAGS_RELWITHDEBINFO  "-g -O2 " CACHE STRING "C 'RelWithDebInfo' flags")
 
 set(CXX_FLAGS ${CMAKE_CXX_FLAGS} CACHE STRING "Build-type independent flags")
@@ -85,8 +85,8 @@ set(CXX_FLAGS_RELWITHDEBINFO  "-g -O2 " CACHE STRING "C++ 'RelWithDebInfo' flags
   foreach(_buildtype IN LISTS _buildtypes)
     foreach (lang IN ITEMS Fortran C)
       string(TOUPPER "${_buildtype}" _buildtype_upper)
-      set(CMAKE_${lang}_FLAGS " ${${lang}_FLAGS}")
-      set(CMAKE_${lang}_FLAGS_${_buildtype_upper} " ${${lang}_FLAGS_${_buildtype_upper}}")
+      set(CMAKE_${lang}_FLAGS "${${lang}_FLAGS}")
+      set(CMAKE_${lang}_FLAGS_${_buildtype_upper} "${${lang}_FLAGS_${_buildtype_upper}}")
       message(STATUS "Flags for ${lang}-compiler (build type: ${_buildtype}): "
         "${CMAKE_${lang}_FLAGS} ${CMAKE_${lang}_FLAGS_${_buildtype_upper}}")
     endforeach()
@@ -99,5 +99,4 @@ set(CXX_FLAGS_RELWITHDEBINFO  "-g -O2 " CACHE STRING "C++ 'RelWithDebInfo' flags
 # For tagging in version-info.inc
 #
 string(TOUPPER ${CMAKE_BUILD_TYPE} _buildtype_upper)
-set(Fortran_FLAGS_CURRENT ${CMAKE_Fortran_FLAGS}
-                          ${CMAKE_Fortran_FLAGS_${_buildtype_upper}})
+set(Fortran_FLAGS_CURRENT "${CMAKE_Fortran_FLAGS} ${CMAKE_Fortran_FLAGS_${_buildtype_upper}}")
