@@ -1,0 +1,578 @@
+Estructura de archivos.
+
+siesta.F (si TwoBaths inicia un Nose y despues un Verlet)
+|
+|
+call sista_init.F LLama a vmb2 para idyn=9 y calcula natoms_1 --> vmb2.F Calcula velocidades iniciales.
+natoms_1 ha pasado a ser una variable global dentro de siesta_move y siesta_init
+|
+|
+Caso Nose
+|
+|
+Inical DO WHILE temporal				<--------	
+|								|
+|								|
+V								|
+call siesta_move.F -->idyn=9, call nose2----->|
+ 
+
+
+
+
+
+
+
+
+***********************************************************************************************************
+***********************************************************************************************************
+file: siesta_options.F90 
+
+(ARCHIVO DONDE ESTAN DEFINIDAS TODAS LAS VARIABLES GLOBALES DEL PROGRAMA)
+
+DEFINICION DE VARIABLES GLOBALES:
+	logical TwoBaths    : decimos que realizamos calculo con dos baños termicos
+	integer	ifinal_baths(1,2)  : tiempo final de simulacion (1) Nose/Vresc (2) Verlet
+	integer	istart_baths(1,2): tiempo inicial de simulacion (1) Nose/Vresc (2) Verlet
+	real mn_baths(1,2): masas de los dos baños de Nose
+	real tempinit_baths(1,2): temperatura inicial de los dos sistemas
+	real tt_baths(1,2): target temperature que queremos en sistema
+	character(len=150) :: sys_prep
+
+MAYORES CAMBIOS EN EL CODIGO
+ln 1086: introduccion caso idyn=9 TwoBaths=.true. 
+(activa flag para leer todas las opciones relacionadas con los dos baños y su posterior Verlet)
+
+ln 1240: creacion del TypeOfRun
+ln 1252: Lectura---> istart_baths and ifinal_baths (el dt no lo tocamos)
+ln 1286: Lectura--->tempinit_baths
+ln 1293: escritura a pantalla de todos los parametros usados
+ln 1303: AddParameter de todos los parametros usados
+ln 1382: Lectura -->ttbaths and mn_baths
+ln 1403: escritura a pantalla de estos parametros
+ln 1410: AddParameter de estos parametros
+
+***********************************************************************************************************
+***********************************************************************************************************
+
+file: siesta_init.F  INICIA LAS VELOCIDADES DE LOS ATOMOS Y LA VARIABLE natoms_1!!
+
+ln 398: añadido el caso idyn=9  
+variables (por similitud con el Verlet, Nose, Nose_PR...)
+inicoor_Nose = istart_baths(1,1)   !time initializing for Nose
+inicoor_Verlet = istart_baths(1,2)   !time initializing for Verlet
+fincoor_Nose = ifinal_baths(1,1)   !end time for Nose
+fincoor_Verlet = ifinal_baths(1,2)   !end time for Verlet
+
+ln 409: modificar las velocidades iniciales de los atomos 
+      if (idyn .eq. 9) then 
+!Let's calculate the number of atoms in each zone (assuming ordered input)
+	natoms_1=0
+		DO i=1,na_u
+			if (xa(3,i) .le. scell(3,3)/2 ) then 
+				natoms_1=natoms_1+1
+			endif
+		ENDDO
+	call vmb2( natoms, tempinit_baths, amass, xa, isa, va, natoms_1 )
+      else
+        if (idyn .ne. 0 .and. idyn .ne. 6 .and. (.not. xv_file_read)) 
+      &    call vmb( na_u, tempinit, amass, xa, isa, va )
+      endif
+
+
+***********************************************************************************************************
+***********************************************************************************************************
+
+file: m_steps.F90
+
+ln 7: añadidas nuevas variables para iniciar el caso idyn=9
+
+integer:: inicoor_Nose	!Initial and final steps in the geommetry iteration
+integer:: inicoor_Verlet	!for the Nose and Verlet Simulations (idyn=9)
+integer:: fincoor_Nose
+integer:: fincoor_Verlet
+
+***********************************************************************************************************
+***********************************************************************************************************
+
+file:siesta.F
+(programa que hace la llamada a la relajacion del sistema, al siesta_move y actualiza el tiempo de la simulacion y da valor a la variable que decide si ha convergido dentro de un do while). Vamos a introducir el flag de antes para separar entre un calculo normal de SIESTA y uno de los NOSE+VERLET
+Separar un calculo normal de SIESTA por un 
+
+ln 20:
+
+if (TwoBaths .eqv. .true.) then
+	
+	!NOSE relaxation of part1 and part2
+	relaxd = .false.
+	istep  = inicoor_Nose
+	DO WHILE ((istep.le.fincoor_Nose) .AND. (.not. relaxd))
+		call siesta_forces( istep ) !independent of the relaxation method
+		call siesta_move( istep, relaxd )
+	    if (.not. relaxd) then
+      	    	istep = istep + 1
+      	    endif
+      	ENDDO
+
+	!VERLET relaxation of whole part
+	typeCall='Verlet'
+	relaxd = .false.
+	istep  = inicoor_Verlet
+	DO WHILE ((istep.le.fincoor_Verlet) .AND. (.not. relaxd))
+		call siesta_forces( istep ) !independent of the relaxation method
+		call siesta_move( istep, relaxd, typeCall)
+	    if (.not. relaxd) then
+      	    	istep = istep + 1
+      	    endif
+      	ENDDO
+else
+	!los casos anteriores....
+
+***********************************************************************************************************
+***********************************************************************************************************
+Asumimos que los atomos los dan ordenados (eje Z)
+
+file: siesta_move.F 
+
+(ARCHIVO QUE HACE LAS LLAMADAS AL PAQUETE DYNAMICS DONDE ESTAN DEFINIDAS TODAS LAS SUBRUTINAS COMO NOSE O VERLET NECESARIAS PARA CALCULAR MD)
+(recordar que cuando hacemos nose o verlet lo hacemos de un tiempo a otro tiempo, no buscamos minimizacion de ningun parametro)
+Añadimos un nuevo caracter opcional a la subrutina para que salte entre los calculos de NOSE o VERLET
+
+Una vez el calculo salta de Nose a Verlet, hemos añadido una llamda extra a vmb2 para que calcule de nuevo una velocidades random a la target temperature de Nose pero con las posiciones de Nose convergidas..asi evitamos que la Ekin de verlet empiece en la ultima Ekin de Nose que no tiene pq ser la target temperature (ya que la target temperature se adquiere promediando sobre todo el tiempo).
+
+ln 8: siesta_move( istep, relaxd, typeCall)
+ln 63: character(15), optional    ::typeCall  
+ln 65:  integer :: natoms_1
+      	integer :: j
+	integer :: tnoses(1,2)=0.0_dp
+
+ln 263: definimos el caso idyn==9
+case (9)
+  if (typeCall .eq. 'Nose') then
+     call nose2( istp, iunit, na_u, cfa, tt_baths, dt, amass, mn_baths,
+     .              ntcon, va, xa, Ekinion_Nose, kn, vn, tempion, natoms_1 )
+
+	!AÑADIMOS NUEVA POSIBILIDAD DE MATAR EL CALCULO DE NOSE CUANDO LA ERGODICIDAD DEL SISTEMA ALCANZA EL VALOR QUE NOSOTROS QUERAMOS (FALTA PASARLO COMO ARGUMENTO POR siesta_options.F)
+
+!	tnoses(1,1)=tnoses(1,1)+tempion_n(1,1) !ergodicity of the noses baths
+!	tnoses(1,2)=tnoses(1,2)+tempion_n(1,2)
+!	print *, 'Ergo 1',tnoses(1,1)/istep
+!	print *, 'Ergo 2',tnoses(1,2)/istep
+	!new end nose condition, convergence criterion can be tunned
+!	if ((abs(tnoses(1,1)/istep-tt_baths(1,1)) .le. 50_dp) .and. 
+!    .   (abs(tnoses(1,2)/istep-tt_baths(1,2)) .le. 50_dp)) then 
+!	   relaxd=.true.
+!	   print *, 'Nose converged before the end time'	
+!		stop
+!	endif	
+    
+  else
+	!Verlet Calculation
+	if (istep .eq. 1) then
+	     !Reiniciate all the velocities to the target temperature (not the positions)
+	     call vmb2(na_u, tt_baths, amass, xa, isa, va, natoms_1)
+	endif
+
+	call verlet3(istep,iunit,iquench,na_u,cfa,
+     .              dt,amass,ntcon,va,xa,Ekinion_Nose,
+     .              tempion_n,natoms_1)
+  endif
+
+***********************************************************************************************************
+***********************************************************************************************************
+
+file: m_energies.F
+
+ln 20: 
+real(dp):: Ekinion_Nose(1,2)    ! Kinetic energy of ions for two baths
+
+***********************************************************************************************************
+***********************************************************************************************************
+
+file: dynamics.f
+Añadimos una subrutina nose2 inspirada en nose
+
+ln 26: public :: nose2, verlet3
+
+ln 2234: añadimos la subrutina nose2 que contiene otra variable natoms_1 (#atomos en la zona 1). Ademas varias de las variables son matrices (tt,mn,kin...)
+
+      subroutine nose2( istep, iunit, natoms, fa, tt, dt, ma, mn, ntcon,
+     .                 va, xa, kin, kn, vn, temp, natoms_1)
+
+	integer 
+     	.   natoms,ntcon,istep,iunit
+
+     	 real(dp)
+     	.  dt,fa(3,natoms),kin(2),kn(2),
+     	.  ma(natoms),mn(2),tt(2),
+     	.  va(3,natoms),vn(2),xa(3,natoms)  !vn energy of the nose variable
+
+     	 external
+     	.  memory
+
+      	logical
+     	.  found
+
+     	 integer
+     	.  ct,i,ia
+
+     	 integer  :: iacc, dummy_iza, old_natoms, natoms_1
+      	 real(dp) :: old_dt
+
+      	save x,xold
+
+     	 real(dp)
+     	.  diff,dt2,dtby2,fact(2),fovermp,
+     	.  tekin(2),temp(2),twodt,
+     	.  x(2),xdot(2),xlast(2),xnew(2),xold(2)
+
+      real(dp), pointer, save :: xanew(:,:)=>null(), xaold(:,:)=>null()
+
+
+	if (iunit .eq. 1) then
+C  convert target ionic temperature into target kinetic energy zone 1
+        tekin(1) = 0.5d0 * (3.d0 * natoms_1 - ct) * 8.617d-5 * tt(1)
+	tekin(2) = 0.5d0 * (3.d0 * (natoms-natoms_1) - ct) * 8.617d-5 * tt(2)
+        fovermp = 0.009579038
+      else
+C  convert target temperature into target kinetic energy zone 2
+        tekin(1) = eV * 0.5d0 * (3.d0 * natoms_1 - ct) * 8.617d-5 * tt(1)
+	tekin(2) = eV * 0.5d0 * (3.d0 * (natoms-natoms_1) - ct) * 8.617d-5 * tt(2)
+	fovermp = 0.009579038 * Ang**2 / eV
+      endif
+
+ln 2375: split for the two Nose baths for the 1st step 
+	do ia = 1,natoms_1
+		1 step
+	enddo
+	do ia = natoms_1+1,natoms
+		1 step
+	enddo
+
+RESTART OPTIONS DO NOT INCLUDED IN THE TWO BATH OPTION
+
+ln 2447: !Compute uncorrected velocities and kinetic energy split for each Nose bath
+	splited for each Nose bath
+
+ln 2469: xnew, x, xold, xlast --->Nose variables splited for each bath 
+
+ln 2474:  !solution of the Nose variables for each bath (duplicate the current stuff)
+
+ln 2496: !variation of the selfconsistency conditions
+      if (abs(xnew(1)-xlast(1)) .ge. abs(xnew(2)-xlast(2))) then
+	diff = abs(xnew(1) - xlast(1))
+      else
+	diff = abs(xnew(2) - xlast(2))
+      endif !define the diff
+
+      if ((xlast(1) .eq. 0.0d0) .or. (xlast(2) .eq. 0.0d0)) then
+        if (diff .gt. tol)  goto 10
+      else
+        if ((diff/abs(xlast(1)) .gt. tol) .or.
+     .	     (diff/abs(xlast(2)) .gt. tol))  goto 10
+      endif
+
+ln 2512: Duplicate for each bath the update of the atomic positions and the kinetic energy.
+
+ln 2540: Duplicate update of the Nose variables xold & x
+
+ln 2547: Kinetic energies of each part of the system and potential energies of Nose variables
+
+ln 2555: !instantaneous temperature Duplicate for each Nose
+
+
+ln 2599: create a new subroutine for the matrix form of the kinetic energy and temperature in each part of the system.
+
+subroutine verlet3(istep,iunit,iquench,natoms,fa,dt,ma,ntcon,va,
+     .                   xa,kin,temp,natoms_1)
+
+real (dp) kin(1,2), temp(1,2)
+
+The restarting options are not implemented....
+ln 2785: if istep==1 !we use the old velocities (the obtained from Nose thermostats)
+	 else 
+ 		do ia = 1,natoms
+            	va(:,ia) = vold(:,ia) + dtby2 
+     	.           * (accold(:,ia) + fovermp * fa(:,ia) / ma(ia))
+               enddo
+         endif 
+ln 2826: !again, compute the kin energy for each part of the system
+ln 2843: and compute the temperature of each part of the system
+	Temp_ion verlet 1
+	Temp_ion verlet 2
+
+***********************************************************************************************************
+***********************************************************************************************************
+
+file: m_kinetic.F90  Hemos de definir la variable velocidad y energia de los dos termostatos de Nose
+
+ln 9:   real(dp):: vn_n(2)       !Velocities of the Nose thermostat
+ln 13:  real(dp):: tempion_n(2)   	! Ionic temperature Nose baths
+ln 16:  real(dp):: kn_n(2) 		! Kinetic energies of the Nose' thermostats 
+
+ln 19: initialize the variables
+      vn_n(:) = 0.0_dp
+      kn_n(:) = 0.0_dp
+      tempion_n(:)= 0.0_dp
+
+***********************************************************************************************************
+***********************************************************************************************************
+
+file: vmb2.f (archivo que contiene varias subrutinas que nos seran utiles para el tratamiento de los datos, copia del vmb.f para nuestros usos)
+
+ln 11: subroutine vmb2(nat,ttemp,mass,xa,isa,va,natoms_1) 
+	real(dp) ttemp(2)
+
+ln 38: llamada al modulo m_fdf_global para poder pasar por fdf la seed que queramos
+
+ln 49: real(dp) massi, tempe(2), velo2, pcm(3,2), mtot(2),
+
+ln para modificar la Vseed call fdf_global_get(iseed,'MD.Vseed',-17)
+Nueva opcion 
+
+ln 61: initialize mtot and pcm
+	!Duplicate the calculation of velocities for Nose1 and Nose2
+	!Nose 1
+        do i = 1,natoms_1
+          massi = mass(i)
+          mtot(1) = mtot(1) + massi  
+          va(1,i) = velo2(iseed,ttemp(1),massi) !each velocity coordinate
+          va(2,i) = velo2(iseed,ttemp(1),massi) !using corresponding temperature value
+          va(3,i) = velo2(iseed,ttemp(1),massi)
+          pcm(:,1) = pcm(:,1) + massi * va(:,i)
+        enddo
+	!Nose 2
+        do i = natoms_1+1,nat
+          massi = mass(i)
+          mtot(2) = mtot(2) + massi  
+          va(1,i) = velo2(iseed,ttemp(2),massi)
+          va(2,i) = velo2(iseed,ttemp(2),massi)
+          va(3,i) = velo2(iseed,ttemp(2),massi)
+          pcm(:,2) = pcm(:,2) + massi * va(:,i)
+        enddo
+
+ln 84: Impose the velocities constrains for each Nose zone
+
+ln 145: C Correct velocity to exact temperature
+      call temp(2,Nat,mass,va,ntcon,tempe,natoms_1)
+!Nose 1
+      if ((abs(tempe(1,1)-ttemp(1,1)) .ge. 1.e-4) .and. 
+      .  (tempe(1,1) .ge. 1.e-4)) then
+        do i = 1,natoms_1
+          do ix = 1,3
+            va(ix,i) = va(ix,i) * dsqrt(ttemp(1,1)/tempe(1,1))
+          enddo
+        enddo
+      endif
+!Nose 2
+      if ((abs(tempe(1,2)-ttemp(1,2)) .ge. 1.e-4) .and. 
+      .  (tempe(1,2) .ge. 1.e-4)) then
+        do i = natoms_1+1, Nat
+          do ix = 1,3
+            va(ix,i) = va(ix,i) * dsqrt(ttemp(1,2)/tempe(1,2))
+          enddo
+        enddo
+      endif
+
+* function velo is well defined 
+
+ln 226: subroutine temp(iunit,natoms,ma,va,ntcon,tempe,natoms_1)
+	real(dp) tempe(2)
+	real(dp) kin(2)
+
+	!Duplicate the Kin evaluation 
+	kin(:) = 0.0d0
+!Nose 1
+      do ia = 1,natoms_1
+        do i = 1,3
+          kin(1) = kin(1) + 0.5d0 * ma(ia) * va(i,ia)**2 / fovermp
+        enddo
+      enddo
+!Nose 2
+      do ia = natoms_1+1,natoms
+        do i = 1,3
+          kin(2) = kin(2) + 0.5d0 * ma(ia) * va(i,ia)**2 / fovermp
+        enddo
+      enddo
+C Instantaneous temperature (Kelvin)
+      if (natoms_1 .eq. 1) then 
+	ntcon=-3 !for the single atom case
+      endif
+
+      if (iunit .eq. 1) then
+        tempe(1) = 2.0d0*kin(1)/(3.0d0*natoms_1-3.0d0-ntcon)/8.617d-5
+	tempe(2) = 2.0d0*kin(2)/(3.0d0*(natoms-natoms_1)-3.0d0-ntcon)/8.617d-5
+      else
+	tempe(1) = 2.0d0*kin(1)/(3.0d0*natoms_1-3.0d0-ntcon)/8.617d-5/eV
+        tempe(2) = 2.0d0*kin(2)/(3.0d0*(natoms-natoms_1)-3.0d0-ntcon)/8.617d-5/eV
+      endif
+
+***********************************************************************************************************
+***********************************************************************************************************
+
+
+
+!!!!!!!!!!!!!!!!DEBUGGIN PROCESSES START!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+11/12/2015
+archivos siesta.F, siesta_init.F, sista_move y vmb2
+
+14/12/2015
+vmb2.F debugado! Tener en cuenta que para 1 atomo en cada zona la va es cero (por la c. del centro de masas). Genera adecuadamente las velocidades iniciales de los atomos..........................................................................ok!
+
+siesta_options.F : debugado, parece que es correcto.............................ok!
+
+siesta.F: creada variable global llamada TwoBaths
+	Introducido el calculo de Verlet, ya estaria............................ok! 
+
+***********************************************************************************************************
+siesta_move.F: tiene comentadas las lineas 320 y hace que de error al escribir a archivo los casos normales (los no modificados por mi...)
+***********************************************************************************************************
+
+dynamics.F: chekeado la subrutina nose2, parece que es correcta.................ok!
+	    chekeando la subrutina verlet3......................................ok!
+
+siesta_init.F: ya esta acabado, calcula las velocidades_0, calcula natoms_1.....ok!
+
+Restart positions in Verlet3....................................................ok!
+Restart velocities in Verlet3...................................................ok!
+
+21/12/2015
+chequeado los restarts (poner el tiempo inicial=final=1 del que no queremos)....ok!
+
+!!!!!!!!!!!!!!!!DEBUGGIN PROCESSES END!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+Nuevas opciones de calculo (siesta options):
+-MD.TypeOfRun twobaths
+-MD.InitialTimeStep_Nose     1
+-MD.FinalTimeStep_Nose       1
+-MD.InitialTimeStep_Verlet   1
+-MD.FinalTimeStep_Verlet     1
+-MD.InitialTemperature_1     0.0 K
+-MD.InitialTemperature_2     0.0 K
+-MD.TargetTemperature_1      0.0 K
+-MD.TargetTemperature_2      0.0 K
+-MD.NoseMass_1               mn_default Ry*fs**2
+-MD.NoseMass_2               mn_default Ry*fs**2
+-MD.UseSaveXV		(opcion por defecto de siesta)
+-MD.Vseed		      -30	(generacion de MB de velocidades)		
+
+
+
+
+
+
+
+
+Los flags a buscar en la simulacion:
+Temp_ion nose zone 1
+Temp_ion nose zone 2
+
+Temp_ion verlet zone 1
+Temp_ion verlet zone 2
+
+
+
+***********************************************************************************************************
+struct_init.F
+***********************************************************************************************************
+Para que lea las velocidades y la variable xv_file_read correctamente, hemos añadido la parte:
+ 
+ln 108: 
+ if ((leqi(dyntyp,'TwoBaths')) .and. foundxv) then
+               call fdf_global_get(dt,'MD.LengthTimeStep',
+     $                             dt_default,'fs')
+        xa=xa-dt*va
+           if (IOnode) then
+               write(6,'(5a)') 'WARNING: twobaths restart',
+     $                           ' not found--reading only XV file',
+     $                           ' and moving back 1 time step using',
+     $                           ' Euler'
+           endif
+        goto 100
+        endif
+
+el 100 esta al final del siguiente bucle if.
+
+Lectura correcta del archivo XV con su correspondiente propagacion, apra reiniciar los calculos solo necesitamos el archivo XV, nada mas,
+
+****************************************************************************************
+state_init.F
+
+Añadido nuevo elemento en el case chooser para el idyn=9 
+ case (9)
+          write(6,'(28(" "),a,i6)') 'Begin MD step = ',istep
+          if (cml_p) call cmlStartStep(mainXML, type='MD', index=istep)
+
+
+28/7/216
+
+write_subs.F
+
+ln 126: añadido caso idyn = 9 para que muestre Stress tensor
+
+case(0:5,8,9)
+
+16/8/2016
+
+dynamics.f
+
+lin 2673: añadido linea que muestre las Ekin de cada zona en el verlet
+
+
+18/8/2016 ************************************************************************
+
+Se observo que Verlet no reinicia correctamente solo desde el XV. La propagacion por el metodo de euler (que es lo que hace si solo encuentra el XV y no el .VERLET_RESTART hacia atras no da exactamente las posiciones de los atomos del paso anterior). Esto hace que la energia varie un poco y en los saltos se vea claramente la discontinuidad en la energia.
+Para resolver esto hemos modificado:
+
+struct_init.F
+
+lin 43:       character(len=22) :: twobaths
+
+Añadido bloque:
+
+lin 111:
+
+        if ((leqi(dyntyp,'TwoBaths')) .and. foundxv) then
+          call fdf_global_get(twobaths,'MD.System_prep','Verlet')
+          if (foundxv .and. (ifinal-istart>0)) then
+           step_back=.true.
+           if (leqi(twobaths,'Verlet')) then
+             restart_file = trim(slabel) // '.VERLET_RESTART'
+           else
+             step_back=.false.
+           endif
+           if (step_back) then
+              if (IOnode) then
+                 inquire( file=restart_file, exist=found_restart )
+              endif
+              call broadcast(found_restart)
+             if (.not. found_restart) then
+               call fdf_global_get(dt,'MD.LengthTimeStep',
+     $                             dt_default,'fs')
+               xa=xa-dt*va
+               if (IOnode) then
+                  write(6,'(5a)') 'WARNING: twobaths restart',
+     $                            trim(restart_file),'not-found',
+     $                           ' reading only XV file',
+     $                           ' and moving back 1 time step using',
+     $                           ' Euler'
+               endif
+             endif
+           endif
+          endif
+        goto 100
+        endif
+
+Ahora ya funciona correctamente.
+
+
+
+
+
+

@@ -5,7 +5,7 @@
 
       CONTAINS
 
-      subroutine siesta_move( istep, relaxd )
+      subroutine siesta_move( istep, relaxd,typeCall)
       use siesta_geom
       use zmatrix,         only: lUseZmatrix, iofaZmat, write_Zmatrix,
      .                           CartesianForce_to_ZmatForce
@@ -24,19 +24,21 @@
       use m_cell_broyden_optim,      only: cell_broyden_optimizer
       use m_cell_fire_optim,      only: cell_fire_optimizer
 
-      use m_dynamics,      only: nose, verlet2, npr, anneal, pr
+           use m_dynamics,      only: nose, nose2, verlet2, verlet3,
+     .                           npr, anneal, pr, anneal2,vresc,anneal3
+ 
       use phonon,          only: phonon_setup, phonon_restore_coords,
      .                           phonon_set_coords
       use iopipes,         only: forcestopipe, coordsfrompipe
-      use m_energies,      only: Ekinion, Etot
+      use m_energies,      only: Ekinion, Etot, Ekinion_sys
       use write_subs
       use m_stress
       use m_steps
       use m_kinetic
       use m_forces
 
-      implicit none
 
+      implicit none
       integer, intent(in)   :: istep
       logical, intent(out)  :: relaxd
       integer               :: i, ia, ix, iadispl, ixdispl
@@ -46,9 +48,8 @@
                 
       logical               :: foundxv  ! dummy for call to ioxv
       logical               :: foundzm  ! dummy for call to iozm
-
       real(dp), external :: volcel
-
+      character(15) :: typeCall 
 
 !------------------------------------------------------------------------- BEGIN
       ! Save the last geometry for which the density matrix 
@@ -238,37 +239,74 @@
           if (volcel(ucell) < 1.0e-8_dp) then
             call automatic_cell(ucell,scell,na_u,xa,isa,charnet)
           endif
+
+      case (9)
+
+        if (typeCall  .eq.'Nose') then !Nose calculation
+         call nose2( istp, iunit, na_u, cfa, tt_baths,
+     .              dt, amass, mn_baths,
+     .              ntcon, va, xa, Ekinion_sys, kn_n,
+     .              vn_n, tempion_n,natoms_1)
+        elseif (typeCall  .eq. 'Vresc') then !Vresc
+
+        call anneal3(istp, iunit, taurelax,bulkm,
+     .       na_u, cfa,cstress, tt_baths, dt, amass, ntcon,
+     .       va, xa, ucell, Ekinion_sys, tempion_n,Pint, natoms_1)
+!       call anneal2(istp, iunit, taurelax,
+! .       na_u, cfa, tt_baths, dt, amass, ntcon,
+! .       va, xa, ucell, Ekinion_sys, tempion_n, natoms_1)
+
+
+        else !Verlet
+         call verlet3(istep,iunit,iquench,na_u,cfa,
+     .              dt,amass,ntcon,va,xa,Ekinion_sys,
+     .              tempion_n,natoms_1)
+        endif
+        call superx( ucell, nsc, na_u, na_s, xa, scell )
       end select
 
       if (IOnode) then
+        if (idyn .eq. 9) then
+         if ((typeCall  .eq. 'Nose') .or. (typeCall  .eq. 'Vresc')) then
+        !Write Nose/Vresc temperatures
+          write(6,'(/,a,f12.3,a)')
+     .      'siesta: Temp_ion zone 1 =', tempion_n(1,1), ' K'
+          write(6,'(/,a,f12.3,a)')
+     .      'siesta: Temp_ion zone 2 =', tempion_n(1,2), ' K'
+                else
+        !Write Verlet temperatures
+          write(6,'(/,a,f12.3,a)')
+     .      'siesta: Temp_ion verlet zone 1 =', tempion_n(1,1), ' K'
+          write(6,'(/,a,f12.3,a)')
+     .      'siesta: Temp_ion verlet zone 2 =', tempion_n(1,2), ' K'
+                endif 
+        endif
+
         if (idyn .gt. 0 .and. idyn .lt. 6) then
           write(6,'(/,a,f12.3,a)')
      .      'siesta: Temp_ion =', tempion, ' K'
         endif
       endif
-
       ! Save last atomic positions and velocities 
       ! NOTE that this means "the positions predicted for next step"
       ! and "the current velocities"
-      if (idyn.ne.6 .and. idyn.ne.7 .and. idyn.ne.8) then
+       if (idyn .eq. 9) then
+!      if (idyn.ne.6 .and. idyn.ne.7 .and. idyn.ne.8) then
         call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va, 
      &             foundxv)
-        if (lUseZmatrix .and. (idyn.eq.0))
-     .    call iozm('write',ucell,vcell,xa,foundzm)
+	endif
+!        if (lUseZmatrix .and. (idyn.eq.0))
+!     .    call iozm('write',ucell,vcell,xa,foundzm)
         call siesta_write_positions()
-
 
         ! Save atomic positions and velocities accumulatively and
         ! accumulate coor in Xmol file for animation 
         call write_md_record( istep )
-      endif
-
-
    60 continue
 ! Output memory use at the end of this geometry step
-      if (cml_p) then
-         call cmlEndStep(mainXML)
-      endif
+      !if (cml_p) then
+       !  call cmlEndStep(mainXML)
+      !endif
       call printmemory( 6, 0 )
       call timer( 'IterMD', 2 )
 

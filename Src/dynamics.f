@@ -22,7 +22,8 @@
       implicit none
 
 
-      public :: npr, nose, verlet2, pr, anneal
+      public :: npr, nose, verlet2, pr, anneal, nose2, verlet3, anneal2,
+     .   vresc, anneal3
       private
 
       real(dp), parameter  :: tol = 1.0e-12_dp
@@ -2045,6 +2046,1690 @@ C .....................
 
       end subroutine verlet2
 
-      end module m_dynamics
+      subroutine nose2( istep, iunit, natoms, fa, tt, dt, ma, mn, ntcon,
+     .                 va, xa, kin, kn, vn, temp, natoms_1)
+C *************************************************************************
+C Subroutine for MD simulations with CONTROLLED TEMPERATURE.
+C The temperature is controlled with a NOSE thermostat.
+C The use of Nose dynamics provides trajectories which sample the 
+C isothermal ensamble.
+C The equations of motion are integrated with a modified Verlet 
+C algorithm, with a selfconsistent set of equations for the 
+C Nose variables.
+C
+C Written by P.Ordejon, November'96
+C ************************* UNITS
+C ******************************************
+C Temperature in Kelvin
+C Time in femtoseconds
+C Atomic masses in atomic mass units
+C
+C Other units depend on input option:
+C
+C   Option iunit = 1:
+C     Energies are in eV
+C     Distances are in Angstrom
+C     Nose mass in eV * fs**2
+C   Option iunit = 2:
+C     Energies are in Ry
+C     Distances are in Bohr
+C     Nose mass in Ry * fs**2
+C ************************* INPUT
+C *********************************************
+C integer istep         : Number of time step during simulation
+C integer iunit         : Units option: 1 or 2 (see UNITS above)
+C integer natoms        : Number of atoms in the simulation cell
+C real*8 fa(3,natoms)   : Atomic forces
+C real*8 tt             : Target temperature
+C real*8 dt             : Length of the time step 
+C real*8 ma(natoms)     : Atomic masses
+C real*8 mn             : Mass of Nose thermostat
+C integer ntcon         : Total number of position constraints imposed
+C real*8 va(3,natoms)   : Atomic velocities
+C                         (used only if istep = 1)
+C ******************* INPUT AND OUTPUT
+C ****************************************
+C real*8 xa(3,natoms)   : Atomic coordinates
+C                        (input: current time step; output: next time
+C                        step)
+C ************************* OUTOPUT
+C *******************************************
+C real*8 kin(2)            : Kinetic energy of the atomic system
+C real*8 kn(2)             : Kinetic energy of Nose variable 
+C real*8 vn(2)             : Potential energyy of Nose var
+C real*8 temp(2)           : Instantaneous system temperature 
+C *****************************************************************************
+C
 
-    
+      integer 
+     .   natoms,ntcon,istep,iunit
+
+      real(dp)
+     .  dt,fa(3,natoms),kin(1,2),kn(1,2),
+     .  ma(natoms),mn(1,2),tt(1,2),
+     .  va(3,natoms),vn(1,2),xa(3,natoms)
+
+      external
+     .  memory
+C Internal variables
+C .........................................................
+
+      logical
+     .  found
+
+      integer
+     .  ct,i,ia
+
+      integer  :: iacc, dummy_iza, old_natoms, natoms_1
+      real(dp) :: old_dt
+
+      save x,xold
+
+      real(dp)
+     .  diff,dt2,dtby2,fact(1,2),fovermp,
+     .  tekin(1,2),temp(1,2),twodt,
+     .  x(1,2),xdot(1,2),xlast(1,2),xnew(1,2),xold(1,2)
+
+      real(dp), dimension(:,:), allocatable, save ::
+     .  xanew,xaold
+
+C .............................................................................
+
+      restart_file = trim(slabel) // '.NOSE_RESTART'
+
+      if (iunit .ne. 1 .and. iunit .ne. 2)
+     $    call die('nose: Wrong iunit option;  must be 1 or 2')
+      ct = 3 + ntcon
+      if (natoms_1 .eq. 1) ct = 0
+
+
+C Allocate local memory and initialise
+      if (.not.allocated(xanew)) then
+        allocate(xanew(3,natoms))
+        call memory('A','D',3*natoms,'nose')
+      endif
+      if (.not.allocated(xaold)) then
+        allocate(xaold(3,natoms))
+        call memory('A','D',3*natoms,'nose')
+        do ia = 1,natoms
+          do i = 1,3
+            xaold(i,ia)=0.0d0
+          enddo
+        enddo
+      endif
+
+C Define constants and conversion factors
+C .....................................
+      dt2   = dt**2
+      dtby2 = dt/2.0d0
+      twodt = dt*2.0d0
+
+      if (iunit .eq. 1) then
+C  convert target ionic temperature into target kinetic energy zone 1
+        tekin(1,1) = 0.5d0 * (3.d0 * natoms_1 - ct) * 8.617d-5 
+     .   * tt(1,1)
+        tekin(1,2) = 0.5d0 * (3.d0 * (natoms-natoms_1) - ct) * 8.617d-5 
+     .   * tt(1,2)
+        fovermp = 0.009579038
+      else
+C  convert target temperature into target kinetic energy zone 2
+        tekin(1,1) = eV * 0.5d0 * (3.d0 * natoms_1 - ct) * 8.617d-5
+     .   * tt(1,1)
+        tekin(1,2) = eV * 0.5d0 * (3.d0 * (natoms-natoms_1) - ct) 
+     .   * tt(1,2) * 8.617d-5 
+        fovermp = 0.009579038 * Ang**2 / eV
+      endif
+
+C Initialize variables if current time step is the first of the
+C simulation
+      if (istep .eq. 1) then
+
+         if (xv_file_read) then
+           if (IONode) inquire( file=restart_file, exist=found )
+           call broadcast(found)
+         else
+           found=.false.
+         endif
+
+         if (.not. found) then
+
+
+C     Compute old positions in terms of current positions and velocities
+C     if the time step is the first of the simulation 
+!     and we start from x(t), v(t) *at the same time*.
+!     (e.g., when the velocities are constructed from
+!      the Boltzmann distribution).
+!     In this case the algorithm works out well.
+!     Nose variables are set to zero, as there is currently no
+!     better way to initialize them...
+
+        !split for the two Nose baths 
+        !Nose 1 runs from 1--->natoms_1 #atoms
+            x(1,1) = 0.0d0
+            xold(1,1) = 0.0d0
+            do ia = 1,natoms_1
+               do i = 1,3
+                  xaold(i,ia) = xa(i,ia) - dt * va(i,ia)
+     .                 + (dt2/2.0d0) * fovermp * fa(i,ia) / ma(ia)
+               enddo
+            enddo
+        !Nose 2 runs from natoms_1+1--->natoms #atoms
+            x(1,2) = 0.0d0
+            xold(1,2) = 0.0d0
+            do ia = natoms_1+1,natoms
+               do i = 1,3
+                  xaold(i,ia) = xa(i,ia) - dt * va(i,ia)
+     .                 + (dt2/2.0d0) * fovermp * fa(i,ia) / ma(ia)
+               enddo
+            enddo
+
+
+         else
+
+!         For restarts, we need information about the old 
+!         positions, and the Nose variables
+!
+           if (Node .eq. 0) then
+            call io_assign(iacc)
+            open(unit=iacc,file=restart_file, form='formatted',
+     $           status='old', action='read', position='rewind')
+            read(iacc,*) old_natoms, old_dt
+            read(iacc,*) x, xold
+            if (old_natoms .ne. natoms)
+     $           call die('Wrong number of atoms in NOSE_RESTART')
+            do ia = 1, natoms
+               read(iacc,*) dummy_iza, (xaold(i,ia),i=1,3)
+               if (dummy_iza .ne. iza(ia))
+     $              call die('Wrong species number in NOSE_RESTART')
+            enddo
+            call io_close(iacc)
+            write(6,*)
+     $         'MD restart: Read old positions and Nose variables',
+     $              ' from NOSE_RESTART'
+            if (abs(old_dt - dt) .gt. 1.0d-8) then
+               write(6,*) '**WARNING: Timestep has changed. Old: ',
+     $              old_dt, ' New: ', dt
+               write(6,*) '**WARNING: Approximating old positions.'
+                  ! First order, using the positions and velocities 
+                  ! at t-old_dt (positions from NOSE_RESTART, velocities
+                  !              from XV file)
+               xaold(1:3,1:natoms) = xaold(1:3,1:natoms) -
+     $                              (dt-old_dt) * va(1:3,1:natoms)
+            endif               ! dt /= old_dt
+
+           endif                  ! IONode
+          
+            call broadcast(x)
+            call broadcast(xold)
+            call broadcast(xaold(1:3,1:natoms))
+
+         endif     ! xv_file_read
+      endif        ! istep == 1
+C ..................
+
+C Compute uncorrected next positions
+C .....................................
+      do ia = 1,natoms
+        do i = 1,3
+          xanew(i,ia) =  2.0d0 * xa(i,ia) - xaold(i,ia) +
+     .                   dt2 * fovermp * fa(i,ia) / ma(ia)
+        enddo
+      enddo
+C ...................
+
+C Compute uncorrected velocities and kinetic energy
+C ......................
+!Nose 1
+      kin(1,1) = 0.d0
+      do ia = 1,natoms_1
+        do i = 1,3
+          va(i,ia) = (xanew(i,ia) - xaold(i,ia)) / twodt
+          kin(1,1) = kin(1,1) + 0.5d0 * ma(ia) * va(i,ia)**2 / fovermp
+        enddo
+      enddo
+!Nose 2
+      kin(1,2) = 0.d0
+      do ia = natoms_1+1, natoms
+        do i = 1,3
+          va(i,ia) = (xanew(i,ia) - xaold(i,ia)) / twodt
+          kin(1,2) = kin(1,2) + 0.5d0 * ma(ia) * va(i,ia)**2 / fovermp
+        enddo
+      enddo
+
+C ..................
+
+C Compute initial guess for Nose variables at next time step
+C .............
+      xnew(1,1) = 2.0_dp * x(1,1) - xold(1,1) !Nose 1
+      xnew(1,2) = 2.0_dp * x(1,2) - xold(1,2) !Nose 2
+C ...................
+
+C Start selfconsistency loop to calculate Nose variable
+C ..................
+10    continue
+
+      xlast(1,1) = xnew(1,1) !Nose 1
+      xlast(1,2) = xnew(1,2) !Nose 2
+        
+C xdot and hdot (time derivatives at current time), and related stuff
+        !Nose 1
+      xdot(1,1) = (xnew(1,1) - xold(1,1)) / twodt
+      fact(1,1) = (1.0_dp/(1.0_dp+xdot(1,1)*dtby2))
+        !Nose 2
+      xdot(1,2) = (xnew(1,2) - xold(1,2)) / twodt
+      fact(1,2) = (1.0_dp/(1.0_dp+xdot(1,2)*dtby2))
+
+C  Compute Nose variable for next iteration
+        !Nose 1
+      xnew(1,1) = 2.0_dp * x(1,1) - xold(1,1) 
+     .       + (dt2/mn(1,1)) * 2.0_dp * ((fact(1,1)**2) 
+     .       * kin(1,1) - tekin(1,1))
+        !Nose 2
+      xnew(1,2) = 2.0_dp * x(1,2) - xold(1,2) 
+     .       + (dt2/mn(1,2)) * 2.0_dp * ((fact(1,2)**2)
+     .       * kin(1,2) - tekin(1,2))
+
+C Check if selfconsistency has been reached (simultaneus solution)
+      if (abs(xnew(1,1)-xlast(1,1)) .ge. abs(xnew(1,2)-xlast(1,2))) then
+        diff = abs(xnew(1,1) - xlast(1,1))
+      else
+        diff = abs(xnew(1,2) - xlast(1,2))
+      endif !diff definition
+
+      if ((xlast(1,1) .eq. 0.0d0) .or. (xlast(1,2) .eq. 0.0d0)) then
+        if (diff .gt. tol)  goto 10
+      else
+        if ((diff/abs(xlast(1,1)) .gt. tol) .or.
+     .       (diff/abs(xlast(1,2)) .gt. tol))  goto 10
+      endif !same condition as before but with and .or. for the 2 bath
+C ...................
+
+C Calculate corrected atomic coordinates at next time step, 
+C and corrected velocities and kinetic energy at current time step
+C .........
+! Nose 1
+      do ia = 1,natoms_1
+        do i = 1,3
+          xanew(i,ia) = fact(1,1) * ( xanew (i,ia) +
+     .                   dtby2 * xdot(1,1) * xaold(i,ia))
+          va(i,ia) = fact(1,1) * va(i,ia)
+        enddo
+      enddo
+      kin(1,1) = kin(1,1) * fact(1,1)**2 
+! Nose 2
+      do ia = natoms_1+1,natoms
+        do i = 1,3
+          xanew(i,ia) = fact(1,2) * ( xanew (i,ia) +
+     .                   dtby2 * xdot(1,2) * xaold(i,ia))
+          va(i,ia) = fact(1,2) * va(i,ia)
+        enddo
+      enddo
+      kin(1,2) = kin(1,2) * fact(1,2)**2 
+
+
+C ...................
+!     Here we can save x, xa, va for MD  (experimental)
+!
+!     call add_to_md_file(xa,va,nose=x,nosedot=xdot)
+C Save current atomic positions as old ones, 
+C   and next positions as current ones
+
+      xaold(1:3,1:natoms) = xa(1:3,1:natoms)
+      xa(1:3,1:natoms) = xanew(1:3,1:natoms)
+
+      xold(1,1) = x(1,1) !Nose 1
+      xold(1,2) = x(1,2) !Nose 2
+      x(1,1) = xnew(1,1) !Nose 1
+      x(1,2) = xnew(1,2) !Nose 2
+
+C Calculate Kinetic and potential energies
+C ................................
+C Kinetic energy of Nose variable
+      kn(1,1) = (1.0d0 / 2.0d0) * mn(1,1) * xdot(1,1)**2 !Nose 1
+      kn(1,2) = (1.0d0 / 2.0d0) * mn(1,2) * xdot(1,2)**2 !Nose 2
+
+C Potential energy of Nose variable (in eV)
+      vn(1,1) = 2.0d0 * tekin(1,1) * xold(1,1)
+      vn(1,2) = 2.0d0 * tekin(1,2) * xold(1,2)
+
+C Instantaneous temperature (Kelvin)
+      if (iunit .eq. 1) then
+        temp(1,1) = kin(1,1) / (0.5d0 * (3.d0 * natoms_1 - ct) 
+     .  * 8.617d-5)
+        temp(1,2) = kin(1,2) / (0.5d0 * (3.d0 * (natoms-natoms_1) - ct)
+     .  * 8.617d-5)
+      else
+        temp(1,1) = kin(1,1) / (0.5d0 * (3.d0 * natoms_1 - ct)
+     .  * 8.617d-5 * eV)
+        temp(1,2) = kin(1,2) / (0.5d0 * (3.d0 * (natoms-natoms_1) - ct)
+     .  * 8.617d-5 * eV)
+      endif
+        
+
+      if (Node .eq. 0) then
+!
+!       Save (now old) positions and nose variables to NOSE_RESTART
+!
+         call io_assign(iacc)
+         open(unit=iacc,file=restart_file, form='formatted',
+     $        status='unknown', action= 'write', position='rewind')
+         write(iacc,*) natoms, dt
+         write(iacc,*) x, xold
+         do ia = 1, natoms
+            write(iacc,*) iza(ia), (xaold(i,ia),i=1,3) 
+         enddo
+         call io_close(iacc)
+      endif
+        
+C .....................
+      end subroutine nose2
+
+      subroutine verlet3(istep,iunit,iquench,natoms,fa,dt,ma,ntcon,va,
+     .                   xa,kin,temp,natoms_1)
+C *************************************************************************
+C Subroutine for MD simulations using the velocity-Verlet Algrithm.
+C (See Allen-Tildesley, Computer Simulations of Liquids, pg. 81)
+C
+C Written by P.Ordejon, November'96
+C ************************* UNITS
+C ******************************************
+C Temperature in Kelvin
+C Time in femtoseconds
+C Atomic masses in atomic mass units
+C
+C Other units depend on input option:
+C
+C   Option iunit = 1:
+C     Energies are in eV
+C     Distances are in Angstrom
+C   Option iunit = 2:
+C     Energies are in Ry
+C     Distances are in Bohr
+C ************************* INPUT
+C *********************************************
+C integer istep         : Number of time step during the simulation
+C integer iunit         : Units option: 1 or 2 (see UNITS above)
+C integer iquench       : Option for quenching:
+C                              0 = no quenching (standard dynamics)
+C                              1 = power quenching (set to zero velocity
+C                                 components opposite to force)
+C                              2 = 'fire' quenching, as in
+C                                  Bitzek et al, PRL 97, 170201 (2006)
+C integer natoms        : Number of atoms in the simulation cell
+C real*8 fa(3,natoms)   : Atomic forces 
+C real*8 dt             : Length of the time step
+C real*8 ma(natoms)     : Atomic masses 
+C integer ntcon         : Total number of position constraints imposed
+C real*8 va(3,natoms)   : Atomic velocities
+C                         (used only if istep = 1)
+C ******************* INPUT AND OUTPUT
+C ****************************************
+C real*8 xa(3,natoms)   : Atomic coordinates 
+C                        (input: current time step; output: next time
+C                        step)
+C ************************** OUTPUT
+C *******************************************
+C real*8 kin(1,2)            : Kinetic energy at current time step 
+C real*8 temp(1,2)           : Instantaneous system temperature
+C *****************************************************************************
+
+      integer 
+     .   natoms,ntcon,istep,iquench,iunit,natoms_1
+
+      real(dp)
+     .  dt,fa(3,natoms),kin(1,2),ma(natoms),
+     .  va(3,natoms),xa(3,natoms)
+
+      external
+     .  memory
+
+C Internal variables
+C ..........................................................
+      logical
+     .  found
+
+      integer
+     .  ct,i,ia
+
+      integer :: old_natoms, iacc, dummy_iza
+      real(dp) :: old_dt
+
+      real(dp)
+     .  dot,dt2,dtby2,fovermp,temp(1,2)
+
+      real(dp), dimension(:,:), allocatable, save ::
+     .  accold,vold
+
+C Related to FIRE quenching
+      integer, parameter  :: firenmin = 5
+      integer, save       :: firenpos
+      real(dp), parameter :: firefinc = 1.1_dp, firefdec = 0.5_dp,
+     .                       firealf0 = 0.1_dp, firefalf = 0.99_dp,
+     .                       dtmax = 10.0_dp
+      real(dp), save      :: firealf
+      real(dp)            :: magv, magf
+C ........................
+
+      restart_file = trim(slabel) // '.VERLET_RESTART'
+      if (iunit .ne. 1 .and. iunit .ne. 2)
+     $     call die('verlet3: Wrong iunit option;  must be 1 or 2')
+
+      ct = 3 + ntcon
+      if ((natoms .eq. 1) .or. (natoms_1 .eq. 1)) then
+        ct = 0
+      endif
+C Allocate local memory - only done once as data must be saved. As a
+C result the memory is not deallocated at the end of the routine.
+      if (.not.allocated(accold)) then
+        allocate(accold(3,natoms))
+        call memory('A','D',3*natoms,'verlet2')
+      endif
+      if (.not.allocated(vold)) then
+        allocate(vold(3,natoms))
+        call memory('A','D',3*natoms,'verlet2')
+      endif
+
+C Define constants and conversion factors
+C .....................................
+      dt2   = dt**2
+      dtby2 = dt/2.0d0
+
+      if (iunit .eq. 1) then
+C  convert F/m in (eV/Amstrong)/amu  to  Amstrong/fs**2
+        fovermp = 0.009579038
+      else
+C  convert F/m in (Ry/Bohr)/amu  to  Bohr/fs**2
+        fovermp = 0.009579038 * Ang**2 / eV
+      endif
+C ........................
+
+
+C ....................
+C Compute velocities at current time step, 
+! using the previous step's velocities and the previous and current
+! forces.
+      if (istep .eq. 1) then 
+         if (xv_file_read) then
+           if (IONode) inquire( file=restart_file, exist=found )
+           call broadcast(found)
+           if (.not. found) old_dt=dt
+         else
+           found=.false.
+         endif
+
+         if (.not. found) then
+
+C     Compute old accelerations and velocities 
+C     if the time step is the first of the simulation
+C     ...........................
+!     and we start from x(t), v(t) *at the same time*.
+!     (e.g., when the velocities are constructed from
+!      the Boltzmann distribution).
+!     In this case the algorithm works out well.
+            do ia = 1,natoms
+               do i = 1,3
+                  accold(i,ia) = fovermp * fa(i,ia) / ma(ia)
+                  vold(i,ia) = va(i,ia) - dt * accold(i,ia)
+               enddo
+            enddo
+
+         else
+!         For restarts, we need information about the old 
+!         forces, in order to match the velocities
+!         correctly (the velocities in the XV file are
+!         one time step behind, so they are already the
+!         'old' velocities).
+!
+           if (Node .eq. 0) then
+           call io_assign(iacc)
+           open(unit=iacc,file=restart_file, form='formatted',
+     $          status='old', action='read', position='rewind')
+           read(iacc,*) old_natoms, old_dt
+           if (old_natoms .ne. natoms)
+     $          call die('Wrong number of atoms in VERLET_RESTART')
+           do ia = 1, natoms
+              read(iacc,*) dummy_iza, (accold(i,ia),i=1,3) ! forces
+              if (dummy_iza .ne. iza(ia)) 
+     $             call die('Wrong species number in VERLET_RESTART')
+              accold(:,ia) = fovermp * accold(:,ia) / ma(ia)
+              vold(:,ia)  = va(:,ia)
+           enddo
+           call io_close(iacc)
+           write(6,*) 'MD restart: Read old forces from VERLET_RESTART'
+             if (abs(old_dt - dt) .gt. 1.0d-8) then
+              write(6,*) 'Timestep has changed. Old: ', old_dt,
+     $             ' New: ', dt
+             endif
+           endif             ! IONode
+          call broadcast(old_dt)
+          call broadcast(accold(1:3,1:natoms))
+          call broadcast(vold(1:3,1:natoms))
+        endif   !XV file read
+      endif !istep
+
+      if ((istep .eq. 1) .and. xv_file_read) then
+!
+!        Use old time step in case it is different, only in 
+!        the first step.
+!
+         do ia = 1,natoms
+            va(:,ia) = vold(:,ia) + 0.5_dp * old_dt
+     .           * (accold(:,ia) + fovermp * fa(:,ia) / ma(ia))
+         enddo
+      else
+!
+!        Current timestep.
+!
+         do ia = 1,natoms
+            va(:,ia) = vold(:,ia) + dtby2 
+     .           * (accold(:,ia) + fovermp * fa(:,ia) / ma(ia))
+         enddo
+      endif 
+
+
+!     This is the place to store the current magnitudes
+!
+!      call add_to_md_file(xa,va,cell=h,vcell=hdot)
+C Compute positions at next time
+C step.....................................
+      do ia = 1,natoms
+        do i = 1,3
+          xa(i,ia) = xa(i,ia) + dt * va(i,ia) 
+     .                  + dt2 / 2.0_dp * fovermp * fa(i,ia) / ma(ia)
+        enddo
+      enddo
+C ...................
+
+C Save current velocities and accelerations as old ones
+C .....................
+      do i = 1,3
+        do ia = 1,natoms
+          vold(i,ia) = va(i,ia)
+          accold(i,ia) = fovermp * fa(i,ia) / ma(ia)
+        enddo
+      enddo
+C ....................
+
+C Calculate kinetic energy and temperature at current time
+C ...................
+C Kinetic energy of atoms 
+      kin(1,1) = 0.0d0
+      kin(1,2) = 0.0d0
+      do ia = 1,natoms_1
+        do i = 1,3
+          kin(1,1) = kin(1,1) + 0.5_dp * ma(ia) * va(i,ia)**2 / fovermp
+        enddo
+      enddo
+      do ia = natoms_1+1,natoms
+        do i = 1,3
+          kin(1,2) = kin(1,2) + 0.5_dp * ma(ia) * va(i,ia)**2 / fovermp
+        enddo
+      enddo
+	write(*,*) 'Verlet: atoms zone 1', natoms_1
+
+C Instantaneous temperature (Kelvin)
+      temp(1,1)=0
+      temp(1,2)=0
+      if (iunit .eq. 1) then
+        temp(1,1) = 2.0d0*kin(1,1)/(3.0d0*natoms_1-ct)/8.617d-5
+        temp(1,2) = 2.0d0*kin(1,2)/(3.0d0*(natoms-natoms_1)
+     .   -ct)/8.617d-5
+      else
+        temp(1,1) = 2.0d0*kin(1,1)/(3.0d0*natoms_1-ct)/8.617d-5/eV
+        temp(1,2) = 2.0d0*kin(1,2)/(3.0d0*(natoms-natoms_1)
+     .   -ct)/8.617d-5/eV
+      endif
+!
+!       Save (now old) forces to VERLET_RESTART
+!
+      if (Node .eq. 0) then
+         call io_assign(iacc)
+         open(unit=iacc,file=restart_file, form='formatted',
+     $        status='unknown', action= 'write', position='rewind')
+         write(iacc,*) natoms, dt
+         do ia = 1, natoms
+            write(iacc,*) iza(ia), (fa(i,ia),i=1,3) ! forces
+         enddo
+         call io_close(iacc)
+      endif
+C .....................
+      if ((istep .eq. 1) .or. (mod(istep,5) .eq. 0 )) then 
+        open (unit=100,file="Vverlet.txt",action="write",
+     .  position='append')
+        write(100,*), 'MD step',istep
+        do i=1,natoms
+          write(100,*) va(:,i)
+        enddo
+        close(100)
+       endif
+      end subroutine verlet3
+
+      subroutine anneal2(istep,iunit,taurelax,
+     .               natoms,fa,tt,dt,
+     .               ma,ntcon,va,xa,h,kin,
+     .               temp, natoms_1)
+C *************************************************************************
+C Subroutine for MD simulations with TWO TARGET TEMPERATURES (NO
+C PREASSURE).
+C ************************* UNITS
+C ******************************************
+C Temperature in Kelvin
+C Time in femtoseconds
+C Atomic masses in atomic mass units
+C
+C Other units depend on input option:
+C
+C   Option iunit = 1:
+C     Pressures are in eV/A**3 ( = 160.20506 GPa)
+C     Energies are in eV
+C     Distances are in Angstrom
+C   Option iunit = 2:
+C     Pressures are in Ry/Bohr**3 
+C     Energies are in Ry
+C     Distances are in Bohr
+C ************************* INPUT
+C *********************************************
+C integer istep       : Number of time step during simulation
+C integer iunit         : Units option: 1 or 2 (see UNITS above)
+C real*8 taurelax     : Relaxation time to reach desired T and P
+C integer natoms      : Number of atoms in the simulation cell
+C real*8 fa(3,natoms) : Atomic forces  
+C real*8 tt           : Target temperature zone 1, 2 
+C real*8 dt           : Length of the time step 
+C real*8 ma(natoms)   : Atomic masses 
+C integer ntcon         : Total number of position constraints imposed
+C real*8 va(3,natoms) : Atomic velocities
+C                       (used only if istep = 1)
+C ******************* INPUT AND OUTPUT
+C ****************************************
+C real*8 xa(3,natoms) : Atomic coordinates 
+C                      (input: current time step; output: next time
+C                      step)
+C real*8 h(3,3)       : Matrix of the vectors defining the unit
+C                       cell at the current time step 
+C                       h(i,j) is the ith component of jth basis vector
+C                      (input: current time step; output: next time
+C                      step)
+C ************************* OUTPUT
+C *******************************************
+C real*8 kin            : Kinetic energy of the atomic system 
+C real*8 temp           : Instantaneous system temperature 
+C real*8 pressin        : Instantaneous system pressure 
+C *****************************************************************************
+
+      integer natoms,ntcon,istep,iunit,natoms_1
+      real(dp) dt,fa(3,natoms),h(3,3),kin(1,2)
+      real(dp) ma(natoms),taurelax, temp(1,2)
+      real(dp) va(3,natoms),xa(3,natoms),tt(1,2)
+
+C Internal variables
+C .............................................................
+
+      integer  :: ct, i, ia, info, j, k
+      real(dp) dt2, fovermp, hi(3,3), hs(3), pgas, press(3,3)
+      real(dp) pgaso(1,2), rfac, rfac2
+      real(dp) tekin(1,2), twodt, vol, volcel,vol2
+
+      real(dp), dimension(:,:), allocatable, save ::
+     .  s,sdot,snew,sold,sunc
+
+      real(dp), dimension(3) :: xdum, xaold
+       external
+     .  volcel, memory
+C ....................................................................
+
+      if (iunit .ne. 1 .and. iunit .ne. 2)
+     $    call die('anneal: Wrong iunit option;  must be 1 or 2')
+      ct = 3 + ntcon
+      if ((natoms .eq. 1) .or. (natoms_1 .eq. 1)) ct = 0
+
+C Allocate local memory
+      allocate(s(3,natoms))
+      call memory('A','D',3*natoms,'anneal2')
+      allocate(sdot(3,natoms))
+      call memory('A','D',3*natoms,'anneal2')
+      allocate(snew(3,natoms))
+      call memory('A','D',3*natoms,'anneal2')
+      allocate(sunc(3,natoms))
+      call memory('A','D',3*natoms,'anneal2')
+      if (.not.allocated(sold)) then
+        allocate(sold(3,natoms))
+        call memory('A','D',3*natoms,'anneal2')
+      endif
+
+
+C Define constants and conversion factors
+C .......................................
+      dt2   = dt**2
+      twodt = dt*2.0d0
+
+      if (iunit .eq. 1) then
+C  convert target ionic temperature into target kinetic energy
+C  Ekin=1/2*(3N-3)*kB*Temp  (yields Ekin in eV if Temp is in Kelvin)
+        tekin(1,1) = 0.5d0 * (3.d0 * natoms_1 - ct) * 8.617d-5
+     . * tt(1,1)
+        tekin(1,2) = 0.5d0 * (3.d0 * (natoms-natoms_1) - ct) * 8.617d-5
+     . * tt(1,2) 
+        fovermp = 0.009579038
+      else
+C  convert target temperature into target kinetic energy
+C  Ekin=1/2*(3N-3)*kB*Temp  (yields Ekin in Ry if Temp is in Kelvin)
+        tekin(1,1) = eV * 0.5d0 * (3.d0 * natoms_1 - ct) * 8.617d-5
+     . * tt(1,1)
+        tekin(1,2) = eV * 0.5d0 * (3.d0 * (natoms-natoms_1) - ct) 
+     . * 8.617d-5 * tt(1,2)
+C  convert F/m in (Ry/Bohr)/amu  to  Bohr/fs**2
+        fovermp = 0.009579038 * Ang**2 / eV
+      endif
+
+C  calculate cell volume at current time
+      vol = volcel( h )
+C ........................
+
+C Compute Parrinello-Rahman variables (H and scaled coordinates)
+C ............
+C Compute Inverse of H at current time 
+      call inver(h,hi,3,3,info)
+      if (info .ne. 0) call die('anneal: INVER failed')
+
+C Calculate scaled coordinates (referred to matrix H) at current time
+      s = 0.0
+      do ia = 1,natoms
+        do i= 1, 3
+          do k= 1, 3
+            s(k,ia) = s(k,ia) + hi(k,i)*xa(i,ia)
+          enddo
+        enddo
+      enddo
+
+C Initialize variables if current time step is the first of the
+C simulation
+      if (istep .eq. 1) then
+        do ia = 1,natoms
+          xaold(1:3) = xa(1:3,ia) - dt*va(1:3,ia)
+     $         + (dt2/2.0_dp) * fovermp * fa(1:3,ia) / ma(ia)
+!         sold(1:3,ia) = matmul(hi,xaold(1:3))
+          do i= 1, 3
+            do k= 1, 3
+              sold(k,ia) = sold(k,ia) + hi(k,i)*xaold(i)
+            enddo
+          enddo
+        enddo
+      endif
+C ..................
+
+C Compute uncorrected next positions
+C .....................................
+      do ia = 1,natoms
+        xdum = 0.0
+        do i= 1, 3
+          do k= 1, 3
+            xdum(k) = xdum(k) + hi(k,i)*fa(i,ia)
+          enddo
+        enddo
+        xdum = (dt2*fovermp/ma(ia))*xdum
+        sunc(:,ia) = -sold(:,ia) + 2.0_dp*s(:,ia) + xdum
+      enddo
+C ...................
+
+C Calculate uncorrected velocities at current time
+      sdot = (sunc - sold) / twodt
+
+!Aqui hemos de separar para cada subsistem
+      vol2=vol/2        !volumen para cada subsistema (vcell/2) 
+
+!********SISTEMA 1*********! natoms_1+1,natoms
+      press = 0.0_dp
+      do ia = 1,natoms_1
+        hs = 0.0
+        do i= 1, 3
+          do k= 1, 3
+            hs(k) = hs(k) + h(k,i)*sdot(i,ia)
+          enddo
+        enddo
+        do j = 1,3
+          do i = 1,3
+            press(i,j) = press(i,j) + ma(ia) * hs(i) * hs(j) / fovermp
+          enddo
+        enddo
+      enddo
+      pgas = 0.0d0
+      do i = 1,3
+        pgas = pgas + press(i,i) / vol2
+      enddo
+      pgaso(1,1) = pgas / 3.0d0
+      kin(1,1) = (3.0d0 / 2.0d0) * pgaso(1,1) * vol2
+      if (IOnode) then
+        write(*,*) 'Anneal: Kinetic Energy zone 1 = ', kin(1,1)
+      endif
+C Correct velocities to reach target termperature
+      if (kin(1,1) .eq. 0.0) then
+        rfac2 = 1.0d0 + dt/taurelax
+      else
+        rfac2 = (1.0d0 + dt/taurelax * (tekin(1,1)/kin(1,1) -1.0d0))
+      endif
+      if (rfac2 .le. 0.0) call die('Wrong anneal parameter')
+      rfac = sqrt(rfac2)
+      if (IOnode) then
+         write(*,*) 'Anneal: Velocity scale factor zone 1 = ', rfac
+      endif
+      sdot(1:3,1:natoms_1) = rfac * sdot(1:3,1:natoms_1)
+
+!********SISTEMA 2********* 
+      press = 0.0_dp
+      do ia = natoms_1+1,natoms
+        hs = 0.0
+        do i= 1, 3
+          do k= 1, 3
+            hs(k) = hs(k) + h(k,i)*sdot(i,ia)
+          enddo
+        enddo
+        do j = 1,3
+          do i = 1,3
+            press(i,j) = press(i,j) + ma(ia) * hs(i) * hs(j) / fovermp
+          enddo
+        enddo
+      enddo
+      pgas = 0.0d0
+      do i = 1,3
+        pgas = pgas + press(i,i) / vol2
+      enddo
+      pgaso(1,2) = pgas / 3.0d0
+      kin(1,2) = (3.0d0 / 2.0d0) * pgaso(1,2) * vol2
+      if (IOnode) then
+         write(*,*) 'Anneal: Kinetic Energy zone 2 = ', kin(1,2)
+      endif
+C Correct velocities to reach target termperature
+      if (kin(1,2) .eq. 0.0) then
+        rfac2 = 1.0d0 + dt/taurelax
+      else
+        rfac2 = (1.0d0 + dt/taurelax * (tekin(1,2)/kin(1,2) -1.0d0))
+      endif
+      if (rfac2 .le. 0.0) call die('Wrong anneal parameter')
+      rfac = sqrt(rfac2)
+      if (IOnode) then 
+        write(*,*) 'Anneal: Velocity scale factor zone 2 = ', rfac
+      endif
+      sdot(1:3,natoms_1+1:natoms) = rfac * sdot(1:3,natoms_1+1:natoms)
+
+C Compute again pressure with corrected velocities 
+      pgaso(1,1:2) = 0.0_dp
+      press(1:3,1:3) = 0.0_dp
+      !sistema 1
+      do ia = 1,natoms_1
+        hs = 0.0
+        do i= 1, 3
+          do k= 1, 3
+            hs(k) = hs(k) + h(k,i)*sdot(i,ia)
+          enddo
+        enddo
+        do j = 1,3
+          do i = 1,3
+            press(i,j) = press(i,j) + ma(ia) * hs(i) * hs(j) / fovermp
+          enddo
+        enddo
+      enddo
+      pgas = 0.0d0
+      do i = 1,3
+        pgas = pgas + press(i,i) / vol2
+      enddo
+      pgaso(1,1) = pgas / 3.0d0
+      !sistema 2
+      press(1:3,1:3) = 0.0_dp   
+      do ia = natoms_1+1,natoms
+        hs = 0.0
+        do i= 1, 3
+          do k= 1, 3
+            hs(k) = hs(k) + h(k,i)*sdot(i,ia)
+          enddo
+        enddo
+        do j = 1,3
+          do i = 1,3
+            press(i,j) = press(i,j) + ma(ia) * hs(i) * hs(j) / fovermp
+          enddo
+        enddo
+      enddo
+      pgas = 0.0d0
+      do i = 1,3
+        pgas = pgas + press(i,i) / vol2
+      enddo
+      pgaso(1,2) = pgas / 3.0d0
+C Correct new possitions according to corrected velocities
+      snew = sold + twodt * sdot
+C Save current atomic positions as old ones, 
+C   and next positions as current ones
+      sold = s
+      s = snew
+C Transform back to absolute coordinates 
+      xa= 0.0
+      do ia = 1,natoms
+        do i= 1, 3
+          do k= 1, 3
+            xa(k,ia) = xa(k,ia) + h(k,i)*s(i,ia)
+          enddo
+        enddo
+      enddo
+
+      va = 0.0
+      do ia = 1,natoms
+        do i= 1, 3
+          do k= 1, 3
+            va(k,ia) = va(k,ia) + h(k,i)*sdot(i,ia)
+          enddo
+        enddo
+      enddo
+
+C ....................
+C Calculate Kinetic and potential energies
+C ................................
+C Kinetic energy of atoms 
+      kin(1,1) = (3.0d0 / 2.0d0) * pgaso(1,1) * vol2
+      kin(1,2) = (3.0d0 / 2.0d0) * pgaso(1,2) * vol2
+
+C Instantaneous temperature (Kelvin)
+      if (iunit .eq. 1) then
+        temp(1,1) = 3.0d0*vol2*pgaso(1,1)/(3.0d0*natoms_1-ct)/8.617d-5
+        temp(1,2) = 3.0d0*vol2*pgaso(1,2)/(3.0d0*(natoms-natoms_1)
+     .   -ct)/8.617d-5
+      else
+        temp(1,1) = 3.0d0*vol2*pgaso(1,1)/(3.0d0*natoms_1-ct)
+     .   /8.617d-5/eV
+        temp(1,2) = 3.0d0*vol2*pgaso(1,2)/(3.0d0*(natoms-natoms_1)-ct)
+     .   /8.617d-5/eV
+      endif
+
+      if ((istep .eq. 1) .or. (mod(istep,5) .eq. 0 )) then 
+        open (unit=100,file="Vresc.txt",action="write",
+     .  position='append')
+        write(100,*), 'MD step',istep
+        do i=1,natoms
+          write(100,*) va(:,i)
+        enddo
+        close(100)
+      endif
+C .....................
+C Deallocate local memory
+      call memory('D','D',size(s),'anneal2')
+      deallocate(s)
+      call memory('D','D',size(sdot),'anneal2')
+      deallocate(sdot)
+      call memory('D','D',size(snew),'anneal2')
+      deallocate(snew)
+      call memory('D','D',size(sunc),'anneal2')
+      deallocate(sunc)
+      end subroutine anneal2
+
+
+      subroutine vresc(istep,iunit,taurelax, natoms,fa,tt,dt,
+     .               ma,ntcon,va,xa,kin, temp, natoms_1)
+
+C *************************************************************************
+C Subroutine for MD simulations using the velocity-Verlet Algrithm.
+C (See Allen-Tildesley, Computer Simulations of Liquids, pg. 81)
+C
+C Written by P.Ordejon, November'96
+C ************************* UNITS
+C ******************************************
+C Temperature in Kelvin
+C Time in femtoseconds
+C Atomic masses in atomic mass units
+C
+C Other units depend on input option:
+C
+C   Option iunit = 1:
+C     Energies are in eV
+C     Distances are in Angstrom
+C   Option iunit = 2:
+C     Energies are in Ry
+C     Distances are in Bohr
+C ************************* INPUT
+C *********************************************
+C integer istep         : Number of time step during the simulation
+C integer iunit         : Units option: 1 or 2 (see UNITS above)
+C integer iquench       : Option for quenching:
+C                              0 = no quenching (standard dynamics)
+C                              1 = power quenching (set to zero velocity
+C                                 components opposite to force)
+C                              2 = 'fire' quenching, as in
+C                                  Bitzek et al, PRL 97, 170201 (2006)
+C integer natoms        : Number of atoms in the simulation cell
+C real*8 fa(3,natoms)   : Atomic forces 
+C real*8 dt             : Length of the time step
+C real*8 ma(natoms)     : Atomic masses 
+C integer ntcon         : Total number of position constraints imposed
+C real*8 va(3,natoms)   : Atomic velocities
+C                         (used only if istep = 1)
+C ******************* INPUT AND OUTPUT
+C ****************************************
+C real*8 xa(3,natoms)   : Atomic coordinates 
+C                        (input: current time step; output: next time
+C                        step)
+C ************************** OUTPUT
+C *******************************************
+C real*8 kin(1,2)            : Kinetic energy at current time step 
+C real*8 temp(1,2)           : Instantaneous system temperature
+C *****************************************************************************
+
+      integer 
+     .   natoms,ntcon,istep,iquench,iunit,natoms_1
+
+      real(dp)
+     .  dt,fa(3,natoms),kin(1,2),ma(natoms),
+     .  va(3,natoms),xa(3,natoms),tekin(1,2),
+     .  taurelax, temp(1,2) ,tt(1,2)
+
+
+      external
+     .  memory
+
+C Internal variables
+C ..........................................................
+      logical
+     .  found
+
+      integer
+     .  ct,i,ia
+
+      integer :: old_natoms, iacc, dummy_iza
+      real(dp) :: old_dt
+
+      real(dp)
+     .  dot,dt2,dtby2,fovermp
+
+      real(dp), dimension(:,:), allocatable, save ::
+     .  accold,vold
+
+C Related to FIRE quenching
+      integer, parameter  :: firenmin = 5
+      integer, save       :: firenpos
+      real(dp), parameter :: firefinc = 1.1_dp, firefdec = 0.5_dp,
+     .                       firealf0 = 0.1_dp, firefalf = 0.99_dp,
+     .                       dtmax = 10.0_dp
+      real(dp), save      :: firealf
+      real(dp)            :: magv, magf, rfac2, rfac_1, rfac_2
+C ........................
+
+      restart_file = trim(slabel) // '.VERLET_RESTART'
+      if (iunit .ne. 1 .and. iunit .ne. 2)
+     $     call die('verlet3: Wrong iunit option;  must be 1 or 2')
+
+      ct = 3 + ntcon
+      if ((natoms .eq. 1) .or. (natoms_1 .eq. 1)) then
+        ct = 0
+      endif
+C Allocate local memory - only done once as data must be saved. As a
+C result the memory is not deallocated at the end of the routine.
+      if (.not.allocated(accold)) then
+        allocate(accold(3,natoms))
+        call memory('A','D',3*natoms,'verlet2')
+      endif
+      if (.not.allocated(vold)) then
+        allocate(vold(3,natoms))
+        call memory('A','D',3*natoms,'verlet2')
+      endif
+
+C Define constants and conversion factors
+C .....................................
+      dt2   = dt**2
+      dtby2 = dt/2.0d0
+
+      if (iunit .eq. 1) then
+C  convert F/m in (eV/Amstrong)/amu  to  Amstrong/fs**2
+        fovermp = 0.009579038
+      else
+C  convert F/m in (Ry/Bohr)/amu  to  Bohr/fs**2
+        fovermp = 0.009579038 * Ang**2 / eV
+      endif
+C ........................
+
+
+C ....................
+C Compute velocities at current time step, 
+! using the previous step's velocities and the previous and current
+! forces.
+      if (istep .eq. 1) then 
+         if (xv_file_read) then
+           if (IONode) inquire( file=restart_file, exist=found )
+           call broadcast(found)
+           if (.not. found) old_dt=dt
+         else
+           found=.false.
+         endif
+
+         if (.not. found) then
+
+C     Compute old accelerations and velocities 
+C     if the time step is the first of the simulation
+C     ...........................
+!     and we start from x(t), v(t) *at the same time*.
+!     (e.g., when the velocities are constructed from
+!      the Boltzmann distribution).
+!     In this case the algorithm works out well.
+            do ia = 1,natoms
+               do i = 1,3
+                  accold(i,ia) = fovermp * fa(i,ia) / ma(ia)
+                  vold(i,ia) = va(i,ia) - dt * accold(i,ia)
+               enddo
+            enddo
+
+         else
+!         For restarts, we need information about the old 
+!         forces, in order to match the velocities
+!         correctly (the velocities in the XV file are
+!         one time step behind, so they are already the
+!         'old' velocities).
+!
+           if (Node .eq. 0) then
+           call io_assign(iacc)
+           open(unit=iacc,file=restart_file, form='formatted',
+     $          status='old', action='read', position='rewind')
+           read(iacc,*) old_natoms, old_dt
+           if (old_natoms .ne. natoms)
+     $          call die('Wrong number of atoms in VERLET_RESTART')
+           do ia = 1, natoms
+              read(iacc,*) dummy_iza, (accold(i,ia),i=1,3) ! forces
+              if (dummy_iza .ne. iza(ia)) 
+     $             call die('Wrong species number in VERLET_RESTART')
+              accold(:,ia) = fovermp * accold(:,ia) / ma(ia)
+              vold(:,ia)  = va(:,ia)
+           enddo
+           call io_close(iacc)
+           write(6,*) 'MD restart: Read old forces from VERLET_RESTART'
+             if (abs(old_dt - dt) .gt. 1.0d-8) then
+              write(6,*) 'Timestep has changed. Old: ', old_dt,
+     $             ' New: ', dt
+             endif
+           endif             ! IONode
+          call broadcast(old_dt)
+          call broadcast(accold(1:3,1:natoms))
+          call broadcast(vold(1:3,1:natoms))
+        endif   !XV file read
+      endif !istep
+
+      if ((istep .eq. 1) .and. xv_file_read) then
+!
+!        Use old time step in case it is different, only in 
+!        the first step.
+!
+         do ia = 1,natoms
+            va(:,ia) = vold(:,ia) + 0.5_dp * old_dt
+     .           * (accold(:,ia) + fovermp * fa(:,ia) / ma(ia))
+         enddo
+      else
+!
+!        Current timestep.
+!
+         do ia = 1,natoms
+            va(:,ia) = vold(:,ia) + dtby2 
+     .           * (accold(:,ia) + fovermp * fa(:,ia) / ma(ia))
+         enddo
+      endif 
+
+
+!     This is the place to store the current magnitudes
+!
+!      call add_to_md_file(xa,va,cell=h,vcell=hdot)
+C Compute positions at next time
+C step.....................................
+      do ia = 1,natoms
+        do i = 1,3
+          xa(i,ia) = xa(i,ia) + dt * va(i,ia) 
+     .                  + dt2 / 2.0_dp * fovermp * fa(i,ia) / ma(ia)
+        enddo
+      enddo
+C ...................
+
+C Save current velocities and accelerations as old ones
+C .....................
+      do i = 1,3
+        do ia = 1,natoms
+          vold(i,ia) = va(i,ia)
+          accold(i,ia) = fovermp * fa(i,ia) / ma(ia)
+        enddo
+      enddo
+C ....................
+
+C Calculate kinetic energy and temperature at current time
+C ...................
+C Instantaneous Kinetic energy of atoms 
+      kin(1,1) = 0.0d0
+      kin(1,2) = 0.0d0
+      do ia = 1,natoms_1
+        do i = 1,3
+          kin(1,1) = kin(1,1) + 0.5_dp * ma(ia) * va(i,ia)**2 / fovermp
+        enddo
+      enddo
+      do ia = natoms_1+1,natoms
+        do i = 1,3
+          kin(1,2) = kin(1,2) + 0.5_dp * ma(ia) * va(i,ia)**2 / fovermp
+        enddo
+      enddo
+
+C Instantaneous temperature (Kelvin)
+      temp(1,1)=0
+      temp(1,2)=0
+      if (iunit .eq. 1) then
+        temp(1,1) = 2.0d0*kin(1,1)/(3.0d0*natoms_1-ct)/8.617d-5
+        temp(1,2) = 2.0d0*kin(1,2)/(3.0d0*(natoms-natoms_1)
+     .   -ct)/8.617d-5
+      else
+        temp(1,1) = 2.0d0*kin(1,1)/(3.0d0*natoms_1-ct)/8.617d-5/eV
+        temp(1,2) = 2.0d0*kin(1,2)/(3.0d0*(natoms-natoms_1)
+     .   -ct)/8.617d-5/eV
+      endif
+
+
+C Target kinetic energy
+	 if (iunit .eq. 1) then
+C  convert target ionic temperature into target kinetic energy
+C  Ekin=1/2*(3N-3)*kB*Temp  (yields Ekin in eV if Temp is in Kelvin)
+        tekin(1,1) = 0.5d0 * (3.d0 * natoms_1 - ct) * 8.617d-5
+     . * tt(1,1)
+        tekin(1,2) = 0.5d0 * (3.d0 * (natoms-natoms_1) - ct) * 8.617d-5
+     . * tt(1,2) 
+        fovermp = 0.009579038
+      else
+C  convert target temperature into target kinetic energy
+C  Ekin=1/2*(3N-3)*kB*Temp  (yields Ekin in Ry if Temp is in Kelvin)
+        tekin(1,1) = eV * 0.5d0 * (3.d0 * natoms_1 - ct) * 8.617d-5
+     . * tt(1,1)
+        tekin(1,2) = eV * 0.5d0 * (3.d0 * (natoms-natoms_1) - ct) 
+     . * 8.617d-5 * tt(1,2)
+C  convert F/m in (Ry/Bohr)/amu  to  Bohr/fs**2
+        fovermp = 0.009579038 * Ang**2 / eV
+      endif
+
+C Scale factors rfac_1 and rfac_2
+      if (kin(1,1) .eq. 0.0) then
+        rfac2 = 1.0d0 + dt/taurelax
+      else
+        rfac2 = (1.0d0 + dt/taurelax * (tekin(1,1)/kin(1,1) -1.0d0))
+      endif
+      if (rfac2 .le. 0.0) call die('Wrong anneal parameter')
+      rfac_1 = sqrt(rfac2)
+
+      if (kin(1,2) .eq. 0.0) then
+        rfac2 = 1.0d0 + dt/taurelax
+      else
+        rfac2 = (1.0d0 + dt/taurelax * (tekin(1,2)/kin(1,2) -1.0d0))
+      endif
+      if (rfac2 .le. 0.0) call die('Wrong anneal parameter')
+      rfac_2 = sqrt(rfac2)
+
+
+C reescale velocities
+	vold(1:3,1:natoms_1) = rfac_1 * vold(1:3,1:natoms_1)
+	vold(1:3,natoms_1+1:natoms) = rfac_2 * vold(1:3,natoms_1+1:natoms)
+
+!
+!       Save (now old) forces to VERLET_RESTART
+!
+      if (Node .eq. 0) then
+         call io_assign(iacc)
+         open(unit=iacc,file=restart_file, form='formatted',
+     $        status='unknown', action= 'write', position='rewind')
+         write(iacc,*) natoms, dt
+         do ia = 1, natoms
+            write(iacc,*) iza(ia), (fa(i,ia),i=1,3) ! forces
+         enddo
+         call io_close(iacc)
+      endif
+C .....................
+      if ((istep .eq. 1) .or. (mod(istep,5) .eq. 0 )) then 
+        open (unit=100,file="Vresc.txt",action="write",
+     .  position='append')
+        write(100,*), 'MD step',istep
+        do i=1,natoms
+          write(100,*) va(:,i)
+        enddo
+        close(100)
+       endif
+      end subroutine vresc
+
+
+
+      subroutine anneal3(istep,iunit,taurelax,bulkm,
+     .               natoms,fa,stress,tt,dt,
+     .               ma,ntcon,va,xa,h,kin,
+     .               temp,pressin,natoms_1)
+C *************************************************************************
+C Subroutine for MD simulations with TWO TARGET TEMPERATURES (NO
+C PREASSURE).
+C ************************* UNITS
+C ******************************************
+C Temperature in Kelvin
+C Time in femtoseconds
+C Atomic masses in atomic mass units
+C
+C Other units depend on input option:
+C
+C   Option iunit = 1:
+C     Pressures are in eV/A**3 ( = 160.20506 GPa)
+C     Energies are in eV
+C     Distances are in Angstrom
+C   Option iunit = 2:
+C     Pressures are in Ry/Bohr**3 
+C     Energies are in Ry
+C     Distances are in Bohr
+C ************************* INPUT
+C *********************************************
+C integer istep       : Number of time step during simulation
+C integer iunit         : Units option: 1 or 2 (see UNITS above)
+C real*8 taurelax     : Relaxation time to reach desired T and P
+C integer natoms      : Number of atoms in the simulation cell
+C real*8 fa(3,natoms) : Atomic forces  
+C real*8 tt           : Target temperature zone 1, 2 
+C real*8 dt           : Length of the time step 
+C real*8 ma(natoms)   : Atomic masses 
+C integer ntcon         : Total number of position constraints imposed
+C real*8 va(3,natoms) : Atomic velocities
+C                       (used only if istep = 1)
+C ******************* INPUT AND OUTPUT
+C ****************************************
+C real*8 xa(3,natoms) : Atomic coordinates 
+C                      (input: current time step; output: next time
+C                      step)
+C real*8 h(3,3)       : Matrix of the vectors defining the unit
+C                       cell at the current time step 
+C                       h(i,j) is the ith component of jth basis vector
+C                      (input: current time step; output: next time
+C                      step)
+C ************************* OUTPUT
+C *******************************************
+C real*8 kin            : Kinetic energy of the atomic system 
+C real*8 temp           : Instantaneous system temperature 
+C real*8 pressin        : Instantaneous system pressure 
+C *****************************************************************************
+
+      integer 
+     .   natoms,ntcon,istep,iunit,natoms_1
+      real(dp)
+     .  bulkm,dt,fa(3,natoms),h(3,3), kin(1,2),
+     .  ma(natoms),taurelax,stress(3,3), temp(1,2),
+     .  va(3,natoms),xa(3,natoms),tt(1,2)
+
+C Internal variables
+C .............................................................
+
+      integer
+     .  ct,i,ia,info,j,k
+      real(dp) dt2, fovermp, hi(3,3), hs(3),press(3,3)
+      real(dp) pgaso(1,2), rfac, rfac2
+      real(dp) tekin(1,2), twodt, vol, volcel,vol2,pgas
+      real(dp) pressin,  press_1(3,3), press_2(3,3)
+
+      real(dp), dimension(:,:), allocatable, save ::
+     .  s,sdot,snew,sold,sunc
+
+      real(dp), dimension(3) :: xdum, xaold
+       external
+     .  volcel, memory
+C ....................................................................
+
+      if (iunit .ne. 1 .and. iunit .ne. 2)
+     $    call die('anneal: Wrong iunit option;  must be 1 or 2')
+      ct = 3 + ntcon
+      if ((natoms .eq. 1) .or. (natoms_1 .eq. 1)) ct = 0
+
+C Allocate local memory
+      allocate(s(3,natoms))
+      call memory('A','D',3*natoms,'anneal')
+      allocate(sdot(3,natoms))
+      call memory('A','D',3*natoms,'anneal')
+      allocate(snew(3,natoms))
+      call memory('A','D',3*natoms,'anneal')
+      allocate(sunc(3,natoms))
+      call memory('A','D',3*natoms,'anneal')
+      if (.not.allocated(sold)) then
+        allocate(sold(3,natoms))
+        call memory('A','D',3*natoms,'anneal')
+      endif
+
+
+C Define constants and conversion factors
+C .......................................
+      dt2   = dt**2
+      twodt = dt*2.0d0
+
+      if (iunit .eq. 1) then
+C  convert target ionic temperature into target kinetic energy
+C  Ekin=1/2*(3N-3)*kB*Temp  (yields Ekin in eV if Temp is in Kelvin)
+        tekin(1,1) = 0.5d0 * (3.d0 * natoms_1 - ct) * 8.617d-5
+     . * tt(1,1)
+        tekin(1,2) = 0.5d0 * (3.d0 * (natoms-natoms_1) - ct) * 8.617d-5
+     . * tt(1,2) 
+        fovermp = 0.009579038
+      else
+C  convert target temperature into target kinetic energy
+C  Ekin=1/2*(3N-3)*kB*Temp  (yields Ekin in Ry if Temp is in Kelvin)
+        tekin(1,1) = eV * 0.5d0 * (3.d0 * natoms_1 - ct) * 8.617d-5
+     . * tt(1,1)
+        tekin(1,2) = eV * 0.5d0 * (3.d0 * (natoms-natoms_1) - ct) 
+     . * 8.617d-5 * tt(1,2)
+C  convert F/m in (Ry/Bohr)/amu  to  Bohr/fs**2
+        fovermp = 0.009579038 * Ang**2 / eV
+      endif
+
+C  calculate cell volume at current time
+      vol = volcel( h )
+C ........................
+
+C Compute Parrinello-Rahman variables (H and scaled coordinates)
+C ............
+C Compute Inverse of H at current time 
+      call inver(h,hi,3,3,info)
+      if (info .ne. 0) call die('anneal: INVER failed')
+
+C Calculate scaled coordinates (referred to matrix H) at current time
+      do ia = 1,natoms
+         s(1:3,ia) = matmul(hi,xa(1:3,ia))
+      enddo
+
+C Initialize variables if current time step is the first of the
+C simulation
+      if (istep .eq. 1) then
+        do ia = 1,natoms
+           xaold(1:3) = xa(1:3,ia) - dt*va(1:3,ia)
+     $          + (dt2/2.0_dp) * fovermp * fa(1:3,ia) / ma(ia)
+           sold(1:3,ia) = matmul(hi,xaold(1:3))
+        enddo
+      endif
+C ..................
+
+C Compute uncorrected next positions
+C .....................................
+      do ia = 1,natoms
+         xdum(1:3) =  (dt2*fovermp/ma(ia)) * matmul(hi,fa(1:3,ia))     
+         sunc(1:3,ia) = -sold(1:3,ia) + 2.0_dp*s(1:3,ia) + xdum(:)
+      enddo
+C ...................
+
+C Calculate uncorrected velocities at current time
+      sdot = (sunc - sold) / twodt
+
+!Aqui hemos de separar para cada subsistem
+      vol2=vol/2        !volumen para cada subsistema (vcell/2) 
+
+!********SISTEMA 1*********! 
+      press_1 = 0.0_dp
+      do ia = 1,natoms_1
+        hs(1:3) = matmul(h,sdot(1:3,ia))
+        do j = 1,3
+          do i = 1,3
+          press_1(i,j) = press_1(i,j) + ma(ia) * hs(i) * hs(j)/ fovermp
+          enddo
+        enddo
+      enddo
+      pgas = 0.0d0
+      do i = 1,3
+        pgas = pgas + press_1(i,i) / vol2
+      enddo
+      pgaso(1,1) = pgas / 3.0d0
+!********SISTEMA 2*********!
+      press_2 = 0.0_dp
+      do ia = 1+natoms_1,natoms
+        hs(1:3) = matmul(h,sdot(1:3,ia))
+        do j = 1,3
+          do i = 1,3
+      press_2(i,j) = press_2(i,j) + ma(ia) * hs(i) * hs(j) / fovermp
+          enddo
+        enddo
+      enddo
+      pgas = 0.0d0
+      do i = 1,3
+        pgas = pgas + press_2(i,i) / vol2
+      enddo
+      pgaso(1,2) = pgas / 3.0d0
+
+      do j = 1,3
+         do i = 1,3
+	press(i,j)=press_1(i,j)+press_2(i,j)
+         enddo
+      enddo
+      press(1:3,1:3) = press(1:3,1:3)/vol - stress(1:3,1:3)
+
+C Compute internal pressure  (pressin = 1/3 Tr (press))   at current time
+      pressin = 0.0d0
+      do i = 1,3
+        pressin = pressin + press(i,i)
+      enddo
+      pressin = pressin / 3.0d0
+
+      kin(1,1) = (3.0d0 / 2.0d0) * pgaso(1,1) * vol2
+      if (IOnode) then
+        write(*,*) 'Anneal: Kinetic Energy zone 1 = ', kin(1,1)
+      endif
+      kin(1,2) = (3.0d0 / 2.0d0) * pgaso(1,2) * vol2
+      if (IOnode) then
+         write(*,*) 'Anneal: Kinetic Energy zone 2 = ', kin(1,2)
+      endif
+
+
+C Correct velocities to reach target termperature
+      if (kin(1,1) .eq. 0.0) then
+        rfac2 = 1.0d0 + dt/taurelax
+      else
+        rfac2 = (1.0d0 + dt/taurelax * (tekin(1,1)/kin(1,1) -1.0d0))
+      endif
+      if (IOnode) then
+         write(*,*) 'Anneal: atoms zone 1', natoms_1
+         write(*,*) 'Anneal: rfac2 factor zone 1 = ', rfac2
+         write(*,*) 'Anneal: target Ekin (1,1)',tekin(1,1)
+      endif
+      if (rfac2 .le. 0.0) call die('Wrong anneal parameter')
+      rfac = sqrt(rfac2)
+      sdot(1:3,1:natoms_1) = rfac * sdot(1:3,1:natoms_1)
+
+
+      if (kin(1,2) .eq. 0.0) then
+        rfac2 = 1.0d0 + dt/taurelax
+      else
+        rfac2 = (1.0d0 + dt/taurelax * (tekin(1,2)/kin(1,2) -1.0d0))
+      endif
+      if (IOnode) then
+         write(*,*) 'Anneal: atoms zone 1', natoms_1
+        write(*,*) 'Anneal: rfac2 factor zone 2 = ', rfac2
+        write(*,*) 'Anneal: target Ekin (1,2)',tekin(1,2)
+      endif
+      if (rfac2 .le. 0.0) call die('Wrong anneal parameter')
+      rfac = sqrt(rfac2)
+      sdot(1:3,natoms_1+1:natoms) = rfac * sdot(1:3,natoms_1+1:natoms)
+
+C Compute again pressure with corrected velocities 
+      press_1 = 0.0_dp
+      do ia = 1,natoms_1
+        hs(1:3) = matmul(h,sdot(1:3,ia))
+        do j = 1,3
+          do i = 1,3
+          press_1(i,j) = press_1(i,j) + ma(ia) * hs(i) * hs(j) / fovermp
+          enddo
+        enddo
+      enddo
+      pgas = 0.0d0
+      do i = 1,3
+        pgas = pgas + press_1(i,i) / vol2
+      enddo
+      pgaso(1,1) = pgas / 3.0d0
+!********SISTEMA 2*********!
+      press_2 = 0.0_dp
+      do ia = 1+natoms_1,natoms
+        hs(1:3) = matmul(h,sdot(1:3,ia))
+        do j = 1,3
+          do i = 1,3
+          press_2(i,j) = press_2(i,j) + ma(ia) * hs(i) * hs(j) / fovermp
+          enddo
+        enddo
+      enddo
+      pgas = 0.0d0
+      do i = 1,3
+        pgas = pgas + press_2(i,i) / vol2
+      enddo
+      pgaso(1,2) = pgas / 3.0d0
+
+      do j = 1,3
+         do i = 1,3
+	press(i,j)=press_1(i,j)+press_2(i,j)
+         enddo
+      enddo
+      press(1:3,1:3) = press(1:3,1:3)/vol - stress(1:3,1:3)
+ 
+C Compute internal pressure  (pressin = 1/3 Tr (press))   at current time
+      pressin = 0.0
+      do i = 1,3
+        pressin = pressin + press(i,i)
+      enddo
+      pressin = pressin / 3.0d0
+
+C Correct new possitions according to corrected velocities
+      snew = sold + twodt * sdot
+C Save current atomic positions as old ones, 
+C   and next positions as current ones
+      sold = s
+      s = snew
+C Transform back to absolute coordinates 
+      do ia = 1,natoms
+         xa(:,ia) = matmul(h,s(:,ia))
+         va(:,ia) = matmul(h,sdot(:,ia))
+      enddo
+C ....................
+C Calculate Kinetic and potential energies
+C ................................
+C Kinetic energy of atoms 
+      kin(1,1) = (3.0d0 / 2.0d0) * pgaso(1,1) * vol2
+      kin(1,2) = (3.0d0 / 2.0d0) * pgaso(1,2) * vol2
+
+C Instantaneous temperature (Kelvin)
+      if (iunit .eq. 1) then
+        temp(1,1) = 3.0d0*vol2*pgaso(1,1)/(3.0d0*natoms_1-ct)/8.617d-5
+        temp(1,2) = 3.0d0*vol2*pgaso(1,2)/(3.0d0*(natoms-natoms_1)
+     .   -ct)/8.617d-5
+      else
+        temp(1,1) = 3.0d0*vol2*pgaso(1,1)/(3.0d0*natoms_1-ct)
+     .   /8.617d-5/eV
+        temp(1,2) = 3.0d0*vol2*pgaso(1,2)/(3.0d0*(natoms-natoms_1)-ct)
+     .   /8.617d-5/eV
+      endif
+        if (IOnode) then
+      if ((istep .eq. 1) .or. (mod(istep,20) .eq. 0 )) then 
+        open (unit=100,file="Vresc.txt",action="write",
+     .  position='append')
+        write(100,*), 'MD step',istep
+        do i=1,natoms
+          write(100,*) va(:,i)
+        enddo
+        close(100)
+      endif
+        endif
+C .....................
+C Deallocate local memory
+      call memory('D','D',size(s),'anneal')
+      deallocate(s)
+      call memory('D','D',size(sdot),'anneal')
+      deallocate(sdot)
+      call memory('D','D',size(snew),'anneal')
+      deallocate(snew)
+      call memory('D','D',size(sunc),'anneal')
+      deallocate(sunc)
+      end subroutine anneal3
+
+      end module m_dynamics

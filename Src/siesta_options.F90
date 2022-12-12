@@ -86,10 +86,12 @@ MODULE siesta_options
   integer :: ianneal       ! Annealing option read in redata and passed to anneal
   integer :: idyn          ! Geommetry relaxation/dynamics option
   integer :: ifinal        ! Last geommetry iteration step for some types of dynamics
+  integer :: ifinal_baths(1,2)
   integer :: ioptlwf       ! Order-N functional option read in redata used in ordern
   integer :: iquench       ! Quenching option, read in redata, used in dynamics routines
   integer :: isolve        ! Option to find density matrix: 0=>diag, 1=>order-N
   integer :: istart        ! First geommetry iteration step for certain types of dynamics
+  integer :: istart_baths(1,2)
   integer :: maxsav        ! Number of previous density matrices used in Pulay mixing
   integer :: broyden_maxit ! Max. iterations in Broyden geometry relaxation
   integer :: mullipop      ! Option for Mulliken population level of detail
@@ -116,6 +118,7 @@ MODULE siesta_options
   real(dp) :: ftol          ! Force tolerance to stop geometry relaxation
   real(dp) :: g2cut         ! Required planewave cutoff of real-space integration mesh
   real(dp) :: mn            ! Mass of Nose thermostat
+  real(dp) :: mn_baths(1,2) ! Mass of Nose thermostats
   real(dp) :: mpr           ! Mass of Parrinello-Rahman variables
   real(dp) :: occtol        ! Occupancy threshold to build DM
   real(dp) :: rcoor         ! Cutoff radius of Localized Wave Functions in ordern
@@ -125,15 +128,16 @@ MODULE siesta_options
   real(dp) :: taurelax      ! Relaxation time to reach desired T and P in anneal
   real(dp) :: temp          
   real(dp) :: tempinit      ! Initial ionic temperature read in redata
+  real(dp) :: tempinit_baths(1,2) !Temperature baths
   real(dp) :: tp            ! Target pressure. Read in redata. Used in dynamics routines
   real(dp) :: ts            ! Total spin read from redata but not used
+  real(dp) :: tt_baths(1,2) ! Target temperature of each bath 
   real(dp) :: tt            ! Target temperature. Read in redata. Used in dynamics rout.
   real(dp) :: wmix          ! Mixing weight for DM in SCF iteration
   real(dp) :: wmixkick       ! Mixing weight for DM in special 'kick' SCF steps
-
   character(len=150) :: sname   ! System name, used to initialise read
-
-
+  character(len=150) :: sys_prep_op !type of system preparation (nose/vresc)
+  logical :: TwoBaths_op
   ! g2max_default : Mesh cutoff default, in Ry
   ! temp_default  : Electronic temperature default, in Ry
 
@@ -166,7 +170,6 @@ MODULE siesta_options
   real(dp), parameter :: taurelax_default = 1.0e2_dp        ! fs
   real(dp), parameter :: bulkm_default = 100*6.79773e-5_dp  ! 100 GPa
   real(dp), parameter :: dx_default = 0.04_dp               ! Bohr
-
 
       CONTAINS
 
@@ -1008,6 +1011,9 @@ MODULE siesta_options
       idyn = 7
     else if (leqi(dyntyp,'forces')) then
       idyn = 8
+    else if (leqi(dyntyp,'twobaths')) then
+      idyn = 9
+      TwoBaths_op=.true.
     else
       call die('Invalid Option selected - value of MD.TypeOfRun not recognised')
     endif
@@ -1160,14 +1166,51 @@ MODULE siesta_options
                                 name  = 'MD.TypeOfRun',     &
                                 value = 'Force Evaluation' )
         endif
+      case(9) 
+        write(6,2) 'redata: Dynamics option                  =     Two'//&
+                'temperature systems'
+        if (cml_p) then
+          call cmlAddParameter( xf    = mainXML,            &
+                                name  = 'MD.TypeOfRun',     &
+                                value = 'twobaths' )
+        endif
+
       end select
     endif
 
-    ! Initial and final time steps for MD
-    call fdf_global_get(istart,'MD.InitialTimeStep',1)
-    call fdf_global_get(ifinal,'MD.FinalTimeStep',1)
+    ! System preparation in two-baths
+    if (TwoBaths_op .eqv. .true.) then
+        call fdf_global_get(sys_prep_op,'MD.System_prep','Verlet')
+        if (ionode) then
+            write(6,2) 'redata: Dynamics option twobaths  =  ',sys_prep_op
+        endif
+        if (cml_p) then
+            call cmlAddParameter( xf    =mainXML,        &
+                                  name  ='MD.System_prep', &
+                                  value =sys_prep_op )
+        endif
+        if ((leqi(sys_prep_op,'Vresc')) .or. (leqi(sys_prep_op,'Nose')) .or. &
+      (leqi(sys_prep_op,'Verlet'))) then
 
-    ! Length of time step for MD
+        else
+         call die('Invalid Option selected - value of MD.System_prep'//&
+                 'not recognised')
+        endif
+    endif
+
+    ! Initial and final time steps for MD
+    if (TwoBaths_op .eqv. .true.) then
+        ! system preparation
+        call fdf_global_get(istart_baths(1,1),'MD.InitialTimeStep_Bath',1)
+        call fdf_global_get(ifinal_baths(1,1),'MD.FinalTimeStep_Bath',1)
+        ! Verlet relaxation (final process)
+        call fdf_global_get(istart_baths(1,2),'MD.InitialTimeStep_relax',1)
+        call fdf_global_get(ifinal_baths(1,2),'MD.FinalTimeStep_relax',1)
+    else
+        call fdf_global_get(istart,'MD.InitialTimeStep',1)
+        call fdf_global_get(ifinal,'MD.FinalTimeStep',1)
+    endif
+
     call fdf_global_get(dt,'MD.LengthTimeStep',dt_default,'fs')
 
     ! Quench Option
@@ -1189,8 +1232,57 @@ MODULE siesta_options
     ! Initial Temperature of MD simulation
     ! (draws random velocities from the Maxwell-Boltzmann distribition
     !  at the given temperature)
+      if (TwoBaths_op .eqv. .true.) then !Read Ionics temperatures
+      call fdf_global_get(tempinit_baths(1,1),'MD.InitialTemperature_1',0.0_dp,'K')
+      call fdf_global_get(tempinit_baths(1,2),'MD.InitialTemperature_2',0.0_dp,'K')
+    else
     call fdf_global_get(tempinit, 'MD.InitialTemperature',0.0_dp,'K')
+    endif
 
+     if (TwoBaths_op .eqv. .true.) then
+                if (ionode) then
+             write(6,4) 'redata: Initial MD bath time step         ='&
+                ,istart_baths(1,1)
+             write(6,4) 'redata: Final MD bath time step           ='&
+                ,ifinal_baths(1,1)
+             write(6,4) 'redata: Initial MD relax time step        ='&
+                ,istart_baths(1,2)
+             write(6,4) 'redata: Final MD relax time step          ='&
+                ,ifinal_baths(1,2)
+             write(6,6) 'redata: Length of MD time step            ='&
+                ,dt,'  fs'
+                    write(6,6) 'redata: Initial temperature zone 1 ='&
+                ,tempinit_baths(1,1),'  K'
+                    write(6,6) 'redata: Initial temperature zone 2 ='&
+                ,tempinit_baths(1,2),'  K'
+                if (cml_p) then 
+                   call cmlAddParameter( xf=mainXML,                  &
+                                      name='MD.InitialTimeStep_Bath',&
+                                      value=istart_baths(1,1),              &
+                                      units='siestaUnits:countable' )
+                   call cmlAddParameter( xf=mainXML,                  &
+                                      name='MD.FinalTimeStep_Bath',&
+                                      value=ifinal_baths(1,1),              &
+                                      units='siestaUnits:countable' )
+                   call cmlAddParameter( xf=mainXML,                  &
+                                      name='MD.InitialTimeStep_relax',&
+                                      value=istart_baths(1,2),              &
+                                      units='siestaUnits:countable' )
+                   call cmlAddParameter( xf=mainXML,                  &
+                                      name='MD.FinalTimeStep_relax',&
+                                      value=ifinal_baths(1,2),              &
+                                      units='siestaUnits:countable' )
+                    call cmlAddParameter( xf=mainXML,                  &
+                                      name='MD.InitialTemperature_1',&
+                                      value=tempinit_baths(1,1),              &
+                                      units='siestaUnits:K' )
+                   call cmlAddParameter( xf=mainXML,                  &
+                                      name='MD.InitialTemperature_2',&
+                                      value=tempinit_baths(1,2),              &
+                                      units='siestaUnits:K' )
+                endif
+        endif
+    else
     if (idyn .ge. 1 .and. idyn .le. 5) then
       if (ionode) then
         write(6,4) 'redata: Initial MD time step             = ',istart
@@ -1239,33 +1331,82 @@ MODULE siesta_options
         endif
       endif
     endif
+        endif
 
     ! Target Temperature and Pressure
+    if (TwoBaths_op .eqv. .true.) then
+        call fdf_global_get(tt_baths(1,1),'MD.TargetTemperature_1',0.0_dp,'K')
+        call fdf_global_get(tt_baths(1,2),'MD.TargetTemperature_2',0.0_dp,'K')
+    else
     call fdf_global_get(tt,'MD.TargetTemperature',0.0_dp,'K')
+    endif
     call fdf_global_get(tp,'MD.TargetPressure',0.0_dp,'Ry/Bohr**3')
 
 
     ! Mass of Nose variable
+    if ((TwoBaths_op .eqv. .true.) .and. (leqi(sys_prep_op,'Nose'))) then
+        call fdf_global_get(mn_baths(1,1),'MD.NoseMass_1',mn_default,'Ry*fs**2')
+        call fdf_global_get(mn_baths(1,2),'MD.NoseMass_2',mn_default,'Ry*fs**2')
+    else
     call fdf_global_get(mn,'MD.NoseMass',mn_default,'Ry*fs**2')
+    endif
 
     ! Mass of Parrinello-Rahman variables
     call fdf_global_get(mpr, 'MD.ParrinelloRahmanMass',mpr_default,'Ry*fs**2')
 
+    if (TwoBaths_op .eqv. .true.) then
+                if (ionode) then
+                write(6,6) 'redata: Target Temperature 1 of MD run  ='&
+                ,tt_baths(1,1),'  K'
+                write(6,6) 'redata: Target Temperature 2 of MD run  ='&
+                ,tt_baths(1,2),'  K'
+                    if (leqi(sys_prep_op,'Nose')) then
+                write(6,6) 'redata: Nose mass 1                     ='&
+                ,mn_baths(1,1),'  Ry/fs**2'
+                write(6,6) 'redata: Nose mass 2                     ='&
+                ,mn_baths(1,2),'  Ry/fs**2'
+                    endif
+                if (cml_p) then
+          !       if (leqi(sys_prep_op,'Nose')) then 
+          !        call cmlAddParameter( xf    = mainXML,              &
+          !                            name  = 'MD.NoseMass_1',        &
+          !                            value = mn_baths(1,1),                   &
+          !                            units = 'siestaUnits:Ry_fs__2')
+          !        call cmlAddParameter( xf    = mainXML,              &
+          !                            name  = 'MD.NoseMass_2',        &
+          !                            value = mn_baths(1,2),                   &
+          !                            units = 'siestaUnits:Ry_fs__2')
+          !       endif
+                  call cmlAddParameter( xf    = mainXML,                &
+                                      name  = 'MD.TargetTemperature_1', &
+                                      value = tt_baths(1,1), &
+                                      units = 'siestaUnits:K' )
+                  call cmlAddParameter( xf    = mainXML,                &
+                                      name  = 'MD.TargetTemperature_2', &
+                                      value = tt_baths(1,2),&
+                                      units = 'siestaUnits:K' )
+                endif
+        endif
+    else
     if (idyn==2 .or. idyn==4) then
       if (ionode) then
-        write(6,6) 'redata: Nose mass                        = ',mn,'  Ry/fs**2'
-      endif
-      if (cml_p) then
+       write(6,6) 'redata: Target Temperature of MD run    = ',tt,'  K'
+        write(6,6) 'redata: Nose mass            = ',mn,'  Ry/fs**2'
+      
+        if (cml_p) then
         call cmlAddParameter( xf    = mainXML,              &
                               name  = 'MD.NoseMass',        &
                               value = mn,                   &
                               units = 'siestaUnits:Ry_fs__2')
       endif
     endif
+    endif
+    endif
 
     if (idyn==3 .or. idyn==4) then
       if (ionode) then
-        write(6,6) 'redata: Parrinello-Rahman mass           = ',mpr,'  Ry/fs**2'
+        write(6,6) 'redata: Parrinello-Rahman mass           = '&
+                ,mpr,'  Ry/fs**2'
       endif
       if (cml_p) then
         call cmlAddParameter( xf    = mainXML,                   &
@@ -1274,8 +1415,8 @@ MODULE siesta_options
                               units = 'siestaUnits:Ry_fs__2' )
       endif
     endif
-
-    ! Annealing option
+    
+! Annealing option
     ianneal = 0
     call fdf_global_get( annop, 'MD.AnnealOption','TemperatureAndPressure' )
 
@@ -1294,7 +1435,7 @@ MODULE siesta_options
       if (ionode) then
         select case (ianneal)
         case(1)
-          write(6,2) 'redata: Annealing Option                 = Temperature'
+          write(6,2) 'redata: Annealing Option  = Temperature'
           if (cml_p) then
             call cmlAddParameter( xf    = mainXML,           &
                                   name  = 'MD.AnnealOption', &
@@ -1302,7 +1443,7 @@ MODULE siesta_options
           endif
 
         case(2)
-          write(6,2) 'redata: Annealing Option                 = Pressure'
+          write(6,2) 'redata: Annealing Option     = Pressure'
           if (cml_p) then
             call cmlAddParameter( xf    = mainXML,           &
                                   name  = 'MD.AnnealOption', &
@@ -1310,8 +1451,7 @@ MODULE siesta_options
           endif
 
         case(3)
-          write(6,2) 'redata: Annealing Option                 = '//&
-                     'Temperature and Pressure'
+          write(6,2) 'redata: Annealing Option= Temperature and Pressure'
           if (cml_p) then
             call cmlAddParameter( xf    = mainXML,                &
                                   name  = 'MD.AnnealOption',      &
@@ -1337,7 +1477,8 @@ MODULE siesta_options
 
     if (idyn==3 .or. idyn==4 .or. (idyn==5 .and. (ianneal==2 .or. ianneal==3))) then
       if (ionode) then
-        write(6,6) 'redata: Target Pressure                  = ', tp, '  Ry/Bohr**3'
+        write(6,6) 'redata: Target Pressure                  = '&
+                 ,tp, '  Ry/Bohr**3'
       endif
 
       if (cml_p) then
@@ -1352,7 +1493,8 @@ MODULE siesta_options
     call fdf_global_get( taurelax, 'MD.TauRelax',taurelax_default,'fs' )
     if (idyn==5) then
       if (ionode) then
-        write(6,6) 'redata: Annealing Relaxation Time        = ', taurelax,'  fs'
+        write(6,6) 'redata: Annealing Relaxation Time        = '&
+                 ,taurelax,'  fs'
       endif
       if (cml_p) then
         call cmlAddParameter( xf    = mainXML,          &
@@ -1361,7 +1503,22 @@ MODULE siesta_options
                               units = 'siestaUnits:fs' )
       endif
     endif
-
+    if ((TwoBaths_op .eqv. .true.) .and. (leqi(sys_prep_op,'Vresc'))) then
+       if (ionode) then
+         write(6,6) 'redata: Vresc Relaxation Time        = '&
+                 ,taurelax,'  fs'
+       if (cml_p) then
+        call cmlAddParameter( xf    = mainXML,          &
+                              name  = 'MD.TauRelax',    &
+                              value = taurelax,         &
+                              units = 'siestaUnits:fs' )
+        call cmlAddParameter( xf=mainXML,                     &
+                              name= 'MD.TargetPressure',      &
+                              value= tp,                      &
+                              units= 'siestaUnits:Ry_Bohr__3' )
+       endif
+     endif
+        endif
     ! Estimated Bulk modulus (for Pressure annealing)
     call fdf_global_get( bulkm, 'MD.BulkModulus',bulkm_default,'Ry/Bohr**3' )
     if (ionode) then

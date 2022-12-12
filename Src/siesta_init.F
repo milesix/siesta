@@ -59,7 +59,6 @@
 #ifdef MPI
       integer :: MPIerror  ! Return error code in MPI routines
 #endif
-
       real(dp):: veclen     ! Length of a unit-cell vector
 
 
@@ -68,6 +67,7 @@
       integer :: ns          ! Number of species
 
       logical :: user_wants_supercell
+      
 
 !------------------------------------------------------------------------- BEGIN
 ! Initialise MPI and set processor number
@@ -357,7 +357,6 @@
 
 ! Initialise metadynamic forces if required
       call initmeta()
-
       if (idyn .eq. 0) then
         inicoor = 0
         fincoor = nmove
@@ -374,13 +373,37 @@
       else if (idyn .eq. 8) then
         inicoor = 0
         fincoor = huge(1)
+      else if (idyn .eq. 9) then
+        inicoor_bath = istart_baths(1,1)   !time initializing for Nose/Vresc
+        inicoor_Verlet = istart_baths(1,2)   !time initializing for Verlet
+        fincoor_bath = ifinal_baths(1,1)   !end time for Nose/Vresc
+        fincoor_Verlet = ifinal_baths(1,2)   !end time for Verlet
+        sys_prep = sys_prep_op 
+	TwoBaths = TwoBaths_op
       else
          call die('siesta: wrong idyn')
       endif
 
+
+
 ! Build initial velocities according to Maxwell-Bolzmann distribution....
-      if (idyn .ne. 0 .and. idyn .ne. 6 .and. (.not. xv_file_read)) 
+        if (idyn .eq. 9) then 
+        !Let's calculate the number of atoms in each zone (assuming
+        !ordered input)
+        natoms_1=0
+                DO i=1,na_u
+                        if (xa(3,i) .lt. scell(3,3)/2 ) then 
+                                natoms_1=natoms_1+1
+                        endif
+                ENDDO
+	write(*,*),'siesta_init: natoms_1',natoms_1
+          if (.not. xv_file_read) then 
+           call vmb2(na_u, tempinit_baths, amass, xa, isa, va, natoms_1)
+           endif
+        else
+         if (idyn .ne. 0 .and. idyn .ne. 6 .and. (.not. xv_file_read)) 
      .    call vmb(na_u,tempinit,amass,xa,isa,va)
+        endif
 ! ..................
 
       istp = 0

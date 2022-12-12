@@ -39,6 +39,9 @@
       integer:: nbcell  ! Auxiliary to call shaper routine
 
       character(len=22) :: dyntyp
+
+      character(len=22) :: twobaths
+
       character(len=60) :: restart_file
       logical :: found_restart, step_back
 
@@ -102,6 +105,42 @@
 
          call fdf_global_get(istart,'MD.InitialTimeStep',1)
          call fdf_global_get(ifinal,'MD.FinalTimeStep',1)
+	 call fdf_global_get(dyntyp,'MD.TypeOfRun','CG')
+
+
+!**********TWOBATHS
+        if ((leqi(dyntyp,'TwoBaths')) .and. foundxv) then
+          call fdf_global_get(twobaths,'MD.System_prep','Verlet')
+          if (foundxv .and. (ifinal-istart>0)) then
+           step_back=.true.
+           if (leqi(twobaths,'Verlet')) then
+             restart_file = trim(slabel) // '.VERLET_RESTART'
+           else
+             step_back=.false.
+           endif
+           if (step_back) then
+              if (IOnode) then
+                 inquire( file=restart_file, exist=found_restart )
+              endif
+              call broadcast(found_restart)
+             if (.not. found_restart) then
+               call fdf_global_get(dt,'MD.LengthTimeStep',
+     $                             dt_default,'fs')
+               xa=xa-dt*va
+               if (IOnode) then
+                  write(6,'(5a)') 'WARNING: twobaths restart',
+     $                            trim(restart_file),'not-found',
+     $                           ' reading only XV file',
+     $                           ' and moving back 1 time step using',
+     $                           ' Euler'
+               endif
+             endif
+           endif
+          endif
+        goto 100
+        endif
+!**********TWOBATHS
+
          if (foundxv .and. (ifinal-istart>0)) then
            call fdf_global_get(dyntyp,'MD.TypeOfRun','CG')
            step_back=.true.
@@ -136,6 +175,7 @@
          endif
       endif
 ! ..................
+100   continue
 
 ! Read cell shape and atomic positions from driver program through pipe
       call fdf_global_get(dummy_str,'MD.TypeOfRun',"none")

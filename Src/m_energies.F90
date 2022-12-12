@@ -18,6 +18,7 @@ module m_energies
   real(dp):: Eions      ! Self-energy of isolated ions
   real(dp):: Ekin       ! Kinetic energy of electrons,  calculated in kinefsm
   real(dp):: Ekinion    ! Kinetic energy of ions
+  real(dp):: Ekinion_sys(1,2)    ! Kinetic energy of ions for two baths
   real(dp):: Elast      ! Total energy in the previous SCF  iteration
   real(dp):: Emad       ! Madelung energy term, calculated in  madelung
   real(dp):: Ena        ! Neutral-atom term in the total energy,  calculated in naefs
