@@ -37,7 +37,20 @@ set(install_prefix "${CMAKE_CURRENT_BINARY_DIR}/install")
 message(STATUS " --- Entering External/BigDFT")
 
 message(STATUS "LAPACK_LIBRARY: ${LAPACK_LIBRARY}")
-message(STATUS "MPI_Fortran_COMPILER: ${MPI_Fortran_COMPILER}")
+if(WITH_MPI)
+  message(STATUS "MPI_Fortran_COMPILER: ${MPI_Fortran_COMPILER}")
+else()
+  set(MPI_Fortran_COMPILER "${CMAKE_Fortran_COMPILER}")
+endif()
+
+if(WITH_OPENMP)
+  set(config_flags "--with-openmp") 
+else()
+  set(config_flags "--with-openmp=no") 
+endif()
+
+
+
 
 find_program(MAKE_EXECUTABLE NAMES gmake make mingw32-make REQUIRED)
 
@@ -47,7 +60,7 @@ ExternalProject_Add(yaml
  CONFIGURE_HANDLED_BY_BUILD true
  CONFIGURE_COMMAND <SOURCE_DIR>/configure
                    CC=${CMAKE_C_COMPILER}
-		   ${config_flags} --enable-shared=no --prefix=${install_prefix}
+		   --enable-shared=no --prefix=${install_prefix}
  BUILD_COMMAND ${MAKE_EXECUTABLE} -j
  INSTALL_COMMAND ${MAKE_EXECUTABLE} -j install
  TEST_COMMAND ""
