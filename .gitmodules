@@ -13,3 +13,18 @@
 [submodule "External/Lua-Engine/flook"]
 	path = External/Lua-Engine/flook
 	url = https://github.com/ElectronicStructureLibrary/flook.git
+[submodule "External/DFTD3/s-dftd3"]
+	path = External/DFTD3/s-dftd3
+	url = https://github.com/dftd3/simple-dftd3.git
+[submodule "External/DFTD3/mctc-lib"]
+	path = External/DFTD3/mctc-lib
+	url = https://github.com/grimme-lab/mctc-lib
+[submodule "External/DFTD3/mstore"]
+	path = External/DFTD3/mstore
+	url = https://github.com/grimme-lab/mstore
+[submodule "External/DFTD3/toml-f"]
+	path = External/DFTD3/toml-f
+	url = https://github.com/toml-f/toml-f
+[submodule "External/DFTD3/test-drive"]
+	path = External/DFTD3/test-drive
+	url = https://github.com/fortran-lang/test-drive

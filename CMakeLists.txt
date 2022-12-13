@@ -48,6 +48,8 @@ option(WITH_OPENMP "Build Siesta and TBTrans with OpenMP support" FALSE)
 option(WITH_ELPA "Use the ELPA library (direct interface)" FALSE)
 option(WITH_LUA "Use the flook library for Lua scripting" FALSE)
 
+option(WITH_DFTD3 "Include support for DFT-D3" FALSE)
+
 # 
 option(BUILD_DOCS "Create Doxygen-based documentation (wip)" FALSE)
 #--------------------------------------
@@ -175,6 +177,10 @@ endif()
 
 if (NOT TARGET libgridxc::libgridxc)
   include(search_for_gridxc)
+endif()
+
+if ( WITH_DFTD3 )
+ add_subdirectory("External/DFTD3")
 endif()
 
 # Search for flook

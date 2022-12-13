@@ -11,32 +11,6 @@ that must be installed before Siesta can be compiled. Depending on the
 needs and experience of the user, several modes of operation are
 available.
 
-_Experimental_) SPACK packages are available in Config/spack_package_defs
-
-   After setting up spack and defining compilers, etc, a user can simply install
-   a new repo with the 'siesta-project' namespace:
-
-     spack repo add /path/to/spack_package_defs
-
-   and issue commands such as:
-
-     spack install xmlf90
-     spack info siesta
-     spack spec siesta +mpi +netcdf +libxc +elpa
-     spack install siesta -mpi build_type=Debug
-
-   Note that the spack builtin repo *might have* other Siesta-related
-   recipes prepared in the past by other members of the community.
-   By making sure that the 'siesta-project' repo is listed first in the
-   spack repository chain, those can be avoided. Check:
-
-     spack repo list
-     
-   At this point, the spack recipes pull sources from development
-   branches of Siesta, without a well-defined source id. This is
-   a temporary situation during the final stages of development of
-   the CMake framework and the update of the dependency libraries.
-   
 A) Installation on-the-fly, using git submodules for the external
 libraries.
 
@@ -52,6 +26,11 @@ libraries.
   where <path> is the path to the submodule. Leave out '<path>' to
   enable all submodules.
 
+  Other optional libraries might be also available as submodules. In
+  particular, those implementing the DFT-D3 functionality can be
+  loaded in External/DFTD3, and flook (to enable the Lua engine) in
+  External/Lua-Engine/flook.
+
   (If you plan to compile Siesta in a system without internet access
    (e.g. MareNostrum), you can use the 'stage_submodules.sh' script
    in the top level of the distribution to gather all the source files
@@ -65,7 +44,8 @@ libraries.
   cmake -S. -GNinja -B_build -DCMAKE_INSTALL_PREFIX=/path/to/installation
   cmake --build _build
     
-  (Optionally followed by  '-- -j 1 -v'  for more info)
+  (Optionally followed by  '-- -j N'  for parallel build)
+  (Optionally followed by  '-- -j 1 -v'  for detailed info and log)
   (Optionally followed by  '-- target'  to build a specific target)
 
   cmake --install _build
@@ -173,6 +153,10 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
                   FLOOK_ROOT or a CMake variable (-DFLOOK_ROOT=/path/to/flook),
 		  or by adding $FLOOK_ROOT to CMAKE_PREFIX_PATH.
 
+      - WITH_DFTD3: The required libraries can be compiled automatically
+                    from code in submodules. Otherwise add $DFTD3_ROOT to
+		    CMAKE_PREFIX_PATH.
+
 * Handling of compiler flags
 
   For Intel and GNU compilers, a set of default flags for the
@@ -236,4 +220,31 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
       
 (Thanks to DFTB+ and other projects for ideas and support files)
 
+
+_Experimental_) SPACK packages are available in Config/spack_package_defs
+
+   After setting up spack and defining compilers, etc, a user can simply install
+   a new repo with the 'siesta-project' namespace:
+
+     spack repo add /path/to/spack_package_defs
+
+   and issue commands such as:
+
+     spack install xmlf90
+     spack info siesta
+     spack spec siesta +mpi +netcdf +libxc +elpa
+     spack install siesta -mpi build_type=Debug
+
+   Note that the spack builtin repo *might have* other Siesta-related
+   recipes prepared in the past by other members of the community.
+   By making sure that the 'siesta-project' repo is listed first in the
+   spack repository chain, those can be avoided. Check:
+
+     spack repo list
+     
+   At this point, the spack recipes pull sources from development
+   branches of Siesta, without a well-defined source id. This is
+   a temporary situation during the final stages of development of
+   the CMake framework and the update of the dependency libraries.
+   
  

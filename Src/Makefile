@@ -1,6 +1,6 @@
-# 
+#
 # Siesta/Src/Makefile
-# 
+#
 # Copyright (C) 1996-2021       The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
@@ -58,7 +58,7 @@ XC=$(GRIDXC_LIBS)
 
 INCFLAGS+= $(NETCDF_INCFLAGS)  $(PSML_INCFLAGS) $(NCPS_INCFLAGS) \
            $(PSOP_INCFLAGS) $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS) \
-           $(PEXSI_INCFLAGS) $(FDF_INCFLAGS) $(MS_INCFLAGS)
+           $(PEXSI_INCFLAGS) $(FDF_INCFLAGS) $(MS_INCFLAGS) $(DFTD3_INCFLAGS)
 INCFLAGS+= $(MPI_WRAPPERS_INCFLAGS)
 INCFLAGS+= $(FDICT_INCFLAGS) $(NCDF_INCFLAGS)
 #
@@ -249,6 +249,8 @@ OBJS += m_iterator.o m_pivot_array.o
 
 OBJS += dm_charge.o
 
+OBJS += grimme_dispersion_m.o
+
 # Pivot (of sparsity pattern) routines
 OBJS += m_pivot.o m_pivot_methods.o
 
@@ -288,7 +290,6 @@ FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 #
 #--------------------------------------------------------------
-
 m_initwf.o sankey_change_basis.o m_evolve.o cranknic_evolg.o cranknic_evolk.o: $(MS)
 wavefunctions.o m_matdiag.o m_matswinvers.o m_inversemm.o: $(MS)
 #--------------------------------------------------------------
@@ -391,13 +392,13 @@ libSiestaForces.a: $(MPI_INTERFACE) $(FDF_LIBS) $(MS) $(NCPS) $(PSOP) \
 #
 siesta: what version \
                 $(MPI_INTERFACE) $(FDF_LIBS) $(MS) $(NCPS) $(PSOP) \
-                $(COMP_LIBS) $(ALL_OBJS) 
+                $(COMP_LIBS) $(ALL_OBJS)
 	$(FC) -o siesta \
 	       $(LDFLAGS) $(ALL_OBJS) $(MS)  \
                $(XC) $(MPI_INTERFACE) \
                $(COMP_LIBS) \
 	       $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) \
-	       $(FDF_LIBS) $(LIBS)
+	       $(FDF_LIBS) $(DFTD3_LIBS) $(LIBS)
 	@echo "--- reference section "
 	@echo "PSML-related libs: $(PSML_LIBS)"
 	@echo "XMLf90 libs: $(XMLF90_LIBS)"
@@ -412,7 +413,7 @@ transiesta:
 	@echo " TranSiesta method is enabled in the siesta executable"
 	@echo ""
 
-clean: 
+clean:
 	@echo "==> Cleaning object, library, and executable files"
 	rm -f siesta *.o  *.a *.pcl *.pc
 	rm -f *.mod
@@ -427,7 +428,7 @@ clean:
 	(cd easy-ncdf ; $(MAKE) clean)
 	if [ -d MPI ] ; then (cd MPI && $(MAKE) \
                               ARCH_MAKE=$(ARCH_MAKE) clean ) ; fi
-	(cd Libs ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean ) 
+	(cd Libs ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean )
 	(cd MatrixSwitch/src ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean )
 
 PROGS:= siesta libSiestaForces.a
@@ -666,7 +667,7 @@ final_H_f_stress.o: m_ncdf_siesta.o m_ntm.o m_spin.o m_stress.o m_ts_io.o
 final_H_f_stress.o: m_ts_options.o metaforce.o molecularmechanics.o naefs.o
 final_H_f_stress.o: nlefsm.o overfsm.o parallel.o siesta_geom.o
 final_H_f_stress.o: siesta_options.o sparse_matrices.o spinorbit.o sys.o
-final_H_f_stress.o: ts_kpoint_scf.o units.o
+final_H_f_stress.o: ts_kpoint_scf.o units.o grimme_dispersion_m.o
 find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
 fire_optim.o: alloc.o m_fire.o m_mpi_utils.o parallel.o precision.o
 fire_optim.o: siesta_options.o units.o
@@ -686,6 +687,7 @@ gradient.o: alloc.o globalise.o m_mpi_utils.o onmod.o precision.o
 gradientlomem.o: alloc.o globalise.o onmod.o precision.o
 grdsam.o: alloc.o dhscf.o files.o m_mpi_utils.o m_partial_charges.o m_spin.o
 grdsam.o: parallel.o precision.o siesta_geom.o siesta_options.o sys.o units.o
+grimme_dispersion_m.o: alloc.o precision.o timer.o sys.o volcel.o
 hsparse.o: alloc.o atm_types.o atmfuncs.o atomlist.o dftu_specs.o listsc.o
 hsparse.o: mneighb.o parallel.o parallelsubs.o precision.o radial.o sorting.o
 hsparse.o: sparse_matrices.o
@@ -1226,6 +1228,7 @@ siesta_init.o: parallel.o parallelsubs.o projected_DOS.o reinit_m.o runinfo_m.o
 siesta_init.o: siesta_cmlsubs.o siesta_dicts.o siesta_geom.o siesta_options.o
 siesta_init.o: sparse_matrices.o spin_subs.o struct_init.o sys.o timer.o
 siesta_init.o: timestamp.o ts_init.o units.o version.o writewave.o zmatrix.o
+siesta_init.o: grimme_dispersion_m.o
 siesta_master.o: iopipes.o iosockets.o precision.o sys.o
 siesta_move.o: atomlist.o broyden_optim.o cell_broyden_optim.o
 siesta_move.o: cell_fire_optim.o dynamics.o fire_optim.o flook_siesta.o ioxv.o

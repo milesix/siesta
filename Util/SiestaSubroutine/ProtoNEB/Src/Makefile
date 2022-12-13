@@ -34,6 +34,7 @@ PSML=$(PSML_LIBS)
 #
 INCFLAGS+= $(FDF_INCFLAGS) 
 INCFLAGS+= $(MPI_WRAPPERS_INCFLAGS)
+INCFLAGS+= $(DFTD3_INCFLAGS)
 INCFLAGS+= $(SIESTA_LIB_INCFLAGS)
 #
 # The "Siesta library" is used by this MPI-based driver
@@ -43,7 +44,7 @@ SIESTA_LIB=$(MAIN_OBJDIR)/Src/libSiestaForces.a
 #
 ALL_LIBS= $(SIESTA_LIB) $(FDF_LIBS)  $(XC) \
 	$(NCPS) $(PSML) $(XMLF90_LIBS) $(PSOP) $(MS)\
-	$(MPI_INTERFACE) $(COMP_LIBS) $(LIBS)
+	$(MPI_INTERFACE) $(COMP_LIBS) $(DFTD3_LIBS) $(LIBS)
 #
 protoNEB: $(SIESTA_LIB) protoNEB.o handlers.o
 	$(FC) $(LDFLAGS) -o protoNEB \

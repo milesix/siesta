@@ -14,9 +14,9 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with s-dftd3.  If not, see <https://www.gnu.org/licenses/>.
 
-set(_lib "xmlf90")
-set(_pkg "XMLF90")
-set(_url "https://gitlab.com/siesta-project/libraries/xmlf90")
+set(_lib "s-dftd3")
+set(_pkg "S-DFTD3")
+set(_url "https://github.com/dftd3/simple-dftd3")
 set(_tag "cmake")
 
 if(NOT DEFINED "${_pkg}_FIND_METHOD")
@@ -30,7 +30,7 @@ endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/s-dftd3-utils.cmake")
 
-sdftd3_find_package("${_lib}" "${${_pkg}_FIND_METHOD}" "${_url}" "${_tag}" "${_lib}")
+sdftd3_find_package("${_lib}" "${${_pkg}_FIND_METHOD}" "${_url}" "${_tag}" "DFTD3/${_lib}")
 
 if(DEFINED "_${_pkg}_FIND_METHOD")
   unset("${_pkg}_FIND_METHOD")
