@@ -235,6 +235,18 @@ ifeq ($(WITH_FLOOK),1)
  COMP_LIBS += $(FDICT_LIBS)
 endif
 
+ifeq ($(WITH_PSOLVER),1)
+ ifndef PSOLVER_ROOT
+   $(error you need to define PSOLVER_ROOT in your arch.make)
+ endif
+ FPPFLAGS_PSOLVER = $(DEFS_PREFIX) -DSIESTA__PSOLVER
+ FPPFLAGS += $(FPPFLAGS_PSOLVER)
+
+ PSOLVER_INCFLAGS = $(shell PKG_CONFIG_PATH=$(PSOLVER_ROOT)/lib/pkgconfig pkg-config --cflags psolver)
+ PSOLVER_LIBS = $(shell PKG_CONFIG_PATH=$(PSOLVER_ROOT)/lib/pkgconfig pkg-config --libs psolver)
+ LIBS += $(PSOLVER_LIBS)
+endif
+
 ifeq ($(WITH_MPI),1)
  FC=$(FC_PARALLEL)
  MPI_INTERFACE=$(MPI_WRAPPERS)

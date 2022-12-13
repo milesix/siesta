@@ -173,6 +173,13 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
                   FLOOK_ROOT or a CMake variable (-DFLOOK_ROOT=/path/to/flook),
 		  or by adding $FLOOK_ROOT to CMAKE_PREFIX_PATH.
 
+      - WITH_PSOLVER: The psolver library can be compiled on-the-fly,
+                  using the code in git submodules in External/BigDFT,
+                  Pre-compiled installations can be used by setting
+                  the environment variable PSOLVER_ROOT or a CMake
+                  variable (-DPSOLVER_ROOT=/path/to/psolver), or by adding
+                  $PSOLVER_ROOT to CMAKE_PREFIX_PATH.
+
 * Handling of compiler flags
 
   For Intel and GNU compilers, a set of default flags for the

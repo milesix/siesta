@@ -61,6 +61,7 @@ INCFLAGS+= $(NETCDF_INCFLAGS)  $(PSML_INCFLAGS) $(NCPS_INCFLAGS) \
            $(PEXSI_INCFLAGS) $(FDF_INCFLAGS) $(MS_INCFLAGS)
 INCFLAGS+= $(MPI_WRAPPERS_INCFLAGS)
 INCFLAGS+= $(FDICT_INCFLAGS) $(NCDF_INCFLAGS)
+INCFLAGS+= $(PSOLVER_INCFLAGS)
 #
 # For removing any -ipo compilation in sub directories...
 # Later compilers are also having this enabled, and it lets you

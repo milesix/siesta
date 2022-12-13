@@ -1126,18 +1126,19 @@ libraries
 
   To enable this solver (see \fdf{Poisson.Method}) one needs to first
   compile the \program{PSolver}-suite and subsequently add the
-  following to the \file{arch.make}. Here \program{<build-dir>} is the
-  build-directory of the \program{PSolver} suite (note the additional sub-tree):
-
+  following to the \file{arch.make} file:
+  
 \begin{shellexample}
-  LIBS += -L<build-dir>/install/lib -lPSolver-1 -latlab-1 -lfutile-1 -ldicts -lfmalloc-1 -lyaml
-  INCFLAGS += -I<build-dir>/install/include
-  FPPFLAGS += -DSIESTA__PSOLVER
+  WITH_PSOLVER=1
+  PSOLVER_ROOT=/path/to/psolver_installation  # perhaps set in the environment
 \end{shellexample}
 \index{compile!pre-processor!-DSIESTA\_\_PSOLVER}
 
-  The current support PSolver version corresponds to the version
+  The current supported PSolver version corresponds to the version
   shipped with BigDFT 1.9.0.
+
+  It is also possible to compile the Psolver dependencies on-the-fly
+  with the CMake-based build system (see \file{INSTALL.CMake}).
 
 \end{description}
 
@@ -6453,13 +6454,13 @@ simultaneously for complete control.
 
     The PSolver\cite{Fisicaro2017} library\footnote{The PSolver
         library originated from the BigDFT code.} is an alternate
-    Poisson solver which calculates the Poisson equation for bulk,
-    slab, wire and molecule systems using accurate boundary
+    Poisson solver for the Poisson equation for bulk,
+    slab, wire and molecule systems using various kinds of boundary
     conditions.
 
-    The PSolver library has some restrictions on where the geometry is
+    The PSolver library has some restrictions on where the system is
     placed in the cell due to the handlings of the boundary
-    conditions. See the below description for how to handle this.
+    conditions. See the description below for how to handle this.
     For systems with open boundaries (molecule, slab, wire) please
     ensure the vacuum region is large enough to remove edge effects.
 
@@ -6472,7 +6473,7 @@ simultaneously for complete control.
 
       \item[slab] can be comparable to the FFT
       solver \emph{with} the \fdf{SlabDipoleCorrection} enabled (to
-      ensure no dipole is setup.
+      ensure no dipole is created).
 
       In this case the vacuum direction should be along the
       $y$-direction (2nd lattice vector) and atoms should be aligned
@@ -6547,7 +6548,7 @@ The PSolver options are provided in a PSolver block
   Additionally, PSolver allows calculations of implicit solvent
   effects using the soft-sphere model\cite{Fisicaro2017}.
 
-  The below options are used, only if \fdf*{PSolver:cavity} is
+  The options below are used, only if \fdf*{PSolver:cavity} is
   different from \fdf*{none}.
 
   \begin{fdfentry}{cavity}[string]<none|soft-sphere|SCCS>
@@ -6558,7 +6559,7 @@ The PSolver options are provided in a PSolver block
   \begin{fdfentry}{radii.type}[string]<UFF|Bondi|Pauling>
 
     Specify the van der Waals radii used for atomic species (ghost
-    atoms will have $0$ radius.
+    atoms will have $0$ radius).
 
   \end{fdfentry}
   \begin{fdfentry}{delta}[real]<2.0>
@@ -6580,7 +6581,8 @@ The PSolver options are provided in a PSolver block
   \end{fdfentry}
   \begin{fdfentry}{epsilon}[real]<78.36>
 
-    Dielectric constant of the exterior region. Default value is water, 78.36.
+    Dielectric constant of the exterior region. The default value is
+    appropiate for water, 78.36.
 
   \end{fdfentry}
   \begin{fdfentry}{atomic.radii}[integer]<0>
