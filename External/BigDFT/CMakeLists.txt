@@ -45,11 +45,9 @@ ExternalProject_Add(yaml
  URL ${CMAKE_CURRENT_LIST_DIR}/yaml
  UPDATE_DISCONNECTED true
  CONFIGURE_HANDLED_BY_BUILD true
- CONFIGURE_COMMAND FC=${CMAKE_Fortran_COMPILER}
-                   FCFLAGS="-g"
-		   CC=${CMAKE_C_COMPILER}
-		   CCFLAGS="-g"
-                   <SOURCE_DIR>/configure ${config_flags} --prefix=${install_prefix}
+ CONFIGURE_COMMAND <SOURCE_DIR>/configure
+                   CC=${CMAKE_C_COMPILER}
+		   ${config_flags} --enable-shared=no --prefix=${install_prefix}
  BUILD_COMMAND ${MAKE_EXECUTABLE} -j
  INSTALL_COMMAND ${MAKE_EXECUTABLE} -j install
  TEST_COMMAND ""
@@ -68,10 +66,12 @@ ExternalProject_Add(futile
  PATCH_COMMAND patch -p1 -i "${CMAKE_SOURCE_DIR}/External/BigDFT/Patches/futile.patch"
  UPDATE_DISCONNECTED true
  CONFIGURE_HANDLED_BY_BUILD true
- CONFIGURE_COMMAND FC=${MPI_Fortran_COMPILER}
-                   <SOURCE_DIR>/configure FCFLAGS=${Fortran_FLAGS_CURRENT}
+ CONFIGURE_COMMAND <SOURCE_DIR>/configure
+                   FC=${MPI_Fortran_COMPILER}
+                   FCFLAGS=${Fortran_FLAGS_CURRENT}
 		   --with-yaml-path=${install_prefix}
 		   --with-ext-linalg=${LAPACK_LIBRARY}
+		   --enable-shared=no
 		   ${config_flags} --prefix=${install_prefix}
  BUILD_COMMAND ${MAKE_EXECUTABLE} -j
  INSTALL_COMMAND ${MAKE_EXECUTABLE} -j install
