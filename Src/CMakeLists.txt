@@ -154,6 +154,7 @@ set(libsiesta_sources
   globalise.F
   gradient.F
   gradientlomem.F
+  grimme_dispersion_m.F90
   grdsam.F
   hamann.f90
   hsparse.F
@@ -545,6 +546,7 @@ target_compile_definitions(
   "$<$<BOOL:${WITH_NCDF}>:NCDF_4>"
   "$<$<BOOL:${WITH_NCDF_PARALLEL}>:NCDF_PARALLEL>"
   "$<$<BOOL:${WITH_LUA}>:SIESTA__FLOOK>"
+  "$<$<BOOL:${WITH_DFTD3}>:SIESTA__DFTD3>"
 )
 
 target_link_libraries(
@@ -565,6 +567,7 @@ target_link_libraries(
   "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libfdict>"
    $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
   "$<$<BOOL:${WITH_MPI}>:Scalapack::Scalapack>"
+  "$<$<BOOL:${WITH_DFTD3}>:s-dftd3::s-dftd3>"
   LAPACK::LAPACK
 )
 

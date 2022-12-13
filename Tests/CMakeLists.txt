@@ -1,5 +1,8 @@
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/install_tests")
 
+#
+#  Function to set up tests
+#
 function(setup_test name pseudos extrafiles)
  set(wdir "${CMAKE_BINARY_DIR}/install_tests/${name}")
  file(MAKE_DIRECTORY "${wdir}")
@@ -49,4 +52,8 @@ setup_test("wannier" "Si.psf" "wannier.nnkp wannier.win")
 
 if(WITH_LUA)
   setup_test("lua_h2o" "O.psf H.psf" "siesta.lua")
+endif()
+
+if(WITH_DFTD3)
+  setup_test("dftd3" "C.psf N.psf O.psf H.psf" "")
 endif()

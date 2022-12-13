@@ -24,7 +24,10 @@ macro(
   methods
   url
   revision
+  submodule_path
 )
+
+    
   string(TOLOWER "${package}" _pkg_lc)
   string(TOUPPER "${package}" _pkg_uc)
 
@@ -49,7 +52,7 @@ macro(
       if("${${_pkg_uc}_FOUND}")
         message(STATUS "Found ${package} via pkg-config")
 
-        add_library("${package}::${package}" INTERFACE IMPORTED)
+        add_library("${package}::${package}" INTERFACE IMPORTED GLOBAL)
         target_link_libraries(
           "${package}::${package}"
           INTERFACE
@@ -65,16 +68,16 @@ macro(
     endif()
 
     if("${method}" STREQUAL "subproject")
-      set("${_pkg_uc}_SOURCE_DIR" "${PROJECT_SOURCE_DIR}/External/${package}")
-      set("${_pkg_uc}_BINARY_DIR" "${PROJECT_BINARY_DIR}/External/${package}")
+      set("${_pkg_uc}_SOURCE_DIR" "${PROJECT_SOURCE_DIR}/External/${submodule_path}")
+      set("${_pkg_uc}_BINARY_DIR" "${PROJECT_BINARY_DIR}/External/${submodule_path}")
       if(EXISTS "${${_pkg_uc}_SOURCE_DIR}/CMakeLists.txt")
-        message(STATUS "Include ${package} from subprojects")
+        message(STATUS "Include ${package} as submodule from External/${submodule_path}")
         add_subdirectory(
           "${${_pkg_uc}_SOURCE_DIR}"
           "${${_pkg_uc}_BINARY_DIR}"
         )
 
-        add_library("${package}::${package}" INTERFACE IMPORTED)
+        add_library("${package}::${package}" INTERFACE IMPORTED GLOBAL)
         target_link_libraries("${package}::${package}" INTERFACE "${package}")
 
         # We need the module directory in the subproject before we finish the configure stage
@@ -96,7 +99,7 @@ macro(
       )
       FetchContent_MakeAvailable("${_pkg_lc}")
 
-      add_library("${package}::${package}" INTERFACE IMPORTED)
+      add_library("${package}::${package}" INTERFACE IMPORTED GLOBAL)
       target_link_libraries("${package}::${package}" INTERFACE "${package}")
 
       # We need the module directory in the subproject before we finish the configure stage
