@@ -11,3 +11,12 @@ Submodules pinned at the 1.9.0 tag of the bigdft-suite repo
 
 libyaml (repo yaml) is pinned at 0.1.6. It seems to work OK,
 but YMMV.
+
+NOTES on patches:
+
+* Futile:  In the template for the .pc file, remove the mention of PYTHON_PATH,
+  as it is typically left empty in our context and confuses pkg-config.
+
+* Psolver: A 'mod' inside an 'if' statement led to a division by zero in some
+  systems.
+  
