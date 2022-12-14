@@ -2593,8 +2593,9 @@ obtained if compiled with the NetCDF4 library and via the use of
 \end{fdflogicalF}
 
 \begin{fdfentry}{TBT.Projs!T}[block]%
+  \fdfdepend{TBT.Projs,TBT.Projs!T.All,TBT.Projs!T.out}
 
-  As you might specify \emph{many} molecular projections to
+  As one might specify \emph{many} molecular projections to
   investigate a lot of details of the system it seems perilous to
   always calculate all allowed transmission permutations.
 
@@ -2670,7 +2671,6 @@ obtained if compiled with the NetCDF4 library and via the use of
  %endblock
   \end{fdfexample}
   
-\end{fdfentry}
 
 \bgroup
 \def\Gf{\mathbf G}
@@ -2702,6 +2702,11 @@ Note that removing an explicit named projection allows easy creation
 of all available permutations of the projection states associated with
 the molecule.
 
+By default some electrodes are not accessible for projections unless
+\fdf{TBT.Projs!T.Out} or \fdf{TBT.Projs!T.All} are \fdftrue.
+
+\end{fdfentry}
+
 
 \begin{fdflogicalF}{TBT.Projs!Only}
 
@@ -2713,6 +2718,7 @@ the molecule.
 \end{fdflogicalF}
 
 \begin{fdflogicalF}{TBT.Projs!DOS.A}%
+  \fdfdepend{TBT.Atoms!Device}
 
   Save the spectral density of states for the projections. In case you
   have set \fdf{TBT.DOS!A} this will default to that flag.
@@ -2724,6 +2730,7 @@ the molecule.
 \end{fdflogicalF}
 
 \begin{fdflogicalF}{TBT.Projs!Current.Orb}%
+  \fdfdepend{TBT.Atoms!Device}
 
   Will calculate and save the orbital current for the device with the
   projections.
@@ -2770,8 +2777,8 @@ the molecule.
 
 \begin{fdflogicalF}{TBT.Projs!T.Out}%
 
-  Same as \fdf{TBT.T!Out} for projections. 
-  
+  Same as \fdf{TBT.T!Out} for projections.
+
 \end{fdflogicalF}
 
 
