@@ -59,7 +59,7 @@
       use gpfa_fft,     only : setgpfa=>setgpfa_check     ! Sets gpfa routine
       use m_timer,      only : timer_start ! Start counting CPU time
       use m_timer,      only : timer_stop ! Stop counting CPU time
-      use iso_c_binding, only : c_loc
+      use, intrinsic :: iso_c_binding, only : c_loc, C_PTR
 #ifdef MPI
       use mpi_siesta
 #endif
@@ -367,23 +367,26 @@ C **********************************************************************
       integer :: ierr, n, n1, n2, n3, n2a, n3a, n1b, n3b, n1c, n2c
       integer :: i, j, k, ng, ioffset
       real(dp) :: scale
-#     ifdef _FFTW_
+#ifdef _FFTW_
       complex(grid_p), pointer :: in(:)
       type(C_PTR), pointer :: plan(:)
-#     endif
+#endif
+#ifdef DEBUG
+      call write_debug( '    PRE fft' )
+#endif
       call timer( 'fft', 1 )
 
       n1 = gmesh(1)
       n2 = gmesh(2)
       n3 = gmesh(3)
 #ifdef MPI
-#     ifdef _FFTW_
+#ifdef _FFTW_
       if (isn<0) then
         plan => plan_fw
       else
         plan => plan_bw
       endif
-#     endif
+#endif
       if (k_ori_distr) then
         n2a = ydispl(py+1)-ydispl(py)
         n3a = zdispl(pz+1)-zdispl(pz)
@@ -418,14 +421,14 @@ C
         if (n>0) then
           IOffSet = 1
           do i= 1, n3b
-#           ifdef _FFTW_
+#ifdef _FFTW_
             call c_f_pointer( c_loc(f2(IOffSet:IOffSet+n1b*n2-1)),
      &                  in, shape=[n1b*n2] )
             call fftw_execute_dft( plan(2), in, in )
-#           else
+#else
             call gpfa(f2(IOffSet:2*n),f2(IOffSet+1:2*n), trigs(:,2),
      .            2*n1b, 2, n2, n1b, -isn )
-#           endif
+#endif
             IOffSet = Ioffset + 2*n1b*n2
           enddo
         endif
@@ -445,13 +448,13 @@ C       FFT in Z direction
 C
         n = n3*n1c*n2c
         if (n>0) then
-#         ifdef _FFTW_
+#ifdef _FFTW_
           call c_f_pointer( c_loc(f2), in, shape=[n] )
           call fftw_execute_dft( plan(3), in, in )
-#         else
+#else
           call gpfa( f2(1:2*n), f2(2:2*n), trigs(:,3), 2*n1c*n2c, 2,
      &    n3, n1c*n2c,-isn )
-#         endif
+#endif
         endif
 C
 C       Transpose data back from Z to X
@@ -528,7 +531,7 @@ C         FFT in Z direction
 C
           n = n3*n1c*n2c
           if (n>0) then
-#ifdef 	    _FFTW_
+#ifdef _FFTW_
             call c_f_pointer( c_loc(f1), in, shape=[n] )
             call fftw_execute_dft( plan(3), in, in )
 #else
@@ -542,7 +545,7 @@ C         FFT in Z direction
 C
           n = n3*n1c*n2c
           if (n>0) then
-#ifdef      _FFTW_
+#ifdef  _FFTW_
             call c_f_pointer( c_loc(f1), in, shape=[n] )
             call fftw_execute_dft( plan(3), in, in )
 #else
@@ -564,7 +567,7 @@ C
           if (n>0) then
             IOffSet = 1
             do i= 1, n3b
-#ifdef        _FFTW_
+#ifdef  _FFTW_
               call c_f_pointer( c_loc(f2(IOffSet:IOffSet+n1b*n2-1)),
      &                  in, shape=[n1b*n2] )
               call fftw_execute_dft( plan(2), in, in )
@@ -622,25 +625,25 @@ C  FFT in Y direction
 C
       IOffSet = 1
       do i=0,n3-1
-#       ifdef  _FFTW_
+#ifdef  _FFTW_
         call c_f_pointer( c_loc(f1(IOffSet:IOffSet+n1*n2-1)),
      &              in, shape=[n1*n2] )
         call fftw_execute_dft( plan(2), in, in )
-#       else
+#else
         call gpfa(f1(IOffSet:2*n),f1(IOffSet:2*n),trigs(:,2),
      .             2*n1,2,n2,n1,-isn)
-#       endif
+#endif
         IOffSet = Ioffset + 2*n1*n2
       enddo
 C
 C  FFT in Z direction
 C
-#     ifdef  _FFTW_
+#ifdef  _FFTW_
       call c_f_pointer( c_loc(f1), in, shape=[n] )
       call fftw_execute_dft( plan(3), in, in )
-#     else
+#else
       call gpfa(f1(1:2*n),f1(2:2*n),trigs(:,3),2*n1*n2,2,n3,n1*n2,-isn)
-#     endif
+#endif
 C
 C  Scale values
 C
@@ -652,6 +655,9 @@ C
       endif
 #endif /* MPI */
       call timer( 'fft', 2 )
+#ifdef DEBUG
+      call write_debug( '    POS fft' )
+#endif
       end subroutine fft
 
 #ifdef MPI
