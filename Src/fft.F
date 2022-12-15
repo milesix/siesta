@@ -672,7 +672,7 @@ C
       integer :: ierr, r_recv, r_send, status(MPI_Status_Size)
       integer :: bsize_s, bsize_r
       integer :: sbox(2,3), dbox(2,3)
-      real(grid_p), pointer  :: sbuf(:,:), rbuf(:,:)
+      real(grid_p), pointer  :: sbuf(:,:) => null(), rbuf(:,:) => null()
       sbox(1,:) = 1
       sbox(2,:) = (/ s1, s2, s3 /)
       dbox(1,:) = 1
