@@ -58,7 +58,8 @@
       use gpfa_fft,     only : gpfa        ! 1-D FFT routine
       use gpfa_fft,     only : setgpfa=>setgpfa_check     ! Sets gpfa routine
       use m_timer,      only : timer_start ! Start counting CPU time
-      use m_timer,      only : timer_stop  ! Stop counting CPU time
+      use m_timer,      only : timer_stop ! Stop counting CPU time
+      use iso_c_binding, only : c_loc
 #ifdef MPI
       use mpi_siesta
 #endif
@@ -164,7 +165,8 @@ C
 C     Recompute plans and displacements if there is a change in the grid size or 
 C     in the value of k_ori_distr
 C
-      if ( any(OldMesh/=gmesh) .or. ori_distr/=k_ori_distr ) then
+      if ( any(OldMesh/=gmesh) .or.
+     $     (ori_distr .neqv. k_ori_distr) ) then
 C
 C       Compute the limits of the differents pencils in each possible direction
 C
