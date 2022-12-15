@@ -140,6 +140,7 @@ set(libsiesta_sources
   fermid.F
   fft.F
   fft1d.F
+  fftw3.F90 
   files.f
   final_H_f_stress.F
   find_kgrid.F
@@ -542,6 +543,7 @@ target_compile_definitions(
   "$<$<BOOL:${HAS_MRRR}>:SIESTA__MRRR>"
   "$<$<BOOL:${WITH_ELPA}>:SIESTA__ELPA>"
   "$<$<BOOL:${WITH_NETCDF}>:CDF>"
+  "$<$<BOOL:${WITH_FFTW}>:_FFTW_>"
   "$<$<BOOL:${WITH_NCDF}>:NCDF>"
   "$<$<BOOL:${WITH_NCDF}>:NCDF_4>"
   "$<$<BOOL:${WITH_NCDF_PARALLEL}>:NCDF_PARALLEL>"
@@ -565,6 +567,7 @@ target_link_libraries(
   "$<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>"
   "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>"
   "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libfdict>"
+  "$<$<BOOL:${WITH_FFTW}>:FFTW::Double>"
    $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
   "$<$<BOOL:${WITH_MPI}>:Scalapack::Scalapack>"
   "$<$<BOOL:${WITH_DFTD3}>:s-dftd3::s-dftd3>"

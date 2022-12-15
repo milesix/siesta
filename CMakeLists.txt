@@ -39,7 +39,7 @@ option(WITH_NETCDF "Build Siesta with NetCDF support" TRUE)
 option(WITH_NCDF "Use the NCDF library" ${WITH_NETCDF})
 option(WITH_NCDF_PARALLEL "Use NCDF_PARALLEL" FALSE)
 
-option(WITH_FFTW "FFTW support (for STM/ol-stm utility)" TRUE)
+option(WITH_FFTW "Use FFTW for Fourier Transforms and STM/ol-stm" FALSE)
 option(WITH_LIBXC "Include libxc support" FALSE)
 option(WITH_GRID_SP "Use single-precision for grid magnitudes" FALSE)
 
@@ -193,7 +193,6 @@ if (WITH_ELPA)
 endif()
 
 if (WITH_FFTW)
-  # For STM/ol-stm only for now
   find_package(FFTW QUIET COMPONENTS DOUBLE_LIB)
   if (FFTW_DOUBLE_LIB_FOUND)
      message(STATUS "Found FFTW Double")

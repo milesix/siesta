@@ -48,7 +48,7 @@ if(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
     set(Fortran_FLAGS_RELWITHDEBINFO   "-g  ${Fortran_FLAGS_RELEASE} -fbacktrace"
                 CACHE STRING "Fortran rel-with-debinfo flags")
 
-    set(Fortran_FLAGS_CHECK  "-g -O0 -fbounds-check" CACHE STRING "Fortran debug flags")
+    set(Fortran_FLAGS_CHECK  "-g -O0 -fcheck=all -fbacktrace" CACHE STRING "Fortran check flags")
     set(Fortran_FLAGS_DEBUG  "-g -O0" CACHE STRING "Fortran debug flags")
 
 endif()
