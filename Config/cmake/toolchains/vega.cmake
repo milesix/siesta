@@ -43,7 +43,6 @@ set(WITH_ELPA "ON" CACHE BOOL "with ELPA")
 set(LAPACK_LIBRARY
       "-L /cvmfs/sling.si/modules/el7/software/OpenBLAS/0.3.12-GCC-10.2.0/lib -lopenblas -lpthread -lm -ldl"
         CACHE STRING "lapack library chosen")
-set(BLAS_LIBRARY "NONE" CACHE STRING "blas library chosen")
 
 set(SCALAPACK_LIBRARY
      "-L/cvmfs/sling.si/modules/el7/software/ScaLAPACK/2.1.0-gompic-2020b/lib -lscalapack"

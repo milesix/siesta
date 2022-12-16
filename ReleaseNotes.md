@@ -19,6 +19,21 @@ grouped under headings representing past (and upcoming) releases.
 
 ### Changes
 
+* Added support for D3 dispersion corrections (Federico Pedron)
+
+   * Most, if not all, of the GGA functionals are supported by default (PBE, LYP and their
+     variants), but not LDA or VDW functionals. Note that D3 corrections should not be used
+     in conjuction with VDW functionals in any case. Mixed "cocktail" functionals
+     are not supported either.
+   * Note, however, that inputing custom D3 parameters is a feature of this implementation.
+     This can be useful for those rare cases that are not supported.
+   * A higher degree of control of the model is also posible, by changing all relevant cut-off
+     values (2-body and 3-body interactions, and coordination number calculations). These
+     already have reasonable values by default.
+   * The implementation relies on the simple-DFTD3 library (https://dftd3.readthedocs.io).
+     The relevant code can be incorporated as git submodules in External/DFTD3, and compiled
+     on the fly (see INSTALL and INSTALL.CMake).
+
 * New building framework, including CMake support and streamlining of makefile-based scheme
 
    * The fdf code in Src/fdf is now serial-only, with clients taking

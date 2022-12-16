@@ -1,0 +1,45 @@
+#
+# s-dftd3 depends on a number of libraries
+# They can be included as submodules in this directory,
+# and this file processes them in order and configures
+# those options that can be configured externally.
+#
+# It would be good to have an option to build only
+# the library itself.
+
+
+set(WITH_TESTS "${WITH_DFTD3_TESTS}" CACHE BOOL "Perform s-dftd3 tests")
+
+### Re-use information already found by Siesta itself
+### and skip BLAS search in s-dftd3
+
+if (TARGET BLAS::BLAS)
+  # Re-use target
+  set(BLAS_FOUND "TRUE")
+elseif(TARGET LAPACK::LAPACK)
+  # Create a BLAS wrapper target
+  add_library("BLAS::BLAS" INTERFACE IMPORTED)
+  target_link_libraries("BLAS::BLAS" INTERFACE LAPACK::LAPACK)
+  set(BLAS_FOUND "TRUE")
+endif()
+
+if(NOT TARGET "mctc-lib::mctc-lib")
+  find_package("mctc-lib" REQUIRED)
+endif()
+
+if(NOT TARGET "mstore::mstore" AND WITH_TESTS)
+  find_package("mstore" REQUIRED)
+endif()
+
+if(NOT TARGET "test-drive::test-drive")
+  find_package("test-drive" REQUIRED)
+endif()
+
+if(NOT TARGET "toml-f::toml-f")
+  find_package("toml-f" REQUIRED)
+endif()
+
+if (NOT TARGET s-dftd3::s-dftd3)
+    find_package(s-dftd3)
+endif()
+

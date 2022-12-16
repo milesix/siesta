@@ -612,6 +612,7 @@
      .    'siesta: ', 'Ion-electron =', (Enascf+Enl+DUscf-Uscf-Uatm)/eV,
      .    'siesta: ',      'Ion-ion =', (Ena+Uatm-Enaatm-Eions)/eV,
      .    'siesta: ',      'Ekinion =', Ekinion/eV,
+     .    'siesta: ','D3 dispersion =', Evdw_d3/eV,
      .    'siesta: ',        'Total =', (Etot+Ekinion)/eV
         if ( TSrun ) then
         write(6,'(a,a15,f15.6)')
@@ -670,10 +671,12 @@
           call cmlAddProperty(xf=mainXML, value=Ekinion/eV,
      .         units='siestaUnits:eV', 
      .         dictref='siesta:Ekinion', fmt='r7')
+          call cmlAddProperty(xf=mainXML, value=Evdw_d3/eV,
+     .         units='siestaUnits:eV',
+     .         dictref='siesta:E_D3', fmt='r7')
           call cmlAddProperty(xf=mainXML, value=(Etot+Ekinion)/eV,
      .         units='siestaUnits:eV', 
      .         dictref='siesta:Etot', fmt='r7')
-
           if ( TSrun ) then
           ! NEGF energies
           call cmlAddProperty(xf=mainXML, value=NEGF_DE/eV, 

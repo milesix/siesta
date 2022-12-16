@@ -12,7 +12,7 @@ module m_energies
   private :: dp
   public
   save
-  
+
   real(dp):: DEharr     ! Tr[H * (DM_out - DM_in)], for Harris energy
   real(dp):: DEna       ! Neutral-atom energy term, calculated  in dnaefs
   real(dp):: DUext      ! Interaction energy with external  electric field,
@@ -46,9 +46,10 @@ module m_energies
   real(dp):: Uscf       ! SCF hartree electron energy,  calculated in dhscf
   real(dp):: Ebs        ! Band-structure energy, Tr(DM*H), calculated in compute_dm
   real(dp):: Eso        ! Spin-orbit energy
+  real(dp):: Evdw_d3    ! Grimme's D3 energy corrections.
   real(dp):: E_dftu_so  ! Spin-orbit energy when DFT+U is considered
-  real(dp):: E_correc_dc! Correction energy required for the 
-  real(dp):: Edftu      
+  real(dp):: E_correc_dc! Correction energy required for the
+  real(dp):: Edftu
   real(dp):: DEdftu
                         !    LDA+U+SO calculations
 
@@ -101,9 +102,10 @@ contains
     Uscf = 0._dp
     Ebs = 0._dp
     Eso = 0._dp
+    Evdw_d3 = 0._dp
     E_dftu_so = 0._dp
     E_correc_dc = 0._dp
-    Edftu = 0._dp      
+    Edftu = 0._dp
     DEdftu = 0._dp
 
     ! NEGF part
@@ -126,7 +128,7 @@ contains
   subroutine update_DEna()
 
     DEna = Enascf - Enaatm
-    
+
   end subroutine update_DEna
 
   subroutine update_E0()
@@ -134,21 +136,21 @@ contains
     E0 = Ena + Ekin + Enl + Eso - Eions
 
   end subroutine update_E0
-  
+
   subroutine update_Etot()
     use m_ts_global_vars, only: TSrun
-    
+
     ! DUext (external electric field) -- should it be in or out?
     Etot = Ena + Ekin + Enl + Eso + E_dftu_so + E_correc_dc - Eions + &
         DEna + DUscf + DUext + Exc + &
-        Ecorrec + Emad + Emm + Emeta + Edftu
+        Ecorrec + Emad + Emm + Emeta + Edftu + Evdw_d3
 
     if ( TSrun ) then
       NEGF_Etot = Ena + NEGF_Ekin + NEGF_Enl - Eions + &
           DEna + DUscf + DUext + Exc + Ecorrec + Emad + Emm + Emeta + &
           Edftu + NEGF_DE
     end if
-    
+
   end subroutine update_Etot
 
   !> @param kBT the temperature in energy

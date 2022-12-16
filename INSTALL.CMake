@@ -11,32 +11,6 @@ that must be installed before Siesta can be compiled. Depending on the
 needs and experience of the user, several modes of operation are
 available.
 
-_Experimental_) SPACK packages are available in Config/spack_package_defs
-
-   After setting up spack and defining compilers, etc, a user can simply install
-   a new repo with the 'siesta-project' namespace:
-
-     spack repo add /path/to/spack_package_defs
-
-   and issue commands such as:
-
-     spack install xmlf90
-     spack info siesta
-     spack spec siesta +mpi +netcdf +libxc +elpa
-     spack install siesta -mpi build_type=Debug
-
-   Note that the spack builtin repo *might have* other Siesta-related
-   recipes prepared in the past by other members of the community.
-   By making sure that the 'siesta-project' repo is listed first in the
-   spack repository chain, those can be avoided. Check:
-
-     spack repo list
-     
-   At this point, the spack recipes pull sources from development
-   branches of Siesta, without a well-defined source id. This is
-   a temporary situation during the final stages of development of
-   the CMake framework and the update of the dependency libraries.
-   
 A) Installation on-the-fly, using git submodules for the external
 libraries.
 
@@ -52,6 +26,11 @@ libraries.
   where <path> is the path to the submodule. Leave out '<path>' to
   enable all submodules.
 
+  Other optional libraries might be also available as submodules. In
+  particular, those implementing the DFT-D3 functionality can be
+  loaded in External/DFTD3, and flook (to enable the Lua engine) in
+  External/Lua-Engine/flook.
+
   (If you plan to compile Siesta in a system without internet access
    (e.g. MareNostrum), you can use the 'stage_submodules.sh' script
    in the top level of the distribution to gather all the source files
@@ -65,7 +44,8 @@ libraries.
   cmake -S. -GNinja -B_build -DCMAKE_INSTALL_PREFIX=/path/to/installation
   cmake --build _build
     
-  (Optionally followed by  '-- -j 1 -v'  for more info)
+  (Optionally followed by  '-- -j N'  for parallel build)
+  (Optionally followed by  '-- -j 1 -v'  for detailed info and log)
   (Optionally followed by  '-- target'  to build a specific target)
 
   cmake --install _build
@@ -75,26 +55,30 @@ If MPI is found on the system, it will be used by default (WITH_MPI=ON).
 If NetCDF is found on the system, it will be used by default (WITH_NETCDF=ON), and
 so will the NCDF library (See below for a fuller option list).
 
-The system will try to find a LAPACK library automatically, but it will honor
-the setting of the LAPACK_LIBRARY variable, and/or a directory path LAPACK_LIBRARY_DIR
-in which to search.
+The system will try to find a LAPACK library automatically, using a
+custom module. The search can be helped by the setting of the
+LAPACK_LIBRARY variable, and/or a directory path LAPACK_LIBRARY_DIR in
+which to search.
 
   cmake [ other options ]  -DLAPACK_LIBRARY="openblas"
   cmake [ other options ]  -DLAPACK_LIBRARY_DIR="/opt/lapack"
 
-A search for a BLAS library will be carried out before searching for LAPACK (honoring
-if present the analogous variables BLAS_LIBRARY and BLAS_LIBRARY_DIR).
-Targets BLAS::BLAS and LAPACK::LAPACK will be defined, and the latter made to depend on
-the first. See the appropriate Config/cmake/Find* files for more details, including the
-possible need to set BLAS_LIBRARY or LAPACK_LIBRARY to "NONE" if either of them is
-redundant.
+The search will also take into account the setting of the variables
+BLAS_LIBRARIES and LAPACK_LIBRARIES, which are handled by the standard
+CMake 'findLAPACK' module.
+
+NOTE: In systems in which Lapack is implicitly linked (e.g., Cray systems),
+it might be necessary to set LAPACK_LIBRARY to "NONE". Newer versions of
+CMake detect this automatically.
   
-If WITH_MPI=ON, the system will search also for a Scalapack library (honoring
-if present the variables SCALAPACK_LIBRARY and SCALAPACK_LIBRARY_DIR). Please watch out for
-MPI compatibility issues, as they are NOT currently checked.
+If WITH_MPI=ON, the system will search also for a Scalapack library
+(honoring if present the variables SCALAPACK_LIBRARY and
+SCALAPACK_LIBRARY_DIR). Please watch out for MPI compatibility issues,
+as they are NOT currently checked. The same "implicit linking" note
+above applies.
 
 (The CMake support for the linear-algebra library search has been
-borrowed from the DFTB+ project, and somewhat refined).
+borrowed from the DFTB+ and SIRIUS projects.)
 
 To have libgridxc compiled with libxc support, change the invocation to:
 
@@ -161,9 +145,17 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
       - WITH_FFTW:  (ON by default) If not set, Util/STM/ol-stm will
                     not be compiled.
 
-      - WITH_LUA:   Use either an *environment* variable FLOOK_ROOT
-                    that points to an installation of the flook library, or
-		    a filepath cache variable (-DFLOOK_ROOT=/path/to/flook)
+      - WITH_LUA: The flook library can be compiled on-the-fly, using
+                  the code in a git submodule in
+                  External/Lua-Engine/flook, or in a tarball pointed
+                  to by FLOOK_PACKAGE. Pre-compiled installations can
+                  be used by setting the environment variable
+                  FLOOK_ROOT or a CMake variable (-DFLOOK_ROOT=/path/to/flook),
+		  or by adding $FLOOK_ROOT to CMAKE_PREFIX_PATH.
+
+      - WITH_DFTD3: The required libraries can be compiled automatically
+                    from code in submodules. Otherwise add $DFTD3_ROOT to
+		    CMAKE_PREFIX_PATH.
 
 * Handling of compiler flags
 
@@ -209,10 +201,6 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
         which might not be well constructed (see the modules
         in config/cmake)
 
-      - The libraries and module search paths for the flook library
-        are hard-coded (based on $FLOOK_ROOT), as there is no proper
-        pkgconfig file yet.
-
       - When using MPI, a single MPI version of GRIDXC is compiled (or
         found) and it is used also for the utility programs that would
         only need a serial version (since they call only the 'atomxc'
@@ -232,4 +220,31 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
       
 (Thanks to DFTB+ and other projects for ideas and support files)
 
+
+_Experimental_) SPACK packages are available in Config/spack_package_defs
+
+   After setting up spack and defining compilers, etc, a user can simply install
+   a new repo with the 'siesta-project' namespace:
+
+     spack repo add /path/to/spack_package_defs
+
+   and issue commands such as:
+
+     spack install xmlf90
+     spack info siesta
+     spack spec siesta +mpi +netcdf +libxc +elpa
+     spack install siesta -mpi build_type=Debug
+
+   Note that the spack builtin repo *might have* other Siesta-related
+   recipes prepared in the past by other members of the community.
+   By making sure that the 'siesta-project' repo is listed first in the
+   spack repository chain, those can be avoided. Check:
+
+     spack repo list
+     
+   At this point, the spack recipes pull sources from development
+   branches of Siesta, without a well-defined source id. This is
+   a temporary situation during the final stages of development of
+   the CMake framework and the update of the dependency libraries.
+   
  
