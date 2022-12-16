@@ -477,7 +477,7 @@ contains
   type(Sparsity), intent(inout) :: sp
   type(OrbitalDistribution), target :: dit
   integer :: max_dsize
-  integer :: p, nw, gio, gnb, BNode, n, no, g_no, nnzs, gsize, ngroups
+  integer :: p, nw, gio, gnb, BNode, n, no, g_no, n_nzs, gsize, ngroups
   integer :: lnb, lno, i, io, b, gb, COMM_SM, ierr
   integer, pointer :: ncol(:), ibuf(:)
   integer, pointer :: nsend(:), nrecv(:), xsend(:), xrecv(:)
@@ -521,7 +521,7 @@ contains
 # endif /* NEW_NCDF==1,2,3,4,5 */
   ! Get information from Sparse matrix
   nullify(ncol)
-  call attach( sp, nrows=no, nrows_g=g_no, n_col=ncol, nnzs=nnzs )
+  call attach( sp, nrows=no, nrows_g=g_no, n_col=ncol, nnzs=n_nzs )
   this%dit => dit
   ! allocate memory
   nullify(this%p_nrows,this%p_xrows,this%p_nbloc,this%p_xbloc)
@@ -600,6 +600,7 @@ contains
   call MPI_WAitAll( this%nb, this%sreq, MPI_STATUSES_IGNORE, ierr )
   ! Number of Nzs of current distribution
   this%nnz = sum(this%p_blonz)
+  print *, "this%nnz: ", this%nnz
 # else /* NEW_NCDF==5 */
   lnb = this%p_nbloc(node+1)
   lno = this%p_nrows(node+1)
@@ -705,6 +706,7 @@ contains
   enddo
   ! Number of Nzs of current distribution
   this%nnz = this%nrecv(Nodes)+this%xrecv(Nodes)
+  print *, " --alt-- this%nnz: ", this%nnz
 # endif /* NEW_NCDF==5 */
   this%bsize = this%nnz
 #	if NEW_NCDF==4 || NEW_NCDF==5
@@ -713,7 +715,9 @@ contains
                  "p_nnz", "t_ncdfSparse" )
   call MPI_Gather( this%nnz, 1, MPI_INTEGER, this%p_nnz, &
                    1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr )
+  ! THIS seems wrong... only the root will set a non-zero value
   this%bsize = max(maxval(this%p_nnz),this%bsize)
+  print *, " --alt 4 5 -- this%bsize: ", this%bsize
 # else
   call MPI_Scan( this%nnz, n, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr )
   this%wroff = n-this%nnz+1

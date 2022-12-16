@@ -38,6 +38,7 @@ option(WITH_MPI "Build Siesta with MPI support" TRUE)
 option(WITH_NETCDF "Build Siesta with NetCDF support" TRUE)
 option(WITH_NCDF "Use the NCDF library" ${WITH_NETCDF})
 option(WITH_NCDF_PARALLEL "Use NCDF_PARALLEL" FALSE)
+option(WITH_NEW_NCDF "Use new CDF IO code" FALSE)
 
 option(WITH_FFTW "FFTW support (for STM/ol-stm utility)" TRUE)
 option(WITH_LIBXC "Include libxc support" FALSE)

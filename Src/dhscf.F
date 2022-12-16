@@ -1039,8 +1039,8 @@ C ----------------------------------------------------------------------
         end if
 #ifdef NCDF_4
         if ( write_cdf ) then
-          call cdf_save_grid(trim(slabel)//'.nc',trim(suffix),nspin,ntml
-     &        ,DRho)
+           call cdf_save_grid(trim(slabel)//'.nc',trim(suffix),
+     &          nspin, ntml ,DRho)
         else
            call write_rho( filesOut%rho, cell, ntm, nsm, ntpl, nspin,
      &        DRho )
@@ -1085,8 +1085,8 @@ C       Save diffuse ionic charge
         if (filesOut%psch .ne. ' ') then
 #ifdef NCDF_4
           if ( write_cdf ) then
-             call cdf_save_grid(trim(slabel)//'.nc','Chlocal',1,ntml,
-     &            Chlocal)
+             call cdf_save_grid(trim(slabel)//'.nc','Chlocal',1,
+     &            ntml, Chlocal)
           else
              call write_rho( filesOut%psch, cell, ntm, nsm, ntpl, 1,
      &            Chlocal)
@@ -1125,8 +1125,8 @@ C       Save total (ionic+electronic) charge
           ! See note above
 #ifdef NCDF_4
            if ( write_cdf ) then
-              call cdf_save_grid(trim(slabel)//'.nc','RhoTot',1,ntml,
-     &             Chlocal)
+              call cdf_save_grid(trim(slabel)//'.nc','RhoTot',1,
+     &             ntml, Chlocal)
            else
               call write_rho(filesOut%toch,cell,ntm,nsm,ntpl,1,Chlocal)
               call write_grid_netcdf( cell, ntm, 1, ntpl, Chlocal, 
@@ -1170,11 +1170,11 @@ C ----------------------------------------------------------------------
       if (filesOut%drho .ne. ' ') then
 #ifdef NCDF_4
         if ( write_cdf ) then
-           call cdf_save_grid(trim(slabel)//'.nc','RhoDelta',nspin,ntml,
-     &          DRho)
+           call cdf_save_grid(trim(slabel)//'.nc','RhoDelta',nspin,
+     &          ntml, DRho)
         else
-           call write_rho( filesOut%drho, cell, ntm, nsm, ntpl, nspin,
-     &          DRho )
+           call write_rho( filesOut%drho, cell, ntm, nsm, ntpl,
+     &          nspin, DRho )
            call write_grid_netcdf( cell, ntm, nspin, ntpl, DRho, 
      &          "DeltaRho", unit='1/Bohr**3')
         end if
@@ -1499,8 +1499,8 @@ C ----------------------------------------------------------------------
       if (filesOut%rhoxc .ne. ' ') then
 #ifdef NCDF_4
         if ( write_cdf ) then
-           call cdf_save_grid(trim(slabel)//'.nc','RhoXC',nspin,ntml,
-     &          DRho )
+           call cdf_save_grid(trim(slabel)//'.nc','RhoXC',nspin,
+     &          ntml, DRho )
         else
            call write_rho( filesOut%rhoxc, cell, ntm, nsm, ntpl, nspin,
      &          DRho )

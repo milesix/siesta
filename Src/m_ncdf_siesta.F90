@@ -80,10 +80,11 @@ contains
 # if NEW_NCDF==5
   subroutine init_ng( this, ntm )
   use moreMeshSubs, only : getLocalBox
+  use fdf, only : fdf_get
   implicit none
   class(t_ncdfGrid) :: this
   integer :: ntm(3)
-  integer, parameter :: NPROC_WIDTH = 12
+  integer :: nproc_width
   integer :: grsize, nred, nz, di, mo, i, j, o, l, r, bsize
   integer :: lbox(2,3)
   !integer :: myred
@@ -93,7 +94,9 @@ contains
 
 # ifdef MPI
   if (nodes>1) then
-    grsize = NPROC_WIDTH
+     nproc_width = fdf_get("CDF.NPROC.WIDTH",12)
+     print *, "nproc_width: ", nproc_width
+    grsize = nproc_width
     Iamred = mod(node,grsize)==0
     ! Split Z dimension among the reductor processors
     nz = ntm(3)
@@ -648,7 +651,6 @@ contains
     use siesta_options, only: fixspin, total_spin
     use siesta_options, only: ia1, ia2, dx ! FC information
     use m_timestamp, only: datestring
-    use m_ts_electype, elec_name => name
     use m_ts_options, only : Volt, N_Elec, Elecs
     use m_ts_options, only : TS_HS_Save
 
@@ -928,7 +930,7 @@ contains
       ! Add all the electrodes
       do iEl = 1, N_Elec
         call cdf_err( nf90_def_grp( grp_tr, trim(Elecs(iEl)%name), grp2 ) )
-        tmp = TotUsedAtoms(Elecs(iEl))
+        tmp = Elecs(iEl)%device_atoms()
         call cdf_err( nf90_def_dim( grp2, 'na', tmp, na ) )
 
         call cdf_err( nf90_def_var( grp2, 'a_idx', &
@@ -1000,7 +1002,7 @@ contains
       do iEl = 1 , N_Elec
         ! Inquire the group ID
         call cdf_err( nf90_inq_ncid( grp_tr,trim(Elecs(iEl)%name), grp2 ) )
-        tmp = TotUsedAtoms(Elecs(iEl))
+        tmp = Elecs(iEl)%device_atoms()
         nullify(ibuf)
         call re_alloc( ibuf, 1, tmp, 'ibuf', 'cdf_init' )
         do i = 1 , tmp

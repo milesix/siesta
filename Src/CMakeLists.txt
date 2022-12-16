@@ -246,6 +246,7 @@ set(libsiesta_sources
   m_getopts.f90
   m_handle_sparse.F90
   m_hartree_add.F90
+  m_host.F90
   m_hs_matrix.f90
   io_hsx.F90
   m_initwf.F90
@@ -544,6 +545,7 @@ target_compile_definitions(
   "$<$<BOOL:${WITH_NETCDF}>:CDF>"
   "$<$<BOOL:${WITH_NCDF}>:NCDF>"
   "$<$<BOOL:${WITH_NCDF}>:NCDF_4>"
+  "$<$<BOOL:${WITH_NEW_NCDF}>:NEW_NCDF=5>"
   "$<$<BOOL:${WITH_NCDF_PARALLEL}>:NCDF_PARALLEL>"
   "$<$<BOOL:${WITH_LUA}>:SIESTA__FLOOK>"
   "$<$<BOOL:${WITH_DFTD3}>:SIESTA__DFTD3>"
