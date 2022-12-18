@@ -411,11 +411,11 @@ subroutine amn( ispin, index_manifold )
       endif
       projector_gindex( iproj ) = gindex
     enddo
-    if (ionode) then
-       write(*, "(a)") "Registered Wannier projectors:"
-       call show_pool(first = projector_gindex(1), &
-            last = projector_gindex(numproj))
-    endif
+    ! if (ionode) then
+    !   write(*, "(a)") "Registered Wannier projectors:"
+    !   call show_pool(first = projector_gindex(1), &
+    !        last = projector_gindex(numproj))
+    ! endif
     
     !!!! (For modern branches: remember to initialize the matel tables)
     firsttime = .false.

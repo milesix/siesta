@@ -1431,6 +1431,10 @@ module m_w90_in_siesta
          enddo
          write(w90_lun,*) "end kpoints"
          close(w90_lun)
+
+         write(6,"(a)") "... Calling wannier90 to generate " // &
+                          "k-point neighbor information"
+         write(6,"(a)") "... See file _nnkp.wout for information"
       end if
 
       !   Call wannier90 in "nnkp" mode, and
@@ -1781,6 +1785,10 @@ module m_w90_in_siesta
          write(w90_lun,'(a,f14.6)') "fermi_energy = ", ef/eV
          
          close(w90_lun)
+
+         write(6,"(a)") "... Calling wannier90 for this manifold"
+         write(6,"(a)") "... See file " // trim(seedname) // &
+                        ".wout for information"
 
       end if
 
