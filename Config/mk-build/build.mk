@@ -82,12 +82,6 @@ WITH_GRIDXC=1
 #LIBS_CPLUS=-lstdc++ -lmpi_cxx
 
 
-# For Wannier90 support. Make sure you build a modified version of
-# Wannier90 as instructed in the Util/Wannier90/README file present in
-# the SIESTA source tree. (But here we use 'include' and 'lib')
-
-#WANNIER90_ROOT= /software/dft/wannier90-3.0.0
-
 #===========================================================
 # Compiler names and flags
 #
@@ -229,17 +223,6 @@ ifeq ($(WITH_NETCDF),1)
    endif
 endif
 
-ifeq ($(WITH_WANNIER90),1)
- ifndef WANNIER90_ROOT
-   $(error you need to define WANNIER90_ROOT in your arch.make)
- endif
- WANNIER90_INCFLAGS = -I$(WANNIER90_ROOT)/include
- INCFLAGS += $(WANNIER90_INCFLAGS)
- WANNIER90_LIBS = -L$(WANNIER90_ROOT)/lib -lwannier
- FPPFLAGS_WANNIER90 = $(DEFS_PREFIX)-DSIESTA__WANNIER90
- FPPFLAGS += $(FPPFLAGS_WANNIER90) 
- LIBS += $(WANNIER90_LIBS)
-endif
 
 ifeq ($(WITH_FLOOK),1)
  ifndef FLOOK_ROOT
@@ -315,9 +298,29 @@ PSML_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs libpsml)
 GRIDXC_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags libgridxc) $(LIBXC_INCFLAGS)
 GRIDXC_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs libgridxc) $(LIBXC_LIBS)
 
+# If selected, the wannier90 wrapper is also compiled here
+ifeq ($(WITH_WANNIER90),1)
+ ifndef WANNIER90_PACKAGE
+   $(error you need to define WANNIER90_PACKAGE in your arch.make)
+ endif
+ FPPFLAGS_WANNIER90 = $(DEFS_PREFIX)-DSIESTA__WANNIER90
+ FPPFLAGS += $(FPPFLAGS_WANNIER90) 
+ EXTLIBS += libwannier90
+
+ WANNIER90_INCFLAGS = $(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --cflags libwannier90)
+ WANNIER90_LIBS = $(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs libwannier90)
+
+ INCFLAGS += $(WANNIER90_INCFLAGS)
+ LIBS += $(WANNIER90_LIBS)
+endif
+
 else        
 
 #  Use of pre-installed required libraries
+
+   $(info Note that defining 'WITH_AUTOMATIC_REQ_LIBS=1')
+   $(info you get automatic compilation of required libraries)
+
 
 # These lines make use of a custom mechanism to generate library lists and
 # include-file management. The mechanism is not implemented in all libraries.
@@ -377,6 +380,19 @@ ifeq ($(WITH_GRIDXC),1)
   endif
 endif
 #
+ifeq ($(WITH_WANNIER90),1)
+ ifndef WANNIER90_ROOT
+   $(info If you are going to use a pre-installed (wrapped) wannier90)
+   $(info You need to define a proper (patched) WANNIER90_ROOT in your arch.make)
+   $(info ... but this is fragile. Better to define 'WITH_AUTOMATIC_REQ_LIBS=1')
+   $(info     and have 'WANNIER90_PACKAGE' point to a pristine wannier90-3.1.0.tar.gz tarball)
+   $(info -----)
+   $(error You need to define a proper (patched) WANNIER90_ROOT in your arch.make)
+ endif
+ WANNIER90_INCFLAGS=$(shell PKG_CONFIG_PATH=$(WANNIER90_ROOT)/lib/pkgconfig  pkg-config --cflags libwannier90)
+ WANNIER90_LIBS=$(shell PKG_CONFIG_PATH=$(WANNIER90_ROOT)/lib/pkgconfig  pkg-config --libs libwannier90)
+endif
+
 EXTLIBS=
 #-----------
 #  End of section for pre-installed required libraries

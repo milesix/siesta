@@ -172,7 +172,7 @@ endif()
 
 # Search for wannier90 code
 if (WITH_WANNIER90)
-  include(search_for_wannier90)
+  add_subdirectory("External/Wannier")
 endif()
 
 if (WITH_ELPA)

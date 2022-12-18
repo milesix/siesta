@@ -139,6 +139,11 @@
                                  !   coefficients of a Wannier in a basis 
                                  !   of NAO to compute the contribution to 
                                  !   the tight-binding matrix elements
+
+          ! Unitary matrices coming out of wannier90
+          complex(dp), allocatable :: u_matrix(:,:,:)
+          complex(dp), allocatable :: u_matrix_opt(:,:,:)
+          
       end type w90_in_manifold_t
 
       type(w90_in_manifold_t), public,
@@ -161,12 +166,12 @@
                                        ! The number of nearest neighbours
                                        !      belonging to each k-point of the 
                                        !      Monkhorst-Pack mesh
-      integer, pointer  :: nnlist_w90_in(:,:)
+      integer, allocatable  :: nnlist_w90_in(:,:)
                                        ! nnlist(ikp,inn) is the index of the
                                        !   inn-neighbour of ikp-point
                                        !   in the Monkhorst-Pack grid folded 
                                        !   to the first Brillouin zone
-      integer, pointer  :: nnfolding_w90_in(:,:,:)
+      integer, allocatable  :: nnfolding_w90_in(:,:,:)
                                        ! nnfolding(i,ikp,inn) is the i-component
                                        !   of the reciprocal lattice vector
                                        !   (in reduced units) that brings
@@ -186,9 +191,9 @@
 !
 ! Variables related with the atomic structure
 !
-      real(dp) :: latvec_w90_in(3,3)   ! Lattice vectors
+      real(dp) :: latvec_w90_in(3,3)   ! Lattice vectors (in Ang???)
       real(dp) :: reclatvec_w90_in(3,3)! Reciprocal lattice vectors
-                                       !  Cartesian coordinates in Bohr^-1
+                                       !  Cartesian coordinates in Ang^-1 ???
                                        !  First  index: component
                                        !  Second index: vector
 !

@@ -212,22 +212,6 @@ C     Initialise MPI and set processor number
          call MPI_Comm_Rank( MPI_Comm_World, Node, MPIerror )
          call MPI_Comm_Size( MPI_Comm_World, Nodes, MPIerror )
       endif
-
-#ifdef SIESTA__WANNIER90
-      ! Sanity check
-      ! Wannier90 uses the raw "mpi_comm_world", which in Siesta
-      ! is stored in true_mpi_comm_world
-      ! We demand congruency at least (same number of ranks and in
-      ! in the same order).
-      call mpi_comm_compare(MPI_COMM_WORLD, true_mpi_comm_world,
-     $     mpi_compare_result, MPIerror)
-      select case (mpi_compare_result)
-      case (MPI_IDENT, MPI_CONGRUENT)
-         ! OK
-      case (MPI_SIMILAR, MPI_UNEQUAL)
-         call die("Siesta and wannier90 communicators not compatible")
-      end select
-#endif
 #else
       SIESTA_worker = .true.
       Node = 0

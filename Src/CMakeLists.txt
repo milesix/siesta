@@ -566,7 +566,7 @@ target_link_libraries(
   ${PROJECT_NAME}-libpsop
   ${PROJECT_NAME}-libms
   "$<$<BOOL:${WITH_LUA}>:flook::flook>"
-  "$<$<BOOL:${WITH_WANNIER90}>:wannier90::wannier90>"
+  "$<$<BOOL:${WITH_WANNIER90}>:libwannier90::libwannier90>"
   "$<$<BOOL:${WITH_MPI}>:mpi_siesta>"
   "$<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>"
   "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>"
