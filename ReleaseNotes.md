@@ -19,6 +19,8 @@ grouped under headings representing past (and upcoming) releases.
 
 ### Changes
 
+* Add XC information to CML file (@william-chem)
+
 * Added support for D3 dispersion corrections (Federico Pedron)
 
    * Most, if not all, of the GGA functionals are supported by default (PBE, LYP and their

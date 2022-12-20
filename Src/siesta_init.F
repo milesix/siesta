@@ -67,6 +67,9 @@
      &                              setup_wf_kpoints
       use m_new_dm,           only: get_allowed_history_depth
       use m_object_debug,     only: set_object_debug_level
+      use siesta_cml
+      use gridXC,  only : getXC=>gridxc_getXC   ! Returns the XC functional to be used
+
 #ifdef DEBUG_XC
       USE siestaXC, only: setDebugOutputUnit
 #endif /* DEBUG_XC */
@@ -114,6 +117,14 @@
       integer :: npSIESTA
       external :: read_options
       external :: reset_messages_file
+
+      integer :: nf, nXCfunc
+      integer, parameter :: MaxFunc = 10
+      character(len=20) :: XCauth(MaxFunc)
+      character(len=20) :: XCfunc(MaxFunc)
+      real(dp) :: XCweightX(MaxFunc)
+      real(dp) :: XCweightC(MaxFunc)
+      character(len=2) :: idx_string
 
 !---------------------------------------------------------------------- BEGIN
 ! Initialise MPI unless siesta is running as a subroutine
@@ -308,6 +319,28 @@ C     Initialise MPI and set processor number
 #else
       call gridxc_init()
 #endif
+
+!     Write exchange-correlation functional to .cml file
+      call getXC( nXCfunc, XCfunc, XCauth, XCweightX, XCweightC )
+
+      if ( cml_p ) then
+        call cmlStartPropertyList(xf=mainXML, title='XC.Mix',
+     .                              dictRef='siesta:xc')
+        do nf = 1,nXCfunc
+          write(idx_string, "(I0.2)") nf
+          call cmlStartPropertyList(mainXML, id=idx_string)
+          call cmlAddProperty(xf=mainXML, dictRef='siesta:xc_func',
+     .                    title='Functional', value=trim(XCfunc(nf)))
+          call cmlAddProperty(xf=mainXML, dictRef='siesta:xc_auth',
+     .                    title='Authors', value=trim(XCauth(nf)))
+          call cmlAddProperty(xf=mainXML, dictRef='siesta:weight_ex',
+     .                    title='Weight(Ex)', value=XCweightX(nf))
+          call cmlAddProperty(xf=mainXML, dictRef='siesta:weight_ec',
+     .                    title='Weight(Ec)', value=XCweightC(nf))
+          call cmlEndPropertyList(xf=mainXML)
+        enddo
+        call cmlEndPropertyList(xf=mainXML)
+      endif
 
 !     Initialise force field component
       call inittwobody( )
