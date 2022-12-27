@@ -29,7 +29,7 @@ $(CMAKE_BUILD_DIR_xmlf90)/Makefile: $(CMAKE_SOURCE_DIR_xmlf90)/CMakeLists.txt
 
 .PHONY: $(CMAKE_BUILD_DIR_xmlf90)/libxmlf90.a  # to allow CMake's make check the build
 $(CMAKE_BUILD_DIR_xmlf90)/libxmlf90.a: $(CMAKE_BUILD_DIR_xmlf90)/Makefile
-	cmake --build $(CMAKE_BUILD_DIR_xmlf90) 
+	cmake --build $(CMAKE_BUILD_DIR_xmlf90)
 	cmake --install $(CMAKE_BUILD_DIR_xmlf90)
 
 xmlf90: check_cmake_version
@@ -48,7 +48,7 @@ $(CMAKE_BUILD_DIR_libpsml)/Makefile: $(CMAKE_SOURCE_DIR_libpsml)/CMakeLists.txt
 
 .PHONY: $(CMAKE_BUILD_DIR_libpsml)/libpsml.a  # to allow CMake's make check the build
 $(CMAKE_BUILD_DIR_libpsml)/libpsml.a: $(CMAKE_BUILD_DIR_libpsml)/Makefile
-	cmake --build $(CMAKE_BUILD_DIR_libpsml) 
+	cmake --build $(CMAKE_BUILD_DIR_libpsml)
 	cmake --install $(CMAKE_BUILD_DIR_libpsml)
 
 libpsml: check_cmake_version
@@ -87,11 +87,83 @@ $(CMAKE_BUILD_DIR_libgridxc)/Makefile: $(CMAKE_SOURCE_DIR_libgridxc)/CMakeLists.
 
 .PHONY: $(CMAKE_BUILD_DIR_libgridxc)/libgridxc.a  # to allow CMake's make check the build
 $(CMAKE_BUILD_DIR_libgridxc)/libgridxc.a: $(CMAKE_BUILD_DIR_libgridxc)/Makefile
-	cmake --build $(CMAKE_BUILD_DIR_libgridxc) 
+	cmake --build $(CMAKE_BUILD_DIR_libgridxc)
 	cmake --install $(CMAKE_BUILD_DIR_libgridxc)
 
 libgridxc: check_cmake_version
 libgridxc: $(CMAKE_BUILD_DIR_libgridxc)/libgridxc.a
+#-----------------------------------------
+CMAKE_BUILD_DIR_mctc-lib := $(MAIN_OBJDIR)/__extlib_mctc-lib
+CMAKE_SOURCE_DIR_mctc-lib := $(TOPDIR)/External/DFTD3/mctc-lib
+
+$(CMAKE_BUILD_DIR_mctc-lib)/Makefile: $(CMAKE_SOURCE_DIR_mctc-lib)/CMakeLists.txt
+	cmake -S $(<D) -B $(@D) \
+             -DCMAKE_INSTALL_PREFIX=$(EXTLIBS_INSTALL_PREFIX) \
+             -DCMAKE_Fortran_COMPILER=$(FC_SERIAL) \
+             -DCMAKE_INSTALL_LIBDIR=$(LIBPREFIX)
+
+.PHONY: $(CMAKE_BUILD_DIR_mctc-lib)/libmctc-lib.a  # to allow CMake's make check the build
+$(CMAKE_BUILD_DIR_mctc-lib)/libmctc-lib.a: $(CMAKE_BUILD_DIR_mctc-lib)/Makefile
+	cmake --build $(CMAKE_BUILD_DIR_mctc-lib)
+	cmake --install $(CMAKE_BUILD_DIR_mctc-lib)
+
+mctc-lib: check_cmake_version
+mctc-lib: $(CMAKE_BUILD_DIR_mctc-lib)/libmctc-lib.a
+#-----------------------------------------
+CMAKE_BUILD_DIR_test-drive := $(MAIN_OBJDIR)/__extlib_test-drive
+CMAKE_SOURCE_DIR_test-drive := $(TOPDIR)/External/DFTD3/test-drive
+
+$(CMAKE_BUILD_DIR_test-drive)/Makefile: $(CMAKE_SOURCE_DIR_test-drive)/CMakeLists.txt
+	cmake -S $(<D) -B $(@D) \
+             -DCMAKE_INSTALL_PREFIX=$(EXTLIBS_INSTALL_PREFIX) \
+             -DCMAKE_Fortran_COMPILER=$(FC_SERIAL) \
+             -DCMAKE_INSTALL_LIBDIR=$(LIBPREFIX)
+
+.PHONY: $(CMAKE_BUILD_DIR_test-drive)/libtest-drive.a  # to allow CMake's make check the build
+$(CMAKE_BUILD_DIR_test-drive)/libtest-drive.a: $(CMAKE_BUILD_DIR_test-drive)/Makefile
+	cmake --build $(CMAKE_BUILD_DIR_test-drive)
+	cmake --install $(CMAKE_BUILD_DIR_test-drive)
+
+test-drive: check_cmake_version
+test-drive: $(CMAKE_BUILD_DIR_test-drive)/libtest-drive.a
+#-----------------------------------------
+CMAKE_BUILD_DIR_toml-f := $(MAIN_OBJDIR)/__extlib_toml-f
+CMAKE_SOURCE_DIR_toml-f := $(TOPDIR)/External/DFTD3/toml-f
+
+$(CMAKE_BUILD_DIR_toml-f)/Makefile: $(CMAKE_SOURCE_DIR_toml-f)/CMakeLists.txt
+	cmake -S $(<D) -B $(@D) \
+             -DCMAKE_INSTALL_PREFIX=$(EXTLIBS_INSTALL_PREFIX) \
+             -DCMAKE_Fortran_COMPILER=$(FC_SERIAL) \
+             -DCMAKE_INSTALL_LIBDIR=$(LIBPREFIX)
+
+.PHONY: $(CMAKE_BUILD_DIR_toml-f)/libtoml-f.a  # to allow CMake's make check the build
+$(CMAKE_BUILD_DIR_toml-f)/libtoml-f.a: $(CMAKE_BUILD_DIR_toml-f)/Makefile
+	cmake --build $(CMAKE_BUILD_DIR_toml-f)
+	cmake --install $(CMAKE_BUILD_DIR_toml-f)
+
+toml-f: check_cmake_version
+toml-f: $(CMAKE_BUILD_DIR_toml-f)/libtoml-f.a
+#-----------------------------------------
+CMAKE_BUILD_DIR_sdftd3 := $(MAIN_OBJDIR)/__extlib_sdftd3
+CMAKE_SOURCE_DIR_sdftd3 := $(TOPDIR)/External/DFTD3/s-dftd3
+
+$(CMAKE_BUILD_DIR_sdftd3)/Makefile: $(CMAKE_SOURCE_DIR_sdftd3)/CMakeLists.txt
+	cmake -S $(<D) -B $(@D) \
+             -DCMAKE_INSTALL_PREFIX=$(EXTLIBS_INSTALL_PREFIX) \
+             -DWITH_OpenMP=OFF \
+             -DWITH_TESTS=OFF \
+             -DBLAS_LIBRARIES=$(LAPACK_LIBS) \
+             -DCMAKE_PREFIX_PATH=$(EXTLIBS_INSTALL_PREFIX)  \
+             -DCMAKE_Fortran_COMPILER=$(FC_SERIAL) \
+             -DCMAKE_INSTALL_LIBDIR=$(LIBPREFIX)
+
+.PHONY: $(CMAKE_BUILD_DIR_sdftd3)/lib/libs-dftd3.a # to allow CMake's make check the build
+$(CMAKE_BUILD_DIR_sdftd3)/lib/libs-dftd3.a: $(CMAKE_BUILD_DIR_sdftd3)/Makefile
+	cmake --build $(CMAKE_BUILD_DIR_sdftd3)
+	cmake --install $(CMAKE_BUILD_DIR_sdftd3)
+
+s-dftd3: check_cmake_version
+s-dftd3: $(CMAKE_BUILD_DIR_sdftd3)/lib/libs-dftd3.a
 #-----------------------------------------
 
 clean_extlibs:

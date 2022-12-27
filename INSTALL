@@ -1,7 +1,6 @@
 SIESTA can be built:
 
-* Using an experimental CMake framework (see file INSTALL.CMake for details,
-quirks, and missing bits).
+* Using an experimental CMake framework (see file INSTALL.CMake for details)
 
 * Using the traditional makefile-based approach, which has been
 streamlined and made more user-friendly.
@@ -20,8 +19,12 @@ streamlined and made more user-friendly.
 
 
 In both cases, several external libraries must be installed before
-Siesta can be compiled. This installation can be made on-the-fly,
-using CMake, pkg-config, and git submodules:
+Siesta can be compiled. Up to now, the user had to specify the
+locations of the installed libraries in the arch.make file or in the
+environment (e.g. XMLF90_ROOT=/path/to/xmlf90). While this approach
+still works, and can be useful for its flexibility, a new scheme
+facilitates the installation of the mandatory libraries
+on-the-fly, using CMake, pkg-config, and git submodules:
 
 - The xmlf90, libpsml, and libgridxc (required) libraries are available as
   submodules in the External subdirectory, set to the appropriate
@@ -33,6 +36,10 @@ using CMake, pkg-config, and git submodules:
 
   where <path> is the path to the submodule. Leave out '<path>' to
   enable all submodules.
+  
+  The libraries required to implement the optional DFT-D3 functionality
+  are also available as submodules, and can be compiled with the same
+  scheme as the mandatory libraries.
 
 - (If you plan to compile Siesta in a system without internet access
    (e.g. MareNostrum), you can use the 'stage_submodules.sh' script
@@ -44,7 +51,7 @@ using CMake, pkg-config, and git submodules:
        WITH_AUTOMATIC_REQ_LIBS=1
 
 - Simply typing "make" will build the Siesta executable. CMake will
-  configure and build the three libraries above, and the building
+  configure and build the libraries above, and the building
   scripts will arrange the right variables for library discovery in
   Siesta using pkg-config.
   The whole set of auxiliary programs can be built by "make utils".
@@ -69,8 +76,6 @@ mentioned at the top, it is possible to use CMake for the installation
 of Siesta itself, also with automatic installation of the required
 libraries. The CMake framework is functional, but still needs some ironing out.
 If you try it, please report problems and/or suggestions for improvement.
-
-
 
 
 

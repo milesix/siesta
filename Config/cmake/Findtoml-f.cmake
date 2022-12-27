@@ -14,10 +14,9 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with s-dftd3.  If not, see <https://www.gnu.org/licenses/>.
 
-set(_lib "xmlf90")
-set(_pkg "XMLF90")
-set(_url "https://gitlab.com/siesta-project/libraries/xmlf90")
-set(_tag "cmake")
+set(_lib "toml-f")
+set(_pkg "TOMLF")
+set(_url "https://github.com/toml-f/toml-f")
 
 if(NOT DEFINED "${_pkg}_FIND_METHOD")
   if(DEFINED "${PROJECT_NAME}-dependency-method")
@@ -30,7 +29,7 @@ endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/s-dftd3-utils.cmake")
 
-sdftd3_find_package("${_lib}" "${${_pkg}_FIND_METHOD}" "${_url}" "${_tag}" "${_lib}")
+sdftd3_find_package("${_lib}" "${${_pkg}_FIND_METHOD}" "${_url}" "v0.2.4"  "DFTD3/${_lib}")
 
 if(DEFINED "_${_pkg}_FIND_METHOD")
   unset("${_pkg}_FIND_METHOD")
@@ -39,4 +38,3 @@ endif()
 unset(_lib)
 unset(_pkg)
 unset(_url)
-unset(_tag)

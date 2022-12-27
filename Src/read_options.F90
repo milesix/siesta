@@ -639,6 +639,26 @@ subroutine read_options( na, ns, nspin )
      end if
   end if
 
+  !------------------------
+  ! DFTD3
+  !
+  want_dftd3_dispersion = fdf_get('DFTD3',.false.)
+#ifdef SIESTA__DFTD3  
+  if (ionode) then
+     write(6,1) 'redata: Using DFT-D3 dispersion', want_dftd3_dispersion
+  endif
+  if (cml_p) then
+     call cmlAddParameter( xf=mainXML, name='DFTD3',   &
+          value=want_dftd3_dispersion, dictRef='siesta:dftd3')
+  end if
+#else
+  if (want_dftd3_dispersion) then
+     call die("Need to compile with DFTD3 support")
+  endif
+#endif
+
+  !------------------------
+  
   ! Use Saved Data
   usesaveddata = fdf_get('UseSaveData',.false.)
   if (ionode) then
