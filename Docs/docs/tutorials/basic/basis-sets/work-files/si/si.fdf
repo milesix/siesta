@@ -1,0 +1,56 @@
+# -----------------------------------------------------------------------------
+#
+SystemName          bulk silicon
+SystemLabel         si
+
+%block ChemicalSpeciesLabel
+ 1  14  Si
+%endblock ChemicalSpeciesLabel
+
+#------- Basis set
+PAO.BasisSize       DZP            # Also SZ, DZ, SZP, etc
+
+#PAO.EnergyShift     _ESHIFT_ meV  # Uncomment and replace symbol
+                                   # to control range
+#
+#  This (commented) block just defines the structure of the basis.
+#  Note the defaults (0.00) for the radii. With this
+#  setting, they will be generated using the energy shift parameter.
+#
+#  You can play by changing individual rc's here (they will take
+#  precedence) (Uncomment first)
+#
+#%block PAO.Basis          
+#Si    2                   # We include 2 explicit shells
+# n=3   0   2              # 2s orbitals (double zeta)
+#   0.000      0.000
+#   1.000      1.000
+# n=3   1   2 P   1        # 2p orbitals (double zeta) + (3d)  polarization (single zeta)
+#   0.000      0.000
+#   1.000      1.000
+#%endblock PAO.Basis
+#-----------------
+
+LatticeConstant    5.43 Ang
+%block LatticeVectors
+  0.500  0.500  0.000
+  0.000  0.500  0.500
+  0.500  0.000  0.500
+%endblock LatticeVectors
+
+MeshCutoff          90.0 Ry
+
+DM.MixingWeight      0.3 
+DM.NumberPulay       3  
+DM.Tolerance         1.d-4
+ 
+kgridcutoff          7. Ang
+
+SolutionMethod       diagon    
+ElectronicTemperature  25 meV  
+
+AtomicCoordinatesFormat  Fractional
+%block AtomicCoordinatesAndAtomicSpecies
+    0.    0.    0.     1  Si        1
+    0.25  0.25  0.25   1  Si        2
+%endblock AtomicCoordinatesAndAtomicSpecies

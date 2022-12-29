@@ -1,0 +1,86 @@
+# General system specifications ....
+SystemName    graphene.diffuse
+SystemLabel   graphene.diffuse
+
+NumberOfAtoms    2
+NumberOfSpecies  1
+
+%block ChemicalSpeciesLabel
+    1   6  C
+%endblock ChemicalSpeciesLabel
+
+# ===============================================================
+# Basis set definition...
+
+# You can play with the extension of the orbitals...
+PAO.EnergyShift      1.0 meV
+
+%block PAO.Basis                 # Define Basis set
+C        4                # We include 4 shells
+ n=2   0   2              # 2s orbitals (double zeta)
+   0.000      0.000
+   1.000      1.000
+ n=2   1   2 P   1        # 2p orbitals (double zeta) + polarization (single zeta)
+   0.000      0.000
+   1.000      1.000
+ n=3   0   1              # 3s diffuse orbital (single zeta) with fixed radii at 10 a.u.
+  10.000    
+   1.000    
+ n=3   1   1              # 3p diffuse orbital (single zeta) with fixed radii at 12 a.u.
+  12.000    
+   1.000    
+%endblock PAO.Basis
+# ===============================================================
+
+# Structural parameters...
+
+LatticeConstant 2.476675 Ang
+%block LatticeParameters
+1.000  1.000  20.0  90.0  90.0  120.0
+%endblock LatticeParameters
+
+AtomicCoordinatesFormat fractional
+
+%block AtomicCoordinatesAndAtomicSpecies
+  0.33333333  0.66666667  0.5        1     # C
+  0.66666667  0.33333333  0.5        1     # C
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+# Simulation parameters ...
+
+SolutionMethod         diagon
+
+XC.Functional          LDA
+XC.Authors             CA
+SpinPolarized          .false.
+
+DM.MixingWeight        0.100     # New DM amount for next SCF cycle
+DM.NumberPulay         3
+DM.Tolerance           5.0d-5
+
+DM.UseSaveDM         .true.
+UseSaveData              T     # default value
+
+# Real space grid...
+
+MeshCutoff           160.0 Ry
+
+
+# K-sampling (using Monkhorst-Pack allows a better fit to the reduced dimensionality)
+
+%block kgrid_Monkhorst_Pack
+  9  0  0    0.0
+  0  9  0    0.0
+  0  0  1    0.0
+%endblock kgrid_Monkhorst_Pack
+
+WriteKbands    .true.
+WriteBands    .true.
+BandLinesScale     ReciprocalLatticeVectors
+
+%block Bandlines
+  1   0.0000000000   0.000000000   0.0000   \Gamma
+ 60   0.3333333333   0.333333333   0.0000   K
+ 30   0.5000000000   0.500000000   0.0000   M
+ 60   0.0000000000   1.000000000   0.0000   \Gamma
+%endblock BandLines
