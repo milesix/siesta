@@ -89,7 +89,7 @@ c -------------------------------------------------------------------
              ! ensure we catch users doing neigwanted calculations
              call ravel(maxo * nspinor, eo(1,1,ik), eok)
              call cmlAddProperty(xf=mainXML,
-     .           value=eok(no*nspinor)/eV,
+     .           value=eok(1:no*nspinor)/eV,
      .           dictRef='siesta:eigenenergies',
      .           units='siestaUnits:ev')
            end do
