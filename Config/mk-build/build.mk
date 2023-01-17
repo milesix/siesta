@@ -87,7 +87,7 @@ WITH_GRIDXC=1
 #
 # FC_PARALLEL=mpif90
 # FC_SERIAL=gfortran
-# FFLAGS = -O2
+# FFLAGS = -g -O2
 # IPO_FLAG = -ipo  # (keep it separate from FFLAGS)
 # FFLAGS_DEBUG= -g -O0
 #
