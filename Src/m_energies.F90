@@ -167,6 +167,8 @@ contains
     FreeE = Etot - kBT * Entropy + E_bulk_bias
 
     if ( TSrun ) then
+      ! A TS-run will not incorporate the bulk-bias energy.
+      ! So it should be left out.
       NEGF_FreeE = NEGF_Etot - kBT * Entropy
     end if
 
@@ -176,7 +178,7 @@ contains
   subroutine update_FreeEHarris( kBT )
     real(dp), intent(in) :: kBT
 
-    FreeEHarris = Eharrs - kBT * Entropy
+    FreeEHarris = Eharrs - kBT * Entropy + E_bulk_bias
 
   end subroutine update_FreeEHarris
 
