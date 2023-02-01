@@ -161,6 +161,10 @@ include(check_for_linalg_features)
 # Handle external dependencies
 # Use proper order for xmlf90 and libpsml dependencies
 
+if (NOT TARGET libfdf::libfdf)
+  find_package(libfdf)
+endif()
+
 if (NOT TARGET xmlf90::xmlf90)
   find_package(xmlf90)
 endif()
@@ -211,8 +215,8 @@ if( WITH_MPI )
 endif()
 
 # FDF
-add_subdirectory("Src/fdf")
-add_library(Siesta::libfdf ALIAS fdf)
+# This works for now
+add_library(fdf ALIAS libfdf::libfdf)
 
 add_subdirectory("Src/easy-fdict")
 add_subdirectory("Src/ncps/src/libxc-compat")

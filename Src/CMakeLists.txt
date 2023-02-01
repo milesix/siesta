@@ -553,7 +553,7 @@ target_link_libraries(
   ${PROJECT_NAME}-libsiesta
   PUBLIC
   OpenMP::OpenMP_Fortran
-  fdf
+  libfdf::libfdf
   xmlf90::xmlf90
   libpsml::libpsml
   libgridxc::libgridxc
