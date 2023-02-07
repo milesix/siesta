@@ -46,7 +46,7 @@ LOCAL_OBJS=get_chem_labels.o handlers.o local_sys.o
 OBJS_GET_CHEM_LABELS=$(SIESTA_OBJS) $(LOCAL_OBJS)
 #
 #
-get_chem_labels: $(FDF_LIBS)  $(OBJS_GET_CHEM_LABELS)
+get_chem_labels: $(OBJS_GET_CHEM_LABELS)
 	$(FC) -o get_chem_labels \
 	       $(LDFLAGS) $(OBJS_GET_CHEM_LABELS) $(FDF_LIBS) $(LIBS)
 #

@@ -132,9 +132,9 @@ INCFLAGS:= $(INCFLAGS) $(GRIDXC_INCFLAGS)
 tscontour.o: $(OBJS)
 ALL_OBJS = $(OBJS) tscontour.o
 
-$(OBJS): $(FDF_LIBS) $(COMP_LIBS)
+$(OBJS): $(COMP_LIBS)
 .PHONY: tscontour
-tscontour: $(FDF_LIBS) $(COMP_LIBS) $(NCPS) $(PSOP) $(ALL_OBJS)
+tscontour: $(COMP_LIBS) $(NCPS) $(PSOP) $(ALL_OBJS)
 	$(FC) $(FFLAGS) $(LDFLAGS) -o tscontour \
 	$(ALL_OBJS)  $(COMP_LIBS) $(FDF_LIBS) \
         $(NCPS) $(PSOP) $(XC) $(PSML_LIBS) $(XMLF90_LIBS) \

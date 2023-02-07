@@ -39,7 +39,7 @@ DEP_OBJS = precision.o parallel.o \
 LOCAL_OBJS= grimme.o handlers.o local_sys.o
 OBJS=$(LOCAL_OBJS) $(DEP_OBJS)
 
-$(EXE): $(FDF_LIBS) $(OBJS)
+$(EXE): $(OBJS)
 	$(FC) -o $(EXE) \
 	       $(LDFLAGS) $(OBJS) $(FDF_LIBS)
 

@@ -51,7 +51,7 @@ LOCAL_OBJS += ts2ts.o handlers.o
 
 OBJS = $(DEP_OBJS) $(LOCAL_OBJS)
 
-$(EXE): $(FDF_LIBS) $(OBJS)
+$(EXE): $(OBJS)
 	$(FC) -o $(EXE) \
 	       $(LDFLAGS) $(OBJS) $(FDF_LIBS)
 

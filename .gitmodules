@@ -28,3 +28,6 @@
 [submodule "External/DFTD3/test-drive"]
 	path = External/DFTD3/test-drive
 	url = https://github.com/fortran-lang/test-drive
+[submodule "External/libfdf"]
+	path = External/libfdf
+	url = https://gitlab.com/siesta-project/libraries/libfdf

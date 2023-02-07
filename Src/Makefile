@@ -383,7 +383,7 @@ ALL_OBJS=$(OBJS) $(SYSOBJ) $(MAIN_OBJ)
 
 $(ALL_OBJS): $(COMP_LIBS)
 
-libSiestaForces.a: $(MPI_INTERFACE) $(FDF_LIBS) $(MS) $(NCPS) $(PSOP) \
+libSiestaForces.a: $(MPI_INTERFACE) $(MS) $(NCPS) $(PSOP) \
                    $(COMP_LIBS) $(OBJS) $(SYSOBJ)
 	$(AR) $(ARFLAGS_EXTRA) cru libSiestaForces.a $(OBJS) $(SYSOBJ)
 	@if [ ! -z "$(MPI_INTERFACE)" ] ; then \
@@ -391,7 +391,7 @@ libSiestaForces.a: $(MPI_INTERFACE) $(FDF_LIBS) $(MS) $(NCPS) $(PSOP) \
 	-$(RANLIB) libSiestaForces.a
 #
 siesta: what version \
-                $(MPI_INTERFACE) $(FDF_LIBS) $(MS) $(NCPS) $(PSOP) \
+                $(MPI_INTERFACE) $(MS) $(NCPS) $(PSOP) \
                 $(COMP_LIBS) $(ALL_OBJS)
 	$(FC) -o siesta \
 	       $(LDFLAGS) $(ALL_OBJS) $(MS)  \
@@ -421,7 +421,6 @@ clean:
 	rm -f *.bck *~
 	rm -f aux_*.f aux_*.f90
 	@echo "==> Cleaning internal libraries"
-	(cd fdf ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean)
 	(cd ncps/src ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean)
 	(cd psoplib/src ; $(MAKE) ARCH_MAKE=$(ARCH_MAKE) clean)
 	(cd easy-fdict ; $(MAKE) clean)

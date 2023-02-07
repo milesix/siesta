@@ -67,11 +67,11 @@ OBJS_IONCAT=$(DEPS_IONCAT) $(IONCAT_LOCAL_OBJS)
 XC = $(GRIDXC_LIBS)
 INCFLAGS:= $(INCFLAGS) $(GRIDXC_INCFLAGS)
 
-gen-basis: $(NCPS) $(PSOP) $(FDF_LIBS) $(OBJS_GEN-BASIS) $(COMP_LIBS)
+gen-basis: $(NCPS) $(PSOP) $(OBJS_GEN-BASIS) $(COMP_LIBS)
 	$(FC) -o gen-basis \
 	       $(LDFLAGS) $(OBJS_GEN-BASIS) $(FDF_LIBS) $(XC) \
               $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) $(NETCDF_LIBS) $(COMP_LIBS) $(LIBS)
-ioncat:  $(NCPS) $(PSOP) $(FDF_LIBS) $(OBJS_IONCAT) $(COMP_LIBS)
+ioncat:  $(NCPS) $(PSOP) $(OBJS_IONCAT) $(COMP_LIBS)
 	$(FC) -o ioncat \
 	       $(LDFLAGS) $(OBJS_IONCAT) $(FDF_LIBS) \
               $(NCPS) $(PSOP) $(XC) $(PSML_LIBS) $(XMLF90_LIBS) $(NETCDF_LIBS) $(COMP_LIBS) $(LIBS)

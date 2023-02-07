@@ -64,7 +64,7 @@ MIXPS_LOCAL_OBJS= mixps.o handlers.o local_sys.o
 MIXPS_OBJS= $(MIXPS_DEPS) $(MIXPS_LOCAL_OBJS)
 #
 
-mixps:  $(FDF_LIBS) $(NCPS) $(MIXPS_OBJS)
+mixps:  $(NCPS) $(MIXPS_OBJS)
 	$(FC) -o mixps \
 	       $(LDFLAGS) $(MIXPS_OBJS) $(NCPS) $(FDF_LIBS) $(PSML_LIBS) $(XMLF90_LIBS)
 
@@ -74,7 +74,7 @@ FRACTIONAL_DEPS= m_io.o alloc.o interpolation.o \
 FRACTIONAL_LOCAL_OBJS= fractional.o handlers.o local_sys.o
 FRACTIONAL_OBJS= $(FRACTIONAL_DEPS) $(FRACTIONAL_LOCAL_OBJS)
 
-fractional: $(FDF_LIBS)  $(NCPS) $(FRACTIONAL_OBJS)
+fractional: $(NCPS) $(FRACTIONAL_OBJS)
 	$(FC) -o fractional \
 	       $(LDFLAGS) $(FRACTIONAL_OBJS) $(NCPS) $(PSML) $(FDF_LIBS)\
                $(PSML_LIBS) $(XMLF90_LIBS)

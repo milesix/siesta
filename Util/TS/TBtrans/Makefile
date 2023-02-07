@@ -205,7 +205,7 @@ INCFLAGS += $(FDICT_INCFLAGS) $(NCDF_INCFLAGS)
 # This will setup the correct compilation sequence
 
 $(DEP_OBJS): $(COMP_LIBS) $(FDICT_LIBS)
-$(TBTOBJS): $(FDF_LIBS) $(FDICT_LIBS)
+$(TBTOBJS): $(FDICT_LIBS)
 
 .PHONY: check-tbtrans
 check-tbtrans:
@@ -238,7 +238,7 @@ pht: phtrans
 
 # We append the -DTBTRANS as some special routines
 # which could take advantage of this preprocessing flag
-tbtrans: version $(MPI_INTERFACE) $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT_LIBS) $(DEP_OBJS) $(TBTOBJS) 
+tbtrans: version $(MPI_INTERFACE) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT_LIBS) $(DEP_OBJS) $(TBTOBJS) 
 	$(FC) $(FFLAGS) $(LDFLAGS) -o tbtrans \
               $(DEP_OBJS) $(TBTOBJS) $(MPI_INTERFACE) \
               $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT_LIBS) $(LIBS)
@@ -247,7 +247,7 @@ tbtrans: version $(MPI_INTERFACE) $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FD
 # which could take advantage of this preprocessing flag
 # Tbtrans has TBT_PHONON flags to compile special capabilities
 phtrans: FPPFLAGS += -DTBT_PHONON
-phtrans: version $(MPI_INTERFACE) $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT_LIBS) $(DEP_OBJS) $(TBTOBJS)
+phtrans: version $(MPI_INTERFACE) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT_LIBS) $(DEP_OBJS) $(TBTOBJS)
 	$(FC) $(FFLAGS) $(LDFLAGS) -o phtrans \
               $(DEP_OBJS) $(TBTOBJS) $(MPI_INTERFACE) \
               $(FDF_LIBS) $(COMP_LIBS) $(TBT_COMP_LIBS) $(FDICT_LIBS) $(LIBS)

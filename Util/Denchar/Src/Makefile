@@ -91,7 +91,7 @@ LOCAL_OBJS= atompla.o colinear.o denchar.o length.o \
 
 ALL_OBJS_DENCHAR= $(SIESTA_OBJS) $(LOCAL_OBJS)
 
-denchar: $(FDF_LIBS) $(NCPS) $(ALL_OBJS_DENCHAR)
+denchar: $(NCPS) $(ALL_OBJS_DENCHAR)
 	$(FC) -o denchar \
 	       $(LDFLAGS) $(ALL_OBJS_DENCHAR) $(FDF_LIBS) $(NCPS) $(PSML_LIBS) \
                $(XMLF90_LIBS) $(METIS_LIB)
