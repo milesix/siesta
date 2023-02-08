@@ -765,9 +765,9 @@ libraries and how each of them may be added to the compilation step
 (\file{arch.make}).
 
 {\bf NOTE:} The \emph{required} libraries: \program{xmlf90},
-\program{libPSML}, and  \program{libGridXC}, can be installed
-on-the-fly (follow instructions in the top-level \program{INSTALL}
-file).
+\program{libPSML}, \program{libfdf}, and \program{libGridXC}, can be
+installed on-the-fly (follow instructions in the top-level
+\program{INSTALL} file).
 
 \siesta\ is distributed with scripts that install the most useful
 libraries. These installation scripts may be located in the
@@ -810,6 +810,11 @@ installation scripts finishe by telling \emph{what} to add to the
 
   To easily install \program{libPSML} please see the installation file:
   \shell{Docs/install\_psml.bash}.
+
+  \item[libfdf] %
+  \index{External library!libfdf}%
+  is required to parse fdf files and handle the options in them.
+  (\href{https://gitlab.com/siesta-project/libraries/libfdf})
 
   \item[libGridXC] %
   \index{External library!libGridXC}%
@@ -1420,7 +1425,7 @@ the simulation to be performed.
 This file is written in a special format called FDF, developed by
 Alberto Garc\'{\i}a and Jos\'e M. Soler. This format allows data to be
 given in any order, or to be omitted in favor of default values.
-Refer to documentation in $\sim$/siesta/Src/fdf for details.
+Refer to documentation of \program{libfdf} for details.
 Here we offer a glimpse of it through the following rules:
 
 \begin{itemize}
