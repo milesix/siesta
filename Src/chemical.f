@@ -15,7 +15,7 @@
       private
 
       public :: atomic_number
-      public :: number_of_species, species_label
+      public :: number_of_species, species_label, ps_file_label
       public :: is_floating, is_bessel, is_synthetic
       public :: read_chemical_types, print_chemical_type
 
@@ -26,6 +26,7 @@
       type chemical_types
          integer                    :: no_of_species
          character(len=20), pointer :: spec_label(:)
+         character(len=20), pointer :: ps_label(:)
          integer, pointer           :: z(:)
       end type chemical_types
 
@@ -52,6 +53,14 @@
       call check(i)
       species_label = chemical_list%spec_label(i)
       end function species_label
+
+      function ps_file_label(i)
+      character(len=20) ps_file_label
+      integer, intent(in)  :: i
+
+      call check(i)
+      ps_file_label = chemical_list%ps_label(i)
+      end function ps_file_label
 
       function atomic_number(i)
       integer atomic_number
@@ -103,7 +112,7 @@
       type(block_fdf)            :: bfdf
       type(parsed_line), pointer :: pline
 
-      character(len=20) :: label
+      character(len=20) :: label, ps_label
       character(len=256) :: msg
 
       integer :: z, is
@@ -136,6 +145,7 @@
       if ( nsp == 0 ) call die("No species found!!!")
 
       allocate(chemical_list%spec_label(nsp))
+      allocate(chemical_list%ps_label(nsp))
       allocate(chemical_list%z(nsp))
       chemical_list%no_of_species = nsp
 
@@ -150,6 +160,13 @@
          label = fdf_bnames(pline,1)
          z = fdf_bintegers(pline,2)
 
+         ! Allow an extra field for a psfile name
+         if (fdf_bnnames(pline) == 2) then
+            ps_label = fdf_bnames(pline,2)
+         else
+            ps_label = label
+         endif
+
          ! We cannot test label names in this
          ! loop as isp may be non-linear
          if ( isp < 1 .or. nsp < isp )
@@ -157,6 +174,7 @@
 
          chemical_list%z(isp) = z
          chemical_list%spec_label(isp) = label
+         chemical_list%ps_label(isp) = ps_label
         
       end do
       if ( ns_read /= nsp )

@@ -59,11 +59,14 @@
          chemical_list%no_of_species = nspecies
          nullify(chemical_list%spec_label,chemical_list%z)
          allocate(chemical_list%spec_label(nspecies))
+         allocate(chemical_list%ps_label(nspecies))
          allocate(chemical_list%z(nspecies))
       end if
 
       do is=1,nspecies
         call MPI_Bcast(chemical_list%spec_label(is),20,MPI_character,
+     $        0,MPI_Comm_World,MPIerror)
+        call MPI_Bcast(chemical_list%ps_label(is),20,MPI_character,
      $        0,MPI_Comm_World,MPIerror)
         call MPI_Bcast(chemical_list%z(is),1,MPI_Integer,
      $        0,MPI_Comm_World,MPIerror)

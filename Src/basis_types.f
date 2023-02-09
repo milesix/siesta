@@ -125,6 +125,7 @@
 !
       type, public :: basis_def_t
           character(len=20)         ::  label      ! Long label
+          character(len=20)         ::  ps_label   ! PS file label
           integer                   ::  z          ! Atomic number
           type(ground_state_t)      ::  ground_state
           type(pseudopotential_t)   ::  pseudopotential
