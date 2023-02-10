@@ -23,7 +23,7 @@ c
 c **********************************************************************
 
       use fdf
-      use units, only: Pi
+      use units, only: Pi, Ang
       use precision, only: dp
 
       implicit none
@@ -154,7 +154,7 @@ c ...
       ndof = natoms * 3
 
 c Lattice constant of unit cell...
-      alat = fdf_get('LatticeConstant',0.d0,'Bohr')
+      alat = fdf_get('LatticeConstant',Ang,'Bohr')
       if (alat .eq. 0.d0) then
         write(6,'(a)') 
      . 'ERROR: No valid lattice constant specified.'

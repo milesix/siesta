@@ -15,6 +15,7 @@ program unfold
 ! S.G.Mayo and J.M.Soler, Oct.2018
 ! P. Ordejón, Jan 2021 - Parallelization over orbitals implemented
 
+  use units, only: Ang
   use alloc,        only: de_alloc, re_alloc
   use memory_log,   only: memory_report
   use atmfuncs,     only: lofio, mofio, nofis, rcut, rphiatm, zetafio
@@ -306,7 +307,7 @@ program unfold
 
   ! Find unit cell and initialize atomic coords
   if (myNode==0) print'(a,/,(3f12.6))','unfold: reading system geometry'
-  alat = fdf_get('LatticeConstant',1._dp,'bohr')
+  alat = fdf_get('LatticeConstant',Ang,'bohr')
   call coor(na,ucell)        ! atomic coordinates xa stored in module siesta_geom
   vol = volcel(ucell)        ! unit cell volume
   call reclat(ucell,rcell,1) ! rcell = reciprocal cell vectors
