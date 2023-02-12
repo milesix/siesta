@@ -15,35 +15,34 @@
       private
 
       public :: atomic_number
-      public :: number_of_species, species_label, ps_file_label
+      public :: number_of_species, species_label, ps_file_spec
       public :: is_floating, is_bessel, is_synthetic
       public :: read_chemical_types, print_chemical_type
 
       ! Public due to Bcast routines
-      public :: chemical_types, chemical_list
+      public :: chemical_type, chemical_list
 
       ! Species information
-      type chemical_types
-         integer                    :: no_of_species
-         character(len=20), pointer :: spec_label(:)
-         character(len=20), pointer :: ps_label(:)
-         integer, pointer           :: z(:)
-      end type chemical_types
+      type chemical_type
+         character(len=20)  :: spec_label
+         character(len=256) :: ps_file_spec
+         integer            :: z
+      end type chemical_type
 
-      type(chemical_types), save :: chemical_list
+      type(chemical_type), allocatable, save :: chemical_list(:)
 
 
       CONTAINS
 
       subroutine check(i)
       integer, intent(in) :: i
-      if (i.lt.0 .or. i.gt.chemical_list%no_of_species)
+      if (i.lt.0 .or. i.gt.size(chemical_list))
      $     call die("Wrong species number requested")
       end subroutine check
 
       function number_of_species()
       integer number_of_species
-      number_of_species = chemical_list%no_of_species
+      number_of_species = size(chemical_list)
       end function number_of_species
 
       function species_label(i)
@@ -51,23 +50,23 @@
       integer, intent(in)  :: i
 
       call check(i)
-      species_label = chemical_list%spec_label(i)
+      species_label = chemical_list(i)%spec_label
       end function species_label
 
-      function ps_file_label(i)
-      character(len=20) ps_file_label
+      function ps_file_spec(i)
+      character(len=256) ps_file_spec
       integer, intent(in)  :: i
 
       call check(i)
-      ps_file_label = chemical_list%ps_label(i)
-      end function ps_file_label
+      ps_file_spec = chemical_list(i)%ps_file_spec
+      end function ps_file_spec
 
       function atomic_number(i)
       integer atomic_number
       integer, intent(in)  :: i
 
       call check(i)
-      atomic_number = chemical_list%z(i)
+      atomic_number = chemical_list(i)%z
       end function atomic_number
 ! -------
       function is_floating(i)
@@ -75,7 +74,7 @@
       integer, intent(in)  :: i
 
       call check(i)
-      is_floating = (chemical_list%z(i) .le. 0)
+      is_floating = (chemical_list(i)%z <= 0)
       end function is_floating
 ! -------
 
@@ -84,7 +83,7 @@
       integer, intent(in)  :: i
 
       call check(i)
-      is_bessel = (chemical_list%z(i) .eq. -100)
+      is_bessel = (chemical_list(i)%z .eq. -100)
       end function is_bessel
 ! -------
 !     Checks whether we are dealing with a synthetic atom
@@ -96,7 +95,7 @@
       call check(i)
       ! Note that we could have a synthetic ghost atom, with
       ! z <= -200
-      is_synthetic = (abs(chemical_list%z(i)) .gt. 200)
+      is_synthetic = (abs(chemical_list(i)%z) .gt. 200)
       end function is_synthetic
 !---
       subroutine read_chemical_types(silent)
@@ -144,10 +143,7 @@
       end if
       if ( nsp == 0 ) call die("No species found!!!")
 
-      allocate(chemical_list%spec_label(nsp))
-      allocate(chemical_list%ps_label(nsp))
-      allocate(chemical_list%z(nsp))
-      chemical_list%no_of_species = nsp
+      allocate(chemical_list(nsp))
 
       ns_read = 0
       do while( fdf_bline(bfdf,pline) )
@@ -160,7 +156,7 @@
          label = fdf_bnames(pline,1)
          z = fdf_bintegers(pline,2)
 
-         ! Allow an extra field for a psfile name
+         ! Allow an extra optional field for a ps file spec
          if (fdf_bnnames(pline) == 2) then
             ps_label = fdf_bnames(pline,2)
          else
@@ -172,9 +168,9 @@
          if ( isp < 1 .or. nsp < isp )
      $ call die("Wrong specnum in Chemical_species_label")
 
-         chemical_list%z(isp) = z
-         chemical_list%spec_label(isp) = label
-         chemical_list%ps_label(isp) = ps_label
+         chemical_list(isp)%z = z
+         chemical_list(isp)%spec_label = label
+         chemical_list(isp)%ps_file_spec = ps_label
         
       end do
       if ( ns_read /= nsp )

@@ -116,8 +116,8 @@
           write(6,'(a)') ' initatom: still needs pseudopotential files'
           do is = 1 , nsp
              basp => basis_parameters(is)
-             basp%ps_label = ps_file_label(is)
-             call pseudo_read(basp%ps_label,basp%pseudopotential,
+             basp%ps_file_spec = ps_file_spec(is)
+             call pseudo_read(basp%ps_file_spec,basp%pseudopotential,
      $            basp%psml_handle,basp%has_psml_ps)
           end do
        end if
