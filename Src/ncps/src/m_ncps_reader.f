@@ -8,7 +8,7 @@
 
       integer, parameter, private :: dp = selected_real_kind(14,100)
 
-      public :: pseudo_read, pseudo_read_from_file
+      public :: pseudo_read
 
       CONTAINS
 
@@ -45,7 +45,7 @@
         logical found, reparametrize
 
         logical :: debug
-                
+
         debug = .false.
         if (present(debugging_enabled)) then
            debug = debugging_enabled
@@ -72,7 +72,7 @@
         if (found) then
            call pseudo_read_unformatted(fname,p)
            if (reparametrize) then
-              call pseudo_reparametrize(p,a,b,label,rmax)
+              call pseudo_reparametrize(p,a,b,rmax)
            endif
         else
            fname = trim(prefix) // trim(label) // '.psf'
@@ -80,7 +80,7 @@
            if (found) then
               call pseudo_read_formatted(fname,p)
               if (reparametrize) then
-                 call pseudo_reparametrize(p,a,b,label,rmax)
+                 call pseudo_reparametrize(p,a,b,rmax)
               endif
            else
               fname = trim(prefix) // trim(label) // '.psml'
@@ -109,6 +109,7 @@
         end subroutine pseudo_read
 
         subroutine pseudo_read_from_file(filename,p,
+     $                                   psml_handle,has_psml_ps,
      $                                   new_grid,a,b,rmax,
      $                                   debugging_enabled)
 
@@ -116,10 +117,13 @@
         use m_ncps_froyen_reader,  only: pseudo_read_unformatted
         use m_ncps_froyen_reader,  only: pseudo_reparametrize
         use m_ncps_writers,  only: pseudo_write_formatted
+        use m_psml,                only: psml_t => ps_t
+        use m_psml,                only: ps_RootAttributes_Get
 
         character(len=*), intent(in)   :: filename
         type(pseudopotential_t)        :: p
-
+        type(psml_t), intent(inout), target :: psml_handle
+        logical, intent(out)           :: has_psml_ps
         logical, intent(in), optional  :: new_grid
         real(dp), intent(in), optional :: a
         real(dp), intent(in), optional :: b
@@ -127,6 +131,7 @@
         logical, intent(in), optional :: debugging_enabled
 
         character(len=30)   :: label, ext
+        character(len=36)   :: uuid
         integer :: status
 
         logical reparametrize
@@ -138,6 +143,8 @@
            debug = debugging_enabled
         endif
 
+        has_psml_ps = .false.
+        
         reparametrize = .false.
         if (present(new_grid)) then
            reparametrize = new_grid
@@ -152,16 +159,19 @@
         if (trim(ext) == ".vps") then
            call pseudo_read_unformatted(filename,p)
            if (reparametrize) then
-              call pseudo_reparametrize(p,a,b,label,rmax)
+              call pseudo_reparametrize(p,a,b,rmax)
            endif
         else if (trim(ext) == ".psf") then
            call pseudo_read_formatted(filename,p)
            if (reparametrize) then
-              call pseudo_reparametrize(p,a,b,label,rmax)
+              call pseudo_reparametrize(p,a,b,rmax)
            endif
         else if (trim(ext) == ".psml") then
            call pseudo_read_psml(filename,p,
      $          reparametrize=reparametrize,a=a,b=b,rmax=rmax)
+           call ps_RootAttributes_Get(psml_handle,uuid=uuid)
+           write(6,"(a)") "PSML uuid: " // uuid
+           has_psml_ps = .true.
         else
            write(6,'(2a,a)') 'pseudo_read_from_file: ERROR: ',
      .                'Extension not supported: ', trim(ext)

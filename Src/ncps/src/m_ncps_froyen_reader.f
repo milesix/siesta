@@ -246,7 +246,7 @@
 
          end subroutine charge_from_ps_conf
 
-         subroutine pseudo_reparametrize(p,a,b,label,new_rmax)
+         subroutine pseudo_reparametrize(p,a,b,new_rmax)
          use ncps_interpolation, only: generate_spline
          use ncps_interpolation, only: evaluate_spline
 !
@@ -256,7 +256,6 @@
 
          type(pseudopotential_t)          :: p
          real(dp), intent(in)             :: a, b
-         character(len=*), intent(in)     :: label
          real(dp), intent(in), optional   :: new_rmax
 
          real(dp)  :: rmax, rpb, ea, ea2, rr
