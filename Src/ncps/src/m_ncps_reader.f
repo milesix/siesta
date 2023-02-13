@@ -12,19 +12,15 @@
 
       CONTAINS
 
-        subroutine pseudo_read(label,p,
+        subroutine pseudo_read(ps_spec,p,
      $                         psml_handle,has_psml_ps,
      $                         new_grid,a,b,rmax,directory,
      $                         debugging_enabled)
 
-        use m_ncps_froyen_reader,  only: pseudo_read_formatted
-        use m_ncps_froyen_reader,  only: pseudo_read_unformatted
-        use m_ncps_froyen_reader,  only: pseudo_reparametrize
-        use m_ncps_writers,  only: pseudo_write_formatted
+        use search_ps_m,           only: search_ps
         use m_psml,                only: psml_t => ps_t
-        use m_psml,                only: ps_RootAttributes_Get
 
-        character(len=*), intent(in)   :: label
+        character(len=*), intent(in)   :: ps_spec
         type(pseudopotential_t)        :: p
         type(psml_t), intent(inout), target :: psml_handle
         logical, intent(out)           :: has_psml_ps
@@ -40,72 +36,47 @@
 !       or in a .psf file (formatted)
 !       or in a .psml file 
 
-        character(len=200) fname, prefix
-        character(len=36) uuid
-        logical found, reparametrize
+        character(len=:), allocatable :: path, ext
+        integer :: stat
+        integer :: idx, j
+        logical :: good_extension
+  
+        character(len=5) :: extensions(3) =
+     $                      [ ".psml", ".psf ", ".vps " ]
 
-        logical :: debug
-
-        debug = .false.
-        if (present(debugging_enabled)) then
-           debug = debugging_enabled
+        good_extension = .false.
+        idx = index(ps_spec,".",back=.true.)
+        if (idx /= 0 ) then
+          if (allocated(ext)) deallocate(ext)
+          allocate(character(len=len_trim(ps_spec(idx:))) :: ext)
+          ext(:) = trim(ps_spec(idx:))
+          do j = 1, size(extensions)
+             if (ext .eq. trim(extensions(j))) then
+                ! print *, "Allowed extension: ", ext
+                good_extension = .true.
+             endif
+          enddo
         endif
 
-        has_psml_ps = .false.
-
-        reparametrize = .false.
-        if (present(new_grid)) then
-           reparametrize = new_grid
-        endif
-        if (reparametrize) then
-           if (.not. present(a)) call die("New a not present")
-           if (.not. present(b)) call die("New b not present")
-        endif
-
-        prefix = ""
-        if (present(directory)) then
-           prefix = trim(directory) // "/"
-        endif
-
-        fname  = trim(prefix) // trim(label) // '.vps'
-        inquire(file=fname, exist=found)
-        if (found) then
-           call pseudo_read_unformatted(fname,p)
-           if (reparametrize) then
-              call pseudo_reparametrize(p,a,b,rmax)
-           endif
+        if (good_extension) then
+           call search_ps(ps_spec,"SIESTA_PS_PATH",path,stat,[""])
         else
-           fname = trim(prefix) // trim(label) // '.psf'
-           inquire(file=fname, exist=found)
-           if (found) then
-              call pseudo_read_formatted(fname,p)
-              if (reparametrize) then
-                 call pseudo_reparametrize(p,a,b,rmax)
-              endif
-           else
-              fname = trim(prefix) // trim(label) // '.psml'
-              inquire(file=fname, exist=found)
-              if (found) then
-                 call pseudo_read_psml(fname,p,psml_handle,
-     $                                 reparametrize,a,b,rmax)
-                 call ps_RootAttributes_Get(psml_handle,uuid=uuid)
-                 write(6,"(a)") "PSML uuid: " // uuid
-                 has_psml_ps = .true.
-              else
-                 write(6,'(2a,a)') 'pseudo_read: ERROR: ',
-     .                'Pseudopotential file not found: ',
-     $                trim(prefix) // trim(label) // '.{psf,vps,psml}'
+           call search_ps(ps_spec,"SIESTA_PS_PATH",path,stat,extensions)
+        endif
+        
+        if (stat /= 0) then
+           write(6,'(2a,a)') 'pseudo_read: ERROR: ',
+     .          'Pseudopotential file not found: ',
+     $          trim(ps_spec) // '.{psf,vps,psml}'
 
-                 call die("")
-              endif
-           endif
+           call die("")
         endif
-        if (debug) then
-           ! Dump locally
-           call pseudo_dump(trim(label) // ".psdump",p)
-           call pseudo_write_formatted(trim(label) // ".out.psf",p,
-     $          print_gen_zval=.true.)
-        endif
+        
+        call pseudo_read_from_file(path,p,
+     $                             psml_handle,has_psml_ps,
+     $                             new_grid,a,b,rmax,
+     $                             debugging_enabled)
+
         end subroutine pseudo_read
 
         subroutine pseudo_read_from_file(filename,p,
@@ -204,6 +175,9 @@
         ! warning about dangling association...
         type(ps_t), target   :: ps
 
+        write(6,'(3a)') 'Reading pseudopotential information ',
+     $       'in PSML from ', trim(fname)
+        
         if (present(psml_handle)) then
            ! We pass the actual handle to the caller
            call psml_reader(fname,psml_handle)
