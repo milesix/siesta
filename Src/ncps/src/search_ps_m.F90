@@ -10,7 +10,7 @@
 
 ! - A single label, .e.g: Si
 
-!   In this case, the routines search for Si.{ext} for ext in {"psml", "psf", "vps"}
+!   In this case, the routines search for Si.{ext} for ext in {"vps", "psf", "psml"}
 
 ! - A ps file name with an extension. e.g. Fe.psml
 

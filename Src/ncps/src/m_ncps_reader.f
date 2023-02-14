@@ -42,7 +42,7 @@
         logical :: good_extension
   
         character(len=5) :: extensions(3) =
-     $                      [ ".psml", ".psf ", ".vps " ]
+     $                      [ ".vps ",  ".psf ", ".psml" ]
 
         good_extension = .false.
         idx = index(ps_spec,".",back=.true.)
