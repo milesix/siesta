@@ -818,7 +818,7 @@ subroutine elsi_kpoints_dispatcher(iscf, no_s, nspin, no_l, maxnh, no_u,  &
      Dscf, ef, Entropy, occtol, neigwanted, Get_EDM_Only)
 
   use mpi_siesta, only: mpi_comm_dft
-  use mpi
+  use mpi, only: MPI_DOUBLE_PRECISION, MPI_INTEGER, MPI_SUM
   use parallel, only: blocksize
   use class_Distribution
     use m_redist_spmatrix, only: aux_matrix, redistribute_spmatrix
