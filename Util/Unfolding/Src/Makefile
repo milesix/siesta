@@ -213,7 +213,7 @@ sparse_matrices.o: class_OrbitalDistribution.o class_SpData1D.o
 sparse_matrices.o: class_SpData2D.o class_SpData2D.o class_Sparsity.o
 sparse_matrices.o: precision.o
 spatial.o: precision.o
-spher_harm.o: alloc.o precision.o sys.o
+spher_harm.o: alloc.o precision.o sys.o units.o
 timer.o: m_timer.o parallel.o sys.o timer_tree.o
 timer_tree.o: m_walltime.o
 units.o: precision.o
