@@ -11460,6 +11460,10 @@ involving molecules.
   \note \siesta\ prints out a small section of how the constraints are
   recognized.
 
+  \def\directionalconstraint{\note these specifications are apt for \emph{directional}
+    constraints.}
+
+  
   \begin{fdfoptions}
     \option[atom|position]%
     Fix certain atomic coordinates.
@@ -11520,23 +11524,22 @@ involving molecules.
 
     \end{fdfoptions}
 
-    \note these specifications are apt for \emph{directional}
-    constraints.
+    \directionalconstraint
+
 
     \option[Z]%
     Equivalent to \fdf*{atom} with all indices of the atoms that
     have atomic number equal to the specified number.
 
-    \note this specification is apt for \emph{directional}
-    constraints.
+    \directionalconstraint
+
 
     \option[species-i]%
     Equivalent to \fdf*{atom} with all indices of the atoms that
     have species according to the \fdf{ChemicalSpeciesLabel} and
     \fdf{AtomicCoordinatesAndAtomicSpecies}.
 
-    \note this specification is apt for \emph{directional}
-    constraints.
+    \directionalconstraint
 
 
     \option[center]%
@@ -11545,8 +11548,7 @@ involving molecules.
 
     Atomic indices may be specified according to \fdf*{atom}.
 
-    \note this specification is apt for \emph{directional}
-    constraints.
+    \directionalconstraint
 
 
     \option[rigid|molecule]%
@@ -11557,8 +11559,7 @@ involving molecules.
 
     Atomic indices may be specified according to \fdf*{atom}.
 
-    \note this specification is apt for \emph{directional}
-    constraints.
+    \directionalconstraint
 
 
     \option[rigid-max|molecule-max]%
@@ -11568,6 +11569,8 @@ involving molecules.
     be expanded to act on all atoms specified.
 
     Atomic indices may be specified according to \fdf*{atom}.
+
+    \directionalconstraint
 
 
     \option[cell-angle]%
@@ -11686,15 +11689,18 @@ involving molecules.
 
   Finally, the \emph{directional} constraint is an important and often
   useful feature.
-  %
+  The directional constraints will subtract the force projected onto
+  the direction specified. Hence an $x$ directional constraint will
+  remove the force component along the $x$ direction $f_x\to 0$.
+  
   When relaxing complex structures it may be advantageous to first
-  relax along a given direction (where you expect the stress to be
+  relax along a given direction (where you expect the stress to be the
   largest) and subsequently let it fully relax. Another example would
   be to relax the binding distance between a molecule and a surface,
   before relaxing the entire system by forcing the molecule and
   adsorption site to relax together.
   %
-  To use directional constraint one may provide an additional 3
+  To use directional constraints one may provide an additional 3
   \emph{reals} after the \fdf*{atom}/\fdf*{rigid}.
   For instance in the previous example (benzene) one may first relax
   all Hydrogen atoms along the $y$ and $z$ Cartesian vector by
@@ -11715,6 +11721,10 @@ involving molecules.
     %endblock
   \end{fdfexample}
 
+  Therefore the directional constraint will remove the force
+  components that projects onto the direction specified.
+  
+  
 \end{fdfentry}
 
 
