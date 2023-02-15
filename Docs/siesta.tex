@@ -10628,46 +10628,54 @@ implemented, selected by
 
     \option[CG]%
     \fdfindex*{MD.TypeOfRun:CG}%
-
-    Coordinate optimization by conjugate gradients). Optionally (see
-    variable \fdf{MD.VariableCell} below), the optimization can include the
-    cell vectors.
+    Performs an atomic coordinates optimization by using the conjugate gradients
+    method. If \fdf{MD.VariableCell} is enabled (see below), the optimization
+    includes the cell vectors.
 
     \option[Broyden]%
     \fdfindex*{MD.TypeOfRun:Broyden}%
-    Coordinate optimization by a modified Broyden scheme). Optionally,
-    (see variable \fdf{MD.VariableCell} below), the optimization can
-    include the cell vectors.
+    Performs an atomic coordinates optimization by using a modified Broyden
+    method, which falls within the Quasi-Newton family of algorithms. If
+    \fdf{MD.VariableCell} is enabled (see below), the optimization includes
+    the cell vectors.
 
     \option[FIRE]%
     \fdfindex*{MD.TypeOfRun:FIRE}%
-    Coordinate optimization by Fast Inertial Relaxation Engine (FIRE)
-    (E. Bitzek et al, PRL 97, 170201, (2006)).  Optionally, (see
-    variable \fdf{MD.VariableCell} below), the optimization can
-    include the cell vectors.
+    Performs an atomic coordinates optimization by using the Fast Inertial
+    Relaxation Engine (E. Bitzek et al, PRL 97, 170201, (2006)). If
+    \fdf{MD.VariableCell} is enabled (see below), the optimization includes
+    the cell vectors.
+    FIRE avoids the need for linear search, thus making each individual iteration
+    faster when compared to Quasi-Newton methods. However, it also needs more
+    iterations to converge, so its efficiency is system-dependent.
 
     \option[Verlet]%
     \fdfindex*{MD.TypeOfRun:Verlet}%
-    Standard Verlet algorithm MD
+    Standard Velocity-Verlet algorithm for NVE molecular dynamics.
 
     \option[Nose]%
     \fdfindex*{MD.TypeOfRun:Nose}%
-    MD with temperature controlled  by means of a Nos\'e
-    thermostat
+    Constant temperature (NVT) MD with using a Nos\'e thermostat.
 
     \option[ParrinelloRahman]%
     \fdfindex*{MD.TypeOfRun:ParrinelloRahman}%
-    MD with pressure controlled by the Parrinello-Rahman method
+    Constant pressure (NPE) MD, controlled by the Parrinello-Rahman method.
 
     \option[NoseParrinelloRahman]%
     \fdfindex*{MD.TypeOfRun:NoseParrinelloRahman}%
-    MD with temperature controlled by means of a Nos\'e thermostat and
-    pressure controlled by the Parrinello-Rahman method
+    Constant temperature and pressure (NPT) MD using both methods above, the
+    Nos\'e thermostat and the Parrinello-Rahman method.
 
     \option[Anneal]%
     \fdfindex*{MD.TypeOfRun:Anneal}%
-    MD with annealing to a desired temperature and/or pressure (see
-    variable \fdf{MD.AnnealOption} below)
+    Constant temperature and/or pressure MD (see the variable
+    \fdf{MD.AnnealOption} below), using a very simple velocity
+    rescaling method. It should be used to quickly equilibrate a system
+    to a desired temperature and pressure; however, atomic velocities
+    resulting from this option are non-canonical and thus tend to
+    produce physically-inaccurate results. Therefore, it is strongly
+    recommended to change to the Nos\'e and/or ParrinelloRahman options
+    for production MD runs after the equilibration is done.
 
     \option[FC]%
     \fdfindex*{MD.TypeOfRun:FC}%
