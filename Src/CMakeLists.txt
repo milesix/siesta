@@ -399,14 +399,16 @@ set(libsiesta_sources
   parallel.F
   parallelsubs.F
   parsing.f
-  pdos.F
-  pdos2g.F
-  pdos2k.F
-  pdos3g.F
-  pdos3k.F
-  pdosg.F
-  pdosk.F
-  pdoskp.F
+  pdos.F90
+  pdos2g.F90
+  pdos2k.F90
+  pdos2kp.F90
+  pdos3g.F90
+  pdos3k.F90
+  pdos3kp.F90
+  pdosg.F90
+  pdosk.F90
+  pdoskp.F90
   periodic_table.f
   phirphi.f
   phirphi_opt.f
