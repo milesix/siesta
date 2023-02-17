@@ -60,13 +60,9 @@
 #endif
 
 #ifdef SIESTA__WANNIER90
-      use m_switch_local_projection, only: switch_local_projection
       use w90_in_siesta_types,   only: compute_chempotwann_after_scf
       use w90_in_siesta_types,   only: first_chempotwann
-      use m_w90_in_siesta,   only: compute_matrices
-      use m_w90_in_siesta,   only: compute_wannier
-      use m_wannier_in_nao,  only: wannier_in_nao
-      use m_chempotwann,     only: chempotwann
+      use m_chempotwann,     only: compute_H_chempotwann
       use m_chempotwann,     only: add_Hamiltonian_chempotwann
       use sparse_matrices,   only: DM_2D
       use sparse_matrices,   only: EDM_2D
@@ -419,22 +415,13 @@
         if( compute_chempotwann_after_scf ) then
           H_chempotwann => val(H_chempotwann_2D)
           if( first_chempotwann ) then
-!           Transfer all the parameters to the variables
-!           that will be used in the wannierization routines.
-!           Those routines comes from the WANNIER90 code.
-            do index_manifold = 1, n_wannier_manifolds
-              call switch_local_projection( index_manifold )
-              do ispin = 1, spin%H
-                call diagonalizeHk( ispin )
-                call compute_matrices( ispin, index_manifold )
-                call compute_wannier( ispin, index_manifold )
-                call wannier_in_nao( ispin, index_manifold )
-                if ( index_manifold .eq.
-     &              w90_index_perturbed_manifold ) then
-                  call chempotwann(index_manifold, ispin, H_chempotwann)
-                endif 
-              enddo 
-            enddo
+!           In this subroutine an extra contribution to the 
+!           DFT hamiltonian is computed.
+!           This extra contribution rises or lowers the diagonal energy element
+!           of the Hamiltonian expressed in a Wannier function basis.
+!           The magnitude of this shifting is introduced in the
+!           Wannier.ChemicalPotential block
+            call compute_H_chempotwann( H_chempotwann )
             first_chempotwann = .false.
           endif  ! Endif first_chempotwann
           call add_Hamiltonian_chempotwann( H_chempotwann )

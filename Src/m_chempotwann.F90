@@ -54,6 +54,7 @@
   private
 
   public :: chempotwann
+  public :: compute_H_chempotwann
   public :: add_Hamiltonian_chempotwann
 
   CONTAINS
@@ -417,6 +418,65 @@
 
 #endif
 
+   subroutine compute_H_chempotwann( H_chempotwann )
+
+!  In this subroutine an extra potential to the DFT hamiltonian is computed.
+!  This extra contribution rises or lowers the diagonal energy element 
+!  of the Hamiltonian expressed in a Wannier function basis.
+!  The magnitude of this shifting is introduced in the 
+!  Wannier.ChemicalPotential block
+!  The explicit expression of this shift, expressed in the SIESTA basis,
+!  is developed in 
+! <https://personales.unican.es/junqueraj/JavierJunquera_files/Notes/Wannier/wannier_in_nao.pdf>
+
+   use siesta_options, only: n_wannier_manifolds ! Number of bands manifolds 
+                                                 !   that will be considered 
+                                                 !   for Wannier transformation
+   use siesta_options, only: w90_index_perturbed_manifold 
+                                                 ! Index of the manifold that 
+                                                 !   will be perturbed with 
+                                                 !   a chemical potential
+   use m_switch_local_projection, only: switch_local_projection
+                                                 ! Subroutine that populates
+                                                 !   the different matrices
+                                                 !   for Wannierization
+                                                 !   starting from the data 
+                                                 !   of a given manifold
+   use m_w90_in_siesta,   only: compute_matrices
+   use m_w90_in_siesta,   only: compute_wannier
+   use m_wannier_in_nao,  only: wannier_in_nao
+
+   implicit none 
+
+   real(dp), intent(out)   :: H_chempotwann(maxnh,spin%H)   
+                                                 ! Extra term in the Hamiltonian
+                                                 !   that accounts for a 
+                                                 !   rigid shift of the 
+                                                 !   bands associated
+                                                 !   with a given Wannier
+
+   integer                 :: index_manifold     ! Index of the manifold to be
+                                                 !   wannierized
+   integer                 :: ispin              ! Counter of spin components
+
+!  Transfer all the parameters to the variables
+!  that will be used in the wannierization routines.
+!  Those routines comes from the WANNIER90 code.
+   do index_manifold = 1, n_wannier_manifolds
+      call switch_local_projection( index_manifold )
+      do ispin = 1, spin%H
+        call diagonalizeHk( ispin )
+        call compute_matrices( ispin, index_manifold )
+        call compute_wannier( ispin, index_manifold )
+        call wannier_in_nao( ispin, index_manifold ) 
+      enddo
+   enddo 
+   do ispin = 1, spin%H
+     call chempotwann(w90_index_perturbed_manifold, ispin, H_chempotwann)
+   enddo 
+   
+   end subroutine compute_H_chempotwann
+
    subroutine add_Hamiltonian_chempotwann( H_chempotwann )
    implicit none 
 
@@ -433,10 +493,12 @@
    integer :: ind       ! Index of the neighbour orbital in listh
 
 !  Add the Hamiltonian elements
+!   write(6,*)' In add_Hamiltonian'
    do io_local = 1, no_l
      do j = 1, numh(io_local)
        ind = listhptr(io_local) + j
        do ispin = 1, spin%H
+!         write(6,'(2i5,2f25.15)') ind, ispin, H(ind,ispin), H_chempotwann(ind,ispin)
          H(ind,ispin) = H(ind,ispin) + H_chempotwann(ind,ispin)
        enddo 
      enddo 

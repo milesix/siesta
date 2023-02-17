@@ -752,6 +752,8 @@ m_charge_add.o: parallel.o precision.o units.o
 m_check_walltime.o: m_walltime.o
 m_chempotwann.o: alloc.o atomlist.o m_spin.o parallel.o parallelsubs.o
 m_chempotwann.o: precision.o sparse_matrices.o sys.o w90_in_types.o
+m_chempotwann.o: siesta_options.o m_w90_in_siesta.o m_switch_local_proj.o
+m_chempotwann.o: m_wannier_in_nao.o
 m_chess.o: parallel.o parallelsubs.o precision.o
 m_dftu_so.o: m_occ_proj_dftu.o m_pot_dftu.o precision.o sparse_matrices.o
 m_digest_nnkp.o: alloc.o atomlist.o files.o m_mpi_utils.o m_noccbands.o
@@ -1180,14 +1182,15 @@ setup_H0.o: class_SpData2D.o dhscf.o dnaefs.o kinefsm.o m_energies.o
 setup_H0.o: m_mpi_utils.o m_ntm.o m_spin.o metaforce.o molecularmechanics.o
 setup_H0.o: naefs.o nlefsm.o siesta_geom.o siesta_options.o sparse_matrices.o
 setup_H0.o: spinorbit.o
-setup_hamiltonian.o: alloc.o atmfuncs.o atomlist.o class_SpData1D.o
-setup_hamiltonian.o: class_SpData2D.o class_SpData2D.o dftu.o dftu_specs.o
+setup_hamiltonian.o: alloc.o atmfuncs.o atomlist.o class_SpData1D.o parallel.o
+setup_hamiltonian.o: class_SpData2D.o dftu.o dftu_specs.o
 setup_hamiltonian.o: dhscf.o files.o io_hsx.o m_dftu_so.o m_dipol.o
 setup_hamiltonian.o: m_energies.o m_mpi_utils.o m_ntm.o m_partial_charges.o
 setup_hamiltonian.o: m_rhog.o m_spin.o m_steps.o m_stress.o metaforce.o
 setup_hamiltonian.o: molecularmechanics.o parallel.o siesta_geom.o
-setup_hamiltonian.o: siesta_options.o sparse_matrices.o sys.o
 setup_hamiltonian.o: siesta_options.o sparse_matrices.o sys.o w90_in_types.o
+setup_hamiltonian.o: m_chempotwann.o m_new_dm.o m_dhscf.o m_dftu.o
+setup_hamiltonian.o: class_zspdata2d.o
 setup_ordern_indexes.o: alloc.o domain_decom.o parallel.o spatial.o
 shaper.o: atmfuncs.o mneighb.o precision.o
 show_distribution.o: atomlist.o parallel.o parallelsubs.o siesta_geom.o sys.o
