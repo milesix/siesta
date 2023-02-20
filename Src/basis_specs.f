@@ -309,7 +309,7 @@ C Sanity checks on values
           basp%mass = atmass(abs(int(basp%z)))
         endif
 
-        write(6,"(/,a)") " ---- Processing specs for species: " //
+        write(6,"(/,a)") "---- Processing specs for species: " //
      $                    trim(basp%label)
         if (basp%bessel) then
           ! Initialize a constant pseudo

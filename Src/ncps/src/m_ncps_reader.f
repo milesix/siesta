@@ -51,7 +51,7 @@
           allocate(character(len=len_trim(ps_spec(idx:))) :: ext)
           ext(:) = trim(ps_spec(idx:))
           do j = 1, size(extensions)
-             if (ext .eq. trim(extensions(j))) then
+             if (ext == trim(extensions(j))) then
                 ! print *, "Allowed extension: ", ext
                 good_extension = .true.
              endif
@@ -67,7 +67,7 @@
         if (stat /= 0) then
            write(6,'(2a,a)') 'pseudo_read: ERROR: ',
      .          'Pseudopotential file not found: ',
-     $          trim(ps_spec) // '.{psf,vps,psml}'
+     $          trim(ps_spec) // '.{vps,psf,psml}'
 
            call die("")
         endif
@@ -175,8 +175,8 @@
         ! warning about dangling association...
         type(ps_t), target   :: ps
 
-        write(6,'(3a)') 'Reading pseudopotential information ',
-     $       'in PSML from ', trim(fname)
+        write(6,'(2a,/,tr2,a)') 'Reading pseudopotential information ',
+     $       'in PSML from:', trim(fname)
         
         if (present(psml_handle)) then
            ! We pass the actual handle to the caller

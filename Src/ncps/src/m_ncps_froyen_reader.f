@@ -19,8 +19,8 @@
 
         call get_free_lun(io_ps)
         open(io_ps,file=fname,form='unformatted',status='unknown')
-        write(6,'(3a)') 'Reading pseudopotential information ',
-     $       'in unformatted form from ', trim(fname)
+        write(6,'(2a,/,tr2,a)') 'Reading pseudopotential information ',
+     $       'in unformatted form from:', trim(fname)
 
         read(io_ps) p%name, p%icorr, p%irel, p%nicore,
      .       (p%method(i),i=1,6), p%text,
@@ -78,8 +78,8 @@
 
         call get_free_lun(io_ps)
         open(io_ps,file=fname,form='formatted',status='unknown')
-        write(6,'(3a)') 'Reading pseudopotential information ',
-     $       'in formatted form from ', trim(fname)
+        write(6,'(2a,/,tr2,a)') 'Reading pseudopotential information ',
+     $       'in formatted form from:', trim(fname)
 
  8000   format(1x,i2)
  8005   format(1x,a2,1x,a2,1x,a3,1x,a4)
