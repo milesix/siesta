@@ -1661,8 +1661,10 @@ default if a given tag is not found when needed (see \file{fdf.log}).
      %endblock ChemicalSpecieslabel
   \end{fdfexample}
   The first number in a line is the species number, it is followed by
-  the atomic number, and then by the desired label. This label will be
-  used to identify per-species files. 
+  the atomic number, and then by the desired unique label. This label
+  will be used to identify each species. For example the label is the
+  equivalent label name that should be found in the \fdf{PAO!Basis}
+  block.
 
   This construction allows you to have atoms of the same species but
   with different basis or pseudopotential, for example.
@@ -1675,10 +1677,11 @@ default if a given tag is not found when needed (see \file{fdf.log}).
   pseudopotential file named \shell{Si.psf}. See
   section~\ref{ps-handling} for a full discussion of options.
 
-  Negative atomic numbers are used for \emph{ghost}
-  atoms\index{ghost atoms} (see \fdf{PAO!Basis}).
+  Negative atomic numbers are used for \emph{ghost} atoms\index{ghost
+      atoms} (see \fdf{PAO!Basis}).
 
-  For atomic numbers over $200$ or below $-200$ you should read \fdf{SyntheticAtoms}.
+  For atomic numbers over $200$ or below $-200$ you should read
+  \fdf{SyntheticAtoms}.
 
   \note This block is mandatory.
 
