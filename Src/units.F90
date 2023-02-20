@@ -32,12 +32,14 @@ module units
 
   implicit none
 
-  ! Internally, siesta works with length: Bohr.
-  !                               energy: Rydberg.
-  !                                 time: femtosecond
+  ! pi to 50 digits
+  real(dp), parameter, public :: pi = 3.14159265358979323846264338327950288419716939937510_dp
+  real(dp), parameter, public :: pi2 = pi * 2._dp
+  real(dp), parameter, public :: deg = pi / 180.0_dp
 
-!  The easy way to make sense of units conversion:
-
+! Internally, siesta works with length: Bohr.
+!                               energy: Rydberg.
+!                                 time: femtosecond
 !  real(dp), parameter :: Bohr   = 1.0_dp
 !  real(dp), parameter :: Rydberg = 1.0_dp
 !  real(dp), parameter :: Femtosecond = 1.0_dp
@@ -64,6 +66,11 @@ module units
   !!    ...
   !! end subroutine units_initialization
   
+  ! Here we should list *new* values that will not be present in the
+  ! original scheme.
+  real(dp), parameter, public :: Joule  = 1._dp/2.1798723611035e-18_dp
+  real(dp), parameter, public :: hbar   = 6.62607015e-19_dp * Joule / (2 * pi) ! in Ry/fs
+
 #ifdef SIESTA__UNITS_ORIGINAL
   real(dp), parameter, public :: Ang    = 1._dp / 0.529177_dp
   real(dp), parameter, public :: eV     = 1._dp / 13.60580_dp
@@ -79,16 +86,10 @@ module units
   real(dp), parameter, public :: Kelvin = 6.33362312691136091e-6_dp
   real(dp), parameter, public :: Debye  = 3.93430269519899511e-1_dp
   real(dp), parameter, public :: amu    = 2.133107_dp
-  real(dp), parameter, public :: Ryd_time = 1._dp/0.048377686531714_dp
+  real(dp), parameter, public :: Ryd_time = 1._dp / hbar
 #endif
   real(dp), parameter, public :: GPa = kBar * 10
 
-! pi to 50 digits
-  real(dp), parameter, public :: pi = 3.14159265358979323846264338327950288419716939937510_dp
-  real(dp), parameter, public :: pi2 = pi * 2._dp
-  real(dp), parameter, public :: deg = pi / 180.0_dp
-
-  
   public :: inquire_unit
   private
 
