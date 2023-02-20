@@ -309,8 +309,11 @@ C Sanity checks on values
           basp%mass = atmass(abs(int(basp%z)))
         endif
 
-        write(6,"(/,a)") "---- Processing specs for species: " //
-     $                    trim(basp%label)
+        if (.not.basp%bessel) then
+          write(6,"(/,a)") "---- Processing specs for species: " //
+     $        trim(basp%label)
+        endif
+
         if (basp%bessel) then
           ! Initialize a constant pseudo
           call pseudo_init_constant(basp%pseudopotential)
