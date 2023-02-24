@@ -86,7 +86,7 @@ add_executable(denchar "${sources}")
 target_link_libraries(
   denchar
   PRIVATE
-  fdf
+  libfdf::libfdf
   libpsml::libpsml
   ${PROJECT_NAME}-libncps
   )

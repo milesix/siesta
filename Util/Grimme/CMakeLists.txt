@@ -14,7 +14,7 @@ add_executable(fdf2grimme
    handlers.f
 )
 
-target_link_libraries(fdf2grimme fdf)
+target_link_libraries(fdf2grimme libfdf::libfdf)
 
 install(
   TARGETS fdf2grimme

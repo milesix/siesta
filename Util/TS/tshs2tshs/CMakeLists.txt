@@ -53,7 +53,7 @@ install(
  target_link_libraries(
   tshs2tshs
   PRIVATE
-#  fdf
+#  libfdf::libfdf
 #  libpsml::libpsml
 #  libgridxc::libgridxc
 #  ${PROJECT_NAME}-libncps

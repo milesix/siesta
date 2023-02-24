@@ -17,7 +17,7 @@ add_library(vca_objs OBJECT
    handlers.f
 )
 target_link_libraries(vca_objs PUBLIC
-                               fdf
+                               libfdf::libfdf
 			       ${PROJECT_NAME}-libncps)
 
 add_executable( mixps mixps.f )

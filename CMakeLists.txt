@@ -214,10 +214,6 @@ if( WITH_MPI )
   add_library(Siesta::MPI ALIAS mpi_siesta)
 endif()
 
-# FDF
-# This works for now
-add_library(fdf ALIAS libfdf::libfdf)
-
 add_subdirectory("Src/easy-fdict")
 add_subdirectory("Src/ncps/src/libxc-compat")
 add_subdirectory("Src/ncps/src")

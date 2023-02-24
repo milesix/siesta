@@ -18,7 +18,7 @@ add_executable(get_chem_labels
    handlers.f
 )
 
-target_link_libraries(get_chem_labels fdf)
+target_link_libraries(get_chem_labels libfdf::libfdf)
 
 
 install(
