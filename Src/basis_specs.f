@@ -292,6 +292,7 @@ C Sanity checks on values
         basp=>basis_parameters(isp)
 
         basp%label = species_label(isp)
+        basp%ps_file_spec = ps_file_spec(isp)
         basp%z = atomic_number(isp)
         basp%floating = is_floating(isp)
         basp%bessel = is_bessel(isp)
@@ -308,22 +309,25 @@ C Sanity checks on values
           basp%mass = atmass(abs(int(basp%z)))
         endif
 
-        write(6,"(/,a)") " ---- Processing specs for species: " //
-     $                    trim(basp%label)
+        if (.not.basp%bessel) then
+          write(6,"(/,a)") "---- Processing specs for species: " //
+     $        trim(basp%label)
+        endif
+
         if (basp%bessel) then
           ! Initialize a constant pseudo
           call pseudo_init_constant(basp%pseudopotential)
         else if (basp%synthetic) then
           synthetic_atoms = .true.
           ! Will set gs later
-          call pseudo_read(basp%label,basp%pseudopotential,
+          call pseudo_read(basp%ps_file_spec,basp%pseudopotential,
      $         basp%psml_handle,basp%has_psml_ps,
      $         new_grid=reparametrize_pseudos,a=new_a,b=new_b,
      $         rmax=new_rmax,
      $         debugging_enabled=write_ion_plot_files)
         else
           call ground_state(abs(int(basp%z)),basp%ground_state)
-          call pseudo_read(basp%label,basp%pseudopotential,
+          call pseudo_read(basp%ps_file_spec,basp%pseudopotential,
      $         basp%psml_handle,basp%has_psml_ps,
      $         new_grid=reparametrize_pseudos,a=new_a,b=new_b,
      $         rmax=new_rmax,
@@ -671,7 +675,7 @@ C Sanity checks on values
          lmax_pseudo = basp%pseudopotential%npotd - 1 
          if (basp%lmxkb > lmax_pseudo) then
             write(6,'(a,i1,a)')
-     .           trim(basp%label) //
+     .           trim(basp%ps_file_spec) //
      .           " pseudopotential only contains V_ls up to l=",
      .           lmax_pseudo, " -- lmxkb reset."
             basp%lmxkb = lmax_pseudo
