@@ -21,7 +21,8 @@ libxc-compat:
 #
 OBJFILES= m_ncps.o m_ncps_froyen_reader.o m_ncps_translators.o \
           m_ncps_froyen_ps_t.o m_ncps_reader.o	m_ncps_writers.o \
-          interpolation.o m_ncps_psml_plugins.o m_ncps_utils.o
+          interpolation.o m_ncps_psml_plugins.o m_ncps_utils.o \
+          search_ps_m.o env_utils_m.o
 #
 INCFLAGS:= -I libxc-compat $(PSML_INCFLAGS)
 #
@@ -46,8 +47,9 @@ m_ncps.o: m_ncps_froyen_ps_t.o m_ncps_reader.o m_ncps_translators.o
 m_ncps.o: m_ncps_writers.o m_ncps_utils.o
 m_ncps_froyen_reader.o: interpolation.o m_ncps_froyen_ps_t.o
 m_ncps_reader.o: m_ncps_froyen_ps_t.o m_ncps_froyen_reader.o
-m_ncps_reader.o: m_ncps_translators.o m_ncps_writers.o
+m_ncps_reader.o: m_ncps_translators.o m_ncps_writers.o search_ps_m.o
 m_ncps_translators.o: m_ncps_froyen_ps_t.o
 m_ncps_translators.o: m_ncps_psml_plugins.o
 m_ncps_writers.o: m_ncps_froyen_ps_t.o
 m_ncps_utils.o: m_ncps_froyen_ps_t.o
+search_ps_m.o: env_utils_m.o
