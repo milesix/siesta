@@ -261,7 +261,7 @@ C Check whether GridCellSampling block has been looked for ------------------
              else
                 write(6,'(a,/,a)')
      &             'grdsam: syntax ERROR in %block Grid.CellSampling:',
-     &             trim(fdf_getline(bfdf%mark))
+     &             trim(pline%line)
              end if
           end do
 
