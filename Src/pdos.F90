@@ -211,7 +211,7 @@ subroutine pdos( NO, nspin, NO_L, MAXNH, &
     endif
 #endif    
   elseif (nspin == 4 .and. gamma) then
-    call pdos2g( NUO, NO, NO_L, MAXNH, &
+    call pdosg_ncso( NUO, NO, NO_L, MAXNH, nspin, &
         no_u, NUMH, LISTHPTR, LISTH, H, S, &
         E1, E2, NHIST, SIGMA, INDXUO, &
         HAUX, SAUX, PSI, eig, DTOT, DPR )
@@ -234,7 +234,7 @@ subroutine pdos( NO, nspin, NO_L, MAXNH, &
     endif
 #endif    
   elseif (nspin == 8 .and. gamma) then
-    call pdos3g( NUO, NO, NO_L, MAXNH, &
+    call pdosg_ncso( NUO, NO, NO_L, MAXNH, nspin, &
         no_u, NUMH, LISTHPTR, LISTH, H, S, &
         E1, E2, NHIST, SIGMA, INDXUO, &
         HAUX, SAUX, PSI, eig, DTOT, DPR )

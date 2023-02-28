@@ -397,10 +397,9 @@ set(libsiesta_sources
   parallelsubs.F
   parsing.f
   pdos.F90
-  pdos2g.F90
+  pdosg_ncso.F90
   pdos2k.F90
   pdos2kp.F90
-  pdos3g.F90
   pdos3k.F90
   pdos3kp.F90
   pdosg.F90
