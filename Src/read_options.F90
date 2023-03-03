@@ -32,7 +32,9 @@ subroutine read_options( na, ns, nspin )
 
   use m_charge_add, only : read_charge_add
   use m_hartree_add, only : read_hartree_add
-  
+
+  use velocity_shift_m, only : read_velocity_shift
+
   use m_mixing_scf, only: mixers_scf_init
   use m_mixing_scf, only: mixers_scf_print, mixers_scf_print_block
 
@@ -1614,6 +1616,9 @@ subroutine read_options( na, ns, nspin )
   
   ! We read in the relevant data for HartreeGeometries block
   call read_hartree_add( )
+
+  ! Read in the bulk-bias options
+  call read_velocity_shift()
 
   ! Harris Forces?. Then DM.UseSaveDM should be false (use always
   ! Harris density in the first SCF step of each MD step), and

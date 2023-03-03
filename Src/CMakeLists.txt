@@ -111,6 +111,9 @@ set(libsiesta_sources
   diagk.F
   diagk_file.F
   diagkp.F
+  diagkp_velocity.F90
+  diag2kp_velocity.F90
+  diag3kp_velocity.F90
   diagmemory.F
   diagon.F
   diagonalizeHk.F90
@@ -494,6 +497,7 @@ set(libsiesta_sources
   uncell.f
   units.f90
   vacuum_level.f90
+  velocity_shift.F90
   vmat.F90
   vmatsp.F90
   vmb.F

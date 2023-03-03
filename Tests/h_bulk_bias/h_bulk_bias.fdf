@@ -1,0 +1,56 @@
+SystemName          H chain
+SystemLabel         h_bulk_bias
+NumberOfAtoms       1
+NumberOfSpecies     1
+
+MeshCutoff  250 Ry
+
+%block ChemicalSpeciesLabel
+ 1  1  H
+%endblock ChemicalSpeciesLabel
+
+%block PAO.Basis   
+H    1
+n=1 0 1 E 100. 4.0
+    5.0  
+%endblock PAO.Basis
+
+Reparametrize.Pseudos
+Restricted.Radial.Grid  .false.
+
+LatticeConstant      1.0 Ang       # Lattice constant alat 
+%block LatticeVectors   
+  10.0  0.0  0.0
+  0.0  10.0  0.0
+  0.0  0.0   1.25
+%endblock LatticeVectors   
+
+AtomicCoordinatesFormat Ang
+%block AtomicCoordinatesAndAtomicSpecies 
+    0.    0.0    0.0  1
+%endblock AtomicCoordinatesAndAtomicSpecies 
+
+%block SuperCell
+ 1 0 0 
+ 0 1 0
+ 0 0 3
+%endblock
+
+BulkBias.Voltage 1. eV
+%block BulkBias.Direction
+ 0. 0. 1.
+%endblock
+
+%block kgrid.MonkhorstPack
+  1 0 0
+  0 1 0
+ 0 0 1000
+%endblock
+Diag.ParallelOverK true
+TimeReversalSymmetry false
+
+BandLinesScale  ReciprocalLatticeVectors
+%block BandLines                  # These are comments
+  1  0.000  0.000  0.000  \Gamma
+100  0.000  0.000  0.500     X
+%endblock BandLines
