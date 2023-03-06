@@ -131,7 +131,7 @@ contains
       call pdos( no_s, h_spin_dim, no_l, &
           maxnh, no_u, numh, listhptr, listh, H, S, &
           e1, e2, sigma, nhist, xijo, indxuo, gamma_pdos, &
-          kpoint_pdos%N, kpoint_pdos%k, kpoint_pdos%w, no_u)
+          kpoint_pdos%N, kpoint_pdos%k, kpoint_pdos%w)
 
     else
 
