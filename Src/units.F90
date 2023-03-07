@@ -48,15 +48,25 @@ module units
 !   eV = Rydberg / 13.60580
 !  Joule = eV / 1.6e-19_dp
 !  Meter = Ang / 1.0e-10_dp
-!  Pascal = Joule/Meter**2
+!  Pascal = Joule/Meter**3
 !   kBar  = Pascal * 1.0e4
 !  Ryd^-1 (time) = fs/0.04837769
 !   .... and so on.
+!
+! amu is the conversion from standard atomic mass (Da) to the units
+! that SIESTA uses when calculating the kinetic energy of atomic
+! nuclei, and for the atomic equations of motion in MD.
+!
+! The amu is defined 1/12 of the mass of a C-12 isotope (about 1822 times
+! the mass of the electron); so in principle:
+!
+! 1 amu = 1.66053906660e-27 kg
+! Thus, amu = 1.66053906660e-27 * Joule * second^2 / meter^2
 
-  ! For consistency, these should be better defined in terms of the units table.
-  ! Parameter initialization cannot use non-intrinsic functions, though.
-  ! These could be then made into 'protected variables' and initialized
-  ! in a call to a "units initialization function".
+! For consistency, these should be better defined in terms of the units table.
+! Parameter initialization cannot use non-intrinsic functions, though.
+! These could be then made into 'protected variables' and initialized
+! in a call to a "units initialization function".
 
   !! real(dp), public, protected :: Ang
   !! ...
@@ -68,6 +78,7 @@ module units
   
   ! Here we should list *new* values that will not be present in the
   ! original scheme.
+  real(dp), parameter, public :: kg     = 1.28460971172331e27_dp
   real(dp), parameter, public :: Joule  = 1._dp/2.1798723611035e-18_dp
   real(dp), parameter, public :: hbar   = 6.62607015e-19_dp * Joule / (2 * pi) ! in Ry/fs
 
@@ -85,9 +96,10 @@ module units
   real(dp), parameter, public :: kBar   = 6.79786184348648780e-6_dp
   real(dp), parameter, public :: Kelvin = 6.33362312691136091e-6_dp
   real(dp), parameter, public :: Debye  = 3.93430269519899511e-1_dp
-  real(dp), parameter, public :: amu    = 2.133107_dp
+  real(dp), parameter, public :: amu    = 2.13314461165032_dp ! 1.6605390666e-27 *kg
   real(dp), parameter, public :: Ryd_time = 1._dp / hbar
 #endif
+
   real(dp), parameter, public :: GPa = kBar * 10
 
   public :: inquire_unit
