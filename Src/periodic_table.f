@@ -241,26 +241,30 @@ C Written by J. Soler
       character(len=50) message
 
       real(dp), parameter ::  AMASS(0:NZ) =
-       !   X          H         He        Li        Be       B
-     . (/ 0.00_dp,  1.01_dp,  4.00_dp,  6.94_dp,  9.01_dp, 10.81_dp,
-       !   C          N         O         F         Ne       Na
-     .   12.01_dp, 14.01_dp, 16.00_dp, 19.00_dp, 20.18_dp, 22.99_dp,
-       !   Mg         Al        Si        P         S        Cl
-     .   24.31_dp, 26.98_dp, 28.09_dp, 30.97_dp, 32.06_dp, 35.45_dp,
-       !   Ar         K         Ca        Sc        Ti       V
-     .   39.95_dp, 39.10_dp, 40.08_dp, 44.96_dp, 47.87_dp, 50.94_dp,
-       !   Cr         Mn        Fe        Co        Ni        Cu
-     .   52.00_dp, 54.94_dp, 55.85_dp, 58.93_dp, 58.69_dp, 63.55_dp,
-       !   Zn         Ga        Ge        As        Se        Br
-     .   65.38_dp, 69.72_dp, 72.63_dp, 74.92_dp, 78.97_dp, 79.90_dp,
-       !   Kr         Rb        Sr        Y         Zr        Nb
-     .   83.80_dp, 85.47_dp, 87.62_dp, 88.91_dp, 91.22_dp, 92.91_dp,
-       !   Mo         Tc        Ru        Rh        Pd        Ag
-     .   95.95_dp, 97.91_dp,101.07_dp,102.91_dp,106.42_dp,107.87_dp,
-       !   Cd         In        Sn        Sb        Te        I
-     .  112.41_dp,114.82_dp,118.71_dp,121.76_dp,127.60_dp,126.90_dp,
-       !   Xe         Cs        Ba        La        Ce        Pr
-     .  131.29_dp,132.91_dp,137.33_dp,138.91_dp,140.12_dp,140.91_dp,
+       !     X         H          He         Li        Be      
+     . (/  0.00_dp,  1.008_dp, 4.0026_dp,   6.94_dp, 9.0122_dp,
+       !     B         C          N          O         F       
+     .    10.81_dp, 12.011_dp, 14.007_dp, 15.999_dp, 18.998_dp,
+       !     Ne        Na         Mg         Al        Si
+     .    20.18_dp,  22.99_dp, 24.305_dp,  26.98_dp,  28.09_dp,
+       !     P         S          Cl         Ar        K
+     .   30.974_dp,  32.06_dp,  35.45_dp,  39.95_dp, 39.098_dp,
+       !     Ca        Sc         Ti         V         Cr
+     .   40.078_dp, 44.956_dp, 47.867_dp, 50.942_dp, 51.996_dp,
+       !     Mn        Fe         Co         Ni        Cu
+     .   54.938_dp, 55.845_dp, 58.933_dp, 58.693_dp, 63.546_dp,
+       !     Zn        Ga         Ge         As        Se
+     .    65.38_dp, 69.723_dp,  72.63_dp, 74.922_dp, 78.971_dp,
+       !     Br        Kr         Rb         Sr        Y
+     .   79.904_dp, 83.798_dp, 85.468_dp,  87.62_dp, 88.906_dp,
+       !     Zr        Nb         Mo         Tc        Ru
+     .   91.224_dp, 92.906_dp,  95.95_dp, 97.906_dp, 101.07_dp,
+       !     Rh        Pd        Ag          Cd         In
+     .   102.91_dp, 106.42_dp, 107.87_dp, 112.41_dp, 114.82_dp,
+       !     Sn        Sb        Te          I          Xe
+     .   118.71_dp, 121.76_dp, 127.60_dp, 126.90_dp, 131.29_dp,
+       !     Cs        Ba        La          Ce         Pr
+     .   132.91_dp, 137.33_dp, 138.91_dp, 140.12_dp, 140.91_dp,
        !   Nd         Pm        Sm        Eu        Gd        Tb
      .  144.24_dp,144.91_dp,150.36_dp,151.96_dp,157.25_dp,158.93_dp,
        !   Dy         Ho        Er        Tm        Yb        Lu
