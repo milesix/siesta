@@ -217,7 +217,7 @@ C Written by J. Soler
       !
       ! Masses updated as of May/2022 according to IUPAC data.
       ! All masses are *average* atomic masses, i.e. the
-      ! Standard Atomic Weight.
+      ! Standard Atomic Weight, weighted by isotopic abundance.
       ! Source page:
       !   https://iupac.org/what-we-do/periodic-table-of-elements/
       !
@@ -226,8 +226,8 @@ C Written by J. Soler
       !
       ! A few notes
       !  * Tc, Pm, Po, At, Rn, Fr, Ra, Ac, Np, Pu (and onwards)
-      !    masses correspond to measuments of radiactive isotopes,
-      !    since they do not have naturally ocurring stable isotopes.
+      !    masses correspond to measurements of radiactive isotopes,
+      !    since they do not have naturally occurring stable isotopes.
       !  * Tc has two possible isotopes that differ in 1 amu,
       !    we chose the largest atomic mass of the two since the
       !    lifetimes are (almost) the same.

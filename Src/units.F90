@@ -54,7 +54,9 @@ module units
 !   .... and so on.
 !
 ! amu is the conversion from standard atomic mass (Da) to the units
-! that siesta would derive for mass. So in principle:
+! that siesta would derive for mass. This mass is 1/12 of the mass
+! of a C-12 isotope. 
+! So in principle:
 ! 1 amu = 1.66053906660e-27 kg; kg = Joule * second^2 / meter^2
 !
 ! Thus amu = 1.66053906660e-27 *  Joule * second^2 / meter^2
