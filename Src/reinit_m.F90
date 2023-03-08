@@ -34,7 +34,7 @@ contains
     use files,       only : slabel, label_length
     use files,       only : stdin_file, stdout_file
     use siesta_master, only: input_file  ! fdf data file
-    use units,         only: unit_conversion_factor
+    use units,         only: inquire_unit
 
 #ifdef MPI
       use mpi_siesta, only: mpi_comm_world
@@ -193,7 +193,7 @@ contains
     ! Parse the command line
     call parse_command_line(info=.false.)
 
-    call fdf_set_unit_conversion(unit_conversion_factor)
+    call fdf_set_unit_handler(inquire_unit)
     
     ! Define Name of the system ...
     sname = fdf_string('SystemName', ' ')
