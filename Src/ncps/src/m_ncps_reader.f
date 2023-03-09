@@ -138,7 +138,7 @@
               call pseudo_reparametrize(p,a,b,rmax)
            endif
         else if (trim(ext) == ".psml") then
-           call pseudo_read_psml(filename,p,
+           call pseudo_read_psml(filename,p,psml_handle,
      $          reparametrize=reparametrize,a=a,b=b,rmax=rmax)
            call ps_RootAttributes_Get(psml_handle,uuid=uuid)
            write(6,"(a)") "PSML uuid: " // uuid
