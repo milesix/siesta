@@ -80,6 +80,7 @@ list(
   ${top_srcdir}/class_Pair_Data1D.F90
   ${top_srcdir}/class_Fstack_Pair_Data1D.F90
   ${top_srcdir}/units.f90
+  ${top_srcdir}/units_table.f90
 )
 
 add_executable(denchar "${sources}")

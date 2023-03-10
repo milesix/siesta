@@ -493,6 +493,7 @@ set(libsiesta_sources
   typecell.f
   uncell.f
   units.f90
+  units_table.f90
   vacuum_level.f90
   vmat.F90
   vmatsp.F90

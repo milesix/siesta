@@ -28,7 +28,7 @@ C
       USE BASIS_IO
       USE LISTSC_MODULE, ONLY: LISTSC_INIT
       USE FDF
-      use units, only: inquire_unit
+      use units, only: inquire_unit, units_initialization
       use parallel, only: nodes, node
       use m_getopts
 
@@ -196,7 +196,8 @@ C Set up fdf -----------------------------------------------------------
       FILEOUT = 'out.fdf'
       CALL FDF_INIT(FILEIN,FILEOUT)
       call fdf_set_unit_handler(inquire_unit)
-
+      call units_initialization()
+      
 C Read some variables from SIESTA to define the limits of some arrays --
       CALL REINIT( NO_S, NA_S, NO_U, MAXND, MAXNA, NSPIN, IDIMEN,
      .     CHARGE, WAVES )

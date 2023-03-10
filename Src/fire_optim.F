@@ -95,13 +95,14 @@ c Internal variables and arrays
      $                  fire_alpha_factor, fire_dtmax
       integer        :: fire_nmin
 
-      real(dp), parameter ::  fovermp = 0.009579038 * Ang**2 / eV
+      real(dp)            ::  fovermp 
       real(dp), parameter ::  dstrain_max = 0.1_dp
 
       real(dp) :: volcel
       external :: volcel
 c ---------------------------------------------------------------------------
 
+      fovermp = 0.009579038 * Ang**2 / eV
       volume = volcel(cell)
 
 C If first call to optim, check dim and get target stress --------------------

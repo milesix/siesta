@@ -62,7 +62,7 @@ SYSOBJ=$(SYS).o
 # Note that machine-specific files are now in top Src directory.
 SIESTA_OBJS =  bessph.o chkdim.o dismin.o \
                dot.o  io.o iodm.o memory.o memory_log.o\
-	       pxf.o radfft.o m_fft_gpfa.o volcel.o units.o
+	       pxf.o radfft.o m_fft_gpfa.o volcel.o units.o units_table.o
 
 SIESTA_OBJS += precision.o parallel.o debugmpi.o m_io.o alloc.o listsc.o  \
          atmparams.o atom_options.o atmfuncs.o atm_types.o \

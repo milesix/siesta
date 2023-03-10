@@ -142,7 +142,7 @@ OBJS =  automatic_cell.o atom_options.o \
 	dftu.o dftu_specs.o \
         onmod.o densematrix.o writewave.o on_subs.o fermid.o m_broyddj.o \
         electrostatic.o mneighb.o globalise.o siesta_cmlsubs.o siesta_cml.o \
-        units.o zmatrix.o m_broyden_mixing.o forhar.o m_walltime.o m_wallclock.o m_iostruct.o \
+        units.o units_table.o zmatrix.o m_broyden_mixing.o forhar.o m_walltime.o m_wallclock.o m_iostruct.o \
         nlefsm.o overfsm.o overlap.o conjgr.o conjgr_old.o m_energies.o m_steps.o\
         m_broyddj_nocomm.o broyden_optim.o ioxv.o dynamics.o md_out.o \
         molecularmechanics.o zm_broyden_optim.o \
@@ -1306,7 +1306,7 @@ ts_show_regions.o: m_region.o m_ts_method.o parallel.o precision.o
 ts_show_regions.o: ts_electrode.o units.o
 typecell.o: precision.o
 uncell.o: precision.o
-units.o: precision.o
+units.o: precision.o units_table.o
 vacuum_level.o: moreParallelSubs.o precision.o
 vmat.o: alloc.o atm_types.o atmfuncs.o atomlist.o listsc.o m_spin.o mesh.o
 vmat.o: meshdscf.o meshphi.o parallel.o parallelsubs.o precision.o
