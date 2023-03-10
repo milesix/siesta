@@ -71,6 +71,7 @@
       use m_mixing_scf,      only: scf_mixs, scf_mix
 
       use m_normalize_dm, only: normalize_dm
+      use intrinsic_missing, only: VNORM
 
       use m_eo
       use files,             only: slabel
@@ -142,6 +143,9 @@
 
       external           ::  madelung, timer
       real(dp), external :: volcel
+
+      integer :: nbcell
+      real(dp):: bcell(3,3), vcross(3)
 
       integer                       :: ts_kscell_file(3,3) = 0
       real(dp)                      :: ts_kdispl_file(3) = 0.0
@@ -252,6 +256,27 @@
       end select
       
       write(6,'(t22,a)') repeat('=',36)
+
+      ! Figure out the shape of the system and initialize the periodic
+      ! directions
+      call shaper( ucell, na_u, isa, xa, shape, nbcell, bcell )
+      select case ( nbcell )
+      case ( 3 )
+        ! All directions are periodic
+        cell_periodic(:) = .true.
+      case ( 2 )
+        ! We have a single vacuum region
+        call cross(bcell(:,1), bcell(:,2), vcross)
+        vcross(:) = vcross(:) / VNORM(vcross)
+        cell_periodic(:) = .true.
+        cell_periodic(maxloc( abs(matmul(vcross, ucell)), 1)) = .false.
+      case ( 1 )
+        cell_periodic(:) = .false.
+        bcell(:,1) = bcell(:,1) / VNORM(bcell(:,1))
+        cell_periodic(maxloc( abs(matmul(bcell(:,1), ucell)), 1)) =
+     &      .true.
+      end select
+
       
 !     Print atomic coordinates
       call outcoor( ucell, xa, na_u, ' ', writec )

@@ -186,11 +186,14 @@ contains
     else
        ! the other nodes will get the data structure
     endif
+
+    ! Parse the command line
+    ! Note that there can be modifications to the fdf structure
+    call parse_command_line(info=.false.)
+
 #ifdef MPI      
       call broadcast_fdf_struct(0,mpi_comm_world)
 #endif
-    ! Parse the command line
-    call parse_command_line(info=.false.)
 
     ! Define Name of the system ...
     sname = fdf_string('SystemName', ' ')

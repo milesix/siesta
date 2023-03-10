@@ -57,7 +57,7 @@
       use m_spin,             only: spin
       use spin_subs_m,        only: init_spin, init_spiral
       use m_rmaxh
-      use m_forces 
+      use m_forces
       use m_eo
       use m_fixed,            only: init_fixed, print_fixed
       use m_ioxv,             only: xv_file_read
@@ -67,6 +67,9 @@
      &                              setup_wf_kpoints
       use m_new_dm,           only: get_allowed_history_depth
       use m_object_debug,     only: set_object_debug_level
+      use siesta_cml
+      use gridXC,  only : getXC=>gridxc_getXC   ! Returns the XC functional to be used
+
 #ifdef DEBUG_XC
       USE siestaXC, only: setDebugOutputUnit
 #endif /* DEBUG_XC */
@@ -81,7 +84,9 @@
 
       use m_diag_option, only: read_diag, print_diag
       use m_diag_option, only: diag_recognizes_neigwanted
-
+#ifdef SIESTA__DFTD3
+      use grimme_dispersion_m, only : dftd3_initialize
+#endif
 #ifdef SIESTA__FLOOK
       use siesta_dicts, only : dict_populate
       use flook_siesta, only : slua_init, slua_call, LUA_INITIALIZE
@@ -113,8 +118,16 @@
       external :: read_options
       external :: reset_messages_file
 
+      integer :: nf, nXCfunc
+      integer, parameter :: MaxFunc = 10
+      character(len=20) :: XCauth(MaxFunc)
+      character(len=20) :: XCfunc(MaxFunc)
+      real(dp) :: XCweightX(MaxFunc)
+      real(dp) :: XCweightC(MaxFunc)
+      character(len=2) :: idx_string
+
 !---------------------------------------------------------------------- BEGIN
-! Initialise MPI unless siesta is running as a subroutine 
+! Initialise MPI unless siesta is running as a subroutine
 ! of a driver program that may have initialized MPI already
 
 #ifdef MPI
@@ -146,7 +159,7 @@ C     Initialise MPI and set processor number
 
 #ifdef MPI
       call MPI_Comm_Size( MPI_Comm_World, Nodes, MPIerror )
-      
+
       ! Keeper for PEXSI-runs..
       PEXSINodes = Nodes
 #endif
@@ -182,7 +195,7 @@ C     Initialise MPI and set processor number
          ! Write time-stamp at the top of the output
          call timestamp('Start of run')
       end if
-      
+
       ! Initialise input
       call reinit( sname )
 
@@ -212,7 +225,7 @@ C     Initialise MPI and set processor number
       ! is at this point MPI_COMM_WORLD
       MPI_COMM_DFT = MPI_COMM_WORLD
       ! This is needed since MPI_COMM_WORLD is used implicitly by
-      ! Siesta for all operations. 
+      ! Siesta for all operations.
       MPI_COMM_WORLD = SIESTA_Comm
       if (SIESTA_worker) then
          call MPI_Comm_Rank( MPI_Comm_World, Node, MPIerror )
@@ -262,7 +275,7 @@ C     Initialise MPI and set processor number
 
 !     Initialize some variables
       call init_Energies()
-      
+
 
 !     Set object debugging level
       call set_object_debug_level(0)
@@ -272,12 +285,12 @@ C     Initialise MPI and set processor number
             call set_object_debug_level(1)
          endif
       endif
-         
+
 !     Initialize CML (relies on reinit)
       call siesta_cml_init( )
 
 ! Set timer report file and threshold .................................
-      call timer_report( file=trim(slabel)//'.times', 
+      call timer_report( file=trim(slabel)//'.times',
      .        threshold=fdf_get('timer_report_threshold', 0._dp))
       ! Note that the parallel timer might be inefficient for reports
       ! when large numbers of processors are used
@@ -308,7 +321,7 @@ C     Initialise MPI and set processor number
      $           file=trim(slabel)//'.alloc',
      .           threshold=fdf_get('alloc_report_threshold', 0._dp),
      &           printNow=.false. )
-      
+
 
 !     Initialise exchange-correlation functional information
       call read_xc_info()
@@ -318,9 +331,32 @@ C     Initialise MPI and set processor number
       call gridxc_init()
 #endif
 
+!     Write exchange-correlation functional to .cml file
+      call getXC( nXCfunc, XCfunc, XCauth, XCweightX, XCweightC )
+
+      if ( cml_p ) then
+        call cmlStartPropertyList(xf=mainXML, title='XC.Mix',
+     .                              dictRef='siesta:xc')
+        do nf = 1,nXCfunc
+          write(idx_string, "(I0.2)") nf
+          call cmlStartPropertyList(mainXML, id=idx_string)
+          call cmlAddProperty(xf=mainXML, dictRef='siesta:xc_func',
+     .                    title='Functional', value=trim(XCfunc(nf)))
+          call cmlAddProperty(xf=mainXML, dictRef='siesta:xc_auth',
+     .                    title='Authors', value=trim(XCauth(nf)))
+          call cmlAddProperty(xf=mainXML, dictRef='siesta:weight_ex',
+     .                    title='Weight(Ex)', value=XCweightX(nf))
+          call cmlAddProperty(xf=mainXML, dictRef='siesta:weight_ec',
+     .                    title='Weight(Ec)', value=XCweightC(nf))
+          call cmlEndPropertyList(xf=mainXML)
+        enddo
+        call cmlEndPropertyList(xf=mainXML)
+      endif
+
 !     Initialise force field component
       call inittwobody( )
 
+      
 !     Initialize pseudopotentials and atomic orbitals
       if (IOnode) call initatom( ns )
       call broadcast( ns )
@@ -337,7 +373,7 @@ C     Initialise MPI and set processor number
 
       ! Initialize the spin-spiral settings
       call init_spiral( ucell )
-      
+
 !     Initialize atom lists
       call initatomlists( )    ! Sets iza
 
@@ -395,6 +431,15 @@ C     Initialise MPI and set processor number
 !     Read simulation data
       call read_options( na_u, ns, spin%H )
 
+#ifdef SIESTA__DFTD3
+      if (want_dftd3_dispersion) then
+         !     Initialise D3 corrections module.
+         if (IOnode) then
+            call dftd3_initialize( )
+         endif
+      endif
+#endif
+
       call get_allowed_history_depth(n_dm_items)
       call new(DM_history,n_dm_items,"(DM history stack)")
       if (ionode) print "(a,i0)", "Size of DM history Fstack: ",
@@ -450,14 +495,14 @@ C     Initialise MPI and set processor number
       ! This is the rough number of states to be occupied (per spin channel)
       ! For spin%spinor=1, this is half the number of electrons
       nstates_spin(1:2) = ceiling ( (qtots(1:2)/2.0_dp) *  spin%spinor )
-      
+
       ! Calculate the number of eigenstates
       ! dependent on the # of spin-components.
       neigmin = 0
       do is = 1 , spin%spinor
         neigmin = max(neigmin, nstates_spin(is))
       end do
-      
+
       ! Always at least have one additional state per 200 K.  This
       ! choice is rather arbitrary. If the system is large it is likely
       ! to have many states "close" to the Fermi level, and then the
@@ -467,7 +512,7 @@ C     Initialise MPI and set processor number
 
       ! Correct the number of calculated eigenstates
       if ( neigwanted < 0 ) then
-         
+
          ! If this number is negative it corresponds to the number of
          ! states ABOVE the charge neutrality point to be included.  For
          ! normal temperatures and small/medium systems, a number such
@@ -505,10 +550,10 @@ C     Initialise MPI and set processor number
 
 !     Find number of locally stored orbitals and allocated related arrays
       call GetNodeOrbs(no_u,Node,Nodes,no_l)
-      
-!     Find k-grid for Brillouin zone integration 
+
+!     Find k-grid for Brillouin zone integration
 !     NOTE: We need to know whether gamma is .true. or
-!     not early, in order to decide whether to use an 
+!     not early, in order to decide whether to use an
 !     auxiliary supercell for the calculation of matrix elements.
       call setup_kpoint_scf( ucell )
       not_using_auxcell = gamma_scf
@@ -520,14 +565,14 @@ C     Initialise MPI and set processor number
          endif
       endif
 #endif
-!     Call initialisation of PDOS here since we need to check if 
+!     Call initialisation of PDOS here since we need to check if
 !     the auxiliary supercell is needed for a non-gamma calculation
       call init_projected_DOS( ucell )
       if ( do_pdos ) then
         not_using_auxcell = not_using_auxcell.and. gamma_pdos
       endif
 
-!     Call initialisation of LDOS here since we need to check if 
+!     Call initialisation of LDOS here since we need to check if
 !     the auxiliary supercell is needed for a non-gamma calculation
       call init_local_DOS( ucell )
       if ( do_ldos ) then
@@ -554,9 +599,9 @@ C     Initialise MPI and set processor number
       end if
 
       nullify(eo,qo)
-      call re_alloc(eo, 1, no_u, 1, spin%spinor, 1, kpoint_scf%N, 'eo', 
+      call re_alloc(eo, 1, no_u, 1, spin%spinor, 1, kpoint_scf%N, 'eo',
      &              'siesta_init')
-      call re_alloc(qo, 1, no_u, 1, spin%spinor, 1, kpoint_scf%N, 'qo', 
+      call re_alloc(qo, 1, no_u, 1, spin%spinor, 1, kpoint_scf%N, 'qo',
      &              'siesta_init')
 
       call setup_bands( )
@@ -583,7 +628,7 @@ C     Initialise MPI and set processor number
         nsc(1:3) = 1
       else
         ! Determine the tightest auxiliary supercell using
-        ! also the atomic positions 
+        ! also the atomic positions
         call exact_sc_ag(negl,ucell,na_u,isa,xa,nsc)
       end if
 
@@ -636,13 +681,13 @@ C     Initialise MPI and set processor number
         call die( 'siesta: wrong idyn' )
       endif
 
-      ! initialize the fixed positions (we need to check whether the 
+      ! initialize the fixed positions (we need to check whether the
       ! fixed positions make sense)
       call init_fixed( ucell, na_u , isa, iza )
       call print_fixed( )
 
       ! Build initial velocities according to Maxwell-Bolzmann distribution....
-      if (idyn .ne. 0 .and. idyn .ne. 6 .and. (.not. xv_file_read)) 
+      if (idyn .ne. 0 .and. idyn .ne. 6 .and. (.not. xv_file_read))
      &    call vmb( na_u, tempinit, amass, xa, isa, va )
 
       istp = 0

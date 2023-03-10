@@ -60,6 +60,7 @@ Frederico Dutilh Novaes
 Micael Oliveira
 Magnus Paulsson
 Oscar Paz
+Federico Pedron
 Andrei Postnikov
 Yann Pouillon
 Roberto Robles

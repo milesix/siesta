@@ -74,7 +74,7 @@ module m_cite
   ! Increment this after having added a new
   ! citation!
   ! OTHERWISE YOU WILL EXPERIENCE A SEG-FAULT.
-  integer, parameter :: N_citations = 13
+  integer, parameter :: N_citations = 14
 
   private
 
@@ -227,6 +227,9 @@ contains
       case ( "projecteuclid.org/euclid.cms/12565628222")
         ! Selected Inversion Algorithm
         lID = 13
+      case ( "10.1103/PhysRevB.106.155401" )
+        ! Bulk-bias
+        lID = 14
       end select
 
     end if
@@ -386,6 +389,19 @@ contains
       cit%cite_key = "CMS2009"
       cit%doi = "projecteuclid.org/euclid.cms/12565628222"
       
+    case ( 14 )
+      ! Bulk-bias
+      cit%comment = "Bulk-bias calculations"
+      cit%title = "Simple approach to current-induced bond weakening &
+          &in ballistic conductors"
+      cit%author = "Papior, N. and Leitherer, S. and Brandbyge, M."
+      cit%journal = "Physical Review B"
+      cit%year = 2022
+      cit%volume = "106"
+      cit%issue = "155401"
+      cit%cite_key = "Papior22BulkBias"
+      cit%doi = "10.1103/PhysRevB.106.155401"
+
     case default
       ! Not found
       cit%ID = 0

@@ -1,15 +1,13 @@
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/install_tests")
 
-function(setup_test name pseudos extrafiles)
+#
+#  Function to set up tests
+#
+function(setup_test name extrafiles)
  set(wdir "${CMAKE_BINARY_DIR}/install_tests/${name}")
  file(MAKE_DIRECTORY "${wdir}")
  
  file(COPY "${name}/${name}.fdf"  DESTINATION "${wdir}")
-
- separate_arguments(pseudos)
- foreach(_ps IN LISTS pseudos)
-   file(COPY Pseudos/${_ps} DESTINATION "${wdir}")
- endforeach()
 
  if(extrafiles)
    separate_arguments(extrafiles)
@@ -25,16 +23,25 @@ function(setup_test name pseudos extrafiles)
 	  $<TARGET_FILE:siesta-siesta> -out OUT ${name}.fdf
           ${MPIEXEC_POSTFLAGS})
 	  
-   add_test( NAME    siesta-${name}_mpi
-             COMMAND ${MPIEXEC_EXECUTABLE} ${mpiexec_args}
-             WORKING_DIRECTORY "${wdir}" )
-
+   add_test( NAME    siesta-${name}_mpi_np_${num_ranks}
+             COMMAND  ${MPIEXEC_EXECUTABLE} ${mpiexec_args}
+             WORKING_DIRECTORY "${wdir}")
+	     
+   set_tests_properties(siesta-${name}_mpi_np_${num_ranks}
+                       PROPERTIES
+                       ENVIRONMENT "SIESTA_PS_PATH=${CMAKE_SOURCE_DIR}/Tests/Pseudos")
+ 		       
+    
  else()
  
    add_test( NAME    siesta-${name}
-             COMMAND siesta-siesta -out OUT ${name}.fdf
+             COMMAND $<TARGET_FILE:siesta-siesta> -out OUT ${name}.fdf
              WORKING_DIRECTORY "${wdir}" )
 
+   set_tests_properties(siesta-${name}
+                       PROPERTIES
+                       ENVIRONMENT "SIESTA_PS_PATH=${CMAKE_SOURCE_DIR}/Tests/Pseudos")
+		       
  endif(WITH_MPI)
 
 endfunction()
@@ -42,14 +49,18 @@ endfunction()
 #
 #
 #
-setup_test("h2o" "H.psf O.psf" "")
-#setup_test("ch4" "H.pbe.psf C.pbe.psf" "")
-setup_test("wannier" "Si.psf" "wannier.nnkp wannier.win")
+setup_test("h2o" "")
+#setup_test("ch4" "")
+setup_test("wannier" "wannier.nnkp wannier.win")
 
 if(WITH_LUA)
-  setup_test("lua_h2o" "O.psf H.psf" "siesta.lua")
+  setup_test("lua_h2o" "siesta.lua")
+endif()
+
+if(WITH_DFTD3)
+  setup_test("dftd3" "")
 endif()
 
 if(WITH_ELSI)
-  setup_test("si64-elsi" "Si.psf" "")
+  setup_test("si64-elsi" "")
 endif()

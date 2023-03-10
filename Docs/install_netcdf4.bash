@@ -22,7 +22,7 @@
 # different flags you should export those variables; CFLAGS, FFLAGS.
 
 # If you have downloaded other versions edit these version strings
-z_v=1.2.11
+z_v=1.2.13
 h_v=1.12.0
 nc_v=4.7.4
 nf_v=4.5.3
@@ -158,10 +158,10 @@ function retval {
     fi
 }
 
-download_file zlib-${z_v}.tar.gz https://zlib.net/zlib-${z_v}.tar.gz
+download_file zlib-${z_v}.tar.gz https://zlib.net/fossils/zlib-${z_v}.tar.gz
 download_file hdf5-${h_v}.tar.bz2 https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-${h_v%.*}/hdf5-${h_v}/src/hdf5-${h_v}.tar.bz2
-download_file netcdf-c-${nc_v}.tar.gz https://www.unidata.ucar.edu/downloads/netcdf/ftp/netcdf-c-${nc_v}.tar.gz
-download_file netcdf-fortran-${nf_v}.tar.gz https://www.unidata.ucar.edu/downloads/netcdf/ftp/netcdf-fortran-${nf_v}.tar.gz
+download_file netcdf-c-${nc_v}.tar.gz https://github.com/Unidata/netcdf-c/archive/refs/tags/v${nc_v}.tar.gz
+download_file netcdf-fortran-${nf_v}.tar.gz https://github.com/Unidata/netcdf-fortran/archive/refs/tags/v${nf_v}.tar.gz
 
 file_exists zlib-${z_v}.tar.gz
 file_exists hdf5-${h_v}.tar.bz2

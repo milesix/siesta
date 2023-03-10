@@ -30,7 +30,7 @@ endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/s-dftd3-utils.cmake")
 
-sdftd3_find_package("${_lib}" "${${_pkg}_FIND_METHOD}" "${_url}" "${_tag}")
+sdftd3_find_package("${_lib}" "${${_pkg}_FIND_METHOD}" "${_url}" "${_tag}" "${_lib}")
 
 if(DEFINED "_${_pkg}_FIND_METHOD")
   unset("${_pkg}_FIND_METHOD")

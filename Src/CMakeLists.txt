@@ -111,6 +111,9 @@ set(libsiesta_sources
   diagk.F
   diagk_file.F
   diagkp.F
+  diagkp_velocity.F90
+  diag2kp_velocity.F90
+  diag3kp_velocity.F90
   diagmemory.F
   diagon.F
   diagonalizeHk.F90
@@ -155,6 +158,7 @@ set(libsiesta_sources
   globalise.F
   gradient.F
   gradientlomem.F
+  grimme_dispersion_m.F90
   grdsam.F
   hamann.f90
   hsparse.F
@@ -495,6 +499,7 @@ set(libsiesta_sources
   uncell.f
   units.f90
   vacuum_level.f90
+  velocity_shift.F90
   vmat.F90
   vmatsp.F90
   vmb.F
@@ -548,6 +553,7 @@ target_compile_definitions(
   "$<$<BOOL:${WITH_NCDF}>:NCDF_4>"
   "$<$<BOOL:${WITH_NCDF_PARALLEL}>:NCDF_PARALLEL>"
   "$<$<BOOL:${WITH_LUA}>:SIESTA__FLOOK>"
+  "$<$<BOOL:${WITH_DFTD3}>:SIESTA__DFTD3>"
 )
 
 target_link_libraries(
@@ -569,6 +575,7 @@ target_link_libraries(
    $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
    $<$<BOOL:${WITH_ELSI}>:elsi::elsi>
   "$<$<BOOL:${WITH_MPI}>:Scalapack::Scalapack>"
+  "$<$<BOOL:${WITH_DFTD3}>:s-dftd3::s-dftd3>"
   LAPACK::LAPACK
 )
 

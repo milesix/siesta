@@ -32,6 +32,7 @@
   add_subdirectory("SiestaSubroutine/FmixMD/Src")
   add_subdirectory("SiestaSubroutine/ProtoNEB/Src")
   add_subdirectory("sies2arc")
+  add_subdirectory("Contrib/APostnikov")
 
 if(FFTW_DOUBLE_LIB_FOUND)
   add_subdirectory("STM/ol-stm/Src")

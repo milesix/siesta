@@ -413,7 +413,7 @@ contains
       do ik = 1 , this%N
         
         ! read current k-point
-        read(iu,*,iostat=stat) ix, k(:), this%w(ik) ! (i6,3f12.6,3x,f12.6)
+        read(iu,*,iostat=stat) ix, k(:), this%w(ik) ! see kpoint_write_file
         call kpoint_convert(rcell, k, this%k(:,ik), -2)
         call kill_iokp(stat,ik)
         wsum = wsum + this%w(ik)
@@ -554,10 +554,10 @@ contains
     if ( all ) then
       write(*,'(/,3a)') 'siesta: ',trim(name), 'point coordinates (Bohr**-1) and weights:'
       do ik = 1, this%N
-        write(*,'(a,i10,3(tr1,e13.6),tr3,e12.6)') 'siesta: ', ik, this%k(:,ik), this%w(ik)
+        write(*,'(a,i12,3(tr1,e13.6),tr3,e12.6)') 'siesta: ', ik, this%k(:,ik), this%w(ik)
       end do
     end if
-    write(*,'(/3a,i10)')  'siesta: ', trim(name), 'grid: Number of k-points =', this%N
+    write(*,'(/3a,i0)')  'siesta: ', trim(name), 'grid: Number of k-points = ', this%N
 
     select case ( this%method )
     case ( K_METHOD_NONE )
@@ -567,14 +567,14 @@ contains
       write(*,'(3a,f10.3,a)')  'siesta: ', trim(name), 'cutoff (effective) =', this%cutoff/Ang, ' Ang'
       write(*,'(3a)') 'siesta: ', trim(name), 'point supercell and displacements'
       do ik = 1, 3
-        write(*,'(a,3i4,3x,f8.3)') 'siesta: k-grid: ', this%k_cell(:,ik), this%k_displ(ik)
+        write(*,'(a,3(tr1,i5),3x,f8.3)') 'siesta: k-grid:', this%k_cell(:,ik), this%k_displ(ik)
       end do
     case ( K_METHOD_CUTOFF )
       write(*,'(3a)')  'siesta: ', trim(name), 'points from cutoff'
       write(*,'(3a,f10.3,a)')  'siesta: ', trim(name), 'cutoff (effective) =', this%cutoff/Ang, ' Ang'
       write(*,'(3a)') 'siesta: ', trim(name), 'point supercell and displacements'
       do ik = 1, 3
-        write(*,'(a,3i4,3x,f8.3)') 'siesta: k-grid: ', this%k_cell(:,ik), this%k_displ(ik)
+        write(*,'(a,3(tr1,i5),3x,f8.3)') 'siesta: k-grid:', this%k_cell(:,ik), this%k_displ(ik)
       end do
     case ( K_METHOD_LIST )
       write(*,'(3a)')  'siesta: ', trim(name), 'points from user-defined list'
@@ -596,9 +596,9 @@ contains
     call io_assign( iu )
     open( iu, file=fname, form='formatted', status='unknown' )      
     
-    write(iu,'(i10)') this%N
+    write(iu,'(i12)') this%N
     do ik = 1, this%N
-      write(iu,'(i10,3(tr1,e13.6),tr3,e12.6)') ik, this%k(:,ik), this%w(ik)
+      write(iu,'(i12,3(tr1,e13.6),tr3,e12.6)') ik, this%k(:,ik), this%w(ik)
     end do
       
     call io_close( iu )
